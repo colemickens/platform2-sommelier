@@ -10,12 +10,6 @@
 
 #include "gmock/gmock.h"
 
-namespace base {
-void PrintTo(const base::FilePath& path, std::ostream* stream) {
-  *stream << path.value();
-}
-}
-
 namespace imageloader {
 
 class MockVerityMounter : public VerityMounter {

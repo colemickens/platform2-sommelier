@@ -4,28 +4,21 @@
 
 #include "imageloader_impl.h"
 
-#include <dirent.h>
 #include <stdint.h>
-#include <stdlib.h>
 
-#include <algorithm>
 #include <list>
+#include <string>
 #include <vector>
 
+#include "component.h"
 #include "mock_verity_mounter.h"
+#include "test_utilities.h"
 #include "verity_mounter.h"
 
-#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/logging.h>
 #include <base/memory/ptr_util.h>
-#include <base/numerics/safe_conversions.h>
-#include <base/strings/string_number_conversions.h>
-#include <base/values.h>
-#include <crypto/secure_hash.h>
-#include <crypto/sha2.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -33,54 +26,14 @@ namespace imageloader {
 
 using testing::_;
 
-namespace {
-
-// Test data always uses the dev key.
-constexpr uint8_t kDevPublicKey[] = {
-    0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02,
-    0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x03,
-    0x42, 0x00, 0x04, 0x7a, 0xaa, 0x2b, 0xf9, 0x3d, 0x7a, 0xbe, 0x35, 0x9a,
-    0xfc, 0x9f, 0x39, 0x2d, 0x2d, 0x37, 0x07, 0xd4, 0x19, 0x67, 0x67, 0x30,
-    0xbb, 0x5c, 0x74, 0x22, 0xd5, 0x02, 0x07, 0xaf, 0x6b, 0x12, 0x9d, 0x12,
-    0xf0, 0x34, 0xfd, 0x1a, 0x7f, 0x02, 0xd8, 0x46, 0x2b, 0x25, 0xca, 0xa0,
-    0x6e, 0x2b, 0x54, 0x41, 0xee, 0x92, 0xa2, 0x0f, 0xa2, 0x2a, 0xc0, 0x30,
-    0xa6, 0x8c, 0xd1, 0x16, 0x0a, 0x48, 0xca};
-
-constexpr char kImageLoaderJSON[] =
-    "{\"image-sha256-hash\":"
-    "\"6B1E52D97EE63DDFDB3375FDC7F840D54116667E02745D31427C108B3F6885FD\","
-    "\"table-sha256-hash\":"
-    "\"24ECDCEC354FB7D020A237908A525CC96F6F77B95E906D5A0E49644D02692F2F\","
-    "\"version\":\"22.0.0.256\","
-    "\"manifest-version\":1}";
-
-constexpr uint8_t kImageLoaderSig[] = {
-    0x30, 0x46, 0x02, 0x21, 0x00, 0x86, 0x4f, 0x25, 0x51, 0x52, 0xb1, 0x79,
-    0xa3, 0x3e, 0x9b, 0x08, 0x70, 0x10, 0x61, 0xca, 0x63, 0x37, 0x0c, 0xa2,
-    0x9f, 0x4f, 0x21, 0xd7, 0x37, 0x05, 0x4e, 0x8d, 0x73, 0x39, 0x18, 0x98,
-    0x94, 0x02, 0x21, 0x00, 0xf1, 0x64, 0x4f, 0x9d, 0x39, 0x58, 0xca, 0xef,
-    0xe7, 0x4c, 0xa2, 0x5e, 0x00, 0xcb, 0x33, 0x43, 0x7b, 0x9d, 0x72, 0x3e,
-    0x67, 0x39, 0x2c, 0xfb, 0x3a, 0xcb, 0x80, 0x2b, 0xc4, 0xca, 0xab, 0x8d};
-
-constexpr uint8_t kImageLoaderBadSig[] = {
-    0x30, 0x44, 0x02, 0x20, 0x0a, 0x75, 0x49, 0xaf, 0x01, 0x3b, 0x48, 0x51,
-    0x45, 0x74, 0x8b, 0x41, 0x64, 0x21, 0x83, 0xce, 0xf1, 0x78, 0x1d, 0xd0,
-    0xa8, 0xd6, 0xae, 0x84, 0xf3, 0xc1, 0x3c, 0x3a, 0xee, 0xb4, 0x35, 0xb7,
-    0x02, 0x20, 0x34, 0xeb, 0xdc, 0x68, 0x2d, 0x8b, 0x4f, 0x64, 0x94, 0x64,
-    0xa3, 0xd5, 0xde, 0xab, 0xf9, 0xa0, 0xbd, 0xcc, 0xc1, 0x2f, 0x78, 0xd4,
-    0xe8, 0xed, 0x6a, 0x45, 0x38, 0x53, 0x54, 0xd2, 0xb1, 0x97};
-
-// This is the name of the component used in the test data.
-constexpr char kTestComponentName[] = "PepperFlashPlayer";
-// This is the version of flash player used in the test data.
-constexpr char kTestDataVersion[] = "22.0.0.158";
-// This is the version of the updated flash player in the test data.
-constexpr char kTestUpdatedVersion[] = "22.0.0.256";
-
-}  // namespace {}
-
 class ImageLoaderTest : public testing::Test {
  public:
+  ImageLoaderTest() {
+    CHECK(scoped_temp_dir_.CreateUniqueTempDir());
+    temp_dir_ = scoped_temp_dir_.path();
+    CHECK(base::SetPosixFilePermissions(temp_dir_, kComponentDirPerms));
+  }
+
   ImageLoaderConfig GetConfig(const char* path) {
     std::vector<uint8_t> key(std::begin(kDevPublicKey),
                              std::end(kDevPublicKey));
@@ -89,46 +42,17 @@ class ImageLoaderTest : public testing::Test {
     return config;
   }
 
-  base::FilePath GetComponentPath() {
-    return GetComponentPath(kTestDataVersion);
-  }
-
-  base::FilePath GetComponentPath(const std::string& version) {
-    const char* src_dir = getenv("CROS_WORKON_SRCROOT");
-    CHECK(src_dir != nullptr);
-    base::FilePath component_path(src_dir);
-    component_path =
-        component_path.Append("src")
-            .Append("platform")
-            .Append("imageloader")
-            .Append("test")
-            .Append(version + "_chromeos_intel64_PepperFlashPlayer");
-    return component_path;
-  }
-
-  void GetFilesInDir(const base::FilePath& dir, std::list<std::string>* files) {
-    base::FileEnumerator file_enum(dir, false, base::FileEnumerator::FILES);
-    for (base::FilePath name = file_enum.Next(); !name.empty();
-         name = file_enum.Next()) {
-      files->emplace_back(name.BaseName().value());
-    }
-  }
+  base::ScopedTempDir scoped_temp_dir_;
+  base::FilePath temp_dir_;
 };
 
 // Test the RegisterComponent public interface.
 TEST_F(ImageLoaderTest, RegisterComponentAndGetVersion) {
-  base::ScopedTempDir scoped_temp_dir;
-  ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
-  const base::FilePath& temp_dir = scoped_temp_dir.path();
-  // Delete the directory so that the ImageLoader can recreate it with the
-  // correct permissions.
-  base::DeleteFile(temp_dir, /*recursive=*/true);
-
-  ImageLoaderImpl loader(GetConfig(temp_dir.value().c_str()));
+  ImageLoaderImpl loader(GetConfig(temp_dir_.value().c_str()));
   ASSERT_TRUE(loader.RegisterComponent(kTestComponentName, kTestDataVersion,
-                                       GetComponentPath().value()));
+                                       GetTestComponentPath().value()));
 
-  base::FilePath comp_dir = temp_dir.Append(kTestComponentName);
+  base::FilePath comp_dir = temp_dir_.Append(kTestComponentName);
   ASSERT_TRUE(base::DirectoryExists(comp_dir));
 
   base::FilePath hint_file = comp_dir.Append("latest-version");
@@ -142,22 +66,10 @@ TEST_F(ImageLoaderTest, RegisterComponentAndGetVersion) {
   base::FilePath version_dir = comp_dir.Append(kTestDataVersion);
   ASSERT_TRUE(base::DirectoryExists(version_dir));
 
-  std::list<std::string> files;
-  GetFilesInDir(version_dir, &files);
-  EXPECT_THAT(files, testing::UnorderedElementsAre(
-                         "imageloader.json", "imageloader.sig.1", "table",
-                         "image.squash", "manifest.fingerprint"));
-
-  // Reject a component if the version already exists.
-  EXPECT_FALSE(loader.RegisterComponent(kTestComponentName, kTestDataVersion,
-                                        GetComponentPath().value()));
-
-  EXPECT_EQ(kTestDataVersion, loader.GetComponentVersion(kTestComponentName));
-
   // Now copy a new version into place.
   EXPECT_TRUE(
       loader.RegisterComponent(kTestComponentName, kTestUpdatedVersion,
-                               GetComponentPath(kTestUpdatedVersion).value()));
+                               GetTestComponentPath(kTestUpdatedVersion).value()));
 
   std::string hint_file_contents2;
   ASSERT_TRUE(
@@ -167,18 +79,12 @@ TEST_F(ImageLoaderTest, RegisterComponentAndGetVersion) {
   base::FilePath version_dir2 = comp_dir.Append(kTestUpdatedVersion);
   ASSERT_TRUE(base::DirectoryExists(version_dir2));
 
-  std::list<std::string> files2;
-  GetFilesInDir(version_dir2, &files2);
-  EXPECT_THAT(files2, testing::UnorderedElementsAre("imageloader.json",
-                                                    "imageloader.sig.1",
-                                                    "table", "image.squash"));
-
   EXPECT_EQ(kTestUpdatedVersion,
             loader.GetComponentVersion(kTestComponentName));
 
   // Reject rollback to an older version.
   EXPECT_FALSE(loader.RegisterComponent(kTestComponentName, kTestDataVersion,
-                                        GetComponentPath().value()));
+                                        GetTestComponentPath().value()));
 
   EXPECT_EQ(kTestUpdatedVersion,
             loader.GetComponentVersion(kTestComponentName));
@@ -187,176 +93,17 @@ TEST_F(ImageLoaderTest, RegisterComponentAndGetVersion) {
 // Pretend ImageLoader crashed, by creating an incomplete installation, and then
 // attempt registration with ImageLoader.
 TEST_F(ImageLoaderTest, RegisterComponentAfterCrash) {
-  base::ScopedTempDir scoped_temp_dir;
-  ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
-  const base::FilePath& temp_dir = scoped_temp_dir.path();
-  // Set the correct permissions on temp dir.
-  ASSERT_TRUE(base::SetPosixFilePermissions(temp_dir, 0755));
-
   // Now create the junk there.
   const std::string junk_contents ="Bad file contents";
   const base::FilePath junk_path =
-      temp_dir.Append(kTestComponentName).Append(kTestDataVersion);
+      temp_dir_.Append(kTestComponentName).Append(kTestDataVersion);
   ASSERT_TRUE(base::CreateDirectory(junk_path));
   ASSERT_EQ(static_cast<int>(junk_contents.size()),
             base::WriteFile(junk_path.Append("junkfile"), junk_contents.data(),
                             junk_contents.size()));
-  ImageLoaderImpl loader(GetConfig(temp_dir.value().c_str()));
+  ImageLoaderImpl loader(GetConfig(temp_dir_.value().c_str()));
   ASSERT_TRUE(loader.RegisterComponent(kTestComponentName, kTestDataVersion,
-                                       GetComponentPath().value()));
-}
-
-TEST_F(ImageLoaderTest, ECVerify) {
-  ImageLoaderImpl loader(GetConfig("/nonexistant"));
-  EXPECT_TRUE(loader.ECVerify(
-      base::StringPiece(kImageLoaderJSON),
-      base::StringPiece(reinterpret_cast<const char*>(kImageLoaderSig),
-                        sizeof(kImageLoaderSig))));
-
-  EXPECT_FALSE(loader.ECVerify(
-      base::StringPiece(kImageLoaderJSON),
-      base::StringPiece(reinterpret_cast<const char*>(kImageLoaderBadSig),
-                        sizeof(kImageLoaderBadSig))));
-}
-
-TEST_F(ImageLoaderTest, ManifestFingerPrint) {
-  ImageLoaderImpl loader(GetConfig("/nonexistant"));
-  const std::string valid_manifest =
-      "1.3464353b1ed78574e05f3ffe84b52582572b2fe7202f3824a3761e54ace8bb1";
-  EXPECT_TRUE(loader.IsValidFingerprintFile(valid_manifest));
-
-  const std::string invalid_unicode_manifest = "Ё Ђ Ѓ Є Ѕ І Ї Ј Љ ";
-  EXPECT_FALSE(loader.IsValidFingerprintFile(invalid_unicode_manifest));
-
-  EXPECT_FALSE(loader.IsValidFingerprintFile("\x49\x34\x19-43.*+abc"));
-}
-
-TEST_F(ImageLoaderTest, CopyValidComponent) {
-  ImageLoaderImpl loader(GetConfig("/nonexistant"));
-  const int image_size = 4096 * 4;
-  base::ScopedTempDir scoped_temp_dir;
-  ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
-  const base::FilePath& temp_dir = scoped_temp_dir.path();
-
-  std::vector<char> image(image_size, 0xBB);
-  base::FilePath component_dest = temp_dir.Append("copied-component");
-  ASSERT_TRUE(loader.CopyComponentDirectory(GetComponentPath(), component_dest,
-                                            kTestDataVersion));
-
-  // Check that all the files are present, except for the manifest.json which
-  // should be discarded.
-  std::list<std::string> original_files;
-  std::list<std::string> copied_files;
-  GetFilesInDir(GetComponentPath(), &original_files);
-  GetFilesInDir(component_dest, &copied_files);
-
-  EXPECT_THAT(original_files,
-              testing::UnorderedElementsAre(
-                  "imageloader.json", "imageloader.sig.1", "manifest.json",
-                  "table", "image.squash", "manifest.fingerprint"));
-  EXPECT_THAT(copied_files,
-              testing::UnorderedElementsAre(
-                  "imageloader.json", "imageloader.sig.1", "table",
-                  "image.squash", "manifest.fingerprint"));
-}
-
-TEST_F(ImageLoaderTest, CopyComponentWithBadManifest) {
-  base::ScopedTempDir scoped_temp_dir;
-  ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
-  const base::FilePath& temp_dir = scoped_temp_dir.path();
-
-  base::FilePath bad_component_dir = temp_dir.Append("bad-component");
-
-  ASSERT_TRUE(base::CopyDirectory(GetComponentPath(), bad_component_dir,
-                                  true /* recursive */));
-
-  base::FilePath manifest = bad_component_dir.Append("imageloader.json");
-  const char data[] = "c";
-  ASSERT_TRUE(base::AppendToFile(manifest, data, sizeof(data)));
-
-  ImageLoaderImpl loader(GetConfig("/nonexistant"));
-  EXPECT_FALSE(loader.CopyComponentDirectory(
-      bad_component_dir, temp_dir.Append("copied-component"),
-      kTestDataVersion));
-}
-
-TEST_F(ImageLoaderTest, CopyValidImage) {
-  const int image_size = 4096 * 4;
-
-  base::ScopedTempDir scoped_temp_dir;
-  ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
-  const base::FilePath& temp_dir = scoped_temp_dir.path();
-
-  base::FilePath image_path = temp_dir.Append("image");
-  std::vector<char> image(image_size,
-                          0xBB);  // large enough to test streaming read.
-  ASSERT_EQ(image_size,
-            base::WriteFile(image_path, image.data(), image.size()));
-
-  std::vector<uint8_t> hash(crypto::kSHA256Length);
-
-  std::unique_ptr<crypto::SecureHash> sha256(
-      crypto::SecureHash::Create(crypto::SecureHash::SHA256));
-  sha256->Update(image.data(), image.size());
-  sha256->Finish(hash.data(), hash.size());
-
-  ImageLoaderImpl loader(GetConfig("/nonexistant"));
-  base::FilePath image_dest = temp_dir.Append("image.copied");
-  ASSERT_TRUE(loader.CopyAndHashFile(image_path, image_dest, hash));
-
-  // Check if the image file actually exists and has the correct contents.
-  std::string resulting_image;
-  ASSERT_TRUE(base::ReadFileToStringWithMaxSize(image_dest, &resulting_image,
-                                                image_size));
-
-  EXPECT_TRUE(memcmp(image.data(), resulting_image.data(), image_size) == 0);
-}
-
-TEST_F(ImageLoaderTest, CopyInvalidImage) {
-  const int image_size = 4096 * 4;
-  // It doesn't matter what the hash is, because this is testing a mismatch.
-  std::string hash_str =
-      "5342065E5D9889739B281D96FD985270A13F2B68A29DD47142ABFA0C2C659AA1";
-  std::vector<uint8_t> hash;
-  ASSERT_TRUE(base::HexStringToBytes(hash_str, &hash));
-
-  base::ScopedTempDir scoped_temp_dir;
-  ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
-  const base::FilePath& temp_dir = scoped_temp_dir.path();
-
-  base::FilePath image_src = temp_dir.Append("bad_image.squash");
-  base::FilePath image_dest = temp_dir.Append("image.squash");
-
-  std::vector<char> file(image_size, 0xAA);
-  ASSERT_EQ(image_size, base::WriteFile(image_src, file.data(), image_size));
-
-  ImageLoaderImpl loader(GetConfig("/nonexistant"));
-  EXPECT_FALSE(loader.CopyAndHashFile(image_src, image_dest, hash));
-}
-
-TEST_F(ImageLoaderTest, ParseManifest) {
-  ImageLoaderImpl loader(GetConfig("/nonexistant"));
-  ImageLoaderImpl::Manifest manifest;
-  base::StringPiece imageloader_sig(reinterpret_cast<const char*>(kImageLoaderSig),
-                              sizeof(kImageLoaderSig));
-  ASSERT_TRUE(loader.VerifyAndParseManifest(kImageLoaderJSON, imageloader_sig,
-                                            &manifest));
-  EXPECT_EQ(1, manifest.manifest_version);
-  EXPECT_EQ(kTestUpdatedVersion, manifest.version);
-  EXPECT_EQ(32, manifest.image_sha256.size());
-  EXPECT_EQ(32, manifest.table_sha256.size());
-
-  std::string bad_manifest = "{\"foo\":\"128.0.0.9\"}";
-  ImageLoaderImpl::Manifest manifest2;
-  EXPECT_FALSE(
-      loader.VerifyAndParseManifest(bad_manifest, imageloader_sig, &manifest2));
-
-  base::StringPiece imageloader_bad_sig(
-      reinterpret_cast<const char*>(kImageLoaderBadSig),
-      sizeof(kImageLoaderBadSig));
-  ImageLoaderImpl::Manifest manifest3;
-  EXPECT_FALSE(loader.VerifyAndParseManifest(kImageLoaderJSON,
-                                             imageloader_bad_sig, &manifest3));
+                                       GetTestComponentPath().value()));
 }
 
 TEST_F(ImageLoaderTest, MountValidImage) {
@@ -365,16 +112,10 @@ TEST_F(ImageLoaderTest, MountValidImage) {
   ON_CALL(*mount_mock, Mount(_, _, _)).WillByDefault(testing::Return(true));
   EXPECT_CALL(*mount_mock, Mount(_, _, _)).Times(2);
 
-  base::ScopedTempDir scoped_temp_dir;
   base::ScopedTempDir scoped_mount_dir;
-  ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
   ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
 
-  const base::FilePath& temp_dir = scoped_temp_dir.path();
-  // Delete the directory so that the ImageLoader can recreate it with the
-  // correct permissions.
-  base::DeleteFile(temp_dir, /*recursive=*/true);
-  ImageLoaderConfig config(key, temp_dir.value().c_str(),
+  ImageLoaderConfig config(key, temp_dir_.value().c_str(),
                            scoped_mount_dir.path().value().c_str(),
                            std::move(mount_mock));
   ImageLoaderImpl loader(std::move(config));
@@ -382,7 +123,7 @@ TEST_F(ImageLoaderTest, MountValidImage) {
   // We previously tested RegisterComponent, so assume this works if it reports
   // true.
   ASSERT_TRUE(loader.RegisterComponent(kTestComponentName, kTestDataVersion,
-                                       GetComponentPath().value()));
+                                       GetTestComponentPath().value()));
 
   const std::string expected_path =
       scoped_mount_dir.path().value() + "/PepperFlashPlayer/22.0.0.158";
@@ -400,17 +141,10 @@ TEST_F(ImageLoaderTest, MountInvalidImage) {
   ON_CALL(*mount_mock, Mount(_, _, _)).WillByDefault(testing::Return(true));
   EXPECT_CALL(*mount_mock, Mount(_, _, _)).Times(0);
 
-  base::ScopedTempDir scoped_temp_dir;
   base::ScopedTempDir scoped_mount_dir;
-  ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
   ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
 
-  const base::FilePath& temp_dir = scoped_temp_dir.path();
-  // Delete the directory so that the ImageLoader can recreate it with the
-  // correct permissions.
-  base::DeleteFile(temp_dir, /*recursive=*/true);
-
-  ImageLoaderConfig config(key, temp_dir.value().c_str(),
+  ImageLoaderConfig config(key, temp_dir_.value().c_str(),
                            scoped_mount_dir.path().value().c_str(),
                            std::move(mount_mock));
   ImageLoaderImpl loader(std::move(config));
@@ -418,9 +152,9 @@ TEST_F(ImageLoaderTest, MountInvalidImage) {
   // We previously tested RegisterComponent, so assume this works if it reports
   // true.
   ASSERT_TRUE(loader.RegisterComponent(kTestComponentName, kTestDataVersion,
-                                       GetComponentPath().value()));
+                                       GetTestComponentPath().value()));
 
-  base::FilePath table = temp_dir.Append(kTestComponentName)
+  base::FilePath table = temp_dir_.Append(kTestComponentName)
                               .Append(kTestDataVersion)
                               .Append("table");
   std::string contents = "corrupt";

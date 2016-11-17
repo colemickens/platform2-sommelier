@@ -54,6 +54,8 @@
         'libimageloader_common',
       ],
       'sources': [
+        'component.cc',
+        'component.h',
         'imageloader_impl.cc',
         'imageloader.h',
         'verity_mounter.h',
@@ -107,9 +109,13 @@
           ],
           'sources': [
             'run_tests.cc',
+            'component_unittest.cc',
+            'component.h',
             'imageloader_unittest.cc',
             'imageloader.h',
             'mock_verity_mounter.h',
+            'test_utilities.cc',
+            'test_utilities.h',
           ],
         },
         ],
