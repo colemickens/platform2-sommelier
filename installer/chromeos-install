@@ -241,18 +241,6 @@ check_payload_image() {
     # Find root partition of the root block device
     SRC=$(get_block_dev_from_partition_dev $(get_root_device))
     ROOT=""
-
-    if [ "${FLAGS_skip_src_removable}" -eq "${FLAGS_FALSE}" ]; then
-      if [ "$(cat /sys/block/${SRC#/dev/}/removable)" != "1" ]; then
-          # Removable flag is implemented inconsistantly for ARM sdcard reader.
-          # Allow all devices except the default rootdev.
-          # DEFAULT_ROOTDEV can be a path expansion on some systems,
-          # so it will not be quoted.
-        if [ "${SRC}" = "/dev/$(basename ${DEFAULT_ROOTDEV})" ]; then
-          die "Error: Source can not be the destination device: ${SRC}"
-        fi
-      fi
-    fi
   else
     if [ ! -e "${FLAGS_payload_image}" ]; then
       die "Error: No payload image found at ${FLAGS_payload_image}"
@@ -781,6 +769,22 @@ main() {
   # Load the GPT helper functions and the image settings.
   . "${ROOT}/usr/sbin/write_gpt.sh"
   load_base_vars
+
+  # This was moved out of check_payload_image because DEFAULT_ROOTDEV
+  # is not defined until after the GPT helper functions are loaded.
+  if [ "${FLAGS_skip_src_removable}" -eq "${FLAGS_FALSE}" ]; then
+    if [ "$(cat /sys/block/${SRC#/dev/}/removable)" != "1" ]; then
+      # Removable flag is implemented inconsistantly for ARM sdcard reader.
+      # Allow all devices except the default rootdev.
+      # DEFAULT_ROOTDEV can be a path expansion on some systems,
+      # so it will not be quoted.
+      if [ "${SRC}" = "/dev/$(basename ${DEFAULT_ROOTDEV})" ]; then
+        trap - EXIT
+        cleanup
+        die "Error: Source can not be the destination device: ${SRC}"
+      fi
+    fi
+  fi
 
   # Now that we have loaded the partition table we can actually read the format
   # and partition information.
