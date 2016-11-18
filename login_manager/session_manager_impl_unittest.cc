@@ -146,11 +146,12 @@ class SessionManagerImplTest : public ::testing::Test {
     utils_.set_base_dir_for_testing(tmpdir_.path());
     SetSystemSalt(&fake_salt_);
 
+#if USE_CHEETS
     android_data_dir_ =
-        GetRootPath(kSaneEmail).Append(SessionManagerImpl::kAndroidDataDirName);
+        SessionManagerImpl::GetAndroidDataDirForUser(kSaneEmail);
     android_data_old_dir_ =
-        GetRootPath(kSaneEmail)
-            .Append(SessionManagerImpl::kAndroidDataOldDirName);
+        SessionManagerImpl::GetAndroidDataOldDirForUser(kSaneEmail);
+#endif  // USE_CHEETS
 
     // AtomicFileWrite calls in TEST_F assume that these directories exist.
     ASSERT_TRUE(utils_.CreateDir(
@@ -280,13 +281,6 @@ class SessionManagerImplTest : public ::testing::Test {
     SetDefaultMockBehavior();
   }
 
-  bool RemoveArcDataInternal(const base::FilePath& android_data_dir,
-                             const base::FilePath& android_data_old_dir,
-                             SessionManagerImpl::Error* error) {
-    return impl_.RemoveArcDataInternal(android_data_dir, android_data_old_dir,
-                                       error);
-  }
-
   void GotLastSyncInfo(bool network_synchronized) {
     ASSERT_TRUE(!available_callback_.is_null());
     available_callback_.Run(true);
@@ -328,8 +322,10 @@ class SessionManagerImplTest : public ::testing::Test {
   SessionManagerImpl::Error error_;
   base::ScopedTempDir tmpdir_;
 
+#if USE_CHEETS
   base::FilePath android_data_dir_;
   base::FilePath android_data_old_dir_;
+#endif  // USE_CHEETS
 
   static const pid_t kDummyPid;
   static const char kNothing[];
@@ -1107,26 +1103,22 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
 #endif
 }
 
-TEST_F(SessionManagerImplTest, ArcInstanceStart_NoSession) {
 #if USE_CHEETS
+TEST_F(SessionManagerImplTest, ArcInstanceStart_NoSession) {
   impl_.StartArcInstance(kSaneEmail, false, &error_);
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error_.name());
-#endif
 }
 
 TEST_F(SessionManagerImplTest, ArcInstanceStart_LowDisk) {
-#if USE_CHEETS
   ExpectAndRunStartSession(kSaneEmail);
 
   // No free disk space.
   EXPECT_CALL(utils_, AmountOfFreeDiskSpace(_)).WillRepeatedly(Return(0));
   impl_.StartArcInstance(kSaneEmail, false, &error_);
   EXPECT_EQ(dbus_error::kLowFreeDisk, error_.name());
-#endif
 }
 
 TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
-#if USE_CHEETS
   ExpectAndRunStartSession(kSaneEmail);
 
   EXPECT_CALL(
@@ -1172,52 +1164,50 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
   // This should now fail since the container was cleaned up already.
   impl_.StopArcInstance(&error_);
   EXPECT_EQ(dbus_error::kContainerShutdownFail, error_.name());
-#endif
 }
 
-#if USE_CHEETS
-TEST_F(SessionManagerImplTest, ArcRemoveDataInternal) {
-  // Test that RemoveArcDataInternal() removes |android_data_dir_| and returns
-  // true even if the directory is not empty.
+TEST_F(SessionManagerImplTest, ArcRemoveData) {
+  // Test that RemoveArcData() removes |android_data_dir_| and reports success
+  // even if the directory is not empty.
   ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
   ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_DIR_EMPTY);
-  EXPECT_TRUE(
-      RemoveArcDataInternal(android_data_dir_, android_data_old_dir_, &error_));
+  impl_.RemoveArcData(kSaneEmail, &error_);
+  EXPECT_FALSE(error_.is_set());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
-TEST_F(SessionManagerImplTest, ArcRemoveDataInternal_NoSourceDirectory) {
-  // Test that RemoveArcDataInternal() returns true when the directory does not
+TEST_F(SessionManagerImplTest, ArcRemoveData_NoSourceDirectory) {
+  // Test that RemoveArcData() reports success when the directory does not
   // exist.
   ASSERT_FALSE(utils_.Exists(android_data_dir_));
   ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
   ExpectRemoveArcData(DataDirType::DATA_DIR_MISSING,
                       OldDataDirType::OLD_DATA_DIR_EMPTY);
-  EXPECT_TRUE(
-      RemoveArcDataInternal(android_data_dir_, android_data_old_dir_, &error_));
+  impl_.RemoveArcData(kSaneEmail, &error_);
+  EXPECT_FALSE(error_.is_set());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
-TEST_F(SessionManagerImplTest, ArcRemoveDataInternal_OldDirectoryExists) {
-  // Test that RemoveArcDataInternal() can remove |android_data_dir_| and
-  // returns true even if the "old" directory already exists.
+TEST_F(SessionManagerImplTest, ArcRemoveData_OldDirectoryExists) {
+  // Test that RemoveArcData() can remove |android_data_dir_| and
+  // reports success even if the "old" directory already exists.
   ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
   ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_DIR_EMPTY);
-  EXPECT_TRUE(
-      RemoveArcDataInternal(android_data_dir_, android_data_old_dir_, &error_));
+  impl_.RemoveArcData(kSaneEmail, &error_);
+  EXPECT_FALSE(error_.is_set());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
-TEST_F(SessionManagerImplTest,
-       ArcRemoveDataInternal_NonEmptyOldDirectoryExists) {
-  // Test that RemoveArcDataInternal() can remove |android_data_dir_| and
-  // returns true even if the "old" directory already exists and is not empty.
+TEST_F(SessionManagerImplTest, ArcRemoveData_NonEmptyOldDirectoryExists) {
+  // Test that RemoveArcData() can remove |android_data_dir_| and
+  // reports success even if the "old" directory already exists and is not
+  // empty.
   ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
   ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
@@ -1225,27 +1215,27 @@ TEST_F(SessionManagerImplTest,
       utils_.AtomicFileWrite(android_data_old_dir_.Append("bar"), "test2"));
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_DIR_NOT_EMPTY);
-  EXPECT_TRUE(
-      RemoveArcDataInternal(android_data_dir_, android_data_old_dir_, &error_));
+  impl_.RemoveArcData(kSaneEmail, &error_);
+  EXPECT_FALSE(error_.is_set());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
 TEST_F(SessionManagerImplTest,
-       ArcRemoveDataInternal_NoSourceDirectoryButOldDirectoryExists) {
-  // Test that RemoveArcDataInternal() removes the "old" directory and returns
-  // true even when |android_data_dir_| does not exist at all.
+       ArcRemoveData_NoSourceDirectoryButOldDirectoryExists) {
+  // Test that RemoveArcData() removes the "old" directory and reports success
+  // even when |android_data_dir_| does not exist at all.
   ASSERT_FALSE(utils_.Exists(android_data_dir_));
   ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
   ExpectRemoveArcData(DataDirType::DATA_DIR_MISSING,
                       OldDataDirType::OLD_DATA_DIR_EMPTY);
-  EXPECT_TRUE(
-      RemoveArcDataInternal(android_data_dir_, android_data_old_dir_, &error_));
+  impl_.RemoveArcData(kSaneEmail, &error_);
+  EXPECT_FALSE(error_.is_set());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
 TEST_F(SessionManagerImplTest,
-       ArcRemoveDataInternal_NoSourceDirectoryButNonEmptyOldDirectoryExists) {
-  // Test that RemoveArcDataInternal() removes the "old" directory and returns
+       ArcRemoveData_NoSourceDirectoryButNonEmptyOldDirectoryExists) {
+  // Test that RemoveArcData() removes the "old" directory and returns
   // true even when |android_data_dir_| does not exist at all.
   ASSERT_FALSE(utils_.Exists(android_data_dir_));
   ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
@@ -1253,33 +1243,22 @@ TEST_F(SessionManagerImplTest,
       utils_.AtomicFileWrite(android_data_old_dir_.Append("foo"), "test"));
   ExpectRemoveArcData(DataDirType::DATA_DIR_MISSING,
                       OldDataDirType::OLD_DATA_DIR_NOT_EMPTY);
-  EXPECT_TRUE(
-      RemoveArcDataInternal(android_data_dir_, android_data_old_dir_, &error_));
+  impl_.RemoveArcData(kSaneEmail, &error_);
+  EXPECT_FALSE(error_.is_set());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
-TEST_F(SessionManagerImplTest, ArcRemoveDataInternal_OldFileExists) {
-  // Test that RemoveArcDataInternal() can remove |android_data_dir_| and
+TEST_F(SessionManagerImplTest, ArcRemoveData_OldFileExists) {
+  // Test that RemoveArcData() can remove |android_data_dir_| and
   // returns true even if the "old" path exists as a file. This should never
-  // happen, but RemoveArcDataInternal() can handle the case.
+  // happen, but RemoveArcData() can handle the case.
   ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_old_dir_, "test2"));
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_FILE_EXISTS);
-  EXPECT_TRUE(
-      RemoveArcDataInternal(android_data_dir_, android_data_old_dir_, &error_));
-  EXPECT_FALSE(utils_.Exists(android_data_dir_));
-}
-
-TEST_F(SessionManagerImplTest, ArcRemoveData) {
-  // Test the wrapper function, ArcRemoveData, without running ARC.
-  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
-  ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
-  ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
-  ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
-                      OldDataDirType::OLD_DATA_DIR_EMPTY);
   impl_.RemoveArcData(kSaneEmail, &error_);
+  EXPECT_FALSE(error_.is_set());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
@@ -1307,39 +1286,24 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_DIR_NOT_EMPTY);
   impl_.RemoveArcData(kSaneEmail, &error_);
+  EXPECT_FALSE(error_.is_set());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 #else
-// When USE_CHEETS is not defined, these methods should immediately return
+// When USE_CHEETS is not defined, ArcRemoveData should immediately return
 // dbus_error::kNotAvailable.
-TEST_F(SessionManagerImplTest, ArcRemoveDataInternal) {
-  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
-  ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
-  ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
-  ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
-                      OldDataDirType::OLD_DATA_DIR_EMPTY);
-  EXPECT_TRUE(
-      RemoveArcDataInternal(android_data_dir_, android_data_old_dir_, &error_));
-  EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
-}
-
 TEST_F(SessionManagerImplTest, ArcRemoveData) {
-  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
-  ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
-  ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
-  ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
-                      OldDataDirType::OLD_DATA_DIR_EMPTY);
   impl_.RemoveArcData(kSaneEmail, &error_);
   EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
 }
 #endif
 
-TEST_F(SessionManagerImplTest, PrioritizeArcInstance) {
 #if !USE_CHEETS
+TEST_F(SessionManagerImplTest, PrioritizeArcInstance) {
   impl_.PrioritizeArcInstance(&error_);
   EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
-#endif
 }
+#endif
 
 TEST_F(SessionManagerImplTest, EmitArcBooted) {
 #if USE_CHEETS

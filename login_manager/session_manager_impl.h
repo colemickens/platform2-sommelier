@@ -68,11 +68,6 @@ class SessionManagerImpl : public SessionManagerInterface,
   // Path to magic file that will trigger device wiping on next boot.
   static const char kResetFile[];
 
-  // Name of android-data directory.
-  static const base::FilePath::CharType kAndroidDataDirName[];
-  // Name of android-data-old directory which RemoveArcDataInternal uses.
-  static const base::FilePath::CharType kAndroidDataOldDirName[];
-
   // Name of upstart signal emitted when user session starts.
   static const char kStartUserSessionSignal[];
 
@@ -123,6 +118,24 @@ class SessionManagerImpl : public SessionManagerInterface,
                      InstallAttributesReader* install_attributes_reader,
                      dbus::ObjectProxy* system_clock_proxy);
   virtual ~SessionManagerImpl();
+
+  // Checks if string looks like a valid GAIA ID key (as returned by
+  // AccountId::GetGaiaIdKey()).
+  static bool ValidateGaiaIdKey(const std::string& account_id);
+
+  // Performs very, very basic validation of |email_address|.
+  static bool ValidateEmail(const std::string& email_address);
+
+#if USE_CHEETS
+  // Returns the Android data directory for |normalized_account_id|.
+  static base::FilePath GetAndroidDataDirForUser(
+      const std::string& normalized_account_id);
+
+  // Returns the directory where old Android data directories are stored for
+  // |normalized_account_id|.
+  static base::FilePath GetAndroidDataOldDirForUser(
+      const std::string& normalized_account_id);
+#endif  // USE_CHEETS
 
   // Tests can call this before Initialize() to inject their own objects.
   void SetPolicyServicesForTest(
@@ -227,9 +240,6 @@ class SessionManagerImpl : public SessionManagerInterface,
   // Holds the state related to one of the signed in users.
   struct UserSession;
 
-  friend class SessionManagerImplStaticTest;
-  friend class SessionManagerImplTest;
-
   typedef std::map<std::string, UserSession*> UserSessionMap;
 
   // Called when the Android container is stopped.
@@ -258,13 +268,6 @@ class SessionManagerImpl : public SessionManagerInterface,
   static bool NormalizeAccountId(const std::string& account_id,
                                  std::string* actual_account_id_out,
                                  Error* error_out);
-
-  // Checks if string looks like a valid GAIA ID key (as returned by
-  // AccountId::GetGaiaIdKey()).
-  static bool ValidateGaiaIdKey(const std::string& account_id);
-
-  // Perform very, very basic validation of |email_address|.
-  static bool ValidateEmail(const std::string& email_address);
 
   bool AllSessionsAreIncognito();
 

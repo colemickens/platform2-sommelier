@@ -79,11 +79,6 @@ const char SessionManagerImpl::kArcBootedSignal[] = "arc-booted";
 const char SessionManagerImpl::kArcRemoveOldDataSignal[] =
     "remove-old-arc-data";
 
-const base::FilePath::CharType SessionManagerImpl::kAndroidDataDirName[] =
-    FILE_PATH_LITERAL("android-data");
-const base::FilePath::CharType SessionManagerImpl::kAndroidDataOldDirName[] =
-    FILE_PATH_LITERAL("android-data-old");
-
 namespace {
 // Constants used in email validation.
 const char kEmailSeparator = '@';
@@ -111,6 +106,14 @@ const base::FilePath::CharType kDeviceLocalAccountStateDir[] =
 // Path and the amount for the check.
 constexpr base::FilePath::CharType kArcDiskCheckPath[] = "/home";
 constexpr int64_t kArcCriticalDiskFreeBytes = 64 << 20;  // 64MB
+
+// Name of android-data directory.
+const base::FilePath::CharType kAndroidDataDirName[] =
+    FILE_PATH_LITERAL("android-data");
+
+// Name of android-data-old directory which RemoveArcDataInternal uses.
+const base::FilePath::CharType kAndroidDataOldDirName[] =
+    FILE_PATH_LITERAL("android-data-old");
 #endif
 
 // SystemUtils::EnsureJobExit() DCHECKs if the timeout is zero, so this is the
@@ -125,20 +128,6 @@ bool IsIncognitoAccountId(const std::string& account_id) {
   return (lower_case_id == kGuestUserName) ||
          (lower_case_id == SessionManagerImpl::kDemoUser);
 }
-
-#if USE_CHEETS
-base::FilePath GetAndroidDataDirForUser(
-    const std::string& normalized_account_id) {
-  return GetRootPath(normalized_account_id)
-      .Append(SessionManagerImpl::kAndroidDataDirName);
-}
-
-base::FilePath GetAndroidDataOldDirForUser(
-    const std::string& normalized_account_id) {
-  return GetRootPath(normalized_account_id)
-      .Append(SessionManagerImpl::kAndroidDataOldDirName);
-}
-#endif  // USE_CHEETS
 
 }  // namespace
 
@@ -227,6 +216,49 @@ SessionManagerImpl::~SessionManagerImpl() {
   STLDeleteValues(&user_sessions_);
   device_policy_->set_delegate(NULL);  // Could use WeakPtr instead?
 }
+
+// static
+bool SessionManagerImpl::ValidateGaiaIdKey(const std::string& account_id) {
+  if (account_id.find_first_not_of(kGaiaIdKeyLegalCharacters) !=
+      std::string::npos)
+    return false;
+
+  return base::StartsWith(account_id, kGaiaIdKeyPrefix,
+                          base::CompareCase::SENSITIVE);
+}
+
+// static
+bool SessionManagerImpl::ValidateEmail(const std::string& email_address) {
+  if (email_address.find_first_not_of(kEmailLegalCharacters) !=
+      std::string::npos) {
+    return false;
+  }
+
+  size_t at = email_address.find(kEmailSeparator);
+  // it has NO @.
+  if (at == std::string::npos)
+    return false;
+
+  // it has more than one @.
+  if (email_address.find(kEmailSeparator, at + 1) != std::string::npos)
+    return false;
+
+  return true;
+}
+
+#if USE_CHEETS
+// static
+base::FilePath SessionManagerImpl::GetAndroidDataDirForUser(
+    const std::string& normalized_account_id) {
+  return GetRootPath(normalized_account_id).Append(kAndroidDataDirName);
+}
+
+// static
+base::FilePath SessionManagerImpl::GetAndroidDataOldDirForUser(
+    const std::string& normalized_account_id) {
+  return GetRootPath(normalized_account_id).Append(kAndroidDataOldDirName);
+}
+#endif  // USE_CHEETS
 
 void SessionManagerImpl::SetPolicyServicesForTest(
     std::unique_ptr<DevicePolicyService> device_policy,
@@ -1029,35 +1061,6 @@ bool SessionManagerImpl::NormalizeAccountId(const std::string& account_id,
     return false;
   }
   *actual_account_id_out = lower_email;
-  return true;
-}
-
-// static
-bool SessionManagerImpl::ValidateGaiaIdKey(const std::string& account_id) {
-  if (account_id.find_first_not_of(kGaiaIdKeyLegalCharacters) !=
-      std::string::npos)
-    return false;
-
-  return base::StartsWith(account_id, kGaiaIdKeyPrefix,
-                          base::CompareCase::SENSITIVE);
-}
-
-// static
-bool SessionManagerImpl::ValidateEmail(const std::string& email_address) {
-  if (email_address.find_first_not_of(kEmailLegalCharacters) !=
-      std::string::npos) {
-    return false;
-  }
-
-  size_t at = email_address.find(kEmailSeparator);
-  // it has NO @.
-  if (at == std::string::npos)
-    return false;
-
-  // it has more than one @.
-  if (email_address.find(kEmailSeparator, at + 1) != std::string::npos)
-    return false;
-
   return true;
 }
 
