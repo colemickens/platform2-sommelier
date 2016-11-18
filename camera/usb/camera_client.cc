@@ -5,12 +5,15 @@
 
 #include "usb/camera_client.h"
 
+#include <vector>
+
 #include <system/camera_metadata.h>
 
 #include "arc/common.h"
 #include "usb/camera_hal.h"
 #include "usb/camera_hal_device_ops.h"
 #include "usb/camera_metadata.h"
+#include "usb/stream_format.h"
 
 namespace arc {
 
@@ -40,12 +43,20 @@ CameraClient::~CameraClient() {}
 int CameraClient::OpenDevice() {
   VLOGFID(1, id_);
   DCHECK(thread_checker_.CalledOnValidThread());
+
+  int ret = device_->Connect(device_path_);
+  if (ret) {
+    LOGFID(ERROR, id_) << "Connect failed: " << strerror(-ret);
+    return ret;
+  }
   return 0;
 }
 
 int CameraClient::CloseDevice() {
   VLOGFID(1, id_);
   DCHECK(thread_checker_.CalledOnValidThread());
+
+  device_->Disconnect();
   return 0;
 }
 
@@ -70,6 +81,48 @@ int CameraClient::ConfigureStreams(
     camera3_stream_configuration_t* stream_config) {
   VLOGFID(1, id_);
   DCHECK(ops_thread_checker_.CalledOnValidThread());
+  /* TODO(henryhsu):
+   * 1. Check there are no in-flight requests.
+   * 2. Check configure_streams is called after initialize.
+   * 3. Check format, width, and height are supported.
+   */
+
+  if (stream_config == NULL) {
+    LOGFID(ERROR, id_) << "NULL stream configuration array";
+    return -EINVAL;
+  }
+  if (stream_config->num_streams == 0) {
+    LOGFID(ERROR, id_) << "Empty stream configuration array";
+    return -EINVAL;
+  }
+  if (stream_config->operation_mode !=
+      CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE) {
+    LOGFID(ERROR, id_) << "Unsupported operation mode: "
+                       << stream_config->operation_mode;
+    return -EINVAL;
+  }
+
+  VLOGFID(1, id_) << "Number of Streams: " << stream_config->num_streams;
+
+  std::vector<camera3_stream_t*> streams;
+  for (size_t i = 0; i < stream_config->num_streams; i++) {
+    VLOGFID(1, id_) << "Stream[" << i
+                    << "] type=" << stream_config->streams[i]->stream_type
+                    << " width=" << stream_config->streams[i]->width
+                    << " height=" << stream_config->streams[i]->height
+                    << " rotation=" << stream_config->streams[i]->rotation
+                    << " format=0x" << std::hex
+                    << stream_config->streams[i]->format;
+    streams.push_back(stream_config->streams[i]);
+  }
+
+  if (!IsValidStreamSet(streams)) {
+    LOGFID(ERROR, id_) << "Invalid stream set";
+    return -EINVAL;
+  }
+
+  SetUpStreams(&streams);
+
   return 0;
 }
 
@@ -100,6 +153,53 @@ int CameraClient::Flush(const camera3_device_t* dev) {
   VLOGFID(1, id_);
   DCHECK(ops_thread_checker_.CalledOnValidThread());
   return 0;
+}
+
+bool CameraClient::IsValidStreamSet(
+    const std::vector<camera3_stream_t*>& streams) {
+  int num_input = 0, num_output = 0;
+
+  // Validate there is no input stream and at least one output stream.
+  for (const auto& stream : streams) {
+    // A stream may be both input and output (bidirectional).
+    if (stream->stream_type == CAMERA3_STREAM_INPUT ||
+        stream->stream_type == CAMERA3_STREAM_BIDIRECTIONAL)
+      num_input++;
+    if (stream->stream_type == CAMERA3_STREAM_OUTPUT ||
+        stream->stream_type == CAMERA3_STREAM_BIDIRECTIONAL)
+      num_output++;
+
+    if (stream->rotation != CAMERA3_STREAM_ROTATION_0) {
+      LOGFID(ERROR, id_) << "Unsupported rotation " << stream->rotation;
+      return false;
+    }
+  }
+  VLOGFID(1, id_) << "Configuring " << num_output << " output streams and "
+                  << num_input << " input streams";
+
+  if (num_output < 1) {
+    LOGFID(ERROR, id_) << "Stream config must have >= 1 output";
+    return false;
+  }
+  if (num_input > 0) {
+    LOGFID(ERROR, id_) << "Input Stream is not supported. Number: "
+                       << num_input;
+    return false;
+  }
+  return true;
+}
+
+void CameraClient::SetUpStreams(std::vector<camera3_stream_t*>* streams) {
+  for (auto& stream : *streams) {
+    uint32_t usage = 0;
+    if (stream->stream_type == CAMERA3_STREAM_OUTPUT ||
+        stream->stream_type == CAMERA3_STREAM_BIDIRECTIONAL) {
+      usage |= GRALLOC_USAGE_SW_WRITE_OFTEN;
+    }
+    stream->usage = usage;
+    // TODO(henryhsu): get correct number of buffers.
+    stream->max_buffers = 0;
+  }
 }
 
 }  // namespace arc

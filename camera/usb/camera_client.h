@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <base/threading/thread_checker.h>
@@ -50,6 +51,12 @@ class CameraClient {
   int Flush(const camera3_device_t* dev);
 
  private:
+  // Verify a set of streams in aggregate.
+  bool IsValidStreamSet(const std::vector<camera3_stream_t*>& streams);
+
+  // Calculate usage and maximum number of buffers of each stream.
+  void SetUpStreams(std::vector<camera3_stream_t*>* streams);
+
   // Camera device id.
   const int id_;
 
@@ -69,7 +76,7 @@ class CameraClient {
   // Delegate to communicate with camera device.
   std::unique_ptr<V4L2CameraDevice> device_;
 
-  // Metadata containing persistent camera characteristics
+  // Metadata containing persistent camera characteristics.
   CameraMetadata metadata_;
 
   // Methods used to call back into the framework.
