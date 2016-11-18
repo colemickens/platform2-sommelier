@@ -176,6 +176,7 @@ message SignReply {
 message RegisterKeyWithChapsTokenRequest {
   optional string key_label = 1;
   optional string username = 2;
+  optional bool include_certificates = 3;
 }
 
 message RegisterKeyWithChapsTokenReply {

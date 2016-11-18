@@ -1259,12 +1259,10 @@ TEST_F(AttestationServiceTest, RegisterSuccess) {
   // catch performance regressions.
   EXPECT_CALL(mock_key_store_,
               Register("user", "label", KEY_TYPE_RSA, KEY_USAGE_SIGN,
-                       "key_blob", "public_key", "fake_cert"))
+                       "key_blob", "public_key", ""))
       .Times(1);
-  EXPECT_CALL(mock_key_store_, RegisterCertificate("user", "fake_ca_cert"))
-      .Times(1);
-  EXPECT_CALL(mock_key_store_, RegisterCertificate("user", "fake_ca_cert2"))
-      .Times(1);
+  EXPECT_CALL(mock_key_store_, RegisterCertificate(_, _))
+      .Times(0);
   EXPECT_CALL(mock_key_store_, Delete("user", "label")).Times(1);
   // Set expectations on the outputs.
   auto callback = [this](const RegisterKeyWithChapsTokenReply& reply) {
@@ -1293,6 +1291,76 @@ TEST_F(AttestationServiceTest, RegisterSuccessNoUser) {
   // catch performance regressions.
   EXPECT_CALL(mock_key_store_,
               Register("", "label", KEY_TYPE_RSA, KEY_USAGE_SIGN, "key_blob",
+                       "public_key", ""))
+      .Times(1);
+  EXPECT_CALL(mock_key_store_, RegisterCertificate(_, _))
+      .Times(0);
+  // Set expectations on the outputs.
+  auto callback = [this](const RegisterKeyWithChapsTokenReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ(0, mock_database_.GetMutableProtobuf()->device_keys_size());
+    Quit();
+  };
+  RegisterKeyWithChapsTokenRequest request;
+  request.set_key_label("label");
+  service_->RegisterKeyWithChapsToken(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, RegisterSuccessWithCertificates) {
+  // Setup a key in the user key store.
+  CertifiedKey key;
+  key.set_key_blob("key_blob");
+  key.set_public_key("public_key");
+  key.set_certified_key_credential("fake_cert");
+  key.set_intermediate_ca_cert("fake_ca_cert");
+  *key.add_additional_intermediate_ca_cert() = "fake_ca_cert2";
+  key.set_key_name("label");
+  key.set_key_type(KEY_TYPE_RSA);
+  key.set_key_usage(KEY_USAGE_SIGN);
+  std::string key_bytes;
+  key.SerializeToString(&key_bytes);
+  EXPECT_CALL(mock_key_store_, Read("user", "label", _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(key_bytes), Return(true)));
+  // Cardinality is verified here to verify various steps are performed and to
+  // catch performance regressions.
+  EXPECT_CALL(mock_key_store_,
+              Register("user", "label", KEY_TYPE_RSA, KEY_USAGE_SIGN,
+                       "key_blob", "public_key", "fake_cert"))
+      .Times(1);
+  EXPECT_CALL(mock_key_store_, RegisterCertificate("user", "fake_ca_cert"))
+      .Times(1);
+  EXPECT_CALL(mock_key_store_, RegisterCertificate("user", "fake_ca_cert2"))
+      .Times(1);
+  EXPECT_CALL(mock_key_store_, Delete("user", "label")).Times(1);
+  // Set expectations on the outputs.
+  auto callback = [this](const RegisterKeyWithChapsTokenReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    Quit();
+  };
+  RegisterKeyWithChapsTokenRequest request;
+  request.set_key_label("label");
+  request.set_username("user");
+  request.set_include_certificates(true);
+  service_->RegisterKeyWithChapsToken(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, RegisterSuccessNoUserWithCertificates) {
+  // Setup a key in the device_keys field.
+  CertifiedKey& key = *mock_database_.GetMutableProtobuf()->add_device_keys();
+  key.set_key_blob("key_blob");
+  key.set_public_key("public_key");
+  key.set_certified_key_credential("fake_cert");
+  key.set_intermediate_ca_cert("fake_ca_cert");
+  *key.add_additional_intermediate_ca_cert() = "fake_ca_cert2";
+  key.set_key_name("label");
+  key.set_key_type(KEY_TYPE_RSA);
+  key.set_key_usage(KEY_USAGE_SIGN);
+  // Cardinality is verified here to verify various steps are performed and to
+  // catch performance regressions.
+  EXPECT_CALL(mock_key_store_,
+              Register("", "label", KEY_TYPE_RSA, KEY_USAGE_SIGN, "key_blob",
                        "public_key", "fake_cert"))
       .Times(1);
   EXPECT_CALL(mock_key_store_, RegisterCertificate("", "fake_ca_cert"))
@@ -1307,6 +1375,7 @@ TEST_F(AttestationServiceTest, RegisterSuccessNoUser) {
   };
   RegisterKeyWithChapsTokenRequest request;
   request.set_key_label("label");
+  request.set_include_certificates(true);
   service_->RegisterKeyWithChapsToken(request, base::Bind(callback));
   Run();
 }
@@ -1379,6 +1448,7 @@ TEST_F(AttestationServiceTest, RegisterIntermediateFailure) {
   RegisterKeyWithChapsTokenRequest request;
   request.set_key_label("label");
   request.set_username("user");
+  request.set_include_certificates(true);
   service_->RegisterKeyWithChapsToken(request, base::Bind(callback));
   Run();
 }
@@ -1402,6 +1472,7 @@ TEST_F(AttestationServiceTest, RegisterAdditionalFailure) {
   RegisterKeyWithChapsTokenRequest request;
   request.set_key_label("label");
   request.set_username("user");
+  request.set_include_certificates(true);
   service_->RegisterKeyWithChapsToken(request, base::Bind(callback));
   Run();
 }

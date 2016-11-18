@@ -694,23 +694,29 @@ void AttestationService::RegisterKeyWithChapsTokenTask(
     result->set_status(STATUS_INVALID_PARAMETER);
     return;
   }
+  std::string certificate;
+  if (request.include_certificates()) {
+    certificate = key.certified_key_credential();
+  }
   if (!key_store_->Register(request.username(), request.key_label(),
                             key.key_type(), key.key_usage(), key.key_blob(),
-                            key.public_key(), key.certified_key_credential())) {
+                            key.public_key(), certificate)) {
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
   }
-  if (key.has_intermediate_ca_cert() &&
-      !key_store_->RegisterCertificate(request.username(),
-                                       key.intermediate_ca_cert())) {
-    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
-    return;
-  }
-  for (int i = 0; i < key.additional_intermediate_ca_cert_size(); ++i) {
-    if (!key_store_->RegisterCertificate(
-            request.username(), key.additional_intermediate_ca_cert(i))) {
+  if (request.include_certificates()) {
+    if (key.has_intermediate_ca_cert() &&
+       !key_store_->RegisterCertificate(request.username(),
+                                        key.intermediate_ca_cert())) {
       result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
       return;
+    }
+    for (int i = 0; i < key.additional_intermediate_ca_cert_size(); ++i) {
+      if (!key_store_->RegisterCertificate(
+              request.username(), key.additional_intermediate_ca_cert(i))) {
+        result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+        return;
+      }
     }
   }
   DeleteKey(request.username(), request.key_label());
