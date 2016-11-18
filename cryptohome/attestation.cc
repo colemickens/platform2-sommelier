@@ -57,7 +57,7 @@ namespace cryptohome {
 
 const size_t Attestation::kQuoteExternalDataSize = 20;
 const size_t Attestation::kCipherKeySize = 32;
-#if defined(USE_TPM2)
+#if USE_TPM2
 const size_t Attestation::kNonceSize = 32;
 const size_t Attestation::kDigestSize = 32;
 #else
