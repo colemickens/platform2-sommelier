@@ -16,17 +16,18 @@
 
 #include "hal_adapter/camera3_callback_ops_delegate.h"
 #include "hal_adapter/camera3_device_ops_delegate.h"
+#include "hal_adapter/common.h"
 
 namespace arc {
 
 CameraDeviceAdapter::CameraDeviceAdapter(camera3_device_t* camera_device)
     : camera_device_(camera_device) {
-  VLOG(2) << "CameraDeviceAdapter::CameraDeviceAdapter: " << camera_device_;
+  VLOGF_ENTER() << camera_device_;
   device_ops_delegate_.reset(new Camera3DeviceOpsDelegate(this));
 }
 
 CameraDeviceAdapter::~CameraDeviceAdapter() {
-  VLOG(2) << "CameraDeviceAdapter::~CameraDeviceAdapter: " << camera_device_;
+  VLOGF_ENTER() << camera_device_;
 }
 
 mojom::Camera3DeviceOpsPtr CameraDeviceAdapter::GetDeviceOpsPtr() {
@@ -40,7 +41,7 @@ int CameraDeviceAdapter::Close() {
 
 int32_t CameraDeviceAdapter::Initialize(
     mojom::Camera3CallbackOpsPtr callback_ops) {
-  VLOG(2) << "CameraDeviceAdapter::Initialize";
+  VLOGF_ENTER();
   callback_ops_delegate_.reset(
       new Camera3CallbackOpsDelegate(this, callback_ops.PassInterface()));
   return camera_device_->ops->initialize(camera_device_,
@@ -49,7 +50,7 @@ int32_t CameraDeviceAdapter::Initialize(
 
 mojom::Camera3StreamConfigurationPtr CameraDeviceAdapter::ConfigureStreams(
     mojom::Camera3StreamConfigurationPtr config) {
-  VLOG(2) << "CameraDeviceAdapter::ConfigureStreams";
+  VLOGF_ENTER();
 
   base::AutoLock l(streams_lock_);
 
@@ -59,10 +60,10 @@ mojom::Camera3StreamConfigurationPtr CameraDeviceAdapter::ConfigureStreams(
     std::unique_ptr<camera3_stream_t>& stream = new_streams[id];
     auto it = streams_.find(id);
     if (it == streams_.end()) {
-      VLOG(2) << "Add new stream: " << id;
+      VLOGF(1) << "Add new stream: " << id;
       stream.reset(new camera3_stream_t);
     } else {
-      VLOG(2) << "Update existing stream: " << id;
+      VLOGF(1) << "Update existing stream: " << id;
       stream.swap(it->second);
     }
     stream->stream_type = s->stream_type;
@@ -110,7 +111,7 @@ mojom::Camera3StreamConfigurationPtr CameraDeviceAdapter::ConfigureStreams(
 
 mojom::CameraMetadataPtr CameraDeviceAdapter::ConstructDefaultRequestSettings(
     int32_t type) {
-  VLOG(2) << "CameraDeviceAdapter::ConstructDefaultRequestSettings";
+  VLOGF_ENTER();
   const camera_metadata_t* metadata =
       camera_device_->ops->construct_default_request_settings(camera_device_,
                                                               type);
@@ -133,7 +134,7 @@ mojom::CameraMetadataPtr CameraDeviceAdapter::ConstructDefaultRequestSettings(
 
 int32_t CameraDeviceAdapter::ProcessCaptureRequest(
     mojom::Camera3CaptureRequestPtr request) {
-  VLOG(2) << "CameraDeviceAdapter::ProcessCaptureRequest";
+  VLOGF_ENTER();
   camera3_capture_request_t req;
 
   req.frame_number = request->frame_number;
@@ -198,13 +199,13 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
 }
 
 void CameraDeviceAdapter::Dump(mojo::ScopedHandle fd) {
-  VLOG(2) << "CameraDeviceAdapter::Dump";
+  VLOGF_ENTER();
   base::ScopedFD dump_fd(internal::UnwrapPlatformHandle(std::move(fd)));
   camera_device_->ops->dump(camera_device_, dump_fd.get());
 }
 
 int32_t CameraDeviceAdapter::Flush() {
-  VLOG(2) << "CameraDeviceAdapter::Flush";
+  VLOGF_ENTER();
   return camera_device_->ops->flush(camera_device_);
 }
 
@@ -245,7 +246,7 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::ProcessCaptureResult(
       mojom::Camera3StreamBufferPtr out_buf =
           internal::SerializeStreamBuffer(result->output_buffers + i, streams_);
       if (out_buf.is_null()) {
-        LOG(ERROR) << "Failed to serialize output stream buffer";
+        LOGF(ERROR) << "Failed to serialize output stream buffer";
         // TODO(jcliang): Handle error?
       }
       output_buffers_array.push_back(std::move(out_buf));
@@ -300,7 +301,7 @@ mojom::Camera3NotifyMsgPtr CameraDeviceAdapter::Notify(
     shutter->timestamp = msg->message.shutter.timestamp;
     m->message->set_shutter(std::move(shutter));
   } else {
-    LOG(ERROR) << "Invalid notify message type: " << msg->type;
+    LOGF(ERROR) << "Invalid notify message type: " << msg->type;
   }
 
   return m;

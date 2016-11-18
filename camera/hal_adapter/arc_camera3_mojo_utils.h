@@ -20,6 +20,7 @@
 #include <mojo/public/cpp/system/data_pipe.h>
 
 #include "hal_adapter/arc_camera3.mojom.h"
+#include "hal_adapter/common.h"
 #include "hardware/camera3.h"
 
 namespace internal {
@@ -97,7 +98,7 @@ class Future {
     if (status == std::future_status::ready) {
       return true;
     }
-    LOG(ERROR) << "Future wait timeout";
+    LOGF(ERROR) << "Future wait timeout";
     return false;
   }
 
@@ -124,7 +125,7 @@ class Future<void> {
     if (status == std::future_status::ready) {
       return true;
     }
-    LOG(ERROR) << "Future wait timeout";
+    LOGF(ERROR) << "Future wait timeout";
     return false;
   }
 
@@ -157,7 +158,7 @@ class MojoInterfaceDelegate {
       : thread_("Delegate thread") {
     if (!thread_.StartWithOptions(
             base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
-      LOG(ERROR) << "Delegate thread failed to start";
+      LOGF(ERROR) << "Delegate thread failed to start";
       exit(-1);
     }
     thread_.WaitUntilThreadStarted();
@@ -192,7 +193,7 @@ class MojoInterfaceDelegate {
                     const base::Callback<void()>& cb) {
     interface_ptr_ = mojo::MakeProxy(std::move(interface_ptr_info));
     if (!interface_ptr_.is_bound()) {
-      LOG(ERROR) << "Failed to bind interface_ptr_";
+      LOGF(ERROR) << "Failed to bind interface_ptr_";
       exit(-1);
     }
     interface_ptr_.set_connection_error_handler(
@@ -205,12 +206,12 @@ class MojoInterfaceDelegate {
   }
 
   void OnIpcConnectionLostOnThread() {
-    LOG(INFO) << "Mojo interface connection lost";
+    LOGF(INFO) << "Mojo interface connection lost";
     interface_ptr_.reset();
   }
 
   void OnQueryVersionOnThread(uint32_t version) {
-    LOG(INFO) << "Bridge ready (version=" << version << ")";
+    LOGF(INFO) << "Bridge ready (version=" << version << ")";
   }
 
   void ResetInterfacePtrOnThread(const base::Callback<void()>& cb) {
@@ -228,7 +229,7 @@ class MojoBindingDelegate : public T {
       : thread_("Delegate thread"), binding_(this) {
     if (!thread_.StartWithOptions(
             base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
-      LOG(ERROR) << "Delegate thread failed to start";
+      LOGF(ERROR) << "Delegate thread failed to start";
       exit(-1);
     }
     thread_.WaitUntilThreadStarted();
@@ -295,7 +296,7 @@ class MojoBindingDelegate : public T {
   }
 
   void OnChannelClosedOnThread() {
-    LOG(INFO) << "Mojo binding channel closed";
+    LOGF(INFO) << "Mojo binding channel closed";
     if (binding_.is_bound()) {
       binding_.Close();
     }

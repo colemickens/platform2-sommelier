@@ -11,6 +11,8 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 
+#include "hal_adapter/common.h"
+
 namespace arc {
 
 CameraModuleCallbacksDelegate::CameraModuleCallbacksDelegate(
@@ -25,6 +27,7 @@ void CameraModuleCallbacksDelegate::CameraDeviceStatusChange(
     const camera_module_callbacks_t* callbacks,
     int camera_id,
     int new_status) {
+  VLOGF_ENTER();
   CameraModuleCallbacksDelegate* delegate =
       const_cast<CameraModuleCallbacksDelegate*>(
           static_cast<const CameraModuleCallbacksDelegate*>(callbacks));

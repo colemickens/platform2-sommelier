@@ -12,6 +12,7 @@
 #include <base/bind_helpers.h>
 
 #include "hal_adapter/camera_device_adapter.h"
+#include "hal_adapter/common.h"
 
 namespace arc {
 
@@ -28,7 +29,7 @@ Camera3CallbackOpsDelegate::Camera3CallbackOpsDelegate(
 void Camera3CallbackOpsDelegate::ProcessCaptureResult(
     const camera3_callback_ops_t* ops,
     const camera3_capture_result_t* result) {
-  VLOG(2) << "Camera3CallbackOpsDelegate::ProcessCaptureResult";
+  VLOGF_ENTER();
   Camera3CallbackOpsDelegate* delegate =
       const_cast<Camera3CallbackOpsDelegate*>(
           static_cast<const Camera3CallbackOpsDelegate*>(ops));
@@ -44,7 +45,7 @@ void Camera3CallbackOpsDelegate::ProcessCaptureResult(
 
 void Camera3CallbackOpsDelegate::Notify(const camera3_callback_ops_t* ops,
                                         const camera3_notify_msg_t* msg) {
-  VLOG(2) << "Camera3CallbackOpsDelegate::Notify";
+  VLOGF_ENTER();
   Camera3CallbackOpsDelegate* delegate =
       const_cast<Camera3CallbackOpsDelegate*>(
           static_cast<const Camera3CallbackOpsDelegate*>(ops));

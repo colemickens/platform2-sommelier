@@ -20,7 +20,7 @@ mojo::ScopedHandle WrapPlatformHandle(int handle) {
       mojo::edk::ScopedPlatformHandle(mojo::edk::PlatformHandle(handle)),
       &wrapped_handle);
   if (wrap_result != MOJO_RESULT_OK) {
-    LOG(ERROR) << "Failed to wrap platform handle: " << wrap_result;
+    LOGF(ERROR) << "Failed to wrap platform handle: " << wrap_result;
     return mojo::ScopedHandle(mojo::Handle());
   }
   return mojo::ScopedHandle(mojo::Handle(wrapped_handle));
@@ -32,7 +32,7 @@ int UnwrapPlatformHandle(mojo::ScopedHandle handle) {
   MojoResult mojo_result = mojo::edk::PassWrappedPlatformHandle(
       handle.release().value(), &scoped_platform_handle);
   if (mojo_result != MOJO_RESULT_OK) {
-    LOG(ERROR) << "Failed to unwrap handle: " << mojo_result;
+    LOGF(ERROR) << "Failed to unwrap handle: " << mojo_result;
     return -EINVAL;
   }
   return scoped_platform_handle.release().handle;
@@ -45,7 +45,7 @@ arc::mojom::HandlePtr SerializeHandle(int handle) {
   } else if (handle >= 0) {
     ret->set_h(WrapPlatformHandle(handle));
   } else {
-    LOG(ERROR) << "Invalid handle to wrap";
+    LOGF(ERROR) << "Invalid handle to wrap";
     // Simply return an invalid handle to indicate that an error has occurred.
     ret->set_h(mojo::ScopedHandle(mojo::Handle()));
   }
@@ -70,7 +70,7 @@ arc::mojom::NativeHandlePtr SerializeNativeHandle(
   for (int i = 0; i < handle->numFds; i++) {
     arc::mojom::HandlePtr wrapped_handle = SerializeHandle(handle->data[i]);
     if (wrapped_handle->is_h() && !wrapped_handle->get_h().is_valid()) {
-      LOG(ERROR) << "Failed to wrap buffer handle";
+      LOGF(ERROR) << "Failed to wrap buffer handle";
       ret.reset();
       return ret;
     }
@@ -93,7 +93,7 @@ int DeserializeNativeHandle(const arc::mojom::NativeHandlePtr& ptr,
   for (int i = 0; i < ptr->num_fds; i++) {
     int unwrapped_handle = DeserializeHandle(ptr->fds[i]);
     if (unwrapped_handle == -EINVAL) {
-      LOG(ERROR) << "Failed to get native fd";
+      LOGF(ERROR) << "Failed to get native fd";
       for (int j = 0; j < i; j++) {
         close(out_handle->data[j]);
       }
@@ -125,7 +125,7 @@ arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
     }
   }
   if (it == streams.end()) {
-    LOG(ERROR) << "Unknown stream set in buffer";
+    LOGF(ERROR) << "Unknown stream set in buffer";
     ret.reset();
     return ret;
   }
@@ -141,14 +141,14 @@ arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
 
   ret->acquire_fence = SerializeHandle(buffer->acquire_fence);
   if (ret->acquire_fence->is_h() && !ret->acquire_fence->get_h().is_valid()) {
-    LOG(ERROR) << "Failed to wrap acquire_fence";
+    LOGF(ERROR) << "Failed to wrap acquire_fence";
     ret.reset();
     return ret;
   }
 
   ret->release_fence = SerializeHandle(buffer->release_fence);
   if (ret->release_fence->is_h() && !ret->release_fence->get_h().is_valid()) {
-    LOG(ERROR) << "Failed to wrap release_fence";
+    LOGF(ERROR) << "Failed to wrap release_fence";
     ret.reset();
     return ret;
   }
@@ -161,7 +161,7 @@ int DeserializeStreamBuffer(const arc::mojom::Camera3StreamBufferPtr& ptr,
                             camera3_stream_buffer_t* out_buffer) {
   auto it = streams.find(ptr->stream_id);
   if (it == streams.end()) {
-    LOG(ERROR) << "Unknown stream: " << ptr->stream_id;
+    LOGF(ERROR) << "Unknown stream: " << ptr->stream_id;
     return -EINVAL;
   }
   out_buffer->stream = it->second.get();
@@ -176,7 +176,7 @@ int DeserializeStreamBuffer(const arc::mojom::Camera3StreamBufferPtr& ptr,
   int unwrapped_handle;
   unwrapped_handle = DeserializeHandle(ptr->acquire_fence);
   if (unwrapped_handle == -EINVAL) {
-    LOG(ERROR) << "Failed to get acquire_fence";
+    LOGF(ERROR) << "Failed to get acquire_fence";
     native_handle_close(*(out_buffer->buffer));
     return -EINVAL;
   }
@@ -184,7 +184,7 @@ int DeserializeStreamBuffer(const arc::mojom::Camera3StreamBufferPtr& ptr,
 
   unwrapped_handle = DeserializeHandle(ptr->release_fence);
   if (unwrapped_handle == -EINVAL) {
-    LOG(ERROR) << "Failed to get release_fence";
+    LOGF(ERROR) << "Failed to get release_fence";
     native_handle_close(*(out_buffer->buffer));
     close(out_buffer->acquire_fence);
     return -EINVAL;
@@ -203,7 +203,7 @@ int32_t SerializeCameraMetadata(
   }
   // Serialize camera metadata.
   uint32_t data_size = get_camera_metadata_size(metadata);
-  VLOG(2) << "Camera metadata size: " << data_size;
+  VLOGF(1) << "Camera metadata size: " << data_size;
   struct MojoCreateDataPipeOptions options = {
       sizeof(struct MojoCreateDataPipeOptions),
       MOJO_CREATE_DATA_PIPE_OPTIONS_FLAG_NONE, 1, data_size};
@@ -211,10 +211,10 @@ int32_t SerializeCameraMetadata(
   mojo::WriteDataRaw(producer_handle->get(), metadata, &data_size,
                      MOJO_WRITE_DATA_FLAG_ALL_OR_NONE);
   if (!data_size) {
-    LOG(ERROR) << "Failed to write camera metadata through data pipe";
+    LOGF(ERROR) << "Failed to write camera metadata through data pipe";
     return -EIO;
   }
-  VLOG(2) << "Data written to pipe: " << data_size;
+  VLOGF(1) << "Data written to pipe: " << data_size;
   return 0;
 }
 
@@ -228,18 +228,18 @@ CameraMetadataUniquePtr DeserializeCameraMetadata(
 
   mojo::ReadDataRaw(consumer_handle, nullptr, &data_size,
                     MOJO_READ_DATA_FLAG_QUERY);
-  VLOG(2) << "Data size in pipe: " << data_size;
+  VLOGF(1) << "Data size in pipe: " << data_size;
 
   camera_metadata_t* metadata =
       reinterpret_cast<camera_metadata_t*>(new uint8_t[data_size]);
   mojo::ReadDataRaw(consumer_handle, metadata, &data_size,
                     MOJO_READ_DATA_FLAG_ALL_OR_NONE);
   if (!data_size) {
-    LOG(ERROR) << "Failed to read camera metadata from data pipe";
+    LOGF(ERROR) << "Failed to read camera metadata from data pipe";
     // Simply return an invalid pointer to indicate that an error has occurred.
     return CameraMetadataUniquePtr();
   }
-  VLOG(2) << "Metadata size=" << get_camera_metadata_size(metadata);
+  VLOGF(1) << "Metadata size=" << get_camera_metadata_size(metadata);
   return CameraMetadataUniquePtr(metadata);
 }
 

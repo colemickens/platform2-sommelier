@@ -13,7 +13,8 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
-#include <base/logging.h>
+
+#include "hal_adapter/common.h"
 
 namespace internal {
 
@@ -28,13 +29,13 @@ int MakeUnixAddrForPath(const std::string& socket_name,
   DCHECK(unix_addr_len);
 
   if (socket_name.length() == 0) {
-    LOG(ERROR) << "Empty socket name provided for unix socket address.";
+    LOGF(ERROR) << "Empty socket name provided for unix socket address.";
     return -1;
   }
   // We reject socket_name.length() == kMaxSocketNameLength to make room for
   // the NUL terminator at the end of the string.
   if (socket_name.length() >= kMaxSocketNameLength) {
-    LOG(ERROR) << "Socket name too long: " << socket_name;
+    LOGF(ERROR) << "Socket name too long: " << socket_name;
     return -1;
   }
 
@@ -76,7 +77,7 @@ bool CreateServerUnixDomainSocket(const base::FilePath& socket_path,
 
   // Make sure the path we need exists.
   if (!base::CreateDirectory(socket_dir)) {
-    LOG(ERROR) << "Couldn't create directory: " << socket_dir.value();
+    LOGF(ERROR) << "Couldn't create directory: " << socket_dir.value();
     return false;
   }
 

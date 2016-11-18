@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "hal_adapter/camera_device_adapter.h"
+#include "hal_adapter/common.h"
 
 namespace arc {
 
@@ -21,41 +22,41 @@ Camera3DeviceOpsDelegate::~Camera3DeviceOpsDelegate() {}
 void Camera3DeviceOpsDelegate::Initialize(
     mojom::Camera3CallbackOpsPtr callback_ops,
     const InitializeCallback& callback) {
-  VLOG(2) << "Camera3DeviceOpsDelegate::Initialize";
+  VLOGF_ENTER();
   callback.Run(camera_device_adapter_->Initialize(std::move(callback_ops)));
 }
 
 void Camera3DeviceOpsDelegate::ConfigureStreams(
     mojom::Camera3StreamConfigurationPtr config,
     const ConfigureStreamsCallback& callback) {
-  VLOG(2) << "Camera3DeviceOpsDelegate::ConfigureStreams";
+  VLOGF_ENTER();
   callback.Run(camera_device_adapter_->ConfigureStreams(std::move(config)));
 }
 
 void Camera3DeviceOpsDelegate::ConstructDefaultRequestSettings(
     int32_t type,
     const ConstructDefaultRequestSettingsCallback& callback) {
-  VLOG(2) << "Camera3DeviceOpsDelegate::ConstructDefaultRequestSettings";
+  VLOGF_ENTER();
   callback.Run(camera_device_adapter_->ConstructDefaultRequestSettings(type));
 }
 
 void Camera3DeviceOpsDelegate::ProcessCaptureRequest(
     mojom::Camera3CaptureRequestPtr request,
     const ProcessCaptureRequestCallback& callback) {
-  VLOG(2) << "Camera3DeviceOpsDelegate::ProcessCaptureRequest";
+  VLOGF_ENTER();
   callback.Run(
       camera_device_adapter_->ProcessCaptureRequest(std::move(request)));
 }
 
 void Camera3DeviceOpsDelegate::Dump(mojo::ScopedHandle fd,
                                     const DumpCallback& callback) {
-  VLOG(2) << "Camera3DeviceOpsDelegate::Dump";
+  VLOGF_ENTER();
   camera_device_adapter_->Dump(std::move(fd));
   callback.Run();
 }
 
 void Camera3DeviceOpsDelegate::Flush(const FlushCallback& callback) {
-  VLOG(2) << "Camera3DeviceOpsDelegate::Flush";
+  VLOGF_ENTER();
   callback.Run(camera_device_adapter_->Flush());
 }
 

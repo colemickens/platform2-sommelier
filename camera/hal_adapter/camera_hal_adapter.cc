@@ -24,6 +24,7 @@
 #include "hal_adapter/camera_device_adapter.h"
 #include "hal_adapter/camera_module_callbacks_delegate.h"
 #include "hal_adapter/camera_module_delegate.h"
+#include "hal_adapter/common.h"
 
 namespace arc {
 
@@ -33,11 +34,11 @@ CameraHalAdapter::CameraHalAdapter(camera_module_t* camera_module,
     : camera_module_(camera_module),
       socket_fd_(socket_fd),
       ipc_thread_("Mojo IPC thread") {
-  VLOG(2) << "CameraHalAdapter::CameraHalAdapter";
+  VLOGF_ENTER();
   mojo::edk::Init();
   if (!ipc_thread_.StartWithOptions(
           base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
-    LOG(ERROR) << "Mojo IPC thread failed to start";
+    LOGF(ERROR) << "Mojo IPC thread failed to start";
     return;
   }
   mojo::edk::InitIPCSupport(this, ipc_thread_.task_runner());
@@ -45,13 +46,13 @@ CameraHalAdapter::CameraHalAdapter(camera_module_t* camera_module,
 }
 
 CameraHalAdapter::~CameraHalAdapter() {
-  VLOG(2) << "CameraHalAdapter::~CameraHalAdapter";
+  VLOGF_ENTER();
   mojo::edk::ShutdownIPCSupport();
 }
 
 bool CameraHalAdapter::Start() {
   if (!socket_fd_.is_valid()) {
-    LOG(ERROR) << "Invalid socket fd: " << socket_fd_.get();
+    LOGF(ERROR) << "Invalid socket fd: " << socket_fd_.get();
     return false;
   }
   mojo::edk::ScopedPlatformHandle handle(
@@ -74,14 +75,14 @@ bool CameraHalAdapter::Start() {
   mojo::edk::PlatformChannelRecvmsg(handle.get(), buf, sizeof(buf),
                                     &platform_handles, true);
   if (platform_handles.size() != 1) {
-    LOG(ERROR) << "Unexpected number of handles received, expected 1: "
-               << platform_handles.size();
+    LOGF(ERROR) << "Unexpected number of handles received, expected 1: "
+                << platform_handles.size();
     return false;
   }
   mojo::edk::ScopedPlatformHandle parent_pipe(platform_handles.back());
   platform_handles.pop_back();
   if (!parent_pipe.is_valid()) {
-    LOG(ERROR) << "Invalid parent pipe";
+    LOGF(ERROR) << "Invalid parent pipe";
     return false;
   }
   mojo::edk::SetParentPipeHandle(std::move(parent_pipe));
@@ -89,25 +90,30 @@ bool CameraHalAdapter::Start() {
   char token[64] = {0};
   mojo::edk::PlatformChannelRecvmsg(handle.get(), token, sizeof(token),
                                     &platform_handles, true);
-  VLOG(2) << "Got token: " << token;
+  VLOGF(1) << "Got token: " << token;
   mojo::ScopedMessagePipeHandle child_pipe =
       mojo::edk::CreateChildMessagePipe(std::string(token));
 
   module_delegate_->Bind(std::move(child_pipe));
 
-  VLOG(2) << "CameraHalAdapter started";
+  VLOGF(1) << "CameraHalAdapter started";
   return true;
 }
 
 // Callback interface for camera_module_t APIs.
 
 mojom::OpenDeviceResultPtr CameraHalAdapter::OpenDevice(int32_t device_id) {
-  VLOG(2) << "CameraHalAdapter::OpenDevice";
+  VLOGF_ENTER();
   mojom::OpenDeviceResultPtr result = mojom::OpenDeviceResult::New();
 
+  if (device_id < 0) {
+    LOGF(ERROR) << "Invalid camera device id: " << device_id;
+    result->set_error(-EINVAL);
+    return result;
+  }
   if (device_adapters_.find(device_id) != device_adapters_.end()) {
-    LOG(WARNING) << "Multiple calls to OpenDevice on device " << device_id;
-    result->set_error(0);
+    LOGF(WARNING) << "Multiple calls to OpenDevice on device " << device_id;
+    result->set_error(-EBUSY);
     return result;
   }
   camera3_device_t* camera_device;
@@ -128,10 +134,14 @@ mojom::OpenDeviceResultPtr CameraHalAdapter::OpenDevice(int32_t device_id) {
 }
 
 int32_t CameraHalAdapter::CloseDevice(int32_t device_id) {
-  VLOG(2) << "CameraHalAdapter::CloseDevice";
+  VLOGF_ENTER();
+  if (device_id < 0) {
+    LOGF(ERROR) << "Invalid camera device id: " << device_id;
+    return -EINVAL;
+  }
   if (device_adapters_.find(device_id) == device_adapters_.end()) {
-    LOG(ERROR) << "Failed to close camera device " << device_id
-               << ": device is not opened";
+    LOGF(ERROR) << "Failed to close camera device " << device_id
+                << ": device is not opened";
     return -ENODEV;
   }
   int32_t result = device_adapters_.at(device_id)->Close();
@@ -140,15 +150,20 @@ int32_t CameraHalAdapter::CloseDevice(int32_t device_id) {
 }
 
 int32_t CameraHalAdapter::GetNumberOfCameras() {
-  VLOG(2) << "CameraHalAdapter::GetNumberOfCameras";
+  VLOGF_ENTER();
   return camera_module_->get_number_of_cameras();
 }
 
 mojom::GetCameraInfoResultPtr CameraHalAdapter::GetCameraInfo(
     int32_t device_id) {
-  VLOG(2) << "CameraHalAdapter::GetCameraInfo";
+  VLOGF_ENTER();
   mojom::GetCameraInfoResultPtr result = mojom::GetCameraInfoResult::New();
 
+  if (device_id < 0) {
+    LOGF(ERROR) << "Invalid camera device id: " << device_id;
+    result->set_error(-EINVAL);
+    return result;
+  }
   camera_info_t info;
   int32_t ret = camera_module_->get_camera_info(device_id, &info);
   if (ret) {
@@ -156,7 +171,7 @@ mojom::GetCameraInfoResultPtr CameraHalAdapter::GetCameraInfo(
     return result;
   }
 
-  if (VLOG_IS_ON(2)) {
+  if (VLOG_IS_ON(1)) {
     dump_camera_metadata(info.static_camera_characteristics, 2, 3);
   }
 
@@ -169,7 +184,7 @@ mojom::GetCameraInfoResultPtr CameraHalAdapter::GetCameraInfo(
   ret = internal::SerializeCameraMetadata(&producer_handle, &consumer_handle,
                                           info.static_camera_characteristics);
   if (ret) {
-    LOG(ERROR) << "Failed to send camera metadata in GetCameraInfo";
+    LOGF(ERROR) << "Failed to send camera metadata in GetCameraInfo";
     // The returned error code is -EIO but HAL need -EINVAL.
     result->set_error(-EINVAL);
     return result;
@@ -182,7 +197,7 @@ mojom::GetCameraInfoResultPtr CameraHalAdapter::GetCameraInfo(
 
 int32_t CameraHalAdapter::SetCallbacks(
     mojom::CameraModuleCallbacksPtr callbacks) {
-  VLOG(2) << "CameraHalAdapter::SetCallbacks";
+  VLOGF_ENTER();
   callbacks_delegate_.reset(
       new CameraModuleCallbacksDelegate(callbacks.PassInterface()));
   return camera_module_->set_callbacks(callbacks_delegate_.get());

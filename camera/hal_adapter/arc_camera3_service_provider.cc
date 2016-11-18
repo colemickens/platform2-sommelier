@@ -16,6 +16,7 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 
+#include "hal_adapter/common.h"
 #include "hal_adapter/ipc_util.h"
 
 namespace arc {
@@ -38,7 +39,7 @@ int ArcCamera3ServiceProvider::Start() {
 
   int raw_fd = -1;
   if (!::internal::CreateServerUnixDomainSocket(socket_path, &raw_fd)) {
-    LOG(ERROR) << "CreateSreverUnixDomainSocket failed";
+    LOGF(ERROR) << "CreateSreverUnixDomainSocket failed";
     return -1;
   }
   base::ScopedFD socket_fd(raw_fd);
@@ -62,9 +63,9 @@ int ArcCamera3ServiceProvider::Start() {
       break;
     }
     if (accept_fd < 0) {
-      LOG(ERROR) << "Invalid accept fd: " << accept_fd;
+      LOGF(ERROR) << "Invalid accept fd: " << accept_fd;
     } else {
-      VLOG(1) << "Accepted a client, fd: " << accept_fd;
+      VLOGF(1) << "Accepted a client, fd: " << accept_fd;
       pid_t child_pid = fork();
       if (child_pid < 0) {
         PLOG(ERROR) << "Fork failed";
