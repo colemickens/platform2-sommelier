@@ -4,7 +4,7 @@
 
 include common.mk
 
-CXX_LIBRARY(usb/libarccamera.so): $(usb_CXX_OBJECTS)
+CXX_LIBRARY(usb/libarccamera.so): $(usb_CXX_OBJECTS) $(COMMON_OBJECTS)
 
 usb/libarccamera: CXX_LIBRARY(usb/libarccamera.so)
 

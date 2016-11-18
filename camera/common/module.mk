@@ -13,4 +13,4 @@ tests: CXX_BINARY(common/future_unittest)
 
 # To link against object files under common/, add $(COMMON_OBJECTS) to the
 # dependency list of your target.
-COMMON_OBJECTS := common/future.o
+COMMON_OBJECTS := common/future.o common/metadata_base.o
