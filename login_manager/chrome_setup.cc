@@ -215,12 +215,12 @@ void AddUiFlags(ChromiumCommandBuilder* builder) {
     base::DeleteFile(data_dir.Append("Local State"), false);
   }
 
+  if (builder->UseFlagIsSet("stylus"))
+    builder->AddArg("--ash-enable-palette");
 
   if (builder->UseFlagIsSet("kevin")) {
     // TODO(jdufault): Remove this once quick unlock launches on all boards.
     builder->AddFeatureEnableOverride("QuickUnlockPin");
-    // TODO(jdufault): Remove once a dedicated USE flag exists for this.
-    builder->AddArg("--ash-enable-palette");
 
     builder->AddArg("--num-raster-threads=1");
     builder->AddArg("--enable-hardware-overlays=single-fullscreen");
