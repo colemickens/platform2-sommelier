@@ -401,7 +401,7 @@ void PowerSupply::Init(const base::FilePath& power_supply_path,
   }
 
   // The percentage-based threshold takes precedence over the time-based
-  // threshold.
+  // threshold. This behavior is duplicated in check_powerd_config.
   if (prefs_->GetDouble(kLowBatteryShutdownPercentPref,
                         &low_battery_shutdown_percent_)) {
     low_battery_shutdown_time_ = base::TimeDelta();
