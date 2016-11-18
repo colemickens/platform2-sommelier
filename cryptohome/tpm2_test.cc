@@ -231,6 +231,19 @@ TEST_F(Tpm2Test, DefineNvramSuccess) {
   uint32_t index = 2;
   size_t length = 5;
   EXPECT_TRUE(tpm_->DefineNvram(
+      index, length, Tpm::kTpmNvramWriteDefine));
+  EXPECT_EQ(index, last_define_space_request.index());
+  EXPECT_EQ(length, last_define_space_request.size());
+  ASSERT_EQ(1, last_define_space_request.attributes_size());
+  EXPECT_EQ(tpm_manager::NVRAM_PERSISTENT_WRITE_LOCK,
+            last_define_space_request.attributes(0));
+  EXPECT_EQ(tpm_manager::NVRAM_POLICY_NONE, last_define_space_request.policy());
+}
+
+TEST_F(Tpm2Test, DefineNvramSuccessWithPolicy) {
+  uint32_t index = 2;
+  size_t length = 5;
+  EXPECT_TRUE(tpm_->DefineNvram(
       index, length, Tpm::kTpmNvramWriteDefine | Tpm::kTpmNvramBindToPCR0));
   EXPECT_EQ(index, last_define_space_request.index());
   EXPECT_EQ(length, last_define_space_request.size());

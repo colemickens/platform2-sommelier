@@ -57,7 +57,11 @@ static const gchar * const kCryptDevName = "encstateful";
 static const gchar * const kNvramExport = "/tmp/lockbox.nvram";
 static const float kSizePercent = 0.3;
 static const float kMigrationSizeMultiplier = 1.1;
+#if USE_TPM2
+static const uint32_t kLockboxIndex = 0x800004;
+#else
 static const uint32_t kLockboxIndex = 0x20000004;
+#endif
 static const uint32_t kLockboxSizeV1 = 0x2c;
 static const uint32_t kLockboxSizeV2 = LOCKBOX_SIZE_MAX;
 static const uint32_t kLockboxSaltOffset = 0x5;
@@ -334,6 +338,78 @@ _read_nvram(uint8_t *buffer, size_t len, uint32_t index, uint32_t size)
 }
 
 /*
+ * Cache Lockbox NVRAM area in nvram_data, set nvram_size to the actual size.
+ * Set *migrate to 0 for Version 2 Lockbox area, and 1 otherwise.
+ * Returns 1 on success.
+ */
+int read_lockbox_nvram_area(int *migrate)
+{
+	uint8_t owned = 0;
+	uint8_t bytes_anded, bytes_ored;
+	uint32_t result, i;
+
+	/* Default to allowing migration (disallow when owned with NVRAMv2). */
+	*migrate = 1;
+
+	/* Ignore unowned TPM's NVRAM area. */
+	result = tpm_owned(&owned);
+	if (result != TPM_SUCCESS) {
+		INFO("Could not read TPM Permanent Flags: error 0x%02x.",
+		     result);
+		return 0;
+	}
+	if (!owned) {
+		INFO("TPM not Owned, ignoring Lockbox NVRAM area.");
+		return 0;
+	}
+
+	/* Reading the NVRAM takes 40ms. Instead of querying the NVRAM area
+	 * for its size (which takes time), just read the expected size. If
+	 * it fails, then fall back to the older size. This means cleared
+	 * devices take 80ms (2 failed reads), legacy devices take 80ms
+	 * (1 failed read, 1 good read), and populated devices take 40ms,
+	 * which is the minimum possible time (instead of 40ms + time to
+	 * query NVRAM size).
+	 */
+	result = _read_nvram(nvram_data, sizeof(nvram_data),
+			kLockboxIndex, kLockboxSizeV2);
+	if (result != TPM_SUCCESS) {
+		result = _read_nvram(nvram_data, sizeof(nvram_data),
+				kLockboxIndex, kLockboxSizeV1);
+		if (result != TPM_SUCCESS) {
+			/* No NVRAM area at all. */
+			INFO("No Lockbox NVRAM area defined: error 0x%02x",
+					result);
+			return 0;
+		}
+		/* Legacy NVRAM area. */
+		nvram_size = kLockboxSizeV1;
+		INFO("Version 1 Lockbox NVRAM area found.");
+	} else {
+		*migrate = 0;
+		nvram_size = kLockboxSizeV2;
+		INFO("Version 2 Lockbox NVRAM area found.");
+	}
+
+	debug_dump_hex("lockbox nvram", value, nvram_size);
+
+	/* Ignore defined but unwritten NVRAM area. */
+	bytes_ored = 0x0;
+	bytes_anded = 0xff;
+	for (i = 0; i < nvram_size; ++i) {
+		bytes_ored |= nvram_data[i];
+		bytes_anded &= nvram_data[i];
+	}
+	if (bytes_ored == 0x0 || bytes_anded == 0xff) {
+		INFO("NVRAM area has been defined but not written.");
+		nvram_size = 0;
+		return 0;
+	}
+
+	return 1;
+}
+
+/*
  * For TPM2, NVRAM area is separate from Lockbox.
  * No legacy systems, so migration is never allowed.
  * Cases:
@@ -368,7 +444,10 @@ static int get_nvram_key_tpm2(uint8_t *digest, int *migrate)
 	uint32_t perm;
 	struct nvram_area_tpm2 area;
 
-	/* Don't ever allow migration, we have no legacy TPM2 systems. */
+	/* "Export" lockbox nvram data for use after the helper.
+	 * Don't ever allow migration, we have no legacy TPM2 systems.
+	 */
+	read_lockbox_nvram_area(migrate);
 	*migrate = 0;
 
 	INFO("Getting key from TPM2 NVRAM index 0x%x", kNvramAreaTpm2Index);
@@ -385,7 +464,7 @@ static int get_nvram_key_tpm2(uint8_t *digest, int *migrate)
 				TlclRead(kNvramAreaTpm2Index, &area,
 						sizeof(area)),
 						"Reading NVRAM area");
-		debug_dump_hex("nvram", (uint8_t *)&area, sizeof(area));
+		debug_dump_hex("key nvram", (uint8_t *)&area, sizeof(area));
 	} else {
 		INFO("NVRAM area doesn't exist or can't check permissions");
 		memset(&area, 0, sizeof(area));
@@ -416,7 +495,7 @@ static int get_nvram_key_tpm2(uint8_t *digest, int *migrate)
 		area.magic = kNvramAreaTpm2Magic;
 		area.ver_flags = kNvramAreaTpm2CurrentVersion;
 		memcpy(area.salt, rand_bytes, DIGEST_LENGTH);
-		debug_dump_hex("nvram", (uint8_t *)&area, sizeof(area));
+		debug_dump_hex("key nvram", (uint8_t *)&area, sizeof(area));
 
 		RETURN_ON_FAILURE(
 				TlclWrite(kNvramAreaTpm2Index, &area,
@@ -473,80 +552,22 @@ static int get_nvram_key_tpm2(uint8_t *digest, int *migrate)
  */
 static int get_nvram_key_tpm1(uint8_t *digest, int *migrate)
 {
-	uint8_t owned = 0;
-	uint8_t value[kLockboxSizeV2], bytes_anded, bytes_ored;
-	uint32_t size, result, i;
 	uint8_t *rand_bytes;
 	uint32_t rand_size;
 
-	/* Default to allowing migration (disallow when owned with NVRAMv2). */
-	*migrate = 1;
-
-	/* Ignore unowned TPM's NVRAM area. */
-	result = tpm_owned(&owned);
-	if (result != TPM_SUCCESS) {
-		INFO("Could not read TPM Permanent Flags: error 0x%02x.",
-		     result);
+	/* Read lockbox nvram data and "export" it for use after the helper. */
+	if (!read_lockbox_nvram_area(migrate))
 		return 0;
-	}
-	if (!owned) {
-		INFO("TPM not Owned, ignoring NVRAM area.");
-		return 0;
-	}
-
-	/* Reading the NVRAM takes 40ms. Instead of querying the NVRAM area
-	 * for its size (which takes time), just read the expected size. If
-	 * it fails, then fall back to the older size. This means cleared
-	 * devices take 80ms (2 failed reads), legacy devices take 80ms
-	 * (1 failed read, 1 good read), and populated devices take 40ms,
-	 * which is the minimum possible time (instead of 40ms + time to
-	 * query NVRAM size).
-	 */
-	size = kLockboxSizeV2;
-	result = _read_nvram(value, sizeof(value), kLockboxIndex, size);
-	if (result != TPM_SUCCESS) {
-		size = kLockboxSizeV1;
-		result = _read_nvram(value, sizeof(value), kLockboxIndex, size);
-		if (result != TPM_SUCCESS) {
-			/* No NVRAM area at all. */
-			INFO("No NVRAM area defined: error 0x%02x", result);
-			return 0;
-		}
-		/* Legacy NVRAM area. */
-		INFO("Version 1 NVRAM area found.");
-	} else {
-		*migrate = 0;
-		INFO("Version 2 NVRAM area found.");
-	}
-
-	debug_dump_hex("nvram", value, size);
-
-	/* Ignore defined but unwritten NVRAM area. */
-	bytes_ored = 0x0;
-	bytes_anded = 0xff;
-	for (i = 0; i < size; ++i) {
-		bytes_ored |= value[i];
-		bytes_anded &= value[i];
-	}
-	if (bytes_ored == 0x0 || bytes_anded == 0xff) {
-		INFO("NVRAM area has been defined but not written.");
-		return 0;
-	}
-
-	/* "Export" nvram data for use after the helper. */
-	if (size <= sizeof(nvram_data)) {
-		nvram_size = size;
-		memcpy(nvram_data, value, size);
-	}
 
 	/* Choose random bytes to use based on NVRAM version. */
-	if (*migrate) {
-		rand_bytes = value;
-		rand_size = size;
+	if (nvram_size == kLockboxSizeV1) {
+		rand_bytes = nvram_data;
+		rand_size = nvram_size;
 	} else {
-		rand_bytes = value + kLockboxSaltOffset;
-		if (kLockboxSaltOffset + DIGEST_LENGTH > size) {
-			INFO("Impossibly small NVRAM area size (%d).", size);
+		rand_bytes = nvram_data + kLockboxSaltOffset;
+		if (kLockboxSaltOffset + DIGEST_LENGTH > nvram_size) {
+			INFO("Impossibly small NVRAM area size (%d).",
+					nvram_size);
 			return 0;
 		}
 		rand_size = DIGEST_LENGTH;
@@ -1471,8 +1492,10 @@ void nvram_export(uint8_t *data, uint32_t size)
 {
 	int fd;
 	DEBUG("Export NVRAM contents");
-	if (!size || !data)
+	if (!size || !data) {
+		DEBUG("No data to export");
 		return;
+	}
 	fd = open(kNvramExport, O_WRONLY|O_CREAT|O_EXCL, S_IRUSR|S_IWUSR);
 	if (fd < 0) {
 		perror("open(nvram_export)");

@@ -153,6 +153,14 @@ class Lockbox {
   // Provide a simple means to access the expected NVRAM contents.
   virtual const LockboxContents* contents() const { return contents_.get(); }
 
+  // Tells if on this platform we store disk encryption salt in lockbox.
+  // If true, it also requires additional protection for lockbox.
+  // If false, the salt field is just filled with zeroes and not used.
+  // Currently, the salt is stored separately for TPM 2.0.
+  virtual bool IsEncryptionSaltInLockbox() const {
+    return tpm_->GetVersion() != Tpm::TpmVersion::TPM_2_0;
+  }
+
   // NVRAM structure versions.
   static const uint32_t kNvramVersion1;
   static const uint32_t kNvramVersion2;

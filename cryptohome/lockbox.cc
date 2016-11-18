@@ -127,9 +127,11 @@ bool Lockbox::Create(ErrorId* error) {
     break;
   }
 
-  if (!tpm_->DefineNvram(nvram_index_, nvram_bytes,
-                         Tpm::kTpmNvramWriteDefine |
-                         Tpm::kTpmNvramBindToPCR0)) {
+  // If we store the encryption salt in lockbox, protect it from reading
+  // in non-verified boot mode.
+  uint32_t nvram_perm = Tpm::kTpmNvramWriteDefine |
+    (IsEncryptionSaltInLockbox() ? Tpm::kTpmNvramBindToPCR0 : 0);
+  if (!tpm_->DefineNvram(nvram_index_, nvram_bytes, nvram_perm)) {
     *error = kErrorIdTpmError;
     LOG(ERROR) << "Create() failed to defined NVRAM space.";
     return false;
@@ -299,17 +301,16 @@ bool Lockbox::Store(const brillo::Blob& blob, ErrorId* error) {
 
   // Grab a salt from the TPM.
   brillo::Blob salt(0);
-  if (tpm_->GetVersion() == Tpm::TpmVersion::TPM_2_0) {
-    // We don't use salt generated here in mount-encrypted for TPM 2.0.
-    // So, save a TPM command, and just fill the salt with zeroes.
-    LOG(INFO) << "Skipping random salt generation for TPM2.0.";
-    salt.resize(contents_->salt_size);
-  } else {
+  if (IsEncryptionSaltInLockbox()) {
     if (!tpm_->GetRandomData(contents_->salt_size, &salt)) {
       LOG(ERROR) << "Store() failed to get a salt from the TPM.";
       *error = kErrorIdTpmError;
       return false;
     }
+  } else {
+    // Save a TPM command, and just fill the salt field with zeroes.
+    LOG(INFO) << "Skipping random salt generation.";
+    salt.resize(contents_->salt_size);
   }
   // Keep the data locally too.
   DCHECK(sizeof(contents_->salt) == kReservedSaltBytesV2);
