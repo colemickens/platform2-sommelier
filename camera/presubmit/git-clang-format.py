@@ -26,9 +26,12 @@ CLANG_FORMAT = os.path.join(os.path.abspath(os.path.dirname(__file__)),
 
 def main(argv):
   parser = argparse.ArgumentParser()
-  parser.add_argument('--commit', type=str, help='The commit to check.')
+  parser.add_argument('--commit', type=str, help='The commit to check.',
+                      default='HEAD')
   parser.add_argument('--fix', action='store_true',
                       help='Fix any formatting errors automatically.')
+  parser.add_argument('--diff', action='store_true',
+                      help='Show the diff output of clang-format.')
   args = parser.parse_args(argv)
 
   cmd = [CLANG_FORMAT, '--style', 'Chromium', '--diff', '%s^' % args.commit,
@@ -52,6 +55,9 @@ def main(argv):
         print('\t%s' % f)
       print('You can run `%s --fix %s` to fix this.' %
             (__file__, ' '.join(argv)))
+      if args.diff:
+        print('\nDiff output from clang-format:\n')
+        print(stdout)
       return 1
 
   return 0
