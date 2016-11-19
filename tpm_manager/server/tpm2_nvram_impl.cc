@@ -59,11 +59,15 @@ void MapAttributesFromTpm(trunks::TPMA_NV tpm_flags,
 
 bool MapAttributesToTpm(
     const std::vector<NvramSpaceAttribute>& attributes,
+    NvramSpacePolicy policy,
     trunks::TPMA_NV* tpm_flags,
     bool* world_read_allowed,
     bool* world_write_allowed) {
-  // Always require policy, even if it's an empty policy.
-  *tpm_flags = trunks::TPMA_NV_POLICYWRITE | trunks::TPMA_NV_POLICYREAD;
+  if (policy == NVRAM_POLICY_NONE) {
+    *tpm_flags = trunks::TPMA_NV_AUTHWRITE | trunks::TPMA_NV_AUTHREAD;
+  } else {
+    *tpm_flags = trunks::TPMA_NV_POLICYWRITE | trunks::TPMA_NV_POLICYREAD;
+  }
   *world_read_allowed = true;
   *world_write_allowed = true;
   for (auto attribute : attributes) {
@@ -149,7 +153,8 @@ NvramResult Tpm2NvramImpl::DefineSpace(
   trunks::TPMA_NV attribute_flags = 0;
   bool world_read_allowed = false;
   bool world_write_allowed = false;
-  if (!MapAttributesToTpm(attributes, &attribute_flags, &world_read_allowed,
+  if (!MapAttributesToTpm(attributes, policy,
+                          &attribute_flags, &world_read_allowed,
                           &world_write_allowed)) {
     return NVRAM_RESULT_INVALID_PARAMETER;
   }
@@ -509,11 +514,13 @@ bool Tpm2NvramImpl::SetupPolicySession(
     return false;
   }
   session->SetEntityAuthorizationValue(authorization_value);
-  if (!AddPoliciesForCommand(policy_record, command_code, session)) {
-    return false;
-  }
-  if (!AddPolicyOR(policy_record, session)) {
-    return false;
+  if (policy_record.policy() != NVRAM_POLICY_NONE) {
+    if (!AddPoliciesForCommand(policy_record, command_code, session)) {
+      return false;
+    }
+    if (!AddPolicyOR(policy_record, session)) {
+      return false;
+    }
   }
   return true;
 }
@@ -573,6 +580,10 @@ bool Tpm2NvramImpl::AddPolicyOR(
 
 bool Tpm2NvramImpl::ComputePolicyDigest(NvramPolicyRecord* policy_record,
                                         std::string* digest) {
+  if (policy_record->policy() == NVRAM_POLICY_NONE) {
+    digest->clear();
+    return true;
+  }
   // Compute a policy digest for each command then OR them all together. This
   // approach gives flexibility to have different requirements for read and
   // write operations, and the ability to support authorization values combined

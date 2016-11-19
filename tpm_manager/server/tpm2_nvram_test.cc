@@ -186,9 +186,10 @@ TEST_F(Tpm2NvramTest, DefineSpaceSuccess) {
   EXPECT_CALL(
       mock_tpm_utility_,
       DefineNVSpace(index, size,
-                    trunks::TPMA_NV_WRITEDEFINE | trunks::TPMA_NV_POLICYWRITE |
-                        trunks::TPMA_NV_POLICYREAD,
-                    kFakeAuthorizationValue, kFakePolicyDigest, kHMACAuth))
+                    trunks::TPMA_NV_WRITEDEFINE | trunks::TPMA_NV_AUTHWRITE |
+                        trunks::TPMA_NV_AUTHREAD,
+                    kFakeAuthorizationValue, std::string() /* policy */,
+                    kHMACAuth))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(
       NVRAM_RESULT_SUCCESS,

@@ -85,10 +85,16 @@ enum NvramSpaceAttribute {
 }
 
 enum NvramSpacePolicy {
-  // No policy. Authorization values are still enforced. This is the default.
+  // No policy, only authorization values are enforced. This is the default.
+  // AUTHREAD | AUTHWRITE attributes are set for the space.
+  // Authorization values are enforced via authValue defined for the space.
   NVRAM_POLICY_NONE = 0;
   // Bind both read and write access to the current PCR0 value in addition to
   // enforcing any authorization value.
+  // For TPM 2.0:
+  // POLICYREAD | POLICYWRITE attributes are set for the space.
+  // Authorization values are enforced by binding the policy to the
+  // defined value using PolicyAuthValue command.
   NVRAM_POLICY_PCR0 = 1;
 }
 
