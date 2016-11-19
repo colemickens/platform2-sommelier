@@ -210,7 +210,7 @@ FIXTURE_SETUP(container_test)
 	char rundir_template[] = "/tmp/cgtest_runXXXXXX";
 	char *rundir;
 	char path[256];
-	char *pargs[] = {
+	const char *pargs[] = {
 		"/sbin/init",
 	};
 

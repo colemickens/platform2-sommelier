@@ -52,7 +52,7 @@ const char *container_config_get_pid_file(const struct container_config *c);
 
 /* The program to run and args, e.g. "/sbin/init", "--second-stage". */
 int container_config_program_argv(struct container_config *c,
-				  char **argv, size_t num_args);
+				  const char **argv, size_t num_args);
 
 /* Get the number of command line args for the program to be run. */
 size_t container_config_get_num_program_args(const struct container_config *c);

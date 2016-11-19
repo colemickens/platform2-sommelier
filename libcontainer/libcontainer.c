@@ -233,7 +233,7 @@ const char *container_config_get_pid_file(const struct container_config *c)
 }
 
 int container_config_program_argv(struct container_config *c,
-				  char **argv, size_t num_args)
+				  const char **argv, size_t num_args)
 {
 	size_t i;
 

@@ -147,11 +147,11 @@ bool ParseProcessConfig(const base::DictionaryValue& config_root_dict,
       return false;
     }
   }
-  std::vector<char*> argv(num_args);
+  std::vector<const char*> argv(num_args);
   for (size_t i = 0; i < num_args; ++i) {
-    argv[i] = const_cast<char*>(argv_str[i].c_str());
+    argv[i] = argv_str[i].c_str();
   }
-  container_config_program_argv(config_out->get(), &argv[0], num_args);
+  container_config_program_argv(config_out->get(), argv.data(), argv.size());
   return true;
 }
 
