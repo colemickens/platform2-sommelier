@@ -31,14 +31,15 @@ void CameraModuleCallbacksDelegate::CameraDeviceStatusChange(
   CameraModuleCallbacksDelegate* delegate =
       const_cast<CameraModuleCallbacksDelegate*>(
           static_cast<const CameraModuleCallbacksDelegate*>(callbacks));
-  internal::Future<void> future;
+  auto future =
+      make_scoped_refptr(new internal::Future<void>(&delegate->relay_));
   delegate->thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(
           &CameraModuleCallbacksDelegate::CameraDeviceStatusChangeOnThread,
           base::Unretained(delegate), camera_id, new_status,
-          internal::GetFutureCallback(&future)));
-  future.Wait();
+          internal::GetFutureCallback(future)));
+  future->Wait();
 }
 
 void CameraModuleCallbacksDelegate::CameraDeviceStatusChangeOnThread(

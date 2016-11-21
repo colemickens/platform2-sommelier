@@ -243,8 +243,4 @@ CameraMetadataUniquePtr DeserializeCameraMetadata(
   return CameraMetadataUniquePtr(metadata);
 }
 
-base::Callback<void()> GetFutureCallback(Future<void>* future) {
-  return base::Bind(&Future<void>::Set, base::Unretained(future));
-}
-
 }  // namespace internal

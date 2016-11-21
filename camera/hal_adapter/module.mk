@@ -45,6 +45,7 @@ CXX_BINARY(hal_adapter/arc_camera3_service): CPPFLAGS += $(hal_adapter_CPPFLAGS)
 CXX_BINARY(hal_adapter/arc_camera3_service): LDLIBS += $(hal_adapter_LDLIBS)
 CXX_BINARY(hal_adapter/arc_camera3_service): \
 	$(ANDROID_OBJECTS) \
+	$(COMMON_OBJECTS) \
 	$(hal_adapter_CXX_OBJECTS)
 
 hal_adapter/arc_camera3_service: CXX_BINARY(hal_adapter/arc_camera3_service)

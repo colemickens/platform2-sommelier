@@ -7,8 +7,6 @@
 #ifndef HAL_ADAPTER_ARC_CAMERA3_MOJO_UTILS_H_
 #define HAL_ADAPTER_ARC_CAMERA3_MOJO_UTILS_H_
 
-#include <chrono>  // NOLINT(build/c++11)
-#include <future>  // NOLINT(build/c++11)
 #include <map>
 #include <memory>
 #include <utility>
@@ -20,6 +18,7 @@
 #include <mojo/public/cpp/system/data_pipe.h>
 
 #include "arc/common.h"
+#include "arc/future.h"
 #include "hal_adapter/arc_camera3.mojom.h"
 #include "hardware/camera3.h"
 
@@ -79,76 +78,6 @@ int32_t SerializeCameraMetadata(
 CameraMetadataUniquePtr DeserializeCameraMetadata(
     mojo::DataPipeConsumerHandle consumer_handle);
 
-// Future templates and helper functions.
-
-template <typename T>
-class Future {
- public:
-  Future() : future(promise.get_future()) {}
-
-  ~Future() = default;
-
-  T Get() { return future.get(); }
-
-  void Set(T&& value) { promise.set_value(std::move(value)); }
-
-  bool Wait(int timeoutMs = 5000) {
-    std::future_status status =
-        future.wait_for(std::chrono::milliseconds(timeoutMs));
-    if (status == std::future_status::ready) {
-      return true;
-    }
-    LOGF(ERROR) << "Future wait timeout";
-    return false;
-  }
-
- private:
-  std::promise<T> promise;
-
-  std::future<T> future;
-
-  DISALLOW_COPY_AND_ASSIGN(Future);
-};
-
-template <>
-class Future<void> {
- public:
-  Future() : future(promise.get_future()) {}
-
-  ~Future() = default;
-
-  void Set() { promise.set_value(); }
-
-  bool Wait(int timeoutMs = 5000) {
-    std::future_status status =
-        future.wait_for(std::chrono::milliseconds(timeoutMs));
-    if (status == std::future_status::ready) {
-      return true;
-    }
-    LOGF(ERROR) << "Future wait timeout";
-    return false;
-  }
-
- private:
-  std::promise<void> promise;
-
-  std::future<void> future;
-
-  DISALLOW_COPY_AND_ASSIGN(Future);
-};
-
-template <typename T>
-void FutureCallback(Future<T>* future, T ret) {
-  future->Set(std::move(ret));
-}
-
-template <typename T>
-base::Callback<void(T)> GetFutureCallback(Future<T>* future) {
-  return base::Bind(&FutureCallback<T>, base::Unretained(future));
-}
-
-base::Callback<void()> GetFutureCallback(Future<void>* future);
-
 // Template classes for Mojo IPC delegates
 
 template <typename T>
@@ -156,6 +85,7 @@ class MojoInterfaceDelegate {
  public:
   explicit MojoInterfaceDelegate(mojo::InterfacePtrInfo<T> interface_ptr_info)
       : thread_("Delegate thread") {
+    VLOGF_ENTER();
     if (!thread_.StartWithOptions(
             base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
       LOGF(ERROR) << "Delegate thread failed to start";
@@ -163,23 +93,24 @@ class MojoInterfaceDelegate {
     }
     thread_.WaitUntilThreadStarted();
 
-    internal::Future<void> future;
+    auto future = make_scoped_refptr(new internal::Future<void>(&relay_));
     thread_.task_runner()->PostTask(
         FROM_HERE,
         base::Bind(&MojoInterfaceDelegate<T>::BindOnThread,
                    base::Unretained(this), base::Passed(&interface_ptr_info),
-                   internal::GetFutureCallback(&future)));
-    future.Wait();
+                   internal::GetFutureCallback(future)));
+    future->Wait();
   }
 
   ~MojoInterfaceDelegate() {
-    internal::Future<void> future;
+    VLOGF_ENTER();
+    auto future = make_scoped_refptr(new internal::Future<void>(&relay_));
     thread_.task_runner()->PostTask(
         FROM_HERE,
         base::Bind(&MojoInterfaceDelegate<T>::ResetInterfacePtrOnThread,
                    base::Unretained(this),
-                   internal::GetFutureCallback(&future)));
-    future.Wait();
+                   internal::GetFutureCallback(future)));
+    future->Wait();
     thread_.Stop();
   }
 
@@ -187,6 +118,8 @@ class MojoInterfaceDelegate {
   base::Thread thread_;
 
   mojo::InterfacePtr<T> interface_ptr_;
+
+  CancellationRelay relay_;
 
  private:
   void BindOnThread(mojo::InterfacePtrInfo<T> interface_ptr_info,
@@ -206,7 +139,9 @@ class MojoInterfaceDelegate {
   }
 
   void OnIpcConnectionLostOnThread() {
+    VLOGF_ENTER();
     LOGF(INFO) << "Mojo interface connection lost";
+    relay_.CancelAllFutures();
     interface_ptr_.reset();
   }
 
@@ -215,6 +150,7 @@ class MojoInterfaceDelegate {
   }
 
   void ResetInterfacePtrOnThread(const base::Callback<void()>& cb) {
+    VLOGF_ENTER();
     interface_ptr_.reset();
     cb.Run();
   }
@@ -227,6 +163,7 @@ class MojoBindingDelegate : public T {
  public:
   explicit MojoBindingDelegate(base::Closure quit_cb = base::Closure())
       : thread_("Delegate thread"), binding_(this) {
+    VLOGF_ENTER();
     if (!thread_.StartWithOptions(
             base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
       LOGF(ERROR) << "Delegate thread failed to start";
@@ -237,36 +174,39 @@ class MojoBindingDelegate : public T {
   }
 
   ~MojoBindingDelegate() {
-    internal::Future<void> future;
+    VLOGF_ENTER();
+    auto future = make_scoped_refptr(new internal::Future<void>(&relay_));
     thread_.task_runner()->PostTask(
         FROM_HERE, base::Bind(&MojoBindingDelegate<T>::CloseBindingOnThread,
                               base::Unretained(this),
-                              internal::GetFutureCallback(&future)));
-    future.Wait();
+                              internal::GetFutureCallback(future)));
+    future->Wait();
+    thread_.Stop();
   }
 
   mojo::InterfacePtr<T> CreateInterfacePtr() {
-    internal::Future<mojo::InterfacePtr<T>> future;
+    auto future = make_scoped_refptr(
+        new internal::Future<mojo::InterfacePtr<T>>(&relay_));
     thread_.task_runner()->PostTask(
         FROM_HERE,
         base::Bind(&MojoBindingDelegate<T>::CreateInterfacePtrOnThread,
                    base::Unretained(this),
-                   internal::GetFutureCallback(&future)));
-    future.Wait();
-    return future.Get();
+                   internal::GetFutureCallback(future)));
+    return future->Get();
   }
 
   void Bind(mojo::ScopedMessagePipeHandle handle) {
-    internal::Future<void> future;
+    auto future = make_scoped_refptr(new internal::Future<void>(&relay_));
     thread_.task_runner()->PostTask(
         FROM_HERE, base::Bind(&MojoBindingDelegate<T>::BindOnThread,
                               base::Unretained(this), base::Passed(&handle),
-                              internal::GetFutureCallback(&future)));
-    future.Wait();
+                              internal::GetFutureCallback(future)));
+    future->Wait();
   }
 
  private:
   void CloseBindingOnThread(const base::Callback<void()>& cb) {
+    VLOGF_ENTER();
     if (binding_.is_bound()) {
       binding_.Close();
     }
@@ -296,8 +236,10 @@ class MojoBindingDelegate : public T {
   }
 
   void OnChannelClosedOnThread() {
+    VLOGF_ENTER();
     LOGF(INFO) << "Mojo binding channel closed";
     if (binding_.is_bound()) {
+      relay_.CancelAllFutures();
       binding_.Close();
     }
     if (!quit_cb_.is_null()) {
@@ -310,6 +252,8 @@ class MojoBindingDelegate : public T {
   base::Thread thread_;
 
   mojo::Binding<T> binding_;
+
+  CancellationRelay relay_;
 
   DISALLOW_COPY_AND_ASSIGN(MojoBindingDelegate);
 };

@@ -37,7 +37,7 @@ class CameraHalAdapter : public mojo::edk::ProcessDelegate {
   bool Start();
 
   // ProcessDelegate implementation.
-  void OnShutdownComplete() override {}
+  void OnShutdownComplete() override;
 
   // Callback interface for CameraModuleDelegate..
   mojom::OpenDeviceResultPtr OpenDevice(int32_t device_id);

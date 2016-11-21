@@ -12,6 +12,7 @@
 #include <base/bind_helpers.h>
 
 #include "arc/common.h"
+#include "arc/future.h"
 #include "hal_adapter/camera_device_adapter.h"
 
 namespace arc {
@@ -34,13 +35,14 @@ void Camera3CallbackOpsDelegate::ProcessCaptureResult(
       const_cast<Camera3CallbackOpsDelegate*>(
           static_cast<const Camera3CallbackOpsDelegate*>(ops));
 
-  internal::Future<void> future;
+  auto future =
+      make_scoped_refptr(new internal::Future<void>(&delegate->relay_));
   delegate->thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread,
                  base::Unretained(delegate), base::Unretained(result),
-                 internal::GetFutureCallback(&future)));
-  future.Wait();
+                 internal::GetFutureCallback(future)));
+  future->Wait();
 }
 
 void Camera3CallbackOpsDelegate::Notify(const camera3_callback_ops_t* ops,
@@ -50,12 +52,13 @@ void Camera3CallbackOpsDelegate::Notify(const camera3_callback_ops_t* ops,
       const_cast<Camera3CallbackOpsDelegate*>(
           static_cast<const Camera3CallbackOpsDelegate*>(ops));
 
-  internal::Future<void> future;
+  auto future =
+      make_scoped_refptr(new internal::Future<void>(&delegate->relay_));
   delegate->thread_.task_runner()->PostTask(
       FROM_HERE, base::Bind(&Camera3CallbackOpsDelegate::NotifyOnThread,
                             base::Unretained(delegate), base::Unretained(msg),
-                            internal::GetFutureCallback(&future)));
-  future.Wait();
+                            internal::GetFutureCallback(future)));
+  future->Wait();
 }
 
 void Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread(

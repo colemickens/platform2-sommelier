@@ -100,6 +100,10 @@ bool CameraHalAdapter::Start() {
   return true;
 }
 
+void CameraHalAdapter::OnShutdownComplete() {
+  ipc_thread_.Stop();
+}
+
 // Callback interface for camera_module_t APIs.
 
 mojom::OpenDeviceResultPtr CameraHalAdapter::OpenDevice(int32_t device_id) {
