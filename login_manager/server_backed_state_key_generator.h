@@ -80,7 +80,7 @@ class ServerBackedStateKeyGenerator {
   // waiting for machine info to become available. If the state keys can't be
   // computed due to missing machine identifiers, |callback| will be invoked
   // with an empty vector.
-  void RequestStateKeys(const StateKeyCallback& callback);
+  virtual void RequestStateKeys(const StateKeyCallback& callback);
 
  private:
   // Computes the keys and stores them in |state_keys|. In case of error,

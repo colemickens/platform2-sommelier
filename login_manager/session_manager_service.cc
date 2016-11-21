@@ -174,6 +174,10 @@ bool SessionManagerService::Initialize() {
       power_manager::kPowerManagerServiceName,
       dbus::ObjectPath(power_manager::kPowerManagerServicePath));
 
+  dbus::ObjectProxy* system_clock_proxy = bus_->GetObjectProxy(
+      system_clock::kSystemClockServiceName,
+      dbus::ObjectPath(system_clock::kSystemClockServicePath));
+
 #if USE_SYSTEMD
   using InitDaemonControllerImpl = SystemdUnitStarter;
 #else
@@ -218,7 +222,8 @@ bool SessionManagerService::Initialize() {
       &vpd_process_,
       &owner_key_,
       &android_container_,
-      &install_attributes_reader_);
+      &install_attributes_reader_,
+      system_clock_proxy);
 
   adaptor_.reset(new SessionManagerDBusAdaptor(impl));
   impl_.reset(impl);

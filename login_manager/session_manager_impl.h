@@ -14,8 +14,6 @@
 #include <string>
 #include <vector>
 
-#include <base/memory/weak_ptr.h>
-
 #include "login_manager/container_manager_interface.h"
 #include "login_manager/device_policy_service.h"
 #include "login_manager/key_generator.h"
@@ -25,6 +23,11 @@
 
 class Crossystem;
 class InstallAttributesReader;
+
+namespace dbus {
+class ObjectProxy;
+class Response;
+}  // namespace dbus
 
 namespace login_manager {
 class DBusSignalEmitterInterface;
@@ -117,10 +120,12 @@ class SessionManagerImpl : public SessionManagerInterface,
                      VpdProcess* vpd_process,
                      PolicyKey* owner_key,
                      ContainerManagerInterface* android_container,
-                     InstallAttributesReader* install_attributes_reader);
+                     InstallAttributesReader* install_attributes_reader,
+                     dbus::ObjectProxy* system_clock_proxy);
   virtual ~SessionManagerImpl();
 
-  void InjectPolicyServices(
+  // Tests can call this before Initialize() to inject their own objects.
+  void SetPolicyServicesForTest(
       scoped_ptr<DevicePolicyService> device_policy,
       scoped_ptr<UserPolicyServiceFactory> user_policy_factory,
       scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy);
@@ -219,9 +224,6 @@ class SessionManagerImpl : public SessionManagerInterface,
                       const base::FilePath& temp_key_file) override;
 
  private:
-  // Called when the Android container is stopped.
-  void OnAndroidContainerStopped(pid_t pid, bool clean);
-
   // Holds the state related to one of the signed in users.
   struct UserSession;
 
@@ -229,6 +231,20 @@ class SessionManagerImpl : public SessionManagerInterface,
   friend class SessionManagerImplTest;
 
   typedef std::map<std::string, UserSession*> UserSessionMap;
+
+  // Called when the Android container is stopped.
+  void OnAndroidContainerStopped(pid_t pid, bool clean);
+
+  // Called when the tlsdated service becomes initially available.
+  void OnSystemClockServiceAvailable(bool service_available);
+
+  // Request the LastSyncInfo from tlsdated daemon.
+  void GetSystemClockLastSyncInfo();
+
+  // The response to LastSyncInfo request is processed here. If the time sync
+  // was done then the state keys are generated, otherwise another LastSyncInfo
+  // request is scheduled to be done later.
+  void OnGotSystemClockLastSyncInfo(dbus::Response* response);
 
   // Given a policy key stored at temp_key_file, pulls it off disk,
   // validates that it is a correctly formed key pair, and ensures it is
@@ -278,6 +294,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   bool session_stopping_;
   bool screen_locked_;
   bool supervised_user_creation_ongoing_;
+  bool system_clock_synchronized_;
   std::string cookie_;
 
   base::FilePath chrome_testing_path_;
@@ -303,11 +320,18 @@ class SessionManagerImpl : public SessionManagerInterface,
   PolicyKey* owner_key_;                                // Owned by the caller.
   ContainerManagerInterface* android_container_;        // Owned by the caller.
   InstallAttributesReader* install_attributes_reader_;  // Owned by the caller.
+  dbus::ObjectProxy* system_clock_proxy_;               // Owned by the caller.
 
   scoped_ptr<DevicePolicyService> device_policy_;
   scoped_ptr<UserPolicyServiceFactory> user_policy_factory_;
   scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy_;
   RegenMitigator mitigator_;
+
+  // Callbacks passed to RequestServerBackedStateKeys() while
+  // |system_clock_synchrononized_| was false. They will be run by
+  // OnGotSystemClockLastSyncInfo() once the clock is synchronized.
+  std::vector<ServerBackedStateKeyGenerator::StateKeyCallback>
+      pending_state_key_callbacks_;
 
   // Map of the currently signed-in users to their state.
   UserSessionMap user_sessions_;

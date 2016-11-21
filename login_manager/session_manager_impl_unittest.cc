@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -21,6 +22,8 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
+#include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <base/strings/string_util.h>
 #include <brillo/cryptohome.h>
 #include <chromeos/dbus/service_constants.h>
@@ -43,13 +46,14 @@
 #include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_metrics.h"
 #include "login_manager/mock_nss_util.h"
+#include "login_manager/mock_object_proxy.h"
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_process_manager_service.h"
+#include "login_manager/mock_server_backed_state_key_generator.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/mock_user_policy_service_factory.h"
 #include "login_manager/mock_vpd_process.h"
-#include "login_manager/server_backed_state_key_generator.h"
 #include "login_manager/stub_upstart_signal_emitter.h"
 
 using ::testing::AnyNumber;
@@ -105,6 +109,7 @@ class SessionManagerImplTest : public ::testing::Test {
       : device_policy_service_(new MockDevicePolicyService),
         state_key_generator_(&utils_, &metrics_),
         android_container_(kAndroidPid),
+        system_clock_proxy_(new MockObjectProxy),
         impl_(scoped_ptr<UpstartSignalEmitter>(new StubUpstartSignalEmitter(
                   &upstart_signal_emitter_delegate_)),
               &dbus_emitter_,
@@ -126,7 +131,8 @@ class SessionManagerImplTest : public ::testing::Test {
               &vpd_process_,
               &owner_key_,
               &android_container_,
-              &install_attributes_reader_),
+              &install_attributes_reader_,
+              system_clock_proxy_.get()),
         fake_salt_("fake salt"),
         actual_locks_(0),
         expected_locks_(0),
@@ -140,10 +146,11 @@ class SessionManagerImplTest : public ::testing::Test {
     utils_.set_base_dir_for_testing(tmpdir_.path());
     SetSystemSalt(&fake_salt_);
 
-    android_data_dir_ = GetRootPath(kSaneEmail).Append(
-        SessionManagerImpl::kAndroidDataDirName);
-    android_data_old_dir_ = GetRootPath(kSaneEmail).Append(
-        SessionManagerImpl::kAndroidDataOldDirName);
+    android_data_dir_ =
+        GetRootPath(kSaneEmail).Append(SessionManagerImpl::kAndroidDataDirName);
+    android_data_old_dir_ =
+        GetRootPath(kSaneEmail)
+            .Append(SessionManagerImpl::kAndroidDataOldDirName);
 
     // AtomicFileWrite calls in TEST_F assume that these directories exist.
     ASSERT_TRUE(utils_.CreateDir(
@@ -151,18 +158,25 @@ class SessionManagerImplTest : public ::testing::Test {
     ASSERT_TRUE(utils_.CreateDir(
         base::FilePath(FILE_PATH_LITERAL("/mnt/stateful_partition"))));
 
+    EXPECT_CALL(*(system_clock_proxy_.get()), WaitForServiceToBeAvailable(_))
+        .WillRepeatedly(testing::SaveArg<0>(&available_callback_));
+    EXPECT_CALL(*(system_clock_proxy_.get()),
+                CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
+        .WillRepeatedly(testing::SaveArg<2>(&time_sync_callback_));
+
     MockUserPolicyServiceFactory* factory = new MockUserPolicyServiceFactory;
     EXPECT_CALL(*factory, Create(_))
         .WillRepeatedly(
             Invoke(this, &SessionManagerImplTest::CreateUserPolicyService));
     scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy(
         new DeviceLocalAccountPolicyService(tmpdir_.path(), NULL));
-    impl_.InjectPolicyServices(
+    impl_.SetPolicyServicesForTest(
         scoped_ptr<DevicePolicyService>(device_policy_service_),
         scoped_ptr<UserPolicyServiceFactory>(factory),
         std::move(device_local_account_policy));
 
     SetDefaultMockBehavior();
+    impl_.Initialize();
   }
 
   void TearDown() override {
@@ -209,9 +223,8 @@ class SessionManagerImplTest : public ::testing::Test {
     }
     EXPECT_CALL(
         upstart_signal_emitter_delegate_,
-        OnSignalEmitted(
-            StrEq(SessionManagerImpl::kArcRemoveOldDataSignal),
-            ElementsAre(StartsWith("ANDROID_DATA_OLD_DIR="))))
+        OnSignalEmitted(StrEq(SessionManagerImpl::kArcRemoveOldDataSignal),
+                        ElementsAre(StartsWith("ANDROID_DATA_OLD_DIR="))))
         .Times(1);
 #endif
   }
@@ -270,8 +283,18 @@ class SessionManagerImplTest : public ::testing::Test {
   bool RemoveArcDataInternal(const base::FilePath& android_data_dir,
                              const base::FilePath& android_data_old_dir,
                              SessionManagerImpl::Error* error) {
-    return impl_.RemoveArcDataInternal(
-        android_data_dir, android_data_old_dir, error);
+    return impl_.RemoveArcDataInternal(android_data_dir, android_data_old_dir,
+                                       error);
+  }
+
+  void GotLastSyncInfo(bool network_synchronized) {
+    ASSERT_TRUE(!available_callback_.is_null());
+    available_callback_.Run(true);
+    ASSERT_TRUE(!time_sync_callback_.is_null());
+    std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
+    dbus::MessageWriter writer(response.get());
+    writer.AppendBool(network_synchronized);
+    time_sync_callback_.Run(response.get());
   }
 
   // These are bare pointers, not scoped_ptrs, because we need to give them
@@ -283,7 +306,7 @@ class SessionManagerImplTest : public ::testing::Test {
   MockDBusSignalEmitter dbus_emitter_;
   StubUpstartSignalEmitter::MockDelegate upstart_signal_emitter_delegate_;
   MockKeyGenerator key_gen_;
-  ServerBackedStateKeyGenerator state_key_generator_;
+  MockServerBackedStateKeyGenerator state_key_generator_;
   MockProcessManagerService manager_;
   MockMetrics metrics_;
   MockNssUtil nss_;
@@ -293,6 +316,9 @@ class SessionManagerImplTest : public ::testing::Test {
   MockPolicyKey owner_key_;
   FakeContainerManager android_container_;
   MockInstallAttributesReader install_attributes_reader_;
+  scoped_refptr<MockObjectProxy> system_clock_proxy_;
+  dbus::ObjectProxy::WaitForServiceToBeAvailableCallback available_callback_;
+  dbus::ObjectProxy::ResponseCallback time_sync_callback_;
 
   // Used by fake closures to simulate calling into powerd to set up
   // suspend delays when ARC starts or stops.
@@ -338,9 +364,8 @@ class SessionManagerImplTest : public ::testing::Test {
     EXPECT_CALL(metrics_, SendLoginUserType(false, guest, for_owner)).Times(1);
     EXPECT_CALL(
         upstart_signal_emitter_delegate_,
-        OnSignalEmitted(
-            StrEq(SessionManagerImpl::kStartUserSessionSignal),
-            ElementsAre(StartsWith("CHROMEOS_USER="))))
+        OnSignalEmitted(StrEq(SessionManagerImpl::kStartUserSessionSignal),
+                        ElementsAre(StartsWith("CHROMEOS_USER="))))
         .Times(1);
     EXPECT_CALL(
         dbus_emitter_,
@@ -375,9 +400,8 @@ class SessionManagerImplTest : public ::testing::Test {
     EXPECT_CALL(metrics_, SendLoginUserType(false, false, false)).Times(1);
     EXPECT_CALL(
         upstart_signal_emitter_delegate_,
-        OnSignalEmitted(
-            StrEq(SessionManagerImpl::kStartUserSessionSignal),
-            ElementsAre(StartsWith("CHROMEOS_USER="))))
+        OnSignalEmitted(StrEq(SessionManagerImpl::kStartUserSessionSignal),
+                        ElementsAre(StartsWith("CHROMEOS_USER="))))
         .Times(1);
     EXPECT_CALL(
         dbus_emitter_,
@@ -395,6 +419,8 @@ class SessionManagerImplTest : public ::testing::Test {
   void FakeStopArcInstance() { suspend_delay_set_up_ = false; }
 
   string fake_salt_;
+
+  base::MessageLoop loop;
 
   // Used by fake closures that simulate calling chrome and powerd to lock
   // the screen and restart the device.
@@ -435,12 +461,13 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
 
   // Check that RestartBrowserWithArgs() is called with a randomly chosen
   // --testing-channel path name.
-  string expected_testing_path_prefix = temp_dir.value().substr(
-      0, temp_dir.value().size() - random_suffix_len);
-  EXPECT_CALL(manager_, RestartBrowserWithArgs(
-                            ElementsAre(args[0], args[1], HasSubstr(
-                                expected_testing_path_prefix)),
-                            true))
+  string expected_testing_path_prefix =
+      temp_dir.value().substr(0, temp_dir.value().size() - random_suffix_len);
+  EXPECT_CALL(manager_,
+              RestartBrowserWithArgs(
+                  ElementsAre(args[0], args[1],
+                              HasSubstr(expected_testing_path_prefix)),
+                  true))
       .Times(1);
 
   string testing_path = impl_.EnableChromeTesting(false, args, NULL);
@@ -457,10 +484,11 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
   args[0] = "--dummy";
   args[1] = "--repeat-arg";
   testing_path.empty();
-  EXPECT_CALL(manager_, RestartBrowserWithArgs(
-                            ElementsAre(args[0], args[1], HasSubstr(
-                                expected_testing_path_prefix)),
-                            true))
+  EXPECT_CALL(manager_,
+              RestartBrowserWithArgs(
+                  ElementsAre(args[0], args[1],
+                              HasSubstr(expected_testing_path_prefix)),
+                  true))
       .Times(1);
 
   testing_path = impl_.EnableChromeTesting(true, args, NULL);
@@ -624,7 +652,41 @@ void CaptureErrorCode(std::string* storage,
   DCHECK(storage);
   *storage = to_capture.code();
 }
+
+void HandleStateKeys(const std::vector<std::vector<uint8_t>>& state_keys) {}
 }  // namespace
+
+TEST_F(SessionManagerImplTest, RequestStateKeys_TimeSync) {
+  EXPECT_CALL(state_key_generator_, RequestStateKeys(_));
+  impl_.RequestServerBackedStateKeys(base::Bind(&HandleStateKeys));
+  GotLastSyncInfo(true);
+}
+
+TEST_F(SessionManagerImplTest, RequestStateKeys_NoTimeSync) {
+  EXPECT_CALL(state_key_generator_, RequestStateKeys(_)).Times(0);
+  impl_.RequestServerBackedStateKeys(base::Bind(&HandleStateKeys));
+}
+
+TEST_F(SessionManagerImplTest, RequestStateKeys_TimeSyncDoneBefore) {
+  GotLastSyncInfo(true);
+  EXPECT_CALL(state_key_generator_, RequestStateKeys(_));
+  impl_.RequestServerBackedStateKeys(base::Bind(&HandleStateKeys));
+}
+
+TEST_F(SessionManagerImplTest, RequestStateKeys_FailedTimeSync) {
+  EXPECT_CALL(state_key_generator_, RequestStateKeys(_)).Times(0);
+  GotLastSyncInfo(false);
+  impl_.RequestServerBackedStateKeys(base::Bind(&HandleStateKeys));
+  base::RunLoop().RunUntilIdle();
+}
+
+TEST_F(SessionManagerImplTest, RequestStateKeys_TimeSyncAfterFail) {
+  GotLastSyncInfo(false);
+  impl_.RequestServerBackedStateKeys(base::Bind(&HandleStateKeys));
+  base::RunLoop().RunUntilIdle();
+  EXPECT_CALL(state_key_generator_, RequestStateKeys(_));
+  GotLastSyncInfo(true);
+}
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSession) {
   const string fake_policy("fake policy");
@@ -999,25 +1061,22 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
   // Check that StartArcInstance emits the signal with ANDROID_DATA_OLD_DIR=
   // when |android_data_old_dir_| is not empty.
   ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
-  ASSERT_TRUE(utils_.AtomicFileWrite(
-      android_data_old_dir_.Append("foo"), "test"));
+  ASSERT_TRUE(
+      utils_.AtomicFileWrite(android_data_old_dir_.Append("foo"), "test"));
 
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
-      OnSignalEmitted(
-          StrEq(SessionManagerImpl::kArcStartSignal),
-          ElementsAre(StartsWith("ANDROID_DATA_DIR="),
-                      std::string("CHROMEOS_USER=") + kSaneEmail,
-                      "CHROMEOS_DEV_MODE=0",
-                      "CHROMEOS_INSIDE_VM=0",
-                      "DISABLE_BOOT_COMPLETED_BROADCAST=0",
-                      StartsWith("ANDROID_DATA_OLD_DIR="))))
+      OnSignalEmitted(StrEq(SessionManagerImpl::kArcStartSignal),
+                      ElementsAre(StartsWith("ANDROID_DATA_DIR="),
+                                  std::string("CHROMEOS_USER=") + kSaneEmail,
+                                  "CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                                  "DISABLE_BOOT_COMPLETED_BROADCAST=0",
+                                  StartsWith("ANDROID_DATA_OLD_DIR="))))
       .Times(1);
-  EXPECT_CALL(
-      upstart_signal_emitter_delegate_,
-      OnSignalEmitted(StrEq(SessionManagerImpl::kArcStopSignal),
-                      ElementsAre(std::string("ANDROID_PID=") +
-                                      std::to_string(kAndroidPid))))
+  EXPECT_CALL(upstart_signal_emitter_delegate_,
+              OnSignalEmitted(StrEq(SessionManagerImpl::kArcStopSignal),
+                              ElementsAre(std::string("ANDROID_PID=") +
+                                          std::to_string(kAndroidPid))))
       .Times(1);
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
@@ -1028,10 +1087,9 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
                                   std::string("CONTAINER_PID=") +
                                       std::to_string(kAndroidPid))))
       .Times(1);
-  EXPECT_CALL(
-      upstart_signal_emitter_delegate_,
-      OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStopSignal),
-                      ElementsAre()))
+  EXPECT_CALL(upstart_signal_emitter_delegate_,
+              OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStopSignal),
+                              ElementsAre()))
       .Times(1);
   impl_.StartArcInstance(kSaneEmail, false, &error_);
   EXPECT_TRUE(android_container_.running());
@@ -1076,20 +1134,17 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
       OnSignalEmitted(StrEq(SessionManagerImpl::kArcStartSignal),
                       ElementsAre(StartsWith("ANDROID_DATA_DIR="),
                                   std::string("CHROMEOS_USER=") + kSaneEmail,
-                                  "CHROMEOS_DEV_MODE=1",
-                                  "CHROMEOS_INSIDE_VM=0",
+                                  "CHROMEOS_DEV_MODE=1", "CHROMEOS_INSIDE_VM=0",
                                   "DISABLE_BOOT_COMPLETED_BROADCAST=0")))
       .Times(1);
-  EXPECT_CALL(
-      upstart_signal_emitter_delegate_,
-      OnSignalEmitted(StrEq(SessionManagerImpl::kArcStopSignal),
-                      ElementsAre(std::string("ANDROID_PID=") +
-                                      std::to_string(kAndroidPid))))
+  EXPECT_CALL(upstart_signal_emitter_delegate_,
+              OnSignalEmitted(StrEq(SessionManagerImpl::kArcStopSignal),
+                              ElementsAre(std::string("ANDROID_PID=") +
+                                          std::to_string(kAndroidPid))))
       .Times(1);
   EXPECT_CALL(
       dbus_emitter_,
-      EmitSignalWithBool(StrEq(login_manager::kArcInstanceStopped),
-                         false))
+      EmitSignalWithBool(StrEq(login_manager::kArcInstanceStopped), false))
       .Times(1);
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
@@ -1100,10 +1155,9 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
                                   std::string("CONTAINER_PID=") +
                                       std::to_string(kAndroidPid))))
       .Times(1);
-  EXPECT_CALL(
-      upstart_signal_emitter_delegate_,
-      OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStopSignal),
-                      ElementsAre()))
+  EXPECT_CALL(upstart_signal_emitter_delegate_,
+              OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStopSignal),
+                              ElementsAre()))
       .Times(1);
   // Overrides dev mode state.
   EXPECT_CALL(utils_, GetDevModeState())
@@ -1130,8 +1184,8 @@ TEST_F(SessionManagerImplTest, ArcRemoveDataInternal) {
   ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_DIR_EMPTY);
-  EXPECT_TRUE(RemoveArcDataInternal(
-      android_data_dir_, android_data_old_dir_, &error_));
+  EXPECT_TRUE(
+      RemoveArcDataInternal(android_data_dir_, android_data_old_dir_, &error_));
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
@@ -1142,8 +1196,8 @@ TEST_F(SessionManagerImplTest, ArcRemoveDataInternal_NoSourceDirectory) {
   ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
   ExpectRemoveArcData(DataDirType::DATA_DIR_MISSING,
                       OldDataDirType::OLD_DATA_DIR_EMPTY);
-  EXPECT_TRUE(RemoveArcDataInternal(
-      android_data_dir_, android_data_old_dir_, &error_));
+  EXPECT_TRUE(
+      RemoveArcDataInternal(android_data_dir_, android_data_old_dir_, &error_));
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
@@ -1155,8 +1209,8 @@ TEST_F(SessionManagerImplTest, ArcRemoveDataInternal_OldDirectoryExists) {
   ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_DIR_EMPTY);
-  EXPECT_TRUE(RemoveArcDataInternal(
-      android_data_dir_, android_data_old_dir_, &error_));
+  EXPECT_TRUE(
+      RemoveArcDataInternal(android_data_dir_, android_data_old_dir_, &error_));
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
@@ -1167,12 +1221,12 @@ TEST_F(SessionManagerImplTest,
   ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
   ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
-  ASSERT_TRUE(utils_.AtomicFileWrite(
-      android_data_old_dir_.Append("bar"), "test2"));
+  ASSERT_TRUE(
+      utils_.AtomicFileWrite(android_data_old_dir_.Append("bar"), "test2"));
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_DIR_NOT_EMPTY);
-  EXPECT_TRUE(RemoveArcDataInternal(
-      android_data_dir_, android_data_old_dir_, &error_));
+  EXPECT_TRUE(
+      RemoveArcDataInternal(android_data_dir_, android_data_old_dir_, &error_));
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
@@ -1184,8 +1238,8 @@ TEST_F(SessionManagerImplTest,
   ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
   ExpectRemoveArcData(DataDirType::DATA_DIR_MISSING,
                       OldDataDirType::OLD_DATA_DIR_EMPTY);
-  EXPECT_TRUE(RemoveArcDataInternal(
-      android_data_dir_, android_data_old_dir_, &error_));
+  EXPECT_TRUE(
+      RemoveArcDataInternal(android_data_dir_, android_data_old_dir_, &error_));
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
@@ -1195,12 +1249,12 @@ TEST_F(SessionManagerImplTest,
   // true even when |android_data_dir_| does not exist at all.
   ASSERT_FALSE(utils_.Exists(android_data_dir_));
   ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
-  ASSERT_TRUE(utils_.AtomicFileWrite(
-      android_data_old_dir_.Append("foo"), "test"));
+  ASSERT_TRUE(
+      utils_.AtomicFileWrite(android_data_old_dir_.Append("foo"), "test"));
   ExpectRemoveArcData(DataDirType::DATA_DIR_MISSING,
                       OldDataDirType::OLD_DATA_DIR_NOT_EMPTY);
-  EXPECT_TRUE(RemoveArcDataInternal(
-      android_data_dir_, android_data_old_dir_, &error_));
+  EXPECT_TRUE(
+      RemoveArcDataInternal(android_data_dir_, android_data_old_dir_, &error_));
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
@@ -1213,8 +1267,8 @@ TEST_F(SessionManagerImplTest, ArcRemoveDataInternal_OldFileExists) {
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_old_dir_, "test2"));
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_FILE_EXISTS);
-  EXPECT_TRUE(RemoveArcDataInternal(
-      android_data_dir_, android_data_old_dir_, &error_));
+  EXPECT_TRUE(
+      RemoveArcDataInternal(android_data_dir_, android_data_old_dir_, &error_));
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
@@ -1246,8 +1300,8 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
   ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
   ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
-  ASSERT_TRUE(utils_.AtomicFileWrite(
-      android_data_old_dir_.Append("bar"), "test2"));
+  ASSERT_TRUE(
+      utils_.AtomicFileWrite(android_data_old_dir_.Append("bar"), "test2"));
   impl_.StartArcInstance(kSaneEmail, false, &error_);
   impl_.StopArcInstance(&error_);
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
@@ -1264,8 +1318,8 @@ TEST_F(SessionManagerImplTest, ArcRemoveDataInternal) {
   ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_DIR_EMPTY);
-  EXPECT_TRUE(RemoveArcDataInternal(
-      android_data_dir_, android_data_old_dir_, &error_));
+  EXPECT_TRUE(
+      RemoveArcDataInternal(android_data_dir_, android_data_old_dir_, &error_));
   EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
 }
 
@@ -1289,10 +1343,9 @@ TEST_F(SessionManagerImplTest, PrioritizeArcInstance) {
 
 TEST_F(SessionManagerImplTest, EmitArcBooted) {
 #if USE_CHEETS
-  EXPECT_CALL(
-      upstart_signal_emitter_delegate_,
-          OnSignalEmitted(StrEq(SessionManagerImpl::kArcBootedSignal),
-                          ElementsAre()))
+  EXPECT_CALL(upstart_signal_emitter_delegate_,
+              OnSignalEmitted(StrEq(SessionManagerImpl::kArcBootedSignal),
+                              ElementsAre()))
       .Times(1);
   impl_.EmitArcBooted(&error_);
 #else

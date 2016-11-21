@@ -56,6 +56,9 @@ class MockObjectProxy : public dbus::ObjectProxy {
            dbus::ObjectProxy::SignalCallback signal_callback,
            dbus::ObjectProxy::OnConnectedCallback on_connected_callback));
   MOCK_METHOD0(Detach, void());
+  MOCK_METHOD1(
+      WaitForServiceToBeAvailable,
+      void(WaitForServiceToBeAvailableCallback callback));
 
  protected:
   virtual ~MockObjectProxy() {}

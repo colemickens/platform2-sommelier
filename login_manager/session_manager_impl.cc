@@ -17,13 +17,17 @@
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
+#include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <base/stl_util.h>
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <brillo/cryptohome.h>
 #include <crypto/scoped_nss_types.h>
 #include <dbus/message.h>
+#include <dbus/object_proxy.h>
 #include <install_attributes/libinstallattributes.h>
 
 #include "bindings/chrome_device_policy.pb.h"
@@ -64,8 +68,7 @@ const char SessionManagerImpl::kLoggedInFlag[] =
 const char SessionManagerImpl::kResetFile[] =
     "/mnt/stateful_partition/factory_install_reset";
 
-const char SessionManagerImpl::kStartUserSessionSignal[] =
-    "start-user-session";
+const char SessionManagerImpl::kStartUserSessionSignal[] = "start-user-session";
 
 const char SessionManagerImpl::kArcContainerName[] = "android";
 const char SessionManagerImpl::kArcStartSignal[] = "start-arc-instance";
@@ -78,8 +81,7 @@ const char SessionManagerImpl::kArcRemoveOldDataSignal[] =
 
 const base::FilePath::CharType SessionManagerImpl::kAndroidDataDirName[] =
     FILE_PATH_LITERAL("android-data");
-const base::FilePath::CharType
-SessionManagerImpl::kAndroidDataOldDirName[] =
+const base::FilePath::CharType SessionManagerImpl::kAndroidDataOldDirName[] =
     FILE_PATH_LITERAL("android-data-old");
 
 namespace {
@@ -115,6 +117,9 @@ constexpr int64_t kArcCriticalDiskFreeBytes = 64 << 20;  // 64MB
 // minimum amount of time we must wait before killing the containers.
 constexpr int kContainerTimeoutSec = 1;
 
+// The interval used to periodically check if time sync was done by tlsdated.
+constexpr int kSystemClockLastSyncInfoRetryMs = 1000;
+
 bool IsIncognitoAccountId(const std::string& account_id) {
   const std::string lower_case_id(base::ToLowerASCII(account_id));
   return (lower_case_id == kGuestUserName) ||
@@ -124,14 +129,14 @@ bool IsIncognitoAccountId(const std::string& account_id) {
 #if USE_CHEETS
 base::FilePath GetAndroidDataDirForUser(
     const std::string& normalized_account_id) {
-  return GetRootPath(normalized_account_id).Append(
-      SessionManagerImpl::kAndroidDataDirName);
+  return GetRootPath(normalized_account_id)
+      .Append(SessionManagerImpl::kAndroidDataDirName);
 }
 
 base::FilePath GetAndroidDataOldDirForUser(
     const std::string& normalized_account_id) {
-  return GetRootPath(normalized_account_id).Append(
-      SessionManagerImpl::kAndroidDataOldDirName);
+  return GetRootPath(normalized_account_id)
+      .Append(SessionManagerImpl::kAndroidDataOldDirName);
 }
 #endif  // USE_CHEETS
 
@@ -190,11 +195,13 @@ SessionManagerImpl::SessionManagerImpl(
     VpdProcess* vpd_process,
     PolicyKey* owner_key,
     ContainerManagerInterface* android_container,
-    InstallAttributesReader* install_attributes_reader)
+    InstallAttributesReader* install_attributes_reader,
+    dbus::ObjectProxy* system_clock_proxy)
     : session_started_(false),
       session_stopping_(false),
       screen_locked_(false),
       supervised_user_creation_ongoing_(false),
+      system_clock_synchronized_(false),
       init_controller_(std::move(init_controller)),
       lock_screen_closure_(lock_screen_closure),
       restart_device_closure_(restart_device_closure),
@@ -212,6 +219,7 @@ SessionManagerImpl::SessionManagerImpl(
       owner_key_(owner_key),
       android_container_(android_container),
       install_attributes_reader_(install_attributes_reader),
+      system_clock_proxy_(system_clock_proxy),
       mitigator_(key_gen),
       weak_ptr_factory_(this) {}
 
@@ -220,7 +228,7 @@ SessionManagerImpl::~SessionManagerImpl() {
   device_policy_->set_delegate(NULL);  // Could use WeakPtr instead?
 }
 
-void SessionManagerImpl::InjectPolicyServices(
+void SessionManagerImpl::SetPolicyServicesForTest(
     std::unique_ptr<DevicePolicyService> device_policy,
     std::unique_ptr<UserPolicyServiceFactory> user_policy_factory,
     std::unique_ptr<DeviceLocalAccountPolicyService>
@@ -251,25 +259,31 @@ bool SessionManagerImpl::ShouldEndSession() {
 bool SessionManagerImpl::Initialize() {
   key_gen_->set_delegate(this);
 
-  device_policy_.reset(DevicePolicyService::Create(login_metrics_, owner_key_,
-                                                   &mitigator_, nss_,
-                                                   crossystem_, vpd_process_));
-  device_policy_->set_delegate(this);
+  system_clock_proxy_->WaitForServiceToBeAvailable(
+      base::Bind(&SessionManagerImpl::OnSystemClockServiceAvailable,
+                 weak_ptr_factory_.GetWeakPtr()));
 
-  user_policy_factory_.reset(
-      new UserPolicyServiceFactory(getuid(), nss_, system_));
-  device_local_account_policy_.reset(new DeviceLocalAccountPolicyService(
-      base::FilePath(kDeviceLocalAccountStateDir), owner_key_));
+  if (!device_policy_) {
+    device_policy_.reset(
+        DevicePolicyService::Create(login_metrics_, owner_key_, &mitigator_,
+                                    nss_, crossystem_, vpd_process_));
+    device_policy_->set_delegate(this);
 
-  if (device_policy_->Initialize()) {
+    user_policy_factory_.reset(
+        new UserPolicyServiceFactory(getuid(), nss_, system_));
+    device_local_account_policy_.reset(new DeviceLocalAccountPolicyService(
+        base::FilePath(kDeviceLocalAccountStateDir), owner_key_));
+
+    if (!device_policy_->Initialize()) {
+      return false;
+    }
     device_local_account_policy_->UpdateDeviceSettings(
         device_policy_->GetSettings());
     if (device_policy_->MayUpdateSystemSettings()) {
       device_policy_->UpdateSystemSettings(PolicyService::Completion());
     }
-    return true;
   }
-  return false;
+  return true;
 }
 
 void SessionManagerImpl::Finalize() {
@@ -372,8 +386,7 @@ bool SessionManagerImpl::StartSession(const std::string& account_id,
   const DevModeState dev_mode_state = system_->GetDevModeState();
   if (dev_mode_state != DevModeState::DEV_MODE_UNKNOWN) {
     login_metrics_->SendLoginUserType(
-        dev_mode_state != DevModeState::DEV_MODE_OFF,
-        is_incognito,
+        dev_mode_state != DevModeState::DEV_MODE_OFF, is_incognito,
         user_is_owner);
   }
 
@@ -428,9 +441,8 @@ void SessionManagerImpl::StorePolicy(
     const std::string& mode = install_attributes_reader_->GetAttribute(
         InstallAttributesReader::kAttrMode);
     if (mode != InstallAttributesReader::kDeviceModeEnterpriseAD) {
-      PolicyService::Error error(
-          dbus_error::kPolicySignatureRequired,
-          "Device mode doesn't permit unsigned policy!");
+      PolicyService::Error error(dbus_error::kPolicySignatureRequired,
+                                 "Device mode doesn't permit unsigned policy!");
       LOG(ERROR) << error.message();
       completion.Run(error);
       return;
@@ -466,9 +478,8 @@ void SessionManagerImpl::StorePolicyForUser(
     const std::string& mode = install_attributes_reader_->GetAttribute(
         InstallAttributesReader::kAttrMode);
     if (mode != InstallAttributesReader::kDeviceModeEnterpriseAD) {
-      PolicyService::Error error(
-          dbus_error::kPolicySignatureRequired,
-          "Device mode doesn't permit unsigned policy!");
+      PolicyService::Error error(dbus_error::kPolicySignatureRequired,
+                                 "Device mode doesn't permit unsigned policy!");
       LOG(ERROR) << error.message();
       completion.Run(error);
       return;
@@ -633,7 +644,67 @@ void SessionManagerImpl::SetFlagsForUser(
 
 void SessionManagerImpl::RequestServerBackedStateKeys(
     const ServerBackedStateKeyGenerator::StateKeyCallback& callback) {
-  state_key_generator_->RequestStateKeys(callback);
+  if (system_clock_synchronized_) {
+    state_key_generator_->RequestStateKeys(callback);
+  } else {
+    pending_state_key_callbacks_.push_back(callback);
+  }
+}
+
+void SessionManagerImpl::OnSystemClockServiceAvailable(bool service_available) {
+  if (!service_available) {
+    LOG(ERROR) << "Failed to listen for tlsdated service start";
+    return;
+  }
+
+  GetSystemClockLastSyncInfo();
+}
+
+void SessionManagerImpl::GetSystemClockLastSyncInfo() {
+  dbus::MethodCall method_call(system_clock::kSystemClockInterface,
+                               system_clock::kSystemLastSyncInfo);
+  dbus::MessageWriter writer(&method_call);
+
+  system_clock_proxy_->CallMethod(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+      base::Bind(&SessionManagerImpl::OnGotSystemClockLastSyncInfo,
+                 weak_ptr_factory_.GetWeakPtr()));
+}
+
+void SessionManagerImpl::OnGotSystemClockLastSyncInfo(
+    dbus::Response* response) {
+  if (!response) {
+    LOG(ERROR) << system_clock::kSystemClockInterface << "."
+               << system_clock::kSystemLastSyncInfo << " request failed.";
+    base::MessageLoop::current()->PostDelayedTask(
+        FROM_HERE, base::Bind(&SessionManagerImpl::GetSystemClockLastSyncInfo,
+                              weak_ptr_factory_.GetWeakPtr()),
+        base::TimeDelta::FromMilliseconds(kSystemClockLastSyncInfoRetryMs));
+    return;
+  }
+
+  dbus::MessageReader reader(response);
+  bool network_synchronized = false;
+  if (!reader.PopBool(&network_synchronized)) {
+    LOG(ERROR) << system_clock::kSystemClockInterface << "."
+               << system_clock::kSystemLastSyncInfo
+               << " response lacks network-synchronized argument";
+    return;
+  }
+
+  if (network_synchronized) {
+    system_clock_synchronized_ = true;
+    for (auto it = pending_state_key_callbacks_.begin();
+         it != pending_state_key_callbacks_.end(); ++it) {
+      state_key_generator_->RequestStateKeys(*it);
+    }
+    pending_state_key_callbacks_.clear();
+  } else {
+    base::MessageLoop::current()->PostDelayedTask(
+        FROM_HERE, base::Bind(&SessionManagerImpl::GetSystemClockLastSyncInfo,
+                              weak_ptr_factory_.GetWeakPtr()),
+        base::TimeDelta::FromMilliseconds(kSystemClockLastSyncInfoRetryMs));
+  }
 }
 
 void SessionManagerImpl::InitMachineInfo(const std::string& data,
@@ -654,8 +725,8 @@ void SessionManagerImpl::StartArcInstance(const std::string& account_id,
 
   // To boot ARC instance, certain amount of disk space is needed under the
   // home. We first check it.
-  if (system_->AmountOfFreeDiskSpace(base::FilePath(kArcDiskCheckPath))
-          < kArcCriticalDiskFreeBytes) {
+  if (system_->AmountOfFreeDiskSpace(base::FilePath(kArcDiskCheckPath)) <
+      kArcCriticalDiskFreeBytes) {
     static const char msg[] = "Low free disk under /home";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kLowFreeDisk, msg);
@@ -679,8 +750,7 @@ void SessionManagerImpl::StartArcInstance(const std::string& account_id,
   const bool is_dev_mode =
       system_->GetDevModeState() != DevModeState::DEV_MODE_OFF;
   // When GetVmState() returns UNKNOWN, assign false to |is_inside_vm|.
-  const bool is_inside_vm =
-      system_->GetVmState() == VmState::INSIDE_VM;
+  const bool is_inside_vm = system_->GetVmState() == VmState::INSIDE_VM;
 
   std::vector<std::string> keyvals = {
       base::StringPrintf("ANDROID_DATA_DIR=%s",
@@ -689,7 +759,7 @@ void SessionManagerImpl::StartArcInstance(const std::string& account_id,
       base::StringPrintf("CHROMEOS_DEV_MODE=%d", is_dev_mode),
       base::StringPrintf("CHROMEOS_INSIDE_VM=%d", is_inside_vm),
       base::StringPrintf("DISABLE_BOOT_COMPLETED_BROADCAST=%d",
-          disable_boot_completed_broadcast),
+                         disable_boot_completed_broadcast),
   };
 
   const base::FilePath android_data_old_dir =
@@ -855,8 +925,7 @@ bool SessionManagerImpl::RemoveArcDataInternal(
   // Create a random temporary directory in |android_data_old_dir|.
   // Note: Renaming a directory to an existing empty directory works.
   base::FilePath target_dir_name;
-  if (!system_->CreateTemporaryDirIn(
-          android_data_old_dir, &target_dir_name)) {
+  if (!system_->CreateTemporaryDirIn(android_data_old_dir, &target_dir_name)) {
     LOG(WARNING) << "Failed to create a temporary directory in "
                  << android_data_old_dir.value();
     return false;
@@ -871,8 +940,8 @@ bool SessionManagerImpl::RemoveArcDataInternal(
   // call RemoveArcData() later as needed, and both directories will disappear.
   if (system_->DirectoryExists(android_data_dir)) {
     if (!system_->RenameDir(android_data_dir, target_dir_name)) {
-      LOG(WARNING) << "Failed to rename " << android_data_dir.value()
-                   << " to " << target_dir_name.value();
+      LOG(WARNING) << "Failed to rename " << android_data_dir.value() << " to "
+                   << target_dir_name.value();
       return false;
     }
   }
@@ -965,12 +1034,12 @@ bool SessionManagerImpl::NormalizeAccountId(const std::string& account_id,
 
 // static
 bool SessionManagerImpl::ValidateGaiaIdKey(const std::string& account_id) {
-  if (account_id.find_first_not_of(kGaiaIdKeyLegalCharacters)
-      != std::string::npos)
+  if (account_id.find_first_not_of(kGaiaIdKeyLegalCharacters) !=
+      std::string::npos)
     return false;
 
-  return base::StartsWith(
-      account_id, kGaiaIdKeyPrefix, base::CompareCase::SENSITIVE);
+  return base::StartsWith(account_id, kGaiaIdKeyPrefix,
+                          base::CompareCase::SENSITIVE);
 }
 
 // static
@@ -1061,11 +1130,9 @@ bool SessionManagerImpl::StartArcInstanceInternal(
   // Also tell init to configure the network.
   if (!init_controller_->TriggerImpulse(
           kArcNetworkStartSignal,
-          {
-            "CONTAINER_NAME=" + std::string(kArcContainerName),
-            "CONTAINER_PATH=" + root_path.value(),
-            "CONTAINER_PID=" + std::to_string(pid)
-          })) {
+          {"CONTAINER_NAME=" + std::string(kArcContainerName),
+           "CONTAINER_PATH=" + root_path.value(),
+           "CONTAINER_PID=" + std::to_string(pid)})) {
     *dbus_error_out = dbus_error::kEmitFailed;
     *error_message_out = "Emitting start-arc-network signal failed.";
     return false;
