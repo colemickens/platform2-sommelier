@@ -32,6 +32,7 @@ using trunks::TrunksDBusProxy;
 constexpr char kRaw[] = "raw";
 constexpr char kGetLock[] = "get_lock";
 constexpr char kSetLock[] = "set_lock";
+constexpr char kSysInfo[] = "sysinfo";
 constexpr char kVerbose[] = "verbose";
 
 static int verbose;
@@ -40,6 +41,7 @@ void PrintUsage() {
   printf("Usage:\n");
   printf("  trunks_send --%s\n", kGetLock);
   printf("  trunks_send --%s\n", kSetLock);
+  printf("  trunks_send --%s\n", kSysInfo);
   printf("  trunks_send --%s XX [XX ..]\n", kRaw);
   printf("Options:\n");
   printf("   --%s\n", kVerbose);
@@ -72,6 +74,7 @@ struct TpmCmdHeader{
 enum vendor_cmd_cc {
   VENDOR_CC_GET_LOCK = 16,
   VENDOR_CC_SET_LOCK = 17,
+  VENDOR_CC_SYSINFO = 18,
 };
 
 // The TPM response code is all zero for success.
@@ -192,6 +195,57 @@ static int VcSetLock(TrunksDBusProxy* proxy, base::CommandLine* cl)
   return rc != 0;
 }
 
+static const char *key_type(uint32_t key_id)
+{
+  // It is a mere convention, but all prod keys are required to have key
+  // IDs such that bit D2 is set, and all dev keys are required to have
+  // key IDs such that bit D2 is not set.
+  if (key_id & (1 << 2))
+    return "prod";
+  else
+    return "dev";
+}
+
+// SysInfo command:
+// There are no input args.
+// Output is this struct, all fields in network order.
+struct sysinfo_s {
+  uint32_t ro_keyid;
+  uint32_t rw_keyid;
+  uint32_t dev_id0;
+  uint32_t dev_id1;
+} __attribute__((packed));
+
+static int VcSysInfo(TrunksDBusProxy* proxy, base::CommandLine* cl)
+{
+  std::string out;
+  uint32_t rc = VendorCommand(proxy, VENDOR_CC_SYSINFO, out, &out);
+
+  if (rc)
+    return 1;
+
+  if (out.size() != sizeof(struct sysinfo_s)) {
+    LOG(ERROR) << "TPM response was too short!";
+    return 1;
+  }
+
+  struct sysinfo_s sysinfo;
+  memcpy(&sysinfo, out.c_str(), out.size());
+  sysinfo.ro_keyid = base::NetToHost32(sysinfo.ro_keyid);
+  sysinfo.rw_keyid = base::NetToHost32(sysinfo.rw_keyid);
+  sysinfo.dev_id0 = base::NetToHost32(sysinfo.dev_id0);
+  sysinfo.dev_id1 = base::NetToHost32(sysinfo.dev_id1);
+
+  printf("RO keyid:    0x%08x (%s)\n",
+         sysinfo.ro_keyid, key_type(sysinfo.ro_keyid));
+  printf("RW keyid:    0x%08x (%s)\n",
+         sysinfo.rw_keyid, key_type(sysinfo.rw_keyid));
+  printf("DEV_ID:      0x%08x 0x%08x\n",
+         sysinfo.dev_id0, sysinfo.dev_id1);
+
+  return 0;
+}
+
 int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
   brillo::InitLog(brillo::kLogToStderr);
@@ -215,6 +269,9 @@ int main(int argc, char** argv) {
 
   if (cl->HasSwitch(kSetLock))
     return VcSetLock(&proxy, cl);
+
+  if (cl->HasSwitch(kSysInfo))
+    return VcSysInfo(&proxy, cl);
 
   PrintUsage();
   return 1;
