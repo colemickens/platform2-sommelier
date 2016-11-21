@@ -235,9 +235,12 @@ int RunOci(const base::FilePath& container_dir,
 
   container_config_keep_fds_open(config.get());
 
-  container_config_set_cgroup_parent(config.get(), "user_containers",
-                                     container_config_get_uid(config.get()),
-                                     container_config_get_gid(config.get()));
+  if (container_options.cgroup_parent.length() > 0) {
+    container_config_set_cgroup_parent(config.get(),
+                                       container_options.cgroup_parent.c_str(),
+                                       container_config_get_uid(config.get()),
+                                       container_config_get_gid(config.get()));
+  }
 
   if (container_options.use_current_user) {
     OciLinuxNamespaceMapping single_map = {
@@ -263,6 +266,7 @@ int RunOci(const base::FilePath& container_dir,
 const struct option longopts[] = {
   { "bind_mount", required_argument, NULL, 'b' },
   { "help", no_argument, NULL, 'h' },
+  { "cgroup_parent", required_argument, NULL, 'p' },
   { "use_current_user", no_argument, NULL, 'u' },
   { 0, 0, 0, 0 },
 };
@@ -271,6 +275,7 @@ void print_help(const char *argv0) {
   printf("usage: %s [OPTIONS] <container path>\n", argv0);
   printf("  -b, --bind_mount=<A>:<B>       Mount path A to B container.\n");
   printf("  -h, --help                     Print this message and exit.\n");
+  printf("  -p, --cgroup_parent=<NAME>     Set parent cgroup for container.\n");
   printf("  -u, --use_current_user         Map the current user/group only.\n");
   printf("\n");
 }
@@ -281,7 +286,7 @@ int main(int argc, char **argv) {
   ContainerOptions container_options;
   int c;
 
-  while ((c = getopt_long(argc, argv, "b:c:hu", longopts, NULL)) != -1) {
+  while ((c = getopt_long(argc, argv, "b:hp:u", longopts, NULL)) != -1) {
     switch (c) {
     case 'b': {
       std::istringstream ss(optarg);
@@ -299,6 +304,9 @@ int main(int argc, char **argv) {
     }
     case 'u':
       container_options.use_current_user = true;
+      break;
+    case 'p':
+      container_options.cgroup_parent = optarg;
       break;
     case 'h':
       print_help(argv[0]);
