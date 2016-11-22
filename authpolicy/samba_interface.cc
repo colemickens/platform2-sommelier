@@ -8,15 +8,18 @@
 #include <string>
 #include <vector>
 
-#include "base/files/file.h"
-#include "base/files/file_util.h"
-#include "base/strings/string_number_conversions.h"
-#include "base/strings/string_split.h"
-#include "base/strings/string_util.h"
-#include "base/strings/stringprintf.h"
+#include <base/files/file.h>
+#include <base/files/file_util.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 #include "authpolicy/errors.h"
 #include "authpolicy/process_executor.h"
+#include "authpolicy/samba_interface_internal.h"
+
+namespace ai = authpolicy::internal;
 
 namespace {
 
@@ -113,64 +116,6 @@ const char kGpoToken_VersionMachine[] = "version_machine";
 #undef STATE_DIR
 #undef TMP_DIR
 
-// Parses user_name@workgroup.domain into its components and normalizes
-// (uppercases) the part behind the @. |out_realm| is workgroup.domain.
-bool ParseUserPrincipalName(const std::string& user_principal_name,
-                            std::string* out_user_name, std::string* out_realm,
-                            std::string* out_workgroup,
-                            std::string* out_normalized_user_principal_name,
-                            const char** out_error_code) {
-  // Note that substr(at_pos + 1) could throw if std::string::npos + 1 != 0,
-  // hence we need to make sure we don't call it if at_pos = std::string::npos.
-  const size_t at_pos = user_principal_name.find('@');
-  bool error = at_pos == std::string::npos;
-  if (!error) {
-    *out_user_name = user_principal_name.substr(0, at_pos);
-    *out_realm = base::ToUpperASCII(user_principal_name.substr(at_pos + 1));
-    const size_t dot_pos = out_realm->find('.');
-    *out_workgroup = out_realm->substr(0, dot_pos);
-    *out_normalized_user_principal_name = *out_user_name + "@" + *out_realm;
-    error = dot_pos == std::string::npos || out_user_name->empty() ||
-            out_realm->empty() || out_workgroup->empty();
-  }
-  if (error) {
-    LOG(ERROR) << "Failed to parse user principal name '" << user_principal_name
-               << "'. Expected form 'user@workgroup.domain'.";
-    *out_error_code = errors::kParseUPNFailed;
-    return false;
-  }
-  return true;
-}
-
-// Parses the given |in_str| consisting of individual lines for
-//   ... \n
-//   |token| <token_separator> |out_result| \n
-//   ... \n
-// and returns the first non-empty |out_result|. Whitespace is trimmed.
-bool FindToken(const std::string& in_str, char token_separator,
-               const std::string& token, std::string* out_result) {
-  std::vector<std::string> lines = base::SplitString(
-      in_str, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  for (const std::string& line : lines) {
-    size_t sep_pos = line.find(token_separator);
-    if (sep_pos != std::string::npos) {
-      std::string line_token;
-      base::TrimWhitespaceASCII(line.substr(0, sep_pos), base::TRIM_ALL,
-                                &line_token);
-      if (line_token == token) {
-        std::string result;
-        base::TrimWhitespaceASCII(line.substr(sep_pos + 1), base::TRIM_ALL,
-                                  &result);
-        if (!result.empty()) {
-          *out_result = result;
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
 // Retrieves the machine and realm name that was used in |JoinMachine|. Fails if
 // the device has not been joined to the Active Directory domain yet. The
 // machine name is required for fetching device policy.
@@ -186,9 +131,9 @@ bool GetMachineAndRealmName(std::string* out_machine_name,
   }
 
   const char* error_token = nullptr;
-  if (!FindToken(smb_conf, '=', "netbios name", out_machine_name))
+  if (!ai::FindToken(smb_conf, '=', "netbios name", out_machine_name))
     error_token = "machine name";
-  else if (!FindToken(smb_conf, '=', "realm", out_realm))
+  else if (!ai::FindToken(smb_conf, '=', "realm", out_realm))
     error_token = "realm";
 
   if (error_token) {
@@ -223,7 +168,8 @@ bool UpdateDomainControllerName(std::string* domain_controller_name,
   }
 
   const std::string& net_out = net_cmd.GetStdout();
-  if (!FindToken(net_out, ':', "LDAP server name", domain_controller_name)) {
+  if (!ai::FindToken(
+      net_out, ':', "LDAP server name", domain_controller_name)) {
     LOG(ERROR) << "Failed to find 'LDAP server name' in net response '"
                << net_out << "'.";
     *out_error_code = errors::kParseNetAdsInfoFailed;
@@ -485,8 +431,8 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
                                       const char** out_error_code) {
   // Split user_principal_name into parts and normalize.
   std::string user_name, realm, workgroup, normalized_upn;
-  if (!ParseUserPrincipalName(user_principal_name, &user_name, &realm,
-                              &workgroup, &normalized_upn, out_error_code))
+  if (!ai::ParseUserPrincipalName(user_principal_name, &user_name, &realm,
+                                  &workgroup, &normalized_upn, out_error_code))
     return false;
 
   // Write krb5 configuration file.
@@ -518,7 +464,7 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
 
   // Parse net output to get user's account id.
   const std::string& net_out = net_cmd.GetStdout();
-  if (!FindToken(net_out, ':', "objectGUID", out_account_id)) {
+  if (!ai::FindToken(net_out, ':', "objectGUID", out_account_id)) {
     LOG(ERROR) << "Failed to get user account id. Net response: " << net_out;
     *out_error_code = errors::kParseNetAdsSearchFailed;
     return false;
@@ -532,10 +478,10 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
 bool SambaInterface::JoinMachine(const std::string& machine_name,
                                  const std::string& user_principal_name,
                                  int password_fd, const char** out_error_code) {
-  // Split user principle name into parts.
+  // Split user principal name into parts.
   std::string user_name, realm, workgroup, normalized_upn;
-  if (!ParseUserPrincipalName(user_principal_name, &user_name, &realm,
-                              &workgroup, &normalized_upn, out_error_code))
+  if (!ai::ParseUserPrincipalName(user_principal_name, &user_name, &realm,
+                                  &workgroup, &normalized_upn, out_error_code))
     return false;
 
   // Write samba configuration file.

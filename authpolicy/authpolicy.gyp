@@ -48,6 +48,7 @@
         'pipe_helper.cc',
         'process_executor.cc',
         'samba_interface.cc',
+        'samba_interface_internal.cc',
       ],
     },
     # Authpolicy daemon executable.
@@ -76,6 +77,7 @@
           'sources': [
             'authpolicy_testrunner.cc',
             'process_executor_unittest.cc',
+            'samba_interface_internal_unittest.cc',
           ],
         },
       ],
