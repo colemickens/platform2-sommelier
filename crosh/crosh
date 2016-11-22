@@ -1222,7 +1222,7 @@ cmd_dump_emk() (
                        --name=attest-ent-machine
 )
 
-USAGE_enroll_status='[--mode] [--domain] [--user]'
+USAGE_enroll_status='[--mode] [--domain] [--realm] [--user]'
 HELP_enroll_status='
   Displays device enrollment information.
 '
@@ -1256,6 +1256,16 @@ cmd_enroll_status() (
             --name=enterprise.domain
         else
           echo "Enterprise enrollment domain not found."
+        fi
+        ;;
+
+      "--realm")
+        if check_enterprise_mode; then
+          echo "Enrollment realm:"
+          /usr/sbin/cryptohome --action=install_attributes_get \
+            --name=enterprise.realm
+        else
+          echo "Enterprise enrollment realm not found."
         fi
         ;;
 
