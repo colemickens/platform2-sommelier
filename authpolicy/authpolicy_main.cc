@@ -4,6 +4,8 @@
 
 #include <memory>
 
+#include <base/at_exit.h>
+#include <base/sys_info.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <chromeos/dbus/service_constants.h>
@@ -14,6 +16,9 @@
 namespace {
 
 const char kObjectServicePath[] = "/org/chromium/AuthPolicy/ObjectManager";
+const char kChromeOSReleaseTrack[] = "CHROMEOS_RELEASE_TRACK";
+const char kBetaChannel[] = "beta-channel";
+const char kStableChannel[] = "stable-channel";
 
 }  // namespace
 
@@ -47,6 +52,28 @@ int main(int argc, const char* const* argv) {
   brillo::OpenLog("authpolicyd", true);
   brillo::InitLog(brillo::kLogToSyslog);
 
+  // Disable on beta and stable (for now).
+  // TODO(ljusten): Reenable after launch reviews, see crbug.com/668119.
+  {
+    // base::SysInfo internally creates a singleton that adds itself to the
+    // current AtExitManager, so that it is destroyed when the manager goes out
+    // of scope. Daemon creates its own, so it has to be destroyed before the
+    // daemon is run.
+    base::AtExitManager at_exit_manager;
+    std::string channel;
+    if (!base::SysInfo::GetLsbReleaseValue(kChromeOSReleaseTrack, &channel)) {
+      LOG(ERROR) << "Failed to retrieve release track from sys info.";
+      // Exit with "success" to prevent respawn by upstart.
+      exit(0);
+    }
+    if (channel == kBetaChannel || channel == kStableChannel) {
+      LOG(ERROR) << "Not allowed to run on '" << kBetaChannel << "' and '"
+                 << kStableChannel << "'.";
+      // Exit with "success" to prevent respawn by upstart.
+      exit(0);
+    }
+  }
+
   // Safety check to ensure that authpolicyd cannot run after the device has
   // been locked to a mode other than enterprise_ad.  (The lifetime management
   // of authpolicyd happens through upstart, this check only serves as a second
@@ -63,7 +90,7 @@ int main(int argc, const char* const* argv) {
     }
   }
 
-  // Run daemon
+  // Run daemon.
   LOG(INFO) << "authpolicyd starting";
   authpolicy::Daemon daemon;
   int res = daemon.Run();
