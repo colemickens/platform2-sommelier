@@ -34,6 +34,14 @@ const char kAuthenticationInterface[] =
     "org.chromium.BiometricsDaemon.Authentication";
 const char kEnrollInterface[] = "org.chromium.BiometricsDaemon.Enroll";
 const char kEnrollmentInterface[] = "org.chromium.BiometricsDaemon.Enrollment";
+const char kSessionManagerInterface[] = "org.chromium.SessionManagerInterface";
+const char kSessionManagerServicePath[] = "/org/chromium/SessionManager";
+const char kSessionManagerServiceName[] = "org.chromium.SessionManager";
+const char kSessionManagerRetrieveActiveSessions[] = "RetrieveActiveSessions";
+const char kSessionManagerSessionStateChanged[] = "SessionStateChanged";
+const int kDbusTimeoutMs = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
+const char kSessionStateStarted[] = "started";
+const char kSessionStateStopping[] = "stopping";
 }
 
 namespace errors {
@@ -403,8 +411,93 @@ BiometricsDaemon::BiometricsDaemon() {
       fpc_bio_path,
       sequencer->GetHandler("Failed to register biometric object", true)));
 
+  session_manager_proxy_ = bus_->GetObjectProxy(
+      dbus_constants::kSessionManagerServiceName,
+      dbus::ObjectPath(dbus_constants::kSessionManagerServicePath));
+
+  std::unordered_set<std::string> new_active_users;
+  if (RetrieveNewActiveSessions(&new_active_users)) {
+    for (const auto& biometric_wrapper : biometrics_) {
+      biometric_wrapper->get().ReadEnrollments(new_active_users);
+      biometric_wrapper->RefreshEnrollmentObjects();
+    }
+  }
+
+  session_manager_proxy_->ConnectToSignal(
+      dbus_constants::kSessionManagerInterface,
+      dbus_constants::kSessionManagerSessionStateChanged,
+      base::Bind(&BiometricsDaemon::OnSessionStateChanged,
+                 base::Unretained(this)),
+      base::Bind(&LogOnSignalConnected));
+
   CHECK(bus_->RequestOwnershipAndBlock(dbus_constants::kServiceName,
                                        dbus::Bus::REQUIRE_PRIMARY));
 }
 
+bool BiometricsDaemon::RetrieveNewActiveSessions(
+    std::unordered_set<std::string>* new_active_users) {
+  dbus::MethodCall method_call(
+      dbus_constants::kSessionManagerInterface,
+      dbus_constants::kSessionManagerRetrieveActiveSessions);
+  std::unique_ptr<dbus::Response> response =
+      session_manager_proxy_->CallMethodAndBlock(
+          &method_call, dbus_constants::kDbusTimeoutMs);
+  if (!response.get()) {
+    LOG(ERROR) << "Cannot retrieve usernames for active sessions.";
+    return false;
+  }
+  dbus::MessageReader response_reader(response.get());
+  dbus::MessageReader array_reader(nullptr);
+  if (!response_reader.PopArray(&array_reader))
+    return false;
+  bool read_all_usernames = true;
+  while (array_reader.HasMoreData()) {
+    dbus::MessageReader dict_entry_reader(nullptr);
+    if (!array_reader.PopDictEntry(&dict_entry_reader)) {
+      read_all_usernames = false;
+      continue;
+    }
+    std::string username;
+    if (!dict_entry_reader.PopString(&username)) {
+      read_all_usernames = false;
+      continue;
+    }
+    std::string sanitized_username;
+    if (!dict_entry_reader.PopString(&sanitized_username)) {
+      read_all_usernames = false;
+      continue;
+    }
+    if (current_active_users_.count(sanitized_username) == 0) {
+      new_active_users->insert(sanitized_username);
+      current_active_users_.insert(sanitized_username);
+    }
+  }
+  return read_all_usernames;
+}
+
+void BiometricsDaemon::OnSessionStateChanged(dbus::Signal* signal) {
+  dbus::MessageReader signal_reader(signal);
+
+  std::string state;
+
+  CHECK(signal_reader.PopString(&state));
+  LOG(INFO) << "Session state changed to " << state << ".";
+
+  if (state == dbus_constants::kSessionStateStarted) {
+    std::unordered_set<std::string> new_active_users;
+    if (RetrieveNewActiveSessions(&new_active_users)) {
+      for (const auto& biometric_wrapper : biometrics_) {
+        biometric_wrapper->get().ReadEnrollments(new_active_users);
+        biometric_wrapper->RefreshEnrollmentObjects();
+      }
+    }
+  } else if (state == dbus_constants::kSessionStateStopping) {
+    // Assuming that log out will always log out all users at the same time
+    for (const auto& biometric_wrapper : biometrics_) {
+      biometric_wrapper->get().RemoveEnrollmentsFromMemory();
+      biometric_wrapper->RefreshEnrollmentObjects();
+    }
+    current_active_users_.clear();
+  }
+}
 }  // namespace biod

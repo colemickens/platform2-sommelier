@@ -19,9 +19,9 @@
 #include <base/guid.h>
 #include <base/json/json_string_value_serializer.h>
 #include <base/memory/ptr_util.h>
+#include <base/message_loop/message_loop.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
-#include <brillo/cryptohome.h>
 
 namespace biod {
 
@@ -29,7 +29,7 @@ using base::FilePath;
 
 namespace {
 const char kRootPath[] = "/home/root";
-const char kEnrollmentFileName[] = "biod/Enrollment";
+const char kEnrollmentFileName[] = "Enrollment";
 const char kBiod[] = "biod";
 const char kUserId[] = "user_id";
 const char kLabel[] = "label";
@@ -37,7 +37,11 @@ const char kEnrollmentId[] = "enrollment_id";
 const char kData[] = "data";
 }
 
-BiodStorage::BiodStorage(): root_path_(kRootPath) {}
+BiodStorage::BiodStorage(const std::string& biometric_path,
+                         const ReadEnrollmentsCallback& load_enrollment)
+    : root_path_(kRootPath),
+      biometric_path_(biometric_path),
+      load_enrollment_(load_enrollment) {}
 
 bool BiodStorage::WriteEnrollment(const Biometric::Enrollment& enrollment,
                                   std::unique_ptr<base::Value> data) {
@@ -83,9 +87,16 @@ bool BiodStorage::WriteEnrollment(const Biometric::Enrollment& enrollment,
   return true;
 }
 
-bool BiodStorage::ReadEnrollments(const std::string& user_id,
-          const base::Callback<bool(std::string, std::string, std::string,
-          base::Value*)>& load_enrollment) {
+bool BiodStorage::ReadEnrollments(
+    const std::unordered_set<std::string>& user_ids) {
+  bool read_enrollments_from_all_users = true;
+  for (const auto& user_id : user_ids) {
+    read_enrollments_from_all_users &= ReadEnrollmentsForSingleUser(user_id);
+  }
+  return read_enrollments_from_all_users;
+}
+
+bool BiodStorage::ReadEnrollmentsForSingleUser(const std::string& user_id) {
   FilePath biod_path =
       root_path_.Append(user_id).Append(kBiod).Append(biometric_path_);
   base::FileEnumerator enum_enrollments(biod_path,
@@ -164,7 +175,7 @@ bool BiodStorage::ReadEnrollments(const std::string& user_id,
       continue;
     }
 
-    if (!load_enrollment.Run(user_id, label, enrollment_id, data)) {
+    if (!load_enrollment_.Run(user_id, label, enrollment_id, data)) {
       LOG(ERROR) << "Cannot load enrollment from " << enrollment_path.value()
                  << ".";
       read_all_enrollments_successfully = false;

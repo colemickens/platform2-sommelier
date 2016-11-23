@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_set>
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
@@ -19,19 +20,24 @@ namespace biod {
 
 class BiodStorage {
  public:
-  // Constructor set the file path to be /home/root/<hash of user id>/biod/.
-  BiodStorage();
+  using ReadEnrollmentsCallback = base::Callback<bool(std::string user_id,
+                                                      std::string label,
+                                                      std::string enrollment_id,
+                                                      base::Value* data)>;
+
+  // Constructor set the file path to be
+  // /home/root/<hash of user id>/biod/<biometric>/EnrollmentUUID.
+  explicit BiodStorage(const std::string& biometric_path,
+                       const ReadEnrollmentsCallback& load_enrollment);
 
   // Write one enrollment to file in per user stateful. This is called whenever
   // we enroll a new enrollment.
   bool WriteEnrollment(const Biometric::Enrollment& enrollment,
                        std::unique_ptr<base::Value> data);
 
-  // Read all enrollments from file. Uses a file enumerator to enumerate through
-  // all enrollment files. Called whenever biod starts or when a new user logs in.
-  bool ReadEnrollments(const std::string& user_id,
-          const base::Callback<bool(std::string, std::string, std::string,
-          base::Value*)>& load_enrollment);
+  // Read all enrollments from file for all new users. Called whenever biod
+  // starts or when a new user logs in.
+  bool ReadEnrollments(const std::unordered_set<std::string>& user_ids);
 
   // Delete one enrollment file. User will be able to do this via UI. True if
   // this enrollment does not exist on disk.
@@ -45,6 +51,13 @@ class BiodStorage {
 
  private:
   base::FilePath root_path_;
+  base::FilePath biometric_path_;
+  ReadEnrollmentsCallback load_enrollment_;
+
+  // Read all enrollments from disk for a single user. Uses a file enumerator to
+  // enumerate through all enrollment files. Called whenever biod starts or when
+  // a new user logs in.
+  bool ReadEnrollmentsForSingleUser(const std::string& user_id);
 };
 }  // namespace biod
 

@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include <base/callback.h>
@@ -146,6 +147,14 @@ class Biometric {
   // Irreversibly destroys enrollments registered with this biometric, including
   // currently encrypted ones. Returns true if successful.
   virtual bool DestroyAllEnrollments() = 0;
+
+  // Remove all enrollments from memory. Still keep them in storage.
+  virtual void RemoveEnrollmentsFromMemory() = 0;
+
+  // Read all the enrollments for each of the users in the set. Return true if
+  // successful.
+  virtual bool ReadEnrollments(
+      const std::unordered_set<std::string>& user_ids) = 0;
 
   // The callbacks should remain valid as long as this object is valid.
 

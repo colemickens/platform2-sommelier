@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <base/files/file_util.h>
@@ -35,6 +36,9 @@ class FakeBiometric : public Biometric, public base::MessageLoopForIO::Watcher {
   Biometric::AuthenticationSession StartAuthentication() override;
   std::vector<std::unique_ptr<Biometric::Enrollment>> GetEnrollments() override;
   bool DestroyAllEnrollments() override;
+  void RemoveEnrollmentsFromMemory() override;
+  bool ReadEnrollments(
+      const std::unordered_set<std::string>& user_ids) override;
 
   void SetScannedHandler(const Biometric::ScanCallback& on_scan) override;
   void SetAttemptHandler(const Biometric::AttemptCallback& on_attempt) override;

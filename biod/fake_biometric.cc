@@ -72,7 +72,11 @@ FakeBiometric::InternalEnrollment* FakeBiometric::Enrollment::GetInternal()
 }
 
 FakeBiometric::FakeBiometric()
-    : session_weak_factory_(this), weak_factory_(this) {
+    : session_weak_factory_(this),
+      weak_factory_(this),
+      biod_storage_(
+          "FakeBiometric",
+          base::Bind(&FakeBiometric::LoadEnrollment, base::Unretained(this))) {
   const char kFakeInputPath[] = "/tmp/fake_biometric";
   base::DeleteFile(base::FilePath(kFakeInputPath), false);
   CHECK_EQ(mkfifo(kFakeInputPath, 0600), 0)
@@ -139,6 +143,15 @@ bool FakeBiometric::DestroyAllEnrollments() {
   }
   enrollments_.clear();
   return delete_all_enrollments;
+}
+
+void FakeBiometric::RemoveEnrollmentsFromMemory() {
+  enrollments_.clear();
+}
+
+bool FakeBiometric::ReadEnrollments(
+    const std::unordered_set<std::string>& user_ids) {
+  return biod_storage_.ReadEnrollments(user_ids);
 }
 
 void FakeBiometric::SetScannedHandler(const Biometric::ScanCallback& on_scan) {
@@ -234,7 +247,6 @@ void FakeBiometric::OnFileCanReadWithoutBlocking(int fd) {
 
       LOG(INFO) << "Scan result " << static_cast<int>(res_code) << " done "
                 << static_cast<bool>(done);
-
       if (mode_ == Mode::kEnroll) {
         if (done) {
           std::string enrollment_id(biod_storage_.GenerateNewEnrollmentId());

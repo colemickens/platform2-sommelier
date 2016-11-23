@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include <base/callback.h>
@@ -34,6 +35,9 @@ class BiometricWrapper {
     DCHECK(biometric_);
     return *biometric_.get();
   }
+
+  // Updates the list of enrollments reflected as dbus objects.
+  void RefreshEnrollmentObjects();
 
  private:
   class EnrollmentWrapper {
@@ -79,7 +83,7 @@ class BiometricWrapper {
   void FinalizeEnrollObject();
   void FinalizeAuthenticationObject();
 
-  void OnNameOwnerChanged(dbus::Signal *signal);
+  void OnNameOwnerChanged(dbus::Signal* signal);
 
   void OnScanned(Biometric::ScanResult scan_result, bool done);
   void OnAttempt(Biometric::ScanResult scan_result,
@@ -102,8 +106,6 @@ class BiometricWrapper {
 
   bool AuthenticationEnd(brillo::ErrorPtr* error);
 
-  void RefreshEnrollmentObjects();
-
   DISALLOW_COPY_AND_ASSIGN(BiometricWrapper);
 };
 
@@ -115,6 +117,18 @@ class BiometricsDaemon {
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<brillo::dbus_utils::ExportedObjectManager> object_manager_;
   std::vector<std::unique_ptr<BiometricWrapper>> biometrics_;
+
+  // Proxy for dbus communication with session manager / login.
+  scoped_refptr<dbus::ObjectProxy> session_manager_proxy_;
+  // Keep track of currently logged in users.
+  std::unordered_set<std::string> current_active_users_;
+
+  // Gets the set of active users since the last time this method was called.
+  bool RetrieveNewActiveSessions(
+      std::unordered_set<std::string>* new_active_users);
+
+  // Read or delete enrollments in memory when users log in or out.
+  void OnSessionStateChanged(dbus::Signal* signal);
 
   DISALLOW_COPY_AND_ASSIGN(BiometricsDaemon);
 };
