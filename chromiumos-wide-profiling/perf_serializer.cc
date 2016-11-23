@@ -230,7 +230,10 @@ bool PerfSerializer::SerializeEvent(
         return false;
       break;
     default:
-      LOG(ERROR) << "Unknown event type: " << event.header.type;
+      if (event.header.type < PERF_RECORD_USER_TYPE_START ||
+          event.header.type >= PERF_RECORD_HEADER_MAX) {
+        LOG(ERROR) << "Unknown event type: " << event.header.type;
+      }
       break;
   }
   return true;
