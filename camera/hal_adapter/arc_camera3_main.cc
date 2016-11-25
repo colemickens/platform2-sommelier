@@ -10,9 +10,9 @@
 #include <brillo/daemons/daemon.h>
 #include <brillo/syslog_logging.h>
 
+#include "arc/common.h"
 #include "hal_adapter/arc_camera3_service_provider.h"
 #include "hal_adapter/camera_hal_adapter.h"
-#include "hal_adapter/common.h"
 #include "hardware/hardware.h"
 
 const char kCameraHalDllName[] = "libarccamera.so";

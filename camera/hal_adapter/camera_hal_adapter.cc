@@ -20,11 +20,11 @@
 #include <mojo/edk/embedder/platform_handle_vector.h>
 #include <mojo/edk/embedder/scoped_platform_handle.h>
 
+#include "arc/common.h"
 #include "hal_adapter/arc_camera3_mojo_utils.h"
 #include "hal_adapter/camera_device_adapter.h"
 #include "hal_adapter/camera_module_callbacks_delegate.h"
 #include "hal_adapter/camera_module_delegate.h"
-#include "hal_adapter/common.h"
 
 namespace arc {
 

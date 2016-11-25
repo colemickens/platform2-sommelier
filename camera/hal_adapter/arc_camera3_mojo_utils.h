@@ -19,8 +19,8 @@
 #include <mojo/public/cpp/bindings/binding.h>
 #include <mojo/public/cpp/system/data_pipe.h>
 
+#include "arc/common.h"
 #include "hal_adapter/arc_camera3.mojom.h"
-#include "hal_adapter/common.h"
 #include "hardware/camera3.h"
 
 namespace internal {

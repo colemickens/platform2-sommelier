@@ -5,8 +5,8 @@
 
 #include "usb/camera_hal_device_ops.h"
 
+#include "arc/common.h"
 #include "usb/camera_client.h"
-#include "usb/common.h"
 
 namespace arc {
 

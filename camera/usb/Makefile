@@ -17,7 +17,8 @@ ANDROID_INCLUDE_PATHS := \
 	-I$(ANDROID_INCLUDE)/system/media/camera/include \
 	-I$(ANDROID_INCLUDE)/system/media/private/camera/include
 
-CPPFLAGS += $(PC_CFLAGS) $(ANDROID_INCLUDE_PATHS) -I$(abspath $(SRC)/../)
+CPPFLAGS += $(PC_CFLAGS) $(ANDROID_INCLUDE_PATHS) -I$(abspath $(SRC)/../) \
+	    -I$(abspath $(SRC)/../include/)
 CXXFLAGS += -std=c++11 -Wall -Wpointer-arith
 CFLAGS += -Wall -std=gnu99
 

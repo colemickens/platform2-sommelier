@@ -11,8 +11,8 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 
+#include "arc/common.h"
 #include "hal_adapter/camera_device_adapter.h"
-#include "hal_adapter/common.h"
 
 namespace arc {
 

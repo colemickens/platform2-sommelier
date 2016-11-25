@@ -14,7 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 
-#include "hal_adapter/common.h"
+#include "arc/common.h"
 
 namespace internal {
 

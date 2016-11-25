@@ -3,8 +3,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef USB_COMMON_H_
-#define USB_COMMON_H_
+#ifndef INCLUDE_ARC_COMMON_H_
+#define INCLUDE_ARC_COMMON_H_
 
 #include <base/logging.h>
 
@@ -15,4 +15,7 @@
 #define VLOGFID(level, id) \
   VLOG(level) << __FUNCTION__ << "(): id: " << id << ": "
 
-#endif  // USB_COMMON_H_
+#define VLOGF_ENTER() VLOGF(1) << "enter"
+#define VLOGF_EXIT() VLOGF(1) << "exit"
+
+#endif  // INCLUDE_ARC_COMMON_H_

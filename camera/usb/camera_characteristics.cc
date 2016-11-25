@@ -10,7 +10,7 @@
 
 #include <base/files/file_util.h>
 
-#include "usb/common.h"
+#include "arc/common.h"
 
 namespace arc {
 

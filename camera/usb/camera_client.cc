@@ -7,9 +7,9 @@
 
 #include <system/camera_metadata.h>
 
+#include "arc/common.h"
 #include "usb/camera_hal.h"
 #include "usb/camera_hal_device_ops.h"
-#include "usb/common.h"
 
 namespace arc {
 

@@ -18,8 +18,8 @@
 #include <base/files/scoped_file.h>
 #include <base/strings/stringprintf.h>
 
+#include "arc/common.h"
 #include "usb/camera_characteristics.h"
-#include "usb/common.h"
 
 namespace arc {
 

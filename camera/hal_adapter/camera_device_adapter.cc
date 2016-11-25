@@ -14,20 +14,20 @@
 #include <base/bind_helpers.h>
 #include <base/logging.h>
 
+#include "arc/common.h"
 #include "hal_adapter/camera3_callback_ops_delegate.h"
 #include "hal_adapter/camera3_device_ops_delegate.h"
-#include "hal_adapter/common.h"
 
 namespace arc {
 
 CameraDeviceAdapter::CameraDeviceAdapter(camera3_device_t* camera_device)
     : camera_device_(camera_device) {
-  VLOGF_ENTER() << camera_device_;
+  VLOGF_ENTER() << ":" << camera_device_;
   device_ops_delegate_.reset(new Camera3DeviceOpsDelegate(this));
 }
 
 CameraDeviceAdapter::~CameraDeviceAdapter() {
-  VLOGF_ENTER() << camera_device_;
+  VLOGF_ENTER() << ":" << camera_device_;
 }
 
 mojom::Camera3DeviceOpsPtr CameraDeviceAdapter::GetDeviceOpsPtr() {

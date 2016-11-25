@@ -11,7 +11,7 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 
-#include "hal_adapter/common.h"
+#include "arc/common.h"
 
 namespace arc {
 

@@ -16,7 +16,7 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 
-#include "hal_adapter/common.h"
+#include "arc/common.h"
 #include "hal_adapter/ipc_util.h"
 
 namespace arc {

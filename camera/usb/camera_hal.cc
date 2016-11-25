@@ -7,7 +7,7 @@
 
 #include <base/lazy_instance.h>
 
-#include "usb/common.h"
+#include "arc/common.h"
 #include "usb/common_types.h"
 #include "usb/v4l2_camera_device.h"
 
