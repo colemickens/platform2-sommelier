@@ -65,15 +65,20 @@ sleep 1
 check_log 1
 
 # Add a slightly different warning to messages, check that it is collected.
-sed s/intel_dp.c/intel_xx.c/ < "${SRC}/TEST_WARNING" >> messages
+sed s/ttm_bo_vm.c/file_one.c/ < "${SRC}/TEST_WARNING" >> messages
 sleep 1
 check_log 2
 
 # Emulate log rotation, add a warning, and check.
 mv messages messages.1
-sed s/intel_dp.c/intel_xy.c/ < "${SRC}/TEST_WARNING" > messages
+sed s/ttm_bo_vm.c/file_two.c/ < "${SRC}/TEST_WARNING" >> messages
 sleep 2
 check_log 3
+
+# Emit a warning in old format and check that it is collected.
+cat "${SRC}/TEST_WARNING_OLD" >> messages
+sleep 1
+check_log 4
 
 # Success!
 exit 0

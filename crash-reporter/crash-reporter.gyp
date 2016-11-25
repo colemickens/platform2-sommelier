@@ -173,6 +173,7 @@
               'destination': '<(PRODUCT_DIR)',
               'files': [
                 'TEST_WARNING',
+                'TEST_WARNING_OLD',
                 'warn_collector_test.sh',
                 'warn_collector_test_reporter.sh',
               ],

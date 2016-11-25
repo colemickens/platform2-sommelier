@@ -37,7 +37,14 @@ void WarnInput(char *buf, yy_size_t *result, size_t max_size);
 D               [0-9]
 PREFIX          .*" kernel: [ "*{D}+"."{D}+"]"
 CUT_HERE        {PREFIX}" ------------[ cut here".*
-WARNING         {PREFIX}" WARNING: at "
+
+/* The CPU and PID information got added in the 3.11 kernel development cycle
+ * per commit dcb6b45254e2281b6f99ea7f2d51343954aa3ba8. That part is marked
+ * optional to make sure the old format still gets accepted. Once we no longer
+ * care about kernel version 3.10 and earlier, we can update the code to require
+ * CPU and PID to be present unconditionally.
+ */
+WARNING         {PREFIX}" WARNING:"(" CPU: "{D}+" PID: "{D}+)?" at "
 END_TRACE       {PREFIX}" ---[ end trace".*
 
 /* Use exclusive start conditions. */
@@ -48,9 +55,14 @@ END_TRACE       {PREFIX}" ---[ end trace".*
 
 ^{CUT_HERE}\n{WARNING}          BEGIN(PRE_WARN);
 .|\n                            /* ignore all other input in state 0 */
-<PRE_WARN>[^ ]+.[^ ]+\n         if (WarnStart()) {
+<PRE_WARN>[^ ].*\n              if (WarnStart()) {
                                   /* yytext is
-                                     "file:line func+offset/offset()\n" */
+                                   *
+                                   * "file:line func+offset/offset() [mod]\n"
+                                   *
+                                   * The [mod] suffix is only present if the
+                                   * address is located within a kernel module.
+                                   */
                                   BEGIN(WARN); ECHO;
                                 } else {
                                   BEGIN(0);
