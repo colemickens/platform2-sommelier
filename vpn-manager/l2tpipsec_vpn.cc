@@ -110,11 +110,16 @@ int main(int argc, char* argv[]) {
   // IpsecManager related flags.
 
   // Phase 1 ciphersuites:
-  // aes128-sha1-modp2048: strongSwan default
+  // aes128gcm16-modp3072: secure + more efficient
+  // aes128-sha256-modp3072: new strongSwan default
+  // aes128-sha1-modp2048: old strongSwan default
   // 3des-sha1-modp1536: strongSwan fallback
   // 3des-sha1-modp1024: for compatibility with Windows RRAS, which requires
   //                     using the modp1024 dh-group
-  DEFINE_string(ike, "aes128-sha1-modp2048,3des-sha1-modp1536,"
+  DEFINE_string(ike, "aes128gcm16-modp3072,"
+                     "aes128-sha256-modp3072,"
+                     "aes128-sha1-modp2048,"
+                     "3des-sha1-modp1536,"
                      "3des-sha1-modp1024",
                 "ike proposals");
 
@@ -122,7 +127,12 @@ int main(int argc, char* argv[]) {
   // Cisco ASA L2TP/IPsec setup instructions indicate using md5 for
   // authentication for the IPsec SA.  Default StrongS/WAN setup is
   // to only propose SHA1.
-  DEFINE_string(esp, "aes128-sha1,3des-sha1,aes128-md5,3des-md5",
+  DEFINE_string(esp, "aes128gcm16,"
+                     "aes128-sha256,"
+                     "aes128-sha1,"
+                     "3des-sha1,"
+                     "aes128-md5,"
+                     "3des-md5",
                 "esp proposals");
 
   DEFINE_int32(ipsec_timeout, 30, "timeout for ipsec to be established");
