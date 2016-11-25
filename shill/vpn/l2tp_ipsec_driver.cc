@@ -518,6 +518,14 @@ void L2TPIPSecDriver::ReportConnectionMetrics() {
   // We output an enum for each of the authentication types specified,
   // even if more than one is set at the same time.
   bool has_remote_authentication = false;
+  if (args()->ContainsStrings(kL2tpIpsecCaCertPemProperty) &&
+      !args()->GetStrings(kL2tpIpsecCaCertPemProperty).empty()) {
+    metrics_->SendEnumToUMA(
+        Metrics::kMetricVpnRemoteAuthenticationType,
+        Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecCertificate,
+        Metrics::kMetricVpnRemoteAuthenticationTypeMax);
+    has_remote_authentication = true;
+  }
   if (args()->LookupString(kL2tpIpsecPskProperty, "") != "") {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,
