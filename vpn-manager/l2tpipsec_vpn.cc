@@ -153,7 +153,7 @@ int main(int argc, char* argv[]) {
   DEFINE_string(password, "", "password (insecure - use pppd plugin instead)");
   DEFINE_bool(ppp_debug, true, "ppp debug");
   DEFINE_bool(ppp_lcp_echo, true, "ppp lcp echo connection monitoring");
-  DEFINE_int32(ppp_setup_timeout, 10, "timeout to setup ppp (seconds)");
+  DEFINE_int32(ppp_setup_timeout, 60, "timeout to setup ppp (seconds)");
   DEFINE_string(pppd_plugin, "", "pppd plugin");
   DEFINE_bool(usepeerdns, true, "usepeerdns - ask peer for DNS");
   DEFINE_string(user, "", "user name");
