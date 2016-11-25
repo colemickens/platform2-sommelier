@@ -47,15 +47,17 @@ $(<"${TESTLOG}")"
 rm -f "${TESTLOG}"
 cp "${SRC}/warn_collector_test_reporter.sh" .
 cp "${SRC}/TEST_WARNING" .
-cp TEST_WARNING messages
+truncate --size=0 messages
 
 # Start the collector daemon.  With the --test option, the daemon reads input
 # from ./messages, writes the warning into ./warning, and invokes
 # ./warn_collector_test_reporter.sh to report the warning.
 warn_collector --test &
 trap cleanup EXIT
+sleep 1
 
-# After a while, check that the first warning has been collected.
+# Emit a warning to messages and check that it is collected.
+cat TEST_WARNING >> messages
 sleep 1
 check_log 1
 

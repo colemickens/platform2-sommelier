@@ -159,21 +159,13 @@ static void WarnOpenInput(const char *path) {
   yyin_fd = open(path, O_RDONLY);
   if (yyin_fd < 0)
     Die("could not open %s: %s\n", path, strerror(errno));
-  if (!fifo) {
-    /* Go directly to the end of the file.  We don't want to parse the same
-     * warnings multiple times on reboot/restart.  We might miss some
-     * warnings, but so be it---it's too hard to keep track reliably of the
-     * last parsed position in the syslog.
-     */
-    if (lseek(yyin_fd, 0, SEEK_END) < 0)
-      Die("could not lseek %s: %s\n", path, strerror(errno));
-    /* Set up notification of file growth and rename. */
-    i_fd = inotify_init();
-    if (i_fd < 0)
-      Die("inotify_init: %s\n", strerror(errno));
-    if (inotify_add_watch(i_fd, path, IN_MODIFY | IN_MOVE_SELF) < 0)
-      Die("inotify_add_watch: %s\n", strerror(errno));
-  }
+
+  /* Set up notification of file growth and rename. */
+  i_fd = inotify_init();
+  if (i_fd < 0)
+    Die("inotify_init: %s\n", strerror(errno));
+  if (inotify_add_watch(i_fd, path, IN_MODIFY | IN_MOVE_SELF) < 0)
+    Die("inotify_add_watch: %s\n", strerror(errno));
 }
 
 /* We replace the default YY_INPUT() for the following reasons:
@@ -277,6 +269,16 @@ int main(int argc, char **argv) {
   }
   if (!filter) {
     WarnOpenInput(msg_path);
+
+    if (!fifo) {
+      /* Go directly to the end of the file.  We don't want to parse the same
+       * warnings multiple times on reboot/restart.  We might miss some
+       * warnings, but so be it---it's too hard to keep track reliably of the
+       * last parsed position in the syslog.
+       */
+      if (lseek(yyin_fd, 0, SEEK_END) < 0)
+        Die("could not lseek %s: %s\n", msg_path, strerror(errno));
+    }
   }
 
   /* Create directory for dump file.  Still need to be root here. */
