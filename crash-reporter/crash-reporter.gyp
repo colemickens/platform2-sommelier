@@ -165,6 +165,20 @@
             }],
           ],
         },
+        {
+          'target_name': 'warn_collector_test',
+          'type': 'none',
+          'copies': [
+            {
+              'destination': '<(PRODUCT_DIR)',
+              'files': [
+                'TEST_WARNING',
+                'warn_collector_test.sh',
+                'warn_collector_test_reporter.sh',
+              ],
+            },
+          ],
+        },
       ],
     }],
   ],

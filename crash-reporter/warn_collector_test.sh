@@ -14,19 +14,10 @@ fail() {
   exit 1
 }
 
-if [[ -z ${SYSROOT} ]]; then
-  fail "SYSROOT must be set for this test to work"
-fi
-: ${OUT:=${PWD}}
-cd "${OUT}"
-PATH=${OUT}:${PATH}
-TESTLOG="${OUT}/warn-test-log"
-
-echo "Testing: $(which warn_collector)"
-
 cleanup() {
   # Kill daemon (if started) on exit
-  kill %
+  kill %1 || true
+  rm -rf "${OUT}"
 }
 
 check_log() {
@@ -44,36 +35,43 @@ $(<"${TESTLOG}")"
   fi
 }
 
-rm -f "${TESTLOG}"
+trap cleanup EXIT
+
+SRC="$(readlink -f "$(dirname "$0")")"
+PATH="${SRC}:${PATH}"
+echo "Testing: $(which warn_collector)"
+
+OUT="$(mktemp -dt warn_collector_test_XXXXXXXXXX)"
+cd "${OUT}"
+TESTLOG="${OUT}/warn-test-log"
+
 cp "${SRC}/warn_collector_test_reporter.sh" .
-cp "${SRC}/TEST_WARNING" .
-truncate --size=0 messages
+touch messages
 
 # Start the collector daemon.  With the --test option, the daemon reads input
 # from ./messages, writes the warning into ./warning, and invokes
 # ./warn_collector_test_reporter.sh to report the warning.
 warn_collector --test &
-trap cleanup EXIT
 sleep 1
 
 # Emit a warning to messages and check that it is collected.
-cat TEST_WARNING >> messages
+cat "${SRC}/TEST_WARNING" >> messages
 sleep 1
 check_log 1
 
 # Add the same warning to messages, verify that it is NOT collected
-cat TEST_WARNING >> messages
+cat "${SRC}/TEST_WARNING" >> messages
 sleep 1
 check_log 1
 
 # Add a slightly different warning to messages, check that it is collected.
-sed s/intel_dp.c/intel_xx.c/ < TEST_WARNING >> messages
+sed s/intel_dp.c/intel_xx.c/ < "${SRC}/TEST_WARNING" >> messages
 sleep 1
 check_log 2
 
 # Emulate log rotation, add a warning, and check.
 mv messages messages.1
-sed s/intel_dp.c/intel_xy.c/ < TEST_WARNING > messages
+sed s/intel_dp.c/intel_xy.c/ < "${SRC}/TEST_WARNING" > messages
 sleep 2
 check_log 3
 
