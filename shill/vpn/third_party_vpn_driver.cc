@@ -413,6 +413,14 @@ void ThirdPartyVpnDriver::SetParameters(
     device_->UpdateIPConfig(ip_properties_);
     device_->SetLooseRouting(true);
     StopConnectTimeout();
+
+    if (!ip_properties_set_) {
+      ip_properties_set_ = true;
+      metrics_->SendEnumToUMA(
+          Metrics::kMetricVpnDriver,
+          Metrics::kVpnDriverThirdParty,
+          Metrics::kMetricVpnDriverMax);
+    }
   }
 }
 
@@ -483,6 +491,7 @@ void ThirdPartyVpnDriver::Connect(const VPNServiceRefPtr& service,
   CHECK(!active_client_);
   StartConnectTimeout(kConnectTimeoutSeconds);
   ip_properties_ = IPConfig::Properties();
+  ip_properties_set_ = false;
   service_ = service;
   service_->SetState(Service::kStateConfiguring);
   if (!device_info_->CreateTunnelInterface(&tunnel_interface_)) {

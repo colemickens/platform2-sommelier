@@ -234,6 +234,7 @@ class ThirdPartyVpnDriver : public VPNDriver {
 
   // Configuration properties of the virtual VPN device set by the VPN client.
   IPConfig::Properties ip_properties_;
+  bool ip_properties_set_;
 
   // IO handler triggered when there is an error or data ready for read in the
   // tun device.

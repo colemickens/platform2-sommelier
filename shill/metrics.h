@@ -309,6 +309,7 @@ class Metrics {
   enum VpnDriver {
     kVpnDriverOpenVpn = 0,
     kVpnDriverL2tpIpsec = 1,
+    kVpnDriverThirdParty = 2,
     kVpnDriverMax
   };
 
