@@ -9,6 +9,7 @@
 from __future__ import print_function
 
 import argparse
+import fnmatch
 import os
 import re
 import subprocess
@@ -23,6 +24,9 @@ DIFF_FILEPATH_REGEXP = re.compile(r'^\+\+\+ b/(?P<file_path>.*)$',
 CLANG_FORMAT = os.path.join(os.path.abspath(os.path.dirname(__file__)),
                             'upstream-git-clang-format')
 
+PRESUBMIT_IGNORE_FILE = os.path.join(
+    os.path.abspath(os.path.dirname(os.path.dirname(__file__))),
+    '.presubmitignore')
 
 def main(argv):
   parser = argparse.ArgumentParser()
@@ -42,6 +46,11 @@ def main(argv):
     return 0
 
   diff_files = DIFF_FILEPATH_REGEXP.findall(stdout)
+  ignored_files = []
+  with open(PRESUBMIT_IGNORE_FILE) as f:
+    for pattern in f.readlines():
+      ignored_files += fnmatch.filter(diff_files, pattern.strip())
+  diff_files = [f for f in diff_files if f not in ignored_files]
 
   if diff_files:
     if args.fix:
