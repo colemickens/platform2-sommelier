@@ -4,6 +4,7 @@
 
 #include <utility>
 
+#include "chaps/chaps_utility.h"
 #include "chaps/tpm2_utility_impl.h"
 
 #include <base/bind.h>
@@ -35,6 +36,33 @@ using trunks::TPM_RC_SUCCESS;
 using trunks::TrunksFactory;
 
 namespace {
+
+const struct {
+  trunks::TPM_ALG_ID id;
+  chaps::DigestAlgorithm alg;
+} kSupportedDigestAlgorithms[] = {
+  { trunks::TPM_ALG_SHA1,   chaps::DigestAlgorithm::SHA1 },
+  { trunks::TPM_ALG_SHA256, chaps::DigestAlgorithm::SHA256 },
+  { trunks::TPM_ALG_SHA384, chaps::DigestAlgorithm::SHA384 },
+  { trunks::TPM_ALG_SHA512, chaps::DigestAlgorithm::SHA512 },
+};
+
+// Extract the algorithm ID and the digest from PKCS1-v1_5 DigestInfo.
+// See RFC-3447, section 9.2.
+bool ParseDigestInfo(const std::string& digest_info,
+                     std::string* digest,
+                     trunks::TPM_ALG_ID* digest_alg) {
+  for (size_t i = 0; i < arraysize(kSupportedDigestAlgorithms); ++i) {
+    std::string encoding =
+      GetDigestAlgorithmEncoding(kSupportedDigestAlgorithms[i].alg);
+    if (!digest_info.compare(0, encoding.size(), encoding)) {
+      *digest = digest_info.substr(encoding.size());
+      *digest_alg = kSupportedDigestAlgorithms[i].id;
+      return true;
+    }
+  }
+  return false;
+}
 
 uint32_t GetIntegerExponent(const std::string& public_exponent) {
   uint32_t exponent = 0;
@@ -493,10 +521,17 @@ bool TPM2UtilityImpl::Sign(int key_handle,
     return false;
   }
   session_->SetEntityAuthorizationValue(auth_data);
+  std::string digest;
+  trunks::TPM_ALG_ID digest_alg;
+  if (!ParseDigestInfo(input, &digest, &digest_alg)) {
+    LOG(ERROR) << "Unknown algorithm in digest info to sign";
+    return false;
+  }
   TPM_RC result = trunks_tpm_utility_->Sign(key_handle,
                                  trunks::TPM_ALG_RSASSA,
-                                 trunks::TPM_ALG_SHA1,
-                                 input,
+                                 digest_alg,
+                                 digest,
+                                 false /* don't generate hash */,
                                  session_->GetDelegate(),
                                  signature);
   if (result != TPM_RC_SUCCESS) {

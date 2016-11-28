@@ -927,38 +927,17 @@ string SessionImpl::GenerateRandomSoftware(int num_bytes) {
 }
 
 string SessionImpl::GetDERDigestInfo(CK_MECHANISM_TYPE mechanism) {
-  // These strings are the DER encodings of the DigestInfo values for the
-  // supported digest algorithms.  See PKCS #1 v2.1: 9.2.
-  static const string kMD5DigestInfo(
-      "\x30\x20\x30\x0c\x06\x08\x2a\x86\x48\x86\xf7\x0d\x02\x05\x05\x00\x04"
-      "\x10",
-      18);
-  static const string kSHA1DigestInfo(
-      "\x30\x21\x30\x09\x06\x05\x2b\x0e\x03\x02\x1a\x05\x00\x04\x14",
-      15);
-  static const string kSHA256DigestInfo(
-      "\x30\x31\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x01\x05\x00\x04"
-      "\x20",
-      19);
-  static const string kSHA384DigestInfo(
-      "\x30\x41\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x02\x05\x00\x04"
-      "\x30",
-      19);
-  static const string kSHA512DigestInfo(
-      "\x30\x51\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x03\x05\x00\x04"
-      "\x40",
-      19);
   const EVP_MD* md = GetOpenSSLDigest(mechanism);
   if (md == EVP_md5()) {
-    return kMD5DigestInfo;
+    return GetDigestAlgorithmEncoding(DigestAlgorithm::MD5);
   } else if (md == EVP_sha1()) {
-    return kSHA1DigestInfo;
+    return GetDigestAlgorithmEncoding(DigestAlgorithm::SHA1);
   } else if (md == EVP_sha256()) {
-    return kSHA256DigestInfo;
+    return GetDigestAlgorithmEncoding(DigestAlgorithm::SHA256);
   } else if (md == EVP_sha384()) {
-    return kSHA384DigestInfo;
+    return GetDigestAlgorithmEncoding(DigestAlgorithm::SHA384);
   } else if (md == EVP_sha512()) {
-    return kSHA512DigestInfo;
+    return GetDigestAlgorithmEncoding(DigestAlgorithm::SHA512);
   }
   // This is valid in some cases (e.g. CKM_RSA_PKCS).
   return string();

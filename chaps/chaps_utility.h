@@ -18,6 +18,51 @@
 
 namespace chaps {
 
+enum class DigestAlgorithm {
+  MD5 = 0,
+  SHA1 = 1,
+  SHA256 = 2,
+  SHA384 = 3,
+  SHA512 = 4,
+};
+
+// These strings are the DER encodings of the DigestInfo values for the
+// supported digest algorithms.  See PKCS #1 v2.1: 9.2.
+const struct {
+  const char* encoding;
+  size_t encoding_len;
+} kDigestAlgorithmEncoding[] = {
+  { /* MD5 = 0 */
+    "\x30\x20\x30\x0c\x06\x08\x2a\x86\x48\x86\xf7\x0d\x02\x05\x05\x00\x04"
+    "\x10",
+    18 },
+  { /* SHA1 = 1 */
+    "\x30\x21\x30\x09\x06\x05\x2b\x0e\x03\x02\x1a\x05\x00\x04\x14",
+    15 },
+  { /* SHA256 = 2 */
+    "\x30\x31\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x01\x05\x00\x04"
+    "\x20",
+    19 },
+  { /* SHA384 = 3 */
+    "\x30\x41\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x02\x05\x00\x04"
+    "\x30",
+    19 },
+  { /* SHA512 = 4 */
+    "\x30\x51\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x03\x05\x00\x04"
+    "\x40",
+    19 },
+};
+
+// Get the algorithm ID for DigestInfo structure
+inline std::string GetDigestAlgorithmEncoding(DigestAlgorithm alg) {
+  size_t alg_index = static_cast<size_t>(alg);
+  if (alg_index >= arraysize(kDigestAlgorithmEncoding)) {
+    return std::string();
+  }
+  return std::string(kDigestAlgorithmEncoding[alg_index].encoding,
+                     kDigestAlgorithmEncoding[alg_index].encoding_len);
+}
+
 // Copy*ToCharBuffer copies to a space-padded CK_UTF8CHAR buffer (not
 // NULL-terminated).
 inline void CopyStringToCharBuffer(const std::string& source,

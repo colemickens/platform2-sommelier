@@ -421,8 +421,8 @@ TEST_F(Tpm2Test, SignPolicySuccess) {
       .WillOnce(Return(&mock_authorization_delegate_));
   std::string tpm_signature(32, 'b');
   EXPECT_CALL(mock_tpm_utility_,
-              Sign(_, _, _, _, &mock_authorization_delegate_, _))
-      .WillOnce(DoAll(SetArgPointee<5>(tpm_signature), Return(TPM_RC_SUCCESS)));
+              Sign(_, _, _, _, _, &mock_authorization_delegate_, _))
+      .WillOnce(DoAll(SetArgPointee<6>(tpm_signature), Return(TPM_RC_SUCCESS)));
   SecureBlob signature;
   EXPECT_TRUE(tpm_->Sign(SecureBlob("key_blob"), SecureBlob("input"), pcr_index,
                          &signature));
@@ -434,8 +434,8 @@ TEST_F(Tpm2Test, SignHmacSuccess) {
       .WillOnce(Return(&mock_authorization_delegate_));
   std::string tpm_signature(32, 'b');
   EXPECT_CALL(mock_tpm_utility_,
-              Sign(_, _, _, _, &mock_authorization_delegate_, _))
-      .WillOnce(DoAll(SetArgPointee<5>(tpm_signature), Return(TPM_RC_SUCCESS)));
+              Sign(_, _, _, _, _, &mock_authorization_delegate_, _))
+      .WillOnce(DoAll(SetArgPointee<6>(tpm_signature), Return(TPM_RC_SUCCESS)));
 
   SecureBlob signature;
   EXPECT_TRUE(
@@ -456,7 +456,7 @@ TEST_F(Tpm2Test, SignFailure) {
   uint32_t handle = 42;
   EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(handle), Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_utility_, Sign(handle, _, _, _, _, _))
+  EXPECT_CALL(mock_tpm_utility_, Sign(handle, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
 
   SecureBlob signature;

@@ -599,9 +599,9 @@ TEST_F(TPM2UtilityTest, UnbindFailure) {
 TEST_F(TPM2UtilityTest, SignSuccess) {
   TPM2UtilityImpl utility(factory_.get());
   int key_handle = 43;
-  std::string input;
+  std::string input = GetDigestAlgorithmEncoding(DigestAlgorithm::SHA1);
   std::string output;
-  EXPECT_CALL(mock_tpm_utility_, Sign(key_handle, _, _, _, _, _))
+  EXPECT_CALL(mock_tpm_utility_, Sign(key_handle, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_TRUE(utility.Sign(key_handle, input, &output));
 }
@@ -609,10 +609,20 @@ TEST_F(TPM2UtilityTest, SignSuccess) {
 TEST_F(TPM2UtilityTest, SignFailure) {
   TPM2UtilityImpl utility(factory_.get());
   int key_handle = 43;
+  std::string input = GetDigestAlgorithmEncoding(DigestAlgorithm::SHA1);
+  std::string output;
+  EXPECT_CALL(mock_tpm_utility_, Sign(key_handle, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_FALSE(utility.Sign(key_handle, input, &output));
+}
+
+TEST_F(TPM2UtilityTest, SignFailureUnknownAlgorithm) {
+  TPM2UtilityImpl utility(factory_.get());
+  int key_handle = 43;
   std::string input;
   std::string output;
-  EXPECT_CALL(mock_tpm_utility_, Sign(key_handle, _, _, _, _, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _, _, _, _, _))
+      .Times(0);
   EXPECT_FALSE(utility.Sign(key_handle, input, &output));
 }
 

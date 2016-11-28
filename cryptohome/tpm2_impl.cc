@@ -494,6 +494,7 @@ bool Tpm2Impl::Sign(const SecureBlob& key_blob,
   std::string tpm_signature;
   result = trunks->tpm_utility->Sign(handle.value(), trunks::TPM_ALG_RSASSA,
                                      trunks::TPM_ALG_SHA256, input.to_string(),
+                                     true /* generate_hash */,
                                      delegate, &tpm_signature);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error signing: " << GetErrorString(result);
