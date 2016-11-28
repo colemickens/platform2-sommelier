@@ -59,7 +59,6 @@ void OpenWithBrokerAsync(dbus::ObjectProxy* broker_proxy,
 
 namespace device_jail {
 
-
 void PermissionBrokerClient::Open(const std::string& path,
                                   const base::Callback<void(int)>& callback) {
   // This must be run on the thread which instantiated the D-Bus objects
