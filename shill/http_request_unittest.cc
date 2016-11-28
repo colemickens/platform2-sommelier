@@ -86,6 +86,11 @@ MATCHER_P(CallbackEq, callback, "") {
   return arg.Equals(callback);
 }
 
+static int BreakConnection() {
+  errno = EPIPE;
+  return -1;
+}
+
 class HTTPRequestTest : public Test {
  public:
   HTTPRequestTest()
@@ -445,11 +450,11 @@ TEST_F(HTTPRequestTest, RequestData) {
   EXPECT_NE(string::npos,
             FindInRequestData(string("\r\nHost: ") + kTextSiteName));
   ByteString request_data = GetRequestData();
-  EXPECT_CALL(sockets(), Send(kServerFD, _, request_data.GetLength(), 0))
+  EXPECT_CALL(sockets(), Send(kServerFD, _, request_data.GetLength(), _))
       .WillOnce(Return(request_data.GetLength() - 1));
   ExpectSetInputTimeout();
   WriteToServer(kServerFD);
-  EXPECT_CALL(sockets(), Send(kServerFD, _, 1, 0))
+  EXPECT_CALL(sockets(), Send(kServerFD, _, 1, _))
       .WillOnce(Return(1));
   ExpectMonitorServerInput();
   WriteToServer(kServerFD);
@@ -458,7 +463,7 @@ TEST_F(HTTPRequestTest, RequestData) {
 TEST_F(HTTPRequestTest, ResponseTimeout) {
   SetupConnectComplete();
   ByteString request_data = GetRequestData();
-  EXPECT_CALL(sockets(), Send(kServerFD, _, request_data.GetLength(), 0))
+  EXPECT_CALL(sockets(), Send(kServerFD, _, request_data.GetLength(), _))
       .WillOnce(Return(request_data.GetLength()));
   ExpectMonitorServerInput();
   WriteToServer(kServerFD);
@@ -470,7 +475,7 @@ TEST_F(HTTPRequestTest, ResponseTimeout) {
 TEST_F(HTTPRequestTest, ResponseInputError) {
   SetupConnectComplete();
   ByteString request_data = GetRequestData();
-  EXPECT_CALL(sockets(), Send(kServerFD, _, request_data.GetLength(), 0))
+  EXPECT_CALL(sockets(), Send(kServerFD, _, request_data.GetLength(), _))
       .WillOnce(Return(request_data.GetLength()));
   ExpectMonitorServerInput();
   WriteToServer(kServerFD);
@@ -511,6 +516,16 @@ TEST_F(HTTPRequestTest, ResponseBadData) {
   ExpectResultCallback(HTTPRequest::kResultResponseFailure);
   ExpectStop();
   ReadFromServerBadData(&server_data);
+}
+
+TEST_F(HTTPRequestTest, ResponseBrokenConnection) {
+  SetupConnectComplete();
+  ByteString request_data = GetRequestData();
+  EXPECT_CALL(sockets(), Send(kServerFD, _, request_data.GetLength(), _))
+      .WillOnce(WithoutArgs(Invoke(BreakConnection)));
+  ExpectResultCallback(HTTPRequest::kResultRequestFailure);
+  ExpectStop();
+  WriteToServer(kServerFD);
 }
 
 }  // namespace shill

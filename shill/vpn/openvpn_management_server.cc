@@ -434,7 +434,8 @@ string OpenVPNManagementServer::EscapeToQuote(const string& str) {
 
 void OpenVPNManagementServer::Send(const string& data) {
   SLOG(this, 2) << __func__;
-  ssize_t len = sockets_->Send(connected_socket_, data.data(), data.size(), 0);
+  ssize_t len = sockets_->Send(connected_socket_, data.data(), data.size(),
+                               MSG_NOSIGNAL);
   PLOG_IF(ERROR, len < 0 || static_cast<size_t>(len) != data.size())
       << "Send failed.";
 }

@@ -69,7 +69,7 @@ class OpenVPNManagementServerTest : public testing::Test {
 
   void ExpectSend(const string& value) {
     EXPECT_CALL(sockets_,
-                Send(kConnectedSocket, VoidStringEq(value), value.size(), 0))
+                Send(kConnectedSocket, VoidStringEq(value), value.size(), _))
         .WillOnce(Return(value.size()));
   }
 

@@ -280,7 +280,7 @@ void HTTPRequest::TimeoutTask() {
 void HTTPRequest::WriteToServer(int fd) {
   CHECK_EQ(server_socket_, fd);
   int ret = sockets_->Send(fd, request_data_.GetConstData(),
-                           request_data_.GetLength(), 0);
+                           request_data_.GetLength(), MSG_NOSIGNAL);
   CHECK(ret < 0 || static_cast<size_t>(ret) <= request_data_.GetLength());
 
   SLOG(connection_.get(), 3) << "In " << __func__ << " wrote " << ret << " of "

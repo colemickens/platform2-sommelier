@@ -318,7 +318,7 @@ void ConnectionHealthChecker::OnConnectionComplete(bool success, int sock_fd) {
   // Send data on the connection and post a delayed task to check successful
   // transfer.
   char buf;
-  if (socket_->Send(sock_fd_, &buf, sizeof(buf), 0) == -1) {
+  if (socket_->Send(sock_fd_, &buf, sizeof(buf), MSG_NOSIGNAL) == -1) {
     SLOG(connection_.get(), 2) << __func__ << ": " << socket_->ErrorString();
     // Count this as a failed connection attempt.
     ++num_connection_failures_;
