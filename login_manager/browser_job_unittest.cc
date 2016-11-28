@@ -304,4 +304,56 @@ TEST_F(BrowserJobTest, ExportArgv) {
   EXPECT_EQ(argv, job.ExportArgv());
 }
 
+TEST_F(BrowserJobTest, CombineVModuleArgs) {
+  const char* kArg1 = "--first";
+  const char* kArg2 = "--second_arg=blah";
+  const char* kArg3 = "--third_arg=5";
+  const char* kArg4 = "--last_arg";
+
+  {
+    // A testcase with 3 --vmodule flags.
+    const char* kVmodule1 = "--vmodule=file1=1,file2=2";
+    const char* kVmodule2 = "--vmodule=file3=3,file4=4,file5=5";
+    const char* kVmodule3 = "--vmodule=file6=6";
+
+    const char* kMultipleVmoduleArgs[] = {
+      kArg1, kVmodule1, kArg2, kArg3, kVmodule2, kVmodule3, kArg4
+    };
+
+    std::vector<std::string> argv(
+        kMultipleVmoduleArgs,
+        kMultipleVmoduleArgs + arraysize(kMultipleVmoduleArgs));
+    BrowserJob job(argv, env_, -1, &checker_, &metrics_, &utils_);
+
+    const char* kCombinedVmodule =
+        "--vmodule=file1=1,file2=2,file3=3,file4=4,file5=5,file6=6";
+
+    auto job_argv = job.ExportArgv();
+    ASSERT_EQ(5, job_argv.size());
+    EXPECT_EQ(kArg1, job_argv[0]);
+    EXPECT_EQ(kArg2, job_argv[1]);
+    EXPECT_EQ(kArg3, job_argv[2]);
+    EXPECT_EQ(kArg4, job_argv[3]);
+    EXPECT_EQ(kCombinedVmodule, job_argv[4]);
+  }
+
+  {
+    // A testcase with no --vmodule flag.
+    const char* kNoVmoduleArgs[] = {
+      kArg1, kArg2, kArg3, kArg4
+    };
+    std::vector<std::string> argv(
+        kNoVmoduleArgs, kNoVmoduleArgs + arraysize(kNoVmoduleArgs));
+
+    BrowserJob job(argv, env_, -1, &checker_, &metrics_, &utils_);
+
+    auto job_argv = job.ExportArgv();
+    ASSERT_EQ(4, job_argv.size());
+    EXPECT_EQ(kArg1, job_argv[0]);
+    EXPECT_EQ(kArg2, job_argv[1]);
+    EXPECT_EQ(kArg3, job_argv[2]);
+    EXPECT_EQ(kArg4, job_argv[3]);
+  }
+}
+
 }  // namespace login_manager

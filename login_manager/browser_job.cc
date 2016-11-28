@@ -22,6 +22,7 @@
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/macros.h>
 #include <base/strings/string_util.h>
 #include <chromeos/switches/chrome_switches.h>
 
@@ -43,6 +44,38 @@ const char BrowserJob::kFirstExecAfterBootFlag[] = "--first-exec-after-boot";
 const uint32_t BrowserJob::kRestartTries = 4;
 // static
 const time_t BrowserJob::kRestartWindowSeconds = 60;
+
+namespace {
+
+constexpr const char kVmoduleFlag[] = "--vmodule=";
+
+// Chrome only reads a single --vmodule flag. Combine them if we have multiple.
+// Example:
+//   --arg1 --vmodule=a=1,b=2 --arg2 --arg3 --vmodule=c=3
+// becomes
+//   --arg1 --arg2 --arg3 --vmodule=a=1,b=2,c=3
+// If --vmodule is not present, args are kept intact.
+void CombineVModuleArgs(std::vector<std::string>* args) {
+  std::string combined_vmodule;
+  auto head = args->begin();
+  for (const auto arg : *args) {
+    if (arg.find(kVmoduleFlag) == 0) {
+      // The value of --vmodule is commma separated, so using a comma to join
+      // each of them.
+      if (!combined_vmodule.empty())
+        combined_vmodule += ",";
+      combined_vmodule += arg.substr(arraysize(kVmoduleFlag) - 1);
+    } else {
+      *head++ = arg;
+    }
+  }
+  if (head != args->end()) {
+    args->erase(head, args->end());
+    args->push_back(kVmoduleFlag + combined_vmodule);
+  }
+}
+
+}  // namespace
 
 BrowserJob::BrowserJob(
     const std::vector<std::string>& arguments,
@@ -203,6 +236,7 @@ std::vector<std::string> BrowserJob::ExportArgv() const {
                      extra_one_time_arguments_.begin(),
                      extra_one_time_arguments_.end());
   }
+  CombineVModuleArgs(&to_return);
   return to_return;
 }
 
