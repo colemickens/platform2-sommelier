@@ -566,6 +566,7 @@ bool TpmUtilityV2::Sign(const std::string& key_blob,
   TpmObjectScoper scoper(trunks_factory_, key_handle);
   result = trunks_utility_->Sign(key_handle, trunks::TPM_ALG_RSASSA,
                                  trunks::TPM_ALG_SHA256, data_to_sign,
+                                 true /* generate_hash */,
                                  empty_password_authorization.get(), signature);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__

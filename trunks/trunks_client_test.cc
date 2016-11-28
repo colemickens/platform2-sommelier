@@ -123,13 +123,14 @@ bool TrunksClientTest::SignTest() {
   std::string signature;
   result =
       utility->Sign(signing_key, TPM_ALG_NULL, TPM_ALG_NULL,
-                    std::string(32, 'a'), session->GetDelegate(), &signature);
+                    std::string(32, 'a'), true /* generate_hash */,
+                    session->GetDelegate(), &signature);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error using key to sign: " << GetErrorString(result);
     return false;
   }
   result = utility->Verify(signing_key, TPM_ALG_NULL, TPM_ALG_NULL,
-                           std::string(32, 'a'), signature, nullptr);
+                           std::string(32, 'a'), true, signature, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error using key to verify: " << GetErrorString(result);
     return false;
@@ -460,14 +461,15 @@ bool TrunksClientTest::PolicyAuthValueTest() {
   std::string signature;
   policy_session->SetEntityAuthorizationValue("password");
   result = utility->Sign(scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL,
-                         std::string(32, 0), policy_session->GetDelegate(),
-                         &signature);
+                         std::string(32, 0), true /* generate_hash */,
+                         policy_session->GetDelegate(), &signature);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error signing using RSA key: " << GetErrorString(result);
     return false;
   }
   result = utility->Verify(scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL,
-                           std::string(32, 0), signature, nullptr);
+                           std::string(32, 0), true /* generate_hash */,
+                           signature, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error verifying using RSA key: " << GetErrorString(result);
     return false;
@@ -591,8 +593,8 @@ bool TrunksClientTest::PolicyAndTest() {
   policy_session->SetEntityAuthorizationValue(key_authorization);
   // Signing with this key when pcr 2 is unchanged fails.
   result = utility->Sign(scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL,
-                         std::string(32, 'a'), policy_session->GetDelegate(),
-                         &signature);
+                         std::string(32, 'a'), true /* generate_hash */,
+                         policy_session->GetDelegate(), &signature);
   if (GetFormatOneError(result) != TPM_RC_POLICY_FAIL) {
     LOG(ERROR) << "Error using key to sign: " << GetErrorString(result);
     return false;
@@ -623,14 +625,15 @@ bool TrunksClientTest::PolicyAndTest() {
   policy_session->SetEntityAuthorizationValue(key_authorization);
   // Signing with this key when pcr 2 is changed succeeds.
   result = utility->Sign(scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL,
-                         std::string(32, 'a'), policy_session->GetDelegate(),
-                         &signature);
+                         std::string(32, 'a'), true /* generate_hash */,
+                         policy_session->GetDelegate(), &signature);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error using key to sign: " << GetErrorString(result);
     return false;
   }
   result = utility->Verify(scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL,
-                           std::string(32, 'a'), signature, nullptr);
+                           std::string(32, 'a'), true /* generate_hash */,
+                           signature, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error using key to verify: " << GetErrorString(result);
     return false;
@@ -803,8 +806,8 @@ bool TrunksClientTest::PolicyOrTest() {
   // However signing with a key only authorized for encrypt/decrypt should
   // fail with TPM_RC_POLICY_CC.
   result = utility->Sign(scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL,
-                         std::string(32, 'a'), policy_session->GetDelegate(),
-                         &signature);
+                         std::string(32, 'a'), true /* generate_hash */,
+                         policy_session->GetDelegate(), &signature);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error using key to sign: " << GetErrorString(result);
     return false;
@@ -1146,7 +1149,8 @@ bool TrunksClientTest::SignAndVerify(const ScopedKeyHandle& key_handle,
   std::unique_ptr<TpmUtility> utility = factory_.GetTpmUtility();
   TPM_RC result =
       utility->Sign(key_handle.get(), TPM_ALG_RSASSA, TPM_ALG_SHA256,
-                    data_to_sign, delegate, &signature);
+                    data_to_sign, true /* generate_hash */,
+                    delegate, &signature);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Sign: " << GetErrorString(result);
     return false;

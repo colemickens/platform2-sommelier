@@ -60,18 +60,20 @@ class MockTpmUtility : public TpmUtility {
                       const std::string&,
                       AuthorizationDelegate*,
                       std::string*));
-  MOCK_METHOD6(Sign,
+  MOCK_METHOD7(Sign,
                TPM_RC(TPM_HANDLE,
                       TPM_ALG_ID,
                       TPM_ALG_ID,
                       const std::string&,
+                      bool,
                       AuthorizationDelegate*,
                       std::string*));
-  MOCK_METHOD6(Verify,
+  MOCK_METHOD7(Verify,
                TPM_RC(TPM_HANDLE,
                       TPM_ALG_ID,
                       TPM_ALG_ID,
                       const std::string&,
+                      bool,
                       const std::string&,
                       AuthorizationDelegate*));
   MOCK_METHOD2(CertifyCreation, TPM_RC(TPM_HANDLE, const std::string&));

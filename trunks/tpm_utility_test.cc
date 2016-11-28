@@ -725,6 +725,7 @@ TEST_F(TpmUtilityTest, SignSuccess) {
       .WillOnce(DoAll(SetArgPointee<5>(signature_out), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS,
             utility_.Sign(key_handle, TPM_ALG_NULL, TPM_ALG_NULL, digest,
+                          true /* generate_hash */,
                           &mock_authorization_delegate_, &signature));
   EXPECT_EQ(0, signature.compare("hi"));
 }
@@ -746,6 +747,7 @@ TEST_F(TpmUtilityTest, SignFail) {
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE,
             utility_.Sign(key_handle, TPM_ALG_NULL, TPM_ALG_NULL, digest,
+                          true /* generate_hash */,
                           &mock_authorization_delegate_, &signature));
 }
 
@@ -762,6 +764,7 @@ TEST_F(TpmUtilityTest, SignBadParams1) {
           DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
             utility_.Sign(key_handle, TPM_ALG_RSAPSS, TPM_ALG_NULL, digest,
+                          true /* generate_hash */,
                           &mock_authorization_delegate_, &signature));
 }
 
@@ -772,6 +775,7 @@ TEST_F(TpmUtilityTest, SignBadAuthorizationSession) {
   std::string signature;
   EXPECT_EQ(SAPI_RC_INVALID_SESSIONS,
             utility_.Sign(key_handle, TPM_ALG_RSAPSS, TPM_ALG_NULL, digest,
+                          true /* generate_hash */,
                           nullptr, &signature));
 }
 
@@ -788,6 +792,7 @@ TEST_F(TpmUtilityTest, SignBadParams2) {
           DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
             utility_.Sign(key_handle, TPM_ALG_RSAPSS, TPM_ALG_NULL, digest,
+                          true /* generate_hash */,
                           &mock_authorization_delegate_, &signature));
 }
 
@@ -804,6 +809,7 @@ TEST_F(TpmUtilityTest, SignBadParams3) {
           DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
             utility_.Sign(key_handle, TPM_ALG_RSAPSS, TPM_ALG_NULL, digest,
+                          true /* generate_hash */,
                           &mock_authorization_delegate_, &signature));
 }
 
@@ -820,6 +826,7 @@ TEST_F(TpmUtilityTest, SignBadParams4) {
           DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_FAILURE)));
   EXPECT_EQ(TPM_RC_FAILURE,
             utility_.Sign(key_handle, TPM_ALG_RSAPSS, TPM_ALG_NULL, digest,
+                          true /* generate_hash */,
                           &mock_authorization_delegate_, &signature));
 }
 
@@ -830,6 +837,7 @@ TEST_F(TpmUtilityTest, SignBadParams5) {
   std::string signature;
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
             utility_.Sign(key_handle, TPM_ALG_AES, TPM_ALG_NULL, digest,
+                          true /* generate_hash */,
                           &mock_authorization_delegate_, &signature));
 }
 
@@ -854,6 +862,7 @@ TEST_F(TpmUtilityTest, SignNullSchemeForward) {
                       Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS,
             utility_.Sign(key_handle, TPM_ALG_NULL, TPM_ALG_NULL, digest,
+                          true /* generate_hash */,
                           &mock_authorization_delegate_, &signature));
   EXPECT_EQ(scheme.scheme, TPM_ALG_RSASSA);
   EXPECT_EQ(scheme.details.rsassa.hash_alg, TPM_ALG_SHA256);
@@ -880,6 +889,7 @@ TEST_F(TpmUtilityTest, SignSchemeForward) {
                       Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS,
             utility_.Sign(key_handle, TPM_ALG_RSAPSS, TPM_ALG_SHA1, digest,
+                          true /* generate_hash */,
                           &mock_authorization_delegate_, &signature));
   EXPECT_EQ(scheme.scheme, TPM_ALG_RSAPSS);
   EXPECT_EQ(scheme.details.rsapss.hash_alg, TPM_ALG_SHA1);
@@ -899,7 +909,7 @@ TEST_F(TpmUtilityTest, VerifySuccess) {
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(TPM_RC_SUCCESS,
             utility_.Verify(key_handle, TPM_ALG_NULL, TPM_ALG_NULL, digest,
-                            signature, nullptr));
+                            true /* generate_hash */, signature, nullptr));
 }
 
 TEST_F(TpmUtilityTest, VerifyFail) {
@@ -916,7 +926,7 @@ TEST_F(TpmUtilityTest, VerifyFail) {
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE,
             utility_.Verify(key_handle, TPM_ALG_NULL, TPM_ALG_NULL, digest,
-                            signature, nullptr));
+                            true /* generate_hash */, signature, nullptr));
 }
 
 TEST_F(TpmUtilityTest, VerifyBadParams1) {
@@ -931,7 +941,7 @@ TEST_F(TpmUtilityTest, VerifyBadParams1) {
           DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
             utility_.Verify(key_handle, TPM_ALG_NULL, TPM_ALG_NULL, digest,
-                            signature, nullptr));
+                            true /* generate_hash */, signature, nullptr));
 }
 
 TEST_F(TpmUtilityTest, VerifyBadParams2) {
@@ -946,7 +956,7 @@ TEST_F(TpmUtilityTest, VerifyBadParams2) {
           DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
             utility_.Verify(key_handle, TPM_ALG_NULL, TPM_ALG_NULL, digest,
-                            signature, nullptr));
+                            true /* generate_hash */, signature, nullptr));
 }
 
 TEST_F(TpmUtilityTest, VerifyBadParams3) {
@@ -961,7 +971,7 @@ TEST_F(TpmUtilityTest, VerifyBadParams3) {
           DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
             utility_.Verify(key_handle, TPM_ALG_NULL, TPM_ALG_NULL, digest,
-                            signature, nullptr));
+                            true /* generate_hash */, signature, nullptr));
 }
 
 TEST_F(TpmUtilityTest, VerifyBadParams4) {
@@ -976,7 +986,7 @@ TEST_F(TpmUtilityTest, VerifyBadParams4) {
           DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_FAILURE)));
   EXPECT_EQ(TPM_RC_FAILURE,
             utility_.Verify(key_handle, TPM_ALG_NULL, TPM_ALG_NULL, digest,
-                            signature, nullptr));
+                            true /* generate_hash */, signature, nullptr));
 }
 
 TEST_F(TpmUtilityTest, VerifyBadParams5) {
@@ -991,7 +1001,7 @@ TEST_F(TpmUtilityTest, VerifyBadParams5) {
           DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
             utility_.Verify(key_handle, TPM_ALG_AES, TPM_ALG_NULL, digest,
-                            signature, nullptr));
+                            true /* generate_hash */, signature, nullptr));
 }
 
 TEST_F(TpmUtilityTest, VerifyNullSchemeForward) {
@@ -1009,7 +1019,7 @@ TEST_F(TpmUtilityTest, VerifyNullSchemeForward) {
       .WillOnce(DoAll(SaveArg<3>(&signature_in), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS,
             utility_.Verify(key_handle, TPM_ALG_NULL, TPM_ALG_NULL, digest,
-                            signature, nullptr));
+                            true /* generate_hash */, signature, nullptr));
   EXPECT_EQ(signature_in.sig_alg, TPM_ALG_RSASSA);
   EXPECT_EQ(signature_in.signature.rsassa.hash, TPM_ALG_SHA256);
 }
@@ -1029,7 +1039,7 @@ TEST_F(TpmUtilityTest, VerifySchemeForward) {
       .WillOnce(DoAll(SaveArg<3>(&signature_in), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS,
             utility_.Verify(key_handle, TPM_ALG_RSAPSS, TPM_ALG_SHA1, digest,
-                            signature, nullptr));
+                            true /* generate_hash */, signature, nullptr));
   EXPECT_EQ(signature_in.sig_alg, TPM_ALG_RSAPSS);
   EXPECT_EQ(signature_in.signature.rsassa.hash, TPM_ALG_SHA1);
 }

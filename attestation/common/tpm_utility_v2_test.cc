@@ -357,16 +357,16 @@ TEST_F(TpmUtilityTest, UnbindFail) {
 }
 
 TEST_F(TpmUtilityTest, Sign) {
-  EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _, "fake_to_sign", _, _))
+  EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _, "fake_to_sign", true, _, _))
       .WillOnce(
-          DoAll(SetArgPointee<5>("fake_signature"), Return(TPM_RC_SUCCESS)));
+          DoAll(SetArgPointee<6>("fake_signature"), Return(TPM_RC_SUCCESS)));
   std::string signature;
   EXPECT_TRUE(tpm_utility_->Sign("fake_key_blob", "fake_to_sign", &signature));
   EXPECT_EQ("fake_signature", signature);
 }
 
 TEST_F(TpmUtilityTest, SignFail) {
-  EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _, "fake_to_sign", _, _))
+  EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _, "fake_to_sign", true, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   std::string signature;
   EXPECT_FALSE(tpm_utility_->Sign("fake_key_blob", "fake_to_sign", &signature));

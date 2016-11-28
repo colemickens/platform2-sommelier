@@ -130,30 +130,35 @@ class TRUNKS_EXPORT TpmUtility {
                                    std::string* plaintext) = 0;
 
   // This method takes an unrestricted signing key referenced by |key_handle|
-  // and uses it to sign the hash of |plaintext|. The signature produced is
-  // returned using the |signature| argument. |scheme| is used to specify the
-  // signature scheme used. By default it is TPM_ALG_RSASSA, but TPM_ALG_RSAPPS
-  // can be specified. |hash_alg| is the algorithm used in the signing
-  // operation. It is by default TPM_ALG_SHA256.
+  // and uses it to sign a hash: if |generate_hash| is true then get the hash
+  // of |plaintext| using |hash_alg|, otherwise |plaintext| is already the hash
+  // to sign. The signature produced is returned using the |signature| argument.
+  // |scheme| is used to specify the signature scheme used. By default it is
+  // TPM_ALG_RSASSA, but TPM_ALG_RSAPPS can be specified. |hash_alg| is the
+  // algorithm used in the signing operation. It is by default TPM_ALG_SHA256.
   // |delegate| is an AuthorizationDelegate used to authorize this command.
   virtual TPM_RC Sign(TPM_HANDLE key_handle,
                       TPM_ALG_ID scheme,
                       TPM_ALG_ID hash_alg,
                       const std::string& plaintext,
+                      bool generate_hash,
                       AuthorizationDelegate* delegate,
                       std::string* signature) = 0;
 
   // This method verifies that the signature produced on the plaintext was
   // performed by |key_handle|. |scheme| and |hash| refer to the signature
-  // scheme used to sign the hash of |plaintext| and produce the signature.
-  // This value is by default TPM_ALG_RSASSA with TPM_ALG_SHA256 but can take
-  // the value of TPM_ALG_RSAPPS with other hash algorithms supported by the
-  // tpm. Returns TPM_RC_SUCCESS when the signature is correct.
-  // |delegate| specifies an optional authorization delegate to be used.
+  // scheme used to produce the signature: if |generate_hash| is true, the
+  // hash of |plaintext| is signed, otherwise |plaintext| is already the hash
+  // to sign. The signature scheme is by default TPM_ALG_RSASSA with
+  // TPM_ALG_SHA256 but can take the value of TPM_ALG_RSAPPS with other hash
+  // algorithms supported by the tpm. Returns TPM_RC_SUCCESS when the signature
+  // is correct. |delegate| specifies an optional authorization delegate to be
+  // used.
   virtual TPM_RC Verify(TPM_HANDLE key_handle,
                         TPM_ALG_ID scheme,
                         TPM_ALG_ID hash_alg,
                         const std::string& plaintext,
+                        bool generate_hash,
                         const std::string& signature,
                         AuthorizationDelegate* delegate) = 0;
 

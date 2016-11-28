@@ -580,6 +580,7 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
                             TPM_ALG_ID scheme,
                             TPM_ALG_ID hash_alg,
                             const std::string& plaintext,
+                            bool generate_hash,
                             AuthorizationDelegate* delegate,
                             std::string* signature) {
   TPMT_SIG_SCHEME in_scheme;
@@ -626,7 +627,8 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
     LOG(ERROR) << __func__ << ": Error computing key name for: " << key_handle;
     return result;
   }
-  std::string digest = HashString(plaintext, hash_alg);
+  std::string digest =
+    generate_hash ? HashString(plaintext, hash_alg) : plaintext;
   TPM2B_DIGEST tpm_digest = Make_TPM2B_DIGEST(digest);
   TPMT_SIGNATURE signature_out;
   TPMT_TK_HASHCHECK validation;
@@ -657,6 +659,7 @@ TPM_RC TpmUtilityImpl::Verify(TPM_HANDLE key_handle,
                               TPM_ALG_ID scheme,
                               TPM_ALG_ID hash_alg,
                               const std::string& plaintext,
+                              bool generate_hash,
                               const std::string& signature,
                               AuthorizationDelegate* delegate) {
   TPMT_PUBLIC public_area;
@@ -694,7 +697,8 @@ TPM_RC TpmUtilityImpl::Verify(TPM_HANDLE key_handle,
   }
   std::string key_name;
   TPMT_TK_VERIFIED verified;
-  std::string digest = HashString(plaintext, hash_alg);
+  std::string digest =
+    generate_hash ? HashString(plaintext, hash_alg) : plaintext;
   TPM2B_DIGEST tpm_digest = Make_TPM2B_DIGEST(digest);
   return_code = factory_.GetTpm()->VerifySignatureSync(
       key_handle, key_name, tpm_digest, signature_in, &verified, delegate);
