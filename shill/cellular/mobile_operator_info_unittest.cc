@@ -1630,11 +1630,11 @@ class MobileOperatorInfoOverrideTest
           mobile_operator_db::init_test_override_db_init_1,
           arraysize(mobile_operator_db::init_test_override_db_init_1));
 
-      this->operator_info_impl_ = new MobileOperatorInfoImpl(
-                                          &dispatcher_,
-                                          "Operator",
-                                          db_path_.c_str(),
-                                          override_db_path_.c_str());
+      this->operator_info_impl_.reset(
+          new MobileOperatorInfoImpl(&dispatcher_,
+                                     "Operator",
+                                     db_path_.c_str(),
+                                     override_db_path_.c_str()));
   }
 
   virtual void SetUp() override {
@@ -1669,7 +1669,7 @@ class MobileOperatorInfoOverrideTest
 
   EventDispatcherForTest dispatcher_;
   vector<FilePath> tmp_db_paths_;
-  MobileOperatorInfoImpl* operator_info_impl_;
+  std::unique_ptr<MobileOperatorInfoImpl> operator_info_impl_;
   string db_path_;
   string override_db_path_;
 
