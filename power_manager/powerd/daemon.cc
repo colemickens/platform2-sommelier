@@ -314,6 +314,11 @@ void Daemon::Init() {
   udev_ = delegate_->CreateUdev();
   input_watcher_ = delegate_->CreateInputWatcher(prefs_.get(), udev_.get());
 
+  const TabletMode tablet_mode = input_watcher_->GetTabletMode();
+  const LidState lid_state = input_watcher_->QueryLidState();
+  if (lid_state == LidState::CLOSED)
+    LOG(INFO) << "Lid closed at startup";
+
   if (BoolPrefIsTrue(kHasAmbientLightSensorPref))
     light_sensor_ = delegate_->CreateAmbientLightSensor();
 
@@ -344,8 +349,7 @@ void Daemon::Init() {
       keyboard_backlight_controller_ =
           delegate_->CreateKeyboardBacklightController(
               keyboard_backlight_.get(), prefs_.get(), light_sensor_.get(),
-              display_backlight_controller_.get(),
-              input_watcher_->GetTabletMode());
+              display_backlight_controller_.get(), tablet_mode);
       all_backlight_controllers_.push_back(
           keyboard_backlight_controller_.get());
     }
@@ -356,8 +360,10 @@ void Daemon::Init() {
 
   prefs_->GetBool(kSetWifiTransmitPowerForTabletModePref,
                   &set_wifi_transmit_power_for_tablet_mode_);
-  if (set_wifi_transmit_power_for_tablet_mode_)
+  if (set_wifi_transmit_power_for_tablet_mode_) {
     PopulateIwlWifiTransmitPowerTable();
+    UpdateWifiTransmitPowerForTabletMode(tablet_mode);
+  }
 
   prefs_->GetBool(kLockVTBeforeSuspendPref, &lock_vt_before_suspend_);
   prefs_->GetBool(kMosysEventlogPref, &log_suspend_with_mosys_eventlog_);
@@ -382,9 +388,6 @@ void Daemon::Init() {
   acpi_wakeup_helper_ = delegate_->CreateAcpiWakeupHelper();
   ec_wakeup_helper_ = delegate_->CreateEcWakeupHelper();
 
-  const LidState lid_state = input_watcher_->QueryLidState();
-  if (lid_state == LidState::CLOSED)
-    LOG(INFO) << "Lid closed at startup";
   wakeup_controller_->Init(display_backlight_controller_.get(), udev_.get(),
                            acpi_wakeup_helper_.get(), ec_wakeup_helper_.get(),
                            lid_state, DisplayMode::NORMAL, prefs_.get());
@@ -401,10 +404,6 @@ void Daemon::Init() {
 
   peripheral_battery_watcher_ =
       delegate_->CreatePeripheralBatteryWatcher(dbus_wrapper_.get());
-
-  TabletMode tablet_mode = input_watcher_->GetTabletMode();
-  if (tablet_mode != TabletMode::UNSUPPORTED)
-    HandleTabletModeChange(tablet_mode);
 
   // Call this last to ensure that all of our members are already initialized.
   OnPowerStatusUpdate();
@@ -548,20 +547,8 @@ void Daemon::HandleTabletModeChange(TabletMode mode) {
   LOG(INFO) << "Tablet mode " << TabletModeToString(mode);
   for (auto controller : all_backlight_controllers_)
     controller->HandleTabletModeChange(mode);
-
-  if (set_wifi_transmit_power_for_tablet_mode_) {
-    std::string args = (mode == TabletMode::ON) ?
-        "--wifi_transmit_power_tablet" : "--nowifi_transmit_power_tablet";
-
-    // Intel iwlwifi driver requires extra power table.
-    if (!iwl_wifi_power_table_.empty()) {
-      args += " --wifi_transmit_power_iwl_power_table=" + iwl_wifi_power_table_;
-    }
-
-    LOG(INFO) << ((mode == TabletMode::ON) ? "Enabling": "Disabling")
-              << " tablet mode wifi transmit power";
-    RunSetuidHelper("set_wifi_transmit_power", args, false);
-  }
+  if (set_wifi_transmit_power_for_tablet_mode_)
+    UpdateWifiTransmitPowerForTabletMode(mode);
 }
 
 void Daemon::DeferInactivityTimeoutForVT2() {
@@ -1596,6 +1583,21 @@ void Daemon::PopulateIwlWifiTransmitPowerTable() {
       return;
     }
   }
+}
+
+void Daemon::UpdateWifiTransmitPowerForTabletMode(TabletMode mode) {
+  DCHECK(set_wifi_transmit_power_for_tablet_mode_);
+  std::string args = (mode == TabletMode::ON) ?
+      "--wifi_transmit_power_tablet" : "--nowifi_transmit_power_tablet";
+
+  // Intel iwlwifi driver requires extra power table.
+  if (!iwl_wifi_power_table_.empty()) {
+    args += " --wifi_transmit_power_iwl_power_table=" + iwl_wifi_power_table_;
+  }
+
+  LOG(INFO) << ((mode == TabletMode::ON) ? "Enabling" : "Disabling")
+            << " tablet mode wifi transmit power";
+  RunSetuidHelper("set_wifi_transmit_power", args, false);
 }
 
 }  // namespace power_manager

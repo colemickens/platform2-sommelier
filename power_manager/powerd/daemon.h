@@ -272,6 +272,10 @@ class Daemon : public policy::BacklightControllerObserver,
   // |iwl_wifi_power_table_|.
   void PopulateIwlWifiTransmitPowerTable();
 
+  // Updates wifi transmit power for |mode|. Should only be called if
+  // |set_wifi_transmit_power_for_tablet_mode_| is true.
+  void UpdateWifiTransmitPowerForTabletMode(TabletMode mode);
+
   DaemonDelegate* delegate_;  // weak
 
   std::unique_ptr<PrefsInterface> prefs_;

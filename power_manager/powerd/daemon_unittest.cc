@@ -209,6 +209,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     EXPECT_EQ(prefs_, prefs);
     EXPECT_TRUE(!sensor || sensor == ambient_light_sensor_);
     EXPECT_EQ(internal_backlight_controller_, display_backlight_controller);
+    EXPECT_EQ(input_watcher_->GetTabletMode(), initial_tablet_mode);
     return std::move(passed_keyboard_backlight_controller_);
   }
   std::unique_ptr<system::InputWatcherInterface> CreateInputWatcher(
@@ -319,6 +320,14 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     return base::StringPrintf("%s --action=shut_down --shutdown_reason=%s",
                               kSetuidHelperPath,
                               ShutdownReasonToString(reason).c_str());
+  }
+
+  // Returns the command that Daemon should execute to set wifi transmit power
+  // for |mode|.
+  std::string GetWifiTransmitPowerCommand(TabletMode mode) {
+    return base::StringPrintf(
+        "%s --action=set_wifi_transmit_power --%swifi_transmit_power_tablet",
+        kSetuidHelperPath, mode == TabletMode::ON ? "" : "no");
   }
 
   // Stub objects to be transferred by Create* methods.
@@ -525,6 +534,18 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
   EXPECT_EQ(1, audio_client_->initial_loads());
   EXPECT_EQ(2, audio_client_->device_updates());
   EXPECT_EQ(1, audio_client_->stream_updates());
+}
+
+TEST_F(DaemonTest, DontReportTabletModeChangeFromInit) {
+  prefs_->SetInt64(kHasKeyboardBacklightPref, 1);
+  input_watcher_->set_tablet_mode(TabletMode::ON);
+  Init();
+
+  // The initial tablet mode is already passed to
+  // CreateKeyboardBacklightController(), so Init() shouldn't send an extra
+  // notification about it changing.
+  EXPECT_EQ(0, internal_backlight_controller_->tablet_mode_changes().size());
+  EXPECT_EQ(0, keyboard_backlight_controller_->tablet_mode_changes().size());
 }
 
 TEST_F(DaemonTest, GetBacklightBrightness) {
@@ -753,6 +774,20 @@ TEST_F(DaemonTest, DeferShutdownWhileFlashromRunning) {
   EXPECT_FALSE(daemon_->TriggerRetryShutdownTimerForTesting());
 
   // TODO(derat): Also verify that we check battery_tool.
+}
+
+TEST_F(DaemonTest, SetWifiTransmitPower) {
+  prefs_->SetInt64(kSetWifiTransmitPowerForTabletModePref, 1);
+  input_watcher_->set_tablet_mode(TabletMode::ON);
+  Init();
+  ASSERT_EQ(1, async_commands_.size());
+  EXPECT_EQ(GetWifiTransmitPowerCommand(TabletMode::ON), async_commands_[0]);
+  async_commands_.clear();
+
+  input_watcher_->set_tablet_mode(TabletMode::OFF);
+  input_watcher_->NotifyObserversAboutTabletMode();
+  ASSERT_EQ(1, async_commands_.size());
+  EXPECT_EQ(GetWifiTransmitPowerCommand(TabletMode::OFF), async_commands_[0]);
 }
 
 // TODO(derat): More tests. Namely:
