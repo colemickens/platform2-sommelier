@@ -155,20 +155,20 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   }
   std::unique_ptr<system::DisplayWatcherInterface> CreateDisplayWatcher(
       system::UdevInterface* udev) override {
-    CHECK_EQ(udev, udev_);
+    EXPECT_EQ(udev_, udev);
     return std::move(passed_display_watcher_);
   }
   std::unique_ptr<system::DisplayPowerSetterInterface> CreateDisplayPowerSetter(
       system::DBusWrapperInterface* dbus_wrapper) override {
-    CHECK_EQ(dbus_wrapper, dbus_wrapper_);
+    EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
     return std::move(passed_display_power_setter_);
   }
   std::unique_ptr<policy::BacklightController>
   CreateExternalBacklightController(
       system::DisplayWatcherInterface* display_watcher,
       system::DisplayPowerSetterInterface* display_power_setter) override {
-    CHECK_EQ(display_watcher, display_watcher_);
-    CHECK_EQ(display_power_setter, display_power_setter_);
+    EXPECT_EQ(display_watcher_, display_watcher);
+    EXPECT_EQ(display_power_setter_, display_power_setter);
     return std::move(passed_external_backlight_controller_);
   }
   std::unique_ptr<system::BacklightInterface> CreateInternalBacklight(
@@ -192,10 +192,10 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
       PrefsInterface* prefs,
       system::AmbientLightSensorInterface* sensor,
       system::DisplayPowerSetterInterface* power_setter) override {
-    CHECK_EQ(backlight, internal_backlight_);
-    CHECK_EQ(prefs, prefs_);
-    CHECK(!sensor || sensor == ambient_light_sensor_);
-    CHECK_EQ(power_setter, display_power_setter_);
+    EXPECT_EQ(internal_backlight_, backlight);
+    EXPECT_EQ(prefs_, prefs);
+    EXPECT_TRUE(!sensor || sensor == ambient_light_sensor_);
+    EXPECT_EQ(display_power_setter_, power_setter);
     return std::move(passed_internal_backlight_controller_);
   }
   std::unique_ptr<policy::BacklightController>
@@ -205,17 +205,17 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
       system::AmbientLightSensorInterface* sensor,
       policy::BacklightController* display_backlight_controller,
       TabletMode initial_tablet_mode) override {
-    CHECK_EQ(backlight, keyboard_backlight_);
-    CHECK_EQ(prefs, prefs_);
-    CHECK(!sensor || sensor == ambient_light_sensor_);
-    CHECK_EQ(display_backlight_controller, internal_backlight_controller_);
+    EXPECT_EQ(keyboard_backlight_, backlight);
+    EXPECT_EQ(prefs_, prefs);
+    EXPECT_TRUE(!sensor || sensor == ambient_light_sensor_);
+    EXPECT_EQ(internal_backlight_controller_, display_backlight_controller);
     return std::move(passed_keyboard_backlight_controller_);
   }
   std::unique_ptr<system::InputWatcherInterface> CreateInputWatcher(
       PrefsInterface* prefs,
       system::UdevInterface* udev) override {
-    CHECK_EQ(prefs, prefs_);
-    CHECK_EQ(udev, udev_);
+    EXPECT_EQ(prefs_, prefs);
+    EXPECT_EQ(udev_, udev);
     return std::move(passed_input_watcher_);
   }
   std::unique_ptr<system::AcpiWakeupHelperInterface> CreateAcpiWakeupHelper()
@@ -229,28 +229,28 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<system::PeripheralBatteryWatcher>
   CreatePeripheralBatteryWatcher(
       system::DBusWrapperInterface* dbus_wrapper) override {
-    CHECK_EQ(dbus_wrapper, dbus_wrapper_);
+    EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
     return std::unique_ptr<system::PeripheralBatteryWatcher>();
   }
   std::unique_ptr<system::PowerSupplyInterface> CreatePowerSupply(
       const base::FilePath& power_supply_path,
       PrefsInterface* prefs,
       system::UdevInterface* udev) override {
-    CHECK_EQ(power_supply_path.value(), kPowerStatusPath);
-    CHECK_EQ(prefs, prefs_);
-    CHECK_EQ(udev, udev_);
+    EXPECT_EQ(kPowerStatusPath, power_supply_path.value());
+    EXPECT_EQ(prefs_, prefs);
+    EXPECT_EQ(udev_, udev);
     return std::move(passed_power_supply_);
   }
   std::unique_ptr<system::DarkResumeInterface> CreateDarkResume(
       system::PowerSupplyInterface* power_supply,
       PrefsInterface* prefs) override {
-    CHECK_EQ(power_supply, power_supply_);
-    CHECK_EQ(prefs, prefs_);
+    EXPECT_EQ(power_supply_, power_supply);
+    EXPECT_EQ(prefs_, prefs);
     return std::move(passed_dark_resume_);
   }
   std::unique_ptr<system::AudioClientInterface> CreateAudioClient(
       system::DBusWrapperInterface* dbus_wrapper) override {
-    CHECK_EQ(dbus_wrapper, dbus_wrapper_);
+    EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
     return std::move(passed_audio_client_);
   }
   std::unique_ptr<MetricsSenderInterface> CreateMetricsSender() override {
