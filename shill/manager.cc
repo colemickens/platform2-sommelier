@@ -1740,8 +1740,12 @@ void Manager::UpdateDefaultServices(
     LOG(INFO) << "Default physical service: NONE";
   }
 
-  for (const auto& callback : default_service_callbacks_) {
-    callback.second.Run(physical_service);
+  for (auto it = default_service_callbacks_.cbegin();
+       it != default_service_callbacks_.cend();
+       /* no increment */) {
+    // Increment early, because |callback| might delete the current element.
+    const ServiceCallback& callback = (*it++).second;
+    callback.Run(physical_service);
   }
 }
 
