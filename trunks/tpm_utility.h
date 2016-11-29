@@ -120,7 +120,7 @@ class TRUNKS_EXPORT TpmUtility {
   // This method performs a decryption operating using a loaded RSA key
   // referenced by its handle |key_handle|. The |ciphertext| is then decrypted
   // to give us the |plaintext|. |scheme| refers to the decryption scheme
-  // used. By default it is OAEP, but TPM_ALG_RSAES can be specified.
+  // used. Valid schemes are: TPM_ALG_NULL, TPM_ALG_OAEP, TPM_ALG_RSAES.
   // |delegate| is an AuthorizationDelegate used to authorize this command.
   virtual TPM_RC AsymmetricDecrypt(TPM_HANDLE key_handle,
                                    TPM_ALG_ID scheme,

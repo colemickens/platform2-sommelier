@@ -516,13 +516,13 @@ TPM_RC TpmUtilityImpl::AsymmetricDecrypt(TPM_HANDLE key_handle,
                                          AuthorizationDelegate* delegate,
                                          std::string* plaintext) {
   TPMT_RSA_DECRYPT in_scheme;
-  if (hash_alg == TPM_ALG_NULL) {
-    hash_alg = TPM_ALG_SHA256;
-  }
-  if (scheme == TPM_ALG_RSAES) {
-    in_scheme.scheme = TPM_ALG_RSAES;
-  } else if (scheme == TPM_ALG_OAEP || scheme == TPM_ALG_NULL) {
+  if (scheme == TPM_ALG_RSAES || scheme == TPM_ALG_NULL) {
+    in_scheme.scheme = scheme;
+  } else if (scheme == TPM_ALG_OAEP) {
     in_scheme.scheme = TPM_ALG_OAEP;
+    if (hash_alg == TPM_ALG_NULL) {
+      hash_alg = TPM_ALG_SHA256;
+    }
     in_scheme.details.oaep.hash_alg = hash_alg;
   } else {
     LOG(ERROR) << __func__ << ": Invalid Signing scheme used.";

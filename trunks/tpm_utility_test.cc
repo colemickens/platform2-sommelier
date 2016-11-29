@@ -648,7 +648,7 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptBadSession) {
                                        ciphertext, nullptr, &plaintext));
 }
 
-TEST_F(TpmUtilityTest, AsymmetricDecryptNullSchemeForward) {
+TEST_F(TpmUtilityTest, AsymmetricDecryptNullHashAlgorithmForward) {
   TPM_HANDLE key_handle;
   std::string plaintext;
   std::string output_plaintext("plaintext");
@@ -670,7 +670,7 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptNullSchemeForward) {
                       Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS,
             utility_.AsymmetricDecrypt(
-                key_handle, TPM_ALG_NULL, TPM_ALG_NULL, ciphertext,
+                key_handle, TPM_ALG_OAEP, TPM_ALG_NULL, ciphertext,
                 &mock_authorization_delegate_, &plaintext));
   EXPECT_EQ(scheme.scheme, TPM_ALG_OAEP);
   EXPECT_EQ(scheme.details.oaep.hash_alg, TPM_ALG_SHA256);
