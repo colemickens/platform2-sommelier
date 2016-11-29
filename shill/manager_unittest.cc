@@ -2782,6 +2782,47 @@ TEST_F(ManagerTest, UpdateDefaultServices) {
   EXPECT_TRUE(manager()->default_service_callbacks_.empty());
 }
 
+TEST_F(ManagerTest, UpdateDefaultServicesWithDefaultServiceCallbacksRemoved) {
+  EXPECT_EQ(0, manager()->default_service_callback_tag_);
+  EXPECT_TRUE(manager()->default_service_callbacks_.empty());
+
+  MockMetrics mock_metrics(dispatcher());
+  SetMetrics(&mock_metrics);
+
+  scoped_refptr<MockService> mock_service(new NiceMock<MockService>(
+      control_interface(), dispatcher(), metrics(), manager()));
+  ServiceRefPtr service = mock_service;
+  ServiceRefPtr null_service;
+
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(nullptr));
+  manager()->UpdateDefaultServices(null_service, null_service);
+
+  // Register many callbacks where each callback simply deregisters itself from
+  // Manager. This verifies that Manager::UpdateDefaultServices() can safely
+  // iterate the container holding the callbacks while callbacks are removed
+  // from the container during iteration.
+  ServiceWatcher service_watchers[1000];
+  for (auto& service_watcher : service_watchers) {
+    int tag = manager()->RegisterDefaultServiceCallback(Bind(
+        &ServiceWatcher::OnDefaultServiceChanged, service_watcher.AsWeakPtr()));
+    EXPECT_CALL(service_watcher, OnDefaultServiceChanged(service))
+        .WillOnce(Invoke([this, tag](const ServiceRefPtr&) {
+          manager()->DeregisterDefaultServiceCallback(tag);
+        }));
+  }
+
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(service.get()));
+  manager()->UpdateDefaultServices(mock_service, mock_service);
+  EXPECT_TRUE(manager()->default_service_callbacks_.empty());
+
+  for (auto& service_watcher : service_watchers) {
+    EXPECT_CALL(service_watcher, OnDefaultServiceChanged(_)).Times(0);
+  }
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(nullptr));
+  manager()->UpdateDefaultServices(null_service, null_service);
+  EXPECT_TRUE(manager()->default_service_callbacks_.empty());
+}
+
 TEST_F(ManagerTest, DefaultServiceStateChange) {
   MockMetrics mock_metrics(dispatcher());
   SetMetrics(&mock_metrics);

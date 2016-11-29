@@ -626,6 +626,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, LinkMonitorEnabled);
   FRIEND_TEST(ManagerTest, MoveService);
   FRIEND_TEST(ManagerTest, UpdateDefaultServices);
+  FRIEND_TEST(ManagerTest,
+              UpdateDefaultServicesWithDefaultServiceCallbacksRemoved);
   FRIEND_TEST(ManagerTest, OnApModeSetterVanished);
   FRIEND_TEST(ManagerTest, OnDeviceClaimerAppeared);
   FRIEND_TEST(ManagerTest, PopProfileWithUnload);
