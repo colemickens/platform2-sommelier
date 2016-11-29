@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 
+#include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
@@ -26,6 +27,8 @@
 #include <chromeos/dbus/service_constants.h>
 #endif  // __ANDROID__
 
+#include "shill/dhcp/mock_dhcp_config.h"
+#include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/eap_credentials.h"
 #include "shill/fake_store.h"
 #include "shill/mock_device_info.h"
@@ -33,8 +36,10 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/nice_mock_control.h"
+#include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 #include "shill/wimax/mock_wimax.h"
+#include "shill/wimax/mock_wimax_device_proxy.h"
 #include "shill/wimax/mock_wimax_manager_proxy.h"
 #include "shill/wimax/mock_wimax_network_proxy.h"
 #include "shill/wimax/mock_wimax_service.h"
@@ -42,6 +47,7 @@
 
 using std::string;
 using std::vector;
+using testing::InvokeWithoutArgs;
 using testing::Return;
 using testing::ReturnNull;
 using testing::SaveArg;
@@ -60,11 +66,34 @@ string GetTestPath(int index) {
   return wimax_manager::kDeviceObjectPathPrefix + GetTestLinkName(index);
 }
 
+string GetTestNetworkName(uint32_t identifier) {
+  return base::StringPrintf("WiMAX %08x", identifier);
+}
+
 string GetTestNetworkPath(uint32_t identifier) {
   return base::StringPrintf("%s%08x",
                             wimax_manager::kNetworkObjectPathPrefix,
                             identifier);
 }
+
+class MockWiMaxNetworkProxyFactory {
+ public:
+  explicit MockWiMaxNetworkProxyFactory(uint32_t identifier)
+      : identifier_(identifier) {}
+
+  MockWiMaxNetworkProxy* CreateProxy() {
+    auto proxy = base::MakeUnique<MockWiMaxNetworkProxy>();
+    ON_CALL(*proxy, Name(_))
+        .WillByDefault(Return(GetTestNetworkName(identifier_)));
+    ON_CALL(*proxy, Identifier(_)).WillByDefault(Return(identifier_));
+    return proxy.release();
+  }
+
+ private:
+  const uint32_t identifier_;
+
+  DISALLOW_COPY_AND_ASSIGN(MockWiMaxNetworkProxyFactory);
+};
 
 }  // namespace
 
@@ -72,10 +101,10 @@ class WiMaxProviderTest : public testing::Test {
  public:
   WiMaxProviderTest()
       : network_proxy_(new MockWiMaxNetworkProxy()),
-        metrics_(nullptr),
-        manager_(&control_, nullptr, &metrics_),
-        device_info_(&control_, nullptr, &metrics_, &manager_),
-        provider_(&control_, nullptr, &metrics_, &manager_) {}
+        metrics_(&dispatcher_),
+        manager_(&control_, &dispatcher_, &metrics_),
+        device_info_(&control_, &dispatcher_, &metrics_, &manager_),
+        provider_(&control_, &dispatcher_, &metrics_, &manager_) {}
 
   virtual ~WiMaxProviderTest() {}
 
@@ -86,6 +115,7 @@ class WiMaxProviderTest : public testing::Test {
 
   std::unique_ptr<MockWiMaxNetworkProxy> network_proxy_;
   NiceMockControl control_;
+  EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;
   MockDeviceInfo device_info_;
@@ -118,13 +148,97 @@ TEST_F(WiMaxProviderTest, ConnectDisconnectWiMaxManager) {
   MockWiMaxManagerProxy* wimax_manager_proxy = new MockWiMaxManagerProxy();
   provider_.wimax_manager_proxy_.reset(wimax_manager_proxy);
 
-  EXPECT_CALL(*wimax_manager_proxy, Devices(_))
-      .WillOnce(Return(RpcIdentifiers()));
-  provider_.ConnectToWiMaxManager();
+  EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&device_info_));
+  EXPECT_CALL(manager_, wimax_provider()).WillRepeatedly(Return(&provider_));
 
-  provider_.pending_devices_[GetTestLinkName(2)] = GetTestPath(2);
+  // Set up a live device and a pending device.
+  const int device_index = 1;
+  const int pending_device_index = 2;
+  const std::string device_link = GetTestLinkName(device_index);
+  const std::string pending_device_link = GetTestLinkName(pending_device_index);
+
+  EXPECT_CALL(device_info_, GetIndex(device_link))
+      .WillRepeatedly(Return(device_index));
+  EXPECT_CALL(device_info_, GetIndex(pending_device_link))
+      .WillRepeatedly(Return(-1));
+  EXPECT_CALL(device_info_, GetMACAddress(device_index, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(device_info_, RegisterDevice(_)).Times(2);
+
+  RpcIdentifiers devices = {GetTestPath(device_index),
+                            GetTestPath(pending_device_index)};
+  EXPECT_CALL(*wimax_manager_proxy, Devices(_)).WillRepeatedly(Return(devices));
+
+  // After connecting to WiMAX manager, WiMaxProvider should see both the live
+  // and pending device.
+  provider_.ConnectToWiMaxManager();
+  EXPECT_EQ(1, provider_.devices_.count(device_link));
+  EXPECT_EQ(1, provider_.pending_devices_.count(pending_device_link));
+
+  // Enable the live device.
+  auto device_proxy = base::MakeUnique<MockWiMaxDeviceProxy>();
+  EXPECT_CALL(*device_proxy, Enable(_, _, _))
+      .WillOnce(SetErrorTypeInArgument<0>(Error::kSuccess));
+  EXPECT_CALL(*device_proxy, Connect(_, _, _, _, _))
+      .WillOnce(SetErrorTypeInArgument<2>(Error::kSuccess));
+  EXPECT_CALL(control_, CreateWiMaxDeviceProxy(_))
+      .WillOnce(ReturnAndReleasePointee(&device_proxy));
+
+  WiMaxRefPtr device = provider_.devices_[device_link];
+  ASSERT_NE(nullptr, device);
+  Error error;
+  device->Start(&error, EnabledStateChangedCallback());
+  EXPECT_TRUE(error.IsSuccess());
+
+  // Set up two services.
+  const uint32_t network0_id = 0x11223344;
+  const uint32_t network1_id = 0xaabbccdd;
+  MockWiMaxNetworkProxyFactory network0_proxy_factory(network0_id);
+  MockWiMaxNetworkProxyFactory network1_proxy_factory(network1_id);
+  ON_CALL(control_, CreateWiMaxNetworkProxy(GetTestNetworkPath(network0_id)))
+      .WillByDefault(InvokeWithoutArgs(
+          &network0_proxy_factory, &MockWiMaxNetworkProxyFactory::CreateProxy));
+  ON_CALL(control_, CreateWiMaxNetworkProxy(GetTestNetworkPath(network1_id)))
+      .WillByDefault(InvokeWithoutArgs(
+          &network1_proxy_factory, &MockWiMaxNetworkProxyFactory::CreateProxy));
+  RpcIdentifiers live_networks = {GetTestNetworkPath(network0_id),
+                                  GetTestNetworkPath(network1_id)};
+  device->OnNetworksChanged(live_networks);
+  ASSERT_EQ(live_networks.size(), provider_.services_.size());
+
+  // Connects to one service.
+  scoped_refptr<MockDHCPConfig> dhcp_config(
+      new MockDHCPConfig(&control_, device_link));
+  EXPECT_CALL(*dhcp_config, RequestIP()).WillOnce(Return(true));
+  MockDHCPProvider dhcp_provider;
+  EXPECT_CALL(dhcp_provider, CreateIPv4Config(device_link, _, false, _))
+      .WillOnce(Return(dhcp_config));
+  device->set_dhcp_provider(&dhcp_provider);
+
+  WiMaxServiceRefPtr service = provider_.services_.begin()->second;
+  service->SetConnectable(true);
+  service->Connect(&error, "in test");
+  EXPECT_TRUE(error.IsSuccess());
+  device->OnStatusChanged(wimax_manager::kDeviceStatusConnected);
+
+  // Make sure this test doesn't hold an extra reference of the device object
+  // or the service object, which prevents either object from being destructed.
+  device = nullptr;
+  service = nullptr;
+
+  // After disconnecting from WiMAX manager, WiMaxProvider shouldn't reference
+  // to any device or service objects.
   provider_.DisconnectFromWiMaxManager();
+  EXPECT_TRUE(provider_.devices_.empty());
   EXPECT_TRUE(provider_.pending_devices_.empty());
+  EXPECT_TRUE(provider_.services_.empty());
+
+  // After reconnecting to WiMAX manager, WiMaxProvider should see both the
+  // live and pending device.
+  provider_.ConnectToWiMaxManager();
+  EXPECT_EQ(1, provider_.devices_.count(device_link));
+  EXPECT_EQ(1, provider_.pending_devices_.count(pending_device_link));
+  EXPECT_TRUE(provider_.services_.empty());
 }
 
 TEST_F(WiMaxProviderTest, OnDevicesChanged) {

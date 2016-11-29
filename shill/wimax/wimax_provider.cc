@@ -80,7 +80,6 @@ void WiMaxProvider::Stop() {
   SLOG(this, 2) << __func__;
   wimax_manager_proxy_.reset();
   DisconnectFromWiMaxManager();
-  DestroyAllServices();
 }
 
 void WiMaxProvider::ConnectToWiMaxManager() {
@@ -93,6 +92,7 @@ void WiMaxProvider::DisconnectFromWiMaxManager() {
   SLOG(this, 2) << __func__;
   LOG(INFO) << "Disconnected from WiMaxManager.";
   OnDevicesChanged(RpcIdentifiers());
+  DestroyAllServices();
 }
 
 void WiMaxProvider::OnWiMaxManagerAppeared() {

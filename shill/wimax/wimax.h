@@ -74,6 +74,7 @@ class WiMax : public Device {
 
  private:
   friend class WiMaxTest;
+  FRIEND_TEST(WiMaxProviderTest, ConnectDisconnectWiMaxManager);
   FRIEND_TEST(WiMaxProviderTest, OnNetworksChanged);
   FRIEND_TEST(WiMaxTest, ConnectTimeout);
   FRIEND_TEST(WiMaxTest, ConnectTo);
