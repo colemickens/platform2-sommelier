@@ -117,9 +117,6 @@ DeviceInfo::DeviceInfo(ControlInterface* control_interface,
       dispatcher_(dispatcher),
       metrics_(metrics),
       manager_(manager),
-      link_callback_(Bind(&DeviceInfo::LinkMsgHandler, Unretained(this))),
-      address_callback_(Bind(&DeviceInfo::AddressMsgHandler, Unretained(this))),
-      rdnss_callback_(Bind(&DeviceInfo::RdnssMsgHandler, Unretained(this))),
       device_info_root_(kDeviceInfoRoot),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
@@ -158,11 +155,14 @@ bool DeviceInfo::IsDeviceBlackListed(const string& device_name) {
 
 void DeviceInfo::Start() {
   link_listener_.reset(
-      new RTNLListener(RTNLHandler::kRequestLink, link_callback_));
+      new RTNLListener(RTNLHandler::kRequestLink,
+                       Bind(&DeviceInfo::LinkMsgHandler, Unretained(this))));
   address_listener_.reset(
-      new RTNLListener(RTNLHandler::kRequestAddr, address_callback_));
+      new RTNLListener(RTNLHandler::kRequestAddr,
+                       Bind(&DeviceInfo::AddressMsgHandler, Unretained(this))));
   rdnss_listener_.reset(
-      new RTNLListener(RTNLHandler::kRequestRdnss, rdnss_callback_));
+      new RTNLListener(RTNLHandler::kRequestRdnss,
+                       Bind(&DeviceInfo::RdnssMsgHandler, Unretained(this))));
   rtnl_handler_->RequestDump(RTNLHandler::kRequestLink |
                              RTNLHandler::kRequestAddr);
   request_link_statistics_callback_.Reset(

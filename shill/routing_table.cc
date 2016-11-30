@@ -69,9 +69,7 @@ const char RoutingTable::kRouteFlushPath4[] = "/proc/sys/net/ipv4/route/flush";
 // static
 const char RoutingTable::kRouteFlushPath6[] = "/proc/sys/net/ipv6/route/flush";
 
-RoutingTable::RoutingTable()
-    : route_callback_(Bind(&RoutingTable::RouteMsgHandler, Unretained(this))),
-      rtnl_handler_(RTNLHandler::GetInstance()) {
+RoutingTable::RoutingTable() : rtnl_handler_(RTNLHandler::GetInstance()) {
   SLOG(this, 2) << __func__;
 }
 
@@ -85,7 +83,8 @@ void RoutingTable::Start() {
   SLOG(this, 2) << __func__;
 
   route_listener_.reset(
-      new RTNLListener(RTNLHandler::kRequestRoute, route_callback_));
+      new RTNLListener(RTNLHandler::kRequestRoute,
+                       Bind(&RoutingTable::RouteMsgHandler, Unretained(this))));
   rtnl_handler_->RequestDump(RTNLHandler::kRequestRoute);
 }
 

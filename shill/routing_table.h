@@ -172,7 +172,6 @@ class RoutingTable {
 
   Tables tables_;
 
-  base::Callback<void(const RTNLMessage&)> route_callback_;
   std::unique_ptr<RTNLListener> route_listener_;
   std::deque<Query> route_queries_;
 

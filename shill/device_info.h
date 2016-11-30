@@ -308,9 +308,6 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   std::map<int, Info> infos_;  // Maps interface index to Info.
   std::map<std::string, int> indices_;  // Maps interface name to index.
 
-  base::Callback<void(const RTNLMessage&)> link_callback_;
-  base::Callback<void(const RTNLMessage&)> address_callback_;
-  base::Callback<void(const RTNLMessage&)> rdnss_callback_;
   std::unique_ptr<RTNLListener> link_listener_;
   std::unique_ptr<RTNLListener> address_listener_;
   std::unique_ptr<RTNLListener> rdnss_listener_;
