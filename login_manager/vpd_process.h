@@ -19,6 +19,7 @@ class VpdProcess {
   // successful.
   virtual bool RunInBackground(const std::vector<std::string>& flags,
                                const std::vector<int>& values,
+                               bool is_enrolled,
                                const PolicyService::Completion& completion) = 0;
 };
 

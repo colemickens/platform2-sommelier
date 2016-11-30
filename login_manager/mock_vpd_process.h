@@ -20,8 +20,9 @@ class SystemUtils;
 class MockVpdProcess : public VpdProcess {
  public:
   MockVpdProcess() : VpdProcess() {}
-  MOCK_METHOD3(RunInBackground, bool(const std::vector<std::string>& flags,
+  MOCK_METHOD4(RunInBackground, bool(const std::vector<std::string>& flags,
                                      const std::vector<int>& values,
+                                     bool is_enrolled,
                                      const PolicyService::Completion&
                                        completion));
 };

@@ -580,11 +580,12 @@ bool DevicePolicyService::UpdateSystemSettings(
   // Check if device is enrolled. The flag for enrolled device is written to VPD
   // but will never get deleted. Existence of the flag is one of the triggers
   // for FRE check during OOBE.
-  if (InstallAttributesEnterpriseMode()) {
+  bool is_enrolled = InstallAttributesEnterpriseMode();
+  if (is_enrolled) {
     flags.push_back(Crossystem::kCheckEnrollment);
     values.push_back(1);
   }
 
-  return vpd_process_->RunInBackground(flags, values, completion);
+  return vpd_process_->RunInBackground(flags, values, is_enrolled, completion);
 }
 }  // namespace login_manager

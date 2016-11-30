@@ -42,11 +42,13 @@ VpdProcessImpl::VpdProcessImpl(SystemUtils* system_utils)
 
 bool VpdProcessImpl::RunInBackground(const std::vector<std::string>& flags,
                                      const std::vector<int>& values,
+                                     bool is_enrolled,
                                      const PolicyService::Completion&
                                        completion) {
   DCHECK(flags.size() == values.size());
   subprocess_.reset(new ChildJobInterface::Subprocess(0, system_utils_));
 
+  is_enrolled_ = is_enrolled;
   std::vector<std::string> argv;
   argv.push_back("/usr/sbin/set_binary_flag_vpd");
   for (size_t i = 0; i < flags.size(); i++) {
@@ -98,8 +100,9 @@ void VpdProcessImpl::HandleExit(const siginfo_t& info) {
     return;
   }
 
-  // We have to notify Chrome that the process has finished.
-  if (success) {
+  // We have to notify Chrome that the process has finished. Ignore the VPD
+  // update error if the device is not enrolled.
+  if (success || !is_enrolled_) {
     completion_.Run(PolicyService::Error());
   } else {
     const std::string board_name = GetStrippedReleaseBoard();

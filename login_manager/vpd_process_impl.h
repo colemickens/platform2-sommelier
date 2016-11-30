@@ -25,6 +25,7 @@ class VpdProcessImpl
   // Implementation of VpdProcess.
   bool RunInBackground(const std::vector<std::string>& flags,
                        const std::vector<int>& values,
+                       bool is_enrolled,
                        const PolicyService::Completion& completion) override;
 
   // Implementation of JobManagerInterface.
@@ -38,6 +39,7 @@ class VpdProcessImpl
   std::unique_ptr<ChildJobInterface::Subprocess> subprocess_;
   SystemUtils* system_utils_;  // Owned by the caller.
   PolicyService::Completion completion_;
+  bool is_enrolled_ = false;
 };
 
 }  // namespace login_manager
