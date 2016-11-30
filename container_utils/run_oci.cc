@@ -128,6 +128,7 @@ void ConfigureDevices(const std::vector<OciLinuxDevice>& devices,
 // pulling the apropriate fields from the OCI configuration given in |oci|.
 bool ContainerConfigFromOci(const OciConfig& oci,
                             const base::FilePath& container_root,
+                            const std::vector<std::string>& extra_args,
                             container_config* config_out) {
   // Process configuration
   container_config_uid(config_out, oci.process.user.uid);
@@ -137,6 +138,8 @@ bool ContainerConfigFromOci(const OciConfig& oci,
 
   std::vector<const char *> argv;
   for (auto & arg : oci.process.args)
+    argv.push_back(arg.c_str());
+  for (auto & arg : extra_args)
     argv.push_back(arg.c_str());
   container_config_program_argv(config_out, argv.data(), argv.size());
 
@@ -224,7 +227,10 @@ int RunOci(const base::FilePath& container_dir,
 
   ContainerConfigPtr config(container_config_create(),
                             &container_config_destroy);
-  if (!ContainerConfigFromOci(*oci_config, container_dir, config.get())) {
+  if (!ContainerConfigFromOci(*oci_config,
+                              container_dir,
+                              container_options.extra_program_args,
+                              config.get())) {
     PLOG(ERROR) << "Failed to create container from oci config.";
     return -1;
   }
@@ -272,7 +278,7 @@ const struct option longopts[] = {
 };
 
 void print_help(const char *argv0) {
-  printf("usage: %s [OPTIONS] <container path>\n", argv0);
+  printf("usage: %s [OPTIONS] <container path> -- [Command Args]\n", argv0);
   printf("  -b, --bind_mount=<A>:<B>       Mount path A to B container.\n");
   printf("  -h, --help                     Print this message and exit.\n");
   printf("  -p, --cgroup_parent=<NAME>     Set parent cgroup for container.\n");
@@ -320,5 +326,9 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  return RunOci(base::FilePath(argv[optind]), container_options);
+  int path_arg_index = optind;
+  for(optind++; optind < argc; optind++)
+    container_options.extra_program_args.push_back(std::string(argv[optind]));
+
+  return RunOci(base::FilePath(argv[path_arg_index]), container_options);
 }
