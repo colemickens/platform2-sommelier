@@ -296,7 +296,6 @@ class Cellular : public Device, public RPCTaskDelegate {
   void set_serving_operator_info(MobileOperatorInfo* serving_operator_info);
 
  private:
-  friend class ActivePassiveOutOfCreditsDetectorTest;
   friend class CellularTest;
   friend class CellularCapabilityTest;
   friend class CellularCapabilityCDMATest;

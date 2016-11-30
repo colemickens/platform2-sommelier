@@ -18,7 +18,6 @@
 
 #include <string>
 
-#include "shill/cellular/active_passive_out_of_credits_detector.h"
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/no_out_of_credits_detector.h"
 #include "shill/cellular/subscription_state_out_of_credits_detector.h"
@@ -55,14 +54,6 @@ OutOfCreditsDetector::CreateDetector(OOCType detector_type,
                                      Metrics* metrics,
                                      CellularService* service) {
   switch (detector_type) {
-    case OOCTypeActivePassive:
-      LOG(INFO) << __func__
-                << ": Using active-passive out-of-credits detection";
-      return
-          new ActivePassiveOutOfCreditsDetector(dispatcher,
-                                                manager,
-                                                metrics,
-                                                service);
     case OOCTypeSubscriptionState:
       LOG(INFO) << __func__
                 << ": Using subscription status out-of-credits detection";

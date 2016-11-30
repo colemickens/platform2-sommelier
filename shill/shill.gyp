@@ -260,7 +260,6 @@
             ],
           },
           'sources': [
-            'cellular/active_passive_out_of_credits_detector.cc',
             'cellular/cellular.cc',
             'cellular/cellular_bearer.cc',
             'cellular/cellular_capability.cc',
@@ -822,7 +821,6 @@
                 ],
               },
               'sources': [
-                'cellular/active_passive_out_of_credits_detector_unittest.cc',
                 'cellular/cellular_bearer_unittest.cc',
                 'cellular/cellular_capability_cdma_unittest.cc',
                 'cellular/cellular_capability_classic_unittest.cc',

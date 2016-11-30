@@ -43,20 +43,15 @@ class OutOfCreditsDetector {
   // Various types of out-of-credits detections.
   enum OOCType {
     // No out-of-credits detection is employed.
-    OOCTypeNone = 0,
-    // Passively monitors the traffic for TX congestion and DNS failures, then
-    // actively probe the network for TX congestion to determine if the
-    // network has entered an OOC condition.
-    OOCTypeActivePassive = 1,
+    OOCTypeNone,
     // Use ModemManager SubscriptionState property to determine OOC condition.
-    OOCTypeSubscriptionState = 2
+    OOCTypeSubscriptionState,
   };
 
   // Creates a specific out-of-credits detector.
-  // For OOCTypeNone, this methods returns NoOutOfCreditsDetector. For
-  // OOCTypeActivePassive, this method returns
-  // ActivePassiveOutOfCreditsDetector. For OOCTypeSubscriptionState,
-  // this method returns SubscriptionStateOutOfCreditsDetector.
+  // For OOCTypeNone, this methods returns NoOutOfCreditsDetector.
+  // For OOCTypeSubscriptionState, this method returns
+  // SubscriptionStateOutOfCreditsDetector.
   static OutOfCreditsDetector* CreateDetector(OOCType detector_type,
                                               EventDispatcher* dispatcher,
                                               Manager* manager,
@@ -76,9 +71,6 @@ class OutOfCreditsDetector {
   virtual bool out_of_credits() const { return out_of_credits_; }
 
  protected:
-  FRIEND_TEST(ActivePassiveOutOfCreditsDetectorTest,
-      ConnectDisconnectLoopDetectionSkippedAlreadyOutOfCredits);
-
   // Sets the out-of-credits state for this object and also tells the service
   // object to signal the property change.
   void ReportOutOfCredits(bool state);
