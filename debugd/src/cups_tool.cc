@@ -62,7 +62,8 @@ bool MatchesUserString(base::StringPiece input) {
 }
 
 bool IsInPPDCache(const std::vector<std::string>& path_components) {
-  return path_components.size() == 5 && path_components[0] == "/" &&
+  // {/, home, chronos, u-HEX, PPDCache, <FileName>}
+  return path_components.size() == 6 && path_components[0] == "/" &&
          path_components[1] == "home" && path_components[2] == "chronos" &&
          MatchesUserString(path_components[3]) &&
          path_components[4] == kPPDCacheFolder;
