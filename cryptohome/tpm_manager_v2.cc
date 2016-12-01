@@ -87,6 +87,10 @@ int VerifyEK(bool is_cros_core) {
     puts(GetProtoDebugString(reply).c_str());
     return -1;
   }
+  if (!reply.verified()) {
+    LOG(ERROR) << "TPM endorsement verification failed.";
+    return -1;
+  }
   LOG(INFO) << "TPM endorsement verified successfully.";
   return 0;
 }
