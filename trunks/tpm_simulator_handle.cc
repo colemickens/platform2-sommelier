@@ -65,6 +65,19 @@ void TpmSimulatorHandle::InitializeSimulator() {
   _plat__Signal_PowerOn();
   _TPM_Init();
   LOG(INFO) << "Simulator initialized.";
+  // Send TPM2_Startup(TPM_SU_CLEAR), ignore the result. This is normally done
+  // by firmware. Without TPM2_Startup, TpmUtility::CheckState() fails,
+  // ResourceManager aborts initialization, and trunks daemon dies.
+  unsigned int response_size;
+  unsigned char* response;
+  unsigned char startup_cmd[] = {
+    0x80, 0x01, /* TPM_ST_NO_SESSIONS */
+    0x00, 0x00, 0x00, 0x0c, /* commandSize = 12 */
+    0x00, 0x00, 0x01, 0x44, /* TPM_CC_Startup */
+    0x00, 0x00 /* TPM_SU_CLEAR */
+  };
+  ExecuteCommand(sizeof(startup_cmd), startup_cmd, &response_size, &response);
+  LOG(INFO) << "TPM2_Startup(TPM_SU_CLEAR) sent.";
 #else
   LOG(FATAL) << "Simulator not configured.";
 #endif
