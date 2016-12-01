@@ -259,6 +259,11 @@ int RunOci(const base::FilePath& container_dir,
     container_config_gid_map(config.get(), map_string.c_str());
   }
 
+  if (!container_options.alt_syscall_table.empty()) {
+    container_config_alt_syscall_table(
+        config.get(), container_options.alt_syscall_table.c_str());
+  }
+
   int rc;
   rc = container_start(container.get(), config.get());
   if (rc) {
@@ -273,6 +278,7 @@ const struct option longopts[] = {
   { "bind_mount", required_argument, NULL, 'b' },
   { "help", no_argument, NULL, 'h' },
   { "cgroup_parent", required_argument, NULL, 'p' },
+  { "alt_syscall", required_argument, NULL, 's' },
   { "use_current_user", no_argument, NULL, 'u' },
   { 0, 0, 0, 0 },
 };
@@ -282,6 +288,7 @@ void print_help(const char *argv0) {
   printf("  -b, --bind_mount=<A>:<B>       Mount path A to B container.\n");
   printf("  -h, --help                     Print this message and exit.\n");
   printf("  -p, --cgroup_parent=<NAME>     Set parent cgroup for container.\n");
+  printf("  -s, --alt_syscall=<NAME>       Set the alt-syscall table.\n");
   printf("  -u, --use_current_user         Map the current user/group only.\n");
   printf("\n");
 }
@@ -292,7 +299,7 @@ int main(int argc, char **argv) {
   ContainerOptions container_options;
   int c;
 
-  while ((c = getopt_long(argc, argv, "b:hp:u", longopts, NULL)) != -1) {
+  while ((c = getopt_long(argc, argv, "b:hp:s:u", longopts, NULL)) != -1) {
     switch (c) {
     case 'b': {
       std::istringstream ss(optarg);
@@ -313,6 +320,9 @@ int main(int argc, char **argv) {
       break;
     case 'p':
       container_options.cgroup_parent = optarg;
+      break;
+    case 's':
+      container_options.alt_syscall_table = optarg;
       break;
     case 'h':
       print_help(argv[0]);

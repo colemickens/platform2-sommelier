@@ -17,12 +17,14 @@ using BindMount = std::pair<base::FilePath, base::FilePath>;
 using BindMounts = std::vector<BindMount>;
 
 struct ContainerOptions {
+  std::string alt_syscall_table;
   BindMounts bind_mounts;
   std::string cgroup_parent;
   std::vector<std::string> extra_program_args;
   bool use_current_user;
 
   ContainerOptions() :
+    alt_syscall_table(),
     bind_mounts(),
     cgroup_parent(),
     extra_program_args(),
