@@ -37,7 +37,6 @@ const FilePath kContainersDir("/run/containers");
 const FilePath::StringType kArcDirPattern("android_*");
 const FilePath kContainerPid("container.pid");
 
-const FilePath kArcRootPrefix("/opt/google/containers/android/rootfs/root");
 const FilePath kArcBuildProp("system/build.prop");  // Relative to ARC root.
 
 // TODO(domlaskowski): Dispatch to core_collector{,32} at run time. Note that
@@ -102,6 +101,8 @@ bool HasExceptionInfo(const std::string &type);
 const char *GetSubjectTag(const std::string &type);
 
 bool GetChromeVersion(std::string *version);
+
+bool GetArcRoot(FilePath *root);
 bool GetArcProperties(std::string *version,
                       std::string *device,
                       std::string *board,
@@ -306,6 +307,12 @@ UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
     const base::FilePath &container_dir,
     const base::FilePath &core_path,
     const base::FilePath &minidump_path) {
+  FilePath root;
+  if (!GetArcRoot(&root)) {
+    LOG(ERROR) << "Failed to get ARC root";
+    return kErrorSystemIssue;
+  }
+
   ProcessImpl core_collector;
   core_collector.AddArg(kCoreCollectorPath);
   core_collector.AddArg("--minidump");
@@ -315,7 +322,7 @@ UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
   core_collector.AddArg("--proc");
   core_collector.AddArg(container_dir.value());
   core_collector.AddArg("--prefix");
-  core_collector.AddArg(kArcRootPrefix.value());
+  core_collector.AddArg(root.value());
 
   std::string error;
   int exit_code = RunAndCaptureOutput(&core_collector, STDERR_FILENO, &error);
@@ -546,12 +553,31 @@ bool GetChromeVersion(std::string *version) {
   return true;
 }
 
+bool GetArcRoot(FilePath *root) {
+  base::FileEnumerator containers(
+      kContainersDir, false, base::FileEnumerator::DIRECTORIES, kArcDirPattern);
+
+  for (FilePath container = containers.Next();
+       !container.empty();
+       container = containers.Next()) {
+    const FilePath path = container.Append("root");
+    if (base::PathExists(path)) {
+      *root = path;
+      return true;
+    }
+  }
+
+  return false;
+}
+
 bool GetArcProperties(std::string *version,
                       std::string *device,
                       std::string *board,
                       std::string *cpu_abi) {
+  FilePath root;
   brillo::KeyValueStore store;
-  if (store.Load(kArcRootPrefix.Append(kArcBuildProp)) &&
+  if (GetArcRoot(&root) &&
+      store.Load(root.Append(kArcBuildProp)) &&
       store.GetString(kFingerprintProperty, version) &&
       store.GetString(kDeviceProperty, device) &&
       store.GetString(kBoardProperty, board) &&
