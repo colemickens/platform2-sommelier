@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 # Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -350,7 +350,7 @@ REGIONS_LIST = [
         'ph', 'xkb:us::eng', 'Asia/Manila', 'en-US', _KML.ANSI,
         'Philippines', None, 25),
     Region(
-        'ru', ['xkb:us::eng' ,'xkb:ru::rus'], 'Europe/Moscow', 'ru', _KML.ANSI,
+        'ru', ['xkb:us::eng', 'xkb:ru::rus'], 'Europe/Moscow', 'ru', _KML.ANSI,
         'Russia', 'For R31+ only; R30 and earlier must use US keyboard '
         'for login', 26),
     Region(
