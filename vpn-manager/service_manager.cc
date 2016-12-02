@@ -111,9 +111,9 @@ void ServiceManager::WriteFdToSyslog(int fd,
     *partial_line = lines.back();
     lines.pop_back();
   }
-  for (size_t i = 0; i < lines.size(); ++i) {
-    LOG(INFO) << prefix << lines[i];
-    OnSyslogOutput(prefix, lines[i]);
+  for (const auto& line : lines) {
+    LOG(INFO) << prefix << line;
+    OnSyslogOutput(prefix, line);
   }
 }
 
