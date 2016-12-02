@@ -73,6 +73,21 @@ uint32_t GetIntegerExponent(const std::string& public_exponent) {
   return exponent;
 }
 
+bool AddPKCS1Padding(const std::string& input,
+                     size_t size,
+                     std::string* result) {
+  if (input.size() + 11 > size) {
+    LOG(ERROR) << "Error adding PKCS1 padding: message too long: "
+               << input.size() << " (target size " << size << ")";
+    return false;
+  }
+  result->assign("\x00\x01", 2);
+  result->append(size - input.size() - 3, '\xff');
+  result->append("\x00", 1);
+  result->append(input);
+  return true;
+}
+
 void InitTransceiver(trunks::CommandTransceiver* transceiver) {
   if (!transceiver->Init()) {
     LOG(ERROR) << "Error initializing transceiver.";
@@ -521,19 +536,48 @@ bool TPM2UtilityImpl::Sign(int key_handle,
     return false;
   }
   session_->SetEntityAuthorizationValue(auth_data);
-  std::string digest;
-  trunks::TPM_ALG_ID digest_alg;
-  if (!ParseDigestInfo(input, &digest, &digest_alg)) {
-    LOG(ERROR) << "Unknown algorithm in digest info to sign";
+  trunks::TPMT_PUBLIC public_area;
+  TPM_RC result = trunks_tpm_utility_->GetKeyPublicArea(key_handle,
+                                                        &public_area);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting key public data: "
+               << trunks::GetErrorString(result);
     return false;
   }
-  TPM_RC result = trunks_tpm_utility_->Sign(key_handle,
-                                 trunks::TPM_ALG_RSASSA,
-                                 digest_alg,
-                                 digest,
-                                 false /* don't generate hash */,
-                                 session_->GetDelegate(),
-                                 signature);
+  // If decryption is allowed for the key, do padding in software (the
+  // session layer already prepared the DigestInfo by prepending the algorithm
+  // ID) and perform raw RSA on TPM by sending Decrypt command with NULL scheme.
+  // Otherwise, strip the algorithm ID already prepended by the session level,
+  // send Sign command to the TPM with the original unencoded digest, and let
+  // TPM handle padding and encoding on its side.
+  // This is done to work with TPMs that don't support all required hashing
+  // algorithms, and for which the Decrypt attribute is set for signing keys.
+  if (public_area.object_attributes & trunks::kDecrypt) {
+    std::string padded_input;
+    if (!AddPKCS1Padding(input, public_area.unique.rsa.size, &padded_input)) {
+      return false;
+    }
+    result = trunks_tpm_utility_->AsymmetricDecrypt(key_handle,
+                                                    trunks::TPM_ALG_NULL,
+                                                    trunks::TPM_ALG_NULL,
+                                                    padded_input,
+                                                    session_->GetDelegate(),
+                                                    signature);
+  } else {
+    std::string digest;
+    trunks::TPM_ALG_ID digest_alg;
+    if (!ParseDigestInfo(input, &digest, &digest_alg)) {
+      LOG(ERROR) << "Unknown algorithm in digest info to sign";
+      return false;
+    }
+    result = trunks_tpm_utility_->Sign(key_handle,
+                                       trunks::TPM_ALG_RSASSA,
+                                       digest_alg,
+                                       digest,
+                                       false /* don't generate hash */,
+                                       session_->GetDelegate(),
+                                       signature);
+  }
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error performing sign operation: "
                << trunks::GetErrorString(result);

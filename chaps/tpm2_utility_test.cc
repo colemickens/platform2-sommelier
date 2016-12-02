@@ -601,7 +601,31 @@ TEST_F(TPM2UtilityTest, SignSuccess) {
   int key_handle = 43;
   std::string input = GetDigestAlgorithmEncoding(DigestAlgorithm::SHA1);
   std::string output;
+  trunks::TPMT_PUBLIC public_data;
+  public_data.parameters.rsa_detail.exponent = 0x10001;
+  public_data.object_attributes = trunks::kSign;
+  public_data.unique.rsa = GetValidRSAPublicKey();
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(public_data),
+                      Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_, Sign(key_handle, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_TRUE(utility.Sign(key_handle, input, &output));
+}
+
+TEST_F(TPM2UtilityTest, SignSuccessWithDecrypt) {
+  TPM2UtilityImpl utility(factory_.get());
+  int key_handle = 43;
+  std::string input = GetDigestAlgorithmEncoding(DigestAlgorithm::SHA1);
+  std::string output;
+  trunks::TPMT_PUBLIC public_data;
+  public_data.parameters.rsa_detail.exponent = 0x10001;
+  public_data.object_attributes = trunks::kSign | trunks::kDecrypt;
+  public_data.unique.rsa = GetValidRSAPublicKey();
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(public_data),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, AsymmetricDecrypt(key_handle, _, _, _,  _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_TRUE(utility.Sign(key_handle, input, &output));
 }
@@ -611,8 +635,63 @@ TEST_F(TPM2UtilityTest, SignFailure) {
   int key_handle = 43;
   std::string input = GetDigestAlgorithmEncoding(DigestAlgorithm::SHA1);
   std::string output;
+  trunks::TPMT_PUBLIC public_data;
+  public_data.parameters.rsa_detail.exponent = 0x10001;
+  public_data.object_attributes = trunks::kSign;
+  public_data.unique.rsa = GetValidRSAPublicKey();
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(public_data),
+                      Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_, Sign(key_handle, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_FALSE(utility.Sign(key_handle, input, &output));
+}
+
+TEST_F(TPM2UtilityTest, SignFailureWithDecrypt) {
+  TPM2UtilityImpl utility(factory_.get());
+  int key_handle = 43;
+  std::string input = GetDigestAlgorithmEncoding(DigestAlgorithm::SHA1);
+  std::string output;
+  trunks::TPMT_PUBLIC public_data;
+  public_data.parameters.rsa_detail.exponent = 0x10001;
+  public_data.object_attributes = trunks::kSign | trunks::kDecrypt;
+  public_data.unique.rsa = GetValidRSAPublicKey();
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(public_data),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, AsymmetricDecrypt(key_handle, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_FALSE(utility.Sign(key_handle, input, &output));
+}
+
+TEST_F(TPM2UtilityTest, SignFailureBadKeySize) {
+  TPM2UtilityImpl utility(factory_.get());
+  int key_handle = 43;
+  std::string input;
+  std::string output;
+  trunks::TPMT_PUBLIC public_data = {};
+  public_data.object_attributes = trunks::kSign | trunks::kDecrypt;
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(public_data),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, Sign(key_handle, _, _, _, _, _, _))
+      .Times(0);
+  EXPECT_CALL(mock_tpm_utility_, AsymmetricDecrypt(key_handle, _, _, _, _, _))
+      .Times(0);
+  EXPECT_FALSE(utility.Sign(key_handle, input, &output));
+}
+
+TEST_F(TPM2UtilityTest, SignFailurePublicArea) {
+  TPM2UtilityImpl utility(factory_.get());
+  int key_handle = 43;
+  std::string input;
+  std::string output;
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_CALL(mock_tpm_utility_, Sign(key_handle, _, _, _, _, _, _))
+      .Times(0);
+  EXPECT_CALL(mock_tpm_utility_, AsymmetricDecrypt(key_handle, _, _, _, _, _))
+      .Times(0);
   EXPECT_FALSE(utility.Sign(key_handle, input, &output));
 }
 
@@ -621,6 +700,13 @@ TEST_F(TPM2UtilityTest, SignFailureUnknownAlgorithm) {
   int key_handle = 43;
   std::string input;
   std::string output;
+  trunks::TPMT_PUBLIC public_data;
+  public_data.parameters.rsa_detail.exponent = 0x10001;
+  public_data.object_attributes = trunks::kSign;
+  public_data.unique.rsa = GetValidRSAPublicKey();
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(public_data),
+                      Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _, _, _, _, _))
       .Times(0);
   EXPECT_FALSE(utility.Sign(key_handle, input, &output));
