@@ -29,7 +29,7 @@ const size_t kMaxNumberOfNetworks = 16;
 
 const char kLogDirectory[] = "/var/log/gct";
 const char kNonVolatileDirectory[] = "/var/cache/gct";
-const char *const InitalDirectoriesToCreate[] = {
+const char *const kInitalDirectoriesToCreate[] = {
   kLogDirectory, kNonVolatileDirectory
 };
 
@@ -461,8 +461,7 @@ bool GdmDriver::DisconnectDeviceFromNetwork(GdmDevice *device) {
 }
 
 bool GdmDriver::CreateInitialDirectories() const {
-  for (size_t i = 0; i < arraysize(InitalDirectoriesToCreate); ++i) {
-    const char *directory = InitalDirectoriesToCreate[i];
+  for (const char *directory : kInitalDirectoriesToCreate) {
     if (!base::CreateDirectory(base::FilePath(directory))) {
       LOG(ERROR) << "Failed to create directory '" << directory << "'";
       return false;
