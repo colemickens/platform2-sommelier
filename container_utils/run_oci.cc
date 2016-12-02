@@ -236,8 +236,10 @@ int RunOci(const base::FilePath& container_dir,
   }
 
   AppendMounts(container_options.bind_mounts, config.get());
+  // Create a container based on the config.  The run_dir argument will be
+  // unused as this container will be run in place where it was mounted.
   std::unique_ptr<container, decltype(&container_destroy)>
-      container(container_new(oci_config->hostname.c_str(), "/var/run"),
+      container(container_new(oci_config->hostname.c_str(), "/unused"),
                 &container_destroy);
 
   container_config_keep_fds_open(config.get());
