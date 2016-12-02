@@ -237,7 +237,8 @@ int RunOci(const base::FilePath& container_dir,
 
   AppendMounts(container_options.bind_mounts, config.get());
   std::unique_ptr<container, decltype(&container_destroy)>
-      container(container_new("oci", "/var/run"), &container_destroy);
+      container(container_new(oci_config->hostname.c_str(), "/var/run"),
+                &container_destroy);
 
   container_config_keep_fds_open(config.get());
 
