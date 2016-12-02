@@ -321,6 +321,56 @@ const char kStrippedJsonData[] = R"json(
     }
 )json";
 
+const char kInvalidHostnameJsonData[] = R"json(
+    {
+        "ociVersion": "1.0.0-rc1",
+        "platform": {
+            "os": "linux",
+            "arch": "amd64"
+        },
+        "root": {
+            "path": "rootfs",
+            "readonly": true
+        },
+        "process": {
+            "terminal": true,
+            "user": {
+                "uid": 0,
+                "gid": 0
+            },
+            "args": [
+                "sh"
+            ],
+            "cwd": "/",
+            "noNewPrivileges": true
+        },
+        "hostname": "../secrets",
+        "mounts": [
+            {
+                "destination": "/proc",
+                "type": "proc",
+                "source": "proc"
+            }
+        ],
+        "linux": {
+            "uidMappings": [
+                {
+                    "hostID": 1000,
+                    "containerID": 0,
+                    "size": 10
+                }
+            ],
+            "gidMappings": [
+                {
+                    "hostID": 1000,
+                    "containerID": 0,
+                    "size": 10
+                }
+            ]
+        }
+    }
+)json";
+
 }  // anonymous namespace
 
 namespace container_utils {
@@ -381,6 +431,12 @@ TEST(OciConfigParserTest, TestStrippedConfig) {
   OciConfigPtr stripped_config(new OciConfig());
   ASSERT_TRUE(ParseContainerConfig(kStrippedJsonData,
                                    stripped_config));
+}
+
+TEST(OciConfigParserTest, TestInvalidHostnameConfig) {
+  OciConfigPtr invalid_config(new OciConfig());
+  ASSERT_FALSE(ParseContainerConfig(kInvalidHostnameJsonData,
+                                    invalid_config));
 }
 
 }  // namespace container_utils

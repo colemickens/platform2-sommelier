@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include <string>
+#include <regex>
 #include <vector>
 
 #include <base/json/json_reader.h>
@@ -368,6 +369,21 @@ bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
   return true;
 }
 
+bool HostnameValid(const std::string& hostname) {
+  if (hostname.length() > 255)
+    return false;
+
+  const std::regex name("^[0-9a-zA-Z]([0-9a-zA-Z-]*[0-9a-zA-Z])?$");
+  if (!std::regex_match(hostname, name))
+    return false;
+
+  const std::regex double_dash("--");
+  if (std::regex_match(hostname, double_dash))
+    return false;
+
+  return true;
+}
+
 // Parses the configuration file for the container.  The config file specifies
 // basic filesystem info and details about the process to be run.  namespace,
 // cgroup, and syscall configurations are also specified
@@ -379,6 +395,10 @@ bool ParseConfigDict(const base::DictionaryValue& config_root_dict,
   }
   if (!config_root_dict.GetString("hostname", &config_out->hostname)) {
     LOG(ERROR) << "Failed to parse hostname";
+    return false;
+  }
+  if (!HostnameValid(config_out->hostname)) {
+    LOG(ERROR) << "Invalid hostname " << config_out->hostname;
     return false;
   }
 
