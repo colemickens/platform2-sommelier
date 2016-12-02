@@ -38,22 +38,24 @@ bool Process::BuildArgumentsArray() {
     return false;
 
   size_t arguments_buffer_size = 0;
-  for (size_t i = 0; i < num_arguments; ++i) {
-    arguments_buffer_size += arguments_[i].size() + 1;
+  for (const auto& argument : arguments_) {
+    arguments_buffer_size += argument.size() + 1;
   }
 
   arguments_buffer_.resize(arguments_buffer_size);
   arguments_array_.resize(num_arguments + 1);
 
+  char** array_pointer = arguments_array_.data();
   char* buffer_pointer = arguments_buffer_.data();
-  for (size_t i = 0; i < num_arguments; ++i) {
-    arguments_array_[i] = buffer_pointer;
-    size_t argument_size = arguments_[i].size();
-    arguments_[i].copy(buffer_pointer, argument_size);
+  for (const auto& argument : arguments_) {
+    *array_pointer = buffer_pointer;
+    size_t argument_size = argument.size();
+    argument.copy(buffer_pointer, argument_size);
     buffer_pointer[argument_size] = '\0';
     buffer_pointer += argument_size + 1;
+    ++array_pointer;
   }
-  arguments_array_[num_arguments] = nullptr;
+  *array_pointer = nullptr;
   return true;
 }
 

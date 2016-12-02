@@ -62,8 +62,7 @@ MountErrorType ExternalMounter::MountImpl() {
 }
 
 string ExternalMounter::GetMountProgramPath() const {
-  for (size_t i = 0; i < arraysize(kMountProgramPaths); ++i) {
-    string path = kMountProgramPaths[i];
+  for (const char* path : kMountProgramPaths) {
     if (base::PathExists(FilePath(path)))
       return path;
   }

@@ -24,9 +24,9 @@ class FileReaderTest : public ::testing::Test {
     string line;
     EXPECT_FALSE(reader_.ReadLine(&line));
     EXPECT_TRUE(reader_.Open(path));
-    for (size_t i = 0; i < lines.size(); ++i) {
+    for (const auto& expected_line : lines) {
       EXPECT_TRUE(reader_.ReadLine(&line));
-      EXPECT_EQ(lines[i], line);
+      EXPECT_EQ(expected_line, line);
     }
     EXPECT_FALSE(reader_.ReadLine(&line));
     reader_.Close();

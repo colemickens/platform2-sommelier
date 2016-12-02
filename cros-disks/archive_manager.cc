@@ -257,9 +257,9 @@ string ArchiveManager::GetAVFSPath(const string& path,
   // If no parent path is a mounted via AVFS, we are not mounting a nested
   // archive and thus construct the virtual path of the archive based on a
   // corresponding AVFS mount path.
-  for (size_t i = 0; i < arraysize(kAVFSPathMapping); ++i) {
-    FilePath base_path(kAVFSPathMapping[i].base_path);
-    FilePath avfs_path(kAVFSPathMapping[i].avfs_path);
+  for (const auto& mapping : kAVFSPathMapping) {
+    FilePath base_path(mapping.base_path);
+    FilePath avfs_path(mapping.avfs_path);
     if (base_path.AppendRelativePath(file_path, &avfs_path)) {
       return avfs_path.value() + handler_iterator->second;
     }
@@ -290,15 +290,14 @@ bool ArchiveManager::StartAVFS() {
   setenv("AVFS_LOGFILE", kAVFSLogFile, 1);
 
   avfs_started_ = true;
-  for (size_t i = 0; i < arraysize(kAVFSPathMapping); ++i) {
-    bool base_path_exists =
-        base::PathExists(FilePath(kAVFSPathMapping[i].base_path));
-    const string& avfs_path = kAVFSPathMapping[i].avfs_path;
+  for (const auto& mapping : kAVFSPathMapping) {
+    bool base_path_exists = base::PathExists(FilePath(mapping.base_path));
+    const string& avfs_path = mapping.avfs_path;
     if (!base_path_exists ||
         !platform()->CreateDirectory(avfs_path) ||
         !platform()->SetOwnership(avfs_path, user_id, group_id) ||
         !platform()->SetPermissions(avfs_path, S_IRWXU) ||
-        !MountAVFSPath(kAVFSPathMapping[i].base_path, avfs_path)) {
+        !MountAVFSPath(mapping.base_path, avfs_path)) {
       StopAVFS();
       return false;
     }
@@ -313,8 +312,8 @@ bool ArchiveManager::StopAVFS() {
   avfs_started_ = false;
   // Unmounts all mounted archives before unmounting AVFS mounts.
   bool all_unmounted = UnmountAll();
-  for (size_t i = 0; i < arraysize(kAVFSPathMapping); ++i) {
-    const string& path = kAVFSPathMapping[i].avfs_path;
+  for (const auto& mapping : kAVFSPathMapping) {
+    const string& path = mapping.avfs_path;
     if (!base::PathExists(FilePath(path)))
       continue;
 

@@ -120,8 +120,8 @@ void FormatManager::FormattingFinished(pid_t pid, int status) {
 }
 
 string FormatManager::GetFormatProgramPath(const string& filesystem) const {
-  for (size_t i = 0; i < arraysize(kFormatProgramPaths); ++i) {
-    string path = kFormatProgramPaths[i] + filesystem;
+  for (const char* program_path : kFormatProgramPaths) {
+    string path = program_path + filesystem;
     if (base::PathExists(FilePath(path)))
       return path;
   }
@@ -129,8 +129,8 @@ string FormatManager::GetFormatProgramPath(const string& filesystem) const {
 }
 
 bool FormatManager::IsFilesystemSupported(const string& filesystem) const {
-  for (size_t i = 0; i < arraysize(kSupportedFilesystems); ++i) {
-    if (filesystem == kSupportedFilesystems[i])
+  for (const char* supported_filesystem : kSupportedFilesystems) {
+    if (filesystem == supported_filesystem)
       return true;
   }
   return false;

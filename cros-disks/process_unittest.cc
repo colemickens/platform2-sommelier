@@ -26,17 +26,17 @@ TEST_F(ProcessTest, GetArguments) {
   static const char* const kTestArguments[] = {
     "/bin/ls", "-l", "", "."
   };
-  static const size_t kNumTestArguments = arraysize(kTestArguments);
-  for (size_t i = 0; i < kNumTestArguments; ++i) {
-    process_.AddArgument(kTestArguments[i]);
+  for (const char* test_argument : kTestArguments) {
+    process_.AddArgument(test_argument);
   }
 
   char** arguments = process_.GetArguments();
   EXPECT_NE(nullptr, arguments);
-  for (size_t i = 0; i < kNumTestArguments; ++i) {
-    EXPECT_STREQ(kTestArguments[i], arguments[i]);
+  for (const char* test_argument : kTestArguments) {
+    EXPECT_STREQ(test_argument, *arguments);
+    ++arguments;
   }
-  EXPECT_EQ(nullptr, arguments[kNumTestArguments]);
+  EXPECT_EQ(nullptr, *arguments);
 }
 
 TEST_F(ProcessTest, GetArgumentsWithNoArgumentsAdded) {

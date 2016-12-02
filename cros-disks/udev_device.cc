@@ -311,8 +311,8 @@ bool UdevDevice::IsHidden() {
   // Hide special partitions based on partition type.
   string partition_type = GetProperty(kPropertyPartitionEntryType);
   if (!partition_type.empty()) {
-    for (size_t i = 0; i < arraysize(kPartitionTypesToHide); ++i) {
-      if (partition_type == kPartitionTypesToHide[i])
+    for (const char* partition_type_to_hide : kPartitionTypesToHide) {
+      if (partition_type == partition_type_to_hide)
         return true;
     }
   }
