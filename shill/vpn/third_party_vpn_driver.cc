@@ -60,7 +60,7 @@ const int32_t kConstantMaxMtu = (1 << 16) - 1;
 const int32_t kConnectTimeoutSeconds = 60*5;
 
 std::string IPAddressFingerprint(const IPAddress& address) {
-  static const std::string hex_to_bin[] = {
+  static const char* const hex_to_bin[] = {
       "0000", "0001", "0010", "0011", "0100", "0101", "0110", "0111",
       "1000", "1001", "1010", "1011", "1100", "1101", "1110", "1111"};
   std::string fingerprint;
