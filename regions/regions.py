@@ -465,7 +465,10 @@ REGIONS_LIST = [
         'Uruguay', None, 216),
     Region(
         'tr', ['xkb:tr::tur', 'xkb:tr:f:tur'], 'Europe/Istanbul',
-        ['tr', 'en-GB'], _KML.ISO, 'Turkey', None, 224)]
+        ['tr', 'en-GB'], _KML.ISO, 'Turkey', None, 224),
+    Region(
+        'ar', 'xkb:latam::spa', 'America/Argentina/Buenos_Aires',
+        ['es-AR'], _KML.ANSI, 'Argentina', None, 251)]
 
 """A list of :py:class:`regions.Region` objects for
 all **confirmed** regions.  A confirmed region is a region whose
@@ -1078,16 +1081,6 @@ UNCONFIRMED_REGIONS_LIST = [
     Region(
         'as', 'xkb:as::eng', 'Pacific/Pago_Pago', ['en-AS', 'sm', 'to'],
         _KML.ANSI, 'American Samoa', None, 250),
-    Region(
-        'ar', 'xkb:ar::spa',
-        ['America/Argentina/Buenos_Aires', 'America/Argentina/Cordoba',
-         'America/Argentina/Salta', 'America/Argentina/Jujuy',
-         'America/Argentina/Tucuman', 'America/Argentina/Catamarca',
-         'America/Argentina/La_Rioja', 'America/Argentina/San_Juan',
-         'America/Argentina/Mendoza', 'America/Argentina/San_Luis',
-         'America/Argentina/Rio_Gallegos', 'America/Argentina/Ushuaia'],
-        ['es-AR', 'en', 'it', 'de', 'fr', 'gn'], _KML.ANSI, 'Argentina',
-        None, 251),
     Region(
         'aw', 'xkb:aw::nld', 'America/Aruba', ['nl-AW', 'es', 'en'],
         _KML.ANSI, 'Aruba', None, 252),
