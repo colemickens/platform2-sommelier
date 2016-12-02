@@ -25,8 +25,8 @@ class EventDispatcherTest : public testing::Test {
  protected:
   void TearDown() {
     // Close all file descriptors opened by CreatePollFileDescriptor().
-    for (size_t i = 0; i < file_descriptors_.size(); ++i) {
-      close(file_descriptors_[i]);
+    for (int file_descriptor : file_descriptors_) {
+      close(file_descriptor);
     }
     file_descriptors_.clear();
   }
