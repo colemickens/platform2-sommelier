@@ -14,8 +14,10 @@
 
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
+#include <brillo/process_reaper.h>
 
 #include "arc-networkd/arc_ip_config.h"
+#include "arc-networkd/helper_process.h"
 #include "arc-networkd/multicast_forwarder.h"
 #include "arc-networkd/neighbor_finder.h"
 #include "arc-networkd/options.h"
@@ -27,7 +29,8 @@ namespace arc_networkd {
 // Main class that runs the mainloop and responds to LAN interface changes.
 class Manager final : public brillo::DBusDaemon {
  public:
-  explicit Manager(const Options& opt);
+  explicit Manager(const Options& opt,
+                   std::unique_ptr<HelperProcess> ip_helper);
 
  protected:
   int OnInit() override;
@@ -35,6 +38,9 @@ class Manager final : public brillo::DBusDaemon {
  private:
   // Called once, after the dbus connection is established.
   void InitialSetup();
+
+  // Delete ARC IPv6 address (if any).
+  void ClearArcIp();
 
   // Callback from ShillClient, invoked whenever the default network
   // interface changes or goes away.
@@ -50,16 +56,23 @@ class Manager final : public brillo::DBusDaemon {
   // collision was found or not found.
   void OnNeighborCheckResult(bool found);
 
+  // Callback from ProcessReaper to notify Manager that one of the
+  // subprocesses died.
+  void OnSubprocessExited(pid_t pid, const siginfo_t& info);
+
+  // Callback from Daemon to notify Manager that a signal was received and
+  // the daemon should clean up in preparation to exit.
+  void OnShutdown(int* exit_code) override;
+
   // Persistent objects.
+  brillo::ProcessReaper process_reaper_;
   std::unique_ptr<ShillClient> shill_client_;
-  std::unique_ptr<ArcIpConfig> arc_ip_config_;
-  int con_init_tries_;
+  std::unique_ptr<HelperProcess> ip_helper_;
 
   std::string int_ifname_;
   std::string lan_ifname_;
   std::string con_ifname_;
 
-  pid_t con_netns_;
   struct in6_addr random_address_;
   int random_address_prefix_len_;
   int random_address_tries_;

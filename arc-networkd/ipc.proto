@@ -1,0 +1,26 @@
+// Copyright 2016 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto2";
+option optimize_for = LITE_RUNTIME;
+
+package arc_networkd;
+
+// Best practice is to use optional fields, but since the client and server
+// are always in sync, these messages use required fields to save on
+// validation.
+
+message SetArcIp {
+  required bytes prefix = 1;
+  required int32 prefix_len = 2;
+  required bytes router = 3;
+  required string lan_ifname = 4;
+}
+
+message IpHelperMessage {
+  oneof message_type {
+    SetArcIp set_arc_ip = 1;
+    bool clear_arc_ip = 2;
+  }
+}

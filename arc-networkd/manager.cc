@@ -7,10 +7,14 @@
 #include <arpa/inet.h>
 #include <stdint.h>
 
+#include <utility>
+
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
-#include <base/time/time.h>
+#include <brillo/minijail/minijail.h>
+
+#include "arc-networkd/ipc.pb.h"
 
 namespace {
 
@@ -21,24 +25,39 @@ const uint16_t kSsdpPort = 1900;
 
 const int kMaxRandomAddressTries = 3;
 
-const int kContainerRetryDelaySeconds = 5;
-const int kMaxContainerRetries = 60;
+const char kUnprivilegedUser[] = "arc-networkd";
+const uint64_t kManagerCapMask = CAP_TO_MASK(CAP_NET_RAW);
 
 }  // namespace
 
 namespace arc_networkd {
 
-Manager::Manager(const Options& opt) :
-    con_init_tries_(0),
-    int_ifname_(opt.int_ifname),
-    con_ifname_(opt.con_ifname),
-    con_netns_(opt.con_netns) {}
+Manager::Manager(const Options& opt, std::unique_ptr<HelperProcess> ip_helper)
+    : int_ifname_(opt.int_ifname), con_ifname_(opt.con_ifname) {
+  ip_helper_ = std::move(ip_helper);
+}
 
 int Manager::OnInit() {
-  arc_ip_config_.reset(new ArcIpConfig(int_ifname_, con_ifname_, con_netns_));
-  CHECK(arc_ip_config_->Init());
+  // Run with minimal privileges.
+  brillo::Minijail* m = brillo::Minijail::GetInstance();
+  struct minijail* jail = m->New();
 
-  // This needs to execute after DBusDaemon::OnInit().
+  // Most of these return void, but DropRoot() can fail if the user/group
+  // does not exist.
+  CHECK(m->DropRoot(jail, kUnprivilegedUser, kUnprivilegedUser));
+  m->UseCapabilities(jail, kManagerCapMask);
+  m->Enter(jail);
+  m->Destroy(jail);
+
+  // Handle subprocess lifecycle.
+  process_reaper_.Register(this);
+  process_reaper_.WatchForChild(FROM_HERE,
+                                ip_helper_->pid(),
+                                base::Bind(&Manager::OnSubprocessExited,
+                                           weak_factory_.GetWeakPtr(),
+                                           ip_helper_->pid()));
+
+  // This needs to execute after DBusDaemon::OnInit() creates bus_.
   base::MessageLoopForIO::current()->PostTask(
       FROM_HERE,
       base::Bind(&Manager::InitialSetup, weak_factory_.GetWeakPtr()));
@@ -47,18 +66,6 @@ int Manager::OnInit() {
 }
 
 void Manager::InitialSetup() {
-  if (!arc_ip_config_->ContainerInit()) {
-    if (++con_init_tries_ >= kMaxContainerRetries) {
-      LOG(FATAL) << "Container failed to come up";
-    } else {
-      base::MessageLoopForIO::current()->PostDelayedTask(
-          FROM_HERE,
-          base::Bind(&Manager::InitialSetup, weak_factory_.GetWeakPtr()),
-          base::TimeDelta::FromSeconds(kContainerRetryDelaySeconds));
-    }
-    return;
-  }
-
   shill_client_.reset(new ShillClient(std::move(bus_)));
   shill_client_->RegisterDefaultInterfaceChangedHandler(
       base::Bind(&Manager::OnDefaultInterfaceChanged,
@@ -66,7 +73,7 @@ void Manager::InitialSetup() {
 }
 
 void Manager::OnDefaultInterfaceChanged(const std::string& ifname) {
-  arc_ip_config_->Clear();
+  ClearArcIp();
   neighbor_finder_.reset();
 
   lan_ifname_ = ifname;
@@ -151,8 +158,30 @@ void Manager::OnNeighborCheckResult(bool found) {
               << inet_ntop(AF_INET6, &random_address_, buf, sizeof(buf))
               << "/128 route "
               << inet_ntop(AF_INET6, &router, buf, sizeof(buf));
-    arc_ip_config_->Set(random_address_, 128, router, lan_ifname_);
+
+    // Set up new ARC IPv6 address, NDP, and forwarding rules.
+    IpHelperMessage outer_msg;
+    SetArcIp* inner_msg = outer_msg.mutable_set_arc_ip();
+    inner_msg->set_prefix(&random_address_, sizeof(struct in6_addr));
+    inner_msg->set_prefix_len(128);
+    inner_msg->set_router(&router, sizeof(struct in6_addr));
+    inner_msg->set_lan_ifname(lan_ifname_);
+    ip_helper_->SendMessage(outer_msg);
   }
+}
+
+void Manager::ClearArcIp() {
+  IpHelperMessage msg;
+  msg.set_clear_arc_ip(true);
+  ip_helper_->SendMessage(msg);
+}
+
+void Manager::OnShutdown(int* exit_code) {
+  ClearArcIp();
+}
+
+void Manager::OnSubprocessExited(pid_t pid, const siginfo_t& info) {
+  LOG(FATAL) << "Subprocess " << pid << " exited unexpectedly";
 }
 
 }  // namespace arc_networkd

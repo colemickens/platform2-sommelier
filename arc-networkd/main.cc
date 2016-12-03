@@ -4,10 +4,16 @@
 
 #include <unistd.h>
 
+#include <memory>
+#include <utility>
+
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
+#include "arc-networkd/helper_process.h"
+#include "arc-networkd/ip_helper.h"
 #include "arc-networkd/manager.h"
 #include "arc-networkd/options.h"
 
@@ -18,6 +24,10 @@ int main(int argc, char* argv[]) {
   DEFINE_string(container_interface, "arc0",
                 "Name of the guest interface that connects to the host");
   DEFINE_int32(con_netns, 0, "Container's network namespace (PID)");
+  DEFINE_int32(
+      ip_helper_fd,
+      -1,
+      "Control socket for starting an IpHelper subprocess. Used internally.");
 
   brillo::FlagHelper::Init(argc, argv, "ARC network daemon");
 
@@ -31,6 +41,16 @@ int main(int argc, char* argv[]) {
   opt.con_ifname = FLAGS_container_interface;
   opt.con_netns = FLAGS_con_netns;
 
-  arc_networkd::Manager manager{opt};
-  return manager.Run();
+  if (FLAGS_ip_helper_fd >= 0) {
+    base::ScopedFD fd(FLAGS_ip_helper_fd);
+    arc_networkd::IpHelper ip_helper{opt, std::move(fd)};
+    return ip_helper.Run();
+  } else {
+    std::unique_ptr<arc_networkd::HelperProcess> ip_helper(
+        new arc_networkd::HelperProcess());
+    ip_helper->Start(argc, argv, "--ip_helper_fd");
+
+    arc_networkd::Manager manager{opt, std::move(ip_helper)};
+    return manager.Run();
+  }
 }

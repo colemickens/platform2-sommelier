@@ -6,15 +6,29 @@
         'libchrome-<(libbase_ver)',
         'libndp',
         'libshill-client',
+        'protobuf-lite',
       ],
     },
   },
   'targets': [
     {
+      'target_name': 'protos',
+      'type': 'static_library',
+      'variables': {
+        'proto_in_dir': '.',
+        'proto_out_dir': 'include/arc-networkd',
+      },
+      'sources': ['<(proto_in_dir)/ipc.proto'],
+      'includes': ['../common-mk/protoc.gypi'],
+    },
+    {
       'target_name': 'arc-networkd',
       'type': 'executable',
+      'dependencies': ['protos'],
       'sources': [
         'arc_ip_config.cc',
+        'helper_process.cc',
+        'ip_helper.cc',
         'main.cc',
         'manager.cc',
         'multicast_forwarder.cc',
