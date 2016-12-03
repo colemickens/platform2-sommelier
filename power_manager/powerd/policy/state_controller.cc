@@ -664,6 +664,7 @@ void StateController::UpdateSettingsAndState() {
   wait_for_initial_user_activity_ = false;
   double presentation_factor = 1.0;
   double user_activity_factor = 1.0;
+  reason_for_ignoring_idle_action_.clear();
 
   // Now update them with values that were set in the policy.
   if (!ignore_external_policy_) {
@@ -702,16 +703,21 @@ void StateController::UpdateSettingsAndState() {
   // prevents the system from shutting down on idle if no session has been
   // started.
   if (disable_idle_suspend_ &&
-      (idle_action_ == Action::SUSPEND || idle_action_ == Action::SHUT_DOWN))
+      (idle_action_ == Action::SUSPEND || idle_action_ == Action::SHUT_DOWN)) {
     idle_action_ = Action::DO_NOTHING;
+    reason_for_ignoring_idle_action_ =
+        "disable_idle_suspend powerd pref is set (done automatically in dev)";
+  }
 
   // Avoid suspending or shutting down due to inactivity while a system
   // update is being applied on AC power so users on slow connections can
   // get updates.  Continue suspending on lid-close so users don't get
   // confused, though.
   if (updater_state_ == UpdaterState::UPDATING && on_ac &&
-      (idle_action_ == Action::SUSPEND || idle_action_ == Action::SHUT_DOWN))
+      (idle_action_ == Action::SUSPEND || idle_action_ == Action::SHUT_DOWN)) {
     idle_action_ = Action::DO_NOTHING;
+    reason_for_ignoring_idle_action_ = "applying update on AC power";
+  }
 
   // Ignore the lid being closed while presenting to support docked mode.
   if (allow_docked_mode_ && presenting)
@@ -852,6 +858,10 @@ void StateController::UpdateState() {
   Action idle_action_to_perform = Action::DO_NOTHING;
   if (idle_duration >= delays_.idle) {
     if (!idle_action_performed_) {
+      if (!reason_for_ignoring_idle_action_.empty()) {
+        LOG(INFO) << "Not performing idle action because "
+                  << reason_for_ignoring_idle_action_;
+      }
       idle_action_to_perform = idle_action_;
       if (!delegate_->IsOobeCompleted()) {
         LOG(INFO) << "Not performing idle action without OOBE completed";

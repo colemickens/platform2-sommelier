@@ -403,6 +403,11 @@ class StateController : public PrefsObserver {
   Delays pref_ac_delays_;
   Delays pref_battery_delays_;
 
+  // Human-readable explanation for why the idle action was ignored. This is set
+  // by UpdateSettingsAndState() and logged by UpdateState() when the action
+  // would actually be performed.
+  std::string reason_for_ignoring_idle_action_;
+
   DISALLOW_COPY_AND_ASSIGN(StateController);
 };
 
