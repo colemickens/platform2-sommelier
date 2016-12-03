@@ -28,6 +28,8 @@ do { \
 	ptr = NULL; \
 } while(0)
 
+#define MAX_NUM_SETFILES_ARGS 128
+
 static int container_teardown(struct container *c);
 
 static int strdup_and_free(char **dest, const char *src)
@@ -611,7 +613,7 @@ static int setup_mount_destination(const struct container_mount *mnt,
 /* Fork and exec the setfiles command to configure the selinux policy. */
 static int run_setfiles_command(const struct container *c,
 				const struct container_config *config,
-				const char *dest)
+				char *const *destinations, size_t num_destinations)
 {
 	int rc;
 	int status;
@@ -621,31 +623,29 @@ static int run_setfiles_command(const struct container *c,
 	if (!config->run_setfiles)
 		return 0;
 
-	/* Really gross hack to avoid setfiles on /data, this should be removed
-	 * when data isn't under /home/chronos/user where we can't access it as
-	 * the android user.
-	 * TODO(b/28705740) - Fix permission to the data directory.
-	 */
-	if (strlen(dest) >= 5 && !strcmp(&dest[strlen(dest) - 5], "/data"))
-		return 0;
-
 	if (asprintf(&context_path, "%s/file_contexts",
 		     c->runfsroot) < 0)
 		return -errno;
 
 	pid = fork();
 	if (pid == 0) {
-		const char *argv[] = {
-			config->run_setfiles,
-			"-r",
-			c->runfsroot,
-			context_path,
-			dest,
-			NULL,
-		};
+		size_t i;
+		size_t arg_index = 0;
+		const char *argv[MAX_NUM_SETFILES_ARGS];
 		const char *env[] = {
 			NULL,
 		};
+
+		argv[arg_index++] = config->run_setfiles;
+		argv[arg_index++] = "-r";
+		argv[arg_index++] = c->runfsroot;
+		argv[arg_index++] = context_path;
+		if (arg_index + num_destinations >= MAX_NUM_SETFILES_ARGS)
+			_exit(-E2BIG);
+		for (i = 0; i < num_destinations; ++i) {
+			argv[arg_index++] = destinations[i];
+		}
+		argv[arg_index] = NULL;
 
 		execve(argv[0], (char *const*)argv, (char *const*)env);
 
@@ -923,6 +923,8 @@ int container_start(struct container *c, const struct container_config *config)
 	int rc = 0;
 	unsigned int i;
 	int uid_userns, gid_userns;
+	char **destinations;
+	size_t num_destinations;
 
 	if (!c)
 		return -EINVAL;
@@ -991,21 +993,42 @@ int container_start(struct container *c, const struct container_config *config)
 	}
 
 	/* Potentailly run setfiles on mounts configured outside of the jail */
+	destinations = calloc(config->num_mounts, sizeof(char *));
+	num_destinations = 0;
 	for (i = 0; i < config->num_mounts; i++) {
 		const struct container_mount *mnt = &config->mounts[i];
-		char *dest;
+		char* dest = mnt->destination;
 
 		if (mnt->mount_in_ns)
 			continue;
 		if (mnt->flags & MS_RDONLY)
 			continue;
-		if (asprintf(&dest, "%s%s", c->runfsroot, mnt->destination) < 0)
+
+		/* A hack to avoid setfiles on /data. */
+		if (!strcmp(dest, "/data"))
+			continue;
+
+		if (asprintf(&dest, "%s%s", c->runfsroot, mnt->destination) < 0) {
+			size_t j;
+			for (j = 0; j < num_destinations; ++j) {
+				free(destinations[j]);
+			}
+			free(destinations);
 			goto error_rmdir;
-		rc = run_setfiles_command(c, config, dest);
-		free(dest);
-		if (rc)
-			goto error_rmdir;
+		}
+
+		destinations[num_destinations++] = dest;
 	}
+	if (num_destinations) {
+		size_t i;
+		rc = run_setfiles_command(c, config, destinations, num_destinations);
+		for (i = 0; i < num_destinations; ++i) {
+			free(destinations[i]);
+		}
+	}
+	free(destinations);
+	if (rc)
+		goto error_rmdir;
 
 	/* Setup CPU cgroup params. */
 	if (config->cpu_cgparams.shares) {
