@@ -152,11 +152,9 @@ void UserCollectorBase::LogCrash(const std::string &message,
 bool UserCollectorBase::GetFirstLineWithPrefix(
     const std::vector<std::string> &lines,
     const char *prefix, std::string *line) {
-  std::vector<std::string>::const_iterator line_iterator;
-  for (line_iterator = lines.begin(); line_iterator != lines.end();
-       ++line_iterator) {
-    if (line_iterator->find(prefix) == 0) {
-      *line = *line_iterator;
+  for (const auto& current_line : lines) {
+    if (current_line.find(prefix) == 0) {
+      *line = current_line;
       return true;
     }
   }

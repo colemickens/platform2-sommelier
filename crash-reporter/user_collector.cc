@@ -114,17 +114,17 @@ bool UserCollector::CopyOffProcFiles(pid_t pid,
     LOG(ERROR) << "Path " << process_path.value() << " does not exist";
     return false;
   }
-  static const char *proc_files[] = {
+  static const char* const kProcFiles[] = {
     "auxv",
     "cmdline",
     "environ",
     "maps",
     "status"
   };
-  for (unsigned i = 0; i < arraysize(proc_files); ++i) {
-    if (!base::CopyFile(process_path.Append(proc_files[i]),
-                        container_dir.Append(proc_files[i]))) {
-      LOG(ERROR) << "Could not copy " << proc_files[i] << " file";
+  for (std::string proc_file : kProcFiles) {
+    if (!base::CopyFile(process_path.Append(proc_file),
+                        container_dir.Append(proc_file))) {
+      LOG(ERROR) << "Could not copy " << proc_file << " file";
       return false;
     }
   }
@@ -329,7 +329,7 @@ UserCollector::ErrorType UserCollector::ConvertCoreToMinidump(
 namespace {
 
 bool IsChromeExecName(const std::string &exec) {
-  static const char *kChromeNames[] = {
+  static const char* const kChromeNames[] = {
     "chrome",
     // These are additional thread names seen in http://crash/
     "MediaPipeline",
@@ -391,8 +391,7 @@ bool IsChromeExecName(const std::string &exec) {
 
   // Initialize a set of chrome names, for efficient lookup
   if (chrome_names.empty()) {
-    for (size_t i = 0; i < arraysize(kChromeNames); i++) {
-      std::string check_name(kChromeNames[i]);
+    for (std::string check_name : kChromeNames) {
       chrome_names.insert(check_name);
       // When checking a kernel-supplied name, it should be truncated to 15
       // chars.  See PR_SET_NAME in

@@ -51,12 +51,9 @@ bool UdevCollector::HandleCrash(const std::string &udev_event) {
   // First get all the key-value pairs.
   std::vector<std::pair<std::string, std::string>> udev_event_keyval;
   base::SplitStringIntoKeyValuePairs(udev_event, '=', ':', &udev_event_keyval);
-  std::vector<std::pair<std::string, std::string>>::const_iterator iter;
   std::map<std::string, std::string> udev_event_map;
-  for (iter = udev_event_keyval.begin();
-       iter != udev_event_keyval.end();
-       ++iter) {
-    udev_event_map[iter->first] = iter->second;
+  for (const auto& key_value : udev_event_keyval) {
+    udev_event_map[key_value.first] = key_value.second;
   }
 
   // Make sure the crash directory exists, or create it if it doesn't.
@@ -225,12 +222,9 @@ std::string UdevCollector::GetFailingDeviceDriverName(int instance_number) {
   // Parse uevent file contents as key-value pairs.
   std::vector<std::pair<std::string, std::string>> uevent_keyval;
   base::SplitStringIntoKeyValuePairs(uevent_content, '=', '\n', &uevent_keyval);
-  std::vector<std::pair<std::string, std::string>>::const_iterator iter;
-  for (iter = uevent_keyval.begin();
-       iter != uevent_keyval.end();
-       ++iter) {
-    if (iter->first == "DRIVER") {
-      return iter->second;
+  for (const auto& key_value : uevent_keyval) {
+    if (key_value.first == "DRIVER") {
+      return key_value.second;
     }
   }
 

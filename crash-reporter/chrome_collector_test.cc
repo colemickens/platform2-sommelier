@@ -20,10 +20,12 @@ namespace {
 const char kCrashFormatGood[] = "value1:10:abcdefghijvalue2:5:12345";
 const char kCrashFormatEmbeddedNewline[] =
     "value1:10:abcd\r\nghijvalue2:5:12\n34";
-const char kCrashFormatBad1[] = "value1:10:abcdefghijvalue2:6=12345";
-const char kCrashFormatBad2[] = "value1:10:abcdefghijvalue2:512345";
-const char kCrashFormatBad3[] = "value1:10::abcdefghijvalue2:5=12345";
-const char kCrashFormatBad4[] = "value1:10:abcdefghijvalue2:4=12345";
+const char* const kCrashFormatBadValues[] = {
+    "value1:10:abcdefghijvalue2:6=12345",
+    "value1:10:abcdefghijvalue2:512345",
+    "value1:10::abcdefghijvalue2:5=12345",
+    "value1:10:abcdefghijvalue2:4=12345",
+};
 
 const char kCrashFormatWithFile[] =
     "value1:10:abcdefghijvalue2:5:12345"
@@ -92,19 +94,9 @@ TEST_F(ChromeCollectorTest, Newlines) {
 
 TEST_F(ChromeCollectorTest, BadValues) {
   FilePath dir(".");
-  const struct {
-    const char *data;
-  } list[] = {
-    {kCrashFormatBad1, },
-    {kCrashFormatBad2, },
-    {kCrashFormatBad3, },
-    {kCrashFormatBad4, },
-  };
-
-  for (size_t i = 0; i < sizeof(list) / sizeof(list[0]); i++) {
+  for (const char* data : kCrashFormatBadValues) {
     brillo::ClearLog();
-    EXPECT_FALSE(collector_.ParseCrashLog(list[i].data,
-                                          dir, dir.Append("minidump.dmp"),
+    EXPECT_FALSE(collector_.ParseCrashLog(data, dir, dir.Append("minidump.dmp"),
                                           "base"));
   }
 }

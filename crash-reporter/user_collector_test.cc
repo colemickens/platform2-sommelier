@@ -479,10 +479,10 @@ TEST_F(UserCollectorTest, CopyOffProcFilesOK) {
 
   ASSERT_TRUE(collector_.CopyOffProcFiles(pid_, container_path));
   EXPECT_FALSE(FindLog("Could not copy"));
-  static struct {
+  static const struct {
     const char *name;
     bool exists;
-  } expectations[] = {
+  } kExpectations[] = {
     { "auxv", true },
     { "cmdline", true },
     { "environ", true },
@@ -492,10 +492,9 @@ TEST_F(UserCollectorTest, CopyOffProcFilesOK) {
     { "sched", false },
     { "status", true }
   };
-  for (unsigned i = 0; i < sizeof(expectations)/sizeof(expectations[0]); ++i) {
-    EXPECT_EQ(expectations[i].exists,
-              base::PathExists(
-                  container_path.Append(expectations[i].name)));
+  for (const auto &expectation : kExpectations) {
+    EXPECT_EQ(expectation.exists,
+              base::PathExists(container_path.Append(expectation.name)));
   }
 }
 
