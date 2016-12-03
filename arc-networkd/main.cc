@@ -9,6 +9,7 @@
 #include <brillo/syslog_logging.h>
 
 #include "arc-networkd/manager.h"
+#include "arc-networkd/options.h"
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(log_to_stderr, false, "Log to both syslog and stderr");
@@ -25,7 +26,7 @@ int main(int argc, char* argv[]) {
     flags |= brillo::kLogToStderr;
   brillo::InitLog(flags);
 
-  arc_networkd::Manager::Options opt;
+  arc_networkd::Options opt;
   opt.int_ifname = FLAGS_internal_interface;
   opt.con_ifname = FLAGS_container_interface;
   opt.con_netns = FLAGS_con_netns;

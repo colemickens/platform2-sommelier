@@ -18,6 +18,7 @@
 #include "arc-networkd/arc_ip_config.h"
 #include "arc-networkd/multicast_forwarder.h"
 #include "arc-networkd/neighbor_finder.h"
+#include "arc-networkd/options.h"
 #include "arc-networkd/router_finder.h"
 #include "arc-networkd/shill_client.h"
 
@@ -26,12 +27,6 @@ namespace arc_networkd {
 // Main class that runs the mainloop and responds to LAN interface changes.
 class Manager final : public brillo::DBusDaemon {
  public:
-  struct Options {
-    std::string int_ifname;
-    std::string con_ifname;
-    pid_t con_netns;
-  };
-
   explicit Manager(const Options& opt);
 
  protected:
