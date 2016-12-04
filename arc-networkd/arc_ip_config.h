@@ -52,7 +52,8 @@ class ArcIpConfig {
 
  protected:
   int ReadTableId(const std::string& table_name);
-  int StartProcessInMinijail(const std::vector<std::string>& argv);
+  int StartProcessInMinijail(const std::vector<std::string>& argv,
+                             bool log_failures);
 
   std::string int_ifname_;
   std::string con_ifname_;

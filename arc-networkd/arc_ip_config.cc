@@ -191,7 +191,8 @@ bool ArcIpConfig::GetV6Address(const std::string& ifname,
 
 // Runs |argv| (a program name + argument list) with reduced privileges.
 // Returns WEXITSTATUS on success, or -1 if the program could not be executed.
-int ArcIpConfig::StartProcessInMinijail(const std::vector<std::string>& argv) {
+int ArcIpConfig::StartProcessInMinijail(const std::vector<std::string>& argv,
+                                        bool log_failures) {
   brillo::Minijail* m = brillo::Minijail::GetInstance();
   minijail* jail = m->New();
 
@@ -209,7 +210,7 @@ int ArcIpConfig::StartProcessInMinijail(const std::vector<std::string>& argv) {
 
   if (!ran) {
     LOG(ERROR) << "Could not execute " << args.front();
-  } else if (status != 0) {
+  } else if (status != 0 && log_failures) {
     LOG(WARNING) << "Subprocess " << args.front() << " returned "
                  << WEXITSTATUS(status);
   }
@@ -254,19 +255,21 @@ bool ArcIpConfig::Set(const struct in6_addr& address,
   PCHECK(setns(con_netns_fd_.get(), CLONE_NEWNET) == 0);
 
   // These can fail if the interface disappears (e.g. hot-unplug).
+  // If that happens, the error will be logged, because sometimes it
+  // might help in debugging a real issue.
 
   StartProcessInMinijail({
       kIpPath, "-6",
       "addr", "add", current_address_full_,
       "dev", con_ifname_
-  });
+  }, true /* log_failures */);
 
   StartProcessInMinijail({
       kIpPath, "-6",
       "route", "add", current_router_,
       "dev", con_ifname_,
       "table", std::to_string(routing_table_id_)
-  });
+  }, true);
 
   StartProcessInMinijail({
       kIpPath, "-6",
@@ -274,7 +277,7 @@ bool ArcIpConfig::Set(const struct in6_addr& address,
       "via", current_router_,
       "dev", con_ifname_,
       "table", std::to_string(routing_table_id_)
-  });
+  }, true);
 
   PCHECK(setns(self_netns_fd_.get(), CLONE_NEWNET) == 0);
 
@@ -282,13 +285,13 @@ bool ArcIpConfig::Set(const struct in6_addr& address,
       kIpPath, "-6",
       "route", "add", current_address_full_,
       "dev", int_ifname_
-  });
+  }, true);
 
   StartProcessInMinijail({
       kIpPath, "-6",
       "neigh", "add", "proxy", current_address_,
       "dev", current_lan_ifname_
-  });
+  }, true);
 
   // These should never fail.
 
@@ -299,7 +302,7 @@ bool ArcIpConfig::Set(const struct in6_addr& address,
       "-o", int_ifname_,
       "-j", "ACCEPT",
       "-w"
-  }), 0);
+  }, true), 0);
 
   CHECK_EQ(StartProcessInMinijail({
       kIp6TablesPath,
@@ -308,7 +311,7 @@ bool ArcIpConfig::Set(const struct in6_addr& address,
       "-o", current_lan_ifname_,
       "-j", "ACCEPT",
       "-w"
-  }), 0);
+  }, true), 0);
 
   is_configured_ = true;
   return true;
@@ -327,7 +330,7 @@ bool ArcIpConfig::Clear() {
       "-o", current_lan_ifname_,
       "-j", "ACCEPT",
       "-w"
-  }), 0);
+  }, true), 0);
 
   CHECK_EQ(StartProcessInMinijail({
       kIp6TablesPath,
@@ -336,21 +339,23 @@ bool ArcIpConfig::Clear() {
       "-o", int_ifname_,
       "-j", "ACCEPT",
       "-w"
-  }), 0);
+  }, true), 0);
 
-  // These can fail if the interface disappears (e.g. hot-unplug).
+  // This often fails because the kernel removes the proxy entry automatically.
 
   StartProcessInMinijail({
       kIpPath, "-6",
       "neigh", "del", "proxy", current_address_,
       "dev", current_lan_ifname_
-  });
+  }, false /* log_failures */);
+
+  // This can fail if the interface disappears (e.g. hot-unplug).  Rare.
 
   StartProcessInMinijail({
       kIpPath, "-6",
       "route", "del", current_address_full_,
       "dev", int_ifname_
-  });
+  }, true);
 
   PCHECK(setns(con_netns_fd_.get(), CLONE_NEWNET) == 0);
 
@@ -360,20 +365,23 @@ bool ArcIpConfig::Clear() {
       "via", current_router_,
       "dev", con_ifname_,
       "table", std::to_string(routing_table_id_)
-  });
+  }, true);
 
   StartProcessInMinijail({
       kIpPath, "-6",
       "route", "del", current_router_,
       "dev", con_ifname_,
       "table", std::to_string(routing_table_id_)
-  });
+  }, true);
+
+  // This often fails because ARC tries to delete the address on its own
+  // when it is notified that the LAN is down.
 
   StartProcessInMinijail({
       kIpPath, "-6",
       "addr", "del", current_address_full_,
       "dev", con_ifname_
-  });
+  }, false);
 
   PCHECK(setns(self_netns_fd_.get(), CLONE_NEWNET) == 0);
 
