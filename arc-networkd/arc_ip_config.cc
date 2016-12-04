@@ -17,6 +17,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include <fstream>
@@ -206,10 +207,12 @@ int ArcIpConfig::StartProcessInMinijail(const std::vector<std::string>& argv) {
   int status;
   bool ran = m->RunSyncAndDestroy(jail, args, &status);
 
-  if (!ran)
+  if (!ran) {
     LOG(ERROR) << "Could not execute " << args.front();
-  else if (status != 0)
-    LOG(WARNING) << "Subprocess " << args.front() << " returned " << status;
+  } else if (status != 0) {
+    LOG(WARNING) << "Subprocess " << args.front() << " returned "
+                 << WEXITSTATUS(status);
+  }
 
   return ran ? status : -1;
 }
