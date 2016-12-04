@@ -137,13 +137,6 @@ bool ArcIpConfig::ContainerInit() {
   if (!(ifr.ifr_flags & IFF_UP))
     return false;
 
-  routing_table_id_ = ReadTableId(con_ifname_);
-  if (routing_table_id_ == kInvalidTableId) {
-    LOG(ERROR) << "Could not look up routing table ID in "
-               << kRoutingTableNames;
-    return false;
-  }
-
   return true;
 }
 
@@ -227,11 +220,20 @@ bool ArcIpConfig::Set(const struct in6_addr& address,
                       const std::string& lan_ifname) {
   Clear();
 
-  if (!con_netns_fd_.is_valid() ||
-      !self_netns_fd_.is_valid() ||
-      routing_table_id_ == kInvalidTableId) {
+  if (!con_netns_fd_.is_valid() || !self_netns_fd_.is_valid()) {
     LOG(ERROR) << "Cannot set IPv6 address: no netns configured";
     return false;
+  }
+
+  // At this point, arc0 is up and the LAN interface has been up for several
+  // seconds.  If the routing table name has not yet been populated,
+  // something really bad probably happened on the Android side.
+  if (routing_table_id_ == kInvalidTableId) {
+    routing_table_id_ = ReadTableId(con_ifname_);
+    if (routing_table_id_ == kInvalidTableId) {
+      LOG(FATAL) << "Could not look up routing table ID in "
+                 << kRoutingTableNames;
+    }
   }
 
   char buf[INET6_ADDRSTRLEN];
