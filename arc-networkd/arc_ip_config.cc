@@ -201,7 +201,7 @@ int ArcIpConfig::StartProcessInMinijail(const std::vector<std::string>& argv) {
   brillo::Minijail* m = brillo::Minijail::GetInstance();
   minijail* jail = m->New();
 
-  m->DropRoot(jail, kUnprivilegedUser, kUnprivilegedUser);
+  CHECK(m->DropRoot(jail, kUnprivilegedUser, kUnprivilegedUser));
   m->UseCapabilities(jail, kIpTablesCapMask);
 
   std::vector<char*> args;
