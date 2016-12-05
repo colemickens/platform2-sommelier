@@ -6,7 +6,9 @@
 Description=Chromium OS power daemon
 PartOf=boot-services.target
 After=boot-services.target
+
 [Service]
+Type=forking
 BusName=org.chromium.PowerManager
 Restart=on-failure
 RestartSec=10
