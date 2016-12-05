@@ -7,12 +7,13 @@
 #include <libudev.h>
 #include <sys/stat.h>
 
+#include <memory>
 #include <set>
 
 #include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
+#include <base/memory/free_deleter.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -299,7 +300,7 @@ bool DeviceManager::CopyFileFromLocal(const std::string& storage_name,
   file->filename = strdup(file_name.c_str());
   file->filesize = file_stat.st_size;
   file->parent_id = parent_id;
-  scoped_ptr<LIBMTP_file_t, LibmtpFileDeleter> new_file(file);
+  std::unique_ptr<LIBMTP_file_t, LibmtpFileDeleter> new_file(file);
 
   // Transfer a file.
   int transfer_status = LIBMTP_Send_File_From_File_Descriptor(
@@ -340,7 +341,7 @@ bool DeviceManager::RenameObject(const std::string& storage_name,
   LIBMTP_file_t* file = LIBMTP_Get_Filemetadata(mtp_device, object_id);
   if (file == NULL)
     return false;
-  scoped_ptr<LIBMTP_file_t, LibmtpFileDeleter> current_file(file);
+  std::unique_ptr<LIBMTP_file_t, LibmtpFileDeleter> current_file(file);
 
   // Rename the object. While libmtp provides LIBMTP_Set_Folder_Name and other
   // methods for other types, they result in the same call of
@@ -426,7 +427,7 @@ bool DeviceManager::ReadDirectory(LIBMTP_mtpdevice_t* device,
   LIBMTP_file_t* file =
       LIBMTP_Get_Files_And_Folders(device, storage_id, file_id);
   while (file != NULL) {
-    scoped_ptr<LIBMTP_file_t, LibmtpFileDeleter> current_file(file);
+    std::unique_ptr<LIBMTP_file_t, LibmtpFileDeleter> current_file(file);
     file = file->next;
     out->push_back(FileEntry(*current_file));
   }
@@ -452,7 +453,7 @@ bool DeviceManager::ReadFileChunk(LIBMTP_mtpdevice_t* device,
                                               &bytes_read);
 
   // Own |data| in a scoper so it gets freed when this function returns.
-  scoped_ptr<uint8_t, base::FreeDeleter> scoped_data(data);
+  std::unique_ptr<uint8_t, base::FreeDeleter> scoped_data(data);
 
   if (transfer_status != 0 || bytes_read != count)
     return false;
@@ -473,7 +474,7 @@ bool DeviceManager::DeleteObjectInternal(LIBMTP_mtpdevice_t* mtp_device,
   LIBMTP_file_t* file = LIBMTP_Get_Filemetadata(mtp_device, object_id);
   if (file == NULL)
     return false;
-  scoped_ptr<LIBMTP_file_t, LibmtpFileDeleter> current_file(file);
+  std::unique_ptr<LIBMTP_file_t, LibmtpFileDeleter> current_file(file);
 
   // If the object is a directory, check it is empty.
   bool is_directory = current_file->filetype == LIBMTP_FILETYPE_FOLDER;
@@ -687,7 +688,7 @@ LIBMTP_mtpdevice_t* DeviceManager::AddOrUpdateDevices(
       new_device = mtp_device;
     }
     // Fetch fallback vendor / product info.
-    scoped_ptr<char, base::FreeDeleter> duplicated_string;
+    std::unique_ptr<char, base::FreeDeleter> duplicated_string;
     duplicated_string.reset(LIBMTP_Get_Manufacturername(mtp_device));
     std::string fallback_vendor;
     if (duplicated_string.get())
@@ -746,8 +747,7 @@ LIBMTP_mtpdevice_t* DeviceManager::AddOrUpdateDevices(
       base::Closure callback(
           base::Bind(&DeviceManager::PollDevice, base::Unretained(this),
                      mtp_device, usb_bus_str));
-      scoped_ptr<base::SimpleThread> p_thread(
-          new MtpPollThread(callback));
+      std::unique_ptr<base::SimpleThread> p_thread(new MtpPollThread(callback));
       p_thread.get()->Start();
       bool device_added = device_map_.insert(
           std::make_pair(usb_bus_str,
