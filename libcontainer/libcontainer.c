@@ -1004,8 +1004,8 @@ int container_start(struct container *c, const struct container_config *config)
 		if (mnt->flags & MS_RDONLY)
 			continue;
 
-		/* A hack to avoid setfiles on /data. */
-		if (!strcmp(dest, "/data"))
+		/* A hack to avoid setfiles on /data and /cache. */
+		if (!strcmp(dest, "/data") || !strcmp(dest, "/cache"))
 			continue;
 
 		if (asprintf(&dest, "%s%s", c->runfsroot, mnt->destination) < 0) {
