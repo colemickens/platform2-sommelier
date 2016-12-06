@@ -45,7 +45,7 @@ static string ObjectID(IPConfig* i) { return i->GetRpcIdentifier(); }
 
 namespace {
 
-const time_t kDefaultLeaseExpirationTime = std::numeric_limits<long>::max();
+const time_t kDefaultLeaseExpirationTime = std::numeric_limits<time_t>::max();
 
 }  // namespace
 
