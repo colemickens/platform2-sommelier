@@ -17,6 +17,7 @@
 #ifndef SHILL_DEVICE_CLAIMER_H_
 #define SHILL_DEVICE_CLAIMER_H_
 
+#include <memory>
 #include <set>
 #include <string>
 

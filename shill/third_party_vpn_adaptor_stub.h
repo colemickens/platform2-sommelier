@@ -17,6 +17,7 @@
 #ifndef SHILL_THIRD_PARTY_VPN_ADAPTOR_STUB_H_
 #define SHILL_THIRD_PARTY_VPN_ADAPTOR_STUB_H_
 
+#include <string>
 #include <vector>
 
 #include <base/macros.h>

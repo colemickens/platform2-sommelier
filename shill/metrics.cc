@@ -16,6 +16,8 @@
 
 #include "shill/metrics.h"
 
+#include <utility>
+
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>

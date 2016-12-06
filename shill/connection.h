@@ -18,6 +18,7 @@
 #define SHILL_CONNECTION_H_
 
 #include <deque>
+#include <memory>
 #include <string>
 #include <vector>
 

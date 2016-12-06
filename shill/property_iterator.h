@@ -18,6 +18,7 @@
 #define SHILL_PROPERTY_ITERATOR_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include "shill/accessor_interface.h"

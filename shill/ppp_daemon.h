@@ -17,6 +17,7 @@
 #ifndef SHILL_PPP_DAEMON_H_
 #define SHILL_PPP_DAEMON_H_
 
+#include <memory>
 #include <string>
 
 #include <base/callback.h>

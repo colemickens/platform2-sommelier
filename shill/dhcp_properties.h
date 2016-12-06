@@ -17,6 +17,7 @@
 #ifndef SHILL_DHCP_PROPERTIES_H_
 #define SHILL_DHCP_PROPERTIES_H_
 
+#include <memory>
 #include <string>
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST

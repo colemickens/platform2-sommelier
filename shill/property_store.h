@@ -18,6 +18,7 @@
 #define SHILL_PROPERTY_STORE_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 

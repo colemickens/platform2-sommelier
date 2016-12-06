@@ -19,6 +19,8 @@
 
 #include "shill/dhcp_properties.h"
 
+#include <string>
+
 #include <gmock/gmock.h>
 
 namespace shill {

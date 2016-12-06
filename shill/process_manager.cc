@@ -20,6 +20,8 @@
 #include <stdlib.h>
 #include <sys/prctl.h>
 
+#include <utility>
+
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 

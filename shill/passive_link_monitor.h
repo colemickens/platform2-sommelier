@@ -17,6 +17,8 @@
 #ifndef SHILL_PASSIVE_LINK_MONITOR_H_
 #define SHILL_PASSIVE_LINK_MONITOR_H_
 
+#include <memory>
+
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
 
