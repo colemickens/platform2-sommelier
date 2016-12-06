@@ -190,7 +190,7 @@ bool ArcIpConfig::GetV6Address(const std::string& ifname,
 }
 
 // Runs |argv| (a program name + argument list) with reduced privileges.
-// Returns WEXITSTATUS on success, or -1 if the program could not be executed.
+// Returns "raw" status on success, or -1 if the program could not be executed.
 int ArcIpConfig::StartProcessInMinijail(const std::vector<std::string>& argv,
                                         bool log_failures) {
   brillo::Minijail* m = brillo::Minijail::GetInstance();
@@ -210,12 +210,20 @@ int ArcIpConfig::StartProcessInMinijail(const std::vector<std::string>& argv,
 
   if (!ran) {
     LOG(ERROR) << "Could not execute " << args.front();
-  } else if (status != 0 && log_failures) {
-    LOG(WARNING) << "Subprocess " << args.front() << " returned "
-                 << WEXITSTATUS(status);
+  } else if (log_failures && (!WIFEXITED(status) || WEXITSTATUS(status) != 0)) {
+    if (WIFEXITED(status)) {
+      LOG(WARNING) << "Subprocess " << args.front() << " exited with code "
+                   << WEXITSTATUS(status);
+    } else if (WIFSIGNALED(status)) {
+      LOG(WARNING) << "Subprocess " << args.front() << " exited with signal "
+                   << WTERMSIG(status);
+    } else {
+      LOG(WARNING) << "Subprocess " << args.front()
+                   << " exited with unknown status " << status;
+    }
   }
 
-  return ran ? status : -1;
+  return ran && WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 }
 
 bool ArcIpConfig::Set(const struct in6_addr& address,
