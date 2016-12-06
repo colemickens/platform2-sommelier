@@ -48,7 +48,6 @@ struct Log {
 const Log common_logs[] = {
   { "CLIENT_ID", "/bin/cat '/home/chronos/Consent To Send Stats'" },
   { "LOGDATE", "/bin/date" },
-  { "Xorg.0.log", "/bin/cat /var/log/Xorg.0.log" },
   { "bios_info", "/bin/cat /var/log/bios_info.txt" },
   { "bios_log",
     "/bin/cat /sys/firmware/log "
