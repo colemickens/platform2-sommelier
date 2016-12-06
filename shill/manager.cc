@@ -178,7 +178,8 @@ Manager::Manager(ControlInterface* control_interface,
       health_checker_remote_ips_(new IPAddressStore()),
       suppress_autoconnect_(false),
       is_connected_state_(false),
-      dhcp_properties_(new DhcpProperties()) {
+      dhcp_properties_(new DhcpProperties()),
+      network_throttling_enabled_(false) {
   HelpRegisterDerivedString(kActiveProfileProperty,
                             &Manager::GetActiveProfileRpcIdentifier,
                             nullptr);
