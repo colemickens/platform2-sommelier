@@ -31,7 +31,7 @@ class ProcessManager;
 // Proxy is setup using dnsmasq.
 class DNSServerProxy {
  public:
-  DNSServerProxy(const std::vector<std::string>& dns_servers);
+  explicit DNSServerProxy(const std::vector<std::string>& dns_servers);
   virtual ~DNSServerProxy();
 
   // Start dnsmasq process for serving local DNS requests.
