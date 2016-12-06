@@ -10,6 +10,8 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+#include <utility>
+
 #include <base/logging.h>
 
 namespace arc_networkd {
