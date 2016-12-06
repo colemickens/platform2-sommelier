@@ -1510,6 +1510,11 @@ TEST_F(PowerSupplyTest, NoNominalVoltage) {
   EXPECT_DOUBLE_EQ(kVoltage, status.nominal_voltage);
   EXPECT_DOUBLE_EQ(kVoltage * kCharge, status.battery_energy);
   EXPECT_DOUBLE_EQ(kVoltage * kCurrent, status.battery_energy_rate);
+
+  // If the current voltage is also zero, report failure rather than returning
+  // bad data: http://crbug.com/671374
+  WriteDoubleValue(battery_dir_, "voltage_now", 0.0);
+  EXPECT_FALSE(UpdateStatus(&status));
 }
 
 }  // namespace system

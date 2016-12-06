@@ -809,9 +809,18 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
   // during an in-progress firmware update, though.
   const bool read_zero_nominal_voltage = nominal_voltage == 0.0;
   if (nominal_voltage <= 0) {
-    LOG(WARNING) << "Got nominal voltage " << nominal_voltage << "; using "
-                 << "instantaneous voltage " << voltage << " instead";
-    nominal_voltage = voltage;
+    if (voltage <= 0) {
+      // Avoid passing bad time-to-empty estimates to Chrome:
+      // http://crbug.com/671374
+      LOG(WARNING) << "Ignoring reading with bad or missing nominal ("
+                   << nominal_voltage << ") and instantaneous ("
+                   << voltage << ") voltages";
+      return false;
+    } else {
+      LOG(WARNING) << "Got nominal voltage " << nominal_voltage << "; using "
+                   << "instantaneous voltage " << voltage << " instead";
+      nominal_voltage = voltage;
+    }
   }
 
   status->nominal_voltage = nominal_voltage;
@@ -844,20 +853,13 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
     if (energy <= 0.0)
       energy = charge * nominal_voltage;
   } else if (base::PathExists(path.Append("energy_full"))) {
-    // Valid voltage is required to determine the charge so return early if it
-    // is not present. In this case, we know nothing about battery state or
-    // remaining percentage, so set proper status.
-    if (nominal_voltage <= 0) {
-      LOG(WARNING) << "Invalid nominal voltage reading for energy-to-charge"
-                   << " conversion: " << nominal_voltage;
-      return false;
-    }
+    DCHECK_GT(nominal_voltage, 0);
     charge_full = ReadScaledDouble(path, "energy_full") / nominal_voltage;
     charge_full_design = ReadScaledDouble(path, "energy_full_design") /
                          nominal_voltage;
     charge = energy / nominal_voltage;
   } else {
-    LOG(WARNING) << "No charge/energy readings for battery";
+    LOG(WARNING) << "Ignoring reading without battery charge/energy";
     return false;
   }
 
