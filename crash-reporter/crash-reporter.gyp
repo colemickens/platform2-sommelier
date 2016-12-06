@@ -1,13 +1,4 @@
 {
-  # Shouldn't need this, but doesn't work otherwise.
-  # http://crbug.com/340086 and http://crbug.com/385186
-  # Note: the unused dependencies are optimized out by the compiler.
-  'target_defaults': {
-    'variables': {
-      'deps': [
-      ],
-    },
-  },
   'targets': [
     {
       'target_name': 'libcrash',

@@ -1,16 +1,5 @@
 {
-  # Shouldn't need this, but doesn't work otherwise.
-  # http://crbug.com/340086 and http://crbug.com/385186
-  # Note: the unused dependencies are optimized out by the compiler.
   'target_defaults': {
-    'variables': {
-      'deps': [
-        'libbrillo-<(libbase_ver)',
-        'libbrillo-glib-<(libbase_ver)',
-        'libchrome-<(libbase_ver)',
-        'libmetrics-<(libbase_ver)',
-      ],
-    },
     'defines': [
       'USE_TPM2=<(USE_tpm2)',
     ],
@@ -104,6 +93,12 @@
       'dependencies': [
         'cryptohome-proto',
       ],
+      'variables': {
+        'deps': [
+          'libchrome-<(libbase_ver)',
+          'libmetrics-<(libbase_ver)',
+        ],
+      },
       'sources': [
         'attestation.cc',
         'boot_lockbox.cc',
@@ -154,6 +149,11 @@
         'cryptohome-dbus-server',
         'cryptohome-proto',
       ],
+      'variables': {
+        'deps': [
+          'libchrome-<(libbase_ver)',
+        ],
+      },
       'cflags': [
         # The generated dbus headers use "register".
         '-Wno-deprecated-register',
@@ -222,7 +222,11 @@
           'dbus-1',
           'dbus-glib-1',
           'glib-2.0',
+          'libbrillo-<(libbase_ver)',
+          'libbrillo-glib-<(libbase_ver)',
+          'libchrome-<(libbase_ver)',
           'libecryptfs',
+          'libmetrics-<(libbase_ver)',
           'openssl',
           'protobuf',
         ],
@@ -239,6 +243,12 @@
         'libcrostpm',
         'libcryptohome',
       ],
+      'variables': {
+        'deps': [
+          'libbrillo-<(libbase_ver)',
+          'libchrome-<(libbase_ver)',
+        ],
+      },
       'sources': [
         'cryptohome-path.cc',
       ],
@@ -265,7 +275,11 @@
           'dbus-1',
           'dbus-glib-1',
           'glib-2.0',
+          'libbrillo-<(libbase_ver)',
+          'libbrillo-glib-<(libbase_ver)',
+          'libchrome-<(libbase_ver)',
           'libecryptfs',
+          'libmetrics-<(libbase_ver)',
           'openssl',
           'protobuf',
         ],
@@ -289,7 +303,10 @@
       },
       'variables': {
         'deps': [
+          'libbrillo-<(libbase_ver)',
+          'libchrome-<(libbase_ver)',
           'libecryptfs',
+          'libmetrics-<(libbase_ver)',
           'openssl',
         ],
       },
@@ -330,7 +347,11 @@
       'variables': {
         'deps': [
           'glib-2.0',
+          'libbrillo-<(libbase_ver)',
+          'libbrillo-glib-<(libbase_ver)',
+          'libchrome-<(libbase_ver)',
           'libecryptfs',
+          'libmetrics-<(libbase_ver)',
           'openssl',
           'protobuf',
         ],
@@ -392,9 +413,13 @@
               'dbus-1',
               'dbus-glib-1',
               'glib-2.0',
+              'libbrillo-<(libbase_ver)',
+              'libbrillo-glib-<(libbase_ver)',
               'libbrillo-test-<(libbase_ver)',
+              'libchrome-<(libbase_ver)',
               'libchrome-test-<(libbase_ver)',
               'libecryptfs',
+              'libmetrics-<(libbase_ver)',
               'openssl',
               'protobuf',
             ],

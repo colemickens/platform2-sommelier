@@ -1,4 +1,5 @@
 # This file is included for every single target.
+
 # Use it to define Platform2 wide settings and defaults.
 
 {
@@ -57,7 +58,6 @@
     'external_cppflags%': '',
     'external_ldflags%': '',
 
-    'deps%': '',
     'libdir%': '/usr/lib',
 
     'cflags_no_exceptions': [
@@ -108,6 +108,25 @@
         '-Wl,-z,now',
         '-Wl,--as-needed',
       ],
+      'target_conditions': [
+        ['deps != []', {
+          # We don't care about getting rid of duplicate ldflags, so we use
+          # @ to expand to list.
+          'ldflags+': [
+            '>!@(<(pkg-config) >(deps) --libs-only-L --libs-only-other)',
+          ],
+          'libraries+': [
+            # Note there's no @ here intentionally, we want to keep libraries
+            # returned by pkg-config as a single string in order to maintain
+            # order for linking (rather than a list of individual libraries
+            # which GYP would make unique for us).
+            '>!(<(pkg-config) >(deps) --libs-only-l)',
+          ],
+        }],
+      ],
+    },
+    'variables': {
+      'deps%': [],
     },
     'conditions': [
       ['enable_werror == 1', {
@@ -165,27 +184,6 @@
           ],
         },
       }],
-      ['deps != ""', {
-        'cflags+': [
-          # We don't care about getting rid of duplicate cflags, so we use
-          # @ to expand to list.
-          '>!@(<(pkg-config) >(deps) --cflags)',
-        ],
-        'link_settings': {
-          # We don't care about getting rid of duplicate ldflags, so we use
-          # @ to expand to list.
-          'ldflags+': [
-            '>!@(<(pkg-config) >(deps) --libs-only-L --libs-only-other)',
-          ],
-          'libraries+': [
-            # Note there's no @ here intentionally, we want to keep libraries
-            # returned by pkg-config as a single string in order to maintain
-            # order for linking (rather than a list of individual libraries
-            # which GYP would make unique for us).
-            '>!(<(pkg-config) >(deps) --libs-only-l)',
-          ],
-        },
-      }],
       ['USE_tcmalloc == 1', {
         'link_settings': {
           'libraries': [
@@ -195,6 +193,13 @@
       }],
     ],
     'target_conditions': [
+      ['deps != []', {
+        'cflags+': [
+          # We don't care about getting rid of duplicate cflags, so we use
+          # @ to expand to list.
+          '>!@(<(pkg-config) >(deps) --cflags)',
+        ],
+      }],
       ['_type == "executable"', {
         'cflags': ['-fPIE'],
         'ldflags': ['-pie'],
