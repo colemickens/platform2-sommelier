@@ -288,6 +288,9 @@ void AddUiFlags(ChromiumCommandBuilder* builder) {
 
   // Re-enable prefixed EME by default in Chrome OS.
   builder->AddArg("--enable-prefixed-encrypted-media");
+
+  if (builder->UseFlagIsSet("allow_consumer_kiosk"))
+    builder->AddArg("--enable-consumer-kiosk");
 }
 
 // Adds enterprise-related flags to the command line.
