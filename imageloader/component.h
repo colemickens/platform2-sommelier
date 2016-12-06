@@ -81,8 +81,8 @@ class Component {
   FRIEND_TEST_ALL_PREFIXES(ComponentTest, IsValidFingerprintFile);
   FRIEND_TEST_ALL_PREFIXES(ComponentTest, CopyValidImage);
 
-  bool initialized_ = false;
   const base::FilePath component_dir_;
+  bool initialized_;
   std::string manifest_raw_;
   std::string manifest_sig_;
   Manifest manifest_;

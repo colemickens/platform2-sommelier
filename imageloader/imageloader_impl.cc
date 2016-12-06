@@ -28,6 +28,8 @@ using imageloader::kBadResult;
 
 // The name of the file containing the latest component version.
 constexpr char kLatestVersionFile[] = "latest-version";
+// The maximum size of the latest-version file.
+constexpr int kMaximumLatestVersionSize = 4096;
 
 // |mount_base_path| is the subfolder where all components are mounted.
 // For example "/mnt/imageloader."
@@ -172,7 +174,7 @@ bool ImageLoaderImpl::RegisterComponent(
   bool have_old_version = base::PathExists(version_hint_path);
   if (have_old_version) {
     if (!base::ReadFileToStringWithMaxSize(version_hint_path, &old_version_hint,
-                                           4096)) {
+                                           kMaximumLatestVersionSize)) {
       return false;
     }
 
@@ -271,7 +273,8 @@ bool ImageLoaderImpl::GetPathToCurrentComponentVersion(
   // Read the latest version file.
   std::string latest_version;
   if (!base::ReadFileToStringWithMaxSize(
-          GetLatestVersionFilePath(component_name), &latest_version, 4096)) {
+          GetLatestVersionFilePath(component_name), &latest_version,
+          kMaximumLatestVersionSize)) {
     LOG(ERROR) << "Failed to read latest-version file.";
     return false;
   }

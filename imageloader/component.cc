@@ -113,7 +113,7 @@ bool GetAndVerifyTable(const base::FilePath& path,
 }  // namespace
 
 Component::Component(const base::FilePath& component_dir)
-    : component_dir_(component_dir) {}
+    : component_dir_(component_dir), initialized_(false) {}
 
 bool Component::Init(const std::vector<uint8_t>& public_key) {
   if (initialized_) {
