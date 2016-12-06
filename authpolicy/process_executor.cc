@@ -4,53 +4,53 @@
 
 #include "authpolicy/process_executor.h"
 
-#include <algorithm>
+#include <stdlib.h>
+#include <utility>
 
-#include "base/files/file_path.h"
-#include "base/files/file_util.h"
-#include "base/process/launch.h"
-#include "base/strings/stringprintf.h"
-#include "base/time/time.h"
+#include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
+#include <base/strings/stringprintf.h>
+#include <libminijail.h>
+
+#include "authpolicy/pipe_helper.h"
+
+namespace ah = authpolicy::helper;
 
 namespace authpolicy {
 
-namespace {
+ProcessExecutor::ProcessExecutor(std::vector<std::string> args)
+    : jail_(minijail_new()), args_(std::move(args)) {}
 
-// The maximum number of bytes to get from a child process
-// (from stdout and stderr).
-const size_t kMaxReadSize = 100*1024;  // 100 Kb
-// The size of the buffer used to fetch stdout and stderr.
-const size_t kBufferSize = 1024;  // 1 Kb
-// The maximum timeout on waiting a command to run.
-const base::TimeDelta kMaxTimeout = base::TimeDelta::FromSeconds(30);
-
-void ReadPipe(int fd, std::string* out) {
-  char buffer[kBufferSize];
-  size_t total_read = 0;
-  while (total_read < kMaxReadSize) {
-    const ssize_t bytes_read =
-        HANDLE_EINTR(read(fd, buffer,
-                          std::min(kBufferSize, kMaxReadSize - total_read)));
-    if (bytes_read < 0)
-      PLOG(ERROR) << "Failed to read from pipe.";
-    if (bytes_read <= 0)
-      break;
-    total_read += bytes_read;
-    out->append(buffer, bytes_read);
-  }
+ProcessExecutor::~ProcessExecutor() {
+  minijail_destroy(jail_);
 }
 
-}  // namespace
-
-ProcessExecutor& ProcessExecutor::SetInputFile(int fd) {
+void ProcessExecutor::SetInputFile(int fd) {
   input_fd_ = fd;
-  return *this;
 }
 
-ProcessExecutor& ProcessExecutor::SetEnv(const std::string& key,
-                                         const std::string& value) {
-  env_[key] = value;
-  return *this;
+void ProcessExecutor::SetInputString(const std::string& input_str) {
+  input_str_ = input_str;
+}
+
+void ProcessExecutor::SetEnv(const std::string& key, const std::string& value) {
+  env_map_[key] = value;
+}
+
+void ProcessExecutor::SetSeccompFilter(const std::string& policy_file) {
+  // TODO(ljusten) Remove, see crbug.com/666691.
+  minijail_log_seccomp_filter_failures(jail_);
+  minijail_parse_seccomp_filters(jail_, policy_file.c_str());
+  minijail_use_seccomp_filter(jail_);
+}
+
+void ProcessExecutor::SetCapabilities(uint64_t capabilities) {
+  minijail_use_caps(jail_, capabilities);
+}
+
+void ProcessExecutor::SetUserAndPidNamespace() {
+  minijail_namespace_user(jail_);
+  minijail_namespace_pids(jail_);
 }
 
 bool ProcessExecutor::Execute() {
@@ -59,35 +59,10 @@ bool ProcessExecutor::Execute() {
 
   if (!base::FilePath(args_[0]).IsAbsolute()) {
     LOG(ERROR) << "Command must be specified by absolute path.";
+    exit_code_ = kExitCodeInternalError;
     return false;
   }
 
-  int stdout_pipe[2];
-  if (!base::CreateLocalNonBlockingPipe(stdout_pipe)) {
-    LOG(ERROR) << "Failed to create pipe.";
-    return false;
-  }
-  base::ScopedFD stdout_read_end(stdout_pipe[0]);
-  base::ScopedFD stdout_write_end(stdout_pipe[1]);
-
-  int stderr_pipe[2];
-  if (!base::CreateLocalNonBlockingPipe(stderr_pipe)) {
-    LOG(ERROR) << "Failed to create pipe.";
-    return false;
-  }
-  base::ScopedFD stderr_read_end(stderr_pipe[0]);
-  base::ScopedFD stderr_write_end(stderr_pipe[1]);
-
-  base::FileHandleMappingVector fds_to_remap;
-  if (input_fd_ != -1)
-    fds_to_remap.push_back(std::make_pair(input_fd_, STDIN_FILENO));
-  fds_to_remap.push_back(std::make_pair(stdout_write_end.get(), STDOUT_FILENO));
-  fds_to_remap.push_back(std::make_pair(stderr_write_end.get(), STDERR_FILENO));
-
-  base::LaunchOptions launch_options_;
-  launch_options_.fds_to_remap = &fds_to_remap;
-  launch_options_.clear_environ = true;
-  launch_options_.environ = env_;
   if (LOG_IS_ON(INFO)) {
     std::string cmd = args_[0];
     for (size_t n = 1; n < args_.size(); ++n)
@@ -95,26 +70,73 @@ bool ProcessExecutor::Execute() {
     LOG(INFO) << "Executing " << cmd;
   }
 
-  base::Process process(base::LaunchProcess(args_, launch_options_));
-  if (!process.IsValid()) {
-    LOG(ERROR) << "Failed to create process";
+  // Convert args to array of pointers. Must be nullptr terminated.
+  std::vector<char*> args_ptr;
+  for (const auto& arg : args_)
+    args_ptr.push_back(const_cast<char*>(arg.c_str()));
+  args_ptr.push_back(nullptr);
+
+  // Save old environment and set ours. Note that clearenv() doesn't actually
+  // delete any pointers, so we can just keep the old pointers.
+  std::vector<char*> old_environ;
+  for (char** env = environ; env != nullptr && *env != nullptr; ++env)
+    old_environ.push_back(*env);
+  clearenv();
+  std::vector<std::string> env_list;
+  for (const auto& env : env_map_) {
+    env_list.push_back(env.first + "=" + env.second);
+    putenv(const_cast<char*>(env_list.back().c_str()));
+  }
+
+  // Execute the command.
+  pid_t pid = -1;
+  int child_stdin = -1, child_stdout = -1, child_stderr = -1;
+  minijail_run_pid_pipes(jail_, args_ptr[0], args_ptr.data(), &pid,
+                         &child_stdin, &child_stdout, &child_stderr);
+
+  // Restore the environment.
+  clearenv();
+  for (char* env : old_environ)
+    putenv(env);
+
+  // Make sure pipes get closed when exiting the scope.
+  base::ScopedFD child_stdin_closer(child_stdin);
+  base::ScopedFD child_stdout_closer(child_stdout);
+  base::ScopedFD child_stderr_closer(child_stderr);
+
+  // Write input to stdin.
+  if (input_fd_ != -1 && !ah::CopyPipe(input_fd_, child_stdin_closer.get())) {
+    LOG(ERROR) << "Failed to copy input pipe to child stdin";
+    exit_code_ = kExitCodeInternalError;
     return false;
   }
-  stdout_write_end.reset();
-  stderr_write_end.reset();
+  if (!input_str_.empty() &&
+      !ah::WriteStringToPipe(input_str_, child_stdin_closer.get())) {
+    LOG(ERROR) << "Failed to write input string to child stdin";
+    exit_code_ = kExitCodeInternalError;
+    return false;
+  }
+  child_stdin_closer.reset();
 
-  if (!process.WaitForExitWithTimeout(kMaxTimeout, &exit_code_)) {
-    LOG(ERROR) << "Failed on waiting the process to stop";
+  // Wait for the process to exit.
+  exit_code_ = minijail_wait(jail_);
+
+  // Read output.
+  if (!ah::ReadPipeToString(child_stdout_closer.get(), &out_data_)) {
+    LOG(ERROR) << "Failed to read data from child stdout";
+    exit_code_ = kExitCodeInternalError;
+    return false;
+  }
+  if (!ah::ReadPipeToString(child_stderr_closer.get(), &err_data_)) {
+    LOG(ERROR) << "Failed to read data from child stderr";
+    exit_code_ = kExitCodeInternalError;
     return false;
   }
 
-  ReadPipe(stdout_read_end.get(), &out_data_);
-  ReadPipe(stderr_read_end.get(), &err_data_);
-
-  LOG(INFO) << "Stdout: " << GetStdout();
-  LOG(INFO) << "Stderr: " << GetStderr();
-  LOG(INFO) << "Exit code: " << GetExitCode();
-  return GetExitCode() == 0;
+  LOG(INFO) << "Stdout: " << out_data_;
+  LOG(INFO) << "Stderr: " << err_data_;
+  LOG(INFO) << "Exit code: " << exit_code_;
+  return exit_code_ == 0;
 }
 
 void ProcessExecutor::ResetOutput() {

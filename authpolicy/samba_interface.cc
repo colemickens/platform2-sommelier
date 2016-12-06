@@ -213,7 +213,7 @@ bool UpdateDomainControllerName(std::string* domain_controller_name,
                                 const char** out_error_code) {
   if (!domain_controller_name->empty())
     return true;
-  authpolicy::ProcessExecutor net_cmd = authpolicy::ProcessExecutor::Create(
+  authpolicy::ProcessExecutor net_cmd(
       {kNetPath, "ads", "info", "-s", kSmbFilePath});
   if (!net_cmd.Execute()) {
     LOG(ERROR) << "net ads info failed with exit code "
@@ -326,9 +326,9 @@ bool GetGpoList(const std::string& user_or_machine_name,
   LOG(INFO) << "Getting GPO list for " << user_or_machine_name;
 
   // Machine names are names ending with $, anything else is a user name.
-  authpolicy::ProcessExecutor net_cmd = authpolicy::ProcessExecutor::Create(
-      {kNetPath, "ads", "gpo", "list", user_or_machine_name, "-s",
-       kSmbFilePath});
+  authpolicy::ProcessExecutor net_cmd({kNetPath, "ads", "gpo", "list",
+                                       user_or_machine_name, "-s",
+                                       kSmbFilePath});
   if (!net_cmd.Execute()) {
     LOG(ERROR) << "net ads gpo list failed with exit code "
                << net_cmd.GetExitCode();
@@ -438,12 +438,11 @@ bool DownloadGpo(const GpoEntry& gpo,
   }
 
   // Download GPO into local directory.
-  authpolicy::ProcessExecutor smb_client_cmd =
-      authpolicy::ProcessExecutor::Create(
-          {kSmbClientPath, service, "-D", smb_dir, "-s", kSmbFilePath, "-c",
-            base::StringPrintf("prompt OFF;lcd %s;mget %s", linux_dir.c_str(),
-                              kPRegFileName),
-            "-k"});
+  authpolicy::ProcessExecutor smb_client_cmd(
+      {kSmbClientPath, service, "-D", smb_dir, "-s", kSmbFilePath, "-c",
+       base::StringPrintf("prompt OFF;lcd %s;mget %s", linux_dir.c_str(),
+                          kPRegFileName),
+       "-k"});
   if (!smb_client_cmd.Execute()) {
     LOG(ERROR) << "smbclient failed with exit code "
                 << smb_client_cmd.GetExitCode();
@@ -495,10 +494,9 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
     return false;
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
-  ProcessExecutor kinit_cmd = ProcessExecutor::Create(
-      {kKInitPath, normalized_upn})
-      .SetInputFile(password_fd)
-      .SetEnv(kKrb5ConfEnvKey, kKrb5ConfEnvValue);  // Kerberos config.
+  ProcessExecutor kinit_cmd({kKInitPath, normalized_upn});
+  kinit_cmd.SetInputFile(password_fd);
+  kinit_cmd.SetEnv(kKrb5ConfEnvKey, kKrb5ConfEnvValue);  // Kerberos config.
   if (!kinit_cmd.Execute()) {
     LOG(ERROR) << "kinit failed with exit code " << kinit_cmd.GetExitCode();
     *out_error_code = errors::kKInitFailed;
@@ -507,7 +505,7 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
 
   // Call net ads search to find the user's object GUID, which is used as
   // account id.
-  ProcessExecutor net_cmd = ProcessExecutor::Create(
+  ProcessExecutor net_cmd(
       {kNetPath, "ads", "search",
        base::StringPrintf("(userPrincipalName=%s)", normalized_upn.c_str()),
        "objectGUID", "-s", kSmbFilePath});
@@ -546,11 +544,10 @@ bool SambaInterface::JoinMachine(const std::string& machine_name,
     return false;
 
   // Call net ads join to join the Active Directory domain.
-  ProcessExecutor net_cmd =
-      ProcessExecutor::Create(
-          {kNetPath, "ads", "join", "-U", normalized_upn, "-s", kSmbFilePath})
-          .SetInputFile(password_fd)
-          .SetEnv(kMachineEnvKey, kMachineEnvValue);  // Keytab file path.
+  ProcessExecutor net_cmd(
+      {kNetPath, "ads", "join", "-U", normalized_upn, "-s", kSmbFilePath});
+  net_cmd.SetInputFile(password_fd);
+  net_cmd.SetEnv(kMachineEnvKey, kMachineEnvValue);  // Keytab file path.
   if (!net_cmd.Execute()) {
     LOG(ERROR) << "net ads join failed with exit code "
                << net_cmd.GetExitCode();
@@ -621,10 +618,9 @@ bool SambaInterface::FetchDeviceGpos(
     return false;
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
-  ProcessExecutor kinit_cmd = ProcessExecutor::Create(
-      {kKInitPath, machine_name_ + "$@" + realm_, "-k"})
-      .SetEnv(kKrb5ConfEnvKey, kKrb5ConfEnvValue)  // Kerberos config.
-      .SetEnv(kMachineEnvKey, kMachineEnvValue);   // Keytab file path.
+  ProcessExecutor kinit_cmd({kKInitPath, machine_name_ + "$@" + realm_, "-k"});
+  kinit_cmd.SetEnv(kKrb5ConfEnvKey, kKrb5ConfEnvValue);  // Kerberos config.
+  kinit_cmd.SetEnv(kMachineEnvKey, kMachineEnvValue);    // Keytab file path.
   if (!kinit_cmd.Execute()) {
     LOG(ERROR) << "kinit failed with exit code " << kinit_cmd.GetExitCode();
     *out_error_code = errors::kKInitFailed;

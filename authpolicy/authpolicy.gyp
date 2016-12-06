@@ -7,6 +7,7 @@
         'protobuf-lite',
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
+        'libminijail',
       ],
     },
   },
@@ -44,11 +45,12 @@
         'policy/registry_dict.cc',
         'policy/user_policy_encoder.cc',
         'policy/user_policy_encoder_gen.cc',
+        'pipe_helper.cc',
         'process_executor.cc',
         'samba_interface.cc',
       ],
     },
-    # Main program.
+    # Authpolicy daemon executable.
     {
       'target_name': 'authpolicyd',
       'type': 'executable',
