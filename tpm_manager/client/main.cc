@@ -123,6 +123,7 @@ NVRAM Index Reference:
   0x00001008 - Chrome OS Kernel Version Rollback Protection
   0x00001009 - Chrome OS Firmware Backup
   0x0000100A - Chrome OS Firmware Management Parameters
+  0x0000100B - Chrome OS Firmware Recovery Hash Space
   0x20000004 - Chrome OS Install Attributes (aka LockBox)
   0x10000001 - Standard TPM_NV_INDEX_DIR (Permanent)
   0x1000F000 - Endorsement Certificate (Permanent)
