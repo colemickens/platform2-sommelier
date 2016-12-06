@@ -23,7 +23,6 @@
       'sources': [
         'chromeos/ui/chromium_command_builder.cc',
         'chromeos/ui/util.cc',
-        'chromeos/ui/x_server_runner.cc',
       ],
     },
   ],
@@ -39,7 +38,6 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'chromeos/ui/chromium_command_builder_unittest.cc',
-            'chromeos/ui/x_server_runner_unittest.cc',
             'testrunner.cc',
           ],
         },

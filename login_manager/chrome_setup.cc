@@ -14,19 +14,13 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/ui/chromium_command_builder.h>
 #include <chromeos/ui/util.h>
-#include <chromeos/ui/x_server_runner.h>
 
 using chromeos::ui::ChromiumCommandBuilder;
-using chromeos::ui::XServerRunner;
 using chromeos::ui::util::EnsureDirectoryExists;
-using chromeos::ui::util::SetPermissions;
 
 namespace login_manager {
 
 namespace {
-
-// Authority file used for running the X server.
-const char kXauthPath[] = "/var/run/chromelogin.auth";
 
 // Path to file containing developer-supplied modifications to Chrome's
 // environment and command line. Passed to
@@ -358,19 +352,7 @@ void PerformChromeSetup(bool* is_developer_end_user_out,
 
   ChromiumCommandBuilder builder;
   CHECK(builder.Init());
-
-  // Start X in the background before doing more-expensive setup.
-  scoped_ptr<XServerRunner> x_runner;
-  const base::FilePath xauth_path(kXauthPath);
-  const bool using_x11 = builder.UseFlagIsSet("X");
-  if (using_x11) {
-    x_runner.reset(new XServerRunner);
-    CHECK(x_runner->StartServer(
-        XServerRunner::kDefaultUser, XServerRunner::kDefaultVt,
-        builder.is_developer_end_user(), xauth_path));
-  }
-
-  builder.SetUpChromium(using_x11 ? xauth_path : base::FilePath());
+  builder.SetUpChromium();
 
   // Please add new code to the most-appropriate helper function instead of
   // putting it here. Things that to all Chromium-derived binaries (e.g.
@@ -391,9 +373,6 @@ void PerformChromeSetup(bool* is_developer_end_user_out,
   *env_vars_out = builder.environment_variables();
   *args_out = builder.arguments();
   *uid_out = builder.uid();
-
-  if (using_x11)
-    CHECK(x_runner->WaitForServer());
 
   // Do not add code here. Potentially-expensive work should be done between
   // StartServer() and WaitForServer().

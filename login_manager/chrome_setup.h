@@ -11,20 +11,12 @@
 #include <string>
 #include <vector>
 
-namespace chromeos {
-namespace ui {
-class ChromiumCommandBuilder;
-class XServerRunner;
-}  // namespace ui
-}  // namespace chromeos
-
 namespace login_manager {
 
 // Initializes a ChromiumCommandBuilder and performs additional Chrome-specific
-// setup. If X is being used, it also starts the X server. Returns environment
-// variables that the caller should export for Chrome and arguments that it
-// should pass to the Chrome binary, along with the UID that should be used to
-// run Chrome.
+// setup. Returns environment variables that the caller should export for Chrome
+// and arguments that it should pass to the Chrome binary, along with the UID
+// that should be used to run Chrome.
 //
 // Initialization that is common across all Chromium-derived binaries (e.g.
 // content_shell, app_shell, etc.) rather than just applying to the Chrome

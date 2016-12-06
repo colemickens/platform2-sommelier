@@ -69,12 +69,8 @@ class ChromiumCommandBuilder {
   // |arguments_| accordingly. Also creates necessary directories, sets resource
   // limits, etc.
   //
-  // If |xauth_path| is non-empty, Chromium will be configured to connect to an
-  // X server at :0. The authority file will be copied to a |uid_|-owned file
-  // within the data dir.
-  //
   // Returns true on success.
-  bool SetUpChromium(const base::FilePath& xauth_path);
+  bool SetUpChromium();
 
   // Configures the environment so a core dump will be written when the binary
   // crashes.
@@ -135,10 +131,6 @@ class ChromiumCommandBuilder {
                         const std::string& flag_prefix,
                         const std::string& entry_separator,
                         const std::string& new_entry);
-
-  // Performs X11-specific setup and returns true on success. Called by
-  // InitChromium().
-  bool SetUpX11(const base::FilePath& xauth_path);
 
   // Checks if an ASAN build was requested, doing appropriate initialization and
   // returning true if so. Called by InitChromium().
