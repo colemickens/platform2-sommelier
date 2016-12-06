@@ -33,14 +33,16 @@ class SystemdUnitStarter : public InitDaemonController {
 
   explicit SystemdUnitStarter(dbus::ObjectProxy* proxy);
   virtual ~SystemdUnitStarter();
-  virtual scoped_ptr<dbus::Response> StartUnit(
-      const std::string& unit_name,
-      const std::vector<std::string>& args_keyvals);
+
+  // InitDaemonController:
   scoped_ptr<dbus::Response> TriggerImpulse(
       const std::string &unit_name,
-      const std::vector<std::string> &args_keyvals) final;
+      const std::vector<std::string> &args_keyvals,
+      TriggerMode mode) final;
+
  private:
   dbus::ObjectProxy* systemd_dbus_proxy_;  // Weak, owned by caller.
+
   DISALLOW_COPY_AND_ASSIGN(SystemdUnitStarter);
 };
 

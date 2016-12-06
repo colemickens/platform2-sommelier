@@ -33,7 +33,8 @@ class UpstartSignalEmitter : public InitDaemonController {
   // InitDaemonController:
   scoped_ptr<dbus::Response> TriggerImpulse(
       const std::string &name,
-      const std::vector<std::string> &args_keyvals) final;
+      const std::vector<std::string> &args_keyvals,
+      TriggerMode mode) final;
 
  private:
   // Emits an upstart signal.  |args_keyvals| will be provided as
@@ -41,11 +42,11 @@ class UpstartSignalEmitter : public InitDaemonController {
   // of the signal. Each element of |args_keyvals| is a string of the format
   // "key=value".
   //
-  // Returns NULL if emitting the signal fails.
-  // Caller takes ownership of this Response*.
+  // Returns null if emitting the signal fails or if |mode| is ASYNC.
   virtual scoped_ptr<dbus::Response> EmitSignal(
       const std::string& signal_name,
-      const std::vector<std::string>& args_keyvals);
+      const std::vector<std::string>& args_keyvals,
+      TriggerMode mode);
 
   dbus::ObjectProxy* upstart_dbus_proxy_;  // Weak, owned by caller.
   DISALLOW_COPY_AND_ASSIGN(UpstartSignalEmitter);

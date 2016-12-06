@@ -19,12 +19,22 @@ namespace login_manager {
 
 class InitDaemonController {
  public:
+  // Different triggering modes.
+  enum class TriggerMode {
+    // Wait for the impulse to be fully processed before returning.
+    SYNC,
+    // Asynchronously trigger the impulse.
+    ASYNC,
+  };
+
   virtual ~InitDaemonController() {}
-  // Call specific methods of the init daemon to signal a special
-  // condition.
+
+  // Asks the init daemon to emit a signal (Upstart) or start a unit (systemd).
+  // The response is null if the request failed or |mode| is ASYNC.
   virtual scoped_ptr<dbus::Response> TriggerImpulse(
       const std::string& name,
-      const std::vector<std::string>& args_keyvals) = 0;
+      const std::vector<std::string>& args_keyvals,
+      TriggerMode mode) = 0;
 };
 
 }  // namespace login_manager

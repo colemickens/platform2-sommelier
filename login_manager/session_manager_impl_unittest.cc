@@ -441,7 +441,7 @@ TEST_F(SessionManagerImplTest, EmitLoginPromptVisible) {
   EXPECT_CALL(dbus_emitter_,
               EmitSignal(StrEq(login_manager::kLoginPromptVisibleSignal)))
       .Times(1);
-  impl_.EmitLoginPromptVisible(&error_);
+  impl_.EmitLoginPromptVisible();
 }
 
 TEST_F(SessionManagerImplTest, EnableChromeTesting) {

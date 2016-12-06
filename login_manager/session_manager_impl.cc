@@ -332,15 +332,11 @@ void SessionManagerImpl::Finalize() {
       base::TimeDelta::FromSeconds(kContainerTimeoutSec));
 }
 
-void SessionManagerImpl::EmitLoginPromptVisible(Error* error) {
+void SessionManagerImpl::EmitLoginPromptVisible() {
   login_metrics_->RecordStats("login-prompt-visible");
   dbus_emitter_->EmitSignal(kLoginPromptVisibleSignal);
-  if (!init_controller_->TriggerImpulse("login-prompt-visible", {})) {
-    static const char msg[] =
-        "Emitting login-prompt-visible upstart signal failed.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kEmitFailed, msg);
-  }
+  init_controller_->TriggerImpulse("login-prompt-visible", {},
+                                   InitDaemonController::TriggerMode::ASYNC);
 }
 
 std::string SessionManagerImpl::EnableChromeTesting(
@@ -423,7 +419,8 @@ bool SessionManagerImpl::StartSession(const std::string& account_id,
   }
 
   if (!init_controller_->TriggerImpulse(
-          kStartUserSessionSignal, {"CHROMEOS_USER=" + actual_account_id})) {
+          kStartUserSessionSignal, {"CHROMEOS_USER=" + actual_account_id},
+          InitDaemonController::TriggerMode::SYNC)) {
     static const char msg[] =
         "Emitting start-user-session upstart signal failed.";
     LOG(ERROR) << msg;
@@ -803,7 +800,8 @@ void SessionManagerImpl::StartArcInstance(const std::string& account_id,
         "ANDROID_DATA_OLD_DIR=%s", android_data_old_dir.value().c_str()));
   }
 
-  if (!init_controller_->TriggerImpulse(kArcStartSignal, keyvals)) {
+  if (!init_controller_->TriggerImpulse(
+          kArcStartSignal, keyvals, InitDaemonController::TriggerMode::SYNC)) {
     static const char msg[] = "Emitting start-arc-instance signal failed.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kEmitFailed, msg);
@@ -817,7 +815,8 @@ void SessionManagerImpl::StartArcInstance(const std::string& account_id,
                                 &error_message)) {
     LOG(ERROR) << error_message;
     error->Set(dbus_error, error_message);
-    init_controller_->TriggerImpulse(kArcStopSignal, {});
+    init_controller_->TriggerImpulse(kArcStopSignal, {},
+                                     InitDaemonController::TriggerMode::SYNC);
     if (started_container) {
       android_container_->RequestJobExit();
       android_container_->EnsureJobExit(
@@ -863,7 +862,8 @@ void SessionManagerImpl::PrioritizeArcInstance(Error* error) {
 
 void SessionManagerImpl::EmitArcBooted(Error* error) {
 #if USE_CHEETS
-  if (!init_controller_->TriggerImpulse(kArcBootedSignal, {})) {
+  if (!init_controller_->TriggerImpulse(
+          kArcBootedSignal, {}, InitDaemonController::TriggerMode::SYNC)) {
     static const char msg[] = "Emitting arc-booted upstart signal failed.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kEmitFailed, msg);
@@ -984,7 +984,8 @@ bool SessionManagerImpl::RemoveArcDataInternal(
   LOG(INFO) << "Removing contents in " << android_data_old_dir.value();
   if (!init_controller_->TriggerImpulse(
           kArcRemoveOldDataSignal,
-          {"ANDROID_DATA_OLD_DIR=" + android_data_old_dir.value()})) {
+          {"ANDROID_DATA_OLD_DIR=" + android_data_old_dir.value()},
+          InitDaemonController::TriggerMode::SYNC)) {
     LOG(ERROR) << "Failed to emit " << kArcRemoveOldDataSignal
                << " upstart signal";
   }
@@ -1135,7 +1136,8 @@ bool SessionManagerImpl::StartArcInstanceInternal(
           kArcNetworkStartSignal,
           {"CONTAINER_NAME=" + std::string(kArcContainerName),
            "CONTAINER_PATH=" + root_path.value(),
-           "CONTAINER_PID=" + std::to_string(pid)})) {
+           "CONTAINER_PID=" + std::to_string(pid)},
+          InitDaemonController::TriggerMode::SYNC)) {
     *dbus_error_out = dbus_error::kEmitFailed;
     *error_message_out = "Emitting start-arc-network signal failed.";
     return false;
@@ -1156,12 +1158,14 @@ void SessionManagerImpl::OnAndroidContainerStopped(pid_t pid, bool clean) {
 
   login_metrics_->StopTrackingArcUseTime();
   if (!init_controller_->TriggerImpulse(
-          kArcStopSignal, {"ANDROID_PID=" + std::to_string(pid)})) {
+          kArcStopSignal, {"ANDROID_PID=" + std::to_string(pid)},
+          InitDaemonController::TriggerMode::SYNC)) {
     static const char msg[] = "Emitting stop-arc-instance init signal failed.";
     LOG(ERROR) << msg;
   }
 
-  if (!init_controller_->TriggerImpulse(kArcNetworkStopSignal, {})) {
+  if (!init_controller_->TriggerImpulse(
+          kArcNetworkStopSignal, {}, InitDaemonController::TriggerMode::SYNC)) {
     static const char msg[] = "Emitting stop-arc-network init signal failed.";
     LOG(ERROR) << msg;
   }

@@ -50,9 +50,11 @@ class StubUpstartSignalEmitter : public UpstartSignalEmitter {
   // UpstartSignalEmitter:
   scoped_ptr<dbus::Response> EmitSignal(
       const std::string& signal_name,
-      const std::vector<std::string>& args_keyvals) override {
+      const std::vector<std::string>& args_keyvals,
+      TriggerMode mode) override {
     delegate_->OnSignalEmitted(signal_name, args_keyvals);
-    return scoped_ptr<dbus::Response>(dbus::Response::CreateEmpty());
+    return scoped_ptr<dbus::Response>(
+        mode == TriggerMode::SYNC ? dbus::Response::CreateEmpty() : nullptr);
   }
 
   Delegate* delegate_;  // Owned by the caller.

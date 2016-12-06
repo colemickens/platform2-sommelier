@@ -26,13 +26,15 @@ UpstartSignalEmitter::~UpstartSignalEmitter() {}
 
 scoped_ptr<dbus::Response> UpstartSignalEmitter::TriggerImpulse(
     const std::string& name,
-    const std::vector<std::string>& args_keyvals) {
-  return EmitSignal(name, args_keyvals);
+    const std::vector<std::string>& args_keyvals,
+    TriggerMode mode) {
+  return EmitSignal(name, args_keyvals, mode);
 }
 
 scoped_ptr<dbus::Response> UpstartSignalEmitter::EmitSignal(
     const std::string& signal_name,
-    const std::vector<std::string>& args_keyvals) {
+    const std::vector<std::string>& args_keyvals,
+    TriggerMode mode) {
   DLOG(INFO) << "Emitting " << signal_name << " Upstart signal";
 
   dbus::MethodCall method_call(UpstartSignalEmitter::kInterface,
@@ -42,8 +44,18 @@ scoped_ptr<dbus::Response> UpstartSignalEmitter::EmitSignal(
   writer.AppendArrayOfStrings(args_keyvals);
   writer.AppendBool(true);
 
-  return upstart_dbus_proxy_->CallMethodAndBlock(
-              &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  switch (mode) {
+    case TriggerMode::SYNC:
+      return upstart_dbus_proxy_->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    case TriggerMode::ASYNC:
+      upstart_dbus_proxy_->CallMethod(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+          dbus::ObjectProxy::EmptyResponseCallback());
+      return nullptr;
+  }
+  NOTREACHED() << "Invalid trigger mode " << mode;
+  return nullptr;
 }
 
 }  // namespace login_manager

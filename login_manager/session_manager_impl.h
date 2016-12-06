@@ -164,7 +164,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   //////////////////////////////////////////////////////////////////////////////
   // Methods exposed via RPC are defined below.
 
-  void EmitLoginPromptVisible(Error* error);
+  void EmitLoginPromptVisible();
   std::string EnableChromeTesting(bool force_relaunch,
                                   std::vector<std::string> extra_args,
                                   Error* error);

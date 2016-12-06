@@ -330,10 +330,7 @@ void SessionManagerDBusAdaptor::ExportDBusMethods(
 
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::EmitLoginPromptVisible(
     dbus::MethodCall* call) {
-  SessionManagerImpl::Error error;
-  impl_->EmitLoginPromptVisible(&error);
-  if (error.is_set())
-    return CreateError(call, error.name(), error.message());
+  impl_->EmitLoginPromptVisible();
   return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
 }
 

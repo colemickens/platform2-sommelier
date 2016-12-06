@@ -79,12 +79,11 @@ SystemdUnitStarter::SystemdUnitStarter(dbus::ObjectProxy *proxy)
 SystemdUnitStarter::~SystemdUnitStarter() {
 }
 
-scoped_ptr<dbus::Response> SystemdUnitStarter::StartUnit(
+scoped_ptr<dbus::Response> SystemdUnitStarter::TriggerImpulse(
     const std::string &unit_name,
-    const std::vector<std::string> &args_keyvals ) {
+    const std::vector<std::string> &args_keyvals,
+    TriggerMode mode) {
   DLOG(INFO) << "Starting " << unit_name << " unit";
-
-  scoped_ptr<dbus::Response> response;
 
   // If we are not able to properly set the environment for the
   // target unit, there is no point in going forward
@@ -98,19 +97,23 @@ scoped_ptr<dbus::Response> SystemdUnitStarter::StartUnit(
   writer.AppendString(unit_name + ".target");
   writer.AppendString(SystemdUnitStarter::kStartUnitMode);
 
-  response = systemd_dbus_proxy_->CallMethodAndBlock(
-             &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  scoped_ptr<dbus::Response> response;
+  switch (mode) {
+    case TriggerMode::SYNC:
+      response = systemd_dbus_proxy_->CallMethodAndBlock(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+      break;
+    case TriggerMode::ASYNC:
+      systemd_dbus_proxy_->CallMethod(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+          dbus::ObjectProxy::EmptyResponseCallback());
+      break;
+  }
 
   if (!UnsetEnvironment(systemd_dbus_proxy_, args_keyvals))
     DLOG(WARNING) << "Unable to unset environment after starting" << unit_name;
 
   return response;
-}
-
-scoped_ptr<dbus::Response> SystemdUnitStarter::TriggerImpulse(
-    const std::string &unit_name,
-    const std::vector<std::string> &args_keyvals) {
-  return StartUnit(unit_name, args_keyvals);
 }
 
 }  // namespace login_manager
