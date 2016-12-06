@@ -31,7 +31,7 @@ class MockDhcpProperties : public DhcpProperties {
   MOCK_CONST_METHOD2(Save, void(StoreInterface* store, const std::string& id));
   MOCK_METHOD2(Load, void(StoreInterface* store, const std::string& id));
   MOCK_METHOD2(GetValueForProperty,
-               bool(std::string& name, std::string* value));
+               bool(const std::string& name, std::string* value));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDhcpProperties);
