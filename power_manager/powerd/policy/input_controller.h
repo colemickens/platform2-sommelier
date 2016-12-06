@@ -55,10 +55,6 @@ class InputController : public system::InputObserver {
     // TabletMode::UNSUPPORTED will never be passed.
     virtual void HandleTabletModeChange(TabletMode mode) = 0;
 
-    // Defers the inactivity timeout in response to VT2 being active (since
-    // Chrome can't detect user activity).
-    virtual void DeferInactivityTimeoutForVT2() = 0;
-
     // Shuts the system down in reponse to the power button being pressed while
     // no display is connected.
     virtual void ShutDownForPowerButtonWithNoDisplay() = 0;
@@ -93,10 +89,6 @@ class InputController : public system::InputObserver {
   // |power_button_acknowledgment_timer_| isn't running.
   bool TriggerPowerButtonAcknowledgmentTimeoutForTesting();
 
-  // Calls CheckActiveVT(). Returns false if |check_active_vt_timer| isn't
-  // running.
-  bool TriggerCheckActiveVTTimeoutForTesting();
-
   // Handles acknowledgment from that a power button press was handled.
   // |timestamp| is the timestamp from the original event.
   void HandlePowerButtonAcknowledgment(const base::TimeTicks& timestamp);
@@ -108,12 +100,6 @@ class InputController : public system::InputObserver {
   void OnHoverStateChange(bool hovering) override;
 
  private:
-  // Asks |delegate_| to defer the inactivity timeout if the second virtual
-  // terminal is currently active (which typically means that the user is doing
-  // something on the console in dev mode, so Chrome won't be reporting user
-  // activity to keep power management from kicking in).
-  void CheckActiveVT();
-
   // Tells |delegate_| when Chrome hasn't acknowledged a power button press
   // quickly enough.
   void HandlePowerButtonAcknowledgmentTimeout();
@@ -138,9 +124,6 @@ class InputController : public system::InputObserver {
 
   // Calls HandlePowerButtonAcknowledgmentTimeout().
   base::OneShotTimer power_button_acknowledgment_timer_;
-
-  // Calls CheckActiveVT() periodically.
-  base::RepeatingTimer check_active_vt_timer_;
 
   DISALLOW_COPY_AND_ASSIGN(InputController);
 };

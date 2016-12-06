@@ -19,14 +19,6 @@
 namespace power_manager {
 namespace policy {
 
-namespace {
-
-// Frequency with which CheckActiveVT() should be called, in seconds.
-// This just needs to be lower than the screen-dimming delay.
-const int kCheckActiveVTFrequencySec = 60;
-
-}  // namespace
-
 InputController::InputController()
     : input_watcher_(NULL),
       delegate_(NULL),
@@ -61,13 +53,6 @@ void InputController::Init(system::InputWatcherInterface* input_watcher,
     lid_state_ = input_watcher_->QueryLidState();
 
   tablet_mode_ = input_watcher_->GetTabletMode();
-
-  bool check_active_vt = false;
-  if (prefs->GetBool(kCheckActiveVTPref, &check_active_vt) && check_active_vt) {
-    check_active_vt_timer_.Start(FROM_HERE,
-        base::TimeDelta::FromSeconds(kCheckActiveVTFrequencySec),
-        this, &InputController::CheckActiveVT);
-  }
 }
 
 bool InputController::TriggerPowerButtonAcknowledgmentTimeoutForTesting() {
@@ -76,14 +61,6 @@ bool InputController::TriggerPowerButtonAcknowledgmentTimeoutForTesting() {
 
   power_button_acknowledgment_timer_.Stop();
   HandlePowerButtonAcknowledgmentTimeout();
-  return true;
-}
-
-bool InputController::TriggerCheckActiveVTTimeoutForTesting() {
-  if (!check_active_vt_timer_.IsRunning())
-    return false;
-
-  CheckActiveVT();
   return true;
 }
 
@@ -167,11 +144,6 @@ void InputController::OnPowerButtonEvent(ButtonState state) {
 
 void InputController::OnHoverStateChange(bool hovering) {
   delegate_->HandleHoverStateChange(hovering);
-}
-
-void InputController::CheckActiveVT() {
-  if (input_watcher_->GetActiveVT() == 2)
-    delegate_->DeferInactivityTimeoutForVT2();
 }
 
 void InputController::HandlePowerButtonAcknowledgmentTimeout() {

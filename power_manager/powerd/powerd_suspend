@@ -178,7 +178,7 @@ setup_dark_resume() {
 }
 
 # Encourage people to use powerd_dbus_suspend instead of running this
-# script directly so that e.g. suspend delays and VT locking will happen.
+# script directly so that e.g. suspend delays will happen.
 if [ -z "$POWERD_SETUID_HELPER" ]; then
   echo "This script is called by powerd. Please run powerd_dbus_suspend" 1>&2
   echo "to manually exercise the full suspend path." 1>&2

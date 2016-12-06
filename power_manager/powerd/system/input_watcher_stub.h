@@ -23,7 +23,6 @@ class InputWatcherStub : public InputWatcherInterface {
   void set_usb_input_device_connected(bool connected) {
     usb_input_device_connected_ = connected;
   }
-  void set_active_vt(int vt) { active_vt_ = vt; }
 
   // Notifies registered observers about various events.
   void NotifyObserversAboutLidState();
@@ -37,14 +36,12 @@ class InputWatcherStub : public InputWatcherInterface {
   LidState QueryLidState() override;
   TabletMode GetTabletMode() override;
   bool IsUSBInputDeviceConnected() const override;
-  int GetActiveVT() override;
 
  private:
   // Current input state.
   LidState lid_state_;
   TabletMode tablet_mode_;
   bool usb_input_device_connected_;
-  int active_vt_;
 
   base::ObserverList<InputObserver> observers_;
 

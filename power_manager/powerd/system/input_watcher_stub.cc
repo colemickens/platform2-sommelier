@@ -12,8 +12,7 @@ namespace system {
 InputWatcherStub::InputWatcherStub()
     : lid_state_(LidState::OPEN),
       tablet_mode_(TabletMode::UNSUPPORTED),
-      usb_input_device_connected_(true),
-      active_vt_(1) {
+      usb_input_device_connected_(true) {
 }
 
 InputWatcherStub::~InputWatcherStub() {}
@@ -54,10 +53,6 @@ TabletMode InputWatcherStub::GetTabletMode() {
 
 bool InputWatcherStub::IsUSBInputDeviceConnected() const {
   return usb_input_device_connected_;
-}
-
-int InputWatcherStub::GetActiveVT() {
-  return active_vt_;
 }
 
 }  // namespace system

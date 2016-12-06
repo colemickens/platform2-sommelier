@@ -178,16 +178,9 @@ extern const char kExternalDisplayOnlyPref[];
 // releases properly.
 extern const char kLegacyPowerButtonPref[];
 
-// If true, disable VT switching before suspending.
-extern const char kLockVTBeforeSuspendPref[];
-
 // If true, record suspend and resume timestamps in eventlog using the "mosys"
 // command.
 extern const char kMosysEventlogPref[];
-
-// If true, use /dev/tty0 to query the active VT periodically and avoid treating
-// the user as idle while VT2 is active.
-extern const char kCheckActiveVTPref[];
 
 // If true, use CRAS, the Chrome OS audio server, to monitor audio activity and
 // to mute audio when suspending.

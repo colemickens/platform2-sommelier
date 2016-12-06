@@ -4,10 +4,7 @@
 
 #include "power_manager/powerd/system/input_watcher.h"
 
-#include <fcntl.h>
 #include <linux/input.h>
-#include <linux/vt.h>
-#include <sys/ioctl.h>
 #include <unistd.h>
 
 #include <base/callback.h>
@@ -42,10 +39,6 @@ const char kInputBaseName[] = "event";
 const char kInputMatchPattern[] = "input*";
 const char kUsbMatchString[] = "usb";
 const char kBluetoothMatchString[] = "bluetooth";
-
-// Path to the console device where VT_GETSTATE ioctls are made to get the
-// currently-active VT.
-const char kConsolePath[] = "/dev/tty0";
 
 // Given a string |name| consisting of kInputBaseName followed by a base-10
 // integer, extracts the integer to |num_out|. Returns false if |name| didn't
@@ -125,7 +118,6 @@ InputWatcher::InputWatcher()
       single_touch_hover_valid_(false),
       single_touch_hover_distance_nonzero_(false),
       power_button_to_skip_(kPowerButtonToSkip),
-      console_fd_(-1),
       udev_(nullptr),
       weak_ptr_factory_(this) {
 }
@@ -133,8 +125,6 @@ InputWatcher::InputWatcher()
 InputWatcher::~InputWatcher() {
   if (udev_)
     udev_->RemoveSubsystemObserver(kInputUdevSubsystem, this);
-  if (console_fd_ >= 0)
-    close(console_fd_);
 }
 
 bool InputWatcher::Init(
@@ -255,24 +245,6 @@ bool InputWatcher::IsUSBInputDeviceConnected() const {
       return true;
   }
   return false;
-}
-
-int InputWatcher::GetActiveVT() {
-  // It's not worthwhile creating an interface around this single ioctl to query
-  // the active VT. Defer opening the console until this method is called so
-  // that unit tests can step around this code.
-  if (console_fd_ < 0) {
-    if ((console_fd_ = open(kConsolePath, O_WRONLY)) == -1) {
-      PLOG(ERROR) << "Unable to open " << kConsolePath;
-      return -1;
-    }
-  }
-  struct vt_stat state;
-  if (ioctl(console_fd_, VT_GETSTATE, &state) == -1) {
-    PLOG(ERROR) << "VT_GETSTATE ioctl on " << kConsolePath << "failed";
-    return -1;
-  }
-  return state.v_active;
 }
 
 void InputWatcher::OnUdevEvent(const std::string& subsystem,

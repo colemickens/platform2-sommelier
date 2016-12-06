@@ -35,9 +35,6 @@ class InputWatcherInterface {
   // Checks if any USB input devices are connected.
   virtual bool IsUSBInputDeviceConnected() const = 0;
 
-  // Returns the (1-indexed) number of the currently-active virtual terminal.
-  virtual int GetActiveVT() = 0;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(InputWatcherInterface);
 };

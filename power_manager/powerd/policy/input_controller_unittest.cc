@@ -34,7 +34,6 @@ const char kLidOpened[] = "lid_opened";
 const char kPowerButtonDown[] = "power_down";
 const char kPowerButtonUp[] = "power_up";
 const char kPowerButtonRepeat[] = "power_repeat";
-const char kDeferInactivity[] = "defer_inactivity";
 const char kShutDown[] = "shut_down";
 const char kMissingPowerButtonAcknowledgment[] = "missing_power_button_ack";
 const char kHoverOn[] = "hover_on";
@@ -96,9 +95,6 @@ class TestInputControllerDelegate : public InputController::Delegate,
   void HandleTabletModeChange(TabletMode mode) override {
     EXPECT_NE(TabletMode::UNSUPPORTED, mode);
     AppendAction(GetTabletModeAction(mode));
-  }
-  void DeferInactivityTimeoutForVT2() override {
-    AppendAction(kDeferInactivity);
   }
   void ShutDownForPowerButtonWithNoDisplay() override {
     AppendAction(kShutDown);
@@ -244,31 +240,6 @@ TEST_F(InputControllerTest, PowerButtonEvents) {
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
   EXPECT_EQ(kShutDown, delegate_.GetActions());
   EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
-}
-
-TEST_F(InputControllerTest, DeferInactivityTimeoutWhileVT2IsActive) {
-  prefs_.SetInt64(kCheckActiveVTPref, 1);
-  Init();
-
-  input_watcher_.set_active_vt(1);
-  EXPECT_TRUE(controller_.TriggerCheckActiveVTTimeoutForTesting());
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-
-  input_watcher_.set_active_vt(2);
-  EXPECT_TRUE(controller_.TriggerCheckActiveVTTimeoutForTesting());
-  EXPECT_EQ(kDeferInactivity, delegate_.GetActions());
-
-  input_watcher_.set_active_vt(3);
-  EXPECT_TRUE(controller_.TriggerCheckActiveVTTimeoutForTesting());
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-}
-
-TEST_F(InputControllerTest, HonorCheckActiveVTPref) {
-  // The timer shouldn't be started if the check-active-VT pref is unset.
-  Init();
-  input_watcher_.set_active_vt(2);
-  EXPECT_FALSE(controller_.TriggerCheckActiveVTTimeoutForTesting());
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
 }
 
 TEST_F(InputControllerTest, AcknowledgePowerButtonPresses) {

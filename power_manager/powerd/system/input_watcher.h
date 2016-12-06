@@ -81,7 +81,6 @@ class InputWatcher : public InputWatcherInterface,
   LidState QueryLidState() override;
   TabletMode GetTabletMode() override;
   bool IsUSBInputDeviceConnected() const override;
-  int GetActiveVT() override;
 
   // UdevSubsystemObserver implementation:
   void OnUdevEvent(const std::string& subsystem,
@@ -191,9 +190,6 @@ class InputWatcher : public InputWatcherInterface,
 
   // Name of the power button interface to skip monitoring.
   const char* power_button_to_skip_;
-
-  // Used to make ioctls to /dev/console to check which VT is active.
-  int console_fd_;
 
   UdevInterface* udev_;  // non-owned
 

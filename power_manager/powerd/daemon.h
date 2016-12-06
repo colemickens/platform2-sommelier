@@ -111,7 +111,6 @@ class Daemon : public policy::BacklightControllerObserver,
   void HandlePowerButtonEvent(ButtonState state) override;
   void HandleHoverStateChange(bool hovering) override;
   void HandleTabletModeChange(TabletMode mode) override;
-  void DeferInactivityTimeoutForVT2() override;
   void ShutDownForPowerButtonWithNoDisplay() override;
   void HandleMissingPowerButtonAcknowledgment() override;
   void ReportPowerButtonAcknowledgmentDelay(base::TimeDelta delay) override;
@@ -371,9 +370,6 @@ class Daemon : public policy::BacklightControllerObserver,
   // Set to true if powerd touched a file for crash-reporter before
   // suspending. If true, the file will be unlinked after resuming.
   bool created_suspended_state_file_;
-
-  // True if VT switching should be disabled before the system is suspended.
-  bool lock_vt_before_suspend_;
 
   // True if the "mosys" command should be used to record suspend and resume
   // timestamps in eventlog.

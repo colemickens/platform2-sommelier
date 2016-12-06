@@ -277,7 +277,6 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       suspend_announced_path_(run_dir.Append(kSuspendAnnouncedFile)),
       session_state_(SessionState::STOPPED),
       created_suspended_state_file_(false),
-      lock_vt_before_suspend_(false),
       log_suspend_with_mosys_eventlog_(false),
       suspend_to_idle_(false),
       set_wifi_transmit_power_for_tablet_mode_(false),
@@ -365,7 +364,6 @@ void Daemon::Init() {
     UpdateWifiTransmitPowerForTabletMode(tablet_mode);
   }
 
-  prefs_->GetBool(kLockVTBeforeSuspendPref, &lock_vt_before_suspend_);
   prefs_->GetBool(kMosysEventlogPref, &log_suspend_with_mosys_eventlog_);
   prefs_->GetBool(kSuspendToIdlePref, &suspend_to_idle_);
 
@@ -551,11 +549,6 @@ void Daemon::HandleTabletModeChange(TabletMode mode) {
     UpdateWifiTransmitPowerForTabletMode(mode);
 }
 
-void Daemon::DeferInactivityTimeoutForVT2() {
-  LOG(INFO) << "Reporting synthetic user activity since VT2 is active";
-  state_controller_->HandleUserActivity();
-}
-
 void Daemon::ShutDownForPowerButtonWithNoDisplay() {
   LOG(INFO) << "Shutting down due to power button press while no display is "
             << "connected";
@@ -633,10 +626,6 @@ void Daemon::PrepareToSuspend() {
   // system is going to suspend (Chrome turns the display back on while leaving
   // the backlight off).
   SetBacklightsSuspended(true);
-
-  // Do not let suspend change the console terminal.
-  if (lock_vt_before_suspend_)
-    RunSetuidHelper("lock_vt", "", true);
 
   power_supply_->SetSuspended(true);
   if (audio_client_)
@@ -740,10 +729,6 @@ void Daemon::UndoPrepareToSuspend(bool success,
   // happens when we idle suspend (and the requested power state in Chrome is
   // off for the displays).
   SetBacklightsSuspended(false);
-
-  // Allow virtual terminal switching again.
-  if (lock_vt_before_suspend_)
-    RunSetuidHelper("unlock_vt", "", true);
 
   if (audio_client_)
     audio_client_->SetSuspended(false);
