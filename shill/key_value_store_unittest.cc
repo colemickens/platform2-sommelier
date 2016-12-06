@@ -78,7 +78,7 @@ const uint8_t kUint8Value = 3;
 const vector<uint8_t> kUint8sValue{1, 2};
 const vector<uint32_t> kUint32sValue{1, 2};
 const int32_t kNestedInt32Value = 1;
-}
+}  // namespace
 
 namespace shill {
 

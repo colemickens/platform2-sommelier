@@ -305,7 +305,8 @@ TEST(PropertyAccessorTest, ByteArrayCorrectness) {
   }
   {
     Error error;
-    ByteArrayAccessor accessor(new ConstPropertyAccessor<ByteArray>(&byteArray));
+    ByteArrayAccessor accessor(
+        new ConstPropertyAccessor<ByteArray>(&byteArray));
     EXPECT_EQ(byteArray, accessor->Get(&error));
 
     ByteArray expected_byteArray({ 0x01, 0x7F, 0x80, 0xFF });
@@ -319,13 +320,15 @@ TEST(PropertyAccessorTest, ByteArrayCorrectness) {
   }
   {
     Error error;
-    ByteArrayAccessor accessor(new ConstPropertyAccessor<ByteArray>(&byteArray));
+    ByteArrayAccessor accessor(
+        new ConstPropertyAccessor<ByteArray>(&byteArray));
     accessor->Clear(&error);
     ASSERT_FALSE(error.IsSuccess());
   }
   {
     Error error;
-    ByteArrayAccessor accessor(new WriteOnlyPropertyAccessor<ByteArray>(&byteArray));
+    ByteArrayAccessor accessor(
+        new WriteOnlyPropertyAccessor<ByteArray>(&byteArray));
     accessor->Get(&error);
     EXPECT_TRUE(error.IsFailure());
     EXPECT_EQ(Error::kPermissionDenied, error.type());
@@ -353,7 +356,7 @@ TEST(PropertyAccessorTest, ByteArrayCorrectness) {
   }
   {
     Error error;
-    ByteArray orig_byteArray = byteArray = ByteArray({ 0x00, 0x7F, 0x80, 0xFF });
+    ByteArray orig_byteArray = byteArray = ByteArray({0x00, 0x7F, 0x80, 0xFF});
     WriteOnlyPropertyAccessor<ByteArray> accessor(&byteArray);
 
     EXPECT_TRUE(accessor.Set(ByteArray({ 0xFF, 0x7F, 0x80, 0x00 }), &error));

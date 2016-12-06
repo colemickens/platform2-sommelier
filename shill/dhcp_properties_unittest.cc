@@ -89,7 +89,8 @@ TEST_F(DhcpPropertiesTest, SetMappedStringPropertyOverrideExisting) {
   dhcp_properties_.properties_.SetString("Hostname", kHostname);
 
   Error error;
-  EXPECT_TRUE(store.SetStringProperty("DHCPProperty.Hostname", kOverrideValue, &error));
+  EXPECT_TRUE(
+      store.SetStringProperty("DHCPProperty.Hostname", kOverrideValue, &error));
   EXPECT_EQ(kOverrideValue, dhcp_properties_.properties_.GetString("Hostname"));
 }
 
@@ -98,7 +99,8 @@ TEST_F(DhcpPropertiesTest, SetMappedStringPropertyNoExistingValue) {
   dhcp_properties_.InitPropertyStore(&store);
 
   Error error;
-  EXPECT_TRUE(store.SetStringProperty("DHCPProperty.Hostname", kHostname, &error));
+  EXPECT_TRUE(
+      store.SetStringProperty("DHCPProperty.Hostname", kHostname, &error));
   EXPECT_EQ(kHostname, dhcp_properties_.properties_.GetString("Hostname"));
 }
 
@@ -108,7 +110,8 @@ TEST_F(DhcpPropertiesTest, SetMappedStringPropertySameAsExistingValue) {
   dhcp_properties_.properties_.SetString("Hostname", kHostname);
 
   Error error;
-  EXPECT_FALSE(store.SetStringProperty("DHCPProperty.Hostname", kHostname, &error));
+  EXPECT_FALSE(
+      store.SetStringProperty("DHCPProperty.Hostname", kHostname, &error));
   EXPECT_EQ(kHostname, dhcp_properties_.properties_.GetString("Hostname"));
 }
 
@@ -119,7 +122,8 @@ TEST_F(DhcpPropertiesTest, GetMappedStringPropertyWithSetValue) {
 
   Error error;
   string value_in_prop_store;
-  store.GetStringProperty("DHCPProperty.Hostname", &value_in_prop_store, &error);
+  store.GetStringProperty(
+      "DHCPProperty.Hostname", &value_in_prop_store, &error);
   EXPECT_EQ(kHostname, value_in_prop_store);
 }
 
@@ -129,7 +133,8 @@ TEST_F(DhcpPropertiesTest, GetMappedStringPropertyNoExistingValue) {
 
   Error error;
   string value_in_prop_store;
-  store.GetStringProperty("DHCPProperty.Hostname", &value_in_prop_store, &error);
+  store.GetStringProperty(
+      "DHCPProperty.Hostname", &value_in_prop_store, &error);
   EXPECT_EQ(Error::kNotFound, error.type());
 }
 
@@ -188,7 +193,8 @@ TEST_F(DhcpPropertiesTest, LoadWithValuesSetAndClearRequired) {
   EXPECT_CALL(storage, GetString(kStorageID, "DHCPProperty.Hostname", _))
       .WillOnce(Return(false));
   dhcp_properties_.Load(&storage, kStorageID);
-  EXPECT_EQ(kVendorClass, dhcp_properties_.properties_.GetString("VendorClass"));
+  EXPECT_EQ(kVendorClass,
+            dhcp_properties_.properties_.GetString("VendorClass"));
   EXPECT_FALSE(dhcp_properties_.properties_.Contains("Hostname"));
 }
 
@@ -269,4 +275,4 @@ TEST_F(DhcpPropertiesTest, GetValueForProperty) {
   EXPECT_EQ(kHostname, value);
 }
 
-} // namespace shill
+}  // namespace shill

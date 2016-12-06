@@ -393,7 +393,8 @@ bool PropertyStore::SetUint8Property(const string& name,
 bool PropertyStore::SetByteArrayProperty(const string& name,
                                          const ByteArray& value,
                                          Error *error) {
-  return SetProperty(name, value, error, &bytearray_properties_, "a byte array");
+  return SetProperty(
+      name, value, error, &bytearray_properties_, "a byte array");
 }
 
 bool PropertyStore::SetUint16Property(const string& name,
@@ -532,8 +533,8 @@ ReadablePropertyConstIterator<uint8_t> PropertyStore::GetUint8PropertiesIter()
   return ReadablePropertyConstIterator<uint8_t>(uint8_properties_);
 }
 
-ReadablePropertyConstIterator<ByteArray> PropertyStore::GetByteArrayPropertiesIter()
-    const {
+ReadablePropertyConstIterator<ByteArray>
+PropertyStore::GetByteArrayPropertiesIter() const {
   return ReadablePropertyConstIterator<ByteArray>(bytearray_properties_);
 }
 

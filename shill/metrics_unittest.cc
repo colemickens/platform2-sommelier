@@ -847,7 +847,8 @@ TEST_F(MetricsTest, NotifyConnectedToServiceAfterWake) {
       Metrics::kWiFiConnectionStatusAfterWakeWoWOnConnected;
   EXPECT_CALL(library_,
               SendEnumToUMA("Network.Shill.WiFi.WiFiConnectionStatusAfterWake",
-                            status, Metrics::kWiFiConnectionStatusAfterWakeMax));
+                            status,
+                            Metrics::kWiFiConnectionStatusAfterWakeMax));
   metrics_.NotifyConnectedToServiceAfterWake(status);
 }
 
@@ -857,10 +858,10 @@ TEST_F(MetricsTest, NotifySuspendDurationAfterWake) {
   int seconds_in_suspend = 1;
   EXPECT_CALL(library_,
               SendToUMA("Network.Shill.WiFi.SuspendDurationWoWOnConnected",
-                            seconds_in_suspend,
-			    Metrics::kSuspendDurationMin,
-			    Metrics::kSuspendDurationMax,
-			    Metrics::kSuspendDurationNumBuckets));
+                        seconds_in_suspend,
+                        Metrics::kSuspendDurationMin,
+                        Metrics::kSuspendDurationMax,
+                        Metrics::kSuspendDurationNumBuckets));
   metrics_.NotifySuspendDurationAfterWake(status, seconds_in_suspend);
 }
 

@@ -782,27 +782,26 @@ string Metrics::GetFullMetricName(const char* metric_suffix,
 }
 
 string Metrics::GetSuspendDurationMetricNameFromStatus(
-        WiFiConnectionStatusAfterWake status) {
-    switch (status)
-    {
-        case kWiFiConnectionStatusAfterWakeWoWOnConnected:
-            return kMetricSuspendDurationWoWOnConnected;
+    WiFiConnectionStatusAfterWake status) {
+  switch (status) {
+    case kWiFiConnectionStatusAfterWakeWoWOnConnected:
+      return kMetricSuspendDurationWoWOnConnected;
 
-        case kWiFiConnectionStatusAfterWakeWoWOnDisconnected:
-            return kMetricSuspendDurationWoWOnDisconnected;
+    case kWiFiConnectionStatusAfterWakeWoWOnDisconnected:
+      return kMetricSuspendDurationWoWOnDisconnected;
 
-        case kWiFiConnectionStatusAfterWakeWoWOffConnected:
-            return kMetricSuspendDurationWoWOffConnected;
+    case kWiFiConnectionStatusAfterWakeWoWOffConnected:
+      return kMetricSuspendDurationWoWOffConnected;
 
-        case kWiFiConnectionStatusAfterWakeWoWOffDisconnected:
-            return kMetricSuspendDurationWoWOffDisconnected;
+    case kWiFiConnectionStatusAfterWakeWoWOffDisconnected:
+      return kMetricSuspendDurationWoWOffDisconnected;
 
-        default:
-            // The return type is std::string, which cannot
-            // be assigned NULL. Return an empty string instead.
-            std::string value;
-            return value;
-  };
+    default:
+      // The return type is std::string, which cannot
+      // be assigned NULL. Return an empty string instead.
+      std::string value;
+      return value;
+  }
 }
 
 void Metrics::NotifyServiceDisconnect(const Service& service) {
@@ -853,15 +852,15 @@ void Metrics::NotifyConnectedToServiceAfterWake(
 
 void Metrics::NotifySuspendDurationAfterWake(
     WiFiConnectionStatusAfterWake status, int seconds_in_suspend) {
-    string metric = GetSuspendDurationMetricNameFromStatus(status);
+  string metric = GetSuspendDurationMetricNameFromStatus(status);
 
-    if (!metric.empty())
-    {
-        SendToUMA(metric, seconds_in_suspend,
-                kSuspendDurationMin,
-                kSuspendDurationMax,
-                kSuspendDurationNumBuckets);
-    }
+  if (!metric.empty()) {
+    SendToUMA(metric,
+              seconds_in_suspend,
+              kSuspendDurationMin,
+              kSuspendDurationMax,
+              kSuspendDurationNumBuckets);
+  }
 }
 
 void Metrics::NotifyTerminationActionsStarted() {

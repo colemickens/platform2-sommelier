@@ -49,7 +49,6 @@ int ShillDaemon::OnInit() {
 }
 
 void ShillDaemon::OnShutdown(int* return_code) {
-
   LOG(INFO) << "ShillDaemon received shutdown.";
 
   if (!DaemonTask::Quit(base::Bind(&DaemonTask::BreakTerminationLoop,

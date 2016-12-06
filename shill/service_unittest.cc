@@ -550,7 +550,8 @@ TEST_F(ServiceTest, LoadAutoConnect) {
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   std::unique_ptr<MockDhcpProperties> dhcp_props(new MockDhcpProperties());
-  EXPECT_CALL(*dhcp_props.get(), Load(&storage, storage_id_)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_props.get(), Load(&storage, storage_id_))
+      .Times(AnyNumber());
   service_->dhcp_properties_ = std::move(dhcp_props);
 
   // Three of each expectation so we can test Favorite == unset, false, true.

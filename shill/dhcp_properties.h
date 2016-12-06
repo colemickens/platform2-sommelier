@@ -70,7 +70,7 @@ class DhcpProperties {
   // Returns true if the property was found.
   bool GetValueForProperty(const std::string& name, std::string* value) const;
 
-  const KeyValueStore& properties() const { return properties_; };
+  const KeyValueStore& properties() const { return properties_; }
 
  private:
   FRIEND_TEST(DhcpPropertiesTest, ClearMappedStringPropertyNoExistingValue);
