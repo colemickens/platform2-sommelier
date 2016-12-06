@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <dbus/message.h>
 
@@ -44,15 +45,19 @@ class StubUpstartSignalEmitter : public UpstartSignalEmitter {
       : UpstartSignalEmitter(NULL),
         delegate_(delegate) {}
   virtual ~StubUpstartSignalEmitter() {}
-  virtual scoped_ptr<dbus::Response> EmitSignal(
+
+ private:
+  // UpstartSignalEmitter:
+  scoped_ptr<dbus::Response> EmitSignal(
       const std::string& signal_name,
-      const std::vector<std::string>& args_keyvals) {
+      const std::vector<std::string>& args_keyvals) override {
     delegate_->OnSignalEmitted(signal_name, args_keyvals);
     return scoped_ptr<dbus::Response>(dbus::Response::CreateEmpty());
   }
 
- private:
   Delegate* delegate_;  // Owned by the caller.
+
+  DISALLOW_COPY_AND_ASSIGN(StubUpstartSignalEmitter);
 };
 
 }  // namespace login_manager

@@ -24,6 +24,12 @@ UpstartSignalEmitter::UpstartSignalEmitter(dbus::ObjectProxy* proxy)
 
 UpstartSignalEmitter::~UpstartSignalEmitter() {}
 
+scoped_ptr<dbus::Response> UpstartSignalEmitter::TriggerImpulse(
+    const std::string& name,
+    const std::vector<std::string>& args_keyvals) {
+  return EmitSignal(name, args_keyvals);
+}
+
 scoped_ptr<dbus::Response> UpstartSignalEmitter::EmitSignal(
     const std::string& signal_name,
     const std::vector<std::string>& args_keyvals) {
@@ -38,12 +44,6 @@ scoped_ptr<dbus::Response> UpstartSignalEmitter::EmitSignal(
 
   return upstart_dbus_proxy_->CallMethodAndBlock(
               &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-}
-
-scoped_ptr<dbus::Response> UpstartSignalEmitter::TriggerImpulse(
-    const std::string &name,
-    const std::vector<std::string> &args_keyvals) {
-  return EmitSignal(name, args_keyvals);
 }
 
 }  // namespace login_manager

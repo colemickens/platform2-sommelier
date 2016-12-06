@@ -30,6 +30,12 @@ class UpstartSignalEmitter : public InitDaemonController {
   explicit UpstartSignalEmitter(dbus::ObjectProxy* proxy);
   virtual ~UpstartSignalEmitter();
 
+  // InitDaemonController:
+  scoped_ptr<dbus::Response> TriggerImpulse(
+      const std::string &name,
+      const std::vector<std::string> &args_keyvals) final;
+
+ private:
   // Emits an upstart signal.  |args_keyvals| will be provided as
   // environment variables to any upstart jobs kicked off as a result
   // of the signal. Each element of |args_keyvals| is a string of the format
@@ -40,12 +46,7 @@ class UpstartSignalEmitter : public InitDaemonController {
   virtual scoped_ptr<dbus::Response> EmitSignal(
       const std::string& signal_name,
       const std::vector<std::string>& args_keyvals);
-  // InitDaemonController interface.
-  scoped_ptr<dbus::Response> TriggerImpulse(
-      const std::string &name,
-      const std::vector<std::string> &args_keyvals) final;
 
- private:
   dbus::ObjectProxy* upstart_dbus_proxy_;  // Weak, owned by caller.
   DISALLOW_COPY_AND_ASSIGN(UpstartSignalEmitter);
 };
