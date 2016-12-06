@@ -221,7 +221,7 @@ TEST_F(PowerManagerTest, SuspendingState) {
   EXPECT_FALSE(power_manager_.suspending());
   OnSuspendImminent(kSuspendId);
   EXPECT_TRUE(power_manager_.suspending());
-  EXPECT_TRUE(power_manager_.suspend_duration_us() == 0);
+  EXPECT_EQ(0, power_manager_.suspend_duration_us());
   OnSuspendDone(kSuspendId, kSuspendDurationUsecs);
   EXPECT_FALSE(power_manager_.suspending());
   EXPECT_TRUE(power_manager_.suspend_duration_us() == kSuspendDurationUsecs);

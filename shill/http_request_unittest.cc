@@ -299,7 +299,7 @@ class HTTPRequestTest : public Test {
     request_->ReadFromServer(&server_data);
   }
   void ReadFromServerBadData(InputData* data) {
-    CHECK(data->len < 0);
+    CHECK_LT(data->len, 0);
     request_->ReadFromServer(data);
   }
   void WriteToServer(int fd) {
