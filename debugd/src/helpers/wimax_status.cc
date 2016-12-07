@@ -4,10 +4,11 @@
 
 #include <stdio.h>
 
+#include <memory>
+
 #include <dbus-c++/dbus.h>
 
 #include <base/json/json_writer.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
 #include <debugd/src/dbus_utils.h>
@@ -41,7 +42,7 @@ class WiMaxStatus {
 
   string GetJsonOutput() {
     string json;
-    scoped_ptr<DictionaryValue> manager_properties(GetManagerProperties());
+    std::unique_ptr<DictionaryValue> manager_properties(GetManagerProperties());
     if (manager_properties) {
       base::JSONWriter::WriteWithOptions(
           *manager_properties, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
