@@ -7,7 +7,7 @@
 
 #include <libudev.h>
 
-#include "base/memory/scoped_ptr.h"
+#include <memory>
 
 namespace permission_broker {
 
@@ -23,9 +23,10 @@ struct UdevDeviceDeleter {
   void operator()(udev_device* device) const;
 };
 
-typedef scoped_ptr<udev, UdevDeleter> ScopedUdevPtr;
-typedef scoped_ptr<udev_enumerate, UdevEnumerateDeleter> ScopedUdevEnumeratePtr;
-typedef scoped_ptr<udev_device, UdevDeviceDeleter> ScopedUdevDevicePtr;
+typedef std::unique_ptr<udev, UdevDeleter> ScopedUdevPtr;
+typedef std::unique_ptr<udev_enumerate, UdevEnumerateDeleter>
+    ScopedUdevEnumeratePtr;
+typedef std::unique_ptr<udev_device, UdevDeviceDeleter> ScopedUdevDevicePtr;
 
 }  // namespace permission_broker
 

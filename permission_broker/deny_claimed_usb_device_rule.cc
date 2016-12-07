@@ -7,6 +7,7 @@
 #include <libudev.h>
 
 #include "base/logging.h"
+#include "base/memory/ptr_util.h"
 #include "base/strings/string_number_conversions.h"
 #include "permission_broker/udev_scopers.h"
 
@@ -25,8 +26,7 @@ DenyClaimedUsbDeviceRule::~DenyClaimedUsbDeviceRule() {
 bool DenyClaimedUsbDeviceRule::LoadPolicy() {
   usb_whitelist_.clear();
 
-  scoped_ptr<policy::PolicyProvider>
-      policy_provider(new policy::PolicyProvider());
+  auto policy_provider = base::MakeUnique<policy::PolicyProvider>();
   policy_provider->Reload();
 
   // No available policies.
