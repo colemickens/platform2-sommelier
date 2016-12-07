@@ -695,7 +695,7 @@ class Device : public base::RefCounted<Device> {
   static const char kStorageReceiveByteCount[];
   static const char kStorageTransmitByteCount[];
   static const char kFallbackDnsTestHostname[];
-  static const char* kFallbackDnsServers[];
+  static const char* const kFallbackDnsServers[];
   static const int kDNSTimeoutMilliseconds;
 
   // Maximum seconds between two link monitor failures to declare this link

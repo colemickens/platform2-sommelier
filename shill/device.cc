@@ -129,7 +129,7 @@ const char Device::kStorageTransmitByteCount[] = "TransmitByteCount";
 // static
 const char Device::kFallbackDnsTestHostname[] = "www.gstatic.com";
 // static
-const char* Device::kFallbackDnsServers[] = {
+const char* const Device::kFallbackDnsServers[] = {
     "8.8.8.8",
     "8.8.4.4"
 };

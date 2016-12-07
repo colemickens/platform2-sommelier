@@ -57,7 +57,7 @@ const char kDNSServer1[] = "8.8.4.4";
 const char kURL[] = "http://www.gstatic.com/generate_204";
 const char kLocalMacAddressASCIIString[] = "123456";
 const char kArpReplySenderMacAddressASCIIString[] = "345678";
-const char* kDNSServers[] = {kDNSServer0, kDNSServer1};
+const char* const kDNSServers[] = {kDNSServer0, kDNSServer1};
 const shill::IPAddress kIPv4LocalAddress("100.200.43.22");
 const shill::IPAddress kIPv4ServerAddress("8.8.8.8");
 const shill::IPAddress kIPv6ServerAddress("fe80::1aa9:5ff:7ebf:14c5");

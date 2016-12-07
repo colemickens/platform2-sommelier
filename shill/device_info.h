@@ -226,7 +226,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // operating in monitor mode.
   static const char kInterfaceType[];
   // Modem drivers that we support.
-  static const char* kModemDrivers[];
+  static const char* const kModemDrivers[];
   // Path to the tun device.
   static const char kTunDeviceName[];
   // Time to wait before registering devices which need extra time to detect.

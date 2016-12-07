@@ -98,7 +98,7 @@ const char DeviceInfo::kInterfaceDevice[] = "device";
 const char DeviceInfo::kInterfaceDriver[] = "device/driver";
 const char DeviceInfo::kInterfaceTunFlags[] = "tun_flags";
 const char DeviceInfo::kInterfaceType[] = "type";
-const char* DeviceInfo::kModemDrivers[] = {
+const char* const DeviceInfo::kModemDrivers[] = {
     "gobi",
     "QCUSBNet2k",
     "GobiNet",

@@ -507,7 +507,7 @@ void RoutingTable::ReplaceMetric(uint32_t interface_index,
 }
 
 bool RoutingTable::FlushCache() {
-  static const char* kPaths[2] = { kRouteFlushPath4, kRouteFlushPath6 };
+  static const char* const kPaths[2] = {kRouteFlushPath4, kRouteFlushPath6};
   bool ret = true;
 
   SLOG(this, 2) << __func__;

@@ -113,7 +113,7 @@ const int Manager::kTerminationActionsTimeoutMilliseconds = 19500;
 const int Manager::kDeviceStatusCheckIntervalMilliseconds = 180000;
 
 // static
-const char* Manager::kProbeTechnologies[] = {
+const char* const Manager::kProbeTechnologies[] = {
     kTypeEthernet,
     kTypeWifi,
     kTypeWimax,

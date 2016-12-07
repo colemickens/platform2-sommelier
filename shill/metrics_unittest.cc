@@ -646,7 +646,7 @@ TEST_F(MetricsTest, CellularAutoConnect) {
 }
 
 TEST_F(MetricsTest, CellularDrop) {
-  const char* kUMATechnologyStrings[] = {
+  static const char* const kUMATechnologyStrings[] = {
       kNetworkTechnology1Xrtt,
       kNetworkTechnologyEdge,
       kNetworkTechnologyEvdo,

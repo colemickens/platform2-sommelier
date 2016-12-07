@@ -58,7 +58,7 @@ static string ObjectID(Connection* c) {
 
 #if defined(__ANDROID__)
 namespace {
-const char* kGoogleDNSServers[] = {
+const char* const kGoogleDNSServers[] = {
     "8.8.4.4",
     "8.8.8.8"
 };

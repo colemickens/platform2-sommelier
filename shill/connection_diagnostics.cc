@@ -48,7 +48,7 @@ using std::vector;
 namespace {
 // These strings are dependent on ConnectionDiagnostics::Type. Any changes to
 // this array should be synced with ConnectionDiagnostics::Type.
-const char* kEventNames[] = {
+const char* const kEventNames[] = {
     "Portal detection",
     "Ping DNS servers",
     "DNS resolution",
@@ -61,7 +61,7 @@ const char* kEventNames[] = {
 };
 // These strings are dependent on ConnectionDiagnostics::Phase. Any changes to
 // this array should be synced with ConnectionDiagnostics::Phase.
-const char* kPhaseNames[] = {
+const char* const kPhaseNames[] = {
     "Start",
     "End",
     "End (Content)",
@@ -70,7 +70,7 @@ const char* kPhaseNames[] = {
 };
 // These strings are dependent on ConnectionDiagnostics::Result. Any changes to
 // this array should be synced with ConnectionDiagnostics::Result.
-const char* kResultNames[] = {
+const char* const kResultNames[] = {
     "Success",
     "Failure",
     "Timeout"

@@ -37,7 +37,7 @@ namespace {
 
 // TODO(benchan): Test IPv6 addresses.
 
-const char* kConnectionInfoLines[] = {
+const char* const kConnectionInfoLines[] = {
   "udp      17 30 src=192.168.1.1 dst=192.168.1.2 sport=9000 dport=53 "
   "[UNREPLIED] src=192.168.1.2 dst=192.168.1.1 sport=53 dport=9000 use=2",
   "tcp      6 299 ESTABLISHED src=192.168.2.1 dst=192.168.2.3 sport=8000 "
@@ -69,7 +69,7 @@ class ConnectionInfoReaderTest : public testing::Test {
     return ip_address;
   }
 
-  void CreateConnectionInfoFile(const char** lines, size_t num_lines,
+  void CreateConnectionInfoFile(const char* const* lines, size_t num_lines,
                                 const FilePath& dir_path, FilePath* file_path) {
     ASSERT_TRUE(base::CreateTemporaryFileInDir(dir_path, file_path));
     for (size_t i = 0; i < num_lines; ++i) {

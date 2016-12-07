@@ -40,7 +40,7 @@ const char kIPv6AddressAllZeros[] = "0000:0000:0000:0000:0000:0000:0000:0000";
 const char kIPv6AddressAllOnes[] = "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff";
 const char kIPv6AddressPattern1[] = "0123:4567:89ab:cdef:ffee:ddcc:bbaa:9988";
 
-const char* kIPv4SocketInfoLines[] = {
+const char* const kIPv4SocketInfoLines[] = {
     "  sl  local_address rem_address   st tx_queue rx_queue tr tm->when "
     "retrnsmt   uid  timeout inode                                      ",
     "   0: 0100007F:0019 00000000:0000 0A 0000000A:00000005 00:00000000 "
@@ -48,7 +48,7 @@ const char* kIPv4SocketInfoLines[] = {
     "   1: 0A01A8C0:0050 0100007F:03FC 01 00000000:00000000 00:00000000 "
     "00000000 65534        0 2787034 1 0000000000000000 100 0 0 10 -1   ",
 };
-const char* kIPv6SocketInfoLines[] = {
+const char* const kIPv6SocketInfoLines[] = {
     "  sl  local_address                         "
     "remote_address                        st tx_queue rx_queue tr tm->when "
     "retrnsmt   uid  timeout inode",
@@ -85,7 +85,7 @@ class SocketInfoReaderTest : public testing::Test {
     return ip_address;
   }
 
-  void CreateSocketInfoFile(const char** lines, size_t num_lines,
+  void CreateSocketInfoFile(const char* const* lines, size_t num_lines,
                             const FilePath& dir_path, FilePath* file_path) {
     ASSERT_TRUE(base::CreateTemporaryFileInDir(dir_path, file_path));
     for (size_t i = 0; i < num_lines; ++i) {

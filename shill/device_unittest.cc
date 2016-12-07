@@ -2415,7 +2415,7 @@ TEST_F(DevicePortalDetectionTest, CancelledOnSelectService) {
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
-  const char* kGoogleDNSServers[] = { "8.8.8.8", "8.8.4.4" };
+  static const char* const kGoogleDNSServers[] = {"8.8.8.8", "8.8.4.4"};
   vector<string> fallback_dns_servers(kGoogleDNSServers, kGoogleDNSServers + 2);
   const string kInterfaceName("int0");
   EXPECT_CALL(*connection_.get(), interface_name())

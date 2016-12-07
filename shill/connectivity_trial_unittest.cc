@@ -56,7 +56,7 @@ const char kInterfaceName[] = "int0";
 const char kURL[] = "http://www.chromium.org";
 const char kDNSServer0[] = "8.8.8.8";
 const char kDNSServer1[] = "8.8.4.4";
-const char* kDNSServers[] = { kDNSServer0, kDNSServer1 };
+const char* const kDNSServers[] = {kDNSServer0, kDNSServer1};
 }  // namespace
 
 MATCHER_P(IsResult, result, "") {

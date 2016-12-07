@@ -658,7 +658,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   static const char kErrorUnsupportedServiceType[];
 
   // Technologies to probe for.
-  static const char* kProbeTechnologies[];
+  static const char* const kProbeTechnologies[];
 
   // Name of the default claimer.
   static const char kDefaultClaimerName[];

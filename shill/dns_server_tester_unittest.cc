@@ -54,7 +54,7 @@ namespace {
 const char kInterfaceName[] = "int0";
 const char kDNSServer0[] = "8.8.8.8";
 const char kDNSServer1[] = "8.8.4.4";
-const char* kDNSServers[] = { kDNSServer0, kDNSServer1 };
+const char* const kDNSServers[] = {kDNSServer0, kDNSServer1};
 }  // namespace
 
 class DNSServerTesterTest : public Test {

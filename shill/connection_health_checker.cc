@@ -57,7 +57,7 @@ static string ObjectID(Connection* c) {
 }
 
 // static
-const char* ConnectionHealthChecker::kDefaultRemoteIPPool[] = {
+const char* const ConnectionHealthChecker::kDefaultRemoteIPPool[] = {
     "74.125.224.47",
     "74.125.224.79",
     "74.125.224.111",

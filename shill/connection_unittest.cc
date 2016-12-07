@@ -668,7 +668,7 @@ TEST_F(ConnectionTest, HasOtherAddress) {
 }
 
 TEST_F(ConnectionTest, UpdateDNSServers) {
-  const char* kDnsServers[] = {"1.1.1.1", "1.1.1.2"};
+  static const char* const kDnsServers[] = {"1.1.1.1", "1.1.1.2"};
   vector<string> dns_servers(kDnsServers, std::end(kDnsServers));
 
   // Non-default connection.

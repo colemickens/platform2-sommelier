@@ -290,7 +290,7 @@ TEST_F(VPNProviderTest, CreateServicesFromProfile) {
 TEST_F(VPNProviderTest, CreateService) {
   static const char kName[] = "test-vpn-service";
   static const char kStorageID[] = "test_vpn_storage_id";
-  static const char* kTypes[] = {
+  static const char* const kTypes[] = {
     kProviderOpenVpn,
     kProviderL2tpIpsec,
     kProviderThirdPartyVpn

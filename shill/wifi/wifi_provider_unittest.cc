@@ -351,7 +351,7 @@ class WiFiProviderTest : public testing::Test {
     // NOTE: These strings match the frequencies in |BuildFreqCountMap|.  They
     // are also provided, here, in sorted order to match the frequency map
     // (iterators for which will provide them in frequency-sorted order).
-    static const char* kStrings[] = {
+    static const char* const kStrings[] = {
       "@20", "5180:14", "5240:16", "5745:7", "5765:4", "5785:14", "5805:5"
     };
     if (!strings) {

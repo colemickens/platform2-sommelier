@@ -45,8 +45,8 @@ namespace {
 // Prefix used for DhcpProperties in the PropertyStore.
 const char kStoragePrefix[] = "DHCPProperty.";
 
-const char* kPropertyNames[] = {DhcpProperties::kHostnameProperty,
-                                DhcpProperties::kVendorClassProperty};
+const char* const kPropertyNames[] = {DhcpProperties::kHostnameProperty,
+                                      DhcpProperties::kVendorClassProperty};
 
 std::string GetFullPropertyName(const std::string& property_name) {
   return kStoragePrefix + property_name;

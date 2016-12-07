@@ -147,7 +147,7 @@ class ConnectionHealthChecker {
   FRIEND_TEST(ConnectionHealthCheckerTest, VerifySentData);
 
   // List of static IPs for connection health check.
-  static const char* kDefaultRemoteIPPool[];
+  static const char* const kDefaultRemoteIPPool[];
   // Time to wait for DNS server.
   static const int kDNSTimeoutMilliseconds;
   static const int kInvalidSocket;
