@@ -103,7 +103,6 @@ bool ReadFieldBinary(const uint8_t** cursor,
     return true;
 
   // Be careful to prevent possible overflows here (don't do *cursor + size).
-  DCHECK(size <= std::numeric_limits<ptrdiff_t>::max());
   if (*cursor >= end || end - *cursor < static_cast<ptrdiff_t>(size))
     return false;
   const uint8_t* field_end = *cursor + size;
