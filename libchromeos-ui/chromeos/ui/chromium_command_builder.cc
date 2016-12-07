@@ -463,12 +463,6 @@ void ChromiumCommandBuilder::AddUiFlags() {
     AddArg("--touch-noise-filtering");
   }
 
-  // TODO(dshwang): Add more devices when supporting native GpuMemoryBuffer.
-  // Currently it supports Intel Core and Intel Core Celeron.
-  // crbug.com/519587
-  if (UseFlagIsSet("native_gpu_memory_buffers"))
-    AddArg("--enable-native-gpu-memory-buffers");
-
   AddArg(std::string("--gpu-sandbox-failures-fatal=") +
       (is_chrome_os_hardware() ? "yes" : "no"));
 
