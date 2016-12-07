@@ -249,11 +249,6 @@ void TpmInit::RestoreTpmStateFromStorage() {
     platform_->DeleteFileDurable(kTpmOwnedFile, false);
     platform_->DeleteFileDurable(kTpmStatusFile, false);
   }
-  if (successful_check && is_owned) {
-    if (!platform_->FileExists(kTpmOwnedFile)) {
-      platform_->TouchFileDurable(kTpmOwnedFile);
-    }
-  }
 
   TpmStatus tpm_status;
   if (LoadTpmStatus(&tpm_status)) {
