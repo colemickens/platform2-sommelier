@@ -64,6 +64,9 @@ readonly ROOT_SPOOL_DIR=/var/spool/power_manager/root
 # send_metrics_on_resume.
 readonly SUSPEND_TO_RAM_TIME_FILE=${ROOT_SPOOL_DIR}/suspend-to-ram-time
 
+# File containing suspend-related information to log on failure.
+readonly SUSPEND_STATS_FILE=/sys/kernel/debug/suspend_stats
+
 log_msg() {
   logger -t "powerd_suspend[$$]" -- "$@"
 }
@@ -74,6 +77,17 @@ log_msg_from_file() {
 
 log_wakeup_count() {
   log_msg "wakeup_count is $(cat /sys/power/wakeup_count)"
+}
+
+log_suspend_stats() {
+  log_msg "--- begin ${SUSPEND_STATS_FILE} ---"
+  local tempfile=$(mktemp --tmpdir powerd_suspend_stats.XXXXXXXXXX)
+  # Omit blank lines and replace tabs with spaces so syslog won't escape them
+  # to "#011".
+  grep -e '\S' <"${SUSPEND_STATS_FILE}" | tr "\t" " " >"${tempfile}"
+  log_msg_from_file "${tempfile}"
+  log_msg "--- end ${SUSPEND_STATS_FILE} ---"
+  rm "${tempfile}"
 }
 
 enable_debug() {
@@ -316,14 +330,14 @@ else
     # occurred since the earlier write to /sys/power/wakeup_count.
     if echo "${error}" | grep -q 'Device or resource busy'; then
       log_msg "Warning: Device or resource busy on write to /sys/power/state"
-      log_msg_from_file /sys/kernel/debug/suspend_stats
+      log_suspend_stats
       log_wakeup_count
       result=$RESULT_CANCELED_LATE
     else
       # Note: The client/cros/power_suspend.py module in autotest depends on
       # this message.
       log_msg "Error writing to /sys/power/state: ${error}"
-      log_msg_from_file /sys/kernel/debug/suspend_stats
+      log_suspend_stats
       result=$RESULT_FAILURE
     fi
   fi
