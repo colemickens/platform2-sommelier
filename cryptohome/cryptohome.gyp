@@ -462,6 +462,7 @@
             'user_oldest_activity_timestamp_cache_unittest.cc',
             'user_session_unittest.cc',
             'vault_keyset_unittest.cc',
+            'tpm_init_unittest.cc',
           ],
           'conditions': [
             ['USE_tpm2 == 1', {
