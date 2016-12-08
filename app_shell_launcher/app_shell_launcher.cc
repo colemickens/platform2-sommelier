@@ -6,11 +6,12 @@
 #include <sys/resource.h>
 #include <sys/types.h>
 
+#include <memory>
+
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/ui/chromium_command_builder.h>
@@ -196,7 +197,7 @@ int main(int argc, char** argv) {
   CHECK(builder.Init());
 
   // Start the X server in the background before doing more-expensive setup.
-  scoped_ptr<XServerRunner> x_runner;
+  std::unique_ptr<XServerRunner> x_runner;
   const base::FilePath xauth_path(kXauthPath);
   const bool using_x11 = builder.UseFlagIsSet("X");
   if (using_x11) {
