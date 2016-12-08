@@ -5,11 +5,11 @@
 #include "login_manager/device_local_account_policy_service.h"
 
 #include <algorithm>
+#include <memory>
 
 #include <base/compiler_specific.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/run_loop.h>
 #include <brillo/cryptohome.h>
 #include <brillo/message_loops/fake_message_loop.h>
@@ -82,7 +82,7 @@ class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
 
   MockPolicyKey key_;
 
-  scoped_ptr<DeviceLocalAccountPolicyService> service_;
+  std::unique_ptr<DeviceLocalAccountPolicyService> service_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DeviceLocalAccountPolicyServiceTest);

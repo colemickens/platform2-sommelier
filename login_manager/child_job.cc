@@ -5,6 +5,7 @@
 #include "login_manager/child_job.h"
 
 #include <algorithm>
+#include <memory>
 #include <vector>
 
 #include <errno.h>
@@ -17,7 +18,6 @@
 #include <unistd.h>
 
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/posix/file_descriptor_shuffle.h>
 #include <base/process/launch.h>
 #include <base/time/time.h>
@@ -126,12 +126,12 @@ bool ChildJobInterface::Subprocess::ForkAndExec(
     return false;
   }
 
-  scoped_ptr<char const* []> argv(new char const* [args.size() + 1]);
+  std::unique_ptr<char const* []> argv(new char const* [args.size() + 1]);
   for (size_t i = 0; i < args.size(); ++i)
     argv[i] = args[i].c_str();
   argv[args.size()] = 0;
 
-  scoped_ptr<char const* []> envp(new char const* [env_vars.size() + 1]);
+  std::unique_ptr<char const* []> envp(new char const* [env_vars.size() + 1]);
   for (size_t i = 0; i < env_vars.size(); ++i)
     envp[i] = env_vars[i].c_str();
   envp[env_vars.size()] = 0;

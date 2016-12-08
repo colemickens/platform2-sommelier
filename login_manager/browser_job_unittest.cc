@@ -9,13 +9,13 @@
 
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
 
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/strings/string_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -76,7 +76,7 @@ class BrowserJobTest : public ::testing::Test {
   MockFileChecker checker_;
   MockMetrics metrics_;
   MockSystemUtils utils_;
-  scoped_ptr<BrowserJob> job_;
+  std::unique_ptr<BrowserJob> job_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BrowserJobTest);

@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -39,10 +40,10 @@ class PolicyKeyTest : public ::testing::Test {
 
   void StartUnowned() { base::DeleteFile(tmpfile_, false); }
 
-  static scoped_ptr<crypto::RSAPrivateKey> CreateRSAPrivateKey(
+  static std::unique_ptr<crypto::RSAPrivateKey> CreateRSAPrivateKey(
       PK11SlotInfo* slot,
       uint16_t num_bits) {
-    scoped_ptr<crypto::RSAPrivateKey> key;
+    std::unique_ptr<crypto::RSAPrivateKey> key;
     crypto::ScopedSECKEYPublicKey public_key_obj;
     crypto::ScopedSECKEYPrivateKey private_key_obj;
     if (crypto::GenerateRSAKeyPairNSS(slot, num_bits, true /* permanent */,
@@ -179,12 +180,12 @@ TEST_F(PolicyKeyTest, RefuseToClobberOnDisk) {
 }
 
 TEST_F(PolicyKeyTest, SignVerify) {
-  scoped_ptr<NssUtil> nss(NssUtil::Create());
+  std::unique_ptr<NssUtil> nss(NssUtil::Create());
   StartUnowned();
   PolicyKey key(tmpfile_, nss.get());
   crypto::ScopedTestNSSDB test_db;
 
-  scoped_ptr<crypto::RSAPrivateKey> pair(
+  std::unique_ptr<crypto::RSAPrivateKey> pair(
       CreateRSAPrivateKey(test_db.slot(), 512));
   ASSERT_NE(pair.get(), reinterpret_cast<crypto::RSAPrivateKey*>(NULL));
 
@@ -207,12 +208,12 @@ TEST_F(PolicyKeyTest, SignVerify) {
 }
 
 TEST_F(PolicyKeyTest, RotateKey) {
-  scoped_ptr<NssUtil> nss(NssUtil::Create());
+  std::unique_ptr<NssUtil> nss(NssUtil::Create());
   StartUnowned();
   PolicyKey key(tmpfile_, nss.get());
   crypto::ScopedTestNSSDB test_db;
 
-  scoped_ptr<crypto::RSAPrivateKey> pair(
+  std::unique_ptr<crypto::RSAPrivateKey> pair(
       CreateRSAPrivateKey(test_db.slot(), 512));
   ASSERT_NE(pair.get(), reinterpret_cast<crypto::RSAPrivateKey*>(NULL));
 
@@ -232,7 +233,7 @@ TEST_F(PolicyKeyTest, RotateKey) {
   ASSERT_TRUE(key2.HaveCheckedDisk());
   ASSERT_TRUE(key2.IsPopulated());
 
-  scoped_ptr<crypto::RSAPrivateKey> new_pair(
+  std::unique_ptr<crypto::RSAPrivateKey> new_pair(
       CreateRSAPrivateKey(test_db.slot(), 512));
   ASSERT_NE(new_pair.get(), reinterpret_cast<crypto::RSAPrivateKey*>(NULL));
   std::vector<uint8_t> new_export;

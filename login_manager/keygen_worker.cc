@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <memory>
 #include <set>
 #include <string>
 
@@ -46,7 +47,7 @@ int GenerateKey(const base::FilePath& file_path,
                           << nssdb.value();
   LOG(INFO) << "Generating Owner key.";
 
-  scoped_ptr<crypto::RSAPrivateKey> pair(
+  std::unique_ptr<crypto::RSAPrivateKey> pair(
       nss->GenerateKeyPairForUser(slot.get()));
   if (pair.get()) {
     if (!key.PopulateFromKeypair(pair.get()))

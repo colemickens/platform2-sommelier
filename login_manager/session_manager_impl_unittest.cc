@@ -21,6 +21,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
@@ -110,8 +111,8 @@ class SessionManagerImplTest : public ::testing::Test {
         state_key_generator_(&utils_, &metrics_),
         android_container_(kAndroidPid),
         system_clock_proxy_(new MockObjectProxy),
-        impl_(scoped_ptr<UpstartSignalEmitter>(new StubUpstartSignalEmitter(
-                  &upstart_signal_emitter_delegate_)),
+        impl_(base::MakeUnique<StubUpstartSignalEmitter>(
+                  &upstart_signal_emitter_delegate_),
               &dbus_emitter_,
               base::Bind(&SessionManagerImplTest::FakeLockScreen,
                          base::Unretained(this)),
@@ -165,15 +166,16 @@ class SessionManagerImplTest : public ::testing::Test {
                 CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
         .WillRepeatedly(testing::SaveArg<2>(&time_sync_callback_));
 
-    MockUserPolicyServiceFactory* factory = new MockUserPolicyServiceFactory;
+    auto factory = base::MakeUnique<MockUserPolicyServiceFactory>();
     EXPECT_CALL(*factory, Create(_))
         .WillRepeatedly(
             Invoke(this, &SessionManagerImplTest::CreateUserPolicyService));
-    scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy(
-        new DeviceLocalAccountPolicyService(tmpdir_.path(), NULL));
+    auto device_local_account_policy =
+        base::MakeUnique<DeviceLocalAccountPolicyService>(tmpdir_.path(),
+                                                          nullptr);
     impl_.SetPolicyServicesForTest(
-        scoped_ptr<DevicePolicyService>(device_policy_service_),
-        scoped_ptr<UserPolicyServiceFactory>(factory),
+        std::unique_ptr<DevicePolicyService>(device_policy_service_),
+        std::move(factory),
         std::move(device_local_account_policy));
 
     SetDefaultMockBehavior();
@@ -291,7 +293,7 @@ class SessionManagerImplTest : public ::testing::Test {
     time_sync_callback_.Run(response.get());
   }
 
-  // These are bare pointers, not scoped_ptrs, because we need to give them
+  // These are bare pointers, not unique_ptrs, because we need to give them
   // to a SessionManagerImpl instance, but also be able to set expectations
   // on them after we hand them off.
   MockDevicePolicyService* device_policy_service_;

@@ -4,18 +4,18 @@
 
 #include "login_manager/systemd_unit_starter.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
 namespace {
 
-scoped_ptr<dbus::Response> CallEnvironmentMethod(
+std::unique_ptr<dbus::Response> CallEnvironmentMethod(
     dbus::ObjectProxy *proxy,
     const std::string &method_name,
     const std::vector<std::string> &args_keyvals) {
@@ -29,7 +29,7 @@ scoped_ptr<dbus::Response> CallEnvironmentMethod(
              &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
 }
 
-scoped_ptr<dbus::Response> SetEnvironment(
+std::unique_ptr<dbus::Response> SetEnvironment(
     dbus::ObjectProxy *proxy,
     const std::vector<std::string> &args_keyvals) {
   return CallEnvironmentMethod(
@@ -37,7 +37,8 @@ scoped_ptr<dbus::Response> SetEnvironment(
              login_manager::SystemdUnitStarter::kSetEnvironmentMethodName,
              args_keyvals);
 }
-scoped_ptr<dbus::Response> UnsetEnvironment(
+
+std::unique_ptr<dbus::Response> UnsetEnvironment(
      dbus::ObjectProxy *proxy,
      const std::vector<std::string> &args_keyvals) {
   std::vector<std::string> env_vars = args_keyvals;
@@ -79,7 +80,7 @@ SystemdUnitStarter::SystemdUnitStarter(dbus::ObjectProxy *proxy)
 SystemdUnitStarter::~SystemdUnitStarter() {
 }
 
-scoped_ptr<dbus::Response> SystemdUnitStarter::TriggerImpulse(
+std::unique_ptr<dbus::Response> SystemdUnitStarter::TriggerImpulse(
     const std::string &unit_name,
     const std::vector<std::string> &args_keyvals,
     TriggerMode mode) {
@@ -97,7 +98,7 @@ scoped_ptr<dbus::Response> SystemdUnitStarter::TriggerImpulse(
   writer.AppendString(unit_name + ".target");
   writer.AppendString(SystemdUnitStarter::kStartUnitMode);
 
-  scoped_ptr<dbus::Response> response;
+  std::unique_ptr<dbus::Response> response;
   switch (mode) {
     case TriggerMode::SYNC:
       response = systemd_dbus_proxy_->CallMethodAndBlock(

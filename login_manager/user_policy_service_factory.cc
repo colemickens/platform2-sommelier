@@ -9,9 +9,12 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <utility>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "brillo/cryptohome.h"
@@ -70,16 +73,16 @@ PolicyService* UserPolicyServiceFactory::Create(const std::string& username) {
     return NULL;
   }
 
-  scoped_ptr<PolicyKey> key(
-      new PolicyKey(policy_dir.Append(kPolicyKeyFile), nss_));
+  auto key =
+      base::MakeUnique<PolicyKey>(policy_dir.Append(kPolicyKeyFile), nss_);
   bool key_load_success = key->PopulateFromDiskIfPossible();
   if (!key_load_success) {
     LOG(ERROR) << "Failed to load user policy key from disk.";
     return NULL;
   }
 
-  scoped_ptr<PolicyStore> store(
-      new PolicyStore(policy_dir.Append(kPolicyDataFile)));
+  auto store =
+      base::MakeUnique<PolicyStore>(policy_dir.Append(kPolicyDataFile));
   bool policy_success = store->LoadOrCreate();
   if (!policy_success)  // Non-fatal, so log, and keep going.
     LOG(WARNING) << "Failed to load user policy data, continuing anyway.";

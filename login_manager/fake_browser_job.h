@@ -9,11 +9,12 @@
 
 #include <sys/types.h>
 
-#include <base/memory/scoped_ptr.h>
-#include <base/time/time.h>
-#include <gmock/gmock.h>
+#include <memory>
 #include <string>
 #include <vector>
+
+#include <base/time/time.h>
+#include <gmock/gmock.h>
 
 namespace login_manager {
 class FakeChildProcess;
@@ -24,7 +25,7 @@ class FakeBrowserJob : public BrowserJobInterface {
   FakeBrowserJob(const std::string& name, bool schedule_exit);
   virtual ~FakeBrowserJob();
 
-  void set_fake_child_process(scoped_ptr<FakeChildProcess> fake) {
+  void set_fake_child_process(std::unique_ptr<FakeChildProcess> fake) {
     fake_process_ = std::move(fake);
   }
   void set_should_run(bool should) { should_run_ = should; }
@@ -48,7 +49,7 @@ class FakeBrowserJob : public BrowserJobInterface {
   void ClearPid() override;
 
  private:
-  scoped_ptr<FakeChildProcess> fake_process_;
+  std::unique_ptr<FakeChildProcess> fake_process_;
   const std::string name_;
   bool running_;
   const bool schedule_exit_;

@@ -8,11 +8,11 @@
 #include <signal.h>
 #include <sys/types.h>
 
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 
 #include "login_manager/generator_job.h"
@@ -49,7 +49,7 @@ class KeyGenerator : public JobManagerInterface {
   void RequestJobExit() override;
   void EnsureJobExit(base::TimeDelta timeout) override;
 
-  void InjectJobFactory(scoped_ptr<GeneratorJobFactoryInterface> factory);
+  void InjectJobFactory(std::unique_ptr<GeneratorJobFactoryInterface> factory);
 
  private:
   static const char kTemporaryKeyFilename[];
@@ -61,8 +61,8 @@ class KeyGenerator : public JobManagerInterface {
   SystemUtils *utils_;
   Delegate* delegate_;
 
-  scoped_ptr<GeneratorJobFactoryInterface> factory_;
-  scoped_ptr<GeneratorJobInterface> keygen_job_;
+  std::unique_ptr<GeneratorJobFactoryInterface> factory_;
+  std::unique_ptr<GeneratorJobInterface> keygen_job_;
   bool generating_;
   std::string key_owner_username_;
   std::string temporary_key_filename_;

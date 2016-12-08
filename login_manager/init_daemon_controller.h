@@ -5,10 +5,9 @@
 #ifndef LOGIN_MANAGER_INIT_DAEMON_CONTROLLER_H_
 #define LOGIN_MANAGER_INIT_DAEMON_CONTROLLER_H_
 
+#include <memory>
 #include <string>
 #include <vector>
-
-#include <base/memory/scoped_ptr.h>
 
 namespace dbus {
 class ObjectProxy;
@@ -31,7 +30,7 @@ class InitDaemonController {
 
   // Asks the init daemon to emit a signal (Upstart) or start a unit (systemd).
   // The response is null if the request failed or |mode| is ASYNC.
-  virtual scoped_ptr<dbus::Response> TriggerImpulse(
+  virtual std::unique_ptr<dbus::Response> TriggerImpulse(
       const std::string& name,
       const std::vector<std::string>& args_keyvals,
       TriggerMode mode) = 0;

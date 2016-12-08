@@ -5,11 +5,11 @@
 #ifndef LOGIN_MANAGER_SYSTEMD_UNIT_STARTER_H_
 #define LOGIN_MANAGER_SYSTEMD_UNIT_STARTER_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "login_manager/init_daemon_controller.h"
 
@@ -35,7 +35,7 @@ class SystemdUnitStarter : public InitDaemonController {
   virtual ~SystemdUnitStarter();
 
   // InitDaemonController:
-  scoped_ptr<dbus::Response> TriggerImpulse(
+  std::unique_ptr<dbus::Response> TriggerImpulse(
       const std::string &unit_name,
       const std::vector<std::string> &args_keyvals,
       TriggerMode mode) final;

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -43,7 +44,7 @@ int main(int argc, char* argv[]) {
   if (cl->GetArgs().size() != 2) {
     LOG(FATAL) << "Usage: keygen /path/to/output_file /path/to/user/homedir";
   }
-  scoped_ptr<login_manager::NssUtil> nss(login_manager::NssUtil::Create());
+  std::unique_ptr<login_manager::NssUtil> nss(login_manager::NssUtil::Create());
   return login_manager::keygen::GenerateKey(base::FilePath(cl->GetArgs()[0]),
                                             base::FilePath(cl->GetArgs()[1]),
                                             nss.get());

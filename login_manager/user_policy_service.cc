@@ -25,8 +25,8 @@ namespace em = enterprise_management;
 namespace login_manager {
 
 UserPolicyService::UserPolicyService(
-    scoped_ptr<PolicyStore> policy_store,
-    scoped_ptr<PolicyKey> policy_key,
+    std::unique_ptr<PolicyStore> policy_store,
+    std::unique_ptr<PolicyKey> policy_key,
     const base::FilePath& key_copy_path,
     SystemUtils* system_utils)
     : PolicyService(std::move(policy_store), policy_key.get()),

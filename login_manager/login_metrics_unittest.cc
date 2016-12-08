@@ -4,9 +4,10 @@
 
 #include "login_manager/login_metrics.h"
 
+#include <memory>
+
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest.h>
 
 namespace login_manager {
@@ -40,7 +41,7 @@ class LoginMetricsTest : public testing::Test {
 
  protected:
   base::ScopedTempDir tmpdir_;
-  scoped_ptr<LoginMetrics> metrics_;
+  std::unique_ptr<LoginMetrics> metrics_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(LoginMetricsTest);

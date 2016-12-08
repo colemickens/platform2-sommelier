@@ -7,13 +7,13 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include <memory>
 #include <string>
 #include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/strings/stringprintf.h>
 #include <crypto/nss_util.h>
 #include <crypto/nss_util_internal.h>
@@ -266,7 +266,7 @@ bool NssUtilImpl::Sign(const uint8_t* data,
                        int data_len,
                        std::vector<uint8_t>* OUT_signature,
                        RSAPrivateKey* key) {
-  scoped_ptr<crypto::SignatureCreator> signer(
+  std::unique_ptr<crypto::SignatureCreator> signer(
       crypto::SignatureCreator::Create(key, crypto::SignatureCreator::SHA1));
   if (!signer->Update(data, data_len))
     return false;

@@ -11,6 +11,7 @@
 #include <stdlib.h>
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -99,7 +100,7 @@ class SessionManagerImpl : public SessionManagerInterface,
     bool set_;
   };
 
-  SessionManagerImpl(scoped_ptr<InitDaemonController> init_controller,
+  SessionManagerImpl(std::unique_ptr<InitDaemonController> init_controller,
                      DBusSignalEmitterInterface* dbus_emitter,
                      base::Closure lock_screen_closure,
                      base::Closure restart_device_closure,
@@ -139,9 +140,10 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   // Tests can call this before Initialize() to inject their own objects.
   void SetPolicyServicesForTest(
-      scoped_ptr<DevicePolicyService> device_policy,
-      scoped_ptr<UserPolicyServiceFactory> user_policy_factory,
-      scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy);
+      std::unique_ptr<DevicePolicyService> device_policy,
+      std::unique_ptr<UserPolicyServiceFactory> user_policy_factory,
+      std::unique_ptr<DeviceLocalAccountPolicyService>
+          device_local_account_policy);
 
   // SessionManagerInterface implementation.
   // Should set up policy stuff; if false DIE.
@@ -302,7 +304,7 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   base::FilePath chrome_testing_path_;
 
-  scoped_ptr<InitDaemonController> init_controller_;
+  std::unique_ptr<InitDaemonController> init_controller_;
 
   base::Closure lock_screen_closure_;
   base::Closure restart_device_closure_;
@@ -325,9 +327,9 @@ class SessionManagerImpl : public SessionManagerInterface,
   InstallAttributesReader* install_attributes_reader_;  // Owned by the caller.
   dbus::ObjectProxy* system_clock_proxy_;               // Owned by the caller.
 
-  scoped_ptr<DevicePolicyService> device_policy_;
-  scoped_ptr<UserPolicyServiceFactory> user_policy_factory_;
-  scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy_;
+  std::unique_ptr<DevicePolicyService> device_policy_;
+  std::unique_ptr<UserPolicyServiceFactory> user_policy_factory_;
+  std::unique_ptr<DeviceLocalAccountPolicyService> device_local_account_policy_;
   RegenMitigator mitigator_;
 
   // Callbacks passed to RequestServerBackedStateKeys() while

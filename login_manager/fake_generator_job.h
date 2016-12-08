@@ -10,9 +10,9 @@
 #include <signal.h>
 #include <sys/types.h>
 
+#include <memory>
 #include <string>
 
-#include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 
@@ -25,7 +25,7 @@ class FakeGeneratorJob : public GeneratorJobInterface {
             const std::string& name,
             const std::string& key_contents);
     virtual ~Factory();
-    scoped_ptr<GeneratorJobInterface> Create(
+    std::unique_ptr<GeneratorJobInterface> Create(
         const std::string& filename,
         const base::FilePath& user_path,
         uid_t desired_uid,

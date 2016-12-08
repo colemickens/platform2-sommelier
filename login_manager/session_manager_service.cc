@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <algorithm>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -17,7 +18,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <brillo/message_loops/message_loop.h>
@@ -126,7 +127,7 @@ void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
 }
 
 SessionManagerService::SessionManagerService(
-    scoped_ptr<BrowserJobInterface> child_job,
+    std::unique_ptr<BrowserJobInterface> child_job,
     uid_t uid,
     int kill_timeout,
     bool enable_browser_abort_on_hang,
@@ -194,11 +195,8 @@ bool SessionManagerService::Initialize() {
 
   // Initially store in derived-type pointer, so that we can initialize
   // appropriately below.
-  scoped_ptr<InitDaemonController> init_controller(
-      new InitDaemonControllerImpl(init_dbus_proxy));
-
   SessionManagerImpl* impl = new SessionManagerImpl(
-      std::move(init_controller),
+      base::MakeUnique<InitDaemonControllerImpl>(init_dbus_proxy),
       dbus_emitter_.get(),
       base::Bind(&FireAndForgetDBusMethodCall,
                  base::Unretained(chrome_dbus_proxy),
@@ -429,7 +427,7 @@ bool SessionManagerService::CallPowerdMethod(
   dbus::MessageWriter writer(&method_call);
   writer.AppendProtoAsArrayOfBytes(request);
 
-  scoped_ptr<dbus::Response> response(
+  std::unique_ptr<dbus::Response> response(
       powerd_dbus_proxy_->CallMethodAndBlock(
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
   if (!response)

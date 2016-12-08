@@ -4,8 +4,9 @@
 
 #include "login_manager/liveness_checker_impl.h"
 
+#include <memory>
+
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <brillo/message_loops/fake_message_loop.h>
 #include <chromeos/dbus/service_constants.h>
@@ -65,9 +66,9 @@ class LivenessCheckerImplTest : public ::testing::Test {
 
   brillo::FakeMessageLoop fake_loop_{nullptr};
   scoped_refptr<MockObjectProxy> object_proxy_;
-  scoped_ptr<StrictMock<MockProcessManagerService>> manager_;
+  std::unique_ptr<StrictMock<MockProcessManagerService>> manager_;
 
-  scoped_ptr<LivenessCheckerImpl> checker_;
+  std::unique_ptr<LivenessCheckerImpl> checker_;
 
  private:
   void Respond(dbus::MethodCall* method_call,

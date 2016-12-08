@@ -11,11 +11,12 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <memory>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
 #include <gtest/gtest.h>
@@ -77,7 +78,7 @@ TEST_F(KeyGeneratorTest, KeygenEndToEndTest) {
 
   KeyGenerator keygen(getuid(), &utils_);
   keygen.set_delegate(&handler);
-  keygen.InjectJobFactory(scoped_ptr<GeneratorJobFactoryInterface>(
+  keygen.InjectJobFactory(std::unique_ptr<GeneratorJobFactoryInterface>(
       new FakeGeneratorJob::Factory(kDummyPid, "gen", fake_key_contents)));
 
   ASSERT_TRUE(keygen.Start(fake_ownername));

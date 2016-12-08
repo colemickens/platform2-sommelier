@@ -11,8 +11,8 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <brillo/cryptohome.h>
@@ -151,7 +151,7 @@ PolicyService* DeviceLocalAccountPolicyService::GetPolicyService(
       return NULL;
     }
 
-    scoped_ptr<PolicyStore> store(new PolicyStore(policy_path));
+    auto store = base::MakeUnique<PolicyStore>(policy_path);
     if (!store->LoadOrCreate()) {
       // This is non-fatal, the policy may not have been stored yet.
       LOG(WARNING) << "Failed to load policy for device-local account "

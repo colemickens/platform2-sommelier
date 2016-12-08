@@ -7,12 +7,12 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 
 namespace crypto {
 class RSAPrivateKey;
@@ -94,7 +94,7 @@ class PolicyKey {
   bool have_replaced_;
   std::vector<uint8_t> key_;
   NssUtil* nss_;
-  scoped_ptr<SystemUtils> utils_;
+  std::unique_ptr<SystemUtils> utils_;
 
   DISALLOW_COPY_AND_ASSIGN(PolicyKey);
 };

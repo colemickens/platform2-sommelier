@@ -14,7 +14,6 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/files/file_util.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/exported_object.h>
@@ -37,35 +36,35 @@ const char kDBusIntrospectMethod[] = "Introspect";
 // |response_sender|. If |handler| returns NULL, an empty response is created
 // and sent.
 void HandleSynchronousDBusMethodCall(
-    base::Callback<scoped_ptr<dbus::Response>(dbus::MethodCall*)> handler,
+    base::Callback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)> handler,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
-  scoped_ptr<dbus::Response> response = handler.Run(method_call);
+  std::unique_ptr<dbus::Response> response = handler.Run(method_call);
   if (!response)
     response = dbus::Response::FromMethodCall(method_call);
   response_sender.Run(std::move(response));
 }
 
-scoped_ptr<dbus::Response> CreateError(dbus::MethodCall* call,
-                                       const std::string& name,
-                                       const std::string& message) {
+std::unique_ptr<dbus::Response> CreateError(dbus::MethodCall* call,
+                                            const std::string& name,
+                                            const std::string& message) {
   return dbus::ErrorResponse::FromMethodCall(call, name, message);
 }
 
 // Creates a new "invalid args" reply to call.
-scoped_ptr<dbus::Response> CreateInvalidArgsError(dbus::MethodCall* call,
-                                                  std::string message) {
+std::unique_ptr<dbus::Response> CreateInvalidArgsError(dbus::MethodCall* call,
+                                                       std::string message) {
   return CreateError(call, DBUS_ERROR_INVALID_ARGS, "Signature is: " + message);
 }
 
 // Craft a Response to call that is appropriate, given the contents of error.
 // If error is set, this will be an ErrorResponse. Otherwise, it will be a
 // Response containing payload.
-scoped_ptr<dbus::Response> CraftAppropriateResponseWithBool(
+std::unique_ptr<dbus::Response> CraftAppropriateResponseWithBool(
     dbus::MethodCall* call,
     const SessionManagerImpl::Error& error,
     bool payload) {
-  scoped_ptr<dbus::Response> response;
+  std::unique_ptr<dbus::Response> response;
   if (error.is_set()) {
     response = CreateError(call, error.name(), error.message());
   } else {
@@ -76,11 +75,11 @@ scoped_ptr<dbus::Response> CraftAppropriateResponseWithBool(
   return response;
 }
 
-scoped_ptr<dbus::Response> CraftAppropriateResponseWithString(
+std::unique_ptr<dbus::Response> CraftAppropriateResponseWithString(
     dbus::MethodCall* call,
     const SessionManagerImpl::Error& error,
     const std::string& payload) {
-  scoped_ptr<dbus::Response> response;
+  std::unique_ptr<dbus::Response> response;
   if (error.is_set()) {
     response = CreateError(call, error.name(), error.message());
   } else {
@@ -91,11 +90,11 @@ scoped_ptr<dbus::Response> CraftAppropriateResponseWithString(
   return response;
 }
 
-scoped_ptr<dbus::Response> CraftAppropriateResponseWithBytes(
+std::unique_ptr<dbus::Response> CraftAppropriateResponseWithBytes(
     dbus::MethodCall* call,
     const SessionManagerImpl::Error& error,
     const std::vector<uint8_t>& payload) {
-  scoped_ptr<dbus::Response> response;
+  std::unique_ptr<dbus::Response> response;
   if (error.is_set()) {
     response = CreateError(call, error.name(), error.message());
   } else {
@@ -112,7 +111,8 @@ void HandleGetServerBackedStateKeysCompletion(
     dbus::MethodCall* call,
     const dbus::ExportedObject::ResponseSender& sender,
     const std::vector<std::vector<uint8_t>>& state_keys) {
-  scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call));
+  std::unique_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(call));
   dbus::MessageWriter writer(response.get());
   dbus::MessageWriter array_writer(NULL);
   writer.OpenArray("ay", &array_writer);
@@ -186,7 +186,8 @@ DBusMethodCompletion::DBusMethodCompletion(
 
 void DBusMethodCompletion::HandleResult(const PolicyService::Error& error) {
   if (error.code() == dbus_error::kNone) {
-    scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call_));
+    std::unique_ptr<dbus::Response> response(
+        dbus::Response::FromMethodCall(call_));
     dbus::MessageWriter writer(response.get());
     writer.AppendBool(true);
     sender_.Run(std::move(response));
@@ -328,13 +329,13 @@ void SessionManagerDBusAdaptor::ExportDBusMethods(
                             base::Unretained(this)))));
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::EmitLoginPromptVisible(
-    dbus::MethodCall* call) {
+std::unique_ptr<dbus::Response>
+SessionManagerDBusAdaptor::EmitLoginPromptVisible(dbus::MethodCall* call) {
   impl_->EmitLoginPromptVisible();
-  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+  return dbus::Response::FromMethodCall(call);
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::EnableChromeTesting(
+std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::EnableChromeTesting(
     dbus::MethodCall* call) {
   dbus::MessageReader reader(call);
   bool relaunch;
@@ -348,7 +349,7 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::EnableChromeTesting(
   return CraftAppropriateResponseWithString(call, error, testing_path);
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StartSession(
+std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StartSession(
     dbus::MethodCall* call) {
   dbus::MessageReader reader(call);
   std::string account_id, unique_id;
@@ -360,11 +361,12 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StartSession(
   return CraftAppropriateResponseWithBool(call, error, success);
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StopSession(
+std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StopSession(
     dbus::MethodCall* call) {
   // Though this takes a string (unique_id), it is ignored.
   bool success = impl_->StopSession();
-  scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call));
+  std::unique_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(call));
   dbus::MessageWriter writer(response.get());
   writer.AppendBool(success);
   return response;
@@ -399,7 +401,7 @@ void SessionManagerDBusAdaptor::DoStorePolicy(
   }
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrievePolicy(
+std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrievePolicy(
     dbus::MethodCall* call) {
   std::vector<uint8_t> policy_data;
   SessionManagerImpl::Error error;
@@ -439,8 +441,8 @@ void SessionManagerDBusAdaptor::DoStorePolicyForUser(
   }
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrievePolicyForUser(
-    dbus::MethodCall* call) {
+std::unique_ptr<dbus::Response>
+SessionManagerDBusAdaptor::RetrievePolicyForUser(dbus::MethodCall* call) {
   std::string account_id;
   dbus::MessageReader reader(call);
 
@@ -474,7 +476,7 @@ void SessionManagerDBusAdaptor::StoreDeviceLocalAccountPolicy(
   }
 }
 
-scoped_ptr<dbus::Response>
+std::unique_ptr<dbus::Response>
 SessionManagerDBusAdaptor::RetrieveDeviceLocalAccountPolicy(
     dbus::MethodCall* call) {
   std::string account_id;
@@ -489,20 +491,22 @@ SessionManagerDBusAdaptor::RetrieveDeviceLocalAccountPolicy(
   return CraftAppropriateResponseWithBytes(call, error, policy_data);
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrieveSessionState(
+std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrieveSessionState(
     dbus::MethodCall* call) {
-  scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call));
+  std::unique_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(call));
   dbus::MessageWriter writer(response.get());
   writer.AppendString(impl_->RetrieveSessionState());
   return response;
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrieveActiveSessions(
-    dbus::MethodCall* call) {
+std::unique_ptr<dbus::Response>
+SessionManagerDBusAdaptor::RetrieveActiveSessions(dbus::MethodCall* call) {
   std::map<std::string, std::string> sessions;
   impl_->RetrieveActiveSessions(&sessions);
 
-  scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call));
+  std::unique_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(call));
   dbus::MessageWriter writer(response.get());
   dbus::MessageWriter array_writer(NULL);
   writer.OpenArray("{ss}", &array_writer);
@@ -519,43 +523,43 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrieveActiveSessions(
   return response;
 }
 
-scoped_ptr<dbus::Response>
+std::unique_ptr<dbus::Response>
 SessionManagerDBusAdaptor::HandleSupervisedUserCreationStarting(
     dbus::MethodCall* call) {
   impl_->HandleSupervisedUserCreationStarting();
-  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+  return dbus::Response::FromMethodCall(call);
 }
 
-scoped_ptr<dbus::Response>
+std::unique_ptr<dbus::Response>
 SessionManagerDBusAdaptor::HandleSupervisedUserCreationFinished(
     dbus::MethodCall* call) {
   impl_->HandleSupervisedUserCreationFinished();
-  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+  return dbus::Response::FromMethodCall(call);
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::LockScreen(
+std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::LockScreen(
     dbus::MethodCall* call) {
   SessionManagerImpl::Error error;
   impl_->LockScreen(&error);
 
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
-  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+  return dbus::Response::FromMethodCall(call);
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::HandleLockScreenShown(
-    dbus::MethodCall* call) {
+std::unique_ptr<dbus::Response>
+SessionManagerDBusAdaptor::HandleLockScreenShown(dbus::MethodCall* call) {
   impl_->HandleLockScreenShown();
-  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+  return dbus::Response::FromMethodCall(call);
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::HandleLockScreenDismissed(
-    dbus::MethodCall* call) {
+std::unique_ptr<dbus::Response>
+SessionManagerDBusAdaptor::HandleLockScreenDismissed(dbus::MethodCall* call) {
   impl_->HandleLockScreenDismissed();
-  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+  return dbus::Response::FromMethodCall(call);
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RestartJob(
+std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::RestartJob(
     dbus::MethodCall* call) {
   dbus::FileDescriptor fd;
   std::vector<std::string> argv;
@@ -572,14 +576,14 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RestartJob(
   return CreateError(call, error.name(), error.message());
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StartDeviceWipe(
+std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StartDeviceWipe(
     dbus::MethodCall* call) {
   SessionManagerImpl::Error error;
   impl_->StartDeviceWipe("session_manager_dbus_request", &error);
   return CraftAppropriateResponseWithBool(call, error, true);
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::SetFlagsForUser(
+std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::SetFlagsForUser(
     dbus::MethodCall* call) {
   dbus::MessageReader reader(call);
   std::string account_id;
@@ -589,7 +593,7 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::SetFlagsForUser(
     return CreateInvalidArgsError(call, call->GetSignature());
   }
   impl_->SetFlagsForUser(account_id, session_user_flags);
-  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+  return dbus::Response::FromMethodCall(call);
 }
 
 void SessionManagerDBusAdaptor::GetServerBackedStateKeys(
@@ -600,7 +604,7 @@ void SessionManagerDBusAdaptor::GetServerBackedStateKeys(
       base::Bind(&HandleGetServerBackedStateKeysCompletion, call, sender));
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::InitMachineInfo(
+std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::InitMachineInfo(
     dbus::MethodCall* call) {
   dbus::MessageReader reader(call);
   std::string data;
@@ -611,10 +615,10 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::InitMachineInfo(
   impl_->InitMachineInfo(data, &error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
-  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+  return dbus::Response::FromMethodCall(call);
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StartContainer(
+std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StartContainer(
     dbus::MethodCall* call) {
   dbus::MessageReader reader(call);
   std::string name;
@@ -625,10 +629,10 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StartContainer(
   impl_->StartContainer(name, &error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
-  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+  return dbus::Response::FromMethodCall(call);
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StopContainer(
+std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StopContainer(
     dbus::MethodCall* call) {
   dbus::MessageReader reader(call);
   std::string name;
@@ -639,10 +643,10 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StopContainer(
   impl_->StopContainer(name, &error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
-  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+  return dbus::Response::FromMethodCall(call);
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StartArcInstance(
+std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StartArcInstance(
     dbus::MethodCall* call) {
   dbus::MessageReader reader(call);
   std::string account_id;
@@ -659,50 +663,51 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StartArcInstance(
   impl_->StartArcInstance(account_id, disable_boot_completed_broadcast, &error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
-  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+  return dbus::Response::FromMethodCall(call);
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StopArcInstance(
+std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StopArcInstance(
     dbus::MethodCall* call) {
   SessionManagerImpl::Error error;
   impl_->StopArcInstance(&error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
-  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+  return dbus::Response::FromMethodCall(call);
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::PrioritizeArcInstance(
-    dbus::MethodCall* call) {
+std::unique_ptr<dbus::Response>
+SessionManagerDBusAdaptor::PrioritizeArcInstance(dbus::MethodCall* call) {
   SessionManagerImpl::Error error;
   impl_->PrioritizeArcInstance(&error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
-  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+  return dbus::Response::FromMethodCall(call);
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::EmitArcBooted(
+std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::EmitArcBooted(
     dbus::MethodCall* call) {
   SessionManagerImpl::Error error;
   impl_->EmitArcBooted(&error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
-  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+  return dbus::Response::FromMethodCall(call);
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::GetArcStartTimeTicks(
+std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::GetArcStartTimeTicks(
     dbus::MethodCall* call) {
   SessionManagerImpl::Error error;
   base::TimeTicks start_time = impl_->GetArcStartTime(&error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
 
-  scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call));
+  std::unique_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(call));
   dbus::MessageWriter writer(response.get());
   writer.AppendInt64(start_time.ToInternalValue());
   return response;
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RemoveArcData(
+std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::RemoveArcData(
     dbus::MethodCall* call) {
   dbus::MessageReader reader(call);
   std::string account_id;
@@ -714,17 +719,18 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RemoveArcData(
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
 
-  return scoped_ptr<dbus::Response>(dbus::Response::FromMethodCall(call));
+  return dbus::Response::FromMethodCall(call);
 }
 
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::Introspect(
+std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::Introspect(
     dbus::MethodCall* call) {
   std::string output;
   if (!base::ReadFileToString(base::FilePath(kBindingsPath), &output)) {
     PLOG(ERROR) << "Can't read XML bindings from disk:";
     return CreateError(call, "Can't read XML bindings from disk.", "");
   }
-  scoped_ptr<dbus::Response> response(dbus::Response::FromMethodCall(call));
+  std::unique_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(call));
   dbus::MessageWriter writer(response.get());
   writer.AppendString(output);
   return response;

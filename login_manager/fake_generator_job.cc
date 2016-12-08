@@ -6,11 +6,11 @@
 
 #include <sys/types.h>
 
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 
 #include "login_manager/generator_job.h"
@@ -27,15 +27,13 @@ FakeGeneratorJob::Factory::Factory(pid_t pid,
 }
 FakeGeneratorJob::Factory::~Factory() {}
 
-scoped_ptr<GeneratorJobInterface> FakeGeneratorJob::Factory::Create(
+std::unique_ptr<GeneratorJobInterface> FakeGeneratorJob::Factory::Create(
     const std::string& filename,
     const base::FilePath& user_path,
     uid_t desired_uid,
     SystemUtils* utils) {
-  return scoped_ptr<GeneratorJobInterface>(new FakeGeneratorJob(pid_,
-                                                                name_,
-                                                                key_contents_,
-                                                                filename));
+  return std::unique_ptr<GeneratorJobInterface>(
+      new FakeGeneratorJob(pid_, name_, key_contents_, filename));
 }
 
 FakeGeneratorJob::FakeGeneratorJob(pid_t pid,

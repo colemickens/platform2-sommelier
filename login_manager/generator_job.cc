@@ -12,6 +12,7 @@
 #include <unistd.h>
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -31,15 +32,13 @@ GeneratorJobFactoryInterface::~GeneratorJobFactoryInterface() {}
 GeneratorJob::Factory::Factory() {}
 GeneratorJob::Factory::~Factory() {}
 
-scoped_ptr<GeneratorJobInterface> GeneratorJob::Factory::Create(
+std::unique_ptr<GeneratorJobInterface> GeneratorJob::Factory::Create(
     const std::string& filename,
     const base::FilePath& user_path,
     uid_t desired_uid,
     SystemUtils* utils) {
-  return scoped_ptr<GeneratorJobInterface>(new GeneratorJob(filename,
-                                                            user_path,
-                                                            desired_uid,
-                                                            utils));
+  return std::unique_ptr<GeneratorJobInterface>(
+      new GeneratorJob(filename, user_path, desired_uid, utils));
 }
 
 GeneratorJob::GeneratorJob(const std::string& filename,

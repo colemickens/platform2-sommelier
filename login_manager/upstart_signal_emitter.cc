@@ -24,14 +24,14 @@ UpstartSignalEmitter::UpstartSignalEmitter(dbus::ObjectProxy* proxy)
 
 UpstartSignalEmitter::~UpstartSignalEmitter() {}
 
-scoped_ptr<dbus::Response> UpstartSignalEmitter::TriggerImpulse(
+std::unique_ptr<dbus::Response> UpstartSignalEmitter::TriggerImpulse(
     const std::string& name,
     const std::vector<std::string>& args_keyvals,
     TriggerMode mode) {
   return EmitSignal(name, args_keyvals, mode);
 }
 
-scoped_ptr<dbus::Response> UpstartSignalEmitter::EmitSignal(
+std::unique_ptr<dbus::Response> UpstartSignalEmitter::EmitSignal(
     const std::string& signal_name,
     const std::vector<std::string>& args_keyvals,
     TriggerMode mode) {

@@ -48,8 +48,8 @@ class UserPolicyServiceTest : public ::testing::Test {
 
     key_ = new StrictMock<MockPolicyKey>;
     store_ = new StrictMock<MockPolicyStore>;
-    service_.reset(new UserPolicyService(scoped_ptr<PolicyStore>(store_),
-                                         scoped_ptr<PolicyKey>(key_),
+    service_.reset(new UserPolicyService(std::unique_ptr<PolicyStore>(store_),
+                                         std::unique_ptr<PolicyKey>(key_),
                                          key_copy_file_,
                                          &system_utils_));
   }
@@ -100,7 +100,7 @@ class UserPolicyServiceTest : public ::testing::Test {
   StrictMock<MockPolicyStore>* store_;
   PolicyService::Completion completion_;
 
-  scoped_ptr<UserPolicyService> service_;
+  std::unique_ptr<UserPolicyService> service_;
 
  private:
   MOCK_METHOD1(HandleCompletion, void(const PolicyService::Error&));

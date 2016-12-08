@@ -5,6 +5,7 @@
 #ifndef LOGIN_MANAGER_SESSION_MANAGER_SERVICE_H_
 #define LOGIN_MANAGER_SESSION_MANAGER_SERVICE_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -12,7 +13,6 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <brillo/asynchronous_signal_handler.h>
 #include <chromeos/dbus/service_constants.h>
@@ -142,7 +142,7 @@ class SessionManagerService
     SessionManagerService* session_manager_service_;
   };
 
-  SessionManagerService(scoped_ptr<BrowserJobInterface> child_job,
+  SessionManagerService(std::unique_ptr<BrowserJobInterface> child_job,
                         uid_t uid,
                         int kill_timeout,
                         bool enable_browser_abort_on_hang,
@@ -260,7 +260,7 @@ class SessionManagerService
   // the instance.
   void SetArcCgroupState(const std::string& state);
 
-  scoped_ptr<BrowserJobInterface> browser_;
+  std::unique_ptr<BrowserJobInterface> browser_;
   bool exit_on_child_done_;
   const base::TimeDelta kill_timeout_;
 
@@ -281,7 +281,7 @@ class SessionManagerService
   LoginMetrics* login_metrics_;  // Owned by the caller.
   SystemUtils* system_;          // Owned by the caller.
 
-  scoped_ptr<NssUtil> nss_;
+  std::unique_ptr<NssUtil> nss_;
   PolicyKey owner_key_;
   KeyGenerator key_gen_;
   ServerBackedStateKeyGenerator state_key_generator_;
@@ -289,14 +289,14 @@ class SessionManagerService
   VpdProcessImpl vpd_process_;
   AndroidContainerManagerImpl android_container_;
   InstallAttributesReader install_attributes_reader_;
-  scoped_ptr<DBusSignalEmitterInterface> dbus_emitter_;
-  scoped_ptr<LivenessChecker> liveness_checker_;
+  std::unique_ptr<DBusSignalEmitterInterface> dbus_emitter_;
+  std::unique_ptr<LivenessChecker> liveness_checker_;
   const bool enable_browser_abort_on_hang_;
   const base::TimeDelta liveness_checking_interval_;
 
   // Holds pointers to nss_, key_gen_, this. Shares system_, login_metrics_.
-  scoped_ptr<SessionManagerInterface> impl_;
-  scoped_ptr<SessionManagerDBusAdaptor> adaptor_;
+  std::unique_ptr<SessionManagerInterface> impl_;
+  std::unique_ptr<SessionManagerDBusAdaptor> adaptor_;
 
   brillo::AsynchronousSignalHandler signal_handler_;
   ChildExitHandler child_exit_handler_;

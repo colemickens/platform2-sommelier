@@ -5,11 +5,11 @@
 #ifndef LOGIN_MANAGER_STUB_UPSTART_SIGNAL_EMITTER_H_
 #define LOGIN_MANAGER_STUB_UPSTART_SIGNAL_EMITTER_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <dbus/message.h>
 
 #include "login_manager/upstart_signal_emitter.h"
@@ -48,13 +48,12 @@ class StubUpstartSignalEmitter : public UpstartSignalEmitter {
 
  private:
   // UpstartSignalEmitter:
-  scoped_ptr<dbus::Response> EmitSignal(
+  std::unique_ptr<dbus::Response> EmitSignal(
       const std::string& signal_name,
       const std::vector<std::string>& args_keyvals,
       TriggerMode mode) override {
     delegate_->OnSignalEmitted(signal_name, args_keyvals);
-    return scoped_ptr<dbus::Response>(
-        mode == TriggerMode::SYNC ? dbus::Response::CreateEmpty() : nullptr);
+    return mode == TriggerMode::SYNC ? dbus::Response::CreateEmpty() : nullptr;
   }
 
   Delegate* delegate_;  // Owned by the caller.

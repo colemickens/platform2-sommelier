@@ -7,8 +7,9 @@
 
 #include <stdint.h>
 
+#include <memory>
+
 #include <base/files/file_path.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "login_manager/policy_service.h"
 
@@ -21,8 +22,8 @@ class SystemUtils;
 // Policy service implementation for user policy.
 class UserPolicyService : public PolicyService {
  public:
-  UserPolicyService(scoped_ptr<PolicyStore> policy_store,
-                    scoped_ptr<PolicyKey> policy_key,
+  UserPolicyService(std::unique_ptr<PolicyStore> policy_store,
+                    std::unique_ptr<PolicyKey> policy_key,
                     const base::FilePath& key_copy_path,
                     SystemUtils* system_utils);
   ~UserPolicyService() override;
@@ -48,7 +49,7 @@ class UserPolicyService : public PolicyService {
  private:
   // UserPolicyService owns its PolicyKey, note that PolicyService just keeps a
   // plain pointer.
-  scoped_ptr<PolicyKey> scoped_policy_key_;
+  std::unique_ptr<PolicyKey> scoped_policy_key_;
 
   // If non-empty then a copy of |scoped_policy_key_| will be stored at this
   // path, readable by chronos.

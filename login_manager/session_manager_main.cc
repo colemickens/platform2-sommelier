@@ -20,6 +20,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_number_conversions.h>
@@ -189,8 +190,8 @@ int main(int argc, char* argv[]) {
 
   // This job encapsulates the command specified on the command line, and the
   // UID that the caller would like to run it as.
-  scoped_ptr<BrowserJobInterface> browser_job(
-      new BrowserJob(command, env_vars, uid, &checker, &metrics, &system));
+  auto browser_job = base::MakeUnique<BrowserJob>(
+      command, env_vars, uid, &checker, &metrics, &system);
   bool should_run_browser = browser_job->ShouldRunBrowser();
 
   base::MessageLoopForIO message_loop;

@@ -6,14 +6,16 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <memory>
+
 #include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/location.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/strings/string_util.h>
 #include <brillo/message_loops/fake_message_loop.h>
 #include <gmock/gmock.h>
@@ -100,18 +102,19 @@ class SessionManagerProcessTest : public ::testing::Test {
         .WillOnce(Return(false))
         .WillOnce(Return(true));
 
-    job->set_fake_child_process(scoped_ptr<FakeChildProcess>(
-        new FakeChildProcess(kDummyPid, exit_status, manager_->test_api())));
+    job->set_fake_child_process(base::MakeUnique<FakeChildProcess>(
+        kDummyPid, exit_status, manager_->test_api()));
   }
 
   void InitManager(FakeBrowserJob* job) {
-    manager_ = new SessionManagerService(scoped_ptr<BrowserJobInterface>(job),
-                                         getuid(),
-                                         3,
-                                         false,
-                                         base::TimeDelta(),
-                                         &metrics_,
-                                         &utils_);
+    manager_ =
+        new SessionManagerService(std::unique_ptr<BrowserJobInterface>(job),
+                                  getuid(),
+                                  3,
+                                  false,
+                                  base::TimeDelta(),
+                                  &metrics_,
+                                  &utils_);
     manager_->test_api().set_liveness_checker(liveness_checker_);
     manager_->test_api().set_session_manager(session_manager_impl_);
   }
@@ -131,8 +134,7 @@ class SessionManagerProcessTest : public ::testing::Test {
     InitManager(job);
 
     job->set_fake_child_process(
-        scoped_ptr<FakeChildProcess>(
-            new FakeChildProcess(kDummyPid, 0, manager_->test_api())));
+        base::MakeUnique<FakeChildProcess>(kDummyPid, 0, manager_->test_api()));
 
     return job;
   }
@@ -144,7 +146,7 @@ class SessionManagerProcessTest : public ::testing::Test {
   MockMetrics metrics_;
   SystemUtilsImpl utils_;
 
-  // These are bare pointers, not scoped_ptrs, because we need to give them
+  // These are bare pointers, not unique_ptrs, because we need to give them
   // to a SessionManagerService instance, but also be able to set expectations
   // on them after we hand them off.
   MockLivenessChecker* liveness_checker_;

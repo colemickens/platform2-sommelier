@@ -7,12 +7,12 @@
 
 #include "login_manager/child_job.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 
 namespace login_manager {
 
@@ -35,7 +35,7 @@ class GeneratorJobInterface : public ChildJobInterface {
 class GeneratorJobFactoryInterface {
  public:
   virtual ~GeneratorJobFactoryInterface();
-  virtual scoped_ptr<GeneratorJobInterface> Create(
+  virtual std::unique_ptr<GeneratorJobInterface> Create(
       const std::string& filename,
       const base::FilePath& user_path,
       uid_t desired_uid,
@@ -48,7 +48,7 @@ class GeneratorJob : public GeneratorJobInterface {
    public:
     Factory();
     virtual ~Factory();
-    scoped_ptr<GeneratorJobInterface> Create(
+    std::unique_ptr<GeneratorJobInterface> Create(
         const std::string& filename,
         const base::FilePath& user_path,
         uid_t desired_uid,

@@ -5,11 +5,11 @@
 #ifndef LOGIN_MANAGER_UPSTART_SIGNAL_EMITTER_H_
 #define LOGIN_MANAGER_UPSTART_SIGNAL_EMITTER_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "login_manager/init_daemon_controller.h"
 
@@ -31,7 +31,7 @@ class UpstartSignalEmitter : public InitDaemonController {
   virtual ~UpstartSignalEmitter();
 
   // InitDaemonController:
-  scoped_ptr<dbus::Response> TriggerImpulse(
+  std::unique_ptr<dbus::Response> TriggerImpulse(
       const std::string &name,
       const std::vector<std::string> &args_keyvals,
       TriggerMode mode) final;
@@ -43,7 +43,7 @@ class UpstartSignalEmitter : public InitDaemonController {
   // "key=value".
   //
   // Returns null if emitting the signal fails or if |mode| is ASYNC.
-  virtual scoped_ptr<dbus::Response> EmitSignal(
+  virtual std::unique_ptr<dbus::Response> EmitSignal(
       const std::string& signal_name,
       const std::vector<std::string>& args_keyvals,
       TriggerMode mode);

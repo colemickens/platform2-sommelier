@@ -88,7 +88,7 @@ void KeyGenerator::EnsureJobExit(base::TimeDelta timeout) {
 }
 
 void KeyGenerator::InjectJobFactory(
-    scoped_ptr<GeneratorJobFactoryInterface> factory) {
+    std::unique_ptr<GeneratorJobFactoryInterface> factory) {
   factory_ = std::move(factory);
 }
 

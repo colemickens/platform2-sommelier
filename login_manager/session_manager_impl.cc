@@ -168,7 +168,7 @@ struct SessionManagerImpl::UserSession {
 };
 
 SessionManagerImpl::SessionManagerImpl(
-    scoped_ptr<InitDaemonController> init_controller,
+    std::unique_ptr<InitDaemonController> init_controller,
     DBusSignalEmitterInterface* dbus_emitter,
     base::Closure lock_screen_closure,
     base::Closure restart_device_closure,
