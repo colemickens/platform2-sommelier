@@ -25,3 +25,7 @@ hal_adapter:
 camera_hal_usb: usb/camera_hal
 
 .PHONY: camera_hal_usb
+
+camera3_test: camera3_test/arc_camera3_test
+
+.PHONY: camera3_test

@@ -7,6 +7,7 @@ include common.mk
 ANDROID_INCLUDE := $(abspath $(SRC)/android/include)
 ANDROID_INCLUDE_PATHS := \
 	-I$(ANDROID_INCLUDE) \
+	-I$(ANDROID_INCLUDE)/external/drm_gralloc \
 	-I$(ANDROID_INCLUDE)/hardware/libhardware/include \
 	-I$(ANDROID_INCLUDE)/system/core/include \
 	-I$(ANDROID_INCLUDE)/system/core/libsync/include \
