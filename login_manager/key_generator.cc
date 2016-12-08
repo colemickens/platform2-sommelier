@@ -7,6 +7,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <utility>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <brillo/cryptohome.h>

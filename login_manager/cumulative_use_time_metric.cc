@@ -5,6 +5,7 @@
 #include "login_manager/cumulative_use_time_metric.h"
 
 #include <limits>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
