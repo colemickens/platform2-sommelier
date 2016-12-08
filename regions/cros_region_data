@@ -8,6 +8,7 @@
 
 # The CROS_VPD_CACHE is defined in dump_vpd_log "filtered_file".
 : ${CROS_VPD_CACHE:=/mnt/stateful_partition/unencrypted/cache/vpd/filtered.txt}
+: ${CROS_VPD_SYS_RO:=/sys/firmware/vpd/ro}
 : ${CROS_REGIONS_DATABASE=/usr/share/misc/cros-regions.json}
 
 load_vpd_cache() {
@@ -17,7 +18,10 @@ load_vpd_cache() {
   # so we cannot use that. Instead we have to try the cache and then read via
   # command 'vpd'.
 
-  if [ ! -f "${CROS_VPD_CACHE}" ]; then
+  if [ -d "${CROS_VPD_SYS_RO}" ]; then
+    # Use sysfs (supported by ARM since kernel 3.18 and x86 since kernel 4.4).
+    CROS_VPD_CACHE=""
+  elif [ ! -f "${CROS_VPD_CACHE}" ]; then
     CROS_VPD_CACHE="$(mktemp)"
     trap "rm ${CROS_VPD_CACHE}" EXIT
     vpd -i RO_VPD -l >"${CROS_VPD_CACHE}"
@@ -26,7 +30,16 @@ load_vpd_cache() {
 
 get_data_from_vpd() {
   local name="$1"
-  sed -nr 's/^"'"${name}"'"="(.*)"$/\1/p' "${CROS_VPD_CACHE}"
+
+  if [ -z "${CROS_VPD_CACHE}" ]; then
+    # Use sysfs. All keys used by cros_region_data should live in RO partition.
+    local value_file="${CROS_VPD_SYS_RO}/${name}"
+    if [ -f "${value_file}" ]; then
+      cat "${value_file}"
+    fi
+  else
+    sed -nr 's/^"'"${name}"'"="(.*)"$/\1/p' "${CROS_VPD_CACHE}"
+  fi
 }
 
 get_legacy_value_from_vpd() {
