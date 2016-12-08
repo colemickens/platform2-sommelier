@@ -28,11 +28,12 @@
 #include <string.h>
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>  // for DISALLOW_COPY_AND_ASSIGN
-#include <base/memory/scoped_ptr.h>
+#include <base/memory/free_deleter.h>
 #include <dbus/dbus.h>  // for DBus::Path &
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -383,7 +384,7 @@ struct CharStarCopier {
   }
 
  private:
-  scoped_ptr<char, base::FreeDeleter> str_;
+  std::unique_ptr<char, base::FreeDeleter> str_;
   DISALLOW_COPY_AND_ASSIGN(CharStarCopier);
 };
 
