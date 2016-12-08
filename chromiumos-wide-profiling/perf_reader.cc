@@ -1697,6 +1697,7 @@ bool PerfReader::WriteNUMATopologyMetadata(u32 type, DataWriter* data) const {
         !data->WriteDataValue(&node.free_memory, sizeof(node.free_memory),
                               "node free memory") ||
         !data->WriteStringWithSizeToData(node.cpu_list)) {
+      return false;
     }
   }
   return true;
