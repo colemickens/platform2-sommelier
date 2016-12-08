@@ -5,11 +5,11 @@
 #ifndef LORGNETTE_FIREWALL_MANAGER_H_
 #define LORGNETTE_FIREWALL_MANAGER_H_
 
+#include <memory>
 #include <set>
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "permission_broker/dbus-proxies.h"
 
