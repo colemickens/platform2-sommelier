@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include <base/memory/scoped_ptr.h>
+#include <base/macros.h>
 #include <crypto/scoped_nss_types.h>
 
 namespace base {

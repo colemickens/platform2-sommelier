@@ -11,7 +11,6 @@
 
 #include <base/compiler_specific.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 
 struct signalfd_siginfo;
 

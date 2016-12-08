@@ -11,7 +11,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <crypto/rsa_private_key.h>
 
 #include "login_manager/nss_util.h"

@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/memory/scoped_ptr.h>
 
 namespace login_manager {
 

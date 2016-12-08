@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-#include <base/memory/scoped_ptr.h>
 #include <gmock/gmock.h>
 
 namespace login_manager {

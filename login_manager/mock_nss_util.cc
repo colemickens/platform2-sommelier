@@ -10,7 +10,6 @@
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <crypto/nss_key_util.h>
 #include <crypto/nss_util.h>
 #include <crypto/rsa_private_key.h>

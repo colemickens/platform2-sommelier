@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "login_manager/owner_key_loss_mitigator.h"
 
