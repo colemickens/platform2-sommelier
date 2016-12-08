@@ -4,6 +4,8 @@
 
 #include "feedback/feedback_service.h"
 
+#include <memory>
+
 #include "base/logging.h"
 #include "chromeos/dbus/service_constants.h"
 #include "components/feedback/feedback_uploader.h"
@@ -93,7 +95,7 @@ void DBusFeedbackServiceImpl::DBusFeedbackSent(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender sender,
     bool status, const std::string& reason) {
-  scoped_ptr<dbus::Response> response =
+  std::unique_ptr<dbus::Response> response =
       dbus::Response::FromMethodCall(method_call);
   dbus::MessageWriter writer(response.get());
   writer.AppendBool(status);

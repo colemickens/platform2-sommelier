@@ -7,7 +7,6 @@
 
 #include "base/callback.h"
 #include "base/memory/ref_counted.h"
-#include "base/memory/scoped_ptr.h"
 #include "dbus/bus.h"
 #include "dbus/message.h"
 

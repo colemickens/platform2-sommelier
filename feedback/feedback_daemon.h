@@ -5,7 +5,8 @@
 #ifndef FEEDBACK_FEEDBACK_DAEMON_H_
 #define FEEDBACK_FEEDBACK_DAEMON_H_
 
-#include "base/memory/scoped_ptr.h"
+#include <memory>
+
 #include "base/message_loop/message_loop.h"
 #include "base/threading/sequenced_worker_pool.h"
 #include "feedback/feedback_service.h"
@@ -30,7 +31,7 @@ class Daemon final {
  private:
   base::MessageLoop loop_;
   scoped_refptr<base::SequencedWorkerPool> pool_;
-  scoped_ptr<feedback::FeedbackUploader> uploader_;
+  std::unique_ptr<feedback::FeedbackUploader> uploader_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };

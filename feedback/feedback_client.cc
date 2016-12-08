@@ -9,6 +9,7 @@
 #include "base/command_line.h"
 #include "base/guid.h"
 #include "base/logging.h"
+#include "base/memory/ptr_util.h"
 #include "base/message_loop/message_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
@@ -67,7 +68,7 @@ bool FillReportFromCommandline(FeedbackCommon* report) {
                         kListSeparator, base::KEEP_WHITESPACE,
                         base::SPLIT_WANT_NONEMPTY);
   for (const std::string& path : raw_files) {
-    scoped_ptr<std::string> content(new std::string());
+    auto content = base::MakeUnique<std::string>();
     if (base::ReadFileToString(base::FilePath(path), content.get())) {
       report->AddFile(path, std::move(content));
     } else {

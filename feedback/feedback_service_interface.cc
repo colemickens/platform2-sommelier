@@ -4,6 +4,8 @@
 
 #include "feedback/feedback_service_interface.h"
 
+#include <memory>
+
 #include "base/bind.h"
 #include "base/message_loop/message_loop.h"
 #include "chromeos/dbus/service_constants.h"
@@ -40,8 +42,8 @@ bool DBusFeedbackServiceInterface::SendFeedback(
       feedback::kFeedbackServiceName,
       dbus::ObjectPath(feedback::kFeedbackServicePath));
 
-  scoped_ptr<dbus::Response> response(object->CallMethodAndBlock(
-      &call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  std::unique_ptr<dbus::Response> response =
+      object->CallMethodAndBlock(&call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (response.get() == nullptr) {
     callback.Run(false);
     return true;
