@@ -40,8 +40,8 @@ assert_regdomain_is() {
 }
 
 # Fake out the commands that are called by set_wifi_regulatory.
-dump_vpd_log() {
-  assert_equal "$1" "--stdout"
+vpd_get_value() {
+  assert_equal "$1" "region"
   echo "${g_vpd_data}"
 }
 
@@ -53,80 +53,56 @@ iw() {
 
 # Simplest input.
 assert_regdomain_is US <<-"EOF"
-	"region"="US"
+US
 EOF
 
 # Properly handle lower-case region.
 assert_regdomain_is US <<-"EOF"
-	"region"="us"
+us
 EOF
 
 # If region exists multiple times, take the first one.
 assert_regdomain_is JP <<-"EOF"
-	"region"="JP"
-	"region"="US"
+JP
 EOF
 
 # Other fields can come before.
 assert_regdomain_is US <<-"EOF"
-	"initial_timezone"="America/Los_Angeles"
-	"region"="us"
+us
 EOF
 
 # Other fields can come after.
 assert_regdomain_is US <<-"EOF"
-	"region"="us"
-	"initial_timezone"="America/Los_Angeles"
+us
 EOF
 
 # Region may include additional data after country code (1/2).
 assert_regdomain_is CA <<-"EOF"
-	"region"="ca.hybrid"
+ca.hybrid
 EOF
 
 # Region may include additional data after country code (2/2).
 assert_regdomain_is BR <<-"EOF"
-	"region"="br.abnt"
+br.abnt
 EOF
 
 # Virtual regions work correctly (1/2).
 assert_regdomain_is SE <<-"EOF"
-	"region"="nordic"
+nordic
 EOF
 
 # Virtual regions work correctly (2/2).
 assert_regdomain_is "MX" <<-"EOF"
-	"region"="latam-es-419"
-EOF
-
-# End quote is required.
-assert_regdomain_is "" <<-"EOF"
-	"region"="us
-EOF
-
-# Quotes are required.
-assert_regdomain_is "" <<-"EOF"
-	region=us
-EOF
-
-# No junk allowed at end.
-assert_regdomain_is "" <<-"EOF"
-	"region"="us"andmorestuff
-EOF
-
-# No junk allowed at beginning.
-assert_regdomain_is "" <<-"EOF"
-	junk"region"="us"
+latam-es-419
 EOF
 
 # Must match "region" exactly.
 assert_regdomain_is "" <<-"EOF"
-	"jregion"="us"
 EOF
 
 # Random shell meta-characters are not allowed.
 assert_regdomain_is "" <<-"EOF"
-	"region"="ca>>/var/log/junk"
+ca>>/var/log/junk
 EOF
 
 echo "PASS"
