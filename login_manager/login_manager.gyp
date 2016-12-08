@@ -13,6 +13,7 @@
         'libchrome-<(libbase_ver)',
         'libchromeos-ui-<(libbase_ver)',
         'libcontainer',
+        'libcros_config',
         'libmetrics-<(libbase_ver)',
         'libminijail',
         'nss',
@@ -129,6 +130,19 @@
             'deps': [
               'libbrillo-test-<(libbase_ver)',
               'libchrome-test-<(libbase_ver)',
+              'libcros_config',
+            ],
+          },
+          # TODO(sjg@chromium.org): See if I can send a .pc file upstream to
+          # libfdt.
+          'ldflags': [
+            '-lfdt',
+          ],
+
+          # TODO(sjg@chromium.org): Why do I need the above, instead of this?:
+          'link_settings': {
+            'libraries': [
+              '-lfdt',
             ],
           },
           'sources': [

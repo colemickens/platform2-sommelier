@@ -14,11 +14,14 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/ui/chromium_command_builder.h>
 #include <chromeos/ui/util.h>
+#include <chromeos-config/libcros_config/cros_config_interface.h>
 
 using chromeos::ui::ChromiumCommandBuilder;
 using chromeos::ui::util::EnsureDirectoryExists;
 
 namespace login_manager {
+
+const char kWallpaperProperty[] = "wallpaper";
 
 namespace {
 
@@ -271,7 +274,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder) {
     builder->AddArg("--ash-animate-from-boot-splash-screen");
   }
 
-  SetUpWallpaperFlags(builder, base::Bind(base::PathExists));
+  SetUpWallpaperFlags(builder, nullptr, base::Bind(base::PathExists));
 
   // TODO(yongjaek): Remove the following flag when the kiosk mode app is ready
   // at crbug.com/309806.
@@ -339,8 +342,14 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
 
 void SetUpWallpaperFlags(
     ChromiumCommandBuilder* builder,
+    brillo::CrosConfigInterface* cros_config,
     base::Callback<bool(const base::FilePath&)> path_exists) {
-  if (AddWallpaperFlags(builder, "default", "oem", path_exists)) {
+  std::string model;
+  // Use the configuration if available, then fall back to oem and default.
+  if (cros_config && cros_config->GetString("/", kWallpaperProperty, &model) &&
+      AddWallpaperFlags(builder, "default", model, path_exists)) {
+    AddWallpaperFlags(builder, "child", "child", path_exists);
+  } else if (AddWallpaperFlags(builder, "default", "oem", path_exists)) {
     builder->AddArg("--default-wallpaper-is-oem");
   } else {
     AddWallpaperFlags(builder, "default", "default", path_exists);

@@ -17,6 +17,10 @@ namespace base {
 class FilePath;
 }  // namespace base
 
+namespace brillo {
+class CrosConfigInterface;
+}  // namespace brillo
+
 namespace chromeos {
 namespace ui {
 class ChromiumCommandBuilder;
@@ -24,6 +28,9 @@ class ChromiumCommandBuilder;
 }  // namespace chromeos
 
 namespace login_manager {
+
+// Property name of the wallpaper setting in CrosConfig.
+extern const char kWallpaperProperty[];
 
 // Initializes a ChromiumCommandBuilder and performs additional Chrome-specific
 // setup. Returns environment variables that the caller should export for Chrome
@@ -43,8 +50,11 @@ void PerformChromeSetup(bool* is_developer_end_user_out,
 // PerformChromeSetup and only present in the header for testing.
 // Flags are added to |builder|, and |path_exists| is called to test whether a
 // given file exists (e.g. use base::Bind(base::PathExists)).
+// |cros_config| (if non-null) provides the master configuration (used to look
+// up the default wallpaper filename).
 void SetUpWallpaperFlags(
     chromeos::ui::ChromiumCommandBuilder* builder,
+    brillo::CrosConfigInterface* cros_config,
     base::Callback<bool(const base::FilePath&)> path_exists);
 
 }  // namespace login_manager

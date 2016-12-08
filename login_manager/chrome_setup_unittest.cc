@@ -9,6 +9,7 @@
 #include <base/bind.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos-config/libcros_config/fake_cros_config.h>
 #include <chromeos/ui/chromium_command_builder.h>
 #include <gtest/gtest.h>
 
@@ -24,6 +25,7 @@ class ChromeSetupTest : public ::testing::Test {
   // Two sizes are supported for the wallpaper flags.
   const std::vector<std::string> kSizes{"small", "large"};
   const std::string kNotPresent = "<not present>";
+  const std::string kModel = "reef";
   const base::Callback<bool(const base::FilePath&)> kPathInSetCallback =
       base::Bind(&ChromeSetupTest::PathInSet, base::Unretained(this));
 
@@ -71,12 +73,13 @@ class ChromeSetupTest : public ::testing::Test {
       GetPath("guest", "small"),
       GetPath("guest", "large"),
   };
+  brillo::FakeCrosConfig cros_config_;
 };
 
 TEST_F(ChromeSetupTest, TestOem) {
   paths_.insert(GetPath("oem", "small"));
   paths_.insert(GetPath("oem", "large"));
-  login_manager::SetUpWallpaperFlags(&builder_, kPathInSetCallback);
+  login_manager::SetUpWallpaperFlags(&builder_, nullptr, kPathInSetCallback);
   std::vector<std::string> argv = builder_.arguments();
   ASSERT_EQ(5, argv.size());
 
@@ -90,11 +93,47 @@ TEST_F(ChromeSetupTest, TestOem) {
 }
 
 TEST_F(ChromeSetupTest, TestDefault) {
-  login_manager::SetUpWallpaperFlags(&builder_, kPathInSetCallback);
+  login_manager::SetUpWallpaperFlags(&builder_, nullptr, kPathInSetCallback);
   std::vector<std::string> argv = builder_.arguments();
   ASSERT_EQ(6, argv.size());
   for (std::string size : kSizes) {
     EXPECT_EQ(GetPath("default", size),
+              GetFlag(argv, GetFlagName("default", size)));
+    EXPECT_EQ(GetPath("child", size),
+              GetFlag(argv, GetFlagName("child", size)));
+    EXPECT_EQ(GetPath("guest", size),
+              GetFlag(argv, GetFlagName("guest", size)));
+  }
+  EXPECT_EQ(kNotPresent, GetFlag(argv, "--default-wallpaper-is-oem"));
+}
+
+TEST_F(ChromeSetupTest, TestModelDoesNotExist) {
+  cros_config_.SetString("/", login_manager::kWallpaperProperty, kModel);
+  login_manager::SetUpWallpaperFlags(
+      &builder_, &cros_config_, kPathInSetCallback);
+  std::vector<std::string> argv = builder_.arguments();
+  ASSERT_EQ(6, argv.size());
+  for (std::string size : kSizes) {
+    EXPECT_EQ(GetPath("default", size),
+              GetFlag(argv, GetFlagName("default", size)));
+    EXPECT_EQ(GetPath("child", size),
+              GetFlag(argv, GetFlagName("child", size)));
+    EXPECT_EQ(GetPath("guest", size),
+              GetFlag(argv, GetFlagName("guest", size)));
+  }
+  EXPECT_EQ(kNotPresent, GetFlag(argv, "--default-wallpaper-is-oem"));
+}
+
+TEST_F(ChromeSetupTest, TestModelExists) {
+  cros_config_.SetString("/", login_manager::kWallpaperProperty, kModel);
+  paths_.insert(GetPath(kModel, "large"));
+  paths_.insert(GetPath(kModel, "small"));
+  login_manager::SetUpWallpaperFlags(
+      &builder_, &cros_config_, kPathInSetCallback);
+  std::vector<std::string> argv = builder_.arguments();
+  ASSERT_EQ(6, argv.size());
+  for (std::string size : kSizes) {
+    EXPECT_EQ(GetPath(kModel, size),
               GetFlag(argv, GetFlagName("default", size)));
     EXPECT_EQ(GetPath("child", size),
               GetFlag(argv, GetFlagName("child", size)));
