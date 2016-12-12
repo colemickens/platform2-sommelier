@@ -6,8 +6,9 @@ collection.
 When Chromium is installed, Chromium will take care of aggregating and uploading
 the metrics to the UMA server.
 
-When Chromium is not installed (e.g. an embedded build) and the metrics_uploader
-USE flag is set, `metrics_daemon` will aggregate and upload the metrics itself.
+When Chromium is not installed (e.g. an embedded/headless build) and the
+metrics_uploader USE flag is set, `metrics_daemon` will aggregate and upload the
+metrics itself.
 
 [TOC]
 
@@ -47,6 +48,34 @@ UMA. In order to use the library in a module, you need to do the following:
   in Chromium through `chrome://histograms`.
 
 
+# The Metrics Client: metrics_client
+
+metrics_client is a simple shell command-line utility for sending histogram
+samples and user actions. It's installed under /usr/bin on the target platform
+and uses libmetrics to send the data to Chromium.  The utility is useful for
+generating metrics from shell scripts.
+
+For usage information and command-line options, run `metrics_client` on the
+target platform or look for `Usage:` in
+[metrics_client.cc](./metrics_client.cc).
+
+
+# The Metrics Daemon: metrics_daemon
+
+metrics_daemon is a daemon that runs in the background on the target platform
+and is intended for passive or ongoing metrics collection, or metrics collection
+requiring feedback from multiple modules. For example, it listens to D-Bus
+signals related to the user session and screen saver states to determine if the
+user is actively using the device or not and generates the corresponding
+data. The metrics daemon uses libmetrics to send the data to Chromium.
+
+The recommended way to generate metrics data from a module is to link and use
+libmetrics directly. However, the module could instead send signals to or
+communicate in some alternative way with the metrics daemon. Then the metrics
+daemon needs to monitor for the relevant events and take appropriate action --
+for example, aggregate data and send the histogram samples.
+
+
 # Histogram Naming Convention
 
 Use TrackerArea.MetricName. For example:
@@ -71,33 +100,6 @@ metric will show field data as of the histogram XML update date; it will not
 include data for older dates. If past data needs to be displayed, manual
 server-side intervention is required. In other words, one should assume that
 field data collection starts only after the histogram XML has been updated.
-
-
-# The Metrics Client: metrics_client
-
-metrics_client is a simple shell command-line utility for sending histogram
-samples and user actions. It's installed under /usr/bin on the target platform
-and uses libmetrics to send the data to Chromium.  The utility is useful for
-generating metrics from shell scripts.
-
-For usage information and command-line options, run "metrics_client" on the
-target platform or look for "Usage:" in metrics_client.cc.
-
-
-# The Metrics Daemon: metrics_daemon
-
-metrics_daemon is a daemon that runs in the background on the target platform
-and is intended for passive or ongoing metrics collection, or metrics collection
-requiring feedback from multiple modules. For example, it listens to D-Bus
-signals related to the user session and screen saver states to determine if the
-user is actively using the device or not and generates the corresponding
-data. The metrics daemon uses libmetrics to send the data to Chromium.
-
-The recommended way to generate metrics data from a module is to link and use
-libmetrics directly. However, the module could instead send signals to or
-communicate in some alternative way with the metrics daemon. Then the metrics
-daemon needs to monitor for the relevant events and take appropriate action --
-for example, aggregate data and send the histogram samples.
 
 
 # FAQ
