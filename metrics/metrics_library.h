@@ -107,10 +107,8 @@ class MetricsLibrary : public MetricsLibraryInterface {
 
   // Sends a "generic Chrome OS event" to UMA.  This is an event name
   // that is translated into an enumerated histogram entry.  Event names
-  // are added to metrics_library.cc.  Optionally, they can be added
-  // to histograms.xml---but part of the reason for this is to simplify
-  // the addition of events (at the cost of having to look them up by
-  // number in the histograms dashboard).
+  // must first be registered in metrics_library.cc.  See that file for
+  // more details.
   bool SendCrosEventToUMA(const std::string& event);
 
  private:

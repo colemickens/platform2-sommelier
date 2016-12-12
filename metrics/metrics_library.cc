@@ -23,11 +23,17 @@ static const char kConsentFile[] = "/home/chronos/Consent To Send Stats";
 static const char kCrosEventHistogramName[] = "Platform.CrOSEvent";
 static const int kCrosEventHistogramMax = 100;
 
-/* Add new cros events here.
- *
- * The index of the event is sent in the message, so please do not
- * reorder the names.
- */
+// Add new cros events here.
+//
+// The index of the event is sent in the message, so please do not
+// reorder the names.
+//
+// Note: All updates here must also update Chrome's historgram.xml database.
+// Please see this document for more details:
+// https://chromium.googlesource.com/chromium/src/+/master/tools/metrics/histograms/
+//
+// You can view them live here:
+// https://uma.googleplex.com/histograms/?histograms=Platform.CrOSEvent
 static const char *kCrosEventNames[] = {
   "ModemManagerCommandSendFailure",  // 0
   "HwWatchdogReboot",  // 1
