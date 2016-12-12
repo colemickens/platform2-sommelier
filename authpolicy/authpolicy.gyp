@@ -25,6 +25,19 @@
       ],
       'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
     },
+    # Container protos
+    {
+      'target_name': 'container-protos',
+      'type': 'static_library',
+      'variables': {
+        'proto_in_dir': 'proto',
+        'proto_out_dir': 'include/bindings',
+      },
+      'sources': [
+        '<(proto_in_dir)/authpolicy_containers.proto',
+      ],
+      'includes': ['../common-mk/protoc.gypi'],
+    },
     # Authpolicy library.
     {
       'target_name': 'libauthpolicy',
@@ -33,6 +46,7 @@
         '../common-mk/external_dependencies.gyp:policy-protos',
         '../common-mk/external_dependencies.gyp:user_policy-protos',
         'dbus_code_generator',
+        'container-protos',
       ],
       'sources': [
         'authpolicy.cc',

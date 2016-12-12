@@ -6,10 +6,12 @@
 
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file.h>
 #include <base/files/file_util.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -20,7 +22,9 @@
 #include "authpolicy/samba_interface_internal.h"
 
 namespace ai = authpolicy::internal;
+namespace ap = authpolicy::protos;
 
+namespace authpolicy {
 namespace {
 
 // Temporary data. Note: Use a #define, so we can concat strings below.
@@ -49,8 +53,9 @@ const char kSmbConfData[] =
     "\tkerberos method = secrets and keytab\n"
     "\tclient signing = mandatory\n"
     "\tclient min protocol = SMB2\n"
-    "\tclient max protocol = SMB3_11\n"   // TODO(ljusten): Remove once
-    "\tclient ipc min protocol = SMB2\n"  // crbug.com/662440 is resolved.
+    // TODO(ljusten): Remove this line once crbug.com/662440 is resolved.
+    "\tclient max protocol = SMB3\n"
+    "\tclient ipc min protocol = SMB2\n"
     "\tclient schannel = yes\n"
     "\tclient ldap sasl wrapping = sign\n";
 
@@ -61,11 +66,10 @@ const char kKrb5ConfData[] =
     "\tdefault_tgs_enctypes = aes256-cts-hmac-sha1-96 aes128-cts-hmac-sha1-96\n"
     "\tdefault_tkt_enctypes = aes256-cts-hmac-sha1-96 aes128-cts-hmac-sha1-96\n"
     "\tpermitted_enctypes = aes256-cts-hmac-sha1-96 aes128-cts-hmac-sha1-96\n"
-    "\t# Prune weak ciphers from the above list. With current settings it’s a "
-      "no-op, but still.\n"
+    // Prune weak ciphers from the above list. With current settings it’s a
+    // no-op, but still.
     "\tallow_weak_crypto = false\n"
-    "\t# Default is 300 seconds, but we might add a policy for that in the "
-      "future.\n"
+    // Default is 300 seconds, but we might add a policy for that in the future.
     "\tclockskew = 300\n";
 
 // Directories to create (Samba fails to do it on its own).
@@ -85,11 +89,12 @@ const char kPRegDeviceDir[] = "Machine";
 const char kPRegFileName[] = "Registry.pol";
 
 // Configuration files.
-const char kSmbFilePath[] = STATE_DIR "/smb.conf";
+const char kSmbFilePath[] = SAMBA_TMP_DIR "/smb.conf";
 const char kKrb5FilePath[] = KRB5_FILE_PATH;
+const char kConfigPath[] = STATE_DIR "/config.dat";
 
-// Size limit when loading the smb.conf file (256 kb).
-const size_t kSmbFileSizeLimit = 256 * 1024;
+// Size limit when loading the config file (256 kb).
+const size_t kConfigSizeLimit = 256 * 1024;
 
 // Env variable for krb5.conf file.
 const char kKrb5ConfEnvKey[] = "KRB5_CONFIG";
@@ -115,38 +120,6 @@ const char kGpoToken_VersionMachine[] = "version_machine";
 #undef SAMBA_TMP_DIR
 #undef STATE_DIR
 #undef TMP_DIR
-
-// Retrieves the machine and realm name that was used in |JoinMachine|. Fails if
-// the device has not been joined to the Active Directory domain yet. The
-// machine name is required for fetching device policy.
-bool GetMachineAndRealmName(std::string* out_machine_name,
-                            std::string* out_realm,
-                            const char** out_error_code) {
-  std::string smb_conf;
-  base::FilePath fp(kSmbFilePath);
-  if (!base::ReadFileToStringWithMaxSize(fp, &smb_conf, kSmbFileSizeLimit)) {
-    LOG(ERROR) << "Failed to read samba conf file '" << kSmbFilePath << "'.";
-    *out_error_code = errors::kReadSmbConfFailed;
-    return false;
-  }
-
-  const char* error_token = nullptr;
-  if (!ai::FindToken(smb_conf, '=', "netbios name", out_machine_name))
-    error_token = "machine name";
-  else if (!ai::FindToken(smb_conf, '=', "realm", out_realm))
-    error_token = "realm";
-
-  if (error_token) {
-    LOG(ERROR) << "Failed to find " << error_token << " in samba conf file '"
-               << kSmbFilePath << "'.";
-    *out_error_code = errors::kParseSmbConfFailed;
-    return false;
-  }
-
-  LOG(INFO) << "Found machine name = '" << *out_machine_name << "'";
-  LOG(INFO) << "Found realm = '" << *out_realm << "'";
-  return true;
-}
 
 // Retrieves the name of the domain controller. If the full server name is
 // 'myserver.workgroup.domain', |domain_controller_name| is set to 'myserver'.
@@ -197,12 +170,18 @@ bool CreateDirectory(const char* dir, const char** out_error_code) {
 }
 
 // Writes the samba configuration file.
-bool WriteSmbConf(const std::string& machine_name, const std::string& workgroup,
-                  const std::string& realm, const char** out_error_code) {
-  std::string data = base::StringPrintf(kSmbConfData, machine_name.c_str(),
-                                        workgroup.c_str(), realm.c_str());
+bool WriteSmbConf(const ap::SambaConfig* config, const char** out_error_code) {
+  if (!config) {
+    LOG(ERROR) << "No configuration to write. Must call JoinMachine first.";
+    *out_error_code = errors::kWriteSmbConfFailed;
+    return false;
+  }
+
+  std::string data =
+      base::StringPrintf(kSmbConfData, config->machine_name().c_str(),
+                         config->workgroup().c_str(), config->realm().c_str());
   base::FilePath fp(kSmbFilePath);
-  if (!base::WriteFile(fp, data.c_str(), data.size())) {
+  if (base::WriteFile(fp, data.c_str(), data.size()) <= 0) {
     LOG(ERROR) << "Failed to write samba conf file '" << fp.value() << "'.";
     *out_error_code = errors::kWriteSmbConfFailed;
     return false;
@@ -214,12 +193,64 @@ bool WriteSmbConf(const std::string& machine_name, const std::string& workgroup,
 // Writes the krb5 configuration file.
 bool WriteKrb5Conf(const char** out_error_code) {
   base::FilePath fp(kKrb5FilePath);
-  if (!base::WriteFile(fp, kKrb5ConfData, strlen(kKrb5ConfData))) {
+  if (base::WriteFile(fp, kKrb5ConfData, strlen(kKrb5ConfData)) <= 0) {
     LOG(ERROR) << "Failed to write krb5 conf file '" << fp.value() << "'.";
     *out_error_code = errors::kWriteKrb5ConfFailed;
     return false;
   }
 
+  return true;
+}
+
+// Writes the file with configuration information.
+bool WriteConfiguration(const ap::SambaConfig* config,
+                        const char** out_error_code) {
+  DCHECK(config);
+  std::string config_blob;
+  if (!config->SerializeToString(&config_blob)) {
+    LOG(ERROR) << "Failed to serialize configuration to string";
+    *out_error_code = errors::kWriteConfigFailed;
+    return false;
+  }
+
+  base::FilePath fp(kConfigPath);
+  if (base::WriteFile(fp, config_blob.c_str(), config_blob.size()) <= 0) {
+    LOG(ERROR) << "Failed to write configuration file '" << fp.value() << "'.";
+    *out_error_code = errors::kWriteConfigFailed;
+    return false;
+  }
+
+  LOG(INFO) << "Wrote configuration file '" << fp.value() << "'.";
+  return true;
+}
+
+// Reads the file with configuration information.
+bool ReadConfiguration(ap::SambaConfig* config) {
+  base::FilePath fp(kConfigPath);
+  if (!base::PathExists(fp)) {
+    LOG(ERROR) << "Configuration file '" << fp.value() << "' does not exist.";
+    return false;
+  }
+
+  std::string config_blob;
+  if (!base::ReadFileToStringWithMaxSize(fp, &config_blob, kConfigSizeLimit)) {
+    LOG(ERROR) << "Failed to read configuration file '" << fp.value() << "'.";
+    return false;
+  }
+
+  if (!config->ParseFromString(config_blob)) {
+    LOG(ERROR) << "Failed to parse configuration from string";
+    return false;
+  }
+
+  // Check if the config is valid.
+  if (config->machine_name().empty() || config->workgroup().empty() ||
+      config->realm().empty()) {
+    LOG(ERROR) << "Configuration is invalid";
+    return false;
+  }
+
+  LOG(INFO) << "Read configuration file '" << fp.value() << "'.";
   return true;
 }
 
@@ -411,18 +442,28 @@ bool DownloadGpo(const GpoEntry& gpo,
 
 }  // namespace
 
-namespace authpolicy {
-
-SambaInterface::SambaInterface() {
+bool SambaInterface::Initialize(bool expect_config) {
   // Need to create samba dirs since samba can't create dirs recursively...
   const char* error_code;
   for (size_t n = 0; n < arraysize(kSambaDirs); ++n) {
     if (!CreateDirectory(kSambaDirs[n], &error_code)) {
-      LOG(ERROR) << "SambaInterface initialization failed. Can't create "
+      LOG(ERROR) << "Failed to initialize SambaInterface. Cannot create "
                  << "directory '" << kSambaDirs[n] << "'.";
-      break;
+      return false;
     }
   }
+
+  if (expect_config) {
+    config_ = base::MakeUnique<ap::SambaConfig>();
+    if (!ReadConfiguration(config_.get())) {
+      LOG(ERROR) << "Failed to initialize SambaInterface. Failed to load "
+                 << "configuration file.";
+      config_.reset();
+      return false;
+    }
+  }
+
+  return true;
 }
 
 bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
@@ -437,6 +478,10 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
 
   // Write krb5 configuration file.
   if (!WriteKrb5Conf(out_error_code))
+    return false;
+
+  // Write samba configuration file.
+  if (!WriteSmbConf(config_.get(), out_error_code))
     return false;
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
@@ -484,9 +529,14 @@ bool SambaInterface::JoinMachine(const std::string& machine_name,
                                   &workgroup, &normalized_upn, out_error_code))
     return false;
 
+  // Create config.
+  std::unique_ptr<ap::SambaConfig> config = base::MakeUnique<ap::SambaConfig>();
+  config->set_machine_name(base::ToUpperASCII(machine_name));
+  config->set_workgroup(workgroup);
+  config->set_realm(realm);
+
   // Write samba configuration file.
-  std::string machine_name_upper = base::ToUpperASCII(machine_name);
-  if (!WriteSmbConf(machine_name_upper, workgroup, realm, out_error_code))
+  if (!WriteSmbConf(config.get(), out_error_code))
     return false;
 
   // Call net ads join to join the Active Directory domain.
@@ -501,9 +551,12 @@ bool SambaInterface::JoinMachine(const std::string& machine_name,
     return false;
   }
 
-  // Store for policy fetch
-  machine_name_ = machine_name_upper;
-  realm_ = realm;
+  // Store configuration for subsequent runs of the daemon.
+  if (!WriteConfiguration(config.get(), out_error_code))
+    return false;
+
+  // Only if everything worked out, keep the config.
+  config_ = std::move(config);
   return true;
 }
 
@@ -519,6 +572,10 @@ bool SambaInterface::FetchUserGpos(const std::string& account_id,
     return false;
   }
   const std::string& user_name = iter->second;
+
+  // Write samba configuration file.
+  if (!WriteSmbConf(config_.get(), out_error_code))
+    return false;
 
   // Make sure we have the domain controller name.
   if (!UpdateDomainControllerName(&domain_controller_name_, out_error_code))
@@ -548,11 +605,8 @@ bool SambaInterface::FetchUserGpos(const std::string& account_id,
 bool SambaInterface::FetchDeviceGpos(
     std::vector<base::FilePath>* out_gpo_file_paths,
     const char** out_error_code) {
-  // If this method is called the first time and the machine wasn't joined in
-  // the current session (see JoinADDomain), the machine name is not yet known
-  // and has to be read from the smb conf.
-  if ((machine_name_.empty() || realm_.empty()) &&
-      !GetMachineAndRealmName(&machine_name_, &realm_, out_error_code))
+  // Write samba configuration file.
+  if (!WriteSmbConf(config_.get(), out_error_code))
     return false;
 
   // Make sure we have the domain controller name.
@@ -564,7 +618,8 @@ bool SambaInterface::FetchDeviceGpos(
     return false;
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
-  ProcessExecutor kinit_cmd({kKInitPath, machine_name_ + "$@" + realm_, "-k"});
+  ProcessExecutor kinit_cmd(
+      {kKInitPath, config_->machine_name() + "$@" + config_->realm(), "-k"});
   kinit_cmd.SetEnv(kKrb5ConfEnvKey, kKrb5ConfEnvValue);  // Kerberos config.
   kinit_cmd.SetEnv(kMachineEnvKey, kMachineEnvValue);    // Keytab file path.
   if (!kinit_cmd.Execute()) {
@@ -575,7 +630,7 @@ bool SambaInterface::FetchDeviceGpos(
 
   // Get the list of GPOs for the machine.
   std::vector<GpoEntry> gpo_list;
-  if (!GetGpoList(machine_name_ + "$", &gpo_list, out_error_code))
+  if (!GetGpoList(config_->machine_name() + "$", &gpo_list, out_error_code))
     return false;
 
   // Download GPOs.

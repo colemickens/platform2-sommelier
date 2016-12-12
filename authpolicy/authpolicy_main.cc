@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sysexits.h>
+
 #include <memory>
 
 #include <base/at_exit.h>
@@ -26,7 +28,9 @@ namespace authpolicy {
 
 class Daemon : public brillo::DBusServiceDaemon {
  public:
-  Daemon() : DBusServiceDaemon(kAuthPolicyServiceName, kObjectServicePath) {}
+  explicit Daemon(bool expect_config)
+      : DBusServiceDaemon(kAuthPolicyServiceName, kObjectServicePath),
+        expect_config_(expect_config) {}
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
@@ -40,7 +44,21 @@ class Daemon : public brillo::DBusServiceDaemon {
     auth_policy_.reset();
   }
 
+  int OnInit() override {
+    int return_code = brillo::DBusServiceDaemon::OnInit();
+    if (return_code != EX_OK)
+      return return_code;
+
+    if (!auth_policy_->Initialize(expect_config_)) {
+      // Exit with "success" to prevent respawn by upstart.
+      exit(0);
+    }
+
+    return EX_OK;
+  }
+
  private:
+  bool expect_config_;
   std::unique_ptr<AuthPolicy> auth_policy_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
@@ -78,21 +96,30 @@ int main(int argc, const char* const* argv) {
   // been locked to a mode other than enterprise_ad.  (The lifetime management
   // of authpolicyd happens through upstart, this check only serves as a second
   // line of defense.)
+  bool expect_config = false;
   InstallAttributesReader install_attributes_reader;
   if (install_attributes_reader.IsLocked()) {
     const std::string& mode =
         install_attributes_reader.GetAttribute(
             InstallAttributesReader::kAttrMode);
     if (mode != InstallAttributesReader::kDeviceModeEnterpriseAD) {
-      LOG(ERROR) << "OOBE completed but device not in AD management mode.";
+      LOG(ERROR) << "OOBE completed but device not in Active Directory "
+                    "management mode.";
       // Exit with "success" to prevent respawn by upstart.
       exit(0);
+    } else {
+      LOG(INFO) << "Install attributes locked to Active Directory mode.";
+
+      // A configuration file should be present in this case.
+      expect_config = true;
     }
+  } else {
+    LOG(INFO) << "No install attributes found.";
   }
 
   // Run daemon.
   LOG(INFO) << "authpolicyd starting";
-  authpolicy::Daemon daemon;
+  authpolicy::Daemon daemon(expect_config);
   int res = daemon.Run();
   LOG(INFO) << "authpolicyd stopping with exit code " << res;
 

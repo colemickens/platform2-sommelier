@@ -5,11 +5,14 @@
 #ifndef AUTHPOLICY_SAMBA_INTERFACE_H_
 #define AUTHPOLICY_SAMBA_INTERFACE_H_
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include <base/files/file_path.h>
+#include "base/files/file_path.h"
+
+#include <bindings/authpolicy_containers.pb.h>
 
 // Helper methods for samba Active Directory authentication, machine (device)
 // joining and policy fetching. Note: "Device" and "machine" can be used
@@ -19,8 +22,11 @@ namespace authpolicy {
 
 class SambaInterface {
  public:
-  // Creates directories required by Samba code. Logs on failure.
-  SambaInterface();
+  // Creates directories required by Samba code and loads configuration, if it
+  // exists. Returns false
+  // - if a directory failed to create or
+  // - if |expect_config| is true and the config file fails to load.
+  bool Initialize(bool expect_config);
 
   // Calls kinit to get a Kerberos ticket-granting-ticket (TGT) for the given
   // |user_principal_name| (format: user_name@workgroup.domain). If a TGT
@@ -59,8 +65,7 @@ class SambaInterface {
  private:
   // Cached state
   std::unordered_map<std::string, std::string> account_id_user_name_map_;
-  std::string machine_name_;
-  std::string realm_;
+  std::unique_ptr<protos::SambaConfig> config_;
   std::string domain_controller_name_;
 };
 
