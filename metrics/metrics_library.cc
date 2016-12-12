@@ -49,6 +49,7 @@ static const char *kCrosEventNames[] = {
   "VeyronEmmcUpgrade.FailedDiskAccess",  // 17
   "VeyronEmmcUpgrade.FailedWPEnable",  // 18
   "VeyronEmmcUpgrade.SignatureDetected",  // 19
+  "Watchdog.StartupFailed",  // 20
 };
 
 time_t MetricsLibrary::cached_enabled_time_ = 0;
