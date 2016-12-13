@@ -16,6 +16,7 @@
       'includes': ['../common-mk/common_test.gypi'],
       'sources': [
         'libcros_config/cros_config.cc',
+        'libcros_config/fake_cros_config.cc',
       ],
     },
     {
