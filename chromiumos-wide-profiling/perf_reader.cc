@@ -179,6 +179,12 @@ bool ReadPerfFileSection(DataReader* data, struct perf_file_section* section) {
   return true;
 }
 
+// Returns true if |e1| has an earlier timestamp than |e2|. Used to sort an
+// array of events.
+bool CompareEventTimes(const PerfEvent& e1, const PerfEvent& e2) {
+  return GetTimeFromPerfEvent(e1) < GetTimeFromPerfEvent(e2);
+}
+
 }  // namespace
 
 PerfReader::PerfReader() : is_cross_endian_(false) {
@@ -533,6 +539,21 @@ void PerfReader::GetFilenamesToBuildIDs(
     PerfizeBuildIDString(&build_id_string);
     (*filenames_to_build_ids)[build_id.filename()] = build_id_string;
   }
+}
+
+void PerfReader::MaybeSortEventsByTime() {
+  // Events can not be sorted by time if PERF_SAMPLE_TIME is not set in
+  // attr.sample_type for all attrs.
+  for (const auto& attr : attrs()) {
+    if (!(attr.attr().sample_type() & PERF_SAMPLE_TIME)) {
+      return;
+    }
+  }
+
+  // Sort the events based on timestamp.
+  std::stable_sort(proto_.mutable_events()->begin(),
+                   proto_.mutable_events()->end(),
+                   CompareEventTimes);
 }
 
 bool PerfReader::ReadHeader(DataReader* data) {

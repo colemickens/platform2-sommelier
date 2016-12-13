@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -202,12 +203,6 @@ class PerfParser {
   // functions in dso.h. If there is a DSO with both an existing build ID and a
   // new build ID read using dso.h, this will overwrite the existing build ID.
   bool FillInDsoBuildIds();
-
-  // Sort |parsed_events_| by time, and updates the events in |reader_| in
-  // sorted order.
-  // Events can not be sorted by time if PERF_SAMPLE_TIME is not set in
-  // attr.sample_type for all attrs.
-  void MaybeSortParsedEvents();
 
   // Updates |reader_->events| based on the contents of |parsed_events_|. For
   // example, if |parsed_events_| had some events removed or reordered,

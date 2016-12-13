@@ -84,6 +84,10 @@ class PerfReader {
   void GetFilenamesToBuildIDs(
       std::map<string, string>* filenames_to_build_ids) const;
 
+  // Sort all events in |proto_| by timestamps if they are available. Otherwise
+  // event order is unchanged.
+  void MaybeSortEventsByTime();
+
   // Accessors and mutators.
 
   // This is a plain accessor for the internal protobuf storage. It is meant for

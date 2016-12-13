@@ -11,7 +11,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <algorithm>
 #include <memory>
 #include <set>
 #include <sstream>
@@ -50,13 +49,6 @@ const char kChromeFilename[] = "/opt/google/chrome/chrome";
 // address. Requires that |kMmapPageAlignment| be a power of 2.
 uint64_t GetPageAlignedOffset(uint64_t addr) {
   return addr % kMmapPageAlignment;
-}
-
-// Returns true if |e1| has an earlier timestamp than |e2|. Used to sort an
-// array of events.
-bool CompareParsedEventTimes(const ParsedEvent& e1, const ParsedEvent& e2) {
-  return (GetTimeFromPerfEvent(*e1.event_ptr) <
-          GetTimeFromPerfEvent(*e2.event_ptr));
 }
 
 bool IsNullBranchStackEntry(const BranchStackEntry& entry) {
@@ -131,6 +123,10 @@ PerfParser::PerfParser(PerfReader* reader, const PerfParserOptions& options)
       options_(options) {}
 
 bool PerfParser::ParseRawEvents() {
+  if (options_.sort_events_by_time) {
+    reader_->MaybeSortEventsByTime();
+  }
+
   // Just in case there was data from a previous call.
   process_mappers_.clear();
 
@@ -157,7 +153,6 @@ bool PerfParser::ParseRawEvents() {
   }
   parsed_events_.resize(write_index);
 
-  MaybeSortParsedEvents();
   ProcessEvents();
 
   if (!options_.discard_unused_events)
@@ -409,27 +404,6 @@ bool PerfParser::FillInDsoBuildIds() {
   if (new_buildids.empty())
     return true;
   return reader_->InjectBuildIDs(new_buildids);
-}
-
-void PerfParser::MaybeSortParsedEvents() {
-  if (!options_.sort_events_by_time)
-    return;
-
-  bool have_sample_time = true;
-  for (const auto& attr : reader_->attrs()) {
-    if (!(attr.attr().sample_type() & PERF_SAMPLE_TIME)) {
-      have_sample_time = false;
-    }
-  }
-  if (!have_sample_time) {
-    return;
-  }
-
-  // Sort the events based on timestamp.
-  std::stable_sort(parsed_events_.begin(), parsed_events_.end(),
-                   CompareParsedEventTimes);
-
-  UpdatePerfEventsFromParsedEvents();
 }
 
 void PerfParser::UpdatePerfEventsFromParsedEvents() {
