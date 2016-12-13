@@ -413,6 +413,7 @@ TEST(PerfReaderTest, ReadsAndWritesSampleEvent) {
       PERF_SAMPLE_TID |
       PERF_SAMPLE_TIME |
       PERF_SAMPLE_ADDR |
+      PERF_SAMPLE_READ |
       PERF_SAMPLE_CALLCHAIN |
       PERF_SAMPLE_CPU |
       PERF_SAMPLE_ID |
@@ -422,11 +423,13 @@ TEST(PerfReaderTest, ReadsAndWritesSampleEvent) {
 
   const size_t num_sample_event_bits = 10;
   // not tested:
-  // PERF_SAMPLE_READ |
   // PERF_SAMPLE_RAW |
   testing::ExamplePerfEventAttrEvent_Hardware(sample_type,
                                               true /*sample_id_all*/)
       .WithId(401)
+      .WithReadFormat(PERF_FORMAT_TOTAL_TIME_ENABLED |
+                      PERF_FORMAT_TOTAL_TIME_RUNNING |
+                      PERF_FORMAT_ID)
       .WriteTo(&input);
 
   // PERF_RECORD_SAMPLE
@@ -437,6 +440,8 @@ TEST(PerfReaderTest, ReadsAndWritesSampleEvent) {
       .type = PERF_RECORD_SAMPLE,
       .misc = PERF_RECORD_MISC_KERNEL,
       .size = sizeof(struct sample_event) + num_sample_event_bits*sizeof(u64) +
+              4*sizeof(u64) +  // Non-grouped read info, see
+                               // perf_event_read_format in kernel/perf_event.h.
               call_chain_size*sizeof(u64) +
               branch_stack_size*sizeof(struct branch_entry),
     }
@@ -450,6 +455,12 @@ TEST(PerfReaderTest, ReadsAndWritesSampleEvent) {
     1,                                     // STREAM_ID
     8,                                     // CPU
     10001,                                 // PERIOD
+
+    // READ
+    0x103c5d0,                             // value
+    0x7f6e8c45a920,                        // time_enabled
+    0x7ffed1a5e950,                        // time_running
+    402,                                   // id
 
     // CALLCHAIN
     6,                                     // nr
@@ -505,6 +516,14 @@ TEST(PerfReaderTest, ReadsAndWritesSampleEvent) {
     EXPECT_EQ(1, sample.stream_id());
     EXPECT_EQ(8, sample.cpu());
     EXPECT_EQ(10001, sample.period());
+
+    // Read info
+    EXPECT_TRUE(sample.has_read_info());
+    EXPECT_EQ(0x7f6e8c45a920, sample.read_info().time_enabled());
+    EXPECT_EQ(0x7ffed1a5e950, sample.read_info().time_running());
+    ASSERT_EQ(1, sample.read_info().read_value_size());
+    EXPECT_EQ(0x103c5d0, sample.read_info().read_value(0).value());
+    EXPECT_EQ(402, sample.read_info().read_value(0).id());
 
     // Callchain.
     ASSERT_EQ(6, sample.callchain_size());
