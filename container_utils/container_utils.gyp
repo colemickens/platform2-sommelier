@@ -34,6 +34,23 @@
         'run_oci.cc',
       ],
     },
+    {
+      'target_name': 'device_jail_utility',
+      'type': 'executable',
+      'variables': {
+        'deps': [
+          'libbrillo-<(libbase_ver)',
+          'libudev',
+        ],
+      },
+      'sources': [
+        'device_jail/device_jail_control.h',
+        'device_jail/device_jail_control.cc',
+        'device_jail/device_jail_server.h',
+        'device_jail/device_jail_server.cc',
+        'device_jail/device_jail_utility.cc',
+      ],
+    },
   ],
   'conditions': [
     ['USE_test == 1', {
