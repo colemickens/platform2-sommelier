@@ -196,9 +196,6 @@ FIRMWARE_TYPE=$(crossystem mainfw_type)
 
 # Check for whether we need a stateful wipe, and alert the user as
 # necessary.  We can wipe for several different reasons:
-#  + Wipe for the factory build process.  This is signaled by
-#    the existence of ${RESET_FILE} prior to reboot; the arguments
-#    for clobber-state are set up before rebooting.
 #  + User requested "power wash".  This is signaled in the same
 #    way as the factory reset, but with different arguments in
 #    ${RESET_FILE}.
@@ -215,14 +212,8 @@ FIRMWARE_TYPE=$(crossystem mainfw_type)
 # especially booting Chromium OS on non-Chrome hardware.
 #
 if [ -O ${RESET_FILE} ]; then
-  # Wipe requested on previous boot.  In the case of a factory wipe,
-  # there can be a special message localized for the factory personnel.
-  WIPE_MESSAGE_FILE=/mnt/stateful_partition/wipe_message.txt
-  if [ -O "${WIPE_MESSAGE_FILE}" ]; then
-    chromeos-boot-alert wipe "${WIPE_MESSAGE_FILE}"
-  else
-    chromeos-boot-alert power_wash
-  fi
+  # Wipe requested on previous boot.
+  chromeos-boot-alert power_wash
 elif [ -z "$FACTORY_MODE" -a "$FIRMWARE_TYPE" != "recovery" ]; then
   if crossystem "devsw_boot?1" ; then
     # We've booted in dev mode.  For platforms using separated
