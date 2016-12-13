@@ -9,12 +9,12 @@
 
 #include "base/json/json_reader.h"
 #include "base/strings/string_number_conversions.h"
-#include "bindings/chrome_device_policy.pb.h"
 #include "dbus/shill/dbus-constants.h"
 
 #include "authpolicy/policy/policy_encoder_helper.h"
 #include "authpolicy/policy/policy_keys.h"
 #include "authpolicy/policy/registry_dict.h"
+#include "bindings/chrome_device_policy.pb.h"
 
 namespace em = enterprise_management;
 

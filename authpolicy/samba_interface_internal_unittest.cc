@@ -34,12 +34,15 @@ class SambaInterfaceTest : public ::testing::Test {
                                       &error_code_);
   }
 
-  // Helpers for ParseUserPrincipleName.
+  // Helpers for FindToken.
   std::string find_token_result;
 
   bool FindToken(const char* in_str, char token_separator, const char* token) {
     return ai::FindToken(in_str, token_separator, token, &find_token_result);
   }
+
+  // Helpers for ParseGpoVersion
+  unsigned int ver = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SambaInterfaceTest);
@@ -175,6 +178,60 @@ TEST_F(SambaInterfaceTest, FindTokenFail_Whitespace) {
   EXPECT_FALSE(FindToken("    ", '=', "tok"));
   EXPECT_FALSE(FindToken("    \n   \n ", '=', "tok"));
   EXPECT_FALSE(FindToken("    \n\n \n   ", '=', "tok"));
+}
+
+// Parsing valid GPO version strings.
+TEST_F(SambaInterfaceTest, ParseGpoVersionSuccess) {
+  EXPECT_TRUE(ai::ParseGpoVersion("0 (0x00000000)", &ver));
+  EXPECT_EQ(ver, 0);
+  EXPECT_TRUE(ai::ParseGpoVersion("1 (0x00000001)", &ver));
+  EXPECT_EQ(ver, 1);
+  EXPECT_TRUE(ai::ParseGpoVersion("15 (0x0000000f)", &ver));
+  EXPECT_EQ(ver, 15);
+  EXPECT_TRUE(ai::ParseGpoVersion("4294967295 (0xffffffff)", &ver));
+  EXPECT_EQ(ver, 0xffffffff);
+}
+
+// Empty string
+TEST_F(SambaInterfaceTest, ParseGpoVersionFail_EmptyString) {
+  EXPECT_FALSE(ai::ParseGpoVersion("", &ver));
+}
+
+// Base-10 and Base-16 (hex) numbers not matching
+TEST_F(SambaInterfaceTest, ParseGpoVersionFail_NotMatching) {
+  EXPECT_FALSE(ai::ParseGpoVersion("15 (0x0000000e)", &ver));
+}
+
+// Non-numeric characters fail
+TEST_F(SambaInterfaceTest, ParseGpoVersionFail_NonNumericCharacters) {
+  EXPECT_FALSE(ai::ParseGpoVersion("15a (0x000000f)", &ver));
+  EXPECT_FALSE(ai::ParseGpoVersion("15 (0x0000g0f)", &ver));
+  EXPECT_FALSE(ai::ParseGpoVersion("deadbabebee", &ver));
+}
+
+// Missing 0x in hex string fails
+TEST_F(SambaInterfaceTest, ParseGpoVersionFail_Missing0x) {
+  EXPECT_FALSE(ai::ParseGpoVersion("15 (0000000f)", &ver));
+}
+
+// Missing brackets in hex string fail
+TEST_F(SambaInterfaceTest, ParseGpoVersionFail_MissingBrackets) {
+  EXPECT_FALSE(ai::ParseGpoVersion("15 0000000f", &ver));
+}
+
+// Missing hex string fails
+TEST_F(SambaInterfaceTest, ParseGpoVersionFail_MissingHex) {
+  EXPECT_FALSE(ai::ParseGpoVersion("10", &ver));
+}
+
+// Only hex string fails
+TEST_F(SambaInterfaceTest, ParseGpoVersionFail_HexOnly) {
+  EXPECT_FALSE(ai::ParseGpoVersion("0x0000000f", &ver));
+}
+
+// Only hex string in brackets fails
+TEST_F(SambaInterfaceTest, ParseGpoVersionFail_BracketsHexOnly) {
+  EXPECT_FALSE(ai::ParseGpoVersion("(0x0000000f)", &ver));
 }
 
 }  // namespace authpolicy

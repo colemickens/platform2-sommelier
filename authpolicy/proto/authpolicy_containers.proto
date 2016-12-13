@@ -9,3 +9,17 @@ message SambaConfig {
   optional string workgroup = 2;
   optional string realm = 3;
 }
+
+message GpoEntry {
+  optional string name = 1;
+  optional string basepath = 2;
+  optional string directory = 3;
+}
+
+message GpoList {
+  repeated GpoEntry entries = 1;
+}
+
+message FilePathList {
+  repeated string entries = 1;
+}

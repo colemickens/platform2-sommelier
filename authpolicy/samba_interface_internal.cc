@@ -40,8 +40,10 @@ bool ParseUserPrincipalName(const std::string& user_principal_name,
   return true;
 }
 
-bool FindToken(const std::string& in_str, char token_separator,
-               const std::string& token, std::string* out_result) {
+bool FindToken(const std::string& in_str,
+               char token_separator,
+               const std::string& token,
+               std::string* out_result) {
   std::vector<std::string> lines = base::SplitString(
       in_str, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   for (const std::string& line : lines) {
@@ -62,6 +64,16 @@ bool FindToken(const std::string& in_str, char token_separator,
     }
   }
   return false;
+}
+
+bool ParseGpoVersion(const std::string& str, unsigned int* out_num) {
+  int num = 0, num_hex = 0;
+  if (sscanf(str.c_str(), "%u (0x%08x)", &num, &num_hex) != 2 || num != num_hex)
+    return false;
+
+  DCHECK(out_num);
+  *out_num = num;
+  return true;
 }
 
 }  // namespace internal

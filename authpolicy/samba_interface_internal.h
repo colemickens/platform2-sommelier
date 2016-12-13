@@ -31,6 +31,10 @@ bool ParseUserPrincipalName(const std::string& user_principal_name,
 bool FindToken(const std::string& in_str, char token_separator,
                const std::string& token, std::string* out_result);
 
+// Parses a GPO version string, which consists of a number and the same number
+// as base-16 hex number, e.g. '31 (0x0000001f)'.
+bool ParseGpoVersion(const std::string& str, unsigned int* out_num);
+
 }  // namespace internal
 }  // namespace authpolicy
 

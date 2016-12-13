@@ -65,6 +65,15 @@
         'samba_interface_internal.cc',
       ],
     },
+    # Parser tool.
+    {
+      'target_name': 'authpolicy_parser',
+      'type': 'executable',
+      'dependencies': ['libauthpolicy'],
+      'sources': [
+        'authpolicy_parser_main.cc',
+      ],
+    },
     # Authpolicy daemon executable.
     {
       'target_name': 'authpolicyd',

@@ -16,12 +16,6 @@
 
 using brillo::dbus_utils::AsyncEventSequencer;
 
-namespace enterprise_management {
-class CloudPolicySettings;
-class ChromeDeviceSettingsProto;
-class PolicyData;
-}
-
 namespace authpolicy {
 
 class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
@@ -59,19 +53,9 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
   void RefreshDevicePolicy(PolicyResponseCallback callback) override;
 
  private:
-  // Sends the user policy blob to SessionManager.
-  void StoreUserPolicy(const std::string& account_id,
-                       const enterprise_management::CloudPolicySettings& policy,
-                       PolicyResponseCallback callback);
-
-  // Sends the device policy blob to SessionManager.
-  void StoreDevicePolicy(
-      const enterprise_management::ChromeDeviceSettingsProto& policy,
-      PolicyResponseCallback callback);
-
-  // Sends policy to SessionManager. Assumes |policy_data| contains user policy
+  // Sends policy to SessionManager. Assumes |policy_blob| contains user policy
   // if account_id is not nullptr, otherwise assumes it's device policy.
-  void StorePolicy(const enterprise_management::PolicyData& policy_data,
+  void StorePolicy(const std::string& policy_blob,
                    const std::string* account_id,
                    PolicyResponseCallback callback);
 

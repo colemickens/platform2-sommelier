@@ -12,9 +12,8 @@
 
 #include "authpolicy/policy/user_policy_encoder.h"
 
-#include "bindings/cloud_policy.pb.h"
-
 #include "authpolicy/policy/policy_keys.h"
+#include "bindings/cloud_policy.pb.h"
 
 namespace em = enterprise_management;
 

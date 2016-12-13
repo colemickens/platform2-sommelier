@@ -10,9 +10,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "base/files/file_path.h"
+#include <base/files/file_path.h>
 
-#include <bindings/authpolicy_containers.pb.h>
+#include "bindings/authpolicy_containers.pb.h"
 
 // Helper methods for samba Active Directory authentication, machine (device)
 // joining and policy fetching. Note: "Device" and "machine" can be used
@@ -45,21 +45,21 @@ class SambaInterface {
                    const std::string& user_principal_name, int password_fd,
                    const char** out_error_code);
 
-  // Downloads user policy files from the Active Directory server. |account_id|
-  // is the unique user GUID returned from |AuthenticateUser|. The user's
-  // Kerberos authentication ticket must still be valid. If this operation
-  // fails, call |AuthenticateUser| and try again. User policy is given as
-  // Registry.pol (preg) files, a binary format encoding policy data.
+  // Downloads user policy from the Active Directory server and stores it in a
+  // serialized user policy protobuf string (see |CloudPolicySettings|).
+  // |account_id| is the unique user GUID returned from |AuthenticateUser|. The
+  // user's Kerberos authentication ticket must still be valid. If this
+  // operation fails, call |AuthenticateUser| and try again.
   bool FetchUserGpos(const std::string& account_id,
-                     std::vector<base::FilePath>* out_gpo_file_paths,
+                     std::string* out_policy_blob,
                      const char** out_error_code);
 
-  // Downloads device policy files from the Active Directory server. The device
-  // must be joined to the Active Directory domain already (see |JoinMachine|).
-  // During join, a machine password is stored in a keytab file, which is used
-  // for authentication for policy fetch. Device policy is given as Registry.pol
-  // (preg) files, a binary format encoding policy data.
-  bool FetchDeviceGpos(std::vector<base::FilePath>* out_gpo_file_paths,
+  // Downloads device policy from the Active Directory server and stores it in a
+  // serialized device policy protobuf string (see |ChromeDeviceSettingsProto|).
+  // The device must be joined to the Active Directory domain already (see
+  // |JoinMachine|). During join, a machine password is stored in a keytab file,
+  // which is used for authentication for policy fetch.
+  bool FetchDeviceGpos(std::string* out_policy_blob,
                        const char** out_error_code);
 
  private:
