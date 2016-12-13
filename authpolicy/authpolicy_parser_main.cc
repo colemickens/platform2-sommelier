@@ -95,10 +95,10 @@ void PushGpo(const GpoEntry& gpo,
   // policy stored in that GPO. Similarly, if version_machine == 0, there's no
   // device policy.
   if (gpo.version_user == 0 && scope == ac::PolicyScope::USER) {
-    LOG(INFO) << "Filtered out GPO (version_user is 0)";
+    LOG(INFO) << "Filtered out GPO (Version-User is 0)";
     gpo.Log();
   } else if (gpo.version_machine == 0 && scope == ac::PolicyScope::MACHINE) {
-    LOG(INFO) << "Filtered out GPO (version_machine is 0)";
+    LOG(INFO) << "Filtered out GPO (Version-Machine is 0)";
     gpo.Log();
   } else {
     gpo_list->push_back(gpo);
@@ -172,10 +172,10 @@ int ParseGpoList(const std::string& net_out, ac::PolicyScope scope) {
           gpo.filesyspath = tokens[1];
         } else if (tokens[0] == kGpoToken_VersionUser) {
           already_set = gpo.version_user != 0;
-          version_error = ai::ParseGpoVersion(tokens[1], &gpo.version_user);
+          version_error = !ai::ParseGpoVersion(tokens[1], &gpo.version_user);
         } else if (tokens[0] == kGpoToken_VersionMachine) {
           already_set = gpo.version_machine != 0;
-          version_error = ai::ParseGpoVersion(tokens[1], &gpo.version_machine);
+          version_error = !ai::ParseGpoVersion(tokens[1], &gpo.version_machine);
         }
 
         // Sanity check that we don't miss separators between GPOs.
@@ -215,13 +215,8 @@ int ParseGpoList(const std::string& net_out, ac::PolicyScope scope) {
     //   \\chrome.lan\SysVol\chrome.lan\Policies\{3507856D-...-CF144DC5CC3A}
     // into
     // - the base path (chrome.lan/SysVol) and
-    // - the directory (\chrome.lan\Policies\...).
+    // - the directory (chrome.lan\Policies\...).
     // Note the change from \ to / in base path.
-    if (gpo.filesyspath.find(';') != std::string::npos) {
-      LOG(ERROR) << "Filesyspath '" << gpo.filesyspath
-                 << "' may not contain a ';'";
-      return ac::EXIT_CODE_PARSE_INPUT_FAILED;
-    }
     std::vector<std::string> file_parts = base::SplitString(
         gpo.filesyspath, "\\/", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
     if (file_parts.size() < 4 || !file_parts[0].empty() ||
@@ -233,7 +228,7 @@ int ParseGpoList(const std::string& net_out, ac::PolicyScope scope) {
     std::string basepath = file_parts[2] + "/" + file_parts[3];
     file_parts =
         std::vector<std::string>(file_parts.begin() + 4, file_parts.end());
-    std::string directory = "\\" + base::JoinString(file_parts, "\\");
+    std::string directory = base::JoinString(file_parts, "\\");
 
     ap::GpoEntry* gpo_proto = gpo_list_proto.add_entries();
     gpo_proto->set_name(gpo.name);

@@ -35,14 +35,14 @@ class SambaInterfaceTest : public ::testing::Test {
   }
 
   // Helpers for FindToken.
-  std::string find_token_result;
+  std::string find_token_result_;
 
   bool FindToken(const char* in_str, char token_separator, const char* token) {
-    return ai::FindToken(in_str, token_separator, token, &find_token_result);
+    return ai::FindToken(in_str, token_separator, token, &find_token_result_);
   }
 
   // Helpers for ParseGpoVersion
-  unsigned int ver = 0;
+  unsigned int gpo_version_ = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SambaInterfaceTest);
@@ -139,31 +139,31 @@ TEST_F(SambaInterfaceTest, ParseUPNFail_NoUpnAtButDot) {
 // a=b works.
 TEST_F(SambaInterfaceTest, FindTokenSuccess) {
   EXPECT_TRUE(FindToken("tok=res", '=', "tok"));
-  EXPECT_EQ(find_token_result, "res");
+  EXPECT_EQ(find_token_result_, "res");
 }
 
 // Multiple matches return the first match
 TEST_F(SambaInterfaceTest, FindTokenSuccess_Multiple) {
   EXPECT_TRUE(FindToken("tok=res\ntok=res2", '=', "tok"));
-  EXPECT_EQ(find_token_result, "res");
+  EXPECT_EQ(find_token_result_, "res");
 }
 
 // Different separators are ignored matches return the first match
 TEST_F(SambaInterfaceTest, FindTokenSuccess_IgnoreInvalidSeparator) {
   EXPECT_TRUE(FindToken("tok:res\ntok=res2", '=', "tok"));
-  EXPECT_EQ(find_token_result, "res2");
+  EXPECT_EQ(find_token_result_, "res2");
 }
 
 // a=b=c returns b=c
 TEST_F(SambaInterfaceTest, FindTokenSuccess_TwoSeparators) {
   EXPECT_TRUE(FindToken("tok = res = true", '=', "tok"));
-  EXPECT_EQ(find_token_result, "res = true");
+  EXPECT_EQ(find_token_result_, "res = true");
 }
 
 // Trims leading and trailing whitespace
 TEST_F(SambaInterfaceTest, FindTokenSuccess_TrimWhitespace) {
   EXPECT_TRUE(FindToken("\n   \n\n tok  =  res   \n\n", '=', "tok"));
-  EXPECT_EQ(find_token_result, "res");
+  EXPECT_EQ(find_token_result_, "res");
 }
 
 // Empty input strings fail.
@@ -182,56 +182,58 @@ TEST_F(SambaInterfaceTest, FindTokenFail_Whitespace) {
 
 // Parsing valid GPO version strings.
 TEST_F(SambaInterfaceTest, ParseGpoVersionSuccess) {
-  EXPECT_TRUE(ai::ParseGpoVersion("0 (0x00000000)", &ver));
-  EXPECT_EQ(ver, 0);
-  EXPECT_TRUE(ai::ParseGpoVersion("1 (0x00000001)", &ver));
-  EXPECT_EQ(ver, 1);
-  EXPECT_TRUE(ai::ParseGpoVersion("15 (0x0000000f)", &ver));
-  EXPECT_EQ(ver, 15);
-  EXPECT_TRUE(ai::ParseGpoVersion("4294967295 (0xffffffff)", &ver));
-  EXPECT_EQ(ver, 0xffffffff);
+  EXPECT_TRUE(ai::ParseGpoVersion("0 (0x0000)", &gpo_version_));
+  EXPECT_EQ(gpo_version_, 0);
+  EXPECT_TRUE(ai::ParseGpoVersion("1 (0x0001)", &gpo_version_));
+  EXPECT_EQ(gpo_version_, 1);
+  EXPECT_TRUE(ai::ParseGpoVersion("9 (0x0009)", &gpo_version_));
+  EXPECT_EQ(gpo_version_, 9);
+  EXPECT_TRUE(ai::ParseGpoVersion("15 (0x000f)", &gpo_version_));
+  EXPECT_EQ(gpo_version_, 15);
+  EXPECT_TRUE(ai::ParseGpoVersion("65535 (0xffff)", &gpo_version_));
+  EXPECT_EQ(gpo_version_, 0xffff);
 }
 
 // Empty string
 TEST_F(SambaInterfaceTest, ParseGpoVersionFail_EmptyString) {
-  EXPECT_FALSE(ai::ParseGpoVersion("", &ver));
+  EXPECT_FALSE(ai::ParseGpoVersion("", &gpo_version_));
 }
 
 // Base-10 and Base-16 (hex) numbers not matching
 TEST_F(SambaInterfaceTest, ParseGpoVersionFail_NotMatching) {
-  EXPECT_FALSE(ai::ParseGpoVersion("15 (0x0000000e)", &ver));
+  EXPECT_FALSE(ai::ParseGpoVersion("15 (0x000e)", &gpo_version_));
 }
 
 // Non-numeric characters fail
 TEST_F(SambaInterfaceTest, ParseGpoVersionFail_NonNumericCharacters) {
-  EXPECT_FALSE(ai::ParseGpoVersion("15a (0x000000f)", &ver));
-  EXPECT_FALSE(ai::ParseGpoVersion("15 (0x0000g0f)", &ver));
-  EXPECT_FALSE(ai::ParseGpoVersion("deadbabebee", &ver));
+  EXPECT_FALSE(ai::ParseGpoVersion("15a (0x00f)", &gpo_version_));
+  EXPECT_FALSE(ai::ParseGpoVersion("15 (0xg0f)", &gpo_version_));
+  EXPECT_FALSE(ai::ParseGpoVersion("dead", &gpo_version_));
 }
 
 // Missing 0x in hex string fails
 TEST_F(SambaInterfaceTest, ParseGpoVersionFail_Missing0x) {
-  EXPECT_FALSE(ai::ParseGpoVersion("15 (0000000f)", &ver));
+  EXPECT_FALSE(ai::ParseGpoVersion("15 (000f)", &gpo_version_));
 }
 
 // Missing brackets in hex string fail
 TEST_F(SambaInterfaceTest, ParseGpoVersionFail_MissingBrackets) {
-  EXPECT_FALSE(ai::ParseGpoVersion("15 0000000f", &ver));
+  EXPECT_FALSE(ai::ParseGpoVersion("15 000f", &gpo_version_));
 }
 
 // Missing hex string fails
 TEST_F(SambaInterfaceTest, ParseGpoVersionFail_MissingHex) {
-  EXPECT_FALSE(ai::ParseGpoVersion("10", &ver));
+  EXPECT_FALSE(ai::ParseGpoVersion("10", &gpo_version_));
 }
 
 // Only hex string fails
 TEST_F(SambaInterfaceTest, ParseGpoVersionFail_HexOnly) {
-  EXPECT_FALSE(ai::ParseGpoVersion("0x0000000f", &ver));
+  EXPECT_FALSE(ai::ParseGpoVersion("0x000f", &gpo_version_));
 }
 
 // Only hex string in brackets fails
 TEST_F(SambaInterfaceTest, ParseGpoVersionFail_BracketsHexOnly) {
-  EXPECT_FALSE(ai::ParseGpoVersion("(0x0000000f)", &ver));
+  EXPECT_FALSE(ai::ParseGpoVersion("(0x000f)", &gpo_version_));
 }
 
 }  // namespace authpolicy

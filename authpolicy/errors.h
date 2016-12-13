@@ -13,6 +13,7 @@ extern const char kDomain[];
 // Brillo error codes, see brillo::Error.
 extern const char kCreateDirFailed[];        // Failed to create a directory.
 extern const char kDownloadGpoFailed[];      // Failed to download GPO.
+extern const char kInvalidGpoPaths[];        // Bad GPO paths.
 extern const char kKInitFailed[];            // Error authenticating.
 extern const char kNetAdsGpoListFailed[];    // Getting GPO list failed.
 extern const char kNetAdsInfoFailed[];       // Getting DC name failed.
@@ -28,6 +29,7 @@ extern const char kPregFileNotFound[];       // Preg file path does not exist.
 extern const char kPregParseError[];         // Failed to parse a preg file.
 extern const char kPregReadError[];          // Failed to load a preg file.
 extern const char kPregTooBig[];             // Preg file was too big.
+extern const char kSetPermissionsFailed[];   // Failed to set file permissions.
 extern const char kSmbClientFailed[];        // Downloading GPOs failed.
 extern const char kStorePolicyFailed[];      // Can't send to Session Manager.
 extern const char kWriteConfigFailed[];      // Failed to write config fle.

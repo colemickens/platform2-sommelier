@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include <base/macros.h>
+
 struct minijail;
 
 namespace authpolicy {
@@ -34,11 +36,14 @@ class ProcessExecutor {
   // Sets a seccomp filter by parsing the given file.
   void SetSeccompFilter(const std::string& policy_file);
 
-  // Sets a set of capabilities flags.
-  void SetCapabilities(uint64_t capabilities);
+  // Set a flag that prevents execve from gaining new privileges.
+  void SetNoNewPrivs();
 
-  // Encapsulates user and process ids in a separate namespace.
-  void SetUserAndPidNamespace();
+  // Execute command as |user| and |group|. If |inherit_user_groups|, inherits
+  // the user's supplementary groups (the other groups the user belongs to).
+  void ChangeUserAndGroup(const char* user,
+                          const char* group,
+                          bool inherit_user_groups);
 
   // Execute the command. Returns true if the command executed and returned with
   // exit code 0. Also returns true if no args were passed to the constructor.
@@ -68,6 +73,9 @@ class ProcessExecutor {
   std::string input_str_;
   std::string out_data_, err_data_;
   int exit_code_ = 0;
+
+  // We better not copy/assign because of jail_.
+  DISALLOW_COPY_AND_ASSIGN(ProcessExecutor);
 };
 
 }  // namespace authpolicy

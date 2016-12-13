@@ -44,13 +44,17 @@ void ProcessExecutor::SetSeccompFilter(const std::string& policy_file) {
   minijail_use_seccomp_filter(jail_);
 }
 
-void ProcessExecutor::SetCapabilities(uint64_t capabilities) {
-  minijail_use_caps(jail_, capabilities);
+void ProcessExecutor::SetNoNewPrivs() {
+  minijail_no_new_privs(jail_);
 }
 
-void ProcessExecutor::SetUserAndPidNamespace() {
-  minijail_namespace_user(jail_);
-  minijail_namespace_pids(jail_);
+void ProcessExecutor::ChangeUserAndGroup(const char* user,
+                                         const char* group,
+                                         bool inherit_user_groups) {
+  minijail_change_user(jail_, user);
+  minijail_change_group(jail_, group);
+  if (inherit_user_groups)
+    minijail_inherit_usergroups(jail_);
 }
 
 bool ProcessExecutor::Execute() {
@@ -91,8 +95,8 @@ bool ProcessExecutor::Execute() {
   // Execute the command.
   pid_t pid = -1;
   int child_stdin = -1, child_stdout = -1, child_stderr = -1;
-  minijail_run_pid_pipes(jail_, args_ptr[0], args_ptr.data(), &pid,
-                         &child_stdin, &child_stdout, &child_stderr);
+  minijail_run_pid_pipes_no_preload(jail_, args_ptr[0], args_ptr.data(), &pid,
+                                    &child_stdin, &child_stdout, &child_stderr);
 
   // Restore the environment.
   clearenv();
