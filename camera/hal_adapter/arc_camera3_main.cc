@@ -15,7 +15,7 @@
 #include "hal_adapter/camera_hal_adapter.h"
 #include "hardware/hardware.h"
 
-const char kCameraHalDllName[] = "libarccamera.so";
+const char kCameraHalDllName[] = "camera_hal.so";
 
 // A closure to make sure the quit callback function is called on the main
 // thread of the daemon.

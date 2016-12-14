@@ -22,6 +22,6 @@ hal_adapter:
 
 .PHONY: hal_adapter
 
-libarccamera_usb: usb/libarccamera
+camera_hal_usb: usb/camera_hal
 
-.PHONY: libarccamera_usb
+.PHONY: camera_hal_usb

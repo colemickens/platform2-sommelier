@@ -4,10 +4,10 @@
 
 include common.mk
 
-CXX_LIBRARY(usb/libarccamera.so): $(usb_CXX_OBJECTS) $(COMMON_OBJECTS)
+CXX_LIBRARY(usb/camera_hal.so): $(usb_CXX_OBJECTS) $(COMMON_OBJECTS)
 
-usb/libarccamera: CXX_LIBRARY(usb/libarccamera.so)
+usb/camera_hal: CXX_LIBRARY(usb/camera_hal.so)
 
-clean: CLEAN(usb/libarccamera.so)
+clean: CLEAN(usb/camera_hal.so)
 
-.PHONY: usb/libarccamera
+.PHONY: usb/camera_hal
