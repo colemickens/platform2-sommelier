@@ -47,7 +47,7 @@ bool CrosConfig::InitForTest(const base::FilePath& filepath,
 }
 
 bool CrosConfig::GetString(const std::string &path, const std::string &prop,
-                           std::string* val) const {
+                           std::string* val) {
   if (!inited_) {
     LOG(ERROR) << "Init() must be called before accessing configuration";
     return false;

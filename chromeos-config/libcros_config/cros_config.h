@@ -7,6 +7,8 @@
 #ifndef CHROMEOS_CONFIG_LIBCROS_CONFIG_CROS_CONFIG_H_
 #define CHROMEOS_CONFIG_LIBCROS_CONFIG_CROS_CONFIG_H_
 
+#include "chromeos-config/libcros_config/cros_config_interface.h"
+
 #include <string>
 
 #include <base/macros.h>
@@ -18,10 +20,10 @@ class FilePath;
 
 namespace brillo {
 
-class CrosConfig {
+class CrosConfig : public CrosConfigInterface {
  public:
   CrosConfig();
-  ~CrosConfig();
+  ~CrosConfig() override;
 
   // Prepare the configuration system for use.
   // This reads the configuration file into memory.
@@ -36,20 +38,10 @@ class CrosConfig {
   // @return true if OK, false on error.
   bool InitForTest(const base::FilePath& filepath, const std::string& model);
 
-  // Obtain a config property.
-  // This returns a property for the current board model.
-  // @path: Path to property ("/" for a property at the top of the model
-  // hierarchy). The path specifies the node that contains the property to be
-  // accessed.
-  // @prop: Name of property to look up. This is separate from the path since
-  // nodes and properties are separate concepts in device tree, and mixing
-  // nodes and properties in paths is frowned upon. Also it is typical when
-  // reading properties to access them all from a single node, so having the
-  // path the same in each case allows a constant to be used for @path.
-  // @val_out: returns the string value found, if any
-  // @return true on success, false on failure (e.g. no such property)
-  bool GetString(const std::string& path, const std::string& prop,
-                 std::string* val_out) const;
+  // CrosConfigInterface:
+  bool GetString(const std::string& path,
+                 const std::string& prop,
+                 std::string* val_out) override;
 
  private:
   // Common init function for both production and test code.
