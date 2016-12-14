@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -41,20 +42,24 @@ base::FilePath GetUserDir(ChromiumCommandBuilder* builder) {
 // or "child") and file type (e.g. "child", "default", "oem", "guest") and
 // add the corresponding flags to |builder| if the files exist. Returns false
 // if the files don't exist.
-bool AddWallpaperFlags(ChromiumCommandBuilder* builder,
-                       const std::string& flag_type,
-                       const std::string& file_type) {
+bool AddWallpaperFlags(
+    ChromiumCommandBuilder* builder,
+    const std::string& flag_type,
+    const std::string& file_type,
+    base::Callback<bool(const base::FilePath&)> path_exists) {
   const base::FilePath large_path(base::StringPrintf(
       "/usr/share/chromeos-assets/wallpaper/%s_large.jpg", file_type.c_str()));
   const base::FilePath small_path(base::StringPrintf(
       "/usr/share/chromeos-assets/wallpaper/%s_small.jpg", file_type.c_str()));
-  if (!base::PathExists(large_path) || !base::PathExists(small_path))
+  if (!path_exists.Run(large_path) || !path_exists.Run(small_path))
     return false;
 
   builder->AddArg(base::StringPrintf("--%s-wallpaper-large=%s",
-      flag_type.c_str(), large_path.value().c_str()));
+                                     flag_type.c_str(),
+                                     large_path.value().c_str()));
   builder->AddArg(base::StringPrintf("--%s-wallpaper-small=%s",
-      flag_type.c_str(), small_path.value().c_str()));
+                                     flag_type.c_str(),
+                                     small_path.value().c_str()));
   return true;
 }
 
@@ -266,13 +271,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder) {
     builder->AddArg("--ash-animate-from-boot-splash-screen");
   }
 
-  if (AddWallpaperFlags(builder, "default", "oem")) {
-    builder->AddArg("--default-wallpaper-is-oem");
-  } else {
-    AddWallpaperFlags(builder, "default", "default");
-    AddWallpaperFlags(builder, "child", "child");
-  }
-  AddWallpaperFlags(builder, "guest", "guest");
+  SetUpWallpaperFlags(builder, base::Bind(base::PathExists));
 
   // TODO(yongjaek): Remove the following flag when the kiosk mode app is ready
   // at crbug.com/309806.
@@ -337,6 +336,18 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
 }
 
 }  // namespace
+
+void SetUpWallpaperFlags(
+    ChromiumCommandBuilder* builder,
+    base::Callback<bool(const base::FilePath&)> path_exists) {
+  if (AddWallpaperFlags(builder, "default", "oem", path_exists)) {
+    builder->AddArg("--default-wallpaper-is-oem");
+  } else {
+    AddWallpaperFlags(builder, "default", "default", path_exists);
+    AddWallpaperFlags(builder, "child", "child", path_exists);
+  }
+  AddWallpaperFlags(builder, "guest", "guest", path_exists);
+}
 
 void PerformChromeSetup(bool* is_developer_end_user_out,
                         std::map<std::string, std::string>* env_vars_out,

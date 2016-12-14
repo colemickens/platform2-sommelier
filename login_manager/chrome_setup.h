@@ -11,6 +11,18 @@
 #include <string>
 #include <vector>
 
+#include <base/callback.h>
+
+namespace base {
+class FilePath;
+}  // namespace base
+
+namespace chromeos {
+namespace ui {
+class ChromiumCommandBuilder;
+}  // namesspace ui
+}  // namespace chromeos
+
 namespace login_manager {
 
 // Initializes a ChromiumCommandBuilder and performs additional Chrome-specific
@@ -26,6 +38,14 @@ void PerformChromeSetup(bool* is_developer_end_user_out,
                         std::map<std::string, std::string>* env_vars_out,
                         std::vector<std::string>* args_out,
                         uid_t* uid_out);
+
+// Add flags to specify the wallpaper to use. This is called by
+// PerformChromeSetup and only present in the header for testing.
+// Flags are added to |builder|, and |path_exists| is called to test whether a
+// given file exists (e.g. use base::Bind(base::PathExists)).
+void SetUpWallpaperFlags(
+    chromeos::ui::ChromiumCommandBuilder* builder,
+    base::Callback<bool(const base::FilePath&)> path_exists);
 
 }  // namespace login_manager
 

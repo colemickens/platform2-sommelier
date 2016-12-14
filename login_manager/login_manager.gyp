@@ -134,6 +134,7 @@
           'sources': [
             'browser_job_unittest.cc',
             'child_exit_handler_unittest.cc',
+            'chrome_setup_unittest.cc',
             'container_config_parser_unittest.cc',
             'cumulative_use_time_metric_unittest.cc',
             'device_local_account_policy_service_unittest.cc',
