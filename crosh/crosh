@@ -1402,6 +1402,9 @@ dispatch() {
   if ! check_command "${command}"; then
     help "unknown command: ${command}"
   else
+    # Only add valid commands to the history.
+    shell_history -s "$LINE_"
+
     # See if --help was requested; if so, handle it directly so each command
     # doesn't have to deal with it directly.
     local p
@@ -1411,9 +1414,6 @@ dispatch() {
         return 0
       fi
     done
-
-    # Only add valid commands to the history.
-    shell_history -s "$LINE_"
 
     # Set CURRENT_COMMAND for the `help` helper.
     CURRENT_COMMAND="${command}" "cmd_${command}" ${params}
