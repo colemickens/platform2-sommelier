@@ -949,14 +949,6 @@ cmd_upload_devcoredumps() (
   esac
 )
 
-USAGE_try_touch_experiment='<experiment hex>'
-HELP_try_touch_experiment='
-  Manage touchpad experiments.
-'
-cmd_try_touch_experiment() (
-  /usr/sbin/try_touch_experiment "$@"
-)
-
 USAGE_inputcontrol=''
 HELP_inputcontrol='
   Manually adjust advanced touchpad and mouse settings. Run
