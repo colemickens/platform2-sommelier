@@ -322,6 +322,8 @@
       </tp:docstring>
       <arg name="result" type="s" direction="out" />
     </method>
+    <!-- CupsAddPrinter is deprecated and will be removed.  Use
+         CupsAdd{Auto|Manually}ConfiguredPrinter instead. -->
     <method name="CupsAddPrinter">
       <tp:docstring>
         Add a printer to CUPS.  Immediately attempt to connect.  Returns true if
@@ -339,6 +341,30 @@
         <tp:docstring>
           Indicate if the printer should be autoconfigured.  ppd_path will be
           ignored if this is true.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="CupsAddAutoConfiguredPrinter">
+      <tp:docstring>
+        Add a printer that can be auto-configured to CUPS.  Immediately attempt
+        to connect.  Returns true if setup was successful.
+      </tp:docstring>
+      <arg name="result" type="i" direction="out" />
+      <arg name="name" type="s" direction="in" />
+      <arg name="uri" type="s" direction="in" />
+    </method>
+    <method name="CupsAddManuallyConfiguredPrinter">
+      <tp:docstring>
+        Add a printer to CUPS using the passed PPD contents.  Immediately
+        attempt to connect.  Returns true if setup was successful.
+      </tp:docstring>
+      <arg name="result" type="i" direction="out" />
+      <arg name="name" type="s" direction="in" />
+      <arg name="uri" type="s" direction="in" />
+      <arg name="ppd_contents" type="ay" direction="in">
+        <tp:docstring>
+          The contents of the CUPS Postscript Printer Driver for this printer.
+          This data may optionally be gzip compressed.
         </tp:docstring>
       </arg>
     </method>

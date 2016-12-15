@@ -219,6 +219,22 @@ bool DebugDaemon::CupsAddPrinter(const std::string& name,
   return cups_tool_->AddPrinter(name, uri, ppd_path, ipp_everywhere, &error);
 }
 
+int32_t DebugDaemon::CupsAddAutoConfiguredPrinter(
+    const std::string& name,
+    const std::string& uri,
+    DBus::Error& error) {  // NOLINT
+  return cups_tool_->AddAutoConfiguredPrinter(name, uri, &error);
+}
+
+int32_t DebugDaemon::CupsAddManuallyConfiguredPrinter(
+    const std::string& name,
+    const std::string& uri,
+    const std::vector<uint8_t>& ppd_contents,
+    DBus::Error& error) {  // NOLINT
+  return cups_tool_->AddManuallyConfiguredPrinter(
+      name, uri, ppd_contents, &error);
+}
+
 bool DebugDaemon::CupsRemovePrinter(const std::string& name,
                                     DBus::Error& error) { // NOLINT
   return cups_tool_->RemovePrinter(name, &error);

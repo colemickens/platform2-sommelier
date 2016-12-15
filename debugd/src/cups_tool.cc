@@ -43,6 +43,13 @@ const char kLpadminGroup[] = "lpadmin";
 const char kLpGroup[] = "lp";
 const char kDownloadsFolder[] = "Downloads";
 
+// Max PPD size we'll allow, in bytes.
+const int kMaxPPDSize = 250000;
+
+// Temporary name for the ppd file, zipped and unzipped variants.
+const char kTempPPDFileName[] = "tmp.ppd";
+const char kGZippedTempPPDFileName[] = "tmp.ppd.gz";
+
 // This pathname has to match the path generated in
 // //chrome/browser/ui/webui/settings/chromeos/cups_printers_handler.cc
 const char kPPDCacheFolder[] = "PPDCache";
@@ -53,6 +60,14 @@ bool IsHexDigits(base::StringPiece digits) {
       return false;
   }
   return true;
+}
+
+// Determine whether or not the contents look like gzipped data by
+// looking for the magic number in the header.
+bool IsGZipped(const std::vector<uint8_t>& contents) {
+  // Min header size is 10 bytes, min footer size is 8 bytes, so 18 bytes is a
+  // lower bound on size for gzip contents.
+  return contents.size() >= 18 && contents[0] == 0x1f && contents[1] == 0x8b;
 }
 
 bool MatchesUserString(base::StringPiece input) {
@@ -222,38 +237,32 @@ int Lpadmin(const ProcessWithOutput::ArgList& arg_list, DBus::Error* error) {
                    kLpadminSeccompPolicy, arg_list, error);
 }
 
-// Runs /bin/cp in a new minijail.  This is done because /home might not be
-// mounted in our current minijail.  Returns true if successful.
-bool RunCopy(const std::string& src, const std::string& dst,
-             DBus::Error* error) {
-  std::string err_msg;
-  int result =
-      RunAsUserWithMount("root", "root", "/bin/cp", "",  // No seccomp policy.
-                         {"-u", src, dst},  // update, source, destination
-                         true,  // access to root mount namespace required
-                         error);
-
-  if (result != 0) {
-    LOG(ERROR) << "Could not copy file src(" << src << "), "
-               << "dst(" << dst << ")";
+// Write |contents| to |filename| in |temp_ppd_dir| and set permissions so
+// it is usable by lpadmin to validate and install the ppd.
+//
+// Note that |temp_ppd_dir|'s parents must be readable by lpadmin, and
+// |temp_ppd_dir| should be dedicated to this particular purpose as we chown it
+// to lpadmin.
+//
+// Returns true and fills in temp_ppd_file with the full path to the written
+// file if the write is successful.
+bool WriteTempPPDFile(const base::FilePath& temp_ppd_dir,
+                      const std::vector<uint8_t>& contents,
+                      base::FilePath* temp_ppd_file,
+                      DBus::Error* error) {
+  *temp_ppd_file = temp_ppd_dir.Append(
+      IsGZipped(contents) ? kGZippedTempPPDFileName : kTempPPDFileName);
+  if (!base::WriteFile(*temp_ppd_file,
+                       reinterpret_cast<const char*>(contents.data()),
+                       contents.size())) {
+    LOG(ERROR) << "Could not write to temporary file "
+               << temp_ppd_file->value();
     return false;
   }
-
-  return true;
-}
-
-// Copies the file at |src_path| to |temp_dir_path| and fixes the permissions.
-// Returns true if the file was copied successfully.
-bool CopyPPDFile(const base::FilePath& src_path,
-                 const base::FilePath& temp_dir_path, DBus::Error* error) {
-  const base::FilePath destination = temp_dir_path.Append(src_path.BaseName());
-  if (!RunCopy(src_path.value(), destination.value(), error))
-    return false;
 
   // Transfer file ownership.
   uid_t uid;
   gid_t gid = 0;
-
   // Set ownership to lpadmin:lpadmin so cupstestppd and lpadmin can use the
   // file appropriately.  root:lpadmin doesn't work because lpadmin is run as
   // lpadmin:lp.
@@ -262,17 +271,14 @@ bool CopyPPDFile(const base::FilePath& src_path,
     PLOG(ERROR) << "Could not retrieve owner information";
     return false;
   }
-
-  if (!SetPerms(temp_dir_path, 0750, uid, gid)) {
+  if (!SetPerms(temp_ppd_dir, 0750, uid, gid)) {
     PLOG(FATAL) << "Could not change directory permissions";
     return false;
   }
-
-  if (!SetPerms(destination, 0640, uid, gid)) {
+  if (!SetPerms(*temp_ppd_file, 0640, uid, gid)) {
     PLOG(FATAL) << "Could not change file permissions";
     return false;
   }
-
   return true;
 }
 
@@ -300,8 +306,16 @@ bool ValidatePPDPath(const base::FilePath& path) {
   return true;
 }
 
-bool ConfigurePrinter(const std::string& name, const std::string& uri,
-                      const std::string& ppd_file, DBus::Error* error) {
+}  // namespace
+
+// Invokes lpadmin with arguments to configure a new printer.  For IPP
+// printers, it can attempt autoconf using '-m everywhere'.
+bool CupsTool::AddPrinter(const std::string& name, const std::string& uri,
+                          const std::string& ppd_file, bool ipp_everywhere,
+                          DBus::Error* error) {
+  if (ipp_everywhere)
+    return AddAutoConfiguredPrinter(name, uri, error);
+
   if (ppd_file.empty()) {
     LOG(ERROR) << "A ppd path must be provided";
     return false;
@@ -311,28 +325,27 @@ bool ConfigurePrinter(const std::string& name, const std::string& uri,
   if (!ValidatePPDPath(src_ppd))
     return false;
 
-  // Scoped temp dir will cleanup the directory when we're done.
-  base::ScopedTempDir temp_dir;
-  if (!temp_dir.CreateUniqueTempDir()) {
-    PLOG(ERROR) << "Could not create temp directory";
+  // Read the file contents into memory and hand it off to
+  // AddManuallyConfiguredPrinter() to do the real work.
+  std::string ppd_contents;
+
+  if (!ReadFileToStringWithMaxSize(src_ppd, &ppd_contents, kMaxPPDSize)) {
+    LOG(ERROR) << "Failed to read " << ppd_file;
     return false;
   }
 
-  const base::FilePath& temp_dir_path = temp_dir.path();
-  if (!CopyPPDFile(src_ppd, temp_dir_path, error))
-    return false;
-
-  base::FilePath copied_ppd = temp_dir_path.Append(src_ppd.BaseName());
-  int result = EXIT_FAILURE;
-  if (TestPPD(copied_ppd.value(), error))
-    result =
-        Lpadmin({"-v", uri, "-p", name, "-P", copied_ppd.value(), "-E"}, error);
-
-  return result == EXIT_SUCCESS;
+  return AddManuallyConfiguredPrinter(
+      name,
+      uri,
+      std::vector<uint8_t>(ppd_contents.begin(), ppd_contents.end()),
+      error);
 }
 
-bool AutoConfigurePrinter(const std::string& name, const std::string& uri,
-                          DBus::Error* error) {
+// Invokes lpadmin with arguments to configure a new printer using '-m
+// everywhere'.
+int32_t CupsTool::AddAutoConfiguredPrinter(const std::string& name,
+                                           const std::string& uri,
+                                           DBus::Error* error) {
   // Autoconfiguration requires ipp or ipps.
   if (!base::StartsWith(uri, "ipp://", base::CompareCase::INSENSITIVE_ASCII) &&
       !base::StartsWith(uri, "ipps://", base::CompareCase::INSENSITIVE_ASCII)) {
@@ -340,20 +353,43 @@ bool AutoConfigurePrinter(const std::string& name, const std::string& uri,
     return false;
   }
 
-  return Lpadmin({"-v", uri, "-p", name, "-m", "everywhere", "-E"}, error) == 0;
+  bool success = (Lpadmin({"-v", uri, "-p", name, "-m", "everywhere", "-E"},
+                          error) == EXIT_SUCCESS);
+  if (success) {
+    return 0;
+  }
+  // TODO(skau) - Use this channel to return better failure code information.
+  return 1;
 }
 
-}  // namespace
+int32_t CupsTool::AddManuallyConfiguredPrinter(
+    const std::string& name,
+    const std::string& uri,
+    const std::vector<uint8_t>& ppd_contents,
+    DBus::Error* error) {
+  // Scoped temp dir will cleanup the directory when we're done.
+  base::ScopedTempDir temp_dir;
+  if (!temp_dir.CreateUniqueTempDir()) {
+    LOG(ERROR) << "Could not create temp directory";
+    return false;
+  }
 
-// Invokes lpadmin with arguments to configure a new printer.  For IPP
-// printers, it can attempt autoconf using '-m everywhere'.
-bool CupsTool::AddPrinter(const std::string& name, const std::string& uri,
-                          const std::string& ppd_file, bool ipp_everywhere,
-                          DBus::Error* error) {
-  if (ipp_everywhere)
-    return AutoConfigurePrinter(name, uri, error);
+  base::FilePath temp_ppd;
+  if (!WriteTempPPDFile(temp_dir.path(), ppd_contents, &temp_ppd, error)) {
+    return false;
+  }
 
-  return ConfigurePrinter(name, uri, ppd_file, error);
+  if (!TestPPD(temp_ppd.value(), error)) {
+    LOG(ERROR) << "PPD failed validation";
+    return false;
+  }
+  bool success = (Lpadmin({"-v", uri, "-p", name, "-P", temp_ppd.value(), "-E"},
+                          error) == EXIT_SUCCESS);
+  if (success) {
+    return 0;
+  }
+  // TODO(skau) - Use this channel for better error reporting.
+  return 1;
 }
 
 // Invokes lpadmin with -x to delete a printer.
