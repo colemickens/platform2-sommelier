@@ -49,7 +49,7 @@ const struct {
 
 // Extract the algorithm ID and the digest from PKCS1-v1_5 DigestInfo.
 // See RFC-3447, section 9.2.
-bool ParseDigestInfo(const std::string& digest_info,
+void ParseDigestInfo(const std::string& digest_info,
                      std::string* digest,
                      trunks::TPM_ALG_ID* digest_alg) {
   for (size_t i = 0; i < arraysize(kSupportedDigestAlgorithms); ++i) {
@@ -58,10 +58,12 @@ bool ParseDigestInfo(const std::string& digest_info,
     if (!digest_info.compare(0, encoding.size(), encoding)) {
       *digest = digest_info.substr(encoding.size());
       *digest_alg = kSupportedDigestAlgorithms[i].id;
-      return true;
+      return;
     }
   }
-  return false;
+  // Unknown algorithm - use "padding-only" signing scheme.
+  *digest = digest_info;
+  *digest_alg = trunks::TPM_ALG_NULL;
 }
 
 uint32_t GetIntegerExponent(const std::string& public_exponent) {
@@ -566,10 +568,7 @@ bool TPM2UtilityImpl::Sign(int key_handle,
   } else {
     std::string digest;
     trunks::TPM_ALG_ID digest_alg;
-    if (!ParseDigestInfo(input, &digest, &digest_alg)) {
-      LOG(ERROR) << "Unknown algorithm in digest info to sign";
-      return false;
-    }
+    ParseDigestInfo(input, &digest, &digest_alg);
     result = trunks_tpm_utility_->Sign(key_handle,
                                        trunks::TPM_ALG_RSASSA,
                                        digest_alg,

@@ -695,10 +695,10 @@ TEST_F(TPM2UtilityTest, SignFailurePublicArea) {
   EXPECT_FALSE(utility.Sign(key_handle, input, &output));
 }
 
-TEST_F(TPM2UtilityTest, SignFailureUnknownAlgorithm) {
+TEST_F(TPM2UtilityTest, SignSuccessWithUnknownAlgorithm) {
   TPM2UtilityImpl utility(factory_.get());
   int key_handle = 43;
-  std::string input;
+  std::string input = "test";
   std::string output;
   trunks::TPMT_PUBLIC public_data;
   public_data.parameters.rsa_detail.exponent = 0x10001;
@@ -707,9 +707,10 @@ TEST_F(TPM2UtilityTest, SignFailureUnknownAlgorithm) {
   EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
       .WillOnce(DoAll(SetArgPointee<1>(public_data),
                       Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _, _, _, _, _))
-      .Times(0);
-  EXPECT_FALSE(utility.Sign(key_handle, input, &output));
+  EXPECT_CALL(mock_tpm_utility_, Sign(key_handle, trunks::TPM_ALG_RSASSA,
+                                      trunks::TPM_ALG_NULL, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_TRUE(utility.Sign(key_handle, input, &output));
 }
 
 }  // namespace chaps
