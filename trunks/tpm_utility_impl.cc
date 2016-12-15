@@ -910,6 +910,9 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
       break;
     case AsymmetricKeyUsage::kSignKey:
       public_area.object_attributes |= kSign;
+      if (!SupportsPaddingOnlySigningScheme()) {
+        public_area.object_attributes |= kDecrypt;
+      }
       break;
     case AsymmetricKeyUsage::kDecryptAndSignKey:
       public_area.object_attributes |= (kSign | kDecrypt);

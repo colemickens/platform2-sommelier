@@ -232,6 +232,12 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   // Also returns tpm_state to the caller for further use.
   TPM_RC TpmBasicInit(std::unique_ptr<TpmState> &tpm_state);
 
+  // Return true if the TPM supports padding-only scheme for Sign.
+  bool SupportsPaddingOnlySigningScheme() {
+    // TODO(http://crosbug.com/p/60967): support padding-only scheme.
+    return false;
+  }
+
   DISALLOW_COPY_AND_ASSIGN(TpmUtilityImpl);
 };
 

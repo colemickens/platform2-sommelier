@@ -1301,7 +1301,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairSignKeySuccess) {
           TpmUtility::AsymmetricKeyUsage::kSignKey, 2048, 0x10001, key_auth,
           policy_digest, true /* use_only_policy_authorization */,
           kNoCreationPCR, &mock_authorization_delegate_, &key_blob, nullptr));
-  EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, 0u);
+  EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, kDecrypt);
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
   EXPECT_EQ(public_area.public_area.object_attributes & kUserWithAuth, 0u);
   EXPECT_EQ(public_area.public_area.object_attributes & kAdminWithPolicy,
