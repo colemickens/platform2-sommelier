@@ -21,6 +21,7 @@
 
 #include <set>
 
+#include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "shill/control_interface.h"

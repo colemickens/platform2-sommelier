@@ -18,6 +18,7 @@
 
 #include <string>
 
+#include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>

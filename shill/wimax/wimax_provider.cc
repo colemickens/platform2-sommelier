@@ -20,6 +20,7 @@
 #include <set>
 
 #include <base/bind.h>
+#include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>

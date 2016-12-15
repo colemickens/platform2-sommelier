@@ -19,6 +19,7 @@
 #include <utility>
 
 #include <base/memory/ptr_util.h>
+#include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #if defined(__ANDROID__)

@@ -17,7 +17,6 @@
 #include "shill/cellular/modem_info.h"
 
 #include <base/memory/ptr_util.h>
-#include <base/stl_util.h>
 #include <gtest/gtest.h>
 
 #include "shill/cellular/mock_dbus_objectmanager_proxy.h"

@@ -36,7 +36,6 @@
 #include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "shill/ipconfig.h"

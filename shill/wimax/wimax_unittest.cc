@@ -19,6 +19,8 @@
 #include <memory>
 #include <string>
 
+#include <base/stl_util.h>
+
 #include "shill/dhcp/mock_dhcp_config.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/mock_manager.h"
