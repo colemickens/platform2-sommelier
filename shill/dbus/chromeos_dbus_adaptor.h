@@ -17,6 +17,7 @@
 #ifndef SHILL_DBUS_CHROMEOS_DBUS_ADAPTOR_H_
 #define SHILL_DBUS_CHROMEOS_DBUS_ADAPTOR_H_
 
+#include <memory>
 #include <string>
 
 #include <base/callback.h>

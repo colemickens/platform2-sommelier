@@ -17,6 +17,7 @@
 #ifndef SHILL_DBUS_CHROMEOS_DBUS_SERVICE_WATCHER_H_
 #define SHILL_DBUS_CHROMEOS_DBUS_SERVICE_WATCHER_H_
 
+#include <memory>
 #include <string>
 
 #include <brillo/dbus/dbus_service_watcher.h>

@@ -16,6 +16,8 @@
 
 #include "shill/dbus/chromeos_device_dbus_adaptor.h"
 
+#include <utility>
+
 #include "shill/device.h"
 #include "shill/error.h"
 #include "shill/logging.h"

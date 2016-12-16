@@ -18,6 +18,8 @@
 
 #include <string.h>
 
+#include <memory>
+
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/strings/stringprintf.h>

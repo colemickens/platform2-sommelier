@@ -17,6 +17,7 @@
 #ifndef SHILL_DBUS_CHROMEOS_MM1_MODEM_PROXY_H_
 #define SHILL_DBUS_CHROMEOS_MM1_MODEM_PROXY_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 

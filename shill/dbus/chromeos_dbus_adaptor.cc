@@ -17,6 +17,7 @@
 #include "shill/dbus/chromeos_dbus_adaptor.h"
 
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/callback.h>

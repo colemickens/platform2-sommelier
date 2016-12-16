@@ -18,6 +18,7 @@
 #define SHILL_DBUS_CHROMEOS_DBUS_OBJECTMANAGER_PROXY_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 

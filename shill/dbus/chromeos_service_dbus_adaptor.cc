@@ -18,6 +18,7 @@
 
 #include <map>
 #include <string>
+#include <utility>
 
 #include "shill/error.h"
 #include "shill/logging.h"

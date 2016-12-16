@@ -17,6 +17,7 @@
 #ifndef SHILL_DBUS_CHROMEOS_PERMISSION_BROKER_PROXY_H_
 #define SHILL_DBUS_CHROMEOS_PERMISSION_BROKER_PROXY_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 

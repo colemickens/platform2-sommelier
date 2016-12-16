@@ -17,6 +17,7 @@
 #ifndef SHILL_DBUS_CHROMEOS_MODEM_GSM_CARD_PROXY_H_
 #define SHILL_DBUS_CHROMEOS_MODEM_GSM_CARD_PROXY_H_
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
