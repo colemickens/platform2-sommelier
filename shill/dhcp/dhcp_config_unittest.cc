@@ -373,7 +373,8 @@ TEST_F(DHCPConfigTest, Restart) {
   const int kPID2 = 987;
   config_->pid_ = kPID1;
   EXPECT_CALL(provider_, UnbindPID(kPID1));
-  EXPECT_CALL(process_manager_, StopProcessAndBlock(kPID1)).WillOnce(Return(true));
+  EXPECT_CALL(process_manager_, StopProcessAndBlock(kPID1))
+      .WillOnce(Return(true));
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _, _))
       .WillOnce(Return(kPID2));
   EXPECT_CALL(provider_, BindPID(kPID2, IsRefPtrTo(config_)));

@@ -343,7 +343,8 @@ TEST_F(DHCPv4ConfigTest, ParseConfiguration) {
   EXPECT_EQ(600, properties.mtu);
   EXPECT_EQ("hostname", properties.accepted_hostname);
   EXPECT_EQ(isns_data.size(), properties.isns_option_data.size());
-  EXPECT_FALSE(memcmp(&properties.isns_option_data[0], &isns_data[0], isns_data.size()));
+  EXPECT_FALSE(
+      memcmp(&properties.isns_option_data[0], &isns_data[0], isns_data.size()));
 }
 
 TEST_F(DHCPv4ConfigTest, ParseConfigurationWithMinimumMTU) {
@@ -398,7 +399,7 @@ MATCHER_P4(IsDHCPCDArgs,
     end_offset += 2;
   }
 
-  if (has_vendorclass){
+  if (has_vendorclass) {
     if (arg[end_offset] != "-i" ||
         arg[end_offset + 1] != kVendorClass) {
       return false;

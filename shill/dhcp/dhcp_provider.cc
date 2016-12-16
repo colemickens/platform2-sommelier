@@ -91,7 +91,7 @@ void DHCPProvider::Init(ControlInterface* control_interface,
   base::NamedProcessIterator iter(kDHCPCDExecutableName, NULL);
   while (const base::ProcessEntry* entry = iter.NextProcessEntry()) {
     base::Process process = base::Process::Open(entry->pid());
-    kill(process.Pid(),SIGKILL);
+    kill(process.Pid(), SIGKILL);
   }
 }
 
