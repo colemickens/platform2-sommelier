@@ -12,6 +12,7 @@
 #include <string>
 
 #include <base/macros.h>
+#include <brillo/brillo_export.h>
 
 namespace base {
 class CommandLine;
@@ -20,7 +21,7 @@ class FilePath;
 
 namespace brillo {
 
-class CrosConfig : public CrosConfigInterface {
+class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
  public:
   CrosConfig();
   ~CrosConfig() override;

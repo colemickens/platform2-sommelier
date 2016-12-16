@@ -12,13 +12,14 @@
 #include <utility>
 
 #include <base/macros.h>
+#include <brillo/brillo_export.h>
 
 namespace brillo {
 
 // Provides a simple Fake to use for testing modules that use CrosConfig.
 // It allows configuration responses to be set up in the test for use in the
 // module.
-class FakeCrosConfig : public CrosConfigInterface {
+class BRILLO_EXPORT FakeCrosConfig : public CrosConfigInterface {
  public:
   FakeCrosConfig();
   ~FakeCrosConfig() override;

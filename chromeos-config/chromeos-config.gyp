@@ -10,9 +10,6 @@
     {
       'target_name': 'libcros_config',
       'type': 'shared_library',
-      'cflags': [
-        '-fvisibility=default',
-      ],
       'includes': ['../common-mk/common_test.gypi'],
       'sources': [
         'libcros_config/cros_config.cc',
