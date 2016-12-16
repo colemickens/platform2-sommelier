@@ -330,9 +330,10 @@ bool ChromeosManagerDBusAdaptor::ConfigureServiceForProfile(
   Error configure_error;
   service = manager_->ConfigureServiceForProfile(
       profile_rpcid.value(), args_store, &configure_error);
-  if (!service || configure_error.ToChromeosError(error)) {
+  if (configure_error.ToChromeosError(error)) {
     return false;
   }
+  CHECK(service);
   *service_path = dbus::ObjectPath(service->GetRpcIdentifier());
   return true;
 }
