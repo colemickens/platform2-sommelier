@@ -44,6 +44,8 @@ const char kWellKnownPassword[] = "cros-password";
 const size_t kMaxPasswordLength = 32;
 // The below maximum is defined in TPM 2.0 Library Spec Part 2 Section 13.1
 const uint32_t kMaxNVSpaceIndex = (1 << 24) - 1;
+// Cr50 Vendor ID ("CROS").
+const uint32_t kVendorIdCr50 = 0x43524f53;
 
 // Auth policy used in RSA and ECC templates for EK keys generation.
 // From TCG Credential Profile EK 2.0. Section 2.1.5.
@@ -78,7 +80,8 @@ std::string HashString(const std::string& plaintext,
 namespace trunks {
 
 TpmUtilityImpl::TpmUtilityImpl(const TrunksFactory& factory)
-    : factory_(factory) {
+    : factory_(factory),
+      vendor_id_(0) {
   crypto::EnsureOpenSSLInit();
 }
 
@@ -2053,6 +2056,30 @@ TPM_RC TpmUtilityImpl::DoesPersistentKeyExist(TPMI_DH_PERSISTENT key_handle,
   TPML_HANDLE& handles = capability_data.data.handles;
   *exists = (handles.count == 1 && handles.handle[0] == key_handle);
   return TPM_RC_SUCCESS;
+}
+
+uint32_t TpmUtilityImpl::VendorId() {
+  if (!vendor_id_) {
+    std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
+    TPM_RC result = tpm_state->Initialize();
+    if (result) {
+      LOG(ERROR) << __func__ << ": TpmState initialization failed: "
+                 << GetErrorString(result);
+      return 0;
+    }
+    if (!tpm_state->GetTpmProperty(TPM_PT_MANUFACTURER, &vendor_id_)) {
+      LOG(WARNING) << __func__
+                   << ": Error getting TPM_PT_MANUFACTURER property";
+      return 0;
+    }
+    VLOG(1) << __func__ << ": TPM_PT_MANUFACTURER = 0x"
+            << std::hex << vendor_id_;
+  }
+  return vendor_id_;
+}
+
+bool TpmUtilityImpl::IsCr50() {
+  return VendorId() == kVendorIdCr50;
 }
 
 }  // namespace trunks

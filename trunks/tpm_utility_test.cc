@@ -39,6 +39,13 @@ using testing::Return;
 using testing::SaveArg;
 using testing::SetArgPointee;
 
+namespace {
+
+// Cr50 Vendor ID ("CROS").
+const uint32_t kVendorIdCr50 = 0x43524f53;
+
+} // namespace
+
 namespace trunks {
 
 // A test fixture for TpmUtility tests.
@@ -1315,6 +1322,10 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairDecryptKeySuccess) {
 TEST_F(TpmUtilityTest, CreateRSAKeyPairSignKeySuccess) {
   TPM2B_PUBLIC public_area;
   TPM2B_SENSITIVE_CREATE sensitive_create;
+  EXPECT_CALL(mock_tpm_state_, Initialize())
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_state_, GetTpmProperty(TPM_PT_MANUFACTURER, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kVendorIdCr50), Return(true)));
   EXPECT_CALL(mock_tpm_, CreateSyncShort(kRSAStorageRootKey, _, _, _, _, _, _,
                                          _, _, &mock_authorization_delegate_))
       .WillOnce(DoAll(SaveArg<1>(&sensitive_create), SaveArg<2>(&public_area),
@@ -1328,7 +1339,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairSignKeySuccess) {
           TpmUtility::AsymmetricKeyUsage::kSignKey, 2048, 0x10001, key_auth,
           policy_digest, true /* use_only_policy_authorization */,
           kNoCreationPCR, &mock_authorization_delegate_, &key_blob, nullptr));
-  EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, kDecrypt);
+  EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, 0u);
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
   EXPECT_EQ(public_area.public_area.object_attributes & kUserWithAuth, 0u);
   EXPECT_EQ(public_area.public_area.object_attributes & kAdminWithPolicy,
@@ -1345,6 +1356,29 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairSignKeySuccess) {
                       key_auth.data(), key_auth.size()));
 }
 
+TEST_F(TpmUtilityTest, CreateRSAKeyPairSignKeySuccessNoPaddingOnlyAlg) {
+  // Unknown vendor - no padding-only alg support expected for TPM.
+  uint32_t vendor_id = 0xaabbccdd;
+  TPM2B_PUBLIC public_area;
+  EXPECT_CALL(mock_tpm_state_, Initialize())
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_state_, GetTpmProperty(TPM_PT_MANUFACTURER, _))
+      .WillOnce(DoAll(SetArgPointee<1>(vendor_id), Return(true)));
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<2>(&public_area), Return(TPM_RC_SUCCESS)));
+  std::string key_blob;
+  std::string policy_digest(32, 'a');
+  std::string key_auth("password");
+  EXPECT_EQ(
+      TPM_RC_SUCCESS,
+      utility_.CreateRSAKeyPair(
+          TpmUtility::AsymmetricKeyUsage::kSignKey, 2048, 0x10001, key_auth,
+          policy_digest, true /* use_only_policy_authorization */,
+          kNoCreationPCR, &mock_authorization_delegate_, &key_blob, nullptr));
+  EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, kDecrypt);
+  EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
+}
+
 TEST_F(TpmUtilityTest, CreateRSAKeyPairBadDelegate) {
   std::string key_blob;
   EXPECT_EQ(
@@ -1355,6 +1389,10 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairBadDelegate) {
 }
 
 TEST_F(TpmUtilityTest, CreateRSAKeyPairFailure) {
+  EXPECT_CALL(mock_tpm_state_, Initialize())
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_state_, GetTpmProperty(TPM_PT_MANUFACTURER, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kVendorIdCr50), Return(true)));
   EXPECT_CALL(mock_tpm_, CreateSyncShort(kRSAStorageRootKey, _, _, _, _, _, _,
                                          _, _, &mock_authorization_delegate_))
       .WillOnce(Return(TPM_RC_FAILURE));
@@ -1368,6 +1406,10 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairFailure) {
 
 TEST_F(TpmUtilityTest, CreateRSAKeyPairKeyParserFail) {
   std::string key_blob;
+  EXPECT_CALL(mock_tpm_state_, Initialize())
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_state_, GetTpmProperty(TPM_PT_MANUFACTURER, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kVendorIdCr50), Return(true)));
   EXPECT_CALL(mock_blob_parser_, SerializeKeyBlob(_, _, &key_blob))
       .WillOnce(Return(false));
   EXPECT_EQ(SAPI_RC_BAD_TCTI_STRUCTURE,
@@ -1380,6 +1422,10 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairKeyParserFail) {
 TEST_F(TpmUtilityTest, CreateRSAKeyPairCreationParserFail) {
   std::string creation_blob;
   std::string key_blob;
+  EXPECT_CALL(mock_tpm_state_, Initialize())
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_state_, GetTpmProperty(TPM_PT_MANUFACTURER, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kVendorIdCr50), Return(true)));
   EXPECT_CALL(mock_blob_parser_, SerializeCreationBlob(_, _, _, &creation_blob))
       .WillOnce(Return(false));
   EXPECT_EQ(SAPI_RC_BAD_TCTI_STRUCTURE,

@@ -172,6 +172,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
 
   const TrunksFactory& factory_;
   std::map<uint32_t, TPMS_NV_PUBLIC> nvram_public_area_map_;
+  uint32_t vendor_id_;
 
   // This method sets a known owner password in the TPM_RH_OWNER hierarchy.
   TPM_RC SetKnownOwnerPassword(const std::string& known_owner_password);
@@ -234,9 +235,16 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
 
   // Return true if the TPM supports padding-only scheme for Sign.
   bool SupportsPaddingOnlySigningScheme() {
-    // TODO(http://crosbug.com/p/60967): support padding-only scheme.
-    return false;
+    return IsCr50();
   }
+
+  // Returns Vendor ID as reported in TPM_PT_MANUFACTURER property, or 0
+  // in case of error reading the property.
+  // Caches a non-zero vendor ID.
+  uint32_t VendorId();
+
+  // Returns true for TPMs running Cr50.
+  bool IsCr50();
 
   DISALLOW_COPY_AND_ASSIGN(TpmUtilityImpl);
 };
