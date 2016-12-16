@@ -16,6 +16,8 @@
 
 #include "shill/cellular/cellular_capability_universal.h"
 
+#include <utility>
+
 #include <base/bind.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>

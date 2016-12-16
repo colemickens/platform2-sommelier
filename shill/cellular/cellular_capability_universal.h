@@ -19,6 +19,7 @@
 
 #include <deque>
 #include <map>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <vector>
