@@ -584,11 +584,11 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
                             AuthorizationDelegate* delegate,
                             std::string* signature) {
   TPMT_SIG_SCHEME in_scheme;
-  if (hash_alg == TPM_ALG_NULL) {
-    hash_alg = TPM_ALG_SHA256;
-  }
   if (scheme == TPM_ALG_RSAPSS) {
     in_scheme.scheme = TPM_ALG_RSAPSS;
+    if (hash_alg == TPM_ALG_NULL) {
+      hash_alg = TPM_ALG_SHA256;
+    }
     in_scheme.details.rsapss.hash_alg = hash_alg;
   } else if (scheme == TPM_ALG_RSASSA || scheme == TPM_ALG_NULL) {
     in_scheme.scheme = TPM_ALG_RSASSA;

@@ -724,7 +724,7 @@ TEST_F(TpmUtilityTest, SignSuccess) {
                                   &mock_authorization_delegate_))
       .WillOnce(DoAll(SetArgPointee<5>(signature_out), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS,
-            utility_.Sign(key_handle, TPM_ALG_NULL, TPM_ALG_NULL, digest,
+            utility_.Sign(key_handle, TPM_ALG_RSASSA, TPM_ALG_SHA256, digest,
                           true /* generate_hash */,
                           &mock_authorization_delegate_, &signature));
   EXPECT_EQ(0, signature.compare("hi"));
@@ -746,7 +746,7 @@ TEST_F(TpmUtilityTest, SignFail) {
   EXPECT_CALL(mock_tpm_, SignSync(key_handle, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE,
-            utility_.Sign(key_handle, TPM_ALG_NULL, TPM_ALG_NULL, digest,
+            utility_.Sign(key_handle, TPM_ALG_RSASSA, TPM_ALG_SHA256, digest,
                           true /* generate_hash */,
                           &mock_authorization_delegate_, &signature));
 }
@@ -861,11 +861,38 @@ TEST_F(TpmUtilityTest, SignNullSchemeForward) {
       .WillOnce(DoAll(SetArgPointee<5>(signature_out), SaveArg<3>(&scheme),
                       Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS,
-            utility_.Sign(key_handle, TPM_ALG_NULL, TPM_ALG_NULL, digest,
+            utility_.Sign(key_handle, TPM_ALG_NULL, TPM_ALG_SHA256, digest,
                           true /* generate_hash */,
                           &mock_authorization_delegate_, &signature));
   EXPECT_EQ(scheme.scheme, TPM_ALG_RSASSA);
   EXPECT_EQ(scheme.details.rsassa.hash_alg, TPM_ALG_SHA256);
+}
+
+TEST_F(TpmUtilityTest, SignRSASSAWithNullAlgorithm) {
+  TPM_HANDLE key_handle;
+  std::string password;
+  std::string digest(32, 'a');
+  TPMT_SIGNATURE signature_out;
+  signature_out.signature.rsassa.sig.size = 0;
+  std::string signature;
+  TPM2B_PUBLIC public_area;
+  TPMT_SIG_SCHEME scheme;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.object_attributes = kSign;
+  public_area.public_area.auth_policy.size = 0;
+  public_area.public_area.unique.rsa.size = 0;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, SignSync(key_handle, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<5>(signature_out), SaveArg<3>(&scheme),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.Sign(key_handle, TPM_ALG_NULL, TPM_ALG_NULL, digest,
+                          false /* generate_hash */,
+                          &mock_authorization_delegate_, &signature));
+  EXPECT_EQ(scheme.scheme, TPM_ALG_RSASSA);
+  EXPECT_EQ(scheme.details.rsassa.hash_alg, TPM_ALG_NULL);
 }
 
 TEST_F(TpmUtilityTest, SignSchemeForward) {
