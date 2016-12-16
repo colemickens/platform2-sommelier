@@ -350,7 +350,7 @@ string FindDsoBuildId(const DSOInfo& dso_info) {
   for (PidTid pidtid : dso_info.threads) {
     u32 pid, tid;
     std::tie(pid, tid) = pidtid;
-    stringstream dso_path_stream;
+    std::stringstream dso_path_stream;
     dso_path_stream << "/proc/" << tid << "/root/" << dso_name;
     string dso_path = dso_path_stream.str();
     if (ReadElfBuildIdIfSameInode(dso_path, dso_info, &buildid_bin)) {
@@ -362,7 +362,7 @@ string FindDsoBuildId(const DSOInfo& dso_info) {
       continue;
     last_pid = pid;
     // Try the parent process:
-    stringstream parent_dso_path_stream;
+    std::stringstream parent_dso_path_stream;
     parent_dso_path_stream << "/proc/" << pid << "/root/" << dso_name;
     string parent_dso_path = parent_dso_path_stream.str();
     if (ReadElfBuildIdIfSameInode(parent_dso_path, dso_info, &buildid_bin)) {

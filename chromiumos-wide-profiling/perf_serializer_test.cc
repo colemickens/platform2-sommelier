@@ -29,7 +29,7 @@ namespace {
 
 // Returns a string representation of an unsigned integer |value|.
 string UintToString(uint64_t value) {
-  stringstream ss;
+  std::stringstream ss;
   ss << value;
   return ss.str();
 }

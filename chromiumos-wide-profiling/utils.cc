@@ -36,7 +36,7 @@ static uint64_t Md5Prefix(
 
   MD5(data, length, digest);
   // We need 64-bits / # of bits in a byte.
-  stringstream ss;
+  std::stringstream ss;
   for (size_t i = 0; i < sizeof(uint64_t); i++)
     // The setw(2) and setfill('0') calls are needed to make sure we output 2
     // hex characters for every 8-bits of the hash.

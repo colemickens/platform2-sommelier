@@ -123,7 +123,7 @@ bool PerfRecorder::RunCommandAndGetSerializedOutput(
     full_perf_args.emplace_back("-v");
 
   // Append the sleep command to run perf for |time_sec| seconds.
-  stringstream time_string;
+  std::stringstream time_string;
   time_string << time_sec;
   full_perf_args.insert(full_perf_args.end(),
                         {"--", "sleep", time_string.str()});

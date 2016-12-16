@@ -17,7 +17,7 @@ const char kDefaultOutputFile[] = "/dev/stdout";
 
 int StringToInt(const string& s) {
   int r;
-  stringstream ss;
+  std::stringstream ss;
   ss << s;
   ss >> r;
   return r;
