@@ -18,6 +18,7 @@
 #define SHILL_PPPOE_PPPOE_SERVICE_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <gtest/gtest_prod.h>
