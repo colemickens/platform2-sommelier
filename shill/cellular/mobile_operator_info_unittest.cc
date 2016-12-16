@@ -1637,7 +1637,7 @@ class MobileOperatorInfoOverrideTest
                                      override_db_path_.c_str()));
   }
 
-  virtual void SetUp() override {
+  void SetUp() override {
     operator_info_impl_->Init();
   }
   void TearDown() override {

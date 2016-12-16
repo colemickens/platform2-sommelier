@@ -52,10 +52,9 @@ class VPNService : public Service {
   bool SetNameProperty(const std::string& name, Error* error) override;
 
   // Power management events.
-  virtual void OnBeforeSuspend(const ResultCallback& callback) override;
-  virtual void OnAfterResume() override;
-  virtual void OnDefaultServiceStateChanged(
-      const ServiceRefPtr& service) override;
+  void OnBeforeSuspend(const ResultCallback& callback) override;
+  void OnAfterResume() override;
+  void OnDefaultServiceStateChanged(const ServiceRefPtr& service) override;
 
   virtual void InitDriverPropertyStore();
 

@@ -62,7 +62,7 @@ class SecurityConfig {
 class WEPConfig : public SecurityConfig {
  public:
   WEPConfig(XmlRpc::XmlRpcValue* xml_rpc_value_in);
-  virtual void GetServiceProperties(brillo::VariantDictionary* properties) override;
+  void GetServiceProperties(brillo::VariantDictionary* properties) override;
 
  private:
   std::vector<std::string> wep_keys_;
