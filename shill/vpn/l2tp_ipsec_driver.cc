@@ -35,6 +35,8 @@
 
 #include "shill/vpn/l2tp_ipsec_driver.h"
 
+#include <utility>
+
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>

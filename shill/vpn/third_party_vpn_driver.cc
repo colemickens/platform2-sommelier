@@ -16,10 +16,11 @@
 
 #include "shill/vpn/third_party_vpn_driver.h"
 
-#include <algorithm>
-
 #include <fcntl.h>
 #include <unistd.h>
+
+#include <algorithm>
+#include <utility>
 
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
