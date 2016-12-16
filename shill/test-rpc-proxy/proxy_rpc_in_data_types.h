@@ -17,6 +17,7 @@
 #ifndef PROXY_RPC_IN_DATA_TYPES_H
 #define PROXY_RPC_IN_DATA_TYPES_H
 
+#include <memory>
 #include <string>
 
 #include <XmlRpcValue.h>

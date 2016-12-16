@@ -23,6 +23,9 @@
 #include <unistd.h>
 
 #include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/callback.h>

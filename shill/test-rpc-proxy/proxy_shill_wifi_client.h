@@ -22,6 +22,7 @@
 #include <sysexits.h>
 
 #include <string>
+#include <vector>
 
 #include <brillo/any.h>
 #include <brillo/variant_dictionary.h>

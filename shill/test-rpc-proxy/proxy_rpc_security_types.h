@@ -17,7 +17,9 @@
 #ifndef PROXY_RPC_SECURITY_TYPES_H
 #define PROXY_RPC_SECURITY_TYPES_H
 
+#include <memory>
 #include <string>
+#include <vector>
 
 #include <XmlRpcValue.h>
 

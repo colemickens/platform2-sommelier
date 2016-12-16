@@ -22,8 +22,9 @@
 #include <sysexits.h>
 
 #include <iostream>
-#include <vector>
+#include <memory>
 #include <string>
+#include <vector>
 
 #include <base/cancelable_callback.h>
 #include <base/logging.h>

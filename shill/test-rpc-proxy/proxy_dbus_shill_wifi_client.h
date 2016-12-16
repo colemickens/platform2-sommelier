@@ -17,6 +17,10 @@
 #ifndef PROXY_DBUS_SHILL_WIFI_CLIENT_H
 #define PROXY_DBUS_SHILL_WIFI_CLIENT_H
 
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "proxy_dbus_client.h"
 #include "proxy_shill_wifi_client.h"
 

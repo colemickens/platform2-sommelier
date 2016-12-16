@@ -16,6 +16,8 @@
 
 #include "proxy_util.h"
 
+#include <map>
+
 namespace {
 template<typename VectorType> void GetXmlRpcArrayFromVector(
     const VectorType& vector_in,

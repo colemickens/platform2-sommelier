@@ -16,6 +16,8 @@
 
 #include <base/bind.h>
 
+#include <utility>
+
 #include "proxy_rpc_in_data_types.h"
 #include "proxy_rpc_out_data_types.h"
 #include "proxy_rpc_server.h"
