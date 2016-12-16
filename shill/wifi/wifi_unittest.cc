@@ -2204,9 +2204,10 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithoutEndpoints) {
   EXPECT_EQ(service, GetPendingService());
   // We expect the service to get a disconnect call, but in this scenario
   // the service does nothing.
-  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureOutOfRange,
-                                              _,
-                                              HasSubstr("PendingTimeoutHandler")));
+  EXPECT_CALL(
+      *service,
+      DisconnectWithFailure(
+          Service::kFailureOutOfRange, _, HasSubstr("PendingTimeoutHandler")));
   EXPECT_CALL(*service, HasEndpoints()).WillOnce(Return(false));
   // DisconnectFrom() should be called directly from WiFi.
   EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(AtLeast(1));
@@ -3086,8 +3087,9 @@ TEST_F(WiFiMainTest, SuspectCredentialsYieldFailureEAP) {
 }
 
 TEST_F(WiFiMainTest, ReportConnectedToServiceAfterWake_CallsWakeOnWiFi) {
-  EXPECT_CALL(*wake_on_wifi_,
-              ReportConnectedToServiceAfterWake(IsConnectedToCurrentService(),_));
+  EXPECT_CALL(
+      *wake_on_wifi_,
+      ReportConnectedToServiceAfterWake(IsConnectedToCurrentService(), _));
   ReportConnectedToServiceAfterWake();
 }
 

@@ -1590,12 +1590,11 @@ void WakeOnWiFi::ReportConnectedToServiceAfterWake(bool is_connected,
 
     // Only log time spent in suspended state for each
     // connection status if wifi was connected before suspending
-    if (connected_before_suspend_)
-    {
-	LOG(INFO) << "NotifySuspendDurationAfterWake: "
-		  << "status: " << status
-		  << "seconds_in_suspend: " << seconds_in_suspend;
-        metrics_->NotifySuspendDurationAfterWake(status, seconds_in_suspend);
+    if (connected_before_suspend_) {
+      LOG(INFO) << "NotifySuspendDurationAfterWake: "
+                << "status: " << status
+                << "seconds_in_suspend: " << seconds_in_suspend;
+      metrics_->NotifySuspendDurationAfterWake(status, seconds_in_suspend);
     }
 }
 

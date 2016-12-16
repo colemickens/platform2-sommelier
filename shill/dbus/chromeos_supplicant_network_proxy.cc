@@ -82,7 +82,7 @@ ChromeosSupplicantNetworkProxy::~ChromeosSupplicantNetworkProxy() {
 
 bool ChromeosSupplicantNetworkProxy::SetEnabled(bool enabled) {
   SLOG(&network_proxy_->GetObjectPath(), 2) << __func__;
-  if(!properties_->enabled.SetAndBlock(enabled)) {
+  if (!properties_->enabled.SetAndBlock(enabled)) {
     LOG(ERROR) << "Failed to SetEnabled: " << enabled;
     return false;
   }

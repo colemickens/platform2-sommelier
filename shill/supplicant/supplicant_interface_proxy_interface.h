@@ -60,7 +60,8 @@ class SupplicantInterfaceProxyInterface {
                                       std::string* status) = 0;
   virtual bool TDLSTeardown(const std::string& peer) = 0;
   virtual bool SetHT40Enable(const std::string& network, bool enable) = 0;
-  virtual bool EnableMACAddressRandomization(const std::vector<unsigned char>& mask) = 0;
+  virtual bool EnableMACAddressRandomization(
+      const std::vector<unsigned char>& mask) = 0;
   virtual bool DisableMACAddressRandomization() = 0;
 };
 

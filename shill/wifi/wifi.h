@@ -372,8 +372,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Used to distinguish between a disconnect reason explicitly set by
   // supplicant and a default.
   static const int kDefaultDisconnectReason;
-  // Used when enabling MAC randomization to request that the OUI remain constant
-  // and the last three octets are randomized.
+  // Used when enabling MAC randomization to request that the OUI remain
+  // constant and the last three octets are randomized.
   static const std::vector<unsigned char> kRandomMACMask;
 
   void GetPhyInfo();

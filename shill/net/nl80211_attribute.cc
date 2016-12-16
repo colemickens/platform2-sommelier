@@ -667,9 +667,9 @@ const char Nl80211AttributeMPathInfo::kNameString[] = "NL80211_ATTR_MPATH_INFO";
 
 Nl80211AttributeMPathInfo::Nl80211AttributeMPathInfo()
     : NetlinkNestedAttribute(kName, kNameString) {
-  nested_template_.insert(
-      AttrDataPair(__NL80211_MPATH_INFO_INVALID,
-                   NestedData(kTypeU32, "__NL80211_MPATH_INFO_INVALID", false)));
+  nested_template_.insert(AttrDataPair(
+      __NL80211_MPATH_INFO_INVALID,
+      NestedData(kTypeU32, "__NL80211_MPATH_INFO_INVALID", false)));
   nested_template_.insert(AttrDataPair(
       NL80211_MPATH_INFO_FRAME_QLEN,
       NestedData(kTypeU32, "NL80211_MPATH_INFO_FRAME_QLEN", false)));

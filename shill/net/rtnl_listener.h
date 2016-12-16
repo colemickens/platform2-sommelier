@@ -33,7 +33,7 @@ class SHILL_EXPORT RTNLListener {
   RTNLListener(int listen_flags,
                const base::Callback<void(const RTNLMessage&)>& callback,
                RTNLHandler *rtnl_handler);
-   ~RTNLListener();
+  ~RTNLListener();
 
   void NotifyEvent(int type, const RTNLMessage& msg);
 

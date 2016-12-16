@@ -3201,15 +3201,13 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
    * ensures that SuspendDuration is logged by metrics */
   SetConnectedBeforeSuspend(true);
 
-  EXPECT_CALL(
-      metrics_,
-      NotifyConnectedToServiceAfterWake(
-          Metrics::kWiFiConnectionStatusAfterWakeWoWOnConnected));
-  EXPECT_CALL(
-      metrics_,
-      NotifySuspendDurationAfterWake(
-	  Metrics::kWiFiConnectionStatusAfterWakeWoWOnConnected,
-	  kSuspendDurationSecs));
+  EXPECT_CALL(metrics_,
+              NotifyConnectedToServiceAfterWake(
+                  Metrics::kWiFiConnectionStatusAfterWakeWoWOnConnected));
+  EXPECT_CALL(metrics_,
+              NotifySuspendDurationAfterWake(
+                  Metrics::kWiFiConnectionStatusAfterWakeWoWOnConnected,
+                  kSuspendDurationSecs));
   ReportConnectedToServiceAfterWake(is_connected, kSuspendDurationSecs);
 
   /* Setting connected_before_suspend_ to false:
@@ -3220,7 +3218,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
       metrics_,
       NotifyConnectedToServiceAfterWake(
           Metrics::kWiFiConnectionStatusAfterWakeWoWOnConnected));
-  EXPECT_CALL(metrics_, NotifySuspendDurationAfterWake(_,_)).Times(0);
+  EXPECT_CALL(metrics_, NotifySuspendDurationAfterWake(_, _)).Times(0);
   ReportConnectedToServiceAfterWake(is_connected, kSuspendDurationSecs);
 }
 
@@ -3234,15 +3232,13 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
    * ensures that SuspendDuration is logged by metrics */
   SetConnectedBeforeSuspend(true);
 
-  EXPECT_CALL(
-      metrics_,
-      NotifyConnectedToServiceAfterWake(
-          Metrics::kWiFiConnectionStatusAfterWakeWoWOnDisconnected));
-  EXPECT_CALL(
-      metrics_,
-      NotifySuspendDurationAfterWake(
-	  Metrics::kWiFiConnectionStatusAfterWakeWoWOnDisconnected,
-	  kSuspendDurationSecs));
+  EXPECT_CALL(metrics_,
+              NotifyConnectedToServiceAfterWake(
+                  Metrics::kWiFiConnectionStatusAfterWakeWoWOnDisconnected));
+  EXPECT_CALL(metrics_,
+              NotifySuspendDurationAfterWake(
+                  Metrics::kWiFiConnectionStatusAfterWakeWoWOnDisconnected,
+                  kSuspendDurationSecs));
   ReportConnectedToServiceAfterWake(is_connected, kSuspendDurationSecs);
 
   /* Setting connected_before_suspend_ to false:
@@ -3253,7 +3249,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
       metrics_,
       NotifyConnectedToServiceAfterWake(
           Metrics::kWiFiConnectionStatusAfterWakeWoWOnDisconnected));
-  EXPECT_CALL(metrics_, NotifySuspendDurationAfterWake(_,_)).Times(0);
+  EXPECT_CALL(metrics_, NotifySuspendDurationAfterWake(_, _)).Times(0);
   ReportConnectedToServiceAfterWake(is_connected, kSuspendDurationSecs);
 }
 
@@ -3378,15 +3374,13 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
    * ensures that SuspendDuration is logged by metrics */
   SetConnectedBeforeSuspend(true);
 
-  EXPECT_CALL(
-      metrics_,
-      NotifyConnectedToServiceAfterWake(
-          Metrics::kWiFiConnectionStatusAfterWakeWoWOffConnected));
-  EXPECT_CALL(
-      metrics_,
-      NotifySuspendDurationAfterWake(
-	  Metrics::kWiFiConnectionStatusAfterWakeWoWOffConnected,
-	  kSuspendDurationSecs));
+  EXPECT_CALL(metrics_,
+              NotifyConnectedToServiceAfterWake(
+                  Metrics::kWiFiConnectionStatusAfterWakeWoWOffConnected));
+  EXPECT_CALL(metrics_,
+              NotifySuspendDurationAfterWake(
+                  Metrics::kWiFiConnectionStatusAfterWakeWoWOffConnected,
+                  kSuspendDurationSecs));
   ReportConnectedToServiceAfterWake(is_connected, kSuspendDurationSecs);
 
   /* Setting connected_before_suspend_ to false:
@@ -3397,7 +3391,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
       metrics_,
       NotifyConnectedToServiceAfterWake(
           Metrics::kWiFiConnectionStatusAfterWakeWoWOffConnected));
-  EXPECT_CALL(metrics_, NotifySuspendDurationAfterWake(_,_)).Times(0);
+  EXPECT_CALL(metrics_, NotifySuspendDurationAfterWake(_, _)).Times(0);
   ReportConnectedToServiceAfterWake(is_connected, kSuspendDurationSecs);
 }
 
@@ -3409,26 +3403,23 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
    * ensures that SuspendDuration is logged by metrics */
   SetConnectedBeforeSuspend(true);
 
-  EXPECT_CALL(
-      metrics_,
-      NotifyConnectedToServiceAfterWake(
-          Metrics::kWiFiConnectionStatusAfterWakeWoWOffDisconnected));
-  EXPECT_CALL(
-      metrics_,
-      NotifySuspendDurationAfterWake(
-	  Metrics::kWiFiConnectionStatusAfterWakeWoWOffDisconnected,
-	  kSuspendDurationSecs));
+  EXPECT_CALL(metrics_,
+              NotifyConnectedToServiceAfterWake(
+                  Metrics::kWiFiConnectionStatusAfterWakeWoWOffDisconnected));
+  EXPECT_CALL(metrics_,
+              NotifySuspendDurationAfterWake(
+                  Metrics::kWiFiConnectionStatusAfterWakeWoWOffDisconnected,
+                  kSuspendDurationSecs));
   ReportConnectedToServiceAfterWake(is_connected, kSuspendDurationSecs);
 
   /* Setting connected_before_suspend_ to false:
    * SuspendDuration should not be logged */
   SetConnectedBeforeSuspend(false);
 
-  EXPECT_CALL(
-      metrics_,
-      NotifyConnectedToServiceAfterWake(
-          Metrics::kWiFiConnectionStatusAfterWakeWoWOffDisconnected));
-  EXPECT_CALL(metrics_, NotifySuspendDurationAfterWake(_,_)).Times(0);
+  EXPECT_CALL(metrics_,
+              NotifyConnectedToServiceAfterWake(
+                  Metrics::kWiFiConnectionStatusAfterWakeWoWOffDisconnected));
+  EXPECT_CALL(metrics_, NotifySuspendDurationAfterWake(_, _)).Times(0);
   ReportConnectedToServiceAfterWake(is_connected, kSuspendDurationSecs);
 }
 
