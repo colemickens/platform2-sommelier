@@ -18,6 +18,11 @@
         'libcros_config/cros_config.cc',
         'libcros_config/fake_cros_config.cc',
       ],
+      'link_settings': {
+        'libraries': [
+          '-lfdt',
+        ],
+      },
     },
     {
       'target_name': 'cros_config_unittest',
@@ -27,9 +32,6 @@
       ],
       'dependencies': [
         'libcros_config',
-      ],
-      'ldflags': [
-        '-lfdt',
       ],
       'sources': [
         'libcros_config/cros_config_unittest.cc',
