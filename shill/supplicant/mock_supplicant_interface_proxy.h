@@ -19,6 +19,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <gmock/gmock.h>

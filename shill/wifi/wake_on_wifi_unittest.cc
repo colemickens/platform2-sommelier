@@ -18,6 +18,7 @@
 
 #include <linux/nl80211.h>
 
+#include <memory>
 #include <set>
 #include <string>
 #include <utility>
