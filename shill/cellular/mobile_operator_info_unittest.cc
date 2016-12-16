@@ -1647,7 +1647,7 @@ class MobileOperatorInfoOverrideTest
   }
 
  protected:
-  void VerifyAPNForMCCMNC(const string& mccmnc, const string& apn){
+  void VerifyAPNForMCCMNC(const string& mccmnc, const string& apn) {
     UpdateMCCMNC(mccmnc);
     EXPECT_TRUE(operator_info_impl_->IsMobileNetworkOperatorKnown());
     EXPECT_FALSE(operator_info_impl_->IsMobileVirtualNetworkOperatorKnown());
@@ -1692,7 +1692,7 @@ class MobileOperatorInfoOverrideTest
 
 // Prevent regression of database override behavior introduced in
 // chromium:654149
-TEST_P(MobileOperatorInfoOverrideTest, MultipleDBOverrides){
+TEST_P(MobileOperatorInfoOverrideTest, MultipleDBOverrides) {
   for (const auto& mcc_apn_pair : GetParam()) {
     VerifyAPNForMCCMNC(mcc_apn_pair.first, mcc_apn_pair.second);
   }

@@ -104,8 +104,8 @@ MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
 MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
                                                const string& info_owner)
     : MobileOperatorInfoImpl::MobileOperatorInfoImpl(
-                                  dispatcher, info_owner, kDefaultDatabasePath,
-                                  kOverrideDatabasePath){}
+          dispatcher, info_owner, kDefaultDatabasePath, kOverrideDatabasePath) {
+}
 
 MobileOperatorInfoImpl::~MobileOperatorInfoImpl() {}
 
