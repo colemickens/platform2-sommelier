@@ -21,6 +21,7 @@
 #include <base/strings/stringprintf.h>
 
 #include "power_manager/common/clock.h"
+#include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
@@ -47,8 +48,15 @@ const int kDefaultBatteryStabilizedAfterResumeDelayMs = 5000;
 
 // Different power supply types reported by the kernel.
 const char kBatteryType[] = "Battery";
-const char kMainsType[] = "Mains";
 const char kUnknownType[] = "Unknown";
+const char kMainsType[] = "Mains";
+const char kUsbType[] = "USB";
+const char kUsbAcaType[] = "USB_ACA";
+const char kUsbCdpType[] = "USB_CDP";
+const char kUsbDcpType[] = "USB_DCP";
+const char kUsbCType[] = "USB_C";
+const char kUsbPdType[] = "USB_PD";
+const char kUsbPdDrpType[] = "USB_PD_DRP";
 
 // Battery states reported by the kernel. This is not the full set of
 // possible states; see drivers/power/power_supply_sysfs.c.
@@ -94,15 +102,15 @@ double ReadScaledDouble(const base::FilePath& directory,
 // sysfs, indicates USB BC1.2 types.
 bool IsLowPowerUsbChargerType(const std::string& type) {
   // These are defined in drivers/power/power_supply_sysfs.c in the kernel.
-  return type == "USB" || type == "USB_DCP" || type == "USB_CDP" ||
-      type == "USB_ACA";
+  return type == kUsbType || type == kUsbDcpType || type == kUsbCdpType ||
+         type == kUsbAcaType;
 }
 
 // Returns true if |type|, a power supply type read from a "type" file in
 // sysfs, indicates USB_PD_DRP, meaning a USB Power Delivery Dual Role Port.
 bool IsDualRoleType(const std::string& type) {
   // This is defined in drivers/power/power_supply_sysfs.c in the kernel.
-  return type == "USB_PD_DRP";
+  return type == kUsbPdDrpType;
 }
 
 // Returns true if |path|, a sysfs directory, corresponds to an external
@@ -270,6 +278,27 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
   }
 
   return output;
+}
+
+metrics::PowerSupplyType GetPowerSupplyTypeMetric(const std::string& type) {
+  if (type == kMainsType)
+    return metrics::PowerSupplyType::MAINS;
+  else if (type == kUsbType)
+    return metrics::PowerSupplyType::USB;
+  else if (type == kUsbAcaType)
+    return metrics::PowerSupplyType::USB_ACA;
+  else if (type == kUsbCdpType)
+    return metrics::PowerSupplyType::USB_CDP;
+  else if (type == kUsbDcpType)
+    return metrics::PowerSupplyType::USB_DCP;
+  else if (type == kUsbCType)
+    return metrics::PowerSupplyType::USB_C;
+  else if (type == kUsbPdType)
+    return metrics::PowerSupplyType::USB_PD;
+  else if (type == kUsbPdDrpType)
+    return metrics::PowerSupplyType::USB_PD_DRP;
+  else
+    return metrics::PowerSupplyType::OTHER;
 }
 
 PowerStatus::Source::Source(const std::string& id,

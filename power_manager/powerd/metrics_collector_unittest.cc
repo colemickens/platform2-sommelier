@@ -52,6 +52,7 @@ class MetricsCollectorTest : public Test {
 
     power_status_.battery_percentage = 100.0;
     power_status_.battery_is_present = true;
+    power_status_.line_power_type = "Mains";
   }
 
  protected:
@@ -98,6 +99,9 @@ class MetricsCollectorTest : public Test {
     IgnoreMetric(kBatteryDischargeRateName);
     IgnoreMetric(kBatteryDischargeRateWhileSuspendedName);
     IgnoreEnumMetric(kBatteryInfoSampleName);
+    IgnoreEnumMetric(kPowerSupplyTypeName);
+    IgnoreEnumMetric(kPowerSupplyMaxVoltageName);
+    IgnoreEnumMetric(kPowerSupplyMaxPowerName);
   }
 
   // Updates |power_status_|'s |line_power_on| member and passes it to
@@ -626,6 +630,58 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
                kBatteryDischargeRateWhileSuspendedMin,
                kBatteryDischargeRateWhileSuspendedMax,
                kDefaultBuckets);
+  collector_.HandlePowerStatusUpdate(power_status_);
+}
+
+TEST_F(MetricsCollectorTest, PowerSupplyMaxVoltageAndPower) {
+  metrics_to_test_ = {
+    kPowerSupplyMaxVoltageName,
+    kPowerSupplyMaxPowerName,
+  };
+  IgnoreHandlePowerStatusUpdateMetrics();
+  power_status_.line_power_on = false;
+  Init();
+
+  power_status_.line_power_on = true;
+  power_status_.line_power_max_voltage = 4.2;
+  power_status_.line_power_max_current = 12.7;
+  ExpectEnumMetric(
+      kPowerSupplyMaxVoltageName,
+      static_cast<int>(round(power_status_.line_power_max_voltage)),
+      kPowerSupplyMaxVoltageMax);
+  ExpectEnumMetric(
+      kPowerSupplyMaxPowerName,
+      static_cast<int>(round(power_status_.line_power_max_voltage *
+                             power_status_.line_power_max_current)),
+      kPowerSupplyMaxPowerMax);
+  collector_.HandlePowerStatusUpdate(power_status_);
+
+  // Nothing should be reported when line power is off.
+  power_status_.line_power_on = false;
+  collector_.HandlePowerStatusUpdate(power_status_);
+}
+
+TEST_F(MetricsCollectorTest, PowerSupplyType) {
+  metrics_to_test_ = { kPowerSupplyTypeName };
+  IgnoreHandlePowerStatusUpdateMetrics();
+  power_status_.line_power_on = false;
+  Init();
+
+  power_status_.line_power_on = true;
+  power_status_.line_power_type = "USB_PD";
+  ExpectEnumMetric(kPowerSupplyTypeName,
+                   static_cast<int>(PowerSupplyType::USB_PD),
+                   kPowerSupplyTypeMax);
+  collector_.HandlePowerStatusUpdate(power_status_);
+
+  power_status_.line_power_type = "BOGUS";
+  ExpectEnumMetric(kPowerSupplyTypeName,
+                   static_cast<int>(PowerSupplyType::OTHER),
+                   kPowerSupplyTypeMax);
+  collector_.HandlePowerStatusUpdate(power_status_);
+
+  // Nothing should be reported when line power is off.
+  power_status_.line_power_on = false;
   collector_.HandlePowerStatusUpdate(power_status_);
 }
 

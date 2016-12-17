@@ -32,6 +32,16 @@ class MetricsSenderInterface {
   // description of the arguments in the below methods.
 
   // Sends a regular (exponential) histogram sample.
+  //
+  // There are various constraints on values (see base/metrics/histogram.h in
+  // Chrome), including:
+  //
+  // * 1 <= |min| < |max| < base::HistogramBase::kSampleType_MAX
+  // * |num_buckets| < base::Histogram::kBucketCount_MAX
+  // * |num_buckets| <= |max| - |min| + 2
+  //
+  // Violating these constraints may result in Chrome silently discarding the
+  // simple rather than reporting.
   virtual bool SendMetric(const std::string& name,
                           int sample,
                           int min,

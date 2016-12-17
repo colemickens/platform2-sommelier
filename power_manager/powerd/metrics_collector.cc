@@ -140,8 +140,14 @@ void MetricsCollector::HandleSessionStateChange(SessionState state) {
 void MetricsCollector::HandlePowerStatusUpdate(
     const system::PowerStatus& status) {
   const bool previously_on_line_power = last_power_status_.line_power_on;
+  const bool previously_using_unknown_type =
+      previously_on_line_power &&
+      system::GetPowerSupplyTypeMetric(last_power_status_.line_power_type) ==
+          PowerSupplyType::OTHER;
+
   last_power_status_ = status;
 
+  // Charge stats.
   if (status.line_power_on && !previously_on_line_power) {
     GenerateNumOfSessionsPerChargeMetric();
     if (status.battery_is_present) {
@@ -157,6 +163,30 @@ void MetricsCollector::HandlePowerStatusUpdate(
   } else if (!status.line_power_on && previously_on_line_power) {
     if (session_state_ == SessionState::STARTED)
       IncrementNumOfSessionsPerChargeMetric();
+  }
+
+  // Power supply details.
+  if (status.line_power_on) {
+    const PowerSupplyType type =
+        system::GetPowerSupplyTypeMetric(status.line_power_type);
+    if (type == PowerSupplyType::OTHER && !previously_using_unknown_type)
+      LOG(WARNING) << "Unknown power supply type " << status.line_power_type;
+    SendEnumMetric(kPowerSupplyTypeName,
+                   static_cast<int>(type),
+                   kPowerSupplyTypeMax);
+
+    // Sent as enums to avoid exponential histogram's exponentially-sized
+    // buckets.
+    SendEnumMetric(kPowerSupplyMaxVoltageName,
+                   static_cast<int>(round(status.line_power_max_voltage)),
+                   kPowerSupplyMaxVoltageMax);
+    SendEnumMetric(kPowerSupplyMaxPowerName,
+                   static_cast<int>(round(status.line_power_max_voltage *
+                                          status.line_power_max_current)),
+                   kPowerSupplyMaxPowerMax);
+
+    // TODO(derat): Also report which port is active and which ports are
+    // connected: http://crbug.com/674338
   }
 
   GenerateBatteryDischargeRateMetric();

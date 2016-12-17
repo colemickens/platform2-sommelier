@@ -4,6 +4,8 @@
 
 #include "power_manager/common/metrics_sender.h"
 
+#include <utility>
+
 #include <base/logging.h>
 #include <metrics/metrics_library.h>
 
@@ -45,6 +47,15 @@ bool MetricsSender::SendMetric(const std::string& name,
                                int num_buckets) {
   VLOG(1) << "Sending metric " << name << " (sample=" << sample << " min="
           << min << " max=" << max << " num_buckets=" << num_buckets << ")";
+
+  // Chrome appears to silently drop histograms with too-large bucket counts.
+  // Running into this warning is a good sign that SendEnumMetric() should be
+  // used instead to get a bucket for each of the possible values instead of
+  // exponentially-sized buckets.
+  if (num_buckets > max - min + 2) {
+    LOG(WARNING) << name << " using excessive bucket count " << num_buckets
+                 << "; consider sending as enum instead";
+  }
 
   // If the sample falls outside of the histogram's range, just let it end up in
   // the underflow or overflow bucket.

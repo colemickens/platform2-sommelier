@@ -87,6 +87,15 @@ extern const int kPowerButtonAcknowledgmentDelayMax;
 
 extern const char kBatteryInfoSampleName[];
 
+extern const char kPowerSupplyMaxVoltageName[];
+extern const int kPowerSupplyMaxVoltageMax;
+
+extern const char kPowerSupplyMaxPowerName[];
+extern const int kPowerSupplyMaxPowerMax;
+
+extern const char kPowerSupplyTypeName[];
+extern const int kPowerSupplyTypeMax;
+
 extern const char kExternalBrightnessRequestResultName[];
 extern const char kExternalBrightnessReadResultName[];
 extern const char kExternalBrightnessWriteResultName[];
@@ -101,12 +110,25 @@ extern const char kDarkResumeWakeDurationMsName[];
 extern const int kDarkResumeWakeDurationMsMin;
 extern const int kDarkResumeWakeDurationMsMax;
 
-// Enum for kBatteryInfoSample.
+// Values for kBatteryInfoSampleName.
 enum class BatteryInfoSampleResult {
   READ,
   GOOD,
   BAD,
   MAX,
+};
+
+// Values for kPowerSupplyTypeName. Do not renumber.
+enum class PowerSupplyType {
+  OTHER = 0,
+  MAINS = 1,
+  USB = 2,
+  USB_ACA = 3,
+  USB_CDP = 4,
+  USB_DCP = 5,
+  USB_C = 6,
+  USB_PD = 7,
+  USB_PD_DRP = 8,
 };
 
 }  // namespace metrics

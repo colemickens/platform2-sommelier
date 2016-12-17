@@ -29,6 +29,10 @@ class Clock;
 class PowerSupplyProperties;
 class PrefsInterface;
 
+namespace metrics {
+enum class PowerSupplyType;
+}
+
 namespace system {
 
 struct PowerStatus;
@@ -40,6 +44,9 @@ void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
 
 // Returns a string describing the battery status from |status|.
 std::string GetPowerStatusBatteryDebugString(const PowerStatus& status);
+
+// Returns a metrics value corresponding to |type|, a sysfs power supply type.
+metrics::PowerSupplyType GetPowerSupplyTypeMetric(const std::string& type);
 
 // Structures used for passing power supply info.
 struct PowerStatus {

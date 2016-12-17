@@ -92,6 +92,15 @@ const int kPowerButtonAcknowledgmentDelayMax = 8 * 1000;
 
 const char kBatteryInfoSampleName[] = "Power.BatteryInfoSample";
 
+const char kPowerSupplyMaxVoltageName[] = "Power.PowerSupplyMaxVoltage";
+const int kPowerSupplyMaxVoltageMax = 21;
+
+const char kPowerSupplyMaxPowerName[] = "Power.PowerSupplyMaxPower";
+const int kPowerSupplyMaxPowerMax = 101;
+
+const char kPowerSupplyTypeName[] = "Power.PowerSupplyType";
+const int kPowerSupplyTypeMax = 20;
+
 const char kExternalBrightnessRequestResultName[] =
     "Power.ExternalBrightnessRequestResult";
 const char kExternalBrightnessReadResultName[] =
