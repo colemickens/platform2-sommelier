@@ -264,7 +264,7 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       input_controller_(new policy::InputController),
       wakeup_controller_(new policy::WakeupController),
       suspender_(new policy::Suspender),
-      metrics_collector_(new MetricsCollector),
+      metrics_collector_(new metrics::MetricsCollector),
       shutting_down_(false),
       retry_shutdown_for_firmware_update_timer_(false /* retain_user_task */,
                                                 true /* is_repeating */),

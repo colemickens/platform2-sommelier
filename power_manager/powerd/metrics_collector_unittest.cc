@@ -37,6 +37,7 @@ using ::testing::StrictMock;
 using ::testing::Test;
 
 namespace power_manager {
+namespace metrics {
 
 class MetricsCollectorTest : public Test {
  public:
@@ -73,30 +74,30 @@ class MetricsCollectorTest : public Test {
   // (except ones listed in |metrics_to_test_|).
   void IgnoreHandleSessionStateChangeMetrics() {
     IgnoreEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
-        kMetricBatteryRemainingAtStartOfSessionName, PowerSource::AC));
+        kBatteryRemainingAtStartOfSessionName, PowerSource::AC));
     IgnoreEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
-        kMetricBatteryRemainingAtStartOfSessionName, PowerSource::BATTERY));
+        kBatteryRemainingAtStartOfSessionName, PowerSource::BATTERY));
     IgnoreEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
-        kMetricBatteryRemainingAtEndOfSessionName, PowerSource::AC));
+        kBatteryRemainingAtEndOfSessionName, PowerSource::AC));
     IgnoreEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
-        kMetricBatteryRemainingAtEndOfSessionName, PowerSource::BATTERY));
-    IgnoreMetric(kMetricLengthOfSessionName);
-    IgnoreMetric(kMetricNumberOfAlsAdjustmentsPerSessionName);
+        kBatteryRemainingAtEndOfSessionName, PowerSource::BATTERY));
+    IgnoreMetric(kLengthOfSessionName);
+    IgnoreMetric(kNumberOfAlsAdjustmentsPerSessionName);
     IgnoreMetric(MetricsCollector::AppendPowerSourceToEnumName(
-        kMetricUserBrightnessAdjustmentsPerSessionName, PowerSource::AC));
+        kUserBrightnessAdjustmentsPerSessionName, PowerSource::AC));
     IgnoreMetric(MetricsCollector::AppendPowerSourceToEnumName(
-        kMetricUserBrightnessAdjustmentsPerSessionName, PowerSource::BATTERY));
+        kUserBrightnessAdjustmentsPerSessionName, PowerSource::BATTERY));
   }
 
   // Adds expectations to ignore all metrics sent by HandlePowerStatusUpdate()
   // (except ones listed in |metrics_to_test_|).
   void IgnoreHandlePowerStatusUpdateMetrics() {
-    IgnoreMetric(kMetricNumOfSessionsPerChargeName);
-    IgnoreEnumMetric(kMetricBatteryRemainingWhenChargeStartsName);
-    IgnoreEnumMetric(kMetricBatteryChargeHealthName);
-    IgnoreMetric(kMetricBatteryDischargeRateName);
-    IgnoreMetric(kMetricBatteryDischargeRateWhileSuspendedName);
-    IgnoreEnumMetric(kMetricBatteryInfoSampleName);
+    IgnoreMetric(kNumOfSessionsPerChargeName);
+    IgnoreEnumMetric(kBatteryRemainingWhenChargeStartsName);
+    IgnoreEnumMetric(kBatteryChargeHealthName);
+    IgnoreMetric(kBatteryDischargeRateName);
+    IgnoreMetric(kBatteryDischargeRateWhileSuspendedName);
+    IgnoreEnumMetric(kBatteryInfoSampleName);
   }
 
   // Updates |power_status_|'s |line_power_on| member and passes it to
@@ -147,17 +148,19 @@ class MetricsCollectorTest : public Test {
   }
 
   void ExpectBatteryDischargeRateMetric(int sample) {
-    ExpectMetric(kMetricBatteryDischargeRateName, sample,
-                 kMetricBatteryDischargeRateMin,
-                 kMetricBatteryDischargeRateMax,
-                 kMetricDefaultBuckets);
+    ExpectMetric(kBatteryDischargeRateName,
+                 sample,
+                 kBatteryDischargeRateMin,
+                 kBatteryDischargeRateMax,
+                 kDefaultBuckets);
   }
 
   void ExpectNumOfSessionsPerChargeMetric(int sample) {
-    ExpectMetric(kMetricNumOfSessionsPerChargeName, sample,
-                 kMetricNumOfSessionsPerChargeMin,
-                 kMetricNumOfSessionsPerChargeMax,
-                 kMetricDefaultBuckets);
+    ExpectMetric(kNumOfSessionsPerChargeName,
+                 sample,
+                 kNumOfSessionsPerChargeMin,
+                 kNumOfSessionsPerChargeMax,
+                 kDefaultBuckets);
   }
 
   FakePrefs prefs_;
@@ -192,20 +195,20 @@ TEST_F(MetricsCollectorTest, BacklightLevel) {
 
   collector_.HandleScreenDimmedChange(false, base::TimeTicks::Now());
   ExpectEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
-                       kMetricBacklightLevelName, PowerSource::BATTERY),
-                   kCurrentDisplayPercent, kMetricMaxPercent);
-  ExpectEnumMetric(kMetricKeyboardBacklightLevelName, kCurrentKeyboardPercent,
-                   kMetricMaxPercent);
+                       kBacklightLevelName, PowerSource::BATTERY),
+                   kCurrentDisplayPercent, kMaxPercent);
+  ExpectEnumMetric(kKeyboardBacklightLevelName, kCurrentKeyboardPercent,
+                   kMaxPercent);
   collector_.GenerateBacklightLevelMetrics();
 
   power_status_.line_power_on = true;
   IgnoreHandlePowerStatusUpdateMetrics();
   collector_.HandlePowerStatusUpdate(power_status_);
   ExpectEnumMetric(MetricsCollector::AppendPowerSourceToEnumName(
-                       kMetricBacklightLevelName, PowerSource::AC),
-                   kCurrentDisplayPercent, kMetricMaxPercent);
-  ExpectEnumMetric(kMetricKeyboardBacklightLevelName, kCurrentKeyboardPercent,
-                   kMetricMaxPercent);
+                       kBacklightLevelName, PowerSource::AC),
+                   kCurrentDisplayPercent, kMaxPercent);
+  ExpectEnumMetric(kKeyboardBacklightLevelName, kCurrentKeyboardPercent,
+                   kMaxPercent);
   collector_.GenerateBacklightLevelMetrics();
 }
 
@@ -213,13 +216,13 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRate) {
   power_status_.line_power_on = false;
   Init();
 
-  metrics_to_test_.insert(kMetricBatteryDischargeRateName);
+  metrics_to_test_.insert(kBatteryDischargeRateName);
   IgnoreHandlePowerStatusUpdateMetrics();
 
   // This much time must elapse before the discharge rate will be reported
   // again.
   const base::TimeDelta interval = base::TimeDelta::FromSeconds(
-      kMetricBatteryDischargeRateIntervalSec);
+      kBatteryDischargeRateIntervalSec);
 
   power_status_.battery_energy_rate = 5.0;
   ExpectBatteryDischargeRateMetric(5000);
@@ -261,8 +264,8 @@ TEST_F(MetricsCollectorTest, BatteryInfoWhenChargeStarts) {
   power_status_.battery_charge_full_design = 100.0;
   Init();
 
-  metrics_to_test_.insert(kMetricBatteryRemainingWhenChargeStartsName);
-  metrics_to_test_.insert(kMetricBatteryChargeHealthName);
+  metrics_to_test_.insert(kBatteryRemainingWhenChargeStartsName);
+  metrics_to_test_.insert(kBatteryChargeHealthName);
 
   for (size_t i = 0; i < arraysize(kBatteryPercentages); ++i) {
     IgnoreHandlePowerStatusUpdateMetrics();
@@ -273,13 +276,13 @@ TEST_F(MetricsCollectorTest, BatteryInfoWhenChargeStarts) {
     collector_.HandlePowerStatusUpdate(power_status_);
 
     power_status_.line_power_on = true;
-    ExpectEnumMetric(kMetricBatteryRemainingWhenChargeStartsName,
+    ExpectEnumMetric(kBatteryRemainingWhenChargeStartsName,
                      round(power_status_.battery_percentage),
-                     kMetricMaxPercent);
-    ExpectEnumMetric(kMetricBatteryChargeHealthName,
+                     kMaxPercent);
+    ExpectEnumMetric(kBatteryChargeHealthName,
                      round(100.0 * power_status_.battery_charge_full /
                            power_status_.battery_charge_full_design),
-                     kMetricBatteryChargeHealthMax);
+                     kBatteryChargeHealthMax);
     collector_.HandlePowerStatusUpdate(power_status_);
 
     Mock::VerifyAndClearExpectations(metrics_lib_);
@@ -290,7 +293,7 @@ TEST_F(MetricsCollectorTest, SessionStartOrStop) {
   const uint kAlsAdjustments[] = { 0, 100 };
   const uint kUserAdjustments[] = { 0, 200 };
   const double kBatteryPercentages[] = { 10.5, 23.0 };
-  const int kSessionSecs[] = { 900, kMetricLengthOfSessionMax + 10 };
+  const int kSessionSecs[] = { 900, kLengthOfSessionMax + 10 };
   ASSERT_EQ(arraysize(kAlsAdjustments), arraysize(kUserAdjustments));
   ASSERT_EQ(arraysize(kAlsAdjustments), arraysize(kBatteryPercentages));
   ASSERT_EQ(arraysize(kAlsAdjustments), arraysize(kSessionSecs));
@@ -303,37 +306,37 @@ TEST_F(MetricsCollectorTest, SessionStartOrStop) {
     power_status_.battery_percentage = kBatteryPercentages[i];
     ExpectEnumMetric(
         MetricsCollector::AppendPowerSourceToEnumName(
-            kMetricBatteryRemainingAtStartOfSessionName, PowerSource::BATTERY),
-        round(kBatteryPercentages[i]), kMetricMaxPercent);
+            kBatteryRemainingAtStartOfSessionName, PowerSource::BATTERY),
+        round(kBatteryPercentages[i]), kMaxPercent);
     collector_.HandlePowerStatusUpdate(power_status_);
     collector_.HandleSessionStateChange(SessionState::STARTED);
     Mock::VerifyAndClearExpectations(metrics_lib_);
 
     ExpectEnumMetric(
         MetricsCollector::AppendPowerSourceToEnumName(
-            kMetricBatteryRemainingAtEndOfSessionName, PowerSource::BATTERY),
-        round(kBatteryPercentages[i]), kMetricMaxPercent);
+            kBatteryRemainingAtEndOfSessionName, PowerSource::BATTERY),
+        round(kBatteryPercentages[i]), kMaxPercent);
 
     display_backlight_controller_.set_num_als_adjustments(kAlsAdjustments[i]);
     display_backlight_controller_.set_num_user_adjustments(kUserAdjustments[i]);
-    ExpectMetric(kMetricNumberOfAlsAdjustmentsPerSessionName,
+    ExpectMetric(kNumberOfAlsAdjustmentsPerSessionName,
                  kAlsAdjustments[i],
-                 kMetricNumberOfAlsAdjustmentsPerSessionMin,
-                 kMetricNumberOfAlsAdjustmentsPerSessionMax,
-                 kMetricDefaultBuckets);
+                 kNumberOfAlsAdjustmentsPerSessionMin,
+                 kNumberOfAlsAdjustmentsPerSessionMax,
+                 kDefaultBuckets);
     ExpectMetric(
         MetricsCollector::AppendPowerSourceToEnumName(
-            kMetricUserBrightnessAdjustmentsPerSessionName,
+            kUserBrightnessAdjustmentsPerSessionName,
             PowerSource::BATTERY),
-        kUserAdjustments[i], kMetricUserBrightnessAdjustmentsPerSessionMin,
-        kMetricUserBrightnessAdjustmentsPerSessionMax, kMetricDefaultBuckets);
+        kUserAdjustments[i], kUserBrightnessAdjustmentsPerSessionMin,
+        kUserBrightnessAdjustmentsPerSessionMax, kDefaultBuckets);
 
     AdvanceTime(base::TimeDelta::FromSeconds(kSessionSecs[i]));
-    ExpectMetric(kMetricLengthOfSessionName,
+    ExpectMetric(kLengthOfSessionName,
                  kSessionSecs[i],
-                 kMetricLengthOfSessionMin,
-                 kMetricLengthOfSessionMax,
-                 kMetricDefaultBuckets);
+                 kLengthOfSessionMin,
+                 kLengthOfSessionMax,
+                 kDefaultBuckets);
 
     collector_.HandleSessionStateChange(SessionState::STOPPED);
     Mock::VerifyAndClearExpectations(metrics_lib_);
@@ -341,7 +344,7 @@ TEST_F(MetricsCollectorTest, SessionStartOrStop) {
 }
 
 TEST_F(MetricsCollectorTest, GenerateNumOfSessionsPerChargeMetric) {
-  metrics_to_test_.insert(kMetricNumOfSessionsPerChargeName);
+  metrics_to_test_.insert(kNumOfSessionsPerChargeName);
   power_status_.line_power_on = false;
   Init();
 
@@ -447,11 +450,11 @@ TEST_F(MetricsCollectorTest, PowerButtonDownMetric) {
   collector_.HandlePowerButtonEvent(ButtonState::DOWN);
   const base::TimeDelta kDuration = base::TimeDelta::FromMilliseconds(243);
   AdvanceTime(kDuration);
-  ExpectMetric(kMetricPowerButtonDownTimeName,
+  ExpectMetric(kPowerButtonDownTimeName,
                kDuration.InMilliseconds(),
-               kMetricPowerButtonDownTimeMin,
-               kMetricPowerButtonDownTimeMax,
-               kMetricDefaultBuckets);
+               kPowerButtonDownTimeMin,
+               kPowerButtonDownTimeMax,
+               kDefaultBuckets);
   collector_.HandlePowerButtonEvent(ButtonState::UP);
 }
 
@@ -482,28 +485,28 @@ TEST_F(MetricsCollectorTest, GatherDarkResumeMetrics) {
 
   suspend_duration = base::TimeDelta::FromHours(2);
 
-  ExpectMetric(kMetricDarkResumeWakeupsPerHourName,
+  ExpectMetric(kDarkResumeWakeupsPerHourName,
                wake_durations.size() / suspend_duration.InHours(),
-               kMetricDarkResumeWakeupsPerHourMin,
-               kMetricDarkResumeWakeupsPerHourMax, kMetricDefaultBuckets);
+               kDarkResumeWakeupsPerHourMin,
+               kDarkResumeWakeupsPerHourMax, kDefaultBuckets);
   for (const auto& pair : wake_durations) {
     const base::TimeDelta& duration = pair.second;
-    ExpectMetric(kMetricDarkResumeWakeDurationMsName, duration.InMilliseconds(),
-                 kMetricDarkResumeWakeDurationMsMin,
-                 kMetricDarkResumeWakeDurationMsMax, kMetricDefaultBuckets);
+    ExpectMetric(kDarkResumeWakeDurationMsName, duration.InMilliseconds(),
+                 kDarkResumeWakeDurationMsMin,
+                 kDarkResumeWakeDurationMsMax, kDefaultBuckets);
   }
   ExpectMetric(kExpectedHistogram1, kTimeDelta1.InMilliseconds(),
-               kMetricDarkResumeWakeDurationMsMin,
-               kMetricDarkResumeWakeDurationMsMax, kMetricDefaultBuckets);
+               kDarkResumeWakeDurationMsMin,
+               kDarkResumeWakeDurationMsMax, kDefaultBuckets);
   ExpectMetric(kExpectedHistogram2, kTimeDelta2.InMilliseconds(),
-               kMetricDarkResumeWakeDurationMsMin,
-               kMetricDarkResumeWakeDurationMsMax, kMetricDefaultBuckets);
+               kDarkResumeWakeDurationMsMin,
+               kDarkResumeWakeDurationMsMax, kDefaultBuckets);
   ExpectMetric(kExpectedHistogram3, kTimeDelta3.InMilliseconds(),
-               kMetricDarkResumeWakeDurationMsMin,
-               kMetricDarkResumeWakeDurationMsMax, kMetricDefaultBuckets);
+               kDarkResumeWakeDurationMsMin,
+               kDarkResumeWakeDurationMsMax, kDefaultBuckets);
   ExpectMetric(kExpectedHistogram4, kTimeDelta4.InMilliseconds(),
-               kMetricDarkResumeWakeDurationMsMin,
-               kMetricDarkResumeWakeDurationMsMax, kMetricDefaultBuckets);
+               kDarkResumeWakeDurationMsMin,
+               kDarkResumeWakeDurationMsMax, kDefaultBuckets);
 
   collector_.GenerateDarkResumeMetrics(wake_durations, suspend_duration);
 
@@ -516,11 +519,11 @@ TEST_F(MetricsCollectorTest, GatherDarkResumeMetrics) {
       std::make_pair(kWakeReason1, base::TimeDelta::FromMilliseconds(359)));
   suspend_duration = base::TimeDelta::FromMinutes(13);
 
-  IgnoreMetric(kMetricDarkResumeWakeDurationMsName);
+  IgnoreMetric(kDarkResumeWakeDurationMsName);
   IgnoreMetric(kExpectedHistogram1);
-  ExpectMetric(kMetricDarkResumeWakeupsPerHourName, 4,
-               kMetricDarkResumeWakeupsPerHourMin,
-               kMetricDarkResumeWakeupsPerHourMax, kMetricDefaultBuckets);
+  ExpectMetric(kDarkResumeWakeupsPerHourName, 4,
+               kDarkResumeWakeupsPerHourMin,
+               kDarkResumeWakeupsPerHourMax, kDefaultBuckets);
 
   collector_.GenerateDarkResumeMetrics(wake_durations, suspend_duration);
 }
@@ -530,7 +533,7 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   const double kEnergyAfterResume = 50;
   const base::TimeDelta kSuspendDuration = base::TimeDelta::FromHours(1);
 
-  metrics_to_test_.insert(kMetricBatteryDischargeRateWhileSuspendedName);
+  metrics_to_test_.insert(kBatteryDischargeRateWhileSuspendedName);
   power_status_.line_power_on = false;
   power_status_.battery_energy = kEnergyAfterResume;
   Init();
@@ -547,9 +550,9 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   collector_.HandlePowerStatusUpdate(power_status_);
   collector_.PrepareForSuspend();
   AdvanceTime(kSuspendDuration);
-  ExpectMetric(kMetricSuspendAttemptsBeforeSuccessName, 1,
-               kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
-               kMetricSuspendAttemptsBuckets);
+  ExpectMetric(kSuspendAttemptsBeforeSuccessName, 1,
+               kSuspendAttemptsMin, kSuspendAttemptsMax,
+               kSuspendAttemptsBuckets);
   collector_.HandleResume(1);
   power_status_.line_power_on = false;
   power_status_.battery_energy = kEnergyAfterResume;
@@ -563,9 +566,9 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   collector_.HandlePowerStatusUpdate(power_status_);
   collector_.PrepareForSuspend();
   AdvanceTime(kSuspendDuration);
-  ExpectMetric(kMetricSuspendAttemptsBeforeSuccessName, 2,
-               kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
-               kMetricSuspendAttemptsBuckets);
+  ExpectMetric(kSuspendAttemptsBeforeSuccessName, 2,
+               kSuspendAttemptsMin, kSuspendAttemptsMax,
+               kSuspendAttemptsBuckets);
   collector_.HandleResume(2);
   power_status_.line_power_on = true;
   power_status_.battery_energy = kEnergyAfterResume;
@@ -580,9 +583,9 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   collector_.HandlePowerStatusUpdate(power_status_);
   collector_.PrepareForSuspend();
   AdvanceTime(kSuspendDuration);
-  ExpectMetric(kMetricSuspendAttemptsBeforeSuccessName, 1,
-               kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
-               kMetricSuspendAttemptsBuckets);
+  ExpectMetric(kSuspendAttemptsBeforeSuccessName, 1,
+               kSuspendAttemptsMin, kSuspendAttemptsMax,
+               kSuspendAttemptsBuckets);
   collector_.HandleResume(1);
   power_status_.battery_energy = kEnergyBeforeSuspend + 5.0;
   collector_.HandlePowerStatusUpdate(power_status_);
@@ -595,10 +598,10 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   collector_.HandlePowerStatusUpdate(power_status_);
   collector_.PrepareForSuspend();
   AdvanceTime(base::TimeDelta::FromSeconds(
-      kMetricBatteryDischargeRateWhileSuspendedMinSuspendSec - 1));
-  ExpectMetric(kMetricSuspendAttemptsBeforeSuccessName, 1,
-               kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
-               kMetricSuspendAttemptsBuckets);
+      kBatteryDischargeRateWhileSuspendedMinSuspendSec - 1));
+  ExpectMetric(kSuspendAttemptsBeforeSuccessName, 1,
+               kSuspendAttemptsMin, kSuspendAttemptsMax,
+               kSuspendAttemptsBuckets);
   collector_.HandleResume(1);
   power_status_.battery_energy = kEnergyAfterResume;
   collector_.HandlePowerStatusUpdate(power_status_);
@@ -611,19 +614,20 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   collector_.HandlePowerStatusUpdate(power_status_);
   collector_.PrepareForSuspend();
   AdvanceTime(kSuspendDuration);
-  ExpectMetric(kMetricSuspendAttemptsBeforeSuccessName, 1,
-               kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
-               kMetricSuspendAttemptsBuckets);
+  ExpectMetric(kSuspendAttemptsBeforeSuccessName, 1,
+               kSuspendAttemptsMin, kSuspendAttemptsMax,
+               kSuspendAttemptsBuckets);
   collector_.HandleResume(1);
   power_status_.battery_energy = kEnergyAfterResume;
   const int rate_mw = static_cast<int>(round(
       1000 * (kEnergyBeforeSuspend - kEnergyAfterResume) /
       (kSuspendDuration.InSecondsF() / 3600)));
-  ExpectMetric(kMetricBatteryDischargeRateWhileSuspendedName, rate_mw,
-               kMetricBatteryDischargeRateWhileSuspendedMin,
-               kMetricBatteryDischargeRateWhileSuspendedMax,
-               kMetricDefaultBuckets);
+  ExpectMetric(kBatteryDischargeRateWhileSuspendedName, rate_mw,
+               kBatteryDischargeRateWhileSuspendedMin,
+               kBatteryDischargeRateWhileSuspendedMax,
+               kDefaultBuckets);
   collector_.HandlePowerStatusUpdate(power_status_);
 }
 
+}  // namespace metrics
 }  // namespace power_manager

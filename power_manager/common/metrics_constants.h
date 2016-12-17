@@ -6,101 +6,102 @@
 #define POWER_MANAGER_COMMON_METRICS_CONSTANTS_H_
 
 namespace power_manager {
+namespace metrics {
 
 // Suffixes added to certain metric names when on different power sources.
-extern const char kMetricACSuffix[];
-extern const char kMetricBatterySuffix[];
+extern const char kAcSuffix[];
+extern const char kBatterySuffix[];
 
 // Default max for percent-based metrics. Percents are reported as enums instead
 // of regular exponential histograms so they'll get a linear scale.
-extern const int kMetricMaxPercent;
+extern const int kMaxPercent;
 
 // Default number of buckets to use for numeric histogram metrics.
-extern const int kMetricDefaultBuckets;
+extern const int kDefaultBuckets;
 
-extern const char kMetricSuspendAttemptsBeforeSuccessName[];
-extern const char kMetricSuspendAttemptsBeforeCancelName[];
-extern const int kMetricSuspendAttemptsMin;
-extern const int kMetricSuspendAttemptsMax;
-extern const int kMetricSuspendAttemptsBuckets;
+extern const char kSuspendAttemptsBeforeSuccessName[];
+extern const char kSuspendAttemptsBeforeCancelName[];
+extern const int kSuspendAttemptsMin;
+extern const int kSuspendAttemptsMax;
+extern const int kSuspendAttemptsBuckets;
 
-extern const char kMetricShutdownReasonName[];
-extern const int kMetricShutdownReasonMax;
+extern const char kShutdownReasonName[];
+extern const int kShutdownReasonMax;
 
-extern const char kMetricBacklightLevelName[];
-extern const char kMetricKeyboardBacklightLevelName[];
-extern const int kMetricBacklightLevelIntervalMs;
+extern const char kBacklightLevelName[];
+extern const char kKeyboardBacklightLevelName[];
+extern const int kBacklightLevelIntervalMs;
 
-extern const char kMetricIdleAfterScreenOffName[];
-extern const int kMetricIdleAfterScreenOffMin;
-extern const int kMetricIdleAfterScreenOffMax;
+extern const char kIdleAfterScreenOffName[];
+extern const int kIdleAfterScreenOffMin;
+extern const int kIdleAfterScreenOffMax;
 
-extern const char kMetricIdleName[];
-extern const int kMetricIdleMin;
-extern const int kMetricIdleMax;
+extern const char kIdleName[];
+extern const int kIdleMin;
+extern const int kIdleMax;
 
-extern const char kMetricIdleAfterDimName[];
-extern const int kMetricIdleAfterDimMin;
-extern const int kMetricIdleAfterDimMax;
+extern const char kIdleAfterDimName[];
+extern const int kIdleAfterDimMin;
+extern const int kIdleAfterDimMax;
 
-extern const char kMetricBatteryChargeHealthName[];
-extern const int kMetricBatteryChargeHealthMax;
+extern const char kBatteryChargeHealthName[];
+extern const int kBatteryChargeHealthMax;
 
-extern const char kMetricBatteryDischargeRateName[];
-extern const int kMetricBatteryDischargeRateMin;
-extern const int kMetricBatteryDischargeRateMax;
-extern const int kMetricBatteryDischargeRateIntervalSec;
+extern const char kBatteryDischargeRateName[];
+extern const int kBatteryDischargeRateMin;
+extern const int kBatteryDischargeRateMax;
+extern const int kBatteryDischargeRateIntervalSec;
 
-extern const char kMetricBatteryDischargeRateWhileSuspendedName[];
-extern const int kMetricBatteryDischargeRateWhileSuspendedMin;
-extern const int kMetricBatteryDischargeRateWhileSuspendedMax;
-extern const int kMetricBatteryDischargeRateWhileSuspendedMinSuspendSec;
+extern const char kBatteryDischargeRateWhileSuspendedName[];
+extern const int kBatteryDischargeRateWhileSuspendedMin;
+extern const int kBatteryDischargeRateWhileSuspendedMax;
+extern const int kBatteryDischargeRateWhileSuspendedMinSuspendSec;
 
-extern const char kMetricBatteryRemainingWhenChargeStartsName[];
-extern const char kMetricBatteryRemainingAtEndOfSessionName[];
-extern const char kMetricBatteryRemainingAtStartOfSessionName[];
+extern const char kBatteryRemainingWhenChargeStartsName[];
+extern const char kBatteryRemainingAtEndOfSessionName[];
+extern const char kBatteryRemainingAtStartOfSessionName[];
 
-extern const char kMetricNumberOfAlsAdjustmentsPerSessionName[];
-extern const int kMetricNumberOfAlsAdjustmentsPerSessionMin;
-extern const int kMetricNumberOfAlsAdjustmentsPerSessionMax;
+extern const char kNumberOfAlsAdjustmentsPerSessionName[];
+extern const int kNumberOfAlsAdjustmentsPerSessionMin;
+extern const int kNumberOfAlsAdjustmentsPerSessionMax;
 
-extern const char kMetricUserBrightnessAdjustmentsPerSessionName[];
-extern const int kMetricUserBrightnessAdjustmentsPerSessionMin;
-extern const int kMetricUserBrightnessAdjustmentsPerSessionMax;
+extern const char kUserBrightnessAdjustmentsPerSessionName[];
+extern const int kUserBrightnessAdjustmentsPerSessionMin;
+extern const int kUserBrightnessAdjustmentsPerSessionMax;
 
-extern const char kMetricLengthOfSessionName[];
-extern const int kMetricLengthOfSessionMin;
-extern const int kMetricLengthOfSessionMax;
+extern const char kLengthOfSessionName[];
+extern const int kLengthOfSessionMin;
+extern const int kLengthOfSessionMax;
 
-extern const char kMetricNumOfSessionsPerChargeName[];
-extern const int kMetricNumOfSessionsPerChargeMin;
-extern const int kMetricNumOfSessionsPerChargeMax;
+extern const char kNumOfSessionsPerChargeName[];
+extern const int kNumOfSessionsPerChargeMin;
+extern const int kNumOfSessionsPerChargeMax;
 
-extern const char kMetricPowerButtonDownTimeName[];
-extern const int kMetricPowerButtonDownTimeMin;
-extern const int kMetricPowerButtonDownTimeMax;
+extern const char kPowerButtonDownTimeName[];
+extern const int kPowerButtonDownTimeMin;
+extern const int kPowerButtonDownTimeMax;
 
-extern const char kMetricPowerButtonAcknowledgmentDelayName[];
-extern const int kMetricPowerButtonAcknowledgmentDelayMin;
-extern const int kMetricPowerButtonAcknowledgmentDelayMax;
+extern const char kPowerButtonAcknowledgmentDelayName[];
+extern const int kPowerButtonAcknowledgmentDelayMin;
+extern const int kPowerButtonAcknowledgmentDelayMax;
 
-extern const char kMetricBatteryInfoSampleName[];
+extern const char kBatteryInfoSampleName[];
 
-extern const char kMetricExternalBrightnessRequestResultName[];
-extern const char kMetricExternalBrightnessReadResultName[];
-extern const char kMetricExternalBrightnessWriteResultName[];
-extern const char kMetricExternalDisplayOpenResultName[];
-extern const int kMetricExternalDisplayResultMax;
+extern const char kExternalBrightnessRequestResultName[];
+extern const char kExternalBrightnessReadResultName[];
+extern const char kExternalBrightnessWriteResultName[];
+extern const char kExternalDisplayOpenResultName[];
+extern const int kExternalDisplayResultMax;
 
-extern const char kMetricDarkResumeWakeupsPerHourName[];
-extern const int kMetricDarkResumeWakeupsPerHourMin;
-extern const int kMetricDarkResumeWakeupsPerHourMax;
+extern const char kDarkResumeWakeupsPerHourName[];
+extern const int kDarkResumeWakeupsPerHourMin;
+extern const int kDarkResumeWakeupsPerHourMax;
 
-extern const char kMetricDarkResumeWakeDurationMsName[];
-extern const int kMetricDarkResumeWakeDurationMsMin;
-extern const int kMetricDarkResumeWakeDurationMsMax;
+extern const char kDarkResumeWakeDurationMsName[];
+extern const int kDarkResumeWakeDurationMsMin;
+extern const int kDarkResumeWakeDurationMsMax;
 
-// Enum for kMetricBatteryInfoSample.
+// Enum for kBatteryInfoSample.
 enum class BatteryInfoSampleResult {
   READ,
   GOOD,
@@ -108,6 +109,7 @@ enum class BatteryInfoSampleResult {
   MAX,
 };
 
+}  // namespace metrics
 }  // namespace power_manager
 
 #endif  // POWER_MANAGER_COMMON_METRICS_CONSTANTS_H_

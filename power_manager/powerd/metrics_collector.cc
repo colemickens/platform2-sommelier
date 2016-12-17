@@ -17,35 +17,29 @@
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 
+namespace power_manager {
+namespace metrics {
 namespace {
+
 // Generates the histogram name under which dark resume wake duration metrics
 // are logged for the dark resume triggered by |wake_reason|.
 std::string WakeReasonToHistogramName(const std::string& wake_reason) {
   return std::string("Power.DarkResumeWakeDurationMs.").append(wake_reason);
 }
-}  // namespace
 
-namespace power_manager {
+}  // namespace
 
 // static
 std::string MetricsCollector::AppendPowerSourceToEnumName(
     const std::string& enum_name,
     PowerSource power_source) {
-  return enum_name + (power_source == PowerSource::AC ? kMetricACSuffix
-                                                      : kMetricBatterySuffix);
+  return enum_name + (power_source == PowerSource::AC ? kAcSuffix
+                                                      : kBatterySuffix);
 }
 
-MetricsCollector::MetricsCollector()
-    : prefs_(NULL),
-      display_backlight_controller_(NULL),
-      keyboard_backlight_controller_(NULL),
-      session_state_(SessionState::STOPPED),
-      battery_energy_before_suspend_(0.0),
-      on_line_power_before_suspend_(false),
-      report_battery_discharge_rate_while_suspended_(false) {
-}
+MetricsCollector::MetricsCollector() = default;
 
-MetricsCollector::~MetricsCollector() {}
+MetricsCollector::~MetricsCollector() = default;
 
 void MetricsCollector::Init(
     PrefsInterface* prefs,
@@ -59,7 +53,7 @@ void MetricsCollector::Init(
 
   if (display_backlight_controller_ || keyboard_backlight_controller_) {
     generate_backlight_metrics_timer_.Start(FROM_HERE,
-        base::TimeDelta::FromMilliseconds(kMetricBacklightLevelIntervalMs),
+        base::TimeDelta::FromMilliseconds(kBacklightLevelIntervalMs),
         this, &MetricsCollector::GenerateBacklightLevelMetrics);
   }
 }
@@ -104,39 +98,39 @@ void MetricsCollector::HandleSessionStateChange(SessionState state) {
       if (last_power_status_.battery_is_present) {
         // Enum to avoid exponential histogram's varyingly-sized buckets.
         SendEnumMetricWithPowerSource(
-            kMetricBatteryRemainingAtStartOfSessionName,
+            kBatteryRemainingAtStartOfSessionName,
             static_cast<int>(round(last_power_status_.battery_percentage)),
-            kMetricMaxPercent);
+            kMaxPercent);
       }
       break;
     case SessionState::STOPPED: {
       if (last_power_status_.battery_is_present) {
         // Enum to avoid exponential histogram's varyingly-sized buckets.
         SendEnumMetricWithPowerSource(
-            kMetricBatteryRemainingAtEndOfSessionName,
+            kBatteryRemainingAtEndOfSessionName,
             static_cast<int>(round(last_power_status_.battery_percentage)),
-            kMetricMaxPercent);
+            kMaxPercent);
       }
 
-      SendMetric(kMetricLengthOfSessionName,
+      SendMetric(kLengthOfSessionName,
                  (clock_.GetCurrentTime() - session_start_time_).InSeconds(),
-                 kMetricLengthOfSessionMin,
-                 kMetricLengthOfSessionMax,
-                 kMetricDefaultBuckets);
+                 kLengthOfSessionMin,
+                 kLengthOfSessionMax,
+                 kDefaultBuckets);
 
       if (display_backlight_controller_) {
-        SendMetric(kMetricNumberOfAlsAdjustmentsPerSessionName,
+        SendMetric(kNumberOfAlsAdjustmentsPerSessionName,
                    display_backlight_controller_->
                        GetNumAmbientLightSensorAdjustments(),
-                   kMetricNumberOfAlsAdjustmentsPerSessionMin,
-                   kMetricNumberOfAlsAdjustmentsPerSessionMax,
-                   kMetricDefaultBuckets);
+                   kNumberOfAlsAdjustmentsPerSessionMin,
+                   kNumberOfAlsAdjustmentsPerSessionMax,
+                   kDefaultBuckets);
         SendMetricWithPowerSource(
-            kMetricUserBrightnessAdjustmentsPerSessionName,
+            kUserBrightnessAdjustmentsPerSessionName,
             display_backlight_controller_->GetNumUserAdjustments(),
-            kMetricUserBrightnessAdjustmentsPerSessionMin,
-            kMetricUserBrightnessAdjustmentsPerSessionMax,
-            kMetricDefaultBuckets);
+            kUserBrightnessAdjustmentsPerSessionMin,
+            kUserBrightnessAdjustmentsPerSessionMax,
+            kDefaultBuckets);
       }
       break;
     }
@@ -152,13 +146,13 @@ void MetricsCollector::HandlePowerStatusUpdate(
     GenerateNumOfSessionsPerChargeMetric();
     if (status.battery_is_present) {
       // Enum to avoid exponential histogram's varyingly-sized buckets.
-      SendEnumMetric(kMetricBatteryRemainingWhenChargeStartsName,
+      SendEnumMetric(kBatteryRemainingWhenChargeStartsName,
                      static_cast<int>(round(status.battery_percentage)),
-                     kMetricMaxPercent);
-      SendEnumMetric(kMetricBatteryChargeHealthName,
+                     kMaxPercent);
+      SendEnumMetric(kBatteryChargeHealthName,
                      static_cast<int>(round(100.0 * status.battery_charge_full /
                                             status.battery_charge_full_design)),
-                     kMetricBatteryChargeHealthMax);
+                     kBatteryChargeHealthMax);
     }
   } else if (!status.line_power_on && previously_on_line_power) {
     if (session_state_ == SessionState::STARTED)
@@ -168,19 +162,19 @@ void MetricsCollector::HandlePowerStatusUpdate(
   GenerateBatteryDischargeRateMetric();
   GenerateBatteryDischargeRateWhileSuspendedMetric();
 
-  SendEnumMetric(kMetricBatteryInfoSampleName,
+  SendEnumMetric(kBatteryInfoSampleName,
                  static_cast<int>(BatteryInfoSampleResult::READ),
                  static_cast<int>(BatteryInfoSampleResult::MAX));
   // TODO(derat): Continue sending BAD in some situations? Remove this metric
   // entirely?
-  SendEnumMetric(kMetricBatteryInfoSampleName,
+  SendEnumMetric(kBatteryInfoSampleName,
                  static_cast<int>(BatteryInfoSampleResult::GOOD),
                  static_cast<int>(BatteryInfoSampleResult::MAX));
 }
 
 void MetricsCollector::HandleShutdown(ShutdownReason reason) {
-  SendEnumMetric(kMetricShutdownReasonName, static_cast<int>(reason),
-                 static_cast<int>(kMetricShutdownReasonMax));
+  SendEnumMetric(kShutdownReasonName, static_cast<int>(reason),
+                 static_cast<int>(kShutdownReasonMax));
 }
 
 void MetricsCollector::PrepareForSuspend() {
@@ -190,18 +184,18 @@ void MetricsCollector::PrepareForSuspend() {
 }
 
 void MetricsCollector::HandleResume(int num_suspend_attempts) {
-  SendMetric(kMetricSuspendAttemptsBeforeSuccessName, num_suspend_attempts,
-             kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
-             kMetricSuspendAttemptsBuckets);
+  SendMetric(kSuspendAttemptsBeforeSuccessName, num_suspend_attempts,
+             kSuspendAttemptsMin, kSuspendAttemptsMax,
+             kSuspendAttemptsBuckets);
   // Report the discharge rate in response to the next
   // OnPowerStatusUpdate() call.
   report_battery_discharge_rate_while_suspended_ = true;
 }
 
 void MetricsCollector::HandleCanceledSuspendRequest(int num_suspend_attempts) {
-  SendMetric(kMetricSuspendAttemptsBeforeCancelName, num_suspend_attempts,
-             kMetricSuspendAttemptsMin, kMetricSuspendAttemptsMax,
-             kMetricSuspendAttemptsBuckets);
+  SendMetric(kSuspendAttemptsBeforeCancelName, num_suspend_attempts,
+             kSuspendAttemptsMin, kSuspendAttemptsMax,
+             kSuspendAttemptsBuckets);
 }
 
 void MetricsCollector::GenerateDarkResumeMetrics(
@@ -214,24 +208,25 @@ void MetricsCollector::GenerateDarkResumeMetrics(
   static const int kSecondsPerHour = 60 * 60;
   const int64_t wakeups_per_hour =
       wake_durations.size() * kSecondsPerHour / suspend_duration.InSeconds();
-  SendMetric(kMetricDarkResumeWakeupsPerHourName, wakeups_per_hour,
-             kMetricDarkResumeWakeupsPerHourMin,
-             kMetricDarkResumeWakeupsPerHourMax,
-             kMetricDefaultBuckets);
+  SendMetric(kDarkResumeWakeupsPerHourName,
+             wakeups_per_hour,
+             kDarkResumeWakeupsPerHourMin,
+             kDarkResumeWakeupsPerHourMax,
+             kDefaultBuckets);
 
   for (const auto& pair : wake_durations) {
     // Send aggregated dark resume duration metric.
-    SendMetric(kMetricDarkResumeWakeDurationMsName,
+    SendMetric(kDarkResumeWakeDurationMsName,
                pair.second.InMilliseconds(),
-               kMetricDarkResumeWakeDurationMsMin,
-               kMetricDarkResumeWakeDurationMsMax,
-               kMetricDefaultBuckets);
+               kDarkResumeWakeDurationMsMin,
+               kDarkResumeWakeDurationMsMax,
+               kDefaultBuckets);
     // Send wake reason-specific dark resume duration metric.
     SendMetric(WakeReasonToHistogramName(pair.first),
                pair.second.InMilliseconds(),
-               kMetricDarkResumeWakeDurationMsMin,
-               kMetricDarkResumeWakeDurationMsMax,
-               kMetricDefaultBuckets);
+               kDarkResumeWakeDurationMsMin,
+               kDarkResumeWakeDurationMsMax,
+               kDefaultBuckets);
   }
 }
 
@@ -244,26 +239,29 @@ void MetricsCollector::GenerateUserActivityMetrics() {
   base::TimeDelta total_delta = event_delta + last_idle_timedelta_;
   last_idle_event_timestamp_ = base::TimeTicks();
 
-  SendMetricWithPowerSource(kMetricIdleName, total_delta.InMilliseconds(),
-      kMetricIdleMin, kMetricIdleMax, kMetricDefaultBuckets);
+  SendMetricWithPowerSource(kIdleName,
+                            total_delta.InMilliseconds(),
+                            kIdleMin,
+                            kIdleMax,
+                            kDefaultBuckets);
 
   if (!screen_dim_timestamp_.is_null()) {
     base::TimeDelta dim_event_delta = current_time - screen_dim_timestamp_;
-    SendMetricWithPowerSource(kMetricIdleAfterDimName,
+    SendMetricWithPowerSource(kIdleAfterDimName,
                               dim_event_delta.InMilliseconds(),
-                              kMetricIdleAfterDimMin,
-                              kMetricIdleAfterDimMax,
-                              kMetricDefaultBuckets);
+                              kIdleAfterDimMin,
+                              kIdleAfterDimMax,
+                              kDefaultBuckets);
     screen_dim_timestamp_ = base::TimeTicks();
   }
   if (!screen_off_timestamp_.is_null()) {
     base::TimeDelta screen_off_event_delta =
         current_time - screen_off_timestamp_;
-    SendMetricWithPowerSource(kMetricIdleAfterScreenOffName,
+    SendMetricWithPowerSource(kIdleAfterScreenOffName,
                               screen_off_event_delta.InMilliseconds(),
-                              kMetricIdleAfterScreenOffMin,
-                              kMetricIdleAfterScreenOffMax,
-                              kMetricDefaultBuckets);
+                              kIdleAfterScreenOffMin,
+                              kIdleAfterScreenOffMax,
+                              kDefaultBuckets);
     screen_off_timestamp_ = base::TimeTicks();
   }
 }
@@ -276,14 +274,14 @@ void MetricsCollector::GenerateBacklightLevelMetrics() {
   if (display_backlight_controller_ &&
       display_backlight_controller_->GetBrightnessPercent(&percent)) {
     // Enum to avoid exponential histogram's varyingly-sized buckets.
-    SendEnumMetricWithPowerSource(kMetricBacklightLevelName, lround(percent),
-                                  kMetricMaxPercent);
+    SendEnumMetricWithPowerSource(
+        kBacklightLevelName, lround(percent), kMaxPercent);
   }
   if (keyboard_backlight_controller_ &&
       keyboard_backlight_controller_->GetBrightnessPercent(&percent)) {
     // Enum to avoid exponential histogram's varyingly-sized buckets.
-    SendEnumMetric(kMetricKeyboardBacklightLevelName, lround(percent),
-                   kMetricMaxPercent);
+    SendEnumMetric(kKeyboardBacklightLevelName, lround(percent),
+                   kMaxPercent);
   }
 }
 
@@ -305,11 +303,11 @@ void MetricsCollector::HandlePowerButtonEvent(ButtonState state) {
         base::TimeDelta delta =
             clock_.GetCurrentTime() - last_power_button_down_timestamp_;
         last_power_button_down_timestamp_ = base::TimeTicks();
-        SendMetric(kMetricPowerButtonDownTimeName,
+        SendMetric(kPowerButtonDownTimeName,
                    delta.InMilliseconds(),
-                   kMetricPowerButtonDownTimeMin,
-                   kMetricPowerButtonDownTimeMax,
-                   kMetricDefaultBuckets);
+                   kPowerButtonDownTimeMin,
+                   kPowerButtonDownTimeMax,
+                   kDefaultBuckets);
       }
       break;
     }
@@ -321,11 +319,11 @@ void MetricsCollector::HandlePowerButtonEvent(ButtonState state) {
 
 void MetricsCollector::SendPowerButtonAcknowledgmentDelayMetric(
     base::TimeDelta delay) {
-  SendMetric(kMetricPowerButtonAcknowledgmentDelayName,
+  SendMetric(kPowerButtonAcknowledgmentDelayName,
              delay.InMilliseconds(),
-             kMetricPowerButtonAcknowledgmentDelayMin,
-             kMetricPowerButtonAcknowledgmentDelayMax,
-             kMetricDefaultBuckets);
+             kPowerButtonAcknowledgmentDelayMin,
+             kPowerButtonAcknowledgmentDelayMax,
+             kDefaultBuckets);
 }
 
 bool MetricsCollector::SendMetricWithPowerSource(const std::string& name,
@@ -365,14 +363,15 @@ void MetricsCollector::GenerateBatteryDischargeRateMetric() {
   if (!last_battery_discharge_rate_metric_timestamp_.is_null() &&
       (clock_.GetCurrentTime() -
        last_battery_discharge_rate_metric_timestamp_).InSeconds() <
-      kMetricBatteryDischargeRateIntervalSec) {
+      kBatteryDischargeRateIntervalSec) {
     return;
   }
 
-  if (SendMetric(kMetricBatteryDischargeRateName, rate,
-                 kMetricBatteryDischargeRateMin,
-                 kMetricBatteryDischargeRateMax,
-                 kMetricDefaultBuckets))
+  if (SendMetric(kBatteryDischargeRateName,
+                 rate,
+                 kBatteryDischargeRateMin,
+                 kBatteryDischargeRateMax,
+                 kDefaultBuckets))
     last_battery_discharge_rate_metric_timestamp_ = clock_.GetCurrentTime();
 }
 
@@ -390,7 +389,7 @@ void MetricsCollector::GenerateBatteryDischargeRateWhileSuspendedMetric() {
   base::TimeDelta elapsed_time =
       clock_.GetCurrentWallTime() - time_before_suspend_;
   if (elapsed_time.InSeconds() <
-      kMetricBatteryDischargeRateWhileSuspendedMinSuspendSec)
+      kBatteryDischargeRateWhileSuspendedMinSuspendSec)
     return;
 
   double discharged_watt_hours =
@@ -403,11 +402,11 @@ void MetricsCollector::GenerateBatteryDischargeRateWhileSuspendedMetric() {
   if (discharge_rate_watts < 0.0)
     return;
 
-  SendMetric(kMetricBatteryDischargeRateWhileSuspendedName,
+  SendMetric(kBatteryDischargeRateWhileSuspendedName,
              static_cast<int>(round(discharge_rate_watts * 1000)),
-             kMetricBatteryDischargeRateWhileSuspendedMin,
-             kMetricBatteryDischargeRateWhileSuspendedMax,
-             kMetricDefaultBuckets);
+             kBatteryDischargeRateWhileSuspendedMin,
+             kBatteryDischargeRateWhileSuspendedMax,
+             kDefaultBuckets);
 }
 
 void MetricsCollector::IncrementNumOfSessionsPerChargeMetric() {
@@ -424,13 +423,14 @@ void MetricsCollector::GenerateNumOfSessionsPerChargeMetric() {
     return;
 
   sample = std::min(
-      sample, static_cast<int64_t>(kMetricNumOfSessionsPerChargeMax));
+      sample, static_cast<int64_t>(kNumOfSessionsPerChargeMax));
   prefs_->SetInt64(kNumSessionsOnCurrentChargePref, 0);
-  SendMetric(kMetricNumOfSessionsPerChargeName,
+  SendMetric(kNumOfSessionsPerChargeName,
              sample,
-             kMetricNumOfSessionsPerChargeMin,
-             kMetricNumOfSessionsPerChargeMax,
-             kMetricDefaultBuckets);
+             kNumOfSessionsPerChargeMin,
+             kNumOfSessionsPerChargeMax,
+             kDefaultBuckets);
 }
 
+}  // namespace metrics
 }  // namespace power_manager

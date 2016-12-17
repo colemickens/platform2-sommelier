@@ -27,6 +27,8 @@ namespace policy {
 class BacklightController;
 }
 
+namespace metrics {
+
 // Used by Daemon to report metrics by way of Chrome.
 //
 // This class handles the reporting of complex metrics (e.g. tracking the
@@ -132,9 +134,9 @@ class MetricsCollector {
   // stored value is greater then 0.
   void GenerateNumOfSessionsPerChargeMetric();
 
-  PrefsInterface* prefs_;
-  policy::BacklightController* display_backlight_controller_;
-  policy::BacklightController* keyboard_backlight_controller_;
+  PrefsInterface* prefs_ = nullptr;
+  policy::BacklightController* display_backlight_controller_ = nullptr;
+  policy::BacklightController* keyboard_backlight_controller_ = nullptr;
 
   Clock clock_;
 
@@ -142,7 +144,7 @@ class MetricsCollector {
   system::PowerStatus last_power_status_;
 
   // Current session state.
-  SessionState session_state_;
+  SessionState session_state_ = SessionState::STOPPED;
 
   // Time at which the current session (if any) started.
   base::TimeTicks session_start_time_;
@@ -171,18 +173,19 @@ class MetricsCollector {
   // suspends.  |time_before_suspend_| is intentionally base::Time rather
   // than base::TimeTicks because the latter doesn't increase while the
   // system is suspended.
-  double battery_energy_before_suspend_;
-  bool on_line_power_before_suspend_;
+  double battery_energy_before_suspend_ = 0.0;
+  bool on_line_power_before_suspend_ = false;
   base::Time time_before_suspend_;
 
   // Set by HandleResume() to indicate that
   // GenerateBatteryDischargeRateWhileSuspendedMetric() should send a
   // sample when it is next called.
-  bool report_battery_discharge_rate_while_suspended_;
+  bool report_battery_discharge_rate_while_suspended_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(MetricsCollector);
 };
 
+}  // namespace metrics
 }  // namespace power_manager
 
 #endif  // POWER_MANAGER_POWERD_METRICS_COLLECTOR_H_

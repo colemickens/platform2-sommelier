@@ -80,13 +80,14 @@ bool ExternalDisplay::RealDelegate::Init(const base::FilePath& i2c_path) {
         result = OpenResult::FAILURE_ENOENT;
         break;
     }
-    SendEnumMetric(kMetricExternalDisplayOpenResultName,
-                   static_cast<int>(result), kMetricExternalDisplayResultMax);
+    SendEnumMetric(metrics::kExternalDisplayOpenResultName,
+                   static_cast<int>(result),
+                   metrics::kExternalDisplayResultMax);
     return false;
   }
-  SendEnumMetric(kMetricExternalDisplayOpenResultName,
+  SendEnumMetric(metrics::kExternalDisplayOpenResultName,
                  static_cast<int>(OpenResult::SUCCESS),
-                 kMetricExternalDisplayResultMax);
+                 metrics::kExternalDisplayResultMax);
   return true;
 }
 
@@ -174,8 +175,9 @@ bool ExternalDisplay::RequestBrightness() {
   message.push_back(kDdcGetCommand);
   message.push_back(kDdcBrightnessIndex);
   const SendResult result = SendMessage(message);
-  SendEnumMetric(kMetricExternalBrightnessRequestResultName,
-                 static_cast<int>(result), kMetricExternalDisplayResultMax);
+  SendEnumMetric(metrics::kExternalBrightnessRequestResultName,
+                 static_cast<int>(result),
+                 metrics::kExternalDisplayResultMax);
   return result == SendResult::SUCCESS;
 }
 
@@ -183,8 +185,9 @@ bool ExternalDisplay::ReadBrightness() {
   std::vector<uint8_t> message(8);
   const ReceiveResult result = ReceiveMessage(&message);
   if (result != ReceiveResult::SUCCESS) {
-    SendEnumMetric(kMetricExternalBrightnessReadResultName,
-                   static_cast<int>(result), kMetricExternalDisplayResultMax);
+    SendEnumMetric(metrics::kExternalBrightnessReadResultName,
+                   static_cast<int>(result),
+                   metrics::kExternalDisplayResultMax);
     return false;
   }
 
@@ -194,26 +197,26 @@ bool ExternalDisplay::ReadBrightness() {
     LOG(WARNING) << "Ignoring brightness reply from " << delegate_->GetName()
                  << " with command " << ByteToHex(message[0]) << " (expected "
                  << ByteToHex(kDdcGetReplyCommand) << ")";
-    SendEnumMetric(kMetricExternalBrightnessReadResultName,
+    SendEnumMetric(metrics::kExternalBrightnessReadResultName,
                    static_cast<int>(ReceiveResult::BAD_COMMAND),
-                   kMetricExternalDisplayResultMax);
+                   metrics::kExternalDisplayResultMax);
     return false;
   }
   if (message[1] != 0x0) {
     LOG(WARNING) << "Ignoring brightness reply from " << delegate_->GetName()
                  << " with non-zero result code " << ByteToHex(message[1]);
-    SendEnumMetric(kMetricExternalBrightnessReadResultName,
+    SendEnumMetric(metrics::kExternalBrightnessReadResultName,
                    static_cast<int>(ReceiveResult::BAD_RESULT),
-                   kMetricExternalDisplayResultMax);
+                   metrics::kExternalDisplayResultMax);
     return false;
   }
   if (message[2] != kDdcBrightnessIndex) {
     LOG(WARNING) << "Ignoring brightness reply from " << delegate_->GetName()
                  << " with feature index " << ByteToHex(message[2])
                  << " (expected " << ByteToHex(kDdcBrightnessIndex) << ")";
-    SendEnumMetric(kMetricExternalBrightnessReadResultName,
+    SendEnumMetric(metrics::kExternalBrightnessReadResultName,
                    static_cast<int>(ReceiveResult::BAD_INDEX),
-                   kMetricExternalDisplayResultMax);
+                   metrics::kExternalDisplayResultMax);
     return false;
   }
   // Don't bother checking the "VCP type code" in the fourth byte.
@@ -223,9 +226,9 @@ bool ExternalDisplay::ReadBrightness() {
   if (max_level == 0) {
     LOG(WARNING) << "Received maximum brightness of 0 from "
                  << delegate_->GetName();
-    SendEnumMetric(kMetricExternalBrightnessReadResultName,
+    SendEnumMetric(metrics::kExternalBrightnessReadResultName,
                    static_cast<int>(ReceiveResult::ZERO_MAX_VALUE),
-                   kMetricExternalDisplayResultMax);
+                   metrics::kExternalDisplayResultMax);
     return false;
   }
 
@@ -245,9 +248,9 @@ bool ExternalDisplay::ReadBrightness() {
           << " (" << current_brightness_percent_ << "%) and maximum brightness "
           << max_level << " from " << delegate_->GetName();
   last_brightness_update_time_ = clock_.GetCurrentTime();
-  SendEnumMetric(kMetricExternalBrightnessReadResultName,
+  SendEnumMetric(metrics::kExternalBrightnessReadResultName,
                  static_cast<int>(ReceiveResult::SUCCESS),
-                 kMetricExternalDisplayResultMax);
+                 metrics::kExternalDisplayResultMax);
   return true;
 }
 
@@ -274,16 +277,17 @@ bool ExternalDisplay::WriteBrightness() {
   message.push_back(new_level & 0xff);  // Low byte.
   const SendResult result = SendMessage(message);
   if (result != SendResult::SUCCESS) {
-    SendEnumMetric(kMetricExternalBrightnessWriteResultName,
-                   static_cast<int>(result), kMetricExternalDisplayResultMax);
+    SendEnumMetric(metrics::kExternalBrightnessWriteResultName,
+                   static_cast<int>(result),
+                   metrics::kExternalDisplayResultMax);
     return false;
   }
 
   current_brightness_percent_ = new_percent;
   last_brightness_update_time_ = clock_.GetCurrentTime();
-  SendEnumMetric(kMetricExternalBrightnessWriteResultName,
+  SendEnumMetric(metrics::kExternalBrightnessWriteResultName,
                  static_cast<int>(SendResult::SUCCESS),
-                 kMetricExternalDisplayResultMax);
+                 metrics::kExternalDisplayResultMax);
   return true;
 }
 

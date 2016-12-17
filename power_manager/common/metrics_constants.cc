@@ -5,115 +5,110 @@
 #include "power_manager/common/metrics_constants.h"
 
 namespace power_manager {
+namespace metrics {
 
-const char kMetricACSuffix[] = "OnAC";
-const char kMetricBatterySuffix[] = "OnBattery";
+const char kAcSuffix[] = "OnAC";
+const char kBatterySuffix[] = "OnBattery";
 
-const int kMetricMaxPercent = 101;
-const int kMetricDefaultBuckets = 50;
+const int kMaxPercent = 101;
+const int kDefaultBuckets = 50;
 
-const char kMetricSuspendAttemptsBeforeSuccessName[] =
+const char kSuspendAttemptsBeforeSuccessName[] =
     "Power.SuspendAttemptsBeforeSuccess";
-const char kMetricSuspendAttemptsBeforeCancelName[] =
+const char kSuspendAttemptsBeforeCancelName[] =
     "Power.SuspendAttemptsBeforeCancel";
-const int kMetricSuspendAttemptsMin = 1;
-const int kMetricSuspendAttemptsMax = 20;
-const int kMetricSuspendAttemptsBuckets =
-    kMetricSuspendAttemptsMax - kMetricSuspendAttemptsMin + 1;
+const int kSuspendAttemptsMin = 1;
+const int kSuspendAttemptsMax = 20;
+const int kSuspendAttemptsBuckets =
+    kSuspendAttemptsMax - kSuspendAttemptsMin + 1;
 
-const char kMetricShutdownReasonName[] = "Power.ShutdownReason";
-const int kMetricShutdownReasonMax = 10;
+const char kShutdownReasonName[] = "Power.ShutdownReason";
+const int kShutdownReasonMax = 10;
 
-const char kMetricBacklightLevelName[] = "Power.BacklightLevel";
-const char kMetricKeyboardBacklightLevelName[] = "Power.KeyboardBacklightLevel";
-const int kMetricBacklightLevelIntervalMs = 30000;
+const char kBacklightLevelName[] = "Power.BacklightLevel";
+const char kKeyboardBacklightLevelName[] = "Power.KeyboardBacklightLevel";
+const int kBacklightLevelIntervalMs = 30000;
 
-const char kMetricIdleAfterScreenOffName[] = "Power.IdleTimeAfterScreenOff";
-const int kMetricIdleAfterScreenOffMin = 100;
-const int kMetricIdleAfterScreenOffMax = 10 * 60 * 1000;
+const char kIdleAfterScreenOffName[] = "Power.IdleTimeAfterScreenOff";
+const int kIdleAfterScreenOffMin = 100;
+const int kIdleAfterScreenOffMax = 10 * 60 * 1000;
 
-const char kMetricIdleName[] = "Power.IdleTime";
-const int kMetricIdleMin = 60 * 1000;
-const int kMetricIdleMax = 60 * 60 * 1000;
+const char kIdleName[] = "Power.IdleTime";
+const int kIdleMin = 60 * 1000;
+const int kIdleMax = 60 * 60 * 1000;
 
-const char kMetricIdleAfterDimName[] = "Power.IdleTimeAfterDim";
-const int kMetricIdleAfterDimMin = 100;
-const int kMetricIdleAfterDimMax = 10 * 60 * 1000;
+const char kIdleAfterDimName[] = "Power.IdleTimeAfterDim";
+const int kIdleAfterDimMin = 100;
+const int kIdleAfterDimMax = 10 * 60 * 1000;
 
-const char kMetricBatteryChargeHealthName[] =
-    "Power.BatteryChargeHealth";  // %
+const char kBatteryChargeHealthName[] = "Power.BatteryChargeHealth";  // %
 // >100% to account for new batteries which often charge above full
-const int kMetricBatteryChargeHealthMax = 111;
+const int kBatteryChargeHealthMax = 111;
 
-const char kMetricBatteryDischargeRateName[] =
-    "Power.BatteryDischargeRate";  // mW
-const int kMetricBatteryDischargeRateMin = 1000;
-const int kMetricBatteryDischargeRateMax = 30000;
-const int kMetricBatteryDischargeRateIntervalSec = 30;
+const char kBatteryDischargeRateName[] = "Power.BatteryDischargeRate";  // mW
+const int kBatteryDischargeRateMin = 1000;
+const int kBatteryDischargeRateMax = 30000;
+const int kBatteryDischargeRateIntervalSec = 30;
 
-const char kMetricBatteryDischargeRateWhileSuspendedName[] =
+const char kBatteryDischargeRateWhileSuspendedName[] =
     "Power.BatteryDischargeRateWhileSuspended";  // mW
-const int kMetricBatteryDischargeRateWhileSuspendedMin = 1;
-const int kMetricBatteryDischargeRateWhileSuspendedMax = 30000;
-const int kMetricBatteryDischargeRateWhileSuspendedMinSuspendSec = 60;
+const int kBatteryDischargeRateWhileSuspendedMin = 1;
+const int kBatteryDischargeRateWhileSuspendedMax = 30000;
+const int kBatteryDischargeRateWhileSuspendedMinSuspendSec = 60;
 
-const char kMetricBatteryRemainingWhenChargeStartsName[] =
+const char kBatteryRemainingWhenChargeStartsName[] =
     "Power.BatteryRemainingWhenChargeStarts";  // %
-const char kMetricBatteryRemainingAtEndOfSessionName[] =
+const char kBatteryRemainingAtEndOfSessionName[] =
     "Power.BatteryRemainingAtEndOfSession";  // %
-const char kMetricBatteryRemainingAtStartOfSessionName[] =
+const char kBatteryRemainingAtStartOfSessionName[] =
     "Power.BatteryRemainingAtStartOfSession";  // %
 
-const char kMetricNumberOfAlsAdjustmentsPerSessionName[] =
+const char kNumberOfAlsAdjustmentsPerSessionName[] =
     "Power.NumberOfAlsAdjustmentsPerSession";
-const int kMetricNumberOfAlsAdjustmentsPerSessionMin = 1;
-const int kMetricNumberOfAlsAdjustmentsPerSessionMax = 10000;
+const int kNumberOfAlsAdjustmentsPerSessionMin = 1;
+const int kNumberOfAlsAdjustmentsPerSessionMax = 10000;
 
-const char kMetricUserBrightnessAdjustmentsPerSessionName[] =
+const char kUserBrightnessAdjustmentsPerSessionName[] =
     "Power.UserBrightnessAdjustmentsPerSession";
-const int kMetricUserBrightnessAdjustmentsPerSessionMin = 1;
-const int kMetricUserBrightnessAdjustmentsPerSessionMax = 10000;
+const int kUserBrightnessAdjustmentsPerSessionMin = 1;
+const int kUserBrightnessAdjustmentsPerSessionMax = 10000;
 
-const char kMetricLengthOfSessionName[] =
-    "Power.LengthOfSession";
-const int kMetricLengthOfSessionMin = 1;
-const int kMetricLengthOfSessionMax = 60 * 60 * 12;
+const char kLengthOfSessionName[] = "Power.LengthOfSession";
+const int kLengthOfSessionMin = 1;
+const int kLengthOfSessionMax = 60 * 60 * 12;
 
-const char kMetricNumOfSessionsPerChargeName[] =
-    "Power.NumberOfSessionsPerCharge";
-const int kMetricNumOfSessionsPerChargeMin = 1;
-const int kMetricNumOfSessionsPerChargeMax = 10000;
+const char kNumOfSessionsPerChargeName[] = "Power.NumberOfSessionsPerCharge";
+const int kNumOfSessionsPerChargeMin = 1;
+const int kNumOfSessionsPerChargeMax = 10000;
 
-const char kMetricPowerButtonDownTimeName[] =
-    "Power.PowerButtonDownTime";  // ms
-const int kMetricPowerButtonDownTimeMin = 1;
-const int kMetricPowerButtonDownTimeMax = 8 * 1000;
+const char kPowerButtonDownTimeName[] = "Power.PowerButtonDownTime";  // ms
+const int kPowerButtonDownTimeMin = 1;
+const int kPowerButtonDownTimeMax = 8 * 1000;
 
-const char kMetricPowerButtonAcknowledgmentDelayName[] =
+const char kPowerButtonAcknowledgmentDelayName[] =
     "Power.PowerButtonAcknowledgmentDelay";  // ms
-const int kMetricPowerButtonAcknowledgmentDelayMin = 1;
-const int kMetricPowerButtonAcknowledgmentDelayMax = 8 * 1000;
+const int kPowerButtonAcknowledgmentDelayMin = 1;
+const int kPowerButtonAcknowledgmentDelayMax = 8 * 1000;
 
-const char kMetricBatteryInfoSampleName[] = "Power.BatteryInfoSample";
+const char kBatteryInfoSampleName[] = "Power.BatteryInfoSample";
 
-const char kMetricExternalBrightnessRequestResultName[] =
+const char kExternalBrightnessRequestResultName[] =
     "Power.ExternalBrightnessRequestResult";
-const char kMetricExternalBrightnessReadResultName[] =
+const char kExternalBrightnessReadResultName[] =
     "Power.ExternalBrightnessReadResult";
-const char kMetricExternalBrightnessWriteResultName[] =
+const char kExternalBrightnessWriteResultName[] =
     "Power.ExternalBrightnessWriteResult";
-const char kMetricExternalDisplayOpenResultName[] =
+const char kExternalDisplayOpenResultName[] =
     "Power.ExternalDisplayOpenResult";
-const int kMetricExternalDisplayResultMax = 10;
+const int kExternalDisplayResultMax = 10;
 
-const char kMetricDarkResumeWakeupsPerHourName[] =
-    "Power.DarkResumeWakeupsPerHour";
-const int kMetricDarkResumeWakeupsPerHourMin = 0;
-const int kMetricDarkResumeWakeupsPerHourMax = 60 * 60;
+const char kDarkResumeWakeupsPerHourName[] = "Power.DarkResumeWakeupsPerHour";
+const int kDarkResumeWakeupsPerHourMin = 0;
+const int kDarkResumeWakeupsPerHourMax = 60 * 60;
 
-const char kMetricDarkResumeWakeDurationMsName[] =
-    "Power.DarkResumeWakeDurationMs";
-const int kMetricDarkResumeWakeDurationMsMin = 0;
-const int kMetricDarkResumeWakeDurationMsMax = 10 * 60 * 1000;
+const char kDarkResumeWakeDurationMsName[] = "Power.DarkResumeWakeDurationMs";
+const int kDarkResumeWakeDurationMsMin = 0;
+const int kDarkResumeWakeDurationMsMax = 10 * 60 * 1000;
 
+}  // namespace metrics
 }  // namespace power_manager

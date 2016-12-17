@@ -33,11 +33,14 @@ class ObjectProxy;
 namespace power_manager {
 
 class DaemonDelegate;
-class MetricsCollector;
 class MetricsSenderInterface;
 class PeriodicActivityLogger;
 class PrefsInterface;
 class StartStopActivityLogger;
+
+namespace metrics {
+class MetricsCollector;
+}  // namespace metrics
 
 namespace policy {
 class BacklightController;
@@ -314,7 +317,7 @@ class Daemon : public policy::BacklightControllerObserver,
   std::unique_ptr<system::DarkResumeInterface> dark_resume_;
   std::unique_ptr<policy::Suspender> suspender_;
 
-  std::unique_ptr<MetricsCollector> metrics_collector_;
+  std::unique_ptr<metrics::MetricsCollector> metrics_collector_;
 
   // Weak pointers to |display_backlight_controller_| and
   // |keyboard_backlight_controller_|, if non-null.
