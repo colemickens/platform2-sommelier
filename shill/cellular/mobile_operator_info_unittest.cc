@@ -86,17 +86,18 @@ enum EventCheckingPolicy {
   kEventCheckingPolicyNonStrict
 };
 
-}  // namespace
+FilePath CreateTempDatabase(const unsigned char database_data[],
+                            size_t num_elems) {
+  FilePath tmp_db_path;
 
-static void GenericAddDatabase(const unsigned char database_data[],
-                               size_t num_elems,
-                               FilePath& tmp_db_path) {
   CHECK(base::CreateTemporaryFile(&tmp_db_path));
+  base::WriteFile(
+      tmp_db_path, reinterpret_cast<const char*>(database_data), num_elems);
 
-  base::WriteFile(tmp_db_path,
-                  reinterpret_cast<const char*>(database_data),
-                  num_elems);
+  return tmp_db_path;
 }
+
+}  // namespace
 
 class MockMobileOperatorInfoObserver : public MobileOperatorInfo::Observer {
  public:
@@ -120,8 +121,7 @@ class MobileOperatorInfoInitTest : public Test {
 
  protected:
   void AddDatabase(const unsigned char database_data[], size_t num_elems) {
-    FilePath tmp_db_path;
-    GenericAddDatabase(database_data, num_elems, tmp_db_path);
+    FilePath tmp_db_path = CreateTempDatabase(database_data, num_elems);
     tmp_db_paths_.push_back(tmp_db_path);
     operator_info_->AddDatabasePath(tmp_db_paths_.back());
   }
@@ -1678,13 +1678,12 @@ class MobileOperatorInfoOverrideTest
                          size_t override_num_elems,
                          const unsigned char db_data[],
                          size_t num_elems) {
-    FilePath override_tmp_path;
-    GenericAddDatabase(override_db_data, override_num_elems, override_tmp_path);
+    FilePath override_tmp_path =
+        CreateTempDatabase(override_db_data, override_num_elems);
     tmp_db_paths_.push_back(override_tmp_path);
     this->override_db_path_ = override_tmp_path.MaybeAsASCII();
 
-    FilePath tmp_path;
-    GenericAddDatabase(db_data, num_elems, tmp_path);
+    FilePath tmp_path = CreateTempDatabase(db_data, num_elems);
     tmp_db_paths_.push_back(tmp_path);
     this->db_path_ = tmp_path.MaybeAsASCII();
   }
