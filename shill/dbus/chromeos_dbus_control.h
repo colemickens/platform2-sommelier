@@ -31,7 +31,7 @@ class Manager;
 
 class ChromeosDBusControl : public ControlInterface {
  public:
-  ChromeosDBusControl(EventDispatcher* dispatcher);
+  explicit ChromeosDBusControl(EventDispatcher* dispatcher);
   ~ChromeosDBusControl() override;
 
   void RegisterManagerObject(
