@@ -288,7 +288,7 @@ void ChromeosPowerManagerProxy::SuspendDone(
     LOG(ERROR) << "Failed to parse SuspendDone signal.";
     return;
   }
-  CHECK(proto.suspend_duration() >= 0);
+  CHECK_GE(proto.suspend_duration(), 0);
   LOG(INFO) << "Suspend: ID " << proto.suspend_id()
             << " duration " << proto.suspend_duration();
   delegate_->OnSuspendDone(proto.suspend_id(), proto.suspend_duration());
