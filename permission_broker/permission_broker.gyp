@@ -1,5 +1,8 @@
 {
   'target_defaults': {
+    'defines': [
+      'USE_CONTAINERS=<(USE_containers)',
+    ],
     'variables': {
       'deps': [
         'dbus-1',
@@ -53,6 +56,13 @@
         'udev_scopers.cc',
         'usb_subsystem_udev_rule.cc',
         'usb_driver_tracker.cc',
+      ],
+      'conditions': [
+        ['USE_containers == 1', {
+          'dependencies': [
+            '../container_utils/container_utils.gyp:libdevice_jail',
+          ],
+        }],
       ],
     },
     {

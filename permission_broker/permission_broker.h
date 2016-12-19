@@ -7,6 +7,7 @@
 
 #include <dbus/dbus.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -15,6 +16,7 @@
 #include <base/sequenced_task_runner.h>
 #include <brillo/dbus/exported_object_manager.h>
 
+#include "container_utils/device_jail/device_jail_server.h"
 #include "firewalld/dbus-proxies.h"
 #include "permission_broker/dbus_adaptors/org.chromium.PermissionBroker.h"
 #include "permission_broker/port_tracker.h"
@@ -67,6 +69,7 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
   // on the path to the one specified numerically by the 'access_group' flag.
   virtual bool GrantAccess(const std::string& path);
 
+  std::unique_ptr<device_jail::DeviceJailServer> jail_server_;
   RuleEngine rule_engine_;
   brillo::dbus_utils::DBusObject dbus_object_;
   gid_t access_group_;

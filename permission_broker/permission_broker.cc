@@ -12,9 +12,11 @@
 #include <unistd.h>
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/posix/eintr_wrapper.h>
 #include <brillo/userdb_utils.h>
 #include <chromeos/dbus/service_constants.h>
@@ -59,6 +61,33 @@ const char kOpenFailedError[] = "open_failed";
 
 namespace permission_broker {
 
+#if USE_CONTAINERS
+class JailRequestHandler : public device_jail::DeviceJailServer::Delegate {
+ public:
+  explicit JailRequestHandler(RuleEngine* rule_engine)
+    : rule_engine_(rule_engine) {}
+
+  jail_request_result HandleRequest(const std::string& path) override {
+    switch (rule_engine_->ProcessPath(path)) {
+    case Rule::ALLOW:
+      return JAIL_REQUEST_ALLOW;
+    case Rule::ALLOW_WITH_LOCKDOWN:
+      return JAIL_REQUEST_ALLOW_WITH_LOCKDOWN;
+    case Rule::ALLOW_WITH_DETACH:
+      return JAIL_REQUEST_ALLOW_WITH_DETACH;
+    default:
+      LOG(WARNING) << "Unknown rule engine response";
+      // fallthrough
+    case Rule::DENY:
+      return JAIL_REQUEST_DENY;
+    }
+  }
+
+ private:
+  RuleEngine* rule_engine_;  // weak
+};
+#endif
+
 PermissionBroker::PermissionBroker(
     brillo::dbus_utils::ExportedObjectManager* object_manager,
     org::chromium::FirewalldProxyInterface* firewalld,
@@ -89,6 +118,15 @@ PermissionBroker::PermissionBroker(
   rule_engine_.AddRule(new DenyGroupTtyDeviceRule("uucp"));
   rule_engine_.AddRule(new DenyClaimedHidrawDeviceRule());
   rule_engine_.AddRule(new DenyUnsafeHidrawDeviceRule());
+
+#if USE_CONTAINERS
+  // Try to serve device_jail requests. If we can't, it's not a huge deal.
+  jail_server_ = device_jail::DeviceJailServer::CreateAndListen(
+      base::MakeUnique<JailRequestHandler>(&rule_engine_),
+      base::MessageLoopForIO::current());
+  if (!jail_server_)
+    LOG(WARNING) << "Jail server failed to start";
+#endif
 }
 
 PermissionBroker::~PermissionBroker() {}

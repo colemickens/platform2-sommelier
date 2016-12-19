@@ -30,6 +30,7 @@
     'USE_buffet%': 0,
     'USE_cellular%': 0,
     'USE_chromeos_dbus%': 0,
+    'USE_containers%': 0,
     'USE_cros_host%': 0,
     'USE_device_mapper%': 0,
     'USE_dhcpv6%': 0,
