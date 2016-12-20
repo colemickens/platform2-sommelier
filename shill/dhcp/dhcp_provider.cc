@@ -89,10 +89,8 @@ void DHCPProvider::Init(ControlInterface* control_interface,
 
   // Kill the dhcpcd processes accidentally left by previous run.
   base::NamedProcessIterator iter(kDHCPCDExecutableName, NULL);
-  while (const base::ProcessEntry* entry = iter.NextProcessEntry()) {
-    base::Process process = base::Process::Open(entry->pid());
-    kill(process.Pid(), SIGKILL);
-  }
+  while (const base::ProcessEntry* entry = iter.NextProcessEntry())
+    kill(entry->pid(), SIGKILL);
 }
 
 void DHCPProvider::Stop() {
