@@ -86,8 +86,8 @@ void ModemManager::RemoveModem(const string& path) {
 }
 
 void ModemManager::OnDeviceInfoAvailable(const string& link_name) {
-  for (Modems::const_iterator it = modems_.begin(); it != modems_.end(); ++it) {
-    it->second->OnDeviceInfoAvailable(link_name);
+  for (const auto& link_name_modem_pair : modems_) {
+    link_name_modem_pair.second->OnDeviceInfoAvailable(link_name);
   }
 }
 
@@ -126,10 +126,8 @@ void ModemManagerClassic::Connect() {
   ModemManager::Connect();
   // TODO(petkov): Switch to asynchronous calls (crbug.com/200687).
   vector<string> devices = proxy_->EnumerateDevices();
-
-  for (vector<string>::const_iterator it = devices.begin();
-       it != devices.end(); ++it) {
-    AddModemClassic(*it);
+  for (const auto& device : devices) {
+    AddModemClassic(device);
   }
 }
 

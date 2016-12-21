@@ -136,9 +136,9 @@ void ModemManager1::OnGetManagedObjectsReply(
     const ObjectsWithProperties& objects,
     const Error& error) {
   if (error.IsSuccess()) {
-    ObjectsWithProperties::const_iterator m;
-    for (m = objects.begin(); m != objects.end(); ++m) {
-      OnInterfacesAddedSignal(m->first, m->second);
+    for (const auto& object_properties_pair : objects) {
+      OnInterfacesAddedSignal(object_properties_pair.first,
+                              object_properties_pair.second);
     }
   }
 }

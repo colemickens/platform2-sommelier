@@ -1431,7 +1431,7 @@ TEST_F(CellularCapabilityUniversalMainTest, ConnectApns) {
 
 // Validates GetTypeString and AccessTechnologyToTechnologyFamily
 TEST_F(CellularCapabilityUniversalMainTest, GetTypeString) {
-  const int gsm_technologies[] = {
+  static const uint32_t kGsmTechnologies[] = {
     MM_MODEM_ACCESS_TECHNOLOGY_LTE,
     MM_MODEM_ACCESS_TECHNOLOGY_HSPA_PLUS,
     MM_MODEM_ACCESS_TECHNOLOGY_HSPA,
@@ -1450,11 +1450,11 @@ TEST_F(CellularCapabilityUniversalMainTest, GetTypeString) {
     MM_MODEM_ACCESS_TECHNOLOGY_GSM | MM_MODEM_ACCESS_TECHNOLOGY_EVDOB,
     MM_MODEM_ACCESS_TECHNOLOGY_GSM | MM_MODEM_ACCESS_TECHNOLOGY_1XRTT,
   };
-  for (size_t i = 0; i < arraysize(gsm_technologies); ++i) {
-    capability_->access_technologies_ = gsm_technologies[i];
+  for (auto gsm_technology : kGsmTechnologies) {
+    capability_->access_technologies_ = gsm_technology;
     ASSERT_EQ(capability_->GetTypeString(), kTechnologyFamilyGsm);
   }
-  const int cdma_technologies[] = {
+  static const uint32_t kCdmaTechnologies[] = {
     MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
     MM_MODEM_ACCESS_TECHNOLOGY_EVDOA,
     MM_MODEM_ACCESS_TECHNOLOGY_EVDOA | MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
@@ -1462,8 +1462,8 @@ TEST_F(CellularCapabilityUniversalMainTest, GetTypeString) {
     MM_MODEM_ACCESS_TECHNOLOGY_EVDOB | MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
     MM_MODEM_ACCESS_TECHNOLOGY_1XRTT,
   };
-  for (size_t i = 0; i < arraysize(cdma_technologies); ++i) {
-    capability_->access_technologies_ = cdma_technologies[i];
+  for (auto cdma_technology : kCdmaTechnologies) {
+    capability_->access_technologies_ = cdma_technology;
     ASSERT_EQ(capability_->GetTypeString(), kTechnologyFamilyCdma);
   }
   capability_->access_technologies_ = MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN;

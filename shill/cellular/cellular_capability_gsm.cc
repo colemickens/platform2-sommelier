@@ -557,8 +557,10 @@ void CellularCapabilityGSM::OnScanReply(
 
 Stringmap CellularCapabilityGSM::ParseScanResult(const GSMScanResult& result) {
   Stringmap parsed;
-  for (GSMScanResult::const_iterator it = result.begin();
-       it != result.end(); ++it) {
+  for (const auto& property_key_value_pair : result) {
+    const string& property_key = property_key_value_pair.first;
+    const string& property_value = property_key_value_pair.second;
+
     // TODO(petkov): Define these in system_api/service_constants.h. The
     // numerical values are taken from 3GPP TS 27.007 Section 7.3.
     static const char* const kStatusString[] = {
@@ -576,34 +578,34 @@ Stringmap CellularCapabilityGSM::ParseScanResult(const GSMScanResult& result) {
       "HSUPA",
       kNetworkTechnologyHspa,
     };
-    SLOG(this, 2) << "Network property: " << it->first << " = "
-                  << it->second;
-    if (it->first == kNetworkPropertyStatus) {
+    SLOG(this, 2) << "Network property: " << property_key << " = "
+                  << property_value;
+    if (property_key == kNetworkPropertyStatus) {
       int status = 0;
-      if (base::StringToInt(it->second, &status) &&
+      if (base::StringToInt(property_value, &status) &&
           status >= 0 &&
           status < static_cast<int>(arraysize(kStatusString))) {
         parsed[kStatusProperty] = kStatusString[status];
       } else {
-        LOG(ERROR) << "Unexpected status value: " << it->second;
+        LOG(ERROR) << "Unexpected status value: " << property_value;
       }
-    } else if (it->first == kNetworkPropertyID) {
-      parsed[kNetworkIdProperty] = it->second;
-    } else if (it->first == kNetworkPropertyLongName) {
-      parsed[kLongNameProperty] = it->second;
-    } else if (it->first == kNetworkPropertyShortName) {
-      parsed[kShortNameProperty] = it->second;
-    } else if (it->first == kNetworkPropertyAccessTechnology) {
+    } else if (property_key == kNetworkPropertyID) {
+      parsed[kNetworkIdProperty] = property_value;
+    } else if (property_key == kNetworkPropertyLongName) {
+      parsed[kLongNameProperty] = property_value;
+    } else if (property_key == kNetworkPropertyShortName) {
+      parsed[kShortNameProperty] = property_value;
+    } else if (property_key == kNetworkPropertyAccessTechnology) {
       int tech = 0;
-      if (base::StringToInt(it->second, &tech) &&
+      if (base::StringToInt(property_value, &tech) &&
           tech >= 0 &&
           tech < static_cast<int>(arraysize(kTechnologyString))) {
         parsed[kTechnologyProperty] = kTechnologyString[tech];
       } else {
-        LOG(ERROR) << "Unexpected technology value: " << it->second;
+        LOG(ERROR) << "Unexpected technology value: " << property_value;
       }
     } else {
-      LOG(WARNING) << "Unknown network property ignored: " << it->first;
+      LOG(WARNING) << "Unknown network property ignored: " << property_key;
     }
   }
   // If the long name is not available but the network ID is, look up the long
