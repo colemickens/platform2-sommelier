@@ -79,10 +79,9 @@ string CertificateFile::ExtractHexData(const std::string& pem_data) {
   vector<string> input_lines = SplitString(
       pem_data, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   vector<string> output_lines;
-  for (vector<string>::const_iterator it = input_lines.begin();
-       it != input_lines.end(); ++it) {
+  for (const auto& input_line : input_lines) {
     string line;
-    base::TrimWhitespaceASCII(*it, base::TRIM_ALL, &line);
+    base::TrimWhitespaceASCII(input_line, base::TRIM_ALL, &line);
     if (base::StartsWith(line, kPEMHeader,
                          base::CompareCase::INSENSITIVE_ASCII)) {
       if (found_header) {

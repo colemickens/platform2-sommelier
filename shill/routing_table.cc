@@ -506,15 +506,15 @@ void RoutingTable::ReplaceMetric(uint32_t interface_index,
 }
 
 bool RoutingTable::FlushCache() {
-  static const char* const kPaths[2] = {kRouteFlushPath4, kRouteFlushPath6};
+  static const char* const kPaths[] = {kRouteFlushPath4, kRouteFlushPath6};
   bool ret = true;
 
   SLOG(this, 2) << __func__;
 
-  for (size_t i = 0; i < arraysize(kPaths); ++i) {
-    if (base::WriteFile(FilePath(kPaths[i]), "-1", 2) != 2) {
+  for (auto path : kPaths) {
+    if (base::WriteFile(FilePath(path), "-1", 2) != 2) {
       LOG(ERROR) << base::StringPrintf("Cannot write to route flush file %s",
-                                       kPaths[i]);
+                                       path);
       ret = false;
     }
   }

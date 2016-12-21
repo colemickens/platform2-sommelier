@@ -262,12 +262,10 @@ TEST_F(PropertyStoreTest, ClearBoolProperty) {
   // to ensure that Clear actually resets the property based on
   // the property's initial value (rather than the language's
   // default value for the type).
-  static const bool kDefaults[] = {true, false};
-  for (size_t i = 0; i < arraysize(kDefaults); ++i) {
+  for (bool default_value : {true, false}) {
     PropertyStore store;
     Error error;
 
-    const bool default_value = kDefaults[i];
     bool flag = default_value;
     store.RegisterBool("some bool", &flag);
 

@@ -353,9 +353,8 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
 
   string driver_name(driver_path.BaseName().value());
   // See if driver for this interface is in a list of known modem driver names.
-  for (size_t modem_idx = 0; modem_idx < arraysize(kModemDrivers);
-       ++modem_idx) {
-    if (driver_name == kModemDrivers[modem_idx]) {
+  for (auto modem_driver : kModemDrivers) {
+    if (driver_name == modem_driver) {
       SLOG(this, 2)
           << StringPrintf("%s: device %s is matched with modem driver %s",
                           __func__, iface_name.c_str(), driver_name.c_str());

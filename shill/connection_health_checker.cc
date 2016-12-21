@@ -113,8 +113,7 @@ ConnectionHealthChecker::ConnectionHealthChecker(
       num_congested_queue_detected_(0),
       num_successful_sends_(0),
       tcp_state_update_wait_milliseconds_(kTCPStateUpdateWaitMilliseconds) {
-  for (size_t i = 0; i < arraysize(kDefaultRemoteIPPool); ++i) {
-    const char* ip_string = kDefaultRemoteIPPool[i];
+  for (auto ip_string : kDefaultRemoteIPPool) {
     IPAddress ip(IPAddress::kFamilyIPv4);
     ip.SetAddressFromString(ip_string);
     remote_ips_->AddUnique(ip);
@@ -418,11 +417,7 @@ bool ConnectionHealthChecker::GetSocketInfo(int sock_fd,
     return false;
   }
 
-  for (vector<SocketInfo>::const_iterator info_list_it = info_list.begin();
-       info_list_it != info_list.end();
-       ++info_list_it) {
-    const SocketInfo& cur_sock_info = *info_list_it;
-
+  for (const auto& cur_sock_info : info_list) {
     SLOG(connection_.get(), 4)
         << "Testing against IP = "
         << cur_sock_info.local_ip_address().ToString()

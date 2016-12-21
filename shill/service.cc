@@ -1121,10 +1121,10 @@ bool Service::Compare(Manager* manager,
   // user-specified.  These heuristics should be richer (contain
   // historical information, for example) and be subject to user
   // customization.
-  for (vector<Technology::Identifier>::const_iterator it = tech_order.begin();
-       it != tech_order.end();
-       ++it) {
-    if (DecideBetween(a->technology() == *it, b->technology() == *it, &ret)) {
+  for (auto technology : tech_order) {
+    if (DecideBetween(a->technology() == technology,
+                      b->technology() == technology,
+                      &ret)) {
       *reason = kServiceSortTechnology;
       return ret;
     }

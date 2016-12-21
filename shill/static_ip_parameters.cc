@@ -149,8 +149,7 @@ void StaticIPParameters::PlumbPropertyStore(PropertyStore* store) {
 
 void StaticIPParameters::Load(
     StoreInterface* storage, const string& storage_id) {
-  for (size_t i = 0; i < arraysize(kProperties); ++i) {
-    const Property& property = kProperties[i];
+  for (const auto& property : kProperties) {
     const string name(string(kConfigKeyPrefix) + property.name);
     switch (property.type) {
       case Property::kTypeInt32:
@@ -196,8 +195,7 @@ void StaticIPParameters::Load(
 
 void StaticIPParameters::Save(
     StoreInterface* storage, const string& storage_id) {
-  for (size_t i = 0; i < arraysize(kProperties); ++i) {
-    const Property& property = kProperties[i];
+  for (const auto& property : kProperties) {
     const string name(string(kConfigKeyPrefix) + property.name);
     bool property_exists = false;
     switch (property.type) {

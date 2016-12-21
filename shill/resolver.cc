@@ -62,19 +62,16 @@ bool Resolver::SetDNSFromLists(const std::vector<std::string>& dns_servers,
   }
 
   vector<string> lines;
-  vector<string>::const_iterator iter;
-  for (iter = dns_servers.begin();
-       iter != dns_servers.end(); ++iter) {
-    lines.push_back("nameserver " + *iter);
+  for (const auto& server : dns_servers) {
+    lines.push_back("nameserver " + server);
   }
 
   vector<string> filtered_domain_search;
-  for (iter = domain_search.begin();
-       iter != domain_search.end(); ++iter) {
+  for (const auto& domain : domain_search) {
     if (std::find(ignored_search_list_.begin(),
                   ignored_search_list_.end(),
-                  *iter) == ignored_search_list_.end()) {
-      filtered_domain_search.push_back(*iter);
+                  domain) == ignored_search_list_.end()) {
+      filtered_domain_search.push_back(domain);
     }
   }
 

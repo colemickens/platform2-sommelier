@@ -455,12 +455,11 @@ bool Connection::PinPendingRoutes(int interface_index,
                                   RoutingTableEntry entry) {
   // The variable entry is locally modified, hence is passed by value in the
   // second argument above.
-  for (auto excluded_ip = excluded_ips_cidr_.begin();
-       excluded_ip != excluded_ips_cidr_.end(); ++excluded_ip) {
-    if (!entry.dst.SetAddressAndPrefixFromString(*excluded_ip) ||
+  for (const auto& excluded_ip : excluded_ips_cidr_) {
+    if (!entry.dst.SetAddressAndPrefixFromString(excluded_ip) ||
         !entry.dst.IsValid() ||
         !routing_table_->AddRoute(interface_index, entry)) {
-      LOG(ERROR) << "Unable to setup route for " << *excluded_ip << ".";
+      LOG(ERROR) << "Unable to setup route for " << excluded_ip << ".";
     }
   }
 

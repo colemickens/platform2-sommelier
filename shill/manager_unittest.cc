@@ -3930,28 +3930,26 @@ TEST_F(ManagerTest, EnumerateServices) {
 
   EXPECT_CALL(*mock_service, IsVisible())
       .WillRepeatedly(Return(true));
-  Service::ConnectState unwatched_states[] = {
+  static const Service::ConnectState kUnwatchedStates[] = {
       Service::kStateUnknown,
       Service::kStateIdle,
       Service::kStateFailure
   };
-  for (size_t i = 0; i < arraysize(unwatched_states); ++i) {
-    EXPECT_CALL(*mock_service, state())
-        .WillRepeatedly(Return(unwatched_states[i]));
+  for (auto unwatched_state : kUnwatchedStates) {
+    EXPECT_CALL(*mock_service, state()).WillRepeatedly(Return(unwatched_state));
     EXPECT_FALSE(EnumerateAvailableServices().empty());
     EXPECT_TRUE(EnumerateWatchedServices().empty());
   }
 
-  Service::ConnectState watched_states[] = {
+  static const Service::ConnectState kWatchedStates[] = {
       Service::kStateAssociating,
       Service::kStateConfiguring,
       Service::kStateConnected,
       Service::kStatePortal,
       Service::kStateOnline
   };
-  for (size_t i = 0; i < arraysize(watched_states); ++i) {
-    EXPECT_CALL(*mock_service, state())
-        .WillRepeatedly(Return(watched_states[i]));
+  for (auto watched_state : kWatchedStates) {
+    EXPECT_CALL(*mock_service, state()).WillRepeatedly(Return(watched_state));
     EXPECT_FALSE(EnumerateAvailableServices().empty());
     EXPECT_FALSE(EnumerateWatchedServices().empty());
   }
