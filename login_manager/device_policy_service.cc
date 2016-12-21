@@ -581,10 +581,8 @@ bool DevicePolicyService::UpdateSystemSettings(
   // but will never get deleted. Existence of the flag is one of the triggers
   // for FRE check during OOBE.
   bool is_enrolled = InstallAttributesEnterpriseMode();
-  if (is_enrolled) {
-    flags.push_back(Crossystem::kCheckEnrollment);
-    values.push_back(1);
-  }
+  flags.push_back(Crossystem::kCheckEnrollment);
+  values.push_back(is_enrolled);
 
   return vpd_process_->RunInBackground(flags, values, is_enrolled, completion);
 }

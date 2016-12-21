@@ -639,6 +639,8 @@ TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
   std::vector<int> flag_values;
   flag_names.push_back(Crossystem::kBlockDevmode);
   flag_values.push_back(0);
+  flag_names.push_back(Crossystem::kCheckEnrollment);
+  flag_values.push_back(0);
   EXPECT_CALL(vpd_process_, RunInBackground(flag_names, flag_values, false, _))
       .Times(1)
       .WillOnce(Return(true));
