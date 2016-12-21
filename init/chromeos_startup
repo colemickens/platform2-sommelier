@@ -147,7 +147,9 @@ BLOCKED_DEV_MODE_FILE="/mnt/stateful_partition/.blocked_dev_mode"
 # mode, thus keeping the check as lightweight as possible for normal boot.
 if [ $CROS_DEBUG -eq 1 ] && crossystem "devsw_boot?1" "debug_build?0"; then
   # Checks ordered by run time: First try reading VPD through sysfs.
-  if [ -f /sys/firmware/vpd/rw/block_devmode ]; then
+  VPD_BLOCK_DEVMODE_FILE=/sys/firmware/vpd/rw/block_devmode
+  if [ -f "${VPD_BLOCK_DEVMODE_FILE}" ] &&
+     [ "$(cat "${VPD_BLOCK_DEVMODE_FILE}")" = "1" ]; then
     BLOCK_DEVMODE=1
   # Second try crossystem.
   elif crossystem "block_devmode?1"; then
