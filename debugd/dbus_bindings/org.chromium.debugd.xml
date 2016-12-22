@@ -751,5 +751,18 @@
         Free-form text reporting status.
       </arg>
     </method>
+    <method name="SetWifiDriverDebug">
+      <tp:docstring>
+        Enable/disable Wifi driver debugging.
+      </tp:docstring>
+      <arg name="flags" type="i" direction="in">
+        <tp:docstring>
+          Indicate if Wifi driver debugging should be enabled or disabled.
+          Supports flag(s):
+            WIFI_DEBUG_ENABLED: 0x1
+        </tp:docstring>
+      </arg>
+      <arg name="result" type="b" direction="out" />
+    </method>
   </interface>
 </node>

@@ -52,6 +52,7 @@ bool DebugDaemon::Init() {
   storage_tool_ = new StorageTool();
   swap_tool_ = new SwapTool();
   memory_tool_ = new MemtesterTool();
+  wifi_debug_tool_ = new WifiDebugTool();
   wimax_status_tool_ = new WiMaxStatusTool();
   if (!dbus_->acquire_name(kDebugdServiceName)) {
     LOG(ERROR) << "Failed to acquire D-Bus name " << kDebugdServiceName;
@@ -401,6 +402,11 @@ std::string DebugDaemon::SwapStartStop(const bool& on,
 
 std::string DebugDaemon::SwapStatus(DBus::Error& error) {  // NOLINT
   return swap_tool_->SwapStatus(&error);
+}
+
+bool DebugDaemon::SetWifiDriverDebug(const int32_t& flags,
+                                     DBus::Error& error) {  // NOLINT
+  return wifi_debug_tool_->SetEnabled(debugd::WifiDebugFlag(flags), &error);
 }
 
 }  // namespace debugd

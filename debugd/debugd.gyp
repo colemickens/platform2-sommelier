@@ -116,6 +116,7 @@
         'src/sysrq_tool.cc',
         'src/systrace_tool.cc',
         'src/tracepath_tool.cc',
+        'src/wifi_debug_tool.cc',
         'src/wimax_status_tool.cc',
       ],
     },

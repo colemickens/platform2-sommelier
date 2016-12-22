@@ -41,6 +41,7 @@
 #include "debugd/src/sysrq_tool.h"
 #include "debugd/src/systrace_tool.h"
 #include "debugd/src/tracepath_tool.h"
+#include "debugd/src/wifi_debug_tool.h"
 #include "debugd/src/wimax_status_tool.h"
 
 namespace debugd {
@@ -199,6 +200,8 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   std::string SwapStartStop(const bool& on,
                             DBus::Error& error) override;  // NOLINT
   std::string SwapStatus(DBus::Error& error) override;  // NOLINT
+  bool SetWifiDriverDebug(const int32_t& flags,
+                          DBus::Error& error) override;  // NOLINT
 
  private:
   DBus::Connection* dbus_;
@@ -230,6 +233,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   SysrqTool* sysrq_tool_ = nullptr;
   SystraceTool* systrace_tool_ = nullptr;
   TracePathTool* tracepath_tool_ = nullptr;
+  WifiDebugTool* wifi_debug_tool_ = nullptr;
   WiMaxStatusTool* wimax_status_tool_ = nullptr;
 };
 
