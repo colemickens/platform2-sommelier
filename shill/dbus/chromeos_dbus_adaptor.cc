@@ -86,10 +86,8 @@ bool ChromeosDBusAdaptor::ClearProperty(PropertyStore* store,
 // static
 string ChromeosDBusAdaptor::SanitizePathElement(const string& object_path) {
   string sanitized_path(object_path);
-  size_t length = sanitized_path.length();
 
-  for (size_t i = 0; i < length; ++i) {
-    char c = sanitized_path[i];
+  for (auto& c : sanitized_path) {
     // The D-Bus specification
     // (http://dbus.freedesktop.org/doc/dbus-specification.html) states:
     // Each element must only contain the ASCII characters "[A-Z][a-z][0-9]_"
@@ -97,7 +95,7 @@ string ChromeosDBusAdaptor::SanitizePathElement(const string& object_path) {
         !(c >= 'a' && c <= 'z') &&
         !(c >= '0' && c <= '9') &&
         c != '_') {
-      sanitized_path[i] = '_';
+      c = '_';
     }
   }
 

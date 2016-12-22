@@ -158,9 +158,8 @@ bool ChromeosServiceDBusAdaptor::ClearProperties(brillo::ErrorPtr* /*error*/,
                                                  const vector<string>& names,
                                                  vector<bool>* results) {
   SLOG(this, 2) << __func__;
-  vector<string>::const_iterator it;
-  for (it = names.begin(); it != names.end(); ++it) {
-    results->push_back(ClearProperty(nullptr, *it));
+  for (const auto& name : names) {
+    results->push_back(ClearProperty(nullptr, name));
   }
   return true;
 }
