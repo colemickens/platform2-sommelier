@@ -385,20 +385,20 @@ ByteString RTNLMessage::Encode() const {
   size_t header_length = hdr.hdr.nlmsg_len;
   ByteString attributes;
 
-  for (auto attr = attributes_.begin(); attr != attributes_.end(); ++attr) {
-    size_t len = RTA_LENGTH(attr->second.GetLength());
+  for (const auto& id_attribute_pair : attributes_) {
+    size_t len = RTA_LENGTH(id_attribute_pair.second.GetLength());
     hdr.hdr.nlmsg_len = NLMSG_ALIGN(hdr.hdr.nlmsg_len) + RTA_ALIGN(len);
 
     struct rtattr rt_attr = {
       static_cast<unsigned short>(len),  // NOLINT(runtime/int)
-      attr->first
+      id_attribute_pair.first,
     };
     ByteString attr_header(reinterpret_cast<unsigned char*>(&rt_attr),
                            sizeof(rt_attr));
     attr_header.Resize(RTA_ALIGN(attr_header.GetLength()));
     attributes.Append(attr_header);
 
-    ByteString attr_data(attr->second);
+    ByteString attr_data(id_attribute_pair.second);
     attr_data.Resize(RTA_ALIGN(attr_data.GetLength()));
     attributes.Append(attr_data);
   }

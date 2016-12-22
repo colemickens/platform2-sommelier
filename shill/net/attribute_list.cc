@@ -75,10 +75,8 @@ bool AttributeList::InitAttributeFromValue(int id, const ByteString& value) {
 }
 
 void AttributeList::Print(int log_level, int indent) const {
-  map<int, AttributePointer>::const_iterator i;
-
-  for (i = attributes_.begin(); i != attributes_.end(); ++i) {
-    i->second->Print(log_level, indent);
+  for (const auto& id_attribute_pair : attributes_) {
+    id_attribute_pair.second->Print(log_level, indent);
   }
 }
 
@@ -124,10 +122,8 @@ bool AttributeList::Decode(const ByteString& payload,
 
 ByteString AttributeList::Encode() const {
   ByteString result;
-  map<int, AttributePointer>::const_iterator i;
-
-  for (i = attributes_.begin(); i != attributes_.end(); ++i) {
-    result.Append(i->second->Encode());
+  for (const auto& id_attribute_pair : attributes_) {
+    result.Append(id_attribute_pair.second->Encode());
   }
   return result;
 }

@@ -817,13 +817,10 @@ ByteString NetlinkNestedAttribute::Encode() const {
   result.Resize(NLA_HDRLEN);  // Add padding after the header.
 
   // Encode all nested attributes.
-  map<int, AttributeList::AttributePointer>::const_iterator attribute;
-  for (attribute = value_->attributes_.begin();
-       attribute != value_->attributes_.end();
-       ++attribute) {
+  for (const auto& id_attribute_pair : value_->attributes_) {
     // Each attribute appends appropriate padding so it's not necessary to
     // re-add padding.
-    result.Append(attribute->second->Encode());
+    result.Append(id_attribute_pair.second->Encode());
   }
 
   // Go back and fill-in the size.
