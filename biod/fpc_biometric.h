@@ -11,14 +11,17 @@
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
 #include <base/files/file_util.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
+#include <base/values.h>
 
 #include "biod/bio_library.h"
+#include "biod/biod_storage.h"
 
 namespace biod {
 
@@ -35,6 +38,9 @@ class FpcBiometric : public Biometric {
   Biometric::AuthenticationSession StartAuthentication() override;
   std::vector<std::unique_ptr<Biometric::Enrollment>> GetEnrollments() override;
   bool DestroyAllEnrollments() override;
+  void RemoveEnrollmentsFromMemory() override;
+  bool ReadEnrollments(
+      const std::unordered_set<std::string>& user_ids) override;
 
   void SetScannedHandler(const Biometric::ScanCallback& on_scan) override;
   void SetAttemptHandler(const Biometric::AttemptCallback& on_attempt) override;
@@ -85,11 +91,11 @@ class FpcBiometric : public Biometric {
   // are all stored inside the FakeBiometric object's enrollments map.
   class Enrollment : public Biometric::Enrollment {
    public:
-    Enrollment(const base::WeakPtr<FpcBiometric>& biometric, uint64_t id)
+    Enrollment(const base::WeakPtr<FpcBiometric>& biometric, std::string id)
         : biometric_(biometric), id_(id) {}
 
     // Biometric::Enrollment overrides:
-    uint64_t GetId() const override;
+    const std::string& GetId() const override;
     const std::string& GetUserId() const override;
     const std::string& GetLabel() const override;
     bool SetLabel(std::string label) override;
@@ -97,7 +103,7 @@ class FpcBiometric : public Biometric {
 
    private:
     base::WeakPtr<FpcBiometric> biometric_;
-    uint64_t id_;
+    std::string id_;
 
     // These are mutable because the const GetUserId and GetLabel methods use
     // them as storage for the their respective return string refs.
@@ -108,7 +114,7 @@ class FpcBiometric : public Biometric {
     InternalEnrollment* GetInternalLocked() const;
 
     using EnrollmentIterator =
-        std::unordered_map<uint64_t, InternalEnrollment>::iterator;
+        std::unordered_map<std::string, InternalEnrollment>::iterator;
     // Used to ensure that the internal enrollment is always handled with proper
     // locks and checking.
     template <typename F>
@@ -153,10 +159,21 @@ class FpcBiometric : public Biometric {
                         std::string label,
                         const std::shared_ptr<BioTemplate>& tmpl);
 
-  void DoAuthenticationTask(const TaskRunnerRef& task_runner);
-  void OnAuthenticationComplete();
+  void DoAuthenticationTask(
+      const TaskRunnerRef& task_runner,
+      std::shared_ptr<std::unordered_set<std::string>> updated_enrollment_ids);
+  void OnAuthenticationComplete(
+      std::shared_ptr<std::unordered_set<std::string>> updated_enrollment_ids);
 
   void OnTaskComplete();
+
+  bool LoadEnrollment(std::string user_id,
+                      std::string label,
+                      std::string enrollment_id,
+                      base::Value* data);
+  bool WriteEnrollment(const Biometric::Enrollment& enrollment,
+                       uint8_t* tmpl_data,
+                       size_t tmpl_size);
 
   // The following variables are const after Init and therefore totally thread
   // safe.
@@ -173,10 +190,9 @@ class FpcBiometric : public Biometric {
   bool kill_task_ = false;
   base::Thread sensor_thread_;
 
-  // This lock protects next_enrollment_id_ and enrollments_.
+  // This lock protects enrollments_.
   base::Lock enrollments_lock_;
-  size_t next_enrollment_id_ = 0;
-  std::unordered_map<uint64_t, InternalEnrollment> enrollments_;
+  std::unordered_map<std::string, InternalEnrollment> enrollments_;
 
   // All the following variables are main thread only.
 
@@ -186,6 +202,8 @@ class FpcBiometric : public Biometric {
 
   base::WeakPtrFactory<FpcBiometric> session_weak_factory_;
   base::WeakPtrFactory<FpcBiometric> weak_factory_;
+
+  BiodStorage biod_storage_;
 
   DISALLOW_COPY_AND_ASSIGN(FpcBiometric);
 };

@@ -10,8 +10,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <base/base64.h>
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/strings/string_piece.h>
 #include <base/threading/thread_task_runner_handle.h>
 
 #include "biod/fpc/fp_sensor.h"
@@ -200,8 +202,8 @@ bool FpcBiometric::SensorLibrary::Init(int fd) {
   return true;
 }
 
-uint64_t FpcBiometric::Enrollment::GetId() const {
-  return static_cast<uint64_t>(id_);
+const std::string& FpcBiometric::Enrollment::GetId() const {
+  return id_;
 }
 
 const std::string& FpcBiometric::Enrollment::GetUserId() const {
@@ -219,11 +221,29 @@ const std::string& FpcBiometric::Enrollment::GetLabel() const {
 }
 
 bool FpcBiometric::Enrollment::SetLabel(std::string label) {
-  return WithInternal(
-      [&](EnrollmentIterator i) { i->second.label = std::move(label); });
+  std::string old_label;
+  std::vector<uint8_t> serialized_tmpl;
+  CHECK(WithInternal([&](EnrollmentIterator i) {
+    old_label = i->second.label;
+    i->second.label = std::move(label);
+    (i->second.tmpl).Serialize(&serialized_tmpl);
+  })) << ": Attempted to reset label for invalid Biometric Enrollment";
+
+  if (!biometric_->WriteEnrollment(
+          *this, serialized_tmpl.data(), serialized_tmpl.size())) {
+    CHECK(WithInternal(
+        [&](EnrollmentIterator i) { i->second.label = std::move(old_label); }));
+    return false;
+  }
+  return true;
 }
 
 bool FpcBiometric::Enrollment::Remove() {
+  if (!biometric_)
+    return false;
+  if (!biometric_->biod_storage_.DeleteEnrollment(GetUserId(), GetId())) {
+    return false;
+  }
   return WithInternal(
       [this](EnrollmentIterator i) { biometric_->enrollments_.erase(i); });
 }
@@ -277,14 +297,19 @@ Biometric::AuthenticationSession FpcBiometric::StartAuthentication() {
   if (running_task_)
     return Biometric::AuthenticationSession();
 
+  std::shared_ptr<std::unordered_set<std::string>> updated_enrollment_ids =
+      std::make_shared<std::unordered_set<std::string>>();
+
   kill_task_ = false;
   bool task_will_run = sensor_thread_.task_runner()->PostTaskAndReply(
       FROM_HERE,
       base::Bind(&FpcBiometric::DoAuthenticationTask,
                  base::Unretained(this),
-                 base::ThreadTaskRunnerHandle::Get()),
+                 base::ThreadTaskRunnerHandle::Get(),
+                 updated_enrollment_ids),
       base::Bind(&FpcBiometric::OnAuthenticationComplete,
-                 weak_factory_.GetWeakPtr()));
+                 weak_factory_.GetWeakPtr(),
+                 updated_enrollment_ids));
 
   if (!task_will_run) {
     LOG(ERROR) << "Failed to schedule authentication task";
@@ -316,8 +341,27 @@ FpcBiometric::GetEnrollments() {
 
 bool FpcBiometric::DestroyAllEnrollments() {
   base::AutoLock guard(enrollments_lock_);
+
+  // Enumerate through enrollments_ and delete each enrollment.
+  bool delete_all_enrollments = true;
+  for (auto& enrollment_pair : enrollments_) {
+    std::string enrollment_id(enrollment_pair.first);
+    std::string user_id(enrollment_pair.second.user_id);
+    delete_all_enrollments &=
+        biod_storage_.DeleteEnrollment(user_id, enrollment_id);
+  }
   enrollments_.clear();
-  return true;
+  return delete_all_enrollments;
+}
+
+void FpcBiometric::RemoveEnrollmentsFromMemory() {
+  base::AutoLock guard(enrollments_lock_);
+  enrollments_.clear();
+}
+
+bool FpcBiometric::ReadEnrollments(
+    const std::unordered_set<std::string>& user_ids) {
+  return biod_storage_.ReadEnrollments(user_ids);
 }
 
 void FpcBiometric::SetScannedHandler(const Biometric::ScanCallback& on_scan) {
@@ -353,7 +397,10 @@ void FpcBiometric::KillSensorTask() {
 FpcBiometric::FpcBiometric()
     : sensor_thread_("fpc_sensor"),
       session_weak_factory_(this),
-      weak_factory_(this) {}
+      weak_factory_(this),
+      biod_storage_(
+          "FpcBiometric",
+          base::Bind(&FpcBiometric::LoadEnrollment, base::Unretained(this))) {}
 
 FpcBiometric::~FpcBiometric() {}
 
@@ -401,7 +448,6 @@ void FpcBiometric::OnFailure() {
 
 FpcBiometric::ScanData FpcBiometric::ScanImage() {
   DCHECK(sensor_thread_.task_runner()->RunsTasksOnCurrentThread());
-
   bool success = sensor_lib_->WaitFingerUp();
   {
     base::AutoLock guard(kill_task_lock_);
@@ -464,8 +510,10 @@ void FpcBiometric::DoEnrollTask(const TaskRunnerRef& task_runner,
           break;
         case BIO_ENROLLMENT_IMMOBILE:
           scan_result = Biometric::ScanResult::kImmobile;
+          break;
         case BIO_ENROLLMENT_LOW_COVERAGE:
           scan_result = Biometric::ScanResult::kPartial;
+          break;
         case BIO_ENROLLMENT_LOW_QUALITY:
           scan_result = Biometric::ScanResult::kInsufficient;
           break;
@@ -511,23 +559,42 @@ void FpcBiometric::OnEnrollComplete(std::string user_id,
 
   // Remember tmpl stores a shared pointer to a /pointer/ which contains the
   // actual result.
-  if (*tmpl.get()) {
+  if (!*tmpl.get()) {
+    OnFailure();
+    return;
+  }
+
+  std::vector<uint8_t> serialized_tmpl;
+  if (!tmpl->Serialize(&serialized_tmpl)) {
+    OnFailure();
+    return;
+  }
+
+  std::string enrollment_id(biod_storage_.GenerateNewEnrollmentId());
+  {
+    base::AutoLock guard(enrollments_lock_);
+    enrollments_.emplace(
+        enrollment_id,
+        InternalEnrollment{
+            std::move(user_id), std::move(label), std::move(*tmpl.get())});
+  }
+  Enrollment current_enrollment(weak_factory_.GetWeakPtr(), enrollment_id);
+  if (!WriteEnrollment(
+          current_enrollment, serialized_tmpl.data(), serialized_tmpl.size())) {
     {
       base::AutoLock guard(enrollments_lock_);
-      enrollments_.emplace(
-          next_enrollment_id_,
-          InternalEnrollment{
-              std::move(user_id), std::move(label), std::move(*tmpl.get())});
-      next_enrollment_id_++;
+      enrollments_.erase(enrollment_id);
     }
-
-    OnScan(Biometric::ScanResult::kSuccess, true);
-  } else {
     OnFailure();
+    return;
   }
+
+  OnScan(Biometric::ScanResult::kSuccess, true);
 }
 
-void FpcBiometric::DoAuthenticationTask(const TaskRunnerRef& task_runner) {
+void FpcBiometric::DoAuthenticationTask(
+    const TaskRunnerRef& task_runner,
+    std::shared_ptr<std::unordered_set<std::string>> updated_enrollment_ids) {
   DCHECK(sensor_thread_.task_runner()->RunsTasksOnCurrentThread());
 
   if (kill_task_)
@@ -555,7 +622,8 @@ void FpcBiometric::DoAuthenticationTask(const TaskRunnerRef& task_runner) {
         switch (match_result) {
           case BIO_TEMPLATE_NO_MATCH:
             break;
-          case BIO_TEMPLATE_MATCH_UPDATED:
+          case BIO_TEMPLATE_MATCH_UPDATED:  // enrollment.tmpl got updated
+            updated_enrollment_ids->insert(kv.first);
           case BIO_TEMPLATE_MATCH:
             recognized_user_ids.emplace_back(enrollment.user_id);
             break;
@@ -591,18 +659,79 @@ void FpcBiometric::DoAuthenticationTask(const TaskRunnerRef& task_runner) {
   }
 }
 
-void FpcBiometric::OnAuthenticationComplete() {
+void FpcBiometric::OnAuthenticationComplete(
+    std::shared_ptr<std::unordered_set<std::string>> updated_enrollment_ids) {
   OnTaskComplete();
 
   // Authentication never ends except on error or being killed. If no kill
   // signal was given, we can assume failure.
   if (!kill_task_)
     OnFailure();
+
+  for (const std::string& enrollment_id : *updated_enrollment_ids) {
+    InternalEnrollment& enrollment = enrollments_[enrollment_id];
+
+    std::vector<uint8_t> serialized_tmpl;
+    if (!enrollment.tmpl.Serialize(&serialized_tmpl)) {
+      LOG(ERROR) << "Cannot update enrollment " << enrollment_id
+                 << " in storage during authentication because template "
+                    "serialization failed.";
+      continue;
+    }
+
+    Enrollment current_enrollment(weak_factory_.GetWeakPtr(), enrollment_id);
+    if (!WriteEnrollment(current_enrollment,
+                         serialized_tmpl.data(),
+                         serialized_tmpl.size())) {
+      LOG(ERROR) << "Cannot update enrollment " << enrollment_id
+                 << " in storage during authentication because writing failed.";
+    }
+  }
 }
 
 void FpcBiometric::OnTaskComplete() {
   session_weak_factory_.InvalidateWeakPtrs();
   running_task_ = false;
+}
+
+bool FpcBiometric::LoadEnrollment(std::string user_id,
+                                  std::string label,
+                                  std::string enrollment_id,
+                                  base::Value* data) {
+  std::string tmpl_data_base64;
+  if (!data->GetAsString(&tmpl_data_base64)) {
+    LOG(ERROR) << "Cannot load data string from enrollment " << enrollment_id
+               << ".";
+    return false;
+  }
+
+  base::StringPiece tmpl_data_base64_sp(tmpl_data_base64);
+  std::string tmpl_data_str;
+  base::Base64Decode(tmpl_data_base64_sp, &tmpl_data_str);
+
+  std::vector<uint8_t> tmpl_data_vector(tmpl_data_str.begin(),
+                                        tmpl_data_str.end());
+  BioTemplate tmpl(bio_lib_->DeserializeTemplate(tmpl_data_vector));
+  InternalEnrollment internal_enrollment = {
+      std::move(user_id), std::move(label), std::move(tmpl)};
+  {
+    base::AutoLock guard(enrollments_lock_);
+    enrollments_[enrollment_id] = std::move(internal_enrollment);
+  }
+  LOG(INFO) << "Load enrollment " << enrollment_id << " from disk.";
+  return true;
+}
+
+bool FpcBiometric::WriteEnrollment(const Biometric::Enrollment& enrollment,
+                                   uint8_t* tmpl_data,
+                                   size_t tmpl_size) {
+  base::StringPiece tmpl_sp(reinterpret_cast<char*>(tmpl_data), tmpl_size);
+  std::string tmpl_base64;
+  base::Base64Encode(tmpl_sp, &tmpl_base64);
+
+  return biod_storage_.WriteEnrollment(
+      enrollment,
+      std::unique_ptr<base::Value>(new base::StringValue(tmpl_base64)));
 }
 
 }  // namespace biod
