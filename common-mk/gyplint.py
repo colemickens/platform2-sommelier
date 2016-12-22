@@ -12,7 +12,7 @@ import collections
 import os
 import sys
 
-import gyp.input
+import gyp_compiler
 
 # Find chromite!
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)),
@@ -142,7 +142,7 @@ def GypLintPkgConfigs(gypdata):
     ret = []
     if key.startswith('ldflags') or key.startswith('libraries'):
       for v in KNOWN_PC_LIBS & set(value):
-        ret.append(('use pkg-config instead: delete "%s" from "%s" and add'
+        ret.append(('use pkg-config instead: delete "%s" from "%s" and add '
                     '"%s" to "deps"') % (v, key, KNOWN_PC_FILES[v]))
     return ret
 
@@ -163,7 +163,7 @@ def CheckGyp(name, gypdata):
 def CheckGypData(name, data):
   """Check |data| (gyp file as a string) for common mistakes."""
   try:
-    gypdata = gyp.input.CheckedEval(data)
+    gypdata = gyp_compiler.CheckedEval(data)
   except Exception as e:
     return [LintResult('gyp.input.CheckedEval', name, 'invalid format: %s' % e,
                        logging.ERROR)]
