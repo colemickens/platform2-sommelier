@@ -110,7 +110,6 @@
       'type': 'executable',
       'libraries': [
         '-lrootdev',
-        '-lminijail',
         '-lcontainer',
       ],
       'dependencies': ['libsession_manager'],
