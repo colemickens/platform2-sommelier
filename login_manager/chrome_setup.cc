@@ -216,6 +216,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder) {
     builder->AddFeatureEnableOverride("QuickUnlockPin");
 
     builder->AddArg("--num-raster-threads=1");
+    builder->AddArg("--enable-drm-atomic");
     builder->AddArg("--enable-hardware-overlays=single-fullscreen");
   }
   if (builder->UseFlagIsSet("veyron_minnie"))
