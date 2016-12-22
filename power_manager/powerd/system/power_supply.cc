@@ -139,16 +139,23 @@ const char* ExternalPowerToString(PowerSupplyProperties::ExternalPower type) {
   return "unknown";
 }
 
-// Less-than comparator for PowerStatus::Source structs.
-struct SourceComparator {
-  bool operator()(const PowerStatus::Source& a, const PowerStatus::Source& b) {
+// Returns true if |port| is connected to a dedicated power source or dual-role
+// device.
+bool PortHasSourceOrDualRole(const PowerStatus::Port& port) {
+  return port.connection == PowerStatus::Port::Connection::DEDICATED_SOURCE ||
+         port.connection == PowerStatus::Port::Connection::DUAL_ROLE;
+}
+
+// Less-than comparator for PowerStatus::Port structs.
+struct PortComparator {
+  bool operator()(const PowerStatus::Port& a, const PowerStatus::Port& b) {
     return a.id < b.id;
   }
 };
 
-// Maps names from PowerSupplyProperties::PowerSource::Port to the corresponding
-// values.
-PowerSupplyProperties::PowerSource::Port GetPortFromString(
+// Maps names read from kChargingPortsPref to the corresponding
+// PowerSupplyProperties::PowerSource::Port values.
+PowerSupplyProperties::PowerSource::Port GetPortLocationFromString(
     const std::string& name) {
   if (name == "LEFT")
     return PowerSupplyProperties_PowerSource_Port_LEFT;
@@ -200,15 +207,20 @@ void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
     proto->set_battery_discharge_rate(status.battery_energy_rate);
   }
 
-  for (auto source : status.available_external_power_sources) {
-    PowerSupplyProperties::PowerSource* proto_source =
+  for (auto port : status.ports) {
+    // Chrome is only interested in ports that are currently in a state where
+    // they can deliver power.
+    if (!PortHasSourceOrDualRole(port))
+      continue;
+
+    PowerSupplyProperties::PowerSource* source =
         proto->add_available_external_power_source();
-    proto_source->set_id(source.id);
-    proto_source->set_port(source.port);
-    proto_source->set_manufacturer_id(source.manufacturer_id);
-    proto_source->set_model_id(source.model_id);
-    proto_source->set_max_power(source.max_power);
-    proto_source->set_active_by_default(source.active_by_default);
+    source->set_id(port.id);
+    source->set_port(port.location);
+    source->set_manufacturer_id(port.manufacturer_id);
+    source->set_model_id(port.model_id);
+    source->set_max_power(port.max_power);
+    source->set_active_by_default(port.active_by_default);
   }
   if (!status.external_power_source_id.empty())
     proto->set_external_power_source_id(status.external_power_source_id);
@@ -301,26 +313,61 @@ metrics::PowerSupplyType GetPowerSupplyTypeMetric(const std::string& type) {
     return metrics::PowerSupplyType::OTHER;
 }
 
-PowerStatus::Source::Source(const std::string& id,
-                            PowerSupplyProperties::PowerSource::Port port,
-                            const std::string& manufacturer_id,
-                            const std::string& model_id,
-                            double max_power,
-                            bool active_by_default)
+PowerStatus::Port::Port() = default;
+
+PowerStatus::Port::Port(const std::string& id,
+                        PowerSupplyProperties::PowerSource::Port location,
+                        Connection connection,
+                        const std::string& manufacturer_id,
+                        const std::string& model_id,
+                        double max_power,
+                        bool active_by_default)
     : id(id),
-      port(port),
+      location(location),
+      connection(connection),
       manufacturer_id(manufacturer_id),
       model_id(model_id),
       max_power(max_power),
       active_by_default(active_by_default) {}
 
-PowerStatus::Source::~Source() {}
+PowerStatus::Port::~Port() = default;
 
-bool PowerStatus::Source::operator==(const Source& o) const {
+bool PowerStatus::Port::operator==(const Port& o) const {
   return id == o.id &&
+      connection == o.connection &&
       manufacturer_id == o.manufacturer_id &&
       model_id == o.model_id &&
       active_by_default == o.active_by_default;
+}
+
+// static
+bool PowerSupply::ConnectedSourcesAreEqual(const PowerStatus& a,
+                                           const PowerStatus& b) {
+  auto a_it = a.ports.begin();
+  auto b_it = b.ports.begin();
+
+  while (true) {
+    // Walk each iterator forward to the next port with something connected that
+    // can supply power.
+    for (; a_it != a.ports.end() && !PortHasSourceOrDualRole(*a_it); ++a_it) {}
+    for (; b_it != b.ports.end() && !PortHasSourceOrDualRole(*b_it); ++b_it) {}
+
+    // If we reached the ends of both lists without finding any mismatches,
+    // report equality.
+    const bool a_done = a_it == a.ports.end();
+    const bool b_done = b_it == b.ports.end();
+    if (a_done && b_done)
+      return true;
+
+    // If we reached the end of one list but have a connected port in the other,
+    // or if the connected ports don't match, report inequality.
+    if (a_done != b_done || !(*a_it == *b_it))
+      return false;
+
+    a_it++;
+    b_it++;
+  }
+  NOTREACHED();
 }
 
 PowerStatus::PowerStatus()
@@ -460,13 +507,13 @@ void PowerSupply::Init(const base::FilePath& power_supply_path,
     if (!base::SplitStringIntoKeyValuePairs(ports_string, ' ', '\n', &pairs))
       LOG(FATAL) << "Failed parsing " << kChargingPortsPref << " pref";
     for (const auto& pair : pairs) {
-      const PowerSupplyProperties::PowerSource::Port port =
-          GetPortFromString(pair.second);
-      if (port == PowerSupplyProperties_PowerSource_Port_UNKNOWN) {
+      const PowerSupplyProperties::PowerSource::Port location =
+          GetPortLocationFromString(pair.second);
+      if (location == PowerSupplyProperties_PowerSource_Port_UNKNOWN) {
         LOG(FATAL) << "Unrecognized port \"" << pair.second << "\" for \""
                    << pair.first << "\" in " << kChargingPortsPref << " pref";
       }
-      if (!port_names_.insert(std::make_pair(pair.first, port)).second) {
+      if (!port_names_.insert(std::make_pair(pair.first, location)).second) {
         LOG(FATAL) << "Duplicate entry for \"" << pair.first << "\" in "
                    << kChargingPortsPref << " pref";
       }
@@ -634,10 +681,8 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
     status.external_power = PowerSupplyProperties_ExternalPower_AC;
   }
 
-  // Sort the power source list to make life easier for tests.
-  std::sort(status.available_external_power_sources.begin(),
-            status.available_external_power_sources.end(),
-            SourceComparator());
+  // Sort the port list as needed by ConnectedSourcesAreEqual().
+  std::sort(status.ports.begin(), status.ports.end(), PortComparator());
 
   // Even though we haven't successfully finished initializing the status yet,
   // save what we have so far so that if we bail out early due to a messed-up
@@ -655,8 +700,7 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
       power_status_initialized_ &&
       status.external_power == power_status_.external_power &&
       status.battery_state == power_status_.battery_state &&
-      (status.available_external_power_sources ==
-       power_status_.available_external_power_sources))
+      ConnectedSourcesAreEqual(status, power_status_))
     return false;
 
   // Update running averages and use them to compute battery estimates.
@@ -704,11 +748,19 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
 
 void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
                                          PowerStatus* status) {
+  // Add the port and fill in its details as we go.
+  status->ports.push_back(PowerStatus::Port());
+  PowerStatus::Port* port = &status->ports.back();
+  port->id = GetIdForPath(path);
+  const auto location_it = port_names_.find(path.BaseName().value());
+  if (location_it != port_names_.end())
+    port->location = location_it->second;
+
   // Bidirectional/dual-role ports export a "status" field.
   std::string line_status;
   ReadAndTrimString(path, "status", &line_status);
-  const bool is_dual_role_port = !line_status.empty();
-  if (is_dual_role_port)
+  const bool dual_role_port = !line_status.empty();
+  if (dual_role_port)
     status->supports_dual_role_devices = true;
 
   // An "Unknown" type indicates a sink-only device that can't supply power.
@@ -716,49 +768,44 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   ReadAndTrimString(path, "type", &type);
   if (type == kUnknownType)
     return;
+  const bool dual_role_connected = IsDualRoleType(type);
 
-  // If "online" is false, nothing is connected unless it is USB_PD_DRP,
-  // in which case, an online of 0 indicates connected to a Dual Role device
-  // but not sinking power.
-  int64_t online_value = 0;
-  if ((!ReadInt64(path, "online", &online_value) || !online_value) &&
-      !IsDualRoleType(type))
+  // If "online" is 0, nothing is connected unless it is USB_PD_DRP, in which
+  // case a value of 0 indicates we're connected to a dual-role device but not
+  // sinking power.
+  int64_t online = 0;
+  if ((!ReadInt64(path, "online", &online) || !online) && !dual_role_connected)
     return;
 
-  // Okay, this is a potential power source. Add it to the list.
-  const std::string id = GetIdForPath(path);
+  // If we've made it this far, there's a dedicated source or dual-role device
+  // connected.
+  port->connection = dual_role_connected
+                         ? PowerStatus::Port::Connection::DUAL_ROLE
+                         : PowerStatus::Port::Connection::DEDICATED_SOURCE;
 
-  // Chargers connect to non-dual-role Chromebook systems are always active
-  // by default. The USB PD kernel driver will report "USB_PD_DRP" for
-  // dual-role devices (which aren't active by default). See
-  // http://crbug.com/459412 for additional discussion.
-  const bool active_by_default = !is_dual_role_port ||
-                                 !IsDualRoleType(type);
+  // Chargers connected to non-dual-role Chromebook systems are always active by
+  // default. The USB PD kernel driver will report "USB_PD_DRP" for dual-role
+  // devices (which aren't active by default). See http://crbug.com/459412 for
+  // additional discussion.
+  port->active_by_default = !dual_role_port || !dual_role_connected;
 
-  const auto port_it = port_names_.find(path.BaseName().value());
-  const PowerSupplyProperties::PowerSource::Port port =
-      port_it != port_names_.end()
-          ? port_it->second
-          : PowerSupplyProperties_PowerSource_Port_UNKNOWN;
-
-  std::string manufacturer_id, model_id;
-  ReadAndTrimString(path, "manufacturer", &manufacturer_id);
-  ReadAndTrimString(path, "model_name", &model_id);
+  ReadAndTrimString(path, "manufacturer", &port->manufacturer_id);
+  ReadAndTrimString(path, "model_name", &port->model_id);
 
   const double max_voltage = ReadScaledDouble(path, "voltage_max_design");
   const double max_current = ReadScaledDouble(path, "current_max");
-  const double max_power = max_voltage * max_current;  // watts
+  port->max_power = max_voltage * max_current;  // watts
 
-  status->available_external_power_sources.push_back(PowerStatus::Source(
-      id, port, manufacturer_id, model_id, max_power, active_by_default));
-  VLOG(1) << "Added power source " << id << ": port=" << port
-          << " manufacturer=" << manufacturer_id << " model=" << model_id
-          << " max_power=" << max_power << " active_by_default="
-          << active_by_default;
+  VLOG(1) << "Added power source " << port->id << ":"
+          << " location=" << port->location
+          << " manufacturer=" << port->manufacturer_id
+          << " model=" << port->model_id
+          << " max_power=" << port->max_power
+          << " active_by_default=" << port->active_by_default;
 
   // If this is a dual-role device, make sure that we're actually getting
   // charged by it.
-  if (is_dual_role_port && line_status != kLinePowerStatusCharging)
+  if (dual_role_port && line_status != kLinePowerStatusCharging)
     return;
 
   if (!status->line_power_path.empty()) {
@@ -777,14 +824,14 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
 
   // The USB PD driver reports the maximum power as being 0 watts while it's
   // being determined; avoid reporting a low-power charger in that case.
-  const bool max_power_is_less_than_ac_min = max_power > 0.0 &&
-      max_power < usb_min_ac_watts_;
+  const bool max_power_is_less_than_ac_min = port->max_power > 0.0 &&
+      port->max_power < usb_min_ac_watts_;
 
-  if (!is_dual_role_port && IsLowPowerUsbChargerType(type)) {
+  if (!dual_role_port && IsLowPowerUsbChargerType(type)) {
     // On spring, report all non-official chargers (which are reported as type
     // USB* rather than Mains) as being low-power.
     status->external_power = PowerSupplyProperties_ExternalPower_USB;
-  } else if (is_dual_role_port && max_power_is_less_than_ac_min) {
+  } else if (dual_role_port && max_power_is_less_than_ac_min) {
     // For dual-role USB PD devices, check whether the maximum supported power
     // is below the configured threshold.
     status->external_power = PowerSupplyProperties_ExternalPower_USB;
@@ -792,7 +839,7 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
     // Otherwise, report a high-power source.
     status->external_power = PowerSupplyProperties_ExternalPower_AC;
   }
-  status->external_power_source_id = id;
+  status->external_power_source_id = port->id;
 
   VLOG(1) << "Found line power of type \"" << status->line_power_type
           << "\" at " << path.value();

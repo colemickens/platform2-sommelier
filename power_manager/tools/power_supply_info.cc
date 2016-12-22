@@ -27,6 +27,7 @@
 // Displays info about battery and line power.
 
 using base::TimeDelta;
+using power_manager::system::PowerStatus;
 
 namespace {
 
@@ -103,8 +104,7 @@ int main(int argc, char** argv) {
   power_supply.Init(path, &prefs, &udev, false /* log_shutdown_thresholds */);
 
   CHECK(power_supply.RefreshImmediately());
-  const power_manager::system::PowerStatus status =
-      power_supply.GetPowerStatus();
+  const PowerStatus status = power_supply.GetPowerStatus();
 
   // NOTE, autotests (see autotest/files/client/cros/power_status.py) rely on
   // parsing this information below.
@@ -136,10 +136,15 @@ int main(int argc, char** argv) {
 
   display.PrintStringValue("active source", status.external_power_source_id);
   std::vector<std::string> sources;
-  for (const auto& source : status.available_external_power_sources) {
-    sources.push_back(base::StringPrintf("%s%s [%s/%s]", source.id.c_str(),
-        source.active_by_default ? "*" : "", source.manufacturer_id.c_str(),
-        source.model_id.c_str()));
+  for (const auto& port : status.ports) {
+    if (port.connection == PowerStatus::Port::Connection::DEDICATED_SOURCE ||
+        port.connection == PowerStatus::Port::Connection::DUAL_ROLE) {
+      sources.push_back(base::StringPrintf("%s%s [%s/%s]",
+                                           port.id.c_str(),
+                                           port.active_by_default ? "*" : "",
+                                           port.manufacturer_id.c_str(),
+                                           port.model_id.c_str()));
+    }
   }
   display.PrintStringValue("available sources",
                            base::JoinString(sources, ", "));

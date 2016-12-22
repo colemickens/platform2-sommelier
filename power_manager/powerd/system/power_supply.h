@@ -48,36 +48,52 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status);
 // Returns a metrics value corresponding to |type|, a sysfs power supply type.
 metrics::PowerSupplyType GetPowerSupplyTypeMetric(const std::string& type);
 
-// Structures used for passing power supply info.
+// Structure used for passing power supply info.
 struct PowerStatus {
-  // Details about a power source.
-  struct Source {
-    Source(const std::string& id,
-           PowerSupplyProperties::PowerSource::Port port,
-           const std::string& manufacturer_id,
-           const std::string& model_id,
-           double max_power,
-           bool active_by_default);
-    ~Source();
+  // Details about a charging port.
+  struct Port {
+    // Different types of connected devices.
+    enum class Connection {
+      NONE,
+      DEDICATED_SOURCE,
+      DUAL_ROLE,
+      // TODO(derat): Report non-PD sinks if we ever get the ability to detect
+      // them from userspace.
+    };
 
-    bool operator==(const Source& o) const;
+    Port();
+    Port(const std::string& id,
+         PowerSupplyProperties::PowerSource::Port location,
+         Connection connection,
+         const std::string& manufacturer_id,
+         const std::string& model_id,
+         double max_power,
+         bool active_by_default);
+    ~Port();
 
-    // Opaque ID corresponding to the power source.
+    // Tests for |o| having a matching ID and connection type.
+    bool operator==(const Port& o) const;
+
+    // Opaque fixed ID corresponding to the port.
     std::string id;
 
-    // The charging port to which this power source is connected.
-    PowerSupplyProperties::PowerSource::Port port;
+    // The port's physical location.
+    PowerSupplyProperties::PowerSource::Port location =
+        PowerSupplyProperties_PowerSource_Port_UNKNOWN;
+
+    // What's connected to the port.
+    Connection connection = Connection::NONE;
 
     // Values read from |manufacturer| and |model_name|.
     std::string manufacturer_id;
     std::string model_id;
 
-    // Maximum power this source is capable of delivering, in watts.
-    double max_power;
+    // Maximum power the source is capable of delivering, in watts.
+    double max_power = 0.0;
 
     // True if the power source automatically provides charge when connected
     // (e.g. a dedicated charger).
-    bool active_by_default;
+    bool active_by_default = false;
   };
 
   PowerStatus();
@@ -157,11 +173,12 @@ struct PowerStatus {
   PowerSupplyProperties::ExternalPower external_power;
   PowerSupplyProperties::BatteryState battery_state;
 
-  // ID of the active source from |available_external_power_sources|.
+  // ID of the active source from |ports|.
   std::string external_power_source_id;
 
-  // Connected external power sources.
-  std::vector<Source> available_external_power_sources;
+  // Ports capable of delivering external power. This includes ports without
+  // anything connected to them.
+  std::vector<Port> ports;
 
   // True if it is possible for some connected devices to function as either
   // sources or sinks (i.e. to either deliver or receive charge).
@@ -259,6 +276,11 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // |low_battery_shutdown_time_| is set if the battery percent is not also
   // equal to or less than this threshold (in the range [0.0, 100.0)).
   static const double kLowBatteryShutdownSafetyPercent;
+
+  // Returns true if |a| and |b| contain the same connected power sources. The
+  // ports in each status must be sorted. Public for testing.
+  static bool ConnectedSourcesAreEqual(const PowerStatus& a,
+                                       const PowerStatus& b);
 
   PowerSupply();
   virtual ~PowerSupply();
@@ -448,7 +470,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
 
   // Maps from sysfs line power subdirectory basenames (e.g.
   // "CROS_USB_PD_CHARGER0") to enum values describing the corresponding
-  // charging ports' positions. Loaded from kChargingPortsPref.
+  // charging ports' locations. Loaded from kChargingPortsPref.
   std::map<std::string, PowerSupplyProperties::PowerSource::Port> port_names_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerSupply);

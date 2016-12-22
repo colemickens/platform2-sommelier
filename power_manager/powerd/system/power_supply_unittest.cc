@@ -28,6 +28,8 @@ namespace system {
 
 namespace {
 
+using Connection = PowerStatus::Port::Connection;
+
 const char kAcType[] = "Mains";
 const char kBatteryType[] = "Battery";
 const char kUsbType[] = "USB";
@@ -226,6 +228,69 @@ class PowerSupplyTest : public ::testing::Test {
   std::unique_ptr<PowerSupply::TestApi> test_api_;
 };
 
+TEST(PowerSupplyStaticTest, ConnectedSourcesAreEqual) {
+  // Equality should be reported when no ports are found.
+  PowerStatus a, b;
+  EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(a, b));
+
+  // A disconnected port should be disregarded.
+  constexpr char kId1[] = "ID1";
+  a.ports.push_back(PowerStatus::Port());
+  a.ports[0].id = kId1;
+  EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(a, b));
+  EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(b, a));
+
+  // After the port is connected, |a| and |b|'s connected sources no longer
+  // match.
+  a.ports[0].connection = Connection::DEDICATED_SOURCE;
+  EXPECT_FALSE(PowerSupply::ConnectedSourcesAreEqual(a, b));
+  EXPECT_FALSE(PowerSupply::ConnectedSourcesAreEqual(b, a));
+
+  // A disconnected port that's added to |b| should be ignored.
+  b.ports.push_back(PowerStatus::Port());
+  b.ports[0].id = kId1;
+  EXPECT_FALSE(PowerSupply::ConnectedSourcesAreEqual(a, b));
+  EXPECT_FALSE(PowerSupply::ConnectedSourcesAreEqual(b, a));
+
+  // Once |b|'s port is connected, the statuses should match again.
+  b.ports[0].connection = Connection::DEDICATED_SOURCE;
+  EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(a, b));
+  EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(b, a));
+
+  // Insert a new disconnected port at the beginning of |a|'s list and check
+  // that the statuses are still reported as being equal.
+  constexpr char kId0[] = "ID0";
+  a.ports.insert(a.ports.begin(), PowerStatus::Port());
+  a.ports[0].id = kId0;
+  EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(a, b));
+  EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(b, a));
+
+  // If the new port is connected, the statuses should be unequal again.
+  a.ports[0].connection = Connection::DEDICATED_SOURCE;
+  EXPECT_FALSE(PowerSupply::ConnectedSourcesAreEqual(a, b));
+  EXPECT_FALSE(PowerSupply::ConnectedSourcesAreEqual(b, a));
+
+  // Give |b| a port with a different ID and check that the statuses are still
+  // unequal.
+  constexpr char kId0B[] = "ID0B";
+  b.ports.insert(b.ports.begin(), PowerStatus::Port());
+  b.ports[0].id = kId0B;
+  b.ports[0].connection = Connection::DEDICATED_SOURCE;
+
+  // Now update the ID and check that they're equal again.
+  b.ports[0].id = kId0;
+  EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(a, b));
+  EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(b, a));
+
+  // The ports' connection types also need to match.
+  a.ports[0].connection = Connection::DUAL_ROLE;
+  EXPECT_FALSE(PowerSupply::ConnectedSourcesAreEqual(a, b));
+  EXPECT_FALSE(PowerSupply::ConnectedSourcesAreEqual(b, a));
+  b.ports[0].connection = Connection::DUAL_ROLE;
+  EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(a, b));
+  EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(b, a));
+}
+
 // Test system without power supply sysfs (e.g. virtual machine).
 TEST_F(PowerSupplyTest, NoPowerSupplySysfs) {
   Init();
@@ -329,7 +394,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   const char kLine1ModelName[] = "0256";
   const base::FilePath line1_dir = temp_dir_.path().Append(kLine1Id);
   ASSERT_TRUE(base::CreateDirectory(line1_dir));
-  WriteValue(line1_dir, "type", kUnknownType);
+  WriteValue(line1_dir, "type", kUsbType);
   WriteValue(line1_dir, "online", "0");
   WriteValue(line1_dir, "status", kNotCharging);
   WriteDoubleValue(line1_dir, "current_max", 0.0);
@@ -363,7 +428,11 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
             status.external_power);
   EXPECT_EQ(PowerSupplyProperties_BatteryState_DISCHARGING,
             status.battery_state);
-  EXPECT_EQ(0u, status.available_external_power_sources.size());
+  ASSERT_EQ(2u, status.ports.size());
+  EXPECT_EQ(kLine1Id, status.ports[0].id);
+  EXPECT_EQ(Connection::NONE, status.ports[0].connection);
+  EXPECT_EQ(kLine2Id, status.ports[1].id);
+  EXPECT_EQ(Connection::NONE, status.ports[1].connection);
   EXPECT_EQ("", status.external_power_source_id);
   EXPECT_TRUE(status.supports_dual_role_devices);
 
@@ -378,21 +447,21 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   EXPECT_TRUE(status.line_power_on);
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
   EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL, status.battery_state);
-  ASSERT_EQ(1u, status.available_external_power_sources.size());
-  EXPECT_EQ(kLine1Id, status.available_external_power_sources[0].id);
-  EXPECT_EQ(kLine1Manufacturer,
-            status.available_external_power_sources[0].manufacturer_id);
-  EXPECT_EQ(kLine1ModelName,
-            status.available_external_power_sources[0].model_id);
-  EXPECT_EQ(kCurrentMax * kVoltageMax,
-            status.available_external_power_sources[0].max_power);
-  EXPECT_FALSE(status.available_external_power_sources[0].active_by_default);
+  ASSERT_EQ(2u, status.ports.size());
+  EXPECT_EQ(kLine1Id, status.ports[0].id);
+  EXPECT_EQ(Connection::DUAL_ROLE, status.ports[0].connection);
+  EXPECT_EQ(kLine1Manufacturer, status.ports[0].manufacturer_id);
+  EXPECT_EQ(kLine1ModelName, status.ports[0].model_id);
+  EXPECT_EQ(kCurrentMax * kVoltageMax, status.ports[0].max_power);
+  EXPECT_FALSE(status.ports[0].active_by_default);
+  EXPECT_EQ(kLine2Id, status.ports[1].id);
+  EXPECT_EQ(Connection::NONE, status.ports[1].connection);
   EXPECT_EQ(kLine1Id, status.external_power_source_id);
   EXPECT_TRUE(status.supports_dual_role_devices);
 
   // Disconnect the first power source and start charging from the second one at
   // a low power.
-  WriteValue(line1_dir, "type", kUnknownType);
+  WriteValue(line1_dir, "type", kUsbType);
   WriteValue(line1_dir, "online", "0");
   WriteValue(line1_dir, "status", kNotCharging);
   WriteValue(line2_dir, "type", kUsbPdDrpType);
@@ -405,19 +474,21 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   EXPECT_TRUE(status.line_power_on);
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB, status.external_power);
   EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL, status.battery_state);
-  ASSERT_EQ(1u, status.available_external_power_sources.size());
-  EXPECT_EQ(kLine2Id, status.available_external_power_sources[0].id);
-  EXPECT_EQ(kLine2Manufacturer,
-            status.available_external_power_sources[0].manufacturer_id);
-  EXPECT_EQ(kLine2ModelName,
-            status.available_external_power_sources[0].model_id);
+  ASSERT_EQ(2u, status.ports.size());
+  EXPECT_EQ(kLine1Id, status.ports[0].id);
+  EXPECT_EQ(Connection::NONE, status.ports[0].connection);
+  EXPECT_EQ(kLine2Id, status.ports[1].id);
+  EXPECT_EQ(Connection::DUAL_ROLE, status.ports[1].connection);
+  EXPECT_EQ(kLine2Manufacturer, status.ports[1].manufacturer_id);
+  EXPECT_EQ(kLine2ModelName, status.ports[1].model_id);
   EXPECT_EQ(kCurrentMax * kCurrentFactor * kVoltageMax,
-            status.available_external_power_sources[0].max_power);
-  EXPECT_FALSE(status.available_external_power_sources[0].active_by_default);
+            status.ports[1].max_power);
+  EXPECT_FALSE(status.ports[1].active_by_default);
   EXPECT_EQ(kLine2Id, status.external_power_source_id);
 
   // Now discharge from the first power source (while still charging from the
-  // second one) and check that it's ignored.
+  // second one) and check that it's still listed as a connected source but not
+  // reported as active.
   WriteValue(line1_dir, "type", kUsbPdDrpType);
   WriteValue(line1_dir, "online", "1");
   WriteValue(line1_dir, "status", kDischarging);
@@ -425,23 +496,20 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   EXPECT_TRUE(status.line_power_on);
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB, status.external_power);
   EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL, status.battery_state);
-  ASSERT_EQ(2u, status.available_external_power_sources.size());
-  EXPECT_EQ(kLine1Id, status.available_external_power_sources[0].id);
-  EXPECT_EQ(kLine1Manufacturer,
-            status.available_external_power_sources[0].manufacturer_id);
-  EXPECT_EQ(kLine1ModelName,
-            status.available_external_power_sources[0].model_id);
-  EXPECT_EQ(kCurrentMax * kVoltageMax,
-            status.available_external_power_sources[0].max_power);
-  EXPECT_FALSE(status.available_external_power_sources[0].active_by_default);
-  EXPECT_EQ(kLine2Id, status.available_external_power_sources[1].id);
-  EXPECT_EQ(kLine2Manufacturer,
-            status.available_external_power_sources[1].manufacturer_id);
-  EXPECT_EQ(kLine2ModelName,
-            status.available_external_power_sources[1].model_id);
+  ASSERT_EQ(2u, status.ports.size());
+  EXPECT_EQ(kLine1Id, status.ports[0].id);
+  EXPECT_EQ(Connection::DUAL_ROLE, status.ports[0].connection);
+  EXPECT_EQ(kLine1Manufacturer, status.ports[0].manufacturer_id);
+  EXPECT_EQ(kLine1ModelName, status.ports[0].model_id);
+  EXPECT_EQ(kCurrentMax * kVoltageMax, status.ports[0].max_power);
+  EXPECT_FALSE(status.ports[0].active_by_default);
+  EXPECT_EQ(kLine2Id, status.ports[1].id);
+  EXPECT_EQ(Connection::DUAL_ROLE, status.ports[1].connection);
+  EXPECT_EQ(kLine2Manufacturer, status.ports[1].manufacturer_id);
+  EXPECT_EQ(kLine2ModelName, status.ports[1].model_id);
   EXPECT_EQ(kCurrentMax * kCurrentFactor * kVoltageMax,
-            status.available_external_power_sources[1].max_power);
-  EXPECT_FALSE(status.available_external_power_sources[1].active_by_default);
+            status.ports[1].max_power);
+  EXPECT_FALSE(status.ports[1].active_by_default);
   EXPECT_EQ(kLine2Id, status.external_power_source_id);
 
   // Request switching to the first power source.
@@ -476,8 +544,12 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   WriteValue(line2_dir, "type", kAcType);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB, status.external_power);
-  ASSERT_EQ(2u, status.available_external_power_sources.size());
-  EXPECT_TRUE(status.available_external_power_sources[1].active_by_default);
+  ASSERT_EQ(2u, status.ports.size());
+  EXPECT_EQ(kLine1Id, status.ports[0].id);
+  EXPECT_EQ(Connection::DUAL_ROLE, status.ports[0].connection);
+  EXPECT_EQ(kLine2Id, status.ports[1].id);
+  EXPECT_EQ(Connection::DEDICATED_SOURCE, status.ports[1].connection);
+  EXPECT_TRUE(status.ports[1].active_by_default);
   EXPECT_EQ(kLine2Id, status.external_power_source_id);
 
   // If the kernel reports a USB charger of any type that is not "USB_PD_DRP"
@@ -491,8 +563,10 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
     WriteValue(line2_dir, "type", kType);
     ASSERT_TRUE(UpdateStatus(&status));
     EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB, status.external_power);
-    ASSERT_EQ(2u, status.available_external_power_sources.size());
-    EXPECT_TRUE(status.available_external_power_sources[1].active_by_default);
+    ASSERT_EQ(2u, status.ports.size());
+    EXPECT_EQ(kLine2Id, status.ports[1].id);
+    EXPECT_EQ(Connection::DEDICATED_SOURCE, status.ports[1].connection);
+    EXPECT_TRUE(status.ports[1].active_by_default);
     EXPECT_EQ(kLine2Id, status.external_power_source_id);
   }
 
@@ -501,8 +575,9 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   WriteDoubleValue(line2_dir, "voltage_max_design", kVoltageMax);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
-  ASSERT_EQ(2u, status.available_external_power_sources.size());
-  EXPECT_TRUE(status.available_external_power_sources[1].active_by_default);
+  ASSERT_EQ(2u, status.ports.size());
+  EXPECT_EQ(Connection::DEDICATED_SOURCE, status.ports[1].connection);
+  EXPECT_TRUE(status.ports[1].active_by_default);
   EXPECT_EQ(kLine2Id, status.external_power_source_id);
 
   // A maximum power of 0 watts should be disregarded.
@@ -510,14 +585,15 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   WriteDoubleValue(line2_dir, "voltage_max_design", 0.0);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
-  ASSERT_EQ(2u, status.available_external_power_sources.size());
-  EXPECT_TRUE(status.available_external_power_sources[1].active_by_default);
+  ASSERT_EQ(2u, status.ports.size());
+  EXPECT_EQ(Connection::DEDICATED_SOURCE, status.ports[1].connection);
+  EXPECT_TRUE(status.ports[1].active_by_default);
   EXPECT_EQ(kLine2Id, status.external_power_source_id);
 }
 
 TEST_F(PowerSupplyTest, ChargingPortNames) {
   // Write a pref describing two charging ports and say that we're charging from
-  // the first one. PowerSupply will sort the sources by name.
+  // the first one. PowerSupply will sort the ports by name.
   const char kSecondName[] = "port2";
   prefs_.SetString(
       kChargingPortsPref,
@@ -532,7 +608,7 @@ TEST_F(PowerSupplyTest, ChargingPortNames) {
   WriteValue(kSecondDir, "type", kUsbType);
   WriteValue(kSecondDir, "status", kNotCharging);
 
-  // Add a third source that isn't described by the pref.
+  // Add a third port that isn't described by the pref.
   const char kThirdName[] = "port3";
   const base::FilePath kThirdDir = temp_dir_.path().Append(kThirdName);
   ASSERT_TRUE(base::CreateDirectory(kThirdDir));
@@ -540,17 +616,17 @@ TEST_F(PowerSupplyTest, ChargingPortNames) {
   WriteValue(kThirdDir, "type", kUsbType);
   WriteValue(kThirdDir, "status", kNotCharging);
 
-  // Check that all three sources' ports are reported correctly.
+  // Check that all three port's locations are reported correctly.
   Init();
   PowerStatus status;
   ASSERT_TRUE(UpdateStatus(&status));
-  ASSERT_EQ(3u, status.available_external_power_sources.size());
+  ASSERT_EQ(3u, status.ports.size());
   EXPECT_EQ(PowerSupplyProperties_PowerSource_Port_LEFT_FRONT,
-            status.available_external_power_sources[0].port);
+            status.ports[0].location);
   EXPECT_EQ(PowerSupplyProperties_PowerSource_Port_RIGHT_BACK,
-            status.available_external_power_sources[1].port);
+            status.ports[1].location);
   EXPECT_EQ(PowerSupplyProperties_PowerSource_Port_UNKNOWN,
-            status.available_external_power_sources[2].port);
+            status.ports[2].location);
 }
 
 TEST_F(PowerSupplyTest, IgnorePeripherals) {
@@ -1373,6 +1449,14 @@ TEST_F(PowerSupplyTest, IgnoreSpuriousUdevEvents) {
   EXPECT_EQ(MakeEstimateString(false, 0, kLowCurrentSec),
             GetEstimateStringFromStatus(power_supply_->GetPowerStatus()));
 
+  // An updated max current and voltage shouldn't generate a notification.
+  WriteDoubleValue(dir, "current_max", 3.0);
+  WriteDoubleValue(dir, "voltage_max_design", 20.0);
+  SendUdevEvent();
+  EXPECT_EQ(1, observer.num_updates());
+  EXPECT_EQ(MakeEstimateString(false, 0, kLowCurrentSec),
+            GetEstimateStringFromStatus(power_supply_->GetPowerStatus()));
+
   power_supply_->RemoveObserver(&observer);
 }
 
@@ -1401,26 +1485,42 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   EXPECT_DOUBLE_EQ(-status.battery_energy_rate, proto.battery_discharge_rate());
   EXPECT_FALSE(proto.supports_dual_role_devices());
 
-  // Check that power source details are copied.
+  // Check that power source details are copied, but that ports that don't have
+  // anything connected are ignored.
   const char kChargerId[] = "PORT1";
   const PowerSupplyProperties::PowerSource::Port kChargerPort =
       PowerSupplyProperties_PowerSource_Port_LEFT;
   const char kChargerManufacturerId[] = "ab4e";
   const char kChargerModelId[] = "0f31";
   const double kChargerMaxPower = 60.0;
+  status.ports.emplace_back(kChargerId,
+                            kChargerPort,
+                            Connection::DEDICATED_SOURCE,
+                            kChargerManufacturerId,
+                            kChargerModelId,
+                            kChargerMaxPower,
+                            true /* active_by_default */);
   const char kPhoneId[] = "PORT2";
   const PowerSupplyProperties::PowerSource::Port kPhonePort =
       PowerSupplyProperties_PowerSource_Port_RIGHT;
   const char kPhoneManufacturerId[] = "468b";
   const char kPhoneModelId[] = "0429";
   const double kPhoneMaxPower = 7.5;
+  status.ports.emplace_back(kPhoneId,
+                            kPhonePort,
+                            Connection::DUAL_ROLE,
+                            kPhoneManufacturerId,
+                            kPhoneModelId,
+                            kPhoneMaxPower,
+                            false /* active_by_default */);
+  status.ports.emplace_back("PORT3",
+                            PowerSupplyProperties_PowerSource_Port_FRONT,
+                            Connection::NONE,
+                            "",
+                            "",
+                            0.0,
+                            false /* active_by_default */);
   status.external_power_source_id = kChargerId;
-  status.available_external_power_sources.push_back(
-      PowerStatus::Source(kChargerId, kChargerPort, kChargerManufacturerId,
-                          kChargerModelId, kChargerMaxPower, true));
-  status.available_external_power_sources.push_back(
-      PowerStatus::Source(kPhoneId, kPhonePort, kPhoneManufacturerId,
-                          kPhoneModelId, kPhoneMaxPower, false));
   status.supports_dual_role_devices = true;
 
   proto.Clear();
@@ -1448,7 +1548,7 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
 
   // Now disconnect everything and start discharging.
   status.external_power_source_id.clear();
-  status.available_external_power_sources.clear();
+  status.ports.clear();
   status.line_power_on = false;
   status.battery_time_to_full = base::TimeDelta();
   status.battery_time_to_empty = base::TimeDelta::FromSeconds(1800);
@@ -1466,6 +1566,7 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   EXPECT_EQ(0, proto.battery_time_to_full_sec());
   EXPECT_FALSE(proto.is_calculating_battery_time());
   EXPECT_DOUBLE_EQ(status.battery_energy_rate, proto.battery_discharge_rate());
+  EXPECT_EQ(0, proto.available_external_power_source_size());
 
   // Check that the is-calculating value is copied.
   status.is_calculating_battery_time = true;
