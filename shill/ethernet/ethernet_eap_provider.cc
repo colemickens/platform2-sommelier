@@ -103,10 +103,9 @@ void EthernetEapProvider::ClearCredentialChangeCallback(Ethernet* device) {
 }
 
 void EthernetEapProvider::OnCredentialsChanged() const {
-  CallbackMap::const_iterator it;
-  for (it = callback_map_.begin(); it != callback_map_.end(); ++it) {
-    CHECK(!it->second.is_null());
-    it->second.Run();
+  for (const auto& ethernet_callback_pair : callback_map_) {
+    CHECK(!ethernet_callback_pair.second.is_null());
+    ethernet_callback_pair.second.Run();
   }
 }
 

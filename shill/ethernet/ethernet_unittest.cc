@@ -579,7 +579,7 @@ TEST_F(EthernetTest, TogglePPPoE) {
     {true,  Technology::kPPPoE},
     {false, Technology::kEthernet},
   };
-  for (const auto transition : transitions) {
+  for (const auto& transition : transitions) {
     Error error;
     ethernet_->mutable_store()->SetBoolProperty(
         kPPPoEProperty, transition.first, &error);
