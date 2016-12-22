@@ -397,9 +397,8 @@ void ThirdPartyVpnDriver::SetParameters(
   IPAddress ip_address(ip_properties_.address_family);
   IPConfig::Route route;
   route.gateway = ip_properties_.gateway;
-  for (auto value = inclusion_list.begin(); value != inclusion_list.end();
-       ++value) {
-    ip_address.SetAddressAndPrefixFromString(*value);
+  for (const auto& value : inclusion_list) {
+    ip_address.SetAddressAndPrefixFromString(value);
     ip_address.IntoString(&route.host);
     IPAddress::GetAddressMaskFromPrefix(
         ip_address.family(), ip_address.prefix()).IntoString(&route.netmask);

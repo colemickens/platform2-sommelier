@@ -194,9 +194,11 @@ void OpenVPNManagementServer::OnInput(InputData* data) {
   vector<string> messages = SplitString(
       string(reinterpret_cast<char*>(data->buf), data->len), "\n",
       base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-  for (vector<string>::const_iterator it = messages.begin();
-       it != messages.end() && IsStarted(); ++it) {
-    ProcessMessage(*it);
+  for (const auto& message : messages) {
+    if (!IsStarted()) {
+      break;
+    }
+    ProcessMessage(message);
   }
 }
 
@@ -423,11 +425,11 @@ bool OpenVPNManagementServer::ProcessSuccessMessage(const string& message) {
 // static
 string OpenVPNManagementServer::EscapeToQuote(const string& str) {
   string escaped;
-  for (string::const_iterator it = str.begin(); it != str.end(); ++it) {
-    if (*it == '\\' || *it == '"') {
+  for (auto ch : str) {
+    if (ch == '\\' || ch == '"') {
       escaped += '\\';
     }
-    escaped += *it;
+    escaped += ch;
   }
   return escaped;
 }

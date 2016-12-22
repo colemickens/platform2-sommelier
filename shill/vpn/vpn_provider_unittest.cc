@@ -300,16 +300,16 @@ TEST_F(VPNProviderTest, CreateService) {
       .Times(kTypesCount)
       .WillRepeatedly(Return(&device_info_));
   EXPECT_CALL(manager_, RegisterService(_)).Times(kTypesCount);
-  for (size_t i = 0; i < kTypesCount; i++) {
+  for (auto type : kTypes) {
     Error error;
     VPNServiceRefPtr service =
-        provider_.CreateService(kTypes[i], kName, kStorageID, &error);
-    ASSERT_TRUE(service.get()) << kTypes[i];
-    ASSERT_TRUE(service->driver()) << kTypes[i];
-    EXPECT_EQ(kTypes[i], service->driver()->GetProviderType());
-    EXPECT_EQ(kName, GetServiceFriendlyName(service)) << kTypes[i];
-    EXPECT_EQ(kStorageID, service->GetStorageIdentifier()) << kTypes[i];
-    EXPECT_TRUE(error.IsSuccess()) << kTypes[i];
+        provider_.CreateService(type, kName, kStorageID, &error);
+    ASSERT_TRUE(service.get()) << type;
+    ASSERT_TRUE(service->driver()) << type;
+    EXPECT_EQ(type, service->driver()->GetProviderType());
+    EXPECT_EQ(kName, GetServiceFriendlyName(service)) << type;
+    EXPECT_EQ(kStorageID, service->GetStorageIdentifier()) << type;
+    EXPECT_TRUE(error.IsSuccess()) << type;
   }
   Error error;
   VPNServiceRefPtr unknown_service =
