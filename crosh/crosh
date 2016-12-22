@@ -498,28 +498,32 @@ cmd_set_wake_on_lan() (
   esac
 )
 
-USAGE_network_logging='<wifi | cellular | ethernet>'
+USAGE_network_logging='<wifi | cellular | ethernet | reset>'
 HELP_network_logging='
   A function that enables a predefined set of tags useful for
-  debugging the specified device.
+  debugging the specified device. Can be used incrementally, then
+  reset to default with the "reset" subcommand.
 '
 cmd_network_logging() (
   if [ -n "$1" ]; then
     case "$1" in
       "wifi")
-        echo; /usr/bin/ff_debug service+wifi+inet+device+manager
+        echo; /usr/bin/ff_debug +service+wifi+inet+device+manager
         echo; /usr/bin/wpa_debug msgdump
-        echo; /usr/bin/modem set-logging info
+        echo; printf "Enable wifi debugging: "; debugd SetWifiDriverDebug int32:1
         ;;
       "cellular")
-        echo; /usr/bin/ff_debug service+cellular+modem+device+manager
-        echo; /usr/bin/wpa_debug info
+        echo; /usr/bin/ff_debug +service+cellular+modem+device+manager
         echo; /usr/bin/modem set-logging debug
         ;;
       "ethernet")
-        echo; /usr/bin/ff_debug service+ethernet+device+manager
-        echo; /usr/bin/wpa_debug info
+        echo; /usr/bin/ff_debug +service+ethernet+device+manager
+        ;;
+      "reset")
+        echo; /usr/bin/ff_debug --reset
+        echo; /usr/bin/wpa_debug --reset
         echo; /usr/bin/modem set-logging info
+        echo; printf "Disable wifi debugging: "; debugd SetWifiDriverDebug int32:0
         ;;
       *)
         help "unknown option: $1"
