@@ -112,6 +112,18 @@ ERROR: The [[...]] construct is a bashism.  Please stick to [...].
 EOF
     ret=1
   fi
+
+  if grep -hn 'echo -' ${s}; then
+    cat <<\EOF
+ERROR: `echo -n` and `echo -e` options are not portable.  Please use printf.
+       before:   echo -n "foo ${blah}"
+       after :   printf '%s' "foo ${blah}"
+       before:   echo -e "${var_with_escapes}"
+       after :   printf '%b\n' "${var_with_escapes}"
+
+EOF
+    ret=1
+  fi
 done
 
 exit ${ret}
