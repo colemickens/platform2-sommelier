@@ -73,7 +73,9 @@ const char kKrb5ConfData[] =
     // no-op, but still.
     "\tallow_weak_crypto = false\n"
     // Default is 300 seconds, but we might add a policy for that in the future.
-    "\tclockskew = 300\n";
+    "\tclockskew = 300\n"
+    // Required for password change.
+    "\tdefault_realm = %s\n";
 
 const int kFileMode_rwxx = base::FILE_PERMISSION_READ_BY_USER |
                            base::FILE_PERMISSION_WRITE_BY_USER |
@@ -133,6 +135,16 @@ const char kSmbClientPath[] = "/usr/bin/smbclient";
 const char kAuthPolicyExecUser[] = "authpolicyd-exec";
 const char kAuthPolicyExecGroup[] = "authpolicyd-exec";
 
+// Keys for interpreting kinit output.
+const char kKeyBadUserName[] =
+    "Client not found in Kerberos database while getting initial credentials";
+const char kKeyBadPassword[] =
+    "Preauthentication failed while getting initial credentials";
+const char kKeyPasswordExpired[] =
+  "Password expired.  You must change it now.";
+const char kKeyCannotResolve[] =
+    "Cannot resolve network address for KDC in realm";
+
 #undef KRB5_FILE_PATH
 #undef SAMBA_TMP_DIR
 #undef STATE_DIR
@@ -165,6 +177,11 @@ void SetupJail(ProcessExecutor* cmd, const char* seccomp_filter) {
 
   // Allows us to drop setgroups, setresgid and setresuid from seccomp filters.
   cmd->SetNoNewPrivs();
+}
+
+// Returns true if the string contains the given substring.
+bool Contains(const std::string& str, const std::string& substr) {
+  return str.find(substr) != std::string::npos;
 }
 
 // Retrieves the name of the domain controller. If the full server name is
@@ -253,7 +270,7 @@ bool SetFilePermissionsRecursive(const base::FilePath& fp,
 // Writes the samba configuration file.
 bool WriteSmbConf(const ap::SambaConfig* config, const char** out_error_code) {
   if (!config) {
-    LOG(ERROR) << "Not configured yet. Must call JoinMachine first.";
+    LOG(ERROR) << "Missing configuration. Must call JoinMachine first.";
     *out_error_code = errors::kWriteSmbConfFailed;
     return false;
   }
@@ -272,9 +289,10 @@ bool WriteSmbConf(const ap::SambaConfig* config, const char** out_error_code) {
 }
 
 // Writes the krb5 configuration file.
-bool WriteKrb5Conf(const char** out_error_code) {
+bool WriteKrb5Conf(const std::string& realm, const char** out_error_code) {
+  std::string data = base::StringPrintf(kKrb5ConfData, realm.c_str());
   base::FilePath fp(kKrb5FilePath);
-  if (base::WriteFile(fp, kKrb5ConfData, strlen(kKrb5ConfData)) <= 0) {
+  if (base::WriteFile(fp, data.c_str(), data.size()) <= 0) {
     LOG(ERROR) << "Failed to write krb5 conf file '" << fp.value() << "'";
     *out_error_code = errors::kWriteKrb5ConfFailed;
     return false;
@@ -535,7 +553,7 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
     return false;
 
   // Write krb5 configuration file.
-  if (!WriteKrb5Conf(out_error_code))
+  if (!WriteKrb5Conf(realm, out_error_code))
     return false;
 
   // Write samba configuration file.
@@ -548,8 +566,26 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
   kinit_cmd.SetInputFile(password_fd);
   kinit_cmd.SetEnv(kKrb5ConfEnvKey, kKrb5ConfEnvValue);  // Kerberos config.
   if (!kinit_cmd.Execute()) {
-    LOG(ERROR) << "kinit failed with exit code " << kinit_cmd.GetExitCode();
-    *out_error_code = errors::kKInitFailed;
+    // Handle different error cases
+    const std::string& kinit_out = kinit_cmd.GetStdout();
+    const std::string& kinit_err = kinit_cmd.GetStderr();
+
+    if (Contains(kinit_err, kKeyBadUserName)) {
+      LOG(ERROR) << "kinit failed - bad user name";
+      *out_error_code = errors::kKInitBadUserName;
+    } else if (Contains(kinit_err, kKeyBadPassword)) {
+      LOG(ERROR) << "kinit failed - bad password";
+      *out_error_code = errors::kKInitBadPassword;
+    } else if (Contains(kinit_out, kKeyPasswordExpired)) {  // Note: kinit_out!
+      LOG(ERROR) << "kinit failed - password expired";
+      *out_error_code = errors::kKInitPasswordExpired;
+    } else if (Contains(kinit_err, kKeyCannotResolve)) {
+      LOG(ERROR) << "kinit failed - cannot resolve KDC realm";
+      *out_error_code = errors::kKInitCannotResolve;
+    } else {
+      LOG(ERROR) << "kinit failed with exit code " << kinit_cmd.GetExitCode();
+      *out_error_code = errors::kKInitFailed;
+    }
     return false;
   }
 
@@ -688,7 +724,8 @@ bool SambaInterface::FetchDeviceGpos(std::string* out_policy_blob,
     return false;
 
   // Write krb5 configuration file.
-  if (!WriteKrb5Conf(out_error_code))
+  DCHECK(config_.get());
+  if (!WriteKrb5Conf(config_->realm(), out_error_code))
     return false;
 
   // Call kinit to get the Kerberos ticket-granting-ticket.

@@ -14,7 +14,11 @@ extern const char kDomain[];
 extern const char kCreateDirFailed[];        // Failed to create a directory.
 extern const char kDownloadGpoFailed[];      // Failed to download GPO.
 extern const char kInvalidGpoPaths[];        // Bad GPO paths.
-extern const char kKInitFailed[];            // Error authenticating.
+extern const char kKInitFailed[];            // Unknown kinit error.
+extern const char kKInitBadUserName[];       // Bad user name.
+extern const char kKInitBadPassword[];       // Bad password.
+extern const char kKInitPasswordExpired[];   // Password expired.
+extern const char kKInitCannotResolve[];     // Cannot resolve KDC realm.
 extern const char kNetAdsGpoListFailed[];    // Getting GPO list failed.
 extern const char kNetAdsInfoFailed[];       // Getting DC name failed.
 extern const char kNetAdsJoinFailed[];       // Joining machine to AD failed.

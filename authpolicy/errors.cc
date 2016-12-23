@@ -10,8 +10,12 @@ const char kDomain[] = "authpolicyd";
 
 const char kCreateDirFailed[] = "create_dir_failed";
 const char kDownloadGpoFailed[] = "download_gpo_failed";
-const char kKInitFailed[] = "kinit_failed";
 const char kInvalidGpoPaths[] = "invalid_gpo_paths";
+const char kKInitFailed[] = "kinit_failed";
+const char kKInitBadUserName[] = "kinit_bad_user_name";
+const char kKInitBadPassword[] = "kinit_bad_password";
+const char kKInitPasswordExpired[] = "kinit_password_expired";
+const char kKInitCannotResolve[] = "kinit_cannot_resolve";
 const char kNetAdsGpoListFailed[] = "net_ads_gpo_list_failed";
 const char kNetAdsInfoFailed[] = "net_ads_info_failed";
 const char kNetAdsJoinFailed[] = "net_ads_join_failed";
