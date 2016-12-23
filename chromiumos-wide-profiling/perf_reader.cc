@@ -15,6 +15,7 @@
 #include "base/logging.h"
 #include "base/macros.h"
 
+#include "chromiumos-wide-profiling/binary_data_utils.h"
 #include "chromiumos-wide-profiling/buffer_reader.h"
 #include "chromiumos-wide-profiling/buffer_writer.h"
 #include "chromiumos-wide-profiling/compat/string.h"
@@ -23,7 +24,6 @@
 #include "chromiumos-wide-profiling/perf_data_structures.h"
 #include "chromiumos-wide-profiling/perf_data_utils.h"
 #include "chromiumos-wide-profiling/sample_info_reader.h"
-#include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
 

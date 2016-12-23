@@ -10,9 +10,9 @@
 
 #include <memory>
 
+#include "chromiumos-wide-profiling/binary_data_utils.h"  // for Align<T>
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/kernel/perf_internals.h"
-#include "chromiumos-wide-profiling/utils.h"  // for Align<T>
 
 namespace quipper {
 

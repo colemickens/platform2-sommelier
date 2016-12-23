@@ -10,6 +10,7 @@
 #include <sstream>
 #include <vector>
 
+#include "chromiumos-wide-profiling/binary_data_utils.h"
 #include "chromiumos-wide-profiling/compat/proto.h"
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/perf_option_parser.h"
@@ -18,7 +19,6 @@
 #include "chromiumos-wide-profiling/perf_stat_parser.h"
 #include "chromiumos-wide-profiling/run_command.h"
 #include "chromiumos-wide-profiling/scoped_temp_path.h"
-#include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
 

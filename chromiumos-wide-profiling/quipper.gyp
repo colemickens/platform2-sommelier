@@ -17,6 +17,7 @@
       'type': 'static_library',
       'sources': [
         'address_mapper.cc',
+        'binary_data_utils.cc',
         'buffer_reader.cc',
         'buffer_writer.cc',
         'compat/cros/detail/log_level.cc',
@@ -38,7 +39,6 @@
         'sample_info_reader.cc',
         'scoped_temp_path.cc',
         'string_utils.cc',
-        'utils.cc',
       ],
       'dependencies': [
         'perf_data_proto',
@@ -164,6 +164,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'address_mapper_test.cc',
+            'binary_data_utils_test.cc',
             'buffer_reader_test.cc',
             'buffer_writer_test.cc',
             'dso_test.cc',
@@ -179,7 +180,6 @@
             'sample_info_reader_test.cc',
             'scoped_temp_path_test.cc',
             'test_runner.cc',
-            'utils_test.cc',
           ],
           'link_settings': {
             'libraries': ['-lcap'],

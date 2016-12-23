@@ -2,15 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMIUMOS_WIDE_PROFILING_UTILS_H_
-#define CHROMIUMOS_WIDE_PROFILING_UTILS_H_
+#ifndef CHROMIUMOS_WIDE_PROFILING_BINARY_DATA_UTILS_H_
+#define CHROMIUMOS_WIDE_PROFILING_BINARY_DATA_UTILS_H_
 
 #include <byteswap.h>
 #include <limits.h>
 #include <stdint.h>
 
 #include <bitset>
-#include <string>
 #include <type_traits>
 #include <vector>
 
@@ -58,6 +57,7 @@ size_t GetNumBits(const T& value) {
   return std::bitset<sizeof(T) * CHAR_BIT>(value).count();
 }
 
+// Returns the leading 64 bits of the MD5 digest of |input|.
 uint64_t Md5Prefix(const string& input);
 uint64_t Md5Prefix(const std::vector<char>& input);
 
@@ -94,4 +94,4 @@ inline uint64_t Align(uint64_t value) {
 
 }  // namespace quipper
 
-#endif  // CHROMIUMOS_WIDE_PROFILING_UTILS_H_
+#endif  // CHROMIUMOS_WIDE_PROFILING_BINARY_DATA_UTILS_H_

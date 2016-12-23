@@ -20,7 +20,6 @@
 #include "chromiumos-wide-profiling/kernel/perf_event.h"
 #include "chromiumos-wide-profiling/perf_serializer.h"
 #include "chromiumos-wide-profiling/sample_info_reader.h"
-#include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
 

@@ -17,11 +17,11 @@
 
 #include "base/macros.h"
 
+#include "chromiumos-wide-profiling/binary_data_utils.h"
 #include "chromiumos-wide-profiling/compat/proto.h"
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/dso.h"
 #include "chromiumos-wide-profiling/perf_reader.h"
-#include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
 

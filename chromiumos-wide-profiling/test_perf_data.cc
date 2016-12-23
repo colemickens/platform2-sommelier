@@ -12,10 +12,10 @@
 
 #include "base/logging.h"
 
+#include "chromiumos-wide-profiling/binary_data_utils.h"
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/kernel/perf_internals.h"
 #include "chromiumos-wide-profiling/perf_data_utils.h"
-#include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
 namespace testing {
