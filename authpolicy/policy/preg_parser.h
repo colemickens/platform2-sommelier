@@ -13,7 +13,8 @@
 #ifndef AUTHPOLICY_POLICY_PREG_PARSER_H_
 #define AUTHPOLICY_POLICY_PREG_PARSER_H_
 
-#include "base/strings/string16.h"
+#include <base/strings/string16.h>
+#include <dbus/authpolicy/dbus-constants.h>
 
 namespace base {
 class FilePath;
@@ -31,7 +32,7 @@ namespace preg_parser {
 bool ReadFile(const base::FilePath& file_path,
               const base::string16& root,
               RegistryDict* dict,
-              const char** out_error_code);
+              authpolicy::ErrorType* out_error);
 
 }  // namespace preg_parser
 }  // namespace policy

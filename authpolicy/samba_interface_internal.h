@@ -8,7 +8,8 @@
 #include <string>
 #include <vector>
 
-#include "base/files/file_path.h"
+#include <base/files/file_path.h>
+#include <dbus/authpolicy/dbus-constants.h>
 
 namespace authpolicy {
 namespace internal {
@@ -18,10 +19,11 @@ namespace internal {
 // |out_workgroup| is WORKGROUP, |out_normalized_user_principal_name| is
 // user_name@WORKGROUP.SOME.DOMAIN.
 bool ParseUserPrincipalName(const std::string& user_principal_name,
-                            std::string* out_user_name, std::string* out_realm,
+                            std::string* out_user_name,
+                            std::string* out_realm,
                             std::string* out_workgroup,
                             std::string* out_normalized_user_principal_name,
-                            const char** out_error_code);
+                            ErrorType* out_error);
 
 // Parses the given |in_str| consisting of individual lines for
 //   ... \n

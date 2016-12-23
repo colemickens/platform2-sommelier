@@ -7,7 +7,7 @@
 #include <memory>
 #include <vector>
 
-#include "base/files/file_path.h"
+#include <base/files/file_path.h>
 
 #include "authpolicy/policy/device_policy_encoder.h"
 #include "authpolicy/policy/policy_encoder_helper.h"
@@ -26,14 +26,14 @@ namespace policy {
 
 bool ParsePRegFilesIntoUserPolicy(const std::vector<base::FilePath>& preg_files,
                                   em::CloudPolicySettings* policy,
-                                  const char** out_error_code) {
+                                  authpolicy::ErrorType* out_error) {
   DCHECK(policy);
 
   RegistryDict merged_mandatory_dict;
   RegistryDict merged_recommended_dict;
   for (const base::FilePath& preg_file : preg_files) {
     RegistryDict mandatory_dict;
-    if (!helper::LoadPRegFile(preg_file, &mandatory_dict, out_error_code))
+    if (!helper::LoadPRegFile(preg_file, &mandatory_dict, out_error))
       return false;
 
     // Recommended policies are stored in their own registry key. This can be
@@ -65,12 +65,12 @@ bool ParsePRegFilesIntoUserPolicy(const std::vector<base::FilePath>& preg_files,
 bool ParsePRegFilesIntoDevicePolicy(
     const std::vector<base::FilePath>& preg_files,
     em::ChromeDeviceSettingsProto* policy,
-    const char** out_error_code) {
+    authpolicy::ErrorType* out_error) {
   DCHECK(policy);
 
   RegistryDict policy_dict;
   for (const base::FilePath& preg_file : preg_files) {
-    if (!helper::LoadPRegFile(preg_file, &policy_dict, out_error_code))
+    if (!helper::LoadPRegFile(preg_file, &policy_dict, out_error))
       return false;
   }
 

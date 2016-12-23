@@ -11,7 +11,6 @@
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "authpolicy/errors.h"
 #include "authpolicy/samba_interface.h"
 #include "bindings/device_management_backend.pb.h"
 
@@ -20,14 +19,21 @@ namespace em = enterprise_management;
 
 using brillo::dbus_utils::ExtractMethodCallResults;
 
+namespace authpolicy {
+
 namespace {
 
 const char kChromeUserPolicyType[] = "google/chromeos/user";
 const char kChromeDevicePolicyType[] = "google/chromeos/device";
 
-}  // namespace
+void PrintError(const char* msg, ErrorType error) {
+  if (error == ERROR_NONE)
+    LOG(INFO) << msg << " succeeded";
+  else
+    LOG(INFO) << msg << " failed with code " << error;
+}
 
-namespace authpolicy {
+}  // namespace
 
 AuthPolicy::AuthPolicy(
     brillo::dbus_utils::ExportedObjectManager* object_manager)
@@ -47,47 +53,31 @@ void AuthPolicy::RegisterAsync(
   DCHECK(session_manager_proxy_);
 }
 
-bool AuthPolicy::AuthenticateUser(brillo::ErrorPtr* error,
-                                  const std::string& in_user_principal_name,
+void AuthPolicy::AuthenticateUser(const std::string& in_user_principal_name,
                                   const dbus::FileDescriptor& in_password_fd,
-                                  int32_t* out_error_code,
+                                  int32_t* out_error,
                                   std::string* out_account_id) {
   LOG(INFO) << "Received 'AuthenticateUser' request";
-  *out_error_code = 0;
 
-  // Call samba to authenticate user and get account id.
-  const char* error_code = nullptr;
-  if (!samba_.AuthenticateUser(in_user_principal_name, in_password_fd.value(),
-                               out_account_id, &error_code)) {
-    brillo::Error::AddToPrintf(error, FROM_HERE, errors::kDomain,
-                               error_code, "Failed to authenticate user.");
-    return false;
-  }
-
-  LOG(INFO) << "AuthenticateUser succeeded";
-  return true;
+  ErrorType error = ERROR_NONE;
+  bool res = samba_.AuthenticateUser(
+      in_user_principal_name, in_password_fd.value(), out_account_id, &error);
+  DCHECK_EQ(res, error == ERROR_NONE);
+  PrintError("AuthenticateUser", error);
+  *out_error = error;
 }
 
-bool AuthPolicy::JoinADDomain(brillo::ErrorPtr* error,
-                              const std::string& in_machine_name,
-                              const std::string& in_user_principal_name,
-                              const dbus::FileDescriptor& in_password_fd,
-                              int32_t* out_error_code) {
+int32_t AuthPolicy::JoinADDomain(const std::string& in_machine_name,
+                                 const std::string& in_user_principal_name,
+                                 const dbus::FileDescriptor& in_password_fd) {
   LOG(INFO) << "Received 'JoinADDomain' request";
-  *out_error_code = 0;
 
-  // Call samba to join machine to the Active Directory domain.
-  const char* error_code = nullptr;
-  if (!samba_.JoinMachine(in_machine_name, in_user_principal_name,
-                          in_password_fd.value(), &error_code)) {
-    brillo::Error::AddToPrintf(error, FROM_HERE, errors::kDomain,
-                               error_code,
-                               "Failed to join Active Directory domain.");
-    return false;
-  }
-
-  LOG(INFO) << "JoinADDomain succeeded";
-  return true;
+  ErrorType error = ERROR_NONE;
+  bool res = samba_.JoinMachine(in_machine_name, in_user_principal_name,
+                                in_password_fd.value(), &error);
+  DCHECK_EQ(res, error == ERROR_NONE);
+  PrintError("JoinADDomain", error);
+  return error;
 }
 
 void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
@@ -95,15 +85,17 @@ void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
   LOG(INFO) << "Received 'RefreshUserPolicy' request";
 
   // Fetch GPOs for the current user.
-  const char* error_code = nullptr;
+  ErrorType error = ERROR_NONE;
   std::string policy_blob;
-  if (!samba_.FetchUserGpos(in_account_id, &policy_blob, &error_code)) {
-    callback->ReplyWithError(FROM_HERE, errors::kDomain, error_code,
-                             "Failed to fetch user policy files.");
+  bool res = samba_.FetchUserGpos(in_account_id, &policy_blob, &error);
+  DCHECK_EQ(res, error == ERROR_NONE);
+  PrintError("User policy fetch and parsing", error);
+
+  // Return immediately on error.
+  if (!res) {
+    callback->Return(error);
     return;
   }
-
-  LOG(INFO) << "User policy fetch and parsing succeeded";
 
   // Send policy to Session Manager.
   StorePolicy(policy_blob, &in_account_id, std::move(callback));
@@ -113,15 +105,17 @@ void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
   LOG(INFO) << "Received 'RefreshDevicePolicy' request";
 
   // Fetch GPOs for the device.
-  const char* error_code = nullptr;
+  ErrorType error = ERROR_NONE;
   std::string policy_blob;
-  if (!samba_.FetchDeviceGpos(&policy_blob, &error_code)) {
-    callback->ReplyWithError(FROM_HERE, errors::kDomain, error_code,
-                             "Failed to fetch device policy files.");
+  bool res = samba_.FetchDeviceGpos(&policy_blob, &error);
+  DCHECK_EQ(res, error == ERROR_NONE);
+  PrintError("Device policy fetch and parsing", error);
+
+  // Return immediately on error.
+  if (!res) {
+    callback->Return(error);
     return;
   }
-
-  LOG(INFO) << "Device policy fetch and parsing succeeded";
 
   // Send policy to Session Manager.
   StorePolicy(policy_blob, nullptr, std::move(callback));
@@ -142,18 +136,14 @@ void AuthPolicy::StorePolicy(const std::string& policy_blob,
   // Note: No signature required here, Active Directory policy is unsigned!
   em::PolicyFetchResponse policy_response;
   if (!policy_data.SerializeToString(policy_response.mutable_policy_data())) {
-    callback->ReplyWithError(FROM_HERE, errors::kDomain,
-                             errors::kStorePolicyFailed,
-                             "Failed to serialize policy data.");
+    callback->Return(ERROR_STORE_POLICY_FAILED);
     return;
   }
 
   // Finally, write response to a string blob.
   std::string response_blob;
   if (!policy_response.SerializeToString(&response_blob)) {
-    callback->ReplyWithError(FROM_HERE, errors::kDomain,
-                             errors::kStorePolicyFailed,
-                             "Failed to serialize policy response.");
+    callback->Return(ERROR_STORE_POLICY_FAILED);
     return;
   }
 
@@ -191,11 +181,10 @@ void AuthPolicy::OnPolicyStored(const char* method,
 
   if (!msg.empty()) {
     LOG(ERROR) << msg;
-    callback->ReplyWithError(FROM_HERE, errors::kDomain,
-        errors::kStorePolicyFailed, msg);
+    callback->Return(ERROR_STORE_POLICY_FAILED);
   } else {
     LOG(INFO) << "Call to " << method << " succeeded.";
-    callback->Return(0);
+    callback->Return(ERROR_NONE);
   }
 }
 

@@ -6,12 +6,11 @@
 
 #include <string>
 
-#include "base/files/file_path.h"
-#include "base/files/file_util.h"
-#include "base/strings/string16.h"
-#include "base/strings/utf_string_conversions.h"
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/strings/string16.h>
+#include <base/strings/utf_string_conversions.h>
 
-#include "authpolicy/errors.h"
 #include "authpolicy/policy/preg_parser.h"
 #include "authpolicy/policy/registry_dict.h"
 
@@ -45,15 +44,14 @@ namespace helper {
 
 bool LoadPRegFile(const base::FilePath& preg_file,
                   RegistryDict* out_dict,
-                  const char** out_error_code) {
+                  authpolicy::ErrorType* out_error) {
   if (!base::PathExists(preg_file)) {
     LOG(ERROR) << "PReg file " << preg_file.value() << " does not exist";
-    *out_error_code = errors::kPregFileNotFound;
+    *out_error = authpolicy::ERROR_PARSE_PREG_FAILED;
     return false;
   }
 
-  return preg_parser::ReadFile(preg_file, kRegistryKey, out_dict,
-                               out_error_code);
+  return preg_parser::ReadFile(preg_file, kRegistryKey, out_dict, out_error);
 }
 
 bool GetAsBoolean(const base::Value* value, bool* bool_value) {

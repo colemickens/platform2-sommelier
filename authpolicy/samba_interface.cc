@@ -18,7 +18,6 @@
 #include <base/strings/stringprintf.h>
 
 #include "authpolicy/constants.h"
-#include "authpolicy/errors.h"
 #include "authpolicy/process_executor.h"
 #include "authpolicy/samba_interface_internal.h"
 #include "bindings/authpolicy_containers.pb.h"
@@ -191,7 +190,7 @@ bool Contains(const std::string& str, const std::string& substr) {
 // |domain_controller_name|. The domain controller name is required for proper
 // kerberized authentication.
 bool UpdateDomainControllerName(std::string* domain_controller_name,
-                                const char** out_error_code) {
+                                ErrorType* out_error) {
   if (!domain_controller_name->empty())
     return true;
 
@@ -201,7 +200,7 @@ bool UpdateDomainControllerName(std::string* domain_controller_name,
   if (!net_cmd.Execute()) {
     LOG(ERROR) << "net ads info failed with exit code "
                << net_cmd.GetExitCode();
-    *out_error_code = errors::kNetAdsInfoFailed;
+    *out_error = ERROR_NET_FAILED;
     return false;
   }
   const std::string& net_out = net_cmd.GetStdout();
@@ -214,7 +213,7 @@ bool UpdateDomainControllerName(std::string* domain_controller_name,
   if (!parse_cmd.Execute()) {
     LOG(ERROR) << "authpolicy_parser failed with exit code "
                << parse_cmd.GetExitCode();
-    *out_error_code = errors::kParseNetAdsInfoFailed;
+    *out_error = ERROR_PARSE_FAILED;
     return false;
   }
   *domain_controller_name = parse_cmd.GetStdout();
@@ -224,12 +223,12 @@ bool UpdateDomainControllerName(std::string* domain_controller_name,
 }
 
 // Creates the given directory recursively and sets error message on failure.
-bool CreateDirectory(const base::FilePath& dir, const char** out_error_code) {
+bool CreateDirectory(const base::FilePath& dir, ErrorType* out_error) {
   base::File::Error ferror;
   if (!base::CreateDirectoryAndGetError(dir, &ferror)) {
     LOG(ERROR) << "Failed to create directory '" << dir.value()
                << "': " << base::File::ErrorToString(ferror);
-    *out_error_code = errors::kCreateDirFailed;
+    *out_error = ERROR_LOCAL_IO;
     return false;
   }
   return true;
@@ -238,10 +237,10 @@ bool CreateDirectory(const base::FilePath& dir, const char** out_error_code) {
 // Sets file permissions for a given filepath and sets error message on failure.
 bool SetFilePermissions(const base::FilePath& fp,
                         int mode,
-                        const char** out_error_code) {
+                        ErrorType* out_error) {
   if (!base::SetPosixFilePermissions(fp, mode)) {
     LOG(ERROR) << "Failed to set permissions on '" << fp.value() << "'";
-    *out_error_code = errors::kSetPermissionsFailed;
+    *out_error = ERROR_LOCAL_IO;
     return false;
   }
   return true;
@@ -253,25 +252,26 @@ bool SetFilePermissions(const base::FilePath& fp,
 bool SetFilePermissionsRecursive(const base::FilePath& fp,
                                  const base::FilePath& base_fp,
                                  int mode,
-                                 const char** out_error_code) {
+                                 ErrorType* out_error) {
   if (!base_fp.IsParent(fp)) {
     LOG(ERROR) << "Base path '" << base_fp.value() << "' is not a parent of '"
                << fp.value() << "'";
+    *out_error = ERROR_LOCAL_IO;
     return false;
   }
   for (base::FilePath curr_fp = fp; curr_fp != base_fp;
        curr_fp = curr_fp.DirName()) {
-    if (!SetFilePermissions(curr_fp, mode, out_error_code))
+    if (!SetFilePermissions(curr_fp, mode, out_error))
       return false;
   }
   return true;
 }
 
 // Writes the samba configuration file.
-bool WriteSmbConf(const ap::SambaConfig* config, const char** out_error_code) {
+bool WriteSmbConf(const ap::SambaConfig* config, ErrorType* out_error) {
   if (!config) {
     LOG(ERROR) << "Missing configuration. Must call JoinMachine first.";
-    *out_error_code = errors::kWriteSmbConfFailed;
+    *out_error = ERROR_NOT_JOINED;
     return false;
   }
 
@@ -281,7 +281,7 @@ bool WriteSmbConf(const ap::SambaConfig* config, const char** out_error_code) {
   base::FilePath fp(kSmbFilePath);
   if (base::WriteFile(fp, data.c_str(), data.size()) <= 0) {
     LOG(ERROR) << "Failed to write samba conf file '" << fp.value() << "'";
-    *out_error_code = errors::kWriteSmbConfFailed;
+    *out_error = ERROR_LOCAL_IO;
     return false;
   }
 
@@ -289,12 +289,12 @@ bool WriteSmbConf(const ap::SambaConfig* config, const char** out_error_code) {
 }
 
 // Writes the krb5 configuration file.
-bool WriteKrb5Conf(const std::string& realm, const char** out_error_code) {
+bool WriteKrb5Conf(const std::string& realm, ErrorType* out_error) {
   std::string data = base::StringPrintf(kKrb5ConfData, realm.c_str());
   base::FilePath fp(kKrb5FilePath);
   if (base::WriteFile(fp, data.c_str(), data.size()) <= 0) {
     LOG(ERROR) << "Failed to write krb5 conf file '" << fp.value() << "'";
-    *out_error_code = errors::kWriteKrb5ConfFailed;
+    *out_error = ERROR_LOCAL_IO;
     return false;
   }
 
@@ -302,20 +302,19 @@ bool WriteKrb5Conf(const std::string& realm, const char** out_error_code) {
 }
 
 // Writes the file with configuration information.
-bool WriteConfiguration(const ap::SambaConfig* config,
-                        const char** out_error_code) {
+bool WriteConfiguration(const ap::SambaConfig* config, ErrorType* out_error) {
   DCHECK(config);
   std::string config_blob;
   if (!config->SerializeToString(&config_blob)) {
     LOG(ERROR) << "Failed to serialize configuration to string";
-    *out_error_code = errors::kWriteConfigFailed;
+    *out_error = ERROR_LOCAL_IO;
     return false;
   }
 
   base::FilePath fp(kConfigFilePath);
   if (base::WriteFile(fp, config_blob.c_str(), config_blob.size()) <= 0) {
     LOG(ERROR) << "Failed to write configuration file '" << fp.value() << "'";
-    *out_error_code = errors::kWriteConfigFailed;
+    *out_error = ERROR_LOCAL_IO;
     return false;
   }
 
@@ -356,7 +355,7 @@ bool ReadConfiguration(ap::SambaConfig* config) {
 bool GetGpoList(const std::string& user_or_machine_name,
                 ac::PolicyScope scope,
                 std::string* out_gpo_list,
-                const char** out_error_code) {
+                ErrorType* out_error) {
   DCHECK(out_gpo_list);
   LOG(INFO) << "Getting GPO list for " << user_or_machine_name;
 
@@ -368,7 +367,7 @@ bool GetGpoList(const std::string& user_or_machine_name,
   if (!net_cmd.Execute()) {
     LOG(ERROR) << "net ads gpo list failed with exit code "
                << net_cmd.GetExitCode();
-    *out_error_code = errors::kNetAdsGpoListFailed;
+    *out_error = ERROR_NET_FAILED;
     return false;
   }
 
@@ -383,7 +382,7 @@ bool GetGpoList(const std::string& user_or_machine_name,
   parse_cmd.SetInputString(net_out);
   if (!parse_cmd.Execute()) {
     LOG(ERROR) << "Failed to parse GPO list";
-    *out_error_code = errors::kParseGpoFailed;
+    *out_error = ERROR_PARSE_FAILED;
     return false;
   }
   *out_gpo_list = parse_cmd.GetStdout();
@@ -395,7 +394,7 @@ bool DownloadGpos(const std::string& gpo_list_blob,
                   const std::string& domain_controller_name,
                   const char* preg_dir,
                   std::vector<base::FilePath>* out_gpo_file_paths,
-                  const char** out_error_code) {
+                  ErrorType* out_error) {
   // Parse GPO list protobuf.
   ap::GpoList gpo_list;
   if (!gpo_list.ParseFromString(gpo_list_blob)) {
@@ -418,7 +417,7 @@ bool DownloadGpos(const std::string& gpo_list_blob,
     if (gpo.basepath().find(';') != std::string::npos ||
         gpo.directory().find(';') != std::string::npos) {
       LOG(ERROR) << "GPO paths may not contain a ';'";
-      *out_error_code = errors::kInvalidGpoPaths;
+      *out_error = ERROR_BAD_GPOS;
       return false;
     }
 
@@ -428,7 +427,7 @@ bool DownloadGpos(const std::string& gpo_list_blob,
     } else if (gpo_basepath != gpo.basepath()) {
       LOG(ERROR) << "Inconsistent base path '" << gpo_basepath << "' != '"
                  << gpo.basepath() << "'";
-      *out_error_code = errors::kInvalidGpoPaths;
+      *out_error = ERROR_BAD_GPOS;
       return false;
     }
 
@@ -440,13 +439,13 @@ bool DownloadGpos(const std::string& gpo_list_blob,
 
     // Make local directory.
     base::FilePath linux_dir_fp(linux_dir);
-    if (!CreateDirectory(linux_dir_fp, out_error_code))
+    if (!CreateDirectory(linux_dir_fp, out_error))
       return false;
 
     // Set group rwx permissions recursively, so that smbclient can write GPOs
     // there and the parser tool can read the GPOs later.
     if (!SetFilePermissionsRecursive(linux_dir_fp, base::FilePath(kSambaTmpDir),
-                                     kFileMode_rwxrwx, out_error_code)) {
+                                     kFileMode_rwxrwx, out_error)) {
       return false;
     }
 
@@ -470,7 +469,7 @@ bool DownloadGpos(const std::string& gpo_list_blob,
   if (!smb_client_cmd.Execute()) {
     LOG(ERROR) << "smbclient failed with exit code "
                << smb_client_cmd.GetExitCode();
-    *out_error_code = errors::kSmbClientFailed;
+    *out_error = ERROR_SMBCLIENT_FAILED;
     return false;
   }
 
@@ -478,7 +477,7 @@ bool DownloadGpos(const std::string& gpo_list_blob,
   for (const auto& fp : *out_gpo_file_paths) {
     if (!base::PathExists(fp)) {
       LOG(ERROR) << "Failed to download preg file '" << fp.value() << "'";
-      *out_error_code = errors::kDownloadGpoFailed;
+      *out_error = ERROR_SMBCLIENT_FAILED;
       return false;
     }
   }
@@ -490,7 +489,7 @@ bool DownloadGpos(const std::string& gpo_list_blob,
 bool ParseGposIntoProtobuf(const std::vector<base::FilePath>& gpo_file_paths,
                            const char* parser_cmd_string,
                            std::string* out_policy_blob,
-                           const char** out_error_code) {
+                           ErrorType* out_error) {
   // Convert file paths to proto blob.
   std::string gpo_file_paths_blob;
   ap::FilePathList fp_proto;
@@ -498,7 +497,7 @@ bool ParseGposIntoProtobuf(const std::vector<base::FilePath>& gpo_file_paths,
     *fp_proto.add_entries() = fp.value();
   if (!fp_proto.SerializeToString(&gpo_file_paths_blob)) {
     LOG(ERROR) << "Failed to serialize policy file paths to protobuf";
-    *out_error_code = errors::kPregParseError;
+    *out_error = ERROR_PARSE_PREG_FAILED;
     return false;
   }
 
@@ -508,7 +507,7 @@ bool ParseGposIntoProtobuf(const std::vector<base::FilePath>& gpo_file_paths,
   parse_cmd.SetInputString(gpo_file_paths_blob);
   if (!parse_cmd.Execute()) {
     LOG(ERROR) << "Failed to parse user policy preg files";
-    *out_error_code = errors::kPregParseError;
+    *out_error = ERROR_PARSE_PREG_FAILED;
     return false;
   }
   *out_policy_blob = parse_cmd.GetStdout();
@@ -519,12 +518,12 @@ bool ParseGposIntoProtobuf(const std::vector<base::FilePath>& gpo_file_paths,
 
 bool SambaInterface::Initialize(bool expect_config) {
   // Need to create samba dirs since samba can't create dirs recursively...
-  const char* error_code;
+  ErrorType error = ERROR_NONE;
   for (const auto& dir_and_mode : kSambaDirsAndMode) {
     base::FilePath dir(dir_and_mode.first);
     const int mode = dir_and_mode.second;
-    if (!CreateDirectory(dir, &error_code) ||
-        !SetFilePermissions(dir, mode, &error_code)) {
+    if (!CreateDirectory(dir, &error) ||
+        !SetFilePermissions(dir, mode, &error)) {
       LOG(ERROR) << "Failed to initialize SambaInterface";
       return false;
     }
@@ -545,19 +544,19 @@ bool SambaInterface::Initialize(bool expect_config) {
 bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
                                       int password_fd,
                                       std::string* out_account_id,
-                                      const char** out_error_code) {
+                                      ErrorType* out_error) {
   // Split user_principal_name into parts and normalize.
   std::string user_name, realm, workgroup, normalized_upn;
   if (!ai::ParseUserPrincipalName(user_principal_name, &user_name, &realm,
-                                  &workgroup, &normalized_upn, out_error_code))
+                                  &workgroup, &normalized_upn, out_error))
     return false;
 
   // Write krb5 configuration file.
-  if (!WriteKrb5Conf(realm, out_error_code))
+  if (!WriteKrb5Conf(realm, out_error))
     return false;
 
   // Write samba configuration file.
-  if (!WriteSmbConf(config_.get(), out_error_code))
+  if (!WriteSmbConf(config_.get(), out_error))
     return false;
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
@@ -572,19 +571,19 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
 
     if (Contains(kinit_err, kKeyBadUserName)) {
       LOG(ERROR) << "kinit failed - bad user name";
-      *out_error_code = errors::kKInitBadUserName;
+      *out_error = ERROR_BAD_USER_NAME;
     } else if (Contains(kinit_err, kKeyBadPassword)) {
       LOG(ERROR) << "kinit failed - bad password";
-      *out_error_code = errors::kKInitBadPassword;
+      *out_error = ERROR_BAD_PASSWORD;
     } else if (Contains(kinit_out, kKeyPasswordExpired)) {  // Note: kinit_out!
       LOG(ERROR) << "kinit failed - password expired";
-      *out_error_code = errors::kKInitPasswordExpired;
+      *out_error = ERROR_PASSWORD_EXPIRED;
     } else if (Contains(kinit_err, kKeyCannotResolve)) {
       LOG(ERROR) << "kinit failed - cannot resolve KDC realm";
-      *out_error_code = errors::kKInitCannotResolve;
+      *out_error = ERROR_CANNOT_RESOLVE_KDC;
     } else {
       LOG(ERROR) << "kinit failed with exit code " << kinit_cmd.GetExitCode();
-      *out_error_code = errors::kKInitFailed;
+      *out_error = ERROR_KINIT_FAILED;
     }
     return false;
   }
@@ -599,7 +598,7 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
   if (!net_cmd.Execute()) {
     LOG(ERROR) << "net ads search failed with exit code "
                << net_cmd.GetExitCode();
-    *out_error_code = errors::kNetAdsSearchFailed;
+    *out_error = ERROR_NET_FAILED;
     return false;
   }
   const std::string& net_out = net_cmd.GetStdout();
@@ -611,7 +610,7 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
   SetupJail(&parse_cmd, kParserSeccompFilter);
   if (!parse_cmd.Execute()) {
     LOG(ERROR) << "Failed to get user account id. Net response: " << net_out;
-    *out_error_code = errors::kParseNetAdsSearchFailed;
+    *out_error = ERROR_PARSE_FAILED;
     return false;
   }
   *out_account_id = parse_cmd.GetStdout();
@@ -623,11 +622,12 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
 
 bool SambaInterface::JoinMachine(const std::string& machine_name,
                                  const std::string& user_principal_name,
-                                 int password_fd, const char** out_error_code) {
+                                 int password_fd,
+                                 ErrorType* out_error) {
   // Split user principal name into parts.
   std::string user_name, realm, workgroup, normalized_upn;
   if (!ai::ParseUserPrincipalName(user_principal_name, &user_name, &realm,
-                                  &workgroup, &normalized_upn, out_error_code))
+                                  &workgroup, &normalized_upn, out_error))
     return false;
 
   // Create config.
@@ -637,7 +637,7 @@ bool SambaInterface::JoinMachine(const std::string& machine_name,
   config->set_realm(realm);
 
   // Write samba configuration file.
-  if (!WriteSmbConf(config.get(), out_error_code))
+  if (!WriteSmbConf(config.get(), out_error))
     return false;
 
   // Call net ads join to join the machine to the Active Directory domain.
@@ -649,19 +649,19 @@ bool SambaInterface::JoinMachine(const std::string& machine_name,
   if (!net_cmd.Execute()) {
     LOG(ERROR) << "net ads join failed with exit code "
                << net_cmd.GetExitCode();
-    *out_error_code = errors::kNetAdsJoinFailed;
+    *out_error = ERROR_NET_FAILED;
     return false;
   }
 
   // Revoke write permission for group, so that authpolicyd-exec can't create
   // any new files.
   if (!SetFilePermissions(base::FilePath(kStateDir), kFileMode_rwxx,
-                          out_error_code)) {
+                          out_error)) {
     return false;
   }
 
   // Store configuration for subsequent runs of the daemon.
-  if (!WriteConfiguration(config.get(), out_error_code))
+  if (!WriteConfiguration(config.get(), out_error))
     return false;
 
   // Only if everything worked out, keep the config.
@@ -671,23 +671,23 @@ bool SambaInterface::JoinMachine(const std::string& machine_name,
 
 bool SambaInterface::FetchUserGpos(const std::string& account_id,
                                    std::string* out_policy_blob,
-                                   const char** out_error_code) {
+                                   ErrorType* out_error) {
   // Get user name from account id (must be logged in to fetch user policy).
   std::unordered_map<std::string, std::string>::const_iterator iter =
       account_id_user_name_map_.find(account_id);
   if (iter == account_id_user_name_map_.end()) {
     LOG(ERROR) << "No user logged in. Please call AuthenticateUser first.";
-    *out_error_code = errors::kNotLoggedIn;
+    *out_error = ERROR_NOT_LOGGED_IN;
     return false;
   }
   const std::string& user_name = iter->second;
 
   // Write samba configuration file.
-  if (!WriteSmbConf(config_.get(), out_error_code))
+  if (!WriteSmbConf(config_.get(), out_error))
     return false;
 
   // Make sure we have the domain controller name.
-  if (!UpdateDomainControllerName(&domain_controller_name_, out_error_code))
+  if (!UpdateDomainControllerName(&domain_controller_name_, out_error))
     return false;
 
   // FetchDeviceGpos writes a krb5.conf here. For user policy, there's no need
@@ -695,37 +695,36 @@ bool SambaInterface::FetchUserGpos(const std::string& account_id,
 
   // Get the list of GPOs for the given user name.
   std::string gpo_list_blob;
-  if (!GetGpoList(user_name, ac::PolicyScope::USER, &gpo_list_blob,
-                  out_error_code))
+  if (!GetGpoList(user_name, ac::PolicyScope::USER, &gpo_list_blob, out_error))
     return false;
 
   // Download GPOs from Active Directory server.
   std::vector<base::FilePath> gpo_file_paths;
   if (!DownloadGpos(gpo_list_blob, domain_controller_name_, kPRegUserDir,
-                    &gpo_file_paths, out_error_code))
+                    &gpo_file_paths, out_error))
     return false;
 
   // Parse GPOs and store them in a user policy protobuf.
   if (!ParseGposIntoProtobuf(gpo_file_paths, ac::kCmdParseUserPreg,
-                             out_policy_blob, out_error_code))
+                             out_policy_blob, out_error))
     return false;
 
   return true;
 }
 
 bool SambaInterface::FetchDeviceGpos(std::string* out_policy_blob,
-                                     const char** out_error_code) {
+                                     ErrorType* out_error) {
   // Write samba configuration file.
-  if (!WriteSmbConf(config_.get(), out_error_code))
+  if (!WriteSmbConf(config_.get(), out_error))
     return false;
 
   // Make sure we have the domain controller name.
-  if (!UpdateDomainControllerName(&domain_controller_name_, out_error_code))
+  if (!UpdateDomainControllerName(&domain_controller_name_, out_error))
     return false;
 
   // Write krb5 configuration file.
   DCHECK(config_.get());
-  if (!WriteKrb5Conf(config_->realm(), out_error_code))
+  if (!WriteKrb5Conf(config_->realm(), out_error))
     return false;
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
@@ -736,25 +735,25 @@ bool SambaInterface::FetchDeviceGpos(std::string* out_policy_blob,
   kinit_cmd.SetEnv(kMachineEnvKey, kMachineEnvValue);    // Keytab file path.
   if (!kinit_cmd.Execute()) {
     LOG(ERROR) << "kinit failed with exit code " << kinit_cmd.GetExitCode();
-    *out_error_code = errors::kKInitFailed;
+    *out_error = ERROR_KINIT_FAILED;
     return false;
   }
 
   // Get the list of GPOs for the machine.
   std::string gpo_list_blob;
   if (!GetGpoList(config_->machine_name() + "$", ac::PolicyScope::MACHINE,
-                  &gpo_list_blob, out_error_code))
+                  &gpo_list_blob, out_error))
     return false;
 
   // Download GPOs from Active Directory server.
   std::vector<base::FilePath> gpo_file_paths;
   if (!DownloadGpos(gpo_list_blob, domain_controller_name_, kPRegDeviceDir,
-                    &gpo_file_paths, out_error_code))
+                    &gpo_file_paths, out_error))
     return false;
 
   // Parse GPOs and store them in a device policy protobuf.
   if (!ParseGposIntoProtobuf(gpo_file_paths, ac::kCmdParseDevicePreg,
-                             out_policy_blob, out_error_code))
+                             out_policy_blob, out_error))
     return false;
 
   return true;

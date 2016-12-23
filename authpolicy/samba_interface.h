@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <dbus/authpolicy/dbus-constants.h>
 
 #include "bindings/authpolicy_containers.pb.h"
 
@@ -34,16 +35,18 @@ class SambaInterface {
   // referenced by the file descriptor |password_fd|. On success, the user's
   // object GUID is returned in |out_account_id|. The GUID uniquely identifies
   // the user's account.
-  bool AuthenticateUser(const std::string& user_principal_name, int password_fd,
+  bool AuthenticateUser(const std::string& user_principal_name,
+                        int password_fd,
                         std::string* out_account_id,
-                        const char** out_error_code);
+                        ErrorType* out_error);
 
   // Joins the local device with name |machine_name| to an Active Directory
   // domain. A user principal name and password are required for authentication
   // (see |AuthenticateUser| for details).
   bool JoinMachine(const std::string& machine_name,
-                   const std::string& user_principal_name, int password_fd,
-                   const char** out_error_code);
+                   const std::string& user_principal_name,
+                   int password_fd,
+                   ErrorType* out_error);
 
   // Downloads user policy from the Active Directory server and stores it in a
   // serialized user policy protobuf string (see |CloudPolicySettings|).
@@ -52,15 +55,14 @@ class SambaInterface {
   // operation fails, call |AuthenticateUser| and try again.
   bool FetchUserGpos(const std::string& account_id,
                      std::string* out_policy_blob,
-                     const char** out_error_code);
+                     ErrorType* out_error);
 
   // Downloads device policy from the Active Directory server and stores it in a
   // serialized device policy protobuf string (see |ChromeDeviceSettingsProto|).
   // The device must be joined to the Active Directory domain already (see
   // |JoinMachine|). During join, a machine password is stored in a keytab file,
   // which is used for authentication for policy fetch.
-  bool FetchDeviceGpos(std::string* out_policy_blob,
-                       const char** out_error_code);
+  bool FetchDeviceGpos(std::string* out_policy_blob, ErrorType* out_error);
 
  private:
   // Cached state

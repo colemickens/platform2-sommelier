@@ -16,19 +16,18 @@
 #include <utility>
 #include <vector>
 
-#include "base/files/file_path.h"
-#include "base/files/memory_mapped_file.h"
-#include "base/logging.h"
-#include "base/macros.h"
-#include "base/memory/ptr_util.h"
-#include "base/strings/string16.h"
-#include "base/strings/string_split.h"
-#include "base/strings/string_util.h"
-#include "base/strings/utf_string_conversions.h"
-#include "base/sys_byteorder.h"
-#include "base/values.h"
+#include <base/files/file_path.h>
+#include <base/files/memory_mapped_file.h>
+#include <base/logging.h>
+#include <base/macros.h>
+#include <base/memory/ptr_util.h>
+#include <base/strings/string16.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
+#include <base/strings/utf_string_conversions.h>
+#include <base/sys_byteorder.h>
+#include <base/values.h>
 
-#include "authpolicy/errors.h"
 #include "authpolicy/policy/registry_dict.h"
 
 namespace {
@@ -254,18 +253,18 @@ void HandleRecord(const base::string16& key_name,
 bool ReadFile(const base::FilePath& file_path,
               const base::string16& root,
               RegistryDict* dict,
-              const char** out_error_code) {
+              authpolicy::ErrorType* out_error) {
   base::MemoryMappedFile mapped_file;
   if (!mapped_file.Initialize(file_path) || !mapped_file.IsValid()) {
     PLOG(ERROR) << "Failed to map " << file_path.value();
-    *out_error_code = errors::kPregReadError;
+    *out_error = authpolicy::ERROR_PARSE_PREG_FAILED;
     return false;
   }
 
   if (mapped_file.length() > kMaxPRegFileSize) {
     LOG(ERROR) << "PReg file " << file_path.value() << " too large: "
                << mapped_file.length();
-    *out_error_code = errors::kPregTooBig;
+    *out_error = authpolicy::ERROR_PARSE_PREG_FAILED;
     return false;
   }
 
@@ -274,7 +273,7 @@ bool ReadFile(const base::FilePath& file_path,
   if (mapped_file.length() < kHeaderSize ||
       memcmp(kPRegFileHeader, mapped_file.data(), kHeaderSize) != 0) {
     LOG(ERROR) << "Bad policy file " << file_path.value();
-    *out_error_code = errors::kPregParseError;
+    *out_error = authpolicy::ERROR_PARSE_PREG_FAILED;
     return false;
   }
 
@@ -339,7 +338,7 @@ bool ReadFile(const base::FilePath& file_path,
   LOG(ERROR) << "Error parsing " << file_path.value() << " at offset "
              << reinterpret_cast<const uint8_t*>(cursor - 1) -
                     mapped_file.data();
-  *out_error_code = errors::kPregParseError;
+  *out_error = authpolicy::ERROR_PARSE_PREG_FAILED;
   return false;
 }
 

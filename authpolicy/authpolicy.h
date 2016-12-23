@@ -39,17 +39,18 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
       const AsyncEventSequencer::CompletionAction& completion_callback);
 
   // org::chromium::AuthPolicyInterface: (see org.chromium.AuthPolicy.xml)
-  bool AuthenticateUser(brillo::ErrorPtr* error,
-                        const std::string& in_user_principal_name,
+  void AuthenticateUser(const std::string& in_user_principal_name,
                         const dbus::FileDescriptor& in_password_fd,
-                        int32_t* out_error_code,
+                        int32_t* out_error,
                         std::string* out_account_id) override;
-  bool JoinADDomain(brillo::ErrorPtr* error, const std::string& in_machine_name,
-                    const std::string& in_user_principal_name,
-                    const dbus::FileDescriptor& in_password_fd,
-                    int32_t* out_error_code) override;
+
+  int32_t JoinADDomain(const std::string& in_machine_name,
+                       const std::string& in_user_principal_name,
+                       const dbus::FileDescriptor& in_password_fd) override;
+
   void RefreshUserPolicy(PolicyResponseCallback callback,
                          const std::string& in_account_id) override;
+
   void RefreshDevicePolicy(PolicyResponseCallback callback) override;
 
  private:

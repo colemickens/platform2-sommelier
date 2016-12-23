@@ -262,14 +262,14 @@ int ParsePreg(const std::string& gpo_file_paths_blob, ac::PolicyScope scope) {
     gpo_file_paths.push_back(base::FilePath(gpo_file_paths_proto.entries(n)));
 
   std::string policy_blob;
-  const char* error_code = nullptr;
+  authpolicy::ErrorType error = authpolicy::ERROR_NONE;
   switch (scope) {
     case ac::PolicyScope::USER: {
       // Parse files into a user policy proto.
       em::CloudPolicySettings policy;
       if (!policy::ParsePRegFilesIntoUserPolicy(gpo_file_paths, &policy,
-                                                &error_code)) {
-        LOG(ERROR) << error_code;
+                                                &error)) {
+        LOG(ERROR) << error;
         return ac::EXIT_CODE_PARSE_INPUT_FAILED;
       }
 
@@ -282,8 +282,8 @@ int ParsePreg(const std::string& gpo_file_paths_blob, ac::PolicyScope scope) {
       // Parse files into a device policy proto.
       em::ChromeDeviceSettingsProto policy;
       if (!policy::ParsePRegFilesIntoDevicePolicy(gpo_file_paths, &policy,
-                                                  &error_code)) {
-        LOG(ERROR) << error_code;
+                                                  &error)) {
+        LOG(ERROR) << error;
         return ac::EXIT_CODE_PARSE_INPUT_FAILED;
       }
 

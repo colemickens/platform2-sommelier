@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "base/bind.h"
-#include "brillo/errors/error.h"
 
 namespace enterprise_management {
 class PolicyOptions;

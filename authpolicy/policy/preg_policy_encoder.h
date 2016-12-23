@@ -7,7 +7,7 @@
 
 #include <vector>
 
-#include "brillo/errors/error.h"
+#include <dbus/authpolicy/dbus-constants.h>
 
 namespace base {
 class FilePath;
@@ -32,7 +32,7 @@ namespace policy {
 bool ParsePRegFilesIntoUserPolicy(
     const std::vector<base::FilePath>& preg_files,
     enterprise_management::CloudPolicySettings* policy,
-    const char** out_error_code);
+    authpolicy::ErrorType* out_error);
 
 // Loads the given set of |preg_files| and encodes all device policies into the
 // given |policy| blob. If multiple files f1,...,fN are passed in, policies
@@ -41,7 +41,7 @@ bool ParsePRegFilesIntoUserPolicy(
 bool ParsePRegFilesIntoDevicePolicy(
     const std::vector<base::FilePath>& preg_files,
     enterprise_management::ChromeDeviceSettingsProto* policy,
-    const char** out_error_code);
+    authpolicy::ErrorType* out_error);
 
 }  // namespace policy
 

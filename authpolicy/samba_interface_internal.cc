@@ -7,16 +7,15 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
-#include "authpolicy/errors.h"
-
 namespace authpolicy {
 namespace internal {
 
 bool ParseUserPrincipalName(const std::string& user_principal_name,
-                            std::string* out_user_name, std::string* out_realm,
+                            std::string* out_user_name,
+                            std::string* out_realm,
                             std::string* out_workgroup,
                             std::string* out_normalized_user_principal_name,
-                            const char** out_error_code) {
+                            ErrorType* out_error) {
   // If there is no '@' in |user_principal_name|, at_pos is std::string::npos
   // and the call to substr(at_pos + 1) might throw if std::string::npos + 1 !=
   // 0. Hence, we the test for at_pos == std::string::npos.
@@ -34,7 +33,7 @@ bool ParseUserPrincipalName(const std::string& user_principal_name,
   if (error) {
     LOG(ERROR) << "Failed to parse user principal name '" << user_principal_name
                << "'. Expected form 'user@workgroup.domain'.";
-    *out_error_code = errors::kParseUPNFailed;
+    *out_error = ERROR_PARSE_UPN_FAILED;
     return false;
   }
   return true;
