@@ -108,22 +108,27 @@ bool ProcessExecutor::Execute() {
   base::ScopedFD child_stdout_closer(child_stdout);
   base::ScopedFD child_stderr_closer(child_stderr);
 
-  // Write input to stdin.
+  // Write input to stdin. On error, do NOT return before minijail_wait or else
+  // the process will leak!
+  bool write_to_stdin_failed = false;
   if (input_fd_ != -1 && !ah::CopyPipe(input_fd_, child_stdin_closer.get())) {
     LOG(ERROR) << "Failed to copy input pipe to child stdin";
-    exit_code_ = kExitCodeInternalError;
-    return false;
-  }
-  if (!input_str_.empty() &&
-      !ah::WriteStringToPipe(input_str_, child_stdin_closer.get())) {
+    write_to_stdin_failed = true;
+  } else if (!input_str_.empty() &&
+             !ah::WriteStringToPipe(input_str_, child_stdin_closer.get())) {
     LOG(ERROR) << "Failed to write input string to child stdin";
-    exit_code_ = kExitCodeInternalError;
-    return false;
+    write_to_stdin_failed = true;
   }
   child_stdin_closer.reset();
 
   // Wait for the process to exit.
   exit_code_ = minijail_wait(jail_);
+
+  // Always exit AFTER minijail_wait!
+  if (write_to_stdin_failed) {
+    exit_code_ = kExitCodeInternalError;
+    return false;
+  }
 
   // Read output.
   if (!ah::ReadPipeToString(child_stdout_closer.get(), &out_data_)) {
