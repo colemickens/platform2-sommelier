@@ -19,6 +19,7 @@
 #include "chromiumos-wide-profiling/buffer_writer.h"
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/file_reader.h"
+#include "chromiumos-wide-profiling/file_utils.h"
 #include "chromiumos-wide-profiling/perf_data_structures.h"
 #include "chromiumos-wide-profiling/perf_data_utils.h"
 #include "chromiumos-wide-profiling/sample_info_reader.h"
@@ -310,7 +311,7 @@ bool PerfReader::ReadFromData(DataReader* data) {
 
 bool PerfReader::WriteFile(const string& filename) {
   std::vector<char> data;
-  return WriteToVector(&data) && WriteDataToFile(data, filename);
+  return WriteToVector(&data) && BufferToFile(filename, data);
 }
 
 bool PerfReader::WriteToVector(std::vector<char>* data) {

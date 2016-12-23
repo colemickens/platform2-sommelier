@@ -24,6 +24,7 @@
         'data_writer.cc',
         'dso.cc',
         'file_reader.cc',
+        'file_utils.cc',
         'huge_pages_mapping_deducer.cc',
         'perf_data_utils.cc',
         'perf_option_parser.cc',

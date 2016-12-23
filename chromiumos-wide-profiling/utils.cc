@@ -54,27 +54,6 @@ uint64_t Md5Prefix(const std::vector<char>& input) {
   return Md5Prefix(data, input.size());
 }
 
-bool FileToBuffer(const string& filename, std::vector<char>* contents) {
-  FileReader reader(filename);
-  if (!reader.IsOpen())
-    return false;
-  size_t file_size = reader.size();
-  contents->resize(file_size);
-  // Do not read anything if the file exists but is empty.
-  if (file_size > 0 &&
-      !reader.ReadData(file_size, contents->data())) {
-    LOG(ERROR) << "Failed to read " << file_size << " bytes from file "
-               << filename << ", only read " << reader.Tell();
-    return false;
-  }
-  return true;
-}
-
-bool FileExists(const string& filename) {
-  struct stat st;
-  return stat(filename.c_str(), &st) == 0;
-}
-
 string RawDataToHexString(const u8* array, size_t length) {
   // Convert the bytes to hex digits one at a time.
   // There will be kNumHexDigitsInByte hex digits, and 1 char for NUL.
@@ -106,33 +85,6 @@ bool HexStringToRawData(const string& str, u8* array, size_t length) {
       return false;
   }
   return true;
-}
-
-bool ReadFileToData(const string& filename, std::vector<char>* data) {
-  std::ifstream in(filename.c_str(), std::ios::binary);
-  if (!in.good()) {
-    LOG(ERROR) << "Failed to open file " << filename;
-    return false;
-  }
-  in.seekg(0, in.end);
-  size_t length = in.tellg();
-  in.seekg(0, in.beg);
-  data->resize(length);
-
-  in.read(&(*data)[0], length);
-
-  if (!in.good()) {
-    LOG(ERROR) << "Error reading from file " << filename;
-    return false;
-  }
-  return true;
-}
-
-bool WriteDataToFile(const std::vector<char>& data, const string& filename) {
-  std::ofstream out(filename.c_str(), std::ios::binary);
-  out.seekp(0, std::ios::beg);
-  out.write(&data[0], data.size());
-  return out.good();
 }
 
 }  // namespace quipper

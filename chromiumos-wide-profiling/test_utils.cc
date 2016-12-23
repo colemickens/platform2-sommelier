@@ -14,10 +14,10 @@
 
 #include "chromiumos-wide-profiling/compat/proto.h"
 #include "chromiumos-wide-profiling/file_reader.h"
+#include "chromiumos-wide-profiling/file_utils.h"
 #include "chromiumos-wide-profiling/perf_protobuf_io.h"
 #include "chromiumos-wide-profiling/run_command.h"
 #include "chromiumos-wide-profiling/string_utils.h"
-#include "chromiumos-wide-profiling/utils.h"
 
 using quipper::PerfDataProto;
 using quipper::SplitString;

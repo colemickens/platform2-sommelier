@@ -8,8 +8,8 @@
 #include "base/logging.h"
 
 #include "chromiumos-wide-profiling/compat/string.h"
+#include "chromiumos-wide-profiling/file_utils.h"
 #include "chromiumos-wide-profiling/perf_recorder.h"
-#include "chromiumos-wide-profiling/utils.h"
 
 namespace {
 
