@@ -11,6 +11,7 @@
 #include "base/logging.h"
 
 #include "chromiumos-wide-profiling/compat/proto.h"
+#include "chromiumos-wide-profiling/string_utils.h"
 #include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {

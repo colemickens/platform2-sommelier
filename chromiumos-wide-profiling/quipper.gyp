@@ -36,6 +36,7 @@
         'run_command.cc',
         'sample_info_reader.cc',
         'scoped_temp_path.cc',
+        'string_utils.cc',
         'utils.cc',
       ],
       'dependencies': [

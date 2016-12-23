@@ -126,14 +126,6 @@ bool ReadFileToData(const string& filename, std::vector<char>* data);
 // existing file.  Returns true on success, false if it fails.
 bool WriteDataToFile(const std::vector<char>& data, const string& filename);
 
-// Trim leading and trailing whitespace from |str|.
-void TrimWhitespace(string* str);
-
-// Splits a character array by |delimiter| into a vector of strings tokens.
-void SplitString(const string& str,
-                 char delimiter,
-                 std::vector<string>* tokens);
-
 }  // namespace quipper
 
 #endif  // CHROMIUMOS_WIDE_PROFILING_UTILS_H_

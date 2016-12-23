@@ -12,7 +12,6 @@
 #include <cstring>
 #include <fstream>  // NOLINT(readability/streams)
 #include <iomanip>
-#include <sstream>
 
 #include "base/logging.h"
 #include "base/macros.h"
@@ -134,27 +133,6 @@ bool WriteDataToFile(const std::vector<char>& data, const string& filename) {
   out.seekp(0, std::ios::beg);
   out.write(&data[0], data.size());
   return out.good();
-}
-
-void TrimWhitespace(string* str) {
-  const char kWhitespaceCharacters[] = " \t\n\r";
-  size_t end = str->find_last_not_of(kWhitespaceCharacters);
-  if (end != std::string::npos) {
-    size_t start = str->find_first_not_of(kWhitespaceCharacters);
-    *str = str->substr(start, end + 1 - start);
-  } else {
-    // The string contains only whitespace.
-    *str = "";
-  }
-}
-
-void SplitString(const string& str,
-                 char delimiter,
-                 std::vector<string>* tokens) {
-  std::stringstream ss(str);
-  std::string token;
-  while (std::getline(ss, token, delimiter))
-    tokens->push_back(token);
 }
 
 }  // namespace quipper

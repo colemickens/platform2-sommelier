@@ -25,7 +25,7 @@ LIBRARY_SOURCES = \
 	mybase/base/logging.cc perf_option_parser.cc perf_data_utils.cc \
 	perf_parser.cc perf_protobuf_io.cc perf_reader.cc perf_recorder.cc \
 	perf_serializer.cc perf_stat_parser.cc run_command.cc \
-	sample_info_reader.cc scoped_temp_path.cc utils.cc
+	sample_info_reader.cc scoped_temp_path.cc string_utils.cc utils.cc
 GENERATED_SOURCES = perf_data.pb.cc perf_stat.pb.cc
 GENERATED_HEADERS = $(GENERATED_SOURCES:.pb.cc=.pb.h)
 
