@@ -137,7 +137,7 @@ bool WiMaxService::Start(WiMaxNetworkProxyInterface* proxy) {
   SetStrength(signal_strength);
   proxy->set_signal_strength_changed_callback(
       Bind(&WiMaxService::OnSignalStrengthChanged, Unretained(this)));
-  proxy_.reset(local_proxy.release());
+  proxy_ = std::move(local_proxy);
   UpdateConnectable();
   NotifyPropertyChanges();
   LOG(INFO) << "WiMAX service started: " << GetStorageIdentifier();

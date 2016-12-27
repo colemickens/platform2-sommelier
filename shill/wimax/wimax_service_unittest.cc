@@ -193,7 +193,7 @@ TEST_F(WiMaxServiceTest, Connectable) {
   EXPECT_FALSE(service_->connectable());
 
   // Connectable.
-  service_->proxy_.reset(proxy_.release());
+  service_->proxy_ = std::move(proxy_);
   ExpectUpdateService();
   service_->OnEapCredentialsChanged(Service::kReasonPropertyUpdate);
   EXPECT_FALSE(service_->need_passphrase_);

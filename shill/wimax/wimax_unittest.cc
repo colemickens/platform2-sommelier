@@ -235,7 +235,7 @@ TEST_F(WiMaxTest, DropService) {
 }
 
 TEST_F(WiMaxTest, OnDeviceVanished) {
-  device_->proxy_.reset(proxy_.release());
+  device_->proxy_ = std::move(proxy_);
   scoped_refptr<MockWiMaxService> service(
       new MockWiMaxService(&control_, nullptr, &metrics_, &manager_));
   device_->pending_service_ = service;
@@ -250,7 +250,7 @@ TEST_F(WiMaxTest, OnEnableComplete) {
   EXPECT_CALL(manager_, wimax_provider()).WillOnce(Return(&provider));
   RpcIdentifiers networks(1, "path");
   EXPECT_CALL(*proxy_, Networks(_)).WillOnce(Return(networks));
-  device_->proxy_.reset(proxy_.release());
+  device_->proxy_ = std::move(proxy_);
   EXPECT_CALL(provider, OnNetworksChanged());
   Target target;
   EXPECT_CALL(target, EnabledStateChanged(_));
@@ -299,7 +299,7 @@ TEST_F(WiMaxTest, ConnectTo) {
   EXPECT_CALL(*service, GetNetworkObjectPath()).WillOnce(Return(kPath));
   EXPECT_CALL(*proxy_, Connect(kPath, _, _, _, _))
       .WillOnce(SetErrorTypeInArgument<2>(Error::kSuccess));
-  device_->proxy_.reset(proxy_.release());
+  device_->proxy_ = std::move(proxy_);
   Error error;
   device_->ConnectTo(service, &error);
   EXPECT_TRUE(error.IsSuccess());
