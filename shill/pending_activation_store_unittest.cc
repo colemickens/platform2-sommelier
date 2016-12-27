@@ -38,7 +38,7 @@ class PendingActivationStoreTest : public ::testing::Test {
 
  protected:
   void SetMockStore() {
-    store_.storage_.reset(mock_store_.release());
+    store_.storage_ = std::move(mock_store_);
   }
 
   std::unique_ptr<MockStore> mock_store_;

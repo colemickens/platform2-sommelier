@@ -271,7 +271,7 @@ TEST_F(DHCPConfigCallbackTest, ProcessAcquisitionTimeout) {
 TEST_F(DHCPConfigTest, ReleaseIP) {
   config_->pid_ = 1 << 18;  // Ensure unknown positive PID.
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(1);
-  config_->proxy_.reset(proxy_.release());
+  config_->proxy_ = std::move(proxy_);
   EXPECT_TRUE(config_->ReleaseIP(IPConfig::kReleaseReasonDisconnect));
   config_->pid_ = 0;
 }
@@ -283,7 +283,7 @@ TEST_F(DHCPConfigTest, KeepLeaseOnDisconnect) {
   EXPECT_CALL(*config_.get(), ShouldKeepLeaseOnDisconnect())
       .WillOnce(Return(true));
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(0);
-  config_->proxy_.reset(proxy_.release());
+  config_->proxy_ = std::move(proxy_);
   EXPECT_TRUE(config_->ReleaseIP(IPConfig::kReleaseReasonDisconnect));
   config_->pid_ = 0;
 }
@@ -295,7 +295,7 @@ TEST_F(DHCPConfigTest, ReleaseLeaseOnDisconnect) {
   EXPECT_CALL(*config_.get(), ShouldKeepLeaseOnDisconnect())
       .WillOnce(Return(false));
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(1);
-  config_->proxy_.reset(proxy_.release());
+  config_->proxy_ = std::move(proxy_);
   EXPECT_TRUE(config_->ReleaseIP(IPConfig::kReleaseReasonDisconnect));
   config_->pid_ = 0;
 }
@@ -304,7 +304,7 @@ TEST_F(DHCPConfigTest, ReleaseIPStaticIPWithLease) {
   config_->pid_ = 1 << 18;  // Ensure unknown positive PID.
   config_->is_lease_active_ = true;
   EXPECT_CALL(*proxy_, Release(kDeviceName));
-  config_->proxy_.reset(proxy_.release());
+  config_->proxy_ = std::move(proxy_);
   EXPECT_TRUE(config_->ReleaseIP(IPConfig::kReleaseReasonStaticIP));
   EXPECT_EQ(nullptr, config_->proxy_.get());
   config_->pid_ = 0;
@@ -315,7 +315,7 @@ TEST_F(DHCPConfigTest, ReleaseIPStaticIPWithoutLease) {
   config_->is_lease_active_ = false;
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(0);
   MockDHCPProxy* proxy_pointer = proxy_.get();
-  config_->proxy_.reset(proxy_.release());
+  config_->proxy_ = std::move(proxy_);
   EXPECT_TRUE(config_->ReleaseIP(IPConfig::kReleaseReasonStaticIP));
   // Expect that proxy has not been released.
   EXPECT_EQ(proxy_pointer, config_->proxy_.get());
@@ -335,7 +335,7 @@ TEST_F(DHCPConfigTest, RenewIP) {
   config_->pid_ = 456;
   EXPECT_FALSE(config_->RenewIP());  // Expect no crash with NULL proxy.
   EXPECT_CALL(*proxy_, Rebind(kDeviceName)).Times(1);
-  config_->proxy_.reset(proxy_.release());
+  config_->proxy_ = std::move(proxy_);
   EXPECT_TRUE(config_->RenewIP());
   EXPECT_FALSE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   EXPECT_TRUE(config_->lease_expiration_callback_.IsCancelled());
@@ -346,7 +346,7 @@ TEST_F(DHCPConfigTest, RequestIP) {
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   config_->pid_ = 567;
   EXPECT_CALL(*proxy_, Rebind(kDeviceName)).Times(1);
-  config_->proxy_.reset(proxy_.release());
+  config_->proxy_ = std::move(proxy_);
   EXPECT_TRUE(config_->RenewIP());
   EXPECT_FALSE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   config_->pid_ = 0;
@@ -360,7 +360,7 @@ TEST_F(DHCPConfigCallbackTest, RequestIPTimeout) {
   config_->lease_acquisition_timeout_seconds_ = 0;
   config_->pid_ = 567;
   EXPECT_CALL(*proxy_, Rebind(kDeviceName)).Times(1);
-  config_->proxy_.reset(proxy_.release());
+  config_->proxy_ = std::move(proxy_);
   config_->RenewIP();
   config_->dispatcher_->DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(this);
@@ -400,7 +400,7 @@ TEST_F(DHCPConfigCallbackTest, StartTimeout) {
   EXPECT_CALL(*this, SuccessCallback(_, _)).Times(0);
   EXPECT_CALL(*this, FailureCallback(ConfigRef()));
   config_->lease_acquisition_timeout_seconds_ = 0;
-  config_->proxy_.reset(proxy_.release());
+  config_->proxy_ = std::move(proxy_);
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _, _))
       .WillOnce(Return(0));
   config_->Start();
@@ -428,7 +428,7 @@ TEST_F(DHCPConfigTest, Stop) {
 TEST_F(DHCPConfigTest, StopDuringRequestIP) {
   config_->pid_ = 567;
   EXPECT_CALL(*proxy_, Rebind(kDeviceName)).Times(1);
-  config_->proxy_.reset(proxy_.release());
+  config_->proxy_ = std::move(proxy_);
   EXPECT_TRUE(config_->RenewIP());
   EXPECT_FALSE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   config_->pid_ = 0;  // Keep Stop from killing a real process.

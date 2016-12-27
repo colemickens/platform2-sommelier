@@ -81,7 +81,7 @@ bool ExternalTask::Start(const FilePath& program,
     return false;
   }
   pid_ = pid;
-  rpc_task_.reset(local_rpc_task.release());
+  rpc_task_ = std::move(local_rpc_task);
   return true;
 }
 

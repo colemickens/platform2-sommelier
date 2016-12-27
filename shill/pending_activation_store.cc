@@ -113,7 +113,7 @@ bool PendingActivationStore::InitStorage(const FilePath& storage_path) {
   }
   if (!already_exists)
     storage->SetHeader("Identifiers pending cellular activation.");
-  storage_.reset(storage.release());
+  storage_ = std::move(storage);
   return true;
 }
 
