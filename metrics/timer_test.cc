@@ -58,7 +58,7 @@ TEST_F(TimerTest, StartStop) {
   EXPECT_CALL(*clock_wrapper_mock_, GetCurrentTime())
       .WillOnce(Return(stime))
       .WillOnce(Return(etime));
-  timer_.clock_wrapper_.reset(clock_wrapper_mock_.release());
+  timer_.clock_wrapper_ = std::move(clock_wrapper_mock_);
   ASSERT_TRUE(timer_.Start());
   ASSERT_TRUE(timer_.start_time_ == stime);
   ASSERT_TRUE(timer_.HasStarted());
@@ -77,7 +77,7 @@ TEST_F(TimerTest, ReStart) {
   EXPECT_CALL(*clock_wrapper_mock_, GetCurrentTime())
       .WillOnce(Return(stime))
       .WillOnce(Return(etime));
-  timer_.clock_wrapper_.reset(clock_wrapper_mock_.release());
+  timer_.clock_wrapper_ = std::move(clock_wrapper_mock_);
   timer_.Start();
   base::TimeTicks buffer = timer_.start_time_;
   timer_.Start();
@@ -87,7 +87,7 @@ TEST_F(TimerTest, ReStart) {
 TEST_F(TimerTest, Reset) {
   EXPECT_CALL(*clock_wrapper_mock_, GetCurrentTime())
       .WillOnce(Return(stime));
-  timer_.clock_wrapper_.reset(clock_wrapper_mock_.release());
+  timer_.clock_wrapper_ = std::move(clock_wrapper_mock_);
   timer_.Start();
   ASSERT_TRUE(timer_.Reset());
   ASSERT_FALSE(timer_.HasStarted());
@@ -99,7 +99,7 @@ TEST_F(TimerTest, SeparatedTimers) {
       .WillOnce(Return(etime))
       .WillOnce(Return(stime2))
       .WillOnce(Return(etime2));
-  timer_.clock_wrapper_.reset(clock_wrapper_mock_.release());
+  timer_.clock_wrapper_ = std::move(clock_wrapper_mock_);
   ASSERT_TRUE(timer_.Start());
   ASSERT_TRUE(timer_.Stop());
   ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(), kDelta1MSec);
@@ -119,7 +119,7 @@ TEST_F(TimerTest, InvalidStop) {
   EXPECT_CALL(*clock_wrapper_mock_, GetCurrentTime())
       .WillOnce(Return(stime))
       .WillOnce(Return(etime));
-  timer_.clock_wrapper_.reset(clock_wrapper_mock_.release());
+  timer_.clock_wrapper_ = std::move(clock_wrapper_mock_);
   ASSERT_FALSE(timer_.Stop());
   // Now we try it again, but after a valid start/stop.
   timer_.Start();
@@ -141,7 +141,7 @@ TEST_F(TimerTest, PauseStartStopResume) {
       .WillOnce(Return(etime2))
       .WillOnce(Return(stime3))
       .WillOnce(Return(etime3));
-  timer_.clock_wrapper_.reset(clock_wrapper_mock_.release());
+  timer_.clock_wrapper_ = std::move(clock_wrapper_mock_);
   ASSERT_TRUE(timer_.Pause());  // Starts timer paused.
   ASSERT_TRUE(timer_.start_time_ == stime);
   ASSERT_TRUE(timer_.HasStarted());
@@ -170,7 +170,7 @@ TEST_F(TimerTest, ResumeStartStopPause) {
       .WillOnce(Return(stime2))
       .WillOnce(Return(etime2))
       .WillOnce(Return(stime3));
-  timer_.clock_wrapper_.reset(clock_wrapper_mock_.release());
+  timer_.clock_wrapper_ = std::move(clock_wrapper_mock_);
   ASSERT_TRUE(timer_.Resume());
   ASSERT_TRUE(timer_.start_time_ == stime);
   ASSERT_TRUE(timer_.HasStarted());
@@ -197,7 +197,7 @@ TEST_F(TimerTest, StartResumeStop) {
   EXPECT_CALL(*clock_wrapper_mock_, GetCurrentTime())
       .WillOnce(Return(stime))
       .WillOnce(Return(etime));
-  timer_.clock_wrapper_.reset(clock_wrapper_mock_.release());
+  timer_.clock_wrapper_ = std::move(clock_wrapper_mock_);
   ASSERT_TRUE(timer_.Start());
   ASSERT_TRUE(timer_.start_time_ == stime);
   ASSERT_TRUE(timer_.HasStarted());
@@ -219,7 +219,7 @@ TEST_F(TimerTest, StartPauseStop) {
   EXPECT_CALL(*clock_wrapper_mock_, GetCurrentTime())
       .WillOnce(Return(stime))
       .WillOnce(Return(etime));
-  timer_.clock_wrapper_.reset(clock_wrapper_mock_.release());
+  timer_.clock_wrapper_ = std::move(clock_wrapper_mock_);
   ASSERT_TRUE(timer_.Start());
   ASSERT_TRUE(timer_.start_time_ == stime);
   ASSERT_TRUE(timer_.HasStarted());
@@ -246,7 +246,7 @@ TEST_F(TimerTest, StartPauseResumeStop) {
       .WillOnce(Return(etime))
       .WillOnce(Return(stime2))
       .WillOnce(Return(etime2));
-  timer_.clock_wrapper_.reset(clock_wrapper_mock_.release());
+  timer_.clock_wrapper_ = std::move(clock_wrapper_mock_);
   ASSERT_TRUE(timer_.Start());
   ASSERT_TRUE(timer_.start_time_ == stime);
   ASSERT_TRUE(timer_.HasStarted());
@@ -273,7 +273,7 @@ TEST_F(TimerTest, StartPauseResumeStop) {
 TEST_F(TimerTest, PauseStop) {
   EXPECT_CALL(*clock_wrapper_mock_, GetCurrentTime())
       .WillOnce(Return(stime));
-  timer_.clock_wrapper_.reset(clock_wrapper_mock_.release());
+  timer_.clock_wrapper_ = std::move(clock_wrapper_mock_);
   ASSERT_TRUE(timer_.Pause());
   ASSERT_TRUE(timer_.start_time_ == stime);
   ASSERT_TRUE(timer_.HasStarted());
@@ -293,7 +293,7 @@ TEST_F(TimerTest, PauseResumeStop) {
       .WillOnce(Return(stime))
       .WillOnce(Return(stime2))
       .WillOnce(Return(etime2));
-  timer_.clock_wrapper_.reset(clock_wrapper_mock_.release());
+  timer_.clock_wrapper_ = std::move(clock_wrapper_mock_);
   ASSERT_TRUE(timer_.Pause());
   ASSERT_TRUE(timer_.start_time_ == stime);
   ASSERT_TRUE(timer_.HasStarted());
@@ -317,7 +317,7 @@ TEST_F(TimerTest, StartPauseResumePauseStop) {
       .WillOnce(Return(stime2))
       .WillOnce(Return(stime3))
       .WillOnce(Return(etime3));
-  timer_.clock_wrapper_.reset(clock_wrapper_mock_.release());
+  timer_.clock_wrapper_ = std::move(clock_wrapper_mock_);
   ASSERT_TRUE(timer_.Start());
   ASSERT_TRUE(timer_.start_time_ == stime);
   ASSERT_TRUE(timer_.HasStarted());
@@ -362,7 +362,7 @@ TEST_F(TimerTest, StartPauseResumePauseResumeStop) {
       .WillOnce(Return(etime2))
       .WillOnce(Return(stime3))
       .WillOnce(Return(etime3));
-  timer_.clock_wrapper_.reset(clock_wrapper_mock_.release());
+  timer_.clock_wrapper_ = std::move(clock_wrapper_mock_);
   ASSERT_TRUE(timer_.Start());
   ASSERT_TRUE(timer_.start_time_ == stime);
   ASSERT_TRUE(timer_.HasStarted());
@@ -433,7 +433,7 @@ TEST_F(TimerReporterTest, StartStopReport) {
   EXPECT_CALL(*clock_wrapper_mock_, GetCurrentTime())
       .WillOnce(Return(stime))
       .WillOnce(Return(etime));
-  timer_reporter_.clock_wrapper_.reset(clock_wrapper_mock_.release());
+  timer_reporter_.clock_wrapper_ = std::move(clock_wrapper_mock_);
   EXPECT_CALL(lib_, SendToUMA(kMetricName, kDelta1MSec, kMinSample, kMaxSample,
                               kNumBuckets)).WillOnce(Return(true));
   ASSERT_TRUE(timer_reporter_.Start());
