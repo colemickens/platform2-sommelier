@@ -21,8 +21,8 @@
 #include <base/strings/stringprintf.h>
 
 #include "shill/dhcp/dhcp_config.h"
+#include "shill/dhcp/mock_dhcp_properties.h"
 #include "shill/mock_control.h"
-#include "shill/mock_dhcp_properties.h"
 #include "shill/mock_event_dispatcher.h"
 
 using base::FilePath;

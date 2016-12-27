@@ -23,8 +23,8 @@
 #include <gmock/gmock.h>
 
 #include "shill/dhcp/dhcp_config.h"
+#include "shill/dhcp/dhcp_properties.h"
 #include "shill/dhcp/dhcp_provider.h"
-#include "shill/dhcp_properties.h"
 #include "shill/refptr_types.h"
 
 namespace shill {

@@ -14,8 +14,8 @@
 // limitations under the License.
 //
 
-#ifndef SHILL_DHCP_PROPERTIES_H_
-#define SHILL_DHCP_PROPERTIES_H_
+#ifndef SHILL_DHCP_DHCP_PROPERTIES_H_
+#define SHILL_DHCP_DHCP_PROPERTIES_H_
 
 #include <memory>
 #include <string>
@@ -104,4 +104,4 @@ class DhcpProperties {
 
 }  // namespace shill
 
-#endif  // SHILL_DHCP_PROPERTIES_H_
+#endif  // SHILL_DHCP_DHCP_PROPERTIES_H_

@@ -33,11 +33,11 @@
 #include <gmock/gmock.h>
 
 #include "shill/connectivity_trial.h"
+#include "shill/dhcp/mock_dhcp_properties.h"
 #include "shill/link_monitor.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
-#include "shill/mock_dhcp_properties.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/portal_detector.h"

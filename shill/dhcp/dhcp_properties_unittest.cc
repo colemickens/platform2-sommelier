@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-#include "shill/dhcp_properties.h"
+#include "shill/dhcp/dhcp_properties.h"
 
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>

@@ -30,11 +30,11 @@
 #include <chromeos/dbus/service_constants.h>
 #endif  // __ANDROID__
 
+#include "shill/dhcp/mock_dhcp_properties.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/dhcp/mock_dhcp_proxy.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_control.h"
-#include "shill/mock_dhcp_properties.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_process_manager.h"

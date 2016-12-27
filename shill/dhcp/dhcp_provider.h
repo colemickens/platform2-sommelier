@@ -26,7 +26,7 @@
 #include <base/lazy_instance.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/dhcp_properties.h"
+#include "shill/dhcp/dhcp_properties.h"
 #include "shill/refptr_types.h"
 
 namespace shill {

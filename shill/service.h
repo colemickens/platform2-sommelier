@@ -33,7 +33,7 @@
 #include "shill/accessor_interface.h"
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
-#include "shill/dhcp_properties.h"
+#include "shill/dhcp/dhcp_properties.h"
 #include "shill/net/event_history.h"
 #include "shill/net/shill_time.h"
 #include "shill/property_store.h"

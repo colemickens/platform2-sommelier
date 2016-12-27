@@ -32,6 +32,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include "shill/dhcp/mock_dhcp_properties.h"
 #include "shill/ethernet/ethernet_service.h"
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
@@ -39,7 +40,6 @@
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
-#include "shill/mock_dhcp_properties.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"

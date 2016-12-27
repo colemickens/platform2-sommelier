@@ -23,7 +23,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/dhcp/dhcp_config.h"
-#include "shill/dhcp_properties.h"
+#include "shill/dhcp/dhcp_properties.h"
 
 namespace shill {
 

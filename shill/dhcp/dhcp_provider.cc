@@ -26,12 +26,12 @@
 #include <base/strings/stringprintf.h>
 
 #include "shill/control_interface.h"
+#include "shill/dhcp/dhcp_properties.h"
 #include "shill/dhcp/dhcpcd_listener_interface.h"
 #include "shill/dhcp/dhcpv4_config.h"
 #ifndef DISABLE_DHCPV6
 #include "shill/dhcp/dhcpv6_config.h"
 #endif
-#include "shill/dhcp_properties.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 

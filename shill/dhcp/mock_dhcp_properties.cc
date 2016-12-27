@@ -14,32 +14,15 @@
 // limitations under the License.
 //
 
-#ifndef SHILL_MOCK_DHCP_PROPERTIES_H_
-#define SHILL_MOCK_DHCP_PROPERTIES_H_
+#include "shill/dhcp/mock_dhcp_properties.h"
 
-#include "shill/dhcp_properties.h"
-
-#include <string>
-
-#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 namespace shill {
 
-class MockDhcpProperties : public DhcpProperties {
- public:
-  MockDhcpProperties();
-  ~MockDhcpProperties() override;
+MockDhcpProperties::MockDhcpProperties() : DhcpProperties() {}
 
-  MOCK_CONST_METHOD2(Save, void(StoreInterface* store, const std::string& id));
-  MOCK_METHOD2(Load, void(StoreInterface* store, const std::string& id));
-  MOCK_METHOD2(GetValueForProperty,
-               bool(const std::string& name, std::string* value));
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(MockDhcpProperties);
-};
+MockDhcpProperties::~MockDhcpProperties() {}
 
 }  // namespace shill
-
-#endif  // SHILL_MOCK_DHCP_PROPERTIES_H_
 
