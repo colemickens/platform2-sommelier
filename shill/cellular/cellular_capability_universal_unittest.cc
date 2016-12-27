@@ -206,11 +206,11 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
     callback.Run(Error());
   }
   void Set3gppProxy() {
-    capability_->modem_3gpp_proxy_.reset(modem_3gpp_proxy_.release());
+    capability_->modem_3gpp_proxy_ = std::move(modem_3gpp_proxy_);
   }
 
   void SetSimpleProxy() {
-    capability_->modem_simple_proxy_.reset(modem_simple_proxy_.release());
+    capability_->modem_simple_proxy_ = std::move(modem_simple_proxy_);
   }
 
   void SetMockMobileOperatorInfoObjects() {

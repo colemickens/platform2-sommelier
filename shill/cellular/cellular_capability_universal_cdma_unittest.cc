@@ -116,11 +116,11 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
   }
 
   void SetCdmaProxy() {
-    capability_->modem_cdma_proxy_.reset(modem_cdma_proxy_.release());
+    capability_->modem_cdma_proxy_ = std::move(modem_cdma_proxy_);
   }
 
   void SetSimpleProxy() {
-    capability_->modem_simple_proxy_.reset(modem_simple_proxy_.release());
+    capability_->modem_simple_proxy_ = std::move(modem_simple_proxy_);
   }
 
   void SetMockMobileOperatorInfoObjects() {

@@ -128,9 +128,8 @@ class CellularCapabilityCDMATest : public testing::Test {
   }
 
   void SetProxy() {
-    capability_->proxy_.reset(proxy_.release());
-    capability_->CellularCapabilityClassic::proxy_.reset(
-        classic_proxy_.release());
+    capability_->proxy_ = std::move(proxy_);
+    capability_->CellularCapabilityClassic::proxy_ = std::move(classic_proxy_);
   }
 
   void SetService() {

@@ -1181,7 +1181,7 @@ TEST_F(CellularTest, Connect) {
                       CellularCapability::kTimeoutConnect))
                 .Times(2)
                 .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
-  GetCapabilityClassic()->simple_proxy_.reset(simple_proxy_.release());
+  GetCapabilityClassic()->simple_proxy_ = std::move(simple_proxy_);
   device_->service_->roaming_state_ = kRoamingStateHome;
   device_->state_ = Cellular::kStateRegistered;
   device_->Connect(&error);
@@ -1209,7 +1209,7 @@ TEST_F(CellularTest, Disconnect) {
   EXPECT_CALL(*proxy_,
               Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
-  GetCapabilityClassic()->proxy_.reset(proxy_.release());
+  GetCapabilityClassic()->proxy_ = std::move(proxy_);
   device_->Disconnect(&error, "in test");
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
@@ -1224,7 +1224,7 @@ TEST_F(CellularTest, DisconnectFailure) {
               Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
        .Times(2)
        .WillRepeatedly(Invoke(this, &CellularTest::InvokeDisconnectFail));
-  GetCapabilityClassic()->proxy_.reset(proxy_.release());
+  GetCapabilityClassic()->proxy_ = std::move(proxy_);
   device_->modem_state_ = Cellular::kModemStateDisconnecting;
   device_->Disconnect(&error, "in test");
   EXPECT_TRUE(error.IsFailure());
@@ -1244,7 +1244,7 @@ TEST_F(CellularTest, ConnectFailure) {
   EXPECT_CALL(*simple_proxy_,
               Connect(_, _, _, CellularCapability::kTimeoutConnect))
                 .WillOnce(Invoke(this, &CellularTest::InvokeConnectFail));
-  GetCapabilityClassic()->simple_proxy_.reset(simple_proxy_.release());
+  GetCapabilityClassic()->simple_proxy_ = std::move(simple_proxy_);
   Error error;
   device_->Connect(&error);
   EXPECT_EQ(Service::kStateFailure, device_->service_->state());
@@ -1262,7 +1262,7 @@ TEST_F(CellularTest, ConnectFailureNoService) {
       Connect(_, _, _, CellularCapability::kTimeoutConnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeConnectFailNoService));
   EXPECT_CALL(*modem_info_.mock_manager(), UpdateService(_));
-  GetCapabilityClassic()->simple_proxy_.reset(simple_proxy_.release());
+  GetCapabilityClassic()->simple_proxy_ = std::move(simple_proxy_);
   Error error;
   device_->Connect(&error);
 }
@@ -1278,7 +1278,7 @@ TEST_F(CellularTest, ConnectSuccessNoService) {
       Connect(_, _, _, CellularCapability::kTimeoutConnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeConnectSuccessNoService));
   EXPECT_CALL(*modem_info_.mock_manager(), UpdateService(_));
-  GetCapabilityClassic()->simple_proxy_.reset(simple_proxy_.release());
+  GetCapabilityClassic()->simple_proxy_ = std::move(simple_proxy_);
   Error error;
   device_->Connect(&error);
 }

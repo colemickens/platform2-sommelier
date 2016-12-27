@@ -218,17 +218,17 @@ class CellularCapabilityTest : public testing::Test {
   };
 
   void SetProxy() {
-    capability_->proxy_.reset(proxy_.release());
+    capability_->proxy_ = std::move(proxy_);
   }
 
   void SetSimpleProxy() {
-    capability_->simple_proxy_.reset(simple_proxy_.release());
+    capability_->simple_proxy_ = std::move(simple_proxy_);
   }
 
   void SetGSMNetworkProxy() {
     CellularCapabilityGSM* gsm_capability =
         static_cast<CellularCapabilityGSM*>(cellular_->capability_.get());
-    gsm_capability->network_proxy_.reset(gsm_network_proxy_.release());
+    gsm_capability->network_proxy_ = std::move(gsm_network_proxy_);
   }
 
   void SetCellularType(Cellular::Type type) {

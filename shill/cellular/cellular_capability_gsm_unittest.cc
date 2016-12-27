@@ -229,15 +229,15 @@ class CellularCapabilityGSMTest : public testing::Test {
   };
 
   void SetProxy() {
-    capability_->proxy_.reset(proxy_.release());
+    capability_->proxy_ = std::move(proxy_);
   }
 
   void SetCardProxy() {
-    capability_->card_proxy_.reset(card_proxy_.release());
+    capability_->card_proxy_ = std::move(card_proxy_);
   }
 
   void SetNetworkProxy() {
-    capability_->network_proxy_.reset(network_proxy_.release());
+    capability_->network_proxy_ = std::move(network_proxy_);
   }
 
   void SetAccessTechnology(uint32_t technology) {
