@@ -15,7 +15,6 @@
 
 #include "base/logging.h"
 #include "base/macros.h"
-#include "chromiumos-wide-profiling/file_reader.h"
 
 namespace {
 
