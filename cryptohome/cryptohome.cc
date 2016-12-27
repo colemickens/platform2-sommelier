@@ -60,7 +60,11 @@ const int kSetCurrentUserOldOffsetInDays = 92;
 
 // Five minutes is enough to wait for any TPM operations, sync() calls, etc.
 const int kDefaultTimeoutMs = 300000;
-}
+
+// Default size of a chunk that the start_dircrypto_data_migration action uses
+// when splitting a file into chunks.
+constexpr uint64_t kDefaultChunkSize = 1 << 20;  // 1MB
+}  // namespace
 
 namespace switches {
   static const char kSyslogSwitch[] = "syslog";
@@ -74,68 +78,68 @@ namespace switches {
     { nullptr,    cryptohome::Attestation::kMaxPCAType }
   };
   static const char kActionSwitch[] = "action";
-  static const char *kActions[] = {
-    "mount",
-    "mount_ex",
-    "mount_guest",
-    "mount_public",
-    "unmount",
-    "is_mounted",
-    "test_auth",
-    "check_key_ex",
-    "remove_key_ex",
-    "get_key_data_ex",
-    "list_keys_ex",
-    "migrate_key",
-    "add_key",
-    "add_key_ex",
-    "update_key_ex",
-    "remove",
-    "obfuscate_user",
-    "dump_keyset",
-    "dump_last_activity",
-    "tpm_status",
-    "tpm_more_status",
-    "status",
-    "set_current_user_old",
-    "do_free_disk_space_control",
-    "tpm_take_ownership",
-    "tpm_clear_stored_password",
-    "tpm_wait_ownership",
-    "install_attributes_set",
-    "install_attributes_get",
-    "install_attributes_finalize",
-    "pkcs11_token_status",
-    "pkcs11_terminate",
-    "store_enrollment_state",
-    "load_enrollment_state",
-    "tpm_live_test",
-    "tpm_verify_attestation",
-    "tpm_verify_ek",
-    "tpm_attestation_status",
-    "tpm_attestation_start_enroll",
-    "tpm_attestation_finish_enroll",
-    "tpm_attestation_start_cert_request",
-    "tpm_attestation_finish_cert_request",
-    "tpm_attestation_key_status",
-    "tpm_attestation_register_key",
-    "tpm_attestation_enterprise_challenge",
-    "tpm_attestation_delete",
-    "tpm_attestation_get_ek",
-    "tpm_attestation_reset_identity",
-    "tpm_attestation_reset_identity_result",
-    "sign_lockbox",
-    "verify_lockbox",
-    "finalize_lockbox",
-    "get_boot_attribute",
-    "set_boot_attribute",
-    "flush_and_sign_boot_attributes",
-    "get_login_status",
-    "initialize_cast_key",
-    "get_firmware_management_parameters",
-    "set_firmware_management_parameters",
-    "remove_firmware_management_parameters",
-    NULL };
+  static const char* kActions[] = {"mount",
+                                   "mount_ex",
+                                   "mount_guest",
+                                   "mount_public",
+                                   "unmount",
+                                   "is_mounted",
+                                   "test_auth",
+                                   "check_key_ex",
+                                   "remove_key_ex",
+                                   "get_key_data_ex",
+                                   "list_keys_ex",
+                                   "migrate_key",
+                                   "add_key",
+                                   "add_key_ex",
+                                   "update_key_ex",
+                                   "remove",
+                                   "obfuscate_user",
+                                   "dump_keyset",
+                                   "dump_last_activity",
+                                   "tpm_status",
+                                   "tpm_more_status",
+                                   "status",
+                                   "set_current_user_old",
+                                   "do_free_disk_space_control",
+                                   "tpm_take_ownership",
+                                   "tpm_clear_stored_password",
+                                   "tpm_wait_ownership",
+                                   "install_attributes_set",
+                                   "install_attributes_get",
+                                   "install_attributes_finalize",
+                                   "pkcs11_token_status",
+                                   "pkcs11_terminate",
+                                   "store_enrollment_state",
+                                   "load_enrollment_state",
+                                   "tpm_live_test",
+                                   "tpm_verify_attestation",
+                                   "tpm_verify_ek",
+                                   "tpm_attestation_status",
+                                   "tpm_attestation_start_enroll",
+                                   "tpm_attestation_finish_enroll",
+                                   "tpm_attestation_start_cert_request",
+                                   "tpm_attestation_finish_cert_request",
+                                   "tpm_attestation_key_status",
+                                   "tpm_attestation_register_key",
+                                   "tpm_attestation_enterprise_challenge",
+                                   "tpm_attestation_delete",
+                                   "tpm_attestation_get_ek",
+                                   "tpm_attestation_reset_identity",
+                                   "tpm_attestation_reset_identity_result",
+                                   "sign_lockbox",
+                                   "verify_lockbox",
+                                   "finalize_lockbox",
+                                   "get_boot_attribute",
+                                   "set_boot_attribute",
+                                   "flush_and_sign_boot_attributes",
+                                   "get_login_status",
+                                   "initialize_cast_key",
+                                   "get_firmware_management_parameters",
+                                   "set_firmware_management_parameters",
+                                   "remove_firmware_management_parameters",
+                                   "start_dircrypto_data_migration",
+                                   NULL};
   enum ActionEnum {
     ACTION_MOUNT,
     ACTION_MOUNT_EX,
@@ -197,6 +201,7 @@ namespace switches {
     ACTION_GET_FIRMWARE_MANAGEMENT_PARAMETERS,
     ACTION_SET_FIRMWARE_MANAGEMENT_PARAMETERS,
     ACTION_REMOVE_FIRMWARE_MANAGEMENT_PARAMETERS,
+    ACTION_DIRCRYPTO_DATA_MIGRATION_START,
   };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
@@ -219,6 +224,9 @@ namespace switches {
   static const char kProtobufSwitch[] = "protobuf";
   static const char kFlagsSwitch[] = "flags";
   static const char kDevKeyHashSwitch[] = "developer_key_hash";
+  static const char kFromDirectorySwitch[] = "from_directory";
+  static const char kToDirectorySwitch[] = "to_directory";
+  static const char kChunkSizeSwitch[] = "chunk_size";
 }  // namespace switches
 
 #define DBUS_METHOD(method_name) \
@@ -2608,6 +2616,43 @@ int main(int argc, char **argv) {
       return -1;
     }
     printf("RemoveFirmwareManagementParameters success.\n");
+  } else if (!strcmp(switches::kActions
+                         [switches::ACTION_DIRCRYPTO_DATA_MIGRATION_START],
+                     action.c_str())) {
+    if (!cl->HasSwitch(switches::kFromDirectorySwitch) ||
+        !cl->HasSwitch(switches::kToDirectorySwitch)) {
+      LOG(ERROR) << "Use --from=<dir> and --to=<dir> "
+                 << "(and optionally [--chunk=<size>])";
+      return 1;
+    }
+
+    const base::FilePath from =
+        cl->GetSwitchValuePath(switches::kFromDirectorySwitch);
+    const base::FilePath to =
+        cl->GetSwitchValuePath(switches::kToDirectorySwitch);
+
+    if (!platform.DirectoryExists(from)) {
+      LOG(ERROR) << "Directory \"" << from.value() << "\" doesn't exist";
+      return 1;
+    }
+    if (!platform.DirectoryExists(to)) {
+      LOG(ERROR) << "Directory \"" << to.value() << "\" doesn't exist";
+      return 1;
+    }
+
+    uint64_t chunk_size = kDefaultChunkSize;
+    if (cl->HasSwitch(switches::kChunkSizeSwitch)) {
+      if (!base::StringToUint64(
+              cl->GetSwitchValueASCII(switches::kChunkSizeSwitch),
+              &chunk_size)) {
+        LOG(ERROR) << "Failed to parse --" << switches::kChunkSizeSwitch
+                   << " switch value";
+        return 1;
+      }
+    }
+
+    LOG(ERROR) << "Not implemented yet.";
+    return 1;
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)
