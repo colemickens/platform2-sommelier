@@ -18,6 +18,7 @@
 
 #include <utility>
 
+#include <base/memory/ptr_util.h>
 #include <base/message_loop/message_loop.h>
 
 #include "proxy_dbus_client.h"
@@ -276,8 +277,7 @@ std::unique_ptr<ServiceProxy> ProxyDbusClient::GetServiceProxy(
           expected_properties, &service_path, &error)) {
     return nullptr;
   }
-  return std::unique_ptr<ServiceProxy>(
-      new ServiceProxy(dbus_bus_, service_path));
+  return base::MakeUnique<ServiceProxy>(dbus_bus_, service_path);
 }
 
 std::unique_ptr<ProfileProxy> ProxyDbusClient::GetActiveProfileProxy() {
@@ -440,7 +440,7 @@ bool ProxyDbusClient::SetLoggingInternal(int level, const std::string& tags) {
 template<typename Proxy>
 std::unique_ptr<Proxy> ProxyDbusClient::GetProxyForObjectPath(
     const dbus::ObjectPath& object_path) {
-  return std::unique_ptr<Proxy>(new Proxy(dbus_bus_, object_path));
+  return base::MakeUnique<Proxy>(dbus_bus_, object_path);
 }
 
 // Templated functions to return the object path property_name based on

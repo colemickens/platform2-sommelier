@@ -17,6 +17,8 @@
 #include "proxy_rpc_in_data_types.h"
 #include "proxy_util.h"
 
+#include <base/memory/ptr_util.h>
+
 namespace {
 // Autotest Server test encodes the object type in this key.
 static const char kXmlRpcStructTypeKey[] = "xmlrpc_struct_type_key";
@@ -116,8 +118,8 @@ AssociationParameters::AssociationParameters(
   GetBoolValueFromXmlRpcValueStructMember(
       xml_rpc_value_in, "expect_failure", false, &expect_failure_);
   autoconnect_type_ = ParseAutoConnectTypeFromXmlRpcValue(xml_rpc_value_in);
-  bgscan_config_ = std::unique_ptr<BgscanConfiguration>(
-      new BgscanConfiguration(&(*xml_rpc_value_in)["bgscan_config"]));
+  bgscan_config_ = base::MakeUnique<BgscanConfiguration>(
+      &(*xml_rpc_value_in)["bgscan_config"]);
   security_config_ = SecurityConfig::CreateSecurityConfigObject(
       &(*xml_rpc_value_in)["security_config"]);
 }
