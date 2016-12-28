@@ -26,6 +26,7 @@
 #include <vector>
 
 #include <base/files/file_util.h>
+#include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -1985,8 +1986,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentService) {
   EXPECT_EQ(service, GetCurrentService());
 
   // Expect that the entry associated with this network will be disabled.
-  unique_ptr<MockSupplicantNetworkProxy> network_proxy(
-      new MockSupplicantNetworkProxy());
+  auto network_proxy = base::MakeUnique<MockSupplicantNetworkProxy>();
   EXPECT_CALL(*control_interface(),
               CreateSupplicantNetworkProxy(kPath))
       .WillOnce(ReturnAndReleasePointee(&network_proxy));
@@ -2012,8 +2012,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithFailure) {
   EXPECT_EQ(service, GetCurrentService());
 
   // Expect that the entry associated with this network will be disabled.
-  unique_ptr<MockSupplicantNetworkProxy> network_proxy(
-      new MockSupplicantNetworkProxy());
+  auto network_proxy = base::MakeUnique<MockSupplicantNetworkProxy>();
   EXPECT_CALL(*control_interface(),
               CreateSupplicantNetworkProxy(kPath))
       .WillOnce(ReturnAndReleasePointee(&network_proxy));
