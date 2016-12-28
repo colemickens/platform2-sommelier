@@ -19,6 +19,7 @@
 #include <memory>
 #include <set>
 
+#include <base/memory/ptr_util.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
 #else
@@ -194,7 +195,7 @@ TEST_F(VPNProviderTest, OnDeviceInfoAvailable) {
   const string kInterfaceName("tun0");
   const int kInterfaceIndex = 1;
 
-  unique_ptr<MockVPNDriver> bad_driver(new MockVPNDriver());
+  auto bad_driver = base::MakeUnique<MockVPNDriver>();
   EXPECT_CALL(*bad_driver.get(), ClaimInterface(_, _))
       .Times(2)
       .WillRepeatedly(Return(false));
@@ -204,13 +205,13 @@ TEST_F(VPNProviderTest, OnDeviceInfoAvailable) {
   EXPECT_FALSE(provider_.OnDeviceInfoAvailable(kInterfaceName,
                                                kInterfaceIndex));
 
-  unique_ptr<MockVPNDriver> good_driver(new MockVPNDriver());
+  auto good_driver = base::MakeUnique<MockVPNDriver>();
   EXPECT_CALL(*good_driver.get(), ClaimInterface(_, _))
       .WillOnce(Return(true));
   provider_.services_.push_back(new VPNService(&control_, nullptr, &metrics_,
                                                nullptr, good_driver.release()));
 
-  unique_ptr<MockVPNDriver> dup_driver(new MockVPNDriver());
+  auto dup_driver = base::MakeUnique<MockVPNDriver>();
   EXPECT_CALL(*dup_driver.get(), ClaimInterface(_, _))
       .Times(0);
   provider_.services_.push_back(new VPNService(&control_, nullptr, &metrics_,

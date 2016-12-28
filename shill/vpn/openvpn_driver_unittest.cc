@@ -21,6 +21,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #if defined(__ANDROID__)
@@ -1363,8 +1364,8 @@ TEST_F(OpenVPNDriverTest, GetEnvironment) {
 
 TEST_F(OpenVPNDriverTest, OnOpenVPNExited) {
   const int kExitStatus = 1;
-  std::unique_ptr<MockDeviceInfo> device_info(
-      new MockDeviceInfo(&control_, &dispatcher_, &metrics_, &manager_));
+  auto device_info = base::MakeUnique<MockDeviceInfo>(
+      &control_, &dispatcher_, &metrics_, &manager_);
   EXPECT_CALL(*device_info, DeleteInterface(kInterfaceIndex))
       .WillOnce(Return(true));
   WeakPtr<DeviceInfo> weak = device_info->AsWeakPtr();

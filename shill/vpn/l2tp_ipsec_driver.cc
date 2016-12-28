@@ -39,6 +39,7 @@
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #if defined(__ANDROID__)
@@ -226,12 +227,12 @@ void L2TPIPSecDriver::DeleteTemporaryFiles() {
 
 bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error* error) {
   SLOG(this, 2) << __func__;
-  std::unique_ptr<ExternalTask> external_task_local(
-      new ExternalTask(control_,
-                       process_manager_,
-                       weak_ptr_factory_.GetWeakPtr(),
-                       Bind(&L2TPIPSecDriver::OnL2TPIPSecVPNDied,
-                            weak_ptr_factory_.GetWeakPtr())));
+  auto external_task_local =
+      base::MakeUnique<ExternalTask>(control_,
+                                     process_manager_,
+                                     weak_ptr_factory_.GetWeakPtr(),
+                                     Bind(&L2TPIPSecDriver::OnL2TPIPSecVPNDied,
+                                          weak_ptr_factory_.GetWeakPtr()));
 
   vector<string> options;
   map<string, string> environment;  // No env vars passed.
