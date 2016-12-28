@@ -23,6 +23,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/memory/ptr_util.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
 #else
@@ -1443,11 +1444,11 @@ TEST_F(CellularTest, LinkEventUpWithPPP) {
   // If PPP is running, don't run DHCP as well.
   TestRPCTaskDelegate task_delegate;
   base::Callback<void(pid_t, int)> death_callback;
-  unique_ptr<NiceMock<MockExternalTask>> mock_task(
-      new NiceMock<MockExternalTask>(modem_info_.control_interface(),
-                                     &process_manager_,
-                                     task_delegate.AsWeakPtr(),
-                                     death_callback));
+  auto mock_task = base::MakeUnique<NiceMock<MockExternalTask>>(
+      modem_info_.control_interface(),
+      &process_manager_,
+      task_delegate.AsWeakPtr(),
+      death_callback);
   EXPECT_CALL(*mock_task, OnDelete()).Times(AnyNumber());
   device_->ppp_task_ = std::move(mock_task);
   device_->state_ = Cellular::kStateConnected;
@@ -2071,8 +2072,7 @@ TEST_F(CellularTest, ScanSuccess) {
 }
 
 TEST_F(CellularTest, EstablishLinkDHCP) {
-  unique_ptr<CellularBearer> bearer(
-      new CellularBearer(&control_interface_, "", ""));
+  auto bearer = base::MakeUnique<CellularBearer>(&control_interface_, "", "");
   bearer->set_ipv4_config_method(IPConfig::kMethodDHCP);
   SetCapabilityUniversalActiveBearer(std::move(bearer));
   device_->state_ = Cellular::kStateConnected;
@@ -2092,8 +2092,7 @@ TEST_F(CellularTest, EstablishLinkDHCP) {
 }
 
 TEST_F(CellularTest, EstablishLinkPPP) {
-  unique_ptr<CellularBearer> bearer(
-      new CellularBearer(&control_interface_, "", ""));
+  auto bearer = base::MakeUnique<CellularBearer>(&control_interface_, "", "");
   bearer->set_ipv4_config_method(IPConfig::kMethodPPP);
   SetCapabilityUniversalActiveBearer(std::move(bearer));
   device_->state_ = Cellular::kStateConnected;
@@ -2115,16 +2114,14 @@ TEST_F(CellularTest, EstablishLinkStatic) {
   const int32_t kSubnetPrefix = 16;
   const char* const kDNS[] = {"10.0.0.2", "8.8.4.4", "8.8.8.8"};
 
-  unique_ptr<IPConfig::Properties> ipconfig_properties(
-      new IPConfig::Properties);
+  auto ipconfig_properties = base::MakeUnique<IPConfig::Properties>();
   ipconfig_properties->address_family = kAddressFamily;
   ipconfig_properties->address = kAddress;
   ipconfig_properties->gateway = kGateway;
   ipconfig_properties->subnet_prefix = kSubnetPrefix;
   ipconfig_properties->dns_servers = vector<string>{kDNS[0], kDNS[1], kDNS[2]};
 
-  unique_ptr<CellularBearer> bearer(
-      new CellularBearer(&control_interface_, "", ""));
+  auto bearer = base::MakeUnique<CellularBearer>(&control_interface_, "", "");
   bearer->set_ipv4_config_method(IPConfig::kMethodStatic);
   bearer->set_ipv4_config_properties(std::move(ipconfig_properties));
   SetCapabilityUniversalActiveBearer(std::move(bearer));

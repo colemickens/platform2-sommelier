@@ -18,6 +18,8 @@
 
 #include <ModemManager/ModemManager.h>
 
+#include <base/memory/ptr_util.h>
+
 #include "shill/mock_control.h"
 #include "shill/mock_dbus_properties_proxy.h"
 #include "shill/testing.h"
@@ -154,8 +156,7 @@ TEST_F(CellularBearerTest, Constructor) {
 TEST_F(CellularBearerTest, Init) {
   // Ownership of |properties_proxy| is transferred to |bearer_| via
   // |control_|.
-  std::unique_ptr<MockDBusPropertiesProxy> properties_proxy(
-      new MockDBusPropertiesProxy);
+  auto properties_proxy = base::MakeUnique<MockDBusPropertiesProxy>();
   EXPECT_CALL(*control_.get(),
               CreateDBusPropertiesProxy(kBearerDBusPath, kBearerDBusService))
       .WillOnce(ReturnAndReleasePointee(&properties_proxy));
