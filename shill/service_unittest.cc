@@ -24,6 +24,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/memory/ptr_util.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
 #else
@@ -549,7 +550,7 @@ TEST_F(ServiceTest, LoadAutoConnect) {
   EXPECT_CALL(*eap_, Load(&storage, storage_id_)).Times(AnyNumber());
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
-  std::unique_ptr<MockDhcpProperties> dhcp_props(new MockDhcpProperties());
+  auto dhcp_props = base::MakeUnique<MockDhcpProperties>();
   EXPECT_CALL(*dhcp_props.get(), Load(&storage, storage_id_))
       .Times(AnyNumber());
   service_->dhcp_properties_ = std::move(dhcp_props);
@@ -676,7 +677,7 @@ TEST_F(ServiceTest, Save) {
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap_, Save(&storage, storage_id_, true));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
-  std::unique_ptr<MockDhcpProperties> dhcp_props(new MockDhcpProperties());
+  auto dhcp_props = base::MakeUnique<MockDhcpProperties>();
   EXPECT_CALL(*dhcp_props.get(), Save(&storage, storage_id_));
   service_->dhcp_properties_ = std::move(dhcp_props);
   EXPECT_TRUE(service_->Save(&storage));
@@ -1374,9 +1375,8 @@ TEST_F(ServiceTest, IsRemembered) {
 TEST_F(ServiceTest, IsDependentOn) {
   EXPECT_FALSE(service_->IsDependentOn(nullptr));
 
-  std::unique_ptr<MockDeviceInfo> mock_device_info(
-      new NiceMock<MockDeviceInfo>(control_interface(), dispatcher(), metrics(),
-                                   &mock_manager_));
+  auto mock_device_info = base::MakeUnique<NiceMock<MockDeviceInfo>>(
+      control_interface(), dispatcher(), metrics(), &mock_manager_);
   scoped_refptr<MockConnection> mock_connection0(
       new NiceMock<MockConnection>(mock_device_info.get()));
   scoped_refptr<MockConnection> mock_connection1(
@@ -1565,9 +1565,8 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
     EXPECT_EQ(Error::kNotFound, error.type());
   }
 
-  std::unique_ptr<MockDeviceInfo> mock_device_info(
-      new NiceMock<MockDeviceInfo>(control_interface(), dispatcher(), metrics(),
-                                   &mock_manager_));
+  auto mock_device_info = base::MakeUnique<NiceMock<MockDeviceInfo>>(
+      control_interface(), dispatcher(), metrics(), &mock_manager_);
   scoped_refptr<MockConnection> mock_connection(
       new NiceMock<MockConnection>(mock_device_info.get()));
 

@@ -22,6 +22,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #if defined(__ANDROID__)
@@ -226,7 +227,7 @@ class ManagerTest : public PropertyStoreTest {
 
   Profile* CreateProfileForManager(Manager* manager) {
     Profile::Identifier id("rather", "irrelevant");
-    std::unique_ptr<FakeStore> storage(new FakeStore());
+    auto storage = base::MakeUnique<FakeStore>();
     if (!storage->Open())
       return nullptr;
     Profile* profile(new Profile(

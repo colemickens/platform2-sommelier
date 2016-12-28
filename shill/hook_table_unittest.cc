@@ -20,6 +20,7 @@
 #include <string>
 
 #include <base/bind.h>
+#include <base/memory/ptr_util.h>
 #include <base/message_loop/message_loop.h>
 
 #include "shill/error.h"
@@ -250,7 +251,7 @@ class SomeClass : public base::RefCounted<SomeClass> {
 // This test verifies that a class that removes itself from a hook table upon
 // destruction does not crash if the hook table is destroyed first.
 TEST_F(HookTableTest, RefcountedObject) {
-  std::unique_ptr<HookTable> ht(new HookTable(&event_dispatcher_));
+  auto ht = base::MakeUnique<HookTable>(&event_dispatcher_);
   {
     scoped_refptr<SomeClass> ref_counted_object = new SomeClass();
     Closure start_callback = Bind(&SomeClass::StartAction, ref_counted_object);

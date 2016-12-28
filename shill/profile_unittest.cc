@@ -20,6 +20,7 @@
 #include <vector>
 
 #include <base/files/file_util.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
 #include <gtest/gtest.h>
@@ -91,8 +92,8 @@ class ProfileTest : public PropertyStoreTest {
 };
 
 TEST_F(ProfileTest, DeleteEntry) {
-  std::unique_ptr<MockManager> manager(new StrictMock<MockManager>(
-      control_interface(), dispatcher(), metrics()));
+  auto manager = base::MakeUnique<StrictMock<MockManager>>(
+      control_interface(), dispatcher(), metrics());
   profile_->manager_ = manager.get();
 
   MockStore* storage(new StrictMock<MockStore>());
@@ -481,8 +482,8 @@ TEST_F(ProfileTest, UpdateDevice) {
 }
 
 TEST_F(ProfileTest, GetServiceFromEntry) {
-  std::unique_ptr<MockManager> manager(new StrictMock<MockManager>(
-      control_interface(), dispatcher(), metrics()));
+  auto manager = base::MakeUnique<StrictMock<MockManager>>(
+      control_interface(), dispatcher(), metrics());
   profile_->manager_ = manager.get();
 
   MockStore* storage(new StrictMock<MockStore>());

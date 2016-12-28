@@ -19,6 +19,7 @@
 #include <string>
 
 #include <base/macros.h>
+#include <base/memory/ptr_util.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
 #else
@@ -111,7 +112,7 @@ void DhcpProperties::Save(StoreInterface* storage, const string& id) const {
 std::unique_ptr<DhcpProperties> DhcpProperties::Combine(
     const DhcpProperties& base, const DhcpProperties& to_merge) {
   SLOG(nullptr, 2) << __func__;
-  std::unique_ptr<DhcpProperties> to_return(new DhcpProperties());
+  auto to_return = base::MakeUnique<DhcpProperties>();
   to_return->properties_ = base.properties_;
   for (const auto& it : to_merge.properties_.properties()) {
     const string& name = it.first;

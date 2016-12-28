@@ -29,6 +29,7 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/macros.h>
+#include <base/memory/ptr_util.h>
 #include <base/memory/weak_ptr.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
@@ -366,7 +367,7 @@ MATCHER_P(IsCombinedDhcpProperties, dhcp_props, "") {
 
 TEST_F(DeviceTest, AcquireIPConfigWithSelectedService) {
   device_->ipconfig_ = new IPConfig(control_interface(), "randomname");
-  std::unique_ptr<MockDHCPProvider> dhcp_provider(new MockDHCPProvider());
+  auto dhcp_provider = base::MakeUnique<MockDHCPProvider>();
   device_->dhcp_provider_ = dhcp_provider.get();
 
   scoped_refptr<MockDHCPConfig> dhcp_config(
@@ -381,7 +382,7 @@ TEST_F(DeviceTest, AcquireIPConfigWithSelectedService) {
                                  "DHCPProperty.VendorClass", _))
       .WillOnce(Return(false));
 
-  std::unique_ptr<DhcpProperties> service_dhcp_properties(new DhcpProperties());
+  auto service_dhcp_properties = base::MakeUnique<DhcpProperties>();
   service_dhcp_properties->Load(&storage, service_storage_id);
 
   scoped_refptr<MockService> service(
@@ -401,7 +402,7 @@ TEST_F(DeviceTest, AcquireIPConfigWithSelectedService) {
                                  "DHCPProperty.Hostname", _))
       .WillOnce(Return(false));
 
-  std::unique_ptr<DhcpProperties> manager_dhcp_properties(new DhcpProperties());
+  auto manager_dhcp_properties = base::MakeUnique<DhcpProperties>();
   manager_dhcp_properties->Load(&default_profile_storage,
                                 default_profile_storage_id);
   std::unique_ptr<DhcpProperties> combined_props =
@@ -445,11 +446,11 @@ TEST_F(DeviceTest, AcquireIPConfigWithSelectedService) {
 
 TEST_F(DeviceTest, AcquireIPConfigWithoutSelectedService) {
   device_->ipconfig_ = new IPConfig(control_interface(), "randomname");
-  std::unique_ptr<MockDHCPProvider> dhcp_provider(new MockDHCPProvider());
+  auto dhcp_provider = base::MakeUnique<MockDHCPProvider>();
   device_->dhcp_provider_ = dhcp_provider.get();
   scoped_refptr<MockDHCPConfig> dhcp_config(
       new MockDHCPConfig(control_interface(), kDeviceName));
-  std::unique_ptr<DhcpProperties> manager_dhcp_properties(new DhcpProperties());
+  auto manager_dhcp_properties = base::MakeUnique<DhcpProperties>();
   device_->manager_->dhcp_properties_ = std::move(manager_dhcp_properties);
 #ifndef DISABLE_DHCPV6
   MockManager manager(control_interface(),
@@ -497,7 +498,7 @@ TEST_F(DeviceTest, ConfigWithMinimumMTU) {
   EXPECT_CALL(manager, GetMinimumMTU()).WillOnce(Return(minimum_mtu));
 
   device_->ipconfig_ = new IPConfig(control_interface(), "anothername");
-  std::unique_ptr<MockDHCPProvider> dhcp_provider(new MockDHCPProvider());
+  auto dhcp_provider = base::MakeUnique<MockDHCPProvider>();
   device_->dhcp_provider_ = dhcp_provider.get();
 
   scoped_refptr<MockDHCPConfig> dhcp_config(

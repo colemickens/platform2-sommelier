@@ -22,6 +22,8 @@
 
 #include <utility>
 
+#include <base/memory/ptr_util.h>
+
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 
@@ -359,12 +361,11 @@ bool ProcessManager::TerminateProcess(pid_t pid, bool kill_signal) {
   if (killed) {
     return true;
   }
-  std::unique_ptr<TerminationTimeoutCallback> termination_callback(
-      new TerminationTimeoutCallback(
-          base::Bind(&ProcessManager::ProcessTerminationTimeoutHandler,
-                     weak_factory_.GetWeakPtr(),
-                     pid,
-                     kill_signal)));
+  auto termination_callback = base::MakeUnique<TerminationTimeoutCallback>(
+      base::Bind(&ProcessManager::ProcessTerminationTimeoutHandler,
+                 weak_factory_.GetWeakPtr(),
+                 pid,
+                 kill_signal));
   dispatcher_->PostDelayedTask(FROM_HERE, termination_callback->callback(),
                                kTerminationTimeoutSeconds * 1000);
   pending_termination_processes_.emplace(pid, std::move(termination_callback));

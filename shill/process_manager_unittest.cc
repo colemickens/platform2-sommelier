@@ -21,6 +21,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/memory/ptr_util.h>
 #include <brillo/minijail/mock_minijail.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -138,8 +139,8 @@ TEST_F(ProcessManagerTest, WatchedProcessExited) {
 TEST_F(ProcessManagerTest, TerminateProcessExited) {
   const pid_t kPid = 123;
   CallbackObserver observer;
-  std::unique_ptr<CancelableClosure> timeout_handler(
-      new CancelableClosure(observer.termination_timeout_callback_));
+  auto timeout_handler = base::MakeUnique<CancelableClosure>(
+      observer.termination_timeout_callback_);
   AddTerminateProcess(kPid, std::move(timeout_handler));
 
   EXPECT_CALL(observer, OnTerminationTimeout()).Times(0);

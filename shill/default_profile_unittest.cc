@@ -24,6 +24,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/memory/ptr_util.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
 #else
@@ -97,7 +98,7 @@ TEST_F(DefaultProfileTest, GetProperties) {
   // DBusAdaptor::GetProperties() will iterate over all the accessors
   // provided by Profile. The |kEntriesProperty| accessor calls
   // GetGroups() on the StoreInterface.
-  unique_ptr<MockStore> storage(new MockStore());
+  auto storage = base::MakeUnique<MockStore>();
   set<string> empty_group_set;
   EXPECT_CALL(*storage.get(), GetGroups())
       .WillRepeatedly(Return(empty_group_set));
@@ -132,7 +133,7 @@ TEST_F(DefaultProfileTest, GetProperties) {
 }
 
 TEST_F(DefaultProfileTest, Save) {
-  unique_ptr<MockStore> storage(new MockStore());
+  auto storage = base::MakeUnique<MockStore>();
   EXPECT_CALL(*storage.get(), SetBool(DefaultProfile::kStorageId,
                                       DefaultProfile::kStorageArpGateway,
                                       true))
@@ -186,7 +187,7 @@ TEST_F(DefaultProfileTest, Save) {
 
   EXPECT_CALL(*device_.get(), Save(storage.get())).Times(0);
   profile_->set_storage(storage.release());
-  unique_ptr<MockDhcpProperties> dhcp_props(new MockDhcpProperties());
+  auto dhcp_props = base::MakeUnique<MockDhcpProperties>();
   EXPECT_CALL(*dhcp_props.get(), Save(_, _));
   manager()->dhcp_properties_ = std::move(dhcp_props);
 
@@ -196,7 +197,7 @@ TEST_F(DefaultProfileTest, Save) {
 }
 
 TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
-  unique_ptr<MockStore> storage(new MockStore());
+  auto storage = base::MakeUnique<MockStore>();
   Manager::Properties manager_props;
   EXPECT_CALL(*storage.get(), GetBool(DefaultProfile::kStorageId,
                                       DefaultProfile::kStorageArpGateway,
@@ -243,7 +244,7 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
                         DefaultProfile::kStoragePortalCheckInterval,
                         _))
       .WillOnce(Return(false));
-  unique_ptr<MockDhcpProperties> dhcp_props(new MockDhcpProperties());
+  auto dhcp_props = base::MakeUnique<MockDhcpProperties>();
   EXPECT_CALL(*dhcp_props.get(), Load(_, DefaultProfile::kStorageId));
   manager()->dhcp_properties_ = std::move(dhcp_props);
   profile_->set_storage(storage.release());
@@ -267,7 +268,7 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
 }
 
 TEST_F(DefaultProfileTest, LoadManagerProperties) {
-  unique_ptr<MockStore> storage(new MockStore());
+  auto storage = base::MakeUnique<MockStore>();
   const string host_name("hostname");
   EXPECT_CALL(*storage.get(), GetBool(DefaultProfile::kStorageId,
                                       DefaultProfile::kStorageArpGateway,
@@ -328,7 +329,7 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
                       Return(true)));
   profile_->set_storage(storage.release());
   Manager::Properties manager_props;
-  unique_ptr<MockDhcpProperties> dhcp_props(new MockDhcpProperties());
+  auto dhcp_props = base::MakeUnique<MockDhcpProperties>();
   EXPECT_CALL(*dhcp_props.get(), Load(_, DefaultProfile::kStorageId));
   manager()->dhcp_properties_ = std::move(dhcp_props);
 
@@ -360,7 +361,7 @@ TEST_F(DefaultProfileTest, GetStoragePath) {
 }
 
 TEST_F(DefaultProfileTest, ConfigureService) {
-  unique_ptr<MockStore> storage(new MockStore());
+  auto storage = base::MakeUnique<MockStore>();
   EXPECT_CALL(*storage, ContainsGroup(_))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*storage, Flush())
@@ -391,7 +392,7 @@ TEST_F(DefaultProfileTest, ConfigureService) {
 }
 
 TEST_F(DefaultProfileTest, UpdateDevice) {
-  unique_ptr<MockStore> storage(new MockStore());
+  auto storage = base::MakeUnique<MockStore>();
   EXPECT_CALL(*storage, Flush()).WillOnce(Return(true));
   EXPECT_CALL(*device_, Save(storage.get()))
       .WillOnce(Return(true))
@@ -406,7 +407,7 @@ TEST_F(DefaultProfileTest, UpdateWiFiProvider) {
   MockWiFiProvider wifi_provider;
 
   {
-    unique_ptr<MockStore> storage(new MockStore());
+    auto storage = base::MakeUnique<MockStore>();
     EXPECT_CALL(*storage, Flush()).Times(0);
     EXPECT_CALL(wifi_provider, Save(storage.get())).WillOnce(Return(false));
     profile_->set_storage(storage.release());
@@ -414,7 +415,7 @@ TEST_F(DefaultProfileTest, UpdateWiFiProvider) {
   }
 
   {
-    unique_ptr<MockStore> storage(new MockStore());
+    auto storage = base::MakeUnique<MockStore>();
     EXPECT_CALL(*storage, Flush()).WillOnce(Return(false));
     EXPECT_CALL(wifi_provider, Save(storage.get())).WillOnce(Return(true));
     profile_->set_storage(storage.release());
@@ -422,7 +423,7 @@ TEST_F(DefaultProfileTest, UpdateWiFiProvider) {
   }
 
   {
-    unique_ptr<MockStore> storage(new MockStore());
+    auto storage = base::MakeUnique<MockStore>();
     EXPECT_CALL(*storage, Flush()).WillOnce(Return(true));
     EXPECT_CALL(wifi_provider, Save(storage.get())).WillOnce(Return(true));
     profile_->set_storage(storage.release());

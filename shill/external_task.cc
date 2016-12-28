@@ -18,6 +18,7 @@
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
+#include <base/memory/ptr_util.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -61,7 +62,7 @@ bool ExternalTask::Start(const FilePath& program,
   CHECK(!rpc_task_);
 
   // Setup full environment variables.
-  std::unique_ptr<RPCTask> local_rpc_task(new RPCTask(control_, this));
+  auto local_rpc_task = base::MakeUnique<RPCTask>(control_, this);
   map<string, string> env = local_rpc_task->GetEnvironment();
   env.insert(environment.begin(), environment.end());
 

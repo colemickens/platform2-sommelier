@@ -24,10 +24,11 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/memory/ptr_util.h>
 #include <base/memory/weak_ptr.h>
 #include <base/stl_util.h>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/ipconfig.h"
@@ -930,7 +931,7 @@ TEST_F(RoutingTableTest, RequestHostRouteWithoutGatewayWithCallback) {
 TEST_F(RoutingTableTest, CancelQueryCallback) {
   IPAddress destination_address(IPAddress::kFamilyIPv4);
   destination_address.SetAddressFromString(kTestRemoteAddress4);
-  std::unique_ptr<QueryCallbackTarget> target(new QueryCallbackTarget());
+  auto target = base::MakeUnique<QueryCallbackTarget>();
   EXPECT_CALL(rtnl_handler_, SendMessage(_))
       .WillOnce(Invoke(this, &RoutingTableTest::SetSequenceForMessage));
   EXPECT_TRUE(

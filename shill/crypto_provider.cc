@@ -38,7 +38,7 @@ void CryptoProvider::Init() {
   cryptos_.clear();
 
   // Register the crypto modules in priority order -- highest priority first.
-  std::unique_ptr<CryptoDESCBC> des_cbc(new CryptoDESCBC());
+  auto des_cbc = base::MakeUnique<CryptoDESCBC>();
   if (des_cbc->LoadKeyMatter(key_matter_file_)) {
     cryptos_.push_back(std::move(des_cbc));
   }

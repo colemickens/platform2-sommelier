@@ -23,6 +23,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/memory/ptr_util.h>
 #include <base/memory/weak_ptr.h>
 #include <base/strings/string_number_conversions.h>
 
@@ -86,8 +87,8 @@ std::unique_ptr<ExternalTask> PPPDaemon::Start(
 
   arguments.push_back(device);
 
-  std::unique_ptr<ExternalTask> task(new ExternalTask(
-      control_interface, process_manager, task_delegate, death_callback));
+  auto task = base::MakeUnique<ExternalTask>(
+      control_interface, process_manager, task_delegate, death_callback);
 
   std::map<std::string, std::string> environment;
   if (task->Start(base::FilePath(kDaemonPath), arguments, environment, true,
