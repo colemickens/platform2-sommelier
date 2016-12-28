@@ -244,12 +244,12 @@ class ConnectionHealthCheckerTest : public Test {
     EXPECT_EQ(connection_.get(), health_checker_->connection_.get());
     EXPECT_EQ(&dispatcher_, health_checker_->dispatcher_);
     EXPECT_EQ(socket_, health_checker_->socket_.get());
-    EXPECT_FALSE(socket_ == nullptr);
+    EXPECT_NE(nullptr, socket_);
     EXPECT_EQ(socket_info_reader_, health_checker_->socket_info_reader_.get());
-    EXPECT_FALSE(socket_info_reader_ == nullptr);
+    EXPECT_NE(nullptr, socket_info_reader_);
     EXPECT_FALSE(health_checker_->connection_complete_callback_.is_null());
     EXPECT_EQ(tcp_connection_, health_checker_->tcp_connection_.get());
-    EXPECT_FALSE(tcp_connection_ == nullptr);
+    EXPECT_NE(nullptr, tcp_connection_);
     EXPECT_FALSE(health_checker_->health_check_in_progress_);
   }
 
