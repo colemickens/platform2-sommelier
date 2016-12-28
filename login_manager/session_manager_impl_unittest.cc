@@ -1321,12 +1321,15 @@ TEST_F(SessionManagerImplTest, ArcRemoveData) {
 }
 #endif
 
-#if !USE_CHEETS
-TEST_F(SessionManagerImplTest, PrioritizeArcInstance) {
-  impl_.PrioritizeArcInstance(&error_);
+TEST_F(SessionManagerImplTest, SetArcCpuRestrictionFails) {
+#if USE_CHEETS
+  impl_.SetArcCpuRestriction(NUM_CONTAINER_CPU_RESTRICTION_STATES, &error_);
+  EXPECT_EQ(dbus_error::kArcCpuCgroupFail, error_.name());
+#else
+  impl_.SetArcCpuRestriction(CONTAINER_CPU_RESTRICTION_BACKGROUND, &error_);
   EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
-}
 #endif
+}
 
 TEST_F(SessionManagerImplTest, EmitArcBooted) {
 #if USE_CHEETS

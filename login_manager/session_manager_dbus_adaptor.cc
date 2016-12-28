@@ -311,6 +311,9 @@ void SessionManagerDBusAdaptor::ExportDBusMethods(
                        kSessionManagerPrioritizeArcInstance,
                        &SessionManagerDBusAdaptor::PrioritizeArcInstance);
   ExportSyncDBusMethod(object,
+                       kSessionManagerSetArcCpuRestriction,
+                       &SessionManagerDBusAdaptor::SetArcCpuRestriction);
+  ExportSyncDBusMethod(object,
                        kSessionManagerEmitArcBooted,
                        &SessionManagerDBusAdaptor::EmitArcBooted);
   ExportSyncDBusMethod(object,
@@ -677,7 +680,23 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StopArcInstance(
 std::unique_ptr<dbus::Response>
 SessionManagerDBusAdaptor::PrioritizeArcInstance(dbus::MethodCall* call) {
   SessionManagerImpl::Error error;
-  impl_->PrioritizeArcInstance(&error);
+  impl_->SetArcCpuRestriction(CONTAINER_CPU_RESTRICTION_FOREGROUND, &error);
+  if (error.is_set())
+    return CreateError(call, error.name(), error.message());
+  return dbus::Response::FromMethodCall(call);
+}
+
+std::unique_ptr<dbus::Response>
+SessionManagerDBusAdaptor::SetArcCpuRestriction(dbus::MethodCall* call) {
+  dbus::MessageReader reader(call);
+  uint32_t state_int;
+  if (!reader.PopUint32(&state_int))
+    return CreateInvalidArgsError(call, call->GetSignature());
+  ContainerCpuRestrictionState state =
+      static_cast<ContainerCpuRestrictionState>(state_int);
+
+  SessionManagerImpl::Error error;
+  impl_->SetArcCpuRestriction(state, &error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
   return dbus::Response::FromMethodCall(call);

@@ -115,6 +115,12 @@ const base::FilePath::CharType kAndroidDataDirName[] =
 // Name of android-data-old directory which RemoveArcDataInternal uses.
 const base::FilePath::CharType kAndroidDataOldDirName[] =
     FILE_PATH_LITERAL("android-data-old");
+
+// To set the CPU limits of the Android container.
+const char kCpuSharesFile[] =
+    "/sys/fs/cgroup/cpu/session_manager_containers/cpu.shares";
+const unsigned int kCpuSharesForeground = 1024;
+const unsigned int kCpuSharesBackground = 64;
 #endif
 
 // SystemUtils::EnsureJobExit() DCHECKs if the timeout is zero, so this is the
@@ -853,12 +859,28 @@ void SessionManagerImpl::StopArcInstance(Error* error) {
 #endif  // USE_CHEETS
 }
 
-void SessionManagerImpl::PrioritizeArcInstance(Error* error) {
+void SessionManagerImpl::SetArcCpuRestriction(
+    ContainerCpuRestrictionState state, Error* error) {
 #if USE_CHEETS
-  if (!android_container_->PrioritizeContainer()) {
+  std::string shares_out;
+  switch (state) {
+    case CONTAINER_CPU_RESTRICTION_FOREGROUND:
+      shares_out = std::to_string(kCpuSharesForeground);
+      break;
+    case CONTAINER_CPU_RESTRICTION_BACKGROUND:
+      shares_out = std::to_string(kCpuSharesBackground);
+      break;
+    default:
+      constexpr char msg[] = "Invalid CPU restriction state specified.";
+      LOG(ERROR) << msg;
+      error->Set(dbus_error::kArcCpuCgroupFail, msg);
+      return;
+  };
+  if (base::WriteFile(base::FilePath(kCpuSharesFile), shares_out.c_str(),
+                      shares_out.length()) != shares_out.length()) {
     constexpr char msg[] = "Error updating Android container's cgroups.";
     LOG(ERROR) << msg;
-    error->Set(dbus_error::kNotAvailable, msg);
+    error->Set(dbus_error::kArcCpuCgroupFail, msg);
   }
 #else
   error->Set(dbus_error::kNotAvailable, "ARC not supported.");

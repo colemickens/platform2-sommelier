@@ -463,7 +463,7 @@
     </method>
 
     <!--
-        PrioritizeArcInstance:
+        PrioritizeArcInstance: ** Deprecated **
 
         Prioritizes the currently running ARC instance by removing the cgroups
         restriction session_manager applies to the instance by default. Calling
@@ -471,6 +471,27 @@
         cgroups exist.
     -->
     <method name="PrioritizeArcInstance">
+    </method>
+
+    <!--
+        SetArcCpuRestriction:
+        @restriction_state: State used to set the level of CPU allowed specified
+        as foreground or background with the
+        |login_manager::ContainerCpuRestrictionState| enum.
+
+        Adjusts the amount of CPU the ARC instance is allowed to use by setting
+        the cpu.shares value of ARC's cpu cgroup.  When restriction_state is
+        ARC_FOREGROUND the limit is adjusted so ARC can use all the system's CPU
+        if needed.  When restriction_state is ARC_BACKGROUND, cpu.shares is set
+        back to a tightly restricted level.  The ARC container is started in a
+        state that is more restricted than ARC_BACKGROUND.  This startup state
+        is to allow Chrome to restore during login and can't be re-entered after
+        startup is complete.
+        Calling the method while the instance is not running *is* okay as long
+        as the cgroups exist.
+    -->
+    <method name="SetArcCpuRestriction">
+      <arg type="u" name="restriction_state" direction="in" />
     </method>
 
     <!--

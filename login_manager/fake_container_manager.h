@@ -27,7 +27,6 @@ class FakeContainerManager : public ContainerManagerInterface {
   bool StartContainer(const ExitCallback& exit_callback) override;
   bool GetRootFsPath(base::FilePath* path_out) const override;
   bool GetContainerPID(pid_t* pid_out) const override;
-  bool PrioritizeContainer() override;
 
   void SimulateCrash();
 

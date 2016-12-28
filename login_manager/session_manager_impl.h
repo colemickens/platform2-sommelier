@@ -225,7 +225,7 @@ class SessionManagerImpl : public SessionManagerInterface,
                         bool disable_boot_completed_broadcast,
                         Error* error);
   void StopArcInstance(Error* error);
-  void PrioritizeArcInstance(Error* error);
+  void SetArcCpuRestriction(ContainerCpuRestrictionState state, Error* error);
   void EmitArcBooted(Error* error);
   base::TimeTicks GetArcStartTime(Error* error);
   void RemoveArcData(const std::string& account_id, Error* error);

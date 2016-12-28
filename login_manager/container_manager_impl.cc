@@ -30,9 +30,6 @@ namespace {
 
 const char kContainerRunPath[] = "/run/containers";
 const char kSessionManagerCgroup[] = "session_manager_containers";
-const char kCpuSharesFile[] =
-    "/sys/fs/cgroup/cpu/session_manager_containers/cpu.shares";
-const char kCpuSharesDefault[] = "1024";
 const char kMountinfoPath[] = "/proc/self/mountinfo";
 
 std::string libcontainer_strerror(int err) {
@@ -189,16 +186,6 @@ bool ContainerManagerImpl::GetContainerPID(pid_t* pid_out) const {
   if (!container_)
     return false;
   *pid_out = container_pid(container_.get());
-  return true;
-}
-
-bool ContainerManagerImpl::PrioritizeContainer() {
-  int shares_size = strlen(kCpuSharesDefault);
-  if (base::WriteFile(base::FilePath(kCpuSharesFile), kCpuSharesDefault,
-                      shares_size) != shares_size) {
-    PLOG(ERROR) << "Failed to set CPU shares for containers";
-    return false;
-  }
   return true;
 }
 

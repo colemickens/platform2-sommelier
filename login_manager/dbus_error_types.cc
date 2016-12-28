@@ -9,6 +9,7 @@ namespace dbus_error {
 #define INTERFACE "org.chromium.SessionManagerInterface"
 
 const char kNone[] = INTERFACE ".None";
+const char kArcCpuCgroupFail[] = INTERFACE ".ArcCpuCgroupFail";
 const char kArcInstanceRunning[] = INTERFACE ".ArcInstanceRunning";
 const char kContainerStartupFail[] = INTERFACE ".ContainerStartupFail";
 const char kContainerShutdownFail[] = INTERFACE ".ContainerShutdownFail";
