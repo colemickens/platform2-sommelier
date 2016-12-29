@@ -1349,8 +1349,8 @@ class SessionManagerImplStaticTest : public ::testing::Test {
     return SessionManagerImpl::ValidateEmail(email_address);
   }
 
-  bool ValidateGaiaIdKey(const string& account_id) {
-    return SessionManagerImpl::ValidateGaiaIdKey(account_id);
+  bool ValidateAccountIdKey(const string& account_id) {
+    return SessionManagerImpl::ValidateAccountIdKey(account_id);
   }
 };
 
@@ -1375,16 +1375,19 @@ TEST_F(SessionManagerImplStaticTest, EmailAddressTooMuchAtTest) {
   EXPECT_FALSE(ValidateEmail(extra_at));
 }
 
-TEST_F(SessionManagerImplStaticTest, GaiaIdKeyTest) {
-  EXPECT_TRUE(ValidateGaiaIdKey("g-1234567890123456"));
+TEST_F(SessionManagerImplStaticTest, AccountIdKeyTest) {
+  EXPECT_TRUE(ValidateAccountIdKey("g-1234567890123456"));
   // email string is invalid GaiaIdKey
-  EXPECT_FALSE(ValidateGaiaIdKey("john@some.where.com"));
+  EXPECT_FALSE(ValidateAccountIdKey("john@some.where.com"));
   // Only alphanumeric characters plus a colon are allowed.
-  EXPECT_TRUE(ValidateGaiaIdKey("g-1234567890"));
-  EXPECT_TRUE(ValidateGaiaIdKey("g-abcdef0123456789"));
-  EXPECT_TRUE(ValidateGaiaIdKey("g-ABCDEF0123456789"));
-  EXPECT_FALSE(ValidateGaiaIdKey("g-123@some.where.com"));
-  EXPECT_FALSE(ValidateGaiaIdKey("g-123@localhost"));
+  EXPECT_TRUE(ValidateAccountIdKey("g-1234567890"));
+  EXPECT_TRUE(ValidateAccountIdKey("g-abcdef0123456789"));
+  EXPECT_TRUE(ValidateAccountIdKey("g-ABCDEF0123456789"));
+  EXPECT_FALSE(ValidateAccountIdKey("g-123@some.where.com"));
+  EXPECT_FALSE(ValidateAccountIdKey("g-123@localhost"));
+  // Active Directory account keys.
+  EXPECT_TRUE(ValidateAccountIdKey("a-abcdef0123456789"));
+  EXPECT_FALSE(ValidateAccountIdKey("a-123@localhost"));
 }
 
 }  // namespace login_manager

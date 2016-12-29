@@ -88,7 +88,9 @@ const char kEmailLegalCharacters[] =
 
 // Should match chromium AccountId::kKeyGaiaIdPrefix .
 const char kGaiaIdKeyPrefix[] = "g-";
-const char kGaiaIdKeyLegalCharacters[] =
+// Should match chromium AccountId::kKeyAdIdPrefix .
+const char kActiveDirectoryPrefix[] = "a-";
+const char kAccountIdKeyLegalCharacters[] =
     "-0123456789"
     "abcdefghijklmnopqrstuvwxyz"
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -216,12 +218,14 @@ SessionManagerImpl::~SessionManagerImpl() {
 }
 
 // static
-bool SessionManagerImpl::ValidateGaiaIdKey(const std::string& account_id) {
-  if (account_id.find_first_not_of(kGaiaIdKeyLegalCharacters) !=
+bool SessionManagerImpl::ValidateAccountIdKey(const std::string& account_id) {
+  if (account_id.find_first_not_of(kAccountIdKeyLegalCharacters) !=
       std::string::npos)
     return false;
 
   return base::StartsWith(account_id, kGaiaIdKeyPrefix,
+                          base::CompareCase::SENSITIVE) ||
+         base::StartsWith(account_id, kActiveDirectoryPrefix,
                           base::CompareCase::SENSITIVE);
 }
 
@@ -1049,7 +1053,7 @@ bool SessionManagerImpl::NormalizeAccountId(const std::string& account_id,
                                             std::string* actual_account_id_out,
                                             Error* error_out) {
   // Validate the |account_id|.
-  if (IsIncognitoAccountId(account_id) || ValidateGaiaIdKey(account_id)) {
+  if (IsIncognitoAccountId(account_id) || ValidateAccountIdKey(account_id)) {
     *actual_account_id_out = account_id;
     return true;
   }

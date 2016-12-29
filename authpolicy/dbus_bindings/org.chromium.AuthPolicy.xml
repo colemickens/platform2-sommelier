@@ -39,14 +39,15 @@
 
     <!--
          RefreshUserPolicy:
-         @account_id: Unique account id of the user to fetch policy for.
+         @account_id_key: Unique account id key of the user to fetch policy for.
+                          It's prefixed account_id.
          @error_code: Returned error code, 0 means success.
 
          Retrieves user policy for the currently authenticated user and sends it
          to Session Manager. Must be authenticated, see |AuthenticateUser|.
     -->
     <method name="RefreshUserPolicy">
-      <arg name="account_id" type="s" direction="in" />
+      <arg name="account_id_key" type="s" direction="in" />
       <arg name="error_code" type="i" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>

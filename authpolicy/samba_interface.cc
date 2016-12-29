@@ -29,6 +29,9 @@ namespace ap = authpolicy::protos;
 namespace authpolicy {
 namespace {
 
+// Must match Chromium AccountId::kKeyAdIdPrefix.
+const char kActiveDirectoryPrefix[] = "a-";
+
 // Temporary data. Note: Use a #define, so we can concat strings below.
 #define AUTHPOLICY_TMP_DIR "/tmp/authpolicyd"
 
@@ -700,8 +703,10 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
   *out_account_id = parse_cmd.GetStdout();
 
   // Store user name for further reference.
-  // TODO(rsorokin): Switch back to Object GUID. (see crbug.com/677497).
-  account_id_user_name_map_[user_principal_name] = user_name;
+  const std::string account_id_key(kActiveDirectoryPrefix + *out_account_id);
+  account_id_key_user_name_map_[account_id_key] = user_name;
+  // TODO(rsorokin): Remove after switch to AccountIdKey on the Chromium side.
+  account_id_key_user_name_map_[user_principal_name] = user_name;
   return true;
 }
 
@@ -751,13 +756,13 @@ bool SambaInterface::JoinMachine(const std::string& machine_name,
   return true;
 }
 
-bool SambaInterface::FetchUserGpos(const std::string& account_id,
+bool SambaInterface::FetchUserGpos(const std::string& account_id_key,
                                    std::string* out_policy_blob,
                                    ErrorType* out_error) {
-  // Get user name from account id (must be logged in to fetch user policy).
+  // Get user name from account id key (must be logged in to fetch user policy).
   std::unordered_map<std::string, std::string>::const_iterator iter =
-      account_id_user_name_map_.find(account_id);
-  if (iter == account_id_user_name_map_.end()) {
+      account_id_key_user_name_map_.find(account_id_key);
+  if (iter == account_id_key_user_name_map_.end()) {
     LOG(ERROR) << "No user logged in. Please call AuthenticateUser first.";
     *out_error = ERROR_NOT_LOGGED_IN;
     return false;

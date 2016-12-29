@@ -120,9 +120,9 @@ class SessionManagerImpl : public SessionManagerInterface,
                      dbus::ObjectProxy* system_clock_proxy);
   virtual ~SessionManagerImpl();
 
-  // Checks if string looks like a valid GAIA ID key (as returned by
-  // AccountId::GetGaiaIdKey()).
-  static bool ValidateGaiaIdKey(const std::string& account_id);
+  // Checks if string looks like a valid account ID key (as returned by
+  // AccountId::GetAccountIdKey()).
+  static bool ValidateAccountIdKey(const std::string& account_id);
 
   // Performs very, very basic validation of |email_address|.
   static bool ValidateEmail(const std::string& email_address);
