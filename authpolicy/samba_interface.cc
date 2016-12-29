@@ -616,7 +616,8 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
   *out_account_id = parse_cmd.GetStdout();
 
   // Store user name for further reference.
-  account_id_user_name_map_[*out_account_id] = user_name;
+  // TODO(rsorokin): Switch back to Object GUID. (see crbug.com/677497).
+  account_id_user_name_map_[user_principal_name] = user_name;
   return true;
 }
 
