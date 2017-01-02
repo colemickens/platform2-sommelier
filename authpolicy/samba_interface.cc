@@ -139,8 +139,10 @@ const char kKeyBadUserName[] =
     "Client not found in Kerberos database while getting initial credentials";
 const char kKeyBadPassword[] =
     "Preauthentication failed while getting initial credentials";
-const char kKeyPasswordExpired[] =
-  "Password expired.  You must change it now.";
+const char kKeyPasswordExpiredStdout[] =
+    "Password expired.  You must change it now.";
+const char kKeyPasswordExpiredStderr[] =
+    "Cannot read password while getting initial credentials";
 const char kKeyCannotResolve[] =
     "Cannot resolve network address for KDC in realm";
 
@@ -569,7 +571,10 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
     } else if (Contains(kinit_err, kKeyBadPassword)) {
       LOG(ERROR) << "kinit failed - bad password";
       *out_error = ERROR_BAD_PASSWORD;
-    } else if (Contains(kinit_out, kKeyPasswordExpired)) {  // Note: kinit_out!
+    } else if (Contains(kinit_out, kKeyPasswordExpiredStdout) &&
+               Contains(kinit_err, kKeyPasswordExpiredStderr)) {
+      // Check both stderr and stdout here since any kinit error in the change-
+      // password-workflow would otherwise be interpreted as 'password expired'.
       LOG(ERROR) << "kinit failed - password expired";
       *out_error = ERROR_PASSWORD_EXPIRED;
     } else if (Contains(kinit_err, kKeyCannotResolve)) {
