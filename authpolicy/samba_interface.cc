@@ -154,14 +154,8 @@ const char kKeyCannotResolve[] =
 const char kParserSeccompFilter[] =
     SECCOMP_DIR "authpolicy_parser-seccomp.policy";
 const char kKInitSeccompFilter[] = SECCOMP_DIR "kinit-seccomp.policy";
-const char kNetAdsGpoListSeccompFilter[] =
-    SECCOMP_DIR "net_ads_gpo_list-seccomp.policy";
-const char kNetAdsInfoSeccompFilter[] =
-    SECCOMP_DIR "net_ads_info-seccomp.policy";
-const char kNetAdsJoinSeccompFilter[] =
-    SECCOMP_DIR "net_ads_join-seccomp.policy";
-const char kNetAdsSearchSeccompFilter[] =
-    SECCOMP_DIR "net_ads_search-seccomp.policy";
+const char kNetAdsSeccompFilter[] =
+    SECCOMP_DIR "net_ads-seccomp.policy";
 const char kSmbClientSeccompFilter[] = SECCOMP_DIR "smbclient-seccomp.policy";
 #undef SECCOMP_DIR
 
@@ -196,7 +190,7 @@ bool UpdateDomainControllerName(std::string* domain_controller_name,
 
   authpolicy::ProcessExecutor net_cmd(
       {kNetPath, "ads", "info", "-s", kSmbFilePath});
-  SetupJail(&net_cmd, kNetAdsInfoSeccompFilter);
+  SetupJail(&net_cmd, kNetAdsSeccompFilter);
   if (!net_cmd.Execute()) {
     LOG(ERROR) << "net ads info failed with exit code "
                << net_cmd.GetExitCode();
@@ -363,7 +357,7 @@ bool GetGpoList(const std::string& user_or_machine_name,
   authpolicy::ProcessExecutor net_cmd({kNetPath, "ads", "gpo", "list",
                                        user_or_machine_name, "-s",
                                        kSmbFilePath});
-  SetupJail(&net_cmd, kNetAdsGpoListSeccompFilter);
+  SetupJail(&net_cmd, kNetAdsSeccompFilter);
   if (!net_cmd.Execute()) {
     LOG(ERROR) << "net ads gpo list failed with exit code "
                << net_cmd.GetExitCode();
@@ -594,7 +588,7 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
       {kNetPath, "ads", "search",
        base::StringPrintf("(userPrincipalName=%s)", normalized_upn.c_str()),
        "objectGUID", "-s", kSmbFilePath});
-  SetupJail(&net_cmd, kNetAdsSearchSeccompFilter);
+  SetupJail(&net_cmd, kNetAdsSeccompFilter);
   if (!net_cmd.Execute()) {
     LOG(ERROR) << "net ads search failed with exit code "
                << net_cmd.GetExitCode();
@@ -644,7 +638,7 @@ bool SambaInterface::JoinMachine(const std::string& machine_name,
   // Call net ads join to join the machine to the Active Directory domain.
   ProcessExecutor net_cmd(
       {kNetPath, "ads", "join", "-U", normalized_upn, "-s", kSmbFilePath});
-  SetupJail(&net_cmd, kNetAdsJoinSeccompFilter);
+  SetupJail(&net_cmd, kNetAdsSeccompFilter);
   net_cmd.SetInputFile(password_fd);
   net_cmd.SetEnv(kMachineEnvKey, kMachineEnvValue);  // Keytab file path.
   if (!net_cmd.Execute()) {
