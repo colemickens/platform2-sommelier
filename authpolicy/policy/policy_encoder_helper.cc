@@ -18,10 +18,10 @@ namespace {
 
 #if defined(GOOGLE_CHROME_BUILD)
 const base::string16 kRegistryKey =
-    base::ASCIIToUTF16("Software\\Policies\\Google\\Chrome");
+    base::ASCIIToUTF16("Software\\Policies\\Google\\ChromeOS");
 #else
 const base::string16 kRegistryKey =
-    base::ASCIIToUTF16("Software\\Policies\\Chromium");
+    base::ASCIIToUTF16("Software\\Policies\\ChromiumOS");
 #endif
 
 // TODO(ljusten): Copied from latest Chromium base::Value::GetTypeName, remove
