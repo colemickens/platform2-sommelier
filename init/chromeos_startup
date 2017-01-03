@@ -372,6 +372,8 @@ chmod 1775 /var/log
 # /var/cache, /var/db, and /var/empty may already exist with wrong permissions.
 # Force the correct ones.
 chmod 0755 /var/cache /var/db /var/empty /var/spool /var/lib /var/lib/misc
+# Make sure the empty dir stays empty (only works on ext4).
+chattr +i /var/empty || :
 
 # "--make-shared" to let ARC container access mount points under /media.
 mount --make-shared -n -t tmpfs -o nodev,noexec,nosuid media /media
