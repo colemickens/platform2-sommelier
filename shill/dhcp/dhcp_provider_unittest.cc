@@ -28,10 +28,6 @@
 using base::FilePath;
 using base::ScopedTempDir;
 using testing::_;
-using testing::DoAll;
-using testing::Return;
-using testing::SaveArg;
-using testing::SetArgPointee;
 using testing::StrictMock;
 using testing::Test;
 

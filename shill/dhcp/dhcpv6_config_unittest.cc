@@ -49,12 +49,9 @@ using std::string;
 using std::unique_ptr;
 using std::vector;
 using testing::_;
-using testing::AnyNumber;
-using testing::ContainsRegex;
 using testing::InvokeWithoutArgs;
 using testing::Mock;
 using testing::Return;
-using testing::SetArgumentPointee;
 using testing::Test;
 
 namespace shill {

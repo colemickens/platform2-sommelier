@@ -39,19 +39,15 @@
 #include "shill/testing.h"
 
 using base::Bind;
-using base::FilePath;
-using base::ScopedTempDir;
 using base::Unretained;
 using std::string;
 using std::unique_ptr;
-using std::vector;
 using testing::_;
 using testing::AnyNumber;
 using testing::ContainsRegex;
 using testing::InvokeWithoutArgs;
 using testing::Mock;
 using testing::Return;
-using testing::SetArgumentPointee;
 using testing::Test;
 
 namespace shill {

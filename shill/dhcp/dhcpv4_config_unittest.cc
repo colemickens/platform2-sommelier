@@ -50,8 +50,6 @@ using std::string;
 using std::unique_ptr;
 using std::vector;
 using testing::_;
-using testing::AnyNumber;
-using testing::ContainsRegex;
 using testing::DoAll;
 using testing::InvokeWithoutArgs;
 using testing::Mock;

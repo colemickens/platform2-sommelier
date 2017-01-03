@@ -35,7 +35,6 @@
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 
-using base::FilePath;
 using std::string;
 
 namespace shill {
