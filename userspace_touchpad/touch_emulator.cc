@@ -2,7 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <assert.h>
+// We want to use assert in production environment
+#undef NDEBUG
+
+#include <cassert>
 #include <cstring>
 
 #include "userspace_touchpad/touch_emulator.h"
