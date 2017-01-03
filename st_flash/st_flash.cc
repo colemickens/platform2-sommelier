@@ -25,6 +25,7 @@
 
 
 #define GPIO_SYS "/sys/class/gpio/"
+#define PULSE_WIDTH 100000  // 100ms reset pulse width, we need at least 300ns.
 
 constexpr int kMaxI2CDevicePathLen = 150;
 
@@ -73,13 +74,13 @@ class IAPFirmwareUpdater {
 
   void Flash(uint32_t address, std::string path, bool verify);
   void GetFirmwareVersion();
+  bool EnterBootloader();
+  void LeaveBootLoader();
 
  private:
   int i2c_fd_;
 
   // High level functions.
-  bool EnterBootloader();
-  void LeaveBootLoader();
   void WriteFlash(uint32_t address, std::vector<uint8_t> data);
   std::vector<uint8_t> ReadFlash(uint32_t address, uint32_t length);
 
@@ -212,9 +213,9 @@ bool IAPFirmwareUpdater::EnterBootloader() {
   CHECK(WriteToFile(GPIO_SYS "gpio" + resetGPIO + "/direction", "out"));
   CHECK(WriteToFile(GPIO_SYS "gpio" + bootGPIO + "/value", "1"));
   CHECK(WriteToFile(GPIO_SYS "gpio" + resetGPIO + "/value", "1"));
-  usleep(100000);
+  usleep(PULSE_WIDTH);
   CHECK(WriteToFile(GPIO_SYS "gpio" + resetGPIO + "/value", "0"));
-  usleep(100000);
+  usleep(PULSE_WIDTH);
   CHECK(WriteToFile(GPIO_SYS "gpio" + bootGPIO + "/value", "0"));
   CHECK(WriteToFile(GPIO_SYS "unexport", bootGPIO));
   CHECK(WriteToFile(GPIO_SYS "unexport", resetGPIO));
@@ -237,7 +238,7 @@ void IAPFirmwareUpdater::LeaveBootLoader() {
   CHECK(WriteToFile(GPIO_SYS "gpio" + resetGPIO + "/direction", "out"));
   CHECK(WriteToFile(GPIO_SYS "gpio" + bootGPIO + "/value", "0"));
   CHECK(WriteToFile(GPIO_SYS "gpio" + resetGPIO + "/value", "1"));
-  usleep(100000);
+  usleep(PULSE_WIDTH);
   CHECK(WriteToFile(GPIO_SYS "gpio" + resetGPIO + "/value", "0"));
   CHECK(WriteToFile(GPIO_SYS "unexport", bootGPIO));
   CHECK(WriteToFile(GPIO_SYS "unexport", resetGPIO));
@@ -403,6 +404,8 @@ bool IAPFirmwareUpdater::WriteToFile(std::string path, std::string value) {
 int main(int argc, const char *argv[]) {
   DEFINE_string(board, "", "Target board to update");
   DEFINE_bool(fw_version, false, "Get current firmware version");
+  DEFINE_bool(enter_bootloader, false, "Enter bootloader mode");
+  DEFINE_bool(leave_bootloader, false, "Leave bootloader mode");
   brillo::FlagHelper::Init(argc, argv, "STM32 IAP firmware updater");
 
   if (!FLAGS_board.length()) {
@@ -419,6 +422,10 @@ int main(int argc, const char *argv[]) {
 
   if (FLAGS_fw_version) {
     updater.GetFirmwareVersion();
+  } else if (FLAGS_enter_bootloader) {
+    // Do nothing as the constructor already enters bootloader
+  } else if (FLAGS_leave_bootloader) {
+    updater.LeaveBootLoader();
   } else {
     auto commandline = base::CommandLine::ForCurrentProcess();
     auto args = commandline->GetArgs();
