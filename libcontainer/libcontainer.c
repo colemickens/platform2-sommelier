@@ -1209,6 +1209,8 @@ int container_start(struct container *c, const struct container_config *config)
 		minijail_namespace_net(c->jail);
 	minijail_namespace_pids(c->jail);
 	minijail_namespace_user(c->jail);
+	if (getuid() != 0)
+		minijail_namespace_user_disable_setgroups(c->jail);
 	minijail_namespace_cgroups(c->jail);
 	rc = minijail_uidmap(c->jail, config->uid_map);
 	if (rc)
