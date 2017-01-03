@@ -44,7 +44,6 @@
 #include "shill/vpn/openvpn_management_server.h"
 #include "shill/vpn/vpn_service.h"
 
-using base::Closure;
 using base::FilePath;
 using base::SplitString;
 using base::Unretained;

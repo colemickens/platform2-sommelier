@@ -40,12 +40,9 @@
 #include "shill/vpn/mock_vpn_service.h"
 
 using std::string;
-using std::unique_ptr;
 using testing::_;
-using testing::DoAll;
 using testing::NiceMock;
 using testing::Return;
-using testing::SetArgumentPointee;
 using testing::StartsWith;
 
 namespace shill {

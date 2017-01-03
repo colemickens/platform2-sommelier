@@ -31,7 +31,6 @@
 #include "shill/vpn/mock_openvpn_driver.h"
 
 using base::Bind;
-using base::Unretained;
 using std::string;
 using std::vector;
 using testing::_;

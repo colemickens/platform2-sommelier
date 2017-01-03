@@ -44,13 +44,10 @@ using std::map;
 using std::string;
 using std::vector;
 using testing::_;
-using testing::ElementsAreArray;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
-using testing::SetArgumentPointee;
-using testing::StrictMock;
 
 namespace shill {
 

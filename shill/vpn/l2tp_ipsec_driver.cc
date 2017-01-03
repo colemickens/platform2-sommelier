@@ -63,7 +63,6 @@
 #include "shill/vpn/vpn_service.h"
 
 using base::Bind;
-using base::Closure;
 using base::FilePath;
 using std::map;
 using std::string;

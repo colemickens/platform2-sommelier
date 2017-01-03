@@ -45,7 +45,6 @@ using testing::AnyNumber;
 using testing::NiceMock;
 using testing::Return;
 using testing::SetArgumentPointee;
-using testing::StrictMock;
 using testing::Test;
 
 namespace shill {

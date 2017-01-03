@@ -37,9 +37,7 @@
 #include "shill/vpn/third_party_vpn_driver.h"
 #include "shill/vpn/vpn_service.h"
 
-using std::set;
 using std::string;
-using std::vector;
 
 namespace shill {
 

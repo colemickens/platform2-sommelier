@@ -58,16 +58,13 @@ using std::map;
 using std::string;
 using std::vector;
 using testing::_;
-using testing::AnyNumber;
 using testing::DoAll;
-using testing::ElementsAreArray;
 using testing::Field;
 using testing::Mock;
 using testing::Ne;
 using testing::NiceMock;
 using testing::Return;
 using testing::SetArgumentPointee;
-using testing::StrictMock;
 
 namespace shill {
 
