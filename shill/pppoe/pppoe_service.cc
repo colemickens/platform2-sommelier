@@ -43,7 +43,6 @@
 using base::StringPrintf;
 using std::map;
 using std::string;
-using std::unique_ptr;
 
 namespace shill {
 

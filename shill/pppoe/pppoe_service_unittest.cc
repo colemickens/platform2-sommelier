@@ -40,7 +40,6 @@
 using std::map;
 using std::string;
 using testing::Mock;
-using testing::NiceMock;
 using testing::Return;
 using testing::StrEq;
 using testing::_;
