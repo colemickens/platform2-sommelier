@@ -42,7 +42,7 @@ mount_or_fail()
 check_directory()
 {
   local path="$1"
-  if [ ! -d "${path}" ]; then
+  if [ -L "${d}" ] || [ ! -d "${path}" ]; then
     cleanup_mounts "${d} is not a directory"
   fi
 }
