@@ -20,6 +20,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/json/json_writer.h>
+#include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ptr_util.h>
 #include <base/posix/eintr_wrapper.h>
@@ -27,6 +28,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/syslog_logging.h>
 
 #include <libcontainer/libcontainer.h>
 
@@ -361,12 +363,12 @@ bool OciConfigFromFile(const base::FilePath& config_path,
                        const OciConfigPtr& oci_out) {
   std::string config_json_data;
   if (!base::ReadFileToString(config_path, &config_json_data)) {
-    PLOG(ERROR) << "Fail to config container.";
+    PLOG(ERROR) << "Fail to read container config: " << config_path.value();
     return false;
   }
 
   if (!run_oci::ParseContainerConfig(config_json_data, oci_out)) {
-    LOG(ERROR) << "Fail to parse config.json.";
+    LOG(ERROR) << "Fail to parse container config: " << config_path.value();
     return false;
   }
 
@@ -584,8 +586,9 @@ int RunOci(const base::FilePath& bundle_dir,
 
     // Create an empty file, just to tag this container as being
     // run_oci-managed.
-    if (base::WriteFile(container_dir.Append(kRunOciFilename), "", 0) != 0) {
-      LOG(ERROR) << "Failed to create .run_oci tag file";
+    const base::FilePath tag_file = container_dir.Append(kRunOciFilename);
+    if (base::WriteFile(tag_file, "", 0) != 0) {
+      LOG(ERROR) << "Failed to create tag file: " << tag_file.value();
       return -1;
     }
   } else {
@@ -676,7 +679,8 @@ int RunOci(const base::FilePath& bundle_dir,
   int rc;
   rc = container_start(container.get(), config.get());
   if (rc) {
-    PLOG(ERROR) << "start failed.";
+    errno = -rc;
+    PLOG(ERROR) << "start failed: " << container_dir.value();
     return -1;
   }
 
@@ -757,7 +761,8 @@ bool GetContainerPID(const std::string& container_id, pid_t* pid_out) {
   if (!base::StringToInt(
           base::TrimWhitespaceASCII(container_pid_str, base::TRIM_ALL),
           &container_pid)) {
-    LOG(ERROR) << "Failed to convert the container pid to a number";
+    LOG(ERROR) << "Failed to convert the container pid to a number: "
+               << container_pid_str;
     return false;
   }
 
@@ -776,7 +781,7 @@ int OciKill(const std::string& container_id, int kill_signal) {
     return -1;
 
   if (kill(container_pid, kill_signal) == -1) {
-    PLOG(ERROR) << "Failed to send signal";
+    PLOG(ERROR) << "Failed to send signal " << kill_signal;
     return -1;
   }
 
@@ -901,6 +906,9 @@ int main(int argc, char **argv) {
   int c;
   int kill_signal = SIGTERM;
   bool inplace = false;
+
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
+                  brillo::kLogToStderrIfTty);
 
   while ((c = getopt_long(argc, argv, "b:B:c:hp:s:S:uU", longopts, NULL)) !=
          -1) {

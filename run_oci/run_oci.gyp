@@ -8,6 +8,7 @@
       'deps': [
         'libcap',
         'libchrome-<(libbase_ver)',
+        'libbrillo-<(libbase_ver)',
       ],
       'enable_exceptions': 1,
     },
