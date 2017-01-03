@@ -6,6 +6,7 @@
         'dbus-c++-1',
         'protobuf-lite',
         'libbrillo-<(libbase_ver)',
+        'libcap',
         'libchrome-<(libbase_ver)',
         'libminijail',
       ],

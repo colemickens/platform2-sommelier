@@ -42,6 +42,9 @@ class ProcessExecutor {
   // Execute command as |user|.
   void ChangeUser(const char* user);
 
+  // Set a flag that prevents that supplementary groups are wiped.
+  void KeepSupplementaryGroups();
+
   // Execute the command. Returns true if the command executed and returned with
   // exit code 0. Also returns true if no args were passed to the constructor.
   // Returns false otherwise.

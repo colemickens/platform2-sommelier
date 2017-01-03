@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <linux/capability.h>
+#include <pwd.h>
+#include <sys/capability.h>
+#include <sys/prctl.h>
 #include <sysexits.h>
 
 #include <memory>
@@ -14,6 +18,12 @@
 #include <install_attributes/libinstallattributes.h>
 
 #include "authpolicy/authpolicy.h"
+#include "authpolicy/constants.h"
+
+namespace ac = authpolicy::constants;
+
+uid_t ac::kAuthPolicydUid = ac::kInvalidUid;
+uid_t ac::kAuthPolicyExecUid = ac::kInvalidUid;
 
 namespace {
 
@@ -21,6 +31,64 @@ const char kObjectServicePath[] = "/org/chromium/AuthPolicy/ObjectManager";
 const char kChromeOSReleaseTrack[] = "CHROMEOS_RELEASE_TRACK";
 const char kBetaChannel[] = "beta-channel";
 const char kStableChannel[] = "stable-channel";
+const int kDefaultBufLen = 65536;
+const char kAuthPolicydUser[] = "authpolicyd";
+const char kAuthPolicydExecUser[] = "authpolicyd-exec";
+
+// Gets a user id by name.
+bool GetUserId(const char* user_name, uid_t* user_id) {
+  // Load the passwd entry.
+  int buf_len = sysconf(_SC_GETPW_R_SIZE_MAX);
+  if (buf_len == -1)
+    buf_len = kDefaultBufLen;
+  struct passwd user_info, *user_infop;
+  std::vector<char> buf(buf_len);
+  if (getpwnam_r(user_name, &user_info, buf.data(), buf_len, &user_infop))
+    return false;
+  *user_id = user_info.pw_uid;
+  return true;
+}
+
+// Sets authpolicy-exec as saved uid and drops caps. This way, Samba executables
+// can be executed as authpolicy-exec even without keeping caps around. That's
+// more secure.
+bool SetSavedUserAndDropCaps() {
+  // Initialize user ids.
+  if (!GetUserId(kAuthPolicydUser, &ac::kAuthPolicydUid) ||
+      !GetUserId(kAuthPolicydExecUser, &ac::kAuthPolicyExecUid)) {
+    PLOG(ERROR) << "Failed to verify user ids";
+    return false;
+  }
+  DCHECK_NE(ac::kAuthPolicydUid, ac::kInvalidUid);
+  DCHECK_NE(ac::kAuthPolicyExecUid, ac::kInvalidUid);
+
+  // Set authpolicyd-exec as saved uid.
+  if (setresuid(ac::kAuthPolicydUid, ac::kAuthPolicydUid,
+                ac::kAuthPolicyExecUid)) {
+    PLOG(ERROR) << "setresuid failed";
+    return false;
+  }
+
+  // Drop capabilities from bounding set.
+  if (prctl(PR_CAPBSET_DROP, CAP_SETUID) ||
+      prctl(PR_CAPBSET_DROP, CAP_SETPCAP)) {
+    PLOG(ERROR) << "Failed to drop caps from bounding set";
+    return false;
+  }
+
+  // Clear capabilities.
+  cap_t caps = cap_get_proc();
+  if (!caps ||
+      cap_clear_flag(caps, CAP_INHERITABLE) ||
+      cap_clear_flag(caps, CAP_EFFECTIVE) ||
+      cap_clear_flag(caps, CAP_PERMITTED) ||
+      cap_set_proc(caps)) {
+    PLOG(ERROR) << "Clearing caps failed";
+    return false;
+  }
+
+  return true;
+}
 
 }  // namespace
 
@@ -69,6 +137,12 @@ class Daemon : public brillo::DBusServiceDaemon {
 int main(int argc, const char* const* argv) {
   brillo::OpenLog("authpolicyd", true);
   brillo::InitLog(brillo::kLogToSyslog);
+
+  // Make it possible to switch to authpolicyd-exec without caps and drop caps.
+  if (!SetSavedUserAndDropCaps()) {
+    // Exit with "success" to prevent respawn by upstart.
+    exit(0);
+  }
 
   // Disable on beta and stable (for now).
   // TODO(ljusten): Reenable after launch reviews, see crbug.com/668119.

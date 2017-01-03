@@ -38,8 +38,6 @@ void ProcessExecutor::SetEnv(const std::string& key, const std::string& value) {
 }
 
 void ProcessExecutor::SetSeccompFilter(const std::string& policy_file) {
-  // TODO(ljusten) Remove, see crbug.com/666691.
-  minijail_log_seccomp_filter_failures(jail_);
   minijail_parse_seccomp_filters(jail_, policy_file.c_str());
   minijail_use_seccomp_filter(jail_);
 }
@@ -50,6 +48,10 @@ void ProcessExecutor::SetNoNewPrivs() {
 
 void ProcessExecutor::ChangeUser(const char* user) {
   minijail_change_user(jail_, user);
+}
+
+void ProcessExecutor::KeepSupplementaryGroups() {
+  minijail_keep_supplementary_gids(jail_);
 }
 
 bool ProcessExecutor::Execute() {

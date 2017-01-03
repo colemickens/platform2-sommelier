@@ -179,6 +179,9 @@ void SetupJail(ProcessExecutor* cmd, const char* seccomp_filter) {
   // data like the configuration file.
   cmd->ChangeUser(kAuthPolicyExecUser);
 
+  // Required since we don't have the caps to wipe supplementary groups.
+  cmd->KeepSupplementaryGroups();
+
   // Allows us to drop setgroups, setresgid and setresuid from seccomp filters.
   cmd->SetNoNewPrivs();
 }
