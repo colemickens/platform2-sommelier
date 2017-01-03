@@ -43,14 +43,10 @@
 #include "shill/net/nl80211_message.h"
 
 using base::Bind;
-using base::StringPrintf;
-using base::Unretained;
 using std::map;
 using std::string;
 using std::vector;
 using testing::_;
-using testing::AnyNumber;
-using testing::EndsWith;
 using testing::Invoke;
 using testing::Mock;
 using testing::Return;

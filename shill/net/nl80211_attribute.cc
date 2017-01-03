@@ -28,7 +28,6 @@
 #include "shill/net/netlink_message.h"
 
 using base::Bind;
-using base::StringAppendF;
 using base::StringPrintf;
 using std::string;
 

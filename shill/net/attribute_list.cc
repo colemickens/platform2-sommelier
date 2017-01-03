@@ -30,8 +30,6 @@
 #include "shill/net/netlink_attribute.h"
 #include "shill/net/netlink_message.h"
 
-using base::StringAppendF;
-using base::WeakPtr;
 using std::map;
 using std::string;
 

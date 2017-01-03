@@ -59,7 +59,6 @@ using base::LazyInstance;
 using base::StringAppendF;
 using std::map;
 using std::string;
-using std::vector;
 
 namespace shill {
 

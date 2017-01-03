@@ -32,7 +32,6 @@
 #include "shill/net/netlink_message.h"
 #include "shill/net/nl80211_attribute.h"
 
-using std::map;
 using std::string;
 using std::unique_ptr;
 

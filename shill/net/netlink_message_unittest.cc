@@ -36,15 +36,10 @@
 #include "shill/net/netlink_packet.h"
 
 using base::Bind;
-using base::StringPrintf;
-using base::Unretained;
 using std::string;
 using std::unique_ptr;
 using std::vector;
 using testing::_;
-using testing::EndsWith;
-using testing::Invoke;
-using testing::Return;
 using testing::Test;
 
 namespace shill {
