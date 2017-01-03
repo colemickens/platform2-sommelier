@@ -33,7 +33,6 @@
 #include "shill/supplicant/wpa_supplicant.h"
 
 using std::string;
-using std::vector;
 using ::testing::_;
 using ::testing::Mock;
 using ::testing::Return;

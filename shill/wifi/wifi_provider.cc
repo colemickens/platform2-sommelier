@@ -45,7 +45,6 @@
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_service.h"
 
-using base::Bind;
 using base::SplitString;
 using base::StringPrintf;
 using std::set;

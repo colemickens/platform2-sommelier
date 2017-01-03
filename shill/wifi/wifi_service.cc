@@ -49,7 +49,6 @@
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_provider.h"
 
-using std::map;
 using std::set;
 using std::string;
 using std::vector;

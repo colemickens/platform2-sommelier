@@ -88,9 +88,7 @@
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_service.h"
 
-using base::FilePath;
 using base::StringPrintf;
-using std::map;
 using std::set;
 using std::string;
 using std::unique_ptr;
@@ -99,30 +97,21 @@ using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::AtLeast;
 using ::testing::ContainsRegex;
-using ::testing::DefaultValue;
 using ::testing::DoAll;
 using ::testing::EndsWith;
 using ::testing::HasSubstr;
 using ::testing::InSequence;
 using ::testing::Invoke;
 using ::testing::InvokeWithoutArgs;
-using ::testing::MakeMatcher;
-using ::testing::Matcher;
-using ::testing::MatcherInterface;
-using ::testing::MatchResultListener;
 using ::testing::Mock;
 using ::testing::NiceMock;
-using ::testing::NotNull;
 using ::testing::Ref;
 using ::testing::Return;
-using ::testing::ReturnNew;
 using ::testing::ReturnRef;
-using ::testing::SaveArg;
 using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
 using ::testing::StrictMock;
 using ::testing::Test;
-using ::testing::Values;
 
 namespace shill {
 

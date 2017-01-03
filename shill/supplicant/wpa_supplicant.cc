@@ -21,7 +21,6 @@
 
 #include "shill/logging.h"
 
-using std::map;
 using std::string;
 
 namespace shill {

@@ -55,8 +55,6 @@
 #include "shill/wifi/mock_wifi_provider.h"
 #include "shill/wifi/wifi_endpoint.h"
 
-using base::FilePath;
-using std::map;
 using std::set;
 using std::string;
 using std::vector;

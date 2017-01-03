@@ -20,7 +20,6 @@
 
 #include "shill/mock_log.h"
 
-using std::map;
 using std::string;
 using testing::_;
 using testing::EndsWith;

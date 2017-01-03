@@ -71,10 +71,8 @@
 #include "shill/wifi/wifi_service.h"
 
 using base::Bind;
-using base::FilePath;
 using base::StringPrintf;
 using std::map;
-using std::set;
 using std::string;
 using std::vector;
 
