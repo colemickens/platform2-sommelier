@@ -38,6 +38,7 @@ typedef std::unique_ptr<camera_metadata_t, CameraMetadataDeleter>
 struct NativeHandleDeleter {
   inline void operator()(native_handle_t* handle) const {
     native_handle_close(handle);
+    native_handle_delete(handle);
   }
 };
 
