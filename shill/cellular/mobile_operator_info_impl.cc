@@ -47,7 +47,6 @@ using shill::mobile_operator_db::MobileNetworkOperator;
 using shill::mobile_operator_db::MobileOperatorDB;
 using shill::mobile_operator_db::MobileVirtualNetworkOperator;
 using shill::mobile_operator_db::OnlinePortal;
-using std::map;
 using std::string;
 using std::vector;
 

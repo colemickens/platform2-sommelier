@@ -33,7 +33,6 @@ using std::string;
 using std::shared_ptr;
 using std::vector;
 using testing::_;
-using testing::Invoke;
 using testing::Pointee;
 using testing::Return;
 using testing::SaveArg;

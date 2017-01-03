@@ -41,7 +41,6 @@ using std::string;
 using testing::_;
 using testing::InSequence;
 using testing::Invoke;
-using testing::Return;
 using testing::StrEq;
 
 namespace shill {

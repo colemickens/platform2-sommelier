@@ -45,16 +45,13 @@
 #include "shill/nice_mock_control.h"
 #include "shill/test_event_dispatcher.h"
 
-using base::StringPrintf;
 using base::UintToString;
 using std::string;
 using std::unique_ptr;
 using std::vector;
-using testing::Invoke;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
-using testing::SetArgumentPointee;
 using testing::_;
 
 namespace shill {

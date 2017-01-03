@@ -31,7 +31,6 @@
 #include "shill/manager.h"
 #include "shill/pending_activation_store.h"
 
-using base::FilePath;
 using std::string;
 
 namespace shill {

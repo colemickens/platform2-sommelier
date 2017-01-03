@@ -21,7 +21,6 @@
 #include "shill/cellular/cellular.h"
 
 using std::string;
-using std::vector;
 
 namespace shill {
 

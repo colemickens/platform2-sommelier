@@ -37,14 +37,12 @@
 #include "shill/test_event_dispatcher.h"
 
 using std::string;
-using std::vector;
 using testing::_;
 using testing::AnyNumber;
 using testing::DoAll;
 using testing::Return;
 using testing::SetArgumentPointee;
 using testing::StrEq;
-using testing::StrictMock;
 using testing::Test;
 
 namespace shill {

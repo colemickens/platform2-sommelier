@@ -84,7 +84,6 @@ using testing::Return;
 using testing::ReturnRef;
 using testing::SaveArg;
 using testing::SetArgumentPointee;
-using testing::Unused;
 
 namespace shill {
 

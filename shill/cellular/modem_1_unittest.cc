@@ -31,7 +31,6 @@
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
-using base::FilePath;
 using std::string;
 using std::vector;
 using testing::_;

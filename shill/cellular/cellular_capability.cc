@@ -28,7 +28,6 @@
 #include "shill/logging.h"
 #include "shill/property_accessor.h"
 
-using base::Closure;
 using std::string;
 
 namespace shill {

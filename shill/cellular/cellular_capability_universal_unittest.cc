@@ -54,7 +54,6 @@
 #include "shill/testing.h"
 
 using base::Bind;
-using base::StringPrintf;
 using base::Unretained;
 using std::string;
 using std::unique_ptr;
@@ -62,9 +61,7 @@ using std::vector;
 using testing::AnyNumber;
 using testing::InSequence;
 using testing::Invoke;
-using testing::InvokeWithoutArgs;
 using testing::Mock;
-using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
 using testing::SaveArg;

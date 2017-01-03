@@ -45,15 +45,12 @@
 #include "shill/testing.h"
 
 using base::Bind;
-using base::StringPrintf;
 using base::Unretained;
 using std::string;
 using std::vector;
 using testing::_;
 using testing::Invoke;
-using testing::NiceMock;
 using testing::Return;
-using testing::SaveArg;
 
 namespace shill {
 

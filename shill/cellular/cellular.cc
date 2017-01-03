@@ -61,8 +61,6 @@
 #include "shill/technology.h"
 
 using base::Bind;
-using base::Closure;
-using base::FilePath;
 using base::StringPrintf;
 using std::map;
 using std::string;
