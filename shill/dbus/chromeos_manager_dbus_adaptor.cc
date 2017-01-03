@@ -32,7 +32,6 @@
 #include "shill/property_store.h"
 
 using base::Unretained;
-using std::map;
 using std::string;
 using std::vector;
 
