@@ -41,6 +41,12 @@ namespace {
 // Kerberos configuration file.
 #define KRB5_FILE_PATH AUTHPOLICY_TMP_DIR "/krb5.conf"
 
+// Temp machine keytab file.
+#define MACHINE_KT_TMP_FILE_PATH SAMBA_TMP_DIR "/krb5_machine.keytab"
+
+// Persistent machine keytab file.
+#define MACHINE_KT_STATE_FILE_PATH STATE_DIR "/krb5_machine.keytab"
+
 // Samba configuration file data.
 const char kSmbConfData[] =
     "[global]\n"
@@ -76,13 +82,13 @@ const char kKrb5ConfData[] =
     // Required for password change.
     "\tdefault_realm = %s\n";
 
-const int kFileMode_rwxx = base::FILE_PERMISSION_READ_BY_USER |
-                           base::FILE_PERMISSION_WRITE_BY_USER |
-                           base::FILE_PERMISSION_EXECUTE_BY_USER |
-                           base::FILE_PERMISSION_EXECUTE_BY_GROUP;
+const int kFileMode_rwr = base::FILE_PERMISSION_READ_BY_USER |
+                          base::FILE_PERMISSION_WRITE_BY_USER |
+                          base::FILE_PERMISSION_READ_BY_GROUP;
 
-const int kFileMode_rwxrx =
-    kFileMode_rwxx | base::FILE_PERMISSION_READ_BY_GROUP;
+const int kFileMode_rwxrx = kFileMode_rwr |
+                            base::FILE_PERMISSION_EXECUTE_BY_USER |
+                            base::FILE_PERMISSION_EXECUTE_BY_GROUP;
 
 const int kFileMode_rwxrwx =
     kFileMode_rwxrx | base::FILE_PERMISSION_WRITE_BY_GROUP;
@@ -108,11 +114,12 @@ const char kPRegUserDir[] = "User";
 const char kPRegDeviceDir[] = "Machine";
 const char kPRegFileName[] = "Registry.pol";
 
-// Configuration files.
+// File paths.
 const char kSmbFilePath[] = AUTHPOLICY_TMP_DIR "/smb.conf";
 const char kKrb5FilePath[] = KRB5_FILE_PATH;
+const char kMachineKtTmpFilePath[] = MACHINE_KT_TMP_FILE_PATH;
+const char kMachineKtStateFilePath[] = MACHINE_KT_STATE_FILE_PATH;
 const char kConfigFilePath[] = STATE_DIR "/config.dat";
-const char kStateDir[] = STATE_DIR;
 
 // Size limit when loading the config file (4 MB).
 const size_t kConfigSizeLimit = 4 * 1024 * 1024;
@@ -122,17 +129,17 @@ const char kKrb5ConfEnvKey[] = "KRB5_CONFIG";
 const char kKrb5ConfEnvValue[] = "FILE:" KRB5_FILE_PATH;
 
 // Env variable for machine keytab (machine password for getting device policy).
-const char kMachineEnvKey[] = "KRB5_KTNAME";
-const char kMachineEnvValue[] = "FILE:" STATE_DIR "/krb5_machine.keytab";
+const char kMachineKTEnvKey[] = "KRB5_KTNAME";
+const char kMachineKTEnvValueTmp[] = "FILE:" MACHINE_KT_TMP_FILE_PATH;
+const char kMachineKTEnvValueState[] = "FILE:" MACHINE_KT_STATE_FILE_PATH;
 
 // Executable paths. For security reasons use absolute file paths!
 const char kNetPath[] = "/usr/bin/net";
 const char kKInitPath[] = "/usr/bin/kinit";
 const char kSmbClientPath[] = "/usr/bin/smbclient";
 
-// User and group for inner sandbox. Used to call kInit, Samba and parser.
+// User for inner sandbox. Used to call kInit, Samba and parser.
 const char kAuthPolicyExecUser[] = "authpolicyd-exec";
-const char kAuthPolicyExecGroup[] = "authpolicyd-exec";
 
 // Keys for interpreting kinit output.
 const char kKeyBadUserName[] =
@@ -146,6 +153,8 @@ const char kKeyPasswordExpiredStderr[] =
 const char kKeyCannotResolve[] =
     "Cannot resolve network address for KDC in realm";
 
+#undef MACHINE_KT_STATE_FILE_PATH
+#undef MACHINE_KT_TMP_FILE_PATH
 #undef KRB5_FILE_PATH
 #undef SAMBA_TMP_DIR
 #undef STATE_DIR
@@ -168,7 +177,7 @@ void SetupJail(ProcessExecutor* cmd, const char* seccomp_filter) {
 
   // Execute as authpolicyd-exec, so that processes can't mess with our private
   // data like the configuration file.
-  cmd->ChangeUserAndGroup(kAuthPolicyExecUser, kAuthPolicyExecGroup, true);
+  cmd->ChangeUser(kAuthPolicyExecUser);
 
   // Allows us to drop setgroups, setresgid and setresuid from seccomp filters.
   cmd->SetNoNewPrivs();
@@ -263,6 +272,76 @@ bool SetFilePermissionsRecursive(const base::FilePath& fp,
   return true;
 }
 
+// Switches to the authpolicyd-exec user in the constructor and back to
+// authpolicyd in the destructor.
+class ScopedAuthpolicyExecSwitch {
+ public:
+  ScopedAuthpolicyExecSwitch() {
+    // Keep kAuthPolicydUid as saved uid, so we can switch back.
+    CHECK_EQ(setresuid(ac::kAuthPolicyExecUid, ac::kAuthPolicyExecUid,
+                       ac::kAuthPolicydUid), 0);
+  }
+
+  ~ScopedAuthpolicyExecSwitch() {
+    // Keep kAuthPolicyExecUid as saved uid, so we can switch back.
+    CHECK_EQ(setresuid(ac::kAuthPolicydUid, ac::kAuthPolicydUid,
+                       ac::kAuthPolicyExecUid), 0);
+  }
+};
+
+// Copies the machine keytab file to the state directory. The copy is owned by
+// authpolicyd, so that authpolicyd_exec cannot modify it anymore.
+bool SecureMachineKeyTab(ErrorType* out_error) {
+  // At this point, tmp_kt_fp is rw for authpolicyd-exec only, so we, i.e.
+  // user authpolicyd, cannot read it. Thus, change file permissions as
+  // authpolicyd-exec user, so that the authpolicyd group can read it.
+  const base::FilePath tmp_kt_fp(kMachineKtTmpFilePath);
+  const base::FilePath state_kt_fp(kMachineKtStateFilePath);
+
+  // Set group read permissions on keytab as authpolicyd-exec, so we can copy it
+  // as authpolicyd (and own the copy).
+  {
+    ScopedAuthpolicyExecSwitch switch_scope;
+    if (!SetFilePermissions(tmp_kt_fp, kFileMode_rwr, out_error))
+      return false;
+  }
+
+  // Create empty file in destination directory. Note that it is created with
+  // rw_r__r__ permissions.
+  if (base::WriteFile(state_kt_fp, nullptr, 0) != 0) {
+    LOG(ERROR) << "Failed to create file '" << state_kt_fp.value() << "'";
+    *out_error = ERROR_LOCAL_IO;
+    return false;
+  }
+
+  // Revoke 'read by others' permission. We could also just copy tmp_kt_fp to
+  // state_kt_fp (see below) and revoke the read permission afterwards, but then
+  // state_kt_fp would be readable by anyone for a split second, causing a
+  // potential security risk.
+  if (!SetFilePermissions(state_kt_fp, kFileMode_rwr, out_error))
+    return false;
+
+  // Now we may copy the file. The copy is owned by authpolicyd:authpolicyd.
+  if (!base::CopyFile(tmp_kt_fp, state_kt_fp)) {
+    PLOG(ERROR) << "Failed to copy file '" << tmp_kt_fp.value()
+                << "' to '" << state_kt_fp.value() << "'";
+    *out_error = ERROR_LOCAL_IO;
+    return false;
+  }
+
+  // Clean up temp file (must be done as authpolicyd-exec).
+  {
+    ScopedAuthpolicyExecSwitch switch_scope;
+    if (!base::DeleteFile(tmp_kt_fp, false)) {
+      LOG(ERROR) << "Failed to delete file '" << tmp_kt_fp.value() << "'";
+      *out_error = ERROR_LOCAL_IO;
+      return false;
+    }
+  }
+
+  return true;
+}
+
 // Writes the samba configuration file.
 bool WriteSmbConf(const ap::SambaConfig* config, ErrorType* out_error) {
   if (!config) {
@@ -274,8 +353,9 @@ bool WriteSmbConf(const ap::SambaConfig* config, ErrorType* out_error) {
   std::string data =
       base::StringPrintf(kSmbConfData, config->machine_name().c_str(),
                          config->workgroup().c_str(), config->realm().c_str());
-  base::FilePath fp(kSmbFilePath);
-  if (base::WriteFile(fp, data.c_str(), data.size()) <= 0) {
+  const base::FilePath fp(kSmbFilePath);
+  const int data_size = static_cast<int>(data.size());
+  if (base::WriteFile(fp, data.c_str(), data_size) != data_size) {
     LOG(ERROR) << "Failed to write samba conf file '" << fp.value() << "'";
     *out_error = ERROR_LOCAL_IO;
     return false;
@@ -287,8 +367,9 @@ bool WriteSmbConf(const ap::SambaConfig* config, ErrorType* out_error) {
 // Writes the krb5 configuration file.
 bool WriteKrb5Conf(const std::string& realm, ErrorType* out_error) {
   std::string data = base::StringPrintf(kKrb5ConfData, realm.c_str());
-  base::FilePath fp(kKrb5FilePath);
-  if (base::WriteFile(fp, data.c_str(), data.size()) <= 0) {
+  const base::FilePath fp(kKrb5FilePath);
+  const int data_size = static_cast<int>(data.size());
+  if (base::WriteFile(fp, data.c_str(), data_size) != data_size) {
     LOG(ERROR) << "Failed to write krb5 conf file '" << fp.value() << "'";
     *out_error = ERROR_LOCAL_IO;
     return false;
@@ -307,8 +388,9 @@ bool WriteConfiguration(const ap::SambaConfig* config, ErrorType* out_error) {
     return false;
   }
 
-  base::FilePath fp(kConfigFilePath);
-  if (base::WriteFile(fp, config_blob.c_str(), config_blob.size()) <= 0) {
+  const base::FilePath fp(kConfigFilePath);
+  const int config_size = static_cast<int>(config_blob.size());
+  if (base::WriteFile(fp, config_blob.c_str(), config_size) != config_size) {
     LOG(ERROR) << "Failed to write configuration file '" << fp.value() << "'";
     *out_error = ERROR_LOCAL_IO;
     return false;
@@ -320,7 +402,7 @@ bool WriteConfiguration(const ap::SambaConfig* config, ErrorType* out_error) {
 
 // Reads the file with configuration information.
 bool ReadConfiguration(ap::SambaConfig* config) {
-  base::FilePath fp(kConfigFilePath);
+  const base::FilePath fp(kConfigFilePath);
   if (!base::PathExists(fp)) {
     LOG(ERROR) << "Configuration file '" << fp.value() << "' does not exist";
     return false;
@@ -434,7 +516,7 @@ bool DownloadGpos(const std::string& gpo_list_blob,
     std::replace(linux_dir.begin(), linux_dir.end(), '\\', '/');
 
     // Make local directory.
-    base::FilePath linux_dir_fp(linux_dir);
+    const base::FilePath linux_dir_fp(linux_dir);
     if (!CreateDirectory(linux_dir_fp, out_error))
       return false;
 
@@ -451,7 +533,7 @@ bool DownloadGpos(const std::string& gpo_list_blob,
 
     // Record output file paths.
     DCHECK(out_gpo_file_paths);
-    base::FilePath fp(linux_dir + "/" + kPRegFileName);
+    const base::FilePath fp(linux_dir + "/" + kPRegFileName);
     out_gpo_file_paths->push_back(fp);
   }
 
@@ -516,7 +598,7 @@ bool SambaInterface::Initialize(bool expect_config) {
   // Need to create samba dirs since samba can't create dirs recursively...
   ErrorType error = ERROR_NONE;
   for (const auto& dir_and_mode : kSambaDirsAndMode) {
-    base::FilePath dir(dir_and_mode.first);
+    const base::FilePath dir(dir_and_mode.first);
     const int mode = dir_and_mode.second;
     if (!CreateDirectory(dir, &error) ||
         !SetFilePermissions(dir, mode, &error)) {
@@ -645,7 +727,7 @@ bool SambaInterface::JoinMachine(const std::string& machine_name,
       {kNetPath, "ads", "join", "-U", normalized_upn, "-s", kSmbFilePath});
   SetupJail(&net_cmd, kNetAdsSeccompFilter);
   net_cmd.SetInputFile(password_fd);
-  net_cmd.SetEnv(kMachineEnvKey, kMachineEnvValue);  // Keytab file path.
+  net_cmd.SetEnv(kMachineKTEnvKey, kMachineKTEnvValueTmp);  // Keytab file path.
   if (!net_cmd.Execute()) {
     LOG(ERROR) << "net ads join failed with exit code "
                << net_cmd.GetExitCode();
@@ -653,12 +735,9 @@ bool SambaInterface::JoinMachine(const std::string& machine_name,
     return false;
   }
 
-  // Revoke write permission for group, so that authpolicyd-exec can't create
-  // any new files.
-  if (!SetFilePermissions(base::FilePath(kStateDir), kFileMode_rwxx,
-                          out_error)) {
+  // Prevent that authpolicyd-exec can make changes to the keytab file.
+  if (!SecureMachineKeyTab(out_error))
     return false;
-  }
 
   // Store configuration for subsequent runs of the daemon.
   if (!WriteConfiguration(config.get(), out_error))
@@ -732,7 +811,7 @@ bool SambaInterface::FetchDeviceGpos(std::string* out_policy_blob,
       {kKInitPath, config_->machine_name() + "$@" + config_->realm(), "-k"});
   SetupJail(&kinit_cmd, kKInitSeccompFilter);
   kinit_cmd.SetEnv(kKrb5ConfEnvKey, kKrb5ConfEnvValue);  // Kerberos config.
-  kinit_cmd.SetEnv(kMachineEnvKey, kMachineEnvValue);    // Keytab file path.
+  kinit_cmd.SetEnv(kMachineKTEnvKey, kMachineKTEnvValueState);  // Keytab file.
   if (!kinit_cmd.Execute()) {
     LOG(ERROR) << "kinit failed with exit code " << kinit_cmd.GetExitCode();
     *out_error = ERROR_KINIT_FAILED;

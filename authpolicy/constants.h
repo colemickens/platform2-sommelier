@@ -33,6 +33,11 @@ enum class PolicyScope {
   MACHINE,  // Machine/device policy
 };
 
+// User ids. Should match ids for authpolicyd resp. authpolicy-exec in
+// eclass-overlay/profiles/base/accounts/user.
+const uid_t kAuthPolicydUid = 254;
+const uid_t kAuthPolicyExecUid = 607;
+
 }  // namespace constants
 }  // namespace authpolicy
 

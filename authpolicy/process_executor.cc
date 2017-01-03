@@ -48,13 +48,8 @@ void ProcessExecutor::SetNoNewPrivs() {
   minijail_no_new_privs(jail_);
 }
 
-void ProcessExecutor::ChangeUserAndGroup(const char* user,
-                                         const char* group,
-                                         bool inherit_user_groups) {
+void ProcessExecutor::ChangeUser(const char* user) {
   minijail_change_user(jail_, user);
-  minijail_change_group(jail_, group);
-  if (inherit_user_groups)
-    minijail_inherit_usergroups(jail_);
 }
 
 bool ProcessExecutor::Execute() {

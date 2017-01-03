@@ -39,11 +39,8 @@ class ProcessExecutor {
   // Set a flag that prevents execve from gaining new privileges.
   void SetNoNewPrivs();
 
-  // Execute command as |user| and |group|. If |inherit_user_groups|, inherits
-  // the user's supplementary groups (the other groups the user belongs to).
-  void ChangeUserAndGroup(const char* user,
-                          const char* group,
-                          bool inherit_user_groups);
+  // Execute command as |user|.
+  void ChangeUser(const char* user);
 
   // Execute the command. Returns true if the command executed and returned with
   // exit code 0. Also returns true if no args were passed to the constructor.
