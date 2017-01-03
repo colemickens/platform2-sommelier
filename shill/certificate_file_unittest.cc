@@ -31,9 +31,6 @@ using base::StringPrintf;
 using std::string;
 using std::vector;
 using testing::_;
-using testing::Return;
-using testing::SetArgumentPointee;
-using testing::StrEq;
 
 namespace shill {
 

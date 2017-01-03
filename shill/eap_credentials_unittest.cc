@@ -35,13 +35,11 @@
 #include "shill/technology.h"
 
 using base::FilePath;
-using std::map;
 using std::string;
 using std::vector;
 using testing::_;
 using testing::AnyNumber;
 using testing::DoAll;
-using testing::HasSubstr;
 using testing::Mock;
 using testing::Return;
 using testing::SetArgumentPointee;

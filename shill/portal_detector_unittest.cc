@@ -37,14 +37,11 @@ using base::Unretained;
 using std::string;
 using std::vector;
 using testing::_;
-using testing::AtLeast;
-using testing::DoAll;
 using testing::InSequence;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
-using testing::SetArgumentPointee;
 using testing::StrictMock;
 using testing::Test;
 

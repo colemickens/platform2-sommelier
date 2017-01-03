@@ -29,8 +29,6 @@
 
 using std::map;
 using std::string;
-using std::vector;
-using ::testing::Return;
 using ::testing::Test;
 
 namespace shill {

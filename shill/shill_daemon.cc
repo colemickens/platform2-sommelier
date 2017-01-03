@@ -21,8 +21,6 @@
 
 #include <base/bind.h>
 
-using base::Bind;
-using base::Unretained;
 
 namespace shill {
 

@@ -34,7 +34,6 @@
 using base::Bind;
 using base::TimeDelta;
 using base::Unretained;
-using std::map;
 using std::string;
 
 namespace shill {

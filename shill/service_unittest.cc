@@ -61,8 +61,6 @@
 
 using base::Bind;
 using base::Unretained;
-using std::deque;
-using std::map;
 using std::string;
 using std::vector;
 using testing::_;

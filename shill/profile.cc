@@ -42,7 +42,6 @@
 #include "shill/stub_storage.h"
 
 using base::FilePath;
-using std::set;
 using std::string;
 using std::vector;
 

@@ -43,10 +43,7 @@ using testing::EndsWith;
 using testing::DoAll;
 using testing::Mock;
 using testing::Return;
-using testing::SaveArg;
 using testing::SetArgPointee;
-using testing::SetArgumentPointee;
-using testing::StrictMock;
 using testing::Test;
 
 namespace shill {

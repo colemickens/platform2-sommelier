@@ -36,14 +36,12 @@
 #include "shill/store_factory.h"
 
 using base::FilePath;
-using std::set;
 using std::string;
 using std::vector;
 using testing::_;
 using testing::Invoke;
 using testing::Mock;
 using testing::Return;
-using testing::SetArgumentPointee;
 using testing::StrictMock;
 
 namespace shill {

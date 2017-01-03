@@ -34,7 +34,6 @@ using std::min;
 using std::string;
 using std::vector;
 using testing::AnyOf;
-using testing::DoAll;
 using testing::InSequence;
 using testing::Invoke;
 using testing::Mock;

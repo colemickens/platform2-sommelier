@@ -27,7 +27,6 @@
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 
-using base::Closure;
 using std::map;
 using std::string;
 using std::vector;

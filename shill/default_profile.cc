@@ -43,7 +43,6 @@
 
 using base::FilePath;
 using std::string;
-using std::vector;
 
 namespace shill {
 // static

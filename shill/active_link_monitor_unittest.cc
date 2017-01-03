@@ -44,7 +44,6 @@ using std::string;
 using testing::_;
 using testing::AnyNumber;
 using testing::HasSubstr;
-using testing::Invoke;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;

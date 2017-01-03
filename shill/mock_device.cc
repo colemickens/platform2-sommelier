@@ -29,7 +29,6 @@ class EventDispatcher;
 
 using ::testing::_;
 using ::testing::DefaultValue;
-using ::testing::ReturnRef;
 using std::string;
 
 MockDevice::MockDevice(ControlInterface* control_interface,

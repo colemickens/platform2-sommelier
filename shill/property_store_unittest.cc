@@ -40,9 +40,7 @@
 
 using base::Bind;
 using base::Unretained;
-using std::map;
 using std::string;
-using std::vector;
 using ::testing::_;
 using ::testing::Return;
 using ::testing::Values;

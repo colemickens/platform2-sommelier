@@ -37,9 +37,7 @@
 #include "shill/shill_ares.h"
 
 using base::Bind;
-using base::Unretained;
 using std::map;
-using std::set;
 using std::string;
 using std::vector;
 

@@ -27,7 +27,6 @@
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
 
-using base::StringPrintf;
 using std::string;
 using std::vector;
 

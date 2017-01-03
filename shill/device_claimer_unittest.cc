@@ -27,7 +27,6 @@
 using std::string;
 using ::testing::_;
 using ::testing::Mock;
-using ::testing::Return;
 
 namespace shill {
 

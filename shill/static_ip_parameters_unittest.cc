@@ -28,7 +28,6 @@
 #include "shill/mock_store.h"
 #include "shill/property_store.h"
 
-using base::IntToString;
 using std::string;
 using std::vector;
 using testing::_;

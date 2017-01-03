@@ -42,7 +42,6 @@
 
 using base::Bind;
 using base::Callback;
-using base::Closure;
 using base::Unretained;
 using std::string;
 using std::vector;
@@ -54,7 +53,6 @@ using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::ReturnRef;
-using ::testing::SaveArg;
 using ::testing::Sequence;
 using ::testing::SetArgumentPointee;
 using ::testing::StrictMock;

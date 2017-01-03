@@ -35,7 +35,6 @@ using base::Callback;
 using base::Unretained;
 using std::string;
 using std::unique_ptr;
-using std::vector;
 using testing::_;
 using testing::NiceMock;
 using testing::Return;

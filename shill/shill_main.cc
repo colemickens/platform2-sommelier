@@ -37,7 +37,6 @@
 #include "shill/shill_daemon.h"
 #include "shill/technology.h"
 
-using base::FilePath;
 using std::string;
 using std::vector;
 

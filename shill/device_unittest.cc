@@ -73,15 +73,11 @@
 #include "shill/tethering.h"
 #include "shill/traffic_monitor.h"
 
-using base::Bind;
 using base::Callback;
-using std::map;
 using std::string;
 using std::vector;
 using ::testing::_;
-using ::testing::AnyNumber;
 using ::testing::AtLeast;
-using ::testing::DefaultValue;
 using ::testing::DoAll;
 using ::testing::HasSubstr;
 using ::testing::Invoke;
@@ -94,7 +90,6 @@ using ::testing::SetArgPointee;
 using ::testing::StrEq;
 using ::testing::StrictMock;
 using ::testing::Test;
-using ::testing::Values;
 
 namespace shill {
 

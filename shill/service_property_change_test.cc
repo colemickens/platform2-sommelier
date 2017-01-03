@@ -35,7 +35,6 @@
 
 using std::string;
 using testing::_;
-using testing::AnyNumber;
 using testing::Mock;
 using testing::NiceMock;
 

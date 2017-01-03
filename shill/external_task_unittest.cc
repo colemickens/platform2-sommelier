@@ -35,17 +35,13 @@
 #include "shill/test_event_dispatcher.h"
 
 using std::map;
-using std::set;
 using std::string;
 using std::vector;
 using testing::_;
-using testing::Matcher;
 using testing::MatchesRegex;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
-using testing::SetArgumentPointee;
-using testing::StrEq;
 
 namespace shill {
 

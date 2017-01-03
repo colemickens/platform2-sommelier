@@ -51,14 +51,10 @@
 #endif  // DISABLE_WIFI
 
 using base::FilePath;
-using std::map;
 using std::set;
 using std::string;
-using std::unique_ptr;
-using std::vector;
 using ::testing::_;
 using ::testing::DoAll;
-using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
 

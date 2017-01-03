@@ -38,7 +38,6 @@
 
 using base::Bind;
 using base::Callback;
-using base::StringPrintf;
 using base::Unretained;
 using std::string;
 using std::vector;
@@ -48,10 +47,8 @@ using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
-using ::testing::ReturnArg;
 using ::testing::ReturnNew;
 using ::testing::ReturnRef;
-using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
 using ::testing::StrictMock;
 using ::testing::Test;

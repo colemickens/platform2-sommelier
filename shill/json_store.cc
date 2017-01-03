@@ -41,7 +41,6 @@
 #include "shill/logging.h"
 #include "shill/scoped_umask.h"
 
-using std::map;
 using std::set;
 using std::string;
 using std::unique_ptr;

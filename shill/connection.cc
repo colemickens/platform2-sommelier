@@ -41,7 +41,6 @@
 using base::Bind;
 using base::Closure;
 using base::Unretained;
-using std::deque;
 using std::set;
 using std::string;
 using std::vector;
