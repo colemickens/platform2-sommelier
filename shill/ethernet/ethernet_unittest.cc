@@ -60,7 +60,6 @@ using testing::InSequence;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
-using testing::ReturnRef;
 using testing::SetArgumentPointee;
 using testing::StrEq;
 using testing::StrictMock;

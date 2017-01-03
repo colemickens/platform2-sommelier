@@ -55,9 +55,7 @@
 #include "shill/supplicant/wpa_supplicant.h"
 #endif  // DISABLE_WIRED_8021X
 
-using std::map;
 using std::string;
-using std::vector;
 
 namespace shill {
 
