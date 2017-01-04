@@ -21,7 +21,6 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/strings/stringprintf.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
 #else

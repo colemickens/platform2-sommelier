@@ -17,7 +17,6 @@
 #ifndef SHILL_CELLULAR_CELLULAR_SERVICE_H_
 #define SHILL_CELLULAR_CELLULAR_SERVICE_H_
 
-#include <map>
 #include <memory>
 #include <set>
 #include <string>

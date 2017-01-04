@@ -17,8 +17,6 @@
 #ifndef SHILL_CELLULAR_MOCK_MM1_BEARER_PROXY_H_
 #define SHILL_CELLULAR_MOCK_MM1_BEARER_PROXY_H_
 
-#include <string>
-
 #include <gmock/gmock.h>
 
 #include "shill/cellular/mm1_bearer_proxy_interface.h"

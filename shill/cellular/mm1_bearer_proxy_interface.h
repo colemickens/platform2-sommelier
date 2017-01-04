@@ -17,8 +17,6 @@
 #ifndef SHILL_CELLULAR_MM1_BEARER_PROXY_INTERFACE_H_
 #define SHILL_CELLULAR_MM1_BEARER_PROXY_INTERFACE_H_
 
-#include <string>
-
 #include "shill/callbacks.h"
 
 namespace shill {

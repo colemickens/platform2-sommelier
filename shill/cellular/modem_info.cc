@@ -18,7 +18,6 @@
 
 #include <utility>
 
-#include <base/files/file_path.h>
 #include <base/memory/ptr_util.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
