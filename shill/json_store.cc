@@ -22,7 +22,6 @@
 #include <unistd.h>
 
 #include <cinttypes>
-#include <map>
 #include <memory>
 #include <typeinfo>
 #include <utility>

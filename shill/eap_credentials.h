@@ -17,11 +17,10 @@
 #ifndef SHILL_EAP_CREDENTIALS_H_
 #define SHILL_EAP_CREDENTIALS_H_
 
-#include <map>
 #include <string>
 #include <vector>
 
-#include <base/files/file_path.h>
+#include <base/macros.h>
 
 #include "shill/technology.h"
 

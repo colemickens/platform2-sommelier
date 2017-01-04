@@ -16,7 +16,6 @@
 
 #include "shill/eap_credentials.h"
 
-#include <map>
 #include <string>
 #include <utility>
 #include <vector>

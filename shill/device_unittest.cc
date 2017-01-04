@@ -20,7 +20,6 @@
 #include <sys/socket.h>
 #include <linux/if.h>  // NOLINT - Needs typedefs from sys/socket.h.
 
-#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -30,7 +29,6 @@
 #include <base/callback.h>
 #include <base/macros.h>
 #include <base/memory/ptr_util.h>
-#include <base/memory/weak_ptr.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
 #else

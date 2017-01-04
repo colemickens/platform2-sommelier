@@ -17,8 +17,6 @@
 #ifndef SHILL_MOCK_POWER_MANAGER_H_
 #define SHILL_MOCK_POWER_MANAGER_H_
 
-#include <string>
-
 #include <base/macros.h>
 #include <gmock/gmock.h>
 

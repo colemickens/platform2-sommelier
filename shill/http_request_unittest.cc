@@ -23,7 +23,6 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
 #include "shill/http_url.h"

@@ -17,7 +17,6 @@
 #ifndef SHILL_PROFILE_H_
 #define SHILL_PROFILE_H_
 
-#include <map>
 #include <memory>
 #include <string>
 #include <vector>

@@ -24,8 +24,6 @@
 #include <base/cancelable_callback.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <base/strings/stringprintf.h>
-#include <brillo/minijail/minijail.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/callbacks.h"

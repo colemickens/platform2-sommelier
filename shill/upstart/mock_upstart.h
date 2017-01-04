@@ -17,8 +17,6 @@
 #ifndef SHILL_UPSTART_MOCK_UPSTART_H_
 #define SHILL_UPSTART_MOCK_UPSTART_H_
 
-#include <string>
-
 #include <base/macros.h>
 #include <gmock/gmock.h>
 

@@ -17,11 +17,9 @@
 #include "shill/default_profile.h"
 
 #include <random>
-#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/stringprintf.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
 #else

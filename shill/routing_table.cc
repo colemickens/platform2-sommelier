@@ -30,7 +30,6 @@
 #include <unistd.h>
 
 #include <limits>
-#include <memory>
 #include <string>
 
 #include <base/bind.h>

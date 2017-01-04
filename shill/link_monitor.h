@@ -20,7 +20,6 @@
 #include <time.h>
 
 #include <memory>
-#include <string>
 
 #include <base/callback.h>
 #include <base/cancelable_callback.h>

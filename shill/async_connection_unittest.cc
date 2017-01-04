@@ -18,8 +18,6 @@
 
 #include <netinet/in.h>
 
-#include <vector>
-
 #include <base/bind.h>
 #include <gtest/gtest.h>
 

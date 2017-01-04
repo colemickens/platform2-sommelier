@@ -20,7 +20,6 @@
 #include <base/memory/ref_counted.h>
 
 #include <string>
-#include <vector>
 
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"

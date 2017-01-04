@@ -18,10 +18,8 @@
 
 #include "shill/property_store_unittest.h"
 
-#include <map>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <base/macros.h>
 #if defined(__ANDROID__)

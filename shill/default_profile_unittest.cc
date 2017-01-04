@@ -16,12 +16,9 @@
 
 #include "shill/default_profile.h"
 
-#include <map>
-#include <memory>
 #include <set>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/memory/ptr_util.h>

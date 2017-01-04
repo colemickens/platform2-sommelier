@@ -17,8 +17,6 @@
 #ifndef SHILL_SHILL_DAEMON_H_
 #define SHILL_SHILL_DAEMON_H_
 
-#include <string>
-
 #include <base/callback.h>
 #include <brillo/daemons/daemon.h>
 

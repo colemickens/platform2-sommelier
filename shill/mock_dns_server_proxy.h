@@ -17,9 +17,6 @@
 #ifndef SHILL_MOCK_DNS_SERVER_PROXY_H_
 #define SHILL_MOCK_DNS_SERVER_PROXY_H_
 
-#include <string>
-#include <vector>
-
 #include <base/macros.h>
 #include <gmock/gmock.h>
 

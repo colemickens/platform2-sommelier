@@ -19,7 +19,6 @@
 
 #include <random>
 #include <string>
-#include <vector>
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 

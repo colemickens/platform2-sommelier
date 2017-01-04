@@ -19,7 +19,6 @@
 #include <limits>
 #include <map>
 #include <string>
-#include <vector>
 
 #include <base/stl_util.h>
 #include <gtest/gtest.h>

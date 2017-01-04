@@ -22,7 +22,6 @@
 
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
-#include <base/strings/stringprintf.h>
 
 #include "shill/ipconfig.h"
 #include "shill/logging.h"

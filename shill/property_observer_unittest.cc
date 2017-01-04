@@ -16,8 +16,6 @@
 
 #include "shill/property_observer.h"
 
-#include <string>
-
 #include <base/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

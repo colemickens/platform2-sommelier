@@ -21,7 +21,6 @@
 // registered users.  It also provides a means for calling methods on the
 // PowerManagerProxy.
 
-#include <map>
 #include <memory>
 #include <string>
 

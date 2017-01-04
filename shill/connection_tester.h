@@ -18,8 +18,6 @@
 #define SHILL_CONNECTION_TESTER_H_
 
 #include <memory>
-#include <string>
-#include <vector>
 
 #include <base/callback.h>
 #include <base/cancelable_callback.h>

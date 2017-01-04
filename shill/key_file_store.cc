@@ -16,8 +16,6 @@
 
 #include "shill/key_file_store.h"
 
-#include <map>
-
 #include <base/files/important_file_writer.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>

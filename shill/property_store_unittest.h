@@ -17,8 +17,6 @@
 #ifndef SHILL_PROPERTY_STORE_UNITTEST_H_
 #define SHILL_PROPERTY_STORE_UNITTEST_H_
 
-#include <map>
-#include <memory>
 #include <string>
 #include <vector>
 

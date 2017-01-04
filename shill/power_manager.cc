@@ -16,7 +16,6 @@
 
 #include "shill/power_manager.h"
 
-#include <map>
 #include <string>
 
 #include <base/bind.h>

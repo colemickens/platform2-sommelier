@@ -18,7 +18,6 @@
 #define SHILL_EPHEMERAL_PROFILE_H_
 
 #include <string>
-#include <vector>
 
 #include "shill/event_dispatcher.h"
 #include "shill/profile.h"

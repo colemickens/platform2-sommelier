@@ -17,9 +17,7 @@
 #ifndef SHILL_MOCK_EAP_CREDENTIALS_H_
 #define SHILL_MOCK_EAP_CREDENTIALS_H_
 
-#include <map>
 #include <string>
-#include <vector>
 
 #include "shill/eap_credentials.h"
 
