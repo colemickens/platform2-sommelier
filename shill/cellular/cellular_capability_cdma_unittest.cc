@@ -16,6 +16,8 @@
 
 #include "shill/cellular/cellular_capability_cdma.h"
 
+#include <utility>
+
 #include <base/bind.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
