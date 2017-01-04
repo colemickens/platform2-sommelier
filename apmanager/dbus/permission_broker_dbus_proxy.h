@@ -20,7 +20,7 @@
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
+#include <base/memory/ref_counted.h>
 #include <permission_broker/dbus-proxies.h>
 
 #include "apmanager/firewall_proxy_interface.h"
