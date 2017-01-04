@@ -17,6 +17,7 @@
 #include "shill/wimax/wimax_service.h"
 
 #include <string>
+#include <utility>
 
 #include <base/strings/string_util.h>
 #if defined(__ANDROID__)
