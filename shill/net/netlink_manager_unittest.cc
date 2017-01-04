@@ -28,7 +28,6 @@
 #include <string>
 #include <vector>
 
-#include <base/strings/stringprintf.h>
 #include <base/message_loop/message_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

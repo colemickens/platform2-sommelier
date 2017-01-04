@@ -19,7 +19,6 @@
 
 #include "shill/net/netlink_manager.h"
 
-#include <map>
 #include <string>
 
 #include <gmock/gmock.h>

@@ -19,7 +19,6 @@
 #include <linux/genetlink.h>
 
 #include <cctype>
-#include <map>
 #include <memory>
 #include <string>
 

@@ -16,8 +16,6 @@
 
 #include "shill/net/netlink_socket.h"
 
-#include <string>
-
 #include <linux/if_packet.h>
 #include <linux/netlink.h>
 #include <sys/socket.h>

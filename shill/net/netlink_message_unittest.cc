@@ -27,7 +27,6 @@
 #include <string>
 #include <vector>
 
-#include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

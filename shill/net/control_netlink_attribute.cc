@@ -18,8 +18,6 @@
 
 #include <linux/genetlink.h>
 
-#include <utility>
-
 #include <base/logging.h>
 
 namespace shill {

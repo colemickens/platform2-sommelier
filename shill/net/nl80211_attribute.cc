@@ -17,7 +17,6 @@
 #include "shill/net/nl80211_attribute.h"
 
 #include <string>
-#include <utility>
 
 #include <base/bind.h>
 #include <base/format_macros.h>

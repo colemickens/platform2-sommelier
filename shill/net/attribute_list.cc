@@ -25,7 +25,6 @@
 
 #include <base/logging.h>
 #include <base/stl_util.h>
-#include <base/strings/stringprintf.h>
 
 #include "shill/net/netlink_attribute.h"
 #include "shill/net/netlink_message.h"

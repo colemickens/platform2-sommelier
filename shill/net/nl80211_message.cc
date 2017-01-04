@@ -41,7 +41,6 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <vector>
 
 #include <base/bind.h>
 #include <base/logging.h>
