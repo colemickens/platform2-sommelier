@@ -16,8 +16,6 @@
 
 #include "shill/dbus/chromeos_dbus_objectmanager_proxy.h"
 
-#include <memory>
-
 #include "shill/cellular/cellular_error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"

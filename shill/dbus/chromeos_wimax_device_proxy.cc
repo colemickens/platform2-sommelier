@@ -16,8 +16,6 @@
 
 #include "shill/dbus/chromeos_wimax_device_proxy.h"
 
-#include <memory>
-
 #include <base/bind.h>
 #include <base/strings/stringprintf.h>
 #if defined(__ANDROID__)

@@ -16,8 +16,6 @@
 
 #include "shill/dbus/chromeos_modem_gsm_network_proxy.h"
 
-#include <memory>
-
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
 #else

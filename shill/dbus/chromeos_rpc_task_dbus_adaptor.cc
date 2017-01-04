@@ -16,8 +16,6 @@
 
 #include "shill/dbus/chromeos_rpc_task_dbus_adaptor.h"
 
-#include <base/strings/stringprintf.h>
-
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/rpc_task.h"

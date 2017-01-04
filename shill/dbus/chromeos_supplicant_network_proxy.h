@@ -17,7 +17,6 @@
 #ifndef SHILL_DBUS_CHROMEOS_SUPPLICANT_NETWORK_PROXY_H_
 #define SHILL_DBUS_CHROMEOS_SUPPLICANT_NETWORK_PROXY_H_
 
-#include <map>
 #include <memory>
 #include <string>
 

@@ -17,7 +17,6 @@
 #ifndef SHILL_DBUS_DBUS_SERVICE_WATCHER_FACTORY_H_
 #define SHILL_DBUS_DBUS_SERVICE_WATCHER_FACTORY_H_
 
-#include <memory>
 #include <string>
 
 #include <base/callback.h>

@@ -16,8 +16,6 @@
 
 #include "shill/dbus/chromeos_modem_proxy.h"
 
-#include <memory>
-
 #include <base/bind.h>
 
 #include "shill/cellular/cellular_error.h"

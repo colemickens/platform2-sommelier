@@ -17,7 +17,6 @@
 #ifndef SHILL_DBUS_CHROMEOS_MANAGER_DBUS_ADAPTOR_H_
 #define SHILL_DBUS_CHROMEOS_MANAGER_DBUS_ADAPTOR_H_
 
-#include <map>
 #include <memory>
 #include <string>
 #include <vector>

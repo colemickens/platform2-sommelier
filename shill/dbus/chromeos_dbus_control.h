@@ -17,7 +17,6 @@
 #ifndef SHILL_DBUS_CHROMEOS_DBUS_CONTROL_H_
 #define SHILL_DBUS_CHROMEOS_DBUS_CONTROL_H_
 
-#include <memory>
 #include <string>
 
 #include <brillo/dbus/exported_object_manager.h>

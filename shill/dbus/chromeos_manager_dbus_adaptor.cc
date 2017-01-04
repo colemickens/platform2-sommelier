@@ -16,7 +16,6 @@
 
 #include "shill/dbus/chromeos_manager_dbus_adaptor.h"
 
-#include <map>
 #include <string>
 #include <utility>
 #include <vector>

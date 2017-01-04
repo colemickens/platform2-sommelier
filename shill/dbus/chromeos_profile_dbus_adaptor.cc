@@ -17,7 +17,6 @@
 #include "shill/dbus/chromeos_profile_dbus_adaptor.h"
 
 #include <string>
-#include <vector>
 
 #include "shill/error.h"
 #include "shill/logging.h"
