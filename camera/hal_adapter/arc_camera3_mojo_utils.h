@@ -9,6 +9,7 @@
 
 #include <map>
 #include <memory>
+#include <unordered_map>
 #include <utility>
 
 #include <base/bind.h>
@@ -35,16 +36,6 @@ struct CameraMetadataDeleter {
 typedef std::unique_ptr<camera_metadata_t, CameraMetadataDeleter>
     CameraMetadataUniquePtr;
 
-struct NativeHandleDeleter {
-  inline void operator()(native_handle_t* handle) const {
-    native_handle_close(handle);
-    native_handle_delete(handle);
-  }
-};
-
-typedef std::unique_ptr<native_handle_t, NativeHandleDeleter>
-    NativeHandleUniquePtr;
-
 typedef std::map<uint64_t, std::unique_ptr<camera3_stream_t>> UniqueStreams;
 
 // Serialize / deserialize helper functions.
@@ -57,15 +48,19 @@ arc::mojom::HandlePtr SerializeHandle(int handle);
 
 int DeserializeHandle(const arc::mojom::HandlePtr& handle);
 
-arc::mojom::NativeHandlePtr SerializeNativeHandle(
-    const native_handle_t* handle);
-
 int DeserializeNativeHandle(const arc::mojom::NativeHandlePtr& ptr,
                             native_handle_t* handle);
 
+// SerializeStreamBuffer is used in CameraDeviceAdapter::ProcessCaptureResult to
+// pass a result buffer handle to ARC++.  For the input / output buffers, we do
+// not need to serialize the whole native handle but instead we can simply
+// return their corresponding handle IDs.  When ARC++ receives the result it
+// will restore using the handle ID the original buffer handles which were
+// passed down when the frameworks called process_capture_request.
 arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
     const camera3_stream_buffer_t* buffer,
-    const UniqueStreams& streams);
+    const UniqueStreams& streams,
+    const std::unordered_map<buffer_handle_t, uint64_t>& buffer_handles);
 
 int DeserializeStreamBuffer(const arc::mojom::Camera3StreamBufferPtr& ptr,
                             const UniqueStreams& streams,

@@ -6,6 +6,7 @@
 
 #include "hal_adapter/arc_camera3_mojo_utils.h"
 
+#include <unordered_map>
 #include <utility>
 
 #include <mojo/edk/embedder/embedder.h>
@@ -60,30 +61,6 @@ int DeserializeHandle(const arc::mojom::HandlePtr& handle) {
   return UnwrapPlatformHandle(std::move(handle->get_h()));
 }
 
-arc::mojom::NativeHandlePtr SerializeNativeHandle(
-    const native_handle_t* handle) {
-  arc::mojom::NativeHandlePtr ret = arc::mojom::NativeHandle::New();
-  ret->version = handle->version;
-  ret->num_fds = handle->numFds;
-  ret->num_ints = handle->numInts;
-
-  for (int i = 0; i < handle->numFds; i++) {
-    arc::mojom::HandlePtr wrapped_handle = SerializeHandle(handle->data[i]);
-    if (wrapped_handle->is_h() && !wrapped_handle->get_h().is_valid()) {
-      LOGF(ERROR) << "Failed to wrap buffer handle";
-      ret.reset();
-      return ret;
-    }
-    ret->fds.push_back(std::move(wrapped_handle));
-  }
-
-  for (int i = 0; i < handle->numInts; i++) {
-    ret->ints.push_back(handle->data[handle->numFds + i]);
-  }
-
-  return ret;
-}
-
 // The caller must allocate the memory for out_handle.
 int DeserializeNativeHandle(const arc::mojom::NativeHandlePtr& ptr,
                             native_handle_t* out_handle) {
@@ -109,7 +86,8 @@ int DeserializeNativeHandle(const arc::mojom::NativeHandlePtr& ptr,
 
 arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
     const camera3_stream_buffer_t* buffer,
-    const UniqueStreams& streams) {
+    const UniqueStreams& streams,
+    const std::unordered_map<buffer_handle_t, uint64_t>& buffer_handles) {
   arc::mojom::Camera3StreamBufferPtr ret =
       arc::mojom::Camera3StreamBuffer::New();
 
@@ -131,11 +109,18 @@ arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
   }
   ret->stream_id = it->first;
 
-  ret->buffer = SerializeNativeHandle(*buffer->buffer);
-  if (ret->buffer.is_null()) {
+  if (buffer_handles.find(*buffer->buffer) == buffer_handles.end()) {
+    LOGF(ERROR) << "Unknown buffer handle";
     ret.reset();
     return ret;
   }
+  // Since we only need to return the handle IDs we can set all the other fields
+  // in the buffer handle to 0.
+  ret->buffer = arc::mojom::NativeHandle::New();
+  ret->buffer->version = 0;
+  ret->buffer->num_fds = 0;
+  ret->buffer->num_ints = 0;
+  ret->buffer->handle_id = buffer_handles.at(*buffer->buffer);
 
   ret->status = buffer->status;
 

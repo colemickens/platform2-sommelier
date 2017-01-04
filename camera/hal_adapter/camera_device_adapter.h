@@ -7,8 +7,8 @@
 #ifndef HAL_ADAPTER_CAMERA_DEVICE_ADAPTER_H_
 #define HAL_ADAPTER_CAMERA_DEVICE_ADAPTER_H_
 
-#include <map>
 #include <memory>
+#include <unordered_map>
 
 #include <base/threading/thread.h>
 #include <mojo/public/cpp/bindings/binding.h>
@@ -48,6 +48,10 @@ class CameraDeviceAdapter {
   int32_t Flush();
 
   // Callback interface for Camera3CallbackOpsDelegate.
+
+  // NOTE: All the fds in |result| (e.g. fences and buffer handles) will be
+  // closed after the function returns.  The caller needs to dup a fd in
+  // |result| if the fd will be accessed after calling ProcessCaptureResult.
   mojom::Camera3CaptureResultPtr ProcessCaptureResult(
       const camera3_capture_result_t* result);
 
@@ -61,10 +65,18 @@ class CameraDeviceAdapter {
   // The real camera device.
   camera3_device_t* camera_device_;
 
-  base::Lock streams_lock_;
-
   // A mapping from Andoird HAL for all the configured streams.
   internal::UniqueStreams streams_;
+
+  base::Lock streams_lock_;
+
+  // A mapping from the locally created buffer handle to the Android HAL handle
+  // ID.  We need to return the correct handle ID in ProcessCaptureResult so ARC
+  // can restore the buffer handle in the capture result before passing up to
+  // the frameworks.
+  std::unordered_map<buffer_handle_t, uint64_t> buffer_handles_;
+
+  base::Lock buffer_handles_lock_;
 
   DISALLOW_COPY_AND_ASSIGN(CameraDeviceAdapter);
 };
