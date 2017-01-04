@@ -17,7 +17,6 @@
 #ifndef SHILL_SUPPLICANT_MOCK_SUPPLICANT_INTERFACE_PROXY_H_
 #define SHILL_SUPPLICANT_MOCK_SUPPLICANT_INTERFACE_PROXY_H_
 
-#include <map>
 #include <string>
 #include <vector>
 

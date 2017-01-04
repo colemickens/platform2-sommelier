@@ -21,7 +21,6 @@
 #include <memory>
 #include <set>
 #include <string>
-#include <utility>
 
 #include <base/message_loop/message_loop.h>
 #if defined(__ANDROID__)

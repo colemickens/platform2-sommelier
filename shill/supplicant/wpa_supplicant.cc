@@ -16,7 +16,6 @@
 
 #include "shill/supplicant/wpa_supplicant.h"
 
-#include <map>
 #include <string>
 
 #include "shill/logging.h"

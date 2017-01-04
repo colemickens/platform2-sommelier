@@ -95,7 +95,6 @@
 
 #include <base/callback_forward.h>
 #include <base/cancelable_callback.h>
-#include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/timer.h>

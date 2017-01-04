@@ -17,7 +17,6 @@
 #ifndef SHILL_SUPPLICANT_SUPPLICANT_INTERFACE_PROXY_INTERFACE_H_
 #define SHILL_SUPPLICANT_SUPPLICANT_INTERFACE_PROXY_INTERFACE_H_
 
-#include <map>
 #include <string>
 #include <vector>
 

@@ -17,9 +17,7 @@
 #ifndef SHILL_SUPPLICANT_WPA_SUPPLICANT_H_
 #define SHILL_SUPPLICANT_WPA_SUPPLICANT_H_
 
-#include <map>
 #include <string>
-#include <vector>
 
 #include "shill/key_value_store.h"
 

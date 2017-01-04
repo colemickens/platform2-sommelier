@@ -17,7 +17,6 @@
 #include "shill/wifi/wifi_service.h"
 
 #include <limits>
-#include <map>
 #include <set>
 #include <string>
 #include <vector>

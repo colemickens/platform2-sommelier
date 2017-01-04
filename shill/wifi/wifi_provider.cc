@@ -29,6 +29,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"

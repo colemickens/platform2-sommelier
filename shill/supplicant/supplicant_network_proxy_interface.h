@@ -17,8 +17,6 @@
 #ifndef SHILL_SUPPLICANT_SUPPLICANT_NETWORK_PROXY_INTERFACE_H_
 #define SHILL_SUPPLICANT_SUPPLICANT_NETWORK_PROXY_INTERFACE_H_
 
-#include <map>
-
 namespace shill {
 
 // SupplicantNetworkProxyInterface declares only the subset of

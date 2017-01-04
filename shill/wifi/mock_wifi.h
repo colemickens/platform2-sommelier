@@ -17,7 +17,6 @@
 #ifndef SHILL_WIFI_MOCK_WIFI_H_
 #define SHILL_WIFI_MOCK_WIFI_H_
 
-#include <map>
 #include <string>
 
 #include <base/memory/ref_counted.h>
