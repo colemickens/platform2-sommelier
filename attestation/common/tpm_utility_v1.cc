@@ -16,10 +16,12 @@
 
 #include "attestation/common/tpm_utility_v1.h"
 
+#include <memory>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
+#include <base/memory/free_deleter.h>
 #include <base/stl_util.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
@@ -40,7 +42,7 @@ using trousers::ScopedTssPcrs;
 
 namespace {
 
-using ScopedByteArray = scoped_ptr<BYTE, base::FreeDeleter>;
+using ScopedByteArray = std::unique_ptr<BYTE, base::FreeDeleter>;
 using ScopedTssEncryptedData = trousers::ScopedTssObject<TSS_HENCDATA>;
 using ScopedTssHash = trousers::ScopedTssObject<TSS_HHASH>;
 
