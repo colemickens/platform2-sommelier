@@ -17,8 +17,6 @@
 #ifndef SHILL_WIMAX_MOCK_WIMAX_MANAGER_PROXY_H_
 #define SHILL_WIMAX_MOCK_WIMAX_MANAGER_PROXY_H_
 
-#include <vector>
-
 #include <base/macros.h>
 #include <gmock/gmock.h>
 

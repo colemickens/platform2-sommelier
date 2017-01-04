@@ -17,8 +17,6 @@
 #ifndef SHILL_WIMAX_WIMAX_MANAGER_PROXY_INTERFACE_H_
 #define SHILL_WIMAX_WIMAX_MANAGER_PROXY_INTERFACE_H_
 
-#include <vector>
-
 #include <base/callback.h>
 
 #include "shill/accessor_interface.h"
