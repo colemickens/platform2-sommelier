@@ -16,6 +16,8 @@
 
 #include "shill/pending_activation_store.h"
 
+#include <utility>
+
 #include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

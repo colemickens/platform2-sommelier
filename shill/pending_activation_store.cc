@@ -16,6 +16,8 @@
 
 #include "shill/pending_activation_store.h"
 
+#include <utility>
+
 #include "shill/logging.h"
 #include "shill/store_factory.h"
 #include "shill/store_interface.h"
