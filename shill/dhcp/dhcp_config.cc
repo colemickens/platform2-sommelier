@@ -22,15 +22,12 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 
-#include <base/files/file_util.h>
-#include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 #if defined(__ANDROID__)
 #include <dbus/service_constants.h>
 #else
 #include <chromeos/dbus/service_constants.h>
 #endif  // __ANDROID__
-#include <brillo/minijail/minijail.h>
 
 #include "shill/control_interface.h"
 #include "shill/dhcp/dhcp_provider.h"

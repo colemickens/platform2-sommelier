@@ -17,7 +17,6 @@
 #ifndef SHILL_DHCP_DHCP_CONFIG_H_
 #define SHILL_DHCP_DHCP_CONFIG_H_
 
-#include <map>
 #include <memory>
 #include <string>
 #include <vector>
