@@ -25,9 +25,7 @@
 #include <string.h>
 #include <time.h>
 
-#include <map>
 #include <string>
-#include <vector>
 
 #include <base/bind.h>
 

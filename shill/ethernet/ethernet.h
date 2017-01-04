@@ -17,7 +17,6 @@
 #ifndef SHILL_ETHERNET_ETHERNET_H_
 #define SHILL_ETHERNET_ETHERNET_H_
 
-#include <map>
 #include <memory>
 #include <string>
 
