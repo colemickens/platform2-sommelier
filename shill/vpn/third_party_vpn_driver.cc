@@ -19,7 +19,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include <algorithm>
 #include <utility>
 
 #include <base/posix/eintr_wrapper.h>
