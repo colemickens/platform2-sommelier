@@ -35,7 +35,8 @@ getuid: 1
 # ioctl: arg1 == SNDCTL_TMR_TIMEBASE or SNDRV_TIMER_IOCTL_NEXT_DEVICE or TCGETS ||
 #        arg1 == SNDCTL_TMR_START or SNDRV_TIMER_IOCTL_TREAD or TCSETS ||
 #        arg1 == SNDCTL_TMR_CONTINUE or SNDRV_TIMER_IOCTL_GPARAMS or TCSETSF ||
-#        arg1 == FIONREAD || arg1 == FIONBIO || arg1 == SIOCGIFINDEX || arg1 == SIOCETHTOOL
+#        arg1 == FIONREAD || arg1 == FIONBIO ||
+#        arg1 == SIOCGIFINDEX || arg1 == SIOCETHTOOL
 ioctl: arg1 == 0x5401 || arg1 == 0x5402 || arg1 == 0x5404 || arg1 == 0x541b || arg1 == 0x5421 || arg1 == 0x8933 || arg1 == 0x8946
 lseek: 1
 lstat: 1
