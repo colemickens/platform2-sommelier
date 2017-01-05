@@ -5,6 +5,7 @@
 #ifndef CROMO_SMS_MESSAGE_H_
 #define CROMO_SMS_MESSAGE_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -108,7 +109,7 @@ class SmsMessage {
   // Storage for the fragments that make up the message, indexed by
   // their part_sequence_ value minus one. Fragments that have not
   // arrived yet are represented as nullptr.
-  std::vector<SmsMessageFragment*> fragments_;
+  std::vector<std::unique_ptr<SmsMessageFragment>> fragments_;
   // The text of the complete message.
   std::string composite_text_;
 

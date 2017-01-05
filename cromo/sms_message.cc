@@ -5,7 +5,7 @@
 #include "cromo/sms_message.h"
 
 #include <base/logging.h>
-#include <base/stl_util.h>
+#include <base/memory/ptr_util.h>
 
 #include "cromo/utilities.h"
 
@@ -417,7 +417,7 @@ SmsMessage::SmsMessage(SmsMessageFragment* base)
     : base_(base),
       num_remaining_parts_(base->part_count() - 1),
       fragments_(base->part_count()) {
-  fragments_[base->part_sequence() - 1] = base;
+  fragments_[base->part_sequence() - 1] = base::WrapUnique(base);
   LOG(INFO) << "Created new message with base ref " << base->part_reference();
 }
 
@@ -440,7 +440,7 @@ void SmsMessage::AddFragment(SmsMessageFragment* sms) {
     return;
   }
   num_remaining_parts_--;
-  fragments_[sequence - 1] = sms;
+  fragments_[sequence - 1] = base::WrapUnique(sms);
 }
 
 bool SmsMessage::IsComplete() const {
@@ -461,18 +461,14 @@ const std::string& SmsMessage::GetMessageText() {
 
 std::vector<int>* SmsMessage::MessageIndexList() const {
   std::vector<int>* ret = new std::vector<int>();
-  for (std::vector<SmsMessageFragment*>::const_iterator it = fragments_.begin();
-       it != fragments_.end();
-       ++it) {
-    if (*it)
-      ret->push_back((*it)->index());
+  for (const auto& fragment : fragments_) {
+    if (fragment)
+      ret->push_back(fragment->index());
   }
 
   return ret;
 }
 
-SmsMessage::~SmsMessage() {
-  STLDeleteElements(&fragments_);
-}
+SmsMessage::~SmsMessage() {}
 
 }  // namespace cromo

@@ -56,8 +56,8 @@ class CromoServer : public org::freedesktop::ModemManager_adaptor,
   HookTable& exit_ok_hooks() { return exit_ok_hooks_; }
 
  private:
-  typedef std::map<std::string, Carrier*> CarrierMap;
-  typedef std::vector<ModemHandler*> ModemHandlers;
+  typedef std::map<std::string, std::unique_ptr<Carrier>> CarrierMap;
+  typedef std::vector<std::unique_ptr<ModemHandler>> ModemHandlers;
 
   // The modem handlers that we are managing.
   ModemHandlers modem_handlers_;
