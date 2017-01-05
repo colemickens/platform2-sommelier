@@ -242,7 +242,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   // Holds the state related to one of the signed in users.
   struct UserSession;
 
-  typedef std::map<std::string, UserSession*> UserSessionMap;
+  using UserSessionMap = std::map<std::string, std::unique_ptr<UserSession>>;
 
   // Called when the Android container is stopped.
   void OnAndroidContainerStopped(pid_t pid, bool clean);

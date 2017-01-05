@@ -213,7 +213,6 @@ SessionManagerImpl::SessionManagerImpl(
       weak_ptr_factory_(this) {}
 
 SessionManagerImpl::~SessionManagerImpl() {
-  STLDeleteValues(&user_sessions_);
   device_policy_->set_delegate(NULL);  // Could use WeakPtr instead?
 }
 
@@ -430,7 +429,7 @@ bool SessionManagerImpl::StartSession(const std::string& account_id,
   LOG(INFO) << "Starting user session";
   manager_->SetBrowserSessionForUser(actual_account_id, user_session->userhash);
   session_started_ = true;
-  user_sessions_[actual_account_id] = user_session.release();
+  user_sessions_[actual_account_id] = std::move(user_session);
   DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStarted;
   dbus_emitter_->EmitSignalWithString(kSessionStateChangedSignal, kStarted);
 

@@ -13,7 +13,6 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
-#include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <brillo/cryptohome.h>
 
@@ -40,9 +39,7 @@ DeviceLocalAccountPolicyService::DeviceLocalAccountPolicyService(
     : device_local_account_dir_(device_local_account_dir),
       owner_key_(owner_key) {}
 
-DeviceLocalAccountPolicyService::~DeviceLocalAccountPolicyService() {
-  STLDeleteValues(&policy_map_);
-}
+DeviceLocalAccountPolicyService::~DeviceLocalAccountPolicyService() {}
 
 bool DeviceLocalAccountPolicyService::Store(
     const std::string& account_id,
@@ -76,7 +73,7 @@ void DeviceLocalAccountPolicyService::UpdateDeviceSettings(
   // Update the policy map.
   typedef google::protobuf::RepeatedPtrField<em::DeviceLocalAccountInfoProto>
       DeviceLocalAccountList;
-  std::map<std::string, PolicyService*> new_policy_map;
+  std::map<std::string, std::unique_ptr<PolicyService>> new_policy_map;
   const DeviceLocalAccountList& list(
       device_settings.device_local_accounts().account());
   for (DeviceLocalAccountList::const_iterator account(list.begin());
@@ -90,12 +87,10 @@ void DeviceLocalAccountPolicyService::UpdateDeviceSettings(
       account_key = GetAccountKey(account->deprecated_public_session_id());
     }
     if (!account_key.empty()) {
-      new_policy_map[account_key] = policy_map_[account_key];
-      policy_map_[account_key] = NULL;
+      new_policy_map[account_key] = std::move(policy_map_[account_key]);
     }
   }
   policy_map_.swap(new_policy_map);
-  STLDeleteValues(&new_policy_map);
 
   MigrateUppercaseDirs();
 
@@ -135,7 +130,7 @@ bool DeviceLocalAccountPolicyService::MigrateUppercaseDirs(void) {
 PolicyService* DeviceLocalAccountPolicyService::GetPolicyService(
     const std::string& account_id) {
   const std::string key = GetAccountKey(account_id);
-  std::map<std::string, PolicyService*>::iterator entry = policy_map_.find(key);
+  auto entry = policy_map_.find(key);
   if (entry == policy_map_.end())
     return NULL;
 
@@ -157,10 +152,11 @@ PolicyService* DeviceLocalAccountPolicyService::GetPolicyService(
       LOG(WARNING) << "Failed to load policy for device-local account "
                    << account_id;
     }
-    entry->second = new PolicyService(std::move(store), owner_key_);
+    entry->second =
+        base::MakeUnique<PolicyService>(std::move(store), owner_key_);
   }
 
-  return entry->second;
+  return entry->second.get();
 }
 
 std::string DeviceLocalAccountPolicyService::GetAccountKey(
