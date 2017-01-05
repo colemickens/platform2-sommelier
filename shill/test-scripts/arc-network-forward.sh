@@ -17,7 +17,7 @@
 
 set -euo pipefail
 
-ANDROID_ADDR=192.168.254.2
+ANDROID_ADDR=100.115.92.2
 SSH_PORT=22
 
 function run_iptables {
