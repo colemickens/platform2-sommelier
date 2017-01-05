@@ -31,10 +31,12 @@ struct CaseInsensitiveStringCompare {
 // simplify maintainance, see crbug.com/659645.
 class RegistryDict {
  public:
-  typedef std::map<std::string, RegistryDict*, CaseInsensitiveStringCompare>
-      KeyMap;
-  typedef std::map<std::string, base::Value*, CaseInsensitiveStringCompare>
-      ValueMap;
+  using KeyMap = std::map<std::string,
+                          std::unique_ptr<RegistryDict>,
+                          CaseInsensitiveStringCompare>;
+  using ValueMap = std::map<std::string,
+                            std::unique_ptr<base::Value>,
+                            CaseInsensitiveStringCompare>;
 
   RegistryDict();
   ~RegistryDict();

@@ -7,7 +7,7 @@
 #include <utility>
 
 #include "base/json/json_reader.h"
-#include "base/stl_util.h"
+#include "base/memory/ptr_util.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
@@ -30,12 +30,12 @@ RegistryDict::~RegistryDict() {
 
 RegistryDict* RegistryDict::GetKey(const std::string& name) {
   KeyMap::iterator entry = keys_.find(name);
-  return entry != keys_.end() ? entry->second : NULL;
+  return entry != keys_.end() ? entry->second.get() : nullptr;
 }
 
 const RegistryDict* RegistryDict::GetKey(const std::string& name) const {
   KeyMap::const_iterator entry = keys_.find(name);
-  return entry != keys_.end() ? entry->second : NULL;
+  return entry != keys_.end() ? entry->second.get() : nullptr;
 }
 
 void RegistryDict::SetKey(const std::string& name,
@@ -45,33 +45,31 @@ void RegistryDict::SetKey(const std::string& name,
     return;
   }
 
-  RegistryDict*& entry = keys_[name];
-  delete entry;
-  entry = dict.release();
+  keys_[name] = std::move(dict);
 }
 
 std::unique_ptr<RegistryDict> RegistryDict::RemoveKey(const std::string& name) {
   std::unique_ptr<RegistryDict> result;
   KeyMap::iterator entry = keys_.find(name);
   if (entry != keys_.end()) {
-    result.reset(entry->second);
+    result = std::move(entry->second);
     keys_.erase(entry);
   }
   return result;
 }
 
 void RegistryDict::ClearKeys() {
-  STLDeleteValues(&keys_);
+  keys_.clear();
 }
 
 base::Value* RegistryDict::GetValue(const std::string& name) {
   ValueMap::iterator entry = values_.find(name);
-  return entry != values_.end() ? entry->second : NULL;
+  return entry != values_.end() ? entry->second.get() : nullptr;
 }
 
 const base::Value* RegistryDict::GetValue(const std::string& name) const {
   ValueMap::const_iterator entry = values_.find(name);
-  return entry != values_.end() ? entry->second : NULL;
+  return entry != values_.end() ? entry->second.get() : nullptr;
 }
 
 void RegistryDict::SetValue(const std::string& name,
@@ -81,9 +79,7 @@ void RegistryDict::SetValue(const std::string& name,
     return;
   }
 
-  base::Value*& entry = values_[name];
-  delete entry;
-  entry = dict.release();
+  values_[name] = std::move(dict);
 }
 
 std::unique_ptr<base::Value> RegistryDict::RemoveValue(
@@ -91,22 +87,22 @@ std::unique_ptr<base::Value> RegistryDict::RemoveValue(
   std::unique_ptr<base::Value> result;
   ValueMap::iterator entry = values_.find(name);
   if (entry != values_.end()) {
-    result.reset(entry->second);
+    result = std::move(entry->second);
     values_.erase(entry);
   }
   return result;
 }
 
 void RegistryDict::ClearValues() {
-  STLDeleteValues(&values_);
+  values_.clear();
 }
 
 void RegistryDict::Merge(const RegistryDict& other) {
   for (KeyMap::const_iterator entry(other.keys_.begin());
        entry != other.keys_.end(); ++entry) {
-    RegistryDict*& subdict = keys_[entry->first];
+    auto& subdict = keys_[entry->first];
     if (!subdict)
-      subdict = new RegistryDict();
+      subdict = base::MakeUnique<RegistryDict>();
     subdict->Merge(*entry->second);
   }
 
