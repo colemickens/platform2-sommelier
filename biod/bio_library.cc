@@ -39,7 +39,7 @@ BioImage& BioImage::operator=(BioImage&& rhs) {
 
 bool BioImage::SetData(std::vector<uint8_t> data) {
   data_ = std::move(data);
-  int ret = lib_->image_set_data_(image_, data.data(), data.size());
+  int ret = lib_->image_set_data_(image_, data_.data(), data_.size());
   if (ret)
     LOG(ERROR) << "Failed to set image data: " << ret;
   return ret == 0;
