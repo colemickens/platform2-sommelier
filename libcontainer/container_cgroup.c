@@ -18,7 +18,7 @@
 #include "container_cgroup.h"
 
 static const char *cgroup_names[NUM_CGROUP_TYPES] = {
-	"cpu", "cpuacct", "cpuset", "devices", "freezer",
+	"cpu", "cpuacct", "cpuset", "devices", "freezer", "schedtune"
 };
 
 static int open_cgroup_file(const char *cgroup_path, const char *name,
@@ -250,6 +250,24 @@ static int create_cgroup_as_owner(const char *cgroup_path,
 	return error;
 }
 
+static int check_cgroup_available(const char *cgroup_root,
+				  const char *cgroup_name)
+{
+	char *path;
+	int rc;
+
+	rc = asprintf(&path, "%s/%s", cgroup_root, cgroup_name);
+	if (rc < 0)
+		return -ENOMEM;
+
+	rc = access(path, F_OK);
+	if (rc < 0)
+		rc = -errno;
+
+	free(path);
+	return rc;
+}
+
 struct container_cgroup *container_cgroup_new(const char *name,
 					      const char *cgroup_root,
 					      const char *cgroup_parent,
@@ -257,13 +275,21 @@ struct container_cgroup *container_cgroup_new(const char *name,
 					      gid_t cgroup_group)
 {
 	int i;
-	struct container_cgroup *cg;
+	int rc;
 
+	struct container_cgroup *cg;
 	cg = calloc(1, sizeof(*cg));
 	if (!cg)
 		return NULL;
 
 	for (i = 0; i < NUM_CGROUP_TYPES; ++i) {
+		rc = check_cgroup_available(cgroup_root, cgroup_names[i]);
+		if (rc < 0) {
+			if (rc == -ENOENT)
+				continue;
+			goto error_free_cg;
+		}
+
 		if (cgroup_parent) {
 			if (asprintf(&cg->cgroup_paths[i], "%s/%s/%s/%s",
 				     cgroup_root, cgroup_names[i],

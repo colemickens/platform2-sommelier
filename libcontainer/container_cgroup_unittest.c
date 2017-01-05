@@ -96,6 +96,7 @@ TEST(cgroup_new_with_parent) {
 	char cpuset_cg[256];
 	char devices_cg[256];
 	char freezer_cg[256];
+	char schedtune_cg[256];
 
 	char temp_template[] = "/tmp/cgtestXXXXXX";
 	char path[256];
@@ -114,6 +115,8 @@ TEST(cgroup_new_with_parent) {
 	mkdir(path, S_IRWXU | S_IRWXG);
 	snprintf(path, sizeof(path), "%s/freezer", cgroup_root);
 	mkdir(path, S_IRWXU | S_IRWXG);
+	snprintf(path, sizeof(path), "%s/schedtune", cgroup_root);
+	mkdir(path, S_IRWXU | S_IRWXG);
 
 	cgroup_parent_name = CGPARENTNAME;
 
@@ -130,6 +133,9 @@ TEST(cgroup_new_with_parent) {
 		 cgroup_parent_name);
 	mkdir(path, S_IRWXU | S_IRWXG);
 	snprintf(path, sizeof(path), "%s/freezer/%s", cgroup_root,
+		 cgroup_parent_name);
+	mkdir(path, S_IRWXU | S_IRWXG);
+	snprintf(path, sizeof(path), "%s/schedtune/%s", cgroup_root,
 		 cgroup_parent_name);
 	mkdir(path, S_IRWXU | S_IRWXG);
 
@@ -156,12 +162,15 @@ TEST(cgroup_new_with_parent) {
 		 cgroup_root, cgroup_parent_name, cgroup_name);
 	snprintf(freezer_cg, sizeof(freezer_cg), "%s/freezer/%s/%s",
 		 cgroup_root, cgroup_parent_name, cgroup_name);
+	snprintf(schedtune_cg, sizeof(schedtune_cg), "%s/schedtune/%s/%s",
+		 cgroup_root, cgroup_parent_name, cgroup_name);
 
 	EXPECT_TRUE(check_is_dir(cpu_cg));
 	EXPECT_TRUE(check_is_dir(cpuacct_cg));
 	EXPECT_TRUE(check_is_dir(cpuset_cg));
 	EXPECT_TRUE(check_is_dir(devices_cg));
 	EXPECT_TRUE(check_is_dir(freezer_cg));
+	EXPECT_TRUE(check_is_dir(schedtune_cg));
 
 	char cmd[256];
 
@@ -183,6 +192,7 @@ FIXTURE(basic_manipulation) {
 	char cpuset_cg[256];
 	char devices_cg[256];
 	char freezer_cg[256];
+	char schedtune_cg[256];
 };
 
 FIXTURE_SETUP(basic_manipulation)
@@ -204,6 +214,8 @@ FIXTURE_SETUP(basic_manipulation)
 	mkdir(path, S_IRWXU | S_IRWXG);
 	snprintf(path, sizeof(path), "%s/freezer", self->cgroup_root);
 	mkdir(path, S_IRWXU | S_IRWXG);
+	snprintf(path, sizeof(path), "%s/schedtune", self->cgroup_root);
+	mkdir(path, S_IRWXU | S_IRWXG);
 
 	self->ccg = container_cgroup_new(CGNAME, self->cgroup_root, NULL, 0, 0);
 	ASSERT_NE(NULL, self->ccg);
@@ -220,12 +232,15 @@ FIXTURE_SETUP(basic_manipulation)
 		 self->cgroup_root, self->cgroup_name);
 	snprintf(self->freezer_cg, sizeof(self->freezer_cg), "%s/freezer/%s",
 		 self->cgroup_root, self->cgroup_name);
+	snprintf(self->schedtune_cg, sizeof(self->schedtune_cg), "%s/schedtune/%s",
+		 self->cgroup_root, self->cgroup_name);
 
 	EXPECT_TRUE(check_is_dir(self->cpu_cg));
 	EXPECT_TRUE(check_is_dir(self->cpuacct_cg));
 	EXPECT_TRUE(check_is_dir(self->cpuset_cg));
 	EXPECT_TRUE(check_is_dir(self->devices_cg));
 	EXPECT_TRUE(check_is_dir(self->freezer_cg));
+	EXPECT_TRUE(check_is_dir(self->schedtune_cg));
 
 	snprintf(path, sizeof(path), "%s/tasks", self->cpu_cg);
 	create_file(path);
@@ -252,6 +267,8 @@ FIXTURE_SETUP(basic_manipulation)
 	snprintf(path, sizeof(path), "%s/tasks", self->freezer_cg);
 	create_file(path);
 	snprintf(path, sizeof(path), "%s/freezer.state", self->freezer_cg);
+	create_file(path);
+	snprintf(path, sizeof(path), "%s/tasks", self->schedtune_cg);
 	create_file(path);
 }
 

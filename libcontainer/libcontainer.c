@@ -1108,25 +1108,14 @@ int container_start(struct container *c, const struct container_config *config)
 		goto error_rmdir;
 
 	/* Add the cgroups configured above. */
-	rc = minijail_add_to_cgroup(c->jail, cgroup_cpu_tasks_path(c->cgroup));
-	if (rc)
-		goto error_rmdir;
-	rc = minijail_add_to_cgroup(c->jail,
-				    cgroup_cpuacct_tasks_path(c->cgroup));
-	if (rc)
-		goto error_rmdir;
-	rc = minijail_add_to_cgroup(c->jail,
-				    cgroup_cpuset_tasks_path(c->cgroup));
-	if (rc)
-		goto error_rmdir;
-	rc = minijail_add_to_cgroup(c->jail,
-				    cgroup_devices_tasks_path(c->cgroup));
-	if (rc)
-		goto error_rmdir;
-	rc = minijail_add_to_cgroup(c->jail,
-				    cgroup_freezer_tasks_path(c->cgroup));
-	if (rc)
-		goto error_rmdir;
+	for (i = 0; i < NUM_CGROUP_TYPES; i++) {
+		if (c->cgroup->cgroup_tasks_paths[i]) {
+			rc = minijail_add_to_cgroup(c->jail,
+					c->cgroup->cgroup_tasks_paths[i]);
+			if (rc)
+				goto error_rmdir;
+		}
+	}
 
 	if (config->alt_syscall_table)
 		minijail_use_alt_syscall(c->jail, config->alt_syscall_table);

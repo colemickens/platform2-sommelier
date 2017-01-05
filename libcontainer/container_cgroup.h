@@ -18,6 +18,7 @@ enum container_cgroup_types {
 	CGROUP_CPUSET,
 	CGROUP_DEVICES,
 	CGROUP_FREEZER,
+	CGROUP_SCHEDTUNE,
 	NUM_CGROUP_TYPES
 };
 
@@ -52,35 +53,5 @@ struct container_cgroup *container_cgroup_new(const char *name,
 					      uid_t cgroup_owner,
 					      gid_t cgroup_group);
 void container_cgroup_destroy(struct container_cgroup *);
-
-static inline const char *cgroup_cpu_tasks_path(
-		const struct container_cgroup *cg)
-{
-	return cg->cgroup_tasks_paths[CGROUP_CPU];
-}
-
-static inline const char *cgroup_cpuacct_tasks_path(
-		const struct container_cgroup *cg)
-{
-	return cg->cgroup_tasks_paths[CGROUP_CPUACCT];
-}
-
-static inline const char *cgroup_cpuset_tasks_path(
-		const struct container_cgroup *cg)
-{
-	return cg->cgroup_tasks_paths[CGROUP_CPUSET];
-}
-
-static inline const char *cgroup_devices_tasks_path(
-		const struct container_cgroup *cg)
-{
-	return cg->cgroup_tasks_paths[CGROUP_DEVICES];
-}
-
-static inline const char *cgroup_freezer_tasks_path(
-		const struct container_cgroup *cg)
-{
-	return cg->cgroup_tasks_paths[CGROUP_FREEZER];
-}
 
 #endif  /* CONTAINER_MANAGER_CGROUP_H_ */
