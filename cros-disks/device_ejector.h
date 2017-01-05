@@ -6,6 +6,7 @@
 #define CROS_DISKS_DEVICE_EJECTOR_H_
 
 #include <list>
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
@@ -31,7 +32,7 @@ class DeviceEjector {
   void OnEjectProcessTerminated(GlibProcess* process);
 
   // List of outstanding eject processes.
-  std::list<GlibProcess*> eject_processes_;
+  std::list<std::unique_ptr<GlibProcess>> eject_processes_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceEjector);
 };

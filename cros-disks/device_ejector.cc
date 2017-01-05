@@ -6,7 +6,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
+#include <base/memory/ptr_util.h>
 
 #include "cros-disks/glib_process.h"
 
@@ -25,15 +25,13 @@ DeviceEjector::DeviceEjector() {
 }
 
 DeviceEjector::~DeviceEjector() {
-  STLDeleteElements(&eject_processes_);
 }
 
 bool DeviceEjector::Eject(const string& device_path) {
   CHECK(!device_path.empty()) << "Invalid device path";
 
-  GlibProcess* process = new(std::nothrow) GlibProcess();
-  CHECK(process) << "Failed to create process object";
-  eject_processes_.push_back(process);
+  eject_processes_.push_back(base::MakeUnique<GlibProcess>());
+  GlibProcess* process = eject_processes_.back().get();
 
   process->AddArgument(kEjectProgram);
   process->AddArgument(device_path);
@@ -45,8 +43,12 @@ bool DeviceEjector::Eject(const string& device_path) {
 
 void DeviceEjector::OnEjectProcessTerminated(GlibProcess* process) {
   CHECK(process);
-  eject_processes_.remove(process);
-  delete process;
+  for (auto it = eject_processes_.begin(); it != eject_processes_.end(); ++it) {
+    if (it->get() == process) {
+      eject_processes_.erase(it);
+      break;
+    }
+  }
 }
 
 }  // namespace cros_disks
