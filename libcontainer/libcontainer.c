@@ -18,6 +18,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <linux/loop.h>
+
 #include "container_cgroup.h"
 #include "libcontainer.h"
 #include "libminijail.h"
@@ -29,6 +31,8 @@ do { \
 } while(0)
 
 #define MAX_NUM_SETFILES_ARGS 128
+
+static const char loopdev_ctl[] = "/dev/loop-control";
 
 static int container_teardown(struct container *c);
 
@@ -55,6 +59,7 @@ struct container_mount {
 	int mode;
 	int mount_in_ns;  /* True if mount should happen in new vfs ns */
 	int create;  /* True if target should be created if it doesn't exist */
+	int loopback;  /* True if target should be mounted via loopback */
 };
 
 struct container_device {
@@ -316,7 +321,8 @@ int container_config_add_mount(struct container_config *c,
 			       int gid,
 			       int mode,
 			       int mount_in_ns,
-			       int create)
+			       int create,
+			       int loopback)
 {
 	struct container_mount *mount_ptr;
 	struct container_mount *current_mount;
@@ -349,6 +355,7 @@ int container_config_add_mount(struct container_config *c,
 	current_mount->mode = mode;
 	current_mount->mount_in_ns = mount_in_ns;
 	current_mount->create = create;
+	current_mount->loopback = loopback;
 	++c->num_mounts;
 	return 0;
 
@@ -530,6 +537,8 @@ struct container {
 	char *pid_file_path;
 	char **ext_mounts; /* Mounts made outside of the minijail */
 	size_t num_ext_mounts;
+	char **loopdevs;
+	size_t num_loopdevs;
 	char *name;
 };
 
@@ -663,6 +672,84 @@ static int run_setfiles_command(const struct container *c,
 	return status;
 }
 
+/* Find a free loop device and attach it. */
+static int loopdev_setup(char **loopdev_ret, const char *source)
+{
+	int ret = 0;
+	int source_fd = -1;
+	int control_fd = -1;
+	int loop_fd = -1;
+	char *loopdev = NULL;
+
+	source_fd = open(source, O_RDONLY|O_CLOEXEC);
+	if (source_fd < 0)
+		goto error;
+
+	control_fd = open(loopdev_ctl, O_RDWR|O_NOFOLLOW|O_CLOEXEC);
+	if (control_fd < 0)
+		goto error;
+
+	while (1) {
+		int num = ioctl(control_fd, LOOP_CTL_GET_FREE);
+		if (num < 0)
+			goto error;
+
+		if (asprintf(&loopdev, "/dev/loop%i", num) < 0)
+			goto error;
+
+		loop_fd = open(loopdev, O_RDONLY|O_NOFOLLOW|O_CLOEXEC);
+		if (loop_fd < 0)
+			goto error;
+
+		if (ioctl(loop_fd, LOOP_SET_FD, source_fd) == 0)
+			break;
+
+		if (errno != EBUSY)
+			goto error;
+
+		/* Clean up resources for the next pass. */
+		free(loopdev);
+		close(loop_fd);
+	}
+
+	*loopdev_ret = loopdev;
+	goto exit;
+
+error:
+	ret = -errno;
+	free(loopdev);
+exit:
+	if (source_fd != -1)
+		close(source_fd);
+	if (control_fd != -1)
+		close(control_fd);
+	if (loop_fd != -1)
+		close(loop_fd);
+	return ret;
+}
+
+/* Detach the specified loop device. */
+static int loopdev_detach(const char *loopdev)
+{
+	int ret = 0;
+	int fd;
+
+	fd = open(loopdev, O_RDONLY|O_NOFOLLOW|O_CLOEXEC);
+	if (fd < 0)
+		goto error;
+	if (ioctl(fd, LOOP_CLR_FD) < 0)
+		goto error;
+
+	goto exit;
+
+error:
+	ret = -errno;
+exit:
+	if (fd != -1)
+		close(fd);
+	return ret;
+}
+
 /*
  * Unmounts anything we mounted in this mount namespace in the opposite order
  * that they were mounted.
@@ -680,6 +767,15 @@ static int unmount_external_mounts(struct container *c)
 		FREE_AND_NULL(c->ext_mounts[c->num_ext_mounts]);
 	}
 	FREE_AND_NULL(c->ext_mounts);
+
+	while (c->num_loopdevs) {
+		c->num_loopdevs--;
+		if (loopdev_detach(c->loopdevs[c->num_loopdevs]))
+			ret = -errno;
+		FREE_AND_NULL(c->loopdevs[c->num_loopdevs]);
+	}
+	FREE_AND_NULL(c->loopdevs);
+
 	return ret;
 }
 
@@ -717,6 +813,7 @@ static int mount_external(const char *src, const char *dest, const char *type,
 static int do_container_mount(struct container *c,
 			      const struct container_mount *mnt)
 {
+	char *loop_source = NULL;
 	char *source = NULL;
 	char *dest = NULL;
 	int rc = 0;
@@ -740,6 +837,20 @@ static int do_container_mount(struct container *c,
 		rc = setup_mount_destination(mnt, source, dest);
 		if (rc)
 			goto error_free_return;
+	}
+	if (mnt->loopback) {
+		/* Record this loopback file for cleanup later. */
+		loop_source = source;
+		source = NULL;
+		rc = loopdev_setup(&source, loop_source);
+		if (rc)
+			goto error_free_return;
+
+		/* Save this to unmount when shutting down. */
+		rc = strdup_and_free(&c->loopdevs[c->num_loopdevs], source);
+		if (rc)
+			goto error_free_return;
+		c->num_loopdevs++;
 	}
 	if (mnt->mount_in_ns) {
 		/* We can mount this with minijail. */
@@ -765,6 +876,7 @@ error_free_return:
 	if (!rc)
 		rc = -errno;
 exit:
+	free(loop_source);
 	free(source);
 	free(dest);
 	return rc;
@@ -783,6 +895,9 @@ static int do_container_mounts(struct container *c,
 	 */
 	c->ext_mounts = calloc(config->num_mounts, sizeof(*c->ext_mounts));
 	if (!c->ext_mounts)
+		return -errno;
+	c->loopdevs = calloc(config->num_mounts, sizeof(*c->loopdevs));
+	if (!c->loopdevs)
 		return -errno;
 
 	for (i = 0; i < config->num_mounts; ++i) {
@@ -987,6 +1102,17 @@ int container_start(struct container *c, const struct container_config *config)
 							minor, dev->read_allowed,
 							dev->write_allowed,
 							dev->modify_allowed, dev->type);
+			if (rc)
+				goto error_rmdir;
+		}
+
+		for (i = 0; i < c->num_loopdevs; ++i) {
+			struct stat st;
+
+			if (stat(c->loopdevs[i], &st) < 0)
+				goto error_rmdir;
+			rc = c->cgroup->ops->add_device(c->cgroup, major(st.st_rdev),
+							minor(st.st_rdev), 1, 0, 0, 'b');
 			if (rc)
 				goto error_rmdir;
 		}

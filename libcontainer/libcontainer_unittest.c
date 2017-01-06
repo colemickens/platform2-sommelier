@@ -264,6 +264,7 @@ FIXTURE_SETUP(container_test)
 				   "tmpfs",
 				   NULL,
 				   self->mount_flags,
+				   0,
 				   1000,
 				   1000,
 				   0x666,

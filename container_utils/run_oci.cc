@@ -49,9 +49,10 @@ std::string IdStringFromMap(const std::vector<OciLinuxNamespaceMapping>& maps) {
 // Parses the options from the OCI mount in to either mount flags in |flags_out|
 // or a data string for mount(2) in |option_string_out|.
 std::string ParseMountOptions(const std::vector<std::string>& options,
-                              int* flags_out) {
+                              int* flags_out, int* loopback_out) {
   std::string option_string_out;
   *flags_out = 0;
+  *loopback_out = 0;
 
   for (auto & option : options) {
     if (option == "nodev") {
@@ -72,6 +73,8 @@ std::string ParseMountOptions(const std::vector<std::string>& options,
       *flags_out |= MS_SLAVE;
     } else if (option == "remount") {
       *flags_out |= MS_REMOUNT;
+    } else if (option == "loop") {
+      *loopback_out = 1;
     } else {
       // Unknown options get appended to the string passed to mount data.
       if (!option_string_out.empty())
@@ -88,8 +91,8 @@ void ConfigureMounts(const std::vector<OciMount>& mounts,
                      uid_t uid, gid_t gid,
                      container_config* config_out) {
   for (auto & mount : mounts) {
-    int flags;
-    std::string options = ParseMountOptions(mount.options, &flags);
+    int flags, loopback;
+    std::string options = ParseMountOptions(mount.options, &flags, &loopback);
     container_config_add_mount(config_out,
                                "mount",
                                mount.source.c_str(),
@@ -100,8 +103,10 @@ void ConfigureMounts(const std::vector<OciMount>& mounts,
                                uid,
                                gid,
                                0750,
+                               // Loopback devices have to be mounted outside.
+                               !loopback,
                                1,
-                               1);
+                               loopback);
   }
 }
 
@@ -188,7 +193,8 @@ bool AppendMounts(const BindMounts& bind_mounts, container_config* config_out) {
                                    0,
                                    0750,
                                    1,
-                                   1)) {
+                                   1,
+                                   0)) {
       PLOG(ERROR) << "Failed to add mount of " << mount.first.value();
       return false;
     }
@@ -206,6 +212,7 @@ bool AppendMounts(const BindMounts& bind_mounts, container_config* config_out) {
                                  0,
                                  0750,
                                  1,
+                                 0,
                                  0)) {
     PLOG(ERROR) << "Failed to add sysfs mount";
     return false;

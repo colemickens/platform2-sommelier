@@ -87,12 +87,13 @@ int container_config_alt_syscall_table(struct container_config *c,
  * destination - Mount point in the container, e.g. "/dev".
  * type - Mount type, e.g. "tmpfs", "selinuxfs", or "devpts".
  * data - Mount data for extra options, e.g. "newinstance" or "ptmxmode=0000".
- * flags - Mount flags as defined in mount(2);
+ * flags - Mount flags as defined in mount(2).
  * uid - uid to chown mount point to if created.
  * gid - gid to chown mount point to if created.
  * mode - Permissions of mount point if created.
  * mount_in_ns - True if mount should happen in the process' vfs namespace.
  * create - If true, create mount destination if it doesn't exist.
+ * loopback - If true, set up a loopback device and mount that.
  */
 int container_config_add_mount(struct container_config *c,
 			       const char *name,
@@ -105,7 +106,8 @@ int container_config_add_mount(struct container_config *c,
 			       int gid,
 			       int mode,
 			       int mount_in_ns,
-			       int create);
+			       int create,
+			       int loopback);
 
 /*
  * Add a device node to create.

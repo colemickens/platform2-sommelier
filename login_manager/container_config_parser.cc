@@ -274,7 +274,8 @@ bool ParseRuntimeMount(const base::DictionaryValue& runtime_mounts_dict,
                                  gid,
                                  0,
                                  mount_in_ns,
-                                 create_mount_point)) {
+                                 create_mount_point,
+                                 0)) {
     LOG(ERROR) << "Failed to add mount " << mount_name << " to config";
     return false;
   }
