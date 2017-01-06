@@ -57,6 +57,7 @@ V4L2CameraDevice::~V4L2CameraDevice() {
 
 int V4L2CameraDevice::Connect(const std::string& device_path) {
   VLOGF(1) << "Connecting device path: " << device_path;
+  base::AutoLock l(lock_);
   if (device_path.compare(0, strlen(kAllowedVideoPrefix),
                           kAllowedVideoPrefix)) {
     LOGF(ERROR) << "Invalid device path " << device_path;
@@ -113,6 +114,7 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
 }
 
 void V4L2CameraDevice::Disconnect() {
+  base::AutoLock l(lock_);
   stream_on_ = false;
   device_fd_.reset();
   buffers_at_client_.clear();
@@ -124,6 +126,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
                                float frame_rate,
                                std::vector<base::ScopedFD>* fds,
                                uint32_t* buffer_size) {
+  base::AutoLock l(lock_);
   if (!device_fd_.is_valid()) {
     LOGF(ERROR) << "Device is not opened";
     return -ENODEV;
@@ -236,7 +239,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
     return -errno;
   }
 
-  for (size_t i = 1; i < temp_fds.size(); i++) {
+  for (size_t i = 0; i < temp_fds.size(); i++) {
     fds->push_back(std::move(temp_fds[i]));
   }
 
@@ -245,6 +248,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
 }
 
 int V4L2CameraDevice::StreamOff() {
+  base::AutoLock l(lock_);
   if (!device_fd_.is_valid()) {
     LOGF(ERROR) << "Device is not opened";
     return -ENODEV;
@@ -278,6 +282,7 @@ int V4L2CameraDevice::StreamOff() {
 
 int V4L2CameraDevice::GetNextFrameBuffer(uint32_t* buffer_id,
                                          uint32_t* data_size) {
+  base::AutoLock l(lock_);
   if (!device_fd_.is_valid()) {
     LOGF(ERROR) << "Device is not opened";
     return -ENODEV;
@@ -310,6 +315,7 @@ int V4L2CameraDevice::GetNextFrameBuffer(uint32_t* buffer_id,
 }
 
 int V4L2CameraDevice::ReuseFrameBuffer(uint32_t buffer_id) {
+  base::AutoLock l(lock_);
   if (!device_fd_.is_valid()) {
     LOGF(ERROR) << "Device is not opened";
     return -ENODEV;

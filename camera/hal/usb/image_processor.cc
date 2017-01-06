@@ -21,7 +21,7 @@ namespace arc {
  * -----------------------------------------------------------------------------
  * HAL_PIXEL_FORMAT_YV12         = V4L2_PIX_FMT_YVU420 = FOURCC_YV12
  * HAL_PIXEL_FORMAT_YCrCb_420_SP = V4L2_PIX_FMT_NV21   = FOURCC_NV21
- * HAL_PIXEL_FORMAT_BGRA_8888    = V4L2_PIX_FMT_BGR32  = FOURCC_ARGB
+ * HAL_PIXEL_FORMAT_RGBA_8888    = V4L2_PIX_FMT_RGB32  = FOURCC_ABGR
  * HAL_PIXEL_FORMAT_YCbCr_422_I  = V4L2_PIX_FMT_YUYV   = FOURCC_YUYV
  *                                                     = FOURCC_YUY2
  *                                 V4L2_PIX_FMT_YUV420 = FOURCC_I420
@@ -75,7 +75,7 @@ size_t ImageProcessor::GetConvertedSize(int fourcc,
     // Fall-through.
     case V4L2_PIX_FMT_NV21:  // NV21
       return width * height * 3 / 2;
-    case V4L2_PIX_FMT_BGR32:
+    case V4L2_PIX_FMT_RGB32:
       return width * height * 4;
     default:
       LOGF(ERROR) << "Pixel format 0x" << std::hex << fourcc
@@ -152,8 +152,8 @@ int ImageProcessor::Convert(const FrameBuffer& in_frame,
         LOGF_IF(ERROR, res) << "YU12ToNV21() returns " << res;
         return res ? -EINVAL : 0;
       }
-      case V4L2_PIX_FMT_BGR32: {
-        int res = libyuv::I420ToARGB(
+      case V4L2_PIX_FMT_RGB32: {
+        int res = libyuv::I420ToABGR(
             in_frame.GetData(), in_frame.GetWidth(),
             in_frame.GetData() + in_frame.GetWidth() * in_frame.GetHeight(),
             in_frame.GetWidth() / 2,
@@ -162,7 +162,7 @@ int ImageProcessor::Convert(const FrameBuffer& in_frame,
             in_frame.GetWidth() / 2, out_frame->GetData(),
             out_frame->GetWidth() * 4, in_frame.GetWidth(),
             in_frame.GetHeight());
-        LOGF_IF(ERROR, res) << "I420ToARGB() returns " << res;
+        LOGF_IF(ERROR, res) << "I420ToABGR() returns " << res;
         return res ? -EINVAL : 0;
       }
       default:

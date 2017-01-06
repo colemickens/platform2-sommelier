@@ -131,6 +131,12 @@ int GrallocFrameBuffer::Map() {
     return -EINVAL;
   }
 
+  // Only accept RGB32 format for preview.
+  if (fourcc_ != V4L2_PIX_FMT_RGB32) {
+    LOGF(ERROR) << "Format " << FormatToString(fourcc_) << " is unsupported";
+    return -EINVAL;
+  }
+
   void* addr;
   int ret = buffer_mapper_->Lock(buffer_, 0, 0, 0, width_, height_, &addr);
   if (ret) {

@@ -6,7 +6,6 @@
 #include "hal/usb/camera_hal.h"
 
 #include <base/bind.h>
-#include <base/threading/thread.h>
 
 #include "arc/common.h"
 #include "hal/usb/camera_metadata.h"

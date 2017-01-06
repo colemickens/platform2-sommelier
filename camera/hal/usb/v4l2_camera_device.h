@@ -12,11 +12,13 @@
 #include <vector>
 
 #include <base/files/scoped_file.h>
+#include <base/synchronization/lock.h>
 
 #include "hal/usb/common_types.h"
 
 namespace arc {
 
+// The class is thread-safe.
 class V4L2CameraDevice {
  public:
   V4L2CameraDevice();
@@ -63,6 +65,9 @@ class V4L2CameraDevice {
   // after StreamOn().
   int ReuseFrameBuffer(uint32_t buffer_id);
 
+  // TODO(henryhsu): GetDeviceSupportedFormats, GetCameraDeviceInfos, and the
+  // private functions used by them can be changed to static.
+
   // Get all supported formats of device by |device_path|. This function can be
   // called without calling Connect().
   const SupportedFormats GetDeviceSupportedFormats(
@@ -91,6 +96,10 @@ class V4L2CameraDevice {
 
   // True if the buffer is used by client after GetNextFrameBuffer().
   std::vector<bool> buffers_at_client_;
+
+  // Since V4L2CameraDevice may be called on different threads, this is used to
+  // guard all variables.
+  base::Lock lock_;
 
   DISALLOW_COPY_AND_ASSIGN(V4L2CameraDevice);
 };

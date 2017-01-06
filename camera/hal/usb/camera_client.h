@@ -7,27 +7,48 @@
 #define HAL_USB_CAMERA_CLIENT_H_
 
 #include <memory>
+#include <queue>
 #include <string>
 #include <vector>
 
 #include <base/bind.h>
 #include <base/macros.h>
+#include <base/threading/thread.h>
 #include <base/threading/thread_checker.h>
+#include <camera_buffer_mapper.h>
 #include <hardware/camera3.h>
 #include <hardware/hardware.h>
 
+#include "hal/usb/cached_frame.h"
 #include "hal/usb/camera_metadata.h"
+#include "hal/usb/capture_request.h"
 #include "hal/usb/common_types.h"
 #include "hal/usb/frame_buffer.h"
 #include "hal/usb/v4l2_camera_device.h"
 
 namespace arc {
 
-// CameraClient class is not thread-safe. Constructor and OpenDevice are called
-// on hal thread. Camera v3 Device Operations and Close are called on device ops
-// thread. But Android framework synchronizes Constructor, OpenDevice,
-// CloseDevice, and device ops. OpenDevice on hal thread and device ops
-// thread won't be called at the same time.
+// CameraClient class is not thread-safe. There are three threads in this
+// class.
+// 1. Hal thread: Called from hal adapter. Constructor and OpenDevice are called
+//    on hal thread.
+// 2. Device ops thread: Called from hal adapter. Camera v3 Device Operations
+//    (except dump) run on this thread. CloseDevice also runs on this thread.
+// 3. Request thread: Owned by this class. Used to handle all requests. The
+//    functions in RequestHandler run on request thread.
+//
+// Android framework synchronizes Constructor, OpenDevice, CloseDevice, and
+// device ops. The following items are guaranteed by Android frameworks. Note
+// that HAL adapter has more restrictions that all functions of device ops
+// (except dump) run on the same thread.
+// 1. Open, Initialize, and Close are not concurrent with any of the method in
+//    device ops.
+// 2. Dump can be called at any time.
+// 3. ConfigureStreams is not concurrent with either ProcessCaptureRequest or
+//    Flush.
+// 4. Flush can be called concurrently with ProcessCaptureRequest.
+// 5. ConstructDefaultRequestSettings may be called concurrently to any of the
+//    device ops.
 class CameraClient {
  public:
   // id is used to distinguish cameras. 0 <= id < number of cameras.
@@ -58,22 +79,22 @@ class CameraClient {
   bool IsValidStreamSet(const std::vector<camera3_stream_t*>& streams);
 
   // Calculate usage and maximum number of buffers of each stream.
-  void SetUpStreams(std::vector<camera3_stream_t*>* streams);
+  void SetUpStreams(int num_buffers, std::vector<camera3_stream_t*>* streams);
 
   // Start streaming.
-  int StreamOn();
+  int StreamOn(int* num_buffers);
 
   // Stop streaming.
   int StreamOff();
-
-  // Memory unmap buffers and close all file descriptors.
-  void ReleaseBuffers();
 
   // Camera device id.
   const int id_;
 
   // Camera device path.
   const std::string device_path_;
+
+  // Delegate to communicate with camera device.
+  std::unique_ptr<V4L2CameraDevice> device_;
 
   // Camera device handle returned to framework for use.
   camera3_device_t camera3_device_;
@@ -84,9 +105,6 @@ class CameraClient {
 
   // Use to check camera v3 device operations are called on the same thread.
   base::ThreadChecker ops_thread_checker_;
-
-  // Delegate to communicate with camera device.
-  std::unique_ptr<V4L2CameraDevice> device_;
 
   // Metadata containing persistent camera characteristics.
   CameraMetadata metadata_;
@@ -101,11 +119,61 @@ class CameraClient {
   // The formats used to report to apps.
   SupportedFormats qualified_formats_;
 
-  // Memory mapped buffers which are shared from |camera_delegate_|.
-  std::vector<std::unique_ptr<V4L2FrameBuffer>> buffers_;
-
   // Maximum resolution in configure streams.
   SupportedFormat stream_on_resolution_;
+
+  // RequestHandler is used to handle in-flight requests. All functions in the
+  // class run on |request_thread_|. The class will be created in StreamOn and
+  // destroyed in StreamOff.
+  class RequestHandler {
+   public:
+    RequestHandler(
+        const int device_id,
+        V4L2CameraDevice* device,
+        const camera3_callback_ops_t* callback_ops,
+        std::vector<std::unique_ptr<V4L2FrameBuffer>> input_buffers,
+        const scoped_refptr<base::SingleThreadTaskRunner>& task_runner);
+    ~RequestHandler();
+
+    // Handle one request.
+    void HandleRequest(std::unique_ptr<CaptureRequest> request);
+
+   private:
+    // Wait output buffer synced.
+    int WaitGrallocBufferSync(camera3_capture_result_t* result);
+
+    // Notify shutter event.
+    void NotifyShutter(uint32_t frame_number, int64_t* timestamp);
+
+    // Variables from CameraClient:
+
+    const int device_id_;
+
+    // Delegate to communicate with camera device. Caller owns the ownership.
+    V4L2CameraDevice* device_;
+
+    // Methods used to call back into the framework.
+    const camera3_callback_ops_t* callback_ops_;
+
+    // Memory mapped buffers which are shared from |device_|.
+    std::vector<std::unique_ptr<V4L2FrameBuffer>> input_buffers_;
+
+    // Task runner for request thread.
+    const scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
+
+    // Variables only for RequestHandler:
+
+    // Used to convert to different output formats.
+    CachedFrame input_frame_;
+  };
+
+  std::unique_ptr<RequestHandler> request_handler_;
+
+  // Used to handle requests.
+  base::Thread request_thread_;
+
+  // Task runner for request thread.
+  scoped_refptr<base::SingleThreadTaskRunner> request_task_runner_;
 
   DISALLOW_COPY_AND_ASSIGN(CameraClient);
 };

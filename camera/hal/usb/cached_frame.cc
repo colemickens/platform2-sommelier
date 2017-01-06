@@ -29,7 +29,7 @@ int CachedFrame::SetSource(const V4L2FrameBuffer* frame, int rotate_degree) {
     return res;
   }
 
-  if (rotate_degree >= 0) {
+  if (rotate_degree > 0) {
     res = CropRotateScale(rotate_degree);
   }
   return res;

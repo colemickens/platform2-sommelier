@@ -89,6 +89,7 @@ class V4L2FrameBuffer : public FrameBuffer {
 
   int Map() override;
   int Unmap() override;
+  const int GetFd() const { return fd_.get(); }
 
  private:
   // File descriptor of V4L2 frame buffer.

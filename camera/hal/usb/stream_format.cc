@@ -68,4 +68,30 @@ SupportedFormats GetQualifiedFormats(
   return qualified_formats;
 }
 
+int HalPixelFormatToFourcc(uint32_t hal_pixel_format) {
+  switch (hal_pixel_format) {
+    case HAL_PIXEL_FORMAT_YV12:
+      return V4L2_PIX_FMT_YVU420;
+    case HAL_PIXEL_FORMAT_YCrCb_420_SP:
+      return V4L2_PIX_FMT_NV21;
+    case HAL_PIXEL_FORMAT_YCbCr_422_I:
+      return V4L2_PIX_FMT_YUYV;
+    case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:  // Fall-through
+    case HAL_PIXEL_FORMAT_RGBA_8888:
+      return V4L2_PIX_FMT_RGB32;
+    case HAL_PIXEL_FORMAT_BLOB:
+      return V4L2_PIX_FMT_MJPEG;
+    case HAL_PIXEL_FORMAT_YCbCr_420_888:
+      // This is a flexible YUV format that depends on platform. Different
+      // platform may have different format. It can be YVU420 or NV12. Now we
+      // return YVU420 first.
+      // TODO(henryhsu): call drm_drv.get_fourcc() to get correct format.
+      return V4L2_PIX_FMT_YVU420;
+    default:
+      LOGF(ERROR) << "Pixel format 0x" << std::hex << hal_pixel_format
+                  << " is unsupported.";
+  }
+  return -EINVAL;
+}
+
 }  // namespace arc
