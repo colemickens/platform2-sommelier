@@ -4,6 +4,7 @@
 
 #include "wimax_manager/gdm_driver.h"
 
+#include <string>
 #include <utility>
 
 #include <base/files/file_util.h>

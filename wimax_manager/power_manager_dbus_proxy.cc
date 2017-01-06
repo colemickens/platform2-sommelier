@@ -11,7 +11,6 @@
 #include "power_manager/proto_bindings/suspend.pb.h"
 #include "wimax_manager/power_manager.h"
 
-using std::string;
 using std::vector;
 
 namespace wimax_manager {
