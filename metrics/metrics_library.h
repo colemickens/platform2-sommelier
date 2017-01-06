@@ -44,6 +44,10 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // Returns whether or not metrics collection is enabled.
   bool AreMetricsEnabled() override;
 
+  // Look up the consent id for metrics reporting.
+  // Note: Should only be used by internal system projects.
+  bool ConsentId(std::string* id);
+
   // Sends histogram data to Chrome for transport to UMA and returns
   // true on success. This method results in the equivalent of an
   // asynchronous non-blocking RPC to UMA_HISTOGRAM_CUSTOM_COUNTS

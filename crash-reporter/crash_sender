@@ -9,10 +9,6 @@ set -e
 # Default product ID in crash report (used if GOOGLE_CRASH_* is undefined).
 CHROMEOS_PRODUCT=ChromeOS
 
-# File whose existence implies crash reports may be sent, and whose
-# contents includes our machine's anonymized guid.
-CONSENT_ID="/home/chronos/Consent To Send Stats"
-
 # Crash sender lock in case the sender is already running.
 CRASH_SENDER_LOCK="/run/lock/crash_sender"
 
@@ -384,8 +380,12 @@ send_crash() {
   fi
 
   # Need to strip dashes ourselves as Chrome preserves it in the file
-  # nowadays.  This is also what the Chrome breakpad client does.
-  guid=$(tr -d '-' < "${CONSENT_ID}")
+  # nowadays.  This is also what the Chrome breakpad client does:
+  # src/components/crash/core/common/crash_keys.cc:SetMetricsClientIdFromGUID
+  # Note: We ignore errors from metrics_client here reading the id.  It was
+  # already sanity checked earlier via the consent check.  If it did fail,
+  # then we'll end up passing a blank guid below which isn't a big deal.
+  guid=$(${METRICS_CLIENT} -i | tr -d '-')
 
   local error_type="$(get_key_value "${meta_path}" "error_type")"
   [ "${error_type}" = "undefined" ] && error_type=

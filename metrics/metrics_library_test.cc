@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <cstring>
+#include <unistd.h>
 
 #include <base/files/file_util.h>
 #include <gmock/gmock.h>
@@ -20,6 +21,9 @@ using ::testing::AnyNumber;
 
 static const FilePath kTestUMAEventsFile("test-uma-events");
 static const char kTestMounts[] = "test-mounts";
+static const FilePath kTestConsentIdFile("test-consent-id");
+static const char kValidGuidOld[] = "56ff27bf7f774919b08488416d597fd8";
+static const char kValidGuid[] = "56ff27bf-7f77-4919-b084-88416d597fd8";
 
 ACTION_P(SetMetricsPolicy, enabled) {
   *arg0 = enabled;
@@ -29,6 +33,7 @@ ACTION_P(SetMetricsPolicy, enabled) {
 class MetricsLibraryTest : public testing::Test {
  protected:
   virtual void SetUp() {
+    lib_.consent_file_ = kTestConsentIdFile.value();
     EXPECT_TRUE(lib_.uma_events_file_.empty());
     lib_.Init();
     EXPECT_FALSE(lib_.uma_events_file_.empty());
@@ -50,6 +55,7 @@ class MetricsLibraryTest : public testing::Test {
   virtual void TearDown() {
     base::DeleteFile(FilePath(kTestMounts), false);
     base::DeleteFile(kTestUMAEventsFile, false);
+    base::DeleteFile(kTestConsentIdFile, false);
   }
 
   void VerifyEnabledCacheHit(bool to_value);
@@ -117,6 +123,76 @@ TEST_F(MetricsLibraryTest, IsDeviceMounted) {
                                      &result));
     EXPECT_FALSE(result);
   }
+}
+
+// Reject symlinks even if they're to normal files.
+TEST_F(MetricsLibraryTest, ConsentIdInvalidSymlinkPath) {
+  std::string id;
+  base::DeleteFile(kTestConsentIdFile, false);
+  ASSERT_EQ(symlink("/bin/sh", kTestConsentIdFile.value().c_str()), 0);
+  ASSERT_FALSE(lib_.ConsentId(&id));
+}
+
+// Reject non-files (like directories).
+TEST_F(MetricsLibraryTest, ConsentIdInvalidDirPath) {
+  std::string id;
+  base::DeleteFile(kTestConsentIdFile, false);
+  ASSERT_EQ(mkdir(kTestConsentIdFile.value().c_str(), 0755), 0);
+  ASSERT_FALSE(lib_.ConsentId(&id));
+}
+
+// Reject valid files full of invalid uuids.
+TEST_F(MetricsLibraryTest, ConsentIdInvalidContent) {
+  std::string id;
+  base::DeleteFile(kTestConsentIdFile, false);
+
+  ASSERT_EQ(base::WriteFile(kTestConsentIdFile, "", 0), 0);
+  ASSERT_FALSE(lib_.ConsentId(&id));
+
+  ASSERT_EQ(base::WriteFile(kTestConsentIdFile, "asdf", 4), 4);
+  ASSERT_FALSE(lib_.ConsentId(&id));
+
+  char buf[100];
+  memset(buf, '0', sizeof(buf));
+
+  // Reject too long UUIDs that lack dashes.
+  ASSERT_EQ(base::WriteFile(kTestConsentIdFile, buf, 36), 36);
+  ASSERT_FALSE(lib_.ConsentId(&id));
+
+  // Reject very long UUIDs.
+  ASSERT_EQ(base::WriteFile(kTestConsentIdFile, buf, sizeof(buf)), sizeof(buf));
+  ASSERT_FALSE(lib_.ConsentId(&id));
+}
+
+// Accept old consent ids.
+TEST_F(MetricsLibraryTest, ConsentIdValidContentOld) {
+  std::string id;
+  base::DeleteFile(kTestConsentIdFile, false);
+  ASSERT_GT(base::WriteFile(kTestConsentIdFile, kValidGuidOld,
+                            strlen(kValidGuidOld)), 0);
+  ASSERT_TRUE(lib_.ConsentId(&id));
+  ASSERT_EQ(id, kValidGuidOld);
+}
+
+// Accept current consent ids.
+TEST_F(MetricsLibraryTest, ConsentIdValidContent) {
+  std::string id;
+  base::DeleteFile(kTestConsentIdFile, false);
+  ASSERT_GT(base::WriteFile(kTestConsentIdFile, kValidGuid,
+                            strlen(kValidGuid)), 0);
+  ASSERT_TRUE(lib_.ConsentId(&id));
+  ASSERT_EQ(id, kValidGuid);
+}
+
+// Accept current consent ids (including a newline).
+TEST_F(MetricsLibraryTest, ConsentIdValidContentNewline) {
+  std::string id;
+  std::string outid = std::string(kValidGuid) + "\n";
+  base::DeleteFile(kTestConsentIdFile, false);
+  ASSERT_GT(base::WriteFile(kTestConsentIdFile, outid.c_str(),
+                            outid.size()), 0);
+  ASSERT_TRUE(lib_.ConsentId(&id));
+  ASSERT_EQ(id, kValidGuid);
 }
 
 TEST_F(MetricsLibraryTest, AreMetricsEnabledFalse) {

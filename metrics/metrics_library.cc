@@ -4,7 +4,9 @@
 
 #include "metrics/metrics_library.h"
 
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <errno.h>
 #include <sys/file.h>
@@ -131,8 +133,49 @@ bool MetricsLibrary::IsGuestMode() {
   return result && (access("/run/state/logged-in", F_OK) == 0);
 }
 
+bool MetricsLibrary::ConsentId(std::string* id) {
+  // Do not allow symlinks.
+  base::ScopedFD fd(open(consent_file_.c_str(), O_RDONLY|O_CLOEXEC|O_NOFOLLOW));
+  if (fd.get() < 0)
+    return false;
+
+  // We declare a slightly larger buffer than needed so we can detect if it's
+  // been corrupted with a lot of bad data.
+  char buf[40];
+  ssize_t len = read(fd.get(), buf, sizeof(buf));
+
+  // Chop the trailing newline to make parsing below easier.
+  if (buf[len - 1] == '\n')
+    buf[--len] = '\0';
+
+  // Make sure it's a valid UUID.  Support older installs that omitted dashes.
+  if (len != 32 && len != 36)
+    return false;
+
+  ssize_t i;
+  id->clear();
+  for (i = 0; i < len; ++i) {
+    char c = buf[i];
+    *id += c;
+
+    // For long UUIDs, require dashes at certain positions.
+    if (len == 36 && (i == 8 || i == 13 || i == 18 || i == 23)) {
+      if (c == '-')
+        continue;
+      return false;
+    }
+
+    // All the rest should be hexdigits.
+    if (base::IsHexDigit(c))
+      continue;
+
+    return false;
+  }
+
+  return true;
+}
+
 bool MetricsLibrary::AreMetricsEnabled() {
-  static struct stat stat_buffer;
   time_t this_check_time = time(nullptr);
   if (this_check_time != cached_enabled_time_) {
     cached_enabled_time_ = this_check_time;
@@ -152,7 +195,8 @@ bool MetricsLibrary::AreMetricsEnabled() {
     // still respect the consent file if it is present for migration purposes.
     // TODO(pastarmovj)
     if (!has_policy) {
-      enabled = stat(consent_file_.c_str(), &stat_buffer) >= 0;
+      std::string id;
+      enabled = ConsentId(&id);
     }
 
     if (enabled && !IsGuestMode())

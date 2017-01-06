@@ -15,6 +15,7 @@ enum Mode {
     kModeSendCrosEvent,
     kModeHasConsent,
     kModeIsGuestMode,
+    kModeShowConsentId,
 };
 
 void ShowUsage() {
@@ -120,13 +121,23 @@ static int IsGuestMode() {
   return metrics_lib.IsGuestMode() ? 0 : 1;
 }
 
+static int ShowConsentId() {
+  MetricsLibrary metrics_lib;
+  metrics_lib.Init();
+  std::string id;
+  if (metrics_lib.ConsentId(&id) == false)
+    return 1;
+  printf("%s\n", id.c_str());
+  return 0;
+}
+
 int main(int argc, char** argv) {
   enum Mode mode = kModeSendSample;
   bool secs_to_msecs = false;
 
   // Parse arguments
   int flag;
-  while ((flag = getopt(argc, argv, "cegstuv")) != -1) {
+  while ((flag = getopt(argc, argv, "cegistuv")) != -1) {
     switch (flag) {
       case 'c':
         mode = kModeHasConsent;
@@ -136,6 +147,9 @@ int main(int argc, char** argv) {
         break;
       case 'g':
         mode = kModeIsGuestMode;
+        break;
+      case 'i':
+        mode = kModeShowConsentId;
         break;
       case 's':
         mode = kModeSendSparseSample;
@@ -191,6 +205,8 @@ int main(int argc, char** argv) {
       return HasConsent();
     case kModeIsGuestMode:
       return IsGuestMode();
+    case kModeShowConsentId:
+      return ShowConsentId();
     default:
       ShowUsage();
       return 0;
