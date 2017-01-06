@@ -62,9 +62,9 @@ const uint32_t kUpdateStatsIntervalMs = 300000;
 // Maximum amount of system memory that will be reported without overflow.
 const int kMaximumMemorySizeInKB = 32 * 1000 * 1000;
 
-const char kKernelCrashDetectedFile[] = "/var/run/kernel-crash-detected";
+const char kKernelCrashDetectedFile[] = "/run/kernel-crash-detected";
 const char kUncleanShutdownDetectedFile[] =
-    "/var/run/unclean-shutdown-detected";
+    "/run/unclean-shutdown-detected";
 
 }  // namespace
 
