@@ -146,6 +146,7 @@ class MetricsDaemon : public brillo::DBusDaemon {
   static const char kMetricsVmStatsPath[];
   static const char kMetricsProcStatFileName[];
   static const int kMetricsProcStatFirstLineItemsCount;
+  static const char kMetricCroutonStarted[];
 
   // Returns the active time since boot (uptime minus sleep time) in seconds.
   double GetActiveTime();
@@ -193,6 +194,9 @@ class MetricsDaemon : public brillo::DBusDaemon {
   // Sends various cumulative kernel crash-related stats, for instance the
   // total number of kernel crashes since the last version update.
   void SendKernelCrashesCumulativeCountStats();
+
+  // Sends stat about crouton usage
+  void SendCroutonStats();
 
   // Returns the total (system-wide) CPU usage between the time of the most
   // recent call to this function and now.

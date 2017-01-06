@@ -129,6 +129,10 @@ const char MetricsDaemon::kComprDataSizeName[] = "compr_data_size";
 const char MetricsDaemon::kOrigDataSizeName[] = "orig_data_size";
 const char MetricsDaemon::kZeroPagesName[] = "zero_pages";
 
+// crouton metrics
+
+const char MetricsDaemon::kMetricCroutonStarted[] = "Platform.Crouton.Started";
+
 // Memory use stats collection intervals.  We collect some memory use interval
 // at these intervals after boot, and we stop collecting after the last one,
 // with the assumption that in most cases the memory use won't change much
@@ -336,6 +340,10 @@ int MetricsDaemon::OnInit() {
       base::Bind(&MetricsDaemon::HandleUpdateStatsTimeout,
                  base::Unretained(this)),
       base::TimeDelta::FromMilliseconds(kUpdateStatsIntervalMs));
+
+  // Emit a "0" value on start, to provide a baseline for this metric.
+  SendLinearSample(kMetricCroutonStarted, 0, 2, 3);
+  SendCroutonStats();
 
   if (uploader_active_) {
     if (IsOnOfficialBuild()) {
@@ -1149,6 +1157,19 @@ void MetricsDaemon::SendLinearSample(const string& name, int sample,
   // metrics API.
   LOG_IF(FATAL, nbuckets != max + 1) << "unsupported histogram scale";
   metrics_lib_->SendEnumToUMA(name, sample, max);
+}
+
+void MetricsDaemon::SendCroutonStats() {
+  // Report the presence of /run/crouton: we only report each state
+  // exactly once per boot ("0" state reported on init).
+  if (PathExists(FilePath("/run/crouton"))) {
+    SendLinearSample(kMetricCroutonStarted, 1, 2, 3);
+  } else {
+    base::MessageLoop::current()->PostDelayedTask(FROM_HERE,
+      base::Bind(&MetricsDaemon::SendCroutonStats,
+                 base::Unretained(this)),
+                 base::TimeDelta::FromMilliseconds(kUpdateStatsIntervalMs));
+  }
 }
 
 void MetricsDaemon::UpdateStats(TimeTicks now_ticks,
