@@ -5,7 +5,7 @@
 #include "cros-disks/format_manager.h"
 
 #include <glib.h>
-#include <map>
+
 #include <string>
 
 #include <base/files/file_util.h>

@@ -6,10 +6,6 @@
 
 #include <gtest/gtest.h>
 
-using std::map;
-using std::string;
-using std::vector;
-
 namespace cros_disks {
 
 class FormatManagerTest : public ::testing::Test {

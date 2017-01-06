@@ -6,17 +6,11 @@
 
 #include <sys/mount.h>
 
-#include <string>
-#include <vector>
-
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <gtest/gtest.h>
 
 #include "cros-disks/mount_options.h"
-
-using std::string;
-using std::vector;
 
 namespace cros_disks {
 

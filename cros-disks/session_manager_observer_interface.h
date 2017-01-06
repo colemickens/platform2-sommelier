@@ -5,8 +5,6 @@
 #ifndef CROS_DISKS_SESSION_MANAGER_OBSERVER_INTERFACE_H_
 #define CROS_DISKS_SESSION_MANAGER_OBSERVER_INTERFACE_H_
 
-#include <string>
-
 namespace cros_disks {
 
 // An interface class for observing events from the session manager.

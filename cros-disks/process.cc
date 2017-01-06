@@ -4,10 +4,7 @@
 
 #include "cros-disks/process.h"
 
-#include <base/logging.h>
-
 using std::string;
-using std::vector;
 
 namespace cros_disks {
 

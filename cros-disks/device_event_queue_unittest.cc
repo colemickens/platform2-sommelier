@@ -5,7 +5,6 @@
 #include "cros-disks/device_event_queue.h"
 
 #include <algorithm>
-#include <string>
 
 #include <gtest/gtest.h>
 

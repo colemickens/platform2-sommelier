@@ -9,8 +9,6 @@
 #include "cros-disks/device_event_dispatcher_interface.h"
 #include "cros-disks/device_event_source_interface.h"
 
-using std::string;
-
 namespace cros_disks {
 
 DeviceEventModerator::DeviceEventModerator(
