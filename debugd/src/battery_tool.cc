@@ -4,6 +4,8 @@
 
 #include "debugd/src/battery_tool.h"
 
+#include <unistd.h>
+
 #include "debugd/src/process_with_id.h"
 #include "debugd/src/process_with_output.h"
 
@@ -13,6 +15,8 @@ namespace {
 
 const char kBatteryFirmware[] = "/usr/sbin/ec_sb_firmware_update";
 const char kEcTool[] = "/usr/sbin/ectool";
+const char kUnsupportedMessage[] =
+    "Sorry, but this command is unavailable on this device.";
 
 }  // namespace
 
@@ -21,6 +25,7 @@ namespace debugd {
 
 std::string BatteryTool::BatteryFirmware(const std::string& option,
                                          DBus::Error* error) {
+  const char *tool_name;
   std::string output;
   ProcessWithOutput process;
   // Disabling sandboxing since battery requires higher privileges.
@@ -29,17 +34,22 @@ std::string BatteryTool::BatteryFirmware(const std::string& option,
     return "<process init failed>";
 
   if (option == "info") {
-    process.AddArg(kEcTool);
+    tool_name = kEcTool;
+    process.AddArg(tool_name);
     process.AddArg("battery");
   } else if (option == "update") {
-    process.AddArg(kBatteryFirmware);
+    tool_name = kBatteryFirmware;
+    process.AddArg(tool_name);
     process.AddArg("update");
   } else if (option == "check") {
-    process.AddArg(kBatteryFirmware);
+    tool_name = kBatteryFirmware;
+    process.AddArg(tool_name);
     process.AddArg("check");
   } else {
     return "<process invalid option>";
   }
+  if (access(tool_name, F_OK) != 0)
+    return kUnsupportedMessage;
 
   process.Run();
   process.GetOutput(&output);
