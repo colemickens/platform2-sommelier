@@ -1149,7 +1149,8 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
                       ElementsAre(StartsWith("ANDROID_DATA_DIR="),
                                   std::string("CHROMEOS_USER=") + kSaneEmail,
                                   "CHROMEOS_DEV_MODE=1", "CHROMEOS_INSIDE_VM=0",
-                                  "DISABLE_BOOT_COMPLETED_BROADCAST=0")))
+                                  "DISABLE_BOOT_COMPLETED_BROADCAST=0",
+                                  StartsWith("ANDROID_DATA_OLD_DIR="))))
       .Times(1);
   EXPECT_CALL(upstart_signal_emitter_delegate_,
               OnSignalEmitted(StrEq(SessionManagerImpl::kArcStopSignal),

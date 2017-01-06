@@ -801,12 +801,9 @@ void SessionManagerImpl::StartArcInstance(const std::string& account_id,
 
   const base::FilePath android_data_old_dir =
       GetAndroidDataOldDirForUser(actual_account_id);
-  if (!system_->IsDirectoryEmpty(android_data_old_dir)) {
-    // A stale old directory exists. Emit the signal with |android_data_old_dir|
-    // so the signal receiver can remove the directory.
-    keyvals.emplace_back(base::StringPrintf(
-        "ANDROID_DATA_OLD_DIR=%s", android_data_old_dir.value().c_str()));
-  }
+
+  keyvals.emplace_back(base::StringPrintf(
+      "ANDROID_DATA_OLD_DIR=%s", android_data_old_dir.value().c_str()));
 
   if (!init_controller_->TriggerImpulse(
           kArcStartSignal, keyvals, InitDaemonController::TriggerMode::SYNC)) {
