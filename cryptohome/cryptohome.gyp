@@ -107,6 +107,7 @@
         'crypto.cc',
         'cryptohome_metrics.cc',
         'cryptolib.cc',
+        'dircrypto_util.cc',
         'firmware_management_parameters.cc',
         'install_attributes.cc',
         'lockbox.cc',
@@ -312,6 +313,7 @@
       },
       'sources': [
         'crc32.c',
+        'dircrypto_util.cc',
         'lockbox.cc',
         'lockbox-cache.cc',
         'lockbox-cache-main.cc',
