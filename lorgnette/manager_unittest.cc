@@ -4,7 +4,6 @@
 
 #include "lorgnette/manager.h"
 
-#include <map>
 #include <string>
 
 #include <base/stl_util.h>
@@ -19,7 +18,6 @@
 
 using base::ScopedFD;
 using brillo::VariantDictionary;
-using std::map;
 using std::string;
 using testing::_;
 using testing::InSequence;

@@ -7,7 +7,6 @@
 #include <sysexits.h>
 
 #include <string>
-#include <vector>
 
 #include <base/bind.h>
 #include <base/logging.h>
@@ -15,7 +14,6 @@
 #include <chromeos/dbus/service_constants.h>
 
 using std::string;
-using std::vector;
 
 namespace lorgnette {
 

@@ -6,7 +6,6 @@
 #define LORGNETTE_DAEMON_H_
 
 #include <memory>
-#include <string>
 
 #include <base/cancelable_callback.h>
 #include <brillo/daemons/dbus_daemon.h>
