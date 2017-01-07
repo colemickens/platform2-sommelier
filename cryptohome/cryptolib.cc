@@ -17,7 +17,6 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 extern "C" {

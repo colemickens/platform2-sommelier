@@ -10,7 +10,6 @@
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/stl_util.h>
 #include <openssl/objects.h>
 #include <openssl/rsa.h>
 

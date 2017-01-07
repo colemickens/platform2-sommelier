@@ -9,7 +9,6 @@
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/stl_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

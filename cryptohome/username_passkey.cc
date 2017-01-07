@@ -7,7 +7,6 @@
 #include <openssl/sha.h>
 
 #include <base/logging.h>
-#include <base/stl_util.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto.h"

@@ -8,7 +8,6 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/cryptohome.h>
 #include <brillo/data_encoding.h>
