@@ -19,7 +19,6 @@
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
-#include <base/stl_util.h>
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
