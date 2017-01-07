@@ -66,6 +66,10 @@ TEST_F(ImageLoaderTest, RegisterComponentAndGetVersion) {
   base::FilePath version_dir = comp_dir.Append(kTestDataVersion);
   ASSERT_TRUE(base::DirectoryExists(version_dir));
 
+  // Make sure it actually checks the reported version against the real version.
+  EXPECT_FALSE(loader.RegisterComponent(kTestComponentName, kTestUpdatedVersion,
+                                        GetTestComponentPath().value()));
+
   // Now copy a new version into place.
   EXPECT_TRUE(
       loader.RegisterComponent(kTestComponentName, kTestUpdatedVersion,

@@ -206,6 +206,13 @@ bool ImageLoaderImpl::RegisterComponent(
   Component component(component_path);
   if (!component.Init(config_.key)) return false;
 
+  // Check that the reported version matches the component manifest version.
+  if (component.manifest().version != version) {
+    LOG(ERROR) << "Version in signed manifest does not match the reported "
+                  "component version.";
+    return false;
+  }
+
   // Take ownership of the component and verify it.
   base::FilePath version_path(GetVersionPath(name, version));
   // If |version_path| exists but was not the active version, ImageLoader
