@@ -5,8 +5,6 @@
 #ifndef CRASH_REPORTER_UNCLEAN_SHUTDOWN_COLLECTOR_H_
 #define CRASH_REPORTER_UNCLEAN_SHUTDOWN_COLLECTOR_H_
 
-#include <string>
-
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST

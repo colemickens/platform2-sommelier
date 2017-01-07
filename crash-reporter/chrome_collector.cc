@@ -9,7 +9,6 @@
 
 #include <map>
 #include <string>
-#include <vector>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>

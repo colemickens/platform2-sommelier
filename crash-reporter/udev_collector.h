@@ -9,7 +9,6 @@
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "crash-reporter/crash_collector.h"
 

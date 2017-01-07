@@ -15,7 +15,6 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
-#include <utility>
 
 #include <common/linux/elf_core_dump.h>
 
