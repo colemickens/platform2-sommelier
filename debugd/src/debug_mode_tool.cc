@@ -4,7 +4,6 @@
 
 #include "debugd/src/debug_mode_tool.h"
 
-#include <base/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <shill/dbus_proxies/org.chromium.flimflam.Manager.h>
 

@@ -20,7 +20,6 @@ using base::ListValue;
 using base::Value;
 using std::map;
 using std::string;
-using std::vector;
 
 class DBusPropertiesProxy : public org::freedesktop::DBus::Properties_proxy,
                             public DBus::ObjectProxy {

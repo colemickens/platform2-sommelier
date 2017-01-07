@@ -5,8 +5,6 @@
 #ifndef DEBUGD_SRC_DEBUG_LOGS_TOOL_H_
 #define DEBUGD_SRC_DEBUG_LOGS_TOOL_H_
 
-#include <string>
-
 #include <base/macros.h>
 #include <dbus-c++/dbus.h>
 

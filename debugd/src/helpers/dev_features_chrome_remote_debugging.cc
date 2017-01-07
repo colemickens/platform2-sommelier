@@ -5,8 +5,6 @@
 #include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string>
-#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>

@@ -6,8 +6,6 @@
 
 #include <functional>
 
-#include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "debugd/src/process_with_output.h"

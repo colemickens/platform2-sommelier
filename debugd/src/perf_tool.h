@@ -8,7 +8,6 @@
 #include <stdint.h>
 #include <sys/utsname.h>
 
-#include <memory>
 #include <string>
 #include <vector>
 

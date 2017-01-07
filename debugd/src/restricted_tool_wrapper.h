@@ -33,8 +33,6 @@
 #ifndef DEBUGD_SRC_RESTRICTED_TOOL_WRAPPER_H_
 #define DEBUGD_SRC_RESTRICTED_TOOL_WRAPPER_H_
 
-#include <string>
-
 #include <base/macros.h>
 #include <dbus-c++/dbus.h>
 

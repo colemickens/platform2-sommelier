@@ -6,13 +6,8 @@
 
 #include <unistd.h>
 
-#include <algorithm>
-#include <map>
-
-#include <base/callback.h>
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/string_split.h>
-#include <base/strings/string_util.h>
+#include <base/bind.h>
+#include <base/strings/stringprintf.h>
 
 #include "debugd/src/process_with_output.h"
 
