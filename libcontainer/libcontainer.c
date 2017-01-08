@@ -87,6 +87,7 @@ struct container_cpu_cgroup {
 /*
  * Structure that configures how the container is run.
  *
+ * config_root - Path to the root of the container itself.
  * rootfs - Path to the root of the container's filesystem.
  * rootfs_mount_flags - Flags that will be passed to mount() for the rootfs.
  * premounted_runfs - Path to where the container will be run.
@@ -111,6 +112,7 @@ struct container_cpu_cgroup {
  * keep_fds_open - Allow the child process to keep open FDs (for stdin/out/err).
  */
 struct container_config {
+	char *config_root;
 	char *rootfs;
 	unsigned long rootfs_mount_flags;
 	char *premounted_runfs;
@@ -190,6 +192,17 @@ void container_config_destroy(struct container_config *c)
 	FREE_AND_NULL(c->run_setfiles);
 	FREE_AND_NULL(c->cgroup_parent);
 	FREE_AND_NULL(c);
+}
+
+int container_config_config_root(struct container_config *c,
+				 const char *config_root)
+{
+	return strdup_and_free(&c->config_root, config_root);
+}
+
+const char *container_config_get_config_root(const struct container_config *c)
+{
+	return c->config_root;
 }
 
 int container_config_rootfs(struct container_config *c, const char *rootfs)
@@ -531,6 +544,7 @@ struct container {
 	struct container_cgroup *cgroup;
 	struct minijail *jail;
 	pid_t init_pid;
+	char *config_root;
 	char *runfs;
 	char *rundir;
 	char *runfsroot;
@@ -565,6 +579,7 @@ void container_destroy(struct container *c)
 		container_cgroup_destroy(c->cgroup);
 	if (c->jail)
 		minijail_destroy(c->jail);
+	FREE_AND_NULL(c->config_root);
 	FREE_AND_NULL(c->name);
 	FREE_AND_NULL(c->rundir);
 	FREE_AND_NULL(c);
@@ -828,6 +843,9 @@ static int do_container_mount(struct container *c,
 	if ((mnt->flags & MS_BIND) && mnt->source[0] != '/') {
 		if (asprintf(&source, "%s/%s", c->runfsroot, mnt->source) < 0)
 			goto error_free_return;
+	} else if (mnt->loopback && mnt->source[0] != '/' && c->config_root) {
+		if (asprintf(&source, "%s/%s", c->config_root, mnt->source) < 0)
+			goto error_free_return;
 	} else {
 		if (asprintf(&source, "%s", mnt->source) < 0)
 			goto error_free_return;
@@ -1048,6 +1066,13 @@ int container_start(struct container *c, const struct container_config *config)
 	if (!config->program_argv || !config->program_argv[0])
 		return -EINVAL;
 
+	if (config->config_root) {
+		c->config_root = strdup(config->config_root);
+		if (!c->config_root) {
+			rc = -ENOMEM;
+			goto error_rmdir;
+		}
+	}
 	if (config->premounted_runfs) {
 		c->runfs = NULL;
 		c->runfsroot = strdup(config->premounted_runfs);

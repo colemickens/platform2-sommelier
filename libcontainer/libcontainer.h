@@ -21,6 +21,13 @@ struct container_config *container_config_create();
 /* Destroy a config create with container_config_create. */
 void container_config_destroy(struct container_config *c);
 
+/* config_root - Path to the root of the container itself. */
+int container_config_config_root(struct container_config *c,
+				 const char *config_root);
+
+/* Get the configured container root path. */
+const char *container_config_get_config_root(const struct container_config *c);
+
 /* rootfs - Path to the root of the container's filesystem. */
 int container_config_rootfs(struct container_config *c, const char *rootfs);
 

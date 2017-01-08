@@ -136,6 +136,7 @@ bool ContainerConfigFromOci(const OciConfig& oci,
                             const std::vector<std::string>& extra_args,
                             container_config* config_out) {
   // Process configuration
+  container_config_config_root(config_out, container_root.value().c_str());
   container_config_uid(config_out, oci.process.user.uid);
   container_config_gid(config_out, oci.process.user.gid);
   base::FilePath root_dir = container_root.Append(oci.root.path);
