@@ -71,7 +71,7 @@ bool CrosConfig::GetString(const std::string &path, const std::string &prop,
   // We must have a normally terminated string. This guards against a string
   // list being used, or perhaps a property that does not contain a valid
   // string at all.
-  if (strnlen(ptr, len) != len - 1) {
+  if (!len || strnlen(ptr, len) != static_cast<size_t>(len - 1)) {
     LOG(ERROR) << "String at path " << path << " property " << prop
                << " is invalid";
     return false;
