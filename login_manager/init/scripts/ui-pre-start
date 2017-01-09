@@ -50,6 +50,14 @@ if [ -d $CONTAINER_CGROUP_DIR ]; then
   echo "32" > ${CONTAINER_CGROUP_DIR}/cpu.shares
 fi
 
+# Set up the alt-syscall kernel module (on systems with kernel 3.14 or later)
+# to allow developer mode only system calls to be exposed to Android containers
+# (and potentially other containers) when the system is in developer mode.
+DEVMODE_SYSCALLS=/proc/sys/kernel/chromiumos/alt_syscall/allow_devmode_syscalls
+if [ -e "${DEVMODE_SYSCALLS}" ] && crossystem "cros_debug?1"; then
+  echo "1" > "${DEVMODE_SYSCALLS}"
+fi
+
 # Set up the lucid sleep debug flag.  This file only exists on devices that
 # use kernel 3.14.  When this sysfs entry is set to 1, the kernel will treat
 # all resumes as dark resumes, relying on chrome and powerd to detect any user
