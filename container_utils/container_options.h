@@ -22,13 +22,15 @@ struct ContainerOptions {
   std::string cgroup_parent;
   std::vector<std::string> extra_program_args;
   bool use_current_user;
+  bool use_signatures;
 
   ContainerOptions() :
     alt_syscall_table(),
     bind_mounts(),
     cgroup_parent(),
     extra_program_args(),
-    use_current_user(false) {}
+    use_current_user(false),
+    use_signatures(true) {}
 };
 
 }  // namespace container_utils
