@@ -227,7 +227,9 @@ class Platform2(object):
         '-Dexternal_cppflags=%s' % os.environ.get('CPPFLAGS', ''),
         '-Dexternal_ldflags=%s' % os.environ.get('LDFLAGS', ''),
     ]
-    gyp_args += ['-DUSE_%s=1' % (use_flag,) for use_flag in self.use_flags]
+    # USE flags allow some chars that gyp does not, so normalize them.
+    gyp_args += ['-DUSE_%s=1' % (use_flag.replace('-', '_'),)
+                 for use_flag in self.use_flags]
 
     try:
       subprocess.check_call(gyp_args, env=self.get_build_environment(),

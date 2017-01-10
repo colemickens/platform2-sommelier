@@ -58,7 +58,8 @@ std::string IdStringFromMap(const std::vector<OciLinuxNamespaceMapping>& maps) {
 // Parses the options from the OCI mount in to either mount flags in |flags_out|
 // or a data string for mount(2) in |option_string_out|.
 std::string ParseMountOptions(const std::vector<std::string>& options,
-                              int* flags_out, int* loopback_out) {
+                              int* flags_out, int* loopback_out,
+                              std::string *verity_options) {
   std::string option_string_out;
   *flags_out = 0;
   *loopback_out = 0;
@@ -84,6 +85,8 @@ std::string ParseMountOptions(const std::vector<std::string>& options,
       *flags_out |= MS_REMOUNT;
     } else if (option == "loop") {
       *loopback_out = 1;
+    } else if (base::StartsWith(option, "dm=", base::CompareCase::SENSITIVE)) {
+      *verity_options = option.substr(3, std::string::npos);
     } else {
       // Unknown options get appended to the string passed to mount data.
       if (!option_string_out.empty())
@@ -101,13 +104,18 @@ void ConfigureMounts(const std::vector<OciMount>& mounts,
                      container_config* config_out) {
   for (auto & mount : mounts) {
     int flags, loopback;
-    std::string options = ParseMountOptions(mount.options, &flags, &loopback);
+    std::string verity_options;
+    std::string options = ParseMountOptions(mount.options, &flags, &loopback,
+                                            &verity_options);
     container_config_add_mount(config_out,
                                "mount",
                                mount.source.c_str(),
                                mount.destination.c_str(),
                                mount.type.c_str(),
-                               options.c_str(),
+                               options.empty() ?
+                                   NULL : options.c_str(),
+                               verity_options.empty() ?
+                                   NULL : verity_options.c_str(),
                                flags,
                                uid,
                                gid,
@@ -198,6 +206,7 @@ bool AppendMounts(const BindMounts& bind_mounts, container_config* config_out) {
                                    mount.second.value().c_str(),
                                    "bind",
                                    NULL,
+                                   NULL,
                                    MS_MGC_VAL | MS_BIND,
                                    0,
                                    0,
@@ -216,6 +225,7 @@ bool AppendMounts(const BindMounts& bind_mounts, container_config* config_out) {
                                  "sysfs",
                                  "/sys",
                                  "sysfs",
+                                 NULL,
                                  NULL,
                                  0,
                                  0,

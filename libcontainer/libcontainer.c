@@ -7,6 +7,9 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#if USE_device_mapper
+#include <libdevmapper.h>
+#endif
 #include <malloc.h>
 #include <signal.h>
 #include <stdio.h>
@@ -33,6 +36,9 @@ do { \
 #define MAX_NUM_SETFILES_ARGS 128
 
 static const char loopdev_ctl[] = "/dev/loop-control";
+#if USE_device_mapper
+static const char dm_dev_prefix[] = "/dev/mapper/";
+#endif
 
 static int container_teardown(struct container *c);
 
@@ -53,6 +59,7 @@ struct container_mount {
 	char *destination;
 	char *type;
 	char *data;
+	char *verity;
 	int flags;
 	int uid;
 	int gid;
@@ -329,6 +336,7 @@ int container_config_add_mount(struct container_config *c,
 			       const char *destination,
 			       const char *type,
 			       const char *data,
+			       const char *verity,
 			       int flags,
 			       int uid,
 			       int gid,
@@ -361,6 +369,8 @@ int container_config_add_mount(struct container_config *c,
 	if (strdup_and_free(&current_mount->type, type))
 		goto error_free_return;
 	if (data && strdup_and_free(&current_mount->data, data))
+		goto error_free_return;
+	if (verity && strdup_and_free(&current_mount->verity, verity))
 		goto error_free_return;
 	current_mount->flags = flags;
 	current_mount->uid = uid;
@@ -553,6 +563,8 @@ struct container {
 	size_t num_ext_mounts;
 	char **loopdevs;
 	size_t num_loopdevs;
+	char **device_mappers;
+	size_t num_device_mappers;
 	char *name;
 };
 
@@ -765,6 +777,112 @@ exit:
 	return ret;
 }
 
+/* Create a new device mapper target for the source. */
+static int dm_setup(char **dm_path_ret, char **dm_name_ret, const char *source,
+		    const char *verity_cmdline)
+{
+	int ret = 0;
+#if USE_device_mapper
+	char *p;
+	char *dm_path = NULL;
+	char *dm_name = NULL;
+	char *verity = NULL;
+	struct dm_task *dmt = NULL;
+	uint32_t cookie = 0;
+
+	/* Normalize the name into something unique-esque. */
+	if (asprintf(&dm_name, "cros-containers-%s", source) < 0)
+		goto error;
+	p = dm_name;
+	while ((p = strchr(p, '/')) != NULL)
+		*p++ = '_';
+
+	/* Get the /dev path for the higher levels to mount. */
+	if (asprintf(&dm_path, "%s%s", dm_dev_prefix, dm_name) < 0)
+		goto error;
+
+	/* Insert the source path in the verity command line. */
+	size_t source_len = strlen(source);
+	verity = malloc(strlen(verity_cmdline) + source_len * 2 + 1);
+	strcpy(verity, verity_cmdline);
+	while ((p = strstr(verity, "@DEV@")) != NULL) {
+		memmove(p + source_len, p + 5, strlen(p + 5) + 1);
+		memcpy(p, source, source_len);
+	}
+
+	/* Extract the first three parameters for dm-verity settings. */
+	char ttype[20];
+	unsigned long long start, size;
+	int n;
+	if (sscanf(verity, "%llu %llu %10s %n", &start, &size, ttype, &n) != 3)
+		goto error;
+
+	/* Finally create the device mapper. */
+	dmt = dm_task_create(DM_DEVICE_CREATE);
+	if (dmt == NULL)
+		goto error;
+
+	if (!dm_task_set_name(dmt, dm_name))
+		goto error;
+
+	if (!dm_task_set_ro(dmt))
+		goto error;
+
+	if (!dm_task_add_target(dmt, start, size, ttype, verity + n))
+		goto error;
+
+	if (!dm_task_set_cookie(dmt, &cookie, 0))
+		goto error;
+
+	if (!dm_task_run(dmt))
+		goto error;
+
+	/* Make sure the node exists before we continue. */
+	dm_udev_wait(cookie);
+
+	*dm_path_ret = dm_path;
+	*dm_name_ret = dm_name;
+	goto exit;
+
+error:
+	ret = -errno;
+	free(dm_name);
+	free(dm_path);
+exit:
+	free(verity);
+	if (dmt)
+		dm_task_destroy(dmt);
+#endif
+	return ret;
+}
+
+/* Tear down the device mapper target. */
+static int dm_detach(const char *dm_name)
+{
+	int ret = 0;
+#if USE_device_mapper
+	struct dm_task *dmt;
+
+	dmt = dm_task_create(DM_DEVICE_REMOVE);
+	if (dmt == NULL)
+		goto error;
+
+	if (!dm_task_set_name(dmt, dm_name))
+		goto error;
+
+	if (!dm_task_run(dmt))
+		goto error;
+
+	goto exit;
+
+error:
+	ret = -errno;
+exit:
+	dm_task_destroy(dmt);
+#endif
+	return ret;
+}
+
 /*
  * Unmounts anything we mounted in this mount namespace in the opposite order
  * that they were mounted.
@@ -790,6 +908,14 @@ static int unmount_external_mounts(struct container *c)
 		FREE_AND_NULL(c->loopdevs[c->num_loopdevs]);
 	}
 	FREE_AND_NULL(c->loopdevs);
+
+	while (c->num_device_mappers) {
+		c->num_device_mappers--;
+		if (dm_detach(c->device_mappers[c->num_device_mappers]))
+			ret = -errno;
+		FREE_AND_NULL(c->device_mappers[c->num_device_mappers]);
+	}
+	FREE_AND_NULL(c->device_mappers);
 
 	return ret;
 }
@@ -828,6 +954,7 @@ static int mount_external(const char *src, const char *dest, const char *type,
 static int do_container_mount(struct container *c,
 			      const struct container_mount *mnt)
 {
+	char *dm_source = NULL;
 	char *loop_source = NULL;
 	char *source = NULL;
 	char *dest = NULL;
@@ -864,11 +991,28 @@ static int do_container_mount(struct container *c,
 		if (rc)
 			goto error_free_return;
 
-		/* Save this to unmount when shutting down. */
+		/* Save this to cleanup when shutting down. */
 		rc = strdup_and_free(&c->loopdevs[c->num_loopdevs], source);
 		if (rc)
 			goto error_free_return;
 		c->num_loopdevs++;
+	}
+	if (mnt->verity) {
+		/* Set this device up via dm-verity. */
+		char *dm_name;
+		dm_source = source;
+		source = NULL;
+		rc = dm_setup(&source, &dm_name, dm_source, mnt->verity);
+		if (rc)
+			goto error_free_return;
+
+		/* Save this to cleanup when shutting down. */
+		rc = strdup_and_free(&c->device_mappers[c->num_device_mappers],
+				     dm_name);
+		free(dm_name);
+		if (rc)
+			goto error_free_return;
+		c->num_device_mappers++;
 	}
 	if (mnt->mount_in_ns) {
 		/* We can mount this with minijail. */
@@ -894,6 +1038,7 @@ error_free_return:
 	if (!rc)
 		rc = -errno;
 exit:
+	free(dm_source);
 	free(loop_source);
 	free(source);
 	free(dest);
@@ -916,6 +1061,9 @@ static int do_container_mounts(struct container *c,
 		return -errno;
 	c->loopdevs = calloc(config->num_mounts, sizeof(*c->loopdevs));
 	if (!c->loopdevs)
+		return -errno;
+	c->device_mappers = calloc(config->num_mounts, sizeof(*c->device_mappers));
+	if (!c->device_mappers)
 		return -errno;
 
 	for (i = 0; i < config->num_mounts; ++i) {

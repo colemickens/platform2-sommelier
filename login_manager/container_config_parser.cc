@@ -269,6 +269,7 @@ bool ParseRuntimeMount(const base::DictionaryValue& runtime_mounts_dict,
                                  type.c_str(),
                                  option_string.length() ? option_string.c_str()
                                      : NULL,
+                                 NULL,
                                  flags,
                                  uid,
                                  gid,

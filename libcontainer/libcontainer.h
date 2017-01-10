@@ -94,6 +94,7 @@ int container_config_alt_syscall_table(struct container_config *c,
  * destination - Mount point in the container, e.g. "/dev".
  * type - Mount type, e.g. "tmpfs", "selinuxfs", or "devpts".
  * data - Mount data for extra options, e.g. "newinstance" or "ptmxmode=0000".
+ * verity - dm-verity options (if used).
  * flags - Mount flags as defined in mount(2).
  * uid - uid to chown mount point to if created.
  * gid - gid to chown mount point to if created.
@@ -108,6 +109,7 @@ int container_config_add_mount(struct container_config *c,
 			       const char *destination,
 			       const char *type,
 			       const char *data,
+			       const char *verity,
 			       int flags,
 			       int uid,
 			       int gid,

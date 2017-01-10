@@ -8,6 +8,18 @@
     'include_dirs': [
       '.',
     ],
+    'defines': [
+      'USE_device_mapper=<(USE_device_mapper)',
+    ],
+    'conditions': [
+      ['USE_device_mapper == 1', {
+        'variables': {
+          'deps': [
+            'devmapper',
+          ],
+        },
+      }],
+    ],
   },
   'targets': [
     {
