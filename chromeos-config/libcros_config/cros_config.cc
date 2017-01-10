@@ -116,6 +116,7 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
   }
   model_offset_ = node;
   inited_ = true;
+  LOG(INFO) << "Using master configuration for model " << model_;
 
   return true;
 }
