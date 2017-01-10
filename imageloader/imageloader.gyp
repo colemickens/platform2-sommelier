@@ -5,59 +5,54 @@
   'target_defaults': {
     'variables': {
       'deps': [
+        'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
-        'dbus-c++-1',
+        'libminijail',
       ],
-      # imageloader uses try/catch to interact with dbus-c++
-      'enable_exceptions': 1,
     },
   },
-    'targets': [
+  'targets': [
     {
-      'target_name': 'libimageloader_common',
-      'type': 'static_library',
-      'sources': [
-        'imageloader_common.cc',
-        'imageloader_common.h',
-      ],
-    },
-    {
-      'target_name': 'imageloader-glue',
+      'target_name': 'imageloader-adaptors',
       'type': 'none',
       'variables': {
-        'xml2cpp_type': 'adaptor',
-        'xml2cpp_in_dir': '.',
-        'xml2cpp_out_dir': 'include',
+        'dbus_adaptors_out_dir': 'include/dbus_adaptors',
+        'dbus_service_config': 'dbus_adaptors/dbus-service-config.json',
       },
       'sources': [
-        '<(xml2cpp_in_dir)/imageloader-glue.xml',
+        'dbus_adaptors/org.chromium.ImageLoaderInterface.xml',
       ],
-      'includes': ['../../platform2/common-mk/xml2cpp.gypi'],
+      'includes': ['../../platform2/common-mk/generate-dbus-adaptors.gypi'],
     },
     {
-      'target_name': 'imageloadclient-glue',
+      'target_name': 'imageloader-proxies',
       'type': 'none',
-      'variables': {
-        'xml2cpp_type': 'proxy',
-        'xml2cpp_in_dir': '.',
-        'xml2cpp_out_dir': 'include',
-      },
-      'sources': [
-        '<(xml2cpp_in_dir)/imageloadclient-glue.xml',
+      'actions': [
+        {
+          'action_name': 'imageloader-dbus-client',
+          'variables': {
+        'dbus_service_config': 'dbus_adaptors/dbus-service-config.json',
+        'proxy_output_file': 'include/dbus_adaptors/dbus-proxies.h',
+          },
+          'sources': [
+        'dbus_adaptors/org.chromium.ImageLoaderInterface.xml',
+          ],
+          'includes': ['../../platform2/common-mk/generate-dbus-proxies.gypi'],
+        },
       ],
-      'includes': ['../../platform2/common-mk/xml2cpp.gypi'],
     },
     {
       'target_name': 'libimageloader_static',
       'type': 'static_library',
       'dependencies': [
-        'libimageloader_common',
+        'imageloader-adaptors',
       ],
       'sources': [
         'component.cc',
         'component.h',
-        'imageloader_impl.cc',
+        'imageloader.cc',
         'imageloader.h',
+        'imageloader_impl.cc',
         'verity_mounter.h',
         'verity_mounter.cc',
       ],
@@ -70,27 +65,12 @@
       },
       'dependencies': [
         'libimageloader_static',
-        'imageloader-glue',
+        'imageloader-adaptors',
       ],
       'sources': [
         'imageloader.h',
-        'imageloader-glue.h',
         'imageloader_main.cc',
       ],
-    },
-    {
-      'target_name': 'imageloadclient',
-      'type': 'executable',
-      'dependencies': [
-        'imageloadclient-glue',
-        'libimageloader_common',
-      ],
-      'sources': [
-        'imageloadclient.cc',
-        'imageloadclient.h',
-        'imageloadclient-glue.h',
-      ],
-      'libraries': ['-lpthread'],
     },
     ],
     'conditions': [
@@ -105,15 +85,14 @@
           'includes': ['../../platform2/common-mk/common_test.gypi'],
           'dependencies': [
             'libimageloader_static',
-            'libimageloader_common',
           ],
           'sources': [
             'run_tests.cc',
             'component_unittest.cc',
             'component.h',
             'imageloader_unittest.cc',
+            'imageloader.cc',
             'imageloader.h',
-            'mock_verity_mounter.h',
             'test_utilities.cc',
             'test_utilities.h',
           ],

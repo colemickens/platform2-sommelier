@@ -1,0 +1,7 @@
+{
+  "service_name": "org.chromium.ImageLoader",
+  "object_manager": {
+    "name": "org.chromium.ImageLoader.ObjectManager",
+    "object_path": "/org/chromium/ImageLoader"
+  }
+}

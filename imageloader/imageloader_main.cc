@@ -9,7 +9,6 @@
 #include <brillo/flag_helper.h>
 
 #include "imageloader.h"
-#include "imageloader_common.h"
 #include "imageloader_impl.h"
 #include "verity_mounter.h"
 
@@ -29,10 +28,6 @@ constexpr char kComponentsPath[] = "/var/lib/imageloader";
 constexpr char kMountPath[] = "/run/imageloader";
 
 int main(int argc, char** argv) {
-  signal(SIGTERM, imageloader::OnQuit);
-  signal(SIGINT, imageloader::OnQuit);
-
-  DEFINE_bool(o, false, "run once");
   DEFINE_bool(mount, false,
               "Rather than starting a dbus daemon, verify and mount a single "
               "component and exit immediately.");
@@ -45,40 +40,28 @@ int main(int argc, char** argv) {
   logging::LoggingSettings settings;
   logging::InitLogging(settings);
 
-  std::vector<uint8_t> key(std::begin(kProdPublicKey), std::end(kProdPublicKey));
+  std::vector<uint8_t> key(std::begin(kProdPublicKey),
+                           std::end(kProdPublicKey));
   auto verity_mounter = base::MakeUnique<imageloader::VerityMounter>();
   imageloader::ImageLoaderConfig config(key, kComponentsPath, kMountPath,
                                         std::move(verity_mounter));
 
   if (FLAGS_mount) {
     if (FLAGS_mount_point == "" || FLAGS_mount_component == "") {
-      LOG(ERROR) << "--mount_component=name and --mount_point=path must be set "
+      LOG(FATAL) << "--mount_component=name and --mount_point=path must be set "
                     "with --mount";
-      return 1;
     }
     // Access the ImageLoaderImpl directly to avoid needless dbus dependencies,
     // which may not be available at early boot.
     imageloader::ImageLoaderImpl loader(std::move(config));
-    return loader.LoadComponent(FLAGS_mount_component, FLAGS_mount_point) ? 0
-                                                                          : 1;
+    if (!loader.LoadComponent(FLAGS_mount_component, FLAGS_mount_point)) {
+      LOG(FATAL) << "Failed to verify and mount component.";
+    }
+    return 0;
   }
 
-  DBus::BusDispatcher dispatcher;
-  DBus::default_dispatcher = &dispatcher;
-  DBus::Connection conn = DBus::Connection::SystemBus();
-  if (!conn.acquire_name(imageloader::kImageLoaderName)) {
-    LOG(ERROR) << "Failed to acquire dbus service with name: "
-               << imageloader::kImageLoaderName;
-    return 1;
-  }
-
-  imageloader::ImageLoader helper(&conn, std::move(config));
-
-  if (FLAGS_o) {
-    dispatcher.dispatch_pending();
-  } else {
-    dispatcher.enter();
-  }
+  imageloader::ImageLoader daemon(std::move(config));
+  daemon.Run();
 
   return 0;
 }

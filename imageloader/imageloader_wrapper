@@ -9,6 +9,5 @@ if [ -L "${IMAGELOADER_DIR}" -o ! -d "${IMAGELOADER_DIR}" ]; then
   mkdir -m=0755 "${IMAGELOADER_DIR}"
   chown imageloaderd:imageloaderd "${IMAGELOADER_DIR}"
 fi
-exec minijail0 -l -n -p -r \
-  -S /opt/google/imageloader/imageloader-seccomp.policy \
-  -t -u imageloaderd -g imageloaderd -v -- /usr/sbin/imageloader "${@}"
+
+/usr/sbin/imageloader "${@}"

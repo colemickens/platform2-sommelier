@@ -16,9 +16,9 @@
 #include <base/files/important_file_writer.h>
 #include <base/logging.h>
 #include <base/version.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "component.h"
-#include "imageloader_common.h"
 
 namespace imageloader {
 

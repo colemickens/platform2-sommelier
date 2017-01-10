@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  Copyright 2016 The Chromium Authors. All rights reserved.
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+-->
+<node name="/org/chromium/ImageLoader"
+  xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+<interface name="org.chromium.ImageLoaderInterface">
+  <method name="RegisterComponent">
+    <tp:docstring>
+      Registers a component with ImageLoader. ImageLoader will verify
+      the integrity and Google signature of the component and, if and
+      only if valid, copy the component into its internal storage.
+    </tp:docstring>
+    <arg name="name" type="s" direction="in">
+      <tp:docstring>
+        The name of the component.
+      </tp:docstring>
+    </arg>
+    <arg name="version" type="s" direction="in">
+      <tp:docstring>
+        The version of the component.
+      </tp:docstring>
+    </arg>
+    <arg name="component_folder_abs_path" type="s" direction="in">
+      <tp:docstring>
+        The absolute path to the current component folder that ImageLoader
+        will verify and copy the component from.
+      </tp:docstring>
+    </arg>
+    <arg name="success" type="b" direction="out">
+      <tp:docstring>
+        The result of the component registration (success or failure).
+      </tp:docstring>
+    </arg>
+  </method>
+  <method name="GetComponentVersion">
+    <tp:docstring>
+      Returns the currently registered version of the given component.
+    </tp:docstring>
+    <arg name="name" type="s" direction="in">
+    <tp:docstring>
+      The name of the component.
+    </tp:docstring>
+    </arg>
+    <arg name="version" type="s" direction="out">
+    <tp:docstring>
+      The returned version of the component.
+    </tp:docstring>
+    </arg>
+  </method>
+</interface>
+</node>
