@@ -41,7 +41,11 @@ extern const char kWallpaperProperty[];
 // content_shell, app_shell, etc.) rather than just applying to the Chrome
 // browser should be added to libchromeos's ChromiumCommandBuilder class
 // instead.
-void PerformChromeSetup(bool* is_developer_end_user_out,
+//
+// |cros_config| (if non-null) provides the master configuration (used to look
+// up the default wallpaper filename).
+void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
+                        bool* is_developer_end_user_out,
                         std::map<std::string, std::string>* env_vars_out,
                         std::vector<std::string>* args_out,
                         uid_t* uid_out);

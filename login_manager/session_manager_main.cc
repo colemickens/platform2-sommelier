@@ -29,6 +29,7 @@
 #include <base/time/time.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <brillo/syslog_logging.h>
+#include <chromeos-config/libcros_config/cros_config.h>
 #include <linux/limits.h>
 #include <rootdev/rootdev.h>
 
@@ -143,12 +144,17 @@ int main(int argc, char* argv[]) {
       base::SplitString(command_flag, base::kWhitespaceASCII,
                         base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
-  // Start the X server and set things up for running Chrome.
+  // Set things up for running Chrome.
+  std::unique_ptr<brillo::CrosConfig> cros_config =
+      base::MakeUnique<brillo::CrosConfig>();
+  if (!cros_config->Init())
+    cros_config = nullptr;
   bool is_developer_end_user = false;
   map<string, string> env_vars;
   vector<string> args;
   uid_t uid = 0;
-  PerformChromeSetup(&is_developer_end_user, &env_vars, &args, &uid);
+  PerformChromeSetup(
+      cros_config.get(), &is_developer_end_user, &env_vars, &args, &uid);
   command.insert(command.end(), args.begin(), args.end());
 
   // Shim that wraps system calls, file system ops, etc.

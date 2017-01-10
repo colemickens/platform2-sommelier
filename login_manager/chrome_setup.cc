@@ -54,8 +54,11 @@ bool AddWallpaperFlags(
       "/usr/share/chromeos-assets/wallpaper/%s_large.jpg", file_type.c_str()));
   const base::FilePath small_path(base::StringPrintf(
       "/usr/share/chromeos-assets/wallpaper/%s_small.jpg", file_type.c_str()));
-  if (!path_exists.Run(large_path) || !path_exists.Run(small_path))
+  if (!path_exists.Run(large_path) || !path_exists.Run(small_path)) {
+    LOG(WARNING) << "Could not find both paths: " << large_path.MaybeAsASCII()
+                 << " and " << small_path.MaybeAsASCII();
     return false;
+  }
 
   builder->AddArg(base::StringPrintf("--%s-wallpaper-large=%s",
                                      flag_type.c_str(),
@@ -207,7 +210,8 @@ void AddSystemFlags(ChromiumCommandBuilder* builder) {
 }
 
 // Adds UI-related flags to the command line.
-void AddUiFlags(ChromiumCommandBuilder* builder) {
+void AddUiFlags(ChromiumCommandBuilder* builder,
+                brillo::CrosConfigInterface* cros_config) {
   const base::FilePath data_dir = GetDataDir(builder);
 
   // Force OOBE on test images that have requested it.
@@ -274,7 +278,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder) {
     builder->AddArg("--ash-animate-from-boot-splash-screen");
   }
 
-  SetUpWallpaperFlags(builder, nullptr, base::Bind(base::PathExists));
+  SetUpWallpaperFlags(builder, cros_config, base::Bind(base::PathExists));
 
   // TODO(yongjaek): Remove the following flag when the kiosk mode app is ready
   // at crbug.com/309806.
@@ -358,7 +362,8 @@ void SetUpWallpaperFlags(
   AddWallpaperFlags(builder, "guest", "guest", path_exists);
 }
 
-void PerformChromeSetup(bool* is_developer_end_user_out,
+void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
+                        bool* is_developer_end_user_out,
                         std::map<std::string, std::string>* env_vars_out,
                         std::vector<std::string>* args_out,
                         uid_t* uid_out) {
@@ -377,7 +382,7 @@ void PerformChromeSetup(bool* is_developer_end_user_out,
   CreateDirectories(&builder);
   InitCrashHandling(&builder);
   AddSystemFlags(&builder);
-  AddUiFlags(&builder);
+  AddUiFlags(&builder, cros_config);
   AddEnterpriseFlags(&builder);
   AddVmodulePatterns(&builder);
 
