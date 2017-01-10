@@ -32,7 +32,7 @@ CrosConfig::CrosConfig() {}
 CrosConfig::~CrosConfig() {}
 
 bool CrosConfig::Init() {
-  const base::FilePath::CharType* const argv[] = {"mosys", "-s", "model"};
+  const base::FilePath::CharType* const argv[] = {"mosys", "platform", "model"};
   base::CommandLine cmdline(arraysize(argv), argv);
 
   return InitCommon(base::FilePath(kConfigDtbPath), cmdline);
