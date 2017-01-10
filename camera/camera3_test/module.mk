@@ -10,7 +10,7 @@ include pc_utils.mk
 camera3_test_PC_DEPS := gbm libdrm
 camera3_test_CPPFLAGS := $(call get_pc_cflags,$(camera3_test_PC_DEPS))
 camera3_test_LDLIBS := $(call get_pc_libs,$(camera3_test_PC_DEPS)) -ldl \
-	$(shell gtest-config --libs) -lgtest_main
+	$(shell gtest-config --libs)
 
 CXX_BINARY(camera3_test/arc_camera3_test): CPPFLAGS += $(camera3_test_CPPFLAGS)
 CXX_BINARY(camera3_test/arc_camera3_test): LDLIBS += $(camera3_test_LDLIBS)

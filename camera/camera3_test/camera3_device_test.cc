@@ -39,15 +39,18 @@ int32_t Camera3TestGralloc::Allocate(int32_t width,
   gbm_usage = GrallocConvertFlags(usage);
 
   if (!gbm_device_is_format_supported(gbm_dev_, gbm_format, gbm_usage)) {
+    LOG(ERROR) << "Unsupported format " << gbm_format;
     return -EINVAL;
   }
 
   bo = gbm_bo_create(gbm_dev_, width, height, gbm_format, gbm_usage);
   if (!bo) {
+    LOG(ERROR) << "Failed to create bo (" << width << "x" << height << ")";
     return -ENOBUFS;
   }
 
   gralloc_drm_handle_t* hnd = new gralloc_drm_handle_t();
+  memset(hnd, 0, sizeof(gralloc_drm_handle_t));
 
   hnd->base.version = sizeof(hnd->base);
   hnd->base.numInts = GRALLOC_DRM_HANDLE_NUM_INTS;
@@ -59,8 +62,8 @@ int32_t Camera3TestGralloc::Allocate(int32_t width,
   hnd->stride = gbm_bo_get_stride(bo);
   hnd->format = gbm_bo_get_format(bo);
   hnd->usage = usage;
-  hnd->data_owner = reinterpret_cast<int32_t>(gbm_bo_get_user_data(bo));
   hnd->data = reinterpret_cast<intptr_t>(bo);
+  hnd->magic = GRALLOC_DRM_HANDLE_MAGIC;
 
   *handle = reinterpret_cast<buffer_handle_t>(hnd);
   *stride = hnd->stride;
@@ -144,9 +147,9 @@ struct gbm_device* Camera3TestGralloc::CreateGbmDevice() {
 }
 
 uint64_t Camera3TestGralloc::GrallocConvertFlags(int32_t flags) {
-  uint64_t usage = 0;
+  uint64_t usage = GBM_BO_USE_RENDERING;
 
-  // TODO: conversion
+  // TODO: conversion from Gralloc flags to GBM flags
 
   return usage;
 }
@@ -156,7 +159,7 @@ uint32_t Camera3TestGralloc::GrallocConvertFormat(int32_t format) {
     case HAL_PIXEL_FORMAT_BGRA_8888:
       return GBM_FORMAT_ARGB8888;
     case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
-      return GBM_FORMAT_MOD_NONE;  // TODO
+      return GBM_FORMAT_ARGB8888;
     case HAL_PIXEL_FORMAT_RGB_565:
       return GBM_FORMAT_RGB565;
     case HAL_PIXEL_FORMAT_RGB_888:
@@ -169,9 +172,13 @@ uint32_t Camera3TestGralloc::GrallocConvertFormat(int32_t format) {
       return GBM_FORMAT_YUV420;
     case HAL_PIXEL_FORMAT_YV12:
       return GBM_FORMAT_YVU420;
+    case HAL_PIXEL_FORMAT_BLOB:
+      return GBM_FORMAT_ARGB8888;
+    default:
+      LOG(ERROR) << "Unsupported format conversion " << format;
   }
 
-  return GBM_FORMAT_MOD_NONE;  // TODO
+  return GBM_FORMAT_ARGB8888;
 }
 
 int Camera3Device::Initialize(const Camera3Module* cam_module,
@@ -212,7 +219,6 @@ void Camera3Device::Destroy() {
   for (auto const& it : stream_buffers_) {
     for (auto const& buffer : it.second) {
       EXPECT_EQ(0, gralloc_.Free(*buffer)) << "Buffer is not freed correctly";
-      delete buffer;
     }
   }
 
@@ -297,26 +303,26 @@ int Camera3Device::AllocateOutputStreamBuffers(
       height = 1;
     }
 
-    buffer_handle_t* buffer = new buffer_handle_t();
+    std::unique_ptr<buffer_handle_t> buffer(new buffer_handle_t);
     int32_t stride;
 
     EXPECT_EQ(0, gralloc_.Allocate(width, height, format,
                                    GRALLOC_USAGE_SW_WRITE_OFTEN |
                                        GRALLOC_USAGE_HW_CAMERA_WRITE,
-                                   buffer, &stride))
+                                   buffer.get(), &stride))
         << "Gralloc allocation fails";
 
     camera3_stream_buffer_t stream_buffer;
     {
       base::AutoLock l2(stream_buffers_lock_);
       camera3_stream_t* stream = const_cast<camera3_stream_t*>(&it);
-      stream_buffers_[stream].insert(buffer);
 
       stream_buffer = {.stream = stream,
-                       .buffer = buffer,
+                       .buffer = buffer.get(),
                        .status = CAMERA3_BUFFER_STATUS_OK,
                        .acquire_fence = -1,
                        .release_fence = -1};
+      stream_buffers_[stream].insert(std::move(buffer));
     }
     output_buffers->push_back(stream_buffer);
   }
@@ -328,21 +334,33 @@ int Camera3Device::FreeOutputStreamBuffers(
     const std::vector<camera3_stream_buffer_t>& output_buffers) {
   base::AutoLock l(stream_buffers_lock_);
 
-  for (const auto& stream_buffer : output_buffers) {
-    if ((stream_buffers_.find(stream_buffer.stream) == stream_buffers_.end()) ||
-        (stream_buffers_[stream_buffer.stream].find(stream_buffer.buffer) ==
-         stream_buffers_[stream_buffer.stream].end())) {
+  for (const auto& output_buffer : output_buffers) {
+    if (stream_buffers_.find(output_buffer.stream) == stream_buffers_.end() ||
+        !output_buffer.buffer) {
+      LOG(ERROR) << "Failed to find configured stream or buffer is invalid";
       return -EINVAL;
     }
-    int result = gralloc_.Free(*stream_buffer.buffer);
-    if (result != 0) {
-      return result;
+
+    bool found = false;
+    for (const auto& it : stream_buffers_[output_buffer.stream]) {
+      if (*it == *output_buffer.buffer) {
+        int result = gralloc_.Free(*it);
+        if (result != 0) {
+          LOG(ERROR) << "Failed to free output buffer";
+          return result;
+        }
+        stream_buffers_[output_buffer.stream].erase(it);
+        if (stream_buffers_[output_buffer.stream].empty()) {
+          stream_buffers_.erase(output_buffer.stream);
+        }
+        found = true;
+        break;
+      }
     }
-    stream_buffers_[stream_buffer.stream].erase(stream_buffer.buffer);
-    if (stream_buffers_[stream_buffer.stream].empty()) {
-      stream_buffers_.erase(stream_buffer.stream);
+    if (!found) {
+      LOG(ERROR) << "Failed to find output buffer";
+      return -EINVAL;
     }
-    delete stream_buffer.buffer;
   }
   return 0;
 }

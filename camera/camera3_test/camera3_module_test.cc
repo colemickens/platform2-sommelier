@@ -4,6 +4,8 @@
 
 #include "camera3_module_fixture.h"
 
+#include <base/at_exit.h>
+
 namespace camera3_test {
 
 // Camera module
@@ -216,3 +218,9 @@ TEST_F(Camera3ModuleFixture, RequiredFormats) {
 }
 
 }  // namespace camera3_test
+
+int main(int argc, char** argv) {
+  base::AtExitManager exit_manager;
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}

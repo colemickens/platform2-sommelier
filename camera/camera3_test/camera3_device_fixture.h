@@ -5,6 +5,7 @@
 #ifndef CAMERA3_TEST_CAMERA3_DEVICE_FIXTURE_H_
 #define CAMERA3_TEST_CAMERA3_DEVICE_FIXTURE_H_
 
+#include <memory>
 #include <unordered_map>
 
 #include <base/synchronization/lock.h>
@@ -99,7 +100,8 @@ class Camera3Device {
   Camera3TestGralloc gralloc_;
 
   // Store allocated buffers while easy to lookup and remove
-  std::unordered_map<camera3_stream_t*, std::set<buffer_handle_t*>>
+  std::unordered_map<camera3_stream_t*,
+                     std::set<std::unique_ptr<buffer_handle_t>>>
       stream_buffers_;
 
   base::Lock stream_lock_;
