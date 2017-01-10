@@ -99,7 +99,8 @@ const char kPowerSupplyMaxPowerName[] = "Power.PowerSupplyMaxPower";
 const int kPowerSupplyMaxPowerMax = 101;
 
 const char kPowerSupplyTypeName[] = "Power.PowerSupplyType";
-const int kPowerSupplyTypeMax = 20;
+
+const char kConnectedChargingPortsName[] = "Power.ConnectedChargingPorts";
 
 const char kExternalBrightnessRequestResultName[] =
     "Power.ExternalBrightnessRequestResult";

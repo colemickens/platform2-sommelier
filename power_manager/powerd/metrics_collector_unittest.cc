@@ -102,6 +102,7 @@ class MetricsCollectorTest : public Test {
     IgnoreEnumMetric(kPowerSupplyTypeName);
     IgnoreEnumMetric(kPowerSupplyMaxVoltageName);
     IgnoreEnumMetric(kPowerSupplyMaxPowerName);
+    IgnoreEnumMetric(kConnectedChargingPortsName);
   }
 
   // Updates |power_status_|'s |line_power_on| member and passes it to
@@ -671,17 +672,74 @@ TEST_F(MetricsCollectorTest, PowerSupplyType) {
   power_status_.line_power_type = "USB_PD";
   ExpectEnumMetric(kPowerSupplyTypeName,
                    static_cast<int>(PowerSupplyType::USB_PD),
-                   kPowerSupplyTypeMax);
+                   static_cast<int>(PowerSupplyType::MAX));
   collector_.HandlePowerStatusUpdate(power_status_);
 
   power_status_.line_power_type = "BOGUS";
   ExpectEnumMetric(kPowerSupplyTypeName,
                    static_cast<int>(PowerSupplyType::OTHER),
-                   kPowerSupplyTypeMax);
+                   static_cast<int>(PowerSupplyType::MAX));
   collector_.HandlePowerStatusUpdate(power_status_);
 
   // Nothing should be reported when line power is off.
   power_status_.line_power_on = false;
+  collector_.HandlePowerStatusUpdate(power_status_);
+}
+
+TEST_F(MetricsCollectorTest, ConnectedChargingPorts) {
+  metrics_to_test_ = { kConnectedChargingPortsName };
+  IgnoreHandlePowerStatusUpdateMetrics();
+  Init();
+
+  // Start out without any ports.
+  ExpectEnumMetric(kConnectedChargingPortsName,
+                   static_cast<int>(ConnectedChargingPorts::NONE),
+                   static_cast<int>(ConnectedChargingPorts::MAX));
+  collector_.HandlePowerStatusUpdate(power_status_);
+
+  // Add a single disconnected port.
+  power_status_.ports.emplace_back();
+  ExpectEnumMetric(kConnectedChargingPortsName,
+                   static_cast<int>(ConnectedChargingPorts::NONE),
+                   static_cast<int>(ConnectedChargingPorts::MAX));
+  collector_.HandlePowerStatusUpdate(power_status_);
+
+  // Connect the port to a dedicated charger.
+  power_status_.ports[0].connection =
+      system::PowerStatus::Port::Connection::DEDICATED_SOURCE;
+  ExpectEnumMetric(kConnectedChargingPortsName,
+                   static_cast<int>(ConnectedChargingPorts::PORT1),
+                   static_cast<int>(ConnectedChargingPorts::MAX));
+  collector_.HandlePowerStatusUpdate(power_status_);
+
+  // Add a second disconnected port.
+  power_status_.ports.emplace_back();
+  ExpectEnumMetric(kConnectedChargingPortsName,
+                   static_cast<int>(ConnectedChargingPorts::PORT1),
+                   static_cast<int>(ConnectedChargingPorts::MAX));
+  collector_.HandlePowerStatusUpdate(power_status_);
+
+  // Connect the second port to a dual-role device.
+  power_status_.ports[1].connection =
+      system::PowerStatus::Port::Connection::DUAL_ROLE;
+  ExpectEnumMetric(kConnectedChargingPortsName,
+                   static_cast<int>(ConnectedChargingPorts::PORT1_PORT2),
+                   static_cast<int>(ConnectedChargingPorts::MAX));
+  collector_.HandlePowerStatusUpdate(power_status_);
+
+  // Disconnect the first port.
+  power_status_.ports[0].connection =
+      system::PowerStatus::Port::Connection::NONE;
+  ExpectEnumMetric(kConnectedChargingPortsName,
+                   static_cast<int>(ConnectedChargingPorts::PORT2),
+                   static_cast<int>(ConnectedChargingPorts::MAX));
+  collector_.HandlePowerStatusUpdate(power_status_);
+
+  // Add a third port, which this code doesn't support.
+  power_status_.ports.emplace_back();
+  ExpectEnumMetric(kConnectedChargingPortsName,
+                   static_cast<int>(ConnectedChargingPorts::TOO_MANY_PORTS),
+                   static_cast<int>(ConnectedChargingPorts::MAX));
   collector_.HandlePowerStatusUpdate(power_status_);
 }
 

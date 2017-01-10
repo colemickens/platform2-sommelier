@@ -18,6 +18,9 @@
 #include "power_manager/powerd/policy/backlight_controller.h"
 
 namespace power_manager {
+
+using system::PowerStatus;
+
 namespace metrics {
 namespace {
 
@@ -25,6 +28,35 @@ namespace {
 // are logged for the dark resume triggered by |wake_reason|.
 std::string WakeReasonToHistogramName(const std::string& wake_reason) {
   return std::string("Power.DarkResumeWakeDurationMs.").append(wake_reason);
+}
+
+// Returns true if port |index| exists in |status| and has a connected dedicated
+// source or dual-role device.
+bool ChargingPortConnected(const PowerStatus& status, size_t index) {
+  if (index >= status.ports.size())
+    return false;
+
+  const PowerStatus::Port::Connection conn = status.ports[index].connection;
+  return conn == PowerStatus::Port::Connection::DEDICATED_SOURCE ||
+         conn == PowerStatus::Port::Connection::DUAL_ROLE;
+}
+
+// Returns a value describing which power ports are connected.
+ConnectedChargingPorts GetConnectedChargingPorts(const PowerStatus& status) {
+  // TODO(derat): Add more values if we ship systems with more than two ports.
+  if (status.ports.size() > 2u)
+    return ConnectedChargingPorts::TOO_MANY_PORTS;
+
+  const bool port1_connected = ChargingPortConnected(status, 0);
+  const bool port2_connected = ChargingPortConnected(status, 1);
+  if (port1_connected && port2_connected)
+    return ConnectedChargingPorts::PORT1_PORT2;
+  else if (port1_connected)
+    return ConnectedChargingPorts::PORT1;
+  else if (port2_connected)
+    return ConnectedChargingPorts::PORT2;
+  else
+    return ConnectedChargingPorts::NONE;
 }
 
 }  // namespace
@@ -45,7 +77,7 @@ void MetricsCollector::Init(
     PrefsInterface* prefs,
     policy::BacklightController* display_backlight_controller,
     policy::BacklightController* keyboard_backlight_controller,
-    const system::PowerStatus& power_status) {
+    const PowerStatus& power_status) {
   prefs_ = prefs;
   display_backlight_controller_ = display_backlight_controller;
   keyboard_backlight_controller_ = keyboard_backlight_controller;
@@ -137,8 +169,7 @@ void MetricsCollector::HandleSessionStateChange(SessionState state) {
   }
 }
 
-void MetricsCollector::HandlePowerStatusUpdate(
-    const system::PowerStatus& status) {
+void MetricsCollector::HandlePowerStatusUpdate(const PowerStatus& status) {
   const bool previously_on_line_power = last_power_status_.line_power_on;
   const bool previously_using_unknown_type =
       previously_on_line_power &&
@@ -173,7 +204,7 @@ void MetricsCollector::HandlePowerStatusUpdate(
       LOG(WARNING) << "Unknown power supply type " << status.line_power_type;
     SendEnumMetric(kPowerSupplyTypeName,
                    static_cast<int>(type),
-                   kPowerSupplyTypeMax);
+                   static_cast<int>(PowerSupplyType::MAX));
 
     // Sent as enums to avoid exponential histogram's exponentially-sized
     // buckets.
@@ -184,10 +215,11 @@ void MetricsCollector::HandlePowerStatusUpdate(
                    static_cast<int>(round(status.line_power_max_voltage *
                                           status.line_power_max_current)),
                    kPowerSupplyMaxPowerMax);
-
-    // TODO(derat): Also report which port is active and which ports are
-    // connected: http://crbug.com/674338
   }
+
+  SendEnumMetric(kConnectedChargingPortsName,
+                 static_cast<int>(GetConnectedChargingPorts(status)),
+                 static_cast<int>(ConnectedChargingPorts::MAX));
 
   GenerateBatteryDischargeRateMetric();
   GenerateBatteryDischargeRateWhileSuspendedMetric();

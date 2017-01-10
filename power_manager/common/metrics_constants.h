@@ -94,7 +94,8 @@ extern const char kPowerSupplyMaxPowerName[];
 extern const int kPowerSupplyMaxPowerMax;
 
 extern const char kPowerSupplyTypeName[];
-extern const int kPowerSupplyTypeMax;
+
+extern const char kConnectedChargingPortsName[];
 
 extern const char kExternalBrightnessRequestResultName[];
 extern const char kExternalBrightnessReadResultName[];
@@ -129,6 +130,19 @@ enum class PowerSupplyType {
   USB_C = 6,
   USB_PD = 7,
   USB_PD_DRP = 8,
+  // Keep this last and increment it if a new value is inserted.
+  MAX = 9,
+};
+
+// Values for kConnectedChargingPortsName. Do not renumber.
+enum class ConnectedChargingPorts {
+  NONE = 0,
+  PORT1 = 1,
+  PORT2 = 2,
+  PORT1_PORT2 = 3,
+  TOO_MANY_PORTS = 4,
+  // Keep this last and increment it if a new value is inserted.
+  MAX = 5,
 };
 
 }  // namespace metrics
