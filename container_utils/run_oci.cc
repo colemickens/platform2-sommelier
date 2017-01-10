@@ -330,6 +330,9 @@ int main(int argc, char **argv) {
     case 'h':
       print_help(argv[0]);
       return 0;
+    default:
+      print_help(argv[0]);
+      return 1;
     }
   }
 
@@ -340,7 +343,7 @@ int main(int argc, char **argv) {
   }
 
   int path_arg_index = optind;
-  for(optind++; optind < argc; optind++)
+  for (optind++; optind < argc; optind++)
     container_options.extra_program_args.push_back(std::string(argv[optind]));
 
   return RunOci(base::FilePath(argv[path_arg_index]), container_options);
