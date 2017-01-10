@@ -214,21 +214,26 @@ class HomeDirs {
   // Loads the device policy, either by initializing it or reloading the
   // existing one.
   void LoadDevicePolicy();
+  // Returns the path of the specified tracked directory (i.e. a directory which
+  // we can locate even when without the key).
+  base::FilePath GetTrackedDirectory(const base::FilePath& user_dir,
+                                     const base::FilePath& tracked_dir_name);
   typedef base::Callback<void(const base::FilePath&)> CryptohomeCallback;
-  // Runs the supplied callback for every unmounted cryptohome.
+  // Runs the supplied callback for every unmounted cryptohome with the user dir
+  // path.
   void DoForEveryUnmountedCryptohome(const CryptohomeCallback& cryptohome_cb);
   // Returns the number of currently-mounted cryptohomes.
   int CountMountedCryptohomes() const;
   // Callback used during RemoveNonOwnerCryptohomes()
-  void RemoveNonOwnerCryptohomesCallback(const base::FilePath& vault);
+  void RemoveNonOwnerCryptohomesCallback(const base::FilePath& user_dir);
   // Callback used during FreeDiskSpace().
-  void DeleteCacheCallback(const base::FilePath& vault);
+  void DeleteCacheCallback(const base::FilePath& user_dir);
   // Finds Drive cache directory.
-  bool FindGCacheFilesDir(const base::FilePath& vault, base::FilePath* dir);
+  bool FindGCacheFilesDir(const base::FilePath& user_dir, base::FilePath* dir);
   // Callback used during FreeDiskSpace().
-  void DeleteGCacheTmpCallback(const base::FilePath& vault);
+  void DeleteGCacheTmpCallback(const base::FilePath& user_dir);
   // Callback used during FreeDiskSpace().
-  void DeleteAndroidCacheCallback(const base::FilePath& vault);
+  void DeleteAndroidCacheCallback(const base::FilePath& user_dir);
   // Recursively deletes all contents of a directory while leaving the directory
   // itself intact.
   void DeleteDirectoryContents(const base::FilePath& dir);
@@ -237,7 +242,7 @@ class HomeDirs {
   void RemoveNonOwnerDirectories(const base::FilePath& prefix);
   // Callback used during FreeDiskSpace() if the timestamp cache is not yet
   // initialized. Loads the last activity timestamp from the vault keyset.
-  void AddUserTimestampToCacheCallback(const base::FilePath& vault);
+  void AddUserTimestampToCacheCallback(const base::FilePath& user_dir);
   // Loads the serialized vault keyset for the supplied obfuscated username.
   // Returns true for success, false for failure.
   bool LoadVaultKeysetForUser(const std::string& obfuscated_user,

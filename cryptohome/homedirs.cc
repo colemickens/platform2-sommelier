@@ -724,17 +724,17 @@ FilePath HomeDirs::GetVaultKeysetPath(const std::string& obfuscated,
     .AddExtension(base::IntToString(index));
 }
 
-void HomeDirs::RemoveNonOwnerCryptohomesCallback(const FilePath& vault) {
+void HomeDirs::RemoveNonOwnerCryptohomesCallback(const FilePath& user_dir) {
   if (!enterprise_owned_) {  // Enterprise owned? Delete it all.
     std::string owner;
     if (!GetOwner(&owner) ||  // No owner? bail.
-        // Don't delete the owner's vault!
+        // Don't delete the owner's cryptohome!
         // TODO(wad,ellyjones) Add GetUser*Path-helpers
-        vault == shadow_root_.Append(owner).Append(kVaultDir))
+        user_dir == shadow_root_.Append(owner))
     return;
   }
-  // Once we're sure this is not the owner vault, delete it.
-  platform_->DeleteFile(vault.DirName(), true);
+  // Once we're sure this is not the owner's cryptohome, delete it.
+  platform_->DeleteFile(user_dir, true);
 }
 
 void HomeDirs::RemoveNonOwnerCryptohomes() {
@@ -766,7 +766,7 @@ void HomeDirs::DoForEveryUnmountedCryptohome(
           brillo::cryptohome::home::GetHashedUserPath(obfuscated))) {
       continue;
     }
-    cryptohome_cb.Run(entry.Append(kVaultDir));
+    cryptohome_cb.Run(entry);
   }
 }
 
@@ -827,19 +827,27 @@ void HomeDirs::RemoveNonOwnerDirectories(const FilePath& prefix) {
   }
 }
 
-void HomeDirs::DeleteCacheCallback(const FilePath& vault) {
-  const FilePath cache = vault.Append(kUserHomeSuffix).Append(kCacheDir);
+FilePath HomeDirs::GetTrackedDirectory(
+    const FilePath& user_dir, const FilePath& tracked_dir_name) {
+  // On Ecryptfs, tracked directories' names are not encrypted.
+  // TODO(hashimoto): Handle ext4 crypto.
+  return user_dir.Append(kVaultDir).Append(tracked_dir_name);
+}
+
+void HomeDirs::DeleteCacheCallback(const FilePath& user_dir) {
+  const FilePath cache = GetTrackedDirectory(
+      user_dir, FilePath(kUserHomeSuffix).Append(kCacheDir));
   LOG(WARNING) << "Deleting Cache " << cache.value();
   DeleteDirectoryContents(cache);
 }
 
-bool HomeDirs::FindGCacheFilesDir(const FilePath& vault, FilePath* dir) {
+bool HomeDirs::FindGCacheFilesDir(const FilePath& user_dir, FilePath* dir) {
   // Start search from GCache/v1.
   std::unique_ptr<FileEnumerator> enumerator(
-      platform_->GetFileEnumerator(vault.Append(kUserHomeSuffix)
-                                        .Append(kGCacheDir)
-                                        .Append(kGCacheVersionDir),
-                                   true, base::FileEnumerator::DIRECTORIES));
+      platform_->GetFileEnumerator(
+          GetTrackedDirectory(user_dir, FilePath(kUserHomeSuffix).Append(
+              kGCacheDir).Append(kGCacheVersionDir)),
+          true, base::FileEnumerator::DIRECTORIES));
   for (FilePath current = enumerator->Next();
        !current.empty();
        current = enumerator->Next()) {
@@ -852,16 +860,15 @@ bool HomeDirs::FindGCacheFilesDir(const FilePath& vault, FilePath* dir) {
   return false;
 }
 
-void HomeDirs::DeleteGCacheTmpCallback(const FilePath& vault) {
-  const FilePath gcachetmp = vault.Append(kUserHomeSuffix)
-                                  .Append(kGCacheDir)
-                                  .Append(kGCacheVersionDir)
-                                  .Append(kGCacheTmpDir);
+void HomeDirs::DeleteGCacheTmpCallback(const FilePath& user_dir) {
+  const FilePath gcachetmp = GetTrackedDirectory(
+      user_dir, FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(
+          kGCacheVersionDir).Append(kGCacheTmpDir));
   LOG(WARNING) << "Deleting GCache " << gcachetmp.value();
   DeleteDirectoryContents(gcachetmp);
 
   FilePath cacheDir;
-  if (!FindGCacheFilesDir(vault, &cacheDir)) return;
+  if (!FindGCacheFilesDir(user_dir, &cacheDir)) return;
 
   std::unique_ptr<FileEnumerator> enumerator(platform_->GetFileEnumerator(
       cacheDir, false, base::FileEnumerator::FILES));
@@ -876,9 +883,10 @@ void HomeDirs::DeleteGCacheTmpCallback(const FilePath& vault) {
   }
 }
 
-void HomeDirs::DeleteAndroidCacheCallback(const FilePath& vault) {
-  const FilePath root = vault.Append(kRootHomeSuffix);
-  // Find the cache directory by walking under vault/root directory
+void HomeDirs::DeleteAndroidCacheCallback(const FilePath& user_dir) {
+  const FilePath root = GetTrackedDirectory(user_dir,
+                                            FilePath(kRootHomeSuffix));
+  // Find the cache directory by walking under the root directory
   // and looking for AndroidCache xattr set. Data is stored under
   // root/android-data/data/data/[package name]/cache. It is not
   // desirable to make all package name directories unencrypted, they
@@ -901,8 +909,7 @@ void HomeDirs::DeleteAndroidCacheCallback(const FilePath& vault) {
   }
 }
 
-void HomeDirs::AddUserTimestampToCacheCallback(const FilePath& vault) {
-  const FilePath user_dir = vault.DirName();
+void HomeDirs::AddUserTimestampToCacheCallback(const FilePath& user_dir) {
   const std::string obfuscated_username = user_dir.BaseName().value();
   //  Add a timestamp for every key.
   std::vector<int> key_indices;
