@@ -690,8 +690,14 @@ SessionManagerDBusAdaptor::SetArcCpuRestriction(dbus::MethodCall* call) {
 
 std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::EmitArcBooted(
     dbus::MethodCall* call) {
+  dbus::MessageReader reader(call);
+  std::string account_id;
+  if (!reader.PopString(&account_id)) {
+    // TODO(xzhou): Return error here once Chrome is updated.
+    LOG(WARNING) << "Failed to pop account_id in EmitArcBooted";
+  }
   SessionManagerImpl::Error error;
-  impl_->EmitArcBooted(&error);
+  impl_->EmitArcBooted(account_id, &error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
   return dbus::Response::FromMethodCall(call);

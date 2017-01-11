@@ -801,7 +801,6 @@ void SessionManagerImpl::StartArcInstance(const std::string& account_id,
 
   const base::FilePath android_data_old_dir =
       GetAndroidDataOldDirForUser(actual_account_id);
-
   keyvals.emplace_back(base::StringPrintf(
       "ANDROID_DATA_OLD_DIR=%s", android_data_old_dir.value().c_str()));
 
@@ -881,10 +880,23 @@ void SessionManagerImpl::SetArcCpuRestriction(
 #endif
 }
 
-void SessionManagerImpl::EmitArcBooted(Error* error) {
+void SessionManagerImpl::EmitArcBooted(const std::string& account_id,
+                                       Error* error) {
 #if USE_CHEETS
+  std::vector<std::string> keyvals;
+  if (!account_id.empty()) {
+    std::string actual_account_id;
+    if (!NormalizeAccountId(account_id, &actual_account_id, error)) {
+      return;
+    }
+    const base::FilePath android_data_old_dir =
+        GetAndroidDataOldDirForUser(actual_account_id);
+    keyvals.emplace_back("ANDROID_DATA_OLD_DIR=" +
+                         android_data_old_dir.value());
+  }
+
   if (!init_controller_->TriggerImpulse(
-          kArcBootedSignal, {}, InitDaemonController::TriggerMode::SYNC)) {
+          kArcBootedSignal, keyvals, InitDaemonController::TriggerMode::SYNC)) {
     static const char msg[] = "Emitting arc-booted upstart signal failed.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kEmitFailed, msg);

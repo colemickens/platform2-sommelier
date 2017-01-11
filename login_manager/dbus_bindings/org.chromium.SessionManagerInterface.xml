@@ -490,6 +490,7 @@
         Emits the "arc-booted" upstart signal on the browser's behalf.
     -->
     <method name="EmitArcBooted">
+      <arg type="s" name="account_id" direction="in" />
     </method>
 
     <!--

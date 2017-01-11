@@ -226,7 +226,8 @@ class SessionManagerImpl : public SessionManagerInterface,
                         Error* error);
   void StopArcInstance(Error* error);
   void SetArcCpuRestriction(ContainerCpuRestrictionState state, Error* error);
-  void EmitArcBooted(Error* error);
+  void EmitArcBooted(const std::string& account_id, Error* error);
+
   base::TimeTicks GetArcStartTime(Error* error);
   void RemoveArcData(const std::string& account_id, Error* error);
 
