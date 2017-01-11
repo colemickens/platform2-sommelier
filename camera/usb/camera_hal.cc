@@ -76,7 +76,19 @@ int CameraHal::GetCameraInfo(int id, struct camera_info* info) {
     return -EINVAL;
   }
 
-  info->facing = device_infos_[id].lens_facing;
+  // camera_info_t.facing uses v1 definitions.
+  // It should be CAMERA_FACING_BACK or CAMERA_FACING_FRONT.
+  switch (device_infos_[id].lens_facing) {
+    case ANDROID_LENS_FACING_FRONT:
+      info->facing = CAMERA_FACING_FRONT;
+      break;
+    case ANDROID_LENS_FACING_BACK:
+      info->facing = CAMERA_FACING_BACK;
+      break;
+    default:
+      LOGF(ERROR) << "Unknown facing type: " << device_infos_[id].lens_facing;
+      break;
+  }
   info->orientation = device_infos_[id].sensor_orientation;
   info->device_version = CAMERA_DEVICE_API_VERSION_3_3;
   info->static_camera_characteristics = static_infos_[id].get();
