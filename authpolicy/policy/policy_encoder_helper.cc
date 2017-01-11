@@ -10,9 +10,9 @@
 #include <base/files/file_util.h>
 #include <base/strings/string16.h>
 #include <base/strings/utf_string_conversions.h>
-
-#include "authpolicy/policy/preg_parser.h"
-#include "authpolicy/policy/registry_dict.h"
+#include <components/policy/core/common/policy_load_status.h>
+#include <components/policy/core/common/preg_parser.h>
+#include <components/policy/core/common/registry_dict.h>
 
 namespace {
 
@@ -43,12 +43,19 @@ bool LoadPRegFile(const base::FilePath& preg_file,
                   RegistryDict* out_dict,
                   authpolicy::ErrorType* out_error) {
   if (!base::PathExists(preg_file)) {
-    LOG(ERROR) << "PReg file " << preg_file.value() << " does not exist";
+    LOG(ERROR) << "PReg file '" << preg_file.value() << "' does not exist";
     *out_error = authpolicy::ERROR_PARSE_PREG_FAILED;
     return false;
   }
 
-  return preg_parser::ReadFile(preg_file, kRegistryKey, out_dict, out_error);
+  PolicyLoadStatusSample status;
+  if (!preg_parser::ReadFile(preg_file, kRegistryKey, out_dict, &status)) {
+    LOG(ERROR) << "Failed to parse preg file '" << preg_file.value() << "'";
+    *out_error = authpolicy::ERROR_PARSE_PREG_FAILED;
+    return false;
+  }
+
+  return true;
 }
 
 bool GetAsBoolean(const base::Value* value, bool* bool_value) {

@@ -9,9 +9,9 @@
 
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
+#include <components/policy/core/common/registry_dict.h>
 
 #include "authpolicy/policy/policy_encoder_helper.h"
-#include "authpolicy/policy/registry_dict.h"
 #include "bindings/cloud_policy.pb.h"
 
 namespace em = enterprise_management;

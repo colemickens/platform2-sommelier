@@ -8,10 +8,10 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <components/policy/core/common/registry_dict.h>
 
 #include "authpolicy/policy/device_policy_encoder.h"
 #include "authpolicy/policy/policy_encoder_helper.h"
-#include "authpolicy/policy/registry_dict.h"
 #include "authpolicy/policy/user_policy_encoder.h"
 
 namespace em = enterprise_management;
