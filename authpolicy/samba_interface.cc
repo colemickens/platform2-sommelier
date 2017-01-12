@@ -436,6 +436,37 @@ bool ReadConfiguration(ap::SambaConfig* config) {
   return true;
 }
 
+// Calls net ads search with given |search_string| to get an objectGUID.
+bool GetAccountId(const std::string& search_string, std::string* out_account_id,
+                  ErrorType* out_error) {
+  // Call net ads search to find the user's object GUID, which is used as
+  // account id.
+  ProcessExecutor net_cmd(
+      {kNetPath, "ads", "search", search_string, "objectGUID", "-s",
+       kSmbFilePath});
+  SetupJail(&net_cmd, kNetAdsSeccompFilter);
+  if (!net_cmd.Execute()) {
+    LOG(ERROR) << "net ads search failed with exit code "
+               << net_cmd.GetExitCode();
+    *out_error = ERROR_NET_FAILED;
+    return false;
+  }
+  const std::string& net_out = net_cmd.GetStdout();
+
+  // Parse the output to find the account id. Enclose in a sandbox for security
+  // considerations.
+  ProcessExecutor parse_cmd({ac::kParserPath, ac::kCmdParseAccountId});
+  parse_cmd.SetInputString(net_out);
+  SetupJail(&parse_cmd, kParserSeccompFilter);
+  if (!parse_cmd.Execute()) {
+    LOG(ERROR) << "Failed to get user account id. Net response: " << net_out;
+    *out_error = ERROR_PARSE_FAILED;
+    return false;
+  }
+  *out_account_id = parse_cmd.GetStdout();
+  return true;
+}
+
 bool GetGpoList(const std::string& user_or_machine_name,
                 ac::PolicyScope scope,
                 std::string* out_gpo_list,
@@ -676,32 +707,21 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
     return false;
   }
 
-  // Call net ads search to find the user's object GUID, which is used as
-  // account id.
-  ProcessExecutor net_cmd(
-      {kNetPath, "ads", "search",
-       base::StringPrintf("(userPrincipalName=%s)", normalized_upn.c_str()),
-       "objectGUID", "-s", kSmbFilePath});
-  SetupJail(&net_cmd, kNetAdsSeccompFilter);
-  if (!net_cmd.Execute()) {
-    LOG(ERROR) << "net ads search failed with exit code "
-               << net_cmd.GetExitCode();
-    *out_error = ERROR_NET_FAILED;
-    return false;
+  // Get a unique id for the user account. Search by sAMAccountName first since
+  // that's what kinit/Windows prefer and if that fails, search by UPN. The name
+  // part of the principal name can be different from the sAMAccountName!
+  if (!GetAccountId(
+      base::StringPrintf("(sAMAccountName=%s)", user_name.c_str()),
+      out_account_id, out_error) && *out_error == ERROR_PARSE_FAILED) {
+    LOG(WARNING) << "Object GUID not found by sAMAccountName. "
+                 << "Trying userPrincipalName.";
+    *out_error = ERROR_NONE;
+    if (!GetAccountId(
+        base::StringPrintf("(userPrincipalName=%s)", normalized_upn.c_str()),
+        out_account_id, out_error)) {
+      return false;
+    }
   }
-  const std::string& net_out = net_cmd.GetStdout();
-
-  // Parse the output to find the account id. Enclose in a sandbox for security
-  // considerations.
-  ProcessExecutor parse_cmd({ac::kParserPath, ac::kCmdParseAccountId});
-  parse_cmd.SetInputString(net_out);
-  SetupJail(&parse_cmd, kParserSeccompFilter);
-  if (!parse_cmd.Execute()) {
-    LOG(ERROR) << "Failed to get user account id. Net response: " << net_out;
-    *out_error = ERROR_PARSE_FAILED;
-    return false;
-  }
-  *out_account_id = parse_cmd.GetStdout();
 
   // Store user name for further reference.
   const std::string account_id_key(kActiveDirectoryPrefix + *out_account_id);
