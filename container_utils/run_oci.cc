@@ -197,7 +197,7 @@ bool AppendMounts(const BindMounts& bind_mounts, container_config* config_out) {
   // Always mount sysfs
   if (container_config_add_mount(config_out,
                                  "sysfs",
-                                 "",
+                                 "sysfs",
                                  "/sys",
                                  "sysfs",
                                  NULL,
