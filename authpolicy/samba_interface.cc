@@ -159,6 +159,19 @@ const char kKeyPasswordExpiredStderr[] =
     "Cannot read password while getting initial credentials";
 const char kKeyCannotResolve[] =
     "Cannot resolve network address for KDC in realm";
+
+// Keys for interpreting net output.
+const char kKeyJoinAccessDenied[] = "NT_STATUS_ACCESS_DENIED";
+const char kKeyBadMachineName[] = "Improperly formed account name";
+const char kKeyMachineNameTooLong[] = "Our netbios name can be at most";
+const char kKeyUserHitJoinQuota[] =
+    "Insufficient quota exists to complete the operation";
+const char kKeyJoinFailedToFindDC[] = "failed to find DC";
+const char kKeyNoLogonServers[] = "No logon servers";
+const char kKeyJoinLogonFailure[] = "Logon failure";
+
+// Keys for interpreting smbclient output.
+const char kKeyNetworkTimeout[] = "NT_STATUS_IO_TIMEOUT";
 const char kKeyNoSuchFile[] = "NT_STATUS_NO_SUCH_FILE listing ";
 
 #undef MACHINE_KT_STATE_FILE_PATH
@@ -226,6 +239,82 @@ bool Contains(const std::string& str, const std::string& substr) {
   return str.find(substr) != std::string::npos;
 }
 
+ErrorType GetKinitError(const ProcessExecutor& kinit_cmd) {
+  // Handle different error cases
+  const std::string& kinit_out = kinit_cmd.GetStdout();
+  const std::string& kinit_err = kinit_cmd.GetStderr();
+
+  if (Contains(kinit_err, kKeyBadUserName)) {
+    LOG(ERROR) << "kinit failed - bad user name";
+    return ERROR_BAD_USER_NAME;
+  }
+  if (Contains(kinit_err, kKeyBadPassword)) {
+    LOG(ERROR) << "kinit failed - bad password";
+    return ERROR_BAD_PASSWORD;
+  }
+  // Check both stderr and stdout here since any kinit error in the change-
+  // password-workflow would otherwise be interpreted as 'password expired'.
+  if (Contains(kinit_out, kKeyPasswordExpiredStdout) &&
+      Contains(kinit_err, kKeyPasswordExpiredStderr)) {
+    LOG(ERROR) << "kinit failed - password expired";
+    return ERROR_PASSWORD_EXPIRED;
+  }
+  if (Contains(kinit_err, kKeyCannotResolve)) {
+    LOG(ERROR) << "kinit failed - cannot resolve KDC realm";
+    return ERROR_NETWORK_PROBLEM;
+  }
+  LOG(ERROR) << "kinit failed with exit code " << kinit_cmd.GetExitCode();
+  return ERROR_KINIT_FAILED;
+}
+
+ErrorType GetNetError(const ProcessExecutor& executor,
+                      const std::string& net_command) {
+  // Handle different error cases
+  const std::string& net_out = executor.GetStdout();
+  const std::string& net_err = executor.GetStderr();
+  const std::string error_msg("net ads " + net_command + " failed: ");
+
+  if (Contains(net_out, kKeyJoinFailedToFindDC) ||
+      Contains(net_err, kKeyNoLogonServers)) {
+    LOG(ERROR) << error_msg << "network failure";
+    return ERROR_NETWORK_PROBLEM;
+  }
+  if (Contains(net_out, kKeyJoinLogonFailure)) {
+    LOG(ERROR) << error_msg << "logon failure";
+    return ERROR_BAD_PASSWORD;
+  }
+  if (Contains(net_out, kKeyJoinAccessDenied)) {
+    LOG(ERROR) << error_msg << "user is not permitted to join the domain";
+    return ERROR_JOIN_ACCESS_DENIED;
+  }
+  if (Contains(net_out, kKeyBadMachineName)) {
+    LOG(ERROR) << error_msg << "incorrect machine name";
+    return ERROR_BAD_MACHINE_NAME;
+  }
+  if (Contains(net_out, kKeyMachineNameTooLong)) {
+    LOG(ERROR) << error_msg << "machine name is too long";
+    return ERROR_MACHINE_NAME_TOO_LONG;
+  }
+  if (Contains(net_out, kKeyUserHitJoinQuota)) {
+    LOG(ERROR) << error_msg << "user joined max number of machines";
+    return ERROR_USER_HIT_JOIN_QUOTA;
+  }
+  LOG(ERROR) << error_msg <<  "failed with exit code "
+             << executor.GetExitCode();
+  return ERROR_NET_FAILED;
+}
+
+ErrorType GetSmbclientError(const ProcessExecutor& smb_client_cmd) {
+  const std::string& smb_client_out = smb_client_cmd.GetStdout();
+  if (Contains(smb_client_out, kKeyNetworkTimeout)) {
+    LOG(ERROR) << "smbclient failed - network failure";
+    return ERROR_NETWORK_PROBLEM;
+  }
+  LOG(ERROR) << "smbclient failed with exit code "
+             << smb_client_cmd.GetExitCode();
+  return ERROR_SMBCLIENT_FAILED;
+}
+
 // Retrieves the name of the domain controller. If the full server name is
 // 'server.realm', |domain_controller_name| is set to 'server'. Since the domain
 // controller name is expected to change very rarely, this function earlies out
@@ -239,9 +328,7 @@ bool UpdateDomainControllerName(std::string* domain_controller_name,
   authpolicy::ProcessExecutor net_cmd(
       {kNetPath, "ads", "info", "-s", kSmbFilePath});
   if (!SetupJailAndRun(&net_cmd, kNetAdsSeccompFilter)) {
-    LOG(ERROR) << "net ads info failed with exit code "
-               << net_cmd.GetExitCode();
-    *out_error = ERROR_NET_FAILED;
+    *out_error = GetNetError(net_cmd, "info");
     return false;
   }
   const std::string& net_out = net_cmd.GetStdout();
@@ -268,9 +355,7 @@ bool GetWorkgroup(const ap::SambaConfig* config, std::string* workgroup,
   ProcessExecutor net_cmd(
       {kNetPath, "ads", "workgroup", "-s", kSmbFilePath});
   if (!SetupJailAndRun(&net_cmd, kNetAdsSeccompFilter)) {
-    LOG(ERROR) << "net ads workgroup failed with exit code "
-               << net_cmd.GetExitCode();
-    *out_error = ERROR_NET_FAILED;
+    *out_error = GetNetError(net_cmd, "workgroup");
     return false;
   }
   const std::string& net_out = net_cmd.GetStdout();
@@ -505,9 +590,7 @@ bool GetAccountId(const std::string& search_string, std::string* out_account_id,
       {kNetPath, "ads", "search", search_string, "objectGUID", "-s",
        kSmbFilePath});
   if (!SetupJailAndRun(&net_cmd, kNetAdsSeccompFilter)) {
-    LOG(ERROR) << "net ads search failed with exit code "
-               << net_cmd.GetExitCode();
-    *out_error = ERROR_NET_FAILED;
+    *out_error = GetNetError(net_cmd, "search");
     return false;
   }
   const std::string& net_out = net_cmd.GetStdout();
@@ -537,9 +620,7 @@ bool GetGpoList(const std::string& user_or_machine_name,
                                        user_or_machine_name, "-s",
                                        kSmbFilePath});
   if (!SetupJailAndRun(&net_cmd, kNetAdsSeccompFilter)) {
-    LOG(ERROR) << "net ads gpo list failed with exit code "
-               << net_cmd.GetExitCode();
-    *out_error = ERROR_NET_FAILED;
+    *out_error = GetNetError(net_cmd, "gpo list");
     return false;
   }
 
@@ -659,9 +740,7 @@ bool DownloadGpos(const std::string& gpo_list_blob,
     // this below (not an error), so only error out here on internal errors.
     if (smb_client_cmd.GetExitCode() ==
         ProcessExecutor::kExitCodeInternalError) {
-      LOG(ERROR) << "smbclient failed with exit code "
-                 << smb_client_cmd.GetExitCode();
-      *out_error = ERROR_SMBCLIENT_FAILED;
+      *out_error = GetSmbclientError(smb_client_cmd);
       return false;
     }
   }
@@ -788,29 +867,7 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
   kinit_cmd.SetInputFile(password_fd);
   kinit_cmd.SetEnv(kKrb5ConfEnvKey, kKrb5ConfEnvValue);  // Kerberos config.
   if (!SetupJailAndRun(&kinit_cmd, kKInitSeccompFilter)) {
-    // Handle different error cases
-    const std::string& kinit_out = kinit_cmd.GetStdout();
-    const std::string& kinit_err = kinit_cmd.GetStderr();
-
-    if (Contains(kinit_err, kKeyBadUserName)) {
-      LOG(ERROR) << "kinit failed - bad user name";
-      *out_error = ERROR_BAD_USER_NAME;
-    } else if (Contains(kinit_err, kKeyBadPassword)) {
-      LOG(ERROR) << "kinit failed - bad password";
-      *out_error = ERROR_BAD_PASSWORD;
-    } else if (Contains(kinit_out, kKeyPasswordExpiredStdout) &&
-               Contains(kinit_err, kKeyPasswordExpiredStderr)) {
-      // Check both stderr and stdout here since any kinit error in the change-
-      // password-workflow would otherwise be interpreted as 'password expired'.
-      LOG(ERROR) << "kinit failed - password expired";
-      *out_error = ERROR_PASSWORD_EXPIRED;
-    } else if (Contains(kinit_err, kKeyCannotResolve)) {
-      LOG(ERROR) << "kinit failed - cannot resolve KDC realm";
-      *out_error = ERROR_CANNOT_RESOLVE_KDC;
-    } else {
-      LOG(ERROR) << "kinit failed with exit code " << kinit_cmd.GetExitCode();
-      *out_error = ERROR_KINIT_FAILED;
-    }
+    *out_error = GetKinitError(kinit_cmd);
     return false;
   }
 
@@ -864,9 +921,7 @@ bool SambaInterface::JoinMachine(const std::string& machine_name,
   net_cmd.SetInputFile(password_fd);
   net_cmd.SetEnv(kMachineKTEnvKey, kMachineKTEnvValueTmp);  // Keytab file path.
   if (!SetupJailAndRun(&net_cmd, kNetAdsSeccompFilter)) {
-    LOG(ERROR) << "net ads join failed with exit code "
-               << net_cmd.GetExitCode();
-    *out_error = ERROR_NET_FAILED;
+    *out_error = GetNetError(net_cmd, "join");
     return false;
   }
 
@@ -947,8 +1002,7 @@ bool SambaInterface::FetchDeviceGpos(std::string* out_policy_blob,
   kinit_cmd.SetEnv(kKrb5ConfEnvKey, kKrb5ConfEnvValue);  // Kerberos config.
   kinit_cmd.SetEnv(kMachineKTEnvKey, kMachineKTEnvValueState);  // Keytab file.
   if (!SetupJailAndRun(&kinit_cmd, kKInitSeccompFilter)) {
-    LOG(ERROR) << "kinit failed with exit code " << kinit_cmd.GetExitCode();
-    *out_error = ERROR_KINIT_FAILED;
+    *out_error = GetKinitError(kinit_cmd);
     return false;
   }
 
