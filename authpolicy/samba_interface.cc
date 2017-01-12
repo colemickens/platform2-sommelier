@@ -508,7 +508,8 @@ bool DownloadGpos(const std::string& gpo_list_blob,
     // All GPOs should have the same basepath, i.e. come from the same SysVol.
     if (gpo_basepath.empty()) {
       gpo_basepath = gpo.basepath();
-    } else if (gpo_basepath != gpo.basepath()) {
+    } else if (!base::EqualsCaseInsensitiveASCII(gpo_basepath,
+                                                 gpo.basepath())) {
       LOG(ERROR) << "Inconsistent base path '" << gpo_basepath << "' != '"
                  << gpo.basepath() << "'";
       *out_error = ERROR_BAD_GPOS;
