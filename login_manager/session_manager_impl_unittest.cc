@@ -206,17 +206,28 @@ class SessionManagerImplTest : public ::testing::Test {
   }
 
   void ExpectStartSessionUnowned(const string& account_id_string) {
-    ExpectStartSessionUnownedBoilerplate(account_id_string, false, false);
+    ExpectStartSessionUnownedBoilerplate(account_id_string,
+                                         false,  // mitigating
+                                         true);  // key_gen
   }
 
   void ExpectStartSessionOwningInProcess(const string& account_id_string) {
-    ExpectStartSessionUnownedBoilerplate(account_id_string, false, true);
+    ExpectStartSessionUnownedBoilerplate(account_id_string,
+                                         false,   // mitigating
+                                         false);  // key_gen
   }
 
   void ExpectStartSessionOwnerLost(const string& account_id_string) {
-    ExpectStartSessionUnownedBoilerplate(account_id_string, true, false);
+    ExpectStartSessionUnownedBoilerplate(account_id_string,
+                                         true,    // mitigating
+                                         false);  // key_gen
   }
 
+  void ExpectStartSessionActiveDirectory(const string& account_id_string) {
+    ExpectStartSessionUnownedBoilerplate(account_id_string,
+                                         false,   // mitigating
+                                         false);  // key_gen
+  }
   void ExpectRemoveArcData(DataDirType data_dir_type,
                            OldDataDirType old_data_dir_type) {
 #if USE_CHEETS
@@ -374,7 +385,9 @@ class SessionManagerImplTest : public ::testing::Test {
 
   void ExpectStartSessionUnownedBoilerplate(const string& account_id_string,
                                             bool mitigating,
-                                            bool owning_in_progress) {
+                                            bool key_gen) {
+    CHECK(!(mitigating && key_gen));
+
     EXPECT_CALL(manager_, SetBrowserSessionForUser(
                               StrEq(account_id_string),
                               StrEq(SanitizeUserName(account_id_string))))
@@ -390,7 +403,7 @@ class SessionManagerImplTest : public ::testing::Test {
     EXPECT_CALL(*device_policy_service_, KeyMissing()).WillOnce(Return(true));
     EXPECT_CALL(*device_policy_service_, Mitigating())
         .WillRepeatedly(Return(mitigating));
-    if (!mitigating && !owning_in_progress)
+    if (key_gen)
       EXPECT_CALL(key_gen_, Start(StrEq(account_id_string))).Times(1);
     else
       EXPECT_CALL(key_gen_, Start(_)).Times(0);
@@ -572,6 +585,13 @@ TEST_F(SessionManagerImplTest, StartSession_Owner) {
 
 TEST_F(SessionManagerImplTest, StartSession_KeyMitigation) {
   ExpectStartSessionOwnerLost(kSaneEmail);
+  EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, NULL));
+}
+
+// Ensure that starting Active Directory session does not create owner key.
+TEST_F(SessionManagerImplTest, StartSession_ActiveDirectorManaged) {
+  SetDeviceMode("enterprise_ad");
+  ExpectStartSessionActiveDirectory(kSaneEmail);
   EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, NULL));
 }
 

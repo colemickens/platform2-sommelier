@@ -432,8 +432,14 @@ bool SessionManagerImpl::StartSession(const std::string& account_id,
   DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStarted;
   dbus_emitter_->EmitSignalWithString(kSessionStateChangedSignal, kStarted);
 
-  if (device_policy_->KeyMissing() && !device_policy_->Mitigating() &&
-      is_first_real_user) {
+  // Active Directory managed devices are not expected to have a policy key.
+  // Don't create one for them.
+  const bool is_active_directory =
+      install_attributes_reader_->GetAttribute(
+          InstallAttributesReader::kAttrMode) ==
+      InstallAttributesReader::kDeviceModeEnterpriseAD;
+  if (device_policy_->KeyMissing() && !is_active_directory &&
+      !device_policy_->Mitigating() && is_first_real_user) {
     // This is the first sign-in on this unmanaged device.  Take ownership.
     key_gen_->Start(actual_account_id);
   }
