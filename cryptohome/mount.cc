@@ -85,6 +85,8 @@ const FilePath::CharType kEphemeralDir[] = "ephemeralfs";
 const char kEphemeralMountType[] = "tmpfs";
 const FilePath::CharType kGuestMountPath[] = "guestfs";
 const char kEphemeralMountPerms[] = "mode=0700";
+const FilePath::CharType kTrackedDirectoriesJsonFile[] =
+    "tracked_directories.json";
 
 const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
 const gid_t kDaemonStoreGid = 400;

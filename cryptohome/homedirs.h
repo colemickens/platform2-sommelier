@@ -18,8 +18,10 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/time/time.h>
+#include <base/values.h>
 #include <chaps/token_manager_client.h>
 #include <brillo/secure_blob.h>
+#include <gtest/gtest_prod.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
@@ -216,8 +218,15 @@ class HomeDirs {
   void LoadDevicePolicy();
   // Returns the path of the specified tracked directory (i.e. a directory which
   // we can locate even when without the key).
-  base::FilePath GetTrackedDirectory(const base::FilePath& user_dir,
-                                     const base::FilePath& tracked_dir_name);
+  bool GetTrackedDirectory(const base::FilePath& user_dir,
+                           const base::FilePath& tracked_dir_name,
+                           base::FilePath* out);
+  // GetTrackedDirectory() implementation for dircrypto.
+  bool GetTrackedDirectoryForDirCrypto(
+      const base::FilePath& mount_dir,
+      const base::FilePath& tracked_dir_name,
+      const base::DictionaryValue& name_to_inode,
+      base::FilePath* out);
   typedef base::Callback<void(const base::FilePath&)> CryptohomeCallback;
   // Runs the supplied callback for every unmounted cryptohome with the user dir
   // path.
@@ -274,6 +283,7 @@ class HomeDirs {
   chaps::TokenManagerClient chaps_client_;
 
   friend class HomeDirsTest;
+  FRIEND_TEST(HomeDirsTest, GetTrackedDirectoryForDirCrypto);
 
   DISALLOW_COPY_AND_ASSIGN(HomeDirs);
 };

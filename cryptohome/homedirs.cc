@@ -10,6 +10,7 @@
 
 #include <base/bind.h>
 #include <base/files/file_path.h>
+#include <base/json/json_file_value_serializer.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
@@ -827,27 +828,107 @@ void HomeDirs::RemoveNonOwnerDirectories(const FilePath& prefix) {
   }
 }
 
-FilePath HomeDirs::GetTrackedDirectory(
-    const FilePath& user_dir, const FilePath& tracked_dir_name) {
-  // On Ecryptfs, tracked directories' names are not encrypted.
-  // TODO(hashimoto): Handle ext4 crypto.
-  return user_dir.Append(kVaultDir).Append(tracked_dir_name);
+bool HomeDirs::GetTrackedDirectory(
+    const FilePath& user_dir, const FilePath& tracked_dir_name, FilePath* out) {
+  FilePath json_path = user_dir.Append(kTrackedDirectoriesJsonFile);
+  if (platform_->FileExists(json_path)) {
+    // This is dircrypto. Use the JSON file to locate the directory.
+    JSONFileValueDeserializer deserializer(json_path);
+    std::string err_msg;
+    std::unique_ptr<base::Value> value(
+        deserializer.Deserialize(nullptr, &err_msg));
+    if (!value) {
+      LOG(ERROR) << "Unable to deserialize " << json_path.value() << " : "
+                 << err_msg;
+      return false;
+    }
+    const base::DictionaryValue* dictionary = nullptr;
+    if (!value->GetAsDictionary(&dictionary)) {
+      LOG(ERROR) << "JSON value is not a dictionary.";
+      return false;
+    }
+    return GetTrackedDirectoryForDirCrypto(
+        user_dir.Append(kMountDir), tracked_dir_name, *dictionary, out);
+  } else {
+    // On Ecryptfs, tracked directories' names are not encrypted.
+    *out = user_dir.Append(kVaultDir).Append(tracked_dir_name);
+    return true;
+  }
+}
+
+bool HomeDirs::GetTrackedDirectoryForDirCrypto(
+    const FilePath& mount_dir,
+    const FilePath& tracked_dir_name,
+    const base::DictionaryValue& name_to_inode,
+    FilePath* out) {
+  FilePath current_name;
+  FilePath current_path = mount_dir;
+
+  // Iterate over name components.
+  std::vector<std::string> name_components;
+  tracked_dir_name.GetComponents(&name_components);
+  for (const auto& name_component : name_components) {
+    // Get the inode to find.
+    current_name = current_name.Append(name_component);
+    std::string inode_string;
+    if (!name_to_inode.GetStringWithoutPathExpansion(
+            current_name.AsUTF8Unsafe(), &inode_string)) {
+      LOG(ERROR) << "Unknown tracked dir " << tracked_dir_name.value();
+      return false;
+    }
+    uint64_t inode_to_find = 0;
+    if (!base::StringToUint64(inode_string, &inode_to_find)) {
+      LOG(ERROR) << "Failed to parse inode value " << inode_string;
+      return false;
+    }
+    // Find a directory with the inode value.
+    FilePath next_path;
+    std::unique_ptr<FileEnumerator> enumerator(
+        platform_->GetFileEnumerator(current_path, false /* recursive */,
+                                     base::FileEnumerator::DIRECTORIES));
+    for (FilePath dir = enumerator->Next(); !dir.empty();
+         dir = enumerator->Next()) {
+      const auto inode = enumerator->GetInfo().stat().st_ino;
+      static_assert(sizeof(inode) <= sizeof(inode_to_find),
+                    "inode shouldn't be larger than 64 bits.");
+      if (inode == inode_to_find) {
+        // This is the directory we're looking for.
+        next_path = dir;
+        break;
+      }
+    }
+    if (next_path.empty()) {
+      LOG(ERROR) << "Tracked dir not found " << tracked_dir_name.value();
+      return false;
+    }
+    current_path = next_path;
+  }
+  *out = current_path;
+  return true;
 }
 
 void HomeDirs::DeleteCacheCallback(const FilePath& user_dir) {
-  const FilePath cache = GetTrackedDirectory(
-      user_dir, FilePath(kUserHomeSuffix).Append(kCacheDir));
+  FilePath cache;
+  if (!GetTrackedDirectory(
+          user_dir, FilePath(kUserHomeSuffix).Append(kCacheDir), &cache)) {
+    LOG(ERROR) << "Failed to locate the cache directory.";
+    return;
+  }
   LOG(WARNING) << "Deleting Cache " << cache.value();
   DeleteDirectoryContents(cache);
 }
 
 bool HomeDirs::FindGCacheFilesDir(const FilePath& user_dir, FilePath* dir) {
   // Start search from GCache/v1.
+  base::FilePath gcache_dir;
+  if (!GetTrackedDirectory(
+          user_dir, FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(
+              kGCacheVersionDir), &gcache_dir)) {
+    return false;
+  }
   std::unique_ptr<FileEnumerator> enumerator(
-      platform_->GetFileEnumerator(
-          GetTrackedDirectory(user_dir, FilePath(kUserHomeSuffix).Append(
-              kGCacheDir).Append(kGCacheVersionDir)),
-          true, base::FileEnumerator::DIRECTORIES));
+      platform_->GetFileEnumerator(gcache_dir, true,
+                                   base::FileEnumerator::DIRECTORIES));
   for (FilePath current = enumerator->Next();
        !current.empty();
        current = enumerator->Next()) {
@@ -861,9 +942,13 @@ bool HomeDirs::FindGCacheFilesDir(const FilePath& user_dir, FilePath* dir) {
 }
 
 void HomeDirs::DeleteGCacheTmpCallback(const FilePath& user_dir) {
-  const FilePath gcachetmp = GetTrackedDirectory(
-      user_dir, FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(
-          kGCacheVersionDir).Append(kGCacheTmpDir));
+  FilePath gcachetmp;
+  if (!GetTrackedDirectory(
+          user_dir, FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(
+              kGCacheVersionDir).Append(kGCacheTmpDir), &gcachetmp)) {
+    LOG(ERROR) << "Failed to locate the GCache tmp directory.";
+    return;
+  }
   LOG(WARNING) << "Deleting GCache " << gcachetmp.value();
   DeleteDirectoryContents(gcachetmp);
 
@@ -884,8 +969,11 @@ void HomeDirs::DeleteGCacheTmpCallback(const FilePath& user_dir) {
 }
 
 void HomeDirs::DeleteAndroidCacheCallback(const FilePath& user_dir) {
-  const FilePath root = GetTrackedDirectory(user_dir,
-                                            FilePath(kRootHomeSuffix));
+  FilePath root;
+  if (!GetTrackedDirectory(user_dir, FilePath(kRootHomeSuffix), &root)) {
+    LOG(ERROR) << "Failed to locate the root directory.";
+    return;
+  }
   // Find the cache directory by walking under the root directory
   // and looking for AndroidCache xattr set. Data is stored under
   // root/android-data/data/data/[package name]/cache. It is not

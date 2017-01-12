@@ -65,6 +65,8 @@ extern const int kKeyFileMax;
 extern const char kEphemeralMountType[];
 extern const base::FilePath::CharType kEphemeralDir[];
 extern const base::FilePath::CharType kGuestMountPath[];
+// JSON file to remember inode of tracked directories.
+extern const base::FilePath::CharType kTrackedDirectoriesJsonFile[];
 
 class BootLockbox;
 class ChapsClientFactory;
