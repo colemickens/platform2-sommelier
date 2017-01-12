@@ -272,11 +272,11 @@ static bool is_vaapi_dec_jpeg_device(int fd) {
  * A V4L2 device supports JPEG decoding, if it's a mem-to-mem V4L2 device,
  * i.e. it provides V4L2_CAP_VIDEO_CAPTURE_*, V4L2_CAP_VIDEO_OUTPUT_* and
  * V4L2_CAP_STREAMING capabilities and it supports V4L2_PIX_FMT_JPEG as it's
- * input, i.e. for its V4L2_BUF_TYPE_VIDEO_OUTPUT queue.
+ * input, i.e. for its V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE queue.
 */
 static bool is_v4l2_dec_jpeg_device(int fd) {
   return is_hw_jpeg_acc_device(fd) &&
-    is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT,
+    is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
          V4L2_PIX_FMT_JPEG);
 }
 
