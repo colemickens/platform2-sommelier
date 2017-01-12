@@ -17,14 +17,16 @@
 
 #include "hal/usb/camera_metadata.h"
 #include "hal/usb/common_types.h"
+#include "hal/usb/frame_buffer.h"
 #include "hal/usb/v4l2_camera_device.h"
 
 namespace arc {
 
 // CameraClient class is not thread-safe. Constructor, OpenDevice, and
-// CloseDevice must be called on the same thread. Camera v3 Device
-// Operations must be called on the same thread. But OpenDevice and device
-// operations can be called on different threads.
+// ClsoeDevice are called on hal thread. Camera v3 Device Operations are called
+// on device ops thread. But Android framework synchronizes Constructor,
+// OpenDevice, CloseDevice, and device ops. The functions on hal thread and
+// device ops thread won't be called at the same time.
 class CameraClient {
  public:
   // id is used to distinguish cameras. 0 <= id < number of cameras.
@@ -57,6 +59,15 @@ class CameraClient {
   // Calculate usage and maximum number of buffers of each stream.
   void SetUpStreams(std::vector<camera3_stream_t*>* streams);
 
+  // Start streaming.
+  int StreamOn();
+
+  // Stop streaming.
+  int StreamOff();
+
+  // Memory unmap buffers and close all file descriptors.
+  void ReleaseBuffers();
+
   // Camera device id.
   const int id_;
 
@@ -85,6 +96,15 @@ class CameraClient {
   // Static array of standard camera settings templates. These are owned by
   // CameraClient.
   CameraMetadataUniquePtr template_settings_[CAMERA3_TEMPLATE_COUNT];
+
+  // The formats used to report to apps.
+  SupportedFormats qualified_formats_;
+
+  // Memory mapped buffers which are shared from |camera_delegate_|.
+  std::vector<FrameBuffer> buffers_;
+
+  // Maximum resolution in configure streams.
+  SupportedFormat stream_on_resolution_;
 
   DISALLOW_COPY_AND_ASSIGN(CameraClient);
 };

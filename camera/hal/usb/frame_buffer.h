@@ -13,6 +13,7 @@
 namespace arc {
 
 struct FrameBuffer {
+  int fd; /* File descriptor of V4L2 frame buffer */
   uint8_t* data;
   size_t data_size; /* How many bytes used in the buffer */
   size_t buffer_size; /* How many bytes allocated in the buffer */

@@ -22,10 +22,9 @@ static const std::vector<uint32_t> GetSupportedFourCCs() {
 
 // Return corresponding format by matching resolution |width|x|height| in
 // |formats|.
-static const SupportedFormat* FindFormatByResolution(
-    const SupportedFormats& formats,
-    uint32_t width,
-    uint32_t height) {
+const SupportedFormat* FindFormatByResolution(const SupportedFormats& formats,
+                                              uint32_t width,
+                                              uint32_t height) {
   for (const auto& format : formats) {
     if (format.width == width && format.height == height) {
       return &format;

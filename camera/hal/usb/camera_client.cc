@@ -7,6 +7,7 @@
 
 #include <vector>
 
+#include <sys/mman.h>
 #include <system/camera_metadata.h>
 
 #include "arc/common.h"
@@ -36,6 +37,10 @@ CameraClient::CameraClient(int id,
 
   // MetadataBase::operator= will make a copy of camera_metadata_t.
   metadata_ = &static_info;
+
+  SupportedFormats supported_formats =
+      device_->GetDeviceSupportedFormats(device_path_);
+  qualified_formats_ = GetQualifiedFormats(supported_formats);
 }
 
 CameraClient::~CameraClient() {}
@@ -56,6 +61,7 @@ int CameraClient::CloseDevice() {
   VLOGFID(1, id_);
   DCHECK(thread_checker_.CalledOnValidThread());
 
+  StreamOff();
   device_->Disconnect();
   return 0;
 }
@@ -104,6 +110,7 @@ int CameraClient::ConfigureStreams(
 
   VLOGFID(1, id_) << "Number of Streams: " << stream_config->num_streams;
 
+  stream_on_resolution_.width = stream_on_resolution_.height = 0;
   std::vector<camera3_stream_t*> streams;
   for (size_t i = 0; i < stream_config->num_streams; i++) {
     VLOGFID(1, id_) << "Stream[" << i
@@ -114,11 +121,24 @@ int CameraClient::ConfigureStreams(
                     << " format=0x" << std::hex
                     << stream_config->streams[i]->format;
     streams.push_back(stream_config->streams[i]);
+
+    // Find maximum resolution of stream_config to stream on.
+    if (stream_config->streams[i]->width > stream_on_resolution_.width ||
+        stream_config->streams[i]->height > stream_on_resolution_.height) {
+      stream_on_resolution_.width = stream_config->streams[i]->width;
+      stream_on_resolution_.height = stream_config->streams[i]->height;
+    }
   }
 
   if (!IsValidStreamSet(streams)) {
     LOGFID(ERROR, id_) << "Invalid stream set";
     return -EINVAL;
+  }
+
+  int ret = StreamOn();
+  if (ret) {
+    LOGFID(ERROR, id_) << "StreamOn failed";
+    return ret;
   }
 
   SetUpStreams(&streams);
@@ -197,9 +217,83 @@ void CameraClient::SetUpStreams(std::vector<camera3_stream_t*>* streams) {
       usage |= GRALLOC_USAGE_SW_WRITE_OFTEN;
     }
     stream->usage = usage;
-    // TODO(henryhsu): get correct number of buffers.
-    stream->max_buffers = 0;
+    stream->max_buffers = buffers_.size();
   }
+}
+
+int CameraClient::StreamOn() {
+  const SupportedFormat* format =
+      FindFormatByResolution(qualified_formats_, stream_on_resolution_.width,
+                             stream_on_resolution_.height);
+  if (format == NULL) {
+    LOGFID(ERROR, id_) << "Cannot find resolution in supported list: width "
+                       << stream_on_resolution_.width << ", height "
+                       << stream_on_resolution_.height;
+    return -EINVAL;
+  }
+
+  float max_fps = 0;
+  for (const auto& frame_rate : format->frameRates) {
+    if (frame_rate > max_fps) {
+      max_fps = frame_rate;
+    }
+  }
+  VLOGFID(1, id_) << "streamOn with width " << format->width << ", height "
+                  << format->height << ", fps " << max_fps << ", format "
+                  << std::hex << format->fourcc;
+
+  std::vector<int> fds;
+  uint32_t buffer_size;
+  int ret;
+  if ((ret = device_->StreamOn(format->width, format->height, format->fourcc,
+                               max_fps, &fds, &buffer_size))) {
+    LOGFID(ERROR, id_) << "StreamOn failed: " << strerror(-ret);
+    return ret;
+  }
+
+  FrameBuffer frame;
+  frame.data_size = 0;
+  frame.buffer_size = buffer_size;
+  frame.width = format->width;
+  frame.height = format->height;
+  frame.fourcc = format->fourcc;
+
+  for (size_t i = 0; i < fds.size(); i++) {
+    void* addr = mmap(NULL, buffer_size, PROT_READ, MAP_SHARED, fds[i], 0);
+    if (addr == MAP_FAILED) {
+      LOGFID(ERROR, id_) << "mmap() (" << i << ") failed: " << strerror(errno);
+      StreamOff();
+      return -errno;
+    }
+    frame.fd = fds[i];
+    frame.data = static_cast<uint8_t*>(addr);
+    VLOGFID(1, id_) << "Buffer " << i << ", fd: " << fds[i]
+                    << " address: " << std::hex << addr;
+    buffers_.push_back(frame);
+  }
+  return 0;
+}
+
+int CameraClient::StreamOff() {
+  int ret;
+  if ((ret = device_->StreamOff())) {
+    LOGFID(ERROR, id_) << "StreamOff failed: " << strerror(-ret);
+  }
+  ReleaseBuffers();
+  return ret;
+}
+
+void CameraClient::ReleaseBuffers() {
+  for (auto const& frame : buffers_) {
+    if (munmap(frame.data, frame.buffer_size)) {
+      LOGFID(ERROR, id_) << "mummap() failed: " << strerror(errno);
+    }
+    if (close(frame.fd)) {
+      LOGFID(ERROR, id_) << "close(" << frame.fd
+                         << ") failed: " << strerror(errno);
+    }
+  }
+  buffers_.clear();
 }
 
 }  // namespace arc

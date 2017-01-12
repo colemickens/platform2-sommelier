@@ -12,6 +12,11 @@
 
 namespace arc {
 
+// Find a resolution from a supported list.
+const SupportedFormat* FindFormatByResolution(const SupportedFormats& formats,
+                                              uint32_t width,
+                                              uint32_t height);
+
 // Get the largest resolution from |supported_formats|.
 SupportedFormat GetMaximumFormat(const SupportedFormats& supported_formats);
 
