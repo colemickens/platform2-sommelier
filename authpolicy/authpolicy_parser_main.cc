@@ -288,7 +288,6 @@ int ParsePreg(const std::string& gpo_file_paths_blob, ac::PolicyScope scope) {
       }
 
       // Serialize policy proto to string.
-      std::string policy_blob;
       if (!policy.SerializeToString(&policy_blob))
         return ac::EXIT_CODE_WRITE_OUTPUT_FAILED;
       break;
