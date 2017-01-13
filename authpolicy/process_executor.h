@@ -36,6 +36,9 @@ class ProcessExecutor {
   // Sets a seccomp filter by parsing the given file.
   void SetSeccompFilter(const std::string& policy_file);
 
+  // Logs syscalls blocked by seccomp filters.
+  void LogSeccompFilterFailures();
+
   // Set a flag that prevents execve from gaining new privileges.
   void SetNoNewPrivs();
 

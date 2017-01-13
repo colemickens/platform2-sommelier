@@ -42,6 +42,10 @@ void ProcessExecutor::SetSeccompFilter(const std::string& policy_file) {
   minijail_use_seccomp_filter(jail_);
 }
 
+void ProcessExecutor::LogSeccompFilterFailures() {
+  minijail_log_seccomp_filter_failures(jail_);
+}
+
 void ProcessExecutor::SetNoNewPrivs() {
   minijail_no_new_privs(jail_);
 }
@@ -120,6 +124,10 @@ bool ProcessExecutor::Execute() {
 
   // Wait for the process to exit.
   exit_code_ = minijail_wait(jail_);
+
+  // Print out a useful error message for seccomp failures.
+  if (exit_code_ == MINIJAIL_ERR_JAIL)
+    LOG(ERROR) << "Seccomp filter blocked a system call";
 
   // Always exit AFTER minijail_wait!
   if (write_to_stdin_failed) {

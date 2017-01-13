@@ -124,6 +124,13 @@ const char kMachineKtTmpFilePath[] = MACHINE_KT_TMP_FILE_PATH;
 const char kMachineKtStateFilePath[] = MACHINE_KT_STATE_FILE_PATH;
 const char kConfigFilePath[] = STATE_DIR "/config.dat";
 
+// Flags. Write kFlag* strings to kFlagsFilePath to toggle flags.
+const char kFlagsFilePath[] = "/etc/authpolicyd_flags";
+const char kFlagDisableSeccomp[] = "disable_seccomp";
+const char kFlagLogSeccomp[] = "log_seccomp";
+static bool s_disable_seccomp_filters = false;
+static bool s_log_seccomp_filters = false;
+
 // Size limit when loading the config file (4 MB).
 const size_t kConfigSizeLimit = 4 * 1024 * 1024;
 
@@ -176,7 +183,11 @@ const char kSmbClientSeccompFilter[] = SECCOMP_DIR "smbclient-seccomp.policy";
 void SetupJail(ProcessExecutor* cmd, const char* seccomp_filter) {
   // Limit the system calls that the process can do.
   DCHECK(cmd);
-  cmd->SetSeccompFilter(seccomp_filter);
+  if (!s_disable_seccomp_filters) {
+    if (s_log_seccomp_filters)
+      cmd->LogSeccompFilterFailures();
+    cmd->SetSeccompFilter(seccomp_filter);
+  }
 
   // Execute as authpolicyd-exec, so that processes can't mess with our private
   // data like the configuration file.
@@ -651,6 +662,22 @@ bool SambaInterface::Initialize(bool expect_config) {
       LOG(ERROR) << "Failed to initialize SambaInterface";
       config_.reset();
       return false;
+    }
+  }
+
+  // Load debug flags file if present. Always CHECK() the flags, even in
+  // release, to catch uninitialized variables.
+  CHECK(!s_disable_seccomp_filters);
+  CHECK(!s_log_seccomp_filters);
+  std::string flags;
+  if (base::ReadFileToString(base::FilePath(kFlagsFilePath), &flags)) {
+    if (Contains(flags, kFlagDisableSeccomp)) {
+      LOG(WARNING) << "Seccomp filters disabled";
+      s_disable_seccomp_filters = true;
+    }
+    if (Contains(flags, kFlagLogSeccomp)) {
+      LOG(WARNING) << "Logging seccomp filter failures";
+      s_log_seccomp_filters = true;
     }
   }
 
