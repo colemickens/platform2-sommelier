@@ -6,7 +6,6 @@ package authpolicy.protos;
 
 message SambaConfig {
   optional string machine_name = 1;
-  optional string workgroup = 2;
   optional string realm = 3;
 }
 

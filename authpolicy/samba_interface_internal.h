@@ -14,14 +14,13 @@
 namespace authpolicy {
 namespace internal {
 
-// Parses user_name@workgroup.some.domain into its components and normalizes
-// (uppercases) the part behind the @. |out_realm| is WORKGROUP.SOME.DOMAIN,
-// |out_workgroup| is WORKGROUP, |out_normalized_user_principal_name| is
-// user_name@WORKGROUP.SOME.DOMAIN.
+// Parses user_name@some.realm into its components and normalizes (uppercases)
+// the part behind the @. |out_user_name| is 'user_name', |out_realm| is
+// |SOME.REALM| and |out_normalized_user_principal_name| is
+// user_name@SOME.REALM.
 bool ParseUserPrincipalName(const std::string& user_principal_name,
                             std::string* out_user_name,
                             std::string* out_realm,
-                            std::string* out_workgroup,
                             std::string* out_normalized_user_principal_name,
                             ErrorType* out_error);
 

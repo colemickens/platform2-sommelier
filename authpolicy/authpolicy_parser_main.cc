@@ -140,6 +140,16 @@ int ParseDomainControllerName(const std::string& net_out) {
   return OutputForCaller(dc_name);
 }
 
+// Parses the output of net ads workgroup to get the workgroup and prints it to
+// stdout.
+int ParseWorkgroup(const std::string& net_out) {
+  std::string workgroup;
+  if (!ai::FindToken(net_out, ':', "Workgroup", &workgroup))
+    return ac::EXIT_CODE_FIND_TOKEN_FAILED;
+
+  return OutputForCaller(workgroup);
+}
+
 // Parses the output of net ads gpo list to get the list of GPOs. Prints out a
 // serialized GpoList blob to stdout.
 int ParseGpoList(const std::string& net_out, ac::PolicyScope scope) {
@@ -321,6 +331,8 @@ int main(int argc, const char* const* argv) {
 
   if (strcmp(cmd, ac::kCmdParseDcName) == 0)
     return ParseDomainControllerName(stdin_str);
+  if (strcmp(cmd, ac::kCmdParseWorkgroup) == 0)
+    return ParseWorkgroup(stdin_str);
   if (strcmp(cmd, ac::kCmdParseAccountId) == 0)
     return ParseAccountId(stdin_str);
   if (strcmp(cmd, ac::kCmdParseUserGpoList) == 0)

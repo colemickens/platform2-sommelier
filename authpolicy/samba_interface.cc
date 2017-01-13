@@ -206,11 +206,10 @@ bool Contains(const std::string& str, const std::string& substr) {
 }
 
 // Retrieves the name of the domain controller. If the full server name is
-// 'myserver.workgroup.domain', |domain_controller_name| is set to 'myserver'.
-// Since the domain controller name is not expected to change, this function
-// earlies out and returns true if called with a non-empty
-// |domain_controller_name|. The domain controller name is required for proper
-// kerberized authentication.
+// 'server.realm', |domain_controller_name| is set to 'server'. Since the domain
+// controller name is expected to change very rarely, this function earlies out
+// and returns true if called with a non-empty |domain_controller_name|. The
+// domain controller name is required for proper kerberized authentication.
 bool UpdateDomainControllerName(std::string* domain_controller_name,
                                 ErrorType* out_error) {
   if (!domain_controller_name->empty())
@@ -233,7 +232,7 @@ bool UpdateDomainControllerName(std::string* domain_controller_name,
   SetupJail(&parse_cmd, kParserSeccompFilter);
   parse_cmd.SetInputString(net_out);
   if (!parse_cmd.Execute()) {
-    LOG(ERROR) << "authpolicy_parser failed with exit code "
+    LOG(ERROR) << "authpolicy_parser parse_dc_name failed with exit code "
                << parse_cmd.GetExitCode();
     *out_error = ERROR_PARSE_FAILED;
     return false;
@@ -241,6 +240,39 @@ bool UpdateDomainControllerName(std::string* domain_controller_name,
   *domain_controller_name = parse_cmd.GetStdout();
 
   LOG(INFO) << "Found DC name = '" << *domain_controller_name << "'";
+  return true;
+}
+
+// Retrieves the name of the workgroup. Since the workgroup is expected to
+// change very rarely, this function earlies out and returns true if called with
+// a non-empty |workgroup|. The workgroup is required for the smb.conf file.
+bool UpdateWorkgroup(std::string* workgroup, ErrorType* out_error) {
+  if (!workgroup->empty())
+    return true;
+
+  ProcessExecutor net_cmd(
+      {kNetPath, "ads", "workgroup", "-s", kSmbFilePath});
+  SetupJail(&net_cmd, kNetAdsSeccompFilter);
+  if (!net_cmd.Execute()) {
+    LOG(ERROR) << "net ads workgroup failed with exit code "
+               << net_cmd.GetExitCode();
+    *out_error = ERROR_NET_FAILED;
+    return false;
+  }
+  const std::string& net_out = net_cmd.GetStdout();
+
+  // Parse the output to find the workgroup. Enclose in a sandbox for security
+  // considerations.
+  ProcessExecutor parse_cmd({ac::kParserPath, ac::kCmdParseWorkgroup});
+  SetupJail(&parse_cmd, kParserSeccompFilter);
+  parse_cmd.SetInputString(net_out);
+  if (!parse_cmd.Execute()) {
+    LOG(ERROR) << "authpolicy_parser parse_workgroup failed with exit code "
+               << parse_cmd.GetExitCode();
+    *out_error = ERROR_PARSE_FAILED;
+    return false;
+  }
+  *workgroup = parse_cmd.GetStdout();
   return true;
 }
 
@@ -360,7 +392,8 @@ bool SecureMachineKeyTab(ErrorType* out_error) {
 }
 
 // Writes the samba configuration file.
-bool WriteSmbConf(const ap::SambaConfig* config, ErrorType* out_error) {
+bool WriteSmbConf(const ap::SambaConfig* config, const std::string& workgroup,
+                  ErrorType* out_error) {
   if (!config) {
     LOG(ERROR) << "Missing configuration. Must call JoinMachine first.";
     *out_error = ERROR_NOT_JOINED;
@@ -369,7 +402,7 @@ bool WriteSmbConf(const ap::SambaConfig* config, ErrorType* out_error) {
 
   std::string data =
       base::StringPrintf(kSmbConfData, config->machine_name().c_str(),
-                         config->workgroup().c_str(), config->realm().c_str());
+                         workgroup.c_str(), config->realm().c_str());
   const base::FilePath fp(kSmbFilePath);
   const int data_size = static_cast<int>(data.size());
   if (base::WriteFile(fp, data.c_str(), data_size) != data_size) {
@@ -437,8 +470,7 @@ bool ReadConfiguration(ap::SambaConfig* config) {
   }
 
   // Check if the config is valid.
-  if (config->machine_name().empty() || config->workgroup().empty() ||
-      config->realm().empty()) {
+  if (config->machine_name().empty() || config->realm().empty()) {
     LOG(ERROR) << "Configuration is invalid";
     return false;
   }
@@ -633,7 +665,7 @@ bool ParseGposIntoProtobuf(const std::vector<base::FilePath>& gpo_file_paths,
   SetupJail(&parse_cmd, kParserSeccompFilter);
   parse_cmd.SetInputString(gpo_file_paths_blob);
   if (!parse_cmd.Execute()) {
-    LOG(ERROR) << "Failed to parse user policy preg files";
+    LOG(ERROR) << "Failed to parse preg files";
     *out_error = ERROR_PARSE_PREG_FAILED;
     return false;
   }
@@ -691,15 +723,19 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
   // Split user_principal_name into parts and normalize.
   std::string user_name, realm, workgroup, normalized_upn;
   if (!ai::ParseUserPrincipalName(user_principal_name, &user_name, &realm,
-                                  &workgroup, &normalized_upn, out_error))
+                                  &normalized_upn, out_error))
     return false;
 
   // Write krb5 configuration file.
   if (!WriteKrb5Conf(realm, out_error))
     return false;
 
+  // Make sure we have the workgroup.
+  if (!UpdateWorkgroup(&workgroup_, out_error))
+    return false;
+
   // Write samba configuration file.
-  if (!WriteSmbConf(config_.get(), out_error))
+  if (!WriteSmbConf(config_.get(), workgroup_, out_error))
     return false;
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
@@ -763,19 +799,26 @@ bool SambaInterface::JoinMachine(const std::string& machine_name,
                                  int password_fd,
                                  ErrorType* out_error) {
   // Split user principal name into parts.
-  std::string user_name, realm, workgroup, normalized_upn;
+  std::string user_name, realm, normalized_upn;
   if (!ai::ParseUserPrincipalName(user_principal_name, &user_name, &realm,
-                                  &workgroup, &normalized_upn, out_error))
+                                  &normalized_upn, out_error))
     return false;
 
   // Create config.
   std::unique_ptr<ap::SambaConfig> config = base::MakeUnique<ap::SambaConfig>();
   config->set_machine_name(base::ToUpperASCII(machine_name));
-  config->set_workgroup(workgroup);
   config->set_realm(realm);
 
-  // Write samba configuration file.
-  if (!WriteSmbConf(config.get(), out_error))
+  // Write samba configuration file with an empty workgroup (not needed below).
+  if (!WriteSmbConf(config.get(), std::string(), out_error))
+    return false;
+
+  // Query the server for the actual workgroup. This needs an smb.conf!
+  if (!UpdateWorkgroup(&workgroup_, out_error))
+    return false;
+
+  // Write samba configuration file again with the proper workgroup.
+  if (!WriteSmbConf(config.get(), workgroup_, out_error))
     return false;
 
   // Call net ads join to join the machine to the Active Directory domain.
@@ -817,8 +860,12 @@ bool SambaInterface::FetchUserGpos(const std::string& account_id_key,
   }
   const std::string& user_name = iter->second;
 
+  // Make sure we have the workgroup.
+  if (!UpdateWorkgroup(&workgroup_, out_error))
+    return false;
+
   // Write samba configuration file.
-  if (!WriteSmbConf(config_.get(), out_error))
+  if (!WriteSmbConf(config_.get(), workgroup_, out_error))
     return false;
 
   // Make sure we have the domain controller name.
@@ -849,8 +896,12 @@ bool SambaInterface::FetchUserGpos(const std::string& account_id_key,
 
 bool SambaInterface::FetchDeviceGpos(std::string* out_policy_blob,
                                      ErrorType* out_error) {
+  // Make sure we have the workgroup.
+  if (!UpdateWorkgroup(&workgroup_, out_error))
+    return false;
+
   // Write samba configuration file.
-  if (!WriteSmbConf(config_.get(), out_error))
+  if (!WriteSmbConf(config_.get(), workgroup_, out_error))
     return false;
 
   // Make sure we have the domain controller name.

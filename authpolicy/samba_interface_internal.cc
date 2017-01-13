@@ -13,29 +13,19 @@ namespace internal {
 bool ParseUserPrincipalName(const std::string& user_principal_name,
                             std::string* out_user_name,
                             std::string* out_realm,
-                            std::string* out_workgroup,
                             std::string* out_normalized_user_principal_name,
                             ErrorType* out_error) {
-  // If there is no '@' in |user_principal_name|, at_pos is std::string::npos
-  // and the call to substr(at_pos + 1) might throw if std::string::npos + 1 !=
-  // 0. Hence, we the test for at_pos == std::string::npos.
-  const size_t at_pos = user_principal_name.find('@');
-  bool error = at_pos == std::string::npos;
-  if (!error) {
-    *out_user_name = user_principal_name.substr(0, at_pos);
-    *out_realm = base::ToUpperASCII(user_principal_name.substr(at_pos + 1));
-    const size_t dot_pos = out_realm->find('.');
-    *out_workgroup = out_realm->substr(0, dot_pos);
-    *out_normalized_user_principal_name = *out_user_name + "@" + *out_realm;
-    error = dot_pos == std::string::npos || out_user_name->empty() ||
-            out_realm->empty() || out_workgroup->empty();
-  }
-  if (error) {
+  std::vector<std::string> parts = base::SplitString(
+      user_principal_name, "@", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  if (parts.size() != 2 || parts.at(0).empty() || parts.at(1).empty()) {
     LOG(ERROR) << "Failed to parse user principal name '" << user_principal_name
-               << "'. Expected form 'user@workgroup.domain'.";
+               << "'. Expected form 'user@some.realm'.";
     *out_error = ERROR_PARSE_UPN_FAILED;
     return false;
   }
+  *out_user_name = parts.at(0);
+  *out_realm = base::ToUpperASCII(parts.at(1));
+  *out_normalized_user_principal_name = *out_user_name + "@" + *out_realm;
   return true;
 }
 

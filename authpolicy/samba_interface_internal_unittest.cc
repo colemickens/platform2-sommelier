@@ -21,14 +21,12 @@ class SambaInterfaceTest : public ::testing::Test {
   // Helpers for ParseUserPrincipleName.
   std::string user_name_;
   std::string realm_;
-  std::string workgroup_;
   std::string normalized_upn_;
   ErrorType error_ = ERROR_NONE;
 
   bool ParseUserPrincipalName(const char* user_principal_name_) {
     return ai::ParseUserPrincipalName(user_principal_name_, &user_name_,
-                                      &realm_, &workgroup_, &normalized_upn_,
-                                      &error_);
+                                      &realm_, &normalized_upn_, &error_);
   }
 
   // Helpers for FindToken.
@@ -50,7 +48,6 @@ TEST_F(SambaInterfaceTest, ParseUPNSuccess) {
   EXPECT_TRUE(ParseUserPrincipalName("usar@wokgroup.doomain"));
   EXPECT_EQ(user_name_, "usar");
   EXPECT_EQ(realm_, "WOKGROUP.DOOMAIN");
-  EXPECT_EQ(workgroup_, "WOKGROUP");
   EXPECT_EQ(normalized_upn_, "usar@WOKGROUP.DOOMAIN");
   EXPECT_EQ(error_, ERROR_NONE);
 }
@@ -60,7 +57,6 @@ TEST_F(SambaInterfaceTest, ParseUPNSuccess_Long) {
   EXPECT_TRUE(ParseUserPrincipalName("usar@wokgroup.doomain.company.com"));
   EXPECT_EQ(user_name_, "usar");
   EXPECT_EQ(realm_, "WOKGROUP.DOOMAIN.COMPANY.COM");
-  EXPECT_EQ(workgroup_, "WOKGROUP");
   EXPECT_EQ(normalized_upn_, "usar@WOKGROUP.DOOMAIN.COMPANY.COM");
 }
 
@@ -69,23 +65,7 @@ TEST_F(SambaInterfaceTest, ParseUPNSuccess_MixedCaps) {
   EXPECT_TRUE(ParseUserPrincipalName("UsAr@WoKgrOUP.DOOMain.com"));
   EXPECT_EQ(user_name_, "UsAr");
   EXPECT_EQ(realm_, "WOKGROUP.DOOMAIN.COM");
-  EXPECT_EQ(workgroup_, "WOKGROUP");
   EXPECT_EQ(normalized_upn_, "UsAr@WOKGROUP.DOOMAIN.COM");
-}
-
-// a@b@c fails (missing .d).
-TEST_F(SambaInterfaceTest, ParseUPNSuccess_AtAt) {
-  EXPECT_FALSE(ParseUserPrincipalName("usar@wokgroup@doomain"));
-  EXPECT_EQ(error_, ERROR_PARSE_UPN_FAILED);
-}
-
-// a@b@c.d succeeds, even though it is invalid (rejected by kinit).
-TEST_F(SambaInterfaceTest, ParseUPNSuccess_AtAtDot) {
-  EXPECT_TRUE(ParseUserPrincipalName("usar@wokgroup@doomain.com"));
-  EXPECT_EQ(user_name_, "usar");
-  EXPECT_EQ(realm_, "WOKGROUP@DOOMAIN.COM");
-  EXPECT_EQ(workgroup_, "WOKGROUP@DOOMAIN");
-  EXPECT_EQ(normalized_upn_, "usar@WOKGROUP@DOOMAIN.COM");
 }
 
 // a.b@c.d succeeds, even though it is invalid (rejected by kinit).
@@ -93,7 +73,6 @@ TEST_F(SambaInterfaceTest, ParseUPNSuccess_DotAtDot) {
   EXPECT_TRUE(ParseUserPrincipalName("usar.team@wokgroup.doomain"));
   EXPECT_EQ(user_name_, "usar.team");
   EXPECT_EQ(realm_, "WOKGROUP.DOOMAIN");
-  EXPECT_EQ(workgroup_, "WOKGROUP");
   EXPECT_EQ(normalized_upn_, "usar.team@WOKGROUP.DOOMAIN");
 }
 
@@ -112,6 +91,18 @@ TEST_F(SambaInterfaceTest, ParseUPNFail_NoAtRealm) {
 // a. fails (no @workgroup.domain and trailing . is invalid, anyway).
 TEST_F(SambaInterfaceTest, ParseUPNFail_NoAtRealmButDot) {
   EXPECT_FALSE(ParseUserPrincipalName("usar."));
+  EXPECT_EQ(error_, ERROR_PARSE_UPN_FAILED);
+}
+
+// a@b@c fails (double at).
+TEST_F(SambaInterfaceTest, ParseUPNFail_AtAt) {
+  EXPECT_FALSE(ParseUserPrincipalName("usar@wokgroup@doomain"));
+  EXPECT_EQ(error_, ERROR_PARSE_UPN_FAILED);
+}
+
+// a@b@c fails (double at).
+TEST_F(SambaInterfaceTest, ParseUPNFail_AtAtDot) {
+  EXPECT_FALSE(ParseUserPrincipalName("usar@wokgroup@doomain.com"));
   EXPECT_EQ(error_, ERROR_PARSE_UPN_FAILED);
 }
 

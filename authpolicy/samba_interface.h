@@ -69,6 +69,7 @@ class SambaInterface {
   std::unordered_map<std::string, std::string> account_id_key_user_name_map_;
   std::unique_ptr<protos::SambaConfig> config_;
   std::string domain_controller_name_;
+  std::string workgroup_;
 };
 
 }  // namespace authpolicy

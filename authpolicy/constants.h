@@ -13,6 +13,7 @@ const char kParserPath[] = "/usr/sbin/authpolicy_parser";
 
 // Commands for the parser.
 const char kCmdParseDcName[] = "parse_dc_name";
+const char kCmdParseWorkgroup[] = "parse_workgroup";
 const char kCmdParseAccountId[] = "parse_account_id";
 const char kCmdParseUserGpoList[] = "parse_user_gpo_list";
 const char kCmdParseDeviceGpoList[] = "parse_device_gpo_list";
