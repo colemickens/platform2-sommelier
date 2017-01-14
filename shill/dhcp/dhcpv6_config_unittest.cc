@@ -64,7 +64,7 @@ const char kIPAddress[] = "2001:db8:0:1::1";
 const char kDelegatedPrefix[] = "2001:db8:0:100::";
 }  // namespace
 
-typedef scoped_refptr<DHCPv6Config> DHCPv6ConfigRefPtr;
+using DHCPv6ConfigRefPtr = scoped_refptr<DHCPv6Config>;
 
 class DHCPv6ConfigTest : public PropertyStoreTest {
  public:

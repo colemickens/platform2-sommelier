@@ -71,7 +71,7 @@ const bool kHasLeaseSuffix = true;
 const char kStorageID[] = "dhcp_service_id";
 }  // namespace
 
-typedef scoped_refptr<DHCPv4Config> DHCPv4ConfigRefPtr;
+using DHCPv4ConfigRefPtr = scoped_refptr<DHCPv4Config>;
 
 class DHCPv4ConfigTest : public PropertyStoreTest {
  public:

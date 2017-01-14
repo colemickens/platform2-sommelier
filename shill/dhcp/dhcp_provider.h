@@ -121,7 +121,7 @@ class DHCPProvider {
   FRIEND_TEST(DHCPProviderTest, CreateIPv4Config);
   FRIEND_TEST(DHCPProviderTest, DestroyLease);
 
-  typedef std::map<int, DHCPConfigRefPtr> PIDConfigMap;
+  using PIDConfigMap = std::map<int, DHCPConfigRefPtr>;
 
   // Retire |pid| from the set of recently retired PIDs.
   void RetireUnboundPID(int pid);

@@ -84,7 +84,7 @@ class TestDHCPConfig : public DHCPConfig {
   MOCK_METHOD0(ShouldKeepLeaseOnDisconnect, bool());
 };
 
-typedef scoped_refptr<TestDHCPConfig> TestDHCPConfigRefPtr;
+using TestDHCPConfigRefPtr = scoped_refptr<TestDHCPConfig>;
 
 class DHCPConfigTest : public PropertyStoreTest {
  public:
