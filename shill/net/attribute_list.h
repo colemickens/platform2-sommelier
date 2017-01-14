@@ -32,8 +32,8 @@ struct nlattr;
 namespace shill {
 
 class AttributeList;
-typedef scoped_refptr<const AttributeList> AttributeListConstRefPtr;
-typedef scoped_refptr<AttributeList> AttributeListRefPtr;
+using AttributeListConstRefPtr = scoped_refptr<const AttributeList>;
+using AttributeListRefPtr = scoped_refptr<AttributeList>;
 
 class ByteString;
 class NetlinkAttribute;
@@ -140,7 +140,7 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
   virtual ~AttributeList() {}
 
  private:
-  typedef std::map<int, AttributePointer> AttributeMap;
+  using AttributeMap = std::map<int, AttributePointer>;
   friend class AttributeIdIterator;
   friend class NetlinkNestedAttribute;
 

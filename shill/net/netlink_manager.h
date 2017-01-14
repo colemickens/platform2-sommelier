@@ -113,18 +113,17 @@ class SHILL_EXPORT NetlinkManager {
     kTimeoutWaitingForResponse,
     kUnexpectedResponseType
   };
-  typedef base::Callback<void(const NetlinkMessage&)> NetlinkMessageHandler;
-  typedef base::Callback<void(const ControlNetlinkMessage&)>
-      ControlNetlinkMessageHandler;
-  typedef base::Callback<void(const Nl80211Message&)> Nl80211MessageHandler;
+  using NetlinkMessageHandler = base::Callback<void(const NetlinkMessage&)>;
+  using ControlNetlinkMessageHandler =
+      base::Callback<void(const ControlNetlinkMessage&)>;
+  using Nl80211MessageHandler = base::Callback<void(const Nl80211Message&)>;
   // NetlinkAuxilliaryMessageHandler handles netlink error messages, things
   // like the DoneMessage at the end of a multi-part message, and any errors
   // discovered by |NetlinkManager| (which are passed as NULL pointers because
   // there is no way to reserve a part of the ErrorAckMessage space for
   // non-netlink errors).
-  typedef base::Callback<void(AuxilliaryMessageType type,
-                              const NetlinkMessage*)>
-      NetlinkAuxilliaryMessageHandler;
+  using NetlinkAuxilliaryMessageHandler =
+      base::Callback<void(AuxilliaryMessageType type, const NetlinkMessage*)>;
   // NetlinkAckHandler handles netlink Ack messages, which are a special type
   // of netlink error message carrying an error code of 0. Since Ack messages
   // contain no useful data (other than the error code of 0 to differentiate
@@ -135,7 +134,7 @@ class SHILL_EXPORT NetlinkManager {
   // removed after this callback is executed. This allows a sender of an NL80211
   // message to handle both an Ack and another response message, rather than
   // handle only the first response received.
-  typedef base::Callback<void(bool*)> NetlinkAckHandler;
+  using NetlinkAckHandler = base::Callback<void(bool*)>;
 
   // ResponseHandlers provide a polymorphic context for the base::Callback
   // message handlers so that handlers for different types of messages can be
@@ -303,7 +302,7 @@ class SHILL_EXPORT NetlinkManager {
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_NOTIFY_CQM);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_TRIGGER_SCAN);
 
-  typedef scoped_refptr<NetlinkResponseHandler> NetlinkResponseHandlerRefPtr;
+  using NetlinkResponseHandlerRefPtr = scoped_refptr<NetlinkResponseHandler>;
 
   // Container for information we need to send a netlink message out on a
   // netlink socket.

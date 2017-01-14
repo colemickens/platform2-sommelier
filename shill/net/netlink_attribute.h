@@ -289,10 +289,12 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
   // set (note that one level of nesting either contains _only_ an array or
   // _no_ array).
   struct NestedData {
-    typedef base::Callback<bool (AttributeList* list, size_t id,
-                                 const std::string& attribute_name,
-                                 ByteString data)> AttributeParser;
-    typedef std::map<size_t, NestedData> NestedDataMap;
+    using AttributeParser =
+        base::Callback<bool(AttributeList* list,
+                            size_t id,
+                            const std::string& attribute_name,
+                            ByteString data)>;
+    using NestedDataMap = std::map<size_t, NestedData>;
 
     NestedData();
     NestedData(Type type, std::string attribute_name, bool is_array);
@@ -308,7 +310,7 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
     AttributeParser parse_attribute;
   };
 
-  typedef std::pair<size_t, NestedData> AttrDataPair;
+  using AttrDataPair = std::pair<size_t, NestedData>;
 
   // Some Nl80211 nested attributes are containers that do not have an actual
   // attribute id, but are nested in another attribute as array elements.

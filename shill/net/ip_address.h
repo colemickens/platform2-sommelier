@@ -28,7 +28,7 @@ namespace shill {
 
 class SHILL_EXPORT IPAddress {
  public:
-  typedef unsigned char Family;
+  using Family = unsigned char;
   static const Family kFamilyUnknown;
   static const Family kFamilyIPv4;
   static const Family kFamilyIPv6;

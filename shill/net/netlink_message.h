@@ -236,8 +236,8 @@ class SHILL_EXPORT UnknownMessage : public NetlinkMessage {
 
 class SHILL_EXPORT NetlinkMessageFactory {
  public:
-  typedef base::Callback<NetlinkMessage*(const NetlinkPacket& packet)>
-      FactoryMethod;
+  using FactoryMethod =
+      base::Callback<NetlinkMessage*(const NetlinkPacket& packet)>;
 
   NetlinkMessageFactory() {}
 

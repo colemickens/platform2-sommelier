@@ -128,7 +128,7 @@ class SHILL_EXPORT ByteString {
   static bool IsLessThan(const ByteString& lhs, const ByteString& rhs);
 
  private:
-  typedef std::vector<unsigned char> Vector;
+  using Vector = std::vector<unsigned char>;
 
   // Converts the string of bytes stored in the ByteString by treating it as
   // an array of unsigned integer of type T and applying |converter| on each

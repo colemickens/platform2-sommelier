@@ -55,7 +55,7 @@ class SHILL_EXPORT RTNLHandler {
   static const int kRequestNeighbor = 16;
   static const int kRequestBridgeNeighbor = 32;
 
-  typedef std::set<int> ErrorMask;
+  using ErrorMask = std::set<int>;
 
   virtual ~RTNLHandler();
 

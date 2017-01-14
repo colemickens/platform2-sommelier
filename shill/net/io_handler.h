@@ -40,9 +40,9 @@ class SHILL_EXPORT IOHandler {
     kModeOutput
   };
 
-  typedef base::Callback<void(const std::string&)> ErrorCallback;
-  typedef base::Callback<void(InputData*)> InputCallback;
-  typedef base::Callback<void(int)> ReadyCallback;
+  using ErrorCallback = base::Callback<void(const std::string&)>;
+  using InputCallback = base::Callback<void(InputData*)>;
+  using ReadyCallback = base::Callback<void(int)>;
 
   // Data buffer size in bytes.
   static const int kDataBufferSize = 4096;
