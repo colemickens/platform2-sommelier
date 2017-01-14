@@ -37,7 +37,7 @@ class Metrics;
 
 class EthernetEapProvider : public ProviderInterface {
  public:
-  typedef base::Callback<void()> CredentialChangeCallback;
+  using CredentialChangeCallback = base::Callback<void()>;
 
   EthernetEapProvider(ControlInterface* control_interface,
                       EventDispatcher* dispatcher,
@@ -84,7 +84,7 @@ class EthernetEapProvider : public ProviderInterface {
   // crbug.com/232134
   void set_service(const ServiceRefPtr& service) { service_ = service; }
 
-  typedef std::map<Ethernet*, CredentialChangeCallback> CallbackMap;
+  using CallbackMap = std::map<Ethernet*, CredentialChangeCallback>;
 
   // Representative service on which EAP credentials are configured.
   ServiceRefPtr service_;
