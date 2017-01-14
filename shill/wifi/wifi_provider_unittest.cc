@@ -189,7 +189,7 @@ class WiFiProviderTest : public testing::Test {
   }
 
  protected:
-  typedef scoped_refptr<MockWiFiService> MockWiFiServiceRefPtr;
+  using MockWiFiServiceRefPtr = scoped_refptr<MockWiFiService>;
 
   void CreateServicesFromProfile(Profile* profile) {
     provider_.CreateServicesFromProfile(profile);

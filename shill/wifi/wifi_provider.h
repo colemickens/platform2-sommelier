@@ -51,10 +51,10 @@ class WiFiProvider : public ProviderInterface {
  public:
   static const char kStorageFrequencies[];
   static const int kMaxStorageFrequencies;
-  typedef std::map<uint16_t, int64_t> ConnectFrequencyMap;
+  using ConnectFrequencyMap = std::map<uint16_t, int64_t>;
   // The key to |ConnectFrequencyMapDated| is the number of days since the
   // Epoch.
-  typedef std::map<time_t, ConnectFrequencyMap> ConnectFrequencyMapDated;
+  using ConnectFrequencyMapDated = std::map<time_t, ConnectFrequencyMap>;
   struct FrequencyCount {
     FrequencyCount() : frequency(0), connection_count(0) {}
     FrequencyCount(uint16_t freq, size_t conn)
@@ -63,7 +63,7 @@ class WiFiProvider : public ProviderInterface {
     size_t connection_count;  // Number of successful connections at this
                               // frequency.
   };
-  typedef std::deque<FrequencyCount> FrequencyCountList;
+  using FrequencyCountList = std::deque<FrequencyCount>;
 
   WiFiProvider(ControlInterface* control_interface,
                EventDispatcher* dispatcher,
@@ -156,7 +156,7 @@ class WiFiProvider : public ProviderInterface {
   FRIEND_TEST(WiFiProviderTest, StringListToFrequencyMap);
   FRIEND_TEST(WiFiProviderTest, StringListToFrequencyMapEmpty);
 
-  typedef std::map<const WiFiEndpoint*, WiFiServiceRefPtr> EndpointServiceMap;
+  using EndpointServiceMap = std::map<const WiFiEndpoint*, WiFiServiceRefPtr>;
 
   static const char kManagerErrorSSIDTooLong[];
   static const char kManagerErrorSSIDTooShort[];

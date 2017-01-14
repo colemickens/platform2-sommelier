@@ -48,7 +48,7 @@ const char kJunkData[] = "junk data";
 
 }  // namespace
 
-typedef Mac80211Monitor::QueueState QState;
+using QState = Mac80211Monitor::QueueState;
 
 class Mac80211MonitorTest : public testing::Test {
  public:

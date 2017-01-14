@@ -129,7 +129,7 @@ class WiFiService;
 // WiFi class. Specialization of Device for WiFi.
 class WiFi : public Device, public SupplicantEventDelegateInterface {
  public:
-  typedef std::set<uint32_t> FreqSet;
+  using FreqSet = std::set<uint32_t>;
 
   WiFi(ControlInterface* control_interface,
        EventDispatcher* dispatcher,
@@ -336,8 +336,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // kMaxPassiveScanRetries, kMaxFreqsForPassiveScanRetries
   FRIEND_TEST(WiFiMainTest, InitiateScanInDarkResume_Idle);
 
-  typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
-  typedef std::map<const WiFiService*, std::string> ReverseServiceMap;
+  using EndpointMap = std::map<const std::string, WiFiEndpointRefPtr>;
+  using ReverseServiceMap = std::map<const WiFiService*, std::string>;
 
   static const char* const kDefaultBgscanMethod;
   static const uint16_t kBackgroundScanIntervalSeconds;

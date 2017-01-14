@@ -717,7 +717,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   }
 
  protected:
-  typedef scoped_refptr<MockWiFiService> MockWiFiServiceRefPtr;
+  using MockWiFiServiceRefPtr = scoped_refptr<MockWiFiService>;
 
   // Simulate the course of events when the last endpoint of a service is
   // removed.
