@@ -68,7 +68,7 @@ class ChromeosModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
   }
 
  private:
-  typedef std::tuple<uint32_t, std::string, std::string> GSMRegistrationInfo;
+  using GSMRegistrationInfo = std::tuple<uint32_t, std::string, std::string>;
 
   class PropertySet : public dbus::PropertySet {
    public:

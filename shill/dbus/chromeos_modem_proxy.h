@@ -56,7 +56,7 @@ class ChromeosModemProxy : public ModemProxyInterface {
   }
 
  private:
-  typedef std::tuple<std::string, std::string, std::string> ModemHardwareInfo;
+  using ModemHardwareInfo = std::tuple<std::string, std::string, std::string>;
 
   // Signal handler.
   void StateChanged(uint32_t old, uint32_t _new, uint32_t reason);

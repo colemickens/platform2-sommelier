@@ -56,10 +56,10 @@ class ChromeosDBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
   }
 
  private:
-  typedef std::map<std::string, brillo::VariantDictionary>
-      DBusInterfaceToProperties;
-  typedef std::map<dbus::ObjectPath, DBusInterfaceToProperties>
-      DBusObjectsWithProperties;
+  using DBusInterfaceToProperties =
+      std::map<std::string, brillo::VariantDictionary>;
+  using DBusObjectsWithProperties =
+      std::map<dbus::ObjectPath, DBusInterfaceToProperties>;
 
   // Signal handlers.
   void InterfacesAdded(
