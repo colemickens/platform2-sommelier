@@ -51,7 +51,7 @@ class ReadablePropertyConstIterator {
  private:
   friend class PropertyStore;
 
-  typedef std::shared_ptr<AccessorInterface<V>> VAccessorPtr;
+  using VAccessorPtr = std::shared_ptr<AccessorInterface<V>>;
 
   explicit ReadablePropertyConstIterator(
       const typename std::map<std::string, VAccessorPtr>& collection)

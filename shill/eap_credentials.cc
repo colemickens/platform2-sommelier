@@ -93,7 +93,7 @@ void EapCredentials::PopulateSupplicantProperties(
   }
 
 
-  typedef std::pair<const char*, const char*> KeyVal;
+  using KeyVal = std::pair<const char*, const char*>;
   KeyVal init_propertyvals[] = {
     // Authentication properties.
     KeyVal(WPASupplicant::kNetworkPropertyEapAnonymousIdentity,

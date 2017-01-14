@@ -55,44 +55,42 @@ class AccessorInterface {
   DISALLOW_COPY_AND_ASSIGN(AccessorInterface);
 };
 
-typedef std::vector<uint8_t> ByteArray;
-typedef std::vector<ByteArray> ByteArrays;
+using ByteArray = std::vector<uint8_t>;
+using ByteArrays = std::vector<ByteArray>;
 // Note that while the RpcIdentifiers type has the same concrete
 // representation as the Strings type, it may be serialized
 // differently. Accordingly, PropertyStore tracks RpcIdentifiers
 // separately from Strings. We create a separate typedef here, to make
 // the PropertyStore-related code read more simply.
-typedef std::string RpcIdentifier;
-typedef std::vector<std::string> RpcIdentifiers;
-typedef std::vector<std::string> Strings;
-typedef std::map<std::string, std::string> Stringmap;
-typedef std::vector<Stringmap> Stringmaps;
-typedef std::vector<uint16_t> Uint16s;
+using RpcIdentifier = std::string;
+using RpcIdentifiers = std::vector<std::string>;
+using Strings = std::vector<std::string>;
+using Stringmap = std::map<std::string, std::string>;
+using Stringmaps = std::vector<Stringmap>;
+using Uint16s = std::vector<uint16_t>;
 
 // Using a smart pointer here allows pointers to classes derived from
 // AccessorInterface<> to be stored in maps and other STL container types.
-typedef std::shared_ptr<AccessorInterface<bool>> BoolAccessor;
-typedef std::shared_ptr<AccessorInterface<int16_t>> Int16Accessor;
-typedef std::shared_ptr<AccessorInterface<int32_t>> Int32Accessor;
+using BoolAccessor = std::shared_ptr<AccessorInterface<bool>>;
+using Int16Accessor = std::shared_ptr<AccessorInterface<int16_t>>;
+using Int32Accessor = std::shared_ptr<AccessorInterface<int32_t>>;
 // See comment above RpcIdentifiers typedef, for the reason why the
 // RpcIdentifiersAccessor exists (even though it has the same
 // underlying type as StringsAccessor).
-typedef std::shared_ptr<
-    AccessorInterface<RpcIdentifier>> RpcIdentifierAccessor;
-typedef std::shared_ptr<
-    AccessorInterface<std::vector<std::string>>> RpcIdentifiersAccessor;
-typedef std::shared_ptr<AccessorInterface<std::string>> StringAccessor;
-typedef std::shared_ptr<AccessorInterface<Stringmap>> StringmapAccessor;
-typedef std::shared_ptr<AccessorInterface<Stringmaps>> StringmapsAccessor;
-typedef std::shared_ptr<AccessorInterface<Strings>> StringsAccessor;
-typedef std::shared_ptr<
-    AccessorInterface<KeyValueStore>> KeyValueStoreAccessor;
-typedef std::shared_ptr<AccessorInterface<uint8_t>> Uint8Accessor;
-typedef std::shared_ptr<AccessorInterface<ByteArray>> ByteArrayAccessor;
-typedef std::shared_ptr<AccessorInterface<uint16_t>> Uint16Accessor;
-typedef std::shared_ptr<AccessorInterface<Uint16s>> Uint16sAccessor;
-typedef std::shared_ptr<AccessorInterface<uint32_t>> Uint32Accessor;
-typedef std::shared_ptr<AccessorInterface<uint64_t>> Uint64Accessor;
+using RpcIdentifierAccessor = std::shared_ptr<AccessorInterface<RpcIdentifier>>;
+using RpcIdentifiersAccessor =
+    std::shared_ptr<AccessorInterface<std::vector<std::string>>>;
+using StringAccessor = std::shared_ptr<AccessorInterface<std::string>>;
+using StringmapAccessor = std::shared_ptr<AccessorInterface<Stringmap>>;
+using StringmapsAccessor = std::shared_ptr<AccessorInterface<Stringmaps>>;
+using StringsAccessor = std::shared_ptr<AccessorInterface<Strings>>;
+using KeyValueStoreAccessor = std::shared_ptr<AccessorInterface<KeyValueStore>>;
+using Uint8Accessor = std::shared_ptr<AccessorInterface<uint8_t>>;
+using ByteArrayAccessor = std::shared_ptr<AccessorInterface<ByteArray>>;
+using Uint16Accessor = std::shared_ptr<AccessorInterface<uint16_t>>;
+using Uint16sAccessor = std::shared_ptr<AccessorInterface<Uint16s>>;
+using Uint32Accessor = std::shared_ptr<AccessorInterface<uint32_t>>;
+using Uint64Accessor = std::shared_ptr<AccessorInterface<uint64_t>>;
 
 }  // namespace shill
 

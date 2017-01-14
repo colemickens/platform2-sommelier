@@ -39,7 +39,7 @@ class IOHandler;
 // automatically stop when the monitor results in either failure or success.
 class PassiveLinkMonitor {
  public:
-  typedef base::Callback<void(bool)> ResultCallback;
+  using ResultCallback = base::Callback<void(bool)>;
 
   // The default number of cycles to monitor for.
   static const int kDefaultMonitorCycles;

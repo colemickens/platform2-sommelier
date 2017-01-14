@@ -36,7 +36,7 @@ namespace shill {
 template <class T>
 class PropertyObserver : public PropertyObserverInterface {
  public:
-  typedef base::Callback<void(const T& new_value)> Callback;
+  using Callback = base::Callback<void(const T& new_value)>;
 
   PropertyObserver(std::shared_ptr<AccessorInterface<T>> accessor,
                    Callback callback)

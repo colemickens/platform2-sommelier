@@ -38,7 +38,7 @@ class PowerManager : public PowerManagerProxyDelegate {
  public:
   // This callback is called prior to a suspend attempt.  When it is OK for the
   // system to suspend, this callback should call ReportSuspendReadiness().
-  typedef base::Closure SuspendImminentCallback;
+  using SuspendImminentCallback = base::Closure;
 
   // This callback is called after the completion of a suspend attempt.  The
   // receiver should undo any pre-suspend work that was done by the
@@ -47,13 +47,13 @@ class PowerManager : public PowerManagerProxyDelegate {
   // SuspendDoneCallback while processing a DarkSuspendImminentCallback. So,
   // SuspendDoneCallback should be ready to run concurrently with (and in a
   // sense override) the actions taken by DarkSuspendImminentCallback.
-  typedef base::Closure SuspendDoneCallback;
+  using SuspendDoneCallback = base::Closure;
 
   // This callback is called at the beginning of a dark resume.
   // The receiver should arrange for ReportDarkSuspendImminentReadiness() to be
   // called when shill is ready to resuspend. In most cases,
   // ReportDarkSuspendImminentReadiness will be called asynchronously.
-  typedef base::Closure DarkSuspendImminentCallback;
+  using DarkSuspendImminentCallback = base::Closure;
 
   // |control_itnerface| creates the PowerManagerProxy. Use a fake for testing.
   // Note: |Start| should be called to initialize this object before using it.

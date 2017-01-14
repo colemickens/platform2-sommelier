@@ -80,7 +80,7 @@ class EthernetEapProvider;
 
 class Manager : public base::SupportsWeakPtr<Manager> {
  public:
-  typedef base::Callback<void(const ServiceRefPtr& service)> ServiceCallback;
+  using ServiceCallback = base::Callback<void(const ServiceRefPtr& service)>;
 
   struct Properties {
    public:

@@ -129,7 +129,7 @@ class NetfilterQueueProcessor {
     uint32_t destination;
   };
 
-  typedef std::shared_ptr<ListenerEntry> ListenerEntryPtr;
+  using ListenerEntryPtr = std::shared_ptr<ListenerEntry>;
 
   // Called by the netlink_queue code when a packet arrives for the
   // input queue.

@@ -1143,11 +1143,11 @@ class Metrics {
   FRIEND_TEST(MetricsTest, NotifyBeforeSuspendActions_NotInDarkResume);
   FRIEND_TEST(WiFiMainTest, GetGeolocationObjects);
 
-  typedef std::vector<std::unique_ptr<chromeos_metrics::TimerReporter>>
-      TimerReporters;
-  typedef std::list<chromeos_metrics::TimerReporter*> TimerReportersList;
-  typedef std::map<Service::ConnectState, TimerReportersList>
-      TimerReportersByState;
+  using TimerReporters =
+      std::vector<std::unique_ptr<chromeos_metrics::TimerReporter>>;
+  using TimerReportersList = std::list<chromeos_metrics::TimerReporter*>;
+  using TimerReportersByState =
+      std::map<Service::ConnectState, TimerReportersList>;
   struct ServiceMetrics {
     // All TimerReporter objects are stored in |timers| which owns the objects.
     // |start_on_state| and |stop_on_state| contain pointers to the
@@ -1156,8 +1156,8 @@ class Metrics {
     TimerReportersByState start_on_state;
     TimerReportersByState stop_on_state;
   };
-  typedef std::map<const Service*, std::shared_ptr<ServiceMetrics>>
-      ServiceMetricsLookupMap;
+  using ServiceMetricsLookupMap =
+      std::map<const Service*, std::shared_ptr<ServiceMetrics>>;
 
   struct DeviceMetrics {
     DeviceMetrics() : auto_connect_tries(0) {}
@@ -1171,8 +1171,8 @@ class Metrics {
     std::unique_ptr<chromeos_metrics::TimerReporter> auto_connect_timer;
     int auto_connect_tries;
   };
-  typedef std::map<const int, std::shared_ptr<DeviceMetrics>>
-      DeviceMetricsLookupMap;
+  using DeviceMetricsLookupMap =
+      std::map<const int, std::shared_ptr<DeviceMetrics>>;
 
   static const uint16_t kWiFiBandwidth5MHz;
   static const uint16_t kWiFiBandwidth20MHz;

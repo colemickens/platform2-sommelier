@@ -22,76 +22,76 @@
 namespace shill {
 
 class Device;
-typedef scoped_refptr<const Device> DeviceConstRefPtr;
-typedef scoped_refptr<Device> DeviceRefPtr;
+using DeviceConstRefPtr = scoped_refptr<const Device>;
+using DeviceRefPtr = scoped_refptr<Device>;
 
 class Cellular;
-typedef scoped_refptr<const Cellular> CellularConstRefPtr;
-typedef scoped_refptr<Cellular> CellularRefPtr;
+using CellularConstRefPtr = scoped_refptr<const Cellular>;
+using CellularRefPtr = scoped_refptr<Cellular>;
 
 class Ethernet;
-typedef scoped_refptr<const Ethernet> EthernetConstRefPtr;
-typedef scoped_refptr<Ethernet> EthernetRefPtr;
+using EthernetConstRefPtr = scoped_refptr<const Ethernet>;
+using EthernetRefPtr = scoped_refptr<Ethernet>;
 
 class PPPDevice;
-typedef scoped_refptr<const PPPDevice> PPPDeviceConstRefPtr;
-typedef scoped_refptr<PPPDevice> PPPDeviceRefPtr;
+using PPPDeviceConstRefPtr = scoped_refptr<const PPPDevice>;
+using PPPDeviceRefPtr = scoped_refptr<PPPDevice>;
 
 class VirtualDevice;
-typedef scoped_refptr<const VirtualDevice> VirtualDeviceConstRefPtr;
-typedef scoped_refptr<VirtualDevice> VirtualDeviceRefPtr;
+using VirtualDeviceConstRefPtr = scoped_refptr<const VirtualDevice>;
+using VirtualDeviceRefPtr = scoped_refptr<VirtualDevice>;
 
 class WiFi;
-typedef scoped_refptr<const WiFi> WiFiConstRefPtr;
-typedef scoped_refptr<WiFi> WiFiRefPtr;
+using WiFiConstRefPtr = scoped_refptr<const WiFi>;
+using WiFiRefPtr = scoped_refptr<WiFi>;
 
 class WiMax;
-typedef scoped_refptr<const WiMax> WiMaxConstRefPtr;
-typedef scoped_refptr<WiMax> WiMaxRefPtr;
+using WiMaxConstRefPtr = scoped_refptr<const WiMax>;
+using WiMaxRefPtr = scoped_refptr<WiMax>;
 
 class WiFiEndpoint;
-typedef scoped_refptr<const WiFiEndpoint> WiFiEndpointConstRefPtr;
-typedef scoped_refptr<WiFiEndpoint> WiFiEndpointRefPtr;
+using WiFiEndpointConstRefPtr = scoped_refptr<const WiFiEndpoint>;
+using WiFiEndpointRefPtr = scoped_refptr<WiFiEndpoint>;
 
 class Service;
-typedef scoped_refptr<const Service> ServiceConstRefPtr;
-typedef scoped_refptr<Service> ServiceRefPtr;
+using ServiceConstRefPtr = scoped_refptr<const Service>;
+using ServiceRefPtr = scoped_refptr<Service>;
 
 class CellularService;
-typedef scoped_refptr<const CellularService> CellularServiceConstRefPtr;
-typedef scoped_refptr<CellularService> CellularServiceRefPtr;
+using CellularServiceConstRefPtr = scoped_refptr<const CellularService>;
+using CellularServiceRefPtr = scoped_refptr<CellularService>;
 
 class EthernetService;
-typedef scoped_refptr<const EthernetService> EthernetServiceConstRefPtr;
-typedef scoped_refptr<EthernetService> EthernetServiceRefPtr;
+using EthernetServiceConstRefPtr = scoped_refptr<const EthernetService>;
+using EthernetServiceRefPtr = scoped_refptr<EthernetService>;
 
 class VPNService;
-typedef scoped_refptr<const VPNService> VPNServiceConstRefPtr;
-typedef scoped_refptr<VPNService> VPNServiceRefPtr;
+using VPNServiceConstRefPtr = scoped_refptr<const VPNService>;
+using VPNServiceRefPtr = scoped_refptr<VPNService>;
 
 class WiFiService;
-typedef scoped_refptr<const WiFiService> WiFiServiceConstRefPtr;
-typedef scoped_refptr<WiFiService> WiFiServiceRefPtr;
+using WiFiServiceConstRefPtr = scoped_refptr<const WiFiService>;
+using WiFiServiceRefPtr = scoped_refptr<WiFiService>;
 
 class WiMaxService;
-typedef scoped_refptr<const WiMaxService> WiMaxServiceConstRefPtr;
-typedef scoped_refptr<WiMaxService> WiMaxServiceRefPtr;
+using WiMaxServiceConstRefPtr = scoped_refptr<const WiMaxService>;
+using WiMaxServiceRefPtr = scoped_refptr<WiMaxService>;
 
 class IPConfig;
-typedef scoped_refptr<IPConfig> IPConfigRefPtr;
+using IPConfigRefPtr = scoped_refptr<IPConfig>;
 
 class DHCPConfig;
-typedef scoped_refptr<DHCPConfig> DHCPConfigRefPtr;
+using DHCPConfigRefPtr = scoped_refptr<DHCPConfig>;
 
 class Throttler;
-typedef scoped_refptr<Throttler> ThrottlerRefPtr;
+using ThrottlerRefPtr = scoped_refptr<Throttler>;
 
 class Profile;
-typedef scoped_refptr<const Profile> ProfileConstRefPtr;
-typedef scoped_refptr<Profile> ProfileRefPtr;
+using ProfileConstRefPtr = scoped_refptr<const Profile>;
+using ProfileRefPtr = scoped_refptr<Profile>;
 
 class Connection;
-typedef scoped_refptr<Connection> ConnectionRefPtr;
+using ConnectionRefPtr = scoped_refptr<Connection>;
 
 }  // namespace shill
 

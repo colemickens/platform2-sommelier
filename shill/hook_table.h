@@ -96,7 +96,7 @@ class HookTable {
   };
 
   // Each action is stored in this table.  The key is |name| passed to Add().
-  typedef std::map<std::string, HookAction> HookTableMap;
+  using HookTableMap = std::map<std::string, HookAction>;
 
   // Returns true if all started actions have completed; false otherwise.  If no
   // actions have started, returns true.

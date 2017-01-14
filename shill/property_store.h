@@ -36,7 +36,7 @@ class Error;
 
 class PropertyStore {
  public:
-  typedef base::Callback<void(const std::string&)> PropertyChangeCallback;
+  using PropertyChangeCallback = base::Callback<void(const std::string&)>;
   PropertyStore();
   explicit PropertyStore(PropertyChangeCallback property_change_callback);
   virtual ~PropertyStore();

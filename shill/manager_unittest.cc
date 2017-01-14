@@ -357,7 +357,7 @@ class ManagerTest : public PropertyStoreTest {
   }
 
  protected:
-  typedef scoped_refptr<MockService> MockServiceRefPtr;
+  using MockServiceRefPtr = scoped_refptr<MockService>;
 
   class ServiceWatcher : public base::SupportsWeakPtr<ServiceWatcher> {
    public:

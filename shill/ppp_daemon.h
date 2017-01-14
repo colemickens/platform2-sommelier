@@ -40,7 +40,7 @@ class PPPDaemon {
   // The type of callback invoked when an ExternalTask wrapping a pppd instance
   // dies.  The first argument is the pid of the process, the second is the exit
   // code.
-  typedef base::Callback<void(pid_t, int)> DeathCallback;
+  using DeathCallback = base::Callback<void(pid_t, int)>;
 
   // Provides options used when preparing a pppd task for execution.  These map
   // to pppd command-line options.  Refer to https://ppp.samba.org/pppd.html for

@@ -111,8 +111,8 @@ class IPConfig : public base::RefCounted<IPConfig> {
     kReleaseReasonStaticIP
   };
 
-  typedef base::Callback<void(const IPConfigRefPtr&, bool)> UpdateCallback;
-  typedef base::Callback<void(const IPConfigRefPtr&)> Callback;
+  using UpdateCallback = base::Callback<void(const IPConfigRefPtr&, bool)>;
+  using Callback = base::Callback<void(const IPConfigRefPtr&)>;
 
   // Define a default and a minimum viable MTU value.
   static const int kDefaultMTU;

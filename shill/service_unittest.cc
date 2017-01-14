@@ -120,7 +120,7 @@ class ServiceTest : public PropertyStoreTest {
   MOCK_METHOD1(TestCallback, void(const Error& error));
 
  protected:
-  typedef scoped_refptr<MockProfile> MockProfileRefPtr;
+  using MockProfileRefPtr = scoped_refptr<MockProfile>;
 
   ServiceMockAdaptor* GetAdaptor() {
     return static_cast<ServiceMockAdaptor*>(service_->adaptor());

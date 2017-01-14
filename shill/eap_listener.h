@@ -33,7 +33,7 @@ class Sockets;
 // callback when a request frame arrives.
 class EapListener {
  public:
-  typedef base::Callback<void()> EapRequestReceivedCallback;
+  using EapRequestReceivedCallback = base::Callback<void()>;
 
   explicit EapListener(EventDispatcher* event_dispatcher,
                        int interface_index);

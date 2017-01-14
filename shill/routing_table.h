@@ -42,12 +42,12 @@ struct RoutingTableEntry;
 // default route for an interface or modifying its metric (priority).
 class RoutingTable {
  public:
-  typedef std::vector<RoutingTableEntry> TableEntryVector;
-  typedef std::unordered_map<int, TableEntryVector> Tables;
+  using TableEntryVector = std::vector<RoutingTableEntry>;
+  using Tables = std::unordered_map<int, TableEntryVector>;
 
   struct Query {
     // Callback::Run(interface_index, entry)
-    typedef base::Callback<void(int, const RoutingTableEntry&)> Callback;
+    using Callback = base::Callback<void(int, const RoutingTableEntry&)>;
 
     Query() : sequence(0), tag(0), table_id(0) {}
     Query(uint32_t sequence_in,

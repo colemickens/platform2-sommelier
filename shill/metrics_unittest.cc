@@ -1103,7 +1103,7 @@ TEST_F(MetricsTest, NotifyConnectionDiagnosticsIssue_Failure) {
 
 #ifndef NDEBUG
 
-typedef MetricsTest MetricsDeathTest;
+using MetricsDeathTest = MetricsTest;
 
 TEST_F(MetricsDeathTest, PortalDetectionResultToEnumDNSSuccess) {
   PortalDetector::Result result(

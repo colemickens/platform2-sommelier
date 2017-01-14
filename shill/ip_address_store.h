@@ -38,7 +38,7 @@ struct IPAddressLTIgnorePrefix {
 // Currently, this is a thin wrapper around an STL container.
 class IPAddressStore {
  public:
-  typedef std::set<IPAddress, IPAddressLTIgnorePrefix> IPAddresses;
+  using IPAddresses = std::set<IPAddress, IPAddressLTIgnorePrefix>;
 
   IPAddressStore();
   virtual ~IPAddressStore();

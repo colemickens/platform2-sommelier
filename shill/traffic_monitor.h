@@ -47,7 +47,7 @@ class TrafficMonitor {
     kNetworkProblemMax
   };
 
-  typedef base::Callback<void(int)> NetworkProblemDetectedCallback;
+  using NetworkProblemDetectedCallback = base::Callback<void(int)>;
 
   TrafficMonitor(const DeviceRefPtr& device, EventDispatcher* dispatcher);
   virtual ~TrafficMonitor();
@@ -94,7 +94,7 @@ class TrafficMonitor {
   FRIEND_TEST(TrafficMonitorTest, SampleTrafficUnstuckTxQueueZeroQueueLength);
   FRIEND_TEST(TrafficMonitorTest, StartAndStop);
 
-  typedef std::map<std::string, uint64_t> IPPortToTxQueueLengthMap;
+  using IPPortToTxQueueLengthMap = std::map<std::string, uint64_t>;
 
   // The minimum number of samples that indicate an abnormal scenario
   // required to trigger the callback.

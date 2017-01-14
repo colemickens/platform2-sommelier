@@ -50,7 +50,7 @@ class GeolocationInfo {
   std::map<std::string, std::string> properties_;
 };
 
-typedef std::vector<GeolocationInfo> GeolocationInfos;
+using GeolocationInfos = std::vector<GeolocationInfo>;
 
 }  // namespace shill
 

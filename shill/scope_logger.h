@@ -73,8 +73,8 @@ class ScopeLogger {
     kNumScopes
   };
 
-  typedef base::Callback<void(bool)> ScopeEnableChangedCallback;
-  typedef std::vector<ScopeEnableChangedCallback>ScopeEnableChangedCallbacks;
+  using ScopeEnableChangedCallback = base::Callback<void(bool)>;
+  using ScopeEnableChangedCallbacks = std::vector<ScopeEnableChangedCallback>;
 
   // Returns a singleton of this class.
   static ScopeLogger* GetInstance();

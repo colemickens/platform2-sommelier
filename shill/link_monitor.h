@@ -38,8 +38,8 @@ class Time;
 
 class LinkMonitor {
  public:
-  typedef base::Closure FailureCallback;
-  typedef base::Closure GatewayChangeCallback;
+  using FailureCallback = base::Closure;
+  using GatewayChangeCallback = base::Closure;
 
   // The default number of milliseconds between ARP requests used by
   // ActiveLinkMonitor. Needed by Metrics.

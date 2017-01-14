@@ -33,18 +33,15 @@ namespace shill {
 class DBusPropertiesProxyInterface {
  public:
   // Callback invoked when an object sends a DBus property change signal.
-  typedef base::Callback<void(
+  using PropertiesChangedCallback = base::Callback<void(
       const std::string& interface,
       const KeyValueStore& changed_properties,
-      const std::vector<std::string>& invalidated_properties)>
-    PropertiesChangedCallback;
+      const std::vector<std::string>& invalidated_properties)>;
 
   // Callback invoked when the classic modem manager sends a DBus
   // property change signal.
-  typedef base::Callback<void(
-      const std::string& interface,
-      const KeyValueStore& properties)>
-    ModemManagerPropertiesChangedCallback;
+  using ModemManagerPropertiesChangedCallback = base::Callback<void(
+      const std::string& interface, const KeyValueStore& properties)>;
 
   virtual ~DBusPropertiesProxyInterface() {}
 

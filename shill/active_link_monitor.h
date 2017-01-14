@@ -50,9 +50,9 @@ class ActiveLinkMonitor {
  public:
   // FailureCallback takes monitor failure code, broadcast failure count, and
   // unicast failure count as arguments.
-  typedef base::Callback<void(Metrics::LinkMonitorFailure, int, int)>
-      FailureCallback;
-  typedef base::Closure SuccessCallback;
+  using FailureCallback =
+      base::Callback<void(Metrics::LinkMonitorFailure, int, int)>;
+  using SuccessCallback = base::Closure;
 
   // The default number of milliseconds between ARP requests. Needed by Metrics.
   static const int kDefaultTestPeriodMilliseconds;

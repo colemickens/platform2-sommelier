@@ -37,9 +37,17 @@ namespace shill {
 
 class PropertyStoreTest : public testing::TestWithParam<brillo::Any> {
  public:
-  typedef ::testing::Types<bool, int16_t, int32_t, std::string, Stringmap,
-                           Stringmaps, Strings, uint8_t, uint16_t, Uint16s,
-                           uint32_t> PropertyTypes;
+  using PropertyTypes = ::testing::Types<bool,
+                                         int16_t,
+                                         int32_t,
+                                         std::string,
+                                         Stringmap,
+                                         Stringmaps,
+                                         Strings,
+                                         uint8_t,
+                                         uint16_t,
+                                         Uint16s,
+                                         uint32_t>;
 
   // In real code, it's frowned upon to have non-POD static members, as there
   // can be ordering issues if your constructors have side effects.
