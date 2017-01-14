@@ -29,7 +29,7 @@ class Error;
 // is provided so that it can be mocked in tests.
 class WiMaxManagerProxyInterface {
  public:
-  typedef base::Callback<void(const RpcIdentifiers&)> DevicesChangedCallback;
+  using DevicesChangedCallback = base::Callback<void(const RpcIdentifiers&)>;
 
   virtual ~WiMaxManagerProxyInterface() {}
 

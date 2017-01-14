@@ -36,9 +36,9 @@ class KeyValueStore;
 // interface is provided so that it can be mocked in tests.
 class WiMaxDeviceProxyInterface {
  public:
-  typedef base::Callback<void(const RpcIdentifiers&)> NetworksChangedCallback;
-  typedef base::Callback<void(
-      wimax_manager::DeviceStatus)> StatusChangedCallback;
+  using NetworksChangedCallback = base::Callback<void(const RpcIdentifiers&)>;
+  using StatusChangedCallback =
+      base::Callback<void(wimax_manager::DeviceStatus)>;
 
   virtual ~WiMaxDeviceProxyInterface() {}
 

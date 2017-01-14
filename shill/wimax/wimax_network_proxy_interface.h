@@ -28,7 +28,7 @@ namespace shill {
 // Generally, a string representation of a Network's Identifier. We may group
 // several different network identifiers into a single representative
 // WiMaxNetworkId, if necessary.
-typedef std::string WiMaxNetworkId;
+using WiMaxNetworkId = std::string;
 
 class Error;
 
@@ -36,7 +36,7 @@ class Error;
 // interface is provided so that it can be mocked in tests.
 class WiMaxNetworkProxyInterface {
  public:
-  typedef base::Callback<void(int)> SignalStrengthChangedCallback;
+  using SignalStrengthChangedCallback = base::Callback<void(int)>;
 
   virtual ~WiMaxNetworkProxyInterface() {}
 
