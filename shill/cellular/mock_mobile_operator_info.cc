@@ -18,6 +18,8 @@
 
 #include <gmock/gmock.h>
 
+using testing::ReturnRef;
+
 namespace shill {
 
 MockMobileOperatorInfo::MockMobileOperatorInfo(EventDispatcher* dispatcher,

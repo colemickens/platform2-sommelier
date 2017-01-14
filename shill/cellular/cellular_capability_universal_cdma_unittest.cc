@@ -52,6 +52,7 @@ using std::vector;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
+using testing::ReturnRef;
 using testing::_;
 
 namespace shill {

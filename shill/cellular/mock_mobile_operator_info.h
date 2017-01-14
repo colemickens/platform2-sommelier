@@ -24,8 +24,6 @@
 
 #include "shill/cellular/mobile_operator_info.h"
 
-using testing::ReturnRef;
-
 namespace shill {
 
 class MockMobileOperatorInfo : public MobileOperatorInfo {

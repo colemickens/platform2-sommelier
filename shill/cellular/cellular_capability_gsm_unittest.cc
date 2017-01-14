@@ -48,9 +48,10 @@ using base::Bind;
 using base::Unretained;
 using std::string;
 using std::vector;
-using testing::_;
 using testing::Invoke;
 using testing::Return;
+using testing::ReturnRef;
+using testing::_;
 
 namespace shill {
 
