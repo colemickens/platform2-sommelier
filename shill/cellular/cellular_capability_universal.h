@@ -49,12 +49,12 @@ class ModemInfo;
 // all types of modems, i.e. CDMA, GSM, and LTE modems.
 class CellularCapabilityUniversal : public CellularCapability {
  public:
-  typedef std::vector<KeyValueStore> ScanResults;
-  typedef KeyValueStore ScanResult;
-  typedef std::map<uint32_t, uint32_t> LockRetryData;
-  typedef std::tuple<uint32_t, bool> SignalQuality;
-  typedef std::tuple<uint32_t, uint32_t> ModesData;
-  typedef std::vector<ModesData> SupportedModes;
+  using ScanResults = std::vector<KeyValueStore>;
+  using ScanResult = KeyValueStore;
+  using LockRetryData = std::map<uint32_t, uint32_t>;
+  using SignalQuality = std::tuple<uint32_t, bool>;
+  using ModesData = std::tuple<uint32_t, uint32_t>;
+  using SupportedModes = std::vector<ModesData>;
 
   // Constants used in connect method call.  Make available to test matchers.
   // TODO(jglasgow): Generate from modem manager into

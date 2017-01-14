@@ -88,7 +88,7 @@ class CellularCapabilityClassic : public CellularCapability {
                   const ResultCallback& callback) override;
 
  protected:
-  typedef std::vector<base::Closure> CellularTaskList;
+  using CellularTaskList = std::vector<base::Closure>;
 
   virtual void GetRegistrationState() = 0;
 

@@ -25,14 +25,13 @@ namespace shill {
 
 class Error;
 
-typedef base::Callback<void(uint32_t)> SignalQualitySignalCallback;
-typedef base::Callback<void(uint32_t, uint32_t)>
-    RegistrationStateSignalCallback;
-
-typedef base::Callback<void(uint32_t, const Error&)> ActivationResultCallback;
-typedef base::Callback<void(uint32_t, const Error&)> SignalQualityCallback;
-typedef base::Callback<void(uint32_t, uint32_t,
-                            const Error&)> RegistrationStateCallback;
+using SignalQualitySignalCallback = base::Callback<void(uint32_t)>;
+using RegistrationStateSignalCallback =
+    base::Callback<void(uint32_t, uint32_t)>;
+using ActivationResultCallback = base::Callback<void(uint32_t, const Error&)>;
+using SignalQualityCallback = base::Callback<void(uint32_t, const Error&)>;
+using RegistrationStateCallback =
+    base::Callback<void(uint32_t, uint32_t, const Error&)>;
 
 // These are the methods that a ModemManager.Modem.CDMA proxy must support.
 // The interface is provided so that it can be mocked in tests.

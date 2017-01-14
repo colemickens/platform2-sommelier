@@ -27,8 +27,8 @@ class Error;
 
 namespace mm1 {
 
-typedef base::Callback<void(int32_t,
-                            int32_t, uint32_t)> ModemStateChangedSignalCallback;
+using ModemStateChangedSignalCallback =
+    base::Callback<void(int32_t, int32_t, uint32_t)>;
 
 // These are the methods that a org.freedesktop.ModemManager1.Modem
 // proxy must support. The interface is provided so that it can be

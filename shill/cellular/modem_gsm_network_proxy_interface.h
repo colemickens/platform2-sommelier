@@ -27,23 +27,17 @@ namespace shill {
 
 class Error;
 
-typedef std::map<std::string, std::string> GSMScanResult;
-typedef std::vector<GSMScanResult> GSMScanResults;
-
-typedef base::Callback<void(uint32_t)> SignalQualitySignalCallback;
-typedef base::Callback<void(
-    uint32_t,
-    const std::string&,
-    const std::string&)> RegistrationInfoSignalCallback;
-typedef base::Callback<void(uint32_t)> NetworkModeSignalCallback;
-
-typedef base::Callback<void(uint32_t, const Error&)> SignalQualityCallback;
-typedef base::Callback<void(uint32_t,
-                            const std::string&,
-                            const std::string&,
-                            const Error&)> RegistrationInfoCallback;
-typedef base::Callback<void(const GSMScanResults&,
-                            const Error&)> ScanResultsCallback;
+using GSMScanResult = std::map<std::string, std::string>;
+using GSMScanResults = std::vector<GSMScanResult>;
+using SignalQualitySignalCallback = base::Callback<void(uint32_t)>;
+using RegistrationInfoSignalCallback =
+    base::Callback<void(uint32_t, const std::string&, const std::string&)>;
+using NetworkModeSignalCallback = base::Callback<void(uint32_t)>;
+using SignalQualityCallback = base::Callback<void(uint32_t, const Error&)>;
+using RegistrationInfoCallback = base::Callback<void(
+    uint32_t, const std::string&, const std::string&, const Error&)>;
+using ScanResultsCallback =
+    base::Callback<void(const GSMScanResults&, const Error&)>;
 
 // These are the methods that a ModemManager.Modem.Gsm.Network proxy must
 // support. The interface is provided so that it can be mocked in tests.

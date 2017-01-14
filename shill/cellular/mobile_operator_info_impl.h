@@ -35,10 +35,9 @@ namespace shill {
 
 class MobileOperatorInfoImpl {
  public:
-  typedef
-  std::map<std::string,
-           std::vector<const mobile_operator_db::MobileNetworkOperator*>>
-      StringToMNOListMap;
+  using StringToMNOListMap =
+      std::map<std::string,
+               std::vector<const mobile_operator_db::MobileNetworkOperator*>>;
 
   // Delegates to private constructor
   MobileOperatorInfoImpl(EventDispatcher* dispatcher,

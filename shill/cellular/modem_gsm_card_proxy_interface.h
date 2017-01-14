@@ -24,8 +24,9 @@
 namespace shill {
 
 class Error;
-typedef base::Callback<void(const std::string&,
-                            const Error&)> GSMIdentifierCallback;
+
+using GSMIdentifierCallback =
+    base::Callback<void(const std::string&, const Error&)>;
 
 // These are the methods that a ModemManager.Modem.Gsm.Card proxy must
 // support. The interface is provided so that it can be mocked in tests.

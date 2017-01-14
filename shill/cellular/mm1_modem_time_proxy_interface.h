@@ -26,8 +26,8 @@ class Error;
 
 namespace mm1 {
 
-typedef base::Callback<void(const std::string&)>
-    NetworkTimeChangedSignalCallback;
+using NetworkTimeChangedSignalCallback =
+    base::Callback<void(const std::string&)>;
 
 // These are the methods that an org.freedesktop.ModemManager1.Modem.Time
 // proxy must support. The interface is provided so that it can be mocked

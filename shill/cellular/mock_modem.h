@@ -48,7 +48,8 @@ class MockModem : public Modem {
       const std::string& device_name,
       int ifindex));
 };
-typedef ::testing::StrictMock<MockModem> StrictModem;
+
+using StrictModem = ::testing::StrictMock<MockModem>;
 
 }  // namespace shill
 

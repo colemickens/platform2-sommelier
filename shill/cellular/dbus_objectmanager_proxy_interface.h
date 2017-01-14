@@ -29,19 +29,16 @@ namespace shill {
 
 class Error;
 
-typedef std::map<std::string, KeyValueStore> InterfaceToProperties;
-typedef std::map<std::string, InterfaceToProperties>
-    ObjectsWithProperties;
-typedef base::Callback<void(const ObjectsWithProperties&, const Error&)>
-    ManagedObjectsCallback;
-typedef base::Callback<void(const InterfaceToProperties&, const Error&)>
-    InterfaceAndPropertiesCallback;
-typedef base::Callback<void(const std::string&,
-                            const InterfaceToProperties&)>
-    InterfacesAddedSignalCallback;
-typedef base::Callback<void(const std::string&,
-                            const std::vector<std::string>&)>
-    InterfacesRemovedSignalCallback;
+using InterfaceToProperties = std::map<std::string, KeyValueStore>;
+using ObjectsWithProperties = std::map<std::string, InterfaceToProperties>;
+using ManagedObjectsCallback =
+    base::Callback<void(const ObjectsWithProperties&, const Error&)>;
+using InterfaceAndPropertiesCallback =
+    base::Callback<void(const InterfaceToProperties&, const Error&)>;
+using InterfacesAddedSignalCallback =
+    base::Callback<void(const std::string&, const InterfaceToProperties&)>;
+using InterfacesRemovedSignalCallback =
+    base::Callback<void(const std::string&, const std::vector<std::string>&)>;
 
 // These are the methods that a org.freedesktop.DBus.ObjectManager
 // proxy must support.  The interface is provided so that it can be

@@ -26,12 +26,12 @@ namespace shill {
 class CallContext;
 class Error;
 
-typedef base::Callback<void(uint32_t, uint32_t, uint32_t)>
-    ModemStateChangedSignalCallback;
-typedef base::Callback<void(const std::string& manufacturer,
-                            const std::string& modem,
-                            const std::string& version,
-                            const Error&)> ModemInfoCallback;
+using ModemStateChangedSignalCallback =
+    base::Callback<void(uint32_t, uint32_t, uint32_t)>;
+using ModemInfoCallback = base::Callback<void(const std::string& manufacturer,
+                                              const std::string& modem,
+                                              const std::string& version,
+                                              const Error&)>;
 
 // These are the methods that a ModemManager.Modem proxy must support. The
 // interface is provided so that it can be mocked in tests. All calls are
