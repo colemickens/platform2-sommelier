@@ -124,40 +124,12 @@ class ManagerTest : public PropertyStoreTest {
 #if !defined(DISABLE_WIFI)
         wifi_provider_(new NiceMock<MockWiFiProvider>()),
 #endif  // DISABLE_WIFI
-        throttler_(new NiceMock<MockThrottler>()),
+        throttler_(new StrictMock<MockThrottler>()),
         crypto_util_proxy_(new NiceMock<MockCryptoUtilProxy>(dispatcher())),
         upstart_(new NiceMock<MockUpstart>(control_interface())) {
     ON_CALL(*control_interface(), CreatePowerManagerProxy(_, _, _))
         .WillByDefault(ReturnNull());
 
-    mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
-                                                     dispatcher(),
-                                                     metrics(),
-                                                     manager(),
-                                                     "null0",
-                                                     "addr0",
-                                                     0));
-    mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
-                                                     dispatcher(),
-                                                     metrics(),
-                                                     manager(),
-                                                     "null1",
-                                                     "addr1",
-                                                     1));
-    mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
-                                                     dispatcher(),
-                                                     metrics(),
-                                                     manager(),
-                                                     "null2",
-                                                     "addr2",
-                                                     2));
-    mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
-                                                     dispatcher(),
-                                                     metrics(),
-                                                     manager(),
-                                                     "null3",
-                                                     "addr3",
-                                                     3));
     manager()->connect_profiles_to_rpc_ = false;
     SetRunning(true);
 
@@ -195,6 +167,42 @@ class ManagerTest : public PropertyStoreTest {
     manager()->upstart_.reset(upstart_);
   }
   virtual ~ManagerTest() {}
+
+  virtual void SetUp() {
+    mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
+                                                     dispatcher(),
+                                                     metrics(),
+                                                     manager(),
+                                                     "null0",
+                                                     "addr0",
+                                                     0));
+    mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
+                                                     dispatcher(),
+                                                     metrics(),
+                                                     manager(),
+                                                     "null1",
+                                                     "addr1",
+                                                     1));
+    mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
+                                                     dispatcher(),
+                                                     metrics(),
+                                                     manager(),
+                                                     "null2",
+                                                     "addr2",
+                                                     2));
+    mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
+                                                     dispatcher(),
+                                                     metrics(),
+                                                     manager(),
+                                                     "null3",
+                                                     "addr3",
+                                                     3));
+  }
+
+  virtual void TearDown() {
+    mock_devices_.clear();
+  }
+
 
   void SetMetrics(Metrics* metrics) {
     manager()->set_metrics(metrics);
@@ -611,6 +619,28 @@ TEST_F(ManagerTest, DeviceRegistrationTriggersThrottler) {
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
   manager()->RegisterDevice(mock_devices_[2]);
+}
+
+TEST_F(ManagerTest, ManagerCallsThrottlerCorrectly) {
+  ON_CALL(*mock_devices_[0].get(), technology())
+      .WillByDefault(Return(Technology::kEthernet));
+  ON_CALL(*mock_devices_[1].get(), technology())
+      .WillByDefault(Return(Technology::kWifi));
+  ON_CALL(*mock_devices_[2].get(), technology())
+      .WillByDefault(Return(Technology::kCellular));
+
+  manager()->RegisterDevice(mock_devices_[0]);
+  manager()->RegisterDevice(mock_devices_[1]);
+  manager()->RegisterDevice(mock_devices_[2]);
+
+  int ulrate = 1024;
+  int dlrate = 2048;
+  ResultCallback dummy;
+
+  EXPECT_CALL(*throttler_, ThrottleInterfaces(_, ulrate, dlrate));
+  manager()->SetNetworkThrottlingStatus(dummy, true, ulrate, dlrate);
+  EXPECT_CALL(*throttler_, DisableThrottlingOnAllInterfaces(_));
+  manager()->SetNetworkThrottlingStatus(dummy, false, ulrate, dlrate);
 }
 
 TEST_F(ManagerTest, DeviceRegistrationAndStart) {
