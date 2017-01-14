@@ -85,6 +85,10 @@ list_fixed_mmc_disks() {
   echo
 }
 
+list_fixed_nvme_disks() {
+  echo
+}
+
 # Test 1: Good update
 # A disk that matches the upgrade file
 prepare_test
@@ -125,7 +129,7 @@ hdparm_files=()
 hdparm_rc=(10)
 
 run_test
-check_test 4 disk_absent 10 $?
+check_test 4 disk_absent 0 $?
 echo ATA PASS 4
 
 # Test 5: Invalid package, a file missing

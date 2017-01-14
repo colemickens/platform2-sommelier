@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -19,23 +19,23 @@ DISK_TEMP=$(mktemp -d --tmpdir "${DISK_TEMP_TEMPLACE}")
 # allow paramters to be taken into account.
 . scripts/chromeos-disk-firmware-update.sh \
   --tmp_dir "${DISK_TEMP}" \
-  --fw_package_dir "tests/test_mmc_dir" \
-  --mmc "tests/mmc" \
+  --fw_package_dir "tests/test_nvme_dir" \
+  --nvme "tests/nvme" \
   --test
 
-# Overwrite funtions that call hdparm
 # Read the identify for files
-declare -a mmc_model
-declare -a mmc_fwrev
-declare -a mmc_rc
+declare -a nvme_model
+declare -a nvme_fwrev
+declare -a nvme_rc
 declare -i id_idx
 
-disk_mmc_info() {
-  disk_model="$(echo ${mmc_model[${id_idx}]} | \
-                tr -d '\n' | od -t x1 -A none -v | sed 's/ //g')"
-  disk_fw_rev="${mmc_fwrev[${id_idx}]}"
+disk_nvme_id_info() {
+  local rc=${nvme_id_rc[${id_idx}]}
+  if [ ${rc} -eq 0 ]; then
+    cat "tests/${nvme_id_files[${id_idx}]}.nvme"
+  fi
   : $(( id_idx += 1))
-  return 0
+  return ${rc}
 }
 
 prepare_test() {
@@ -63,9 +63,9 @@ check_test() {
   fi
 }
 
-# MMC tests:
+# NVME tests:
 get_device_type() {
-  echo "MMC"
+  echo "NVME"
 }
 
 list_fixed_ata_disks() {
@@ -73,58 +73,54 @@ list_fixed_ata_disks() {
 }
 
 list_fixed_mmc_disks() {
-  echo "mmcblk0"
-}
-
-list_fixed_nvme_disks() {
   echo
 }
 
+list_fixed_nvme_disks() {
+  echo "nvme0"
+}
+
 prepare_test
-
-mmc_fwrev=(
-  '0x0b00000000000000'
-  '0xff00000000000000'
-  '0xff00000000000000'
-  '00'
-  '0x0c00000000000000'
-  '0xfe00000000000000'
-  '0xfe00000000000000'
-  '0x0b00000000000000'
-  '0xff00000000000000'
+nvme_id_files=(
+  'INTEL_SSDPEKKW256G7-PSF100C'
+  ''
+  ''
+  'INTEL_SSDPEKKW256G7-PSF109C'
+  'INTEL_SSDPEKKW256G7-PSF109C'
 )
-mmc_model=(
-  'MAG2GC'
-  'MAG2GC'
-  'MAG2GC'
-  'NO FFU'
-  'MAG3GC'
-  'MAG3GC'
-  'MAG3GC'
-  'MAG2GC'
-  'MAG2GC'
-)
+nvme_id_rc=(0 10 10 0 0)
 
-run_test
-check_test 1 mmc_upgraded 0 $?
-echo MMC PASS 1
-
-run_test
-check_test 2 mmc_good 0 $?
-echo MMC PASS 2
-
-run_test
-check_test 3 mmc_upgraded 0 $?
-echo MMC PASS 3
-
-# set firmware upgrade to fail
-disk_mmc_upgrade() {
-  return 1
+disk_nmve_reset() {
+  echo "mock reset for $1"
 }
 
 run_test
-check_test 4 mmc_upgrade_failed 1 $?
-echo MMC PASS 4
+check_test 1 nvme_upgraded 0 $?
+echo NVME PASS 1
+
+prepare_test
+nvme_id_files=(
+  'INTEL_SSDPEKKW256G7-PSF109C'
+)
+nvme_id_rc=(0)
+
+run_test
+check_test 2 nvme_good 0 $?
+echo NVME PASS 2
+
+# set firmware upgrade to fail
+disk_nmve_reset() {
+  return 1
+}
+
+prepare_test
+nvme_id_files=(
+  'INTEL_SSDPEKKW256G7-PSF100C'
+)
+nvme_id_rc=(0)
+run_test
+check_test 3 nvme_upgrade_failed 1 $?
+echo NVME PASS 3
 
 
 rm -rf "${DISK_TEMP}"

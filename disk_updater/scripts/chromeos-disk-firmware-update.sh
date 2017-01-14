@@ -20,6 +20,7 @@ DEFINE_string 'hdparm_kingston' '/opt/google/disk/bin/hdparm_kingston' \
 DEFINE_string 'smartctl' '/usr/sbin/smartctl' "smartctl binary to use."
 DEFINE_string 'pwr_suspend' '/usr/bin/powerd_dbus_suspend' "To power cycle SSD"
 DEFINE_string 'mmc' '/usr/bin/mmc' "mmc binary to use."
+DEFINE_string 'nvme' '/usr/sbin/nvme' "nvme binary to use."
 DEFINE_string 'status' '' "Status file to write to."
 DEFINE_boolean 'test' ${FLAGS_FALSE} "For unit testing."
 
@@ -106,7 +107,7 @@ disk_fw_select() {
   fi
 }
 
-# disk_hdparm_info - Shime for calling hdparm
+# disk_hdparm_info - Shim for calling hdparm
 #
 # Useful for testing overide.
 #
@@ -118,11 +119,32 @@ disk_fw_select() {
 disk_hdparm_info() {
   local device="$1"
 
+  # Test if we have the tool needed for an upgrade.
+  if [ ! -x "${FLAGS_hdparm}" ]; then
+    log_msg "hdparm is not installed"
+    return 1
+  fi
+
   # use -I option to be sure the drive is accessed:
   # will fail if the drive is not up
   # sure that the firmware version is up to date if the
   # disk upgrade without reset.
   "${FLAGS_hdparm}" -I "/dev/${device}"
+}
+
+# disk_nvme_id_info - Shim for calling nvme id-ctrl command
+#
+# Useful for testing overide.
+#
+# inputs:
+#     device            -- the device name [nvme0,...]
+#
+# echo the output of nvme id-ctrl.
+#
+disk_nvme_id_info() {
+  local device="$1"
+
+  "${FLAGS_nvme}" id-ctrl "/dev/${device}"
 }
 
 #disk_mmc_info - Retrieve disk information for MMC device
@@ -140,6 +162,13 @@ disk_mmc_info() {
   # Some vendor use hexa decimal character for indentification.
   disk_model=$(cat "/sys/block/$1/device/cid" | cut -c 7-18)
   disk_fw_rev=$(cat "/sys/block/$1/device/fwrev")
+
+  # Test if we have the tool needed for an upgrade.
+  if [ ! -x "${FLAGS_mmc}" ]; then
+    log_msg "mmc is not installed"
+    return 1
+  fi
+
   if [ -z "${disk_model}" -o -z "${disk_fw_rev}" ]; then
     return 1
   fi
@@ -173,11 +202,55 @@ disk_ata_info() {
     log_msg "hdparm did not produced any output"
     return 1
   fi
-  disk_model=$(sed -nre \
+  disk_model=$(sed -nEe \
       '/^\t+Model/s|\t+Model Number: +(.*)|\1|p' "${hdparm_out}" \
     | sed -re 's/ +$//' -e 's/[ -]/_/g')
-  disk_fw_rev=$(sed -nre \
+  disk_fw_rev=$(sed -nEe \
       '/^\t+Firmware/s|\t+Firmware Revision: +(.*)|\1|p' "${hdparm_out}" \
+    | sed -re 's/ +$//' -e 's/[ -]/_/g')
+  if [ -z "${disk_model}" -o -z "${disk_fw_rev}" ]; then
+    return 1
+  fi
+  return 0
+}
+
+# disk_nvme_info - Retrieve disk information for NMVe device
+#
+# inputs:
+#     device            -- the device name [nvme0]
+#
+# outputs:
+#     disk_model        -- model of the device
+#     disk_fw_rev       -- actual firmware revision on the device
+#
+# returns non 0 on error
+#
+disk_nvme_info() {
+  local device="$1"
+  local rc=0
+  local nvme_out="${FLAGS_tmp_dir}/${device}"
+
+  # Test if we have the tool needed for an upgrade.
+  if [ ! -x "${FLAGS_nvme}" ]; then
+    log_msg "nvme is not installed"
+    return 1
+  fi
+
+  # Use -I option to be sure the drive is accessed.
+  disk_model=""
+  disk_fw_rev=""
+  disk_nvme_id_info "${device}" > "${nvme_out}"
+  rc=$?
+  if [ ${rc} -ne 0 ]; then
+    return ${rc}
+  fi
+  if [ ! -s "${nvme_out}" ]; then
+    log_msg "nvme did not produced any output"
+    return 1
+  fi
+  disk_model=$(sed -nEe '/^mn +:/s|[^:]*: +(.*)|\1|p' "${nvme_out}" \
+    | sed -re 's/ +$//' -e 's/[ -]/_/g')
+  disk_fw_rev=$(sed -nEe '/^fr +:/s|[^:]*: +(.*)|\1|p' "${nvme_out}" \
     | sed -re 's/ +$//' -e 's/[ -]/_/g')
   if [ -z "${disk_model}" -o -z "${disk_fw_rev}" ]; then
     return 1
@@ -208,6 +281,9 @@ disk_info() {
       ;;
     "MMC")
       disk_mmc_info "$@"
+      ;;
+    "NVME")
+      disk_nvme_info "$@"
       ;;
     *)
       log_msg "Unknown device(${device}) type: ${device_type}"
@@ -387,6 +463,53 @@ disk_mmc_upgrade() {
   "${FLAGS_mmc}" ffu ${options} "${fw_file##*/}" "/dev/${device}"
 }
 
+# disk_nmve_reset - Reset  NMVE SSD PCIe device.
+#
+# Reset the PCIe device hosting the NMVe device.
+#
+# inputs:
+#     device            -- the device name [nvme0,...]
+#
+# returns non 0 on error
+#
+disk_nmve_reset() {
+  local device="$1"
+
+  # Name space 1 is required to exits:
+  echo 1 > "/sys/block/${device}n1/device/device/reset"
+}
+
+# disk_nvme_upgrade - Upgrade the firmware on the NVME storage
+#
+# Update the firmware on the disk.
+#
+# inputs:
+#     device            -- the device name [nvme0,...]
+#     fw_file           -- the firmware image
+#     fw_options        -- the options from the rule file. (unused)
+#
+# returns non 0 on error
+#
+disk_nvme_upgrade() {
+  local device="$1"
+  local fw_file="$2"
+  local fw_options="$3"
+
+  "${FLAGS_nvme}" fw-download "/dev/${device}" --fw="${fw_file}"
+  if [ $? -ne 0 ]; then
+    log_msg "Unable to download ${fw_file} to  ${device}"
+    return $?
+  fi
+
+  "${FLAGS_nvme}" fw-activate "/dev/${device}" --slot=1 --action=1
+  if [ $? -ne 0 ]; then
+    log_msg "Unable to activate ${fw_file} to  ${device}"
+    return $?
+  fi
+
+  disk_nmve_reset "${device}"
+}
+
 # disk_upgrade - Upgrade the firmware on the disk
 #
 # Update the firmware on the disk by calling the function appropriate for
@@ -409,6 +532,9 @@ disk_upgrade() {
       ;;
     "MMC")
       disk_mmc_upgrade "$@"
+      ;;
+    "NVME")
+      disk_nvme_upgrade "$@"
       ;;
     *)
       log_msg "Unknown device(${device}) type: ${device_type}"
@@ -446,6 +572,7 @@ disk_upgrade_devices() {
       rc=$?
       if [ ${rc} -ne 0 ]; then
         log_msg "Can not get info on this device. skip."
+        rc=0
         break
       fi
       disk_fw_select "${disk_rules}"  # sets disk_fw_file, disk_exp_fw_rev, disk_fw_opt
@@ -538,7 +665,7 @@ main() {
   sed '/^#/d;/^[[:space:]]*$/d' "${disk_rules_raw}" > "${disk_rules}"
 
   disk_upgrade_devices "${disk_rules}" \
-    $(list_fixed_ata_disks) $(list_fixed_mmc_disks)
+    $(list_fixed_ata_disks) $(list_fixed_mmc_disks) $(list_fixed_nvme_disks)
   rc=$?
 
   if [ ${erase_tmp_dir} -eq ${FLAGS_TRUE} ]; then
