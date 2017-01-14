@@ -34,8 +34,8 @@
 
 #include "proxy_shill_wifi_client.h"
 
-typedef const base::Callback<XmlRpc::XmlRpcValue(
-    XmlRpc::XmlRpcValue, ProxyShillWifiClient*)> RpcServerMethodHandler;
+using RpcServerMethodHandler = const base::Callback<XmlRpc::XmlRpcValue(
+    XmlRpc::XmlRpcValue, ProxyShillWifiClient*)>;
 
 class ProxyRpcServer;
 class ProxyRpcServerMethod : public XmlRpc::XmlRpcServerMethod {

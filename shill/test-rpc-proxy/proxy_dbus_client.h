@@ -38,8 +38,8 @@ using DeviceProxy = org::chromium::flimflam::DeviceProxy;
 using ServiceProxy = org::chromium::flimflam::ServiceProxy;
 using ProfileProxy = org::chromium::flimflam::ProfileProxy;
 
-typedef base::Callback<void(const std::string&,
-                            const brillo::Any&)> DbusPropertyChangeCallback;
+using DbusPropertyChangeCallback =
+    base::Callback<void(const std::string&, const brillo::Any&)>;
 
 class ProxyDbusClient {
  public:
