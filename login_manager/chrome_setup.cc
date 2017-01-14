@@ -324,6 +324,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     builder->AddArg(
         "--enable-hardware-overlays=single-fullscreen,single-on-top");
     builder->AddArg("--enable-webgl-image-chromium");
+    builder->AddFeatureEnableOverride("Pepper3DImageChromium");
   }
   if (builder->UseFlagIsSet("veyron_minnie"))
     builder->AddArg("--enable-hardware-overlays=single-fullscreen");
