@@ -166,8 +166,8 @@ class OpenVPNDriver : public VPNDriver,
 
   // The map is a sorted container that allows us to iterate through the options
   // in order.
-  typedef std::map<int, std::string> ForeignOptions;
-  typedef std::map<int, IPConfig::Route> RouteOptions;
+  using ForeignOptions = std::map<int, std::string>;
+  using RouteOptions = std::map<int, IPConfig::Route>;
 
   static const char kDefaultCACertificates[];
 
