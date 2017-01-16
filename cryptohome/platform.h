@@ -22,6 +22,10 @@
 #include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
 
+extern "C" {
+#include <keyutils.h>
+}
+
 namespace base {
 class Thread;
 class Time;
@@ -476,6 +480,21 @@ class Platform {
   virtual bool ReportFilesystemDetails(const base::FilePath &filesystem,
                                        const base::FilePath &logfile);
 
+  // Returns true if the kernel and partition supports dircrypto.
+  virtual bool IsDirCryptoSupported(const base::FilePath& path);
+
+  // Sets up a directory to be encrypted with the provided key.
+  virtual bool SetDirCryptoKey(const base::FilePath& dir,
+                               const brillo::SecureBlob& key_sig);
+
+  // Adds the key to the dircrypto keyring and sets permissions.
+  virtual bool AddDirCryptoKeyToKeyring(
+      const brillo::SecureBlob& key,
+      const brillo::SecureBlob& key_sig,
+      key_serial_t* key_id);
+
+  // Invalidates the key to make dircrypto data inaccessible.
+  virtual bool InvalidateDirCryptoKey(key_serial_t key_id);
 
   // Clears the kernel-managed user keyring
   virtual bool ClearUserKeyring();

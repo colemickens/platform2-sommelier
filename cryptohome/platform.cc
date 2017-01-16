@@ -60,6 +60,7 @@ extern "C" {
 }
 
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/dircrypto_util.h"
 
 using base::FilePath;
 using base::SplitString;
@@ -1030,6 +1031,56 @@ long AddEcryptfsAuthToken(  // NOLINT(runtime/int)
                                           const_cast<char*>(key_sig.c_str()));
 }
 }  // namespace ecryptfs
+
+bool Platform::IsDirCryptoSupported(const FilePath& path) {
+  return dircrypto::IsDirCryptoSupported(path);
+}
+
+bool Platform::SetDirCryptoKey(const FilePath& dir,
+                               const brillo::SecureBlob& key_sig) {
+  return dircrypto::SetDirectoryKey(dir, key_sig);
+}
+
+bool Platform::AddDirCryptoKeyToKeyring(const brillo::SecureBlob& key,
+                                        const brillo::SecureBlob& key_sig,
+                                        key_serial_t* key_id) {
+  *key_id = dircrypto::AddKeyToKeyring(key, key_sig);
+  if (*key_id == dircrypto::kInvalidKeySerial)
+    return false;
+
+  /* Set the permission on the key.
+   * Possessor: (everyone given the key is in a session keyring belonging to
+   * init):
+   * -- View
+   * -- Search
+   * User, Other, Group:
+   * -- None
+   */
+  if (keyctl_setperm(*key_id, KEY_POS_VIEW | KEY_POS_SEARCH) != 0) {
+    PLOG(ERROR) << "Could not change permission on key " << *key_id;
+    InvalidateDirCryptoKey(*key_id);
+    return false;
+  }
+  return true;
+}
+
+bool Platform::InvalidateDirCryptoKey(key_serial_t key_id) {
+  if (keyctl_invalidate(key_id) != 0) {
+    PLOG(ERROR) << "Failed to invalidate the key " << key_id;
+    return false;
+  }
+  // Run Sync() to make all dirty cache clear.
+  Sync();
+  // Use drop_caches to drop all clear cache. Otherwise, cached dypcrypted data
+  // will stay visible.
+  constexpr char kData[] = "3\n";
+  if (!base::WriteFile(FilePath(FILE_PATH_LITERAL(
+          "/proc/sys/vm/drop_caches")), kData, sizeof(kData))) {
+    LOG(ERROR) << "Failed to drop cache.";
+    return false;
+  }
+  return true;
+}
 
 bool Platform::ClearUserKeyring() {
   /* Flush cache to prevent corruption */
