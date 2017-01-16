@@ -50,10 +50,6 @@ void ProcessExecutor::SetNoNewPrivs() {
   minijail_no_new_privs(jail_);
 }
 
-void ProcessExecutor::ChangeUser(const char* user) {
-  minijail_change_user(jail_, user);
-}
-
 void ProcessExecutor::KeepSupplementaryGroups() {
   minijail_keep_supplementary_gids(jail_);
 }
@@ -96,8 +92,8 @@ bool ProcessExecutor::Execute() {
   // Execute the command.
   pid_t pid = -1;
   int child_stdin = -1, child_stdout = -1, child_stderr = -1;
-  minijail_run_pid_pipes_no_preload(jail_, args_ptr[0], args_ptr.data(), &pid,
-                                    &child_stdin, &child_stdout, &child_stderr);
+  minijail_run_pid_pipes(jail_, args_ptr[0], args_ptr.data(), &pid,
+                         &child_stdin, &child_stdout, &child_stderr);
 
   // Restore the environment.
   clearenv();

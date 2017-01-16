@@ -148,9 +148,6 @@ const char kNetPath[] = "/usr/bin/net";
 const char kKInitPath[] = "/usr/bin/kinit";
 const char kSmbClientPath[] = "/usr/bin/smbclient";
 
-// User for inner sandbox. Used to call kInit, Samba and parser.
-const char kAuthPolicyExecUser[] = "authpolicyd-exec";
-
 // Keys for interpreting kinit output.
 const char kKeyBadUserName[] =
     "Client not found in Kerberos database while getting initial credentials";
@@ -180,7 +177,24 @@ const char kNetAdsSeccompFilter[] =
 const char kSmbClientSeccompFilter[] = SECCOMP_DIR "smbclient-seccomp.policy";
 #undef SECCOMP_DIR
 
-void SetupJail(ProcessExecutor* cmd, const char* seccomp_filter) {
+// Switches to the authpolicyd-exec user in the constructor and back to
+// authpolicyd in the destructor.
+class ScopedAuthpolicyExecSwitch {
+ public:
+  ScopedAuthpolicyExecSwitch() {
+    // Keep kAuthPolicydUid as saved uid, so we can switch back.
+    CHECK_EQ(0, setresuid(ac::kAuthPolicyExecUid, ac::kAuthPolicyExecUid,
+                          ac::kAuthPolicydUid));
+  }
+
+  ~ScopedAuthpolicyExecSwitch() {
+    // Keep kAuthPolicyExecUid as saved uid, so we can switch back.
+    CHECK_EQ(0, setresuid(ac::kAuthPolicydUid, ac::kAuthPolicydUid,
+                          ac::kAuthPolicyExecUid));
+  }
+};
+
+bool SetupJailAndRun(ProcessExecutor* cmd, const char* seccomp_filter) {
   // Limit the system calls that the process can do.
   DCHECK(cmd);
   if (!s_disable_seccomp_filters) {
@@ -189,15 +203,21 @@ void SetupJail(ProcessExecutor* cmd, const char* seccomp_filter) {
     cmd->SetSeccompFilter(seccomp_filter);
   }
 
-  // Execute as authpolicyd-exec, so that processes can't mess with our private
-  // data like the configuration file.
-  cmd->ChangeUser(kAuthPolicyExecUser);
-
   // Required since we don't have the caps to wipe supplementary groups.
   cmd->KeepSupplementaryGroups();
 
   // Allows us to drop setgroups, setresgid and setresuid from seccomp filters.
   cmd->SetNoNewPrivs();
+
+  // Execute as authpolicyd exec user. Don't use minijail to switch user. This
+  // would force us to run without preload library since saved uids are wiped by
+  // execve and the executed code wouldn't be able to switch user. Running with
+  // preload library has two main advantages:
+  //   1) Tighter seccomp filters, no need to allow execve and others.
+  //   2) Ability to log seccomp filter failures. Without this, it is hard to
+  //      know which syscall has to be added to the filter policy file.
+  ScopedAuthpolicyExecSwitch switch_scope;
+  return cmd->Execute();
 }
 
 // Returns true if the string contains the given substring.
@@ -217,8 +237,7 @@ bool UpdateDomainControllerName(std::string* domain_controller_name,
 
   authpolicy::ProcessExecutor net_cmd(
       {kNetPath, "ads", "info", "-s", kSmbFilePath});
-  SetupJail(&net_cmd, kNetAdsSeccompFilter);
-  if (!net_cmd.Execute()) {
+  if (!SetupJailAndRun(&net_cmd, kNetAdsSeccompFilter)) {
     LOG(ERROR) << "net ads info failed with exit code "
                << net_cmd.GetExitCode();
     *out_error = ERROR_NET_FAILED;
@@ -229,9 +248,8 @@ bool UpdateDomainControllerName(std::string* domain_controller_name,
   // Parse the output to find the domain controller name. Enclose in a sandbox
   // for security considerations.
   ProcessExecutor parse_cmd({ac::kParserPath, ac::kCmdParseDcName});
-  SetupJail(&parse_cmd, kParserSeccompFilter);
   parse_cmd.SetInputString(net_out);
-  if (!parse_cmd.Execute()) {
+  if (!SetupJailAndRun(&parse_cmd, kParserSeccompFilter)) {
     LOG(ERROR) << "authpolicy_parser parse_dc_name failed with exit code "
                << parse_cmd.GetExitCode();
     *out_error = ERROR_PARSE_FAILED;
@@ -252,8 +270,7 @@ bool UpdateWorkgroup(std::string* workgroup, ErrorType* out_error) {
 
   ProcessExecutor net_cmd(
       {kNetPath, "ads", "workgroup", "-s", kSmbFilePath});
-  SetupJail(&net_cmd, kNetAdsSeccompFilter);
-  if (!net_cmd.Execute()) {
+  if (!SetupJailAndRun(&net_cmd, kNetAdsSeccompFilter)) {
     LOG(ERROR) << "net ads workgroup failed with exit code "
                << net_cmd.GetExitCode();
     *out_error = ERROR_NET_FAILED;
@@ -264,9 +281,8 @@ bool UpdateWorkgroup(std::string* workgroup, ErrorType* out_error) {
   // Parse the output to find the workgroup. Enclose in a sandbox for security
   // considerations.
   ProcessExecutor parse_cmd({ac::kParserPath, ac::kCmdParseWorkgroup});
-  SetupJail(&parse_cmd, kParserSeccompFilter);
   parse_cmd.SetInputString(net_out);
-  if (!parse_cmd.Execute()) {
+  if (!SetupJailAndRun(&parse_cmd, kParserSeccompFilter)) {
     LOG(ERROR) << "authpolicy_parser parse_workgroup failed with exit code "
                << parse_cmd.GetExitCode();
     *out_error = ERROR_PARSE_FAILED;
@@ -320,23 +336,6 @@ bool SetFilePermissionsRecursive(const base::FilePath& fp,
   }
   return true;
 }
-
-// Switches to the authpolicyd-exec user in the constructor and back to
-// authpolicyd in the destructor.
-class ScopedAuthpolicyExecSwitch {
- public:
-  ScopedAuthpolicyExecSwitch() {
-    // Keep kAuthPolicydUid as saved uid, so we can switch back.
-    CHECK_EQ(setresuid(ac::kAuthPolicyExecUid, ac::kAuthPolicyExecUid,
-                       ac::kAuthPolicydUid), 0);
-  }
-
-  ~ScopedAuthpolicyExecSwitch() {
-    // Keep kAuthPolicyExecUid as saved uid, so we can switch back.
-    CHECK_EQ(setresuid(ac::kAuthPolicydUid, ac::kAuthPolicydUid,
-                       ac::kAuthPolicyExecUid), 0);
-  }
-};
 
 // Copies the machine keytab file to the state directory. The copy is owned by
 // authpolicyd, so that authpolicyd_exec cannot modify it anymore.
@@ -487,8 +486,7 @@ bool GetAccountId(const std::string& search_string, std::string* out_account_id,
   ProcessExecutor net_cmd(
       {kNetPath, "ads", "search", search_string, "objectGUID", "-s",
        kSmbFilePath});
-  SetupJail(&net_cmd, kNetAdsSeccompFilter);
-  if (!net_cmd.Execute()) {
+  if (!SetupJailAndRun(&net_cmd, kNetAdsSeccompFilter)) {
     LOG(ERROR) << "net ads search failed with exit code "
                << net_cmd.GetExitCode();
     *out_error = ERROR_NET_FAILED;
@@ -500,8 +498,7 @@ bool GetAccountId(const std::string& search_string, std::string* out_account_id,
   // considerations.
   ProcessExecutor parse_cmd({ac::kParserPath, ac::kCmdParseAccountId});
   parse_cmd.SetInputString(net_out);
-  SetupJail(&parse_cmd, kParserSeccompFilter);
-  if (!parse_cmd.Execute()) {
+  if (!SetupJailAndRun(&parse_cmd, kParserSeccompFilter)) {
     LOG(ERROR) << "Failed to get user account id. Net response: " << net_out;
     *out_error = ERROR_PARSE_FAILED;
     return false;
@@ -521,8 +518,7 @@ bool GetGpoList(const std::string& user_or_machine_name,
   authpolicy::ProcessExecutor net_cmd({kNetPath, "ads", "gpo", "list",
                                        user_or_machine_name, "-s",
                                        kSmbFilePath});
-  SetupJail(&net_cmd, kNetAdsSeccompFilter);
-  if (!net_cmd.Execute()) {
+  if (!SetupJailAndRun(&net_cmd, kNetAdsSeccompFilter)) {
     LOG(ERROR) << "net ads gpo list failed with exit code "
                << net_cmd.GetExitCode();
     *out_error = ERROR_NET_FAILED;
@@ -536,9 +532,8 @@ bool GetGpoList(const std::string& user_or_machine_name,
   const char* cmd = scope == ac::PolicyScope::USER ? ac::kCmdParseUserGpoList
                                                    : ac::kCmdParseDeviceGpoList;
   ProcessExecutor parse_cmd({ac::kParserPath, cmd});
-  SetupJail(&parse_cmd, kParserSeccompFilter);
   parse_cmd.SetInputString(net_out);
-  if (!parse_cmd.Execute()) {
+  if (!SetupJailAndRun(&parse_cmd, kParserSeccompFilter)) {
     LOG(ERROR) << "Failed to parse GPO list";
     *out_error = ERROR_PARSE_FAILED;
     return false;
@@ -624,8 +619,7 @@ bool DownloadGpos(const std::string& gpo_list_blob,
   // Download GPO into local directory.
   ProcessExecutor smb_client_cmd(
       {kSmbClientPath, service, "-s", kSmbFilePath, "-c", smb_command, "-k"});
-  SetupJail(&smb_client_cmd, kSmbClientSeccompFilter);
-  if (!smb_client_cmd.Execute()) {
+  if (!SetupJailAndRun(&smb_client_cmd, kSmbClientSeccompFilter)) {
     LOG(ERROR) << "smbclient failed with exit code "
                << smb_client_cmd.GetExitCode();
     *out_error = ERROR_SMBCLIENT_FAILED;
@@ -662,9 +656,8 @@ bool ParseGposIntoProtobuf(const std::vector<base::FilePath>& gpo_file_paths,
 
   // Load GPOs into protobuf. Enclose in a sandbox for security considerations.
   ProcessExecutor parse_cmd({ac::kParserPath, parser_cmd_string});
-  SetupJail(&parse_cmd, kParserSeccompFilter);
   parse_cmd.SetInputString(gpo_file_paths_blob);
-  if (!parse_cmd.Execute()) {
+  if (!SetupJailAndRun(&parse_cmd, kParserSeccompFilter)) {
     LOG(ERROR) << "Failed to parse preg files";
     *out_error = ERROR_PARSE_PREG_FAILED;
     return false;
@@ -740,10 +733,9 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
   ProcessExecutor kinit_cmd({kKInitPath, normalized_upn});
-  SetupJail(&kinit_cmd, kKInitSeccompFilter);
   kinit_cmd.SetInputFile(password_fd);
   kinit_cmd.SetEnv(kKrb5ConfEnvKey, kKrb5ConfEnvValue);  // Kerberos config.
-  if (!kinit_cmd.Execute()) {
+  if (!SetupJailAndRun(&kinit_cmd, kKInitSeccompFilter)) {
     // Handle different error cases
     const std::string& kinit_out = kinit_cmd.GetStdout();
     const std::string& kinit_err = kinit_cmd.GetStderr();
@@ -824,10 +816,9 @@ bool SambaInterface::JoinMachine(const std::string& machine_name,
   // Call net ads join to join the machine to the Active Directory domain.
   ProcessExecutor net_cmd(
       {kNetPath, "ads", "join", "-U", normalized_upn, "-s", kSmbFilePath});
-  SetupJail(&net_cmd, kNetAdsSeccompFilter);
   net_cmd.SetInputFile(password_fd);
   net_cmd.SetEnv(kMachineKTEnvKey, kMachineKTEnvValueTmp);  // Keytab file path.
-  if (!net_cmd.Execute()) {
+  if (!SetupJailAndRun(&net_cmd, kNetAdsSeccompFilter)) {
     LOG(ERROR) << "net ads join failed with exit code "
                << net_cmd.GetExitCode();
     *out_error = ERROR_NET_FAILED;
@@ -916,10 +907,9 @@ bool SambaInterface::FetchDeviceGpos(std::string* out_policy_blob,
   // Call kinit to get the Kerberos ticket-granting-ticket.
   ProcessExecutor kinit_cmd(
       {kKInitPath, config_->machine_name() + "$@" + config_->realm(), "-k"});
-  SetupJail(&kinit_cmd, kKInitSeccompFilter);
   kinit_cmd.SetEnv(kKrb5ConfEnvKey, kKrb5ConfEnvValue);  // Kerberos config.
   kinit_cmd.SetEnv(kMachineKTEnvKey, kMachineKTEnvValueState);  // Keytab file.
-  if (!kinit_cmd.Execute()) {
+  if (!SetupJailAndRun(&kinit_cmd, kKInitSeccompFilter)) {
     LOG(ERROR) << "kinit failed with exit code " << kinit_cmd.GetExitCode();
     *out_error = ERROR_KINIT_FAILED;
     return false;

@@ -42,9 +42,6 @@ class ProcessExecutor {
   // Set a flag that prevents execve from gaining new privileges.
   void SetNoNewPrivs();
 
-  // Execute command as |user|.
-  void ChangeUser(const char* user);
-
   // Set a flag that prevents that supplementary groups are wiped.
   void KeepSupplementaryGroups();
 
