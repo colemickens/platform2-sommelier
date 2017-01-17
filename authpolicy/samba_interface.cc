@@ -159,6 +159,7 @@ const char kKeyPasswordExpiredStderr[] =
     "Cannot read password while getting initial credentials";
 const char kKeyCannotResolve[] =
     "Cannot resolve network address for KDC in realm";
+const char kKeyNoSuchFile[] = "NT_STATUS_NO_SUCH_FILE listing ";
 
 #undef MACHINE_KT_STATE_FILE_PATH
 #undef MACHINE_KT_TMP_FILE_PATH
@@ -560,6 +561,13 @@ bool GetGpoList(const std::string& user_or_machine_name,
   return true;
 }
 
+struct GpoPaths {
+  std::string server_;    // GPO file path on server (not a local file path!).
+  base::FilePath local_;  // Local GPO file path.
+  GpoPaths(const std::string& server, const std::string& local)
+      : server_(server), local_(local) {}
+};
+
 bool DownloadGpos(const std::string& gpo_list_blob,
                   const std::string& domain_controller_name,
                   const char* preg_dir,
@@ -580,6 +588,7 @@ bool DownloadGpos(const std::string& gpo_list_blob,
   // Generate all smb source and linux target directories and create targets.
   std::string smb_command = "prompt OFF;";
   std::string gpo_basepath;
+  std::vector<GpoPaths> gpo_paths;
   for (int entry_idx = 0; entry_idx < gpo_list.entries_size(); ++entry_idx) {
     const ap::GpoEntry& gpo = gpo_list.entries(entry_idx);
 
@@ -625,9 +634,17 @@ bool DownloadGpos(const std::string& gpo_list_blob,
                                       linux_dir.c_str(), kPRegFileName);
 
     // Record output file paths.
-    DCHECK(out_gpo_file_paths);
-    const base::FilePath fp(linux_dir + "/" + kPRegFileName);
-    out_gpo_file_paths->push_back(fp);
+    gpo_paths.push_back(GpoPaths(smb_dir + "\\" + kPRegFileName,
+                                 linux_dir + "/" + kPRegFileName));
+
+    // Delete any preexisting policy file. Otherwise, if downloading the file
+    // failed, we wouldn't realize it and use a stale version.
+    if (base::PathExists(gpo_paths.back().local_) &&
+        !base::DeleteFile(gpo_paths.back().local_, false)) {
+      LOG(ERROR) << "Failed to delete old GPO file '"
+                 << gpo_paths.back().local_.value().c_str() << "'";
+      return false;
+    }
   }
 
   std::string service = base::StringPrintf(
@@ -637,18 +654,40 @@ bool DownloadGpos(const std::string& gpo_list_blob,
   ProcessExecutor smb_client_cmd(
       {kSmbClientPath, service, "-s", kSmbFilePath, "-c", smb_command, "-k"});
   if (!SetupJailAndRun(&smb_client_cmd, kSmbClientSeccompFilter)) {
-    LOG(ERROR) << "smbclient failed with exit code "
-               << smb_client_cmd.GetExitCode();
-    *out_error = ERROR_SMBCLIENT_FAILED;
-    return false;
-  }
-
-  // Make sure the GPO files actually downloaded.
-  for (const auto& fp : *out_gpo_file_paths) {
-    if (!base::PathExists(fp)) {
-      LOG(ERROR) << "Failed to download preg file '" << fp.value() << "'";
+    // The exit code of smbclient corresponds to the LAST command issued. Thus,
+    // Execute() might fail if the last GPO file is missing. However, we handle
+    // this below (not an error), so only error out here on internal errors.
+    if (smb_client_cmd.GetExitCode() ==
+        ProcessExecutor::kExitCodeInternalError) {
+      LOG(ERROR) << "smbclient failed with exit code "
+                 << smb_client_cmd.GetExitCode();
       *out_error = ERROR_SMBCLIENT_FAILED;
       return false;
+    }
+  }
+  // Note that the errors are in stdout and the output is in stderr :-/
+  const std::string& smbclient_out_lower =
+      base::ToLowerASCII(smb_client_cmd.GetStdout());
+
+  // Make sure the GPO files actually downloaded.
+  DCHECK(out_gpo_file_paths);
+  for (const GpoPaths& gpo_path : gpo_paths) {
+    if (base::PathExists(gpo_path.local_)) {
+      out_gpo_file_paths->push_back(gpo_path.local_);
+    } else {
+      // Gracefully handle non-existing GPOs. Testing revealed these cases do
+      // exist, see crbug.com/680921.
+      const std::string no_file_error_key(
+        base::ToLowerASCII(kKeyNoSuchFile + gpo_path.server_));
+      if (Contains(smbclient_out_lower, no_file_error_key)) {
+        LOG(WARNING) << "Ignoring missing preg file '"
+                     << gpo_path.local_.value() << "'";
+      } else {
+        LOG(ERROR) << "Failed to download preg file '"
+                   << gpo_path.local_.value() << "'";
+        *out_error = ERROR_SMBCLIENT_FAILED;
+        return false;
+      }
     }
   }
 

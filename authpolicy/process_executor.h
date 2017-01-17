@@ -60,7 +60,7 @@ class ProcessExecutor {
 
   // GetExitCode() returns this if some internal error in Execute() occurred,
   // e.g. failed to copy stdin pipes. Not an actual return code from execve.
-  const int kExitCodeInternalError = 127;
+  static const int kExitCodeInternalError = 127;
 
  private:
   // Resets the output variables that are populated by |Execute|.
