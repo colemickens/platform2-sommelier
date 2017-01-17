@@ -141,6 +141,10 @@ is_blaze() {
   crossystem hwid | grep -q "BLAZE"
 }
 
+is_kip() {
+  crossystem hwid | grep -q '^KIP '
+}
+
 # Checks if the system has a Huawei Technologies Mobile Broadband Module.
 has_huawei_modem() {
   lsusb -d 12d1:15bb
@@ -161,6 +165,32 @@ do_blaze_huawei_modem() {
     log_msg "Power $1 Huawei modem"
   else
     log_msg "Failed to power $1 Huawei modem"
+  fi
+}
+
+# Powers "on" or "off" the built-in modem via EC.
+ec_power_modem() {
+  local op="$1"
+
+  case "${op}" in
+    on)
+      ectool wireless 0x4 0x4
+      ;;
+    off)
+      ectool wireless 0x0 0x4
+      ;;
+    *)
+      log_msg "Invalid operation 'ec_power_modem ${op}'"
+      return 1
+      ;;
+  esac
+
+  if [ $? -eq 0 ]; then
+    log_msg "Power ${op} built-in modem"
+    return 0
+  else
+    log_msg "Failed to power ${op} built-in modem"
+    return 1
   fi
 }
 
@@ -241,6 +271,13 @@ if is_blaze && has_huawei_modem; then
   blaze_with_huawei_modem=1
 fi
 
+# Is this a Kip system with Huawei modem?
+kip_with_huawei_modem=0
+if is_kip && has_huawei_modem; then
+  log_msg "Kip with Huawei modem"
+  kip_with_huawei_modem=1
+fi
+
 enable_debug
 
 log_msg "Explicit sync"
@@ -262,6 +299,9 @@ else
   # Before suspending, power down this problematic modem.
   if [ $blaze_with_huawei_modem -eq 1 ]; then
     do_blaze_huawei_modem off
+  fi
+  if [ ${kip_with_huawei_modem} -eq 1 ]; then
+    ec_power_modem off
   fi
 
   log_msg "Finalizing suspend"
@@ -340,6 +380,9 @@ else
   # Power back on the Huawei modem if it was powered off before suspend.
   if [ $blaze_with_huawei_modem -eq 1 ]; then
     do_blaze_huawei_modem on
+  fi
+  if [ ${kip_with_huawei_modem} -eq 1 ]; then
+    ec_power_modem on
   fi
 fi
 
