@@ -144,6 +144,10 @@ bool MetricsLibrary::ConsentId(std::string* id) {
   char buf[40];
   ssize_t len = read(fd.get(), buf, sizeof(buf));
 
+  // If we couldn't get any data, just fail right away.
+  if (len <= 0)
+    return false;
+
   // Chop the trailing newline to make parsing below easier.
   if (buf[len - 1] == '\n')
     buf[--len] = '\0';
