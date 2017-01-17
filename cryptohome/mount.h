@@ -77,6 +77,12 @@ class UserOldestActivityTimestampCache;
 // the directory's crypto key.
 class Mount : public base::RefCountedThreadSafe<Mount> {
  public:
+  enum class MountType {
+    NONE,  // Not mounted.
+    ECRYPTFS,  // Encrypted with ecryptfs.
+    EPHEMERAL,  // Ephemeral mount.
+  };
+
   struct MountArgs {
     bool create_if_missing;
     bool ensure_ephemeral;
@@ -772,9 +778,9 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Whether to mount the legacy homedir or not (see MountLegacyHome)
   bool legacy_mount_;
 
-  // Indicates if the current mount is ephemeral.
+  // Indicates the type of the current mount.
   // This is only valid when IsMounted() is true.
-  bool ephemeral_mount_;
+  MountType mount_type_;
 
   std::unique_ptr<ChapsClientFactory> default_chaps_client_factory_;
   ChapsClientFactory* chaps_client_factory_;

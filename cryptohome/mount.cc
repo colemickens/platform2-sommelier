@@ -136,7 +136,7 @@ Mount::Mount()
       pkcs11_state_(kUninitialized),
       is_pkcs11_passkey_migration_required_(false),
       legacy_mount_(true),
-      ephemeral_mount_(false),
+      mount_type_(MountType::NONE),
       default_chaps_client_factory_(new ChapsClientFactory()),
       chaps_client_factory_(default_chaps_client_factory_.get()),
       boot_lockbox_(NULL) {
@@ -370,7 +370,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
-
+  mount_type_ = MountType::ECRYPTFS;
 
   // Attempt to decrypt the vault keyset with the specified credentials
   VaultKeyset vault_keyset;
@@ -594,7 +594,7 @@ bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
     UnmountAll();
     return false;
   }
-  ephemeral_mount_ = true;
+  mount_type_ = MountType::EPHEMERAL;
   return true;
 }
 
@@ -727,7 +727,7 @@ bool Mount::UnmountCryptohome() {
 
   RemovePkcs11Token();
   current_user_->Reset();
-  ephemeral_mount_ = false;
+  mount_type_ = MountType::NONE;
 
   platform_->ClearUserKeyring();
 
@@ -863,7 +863,7 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
 bool Mount::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
   std::string obfuscated_username;
   current_user_->GetObfuscatedUsername(&obfuscated_username);
-  if (!obfuscated_username.empty() && !ephemeral_mount_) {
+  if (!obfuscated_username.empty() && mount_type_ != MountType::EPHEMERAL) {
     SerializedVaultKeyset serialized;
     // TODO(wad) Start using current_user_'s key_data label when
     //           it is defined.
@@ -1718,7 +1718,8 @@ base::Value* Mount::GetStatus() {
       }
       // TODO(wad) Replace key_index use with key_label() use once
       //           legacy keydata is populated.
-      if (!ephemeral_mount_ && key_index == current_user_->key_index())
+      if (mount_type_ != MountType::EPHEMERAL &&
+          key_index == current_user_->key_index())
         keyset_dict->SetBoolean("current", true);
       keyset_dict->SetInteger("index", key_index);
       keysets->Append(keyset_dict);
