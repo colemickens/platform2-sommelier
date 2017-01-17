@@ -50,9 +50,11 @@ class CancellationRelay {
 // Future templates and helper functions.
 
 template <typename T>
-class Future : public base::RefCounted<Future<T>> {
+class Future : public base::RefCountedThreadSafe<Future<T>> {
  public:
-  explicit Future(CancellationRelay* relay) : lock_(relay) {}
+  static scoped_refptr<Future<T>> Create(CancellationRelay* relay) {
+    return make_scoped_refptr(new Future<T>(relay));
+  }
 
   /* Waits until the value to be ready and then return the value through
    * std::move(). */
@@ -78,7 +80,9 @@ class Future : public base::RefCounted<Future<T>> {
   }
 
  private:
-  friend class base::RefCounted<Future<T>>;
+  friend class base::RefCountedThreadSafe<Future<T>>;
+
+  explicit Future(CancellationRelay* relay) : lock_(relay) {}
 
   ~Future() = default;
 
@@ -90,9 +94,11 @@ class Future : public base::RefCounted<Future<T>> {
 };
 
 template <>
-class Future<void> : public base::RefCounted<Future<void>> {
+class Future<void> : public base::RefCountedThreadSafe<Future<void>> {
  public:
-  explicit Future(CancellationRelay* relay) : lock_(relay) {}
+  static scoped_refptr<Future<void>> Create(CancellationRelay* relay) {
+    return make_scoped_refptr(new Future<void>(relay));
+  }
 
   /* Wakes up the waiter. */
   void Set() {
@@ -109,7 +115,9 @@ class Future<void> : public base::RefCounted<Future<void>> {
   }
 
  private:
-  friend class base::RefCounted<Future<void>>;
+  friend class base::RefCountedThreadSafe<Future<void>>;
+
+  explicit Future(CancellationRelay* relay) : lock_(relay) {}
 
   ~Future() = default;
 

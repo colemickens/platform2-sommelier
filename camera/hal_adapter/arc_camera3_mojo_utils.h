@@ -89,7 +89,7 @@ class MojoInterfaceDelegate {
     }
     thread_.WaitUntilThreadStarted();
 
-    auto future = make_scoped_refptr(new internal::Future<void>(&relay_));
+    auto future = internal::Future<void>::Create(&relay_);
     thread_.task_runner()->PostTask(
         FROM_HERE,
         base::Bind(&MojoInterfaceDelegate<T>::BindOnThread,
@@ -100,7 +100,7 @@ class MojoInterfaceDelegate {
 
   ~MojoInterfaceDelegate() {
     VLOGF_ENTER();
-    auto future = make_scoped_refptr(new internal::Future<void>(&relay_));
+    auto future = internal::Future<void>::Create(&relay_);
     thread_.task_runner()->PostTask(
         FROM_HERE,
         base::Bind(&MojoInterfaceDelegate<T>::ResetInterfacePtrOnThread,
@@ -171,7 +171,7 @@ class MojoBindingDelegate : public T {
 
   ~MojoBindingDelegate() {
     VLOGF_ENTER();
-    auto future = make_scoped_refptr(new internal::Future<void>(&relay_));
+    auto future = internal::Future<void>::Create(&relay_);
     thread_.task_runner()->PostTask(
         FROM_HERE, base::Bind(&MojoBindingDelegate<T>::CloseBindingOnThread,
                               base::Unretained(this),
@@ -181,8 +181,7 @@ class MojoBindingDelegate : public T {
   }
 
   mojo::InterfacePtr<T> CreateInterfacePtr() {
-    auto future = make_scoped_refptr(
-        new internal::Future<mojo::InterfacePtr<T>>(&relay_));
+    auto future = internal::Future<mojo::InterfacePtr<T>>::Create(&relay_);
     thread_.task_runner()->PostTask(
         FROM_HERE,
         base::Bind(&MojoBindingDelegate<T>::CreateInterfacePtrOnThread,
@@ -192,7 +191,7 @@ class MojoBindingDelegate : public T {
   }
 
   void Bind(mojo::ScopedMessagePipeHandle handle) {
-    auto future = make_scoped_refptr(new internal::Future<void>(&relay_));
+    auto future = internal::Future<void>::Create(&relay_);
     thread_.task_runner()->PostTask(
         FROM_HERE, base::Bind(&MojoBindingDelegate<T>::BindOnThread,
                               base::Unretained(this), base::Passed(&handle),

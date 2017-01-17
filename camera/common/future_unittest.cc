@@ -47,7 +47,7 @@ TEST_F(FutureTest, WaitTest) {
   // Normal signal-wait scenario.  The future wait should return true.
 
   // The future is signalled after being waited on.
-  auto future = make_scoped_refptr(new Future<void>(&relay_));
+  auto future = Future<void>::Create(&relay_);
   thread_.task_runner()->PostDelayedTask(
       FROM_HERE, base::Bind(&FutureTest::SignalCallback, base::Unretained(this),
                             internal::GetFutureCallback(future)),
@@ -58,7 +58,7 @@ TEST_F(FutureTest, WaitTest) {
   ASSERT_TRUE(future->Wait());
 
   // The future is signalled before being waited on.
-  future = make_scoped_refptr(new Future<void>(&relay_));
+  future = Future<void>::Create(&relay_);
   future->Set();
   ASSERT_TRUE(future->Wait());
 }
@@ -66,7 +66,7 @@ TEST_F(FutureTest, WaitTest) {
 TEST_F(FutureTest, TimeoutTest) {
   // A future wait should return false because of time-out if it's not
   // signalled.
-  auto future = make_scoped_refptr(new Future<void>(&relay_));
+  auto future = Future<void>::Create(&relay_);
   base::TimeTicks start = base::TimeTicks::Now();
   ASSERT_FALSE(future->Wait(1000));
   ASSERT_GE(base::TimeTicks::Now() - start,
@@ -83,7 +83,7 @@ TEST_F(FutureTest, TimeoutTest) {
 TEST_F(FutureTest, CancelTest) {
   // A future wait should return false if it's cancelled.  The future is
   // cancelled before it's being waited on.
-  auto future = make_scoped_refptr(new Future<void>(&relay_));
+  auto future = Future<void>::Create(&relay_);
   relay_.CancelAllFutures();
   ASSERT_FALSE(future->Wait());
   // Subsequent wait to a cancelled future should return false.
@@ -91,7 +91,7 @@ TEST_F(FutureTest, CancelTest) {
 
   // A future wait should return false if the relay_.CancelAllFutures() has been
   // called.
-  future = make_scoped_refptr(new Future<void>(&relay_));
+  future = Future<void>::Create(&relay_);
   thread_.task_runner()->PostTask(
       FROM_HERE, base::Bind(&FutureTest::SignalCallback, base::Unretained(this),
                             internal::GetFutureCallback(future)));
@@ -101,7 +101,7 @@ TEST_F(FutureTest, CancelTest) {
 TEST_F(FutureTest, DelayedCancelTest) {
   // A future wait should return false if it's cancelled.  The future is
   // cancelled after it's being waited on.
-  auto future = make_scoped_refptr(new Future<void>(&relay_));
+  auto future = Future<void>::Create(&relay_);
   thread_.task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&FutureTest::CancelCallback, base::Unretained(this)),
@@ -116,7 +116,7 @@ TEST_F(FutureTest, FutureRefcountTest) {
   // The wait on main thread should return false immediately.
   // The SignalCallback should successfully run in another thread even after
   // main thread has terminated.
-  auto future = make_scoped_refptr(new Future<void>(&relay_));
+  auto future = Future<void>::Create(&relay_);
   relay_.CancelAllFutures();
   thread_.task_runner()->PostDelayedTask(
       FROM_HERE, base::Bind(&FutureTest::SignalCallback, base::Unretained(this),

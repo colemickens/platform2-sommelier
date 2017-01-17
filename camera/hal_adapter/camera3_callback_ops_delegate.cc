@@ -35,8 +35,7 @@ void Camera3CallbackOpsDelegate::ProcessCaptureResult(
       const_cast<Camera3CallbackOpsDelegate*>(
           static_cast<const Camera3CallbackOpsDelegate*>(ops));
 
-  auto future =
-      make_scoped_refptr(new internal::Future<void>(&delegate->relay_));
+  auto future = internal::Future<void>::Create(&delegate->relay_);
   delegate->thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread,
@@ -52,8 +51,7 @@ void Camera3CallbackOpsDelegate::Notify(const camera3_callback_ops_t* ops,
       const_cast<Camera3CallbackOpsDelegate*>(
           static_cast<const Camera3CallbackOpsDelegate*>(ops));
 
-  auto future =
-      make_scoped_refptr(new internal::Future<void>(&delegate->relay_));
+  auto future = internal::Future<void>::Create(&delegate->relay_);
   delegate->thread_.task_runner()->PostTask(
       FROM_HERE, base::Bind(&Camera3CallbackOpsDelegate::NotifyOnThread,
                             base::Unretained(delegate), base::Unretained(msg),

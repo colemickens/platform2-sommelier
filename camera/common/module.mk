@@ -4,7 +4,7 @@
 
 include common.mk
 
-future_unittest_OBJS = common/future_unittest.o $(common_CXX_OBJECTS)
+future_unittest_OBJS = common/future.o common/future_unittest.o
 future_unittest_LIBS = -lgtest
 CXX_BINARY(common/future_unittest): $(future_unittest_OBJS)
 CXX_BINARY(common/future_unittest): LDLIBS += $(future_unittest_LIBS)

@@ -31,8 +31,7 @@ void CameraModuleCallbacksDelegate::CameraDeviceStatusChange(
   CameraModuleCallbacksDelegate* delegate =
       const_cast<CameraModuleCallbacksDelegate*>(
           static_cast<const CameraModuleCallbacksDelegate*>(callbacks));
-  auto future =
-      make_scoped_refptr(new internal::Future<void>(&delegate->relay_));
+  auto future = internal::Future<void>::Create(&delegate->relay_);
   delegate->thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(
