@@ -261,13 +261,9 @@ bool UpdateDomainControllerName(std::string* domain_controller_name,
   return true;
 }
 
-// Retrieves the name of the workgroup. Since the workgroup is expected to
-// change very rarely, this function earlies out and returns true if called with
-// a non-empty |workgroup|. The workgroup is required for the smb.conf file.
-bool UpdateWorkgroup(std::string* workgroup, ErrorType* out_error) {
-  if (!workgroup->empty())
-    return true;
-
+// Retrieves the name of the workgroup.
+bool GetWorkgroup(const ap::SambaConfig* config, std::string* workgroup,
+                  ErrorType* out_error) {
   ProcessExecutor net_cmd(
       {kNetPath, "ads", "workgroup", "-s", kSmbFilePath});
   if (!SetupJailAndRun(&net_cmd, kNetAdsSeccompFilter)) {
@@ -288,6 +284,7 @@ bool UpdateWorkgroup(std::string* workgroup, ErrorType* out_error) {
     *out_error = ERROR_PARSE_FAILED;
     return false;
   }
+  DCHECK(workgroup);
   *workgroup = parse_cmd.GetStdout();
   return true;
 }
@@ -411,6 +408,26 @@ bool WriteSmbConf(const ap::SambaConfig* config, const std::string& workgroup,
   }
 
   return true;
+}
+
+// Writes the Samba configuration file. If |workgroup| points to an empty
+// string, the workgroup is queried from the server and the string is updated.
+// Workgroups are only queried once a session, they are expected to change very
+// rarely.
+bool UpdateWorkgroupAndWriteSmbConf(const ap::SambaConfig* config,
+                                    std::string* workgroup,
+                                    ErrorType* out_error) {
+  DCHECK(workgroup);
+  if (workgroup->empty()) {
+    // GetWorkgroup requires an smb.conf file, write one with empty workgroup.
+    if (!WriteSmbConf(config, *workgroup, out_error) ||
+        !GetWorkgroup(config, workgroup, out_error)) {
+      return false;
+    }
+  }
+
+  // Write smb.conf (potentially again, with valid workgroup).
+  return WriteSmbConf(config, *workgroup, out_error);
 }
 
 // Writes the krb5 configuration file.
@@ -723,12 +740,8 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
   if (!WriteKrb5Conf(realm, out_error))
     return false;
 
-  // Make sure we have the workgroup.
-  if (!UpdateWorkgroup(&workgroup_, out_error))
-    return false;
-
   // Write samba configuration file.
-  if (!WriteSmbConf(config_.get(), workgroup_, out_error))
+  if (!UpdateWorkgroupAndWriteSmbConf(config_.get(), &workgroup_, out_error))
     return false;
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
@@ -801,16 +814,9 @@ bool SambaInterface::JoinMachine(const std::string& machine_name,
   config->set_machine_name(base::ToUpperASCII(machine_name));
   config->set_realm(realm);
 
-  // Write samba configuration file with an empty workgroup (not needed below).
-  if (!WriteSmbConf(config.get(), std::string(), out_error))
-    return false;
-
-  // Query the server for the actual workgroup. This needs an smb.conf!
-  if (!UpdateWorkgroup(&workgroup_, out_error))
-    return false;
-
-  // Write samba configuration file again with the proper workgroup.
-  if (!WriteSmbConf(config.get(), workgroup_, out_error))
+  // Write samba configuration. Will query the workgroup.
+  workgroup_.clear();
+  if (!UpdateWorkgroupAndWriteSmbConf(config.get(), &workgroup_, out_error))
     return false;
 
   // Call net ads join to join the machine to the Active Directory domain.
@@ -851,12 +857,8 @@ bool SambaInterface::FetchUserGpos(const std::string& account_id_key,
   }
   const std::string& user_name = iter->second;
 
-  // Make sure we have the workgroup.
-  if (!UpdateWorkgroup(&workgroup_, out_error))
-    return false;
-
   // Write samba configuration file.
-  if (!WriteSmbConf(config_.get(), workgroup_, out_error))
+  if (!UpdateWorkgroupAndWriteSmbConf(config_.get(), &workgroup_, out_error))
     return false;
 
   // Make sure we have the domain controller name.
@@ -887,12 +889,8 @@ bool SambaInterface::FetchUserGpos(const std::string& account_id_key,
 
 bool SambaInterface::FetchDeviceGpos(std::string* out_policy_blob,
                                      ErrorType* out_error) {
-  // Make sure we have the workgroup.
-  if (!UpdateWorkgroup(&workgroup_, out_error))
-    return false;
-
   // Write samba configuration file.
-  if (!WriteSmbConf(config_.get(), workgroup_, out_error))
+  if (!UpdateWorkgroupAndWriteSmbConf(config_.get(), &workgroup_, out_error))
     return false;
 
   // Make sure we have the domain controller name.
