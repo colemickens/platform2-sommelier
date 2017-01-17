@@ -890,8 +890,6 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
   // Store user name for further reference.
   const std::string account_id_key(kActiveDirectoryPrefix + *out_account_id);
   account_id_key_user_name_map_[account_id_key] = user_name;
-  // TODO(rsorokin): Remove after switch to AccountIdKey on the Chromium side.
-  account_id_key_user_name_map_[user_principal_name] = user_name;
   return true;
 }
 
@@ -945,7 +943,7 @@ bool SambaInterface::FetchUserGpos(const std::string& account_id_key,
   std::unordered_map<std::string, std::string>::const_iterator iter =
       account_id_key_user_name_map_.find(account_id_key);
   if (iter == account_id_key_user_name_map_.end()) {
-    LOG(ERROR) << "No user logged in. Please call AuthenticateUser first.";
+    LOG(ERROR) << "User not logged in. Please call AuthenticateUser first.";
     *out_error = ERROR_NOT_LOGGED_IN;
     return false;
   }
