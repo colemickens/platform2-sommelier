@@ -214,13 +214,18 @@ def GetParser():
   parser.add_argument('--extensions', default='gyp,gypi',
                       help='Comma delimited file extensions to check. '
                            '(default: %(default)s)')
-  parser.add_argument('files', nargs='+')
+  parser.add_argument('files', nargs='*',
+                      help='Files to run lint.')
   return parser
 
 
 def main(argv):
   parser = GetParser()
   opts = parser.parse_args(argv)
+
+  if not opts.files:
+    logging.warning('No files provided to lint.  Doing nothing.')
+    return 0
 
   extensions = set(opts.extensions.split(','))
   num_files = 0
