@@ -15,6 +15,7 @@
 
 #include <base/bind.h>
 #include <base/files/file_path.h>
+#include <base/json/json_string_value_serializer.h>
 #include <base/logging.h>
 #include <base/sha1.h>
 #include <base/strings/string_number_conversions.h>
@@ -882,67 +883,101 @@ bool Mount::CreateCryptohome(const Credentials& credentials) const {
   return true;
 }
 
+// static
+std::vector<FilePath> Mount::GetTrackedSubdirectories() {
+  return std::vector<FilePath>{
+    FilePath(kRootHomeSuffix),
+    FilePath(kUserHomeSuffix),
+    FilePath(kUserHomeSuffix).Append(kCacheDir),
+    FilePath(kUserHomeSuffix).Append(kDownloadsDir),
+    FilePath(kUserHomeSuffix).Append(kGCacheDir),
+    FilePath(kUserHomeSuffix).Append(kGCacheDir)
+                             .Append(kGCacheVersionDir),
+    FilePath(kUserHomeSuffix).Append(kGCacheDir)
+                             .Append(kGCacheVersionDir)
+                             .Append(kGCacheBlobsDir),
+    FilePath(kUserHomeSuffix).Append(kGCacheDir)
+                             .Append(kGCacheVersionDir)
+                             .Append(kGCacheTmpDir),
+  };
+}
+
 bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
                                         bool is_new) const {
-  // TODO(hashimoto): Fix this method for dircrypto.
-  const int original_mask = platform_->SetMask(kDefaultUmask);
+  ScopedUmask scoped_umask(platform_, kDefaultUmask);
 
   // Add the subdirectories if they do not exist.
   const std::string obfuscated_username =
       credentials.GetObfuscatedUsername(system_salt_);
-  const FilePath shadow_home(VaultPathToUserPath(GetUserVaultPath(
-      obfuscated_username)));
-  if (!platform_->DirectoryExists(shadow_home)) {
+  const FilePath dest_dir(mount_type_ == MountType::ECRYPTFS ?
+                          GetUserVaultPath(obfuscated_username) :
+                          GetUserMountDirectory(obfuscated_username));
+  if (!platform_->DirectoryExists(dest_dir)) {
      LOG(ERROR) << "Can't create tracked subdirectories for a missing user.";
-     platform_->SetMask(original_mask);
      return false;
   }
 
   const FilePath user_home(GetMountedUserHomePath(obfuscated_username));
 
-  static const FilePath kTrackedDirs[] = {
-    FilePath(kCacheDir),
-    FilePath(kDownloadsDir),
-    FilePath(kGCacheDir),
-    FilePath(kGCacheDir).Append(kGCacheVersionDir),
-    FilePath(kGCacheDir).Append(kGCacheVersionDir).Append(kGCacheBlobsDir),
-    FilePath(kGCacheDir).Append(kGCacheVersionDir).Append(kGCacheTmpDir)
-  };
-
   // The call is allowed to partially fail if directory creation fails, but we
   // want to have as many of the specified tracked directories created as
   // possible.
   bool result = true;
-  for (const auto& tracked_dir : kTrackedDirs) {
-    const FilePath shadowside_dir = shadow_home.Append(tracked_dir);
-    const FilePath userside_dir = user_home.Append(tracked_dir);
-
-    // If non-pass-through dir with the same name existed - delete it
-    // to prevent duplication.
-    if (!is_new && platform_->DirectoryExists(userside_dir) &&
-        !platform_->DirectoryExists(shadowside_dir)) {
-      platform_->DeleteFile(userside_dir, true);
+  base::DictionaryValue name_to_inode;
+  for (const auto& tracked_dir : GetTrackedSubdirectories()) {
+    const FilePath tracked_dir_path = dest_dir.Append(tracked_dir);
+    if (mount_type_ == MountType::ECRYPTFS) {
+      const FilePath userside_dir = user_home.Append(tracked_dir);
+      // If non-pass-through dir with the same name existed - delete it
+      // to prevent duplication.
+      if (!is_new && platform_->DirectoryExists(userside_dir) &&
+          !platform_->DirectoryExists(tracked_dir_path)) {
+        platform_->DeleteFile(userside_dir, true);
+      }
     }
 
     // Create pass-through directory.
-    if (!platform_->DirectoryExists(shadowside_dir)) {
+    if (!platform_->DirectoryExists(tracked_dir_path)) {
       LOG(INFO) << "Creating pass-through directories "
-                << shadowside_dir.value();
-      platform_->CreateDirectory(shadowside_dir);
-      if (!platform_->SetOwnership(shadowside_dir,
+                << tracked_dir_path.value();
+      platform_->CreateDirectory(tracked_dir_path);
+      if (!platform_->SetOwnership(tracked_dir_path,
                                    default_user_, default_group_)) {
         LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
                    << default_group_ << ") of tracked directory path: "
-                   << shadowside_dir.value();
-        platform_->DeleteFile(shadowside_dir, true);
+                   << tracked_dir_path.value();
+        platform_->DeleteFile(tracked_dir_path, true);
         result = false;
         continue;
       }
     }
+    if (mount_type_ == MountType::DIR_CRYPTO) {
+      // Remember inode values of tracked directories.
+      struct stat buf = {};
+      if (!platform_->Stat(tracked_dir_path, &buf)) {
+        PLOG(ERROR) << "Unable to stat " << tracked_dir_path.value();
+        result = false;
+        continue;
+      }
+      static_assert(sizeof(buf.st_ino) <= sizeof(uint64_t),
+                    "inode shouldn't be larger than 64 bits.");
+      name_to_inode.SetStringWithoutPathExpansion(
+          tracked_dir.AsUTF8Unsafe(), base::Uint64ToString(buf.st_ino));
+    }
   }
-
-  // Restore the umask
-  platform_->SetMask(original_mask);
+  if (mount_type_ == MountType::DIR_CRYPTO) {
+    // HomeDirs::GetTrackedDirectory() needs inode values of tracked directories
+    // and all their parents to locate directories.
+    std::string json_string;
+    JSONStringValueSerializer serializer(&json_string);
+    if (!serializer.Serialize(name_to_inode) ||
+        !platform_->WriteStringToFile(
+            GetUserTrackedDirectoriesJsonFilePath(obfuscated_username),
+            json_string)) {
+      LOG(ERROR) << "Failed to write tracked directories' inode values.";
+      result = false;
+    }
+  }
   return result;
 }
 
@@ -1338,6 +1373,12 @@ FilePath Mount::GetUserVaultPath(
 FilePath Mount::GetUserMountDirectory(
     const std::string& obfuscated_username) const {
   return shadow_root_.Append(obfuscated_username).Append(kMountDir);
+}
+
+FilePath Mount::GetUserTrackedDirectoriesJsonFilePath(
+    const std::string& obfuscated_username) const {
+  return shadow_root_.Append(obfuscated_username).Append(
+      kTrackedDirectoriesJsonFile);
 }
 
 FilePath Mount::VaultPathToUserPath(const FilePath& vault) const {

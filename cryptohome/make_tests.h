@@ -90,6 +90,7 @@ class TestUser {
   base::FilePath image_path;
   base::FilePath vault_path;
   base::FilePath vault_mount_path;
+  base::FilePath tracked_directories_json_path;
   base::FilePath user_vault_path;
   base::FilePath root_vault_path;
   base::FilePath user_vault_mount_path;

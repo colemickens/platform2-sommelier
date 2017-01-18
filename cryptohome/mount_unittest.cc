@@ -17,6 +17,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/json/json_string_value_serializer.h>
 #include <base/logging.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
@@ -1558,6 +1559,69 @@ TEST_P(MountTest, BothFlagsMigrationTest) {
   ASSERT_EQ((flags & SerializedVaultKeyset::TPM_WRAPPED),
             SerializedVaultKeyset::TPM_WRAPPED);
   ASSERT_EQ((flags & SerializedVaultKeyset::SCRYPT_WRAPPED), 0);
+}
+
+TEST_P(MountTest, CreateTrackedSubdirectories) {
+  EXPECT_TRUE(DoMountInit());
+  InsertTestUsers(&kDefaultUsers[0], 1);
+  TestUser *user = &helper_.users[0];
+  UsernamePasskey up(user->username, user->passkey);
+
+  FilePath dest_dir;
+  if (ShouldTestEcryptfs()) {
+    dest_dir = user->vault_path;
+    mount_->mount_type_ = Mount::MountType::ECRYPTFS;
+  } else {
+    dest_dir = user->vault_mount_path;
+    mount_->mount_type_ = Mount::MountType::DIR_CRYPTO;
+  }
+  EXPECT_CALL(platform_, DirectoryExists(dest_dir))
+    .WillOnce(Return(true));
+  // Expectations for each tracked subdirectory.
+  for (const auto& tracked_dir : Mount::GetTrackedSubdirectories()) {
+    const FilePath tracked_dir_path = dest_dir.Append(tracked_dir);
+    EXPECT_CALL(platform_, DirectoryExists(tracked_dir_path))
+      .WillOnce(Return(false));
+    EXPECT_CALL(platform_, CreateDirectory(tracked_dir_path))
+      .WillOnce(Return(true));
+    EXPECT_CALL(platform_, SetOwnership(tracked_dir_path, chronos_uid_,
+                                        chronos_gid_))
+      .WillOnce(Return(true));
+    if (!ShouldTestEcryptfs()) {
+      EXPECT_CALL(platform_, Stat(tracked_dir_path, _))
+        .WillOnce(Return(true));
+    }
+  }
+  // For dircrypto, JSON file should be written.
+  std::string json_string;
+  if (!ShouldTestEcryptfs()) {
+    EXPECT_CALL(platform_,
+                WriteStringToFile(user->tracked_directories_json_path, _))
+      .WillOnce(DoAll(SaveArg<1>(&json_string), Return(true)));
+  }
+  // Run the method.
+  EXPECT_TRUE(mount_->CreateTrackedSubdirectories(up, true /* is_new */));
+
+  // For dircrypto, check the contents of the JSON file.
+  if (!ShouldTestEcryptfs()) {
+    std::unique_ptr<base::Value> value = JSONStringValueDeserializer(
+        json_string).Deserialize(nullptr, nullptr);
+    ASSERT_TRUE(value.get());
+    base::DictionaryValue* dictionary = nullptr;
+    ASSERT_TRUE(value->GetAsDictionary(&dictionary));
+
+    // The dictionary should contain all tracked subdirectories and their
+    // parents.
+    for (const auto& tracked_dir : Mount::GetTrackedSubdirectories()) {
+      SCOPED_TRACE(tracked_dir.value());
+      for (FilePath current = tracked_dir;
+           current.value() != FilePath::kCurrentDirectory;
+           current = current.DirName()) {
+        SCOPED_TRACE(current.value());
+        EXPECT_TRUE(dictionary->HasKey(current.AsUTF8Unsafe()));
+      }
+    }
+  }
 }
 
 // Test setup that initially has no cryptohomes.

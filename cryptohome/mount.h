@@ -330,7 +330,10 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //     should be checked.
   virtual bool DoesCryptohomeExist(const Credentials& credentials) const;
 
-  // Creates the the tracked subdirectories in a user's cryptohome
+  // Returns the names of all tracked subdirectories.
+  static std::vector<base::FilePath> GetTrackedSubdirectories();
+
+  // Creates the tracked subdirectories in a user's cryptohome
   // If the cryptohome did not have tracked directories, but had them untracked,
   // migrate their contents.
   //
@@ -499,6 +502,13 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Parameters
   //   credentials - The credentials representing the user
   base::FilePath GetUserMountDirectory(
+      const std::string& obfuscated_username) const;
+
+  // Gets the user's tracked directory JSON file used for dircrypto.
+  //
+  // Parameters
+  //   obfuscated_username - Obfuscated username field of the credentials.
+  base::FilePath GetUserTrackedDirectoriesJsonFilePath(
       const std::string& obfuscated_username) const;
 
   // Returns the path of a user passthrough inside a vault
@@ -802,6 +812,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   FRIEND_TEST(MountTest, CheckChapsDirectoryMigration);
   FRIEND_TEST(MountTest, TwoWayKeysetMigrationTest);
   FRIEND_TEST(MountTest, BothFlagsMigrationTest);
+  FRIEND_TEST(MountTest, CreateTrackedSubdirectories);
 
   DISALLOW_COPY_AND_ASSIGN(Mount);
 };

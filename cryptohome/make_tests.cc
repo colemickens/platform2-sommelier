@@ -168,6 +168,7 @@ void TestUser::FromInfo(const struct TestUserInfo* info,
   image_path = base_path.Append("image");
   vault_path = base_path.Append("vault");
   vault_mount_path = base_path.Append("mount");
+  tracked_directories_json_path = base_path.Append("tracked_directories.json");
   root_vault_path = vault_path.Append("root");
   user_vault_path = vault_path.Append("user");
   root_vault_mount_path = vault_mount_path.Append("root");
@@ -329,6 +330,12 @@ void TestUser::InjectUserPaths(MockPlatform* platform,
       Stat(AnyOf(user_mount_path,
                  temp_mount->GetNewUserPath(username)), _))
     .WillRepeatedly(DoAll(SetArgPointee<1>(user_dir), Return(true)));
+  if (!is_ecryptfs) {
+    EXPECT_CALL(*platform,
+        Stat(Property(&FilePath::value,
+                      StartsWith(user_vault_mount_path.value())), _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(user_dir), Return(true)));
+  }
   struct stat chronos_dir;
   memset(&chronos_dir, 0, sizeof(chronos_dir));
   chronos_dir.st_mode = S_IFDIR;
