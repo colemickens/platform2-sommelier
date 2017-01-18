@@ -76,7 +76,8 @@ MakeTests::MakeTests() { }
 
 void MakeTests::InitTestData(const FilePath& image_dir,
                              const TestUserInfo* test_users,
-                             size_t test_user_count) {
+                             size_t test_user_count,
+                             bool force_ecryptfs) {
   CHECK(system_salt.size()) << "Call SetUpSystemSalt() first";
   users.clear();
   users.resize(test_user_count);
@@ -84,7 +85,7 @@ void MakeTests::InitTestData(const FilePath& image_dir,
   for (size_t id = 0; id < test_user_count; ++id, ++user_info) {
     TestUser* user = &users[id];
     user->FromInfo(user_info, image_dir);
-    user->GenerateCredentials();
+    user->GenerateCredentials(force_ecryptfs);
   }
 }
 
@@ -169,6 +170,8 @@ void TestUser::FromInfo(const struct TestUserInfo* info,
   vault_mount_path = base_path.Append("mount");
   root_vault_path = vault_path.Append("root");
   user_vault_path = vault_path.Append("user");
+  root_vault_mount_path = vault_mount_path.Append("root");
+  user_vault_mount_path = vault_mount_path.Append("user");
   keyset_path = base_path.Append("master.0");
   salt_path = base_path.Append("master.0.salt");
   user_salt.assign('A', PKCS5_SALT_LEN);
@@ -184,7 +187,7 @@ void TestUser::FromInfo(const struct TestUserInfo* info,
     .StripTrailingSeparators();
 }
 
-void TestUser::GenerateCredentials() {
+void TestUser::GenerateCredentials(bool force_ecryptfs) {
   std::string* system_salt = brillo::cryptohome::home::GetSystemSalt();
   brillo::Blob salt;
   salt.resize(system_salt->size());
@@ -260,7 +263,7 @@ void TestUser::GenerateCredentials() {
   // Grab the generated credential
   EXPECT_CALL(platform, WriteFileAtomicDurable(keyset_path, _, _))
     .WillOnce(DoAll(SaveArg<1>(&credentials), Return(true)));
-  mount->EnsureCryptohome(up, &created);
+  mount->EnsureCryptohome(up, force_ecryptfs, &created);
   DCHECK(created && credentials.size());
 }
 
@@ -292,7 +295,8 @@ void TestUser::InjectUserPaths(MockPlatform* platform,
                                uid_t chronos_uid,
                                gid_t chronos_gid,
                                gid_t chronos_access_gid,
-                               gid_t daemon_gid) {
+                               gid_t daemon_gid,
+                               bool is_ecryptfs) {
   scoped_refptr<Mount> temp_mount = new Mount();
   EXPECT_CALL(*platform, FileExists(image_path))
     .WillRepeatedly(Return(false));
@@ -313,7 +317,8 @@ void TestUser::InjectUserPaths(MockPlatform* platform,
   root_vault_dir.st_mode = S_IFDIR|S_ISVTX;
   root_vault_dir.st_uid = 0;
   root_vault_dir.st_gid = daemon_gid;
-  EXPECT_CALL(*platform, Stat(root_vault_path, _))
+  EXPECT_CALL(*platform,
+              Stat(is_ecryptfs ? root_vault_path : root_vault_mount_path, _))
     .WillRepeatedly(DoAll(SetArgPointee<1>(root_vault_dir), Return(true)));
   struct stat user_dir;
   memset(&user_dir, 0, sizeof(user_dir));
@@ -339,11 +344,11 @@ void TestUser::InjectUserPaths(MockPlatform* platform,
           AnyOf(shadow_root.value(),
                 mount_prefix.value(),
                 StartsWith(legacy_user_mount_path.value()),
-                StartsWith(vault_mount_path.value()),
-                StartsWith(vault_path.value())))))
+                StartsWith(vault_mount_path.value())))))
     .WillRepeatedly(Return(true));
-  // TODO(wad) Bounce this out if needed elsewhere.
-  FilePath user_vault_mount = vault_mount_path.Append("user");
+  EXPECT_CALL(*platform, DirectoryExists(
+      Property(&FilePath::value, StartsWith(vault_path.value()))))
+      .WillRepeatedly(Return(is_ecryptfs));
   FilePath new_user_path = temp_mount->GetNewUserPath(username);
   EXPECT_CALL(*platform,
       FileExists(
@@ -359,9 +364,13 @@ void TestUser::InjectUserPaths(MockPlatform* platform,
       SetGroupAccessible(
         Property(&FilePath::value,
           AnyOf(StartsWith(legacy_user_mount_path.value()),
-                StartsWith(user_vault_mount.value()))),
+                StartsWith(user_vault_mount_path.value()))),
         chronos_access_gid, _))
     .WillRepeatedly(Return(true));
+  if (!is_ecryptfs) {
+    EXPECT_CALL(*platform, GetDirCryptoKeyState(vault_mount_path))
+        .WillRepeatedly(Return(dircrypto::KeyState::ENCRYPTED));
+  }
 }
 
 }  // namespace cryptohome

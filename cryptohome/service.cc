@@ -2029,6 +2029,7 @@ gboolean Service::AsyncMount(const gchar *userid,
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
   mount_args.ensure_ephemeral = ensure_ephemeral;
+  mount_args.force_ecryptfs = force_ecryptfs_;
   std::unique_ptr<SecureBlob> key_blob(new SecureBlob(key, key + strlen(key)));
   UsernamePasskey credentials(userid, *key_blob);
   scoped_refptr<MountTaskMount> mount_task = new MountTaskMount(
@@ -2163,6 +2164,7 @@ gboolean Service::AsyncMountPublic(const gchar* public_mount_id,
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
   mount_args.ensure_ephemeral = ensure_ephemeral;
+  mount_args.force_ecryptfs = force_ecryptfs_;
   std::unique_ptr<SecureBlob> key_blob(new SecureBlob());
   UsernamePasskey credentials(public_mount_id, *key_blob);
   scoped_refptr<MountTaskMount> mount_task = new MountTaskMount(

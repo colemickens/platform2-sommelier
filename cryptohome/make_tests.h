@@ -45,7 +45,8 @@ class MakeTests {
   void SetUpSystemSalt();
   void InitTestData(const base::FilePath& image_dir,
                     const TestUserInfo* test_users,
-                    size_t test_user_count);
+                    size_t test_user_count,
+                    bool force_ecryptfs);
   void InjectSystemSalt(MockPlatform* platform, const base::FilePath& path);
   // Inject mocks needed for skeleton population.
   void InjectEphemeralSkeleton(MockPlatform* platform,
@@ -67,7 +68,7 @@ class TestUser {
   void FromInfo(const struct TestUserInfo* info,
                 const base::FilePath& image_dir);
   // Generate a valid vault keyset using scrypt.
-  void GenerateCredentials();
+  void GenerateCredentials(bool force_ecryptfs);
   // Inject the keyset so it can be accessed via platform.
   void InjectKeyset(MockPlatform* platform, bool enumerate = true);
   // Inject all the paths for a vault to exist.
@@ -75,7 +76,8 @@ class TestUser {
                        uid_t chronos_uid,
                        gid_t chronos_gid,
                        gid_t chronos_access_gid,
-                       gid_t daemon_gid);
+                       gid_t daemon_gid,
+                       bool is_ecryptfs);
   // Completely public accessors like the TestUserInfo struct.
   const char* username;
   const char* password;
@@ -90,6 +92,8 @@ class TestUser {
   base::FilePath vault_mount_path;
   base::FilePath user_vault_path;
   base::FilePath root_vault_path;
+  base::FilePath user_vault_mount_path;
+  base::FilePath root_vault_mount_path;
   base::FilePath keyset_path;
   base::FilePath salt_path;
   base::FilePath mount_prefix;

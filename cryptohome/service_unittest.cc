@@ -341,7 +341,8 @@ TEST_F(ServiceTest, CheckKeyHomedirsTest) {
 TEST_F(ServiceTestNotInitialized, CheckAsyncTestCredentials) {
   // Setup a real homedirs instance (making this a pseudo-integration test).
   test_helper_.InjectSystemSalt(&platform_, kSaltFile);
-  test_helper_.InitTestData(kImageDir, kDefaultUsers, 1);
+  test_helper_.InitTestData(kImageDir, kDefaultUsers, 1,
+                            false /* force_ecryptfs */);
   TestUser* user = &test_helper_.users[0];
   user->InjectKeyset(&platform_);
   SecureBlob passkey;

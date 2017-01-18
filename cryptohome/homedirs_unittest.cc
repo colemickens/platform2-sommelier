@@ -119,7 +119,9 @@ class HomeDirsTest : public ::testing::Test {
 
     test_helper_.SetUpSystemSalt();
     // TODO(wad) Only generate the user data we need. This is time consuming.
-    test_helper_.InitTestData(kTestRoot, kDefaultUsers, kDefaultUserCount);
+    // TODO(hashimoto): Test both force_ecryptfs=true/false cases.
+    test_helper_.InitTestData(kTestRoot, kDefaultUsers, kDefaultUserCount,
+                              false /* force_ecryptfs */);
     homedirs_.set_shadow_root(kTestRoot);
     test_helper_.InjectSystemSalt(&platform_, kTestRoot.Append("salt"));
     set_policy(true, kOwner, false, "");

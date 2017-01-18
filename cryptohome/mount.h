@@ -80,6 +80,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   enum class MountType {
     NONE,  // Not mounted.
     ECRYPTFS,  // Encrypted with ecryptfs.
+    DIR_CRYPTO,  // Encrypted with dircrypto.
     EPHEMERAL,  // Ephemeral mount.
   };
 
@@ -137,14 +138,16 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   virtual bool IsNonEphemeralMounted() const;
 
   // Checks if the cryptohome vault exists for the given credentials and creates
-  // it if not (calls CreateCryptohome).
+  // it if not (calls CreateCryptohome and sets mount_type_).
   //
   // Parameters
   //   credentials - The Credentials representing the user whose cryptohome
   //     should be ensured.
+  //   force_ecryptfs - Force usage of ecryptfs, do not use dircrypto.
   //   created (OUT) - Whether the cryptohome was created
   virtual bool EnsureCryptohome(const Credentials& credentials,
-                                bool* created) const;
+                                bool force_ecryptfs,
+                                bool* created);
 
   // Updates current user activity timestamp. This is called daily.
   // So we may not consider current user as old (and delete it soon after she
@@ -338,7 +341,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   virtual bool CreateTrackedSubdirectories(const Credentials& credentials,
                                            bool is_new) const;
 
-  // Creates the cryptohome salt, key, and vault for the specified credentials
+  // Creates the cryptohome salt, key, (and vault if necessary) for the
+  // specified credentials.
   //
   // Parameters
   //   credentials - The Credentials representing the user whose cryptohome
@@ -772,6 +776,9 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Stack of mounts (in the mount(2) sense) that we've made.
   MountStack mounts_;
+
+  // Dircrypto key ID.
+  key_serial_t dircrypto_key_id_;
 
   // Whether to mount the legacy homedir or not (see MountLegacyHome)
   bool legacy_mount_;

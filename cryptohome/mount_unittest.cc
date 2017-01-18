@@ -106,7 +106,8 @@ Tpm::TpmRetryAction TpmPassthroughDecrypt(uint32_t _key,
   return Tpm::kTpmRetryNone;
 }
 
-class MountTest : public ::testing::Test {
+class MountTest
+    : public ::testing::TestWithParam<bool /* should_test_ecryptfs */> {
  public:
   MountTest() : crypto_(&platform_) { }
   virtual ~MountTest() { }
@@ -145,7 +146,7 @@ class MountTest : public ::testing::Test {
 
   void InsertTestUsers(const TestUserInfo* user_info_list, int count) {
     helper_.InitTestData(kImageDir, user_info_list,
-                         static_cast<size_t>(count));
+                         static_cast<size_t>(count), ShouldTestEcryptfs());
   }
 
   bool DoMountInit() {
@@ -196,6 +197,42 @@ class MountTest : public ::testing::Test {
         .WillRepeatedly(Invoke(&homedirs_, &MockHomeDirs::ActualGetPlainOwner));
   }
 
+  // Returns true if the test is running for eCryptfs, false if for dircrypto.
+  bool ShouldTestEcryptfs() const { return GetParam(); }
+
+  Mount::MountArgs GetDefaultMountArgs() const {
+    Mount::MountArgs args;
+    args.force_ecryptfs = ShouldTestEcryptfs();
+    return args;
+  }
+
+  // Sets expectations for cryptohome key setup.
+  void ExpectCryptohomeKeySetup(const TestUser& user) {
+    if (ShouldTestEcryptfs()) {
+      EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
+          .Times(2)
+          .WillRepeatedly(Return(true));
+    } else {
+      const key_serial_t kDirCryptoKeyId = 12345;
+      EXPECT_CALL(platform_, AddDirCryptoKeyToKeyring(_, _, _))
+          .WillOnce(DoAll(SetArgPointee<2>(kDirCryptoKeyId), Return(true)));
+      EXPECT_CALL(platform_, SetDirCryptoKey(user.vault_mount_path, _))
+          .WillOnce(Return(true));
+      EXPECT_CALL(platform_, InvalidateDirCryptoKey(kDirCryptoKeyId))
+          .WillRepeatedly(Return(true));
+    }
+  }
+
+  // Sets expectations for cryptohome mount.
+  void ExpectCryptohomeMount(const TestUser& user) {
+    ExpectCryptohomeKeySetup(user);
+    if (ShouldTestEcryptfs()) {
+      EXPECT_CALL(platform_, Mount(user.vault_path, user.vault_mount_path,
+                                   "ecryptfs", _))
+          .WillOnce(Return(true));
+    }
+  }
+
  protected:
   // Protected for trivial access.
   MakeTests helper_;
@@ -216,7 +253,10 @@ class MountTest : public ::testing::Test {
   DISALLOW_COPY_AND_ASSIGN(MountTest);
 };
 
-TEST_F(MountTest, BadInitTest) {
+INSTANTIATE_TEST_CASE_P(WithEcryptfs, MountTest, ::testing::Values(true));
+INSTANTIATE_TEST_CASE_P(WithDircrypto, MountTest, ::testing::Values(false));
+
+TEST_P(MountTest, BadInitTest) {
   // Create a Mount instance that points to a bad shadow root.
   mount_->set_shadow_root(FilePath("/dev/null"));
 
@@ -248,7 +288,7 @@ TEST_F(MountTest, BadInitTest) {
   ASSERT_FALSE(mount_->AreValid(up));
 }
 
-TEST_F(MountTest, CurrentCredentialsTest) {
+TEST_P(MountTest, CurrentCredentialsTest) {
   // Create a Mount instance that points to a good shadow root, test that it
   // properly authenticates against the first key.
   SecureBlob passkey;
@@ -271,7 +311,7 @@ TEST_F(MountTest, CurrentCredentialsTest) {
   ASSERT_TRUE(mount_->AreValid(up));
 }
 
-TEST_F(MountTest, BadDecryptTest) {
+TEST_P(MountTest, BadDecryptTest) {
   // Create a Mount instance that points to a good shadow root, test that it
   // properly denies access with a bad passkey.
   SecureBlob passkey;
@@ -282,7 +322,7 @@ TEST_F(MountTest, BadDecryptTest) {
   ASSERT_FALSE(mount_->AreValid(up));
 }
 
-TEST_F(MountTest, MountCryptohomeNoPrivileges) {
+TEST_P(MountTest, MountCryptohomeNoPrivileges) {
   // Check that Mount only works if the mount permission is given.
   InsertTestUsers(&kDefaultUsers[10], 1);
   EXPECT_CALL(platform_, SetMask(_))
@@ -296,12 +336,12 @@ TEST_F(MountTest, MountCryptohomeNoPrivileges) {
   user->use_key_data = true;
   user->key_data.mutable_privileges()->set_mount(false);
   // Regenerate the serialized vault keyset.
-  user->GenerateCredentials();
+  user->GenerateCredentials(ShouldTestEcryptfs());
   UsernamePasskey up(user->username, user->passkey);
   // Let the legacy key iteration work here.
 
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_, shared_gid_,
-                        kDaemonGid);
+                        kDaemonGid, ShouldTestEcryptfs());
   user->InjectKeyset(&platform_, false);
 
   std::vector<int> key_indices;
@@ -310,8 +350,10 @@ TEST_F(MountTest, MountCryptohomeNoPrivileges) {
     .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
                           Return(true)));
 
-  EXPECT_CALL(platform_, ClearUserKeyring())
-    .WillOnce(Return(true));
+  if (ShouldTestEcryptfs()) {
+    EXPECT_CALL(platform_, ClearUserKeyring())
+        .WillOnce(Return(true));
+  }
 
   EXPECT_CALL(platform_, CreateDirectory(user->vault_mount_path))
     .WillRepeatedly(Return(true));
@@ -321,11 +363,11 @@ TEST_F(MountTest, MountCryptohomeNoPrivileges) {
     .WillRepeatedly(Return(true));
 
   MountError error = MOUNT_ERROR_NONE;
-  EXPECT_FALSE(mount_->MountCryptohome(up, Mount::MountArgs(), &error));
+  EXPECT_FALSE(mount_->MountCryptohome(up, GetDefaultMountArgs(), &error));
   EXPECT_EQ(MOUNT_ERROR_KEY_FAILURE, error);
 }
 
-TEST_F(MountTest, MountCryptohomeHasPrivileges) {
+TEST_P(MountTest, MountCryptohomeHasPrivileges) {
   // Check that Mount only works if the mount permission is given.
   InsertTestUsers(&kDefaultUsers[10], 1);
   EXPECT_CALL(platform_, SetMask(_))
@@ -339,12 +381,12 @@ TEST_F(MountTest, MountCryptohomeHasPrivileges) {
   user->use_key_data = true;
   user->key_data.mutable_privileges()->set_mount(true);
   // Regenerate the serialized vault keyset.
-  user->GenerateCredentials();
+  user->GenerateCredentials(ShouldTestEcryptfs());
   UsernamePasskey up(user->username, user->passkey);
   // Let the legacy key iteration work here.
 
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_, shared_gid_,
-                        kDaemonGid);
+                        kDaemonGid, ShouldTestEcryptfs());
   user->InjectKeyset(&platform_, false);
 
   std::vector<int> key_indices;
@@ -353,9 +395,7 @@ TEST_F(MountTest, MountCryptohomeHasPrivileges) {
     .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
                           Return(true)));
 
-  EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
-    .Times(2)
-    .WillRepeatedly(Return(true));
+  ExpectCryptohomeMount(*user);
   EXPECT_CALL(platform_, ClearUserKeyring())
     .WillOnce(Return(true));
 
@@ -369,8 +409,6 @@ TEST_F(MountTest, MountCryptohomeHasPrivileges) {
   EXPECT_CALL(platform_, IsDirectoryMounted(user->vault_mount_path))
     .WillOnce(Return(false));
   // user exists, so there'll be no skel copy after.
-  EXPECT_CALL(platform_, Mount(_, _, _, _))
-    .WillRepeatedly(Return(true));
   // Only one mount, so the legacy mount point is used.
   EXPECT_CALL(platform_,
       IsDirectoryMounted(FilePath("/home/chronos/user")))
@@ -379,10 +417,10 @@ TEST_F(MountTest, MountCryptohomeHasPrivileges) {
     .WillRepeatedly(Return(true));
 
   MountError error = MOUNT_ERROR_NONE;
-  ASSERT_TRUE(mount_->MountCryptohome(up, Mount::MountArgs(), &error));
+  ASSERT_TRUE(mount_->MountCryptohome(up, GetDefaultMountArgs(), &error));
 
   EXPECT_CALL(platform_, Unmount(_, _, _))
-      .Times(5)
+      .Times(ShouldTestEcryptfs() ? 5 : 4)
       .WillRepeatedly(Return(true));
 
   // Unmount here to avoid the scoped Mount doing it implicitly.
@@ -567,7 +605,7 @@ TEST_F(ChapsDirectoryTest, FixBadOwnershipFailure) {
   ASSERT_FALSE(RunCheck());
 }
 
-TEST_F(MountTest, CheckChapsDirectoryMigration) {
+TEST_P(MountTest, CheckChapsDirectoryMigration) {
   EXPECT_CALL(platform_, DirectoryExists(kImageDir))
     .WillRepeatedly(Return(true));
 
@@ -628,7 +666,7 @@ TEST_F(MountTest, CheckChapsDirectoryMigration) {
         FilePath("/fake"), FilePath("/fake_legacy")));
 }
 
-TEST_F(MountTest, CreateCryptohomeTest) {
+TEST_P(MountTest, CreateCryptohomeTest) {
   InsertTestUsers(&kDefaultUsers[5], 1);
   // Creates a cryptohome and tests credentials.
   HomeDirs homedirs;
@@ -662,17 +700,18 @@ TEST_F(MountTest, CreateCryptohomeTest) {
     .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, DirectoryExists(user->vault_mount_path))
     .WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_,
-      CreateDirectory(AnyOf(user->vault_path, user->base_path)))
-    .Times(2)
-    .WillRepeatedly(Return(true));
-
+  if (ShouldTestEcryptfs()) {
+    EXPECT_CALL(platform_, CreateDirectory(user->vault_path))
+      .WillOnce(Return(true));
+  }
+  EXPECT_CALL(platform_, CreateDirectory(user->base_path))
+    .WillOnce(Return(true));
   brillo::Blob creds;
   EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillOnce(DoAll(SaveArg<1>(&creds), Return(true)));
 
   bool created;
-  ASSERT_TRUE(mount_->EnsureCryptohome(up, &created));
+  ASSERT_TRUE(mount_->EnsureCryptohome(up, ShouldTestEcryptfs(), &created));
   ASSERT_TRUE(created);
   ASSERT_NE(creds.size(), 0);
   ASSERT_FALSE(mount_->AreValid(up));
@@ -694,7 +733,7 @@ TEST_F(MountTest, CreateCryptohomeTest) {
   ASSERT_TRUE(homedirs.AreCredentialsValid(up));
 }
 
-TEST_F(MountTest, GoodReDecryptTest) {
+TEST_P(MountTest, GoodReDecryptTest) {
   InsertTestUsers(&kDefaultUsers[6], 1);
   // Create a Mount instance that points to a good shadow root, test that it
   // properly re-authenticates against the first key.
@@ -830,7 +869,7 @@ TEST_F(MountTest, GoodReDecryptTest) {
   ASSERT_TRUE(homedirs.AreCredentialsValid(up));
 }
 
-TEST_F(MountTest, MountCryptohome) {
+TEST_P(MountTest, MountCryptohome) {
   // checks that cryptohome tries to mount successfully, and tests that the
   // tracked directories are created/replaced as expected
   InsertTestUsers(&kDefaultUsers[10], 1);
@@ -842,7 +881,7 @@ TEST_F(MountTest, MountCryptohome) {
   UsernamePasskey up(user->username, user->passkey);
 
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_, shared_gid_,
-                        kDaemonGid);
+                        kDaemonGid, ShouldTestEcryptfs());
   user->InjectKeyset(&platform_, false);
 
   std::vector<int> key_indices;
@@ -851,9 +890,7 @@ TEST_F(MountTest, MountCryptohome) {
     .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
                           Return(true)));
 
-  EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
-    .Times(2)
-    .WillRepeatedly(Return(true));
+  ExpectCryptohomeMount(*user);
   EXPECT_CALL(platform_, ClearUserKeyring())
     .WillRepeatedly(Return(true));
 
@@ -867,8 +904,6 @@ TEST_F(MountTest, MountCryptohome) {
   EXPECT_CALL(platform_, IsDirectoryMounted(user->vault_mount_path))
     .WillOnce(Return(false));
   // user exists, so there'll be no skel copy after.
-  EXPECT_CALL(platform_, Mount(_, _, _, _))
-    .WillRepeatedly(Return(true));
   // Only one mount, so the legacy mount point is used.
   EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
     .WillOnce(Return(false));
@@ -876,10 +911,10 @@ TEST_F(MountTest, MountCryptohome) {
     .WillRepeatedly(Return(true));
 
   MountError error = MOUNT_ERROR_NONE;
-  EXPECT_TRUE(mount_->MountCryptohome(up, Mount::MountArgs(), &error));
+  EXPECT_TRUE(mount_->MountCryptohome(up, GetDefaultMountArgs(), &error));
 }
 
-TEST_F(MountTest, MountCryptohomeChapsKey) {
+TEST_P(MountTest, MountCryptohomeChapsKey) {
   // Test to check if Cryptohome mount saves the chaps key correctly,
   // and doesn't regenerate it.
   EXPECT_CALL(platform_, DirectoryExists(kImageDir))
@@ -911,22 +946,18 @@ TEST_F(MountTest, MountCryptohomeChapsKey) {
   SecureBlob local_chaps(vault_keyset.chaps_key().begin(),
                          vault_keyset.chaps_key().end());
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
-                        shared_gid_, kDaemonGid);
+                        shared_gid_, kDaemonGid, ShouldTestEcryptfs());
 
-  EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
-    .Times(2)
-    .WillRepeatedly(Return(true));
+  ExpectCryptohomeMount(*user);
   EXPECT_CALL(platform_, CreateDirectory(user->vault_mount_path))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_,
               CreateDirectory(mount_->GetNewUserPath(user->username)))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Mount(_, _, _, _))
-      .WillOnce(Return(true));
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
-  ASSERT_TRUE(mount_->MountCryptohome(up, Mount::MountArgs(), &error));
+  ASSERT_TRUE(mount_->MountCryptohome(up, GetDefaultMountArgs(), &error));
 
   ASSERT_TRUE(mount_->DecryptVaultKeyset(up, false, &vault_keyset, &serialized,
                                         &key_index, &error));
@@ -937,7 +968,7 @@ TEST_F(MountTest, MountCryptohomeChapsKey) {
     vault_keyset.chaps_key().data(), local_chaps.size()));
 }
 
-TEST_F(MountTest, MountCryptohomeNoChapsKey) {
+TEST_P(MountTest, MountCryptohomeNoChapsKey) {
   // This test checks if the mount operation recreates the chaps key
   // if it isn't present in the vault.
   EXPECT_CALL(platform_, DirectoryExists(kImageDir))
@@ -987,22 +1018,18 @@ TEST_F(MountTest, MountCryptohomeNoChapsKey) {
   EXPECT_EQ(serialized.has_wrapped_chaps_key(), false);
 
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
-                        shared_gid_, kDaemonGid);
+                        shared_gid_, kDaemonGid, ShouldTestEcryptfs());
 
-  EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
-    .Times(2)
-    .WillRepeatedly(Return(true));
+  ExpectCryptohomeMount(*user);
   EXPECT_CALL(platform_, CreateDirectory(user->vault_mount_path))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_,
               CreateDirectory(mount_->GetNewUserPath(user->username)))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Mount(_, _, _, _))
-      .WillOnce(Return(true));
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
-  ASSERT_TRUE(mount_->MountCryptohome(up, Mount::MountArgs(), &error));
+  ASSERT_TRUE(mount_->MountCryptohome(up, GetDefaultMountArgs(), &error));
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
     .WillRepeatedly(DoAll(SetArgPointee<1>(user->credentials),
                           Return(true)));
@@ -1012,7 +1039,7 @@ TEST_F(MountTest, MountCryptohomeNoChapsKey) {
   EXPECT_EQ(vault_keyset.chaps_key().size(), CRYPTOHOME_CHAPS_KEY_LENGTH);
 }
 
-TEST_F(MountTest, MountCryptohomeNoChange) {
+TEST_P(MountTest, MountCryptohomeNoChange) {
   // Checks that cryptohome doesn't by default re-save the cryptohome on mount.
   EXPECT_CALL(platform_, DirectoryExists(kImageDir))
     .WillRepeatedly(Return(true));
@@ -1039,23 +1066,19 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
   EXPECT_EQ(key_index, key_indices[0]);
 
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
-                        shared_gid_, kDaemonGid);
+                        shared_gid_, kDaemonGid, ShouldTestEcryptfs());
 
-  EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
-    .Times(2)
-    .WillRepeatedly(Return(true));
+  ExpectCryptohomeMount(*user);
   EXPECT_CALL(platform_, CreateDirectory(user->vault_mount_path))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_,
               CreateDirectory(mount_->GetNewUserPath(user->username)))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Mount(_, _, _, _))
-      .WillOnce(Return(true));
   EXPECT_CALL(platform_, Bind(_, _))
       .Times(4)
       .WillRepeatedly(Return(true));
 
-  ASSERT_TRUE(mount_->MountCryptohome(up, Mount::MountArgs(), &error));
+  ASSERT_TRUE(mount_->MountCryptohome(up, GetDefaultMountArgs(), &error));
 
   SerializedVaultKeyset new_serialized;
   ASSERT_TRUE(mount_->DecryptVaultKeyset(up, true, &vault_keyset,
@@ -1069,7 +1092,7 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
   ASSERT_EQ(0, brillo::SecureMemcmp(lhs.data(), rhs.data(), lhs.size()));
 }
 
-TEST_F(MountTest, MountCryptohomeNoCreate) {
+TEST_P(MountTest, MountCryptohomeNoCreate) {
   // Checks that doesn't create the cryptohome for the user on Mount without
   // being told to do so.
   EXPECT_CALL(platform_, DirectoryExists(kImageDir))
@@ -1095,7 +1118,7 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
   EXPECT_CALL(platform_, DirectoryExists(user->vault_mount_path))
     .WillOnce(Return(false));
 
-  Mount::MountArgs mount_args;
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = false;
   MountError error = MOUNT_ERROR_NONE;
   ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
@@ -1124,13 +1147,9 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
     .WillOnce(DoAll(SaveArg<1>(&creds), Return(true)))
     .WillRepeatedly(Return(true));
 
-  EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
-    .Times(2)
-    .WillRepeatedly(Return(true));
+  ExpectCryptohomeMount(*user);
   EXPECT_CALL(platform_, IsDirectoryMounted(user->vault_mount_path))
     .WillOnce(Return(false));  // mount precondition
-  EXPECT_CALL(platform_, Mount(_, _, _, _))
-      .WillOnce(Return(true));
   EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
     .WillOnce(Return(false));  // bind precondition for first mount
   EXPECT_CALL(platform_, Bind(_, _))
@@ -1151,7 +1170,7 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
   ASSERT_EQ(MOUNT_ERROR_NONE, error);
 }
 
-TEST_F(MountTest, UserActivityTimestampUpdated) {
+TEST_P(MountTest, UserActivityTimestampUpdated) {
   // checks that user activity timestamp is updated during Mount() and
   // periodically while mounted, other Keyset fields remains the same
   EXPECT_CALL(platform_, DirectoryExists(kImageDir))
@@ -1171,7 +1190,7 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
 
   user->InjectKeyset(&platform_, false);
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
-                        shared_gid_, kDaemonGid);
+                        shared_gid_, kDaemonGid, ShouldTestEcryptfs());
 
   std::vector<int> key_indices;
   key_indices.push_back(0);
@@ -1181,15 +1200,11 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
 
   // Mount()
   MountError error;
-  EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
-    .Times(2)
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Mount(_, _, _, _))
-      .WillOnce(Return(true));
+  ExpectCryptohomeMount(*user);
   EXPECT_CALL(platform_, Bind(_, _))
       .Times(4)
       .WillRepeatedly(Return(true));
-  ASSERT_TRUE(mount_->MountCryptohome(up, Mount::MountArgs(), &error));
+  ASSERT_TRUE(mount_->MountCryptohome(up, GetDefaultMountArgs(), &error));
 
   // Update the timestamp. Normally it is called in MountTaskMount::Run() in
   // background but here in the test we must call it manually.
@@ -1213,7 +1228,7 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   EXPECT_CALL(platform_, GetCurrentTime())
       .WillOnce(Return(base::Time::FromInternalValue(kMagicTimestamp2)));
   EXPECT_CALL(platform_, Unmount(_, _, _))
-      .Times(5)
+      .Times(ShouldTestEcryptfs() ? 5 : 4)
       .WillRepeatedly(Return(true));
   mount_->UnmountCryptohome();
   SerializedVaultKeyset serialized2;
@@ -1233,7 +1248,7 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
             serialized2.has_last_activity_timestamp());
 }
 
-TEST_F(MountTest, RememberMountOrderingTest) {
+TEST_P(MountTest, RememberMountOrderingTest) {
   // Checks that mounts made with RememberMount/RememberBind are undone in the
   // right order.
   EXPECT_CALL(platform_, DirectoryExists(kImageDir))
@@ -1268,19 +1283,19 @@ TEST_F(MountTest, RememberMountOrderingTest) {
   }
 }
 
-TEST_F(MountTest, LockboxGetsFinalized) {
+TEST_P(MountTest, LockboxGetsFinalized) {
   StrictMock<MockBootLockbox> lockbox;
   mount_->set_boot_lockbox(&lockbox);
   ASSERT_TRUE(DoMountInit());
   EXPECT_CALL(lockbox, FinalizeBoot()).Times(2).WillRepeatedly(Return(true));
   UsernamePasskey up("username", SecureBlob("password"));
-  Mount::MountArgs args;
+  Mount::MountArgs args = GetDefaultMountArgs();
   MountError error = MOUNT_ERROR_NONE;
   mount_->MountCryptohome(up, args, &error);
   mount_->MountGuestCryptohome();
 }
 
-TEST_F(MountTest, TwoWayKeysetMigrationTest) {
+TEST_P(MountTest, TwoWayKeysetMigrationTest) {
   // Checks that in the following scenario the keyset is not corrupted
   // 1) Have TPM present - keys are TPM wrapped.
   // 2) Decrypt while no TPM - keys are migrated to Scrypt.
@@ -1425,7 +1440,7 @@ TEST_F(MountTest, TwoWayKeysetMigrationTest) {
   ASSERT_EQ(error, MOUNT_ERROR_NONE);
 }
 
-TEST_F(MountTest, BothFlagsMigrationTest) {
+TEST_P(MountTest, BothFlagsMigrationTest) {
   // Checks that in the following scenario works:
   // TPM is enabled.
   // We have a keyset that has both TPM and Scrypt flags set.
@@ -1683,7 +1698,12 @@ class EphemeralNoUserSystemTest : public AltImageTest {
   DISALLOW_COPY_AND_ASSIGN(EphemeralNoUserSystemTest);
 };
 
-TEST_F(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
+INSTANTIATE_TEST_CASE_P(WithEcryptfs, EphemeralNoUserSystemTest,
+                        ::testing::Values(true));
+INSTANTIATE_TEST_CASE_P(WithDircrypto, EphemeralNoUserSystemTest,
+                        ::testing::Values(false));
+
+TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
   // Checks that when a device is not enterprise enrolled and does not have a
   // known owner, a regular vault is created and mounted.
   set_policy(false, "", true);
@@ -1699,9 +1719,7 @@ TEST_F(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
     .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, DirectoryExists(user->vault_mount_path))
     .WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
-    .Times(2)
-    .WillRepeatedly(Return(true));
+  ExpectCryptohomeKeySetup(*user);
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
@@ -1726,7 +1744,7 @@ TEST_F(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
-  Mount::MountArgs mount_args;
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   MountError error;
   ASSERT_TRUE(mount_->MountCryptohome(up,
@@ -1738,7 +1756,7 @@ TEST_F(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
 
 // TODO(wad) Duplicate these tests with multiple mounts instead of one.
 
-TEST_F(EphemeralNoUserSystemTest, EnterpriseMountNoCreateTest) {
+TEST_P(EphemeralNoUserSystemTest, EnterpriseMountNoCreateTest) {
   // Checks that when a device is enterprise enrolled, a tmpfs cryptohome is
   // mounted and no regular vault is created.
   set_policy(false, "", true);
@@ -1789,21 +1807,21 @@ TEST_F(EphemeralNoUserSystemTest, EnterpriseMountNoCreateTest) {
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
-  Mount::MountArgs mount_args;
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   MountError error;
   UsernamePasskey up(user->username, user->passkey);
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
-TEST_F(EphemeralNoUserSystemTest, OwnerUnknownMountEnsureEphemeralTest) {
+TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountEnsureEphemeralTest) {
   // Checks that when a device is not enterprise enrolled and does not have a
   // known owner, a mount request with the |ensure_ephemeral| flag set fails.
   TestUser *user = &helper_.users[0];
 
   EXPECT_CALL(platform_, Mount(_, _, _, _)).Times(0);
 
-  Mount::MountArgs mount_args;
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   mount_args.ensure_ephemeral = true;
   MountError error;
@@ -1812,7 +1830,7 @@ TEST_F(EphemeralNoUserSystemTest, OwnerUnknownMountEnsureEphemeralTest) {
   ASSERT_EQ(MOUNT_ERROR_FATAL, error);
 }
 
-TEST_F(EphemeralNoUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
+TEST_P(EphemeralNoUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
   // Checks that when a device is enterprise enrolled, a mount request with the
   // |ensure_ephemeral| flag set causes a tmpfs cryptohome to be mounted and no
   // regular vault to be created.
@@ -1861,7 +1879,7 @@ TEST_F(EphemeralNoUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
-  Mount::MountArgs mount_args;
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   mount_args.ensure_ephemeral = true;
   MountError error;
@@ -1902,7 +1920,12 @@ class EphemeralOwnerOnlySystemTest : public AltImageTest {
   DISALLOW_COPY_AND_ASSIGN(EphemeralOwnerOnlySystemTest);
 };
 
-TEST_F(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
+INSTANTIATE_TEST_CASE_P(WithEcryptfs, EphemeralOwnerOnlySystemTest,
+                        ::testing::Values(true));
+INSTANTIATE_TEST_CASE_P(WithDircrypto, EphemeralOwnerOnlySystemTest,
+                        ::testing::Values(false));
+
+TEST_P(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
   // Checks that when a device is not enterprise enrolled and has a known owner,
   // a tmpfs cryptohome is mounted and no regular vault is created.
   TestUser* owner = &helper_.users[3];
@@ -1955,7 +1978,7 @@ TEST_F(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
-  Mount::MountArgs mount_args;
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   MountError error;
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
@@ -1982,7 +2005,7 @@ TEST_F(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
-TEST_F(EphemeralOwnerOnlySystemTest, NonOwnerMountEnsureEphemeralTest) {
+TEST_P(EphemeralOwnerOnlySystemTest, NonOwnerMountEnsureEphemeralTest) {
   // Checks that when a device is not enterprise enrolled and has a known owner,
   // a mount request for a non-owner user with the |ensure_ephemeral| flag set
   // causes a tmpfs cryptohome to be mounted and no regular vault to be created.
@@ -2037,14 +2060,14 @@ TEST_F(EphemeralOwnerOnlySystemTest, NonOwnerMountEnsureEphemeralTest) {
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
-  Mount::MountArgs mount_args;
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   mount_args.ensure_ephemeral = true;
   MountError error;
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
-TEST_F(EphemeralOwnerOnlySystemTest, OwnerMountEnsureEphemeralTest) {
+TEST_P(EphemeralOwnerOnlySystemTest, OwnerMountEnsureEphemeralTest) {
   // Checks that when a device is not enterprise enrolled and has a known owner,
   // a mount request for the owner with the |ensure_ephemeral| flag set fails.
   TestUser* owner = &helper_.users[3];
@@ -2053,7 +2076,7 @@ TEST_F(EphemeralOwnerOnlySystemTest, OwnerMountEnsureEphemeralTest) {
 
   EXPECT_CALL(platform_, Mount(_, _, _, _)).Times(0);
 
-  Mount::MountArgs mount_args;
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   mount_args.ensure_ephemeral = true;
   MountError error;
@@ -2073,7 +2096,12 @@ class EphemeralExistingUserSystemTest : public AltImageTest {
   DISALLOW_COPY_AND_ASSIGN(EphemeralExistingUserSystemTest);
 };
 
-TEST_F(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
+INSTANTIATE_TEST_CASE_P(WithEcryptfs, EphemeralExistingUserSystemTest,
+                        ::testing::Values(true));
+INSTANTIATE_TEST_CASE_P(WithDircrypto, EphemeralExistingUserSystemTest,
+                        ::testing::Values(false));
+
+TEST_P(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
   // Checks that when a device is not enterprise enrolled and does not have a
   // known owner, no stale cryptohomes are removed while mounting.
   set_policy(false, "", true);
@@ -2083,20 +2111,16 @@ TEST_F(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
   // Mount().
   for (auto& user : helper_.users)
     user.InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
-                         shared_gid_, kDaemonGid);
+                         shared_gid_, kDaemonGid, ShouldTestEcryptfs());
 
   std::vector<FilePath> empty;
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(_, _, _))
     .WillOnce(DoAll(SetArgPointee<2>(empty), Return(true)));
 
-  EXPECT_CALL(platform_, DirectoryExists(_))
-    .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, Stat(_, _))
     .WillRepeatedly(Return(false));
 
-  EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
-    .Times(2)
-    .WillRepeatedly(Return(true));
+  ExpectCryptohomeMount(*user);
   EXPECT_CALL(platform_, ClearUserKeyring())
     .WillOnce(Return(true));
 
@@ -2123,14 +2147,12 @@ TEST_F(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
     .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
                           Return(true)));
 
-  EXPECT_CALL(platform_, Mount(_, _, _, _))
-      .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
       .Times(0);
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
-  Mount::MountArgs mount_args;
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   MountError error;
   user->InjectKeyset(&platform_, false);
@@ -2139,9 +2161,11 @@ TEST_F(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
 
   EXPECT_CALL(platform_, Unmount(_, _, _))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_,
-      Unmount(Property(&FilePath::value, EndsWith("/mount")), _, _))
-      .WillOnce(Return(true));  // user mount
+  if (ShouldTestEcryptfs()) {
+    EXPECT_CALL(platform_,
+        Unmount(Property(&FilePath::value, EndsWith("/mount")), _, _))
+        .WillOnce(Return(true));  // user mount
+  }
   EXPECT_CALL(platform_,
       Unmount(
         Property(&FilePath::value, StartsWith("/home/chronos/u-")),
@@ -2164,7 +2188,7 @@ TEST_F(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
-TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
+TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
   // Checks that when a device is enterprise enrolled, all stale cryptohomes are
   // removed while mounting.
   set_policy(false, "", true);
@@ -2211,7 +2235,7 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
     .WillRepeatedly(Return(false));
   helper_.InjectEphemeralSkeleton(&platform_, kImageDir, false);
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
-                        shared_gid_, kDaemonGid);
+                        shared_gid_, kDaemonGid, ShouldTestEcryptfs());
   // Only expect the mounted user to "exist".
   EXPECT_CALL(platform_,
       DirectoryExists(
@@ -2243,7 +2267,7 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
-  Mount::MountArgs mount_args;
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   MountError error;
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
@@ -2272,7 +2296,7 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
-TEST_F(EphemeralExistingUserSystemTest, MountRemoveTest) {
+TEST_P(EphemeralExistingUserSystemTest, MountRemoveTest) {
   // Checks that when a device is not enterprise enrolled and has a known owner,
   // all non-owner cryptohomes are removed while mounting.
   TestUser* owner = &helper_.users[3];
@@ -2317,7 +2341,7 @@ TEST_F(EphemeralExistingUserSystemTest, MountRemoveTest) {
     .WillRepeatedly(Return(false));
   helper_.InjectEphemeralSkeleton(&platform_, kImageDir, false);
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
-                        shared_gid_, kDaemonGid);
+                        shared_gid_, kDaemonGid, ShouldTestEcryptfs());
   // Only expect the mounted user to "exist".
   EXPECT_CALL(platform_,
       DirectoryExists(
@@ -2349,7 +2373,7 @@ TEST_F(EphemeralExistingUserSystemTest, MountRemoveTest) {
   EXPECT_CALL(platform_, Bind(_, _))
     .WillRepeatedly(Return(true));
 
-  Mount::MountArgs mount_args;
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   MountError error;
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
@@ -2377,7 +2401,7 @@ TEST_F(EphemeralExistingUserSystemTest, MountRemoveTest) {
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
-TEST_F(EphemeralExistingUserSystemTest, OwnerUnknownUnmountNoRemoveTest) {
+TEST_P(EphemeralExistingUserSystemTest, OwnerUnknownUnmountNoRemoveTest) {
   // Checks that when a device is not enterprise enrolled and does not have a
   // known owner, no stale cryptohomes are removed while unmounting.
   set_policy(false, "", true);
@@ -2386,7 +2410,7 @@ TEST_F(EphemeralExistingUserSystemTest, OwnerUnknownUnmountNoRemoveTest) {
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
-TEST_F(EphemeralExistingUserSystemTest, EnterpriseUnmountRemoveTest) {
+TEST_P(EphemeralExistingUserSystemTest, EnterpriseUnmountRemoveTest) {
   // Checks that when a device is enterprise enrolled, all stale cryptohomes are
   // removed while unmounting.
   set_policy(false, "", true);
@@ -2419,7 +2443,7 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseUnmountRemoveTest) {
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
-TEST_F(EphemeralExistingUserSystemTest, UnmountRemoveTest) {
+TEST_P(EphemeralExistingUserSystemTest, UnmountRemoveTest) {
   // Checks that when a device is not enterprise enrolled and has a known owner,
   // all stale cryptohomes are removed while unmounting.
   TestUser* owner = &helper_.users[3];
@@ -2451,7 +2475,7 @@ TEST_F(EphemeralExistingUserSystemTest, UnmountRemoveTest) {
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
-TEST_F(EphemeralExistingUserSystemTest, NonOwnerMountEnsureEphemeralTest) {
+TEST_P(EphemeralExistingUserSystemTest, NonOwnerMountEnsureEphemeralTest) {
   // Checks that when a device is not enterprise enrolled and has a known owner,
   // a mount request for a non-owner user with the |ensure_ephemeral| flag set
   // causes a tmpfs cryptohome to be mounted, even if a regular vault exists for
@@ -2534,14 +2558,14 @@ TEST_F(EphemeralExistingUserSystemTest, NonOwnerMountEnsureEphemeralTest) {
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
-  Mount::MountArgs mount_args;
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   mount_args.ensure_ephemeral = true;
   MountError error;
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
-TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
+TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
   // Checks that when a device is enterprise enrolled, a mount request with the
   // |ensure_ephemeral| flag set causes a tmpfs cryptohome to be mounted, even
   // if a regular vault exists for the user.
@@ -2625,14 +2649,14 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
-  Mount::MountArgs mount_args;
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   mount_args.ensure_ephemeral = true;
   MountError error;
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
-TEST_F(EphemeralNoUserSystemTest, MountGuestUserDir) {
+TEST_P(EphemeralNoUserSystemTest, MountGuestUserDir) {
   struct stat fake_root_st;
   fake_root_st.st_uid = 0;
   fake_root_st.st_gid = 0;
