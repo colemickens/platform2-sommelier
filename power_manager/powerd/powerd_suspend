@@ -320,11 +320,6 @@ else
         do_lumpy_gobi_modem_revive
       fi
     fi
-
-    # Power back on the Huawei modem.
-    if [ $blaze_with_huawei_modem -eq 1 ]; then
-      do_blaze_huawei_modem on
-    fi
   else
     # The write will fail with EBUSY if additional wakeup events have
     # occurred since the earlier write to /sys/power/wakeup_count.
@@ -340,6 +335,11 @@ else
       log_suspend_stats
       result=$RESULT_FAILURE
     fi
+  fi
+
+  # Power back on the Huawei modem if it was powered off before suspend.
+  if [ $blaze_with_huawei_modem -eq 1 ]; then
+    do_blaze_huawei_modem on
   fi
 fi
 
