@@ -8,6 +8,7 @@
 access: 1
 arch_prctl: 1
 brk: 1
+clone: 1
 close: 1
 execve: 1
 exit: 1
@@ -40,7 +41,9 @@ restart_syscall: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
 rt_sigreturn: 1
+select: 1
 set_robust_list: 1
 set_tid_address: 1
 stat: 1
+wait4: 1
 write: 1

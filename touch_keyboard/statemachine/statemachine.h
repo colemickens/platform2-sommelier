@@ -6,8 +6,8 @@
 #define TOUCH_KEYBOARD_STATEMACHINE_STATEMACHINE_H_
 
 #include <linux/input.h>
-#include <map>
 #include <stdio.h>
+#include <unordered_map>
 #include <vector>
 
 #include "touch_keyboard/statemachine/slot.h"
@@ -43,14 +43,14 @@ class MtStateMachine {
   // the current state and return true.  Otherwise leave out_snapshot unchanged
   // and return false to indicate there is still more events on the way.
   bool AddEvent(struct input_event const &ev,
-                std::map<int, struct MtFinger> *out_snapshot);
+                std::unordered_map<int, struct MtFinger> *out_snapshot);
 
   int slot_;
   Slot slots_[kNumSlots];
 
  private:
   // Populate out_snapshot with the current state of the MtStateMachine.
-  void FillSnapshot(std::map<int, struct MtFinger> *out_snapshot);
+  void FillSnapshot(std::unordered_map<int, struct MtFinger> *out_snapshot);
 };
 
 }  // namespace mtstatemachine

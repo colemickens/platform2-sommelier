@@ -6,8 +6,9 @@
 
 namespace mtstatemachine {
 
-bool MtStateMachine::AddEvent(struct input_event const &ev,
-                              std::map<int, struct MtFinger> *out_snapshot) {
+bool MtStateMachine::AddEvent(
+    struct input_event const &ev,
+    std::unordered_map<int, struct MtFinger> *out_snapshot) {
   // Here we process an event.  This function returns true at the end of a full
   // snapshot of the data (whenever there is a SYN event) and if you
   // pass it a pointer to an appropriate map, it will fill it with the
@@ -27,7 +28,7 @@ bool MtStateMachine::AddEvent(struct input_event const &ev,
 }
 
 void MtStateMachine::FillSnapshot(
-                        std::map<int, struct MtFinger> *out_snapshot) {
+    std::unordered_map<int, struct MtFinger> *out_snapshot) {
   out_snapshot->clear();
 
   for (int slot = 0; slot < kNumSlots; slot++) {

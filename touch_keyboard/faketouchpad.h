@@ -72,6 +72,8 @@ class FakeTouchpad : public UinputDevice, public EvdevSource {
   // Here we store a mapping that determines which slots are in the touchpad
   // region or not currently.
   std::vector<bool> slot_memberships_;
+
+  DISALLOW_COPY_AND_ASSIGN(FakeTouchpad);
 };
 
 }  // namespace touch_keyboard

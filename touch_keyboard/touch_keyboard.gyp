@@ -14,6 +14,7 @@
       'sources': [
         'main.cc',
         'evdevsource.cc',
+        'fakekeyboard.cc',
         'faketouchpad.cc',
         'uinputdevice.cc',
         'statemachine/statemachine.cc',
