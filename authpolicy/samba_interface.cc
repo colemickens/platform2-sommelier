@@ -62,6 +62,7 @@ const char kSmbConfData[] =
     "\tstate directory = " SAMBA_TMP_DIR "/state\n"
     "\tprivate directory = " SAMBA_TMP_DIR "/private\n"
     "\tkerberos method = secrets and keytab\n"
+    "\tkerberos encryption types = strong\n"
     "\tclient signing = mandatory\n"
     "\tclient min protocol = SMB2\n"
     // TODO(ljusten): Remove this line once crbug.com/662440 is resolved.
