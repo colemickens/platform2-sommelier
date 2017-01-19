@@ -16,6 +16,8 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/threading/platform_thread.h>
+#include <base/time/time.h>
 
 #include "authpolicy/constants.h"
 #include "authpolicy/process_executor.h"
@@ -149,9 +151,14 @@ const char kNetPath[] = "/usr/bin/net";
 const char kKInitPath[] = "/usr/bin/kinit";
 const char kSmbClientPath[] = "/usr/bin/smbclient";
 
+// Maximum kinit retries for a recently created machine account.
+const int kMachineKinitMaxRetries = 60;
+// Wait interval between two kinit retries.
+const int kMachineKinitRetryWaitSeconds = 1;
+
 // Keys for interpreting kinit output.
 const char kKeyBadUserName[] =
-    "Client not found in Kerberos database while getting initial credentials";
+    "not found in Kerberos database while getting initial credentials";
 const char kKeyBadPassword[] =
     "Preauthentication failed while getting initial credentials";
 const char kKeyPasswordExpiredStdout[] =
@@ -934,6 +941,7 @@ bool SambaInterface::JoinMachine(const std::string& machine_name,
 
   // Only if everything worked out, keep the config.
   config_ = std::move(config);
+  retry_machine_kinit_ = true;
   return true;
 }
 
@@ -1000,10 +1008,25 @@ bool SambaInterface::FetchDeviceGpos(std::string* out_policy_blob,
       {kKInitPath, config_->machine_name() + "$@" + config_->realm(), "-k"});
   kinit_cmd.SetEnv(kKrb5ConfEnvKey, kKrb5ConfEnvValue);  // Kerberos config.
   kinit_cmd.SetEnv(kMachineKTEnvKey, kMachineKTEnvValueState);  // Keytab file.
-  if (!SetupJailAndRun(&kinit_cmd, kKInitSeccompFilter)) {
+
+  // The first device policy fetch after joining Active Directory can be very
+  // slow because machine credentials need to propagate through the AD
+  // deployment.
+  bool success = false;
+  const int max_tries = (retry_machine_kinit_ ? kMachineKinitMaxRetries : 1);
+  for (int tries = 0; tries < max_tries; ++tries) {
+    success = SetupJailAndRun(&kinit_cmd, kKInitSeccompFilter);
+    if (success)
+      break;
     *out_error = GetKinitError(kinit_cmd);
-    return false;
+    if (*out_error != ERROR_BAD_USER_NAME && *out_error != ERROR_BAD_PASSWORD)
+      break;
+    base::PlatformThread::Sleep(
+        base::TimeDelta::FromSeconds(kMachineKinitRetryWaitSeconds));
   }
+  retry_machine_kinit_ = false;
+  if (!success)
+    return false;
 
   // Get the list of GPOs for the machine.
   std::string gpo_list_blob;

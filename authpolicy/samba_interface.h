@@ -70,6 +70,9 @@ class SambaInterface {
   std::unique_ptr<protos::SambaConfig> config_;
   std::string domain_controller_name_;
   std::string workgroup_;
+
+  // Whether kinit calls may return false negatives and must be retried.
+  bool retry_machine_kinit_ = false;
 };
 
 }  // namespace authpolicy
