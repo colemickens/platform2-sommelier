@@ -5,8 +5,6 @@
 
 #include "usb/camera_hal.h"
 
-#include <base/lazy_instance.h>
-
 #include "arc/common.h"
 #include "usb/camera_metadata.h"
 #include "usb/common_types.h"
@@ -14,8 +12,6 @@
 #include "usb/v4l2_camera_device.h"
 
 namespace arc {
-
-base::LazyInstance<CameraHal> g_camera_hal = LAZY_INSTANCE_INITIALIZER;
 
 CameraHal::CameraHal() {
   std::unique_ptr<V4L2CameraDevice> device(new V4L2CameraDevice());
@@ -39,7 +35,8 @@ CameraHal::CameraHal() {
 CameraHal::~CameraHal() {}
 
 CameraHal& CameraHal::GetInstance() {
-  return g_camera_hal.Get();
+  static CameraHal camera_hal;
+  return camera_hal;
 }
 
 int CameraHal::OpenDevice(int id,
