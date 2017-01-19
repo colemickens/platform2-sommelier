@@ -10,6 +10,7 @@
 
 #define LOGF(level) LOG(level) << __FUNCTION__ << "(): "
 #define LOGFID(level, id) LOG(level) << __FUNCTION__ << "(): id: " << id << ": "
+#define LOGF_IF(level, res) LOG_IF(level, res) << __FUNCTION__ << "(): "
 
 #define VLOGF(level) VLOG(level) << __FUNCTION__ << "(): "
 #define VLOGFID(level, id) \
