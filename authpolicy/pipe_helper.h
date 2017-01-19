@@ -16,14 +16,19 @@ namespace helper {
 // smaller than some limit (see code).
 extern bool ReadPipeToString(int fd, std::string* out);
 
-// Writes the whole string |str| to the file descriptor |fd|. Does not close
-// |fd| when done.  Returns true iff the whole string has been written to |fd|.
-// Might block if the underlying pipe is full.
-extern bool WriteStringToPipe(const std::string& str, int fd);
-
-// Uses tee() to copy |fd_in| to |fd_out|. Might block if the underlying pipes
-// block.
-extern bool CopyPipe(int fd_in, int fd_out);
+// Performs concurrent IO for three different pipes:
+// - Reads data from |stdout_fd| into |out_stdout|.
+// - Reads data from |stderr_fd| into |out_stderr|.
+// - Writes data from |input_str| into |stdin_fd|.
+//   If |input_fd| is not -1, splices the whole pipe into |stdin_fd| first.
+// Returns false on error. May block if any of the pipes is a blocking pipe.
+extern bool PerformPipeIo(int stdin_fd,
+                          int stdout_fd,
+                          int stderr_fd,
+                          int input_fd,
+                          const std::string& input_str,
+                          std::string* out_stdout,
+                          std::string* out_stderr);
 
 }  // namespace helper
 }  // namespace authpolicy

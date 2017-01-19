@@ -4,10 +4,12 @@
 
 #include "authpolicy/process_executor.h"
 
+#include <algorithm>
 #include <stdlib.h>
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/strings/stringprintf.h>
 #include <libminijail.h>
@@ -95,28 +97,24 @@ bool ProcessExecutor::Execute() {
   minijail_run_pid_pipes(jail_, args_ptr[0], args_ptr.data(), &pid,
                          &child_stdin, &child_stdout, &child_stderr);
 
+  // Make sure the pipes never block.
+  if (!base::SetNonBlocking(child_stdin))
+    LOG(WARNING) << "Failed to set stdin non-blocking";
+  if (!base::SetNonBlocking(child_stdout))
+    LOG(WARNING) << "Failed to set stdout non-blocking";
+  if (!base::SetNonBlocking(child_stderr))
+    LOG(WARNING) << "Failed to set stderr non-blocking";
+
   // Restore the environment.
   clearenv();
   for (char* env : old_environ)
     putenv(env);
 
-  // Make sure pipes get closed when exiting the scope.
-  base::ScopedFD child_stdin_closer(child_stdin);
-  base::ScopedFD child_stdout_closer(child_stdout);
-  base::ScopedFD child_stderr_closer(child_stderr);
-
-  // Write input to stdin. On error, do NOT return before minijail_wait or else
-  // the process will leak!
-  bool write_to_stdin_failed = false;
-  if (input_fd_ != -1 && !ah::CopyPipe(input_fd_, child_stdin_closer.get())) {
-    LOG(ERROR) << "Failed to copy input pipe to child stdin";
-    write_to_stdin_failed = true;
-  } else if (!input_str_.empty() &&
-             !ah::WriteStringToPipe(input_str_, child_stdin_closer.get())) {
-    LOG(ERROR) << "Failed to write input string to child stdin";
-    write_to_stdin_failed = true;
-  }
-  child_stdin_closer.reset();
+  // Write to child_stdin and read from child_stdout and child_stderr while
+  // there is still data to read/write.
+  bool io_success =
+      ah::PerformPipeIo(child_stdin, child_stdout, child_stderr, input_fd_,
+                        input_str_, &out_data_, &err_data_);
 
   // Wait for the process to exit.
   exit_code_ = minijail_wait(jail_);
@@ -125,20 +123,10 @@ bool ProcessExecutor::Execute() {
   if (exit_code_ == MINIJAIL_ERR_JAIL)
     LOG(ERROR) << "Seccomp filter blocked a system call";
 
-  // Always exit AFTER minijail_wait!
-  if (write_to_stdin_failed) {
-    exit_code_ = kExitCodeInternalError;
-    return false;
-  }
-
-  // Read output.
-  if (!ah::ReadPipeToString(child_stdout_closer.get(), &out_data_)) {
-    LOG(ERROR) << "Failed to read data from child stdout";
-    exit_code_ = kExitCodeInternalError;
-    return false;
-  }
-  if (!ah::ReadPipeToString(child_stderr_closer.get(), &err_data_)) {
-    LOG(ERROR) << "Failed to read data from child stderr";
+  // Always exit AFTER minijail_wait! If we do it before, the exit code is never
+  // queried and the process is left dangling.
+  if (!io_success) {
+    LOG(ERROR) << "IO failed";
     exit_code_ = kExitCodeInternalError;
     return false;
   }

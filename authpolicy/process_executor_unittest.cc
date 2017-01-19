@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <fcntl.h>
+
 #include <stdlib.h>
 
 #include <base/files/file_path.h>
@@ -20,12 +22,24 @@ const char kCmdCat[] = "/bin/cat";
 const char kCmdEcho[] = "/bin/echo";
 const char kCmdFalse[] = "/bin/false";
 const char kCmdGrep[] = "/bin/grep";
+const char kCmdTee[] = "/usr/bin/tee";
 const char kCmdPrintEnv[] = "/usr/bin/printenv";
 const char kEnvVar[] = "PROCESS_EXECUTOR_TEST_ENV_VAR";
 const char kEnvVar2[] = "PROCESS_EXECUTOR_TEST_2_ENV_VAR";
 const char kGrepTestText[] = "This is a test.\n";
 const char kGrepTestToken[] = "test";
 const char kFileDoesNotExist[] = "does_not_exist_khsdgviu";
+const char kLargeTestString[] = "I like recursion because ";
+
+int GetPipeSize() {
+  int fds[2] = {-1, -1};
+  EXPECT_EQ(pipe(fds), 0);
+  base::ScopedFD fd0(fds[0]);
+  base::ScopedFD fd1(fds[1]);
+  int pipe_size = fcntl(fd1.get(), F_GETPIPE_SZ);
+  EXPECT_NE(pipe_size, -1);
+  return pipe_size;
+}
 
 }  // namespace
 
@@ -117,6 +131,26 @@ TEST_F(ProcessExecutorTest, ReadFromStderr) {
   EXPECT_TRUE(cmd.GetStdout().empty());
   EXPECT_TRUE(base::StartsWith(cmd.GetStderr(), kCmdGrep,
                                base::CompareCase::SENSITIVE));
+}
+
+// Reading large amounts of output from stdout to test piping (triggers pipe
+// block if done improperly).
+TEST_F(ProcessExecutorTest, ReadLargeStringFromStdout) {
+  // Target size should be much bigger than the pipe buffer size. In a test I
+  // able to write more than 2x the pipe size to a blocking pipe, not sure why
+  // this was possible. Usually, GetPipeSize() is around 64 kb.
+  const int kTargetStringSize = GetPipeSize() * 16 + 1024;
+  const int kNumRepeats = kTargetStringSize / strlen(kLargeTestString);
+  std::string large_string;
+  large_string.reserve(strlen(kLargeTestString) * kNumRepeats);
+  for (int n = 0; n < kNumRepeats; ++n)
+    large_string += kLargeTestString;
+  ProcessExecutor cmd({kCmdTee, "/dev/stderr"});
+  cmd.SetInputString(large_string);
+  EXPECT_TRUE(cmd.Execute());
+  EXPECT_EQ(cmd.GetExitCode(), 0);
+  EXPECT_EQ(cmd.GetStdout(), large_string);
+  EXPECT_EQ(cmd.GetStderr(), large_string);
 }
 
 // Getting exit codes.

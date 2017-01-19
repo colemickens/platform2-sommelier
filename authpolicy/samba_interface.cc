@@ -134,8 +134,8 @@ const char kFlagLogSeccomp[] = "log_seccomp";
 static bool s_disable_seccomp_filters = false;
 static bool s_log_seccomp_filters = false;
 
-// Size limit when loading the config file (4 MB).
-const size_t kConfigSizeLimit = 4 * 1024 * 1024;
+// Size limit when loading the config file (256 kb).
+const size_t kConfigSizeLimit = 256 * 1024;
 
 // Env variable for krb5.conf file.
 const char kKrb5ConfEnvKey[] = "KRB5_CONFIG";
