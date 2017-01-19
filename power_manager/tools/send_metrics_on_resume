@@ -175,7 +175,7 @@ get_end_suspend_time() {
     "CPU.: shutdown" \
     "CPU. killed" \
     "Entering suspend state" \
-    "sleep: irq wakeup masks:" \
+    "sleep: irq wakeup masks:"
 }
 
 # Find the message related to the start of resume and parse its timestamp.
