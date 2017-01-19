@@ -16,13 +16,10 @@
 
 namespace {
 
-#if defined(GOOGLE_CHROME_BUILD)
+// Workaround for missing GOOGLE_CHROME_BUILD, always use Chrome OS key for now.
+// TODO(ljusten): Find a better fix. See crbug.com/682637.
 const base::string16 kRegistryKey =
     base::ASCIIToUTF16("Software\\Policies\\Google\\ChromeOS");
-#else
-const base::string16 kRegistryKey =
-    base::ASCIIToUTF16("Software\\Policies\\ChromiumOS");
-#endif
 
 // TODO(ljusten): Copied from latest Chromium base::Value::GetTypeName, remove
 // once the latest code is merged.
