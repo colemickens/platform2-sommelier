@@ -163,6 +163,25 @@ class UtilityTests(cros_test_lib.MockTestCase):
     gyplint.main(['foo.gyp'])
 
 
+class OptionsTests(cros_test_lib.TestCase):
+  """Tests for option parsing."""
+
+  def testEmpty(self):
+    """We should get a dummy object when no inputs are specified."""
+    ret = gyplint.ParseOptions([])
+    self.assertTrue(isinstance(ret, gyplint.LintSettings))
+
+  def testInvalid(self):
+    """Throw an error when invalid options are found."""
+    self.assertRaises(ValueError, gyplint.ParseOptions, ['disab=foo'])
+
+  def testDisabled(self):
+    """Check that all the right values are extracted."""
+    ret = gyplint.ParseOptions(['disable = some,msgs, can be found  '])
+    exp = set(('some', 'msgs', 'can be found'))
+    self.assertEqual(ret.skip, exp)
+
+
 class FilesystemUtilityTests(cros_test_lib.MockTempDirTestCase):
   """Tests for utility funcs that access the filesystem."""
 

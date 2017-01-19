@@ -2,6 +2,8 @@
 
 # Use it to define Platform2 wide settings and defaults.
 
+# gyplint: disable=GypLintVisibilityFlags
+
 {
   'variables': {
     # Set this to 0 if you'd like to disable -Werror.

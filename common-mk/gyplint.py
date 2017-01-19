@@ -10,6 +10,7 @@ from __future__ import print_function
 
 import collections
 import os
+import re
 import sys
 
 import gyp_compiler
@@ -149,9 +150,52 @@ def GypLintPkgConfigs(gypdata):
   return WalkGyp(CheckNode, gypdata)
 
 
-def CheckGyp(name, gypdata):
+# The regex used to find gyplint options in the file.
+# This matches the regex pylint uses.
+OPTIONS_RE = re.compile(r'^\s*#.*\bgyplint:\s*([^\n;]+)', flags=re.MULTILINE)
+
+# Object holding linter settings.
+LintSettings = collections.namedtuple('LinterSettings', (
+    # Linters to skip.
+    'skip',
+))
+
+def ParseOptions(options, name=None):
+  """Parse out the linter settings from |options|.
+
+  Currently we support:
+    disable=<linter name>
+
+  Args:
+    options: A list of linter options (e.g. ['foo=bar']).
+    name: The file we're parsing.
+
+  Returns:
+    A LintSettings object.
+  """
+  skip = set()
+
+  for option in options:
+    key, value = option.split('=', 1)
+    key = key.strip()
+    value = value.strip()
+
+    if key == 'disable':
+      skip.update(x.strip() for x in value.split(','))
+    else:
+      raise ValueError('%s: unknown gyplint option: %s' % (name, key))
+
+  return LintSettings(skip)
+
+
+def CheckGyp(name, gypdata, settings=None):
   """Check |gypdata| for common mistakes."""
-  linters = [x for x in globals() if x.startswith('GypLint')]
+  if settings is None:
+    settings = ParseOptions([])
+
+  linters = [x for x in globals()
+             if x.startswith('GypLint') and x not in settings.skip]
+
   ret = []
   for linter in linters:
     functor = globals().get(linter)
@@ -168,7 +212,11 @@ def CheckGypData(name, data):
     return [LintResult('gyp.input.CheckedEval', name, 'invalid format: %s' % e,
                        logging.ERROR)]
 
-  return CheckGyp(name, gypdata)
+  # Parse the gyplint flags in the file.
+  m = OPTIONS_RE.findall(data)
+  settings = ParseOptions(m, name=name)
+
+  return CheckGyp(name, gypdata, settings)
 
 
 def CheckGypFile(gypfile):
