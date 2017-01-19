@@ -52,6 +52,8 @@ MockPlatform::MockPlatform()
       .WillByDefault(CallRename());
   ON_CALL(*this, ComputeDirectorySize(_))
       .WillByDefault(CallComputeDirectorySize());
+  ON_CALL(*this, GetDirCryptoKeyState(_))
+      .WillByDefault(Return(dircrypto::KeyState::NO_KEY));
 }
 
 MockPlatform::~MockPlatform() {}

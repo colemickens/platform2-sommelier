@@ -132,9 +132,9 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   virtual bool IsMounted() const;
 
   // Checks whether the mount point currently has a cryptohome mounted for the
-  // current user that is backed by a vault.
+  // current user that is not ephemeral.
   //
-  virtual bool IsVaultMounted() const;
+  virtual bool IsNonEphemeralMounted() const;
 
   // Checks if the cryptohome vault exists for the given credentials and creates
   // it if not (calls CreateCryptohome).
@@ -604,10 +604,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   void RecursiveCopy(const base::FilePath& destination,
                      const base::FilePath& source) const;
 
-  // Copies the skeleton directory to the user's cryptohome if that user is
-  // currently mounted
-  //
-  void CopySkeleton(void) const;
+  // Copies the skeleton directory to the user's cryptohome.
+  void CopySkeleton(const base::FilePath& destination) const;
 
   // Returns the user's salt
   //

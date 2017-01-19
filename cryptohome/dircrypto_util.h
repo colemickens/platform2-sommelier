@@ -14,6 +14,14 @@ extern "C" {
 
 namespace dircrypto {
 
+// State of the directory's encryption key.
+enum class KeyState {
+  UNKNOWN,  // Cannot get the state.
+  NOT_SUPPORTED,  // The directory doesn't support dircrypto.
+  NO_KEY,  // No key is set.
+  ENCRYPTED,  // Key is set.
+};
+
 // keyutils functions use -1 as the invalid key serial value.
 constexpr key_serial_t kInvalidKeySerial = -1;
 
@@ -21,8 +29,8 @@ constexpr key_serial_t kInvalidKeySerial = -1;
 bool SetDirectoryKey(const base::FilePath& dir,
                      const brillo::SecureBlob& key_descriptor);
 
-// Returns whether dircrypto is supported for the given directory.
-bool IsDirCryptoSupported(const base::FilePath& dir);
+// Returns the directory's key state, or returns UNKNOWN on errors.
+KeyState GetDirectoryKeyState(const base::FilePath& dir);
 
 // Adds the key to the dircrypto keyring. Returns -1 on errors.
 key_serial_t AddKeyToKeyring(const brillo::SecureBlob& key,

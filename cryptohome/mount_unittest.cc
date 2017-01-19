@@ -660,6 +660,8 @@ TEST_F(MountTest, CreateCryptohomeTest) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, DirectoryExists(user->vault_path))
     .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, DirectoryExists(user->vault_mount_path))
+    .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_,
       CreateDirectory(AnyOf(user->vault_path, user->base_path)))
     .Times(2)
@@ -1090,6 +1092,8 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
   // Doesn't exist.
   EXPECT_CALL(platform_, DirectoryExists(user->vault_path))
     .WillOnce(Return(false));
+  EXPECT_CALL(platform_, DirectoryExists(user->vault_mount_path))
+    .WillOnce(Return(false));
 
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = false;
@@ -1104,8 +1108,9 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
   user->InjectKeyset(&platform_, false);
 
   EXPECT_CALL(platform_,
-      DirectoryExists(AnyOf(user->vault_path, user->user_vault_path)))
-    .Times(2)
+      DirectoryExists(AnyOf(user->vault_path, user->vault_mount_path,
+                            user->user_vault_path)))
+    .Times(3)
     .WillRepeatedly(Return(false));
 
   // Not legacy
@@ -1692,6 +1697,8 @@ TEST_F(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
     .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, DirectoryExists(user->vault_path))
     .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, DirectoryExists(user->vault_mount_path))
+    .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
     .Times(2)
     .WillRepeatedly(Return(true));
@@ -1844,7 +1851,6 @@ TEST_F(EphemeralNoUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
 
   EXPECT_CALL(platform_,
       IsDirectoryMounted(FilePath("test_image_dir/skeleton")))
-    .WillOnce(Return(true))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
       .WillRepeatedly(Return(true));
@@ -1938,7 +1944,6 @@ TEST_F(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
       .Times(0);
   EXPECT_CALL(platform_,
       IsDirectoryMounted(FilePath("test_image_dir/skeleton")))
-    .WillOnce(Return(true))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
       .WillRepeatedly(Return(true));
@@ -2020,7 +2025,6 @@ TEST_F(EphemeralOwnerOnlySystemTest, NonOwnerMountEnsureEphemeralTest) {
       .Times(0);
   EXPECT_CALL(platform_,
       IsDirectoryMounted(FilePath("test_image_dir/skeleton")))
-    .WillOnce(Return(true))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
       .WillRepeatedly(Return(true));
@@ -2663,7 +2667,6 @@ TEST_F(EphemeralNoUserSystemTest, MountGuestUserDir) {
   EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, IsDirectoryMounted(_))
-    .WillOnce(Return(true))
     .WillOnce(Return(false))
     .WillOnce(Return(false));
   EXPECT_CALL(platform_, DirectoryExists(_))

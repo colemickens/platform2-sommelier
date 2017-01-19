@@ -221,12 +221,9 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
   if (!EnsureUserMountPoints(credentials)) {
     return false;
   }
-  // Now check for the presence of a vault directory
-  FilePath vault_path = GetUserVaultPath(
-      credentials.GetObfuscatedUsername(system_salt_));
-  if (!platform_->DirectoryExists(vault_path)) {
-    // If the vault directory doesn't exist, then create the cryptohome from
-    // scratch
+  // Now check for the presence of a cryptohome.
+  if (!DoesCryptohomeExist(credentials)) {
+    // If cryptohome doesn't exist, then create one from scratch.
     bool result = CreateCryptohome(credentials);
     if (created) {
       *created = result;
@@ -240,9 +237,20 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
 }
 
 bool Mount::DoesCryptohomeExist(const Credentials& credentials) const {
-  // Check for the presence of a vault directory
-  return platform_->DirectoryExists(GetUserVaultPath(
-      credentials.GetObfuscatedUsername(system_salt_)));
+  // Check for the presence of a vault directory for ecryptfs.
+  if (platform_->DirectoryExists(GetUserVaultPath(
+          credentials.GetObfuscatedUsername(system_salt_)))) {
+    return true;
+  }
+  // Check for the presence of an encrypted mount directory for dircrypto.
+  FilePath mount_path = GetUserMountDirectory(
+      credentials.GetObfuscatedUsername(system_salt_));
+  if (platform_->DirectoryExists(mount_path) &&
+      platform_->GetDirCryptoKeyState(mount_path) ==
+      dircrypto::KeyState::ENCRYPTED) {
+    return true;
+  }
+  return false;
 }
 
 bool Mount::MountCryptohome(const Credentials& credentials,
@@ -469,7 +477,6 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   // contents of vault_path into vault_path/user, create vault_path/root.
   MigrateToUserHome(vault_path);
 
-  // TODO(wad) Make mount_point_ not instance-wide or do it at Init time.
   mount_point_ = GetUserMountDirectory(obfuscated_username);
   if (!platform_->CreateDirectory(mount_point_)) {
     PLOG(ERROR) << "Directory creation failed for " << mount_point_.value();
@@ -504,10 +511,10 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   // as passthrough directories.
   CreateTrackedSubdirectories(credentials, created);
 
-  if (created)
-    CopySkeleton();
-
   FilePath user_home = GetMountedUserHomePath(obfuscated_username);
+  if (created)
+    CopySkeleton(user_home);
+
   if (!SetupGroupAccess(FilePath(user_home))) {
     UnmountAll();
     *mount_error = MOUNT_ERROR_FATAL;
@@ -623,7 +630,7 @@ bool Mount::SetUpEphemeralCryptohome(const FilePath& source_path,
   // home directory.
   ScopedMountPoint scoped_skeleton_mount(this, source_path,
                                          ephemeral_skeleton_path);
-  CopySkeleton();
+  CopySkeleton(ephemeral_skeleton_path);
 
   // Create the Downloads directory if it does not exist so that it can later be
   // made group accessible when SetupGroupAccess() is called.
@@ -738,11 +745,8 @@ bool Mount::IsMounted() const {
   return mounts_.size() != 0;
 }
 
-bool Mount::IsVaultMounted() const {
-  std::string obfuscated_username;
-  current_user_->GetObfuscatedUsername(&obfuscated_username);
-  const FilePath vault_path = GetUserMountDirectory(obfuscated_username);
-  return mounts_.ContainsDest(vault_path);
+bool Mount::IsNonEphemeralMounted() const {
+  return IsMounted() && mount_type_ != MountType::EPHEMERAL;
 }
 
 bool Mount::OwnsMountPoint(const FilePath& path) const {
@@ -1500,23 +1504,9 @@ void Mount::MigrateToUserHome(const FilePath& vault_path) const {
   LOG(INFO) << "Migrated (or created) user directory: " << vault_path.value();
 }
 
-void Mount::CopySkeleton() const {
-  CHECK(current_user_);
-  FilePath destination = FilePath(GetEphemeralSkeletonPath());
-  // For a Mount with a real vault, the skeleton can be safely
-  // prepared under /home/.shadow/[hash]/mount/user, but for
-  // ephemeral mounts, we use a single location.
-  if (IsVaultMounted()) {
-    std::string user;
-    current_user_->GetObfuscatedUsername(&user);
-    destination = FilePath(GetMountedUserHomePath(user));
-  } else if (!platform_->IsDirectoryMounted(destination)) {
-    LOG(ERROR) << "CopySkeleton with no mounted vault or ephemeral path.";
-    return;
-  }
+void Mount::CopySkeleton(const FilePath& destination) const {
   RecursiveCopy(destination, FilePath(skel_source_));
 }
-
 
 bool Mount::CacheOldFiles(const std::vector<FilePath>& files) const {
   for (const auto& file : files) {

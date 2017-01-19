@@ -253,6 +253,8 @@ void TestUser::GenerateCredentials() {
       .WillRepeatedly(Return(false));
   EXPECT_CALL(platform, DirectoryExists(vault_path))
     .WillOnce(Return(false));
+  EXPECT_CALL(platform, DirectoryExists(vault_mount_path))
+    .WillOnce(Return(false));
   EXPECT_CALL(platform, CreateDirectory(_))
     .WillRepeatedly(Return(true));
   // Grab the generated credential

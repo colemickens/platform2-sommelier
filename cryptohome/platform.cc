@@ -1032,8 +1032,8 @@ long AddEcryptfsAuthToken(  // NOLINT(runtime/int)
 }
 }  // namespace ecryptfs
 
-bool Platform::IsDirCryptoSupported(const FilePath& path) {
-  return dircrypto::IsDirCryptoSupported(path);
+dircrypto::KeyState Platform::GetDirCryptoKeyState(const FilePath& dir) {
+  return dircrypto::GetDirectoryKeyState(dir);
 }
 
 bool Platform::SetDirCryptoKey(const FilePath& dir,

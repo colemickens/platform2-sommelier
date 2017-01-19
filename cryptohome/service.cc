@@ -1464,8 +1464,7 @@ void Service::DoRenameCryptohome(AccountIdentifier* id_from,
 
   scoped_refptr<cryptohome::Mount> mount =
       GetMountForUser(GetAccountId(*id_from));
-  const bool is_mounted =
-      mount.get() && (mount->IsVaultMounted() || mount->IsMounted());
+  const bool is_mounted = mount.get() && mount->IsMounted();
   BaseReply reply;
 
   if (is_mounted) {
@@ -1561,7 +1560,7 @@ gboolean Service::IsMountedForUser(gchar *userid,
   *OUT_is_ephemeral_mount = false;
   if (!mount.get())
     return TRUE;
-  if (mount->IsVaultMounted()) {
+  if (mount->IsNonEphemeralMounted()) {
     *OUT_is_mounted = true;
     *OUT_is_ephemeral_mount = false;
   } else if (mount->IsMounted()) {
@@ -1609,7 +1608,7 @@ gboolean Service::Mount(const gchar *userid,
   // mounted cryptohome is backed by a vault, it must be unmounted and
   // remounted with a tmpfs backend.
   scoped_refptr<cryptohome::Mount> user_mount = GetOrCreateMountForUser(userid);
-  if (ensure_ephemeral && user_mount->IsVaultMounted()) {
+  if (ensure_ephemeral && user_mount->IsNonEphemeralMounted()) {
     // TODO(wad,ellyjones) Change this behavior to return failure even
     // on a succesful unmount to tell chrome MOUNT_ERROR_NEEDS_RESTART.
     if (!user_mount->UnmountCryptohome()) {
@@ -1816,7 +1815,7 @@ void Service::DoMountEx(AccountIdentifier* identifier,
   // Don't overlay an ephemeral mount over a file-backed one.
   scoped_refptr<cryptohome::Mount> user_mount =
       GetOrCreateMountForUser(GetAccountId(*identifier));
-  if (request->require_ephemeral() && user_mount->IsVaultMounted()) {
+  if (request->require_ephemeral() && user_mount->IsNonEphemeralMounted()) {
     // TODO(wad,ellyjones) Change this behavior to return failure even
     // on a succesful unmount to tell chrome MOUNT_ERROR_NEEDS_RESTART.
     if (!user_mount->UnmountCryptohome()) {
@@ -1974,7 +1973,7 @@ void Service::DoAsyncMount(const std::string& userid,
 
   // Don't overlay an ephemeral mount over a file-backed one.
   const Mount::MountArgs mount_args = mount_task->mount_args();
-  if (mount_args.ensure_ephemeral && user_mount->IsVaultMounted()) {
+  if (mount_args.ensure_ephemeral && user_mount->IsNonEphemeralMounted()) {
     // TODO(wad,ellyjones) Change this behavior to return failure even
     // on a succesful unmount to tell chrome MOUNT_ERROR_NEEDS_RESTART.
     if (!user_mount->UnmountCryptohome()) {

@@ -26,6 +26,8 @@ extern "C" {
 #include <keyutils.h>
 }
 
+#include "cryptohome/dircrypto_util.h"
+
 namespace base {
 class Thread;
 class Time;
@@ -480,8 +482,8 @@ class Platform {
   virtual bool ReportFilesystemDetails(const base::FilePath &filesystem,
                                        const base::FilePath &logfile);
 
-  // Returns true if the kernel and partition supports dircrypto.
-  virtual bool IsDirCryptoSupported(const base::FilePath& path);
+  // Returns the state of the directory's encryption key.
+  virtual dircrypto::KeyState GetDirCryptoKeyState(const base::FilePath& dir);
 
   // Sets up a directory to be encrypted with the provided key.
   virtual bool SetDirCryptoKey(const base::FilePath& dir,

@@ -155,6 +155,14 @@ class MockPlatform : public Platform {
   MOCK_METHOD2(DeleteFileDurable, bool(const base::FilePath&, bool));
   MOCK_METHOD1(DirectoryExists, bool(const base::FilePath&));
   MOCK_METHOD1(CreateDirectory, bool(const base::FilePath&));
+  MOCK_METHOD1(GetDirCryptoKeyState,
+               dircrypto::KeyState(const base::FilePath&));
+  MOCK_METHOD2(SetDirCryptoKey, bool(const base::FilePath&,
+                                     const brillo::SecureBlob&));
+  MOCK_METHOD3(AddDirCryptoKeyToKeyring, bool(const brillo::SecureBlob&,
+                                              const brillo::SecureBlob&,
+                                              key_serial_t*));
+  MOCK_METHOD1(InvalidateDirCryptoKey, bool(key_serial_t));
   MOCK_METHOD0(ClearUserKeyring, bool(void));
   MOCK_METHOD3(AddEcryptfsAuthToken,
                bool(const brillo::SecureBlob&,

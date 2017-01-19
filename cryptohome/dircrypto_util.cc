@@ -62,28 +62,28 @@ bool SetDirectoryKey(const base::FilePath& dir,
   return true;
 }
 
-bool IsDirCryptoSupported(const base::FilePath& dir) {
+KeyState GetDirectoryKeyState(const base::FilePath& dir) {
   base::ScopedFD fd(HANDLE_EINTR(open(dir.value().c_str(),
                                       O_RDONLY | O_DIRECTORY)));
   if (!fd.is_valid()) {
     PLOG(ERROR) << "Ext4: Invalid directory" << dir.value();
-    return false;
+    return KeyState::UNKNOWN;
   }
   ext4_encryption_policy policy = {};
   if (ioctl(fd.get(), EXT4_IOC_GET_ENCRYPTION_POLICY, &policy) < 0) {
     switch (errno) {
       case ENODATA:
       case ENOENT:
-        return true;
+        return KeyState::NO_KEY;
       case ENOTTY:
       case EOPNOTSUPP:
-        return false;
+        return KeyState::NOT_SUPPORTED;
       default:
         PLOG(ERROR) << "Failed to get the encryption policy of " << dir.value();
-        return false;
+        return KeyState::UNKNOWN;
     }
   }
-  return true;
+  return KeyState::ENCRYPTED;
 }
 
 key_serial_t AddKeyToKeyring(const brillo::SecureBlob& key,
