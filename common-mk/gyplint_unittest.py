@@ -23,19 +23,25 @@ from chromite.lib import osutils
 import gyplint
 
 
-class LintTests(cros_test_lib.TestCase):
-  """Tests of various linters."""
+class LintTestCase(cros_test_lib.TestCase):
+  """Helper for running linters."""
 
   def _CheckLinter(self, functor, inputs):
     """Make sure |functor| rejects every input in |inputs|."""
     # First run a sanity check.
-    ret = functor({})
+    ret = functor(self.STUB_DATA)
     self.assertEqual(ret, [])
 
     # Then run through all the bad inputs.
-    for gyp in inputs:
-      ret = functor(gyp)
-      self.assertNotEqual(ret, 0)
+    for x in inputs:
+      ret = functor(x)
+      self.assertNotEqual(ret, [])
+
+
+class GypLintTests(LintTestCase):
+  """Tests of various gyp linters."""
+
+  STUB_DATA = {}
 
   def testGypLintLibFlags(self):
     """Verify GypLintLibFlags catches bad inputs."""
@@ -81,6 +87,52 @@ class LintTests(cros_test_lib.TestCase):
     ))
 
 
+class LinesLintTests(LintTestCase):
+  """Tests of various line based linters."""
+
+  STUB_DATA = ['{', '}']
+
+  def testLinesLintWhitespace(self):
+    """Verify LinesLintWhitespace catches bad inputs."""
+    self._CheckLinter(gyplint.LinesLintWhitespace, (
+        # Tabs instead of spaces.
+        ['{', '\t[]', '}'],
+        # Trailing whitespace.
+        ['{', '}  '],
+        # Leading blanklines.
+        ['', '{', '}'],
+        # Trailing blanklines.
+        ['{', '}', ''],
+    ))
+
+  def testLinesLintDanglingCommas(self):
+    """Verify LinesLintDanglingCommas catches bad inputs."""
+    self._CheckLinter(gyplint.LinesLintDanglingCommas, (
+        ['{', '  [', '  ]', '}'],
+        ['{', '  {', '  }', '}'],
+        ['{', "  'foo': 'bar'", '}'],
+    ))
+
+  def testLinesLintSingleQuotes(self):
+    """Verify LinesLintSingleQuotes catches bad inputs."""
+    self._CheckLinter(gyplint.LinesLintSingleQuotes, (
+        ['{', '  0: "blah"', '}'],
+    ))
+
+
+class RawLintTests(LintTestCase):
+  """Tests of various raw linters."""
+
+  STUB_DATA = '{}\n'
+
+  def testRawLintWhitespace(self):
+    """Verify RawLintWhitespace catches bad inputs."""
+    self._CheckLinter(gyplint.RawLintWhitespace, (
+        # Missing trailing newline.
+        '{}',
+    ))
+
+
 class UtilityTests(cros_test_lib.MockTestCase):
   """Tests for utility funcs."""
 
@@ -117,7 +169,7 @@ class UtilityTests(cros_test_lib.MockTestCase):
 
   def testCheckGypData(self):
     """Check CheckGypData doesn't crash."""
-    ret = gyplint.CheckGypData('my.gyp', '{}')
+    ret = gyplint.CheckGypData('my.gyp', '{\n}\n')
     self.assertEqual(ret, [])
 
   def testCheckGypDataInvalidInput(self):
@@ -145,6 +197,23 @@ class UtilityTests(cros_test_lib.MockTestCase):
     extensions = set(('gyp', 'gypi'))
     result = sorted(gyplint.FilterFiles(files, extensions))
     self.assertEqual(result, exp)
+
+  def testLineIsComment(self):
+    """Make sure comment parsing is correct."""
+    TRUE_INPUTS = (
+        '# A comment',
+        '  # A comment',
+        '\t\t# A comment',
+        ' #Comment!',
+    )
+    FALSE_INPUTS = (
+        '  "# In a string"',
+        '  [  # At the end.',
+    )
+    for s in TRUE_INPUTS:
+      self.assertTrue(gyplint.LineIsComment(s))
+    for s in FALSE_INPUTS:
+      self.assertFalse(gyplint.LineIsComment(s))
 
   def testGetParser(self):
     """Make sure it doesn't crash."""

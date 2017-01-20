@@ -150,6 +150,66 @@ def GypLintPkgConfigs(gypdata):
   return WalkGyp(CheckNode, gypdata)
 
 
+def RawLintWhitespace(data):
+  """Make sure whitespace is sane."""
+  ret = []
+  if not data.endswith('\n'):
+    ret.append('missing newline at end of file')
+  return ret
+
+
+def LineIsComment(line):
+  """Whether this entire line is a comment (and whitespace).
+
+  Note: This doesn't handle inline comments like:
+    [  # Blah blah.
+  But we discourage those in general, so shouldn't be a problem.
+  """
+  return line.lstrip().startswith('#')
+
+
+def LinesLintWhitespace(lines):
+  """Make sure whitespace is sane."""
+  ret = []
+
+  for i, line in enumerate(lines, 1):
+    if '\t' in line:
+      ret.append('use spaces, not tabs: line %i: %s' % (i, line))
+
+    if line.rstrip() != line:
+      ret.append('delete trailing whitespace: line %i: %s' % (i, line))
+
+  if lines:
+    if not lines[0]:
+      ret.append('delete leading blanklines')
+
+    if not lines[-1]:
+      ret.append('delete trailing blanklines')
+
+  return ret
+
+
+def LinesLintDanglingCommas(lines):
+  """Check for missing dangling commas."""
+  ret = []
+  for i, line in enumerate(lines, 1):
+    if not LineIsComment(line):
+      if len(line) > 1 and line.endswith(('}', ']', "'")):
+        ret.append('add a dangling comma: line %i: %s' % (i, line))
+  return ret
+
+
+def LinesLintSingleQuotes(lines):
+  """Check for double quote usage."""
+  ret = []
+  for i, line in enumerate(lines, 1):
+    if not LineIsComment(line):
+      if line.endswith('"'):
+        ret.append('use single quotes instead of double quotes: line %i: %s' %
+                   (i, line))
+  return ret
+
+
 # The regex used to find gyplint options in the file.
 # This matches the regex pylint uses.
 OPTIONS_RE = re.compile(r'^\s*#.*\bgyplint:\s*([^\n;]+)', flags=re.MULTILINE)
@@ -188,20 +248,25 @@ def ParseOptions(options, name=None):
   return LintSettings(skip)
 
 
-def CheckGyp(name, gypdata, settings=None):
-  """Check |gypdata| for common mistakes."""
+def RunLinters(prefix, name, data, settings=None):
+  """Run linters starting with |prefix| against |data|."""
   if settings is None:
     settings = ParseOptions([])
 
   linters = [x for x in globals()
-             if x.startswith('GypLint') and x not in settings.skip]
+             if x.startswith(prefix) and x not in settings.skip]
 
   ret = []
   for linter in linters:
     functor = globals().get(linter)
-    for result in functor(gypdata):
+    for result in functor(data):
       ret.append(LintResult(linter, name, result, logging.ERROR))
   return ret
+
+
+def CheckGyp(name, gypdata, settings=None):
+  """Check |gypdata| for common mistakes."""
+  return RunLinters('GypLint', name, gypdata, settings=settings)
 
 
 def CheckGypData(name, data):
@@ -216,7 +281,16 @@ def CheckGypData(name, data):
   m = OPTIONS_RE.findall(data)
   settings = ParseOptions(m, name=name)
 
-  return CheckGyp(name, gypdata, settings)
+  lines = data.splitlines()
+  ret = []
+
+  # Run linters on the raw data first (for style/syntax).
+  ret += RunLinters('RawLint', name, data, settings=settings)
+  ret += RunLinters('LinesLint', name, lines, settings=settings)
+  # Then run linters against the parsed AST.
+  ret += CheckGyp(name, gypdata, settings)
+
+  return ret
 
 
 def CheckGypFile(gypfile):
