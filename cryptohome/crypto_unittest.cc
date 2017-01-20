@@ -336,6 +336,11 @@ TEST_F(CryptoTest, TpmStepTest) {
   new_keyset.Initialize(&platform, &crypto);
   unsigned int crypt_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
+
+  // Successful DecryptValutKeyset for tpm-backed keyset should
+  // lead to a call to DeclareTpmFirmwareStable().
+  EXPECT_CALL(tpm, DeclareTpmFirmwareStable());
+
   ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key, &crypt_flags,
                                         &crypto_error, &new_keyset));
 
@@ -346,6 +351,66 @@ TEST_F(CryptoTest, TpmStepTest) {
 
   EXPECT_EQ(new_data.size(), original_data.size());
   ASSERT_TRUE(CryptoTest::FindBlobInBlob(new_data, original_data));
+}
+
+TEST_F(CryptoTest, TpmDecryptFailureTest) {
+  // Check how TPM error on Decrypt is reported.
+  MockPlatform platform;
+  Crypto crypto(&platform);
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockTpmInit> tpm_init;
+
+  crypto.set_tpm(&tpm);
+  crypto.set_use_tpm(true);
+
+  EXPECT_CALL(tpm, EncryptBlob(_, _, _, _));
+  EXPECT_CALL(tpm_init, HasCryptohomeKey())
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_init, SetupTpm(true))
+      .Times(AtLeast(2));  // One by crypto.Init(), one by crypto.EnsureTpm()
+  SecureBlob blob("public key hash");
+  EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
+      .Times(2)  // Once on Encrypt and once on Decrypt of Vault.
+      .WillRepeatedly(DoAll(SetArgPointee<1>(blob),
+                            Return(Tpm::kTpmRetryNone)));
+  crypto.Init(&tpm_init);
+
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, &crypto);
+  vault_keyset.CreateRandom();
+
+  SecureBlob key(20);
+  CryptoLib::GetSecureRandom(key.data(), key.size());
+  SecureBlob salt(PKCS5_SALT_LEN);
+  CryptoLib::GetSecureRandom(salt.data(), salt.size());
+
+  SerializedVaultKeyset serialized;
+  ASSERT_TRUE(crypto.EncryptVaultKeyset(vault_keyset, key, salt, &serialized));
+  SecureBlob encrypted;
+  GetSerializedBlob(serialized, &encrypted);
+
+  ASSERT_TRUE(CryptoTest::FindBlobInBlob(encrypted, salt));
+
+  ASSERT_TRUE(CryptoTest::FromSerializedBlob(encrypted, &serialized));
+
+  VaultKeyset new_keyset;
+  new_keyset.Initialize(&platform, &crypto);
+  unsigned int crypt_flags = 0;
+  Crypto::CryptoError crypto_error = Crypto::CE_NONE;
+
+  // DecryptBlob operation will fail.
+  EXPECT_CALL(tpm, DecryptBlob(_, _, _, _))
+      .WillOnce(Return(Tpm::kTpmRetryFatal));
+
+  // Unsuccessful DecryptValutKeyset for tpm-backed keyset should not
+  // lead to a call to DeclareTpmFirmwareStable().
+  EXPECT_CALL(tpm, DeclareTpmFirmwareStable())
+      .Times(0);
+
+  ASSERT_FALSE(crypto.DecryptVaultKeyset(serialized, key, &crypt_flags,
+                                         &crypto_error, &new_keyset));
+  ASSERT_NE(Crypto::CE_NONE, crypto_error);
 }
 
 TEST_F(CryptoTest, ScryptStepTest) {
@@ -432,6 +497,11 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
   new_keyset.Initialize(&platform_, &crypto);
   unsigned int crypt_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
+
+  // Successful DecryptValutKeyset for tpm-backed keyset should
+  // lead to a call to DeclareTpmFirmwareStable().
+  EXPECT_CALL(tpm, DeclareTpmFirmwareStable());
+
   ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key, &crypt_flags,
                                         &crypto_error, &new_keyset));
 

@@ -151,6 +151,7 @@ class StubTpm : public Tpm {
   bool ResetDictionaryAttackMitigation(
       const SecureBlob& delegate_blob,
       const SecureBlob& delegate_secret) override { return false; }
+  void DeclareTpmFirmwareStable() override {}
 };
 
 }  // namespace cryptohome

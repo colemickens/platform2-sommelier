@@ -979,4 +979,19 @@ TEST_F(Tpm2Test, GetPublicKeyHashFailure) {
             tpm_->GetPublicKeyHash(handle, &public_key_hash));
 }
 
+TEST_F(Tpm2Test, DeclareTpmFirmwareStable) {
+  EXPECT_CALL(mock_tpm_utility_, DeclareTpmFirmwareStable())
+      .Times(2)
+      .WillOnce(Return(TPM_RC_FAILURE))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  // First attempt shall call TpmUtility since we haven't called it yet.
+  tpm_->DeclareTpmFirmwareStable();
+  // Second attempt shall call TpmUtility since the first attempt failed.
+  tpm_->DeclareTpmFirmwareStable();
+  // Subsequent attempts shall do nothing since we already succeeded on the
+  // second attempt.
+  tpm_->DeclareTpmFirmwareStable();
+  tpm_->DeclareTpmFirmwareStable();
+}
+
 }  // namespace cryptohome

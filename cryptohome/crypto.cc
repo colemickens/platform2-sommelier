@@ -426,6 +426,13 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
   if (!serialized.has_tpm_public_key_hash() && error) {
     *error = CE_NO_PUBLIC_KEY_HASH;
   }
+
+  // By this point we know that the TPM is successfully owned, everything
+  // is initialized, and we were able to successfully decrypted a
+  // tpm-wrapped keyset. So, for TPMs with updateable firmware, we assume
+  // that it is stable (and the TPM can invalidate the old version).
+  tpm_->DeclareTpmFirmwareStable();
+
   return true;
 }
 

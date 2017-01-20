@@ -147,6 +147,7 @@ class Tpm2Impl : public Tpm {
   bool ResetDictionaryAttackMitigation(
       const brillo::SecureBlob& delegate_blob,
       const brillo::SecureBlob& delegate_secret) override;
+  void DeclareTpmFirmwareStable() override;
 
  private:
   // This object may be used across multiple threads but the Trunks D-Bus proxy
@@ -197,6 +198,9 @@ class Tpm2Impl : public Tpm {
 
   // The most recent status from tpm_managerd.
   tpm_manager::GetTpmStatusReply tpm_status_;
+
+  // True, if the tpm firmware has been already successfully declared stable.
+  bool fw_declared_stable_ = false;
 
   // A message loop thread dedicated for asynchronous communication with
   // tpm_managerd.

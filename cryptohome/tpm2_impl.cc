@@ -907,6 +907,14 @@ bool Tpm2Impl::ResetDictionaryAttackMitigation(
           TPM_RC_SUCCESS);
 }
 
+void Tpm2Impl::DeclareTpmFirmwareStable() {
+  TrunksClientContext* trunks;
+  if (!fw_declared_stable_ && GetTrunksContext(&trunks)) {
+    TPM_RC res = trunks->tpm_utility->DeclareTpmFirmwareStable();
+    fw_declared_stable_ = (res == TPM_RC_SUCCESS);
+  }
+}
+
 bool Tpm2Impl::GetTrunksContext(TrunksClientContext** trunks) {
   if (has_external_trunks_context_) {
     *trunks = &external_trunks_context_;

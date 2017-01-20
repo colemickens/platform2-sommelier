@@ -521,6 +521,11 @@ class Tpm {
       const brillo::SecureBlob& delegate_blob,
       const brillo::SecureBlob& delegate_secret) = 0;
 
+  // For TPMs with updateable firmware: Declate the current firmware
+  // version stable and invalidate previous versions, if any.
+  // For TPMs with fixed firmware: NOP.
+  virtual void DeclareTpmFirmwareStable() = 0;
+
  private:
   static Tpm* singleton_;
   static base::Lock singleton_lock_;

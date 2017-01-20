@@ -130,6 +130,7 @@ class TpmImpl : public Tpm {
   bool ResetDictionaryAttackMitigation(
       const brillo::SecureBlob& delegate_blob,
       const brillo::SecureBlob& delegate_secret) override;
+  void DeclareTpmFirmwareStable() override {}
 
  private:
   // Connects to the TPM and return its context at |context_handle|.
