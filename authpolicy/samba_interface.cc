@@ -131,8 +131,10 @@ const char kConfigFilePath[] = STATE_DIR "/config.dat";
 const char kFlagsFilePath[] = "/etc/authpolicyd_flags";
 const char kFlagDisableSeccomp[] = "disable_seccomp";
 const char kFlagLogSeccomp[] = "log_seccomp";
+const char kFlagTraceKinit[] = "trace_kinit";
 static bool s_disable_seccomp_filters = false;
 static bool s_log_seccomp_filters = false;
+static bool s_trace_kinit = false;
 
 // Size limit when loading the config file (256 kb).
 const size_t kConfigSizeLimit = 256 * 1024;
@@ -145,6 +147,10 @@ const char kKrb5ConfEnvValue[] = "FILE:" KRB5_FILE_PATH;
 const char kMachineKTEnvKey[] = "KRB5_KTNAME";
 const char kMachineKTEnvValueTmp[] = "FILE:" MACHINE_KT_TMP_FILE_PATH;
 const char kMachineKTEnvValueState[] = "FILE:" MACHINE_KT_STATE_FILE_PATH;
+
+// Env variable to trace debug info of kinit.
+const char kKrb5TraceEnvKey[] = "KRB5_TRACE";
+const char kKrb5TraceEnvValue[] = "/tmp/krb5_trace";
 
 // Executable paths. For security reasons use absolute file paths!
 const char kNetPath[] = "/usr/bin/net";
@@ -243,12 +249,39 @@ bool SetupJailAndRun(ProcessExecutor* cmd, const char* seccomp_filter) {
   return cmd->Execute();
 }
 
+void SetupKinitTrace(ProcessExecutor* kinit_cmd) {
+  if (!s_trace_kinit)
+    return;
+  {
+    // Deleting kinit trace file (must be done as authpolicyd-exec).
+    ScopedAuthpolicyExecSwitch exec_switch;
+    if (!base::DeleteFile(base::FilePath(kKrb5TraceEnvValue),
+                          /* recursive */ false)) {
+      LOG(WARNING) << "Failed to delete kinit trace file";
+    }
+  }
+  kinit_cmd->SetEnv(kKrb5TraceEnvKey, kKrb5TraceEnvValue);
+}
+
+void OutputKinitTrace() {
+  if (!s_trace_kinit)
+    return;
+  std::string trace;
+  {
+    // Reading kinit trace file (must be done as authpolicyd-exec).
+    ScopedAuthpolicyExecSwitch exec_switch;
+    base::ReadFileToString(base::FilePath(kKrb5TraceEnvValue), &trace);
+  }
+  LOG(INFO) << "Kinit trace:\n" << trace;
+}
+
 // Returns true if the string contains the given substring.
 bool Contains(const std::string& str, const std::string& substr) {
   return str.find(substr) != std::string::npos;
 }
 
-ErrorType GetKinitError(const ProcessExecutor& kinit_cmd) {
+ErrorType HandleKinitError(const ProcessExecutor& kinit_cmd) {
+  OutputKinitTrace();
   // Handle different error cases
   const std::string& kinit_out = kinit_cmd.GetStdout();
   const std::string& kinit_err = kinit_cmd.GetStderr();
@@ -848,6 +881,10 @@ bool SambaInterface::Initialize(bool expect_config) {
       LOG(WARNING) << "Logging seccomp filter failures";
       s_log_seccomp_filters = true;
     }
+    if (Contains(flags, kFlagTraceKinit)) {
+      LOG(WARNING) << "Trace kinit";
+      s_trace_kinit = true;
+    }
   }
 
   return true;
@@ -875,8 +912,9 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
   ProcessExecutor kinit_cmd({kKInitPath, normalized_upn});
   kinit_cmd.SetInputFile(password_fd);
   kinit_cmd.SetEnv(kKrb5ConfEnvKey, kKrb5ConfEnvValue);  // Kerberos config.
+  SetupKinitTrace(&kinit_cmd);
   if (!SetupJailAndRun(&kinit_cmd, kKInitSeccompFilter)) {
-    *out_error = GetKinitError(kinit_cmd);
+    *out_error = HandleKinitError(kinit_cmd);
     return false;
   }
 
@@ -1009,6 +1047,7 @@ bool SambaInterface::FetchDeviceGpos(std::string* out_policy_blob,
       {kKInitPath, config_->machine_name() + "$@" + config_->realm(), "-k"});
   kinit_cmd.SetEnv(kKrb5ConfEnvKey, kKrb5ConfEnvValue);  // Kerberos config.
   kinit_cmd.SetEnv(kMachineKTEnvKey, kMachineKTEnvValueState);  // Keytab file.
+  SetupKinitTrace(&kinit_cmd);
 
   // The first device policy fetch after joining Active Directory can be very
   // slow because machine credentials need to propagate through the AD
@@ -1021,7 +1060,7 @@ bool SambaInterface::FetchDeviceGpos(std::string* out_policy_blob,
       *out_error = ERROR_NONE;
       break;
     }
-    *out_error = GetKinitError(kinit_cmd);
+    *out_error = HandleKinitError(kinit_cmd);
     if (*out_error != ERROR_BAD_USER_NAME && *out_error != ERROR_BAD_PASSWORD)
       break;
     base::PlatformThread::Sleep(
