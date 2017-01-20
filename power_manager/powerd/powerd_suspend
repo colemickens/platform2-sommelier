@@ -335,7 +335,7 @@ else
   # the causes of failures -- dash's "echo" command appears to not print
   # anything in response to write errors.
   error=$( (printf '%s' ${action} | cat > /sys/power/state) 2>&1)
-  if [ $? = 0 ]; then
+  if [ $? -eq 0 ]; then
     # On resume:
     result=$RESULT_SUCCESS
 
