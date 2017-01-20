@@ -41,7 +41,7 @@ readonly RESULT_MAX=4
 
 # Directory where this script and send_metrics_on_resume (running as root)
 # write temporary state files.
-readonly ROOT_RUN_DIR=/var/run/power_manager/root
+readonly ROOT_RUN_DIR=/run/power_manager/root
 
 # For testing: write RTC resume timestamp to this file if it exists
 readonly TIMESTAMP_FILE=${ROOT_RUN_DIR}/hwclock-on-resume
