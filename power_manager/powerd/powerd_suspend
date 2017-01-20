@@ -44,17 +44,17 @@ readonly RESULT_MAX=4
 readonly ROOT_RUN_DIR=/run/power_manager/root
 
 # For testing: write RTC resume timestamp to this file if it exists
-readonly TIMESTAMP_FILE=${ROOT_RUN_DIR}/hwclock-on-resume
+readonly TIMESTAMP_FILE="${ROOT_RUN_DIR}"/hwclock-on-resume
 
 # File used to record the power status (AC vs. battery) before suspending.  Read
 # by send_metrics_on_resume (but only when run after resuming; this doesn't
 # need to persist across reboots).
-readonly POWER_STATUS_ON_SUSPEND_FILE=${ROOT_RUN_DIR}/power-status-on-suspend
+readonly POWER_STATUS_ON_SUSPEND_FILE="${ROOT_RUN_DIR}"/power-status-on-suspend
 
 # File containing resume-related timing information.  Written by
 # send_metrics_on_resume and read by autotests; doesn't need to persist
 # across reboots.
-readonly LAST_RESUME_TIMINGS_FILE=${ROOT_RUN_DIR}/last_resume_timings
+readonly LAST_RESUME_TIMINGS_FILE="${ROOT_RUN_DIR}"/last_resume_timings
 
 # Directory where this script (running as root) writes files that must
 # persist across reboots.
@@ -62,7 +62,7 @@ readonly ROOT_SPOOL_DIR=/var/spool/power_manager/root
 
 # File containing the time at which we started suspending.  Read by
 # send_metrics_on_resume.
-readonly SUSPEND_TO_RAM_TIME_FILE=${ROOT_SPOOL_DIR}/suspend-to-ram-time
+readonly SUSPEND_TO_RAM_TIME_FILE="${ROOT_SPOOL_DIR}"/suspend-to-ram-time
 
 # File containing suspend-related information to log on failure.
 readonly SUSPEND_STATS_FILE=/sys/kernel/debug/suspend_stats
@@ -81,10 +81,10 @@ log_wakeup_count() {
 
 log_suspend_stats() {
   log_msg "--- begin ${SUSPEND_STATS_FILE} ---"
-  local tempfile=$(mktemp --tmpdir powerd_suspend_stats.XXXXXXXXXX)
+  local tempfile="$(mktemp --tmpdir powerd_suspend_stats.XXXXXXXXXX)"
   # Omit blank lines and replace tabs with spaces so syslog won't escape them
   # to "#011".
-  grep -e '\S' <"${SUSPEND_STATS_FILE}" | tr "\t" " " >"${tempfile}"
+  grep -e '\S' <"${SUSPEND_STATS_FILE}" | tr '\t' ' ' >"${tempfile}"
   log_msg_from_file "${tempfile}"
   log_msg "--- end ${SUSPEND_STATS_FILE} ---"
   rm "${tempfile}"
@@ -101,7 +101,7 @@ enable_debug() {
 }
 
 is_lumpy() {
-  crossystem hwid | grep -q "LUMPY"
+  crossystem hwid | grep -q 'LUMPY'
 }
 
 # Checks if the system has a Novatel Wireless Gobi 3000 E396/E396U modem.
@@ -138,7 +138,7 @@ do_lumpy_gobi_modem_revive() {
 
 # Return true on Blaze systems.
 is_blaze() {
-  crossystem hwid | grep -q "BLAZE"
+  crossystem hwid | grep -q 'BLAZE'
 }
 
 is_kip() {
@@ -161,7 +161,7 @@ do_blaze_huawei_modem() {
     echo 148 > export
   fi
   echo out > gpio148/direction
-  echo $gpioval > gpio148/value
+  echo "${gpioval}" > gpio148/value
   if [ $? -eq 0 ]; then
     log_msg "Power ${op} Huawei modem"
   else
@@ -206,7 +206,7 @@ ec_power_modem() {
 # that one or more wakeup events occurred in the meantime.
 saw_wakeup_event() {
   if [ "${FLAGS_wakeup_count}" -eq -1 ] ||
-    echo "${FLAGS_wakeup_count}" > "/sys/power/wakeup_count"; then
+    echo "${FLAGS_wakeup_count}" > /sys/power/wakeup_count; then
     return 1
   else
     log_msg "Aborting suspend, wake event received"
@@ -218,7 +218,7 @@ saw_wakeup_event() {
 
 # Sends suspend result (one of the above RESULT_* values) to UMA.
 send_uma_result() {
-  metrics_client -e Power.SuspendResult $1 $RESULT_MAX &
+  metrics_client -e Power.SuspendResult "$1" "${RESULT_MAX}" &
 }
 
 setup_dark_resume() {
@@ -230,7 +230,7 @@ setup_dark_resume() {
 
 # Encourage people to use powerd_dbus_suspend instead of running this
 # script directly so that e.g. suspend delays will happen.
-if [ -z "$POWERD_SETUID_HELPER" ]; then
+if [ -z "${POWERD_SETUID_HELPER}" ]; then
   echo "This script is called by powerd. Please run powerd_dbus_suspend" 1>&2
   echo "to manually exercise the full suspend path." 1>&2
   exit 1
@@ -242,26 +242,26 @@ log_msg "Going to suspend-to-RAM state: args=$@"
 
 # Parse command line.
 FLAGS "$@" || exit 1
-eval set -- "$FLAGS_ARGV"
+eval set -- "${FLAGS_ARGV}"
 
 # The metrics library requires a max value of 2 rather than 1
 # (http://crbug.com/338015).
 metrics_client -e Power.SuspendAttempt 0 2 &
 
 # Log the time before going to suspend (no-op if no RTC).
-cp /sys/class/rtc/rtc0/since_epoch $SUSPEND_TO_RAM_TIME_FILE \
+cp /sys/class/rtc/rtc0/since_epoch "${SUSPEND_TO_RAM_TIME_FILE}" \
   2> /dev/null || true
 
 # Remove last_resume_timings to ensure the file is fresh on resume.
-rm -f $LAST_RESUME_TIMINGS_FILE
+rm -f "${LAST_RESUME_TIMINGS_FILE}"
 
 # Store the current power status.
 power_supply_info 2> /dev/null \
   | /bin/grep -Eq '^[[:space:]]+online:[[:space:]]+no$'
 if [ $? -eq 0 ]; then
-  echo OnBattery > $POWER_STATUS_ON_SUSPEND_FILE
+  echo OnBattery > "${POWER_STATUS_ON_SUSPEND_FILE}"
 else
-  echo OnAC > $POWER_STATUS_ON_SUSPEND_FILE
+  echo OnAC > "${POWER_STATUS_ON_SUSPEND_FILE}"
 fi
 
 # Is this a Lumpy system with Gobi modem?
@@ -290,7 +290,7 @@ enable_debug
 log_msg "Explicit sync"
 sync
 
-result=$RESULT_FAILURE
+result="${RESULT_FAILURE}"
 
 if saw_wakeup_event; then
   # Note: The client/cros/power_suspend.py module in autotest depends on
@@ -299,15 +299,15 @@ if saw_wakeup_event; then
 
   # This file is usually removed by send_metrics_on_resume, but that script
   # isn't run if the suspend attempt is unsuccessful.
-  rm -f $SUSPEND_TO_RAM_TIME_FILE
+  rm -f "${SUSPEND_TO_RAM_TIME_FILE}"
 
-  result=$RESULT_CANCELED_EARLY
+  result="${RESULT_CANCELED_EARLY}"
 else
   # Before suspending, power down this problematic modem.
-  if [ $blaze_with_huawei_modem -eq 1 ]; then
+  if [ "${blaze_with_huawei_modem}" -eq 1 ]; then
     do_blaze_huawei_modem off
   fi
-  if [ ${kip_with_huawei_modem} -eq 1 ]; then
+  if [ "${kip_with_huawei_modem}" -eq 1 ]; then
     ec_power_modem off
   fi
 
@@ -327,31 +327,31 @@ else
   fi
 
   # Echo freeze to /sys/power/state on platforms that support suspend to idle.
-  action="mem"
-  if [ ${FLAGS_suspend_to_idle} -eq 0 ]; then
-    action="freeze"
+  action='mem'
+  if [ "${FLAGS_suspend_to_idle}" -eq 0 ]; then
+    action='freeze'
   fi
 
   # Suspend to RAM. This is piped through cat since we want to determine
   # the causes of failures -- dash's "echo" command appears to not print
   # anything in response to write errors.
-  error=$( (printf '%s' ${action} | cat > /sys/power/state) 2>&1)
+  error=$( (printf '%s' "${action}" | cat > /sys/power/state) 2>&1)
   if [ $? -eq 0 ]; then
     # On resume:
-    result=$RESULT_SUCCESS
+    result="${RESULT_SUCCESS}"
 
     if [ -f "${TIMESTAMP_FILE}" ]; then
       # Record the hwclock time at resume for the power_Resume test.
-      TIME=$(/sbin/hwclock --utc)
-      echo ${TIME} > "${TIMESTAMP_FILE}"
+      TIME="$(/sbin/hwclock --utc)"
+      echo "${TIME}" > "${TIMESTAMP_FILE}"
       log_msg "Recorded hwclock time for test"
     fi
 
-    if [ -e "/sys/firmware/log" ]; then
+    if [ -e /sys/firmware/log ]; then
       # Grep /sys/firmware/log for WAK
-      wakeup_source=$(grep -A1 -B1 "PM1_STS: WAK" /sys/firmware/log)
+      wakeup_source="$(grep -A1 -B1 "PM1_STS: WAK" /sys/firmware/log)"
       if [ -z "${wakeup_source}" ]; then
-        wakeup_source="unknown"
+        wakeup_source='unknown'
       fi
       log_msg "wake source: ${wakeup_source}"
     fi
@@ -361,7 +361,7 @@ else
 
     # Revive the modem if it was present prior to suspending but is absent
     # now.
-    if [ $lumpy_with_gobi_modem -eq 1 ]; then
+    if [ "${lumpy_with_gobi_modem}" -eq 1 ]; then
       if ! has_gobi_modem ; then
         log_msg "Reviving lumpy gobi modem"
         do_lumpy_gobi_modem_revive
@@ -374,26 +374,26 @@ else
       log_msg "Warning: Device or resource busy on write to /sys/power/state"
       log_suspend_stats
       log_wakeup_count
-      result=$RESULT_CANCELED_LATE
+      result="${RESULT_CANCELED_LATE}"
     else
       # Note: The client/cros/power_suspend.py module in autotest depends on
       # this message.
       log_msg "Error writing to /sys/power/state: ${error}"
       log_suspend_stats
-      result=$RESULT_FAILURE
+      result="${RESULT_FAILURE}"
     fi
   fi
 
   # Power back on the Huawei modem if it was powered off before suspend.
-  if [ $blaze_with_huawei_modem -eq 1 ]; then
+  if [ "${blaze_with_huawei_modem}" -eq 1 ]; then
     do_blaze_huawei_modem on
   fi
-  if [ ${kip_with_huawei_modem} -eq 1 ]; then
+  if [ "${kip_with_huawei_modem}" -eq 1 ]; then
     ec_power_modem on
   fi
 fi
 
-send_uma_result $result
+send_uma_result "${result}"
 
 initctl emit system-resumed &
 
@@ -402,4 +402,4 @@ initctl emit system-resumed &
 
 log_msg "Resume finished"
 
-return $result
+return "${result}"
