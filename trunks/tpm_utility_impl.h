@@ -166,6 +166,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC CreateIdentityKey(TPM_ALG_ID key_type,
                            AuthorizationDelegate* delegate,
                            std::string* key_blob) override;
+  TPM_RC DeclareTpmFirmwareStable() override;
 
  private:
   friend class TpmUtilityTest;
@@ -245,6 +246,37 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
 
   // Returns true for TPMs running Cr50.
   bool IsCr50();
+
+  // Send an arbitrary command to the TPM and wait for the response.
+  // Returns the response packet.
+  std::string SendCommandAndWait(const std::string& command);
+
+  // Sends vendor command in cr50 format, built from subcommand and already
+  // serialized |command_payload|.
+  // Returns the result of the command. Fills the |response_payload|,
+  // if successful.
+  TPM_RC Cr50VendorCommand(uint16_t subcommand,
+                           const std::string& command_payload,
+                           std::string* response_payload);
+
+  // Helper function for serializing cr50 vendor command called from
+  // Cr50VendorCommand(). Builds the ready-to-send |serialized_command|
+  // including the standard header, the |subcommand| code, and the
+  // subcommand-specific |command_payload|.
+  // Returns the result of serializing the command.
+  TPM_RC SerializeCommand_Cr50Vendor(uint16_t subcommand,
+                                     const std::string& command_payload,
+                                     std::string* serialized_command);
+
+  // Helper function for parsing the response to cr50 vendor command,
+  // called from Cr50VendorCommand(). Takes the |response| received from
+  // the TPM, parses and ensures the correctness of the header, and
+  // extracts the subcommand-specific |response_payload| (kept serialized
+  // as received from the TPM).
+  // If deserialization failed, returns an error. If the header is correctly
+  // parsed, returns the error code received from the TPM.
+  TPM_RC ParseResponse_Cr50Vendor(const std::string& response,
+                                  std::string* response_payload);
 
   DISALLOW_COPY_AND_ASSIGN(TpmUtilityImpl);
 };

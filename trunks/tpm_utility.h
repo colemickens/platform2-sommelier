@@ -347,6 +347,12 @@ class TRUNKS_EXPORT TpmUtility {
                                    AuthorizationDelegate* delegate,
                                    std::string* key_blob) = 0;
 
+  // For TPMs with updateable firmware: Declate the current firmware
+  // version stable and invalidate previous versions, if any.
+  // Returns the result of sending the appropriate command to the TPM.
+  // For TPMs with fixed firmware: NOP, always returns TPM_RC_SUCCESS.
+  virtual TPM_RC DeclareTpmFirmwareStable() = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(TpmUtility);
 };

@@ -21,6 +21,7 @@
 #include <base/logging.h>
 #include <base/sha1.h>
 #include <base/stl_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <crypto/openssl_util.h>
 #include <crypto/secure_hash.h>
 #include <crypto/sha2.h>
@@ -29,6 +30,7 @@
 
 #include "trunks/authorization_delegate.h"
 #include "trunks/blob_parser.h"
+#include "trunks/command_transceiver.h"
 #include "trunks/error_codes.h"
 #include "trunks/hmac_authorization_delegate.h"
 #include "trunks/hmac_session.h"
@@ -46,6 +48,10 @@ const size_t kMaxPasswordLength = 32;
 const uint32_t kMaxNVSpaceIndex = (1 << 24) - 1;
 // Cr50 Vendor ID ("CROS").
 const uint32_t kVendorIdCr50 = 0x43524f53;
+// Command code for Cr50 vendor-specific commands,
+const uint32_t kCr50VendorCC = 0x20000000 | 0; /* Vendor Bit Set + 0 */
+// Vendor-specific subcommand codes.
+const uint16_t kCr50SubcmdInvalidateInactiveRW = 20;
 
 // Auth policy used in RSA and ECC templates for EK keys generation.
 // From TCG Credential Profile EK 2.0. Section 2.1.5.
@@ -1673,6 +1679,22 @@ TPM_RC TpmUtilityImpl::CreateIdentityKey(TPM_ALG_ID key_type,
   return TPM_RC_SUCCESS;
 }
 
+TPM_RC TpmUtilityImpl::DeclareTpmFirmwareStable() {
+  if (!IsCr50()) {
+    return TPM_RC_SUCCESS;
+  }
+  std::string response_payload;
+  TPM_RC rc = Cr50VendorCommand(kCr50SubcmdInvalidateInactiveRW,
+                                std::string(), &response_payload);
+  if (rc == TPM_RC_SUCCESS) {
+    LOG(INFO) << "Successfully invalidated inactive Cr50 RW";
+  } else {
+    LOG(WARNING) << "Invalidating inactive Cr50 RW failed: 0x"
+                 << std::hex << rc;
+  }
+  return rc;
+}
+
 TPM_RC TpmUtilityImpl::SetKnownOwnerPassword(
     const std::string& known_owner_password) {
   std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
@@ -2080,6 +2102,87 @@ uint32_t TpmUtilityImpl::VendorId() {
 
 bool TpmUtilityImpl::IsCr50() {
   return VendorId() == kVendorIdCr50;
+}
+
+std::string TpmUtilityImpl::SendCommandAndWait(const std::string& command) {
+  return factory_.GetTpm()->get_transceiver()->SendCommandAndWait(command);
+}
+
+TPM_RC TpmUtilityImpl::SerializeCommand_Cr50Vendor(
+    uint16_t subcommand,
+    const std::string& command_payload,
+    std::string* serialized_command) {
+  VLOG(3) << __func__;
+
+  UINT32 command_size = 12 + command_payload.size();
+  Serialize_TPMI_ST_COMMAND_TAG(TPM_ST_NO_SESSIONS, serialized_command);
+  Serialize_UINT32(command_size, serialized_command);
+  Serialize_TPM_CC(kCr50VendorCC, serialized_command);
+  Serialize_UINT16(subcommand, serialized_command);
+  serialized_command->append(command_payload);
+  VLOG(2) << "Command: " << base::HexEncode(serialized_command->data(),
+                                            serialized_command->size());
+
+  // We didn't check the return statuses of Serialize_Xxx routines above, which
+  // in practice always succeed. Let's at least check the resulting command
+  // size to make sure all fields were indeed serialized in.
+  if (serialized_command->size() != command_size) {
+    LOG(ERROR) << "Bad cr50 vendor command size: expected = " << command_size
+               << ", actual = " << serialized_command->size();
+    return TPM_RC_INSUFFICIENT;
+  }
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::ParseResponse_Cr50Vendor(
+    const std::string& response,
+    std::string* response_payload) {
+  VLOG(3) << __func__;
+  VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
+  response_payload->assign(response);
+
+  TPM_ST tag;
+  TPM_RC rc = Parse_TPM_ST(response_payload, &tag, nullptr);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
+  if (tag != TPM_ST_NO_SESSIONS) {
+    LOG(ERROR) << "Bad cr50 vendor response tag: 0x" << std::hex << tag;
+    return TPM_RC_AUTH_CONTEXT;
+  }
+
+  UINT32 response_size;
+  rc = Parse_UINT32(response_payload, &response_size, nullptr);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
+  if (response_size != response.size()) {
+    LOG(ERROR) << "Bad cr50 vendor response size: expected = " << response_size
+               << ", actual = " << response.size();
+    return TPM_RC_SIZE;
+  }
+
+  TPM_RC response_code;
+  rc = Parse_TPM_RC(response_payload, &response_code, nullptr);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
+  return response_code;
+}
+
+TPM_RC TpmUtilityImpl::Cr50VendorCommand(uint16_t subcommand,
+                                         const std::string& command_payload,
+                                         std::string* response_payload) {
+  VLOG(1) << __func__ << "(subcommand: " << subcommand << ")";
+  std::string command;
+  TPM_RC rc =
+    SerializeCommand_Cr50Vendor(subcommand, command_payload, &command);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
+  std::string response = SendCommandAndWait(command);
+  rc = ParseResponse_Cr50Vendor(response, response_payload);
+  return rc;
 }
 
 }  // namespace trunks

@@ -28,9 +28,10 @@ namespace trunks {
 
 class MockTpm : public Tpm {
  public:
-  MockTpm();
+  MockTpm(CommandTransceiver* transceiver = nullptr);
   ~MockTpm() override;
 
+  MOCK_METHOD0(get_transceiver, CommandTransceiver*());
   MOCK_METHOD3(Startup,
                void(const TPM_SU& startup_type,
                     AuthorizationDelegate* authorization_delegate,

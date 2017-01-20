@@ -155,6 +155,7 @@ class TRUNKS_EXPORT Tpm {
   // Does not take ownership of |transceiver|.
   explicit Tpm(CommandTransceiver* transceiver) : transceiver_(transceiver) {}
   virtual ~Tpm() {}
+  CommandTransceiver* get_transceiver() { return transceiver_; }
 
 """
 _CLASS_END = """

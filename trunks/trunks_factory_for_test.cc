@@ -367,6 +367,10 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->CreateIdentityKey(key_type, delegate, key_blob);
   }
 
+  TPM_RC DeclareTpmFirmwareStable() override {
+    return target_->DeclareTpmFirmwareStable();
+  }
+
  private:
   TpmUtility* target_;
 };

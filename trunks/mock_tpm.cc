@@ -25,7 +25,7 @@ using testing::SetArgPointee;
 
 namespace trunks {
 
-MockTpm::MockTpm() : Tpm(nullptr) {
+MockTpm::MockTpm(CommandTransceiver* transceiver) : Tpm(transceiver) {
   ON_CALL(*this, PCR_AllocateSync(_, _, _, _, _, _, _, _))
       .WillByDefault(DoAll(SetArgPointee<3>(YES), Return(TPM_RC_SUCCESS)));
   TPMT_PUBLIC fake_public = {};

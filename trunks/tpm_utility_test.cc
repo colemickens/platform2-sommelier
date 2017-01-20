@@ -24,6 +24,7 @@
 #include "trunks/hmac_authorization_delegate.h"
 #include "trunks/mock_authorization_delegate.h"
 #include "trunks/mock_blob_parser.h"
+#include "trunks/mock_command_transceiver.h"
 #include "trunks/mock_hmac_session.h"
 #include "trunks/mock_policy_session.h"
 #include "trunks/mock_tpm.h"
@@ -51,7 +52,7 @@ namespace trunks {
 // A test fixture for TpmUtility tests.
 class TpmUtilityTest : public testing::Test {
  public:
-  TpmUtilityTest() : utility_(factory_) {}
+  TpmUtilityTest() : mock_tpm_(&mock_transceiver_), utility_(factory_) {}
   ~TpmUtilityTest() override {}
   void SetUp() override {
     factory_.set_blob_parser(&mock_blob_parser_);
@@ -140,8 +141,17 @@ class TpmUtilityTest : public testing::Test {
             DoAll(SetArgPointee<4>(capability_data), Return(TPM_RC_SUCCESS)));
   }
 
+  void SetCr50(bool is_cr50) {
+    EXPECT_CALL(mock_tpm_state_, Initialize())
+        .WillOnce(Return(TPM_RC_SUCCESS));
+    uint32_t vendor_id = is_cr50 ? kVendorIdCr50 : 1;
+    EXPECT_CALL(mock_tpm_state_, GetTpmProperty(TPM_PT_MANUFACTURER, _))
+        .WillOnce(DoAll(SetArgPointee<1>(vendor_id), Return(true)));
+  }
+
  protected:
   TrunksFactoryForTest factory_;
+  NiceMock<MockCommandTransceiver> mock_transceiver_;
   NiceMock<MockBlobParser> mock_blob_parser_;
   NiceMock<MockTpmState> mock_tpm_state_;
   NiceMock<MockTpm> mock_tpm_;
@@ -2148,6 +2158,51 @@ TEST_F(TpmUtilityTest, CreateIdentityKeyFail) {
   std::string key_blob;
   EXPECT_EQ(TPM_RC_FAILURE,
             utility_.CreateIdentityKey(TPM_ALG_RSA, nullptr, &key_blob));
+}
+
+TEST_F(TpmUtilityTest, DeclareTpmFirmwareStableNonCr50) {
+  SetCr50(false);
+  EXPECT_CALL(mock_transceiver_, SendCommandAndWait(_))
+      .Times(0);
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.DeclareTpmFirmwareStable());
+}
+
+TEST_F(TpmUtilityTest, DeclareTpmFirmwareStableCr50Success) {
+  // A hand-coded kCr50SubcmdInvalidateInactiveRW command and response.
+  std::string expected_command(
+      "\x80\x01"          // tag=TPM_ST_NO_SESSIONS
+      "\x00\x00\x00\x0C"  // size=12
+      "\x20\x00\x00\x00"  // code=kCr50VendorCC
+      "\x00\x14",         // subcommand=kCr50SubcmdInvalidateInactiveRW
+      12);
+  std::string command_response(
+      "\x80\x01"           // tag=TPM_ST_NO_SESSIONS
+      "\x00\x00\x00\x0A"   // size=10
+      "\x00\x00\x00\x00",  // code=TPM_RC_SUCCESS
+      10);
+  SetCr50(true);
+  EXPECT_CALL(mock_transceiver_, SendCommandAndWait(expected_command))
+      .WillOnce(Return(command_response));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.DeclareTpmFirmwareStable());
+}
+
+TEST_F(TpmUtilityTest, DeclareTpmFirmwareStableCr50Failure) {
+  // A hand-coded kCr50SubcmdInvalidateInactiveRW command and response.
+  std::string expected_command(
+      "\x80\x01"          // tag=TPM_ST_NO_SESSIONS
+      "\x00\x00\x00\x0C"  // size=12
+      "\x20\x00\x00\x00"  // code=kCr50VendorCC
+      "\x00\x14",         // subcommand=kCr50SubcmdInvalidateInactiveRW
+      12);
+  std::string command_response(
+      "\x80\x01"           // tag=TPM_ST_NO_SESSIONS
+      "\x00\x00\x00\x0A"   // size=10
+      "\x00\x00\x01\x01",  // code=TPM_RC_FAILURE
+      10);
+  SetCr50(true);
+  EXPECT_CALL(mock_transceiver_, SendCommandAndWait(expected_command))
+      .WillOnce(Return(command_response));
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.DeclareTpmFirmwareStable());
 }
 
 }  // namespace trunks
