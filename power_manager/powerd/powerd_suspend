@@ -334,7 +334,7 @@ else
   # Suspend to RAM. This is piped through cat since we want to determine
   # the causes of failures -- dash's "echo" command appears to not print
   # anything in response to write errors.
-  error=$( (echo -n ${action} | cat > /sys/power/state) 2>&1)
+  error=$( (printf '%s' ${action} | cat > /sys/power/state) 2>&1)
   if [ $? = 0 ]; then
     # On resume:
     result=$RESULT_SUCCESS
