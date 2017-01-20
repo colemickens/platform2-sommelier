@@ -273,7 +273,7 @@ rm -f "${LAST_RESUME_TIMINGS_FILE}"
 
 # Store the current power status.
 power_supply_info 2> /dev/null \
-  | /bin/grep -Eq '^[[:space:]]+online:[[:space:]]+no$'
+  | grep -Eq '^[[:space:]]+online:[[:space:]]+no$'
 if [ $? -eq 0 ]; then
   echo OnBattery > "${POWER_STATUS_ON_SUSPEND_FILE}"
 else
