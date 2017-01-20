@@ -84,7 +84,7 @@ log_suspend_stats() {
   local tempfile="$(mktemp --tmpdir powerd_suspend_stats.XXXXXXXXXX)"
   # Omit blank lines and replace tabs with spaces so syslog won't escape them
   # to "#011".
-  grep -e '\S' <"${SUSPEND_STATS_FILE}" | tr '\t' ' ' >"${tempfile}"
+  grep -e '\S' "${SUSPEND_STATS_FILE}" | tr '\t' ' ' >"${tempfile}"
   log_msg_from_file "${tempfile}"
   log_msg "--- end ${SUSPEND_STATS_FILE} ---"
   rm "${tempfile}"
