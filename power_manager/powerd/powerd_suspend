@@ -152,7 +152,7 @@ has_huawei_modem() {
 
 # Drive the Blaze MODEM_EN gpio for $1 "on" or "off".
 do_blaze_huawei_modem() {
-  gpioval=1
+  local gpioval=1
   [ "$1" = off ] && gpioval=0
 
   cd /sys/class/gpio
