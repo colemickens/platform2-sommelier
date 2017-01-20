@@ -95,7 +95,7 @@
             'usb_interface_descriptor_unittest.cc',
             'usb_modem_switch_context_unittest.cc',
             'usb_transfer_unittest.cc',
-          ]
+          ],
         },
       ],
     }],

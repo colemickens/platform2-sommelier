@@ -98,7 +98,7 @@
         'libweave_common',
       ],
       'sources': [
-        'src/empty.cc'
+        'src/empty.cc',
       ],
     },
     {
@@ -135,8 +135,8 @@
           ],
           'includes': ['../../platform2/common-mk/common_test.gypi'],
           'sources': [
-            '<!@(find src/ -name *unittest.cc)'
-            '<!@(find third_party/chromium/crypto/ -name *unittest.cc)'
+            '<!@(find src/ -name *unittest.cc)',
+            '<!@(find third_party/chromium/crypto/ -name *unittest.cc)',
           ],
         },
       ],

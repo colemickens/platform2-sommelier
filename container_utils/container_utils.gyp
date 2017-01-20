@@ -38,7 +38,7 @@
       'variables': {
         'deps': [
           'libcontainer',
-          'libbrillo-<(libbase_ver)'
+          'libbrillo-<(libbase_ver)',
         ],
       },
       'sources': [

@@ -34,7 +34,7 @@
           ],
         },
       },
-      'include_dirs': ['.']
+      'include_dirs': ['.'],
     },
     {
       'target_name': 'feedback_daemon',
@@ -68,7 +68,7 @@
           ],
         },
       },
-      'include_dirs': ['.']
+      'include_dirs': ['.'],
     },
     {
       'target_name': 'feedback_client',
@@ -96,7 +96,7 @@
         '<(proto_in_dir)/web.proto',
       ],
       'includes': [
-        '../common-mk/protoc.gypi'
+        '../common-mk/protoc.gypi',
       ],
     },
   ],
@@ -113,7 +113,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'feedback_service_unittest.cc',
-          ]
+          ],
         },
       ],
     }],

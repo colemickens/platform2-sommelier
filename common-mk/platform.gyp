@@ -37,11 +37,11 @@
         # "outputs" can not be empty. Set it to refer to this gyp file so
         # ninja never actually runs this rule.
         'outputs': [
-          'platform.gyp'
+          'platform.gyp',
         ],
         'action_name': 'phony',
-        'action': ['true']
+        'action': ['true'],
       }],
     },
-  ]
+  ],
 }

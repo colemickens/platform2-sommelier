@@ -70,7 +70,7 @@
           'action_name': 'generate-buffet-proxies',
           'variables': {
             'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
-            'proxy_output_file': 'include/buffet/dbus-proxies.h'
+            'proxy_output_file': 'include/buffet/dbus-proxies.h',
           },
           'sources': [
             'dbus_bindings/org.chromium.Buffet.Command.xml',

@@ -62,7 +62,7 @@
       'dependencies': ['liblorgnette'],
       'sources': [
         'main.cc',
-      ]
+      ],
     },
   ],
   'conditions': [

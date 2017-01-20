@@ -83,9 +83,9 @@
       'link_settings': {
         'libraries': [
           '-linstallattributes-<(libbase_ver)',
-        ]
+        ],
       },
-    }
+    },
   ],
   # Unit tests.
   'conditions': [

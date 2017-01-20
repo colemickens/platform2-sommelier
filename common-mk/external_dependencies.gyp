@@ -95,7 +95,7 @@
         'inputs': [
           '<(policy_tools_dir)/generate_policy_source.py',
           '<(policy_resources_dir)/policy_templates.json',
-          '<(policy_resources_dir)/VERSION'
+          '<(policy_resources_dir)/VERSION',
         ],
         'outputs': [ '<(proto_out_dir)/cloud_policy.proto' ],
         'action': [
@@ -105,7 +105,7 @@
           '<(OS)',
           '1',         # chromeos-flag
           '<(policy_resources_dir)/policy_templates.json',
-        ]
+        ],
       }],
     },
     {

@@ -79,7 +79,7 @@
       'dependencies': ['libdisks'],
       'sources': [
         'main.cc',
-      ]
+      ],
     },
   ],
   'conditions': [
@@ -111,7 +111,7 @@
             'system_mounter_unittest.cc',
             'udev_device_unittest.cc',
             'usb_device_info_unittest.cc',
-          ]
+          ],
         },
       ],
     }],

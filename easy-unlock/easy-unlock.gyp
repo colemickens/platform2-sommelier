@@ -32,7 +32,7 @@
       'type': 'executable',
       'dependencies': ['libeasyunlock'],
       'sources': ['main.cc'],
-    }
+    },
   ],
   'conditions': [
     ['USE_test == 1', {
@@ -51,7 +51,7 @@
             'easy_unlock_unittest.cc',
             'test_runner.cc',
           ],
-        }
+        },
       ],
     }],
   ],

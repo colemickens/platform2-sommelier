@@ -21,8 +21,8 @@
       ],
       'dependencies': [
         'libbootstat',
-      ]
-    }
+      ],
+    },
   ],
   'conditions': [
     ['USE_test == 1', {

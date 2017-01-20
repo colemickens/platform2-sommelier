@@ -28,7 +28,7 @@
           ],
           'action': [
             'sh', '-c',
-            'cp <@(_inputs) <(proto_out_dir)/ && sed -i s:LITE_RUNTIME:CODE_SIZE:g <@(_outputs)'
+            'cp <@(_inputs) <(proto_out_dir)/ && sed -i s:LITE_RUNTIME:CODE_SIZE:g <@(_outputs)',
           ],
         },
       ],
@@ -54,7 +54,7 @@
         'signed_secret.proto',
       ],
       'includes': [
-        '../common-mk/protoc.gypi'
+        '../common-mk/protoc.gypi',
       ],
     },
 
@@ -234,7 +234,7 @@
       },
       'sources': [
         'cryptohome.cc',
-        'tpm_live_test.cc'
+        'tpm_live_test.cc',
       ],
     },
     {

@@ -32,7 +32,7 @@
         '<(proto_in_dir)/rpc.proto',
       ],
       'includes': [
-        '../common-mk/protoc.gypi'
+        '../common-mk/protoc.gypi',
       ],
     },
     {
@@ -125,13 +125,13 @@
       'type': 'static_library',
       'sources': [
         'src/dbus_utils.cc',
-      ]
+      ],
     },
     {
       'target_name': 'debugd',
       'type': 'executable',
       'dependencies': [
-        'libdebugd'
+        'libdebugd',
       ],
       'variables': {
         'deps': [
@@ -140,7 +140,7 @@
       },
       'sources': [
         'src/main.cc',
-      ]
+      ],
     },
     {
       'target_name': 'capture_packets',
@@ -150,34 +150,34 @@
       ],
       'sources': [
         'src/helpers/capture_packets.cc',
-      ]
+      ],
     },
     {
       'target_name': 'dev_features_chrome_remote_debugging',
       'type': 'executable',
       'dependencies': [
-        'libdebugd'
+        'libdebugd',
       ],
       'sources': [
         'src/helpers/dev_features_chrome_remote_debugging.cc',
-      ]
+      ],
     },
     {
       'target_name': 'dev_features_password',
       'type': 'executable',
       'dependencies': [
-        'libdebugd'
+        'libdebugd',
       ],
       'sources': [
         'src/helpers/dev_features_password.cc',
         'src/helpers/dev_features_password_utils.cc',
-      ]
+      ],
     },
     {
       'target_name': 'dev_features_rootfs_verification',
       'type': 'executable',
       'dependencies': [
-        'libdebugd'
+        'libdebugd',
       ],
       'link_settings': {
         'libraries': [
@@ -186,23 +186,23 @@
       },
       'sources': [
         'src/helpers/dev_features_rootfs_verification.cc',
-      ]
+      ],
     },
     {
       'target_name': 'dev_features_ssh',
       'type': 'executable',
       'dependencies': [
-        'libdebugd'
+        'libdebugd',
       ],
       'sources': [
         'src/helpers/dev_features_ssh.cc',
-      ]
+      ],
     },
     {
       'target_name': 'dev_features_usb_boot',
       'type': 'executable',
       'dependencies': [
-        'libdebugd'
+        'libdebugd',
       ],
       'link_settings': {
         'libraries': [
@@ -211,14 +211,14 @@
       },
       'sources': [
         'src/helpers/dev_features_usb_boot.cc',
-      ]
+      ],
     },
     {
       'target_name': 'icmp',
       'type': 'executable',
       'sources': [
         'src/helpers/icmp.cc',
-      ]
+      ],
     },
     {
       'target_name': 'netif',
@@ -229,7 +229,7 @@
       ],
       'sources': [
         'src/helpers/netif.cc',
-      ]
+      ],
     },
     {
       'target_name': 'network_status',
@@ -240,7 +240,7 @@
       ],
       'sources': [
         'src/helpers/network_status.cc',
-      ]
+      ],
     },
     {
       'target_name': 'get_feedback_logs',
@@ -260,7 +260,7 @@
           ],
           'sources': [
             'src/helpers/modem_status.cc',
-          ]
+          ],
         },
       ],
     }],
@@ -291,7 +291,7 @@
             'src/process_with_id_test.cc',
             'src/sandboxed_process_test.cc',
             'src/testrunner.cc',
-          ]
+          ],
         },
       ],
     }],
@@ -306,7 +306,7 @@
           ],
           'sources': [
             'src/helpers/wimax_status.cc',
-          ]
+          ],
         },
       ],
     }],

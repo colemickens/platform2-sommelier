@@ -30,7 +30,7 @@
       'link_settings': {
         'libraries': [
           '-lpolicy-<(libbase_ver)',
-        ]
+        ],
       },
       'sources': [
         'allow_group_tty_device_rule.cc',

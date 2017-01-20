@@ -111,7 +111,7 @@
           'sources': [
             'carrier.cc',
             'cromo_server_unittest.cc',
-          ]
+          ],
         },
         {
           'target_name': 'utilities_unittest',
@@ -120,7 +120,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'utilities_unittest.cc',
-          ]
+          ],
         },
         {
           'target_name': 'sms_message_unittest',
@@ -129,7 +129,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'sms_message_unittest.cc',
-          ]
+          ],
         },
         {
           'target_name': 'sms_cache_unittest',
@@ -138,7 +138,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'sms_cache_unittest.cc',
-          ]
+          ],
         },
       ],
     }],

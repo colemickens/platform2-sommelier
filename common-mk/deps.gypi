@@ -11,5 +11,5 @@
       ],
       'action': ['sh', '-c', 'echo >@(deps) > >@(_outputs)'],
     },
-  ]
+  ],
 }

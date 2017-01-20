@@ -5,6 +5,6 @@
     'type': 'none',
     'dependencies': [
       'quipper.gyp:*',
-    ]
-  }]
+    ],
+  }],
 }

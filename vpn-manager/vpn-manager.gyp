@@ -12,7 +12,7 @@
       'IPSEC_WHACK="/usr/libexec/ipsec/whack"',
       'IPSEC_UPDOWN="/usr/libexec/l2tpipsec_vpn/pluto_updown"',
       'L2TPD="/usr/sbin/xl2tpd"',
-      'PKCS11_LIB="<(libdir)/libchaps.so"'
+      'PKCS11_LIB="<(libdir)/libchaps.so"',
     ],
   },
   'targets': [
@@ -45,7 +45,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'daemon_test.cc',
-          ]
+          ],
         },
         {
           'target_name': 'ipsec_manager_test',
@@ -54,7 +54,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'ipsec_manager_test.cc',
-          ]
+          ],
         },
         {
           'target_name': 'l2tp_manager_test',
@@ -63,7 +63,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'l2tp_manager_test.cc',
-          ]
+          ],
         },
         {
           'target_name': 'service_manager_test',
@@ -72,7 +72,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'service_manager_test.cc',
-          ]
+          ],
         },
       ],
     }],

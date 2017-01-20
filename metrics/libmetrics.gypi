@@ -4,7 +4,7 @@
       'deps': [
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
-      ]
+      ],
     },
     'cflags_cc': [
       '-fno-exceptions',

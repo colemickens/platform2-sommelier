@@ -75,7 +75,7 @@
         {
           'action_name': 'generate-lib-cros-service-proxies',
           'variables': {
-            'proxy_output_file': 'include/libcrosservice/dbus-proxies.h'
+            'proxy_output_file': 'include/libcrosservice/dbus-proxies.h',
           },
           'sources': [
             './dbus_bindings/org.chromium.LibCrosService.xml',

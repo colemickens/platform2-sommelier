@@ -206,7 +206,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'chaps_test.cc',
-          ]
+          ],
         },
         {
           'target_name': 'chaps_service_test',
@@ -219,7 +219,7 @@
           'sources': [
             'chaps_service.cc',
             'chaps_service_test.cc',
-          ]
+          ],
         },
         {
           'target_name': 'slot_manager_test',
@@ -232,7 +232,7 @@
           'sources': [
             'slot_manager_impl.cc',
             'slot_manager_test.cc',
-          ]
+          ],
         },
         {
           'target_name': 'session_test',
@@ -245,7 +245,7 @@
           'sources': [
             'session_impl.cc',
             'session_test.cc',
-          ]
+          ],
         },
         {
           'target_name': 'object_test',
@@ -258,7 +258,7 @@
           'sources': [
             'object_impl.cc',
             'object_test.cc',
-          ]
+          ],
         },
         {
           'target_name': 'object_policy_test',
@@ -277,7 +277,7 @@
             'object_policy_private_key.cc',
             'object_policy_secret_key.cc',
             'object_policy_test.cc',
-          ]
+          ],
         },
         {
           'target_name': 'object_pool_test',
@@ -290,7 +290,7 @@
           'sources': [
             'object_pool_impl.cc',
             'object_pool_test.cc',
-          ]
+          ],
         },
         {
           'target_name': 'object_store_test',
@@ -311,7 +311,7 @@
           'sources': [
             'object_store_impl.cc',
             'object_store_test.cc',
-          ]
+          ],
         },
         {
           'target_name': 'opencryptoki_importer_test',
@@ -329,7 +329,7 @@
           'sources': [
             'opencryptoki_importer.cc',
             'opencryptoki_importer_test.cc',
-          ]
+          ],
         },
         {
           'target_name': 'isolate_login_client_test',
@@ -348,7 +348,7 @@
             'token_file_manager_chromeos.cc',
             'isolate_login_client.cc',
             'isolate_login_client_test.cc',
-          ]
+          ],
         },
         # Live Tests
         # Note: These tests require a live system with gtest and gmock
@@ -369,7 +369,7 @@
             'chapsd_test.cc',
             'chaps_service_redirect.cc',
             'platform_globals_chromeos.cc',
-          ]
+          ],
         },
         {
           'target_name': 'tpm_utility_test',
@@ -421,7 +421,7 @@
               'sources': [
                 'tpm2_utility_impl.cc',
                 'tpm2_utility_test.cc',
-              ]
+              ],
             },
           ],
         }],

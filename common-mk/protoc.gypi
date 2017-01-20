@@ -64,5 +64,5 @@
     'include_dirs': [
       '<(SHARED_INTERMEDIATE_DIR)',
     ],
-  }
+  },
 }

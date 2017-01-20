@@ -153,7 +153,7 @@
                 'network_unittest.cc',
                 'testrunner.cc',
                 'utility_unittest.cc',
-              ]
+              ],
             },
           ],
         }],

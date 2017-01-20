@@ -5,7 +5,7 @@
         'dbus-1',
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
-      ]
+      ],
     },
     'cflags_cc': [
       '-fno-exceptions',
@@ -40,7 +40,7 @@
       ],
       'sources': [
         'metrics_client.cc',
-      ]
+      ],
     },
     {
       'target_name': 'libupload_service',
@@ -77,7 +77,7 @@
         'uploader/system_profile_cache.cc',
         'uploader/sender_http.cc',
       ],
-      'include_dirs': ['.']
+      'include_dirs': ['.'],
     },
     {
       'target_name': 'metrics_proto',
@@ -93,7 +93,7 @@
         '<(proto_in_dir)/user_action_event.proto',
       ],
       'includes': [
-        '../common-mk/protoc.gypi'
+        '../common-mk/protoc.gypi',
       ],
     },
   ],
@@ -116,7 +116,7 @@
           'sources': [
             'persistent_integer.cc',
             'persistent_integer_test.cc',
-          ]
+          ],
         },
         {
           'target_name': 'metrics_library_test',
@@ -132,8 +132,8 @@
           'link_settings': {
             'libraries': [
               '-lpolicy-<(libbase_ver)',
-            ]
-          }
+            ],
+          },
         },
         {
           'target_name': 'timer_test',
@@ -142,7 +142,7 @@
           'sources': [
             'timer.cc',
             'timer_test.cc',
-          ]
+          ],
         },
         {
           'target_name': 'upload_service_test',
@@ -160,7 +160,7 @@
           'includes':[
             '../common-mk/common_test.gypi',
           ],
-          'include_dirs': ['.']
+          'include_dirs': ['.'],
         },
       ],
     }],
@@ -180,5 +180,5 @@
         },
       ],
     }],
-  ]
+  ],
 }

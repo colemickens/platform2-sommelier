@@ -32,7 +32,7 @@
       ],
       'sources': [
         'libcros_config/cros_config_unittest.cc',
-      ]
-    }
+      ],
+    },
   ],
 }

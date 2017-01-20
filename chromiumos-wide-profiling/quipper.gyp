@@ -5,11 +5,11 @@
         'libchrome-<(libbase_ver)',
         'openssl',
         'protobuf',
-      ]
+      ],
     },
     'include_dirs': [
       'compat/cros',
-    ]
+    ],
   },
   'targets': [
     {
@@ -110,7 +110,7 @@
       ],
       'sources': [
         'quipper.cc',
-      ]
+      ],
     },
     {
       'target_name': 'perf_converter',
@@ -121,7 +121,7 @@
       ],
       'sources': [
         'perf_converter.cc',
-      ]
+      ],
     },
   ],
   'conditions': [
@@ -140,7 +140,7 @@
           'sources': [
             'conversion_utils_test.cc',
             'test_runner.cc',
-          ]
+          ],
         },
         {
           'target_name': 'perf_recorder_test',
@@ -152,7 +152,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'perf_recorder_test.cc',
-          ]
+          ],
         },
         {
           'target_name': 'unit_tests',
