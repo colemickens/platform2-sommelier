@@ -152,8 +152,9 @@ has_huawei_modem() {
 
 # Drive the Blaze MODEM_EN gpio for $1 "on" or "off".
 do_blaze_huawei_modem() {
+  local op="$1"
   local gpioval=1
-  [ "$1" = off ] && gpioval=0
+  [ "${op}" = off ] && gpioval=0
 
   cd /sys/class/gpio
   if [ ! -d gpio148 ]; then
@@ -162,9 +163,9 @@ do_blaze_huawei_modem() {
   echo out > gpio148/direction
   echo $gpioval > gpio148/value
   if [ $? -eq 0 ]; then
-    log_msg "Power $1 Huawei modem"
+    log_msg "Power ${op} Huawei modem"
   else
-    log_msg "Failed to power $1 Huawei modem"
+    log_msg "Failed to power ${op} Huawei modem"
   fi
 }
 
