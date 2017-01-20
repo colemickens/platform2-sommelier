@@ -364,7 +364,7 @@ else
     fi
 
     if [ -e /sys/firmware/log ]; then
-      # Grep /sys/firmware/log for WAK
+      # Grep /sys/firmware/log for WAK.
       wakeup_source="$(grep -A1 -B1 "PM1_STS: WAK" /sys/firmware/log)"
       if [ -z "${wakeup_source}" ]; then
         wakeup_source='unknown'
@@ -378,7 +378,7 @@ else
     # Revive the modem if it was present prior to suspending but is absent
     # now.
     if [ "${lumpy_with_gobi_modem}" -eq 1 ]; then
-      if ! has_gobi_modem ; then
+      if ! has_gobi_modem; then
         log_msg "Reviving lumpy gobi modem"
         do_lumpy_gobi_modem_revive
       fi
