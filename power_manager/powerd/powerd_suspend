@@ -150,11 +150,24 @@ has_huawei_modem() {
   lsusb -d 12d1:15bb
 }
 
-# Drive the Blaze MODEM_EN gpio for $1 "on" or "off".
-do_blaze_huawei_modem() {
+# Powers "on" or "off" the built-in modem on Blaze by driving the MODEM_EN
+# GPIO.
+power_blaze_modem() {
   local op="$1"
-  local gpioval=1
-  [ "${op}" = off ] && gpioval=0
+  local gpioval
+
+  case "${op}" in
+    on)
+      gpioval=1
+      ;;
+    off)
+      gpioval=0
+      ;;
+    *)
+      log_msg "Invalid operation 'power_blaze_modem ${op}'"
+      return 1
+      ;;
+  esac
 
   cd /sys/class/gpio
   if [ ! -d gpio148 ]; then
@@ -162,10 +175,13 @@ do_blaze_huawei_modem() {
   fi
   echo out > gpio148/direction
   echo "${gpioval}" > gpio148/value
+
   if [ $? -eq 0 ]; then
-    log_msg "Power ${op} Huawei modem"
+    log_msg "Power ${op} built-in modem"
+    return 0
   else
-    log_msg "Failed to power ${op} Huawei modem"
+    log_msg "Failed to power ${op} built-in modem"
+    return 1
   fi
 }
 
@@ -305,7 +321,7 @@ if saw_wakeup_event; then
 else
   # Before suspending, power down this problematic modem.
   if [ "${blaze_with_huawei_modem}" -eq 1 ]; then
-    do_blaze_huawei_modem off
+    power_blaze_modem off
   fi
   if [ "${kip_with_huawei_modem}" -eq 1 ]; then
     ec_power_modem off
@@ -386,7 +402,7 @@ else
 
   # Power back on the Huawei modem if it was powered off before suspend.
   if [ "${blaze_with_huawei_modem}" -eq 1 ]; then
-    do_blaze_huawei_modem on
+    power_blaze_modem on
   fi
   if [ "${kip_with_huawei_modem}" -eq 1 ]; then
     ec_power_modem on
