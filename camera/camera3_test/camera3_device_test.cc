@@ -434,7 +434,7 @@ class Camera3DeviceDefaultSettings
 TEST_P(Camera3DeviceDefaultSettings, ConstructDefaultSettings) {
   int type = std::get<1>(GetParam());
 
-  ASSERT_TRUE(NULL != cam_device_.ConstructDefaultRequestSettings(type))
+  ASSERT_NE(nullptr, cam_device_.ConstructDefaultRequestSettings(type))
       << "Camera default settings are NULL";
 }
 

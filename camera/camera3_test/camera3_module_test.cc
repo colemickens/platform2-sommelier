@@ -8,39 +8,31 @@
 
 namespace camera3_test {
 
+static camera_module_t* g_cam_module = NULL;
+
+static void InitCameraModule(void*& cam_hal_handle) {
+  const char kCameraHalDllName[] = "camera_hal.so";
+  cam_hal_handle = dlopen(kCameraHalDllName, RTLD_NOW);
+  ASSERT_NE(nullptr, cam_hal_handle) << "Failed to dlopen: " << dlerror();
+
+  g_cam_module = static_cast<camera_module_t*>(
+      dlsym(cam_hal_handle, HAL_MODULE_INFO_SYM_AS_STR));
+  ASSERT_NE(nullptr, g_cam_module) << "Camera module is invalid";
+  ASSERT_NE(nullptr, g_cam_module->get_number_of_cameras)
+      << "get_number_of_cameras is not implemented";
+  ASSERT_NE(nullptr, g_cam_module->get_camera_info)
+      << "get_camera_info is not implemented";
+  ASSERT_NE(nullptr, g_cam_module->common.methods->open)
+      << "open() is unimplemented";
+}
+
+static camera_module_t* GetCameraModule() {
+  return g_cam_module;
+}
+
 // Camera module
 
-Camera3Module::Camera3Module() : cam_module_(NULL) {
-  Create();
-}
-
-Camera3Module::~Camera3Module() {
-  if (cam_hal_handle_) {
-    dlclose(cam_hal_handle_);
-  }
-}
-
-void Camera3Module::Create() {
-  const camera_module_t* cam_module = NULL;
-  const char kCameraHalDllName[] = "camera_hal.so";
-
-  cam_hal_handle_ = dlopen(kCameraHalDllName, RTLD_NOW);
-  ASSERT_TRUE(NULL != cam_hal_handle_) << "Failed to dlopen: " << dlerror();
-
-  cam_module = static_cast<const camera_module_t*>(
-      dlsym(cam_hal_handle_, HAL_MODULE_INFO_SYM_AS_STR));
-
-  ASSERT_TRUE(NULL != cam_module) << "Camera module is invalid";
-  ASSERT_TRUE(NULL != cam_module->get_number_of_cameras)
-      << "get_number_of_cameras is not implemented";
-  ASSERT_TRUE(NULL != cam_module->get_camera_info)
-      << "get_camera_info is not implemented";
-  ASSERT_TRUE(NULL != cam_module->common.methods->open)
-      << "open() is unimplemented";
-
-  // Everything looks good
-  cam_module_ = cam_module;
-}
+Camera3Module::Camera3Module() : cam_module_(GetCameraModule()) {}
 
 int Camera3Module::Initialize() {
   return cam_module_ ? 0 : -ENODEV;
@@ -148,7 +140,7 @@ TEST_F(Camera3ModuleFixture, OpenDeviceOfBadIndices) {
   int bad_indices[] = {-1, cam_module_.GetNumberOfCameras(),
                        cam_module_.GetNumberOfCameras() + 1};
   for (size_t i = 0; i < arraysize(bad_indices); ++i) {
-    ASSERT_TRUE(NULL == cam_module_.OpenDevice(bad_indices[i]))
+    ASSERT_EQ(nullptr, cam_module_.OpenDevice(bad_indices[i]))
         << "Open camera device of bad index " << bad_indices[i];
   }
 }
@@ -186,8 +178,8 @@ TEST_F(Camera3ModuleFixture, IsActiveArraySizeSubsetOfPixelArraySize) {
 TEST_F(Camera3ModuleFixture, OpenDevice) {
   for (int cam_id = 0; cam_id < cam_module_.GetNumberOfCameras(); cam_id++) {
     camera3_device* cam_dev = cam_module_.OpenDevice(cam_id);
-    ASSERT_TRUE(NULL != cam_dev) << "Camera open() returned a NULL device";
-    ASSERT_TRUE(NULL != cam_dev->common.close)
+    ASSERT_NE(nullptr, cam_dev) << "Camera open() returned a NULL device";
+    ASSERT_NE(nullptr, cam_dev->common.close)
         << "Camera close() is not implemented";
     cam_dev->common.close(&cam_dev->common);
   }
@@ -196,12 +188,12 @@ TEST_F(Camera3ModuleFixture, OpenDevice) {
 TEST_F(Camera3ModuleFixture, OpenDeviceTwice) {
   for (int cam_id = 0; cam_id < cam_module_.GetNumberOfCameras(); cam_id++) {
     camera3_device* cam_dev = cam_module_.OpenDevice(cam_id);
-    ASSERT_TRUE(NULL != cam_dev) << "Camera open() returned a NULL device";
+    ASSERT_NE(nullptr, cam_dev) << "Camera open() returned a NULL device";
     // Open the device again
     camera3_device* cam_bad_dev = cam_module_.OpenDevice(cam_id);
-    ASSERT_TRUE(NULL == cam_bad_dev) << "Opening camera device " << cam_id
-                                     << " should have failed";
-    ASSERT_TRUE(NULL != cam_dev->common.close)
+    ASSERT_EQ(nullptr, cam_bad_dev) << "Opening camera device " << cam_id
+                                    << " should have failed";
+    ASSERT_NE(nullptr, cam_dev->common.close)
         << "Camera close() is not implemented";
     cam_dev->common.close(&cam_dev->common);
   }
@@ -221,6 +213,22 @@ TEST_F(Camera3ModuleFixture, RequiredFormats) {
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+
+  // Open camera HAL and get module
+  void* cam_hal_handle = NULL;
+  camera3_test::InitCameraModule(cam_hal_handle);
+
+  int result = EXIT_FAILURE;
+  if (!testing::Test::HasFailure()) {
+    // Initialize and run all tests
+    ::testing::InitGoogleTest(&argc, argv);
+    result = RUN_ALL_TESTS();
+  }
+
+  if (cam_hal_handle) {
+    // Close Camera HAL
+    dlclose(cam_hal_handle);
+  }
+
+  return result;
 }

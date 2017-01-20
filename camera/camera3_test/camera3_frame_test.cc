@@ -36,7 +36,7 @@ int32_t Camera3FrameFixture::CreateCaptureRequest(int32_t type) {
   // Use default metadata settings
   const camera_metadata_t* default_settings;
   default_settings = cam_device_.ConstructDefaultRequestSettings(type);
-  EXPECT_TRUE(NULL != default_settings) << "Camera default settings are NULL";
+  EXPECT_NE(nullptr, default_settings) << "Camera default settings are NULL";
   if (HasFailure()) {
     return -EINVAL;
   }
@@ -75,14 +75,14 @@ void Camera3FrameFixture::WaitCaptureResult(int32_t ms) {
 
 void Camera3FrameFixture::ProcessCaptureResult(
     const camera3_capture_result* result) {
-  ASSERT_TRUE(NULL != result) << "Capture result is null";
+  ASSERT_NE(nullptr, result) << "Capture result is null";
   ASSERT_TRUE((result->result != NULL) || (result->num_output_buffers != 0) ||
               (result->input_buffer != NULL))
       << "No result data provided by HAL for frame " << result->frame_number;
 
   for (uint32_t i = 0; i < result->num_output_buffers; i++) {
     camera3_stream_buffer_t stream_buffer = result->output_buffers[i];
-    ASSERT_TRUE(NULL != stream_buffer.buffer)
+    ASSERT_NE(nullptr, stream_buffer.buffer)
         << "Capture result output buffer is null";
     ASSERT_EQ(CAMERA3_BUFFER_STATUS_OK, stream_buffer.status)
         << "Capture result buffer status error";

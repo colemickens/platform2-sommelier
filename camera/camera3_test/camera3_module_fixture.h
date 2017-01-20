@@ -18,8 +18,6 @@ class Camera3Module {
  public:
   Camera3Module();
 
-  ~Camera3Module();
-
   // Initialize
   int Initialize();
 
@@ -39,10 +37,6 @@ class Camera3Module {
   int GetCameraInfo(int cam_id, camera_info* info) const;
 
  private:
-  void Create();
-
-  void* cam_hal_handle_;
-
   const camera_module_t* cam_module_;
 
   DISALLOW_COPY_AND_ASSIGN(Camera3Module);
