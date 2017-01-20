@@ -77,10 +77,6 @@ class SessionManagerService
   // Path to magic file that will trigger device wiping on next boot.
   static const char kResetFile[];
 
-  // Constants for setting the ARC instance cgroup state.
-  static const char kFrozen[];
-  static const char kThawed[];
-
   // If you want to call any of these setters, you should do so before calling
   // any other methods on this class.
   class TestApi {
@@ -101,18 +97,8 @@ class SessionManagerService
     void set_exit_on_child_done(bool do_exit) {
       session_manager_service_->exit_on_child_done_ = do_exit;
     }
-
-    // Sets up powerd and arc cgroup freezer state location
-    // for testing ARC functionality.
     void set_powerd_object_proxy(dbus::ObjectProxy* proxy) {
       session_manager_service_->powerd_dbus_proxy_ = proxy;
-    }
-    void set_arc_cgroup_freezer_state_path(base::FilePath path) {
-      session_manager_service_->arc_cgroup_freezer_state_path_ = path;
-    }
-    void set_suspend_delay_id(int id) {
-      session_manager_service_->suspend_delay_id_ = id;
-      session_manager_service_->suspend_delay_set_up_ = true;
     }
 
     // Executes the CleanupChildren() method on the manager.
@@ -268,15 +254,6 @@ class SessionManagerService
   const std::string match_rule_;
   dbus::ExportedObject* session_manager_dbus_object_;  // Owned by bus_;
   dbus::ObjectProxy* powerd_dbus_proxy_;  // Owned by bus_.
-
-  // ARC instance related. |arc_cgroup_freezer_state_path_| is the path
-  // to the sysfs file that controls whether the instance's processes
-  // are frozen. |suspend_delay_id_| needs to be passed back to powerd
-  // after we are done freezing the instance to let it know we're ready
-  // to suspend.
-  base::FilePath arc_cgroup_freezer_state_path_;
-  bool suspend_delay_set_up_;
-  int suspend_delay_id_;
 
   LoginMetrics* login_metrics_;  // Owned by the caller.
   SystemUtils* system_;          // Owned by the caller.

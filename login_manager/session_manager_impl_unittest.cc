@@ -327,9 +327,9 @@ class SessionManagerImplTest : public ::testing::Test {
   dbus::ObjectProxy::WaitForServiceToBeAvailableCallback available_callback_;
   dbus::ObjectProxy::ResponseCallback time_sync_callback_;
 
-  // Used by fake closures to simulate calling into powerd to set up
-  // suspend delays when ARC starts or stops.
-  bool suspend_delay_set_up_;
+  // Used by fake closures to simulate doing whatever start/stop work needs
+  // doing for ARC.
+  bool arc_setup_completed_;
 
   SessionManagerImpl impl_;
   SessionManagerImpl::Error error_;
@@ -425,9 +425,9 @@ class SessionManagerImplTest : public ::testing::Test {
 
   void FakeRestartDevice() { actual_restarts_++; }
 
-  void FakeStartArcInstance() { suspend_delay_set_up_ = true; }
+  void FakeStartArcInstance() { arc_setup_completed_ = true; }
 
-  void FakeStopArcInstance() { suspend_delay_set_up_ = false; }
+  void FakeStopArcInstance() { arc_setup_completed_ = false; }
 
   string fake_salt_;
 
@@ -1111,12 +1111,12 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
       .Times(1);
   impl_.StartArcInstance(kSaneEmail, false, &error_);
   EXPECT_TRUE(android_container_.running());
-  EXPECT_TRUE(suspend_delay_set_up_);
+  EXPECT_TRUE(arc_setup_completed_);
   EXPECT_NE(base::TimeTicks(), impl_.GetArcStartTime(&start_time_error));
   impl_.StopArcInstance(&error_);
   EXPECT_FALSE(error_.is_set());
   EXPECT_FALSE(android_container_.running());
-  EXPECT_FALSE(suspend_delay_set_up_);
+  EXPECT_FALSE(arc_setup_completed_);
 #else
   impl_.StartArcInstance(kSaneEmail, false, &error_);
   EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
@@ -1180,10 +1180,10 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
       .RetiresOnSaturation();
   impl_.StartArcInstance(kSaneEmail, false, &error_);
   EXPECT_TRUE(android_container_.running());
-  EXPECT_TRUE(suspend_delay_set_up_);
+  EXPECT_TRUE(arc_setup_completed_);
   android_container_.SimulateCrash();
   EXPECT_FALSE(android_container_.running());
-  EXPECT_FALSE(suspend_delay_set_up_);
+  EXPECT_FALSE(arc_setup_completed_);
   // This should now fail since the container was cleaned up already.
   impl_.StopArcInstance(&error_);
   EXPECT_EQ(dbus_error::kContainerShutdownFail, error_.name());

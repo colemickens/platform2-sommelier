@@ -351,48 +351,4 @@ TEST_F(SessionManagerProcessTest, TestWipeOnBadState) {
   ASSERT_EQ(SessionManagerService::MUST_WIPE_DEVICE, manager_->exit_code());
 }
 
-TEST_F(SessionManagerProcessTest, SuspendAndResumeArcInstance) {
-  CreateMockJobAndInitManager(true);
-
-  const int kSuspendDelayId = 1000;
-  const int kSuspendId = 2000;
-  scoped_refptr<MockObjectProxy> powerd_object_proxy(new MockObjectProxy);
-  std::string cgroup_state;
-
-  manager_->test_api().set_powerd_object_proxy(powerd_object_proxy.get());
-  base::FilePath temp_file_path;
-  CHECK(base::CreateTemporaryFile(&temp_file_path));
-  manager_->test_api().set_arc_cgroup_freezer_state_path(temp_file_path);
-  manager_->test_api().set_suspend_delay_id(kSuspendDelayId);
-
-  // Fake the SuspendImminent signal.
-  dbus::Signal suspend_signal(
-      power_manager::kPowerManagerInterface,
-      power_manager::kSuspendImminentSignal);
-  power_manager::SuspendImminent suspend_imminent;
-  suspend_imminent.set_suspend_id(kSuspendId);
-  dbus::MessageWriter suspend_writer(&suspend_signal);
-  suspend_writer.AppendProtoAsArrayOfBytes(suspend_imminent);
-
-  // SuspendImminent should trigger a HandleSuspendReadiness response
-  // after freezing the ARC instance.
-  EXPECT_CALL(*powerd_object_proxy.get(),
-      MockCallMethodAndBlock(
-          HandleSuspendReadinessMethod(kSuspendDelayId, kSuspendId),
-          _));
-
-  manager_->test_api().Suspend(&suspend_signal);
-
-  EXPECT_TRUE(base::ReadFileToString(temp_file_path, &cgroup_state));
-  EXPECT_EQ(cgroup_state, SessionManagerService::kFrozen);
-
-  // SuspendDone should just trigger thawing the instance. We don't
-  // need to worry about faking a message here, since we don't use
-  // the message.
-  manager_->test_api().Resume();
-
-  EXPECT_TRUE(base::ReadFileToString(temp_file_path, &cgroup_state));
-  EXPECT_EQ(cgroup_state, SessionManagerService::kThawed);
-}
-
 }  // namespace login_manager
