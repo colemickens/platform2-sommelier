@@ -98,6 +98,22 @@ std::string ParseMountOptions(const std::vector<std::string>& options,
   return option_string_out;
 }
 
+// Sanitize |flags| that can be used for filesystem of a given |type|.
+int SanitizeFlags(const std::string &type, int flags) {
+    int sanitized_flags = flags;
+    // Right now, only sanitize sysfs and procfs.
+    if (type != "sysfs" && type != "proc")
+        return flags;
+
+    // sysfs and proc should always have nodev, noexec, nosuid.
+    // Warn the user if these weren't specified, then turn them on.
+    sanitized_flags |= (MS_NODEV | MS_NOEXEC | MS_NOSUID);
+    if (flags ^ sanitized_flags)
+        LOG(WARNING) << "Sanitized mount of type " << type << ".";
+
+    return sanitized_flags;
+}
+
 // Adds the mounts specified in |mounts| to |config_out|.
 void ConfigureMounts(const std::vector<OciMount>& mounts,
                      uid_t uid, gid_t gid,
@@ -107,6 +123,8 @@ void ConfigureMounts(const std::vector<OciMount>& mounts,
     std::string verity_options;
     std::string options = ParseMountOptions(mount.options, &flags, &loopback,
                                             &verity_options);
+    flags = SanitizeFlags(mount.type, flags);
+
     container_config_add_mount(config_out,
                                "mount",
                                mount.source.c_str(),
@@ -217,25 +235,6 @@ bool AppendMounts(const BindMounts& bind_mounts, container_config* config_out) {
       PLOG(ERROR) << "Failed to add mount of " << mount.first.value();
       return false;
     }
-  }
-
-  // Always mount sysfs
-  if (container_config_add_mount(config_out,
-                                 "sysfs",
-                                 "sysfs",
-                                 "/sys",
-                                 "sysfs",
-                                 NULL,
-                                 NULL,
-                                 0,
-                                 0,
-                                 0,
-                                 0750,
-                                 1,
-                                 0,
-                                 0)) {
-    PLOG(ERROR) << "Failed to add sysfs mount";
-    return false;
   }
 
   return true;
