@@ -21,7 +21,7 @@
 
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
-#include "power_manager/powerd/policy/input_controller.h"
+#include "power_manager/powerd/policy/input_event_handler.h"
 #include "power_manager/powerd/policy/suspender.h"
 #include "power_manager/powerd/system/audio_observer.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
@@ -44,9 +44,9 @@ class MetricsCollector;
 
 namespace policy {
 class BacklightController;
+class InputDeviceController;
 class StateController;
 class Suspender;
-class WakeupController;
 }  // namespace policy
 
 namespace system {
@@ -69,7 +69,7 @@ class Daemon;
 
 // Main class within the powerd daemon that ties all other classes together.
 class Daemon : public policy::BacklightControllerObserver,
-               public policy::InputController::Delegate,
+               public policy::InputEventHandler::Delegate,
                public policy::Suspender::Delegate,
                public system::AudioObserver,
                public system::PowerSupplyObserver {
@@ -108,7 +108,7 @@ class Daemon : public policy::BacklightControllerObserver,
       policy::BacklightController::BrightnessChangeCause cause,
       policy::BacklightController* source) override;
 
-  // Overridden from policy::InputController::Delegate:
+  // Overridden from policy::InputEventHandler::Delegate:
   void HandleLidClosed() override;
   void HandleLidOpened() override;
   void HandlePowerButtonEvent(ButtonState state) override;
@@ -306,10 +306,10 @@ class Daemon : public policy::BacklightControllerObserver,
   std::unique_ptr<system::UdevInterface> udev_;
   std::unique_ptr<system::InputWatcherInterface> input_watcher_;
   std::unique_ptr<policy::StateController> state_controller_;
-  std::unique_ptr<policy::InputController> input_controller_;
+  std::unique_ptr<policy::InputEventHandler> input_event_handler_;
   std::unique_ptr<system::AcpiWakeupHelperInterface> acpi_wakeup_helper_;
   std::unique_ptr<system::EcWakeupHelperInterface> ec_wakeup_helper_;
-  std::unique_ptr<policy::WakeupController> wakeup_controller_;
+  std::unique_ptr<policy::InputDeviceController> input_device_controller_;
   std::unique_ptr<system::AudioClientInterface> audio_client_;  // May be null.
   std::unique_ptr<system::PeripheralBatteryWatcher>
       peripheral_battery_watcher_;  // May be null.

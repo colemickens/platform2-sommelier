@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/policy/input_controller.h"
+#include "power_manager/powerd/policy/input_event_handler.h"
 
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
@@ -19,7 +19,7 @@
 namespace power_manager {
 namespace policy {
 
-InputController::InputController()
+InputEventHandler::InputEventHandler()
     : input_watcher_(NULL),
       delegate_(NULL),
       display_watcher_(NULL),
@@ -30,16 +30,16 @@ InputController::InputController()
       tablet_mode_(TabletMode::UNSUPPORTED) {
 }
 
-InputController::~InputController() {
+InputEventHandler::~InputEventHandler() {
   if (input_watcher_)
     input_watcher_->RemoveObserver(this);
 }
 
-void InputController::Init(system::InputWatcherInterface* input_watcher,
-                           Delegate* delegate,
-                           system::DisplayWatcherInterface* display_watcher,
-                           system::DBusWrapperInterface* dbus_wrapper,
-                           PrefsInterface* prefs) {
+void InputEventHandler::Init(system::InputWatcherInterface* input_watcher,
+                             Delegate* delegate,
+                             system::DisplayWatcherInterface* display_watcher,
+                             system::DBusWrapperInterface* dbus_wrapper,
+                             PrefsInterface* prefs) {
   input_watcher_ = input_watcher;
   input_watcher_->AddObserver(this);
   delegate_ = delegate;
@@ -55,7 +55,7 @@ void InputController::Init(system::InputWatcherInterface* input_watcher,
   tablet_mode_ = input_watcher_->GetTabletMode();
 }
 
-bool InputController::TriggerPowerButtonAcknowledgmentTimeoutForTesting() {
+bool InputEventHandler::TriggerPowerButtonAcknowledgmentTimeoutForTesting() {
   if (!power_button_acknowledgment_timer_.IsRunning())
     return false;
 
@@ -64,7 +64,7 @@ bool InputController::TriggerPowerButtonAcknowledgmentTimeoutForTesting() {
   return true;
 }
 
-void InputController::HandlePowerButtonAcknowledgment(
+void InputEventHandler::HandlePowerButtonAcknowledgment(
     const base::TimeTicks& timestamp) {
   VLOG(1) << "Received acknowledgment of power button press at "
           << timestamp.ToInternalValue() << "; expected "
@@ -77,7 +77,7 @@ void InputController::HandlePowerButtonAcknowledgment(
   }
 }
 
-void InputController::OnLidEvent(LidState state) {
+void InputEventHandler::OnLidEvent(LidState state) {
   lid_state_ = state;
   InputEvent proto;
   switch (lid_state_) {
@@ -96,7 +96,7 @@ void InputController::OnLidEvent(LidState state) {
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);
 }
 
-void InputController::OnTabletModeEvent(TabletMode mode) {
+void InputEventHandler::OnTabletModeEvent(TabletMode mode) {
   DCHECK_NE(mode, TabletMode::UNSUPPORTED);
   tablet_mode_ = mode;
 
@@ -110,7 +110,7 @@ void InputController::OnTabletModeEvent(TabletMode mode) {
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);
 }
 
-void InputController::OnPowerButtonEvent(ButtonState state) {
+void InputEventHandler::OnPowerButtonEvent(ButtonState state) {
   if (state == ButtonState::DOWN && only_has_external_display_ &&
       display_watcher_->GetDisplays().empty()) {
     delegate_->ShutDownForPowerButtonWithNoDisplay();
@@ -132,7 +132,7 @@ void InputController::OnPowerButtonEvent(ButtonState state) {
       power_button_acknowledgment_timer_.Start(FROM_HERE,
           base::TimeDelta::FromMilliseconds(
               kPowerButtonAcknowledgmentTimeoutMs),
-          this, &InputController::HandlePowerButtonAcknowledgmentTimeout);
+          this, &InputEventHandler::HandlePowerButtonAcknowledgmentTimeout);
     } else {
       expected_power_button_acknowledgment_timestamp_ = base::TimeTicks();
       power_button_acknowledgment_timer_.Stop();
@@ -142,11 +142,11 @@ void InputController::OnPowerButtonEvent(ButtonState state) {
   delegate_->HandlePowerButtonEvent(state);
 }
 
-void InputController::OnHoverStateChange(bool hovering) {
+void InputEventHandler::OnHoverStateChange(bool hovering) {
   delegate_->HandleHoverStateChange(hovering);
 }
 
-void InputController::HandlePowerButtonAcknowledgmentTimeout() {
+void InputEventHandler::HandlePowerButtonAcknowledgmentTimeout() {
   delegate_->ReportPowerButtonAcknowledgmentDelay(
       base::TimeDelta::FromMilliseconds(
           kPowerButtonAcknowledgmentTimeoutMs));

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/policy/wakeup_controller.h"
+#include "power_manager/powerd/policy/input_device_controller.h"
 
 #include <base/logging.h>
 #include <vector>
@@ -20,18 +20,18 @@ namespace policy {
 namespace {
 
 bool IsUsableInMode(const system::TaggedDevice& device,
-                    WakeupController::Mode mode) {
+                    InputDeviceController::Mode mode) {
   switch (mode) {
-    case WakeupController::Mode::CLOSED:
+    case InputDeviceController::Mode::CLOSED:
       return false;
-    case WakeupController::Mode::DOCKED:
-      return device.HasTag(WakeupController::kTagUsableWhenDocked);
-    case WakeupController::Mode::DISPLAY_OFF:
-      return device.HasTag(WakeupController::kTagUsableWhenDisplayOff);
-    case WakeupController::Mode::LAPTOP:
-      return device.HasTag(WakeupController::kTagUsableWhenLaptop);
-    case WakeupController::Mode::TABLET:
-      return device.HasTag(WakeupController::kTagUsableWhenTablet);
+    case InputDeviceController::Mode::DOCKED:
+      return device.HasTag(InputDeviceController::kTagUsableWhenDocked);
+    case InputDeviceController::Mode::DISPLAY_OFF:
+      return device.HasTag(InputDeviceController::kTagUsableWhenDisplayOff);
+    case InputDeviceController::Mode::LAPTOP:
+      return device.HasTag(InputDeviceController::kTagUsableWhenLaptop);
+    case InputDeviceController::Mode::TABLET:
+      return device.HasTag(InputDeviceController::kTagUsableWhenTablet);
   }
   NOTREACHED() << "Invalid mode " << static_cast<int>(mode);
   return false;
@@ -39,37 +39,37 @@ bool IsUsableInMode(const system::TaggedDevice& device,
 
 }  // namespace
 
-const char WakeupController::kTagInhibit[] = "inhibit";
-const char WakeupController::kTagUsableWhenDocked[] = "usable_when_docked";
-const char WakeupController::kTagUsableWhenDisplayOff[] =
+const char InputDeviceController::kTagInhibit[] = "inhibit";
+const char InputDeviceController::kTagUsableWhenDocked[] = "usable_when_docked";
+const char InputDeviceController::kTagUsableWhenDisplayOff[] =
     "usable_when_display_off";
-const char WakeupController::kTagUsableWhenLaptop[] = "usable_when_laptop";
-const char WakeupController::kTagUsableWhenTablet[] = "usable_when_tablet";
-const char WakeupController::kTagWakeup[] = "wakeup";
-const char WakeupController::kTagWakeupOnlyWhenUsable[] =
+const char InputDeviceController::kTagUsableWhenLaptop[] = "usable_when_laptop";
+const char InputDeviceController::kTagUsableWhenTablet[] = "usable_when_tablet";
+const char InputDeviceController::kTagWakeup[] = "wakeup";
+const char InputDeviceController::kTagWakeupOnlyWhenUsable[] =
     "wakeup_only_when_usable";
-const char WakeupController::kTagWakeupDisabled[] = "wakeup_disabled";
+const char InputDeviceController::kTagWakeupDisabled[] = "wakeup_disabled";
 
-const char WakeupController::kPowerWakeup[] = "power/wakeup";
-const char WakeupController::kEnabled[] = "enabled";
-const char WakeupController::kDisabled[] = "disabled";
-const char WakeupController::kUSBDevice[] = "usb_device";
+const char InputDeviceController::kPowerWakeup[] = "power/wakeup";
+const char InputDeviceController::kEnabled[] = "enabled";
+const char InputDeviceController::kDisabled[] = "disabled";
+const char InputDeviceController::kUSBDevice[] = "usb_device";
 
-const char WakeupController::kInhibited[] = "inhibited";
+const char InputDeviceController::kInhibited[] = "inhibited";
 
-const char WakeupController::kTPAD[] = "TPAD";
-const char WakeupController::kTSCR[] = "TSCR";
+const char InputDeviceController::kTPAD[] = "TPAD";
+const char InputDeviceController::kTSCR[] = "TSCR";
 
-WakeupController::WakeupController() {}
+InputDeviceController::InputDeviceController() {}
 
-WakeupController::~WakeupController() {
+InputDeviceController::~InputDeviceController() {
   if (udev_)
     udev_->RemoveTaggedDeviceObserver(this);
   if (backlight_controller_)
     backlight_controller_->RemoveObserver(this);
 }
 
-void WakeupController::Init(
+void InputDeviceController::Init(
     BacklightController* backlight_controller,
     system::UdevInterface* udev,
     system::AcpiWakeupHelperInterface* acpi_wakeup_helper,
@@ -100,22 +100,22 @@ void WakeupController::Init(
   initialized_ = true;
 }
 
-void WakeupController::SetLidState(LidState lid_state) {
+void InputDeviceController::SetLidState(LidState lid_state) {
   lid_state_ = lid_state;
   UpdatePolicy();
 }
 
-void WakeupController::SetTabletMode(TabletMode tablet_mode) {
+void InputDeviceController::SetTabletMode(TabletMode tablet_mode) {
   tablet_mode_ = tablet_mode;
   UpdatePolicy();
 }
 
-void WakeupController::SetDisplayMode(DisplayMode display_mode) {
+void InputDeviceController::SetDisplayMode(DisplayMode display_mode) {
   display_mode_ = display_mode;
   UpdatePolicy();
 }
 
-void WakeupController::OnBrightnessChange(
+void InputDeviceController::OnBrightnessChange(
     double brightness_percent,
     BacklightController::BrightnessChangeCause cause,
     BacklightController* source) {
@@ -129,16 +129,16 @@ void WakeupController::OnBrightnessChange(
   UpdatePolicy();
 }
 
-void WakeupController::OnTaggedDeviceChanged(
+void InputDeviceController::OnTaggedDeviceChanged(
     const system::TaggedDevice& device) {
   ConfigureInhibit(device);
   ConfigureWakeup(device);
 }
 
-void WakeupController::OnTaggedDeviceRemoved(
+void InputDeviceController::OnTaggedDeviceRemoved(
     const system::TaggedDevice& device) {}
 
-void WakeupController::SetWakeupFromS3(const system::TaggedDevice& device,
+void InputDeviceController::SetWakeupFromS3(const system::TaggedDevice& device,
                                        bool enabled) {
   // For USB devices, the input device does not have a power/wakeup property
   // itself, but the corresponding USB device does. If the matching device does
@@ -162,7 +162,7 @@ void WakeupController::SetWakeupFromS3(const system::TaggedDevice& device,
                     enabled ? kEnabled : kDisabled);
 }
 
-void WakeupController::ConfigureInhibit(
+void InputDeviceController::ConfigureInhibit(
     const system::TaggedDevice& device) {
   // Should this device be inhibited when it is not usable?
   if (!device.HasTag(kTagInhibit))
@@ -172,7 +172,7 @@ void WakeupController::ConfigureInhibit(
   udev_->SetSysattr(device.syspath(), kInhibited, inhibit ? "1" : "0");
 }
 
-void WakeupController::ConfigureWakeup(
+void InputDeviceController::ConfigureWakeup(
     const system::TaggedDevice& device) {
   // Do we manage wakeup for this device?
   if (!device.HasTag(kTagWakeup))
@@ -187,7 +187,7 @@ void WakeupController::ConfigureWakeup(
   SetWakeupFromS3(device, wakeup);
 }
 
-void WakeupController::ConfigureEcWakeup() {
+void InputDeviceController::ConfigureEcWakeup() {
   // Force the EC to do keyboard wakeups even in tablet mode when display off.
   if (!ec_wakeup_helper_->IsSupported())
     return;
@@ -195,7 +195,7 @@ void WakeupController::ConfigureEcWakeup() {
   ec_wakeup_helper_->AllowWakeupAsTablet(mode_ == Mode::DISPLAY_OFF);
 }
 
-void WakeupController::ConfigureAcpiWakeup() {
+void InputDeviceController::ConfigureAcpiWakeup() {
   // On x86 systems, setting power/wakeup in sysfs is not enough, we also need
   // to go through /proc/acpi/wakeup.
 
@@ -206,7 +206,7 @@ void WakeupController::ConfigureAcpiWakeup() {
   acpi_wakeup_helper_->SetWakeupEnabled(kTSCR, false);
 }
 
-WakeupController::Mode WakeupController::GetMode() const {
+InputDeviceController::Mode InputDeviceController::GetMode() const {
   if (allow_docked_mode_ && display_mode_ == DisplayMode::PRESENTATION &&
       lid_state_ == LidState::CLOSED)
     return Mode::DOCKED;
@@ -226,7 +226,7 @@ WakeupController::Mode WakeupController::GetMode() const {
     return Mode::LAPTOP;
 }
 
-void WakeupController::UpdatePolicy() {
+void InputDeviceController::UpdatePolicy() {
   DCHECK(udev_);
 
   Mode new_mode = GetMode();

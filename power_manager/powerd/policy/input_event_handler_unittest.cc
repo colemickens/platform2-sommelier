@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/policy/input_controller.h"
+#include "power_manager/powerd/policy/input_event_handler.h"
 
 #include <stdint.h>
 
@@ -73,13 +73,13 @@ std::string GetAcknowledgmentDelayAction(base::TimeDelta delay) {
                             delay.InMilliseconds());
 }
 
-class TestInputControllerDelegate : public InputController::Delegate,
-                                    public ActionRecorder {
+class TestInputEventHandlerDelegate : public InputEventHandler::Delegate,
+                                      public ActionRecorder {
  public:
-  TestInputControllerDelegate() {}
-  virtual ~TestInputControllerDelegate() {}
+  TestInputEventHandlerDelegate() {}
+  virtual ~TestInputEventHandlerDelegate() {}
 
-  // InputController::Delegate implementation:
+  // InputEventHandler::Delegate implementation:
   void HandleLidClosed() override {
     AppendAction(kLidClosed);
   }
@@ -107,24 +107,27 @@ class TestInputControllerDelegate : public InputController::Delegate,
   }
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(TestInputControllerDelegate);
+  DISALLOW_COPY_AND_ASSIGN(TestInputEventHandlerDelegate);
 };
 
 }  // namespace
 
-class InputControllerTest : public ::testing::Test {
+class InputEventHandlerTest : public ::testing::Test {
  public:
-  InputControllerTest() {
-    controller_.clock_for_testing()->set_current_time_for_testing(
+  InputEventHandlerTest() {
+    handler_.clock_for_testing()->set_current_time_for_testing(
         base::TimeTicks::FromInternalValue(1000));
   }
-  virtual ~InputControllerTest() {}
+  virtual ~InputEventHandlerTest() {}
 
  protected:
-  // Initializes |controller_|.
+  // Initializes |handler_|.
   void Init() {
-    controller_.Init(&input_watcher_, &delegate_, &display_watcher_,
-                     &dbus_wrapper_, &prefs_);
+    handler_.Init(&input_watcher_,
+                  &delegate_,
+                  &display_watcher_,
+                  &dbus_wrapper_,
+                  &prefs_);
   }
 
   // Tests that one InputEvent D-Bus signal has been sent and returns the
@@ -149,12 +152,12 @@ class InputControllerTest : public ::testing::Test {
 
   // Returns the current (fake) time.
   base::TimeTicks Now() {
-    return controller_.clock_for_testing()->GetCurrentTime();
+    return handler_.clock_for_testing()->GetCurrentTime();
   }
 
   // Advances the current time by |interval|.
   void AdvanceTime(const base::TimeDelta& interval) {
-    controller_.clock_for_testing()->set_current_time_for_testing(
+    handler_.clock_for_testing()->set_current_time_for_testing(
         Now() + interval);
   }
 
@@ -162,11 +165,11 @@ class InputControllerTest : public ::testing::Test {
   system::InputWatcherStub input_watcher_;
   system::DisplayWatcherStub display_watcher_;
   system::DBusWrapperStub dbus_wrapper_;
-  TestInputControllerDelegate delegate_;
-  InputController controller_;
+  TestInputEventHandlerDelegate delegate_;
+  InputEventHandler handler_;
 };
 
-TEST_F(InputControllerTest, LidEvents) {
+TEST_F(InputEventHandlerTest, LidEvents) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
   // Initialization shouldn't generate a synthetic event.
@@ -193,7 +196,7 @@ TEST_F(InputControllerTest, LidEvents) {
   dbus_wrapper_.ClearSentSignals();
 }
 
-TEST_F(InputControllerTest, TabletModeEvents) {
+TEST_F(InputEventHandlerTest, TabletModeEvents) {
   Init();
   EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
   dbus_wrapper_.ClearSentSignals();
@@ -215,7 +218,7 @@ TEST_F(InputControllerTest, TabletModeEvents) {
   dbus_wrapper_.ClearSentSignals();
 }
 
-TEST_F(InputControllerTest, PowerButtonEvents) {
+TEST_F(InputEventHandlerTest, PowerButtonEvents) {
   prefs_.SetInt64(kExternalDisplayOnlyPref, 1);
   std::vector<system::DisplayInfo> displays(1, system::DisplayInfo());
   display_watcher_.set_displays(displays);
@@ -242,22 +245,22 @@ TEST_F(InputControllerTest, PowerButtonEvents) {
   EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
 }
 
-TEST_F(InputControllerTest, AcknowledgePowerButtonPresses) {
+TEST_F(InputEventHandlerTest, AcknowledgePowerButtonPresses) {
   Init();
 
   const base::TimeDelta kShortDelay = base::TimeDelta::FromMilliseconds(100);
   const base::TimeDelta kTimeout = base::TimeDelta::FromMilliseconds(
-      InputController::kPowerButtonAcknowledgmentTimeoutMs);
+      InputEventHandler::kPowerButtonAcknowledgmentTimeoutMs);
 
   // Press the power button, acknowledge the event nearly immediately, and check
   // that no further actions are performed and that the timeout is stopped.
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
   AdvanceTime(kShortDelay);
-  controller_.HandlePowerButtonAcknowledgment(
+  handler_.HandlePowerButtonAcknowledgment(
       base::TimeTicks::FromInternalValue(GetInputEventSignalTimestamp()));
   EXPECT_EQ(GetAcknowledgmentDelayAction(kShortDelay), delegate_.GetActions());
-  ASSERT_FALSE(controller_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
+  ASSERT_FALSE(handler_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
   EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
 
@@ -268,18 +271,18 @@ TEST_F(InputControllerTest, AcknowledgePowerButtonPresses) {
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
   EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
-  ASSERT_FALSE(controller_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
+  ASSERT_FALSE(handler_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   dbus_wrapper_.ClearSentSignals();
 
   // Let the timeout fire and check that the delegate is notified.
   AdvanceTime(base::TimeDelta::FromSeconds(1));
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
-  ASSERT_TRUE(controller_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
+  ASSERT_TRUE(handler_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   EXPECT_EQ(JoinActions(GetAcknowledgmentDelayAction(kTimeout).c_str(),
                         kMissingPowerButtonAcknowledgment, NULL),
             delegate_.GetActions());
-  ASSERT_FALSE(controller_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
+  ASSERT_FALSE(handler_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
   EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
 
@@ -289,19 +292,19 @@ TEST_F(InputControllerTest, AcknowledgePowerButtonPresses) {
   dbus_wrapper_.ClearSentSignals();
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
-  controller_.HandlePowerButtonAcknowledgment(
+  handler_.HandlePowerButtonAcknowledgment(
       base::TimeTicks::FromInternalValue(GetInputEventSignalTimestamp() - 100));
   EXPECT_EQ(kNoActions, delegate_.GetActions());
-  ASSERT_TRUE(controller_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
+  ASSERT_TRUE(handler_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   EXPECT_EQ(JoinActions(GetAcknowledgmentDelayAction(kTimeout).c_str(),
                         kMissingPowerButtonAcknowledgment, NULL),
             delegate_.GetActions());
-  ASSERT_FALSE(controller_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
+  ASSERT_FALSE(handler_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
   EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
 }
 
-TEST_F(InputControllerTest, OnHoverStateChangeTest) {
+TEST_F(InputEventHandlerTest, OnHoverStateChangeTest) {
   Init();
   input_watcher_.NotifyObserversAboutHoverState(true);
   EXPECT_EQ(kHoverOn, delegate_.GetActions());

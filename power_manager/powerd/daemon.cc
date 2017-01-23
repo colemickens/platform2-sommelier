@@ -33,9 +33,9 @@
 #include "power_manager/powerd/daemon_delegate.h"
 #include "power_manager/powerd/metrics_collector.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
+#include "power_manager/powerd/policy/input_device_controller.h"
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
 #include "power_manager/powerd/policy/state_controller.h"
-#include "power_manager/powerd/policy/wakeup_controller.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper_interface.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/audio_client_interface.h"
@@ -261,8 +261,8 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       cryptohomed_dbus_proxy_(nullptr),
       state_controller_delegate_(new StateControllerDelegate(this)),
       state_controller_(new policy::StateController),
-      input_controller_(new policy::InputController),
-      wakeup_controller_(new policy::WakeupController),
+      input_event_handler_(new policy::InputEventHandler),
+      input_device_controller_(new policy::InputDeviceController),
       suspender_(new policy::Suspender),
       metrics_collector_(new metrics::MetricsCollector),
       shutting_down_(false),
@@ -380,16 +380,22 @@ void Daemon::Init() {
   dark_resume_ = delegate_->CreateDarkResume(power_supply_.get(), prefs_.get());
   suspender_->Init(this, dbus_wrapper_.get(), dark_resume_.get(), prefs_.get());
 
-  input_controller_->Init(input_watcher_.get(), this, display_watcher_.get(),
-                          dbus_wrapper_.get(), prefs_.get());
+  input_event_handler_->Init(input_watcher_.get(),
+                             this,
+                             display_watcher_.get(),
+                             dbus_wrapper_.get(),
+                             prefs_.get());
 
   acpi_wakeup_helper_ = delegate_->CreateAcpiWakeupHelper();
   ec_wakeup_helper_ = delegate_->CreateEcWakeupHelper();
-
-  wakeup_controller_->Init(display_backlight_controller_.get(), udev_.get(),
-                           acpi_wakeup_helper_.get(), ec_wakeup_helper_.get(),
-                           lid_state, tablet_mode, DisplayMode::NORMAL,
-                           prefs_.get());
+  input_device_controller_->Init(display_backlight_controller_.get(),
+                                 udev_.get(),
+                                 acpi_wakeup_helper_.get(),
+                                 ec_wakeup_helper_.get(),
+                                 lid_state,
+                                 tablet_mode,
+                                 DisplayMode::NORMAL,
+                                 prefs_.get());
 
   const PowerSource power_source =
       power_status.line_power_on ? PowerSource::AC : PowerSource::BATTERY;
@@ -505,10 +511,10 @@ void Daemon::OnBrightnessChange(
 
 void Daemon::HandleLidClosed() {
   LOG(INFO) << "Lid closed";
-  // It is important that we notify WakeupController first so that it can
+  // It is important that we notify InputDeviceController first so that it can
   // inhibit input devices quickly. StateController will issue a blocking call
   // to Chrome which can take longer than a second.
-  wakeup_controller_->SetLidState(LidState::CLOSED);
+  input_device_controller_->SetLidState(LidState::CLOSED);
   state_controller_->HandleLidStateChange(LidState::CLOSED);
 }
 
@@ -516,7 +522,7 @@ void Daemon::HandleLidOpened() {
   LOG(INFO) << "Lid opened";
   suspender_->HandleLidOpened();
   state_controller_->HandleLidStateChange(LidState::OPEN);
-  wakeup_controller_->SetLidState(LidState::OPEN);
+  input_device_controller_->SetLidState(LidState::OPEN);
 }
 
 void Daemon::HandlePowerButtonEvent(ButtonState state) {
@@ -544,7 +550,7 @@ void Daemon::HandleHoverStateChange(bool hovering) {
 void Daemon::HandleTabletModeChange(TabletMode mode) {
   DCHECK_NE(mode, TabletMode::UNSUPPORTED);
   LOG(INFO) << "Tablet mode " << TabletModeToString(mode);
-  wakeup_controller_->SetTabletMode(mode);
+  input_device_controller_->SetTabletMode(mode);
   for (auto controller : all_backlight_controllers_)
     controller->HandleTabletModeChange(mode);
   if (set_wifi_transmit_power_for_tablet_mode_)
@@ -1341,7 +1347,7 @@ std::unique_ptr<dbus::Response> Daemon::HandleSetIsProjectingMethod(
   LOG(INFO) << "Chrome is using " << DisplayModeToString(mode)
             << " display mode";
   state_controller_->HandleDisplayModeChange(mode);
-  wakeup_controller_->SetDisplayMode(mode);
+  input_device_controller_->SetDisplayMode(mode);
   for (auto controller : all_backlight_controllers_)
     controller->HandleDisplayModeChange(mode);
   return std::unique_ptr<dbus::Response>();
@@ -1417,7 +1423,7 @@ std::unique_ptr<dbus::Response> Daemon::HandlePowerButtonAcknowledgment(
                << " request";
     return CreateInvalidArgsError(method_call, "Expected int64_t timestamp");
   }
-  input_controller_->HandlePowerButtonAcknowledgment(
+  input_event_handler_->HandlePowerButtonAcknowledgment(
       base::TimeTicks::FromInternalValue(timestamp_internal));
   return std::unique_ptr<dbus::Response>();
 }

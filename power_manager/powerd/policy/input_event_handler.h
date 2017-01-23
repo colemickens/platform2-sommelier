@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_POLICY_INPUT_CONTROLLER_H_
-#define POWER_MANAGER_POWERD_POLICY_INPUT_CONTROLLER_H_
+#ifndef POWER_MANAGER_POWERD_POLICY_INPUT_EVENT_HANDLER_H_
+#define POWER_MANAGER_POWERD_POLICY_INPUT_EVENT_HANDLER_H_
 
 #include <memory>
 
@@ -29,12 +29,12 @@ class InputWatcherInterface;
 
 namespace policy {
 
-// InputController responds to input events (e.g. lid open/close, power button,
-// etc.).
-class InputController : public system::InputObserver {
+// InputEventHandler responds to input events (e.g. lid open/close, power
+// button, etc.).
+class InputEventHandler : public system::InputObserver {
  public:
   // Interface for delegates responsible for performing actions on behalf of
-  // InputController.
+  // InputEventHandler.
   class Delegate {
    public:
     virtual ~Delegate() {}
@@ -73,8 +73,8 @@ class InputController : public system::InputObserver {
   // milliseconds.
   static const int kPowerButtonAcknowledgmentTimeoutMs = 2000;
 
-  InputController();
-  virtual ~InputController();
+  InputEventHandler();
+  virtual ~InputEventHandler();
 
   Clock* clock_for_testing() { return clock_.get(); }
 
@@ -125,10 +125,10 @@ class InputController : public system::InputObserver {
   // Calls HandlePowerButtonAcknowledgmentTimeout().
   base::OneShotTimer power_button_acknowledgment_timer_;
 
-  DISALLOW_COPY_AND_ASSIGN(InputController);
+  DISALLOW_COPY_AND_ASSIGN(InputEventHandler);
 };
 
 }  // namespace policy
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_POLICY_INPUT_CONTROLLER_H_
+#endif  // POWER_MANAGER_POWERD_POLICY_INPUT_EVENT_HANDLER_H_

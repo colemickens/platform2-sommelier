@@ -410,7 +410,7 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
   keyboard_backlight_controller_->ResetStats();
 
   // TODO(derat): Create stubs for policy::StateController, policy::Suspender,
-  // and policy::WakeupController and verify that they're notified too
+  // and policy::InputDeviceController and verify that they're notified too
   // (including for lid events).
 
   // Power button events.

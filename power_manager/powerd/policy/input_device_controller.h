@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_POLICY_WAKEUP_CONTROLLER_H_
-#define POWER_MANAGER_POWERD_POLICY_WAKEUP_CONTROLLER_H_
+#ifndef POWER_MANAGER_POWERD_POLICY_INPUT_DEVICE_CONTROLLER_H_
+#define POWER_MANAGER_POWERD_POLICY_INPUT_DEVICE_CONTROLLER_H_
 
 #include <string>
 
@@ -26,8 +26,8 @@ class UdevInterface;
 namespace policy {
 
 // Configures wakeup-capable devices according to the current lid state.
-class WakeupController : public policy::BacklightControllerObserver,
-                         public system::UdevTaggedDeviceObserver {
+class InputDeviceController : public policy::BacklightControllerObserver,
+                              public system::UdevTaggedDeviceObserver {
  public:
   // Powerd tags.
   static const char kTagInhibit[];
@@ -62,8 +62,8 @@ class WakeupController : public policy::BacklightControllerObserver,
     TABLET,       // Tablet mode, e.g. lid open more than 180 degrees.
   };
 
-  WakeupController();
-  virtual ~WakeupController();
+  InputDeviceController();
+  virtual ~InputDeviceController();
 
   void Init(policy::BacklightController* backlight_controller,
             system::UdevInterface* udev,
@@ -127,10 +127,10 @@ class WakeupController : public policy::BacklightControllerObserver,
 
   bool initialized_ = false;
 
-  DISALLOW_COPY_AND_ASSIGN(WakeupController);
+  DISALLOW_COPY_AND_ASSIGN(InputDeviceController);
 };
 
 }  // namespace policy
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_POLICY_WAKEUP_CONTROLLER_H_
+#endif  // POWER_MANAGER_POWERD_POLICY_INPUT_DEVICE_CONTROLLER_H_
