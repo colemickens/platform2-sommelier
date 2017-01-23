@@ -597,6 +597,49 @@ void container_destroy(struct container *c)
 	FREE_AND_NULL(c);
 }
 
+/*
+ * Given a uid/gid map of "inside1 outside1 length1, ...", and an id
+ * inside of the user namespace, return the equivalent outside id, or
+ * return < 0 on error.
+ */
+static int get_userns_outside_id(const char *map, int id)
+{
+	char *map_copy, *mapping, *saveptr1, *saveptr2;
+	int inside, outside, length;
+	int result = 0;
+	errno = 0;
+
+	if (asprintf(&map_copy, "%s", map) < 0)
+		return -ENOMEM;
+
+	mapping = strtok_r(map_copy, ",", &saveptr1);
+	while (mapping) {
+		inside = strtol(strtok_r(mapping, " ", &saveptr2), NULL, 10);
+		outside = strtol(strtok_r(NULL, " ", &saveptr2), NULL, 10);
+		length = strtol(strtok_r(NULL, "\0", &saveptr2), NULL, 10);
+		if (errno) {
+			goto error_free_return;
+		} else if (inside < 0 || outside < 0 || length < 0) {
+			errno = EINVAL;
+			goto error_free_return;
+		}
+
+		if (id >= inside && id <= (inside + length)) {
+			result = (id - inside) + outside;
+			goto exit;
+		}
+
+		mapping = strtok_r(NULL, ",", &saveptr1);
+	}
+	errno = EINVAL;
+
+error_free_return:
+	result = -errno;
+exit:
+	free(map_copy);
+	return result;
+}
+
 static int make_dir(const char *path, int uid, int gid, int mode)
 {
 	if (mkdir(path, mode))
@@ -625,10 +668,12 @@ static int touch_file(const char *path, int uid, int gid, int mode)
 /* Make sure the mount target exists in the new rootfs. Create if needed and
  * possible.
  */
-static int setup_mount_destination(const struct container_mount *mnt,
+static int setup_mount_destination(const struct container_config *config,
+				   const struct container_mount *mnt,
 				   const char *source,
 				   const char *dest)
 {
+	int uid_userns, gid_userns;
 	int rc;
 	struct stat st_buf;
 
@@ -639,11 +684,18 @@ static int setup_mount_destination(const struct container_mount *mnt,
 	/* Try to create the destination. Either make directory or touch a file
 	 * depending on the source type.
 	 */
+	uid_userns = get_userns_outside_id(config->uid_map, mnt->uid);
+	if (uid_userns < 0)
+		return uid_userns;
+	gid_userns = get_userns_outside_id(config->gid_map, mnt->gid);
+	if (gid_userns < 0)
+		return gid_userns;
+
 	rc = stat(source, &st_buf);
 	if (rc || S_ISDIR(st_buf.st_mode) || S_ISBLK(st_buf.st_mode))
-		return make_dir(dest, mnt->uid, mnt->gid, mnt->mode);
+		return make_dir(dest, uid_userns, gid_userns, mnt->mode);
 
-	return touch_file(dest, mnt->uid, mnt->gid, mnt->mode);
+	return touch_file(dest, uid_userns, gid_userns, mnt->mode);
 }
 
 /* Fork and exec the setfiles command to configure the selinux policy. */
@@ -952,6 +1004,7 @@ static int mount_external(const char *src, const char *dest, const char *type,
 }
 
 static int do_container_mount(struct container *c,
+			      const struct container_config *config,
 			      const struct container_mount *mnt)
 {
 	char *dm_source = NULL;
@@ -979,7 +1032,7 @@ static int do_container_mount(struct container *c,
 	}
 
 	if (mnt->create) {
-		rc = setup_mount_destination(mnt, source, dest);
+		rc = setup_mount_destination(config, mnt, source, dest);
 		if (rc)
 			goto error_free_return;
 	}
@@ -1067,7 +1120,7 @@ static int do_container_mounts(struct container *c,
 		return -errno;
 
 	for (i = 0; i < config->num_mounts; ++i) {
-		rc = do_container_mount(c, &config->mounts[i]);
+		rc = do_container_mount(c, config, &config->mounts[i]);
 		if (rc)
 			goto error_free_return;
 	}
@@ -1080,12 +1133,14 @@ error_free_return:
 }
 
 static int container_create_device(const struct container *c,
+				   const struct container_config *config,
 				   const struct container_device *dev,
 				   int minor)
 {
 	char *path = NULL;
 	int rc = 0;
 	int mode;
+	int uid_userns, gid_userns;
 
 	switch (dev->type) {
 	case  'b':
@@ -1099,11 +1154,18 @@ static int container_create_device(const struct container *c,
 	}
 	mode |= dev->fs_permissions;
 
+	uid_userns = get_userns_outside_id(config->uid_map, dev->uid);
+	if (uid_userns < 0)
+		return uid_userns;
+	gid_userns = get_userns_outside_id(config->gid_map, dev->gid);
+	if (gid_userns < 0)
+		return gid_userns;
+
 	if (asprintf(&path, "%s%s", c->runfsroot, dev->path) < 0)
 		goto error_free_return;
 	if (mknod(path, mode, makedev(dev->major, minor)) && errno != EEXIST)
 		goto error_free_return;
-	if (chown(path, dev->uid, dev->gid))
+	if (chown(path, uid_userns, gid_userns))
 		goto error_free_return;
 	if (chmod(path, dev->fs_permissions))
 		goto error_free_return;
@@ -1117,11 +1179,13 @@ exit:
 	return rc;
 }
 
+
 static int mount_runfs(struct container *c, const struct container_config *config)
 {
 	static const mode_t root_dir_mode = 0660;
 	const char *rootfs = config->rootfs;
 	char *runfs_template = NULL;
+	int uid_userns, gid_userns;
 
 	if (asprintf(&runfs_template, "%s/%s_XXXXXX", c->rundir, c->name) < 0)
 		return -ENOMEM;
@@ -1132,10 +1196,17 @@ static int mount_runfs(struct container *c, const struct container_config *confi
 		return -errno;
 	}
 
+	uid_userns = get_userns_outside_id(config->uid_map, config->uid);
+	if (uid_userns < 0)
+		return uid_userns;
+	gid_userns = get_userns_outside_id(config->gid_map, config->gid);
+	if (gid_userns < 0)
+		return gid_userns;
+
 	/* Make sure the container uid can access the rootfs. */
 	if (chmod(c->runfs, 0700))
 		return -errno;
-	if (chown(c->runfs, config->uid, config->gid))
+	if (chown(c->runfs, uid_userns, gid_userns))
 		return -errno;
 
 	if (asprintf(&c->runfsroot, "%s/root", c->runfs) < 0)
@@ -1161,49 +1232,11 @@ static int mount_runfs(struct container *c, const struct container_config *confi
 	return 0;
 }
 
-static int get_userns_id(const char *map, int id)
-{
-	char *map_copy, *mapping, *saveptr1, *saveptr2;
-	int inside, outside, length;
-	int result = 0;
-	errno = 0;
-
-	if (asprintf(&map_copy, "%s", map) < 0)
-		return -ENOMEM;
-
-	mapping = strtok_r(map_copy, ",", &saveptr1);
-	while (mapping) {
-		inside = strtol(strtok_r(mapping, " ", &saveptr2), NULL, 10);
-		outside = strtol(strtok_r(NULL, " ", &saveptr2), NULL, 10);
-		length = strtol(strtok_r(NULL, "\0", &saveptr2), NULL, 10);
-		if (errno) {
-			goto error_free_return;
-		} else if (inside < 0 || outside < 0 || length < 0) {
-			errno = EINVAL;
-			goto error_free_return;
-		}
-
-		if (id >= outside && id <= (outside + length)) {
-			result = id - (outside - inside);
-			goto exit;
-		}
-
-		mapping = strtok_r(NULL, ",", &saveptr1);
-	}
-	errno = EINVAL;
-
-error_free_return:
-	result = -errno;
-exit:
-	free(map_copy);
-	return result;
-}
-
 int container_start(struct container *c, const struct container_config *config)
 {
 	int rc = 0;
 	unsigned int i;
-	int uid_userns, gid_userns;
+	int cgroup_uid, cgroup_gid;
 	char **destinations;
 	size_t num_destinations;
 
@@ -1242,11 +1275,24 @@ int container_start(struct container *c, const struct container_config *config)
 	if (rc)
 		goto error_rmdir;
 
+	cgroup_uid = get_userns_outside_id(config->uid_map,
+					   config->cgroup_owner);
+	if (cgroup_uid < 0) {
+		rc = cgroup_uid;
+		goto error_rmdir;
+	}
+	cgroup_gid = get_userns_outside_id(config->gid_map,
+					   config->cgroup_group);
+	if (cgroup_gid < 0) {
+		rc = cgroup_gid;
+		goto error_rmdir;
+	}
+
 	c->cgroup = container_cgroup_new(c->name,
 					 "/sys/fs/cgroup",
 					 config->cgroup_parent,
-					 config->cgroup_owner,
-					 config->cgroup_group);
+					 cgroup_uid,
+					 cgroup_gid);
 	if (!c->cgroup)
 		goto error_rmdir;
 
@@ -1266,7 +1312,7 @@ int container_start(struct container *c, const struct container_config *config)
 				minor = minor(st_buff.st_rdev);
 			}
 			if (minor >= 0) {
-				rc = container_create_device(c, dev, minor);
+				rc = container_create_device(c, config, dev, minor);
 				if (rc)
 					goto error_rmdir;
 			}
@@ -1393,16 +1439,14 @@ int container_start(struct container *c, const struct container_config *config)
 		goto error_rmdir;
 
 	/* Set the UID/GID inside the container if not 0. */
-	uid_userns = get_userns_id(config->uid_map, config->uid);
-	if (uid_userns < 0)
+	if (get_userns_outside_id(config->uid_map, config->uid) < 0)
 		goto error_rmdir;
-	else if (uid_userns > 0)
-		minijail_change_uid(c->jail, (uid_t) uid_userns);
-	gid_userns = get_userns_id(config->gid_map, config->gid);
-	if (gid_userns < 0)
+	else if (config->uid > 0)
+		minijail_change_uid(c->jail, config->uid);
+	if (get_userns_outside_id(config->gid_map, config->gid) < 0)
 		goto error_rmdir;
-	else if (gid_userns > 0)
-		minijail_change_gid(c->jail, (gid_t) gid_userns);
+	else if (config->gid > 0)
+		minijail_change_gid(c->jail, config->gid);
 
 	rc = minijail_enter_pivot_root(c->jail, c->runfsroot);
 	if (rc)
