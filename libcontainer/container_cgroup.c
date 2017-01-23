@@ -314,7 +314,7 @@ struct container_cgroup *container_cgroup_new(const char *name,
 		 * other wise we'll start with "empty" cpuset and nothing can
 		 * run in it/be moved into it.
 		 */
-		if (i == CGROUP_CPUSET && cgroup_parent) {
+		if (i == CGROUP_CPUSET) {
 			if (copy_cgroup_parent(cg->cgroup_paths[i], "cpus") < 0)
 				goto error_free_cg;
 			if (copy_cgroup_parent(cg->cgroup_paths[i], "mems") < 0)

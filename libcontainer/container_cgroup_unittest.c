@@ -217,6 +217,11 @@ FIXTURE_SETUP(basic_manipulation)
 	snprintf(path, sizeof(path), "%s/schedtune", self->cgroup_root);
 	mkdir(path, S_IRWXU | S_IRWXG);
 
+	snprintf(path, sizeof(path), "%s/cpuset/cpus", self->cgroup_root);
+	create_file_with_content(path, "0-3");
+	snprintf(path, sizeof(path), "%s/cpuset/mems", self->cgroup_root);
+	create_file_with_content(path, "0");
+
 	self->ccg = container_cgroup_new(CGNAME, self->cgroup_root, NULL, 0, 0);
 	ASSERT_NE(NULL, self->ccg);
 
