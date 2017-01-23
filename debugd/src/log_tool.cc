@@ -62,6 +62,7 @@ const Log common_logs[] = {
   { "console-ramoops", "/bin/cat /dev/pstore/console-ramoops 2> /dev/null" },
   { "cpu", "/usr/bin/uname -p" },
   { "cpuinfo", "/bin/cat /proc/cpuinfo" },
+  { "cr50_version", "/bin/cat /var/cache/cr50-version" },
   { "cros_ec",
     "/bin/cat /var/log/cros_ec.previous /var/log/cros_ec.log 2> /dev/null" },
   { "cros_ec_panicinfo",
