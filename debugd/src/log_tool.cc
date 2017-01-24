@@ -6,8 +6,7 @@
 
 #include <vector>
 
-#include <glib.h>
-
+#include <base/base64.h>
 #include <base/files/file_util.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
@@ -236,15 +235,9 @@ string EnsureUTF8String(const string& value) {
   if (base::IsStringUTF8(value))
     return value;
 
-  gchar* base64_value = g_base64_encode(
-      reinterpret_cast<const guchar*>(value.c_str()), value.length());
-  if (base64_value) {
-    string encoded_value = "<base64>: ";
-    encoded_value += base64_value;
-    g_free(base64_value);
-    return encoded_value;
-  }
-  return "<invalid>";
+  std::string encoded_value;
+  base::Base64Encode(value, &encoded_value);
+  return "<base64>: " + encoded_value;
 }
 
 // TODO(ellyjones): sandbox. crosbug.com/35122
