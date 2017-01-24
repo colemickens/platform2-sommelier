@@ -131,8 +131,8 @@ void Camera3ModuleFixture::SetUp() {
 // Test cases
 
 TEST_F(Camera3ModuleFixture, NumberOfCameras) {
-  ASSERT_GE(cam_module_.GetNumberOfCameras(), 0) << "No cameras found";
-  ASSERT_LT(cam_module_.GetNumberOfCameras(), kMaxNumCameras)
+  ASSERT_GT(cam_module_.GetNumberOfCameras(), 0) << "No cameras found";
+  ASSERT_LE(cam_module_.GetNumberOfCameras(), kMaxNumCameras)
       << "Too many cameras found";
 }
 
