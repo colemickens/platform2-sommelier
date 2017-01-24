@@ -308,9 +308,6 @@ void SessionManagerDBusAdaptor::ExportDBusMethods(
                        kSessionManagerStopArcInstance,
                        &SessionManagerDBusAdaptor::StopArcInstance);
   ExportSyncDBusMethod(object,
-                       kSessionManagerPrioritizeArcInstance,
-                       &SessionManagerDBusAdaptor::PrioritizeArcInstance);
-  ExportSyncDBusMethod(object,
                        kSessionManagerSetArcCpuRestriction,
                        &SessionManagerDBusAdaptor::SetArcCpuRestriction);
   ExportSyncDBusMethod(object,
@@ -672,15 +669,6 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StopArcInstance(
     dbus::MethodCall* call) {
   SessionManagerImpl::Error error;
   impl_->StopArcInstance(&error);
-  if (error.is_set())
-    return CreateError(call, error.name(), error.message());
-  return dbus::Response::FromMethodCall(call);
-}
-
-std::unique_ptr<dbus::Response>
-SessionManagerDBusAdaptor::PrioritizeArcInstance(dbus::MethodCall* call) {
-  SessionManagerImpl::Error error;
-  impl_->SetArcCpuRestriction(CONTAINER_CPU_RESTRICTION_FOREGROUND, &error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
   return dbus::Response::FromMethodCall(call);

@@ -92,7 +92,6 @@ class SessionManagerDBusAdaptor {
 
   std::unique_ptr<dbus::Response> StartArcInstance(dbus::MethodCall* call);
   std::unique_ptr<dbus::Response> StopArcInstance(dbus::MethodCall* call);
-  std::unique_ptr<dbus::Response> PrioritizeArcInstance(dbus::MethodCall* call);
   std::unique_ptr<dbus::Response> SetArcCpuRestriction(dbus::MethodCall* call);
   std::unique_ptr<dbus::Response> EmitArcBooted(dbus::MethodCall* call);
   std::unique_ptr<dbus::Response> GetArcStartTimeTicks(dbus::MethodCall* call);

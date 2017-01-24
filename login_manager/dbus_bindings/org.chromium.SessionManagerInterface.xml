@@ -463,17 +463,6 @@
     </method>
 
     <!--
-        PrioritizeArcInstance: ** Deprecated **
-
-        Prioritizes the currently running ARC instance by removing the cgroups
-        restriction session_manager applies to the instance by default. Calling
-        the method while instance is not running *is* okay as long as the
-        cgroups exist.
-    -->
-    <method name="PrioritizeArcInstance">
-    </method>
-
-    <!--
         SetArcCpuRestriction:
         @restriction_state: State used to set the level of CPU allowed specified
         as foreground or background with the
