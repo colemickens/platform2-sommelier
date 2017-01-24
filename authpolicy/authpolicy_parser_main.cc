@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include <base/at_exit.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -314,6 +315,9 @@ int ParsePreg(const std::string& gpo_file_paths_blob, ac::PolicyScope scope) {
 int main(int argc, const char* const* argv) {
   brillo::OpenLog("authpolicy_parser", true);
   brillo::InitLog(brillo::kLogToSyslog);
+
+  // Required for base::SysInfo.
+  base::AtExitManager at_exit_manager;
 
   // Require one argument, one of the ac::kCmdParse* strings.
   if (argc <= 1) {

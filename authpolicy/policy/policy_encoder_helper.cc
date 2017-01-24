@@ -10,16 +10,21 @@
 #include <base/files/file_util.h>
 #include <base/strings/string16.h>
 #include <base/strings/utf_string_conversions.h>
+#include <base/sys_info.h>
 #include <components/policy/core/common/policy_load_status.h>
 #include <components/policy/core/common/preg_parser.h>
 #include <components/policy/core/common/registry_dict.h>
 
 namespace {
 
-// Workaround for missing GOOGLE_CHROME_BUILD, always use Chrome OS key for now.
-// TODO(ljusten): Find a better fix. See crbug.com/682637.
-const base::string16 kRegistryKey =
-    base::ASCIIToUTF16("Software\\Policies\\Google\\ChromeOS");
+// Registry key for Chrome branded builds.
+const char kRegistryKeyChromeOS[] = "Software\\Policies\\Google\\ChromeOS";
+// Registry key for Chromium branded builds.
+const char kRegistryKeyChromiumOS[] = "Software\\Policies\\ChromiumOS";
+
+// Keys for checking the branding (Chromium/Chrome) in lsb-release flags.
+const char kChromeOSReleaseNameKey[] = "CHROMEOS_RELEASE_NAME";
+const char kChromeOSReleaseNameValue[] = "Chrome OS";
 
 // TODO(ljusten): Copied from latest Chromium base::Value::GetTypeName, remove
 // once the latest code is merged.
@@ -32,6 +37,19 @@ const char* GetValueTypeName(const base::Value* value) {
   DCHECK_GE(value->GetType(), 0);
   DCHECK_LT(static_cast<size_t>(value->GetType()), arraysize(kTypeNames));
   return kTypeNames[value->GetType()];
+}
+
+// Gets the Chrome OS or the Chromium OS registry key, depending on the branding
+// of the build. Returns false on error.
+bool GetRegistryKey(base::string16* out_key) {
+  std::string value;
+  if (!base::SysInfo::GetLsbReleaseValue(kChromeOSReleaseNameKey, &value))
+    return false;
+  const bool is_chrome_branded = (value == kChromeOSReleaseNameValue);
+  const char* key_ascii =
+      is_chrome_branded ? kRegistryKeyChromeOS : kRegistryKeyChromiumOS;
+  *out_key = base::ASCIIToUTF16(key_ascii);
+  return true;
 }
 
 }  // namespace
@@ -48,8 +66,14 @@ bool LoadPRegFile(const base::FilePath& preg_file,
     return false;
   }
 
+  base::string16 registry_key;
+  if (!GetRegistryKey(&registry_key)) {
+    LOG(ERROR) << "Failed to get registry key";
+    return false;
+  }
+
   PolicyLoadStatusSample status;
-  if (!preg_parser::ReadFile(preg_file, kRegistryKey, out_dict, &status)) {
+  if (!preg_parser::ReadFile(preg_file, registry_key, out_dict, &status)) {
     LOG(ERROR) << "Failed to parse preg file '" << preg_file.value() << "'";
     *out_error = authpolicy::ERROR_PARSE_PREG_FAILED;
     return false;
