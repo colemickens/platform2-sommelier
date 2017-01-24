@@ -102,6 +102,7 @@ TEST_F(BackgroundTransceiverTest, Synchronous) {
   run_loop.RunUntilIdle();
   // The call to our mock should have happened on the background thread.
   EXPECT_EQ(std::string("test_thread"), output);
+  test_thread_.Stop();
 }
 
 }  // namespace trunks
