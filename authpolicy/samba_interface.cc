@@ -1016,8 +1016,10 @@ bool SambaInterface::FetchDeviceGpos(std::string* out_policy_blob,
   const int max_tries = (retry_machine_kinit_ ? kMachineKinitMaxRetries : 1);
   for (int tries = 0; tries < max_tries; ++tries) {
     success = SetupJailAndRun(&kinit_cmd, kKInitSeccompFilter);
-    if (success)
+    if (success) {
+      *out_error = ERROR_NONE;
       break;
+    }
     *out_error = GetKinitError(kinit_cmd);
     if (*out_error != ERROR_BAD_USER_NAME && *out_error != ERROR_BAD_PASSWORD)
       break;
