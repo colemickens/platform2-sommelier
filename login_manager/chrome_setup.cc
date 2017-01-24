@@ -230,7 +230,8 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
 
     builder->AddArg("--num-raster-threads=1");
     builder->AddArg("--enable-drm-atomic");
-    builder->AddArg("--enable-hardware-overlays=single-fullscreen");
+    builder->AddArg(
+        "--enable-hardware-overlays=single-fullscreen,single-on-top");
   }
   if (builder->UseFlagIsSet("veyron_minnie"))
     builder->AddArg("--enable-hardware-overlays=single-fullscreen");
