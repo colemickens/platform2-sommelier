@@ -15,10 +15,10 @@ namespace arc {
 struct FrameBuffer {
   uint8_t* data;
   size_t data_size; /* How many bytes used in the buffer */
+  size_t buffer_size; /* How many bytes allocated in the buffer */
   uint32_t width;
   uint32_t height;
-  uint32_t stride;
-  uint32_t fourcc;
+  uint32_t fourcc; /* This is V4L2_PIX_FMT_* in linux/videodev2.h */
 };
 
 }  // namespace arc

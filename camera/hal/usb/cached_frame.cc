@@ -13,8 +13,7 @@
 
 namespace arc {
 
-CachedFrame::CachedFrame()
-    : cropped_buffer_capacity_(0), yu12_buffer_capacity_(0) {
+CachedFrame::CachedFrame() : cropped_buffer_capacity_(0) {
   memset(&source_frame_, 0, sizeof(source_frame_));
   memset(&yu12_frame_, 0, sizeof(yu12_frame_));
 }
@@ -66,49 +65,41 @@ int CachedFrame::GetHeight() const {
   return yu12_frame_.height;
 }
 
-size_t CachedFrame::GetConvertedSize(uint32_t hal_pixel_format,
-                                     int stride) const {
-  return ImageProcessor::GetConvertedSize(yu12_frame_, hal_pixel_format,
-                                          stride);
+size_t CachedFrame::GetConvertedSize(int fourcc) const {
+  return ImageProcessor::GetConvertedSize(fourcc, yu12_frame_.width,
+                                          yu12_frame_.height);
 }
 
-int CachedFrame::Convert(uint32_t hal_pixel_format,
-                         void* output_buffer,
-                         size_t output_buffer_size,
-                         int output_stride,
-                         bool video_hack) {
-  if (video_hack && hal_pixel_format == HAL_PIXEL_FORMAT_YV12) {
-    hal_pixel_format = CUSTOM_PIXEL_FORMAT_YU12;
+int CachedFrame::Convert(FrameBuffer* out_frame, bool video_hack) {
+  if (video_hack && out_frame->fourcc == V4L2_PIX_FMT_YVU420) {
+    out_frame->fourcc = V4L2_PIX_FMT_YUV420;
   }
-  return ImageProcessor::Convert(yu12_frame_, hal_pixel_format, output_buffer,
-                                 output_buffer_size, output_stride);
+  return ImageProcessor::Convert(yu12_frame_, out_frame);
 }
 
 int CachedFrame::ConvertToYU12() {
   size_t cache_size = ImageProcessor::GetConvertedSize(
-      source_frame_, CUSTOM_PIXEL_FORMAT_YU12, 0);
+      V4L2_PIX_FMT_YUV420, source_frame_.width, source_frame_.height);
   if (cache_size == 0) {
     return -EINVAL;
-  } else if (cache_size > yu12_buffer_capacity_) {
+  } else if (cache_size > yu12_frame_.buffer_size) {
     yu12_buffer_.reset(new uint8_t[cache_size]);
-    yu12_buffer_capacity_ = cache_size;
+    yu12_frame_.buffer_size = cache_size;
   }
   yu12_frame_.data = yu12_buffer_.get();
-  yu12_frame_.data_size = cache_size;
-  yu12_frame_.width = source_frame_.width;
-  yu12_frame_.height = source_frame_.height;
   yu12_frame_.fourcc = V4L2_PIX_FMT_YUV420;
 
-  int res = ImageProcessor::Convert(source_frame_, CUSTOM_PIXEL_FORMAT_YU12,
-                                    yu12_frame_.data, cache_size, 0);
+  int res = ImageProcessor::Convert(source_frame_, &yu12_frame_);
   if (res) {
     LOGF(ERROR) << "Convert from FOURCC 0x" << std::hex << source_frame_.fourcc
                 << " to YU12 fails.";
+    return res;
   }
-  return res;
+  return 0;
 }
 
 int CachedFrame::CropRotateScale(int rotate_degree) {
+  // TODO(henryhsu): Move libyuv part to ImageProcessor.
   if (yu12_frame_.height % 2 != 0 || yu12_frame_.width % 2 != 0) {
     LOGF(ERROR) << "yu12_frame_ has odd dimension: " << yu12_frame_.width << "x"
                 << yu12_frame_.height;

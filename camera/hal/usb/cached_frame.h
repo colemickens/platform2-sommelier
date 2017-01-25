@@ -41,20 +41,16 @@ class CachedFrame {
   int GetHeight() const;
 
   // Calculate the output buffer size when converting to the specified pixel
-  // format. |hal_pixel_format| is defined as HAL_PIXEL_FORMAT_XXX in
-  // /system/core/include/system/graphics.h. If |stride| is non-zero, use it as
-  // the byte stride for destination buffer. Return 0 on error.
-  size_t GetConvertedSize(uint32_t hal_pixel_format, int stride) const;
+  // format. |fourcc| is defined as V4L2_PIX_FMT_* in linux/videodev2.h. Return
+  // 0 on error.
+  size_t GetConvertedSize(int fourcc) const;
 
-  // Return non-zero error code on failure; return 0 on success. If
-  // |output_stride| is non-zero, use it as the byte stride of |output_buffer|.
+  // Caller should fill |fourcc|, |data|, and |buffer_size| of |out_frame|. The
+  // function will fill other members in |out_frame|.
   // If |video_hack| is true, it outputs YU12 when |hal_pixel_format| is YV12
-  // (swapping U/V planes).
-  int Convert(uint32_t hal_pixel_format,
-              void* output_buffer,
-              size_t output_buffer_size,
-              int output_stride,
-              bool video_hack = false);
+  // (swapping U/V planes). Caller should fill |fourcc|, |data|, and
+  // Return non-zero error code on failure; return 0 on success.
+  int Convert(FrameBuffer* out_frame, bool video_hack = false);
 
  private:
   int ConvertToYU12();
@@ -76,7 +72,6 @@ class CachedFrame {
   // Cache YU12 decoded results.
   FrameBuffer yu12_frame_;
   std::unique_ptr<uint8_t[]> yu12_buffer_;
-  size_t yu12_buffer_capacity_;
 };
 
 }  // namespace arc

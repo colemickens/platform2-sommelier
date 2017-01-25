@@ -50,11 +50,6 @@ struct SupportedFormat {
 
 typedef std::vector<SupportedFormat> SupportedFormats;
 
-// Custom HAL pixel format used internally in Camera HAL:
-// YU12 is YUV 4:2:0 format. It is similar to HAL_PIXEL_FORMAT_YV12, but the U/V
-// planes are swapped.
-#define CUSTOM_PIXEL_FORMAT_YU12 0x32315559
-
 }  // namespace arc
 
 #endif  // HAL_USB_COMMON_TYPES_H_
