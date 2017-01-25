@@ -10,6 +10,7 @@
 
 CLEANUP_PAUSED_FILE="/var/lib/cleanup_logs_paused"
 NUM_DAYS_TO_PRESERVE=7
+MAX_SUBDIR_SIZE=100   # MB
 # Threshold for additional histogram reporting (in 1KB blocks), 1GB in total.
 ADDITIONAL_REPORTING_THRESHOLD_BLOCKS=1048576
 SHADOW="/home/.shadow"
@@ -65,8 +66,21 @@ report_additional_statistics() {
                  ${least_used_days} $METRICS_ARGS
 }
 
-remove_old_dated_files() {
-  find "$1" -name "$2" -mtime +${NUM_DAYS_TO_PRESERVE} -exec rm '{}' ';'
+# Remove older files, keep deleting until the directory is less than 100MB
+# or only one day old files remains.
+remove_old_files() {
+  local subdir="$1"
+  local file_pattern="$2"
+  local mtime=${NUM_DAYS_TO_PRESERVE}
+  while [ ${mtime} -ge 1 ]; do
+    find "${subdir}" -name "${file_pattern}" -mtime "+${mtime}" -delete
+    if [ $(du -s --block-size=1M "${subdir}" | cut -f 1) -gt \
+         ${MAX_SUBDIR_SIZE} ]; then
+      : $(( d -= 1 ))
+    else
+      break
+    fi
+  done
 }
 
 rotate_file() {
@@ -121,19 +135,19 @@ if [ -r "${CLEANUP_PAUSED_FILE}" ]; then
 fi
 
 # Remove old chrome logs (not logged in)
-remove_old_dated_files /var/log/chrome "chrome_*-*"
+remove_old_files /var/log/chrome "chrome_*-*"
 
 # Remove old chrome logs (logged in)
-remove_old_dated_files /home/chronos/user/log "chrome_*-*"
+remove_old_files /home/chronos/user/log "chrome_*-*"
 
 # Remove old miscellaneous UI logs
-remove_old_dated_files /var/log/ui "ui.*-*"
+remove_old_files /var/log/ui "ui.*-*"
 
 # Remove old update engine logs
-remove_old_dated_files /var/log/update_engine "update_engine.*-*"
+remove_old_files /var/log/update_engine "update_engine.*-*"
 
 # Remove old power manager logs
-remove_old_dated_files /var/log/power_manager "power*"
+remove_old_files /var/log/power_manager "power*"
 
 # Rotate other logs
 rotate_logs
