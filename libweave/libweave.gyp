@@ -21,9 +21,7 @@
       'target_name': 'libweave_common',
       'type': 'static_library',
       'cflags!': ['-fPIE'],
-      # TODO(avakulenko): remove the hack with int64 when latest libweave
-      # is pulled from upstream
-      'cflags': ['-fPIC', '-Dint64=int64_t'],
+      'cflags': ['-fPIC'],
       'variables': {
         'deps': [
           'libchrome-<(libbase_ver)',
