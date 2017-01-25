@@ -111,6 +111,7 @@
       'sources': [
         'src/test/fake_stream.cc',
         'src/test/fake_task_runner.cc',
+        'src/test/mock_command.cc',
         'src/test/unittest_utils.cc',
       ],
       'includes': ['../../platform2/common-mk/deps.gypi'],
@@ -135,6 +136,7 @@
           'sources': [
             '<!@(find src/ -name *unittest.cc)',
             '<!@(find third_party/chromium/crypto/ -name *unittest.cc)',
+            'src/test/weave_testrunner.cc',
           ],
         },
       ],
