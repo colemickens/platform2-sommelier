@@ -20,19 +20,6 @@
       ],
     },
     {
-      'target_name': 'libpermission_broker_client',
-      'type': 'static_library',
-      'variables': {
-        'deps': [
-          'libbrillo-<(libbase_ver)',
-        ],
-      },
-      'sources': [
-        'device_jail/permission_broker_client.cc',
-        'device_jail/permission_broker_client.h',
-      ],
-    },
-    {
       'target_name': 'run_oci',
       'type': 'executable',
       'variables': {
@@ -44,22 +31,6 @@
       'sources': [
         'container_config_parser.cc',
         'run_oci.cc',
-      ],
-    },
-    {
-      'target_name': 'device_jail',
-      'type': 'executable',
-      'variables': {
-        'deps': [
-          'fuse',
-          'libbrillo-<(libbase_ver)',
-        ],
-      },
-      'dependencies': [
-        'libpermission_broker_client',
-      ],
-      'sources': [
-        'device_jail/device_jail.cc',
       ],
     },
   ],
@@ -80,23 +51,6 @@
           'sources': [
             'container_config_parser.cc',
             'container_config_parser_unittest.cc',
-          ],
-        },
-        {
-          'target_name': 'permission_broker_client_unittest',
-          'type': 'executable',
-          'includes': ['../common-mk/common_test.gypi'],
-          'dependencies': [
-            'libpermission_broker_client',
-          ],
-          'variables': {
-            'deps': [
-              'libbrillo-test-<(libbase_ver)',
-              'libchrome-test-<(libbase_ver)',
-            ],
-          },
-          'sources': [
-            'device_jail/permission_broker_client_unittest.cc',
           ],
         },
       ]},
