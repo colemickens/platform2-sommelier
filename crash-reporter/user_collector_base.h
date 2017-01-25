@@ -120,6 +120,11 @@ class UserCollectorBase : public CrashCollector {
                                 base::FilePath *crash_file_path,
                                 bool *out_of_capacity);
 
+#if USE_DIRENCRYPTION
+  // Joins the session keyring to get the directory encryption keys.
+  void JoinSessionKeyring();
+#endif  // USE_DIRENCRYPTION
+
   // Prepended to log messages to differentiate between collectors.
   const char * const tag_;
 

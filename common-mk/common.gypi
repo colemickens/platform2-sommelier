@@ -32,6 +32,7 @@
     'USE_chromeos_dbus%': 0,
     'USE_cros_host%': 0,
     'USE_dhcpv6%': 0,
+    'USE_direncryption%': 0,
     'USE_feedback%': 0,
     'USE_ftdi_tpm%': 0,
     'USE_fuzzing%': 0,

@@ -20,6 +20,9 @@
           ],
         },
       },
+      'defines': [
+        'USE_DIRENCRYPTION=<(USE_direncryption)',
+      ],
       'sources': [
         'chrome_collector.cc',
         'crash_collector.cc',
@@ -36,6 +39,13 @@
           'sources': [
             'arc_collector.cc',
           ],
+        }],
+        ['USE_direncryption == 1', {
+          'link_settings': {
+            'libraries': [
+              '-lkeyutils',
+            ],
+          },
         }],
       ],
     },

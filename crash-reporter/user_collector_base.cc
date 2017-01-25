@@ -4,6 +4,10 @@
 
 #include <pcrecpp.h>
 
+#if USE_DIRENCRYPTION
+#include <keyutils.h>
+#endif  // USE_DIRENCRYPTION
+
 #include <base/files/file_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
@@ -21,6 +25,11 @@ const uid_t kUnknownUid = -1;
 
 const char kCollectionErrorSignature[] = "crash_reporter-user-collection";
 const char kStatePrefix[] = "State:\t";
+
+#if USE_DIRENCRYPTION
+// Name of the session keyring.
+const char kDircrypt[] = "dircrypt";
+#endif  // USE_DIRENCRYPTION
 
 }  // namespace
 
@@ -239,6 +248,11 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
   if (GetLogContents(FilePath(log_config_path_), exec, log_path))
     AddCrashMetaData("log", log_path.value());
 
+#if USE_DIRENCRYPTION
+  // Join the session keyring, if one exists.
+  JoinSessionKeyring();
+#endif  // USE_DIRENCRYPTION
+
   ErrorType error_type =
       ConvertCoreToMinidump(pid, container_dir, core_path, minidump_path);
   if (error_type != kErrorNone) {
@@ -372,3 +386,14 @@ void UserCollectorBase::EnqueueCollectionErrorLog(pid_t pid,
   }
   WriteCrashMetaData(meta_path, exec, log_path.value());
 }
+
+#if USE_DIRENCRYPTION
+void UserCollectorBase::JoinSessionKeyring() {
+  key_serial_t session_keyring = keyctl_join_session_keyring(kDircrypt);
+  if (session_keyring == -1) {
+    // The session keyring may not exist if ext4 encryption isn't enabled so
+    // just log an info message instead of an error.
+    PLOG(INFO) << "Unable to join session keying";
+  }
+}
+#endif  // USE_DIRENCRYPTION
