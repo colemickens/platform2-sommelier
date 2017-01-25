@@ -118,7 +118,7 @@ const char kGpoLocalDir[] = SAMBA_TMP_DIR "/cache/gpo_cache";
 // Directory / filenames for user and device policy.
 const char kPRegUserDir[] = "User";
 const char kPRegDeviceDir[] = "Machine";
-const char kPRegFileName[] = "Registry.pol";
+const char kPRegFileName[] = "registry.pol";
 
 // File paths.
 const char kSmbFilePath[] = AUTHPOLICY_TMP_DIR "/smb.conf";
@@ -180,7 +180,8 @@ const char kKeyJoinLogonFailure[] = "Logon failure";
 
 // Keys for interpreting smbclient output.
 const char kKeyNetworkTimeout[] = "NT_STATUS_IO_TIMEOUT";
-const char kKeyNoSuchFile[] = "NT_STATUS_NO_SUCH_FILE listing ";
+const char kKeyObjectNameNotFound[] =
+    "NT_STATUS_OBJECT_NAME_NOT_FOUND opening remote file ";
 
 #undef MACHINE_KT_STATE_FILE_PATH
 #undef MACHINE_KT_TMP_FILE_PATH
@@ -675,7 +676,7 @@ bool DownloadGpos(const std::string& gpo_list_blob,
   }
 
   // Generate all smb source and linux target directories and create targets.
-  std::string smb_command = "prompt OFF;";
+  std::string smb_command = "prompt OFF;lowercase ON;";
   std::string gpo_basepath;
   std::vector<GpoPaths> gpo_paths;
   for (int entry_idx = 0; entry_idx < gpo_list.entries_size(); ++entry_idx) {
@@ -719,7 +720,7 @@ bool DownloadGpos(const std::string& gpo_list_blob,
     }
 
     // Build command for smbclient.
-    smb_command += base::StringPrintf("cd %s;lcd %s;mget %s;", smb_dir.c_str(),
+    smb_command += base::StringPrintf("cd %s;lcd %s;get %s;", smb_dir.c_str(),
                                       linux_dir.c_str(), kPRegFileName);
 
     // Record output file paths.
@@ -741,7 +742,7 @@ bool DownloadGpos(const std::string& gpo_list_blob,
 
   // Download GPO into local directory.
   ProcessExecutor smb_client_cmd(
-      {kSmbClientPath, service, "-s", kSmbFilePath, "-c", smb_command, "-k"});
+      {kSmbClientPath, service, "-s", kSmbFilePath, "-k", "-c", smb_command});
   if (!SetupJailAndRun(&smb_client_cmd, kSmbClientSeccompFilter)) {
     // The exit code of smbclient corresponds to the LAST command issued. Thus,
     // Execute() might fail if the last GPO file is missing. However, we handle
@@ -765,7 +766,7 @@ bool DownloadGpos(const std::string& gpo_list_blob,
       // Gracefully handle non-existing GPOs. Testing revealed these cases do
       // exist, see crbug.com/680921.
       const std::string no_file_error_key(
-        base::ToLowerASCII(kKeyNoSuchFile + gpo_path.server_));
+        base::ToLowerASCII(kKeyObjectNameNotFound + gpo_path.server_));
       if (Contains(smbclient_out_lower, no_file_error_key)) {
         LOG(WARNING) << "Ignoring missing preg file '"
                      << gpo_path.local_.value() << "'";

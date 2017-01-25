@@ -139,7 +139,6 @@ bool PerformPipeIo(int stdin_fd,
 
     const int poll_result =
         HANDLE_EINTR(poll(poll_fds, kPollCount, kPollTimeoutMilliseconds));
-    LOG(INFO) << "Poll result " << poll_result;
     if (poll_result < 0) {
       PLOG(ERROR) << "poll() failed";
       return false;
