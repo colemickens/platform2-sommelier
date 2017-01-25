@@ -3,8 +3,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef USB_CAPTURED_FRAME_H_
-#define USB_CAPTURED_FRAME_H_
+#ifndef USB_IMAGE_PROCESSOR_H_
+#define USB_IMAGE_PROCESSOR_H_
 
 #include <stdint.h>
 
@@ -16,27 +16,23 @@
 // Declarations of HAL_PIXEL_FORMAT_XXX.
 #include <system/graphics.h>
 
+#include "usb/frame_buffer.h"
+
 namespace arc {
 
-struct CapturedFrame {
-  uint8_t* buffer;
-  size_t data_size; /* How many bytes used in the buffer */
-  int width;
-  int height;
-  uint32_t fourcc;
-
+struct ImageProcessor {
   // Calculate the output buffer size when converting to the specified pixel
   // format. |hal_pixel_format| is defined as HAL_PIXEL_FORMAT_XXX in
   // /system/core/include/system/graphics.h. If |stride| is non-zero, use it as
   // the byte stride for RGBA destination buffer. Return 0 on error.
-  static size_t GetConvertedSize(const CapturedFrame& frame,
+  static size_t GetConvertedSize(const FrameBuffer& frame,
                                  uint32_t hal_pixel_format,
                                  int stride);
 
   // If |output_stride| is non-zero, use it as the byte stride of
   // |output_buffer|. Return non-zero error code on failure; return 0 on
   // success.
-  static int Convert(const CapturedFrame& frame,
+  static int Convert(const FrameBuffer& frame,
                      uint32_t hal_pixel_format,
                      void* output_buffer,
                      size_t output_buffer_size,
@@ -48,4 +44,4 @@ struct CapturedFrame {
 
 }  // namespace arc
 
-#endif  // USB_CAPTURED_FRAME_H_
+#endif  // USB_IMAGE_PROCESSOR_H_

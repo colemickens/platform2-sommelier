@@ -21,7 +21,7 @@ CachedFrame::CachedFrame()
 
 CachedFrame::~CachedFrame() {}
 
-int CachedFrame::SetSource(const CapturedFrame& frame, int rotate_degree) {
+int CachedFrame::SetSource(const FrameBuffer& frame, int rotate_degree) {
   source_frame_ = frame;
   int res = ConvertToYU12();
   if (res != 0) {
@@ -39,7 +39,7 @@ void CachedFrame::UnsetSource() {
 }
 
 uint8_t* CachedFrame::GetSourceBuffer() const {
-  return source_frame_.buffer;
+  return source_frame_.data;
 }
 
 size_t CachedFrame::GetSourceDataSize() const {
@@ -51,7 +51,7 @@ uint32_t CachedFrame::GetSourceFourCC() const {
 }
 
 uint8_t* CachedFrame::GetCachedBuffer() const {
-  return yu12_frame_.buffer;
+  return yu12_frame_.data;
 }
 
 uint32_t CachedFrame::GetCachedFourCC() const {
@@ -68,7 +68,8 @@ int CachedFrame::GetHeight() const {
 
 size_t CachedFrame::GetConvertedSize(uint32_t hal_pixel_format,
                                      int stride) const {
-  return CapturedFrame::GetConvertedSize(yu12_frame_, hal_pixel_format, stride);
+  return ImageProcessor::GetConvertedSize(yu12_frame_, hal_pixel_format,
+                                          stride);
 }
 
 int CachedFrame::Convert(uint32_t hal_pixel_format,
@@ -79,12 +80,12 @@ int CachedFrame::Convert(uint32_t hal_pixel_format,
   if (video_hack && hal_pixel_format == HAL_PIXEL_FORMAT_YV12) {
     hal_pixel_format = CUSTOM_PIXEL_FORMAT_YU12;
   }
-  return CapturedFrame::Convert(yu12_frame_, hal_pixel_format, output_buffer,
-                                output_buffer_size, output_stride);
+  return ImageProcessor::Convert(yu12_frame_, hal_pixel_format, output_buffer,
+                                 output_buffer_size, output_stride);
 }
 
 int CachedFrame::ConvertToYU12() {
-  size_t cache_size = CapturedFrame::GetConvertedSize(
+  size_t cache_size = ImageProcessor::GetConvertedSize(
       source_frame_, CUSTOM_PIXEL_FORMAT_YU12, 0);
   if (cache_size == 0) {
     return -EINVAL;
@@ -92,14 +93,14 @@ int CachedFrame::ConvertToYU12() {
     yu12_buffer_.reset(new uint8_t[cache_size]);
     yu12_buffer_capacity_ = cache_size;
   }
-  yu12_frame_.buffer = yu12_buffer_.get();
+  yu12_frame_.data = yu12_buffer_.get();
   yu12_frame_.data_size = cache_size;
   yu12_frame_.width = source_frame_.width;
   yu12_frame_.height = source_frame_.height;
   yu12_frame_.fourcc = V4L2_PIX_FMT_YUV420;
 
-  int res = CapturedFrame::Convert(source_frame_, CUSTOM_PIXEL_FORMAT_YU12,
-                                   yu12_frame_.buffer, cache_size, 0);
+  int res = ImageProcessor::Convert(source_frame_, CUSTOM_PIXEL_FORMAT_YU12,
+                                    yu12_frame_.data, cache_size, 0);
   if (res) {
     LOGF(ERROR) << "Convert from FOURCC 0x" << std::hex << source_frame_.fourcc
                 << " to YU12 fails.";
@@ -171,7 +172,7 @@ int CachedFrame::CropRotateScale(int rotate_degree) {
   // This libyuv method first crops the frame and then rotates it 90 degrees
   // clockwise.
   int res = libyuv::ConvertToI420(
-      yu12_frame_.buffer, yu12_frame_.data_size, rotated_y_plane,
+      yu12_frame_.data, yu12_frame_.data_size, rotated_y_plane,
       rotated_y_stride, rotated_u_plane, rotated_uv_stride, rotated_v_plane,
       rotated_uv_stride, margin, 0, yu12_frame_.width, yu12_frame_.height,
       cropped_width, cropped_height, rotation_mode,
@@ -197,10 +198,10 @@ int CachedFrame::CropRotateScale(int rotate_degree) {
   res = libyuv::I420Scale(
       rotated_y_plane, rotated_y_stride, rotated_u_plane, rotated_uv_stride,
       rotated_v_plane, rotated_uv_stride, rotated_width, rotated_height,
-      yu12_frame_.buffer, yu12_frame_.width,
-      yu12_frame_.buffer + yu12_frame_.width * yu12_frame_.height,
+      yu12_frame_.data, yu12_frame_.width,
+      yu12_frame_.data + yu12_frame_.width * yu12_frame_.height,
       yu12_frame_.width / 2,
-      yu12_frame_.buffer + yu12_frame_.width * yu12_frame_.height * 5 / 4,
+      yu12_frame_.data + yu12_frame_.width * yu12_frame_.height * 5 / 4,
       yu12_frame_.width / 2, yu12_frame_.width, yu12_frame_.height,
       libyuv::FilterMode::kFilterNone);
   LOGF_IF(ERROR, res) << "I420Scale failed: " << res;

@@ -3,7 +3,7 @@
  * found in the LICENSE file.
  */
 
-#include "usb/captured_frame.h"
+#include "usb/image_processor.h"
 
 #include <errno.h>
 #include <libyuv.h>
@@ -63,9 +63,9 @@ inline static size_t Align16(size_t value) {
   return (value + 15) & ~15;
 }
 
-size_t CapturedFrame::GetConvertedSize(const CapturedFrame& frame,
-                                       uint32_t hal_pixel_format,
-                                       int stride) {
+size_t ImageProcessor::GetConvertedSize(const FrameBuffer& frame,
+                                        uint32_t hal_pixel_format,
+                                        int stride) {
   if ((frame.width % 2) || (frame.height % 2)) {
     LOGF(ERROR) << "Width or height is not even (" << frame.width << " x "
                 << frame.height << ")";
@@ -100,11 +100,11 @@ size_t CapturedFrame::GetConvertedSize(const CapturedFrame& frame,
   }
 }
 
-int CapturedFrame::Convert(const CapturedFrame& frame,
-                           uint32_t hal_pixel_format,
-                           void* output_buffer,
-                           size_t output_buffer_size,
-                           int output_stride) {
+int ImageProcessor::Convert(const FrameBuffer& frame,
+                            uint32_t hal_pixel_format,
+                            void* output_buffer,
+                            size_t output_buffer_size,
+                            int output_stride) {
   if ((frame.width % 2) || (frame.height % 2)) {
     LOGF(ERROR) << "Width or height is not even (" << frame.width << " x "
                 << frame.height << ")";
@@ -141,7 +141,7 @@ int CapturedFrame::Convert(const CapturedFrame& frame,
       {
         uint8_t* dst = reinterpret_cast<uint8_t*>(output_buffer);
         int res = libyuv::YUY2ToI420(
-            frame.buffer, frame.width * 2, dst, frame.width,
+            frame.data, frame.width * 2, dst, frame.width,
             dst + frame.width * frame.height, frame.width / 2,
             dst + frame.width * frame.height * 5 / 4, frame.width / 2,
             frame.width, frame.height);
@@ -154,8 +154,7 @@ int CapturedFrame::Convert(const CapturedFrame& frame,
       // Fall-through.
       case HAL_PIXEL_FORMAT_BGRA_8888:
         // Unsupported path. CachedFrame will use an intermediate YU12
-        // CapturedFrame for
-        // this conversion path.
+        // FrameBuffer for this conversion path.
         return -EINVAL;
       default:
         LOGF(ERROR) << "Destination pixel format " << std::hex
@@ -172,30 +171,29 @@ int CapturedFrame::Convert(const CapturedFrame& frame,
       {
         int ystride = Align16(frame.width);
         int uvstride = Align16(frame.width / 2);
-        int res = YU12ToYV12(frame.buffer, output_buffer, frame.width,
+        int res = YU12ToYV12(frame.data, output_buffer, frame.width,
                              frame.height, ystride, uvstride);
         LOGF_IF(ERROR, res) << "YU12ToYV12() returns " << res;
         return res ? -EINVAL : 0;
       }
       case CUSTOM_PIXEL_FORMAT_YU12:  // YU12
       {
-        memcpy(output_buffer, frame.buffer, output_buffer_size);
+        memcpy(output_buffer, frame.data, output_buffer_size);
         return 0;
       }
       case HAL_PIXEL_FORMAT_YCrCb_420_SP:  // NV21
       {
         int res =
-            YU12ToNV21(frame.buffer, output_buffer, frame.width, frame.height);
+            YU12ToNV21(frame.data, output_buffer, frame.width, frame.height);
         LOGF_IF(ERROR, res) << "YU12ToNV21() returns " << res;
         return res ? -EINVAL : 0;
       }
       case HAL_PIXEL_FORMAT_BGRA_8888: {
         int res = libyuv::I420ToARGB(
-            frame.buffer, frame.width,
-            frame.buffer + frame.width * frame.height, frame.width / 2,
-            frame.buffer + frame.width * frame.height * 5 / 4, frame.width / 2,
-            static_cast<uint8_t*>(output_buffer), output_stride, frame.width,
-            frame.height);
+            frame.data, frame.width, frame.data + frame.width * frame.height,
+            frame.width / 2, frame.data + frame.width * frame.height * 5 / 4,
+            frame.width / 2, static_cast<uint8_t*>(output_buffer),
+            output_stride, frame.width, frame.height);
         LOGF_IF(ERROR, res) << "I420ToARGB() returns " << res;
         return res ? -EINVAL : 0;
       }
@@ -211,7 +209,7 @@ int CapturedFrame::Convert(const CapturedFrame& frame,
       {
         uint8_t* yplane = static_cast<uint8_t*>(output_buffer);
         int res = libyuv::MJPGToI420(
-            frame.buffer, frame.data_size, yplane, frame.width,
+            frame.data, frame.data_size, yplane, frame.width,
             yplane + frame.width * frame.height, frame.width / 2,
             yplane + frame.width * frame.height * 5 / 4, frame.width / 2,
             frame.width, frame.height, frame.width, frame.height);
@@ -224,8 +222,7 @@ int CapturedFrame::Convert(const CapturedFrame& frame,
       // Fall-through.
       case HAL_PIXEL_FORMAT_BGRA_8888:
         // Unsupported path. CachedFrame will use an intermediate YU12
-        // CapturedFrame for
-        // this conversion path.
+        // FrameBuffer for this conversion path.
         return -EINVAL;
       default:
         LOGF(ERROR) << "Destination pixel format " << std::hex
@@ -294,7 +291,7 @@ static int YU12ToNV21(const void* yu12, void* nv21, int width, int height) {
   return 0;
 }
 
-const std::vector<uint32_t> CapturedFrame::GetSupportedFourCCs() {
+const std::vector<uint32_t> ImageProcessor::GetSupportedFourCCs() {
   // The preference of supported fourccs in the list is from high to low.
   static const std::vector<uint32_t> kSupportedFourCCs = {
       V4L2_PIX_FMT_MJPEG, V4L2_PIX_FMT_YUYV, V4L2_PIX_FMT_YUV420};

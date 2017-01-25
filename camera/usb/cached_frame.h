@@ -8,12 +8,12 @@
 
 #include <memory>
 
-#include "usb/captured_frame.h"
+#include "usb/image_processor.h"
 
 namespace arc {
 
-// CachedFrame contains a source CapturedFrame and a cached, converted
-// CapturedFrame. The incoming frames would be converted to YU12, the default
+// CachedFrame contains a source FrameBuffer and a cached, converted
+// FrameBuffer. The incoming frames would be converted to YU12, the default
 // format of libyuv, to allow convenient processing.
 class CachedFrame {
  public:
@@ -28,7 +28,7 @@ class CachedFrame {
   // If |rotate_degree| is -1, |frame| will not be cropped, rotated, and scaled.
   // This function will return an error if |rotate_degree| is not -1, 90, or
   // 270.
-  int SetSource(const CapturedFrame& frame, int rotate_degree);
+  int SetSource(const FrameBuffer& frame, int rotate_degree);
   void UnsetSource();
 
   uint8_t* GetSourceBuffer() const;
@@ -67,14 +67,14 @@ class CachedFrame {
   // needs to rotate clockwise by |rotate_degree|.
   int CropRotateScale(int rotate_degree);
 
-  CapturedFrame source_frame_;
+  FrameBuffer source_frame_;
 
   // Temporary buffer for cropped and rotated results.
   std::unique_ptr<uint8_t[]> cropped_buffer_;
   size_t cropped_buffer_capacity_;
 
   // Cache YU12 decoded results.
-  CapturedFrame yu12_frame_;
+  FrameBuffer yu12_frame_;
   std::unique_ptr<uint8_t[]> yu12_buffer_;
   size_t yu12_buffer_capacity_;
 };
