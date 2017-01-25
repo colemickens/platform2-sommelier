@@ -59,7 +59,7 @@ report_additional_statistics() {
   # input information for cleanup tuning.
 
   local least_used_days=$(cryptohome --action=dump_last_activity |
-                          awk '$2 > max {max = $2} END {print max}')
+      awk 'BEGIN {max = 0} $2 > max {max = $2} END {print max}')
 
   metrics_client Platform.DiskUsage.LeastUsedAccountDays.${users_category} \
                  ${least_used_days} $METRICS_ARGS
@@ -153,7 +153,7 @@ metrics_client Platform.DiskUsage.NumUserHomeDirectories \
                $NUMBER_OF_USERS 1 50 50
 
 WEEKLY_USERS_ACTIVE=$(cryptohome --action=dump_last_activity |
-                      awk '$2 <= 7 {++count} END {print count}')
+    awk 'BEGIN {count = 0} $2 <= 7 {++count} END {print count}')
 metrics_client -s Login.UsersActiveWeekly ${WEEKLY_USERS_ACTIVE}
 
 if [ $NUMBER_OF_USERS -gt 0 ] ; then
@@ -166,7 +166,7 @@ fi
 # Report days since the least frequently used account signed in.
 # It is reported every time to measure effect of autodeletion feature.
 DAYS_SINCE_LFU_ACCOUNT_SIGNIN=$(cryptohome --action=dump_last_activity |
-                                awk '$2 > max {max = $2} END {print max}')
+    awk 'BEGIN {max = 0} $2 > max {max = $2} END {print max}')
 
 # Check if there are any users.
 if [ "${DAYS_SINCE_LFU_ACCOUNT_SIGNIN}" != "" ]; then
