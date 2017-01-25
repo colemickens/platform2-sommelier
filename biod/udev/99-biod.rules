@@ -1,0 +1,1 @@
+SUBSYSTEM=="fpc_sensor" OWNER="root", GROUP="biod" MODE="0660"
