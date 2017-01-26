@@ -59,6 +59,8 @@ class BRILLO_EXPORT Transport : public http::Transport {
 
   void SetDefaultTimeout(base::TimeDelta timeout) override;
 
+  void SetLocalIpAddress(const std::string& ip_address) override;
+
   // Helper methods to convert CURL error codes (CURLcode and CURLMcode)
   // into brillo::Error object.
   static void AddEasyCurlError(brillo::ErrorPtr* error,
@@ -127,6 +129,7 @@ class BRILLO_EXPORT Transport : public http::Transport {
   RequestID last_request_id_{0};
   // The connection timeout for the requests made.
   base::TimeDelta connection_timeout_;
+  std::string ip_address_;
 
   base::WeakPtrFactory<Transport> weak_ptr_factory_for_timer_{this};
   base::WeakPtrFactory<Transport> weak_ptr_factory_{this};

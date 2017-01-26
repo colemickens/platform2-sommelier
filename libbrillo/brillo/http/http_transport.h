@@ -82,6 +82,9 @@ class BRILLO_EXPORT Transport : public std::enable_shared_from_this<Transport> {
   // Set the default timeout of requests made.
   virtual void SetDefaultTimeout(base::TimeDelta timeout) = 0;
 
+  // Set the local IP address of requests
+  virtual void SetLocalIpAddress(const std::string& ip_address) = 0;
+
   // Creates a default http::Transport (currently, using http::curl::Transport).
   static std::shared_ptr<Transport> CreateDefault();
 

@@ -102,6 +102,8 @@ class Transport : public http::Transport {
 
   void SetDefaultTimeout(base::TimeDelta timeout) override;
 
+  void SetLocalIpAddress(const std::string& ip_address) override {}
+
  private:
   // A list of user-supplied request handlers.
   std::map<std::string, HandlerCallback> handlers_;

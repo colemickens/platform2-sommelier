@@ -164,6 +164,10 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
           static_cast<int>(timeout_ms));
     }
   }
+  if (code == CURLE_OK && !ip_address_.empty()) {
+    code = curl_interface_->EasySetOptStr(
+        curl_handle, CURLOPT_INTERFACE, ip_address_.c_str());
+  }
 
   // Setup HTTP request method and optional request body.
   if (code == CURLE_OK) {
@@ -262,6 +266,10 @@ bool Transport::CancelRequest(RequestID request_id) {
 
 void Transport::SetDefaultTimeout(base::TimeDelta timeout) {
   connection_timeout_ = timeout;
+}
+
+void Transport::SetLocalIpAddress(const std::string& ip_address) {
+  ip_address_ = "host!" + ip_address;
 }
 
 void Transport::AddEasyCurlError(brillo::ErrorPtr* error,
