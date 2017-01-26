@@ -234,7 +234,8 @@ bool Crypto::IsTPMPubkeyHash(const std::string& hash,
   Tpm::TpmRetryAction retry_action = tpm_->GetPublicKeyHash(
       tpm_init_->GetCryptohomeKey(),
       &pub_key_hash);
-  if (retry_action == Tpm::kTpmRetryLoadFail) {
+  if (retry_action == Tpm::kTpmRetryLoadFail ||
+      retry_action == Tpm::kTpmRetryInvalidHandle) {
     if (!tpm_init_->ReloadCryptohomeKey()) {
       LOG(ERROR) << "Unable to reload key.";
       retry_action = Tpm::kTpmRetryFailNoRetry;

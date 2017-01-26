@@ -585,6 +585,13 @@ TpmKeyHandle TpmInit::GetCryptohomeKey() {
 
 bool TpmInit::ReloadCryptohomeKey() {
   CHECK(HasCryptohomeKey());
+  // Release the handle first, we know this handle doesn't contain a loaded key
+  // since ReloadCryptohomeKey only called after we failed to use it.
+  // Otherwise we may flush the newly loaded key and fail to use it again,
+  // if it is loaded to the same handle.
+  // TODO(crbug.com/687330): change to closing the handle and ignoring errors
+  // once checking for stale virtual handles is implemented in trunksd.
+  cryptohome_key_.release();
   if (!LoadCryptohomeKey(&cryptohome_key_)) {
     LOG(ERROR) << "Error reloading Cryptohome key.";
     return false;

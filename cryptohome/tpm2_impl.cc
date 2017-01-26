@@ -33,6 +33,43 @@ using trunks::TPM_RC;
 using trunks::TPM_RC_SUCCESS;
 using trunks::TrunksFactory;
 
+namespace {
+
+using cryptohome::Tpm;
+Tpm::TpmRetryAction ResultToRetryAction(TPM_RC result) {
+  // Strip everything but the error number from Format-1 error codes (other
+  // error codes are left untouched) and decide based on that.
+  Tpm::TpmRetryAction action;
+  switch (trunks::GetFormatOneError(result)) {
+    case trunks::TPM_RC_SUCCESS:
+      action = Tpm::kTpmRetryNone;
+      break;
+    case trunks::TPM_RC_LOCKOUT:
+      action = Tpm::kTpmRetryDefendLock;
+      break;
+    case trunks::TPM_RC_HANDLE:
+    case trunks::TPM_RC_REFERENCE_H0:
+    case trunks::TPM_RC_REFERENCE_H1:
+    case trunks::TPM_RC_REFERENCE_H2:
+    case trunks::TPM_RC_REFERENCE_H3:
+    case trunks::TPM_RC_REFERENCE_H4:
+    case trunks::TPM_RC_REFERENCE_H5:
+    case trunks::TPM_RC_REFERENCE_H6:
+      action = Tpm::kTpmRetryInvalidHandle;
+      break;
+    case trunks::TPM_RC_INITIALIZE:
+    case trunks::TPM_RC_REBOOT:
+      action = Tpm::kTpmRetryReboot;
+      break;
+    default:
+      action = Tpm::kTpmRetryFailNoRetry;
+      break;
+  }
+  return action;
+}
+
+}  // namespace
+
 namespace cryptohome {
 
 Tpm2Impl::Tpm2Impl(TrunksFactory* factory,
@@ -723,7 +760,7 @@ Tpm::TpmRetryAction Tpm2Impl::LoadWrappedKey(const SecureBlob& wrapped_key,
                                                delegate.get(), &handle);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error loading SRK wrapped key: " << GetErrorString(result);
-    return Tpm::kTpmRetryFailNoRetry;
+    return ResultToRetryAction(result);
   }
   key_handle->reset(this, handle);
   return Tpm::kTpmRetryNone;
@@ -763,7 +800,7 @@ Tpm::TpmRetryAction Tpm2Impl::EncryptBlob(TpmKeyHandle key_handle,
       plaintext.to_string(), nullptr, &tpm_ciphertext);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error encrypting plaintext: " << GetErrorString(result);
-    return Tpm::kTpmRetryFailNoRetry;
+    return ResultToRetryAction(result);
   }
   if (!CryptoLib::ObscureRSAMessage(SecureBlob(tpm_ciphertext), key,
                                     ciphertext)) {
@@ -795,7 +832,7 @@ Tpm::TpmRetryAction Tpm2Impl::DecryptBlob(TpmKeyHandle key_handle,
       local_data.to_string(), delegate.get(), &tpm_plaintext);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error encrypting plaintext: " << GetErrorString(result);
-    return Tpm::kTpmRetryFailNoRetry;
+    return ResultToRetryAction(result);
   }
   plaintext->assign(tpm_plaintext.begin(), tpm_plaintext.end());
   return Tpm::kTpmRetryNone;
@@ -813,7 +850,7 @@ Tpm::TpmRetryAction Tpm2Impl::GetPublicKeyHash(TpmKeyHandle key_handle,
       trunks->tpm_utility->GetKeyPublicArea(key_handle, &public_data);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting key public area: " << GetErrorString(result);
-    return Tpm::kTpmRetryFailNoRetry;
+    return ResultToRetryAction(result);
   }
   std::string public_modulus =
       trunks::StringFrom_TPM2B_PUBLIC_KEY_RSA(public_data.unique.rsa);
