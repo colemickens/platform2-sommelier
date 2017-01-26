@@ -416,6 +416,18 @@ void Manager::OnPairingEnd(const std::string& session_id) {
 }
 
 void Manager::OnConnectionStateChanged() {
+  if (shill_client_->GetIpAddress() != ip_address_) {
+    if (!ip_address_.empty()) {
+      LOG(INFO) << "IP address changed from " << ip_address_ << " to "
+                << shill_client_->GetIpAddress();
+      if (http_client_) {
+        http_client_->SetLocalIpAddress(shill_client_->GetIpAddress());
+      }
+    }
+    ip_address_ = shill_client_->GetIpAddress();
+    return;
+  }
+
   if (http_client_) {
     http_client_->SetOnline(shill_client_->GetConnectionState() ==
           weave::provider::Network::State::kOnline);

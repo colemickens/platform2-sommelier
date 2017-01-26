@@ -27,6 +27,7 @@ using brillo::VariantDictionary;
 using dbus::ObjectPath;
 using org::chromium::flimflam::DeviceProxy;
 using org::chromium::flimflam::DeviceProxyInterface;
+using org::chromium::flimflam::IPConfigProxy;
 using org::chromium::flimflam::ServiceProxy;
 using org::chromium::flimflam::ServiceProxyInterface;
 using std::map;
@@ -207,6 +208,10 @@ void ShillClient::StopAccessPoint() {
 #ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
   ap_manager_client_->Stop();
 #endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
+}
+
+std::string ShillClient::GetIpAddress() {
+  return ip_address_;
 }
 
 void ShillClient::AddConnectionChangedCallback(
@@ -430,7 +435,7 @@ void ShillClient::OnServicePropertyChangeRegistration(const ObjectPath& path,
   // Give ourselves property changed signals for the initial property
   // values.
   for (auto name : {shill::kStateProperty, shill::kSignalStrengthProperty,
-                    shill::kErrorProperty}) {
+                    shill::kErrorProperty, shill::kIPConfigProperty}) {
     auto it = properties.find(name);
     if (it != properties.end())
       OnServicePropertyChange(path, name, it->second);
@@ -464,6 +469,36 @@ void ShillClient::OnServicePropertyChange(const ObjectPath& service_path,
     VLOG(3) << "Error=" << property_value.TryGet<std::string>();
     if (is_connecting_service)
       connecting_service_error_ = property_value.TryGet<std::string>();
+  } else if (property_name == shill::kIPConfigProperty) {
+    string device_path;
+    for (const auto& kv : devices_) {
+      if (kv.second.selected_service &&
+          kv.second.selected_service->GetObjectPath() == service_path) {
+        device_path = kv.first.value();
+        break;
+      }
+    }
+    OnIpConfigChange(property_value.TryGet<ObjectPath>(), device_path);
+  }
+}
+
+void ShillClient::OnIpConfigChange(const ObjectPath& ip_config_path,
+                                   const string& device_path) {
+  IPConfigProxy ip_config(bus_.get(), ip_config_path);
+  VariantDictionary properties;
+  if (!ip_config.GetProperties(&properties, nullptr)) {
+    LOG(WARNING) << "Failed to read properties from ipconfig.";
+    return;
+  }
+  const auto it = properties.find(shill::kAddressProperty);
+  if (it != properties.end()) {
+    ip_address_ = it->second.TryGet<string>();
+    LOG(INFO) << "IPConfigProperty address = " << ip_address_
+              << " at " << device_path;
+    base::MessageLoop::current()->PostTask(
+        FROM_HERE, base::Bind(&ShillClient::NotifyConnectivityListeners,
+                          weak_factory_.GetWeakPtr(),
+                          GetConnectionState() == Network::State::kOnline));
   }
 }
 

@@ -127,6 +127,8 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   std::unique_ptr<weave::Device> device_;
   std::unique_ptr<DBusCommandDispacher> command_dispatcher_;
 
+  std::string ip_address_;
+
   base::WeakPtrFactory<Manager> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };

@@ -39,6 +39,8 @@ class HttpTransportClient : public weave::provider::HttpClient {
 
   void SetOnline(bool online);
 
+  void SetLocalIpAddress(const std::string& ip_address);
+
  private:
   std::map<int, HttpClient::SendRequestCallback> callbacks_;
 

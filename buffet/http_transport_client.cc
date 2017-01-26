@@ -57,6 +57,10 @@ HttpTransportClient::HttpTransportClient()
 
 HttpTransportClient::~HttpTransportClient() {}
 
+void HttpTransportClient::SetLocalIpAddress(const std::string& ip_address) {
+  transport_->SetLocalIpAddress(ip_address);
+}
+
 void HttpTransportClient::SendRequest(Method method,
                                       const std::string& url,
                                       const Headers& headers,

@@ -6,6 +6,7 @@
 #define BUFFET_SHILL_CLIENT_H_
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -51,6 +52,8 @@ class ShillClient final : public weave::provider::Network,
   void StartAccessPoint(const std::string& ssid) override;
   void StopAccessPoint() override;
 
+  std::string GetIpAddress();
+
  private:
   struct DeviceState {
     std::unique_ptr<org::chromium::flimflam::DeviceProxyInterface> device;
@@ -90,6 +93,9 @@ class ShillClient final : public weave::provider::Network,
   void OnStrengthChangeForConnectingService(uint8_t signal_strength);
   void OnStateChangeForSelectedService(const dbus::ObjectPath& service_path,
                                        const std::string& state);
+  void OnIpConfigChange(const dbus::ObjectPath& ip_config_path,
+                        const std::string& device_path);
+
   void UpdateConnectivityState();
   void NotifyConnectivityListeners(bool am_online);
   // Clean up state related to a connecting service.
@@ -120,6 +126,8 @@ class ShillClient final : public weave::provider::Network,
 #ifdef BUFFET_USE_WIFI_BOOTSTRAPPING
   std::unique_ptr<ApManagerClient> ap_manager_client_;
 #endif  // BUFFET_USE_WIFI_BOOTSTRAPPING
+
+  std::string ip_address_;
 
   base::WeakPtrFactory<ShillClient> weak_factory_{this};
 
