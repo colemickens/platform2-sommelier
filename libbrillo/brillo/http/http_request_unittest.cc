@@ -175,7 +175,7 @@ TEST_F(HttpRequestTest, GetResponse) {
   };
 
   auto finish_request_async =
-      [this, &read_data, &resp_data](const SuccessCallback& success_callback) {
+      [this, &read_data](const SuccessCallback& success_callback) {
     std::unique_ptr<MockStream> mock_stream{new MockStream};
     EXPECT_CALL(*mock_stream, ReadBlocking(_, _, _, _))
         .WillOnce(Invoke(read_data))
