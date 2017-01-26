@@ -161,6 +161,10 @@ const char kSmbClientPath[] = "/usr/bin/smbclient";
 const int kMachineKinitMaxRetries = 60;
 // Wait interval between two kinit retries.
 const int kMachineKinitRetryWaitSeconds = 1;
+// Maximum smbclient retries.
+const int kSmbClientMaxRetries = 5;
+// Wait interval between two smbclient retries.
+const int kSmbClientRetryWaitSeconds = 1;
 
 // Keys for interpreting kinit output.
 const char kKeyBadUserName[] =
@@ -185,6 +189,7 @@ const char kKeyNoLogonServers[] = "No logon servers";
 const char kKeyJoinLogonFailure[] = "Logon failure";
 
 // Keys for interpreting smbclient output.
+const char kKeyConnectionReset[] = "NT_STATUS_CONNECTION_RESET";
 const char kKeyNetworkTimeout[] = "NT_STATUS_IO_TIMEOUT";
 const char kKeyObjectNameNotFound[] =
     "NT_STATUS_OBJECT_NAME_NOT_FOUND opening remote file ";
@@ -318,7 +323,7 @@ ErrorType GetNetError(const ProcessExecutor& executor,
 
   if (Contains(net_out, kKeyJoinFailedToFindDC) ||
       Contains(net_err, kKeyNoLogonServers)) {
-    LOG(ERROR) << error_msg << "network failure";
+    LOG(ERROR) << error_msg << "network problem";
     return ERROR_NETWORK_PROBLEM;
   }
   if (Contains(net_out, kKeyJoinLogonFailure)) {
@@ -348,8 +353,9 @@ ErrorType GetNetError(const ProcessExecutor& executor,
 
 ErrorType GetSmbclientError(const ProcessExecutor& smb_client_cmd) {
   const std::string& smb_client_out = smb_client_cmd.GetStdout();
-  if (Contains(smb_client_out, kKeyNetworkTimeout)) {
-    LOG(ERROR) << "smbclient failed - network failure";
+  if (Contains(smb_client_out, kKeyNetworkTimeout) ||
+      Contains(smb_client_out, kKeyConnectionReset)) {
+    LOG(ERROR) << "smbclient failed - network problem";
     return ERROR_NETWORK_PROBLEM;
   }
   LOG(ERROR) << "smbclient failed with exit code "
@@ -770,22 +776,38 @@ bool DownloadGpos(const std::string& gpo_list_blob,
     }
   }
 
-  std::string service = base::StringPrintf(
+  const std::string service = base::StringPrintf(
       "//%s.%s", domain_controller_name.c_str(), gpo_basepath.c_str());
 
-  // Download GPO into local directory.
+  // Download GPO into local directory. Retry a couple of times in case of
+  // network errors, Kerberos authentication may be flaky in some deployments,
+  // see crbug.com/684733.
   ProcessExecutor smb_client_cmd(
       {kSmbClientPath, service, "-s", kSmbFilePath, "-k", "-c", smb_command});
-  if (!SetupJailAndRun(&smb_client_cmd, kSmbClientSeccompFilter)) {
-    // The exit code of smbclient corresponds to the LAST command issued. Thus,
-    // Execute() might fail if the last GPO file is missing. However, we handle
-    // this below (not an error), so only error out here on internal errors.
-    if (smb_client_cmd.GetExitCode() ==
-        ProcessExecutor::kExitCodeInternalError) {
-      *out_error = GetSmbclientError(smb_client_cmd);
-      return false;
+  bool success = false;
+  for (int tries = 0; tries < kSmbClientMaxRetries; ++tries) {
+    success = SetupJailAndRun(&smb_client_cmd, kSmbClientSeccompFilter);
+    if (success) {
+      *out_error = ERROR_NONE;
+      break;
     }
+    *out_error = GetSmbclientError(smb_client_cmd);
+    if (*out_error != ERROR_NETWORK_PROBLEM)
+      break;
+    base::PlatformThread::Sleep(
+        base::TimeDelta::FromSeconds(kSmbClientRetryWaitSeconds));
   }
+
+  if (!success) {
+    // The exit code of smbclient corresponds to the LAST command issued. Thus,
+    // Execute() might fail if the last GPO file is missing, which creates an
+    // ERROR_SMBCLIENT_FAILED error code. However, we handle this below (not an
+    // error), so only error out here on other error codes.
+    if (*out_error != ERROR_SMBCLIENT_FAILED)
+      return false;
+    *out_error = ERROR_NONE;
+  }
+
   // Note that the errors are in stdout and the output is in stderr :-/
   const std::string& smbclient_out_lower =
       base::ToLowerASCII(smb_client_cmd.GetStdout());
