@@ -48,14 +48,16 @@ int main(int argc, char** argv) {
 
   if (FLAGS_mount) {
     if (FLAGS_mount_point == "" || FLAGS_mount_component == "") {
-      LOG(FATAL) << "--mount_component=name and --mount_point=path must be set "
+      LOG(ERROR) << "--mount_component=name and --mount_point=path must be set "
                     "with --mount";
+      return 1;
     }
     // Access the ImageLoaderImpl directly to avoid needless dbus dependencies,
     // which may not be available at early boot.
     imageloader::ImageLoaderImpl loader(std::move(config));
     if (!loader.LoadComponent(FLAGS_mount_component, FLAGS_mount_point)) {
-      LOG(FATAL) << "Failed to verify and mount component.";
+      LOG(ERROR) << "Failed to verify and mount component.";
+      return 1;
     }
     return 0;
   }
