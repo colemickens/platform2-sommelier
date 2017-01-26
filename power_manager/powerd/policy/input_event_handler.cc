@@ -27,8 +27,7 @@ InputEventHandler::InputEventHandler()
       clock_(new Clock),
       only_has_external_display_(false),
       lid_state_(LidState::NOT_PRESENT),
-      tablet_mode_(TabletMode::UNSUPPORTED) {
-}
+      tablet_mode_(TabletMode::UNSUPPORTED) {}
 
 InputEventHandler::~InputEventHandler() {
   if (input_watcher_)
@@ -70,7 +69,8 @@ void InputEventHandler::HandlePowerButtonAcknowledgment(
           << timestamp.ToInternalValue() << "; expected "
           << expected_power_button_acknowledgment_timestamp_.ToInternalValue();
   if (timestamp == expected_power_button_acknowledgment_timestamp_) {
-    delegate_->ReportPowerButtonAcknowledgmentDelay(clock_->GetCurrentTime() -
+    delegate_->ReportPowerButtonAcknowledgmentDelay(
+        clock_->GetCurrentTime() -
         expected_power_button_acknowledgment_timestamp_);
     expected_power_button_acknowledgment_timestamp_ = base::TimeTicks();
     power_button_acknowledgment_timer_.Stop();
@@ -103,9 +103,9 @@ void InputEventHandler::OnTabletModeEvent(TabletMode mode) {
   delegate_->HandleTabletModeChange(mode);
 
   InputEvent proto;
-  proto.set_type(tablet_mode_ == TabletMode::ON ?
-                 InputEvent_Type_TABLET_MODE_ON :
-                 InputEvent_Type_TABLET_MODE_OFF);
+  proto.set_type(tablet_mode_ == TabletMode::ON
+                     ? InputEvent_Type_TABLET_MODE_ON
+                     : InputEvent_Type_TABLET_MODE_OFF);
   proto.set_timestamp(clock_->GetCurrentTime().ToInternalValue());
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);
 }
@@ -121,18 +121,20 @@ void InputEventHandler::OnPowerButtonEvent(ButtonState state) {
     const base::TimeTicks now = clock_->GetCurrentTime();
 
     InputEvent proto;
-    proto.set_type(state == ButtonState::DOWN ?
-                   InputEvent_Type_POWER_BUTTON_DOWN :
-                   InputEvent_Type_POWER_BUTTON_UP);
+    proto.set_type(state == ButtonState::DOWN
+                       ? InputEvent_Type_POWER_BUTTON_DOWN
+                       : InputEvent_Type_POWER_BUTTON_UP);
     proto.set_timestamp(now.ToInternalValue());
     dbus_wrapper_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);
 
     if (state == ButtonState::DOWN) {
       expected_power_button_acknowledgment_timestamp_ = now;
-      power_button_acknowledgment_timer_.Start(FROM_HERE,
+      power_button_acknowledgment_timer_.Start(
+          FROM_HERE,
           base::TimeDelta::FromMilliseconds(
               kPowerButtonAcknowledgmentTimeoutMs),
-          this, &InputEventHandler::HandlePowerButtonAcknowledgmentTimeout);
+          this,
+          &InputEventHandler::HandlePowerButtonAcknowledgmentTimeout);
     } else {
       expected_power_button_acknowledgment_timestamp_ = base::TimeTicks();
       power_button_acknowledgment_timer_.Stop();
@@ -148,8 +150,7 @@ void InputEventHandler::OnHoverStateChange(bool hovering) {
 
 void InputEventHandler::HandlePowerButtonAcknowledgmentTimeout() {
   delegate_->ReportPowerButtonAcknowledgmentDelay(
-      base::TimeDelta::FromMilliseconds(
-          kPowerButtonAcknowledgmentTimeoutMs));
+      base::TimeDelta::FromMilliseconds(kPowerButtonAcknowledgmentTimeoutMs));
   delegate_->HandleMissingPowerButtonAcknowledgment();
   expected_power_button_acknowledgment_timestamp_ = base::TimeTicks();
 }

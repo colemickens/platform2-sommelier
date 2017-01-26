@@ -47,9 +47,9 @@ class ActivityLoggerTest : public testing::Test {
   // BaseActivityLogger::LogCallback that just saves messages passed to it.
   void SaveMessage(const std::string& message) {
     EXPECT_FALSE(message.empty()) << "Got request to log empty message";
-    EXPECT_TRUE(last_message_.empty())
-        << "Got request to log \"" << message << "\" before previous message \""
-        << last_message_ << "\" was popped";
+    EXPECT_TRUE(last_message_.empty()) << "Got request to log \"" << message
+                                       << "\" before previous message \""
+                                       << last_message_ << "\" was popped";
     last_message_ = message;
   }
 
@@ -204,7 +204,7 @@ TEST_F(ActivityLoggerTest, PeriodicWithOngoing) {
   // Advance the clock the remaining 10 seconds to the ongoing interval.
   AdvanceTime(base::TimeDelta::FromSeconds(10));
   ASSERT_TRUE(logger.TriggerOngoingTimerForTest());
-  EXPECT_EQ(kName + " ongoing; last reported 10 sec ago" , PopMessage());
+  EXPECT_EQ(kName + " ongoing; last reported 10 sec ago", PopMessage());
 
   // Now let the "stopped" timer fire 10 seconds later and check that the
   // "ongoing" timer is also stopped.

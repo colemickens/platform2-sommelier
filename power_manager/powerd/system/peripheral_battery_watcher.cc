@@ -41,8 +41,7 @@ const int kDefaultPollIntervalMs = 600000;
 PeripheralBatteryWatcher::PeripheralBatteryWatcher()
     : dbus_wrapper_(NULL),
       peripheral_battery_path_(kDefaultPeripheralBatteryPath),
-      poll_interval_ms_(kDefaultPollIntervalMs) {
-}
+      poll_interval_ms_(kDefaultPollIntervalMs) {}
 
 PeripheralBatteryWatcher::~PeripheralBatteryWatcher() {}
 
@@ -101,20 +100,22 @@ void PeripheralBatteryWatcher::ReadBatteryStatuses() {
     AsyncFileReader* reader = battery_readers_.back().get();
 
     if (reader->Init(capacity_path.value())) {
-      reader->StartRead(
-          base::Bind(&PeripheralBatteryWatcher::ReadCallback,
-                     base::Unretained(this),
-                     path.value(), model_name),
-          base::Bind(&PeripheralBatteryWatcher::ErrorCallback,
-                     base::Unretained(this),
-                     path.value(), model_name));
+      reader->StartRead(base::Bind(&PeripheralBatteryWatcher::ReadCallback,
+                                   base::Unretained(this),
+                                   path.value(),
+                                   model_name),
+                        base::Bind(&PeripheralBatteryWatcher::ErrorCallback,
+                                   base::Unretained(this),
+                                   path.value(),
+                                   model_name));
     } else {
       LOG(ERROR) << "Can't read battery capacity " << capacity_path.value();
     }
   }
   poll_timer_.Start(FROM_HERE,
-      base::TimeDelta::FromMilliseconds(poll_interval_ms_),
-      this, &PeripheralBatteryWatcher::ReadBatteryStatuses);
+                    base::TimeDelta::FromMilliseconds(poll_interval_ms_),
+                    this,
+                    &PeripheralBatteryWatcher::ReadBatteryStatuses);
 }
 
 void PeripheralBatteryWatcher::SendBatteryStatus(const std::string& path,

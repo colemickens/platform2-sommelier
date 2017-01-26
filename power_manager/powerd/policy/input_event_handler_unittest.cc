@@ -80,12 +80,8 @@ class TestInputEventHandlerDelegate : public InputEventHandler::Delegate,
   virtual ~TestInputEventHandlerDelegate() {}
 
   // InputEventHandler::Delegate implementation:
-  void HandleLidClosed() override {
-    AppendAction(kLidClosed);
-  }
-  void HandleLidOpened() override {
-    AppendAction(kLidOpened);
-  }
+  void HandleLidClosed() override { AppendAction(kLidClosed); }
+  void HandleLidOpened() override { AppendAction(kLidOpened); }
   void HandlePowerButtonEvent(ButtonState state) override {
     AppendAction(GetPowerButtonAction(state));
   }
@@ -157,8 +153,8 @@ class InputEventHandlerTest : public ::testing::Test {
 
   // Advances the current time by |interval|.
   void AdvanceTime(const base::TimeDelta& interval) {
-    handler_.clock_for_testing()->set_current_time_for_testing(
-        Now() + interval);
+    handler_.clock_for_testing()->set_current_time_for_testing(Now() +
+                                                               interval);
   }
 
   FakePrefs prefs_;
@@ -280,7 +276,8 @@ TEST_F(InputEventHandlerTest, AcknowledgePowerButtonPresses) {
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
   ASSERT_TRUE(handler_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   EXPECT_EQ(JoinActions(GetAcknowledgmentDelayAction(kTimeout).c_str(),
-                        kMissingPowerButtonAcknowledgment, NULL),
+                        kMissingPowerButtonAcknowledgment,
+                        NULL),
             delegate_.GetActions());
   ASSERT_FALSE(handler_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
@@ -297,7 +294,8 @@ TEST_F(InputEventHandlerTest, AcknowledgePowerButtonPresses) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ASSERT_TRUE(handler_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   EXPECT_EQ(JoinActions(GetAcknowledgmentDelayAction(kTimeout).c_str(),
-                        kMissingPowerButtonAcknowledgment, NULL),
+                        kMissingPowerButtonAcknowledgment,
+                        NULL),
             delegate_.GetActions());
   ASSERT_FALSE(handler_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);

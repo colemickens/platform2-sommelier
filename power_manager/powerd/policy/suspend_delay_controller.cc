@@ -5,6 +5,7 @@
 #include "power_manager/powerd/policy/suspend_delay_controller.h"
 
 #include <algorithm>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -32,11 +33,9 @@ SuspendDelayController::SuspendDelayController(int initial_delay_id,
                                                const std::string& description)
     : description_(description),
       next_delay_id_(initial_delay_id),
-      current_suspend_id_(0) {
-}
+      current_suspend_id_(0) {}
 
-SuspendDelayController::~SuspendDelayController() {
-}
+SuspendDelayController::~SuspendDelayController() {}
 
 void SuspendDelayController::AddObserver(SuspendDelayObserver* observer) {
   DCHECK(observer);
@@ -61,8 +60,8 @@ void SuspendDelayController::RegisterSuspendDelay(
   info.dbus_client = dbus_client;
   info.description = request.description();
   LOG(INFO) << "Registering " << GetLogDescription() << " delay " << delay_id
-            << " (" << info.description << ")" << " of "
-            << info.timeout.InMilliseconds() << " ms on behalf of "
+            << " (" << info.description << ")"
+            << " of " << info.timeout.InMilliseconds() << " ms on behalf of "
             << dbus_client;
   registered_delays_.insert(std::make_pair(delay_id, info));
 
@@ -74,21 +73,20 @@ void SuspendDelayController::UnregisterSuspendDelay(
     const UnregisterSuspendDelayRequest& request,
     const std::string& dbus_client) {
   LOG(INFO) << "Unregistering " << GetLogDescription() << " delay "
-            << request.delay_id()
-            << " (" << GetDelayDescription(request.delay_id()) << ")"
+            << request.delay_id() << " ("
+            << GetDelayDescription(request.delay_id()) << ")"
             << " on behalf of " << dbus_client;
   UnregisterDelayInternal(request.delay_id());
 }
 
 void SuspendDelayController::HandleSuspendReadiness(
-    const SuspendReadinessInfo& info,
-    const std::string& dbus_client) {
+    const SuspendReadinessInfo& info, const std::string& dbus_client) {
   int delay_id = info.delay_id();
   int suspend_id = info.suspend_id();
-  LOG(INFO) << "Got notification that delay " << delay_id
-            << " (" << GetDelayDescription(delay_id) << ") is ready for "
-            << GetLogDescription() << " request " << suspend_id
-            << " from " << dbus_client;
+  LOG(INFO) << "Got notification that delay " << delay_id << " ("
+            << GetDelayDescription(delay_id) << ") is ready for "
+            << GetLogDescription() << " request " << suspend_id << " from "
+            << dbus_client;
 
   if (suspend_id != current_suspend_id_) {
     // This can legitimately happen if we cancel a suspend request, quickly
@@ -113,13 +111,15 @@ void SuspendDelayController::HandleDBusClientDisconnected(
     const std::string& client) {
   std::vector<int> delay_ids_to_remove;
   for (DelayInfoMap::const_iterator it = registered_delays_.begin();
-       it != registered_delays_.end(); ++it) {
+       it != registered_delays_.end();
+       ++it) {
     if (it->second.dbus_client == client)
       delay_ids_to_remove.push_back(it->first);
   }
 
   for (std::vector<int>::const_iterator it = delay_ids_to_remove.begin();
-       it != delay_ids_to_remove.end(); ++it) {
+       it != delay_ids_to_remove.end();
+       ++it) {
     LOG(INFO) << "Unregistering " << GetLogDescription() << " delay " << *it
               << " (" << GetDelayDescription(*it) << ") due to D-Bus client "
               << client << " going away";
@@ -133,7 +133,8 @@ void SuspendDelayController::PrepareForSuspend(int suspend_id) {
   size_t old_count = delay_ids_being_waited_on_.size();
   delay_ids_being_waited_on_.clear();
   for (DelayInfoMap::const_iterator it = registered_delays_.begin();
-       it != registered_delays_.end(); ++it)
+       it != registered_delays_.end();
+       ++it)
     delay_ids_being_waited_on_.insert(it->first);
 
   LOG(INFO) << "Announcing " << GetLogDescription() << " request "
@@ -145,13 +146,16 @@ void SuspendDelayController::PrepareForSuspend(int suspend_id) {
   } else {
     base::TimeDelta max_timeout;
     for (DelayInfoMap::const_iterator it = registered_delays_.begin();
-         it != registered_delays_.end(); ++it) {
+         it != registered_delays_.end();
+         ++it) {
       max_timeout = std::max(max_timeout, it->second.timeout);
     }
     max_timeout = std::min(
         max_timeout, base::TimeDelta::FromMilliseconds(kMaxDelayTimeoutMs));
-    delay_expiration_timer_.Start(FROM_HERE, max_timeout, this,
-        &SuspendDelayController::OnDelayExpiration);
+    delay_expiration_timer_.Start(FROM_HERE,
+                                  max_timeout,
+                                  this,
+                                  &SuspendDelayController::OnDelayExpiration);
   }
 }
 
@@ -165,7 +169,7 @@ void SuspendDelayController::FinishSuspend(int suspend_id) {
 
 std::string SuspendDelayController::GetLogDescription() const {
   return (!description_.empty() ? description_ + " " : std::string()) +
-      "suspend";
+         "suspend";
 }
 
 std::string SuspendDelayController::GetDelayDescription(int delay_id) const {
@@ -197,34 +201,38 @@ void SuspendDelayController::RemoveDelayFromWaitList(int delay_id) {
 void SuspendDelayController::OnDelayExpiration() {
   std::string tardy_delays;
   for (std::set<int>::const_iterator it = delay_ids_being_waited_on_.begin();
-       it != delay_ids_being_waited_on_.end(); ++it) {
+       it != delay_ids_being_waited_on_.end();
+       ++it) {
     const DelayInfo& delay = registered_delays_[*it];
     if (!tardy_delays.empty())
       tardy_delays += ", ";
     tardy_delays += base::IntToString(*it) + " (" + delay.dbus_client + ": " +
-        delay.description + ")";
+                    delay.description + ")";
   }
   LOG(WARNING) << "Timed out while waiting for " << GetLogDescription()
                << " request " << current_suspend_id_
                << " readiness confirmation for "
-               << delay_ids_being_waited_on_.size() << " delay(s): "
-               << tardy_delays;
+               << delay_ids_being_waited_on_.size()
+               << " delay(s): " << tardy_delays;
 
   delay_ids_being_waited_on_.clear();
   PostNotifyObserversTask(current_suspend_id_);
 }
 
 void SuspendDelayController::PostNotifyObserversTask(int suspend_id) {
-  notify_observers_timer_.Start(FROM_HERE, base::TimeDelta(),
+  notify_observers_timer_.Start(
+      FROM_HERE,
+      base::TimeDelta(),
       base::Bind(&SuspendDelayController::NotifyObservers,
-                 base::Unretained(this), suspend_id));
+                 base::Unretained(this),
+                 suspend_id));
 }
 
 void SuspendDelayController::NotifyObservers(int suspend_id) {
   LOG(INFO) << "Notifying observers that " << GetLogDescription()
             << " is ready";
-  FOR_EACH_OBSERVER(SuspendDelayObserver, observers_,
-                    OnReadyForSuspend(this, suspend_id));
+  FOR_EACH_OBSERVER(
+      SuspendDelayObserver, observers_, OnReadyForSuspend(this, suspend_id));
 }
 
 }  // namespace policy

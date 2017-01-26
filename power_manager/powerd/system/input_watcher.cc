@@ -63,8 +63,7 @@ bool GetLidStateFromEvent(const input_event& event, LidState* state_out) {
 
 // If |event| came from a tablet mode switch, copies its state to |mode_out| and
 // returns true. Otherwise, leaves |mode_out| untouched and returns false.
-bool GetTabletModeFromEvent(const input_event& event,
-                            TabletMode* mode_out) {
+bool GetTabletModeFromEvent(const input_event& event, TabletMode* mode_out) {
   if (event.type != EV_SW || event.code != SW_TABLET_MODE)
     return false;
 
@@ -119,8 +118,7 @@ InputWatcher::InputWatcher()
       single_touch_hover_distance_nonzero_(false),
       power_button_to_skip_(kPowerButtonToSkip),
       udev_(nullptr),
-      weak_ptr_factory_(this) {
-}
+      weak_ptr_factory_(this) {}
 
 InputWatcher::~InputWatcher() {
   if (udev_)
@@ -148,7 +146,7 @@ bool InputWatcher::Init(
   udev_->AddSubsystemObserver(kInputUdevSubsystem, this);
 
   if (base::DirectoryExists(dev_input_path_)) {
-    if (access(dev_input_path_.value().c_str(), R_OK|X_OK) != 0) {
+    if (access(dev_input_path_.value().c_str(), R_OK | X_OK) != 0) {
       LOG(ERROR) << dev_input_path_.value() << " isn't readable";
       return false;
     }
@@ -189,8 +187,9 @@ LidState InputWatcher::QueryLidState() {
 
     // Get the state from the last lid event (|events| may also contain non-lid
     // events).
-    for (std::vector<input_event>::const_reverse_iterator it =
-             events.rbegin(); it != events.rend(); ++it) {
+    for (std::vector<input_event>::const_reverse_iterator it = events.rbegin();
+         it != events.rend();
+         ++it) {
       if (GetLidStateFromEvent(*it, &lid_state_))
         break;
     }
@@ -205,8 +204,8 @@ LidState InputWatcher::QueryLidState() {
   if (!queued_events_.empty()) {
     send_queued_events_task_.Reset(
         base::Bind(&InputWatcher::SendQueuedEvents, base::Unretained(this)));
-    base::MessageLoop::current()->PostTask(
-        FROM_HERE, send_queued_events_task_.callback());
+    base::MessageLoop::current()->PostTask(FROM_HERE,
+                                           send_queued_events_task_.callback());
   }
 
   return lid_state_;
@@ -217,7 +216,9 @@ TabletMode InputWatcher::GetTabletMode() {
 }
 
 bool InputWatcher::IsUSBInputDeviceConnected() const {
-  base::FileEnumerator enumerator(sys_class_input_path_, false,
+  base::FileEnumerator enumerator(
+      sys_class_input_path_,
+      false,
       static_cast<::base::FileEnumerator::FileType>(
           base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS),
       kInputMatchPattern);
@@ -309,8 +310,8 @@ void InputWatcher::ProcessEvent(const input_event& event,
     tablet_mode_ = tablet_mode;
     VLOG(1) << "Notifying observers about tablet mode "
             << TabletModeToString(tablet_mode) << " event";
-    FOR_EACH_OBSERVER(InputObserver, observers_,
-                      OnTabletModeEvent(tablet_mode));
+    FOR_EACH_OBSERVER(
+        InputObserver, observers_, OnTabletModeEvent(tablet_mode));
   }
 
   ButtonState button_state = ButtonState::DOWN;
@@ -318,8 +319,8 @@ void InputWatcher::ProcessEvent(const input_event& event,
       GetPowerButtonStateFromEvent(event, &button_state)) {
     VLOG(1) << "Notifying observers about power button "
             << ButtonStateToString(button_state) << " event";
-    FOR_EACH_OBSERVER(InputObserver, observers_,
-                      OnPowerButtonEvent(button_state));
+    FOR_EACH_OBSERVER(
+        InputObserver, observers_, OnPowerButtonEvent(button_state));
   }
 
   if (device_types & DEVICE_HOVER)
@@ -333,9 +334,8 @@ void InputWatcher::ProcessHoverEvent(const input_event& event) {
     // will refer to.
     if (event.value < 0 ||
         event.value >=
-        static_cast<int>(sizeof(multitouch_slots_hover_state_) * 8)) {
-      LOG(WARNING) << "Ignoring ABS_MT_SLOT event for slot "
-                   << event.value;
+            static_cast<int>(sizeof(multitouch_slots_hover_state_) * 8)) {
+      LOG(WARNING) << "Ignoring ABS_MT_SLOT event for slot " << event.value;
       current_multitouch_slot_ = -1;
     } else {
       current_multitouch_slot_ = event.value;
@@ -346,8 +346,8 @@ void InputWatcher::ProcessHoverEvent(const input_event& event) {
     // with -1 indicating that the slot is unused. Use them as a proxy for
     // whether the slot is reporting a hover (or touch).
     if (current_multitouch_slot_ >= 0) {
-      const uint64_t slot_bit =
-          static_cast<uint64_t>(1) << current_multitouch_slot_;
+      const uint64_t slot_bit = static_cast<uint64_t>(1)
+                                << current_multitouch_slot_;
       if (event.value >= 0)
         multitouch_slots_hover_state_ |= slot_bit;
       else
@@ -370,15 +370,15 @@ void InputWatcher::ProcessHoverEvent(const input_event& event) {
     // notify observers if so.
     VLOG(2) << "SYN_REPORT";
     bool multi_touch_hovering = multitouch_slots_hover_state_ != 0;
-    bool single_touch_hovering = (single_touch_hover_distance_nonzero_ &&
-                                  single_touch_hover_valid_);
+    bool single_touch_hovering =
+        (single_touch_hover_distance_nonzero_ && single_touch_hover_valid_);
     bool hovering = multi_touch_hovering || single_touch_hovering;
     if (hovering != hovering_) {
       VLOG(1) << "Notifying observers about hover state change to "
               << (hovering ? "on" : "off");
       hovering_ = hovering;
-      FOR_EACH_OBSERVER(InputObserver, observers_,
-                        OnHoverStateChange(hovering_));
+      FOR_EACH_OBSERVER(
+          InputObserver, observers_, OnHoverStateChange(hovering_));
     }
   }
 }
@@ -398,8 +398,8 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
   }
 
   const std::string phys = device->GetPhysPath();
-  if (base::StartsWith(phys, power_button_to_skip_,
-                       base::CompareCase::SENSITIVE)) {
+  if (base::StartsWith(
+          phys, power_button_to_skip_, base::CompareCase::SENSITIVE)) {
     VLOG(1) << "Skipping event device with phys path: " << phys;
     return;
   }
@@ -458,7 +458,6 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
     event_devices_.insert(std::make_pair(input_num, device));
   }
 }
-
 
 void InputWatcher::HandleRemovedInput(int input_num) {
   InputMap::iterator it = event_devices_.find(input_num);

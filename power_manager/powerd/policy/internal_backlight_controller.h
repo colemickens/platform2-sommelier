@@ -133,11 +133,10 @@ class InternalBacklightController : public BacklightController,
   // |*_explicit_brightness_percent_| members, and updates the backlight's
   // brightness if needed. Returns true if the backlight's brightness was
   // changed.
-  bool SetExplicitBrightnessPercent(
-      double ac_percent,
-      double battery_percent,
-      Transition transition,
-      BrightnessChangeCause cause);
+  bool SetExplicitBrightnessPercent(double ac_percent,
+                                    double battery_percent,
+                                    Transition transition,
+                                    BrightnessChangeCause cause);
 
   // Updates the current brightness after assessing the current state
   // (based on |power_source_|, |dimmed_for_inactivity_|, etc.).  Should be

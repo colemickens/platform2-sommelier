@@ -91,7 +91,9 @@ bool ExternalDisplay::RealDelegate::Init(const base::FilePath& i2c_path) {
   return true;
 }
 
-std::string ExternalDisplay::RealDelegate::GetName() const { return name_; }
+std::string ExternalDisplay::RealDelegate::GetName() const {
+  return name_;
+}
 
 bool ExternalDisplay::RealDelegate::PerformI2COperation(
     struct i2c_rdwr_ioctl_data* data) {
@@ -117,8 +119,8 @@ void ExternalDisplay::TestApi::AdvanceTime(base::TimeDelta interval) {
 }
 
 base::TimeDelta ExternalDisplay::TestApi::GetTimerDelay() const {
-  return display_->timer_.IsRunning() ?
-      display_->timer_.GetCurrentDelay() : base::TimeDelta();
+  return display_->timer_.IsRunning() ? display_->timer_.GetCurrentDelay()
+                                      : base::TimeDelta();
 }
 
 bool ExternalDisplay::TestApi::TriggerTimeout() {
@@ -135,8 +137,7 @@ ExternalDisplay::ExternalDisplay(std::unique_ptr<Delegate> delegate)
       state_(State::IDLE),
       current_brightness_percent_(0.0),
       max_brightness_level_(0),
-      pending_brightness_adjustment_percent_(0.0) {
-}
+      pending_brightness_adjustment_percent_(0.0) {}
 
 ExternalDisplay::~ExternalDisplay() {}
 
@@ -153,16 +154,14 @@ uint16_t ExternalDisplay::BrightnessPercentToLevel(double percent) const {
 }
 
 bool ExternalDisplay::HaveCachedBrightness() {
-  return max_brightness_level_ > 0 &&
-      !last_brightness_update_time_.is_null() &&
-      (clock_.GetCurrentTime() -
-       last_brightness_update_time_).InMilliseconds() <=
-      kCachedBrightnessValidMs;
+  return max_brightness_level_ > 0 && !last_brightness_update_time_.is_null() &&
+         (clock_.GetCurrentTime() - last_brightness_update_time_)
+                 .InMilliseconds() <= kCachedBrightnessValidMs;
 }
 
 bool ExternalDisplay::HavePendingBrightnessAdjustment() const {
   return pending_brightness_adjustment_percent_ < -kEpsilon ||
-      pending_brightness_adjustment_percent_ > kEpsilon;
+         pending_brightness_adjustment_percent_ > kEpsilon;
 }
 
 void ExternalDisplay::StartTimer(base::TimeDelta delay) {
@@ -234,8 +233,8 @@ bool ExternalDisplay::ReadBrightness() {
 
   if (max_brightness_level_ > 0 && max_level != max_brightness_level_) {
     LOG(WARNING) << "Maximum brightness from " << delegate_->GetName()
-                 << " changed from " << max_brightness_level_
-                 << " to " << max_level;
+                 << " changed from " << max_brightness_level_ << " to "
+                 << max_level;
   }
   max_brightness_level_ = max_level;
 
@@ -244,8 +243,8 @@ bool ExternalDisplay::ReadBrightness() {
   current_brightness_percent_ = util::ClampPercent(
       static_cast<double>(current_level) / max_brightness_level_ * 100.0);
 
-  VLOG(1) << "Received current brightness " << current_level
-          << " (" << current_brightness_percent_ << "%) and maximum brightness "
+  VLOG(1) << "Received current brightness " << current_level << " ("
+          << current_brightness_percent_ << "%) and maximum brightness "
           << max_level << " from " << delegate_->GetName();
   last_brightness_update_time_ = clock_.GetCurrentTime();
   SendEnumMetric(metrics::kExternalBrightnessReadResultName,
@@ -268,8 +267,8 @@ bool ExternalDisplay::WriteBrightness() {
     return false;
   }
 
-  VLOG(1) << "Writing brightness " << new_level
-          << " (" << new_percent << "%) to " << delegate_->GetName();
+  VLOG(1) << "Writing brightness " << new_level << " (" << new_percent
+          << "%) to " << delegate_->GetName();
   std::vector<uint8_t> message;
   message.push_back(kDdcSetCommand);
   message.push_back(kDdcBrightnessIndex);
@@ -363,10 +362,10 @@ ExternalDisplay::SendResult ExternalDisplay::SendMessage(
   ioctl_data.msgs = &i2c_message;
   ioctl_data.nmsgs = 1;
 
-  VLOG(1) << "Sending data to " << delegate_->GetName()
-          << ": " << base::HexEncode(&message[0], message.size());
-  return delegate_->PerformI2COperation(&ioctl_data) ? SendResult::SUCCESS :
-      SendResult::IOCTL_FAILED;
+  VLOG(1) << "Sending data to " << delegate_->GetName() << ": "
+          << base::HexEncode(&message[0], message.size());
+  return delegate_->PerformI2COperation(&ioctl_data) ? SendResult::SUCCESS
+                                                     : SendResult::IOCTL_FAILED;
 }
 
 ExternalDisplay::ReceiveResult ExternalDisplay::ReceiveMessage(
@@ -392,8 +391,8 @@ ExternalDisplay::ReceiveResult ExternalDisplay::ReceiveMessage(
   if (!delegate_->PerformI2COperation(&ioctl_data))
     return ReceiveResult::IOCTL_FAILED;
 
-  VLOG(1) << "Received data from " << delegate_->GetName()
-          << ": " << base::HexEncode(&(message[0]), message.size());
+  VLOG(1) << "Received data from " << delegate_->GetName() << ": "
+          << base::HexEncode(&(message[0]), message.size());
 
   // The final byte in a message from the display is the "virtual host address"
   // XOR-ed with all other bytes in the message (excluding the final byte).

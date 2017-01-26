@@ -64,7 +64,8 @@ base::TimeDelta TransitionToTimeDelta(
 
 // Clamps |percent| to fit between kMinVisiblePercent and 100.
 double ClampPercentToVisibleRange(double percent) {
-  return std::min(kMaxPercent,
+  return std::min(
+      kMaxPercent,
       std::max(InternalBacklightController::kMinVisiblePercent, percent));
 }
 
@@ -92,22 +93,23 @@ double GetInitialBrightnessPercent(PrefsInterface* prefs,
                                    int64_t backlight_nits) {
   DCHECK(prefs);
   std::string pref_value;
-  CHECK(prefs->GetString(pref_name, &pref_value))
-      << "Unable to read pref " << pref_name;
+  CHECK(prefs->GetString(pref_name, &pref_value)) << "Unable to read pref "
+                                                  << pref_name;
 
-  std::vector<std::string> lines =
-      base::SplitString(pref_value, "\n", base::KEEP_WHITESPACE,
-                        base::SPLIT_WANT_ALL);
+  std::vector<std::string> lines = base::SplitString(
+      pref_value, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   for (size_t i = 0; i < lines.size(); ++i) {
     std::vector<std::string> parts =
-        base::SplitString(lines[i], base::kWhitespaceASCII,
-                          base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+        base::SplitString(lines[i],
+                          base::kWhitespaceASCII,
+                          base::KEEP_WHITESPACE,
+                          base::SPLIT_WANT_NONEMPTY);
     CHECK(parts.size() == 1U || parts.size() == 2U)
         << "Unable to parse \"" << lines[i] << "\" from pref " << pref_name;
 
     double percent = 0.0;
-    CHECK(base::StringToDouble(parts[0], &percent) &&
-          percent >= 0.0 && percent <= 100.0)
+    CHECK(base::StringToDouble(parts[0], &percent) && percent >= 0.0 &&
+          percent <= 100.0)
         << "Unable to parse \"" << parts[0] << "\" from pref " << pref_name
         << " as double in [0.0, 100.0]";
     if (parts.size() == 1U)
@@ -137,8 +139,7 @@ const int InternalBacklightController::kAmbientLightSensorTimeoutSec = 10;
 InternalBacklightController::InternalBacklightController()
     : clock_(new Clock),
       dimmed_brightness_percent_(kDimmedBrightnessFraction * 100.0),
-      level_to_percent_exponent_(kDefaultLevelToPercentExponent) {
-}
+      level_to_percent_exponent_(kDefaultLevelToPercentExponent) {}
 
 InternalBacklightController::~InternalBacklightController() {}
 
@@ -201,10 +202,9 @@ void InternalBacklightController::Init(
   }
   CHECK_GT(step_percent_, 0.0);
 
-  level_to_percent_exponent_ =
-      max_level_ >= kMinLevelsForNonLinearMapping ?
-          kDefaultLevelToPercentExponent :
-          1.0;
+  level_to_percent_exponent_ = max_level_ >= kMinLevelsForNonLinearMapping
+                                   ? kDefaultLevelToPercentExponent
+                                   : 1.0;
 
   dimmed_brightness_percent_ = ClampPercentToVisibleRange(
       LevelToPercent(lround(kDimmedBrightnessFraction * max_level_)));
@@ -227,11 +227,11 @@ double InternalBacklightController::LevelToPercent(int64_t raw_level) {
   if (min_visible_level_ == max_level_)
     return 100.0;
 
-  double linear_fraction =
-      static_cast<double>(raw_level - min_visible_level_) /
-      (max_level_ - min_visible_level_);
-  return kMinVisiblePercent + (kMaxPercent - kMinVisiblePercent) *
-      pow(linear_fraction, level_to_percent_exponent_);
+  double linear_fraction = static_cast<double>(raw_level - min_visible_level_) /
+                           (max_level_ - min_visible_level_);
+  return kMinVisiblePercent +
+         (kMaxPercent - kMinVisiblePercent) *
+             pow(linear_fraction, level_to_percent_exponent_);
 }
 
 int64_t InternalBacklightController::PercentToLevel(double percent) {
@@ -241,10 +241,11 @@ int64_t InternalBacklightController::PercentToLevel(double percent) {
   if (percent == kMaxPercent)
     return max_level_;
 
-  double linear_fraction = (percent - kMinVisiblePercent) /
-                           (kMaxPercent - kMinVisiblePercent);
-  return lround(min_visible_level_ + (max_level_ - min_visible_level_) *
-      pow(linear_fraction, 1.0 / level_to_percent_exponent_));
+  double linear_fraction =
+      (percent - kMinVisiblePercent) / (kMaxPercent - kMinVisiblePercent);
+  return lround(min_visible_level_ +
+                (max_level_ - min_visible_level_) *
+                    pow(linear_fraction, 1.0 / level_to_percent_exponent_));
 }
 
 void InternalBacklightController::AddObserver(
@@ -347,18 +348,20 @@ void InternalBacklightController::HandlePolicyChange(
 
   using_policy_brightness_ = got_policy_brightness;
   if (got_policy_brightness) {
-    SetExplicitBrightnessPercent(ac_brightness, battery_brightness,
+    SetExplicitBrightnessPercent(ac_brightness,
+                                 battery_brightness,
                                  Transition::FAST,
                                  BrightnessChangeCause::AUTOMATED);
   }
   force_nonzero_brightness_for_user_activity_ =
-      policy.has_force_nonzero_brightness_for_user_activity() ?
-      policy.force_nonzero_brightness_for_user_activity() : true;
+      policy.has_force_nonzero_brightness_for_user_activity()
+          ? policy.force_nonzero_brightness_for_user_activity()
+          : true;
 }
 
 void InternalBacklightController::HandleChromeStart() {
-  display_power_setter_->SetDisplayPower(
-      display_power_state_, base::TimeDelta());
+  display_power_setter_->SetDisplayPower(display_power_state_,
+                                         base::TimeDelta());
 }
 
 void InternalBacklightController::SetDimmedForInactivity(bool dimmed) {
@@ -430,25 +433,25 @@ bool InternalBacklightController::GetBrightnessPercent(double* percent) {
 }
 
 bool InternalBacklightController::SetUserBrightnessPercent(
-    double percent,
-    Transition transition) {
-  LOG(INFO) << "Got user-triggered request to set brightness to "
-            << percent << "%";
+    double percent, Transition transition) {
+  LOG(INFO) << "Got user-triggered request to set brightness to " << percent
+            << "%";
   user_adjustment_count_++;
   using_policy_brightness_ = false;
 
   // When the user explicitly requests a specific brightness level, use it for
   // both AC and battery power.
-  return SetExplicitBrightnessPercent(percent, percent, transition,
-                                      BrightnessChangeCause::USER_INITIATED);
+  return SetExplicitBrightnessPercent(
+      percent, percent, transition, BrightnessChangeCause::USER_INITIATED);
 }
 
 bool InternalBacklightController::IncreaseUserBrightness() {
   double old_percent = GetUndimmedBrightnessPercent();
   double new_percent =
-      (old_percent < kMinVisiblePercent - kEpsilon) ? kMinVisiblePercent :
-      ClampPercentToVisibleRange(
-          SnapBrightnessPercentToNearestStep(old_percent + step_percent_));
+      (old_percent < kMinVisiblePercent - kEpsilon)
+          ? kMinVisiblePercent
+          : ClampPercentToVisibleRange(SnapBrightnessPercentToNearestStep(
+                old_percent + step_percent_));
   return SetUserBrightnessPercent(new_percent, Transition::FAST);
 }
 
@@ -456,9 +459,11 @@ bool InternalBacklightController::DecreaseUserBrightness(bool allow_off) {
   // Lower the backlight to the next step, turning it off if it was already at
   // the minimum visible level.
   double old_percent = GetUndimmedBrightnessPercent();
-  double new_percent = old_percent <= kMinVisiblePercent + kEpsilon ? 0.0 :
-      ClampPercentToVisibleRange(
-          SnapBrightnessPercentToNearestStep(old_percent - step_percent_));
+  double new_percent =
+      old_percent <= kMinVisiblePercent + kEpsilon
+          ? 0.0
+          : ClampPercentToVisibleRange(SnapBrightnessPercentToNearestStep(
+                old_percent - step_percent_));
 
   if (!allow_off && new_percent <= kEpsilon) {
     user_adjustment_count_++;
@@ -507,8 +512,9 @@ double InternalBacklightController::SnapBrightnessPercentToNearestStep(
 }
 
 double InternalBacklightController::GetExplicitBrightnessPercent() const {
-  return power_source_ == PowerSource::AC ? ac_explicit_brightness_percent_ :
-      battery_explicit_brightness_percent_;
+  return power_source_ == PowerSource::AC
+             ? ac_explicit_brightness_percent_
+             : battery_explicit_brightness_percent_;
 }
 
 double InternalBacklightController::GetUndimmedBrightnessPercent() const {
@@ -526,9 +532,9 @@ void InternalBacklightController::EnsureUserBrightnessIsNonzero() {
   if (force_nonzero_brightness_for_user_activity_ &&
       display_mode_ == DisplayMode::NORMAL &&
       GetExplicitBrightnessPercent() < kMinVisiblePercent &&
-      !using_policy_brightness_ &&
-      !use_ambient_light_) {
-    SetExplicitBrightnessPercent(kMinVisiblePercent, kMinVisiblePercent,
+      !using_policy_brightness_ && !use_ambient_light_) {
+    SetExplicitBrightnessPercent(kMinVisiblePercent,
+                                 kMinVisiblePercent,
                                  Transition::FAST,
                                  BrightnessChangeCause::AUTOMATED);
   }
@@ -540,10 +546,11 @@ bool InternalBacklightController::SetExplicitBrightnessPercent(
     Transition transition,
     BrightnessChangeCause cause) {
   use_ambient_light_ = false;
-  ac_explicit_brightness_percent_ = ac_percent <= kEpsilon ? 0.0 :
-      ClampPercentToVisibleRange(ac_percent);
-  battery_explicit_brightness_percent_ = battery_percent <= kEpsilon ? 0.0 :
-      ClampPercentToVisibleRange(battery_percent);
+  ac_explicit_brightness_percent_ =
+      ac_percent <= kEpsilon ? 0.0 : ClampPercentToVisibleRange(ac_percent);
+  battery_explicit_brightness_percent_ =
+      battery_percent <= kEpsilon ? 0.0
+                                  : ClampPercentToVisibleRange(battery_percent);
   return UpdateUndimmedBrightness(transition, cause);
 }
 
@@ -551,7 +558,7 @@ void InternalBacklightController::UpdateState() {
   // Give up on the ambient light sensor if it's not supplying readings.
   if (use_ambient_light_ && !got_ambient_light_brightness_percent_ &&
       clock_->GetCurrentTime() - init_time_ >=
-      base::TimeDelta::FromSeconds(kAmbientLightSensorTimeoutSec)) {
+          base::TimeDelta::FromSeconds(kAmbientLightSensorTimeoutSec)) {
     LOG(ERROR) << "Giving up on ambient light sensor after getting no reading "
                << "within " << kAmbientLightSensorTimeoutSec << " seconds";
     use_ambient_light_ = false;
@@ -590,19 +597,22 @@ void InternalBacklightController::UpdateState() {
     brightness_percent = 0.0;
     display_power = chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON;
   } else {
-    brightness_percent = std::min(GetUndimmedBrightnessPercent(),
-        dimmed_for_inactivity_ ? dimmed_brightness_percent_ : 100.0);
+    brightness_percent =
+        std::min(GetUndimmedBrightnessPercent(),
+                 dimmed_for_inactivity_ ? dimmed_brightness_percent_ : 100.0);
     const bool turning_on =
         display_power_state_ != chromeos::DISPLAY_POWER_ALL_ON ||
         current_level_ == 0;
-    brightness_transition = turning_on ? Transition::INSTANT :
-        (already_set_initial_state_ ? Transition::FAST : Transition::SLOW);
+    brightness_transition =
+        turning_on ? Transition::INSTANT
+                   : (already_set_initial_state_ ? Transition::FAST
+                                                 : Transition::SLOW);
 
     // Keep the external display(s) on if the brightness was explicitly set to
     // 0.
-    display_power = (brightness_percent <= kEpsilon) ?
-        chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON :
-        chromeos::DISPLAY_POWER_ALL_ON;
+    display_power = (brightness_percent <= kEpsilon)
+                        ? chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON
+                        : chromeos::DISPLAY_POWER_ALL_ON;
   }
 
   if (set_display_power) {
@@ -617,7 +627,8 @@ void InternalBacklightController::UpdateState() {
   // resulting in this request being dropped and the brightness being set to its
   // previous value instead. See chrome-os-partner:31186 and :35662 for more
   // details.
-  ApplyBrightnessPercent(brightness_percent, brightness_transition,
+  ApplyBrightnessPercent(brightness_percent,
+                         brightness_transition,
                          BrightnessChangeCause::AUTOMATED);
 
   if (resume_percent >= 0.0)
@@ -627,8 +638,7 @@ void InternalBacklightController::UpdateState() {
 }
 
 bool InternalBacklightController::UpdateUndimmedBrightness(
-    Transition transition,
-    BrightnessChangeCause cause) {
+    Transition transition, BrightnessChangeCause cause) {
   const double percent = GetUndimmedBrightnessPercent();
   if (suspended_)
     ApplyResumeBrightnessPercent(percent);
@@ -646,8 +656,8 @@ bool InternalBacklightController::UpdateUndimmedBrightness(
     // 0.
     SetDisplayPower(
         chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
-        docked_ ? base::TimeDelta() :
-        TransitionToTimeDelta(transition) + turn_off_screen_timeout_);
+        docked_ ? base::TimeDelta()
+                : TransitionToTimeDelta(transition) + turn_off_screen_timeout_);
   } else {
     SetDisplayPower(chromeos::DISPLAY_POWER_ALL_ON, base::TimeDelta());
   }
@@ -655,9 +665,7 @@ bool InternalBacklightController::UpdateUndimmedBrightness(
 }
 
 bool InternalBacklightController::ApplyBrightnessPercent(
-    double percent,
-    Transition transition,
-    BrightnessChangeCause cause) {
+    double percent, Transition transition, BrightnessChangeCause cause) {
   int64_t level = PercentToLevel(percent);
   if (level == current_level_ && !backlight_->TransitionInProgress())
     return false;
@@ -679,7 +687,8 @@ bool InternalBacklightController::ApplyBrightnessPercent(
   }
 
   current_level_ = level;
-  FOR_EACH_OBSERVER(BacklightControllerObserver, observers_,
+  FOR_EACH_OBSERVER(BacklightControllerObserver,
+                    observers_,
                     OnBrightnessChange(percent, cause, this));
   return true;
 }
@@ -693,8 +702,7 @@ bool InternalBacklightController::ApplyResumeBrightnessPercent(
 }
 
 void InternalBacklightController::SetDisplayPower(
-    chromeos::DisplayPowerState state,
-    base::TimeDelta delay) {
+    chromeos::DisplayPowerState state, base::TimeDelta delay) {
   if (state == display_power_state_)
     return;
 

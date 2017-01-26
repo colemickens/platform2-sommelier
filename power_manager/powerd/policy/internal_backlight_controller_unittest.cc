@@ -45,8 +45,7 @@ class InternalBacklightControllerTest : public ::testing::Test {
         default_no_als_ac_brightness_("80.0"),
         default_no_als_battery_brightness_("60.0"),
         backlight_(max_backlight_level_, initial_backlight_level_),
-        light_sensor_(initial_als_lux_) {
-  }
+        light_sensor_(initial_als_lux_) {}
 
   // Initializes |controller_| and sends it power source and ambient light
   // event such that it should make its first adjustment to the backlight
@@ -68,7 +67,8 @@ class InternalBacklightControllerTest : public ::testing::Test {
     controller_.reset(new InternalBacklightController);
     if (!init_time_.is_null())
       controller_->clock()->set_current_time_for_testing(init_time_);
-    controller_->Init(&backlight_, &prefs_,
+    controller_->Init(&backlight_,
+                      &prefs_,
                       pass_light_sensor_ ? &light_sensor_ : NULL,
                       &display_power_setter_);
 
@@ -338,7 +338,8 @@ TEST_F(InternalBacklightControllerTest, LinearMappingForSmallBacklightRange) {
   const double kMinVisiblePercent =
       InternalBacklightController::kMinVisiblePercent;
   for (int i = 1; i <= max_backlight_level_; ++i) {
-    double percent = kMinVisiblePercent +
+    double percent =
+        kMinVisiblePercent +
         (100.0 - kMinVisiblePercent) * (i - 1) / (max_backlight_level_ - 1);
     EXPECT_EQ(static_cast<int64_t>(i), PercentToLevel(percent));
   }
@@ -723,8 +724,10 @@ TEST_F(InternalBacklightControllerTest, GiveUpOnBrokenAmbientLightSensor) {
 
   // After the timeout has elapsed, state changes (like dimming due to
   // inactivity) should be honored.
-  const base::TimeTicks kUpdateTime = init_time_ + base::TimeDelta::FromSeconds(
-      InternalBacklightController::kAmbientLightSensorTimeoutSec);
+  const base::TimeTicks kUpdateTime =
+      init_time_ +
+      base::TimeDelta::FromSeconds(
+          InternalBacklightController::kAmbientLightSensorTimeoutSec);
   controller_->clock()->set_current_time_for_testing(kUpdateTime);
   controller_->SetDimmedForInactivity(true);
   EXPECT_LT(backlight_.current_level(), initial_backlight_level_);
@@ -897,8 +900,8 @@ TEST_F(InternalBacklightControllerTest, MinVisibleLevelPrefUndercutsDefault) {
 TEST_F(InternalBacklightControllerTest, PreemptTransitionForShutdown) {
   // Start a user-requested transition to 0.
   Init(PowerSource::AC);
-  controller_->SetUserBrightnessPercent(
-      0, BacklightController::Transition::FAST);
+  controller_->SetUserBrightnessPercent(0,
+                                        BacklightController::Transition::FAST);
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());

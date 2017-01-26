@@ -69,10 +69,9 @@ std::string BaseActivityLogger::GetDelaySuffix(
   return base::StringPrintf("%0.f sec ago", round(delay.InSecondsF()));
 }
 
-PeriodicActivityLogger::PeriodicActivityLogger(
-    const std::string& activity_name,
-    base::TimeDelta stopped_delay,
-    base::TimeDelta ongoing_interval)
+PeriodicActivityLogger::PeriodicActivityLogger(const std::string& activity_name,
+                                               base::TimeDelta stopped_delay,
+                                               base::TimeDelta ongoing_interval)
     : BaseActivityLogger(activity_name, stopped_delay, ongoing_interval) {
   // This class is pointless without a stopped delay -- the caller should just
   // log every report directly themselves.
@@ -94,10 +93,12 @@ void PeriodicActivityLogger::OnActivityReported() {
 
   // Extend the "stopped" timeout and start the "ongoing" timer if it isn't
   // already running.
-  stopped_timer_.Start(FROM_HERE, stopped_delay_, this,
-                       &PeriodicActivityLogger::LogStopped);
+  stopped_timer_.Start(
+      FROM_HERE, stopped_delay_, this, &PeriodicActivityLogger::LogStopped);
   if (!ongoing_interval_.is_zero() && !ongoing_timer_.IsRunning()) {
-    ongoing_timer_.Start(FROM_HERE, ongoing_interval_, this,
+    ongoing_timer_.Start(FROM_HERE,
+                         ongoing_interval_,
+                         this,
                          &PeriodicActivityLogger::LogOngoing);
   }
 }
@@ -133,7 +134,9 @@ void StartStopActivityLogger::OnActivityStarted() {
     stopped_timer_.Stop();
 
   if (!ongoing_interval_.is_zero() && !ongoing_timer_.IsRunning()) {
-    ongoing_timer_.Start(FROM_HERE, ongoing_interval_, this,
+    ongoing_timer_.Start(FROM_HERE,
+                         ongoing_interval_,
+                         this,
                          &StartStopActivityLogger::LogOngoing);
   }
 }
@@ -151,8 +154,8 @@ void StartStopActivityLogger::OnActivityStopped() {
   if (stopped_delay_.is_zero()) {
     LogStopped();
   } else {
-    stopped_timer_.Start(FROM_HERE, stopped_delay_, this,
-                         &StartStopActivityLogger::LogStopped);
+    stopped_timer_.Start(
+        FROM_HERE, stopped_delay_, this, &StartStopActivityLogger::LogStopped);
   }
 }
 

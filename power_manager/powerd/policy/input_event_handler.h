@@ -65,8 +65,8 @@ class InputEventHandler : public system::InputObserver {
 
     // Sends a metric reporting how long Chrome took to acknowledge a power
     // button press.
-    virtual void ReportPowerButtonAcknowledgmentDelay(base::TimeDelta delay)
-        = 0;
+    virtual void ReportPowerButtonAcknowledgmentDelay(
+        base::TimeDelta delay) = 0;
   };
 
   // Amount of time to wait for Chrome to acknowledge power button presses, in
@@ -104,10 +104,10 @@ class InputEventHandler : public system::InputObserver {
   // quickly enough.
   void HandlePowerButtonAcknowledgmentTimeout();
 
-  system::InputWatcherInterface* input_watcher_;  // weak
-  Delegate* delegate_;  // weak
+  system::InputWatcherInterface* input_watcher_;      // weak
+  Delegate* delegate_;                                // weak
   system::DisplayWatcherInterface* display_watcher_;  // weak
-  system::DBusWrapperInterface* dbus_wrapper_;  // weak
+  system::DBusWrapperInterface* dbus_wrapper_;        // weak
 
   std::unique_ptr<Clock> clock_;
 

@@ -41,9 +41,8 @@ class MetricsCollector {
  public:
   // Returns a copy of |enum_name| with a suffix describing |power_source|
   // appended to it. Public so it can be called by tests.
-  static std::string AppendPowerSourceToEnumName(
-      const std::string& enum_name,
-      PowerSource power_source);
+  static std::string AppendPowerSourceToEnumName(const std::string& enum_name,
+                                                 PowerSource power_source);
 
   MetricsCollector();
   ~MetricsCollector();
@@ -107,11 +106,8 @@ class MetricsCollector {
   FRIEND_TEST(MetricsCollectorTest, GatherDarkResumeMetrics);
 
   // These methods append the current power source to |name|.
-  bool SendMetricWithPowerSource(const std::string& name,
-                                 int sample,
-                                 int min,
-                                 int max,
-                                 int num_buckets);
+  bool SendMetricWithPowerSource(
+      const std::string& name, int sample, int min, int max, int num_buckets);
   bool SendEnumMetricWithPowerSource(const std::string& name,
                                      int sample,
                                      int max);

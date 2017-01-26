@@ -7,8 +7,8 @@
 #include <string>
 
 #include <base/compiler_specific.h>
-#include <base/files/file_util.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
@@ -50,8 +50,9 @@ class TestWrapper : public DBusWrapperStub {
     loop_runner_.StopLoop();
   }
 
-  virtual void EmitSignalWithProtocolBuffer(const std::string& signal_name,
-    const google::protobuf::MessageLite& protobuf) {
+  virtual void EmitSignalWithProtocolBuffer(
+      const std::string& signal_name,
+      const google::protobuf::MessageLite& protobuf) {
     DBusWrapperStub::EmitSignalWithProtocolBuffer(signal_name, protobuf);
     loop_runner_.StopLoop();
   }
@@ -109,8 +110,8 @@ TEST_F(PeripheralBatteryWatcherTest, Basic) {
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeoutMs));
   EXPECT_EQ(1, test_wrapper_.num_sent_signals());
   PeripheralBatteryStatus proto;
-  EXPECT_TRUE(test_wrapper_.GetSentSignal(0, kPeripheralBatteryStatusSignal,
-                                          &proto, nullptr));
+  EXPECT_TRUE(test_wrapper_.GetSentSignal(
+      0, kPeripheralBatteryStatusSignal, &proto, nullptr));
   EXPECT_EQ(80, proto.level());
   EXPECT_EQ(kDeviceModelName, proto.name());
 }

@@ -11,8 +11,8 @@
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
-#include <base/files/file_util.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/message_loop/message_loop.h>
@@ -168,18 +168,21 @@ class DaemonDelegateImpl : public DaemonDelegate {
       TabletMode initial_tablet_mode) override {
     auto controller =
         base::WrapUnique(new policy::KeyboardBacklightController());
-    controller->Init(backlight, prefs, sensor, display_backlight_controller,
+    controller->Init(backlight,
+                     prefs,
+                     sensor,
+                     display_backlight_controller,
                      initial_tablet_mode);
     return std::move(controller);
   }
 
   std::unique_ptr<system::InputWatcherInterface> CreateInputWatcher(
-      PrefsInterface* prefs,
-      system::UdevInterface* udev) override {
+      PrefsInterface* prefs, system::UdevInterface* udev) override {
     auto watcher = base::WrapUnique(new system::InputWatcher());
     CHECK(watcher->Init(std::unique_ptr<system::EventDeviceFactoryInterface>(
                             new system::EventDeviceFactory),
-                        prefs, udev));
+                        prefs,
+                        udev));
     return std::move(watcher);
   }
 
@@ -206,8 +209,8 @@ class DaemonDelegateImpl : public DaemonDelegate {
       PrefsInterface* prefs,
       system::UdevInterface* udev) override {
     auto supply = base::WrapUnique(new system::PowerSupply());
-    supply->Init(power_supply_path, prefs, udev,
-                 true /* log_shutdown_thresholds */);
+    supply->Init(
+        power_supply_path, prefs, udev, true /* log_shutdown_thresholds */);
     return std::move(supply);
   }
 
@@ -232,9 +235,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
     return base::WrapUnique(new MetricsSender(std::move(metrics_lib)));
   }
 
-  pid_t GetPid() override {
-    return getpid();
-  }
+  pid_t GetPid() override { return getpid(); }
 
   void Launch(const std::string& command) override {
     LOG(INFO) << "Launching \"" << command << "\"";
@@ -277,27 +278,31 @@ class DaemonDelegateImpl : public DaemonDelegate {
 }  // namespace power_manager
 
 int main(int argc, char* argv[]) {
-  DEFINE_string(prefs_dir, power_manager::kReadWritePrefsDir,
+  DEFINE_string(prefs_dir,
+                power_manager::kReadWritePrefsDir,
                 "Directory holding read/write preferences.");
-  DEFINE_string(default_prefs_dir, power_manager::kReadOnlyPrefsDir,
+  DEFINE_string(default_prefs_dir,
+                power_manager::kReadOnlyPrefsDir,
                 "Directory holding read-only default settings.");
   DEFINE_string(log_dir, "", "Directory where logs are written.");
   DEFINE_string(run_dir, "", "Directory where stateful data is written.");
   // This flag is handled by libbase/libchrome's logging library instead of
   // directly by powerd, but it is defined here so FlagHelper won't abort after
   // seeing an unexpected flag.
-  DEFINE_string(vmodule, "",
-                "Per-module verbose logging levels, e.g. \"foo=1,bar=2\"");
+  DEFINE_string(
+      vmodule, "", "Per-module verbose logging levels, e.g. \"foo=1,bar=2\"");
 
-  brillo::FlagHelper::Init(argc, argv,
-      "powerd, the Chromium OS userspace power manager.");
+  brillo::FlagHelper::Init(
+      argc, argv, "powerd, the Chromium OS userspace power manager.");
 
   CHECK(!FLAGS_prefs_dir.empty()) << "--prefs_dir is required";
   CHECK(!FLAGS_log_dir.empty()) << "--log_dir is required";
   CHECK(!FLAGS_run_dir.empty()) << "--run_dir is required";
 
-  const base::FilePath log_file = base::FilePath(FLAGS_log_dir).Append(
-      base::StringPrintf("powerd.%s", GetTimeAsString(::time(NULL)).c_str()));
+  const base::FilePath log_file =
+      base::FilePath(FLAGS_log_dir)
+          .Append(base::StringPrintf("powerd.%s",
+                                     GetTimeAsString(::time(NULL)).c_str()));
   UpdateLogSymlinks(base::FilePath(FLAGS_log_dir).Append("powerd.LATEST"),
                     base::FilePath(FLAGS_log_dir).Append("powerd.PREVIOUS"),
                     log_file);

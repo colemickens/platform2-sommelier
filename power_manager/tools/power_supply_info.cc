@@ -56,14 +56,11 @@ class InfoDisplay {
 
   void PrintStringValue(const std::string& name_field,
                         const std::string& value_field) {
-    std::cout << std::setw(name_indent_)
-              << ""
+    std::cout << std::setw(name_indent_) << ""
               << std::setw(value_indent_ - name_indent_)
               << std::setiosflags(std::ios::left)
-              << std::resetiosflags(std::ios::right)
-              << name_field + ":"
-              << value_field
-              << std::endl;
+              << std::resetiosflags(std::ios::right) << name_field + ":"
+              << value_field << std::endl;
   }
 
   template <class T>
@@ -72,10 +69,7 @@ class InfoDisplay {
   }
 
   void PrintString(const std::string& string) {
-    std::cout << std::setw(name_indent_)
-              << ""
-              << string
-              << std::endl;
+    std::cout << std::setw(name_indent_) << "" << string << std::endl;
   }
 
  private:
@@ -88,7 +82,9 @@ class InfoDisplay {
 }  // namespace
 
 int main(int argc, char** argv) {
-  brillo::FlagHelper::Init(argc, argv,
+  brillo::FlagHelper::Init(
+      argc,
+      argv,
       "Print information obtained from /sys about the power supply.");
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
@@ -185,10 +181,9 @@ int main(int argc, char** argv) {
     display.PrintValue("charge (Ah)", status.battery_charge);
     display.PrintValue("full charge (Ah)", status.battery_charge_full);
     display.PrintValue("full charge design (Ah)",
-        status.battery_charge_full_design);
+                       status.battery_charge_full_design);
     display.PrintValue("percentage", status.battery_percentage);
-    display.PrintValue("display percentage",
-        status.display_battery_percentage);
+    display.PrintValue("display percentage", status.display_battery_percentage);
     display.PrintStringValue("technology", status.battery_technology);
 
     // Don't print the battery time estimates -- they're wildly inaccurate since

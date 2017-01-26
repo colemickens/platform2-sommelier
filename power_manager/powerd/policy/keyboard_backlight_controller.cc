@@ -52,8 +52,7 @@ base::TimeDelta GetTransitionDuration(
 
 KeyboardBacklightController::TestApi::TestApi(
     KeyboardBacklightController* controller)
-  : controller_(controller) {
-}
+    : controller_(controller) {}
 
 KeyboardBacklightController::TestApi::~TestApi() {}
 
@@ -123,20 +122,19 @@ void KeyboardBacklightController::Init(
   std::string input_str;
   if (!prefs_->GetString(kKeyboardBacklightUserStepsPref, &input_str))
     LOG(FATAL) << "Failed to read pref " << kKeyboardBacklightUserStepsPref;
-  std::vector<std::string> lines =
-      base::SplitString(input_str, "\n", base::KEEP_WHITESPACE,
-                        base::SPLIT_WANT_ALL);
+  std::vector<std::string> lines = base::SplitString(
+      input_str, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   for (std::vector<std::string>::iterator iter = lines.begin();
-       iter != lines.end(); ++iter) {
+       iter != lines.end();
+       ++iter) {
     double new_step = 0.0;
     if (!base::StringToDouble(*iter, &new_step))
       LOG(FATAL) << "Invalid line in pref " << kKeyboardBacklightUserStepsPref
                  << ": \"" << *iter << "\"";
     user_steps_.push_back(util::ClampPercent(new_step));
   }
-  CHECK(!user_steps_.empty())
-      << "No user brightness steps defined in "
-      << kKeyboardBacklightUserStepsPref;
+  CHECK(!user_steps_.empty()) << "No user brightness steps defined in "
+                              << kKeyboardBacklightUserStepsPref;
 
   if (ambient_light_handler_.get()) {
     std::string pref_value;
@@ -198,9 +196,11 @@ void KeyboardBacklightController::HandleVideoActivity(bool is_fullscreen) {
 
   video_timer_.Stop();
   if (is_fullscreen) {
-    video_timer_.Start(FROM_HERE,
+    video_timer_.Start(
+        FROM_HERE,
         base::TimeDelta::FromMilliseconds(kVideoTimeoutIntervalMs),
-        this, &KeyboardBacklightController::HandleVideoTimeout);
+        this,
+        &KeyboardBacklightController::HandleVideoTimeout);
   }
 }
 
@@ -293,8 +293,7 @@ bool KeyboardBacklightController::GetBrightnessPercent(double* percent) {
 }
 
 bool KeyboardBacklightController::SetUserBrightnessPercent(
-    double percent,
-    Transition transition) {
+    double percent, Transition transition) {
   // There's currently no UI for setting the keyboard backlight brightness
   // to arbitrary levels; the user is instead just given the option of
   // increasing or decreasing the brightness between pre-defined levels.
@@ -336,8 +335,9 @@ void KeyboardBacklightController::SetBrightnessPercentForAmbientLight(
     AmbientLightHandler::BrightnessChangeCause cause) {
   automated_percent_ = brightness_percent;
   Transition transition =
-      cause == AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT ?
-      Transition::SLOW : Transition::FAST;
+      cause == AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT
+          ? Transition::SLOW
+          : Transition::FAST;
   if (UpdateState(transition, BrightnessChangeCause::AUTOMATED) &&
       cause == AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT)
     num_als_adjustments_++;
@@ -404,8 +404,8 @@ void KeyboardBacklightController::InitUserStepIndex() {
       user_step_index_ = i;
     }
   }
-  CHECK_NE(user_step_index_, -1)
-      << "Failed to find brightness step for level " << current_level_;
+  CHECK_NE(user_step_index_, -1) << "Failed to find brightness step for level "
+                                 << current_level_;
 }
 
 void KeyboardBacklightController::UpdateTurnOffTimer() {
@@ -432,11 +432,12 @@ void KeyboardBacklightController::UpdateTurnOffTimer() {
     return;
 
   turn_off_timer_.Start(
-      FROM_HERE, remaining_delay,
-      base::Bind(
-          base::IgnoreResult(&KeyboardBacklightController::UpdateState),
-          base::Unretained(this), Transition::SLOW,
-          BrightnessChangeCause::AUTOMATED));
+      FROM_HERE,
+      remaining_delay,
+      base::Bind(base::IgnoreResult(&KeyboardBacklightController::UpdateState),
+                 base::Unretained(this),
+                 Transition::SLOW,
+                 BrightnessChangeCause::AUTOMATED));
 }
 
 bool KeyboardBacklightController::UpdateState(Transition transition,
@@ -450,7 +451,7 @@ bool KeyboardBacklightController::UpdateState(Transition transition,
   // user is inactive.
   if (user_step_index_ != -1) {
     double percent = user_steps_[user_step_index_];
-    if ((off_for_inactivity_|| dimmed_for_inactivity_) && !hovering_)
+    if ((off_for_inactivity_ || dimmed_for_inactivity_) && !hovering_)
       percent = off_for_inactivity_ ? 0.0 : std::min(kDimPercent, percent);
     return ApplyBrightnessPercent(percent, transition, cause);
   }
@@ -474,17 +475,15 @@ bool KeyboardBacklightController::UpdateState(Transition transition,
   }
 
   if (dimmed_for_inactivity_) {
-    return ApplyBrightnessPercent(std::min(kDimPercent, automated_percent_),
-                                  transition, cause);
+    return ApplyBrightnessPercent(
+        std::min(kDimPercent, automated_percent_), transition, cause);
   }
 
   return ApplyBrightnessPercent(automated_percent_, transition, cause);
 }
 
 bool KeyboardBacklightController::ApplyBrightnessPercent(
-    double percent,
-    Transition transition,
-    BrightnessChangeCause cause) {
+    double percent, Transition transition, BrightnessChangeCause cause) {
   int64_t level = PercentToLevel(percent);
   if (level == current_level_ && !backlight_->TransitionInProgress())
     return false;
@@ -498,7 +497,8 @@ bool KeyboardBacklightController::ApplyBrightnessPercent(
   }
 
   current_level_ = level;
-  FOR_EACH_OBSERVER(BacklightControllerObserver, observers_,
+  FOR_EACH_OBSERVER(BacklightControllerObserver,
+                    observers_,
                     OnBrightnessChange(percent, cause, this));
   return true;
 }

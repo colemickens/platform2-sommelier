@@ -88,16 +88,15 @@ void DisplayWatcher::OnUdevEvent(const std::string& subsystem,
 }
 
 base::FilePath DisplayWatcher::GetI2CDevicePath(const base::FilePath& drm_dir) {
-  base::FileEnumerator enumerator(
-      drm_dir,
-      false,  // recursive
-      base::FileEnumerator::DIRECTORIES,
-      kI2CDeviceNamePattern);
+  base::FileEnumerator enumerator(drm_dir,
+                                  false,  // recursive
+                                  base::FileEnumerator::DIRECTORIES,
+                                  kI2CDeviceNamePattern);
   for (base::FilePath i2c_dir = enumerator.Next(); !i2c_dir.empty();
        i2c_dir = enumerator.Next()) {
-    base::FilePath dev_path =
-        i2c_dev_path_for_testing_.empty() ? base::FilePath(kI2CDevPath) :
-        i2c_dev_path_for_testing_;
+    base::FilePath dev_path = i2c_dev_path_for_testing_.empty()
+                                  ? base::FilePath(kI2CDevPath)
+                                  : i2c_dev_path_for_testing_;
     const std::string i2c_name = i2c_dir.BaseName().value();
     base::FilePath i2c_dev = dev_path.Append(i2c_name);
     if (base::PathExists(i2c_dev))
@@ -110,13 +109,11 @@ void DisplayWatcher::UpdateDisplays() {
   std::vector<DisplayInfo> new_displays;
 
   base::FileEnumerator enumerator(
-      sysfs_drm_path_for_testing_.empty() ?
-          base::FilePath(kSysClassDrmPath) :
-          sysfs_drm_path_for_testing_,
+      sysfs_drm_path_for_testing_.empty() ? base::FilePath(kSysClassDrmPath)
+                                          : sysfs_drm_path_for_testing_,
       false,  // recursive
       static_cast<base::FileEnumerator::FileType>(
-          base::FileEnumerator::FILES |
-          base::FileEnumerator::DIRECTORIES |
+          base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES |
           base::FileEnumerator::SHOW_SYM_LINKS),
       kDrmDeviceNamePattern);
   for (base::FilePath device_path = enumerator.Next(); !device_path.empty();
@@ -135,8 +132,8 @@ void DisplayWatcher::UpdateDisplays() {
   std::sort(new_displays.begin(), new_displays.end());
   if (new_displays != displays_) {
     displays_.swap(new_displays);
-    FOR_EACH_OBSERVER(DisplayWatcherObserver, observers_,
-                      OnDisplaysChanged(displays_));
+    FOR_EACH_OBSERVER(
+        DisplayWatcherObserver, observers_, OnDisplaysChanged(displays_));
   }
 }
 

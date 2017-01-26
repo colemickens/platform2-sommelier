@@ -65,9 +65,8 @@ class DBusWrapperStub : public DBusWrapperInterface {
 
   // DBusWrapperInterface overrides:
   dbus::Bus* GetBus() override;
-  dbus::ObjectProxy* GetObjectProxy(
-      const std::string& service_name,
-      const std::string& object_path) override;
+  dbus::ObjectProxy* GetObjectProxy(const std::string& service_name,
+                                    const std::string& object_path) override;
   void RegisterForServiceAvailability(
       dbus::ObjectProxy* proxy,
       dbus::ObjectProxy::WaitForServiceToBeAvailableCallback callback) override;
@@ -87,11 +86,10 @@ class DBusWrapperStub : public DBusWrapperInterface {
       dbus::ObjectProxy* proxy,
       dbus::MethodCall* method_call,
       base::TimeDelta timeout) override;
-  void CallMethodAsync(
-      dbus::ObjectProxy* proxy,
-      dbus::MethodCall* method_call,
-      base::TimeDelta timeout,
-      dbus::ObjectProxy::ResponseCallback callback) override;
+  void CallMethodAsync(dbus::ObjectProxy* proxy,
+                       dbus::MethodCall* method_call,
+                       base::TimeDelta timeout,
+                       dbus::ObjectProxy::ResponseCallback callback) override;
 
  private:
   // Information about a proxy returned by GetObjectProxy().

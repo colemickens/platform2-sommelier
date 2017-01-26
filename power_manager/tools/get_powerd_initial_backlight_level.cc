@@ -29,7 +29,9 @@
 #include "power_manager/powerd/system/udev_stub.h"
 
 int main(int argc, char* argv[]) {
-  DEFINE_bool(keyboard, false, "Display initial keyboard (rather than panel) "
+  DEFINE_bool(keyboard,
+              false,
+              "Display initial keyboard (rather than panel) "
               "backlight brightness. The level corresponds to that used when "
               "hovering is detected and ambient light is at its lowest level "
               "(if applicable).");
@@ -69,7 +71,10 @@ int main(int argc, char* argv[]) {
 
   if (FLAGS_keyboard) {
     auto controller = new power_manager::policy::KeyboardBacklightController;
-    controller->Init(&stub_backlight, &prefs, light_sensor.get(), nullptr,
+    controller->Init(&stub_backlight,
+                     &prefs,
+                     light_sensor.get(),
+                     nullptr,
                      power_manager::TabletMode::UNSUPPORTED);
     controller->HandleHoverStateChange(true /* hovering */);
     backlight_controller.reset(controller);
@@ -77,7 +82,9 @@ int main(int argc, char* argv[]) {
     display_power_setter.reset(
         new power_manager::system::DisplayPowerSetterStub);
     auto controller = new power_manager::policy::InternalBacklightController;
-    controller->Init(&stub_backlight, &prefs, light_sensor.get(),
+    controller->Init(&stub_backlight,
+                     &prefs,
+                     light_sensor.get(),
                      display_power_setter.get());
     backlight_controller.reset(controller);
   }
@@ -85,13 +92,15 @@ int main(int argc, char* argv[]) {
   // Get the power source.
   power_manager::system::UdevStub udev;
   power_manager::system::PowerSupply power_supply;
-  power_supply.Init(
-      base::FilePath(power_manager::kPowerStatusPath), &prefs, &udev,
-      false /* log_shutdown_thresholds */);
+  power_supply.Init(base::FilePath(power_manager::kPowerStatusPath),
+                    &prefs,
+                    &udev,
+                    false /* log_shutdown_thresholds */);
   CHECK(power_supply.RefreshImmediately());
   const power_manager::PowerSource power_source =
-      power_supply.GetPowerStatus().line_power_on ?
-      power_manager::PowerSource::AC : power_manager::PowerSource::BATTERY;
+      power_supply.GetPowerStatus().line_power_on
+          ? power_manager::PowerSource::AC
+          : power_manager::PowerSource::BATTERY;
 
   // Mimic powerd startup and grab the brightness level that's used.
   if (light_sensor.get())

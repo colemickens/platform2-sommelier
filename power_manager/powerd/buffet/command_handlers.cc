@@ -62,11 +62,12 @@ class CommandHandler final {
         //
         // TODO(kemp): This should be removed once brbug.com/1265 is fixed.
         base::MessageLoop::current()->PostDelayedTask(
-            FROM_HERE, reboot_callback_, base::TimeDelta::FromSeconds(
-                kRebootDelayInSeconds));
+            FROM_HERE,
+            reboot_callback_,
+            base::TimeDelta::FromSeconds(kRebootDelayInSeconds));
       }
     }
-}
+  }
 
   std::unique_ptr<ObjectManagerProxy> object_manager_;
   base::Closure reboot_callback_;

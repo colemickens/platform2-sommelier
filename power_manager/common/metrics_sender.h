@@ -49,9 +49,7 @@ class MetricsSenderInterface {
                           int num_buckets) = 0;
 
   // Sends an enumeration (linear) histogram sample.
-  virtual bool SendEnumMetric(const std::string& name,
-                              int sample,
-                              int max) = 0;
+  virtual bool SendEnumMetric(const std::string& name, int sample, int max) = 0;
 };
 
 // MetricsSenderInterface implementation that wraps the metrics library and
@@ -80,11 +78,8 @@ class MetricsSender : public MetricsSenderInterface {
 // Convenience wrapper for calling SendMetric() on the currently-registered
 // MetricsSenderInterface singleton. Returns true without doing anything if no
 // singleton is currently registered (e.g. for testing).
-bool SendMetric(const std::string& name,
-                int sample,
-                int min,
-                int max,
-                int num_buckets);
+bool SendMetric(
+    const std::string& name, int sample, int min, int max, int num_buckets);
 
 // Convenience wrapper for calling SendEnumMetric() on the currently-registered
 // MetricsSenderInterface singleton. Returns true without doing anything if no

@@ -119,8 +119,7 @@ bool GetMillisecondPref(PrefsInterface* prefs,
 // Returns a string describing |delays| with each field prefixed by
 // |prefix|. Helper method for GetPolicyDebugString().
 std::string GetPolicyDelaysDebugString(
-    const PowerManagementPolicy::Delays& delays,
-    const std::string& prefix) {
+    const PowerManagementPolicy::Delays& delays, const std::string& prefix) {
   std::string str;
   if (delays.has_screen_dim_ms())
     str += prefix + "_dim=" + MsToString(delays.screen_dim_ms()) + " ";
@@ -138,8 +137,7 @@ std::string GetPolicyDelaysDebugString(
 }  // namespace
 
 StateController::TestApi::TestApi(StateController* controller)
-    : controller_(controller) {
-}
+    : controller_(controller) {}
 
 StateController::TestApi::~TestApi() {
   controller_ = NULL;
@@ -170,15 +168,17 @@ std::string StateController::GetPolicyDebugString(
 
   if (policy.has_ac_idle_action()) {
     str += "ac_idle=" +
-        ActionToString(ProtoActionToAction(policy.ac_idle_action())) + " ";
+           ActionToString(ProtoActionToAction(policy.ac_idle_action())) + " ";
   }
   if (policy.has_battery_idle_action()) {
     str += "battery_idle=" +
-        ActionToString(ProtoActionToAction(policy.battery_idle_action())) + " ";
+           ActionToString(ProtoActionToAction(policy.battery_idle_action())) +
+           " ";
   }
   if (policy.has_lid_closed_action()) {
     str += "lid_closed=" +
-        ActionToString(ProtoActionToAction(policy.lid_closed_action())) + " ";
+           ActionToString(ProtoActionToAction(policy.lid_closed_action())) +
+           " ";
   }
   if (policy.has_use_audio_activity())
     str += "use_audio=" + base::IntToString(policy.use_audio_activity()) + " ";
@@ -186,19 +186,22 @@ std::string StateController::GetPolicyDebugString(
     str += "use_video=" + base::IntToString(policy.use_video_activity()) + " ";
   if (policy.has_presentation_screen_dim_delay_factor()) {
     str += "presentation_factor=" +
-        base::DoubleToString(policy.presentation_screen_dim_delay_factor()) +
-        " ";
+           base::DoubleToString(policy.presentation_screen_dim_delay_factor()) +
+           " ";
   }
   if (policy.has_user_activity_screen_dim_delay_factor()) {
-    str += "user_activity_factor=" + base::DoubleToString(
-        policy.user_activity_screen_dim_delay_factor()) + " ";
+    str +=
+        "user_activity_factor=" +
+        base::DoubleToString(policy.user_activity_screen_dim_delay_factor()) +
+        " ";
   }
   if (policy.has_wait_for_initial_user_activity()) {
     str += "wait_for_initial_user_activity=" +
-        base::IntToString(policy.wait_for_initial_user_activity()) + " ";
+           base::IntToString(policy.wait_for_initial_user_activity()) + " ";
   }
   if (policy.has_force_nonzero_brightness_for_user_activity()) {
-    str += "force_nonzero_brightness_for_user_activity=" +
+    str +=
+        "force_nonzero_brightness_for_user_activity=" +
         base::IntToString(policy.force_nonzero_brightness_for_user_activity()) +
         " ";
   }
@@ -243,8 +246,7 @@ StateController::StateController()
       lid_closed_action_(Action::DO_NOTHING),
       use_audio_activity_(true),
       use_video_activity_(true),
-      wait_for_initial_user_activity_(false) {
-}
+      wait_for_initial_user_activity_(false) {}
 
 StateController::~StateController() {
   if (prefs_)
@@ -264,8 +266,10 @@ void StateController::Init(Delegate* delegate,
   power_source_ = power_source;
   lid_state_ = lid_state;
 
-  initial_state_timer_.Start(FROM_HERE,
-      base::TimeDelta::FromMilliseconds(kInitialStateTimeoutMs), this,
+  initial_state_timer_.Start(
+      FROM_HERE,
+      base::TimeDelta::FromMilliseconds(kInitialStateTimeoutMs),
+      this,
       &StateController::HandleInitialStateTimeout);
 
   UpdateSettingsAndState();
@@ -383,7 +387,7 @@ void StateController::HandleUserActivity() {
   const bool screen_turned_off_recently =
       delays_.screen_off > base::TimeDelta() && screen_turned_off_ &&
       (clock_->GetCurrentTime() - screen_turned_off_time_).InMilliseconds() <=
-      kUserActivityAfterScreenOffIncreaseDelaysMs;
+          kUserActivityAfterScreenOffIncreaseDelaysMs;
   if (!saw_user_activity_soon_after_screen_dim_or_off_ &&
       ((screen_dimmed_ && !screen_turned_off_) || screen_turned_off_recently)) {
     LOG(INFO) << "Scaling delays due to user activity while screen was dimmed "
@@ -506,9 +510,9 @@ void StateController::SanitizeDelays(Delays* delays) {
 
   // Similarly, don't try to dim the screen after turning it off.
   if (delays->screen_dim > base::TimeDelta()) {
-    delays->screen_dim = std::min(
-        delays->screen_dim,
-        GetMinPositiveTimeDelta(delays->idle, delays->screen_off));
+    delays->screen_dim =
+        std::min(delays->screen_dim,
+                 GetMinPositiveTimeDelta(delays->idle, delays->screen_off));
   } else {
     delays->screen_dim = base::TimeDelta();
   }
@@ -529,8 +533,7 @@ void StateController::SanitizeDelays(Delays* delays) {
 
 // static
 void StateController::MergeDelaysFromPolicy(
-    const PowerManagementPolicy::Delays& policy_delays,
-    Delays* delays_out) {
+    const PowerManagementPolicy::Delays& policy_delays, Delays* delays_out) {
   DCHECK(delays_out);
 
   if (policy_delays.has_idle_ms() && policy_delays.idle_ms() >= 0) {
@@ -622,19 +625,19 @@ void StateController::LoadPrefs() {
   prefs_->GetInt64(kTpmCounterSuspendThresholdPref, &tpm_threshold);
   tpm_dictionary_attack_suspend_threshold_ = static_cast<int>(tpm_threshold);
 
-  CHECK(GetMillisecondPref(prefs_, kPluggedSuspendMsPref,
-                           &pref_ac_delays_.idle));
-  CHECK(GetMillisecondPref(prefs_, kPluggedOffMsPref,
-                           &pref_ac_delays_.screen_off));
-  CHECK(GetMillisecondPref(prefs_, kPluggedDimMsPref,
-                           &pref_ac_delays_.screen_dim));
+  CHECK(
+      GetMillisecondPref(prefs_, kPluggedSuspendMsPref, &pref_ac_delays_.idle));
+  CHECK(GetMillisecondPref(
+      prefs_, kPluggedOffMsPref, &pref_ac_delays_.screen_off));
+  CHECK(GetMillisecondPref(
+      prefs_, kPluggedDimMsPref, &pref_ac_delays_.screen_dim));
 
-  CHECK(GetMillisecondPref(prefs_, kUnpluggedSuspendMsPref,
-                           &pref_battery_delays_.idle));
-  CHECK(GetMillisecondPref(prefs_, kUnpluggedOffMsPref,
-                           &pref_battery_delays_.screen_off));
-  CHECK(GetMillisecondPref(prefs_, kUnpluggedDimMsPref,
-                           &pref_battery_delays_.screen_dim));
+  CHECK(GetMillisecondPref(
+      prefs_, kUnpluggedSuspendMsPref, &pref_battery_delays_.idle));
+  CHECK(GetMillisecondPref(
+      prefs_, kUnpluggedOffMsPref, &pref_battery_delays_.screen_off));
+  CHECK(GetMillisecondPref(
+      prefs_, kUnpluggedDimMsPref, &pref_battery_delays_.screen_dim));
 
   SanitizeDelays(&pref_ac_delays_);
   SanitizeDelays(&pref_battery_delays_);
@@ -727,7 +730,7 @@ void StateController::UpdateSettingsAndState() {
   // down if the TPM dictionary-attack counter is high.
   if (tpm_dictionary_attack_suspend_threshold_ > 0 &&
       tpm_dictionary_attack_count_ >=
-      tpm_dictionary_attack_suspend_threshold_) {
+          tpm_dictionary_attack_suspend_threshold_) {
     LOG(WARNING) << "TPM dictionary attack count is "
                  << tpm_dictionary_attack_count_ << " (threshold is "
                  << tpm_dictionary_attack_suspend_threshold_ << "); "
@@ -751,16 +754,16 @@ void StateController::UpdateSettingsAndState() {
   // Let UpdateState() know if it may need to re-send the warning with an
   // updated time-until-idle-action.
   resend_idle_warning_ = sent_idle_warning_ &&
-      delays_.idle_warning != base::TimeDelta() &&
-      delays_.idle != old_idle_delay;
+                         delays_.idle_warning != base::TimeDelta() &&
+                         delays_.idle != old_idle_delay;
 
   LOG(INFO) << "Updated settings:"
             << " dim=" << util::TimeDeltaToString(delays_.screen_dim)
             << " screen_off=" << util::TimeDeltaToString(delays_.screen_off)
             << " lock=" << util::TimeDeltaToString(delays_.screen_lock)
             << " idle_warn=" << util::TimeDeltaToString(delays_.idle_warning)
-            << " idle=" << util::TimeDeltaToString(delays_.idle)
-            << " (" << ActionToString(idle_action_) << ")"
+            << " idle=" << util::TimeDeltaToString(delays_.idle) << " ("
+            << ActionToString(idle_action_) << ")"
             << " lid_closed=" << ActionToString(lid_closed_action_)
             << " use_audio=" << use_audio_activity_
             << " use_video=" << use_video_activity_;
@@ -799,29 +802,39 @@ void StateController::UpdateState() {
       now - GetLastActivityTimeForScreenOff(now);
 
   const bool screen_was_dimmed = screen_dimmed_;
-  HandleDelay(delays_.screen_dim, screen_dim_or_lock_duration,
+  HandleDelay(delays_.screen_dim,
+              screen_dim_or_lock_duration,
               base::Bind(&Delegate::DimScreen, base::Unretained(delegate_)),
               base::Bind(&Delegate::UndimScreen, base::Unretained(delegate_)),
-              "Dimming screen", "Undimming screen", &screen_dimmed_);
-  if (screen_dimmed_ && !screen_was_dimmed &&
-      audio_is_active_ && delegate_->IsHdmiAudioActive()) {
+              "Dimming screen",
+              "Undimming screen",
+              &screen_dimmed_);
+  if (screen_dimmed_ && !screen_was_dimmed && audio_is_active_ &&
+      delegate_->IsHdmiAudioActive()) {
     LOG(INFO) << "Audio is currently being sent to display; screen will not be "
               << "turned off for inactivity";
   }
 
   const bool screen_was_turned_off = screen_turned_off_;
-  HandleDelay(delays_.screen_off, screen_off_duration,
+  HandleDelay(delays_.screen_off,
+              screen_off_duration,
               base::Bind(&Delegate::TurnScreenOff, base::Unretained(delegate_)),
               base::Bind(&Delegate::TurnScreenOn, base::Unretained(delegate_)),
-              "Turning screen off", "Turning screen on", &screen_turned_off_);
+              "Turning screen off",
+              "Turning screen on",
+              &screen_turned_off_);
   if (screen_turned_off_ && !screen_was_turned_off)
     screen_turned_off_time_ = now;
   else if (!screen_turned_off_)
     screen_turned_off_time_ = base::TimeTicks();
 
-  HandleDelay(delays_.screen_lock, screen_dim_or_lock_duration,
+  HandleDelay(delays_.screen_lock,
+              screen_dim_or_lock_duration,
               base::Bind(&Delegate::LockScreen, base::Unretained(delegate_)),
-              base::Closure(), "Locking screen", "", &requested_screen_lock_);
+              base::Closure(),
+              "Locking screen",
+              "",
+              &requested_screen_lock_);
 
   // The idle-imminent signal is only emitted if an idle action is set.
   if (delays_.idle_warning > base::TimeDelta() &&
@@ -924,20 +937,28 @@ void StateController::UpdateState() {
 void StateController::ScheduleActionTimeout(base::TimeTicks now) {
   // Find the minimum of the delays that haven't yet occurred.
   base::TimeDelta timeout_delay;
-  UpdateActionTimeout(now, GetLastActivityTimeForScreenDimOrLock(now),
-                      delays_.screen_dim, &timeout_delay);
-  UpdateActionTimeout(now, GetLastActivityTimeForScreenOff(now),
-                      delays_.screen_off, &timeout_delay);
-  UpdateActionTimeout(now, GetLastActivityTimeForScreenDimOrLock(now),
-                      delays_.screen_lock, &timeout_delay);
-  UpdateActionTimeout(now, GetLastActivityTimeForIdle(now),
-                      delays_.idle_warning, &timeout_delay);
-  UpdateActionTimeout(now, GetLastActivityTimeForIdle(now),
-                      delays_.idle, &timeout_delay);
+  UpdateActionTimeout(now,
+                      GetLastActivityTimeForScreenDimOrLock(now),
+                      delays_.screen_dim,
+                      &timeout_delay);
+  UpdateActionTimeout(now,
+                      GetLastActivityTimeForScreenOff(now),
+                      delays_.screen_off,
+                      &timeout_delay);
+  UpdateActionTimeout(now,
+                      GetLastActivityTimeForScreenDimOrLock(now),
+                      delays_.screen_lock,
+                      &timeout_delay);
+  UpdateActionTimeout(now,
+                      GetLastActivityTimeForIdle(now),
+                      delays_.idle_warning,
+                      &timeout_delay);
+  UpdateActionTimeout(
+      now, GetLastActivityTimeForIdle(now), delays_.idle, &timeout_delay);
 
   if (timeout_delay > base::TimeDelta()) {
-    action_timer_.Start(FROM_HERE, timeout_delay, this,
-        &StateController::HandleActionTimeout);
+    action_timer_.Start(
+        FROM_HERE, timeout_delay, this, &StateController::HandleActionTimeout);
     action_timer_time_for_testing_ = now + timeout_delay;
   } else {
     action_timer_.Stop();

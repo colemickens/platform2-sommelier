@@ -42,8 +42,7 @@ class RollingAverage {
   // A timestamped data point.
   struct Sample {
     Sample(double value, const base::TimeTicks& time)
-        : value(value),
-          time(time) {}
+        : value(value), time(time) {}
 
     double value;
     base::TimeTicks time;

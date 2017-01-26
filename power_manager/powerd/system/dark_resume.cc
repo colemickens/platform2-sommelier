@@ -74,8 +74,7 @@ DarkResume::DarkResume()
       pm_test_delay_path_(kPMTestDelayPath),
       power_state_path_(kPowerStatePath),
       battery_shutdown_threshold_(0.0),
-      next_action_(Action::SUSPEND) {
-}
+      next_action_(Action::SUSPEND) {}
 
 DarkResume::~DarkResume() {
   if (enabled_) {
@@ -95,7 +94,7 @@ void DarkResume::Init(PowerSupplyInterface* power_supply,
 
   bool disable = false;
   enabled_ = (!prefs_->GetBool(kDisableDarkResumePref, &disable) || !disable) &&
-      ReadSuspendDurationsPref();
+             ReadSuspendDurationsPref();
   LOG(INFO) << "Dark resume user space " << (enabled_ ? "enabled" : "disabled");
 
   std::string source_file;
@@ -162,10 +161,10 @@ void DarkResume::ScheduleBatteryCheck() {
 
   UpdateNextAction();
 
-  timer_->Start(FROM_HERE,
-                GetNextSuspendDuration(),
-                base::Bind(&DarkResume::ScheduleBatteryCheck,
-                           base::Unretained(this)));
+  timer_->Start(
+      FROM_HERE,
+      GetNextSuspendDuration(),
+      base::Bind(&DarkResume::ScheduleBatteryCheck, base::Unretained(this)));
 }
 
 base::TimeDelta DarkResume::GetNextSuspendDuration() {
@@ -236,16 +235,16 @@ bool DarkResume::ExitDarkResume() {
   LOG(INFO) << "Transitioning from dark resume to fully resumed.";
 
   // Set up the pm_test down to devices level.
-  if (!util::WriteFileFully(pm_test_path_, kPMTestDevices,
-                            strlen(kPMTestDevices))) {
+  if (!util::WriteFileFully(
+          pm_test_path_, kPMTestDevices, strlen(kPMTestDevices))) {
     PLOG(ERROR) << "Unable to set up the pm_test level to properly exit dark "
                 << "resume";
     return false;
   }
 
   // Do the pm_test suspend.
-  if (!util::WriteFileFully(power_state_path_, kPowerStateMem,
-                            strlen(kPowerStateMem))) {
+  if (!util::WriteFileFully(
+          power_state_path_, kPowerStateMem, strlen(kPowerStateMem))) {
     PLOG(ERROR) << "Error while performing a pm_test suspend to exit dark "
                 << "resume";
     return false;
@@ -278,7 +277,7 @@ bool DarkResume::ReadSuspendDurationsPref() {
     double battery_level = 0.0;
     int suspend_duration = 0;
     if (!base::StringToDouble(pairs[i].first, &battery_level) ||
-        !base::StringToInt(pairs[i].second,  &suspend_duration)) {
+        !base::StringToInt(pairs[i].second, &suspend_duration)) {
       LOG(ERROR) << "Unable to parse values on line " << i << " of "
                  << kDarkResumeSuspendDurationsPref;
       return false;
@@ -305,9 +304,8 @@ void DarkResume::GetFiles(std::vector<base::FilePath>* files,
   if (!prefs_->GetString(pref_name, &data))
     return;
 
-  std::vector<std::string> lines =
-      base::SplitString(data, "\n", base::KEEP_WHITESPACE,
-                        base::SPLIT_WANT_ALL);
+  std::vector<std::string> lines = base::SplitString(
+      data, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   for (size_t i = 0; i < lines.size(); ++i) {
     base::FilePath path = base::FilePath(lines[i]);
     path = path.AppendASCII(kPowerDir);
@@ -319,7 +317,8 @@ void DarkResume::GetFiles(std::vector<base::FilePath>* files,
 void DarkResume::SetStates(const std::vector<base::FilePath>& files,
                            const std::string& state) {
   for (std::vector<base::FilePath>::const_iterator iter = files.begin();
-       iter != files.end(); ++iter) {
+       iter != files.end();
+       ++iter) {
     if (!util::WriteFileFully(*iter, state.c_str(), state.length())) {
       PLOG(ERROR) << "Failed writing \"" << state << "\" to " << iter->value();
     }

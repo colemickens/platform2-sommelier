@@ -81,16 +81,12 @@ const char* GetPowerButtonAction(ButtonState state) {
 }  // namespace
 
 // InputObserver implementation that just records the events that it receives.
-class TestObserver : public InputObserver,
-                     public ActionRecorder {
+class TestObserver : public InputObserver, public ActionRecorder {
  public:
-  explicit TestObserver(InputWatcher* watcher)
-      : watcher_(watcher) {
+  explicit TestObserver(InputWatcher* watcher) : watcher_(watcher) {
     watcher_->AddObserver(this);
   }
-  ~TestObserver() override {
-    watcher_->RemoveObserver(this);
-  }
+  ~TestObserver() override { watcher_->RemoveObserver(this); }
 
   // InputObserver implementation:
   void OnLidEvent(LidState state) override {
@@ -159,8 +155,7 @@ class InputWatcherTest : public testing::Test {
 
   // Registers |device| named |name| within |dev_input_dir_|. To be recognized,
   // |name| should be of the form "event<num>".
-  void AddDevice(const std::string& name,
-                 linked_ptr<EventDeviceStub> device) {
+  void AddDevice(const std::string& name, linked_ptr<EventDeviceStub> device) {
     const base::FilePath path = dev_input_path_.Append(name);
     ASSERT_EQ(0, base::WriteFile(path, "", 0));
     device_factory_->RegisterDevice(path, device);
@@ -196,34 +191,34 @@ TEST_F(InputWatcherTest, DetectUSBDevices) {
 
   // Create a bunch of non-USB paths.
   ASSERT_TRUE(base::CreateSymbolicLink(
-                  sys_class_input_path_.Append("../../foo0/dev:1/00:00"),
-                  sys_class_input_path_.Append("input0")));
+      sys_class_input_path_.Append("../../foo0/dev:1/00:00"),
+      sys_class_input_path_.Append("input0")));
   ASSERT_TRUE(base::CreateSymbolicLink(
-                  sys_class_input_path_.Append("../../bar4/dev:2/00:00"),
-                  sys_class_input_path_.Append("input1")));
+      sys_class_input_path_.Append("../../bar4/dev:2/00:00"),
+      sys_class_input_path_.Append("input1")));
   ASSERT_TRUE(base::CreateSymbolicLink(
-                  sys_class_input_path_.Append("../../goo3/dev:3/00:00"),
-                  sys_class_input_path_.Append("input2")));
+      sys_class_input_path_.Append("../../goo3/dev:3/00:00"),
+      sys_class_input_path_.Append("input2")));
   EXPECT_FALSE(input_watcher_->IsUSBInputDeviceConnected());
 
   // Create a "fake USB" path that contains "usb" as part of another word
   ASSERT_TRUE(base::CreateSymbolicLink(
-                  sys_class_input_path_.Append("../../busbreaker/00:00"),
-                  sys_class_input_path_.Append("input3")));
+      sys_class_input_path_.Append("../../busbreaker/00:00"),
+      sys_class_input_path_.Append("input3")));
   EXPECT_FALSE(input_watcher_->IsUSBInputDeviceConnected());
 
   // Create a true USB path.
   ASSERT_TRUE(base::CreateSymbolicLink(
-                  sys_class_input_path_.Append("../../usb3/dev:3/00:00"),
-                  sys_class_input_path_.Append("input4")));
+      sys_class_input_path_.Append("../../usb3/dev:3/00:00"),
+      sys_class_input_path_.Append("input4")));
   EXPECT_TRUE(input_watcher_->IsUSBInputDeviceConnected());
 
   // Clear directory and create a USB path.
   ASSERT_TRUE(base::DeleteFile(sys_class_input_path_, true));
   ASSERT_TRUE(base::CreateDirectory(sys_class_input_path_));
   ASSERT_TRUE(base::CreateSymbolicLink(
-                  sys_class_input_path_.Append("../../usb/dev:5/00:00"),
-                  sys_class_input_path_.Append("input10")));
+      sys_class_input_path_.Append("../../usb/dev:5/00:00"),
+      sys_class_input_path_.Append("input10")));
   EXPECT_TRUE(input_watcher_->IsUSBInputDeviceConnected());
 
   // Clear directory and create a non-symlink USB path. It should not counted
@@ -316,11 +311,9 @@ TEST_F(InputWatcherTest, LidSwitch) {
   lid_switch->AppendEvent(EV_SW, SW_LID, 0);
   lid_switch->AppendEvent(EV_SW, SW_LID, 1);
   lid_switch->NotifyAboutEvents();
-  EXPECT_EQ(JoinActions(kLidClosedAction,
-                        kLidOpenAction,
-                        kLidClosedAction,
-                        NULL),
-            observer_->GetActions());
+  EXPECT_EQ(
+      JoinActions(kLidClosedAction, kLidOpenAction, kLidClosedAction, NULL),
+      observer_->GetActions());
 
   // There aren't any more events to send.
   base::RunLoop().RunUntilIdle();
@@ -626,22 +619,22 @@ TEST_F(InputWatcherTest, RegisterForUdevEvents) {
   linked_ptr<EventDeviceStub> keyboard(new EventDeviceStub);
   keyboard->set_is_power_button(true);
   AddDevice(kDeviceName, keyboard);
-  input_watcher_->OnUdevEvent(InputWatcher::kInputUdevSubsystem,
-                              kDeviceName, UdevAction::ADD);
+  input_watcher_->OnUdevEvent(
+      InputWatcher::kInputUdevSubsystem, kDeviceName, UdevAction::ADD);
   keyboard->AppendEvent(EV_KEY, KEY_POWER, 1);
   keyboard->NotifyAboutEvents();
   EXPECT_EQ(kPowerButtonDownAction, observer_->GetActions());
 
   // Disconnect the keyboard.
-  input_watcher_->OnUdevEvent(InputWatcher::kInputUdevSubsystem,
-                              kDeviceName, UdevAction::REMOVE);
+  input_watcher_->OnUdevEvent(
+      InputWatcher::kInputUdevSubsystem, kDeviceName, UdevAction::REMOVE);
 
   // Check that the InputWatcher unregisters itself.
   InputWatcher* dead_ptr = input_watcher_.get();
   observer_.reset();
   input_watcher_.reset();
-  EXPECT_FALSE(udev_.HasSubsystemObserver(InputWatcher::kInputUdevSubsystem,
-                                          dead_ptr));
+  EXPECT_FALSE(
+      udev_.HasSubsystemObserver(InputWatcher::kInputUdevSubsystem, dead_ptr));
 }
 
 TEST_F(InputWatcherTest, TolerateMissingDevInputDirectory) {
@@ -662,8 +655,8 @@ TEST_F(InputWatcherTest, DevInputDirectoryMustBeReadable) {
   InputWatcher input_watcher;
   input_watcher.set_dev_input_path_for_testing(dev_input_path_);
   input_watcher.set_sys_class_input_path_for_testing(sys_class_input_path_);
-  EXPECT_FALSE(input_watcher.Init(
-      std::move(scoped_device_factory_), &prefs_, &udev_));
+  EXPECT_FALSE(
+      input_watcher.Init(std::move(scoped_device_factory_), &prefs_, &udev_));
 }
 
 }  // namespace system

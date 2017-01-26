@@ -26,16 +26,11 @@ class MetricsSenderStub : public MetricsSenderInterface {
     ~Metric();
 
     // Returns a new exponential metric initialized to the passed-in values.
-    static Metric CreateExp(const std::string& name,
-                            int sample,
-                            int min,
-                            int max,
-                            int num_buckets);
+    static Metric CreateExp(
+        const std::string& name, int sample, int min, int max, int num_buckets);
 
     // Returns a new enumerated metric initialized to the passed-in values.
-    static Metric CreateEnum(const std::string& name,
-                             int sample,
-                             int max);
+    static Metric CreateEnum(const std::string& name, int sample, int max);
 
     // Returns a string describing the metric. Useful for comparisons in tests.
     std::string ToString() const;

@@ -45,17 +45,14 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
         suspend_wakeup_count_valid_(false),
         suspend_was_successful_(false),
         num_suspend_attempts_(0),
-        suspend_canceled_while_in_dark_resume_(false) {
-  }
+        suspend_canceled_while_in_dark_resume_(false) {}
 
   void set_lid_closed(bool closed) { lid_closed_ = closed; }
   void set_report_success_for_read_wakeup_count(bool success) {
     report_success_for_read_wakeup_count_ = success;
   }
   void set_suspend_announced(bool announced) { suspend_announced_ = announced; }
-  void set_suspend_result(SuspendResult result) {
-    suspend_result_ = result;
-  }
+  void set_suspend_result(SuspendResult result) { suspend_result_ = result; }
   void set_wakeup_count(uint64_t count) { wakeup_count_ = count; }
   void set_suspend_callback(base::Closure callback) {
     suspend_callback_ = callback;
@@ -106,9 +103,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
 
   bool GetSuspendAnnounced() override { return suspend_announced_; }
 
-  void PrepareToSuspend() override {
-    AppendAction(kPrepare);
-  }
+  void PrepareToSuspend() override { AppendAction(kPrepare); }
 
   SuspendResult DoSuspend(uint64_t wakeup_count,
                           bool wakeup_count_valid,
@@ -207,8 +202,7 @@ class SuspenderTest : public testing::Test {
   SuspenderTest()
       : test_api_(&suspender_),
         pref_retry_delay_ms_(10000),
-        pref_num_retries_(10) {
-  }
+        pref_num_retries_(10) {}
 
  protected:
   void Init() {
@@ -221,8 +215,8 @@ class SuspenderTest : public testing::Test {
   // signal wasn't sent.
   int GetSuspendImminentId(int position) {
     SuspendImminent proto;
-    if (!dbus_wrapper_.GetSentSignal(position, kSuspendImminentSignal, &proto,
-                                     nullptr))
+    if (!dbus_wrapper_.GetSentSignal(
+            position, kSuspendImminentSignal, &proto, nullptr))
       return -1;
     return proto.suspend_id();
   }
@@ -241,23 +235,23 @@ class SuspenderTest : public testing::Test {
   // wasn't sent.
   int GetSuspendDoneId(int position) {
     SuspendDone proto;
-    if (!dbus_wrapper_.GetSentSignal(position, kSuspendDoneSignal, &proto,
-                                     nullptr))
+    if (!dbus_wrapper_.GetSentSignal(
+            position, kSuspendDoneSignal, &proto, nullptr))
       return -1;
     return proto.suspend_id();
   }
 
   // Announces the readiness of registered delays for a regular suspend request.
   void AnnounceReadyForSuspend(int suspend_request_id) {
-    suspender_.OnReadyForSuspend(
-        test_api_.suspend_delay_controller(), suspend_request_id);
+    suspender_.OnReadyForSuspend(test_api_.suspend_delay_controller(),
+                                 suspend_request_id);
   }
 
   // Announces the readiness of registered delays for a suspend from dark
   // resume.
   void AnnounceReadyForDarkSuspend(int dark_suspend_id) {
-    suspender_.OnReadyForSuspend(
-        test_api_.dark_suspend_delay_controller(), dark_suspend_id);
+    suspender_.OnReadyForSuspend(test_api_.dark_suspend_delay_controller(),
+                                 dark_suspend_id);
   }
 
   // Records the |last_dark_resume_wake_reason_| in |suspender_|.  Takes a
@@ -301,7 +295,8 @@ TEST_F(SuspenderTest, SuspendResume) {
   const base::Time kResumeTime = base::Time::FromInternalValue(567);
   delegate_.set_suspend_callback(
       base::Bind(&Suspender::TestApi::SetCurrentWallTime,
-                 base::Unretained(&test_api_), kResumeTime));
+                 base::Unretained(&test_api_),
+                 kResumeTime));
 
   // When Suspender receives notice that the system is ready to be
   // suspended, it should immediately suspend the system.
@@ -958,8 +953,8 @@ TEST_F(SuspenderTest, RerunDarkSuspendDelaysForCanceledSuspend) {
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::CANCELED);
   AnnounceReadyForDarkSuspend(test_api_.dark_suspend_id());
   EXPECT_EQ(kSuspend, delegate_.GetActions());
-  EXPECT_TRUE(dbus_wrapper_.GetSentSignal(0, kDarkSuspendImminentSignal,
-                                          nullptr, nullptr));
+  EXPECT_TRUE(dbus_wrapper_.GetSentSignal(
+      0, kDarkSuspendImminentSignal, nullptr, nullptr));
   dbus_wrapper_.ClearSentSignals();
 
   // The resuspend attempt fails due to a transient kernel error.
@@ -989,9 +984,10 @@ TEST_F(SuspenderTest, GenerateDarkResumeMetricsOnlyIfEnabled) {
   dark_resume_.set_enabled(true);
   suspender_.RequestSuspend();
   AnnounceReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kUnprepare,
-                        kGenerateDarkResumeMetrics, NULL),
-            delegate_.GetActions());
+  EXPECT_EQ(
+      JoinActions(
+          kPrepare, kSuspend, kUnprepare, kGenerateDarkResumeMetrics, NULL),
+      delegate_.GetActions());
 }
 
 // Tests that the Suspender properly generates dark resume wake data.

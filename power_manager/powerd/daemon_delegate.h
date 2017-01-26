@@ -90,8 +90,7 @@ class DaemonDelegate {
       TabletMode initial_tablet_mode) = 0;
 
   virtual std::unique_ptr<system::InputWatcherInterface> CreateInputWatcher(
-      PrefsInterface* prefs,
-      system::UdevInterface* udev) = 0;
+      PrefsInterface* prefs, system::UdevInterface* udev) = 0;
 
   virtual std::unique_ptr<system::AcpiWakeupHelperInterface>
   CreateAcpiWakeupHelper() = 0;
@@ -110,8 +109,7 @@ class DaemonDelegate {
       system::UdevInterface* udev) = 0;
 
   virtual std::unique_ptr<system::DarkResumeInterface> CreateDarkResume(
-      system::PowerSupplyInterface* power_supply,
-      PrefsInterface* prefs) = 0;
+      system::PowerSupplyInterface* power_supply, PrefsInterface* prefs) = 0;
 
   virtual std::unique_ptr<system::AudioClientInterface> CreateAudioClient(
       system::DBusWrapperInterface* dbus_wrapper) = 0;

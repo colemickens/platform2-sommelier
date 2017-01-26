@@ -63,10 +63,9 @@ ConnectedChargingPorts GetConnectedChargingPorts(const PowerStatus& status) {
 
 // static
 std::string MetricsCollector::AppendPowerSourceToEnumName(
-    const std::string& enum_name,
-    PowerSource power_source) {
-  return enum_name + (power_source == PowerSource::AC ? kAcSuffix
-                                                      : kBatterySuffix);
+    const std::string& enum_name, PowerSource power_source) {
+  return enum_name +
+         (power_source == PowerSource::AC ? kAcSuffix : kBatterySuffix);
 }
 
 MetricsCollector::MetricsCollector() = default;
@@ -84,15 +83,16 @@ void MetricsCollector::Init(
   last_power_status_ = power_status;
 
   if (display_backlight_controller_ || keyboard_backlight_controller_) {
-    generate_backlight_metrics_timer_.Start(FROM_HERE,
+    generate_backlight_metrics_timer_.Start(
+        FROM_HERE,
         base::TimeDelta::FromMilliseconds(kBacklightLevelIntervalMs),
-        this, &MetricsCollector::GenerateBacklightLevelMetrics);
+        this,
+        &MetricsCollector::GenerateBacklightLevelMetrics);
   }
 }
 
 void MetricsCollector::HandleScreenDimmedChange(
-    bool dimmed,
-    base::TimeTicks last_user_activity_time) {
+    bool dimmed, base::TimeTicks last_user_activity_time) {
   if (dimmed) {
     base::TimeTicks now = clock_.GetCurrentTime();
     screen_dim_timestamp_ = now;
@@ -104,8 +104,7 @@ void MetricsCollector::HandleScreenDimmedChange(
 }
 
 void MetricsCollector::HandleScreenOffChange(
-    bool off,
-    base::TimeTicks last_user_activity_time) {
+    bool off, base::TimeTicks last_user_activity_time) {
   if (off) {
     base::TimeTicks now = clock_.GetCurrentTime();
     screen_off_timestamp_ = now;
@@ -152,8 +151,8 @@ void MetricsCollector::HandleSessionStateChange(SessionState state) {
 
       if (display_backlight_controller_) {
         SendMetric(kNumberOfAlsAdjustmentsPerSessionName,
-                   display_backlight_controller_->
-                       GetNumAmbientLightSensorAdjustments(),
+                   display_backlight_controller_
+                       ->GetNumAmbientLightSensorAdjustments(),
                    kNumberOfAlsAdjustmentsPerSessionMin,
                    kNumberOfAlsAdjustmentsPerSessionMax,
                    kDefaultBuckets);
@@ -235,7 +234,8 @@ void MetricsCollector::HandlePowerStatusUpdate(const PowerStatus& status) {
 }
 
 void MetricsCollector::HandleShutdown(ShutdownReason reason) {
-  SendEnumMetric(kShutdownReasonName, static_cast<int>(reason),
+  SendEnumMetric(kShutdownReasonName,
+                 static_cast<int>(reason),
                  static_cast<int>(kShutdownReasonMax));
 }
 
@@ -246,8 +246,10 @@ void MetricsCollector::PrepareForSuspend() {
 }
 
 void MetricsCollector::HandleResume(int num_suspend_attempts) {
-  SendMetric(kSuspendAttemptsBeforeSuccessName, num_suspend_attempts,
-             kSuspendAttemptsMin, kSuspendAttemptsMax,
+  SendMetric(kSuspendAttemptsBeforeSuccessName,
+             num_suspend_attempts,
+             kSuspendAttemptsMin,
+             kSuspendAttemptsMax,
              kSuspendAttemptsBuckets);
   // Report the discharge rate in response to the next
   // OnPowerStatusUpdate() call.
@@ -255,15 +257,18 @@ void MetricsCollector::HandleResume(int num_suspend_attempts) {
 }
 
 void MetricsCollector::HandleCanceledSuspendRequest(int num_suspend_attempts) {
-  SendMetric(kSuspendAttemptsBeforeCancelName, num_suspend_attempts,
-             kSuspendAttemptsMin, kSuspendAttemptsMax,
+  SendMetric(kSuspendAttemptsBeforeCancelName,
+             num_suspend_attempts,
+             kSuspendAttemptsMin,
+             kSuspendAttemptsMax,
              kSuspendAttemptsBuckets);
 }
 
 void MetricsCollector::GenerateDarkResumeMetrics(
     const std::vector<policy::Suspender::DarkResumeInfo>& wake_durations,
     base::TimeDelta suspend_duration) {
-  if (suspend_duration.InSeconds() <= 0) return;
+  if (suspend_duration.InSeconds() <= 0)
+    return;
 
   // We want to get metrics even if the system suspended for less than an hour
   // so we scale the number of wakes up.
@@ -342,8 +347,7 @@ void MetricsCollector::GenerateBacklightLevelMetrics() {
   if (keyboard_backlight_controller_ &&
       keyboard_backlight_controller_->GetBrightnessPercent(&percent)) {
     // Enum to avoid exponential histogram's varyingly-sized buckets.
-    SendEnumMetric(kKeyboardBacklightLevelName, lround(percent),
-                   kMaxPercent);
+    SendEnumMetric(kKeyboardBacklightLevelName, lround(percent), kMaxPercent);
   }
 }
 
@@ -388,14 +392,12 @@ void MetricsCollector::SendPowerButtonAcknowledgmentDelayMetric(
              kDefaultBuckets);
 }
 
-bool MetricsCollector::SendMetricWithPowerSource(const std::string& name,
-                                                 int sample,
-                                                 int min,
-                                                 int max,
-                                                 int num_buckets) {
+bool MetricsCollector::SendMetricWithPowerSource(
+    const std::string& name, int sample, int min, int max, int num_buckets) {
   const std::string full_name = AppendPowerSourceToEnumName(
-      name, last_power_status_.line_power_on ? PowerSource::AC
-                                             : PowerSource::BATTERY);
+      name,
+      last_power_status_.line_power_on ? PowerSource::AC
+                                       : PowerSource::BATTERY);
   return SendMetric(full_name, sample, min, max, num_buckets);
 }
 
@@ -403,8 +405,9 @@ bool MetricsCollector::SendEnumMetricWithPowerSource(const std::string& name,
                                                      int sample,
                                                      int max) {
   const std::string full_name = AppendPowerSourceToEnumName(
-      name, last_power_status_.line_power_on ? PowerSource::AC
-                                             : PowerSource::BATTERY);
+      name,
+      last_power_status_.line_power_on ? PowerSource::AC
+                                       : PowerSource::BATTERY);
   return SendEnumMetric(full_name, sample, max);
 }
 
@@ -416,16 +419,15 @@ void MetricsCollector::GenerateBatteryDischargeRateMetric() {
     return;
 
   // Converts the discharge rate from W to mW.
-  int rate = static_cast<int>(
-      round(last_power_status_.battery_energy_rate * 1000));
+  int rate =
+      static_cast<int>(round(last_power_status_.battery_energy_rate * 1000));
   if (rate <= 0)
     return;
 
   // Ensures that the metric is not generated too frequently.
   if (!last_battery_discharge_rate_metric_timestamp_.is_null() &&
-      (clock_.GetCurrentTime() -
-       last_battery_discharge_rate_metric_timestamp_).InSeconds() <
-      kBatteryDischargeRateIntervalSec) {
+      (clock_.GetCurrentTime() - last_battery_discharge_rate_metric_timestamp_)
+              .InSeconds() < kBatteryDischargeRateIntervalSec) {
     return;
   }
 
@@ -443,8 +445,7 @@ void MetricsCollector::GenerateBatteryDischargeRateWhileSuspendedMetric() {
     return;
   report_battery_discharge_rate_while_suspended_ = false;
 
-  if (!last_power_status_.battery_is_present ||
-      on_line_power_before_suspend_ ||
+  if (!last_power_status_.battery_is_present || on_line_power_before_suspend_ ||
       last_power_status_.line_power_on)
     return;
 
@@ -484,8 +485,7 @@ void MetricsCollector::GenerateNumOfSessionsPerChargeMetric() {
   if (sample <= 0)
     return;
 
-  sample = std::min(
-      sample, static_cast<int64_t>(kNumOfSessionsPerChargeMax));
+  sample = std::min(sample, static_cast<int64_t>(kNumOfSessionsPerChargeMax));
   prefs_->SetInt64(kNumSessionsOnCurrentChargePref, 0);
   SendMetric(kNumOfSessionsPerChargeName,
              sample,

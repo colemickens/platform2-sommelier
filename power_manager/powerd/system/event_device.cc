@@ -12,9 +12,9 @@
 // Helper macros for accessing the bitfields returned by the kernel interface,
 // compare with include/linux/bitops.h.
 #define BITS_PER_LONG (sizeof(long) * 8)  // NOLINT(runtime/int)
-#define BITS_TO_LONGS(bits) (((bits) - 1) / BITS_PER_LONG + 1)
+#define BITS_TO_LONGS(bits) (((bits)-1) / BITS_PER_LONG + 1)
 #define BITMASK_GET_BIT(bitmask, bit) \
-    ((bitmask[bit / BITS_PER_LONG] >> (bit % BITS_PER_LONG)) & 1)
+  ((bitmask[bit / BITS_PER_LONG] >> (bit % BITS_PER_LONG)) & 1)
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
@@ -29,9 +29,7 @@ static constexpr int kMaxBit = MAX(MAX(EV_MAX, KEY_MAX), SW_MAX);
 // EventDevice
 
 EventDevice::EventDevice(int fd, const base::FilePath& path)
-    : fd_(fd),
-      path_(path) {
-}
+    : fd_(fd), path_(path) {}
 
 EventDevice::~EventDevice() {
   fd_watcher_.reset();
@@ -99,7 +97,7 @@ bool EventDevice::HasEventBit(int event_type, int bit) {
   DCHECK(bit <= kMaxBit);
 
   // bitmask needs to hold kMaxBit+1 bits
-  unsigned long bitmask[BITS_TO_LONGS(kMaxBit+1)];  // NOLINT(runtime/int)
+  unsigned long bitmask[BITS_TO_LONGS(kMaxBit + 1)];  // NOLINT(runtime/int)
   memset(bitmask, 0, sizeof(bitmask));
   if (ioctl(fd_, EVIOCGBIT(event_type, sizeof(bitmask)), bitmask) < 0) {
     PLOG(ERROR) << "EVIOCGBIT failed for " << path_.value();
@@ -112,7 +110,7 @@ bool EventDevice::GetSwitchBit(int bit) {
   DCHECK(bit <= kMaxBit);
 
   // bitmask needs to hold SW_MAX+1 bits
-  unsigned long bitmask[BITS_TO_LONGS(SW_MAX+1)];  // NOLINT(runtime/int)
+  unsigned long bitmask[BITS_TO_LONGS(SW_MAX + 1)];  // NOLINT(runtime/int)
   memset(bitmask, 0, sizeof(bitmask));
   if (ioctl(fd_, EVIOCGSW(sizeof(bitmask)), bitmask) < 0) {
     PLOG(ERROR) << "EVIOCGBIT failed for " << path_.value();
@@ -154,7 +152,10 @@ void EventDevice::WatchForEvents(base::Closure new_events_cb) {
   fd_watcher_.reset(new base::MessageLoopForIO::FileDescriptorWatcher);
   new_events_cb_ = new_events_cb;
   if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
-          fd_, true, base::MessageLoopForIO::WATCH_READ, fd_watcher_.get(),
+          fd_,
+          true,
+          base::MessageLoopForIO::WATCH_READ,
+          fd_watcher_.get(),
           this)) {
     LOG(ERROR) << "Unable to watch FD " << fd_;
   }

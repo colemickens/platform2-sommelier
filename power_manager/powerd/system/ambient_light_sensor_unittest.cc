@@ -71,9 +71,7 @@ class AmbientLightSensorTest : public ::testing::Test {
     sensor_->Init();
   }
 
-  void TearDown() override {
-    sensor_->RemoveObserver(&observer_);
-  }
+  void TearDown() override { sensor_->RemoveObserver(&observer_); }
 
  protected:
   // Writes |lux| to |data_file_| to simulate the ambient light sensor reporting

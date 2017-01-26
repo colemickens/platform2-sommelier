@@ -24,9 +24,7 @@ const base::FilePath k314AccelNodeName("in_angl_offset");
 
 }  // namespace
 
-EcWakeupHelper::EcWakeupHelper()
-    : supported_(false),
-      cached_wake_angle_(-1) {
+EcWakeupHelper::EcWakeupHelper() : supported_(false), cached_wake_angle_(-1) {
   if (base::PathExists(k318SysfsPath)) {  // Kernel 3.18 and later
     sysfs_node_ = k318SysfsPath;
     supported_ = true;

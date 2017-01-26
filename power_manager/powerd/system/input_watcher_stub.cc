@@ -12,8 +12,7 @@ namespace system {
 InputWatcherStub::InputWatcherStub()
     : lid_state_(LidState::OPEN),
       tablet_mode_(TabletMode::UNSUPPORTED),
-      usb_input_device_connected_(true) {
-}
+      usb_input_device_connected_(true) {}
 
 InputWatcherStub::~InputWatcherStub() {}
 

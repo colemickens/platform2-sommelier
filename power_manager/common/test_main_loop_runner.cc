@@ -20,8 +20,8 @@ TestMainLoopRunner::~TestMainLoopRunner() {}
 bool TestMainLoopRunner::StartLoop(base::TimeDelta timeout_delay) {
   CHECK(!runner_.get()) << "Loop is already running";
   timed_out_ = false;
-  timeout_timer_.Start(FROM_HERE, timeout_delay, this,
-                       &TestMainLoopRunner::OnTimeout);
+  timeout_timer_.Start(
+      FROM_HERE, timeout_delay, this, &TestMainLoopRunner::OnTimeout);
   runner_.reset(new base::RunLoop);
   runner_->Run();
   runner_.reset();

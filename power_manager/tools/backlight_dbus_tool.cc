@@ -23,9 +23,8 @@ bool GetCurrentBrightness(dbus::ObjectProxy* proxy, double* percent) {
   dbus::MethodCall method_call(
       power_manager::kPowerManagerInterface,
       power_manager::kGetScreenBrightnessPercentMethod);
-  std::unique_ptr<dbus::Response> response(
-      proxy->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  std::unique_ptr<dbus::Response> response(proxy->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
   if (!response)
     return false;
   dbus::MessageReader reader(response.get());
@@ -41,9 +40,8 @@ bool SetCurrentBrightness(dbus::ObjectProxy* proxy, double percent, int style) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendDouble(percent);
   writer.AppendInt32(style);
-  std::unique_ptr<dbus::Response> response(
-      proxy->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  std::unique_ptr<dbus::Response> response(proxy->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
   return response.get() != NULL;
 }
 
@@ -57,8 +55,8 @@ int main(int argc, char* argv[]) {
   DEFINE_double(percent, 0, "Percent to set, in the range [0.0, 100.0]");
   DEFINE_bool(gradual, true, "Transition gradually");
 
-  brillo::FlagHelper::Init(argc, argv,
-      "Query or change the panel backlight brightness via powerd.");
+  brillo::FlagHelper::Init(
+      argc, argv, "Query or change the panel backlight brightness via powerd.");
 
   CHECK_LE(FLAGS_decrease + FLAGS_increase + FLAGS_set, 1)
       << "Exactly zero or one of --decrease, --increase, and --set may be set";
@@ -77,8 +75,8 @@ int main(int argc, char* argv[]) {
   if (FLAGS_decrease || FLAGS_increase) {
     dbus::MethodCall method_call(
         power_manager::kPowerManagerInterface,
-        FLAGS_decrease ? power_manager::kDecreaseScreenBrightnessMethod :
-            power_manager::kIncreaseScreenBrightnessMethod);
+        FLAGS_decrease ? power_manager::kDecreaseScreenBrightnessMethod
+                       : power_manager::kIncreaseScreenBrightnessMethod);
     if (FLAGS_decrease) {
       dbus::MessageWriter writer(&method_call);
       writer.AppendBool(true);  // allow_off
@@ -90,9 +88,9 @@ int main(int argc, char* argv[]) {
     CHECK(GetCurrentBrightness(powerd_proxy, &percent));
     printf("Current percent = %f\n", percent);
     if (FLAGS_set) {
-      const int style = FLAGS_gradual ?
-          power_manager::kBrightnessTransitionGradual :
-          power_manager::kBrightnessTransitionInstant;
+      const int style = FLAGS_gradual
+                            ? power_manager::kBrightnessTransitionGradual
+                            : power_manager::kBrightnessTransitionInstant;
       CHECK(SetCurrentBrightness(powerd_proxy, FLAGS_percent, style));
       printf("Set percent to %f\n", FLAGS_percent);
       CHECK(GetCurrentBrightness(powerd_proxy, &percent));

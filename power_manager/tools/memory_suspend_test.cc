@@ -16,10 +16,10 @@
 #include <base/files/file_util.h>
 #include <base/format_macros.h>
 #include <base/logging.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/flag_helper.h>
 
 #define PATTERN(i) ((i % 1) ? 0x55555555 : 0xAAAAAAAA)
@@ -30,7 +30,7 @@ using std::set;
 using std::string;
 using std::vector;
 
-void PrintAddrMap(void *vaddr) {
+void PrintAddrMap(void* vaddr) {
   int fd;
   uintptr_t page = reinterpret_cast<uintptr_t>(vaddr) / getpagesize();
   uint64_t page_data;
@@ -39,34 +39,39 @@ void PrintAddrMap(void *vaddr) {
   CHECK_GE(fd, 0);
   CHECK_EQ(static_cast<uintptr_t>(lseek64(fd, page * 8, SEEK_SET)), page * 8);
   CHECK_EQ(read(fd, &page_data, 8), 8);
-  printf("Vaddr: 0x%p   PFN=0x%llx  shift=%llu  present=%lld\n", vaddr,
-         page_data & ((1LL << 55) - 1), (page_data & ((0x3fLL << 55))) >> 55,
+  printf("Vaddr: 0x%p   PFN=0x%llx  shift=%llu  present=%lld\n",
+         vaddr,
+         page_data & ((1LL << 55) - 1),
+         (page_data & ((0x3fLL << 55))) >> 55,
          (page_data & (1LL << 63)) >> 63);
 }
 
 int Suspend(uint64_t wakeup_count) {
-  return system(base::StringPrintf(
-      "powerd_dbus_suspend --delay=0 --wakeup_count=%" PRIu64,
-      wakeup_count).c_str());
+  return system(
+      base::StringPrintf(
+          "powerd_dbus_suspend --delay=0 --wakeup_count=%" PRIu64, wakeup_count)
+          .c_str());
 }
 
 uint32_t* Allocate(size_t size) {
-  return static_cast<uint32_t *>(malloc(size));
+  return static_cast<uint32_t*>(malloc(size));
 }
 
-void Fill(uint32_t *ptr, size_t size) {
+void Fill(uint32_t* ptr, size_t size) {
   for (size_t i = 0; i < size / sizeof(*ptr); i++) {
     *(ptr + i) = PATTERN(i);
   }
 }
 
-bool Check(uint32_t *ptr, size_t size) {
+bool Check(uint32_t* ptr, size_t size) {
   bool success = true;
 
   for (size_t i = 0; i < size / sizeof(*ptr); i++) {
     if (*(ptr + i) != PATTERN(i)) {
       printf("Found changed value: Addr=%p val=0x%X, expected=0x%X\n",
-             ptr + i, *(ptr + i), PATTERN(i));
+             ptr + i,
+             *(ptr + i),
+             PATTERN(i));
       PrintAddrMap(ptr + i);
       success = false;
     }
@@ -84,13 +89,11 @@ int64_t GetUsableMemorySize() {
 
   /* Parse /proc/meminfo for MemFree and Inactive size */
   set<string> field_name = {"MemFree", "Inactive"};
-  vector<string> lines =
-      base::SplitString(meminfo_raw, "\n", base::KEEP_WHITESPACE,
-                        base::SPLIT_WANT_NONEMPTY);
+  vector<string> lines = base::SplitString(
+      meminfo_raw, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   for (auto line : lines) {
-    vector<string> tokens =
-        base::SplitString(line, ": ", base::KEEP_WHITESPACE,
-                          base::SPLIT_WANT_NONEMPTY);
+    vector<string> tokens = base::SplitString(
+        line, ": ", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
     auto it = field_name.find(tokens[0]);
     if (it != field_name.end()) {
       uint64_t field_value;
@@ -115,7 +118,9 @@ int main(int argc, char* argv[]) {
   DEFINE_int64(size, 0, "Amount of memory to allocate");
   DEFINE_uint64(wakeup_count, 0, "Value read from /sys/power/wakeup_count");
 
-  brillo::FlagHelper::Init(argc, argv,
+  brillo::FlagHelper::Init(
+      argc,
+      argv,
       "Test memory retention across suspend/resume.\n\n"
       "  Fills memory with 0x55/0xAA patterns, performs a suspend, and checks\n"
       "  those patterns after resume. Will return 0 on success, 1 when the\n"
@@ -128,7 +133,7 @@ int main(int argc, char* argv[]) {
     size = GetUsableMemorySize();
   }
 
-  uint32_t *ptr = Allocate(size);
+  uint32_t* ptr = Allocate(size);
 
   /* Retry allocate at 2.7GiB on 32 bit userland machine */
   /* NOLINTNEXTLINE(runtime/int) - suppress using long instead of int32 */

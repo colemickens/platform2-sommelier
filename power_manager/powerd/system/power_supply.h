@@ -293,7 +293,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // with the caller. If |log_shutdown_thresholds| is true, logs details about
   // shutdown thresholds that are needed by power_LoadTest.
   void Init(const base::FilePath& power_supply_path,
-            PrefsInterface *prefs,
+            PrefsInterface* prefs,
             UdevInterface* udev,
             bool log_shutdown_thresholds);
 
@@ -350,8 +350,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // Helper method for UpdatePowerStatus() that reads |path|, a directory under
   // |power_supply_path_| corresponding to a line power source (e.g. anything
   // that isn't a battery), and updates |status|.
-  void ReadLinePowerDirectory(const base::FilePath& path,
-                              PowerStatus* status);
+  void ReadLinePowerDirectory(const base::FilePath& path, PowerStatus* status);
 
   // Helper method for UpdatePowerStatus() that reads |path|, a directory under
   // |power_supply_path_| corresponding to a battery, and updates |status|.
@@ -392,7 +391,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   void NotifyObservers();
 
   PrefsInterface* prefs_;  // non-owned
-  UdevInterface* udev_;  // non-owned
+  UdevInterface* udev_;    // non-owned
 
   std::unique_ptr<Clock> clock_;
 

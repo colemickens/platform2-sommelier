@@ -54,4 +54,3 @@ class Clock {
 }  // namespace power_manager
 
 #endif  // POWER_MANAGER_COMMON_CLOCK_H_
-

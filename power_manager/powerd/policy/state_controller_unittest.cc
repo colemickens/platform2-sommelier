@@ -56,8 +56,7 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
         oobe_completed_(true),
         hdmi_audio_active_(false),
         headphone_jack_plugged_(false),
-        lid_state_(LidState::OPEN) {
-  }
+        lid_state_(LidState::OPEN) {}
   virtual ~TestDelegate() {}
 
   void set_record_metrics_actions(bool record) {
@@ -66,9 +65,7 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
   void set_usb_input_device_connected(bool connected) {
     usb_input_device_connected_ = connected;
   }
-  void set_oobe_completed(bool completed) {
-    oobe_completed_ = completed;
-  }
+  void set_oobe_completed(bool completed) { oobe_completed_ = completed; }
   void set_hdmi_audio_active(bool active) { hdmi_audio_active_ = active; }
   void set_headphone_jack_plugged(bool plugged) {
     headphone_jack_plugged_ = plugged;
@@ -82,9 +79,7 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
   LidState QueryLidState() override { return lid_state_; }
   bool IsOobeCompleted() override { return oobe_completed_; }
   bool IsHdmiAudioActive() override { return hdmi_audio_active_; }
-  bool IsHeadphoneJackPlugged() override {
-    return headphone_jack_plugged_;
-  }
+  bool IsHeadphoneJackPlugged() override { return headphone_jack_plugged_; }
   void DimScreen() override { AppendAction(kScreenDim); }
   void UndimScreen() override { AppendAction(kScreenUndim); }
   void TurnScreenOff() override { AppendAction(kScreenOff); }
@@ -99,9 +94,7 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
   void EmitIdleActionImminent(base::TimeDelta time_until_idle_action) override {
     AppendAction(GetIdleImminentAction(time_until_idle_action));
   }
-  void EmitIdleActionDeferred() override {
-    AppendAction(kIdleDeferred);
-  }
+  void EmitIdleActionDeferred() override { AppendAction(kIdleDeferred); }
   void ReportUserActivityMetrics() override {
     if (record_metrics_actions_)
       AppendAction(kReportUserActivityMetrics);
@@ -152,8 +145,7 @@ class StateControllerTest : public testing::Test {
         initial_lid_state_(LidState::OPEN),
         initial_display_mode_(DisplayMode::NORMAL),
         send_initial_display_mode_(true),
-        send_initial_policy_(true) {
-  }
+        send_initial_policy_(true) {}
 
  protected:
   void SetMillisecondPref(const std::string& name, base::TimeDelta value) {
@@ -178,8 +170,8 @@ class StateControllerTest : public testing::Test {
     prefs_.SetInt64(kAllowDockedModePref, default_allow_docked_mode_);
 
     test_api_.clock()->set_current_time_for_testing(now_);
-    controller_.Init(&delegate_, &prefs_, initial_power_source_,
-                     initial_lid_state_);
+    controller_.Init(
+        &delegate_, &prefs_, initial_power_source_, initial_lid_state_);
 
     if (send_initial_display_mode_)
       controller_.HandleDisplayModeChange(initial_display_mode_);
@@ -242,8 +234,8 @@ class StateControllerTest : public testing::Test {
   bool TriggerDefaultAcTimeouts() WARN_UNUSED_RESULT {
     ResetLastStepDelay();
     return StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_) &&
-        StepTimeAndTriggerTimeout(default_ac_screen_off_delay_) &&
-        StepTimeAndTriggerTimeout(default_ac_suspend_delay_);
+           StepTimeAndTriggerTimeout(default_ac_screen_off_delay_) &&
+           StepTimeAndTriggerTimeout(default_ac_suspend_delay_);
   }
 
   FakePrefs prefs_;
@@ -1067,9 +1059,9 @@ TEST_F(StateControllerTest, IdleWarnings) {
   // The warning should be sent again when its new delay is reached, and
   // the idle action should be performed at the usual time.
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kHalfInterval));
-  EXPECT_EQ(GetIdleImminentAction(
-                kIdleDelay - (kIdleWarningDelay + kHalfInterval)),
-            delegate_.GetActions());
+  EXPECT_EQ(
+      GetIdleImminentAction(kIdleDelay - (kIdleWarningDelay + kHalfInterval)),
+      delegate_.GetActions());
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kHalfInterval));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
 
@@ -1146,9 +1138,10 @@ TEST_F(StateControllerTest, IdleWarnings) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   policy.set_ac_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
   controller_.HandlePolicyChange(policy);
-  EXPECT_EQ(JoinActions(GetIdleImminentAction(base::TimeDelta()).c_str(),
-                        kStopSession, NULL),
-            delegate_.GetActions());
+  EXPECT_EQ(
+      JoinActions(
+          GetIdleImminentAction(base::TimeDelta()).c_str(), kStopSession, NULL),
+      delegate_.GetActions());
 
   // Let idle-imminent get sent and then increase the idle delay. idle-imminent
   // should be sent again immediately with an updated time-until-idle-action.
@@ -1292,7 +1285,8 @@ TEST_F(StateControllerTest, IncreaseDelaysAfterUserActivity) {
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kOffDelay));
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
-  const base::TimeDelta kShortOffDelay = kOffDelay -
+  const base::TimeDelta kShortOffDelay =
+      kOffDelay -
       base::TimeDelta::FromMilliseconds(
           StateController::kUserActivityAfterScreenOffIncreaseDelaysMs + 1000);
   policy.mutable_ac_delays()->set_screen_off_ms(

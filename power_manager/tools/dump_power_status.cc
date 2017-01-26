@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
   printf("battery_voltage %0.2f\n", status.battery_voltage);
   printf("battery_discharging %d\n",
          status.battery_state ==
-         power_manager::PowerSupplyProperties_BatteryState_DISCHARGING);
+             power_manager::PowerSupplyProperties_BatteryState_DISCHARGING);
 
   return 0;
 }

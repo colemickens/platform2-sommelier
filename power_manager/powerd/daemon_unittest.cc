@@ -213,8 +213,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     return std::move(passed_keyboard_backlight_controller_);
   }
   std::unique_ptr<system::InputWatcherInterface> CreateInputWatcher(
-      PrefsInterface* prefs,
-      system::UdevInterface* udev) override {
+      PrefsInterface* prefs, system::UdevInterface* udev) override {
     EXPECT_EQ(prefs_, prefs);
     EXPECT_EQ(udev_, udev);
     return std::move(passed_input_watcher_);
@@ -257,9 +256,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<MetricsSenderInterface> CreateMetricsSender() override {
     return std::move(passed_metrics_sender_);
   }
-  pid_t GetPid() override {
-    return pid_;
-  }
+  pid_t GetPid() override { return pid_; }
   void Launch(const std::string& command) override {
     async_commands_.push_back(command);
   }
@@ -302,8 +299,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
                                     double brightness_percent,
                                     bool user_initiated) {
     std::unique_ptr<dbus::Signal> signal;
-    ASSERT_TRUE(dbus_wrapper_->GetSentSignal(
-        index, signal_name, nullptr, &signal));
+    ASSERT_TRUE(
+        dbus_wrapper_->GetSentSignal(index, signal_name, nullptr, &signal));
 
     dbus::MessageReader reader(signal.get());
     int32_t sent_brightness = 0;
@@ -327,7 +324,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::string GetWifiTransmitPowerCommand(TabletMode mode) {
     return base::StringPrintf(
         "%s --action=set_wifi_transmit_power --%swifi_transmit_power_tablet",
-        kSetuidHelperPath, mode == TabletMode::ON ? "" : "no");
+        kSetuidHelperPath,
+        mode == TabletMode::ON ? "" : "no");
   }
 
   // Stub objects to be transferred by Create* methods.
@@ -746,9 +744,10 @@ TEST_F(DaemonTest, DeferShutdownWhileFlashromRunning) {
   Init();
 
   const std::string kFlashromPid = "123";
-  ASSERT_EQ(kFlashromPid.size(),
-            base::WriteFile(flashrom_lock_path_, kFlashromPid.c_str(),
-                            kFlashromPid.size()));
+  ASSERT_EQ(
+      kFlashromPid.size(),
+      base::WriteFile(
+          flashrom_lock_path_, kFlashromPid.c_str(), kFlashromPid.size()));
   const base::FilePath kFlashromPidDir(proc_path_.Append(kFlashromPid));
   ASSERT_TRUE(base::CreateDirectory(kFlashromPidDir));
 

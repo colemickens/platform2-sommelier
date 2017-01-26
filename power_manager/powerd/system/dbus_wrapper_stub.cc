@@ -102,9 +102,9 @@ void DBusWrapperStub::EmitRegisteredSignal(dbus::ObjectProxy* proxy,
   CHECK(proxy);
   CHECK(signal);
   RegisteredSignalInfo info{proxy, signal->GetInterface(), signal->GetMember()};
-  CHECK(signal_handlers_.count(info))
-      << "No signal handler registered on " << proxy << " for "
-      << info.interface_name << "." << info.signal_name;
+  CHECK(signal_handlers_.count(info)) << "No signal handler registered on "
+                                      << proxy << " for " << info.interface_name
+                                      << "." << info.signal_name;
   signal_handlers_[info].Run(signal);
 }
 
@@ -113,12 +113,10 @@ dbus::Bus* DBusWrapperStub::GetBus() {
 }
 
 dbus::ObjectProxy* DBusWrapperStub::GetObjectProxy(
-    const std::string& service_name,
-    const std::string& object_path) {
+    const std::string& service_name, const std::string& object_path) {
   // If a proxy was already created, return it.
   for (const auto& info : object_proxy_infos_) {
-    if (info.service_name == service_name &&
-        info.object_path == object_path) {
+    if (info.service_name == service_name && info.object_path == object_path) {
       return info.object_proxy.get();
     }
   }
@@ -182,9 +180,10 @@ void DBusWrapperStub::EmitSignalWithProtocolBuffer(
     const google::protobuf::MessageLite& protobuf) {
   std::string serialized_data;
   protobuf.SerializeToString(&serialized_data);
-  sent_signals_.emplace_back(
-      SignalInfo{signal_name, std::unique_ptr<dbus::Signal>(),
-                 protobuf.GetTypeName(), serialized_data});
+  sent_signals_.emplace_back(SignalInfo{signal_name,
+                                        std::unique_ptr<dbus::Signal>(),
+                                        protobuf.GetTypeName(),
+                                        serialized_data});
 }
 
 std::unique_ptr<dbus::Response> DBusWrapperStub::CallMethodSync(

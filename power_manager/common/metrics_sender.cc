@@ -25,8 +25,8 @@ MetricsSenderInterface* MetricsSenderInterface::GetInstance() {
 
 // static
 void MetricsSenderInterface::SetInstance(MetricsSenderInterface* instance) {
-  CHECK((!!instance_) ^ (!!instance))
-      << "Replacing live instance " << instance_ << " with " << instance;
+  CHECK((!!instance_) ^ (!!instance)) << "Replacing live instance " << instance_
+                                      << " with " << instance;
   instance_ = instance;
 }
 
@@ -40,13 +40,11 @@ MetricsSender::~MetricsSender() {
   MetricsSenderInterface::SetInstance(NULL);
 }
 
-bool MetricsSender::SendMetric(const std::string& name,
-                               int sample,
-                               int min,
-                               int max,
-                               int num_buckets) {
-  VLOG(1) << "Sending metric " << name << " (sample=" << sample << " min="
-          << min << " max=" << max << " num_buckets=" << num_buckets << ")";
+bool MetricsSender::SendMetric(
+    const std::string& name, int sample, int min, int max, int num_buckets) {
+  VLOG(1) << "Sending metric " << name << " (sample=" << sample
+          << " min=" << min << " max=" << max << " num_buckets=" << num_buckets
+          << ")";
 
   // Chrome appears to silently drop histograms with too-large bucket counts.
   // Running into this warning is a good sign that SendEnumMetric() should be
@@ -84,14 +82,11 @@ bool MetricsSender::SendEnumMetric(const std::string& name,
   return true;
 }
 
-bool SendMetric(const std::string& name,
-                int sample,
-                int min,
-                int max,
-                int num_buckets) {
+bool SendMetric(
+    const std::string& name, int sample, int min, int max, int num_buckets) {
   MetricsSenderInterface* sender = MetricsSenderInterface::GetInstance();
-  return sender ? sender->SendMetric(name, sample, min, max, num_buckets) :
-      true;
+  return sender ? sender->SendMetric(name, sample, min, max, num_buckets)
+                : true;
 }
 
 bool SendEnumMetric(const std::string& name, int sample, int max) {

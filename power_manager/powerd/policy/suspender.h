@@ -251,7 +251,7 @@ class Suspender : public SuspendDelayObserver {
                                   const std::string& new_owner);
 
   // SuspendDelayObserver override:
-  void OnReadyForSuspend(SuspendDelayController *controller,
+  void OnReadyForSuspend(SuspendDelayController* controller,
                          int suspend_id) override;
 
  private:
@@ -287,15 +287,15 @@ class Suspender : public SuspendDelayObserver {
 
   // Internal functions that actually process the received D-Bus messages.
   void RegisterSuspendDelayInternal(
-      SuspendDelayController *controller,
+      SuspendDelayController* controller,
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
   void UnregisterSuspendDelayInternal(
-      SuspendDelayController *controller,
+      SuspendDelayController* controller,
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
   void HandleSuspendReadinessInternal(
-      SuspendDelayController *controller,
+      SuspendDelayController* controller,
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
 
@@ -326,9 +326,9 @@ class Suspender : public SuspendDelayObserver {
   // dark resume.
   void EmitDarkSuspendImminentSignal(int dark_suspend_id);
 
-  Delegate* delegate_;  // weak
+  Delegate* delegate_;                          // weak
   system::DBusWrapperInterface* dbus_wrapper_;  // weak
-  system::DarkResumeInterface* dark_resume_;  // weak
+  system::DarkResumeInterface* dark_resume_;    // weak
 
   std::unique_ptr<Clock> clock_;
   std::unique_ptr<SuspendDelayController> suspend_delay_controller_;

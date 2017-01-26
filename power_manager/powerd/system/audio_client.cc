@@ -39,11 +39,9 @@ AudioClient::AudioClient()
       cras_proxy_(nullptr),
       num_active_streams_(0),
       headphone_jack_plugged_(false),
-      hdmi_active_(false) {
-}
+      hdmi_active_(false) {}
 
-AudioClient::~AudioClient() {
-}
+AudioClient::~AudioClient() {}
 
 void AudioClient::Init(DBusWrapperInterface* dbus_wrapper) {
   DCHECK(dbus_wrapper);
@@ -84,7 +82,8 @@ void AudioClient::UpdateDevices() {
 
   dbus::MethodCall method_call(cras::kCrasControlInterface, cras::kGetNodes);
   std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
-      cras_proxy_, &method_call,
+      cras_proxy_,
+      &method_call,
       base::TimeDelta::FromMilliseconds(kCrasDBusTimeoutMs));
   if (!response)
     return;
@@ -134,7 +133,8 @@ void AudioClient::UpdateNumActiveStreams() {
   dbus::MethodCall method_call(cras::kCrasControlInterface,
                                cras::kGetNumberOfActiveStreams);
   std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
-      cras_proxy_, &method_call,
+      cras_proxy_,
+      &method_call,
       base::TimeDelta::FromMilliseconds(kCrasDBusTimeoutMs));
   int num_streams = 0;
   if (response) {
@@ -164,7 +164,8 @@ void AudioClient::SetSuspended(bool suspended) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendBool(suspended);
   dbus_wrapper_->CallMethodSync(
-      cras_proxy_, &method_call,
+      cras_proxy_,
+      &method_call,
       base::TimeDelta::FromMilliseconds(kCrasDBusTimeoutMs));
 }
 

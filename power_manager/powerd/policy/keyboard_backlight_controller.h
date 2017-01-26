@@ -34,10 +34,9 @@ namespace policy {
 class KeyboardBacklightControllerTest;
 
 // Controls the keyboard backlight for devices with such a backlight.
-class KeyboardBacklightController
-    : public BacklightController,
-      public AmbientLightHandler::Delegate,
-      public BacklightControllerObserver {
+class KeyboardBacklightController : public BacklightController,
+                                    public AmbientLightHandler::Delegate,
+                                    public BacklightControllerObserver {
  public:
   // Helper class for tests that need to access internal state.
   class TestApi {

@@ -300,17 +300,17 @@ enum class ButtonState {
 // Note: These are reported in a histogram and must not be renumbered.
 enum class ShutdownReason {
   // Explicit user request (e.g. holding power button).
-  USER_REQUEST            = 0,
+  USER_REQUEST = 0,
   // Request from StateController (e.g. lid was closed or user was inactive).
-  STATE_TRANSITION        = 1,
+  STATE_TRANSITION = 1,
   // Battery level dropped below shutdown threshold.
-  LOW_BATTERY             = 2,
+  LOW_BATTERY = 2,
   // Multiple suspend attempts failed.
-  SUSPEND_FAILED          = 3,
+  SUSPEND_FAILED = 3,
   // Battery level was below threshold during dark resume from suspend.
-  DARK_RESUME             = 4,
+  DARK_RESUME = 4,
   // System is being rebooted to apply an update.
-  SYSTEM_UPDATE           = 5,
+  SYSTEM_UPDATE = 5,
   // Failed to properly recover from dark resume.
   EXIT_DARK_RESUME_FAILED = 6,
 };

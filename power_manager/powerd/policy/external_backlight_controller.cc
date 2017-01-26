@@ -59,8 +59,7 @@ void ExternalBacklightController::HandlePowerSourceChange(PowerSource source) {}
 
 void ExternalBacklightController::HandleDisplayModeChange(DisplayMode mode) {}
 
-void ExternalBacklightController::HandleSessionStateChange(
-    SessionState state) {
+void ExternalBacklightController::HandleSessionStateChange(SessionState state) {
   if (state == SessionState::STARTED)
     num_brightness_adjustments_in_session_ = 0;
 }
@@ -80,9 +79,9 @@ void ExternalBacklightController::HandlePolicyChange(
 
 void ExternalBacklightController::HandleChromeStart() {
   display_power_setter_->SetDisplaySoftwareDimming(dimmed_for_inactivity_);
-  display_power_setter_->SetDisplayPower(currently_off_ ?
-                                         chromeos::DISPLAY_POWER_ALL_OFF :
-                                         chromeos::DISPLAY_POWER_ALL_ON,
+  display_power_setter_->SetDisplayPower(currently_off_
+                                             ? chromeos::DISPLAY_POWER_ALL_OFF
+                                             : chromeos::DISPLAY_POWER_ALL_ON,
                                          base::TimeDelta());
   NotifyObservers();
 }
@@ -120,8 +119,7 @@ bool ExternalBacklightController::GetBrightnessPercent(double* percent) {
 }
 
 bool ExternalBacklightController::SetUserBrightnessPercent(
-    double percent,
-    Transition transition) {
+    double percent, Transition transition) {
   return false;
 }
 
@@ -169,25 +167,28 @@ void ExternalBacklightController::UpdateScreenPowerState() {
       off_for_inactivity_ || suspended_ || shutting_down_ || forced_off_;
   if (should_turn_off != currently_off_) {
     currently_off_ = should_turn_off;
-    display_power_setter_->SetDisplayPower(should_turn_off ?
-                                           chromeos::DISPLAY_POWER_ALL_OFF :
-                                           chromeos::DISPLAY_POWER_ALL_ON,
+    display_power_setter_->SetDisplayPower(should_turn_off
+                                               ? chromeos::DISPLAY_POWER_ALL_OFF
+                                               : chromeos::DISPLAY_POWER_ALL_ON,
                                            base::TimeDelta());
     NotifyObservers();
   }
 }
 
 void ExternalBacklightController::NotifyObservers() {
-  FOR_EACH_OBSERVER(BacklightControllerObserver, observers_,
+  FOR_EACH_OBSERVER(BacklightControllerObserver,
+                    observers_,
                     OnBrightnessChange(currently_off_ ? 0.0 : 100.0,
-                                       BrightnessChangeCause::AUTOMATED, this));
+                                       BrightnessChangeCause::AUTOMATED,
+                                       this));
 }
 
 void ExternalBacklightController::UpdateDisplays(
     const std::vector<system::DisplayInfo>& displays) {
   ExternalDisplayMap updated_displays;
   for (std::vector<system::DisplayInfo>::const_iterator it = displays.begin();
-       it != displays.end(); ++it) {
+       it != displays.end();
+       ++it) {
     const system::DisplayInfo& info = *it;
     if (info.i2c_path.empty())
       continue;
@@ -213,7 +214,8 @@ void ExternalBacklightController::AdjustBrightnessByPercent(
     double percent_offset) {
   LOG(INFO) << "Adjusting brightness by " << percent_offset << "%";
   for (ExternalDisplayMap::const_iterator it = external_displays_.begin();
-       it != external_displays_.end(); ++it) {
+       it != external_displays_.end();
+       ++it) {
     it->second->AdjustBrightnessByPercent(percent_offset);
   }
 }

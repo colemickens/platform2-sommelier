@@ -5,6 +5,7 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_DBUS_WRAPPER_H_
 #define POWER_MANAGER_POWERD_SYSTEM_DBUS_WRAPPER_H_
 
+#include <memory>
 #include <string>
 
 #include <base/compiler_specific.h>
@@ -41,9 +42,8 @@ class DBusWrapperInterface {
   // D-Bus service name like "org.chromium.cras" while |object_path| is the
   // D-Bus path to the corresponding object, e.g. "/org/chromium/cras".
   // Ownership of the returned object is not transferred to the caller.
-  virtual dbus::ObjectProxy* GetObjectProxy(
-      const std::string& service_name,
-      const std::string& object_path) = 0;
+  virtual dbus::ObjectProxy* GetObjectProxy(const std::string& service_name,
+                                            const std::string& object_path) = 0;
 
   // Registers to be notified when a service identified by |proxy| becomes
   // available or is restarted.
@@ -111,9 +111,8 @@ class DBusWrapper : public DBusWrapperInterface {
 
   // DBusWrapperInterface overrides:
   dbus::Bus* GetBus() override;
-  dbus::ObjectProxy* GetObjectProxy(
-      const std::string& service_name,
-      const std::string& object_path) override;
+  dbus::ObjectProxy* GetObjectProxy(const std::string& service_name,
+                                    const std::string& object_path) override;
   void RegisterForServiceAvailability(
       dbus::ObjectProxy* proxy,
       dbus::ObjectProxy::WaitForServiceToBeAvailableCallback callback) override;
@@ -133,11 +132,10 @@ class DBusWrapper : public DBusWrapperInterface {
       dbus::ObjectProxy* proxy,
       dbus::MethodCall* method_call,
       base::TimeDelta timeout) override;
-  void CallMethodAsync(
-      dbus::ObjectProxy* proxy,
-      dbus::MethodCall* method_call,
-      base::TimeDelta timeout,
-      dbus::ObjectProxy::ResponseCallback callback) override;
+  void CallMethodAsync(dbus::ObjectProxy* proxy,
+                       dbus::MethodCall* method_call,
+                       base::TimeDelta timeout,
+                       dbus::ObjectProxy::ResponseCallback callback) override;
 
  private:
   // Connection to the D-Bus system bus.

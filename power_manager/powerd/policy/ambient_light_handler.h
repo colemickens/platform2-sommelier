@@ -41,8 +41,7 @@ class AmbientLightHandler : public system::AmbientLightObserver {
     // Invoked when the backlight brightness should be adjusted in response
     // to a change in ambient light.
     virtual void SetBrightnessPercentForAmbientLight(
-        double brightness_percent,
-        BrightnessChangeCause cause) = 0;
+        double brightness_percent, BrightnessChangeCause cause) = 0;
   };
 
   AmbientLightHandler(system::AmbientLightSensorInterface* sensor,
@@ -125,7 +124,7 @@ class AmbientLightHandler : public system::AmbientLightObserver {
   double GetTargetPercent() const;
 
   system::AmbientLightSensorInterface* sensor_;  // weak
-  Delegate* delegate_;  // weak
+  Delegate* delegate_;                           // weak
 
   PowerSource power_source_;
 

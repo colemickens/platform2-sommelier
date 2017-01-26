@@ -20,9 +20,7 @@ EventDeviceStub::EventDeviceStub()
 
 EventDeviceStub::~EventDeviceStub() {}
 
-void EventDeviceStub::AppendEvent(uint16_t type,
-                                  uint16_t code,
-                                  int32_t value) {
+void EventDeviceStub::AppendEvent(uint16_t type, uint16_t code, int32_t value) {
   input_event event;
   memset(&event, 0, sizeof(event));
   event.type = type;
@@ -36,21 +34,37 @@ void EventDeviceStub::NotifyAboutEvents() {
     new_events_cb_.Run();
 }
 
-std::string EventDeviceStub::GetDebugName() { return debug_name_; }
+std::string EventDeviceStub::GetDebugName() {
+  return debug_name_;
+}
 
-std::string EventDeviceStub::GetPhysPath() { return phys_path_; }
+std::string EventDeviceStub::GetPhysPath() {
+  return phys_path_;
+}
 
-bool EventDeviceStub::IsLidSwitch() { return is_lid_switch_; }
+bool EventDeviceStub::IsLidSwitch() {
+  return is_lid_switch_;
+}
 
-bool EventDeviceStub::IsTabletModeSwitch() { return is_tablet_mode_switch_; }
+bool EventDeviceStub::IsTabletModeSwitch() {
+  return is_tablet_mode_switch_;
+}
 
-bool EventDeviceStub::IsPowerButton() { return is_power_button_; }
+bool EventDeviceStub::IsPowerButton() {
+  return is_power_button_;
+}
 
-bool EventDeviceStub::HoverSupported() { return hover_supported_; }
+bool EventDeviceStub::HoverSupported() {
+  return hover_supported_;
+}
 
-bool EventDeviceStub::HasLeftButton() { return has_left_button_; }
+bool EventDeviceStub::HasLeftButton() {
+  return has_left_button_;
+}
 
-LidState EventDeviceStub::GetInitialLidState() { return initial_lid_state_; }
+LidState EventDeviceStub::GetInitialLidState() {
+  return initial_lid_state_;
+}
 
 TabletMode EventDeviceStub::GetInitialTabletMode() {
   return initial_tablet_mode_;
@@ -74,8 +88,7 @@ EventDeviceFactoryStub::EventDeviceFactoryStub() {}
 EventDeviceFactoryStub::~EventDeviceFactoryStub() {}
 
 void EventDeviceFactoryStub::RegisterDevice(
-    const base::FilePath& path,
-    linked_ptr<EventDeviceInterface> device) {
+    const base::FilePath& path, linked_ptr<EventDeviceInterface> device) {
   devices_[path] = device;
 }
 

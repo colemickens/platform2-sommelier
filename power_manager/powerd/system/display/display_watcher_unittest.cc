@@ -58,8 +58,8 @@ class DisplayWatcherTest : public testing::Test {
   base::FilePath CreateDrmDevice(const std::string& device_name) {
     base::FilePath device_path = device_dir_.path().Append(device_name);
     CHECK(base::CreateDirectory(device_path));
-    CHECK(base::CreateSymbolicLink(
-              device_path, drm_dir_.path().Append(device_name)));
+    CHECK(base::CreateSymbolicLink(device_path,
+                                   drm_dir_.path().Append(device_name)));
     return device_path;
   }
 
@@ -73,8 +73,8 @@ class DisplayWatcherTest : public testing::Test {
 
   // Notifies |watcher_| about a Udev event to trigger a rescan of displays.
   void NotifyAboutUdevEvent() {
-    watcher_.OnUdevEvent("system", DisplayWatcher::kDrmUdevSubsystem,
-                         UdevAction::CHANGE);
+    watcher_.OnUdevEvent(
+        "system", DisplayWatcher::kDrmUdevSubsystem, UdevAction::CHANGE);
   }
 
   // Directory with symlinks to DRM devices.
@@ -101,24 +101,24 @@ TEST_F(DisplayWatcherTest, DisplayStatus) {
   const char kDisconnected[] = "disconnected";
   base::FilePath status_path =
       device_path.Append(DisplayWatcher::kDrmStatusFile);
-  ASSERT_TRUE(base::WriteFile(status_path, kDisconnected,
-      strlen(kDisconnected)));
+  ASSERT_TRUE(
+      base::WriteFile(status_path, kDisconnected, strlen(kDisconnected)));
   NotifyAboutUdevEvent();
   EXPECT_EQ(static_cast<size_t>(0), watcher_.GetDisplays().size());
 
   // The display should be reported when the device's status goes to
   // "connected".
   ASSERT_TRUE(base::WriteFile(status_path,
-      DisplayWatcher::kDrmStatusConnected,
-      strlen(DisplayWatcher::kDrmStatusConnected)));
+                              DisplayWatcher::kDrmStatusConnected,
+                              strlen(DisplayWatcher::kDrmStatusConnected)));
   NotifyAboutUdevEvent();
   ASSERT_EQ(static_cast<size_t>(1), watcher_.GetDisplays().size());
 
   // A trailing newline should be okay.
   std::string kConnectedNewline(DisplayWatcher::kDrmStatusConnected);
   kConnectedNewline += "\n";
-  ASSERT_TRUE(base::WriteFile(status_path, kConnectedNewline.c_str(),
-      kConnectedNewline.size()));
+  ASSERT_TRUE(base::WriteFile(
+      status_path, kConnectedNewline.c_str(), kConnectedNewline.size()));
   NotifyAboutUdevEvent();
   ASSERT_EQ(static_cast<size_t>(1), watcher_.GetDisplays().size());
   EXPECT_EQ(drm_dir_.path().Append(device_path.BaseName()).value(),
@@ -128,8 +128,8 @@ TEST_F(DisplayWatcherTest, DisplayStatus) {
   base::FilePath second_device_path = CreateDrmDevice("card0-DP-0");
   base::FilePath second_status_path =
       second_device_path.Append(DisplayWatcher::kDrmStatusFile);
-  ASSERT_TRUE(base::WriteFile(second_status_path, kDisconnected,
-      strlen(kDisconnected)));
+  ASSERT_TRUE(base::WriteFile(
+      second_status_path, kDisconnected, strlen(kDisconnected)));
   NotifyAboutUdevEvent();
   ASSERT_EQ(static_cast<size_t>(1), watcher_.GetDisplays().size());
   EXPECT_EQ(drm_dir_.path().Append(device_path.BaseName()).value(),
@@ -138,8 +138,8 @@ TEST_F(DisplayWatcherTest, DisplayStatus) {
   // Connect the second device. It should be reported first since devices are
   // sorted alphabetically.
   ASSERT_TRUE(base::WriteFile(second_status_path,
-      DisplayWatcher::kDrmStatusConnected,
-      strlen(DisplayWatcher::kDrmStatusConnected)));
+                              DisplayWatcher::kDrmStatusConnected,
+                              strlen(DisplayWatcher::kDrmStatusConnected)));
   NotifyAboutUdevEvent();
   ASSERT_EQ(static_cast<size_t>(2), watcher_.GetDisplays().size());
   EXPECT_EQ(drm_dir_.path().Append(second_device_path.BaseName()).value(),
@@ -150,15 +150,16 @@ TEST_F(DisplayWatcherTest, DisplayStatus) {
   // Disconnect both devices and create a new device that has a
   // "connected" status but doesn't match the expected naming pattern for a
   // video card.
-  ASSERT_TRUE(base::WriteFile(status_path, kDisconnected,
-      strlen(kDisconnected)));
-  ASSERT_TRUE(base::WriteFile(second_status_path, kDisconnected,
-      strlen(kDisconnected)));
+  ASSERT_TRUE(
+      base::WriteFile(status_path, kDisconnected, strlen(kDisconnected)));
+  ASSERT_TRUE(base::WriteFile(
+      second_status_path, kDisconnected, strlen(kDisconnected)));
   base::FilePath misnamed_device_path = CreateDrmDevice("control32");
   base::FilePath misnamed_status_path =
       misnamed_device_path.Append(DisplayWatcher::kDrmStatusFile);
   ASSERT_TRUE(base::WriteFile(misnamed_status_path,
-      kConnectedNewline.c_str(), kConnectedNewline.size()));
+                              kConnectedNewline.c_str(),
+                              kConnectedNewline.size()));
   NotifyAboutUdevEvent();
   EXPECT_EQ(static_cast<size_t>(0), watcher_.GetDisplays().size());
 }
@@ -169,8 +170,8 @@ TEST_F(DisplayWatcherTest, I2CDevices) {
   base::FilePath status_path =
       device_path.Append(DisplayWatcher::kDrmStatusFile);
   ASSERT_TRUE(base::WriteFile(status_path,
-      DisplayWatcher::kDrmStatusConnected,
-      strlen(DisplayWatcher::kDrmStatusConnected)));
+                              DisplayWatcher::kDrmStatusConnected,
+                              strlen(DisplayWatcher::kDrmStatusConnected)));
 
   watcher_.Init(&udev_);
   ASSERT_EQ(static_cast<size_t>(1), watcher_.GetDisplays().size());
@@ -220,8 +221,8 @@ TEST_F(DisplayWatcherTest, Observer) {
   base::FilePath status_path =
       device_path.Append(DisplayWatcher::kDrmStatusFile);
   ASSERT_TRUE(base::WriteFile(status_path,
-      DisplayWatcher::kDrmStatusConnected,
-      strlen(DisplayWatcher::kDrmStatusConnected)));
+                              DisplayWatcher::kDrmStatusConnected,
+                              strlen(DisplayWatcher::kDrmStatusConnected)));
   NotifyAboutUdevEvent();
   EXPECT_EQ(1, observer.num_display_changes());
 

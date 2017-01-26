@@ -51,8 +51,7 @@ class PeripheralBatteryWatcher {
   void ReadCallback(const std::string& path,
                     const std::string& model_name,
                     const std::string& data);
-  void ErrorCallback(const std::string& path,
-                     const std::string& model_name);
+  void ErrorCallback(const std::string& path, const std::string& model_name);
 
   DBusWrapperInterface* dbus_wrapper_;  // weak
 

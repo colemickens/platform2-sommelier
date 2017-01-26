@@ -197,14 +197,13 @@ class StateController : public PrefsObserver {
   // Merges set fields from |policy_delays| into |delays_out|, which should
   // already be initialized with default settings.
   static void MergeDelaysFromPolicy(
-      const PowerManagementPolicy::Delays& policy_delays,
-      Delays* delays_out);
+      const PowerManagementPolicy::Delays& policy_delays, Delays* delays_out);
 
   // Is the system currently in "docked mode", where it remains awake while
   // the lid is closed because an external display is connected?
   bool in_docked_mode() {
     return allow_docked_mode_ && display_mode_ == DisplayMode::PRESENTATION &&
-        lid_state_ == LidState::CLOSED;
+           lid_state_ == LidState::CLOSED;
   }
 
   // Is StateController currently waiting for the display mode and policy to be
@@ -217,8 +216,8 @@ class StateController : public PrefsObserver {
   // waiting for user activity to be seen during the current session?
   bool waiting_for_initial_user_activity() const {
     return wait_for_initial_user_activity_ &&
-        session_state_ == SessionState::STARTED &&
-        !saw_user_activity_during_current_session_;
+           session_state_ == SessionState::STARTED &&
+           !saw_user_activity_during_current_session_;
   }
 
   // Stops |initial_state_timer_| if |got_initial_display_mode_| and

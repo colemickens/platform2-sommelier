@@ -50,8 +50,8 @@ class UdevInterface {
 
   // Adds/removes an observer that will receive events for tagged devices.
   virtual void AddTaggedDeviceObserver(UdevTaggedDeviceObserver* observer) = 0;
-  virtual void RemoveTaggedDeviceObserver(UdevTaggedDeviceObserver* observer)
-      = 0;
+  virtual void RemoveTaggedDeviceObserver(
+      UdevTaggedDeviceObserver* observer) = 0;
 
   // Retrieves a list of all known tagged devices.
   virtual std::vector<TaggedDevice> GetTaggedDevices() = 0;
@@ -114,12 +114,9 @@ class Udev : public UdevInterface, public base::MessageLoopForIO::Watcher {
   void OnFileCanWriteWithoutBlocking(int fd) override;
 
  private:
-  void HandleSubsystemEvent(UdevAction action,
-                            struct udev_device* dev);
-  void HandleTaggedDevice(UdevAction action,
-                          struct udev_device* dev);
-  void TaggedDeviceChanged(const std::string& syspath,
-                           const std::string& tags);
+  void HandleSubsystemEvent(UdevAction action, struct udev_device* dev);
+  void HandleTaggedDevice(UdevAction action, struct udev_device* dev);
+  void TaggedDeviceChanged(const std::string& syspath, const std::string& tags);
   void TaggedDeviceRemoved(const std::string& syspath);
 
   // Populates |tagged_devices_| with currently-existing devices.

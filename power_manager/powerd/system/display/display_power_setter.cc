@@ -40,16 +40,15 @@ std::string DisplayPowerStateToString(chromeos::DisplayPowerState state) {
 }  // namespace
 
 DisplayPowerSetter::DisplayPowerSetter()
-    : dbus_wrapper_(nullptr),
-      chrome_proxy_(nullptr) {}
+    : dbus_wrapper_(nullptr), chrome_proxy_(nullptr) {}
 
 DisplayPowerSetter::~DisplayPowerSetter() {}
 
 void DisplayPowerSetter::Init(DBusWrapperInterface* dbus_wrapper) {
   DCHECK(dbus_wrapper);
   dbus_wrapper_ = dbus_wrapper;
-  chrome_proxy_ = dbus_wrapper_->GetObjectProxy(
-      chromeos::kLibCrosServiceName, chromeos::kLibCrosServicePath);
+  chrome_proxy_ = dbus_wrapper_->GetObjectProxy(chromeos::kLibCrosServiceName,
+                                                chromeos::kLibCrosServicePath);
 }
 
 void DisplayPowerSetter::SetDisplayPower(chromeos::DisplayPowerState state,
@@ -58,9 +57,11 @@ void DisplayPowerSetter::SetDisplayPower(chromeos::DisplayPowerState state,
     timer_.Stop();
     SendStateToChrome(state);
   } else {
-    timer_.Start(FROM_HERE, delay,
-        base::Bind(&DisplayPowerSetter::SendStateToChrome,
-                   base::Unretained(this), state));
+    timer_.Start(FROM_HERE,
+                 delay,
+                 base::Bind(&DisplayPowerSetter::SendStateToChrome,
+                            base::Unretained(this),
+                            state));
   }
 }
 
@@ -72,7 +73,8 @@ void DisplayPowerSetter::SetDisplaySoftwareDimming(bool dimmed) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendBool(dimmed);
   dbus_wrapper_->CallMethodSync(
-      chrome_proxy_, &method_call,
+      chrome_proxy_,
+      &method_call,
       base::TimeDelta::FromMilliseconds(kChromeDBusTimeoutMs));
 }
 
@@ -83,7 +85,8 @@ void DisplayPowerSetter::SendStateToChrome(chromeos::DisplayPowerState state) {
   dbus::MessageWriter writer(&method_call);
   writer.AppendInt32(state);
   dbus_wrapper_->CallMethodSync(
-      chrome_proxy_, &method_call,
+      chrome_proxy_,
+      &method_call,
       base::TimeDelta::FromMilliseconds(kChromeDBusTimeoutMs));
 }
 

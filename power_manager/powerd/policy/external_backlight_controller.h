@@ -86,7 +86,7 @@ class ExternalBacklightController : public BacklightController,
   // percent in the range [-100.0, 100.0].
   void AdjustBrightnessByPercent(double percent_offset);
 
-  system::DisplayWatcherInterface* display_watcher_ = nullptr;  // weak
+  system::DisplayWatcherInterface* display_watcher_ = nullptr;           // weak
   system::DisplayPowerSetterInterface* display_power_setter_ = nullptr;  // weak
 
   base::ObserverList<BacklightControllerObserver> observers_;

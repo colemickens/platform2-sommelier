@@ -25,8 +25,8 @@ class EventDeviceStub : public EventDeviceInterface {
   ~EventDeviceStub() override;
 
   const base::Closure& new_events_cb() const { return new_events_cb_; }
-  void set_debug_name(const std::string &name) { debug_name_ = name; }
-  void set_phys_path(const std::string &path) { phys_path_ = path; }
+  void set_debug_name(const std::string& name) { debug_name_ = name; }
+  void set_phys_path(const std::string& path) { phys_path_ = path; }
   void set_is_lid_switch(bool is_switch) { is_lid_switch_ = is_switch; }
   void set_is_tablet_mode_switch(bool is_switch) {
     is_tablet_mode_switch_ = is_switch;
@@ -35,9 +35,7 @@ class EventDeviceStub : public EventDeviceInterface {
   void set_hover_supported(bool supported) { hover_supported_ = supported; }
   void set_has_left_button(bool has_button) { has_left_button_ = has_button; }
   void set_initial_lid_state(LidState state) { initial_lid_state_ = state; }
-  void set_initial_tablet_mode(TabletMode mode) {
-    initial_tablet_mode_ = mode;
-  }
+  void set_initial_tablet_mode(TabletMode mode) { initial_tablet_mode_ = mode; }
 
   // Appends an event with the passed-in values to the list to be returned by
   // the next call to ReadEvents(). Arguments correspond to fields in the

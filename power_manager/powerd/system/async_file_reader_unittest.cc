@@ -82,8 +82,8 @@ class AsyncFileReaderTest : public ::testing::Test {
   // Creates a file containing |file_size| bytes and uses AsyncFileReader to
   // read from it, starting with an |initial_read_size|-byte chunk. Returns
   // false if initialization failed or if the reader timed out.
-  bool WriteAndReadData(size_t file_size, size_t initial_read_size)
-      WARN_UNUSED_RESULT {
+  bool WriteAndReadData(size_t file_size,
+                        size_t initial_read_size) WARN_UNUSED_RESULT {
     data_.clear();
     got_error_ = false;
 

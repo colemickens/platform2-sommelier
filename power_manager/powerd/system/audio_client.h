@@ -44,7 +44,7 @@ class AudioClient : public AudioClientInterface {
 
  private:
   DBusWrapperInterface* dbus_wrapper_;  // weak
-  dbus::ObjectProxy* cras_proxy_;  // weak
+  dbus::ObjectProxy* cras_proxy_;       // weak
 
   // Number of audio streams (either input or output) currently active.
   int num_active_streams_;

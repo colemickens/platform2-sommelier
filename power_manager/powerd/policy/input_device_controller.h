@@ -109,10 +109,10 @@ class InputDeviceController : public policy::BacklightControllerObserver,
   // Re-configures all known devices to reflect a policy change.
   void UpdatePolicy();
 
-  system::UdevInterface* udev_ = nullptr;  // weak
-  policy::BacklightController* backlight_controller_ = nullptr;  // weak
+  system::UdevInterface* udev_ = nullptr;                            // weak
+  policy::BacklightController* backlight_controller_ = nullptr;      // weak
   system::AcpiWakeupHelperInterface* acpi_wakeup_helper_ = nullptr;  // weak
-  system::EcWakeupHelperInterface* ec_wakeup_helper_ = nullptr;  // weak
+  system::EcWakeupHelperInterface* ec_wakeup_helper_ = nullptr;      // weak
 
   PrefsInterface* prefs_ = nullptr;  // weak
 

@@ -108,8 +108,7 @@ const char kExternalBrightnessReadResultName[] =
     "Power.ExternalBrightnessReadResult";
 const char kExternalBrightnessWriteResultName[] =
     "Power.ExternalBrightnessWriteResult";
-const char kExternalDisplayOpenResultName[] =
-    "Power.ExternalDisplayOpenResult";
+const char kExternalDisplayOpenResultName[] = "Power.ExternalDisplayOpenResult";
 const int kExternalDisplayResultMax = 10;
 
 const char kDarkResumeWakeupsPerHourName[] = "Power.DarkResumeWakeupsPerHour";

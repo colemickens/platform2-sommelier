@@ -24,7 +24,9 @@ namespace system {
 namespace {
 
 // Returns a two-character hexadecimal representation of |byte|.
-std::string Hex(uint8_t byte) { return base::HexEncode(&byte, 1); }
+std::string Hex(uint8_t byte) {
+  return base::HexEncode(&byte, 1);
+}
 
 // Test implementation of ExternalDisplay::Delegate.
 class TestDelegate : public ExternalDisplay::Delegate {
@@ -184,17 +186,14 @@ class ExternalDisplayTest : public testing::Test {
         Hex(ExternalDisplay::kDdcMessageBodyLengthMask | 4) +
         // Message body.
         Hex(ExternalDisplay::kDdcSetCommand) +
-        Hex(ExternalDisplay::kDdcBrightnessIndex) +
-        Hex(high_byte) +
+        Hex(ExternalDisplay::kDdcBrightnessIndex) + Hex(high_byte) +
         Hex(low_byte) +
         // Checksum byte.
         Hex(ExternalDisplay::kDdcDisplayAddress ^
             ExternalDisplay::kDdcHostAddress ^
             (ExternalDisplay::kDdcMessageBodyLengthMask | 4) ^
             ExternalDisplay::kDdcSetCommand ^
-            ExternalDisplay::kDdcBrightnessIndex ^
-            high_byte ^
-            low_byte);
+            ExternalDisplay::kDdcBrightnessIndex ^ high_byte ^ low_byte);
   }
 
   // Pops and returns a string representation of the metric stored in
@@ -224,7 +223,8 @@ TEST_F(ExternalDisplayTest, BasicCommunication) {
   EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
                 metrics::kExternalBrightnessRequestResultName,
                 static_cast<int>(ExternalDisplay::SendResult::SUCCESS),
-                metrics::kExternalDisplayResultMax).ToString(),
+                metrics::kExternalDisplayResultMax)
+                .ToString(),
             PopMetric());
 
   // After the timer fires, the reply should be read and a request to set the
@@ -240,12 +240,14 @@ TEST_F(ExternalDisplayTest, BasicCommunication) {
   EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
                 metrics::kExternalBrightnessReadResultName,
                 static_cast<int>(ExternalDisplay::ReceiveResult::SUCCESS),
-                metrics::kExternalDisplayResultMax).ToString(),
+                metrics::kExternalDisplayResultMax)
+                .ToString(),
             metrics_sender_.GetMetric(0));
   EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
                 metrics::kExternalBrightnessWriteResultName,
                 static_cast<int>(ExternalDisplay::SendResult::SUCCESS),
-                metrics::kExternalDisplayResultMax).ToString(),
+                metrics::kExternalDisplayResultMax)
+                .ToString(),
             metrics_sender_.GetMetric(1));
   metrics_sender_.clear_metrics();
 
@@ -347,7 +349,8 @@ TEST_F(ExternalDisplayTest, InvalidBrightnessReplies) {
     EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
                   metrics::kExternalBrightnessRequestResultName,
                   static_cast<int>(ExternalDisplay::SendResult::SUCCESS),
-                  metrics::kExternalDisplayResultMax).ToString(),
+                  metrics::kExternalDisplayResultMax)
+                  .ToString(),
               PopMetric());
 
     delegate_->set_reply_message(test_cases[i].reply);
@@ -355,7 +358,8 @@ TEST_F(ExternalDisplayTest, InvalidBrightnessReplies) {
     EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
                   metrics::kExternalBrightnessReadResultName,
                   static_cast<int>(test_cases[i].metric),
-                  metrics::kExternalDisplayResultMax).ToString(),
+                  metrics::kExternalDisplayResultMax)
+                  .ToString(),
               PopMetric());
 
     EXPECT_EQ("", delegate_->PopSentMessage());
@@ -371,7 +375,8 @@ TEST_F(ExternalDisplayTest, CommunicationFailures) {
   EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
                 metrics::kExternalBrightnessRequestResultName,
                 static_cast<int>(ExternalDisplay::SendResult::IOCTL_FAILED),
-                metrics::kExternalDisplayResultMax).ToString(),
+                metrics::kExternalDisplayResultMax)
+                .ToString(),
             PopMetric());
 
   // Now let the initial request succeed but make the read fail. The timer
@@ -387,12 +392,14 @@ TEST_F(ExternalDisplayTest, CommunicationFailures) {
   EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
                 metrics::kExternalBrightnessRequestResultName,
                 static_cast<int>(ExternalDisplay::SendResult::SUCCESS),
-                metrics::kExternalDisplayResultMax).ToString(),
+                metrics::kExternalDisplayResultMax)
+                .ToString(),
             metrics_sender_.GetMetric(0));
   EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
                 metrics::kExternalBrightnessReadResultName,
                 static_cast<int>(ExternalDisplay::ReceiveResult::IOCTL_FAILED),
-                metrics::kExternalDisplayResultMax).ToString(),
+                metrics::kExternalDisplayResultMax)
+                .ToString(),
             metrics_sender_.GetMetric(1));
   metrics_sender_.clear_metrics();
 
@@ -410,17 +417,20 @@ TEST_F(ExternalDisplayTest, CommunicationFailures) {
   EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
                 metrics::kExternalBrightnessRequestResultName,
                 static_cast<int>(ExternalDisplay::SendResult::SUCCESS),
-                metrics::kExternalDisplayResultMax).ToString(),
+                metrics::kExternalDisplayResultMax)
+                .ToString(),
             metrics_sender_.GetMetric(0));
   EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
                 metrics::kExternalBrightnessReadResultName,
                 static_cast<int>(ExternalDisplay::ReceiveResult::SUCCESS),
-                metrics::kExternalDisplayResultMax).ToString(),
+                metrics::kExternalDisplayResultMax)
+                .ToString(),
             metrics_sender_.GetMetric(1));
   EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
                 metrics::kExternalBrightnessWriteResultName,
                 static_cast<int>(ExternalDisplay::SendResult::IOCTL_FAILED),
-                metrics::kExternalDisplayResultMax).ToString(),
+                metrics::kExternalDisplayResultMax)
+                .ToString(),
             metrics_sender_.GetMetric(2));
   metrics_sender_.clear_metrics();
 
@@ -433,7 +443,8 @@ TEST_F(ExternalDisplayTest, CommunicationFailures) {
   EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
                 metrics::kExternalBrightnessWriteResultName,
                 static_cast<int>(ExternalDisplay::SendResult::SUCCESS),
-                metrics::kExternalDisplayResultMax).ToString(),
+                metrics::kExternalDisplayResultMax)
+                .ToString(),
             PopMetric());
 }
 
@@ -503,7 +514,8 @@ TEST_F(ExternalDisplayTest, ZeroMax) {
   EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
                 metrics::kExternalBrightnessRequestResultName,
                 static_cast<int>(ExternalDisplay::SendResult::SUCCESS),
-                metrics::kExternalDisplayResultMax).ToString(),
+                metrics::kExternalDisplayResultMax)
+                .ToString(),
             PopMetric());
 
   // ExternalDisplay should report a failure and avoid writing an updated level.

@@ -23,7 +23,7 @@ class EcWakeupHelper : public EcWakeupHelperInterface {
   bool AllowWakeupAsTablet(bool enabled) override;
 
  private:
-  bool supported_;  // True iff EC supports angle-based wakeup controls.
+  bool supported_;         // True iff EC supports angle-based wakeup controls.
   int cached_wake_angle_;  // EC wake angle cached from the last time we set it.
   base::FilePath sysfs_node_;  // Path of the sysfs node to write to.
 

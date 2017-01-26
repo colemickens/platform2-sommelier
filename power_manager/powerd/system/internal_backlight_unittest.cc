@@ -40,23 +40,26 @@ class InternalBacklightTest : public ::testing::Test {
     CHECK(base::CreateDirectory(path));
 
     std::string str = base::StringPrintf("%" PRId64 "\n", brightness);
-    ASSERT_EQ(str.size(),
-              base::WriteFile(
-                  path.Append(InternalBacklight::kBrightnessFilename),
-                  str.data(), str.size()));
+    ASSERT_EQ(
+        str.size(),
+        base::WriteFile(path.Append(InternalBacklight::kBrightnessFilename),
+                        str.data(),
+                        str.size()));
 
     str = base::StringPrintf("%" PRId64 "\n", max_brightness);
-    ASSERT_EQ(str.size(),
-              base::WriteFile(
-                  path.Append(InternalBacklight::kMaxBrightnessFilename),
-                  str.data(), str.size()));
+    ASSERT_EQ(
+        str.size(),
+        base::WriteFile(path.Append(InternalBacklight::kMaxBrightnessFilename),
+                        str.data(),
+                        str.size()));
 
     if (actual_brightness >= 0) {
       str = base::StringPrintf("%" PRId64 "\n", actual_brightness);
       ASSERT_EQ(str.size(),
                 base::WriteFile(
                     path.Append(InternalBacklight::kActualBrightnessFilename),
-                    str.data(), str.size()));
+                    str.data(),
+                    str.size()));
     }
   }
 
@@ -304,7 +307,8 @@ TEST_F(InternalBacklightTest, BlPower) {
   backlight.SetBrightnessLevel(0, base::TimeDelta());
   EXPECT_EQ(FB_BLANK_POWERDOWN, ReadFile(kPowerFile));
 
-  // When the brightness goes from 0 to nonzero, FB_BLANK_UNBLANK should be written to
+  // When the brightness goes from 0 to nonzero, FB_BLANK_UNBLANK should be
+  // written to
   // bl_power.
   backlight.SetBrightnessLevel(1, base::TimeDelta());
   EXPECT_EQ(FB_BLANK_UNBLANK, ReadFile(kPowerFile));
@@ -316,7 +320,9 @@ TEST_F(InternalBacklightTest, BlPower) {
   backlight.SetBrightnessLevel(kMaxBrightness, base::TimeDelta());
   ASSERT_TRUE(base::ReadFileToString(kPowerFile, &data));
   EXPECT_EQ("", data);
-  ASSERT_EQ(base::WriteFile(kPowerFile, kUnblankValue.c_str(), kUnblankValue.size()), 1);
+  ASSERT_EQ(
+      base::WriteFile(kPowerFile, kUnblankValue.c_str(), kUnblankValue.size()),
+      1);
 
   // Now do an animated transition. bl_power should remain at FB_BLANK_UNBLANK
   // until the backlight level reaches 0.

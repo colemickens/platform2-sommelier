@@ -22,37 +22,33 @@
 #include <netlink/genl/genl.h>
 #include <netlink/msg.h>
 
-
 // Vendor command definition for marvell mwifiex driver
 // Defined in Linux kernel:
 // drivers/net/wireless/marvell/mwifiex/main.h
-#define MWIFIEX_VENDOR_ID  0x005043
+#define MWIFIEX_VENDOR_ID 0x005043
 
 // Vendor sub command
 #define MWIFIEX_VENDOR_CMD_SET_TX_POWER_LIMIT 0
 
-#define MWIFIEX_VENDOR_CMD_ATTR_TXP_LIMIT_24  1
-#define MWIFIEX_VENDOR_CMD_ATTR_TXP_LIMIT_52  2
-
+#define MWIFIEX_VENDOR_CMD_ATTR_TXP_LIMIT_24 1
+#define MWIFIEX_VENDOR_CMD_ATTR_TXP_LIMIT_52 2
 
 // Vendor command definition for intel iwl7000 driver
 // Defined in Linux kernel:
 // drivers/net/wireless/iwl7000/iwlwifi/mvm/vendor-cmd.h
-#define INTEL_OUI  0x001735
+#define INTEL_OUI 0x001735
 
 // Vendor sub command
-#define IWL_MVM_VENDOR_CMD_SET_NIC_TXPOWER_LIMIT  13
+#define IWL_MVM_VENDOR_CMD_SET_NIC_TXPOWER_LIMIT 13
 
-#define IWL_MVM_VENDOR_ATTR_TXP_LIMIT_24   13
-#define IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52L  14
-#define IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52H  15
-
+#define IWL_MVM_VENDOR_ATTR_TXP_LIMIT_24 13
+#define IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52L 14
+#define IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52H 15
 
 namespace {
 
 // Kernel module path for Marvell wireless driver.
 const char kMwifiexModulePath[] = "/sys/module/mwifiex";
-
 
 int ErrorHandler(struct sockaddr_nl* nla, struct nlmsgerr* err, void* arg) {
   int* ret = static_cast<int*>(arg);
@@ -76,11 +72,7 @@ int ValidHandler(struct nl_msg* msg, void* arg) {
   return NL_OK;
 }
 
-enum class WirelessDriver {
-  NONE = 0,
-  MWIFIEX,
-  IWL
-};
+enum class WirelessDriver { NONE = 0, MWIFIEX, IWL };
 
 class SetWiFiTransmitPower {
  public:
@@ -114,9 +106,7 @@ class SetWiFiTransmitPower {
 };
 
 SetWiFiTransmitPower::SetWiFiTransmitPower()
-    : nl_sock_(nl_socket_alloc()),
-      cb_(nl_cb_alloc(NL_CB_DEFAULT)),
-      err_(0) {
+    : nl_sock_(nl_socket_alloc()), cb_(nl_cb_alloc(NL_CB_DEFAULT)), err_(0) {
   CHECK(nl_sock_);
   CHECK(cb_);
 
@@ -164,8 +154,8 @@ void SetWiFiTransmitPower::FillMessageMwifiex(struct nl_msg* msg, bool tablet) {
   err = nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, MWIFIEX_VENDOR_ID);
   CHECK(!err) << "Failed to put NL80211_ATTR_VENDOR_ID";
 
-  err = nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
-                    MWIFIEX_VENDOR_CMD_SET_TX_POWER_LIMIT);
+  err = nla_put_u32(
+      msg, NL80211_ATTR_VENDOR_SUBCMD, MWIFIEX_VENDOR_CMD_SET_TX_POWER_LIMIT);
   CHECK(!err) << "Failed to put NL80211_ATTR_VENDOR_SUBCMD";
 
   struct nlattr* limits = nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA);
@@ -192,9 +182,8 @@ void SetWiFiTransmitPower::FillMessageIwl(struct nl_msg* msg,
   // The first three integers represent the power value of 24, 52L, 52H bands
   // in clamshell mode, while the last three integers represent that of the
   // power value for tablet mode.
-  std::vector<std::string> str_values =
-      base::SplitString(iwl_power_table, ":", base::TRIM_WHITESPACE,
-                        base::SPLIT_WANT_ALL);
+  std::vector<std::string> str_values = base::SplitString(
+      iwl_power_table, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
   CHECK_EQ(str_values.size(), static_cast<size_t>(6))
       << "Wrong number of power table literal";
@@ -211,7 +200,8 @@ void SetWiFiTransmitPower::FillMessageIwl(struct nl_msg* msg,
   err = nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, INTEL_OUI);
   CHECK(!err) << "Failed to put NL80211_ATTR_VENDOR_ID";
 
-  err = nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
+  err = nla_put_u32(msg,
+                    NL80211_ATTR_VENDOR_SUBCMD,
                     IWL_MVM_VENDOR_CMD_SET_NIC_TXPOWER_LIMIT);
   CHECK(!err) << "Failed to put NL80211_ATTR_VENDOR_SUBCMD";
 
@@ -220,16 +210,16 @@ void SetWiFiTransmitPower::FillMessageIwl(struct nl_msg* msg,
 
   int group = tablet ? 1 : 0;
 
-  err = nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_TXP_LIMIT_24,
-                    values[group * 3 + 0] * 8);
+  err = nla_put_u32(
+      msg, IWL_MVM_VENDOR_ATTR_TXP_LIMIT_24, values[group * 3 + 0] * 8);
   CHECK(!err) << "Failed to put MWIFIEX_VENDOR_CMD_ATTR_TXP_LIMIT_24";
 
-  err = nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52L,
-                    values[group * 3 + 1] * 8);
+  err = nla_put_u32(
+      msg, IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52L, values[group * 3 + 1] * 8);
   CHECK(!err) << "Failed to put MWIFIEX_VENDOR_CMD_ATTR_TXP_LIMIT_52L";
 
-  err = nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52H,
-                    values[group * 3 + 2] * 8);
+  err = nla_put_u32(
+      msg, IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52H, values[group * 3 + 2] * 8);
   CHECK(!err) << "Failed to put MWIFIEX_VENDOR_CMD_ATTR_TXP_LIMIT_52H";
 
   err = nla_nest_end(msg, limits);
@@ -237,7 +227,7 @@ void SetWiFiTransmitPower::FillMessageIwl(struct nl_msg* msg,
 }
 
 void SetWiFiTransmitPower::SetPowerMode(bool tablet,
-                                       const std::string& iwl_power_table) {
+                                        const std::string& iwl_power_table) {
   int err = 0;
 
   err = genl_connect(nl_sock_);
@@ -250,8 +240,8 @@ void SetWiFiTransmitPower::SetPowerMode(bool tablet,
   CHECK(msg);
 
   // Set header.
-  genlmsg_put(msg, NL_AUTO_PID, NL_AUTO_SEQ, nl_family_id, 0, 0,
-              NL80211_CMD_VENDOR, 0);
+  genlmsg_put(
+      msg, NL_AUTO_PID, NL_AUTO_SEQ, nl_family_id, 0, 0, NL80211_CMD_VENDOR, 0);
 
   // Set actual message.
   err = nla_put_u32(msg, NL80211_ATTR_IFINDEX, GetWirelessDeviceIndex());
@@ -281,7 +271,9 @@ void SetWiFiTransmitPower::SetPowerMode(bool tablet,
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(tablet, false, "Set wifi transmit power mode to tablet mode");
-  DEFINE_string(iwl_power_table, "", "Power table for iwlwifi driver. "
+  DEFINE_string(iwl_power_table,
+                "",
+                "Power table for iwlwifi driver. "
                 "The argument should be a string containing 6 integers "
                 "separated by colons");
   brillo::FlagHelper::Init(argc, argv, "Set wifi transmit power mode");

@@ -24,8 +24,7 @@ const int kHysteresisThreshold = 2;
 }  // namespace
 
 AmbientLightHandler::AmbientLightHandler(
-    system::AmbientLightSensorInterface* sensor,
-    Delegate* delegate)
+    system::AmbientLightSensorInterface* sensor, Delegate* delegate)
     : sensor_(sensor),
       delegate_(delegate),
       power_source_(PowerSource::AC),
@@ -45,26 +44,27 @@ AmbientLightHandler::~AmbientLightHandler() {
 
 void AmbientLightHandler::Init(const std::string& steps_pref_value,
                                double initial_brightness_percent) {
-  std::vector<std::string> lines =
-      base::SplitString(steps_pref_value, "\n", base::KEEP_WHITESPACE,
-                        base::SPLIT_WANT_ALL);
+  std::vector<std::string> lines = base::SplitString(
+      steps_pref_value, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   for (std::vector<std::string>::iterator iter = lines.begin();
-       iter != lines.end(); ++iter) {
-    std::vector<std::string> segments =
-        base::SplitString(*iter, " ", base::KEEP_WHITESPACE,
-                          base::SPLIT_WANT_ALL);
+       iter != lines.end();
+       ++iter) {
+    std::vector<std::string> segments = base::SplitString(
+        *iter, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
     BrightnessStep new_step;
     if (segments.size() == 3 &&
         base::StringToDouble(segments[0], &new_step.ac_target_percent) &&
         base::StringToInt(segments[1], &new_step.decrease_lux_threshold) &&
         base::StringToInt(segments[2], &new_step.increase_lux_threshold)) {
       new_step.battery_target_percent = new_step.ac_target_percent;
-    } else if (
-        segments.size() == 4 &&
-        base::StringToDouble(segments[0], &new_step.ac_target_percent) &&
-        base::StringToDouble(segments[1], &new_step.battery_target_percent) &&
-        base::StringToInt(segments[2], &new_step.decrease_lux_threshold) &&
-        base::StringToInt(segments[3], &new_step.increase_lux_threshold)) {
+    } else if (segments.size() == 4 &&
+               base::StringToDouble(segments[0], &new_step.ac_target_percent) &&
+               base::StringToDouble(segments[1],
+                                    &new_step.battery_target_percent) &&
+               base::StringToInt(segments[2],
+                                 &new_step.decrease_lux_threshold) &&
+               base::StringToInt(segments[3],
+                                 &new_step.increase_lux_threshold)) {
       // Okay, we've read all the fields.
     } else {
       LOG(FATAL) << "Steps pref has invalid line \"" << *iter << "\"";
@@ -96,8 +96,9 @@ void AmbientLightHandler::Init(const std::string& steps_pref_value,
   if (steps_[step_index_].decrease_lux_threshold >= 0 &&
       steps_[step_index_].increase_lux_threshold >= 0) {
     lux_level_ = steps_[step_index_].decrease_lux_threshold +
-        (steps_[step_index_].increase_lux_threshold -
-         steps_[step_index_].decrease_lux_threshold) / 2;
+                 (steps_[step_index_].increase_lux_threshold -
+                  steps_[step_index_].decrease_lux_threshold) /
+                     2;
   } else if (steps_[step_index_].decrease_lux_threshold >= 0) {
     lux_level_ = steps_[step_index_].decrease_lux_threshold;
   } else if (steps_[step_index_].increase_lux_threshold >= 0) {
@@ -193,8 +194,8 @@ void AmbientLightHandler::OnAmbientLightUpdated(
     step_index_ = new_step_index;
     double target_percent = GetTargetPercent();
     LOG(INFO) << "Hysteresis overcome; transitioning to " << target_percent
-              << "% (step " << step_index_ << ") for lux " << new_lux
-              << " (" << name_ << ")";
+              << "% (step " << step_index_ << ") for lux " << new_lux << " ("
+              << name_ << ")";
     lux_level_ = new_lux;
     hysteresis_count_ = 1;
     delegate_->SetBrightnessPercentForAmbientLight(
@@ -205,9 +206,9 @@ void AmbientLightHandler::OnAmbientLightUpdated(
 
 double AmbientLightHandler::GetTargetPercent() const {
   CHECK_LT(step_index_, steps_.size());
-  return power_source_ == PowerSource::AC ?
-      steps_[step_index_].ac_target_percent :
-      steps_[step_index_].battery_target_percent;
+  return power_source_ == PowerSource::AC
+             ? steps_[step_index_].ac_target_percent
+             : steps_[step_index_].battery_target_percent;
 }
 
 }  // namespace policy

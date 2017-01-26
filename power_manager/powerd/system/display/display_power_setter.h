@@ -66,7 +66,7 @@ class DisplayPowerSetter : public DisplayPowerSetterInterface {
   base::OneShotTimer timer_;
 
   DBusWrapperInterface* dbus_wrapper_;  // weak
-  dbus::ObjectProxy* chrome_proxy_;  // non-owned
+  dbus::ObjectProxy* chrome_proxy_;     // non-owned
 
   DISALLOW_COPY_AND_ASSIGN(DisplayPowerSetter);
 };

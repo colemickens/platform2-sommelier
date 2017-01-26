@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/system/dbus_wrapper.h"
 
+#include <memory>
+
 #include <base/bind.h>
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
@@ -40,8 +42,8 @@ bool DBusWrapper::Init() {
     LOG(ERROR) << "Failed to connect to system bus";
     return false;
   }
-  exported_object_ = bus_->GetExportedObject(
-      dbus::ObjectPath(kPowerManagerServicePath));
+  exported_object_ =
+      bus_->GetExportedObject(dbus::ObjectPath(kPowerManagerServicePath));
   if (!exported_object_) {
     LOG(ERROR) << "Failed to export " << kPowerManagerServicePath << " object";
     return false;
@@ -53,9 +55,8 @@ dbus::Bus* DBusWrapper::GetBus() {
   return bus_.get();
 }
 
-dbus::ObjectProxy* DBusWrapper::GetObjectProxy(
-    const std::string& service_name,
-    const std::string& object_path) {
+dbus::ObjectProxy* DBusWrapper::GetObjectProxy(const std::string& service_name,
+                                               const std::string& object_path) {
   return bus_->GetObjectProxy(service_name, dbus::ObjectPath(object_path));
 }
 
@@ -72,15 +73,17 @@ void DBusWrapper::RegisterForSignal(
     const std::string& signal_name,
     dbus::ObjectProxy::SignalCallback callback) {
   DCHECK(proxy);
-  proxy->ConnectToSignal(interface_name, signal_name, callback,
+  proxy->ConnectToSignal(interface_name,
+                         signal_name,
+                         callback,
                          base::Bind(&HandleSignalConnected));
 }
 
 void DBusWrapper::ExportMethod(
     const std::string& method_name,
     dbus::ExportedObject::MethodCallCallback callback) {
-  CHECK(exported_object_->ExportMethodAndBlock(kPowerManagerInterface,
-                                               method_name, callback));
+  CHECK(exported_object_->ExportMethodAndBlock(
+      kPowerManagerInterface, method_name, callback));
 }
 
 bool DBusWrapper::PublishService() {

@@ -11,10 +11,10 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
-#include <base/files/file_path.h>
 
 #include "power_manager/powerd/system/power_supply.h"
 
@@ -53,8 +53,7 @@ class DarkResumeInterface {
   // successful in setting a wake alarm for some point in the future.
   // This may be called more than once per suspend request.
   virtual void GetActionForSuspendAttempt(
-      Action* action,
-      base::TimeDelta* suspend_duration) = 0;
+      Action* action, base::TimeDelta* suspend_duration) = 0;
 
   // Reads the system state to see if it's in a dark resume.
   virtual void HandleSuccessfulResume() = 0;
@@ -116,9 +115,7 @@ class DarkResume : public DarkResumeInterface {
     timer_ = std::move(timer);
   }
 
-  Action next_action_for_testing() const {
-    return next_action_;
-  }
+  Action next_action_for_testing() const { return next_action_; }
 
   // Reads preferences on how long to suspend, what devices are affected by
   // suspend, and what devices can wake the system up from suspend.

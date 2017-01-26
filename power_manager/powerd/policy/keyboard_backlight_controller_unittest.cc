@@ -66,9 +66,11 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
     prefs_.SetInt64(kKeyboardBacklightKeepOnDuringVideoMsPref,
                     keep_on_during_video_ms_pref_);
 
-    controller_.Init(&backlight_, &prefs_,
-                     pass_light_sensor_? &light_sensor_ : NULL,
-                     &display_backlight_controller_, initial_tablet_mode_);
+    controller_.Init(&backlight_,
+                     &prefs_,
+                     pass_light_sensor_ ? &light_sensor_ : NULL,
+                     &display_backlight_controller_,
+                     initial_tablet_mode_);
   }
 
  protected:

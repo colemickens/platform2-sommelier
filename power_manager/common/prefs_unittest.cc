@@ -40,15 +40,13 @@ class TestPrefsObserver : public PrefsObserver {
   explicit TestPrefsObserver(Prefs* prefs) : prefs_(prefs) {
     prefs_->AddObserver(this);
   }
-  virtual ~TestPrefsObserver() {
-    prefs_->RemoveObserver(this);
-  }
+  virtual ~TestPrefsObserver() { prefs_->RemoveObserver(this); }
 
   // Runs |loop_| until OnPrefChanged() is called, then quits the loop
   // and returns a string containing the name of the pref that was changed.
   std::string RunUntilPrefChanged() {
     CHECK(loop_runner_.StartLoop(
-              base::TimeDelta::FromMilliseconds(kPrefChangeTimeoutMs)))
+        base::TimeDelta::FromMilliseconds(kPrefChangeTimeoutMs)))
         << "Pref change not received";
     return pref_name_;
   }
@@ -197,13 +195,15 @@ TEST_F(PrefsTest, TestThreeDirectoriesStacked) {
       std::string int_string = base::Int64ToString(kIntTestValue + i);
       EXPECT_EQ(int_string.size(),
                 base::WriteFile(path.Append(kIntTestFileName),
-                    int_string.data(), int_string.size()));
+                                int_string.data(),
+                                int_string.size()));
       EXPECT_TRUE(base::PathExists(path.Append(kIntTestFileName)));
 
       std::string double_string = base::DoubleToString(kDoubleTestValue + i);
       EXPECT_EQ(double_string.size(),
                 base::WriteFile(path.Append(kDoubleTestFileName),
-                    double_string.data(), double_string.size()));
+                                double_string.data(),
+                                double_string.size()));
       EXPECT_TRUE(base::PathExists(path.Append(kDoubleTestFileName)));
     }
 
@@ -259,11 +259,13 @@ TEST_F(PrefsTest, TestThreeDirectoriesGarbage) {
     }
     EXPECT_EQ(int_string.size(),
               base::WriteFile(path.Append(kIntTestFileName),
-                  int_string.data(), int_string.size()));
+                              int_string.data(),
+                              int_string.size()));
     EXPECT_TRUE(base::PathExists(path.Append(kIntTestFileName)));
     EXPECT_EQ(double_string.size(),
               base::WriteFile(path.Append(kDoubleTestFileName),
-                  double_string.data(), double_string.size()));
+                              double_string.data(),
+                              double_string.size()));
     EXPECT_TRUE(base::PathExists(path.Append(kDoubleTestFileName)));
   }
 

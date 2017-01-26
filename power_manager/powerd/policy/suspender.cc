@@ -68,12 +68,11 @@ Suspender::Suspender()
       initial_num_attempts_(0),
       last_dark_resume_wake_reason_(kDefaultWakeReason) {}
 
-Suspender::~Suspender() {
-}
+Suspender::~Suspender() {}
 
 void Suspender::Init(Delegate* delegate,
                      system::DBusWrapperInterface* dbus_wrapper,
-                     system::DarkResumeInterface *dark_resume,
+                     system::DarkResumeInterface* dark_resume,
                      PrefsInterface* prefs) {
   delegate_ = delegate;
   dbus_wrapper_ = dbus_wrapper;
@@ -188,10 +187,10 @@ void Suspender::RecordDarkResumeWakeReason(
   dbus::MessageReader reader(method_call);
   if (!reader.PopArrayOfBytesAsProto(&proto)) {
     LOG(ERROR) << "Unable to parse " << method_call->GetMember() << " request";
-    response_sender.Run(
-        std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
-            method_call, DBUS_ERROR_INVALID_ARGS,
-            "Expected wake reason proto")));
+    response_sender.Run(std::unique_ptr<dbus::Response>(
+        dbus::ErrorResponse::FromMethodCall(method_call,
+                                            DBUS_ERROR_INVALID_ARGS,
+                                            "Expected wake reason proto")));
     return;
   }
   last_dark_resume_wake_reason_ = proto.wake_reason();
@@ -249,16 +248,18 @@ void Suspender::OnReadyForSuspend(SuspendDelayController* controller,
 }
 
 void Suspender::RegisterSuspendDelayInternal(
-    SuspendDelayController *controller,
+    SuspendDelayController* controller,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
   RegisterSuspendDelayRequest request;
   dbus::MessageReader reader(method_call);
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << "Unable to parse " << method_call->GetMember() << " request";
-    response_sender.Run(std::unique_ptr<dbus::Response>(
-        dbus::ErrorResponse::FromMethodCall(method_call,
-            DBUS_ERROR_INVALID_ARGS, "Expected serialized protocol buffer")));
+    response_sender.Run(
+        std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
+            method_call,
+            DBUS_ERROR_INVALID_ARGS,
+            "Expected serialized protocol buffer")));
     return;
   }
   RegisterSuspendDelayReply reply_proto;
@@ -273,16 +274,18 @@ void Suspender::RegisterSuspendDelayInternal(
 }
 
 void Suspender::UnregisterSuspendDelayInternal(
-    SuspendDelayController *controller,
+    SuspendDelayController* controller,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
   UnregisterSuspendDelayRequest request;
   dbus::MessageReader reader(method_call);
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << "Unable to parse " << method_call->GetMember() << " request";
-    response_sender.Run(std::unique_ptr<dbus::Response>(
-        dbus::ErrorResponse::FromMethodCall(method_call,
-            DBUS_ERROR_INVALID_ARGS, "Expected serialized protocol buffer")));
+    response_sender.Run(
+        std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
+            method_call,
+            DBUS_ERROR_INVALID_ARGS,
+            "Expected serialized protocol buffer")));
     return;
   }
   controller->UnregisterSuspendDelay(request, method_call->GetSender());
@@ -290,16 +293,18 @@ void Suspender::UnregisterSuspendDelayInternal(
 }
 
 void Suspender::HandleSuspendReadinessInternal(
-    SuspendDelayController *controller,
+    SuspendDelayController* controller,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
   SuspendReadinessInfo info;
   dbus::MessageReader reader(method_call);
   if (!reader.PopArrayOfBytesAsProto(&info)) {
     LOG(ERROR) << "Unable to parse " << method_call->GetMember() << " request";
-    response_sender.Run(std::unique_ptr<dbus::Response>(
-        dbus::ErrorResponse::FromMethodCall(method_call,
-            DBUS_ERROR_INVALID_ARGS, "Expected serialized protocol buffer")));
+    response_sender.Run(
+        std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
+            method_call,
+            DBUS_ERROR_INVALID_ARGS,
+            "Expected serialized protocol buffer")));
     return;
   }
   controller->HandleSuspendReadiness(info, method_call->GetSender());
@@ -426,11 +431,13 @@ void Suspender::FinishRequest(bool success) {
   resuspend_timer_.Stop();
   suspend_delay_controller_->FinishSuspend(suspend_request_id_);
   dark_suspend_delay_controller_->FinishSuspend(dark_suspend_id_);
-  base::TimeDelta suspend_duration = std::max(base::TimeDelta(),
-      clock_->GetCurrentWallTime() - suspend_request_start_time_);
+  base::TimeDelta suspend_duration =
+      std::max(base::TimeDelta(),
+               clock_->GetCurrentWallTime() - suspend_request_start_time_);
   EmitSuspendDoneSignal(suspend_request_id_, suspend_duration);
   delegate_->SetSuspendAnnounced(false);
-  delegate_->UndoPrepareToSuspend(success,
+  delegate_->UndoPrepareToSuspend(
+      success,
       initial_num_attempts_ ? initial_num_attempts_ : current_num_attempts_,
       dark_resume_->InDarkResume());
 
@@ -489,8 +496,7 @@ Suspender::State Suspender::Suspend() {
   // successful, ensuring that we account for all the time spent in dark resume
   // during a particular wake.
   if (!dark_resume_wake_durations_.empty()) {
-    dark_resume_wake_durations_.back().first =
-        last_dark_resume_wake_reason_;
+    dark_resume_wake_durations_.back().first = last_dark_resume_wake_reason_;
     dark_resume_wake_durations_.back().second =
         std::max(base::TimeDelta(),
                  clock_->GetCurrentWallTime() - dark_resume_start_time_);
@@ -512,10 +518,9 @@ Suspender::State Suspender::Suspend() {
   // that a test probably triggered this suspend attempt after setting a wake
   // alarm, and if we retry later, it's likely that the alarm will have already
   // fired and the system will never wake up.
-  if (!in_dark_resume &&
-      ((result == Delegate::SuspendResult::SUCCESS) ||
-       (result == Delegate::SuspendResult::CANCELED &&
-        suspend_request_supplied_wakeup_count_))) {
+  if (!in_dark_resume && ((result == Delegate::SuspendResult::SUCCESS) ||
+                          (result == Delegate::SuspendResult::CANCELED &&
+                           suspend_request_supplied_wakeup_count_))) {
     FinishRequest(result == Delegate::SuspendResult::SUCCESS);
     return State::IDLE;
   }
@@ -595,9 +600,11 @@ Suspender::State Suspender::Suspend() {
 }
 
 void Suspender::ScheduleResuspend(const base::TimeDelta& delay) {
-  resuspend_timer_.Start(FROM_HERE, delay,
-      base::Bind(&Suspender::HandleEvent, base::Unretained(this),
-                 Event::READY_TO_RESUSPEND));
+  resuspend_timer_.Start(FROM_HERE,
+                         delay,
+                         base::Bind(&Suspender::HandleEvent,
+                                    base::Unretained(this),
+                                    Event::READY_TO_RESUSPEND));
 }
 
 void Suspender::EmitSuspendImminentSignal(int suspend_request_id) {

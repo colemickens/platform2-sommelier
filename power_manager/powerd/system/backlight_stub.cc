@@ -13,8 +13,7 @@ BacklightStub::BacklightStub(int64_t max_level, int64_t current_level)
       current_level_(current_level),
       resume_level_(-1),
       transition_in_progress_(false),
-      should_fail_(false) {
-}
+      should_fail_(false) {}
 
 BacklightStub::~BacklightStub() {}
 

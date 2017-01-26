@@ -43,8 +43,7 @@ AmbientLightSensor::AmbientLightSensor()
     : device_list_path_(kDefaultDeviceListPath),
       poll_interval_ms_(kDefaultPollIntervalMs),
       lux_value_(-1),
-      num_init_attempts_(0) {
-}
+      num_init_attempts_(0) {}
 
 AmbientLightSensor::~AmbientLightSensor() {}
 
@@ -76,8 +75,9 @@ int AmbientLightSensor::GetAmbientLightLux() {
 
 void AmbientLightSensor::StartTimer() {
   poll_timer_.Start(FROM_HERE,
-      base::TimeDelta::FromMilliseconds(poll_interval_ms_),
-      this, &AmbientLightSensor::ReadAls);
+                    base::TimeDelta::FromMilliseconds(poll_interval_ms_),
+                    this,
+                    &AmbientLightSensor::ReadAls);
 }
 
 void AmbientLightSensor::ReadAls() {
@@ -105,8 +105,8 @@ void AmbientLightSensor::ReadCallback(const std::string& data) {
   if (base::StringToInt(trimmed_data, &value)) {
     lux_value_ = value;
     VLOG(1) << "Read lux " << lux_value_;
-    FOR_EACH_OBSERVER(AmbientLightObserver, observers_,
-                      OnAmbientLightUpdated(this));
+    FOR_EACH_OBSERVER(
+        AmbientLightObserver, observers_, OnAmbientLightUpdated(this));
   } else {
     LOG(ERROR) << "Could not read lux value from ALS file contents: ["
                << trimmed_data << "]";

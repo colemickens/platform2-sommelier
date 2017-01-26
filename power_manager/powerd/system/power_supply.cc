@@ -94,8 +94,8 @@ bool ReadInt64(const base::FilePath& directory,
 double ReadScaledDouble(const base::FilePath& directory,
                         const std::string& filename) {
   int64_t value = 0;
-  return ReadInt64(directory, filename, &value) ?
-      kDoubleScaleFactor * value : 0.0;
+  return ReadInt64(directory, filename, &value) ? kDoubleScaleFactor * value
+                                                : 0.0;
 }
 
 // Returns true if |type|, a power supply type read from a "type" file in
@@ -196,8 +196,7 @@ void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
   // rather than the time until the battery is completely empty.
   proto->set_battery_time_to_empty_sec(
       status.battery_time_to_shutdown.InSeconds());
-  proto->set_battery_time_to_full_sec(
-      status.battery_time_to_full.InSeconds());
+  proto->set_battery_time_to_full_sec(status.battery_time_to_full.InSeconds());
   proto->set_is_calculating_battery_time(status.is_calculating_battery_time);
 
   if (status.battery_state == PowerSupplyProperties_BatteryState_FULL ||
@@ -235,14 +234,16 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
     case PowerSupplyProperties_ExternalPower_AC:
     case PowerSupplyProperties_ExternalPower_USB:
       output = base::StringPrintf("On %s (%s",
-          ExternalPowerToString(status.external_power),
-          status.line_power_type.c_str());
+                                  ExternalPowerToString(status.external_power),
+                                  status.line_power_type.c_str());
       if (status.line_power_current || status.line_power_voltage) {
         output += base::StringPrintf(", %.3fA at %.1fV",
-            status.line_power_current, status.line_power_voltage);
+                                     status.line_power_current,
+                                     status.line_power_voltage);
         if (status.line_power_max_current && status.line_power_max_voltage) {
           output += base::StringPrintf(", max %.1fA at %.1fV",
-              status.line_power_max_current, status.line_power_max_voltage);
+                                       status.line_power_max_current,
+                                       status.line_power_max_voltage);
         }
       }
       output += ") with battery at ";
@@ -257,8 +258,10 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
   output += base::StringPrintf("%d%%", rounded_actual);
   if (rounded_actual != rounded_display)
     output += base::StringPrintf(" (displayed as %d%%)", rounded_display);
-  output += base::StringPrintf(", %.3f/%.3fAh at %.3fA", status.battery_charge,
-      status.battery_charge_full, status.battery_current);
+  output += base::StringPrintf(", %.3f/%.3fAh at %.3fA",
+                               status.battery_charge,
+                               status.battery_charge_full,
+                               status.battery_current);
 
   switch (status.battery_state) {
     case PowerSupplyProperties_BatteryState_FULL:
@@ -267,7 +270,7 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
     case PowerSupplyProperties_BatteryState_CHARGING:
       if (status.battery_time_to_full >= base::TimeDelta()) {
         output += ", " + util::TimeDeltaToString(status.battery_time_to_full) +
-            " until full";
+                  " until full";
         if (status.is_calculating_battery_time)
           output += " (calculating)";
       }
@@ -275,12 +278,13 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
     case PowerSupplyProperties_BatteryState_DISCHARGING:
       if (status.battery_time_to_empty >= base::TimeDelta()) {
         output += ", " + util::TimeDeltaToString(status.battery_time_to_empty) +
-            " until empty";
+                  " until empty";
         if (status.is_calculating_battery_time) {
           output += " (calculating)";
         } else if (status.battery_time_to_shutdown !=
                    status.battery_time_to_empty) {
-          output += base::StringPrintf(" (%s until shutdown)",
+          output += base::StringPrintf(
+              " (%s until shutdown)",
               util::TimeDeltaToString(status.battery_time_to_shutdown).c_str());
         }
       }
@@ -333,11 +337,9 @@ PowerStatus::Port::Port(const std::string& id,
 PowerStatus::Port::~Port() = default;
 
 bool PowerStatus::Port::operator==(const Port& o) const {
-  return id == o.id &&
-      connection == o.connection &&
-      manufacturer_id == o.manufacturer_id &&
-      model_id == o.model_id &&
-      active_by_default == o.active_by_default;
+  return id == o.id && connection == o.connection &&
+         manufacturer_id == o.manufacturer_id && model_id == o.model_id &&
+         active_by_default == o.active_by_default;
 }
 
 // static
@@ -349,8 +351,10 @@ bool PowerSupply::ConnectedSourcesAreEqual(const PowerStatus& a,
   while (true) {
     // Walk each iterator forward to the next port with something connected that
     // can supply power.
-    for (; a_it != a.ports.end() && !PortHasSourceOrDualRole(*a_it); ++a_it) {}
-    for (; b_it != b.ports.end() && !PortHasSourceOrDualRole(*b_it); ++b_it) {}
+    for (; a_it != a.ports.end() && !PortHasSourceOrDualRole(*a_it); ++a_it) {
+    }
+    for (; b_it != b.ports.end() && !PortHasSourceOrDualRole(*b_it); ++b_it) {
+    }
 
     // If we reached the ends of both lists without finding any mismatches,
     // report equality.
@@ -405,8 +409,8 @@ void PowerSupply::TestApi::SetCurrentTime(base::TimeTicks now) {
 }
 
 void PowerSupply::TestApi::AdvanceTime(base::TimeDelta interval) {
-  power_supply_->clock_->set_current_time_for_testing(
-      GetCurrentTime() + interval);
+  power_supply_->clock_->set_current_time_for_testing(GetCurrentTime() +
+                                                      interval);
 }
 
 bool PowerSupply::TestApi::TriggerPollTimeout() {
@@ -433,8 +437,7 @@ PowerSupply::PowerSupply()
       low_battery_shutdown_percent_(0.0),
       usb_min_ac_watts_(0.0),
       is_suspended_(false),
-      full_factor_(1.0) {
-}
+      full_factor_(1.0) {}
 
 PowerSupply::~PowerSupply() {
   if (udev_)
@@ -452,18 +455,18 @@ void PowerSupply::Init(const base::FilePath& power_supply_path,
   power_supply_path_ = power_supply_path;
 
   poll_delay_ = GetMsPref(kBatteryPollIntervalPref, kDefaultPollMs);
-  battery_stabilized_after_startup_delay_ = GetMsPref(
-      kBatteryStabilizedAfterStartupMsPref,
-      kDefaultBatteryStabilizedAfterStartupDelayMs);
-  battery_stabilized_after_line_power_connected_delay_ = GetMsPref(
-      kBatteryStabilizedAfterLinePowerConnectedMsPref,
-      kDefaultBatteryStabilizedAfterLinePowerConnectedDelayMs);
-  battery_stabilized_after_line_power_disconnected_delay_ = GetMsPref(
-      kBatteryStabilizedAfterLinePowerDisconnectedMsPref,
-      kDefaultBatteryStabilizedAfterLinePowerDisconnectedDelayMs);
-  battery_stabilized_after_resume_delay_ = GetMsPref(
-      kBatteryStabilizedAfterResumeMsPref,
-      kDefaultBatteryStabilizedAfterResumeDelayMs);
+  battery_stabilized_after_startup_delay_ =
+      GetMsPref(kBatteryStabilizedAfterStartupMsPref,
+                kDefaultBatteryStabilizedAfterStartupDelayMs);
+  battery_stabilized_after_line_power_connected_delay_ =
+      GetMsPref(kBatteryStabilizedAfterLinePowerConnectedMsPref,
+                kDefaultBatteryStabilizedAfterLinePowerConnectedDelayMs);
+  battery_stabilized_after_line_power_disconnected_delay_ =
+      GetMsPref(kBatteryStabilizedAfterLinePowerDisconnectedMsPref,
+                kDefaultBatteryStabilizedAfterLinePowerDisconnectedDelayMs);
+  battery_stabilized_after_resume_delay_ =
+      GetMsPref(kBatteryStabilizedAfterResumeMsPref,
+                kDefaultBatteryStabilizedAfterResumeDelayMs);
 
   prefs_->GetDouble(kPowerSupplyFullFactorPref, &full_factor_);
   full_factor_ = std::min(std::max(kEpsilon, full_factor_), 1.0);
@@ -564,8 +567,8 @@ bool PowerSupply::SetPowerSource(const std::string& id) {
   // An empty ID means we should write -1 to any power source (we'll use the
   // active one) to ask the kernel to use the battery as the power source.
   // Otherwise, write 0 to the requested power source to activate it.
-  const base::FilePath device_path = GetPathForId(
-      id.empty() ? power_status_.external_power_source_id : id);
+  const base::FilePath device_path =
+      GetPathForId(id.empty() ? power_status_.external_power_source_id : id);
   if (device_path.empty())
     return false;
 
@@ -707,9 +710,10 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
   if (status.battery_is_present) {
     if (power_status_initialized_ &&
         status.line_power_on != power_status_.line_power_on) {
-      DeferBatterySampling(status.line_power_on ?
-          battery_stabilized_after_line_power_connected_delay_ :
-          battery_stabilized_after_line_power_disconnected_delay_);
+      DeferBatterySampling(
+          status.line_power_on
+              ? battery_stabilized_after_line_power_connected_delay_
+              : battery_stabilized_after_line_power_disconnected_delay_);
       charge_samples_->Clear();
 
       // Chargers can deliver highly-variable currents depending on various
@@ -726,8 +730,9 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
       if (status.battery_current > 0.0) {
         const double signed_current =
             (status.battery_state ==
-             PowerSupplyProperties_BatteryState_DISCHARGING) ?
-            -status.battery_current : status.battery_current;
+             PowerSupplyProperties_BatteryState_DISCHARGING)
+                ? -status.battery_current
+                : status.battery_current;
         if (status.line_power_on)
           current_samples_on_line_power_->AddSample(signed_current, now);
         else
@@ -799,8 +804,7 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   VLOG(1) << "Added power source " << port->id << ":"
           << " location=" << port->location
           << " manufacturer=" << port->manufacturer_id
-          << " model=" << port->model_id
-          << " max_power=" << port->max_power
+          << " model=" << port->model_id << " max_power=" << port->max_power
           << " active_by_default=" << port->active_by_default;
 
   // If this is a dual-role device, make sure that we're actually getting
@@ -824,8 +828,8 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
 
   // The USB PD driver reports the maximum power as being 0 watts while it's
   // being determined; avoid reporting a low-power charger in that case.
-  const bool max_power_is_less_than_ac_min = port->max_power > 0.0 &&
-      port->max_power < usb_min_ac_watts_;
+  const bool max_power_is_less_than_ac_min =
+      port->max_power > 0.0 && port->max_power < usb_min_ac_watts_;
 
   if (!dual_role_port && IsLowPowerUsbChargerType(type)) {
     // On spring, report all non-official chargers (which are reported as type
@@ -858,7 +862,8 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
 
   // POWER_SUPPLY_PROP_VENDOR does not seem to be a valid property
   // defined in <linux/power_supply.h>.
-  ReadAndTrimString(path,
+  ReadAndTrimString(
+      path,
       base::PathExists(path.Append("manufacturer")) ? "manufacturer" : "vendor",
       &status->battery_vendor);
   ReadAndTrimString(path, "model_name", &status->battery_model_name);
@@ -889,8 +894,8 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
       // Avoid passing bad time-to-empty estimates to Chrome:
       // http://crbug.com/671374
       LOG(WARNING) << "Ignoring reading with bad or missing nominal ("
-                   << nominal_voltage << ") and instantaneous ("
-                   << voltage << ") voltages";
+                   << nominal_voltage << ") and instantaneous (" << voltage
+                   << ") voltages";
       return false;
     } else {
       LOG(WARNING) << "Got nominal voltage " << nominal_voltage << "; using "
@@ -931,8 +936,8 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
   } else if (base::PathExists(path.Append("energy_full"))) {
     DCHECK_GT(nominal_voltage, 0);
     charge_full = ReadScaledDouble(path, "energy_full") / nominal_voltage;
-    charge_full_design = ReadScaledDouble(path, "energy_full_design") /
-                         nominal_voltage;
+    charge_full_design =
+        ReadScaledDouble(path, "energy_full_design") / nominal_voltage;
     charge = energy / nominal_voltage;
   } else {
     LOG(WARNING) << "Ignoring reading without battery charge/energy";
@@ -958,9 +963,9 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
   // The current can be reported as negative on some systems but not on others,
   // so it can't be used to determine whether the battery is charging or
   // discharging.
-  double current = base::PathExists(path.Append("power_now")) ?
-      fabs(ReadScaledDouble(path, "power_now")) / voltage :
-      fabs(ReadScaledDouble(path, "current_now"));
+  double current = base::PathExists(path.Append("power_now"))
+                       ? fabs(ReadScaledDouble(path, "power_now")) / voltage
+                       : fabs(ReadScaledDouble(path, "current_now"));
   status->battery_current = current;
   status->battery_energy_rate = current * voltage;
 
@@ -974,9 +979,8 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
   if (status->line_power_on) {
     if (is_full) {
       status->battery_state = PowerSupplyProperties_BatteryState_FULL;
-    } else if (current > 0.0 &&
-               (status_value == kBatteryStatusCharging ||
-                status_value == kBatteryStatusFull)) {
+    } else if (current > 0.0 && (status_value == kBatteryStatusCharging ||
+                                 status_value == kBatteryStatusFull)) {
       status->battery_state = PowerSupplyProperties_BatteryState_CHARGING;
     } else {
       status->battery_state = PowerSupplyProperties_BatteryState_DISCHARGING;
@@ -998,18 +1002,19 @@ bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
     return false;
 
   // Positive if the battery is charging and negative if it's discharging.
-  const double signed_current = status->line_power_on ?
-      current_samples_on_line_power_->GetAverage() :
-      current_samples_on_battery_power_->GetAverage();
+  const double signed_current =
+      status->line_power_on ? current_samples_on_line_power_->GetAverage()
+                            : current_samples_on_battery_power_->GetAverage();
 
   switch (status->battery_state) {
     case PowerSupplyProperties_BatteryState_CHARGING:
       if (signed_current <= kEpsilon) {
         status->battery_time_to_full = base::TimeDelta::FromSeconds(-1);
       } else {
-        const double charge_to_full = std::max(0.0,
-            status->battery_charge_full * full_factor_ -
-            status->battery_charge);
+        const double charge_to_full =
+            std::max(0.0,
+                     status->battery_charge_full * full_factor_ -
+                         status->battery_charge);
         status->battery_time_to_full = base::TimeDelta::FromSeconds(
             roundl(3600 * charge_to_full / signed_current));
       }
@@ -1025,11 +1030,12 @@ bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
 
         const double shutdown_charge =
             status->battery_charge_full * low_battery_shutdown_percent_ / 100.0;
-        const double available_charge = std::max(0.0,
-            status->battery_charge - shutdown_charge);
-        status->battery_time_to_shutdown = base::TimeDelta::FromSeconds(
-            roundl(3600 * (available_charge * status->nominal_voltage) /
-                   (-signed_current * status->battery_voltage))) -
+        const double available_charge =
+            std::max(0.0, status->battery_charge - shutdown_charge);
+        status->battery_time_to_shutdown =
+            base::TimeDelta::FromSeconds(
+                roundl(3600 * (available_charge * status->nominal_voltage) /
+                       (-signed_current * status->battery_voltage))) -
             low_battery_shutdown_time_;
         status->battery_time_to_shutdown =
             std::max(base::TimeDelta(), status->battery_time_to_shutdown);
@@ -1048,8 +1054,9 @@ void PowerSupply::UpdateObservedBatteryChargeRate(PowerStatus* status) const {
   DCHECK(status);
   const base::TimeDelta time_delta = charge_samples_->GetTimeDelta();
   status->observed_battery_charge_rate =
-      (time_delta.InMilliseconds() < kObservedBatteryChargeRateMinMs) ? 0.0 :
-      charge_samples_->GetValueDelta() / (time_delta.InSecondsF() / 3600);
+      (time_delta.InMilliseconds() < kObservedBatteryChargeRateMinMs)
+          ? 0.0
+          : charge_samples_->GetValueDelta() / (time_delta.InSecondsF() / 3600);
 }
 
 bool PowerSupply::IsBatteryBelowShutdownThreshold(
@@ -1091,8 +1098,8 @@ bool PowerSupply::PerformUpdate(UpdatePolicy update_policy,
     } else {
       notify_observers_task_.Reset(
           base::Bind(&PowerSupply::NotifyObservers, base::Unretained(this)));
-      base::MessageLoop::current()->PostTask(
-          FROM_HERE, notify_observers_task_.callback());
+      base::MessageLoop::current()->PostTask(FROM_HERE,
+                                             notify_observers_task_.callback());
     }
   }
   return success;
@@ -1102,9 +1109,10 @@ void PowerSupply::SchedulePoll() {
   base::TimeDelta delay = poll_delay_;
   base::TimeTicks now = clock_->GetCurrentTime();
   if (battery_stabilized_timestamp_ > now) {
-    delay = std::min(delay,
+    delay = std::min(
+        delay,
         battery_stabilized_timestamp_ - now +
-        base::TimeDelta::FromMilliseconds(kBatteryStabilizedSlackMs));
+            base::TimeDelta::FromMilliseconds(kBatteryStabilizedSlackMs));
   }
 
   VLOG(1) << "Scheduling update in " << delay.InMilliseconds() << " ms";

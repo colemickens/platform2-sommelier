@@ -129,20 +129,16 @@ void HandleSynchronousDBusMethodCall(
 
 // Creates a new "not supported" reply to |method_call|.
 std::unique_ptr<dbus::Response> CreateNotSupportedError(
-    dbus::MethodCall* method_call,
-    std::string message) {
-  return std::unique_ptr<dbus::Response>(
-      dbus::ErrorResponse::FromMethodCall(
-          method_call, DBUS_ERROR_NOT_SUPPORTED, message));
+    dbus::MethodCall* method_call, std::string message) {
+  return std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
+      method_call, DBUS_ERROR_NOT_SUPPORTED, message));
 }
 
 // Creates a new "invalid args" reply to |method_call|.
 std::unique_ptr<dbus::Response> CreateInvalidArgsError(
-    dbus::MethodCall* method_call,
-    std::string message) {
-  return std::unique_ptr<dbus::Response>(
-      dbus::ErrorResponse::FromMethodCall(
-          method_call, DBUS_ERROR_INVALID_ARGS, message));
+    dbus::MethodCall* method_call, std::string message) {
+  return std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
+      method_call, DBUS_ERROR_INVALID_ARGS, message));
 }
 
 }  // namespace
@@ -154,9 +150,7 @@ class Daemon::StateControllerDelegate
     : public policy::StateController::Delegate {
  public:
   explicit StateControllerDelegate(Daemon* daemon) : daemon_(daemon) {}
-  virtual ~StateControllerDelegate() {
-    daemon_ = NULL;
-  }
+  virtual ~StateControllerDelegate() { daemon_ = NULL; }
 
   // Overridden from policy::StateController::Delegate:
   bool IsUsbInputDeviceConnected() override {
@@ -168,22 +162,21 @@ class Daemon::StateControllerDelegate
   }
 
   bool IsHdmiAudioActive() override {
-    return daemon_->audio_client_ ?
-        daemon_->audio_client_->GetHdmiActive() : false;
+    return daemon_->audio_client_ ? daemon_->audio_client_->GetHdmiActive()
+                                  : false;
   }
 
   bool IsHeadphoneJackPlugged() override {
-    return daemon_->audio_client_ ?
-        daemon_->audio_client_->GetHeadphoneJackPlugged() : false;
+    return daemon_->audio_client_
+               ? daemon_->audio_client_->GetHeadphoneJackPlugged()
+               : false;
   }
 
   LidState QueryLidState() override {
     return daemon_->input_watcher_->QueryLidState();
   }
 
-  void DimScreen() override {
-    daemon_->SetBacklightsDimmedForInactivity(true);
-  }
+  void DimScreen() override { daemon_->SetBacklightsDimmedForInactivity(true); }
 
   void UndimScreen() override {
     daemon_->SetBacklightsDimmedForInactivity(false);
@@ -198,28 +191,26 @@ class Daemon::StateControllerDelegate
   }
 
   void LockScreen() override {
-    dbus::MethodCall method_call(
-        login_manager::kSessionManagerInterface,
-        login_manager::kSessionManagerLockScreen);
+    dbus::MethodCall method_call(login_manager::kSessionManagerInterface,
+                                 login_manager::kSessionManagerLockScreen);
     daemon_->dbus_wrapper_->CallMethodSync(
-        daemon_->session_manager_dbus_proxy_, &method_call,
+        daemon_->session_manager_dbus_proxy_,
+        &method_call,
         base::TimeDelta::FromMilliseconds(kSessionManagerDBusTimeoutMs));
   }
 
-  void Suspend() override {
-    daemon_->Suspend(false, 0);
-  }
+  void Suspend() override { daemon_->Suspend(false, 0); }
 
   void StopSession() override {
     // This session manager method takes a string argument, although it
     // doesn't currently do anything with it.
-    dbus::MethodCall method_call(
-        login_manager::kSessionManagerInterface,
-        login_manager::kSessionManagerStopSession);
+    dbus::MethodCall method_call(login_manager::kSessionManagerInterface,
+                                 login_manager::kSessionManagerStopSession);
     dbus::MessageWriter writer(&method_call);
     writer.AppendString("");
     daemon_->dbus_wrapper_->CallMethodSync(
-        daemon_->session_manager_dbus_proxy_, &method_call,
+        daemon_->session_manager_dbus_proxy_,
+        &method_call,
         base::TimeDelta::FromMilliseconds(kSessionManagerDBusTimeoutMs));
   }
 
@@ -232,8 +223,7 @@ class Daemon::StateControllerDelegate
     daemon_->SetBacklightsDocked(docked);
   }
 
-  void EmitIdleActionImminent(
-      base::TimeDelta time_until_idle_action) override {
+  void EmitIdleActionImminent(base::TimeDelta time_until_idle_action) override {
     IdleActionImminent proto;
     proto.set_time_until_idle_action(time_until_idle_action.ToInternalValue());
     daemon_->dbus_wrapper_->EmitSignalWithProtocolBuffer(
@@ -289,10 +279,12 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
           base::TimeDelta::FromSeconds(kLogUserActivityStoppedDelaySec),
           base::TimeDelta::FromSeconds(kLogOngoingActivitySec))),
       audio_activity_logger_(new StartStopActivityLogger(
-          "Audio activity", base::TimeDelta(),
+          "Audio activity",
+          base::TimeDelta(),
           base::TimeDelta::FromSeconds(kLogOngoingActivitySec))),
       hovering_logger_(new StartStopActivityLogger(
-          "Hovering", base::TimeDelta::FromSeconds(kLogHoveringStoppedDelaySec),
+          "Hovering",
+          base::TimeDelta::FromSeconds(kLogHoveringStoppedDelaySec),
           base::TimeDelta())),
       weak_ptr_factory_(this) {}
 
@@ -334,7 +326,9 @@ void Daemon::Init() {
     if (display_backlight_) {
       display_backlight_controller_ =
           delegate_->CreateInternalBacklightController(
-              display_backlight_.get(), prefs_.get(), light_sensor_.get(),
+              display_backlight_.get(),
+              prefs_.get(),
+              light_sensor_.get(),
               display_power_setter_.get());
     }
   }
@@ -347,8 +341,11 @@ void Daemon::Init() {
     if (keyboard_backlight_) {
       keyboard_backlight_controller_ =
           delegate_->CreateKeyboardBacklightController(
-              keyboard_backlight_.get(), prefs_.get(), light_sensor_.get(),
-              display_backlight_controller_.get(), tablet_mode);
+              keyboard_backlight_.get(),
+              prefs_.get(),
+              light_sensor_.get(),
+              display_backlight_controller_.get(),
+              tablet_mode);
       all_backlight_controllers_.push_back(
           keyboard_backlight_controller_.get());
     }
@@ -367,15 +364,17 @@ void Daemon::Init() {
   prefs_->GetBool(kMosysEventlogPref, &log_suspend_with_mosys_eventlog_);
   prefs_->GetBool(kSuspendToIdlePref, &suspend_to_idle_);
 
-  power_supply_ = delegate_->CreatePowerSupply(base::FilePath(kPowerStatusPath),
-                                               prefs_.get(), udev_.get());
+  power_supply_ = delegate_->CreatePowerSupply(
+      base::FilePath(kPowerStatusPath), prefs_.get(), udev_.get());
   power_supply_->AddObserver(this);
   if (!power_supply_->RefreshImmediately())
     LOG(ERROR) << "Initial power supply refresh failed; brace for weirdness";
   const system::PowerStatus power_status = power_supply_->GetPowerStatus();
 
-  metrics_collector_->Init(prefs_.get(), display_backlight_controller_.get(),
-                           keyboard_backlight_controller_.get(), power_status);
+  metrics_collector_->Init(prefs_.get(),
+                           display_backlight_controller_.get(),
+                           keyboard_backlight_controller_.get(),
+                           power_status);
 
   dark_resume_ = delegate_->CreateDarkResume(power_supply_.get(), prefs_.get());
   suspender_->Init(this, dbus_wrapper_.get(), dark_resume_.get(), prefs_.get());
@@ -399,8 +398,8 @@ void Daemon::Init() {
 
   const PowerSource power_source =
       power_status.line_power_on ? PowerSource::AC : PowerSource::BATTERY;
-  state_controller_->Init(state_controller_delegate_.get(), prefs_.get(),
-                          power_source, lid_state);
+  state_controller_->Init(
+      state_controller_delegate_.get(), prefs_.get(), power_source, lid_state);
 
   if (BoolPrefIsTrue(kUseCrasPref)) {
     audio_client_ = delegate_->CreateAudioClient(dbus_wrapper_.get());
@@ -434,8 +433,8 @@ bool Daemon::PidLockFileExists(const base::FilePath& path) {
 
   base::TrimWhitespaceASCII(pid, base::TRIM_TRAILING, &pid);
   if (!base::DirectoryExists(proc_path_.Append(pid))) {
-    LOG(WARNING) << path.value() << " contains stale/invalid PID \""
-                 << pid << "\"";
+    LOG(WARNING) << path.value() << " contains stale/invalid PID \"" << pid
+                 << "\"";
     return false;
   }
 
@@ -456,8 +455,7 @@ bool Daemon::FirmwareIsBeingUpdated(std::string* details_out) {
 int Daemon::RunSetuidHelper(const std::string& action,
                             const std::string& additional_args,
                             bool wait_for_completion) {
-  std::string command =
-      kSetuidHelperPath + std::string(" --action=" + action);
+  std::string command = kSetuidHelperPath + std::string(" --action=" + action);
   if (!additional_args.empty())
     command += " " + additional_args;
   if (wait_for_completion) {
@@ -486,7 +484,8 @@ void Daemon::SendBrightnessChangedSignal(
   dbus::Signal signal(kPowerManagerInterface, signal_name);
   dbus::MessageWriter writer(&signal);
   writer.AppendInt32(round(brightness_percent));
-  writer.AppendBool(cause ==
+  writer.AppendBool(
+      cause ==
       policy::BacklightController::BrightnessChangeCause::USER_INITIATED);
   dbus_wrapper_->EmitSignal(&signal);
 }
@@ -497,12 +496,12 @@ void Daemon::OnBrightnessChange(
     policy::BacklightController* source) {
   if (source == display_backlight_controller_.get() &&
       display_backlight_controller_) {
-    SendBrightnessChangedSignal(brightness_percent, cause,
-                                kBrightnessChangedSignal);
+    SendBrightnessChangedSignal(
+        brightness_percent, cause, kBrightnessChangedSignal);
   } else if (source == keyboard_backlight_controller_.get() &&
              keyboard_backlight_controller_) {
-    SendBrightnessChangedSignal(brightness_percent, cause,
-                                kKeyboardBrightnessChangedSignal);
+    SendBrightnessChangedSignal(
+        brightness_percent, cause, kKeyboardBrightnessChangedSignal);
   } else {
     NOTREACHED() << "Received a brightness change callback from an unknown "
                  << "backlight controller";
@@ -642,9 +641,7 @@ void Daemon::PrepareToSuspend() {
 }
 
 policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
-    uint64_t wakeup_count,
-    bool wakeup_count_valid,
-    base::TimeDelta duration) {
+    uint64_t wakeup_count, bool wakeup_count_valid, base::TimeDelta duration) {
   // If a firmware update is ongoing, spin for a bit to wait for it to finish:
   // http://crosbug.com/p/38947
   const base::TimeDelta firmware_poll_interval =
@@ -682,9 +679,10 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
 
   std::string args;
   if (wakeup_count_valid) {
-    args += base::StringPrintf(" --suspend_wakeup_count_valid"
-                               " --suspend_wakeup_count=%" PRIu64,
-                               wakeup_count);
+    args += base::StringPrintf(
+        " --suspend_wakeup_count_valid"
+        " --suspend_wakeup_count=%" PRIu64,
+        wakeup_count);
   }
 
   if (duration != base::TimeDelta()) {
@@ -790,8 +788,8 @@ void Daemon::OnPowerStatusUpdate() {
               << base::StringPrintf("%0.2f", status.battery_percentage) << "%, "
               << util::TimeDeltaToString(status.battery_time_to_empty)
               << " until empty, "
-              << base::StringPrintf(
-                     "%0.3f", status.observed_battery_charge_rate)
+              << base::StringPrintf("%0.3f",
+                                    status.observed_battery_charge_rate)
               << "A observed charge rate)";
     ShutDown(ShutdownMode::POWER_OFF, ShutdownReason::LOW_BATTERY);
   }
@@ -807,18 +805,20 @@ void Daemon::InitDBus() {
   dbus::ObjectProxy* chrome_proxy = dbus_wrapper_->GetObjectProxy(
       chromeos::kLibCrosServiceName, chromeos::kLibCrosServicePath);
   dbus_wrapper_->RegisterForServiceAvailability(
-      chrome_proxy, base::Bind(&Daemon::HandleChromeAvailableOrRestarted,
-                               weak_ptr_factory_.GetWeakPtr()));
+      chrome_proxy,
+      base::Bind(&Daemon::HandleChromeAvailableOrRestarted,
+                 weak_ptr_factory_.GetWeakPtr()));
 
-  session_manager_dbus_proxy_ = dbus_wrapper_->GetObjectProxy(
-      login_manager::kSessionManagerServiceName,
-      login_manager::kSessionManagerServicePath);
+  session_manager_dbus_proxy_ =
+      dbus_wrapper_->GetObjectProxy(login_manager::kSessionManagerServiceName,
+                                    login_manager::kSessionManagerServicePath);
   dbus_wrapper_->RegisterForServiceAvailability(
       session_manager_dbus_proxy_,
       base::Bind(&Daemon::HandleSessionManagerAvailableOrRestarted,
                  weak_ptr_factory_.GetWeakPtr()));
   dbus_wrapper_->RegisterForSignal(
-      session_manager_dbus_proxy_, login_manager::kSessionManagerInterface,
+      session_manager_dbus_proxy_,
+      login_manager::kSessionManagerInterface,
       login_manager::kSessionStateChangedSignal,
       base::Bind(&Daemon::HandleSessionStateChangedSignal,
                  weak_ptr_factory_.GetWeakPtr()));
@@ -827,32 +827,39 @@ void Daemon::InitDBus() {
     dbus::ObjectProxy* cras_proxy = dbus_wrapper_->GetObjectProxy(
         cras::kCrasServiceName, cras::kCrasServicePath);
     dbus_wrapper_->RegisterForServiceAvailability(
-        cras_proxy, base::Bind(&Daemon::HandleCrasAvailableOrRestarted,
-                               weak_ptr_factory_.GetWeakPtr()));
+        cras_proxy,
+        base::Bind(&Daemon::HandleCrasAvailableOrRestarted,
+                   weak_ptr_factory_.GetWeakPtr()));
     dbus_wrapper_->RegisterForSignal(
-        cras_proxy, cras::kCrasControlInterface, cras::kNodesChanged,
+        cras_proxy,
+        cras::kCrasControlInterface,
+        cras::kNodesChanged,
         base::Bind(&Daemon::HandleCrasNodesChangedSignal,
                    weak_ptr_factory_.GetWeakPtr()));
     dbus_wrapper_->RegisterForSignal(
-        cras_proxy, cras::kCrasControlInterface, cras::kActiveOutputNodeChanged,
+        cras_proxy,
+        cras::kCrasControlInterface,
+        cras::kActiveOutputNodeChanged,
         base::Bind(&Daemon::HandleCrasActiveOutputNodeChangedSignal,
                    weak_ptr_factory_.GetWeakPtr()));
     dbus_wrapper_->RegisterForSignal(
-        cras_proxy, cras::kCrasControlInterface,
+        cras_proxy,
+        cras::kCrasControlInterface,
         cras::kNumberOfActiveStreamsChanged,
         base::Bind(&Daemon::HandleCrasNumberOfActiveStreamsChanged,
                    weak_ptr_factory_.GetWeakPtr()));
   }
 
-  update_engine_dbus_proxy_ = dbus_wrapper_->GetObjectProxy(
-      update_engine::kUpdateEngineServiceName,
-      update_engine::kUpdateEngineServicePath);
+  update_engine_dbus_proxy_ =
+      dbus_wrapper_->GetObjectProxy(update_engine::kUpdateEngineServiceName,
+                                    update_engine::kUpdateEngineServicePath);
   dbus_wrapper_->RegisterForServiceAvailability(
       update_engine_dbus_proxy_,
       base::Bind(&Daemon::HandleUpdateEngineAvailable,
                  weak_ptr_factory_.GetWeakPtr()));
   dbus_wrapper_->RegisterForSignal(
-      update_engine_dbus_proxy_, update_engine::kUpdateEngineInterface,
+      update_engine_dbus_proxy_,
+      update_engine::kUpdateEngineInterface,
       update_engine::kStatusUpdate,
       base::Bind(&Daemon::HandleUpdateEngineStatusUpdateSignal,
                  weak_ptr_factory_.GetWeakPtr()));
@@ -863,8 +870,9 @@ void Daemon::InitDBus() {
     cryptohomed_dbus_proxy_ = dbus_wrapper_->GetObjectProxy(
         cryptohome::kCryptohomeServiceName, cryptohome::kCryptohomeServicePath);
     dbus_wrapper_->RegisterForServiceAvailability(
-        cryptohomed_dbus_proxy_, base::Bind(&Daemon::HandleCryptohomedAvailable,
-                                            weak_ptr_factory_.GetWeakPtr()));
+        cryptohomed_dbus_proxy_,
+        base::Bind(&Daemon::HandleCryptohomedAvailable,
+                   weak_ptr_factory_.GetWeakPtr()));
 
     int64_t tpm_status_sec = 0;
     prefs_->GetInt64(kTpmStatusIntervalSecPref, &tpm_status_sec);
@@ -872,8 +880,8 @@ void Daemon::InitDBus() {
   }
 
   // Export Daemon's D-Bus method calls.
-  typedef std::unique_ptr<dbus::Response> (
-      Daemon::*DaemonMethod)(dbus::MethodCall*);
+  typedef std::unique_ptr<dbus::Response> (Daemon::*DaemonMethod)(
+      dbus::MethodCall*);
   const std::map<const char*, DaemonMethod> kDaemonMethods = {
       {kRequestShutdownMethod, &Daemon::HandleRequestShutdownMethod},
       {kRequestRestartMethod, &Daemon::HandleRequestRestartMethod},
@@ -906,8 +914,9 @@ void Daemon::InitDBus() {
   };
   for (const auto& it : kDaemonMethods) {
     dbus_wrapper_->ExportMethod(
-        it.first, base::Bind(&HandleSynchronousDBusMethodCall,
-                             base::Bind(it.second, base::Unretained(this))));
+        it.first,
+        base::Bind(&HandleSynchronousDBusMethodCall,
+                   base::Bind(it.second, base::Unretained(this))));
   }
 
   // Export |suspender_|'s D-Bus method calls.
@@ -944,7 +953,9 @@ void Daemon::InitDBus() {
   dbus::ObjectProxy* proxy =
       dbus_wrapper_->GetObjectProxy(kBusServiceName, kBusServicePath);
   dbus_wrapper_->RegisterForSignal(
-      proxy, kBusInterface, kBusNameOwnerChangedSignal,
+      proxy,
+      kBusInterface,
+      kBusNameOwnerChangedSignal,
       base::Bind(&Daemon::HandleDBusNameOwnerChanged,
                  weak_ptr_factory_.GetWeakPtr()));
 
@@ -980,7 +991,8 @@ void Daemon::HandleSessionManagerAvailableOrRestarted(bool available) {
       login_manager::kSessionManagerInterface,
       login_manager::kSessionManagerRetrieveSessionState);
   std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
-      session_manager_dbus_proxy_, &method_call,
+      session_manager_dbus_proxy_,
+      &method_call,
       base::TimeDelta::FromMilliseconds(kSessionManagerDBusTimeoutMs));
   if (!response)
     return;
@@ -1013,7 +1025,8 @@ void Daemon::HandleUpdateEngineAvailable(bool available) {
   dbus::MethodCall method_call(update_engine::kUpdateEngineInterface,
                                update_engine::kGetStatus);
   std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
-      update_engine_dbus_proxy_, &method_call,
+      update_engine_dbus_proxy_,
+      &method_call,
       base::TimeDelta::FromMilliseconds(kUpdateEngineDBusTimeoutMs));
   if (!response)
     return;
@@ -1022,8 +1035,7 @@ void Daemon::HandleUpdateEngineAvailable(bool available) {
   int64_t last_checked_time = 0;
   double progress = 0.0;
   std::string operation;
-  if (!reader.PopInt64(&last_checked_time) ||
-      !reader.PopDouble(&progress) ||
+  if (!reader.PopInt64(&last_checked_time) || !reader.PopDouble(&progress) ||
       !reader.PopString(&operation)) {
     LOG(ERROR) << "Unable to read " << update_engine::kGetStatus << " args";
     return;
@@ -1041,16 +1053,15 @@ void Daemon::HandleCryptohomedAvailable(bool available) {
 
   RequestTpmStatus();
   if (tpm_status_interval_ > base::TimeDelta::FromSeconds(0)) {
-    tpm_status_timer_.Start(FROM_HERE, tpm_status_interval_,
-                            this, &Daemon::RequestTpmStatus);
+    tpm_status_timer_.Start(
+        FROM_HERE, tpm_status_interval_, this, &Daemon::RequestTpmStatus);
   }
 }
 
 void Daemon::HandleDBusNameOwnerChanged(dbus::Signal* signal) {
   dbus::MessageReader reader(signal);
   std::string name, old_owner, new_owner;
-  if (!reader.PopString(&name) ||
-      !reader.PopString(&old_owner) ||
+  if (!reader.PopString(&name) || !reader.PopString(&old_owner) ||
       !reader.PopString(&new_owner)) {
     LOG(ERROR) << "Unable to parse NameOwnerChanged signal";
     return;
@@ -1075,8 +1086,8 @@ void Daemon::HandleSessionStateChangedSignal(dbus::Signal* signal) {
   if (reader.PopString(&state)) {
     OnSessionStateChange(state);
   } else {
-    LOG(ERROR) << "Unable to read "
-               << login_manager::kSessionStateChangedSignal << " args";
+    LOG(ERROR) << "Unable to read " << login_manager::kSessionStateChangedSignal
+               << " args";
   }
 }
 
@@ -1085,8 +1096,7 @@ void Daemon::HandleUpdateEngineStatusUpdateSignal(dbus::Signal* signal) {
   int64_t last_checked_time = 0;
   double progress = 0.0;
   std::string operation;
-  if (!reader.PopInt64(&last_checked_time) ||
-      !reader.PopDouble(&progress) ||
+  if (!reader.PopInt64(&last_checked_time) || !reader.PopDouble(&progress) ||
       !reader.PopString(&operation)) {
     LOG(ERROR) << "Unable to read " << update_engine::kStatusUpdate << " args";
     return;
@@ -1179,12 +1189,14 @@ std::unique_ptr<dbus::Response> Daemon::HandleRequestSuspendMethod(
   // expected.
   dbus::MessageReader reader(method_call);
   uint64_t external_wakeup_count = 0;
-  const bool got_external_wakeup_count = reader.PopUint64(
-      &external_wakeup_count);
+  const bool got_external_wakeup_count =
+      reader.PopUint64(&external_wakeup_count);
   LOG(INFO) << "Got " << kRequestSuspendMethod << " message"
-            << (got_external_wakeup_count ?
-                base::StringPrintf(" with external wakeup count %" PRIu64,
-                                   external_wakeup_count).c_str() : "")
+            << (got_external_wakeup_count
+                    ? base::StringPrintf(" with external wakeup count %" PRIu64,
+                                         external_wakeup_count)
+                          .c_str()
+                    : "")
             << " from " << method_call->GetSender();
   Suspend(got_external_wakeup_count, external_wakeup_count);
   return std::unique_ptr<dbus::Response>();
@@ -1429,8 +1441,8 @@ std::unique_ptr<dbus::Response> Daemon::HandlePowerButtonAcknowledgment(
 }
 
 void Daemon::OnSessionStateChange(const std::string& state_str) {
-  SessionState state = (state_str == kSessionStarted) ?
-      SessionState::STARTED : SessionState::STOPPED;
+  SessionState state = (state_str == kSessionStarted) ? SessionState::STARTED
+                                                      : SessionState::STOPPED;
   if (state == session_state_)
     return;
 
@@ -1462,7 +1474,8 @@ void Daemon::RequestTpmStatus() {
   dbus::MessageWriter writer(&method_call);
   writer.AppendProtoAsArrayOfBytes(cryptohome::GetTpmStatusRequest());
   dbus_wrapper_->CallMethodAsync(
-      cryptohomed_dbus_proxy_, &method_call,
+      cryptohomed_dbus_proxy_,
+      &method_call,
       base::TimeDelta::FromMilliseconds(kCryptohomedDBusTimeoutMs),
       base::Bind(&Daemon::HandleGetTpmStatusResponse,
                  weak_ptr_factory_.GetWeakPtr()));
@@ -1481,8 +1494,8 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
       retry_shutdown_for_firmware_update_timer_.Start(
           FROM_HERE,
           base::TimeDelta::FromSeconds(kRetryShutdownForFirmwareUpdateSec),
-          base::Bind(&Daemon::ShutDown, weak_ptr_factory_.GetWeakPtr(), mode,
-                     reason));
+          base::Bind(
+              &Daemon::ShutDown, weak_ptr_factory_.GetWeakPtr(), mode, reason));
     }
     return;
   }
@@ -1556,9 +1569,8 @@ void Daemon::PopulateIwlWifiTransmitPowerTable() {
     return;
 
   // Perform format checking to ensure no one can inject shell command.
-  std::vector<std::string> str_values =
-      base::SplitString(iwl_wifi_power_table_, ":", base::TRIM_WHITESPACE,
-                        base::SPLIT_WANT_ALL);
+  std::vector<std::string> str_values = base::SplitString(
+      iwl_wifi_power_table_, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
   if (str_values.size() != 6) {
     LOG(ERROR) << "Wrong number of power table literal "
@@ -1580,8 +1592,9 @@ void Daemon::PopulateIwlWifiTransmitPowerTable() {
 
 void Daemon::UpdateWifiTransmitPowerForTabletMode(TabletMode mode) {
   DCHECK(set_wifi_transmit_power_for_tablet_mode_);
-  std::string args = (mode == TabletMode::ON) ?
-      "--wifi_transmit_power_tablet" : "--nowifi_transmit_power_tablet";
+  std::string args = (mode == TabletMode::ON)
+                         ? "--wifi_transmit_power_tablet"
+                         : "--nowifi_transmit_power_tablet";
 
   // Intel iwlwifi driver requires extra power table.
   if (!iwl_wifi_power_table_.empty()) {

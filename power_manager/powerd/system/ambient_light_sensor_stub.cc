@@ -14,8 +14,8 @@ AmbientLightSensorStub::AmbientLightSensorStub(int lux) : lux_(lux) {}
 AmbientLightSensorStub::~AmbientLightSensorStub() {}
 
 void AmbientLightSensorStub::NotifyObservers() {
-  FOR_EACH_OBSERVER(AmbientLightObserver, observers_,
-                    OnAmbientLightUpdated(this));
+  FOR_EACH_OBSERVER(
+      AmbientLightObserver, observers_, OnAmbientLightUpdated(this));
 }
 
 void AmbientLightSensorStub::AddObserver(AmbientLightObserver* observer) {
@@ -28,7 +28,9 @@ void AmbientLightSensorStub::RemoveObserver(AmbientLightObserver* observer) {
   observers_.RemoveObserver(observer);
 }
 
-int AmbientLightSensorStub::GetAmbientLightLux() { return lux_; }
+int AmbientLightSensorStub::GetAmbientLightLux() {
+  return lux_;
+}
 
 }  // namespace system
 }  // namespace power_manager

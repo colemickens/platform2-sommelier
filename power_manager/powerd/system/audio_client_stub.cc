@@ -41,11 +41,17 @@ void AudioClientStub::RemoveObserver(AudioObserver* observer) {
   observers_.RemoveObserver(observer);
 }
 
-void AudioClientStub::LoadInitialState() { initial_loads_++; }
+void AudioClientStub::LoadInitialState() {
+  initial_loads_++;
+}
 
-void AudioClientStub::UpdateDevices() { device_updates_++; }
+void AudioClientStub::UpdateDevices() {
+  device_updates_++;
+}
 
-void AudioClientStub::UpdateNumActiveStreams() { stream_updates_++; }
+void AudioClientStub::UpdateNumActiveStreams() {
+  stream_updates_++;
+}
 
 void AudioClientStub::SetSuspended(bool suspended) {
   suspended_ = suspended;

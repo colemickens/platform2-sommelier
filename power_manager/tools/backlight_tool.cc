@@ -30,24 +30,32 @@ int64_t PercentToLevel(
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(get_brightness, false, "Print current brightness level");
-  DEFINE_bool(get_brightness_percent, false,
+  DEFINE_bool(get_brightness_percent,
+              false,
               "Print current brightness as linearly-calculated percent");
   DEFINE_bool(get_max_brightness, false, "Print max brightness level");
   DEFINE_bool(keyboard, false, "Use keyboard (rather than panel) backlight");
   DEFINE_int64(set_brightness, -1, "Set brightness level");
-  DEFINE_double(set_brightness_percent, -1.0, "Set brightness as "
+  DEFINE_double(set_brightness_percent,
+                -1.0,
+                "Set brightness as "
                 "linearly-calculated percent in [0.0, 100.0]");
-  DEFINE_int64(set_resume_brightness, -2,
+  DEFINE_int64(set_resume_brightness,
+               -2,
                "Set brightness level on resume; -1 clears current level");
-  DEFINE_double(set_resume_brightness_percent, -1.0,
+  DEFINE_double(set_resume_brightness_percent,
+                -1.0,
                 "Set resume brightness as linearly-calculated percent in "
                 "[0.0, 100.0]");
 
-  brillo::FlagHelper::Init(argc, argv,
+  brillo::FlagHelper::Init(
+      argc,
+      argv,
       "Print or set the internal panel or keyboard backlight's brightness.");
 
   CHECK_LT((FLAGS_get_brightness + FLAGS_get_max_brightness +
-            FLAGS_get_brightness_percent), 2)
+            FLAGS_get_brightness_percent),
+           2)
       << "-get_brightness, -get_brightness_percent, and -get_max_brightness "
       << "are mutually exclusive";
   CHECK(FLAGS_set_brightness < 0 || FLAGS_set_brightness_percent < 0.0)
@@ -78,12 +86,12 @@ int main(int argc, char* argv[]) {
     printf("%f\n", level * 100.0 / max_level);
 
   if (FLAGS_set_brightness >= 0) {
-    CHECK(backlight.SetBrightnessLevel(FLAGS_set_brightness,
-                                       base::TimeDelta()));
+    CHECK(
+        backlight.SetBrightnessLevel(FLAGS_set_brightness, base::TimeDelta()));
   }
   if (FLAGS_set_brightness_percent >= 0.0) {
-    int64_t new_level = PercentToLevel(
-        backlight, FLAGS_set_brightness_percent, max_level);
+    int64_t new_level =
+        PercentToLevel(backlight, FLAGS_set_brightness_percent, max_level);
     CHECK(backlight.SetBrightnessLevel(new_level, base::TimeDelta()));
   }
 

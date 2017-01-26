@@ -159,8 +159,8 @@ bool Udev::SetSysattr(const std::string& syspath,
   }
   // udev can modify this value, hence we copy it first.
   std::unique_ptr<char, base::FreeDeleter> value_mutable(strdup(value.c_str()));
-  int rv = udev_device_set_sysattr_value(device, sysattr.c_str(),
-                                         value_mutable.get());
+  int rv = udev_device_set_sysattr_value(
+      device, sysattr.c_str(), value_mutable.get());
   udev_device_unref(device);
   if (rv != 0) {
     LOG(WARNING) << "Failed to set sysattr '" << sysattr << "' on device "
@@ -190,9 +190,9 @@ bool Udev::FindParentWithSysattr(const std::string& syspath,
       break;
     // Go up one level unless the devtype matches stop_at_devtype.
     if (devtype && strcmp(stop_at_devtype.c_str(), devtype) == 0)
-        parent = nullptr;
+      parent = nullptr;
     else
-        parent = udev_device_get_parent(parent);
+      parent = udev_device_get_parent(parent);
   }
   if (parent)
     *parent_syspath = udev_device_get_syspath(parent);
@@ -210,8 +210,8 @@ void Udev::OnFileCanReadWithoutBlocking(int fd) {
   const char* action_str = udev_device_get_action(dev);
   UdevAction action = StrToAction(action_str);
 
-  VLOG(1) << "Received event: subsystem=" << subsystem
-          << " sysname=" << sysname << " action=" << action_str;
+  VLOG(1) << "Received event: subsystem=" << subsystem << " sysname=" << sysname
+          << " action=" << action_str;
 
   HandleSubsystemEvent(action, dev);
   HandleTaggedDevice(action, dev);
@@ -223,8 +223,7 @@ void Udev::OnFileCanWriteWithoutBlocking(int fd) {
   NOTREACHED() << "Unexpected non-blocking write notification for FD " << fd;
 }
 
-void Udev::HandleSubsystemEvent(UdevAction action,
-                                struct udev_device* dev) {
+void Udev::HandleSubsystemEvent(UdevAction action, struct udev_device* dev) {
   const char* subsystem = udev_device_get_subsystem(dev);
   const char* sysname = udev_device_get_sysname(dev);
 
@@ -234,13 +233,13 @@ void Udev::HandleSubsystemEvent(UdevAction action,
   SubsystemObserverMap::iterator it = subsystem_observers_.find(subsystem);
   if (it != subsystem_observers_.end()) {
     base::ObserverList<UdevSubsystemObserver>* observers = it->second.get();
-    FOR_EACH_OBSERVER(UdevSubsystemObserver, *observers,
-        OnUdevEvent(subsystem, sysname ? sysname : "", action));
+    FOR_EACH_OBSERVER(UdevSubsystemObserver,
+                      *observers,
+                      OnUdevEvent(subsystem, sysname ? sysname : "", action));
   }
 }
 
-void Udev::HandleTaggedDevice(UdevAction action,
-                              struct udev_device* dev) {
+void Udev::HandleTaggedDevice(UdevAction action, struct udev_device* dev) {
   if (!udev_device_has_tag(dev, kPowerdUdevTag))
     return;
 
@@ -268,10 +267,11 @@ void Udev::TaggedDeviceChanged(const std::string& syspath,
   tagged_devices_[syspath] = TaggedDevice(syspath, tags);
   const TaggedDevice& device = tagged_devices_[syspath];
 
-  VLOG(1) << "Tagged device changed: syspath=" << syspath << ", tags: "
-          << (tags.empty() ? "(none)" : tags);
+  VLOG(1) << "Tagged device changed: syspath=" << syspath
+          << ", tags: " << (tags.empty() ? "(none)" : tags);
 
-  FOR_EACH_OBSERVER(UdevTaggedDeviceObserver, tagged_device_observers_,
+  FOR_EACH_OBSERVER(UdevTaggedDeviceObserver,
+                    tagged_device_observers_,
                     OnTaggedDeviceChanged(device));
 }
 
@@ -281,7 +281,8 @@ void Udev::TaggedDeviceRemoved(const std::string& syspath) {
 
   VLOG(1) << "Tagged device removed: syspath=" << syspath;
 
-  FOR_EACH_OBSERVER(UdevTaggedDeviceObserver, tagged_device_observers_,
+  FOR_EACH_OBSERVER(UdevTaggedDeviceObserver,
+                    tagged_device_observers_,
                     OnTaggedDeviceRemoved(device));
 }
 
@@ -319,8 +320,8 @@ bool Udev::EnumerateTaggedDevices() {
     const char* tags_cstr =
         udev_device_get_property_value(device, kPowerdTagsVar);
     const std::string tags = tags_cstr ? tags_cstr : "";
-    VLOG(1) << "Pre-existing tagged device: syspath=" << syspath << ", tags: "
-            << (tags.empty() ? "(none)" : tags);
+    VLOG(1) << "Pre-existing tagged device: syspath=" << syspath
+            << ", tags: " << (tags.empty() ? "(none)" : tags);
     tagged_devices_[syspath] = TaggedDevice(syspath, tags);
     udev_device_unref(device);
   }

@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/system/acpi_wakeup_helper.h"
 
+#include <utility>
+
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/macros.h>
@@ -21,9 +23,7 @@ class AcpiWakeupFile : public AcpiWakeupFileInterface {
   AcpiWakeupFile() {}
   virtual ~AcpiWakeupFile() {}
 
-  bool Exists() override {
-    return base::PathExists(kAcpiWakeupPath);
-  }
+  bool Exists() override { return base::PathExists(kAcpiWakeupPath); }
 
   bool Read(std::string* contents) override {
     CHECK(contents);
@@ -31,16 +31,14 @@ class AcpiWakeupFile : public AcpiWakeupFileInterface {
   }
 
   bool Write(const std::string& contents) override {
-    int bytes_written = base::WriteFile(kAcpiWakeupPath, contents.data(),
-                                        contents.size());
+    int bytes_written =
+        base::WriteFile(kAcpiWakeupPath, contents.data(), contents.size());
     return bytes_written == static_cast<int>(contents.size());
   }
 };
 }  // namespace
 
-AcpiWakeupHelper::AcpiWakeupHelper()
-    : file_(new AcpiWakeupFile()) {
-}
+AcpiWakeupHelper::AcpiWakeupHelper() : file_(new AcpiWakeupFile()) {}
 
 AcpiWakeupHelper::~AcpiWakeupHelper() {}
 

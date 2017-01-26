@@ -12,8 +12,7 @@ namespace power_manager {
 namespace system {
 
 RollingAverage::RollingAverage(size_t window_size)
-    : running_total_(0.0),
-      window_size_(window_size) {
+    : running_total_(0.0), window_size_(window_size) {
   DCHECK_GT(window_size_, static_cast<size_t>(0));
 }
 
@@ -38,13 +37,13 @@ double RollingAverage::GetAverage() const {
 }
 
 base::TimeDelta RollingAverage::GetTimeDelta() const {
-  return samples_.size() >= 2 ? samples_.back().time - samples_.front().time :
-      base::TimeDelta();
+  return samples_.size() >= 2 ? samples_.back().time - samples_.front().time
+                              : base::TimeDelta();
 }
 
 double RollingAverage::GetValueDelta() const {
-  return samples_.size() >= 2 ? samples_.back().value - samples_.front().value :
-      0.0;
+  return samples_.size() >= 2 ? samples_.back().value - samples_.front().value
+                              : 0.0;
 }
 
 void RollingAverage::Clear() {

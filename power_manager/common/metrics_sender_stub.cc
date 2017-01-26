@@ -20,11 +20,7 @@ MetricsSenderStub::Metric::~Metric() {}
 
 // static
 MetricsSenderStub::Metric MetricsSenderStub::Metric::CreateExp(
-    const std::string& name,
-    int sample,
-    int min,
-    int max,
-    int num_buckets) {
+    const std::string& name, int sample, int min, int max, int num_buckets) {
   Metric metric;
   metric.name = name;
   metric.type = Type::EXPONENTIAL;
@@ -36,9 +32,7 @@ MetricsSenderStub::Metric MetricsSenderStub::Metric::CreateExp(
 }
 
 MetricsSenderStub::Metric MetricsSenderStub::Metric::CreateEnum(
-    const std::string& name,
-    int sample,
-    int max) {
+    const std::string& name, int sample, int max) {
   Metric metric;
   metric.name = name;
   metric.type = Type::ENUMERATION;
@@ -50,7 +44,12 @@ MetricsSenderStub::Metric MetricsSenderStub::Metric::CreateEnum(
 std::string MetricsSenderStub::Metric::ToString() const {
   return base::StringPrintf(
       "name=%s,type=%d,sample=%d,min=%d,max=%d,num_buckets=%d",
-      name.c_str(), static_cast<int>(type), sample, min, max, num_buckets);
+      name.c_str(),
+      static_cast<int>(type),
+      sample,
+      min,
+      max,
+      num_buckets);
 }
 
 MetricsSenderStub::MetricsSenderStub() {
@@ -65,13 +64,9 @@ std::string MetricsSenderStub::GetMetric(size_t i) const {
   return metrics_.size() > i ? metrics_[i].ToString() : std::string();
 }
 
-bool MetricsSenderStub::SendMetric(const std::string& name,
-                                   int sample,
-                                   int min,
-                                   int max,
-                                   int num_buckets) {
-  metrics_.push_back(Metric::CreateExp(
-      name, sample, min, max, num_buckets));
+bool MetricsSenderStub::SendMetric(
+    const std::string& name, int sample, int min, int max, int num_buckets) {
+  metrics_.push_back(Metric::CreateExp(name, sample, min, max, num_buckets));
   return true;
 }
 

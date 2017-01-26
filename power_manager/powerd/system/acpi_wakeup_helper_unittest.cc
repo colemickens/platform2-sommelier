@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/system/acpi_wakeup_helper.h"
 
+#include <utility>
+
 #include "gtest/gtest.h"
 #include "power_manager/common/test_main_loop_runner.h"
 
@@ -13,33 +15,30 @@ namespace system {
 namespace {
 
 const char* const kFileContents[] = {
-  // State 0
-  "Device\tS-state\t  Status   Sysfs node\n"
-  "LID0\t  S4\t*enabled \n"
-  "TPAD\t  S3\t*enabled   pnp:00:00\n"
-  "TSCR\t  S3\t*enabled   pnp:00:01\n"
-  "HDEF\t  S3\t*disabled  pci:0000:00:1b.0\n"
-  "EHCI\t  S3\t*disabled\n"
-  "XHCI\t  S3\t*enabled   pci:0000:00:14.0\n",
+    // State 0
+    "Device\tS-state\t  Status   Sysfs node\n"
+    "LID0\t  S4\t*enabled \n"
+    "TPAD\t  S3\t*enabled   pnp:00:00\n"
+    "TSCR\t  S3\t*enabled   pnp:00:01\n"
+    "HDEF\t  S3\t*disabled  pci:0000:00:1b.0\n"
+    "EHCI\t  S3\t*disabled\n"
+    "XHCI\t  S3\t*enabled   pci:0000:00:14.0\n",
 
-  // State 1: After toggling TSCR
-  "Device\tS-state\t  Status   Sysfs node\n"
-  "LID0\t  S4\t*enabled \n"
-  "TPAD\t  S3\t*enabled   pnp:00:00\n"
-  "TSCR\t  S3\t*disabled  pnp:00:01\n"
-  "HDEF\t  S3\t*disabled  pci:0000:00:1b.0\n"
-  "EHCI\t  S3\t*disabled\n"
-  "XHCI\t  S3\t*enabled   pci:0000:00:14.0\n"
-};
+    // State 1: After toggling TSCR
+    "Device\tS-state\t  Status   Sysfs node\n"
+    "LID0\t  S4\t*enabled \n"
+    "TPAD\t  S3\t*enabled   pnp:00:00\n"
+    "TSCR\t  S3\t*disabled  pnp:00:01\n"
+    "HDEF\t  S3\t*disabled  pci:0000:00:1b.0\n"
+    "EHCI\t  S3\t*disabled\n"
+    "XHCI\t  S3\t*enabled   pci:0000:00:14.0\n"};
 
 class FakeAcpiWakeupFile : public AcpiWakeupFileInterface {
  public:
   FakeAcpiWakeupFile()
       : contents_(NULL), expected_write_(NULL), contents_after_write_(NULL) {}
 
-  bool Exists() override {
-    return contents_ != NULL;
-  }
+  bool Exists() override { return contents_ != NULL; }
 
   bool Read(std::string* contents) override {
     if (!contents_)
@@ -94,7 +93,7 @@ class AcpiWakeupHelperTest : public ::testing::Test {
   }
 
   AcpiWakeupHelper helper_;
-  FakeAcpiWakeupFile *file_;
+  FakeAcpiWakeupFile* file_;
 };
 
 TEST_F(AcpiWakeupHelperTest, Get) {

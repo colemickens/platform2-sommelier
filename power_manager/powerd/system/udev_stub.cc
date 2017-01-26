@@ -25,14 +25,16 @@ void UdevStub::TaggedDeviceChanged(const std::string& syspath,
                                    const std::string& tags) {
   tagged_devices_[syspath] = TaggedDevice(syspath, tags);
   const TaggedDevice& device = tagged_devices_[syspath];
-  FOR_EACH_OBSERVER(UdevTaggedDeviceObserver, tagged_device_observers_,
+  FOR_EACH_OBSERVER(UdevTaggedDeviceObserver,
+                    tagged_device_observers_,
                     OnTaggedDeviceChanged(device));
 }
 
 void UdevStub::TaggedDeviceRemoved(const std::string& syspath) {
   TaggedDevice device = tagged_devices_[syspath];
   tagged_devices_.erase(syspath);
-  FOR_EACH_OBSERVER(UdevTaggedDeviceObserver, tagged_device_observers_,
+  FOR_EACH_OBSERVER(UdevTaggedDeviceObserver,
+                    tagged_device_observers_,
                     OnTaggedDeviceRemoved(device));
 }
 

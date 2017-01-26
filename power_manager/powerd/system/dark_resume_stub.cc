@@ -11,19 +11,16 @@ DarkResumeStub::DarkResumeStub()
     : action_(Action::SUSPEND),
       in_dark_resume_(false),
       enabled_(false),
-      can_safely_exit_dark_resume_(true) {
-}
+      can_safely_exit_dark_resume_(true) {}
 
-DarkResumeStub::~DarkResumeStub() {
-}
+DarkResumeStub::~DarkResumeStub() {}
 
 void DarkResumeStub::PrepareForSuspendRequest() {}
 
 void DarkResumeStub::UndoPrepareForSuspendRequest() {}
 
 void DarkResumeStub::GetActionForSuspendAttempt(
-    Action* action,
-    base::TimeDelta* suspend_duration) {
+    Action* action, base::TimeDelta* suspend_duration) {
   CHECK(action);
   CHECK(suspend_duration);
   *action = action_;

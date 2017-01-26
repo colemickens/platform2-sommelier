@@ -5,13 +5,14 @@
 #include "power_manager/common/prefs.h"
 
 #include <set>
+#include <utility>
 
 #include <base/bind.h>
-#include <base/location.h>
-#include <base/logging.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/location.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 
@@ -43,8 +44,7 @@ bool Prefs::TestApi::TriggerWriteTimeout() {
 
 Prefs::Prefs()
     : write_interval_(
-          base::TimeDelta::FromMilliseconds(kDefaultWriteIntervalMs)) {
-}
+          base::TimeDelta::FromMilliseconds(kDefaultWriteIntervalMs)) {}
 
 Prefs::~Prefs() {
   if (write_prefs_timer_.IsRunning())
@@ -55,7 +55,8 @@ bool Prefs::Init(const std::vector<base::FilePath>& pref_paths) {
   CHECK(!pref_paths.empty());
   pref_paths_ = pref_paths;
   return dir_watcher_.Watch(
-      pref_paths_[0], false,
+      pref_paths_[0],
+      false,
       base::Bind(&Prefs::HandleFileChanged, base::Unretained(this)));
 }
 
@@ -98,7 +99,8 @@ void Prefs::GetPrefStrings(const std::string& name,
   results->clear();
 
   for (std::vector<base::FilePath>::const_iterator iter = pref_paths_.begin();
-       iter != pref_paths_.end(); ++iter) {
+       iter != pref_paths_.end();
+       ++iter) {
     base::FilePath path = iter->Append(name);
     std::string buf;
 
@@ -135,7 +137,8 @@ bool Prefs::GetInt64(const std::string& name, int64_t* value) {
   GetPrefStrings(name, true, &results);
 
   for (std::vector<PrefReadResult>::const_iterator iter = results.begin();
-       iter != results.end(); ++iter) {
+       iter != results.end();
+       ++iter) {
     if (base::StringToInt64(iter->value, value))
       return true;
     else
@@ -150,7 +153,8 @@ bool Prefs::GetDouble(const std::string& name, double* value) {
   GetPrefStrings(name, true, &results);
 
   for (std::vector<PrefReadResult>::const_iterator iter = results.begin();
-       iter != results.end(); ++iter) {
+       iter != results.end();
+       ++iter) {
     if (base::StringToDouble(iter->value, value))
       return true;
     else
@@ -188,15 +192,19 @@ void Prefs::ScheduleWrite() {
   if (last_write_time_.is_null() || time_since_last_write >= write_interval_) {
     WritePrefs();
   } else if (!write_prefs_timer_.IsRunning()) {
-    write_prefs_timer_.Start(FROM_HERE, write_interval_ - time_since_last_write,
-                             this, &Prefs::WritePrefs);
+    write_prefs_timer_.Start(FROM_HERE,
+                             write_interval_ - time_since_last_write,
+                             this,
+                             &Prefs::WritePrefs);
   }
 }
 
 void Prefs::WritePrefs() {
   CHECK(!pref_paths_.empty());
   for (std::map<std::string, std::string>::const_iterator it =
-       prefs_to_write_.begin(); it != prefs_to_write_.end(); ++it) {
+           prefs_to_write_.begin();
+       it != prefs_to_write_.end();
+       ++it) {
     const std::string& name = it->first;
     const std::string& value = it->second;
     base::FilePath path = pref_paths_[0].Append(name);
@@ -217,24 +225,29 @@ void Prefs::UpdateFileWatchers(const base::FilePath& dir) {
   }
   std::vector<std::string> added_prefs;
   for (std::set<std::string>::const_iterator it = current_prefs.begin();
-       it != current_prefs.end(); ++it) {
+       it != current_prefs.end();
+       ++it) {
     if (file_watchers_.find(*it) == file_watchers_.end())
       added_prefs.push_back(*it);
   }
   std::vector<std::string> removed_prefs;
   for (FileWatcherMap::const_iterator it = file_watchers_.begin();
-       it != file_watchers_.end(); ++it) {
+       it != file_watchers_.end();
+       ++it) {
     if (current_prefs.find(it->first) == current_prefs.end())
       removed_prefs.push_back(it->first);
   }
 
   // Start watching new files.
   for (std::vector<std::string>::const_iterator it = added_prefs.begin();
-       it != added_prefs.end(); ++it) {
+       it != added_prefs.end();
+       ++it) {
     const std::string& name = *it;
     const base::FilePath path = dir.Append(name);
     linked_ptr<base::FilePathWatcher> watcher(new base::FilePathWatcher);
-    if (watcher->Watch(path, false,
+    if (watcher->Watch(
+            path,
+            false,
             base::Bind(&Prefs::HandleFileChanged, base::Unretained(this)))) {
       file_watchers_.insert(std::make_pair(name, watcher));
     } else {
@@ -245,7 +258,8 @@ void Prefs::UpdateFileWatchers(const base::FilePath& dir) {
 
   // Stop watching old files.
   for (std::vector<std::string>::const_iterator it = removed_prefs.begin();
-       it != removed_prefs.end(); ++it) {
+       it != removed_prefs.end();
+       ++it) {
     const std::string& name = *it;
     file_watchers_.erase(name);
     FOR_EACH_OBSERVER(PrefsObserver, observers_, OnPrefChanged(name));

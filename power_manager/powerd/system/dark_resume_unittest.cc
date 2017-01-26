@@ -178,11 +178,10 @@ class DarkResumeTest : public ::testing::Test {
 
   // Writes the passed-in dark resume state to the in-use state file.
   void WriteDarkResumeState(bool in_dark_resume) {
-    const char* state = in_dark_resume ? SystemType::kInDarkResume :
-        SystemType::kNotInDarkResume;
+    const char* state = in_dark_resume ? SystemType::kInDarkResume
+                                       : SystemType::kNotInDarkResume;
     ASSERT_TRUE(util::WriteFileFully(
-        temp_dir_.path().Append(SystemType::kStateFile),
-        state, strlen(state)));
+        temp_dir_.path().Append(SystemType::kStateFile), state, strlen(state)));
   }
 
   // Updates the status returned by |power_supply_|.
@@ -204,8 +203,8 @@ class DarkResumeTest : public ::testing::Test {
   void Suspend(DarkResumeInterface::Action* action,
                base::TimeDelta* suspend_duration,
                bool woken_by_timer) {
-    system_.Suspend(dark_resume_.get(), action, suspend_duration,
-                             woken_by_timer);
+    system_.Suspend(
+        dark_resume_.get(), action, suspend_duration, woken_by_timer);
     dark_resume_->HandleSuccessfulResume();
   }
 
@@ -272,10 +271,11 @@ TYPED_TEST(DarkResumeTest, SuspendAndShutDown) {
 // Test that a new shutdown threshold is calculated when suspending from outside
 // of dark resume.
 TYPED_TEST(DarkResumeTest, UserResumes) {
-  this->prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10\n"
-                                                          "20.0 50\n"
-                                                          "50.0 100\n"
-                                                          "80.0 500\n");
+  this->prefs_.SetString(kDarkResumeSuspendDurationsPref,
+                         "0.0 10\n"
+                         "20.0 50\n"
+                         "50.0 100\n"
+                         "80.0 500\n");
   this->Init();
   DarkResumeInterface::Action action;
   base::TimeDelta suspend_duration;
@@ -456,8 +456,9 @@ TYPED_TEST(DarkResumeTest, PowerStatusRefreshFails) {
 
 // Check that we don't fail to schedule work after a full resume.
 TYPED_TEST(DarkResumeTest, FullResumeReschedule) {
-  this->prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10\n"
-                                                          "50.0 20\n");
+  this->prefs_.SetString(kDarkResumeSuspendDurationsPref,
+                         "0.0 10\n"
+                         "50.0 20\n");
   this->Init();
 
   // This "full resume" will not have fired the timer.
@@ -482,8 +483,9 @@ TYPED_TEST(DarkResumeTest, FullResumeReschedule) {
 
 // Check that we don't reschedule work when we dark resume for another reason.
 TYPED_TEST(DarkResumeTest, InterruptedDarkResume) {
-  this->prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10\n"
-                                                          "50.0 20\n");
+  this->prefs_.SetString(kDarkResumeSuspendDurationsPref,
+                         "0.0 10\n"
+                         "50.0 20\n");
   this->Init();
 
   // This doesn't apply to legacy pathways, since there are no dark resumes
@@ -513,8 +515,9 @@ TYPED_TEST(DarkResumeTest, InterruptedDarkResume) {
 
 // Check that we suspend normally after exiting dark resume after user activity.
 TYPED_TEST(DarkResumeTest, ExitDarkResume) {
-  this->prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10\n"
-                                                          "50.0 20\n");
+  this->prefs_.SetString(kDarkResumeSuspendDurationsPref,
+                         "0.0 10\n"
+                         "50.0 20\n");
   this->Init();
   this->SetBattery(80.0, false);
   DarkResumeInterface::Action action;

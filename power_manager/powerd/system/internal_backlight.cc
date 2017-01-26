@@ -71,8 +71,7 @@ InternalBacklight::InternalBacklight()
       max_brightness_level_(0),
       current_brightness_level_(0),
       transition_start_level_(0),
-      transition_end_level_(0) {
-}
+      transition_end_level_(0) {}
 
 InternalBacklight::~InternalBacklight() {}
 
@@ -172,8 +171,10 @@ bool InternalBacklight::SetBrightnessLevel(int64_t level,
   transition_start_level_ = current_brightness_level_;
   transition_end_level_ = level;
   if (!transition_timer_.IsRunning()) {
-    transition_timer_.Start(FROM_HERE,
-        base::TimeDelta::FromMilliseconds(kTransitionIntervalMs), this,
+    transition_timer_.Start(
+        FROM_HERE,
+        base::TimeDelta::FromMilliseconds(kTransitionIntervalMs),
+        this,
         &InternalBacklight::HandleTransitionTimeout);
     transition_timer_start_time_ = transition_start_time_;
   }
@@ -223,9 +224,9 @@ void InternalBacklight::HandleTransitionTimeout() {
     double transition_fraction =
         (now - transition_start_time_).InMillisecondsF() /
         (transition_end_time_ - transition_start_time_).InMillisecondsF();
-    int64_t intermediate_amount = lround(
-        transition_fraction *
-        (transition_end_level_ - transition_start_level_));
+    int64_t intermediate_amount =
+        lround(transition_fraction *
+               (transition_end_level_ - transition_start_level_));
     new_level = transition_start_level_ + intermediate_amount;
   }
 
