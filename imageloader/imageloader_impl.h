@@ -11,22 +11,20 @@
 #include <base/gtest_prod_util.h>
 #include <base/macros.h>
 
-#include "verity_mounter.h"
+#include "helper_process.h"
 
 namespace imageloader {
 
 struct ImageLoaderConfig {
   ImageLoaderConfig(const std::vector<uint8_t> key, const char* storage_path,
-                    const char* mount_path, std::unique_ptr<VerityMounter> ops)
+                    const char* mount_path)
       : key(key),
         storage_dir(storage_path),
-        mount_path(mount_path),
-        verity_mounter(std::move(ops)) {}
+        mount_path(mount_path) {}
 
   std::vector<uint8_t> key;
   base::FilePath storage_dir;
   base::FilePath mount_path;
-  std::unique_ptr<VerityMounter> verity_mounter;
 };
 
 class ImageLoaderImpl {
@@ -44,10 +42,11 @@ class ImageLoaderImpl {
 
   // Load the specified component. This returns the mount point or an empty
   // string on failure.
-  std::string LoadComponent(const std::string& name);
+  std::string LoadComponent(const std::string& name, HelperProcess* process);
 
   // Load the specified component at a set mount point.
-  bool LoadComponent(const std::string& name, const std::string& mount_point);
+  bool LoadComponent(const std::string& name, const std::string& mount_point,
+                     HelperProcess* process);
 
   // The directory hierarchy for a component consists of the storage_root (i.e.
   // `/var/lib/imageloader`), the component_root

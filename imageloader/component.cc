@@ -24,6 +24,8 @@
 #include <crypto/sha2.h>
 #include <crypto/signature_verifier.h>
 
+#include "helper_process.h"
+
 namespace imageloader {
 
 namespace {
@@ -130,7 +132,7 @@ const Component::Manifest& Component::manifest() {
   return manifest_;
 }
 
-bool Component::Mount(VerityMounter* mounter, const base::FilePath& dest_dir) {
+bool Component::Mount(HelperProcess* mounter, const base::FilePath& dest_dir) {
   if (!initialized_) {
     NOTREACHED() << "Component not initialized";
     return false;
@@ -151,12 +153,7 @@ bool Component::Mount(VerityMounter* mounter, const base::FilePath& dest_dir) {
   }
   base::ScopedFD image_fd(image.TakePlatformFile());
 
-  // The mount point is not yet taken, so go ahead.
-  if (!mounter->Mount(image_fd, dest_dir, table)) {
-    LOG(ERROR) << "Failed to mount image.";
-    return false;
-  }
-  return true;
+  return mounter->SendMountCommand(image_fd.get(), dest_dir.value(), table);
 }
 
 bool Component::ParseManifest() {

@@ -10,9 +10,8 @@
 #include <string>
 #include <vector>
 
-#include "mock_verity_mounter.h"
+#include "mock_helper_process.h"
 #include "test_utilities.h"
-#include "verity_mounter.h"
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -143,10 +142,14 @@ TEST_F(ComponentTest, TestCopyAndMountComponent) {
   ASSERT_TRUE(base::CreateDirectory(copied_dir));
   ASSERT_TRUE(base::SetPosixFilePermissions(copied_dir, kComponentDirPerms));
 
-  auto mount_mock = base::MakeUnique<MockVerityMounter>();
-  ON_CALL(*mount_mock, Mount(_, _, _)).WillByDefault(testing::Return(true));
-  EXPECT_CALL(*mount_mock, Mount(_, _, _)).Times(1);
-  ASSERT_TRUE(copied_component.Mount(mount_mock.get(), mount_dir));
+  // Note: this fails to test the actual mounting process since it is just a
+  // mock here. The platform_ImageLoader autotest tests the real helper
+  // process running as a dbus service.
+  auto helper_mock = base::MakeUnique<MockHelperProcess>();
+  EXPECT_CALL(*helper_mock, SendMountCommand(_, _, _)).Times(1);
+  ON_CALL(*helper_mock, SendMountCommand(_, _, _))
+      .WillByDefault(testing::Return(true));
+  ASSERT_TRUE(copied_component.Mount(helper_mock.get(), mount_dir));
 }
 
 TEST_F(ComponentTest, CheckFilesAfterCopy) {

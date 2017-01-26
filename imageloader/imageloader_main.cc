@@ -8,9 +8,10 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
+#include "helper_process.h"
 #include "imageloader.h"
 #include "imageloader_impl.h"
-#include "verity_mounter.h"
+#include "mount_helper.h"
 
 constexpr uint8_t kProdPublicKey[] = {
     0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02,
@@ -35,18 +36,33 @@ int main(int argc, char** argv) {
                 "Specifies the name of the component when using --mount.");
   DEFINE_string(mount_point, "",
                 "Specifies the mountpoint when using --mount.");
+  DEFINE_int32(mount_helper_fd, -1,
+               "Control socket for starting an ImageLoader subprocess. Used "
+               "internally.");
   brillo::FlagHelper::Init(argc, argv, "imageloader");
 
   brillo::OpenLog("imageloader", true);
   brillo::InitLog(brillo::kLogToSyslog);
 
+  // Executing this as the helper process if specified.
+  if (FLAGS_mount_helper_fd >= 0) {
+    CHECK_GT(FLAGS_mount_helper_fd, -1);
+    base::ScopedFD fd(FLAGS_mount_helper_fd);
+    imageloader::MountHelper mount_helper(std::move(fd));
+    return mount_helper.Run();
+  }
+
   std::vector<uint8_t> key(std::begin(kProdPublicKey),
                            std::end(kProdPublicKey));
-  auto verity_mounter = base::MakeUnique<imageloader::VerityMounter>();
-  imageloader::ImageLoaderConfig config(key, kComponentsPath, kMountPath,
-                                        std::move(verity_mounter));
+  imageloader::ImageLoaderConfig config(key, kComponentsPath, kMountPath);
+  auto helper_process = base::MakeUnique<imageloader::HelperProcess>();
+  helper_process->Start(argc, argv, "--mount_helper_fd");
 
+  // Load and mount the specified component and exit.
   if (FLAGS_mount) {
+    // Run with minimal privilege.
+    imageloader::ImageLoader::EnterSandbox();
+
     if (FLAGS_mount_point == "" || FLAGS_mount_component == "") {
       LOG(ERROR) << "--mount_component=name and --mount_point=path must be set "
                     "with --mount";
@@ -55,14 +71,16 @@ int main(int argc, char** argv) {
     // Access the ImageLoaderImpl directly to avoid needless dbus dependencies,
     // which may not be available at early boot.
     imageloader::ImageLoaderImpl loader(std::move(config));
-    if (!loader.LoadComponent(FLAGS_mount_component, FLAGS_mount_point)) {
+    if (!loader.LoadComponent(FLAGS_mount_component, FLAGS_mount_point,
+                              helper_process.get())) {
       LOG(ERROR) << "Failed to verify and mount component.";
       return 1;
     }
     return 0;
   }
 
-  imageloader::ImageLoader daemon(std::move(config));
+  // Run as a daemon and wait for dbus requests.
+  imageloader::ImageLoader daemon(std::move(config), std::move(helper_process));
   daemon.Run();
 
   return 0;

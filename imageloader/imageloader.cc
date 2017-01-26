@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium OS Authors. All rights reserved.
+// Copyright 2017 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -23,15 +23,17 @@ const char ImageLoader::kImageLoaderGroupName[] = "imageloaderd";
 const char ImageLoader::kImageLoaderUserName[] = "imageloaderd";
 const int ImageLoader::kShutdownTimeoutMilliseconds = 20000;
 
-ImageLoader::ImageLoader(ImageLoaderConfig config)
+ImageLoader::ImageLoader(ImageLoaderConfig config,
+                         std::unique_ptr<HelperProcess> process)
     : DBusServiceDaemon(kImageLoaderServiceName,
                         "/org/chromium/ImageLoader/Manager"),
-      impl_(std::move(config)) {}
+      impl_(std::move(config)),
+      helper_process_(std::move(process)) {}
 
 ImageLoader::~ImageLoader() {}
 
-int ImageLoader::OnInit() {
-  // Run with minimal privileges.
+// static
+void ImageLoader::EnterSandbox() {
   struct minijail* jail = minijail_new();
   minijail_no_new_privs(jail);
   minijail_use_seccomp_filter(jail);
@@ -39,15 +41,25 @@ int ImageLoader::OnInit() {
   minijail_reset_signal_mask(jail);
   minijail_namespace_ipc(jail);
   minijail_namespace_net(jail);
-  minijail_namespace_user(jail);
   minijail_remount_proc_readonly(jail);
   CHECK_EQ(0, minijail_change_user(jail, kImageLoaderUserName));
   CHECK_EQ(0, minijail_change_group(jail, kImageLoaderGroupName));
   minijail_enter(jail);
+}
+
+int ImageLoader::OnInit() {
+  // Run with minimal privileges.
+  EnterSandbox();
 
   int return_code = brillo::DBusServiceDaemon::OnInit();
   if (return_code != EX_OK)
     return return_code;
+
+  process_reaper_.Register(this);
+  process_reaper_.WatchForChild(
+      FROM_HERE, helper_process_->pid(),
+      base::Bind(&ImageLoader::OnSubprocessExited, weak_factory_.GetWeakPtr(),
+                 helper_process_->pid()));
 
   PostponeShutdown();
 
@@ -66,6 +78,10 @@ void ImageLoader::RegisterDBusObjectsAsync(
 
 void ImageLoader::OnShutdown(int* return_code) {
   brillo::DBusServiceDaemon::OnShutdown(return_code);
+}
+
+void ImageLoader::OnSubprocessExited(pid_t pid, const siginfo_t& info) {
+  LOG(FATAL) << "Subprocess " << pid << " exited unexpectedly.";
 }
 
 void ImageLoader::PostponeShutdown() {
@@ -95,7 +111,7 @@ bool ImageLoader::GetComponentVersion(brillo::ErrorPtr* err,
 
 bool ImageLoader::LoadComponent(brillo::ErrorPtr* err, const std::string& name,
                                 std::string* out_mount_point) {
-  *out_mount_point = impl_.LoadComponent(name);
+  *out_mount_point = impl_.LoadComponent(name, helper_process_.get());
   PostponeShutdown();
   return true;
 }

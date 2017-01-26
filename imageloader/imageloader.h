@@ -6,13 +6,17 @@
 
 #include <string>
 
+#include <signal.h>
+
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/errors/error.h>
+#include <brillo/process_reaper.h>
 
 #include "dbus_adaptors/org.chromium.ImageLoaderInterface.h"
+#include "helper_process.h"
 #include "imageloader_impl.h"
 
 namespace imageloader {
@@ -27,7 +31,7 @@ class ImageLoader : public brillo::DBusServiceDaemon,
   static const char kImageLoaderGroupName[];
   static const char kImageLoaderUserName[];
 
-  ImageLoader(ImageLoaderConfig config);
+  ImageLoader(ImageLoaderConfig config, std::unique_ptr<HelperProcess> helper);
   ~ImageLoader();
 
   // Implementations of the public methods interface.
@@ -44,7 +48,11 @@ class ImageLoader : public brillo::DBusServiceDaemon,
 
   // Load and mount a component.
   bool LoadComponent(brillo::ErrorPtr* err, const std::string& name,
-                     std::string* out_mount_point);
+                     std::string* out_mount_point) override;
+
+  // Sandboxes the runtime environment, using minijail. This is publicly exposed
+  // so that imageloader_main.cc can sandbox when not running as a daemon.
+  static void EnterSandbox();
 
  protected:
   int OnInit() override;
@@ -53,6 +61,11 @@ class ImageLoader : public brillo::DBusServiceDaemon,
   void OnShutdown(int* return_code) override;
 
  private:
+  // Callback from ProcessReaper to notify ImageLoader that one of the
+  // subprocesses died.
+  void OnSubprocessExited(pid_t pid, const siginfo_t& info);
+  // ImageLoader exits after 20 seconds of inactivity. This function restarts
+  // the timer.
   void PostponeShutdown();
 
   // Daemon will automatically shutdown after this length of idle time.
@@ -60,6 +73,8 @@ class ImageLoader : public brillo::DBusServiceDaemon,
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   ImageLoaderImpl impl_;
+  std::unique_ptr<HelperProcess> helper_process_;
+  brillo::ProcessReaper process_reaper_;
   base::CancelableClosure shutdown_callback_;
   org::chromium::ImageLoaderInterfaceAdaptor dbus_adaptor_{this};
 

@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "component.h"
-#include "mock_verity_mounter.h"
+#include "mock_helper_process.h"
 #include "test_utilities.h"
 #include "verity_mounter.h"
 
@@ -37,8 +37,7 @@ class ImageLoaderTest : public testing::Test {
   ImageLoaderConfig GetConfig(const char* path) {
     std::vector<uint8_t> key(std::begin(kDevPublicKey),
                              std::end(kDevPublicKey));
-    auto ops = base::MakeUnique<MockVerityMounter>();
-    ImageLoaderConfig config(key, path, "/foo", std::move(ops));
+    ImageLoaderConfig config(key, path, "/foo");
     return config;
   }
 
@@ -112,16 +111,16 @@ TEST_F(ImageLoaderTest, RegisterComponentAfterCrash) {
 
 TEST_F(ImageLoaderTest, MountValidImage) {
   std::vector<uint8_t> key(std::begin(kDevPublicKey), std::end(kDevPublicKey));
-  auto mount_mock = base::MakeUnique<MockVerityMounter>();
-  ON_CALL(*mount_mock, Mount(_, _, _)).WillByDefault(testing::Return(true));
-  EXPECT_CALL(*mount_mock, Mount(_, _, _)).Times(2);
+  auto helper_mock = base::MakeUnique<MockHelperProcess>();
+  EXPECT_CALL(*helper_mock, SendMountCommand(_, _, _)).Times(2);
+  ON_CALL(*helper_mock, SendMountCommand(_, _, _))
+      .WillByDefault(testing::Return(true));
 
   base::ScopedTempDir scoped_mount_dir;
   ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
 
   ImageLoaderConfig config(key, temp_dir_.value().c_str(),
-                           scoped_mount_dir.path().value().c_str(),
-                           std::move(mount_mock));
+                           scoped_mount_dir.path().value().c_str());
   ImageLoaderImpl loader(std::move(config));
 
   // We previously tested RegisterComponent, so assume this works if it reports
@@ -131,26 +130,28 @@ TEST_F(ImageLoaderTest, MountValidImage) {
 
   const std::string expected_path =
       scoped_mount_dir.path().value() + "/PepperFlashPlayer/22.0.0.158";
-  EXPECT_EQ(expected_path, loader.LoadComponent(kTestComponentName));
+  EXPECT_EQ(expected_path,
+            loader.LoadComponent(kTestComponentName, helper_mock.get()));
 
   // Let's also test mounting the component at a fixed point.
   const std::string expected_path2 =
       scoped_mount_dir.path().value() + "/FixedMountPoint";
-  EXPECT_TRUE(loader.LoadComponent(kTestComponentName, expected_path2));
+  EXPECT_TRUE(loader.LoadComponent(kTestComponentName, expected_path2,
+                                   helper_mock.get()));
 }
 
 TEST_F(ImageLoaderTest, MountInvalidImage) {
   std::vector<uint8_t> key(std::begin(kDevPublicKey), std::end(kDevPublicKey));
-  auto mount_mock = base::MakeUnique<MockVerityMounter>();
-  ON_CALL(*mount_mock, Mount(_, _, _)).WillByDefault(testing::Return(true));
-  EXPECT_CALL(*mount_mock, Mount(_, _, _)).Times(0);
+  auto helper_mock = base::MakeUnique<MockHelperProcess>();
+  EXPECT_CALL(*helper_mock, SendMountCommand(_, _, _)).Times(0);
+  ON_CALL(*helper_mock, SendMountCommand(_, _, _))
+      .WillByDefault(testing::Return(true));
 
   base::ScopedTempDir scoped_mount_dir;
   ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
 
   ImageLoaderConfig config(key, temp_dir_.value().c_str(),
-                           scoped_mount_dir.path().value().c_str(),
-                           std::move(mount_mock));
+                           scoped_mount_dir.path().value().c_str());
   ImageLoaderImpl loader(std::move(config));
 
   // We previously tested RegisterComponent, so assume this works if it reports
@@ -164,7 +165,7 @@ TEST_F(ImageLoaderTest, MountInvalidImage) {
   std::string contents = "corrupt";
   ASSERT_EQ(static_cast<int>(contents.size()),
             base::WriteFile(table, contents.data(), contents.size()));
-  ASSERT_EQ("", loader.LoadComponent(kTestComponentName));
+  ASSERT_EQ("", loader.LoadComponent(kTestComponentName, helper_mock.get()));
 }
 
 TEST_F(ImageLoaderTest, SetupTable) {

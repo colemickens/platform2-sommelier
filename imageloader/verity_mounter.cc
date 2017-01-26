@@ -7,20 +7,27 @@
 #include <algorithm>
 #include <string>
 
+#include </usr/include/linux/magic.h>
 #include <fcntl.h>
 #include <linux/loop.h>
 #include <sys/ioctl.h>
-#include <sys/stat.h>
 #include <sys/mount.h>
+#include <sys/stat.h>
+#include <sys/statvfs.h>
+#include <sys/vfs.h>
 
 #include <base/command_line.h>
+#include <base/containers/adapters.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/process/launch.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+
+#include "component.h"
 
 namespace imageloader {
 
@@ -81,8 +88,96 @@ void ClearVerityDevice(const std::string& name) {
 void ClearLoopDevice(const std::string& device_path) {
   base::ScopedFD loop_device_fd(
       open(device_path.c_str(), O_RDONLY | O_CLOEXEC));
-  if (loop_device_fd.is_valid())
-    ioctl(loop_device_fd.get(), LOOP_CLR_FD, 0);
+  if (loop_device_fd.is_valid()) ioctl(loop_device_fd.get(), LOOP_CLR_FD, 0);
+}
+
+bool SetupDeviceMapper(const std::string& device_path, const std::string& table,
+                       std::string* dev_name) {
+  // Now setup the dmsetup table.
+  std::string final_table = table;
+  if (!VerityMounter::SetupTable(&final_table, device_path)) return false;
+
+  // Generate a name with a random string of 32 characters: we consider this to
+  // have sufficiently low chance of collision to assume the name isn't taken.
+  std::vector<uint8_t> rand_bytes(32);
+  base::RandBytes(rand_bytes.data(), rand_bytes.size());
+  std::string name = base::HexEncode(rand_bytes.data(), rand_bytes.size());
+
+  if (!LaunchDMCreate(name, final_table)) {
+    LOG(ERROR) << "Failed to run dmsetup.";
+    return false;
+  }
+
+  dev_name->assign("/dev/mapper/" + name);
+  return true;
+}
+
+bool CreateDirectoryWithMode(const base::FilePath& full_path, int mode) {
+  std::vector<base::FilePath> subpaths;
+
+  // Collect a list of all parent directories.
+  base::FilePath last_path = full_path;
+  subpaths.push_back(full_path);
+  for (base::FilePath path = full_path.DirName();
+       path.value() != last_path.value(); path = path.DirName()) {
+    subpaths.push_back(path);
+    last_path = path;
+  }
+
+  // Iterate through the parents and create the missing ones.
+  for (const auto& subpath : base::Reversed(subpaths)) {
+    if (base::DirectoryExists(subpath)) continue;
+    if (mkdir(subpath.value().c_str(), mode) == 0) continue;
+    // Mkdir failed, but it might have failed with EEXIST, or some other error
+    // due to the the directory appearing out of thin air. This can occur if
+    // two processes are trying to create the same file system tree at the same
+    // time. Check to see if it exists and make sure it is a directory.
+    if (!base::DirectoryExists(subpath)) {
+      PLOG(ERROR) << "Failed to create directory: " << subpath.value();
+      return false;
+    }
+  }
+  return true;
+}
+
+bool CreateMountPointIfNeeded(const base::FilePath& mount_point,
+                              bool* already_mounted) {
+  LOG(INFO) << "In CreateMountPoint if needed";
+  *already_mounted = false;
+  // Is this mount point somehow already taken?
+  struct stat st;
+  if (lstat(mount_point.value().c_str(), &st) == 0) {
+    if (!S_ISDIR(st.st_mode)) {
+      LOG(ERROR) << "Mount point exists but is not a directory.";
+      return false;
+    }
+
+    base::FilePath mount_parent = mount_point.DirName();
+    struct stat st2;
+    if (stat(mount_parent.value().c_str(), &st2) != 0) {
+      PLOG(ERROR) << "Could not stat the mount point parent";
+      return false;
+    }
+    if (st.st_dev != st2.st_dev) {
+      struct statfs st_fs;
+      if (statfs(mount_point.value().c_str(), &st_fs) != 0) {
+        PLOG(ERROR) << "statfs";
+        return false;
+      }
+      if (st_fs.f_type != SQUASHFS_MAGIC || !(st_fs.f_flags & ST_NODEV) ||
+          !(st_fs.f_flags & ST_NOSUID) || !(st_fs.f_flags & ST_RDONLY)) {
+        LOG(ERROR) << "File system is not the expected type.";
+        return false;
+      }
+      LOG(INFO) << "The mount point already exists: " << mount_point.value();
+      *already_mounted = true;
+      return true;
+    }
+  } else if (!CreateDirectoryWithMode(mount_point, kComponentDirPerms)) {
+    LOG(ERROR) << "Failed to create mount point: " << mount_point.value();
+    return false;
+  }
+  return true;
 }
 
 // Reserves a loop device and associates it with |image_fd|. The path to the
@@ -123,29 +218,7 @@ MountStatus GetLoopDevice(const base::ScopedFD& image_fd,
   return MountStatus::SUCCESS;
 }
 
-bool SetupDeviceMapper(const std::string& device_path, const std::string& table,
-                       std::string* dev_name) {
-  // Now setup the dmsetup table.
-  std::string final_table = table;
-  if (!VerityMounter::SetupTable(&final_table, device_path))
-    return false;
-
-  // Generate a name with a random string of 32 characters: we consider this to
-  // have sufficiently low chance of collision to assume the name isn't taken.
-  std::vector<uint8_t> rand_bytes(32);
-  base::RandBytes(rand_bytes.data(), rand_bytes.size());
-  std::string name = base::HexEncode(rand_bytes.data(), rand_bytes.size());
-
-  if (!LaunchDMCreate(name, final_table)) {
-    LOG(ERROR) << "Failed to run dmsetup.";
-    return false;
-  }
-
-  dev_name->assign("/dev/mapper/" + name);
-  return true;
-}
-
-} // namespace
+}  // namespace
 
 // static
 bool VerityMounter::SetupTable(std::string* table,
@@ -171,6 +244,11 @@ bool VerityMounter::SetupTable(std::string* table,
 bool VerityMounter::Mount(const base::ScopedFD& image_fd,
                           const base::FilePath& mount_point,
                           const std::string& table) {
+  // First check if the component is already mounted and avoid unnecessary work.
+  bool already_mounted = false;
+  if (!CreateMountPointIfNeeded(mount_point, &already_mounted)) return false;
+  if (already_mounted) return true;
+
   std::string loop_device_path;
   // We need to retry because another program could grap the loop device,
   // resulting in an EBUSY error. If that happens, run again and grab a new

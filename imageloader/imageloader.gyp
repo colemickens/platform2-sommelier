@@ -8,10 +8,21 @@
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
         'libminijail',
+        'protobuf-lite',
       ],
     },
   },
   'targets': [
+    {
+      'target_name': 'protos',
+      'type': 'static_library',
+      'variables': {
+        'proto_in_dir': '.',
+        'proto_out_dir': 'include',
+      },
+      'sources': ['<(proto_in_dir)/ipc.proto'],
+      'includes': ['../../platform2/common-mk/protoc.gypi'],
+    },
     {
       'target_name': 'imageloader-adaptors',
       'type': 'none',
@@ -46,13 +57,18 @@
       'type': 'static_library',
       'dependencies': [
         'imageloader-adaptors',
+        'protos',
       ],
       'sources': [
         'component.cc',
         'component.h',
+        'helper_process.cc',
+        'helper_process.h',
         'imageloader.cc',
         'imageloader.h',
         'imageloader_impl.cc',
+        'mount_helper.cc',
+        'mount_helper.h',
         'verity_mounter.h',
         'verity_mounter.cc',
       ],
@@ -93,6 +109,7 @@
             'imageloader_unittest.cc',
             'imageloader.cc',
             'imageloader.h',
+            'mock_helper_process.h',
             'test_utilities.cc',
             'test_utilities.h',
           ],
