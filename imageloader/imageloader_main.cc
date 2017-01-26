@@ -4,9 +4,9 @@
 
 #include <signal.h>
 
-#include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <brillo/flag_helper.h>
+#include <brillo/syslog_logging.h>
 
 #include "imageloader.h"
 #include "imageloader_impl.h"
@@ -37,8 +37,8 @@ int main(int argc, char** argv) {
                 "Specifies the mountpoint when using --mount.");
   brillo::FlagHelper::Init(argc, argv, "imageloader");
 
-  logging::LoggingSettings settings;
-  logging::InitLogging(settings);
+  brillo::OpenLog("imageloader", true);
+  brillo::InitLog(brillo::kLogToSyslog);
 
   std::vector<uint8_t> key(std::begin(kProdPublicKey),
                            std::end(kProdPublicKey));
