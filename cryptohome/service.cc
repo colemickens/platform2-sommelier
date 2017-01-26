@@ -20,6 +20,7 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <base/strings/sys_string_conversions.h>
 #include <base/time/time.h>
 #include <base/values.h>
 #include <brillo/cryptohome.h>
@@ -2257,7 +2258,21 @@ gboolean Service::TpmGetPassword(gchar** OUT_password, GError** error) {
     *OUT_password = NULL;
     return TRUE;
   }
-  *OUT_password = g_strndup(password.char_data(), password.size());
+  // Convert to UTF-8 for sending over DBus. In case the original string
+  // contained only ASCII characters, the result will be identical to the
+  // original password.
+  SecureBlob utf8_password(
+      base::SysWideToUTF8(std::wstring(password.begin(), password.end())));
+  // Make sure we copy and NULL-terminate the entire UTF-8 string, even if
+  // there are 00 bytes in the middle of it. strndup/g_strndup would have
+  // stopped at the first 00. Can still be stripped later by DBus code, though.
+  size_t ret_size = utf8_password.size();
+  gchar* ret_str = g_new(gchar, ret_size + 1);
+  if (ret_str) {
+    memcpy(ret_str, utf8_password.char_data(), ret_size);
+    ret_str[ret_size] = 0;
+  }
+  *OUT_password = ret_str;
   return TRUE;
 }
 

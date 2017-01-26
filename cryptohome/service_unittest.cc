@@ -14,6 +14,7 @@
 
 #include <base/at_exit.h>
 #include <base/files/file_util.h>
+#include <base/strings/sys_string_conversions.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <brillo/bind_lambda.h>
@@ -1470,6 +1471,43 @@ TEST_F(ServiceTestNotInitialized, CheckTpmInitRace) {
   service_.set_tpm_init(&tpm_init);
   service_.set_initialize_tpm(true);
   service_.Initialize();
+}
+
+TEST_F(ServiceTestNotInitialized, CheckTpmGetPassword) {
+  NiceMock<MockTpmInit> tpm_init;
+  service_.set_tpm_init(&tpm_init);
+
+  std::string pwd1_ascii_str("abcdefgh", 8);
+  SecureBlob pwd1_ascii_blob(pwd1_ascii_str);
+  std::string pwd2_non_ascii_str("ab\xB2\xFF\x00\xA0gh", 8);
+  SecureBlob pwd2_non_ascii_blob(pwd2_non_ascii_str);
+  std::wstring pwd2_non_ascii_wstr(
+      pwd2_non_ascii_blob.data(),
+      pwd2_non_ascii_blob.data() + pwd2_non_ascii_blob.size());
+  std::string pwd2_non_ascii_str_utf8(base::SysWideToUTF8(pwd2_non_ascii_wstr));
+  EXPECT_CALL(tpm_init, GetTpmPassword(_))
+      .WillOnce(Return(false))
+      .WillOnce(DoAll(SetArgPointee<0>(pwd1_ascii_blob), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<0>(pwd2_non_ascii_blob), Return(true)));
+
+  gchar* res_pwd;
+  GError* res_err;
+  // Return success and NULL if getting tpm password failed.
+  EXPECT_TRUE(service_.TpmGetPassword(&res_pwd, &res_err));
+  EXPECT_EQ(NULL, res_pwd);
+  g_free(res_pwd);
+  // Check that the ASCII password is returned as is.
+  EXPECT_TRUE(service_.TpmGetPassword(&res_pwd, &res_err));
+  EXPECT_EQ(0, memcmp(pwd1_ascii_str.data(),
+                      res_pwd,
+                      pwd1_ascii_str.size()));
+  g_free(res_pwd);
+  // Check that non-ASCII password is converted to UTF-8.
+  EXPECT_TRUE(service_.TpmGetPassword(&res_pwd, &res_err));
+  EXPECT_EQ(0, memcmp(pwd2_non_ascii_str_utf8.data(),
+                      res_pwd,
+                      pwd2_non_ascii_str_utf8.size()));
+  g_free(res_pwd);
 }
 
 }  // namespace cryptohome
