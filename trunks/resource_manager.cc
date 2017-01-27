@@ -28,6 +28,7 @@
 
 namespace {
 
+const int kMaxSuspendDurationSec = 10;
 const int kMaxCommandAttempts = 3;
 const size_t kMinimumAuthorizationSize = 9;
 const size_t kMessageHeaderSize = 10;
@@ -57,7 +58,9 @@ namespace trunks {
 
 ResourceManager::ResourceManager(const TrunksFactory& factory,
                                  CommandTransceiver* next_transceiver)
-    : factory_(factory), next_transceiver_(next_transceiver) {}
+    : factory_(factory), next_transceiver_(next_transceiver),
+      max_suspend_duration_(
+          base::TimeDelta::FromSeconds(kMaxSuspendDurationSec)) {}
 
 ResourceManager::~ResourceManager() {}
 
@@ -107,6 +110,27 @@ std::string ResourceManager::SendCommandAndWait(const std::string& command) {
   TPM_RC result = ParseCommand(command, &command_info);
   if (result != TPM_RC_SUCCESS) {
     return CreateErrorResponse(result);
+  }
+  // Block all commands with handles when suspended.
+  // TODO(apronin): Add metrics to track cases when we receive commands
+  // while in the suspended state, auto-resume from it, block commands
+  // with handles as a result.
+  if (suspended_) {
+    LOG(WARNING) << "Received command CC 0x"
+                 << std::hex << command_info.code << " while suspended.";
+    // Make sure we resume after the maximum allowed suspend duration even
+    // if the resume event is somehow lost. Should be enough to go through
+    // suspend preparaion - and that's all we care about.
+    base::TimeTicks now = base::TimeTicks::Now();
+    if (now < suspended_timestamp_ ||
+        now >= suspended_timestamp_ + max_suspend_duration_) {
+      LOG(WARNING) << "Auto-resuming Resource Manager.";
+      suspended_ = false;
+    } else if (GetNumberOfRequestHandles(command_info.code) ||
+               GetNumberOfResponseHandles(command_info.code)) {
+      LOG(WARNING) << "Blocking command while suspended.";
+      return CreateErrorResponse(TPM_RC_RETRY);
+    }
   }
   // A special case for FlushContext. It requires special handling because it
   // has a handle as a parameter and because we need to cleanup if it succeeds.
@@ -190,6 +214,20 @@ std::string ResourceManager::SendCommandAndWait(const std::string& command) {
     response = ReplaceHandles(response, virtual_handles);
   }
   return response;
+}
+
+void ResourceManager::Suspend() {
+  VLOG(1) << __func__;
+  if (!suspended_) {
+    suspended_timestamp_ = base::TimeTicks::Now();
+    suspended_ = true;
+    SaveAllContexts();
+  }
+}
+
+void ResourceManager::Resume() {
+  VLOG(1) << __func__ << " (suspended = " << suspended_ << ").";
+  suspended_ = false;
 }
 
 bool ResourceManager::ChooseSessionToEvict(
@@ -319,6 +357,11 @@ void ResourceManager::EvictSession(const MessageInfo& command_info) {
     LOG(WARNING) << "Failed to evict session: " << GetErrorString(result);
   }
   VLOG(1) << "EVICT_SESSION: " << std::hex << session_to_evict;
+}
+
+void ResourceManager::SaveAllContexts() {
+  EvictObjects(MessageInfo());
+  LOG(INFO) << "Finished saving contexts.";
 }
 
 std::vector<TPM_HANDLE> ResourceManager::ExtractHandlesFromBuffer(

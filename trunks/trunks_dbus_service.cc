@@ -41,6 +41,16 @@ void TrunksDBusService::RegisterDBusObjectsAsync(
                                    &TrunksDBusService::HandleSendCommand);
   trunks_dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed to register D-Bus object.", true));
+  if (power_manager_) {
+    power_manager_->Init(bus_);
+  }
+}
+
+void TrunksDBusService::OnShutdown(int* exit_code) {
+  if (power_manager_) {
+    power_manager_->TearDown();
+  }
+  DBusServiceDaemon::OnShutdown(exit_code);
 }
 
 void TrunksDBusService::HandleSendCommand(

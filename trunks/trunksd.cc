@@ -26,6 +26,9 @@
 #include <brillo/userdb_utils.h>
 
 #include "trunks/background_command_transceiver.h"
+#if !defined(USE_BINDER_IPC)
+#include "trunks/power_manager.h"
+#endif
 #include "trunks/resource_manager.h"
 #include "trunks/tpm_handle.h"
 #include "trunks/tpm_simulator_handle.h"
@@ -135,6 +138,10 @@ int main(int argc, char** argv) {
   trunks::BackgroundCommandTransceiver background_transceiver(
       &resource_manager, background_thread.task_runner());
   service.set_transceiver(&background_transceiver);
+#if !defined(USE_BINDER_IPC)
+  trunks::PowerManager power_manager(&resource_manager);
+  service.set_power_manager(&power_manager);
+#endif
   LOG(INFO) << "Trunks service started.";
   return service.Run();
 }

@@ -73,6 +73,26 @@ class ResourceManagerTest : public testing::Test {
 
   void SetUp() override { factory_.set_tpm(&tpm_); }
 
+  struct CommandResponsePair {
+    std::string name;
+    std::string command;
+    std::string response;
+  };
+
+  // Builds a command-response pair.
+  CommandResponsePair CreateCommandResponsePair(
+      const std::string& name, TPM_CC code,
+      const std::vector<TPM_HANDLE>& input_handles,
+      const std::vector<TPM_HANDLE>& output_handles) {
+    CommandResponsePair pair;
+    pair.name = name;
+    pair.command = CreateCommand(code, input_handles,
+                                 kNoAuthorization, kNoParameters);
+    pair.response = CreateResponse(TPM_RC_SUCCESS, output_handles,
+                                   kNoAuthorization, kNoParameters);
+    return pair;
+  }
+
   // Builds a well-formed command.
   std::string CreateCommand(TPM_CC code,
                             const std::vector<TPM_HANDLE>& handles,
@@ -141,6 +161,19 @@ class ResourceManagerTest : public testing::Test {
 
   std::string StripHeader(const std::string& message) {
     return message.substr(10);
+  }
+
+  TPM_RC GetResponseCode(const std::string& message) {
+    std::string rc_bytes(message.substr(6, 10));
+    TPM_RC rc;
+    EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPM_RC(&rc_bytes, &rc, nullptr));
+    return rc;
+  }
+
+  // Checks if sending the command returns response with TPM_RC_SUCCESS code.
+  bool CommandReturnsSuccess(const std::string& command) {
+    std::string response = resource_manager_.SendCommandAndWait(command);
+    return GetResponseCode(response) == TPM_RC_SUCCESS;
   }
 
   // Makes the resource manager aware of a transient object handle and returns
@@ -778,6 +811,132 @@ TEST_F(ResourceManagerTest, PasswordAuthorization) {
       .WillOnce(Return(response));
   std::string actual_response = resource_manager_.SendCommandAndWait(command);
   EXPECT_EQ(response, actual_response);
+}
+
+TEST_F(ResourceManagerTest, SuspendSavesObjects) {
+  // Test that Suspend saves all loaded objects and ignores errors.
+  // Handle 0 - was loaded but then flushed. Not saved again by Suspend().
+  TPM_HANDLE tpm_handle0 = kArbitraryObjectHandle + 0;
+  LoadHandle(tpm_handle0);
+  EvictObjects();
+  testing::Mock::VerifyAndClearExpectations(&tpm_);
+  EXPECT_CALL(tpm_, ContextSaveSync(tpm_handle0, _, _, _))
+      .Times(0);
+  EXPECT_CALL(tpm_, FlushContextSync(tpm_handle0, _))
+      .Times(0);
+
+  // Handle 1 - success.
+  TPM_HANDLE tpm_handle1 = kArbitraryObjectHandle + 1;
+  LoadHandle(tpm_handle1);
+  EXPECT_CALL(tpm_, ContextSaveSync(tpm_handle1, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(tpm_, FlushContextSync(tpm_handle1, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+
+  // Handle 2 - failure during ContextSave.
+  TPM_HANDLE tpm_handle2 = kArbitraryObjectHandle + 2;
+  LoadHandle(tpm_handle2);
+  EXPECT_CALL(tpm_, ContextSaveSync(tpm_handle2, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_CALL(tpm_, FlushContextSync(tpm_handle2, _))
+      .Times(0);
+
+  // Handle 3 - failure during FlushContext.
+  TPM_HANDLE tpm_handle3 = kArbitraryObjectHandle + 3;
+  LoadHandle(tpm_handle3);
+  EXPECT_CALL(tpm_, ContextSaveSync(tpm_handle3, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(tpm_, FlushContextSync(tpm_handle3, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+
+  // Handle 4 - success again.
+  TPM_HANDLE tpm_handle4 = kArbitraryObjectHandle + 4;
+  LoadHandle(tpm_handle4);
+  EXPECT_CALL(tpm_, ContextSaveSync(tpm_handle4, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(tpm_, FlushContextSync(tpm_handle4, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+
+  resource_manager_.Suspend();
+}
+
+TEST_F(ResourceManagerTest, SuspendBlocksCommands) {
+  CommandResponsePair no_handles =
+      CreateCommandResponsePair("with no handles",
+                                TPM_CC_Startup,
+                                kNoHandles,
+                                kNoHandles);
+  CommandResponsePair output_handles =
+      CreateCommandResponsePair("with output handles",
+                                TPM_CC_HashSequenceStart,
+                                kNoHandles,
+                                {kArbitraryObjectHandle});
+  CommandResponsePair input_handles =
+      CreateCommandResponsePair("with input handles",
+                                TPM_CC_ReadPublic,
+                                {PERSISTENT_FIRST},
+                                kNoHandles);
+  CommandResponsePair all_handles =
+      CreateCommandResponsePair("with input and output handles",
+                                TPM_CC_CreatePrimary,
+                                {PERSISTENT_FIRST},
+                                {kArbitraryObjectHandle+1});
+
+  // After Suspend, commands with handles are blocked, commands without
+  // handles are let through.
+  resource_manager_.set_max_suspend_duration(base::TimeDelta::FromDays(10));
+  resource_manager_.Suspend();
+  EXPECT_CALL(transceiver_, SendCommandAndWait(no_handles.command))
+      .WillOnce(Return(no_handles.response));
+  EXPECT_CALL(transceiver_, SendCommandAndWait(output_handles.command))
+      .Times(0);
+  EXPECT_CALL(transceiver_, SendCommandAndWait(input_handles.command))
+      .Times(0);
+  EXPECT_CALL(transceiver_, SendCommandAndWait(all_handles.command))
+      .Times(0);
+  EXPECT_TRUE(CommandReturnsSuccess(no_handles.command));
+  EXPECT_FALSE(CommandReturnsSuccess(output_handles.command));
+  EXPECT_FALSE(CommandReturnsSuccess(input_handles.command));
+  EXPECT_FALSE(CommandReturnsSuccess(all_handles.command));
+
+  // After Resume, no commands are blocked.
+  testing::Mock::VerifyAndClearExpectations(&tpm_);
+  resource_manager_.Resume();
+  EXPECT_CALL(transceiver_, SendCommandAndWait(no_handles.command))
+      .WillOnce(Return(no_handles.response));
+  EXPECT_CALL(transceiver_, SendCommandAndWait(output_handles.command))
+      .WillOnce(Return(output_handles.response));
+  EXPECT_CALL(transceiver_, SendCommandAndWait(input_handles.command))
+      .WillOnce(Return(input_handles.response));
+  EXPECT_CALL(transceiver_, SendCommandAndWait(all_handles.command))
+      .WillOnce(Return(all_handles.response));
+  EXPECT_TRUE(CommandReturnsSuccess(no_handles.command));
+  EXPECT_TRUE(CommandReturnsSuccess(output_handles.command));
+  EXPECT_TRUE(CommandReturnsSuccess(input_handles.command));
+  EXPECT_TRUE(CommandReturnsSuccess(all_handles.command));
+
+  // After Suspend, once the max suspend duration is over, it auto-resumes
+  // and and lets all commands through.
+  testing::Mock::VerifyAndClearExpectations(&tpm_);
+  EXPECT_CALL(tpm_, ContextSaveSync(_, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(tpm_, FlushContextSync(_, _))
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  resource_manager_.set_max_suspend_duration(base::TimeDelta());
+  resource_manager_.Suspend();
+  usleep(1);
+  EXPECT_CALL(transceiver_, SendCommandAndWait(no_handles.command))
+      .WillOnce(Return(no_handles.response));
+  EXPECT_CALL(transceiver_, SendCommandAndWait(output_handles.command))
+      .WillOnce(Return(output_handles.response));
+  EXPECT_CALL(transceiver_, SendCommandAndWait(input_handles.command))
+      .WillOnce(Return(input_handles.response));
+  EXPECT_CALL(transceiver_, SendCommandAndWait(all_handles.command))
+      .WillOnce(Return(all_handles.response));
+  EXPECT_TRUE(CommandReturnsSuccess(no_handles.command));
+  EXPECT_TRUE(CommandReturnsSuccess(output_handles.command));
+  EXPECT_TRUE(CommandReturnsSuccess(input_handles.command));
+  EXPECT_TRUE(CommandReturnsSuccess(all_handles.command));
 }
 
 }  // namespace trunks

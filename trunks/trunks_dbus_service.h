@@ -27,6 +27,7 @@
 
 #include "trunks/command_transceiver.h"
 #include "trunks/interface.pb.h"
+#include "trunks/power_manager.h"
 
 namespace trunks {
 
@@ -49,10 +50,19 @@ class TrunksDBusService : public brillo::DBusServiceDaemon {
     transceiver_ = transceiver;
   }
 
+  // The |power_manager| will be initialized with D-Bus object.
+  // This class does not take ownership of |power_manager|.
+  void set_power_manager(PowerManager* power_manager) {
+    power_manager_ = power_manager;
+  }
+
  protected:
   // Exports D-Bus methods.
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
+
+  // Tears down dependant objects.
+  void OnShutdown(int* exit_code) override;
 
  private:
   // Handles calls to the 'SendCommand' method.
@@ -66,6 +76,7 @@ class TrunksDBusService : public brillo::DBusServiceDaemon {
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> trunks_dbus_object_;
   CommandTransceiver* transceiver_ = nullptr;
+  PowerManager* power_manager_ = nullptr;
 
   // Declared last so weak pointers are invalidated first on destruction.
   base::WeakPtrFactory<TrunksDBusService> weak_factory_{this};

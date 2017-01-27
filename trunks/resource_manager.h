@@ -67,10 +67,21 @@ class ResourceManager : public CommandTransceiver {
 
   std::string SendCommandAndWait(const std::string& command) override;
 
+  // Handle suspending the system to memory, when there is a change that
+  // TPM will be reset while suspended.
+  virtual void Suspend();
+
+  // Handle resuming the system after it has been suspended.
+  virtual void Resume();
+
+  void set_max_suspend_duration(base::TimeDelta max_suspend_duration) {
+    max_suspend_duration_ = max_suspend_duration;
+  }
+
  private:
   struct MessageInfo {
-    bool has_sessions;
-    TPM_CC code;  // For a response message this is the TPM_RC response code.
+    bool has_sessions = false;
+    TPM_CC code = 0;  // For a response message this is the TPM_RC code.
     std::vector<TPM_HANDLE> handles;
     std::vector<TPM_HANDLE> session_handles;
     std::vector<bool> session_continued;
@@ -117,6 +128,10 @@ class ResourceManager : public CommandTransceiver {
   // Evicts a session other than those required by |command_info|. The eviction
   // is best effort; any errors will be ignored.
   void EvictSession(const MessageInfo& command_info);
+
+  // Saves contexts for and evicts all loaded sessions and objects. The eviction
+  // is best effort; any errors will be ignored.
+  void SaveAllContexts();
 
   // Returns a list of handles parsed from a given |buffer|. No more than
   // |number_of_handles| will be parsed.
@@ -229,6 +244,12 @@ class ResourceManager : public CommandTransceiver {
   std::set<TPM_RC> warnings_already_seen_;
   // Whether a FixWarnings() call is currently executing.
   bool fixing_warnings_ = false;
+  // Whether the system is currently suspended.
+  bool suspended_ = false;
+  // Time when we were suspended.
+  base::TimeTicks suspended_timestamp_;
+  // Maximum suspend duration before the resource manager auto-resumes.
+  base::TimeDelta max_suspend_duration_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };
