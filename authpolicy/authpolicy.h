@@ -28,11 +28,10 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
       brillo::dbus_utils::ExportedObjectManager* object_manager);
   ~AuthPolicy() override = default;
 
-  // Initializes the samba interface. See SambaInterface::Initialize for
-  // an explanation of |expect_config|.
-  bool Initialize(bool expect_config) {
-    return samba_.Initialize(expect_config);
-  }
+  // Initializes internals. See SambaInterface::Initialize for an explanation of
+  // |path_service| and |expect_config|.
+  bool Initialize(std::unique_ptr<PathService> path_service,
+                  bool expect_config);
 
   // Register the D-Bus object and interfaces.
   void RegisterAsync(

@@ -8,9 +8,6 @@
 namespace authpolicy {
 namespace constants {
 
-// File path of the parser.
-const char kParserPath[] = "/usr/sbin/authpolicy_parser";
-
 // Commands for the parser.
 const char kCmdParseDcName[] = "parse_dc_name";
 const char kCmdParseWorkgroup[] = "parse_workgroup";

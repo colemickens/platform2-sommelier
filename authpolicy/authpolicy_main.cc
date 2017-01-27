@@ -11,6 +11,7 @@
 #include <memory>
 
 #include <base/at_exit.h>
+#include <base/memory/ptr_util.h>
 #include <base/sys_info.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/daemons/dbus_daemon.h>
@@ -19,6 +20,7 @@
 
 #include "authpolicy/authpolicy.h"
 #include "authpolicy/constants.h"
+#include "authpolicy/path_service.h"
 
 namespace ac = authpolicy::constants;
 
@@ -117,7 +119,8 @@ class Daemon : public brillo::DBusServiceDaemon {
     if (return_code != EX_OK)
       return return_code;
 
-    if (!auth_policy_->Initialize(expect_config_)) {
+    std::unique_ptr<PathService> path_service = base::MakeUnique<PathService>();
+    if (!auth_policy_->Initialize(std::move(path_service), expect_config_)) {
       // Exit with "success" to prevent respawn by upstart.
       exit(0);
     }

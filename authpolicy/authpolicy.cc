@@ -11,6 +11,7 @@
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "authpolicy/path_service.h"
 #include "authpolicy/samba_interface.h"
 #include "bindings/device_management_backend.pb.h"
 
@@ -42,6 +43,11 @@ AuthPolicy::AuthPolicy(
                    org::chromium::AuthPolicyAdaptor::GetObjectPath()),
       session_manager_proxy_(nullptr),
       weak_ptr_factory_(this) {}
+
+bool AuthPolicy::Initialize(std::unique_ptr<PathService> path_service,
+                            bool expect_config) {
+  return samba_.Initialize(std::move(path_service), expect_config);
+}
 
 void AuthPolicy::RegisterAsync(
     const AsyncEventSequencer::CompletionAction& completion_callback) {

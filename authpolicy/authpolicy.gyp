@@ -51,6 +51,7 @@
       ],
       'sources': [
         'authpolicy.cc',
+        'path_service.cc',
         'policy/device_policy_encoder.cc',
         'policy/policy_encoder_helper.cc',
         'policy/policy_keys.cc',

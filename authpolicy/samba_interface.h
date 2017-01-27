@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/macros.h>
 #include <dbus/authpolicy/dbus-constants.h>
 
 #include "bindings/authpolicy_containers.pb.h"
@@ -21,13 +22,19 @@
 
 namespace authpolicy {
 
+class PathService;
+
 class SambaInterface {
  public:
+  SambaInterface();
+  ~SambaInterface();
+
   // Creates directories required by Samba code and loads configuration, if it
-  // exists. Returns false
+  // exists. Also loads the debug flags file. Returns false
   // - if a directory failed to create or
   // - if |expect_config| is true and the config file fails to load.
-  bool Initialize(bool expect_config);
+  bool Initialize(std::unique_ptr<PathService> path_service,
+                  bool expect_config);
 
   // Calls kinit to get a Kerberos ticket-granting-ticket (TGT) for the given
   // |user_principal_name| (format: user_name@workgroup.domain). If a TGT
@@ -73,6 +80,8 @@ class SambaInterface {
 
   // Whether kinit calls may return false negatives and must be retried.
   bool retry_machine_kinit_ = false;
+
+  DISALLOW_COPY_AND_ASSIGN(SambaInterface);
 };
 
 }  // namespace authpolicy

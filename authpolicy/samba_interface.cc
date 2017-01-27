@@ -20,6 +20,7 @@
 #include <base/time/time.h>
 
 #include "authpolicy/constants.h"
+#include "authpolicy/path_service.h"
 #include "authpolicy/process_executor.h"
 #include "authpolicy/samba_interface_internal.h"
 #include "bindings/authpolicy_containers.pb.h"
@@ -34,24 +35,6 @@ namespace {
 // Must match Chromium AccountId::kKeyAdIdPrefix.
 const char kActiveDirectoryPrefix[] = "a-";
 
-// Temporary data. Note: Use a #define, so we can concat strings below.
-#define AUTHPOLICY_TMP_DIR "/tmp/authpolicyd"
-
-// Persisted samba data.
-#define STATE_DIR "/var/lib/authpolicyd"
-
-// Temporary samba data.
-#define SAMBA_TMP_DIR AUTHPOLICY_TMP_DIR "/samba"
-
-// Kerberos configuration file.
-#define KRB5_FILE_PATH AUTHPOLICY_TMP_DIR "/krb5.conf"
-
-// Temp machine keytab file.
-#define MACHINE_KT_TMP_FILE_PATH SAMBA_TMP_DIR "/krb5_machine.keytab"
-
-// Persistent machine keytab file.
-#define MACHINE_KT_STATE_FILE_PATH STATE_DIR "/krb5_machine.keytab"
-
 // Samba configuration file data.
 const char kSmbConfData[] =
     "[global]\n"
@@ -59,10 +42,10 @@ const char kSmbConfData[] =
     "\tsecurity = ADS\n"
     "\tworkgroup = %s\n"
     "\trealm = %s\n"
-    "\tlock directory = " SAMBA_TMP_DIR "/lock\n"
-    "\tcache directory = " SAMBA_TMP_DIR "/cache\n"
-    "\tstate directory = " SAMBA_TMP_DIR "/state\n"
-    "\tprivate directory = " SAMBA_TMP_DIR "/private\n"
+    "\tlock directory = %s\n"
+    "\tcache directory = %s\n"
+    "\tstate directory = %s\n"
+    "\tprivate directory = %s\n"
     "\tkerberos method = secrets and keytab\n"
     "\tkerberos encryption types = strong\n"
     "\tclient signing = mandatory\n"
@@ -99,36 +82,24 @@ const int kFileMode_rwxrx = kFileMode_rwr |
 const int kFileMode_rwxrwx =
     kFileMode_rwxrx | base::FILE_PERMISSION_WRITE_BY_GROUP;
 
-// Directories to create (Samba fails to do it on its own). AUTHPOLICY_TMP_DIR
-// needs group rx access to read smb.conf and krb5.conf and to access
-// SAMBA_TMP_DIR, but no write access. SAMBA_TMP_DIR needs full group rwx access
-// since samba reads and writes files there.
-std::pair<const char*, int> kSambaDirsAndMode[] = {
-    {AUTHPOLICY_TMP_DIR,       kFileMode_rwxrx },
-    {SAMBA_TMP_DIR,            kFileMode_rwxrwx},
-    {SAMBA_TMP_DIR "/lock",    kFileMode_rwxrwx},
-    {SAMBA_TMP_DIR "/cache",   kFileMode_rwxrwx},
-    {SAMBA_TMP_DIR "/state",   kFileMode_rwxrwx},
-    {SAMBA_TMP_DIR "/private", kFileMode_rwxrwx}};
-
-// Location to download GPOs to.
-const char kSambaTmpDir[] = SAMBA_TMP_DIR;
-const char kGpoLocalDir[] = SAMBA_TMP_DIR "/cache/gpo_cache";
+// Directories with permissions to be created. AUTHPOLICY_TMP_DIR needs group rx
+// access to read smb.conf and krb5.conf and to access SAMBA_DIR, but no write
+// access. The Samba directories need full group rwx access since samba reads
+// and writes files there.
+constexpr std::pair<Path, int> kDirsAndMode[] = {
+    {Path::TEMP_DIR,          kFileMode_rwxrx },
+    {Path::SAMBA_DIR,         kFileMode_rwxrwx},
+    {Path::SAMBA_LOCK_DIR,    kFileMode_rwxrwx},
+    {Path::SAMBA_CACHE_DIR,   kFileMode_rwxrwx},
+    {Path::SAMBA_STATE_DIR,   kFileMode_rwxrwx},
+    {Path::SAMBA_PRIVATE_DIR, kFileMode_rwxrwx}};
 
 // Directory / filenames for user and device policy.
 const char kPRegUserDir[] = "User";
 const char kPRegDeviceDir[] = "Machine";
 const char kPRegFileName[] = "registry.pol";
 
-// File paths.
-const char kSmbFilePath[] = AUTHPOLICY_TMP_DIR "/smb.conf";
-const char kKrb5FilePath[] = KRB5_FILE_PATH;
-const char kMachineKtTmpFilePath[] = MACHINE_KT_TMP_FILE_PATH;
-const char kMachineKtStateFilePath[] = MACHINE_KT_STATE_FILE_PATH;
-const char kConfigFilePath[] = STATE_DIR "/config.dat";
-
-// Flags. Write kFlag* strings to kFlagsFilePath to toggle flags.
-const char kFlagsFilePath[] = "/etc/authpolicyd_flags";
+// Flags. Write kFlag* strings to the Path::DEBUG_FLAGS file to toggle flags.
 const char kFlagDisableSeccomp[] = "disable_seccomp";
 const char kFlagLogSeccomp[] = "log_seccomp";
 const char kFlagTraceKinit[] = "trace_kinit";
@@ -141,21 +112,12 @@ const size_t kConfigSizeLimit = 256 * 1024;
 
 // Env variable for krb5.conf file.
 const char kKrb5ConfEnvKey[] = "KRB5_CONFIG";
-const char kKrb5ConfEnvValue[] = "FILE:" KRB5_FILE_PATH;
-
 // Env variable for machine keytab (machine password for getting device policy).
 const char kMachineKTEnvKey[] = "KRB5_KTNAME";
-const char kMachineKTEnvValueTmp[] = "FILE:" MACHINE_KT_TMP_FILE_PATH;
-const char kMachineKTEnvValueState[] = "FILE:" MACHINE_KT_STATE_FILE_PATH;
-
 // Env variable to trace debug info of kinit.
 const char kKrb5TraceEnvKey[] = "KRB5_TRACE";
-const char kKrb5TraceEnvValue[] = "/tmp/krb5_trace";
-
-// Executable paths. For security reasons use absolute file paths!
-const char kNetPath[] = "/usr/bin/net";
-const char kKInitPath[] = "/usr/bin/kinit";
-const char kSmbClientPath[] = "/usr/bin/smbclient";
+// Prefix for some environment variable values that specify a file path.
+const char kFilePrefix[] = "FILE:";
 
 // Maximum kinit retries for a recently created machine account.
 const int kMachineKinitMaxRetries = 60;
@@ -194,22 +156,8 @@ const char kKeyNetworkTimeout[] = "NT_STATUS_IO_TIMEOUT";
 const char kKeyObjectNameNotFound[] =
     "NT_STATUS_OBJECT_NAME_NOT_FOUND opening remote file ";
 
-#undef MACHINE_KT_STATE_FILE_PATH
-#undef MACHINE_KT_TMP_FILE_PATH
-#undef KRB5_FILE_PATH
-#undef SAMBA_TMP_DIR
-#undef STATE_DIR
-#undef AUTHPOLICY_TMP_DIR
-
-// Seccomp filters.
-#define SECCOMP_DIR "/usr/share/policy/"
-const char kParserSeccompFilter[] =
-    SECCOMP_DIR "authpolicy_parser-seccomp.policy";
-const char kKInitSeccompFilter[] = SECCOMP_DIR "kinit-seccomp.policy";
-const char kNetAdsSeccompFilter[] =
-    SECCOMP_DIR "net_ads-seccomp.policy";
-const char kSmbClientSeccompFilter[] = SECCOMP_DIR "smbclient-seccomp.policy";
-#undef SECCOMP_DIR
+// Easy access to paths. TODO(ljusten): Refactor into SambaInterface class.
+std::unique_ptr<PathService> s_paths;
 
 // Switches to the authpolicyd-exec user in the constructor and back to
 // authpolicyd in the destructor.
@@ -228,13 +176,13 @@ class ScopedAuthpolicyExecSwitch {
   }
 };
 
-bool SetupJailAndRun(ProcessExecutor* cmd, const char* seccomp_filter) {
+bool SetupJailAndRun(ProcessExecutor* cmd, Path seccomp_path_key) {
   // Limit the system calls that the process can do.
   DCHECK(cmd);
   if (!s_disable_seccomp_filters) {
     if (s_log_seccomp_filters)
       cmd->LogSeccompFilterFailures();
-    cmd->SetSeccompFilter(seccomp_filter);
+    cmd->SetSeccompFilter(s_paths->Get(seccomp_path_key));
   }
 
   // Required since we don't have the caps to wipe supplementary groups.
@@ -257,25 +205,26 @@ bool SetupJailAndRun(ProcessExecutor* cmd, const char* seccomp_filter) {
 void SetupKinitTrace(ProcessExecutor* kinit_cmd) {
   if (!s_trace_kinit)
     return;
+  const std::string& trace_path = s_paths->Get(Path::KRB5_TRACE);
   {
     // Deleting kinit trace file (must be done as authpolicyd-exec).
     ScopedAuthpolicyExecSwitch exec_switch;
-    if (!base::DeleteFile(base::FilePath(kKrb5TraceEnvValue),
-                          /* recursive */ false)) {
+    if (!base::DeleteFile(base::FilePath(trace_path), /* recursive */ false)) {
       LOG(WARNING) << "Failed to delete kinit trace file";
     }
   }
-  kinit_cmd->SetEnv(kKrb5TraceEnvKey, kKrb5TraceEnvValue);
+  kinit_cmd->SetEnv(kKrb5TraceEnvKey, trace_path);
 }
 
 void OutputKinitTrace() {
   if (!s_trace_kinit)
     return;
+  const std::string& trace_path = s_paths->Get(Path::KRB5_TRACE);
   std::string trace;
   {
     // Reading kinit trace file (must be done as authpolicyd-exec).
     ScopedAuthpolicyExecSwitch exec_switch;
-    base::ReadFileToString(base::FilePath(kKrb5TraceEnvValue), &trace);
+    base::ReadFileToString(base::FilePath(trace_path), &trace);
   }
   LOG(INFO) << "Kinit trace:\n" << trace;
 }
@@ -373,9 +322,9 @@ bool UpdateDomainControllerName(std::string* domain_controller_name,
   if (!domain_controller_name->empty())
     return true;
 
-  authpolicy::ProcessExecutor net_cmd(
-      {kNetPath, "ads", "info", "-s", kSmbFilePath});
-  if (!SetupJailAndRun(&net_cmd, kNetAdsSeccompFilter)) {
+  authpolicy::ProcessExecutor net_cmd({s_paths->Get(Path::NET), "ads", "info",
+                                       "-s", s_paths->Get(Path::SMB_CONF)});
+  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP)) {
     *out_error = GetNetError(net_cmd, "info");
     return false;
   }
@@ -383,9 +332,9 @@ bool UpdateDomainControllerName(std::string* domain_controller_name,
 
   // Parse the output to find the domain controller name. Enclose in a sandbox
   // for security considerations.
-  ProcessExecutor parse_cmd({ac::kParserPath, ac::kCmdParseDcName});
+  ProcessExecutor parse_cmd({s_paths->Get(Path::PARSER), ac::kCmdParseDcName});
   parse_cmd.SetInputString(net_out);
-  if (!SetupJailAndRun(&parse_cmd, kParserSeccompFilter)) {
+  if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP)) {
     LOG(ERROR) << "authpolicy_parser parse_dc_name failed with exit code "
                << parse_cmd.GetExitCode();
     *out_error = ERROR_PARSE_FAILED;
@@ -400,9 +349,9 @@ bool UpdateDomainControllerName(std::string* domain_controller_name,
 // Retrieves the name of the workgroup.
 bool GetWorkgroup(const ap::SambaConfig* config, std::string* workgroup,
                   ErrorType* out_error) {
-  ProcessExecutor net_cmd(
-      {kNetPath, "ads", "workgroup", "-s", kSmbFilePath});
-  if (!SetupJailAndRun(&net_cmd, kNetAdsSeccompFilter)) {
+  ProcessExecutor net_cmd({s_paths->Get(Path::NET), "ads", "workgroup", "-s",
+                           s_paths->Get(Path::SMB_CONF)});
+  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP)) {
     *out_error = GetNetError(net_cmd, "workgroup");
     return false;
   }
@@ -410,9 +359,10 @@ bool GetWorkgroup(const ap::SambaConfig* config, std::string* workgroup,
 
   // Parse the output to find the workgroup. Enclose in a sandbox for security
   // considerations.
-  ProcessExecutor parse_cmd({ac::kParserPath, ac::kCmdParseWorkgroup});
+  ProcessExecutor parse_cmd({s_paths->Get(Path::PARSER),
+                             ac::kCmdParseWorkgroup});
   parse_cmd.SetInputString(net_out);
-  if (!SetupJailAndRun(&parse_cmd, kParserSeccompFilter)) {
+  if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP)) {
     LOG(ERROR) << "authpolicy_parser parse_workgroup failed with exit code "
                << parse_cmd.GetExitCode();
     *out_error = ERROR_PARSE_FAILED;
@@ -474,14 +424,14 @@ bool SecureMachineKeyTab(ErrorType* out_error) {
   // At this point, tmp_kt_fp is rw for authpolicyd-exec only, so we, i.e.
   // user authpolicyd, cannot read it. Thus, change file permissions as
   // authpolicyd-exec user, so that the authpolicyd group can read it.
-  const base::FilePath tmp_kt_fp(kMachineKtTmpFilePath);
-  const base::FilePath state_kt_fp(kMachineKtStateFilePath);
+  const base::FilePath temp_kt_fp(s_paths->Get(Path::MACHINE_KT_TEMP));
+  const base::FilePath state_kt_fp(s_paths->Get(Path::MACHINE_KT_STATE));
 
   // Set group read permissions on keytab as authpolicyd-exec, so we can copy it
   // as authpolicyd (and own the copy).
   {
     ScopedAuthpolicyExecSwitch switch_scope;
-    if (!SetFilePermissions(tmp_kt_fp, kFileMode_rwr, out_error))
+    if (!SetFilePermissions(temp_kt_fp, kFileMode_rwr, out_error))
       return false;
   }
 
@@ -493,7 +443,7 @@ bool SecureMachineKeyTab(ErrorType* out_error) {
     return false;
   }
 
-  // Revoke 'read by others' permission. We could also just copy tmp_kt_fp to
+  // Revoke 'read by others' permission. We could also just copy temp_kt_fp to
   // state_kt_fp (see below) and revoke the read permission afterwards, but then
   // state_kt_fp would be readable by anyone for a split second, causing a
   // potential security risk.
@@ -501,9 +451,9 @@ bool SecureMachineKeyTab(ErrorType* out_error) {
     return false;
 
   // Now we may copy the file. The copy is owned by authpolicyd:authpolicyd.
-  if (!base::CopyFile(tmp_kt_fp, state_kt_fp)) {
-    PLOG(ERROR) << "Failed to copy file '" << tmp_kt_fp.value()
-                << "' to '" << state_kt_fp.value() << "'";
+  if (!base::CopyFile(temp_kt_fp, state_kt_fp)) {
+    PLOG(ERROR) << "Failed to copy file '" << temp_kt_fp.value() << "' to '"
+                << state_kt_fp.value() << "'";
     *out_error = ERROR_LOCAL_IO;
     return false;
   }
@@ -511,8 +461,8 @@ bool SecureMachineKeyTab(ErrorType* out_error) {
   // Clean up temp file (must be done as authpolicyd-exec).
   {
     ScopedAuthpolicyExecSwitch switch_scope;
-    if (!base::DeleteFile(tmp_kt_fp, false)) {
-      LOG(ERROR) << "Failed to delete file '" << tmp_kt_fp.value() << "'";
+    if (!base::DeleteFile(temp_kt_fp, false)) {
+      LOG(ERROR) << "Failed to delete file '" << temp_kt_fp.value() << "'";
       *out_error = ERROR_LOCAL_IO;
       return false;
     }
@@ -532,8 +482,13 @@ bool WriteSmbConf(const ap::SambaConfig* config, const std::string& workgroup,
 
   std::string data =
       base::StringPrintf(kSmbConfData, config->machine_name().c_str(),
-                         workgroup.c_str(), config->realm().c_str());
-  const base::FilePath fp(kSmbFilePath);
+                         workgroup.c_str(), config->realm().c_str(),
+                         s_paths->Get(Path::SAMBA_LOCK_DIR).c_str(),
+                         s_paths->Get(Path::SAMBA_CACHE_DIR).c_str(),
+                         s_paths->Get(Path::SAMBA_STATE_DIR).c_str(),
+                         s_paths->Get(Path::SAMBA_PRIVATE_DIR).c_str());
+
+  const base::FilePath fp(s_paths->Get(Path::SMB_CONF));
   const int data_size = static_cast<int>(data.size());
   if (base::WriteFile(fp, data.c_str(), data_size) != data_size) {
     LOG(ERROR) << "Failed to write samba conf file '" << fp.value() << "'";
@@ -567,7 +522,7 @@ bool UpdateWorkgroupAndWriteSmbConf(const ap::SambaConfig* config,
 // Writes the krb5 configuration file.
 bool WriteKrb5Conf(const std::string& realm, ErrorType* out_error) {
   std::string data = base::StringPrintf(kKrb5ConfData, realm.c_str());
-  const base::FilePath fp(kKrb5FilePath);
+  const base::FilePath fp(s_paths->Get(Path::KRB5_CONF));
   const int data_size = static_cast<int>(data.size());
   if (base::WriteFile(fp, data.c_str(), data_size) != data_size) {
     LOG(ERROR) << "Failed to write krb5 conf file '" << fp.value() << "'";
@@ -588,7 +543,7 @@ bool WriteConfiguration(const ap::SambaConfig* config, ErrorType* out_error) {
     return false;
   }
 
-  const base::FilePath fp(kConfigFilePath);
+  const base::FilePath fp(s_paths->Get(Path::CONFIG_DAT));
   const int config_size = static_cast<int>(config_blob.size());
   if (base::WriteFile(fp, config_blob.c_str(), config_size) != config_size) {
     LOG(ERROR) << "Failed to write configuration file '" << fp.value() << "'";
@@ -602,7 +557,7 @@ bool WriteConfiguration(const ap::SambaConfig* config, ErrorType* out_error) {
 
 // Reads the file with configuration information.
 bool ReadConfiguration(ap::SambaConfig* config) {
-  const base::FilePath fp(kConfigFilePath);
+  const base::FilePath fp(s_paths->Get(Path::CONFIG_DAT));
   if (!base::PathExists(fp)) {
     LOG(ERROR) << "Configuration file '" << fp.value() << "' does not exist";
     return false;
@@ -634,8 +589,9 @@ bool GetAccountInfo(const std::string& search_string,
                   ap::AccountInfo* out_account_info, ErrorType* out_error) {
   // Call net ads search to find the user's account info.
   ProcessExecutor net_cmd(
-      {kNetPath, "ads", "search", search_string, "-s", kSmbFilePath});
-  if (!SetupJailAndRun(&net_cmd, kNetAdsSeccompFilter)) {
+      {s_paths->Get(Path::NET), "ads", "search", search_string,
+       "-s", s_paths->Get(Path::SMB_CONF)});
+  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP)) {
     *out_error = GetNetError(net_cmd, "search");
     return false;
   }
@@ -643,9 +599,10 @@ bool GetAccountInfo(const std::string& search_string,
 
   // Parse the output to find the account info proto blob. Enclose in a sandbox
   // for security considerations.
-  ProcessExecutor parse_cmd({ac::kParserPath, ac::kCmdParseAccountInfo});
+  ProcessExecutor parse_cmd({s_paths->Get(Path::PARSER),
+                             ac::kCmdParseAccountInfo});
   parse_cmd.SetInputString(net_out);
-  if (!SetupJailAndRun(&parse_cmd, kParserSeccompFilter)) {
+  if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP)) {
     LOG(ERROR) << "Failed to get user account id. Net response: " << net_out;
     *out_error = ERROR_PARSE_FAILED;
     return false;
@@ -671,10 +628,11 @@ bool GetGpoList(const std::string& user_or_machine_name,
 
   // Machine names are names ending with $, anything else is a user name.
   // TODO(tnagel): Revisit the amount of logging. https://crbug.com/666691
-  authpolicy::ProcessExecutor net_cmd({kNetPath, "ads", "gpo", "list",
-                                       user_or_machine_name, "-s",
-                                       kSmbFilePath, "-d", "10"});
-  if (!SetupJailAndRun(&net_cmd, kNetAdsSeccompFilter)) {
+  authpolicy::ProcessExecutor net_cmd({s_paths->Get(Path::NET), "ads", "gpo",
+                                       "list", user_or_machine_name, "-s",
+                                       s_paths->Get(Path::SMB_CONF),
+                                      "-d", "10"});
+  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP)) {
     *out_error = GetNetError(net_cmd, "gpo list");
     return false;
   }
@@ -685,9 +643,9 @@ bool GetGpoList(const std::string& user_or_machine_name,
   // Parse the GPO list. Enclose in a sandbox for security considerations.
   const char* cmd = scope == ac::PolicyScope::USER ? ac::kCmdParseUserGpoList
                                                    : ac::kCmdParseDeviceGpoList;
-  ProcessExecutor parse_cmd({ac::kParserPath, cmd});
+  ProcessExecutor parse_cmd({s_paths->Get(Path::PARSER), cmd});
   parse_cmd.SetInputString(net_out);
-  if (!SetupJailAndRun(&parse_cmd, kParserSeccompFilter)) {
+  if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP)) {
     LOG(ERROR) << "Failed to parse GPO list";
     *out_error = ERROR_PARSE_FAILED;
     return false;
@@ -750,7 +708,7 @@ bool DownloadGpos(const std::string& gpo_list_blob,
     // Figure out local (Linux) and remote (smb) directories.
     std::string smb_dir =
       base::StringPrintf("\\%s\\%s", gpo.directory().c_str(), preg_dir);
-    std::string linux_dir = kGpoLocalDir + smb_dir;
+    std::string linux_dir = s_paths->Get(Path::GPO_LOCAL_DIR) + smb_dir;
     std::replace(linux_dir.begin(), linux_dir.end(), '\\', '/');
 
     // Make local directory.
@@ -760,8 +718,9 @@ bool DownloadGpos(const std::string& gpo_list_blob,
 
     // Set group rwx permissions recursively, so that smbclient can write GPOs
     // there and the parser tool can read the GPOs later.
-    if (!SetFilePermissionsRecursive(linux_dir_fp, base::FilePath(kSambaTmpDir),
-                                     kFileMode_rwxrwx, out_error)) {
+    if (!SetFilePermissionsRecursive(
+            linux_dir_fp, base::FilePath(s_paths->Get(Path::SAMBA_DIR)),
+            kFileMode_rwxrwx, out_error)) {
       return false;
     }
 
@@ -789,11 +748,12 @@ bool DownloadGpos(const std::string& gpo_list_blob,
   // Download GPO into local directory. Retry a couple of times in case of
   // network errors, Kerberos authentication may be flaky in some deployments,
   // see crbug.com/684733.
-  ProcessExecutor smb_client_cmd(
-      {kSmbClientPath, service, "-s", kSmbFilePath, "-k", "-c", smb_command});
+  ProcessExecutor smb_client_cmd({s_paths->Get(Path::SMBCLIENT), service, "-s",
+                                  s_paths->Get(Path::SMB_CONF), "-k", "-c",
+                                  smb_command});
   bool success = false;
   for (int tries = 0; tries < kSmbClientMaxRetries; ++tries) {
-    success = SetupJailAndRun(&smb_client_cmd, kSmbClientSeccompFilter);
+    success = SetupJailAndRun(&smb_client_cmd, Path::SMBCLIENT_SECCOMP);
     if (success) {
       *out_error = ERROR_NONE;
       break;
@@ -861,9 +821,9 @@ bool ParseGposIntoProtobuf(const std::vector<base::FilePath>& gpo_file_paths,
   }
 
   // Load GPOs into protobuf. Enclose in a sandbox for security considerations.
-  ProcessExecutor parse_cmd({ac::kParserPath, parser_cmd_string});
+  ProcessExecutor parse_cmd({s_paths->Get(Path::PARSER), parser_cmd_string});
   parse_cmd.SetInputString(gpo_file_paths_blob);
-  if (!SetupJailAndRun(&parse_cmd, kParserSeccompFilter)) {
+  if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP)) {
     LOG(ERROR) << "Failed to parse preg files";
     *out_error = ERROR_PARSE_PREG_FAILED;
     return false;
@@ -874,11 +834,21 @@ bool ParseGposIntoProtobuf(const std::vector<base::FilePath>& gpo_file_paths,
 
 }  // namespace
 
-bool SambaInterface::Initialize(bool expect_config) {
-  // Need to create samba dirs since samba can't create dirs recursively...
+SambaInterface::SambaInterface() {
+}
+
+SambaInterface::~SambaInterface() {
+  s_paths.reset();
+}
+
+bool SambaInterface::Initialize(std::unique_ptr<PathService> path_service,
+                                bool expect_config) {
+  DCHECK(path_service);
+  s_paths = std::move(path_service);
+
   ErrorType error = ERROR_NONE;
-  for (const auto& dir_and_mode : kSambaDirsAndMode) {
-    const base::FilePath dir(dir_and_mode.first);
+  for (const auto& dir_and_mode : kDirsAndMode) {
+    const base::FilePath dir(s_paths->Get(dir_and_mode.first));
     const int mode = dir_and_mode.second;
     if (!CreateDirectory(dir, &error) ||
         !SetFilePermissions(dir, mode, &error)) {
@@ -901,7 +871,8 @@ bool SambaInterface::Initialize(bool expect_config) {
   CHECK(!s_disable_seccomp_filters);
   CHECK(!s_log_seccomp_filters);
   std::string flags;
-  if (base::ReadFileToString(base::FilePath(kFlagsFilePath), &flags)) {
+  const std::string& flags_path = s_paths->Get(Path::DEBUG_FLAGS);
+  if (base::ReadFileToString(base::FilePath(flags_path), &flags)) {
     if (Contains(flags, kFlagDisableSeccomp)) {
       LOG(WARNING) << "Seccomp filters disabled";
       s_disable_seccomp_filters = true;
@@ -939,11 +910,12 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
     return false;
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
-  ProcessExecutor kinit_cmd({kKInitPath, normalized_upn});
+  ProcessExecutor kinit_cmd({s_paths->Get(Path::KINIT), normalized_upn});
   kinit_cmd.SetInputFile(password_fd);
-  kinit_cmd.SetEnv(kKrb5ConfEnvKey, kKrb5ConfEnvValue);  // Kerberos config.
+  kinit_cmd.SetEnv(kKrb5ConfEnvKey,  // Kerberos configuration file path.
+                   kFilePrefix + s_paths->Get(Path::KRB5_CONF));
   SetupKinitTrace(&kinit_cmd);
-  if (!SetupJailAndRun(&kinit_cmd, kKInitSeccompFilter)) {
+  if (!SetupJailAndRun(&kinit_cmd, Path::KINIT_SECCOMP)) {
     *out_error = HandleKinitError(kinit_cmd);
     return false;
   }
@@ -995,11 +967,13 @@ bool SambaInterface::JoinMachine(const std::string& machine_name,
     return false;
 
   // Call net ads join to join the machine to the Active Directory domain.
-  ProcessExecutor net_cmd(
-      {kNetPath, "ads", "join", "-U", normalized_upn, "-s", kSmbFilePath});
+  ProcessExecutor net_cmd({s_paths->Get(Path::NET), "ads", "join", "-U",
+                           normalized_upn, "-s",
+                           s_paths->Get(Path::SMB_CONF)});
   net_cmd.SetInputFile(password_fd);
-  net_cmd.SetEnv(kMachineKTEnvKey, kMachineKTEnvValueTmp);  // Keytab file path.
-  if (!SetupJailAndRun(&net_cmd, kNetAdsSeccompFilter)) {
+  net_cmd.SetEnv(kMachineKTEnvKey,  // Machine keytab file path.
+                 kFilePrefix + s_paths->Get(Path::MACHINE_KT_TEMP));
+  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP)) {
     *out_error = GetNetError(net_cmd, "join");
     return false;
   }
@@ -1080,10 +1054,13 @@ bool SambaInterface::FetchDeviceGpos(std::string* out_policy_blob,
     return false;
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
-  ProcessExecutor kinit_cmd(
-      {kKInitPath, config_->machine_name() + "$@" + config_->realm(), "-k"});
-  kinit_cmd.SetEnv(kKrb5ConfEnvKey, kKrb5ConfEnvValue);  // Kerberos config.
-  kinit_cmd.SetEnv(kMachineKTEnvKey, kMachineKTEnvValueState);  // Keytab file.
+  ProcessExecutor kinit_cmd({s_paths->Get(Path::KINIT),
+                             config_->machine_name() + "$@" + config_->realm(),
+                             "-k"});
+  kinit_cmd.SetEnv(kKrb5ConfEnvKey,  // Kerberos configuration file path.
+                   kFilePrefix + s_paths->Get(Path::KRB5_CONF));
+  kinit_cmd.SetEnv(kMachineKTEnvKey,  // Machine keytab file path.
+                   kFilePrefix + s_paths->Get(Path::MACHINE_KT_STATE));
   SetupKinitTrace(&kinit_cmd);
 
   // The first device policy fetch after joining Active Directory can be very
@@ -1092,7 +1069,7 @@ bool SambaInterface::FetchDeviceGpos(std::string* out_policy_blob,
   bool success = false;
   const int max_tries = (retry_machine_kinit_ ? kMachineKinitMaxRetries : 1);
   for (int tries = 0; tries < max_tries; ++tries) {
-    success = SetupJailAndRun(&kinit_cmd, kKInitSeccompFilter);
+    success = SetupJailAndRun(&kinit_cmd, Path::KINIT_SECCOMP);
     if (success) {
       *out_error = ERROR_NONE;
       break;
