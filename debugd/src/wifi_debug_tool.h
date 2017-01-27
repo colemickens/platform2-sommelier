@@ -5,6 +5,7 @@
 #ifndef DEBUGD_SRC_WIFI_DEBUG_TOOL_H_
 #define DEBUGD_SRC_WIFI_DEBUG_TOOL_H_
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <dbus-c++/dbus.h>
 
@@ -23,7 +24,8 @@ class WifiDebugTool {
   bool SetEnabled(WifiDebugFlag flags, DBus::Error* error);
 
  private:
-  int MwifiexDebug(bool enable, DBus::Error* error);
+  bool WriteSysfsFlags(const char* str, base::FilePath path,
+                       DBus::Error* error);
   DISALLOW_COPY_AND_ASSIGN(WifiDebugTool);
 };
 

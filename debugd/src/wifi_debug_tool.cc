@@ -14,38 +14,53 @@ namespace {
 
 const char kErrorWifiDebug[] = "org.chromium.debugd.error.WifiDebug";
 
+// Marvell wifi
 const char kMwifiexDebugMask[] = "/sys/kernel/debug/mwifiex/mlan0/debug_mask";
 // Enable extra debugging: MSG | FATAL | ERROR | CMD | EVENT.
 const char kMwifiexEnable[] = "0x37";
 // Default debugging level: MSG | FATAL | ERROR.
 const char kMwifiexDisable[] = "0x7";
 
+// Intel wifi
+const char kIwlwifiDebugFlag[] = "/sys/module/iwlwifi/parameters/debug";
+// Full debugging: see below file for details on each bit:
+// drivers/net/wireless-$(WIFIVERSION)/iwl7000/iwlwifi/iwl-debug.h
+const char kIwlwifiEnable[] = "0xFFFFFFFF";
+// Default debugging: none
+const char kIwlwifiDisable[] = "0x0";
+
 }  // namespace
 
-// Return 1 if success; 0 if not supported; negative on error.
-int WifiDebugTool::MwifiexDebug(bool enable, DBus::Error* error) {
-  base::FilePath path(kMwifiexDebugMask);
-
-  if (!base::PathExists(path))
-    return 0;
-
-  const char *str = enable ? kMwifiexEnable : kMwifiexDisable;
+bool WifiDebugTool::WriteSysfsFlags(const char* str, base::FilePath path,
+                                    DBus::Error* error) {
   int len = strlen(str);
   if (base::WriteFile(path, str, len) != len) {
     error->set(kErrorWifiDebug, "write");
-    return -1;
+    return false;
   }
-  return 1;
+  return true;
 }
 
-// Supports only mwifiex for now.
 bool WifiDebugTool::SetEnabled(WifiDebugFlag flags, DBus::Error* error) {
   if (flags & ~WIFI_DEBUG_ENABLED) {
     error->set(kErrorWifiDebug, "unsupported flags");
     return false;
   }
 
-  return MwifiexDebug(flags == WIFI_DEBUG_ENABLED, error) == 1;
+  base::FilePath iwlwifi_path(kIwlwifiDebugFlag);
+  base::FilePath mwifiex_path(kMwifiexDebugMask);
+  const char* str = nullptr;
+
+  if (base::PathExists(iwlwifi_path)) {
+    str = (flags == WIFI_DEBUG_ENABLED) ? kIwlwifiEnable : kIwlwifiDisable;
+    return WriteSysfsFlags(str, iwlwifi_path, error);
+  }
+  if (base::PathExists(mwifiex_path)) {
+    str = (flags == WIFI_DEBUG_ENABLED) ? kMwifiexEnable : kMwifiexDisable;
+    return WriteSysfsFlags(str, mwifiex_path, error);
+  }
+  error->set(kErrorWifiDebug, "unsupported driver");
+  return false;
 }
 
 }  // namespace debugd
