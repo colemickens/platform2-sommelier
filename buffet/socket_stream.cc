@@ -4,11 +4,13 @@
 
 #include <arpa/inet.h>
 #include <map>
+#include <memory>
 #include <netdb.h>
 #include <string>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
@@ -55,7 +57,7 @@ std::string GetIPAddress(const sockaddr* sa) {
 
 int ConnectSocket(const std::string& host, uint16_t port) {
   std::string service = std::to_string(port);
-  addrinfo hints = {0, AF_UNSPEC, SOCK_STREAM};
+  addrinfo hints = {0, AF_INET, SOCK_STREAM};
   addrinfo* result = nullptr;
   if (getaddrinfo(host.c_str(), service.c_str(), &hints, &result)) {
     PLOG(WARNING) << "Failed to resolve host name: " << host;
