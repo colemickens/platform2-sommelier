@@ -14,6 +14,9 @@
 // limitations under the License.
 //
 
+#include <string>
+#include <vector>
+
 #include "shill/mock_dns_server_proxy.h"
 
 namespace shill {
