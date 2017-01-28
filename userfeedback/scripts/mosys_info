@@ -29,4 +29,4 @@ fi
 (mosys -l platform name || echo -n "") >> ${PLATFORM_INFO_FILE}
 (mosys -l platform version || echo -n "") >> ${PLATFORM_INFO_FILE}
 (mosys -l platform family || echo -n "") >> ${PLATFORM_INFO_FILE}
-(mosys -l platform variant || echo -n "") >> ${PLATFORM_INFO_FILE}
+(mosys -l platform model || echo -n "") >> ${PLATFORM_INFO_FILE}
