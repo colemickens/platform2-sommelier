@@ -664,9 +664,10 @@ bool GetGpoList(const std::string& user_or_machine_name,
   LOG(INFO) << "Getting GPO list for " << user_or_machine_name;
 
   // Machine names are names ending with $, anything else is a user name.
+  // TODO(tnagel): Revisit the amount of logging. https://crbug.com/666691
   authpolicy::ProcessExecutor net_cmd({kNetPath, "ads", "gpo", "list",
                                        user_or_machine_name, "-s",
-                                       kSmbFilePath});
+                                       kSmbFilePath, "-d", "10"});
   if (!SetupJailAndRun(&net_cmd, kNetAdsSeccompFilter)) {
     *out_error = GetNetError(net_cmd, "gpo list");
     return false;

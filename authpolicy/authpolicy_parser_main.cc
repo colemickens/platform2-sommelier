@@ -162,44 +162,47 @@ int ParseGpoList(const std::string& net_out, ac::PolicyScope scope) {
   LOG(INFO) << "Parsing GPO list (" << lines.size() << " lines)";
   bool found_separator = false;
   for (const std::string& line : lines) {
-    if (line.find(kGpoToken_Separator) != std::string::npos) {
+    if (line.find(kGpoToken_Separator) == 0) {
       // Separator between entries. Process last gpo if any.
       PushGpo(gpo, scope, &gpo_list);
       gpo.Clear();
       found_separator = true;
-    } else {
-      // Collect data
-      std::vector<std::string> tokens = base::SplitString(
-          line, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+      continue;
+    }
 
-      if (tokens.size() == 2) {
-        bool already_set = false;
-        bool version_error = false;
-        if (tokens[0] == kGpoToken_Name) {
-          already_set = !gpo.name.empty();
-          gpo.name = tokens[1];
-        } else if (tokens[0] == kGpoToken_Filesyspath) {
-          already_set = !gpo.filesyspath.empty();
-          gpo.filesyspath = tokens[1];
-        } else if (tokens[0] == kGpoToken_VersionUser) {
-          already_set = gpo.version_user != 0;
-          version_error = !ai::ParseGpoVersion(tokens[1], &gpo.version_user);
-        } else if (tokens[0] == kGpoToken_VersionMachine) {
-          already_set = gpo.version_machine != 0;
-          version_error = !ai::ParseGpoVersion(tokens[1], &gpo.version_machine);
-        }
+    // Collect data
+    const size_t colon_pos = line.find(":");
+    if (colon_pos == std::string::npos || colon_pos + 1 >= line.size())
+      continue;
+    const std::string key = line.substr(0, colon_pos);
+    std::string value = line.substr(colon_pos + 1);
+    base::TrimWhitespaceASCII(value, base::TRIM_ALL, &value);
 
-        // Sanity check that we don't miss separators between GPOs.
-        if (already_set) {
-          LOG(ERROR) << "Failed to parse GPO data (bad format)";
-          return ac::EXIT_CODE_PARSE_INPUT_FAILED;
-        }
+    bool already_set = false;
+    bool version_error = false;
+    if (key == kGpoToken_Name) {
+      already_set = !gpo.name.empty();
+      gpo.name = value;
+    } else if (key == kGpoToken_Filesyspath) {
+      already_set = !gpo.filesyspath.empty();
+      gpo.filesyspath = value;
+    } else if (key == kGpoToken_VersionUser) {
+      already_set = gpo.version_user != 0;
+      version_error = !ai::ParseGpoVersion(value, &gpo.version_user);
+    } else if (key == kGpoToken_VersionMachine) {
+      already_set = gpo.version_machine != 0;
+      version_error = !ai::ParseGpoVersion(value, &gpo.version_machine);
+    }
 
-        if (version_error) {
-          LOG(ERROR) << "Failed to parse GPO version '" << tokens[1] << "'";
-          return ac::EXIT_CODE_PARSE_INPUT_FAILED;
-        }
-      }
+    // Sanity check that we don't miss separators between GPOs.
+    if (already_set) {
+      LOG(ERROR) << "Failed to parse GPO data (bad format)";
+      return ac::EXIT_CODE_PARSE_INPUT_FAILED;
+    }
+
+    if (version_error) {
+      LOG(ERROR) << "Failed to parse GPO version '" << value << "'";
+      return ac::EXIT_CODE_PARSE_INPUT_FAILED;
     }
   }
 
