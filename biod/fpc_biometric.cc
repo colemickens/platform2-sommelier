@@ -365,7 +365,7 @@ bool FpcBiometric::Init() {
     return false;
   }
 
-  const char kFpcLibName[] = "/usr/lib/libfp.so";
+  const char kFpcLibName[] = "/opt/fpc/lib/libfp.so";
   bio_lib_ = BioLibrary::Load(base::FilePath(kFpcLibName));
   if (!bio_lib_)
     return false;
