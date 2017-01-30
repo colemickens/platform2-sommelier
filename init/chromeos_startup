@@ -98,9 +98,15 @@ fi
 if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
   # Find our stateful partition. It's always partition 1.
   # Unless we're on UBI, when it's ubi1_0.
+  # To support multiple volumes on a single UBI device, if the stateful
+  # partition is not found on ubi${PARTITION_NUM_STATE}_0, check
+  # ubi0_${PARTITION_NUM_STATE}.
   STATE_FLAGS="nodev,noexec,nosuid"
   if [ "${FORMAT_STATE}" = "ubi" ]; then
     STATE_DEV="/dev/ubi${PARTITION_NUM_STATE}_0"
+    if [ ! -e "${STATE_DEV}" ]; then
+      STATE_DEV="/dev/ubi0_${PARTITION_NUM_STATE}"
+    fi
   else
     DIRTY_EXPIRE_CENTISECS=$(sysctl -n vm.dirty_expire_centisecs)
     COMMIT_INTERVAL=$(( DIRTY_EXPIRE_CENTISECS / 100 ))
