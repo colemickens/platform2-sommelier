@@ -1301,6 +1301,19 @@ cmd_tpm_status() (
   /usr/sbin/cryptohome --action=tpm_more_status
 )
 
+USAGE_cryptohome_status=''
+HELP_cryptohome_status='
+  Get human-readable status information from cryptohomed.
+'
+cmd_cryptohome_status() (
+  if [ $# -eq 0 ]; then
+    /usr/sbin/cryptohome --action=status
+  else
+    help "too many arguments"
+    return 1
+  fi
+)
+
 USAGE_dmesg='[-d|-k|-r|-t|-u|-x]'
 HELP_dmesg='
   Display kernel log buffer
