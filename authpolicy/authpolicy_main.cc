@@ -9,7 +9,6 @@
 #include <base/sys_info.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/daemons/dbus_daemon.h>
-#include <chromeos/dbus/service_constants.h>
 #include <install_attributes/libinstallattributes.h>
 
 #include "authpolicy/authpolicy.h"
@@ -23,14 +22,14 @@ const char kObjectServicePath[] = "/org/chromium/AuthPolicy/ObjectManager";
 const char kChromeOSReleaseTrack[] = "CHROMEOS_RELEASE_TRACK";
 const char kBetaChannel[] = "beta-channel";
 const char kStableChannel[] = "stable-channel";
+const char kAuthPolicydUser[] = "authpolicyd";
+const char kAuthPolicydExecUser[] = "authpolicyd-exec";
+
+const int kExitCodeStartupFailure = 175;  // This number is hex AF.
 
 }  // namespace
 
 namespace authpolicy {
-
-namespace {
-
-}  // namespace
 
 class Daemon : public brillo::DBusServiceDaemon {
  public:
@@ -40,7 +39,7 @@ class Daemon : public brillo::DBusServiceDaemon {
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
-    auth_policy_.reset(new AuthPolicy(object_manager_.get()));
+    auth_policy_ = base::MakeUnique<AuthPolicy>(object_manager_.get());
     auth_policy_->RegisterAsync(
         sequencer->GetHandler("AuthPolicy.RegisterAsync() failed.", true));
     std::unique_ptr<PathService> path_service = base::MakeUnique<PathService>();
@@ -48,8 +47,7 @@ class Daemon : public brillo::DBusServiceDaemon {
         auth_policy_->Initialize(std::move(path_service), expect_config_);
     if (error != ERROR_NONE) {
       LOG(ERROR) << "Failed to initialize SambaInterface. Error: " << error;
-      // Exit with "success" to prevent respawn by upstart.
-      exit(0);
+      exit(kExitCodeStartupFailure);
     }
   }
 
@@ -67,16 +65,22 @@ class Daemon : public brillo::DBusServiceDaemon {
 
 }  // namespace authpolicy
 
-int main(int argc, const char* const* argv) {
+int main(int argc, char* argv[]) {
   brillo::OpenLog("authpolicyd", true);
   brillo::InitLog(brillo::kLogToSyslog);
 
+  // Verify we're running as authpolicyd user.
+  uid_t authpolicyd_uid = authpolicy::GetUserId(kAuthPolicydUser);
+  if (authpolicyd_uid != authpolicy::GetEffectiveUserId()) {
+    LOG(ERROR) << "Failed to verify effective UID (must run as authpolicyd).";
+    exit(kExitCodeStartupFailure);
+  }
+
   // Make it possible to switch to authpolicyd-exec without caps and drop caps.
-  uid_t authpolicyd_exec_uid =
-      authpolicy::GetUserId(authpolicy::kAuthPolicydExecUser);
+  uid_t authpolicyd_exec_uid = authpolicy::GetUserId(kAuthPolicydExecUser);
   if (!authpolicy::SetSavedUserAndDropCaps(authpolicyd_exec_uid)) {
-    // Exit with "success" to prevent respawn by upstart.
-    exit(0);
+    LOG(ERROR) << "Failed to establish user ids and drop caps.";
+    exit(kExitCodeStartupFailure);
   }
 
   // Disable on beta and stable (for now).
@@ -90,14 +94,12 @@ int main(int argc, const char* const* argv) {
     std::string channel;
     if (!base::SysInfo::GetLsbReleaseValue(kChromeOSReleaseTrack, &channel)) {
       LOG(ERROR) << "Failed to retrieve release track from sys info.";
-      // Exit with "success" to prevent respawn by upstart.
-      exit(0);
+      exit(kExitCodeStartupFailure);
     }
     if (channel == kBetaChannel || channel == kStableChannel) {
       LOG(ERROR) << "Not allowed to run on '" << kBetaChannel << "' and '"
                  << kStableChannel << "'.";
-      // Exit with "success" to prevent respawn by upstart.
-      exit(0);
+      exit(kExitCodeStartupFailure);
     }
   }
 
@@ -114,8 +116,7 @@ int main(int argc, const char* const* argv) {
     if (mode != InstallAttributesReader::kDeviceModeEnterpriseAD) {
       LOG(ERROR) << "OOBE completed but device not in Active Directory "
                     "management mode.";
-      // Exit with "success" to prevent respawn by upstart.
-      exit(0);
+      exit(kExitCodeStartupFailure);
     } else {
       LOG(INFO) << "Install attributes locked to Active Directory mode.";
 

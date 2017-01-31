@@ -62,8 +62,8 @@ class PathService {
   const std::string& Get(Path path_key) const;
 
  protected:
-  // Calls Initialize() if requested.
-  PathService(bool initialize);
+  // Calls Initialize() if |initialize| is true.
+  explicit PathService(bool initialize);
 
   // Should be called at some point during construction to initialize all paths.
   // Derived classes can override paths by specifying a constuctor that calls

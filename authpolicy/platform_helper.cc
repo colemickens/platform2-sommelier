@@ -235,8 +235,12 @@ uid_t GetUserId(const char* user_name) {
   return user_info.pw_uid;
 }
 
+uid_t GetEffectiveUserId() {
+  return geteuid();
+}
+
 bool SetSavedUserAndDropCaps(uid_t saved_uid) {
-  // Only set the saved uid, keep the other ones.
+  // Only set the saved UID, keep the other ones.
   if (setresuid(-1, -1, saved_uid)) {
     PLOG(ERROR) << "setresuid failed";
     return false;
@@ -263,12 +267,15 @@ bool SetSavedUserAndDropCaps(uid_t saved_uid) {
   return true;
 }
 
-ScopedUidSwitch::ScopedUidSwitch(uid_t real_and_effective_uid, uid_t saved_uid)
-    : real_and_effective_uid_(real_and_effective_uid), saved_uid_(saved_uid) {
+ScopedSwitchToSavedUid::ScopedSwitchToSavedUid() {
+  uid_t real_uid, effective_uid;
+  CHECK_EQ(0, getresuid(&real_uid, &effective_uid, &saved_uid_));
+  CHECK(real_uid == effective_uid);
+  real_and_effective_uid_ = real_uid;
   CHECK_EQ(0, setresuid(saved_uid_, saved_uid_, real_and_effective_uid_));
 }
 
-ScopedUidSwitch::~ScopedUidSwitch() {
+ScopedSwitchToSavedUid::~ScopedSwitchToSavedUid() {
   CHECK_EQ(0, setresuid(real_and_effective_uid_, real_and_effective_uid_,
                         saved_uid_));
 }

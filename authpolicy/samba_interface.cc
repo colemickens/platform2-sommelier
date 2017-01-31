@@ -20,7 +20,6 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 
-#include "authpolicy/constants.h"
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/process_executor.h"
 #include "authpolicy/samba_interface_internal.h"
@@ -178,13 +177,13 @@ bool SambaInterface::SetupJailAndRun(ProcessExecutor* cmd,
   cmd->SetNoNewPrivs();
 
   // Execute as authpolicyd exec user. Don't use minijail to switch user. This
-  // would force us to run without preload library since saved uids are wiped by
+  // would force us to run without preload library since saved UIDs are wiped by
   // execve and the executed code wouldn't be able to switch user. Running with
   // preload library has two main advantages:
   //   1) Tighter seccomp filters, no need to allow execve and others.
   //   2) Ability to log seccomp filter failures. Without this, it is hard to
   //      know which syscall has to be added to the filter policy file.
-  ScopedUidSwitch switch_scope(authpolicyd_uid_, authpolicyd_exec_uid_);
+  ScopedSwitchToSavedUid switch_scope;
   return cmd->Execute();
 }
 
@@ -194,7 +193,7 @@ void SambaInterface::SetupKinitTrace(ProcessExecutor* kinit_cmd) const {
   const std::string& trace_path = paths_->Get(Path::KRB5_TRACE);
   {
     // Deleting kinit trace file (must be done as authpolicyd-exec).
-    ScopedUidSwitch switch_scope(authpolicyd_uid_, authpolicyd_exec_uid_);
+    ScopedSwitchToSavedUid switch_scope;
     if (!base::DeleteFile(base::FilePath(trace_path), false /* recursive */)) {
       LOG(WARNING) << "Failed to delete kinit trace file";
     }
@@ -209,7 +208,7 @@ void SambaInterface::OutputKinitTrace() const {
   std::string trace;
   {
     // Reading kinit trace file (must be done as authpolicyd-exec).
-    ScopedUidSwitch switch_scope(authpolicyd_uid_, authpolicyd_exec_uid_);
+    ScopedSwitchToSavedUid switch_scope;
     base::ReadFileToString(base::FilePath(trace_path), &trace);
   }
   LOG(INFO) << "Kinit trace:\n" << trace;
@@ -411,7 +410,7 @@ ErrorType SambaInterface::SecureMachineKeyTab() const {
   // Set group read permissions on keytab as authpolicyd-exec, so we can copy it
   // as authpolicyd (and own the copy).
   {
-    ScopedUidSwitch switch_scope(authpolicyd_uid_, authpolicyd_exec_uid_);
+    ScopedSwitchToSavedUid switch_scope;
     error = SetFilePermissions(temp_kt_fp, kFileMode_rwr);
     if (error != ERROR_NONE)
       return error;
@@ -441,7 +440,7 @@ ErrorType SambaInterface::SecureMachineKeyTab() const {
 
   // Clean up temp file (must be done as authpolicyd-exec).
   {
-    ScopedUidSwitch switch_scope(authpolicyd_uid_, authpolicyd_exec_uid_);
+    ScopedSwitchToSavedUid switch_scope;
     if (!base::DeleteFile(temp_kt_fp, false)) {
       LOG(ERROR) << "Failed to delete file '" << temp_kt_fp.value() << "'";
       return ERROR_LOCAL_IO;
@@ -830,9 +829,6 @@ ErrorType SambaInterface::Initialize(std::unique_ptr<PathService> path_service,
     if (error != ERROR_NONE)
       return error;
   }
-
-  authpolicyd_uid_ = GetUserId(kAuthPolicydUser);
-  authpolicyd_exec_uid_ = GetUserId(kAuthPolicydExecUser);
 
   if (expect_config) {
     error = ReadConfiguration();

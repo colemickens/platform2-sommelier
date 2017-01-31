@@ -7,9 +7,11 @@
 #include <utility>
 #include <vector>
 
+#include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/dbus/dbus_method_invoker.h>
-#include <chromeos/dbus/service_constants.h>
+#include <dbus/authpolicy/dbus-constants.h>
+#include <dbus/login_manager/dbus-constants.h>
 
 #include "authpolicy/path_service.h"
 #include "authpolicy/samba_interface.h"
@@ -18,6 +20,7 @@
 namespace ap = authpolicy::protos;
 namespace em = enterprise_management;
 
+using brillo::dbus_utils::DBusObject;
 using brillo::dbus_utils::ExtractMethodCallResults;
 
 namespace authpolicy {
@@ -38,11 +41,10 @@ void PrintError(const char* msg, ErrorType error) {
 
 AuthPolicy::AuthPolicy(
     brillo::dbus_utils::ExportedObjectManager* object_manager)
-    : org::chromium::AuthPolicyAdaptor(this),
-      dbus_object_(object_manager, object_manager->GetBus(),
-                   org::chromium::AuthPolicyAdaptor::GetObjectPath()),
-      session_manager_proxy_(nullptr),
-      weak_ptr_factory_(this) {}
+    : AuthPolicy(base::MakeUnique<DBusObject>(
+          object_manager,
+          object_manager->GetBus(),
+          org::chromium::AuthPolicyAdaptor::GetObjectPath())) {}
 
 ErrorType AuthPolicy::Initialize(std::unique_ptr<PathService> path_service,
                                  bool expect_config) {
@@ -51,9 +53,9 @@ ErrorType AuthPolicy::Initialize(std::unique_ptr<PathService> path_service,
 
 void AuthPolicy::RegisterAsync(
     const AsyncEventSequencer::CompletionAction& completion_callback) {
-  RegisterWithDBusObject(&dbus_object_);
-  dbus_object_.RegisterAsync(completion_callback);
-  session_manager_proxy_ = dbus_object_.GetBus()->GetObjectProxy(
+  RegisterWithDBusObject(dbus_object_.get());
+  dbus_object_->RegisterAsync(completion_callback);
+  session_manager_proxy_ = dbus_object_->GetBus()->GetObjectProxy(
       login_manager::kSessionManagerServiceName,
       dbus::ObjectPath(login_manager::kSessionManagerServicePath));
   DCHECK(session_manager_proxy_);
@@ -118,6 +120,12 @@ void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
   // Send policy to Session Manager.
   StorePolicy(policy_blob, nullptr, std::move(callback));
 }
+
+AuthPolicy::AuthPolicy(
+    std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object)
+    : org::chromium::AuthPolicyAdaptor(this),
+      dbus_object_(std::move(dbus_object)),
+      weak_ptr_factory_(this) {}
 
 void AuthPolicy::StorePolicy(const std::string& policy_blob,
                              const std::string* account_id,

@@ -38,18 +38,21 @@ extern base::ScopedFD DuplicatePipe(int src_fd);
 // Gets a user id by name. Dies on error.
 uid_t GetUserId(const char* user_name);
 
-// Sets the given uid as saved uid and drops caps. This way, the uid can be
-// switched to the saved uid even without keeping caps around. That's more
+// Gets the current effective user id.
+uid_t GetEffectiveUserId();
+
+// Sets the given UID as saved UID and drops caps. This way, the UID can be
+// switched to the saved UID even without keeping caps around. That's more
 // secure.
 bool SetSavedUserAndDropCaps(uid_t saved_uid);
 
-// Helper class that switches to the saved uid in its scope by swapping the
-// real/effective uid with the saved uid. The actual real and effective uid have
-// to be equal. Dies on error.
-class ScopedUidSwitch {
+// Helper class that swaps the real/effective UID with the saved UID in its
+// scope. The real and effective UIDs have to match, so that the real/effective
+// UID can be restored from the saved UID. Dies on error.
+class ScopedSwitchToSavedUid {
  public:
-  ScopedUidSwitch(uid_t real_and_effective_uid, uid_t saved_uid);
-  ~ScopedUidSwitch();
+  ScopedSwitchToSavedUid();
+  ~ScopedSwitchToSavedUid();
 
  private:
   uid_t real_and_effective_uid_;

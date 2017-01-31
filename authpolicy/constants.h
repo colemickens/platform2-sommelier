@@ -30,9 +30,6 @@ enum class PolicyScope {
   MACHINE,  // Machine/device policy
 };
 
-const char kAuthPolicydUser[] = "authpolicyd";
-const char kAuthPolicydExecUser[] = "authpolicyd-exec";
-
 }  // namespace authpolicy
 
 #endif  // AUTHPOLICY_CONSTANTS_H_

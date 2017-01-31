@@ -76,7 +76,10 @@
     {
       'target_name': 'authpolicyd',
       'type': 'executable',
-      'dependencies': ['libauthpolicy'],
+      'dependencies': [
+        'libauthpolicy',
+        'authpolicy_parser',
+      ],
       'sources': ['authpolicy_main.cc'],
       'link_settings': {
         'libraries': [
@@ -95,11 +98,40 @@
           'includes': ['../common-mk/common_test.gypi'],
           'defines': ['UNIT_TEST'],
           'dependencies': ['libauthpolicy'],
+          'variables': {
+            'deps': [
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
           'sources': [
             'authpolicy_testrunner.cc',
+            'authpolicy_unittest.cc',
             'process_executor_unittest.cc',
             'samba_interface_internal_unittest.cc',
           ],
+        },
+        {
+          'target_name': 'stub_common',
+          'type': 'static_library',
+          'sources': ['stub_common.cc'],
+        },
+        {
+          'target_name': 'stub_net',
+          'type': 'executable',
+          'dependencies': [
+            'libauthpolicy',
+            'stub_common',
+          ],
+          'sources': ['stub_net_main.cc'],
+        },
+        {
+          'target_name': 'stub_kinit',
+          'type': 'executable',
+          'dependencies': [
+            'libauthpolicy',
+            'stub_common',
+          ],
+          'sources': ['stub_kinit_main.cc'],
         },
       ],
     }],

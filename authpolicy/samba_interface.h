@@ -157,10 +157,6 @@ class SambaInterface {
   bool log_seccomp_filters_ = false;
   bool trace_kinit_ = false;
 
-  // User ids.
-  uid_t authpolicyd_uid_ = -1;
-  uid_t authpolicyd_exec_uid_ = -1;
-
   // Lookup for file paths.
   std::unique_ptr<PathService> paths_;
 

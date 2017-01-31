@@ -378,7 +378,7 @@ int HandleCommand(const std::string& cmd, const std::string& arg) {
 
 }  // namespace authpolicy
 
-int main(int argc, const char* const* argv) {
+int main(int argc, char* argv[]) {
   brillo::OpenLog("authpolicy_parser", true);
   brillo::InitLog(brillo::kLogToSyslog);
 

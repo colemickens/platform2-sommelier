@@ -53,6 +53,12 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
   void RefreshDevicePolicy(PolicyResponseCallback callback) override;
 
  private:
+  friend class AuthPolicyTest;
+
+  // Used in unit tests to inject mocks.
+  explicit AuthPolicy(
+      std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object);
+
   // Sends policy to SessionManager. Assumes |policy_blob| contains user policy
   // if account_id is not nullptr, otherwise assumes it's device policy.
   void StorePolicy(const std::string& policy_blob,
@@ -65,8 +71,8 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
 
   SambaInterface samba_;
 
-  brillo::dbus_utils::DBusObject dbus_object_;
-  dbus::ObjectProxy* session_manager_proxy_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+  dbus::ObjectProxy* session_manager_proxy_ = nullptr;
   base::WeakPtrFactory<AuthPolicy> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(AuthPolicy);
