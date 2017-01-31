@@ -166,17 +166,20 @@ class Platform {
   virtual void GetProcessesWithOpenFiles(const base::FilePath& path_in,
                                  std::vector<ProcessInformation>* processes);
 
-  // Calls the platform stat() function to obtain the ownership of
+  // Calls the platform stat() or lstat() function to obtain the ownership of
   // a given path. The path may be a directory or a file.
   //
   // Parameters
   //   path - The path to look up
   //   user_id - The user ID of the path. NULL if the result is not needed.
   //   group_id - The group ID of the path. NULL if the result is not needed.
-  virtual bool GetOwnership(const base::FilePath& path, uid_t* user_id,
-                            gid_t* group_id) const;
+  //   follow_links - Whether or not to dereference symlinks
+  virtual bool GetOwnership(const base::FilePath& path,
+                            uid_t* user_id,
+                            gid_t* group_id,
+                            bool follow_links) const;
 
-  // Calls the platform chown() function on the given path.
+  // Calls the platform chown() or lchown() function on the given path.
   //
   // The path may be a directory or a file.
   //
@@ -184,8 +187,11 @@ class Platform {
   //   path - The path to set ownership on
   //   user_id - The user_id to assign ownership to
   //   group_id - The group_id to assign ownership to
-  virtual bool SetOwnership(const base::FilePath& directory, uid_t user_id,
-                            gid_t group_id) const;
+  //   follow_links - Whether or not to dereference symlinks
+  virtual bool SetOwnership(const base::FilePath& directory,
+                            uid_t user_id,
+                            gid_t group_id,
+                            bool follow_links) const;
 
   // Calls the platform stat() function to obtain the permissions of
   // the given path. The path may be a directory or a file.

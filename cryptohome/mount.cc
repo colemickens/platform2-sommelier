@@ -714,8 +714,8 @@ bool Mount::SetUpEphemeralCryptohome(const FilePath& source_path,
       FilePath(ephemeral_skeleton_path).Append(kDownloadsDir);
   if (!platform_->DirectoryExists(downloads_path)) {
     if (!platform_->CreateDirectory(downloads_path) ||
-        !platform_->SetOwnership(downloads_path,
-                                 default_user_, default_group_)) {
+        !platform_->SetOwnership(
+            downloads_path, default_user_, default_group_, true)) {
       LOG(ERROR) << "Couldn't create user Downloads directory: "
                  << downloads_path.value();
       return false;
@@ -724,7 +724,8 @@ bool Mount::SetUpEphemeralCryptohome(const FilePath& source_path,
 
   if (!platform_->SetOwnership(ephemeral_skeleton_path,
                                default_user_,
-                               default_access_group_)) {
+                               default_access_group_,
+                               true)) {
     LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
                << default_access_group_ << ") of path: "
                << ephemeral_skeleton_path.value();
@@ -943,8 +944,8 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
       LOG(INFO) << "Creating pass-through directories "
                 << tracked_dir_path.value();
       platform_->CreateDirectory(tracked_dir_path);
-      if (!platform_->SetOwnership(tracked_dir_path,
-                                   default_user_, default_group_)) {
+      if (!platform_->SetOwnership(
+              tracked_dir_path, default_user_, default_group_, true)) {
         LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
                    << default_group_ << ") of tracked directory path: "
                    << tracked_dir_path.value();
@@ -1471,7 +1472,8 @@ bool Mount::CheckChapsDirectory(const FilePath& dir,
       }
       if (!platform_->SetOwnership(dir,
                                    kChapsDirPermissions.user,
-                                   kChapsDirPermissions.group)) {
+                                   kChapsDirPermissions.group,
+                                   true)) {
         LOG(ERROR) << "Couldn't set file ownership for " << dir.value();
         return false;
       }
@@ -1589,7 +1591,8 @@ void Mount::MigrateToUserHome(const FilePath& vault_path) const {
     return;
   }
 
-  if (!platform_->SetOwnership(user_path, default_user_, default_group_)) {
+  if (!platform_->SetOwnership(
+          user_path, default_user_, default_group_, true)) {
     PLOG(ERROR) << "SetOwnership() failed: " << user_path.value();
     return;
   }
@@ -1618,7 +1621,8 @@ void Mount::MigrateToUserHome(const FilePath& vault_path) const {
     PLOG(ERROR) << "CreateDirectory() failed: " << root_path.value();
     return;
   }
-  if (!platform_->SetOwnership(root_path, kMountOwnerUid, kDaemonStoreGid)) {
+  if (!platform_->SetOwnership(
+          root_path, kMountOwnerUid, kDaemonStoreGid, true)) {
     PLOG(ERROR) << "SetOwnership() failed: " << root_path.value();
     return;
   }
@@ -1660,8 +1664,8 @@ void Mount::RecursiveCopy(const FilePath& destination,
     FilePath file_name = next_path.BaseName();
     FilePath destination_file = destination.Append(file_name);
     if (!platform_->Copy(next_path, destination_file) ||
-        !platform_->SetOwnership(destination_file,
-                                 default_user_, default_group_)) {
+        !platform_->SetOwnership(
+            destination_file, default_user_, default_group_, true)) {
       LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
                  << default_group_ << ") of destination path: "
                  << destination_file.value();
@@ -1675,8 +1679,8 @@ void Mount::RecursiveCopy(const FilePath& destination,
     FilePath destination_dir = destination.Append(dir_name);
     LOG(INFO) << "RecursiveCopy: " << destination_dir.value();
     if (!platform_->CreateDirectory(destination_dir) ||
-        !platform_->SetOwnership(destination_dir,
-                                 default_user_, default_group_)) {
+        !platform_->SetOwnership(
+            destination_dir, default_user_, default_group_, true)) {
       LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
                  << default_group_ << ") of destination path: "
                  << destination_dir.value();
@@ -1732,7 +1736,7 @@ bool Mount::EnsurePathComponent(const FilePath& fp, size_t num,
       PLOG(ERROR) << "Can't create: " << check_path.value();
       return false;
     }
-    if (!platform_->SetOwnership(check_path, uid, gid)) {
+    if (!platform_->SetOwnership(check_path, uid, gid, true)) {
       PLOG(ERROR) << "Can't chown/chgrp: " << check_path.value()
                   << " uid " << uid << " gid " << gid;
       return false;

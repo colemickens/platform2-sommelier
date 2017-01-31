@@ -531,7 +531,7 @@ TEST_F(ChapsDirectoryTest, DirectoryDoesNotExist) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetPermissions(kBaseDir, 0750))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(kBaseDir, kChapsUID, kSharedGID))
+  EXPECT_CALL(platform_, SetOwnership(kBaseDir, kChapsUID, kSharedGID, true))
       .WillRepeatedly(Return(true));
   ASSERT_TRUE(RunCheck());
 }
@@ -575,13 +575,15 @@ TEST_F(ChapsDirectoryTest, FixBadOwnership) {
   database_file_stat_.st_uid = kSharedGID;
   SetupFakeChapsDirectory();
   // Expect corrections.
-  EXPECT_CALL(platform_, SetOwnership(kBaseDir, kChapsUID, kSharedGID))
+  EXPECT_CALL(platform_, SetOwnership(kBaseDir, kChapsUID, kSharedGID, true))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(kSaltFile, kRootUID, kRootGID))
+  EXPECT_CALL(platform_, SetOwnership(kSaltFile, kRootUID, kRootGID, true))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(kDatabaseDir, kChapsUID, kSharedGID))
+  EXPECT_CALL(platform_,
+              SetOwnership(kDatabaseDir, kChapsUID, kSharedGID, true))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(kDatabaseFile, kChapsUID, kSharedGID))
+  EXPECT_CALL(platform_,
+              SetOwnership(kDatabaseFile, kChapsUID, kSharedGID, true))
       .WillRepeatedly(Return(true));
   ASSERT_TRUE(RunCheck());
 }
@@ -601,7 +603,7 @@ TEST_F(ChapsDirectoryTest, FixBadOwnershipFailure) {
   base_stat_.st_uid = kRootUID;
   SetupFakeChapsDirectory();
   // Expect corrections but fail to apply.
-  EXPECT_CALL(platform_, SetOwnership(_, _, _))
+  EXPECT_CALL(platform_, SetOwnership(_, _, _, _))
       .WillRepeatedly(Return(false));
   ASSERT_FALSE(RunCheck());
 }
@@ -649,16 +651,15 @@ TEST_P(MountTest, CheckChapsDirectoryMigration) {
 
   // These expectations will ensure the ownership and permissions are being
   // correctly applied after the directory has been moved.
-  EXPECT_CALL(platform_,
-      SetOwnership(FilePath("/fake/test_file1"), 3, 4)).Times(1);
+  EXPECT_CALL(platform_, SetOwnership(FilePath("/fake/test_file1"), 3, 4, true))
+      .Times(1);
   EXPECT_CALL(platform_,
       SetPermissions(FilePath("/fake/test_file1"), 0555)).Times(1);
-  EXPECT_CALL(platform_,
-      SetOwnership(FilePath("/fake/test_file2"), 5, 6)).Times(1);
+  EXPECT_CALL(platform_, SetOwnership(FilePath("/fake/test_file2"), 5, 6, true))
+      .Times(1);
   EXPECT_CALL(platform_,
       SetPermissions(FilePath("/fake/test_file2"), 0777)).Times(1);
-  EXPECT_CALL(platform_,
-      SetOwnership(FilePath("/fake"), 1, 2)).Times(1);
+  EXPECT_CALL(platform_, SetOwnership(FilePath("/fake"), 1, 2, true)).Times(1);
   EXPECT_CALL(platform_,
       SetPermissions(FilePath("/fake"), 0123)).Times(1);
 
@@ -1584,9 +1585,10 @@ TEST_P(MountTest, CreateTrackedSubdirectories) {
       .WillOnce(Return(false));
     EXPECT_CALL(platform_, CreateDirectory(tracked_dir_path))
       .WillOnce(Return(true));
-    EXPECT_CALL(platform_, SetOwnership(tracked_dir_path, chronos_uid_,
-                                        chronos_gid_))
-      .WillOnce(Return(true));
+    EXPECT_CALL(
+        platform_,
+        SetOwnership(tracked_dir_path, chronos_uid_, chronos_gid_, true))
+        .WillOnce(Return(true));
     if (!ShouldTestEcryptfs()) {
       EXPECT_CALL(platform_, Stat(tracked_dir_path, _))
         .WillOnce(Return(true));
@@ -1844,8 +1846,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountNoCreateTest) {
     .Times(0);
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(_, _, _))
-    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, DeleteFile(_, _))
@@ -1919,8 +1920,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
     .Times(0);
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(_, _, _))
-    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, DeleteFile(_, _))
@@ -2016,8 +2016,7 @@ TEST_P(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
     .Times(0);
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(_, _, _))
-    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, DeleteFile(_, _))
@@ -2097,8 +2096,7 @@ TEST_P(EphemeralOwnerOnlySystemTest, NonOwnerMountEnsureEphemeralTest) {
     .Times(0);
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(_, _, _))
-    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, DeleteFile(_, _))
@@ -2192,8 +2190,7 @@ TEST_P(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
     .Times(0);
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(_, _, _))
-    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetPermissions(_, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
@@ -2307,8 +2304,7 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(_, _, _))
-    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetPermissions(_, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
@@ -2413,8 +2409,7 @@ TEST_P(EphemeralExistingUserSystemTest, MountRemoveTest) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(_, _, _))
-    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetPermissions(_, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
@@ -2586,8 +2581,7 @@ TEST_P(EphemeralExistingUserSystemTest, NonOwnerMountEnsureEphemeralTest) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(_, _, _))
-    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetPermissions(_, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
@@ -2678,8 +2672,7 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(_, _, _))
-    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetPermissions(_, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
@@ -2750,8 +2743,7 @@ TEST_P(EphemeralNoUserSystemTest, MountGuestUserDir) {
                     Return(true)));
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(_, _, _))
-    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, IsDirectoryMounted(_))

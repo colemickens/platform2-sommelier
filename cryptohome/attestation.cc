@@ -1334,8 +1334,8 @@ bool Attestation::StoreDatabase(const std::string& serial_encrypted_db) {
     LOG(ERROR) << "Failed to write db.";
     return false;
   }
-  if (!platform_->SetOwnership(database_path_, attestation_user_,
-                               attestation_group_)) {
+  if (!platform_->SetOwnership(
+          database_path_, attestation_user_, attestation_group_, true)) {
     PLOG(ERROR) << "Failed to set db ownership";
     return false;
   }
@@ -1365,7 +1365,7 @@ void Attestation::CheckDatabasePermissions() {
   uid_t user = 0;
   gid_t group = 0;
   if (!platform_->GetPermissions(database_path_, &permissions) ||
-      !platform_->GetOwnership(database_path_, &user, &group)) {
+      !platform_->GetOwnership(database_path_, &user, &group, true)) {
     if (errno != ENOENT) {
       PLOG(WARNING) << "Failed to read database permissions";
     }
@@ -1379,8 +1379,10 @@ void Attestation::CheckDatabasePermissions() {
   }
   if (user != attestation_user_ || group != attestation_group_) {
     LOG(WARNING) << "Fixing database ownership.";
-    if (!platform_->SetOwnership(database_path_, attestation_user_,
-                                 attestation_group_)) {
+    if (!platform_->SetOwnership(database_path_,
+                                 attestation_user_,
+                                 attestation_group_,
+                                 true /* follow links */)) {
       PLOG(WARNING) << "Failed to fix database ownership";
     }
   }

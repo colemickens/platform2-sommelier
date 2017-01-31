@@ -374,10 +374,19 @@ bool Platform::IsPathChild(const FilePath& parent_path,
 }
 
 bool Platform::GetOwnership(const FilePath& path,
-                            uid_t* user_id, gid_t* group_id) const {
+                            uid_t* user_id,
+                            gid_t* group_id,
+                            bool follow_links) const {
   struct stat path_status;
-  if (stat(path.value().c_str(), &path_status) != 0) {
-    PLOG(ERROR) << "stat() of " << path.value() << " failed.";
+  int ret;
+  if (follow_links)
+    ret = stat(path.value().c_str(), &path_status);
+  else
+    ret = lstat(path.value().c_str(), &path_status);
+
+  if (ret != 0) {
+    PLOG(ERROR) << (follow_links ? "" : "l") << "stat() of " << path.value()
+                << " failed.";
     return false;
   }
   if (user_id)
@@ -387,11 +396,18 @@ bool Platform::GetOwnership(const FilePath& path,
   return true;
 }
 
-bool Platform::SetOwnership(const FilePath& path, uid_t user_id,
-                            gid_t group_id) const {
-  if (chown(path.value().c_str(), user_id, group_id)) {
-    PLOG(ERROR) << "chown() of " << path.value() << " to (" << user_id
-                << "," << group_id << ") failed.";
+bool Platform::SetOwnership(const FilePath& path,
+                            uid_t user_id,
+                            gid_t group_id,
+                            bool follow_links) const {
+  int ret;
+  if (follow_links)
+    ret = chown(path.value().c_str(), user_id, group_id);
+  else
+    ret = lchown(path.value().c_str(), user_id, group_id);
+  if (ret) {
+    PLOG(ERROR) << (follow_links ? "" : "l") << "chown() of " << path.value()
+                << " to (" << user_id << "," << group_id << ") failed.";
     return false;
   }
   return true;
@@ -420,9 +436,9 @@ bool Platform::SetGroupAccessible(const FilePath& path, gid_t group_id,
                                   mode_t group_mode) const {
   uid_t user_id;
   mode_t mode;
-  if (!GetOwnership(path, &user_id, NULL) ||
+  if (!GetOwnership(path, &user_id, NULL, true) ||
       !GetPermissions(path, &mode) ||
-      !SetOwnership(path, user_id, group_id) ||
+      !SetOwnership(path, user_id, group_id, true /* follow_links */) ||
       !SetPermissions(path, (mode & ~S_IRWXG) | (group_mode & S_IRWXG))) {
     LOG(ERROR) << "Couldn't set up group access on directory: " << path.value();
     return false;
@@ -786,7 +802,10 @@ bool Platform::CopyPermissionsCallback(
       new_path = new_base.Append(old_path);
     }
   }
-  if (!SetOwnership(new_path, file_info.st_uid, file_info.st_gid)) {
+  if (!SetOwnership(new_path,
+                    file_info.st_uid,
+                    file_info.st_gid,
+                    true /* follow_links */)) {
     PLOG(ERROR) << "Failed to set ownership for " << new_path.value();
     return false;
   }
@@ -842,9 +861,7 @@ bool Platform::ApplyPermissionsCallback(
   if (expected.user != file_info.st_uid ||
       expected.group != file_info.st_gid) {
     LOG(WARNING) << "Unexpected user/group for " << file_path.value();
-    if (!SetOwnership(file_path,
-                      expected.user,
-                      expected.group)) {
+    if (!SetOwnership(file_path, expected.user, expected.group, true)) {
       PLOG(ERROR) << "Failed to fix user/group for "
                   << file_path.value();
       return false;

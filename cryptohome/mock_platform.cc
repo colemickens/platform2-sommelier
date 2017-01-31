@@ -8,10 +8,9 @@ namespace cryptohome {
 
 MockPlatform::MockPlatform()
     : mock_enumerator_(new NiceMock<MockFileEnumerator>()) {
-  ON_CALL(*this, GetOwnership(_, _, _))
+  ON_CALL(*this, GetOwnership(_, _, _, _))
       .WillByDefault(Invoke(this, &MockPlatform::MockGetOwnership));
-  ON_CALL(*this, SetOwnership(_, _, _))
-      .WillByDefault(Return(true));
+  ON_CALL(*this, SetOwnership(_, _, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, GetPermissions(_, _))
       .WillByDefault(Invoke(this, &MockPlatform::MockGetPermissions));
   ON_CALL(*this, SetPermissions(_, _))

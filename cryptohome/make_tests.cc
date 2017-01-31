@@ -121,11 +121,11 @@ void MakeTests::InjectEphemeralSkeleton(MockPlatform* platform,
   EXPECT_CALL(*platform, CreateDirectory(
         Property(&FilePath::value, StartsWith(skel.value()))))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(*platform,
+  EXPECT_CALL(
+      *platform,
       SetOwnership(
-        Property(&FilePath::value, StartsWith(skel.value())),
-        _, _))
-    .WillRepeatedly(Return(true));
+          Property(&FilePath::value, StartsWith(skel.value())), _, _, _))
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(*platform,
       DirectoryExists(
         Property(&FilePath::value, StartsWith(skel.value()))))

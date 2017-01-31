@@ -99,8 +99,10 @@ class MockPlatform : public Platform {
   MOCK_METHOD1(IsDirectoryMounted, bool(const base::FilePath&));
   MOCK_METHOD2(GetProcessesWithOpenFiles, void(const base::FilePath&,
                                           std::vector<ProcessInformation>*));
-  MOCK_CONST_METHOD3(GetOwnership, bool(const base::FilePath&, uid_t*, gid_t*));
-  MOCK_CONST_METHOD3(SetOwnership, bool(const base::FilePath&, uid_t, gid_t));
+  MOCK_CONST_METHOD4(GetOwnership,
+                     bool(const base::FilePath&, uid_t*, gid_t*, bool));
+  MOCK_CONST_METHOD4(SetOwnership,
+                     bool(const base::FilePath&, uid_t, gid_t, bool));
   MOCK_CONST_METHOD2(GetPermissions, bool(const base::FilePath&, mode_t*));
   MOCK_CONST_METHOD2(SetPermissions, bool(const base::FilePath&, mode_t));
   MOCK_CONST_METHOD3(SetGroupAccessible, bool(const base::FilePath&,
@@ -180,8 +182,10 @@ class MockPlatform : public Platform {
   MockFileEnumerator* mock_enumerator() { return mock_enumerator_.get(); }
 
  private:
-  bool MockGetOwnership(const base::FilePath& path, uid_t* user_id,
-                        gid_t* group_id) const {
+  bool MockGetOwnership(const base::FilePath& path,
+                        uid_t* user_id,
+                        gid_t* group_id,
+                        bool dereference_links) const {
     *user_id = getuid();
     *group_id = getgid();
     return true;
