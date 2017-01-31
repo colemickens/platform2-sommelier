@@ -629,30 +629,36 @@ bool ReadConfiguration(ap::SambaConfig* config) {
   return true;
 }
 
-// Calls net ads search with given |search_string| to get an objectGUID.
-bool GetAccountId(const std::string& search_string, std::string* out_account_id,
-                  ErrorType* out_error) {
-  // Call net ads search to find the user's object GUID, which is used as
-  // account id.
+// Calls net ads search with given |search_string| to retrieve account info.
+bool GetAccountInfo(const std::string& search_string,
+                  ap::AccountInfo* out_account_info, ErrorType* out_error) {
+  // Call net ads search to find the user's account info.
   ProcessExecutor net_cmd(
-      {kNetPath, "ads", "search", search_string, "objectGUID", "-s",
-       kSmbFilePath});
+      {kNetPath, "ads", "search", search_string, "-s", kSmbFilePath});
   if (!SetupJailAndRun(&net_cmd, kNetAdsSeccompFilter)) {
     *out_error = GetNetError(net_cmd, "search");
     return false;
   }
   const std::string& net_out = net_cmd.GetStdout();
 
-  // Parse the output to find the account id. Enclose in a sandbox for security
-  // considerations.
-  ProcessExecutor parse_cmd({ac::kParserPath, ac::kCmdParseAccountId});
+  // Parse the output to find the account info proto blob. Enclose in a sandbox
+  // for security considerations.
+  ProcessExecutor parse_cmd({ac::kParserPath, ac::kCmdParseAccountInfo});
   parse_cmd.SetInputString(net_out);
   if (!SetupJailAndRun(&parse_cmd, kParserSeccompFilter)) {
     LOG(ERROR) << "Failed to get user account id. Net response: " << net_out;
     *out_error = ERROR_PARSE_FAILED;
     return false;
   }
-  *out_account_id = parse_cmd.GetStdout();
+  const std::string& account_info_blob = parse_cmd.GetStdout();
+
+  // Parse account info protobuf.
+  if (!out_account_info->ParseFromString(account_info_blob)) {
+    LOG(ERROR) << "Failed to parse account info protobuf";
+    *out_error = ERROR_PARSE_FAILED;
+    return false;
+  }
+
   return true;
 }
 
@@ -920,8 +926,9 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
   // Split user_principal_name into parts and normalize.
   std::string user_name, realm, workgroup, normalized_upn;
   if (!ai::ParseUserPrincipalName(user_principal_name, &user_name, &realm,
-                                  &normalized_upn, out_error))
+                                  &normalized_upn, out_error)) {
     return false;
+  }
 
   // Write krb5 configuration file.
   if (!WriteKrb5Conf(realm, out_error))
@@ -941,25 +948,29 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
     return false;
   }
 
-  // Get a unique id for the user account. Search by sAMAccountName first since
-  // that's what kinit/Windows prefer and if that fails, search by UPN. The name
-  // part of the principal name can be different from the sAMAccountName!
-  if (!GetAccountId(
+  // Get account info for the user. user_name is allowed to be either
+  // sAMAccountName or userPrincipalName (the two can be different!). Search by
+  // sAMAccountName first since that's what kinit/Windows prefer. If that fails,
+  // search by userPrincipalName.
+  ap::AccountInfo account_info;
+  if (!GetAccountInfo(
       base::StringPrintf("(sAMAccountName=%s)", user_name.c_str()),
-      out_account_id, out_error) && *out_error == ERROR_PARSE_FAILED) {
+      &account_info, out_error) && *out_error == ERROR_PARSE_FAILED) {
     LOG(WARNING) << "Object GUID not found by sAMAccountName. "
                  << "Trying userPrincipalName.";
     *out_error = ERROR_NONE;
-    if (!GetAccountId(
+    if (!GetAccountInfo(
         base::StringPrintf("(userPrincipalName=%s)", normalized_upn.c_str()),
-        out_account_id, out_error)) {
+        &account_info, out_error)) {
       return false;
     }
   }
+  *out_account_id = account_info.object_guid();
 
-  // Store user name for further reference.
+  // Store sAMAccountName for policy fetch. Note that net ads gpo list always
+  // wants the sAMAccountName.
   const std::string account_id_key(kActiveDirectoryPrefix + *out_account_id);
-  account_id_key_user_name_map_[account_id_key] = user_name;
+  user_id_name_map_[account_id_key] = account_info.sam_account_name();
   return true;
 }
 
@@ -1010,15 +1021,15 @@ bool SambaInterface::JoinMachine(const std::string& machine_name,
 bool SambaInterface::FetchUserGpos(const std::string& account_id_key,
                                    std::string* out_policy_blob,
                                    ErrorType* out_error) {
-  // Get user name from account id key (must be logged in to fetch user policy).
-  std::unordered_map<std::string, std::string>::const_iterator iter =
-      account_id_key_user_name_map_.find(account_id_key);
-  if (iter == account_id_key_user_name_map_.end()) {
+  // Get sAMAccountName from account id key (must be logged in to fetch user
+  // policy).
+  auto iter = user_id_name_map_.find(account_id_key);
+  if (iter == user_id_name_map_.end()) {
     LOG(ERROR) << "User not logged in. Please call AuthenticateUser first.";
     *out_error = ERROR_NOT_LOGGED_IN;
     return false;
   }
-  const std::string& user_name = iter->second;
+  const std::string& sam_account_name = iter->second;
 
   // Write samba configuration file.
   if (!UpdateWorkgroupAndWriteSmbConf(config_.get(), &workgroup_, out_error))
@@ -1033,14 +1044,17 @@ bool SambaInterface::FetchUserGpos(const std::string& account_id_key,
 
   // Get the list of GPOs for the given user name.
   std::string gpo_list_blob;
-  if (!GetGpoList(user_name, ac::PolicyScope::USER, &gpo_list_blob, out_error))
+  if (!GetGpoList(sam_account_name, ac::PolicyScope::USER, &gpo_list_blob,
+                  out_error)) {
     return false;
+  }
 
   // Download GPOs from Active Directory server.
   std::vector<base::FilePath> gpo_file_paths;
   if (!DownloadGpos(gpo_list_blob, domain_controller_name_, kPRegUserDir,
-                    &gpo_file_paths, out_error))
+                    &gpo_file_paths, out_error)) {
     return false;
+  }
 
   // Parse GPOs and store them in a user policy protobuf.
   if (!ParseGposIntoProtobuf(gpo_file_paths, ac::kCmdParseUserPreg,

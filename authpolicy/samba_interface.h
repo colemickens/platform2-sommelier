@@ -65,8 +65,8 @@ class SambaInterface {
   bool FetchDeviceGpos(std::string* out_policy_blob, ErrorType* out_error);
 
  private:
-  // Cached state
-  std::unordered_map<std::string, std::string> account_id_key_user_name_map_;
+  // Maps the account id key ("a-" + user object GUID) to sAMAccountName.
+  std::unordered_map<std::string, std::string> user_id_name_map_;
   std::unique_ptr<protos::SambaConfig> config_;
   std::string domain_controller_name_;
   std::string workgroup_;

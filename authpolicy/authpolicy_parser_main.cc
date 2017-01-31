@@ -118,12 +118,24 @@ int OutputForCaller(const std::string& str) {
 
 // Parses the output of net ads search to get the user's objectGUID and prints
 // it to stdout.
-int ParseAccountId(const std::string& net_out) {
-  std::string account_id;
-  if (!ai::FindToken(net_out, ':', "objectGUID", &account_id))
+int ParseAccountInfo(const std::string& net_out) {
+  std::string object_guid, sam_account_name;
+  if (!ai::FindToken(net_out, ':', "objectGUID", &object_guid) ||
+      !ai::FindToken(net_out, ':', "sAMAccountName", &sam_account_name)) {
+    LOG(ERROR) << "Failed to parse account info";
     return ac::EXIT_CODE_FIND_TOKEN_FAILED;
+  }
 
-  return OutputForCaller(account_id);
+  // Output data as proto blob.
+  ap::AccountInfo account_info_proto;
+  account_info_proto.set_object_guid(object_guid);
+  account_info_proto.set_sam_account_name(sam_account_name);
+  std::string account_info_blob;
+  if (!account_info_proto.SerializeToString(&account_info_blob)) {
+    LOG(ERROR) << "Failed to convert account info proto to string";
+    return ac::EXIT_CODE_WRITE_OUTPUT_FAILED;
+  }
+  return OutputForCaller(account_info_blob);
 }
 
 // Parses the output of net ads info to get the domain controller name and
@@ -340,8 +352,8 @@ int main(int argc, const char* const* argv) {
     return ParseDomainControllerName(stdin_str);
   if (strcmp(cmd, ac::kCmdParseWorkgroup) == 0)
     return ParseWorkgroup(stdin_str);
-  if (strcmp(cmd, ac::kCmdParseAccountId) == 0)
-    return ParseAccountId(stdin_str);
+  if (strcmp(cmd, ac::kCmdParseAccountInfo) == 0)
+    return ParseAccountInfo(stdin_str);
   if (strcmp(cmd, ac::kCmdParseUserGpoList) == 0)
     return ParseGpoList(stdin_str, ac::PolicyScope::USER);
   if (strcmp(cmd, ac::kCmdParseDeviceGpoList) == 0)

@@ -22,3 +22,8 @@ message GpoList {
 message FilePathList {
   repeated string entries = 1;
 }
+
+message AccountInfo {
+  optional string object_guid = 1;
+  optional string sam_account_name = 2;
+}
