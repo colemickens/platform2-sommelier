@@ -19,7 +19,6 @@
 #include <base/files/file_util.h>
 
 namespace authpolicy {
-namespace helper {
 
 namespace {
 
@@ -207,6 +206,23 @@ bool PerformPipeIo(int stdin_fd,
   return true;
 }
 
+base::ScopedFD DuplicatePipe(int src_fd) {
+  int pipe_fd[2];
+  base::ScopedFD dup;
+  if (!base::CreateLocalNonBlockingPipe(pipe_fd)) {
+    LOG(ERROR) << "Failed to create pipe";
+    return dup;
+  }
+  dup.reset(pipe_fd[0]);
+  base::ScopedFD pipe_write_end(pipe_fd[1]);
+  if (HANDLE_EINTR(
+          tee(src_fd, pipe_write_end.get(), INT_MAX, SPLICE_F_NONBLOCK)) <= 0) {
+    PLOG(ERROR) << "Failed to duplicate pipe";
+    dup.reset();
+  }
+  return dup;
+}
+
 uid_t GetUserId(const char* user_name) {
   // Load the passwd entry.
   int buf_len = sysconf(_SC_GETPW_R_SIZE_MAX);
@@ -257,5 +273,4 @@ ScopedUidSwitch::~ScopedUidSwitch() {
                         saved_uid_));
 }
 
-}  // namespace helper
 }  // namespace authpolicy

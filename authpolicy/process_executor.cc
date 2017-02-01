@@ -17,8 +17,6 @@
 
 #include "authpolicy/platform_helper.h"
 
-namespace ah = authpolicy::helper;
-
 namespace {
 
 // Splits string into lines and logs the lines. This works around a restriction
@@ -132,9 +130,13 @@ bool ProcessExecutor::Execute() {
 
   // Write to child_stdin and read from child_stdout and child_stderr while
   // there is still data to read/write.
-  bool io_success =
-      ah::PerformPipeIo(child_stdin, child_stdout, child_stderr, input_fd_,
-                        input_str_, &out_data_, &err_data_);
+  bool io_success = PerformPipeIo(child_stdin,
+                                  child_stdout,
+                                  child_stderr,
+                                  input_fd_,
+                                  input_str_,
+                                  &out_data_,
+                                  &err_data_);
 
   // Wait for the process to exit.
   exit_code_ = minijail_wait(jail_);

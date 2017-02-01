@@ -80,12 +80,13 @@ class SambaInterface {
   // Prints out the trace log of kinit.
   void OutputKinitTrace() const;
 
-  // Retrieves the name of the domain controller (DC). If the full server name
-  // is 'server.realm', the DC name is set to 'server'. Since the DC name is
-  // expected to change very rarely, this function earlies out and returns
-  // ERROR_NONE if the DC name has already been fetched. The DC name is required
-  // for proper kerberized authentication.
-  ErrorType EnsureDomainControllerName();
+  // Retrieves the name of the domain controller (DC) and the IP of the key
+  // distribution center (KDC). If the full server name is 'server.realm', the
+  // DC name is set to 'server'. The DC name is required for proper kerberized
+  // authentication. The KDC address is required to speed up network
+  // communication and get rid of waiting for the machine account propagation
+  // after Active Directory domain join.
+  ErrorType GetRealmInfo(protos::RealmInfo* realm_info) const;
 
   // Retrieves the name of the workgroup. Since the workgroup is expected to
   // change very rarely, this function earlies out and returns ERROR_NONE if the
@@ -101,10 +102,11 @@ class SambaInterface {
   ErrorType EnsureWorkgroupAndWriteSmbConf();
 
   // Writes the krb5 configuration file.
-  ErrorType WriteKrb5Conf(const std::string& realm) const;
+  ErrorType WriteKrb5Conf(const std::string& realm,
+                          const std::string& kdc_ip) const;
 
   // Writes the file with configuration information.
-  ErrorType WriteConfiguration();
+  ErrorType WriteConfiguration() const;
 
   // Reads the file with configuration information.
   ErrorType ReadConfiguration();
@@ -115,7 +117,7 @@ class SambaInterface {
 
   // Calls net ads search with given |search_string| to retrieve account info.
   ErrorType GetAccountInfo(const std::string& search_string,
-                           protos::AccountInfo* account_info);
+                           protos::AccountInfo* account_info) const;
 
   // Calls net ads gpo list to retrieve a list of GPOs. |user_or_machine_name|
   // may be a user or machine sAMAccountName. (The machine sAMAccountName is the
@@ -128,6 +130,7 @@ class SambaInterface {
   // a sub-folder where GPOs are downloaded to. It should match |scope| from
   // |GetGpoList|.
   ErrorType DownloadGpos(const protos::GpoList& gpo_list,
+                         const std::string& domain_controller_name,
                          PolicyScope scope,
                          std::vector<base::FilePath>* gpo_file_paths) const;
 
@@ -144,7 +147,6 @@ class SambaInterface {
   // Maps the account id key ("a-" + user object GUID) to sAMAccountName.
   std::unordered_map<std::string, std::string> user_id_name_map_;
   std::unique_ptr<protos::ActiveDirectoryConfig> config_;
-  std::string domain_controller_name_;
   std::string workgroup_;
 
   // Whether kinit calls may return false negatives and must be retried.

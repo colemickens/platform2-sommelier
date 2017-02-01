@@ -32,7 +32,6 @@
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/cloud_policy.pb.h"
 
-namespace ah = authpolicy::helper;
 namespace ap = authpolicy::protos;
 namespace ai = authpolicy::internal;
 namespace em = enterprise_management;
@@ -140,7 +139,6 @@ int ParseAccountInfo(const std::string& net_out) {
   std::string object_guid, sam_account_name;
   if (!ai::FindToken(net_out, ':', "objectGUID", &object_guid) ||
       !ai::FindToken(net_out, ':', "sAMAccountName", &sam_account_name)) {
-    LOG(ERROR) << "Failed to parse account info";
     return EXIT_CODE_FIND_TOKEN_FAILED;
   }
 
@@ -156,19 +154,30 @@ int ParseAccountInfo(const std::string& net_out) {
   return OutputForCaller(account_info_blob);
 }
 
-// Parses the output of net ads info to get the domain controller name and
-// prints it to stdout.
-int ParseDomainControllerName(const std::string& net_out) {
+// Parses the output of net ads info to get the domain controller name and KDC
+// IP address. Prints it to stdout.
+int ParseRealmInfo(const std::string& net_out) {
   // Parse output for dc_name in 'LDAP server name: dc_name.some.domain'.
-  std::string dc_name;
-  if (!ai::FindToken(net_out, ':', "LDAP server name", &dc_name))
+  std::string dc_name, kdc_ip;
+  if (!ai::FindToken(net_out, ':', "LDAP server name", &dc_name) ||
+      !ai::FindToken(net_out, ':', "KDC server", &kdc_ip)) {
     return EXIT_CODE_FIND_TOKEN_FAILED;
+  }
 
   // We're only interested in the part before the dot.
   size_t dot_pos = dc_name.find('.');
   dc_name = dc_name.substr(0, dot_pos);
 
-  return OutputForCaller(dc_name);
+  ap::RealmInfo realm_info_proto;
+  realm_info_proto.set_dc_name(dc_name);
+  realm_info_proto.set_kdc_ip(kdc_ip);
+  std::string realm_info_blob;
+  if (!realm_info_proto.SerializeToString(&realm_info_blob)) {
+    LOG(ERROR) << "Failed to convert realm info proto to string";
+    return EXIT_CODE_WRITE_OUTPUT_FAILED;
+  }
+
+  return OutputForCaller(realm_info_blob);
 }
 
 // Parses the output of net ads workgroup to get the workgroup and prints it to
@@ -346,8 +355,8 @@ int ParsePreg(const std::string& gpo_file_paths_blob, PolicyScope scope) {
 }
 
 int HandleCommand(const std::string& cmd, const std::string& arg) {
-  if (cmd == kCmdParseDcName)
-    return ParseDomainControllerName(arg);
+  if (cmd == kCmdParseRealmInfo)
+    return ParseRealmInfo(arg);
   if (cmd == kCmdParseWorkgroup)
     return ParseWorkgroup(arg);
   if (cmd == kCmdParseAccountInfo)
@@ -385,7 +394,7 @@ int main(int argc, const char* const* argv) {
 
   // All commands take additional arguments via stdin.
   std::string stdin;
-  if (!ah::ReadPipeToString(STDIN_FILENO, &stdin)) {
+  if (!authpolicy::ReadPipeToString(STDIN_FILENO, &stdin)) {
     LOG(ERROR) << "Failed to read stdin";
     return authpolicy::EXIT_CODE_READ_INPUT_FAILED;
   }

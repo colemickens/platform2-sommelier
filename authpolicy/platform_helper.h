@@ -7,8 +7,9 @@
 
 #include <string>
 
+#include <base/files/scoped_file.h>
+
 namespace authpolicy {
-namespace helper {
 
 // Reads the whole contents of the file descriptor |fd| into the string |out|.
 // If fd is a blocking pipe this call will block until the pipe is closed.
@@ -29,6 +30,10 @@ extern bool PerformPipeIo(int stdin_fd,
                           const std::string& input_str,
                           std::string* stdout,
                           std::string* stderr);
+
+// Duplicating pipe content from |src_fd|. Returns valid base::ScopedFD on
+// success. Should never block.
+extern base::ScopedFD DuplicatePipe(int src_fd);
 
 // Gets a user id by name. Dies on error.
 uid_t GetUserId(const char* user_name);
@@ -51,7 +56,6 @@ class ScopedUidSwitch {
   uid_t saved_uid_;
 };
 
-}  // namespace helper
 }  // namespace authpolicy
 
 #endif  // AUTHPOLICY_PLATFORM_HELPER_H_

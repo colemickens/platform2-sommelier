@@ -4,6 +4,7 @@
 
 #include "authpolicy/samba_interface.h"
 
+#include <algorithm>
 #include <map>
 #include <string>
 #include <utility>
@@ -26,7 +27,6 @@
 #include "bindings/authpolicy_containers.pb.h"
 
 namespace ai = authpolicy::internal;
-namespace ah = authpolicy::helper;
 namespace ap = authpolicy::protos;
 
 namespace authpolicy {
@@ -70,6 +70,11 @@ const char kKrb5ConfData[] =
     "\tclockskew = 300\n"
     // Required for password change.
     "\tdefault_realm = %s\n";
+const char kKrb5RealmsData[] =
+    "[realms]\n"
+    "\t%s = {\n"
+    "\t\tkdc = [%s]\n"
+    "\t}\n";
 
 const int kFileMode_rwr = base::FILE_PERMISSION_READ_BY_USER |
                           base::FILE_PERMISSION_WRITE_BY_USER |
@@ -136,6 +141,7 @@ const char kKeyPasswordExpiredStderr[] =
     "Cannot read password while getting initial credentials";
 const char kKeyCannotResolve[] =
     "Cannot resolve network address for KDC in realm";
+const char kKeyCannotContactKDC[] = "Cannot contact any KDC";
 
 // Keys for interpreting net output.
 const char kKeyJoinAccessDenied[] = "NT_STATUS_ACCESS_DENIED";
@@ -178,7 +184,7 @@ bool SambaInterface::SetupJailAndRun(ProcessExecutor* cmd,
   //   1) Tighter seccomp filters, no need to allow execve and others.
   //   2) Ability to log seccomp filter failures. Without this, it is hard to
   //      know which syscall has to be added to the filter policy file.
-  ah::ScopedUidSwitch switch_scope(authpolicyd_uid_, authpolicyd_exec_uid_);
+  ScopedUidSwitch switch_scope(authpolicyd_uid_, authpolicyd_exec_uid_);
   return cmd->Execute();
 }
 
@@ -188,7 +194,7 @@ void SambaInterface::SetupKinitTrace(ProcessExecutor* kinit_cmd) const {
   const std::string& trace_path = paths_->Get(Path::KRB5_TRACE);
   {
     // Deleting kinit trace file (must be done as authpolicyd-exec).
-    ah::ScopedUidSwitch switch_scope(authpolicyd_uid_, authpolicyd_exec_uid_);
+    ScopedUidSwitch switch_scope(authpolicyd_uid_, authpolicyd_exec_uid_);
     if (!base::DeleteFile(base::FilePath(trace_path), false /* recursive */)) {
       LOG(WARNING) << "Failed to delete kinit trace file";
     }
@@ -203,7 +209,7 @@ void SambaInterface::OutputKinitTrace() const {
   std::string trace;
   {
     // Reading kinit trace file (must be done as authpolicyd-exec).
-    ah::ScopedUidSwitch switch_scope(authpolicyd_uid_, authpolicyd_exec_uid_);
+    ScopedUidSwitch switch_scope(authpolicyd_uid_, authpolicyd_exec_uid_);
     base::ReadFileToString(base::FilePath(trace_path), &trace);
   }
   LOG(INFO) << "Kinit trace:\n" << trace;
@@ -220,6 +226,10 @@ ErrorType GetKinitError(const ProcessExecutor& kinit_cmd) {
   const std::string& kinit_out = kinit_cmd.GetStdout();
   const std::string& kinit_err = kinit_cmd.GetStderr();
 
+  if (Contains(kinit_err, kKeyCannotContactKDC)) {
+    LOG(ERROR) << "kinit failed - failed to contact KDC";
+    return ERROR_CONTACTING_KDC_FAILED;
+  }
   if (Contains(kinit_err, kKeyBadUserName)) {
     LOG(ERROR) << "kinit failed - bad user name";
     return ERROR_BAD_USER_NAME;
@@ -280,6 +290,11 @@ ErrorType GetNetError(const ProcessExecutor& executor,
 
 ErrorType GetSmbclientError(const ProcessExecutor& smb_client_cmd) {
   const std::string& smb_client_out = smb_client_cmd.GetStdout();
+  const std::string& smb_client_err = smb_client_cmd.GetStderr();
+  if (Contains(smb_client_err, kKeyCannotContactKDC)) {
+    LOG(ERROR) << "smbclient failed - cannot contact KDC";
+    return ERROR_CONTACTING_KDC_FAILED;
+  }
   if (Contains(smb_client_out, kKeyNetworkTimeout) ||
       Contains(smb_client_out, kKeyConnectionReset)) {
     LOG(ERROR) << "smbclient failed - network problem";
@@ -292,28 +307,30 @@ ErrorType GetSmbclientError(const ProcessExecutor& smb_client_cmd) {
 
 }  // namespace
 
-ErrorType SambaInterface::EnsureDomainControllerName() {
-  if (!domain_controller_name_.empty())
-    return ERROR_NONE;
-
+ErrorType SambaInterface::GetRealmInfo(protos::RealmInfo* realm_info) const {
   authpolicy::ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "info",
                                        "-s", paths_->Get(Path::SMB_CONF)});
-  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP))
+  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP)) {
     return GetNetError(net_cmd, "info");
+  }
   const std::string& net_out = net_cmd.GetStdout();
 
   // Parse the output to find the domain controller name. Enclose in a sandbox
   // for security considerations.
-  ProcessExecutor parse_cmd({paths_->Get(Path::PARSER), kCmdParseDcName});
+  ProcessExecutor parse_cmd({paths_->Get(Path::PARSER), kCmdParseRealmInfo});
   parse_cmd.SetInputString(net_out);
   if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP)) {
-    LOG(ERROR) << "authpolicy_parser parse_dc_name failed with exit code "
+    LOG(ERROR) << "authpolicy_parser parse_realm_info failed with exit code "
                << parse_cmd.GetExitCode();
     return ERROR_PARSE_FAILED;
   }
-  domain_controller_name_ = parse_cmd.GetStdout();
+  if (!realm_info->ParseFromString(parse_cmd.GetStdout())) {
+    LOG(ERROR) << "Failed to parse realm info from string";
+    return ERROR_PARSE_FAILED;
+  }
 
-  LOG(INFO) << "Found DC name = '" << domain_controller_name_ << "'";
+  LOG(INFO) << "Found DC name = '" << realm_info->dc_name() << "'";
+  LOG(INFO) << "Found KDC IP = '" << realm_info->kdc_ip() << "'";
   return ERROR_NONE;
 }
 
@@ -394,7 +411,7 @@ ErrorType SambaInterface::SecureMachineKeyTab() const {
   // Set group read permissions on keytab as authpolicyd-exec, so we can copy it
   // as authpolicyd (and own the copy).
   {
-    ah::ScopedUidSwitch switch_scope(authpolicyd_uid_, authpolicyd_exec_uid_);
+    ScopedUidSwitch switch_scope(authpolicyd_uid_, authpolicyd_exec_uid_);
     error = SetFilePermissions(temp_kt_fp, kFileMode_rwr);
     if (error != ERROR_NONE)
       return error;
@@ -424,7 +441,7 @@ ErrorType SambaInterface::SecureMachineKeyTab() const {
 
   // Clean up temp file (must be done as authpolicyd-exec).
   {
-    ah::ScopedUidSwitch switch_scope(authpolicyd_uid_, authpolicyd_exec_uid_);
+    ScopedUidSwitch switch_scope(authpolicyd_uid_, authpolicyd_exec_uid_);
     if (!base::DeleteFile(temp_kt_fp, false)) {
       LOG(ERROR) << "Failed to delete file '" << temp_kt_fp.value() << "'";
       return ERROR_LOCAL_IO;
@@ -476,8 +493,11 @@ ErrorType SambaInterface::EnsureWorkgroupAndWriteSmbConf() {
   return WriteSmbConf();
 }
 
-ErrorType SambaInterface::WriteKrb5Conf(const std::string& realm) const {
+ErrorType SambaInterface::WriteKrb5Conf(const std::string& realm,
+                                        const std::string& kdc_ip) const {
   std::string data = base::StringPrintf(kKrb5ConfData, realm.c_str());
+  if (!kdc_ip.empty())
+    data += base::StringPrintf(kKrb5RealmsData, realm.c_str(), kdc_ip.c_str());
   const base::FilePath krbconf_path(paths_->Get(Path::KRB5_CONF));
   const int data_size = static_cast<int>(data.size());
   if (base::WriteFile(krbconf_path, data.c_str(), data_size) != data_size) {
@@ -489,7 +509,7 @@ ErrorType SambaInterface::WriteKrb5Conf(const std::string& realm) const {
   return ERROR_NONE;
 }
 
-ErrorType SambaInterface::WriteConfiguration() {
+ErrorType SambaInterface::WriteConfiguration() const {
   DCHECK(config_);
   std::string config_blob;
   if (!config_->SerializeToString(&config_blob)) {
@@ -544,7 +564,7 @@ ErrorType SambaInterface::ReadConfiguration() {
 }
 
 ErrorType SambaInterface::GetAccountInfo(const std::string& search_string,
-                                         ap::AccountInfo* account_info) {
+                                         ap::AccountInfo* account_info) const {
   // Call net ads search to find the user's account info.
   ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "search",
                            search_string, "-s", paths_->Get(Path::SMB_CONF)});
@@ -618,6 +638,7 @@ struct GpoPaths {
 
 ErrorType SambaInterface::DownloadGpos(
     const ap::GpoList& gpo_list,
+    const std::string& domain_controller_name,
     PolicyScope scope,
     std::vector<base::FilePath>* gpo_file_paths) const {
   if (gpo_list.entries_size() == 0) {
@@ -691,7 +712,7 @@ ErrorType SambaInterface::DownloadGpos(
   }
 
   const std::string service = base::StringPrintf(
-      "//%s.%s", domain_controller_name_.c_str(), gpo_basepath.c_str());
+      "//%s.%s", domain_controller_name.c_str(), gpo_basepath.c_str());
 
   // Download GPO into local directory. Retry a couple of times in case of
   // network errors, Kerberos authentication may be flaky in some deployments,
@@ -699,18 +720,32 @@ ErrorType SambaInterface::DownloadGpos(
   ProcessExecutor smb_client_cmd({paths_->Get(Path::SMBCLIENT), service, "-s",
                                   paths_->Get(Path::SMB_CONF), "-k", "-c",
                                   smb_command});
+  smb_client_cmd.SetEnv(kKrb5ConfEnvKey,  // Kerberos configuration file path.
+                        kFilePrefix + paths_->Get(Path::KRB5_CONF));
   bool success = false;
   for (int tries = 0; tries < kSmbClientMaxRetries; ++tries) {
+    // Sleep after it tried with both types of krb5.conf.
+    if (tries > 1) {
+      base::PlatformThread::Sleep(
+          base::TimeDelta::FromSeconds(kSmbClientRetryWaitSeconds));
+    }
     success = SetupJailAndRun(&smb_client_cmd, Path::SMBCLIENT_SECCOMP);
     if (success) {
       error = ERROR_NONE;
       break;
     }
     error = GetSmbclientError(smb_client_cmd);
-    if (error != ERROR_NETWORK_PROBLEM)
+    if (error != ERROR_NETWORK_PROBLEM &&
+        error != ERROR_CONTACTING_KDC_FAILED) {
       break;
-    base::PlatformThread::Sleep(
-        base::TimeDelta::FromSeconds(kSmbClientRetryWaitSeconds));
+    }
+    if (tries == 0) {
+      LOG(WARNING)
+          << "Retrying smbclient without KDC IP config in the krb5.conf";
+      error = WriteKrb5Conf(config_->realm(), std::string() /* kdc_ip */);
+      if (error != ERROR_NONE)
+        return error;
+    }
   }
 
   if (!success) {
@@ -796,8 +831,8 @@ ErrorType SambaInterface::Initialize(std::unique_ptr<PathService> path_service,
       return error;
   }
 
-  authpolicyd_uid_ = ah::GetUserId(kAuthPolicydUser);
-  authpolicyd_exec_uid_ = ah::GetUserId(kAuthPolicydExecUser);
+  authpolicyd_uid_ = GetUserId(kAuthPolicydUser);
+  authpolicyd_exec_uid_ = GetUserId(kAuthPolicydExecUser);
 
   if (expect_config) {
     error = ReadConfiguration();
@@ -841,15 +876,26 @@ ErrorType SambaInterface::AuthenticateUser(
     return ERROR_PARSE_UPN_FAILED;
   }
 
-  // Write krb5 configuration file.
-  ErrorType error = WriteKrb5Conf(realm);
+  // Write Samba configuration file.
+  ErrorType error = EnsureWorkgroupAndWriteSmbConf();
   if (error != ERROR_NONE)
     return error;
 
-  // Write Samba configuration file.
-  error = EnsureWorkgroupAndWriteSmbConf();
+  // Make sure we have realm info.
+  ap::RealmInfo realm_info;
+  error = GetRealmInfo(&realm_info);
   if (error != ERROR_NONE)
     return error;
+
+  // Write krb5 configuration file.
+  error = WriteKrb5Conf(realm, realm_info.kdc_ip());
+  if (error != ERROR_NONE)
+    return error;
+
+  // Duplicate password pipe in case we'll need to retry kinit.
+  base::ScopedFD password_dup(DuplicatePipe(password_fd));
+  if (!password_dup.is_valid())
+    return ERROR_LOCAL_IO;
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
   ProcessExecutor kinit_cmd({paths_->Get(Path::KINIT), normalized_upn});
@@ -859,7 +905,19 @@ ErrorType SambaInterface::AuthenticateUser(
   SetupKinitTrace(&kinit_cmd);
   if (!SetupJailAndRun(&kinit_cmd, Path::KINIT_SECCOMP)) {
     OutputKinitTrace();
-    return GetKinitError(kinit_cmd);
+    error = GetKinitError(kinit_cmd);
+    if (error != ERROR_CONTACTING_KDC_FAILED)
+      return error;
+    error = ERROR_NONE;
+    LOG(WARNING) << "Retrying kinit without KDC IP config in the krb5.conf";
+    error = WriteKrb5Conf(realm, std::string() /* kdc_ip */);
+    if (error != ERROR_NONE)
+      return error;
+    kinit_cmd.SetInputFile(password_dup.get());
+    if (!SetupJailAndRun(&kinit_cmd, Path::KINIT_SECCOMP)) {
+      OutputKinitTrace();
+      return GetKinitError(kinit_cmd);
+    }
   }
 
   // Get account info for the user. user_name is allowed to be either
@@ -959,7 +1017,8 @@ ErrorType SambaInterface::FetchUserGpos(const std::string& account_id_key,
     return error;
 
   // Make sure we have the domain controller name.
-  error = EnsureDomainControllerName();
+  ap::RealmInfo realm_info;
+  error = GetRealmInfo(&realm_info);
   if (error != ERROR_NONE)
     return error;
 
@@ -974,7 +1033,8 @@ ErrorType SambaInterface::FetchUserGpos(const std::string& account_id_key,
 
   // Download GPOs from Active Directory server.
   std::vector<base::FilePath> gpo_file_paths;
-  error = DownloadGpos(gpo_list, PolicyScope::USER, &gpo_file_paths);
+  error = DownloadGpos(
+      gpo_list, realm_info.dc_name(), PolicyScope::USER, &gpo_file_paths);
   if (error != ERROR_NONE)
     return error;
 
@@ -992,14 +1052,15 @@ ErrorType SambaInterface::FetchDeviceGpos(std::string* policy_blob) {
   if (error != ERROR_NONE)
     return error;
 
-  // Make sure we have the domain controller name.
-  error = EnsureDomainControllerName();
+  // Get realm info.
+  ap::RealmInfo realm_info;
+  error = GetRealmInfo(&realm_info);
   if (error != ERROR_NONE)
     return error;
 
   // Write krb5 configuration file.
   DCHECK(config_.get());
-  error = WriteKrb5Conf(config_->realm());
+  error = WriteKrb5Conf(config_->realm(), realm_info.kdc_ip());
   if (error != ERROR_NONE)
     return error;
 
@@ -1017,8 +1078,14 @@ ErrorType SambaInterface::FetchDeviceGpos(std::string* policy_blob) {
   // slow because machine credentials need to propagate through the AD
   // deployment.
   bool success = false;
-  const int max_tries = (retry_machine_kinit_ ? kMachineKinitMaxRetries : 1);
+  const int max_tries =
+      retry_machine_kinit_ ? std::max(kMachineKinitMaxRetries, 2) : 2;
   for (int tries = 0; tries < max_tries; ++tries) {
+    // Sleep after it tried with both types of krb5.conf.
+    if (tries > 1) {
+      base::PlatformThread::Sleep(
+          base::TimeDelta::FromSeconds(kMachineKinitRetryWaitSeconds));
+    }
     success = SetupJailAndRun(&kinit_cmd, Path::KINIT_SECCOMP);
     if (success) {
       error = ERROR_NONE;
@@ -1026,10 +1093,16 @@ ErrorType SambaInterface::FetchDeviceGpos(std::string* policy_blob) {
     }
     OutputKinitTrace();
     error = GetKinitError(kinit_cmd);
-    if (error != ERROR_BAD_USER_NAME && error != ERROR_BAD_PASSWORD)
+    if (error != ERROR_BAD_USER_NAME && error != ERROR_BAD_PASSWORD &&
+        error != ERROR_CONTACTING_KDC_FAILED) {
       break;
-    base::PlatformThread::Sleep(
-        base::TimeDelta::FromSeconds(kMachineKinitRetryWaitSeconds));
+    }
+    if (tries == 0) {
+      LOG(WARNING) << "Retrying kinit without KDC IP config in the krb5.conf";
+      error = WriteKrb5Conf(config_->realm(), std::string());
+      if (error != ERROR_NONE)
+        break;
+    }
   }
   retry_machine_kinit_ = false;
   if (!success)
@@ -1044,7 +1117,8 @@ ErrorType SambaInterface::FetchDeviceGpos(std::string* policy_blob) {
 
   // Download GPOs from Active Directory server.
   std::vector<base::FilePath> gpo_file_paths;
-  error = DownloadGpos(gpo_list, PolicyScope::MACHINE, &gpo_file_paths);
+  error = DownloadGpos(
+      gpo_list, realm_info.dc_name(), PolicyScope::MACHINE, &gpo_file_paths);
   if (error != ERROR_NONE)
     return error;
 
@@ -1060,8 +1134,8 @@ ErrorType SambaInterface::FetchDeviceGpos(std::string* policy_blob) {
 void SambaInterface::Reset() {
   user_id_name_map_.clear();
   config_.reset();
-  domain_controller_name_.clear();
   workgroup_.clear();
+  retry_machine_kinit_ = false;
 }
 
 }  // namespace authpolicy

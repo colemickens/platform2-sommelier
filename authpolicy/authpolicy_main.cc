@@ -17,8 +17,6 @@
 #include "authpolicy/path_service.h"
 #include "authpolicy/platform_helper.h"
 
-namespace ah = authpolicy::helper;
-
 namespace {
 
 const char kObjectServicePath[] = "/org/chromium/AuthPolicy/ObjectManager";
@@ -74,8 +72,9 @@ int main(int argc, const char* const* argv) {
   brillo::InitLog(brillo::kLogToSyslog);
 
   // Make it possible to switch to authpolicyd-exec without caps and drop caps.
-  uid_t authpolicyd_exec_uid = ah::GetUserId(authpolicy::kAuthPolicydExecUser);
-  if (!ah::SetSavedUserAndDropCaps(authpolicyd_exec_uid)) {
+  uid_t authpolicyd_exec_uid =
+      authpolicy::GetUserId(authpolicy::kAuthPolicydExecUser);
+  if (!authpolicy::SetSavedUserAndDropCaps(authpolicyd_exec_uid)) {
     // Exit with "success" to prevent respawn by upstart.
     exit(0);
   }

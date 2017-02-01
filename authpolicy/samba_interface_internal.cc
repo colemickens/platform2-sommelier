@@ -58,6 +58,7 @@ bool FindToken(const std::string& in_str,
       }
     }
   }
+  LOG(ERROR) << "Failed to find '" << token << "' in '" << in_str << "'";
   return false;
 }
 

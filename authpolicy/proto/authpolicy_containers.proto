@@ -36,3 +36,11 @@ message AccountInfo {
   optional string object_guid = 1;
   optional string sam_account_name = 2;
 }
+
+// Selected data from net ads info. |dc_name| is the name of the domain
+// controller and |kdc_ip| is the IPv4 or IPv6 address of the key distribution
+// center.
+message RealmInfo {
+  optional string dc_name = 1;
+  optional string kdc_ip = 2;
+}
