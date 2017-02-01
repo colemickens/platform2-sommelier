@@ -1,0 +1,2 @@
+# Enable WiFi Power Save Mode
+ACTION=="add|change", SUBSYSTEM=="net", TEST=="phy80211", RUN+="/usr/sbin/iw dev %k set power_save on"
