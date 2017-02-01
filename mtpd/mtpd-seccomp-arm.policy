@@ -67,3 +67,4 @@ ARM_set_tls: 1
 # Allow PR_SET_NAME from libchrome's base::PlatformThread::SetName()
 prctl: arg0 == 0xf
 setpriority: 1
+getrandom: 1
