@@ -14,6 +14,7 @@
 // limitations under the License.
 //
 
+#include <signal.h>
 #include <sysexits.h>
 
 #include <base/at_exit.h>
@@ -68,6 +69,18 @@ void InitMinijailSandbox() {
       << "trunksd was not able to drop group privilege.";
 }
 
+// Add the signals, for which the handlers are added by brillo::Daemon
+// to the blocked mask.
+void MaskSignals() {
+  sigset_t signal_mask;
+  CHECK_EQ(0, sigemptyset(&signal_mask));
+  for (int signal : {SIGTERM, SIGINT, SIGHUP}) {
+    CHECK_EQ(0, sigaddset(&signal_mask, signal));
+  }
+  CHECK_EQ(0, sigprocmask(SIG_BLOCK, &signal_mask, nullptr));
+  VLOG(2) << "Signal mask set.";
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -107,6 +120,10 @@ int main(int argc, char** argv) {
   // This needs to be *after* opening the TPM handle and *before* starting the
   // background thread.
   InitMinijailSandbox();
+  // Make sure signals handled by the server are blocked in all threads,
+  // otherwise the process still dies.
+  // This needs to be *before* starting the background thread.
+  MaskSignals();
   base::Thread background_thread(kBackgroundThreadName);
   CHECK(background_thread.Start()) << "Failed to start background thread.";
   trunks::TrunksFactoryImpl factory(low_level_transceiver);
