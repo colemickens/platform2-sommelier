@@ -141,6 +141,10 @@
     {
       'target_name': 'install_attributes-proto',
       'type': 'static_library',
+      # install_attributes-proto.a is used by a shared_libary
+      # object, so we need to build it with '-fPIC' instead of '-fPIE'.
+      'cflags!': ['-fPIE'],
+      'cflags': ['-fPIC'],
       'variables': {
         'proto_in_dir': '<(sysroot)/usr/include/proto',
         'proto_out_dir': 'include/bindings',
