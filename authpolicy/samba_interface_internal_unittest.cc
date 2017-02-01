@@ -39,6 +39,9 @@ class SambaInterfaceTest : public ::testing::Test {
   // Helpers for ParseGpoVersion
   unsigned int gpo_version_ = 0;
 
+  // Helpers for ParseGpFLags
+  int gp_flags_ = ai::kGpFlagInvalid;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(SambaInterfaceTest);
 };
@@ -222,6 +225,41 @@ TEST_F(SambaInterfaceTest, ParseGpoVersionFail_HexOnly) {
 // Only hex string in brackets fails
 TEST_F(SambaInterfaceTest, ParseGpoVersionFail_BracketsHexOnly) {
   EXPECT_FALSE(ai::ParseGpoVersion("(0x000f)", &gpo_version_));
+}
+
+// Successfully parsing GP flags
+TEST_F(SambaInterfaceTest, ParseGpFlagsSuccess) {
+  EXPECT_TRUE(ai::ParseGpFlags("0 GPFLAGS_ALL_ENABLED", &gp_flags_));
+  EXPECT_EQ(0, gp_flags_);
+  EXPECT_TRUE(ai::ParseGpFlags("1 GPFLAGS_USER_SETTINGS_DISABLED", &gp_flags_));
+  EXPECT_EQ(1, gp_flags_);
+  EXPECT_TRUE(ai::ParseGpFlags("2 GPFLAGS_MACHINE_SETTINGS_DISABLED",
+                               &gp_flags_));
+  EXPECT_EQ(2, gp_flags_);
+  EXPECT_TRUE(ai::ParseGpFlags("3 GPFLAGS_ALL_DISABLED", &gp_flags_));
+  EXPECT_EQ(3, gp_flags_);
+}
+
+// Strings don't match numbers
+TEST_F(SambaInterfaceTest, ParseGpFlagsFail_StringNotMatching) {
+  EXPECT_FALSE(ai::ParseGpFlags("1 GPFLAGS_ALL_ENABLED", &gp_flags_));
+  EXPECT_FALSE(ai::ParseGpFlags("2 GPFLAGS_ALL_DISABLED", &gp_flags_));
+}
+
+// Missing string
+TEST_F(SambaInterfaceTest, ParseGpFlagsFail_MissingString) {
+  EXPECT_FALSE(ai::ParseGpFlags("0", &gp_flags_));
+}
+
+// Missing number
+TEST_F(SambaInterfaceTest, ParseGpFlagsFail_MissingNumber) {
+  EXPECT_FALSE(ai::ParseGpFlags("GPFLAGS_ALL_ENABLED", &gp_flags_));
+}
+
+// String not trimmed
+TEST_F(SambaInterfaceTest, ParseGpFlagsFail_NotTrimmed) {
+  EXPECT_FALSE(ai::ParseGpFlags(" 0 GPFLAGS_ALL_ENABLED", &gp_flags_));
+  EXPECT_FALSE(ai::ParseGpFlags("0 GPFLAGS_ALL_ENABLED ", &gp_flags_));
 }
 
 }  // namespace authpolicy

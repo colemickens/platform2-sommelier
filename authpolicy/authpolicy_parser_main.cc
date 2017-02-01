@@ -46,6 +46,7 @@ const char kGpoToken_Name[] = "name";
 const char kGpoToken_Filesyspath[] = "filesyspath";
 const char kGpoToken_VersionUser[] = "version_user";
 const char kGpoToken_VersionMachine[] = "version_machine";
+const char kGpoToken_Options[] = "options";
 
 struct GpoEntry {
   GpoEntry() { Clear(); }
@@ -55,29 +56,33 @@ struct GpoEntry {
     filesyspath.clear();
     version_user = 0;
     version_machine = 0;
+    gp_flags = ai::kGpFlagInvalid;
   }
 
   bool IsValid() const {
     return !name.empty() && !filesyspath.empty() &&
-           !(version_user == 0 && version_machine == 0);
+           !(version_user == 0 && version_machine == 0) &&
+           gp_flags != ai::kGpFlagInvalid;
   }
 
   bool IsEmpty() const {
     return name.empty() && filesyspath.empty() && version_user == 0 &&
-           version_machine == 0;
+           version_machine == 0 && gp_flags == ai::kGpFlagInvalid;
   }
 
   void Log() const {
-    LOG(INFO) << "  Name:            " << name;
-    LOG(INFO) << "  Filesyspath:     " << filesyspath;
-    LOG(INFO) << "  Version-User:    " << version_user;
-    LOG(INFO) << "  Version-Machine: " << version_machine;
+    LOG(INFO) << "  Name:        " << name;
+    LOG(INFO) << "  Filesyspath: " << filesyspath;
+    LOG(INFO) << "  Version:     " << version_user << " (user) "
+                                   << version_machine << " (machine)";
+    LOG(INFO) << "  GPFLags:     " << gp_flags;
   }
 
   std::string name;
   std::string filesyspath;
   unsigned int version_user;
   unsigned int version_machine;
+  int gp_flags;
 };
 
 void PushGpo(const GpoEntry& gpo,
@@ -95,11 +100,23 @@ void PushGpo(const GpoEntry& gpo,
   // Filter out GPOs we don't need. If version_user == 0, there's no user
   // policy stored in that GPO. Similarly, if version_machine == 0, there's no
   // device policy.
-  if (gpo.version_user == 0 && scope == ac::PolicyScope::USER) {
-    LOG(INFO) << "Filtered out GPO (Version-User is 0)";
-    gpo.Log();
-  } else if (gpo.version_machine == 0 && scope == ac::PolicyScope::MACHINE) {
-    LOG(INFO) << "Filtered out GPO (Version-Machine is 0)";
+  const char* filter_reason = nullptr;
+  switch (scope) {
+    case ac::PolicyScope::USER:
+      if (gpo.version_user == 0)
+        filter_reason = "user version is 0";
+      else if (gpo.gp_flags & ai::kGpFlagUserDisabled)
+        filter_reason = "user disabled flag is set";
+      break;
+    case ac::PolicyScope::MACHINE:
+      if (gpo.version_machine == 0)
+        filter_reason = "machine version is 0";
+      else if (gpo.gp_flags & ai::kGpFlagMachineDisabled)
+        filter_reason = "machine disabled flag is set";
+      break;
+  }
+  if (filter_reason) {
+    LOG(INFO) << "Filtered out GPO (" << filter_reason << ")";
     gpo.Log();
   } else {
     gpo_list->push_back(gpo);
@@ -192,6 +209,7 @@ int ParseGpoList(const std::string& net_out, ac::PolicyScope scope) {
 
     bool already_set = false;
     bool version_error = false;
+    bool flags_error = false;
     if (key == kGpoToken_Name) {
       already_set = !gpo.name.empty();
       gpo.name = value;
@@ -204,6 +222,9 @@ int ParseGpoList(const std::string& net_out, ac::PolicyScope scope) {
     } else if (key == kGpoToken_VersionMachine) {
       already_set = gpo.version_machine != 0;
       version_error = !ai::ParseGpoVersion(value, &gpo.version_machine);
+    } else if (key == kGpoToken_Options) {
+      already_set = gpo.gp_flags != ai::kGpFlagInvalid;
+      flags_error = !ai::ParseGpFlags(value, &gpo.gp_flags);
     }
 
     // Sanity check that we don't miss separators between GPOs.
@@ -214,6 +235,11 @@ int ParseGpoList(const std::string& net_out, ac::PolicyScope scope) {
 
     if (version_error) {
       LOG(ERROR) << "Failed to parse GPO version '" << value << "'";
+      return ac::EXIT_CODE_PARSE_INPUT_FAILED;
+    }
+
+    if (flags_error) {
+      LOG(ERROR) << "Failed to parse GP flags '" << value << "'";
       return ac::EXIT_CODE_PARSE_INPUT_FAILED;
     }
   }

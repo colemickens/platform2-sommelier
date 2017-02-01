@@ -14,6 +14,11 @@
 namespace authpolicy {
 namespace internal {
 
+// Group policy flags.
+const int kGpFlagUserDisabled = 0x01;
+const int kGpFlagMachineDisabled = 0x02;
+const int kGpFlagInvalid = 0x04;
+
 // Parses user_name@some.realm into its components and normalizes (uppercases)
 // the part behind the @. |out_user_name| is 'user_name', |out_realm| is
 // |SOME.REALM| and |out_normalized_user_principal_name| is
@@ -35,6 +40,10 @@ bool FindToken(const std::string& in_str, char token_separator,
 // Parses a GPO version string, which consists of a number and the same number
 // as base-16 hex number, e.g. '31 (0x0000001f)'.
 bool ParseGpoVersion(const std::string& str, unsigned int* out_num);
+
+// Parses a group policy flags string, which consists of a number 0-3 and a
+// descriptive name. See |kGpFlag*| for possible values.
+bool ParseGpFlags(const std::string& str, int* out_gp_flags);
 
 }  // namespace internal
 }  // namespace authpolicy

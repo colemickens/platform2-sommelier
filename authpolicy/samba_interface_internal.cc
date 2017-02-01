@@ -7,6 +7,17 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
+namespace {
+
+const char* kGpFlagsStr[] = {
+  "0 GPFLAGS_ALL_ENABLED",
+  "1 GPFLAGS_USER_SETTINGS_DISABLED",
+  "2 GPFLAGS_MACHINE_SETTINGS_DISABLED",
+  "3 GPFLAGS_ALL_DISABLED",
+};
+
+}  // namespace
+
 namespace authpolicy {
 namespace internal {
 
@@ -63,6 +74,16 @@ bool ParseGpoVersion(const std::string& str, unsigned int* out_num) {
   DCHECK(out_num);
   *out_num = num;
   return true;
+}
+
+bool ParseGpFlags(const std::string& str, int* out_gp_flags) {
+  for (int n = 0; n < static_cast<int>(arraysize(kGpFlagsStr)); ++n) {
+    if (str == kGpFlagsStr[n]) {
+      *out_gp_flags = n;
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace internal
