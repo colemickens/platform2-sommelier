@@ -41,14 +41,14 @@ const char* GetValueTypeName(const base::Value* value) {
 
 // Gets the Chrome OS or the Chromium OS registry key, depending on the branding
 // of the build. Returns false on error.
-bool GetRegistryKey(base::string16* out_key) {
+bool GetRegistryKey(base::string16* key) {
   std::string value;
   if (!base::SysInfo::GetLsbReleaseValue(kChromeOSReleaseNameKey, &value))
     return false;
   const bool is_chrome_branded = (value == kChromeOSReleaseNameValue);
   const char* key_ascii =
       is_chrome_branded ? kRegistryKeyChromeOS : kRegistryKeyChromiumOS;
-  *out_key = base::ASCIIToUTF16(key_ascii);
+  *key = base::ASCIIToUTF16(key_ascii);
   return true;
 }
 
@@ -57,12 +57,9 @@ bool GetRegistryKey(base::string16* out_key) {
 namespace policy {
 namespace helper {
 
-bool LoadPRegFile(const base::FilePath& preg_file,
-                  RegistryDict* out_dict,
-                  authpolicy::ErrorType* out_error) {
+bool LoadPRegFile(const base::FilePath& preg_file, RegistryDict* dict) {
   if (!base::PathExists(preg_file)) {
     LOG(ERROR) << "PReg file '" << preg_file.value() << "' does not exist";
-    *out_error = authpolicy::ERROR_PARSE_PREG_FAILED;
     return false;
   }
 
@@ -73,9 +70,8 @@ bool LoadPRegFile(const base::FilePath& preg_file,
   }
 
   PolicyLoadStatusSample status;
-  if (!preg_parser::ReadFile(preg_file, registry_key, out_dict, &status)) {
+  if (!preg_parser::ReadFile(preg_file, registry_key, dict, &status)) {
     LOG(ERROR) << "Failed to parse preg file '" << preg_file.value() << "'";
-    *out_error = authpolicy::ERROR_PARSE_PREG_FAILED;
     return false;
   }
 

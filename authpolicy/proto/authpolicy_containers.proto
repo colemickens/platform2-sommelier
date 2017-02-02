@@ -4,25 +4,34 @@ option optimize_for = LITE_RUNTIME;
 
 package authpolicy.protos;
 
-message SambaConfig {
+// Active directory information entered during domain join.
+message ActiveDirectoryConfig {
   optional string machine_name = 1;
   optional string realm = 3;
 }
 
+// Information about a GPO parsed from net ads gpo list. |name| is the 16-byte
+// guid (e.g. {12345678-9ABC-...}), |basepath| is created from the first part of
+// the GPO's filesyspath (e.g. 'example.com/SysVol') and |directory| is the last
+// part of the filesyspath (e.g. example.com\Policies\...\{123...}).
 message GpoEntry {
   optional string name = 1;
   optional string basepath = 2;
   optional string directory = 3;
 }
 
+// List of GPOs on server. Agnostic of policy scope (user/machine); GPOs can
+// contain both user and machine policy.
 message GpoList {
   repeated GpoEntry entries = 1;
 }
 
+// Local file paths of downloaded GPO files.
 message FilePathList {
   repeated string entries = 1;
 }
 
+// Account information from net ads search.
 message AccountInfo {
   optional string object_guid = 1;
   optional string sam_account_name = 2;

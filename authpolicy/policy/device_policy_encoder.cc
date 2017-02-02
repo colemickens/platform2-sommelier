@@ -41,14 +41,13 @@ const std::pair<const char*, em::AutoUpdateSettingsProto_ConnectionType>
           em::AutoUpdateSettingsProto_ConnectionType_CONNECTION_TYPE_CELLULAR)};
 
 // Translates string connection types to enums
-bool DecodeConnectionType(
-    const std::string& value,
-    em::AutoUpdateSettingsProto_ConnectionType* out_type) {
-  DCHECK(out_type);
+bool DecodeConnectionType(const std::string& value,
+                          em::AutoUpdateSettingsProto_ConnectionType* type) {
+  DCHECK(type);
 
   for (size_t n = 0; n < arraysize(kConnectionTypes); ++n) {
     if (value.compare(kConnectionTypes[n].first) == 0) {
-      *out_type = kConnectionTypes[n].second;
+      *type = kConnectionTypes[n].second;
       return true;
     }
   }

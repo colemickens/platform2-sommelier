@@ -58,7 +58,7 @@
         'policy/preg_policy_encoder.cc',
         'policy/user_policy_encoder.cc',
         'policy/user_policy_encoder_gen.cc',
-        'pipe_helper.cc',
+        'platform_helper.cc',
         'process_executor.cc',
         'samba_interface.cc',
         'samba_interface_internal.cc',

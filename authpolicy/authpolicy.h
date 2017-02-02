@@ -30,25 +30,25 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
 
   // Initializes internals. See SambaInterface::Initialize for an explanation of
   // |path_service| and |expect_config|.
-  bool Initialize(std::unique_ptr<PathService> path_service,
-                  bool expect_config);
+  ErrorType Initialize(std::unique_ptr<PathService> path_service,
+                       bool expect_config);
 
   // Register the D-Bus object and interfaces.
   void RegisterAsync(
       const AsyncEventSequencer::CompletionAction& completion_callback);
 
   // org::chromium::AuthPolicyInterface: (see org.chromium.AuthPolicy.xml)
-  void AuthenticateUser(const std::string& in_user_principal_name,
-                        const dbus::FileDescriptor& in_password_fd,
-                        int32_t* out_error,
-                        std::string* out_account_id) override;
+  void AuthenticateUser(const std::string& user_principal_name,
+                        const dbus::FileDescriptor& password_fd,
+                        int32_t* error,
+                        std::string* account_id) override;
 
-  int32_t JoinADDomain(const std::string& in_machine_name,
-                       const std::string& in_user_principal_name,
-                       const dbus::FileDescriptor& in_password_fd) override;
+  int32_t JoinADDomain(const std::string& machine_name,
+                       const std::string& user_principal_name,
+                       const dbus::FileDescriptor& password_fd) override;
 
   void RefreshUserPolicy(PolicyResponseCallback callback,
-                         const std::string& in_account_id) override;
+                         const std::string& account_id) override;
 
   void RefreshDevicePolicy(PolicyResponseCallback callback) override;
 

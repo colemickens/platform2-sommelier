@@ -7,8 +7,6 @@
 
 #include <vector>
 
-#include <dbus/authpolicy/dbus-constants.h>
-
 namespace base {
 class FilePath;
 }  // namespace base
@@ -31,8 +29,7 @@ namespace policy {
 // even though f3 has the higher index.
 bool ParsePRegFilesIntoUserPolicy(
     const std::vector<base::FilePath>& preg_files,
-    enterprise_management::CloudPolicySettings* policy,
-    authpolicy::ErrorType* out_error);
+    enterprise_management::CloudPolicySettings* policy);
 
 // Loads the given set of |preg_files| and encodes all device policies into the
 // given |policy| blob. If multiple files f1,...,fN are passed in, policies
@@ -40,8 +37,7 @@ bool ParsePRegFilesIntoUserPolicy(
 // - Policies in fn overwrite policies in fm if n > m.
 bool ParsePRegFilesIntoDevicePolicy(
     const std::vector<base::FilePath>& preg_files,
-    enterprise_management::ChromeDeviceSettingsProto* policy,
-    authpolicy::ErrorType* out_error);
+    enterprise_management::ChromeDeviceSettingsProto* policy);
 
 }  // namespace policy
 

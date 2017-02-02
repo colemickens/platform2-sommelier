@@ -139,7 +139,7 @@ TEST_F(ProcessExecutorTest, ReadLargeStringFromStdout) {
   // Target size should be much bigger than the pipe buffer size. In a test I
   // able to write more than 2x the pipe size to a blocking pipe, not sure why
   // this was possible. Usually, GetPipeSize() is around 64 kb.
-  const int kTargetStringSize = GetPipeSize() * 16 + 1024;
+  const int kTargetStringSize = GetPipeSize() * 4 + 1024;
   const int kNumRepeats = kTargetStringSize / strlen(kLargeTestString);
   std::string large_string;
   large_string.reserve(strlen(kLargeTestString) * kNumRepeats);

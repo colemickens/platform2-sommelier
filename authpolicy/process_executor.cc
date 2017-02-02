@@ -15,7 +15,7 @@
 #include <base/strings/stringprintf.h>
 #include <libminijail.h>
 
-#include "authpolicy/pipe_helper.h"
+#include "authpolicy/platform_helper.h"
 
 namespace ah = authpolicy::helper;
 

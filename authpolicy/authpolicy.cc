@@ -44,8 +44,8 @@ AuthPolicy::AuthPolicy(
       session_manager_proxy_(nullptr),
       weak_ptr_factory_(this) {}
 
-bool AuthPolicy::Initialize(std::unique_ptr<PathService> path_service,
-                            bool expect_config) {
+ErrorType AuthPolicy::Initialize(std::unique_ptr<PathService> path_service,
+                                 bool expect_config) {
   return samba_.Initialize(std::move(path_service), expect_config);
 }
 
@@ -59,66 +59,58 @@ void AuthPolicy::RegisterAsync(
   DCHECK(session_manager_proxy_);
 }
 
-void AuthPolicy::AuthenticateUser(const std::string& in_user_principal_name,
-                                  const dbus::FileDescriptor& in_password_fd,
-                                  int32_t* out_error,
-                                  std::string* out_account_id) {
+void AuthPolicy::AuthenticateUser(const std::string& user_principal_name,
+                                  const dbus::FileDescriptor& password_fd,
+                                  int32_t* int_error,
+                                  std::string* account_id) {
   LOG(INFO) << "Received 'AuthenticateUser' request";
 
-  ErrorType error = ERROR_NONE;
-  bool res = samba_.AuthenticateUser(
-      in_user_principal_name, in_password_fd.value(), out_account_id, &error);
-  DCHECK_EQ(res, error == ERROR_NONE);
+  ErrorType error = samba_.AuthenticateUser(
+      user_principal_name, password_fd.value(), account_id);
   PrintError("AuthenticateUser", error);
-  *out_error = error;
+  *int_error = static_cast<int>(error);
 }
 
-int32_t AuthPolicy::JoinADDomain(const std::string& in_machine_name,
-                                 const std::string& in_user_principal_name,
-                                 const dbus::FileDescriptor& in_password_fd) {
+int32_t AuthPolicy::JoinADDomain(const std::string& machine_name,
+                                 const std::string& user_principal_name,
+                                 const dbus::FileDescriptor& password_fd) {
   LOG(INFO) << "Received 'JoinADDomain' request";
 
-  ErrorType error = ERROR_NONE;
-  bool res = samba_.JoinMachine(in_machine_name, in_user_principal_name,
-                                in_password_fd.value(), &error);
-  DCHECK_EQ(res, error == ERROR_NONE);
+  ErrorType error = samba_.JoinMachine(machine_name, user_principal_name,
+                                       password_fd.value());
   PrintError("JoinADDomain", error);
   return error;
 }
 
 void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
-                                   const std::string& in_account_id) {
+                                   const std::string& account_id) {
   LOG(INFO) << "Received 'RefreshUserPolicy' request";
 
   // Fetch GPOs for the current user.
-  ErrorType error = ERROR_NONE;
   std::string policy_blob;
-  bool res = samba_.FetchUserGpos(in_account_id, &policy_blob, &error);
-  DCHECK_EQ(res, error == ERROR_NONE);
+  ErrorType error = samba_.FetchUserGpos(account_id, &policy_blob);
   PrintError("User policy fetch and parsing", error);
 
   // Return immediately on error.
-  if (!res) {
+  if (error != ERROR_NONE) {
     callback->Return(error);
     return;
   }
 
   // Send policy to Session Manager.
-  StorePolicy(policy_blob, &in_account_id, std::move(callback));
+  StorePolicy(policy_blob, &account_id, std::move(callback));
 }
 
 void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
   LOG(INFO) << "Received 'RefreshDevicePolicy' request";
 
   // Fetch GPOs for the device.
-  ErrorType error = ERROR_NONE;
   std::string policy_blob;
-  bool res = samba_.FetchDeviceGpos(&policy_blob, &error);
-  DCHECK_EQ(res, error == ERROR_NONE);
+  ErrorType error = samba_.FetchDeviceGpos(&policy_blob);
   PrintError("Device policy fetch and parsing", error);
 
   // Return immediately on error.
-  if (!res) {
+  if (error != ERROR_NONE) {
     callback->Return(error);
     return;
   }

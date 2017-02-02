@@ -25,18 +25,19 @@
 #include <brillo/syslog_logging.h>
 
 #include "authpolicy/constants.h"
-#include "authpolicy/pipe_helper.h"
+#include "authpolicy/platform_helper.h"
 #include "authpolicy/policy/preg_policy_encoder.h"
 #include "authpolicy/samba_interface_internal.h"
 #include "bindings/authpolicy_containers.pb.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/cloud_policy.pb.h"
 
-namespace ac = authpolicy::constants;
 namespace ah = authpolicy::helper;
 namespace ap = authpolicy::protos;
 namespace ai = authpolicy::internal;
 namespace em = enterprise_management;
+
+namespace authpolicy {
 
 namespace {
 
@@ -86,7 +87,7 @@ struct GpoEntry {
 };
 
 void PushGpo(const GpoEntry& gpo,
-             ac::PolicyScope scope,
+             PolicyScope scope,
              std::vector<GpoEntry>* gpo_list) {
   if (gpo.IsEmpty())
     return;
@@ -102,13 +103,13 @@ void PushGpo(const GpoEntry& gpo,
   // device policy.
   const char* filter_reason = nullptr;
   switch (scope) {
-    case ac::PolicyScope::USER:
+    case PolicyScope::USER:
       if (gpo.version_user == 0)
         filter_reason = "user version is 0";
       else if (gpo.gp_flags & ai::kGpFlagUserDisabled)
         filter_reason = "user disabled flag is set";
       break;
-    case ac::PolicyScope::MACHINE:
+    case PolicyScope::MACHINE:
       if (gpo.version_machine == 0)
         filter_reason = "machine version is 0";
       else if (gpo.gp_flags & ai::kGpFlagMachineDisabled)
@@ -128,9 +129,9 @@ void PushGpo(const GpoEntry& gpo,
 int OutputForCaller(const std::string& str) {
   if (!base::WriteFileDescriptor(STDOUT_FILENO, str.c_str(), str.size())) {
     LOG(ERROR) << "Failed to write output for caller";
-    return ac::EXIT_CODE_WRITE_OUTPUT_FAILED;
+    return EXIT_CODE_WRITE_OUTPUT_FAILED;
   }
-  return ac::EXIT_CODE_OK;
+  return EXIT_CODE_OK;
 }
 
 // Parses the output of net ads search to get the user's objectGUID and prints
@@ -140,7 +141,7 @@ int ParseAccountInfo(const std::string& net_out) {
   if (!ai::FindToken(net_out, ':', "objectGUID", &object_guid) ||
       !ai::FindToken(net_out, ':', "sAMAccountName", &sam_account_name)) {
     LOG(ERROR) << "Failed to parse account info";
-    return ac::EXIT_CODE_FIND_TOKEN_FAILED;
+    return EXIT_CODE_FIND_TOKEN_FAILED;
   }
 
   // Output data as proto blob.
@@ -150,7 +151,7 @@ int ParseAccountInfo(const std::string& net_out) {
   std::string account_info_blob;
   if (!account_info_proto.SerializeToString(&account_info_blob)) {
     LOG(ERROR) << "Failed to convert account info proto to string";
-    return ac::EXIT_CODE_WRITE_OUTPUT_FAILED;
+    return EXIT_CODE_WRITE_OUTPUT_FAILED;
   }
   return OutputForCaller(account_info_blob);
 }
@@ -161,7 +162,7 @@ int ParseDomainControllerName(const std::string& net_out) {
   // Parse output for dc_name in 'LDAP server name: dc_name.some.domain'.
   std::string dc_name;
   if (!ai::FindToken(net_out, ':', "LDAP server name", &dc_name))
-    return ac::EXIT_CODE_FIND_TOKEN_FAILED;
+    return EXIT_CODE_FIND_TOKEN_FAILED;
 
   // We're only interested in the part before the dot.
   size_t dot_pos = dc_name.find('.');
@@ -175,14 +176,14 @@ int ParseDomainControllerName(const std::string& net_out) {
 int ParseWorkgroup(const std::string& net_out) {
   std::string workgroup;
   if (!ai::FindToken(net_out, ':', "Workgroup", &workgroup))
-    return ac::EXIT_CODE_FIND_TOKEN_FAILED;
+    return EXIT_CODE_FIND_TOKEN_FAILED;
 
   return OutputForCaller(workgroup);
 }
 
 // Parses the output of net ads gpo list to get the list of GPOs. Prints out a
 // serialized GpoList blob to stdout.
-int ParseGpoList(const std::string& net_out, ac::PolicyScope scope) {
+int ParseGpoList(const std::string& net_out, PolicyScope scope) {
   // Parse net output.
   GpoEntry gpo;
   std::vector<GpoEntry> gpo_list;
@@ -230,17 +231,17 @@ int ParseGpoList(const std::string& net_out, ac::PolicyScope scope) {
     // Sanity check that we don't miss separators between GPOs.
     if (already_set) {
       LOG(ERROR) << "Failed to parse GPO data (bad format)";
-      return ac::EXIT_CODE_PARSE_INPUT_FAILED;
+      return EXIT_CODE_PARSE_INPUT_FAILED;
     }
 
     if (version_error) {
       LOG(ERROR) << "Failed to parse GPO version '" << value << "'";
-      return ac::EXIT_CODE_PARSE_INPUT_FAILED;
+      return EXIT_CODE_PARSE_INPUT_FAILED;
     }
 
     if (flags_error) {
       LOG(ERROR) << "Failed to parse GP flags '" << value << "'";
-      return ac::EXIT_CODE_PARSE_INPUT_FAILED;
+      return EXIT_CODE_PARSE_INPUT_FAILED;
     }
   }
 
@@ -251,7 +252,7 @@ int ParseGpoList(const std::string& net_out, ac::PolicyScope scope) {
     // This usually happens when something went wrong, e.g. connection error.
     LOG(ERROR) << "Failed to parse GPO data (no separator, did net fail?)";
     LOG(ERROR) << "Net response: " << net_out;
-    return ac::EXIT_CODE_PARSE_INPUT_FAILED;
+    return EXIT_CODE_PARSE_INPUT_FAILED;
   }
 
   LOG(INFO) << "Found " << gpo_list.size() << " GPOs.";
@@ -275,7 +276,7 @@ int ParseGpoList(const std::string& net_out, ac::PolicyScope scope) {
         !file_parts[1].empty()) {
       LOG(ERROR) << "Failed to split filesyspath '" << gpo.filesyspath
                  << "' into service and directory parts";
-      return ac::EXIT_CODE_PARSE_INPUT_FAILED;
+      return EXIT_CODE_PARSE_INPUT_FAILED;
     }
     std::string basepath = file_parts[2] + "/" + file_parts[3];
     file_parts =
@@ -292,7 +293,7 @@ int ParseGpoList(const std::string& net_out, ac::PolicyScope scope) {
   std::string gpo_list_blob;
   if (!gpo_list_proto.SerializeToString(&gpo_list_blob)) {
     LOG(ERROR) << "Failed to convert GPO list proto to string";
-    return ac::EXIT_CODE_WRITE_OUTPUT_FAILED;
+    return EXIT_CODE_WRITE_OUTPUT_FAILED;
   }
   return OutputForCaller(gpo_list_blob);
 }
@@ -300,12 +301,12 @@ int ParseGpoList(const std::string& net_out, ac::PolicyScope scope) {
 // Parses a set of GPO files and assembles a user or device policy proto. Writes
 // the serialized policy blob to stdout. |gpo_file_paths_blob| is expected to be
 // a serialized |ap::FilePathList| proto blob.
-int ParsePreg(const std::string& gpo_file_paths_blob, ac::PolicyScope scope) {
+int ParsePreg(const std::string& gpo_file_paths_blob, PolicyScope scope) {
   // Parse FilePathList proto blob.
   ap::FilePathList gpo_file_paths_proto;
   if (!gpo_file_paths_proto.ParseFromString(gpo_file_paths_blob)) {
     LOG(ERROR) << "Failed to parse file paths blob";
-    return ac::EXIT_CODE_READ_INPUT_FAILED;
+    return EXIT_CODE_READ_INPUT_FAILED;
   }
 
   // Convert to list of base::FilePaths.
@@ -314,34 +315,27 @@ int ParsePreg(const std::string& gpo_file_paths_blob, ac::PolicyScope scope) {
     gpo_file_paths.push_back(base::FilePath(gpo_file_paths_proto.entries(n)));
 
   std::string policy_blob;
-  authpolicy::ErrorType error = authpolicy::ERROR_NONE;
   switch (scope) {
-    case ac::PolicyScope::USER: {
+    case PolicyScope::USER: {
       // Parse files into a user policy proto.
       em::CloudPolicySettings policy;
-      if (!policy::ParsePRegFilesIntoUserPolicy(gpo_file_paths, &policy,
-                                                &error)) {
-        LOG(ERROR) << error;
-        return ac::EXIT_CODE_PARSE_INPUT_FAILED;
-      }
+      if (!policy::ParsePRegFilesIntoUserPolicy(gpo_file_paths, &policy))
+        return EXIT_CODE_PARSE_INPUT_FAILED;
 
       // Serialize user policy proto to string.
       if (!policy.SerializeToString(&policy_blob))
-        return ac::EXIT_CODE_WRITE_OUTPUT_FAILED;
+        return EXIT_CODE_WRITE_OUTPUT_FAILED;
       break;
     }
-    case ac::PolicyScope::MACHINE: {
+    case PolicyScope::MACHINE: {
       // Parse files into a device policy proto.
       em::ChromeDeviceSettingsProto policy;
-      if (!policy::ParsePRegFilesIntoDevicePolicy(gpo_file_paths, &policy,
-                                                  &error)) {
-        LOG(ERROR) << error;
-        return ac::EXIT_CODE_PARSE_INPUT_FAILED;
-      }
+      if (!policy::ParsePRegFilesIntoDevicePolicy(gpo_file_paths, &policy))
+        return EXIT_CODE_PARSE_INPUT_FAILED;
 
       // Serialize policy proto to string.
       if (!policy.SerializeToString(&policy_blob))
-        return ac::EXIT_CODE_WRITE_OUTPUT_FAILED;
+        return EXIT_CODE_WRITE_OUTPUT_FAILED;
       break;
     }
     default: { LOG(FATAL) << "invalid scope"; }
@@ -351,7 +345,29 @@ int ParsePreg(const std::string& gpo_file_paths_blob, ac::PolicyScope scope) {
   return OutputForCaller(policy_blob);
 }
 
+int HandleCommand(const std::string& cmd, const std::string& arg) {
+  if (cmd == kCmdParseDcName)
+    return ParseDomainControllerName(arg);
+  if (cmd == kCmdParseWorkgroup)
+    return ParseWorkgroup(arg);
+  if (cmd == kCmdParseAccountInfo)
+    return ParseAccountInfo(arg);
+  if (cmd == kCmdParseUserGpoList)
+    return ParseGpoList(arg, PolicyScope::USER);
+  if (cmd == kCmdParseDeviceGpoList)
+    return ParseGpoList(arg, PolicyScope::MACHINE);
+  if (cmd == kCmdParseUserPreg)
+    return ParsePreg(arg, PolicyScope::USER);
+  if (cmd == kCmdParseDevicePreg)
+    return ParsePreg(arg, PolicyScope::MACHINE);
+
+  LOG(ERROR) << "Bad command '" << cmd << "'";
+  return EXIT_CODE_BAD_COMMAND;
+}
+
 }  // namespace
+
+}  // namespace authpolicy
 
 int main(int argc, const char* const* argv) {
   brillo::OpenLog("authpolicy_parser", true);
@@ -360,35 +376,19 @@ int main(int argc, const char* const* argv) {
   // Required for base::SysInfo.
   base::AtExitManager at_exit_manager;
 
-  // Require one argument, one of the ac::kCmdParse* strings.
+  // Require one argument, one of the kCmdParse* strings.
   if (argc <= 1) {
     LOG(ERROR) << "No command";
-    return ac::EXIT_CODE_BAD_COMMAND;
+    return authpolicy::EXIT_CODE_BAD_COMMAND;
   }
   const char* cmd = argv[1];
 
   // All commands take additional arguments via stdin.
-  std::string stdin_str;
-  if (!ah::ReadPipeToString(STDIN_FILENO, &stdin_str)) {
+  std::string stdin;
+  if (!ah::ReadPipeToString(STDIN_FILENO, &stdin)) {
     LOG(ERROR) << "Failed to read stdin";
-    return ac::EXIT_CODE_READ_INPUT_FAILED;
+    return authpolicy::EXIT_CODE_READ_INPUT_FAILED;
   }
 
-  if (strcmp(cmd, ac::kCmdParseDcName) == 0)
-    return ParseDomainControllerName(stdin_str);
-  if (strcmp(cmd, ac::kCmdParseWorkgroup) == 0)
-    return ParseWorkgroup(stdin_str);
-  if (strcmp(cmd, ac::kCmdParseAccountInfo) == 0)
-    return ParseAccountInfo(stdin_str);
-  if (strcmp(cmd, ac::kCmdParseUserGpoList) == 0)
-    return ParseGpoList(stdin_str, ac::PolicyScope::USER);
-  if (strcmp(cmd, ac::kCmdParseDeviceGpoList) == 0)
-    return ParseGpoList(stdin_str, ac::PolicyScope::MACHINE);
-  if (strcmp(cmd, ac::kCmdParseUserPreg) == 0)
-    return ParsePreg(stdin_str, ac::PolicyScope::USER);
-  if (strcmp(cmd, ac::kCmdParseDevicePreg) == 0)
-    return ParsePreg(stdin_str, ac::PolicyScope::MACHINE);
-
-  LOG(ERROR) << "Bad command '" << cmd << "'";
-  return ac::EXIT_CODE_BAD_COMMAND;
+  return authpolicy::HandleCommand(cmd, stdin);
 }

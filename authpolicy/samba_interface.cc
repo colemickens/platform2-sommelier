@@ -20,13 +20,13 @@
 #include <base/time/time.h>
 
 #include "authpolicy/constants.h"
-#include "authpolicy/path_service.h"
+#include "authpolicy/platform_helper.h"
 #include "authpolicy/process_executor.h"
 #include "authpolicy/samba_interface_internal.h"
 #include "bindings/authpolicy_containers.pb.h"
 
-namespace ac = authpolicy::constants;
 namespace ai = authpolicy::internal;
+namespace ah = authpolicy::helper;
 namespace ap = authpolicy::protos;
 
 namespace authpolicy {
@@ -84,7 +84,7 @@ const int kFileMode_rwxrwx =
 
 // Directories with permissions to be created. AUTHPOLICY_TMP_DIR needs group rx
 // access to read smb.conf and krb5.conf and to access SAMBA_DIR, but no write
-// access. The Samba directories need full group rwx access since samba reads
+// access. The Samba directories need full group rwx access since Samba reads
 // and writes files there.
 constexpr std::pair<Path, int> kDirsAndMode[] = {
     {Path::TEMP_DIR,          kFileMode_rwxrx },
@@ -103,9 +103,6 @@ const char kPRegFileName[] = "registry.pol";
 const char kFlagDisableSeccomp[] = "disable_seccomp";
 const char kFlagLogSeccomp[] = "log_seccomp";
 const char kFlagTraceKinit[] = "trace_kinit";
-static bool s_disable_seccomp_filters = false;
-static bool s_log_seccomp_filters = false;
-static bool s_trace_kinit = false;
 
 // Size limit when loading the config file (256 kb).
 const size_t kConfigSizeLimit = 256 * 1024;
@@ -156,33 +153,16 @@ const char kKeyNetworkTimeout[] = "NT_STATUS_IO_TIMEOUT";
 const char kKeyObjectNameNotFound[] =
     "NT_STATUS_OBJECT_NAME_NOT_FOUND opening remote file ";
 
-// Easy access to paths. TODO(ljusten): Refactor into SambaInterface class.
-std::unique_ptr<PathService> s_paths;
+}  // namespace
 
-// Switches to the authpolicyd-exec user in the constructor and back to
-// authpolicyd in the destructor.
-class ScopedAuthpolicyExecSwitch {
- public:
-  ScopedAuthpolicyExecSwitch() {
-    // Keep kAuthPolicydUid as saved uid, so we can switch back.
-    CHECK_EQ(0, setresuid(ac::kAuthPolicyExecUid, ac::kAuthPolicyExecUid,
-                          ac::kAuthPolicydUid));
-  }
-
-  ~ScopedAuthpolicyExecSwitch() {
-    // Keep kAuthPolicyExecUid as saved uid, so we can switch back.
-    CHECK_EQ(0, setresuid(ac::kAuthPolicydUid, ac::kAuthPolicydUid,
-                          ac::kAuthPolicyExecUid));
-  }
-};
-
-bool SetupJailAndRun(ProcessExecutor* cmd, Path seccomp_path_key) {
+bool SambaInterface::SetupJailAndRun(ProcessExecutor* cmd,
+                                     Path seccomp_path_key) const {
   // Limit the system calls that the process can do.
   DCHECK(cmd);
-  if (!s_disable_seccomp_filters) {
-    if (s_log_seccomp_filters)
+  if (!disable_seccomp_filters_) {
+    if (log_seccomp_filters_)
       cmd->LogSeccompFilterFailures();
-    cmd->SetSeccompFilter(s_paths->Get(seccomp_path_key));
+    cmd->SetSeccompFilter(paths_->Get(seccomp_path_key));
   }
 
   // Required since we don't have the caps to wipe supplementary groups.
@@ -198,45 +178,45 @@ bool SetupJailAndRun(ProcessExecutor* cmd, Path seccomp_path_key) {
   //   1) Tighter seccomp filters, no need to allow execve and others.
   //   2) Ability to log seccomp filter failures. Without this, it is hard to
   //      know which syscall has to be added to the filter policy file.
-  ScopedAuthpolicyExecSwitch switch_scope;
+  ah::ScopedUidSwitch switch_scope(authpolicyd_uid_, authpolicyd_exec_uid_);
   return cmd->Execute();
 }
 
-void SetupKinitTrace(ProcessExecutor* kinit_cmd) {
-  if (!s_trace_kinit)
+void SambaInterface::SetupKinitTrace(ProcessExecutor* kinit_cmd) const {
+  if (!trace_kinit_)
     return;
-  const std::string& trace_path = s_paths->Get(Path::KRB5_TRACE);
+  const std::string& trace_path = paths_->Get(Path::KRB5_TRACE);
   {
     // Deleting kinit trace file (must be done as authpolicyd-exec).
-    ScopedAuthpolicyExecSwitch exec_switch;
-    if (!base::DeleteFile(base::FilePath(trace_path), /* recursive */ false)) {
+    ah::ScopedUidSwitch switch_scope(authpolicyd_uid_, authpolicyd_exec_uid_);
+    if (!base::DeleteFile(base::FilePath(trace_path), false /* recursive */)) {
       LOG(WARNING) << "Failed to delete kinit trace file";
     }
   }
   kinit_cmd->SetEnv(kKrb5TraceEnvKey, trace_path);
 }
 
-void OutputKinitTrace() {
-  if (!s_trace_kinit)
+void SambaInterface::OutputKinitTrace() const {
+  if (!trace_kinit_)
     return;
-  const std::string& trace_path = s_paths->Get(Path::KRB5_TRACE);
+  const std::string& trace_path = paths_->Get(Path::KRB5_TRACE);
   std::string trace;
   {
     // Reading kinit trace file (must be done as authpolicyd-exec).
-    ScopedAuthpolicyExecSwitch exec_switch;
+    ah::ScopedUidSwitch switch_scope(authpolicyd_uid_, authpolicyd_exec_uid_);
     base::ReadFileToString(base::FilePath(trace_path), &trace);
   }
   LOG(INFO) << "Kinit trace:\n" << trace;
 }
+
+namespace {
 
 // Returns true if the string contains the given substring.
 bool Contains(const std::string& str, const std::string& substr) {
   return str.find(substr) != std::string::npos;
 }
 
-ErrorType HandleKinitError(const ProcessExecutor& kinit_cmd) {
-  OutputKinitTrace();
-  // Handle different error cases
+ErrorType GetKinitError(const ProcessExecutor& kinit_cmd) {
   const std::string& kinit_out = kinit_cmd.GetStdout();
   const std::string& kinit_err = kinit_cmd.GetStderr();
 
@@ -265,7 +245,6 @@ ErrorType HandleKinitError(const ProcessExecutor& kinit_cmd) {
 
 ErrorType GetNetError(const ProcessExecutor& executor,
                       const std::string& net_command) {
-  // Handle different error cases
   const std::string& net_out = executor.GetStdout();
   const std::string& net_err = executor.GetStderr();
   const std::string error_msg("net ads " + net_command + " failed: ");
@@ -295,8 +274,7 @@ ErrorType GetNetError(const ProcessExecutor& executor,
     LOG(ERROR) << error_msg << "user joined max number of machines";
     return ERROR_USER_HIT_JOIN_QUOTA;
   }
-  LOG(ERROR) << error_msg <<  "failed with exit code "
-             << executor.GetExitCode();
+  LOG(ERROR) << error_msg << "exit code " << executor.GetExitCode();
   return ERROR_NET_FAILED;
 }
 
@@ -312,347 +290,323 @@ ErrorType GetSmbclientError(const ProcessExecutor& smb_client_cmd) {
   return ERROR_SMBCLIENT_FAILED;
 }
 
-// Retrieves the name of the domain controller. If the full server name is
-// 'server.realm', |domain_controller_name| is set to 'server'. Since the domain
-// controller name is expected to change very rarely, this function earlies out
-// and returns true if called with a non-empty |domain_controller_name|. The
-// domain controller name is required for proper kerberized authentication.
-bool UpdateDomainControllerName(std::string* domain_controller_name,
-                                ErrorType* out_error) {
-  if (!domain_controller_name->empty())
-    return true;
+}  // namespace
 
-  authpolicy::ProcessExecutor net_cmd({s_paths->Get(Path::NET), "ads", "info",
-                                       "-s", s_paths->Get(Path::SMB_CONF)});
-  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP)) {
-    *out_error = GetNetError(net_cmd, "info");
-    return false;
-  }
+ErrorType SambaInterface::EnsureDomainControllerName() {
+  if (!domain_controller_name_.empty())
+    return ERROR_NONE;
+
+  authpolicy::ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "info",
+                                       "-s", paths_->Get(Path::SMB_CONF)});
+  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP))
+    return GetNetError(net_cmd, "info");
   const std::string& net_out = net_cmd.GetStdout();
 
   // Parse the output to find the domain controller name. Enclose in a sandbox
   // for security considerations.
-  ProcessExecutor parse_cmd({s_paths->Get(Path::PARSER), ac::kCmdParseDcName});
+  ProcessExecutor parse_cmd({paths_->Get(Path::PARSER), kCmdParseDcName});
   parse_cmd.SetInputString(net_out);
   if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP)) {
     LOG(ERROR) << "authpolicy_parser parse_dc_name failed with exit code "
                << parse_cmd.GetExitCode();
-    *out_error = ERROR_PARSE_FAILED;
-    return false;
+    return ERROR_PARSE_FAILED;
   }
-  *domain_controller_name = parse_cmd.GetStdout();
+  domain_controller_name_ = parse_cmd.GetStdout();
 
-  LOG(INFO) << "Found DC name = '" << *domain_controller_name << "'";
-  return true;
+  LOG(INFO) << "Found DC name = '" << domain_controller_name_ << "'";
+  return ERROR_NONE;
 }
 
-// Retrieves the name of the workgroup.
-bool GetWorkgroup(const ap::SambaConfig* config, std::string* workgroup,
-                  ErrorType* out_error) {
-  ProcessExecutor net_cmd({s_paths->Get(Path::NET), "ads", "workgroup", "-s",
-                           s_paths->Get(Path::SMB_CONF)});
-  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP)) {
-    *out_error = GetNetError(net_cmd, "workgroup");
-    return false;
-  }
+ErrorType SambaInterface::EnsureWorkgroup() {
+  if (!workgroup_.empty())
+    return ERROR_NONE;
+
+  ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "workgroup", "-s",
+                           paths_->Get(Path::SMB_CONF)});
+  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP))
+    return GetNetError(net_cmd, "workgroup");
   const std::string& net_out = net_cmd.GetStdout();
 
   // Parse the output to find the workgroup. Enclose in a sandbox for security
   // considerations.
-  ProcessExecutor parse_cmd({s_paths->Get(Path::PARSER),
-                             ac::kCmdParseWorkgroup});
+  ProcessExecutor parse_cmd({paths_->Get(Path::PARSER), kCmdParseWorkgroup});
   parse_cmd.SetInputString(net_out);
   if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP)) {
     LOG(ERROR) << "authpolicy_parser parse_workgroup failed with exit code "
                << parse_cmd.GetExitCode();
-    *out_error = ERROR_PARSE_FAILED;
-    return false;
+    return ERROR_PARSE_FAILED;
   }
-  DCHECK(workgroup);
-  *workgroup = parse_cmd.GetStdout();
-  return true;
+  workgroup_ = parse_cmd.GetStdout();
+  return ERROR_NONE;
 }
 
+namespace {
+
 // Creates the given directory recursively and sets error message on failure.
-bool CreateDirectory(const base::FilePath& dir, ErrorType* out_error) {
+ErrorType CreateDirectory(const base::FilePath& dir) {
   base::File::Error ferror;
   if (!base::CreateDirectoryAndGetError(dir, &ferror)) {
     LOG(ERROR) << "Failed to create directory '" << dir.value()
                << "': " << base::File::ErrorToString(ferror);
-    *out_error = ERROR_LOCAL_IO;
-    return false;
+    return ERROR_LOCAL_IO;
   }
-  return true;
+  return ERROR_NONE;
 }
 
 // Sets file permissions for a given filepath and sets error message on failure.
-bool SetFilePermissions(const base::FilePath& fp,
-                        int mode,
-                        ErrorType* out_error) {
+ErrorType SetFilePermissions(const base::FilePath& fp, int mode) {
   if (!base::SetPosixFilePermissions(fp, mode)) {
     LOG(ERROR) << "Failed to set permissions on '" << fp.value() << "'";
-    *out_error = ERROR_LOCAL_IO;
-    return false;
+    return ERROR_LOCAL_IO;
   }
-  return true;
+  return ERROR_NONE;
 }
 
 // Similar to |SetFilePermissions|, but sets permissions recursively up the path
 // to |base_fp| (not including |base_fp|). Returns false if |base_fp| is not a
 // parent of |fp|.
-bool SetFilePermissionsRecursive(const base::FilePath& fp,
-                                 const base::FilePath& base_fp,
-                                 int mode,
-                                 ErrorType* out_error) {
+ErrorType SetFilePermissionsRecursive(const base::FilePath& fp,
+                                      const base::FilePath& base_fp,
+                                      int mode) {
   if (!base_fp.IsParent(fp)) {
     LOG(ERROR) << "Base path '" << base_fp.value() << "' is not a parent of '"
                << fp.value() << "'";
-    *out_error = ERROR_LOCAL_IO;
-    return false;
+    return ERROR_LOCAL_IO;
   }
-  for (base::FilePath curr_fp = fp; curr_fp != base_fp;
+  ErrorType error = ERROR_NONE;
+  for (base::FilePath curr_fp = fp; curr_fp != base_fp && error == ERROR_NONE;
        curr_fp = curr_fp.DirName()) {
-    if (!SetFilePermissions(curr_fp, mode, out_error))
-      return false;
+    error = SetFilePermissions(curr_fp, mode);
   }
-  return true;
+  return error;
 }
 
-// Copies the machine keytab file to the state directory. The copy is owned by
-// authpolicyd, so that authpolicyd_exec cannot modify it anymore.
-bool SecureMachineKeyTab(ErrorType* out_error) {
+}  // namespace
+
+ErrorType SambaInterface::SecureMachineKeyTab() const {
   // At this point, tmp_kt_fp is rw for authpolicyd-exec only, so we, i.e.
   // user authpolicyd, cannot read it. Thus, change file permissions as
   // authpolicyd-exec user, so that the authpolicyd group can read it.
-  const base::FilePath temp_kt_fp(s_paths->Get(Path::MACHINE_KT_TEMP));
-  const base::FilePath state_kt_fp(s_paths->Get(Path::MACHINE_KT_STATE));
+  const base::FilePath temp_kt_fp(paths_->Get(Path::MACHINE_KT_TEMP));
+  const base::FilePath state_kt_fp(paths_->Get(Path::MACHINE_KT_STATE));
+  ErrorType error;
 
   // Set group read permissions on keytab as authpolicyd-exec, so we can copy it
   // as authpolicyd (and own the copy).
   {
-    ScopedAuthpolicyExecSwitch switch_scope;
-    if (!SetFilePermissions(temp_kt_fp, kFileMode_rwr, out_error))
-      return false;
+    ah::ScopedUidSwitch switch_scope(authpolicyd_uid_, authpolicyd_exec_uid_);
+    error = SetFilePermissions(temp_kt_fp, kFileMode_rwr);
+    if (error != ERROR_NONE)
+      return error;
   }
 
   // Create empty file in destination directory. Note that it is created with
   // rw_r__r__ permissions.
   if (base::WriteFile(state_kt_fp, nullptr, 0) != 0) {
     LOG(ERROR) << "Failed to create file '" << state_kt_fp.value() << "'";
-    *out_error = ERROR_LOCAL_IO;
-    return false;
+    return ERROR_LOCAL_IO;
   }
 
   // Revoke 'read by others' permission. We could also just copy temp_kt_fp to
   // state_kt_fp (see below) and revoke the read permission afterwards, but then
   // state_kt_fp would be readable by anyone for a split second, causing a
   // potential security risk.
-  if (!SetFilePermissions(state_kt_fp, kFileMode_rwr, out_error))
-    return false;
+  error = SetFilePermissions(state_kt_fp, kFileMode_rwr);
+  if (error != ERROR_NONE)
+    return error;
 
   // Now we may copy the file. The copy is owned by authpolicyd:authpolicyd.
   if (!base::CopyFile(temp_kt_fp, state_kt_fp)) {
     PLOG(ERROR) << "Failed to copy file '" << temp_kt_fp.value() << "' to '"
                 << state_kt_fp.value() << "'";
-    *out_error = ERROR_LOCAL_IO;
-    return false;
+    return ERROR_LOCAL_IO;
   }
 
   // Clean up temp file (must be done as authpolicyd-exec).
   {
-    ScopedAuthpolicyExecSwitch switch_scope;
+    ah::ScopedUidSwitch switch_scope(authpolicyd_uid_, authpolicyd_exec_uid_);
     if (!base::DeleteFile(temp_kt_fp, false)) {
       LOG(ERROR) << "Failed to delete file '" << temp_kt_fp.value() << "'";
-      *out_error = ERROR_LOCAL_IO;
-      return false;
+      return ERROR_LOCAL_IO;
     }
   }
 
-  return true;
+  return ERROR_NONE;
 }
 
-// Writes the samba configuration file.
-bool WriteSmbConf(const ap::SambaConfig* config, const std::string& workgroup,
-                  ErrorType* out_error) {
-  if (!config) {
+ErrorType SambaInterface::WriteSmbConf() const {
+  if (!config_) {
     LOG(ERROR) << "Missing configuration. Must call JoinMachine first.";
-    *out_error = ERROR_NOT_JOINED;
-    return false;
+    return ERROR_NOT_JOINED;
   }
 
   std::string data =
-      base::StringPrintf(kSmbConfData, config->machine_name().c_str(),
-                         workgroup.c_str(), config->realm().c_str(),
-                         s_paths->Get(Path::SAMBA_LOCK_DIR).c_str(),
-                         s_paths->Get(Path::SAMBA_CACHE_DIR).c_str(),
-                         s_paths->Get(Path::SAMBA_STATE_DIR).c_str(),
-                         s_paths->Get(Path::SAMBA_PRIVATE_DIR).c_str());
+    base::StringPrintf(kSmbConfData, config_->machine_name().c_str(),
+                        workgroup_.c_str(), config_->realm().c_str(),
+                        paths_->Get(Path::SAMBA_LOCK_DIR).c_str(),
+                        paths_->Get(Path::SAMBA_CACHE_DIR).c_str(),
+                        paths_->Get(Path::SAMBA_STATE_DIR).c_str(),
+                        paths_->Get(Path::SAMBA_PRIVATE_DIR).c_str());
 
-  const base::FilePath fp(s_paths->Get(Path::SMB_CONF));
+  const base::FilePath smbconf_path(paths_->Get(Path::SMB_CONF));
   const int data_size = static_cast<int>(data.size());
-  if (base::WriteFile(fp, data.c_str(), data_size) != data_size) {
-    LOG(ERROR) << "Failed to write samba conf file '" << fp.value() << "'";
-    *out_error = ERROR_LOCAL_IO;
-    return false;
+  if (base::WriteFile(smbconf_path, data.c_str(), data_size) != data_size) {
+    LOG(ERROR) << "Failed to write Samba conf file '" << smbconf_path.value()
+               << "'";
+    return ERROR_LOCAL_IO;
   }
 
-  return true;
+  return ERROR_NONE;
 }
 
-// Writes the Samba configuration file. If |workgroup| points to an empty
-// string, the workgroup is queried from the server and the string is updated.
-// Workgroups are only queried once a session, they are expected to change very
-// rarely.
-bool UpdateWorkgroupAndWriteSmbConf(const ap::SambaConfig* config,
-                                    std::string* workgroup,
-                                    ErrorType* out_error) {
-  DCHECK(workgroup);
-  if (workgroup->empty()) {
-    // GetWorkgroup requires an smb.conf file, write one with empty workgroup.
-    if (!WriteSmbConf(config, *workgroup, out_error) ||
-        !GetWorkgroup(config, workgroup, out_error)) {
-      return false;
-    }
+ErrorType SambaInterface::EnsureWorkgroupAndWriteSmbConf() {
+  if (workgroup_.empty()) {
+    // EnsureWorkgroup requires an smb.conf file, write one with empty
+    // workgroup.
+    ErrorType error = WriteSmbConf();
+    if (error != ERROR_NONE)
+      return error;
+
+    error = EnsureWorkgroup();
+    if (error != ERROR_NONE)
+      return error;
   }
 
   // Write smb.conf (potentially again, with valid workgroup).
-  return WriteSmbConf(config, *workgroup, out_error);
+  return WriteSmbConf();
 }
 
-// Writes the krb5 configuration file.
-bool WriteKrb5Conf(const std::string& realm, ErrorType* out_error) {
+ErrorType SambaInterface::WriteKrb5Conf(const std::string& realm) const {
   std::string data = base::StringPrintf(kKrb5ConfData, realm.c_str());
-  const base::FilePath fp(s_paths->Get(Path::KRB5_CONF));
+  const base::FilePath krbconf_path(paths_->Get(Path::KRB5_CONF));
   const int data_size = static_cast<int>(data.size());
-  if (base::WriteFile(fp, data.c_str(), data_size) != data_size) {
-    LOG(ERROR) << "Failed to write krb5 conf file '" << fp.value() << "'";
-    *out_error = ERROR_LOCAL_IO;
-    return false;
+  if (base::WriteFile(krbconf_path, data.c_str(), data_size) != data_size) {
+    LOG(ERROR) << "Failed to write krb5 conf file '" << krbconf_path.value()
+               << "'";
+    return ERROR_LOCAL_IO;
   }
 
-  return true;
+  return ERROR_NONE;
 }
 
-// Writes the file with configuration information.
-bool WriteConfiguration(const ap::SambaConfig* config, ErrorType* out_error) {
-  DCHECK(config);
+ErrorType SambaInterface::WriteConfiguration() {
+  DCHECK(config_);
   std::string config_blob;
-  if (!config->SerializeToString(&config_blob)) {
+  if (!config_->SerializeToString(&config_blob)) {
     LOG(ERROR) << "Failed to serialize configuration to string";
-    *out_error = ERROR_LOCAL_IO;
-    return false;
+    return ERROR_LOCAL_IO;
   }
 
-  const base::FilePath fp(s_paths->Get(Path::CONFIG_DAT));
+  const base::FilePath config_path(paths_->Get(Path::CONFIG_DAT));
   const int config_size = static_cast<int>(config_blob.size());
-  if (base::WriteFile(fp, config_blob.c_str(), config_size) != config_size) {
-    LOG(ERROR) << "Failed to write configuration file '" << fp.value() << "'";
-    *out_error = ERROR_LOCAL_IO;
-    return false;
+  if (base::WriteFile(config_path, config_blob.c_str(), config_size) !=
+      config_size) {
+    LOG(ERROR) << "Failed to write configuration file '" << config_path.value()
+               << "'";
+    return ERROR_LOCAL_IO;
   }
 
-  LOG(INFO) << "Wrote configuration file '" << fp.value() << "'";
-  return true;
+  LOG(INFO) << "Wrote configuration file '" << config_path.value() << "'";
+  return ERROR_NONE;
 }
 
-// Reads the file with configuration information.
-bool ReadConfiguration(ap::SambaConfig* config) {
-  const base::FilePath fp(s_paths->Get(Path::CONFIG_DAT));
-  if (!base::PathExists(fp)) {
-    LOG(ERROR) << "Configuration file '" << fp.value() << "' does not exist";
-    return false;
+ErrorType SambaInterface::ReadConfiguration() {
+  const base::FilePath config_path(paths_->Get(Path::CONFIG_DAT));
+  if (!base::PathExists(config_path)) {
+    LOG(ERROR) << "Configuration file '" << config_path.value()
+               << "' does not exist";
+    return ERROR_LOCAL_IO;
   }
 
   std::string config_blob;
-  if (!base::ReadFileToStringWithMaxSize(fp, &config_blob, kConfigSizeLimit)) {
-    LOG(ERROR) << "Failed to read configuration file '" << fp.value() << "'";
-    return false;
+  if (!base::ReadFileToStringWithMaxSize(config_path, &config_blob,
+                                         kConfigSizeLimit)) {
+    LOG(ERROR) << "Failed to read configuration file '" << config_path.value()
+               << "'";
+    return ERROR_LOCAL_IO;
   }
 
+  auto config = base::MakeUnique<ap::ActiveDirectoryConfig>();
   if (!config->ParseFromString(config_blob)) {
     LOG(ERROR) << "Failed to parse configuration from string";
-    return false;
+    return ERROR_LOCAL_IO;
   }
 
   // Check if the config is valid.
   if (config->machine_name().empty() || config->realm().empty()) {
     LOG(ERROR) << "Configuration is invalid";
-    return false;
+    return ERROR_LOCAL_IO;
   }
 
-  LOG(INFO) << "Read configuration file '" << fp.value() << "'";
-  return true;
+  config_ = std::move(config);
+  LOG(INFO) << "Read configuration file '" << config_path.value() << "'";
+  return ERROR_NONE;
 }
 
-// Calls net ads search with given |search_string| to retrieve account info.
-bool GetAccountInfo(const std::string& search_string,
-                  ap::AccountInfo* out_account_info, ErrorType* out_error) {
+ErrorType SambaInterface::GetAccountInfo(const std::string& search_string,
+                                         ap::AccountInfo* account_info) {
   // Call net ads search to find the user's account info.
-  ProcessExecutor net_cmd(
-      {s_paths->Get(Path::NET), "ads", "search", search_string,
-       "-s", s_paths->Get(Path::SMB_CONF)});
+  ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "search",
+                           search_string, "-s", paths_->Get(Path::SMB_CONF)});
   if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP)) {
-    *out_error = GetNetError(net_cmd, "search");
-    return false;
+    return GetNetError(net_cmd, "search");
   }
   const std::string& net_out = net_cmd.GetStdout();
 
   // Parse the output to find the account info proto blob. Enclose in a sandbox
   // for security considerations.
-  ProcessExecutor parse_cmd({s_paths->Get(Path::PARSER),
-                             ac::kCmdParseAccountInfo});
+  ProcessExecutor parse_cmd({paths_->Get(Path::PARSER), kCmdParseAccountInfo});
   parse_cmd.SetInputString(net_out);
   if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP)) {
     LOG(ERROR) << "Failed to get user account id. Net response: " << net_out;
-    *out_error = ERROR_PARSE_FAILED;
-    return false;
+    return ERROR_PARSE_FAILED;
   }
   const std::string& account_info_blob = parse_cmd.GetStdout();
 
   // Parse account info protobuf.
-  if (!out_account_info->ParseFromString(account_info_blob)) {
+  if (!account_info->ParseFromString(account_info_blob)) {
     LOG(ERROR) << "Failed to parse account info protobuf";
-    *out_error = ERROR_PARSE_FAILED;
-    return false;
+    return ERROR_PARSE_FAILED;
   }
 
-  return true;
+  return ERROR_NONE;
 }
 
-bool GetGpoList(const std::string& user_or_machine_name,
-                ac::PolicyScope scope,
-                std::string* out_gpo_list,
-                ErrorType* out_error) {
-  DCHECK(out_gpo_list);
+ErrorType SambaInterface::GetGpoList(const std::string& user_or_machine_name,
+                                     PolicyScope scope,
+                                     ap::GpoList* gpo_list) const {
+  DCHECK(gpo_list);
   LOG(INFO) << "Getting GPO list for " << user_or_machine_name;
 
   // Machine names are names ending with $, anything else is a user name.
   // TODO(tnagel): Revisit the amount of logging. https://crbug.com/666691
-  authpolicy::ProcessExecutor net_cmd({s_paths->Get(Path::NET), "ads", "gpo",
-                                       "list", user_or_machine_name, "-s",
-                                       s_paths->Get(Path::SMB_CONF),
-                                      "-d", "10"});
-  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP)) {
-    *out_error = GetNetError(net_cmd, "gpo list");
-    return false;
-  }
+  authpolicy::ProcessExecutor net_cmd(
+      {paths_->Get(Path::NET), "ads", "gpo", "list", user_or_machine_name, "-s",
+       paths_->Get(Path::SMB_CONF), "-d", "10"});
+  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP))
+    return GetNetError(net_cmd, "gpo list");
 
   // GPO data is written to stderr, not stdin!
   const std::string& net_out = net_cmd.GetStderr();
 
   // Parse the GPO list. Enclose in a sandbox for security considerations.
-  const char* cmd = scope == ac::PolicyScope::USER ? ac::kCmdParseUserGpoList
-                                                   : ac::kCmdParseDeviceGpoList;
-  ProcessExecutor parse_cmd({s_paths->Get(Path::PARSER), cmd});
+  const char* cmd = scope == PolicyScope::USER ? kCmdParseUserGpoList
+                                               : kCmdParseDeviceGpoList;
+  ProcessExecutor parse_cmd({paths_->Get(Path::PARSER), cmd});
   parse_cmd.SetInputString(net_out);
   if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP)) {
     LOG(ERROR) << "Failed to parse GPO list";
-    *out_error = ERROR_PARSE_FAILED;
-    return false;
+    return ERROR_PARSE_FAILED;
   }
-  *out_gpo_list = parse_cmd.GetStdout();
+  std::string gpo_list_blob = parse_cmd.GetStdout();
 
-  return true;
+  // Parse GPO list protobuf.
+  if (!gpo_list->ParseFromString(gpo_list_blob)) {
+    LOG(ERROR) << "Failed to read GPO list protobuf";
+    return ERROR_PARSE_FAILED;
+  }
+
+  return ERROR_NONE;
 }
 
 struct GpoPaths {
@@ -662,24 +616,17 @@ struct GpoPaths {
       : server_(server), local_(local) {}
 };
 
-bool DownloadGpos(const std::string& gpo_list_blob,
-                  const std::string& domain_controller_name,
-                  const char* preg_dir,
-                  std::vector<base::FilePath>* out_gpo_file_paths,
-                  ErrorType* out_error) {
-  // Parse GPO list protobuf.
-  ap::GpoList gpo_list;
-  if (!gpo_list.ParseFromString(gpo_list_blob)) {
-    LOG(ERROR) << "Failed to read GPO list protobuf";
-    return false;
-  }
-
+ErrorType SambaInterface::DownloadGpos(
+    const ap::GpoList& gpo_list,
+    PolicyScope scope,
+    std::vector<base::FilePath>* gpo_file_paths) const {
   if (gpo_list.entries_size() == 0) {
     LOG(INFO) << "No GPOs to download";
-    return true;
+    return ERROR_NONE;
   }
 
   // Generate all smb source and linux target directories and create targets.
+  ErrorType error;
   std::string smb_command = "prompt OFF;lowercase ON;";
   std::string gpo_basepath;
   std::vector<GpoPaths> gpo_paths;
@@ -690,8 +637,7 @@ bool DownloadGpos(const std::string& gpo_list_blob,
     if (gpo.basepath().find(';') != std::string::npos ||
         gpo.directory().find(';') != std::string::npos) {
       LOG(ERROR) << "GPO paths may not contain a ';'";
-      *out_error = ERROR_BAD_GPOS;
-      return false;
+      return ERROR_BAD_GPOS;
     }
 
     // All GPOs should have the same basepath, i.e. come from the same SysVol.
@@ -701,28 +647,30 @@ bool DownloadGpos(const std::string& gpo_list_blob,
                                                  gpo.basepath())) {
       LOG(ERROR) << "Inconsistent base path '" << gpo_basepath << "' != '"
                  << gpo.basepath() << "'";
-      *out_error = ERROR_BAD_GPOS;
-      return false;
+      return ERROR_BAD_GPOS;
     }
 
     // Figure out local (Linux) and remote (smb) directories.
+    const char* preg_dir =
+        scope == PolicyScope::USER ? kPRegUserDir : kPRegDeviceDir;
     std::string smb_dir =
-      base::StringPrintf("\\%s\\%s", gpo.directory().c_str(), preg_dir);
-    std::string linux_dir = s_paths->Get(Path::GPO_LOCAL_DIR) + smb_dir;
+        base::StringPrintf("\\%s\\%s", gpo.directory().c_str(), preg_dir);
+    std::string linux_dir = paths_->Get(Path::GPO_LOCAL_DIR) + smb_dir;
     std::replace(linux_dir.begin(), linux_dir.end(), '\\', '/');
 
     // Make local directory.
     const base::FilePath linux_dir_fp(linux_dir);
-    if (!CreateDirectory(linux_dir_fp, out_error))
-      return false;
+    error = ::authpolicy::CreateDirectory(linux_dir_fp);
+    if (error != ERROR_NONE)
+      return error;
 
     // Set group rwx permissions recursively, so that smbclient can write GPOs
     // there and the parser tool can read the GPOs later.
-    if (!SetFilePermissionsRecursive(
-            linux_dir_fp, base::FilePath(s_paths->Get(Path::SAMBA_DIR)),
-            kFileMode_rwxrwx, out_error)) {
-      return false;
-    }
+    error = SetFilePermissionsRecursive(
+        linux_dir_fp, base::FilePath(paths_->Get(Path::SAMBA_DIR)),
+        kFileMode_rwxrwx);
+    if (error != ERROR_NONE)
+      return error;
 
     // Build command for smbclient.
     smb_command += base::StringPrintf("cd %s;lcd %s;get %s;", smb_dir.c_str(),
@@ -738,28 +686,28 @@ bool DownloadGpos(const std::string& gpo_list_blob,
         !base::DeleteFile(gpo_paths.back().local_, false)) {
       LOG(ERROR) << "Failed to delete old GPO file '"
                  << gpo_paths.back().local_.value().c_str() << "'";
-      return false;
+      return ERROR_LOCAL_IO;
     }
   }
 
   const std::string service = base::StringPrintf(
-      "//%s.%s", domain_controller_name.c_str(), gpo_basepath.c_str());
+      "//%s.%s", domain_controller_name_.c_str(), gpo_basepath.c_str());
 
   // Download GPO into local directory. Retry a couple of times in case of
   // network errors, Kerberos authentication may be flaky in some deployments,
   // see crbug.com/684733.
-  ProcessExecutor smb_client_cmd({s_paths->Get(Path::SMBCLIENT), service, "-s",
-                                  s_paths->Get(Path::SMB_CONF), "-k", "-c",
+  ProcessExecutor smb_client_cmd({paths_->Get(Path::SMBCLIENT), service, "-s",
+                                  paths_->Get(Path::SMB_CONF), "-k", "-c",
                                   smb_command});
   bool success = false;
   for (int tries = 0; tries < kSmbClientMaxRetries; ++tries) {
     success = SetupJailAndRun(&smb_client_cmd, Path::SMBCLIENT_SECCOMP);
     if (success) {
-      *out_error = ERROR_NONE;
+      error = ERROR_NONE;
       break;
     }
-    *out_error = GetSmbclientError(smb_client_cmd);
-    if (*out_error != ERROR_NETWORK_PROBLEM)
+    error = GetSmbclientError(smb_client_cmd);
+    if (error != ERROR_NETWORK_PROBLEM)
       break;
     base::PlatformThread::Sleep(
         base::TimeDelta::FromSeconds(kSmbClientRetryWaitSeconds));
@@ -770,9 +718,9 @@ bool DownloadGpos(const std::string& gpo_list_blob,
     // Execute() might fail if the last GPO file is missing, which creates an
     // ERROR_SMBCLIENT_FAILED error code. However, we handle this below (not an
     // error), so only error out here on other error codes.
-    if (*out_error != ERROR_SMBCLIENT_FAILED)
-      return false;
-    *out_error = ERROR_NONE;
+    if (error != ERROR_SMBCLIENT_FAILED)
+      return error;
+    error = ERROR_NONE;
   }
 
   // Note that the errors are in stdout and the output is in stderr :-/
@@ -780,10 +728,10 @@ bool DownloadGpos(const std::string& gpo_list_blob,
       base::ToLowerASCII(smb_client_cmd.GetStdout());
 
   // Make sure the GPO files actually downloaded.
-  DCHECK(out_gpo_file_paths);
+  DCHECK(gpo_file_paths);
   for (const GpoPaths& gpo_path : gpo_paths) {
     if (base::PathExists(gpo_path.local_)) {
-      out_gpo_file_paths->push_back(gpo_path.local_);
+      gpo_file_paths->push_back(gpo_path.local_);
     } else {
       // Gracefully handle non-existing GPOs. Testing revealed these cases do
       // exist, see crbug.com/680921.
@@ -795,20 +743,18 @@ bool DownloadGpos(const std::string& gpo_list_blob,
       } else {
         LOG(ERROR) << "Failed to download preg file '"
                    << gpo_path.local_.value() << "'";
-        *out_error = ERROR_SMBCLIENT_FAILED;
-        return false;
+        return ERROR_SMBCLIENT_FAILED;
       }
     }
   }
 
-  return true;
+  return ERROR_NONE;
 }
 
-// Parse GPOs and store them in user/device policy protobufs.
-bool ParseGposIntoProtobuf(const std::vector<base::FilePath>& gpo_file_paths,
-                           const char* parser_cmd_string,
-                           std::string* out_policy_blob,
-                           ErrorType* out_error) {
+ErrorType SambaInterface::ParseGposIntoProtobuf(
+    const std::vector<base::FilePath>& gpo_file_paths,
+    const char* parser_cmd_string,
+    std::string* policy_blob) const {
   // Convert file paths to proto blob.
   std::string gpo_file_paths_blob;
   ap::FilePathList fp_proto;
@@ -816,108 +762,104 @@ bool ParseGposIntoProtobuf(const std::vector<base::FilePath>& gpo_file_paths,
     *fp_proto.add_entries() = fp.value();
   if (!fp_proto.SerializeToString(&gpo_file_paths_blob)) {
     LOG(ERROR) << "Failed to serialize policy file paths to protobuf";
-    *out_error = ERROR_PARSE_PREG_FAILED;
-    return false;
+    return ERROR_PARSE_PREG_FAILED;
   }
 
   // Load GPOs into protobuf. Enclose in a sandbox for security considerations.
-  ProcessExecutor parse_cmd({s_paths->Get(Path::PARSER), parser_cmd_string});
+  ProcessExecutor parse_cmd({paths_->Get(Path::PARSER), parser_cmd_string});
   parse_cmd.SetInputString(gpo_file_paths_blob);
   if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP)) {
     LOG(ERROR) << "Failed to parse preg files";
-    *out_error = ERROR_PARSE_PREG_FAILED;
-    return false;
+    return ERROR_PARSE_PREG_FAILED;
   }
-  *out_policy_blob = parse_cmd.GetStdout();
-  return true;
+  *policy_blob = parse_cmd.GetStdout();
+  return ERROR_NONE;
 }
-
-}  // namespace
 
 SambaInterface::SambaInterface() {
 }
 
-SambaInterface::~SambaInterface() {
-  s_paths.reset();
-}
-
-bool SambaInterface::Initialize(std::unique_ptr<PathService> path_service,
-                                bool expect_config) {
+ErrorType SambaInterface::Initialize(std::unique_ptr<PathService> path_service,
+                                     bool expect_config) {
   DCHECK(path_service);
-  s_paths = std::move(path_service);
+  paths_ = std::move(path_service);
 
   ErrorType error = ERROR_NONE;
   for (const auto& dir_and_mode : kDirsAndMode) {
-    const base::FilePath dir(s_paths->Get(dir_and_mode.first));
+    const base::FilePath dir(paths_->Get(dir_and_mode.first));
     const int mode = dir_and_mode.second;
-    if (!CreateDirectory(dir, &error) ||
-        !SetFilePermissions(dir, mode, &error)) {
-      LOG(ERROR) << "Failed to initialize SambaInterface";
-      return false;
-    }
+    error = ::authpolicy::CreateDirectory(dir);
+    if (error != ERROR_NONE)
+      return error;
+    error = SetFilePermissions(dir, mode);
+    if (error != ERROR_NONE)
+      return error;
   }
 
+  authpolicyd_uid_ = ah::GetUserId(kAuthPolicydUser);
+  authpolicyd_exec_uid_ = ah::GetUserId(kAuthPolicydExecUser);
+
   if (expect_config) {
-    config_ = base::MakeUnique<ap::SambaConfig>();
-    if (!ReadConfiguration(config_.get())) {
-      LOG(ERROR) << "Failed to initialize SambaInterface";
-      config_.reset();
-      return false;
-    }
+    error = ReadConfiguration();
+    if (error != ERROR_NONE)
+      return error;
   }
 
   // Load debug flags file if present. Always CHECK() the flags, even in
-  // release, to catch uninitialized variables.
-  CHECK(!s_disable_seccomp_filters);
-  CHECK(!s_log_seccomp_filters);
+  // release, since these can be critical for authpolicy security.
+  CHECK(!disable_seccomp_filters_);
+  CHECK(!log_seccomp_filters_);
+  CHECK(!trace_kinit_);
   std::string flags;
-  const std::string& flags_path = s_paths->Get(Path::DEBUG_FLAGS);
+  const std::string& flags_path = paths_->Get(Path::DEBUG_FLAGS);
   if (base::ReadFileToString(base::FilePath(flags_path), &flags)) {
     if (Contains(flags, kFlagDisableSeccomp)) {
       LOG(WARNING) << "Seccomp filters disabled";
-      s_disable_seccomp_filters = true;
+      disable_seccomp_filters_ = true;
     }
     if (Contains(flags, kFlagLogSeccomp)) {
       LOG(WARNING) << "Logging seccomp filter failures";
-      s_log_seccomp_filters = true;
+      log_seccomp_filters_ = true;
     }
     if (Contains(flags, kFlagTraceKinit)) {
       LOG(WARNING) << "Trace kinit";
-      s_trace_kinit = true;
+      trace_kinit_ = true;
     }
   }
 
-  return true;
+  return ERROR_NONE;
 }
 
-bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
-                                      int password_fd,
-                                      std::string* out_account_id,
-                                      ErrorType* out_error) {
+ErrorType SambaInterface::AuthenticateUser(
+    const std::string& user_principal_name,
+    int password_fd,
+    std::string* account_id) {
   // Split user_principal_name into parts and normalize.
   std::string user_name, realm, workgroup, normalized_upn;
   if (!ai::ParseUserPrincipalName(user_principal_name, &user_name, &realm,
-                                  &normalized_upn, out_error)) {
-    return false;
+                                  &normalized_upn)) {
+    return ERROR_PARSE_UPN_FAILED;
   }
 
   // Write krb5 configuration file.
-  if (!WriteKrb5Conf(realm, out_error))
-    return false;
+  ErrorType error = WriteKrb5Conf(realm);
+  if (error != ERROR_NONE)
+    return error;
 
-  // Write samba configuration file.
-  if (!UpdateWorkgroupAndWriteSmbConf(config_.get(), &workgroup_, out_error))
-    return false;
+  // Write Samba configuration file.
+  error = EnsureWorkgroupAndWriteSmbConf();
+  if (error != ERROR_NONE)
+    return error;
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
-  ProcessExecutor kinit_cmd({s_paths->Get(Path::KINIT), normalized_upn});
+  ProcessExecutor kinit_cmd({paths_->Get(Path::KINIT), normalized_upn});
   kinit_cmd.SetInputFile(password_fd);
   kinit_cmd.SetEnv(kKrb5ConfEnvKey,  // Kerberos configuration file path.
-                   kFilePrefix + s_paths->Get(Path::KRB5_CONF));
+                   kFilePrefix + paths_->Get(Path::KRB5_CONF));
   SetupKinitTrace(&kinit_cmd);
   if (!SetupJailAndRun(&kinit_cmd, Path::KINIT_SECCOMP)) {
-    *out_error = HandleKinitError(kinit_cmd);
-    return false;
+    OutputKinitTrace();
+    return GetKinitError(kinit_cmd);
   }
 
   // Get account info for the user. user_name is allowed to be either
@@ -925,142 +867,150 @@ bool SambaInterface::AuthenticateUser(const std::string& user_principal_name,
   // sAMAccountName first since that's what kinit/Windows prefer. If that fails,
   // search by userPrincipalName.
   ap::AccountInfo account_info;
-  if (!GetAccountInfo(
-      base::StringPrintf("(sAMAccountName=%s)", user_name.c_str()),
-      &account_info, out_error) && *out_error == ERROR_PARSE_FAILED) {
+  std::string search_string =
+      base::StringPrintf("(sAMAccountName=%s)", user_name.c_str());
+  error = GetAccountInfo(search_string, &account_info);
+  if (error == ERROR_PARSE_FAILED) {
     LOG(WARNING) << "Object GUID not found by sAMAccountName. "
                  << "Trying userPrincipalName.";
-    *out_error = ERROR_NONE;
-    if (!GetAccountInfo(
-        base::StringPrintf("(userPrincipalName=%s)", normalized_upn.c_str()),
-        &account_info, out_error)) {
-      return false;
-    }
+    search_string =
+        base::StringPrintf("(userPrincipalName=%s)", normalized_upn.c_str());
+    error = GetAccountInfo(search_string, &account_info);
   }
-  *out_account_id = account_info.object_guid();
+  if (error != ERROR_NONE)
+    return error;
+  *account_id = account_info.object_guid();
 
   // Store sAMAccountName for policy fetch. Note that net ads gpo list always
   // wants the sAMAccountName.
-  const std::string account_id_key(kActiveDirectoryPrefix + *out_account_id);
+  const std::string account_id_key(kActiveDirectoryPrefix + *account_id);
   user_id_name_map_[account_id_key] = account_info.sam_account_name();
-  return true;
+  return ERROR_NONE;
 }
 
-bool SambaInterface::JoinMachine(const std::string& machine_name,
-                                 const std::string& user_principal_name,
-                                 int password_fd,
-                                 ErrorType* out_error) {
+ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
+                                      const std::string& user_principal_name,
+                                      int password_fd) {
   // Split user principal name into parts.
   std::string user_name, realm, normalized_upn;
   if (!ai::ParseUserPrincipalName(user_principal_name, &user_name, &realm,
-                                  &normalized_upn, out_error))
-    return false;
+                                  &normalized_upn)) {
+    return ERROR_PARSE_UPN_FAILED;
+  }
 
-  // Create config.
-  std::unique_ptr<ap::SambaConfig> config = base::MakeUnique<ap::SambaConfig>();
-  config->set_machine_name(base::ToUpperASCII(machine_name));
-  config->set_realm(realm);
+  // Wipe and (re-)create config. Note that all session data is wiped to make
+  // testing easier.
+  Reset();
+  config_ = base::MakeUnique<ap::ActiveDirectoryConfig>();
+  config_->set_machine_name(base::ToUpperASCII(machine_name));
+  config_->set_realm(realm);
 
-  // Write samba configuration. Will query the workgroup.
-  workgroup_.clear();
-  if (!UpdateWorkgroupAndWriteSmbConf(config.get(), &workgroup_, out_error))
-    return false;
+  // Write Samba configuration. Will query the workgroup.
+  ErrorType error = EnsureWorkgroupAndWriteSmbConf();
+  if (error != ERROR_NONE) {
+    Reset();
+    return error;
+  }
 
   // Call net ads join to join the machine to the Active Directory domain.
-  ProcessExecutor net_cmd({s_paths->Get(Path::NET), "ads", "join", "-U",
-                           normalized_upn, "-s",
-                           s_paths->Get(Path::SMB_CONF)});
+  ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "join", "-U",
+                           normalized_upn, "-s", paths_->Get(Path::SMB_CONF)});
   net_cmd.SetInputFile(password_fd);
   net_cmd.SetEnv(kMachineKTEnvKey,  // Machine keytab file path.
-                 kFilePrefix + s_paths->Get(Path::MACHINE_KT_TEMP));
+                 kFilePrefix + paths_->Get(Path::MACHINE_KT_TEMP));
   if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP)) {
-    *out_error = GetNetError(net_cmd, "join");
-    return false;
+    Reset();
+    return GetNetError(net_cmd, "join");
   }
 
   // Prevent that authpolicyd-exec can make changes to the keytab file.
-  if (!SecureMachineKeyTab(out_error))
-    return false;
+  error = SecureMachineKeyTab();
+  if (error != ERROR_NONE) {
+    Reset();
+    return error;
+  }
 
   // Store configuration for subsequent runs of the daemon.
-  if (!WriteConfiguration(config.get(), out_error))
-    return false;
+  error = WriteConfiguration();
+  if (error != ERROR_NONE) {
+    Reset();
+    return error;
+  }
 
   // Only if everything worked out, keep the config.
-  config_ = std::move(config);
   retry_machine_kinit_ = true;
-  return true;
+  return ERROR_NONE;
 }
 
-bool SambaInterface::FetchUserGpos(const std::string& account_id_key,
-                                   std::string* out_policy_blob,
-                                   ErrorType* out_error) {
+ErrorType SambaInterface::FetchUserGpos(const std::string& account_id_key,
+                                        std::string* policy_blob) {
   // Get sAMAccountName from account id key (must be logged in to fetch user
   // policy).
   auto iter = user_id_name_map_.find(account_id_key);
   if (iter == user_id_name_map_.end()) {
     LOG(ERROR) << "User not logged in. Please call AuthenticateUser first.";
-    *out_error = ERROR_NOT_LOGGED_IN;
-    return false;
+    return ERROR_NOT_LOGGED_IN;
   }
   const std::string& sam_account_name = iter->second;
 
-  // Write samba configuration file.
-  if (!UpdateWorkgroupAndWriteSmbConf(config_.get(), &workgroup_, out_error))
-    return false;
+  // Write Samba configuration file.
+  ErrorType error = EnsureWorkgroupAndWriteSmbConf();
+  if (error != ERROR_NONE)
+    return error;
 
   // Make sure we have the domain controller name.
-  if (!UpdateDomainControllerName(&domain_controller_name_, out_error))
-    return false;
+  error = EnsureDomainControllerName();
+  if (error != ERROR_NONE)
+    return error;
 
   // FetchDeviceGpos writes a krb5.conf here. For user policy, there's no need
   // to do that here since we're reusing the TGT generated in AuthenticateUser.
 
   // Get the list of GPOs for the given user name.
-  std::string gpo_list_blob;
-  if (!GetGpoList(sam_account_name, ac::PolicyScope::USER, &gpo_list_blob,
-                  out_error)) {
-    return false;
-  }
+  ap::GpoList gpo_list;
+  error = GetGpoList(sam_account_name, PolicyScope::USER, &gpo_list);
+  if (error != ERROR_NONE)
+    return error;
 
   // Download GPOs from Active Directory server.
   std::vector<base::FilePath> gpo_file_paths;
-  if (!DownloadGpos(gpo_list_blob, domain_controller_name_, kPRegUserDir,
-                    &gpo_file_paths, out_error)) {
-    return false;
-  }
+  error = DownloadGpos(gpo_list, PolicyScope::USER, &gpo_file_paths);
+  if (error != ERROR_NONE)
+    return error;
 
   // Parse GPOs and store them in a user policy protobuf.
-  if (!ParseGposIntoProtobuf(gpo_file_paths, ac::kCmdParseUserPreg,
-                             out_policy_blob, out_error))
-    return false;
+  error = ParseGposIntoProtobuf(gpo_file_paths, kCmdParseUserPreg, policy_blob);
+  if (error != ERROR_NONE)
+    return error;
 
-  return true;
+  return ERROR_NONE;
 }
 
-bool SambaInterface::FetchDeviceGpos(std::string* out_policy_blob,
-                                     ErrorType* out_error) {
-  // Write samba configuration file.
-  if (!UpdateWorkgroupAndWriteSmbConf(config_.get(), &workgroup_, out_error))
-    return false;
+ErrorType SambaInterface::FetchDeviceGpos(std::string* policy_blob) {
+  // Write Samba configuration file.
+  ErrorType error = EnsureWorkgroupAndWriteSmbConf();
+  if (error != ERROR_NONE)
+    return error;
 
   // Make sure we have the domain controller name.
-  if (!UpdateDomainControllerName(&domain_controller_name_, out_error))
-    return false;
+  error = EnsureDomainControllerName();
+  if (error != ERROR_NONE)
+    return error;
 
   // Write krb5 configuration file.
   DCHECK(config_.get());
-  if (!WriteKrb5Conf(config_->realm(), out_error))
-    return false;
+  error = WriteKrb5Conf(config_->realm());
+  if (error != ERROR_NONE)
+    return error;
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
-  ProcessExecutor kinit_cmd({s_paths->Get(Path::KINIT),
+  ProcessExecutor kinit_cmd({paths_->Get(Path::KINIT),
                              config_->machine_name() + "$@" + config_->realm(),
                              "-k"});
   kinit_cmd.SetEnv(kKrb5ConfEnvKey,  // Kerberos configuration file path.
-                   kFilePrefix + s_paths->Get(Path::KRB5_CONF));
+                   kFilePrefix + paths_->Get(Path::KRB5_CONF));
   kinit_cmd.SetEnv(kMachineKTEnvKey,  // Machine keytab file path.
-                   kFilePrefix + s_paths->Get(Path::MACHINE_KT_STATE));
+                   kFilePrefix + paths_->Get(Path::MACHINE_KT_STATE));
   SetupKinitTrace(&kinit_cmd);
 
   // The first device policy fetch after joining Active Directory can be very
@@ -1071,37 +1021,47 @@ bool SambaInterface::FetchDeviceGpos(std::string* out_policy_blob,
   for (int tries = 0; tries < max_tries; ++tries) {
     success = SetupJailAndRun(&kinit_cmd, Path::KINIT_SECCOMP);
     if (success) {
-      *out_error = ERROR_NONE;
+      error = ERROR_NONE;
       break;
     }
-    *out_error = HandleKinitError(kinit_cmd);
-    if (*out_error != ERROR_BAD_USER_NAME && *out_error != ERROR_BAD_PASSWORD)
+    OutputKinitTrace();
+    error = GetKinitError(kinit_cmd);
+    if (error != ERROR_BAD_USER_NAME && error != ERROR_BAD_PASSWORD)
       break;
     base::PlatformThread::Sleep(
         base::TimeDelta::FromSeconds(kMachineKinitRetryWaitSeconds));
   }
   retry_machine_kinit_ = false;
   if (!success)
-    return false;
+    return error;
 
   // Get the list of GPOs for the machine.
-  std::string gpo_list_blob;
-  if (!GetGpoList(config_->machine_name() + "$", ac::PolicyScope::MACHINE,
-                  &gpo_list_blob, out_error))
-    return false;
+  ap::GpoList gpo_list;
+  error = GetGpoList(config_->machine_name() + "$", PolicyScope::MACHINE,
+                     &gpo_list);
+  if (error != ERROR_NONE)
+    return error;
 
   // Download GPOs from Active Directory server.
   std::vector<base::FilePath> gpo_file_paths;
-  if (!DownloadGpos(gpo_list_blob, domain_controller_name_, kPRegDeviceDir,
-                    &gpo_file_paths, out_error))
-    return false;
+  error = DownloadGpos(gpo_list, PolicyScope::MACHINE, &gpo_file_paths);
+  if (error != ERROR_NONE)
+    return error;
 
   // Parse GPOs and store them in a device policy protobuf.
-  if (!ParseGposIntoProtobuf(gpo_file_paths, ac::kCmdParseDevicePreg,
-                             out_policy_blob, out_error))
-    return false;
+  error =
+      ParseGposIntoProtobuf(gpo_file_paths, kCmdParseDevicePreg, policy_blob);
+  if (error != ERROR_NONE)
+    return error;
 
-  return true;
+  return ERROR_NONE;
+}
+
+void SambaInterface::Reset() {
+  user_id_name_map_.clear();
+  config_.reset();
+  domain_controller_name_.clear();
+  workgroup_.clear();
 }
 
 }  // namespace authpolicy

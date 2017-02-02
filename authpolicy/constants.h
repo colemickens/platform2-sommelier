@@ -6,7 +6,6 @@
 #define AUTHPOLICY_CONSTANTS_H_
 
 namespace authpolicy {
-namespace constants {
 
 // Commands for the parser.
 const char kCmdParseDcName[] = "parse_dc_name";
@@ -31,12 +30,9 @@ enum class PolicyScope {
   MACHINE,  // Machine/device policy
 };
 
-// User ids are initialized during startup.
-const uid_t kInvalidUid = -1;
-extern uid_t kAuthPolicydUid;
-extern uid_t kAuthPolicyExecUid;
+const char kAuthPolicydUser[] = "authpolicyd";
+const char kAuthPolicydExecUser[] = "authpolicyd-exec";
 
-}  // namespace constants
 }  // namespace authpolicy
 
 #endif  // AUTHPOLICY_CONSTANTS_H_

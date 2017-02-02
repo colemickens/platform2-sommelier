@@ -22,11 +22,10 @@ class SambaInterfaceTest : public ::testing::Test {
   std::string user_name_;
   std::string realm_;
   std::string normalized_upn_;
-  ErrorType error_ = ERROR_NONE;
 
   bool ParseUserPrincipalName(const char* user_principal_name_) {
     return ai::ParseUserPrincipalName(user_principal_name_, &user_name_,
-                                      &realm_, &normalized_upn_, &error_);
+                                      &realm_, &normalized_upn_);
   }
 
   // Helpers for FindToken.
@@ -52,7 +51,6 @@ TEST_F(SambaInterfaceTest, ParseUPNSuccess) {
   EXPECT_EQ(user_name_, "usar");
   EXPECT_EQ(realm_, "WOKGROUP.DOOMAIN");
   EXPECT_EQ(normalized_upn_, "usar@WOKGROUP.DOOMAIN");
-  EXPECT_EQ(error_, ERROR_NONE);
 }
 
 // a@b.c.d.e succeeds.
@@ -82,49 +80,41 @@ TEST_F(SambaInterfaceTest, ParseUPNSuccess_DotAtDot) {
 // a@ fails (no workgroup.domain).
 TEST_F(SambaInterfaceTest, ParseUPNFail_NoRealm) {
   EXPECT_FALSE(ParseUserPrincipalName("usar@"));
-  EXPECT_EQ(error_, ERROR_PARSE_UPN_FAILED);
 }
 
 // a fails (no @workgroup.domain).
 TEST_F(SambaInterfaceTest, ParseUPNFail_NoAtRealm) {
   EXPECT_FALSE(ParseUserPrincipalName("usar"));
-  EXPECT_EQ(error_, ERROR_PARSE_UPN_FAILED);
 }
 
 // a. fails (no @workgroup.domain and trailing . is invalid, anyway).
 TEST_F(SambaInterfaceTest, ParseUPNFail_NoAtRealmButDot) {
   EXPECT_FALSE(ParseUserPrincipalName("usar."));
-  EXPECT_EQ(error_, ERROR_PARSE_UPN_FAILED);
 }
 
 // a@b@c fails (double at).
 TEST_F(SambaInterfaceTest, ParseUPNFail_AtAt) {
   EXPECT_FALSE(ParseUserPrincipalName("usar@wokgroup@doomain"));
-  EXPECT_EQ(error_, ERROR_PARSE_UPN_FAILED);
 }
 
 // a@b@c fails (double at).
 TEST_F(SambaInterfaceTest, ParseUPNFail_AtAtDot) {
   EXPECT_FALSE(ParseUserPrincipalName("usar@wokgroup@doomain.com"));
-  EXPECT_EQ(error_, ERROR_PARSE_UPN_FAILED);
 }
 
 // @b.c fails (empty user name).
 TEST_F(SambaInterfaceTest, ParseUPNFail_NoUpn) {
   EXPECT_FALSE(ParseUserPrincipalName("@wokgroup.doomain"));
-  EXPECT_EQ(error_, ERROR_PARSE_UPN_FAILED);
 }
 
 // b.c fails (no user name@).
 TEST_F(SambaInterfaceTest, ParseUPNFail_NoUpnAt) {
   EXPECT_FALSE(ParseUserPrincipalName("wokgroup.doomain"));
-  EXPECT_EQ(error_, ERROR_PARSE_UPN_FAILED);
 }
 
 // .b.c fails (no user name@ and initial . is invalid, anyway).
 TEST_F(SambaInterfaceTest, ParseUPNFail_NoUpnAtButDot) {
   EXPECT_FALSE(ParseUserPrincipalName(".wokgroup.doomain"));
-  EXPECT_EQ(error_, ERROR_PARSE_UPN_FAILED);
 }
 
 // a=b works.

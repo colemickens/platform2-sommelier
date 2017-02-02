@@ -25,15 +25,14 @@ const char kRecommendedKey[] = "Recommended";
 namespace policy {
 
 bool ParsePRegFilesIntoUserPolicy(const std::vector<base::FilePath>& preg_files,
-                                  em::CloudPolicySettings* policy,
-                                  authpolicy::ErrorType* out_error) {
+                                  em::CloudPolicySettings* policy) {
   DCHECK(policy);
 
   RegistryDict merged_mandatory_dict;
   RegistryDict merged_recommended_dict;
   for (const base::FilePath& preg_file : preg_files) {
     RegistryDict mandatory_dict;
-    if (!helper::LoadPRegFile(preg_file, &mandatory_dict, out_error))
+    if (!helper::LoadPRegFile(preg_file, &mandatory_dict))
       return false;
 
     // Recommended policies are stored in their own registry key. This can be
@@ -64,13 +63,12 @@ bool ParsePRegFilesIntoUserPolicy(const std::vector<base::FilePath>& preg_files,
 
 bool ParsePRegFilesIntoDevicePolicy(
     const std::vector<base::FilePath>& preg_files,
-    em::ChromeDeviceSettingsProto* policy,
-    authpolicy::ErrorType* out_error) {
+    em::ChromeDeviceSettingsProto* policy) {
   DCHECK(policy);
 
   RegistryDict policy_dict;
   for (const base::FilePath& preg_file : preg_files) {
-    if (!helper::LoadPRegFile(preg_file, &policy_dict, out_error))
+    if (!helper::LoadPRegFile(preg_file, &policy_dict))
       return false;
   }
 

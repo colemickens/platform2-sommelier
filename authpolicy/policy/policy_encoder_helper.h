@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/values.h>
-#include <dbus/authpolicy/dbus-constants.h>
 
 namespace base {
 class FilePath;
@@ -21,9 +20,7 @@ class RegistryDict;
 namespace helper {
 
 // Checks a PReg file for existence and loads it into |dict|.
-bool LoadPRegFile(const base::FilePath& preg_file,
-                  RegistryDict* out_dict,
-                  authpolicy::ErrorType* out_error);
+bool LoadPRegFile(const base::FilePath& preg_file, RegistryDict* dict);
 
 // Similar to base::Value::GetAsBoolean(), but in addition it converts int
 // values of 0 or 1 to bool. Returns true on success and stores the output in
