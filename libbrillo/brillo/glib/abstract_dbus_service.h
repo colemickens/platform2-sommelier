@@ -10,9 +10,6 @@
 
 namespace brillo {
 
-// \precondition No functions in the dbus namespace can be called before
-// ::g_type_init();
-
 namespace dbus {
 class BRILLO_EXPORT AbstractDbusService {
  public:

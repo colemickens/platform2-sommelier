@@ -20,9 +20,6 @@ struct DBusConnection;
 
 namespace brillo {
 
-// \precondition No functions in the dbus namespace can be called before
-// ::g_type_init();
-
 namespace dbus {
 
 // \brief   BusConnection manages the ref-count for a ::DBusGConnection*.
