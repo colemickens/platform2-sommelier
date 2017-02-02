@@ -8,7 +8,6 @@
         'blkid',
         'dbus-c++-1',
         'glib-2.0',
-        'gobject-2.0',
         'gthread-2.0',
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',

@@ -5,7 +5,6 @@
 // A simple daemon to detect, mount, and eject removable storage devices.
 
 #include <glib.h>
-#include <glib-object.h>
 #include <glib-unix.h>
 #include <libudev.h>
 
@@ -101,8 +100,6 @@ gboolean TerminationSignalCallback(gpointer data) {
 }  // namespace
 
 int main(int argc, char** argv) {
-  g_type_init();
-
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
 
