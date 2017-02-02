@@ -57,8 +57,6 @@ class SystemUtils;
 // |magic_chrome_file| exists, or this process receives a termination signal.
 // Also provides a wrapper that exports SessionManagerImpl methods via
 // D-Bus.
-//
-// ::g_type_init() must be called before this class is used.
 class SessionManagerService
     : public base::RefCountedThreadSafe<SessionManagerService>,
       public JobManagerInterface,
