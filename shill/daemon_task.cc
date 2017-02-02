@@ -19,7 +19,6 @@
 #include <base/bind.h>
 
 #if !defined(ENABLE_JSON_STORE)
-#include <glib-object.h>
 #include <glib.h>
 #endif  // ENABLE_JSON_STORE
 
@@ -160,9 +159,6 @@ void DaemonTask::StopAndReturnToMain() {
 }
 
 void DaemonTask::Start() {
-#if !defined(ENABLE_JSON_STORE)
-  g_type_init();
-#endif
   metrics_->Start();
   rtnl_handler_->Start(RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
                        RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE |

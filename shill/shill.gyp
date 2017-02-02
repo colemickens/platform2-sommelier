@@ -330,7 +330,6 @@
           'link_settings': {
             'variables': {
               'deps': [
-                'gio-2.0',  # for g_type_init()
                 'glib-2.0',  # for g_key_*(), etc.
               ],
             },
@@ -340,7 +339,6 @@
           ],
           'variables': {
             'exported_deps': [
-              'gio-2.0',  # for g_type_init()
               'glib-2.0',  # for g_key_*(), etc.
             ],
             'deps': ['<@(exported_deps)'],
