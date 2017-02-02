@@ -69,7 +69,10 @@ gboolean TerminationSignalCallback(GIOChannel* /* source */,
 }
 
 int main(int argc, char** argv) {
+  // g_type_init() is deprecated since glib 2.36.
+#if !(GLIB_CHECK_VERSION(2, 36, 0))
   ::g_type_init();
+#endif
   // g_thread_init() is deprecated since glib 2.32 and the symbol is no longer
   // exported since glib 2.34:
   //
