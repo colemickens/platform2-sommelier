@@ -16,6 +16,8 @@ enum Mode {
     kModeHasConsent,
     kModeIsGuestMode,
     kModeShowConsentId,
+    kModeCreateConsent,
+    kModeDeleteConsent,
 };
 
 void ShowUsage() {
@@ -25,10 +27,12 @@ void ShowUsage() {
           "        metrics_client -s   name sample\n"
           "        metrics_client -v   event\n"
           "        metrics_client -u action\n"
-          "        metrics_client [-cg]\n"
+          "        metrics_client [-cCDg]\n"
           "\n"
           "  default: send metric with integer values\n"
           "           |min| > 0, |min| <= sample < |max|\n"
+          "  -C: Create consent file such that -c will return 0.\n"
+          "  -D: Delete consent file such that -c will return 1.\n"
           "  -c: return exit status 0 if user consents to stats, 1 otherwise,\n"
           "      in guest mode always return 1\n"
           "  -e: send linear/enumeration histogram data\n"
@@ -109,6 +113,18 @@ static int SendCrosEvent(char* argv[], int action_index) {
   return 0;
 }
 
+static int CreateConsent() {
+  MetricsLibrary metrics_lib;
+  metrics_lib.Init();
+  return metrics_lib.EnableMetrics() ? 0 : 1;
+}
+
+static int DeleteConsent() {
+  MetricsLibrary metrics_lib;
+  metrics_lib.Init();
+  return metrics_lib.DisableMetrics() ? 0 : 1;
+}
+
 static int HasConsent() {
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
@@ -137,8 +153,14 @@ int main(int argc, char** argv) {
 
   // Parse arguments
   int flag;
-  while ((flag = getopt(argc, argv, "cegistuv")) != -1) {
+  while ((flag = getopt(argc, argv, "CDcegistuv")) != -1) {
     switch (flag) {
+      case 'C':
+        mode = kModeCreateConsent;
+        break;
+      case 'D':
+        mode = kModeDeleteConsent;
+        break;
       case 'c':
         mode = kModeHasConsent;
         break;
@@ -201,6 +223,10 @@ int main(int argc, char** argv) {
       return SendUserAction(argv, arg_index);
     case kModeSendCrosEvent:
       return SendCrosEvent(argv, arg_index);
+    case kModeCreateConsent:
+      return CreateConsent();
+    case kModeDeleteConsent:
+      return DeleteConsent();
     case kModeHasConsent:
       return HasConsent();
     case kModeIsGuestMode:

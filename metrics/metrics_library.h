@@ -44,6 +44,18 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // Returns whether or not metrics collection is enabled.
   bool AreMetricsEnabled() override;
 
+  // Chrome normally manages Enable/Disable state. These functions are
+  // intended ONLY for use by devices which don't run Chrome (e.g. Onhub)
+  // but are based on Chrome OS.
+  // In those cases, "User Consent" is given via an "external" app
+  // (e.g. cloud service or directly from a smart phone app).
+  //
+  // Enable metrics by creating and populating the Consent file.
+  bool EnableMetrics();
+
+  // Disable metrics by deleting the Consent file.
+  bool DisableMetrics();
+
   // Look up the consent id for metrics reporting.
   // Note: Should only be used by internal system projects.
   bool ConsentId(std::string* id);

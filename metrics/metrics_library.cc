@@ -4,7 +4,9 @@
 
 #include "metrics/metrics_library.h"
 
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/guid.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -209,6 +211,29 @@ bool MetricsLibrary::AreMetricsEnabled() {
       cached_enabled_ = false;
   }
   return cached_enabled_;
+}
+
+bool MetricsLibrary::EnableMetrics() {
+  // Already enabled? Don't touch anything.
+  if (AreMetricsEnabled())
+    return true;
+
+  std::string guid = base::GenerateGUID();
+
+  if (guid.empty())
+    return false;
+
+  // http://crbug.com/383003 says we must be world readable.
+  mode_t mask = umask(0022);
+  int write_len = base::WriteFile(base::FilePath(consent_file_),
+                                  guid.c_str(), guid.length());
+  umask(mask);
+
+  return write_len == static_cast<int>(guid.length());
+}
+
+bool MetricsLibrary::DisableMetrics() {
+  return base::DeleteFile(base::FilePath(consent_file_), false);
 }
 
 void MetricsLibrary::Init() {
