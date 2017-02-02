@@ -96,8 +96,7 @@ fi
 # image also uses initramfs but it never reach here). When using initrd+tftpboot
 # (some old netboot factory installer), ROOTDEV_TYPE will be /dev/ram.
 if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
-  # Find our stateful partition. It's always partition 1.
-  # Unless we're on UBI, when it's ubi1_0.
+  # Find our stateful partition mount point.
   # To support multiple volumes on a single UBI device, if the stateful
   # partition is not found on ubi${PARTITION_NUM_STATE}_0, check
   # ubi0_${PARTITION_NUM_STATE}.
