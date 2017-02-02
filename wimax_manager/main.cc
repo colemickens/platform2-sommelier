@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <glib.h>
-#include <glib-object.h>
 #include <glib-unix.h>
 
 #include <base/at_exit.h>
@@ -81,7 +79,6 @@ gboolean TerminationSignalCallback(gpointer data) {
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
-  g_type_init();
 
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
