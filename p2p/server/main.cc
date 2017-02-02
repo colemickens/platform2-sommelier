@@ -46,8 +46,6 @@ int main(int argc, char* argv[]) {
   int ret = 1;
   GMainLoop* loop = NULL;
 
-  g_type_init();
-
   base::CommandLine::Init(argc, argv);
 
   logging::LoggingSettings logging_settings;

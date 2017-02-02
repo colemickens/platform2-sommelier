@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <glib-object.h>
-
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -11,8 +9,6 @@
 #include <base/logging.h>
 
 int main(int argc, char** argv) {
-  ::g_type_init();
-
   base::CommandLine::Init(argc, argv);
 
   logging::LoggingSettings logging_settings;

@@ -8,7 +8,6 @@
 #include "p2p/common/constants.h"
 #include "p2p/common/util.h"
 
-#include <glib-object.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -82,7 +81,6 @@ static void ListUrls(p2p::client::ServiceFinder* finder,
 int main(int argc, char* argv[]) {
   std::unique_ptr<p2p::client::ServiceFinder> finder;
 
-  g_type_init();
   base::CommandLine::Init(argc, argv);
   logging::LoggingSettings logging_settings;
   logging_settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
