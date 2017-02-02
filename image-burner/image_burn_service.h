@@ -29,8 +29,6 @@ enum BurnSignals {
 
 // Provides a wrapper for exporting ImageBurnerInterface to
 // D-Bus and entering the glib run loop.
-//
-// ::g_type_init() must be called before this class is used.
 class ImageBurnService : public brillo::dbus::AbstractDbusService,
                          public SignalSender {
  public:

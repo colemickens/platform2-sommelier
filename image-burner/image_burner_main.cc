@@ -22,8 +22,6 @@ int main(int argc, char* argv[]) {
   settings.delete_old = logging::DELETE_OLD_LOG_FILE;
   logging::InitLogging(settings);
 
-  g_type_init();
-
   imageburn::BurnWriter writer;
   imageburn::BurnReader reader;
   imageburn::BurnRootPathGetter path_getter;
