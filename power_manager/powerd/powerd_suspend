@@ -303,9 +303,6 @@ fi
 
 enable_debug
 
-log_msg "Explicit sync"
-sync
-
 result="${RESULT_FAILURE}"
 
 if saw_wakeup_event; then
