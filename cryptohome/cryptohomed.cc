@@ -58,7 +58,6 @@ static std::string ReadAbeDataFileContents(cryptohome::Platform* platform) {
 }
 
 int main(int argc, char **argv) {
-  ::g_type_init();
   base::AtExitManager exit_manager;
   base::CommandLine::Init(argc, argv);
 

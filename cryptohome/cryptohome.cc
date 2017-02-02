@@ -646,7 +646,6 @@ int main(int argc, char **argv) {
   }
 
   std::string action = cl->GetSwitchValueASCII(switches::kActionSwitch);
-  g_type_init();
   brillo::dbus::BusConnection bus = brillo::dbus::GetSystemBusConnection();
   brillo::dbus::Proxy proxy(bus,
                               cryptohome::kCryptohomeServiceName,

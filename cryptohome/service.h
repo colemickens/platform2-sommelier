@@ -21,7 +21,6 @@
 #include <brillo/secure_blob.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dbus-glib.h>
-#include <glib-object.h>
 
 #include "cryptohome/cryptohome_event_source.h"
 #include "cryptohome/dbus_transition.h"
@@ -75,8 +74,6 @@ class MountTaskObserverBridge : public MountTaskObserver {
 // Service
 // Provides a wrapper for exporting CryptohomeInterface to
 // D-Bus and entering the glib run loop.
-//
-// ::g_type_init() must be called before this class is used.
 class Service : public brillo::dbus::AbstractDbusService,
                 public CryptohomeEventSourceSink,
                 public TpmInit::TpmInitCallback {
