@@ -35,12 +35,16 @@ using trunks::TrunksFactory;
 
 namespace {
 
+// Mask to strip the upper bits, which are non-zero when the error is generated
+// by trunksd software layers instead of coming from a hardware TPM.
+const TPM_RC kResponseCodeMask = 0xFFF;
+
 using cryptohome::Tpm;
 Tpm::TpmRetryAction ResultToRetryAction(TPM_RC result) {
   // Strip everything but the error number from Format-1 error codes (other
   // error codes are left untouched) and decide based on that.
   Tpm::TpmRetryAction action;
-  switch (trunks::GetFormatOneError(result)) {
+  switch (trunks::GetFormatOneError(result & kResponseCodeMask)) {
     case trunks::TPM_RC_SUCCESS:
       action = Tpm::kTpmRetryNone;
       break;
