@@ -143,6 +143,10 @@ create_monitor ()
   if ! iw phy "${phy}" interface add "${device}" type monitor ; then
     return
   fi
+  if ! ip link set "${device}" up ; then
+    iw dev "${device}" del
+    return
+  fi
   echo "${device}"
 }
 

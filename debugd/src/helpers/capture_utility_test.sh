@@ -47,6 +47,11 @@ test_create_monitor ()
       fatal_error "Unexpected arguments to iw: $*"
     fi
   }
+  ip () {
+    if [[ "$#" != 4 || "${*}" != "link set phy0_mon up" ]] ; then
+      fatal_error "Unexpected arguments to ip: $*"
+    fi
+  }
   expect_eq "create_monitor phy" "phy0_mon" "$(create_monitor phy0)"
 }
 
