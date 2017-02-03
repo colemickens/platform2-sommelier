@@ -32,13 +32,12 @@ get_array_element ()
 }
 
 
-# get_device_list returns the name of all network devices shown in an
-# "ifconfig" listing.
+# get_device_list returns the name of all network interfaces.
 #
 # @return "<device0>\n<device1>..."
 get_device_list ()
 {
-  ifconfig -a | grep '^[^ ]' | awk '{ print $1 }' | sed 's/:$//'
+  ip -o link show | awk '{ sub(/:$/, "", $2); print $2 }'
 }
 
 
@@ -244,7 +243,7 @@ get_monitor_device ()
         error "Shutting down interface ${unused_device} so we can perform"
         error "monitoring.  You may need to disable, then re-enable WiFi to"
         error "use this interface again normally again."
-        ifconfig "${unused_device}" down
+        ip link set "${unused_device}" down
       else
         error "Warning: Interface ${unused_device} is in-use for an active"
         error "connection.  This may affect the quality of the packet capture."
@@ -389,7 +388,7 @@ start_capture ()
   local device="${1}"
   local output_file="${2}"
   echo "Capturing from ${device}.  Press Ctrl-C to stop."
-  ifconfig "${device}" up
+  ip link set "${device}" up
   exec /usr/libexec/debugd/helpers/capture_packets "${device}" "${output_file}"
 }
 

@@ -57,11 +57,11 @@ test_create_monitor ()
 
 test_device_list ()
 {
-  ifconfig () {
-    if [[ "$#" != 1 || "${1}" != "-a" ]] ; then
-      fatal_error "Unexpected arguments to ifconfig: $*"
+  ip () {
+    if [[ "$#" != 3 || "${*}" != "-o link show" ]] ; then
+      fatal_error "Unexpected arguments to ip: $*"
     fi
-    echo -e "int0\n  int1\nint2"
+    printf "1: int0: something\n2: int2:\n"
   }
   local -a devices=($(get_device_list))
   if [[ "${#devices[@]}" != 2 || "${devices[0]}" != "int0" ||
