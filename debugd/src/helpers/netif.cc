@@ -44,7 +44,7 @@
 // }
 // The meanings of the individual flags are up to Linux's networking stack (and
 // sometimes up to the individual cards' drivers); "up" indicates that the
-// interface is up in the ifconfig sense.
+// interface is up.
 
 #include <arpa/inet.h>
 #include <ifaddrs.h>
