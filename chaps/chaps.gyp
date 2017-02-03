@@ -19,6 +19,10 @@
     {
       'target_name': 'chaps-protos',
       'type': 'static_library',
+      # libchaps-protos.a is used by a shared_libary
+      # object, so we need to build it with '-fPIC' instead of '-fPIE'.
+      'cflags!': ['-fPIE'],
+      'cflags': ['-fPIC'],
       'variables': {
         'proto_in_dir': '.',
         'proto_out_dir': 'include/chaps/proto_bindings',
