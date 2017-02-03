@@ -426,15 +426,9 @@ bool SessionManagerImpl::StartSession(const std::string& account_id,
         user_is_owner);
   }
 
-  if (!init_controller_->TriggerImpulse(
-          kStartUserSessionSignal, {"CHROMEOS_USER=" + actual_account_id},
-          InitDaemonController::TriggerMode::SYNC)) {
-    static const char msg[] =
-        "Emitting start-user-session upstart signal failed.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kEmitFailed, msg);
-    return false;
-  }
+  init_controller_->TriggerImpulse(kStartUserSessionSignal,
+                                   {"CHROMEOS_USER=" + actual_account_id},
+                                   InitDaemonController::TriggerMode::ASYNC);
   LOG(INFO) << "Starting user session";
   manager_->SetBrowserSessionForUser(actual_account_id, user_session->userhash);
   session_started_ = true;
@@ -875,7 +869,7 @@ void SessionManagerImpl::SetArcCpuRestriction(
       LOG(ERROR) << msg;
       error->Set(dbus_error::kArcCpuCgroupFail, msg);
       return;
-  };
+  }
   if (base::WriteFile(base::FilePath(kCpuSharesFile), shares_out.c_str(),
                       shares_out.length()) != shares_out.length()) {
     constexpr char msg[] = "Error updating Android container's cgroups.";

@@ -64,9 +64,9 @@
         @unique_identifier: Unused.
         @done: True on success. Error returned on failure, so likely redundant.
 
-        Updates bookkeeping to know about a session for
-        @account_id. Also emits "start-user-session" upstart signal
-        and "SessionStateChanged:started" D-Bus signal.
+        Updates bookkeeping to know about a session for @account_id. Also emits
+        "start-user-session" upstart signal (asynchronously) and
+        "SessionStateChanged:started" D-Bus signal.
     -->
     <method name="StartSession">
       <arg type="s" name="account_id" direction="in" />
