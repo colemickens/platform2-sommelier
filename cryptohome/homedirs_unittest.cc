@@ -39,6 +39,7 @@ using ::testing::DoAll;
 using ::testing::EndsWith;
 using ::testing::HasSubstr;
 using ::testing::InSequence;
+using ::testing::InvokeWithoutArgs;
 using ::testing::MatchesRegex;
 using ::testing::NiceMock;
 using ::testing::Return;
@@ -104,7 +105,8 @@ NiceMock<MockFileEnumerator>* CreateMockFileEnumerator() {
 }
 }  // namespace
 
-class HomeDirsTest : public ::testing::Test {
+class HomeDirsTest
+    : public ::testing::TestWithParam<bool /* should_test_ecryptfs */> {
  public:
   HomeDirsTest() : crypto_(&platform_) { }
   virtual ~HomeDirsTest() { }
@@ -112,9 +114,8 @@ class HomeDirsTest : public ::testing::Test {
   void SetUp() {
     test_helper_.SetUpSystemSalt();
     // TODO(wad) Only generate the user data we need. This is time consuming.
-    // TODO(hashimoto): Test both force_ecryptfs=true/false cases.
     test_helper_.InitTestData(kTestRoot, kDefaultUsers, kDefaultUserCount,
-                              false /* force_ecryptfs */);
+                              ShouldTestEcryptfs());
     homedirs_.set_shadow_root(kTestRoot);
     test_helper_.InjectSystemSalt(&platform_, kTestRoot.Append("salt"));
     set_policy(true, kOwner, false, "");
@@ -153,6 +154,9 @@ class HomeDirsTest : public ::testing::Test {
     homedirs_.own_policy_provider(new policy::PolicyProvider(device_policy));
   }
 
+  // Returns true if the test is running for eCryptfs, false if for dircrypto.
+  bool ShouldTestEcryptfs() const { return GetParam(); }
+
  protected:
   MakeTests test_helper_;
   NiceMock<MockPlatform> platform_;
@@ -168,7 +172,10 @@ class HomeDirsTest : public ::testing::Test {
   DISALLOW_COPY_AND_ASSIGN(HomeDirsTest);
 };
 
-TEST_F(HomeDirsTest, RemoveNonOwnerCryptohomes) {
+INSTANTIATE_TEST_CASE_P(WithEcryptfs, HomeDirsTest, ::testing::Values(true));
+INSTANTIATE_TEST_CASE_P(WithDircrypto, HomeDirsTest, ::testing::Values(false));
+
+TEST_P(HomeDirsTest, RemoveNonOwnerCryptohomes) {
   // Ensure that RemoveNonOwnerCryptohomes does.
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
     .WillOnce(
@@ -182,6 +189,9 @@ TEST_F(HomeDirsTest, RemoveNonOwnerCryptohomes) {
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_,
+              DirectoryExists(Property(&FilePath::value, EndsWith(kVaultDir))))
+    .WillRepeatedly(Return(ShouldTestEcryptfs()));
   EXPECT_CALL(platform_, IsDirectoryMounted(_))
     .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
@@ -194,7 +204,7 @@ TEST_F(HomeDirsTest, RemoveNonOwnerCryptohomes) {
   homedirs_.RemoveNonOwnerCryptohomes();
 }
 
-TEST_F(HomeDirsTest, RenameCryptohome) {
+TEST_P(HomeDirsTest, RenameCryptohome) {
   ASSERT_TRUE(
       base::CreateDirectory(FilePath(test_helper_.users[0].base_path)));
   ASSERT_TRUE(
@@ -216,7 +226,7 @@ TEST_F(HomeDirsTest, RenameCryptohome) {
   EXPECT_TRUE(homedirs_.Rename(kNewUserId, kDefaultUsers[0].username));
 }
 
-TEST_F(HomeDirsTest, ComputeSize) {
+TEST_P(HomeDirsTest, ComputeSize) {
   FilePath base_path(test_helper_.users[0].base_path);
   FilePath user_path = brillo::cryptohome::home::GetUserPathPrefix()
       .Append(test_helper_.users[0].obfuscated_username);
@@ -250,14 +260,14 @@ TEST_F(HomeDirsTest, ComputeSize) {
             homedirs_.ComputeSize(kDefaultUsers[0].username));
 }
 
-TEST_F(HomeDirsTest, ComputeSizeWithNonexistentUser) {
+TEST_P(HomeDirsTest, ComputeSizeWithNonexistentUser) {
   // If the specified user doesn't exist, there is no directory for the user, so
   // ComputeSize should return 0.
   const char kNonExistentUserId[] = "non_existent_user";
   EXPECT_EQ(0, homedirs_.ComputeSize(kNonExistentUserId));
 }
 
-TEST_F(HomeDirsTest, GetTrackedDirectoryForDirCrypto) {
+TEST_P(HomeDirsTest, GetTrackedDirectoryForDirCrypto) {
   Platform real_platform;
   // Use real PathExists.
   EXPECT_CALL(platform_, FileExists(_)).WillRepeatedly(
@@ -313,6 +323,54 @@ class FreeDiskSpaceTest : public HomeDirsTest {
   FreeDiskSpaceTest() { }
   virtual ~FreeDiskSpaceTest() { }
 
+  // Sets up expectaions for tracked directories.
+  void ExpectTrackedDirectoriesEnumeration() {
+    if (ShouldTestEcryptfs())  // No expecations needed for eCryptfs.
+      return;
+
+    for (const auto& path : homedir_paths_) {
+      FilePath mount = path.Append(kMountDir);
+      FilePath user = mount.Append(kUserHomeSuffix);
+      FilePath root = mount.Append(kRootHomeSuffix);
+      FilePath cache = user.Append(kCacheDir);
+      FilePath gcache = user.Append(kGCacheDir);
+      FilePath gcache_version = gcache.Append(kGCacheVersionDir);
+      FilePath gcache_tmp = gcache_version.Append(kGCacheTmpDir);
+      ExpectTrackedDirectoryEnumeration({user, root});
+      ExpectTrackedDirectoryEnumeration({cache, gcache});
+      ExpectTrackedDirectoryEnumeration({gcache_version});
+      ExpectTrackedDirectoryEnumeration({gcache_tmp});
+    }
+  }
+
+  // Sets up expectations for the given tracked directories which belong to the
+  // same parent directory.
+  void ExpectTrackedDirectoryEnumeration(
+      const std::vector<FilePath>& child_directories) {
+    DCHECK(!child_directories.empty());
+    FilePath parent_directory = child_directories[0].DirName();
+    // xattr is used to track directories.
+    for (const auto& child : child_directories) {
+      DCHECK_EQ(parent_directory.value(), child.DirName().value());
+      EXPECT_CALL(platform_, GetExtendedFileAttributeAsString(
+          child, kTrackedDirectoryNameAttribute, _))
+          .WillRepeatedly(DoAll(SetArgPointee<2>(child.BaseName().value()),
+                                Return(true)));
+    }
+    // |child_directories| should be enumerated as the parent's children.
+    auto create_file_enumerator_function = [child_directories]() {
+      auto* mock = new NiceMock<MockFileEnumerator>;
+      for (const auto& child : child_directories) {
+        struct stat stat = {};
+        mock->entries_.push_back(FileEnumerator::FileInfo(child, stat));
+      }
+      return mock;
+    };
+    EXPECT_CALL(platform_, GetFileEnumerator(
+        parent_directory, false, base::FileEnumerator::DIRECTORIES))
+        .WillRepeatedly(InvokeWithoutArgs(create_file_enumerator_function));
+  }
+
   // The first half of HomeDirs::FreeDiskSpace does a purge of the Cache and
   // GCached dirs.  Unless these are being explicitly tested, we want these to
   // always succeed for every test. Set those expectations here for the given
@@ -328,6 +386,10 @@ class FreeDiskSpaceTest : public HomeDirsTest {
       .RetiresOnSaturation();
     EXPECT_CALL(platform_, DirectoryExists(_))
       .WillRepeatedly(Return(true));
+    EXPECT_CALL(platform_,
+                DirectoryExists(Property(&FilePath::value,
+                                         EndsWith(kVaultDir))))
+      .WillRepeatedly(Return(ShouldTestEcryptfs()));
     // N users * (1 Cache dir + 1 GCache tmp dir)
     EXPECT_CALL(platform_, GetFileEnumerator(_, false, _))
       .Times(user_count * 2)
@@ -336,10 +398,17 @@ class FreeDiskSpaceTest : public HomeDirsTest {
     EXPECT_CALL(platform_, GetFileEnumerator(_, true, _))
       .Times(user_count * 2)
       .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+
+    ExpectTrackedDirectoriesEnumeration();
   }
 };
 
-TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithNoTime) {
+INSTANTIATE_TEST_CASE_P(WithEcryptfs, FreeDiskSpaceTest,
+                        ::testing::Values(true));
+INSTANTIATE_TEST_CASE_P(WithDircrypto, FreeDiskSpaceTest,
+                        ::testing::Values(false));
+
+TEST_P(FreeDiskSpaceTest, InitializeTimeCacheWithNoTime) {
   // To get to the init logic, we need to fail four
   // |kTargetFreeSpaceAfterCleanup| checks.
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
@@ -355,6 +424,9 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithNoTime) {
               Return(true)));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_,
+              DirectoryExists(Property(&FilePath::value, EndsWith(kVaultDir))))
+    .WillRepeatedly(Return(ShouldTestEcryptfs()));
   EXPECT_CALL(platform_, IsDirectoryMounted(_))
     .WillRepeatedly(Return(false));
 
@@ -380,10 +452,13 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithNoTime) {
     .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
   EXPECT_CALL(platform_, GetFileEnumerator(
         Property(&FilePath::value,
-          EndsWith(std::string(kVaultDir) + "/root")),
+          EndsWith(std::string(ShouldTestEcryptfs() ? kVaultDir : kMountDir) +
+                   "/root")),
         true, _))
     .Times(4)
     .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+
+  ExpectTrackedDirectoriesEnumeration();
 
   // Now cover the actual initialization piece
   EXPECT_CALL(timestamp_cache_, initialized())
@@ -415,7 +490,7 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithNoTime) {
   EXPECT_FALSE(homedirs_.FreeDiskSpace());
 }
 
-TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
+TEST_P(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
   // To get to the init logic, we need to fail four
   // |kTargetFreeSpaceAfterCleanup| checks.
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
@@ -431,6 +506,9 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
               Return(true)));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_,
+              DirectoryExists(Property(&FilePath::value, EndsWith(kVaultDir))))
+    .WillRepeatedly(Return(ShouldTestEcryptfs()));
   // The master.* enumerators (wildcard matcher first)
   EXPECT_CALL(platform_, GetFileEnumerator(_, false, _))
     .Times(3).WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
@@ -450,17 +528,21 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
   EXPECT_CALL(platform_,
       GetFileEnumerator(
         Property(&FilePath::value,
-          EndsWith(std::string(kVaultDir) + "/user/GCache/v1")),
+          EndsWith(std::string(ShouldTestEcryptfs() ? kVaultDir : kMountDir) +
+                   "/user/GCache/v1")),
         true, _))
     .Times(4)
     .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
   EXPECT_CALL(platform_,
       GetFileEnumerator(
         Property(&FilePath::value,
-          EndsWith(std::string(kVaultDir) + "/root")),
+          EndsWith(std::string(ShouldTestEcryptfs() ? kVaultDir : kMountDir) +
+                   "/root")),
         true, _))
     .Times(4)
     .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+
+  ExpectTrackedDirectoriesEnumeration();
 
   // Now cover the actual initialization piece
   EXPECT_CALL(timestamp_cache_, initialized())
@@ -518,14 +600,14 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
   EXPECT_FALSE(homedirs_.FreeDiskSpace());
 }
 
-TEST_F(FreeDiskSpaceTest, NoCacheCleanup) {
+TEST_P(FreeDiskSpaceTest, NoCacheCleanup) {
   // Pretend we have lots of free space
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
     .WillOnce(Return(kFreeSpaceThresholdToTriggerCleanup + 1));
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
 }
 
-TEST_F(FreeDiskSpaceTest, OnlyCacheCleanup) {
+TEST_P(FreeDiskSpaceTest, OnlyCacheCleanup) {
   // Only clean up the Cache data. Not GCache, etc.
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
     .WillRepeatedly(
@@ -537,6 +619,9 @@ TEST_F(FreeDiskSpaceTest, OnlyCacheCleanup) {
     .WillOnce(Return(kTargetFreeSpaceAfterCleanup + 1));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_,
+              DirectoryExists(Property(&FilePath::value, EndsWith(kVaultDir))))
+    .WillRepeatedly(Return(ShouldTestEcryptfs()));
   // Empty enumerators per-user per-cache dirs
   NiceMock<MockFileEnumerator>* fe[arraysize(kHomedirs)];
   EXPECT_CALL(platform_, GetFileEnumerator(_, false, _))
@@ -557,10 +642,12 @@ TEST_F(FreeDiskSpaceTest, OnlyCacheCleanup) {
     .Times(4)
     .WillRepeatedly(Return(true));
 
+  ExpectTrackedDirectoriesEnumeration();
+
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
 }
 
-TEST_F(FreeDiskSpaceTest, GCacheCleanup) {
+TEST_P(FreeDiskSpaceTest, GCacheCleanup) {
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
     .WillRepeatedly(
         DoAll(SetArgPointee<2>(homedir_paths_),
@@ -571,6 +658,9 @@ TEST_F(FreeDiskSpaceTest, GCacheCleanup) {
     .WillOnce(Return(kTargetFreeSpaceAfterCleanup + 1));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_,
+              DirectoryExists(Property(&FilePath::value, EndsWith(kVaultDir))))
+    .WillRepeatedly(Return(ShouldTestEcryptfs()));
   // Empty enumerators per-user per-cache dirs
   EXPECT_CALL(platform_,
       GetFileEnumerator(
@@ -586,7 +676,8 @@ TEST_F(FreeDiskSpaceTest, GCacheCleanup) {
       platform_,
       GetFileEnumerator(
         Property(&FilePath::value,
-          EndsWith(std::string(kVaultDir) + "/user/GCache/v1")),
+          EndsWith(std::string(ShouldTestEcryptfs() ? kVaultDir : kMountDir) +
+                   "/user/GCache/v1")),
         true, base::FileEnumerator::DIRECTORIES))
       .WillOnce(Return(fe[0] = new NiceMock<MockFileEnumerator>))
       .WillOnce(Return(fe[1] = new NiceMock<MockFileEnumerator>))
@@ -646,6 +737,8 @@ TEST_F(FreeDiskSpaceTest, GCacheCleanup) {
           EndsWith("GCache/v1/files/unremovable"))))
     .WillOnce(Return(false));
 
+  ExpectTrackedDirectoriesEnumeration();
+
   // Confirm removable file is removed.
   EXPECT_CALL(platform_,
       DeleteFile(
@@ -657,7 +750,7 @@ TEST_F(FreeDiskSpaceTest, GCacheCleanup) {
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
 }
 
-TEST_F(FreeDiskSpaceTest, CacheAndGCacheCleanup) {
+TEST_P(FreeDiskSpaceTest, CacheAndGCacheCleanup) {
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
     .WillRepeatedly(
         DoAll(SetArgPointee<2>(homedir_paths_),
@@ -668,6 +761,9 @@ TEST_F(FreeDiskSpaceTest, CacheAndGCacheCleanup) {
     .WillOnce(Return(kMinFreeSpaceInBytes + 1));  // After removing gcache
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_,
+              DirectoryExists(Property(&FilePath::value, EndsWith(kVaultDir))))
+    .WillRepeatedly(Return(ShouldTestEcryptfs()));
 
   // Skip per-cache and Cache enumerations done per user in order to
   // test cache and GCache deletion.
@@ -682,7 +778,8 @@ TEST_F(FreeDiskSpaceTest, CacheAndGCacheCleanup) {
   EXPECT_CALL(platform_, GetFileEnumerator(
         Property(
           &FilePath::value,
-          EndsWith(std::string(kVaultDir) + "/user/GCache/v1")),
+          EndsWith(std::string(ShouldTestEcryptfs() ? kVaultDir : kMountDir) +
+                   "/user/GCache/v1")),
         true, base::FileEnumerator::DIRECTORIES))
     .Times(4)
     .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
@@ -694,9 +791,11 @@ TEST_F(FreeDiskSpaceTest, CacheAndGCacheCleanup) {
 
   // Should not attempt to remove Android cache. (by getting enumerator first)
   EXPECT_CALL(platform_, GetFileEnumerator(
-      Property(&FilePath::value, EndsWith(std::string(kVaultDir) + "/root")),
-          true, _))
+      Property(&FilePath::value, EndsWith(std::string(
+          ShouldTestEcryptfs() ? kVaultDir : kMountDir) + "/root")), true, _))
       .Times(0);
+
+  ExpectTrackedDirectoriesEnumeration();
 
   // Should finish cleaning up because the free space size exceeds
   // |kMinFreeSpaceInBytes| after deleting gcache, although it's still
@@ -704,7 +803,7 @@ TEST_F(FreeDiskSpaceTest, CacheAndGCacheCleanup) {
   EXPECT_FALSE(homedirs_.FreeDiskSpace());
 }
 
-TEST_F(FreeDiskSpaceTest, CacheAndGCacheAndAndroidCleanup) {
+TEST_P(FreeDiskSpaceTest, CacheAndGCacheAndAndroidCleanup) {
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
     .WillRepeatedly(
         DoAll(SetArgPointee<2>(homedir_paths_),
@@ -716,6 +815,9 @@ TEST_F(FreeDiskSpaceTest, CacheAndGCacheAndAndroidCleanup) {
     .WillOnce(Return(kMinFreeSpaceInBytes + 1));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_,
+              DirectoryExists(Property(&FilePath::value, EndsWith(kVaultDir))))
+    .WillRepeatedly(Return(ShouldTestEcryptfs()));
 
   // Skip per-cache and Cache enumerations done per user in order to
   // test Android cache deletions.
@@ -730,7 +832,8 @@ TEST_F(FreeDiskSpaceTest, CacheAndGCacheAndAndroidCleanup) {
   EXPECT_CALL(platform_, GetFileEnumerator(
         Property(
           &FilePath::value,
-          EndsWith(std::string(kVaultDir) + "/user/GCache/v1")),
+          EndsWith(std::string(ShouldTestEcryptfs() ? kVaultDir : kMountDir) +
+                   "/user/GCache/v1")),
         true, base::FileEnumerator::DIRECTORIES))
     .Times(4)
     .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
@@ -740,12 +843,15 @@ TEST_F(FreeDiskSpaceTest, CacheAndGCacheAndAndroidCleanup) {
     .Times(4)
     .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
 
+  ExpectTrackedDirectoriesEnumeration();
+
   // Now test for the Android user, just test for the first user.
   NiceMock<MockFileEnumerator>* fe = new NiceMock<MockFileEnumerator>;
   EXPECT_CALL(platform_, GetFileEnumerator(
         Property(
           &FilePath::value,
-          EndsWith(std::string(kVaultDir) + "/root")),
+          EndsWith(std::string(ShouldTestEcryptfs() ? kVaultDir : kMountDir) +
+                   "/root")),
         true, _))
     .WillOnce(Return(fe))
     .WillOnce(InvokeWithoutArgs(CreateMockFileEnumerator))
@@ -793,7 +899,7 @@ TEST_F(FreeDiskSpaceTest, CacheAndGCacheAndAndroidCleanup) {
   EXPECT_FALSE(homedirs_.FreeDiskSpace());
 }
 
-TEST_F(FreeDiskSpaceTest, CleanUpOneUser) {
+TEST_P(FreeDiskSpaceTest, CleanUpOneUser) {
   // Ensure that the oldest user directory deleted, but not any
   // others, if the first deletion frees enough space.
   EXPECT_CALL(timestamp_cache_, initialized())
@@ -815,7 +921,7 @@ TEST_F(FreeDiskSpaceTest, CleanUpOneUser) {
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
 }
 
-TEST_F(FreeDiskSpaceTest, CleanUpMultipleUsers) {
+TEST_P(FreeDiskSpaceTest, CleanUpMultipleUsers) {
   // Ensure that the two oldest user directories are deleted, but not any
   // others, if the second deletion frees enough space.
   EXPECT_CALL(timestamp_cache_, initialized())
@@ -842,7 +948,7 @@ TEST_F(FreeDiskSpaceTest, CleanUpMultipleUsers) {
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
 }
 
-TEST_F(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_LoginScreen) {
+TEST_P(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_LoginScreen) {
   set_policy(true, "", false, "");
   homedirs_.set_enterprise_owned(true);
   UserOldestActivityTimestampCache cache;
@@ -875,7 +981,7 @@ TEST_F(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_LoginScreen) {
 }
 
 
-TEST_F(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_UserLoggedIn) {
+TEST_P(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_UserLoggedIn) {
   set_policy(true, "", false, "");
   homedirs_.set_enterprise_owned(true);
   UserOldestActivityTimestampCache cache;
@@ -916,7 +1022,7 @@ TEST_F(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_UserLoggedIn) {
   EXPECT_TRUE(cache.empty());
 }
 
-TEST_F(FreeDiskSpaceTest, CleanUpMultipleNonadjacentUsers) {
+TEST_P(FreeDiskSpaceTest, CleanUpMultipleNonadjacentUsers) {
   // Ensure that the two oldest user directories are deleted, but not any
   // others.  The owner is inserted in the middle.
   EXPECT_CALL(timestamp_cache_, initialized())
@@ -949,7 +1055,7 @@ TEST_F(FreeDiskSpaceTest, CleanUpMultipleNonadjacentUsers) {
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
 }
 
-TEST_F(FreeDiskSpaceTest, NoOwnerNoEnterpriseNoCleanup) {
+TEST_P(FreeDiskSpaceTest, NoOwnerNoEnterpriseNoCleanup) {
   // Ensure that no users are deleted with no owner/enterprise-owner.
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
     .WillRepeatedly(Return(0));
@@ -975,7 +1081,7 @@ TEST_F(FreeDiskSpaceTest, NoOwnerNoEnterpriseNoCleanup) {
   EXPECT_FALSE(homedirs_.FreeDiskSpace());
 }
 
-TEST_F(FreeDiskSpaceTest, ConsumerEphemeralUsers) {
+TEST_P(FreeDiskSpaceTest, ConsumerEphemeralUsers) {
   // When ephemeral users are enabled, no cryptohomes are kept except the owner.
   set_policy(true, kOwner, true, "");
 
@@ -1001,6 +1107,9 @@ TEST_F(FreeDiskSpaceTest, ConsumerEphemeralUsers) {
 
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_,
+              DirectoryExists(Property(&FilePath::value, EndsWith(kVaultDir))))
+    .WillRepeatedly(Return(ShouldTestEcryptfs()));
   EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
     .WillOnce(Return(true))  // vault
     .WillOnce(Return(true))  // user
@@ -1020,7 +1129,7 @@ TEST_F(FreeDiskSpaceTest, ConsumerEphemeralUsers) {
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
 }
 
-TEST_F(FreeDiskSpaceTest, EnterpriseEphemeralUsers) {
+TEST_P(FreeDiskSpaceTest, EnterpriseEphemeralUsers) {
   // When ephemeral users are enabled, no cryptohomes are kept except the owner.
   set_policy(true, "", true, "");
   homedirs_.set_enterprise_owned(true);
@@ -1047,6 +1156,9 @@ TEST_F(FreeDiskSpaceTest, EnterpriseEphemeralUsers) {
 
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_,
+              DirectoryExists(Property(&FilePath::value, EndsWith(kVaultDir))))
+    .WillRepeatedly(Return(ShouldTestEcryptfs()));
   EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
     .WillOnce(Return(true))  // vault
     .WillOnce(Return(true))  // user
@@ -1067,7 +1179,7 @@ TEST_F(FreeDiskSpaceTest, EnterpriseEphemeralUsers) {
   EXPECT_TRUE(homedirs_.FreeDiskSpace());
 }
 
-TEST_F(FreeDiskSpaceTest, DontCleanUpMountedUser) {
+TEST_P(FreeDiskSpaceTest, DontCleanUpMountedUser) {
   // Ensure that a user isn't deleted if it appears to be mounted.
   EXPECT_CALL(timestamp_cache_, initialized())
     .WillRepeatedly(Return(true));
@@ -1087,6 +1199,9 @@ TEST_F(FreeDiskSpaceTest, DontCleanUpMountedUser) {
     .WillRepeatedly(Return(0));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_,
+              DirectoryExists(Property(&FilePath::value, EndsWith(kVaultDir))))
+    .WillRepeatedly(Return(ShouldTestEcryptfs()));
 
   // Ensure the mounted user never has (G)Cache traversed!
   EXPECT_CALL(platform_, GetFileEnumerator(
@@ -1101,6 +1216,8 @@ TEST_F(FreeDiskSpaceTest, DontCleanUpMountedUser) {
   // 3 users * (1 GCache files dir + 1 Android cache)
   EXPECT_CALL(platform_, GetFileEnumerator(_, true, _))
     .Times(6).WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+
+  ExpectTrackedDirectoriesEnumeration();
 
   EXPECT_CALL(platform_,
       IsDirectoryMounted(
@@ -1118,7 +1235,7 @@ TEST_F(FreeDiskSpaceTest, DontCleanUpMountedUser) {
   EXPECT_FALSE(homedirs_.FreeDiskSpace());
 }
 
-TEST_F(HomeDirsTest, GoodDecryptTest) {
+TEST_P(HomeDirsTest, GoodDecryptTest) {
   // create a HomeDirs instance that points to a good shadow root, test that it
   // properly authenticates against the first key.
   SecureBlob system_salt;
@@ -1137,7 +1254,7 @@ TEST_F(HomeDirsTest, GoodDecryptTest) {
   ASSERT_TRUE(homedirs_.AreCredentialsValid(up));
 }
 
-TEST_F(HomeDirsTest, BadDecryptTest) {
+TEST_P(HomeDirsTest, BadDecryptTest) {
   // create a HomeDirs instance that points to a good shadow root, test that it
   // properly denies access with a bad passkey
   SecureBlob system_salt;
@@ -1268,7 +1385,12 @@ class KeysetManagementTest : public HomeDirsTest {
   SerializedVaultKeyset serialized_;
 };
 
-TEST_F(KeysetManagementTest, AddKeysetSuccess) {
+INSTANTIATE_TEST_CASE_P(WithEcryptfs, KeysetManagementTest,
+                        ::testing::Values(true));
+INSTANTIATE_TEST_CASE_P(WithDircrypto, KeysetManagementTest,
+                        ::testing::Values(false));
+
+TEST_P(KeysetManagementTest, AddKeysetSuccess) {
   KeysetSetUp();
 
   SecureBlob newkey;
@@ -1298,7 +1420,7 @@ TEST_F(KeysetManagementTest, AddKeysetSuccess) {
   EXPECT_EQ(index, 1);
 }
 
-TEST_F(KeysetManagementTest, AddKeysetClobber) {
+TEST_P(KeysetManagementTest, AddKeysetClobber) {
   KeysetSetUp();
 
   SecureBlob newkey;
@@ -1341,7 +1463,7 @@ TEST_F(KeysetManagementTest, AddKeysetClobber) {
 }
 
 
-TEST_F(KeysetManagementTest, AddKeysetNoClobber) {
+TEST_P(KeysetManagementTest, AddKeysetNoClobber) {
   KeysetSetUp();
 
   SecureBlob newkey;
@@ -1368,7 +1490,7 @@ TEST_F(KeysetManagementTest, AddKeysetNoClobber) {
 }
 
 
-TEST_F(KeysetManagementTest, UpdateKeysetSuccess) {
+TEST_P(KeysetManagementTest, UpdateKeysetSuccess) {
   KeysetSetUp();
 
   // No need to do PasswordToPasskey as that is the
@@ -1394,7 +1516,7 @@ TEST_F(KeysetManagementTest, UpdateKeysetSuccess) {
   EXPECT_EQ(serialized_.key_data().label(), new_key.data().label());
 }
 
-TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedNoSignature) {
+TEST_P(KeysetManagementTest, UpdateKeysetAuthorizedNoSignature) {
   KeysetSetUp();
 
   // No need to do PasswordToPasskey as that is the
@@ -1423,7 +1545,7 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedNoSignature) {
   EXPECT_NE(serialized_.key_data().label(), new_key.data().label());
 }
 
-TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedSuccess) {
+TEST_P(KeysetManagementTest, UpdateKeysetAuthorizedSuccess) {
   KeysetSetUp();
 
   // No need to do PasswordToPasskey as that is the
@@ -1471,7 +1593,7 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedSuccess) {
 }
 
 // Ensure signing matches the test vectors in Chrome.
-TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedCompatVector) {
+TEST_P(KeysetManagementTest, UpdateKeysetAuthorizedCompatVector) {
   KeysetSetUp();
 
   // The salted password passed in from Chrome.
@@ -1532,7 +1654,7 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedCompatVector) {
   EXPECT_EQ(new_key.data().revision(), serialized_.key_data().revision());
 }
 
-TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedNoEqualReplay) {
+TEST_P(KeysetManagementTest, UpdateKeysetAuthorizedNoEqualReplay) {
   KeysetSetUp();
 
   // No need to do PasswordToPasskey as that is the
@@ -1570,7 +1692,7 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedNoEqualReplay) {
 }
 
 
-TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedNoLessReplay) {
+TEST_P(KeysetManagementTest, UpdateKeysetAuthorizedNoLessReplay) {
   KeysetSetUp();
 
   // No need to do PasswordToPasskey as that is the
@@ -1608,7 +1730,7 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedNoLessReplay) {
   EXPECT_NE(serialized_.key_data().label(), new_key.data().label());
 }
 
-TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedBadSignature) {
+TEST_P(KeysetManagementTest, UpdateKeysetAuthorizedBadSignature) {
   KeysetSetUp();
 
   // No need to do PasswordToPasskey as that is the
@@ -1645,7 +1767,7 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedBadSignature) {
   EXPECT_NE(serialized_.key_data().label(), new_key.data().label());
 }
 
-TEST_F(KeysetManagementTest, UpdateKeysetBadSecret) {
+TEST_P(KeysetManagementTest, UpdateKeysetBadSecret) {
   KeysetSetUp();
 
   // No need to do PasswordToPasskey as that is the
@@ -1666,7 +1788,7 @@ TEST_F(KeysetManagementTest, UpdateKeysetBadSecret) {
   EXPECT_NE(serialized_.key_data().label(), new_key.data().label());
 }
 
-TEST_F(KeysetManagementTest, UpdateKeysetNotFoundWithLabel) {
+TEST_P(KeysetManagementTest, UpdateKeysetNotFoundWithLabel) {
   KeysetSetUp();
 
   KeyData some_label;
@@ -1679,7 +1801,7 @@ TEST_F(KeysetManagementTest, UpdateKeysetNotFoundWithLabel) {
                                    ""));
 }
 
-TEST_F(KeysetManagementTest, RemoveKeysetSuccess) {
+TEST_P(KeysetManagementTest, RemoveKeysetSuccess) {
   KeysetSetUp();
 
   Key remove_key;
@@ -1699,7 +1821,7 @@ TEST_F(KeysetManagementTest, RemoveKeysetSuccess) {
             homedirs_.RemoveKeyset(*up_, remove_key.data()));
 }
 
-TEST_F(KeysetManagementTest, RemoveKeysetNotFound) {
+TEST_P(KeysetManagementTest, RemoveKeysetNotFound) {
   KeysetSetUp();
 
   Key remove_key;
@@ -1711,7 +1833,7 @@ TEST_F(KeysetManagementTest, RemoveKeysetNotFound) {
             homedirs_.RemoveKeyset(*up_, remove_key.data()));
 }
 
-TEST_F(KeysetManagementTest, GetVaultKeysetLabelsOneLabeled) {
+TEST_P(KeysetManagementTest, GetVaultKeysetLabelsOneLabeled) {
   KeysetSetUp();
 
   serialized_.mutable_key_data()->set_label("a labeled key");
@@ -1722,7 +1844,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsOneLabeled) {
             labels[0]);
 }
 
-TEST_F(KeysetManagementTest, GetVaultKeysetLabelsOneLegacyLabeled) {
+TEST_P(KeysetManagementTest, GetVaultKeysetLabelsOneLegacyLabeled) {
   KeysetSetUp();
 
   serialized_.clear_key_data();
@@ -1733,7 +1855,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsOneLegacyLabeled) {
             labels[0]);
 }
 
-TEST_F(KeysetManagementTest, AddKeysetInvalidCreds) {
+TEST_P(KeysetManagementTest, AddKeysetInvalidCreds) {
   KeysetSetUp();
 
   SecureBlob newkey;
@@ -1749,7 +1871,7 @@ TEST_F(KeysetManagementTest, AddKeysetInvalidCreds) {
   EXPECT_EQ(index, -1);
 }
 
-TEST_F(KeysetManagementTest, AddKeysetInvalidPrivileges) {
+TEST_P(KeysetManagementTest, AddKeysetInvalidPrivileges) {
   // Check for key use that lacks valid add privileges
   KeysetSetUp();
 
@@ -1765,7 +1887,7 @@ TEST_F(KeysetManagementTest, AddKeysetInvalidPrivileges) {
   EXPECT_EQ(index, -1);
 }
 
-TEST_F(KeysetManagementTest, AddKeyset0Available) {
+TEST_P(KeysetManagementTest, AddKeyset0Available) {
   // While this doesn't affect the hole-finding logic, it's good to cover the
   // full logical behavior by changing which key auths too.
   // master.0 -> master.1
@@ -1798,7 +1920,7 @@ TEST_F(KeysetManagementTest, AddKeyset0Available) {
   EXPECT_EQ(index, 0);
 }
 
-TEST_F(KeysetManagementTest, AddKeyset10Available) {
+TEST_P(KeysetManagementTest, AddKeyset10Available) {
   KeysetSetUp();
 
   // The injected keyset in the fixture handles the up_ validation.
@@ -1831,7 +1953,7 @@ TEST_F(KeysetManagementTest, AddKeyset10Available) {
   EXPECT_EQ(index, 10);
 }
 
-TEST_F(KeysetManagementTest, AddKeysetNoFreeIndices) {
+TEST_P(KeysetManagementTest, AddKeysetNoFreeIndices) {
   KeysetSetUp();
 
   // The injected keyset in the fixture handles the up_ validation.
@@ -1852,7 +1974,7 @@ TEST_F(KeysetManagementTest, AddKeysetNoFreeIndices) {
   EXPECT_EQ(index, -1);
 }
 
-TEST_F(KeysetManagementTest, AddKeysetEncryptFail) {
+TEST_P(KeysetManagementTest, AddKeysetEncryptFail) {
   KeysetSetUp();
 
   SecureBlob newkey;
@@ -1878,7 +2000,7 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFail) {
   EXPECT_EQ(index, -1);
 }
 
-TEST_F(KeysetManagementTest, AddKeysetSaveFail) {
+TEST_P(KeysetManagementTest, AddKeysetSaveFail) {
   KeysetSetUp();
 
   SecureBlob newkey;
@@ -1905,7 +2027,7 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFail) {
   EXPECT_EQ(index, -1);
 }
 
-TEST_F(KeysetManagementTest, ForceRemoveKeysetSuccess) {
+TEST_P(KeysetManagementTest, ForceRemoveKeysetSuccess) {
   EXPECT_CALL(platform_,
       FileExists(Property(&FilePath::value, EndsWith("master.0"))))
     .WillOnce(Return(true));
@@ -1916,7 +2038,7 @@ TEST_F(KeysetManagementTest, ForceRemoveKeysetSuccess) {
   ASSERT_TRUE(homedirs_.ForceRemoveKeyset("a0b0c0", 0));
 }
 
-TEST_F(KeysetManagementTest, ForceRemoveKeysetMissingKeyset) {
+TEST_P(KeysetManagementTest, ForceRemoveKeysetMissingKeyset) {
   EXPECT_CALL(platform_,
       FileExists(
         Property(&FilePath::value, EndsWith("master.0"))))
@@ -1924,15 +2046,15 @@ TEST_F(KeysetManagementTest, ForceRemoveKeysetMissingKeyset) {
   ASSERT_TRUE(homedirs_.ForceRemoveKeyset("a0b0c0", 0));
 }
 
-TEST_F(KeysetManagementTest, ForceRemoveKeysetNegativeIndex) {
+TEST_P(KeysetManagementTest, ForceRemoveKeysetNegativeIndex) {
   ASSERT_FALSE(homedirs_.ForceRemoveKeyset("a0b0c0", -1));
 }
 
-TEST_F(KeysetManagementTest, ForceRemoveKeysetOverMaxIndex) {
+TEST_P(KeysetManagementTest, ForceRemoveKeysetOverMaxIndex) {
   ASSERT_FALSE(homedirs_.ForceRemoveKeyset("a0b0c0", kKeyFileMax));
 }
 
-TEST_F(KeysetManagementTest, ForceRemoveKeysetFailedDelete) {
+TEST_P(KeysetManagementTest, ForceRemoveKeysetFailedDelete) {
   EXPECT_CALL(platform_,
       FileExists(
         Property(&FilePath::value, EndsWith("master.0"))))
@@ -1945,7 +2067,7 @@ TEST_F(KeysetManagementTest, ForceRemoveKeysetFailedDelete) {
   ASSERT_FALSE(homedirs_.ForceRemoveKeyset("a0b0c0", 0));
 }
 
-TEST_F(KeysetManagementTest, MoveKeysetSuccess_0_to_1) {
+TEST_P(KeysetManagementTest, MoveKeysetSuccess_0_to_1) {
   const std::string obfuscated = "a0b0c0";
   EXPECT_CALL(platform_,
       FileExists(Property(&FilePath::value, EndsWith("master.0"))))
@@ -1967,7 +2089,7 @@ TEST_F(KeysetManagementTest, MoveKeysetSuccess_0_to_1) {
   ASSERT_TRUE(homedirs_.MoveKeyset(obfuscated, 0, 1));
 }
 
-TEST_F(KeysetManagementTest, MoveKeysetSuccess_1_to_99) {
+TEST_P(KeysetManagementTest, MoveKeysetSuccess_1_to_99) {
   const std::string obfuscated = "a0b0c0";
   EXPECT_CALL(platform_,
       FileExists(Property(&FilePath::value, EndsWith("master.1"))))
@@ -1990,27 +2112,27 @@ TEST_F(KeysetManagementTest, MoveKeysetSuccess_1_to_99) {
   ASSERT_TRUE(homedirs_.MoveKeyset(obfuscated, 1, 99));
 }
 
-TEST_F(KeysetManagementTest, MoveKeysetNegativeSource) {
+TEST_P(KeysetManagementTest, MoveKeysetNegativeSource) {
   const std::string obfuscated = "a0b0c0";
   ASSERT_FALSE(homedirs_.MoveKeyset(obfuscated, -1, 1));
 }
 
-TEST_F(KeysetManagementTest, MoveKeysetNegativeDestination) {
+TEST_P(KeysetManagementTest, MoveKeysetNegativeDestination) {
   const std::string obfuscated = "a0b0c0";
   ASSERT_FALSE(homedirs_.MoveKeyset(obfuscated, 1, -1));
 }
 
-TEST_F(KeysetManagementTest, MoveKeysetTooLargeDestination) {
+TEST_P(KeysetManagementTest, MoveKeysetTooLargeDestination) {
   const std::string obfuscated = "a0b0c0";
   ASSERT_FALSE(homedirs_.MoveKeyset(obfuscated, 1, kKeyFileMax));
 }
 
-TEST_F(KeysetManagementTest, MoveKeysetTooLargeSource) {
+TEST_P(KeysetManagementTest, MoveKeysetTooLargeSource) {
   const std::string obfuscated = "a0b0c0";
   ASSERT_FALSE(homedirs_.MoveKeyset(obfuscated, kKeyFileMax, 0));
 }
 
-TEST_F(KeysetManagementTest, MoveKeysetMissingSource) {
+TEST_P(KeysetManagementTest, MoveKeysetMissingSource) {
   const std::string obfuscated = "a0b0c0";
   EXPECT_CALL(platform_,
       FileExists(Property(&FilePath::value, EndsWith("master.0"))))
@@ -2018,7 +2140,7 @@ TEST_F(KeysetManagementTest, MoveKeysetMissingSource) {
   ASSERT_FALSE(homedirs_.MoveKeyset(obfuscated, 0, 1));
 }
 
-TEST_F(KeysetManagementTest, MoveKeysetDestinationExists) {
+TEST_P(KeysetManagementTest, MoveKeysetDestinationExists) {
   const std::string obfuscated = "a0b0c0";
   EXPECT_CALL(platform_,
       FileExists(Property(&FilePath::value, EndsWith("master.0"))))
@@ -2029,7 +2151,7 @@ TEST_F(KeysetManagementTest, MoveKeysetDestinationExists) {
   ASSERT_FALSE(homedirs_.MoveKeyset(obfuscated, 0, 1));
 }
 
-TEST_F(KeysetManagementTest, MoveKeysetExclusiveOpenFailed) {
+TEST_P(KeysetManagementTest, MoveKeysetExclusiveOpenFailed) {
   const std::string obfuscated = "a0b0c0";
   EXPECT_CALL(platform_,
       FileExists(Property(&FilePath::value, EndsWith("master.0"))))
@@ -2045,7 +2167,7 @@ TEST_F(KeysetManagementTest, MoveKeysetExclusiveOpenFailed) {
   ASSERT_FALSE(homedirs_.MoveKeyset(obfuscated, 0, 1));
 }
 
-TEST_F(KeysetManagementTest, MoveKeysetRenameFailed) {
+TEST_P(KeysetManagementTest, MoveKeysetRenameFailed) {
   const std::string obfuscated = "a0b0c0";
   EXPECT_CALL(platform_,
       FileExists(Property(&FilePath::value, EndsWith("master.0"))))
