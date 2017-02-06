@@ -81,7 +81,7 @@ Rule::Result DenyClaimedHidrawDeviceRule::ProcessHidrawDevice(
   // subsystem. Yet the traffic to those children is not available on
   // the hidraw node of the receiver, so it is safe to white-list it.
   struct udev_device* hid_parent =
-      udev_device_get_parent_with_subsystem_devtype(device, "hid", NULL);
+      udev_device_get_parent_with_subsystem_devtype(device, "hid", nullptr);
   if (hid_parent) {
     const char* hid_parent_driver = udev_device_get_driver(hid_parent);
     if (strcmp(hid_parent_driver, kLogitechUnifyingReceiverDriver) == 0) {

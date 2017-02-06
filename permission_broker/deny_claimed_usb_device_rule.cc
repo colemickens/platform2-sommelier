@@ -74,7 +74,7 @@ Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {
 
   bool found_claimed_interface = false;
   bool found_unclaimed_interface = false;
-  struct udev_list_entry *entry = NULL;
+  struct udev_list_entry *entry = nullptr;
   udev_list_entry_foreach(entry,
                           udev_enumerate_get_list_entry(enumerate.get())) {
     const char *entry_path = udev_list_entry_get_name(entry);

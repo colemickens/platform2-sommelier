@@ -50,7 +50,7 @@ class DenyClaimedUsbDeviceRuleTest : public RuleTest {
     ScopedUdevEnumeratePtr enumerate(udev_enumerate_new(udev.get()));
     udev_enumerate_scan_devices(enumerate.get());
 
-    struct udev_list_entry *entry = NULL;
+    struct udev_list_entry *entry = nullptr;
     udev_list_entry_foreach(entry,
                             udev_enumerate_get_list_entry(enumerate.get())) {
       const char *syspath = udev_list_entry_get_name(entry);

@@ -33,7 +33,7 @@ TEST_F(DenyClaimedHidrawDeviceRuleTest, DenyClaimedHidrawDevices) {
   ScopedUdevEnumeratePtr enumerate(udev_enumerate_new(udev_.get()));
   udev_enumerate_add_match_subsystem(enumerate.get(), "hidraw");
   udev_enumerate_scan_devices(enumerate.get());
-  struct udev_list_entry* entry = NULL;
+  struct udev_list_entry* entry = nullptr;
   udev_list_entry_foreach(entry,
                           udev_enumerate_get_list_entry(enumerate.get())) {
     const char *syspath = udev_list_entry_get_name(entry);
@@ -48,8 +48,8 @@ TEST_F(DenyClaimedHidrawDeviceRuleTest, DenyClaimedHidrawDevices) {
           udev_device_get_parent_with_subsystem_devtype(
               device.get(), "usb", "usb_interface");
 
-      ASSERT_TRUE(usb_interface != NULL) <<
-          "This rule should DENY all non-USB HID devices.";
+      ASSERT_NE(nullptr, usb_interface)
+          << "This rule should DENY all non-USB HID devices.";
 
       std::string usb_interface_path(udev_device_get_syspath(usb_interface));
 
@@ -59,7 +59,7 @@ TEST_F(DenyClaimedHidrawDeviceRuleTest, DenyClaimedHidrawDevices) {
       // generic subsystem.
       ScopedUdevEnumeratePtr other_enumerate(udev_enumerate_new(udev_.get()));
       udev_enumerate_scan_devices(other_enumerate.get());
-      struct udev_list_entry* other_entry = NULL;
+      struct udev_list_entry* other_entry = nullptr;
       udev_list_entry_foreach(
           other_entry,
           udev_enumerate_get_list_entry(other_enumerate.get())) {

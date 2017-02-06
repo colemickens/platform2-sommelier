@@ -22,7 +22,7 @@ namespace permission_broker {
 // static
 std::string TtySubsystemUdevRule::GetDevNodeGroupName(udev_device* device) {
   const char* const devnode = udev_device_get_devnode(device);
-  if (devnode == NULL) {
+  if (devnode == nullptr) {
     return "";
   }
 
@@ -45,7 +45,7 @@ std::string TtySubsystemUdevRule::GetDevNodeGroupName(udev_device* device) {
   size_t getgr_size = static_cast<size_t>(getgr_res);
   std::vector<char> getgr_buf(getgr_size);
   ret = getgrgid_r(st.st_gid, &gr, getgr_buf.data(), getgr_buf.size(), &pgr);
-  if (ret != 0 || pgr == NULL) {
+  if (ret != 0 || pgr == nullptr) {
     return "";
   }
 

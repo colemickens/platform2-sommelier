@@ -71,7 +71,7 @@ bool UsbDriverTracker::ReAttachPathToKernel(const std::string& path,
     struct usbdevfs_ioctl dio;
     dio.ifno = iface_num;
     dio.ioctl_code = USBDEVFS_CONNECT;
-    dio.data = NULL;
+    dio.data = nullptr;
 
     int res = ioctl(fd, USBDEVFS_IOCTL, &dio);
     if (res < 0) {
@@ -136,7 +136,7 @@ bool UsbDriverTracker::DetachPathFromKernel(int fd, const std::string& path) {
       struct usbdevfs_ioctl dio;
       dio.ifno = iface_num;
       dio.ioctl_code = USBDEVFS_DISCONNECT;
-      dio.data = NULL;
+      dio.data = nullptr;
 
       int res = ioctl(fd, USBDEVFS_IOCTL, &dio);
       if (res < 0) {

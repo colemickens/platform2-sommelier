@@ -275,7 +275,7 @@ bool PortTracker::DeleteLifelineFd(int fd) {
   }
 
   LOG(INFO) << "Deleting file descriptor " << fd << " from epoll instance";
-  if (epoll_ctl(epfd_, EPOLL_CTL_DEL, fd, NULL) != 0) {
+  if (epoll_ctl(epfd_, EPOLL_CTL_DEL, fd, nullptr) != 0) {
     PLOG(ERROR) << "epoll_ctl(EPOLL_CTL_DEL)";
     return false;
   }
