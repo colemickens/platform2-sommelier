@@ -41,7 +41,7 @@ TEST_F(EnvironmentTest, GetVariable) {
   };
   static const char kVarName[] = "SHILL_SHIMS_GET_VARIABLE_TEST";
   for (size_t i = 0; i < arraysize(kVarValues); i++) {
-    EXPECT_FALSE(environment_->GetVariable(kVarName, NULL));
+    EXPECT_FALSE(environment_->GetVariable(kVarName, nullptr));
     EXPECT_EQ(0, setenv(kVarName, kVarValues[i], 0)) << kVarValues[i];
     string value;
     EXPECT_TRUE(environment_->GetVariable(kVarName, &value)) << kVarValues[i];

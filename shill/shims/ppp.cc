@@ -74,7 +74,7 @@ void PPP::Init() {
     return;
   }
   running_ = true;
-  base::CommandLine::Init(0, NULL);
+  base::CommandLine::Init(0, nullptr);
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader);
   LOG(INFO) << "PPP started.";
 }

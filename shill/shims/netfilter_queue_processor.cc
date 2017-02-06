@@ -143,9 +143,9 @@ NetfilterQueueProcessor::NetfilterQueueProcessor(
     int input_queue, int output_queue)
     : input_queue_(input_queue),
       output_queue_(output_queue),
-      nfq_handle_(NULL),
-      input_queue_handle_(NULL),
-      output_queue_handle_(NULL)  {
+      nfq_handle_(nullptr),
+      input_queue_handle_(nullptr),
+      output_queue_handle_(nullptr)  {
   VLOG(2) << "Created netfilter queue processor.";
 }
 
@@ -230,17 +230,17 @@ bool NetfilterQueueProcessor::Start() {
 void NetfilterQueueProcessor::Stop() {
   if (input_queue_handle_) {
     nfq_destroy_queue(input_queue_handle_);
-    input_queue_handle_ = NULL;
+    input_queue_handle_ = nullptr;
   }
 
   if (output_queue_handle_) {
     nfq_destroy_queue(output_queue_handle_);
-    output_queue_handle_ = NULL;
+    output_queue_handle_ = nullptr;
   }
 
   if (nfq_handle_) {
     nfq_close(nfq_handle_);
-    nfq_handle_ = NULL;
+    nfq_handle_ = nullptr;
   }
 }
 
@@ -258,13 +258,13 @@ int NetfilterQueueProcessor::InputQueueCallback(
   NetfilterQueueProcessor* processor =
       reinterpret_cast<NetfilterQueueProcessor*>(private_data);
   uint32_t verdict;
-  time_t now = time(NULL);
+  time_t now = time(nullptr);
   if (processor->IsIncomingPacketAllowed(packet, now)) {
     verdict = NF_ACCEPT;
   } else {
     verdict = NF_DROP;
   }
-  return nfq_set_verdict(queue_handle, packet.packet_id(), verdict, 0, NULL);
+  return nfq_set_verdict(queue_handle, packet.packet_id(), verdict, 0, nullptr);
 }
 
 // static
@@ -280,9 +280,10 @@ int NetfilterQueueProcessor::OutputQueueCallback(
 
   NetfilterQueueProcessor* processor =
       reinterpret_cast<NetfilterQueueProcessor*>(private_data);
-  time_t now = time(NULL);
+  time_t now = time(nullptr);
   processor->LogOutgoingPacket(packet, now);
-  return nfq_set_verdict(queue_handle, packet.packet_id(), NF_ACCEPT, 0, NULL);
+  return nfq_set_verdict(
+      queue_handle, packet.packet_id(), NF_ACCEPT, 0, nullptr);
 }
 
 // static

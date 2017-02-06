@@ -76,7 +76,7 @@ bool EncryptByteStringImpl(const string& public_key,
   // This pointer will be incremented internally by the parsing routine.
   const unsigned char* throwaway_ptr =
       reinterpret_cast<const unsigned char*>(public_key.data());
-  *rsa_ptr = d2i_RSAPublicKey(NULL, &throwaway_ptr, public_key.length());
+  *rsa_ptr = d2i_RSAPublicKey(nullptr, &throwaway_ptr, public_key.length());
   RSA* rsa = *rsa_ptr;
   if (!rsa) {
     LOG(ERROR) << "Failed to parse public key.";
@@ -118,13 +118,13 @@ bool EncryptByteString(const string& raw_input, string* output) {
     return false;
   }
 
-  RSA* rsa = NULL;
+  RSA* rsa = nullptr;
   string encrypted_output;
   bool operation_successful = EncryptByteStringImpl(
       message.public_key(), message.data(), &rsa, &encrypted_output);
   if (rsa) {
     RSA_free(rsa);
-    rsa = NULL;
+    rsa = nullptr;
   }
 
   if (operation_successful) {
@@ -195,7 +195,7 @@ bool VerifyCredentialsImpl(const string& certificate,
     return false;
   }
 
-  *rsa_ptr = NULL;  // pkey took ownership
+  *rsa_ptr = nullptr;  // pkey took ownership
   // Another helpfully unmarked const interface.
   *raw_certificate_bio_ptr = BIO_new_mem_buf(
       const_cast<char*>(certificate.data()), certificate.length());
@@ -206,7 +206,7 @@ bool VerifyCredentialsImpl(const string& certificate,
   }
 
   // No callback for a passphrase, and no passphrase either.
-  *x509_ptr = PEM_read_bio_X509(raw_certificate_bio, NULL, NULL, NULL);
+  *x509_ptr = PEM_read_bio_X509(raw_certificate_bio, nullptr, nullptr, nullptr);
   X509* x509 = *x509_ptr;
   if (!x509) {
     LOG(ERROR) << "Failed to parse certificate.";
@@ -313,28 +313,28 @@ bool VerifyCredentials(const string& raw_input, string* output) {
     return false;
   }
 
-  RSA* rsa = NULL;
-  EVP_PKEY* pkey = NULL;
-  BIO* raw_certificate_bio = NULL;
-  X509* x509 = NULL;
+  RSA* rsa = nullptr;
+  EVP_PKEY* pkey = nullptr;
+  BIO* raw_certificate_bio = nullptr;
+  X509* x509 = nullptr;
   bool operation_successful = VerifyCredentialsImpl(message.certificate(),
       message.signed_data(), message.unsigned_data(), connected_mac,
       &rsa, &pkey, &raw_certificate_bio, &x509);
   if (x509) {
     X509_free(x509);
-    x509 = NULL;
+    x509 = nullptr;
   }
   if (raw_certificate_bio) {
     BIO_free(raw_certificate_bio);
-    raw_certificate_bio = NULL;
+    raw_certificate_bio = nullptr;
   }
   if (pkey) {
     EVP_PKEY_free(pkey);
-    pkey = NULL;
+    pkey = nullptr;
   }
   if (rsa) {
     RSA_free(rsa);
-    rsa = NULL;
+    rsa = nullptr;
   }
 
   if (operation_successful) {
@@ -436,7 +436,7 @@ int main(int argc, char** argv) {
   OBJ_cleanup();
   EVP_cleanup();
   CRYPTO_cleanup_all_ex_data();
-  ERR_remove_thread_state(NULL);
+  ERR_remove_thread_state(nullptr);
   ERR_free_strings();
 
   return return_code;

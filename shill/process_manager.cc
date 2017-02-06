@@ -281,7 +281,7 @@ bool ProcessManager::WaitpidWithTimeout(pid_t pid,
   SLOG(this, 2) << __func__ << "(pid: " << pid << ")";
 
   while (tries-- > 0) {
-    if (waitpid(pid, NULL, WNOHANG) == pid) {
+    if (waitpid(pid, nullptr, WNOHANG) == pid) {
       return true;
     }
     usleep(sleep_ms * 1000);

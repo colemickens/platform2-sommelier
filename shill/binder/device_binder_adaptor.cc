@@ -123,7 +123,7 @@ Status DeviceBinderAdaptor::GetSelectedService(sp<IBinder>* _aidl_return) {
   SLOG(this, 2) << __func__;
   ServiceRefPtr selected_service = device_->selected_service();
   if (!selected_service) {
-    *_aidl_return = NULL;
+    *_aidl_return = nullptr;
   } else {
     *_aidl_return = static_cast<ServiceBinderService*>(
         control()->GetBinderServiceForRpcIdentifier(

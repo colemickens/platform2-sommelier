@@ -26,7 +26,7 @@ using shill::shims::PPP;
 using std::string;
 
 namespace {
-base::AtExitManager* g_exit_manager = NULL;  // Cleans up LazyInstances.
+base::AtExitManager* g_exit_manager = nullptr;  // Cleans up LazyInstances.
 }  // namespace
 
 void PPPInit() {
@@ -71,5 +71,5 @@ void PPPOnDisconnect() {
 void PPPOnExit(void* /*data*/, int /*arg*/) {
   LOG(INFO) << __func__;
   delete g_exit_manager;
-  g_exit_manager = NULL;
+  g_exit_manager = nullptr;
 }

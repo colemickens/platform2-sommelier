@@ -89,9 +89,9 @@ const int NetfilterQueueProcessorTest::kOutputQueue = 2;
 TEST_F(NetfilterQueueProcessorTest, Init) {
   EXPECT_EQ(kInputQueue, GetInputQueue());
   EXPECT_EQ(kOutputQueue, GetOutputQueue());
-  EXPECT_TRUE(GetNFQHandle() == NULL);
-  EXPECT_TRUE(GetInputQueueHandle() == NULL);
-  EXPECT_TRUE(GetOutputQueueHandle() == NULL);
+  EXPECT_EQ(nullptr, GetNFQHandle());
+  EXPECT_EQ(nullptr, GetInputQueueHandle());
+  EXPECT_EQ(nullptr, GetOutputQueueHandle());
   EXPECT_TRUE(GetListeners().empty());
 }
 
