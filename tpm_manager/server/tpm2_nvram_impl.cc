@@ -55,6 +55,8 @@ void MapAttributesFromTpm(trunks::TPMA_NV tpm_flags,
     attributes->push_back(NVRAM_OWNER_READ);
   if (tpm_flags & trunks::TPMA_NV_EXTEND)
     attributes->push_back(NVRAM_WRITE_EXTEND);
+  if (tpm_flags & (trunks::TPMA_NV_PPREAD))
+    attributes->push_back(NVRAM_PLATFORM_READ);
 }
 
 bool MapAttributesToTpm(
@@ -89,6 +91,9 @@ bool MapAttributesToTpm(
         break;
       case NVRAM_WRITE_EXTEND:
         *tpm_flags |= trunks::TPMA_NV_EXTEND;
+        break;
+      case NVRAM_PLATFORM_READ:
+        *tpm_flags |= trunks::TPMA_NV_PPREAD;
         break;
       case NVRAM_GLOBAL_LOCK:
       case NVRAM_PLATFORM_WRITE:

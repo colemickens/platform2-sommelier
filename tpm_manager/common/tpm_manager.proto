@@ -82,6 +82,11 @@ enum NvramSpaceAttribute {
   // The space can only be read by the TPM owner. For TPM 2.0 this can be used
   // only for inspecting existing spaces, not for defining new spaces.
   NVRAM_OWNER_READ = 9;
+  // This space can be read by firmware (which always uses platform
+  // authorization) in addition to other authorizations defined here. Used
+  // by spaces like FWMP, which are defined in userland but can be read
+  // by firmware.
+  NVRAM_PLATFORM_READ = 10;
 }
 
 enum NvramSpacePolicy {

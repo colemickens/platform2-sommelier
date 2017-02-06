@@ -201,6 +201,35 @@ TEST_F(Tpm2NvramTest, DefineSpaceSuccess) {
   EXPECT_EQ(NVRAM_POLICY_NONE, local_data.nvram_policy(0).policy());
 }
 
+TEST_F(Tpm2NvramTest, DefineSpaceSuccessPlatformReadable) {
+  SetupOwnerPassword();
+  EXPECT_CALL(mock_hmac_session_,
+              SetEntityAuthorizationValue(kTestOwnerPassword))
+      .Times(AtLeast(1));
+  EXPECT_CALL(mock_trial_session_, PolicyAuthValue()).Times(0);
+  EXPECT_CALL(mock_trial_session_, PolicyPCR(_, _)).Times(0);
+  uint32_t index = 42;
+  size_t size = 20;
+  std::vector<NvramSpaceAttribute> attributes{NVRAM_PERSISTENT_WRITE_LOCK,
+                                              NVRAM_PLATFORM_READ};
+  EXPECT_CALL(
+      mock_tpm_utility_,
+      DefineNVSpace(index, size,
+                    trunks::TPMA_NV_WRITEDEFINE | trunks::TPMA_NV_AUTHWRITE |
+                        trunks::TPMA_NV_AUTHREAD | trunks::TPMA_NV_PPREAD,
+                    kFakeAuthorizationValue, std::string() /* policy */,
+                    kHMACAuth))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(
+      NVRAM_RESULT_SUCCESS,
+      tpm_nvram_->DefineSpace(index, size, attributes, kFakeAuthorizationValue,
+                              NVRAM_POLICY_NONE));
+  const LocalData& local_data = mock_data_store_.GetFakeData();
+  EXPECT_EQ(1, local_data.nvram_policy_size());
+  EXPECT_EQ(index, local_data.nvram_policy(0).index());
+  EXPECT_EQ(NVRAM_POLICY_NONE, local_data.nvram_policy(0).policy());
+}
+
 TEST_F(Tpm2NvramTest, DefineSpaceFailure) {
   SetupOwnerPassword();
   uint32_t index = 42;
@@ -561,6 +590,33 @@ TEST_F(Tpm2NvramTest, GetSpaceInfoSuccess) {
   EXPECT_GE(attributes.size(), 1);
   EXPECT_EQ(1, std::count(attributes.begin(), attributes.end(),
                           NVRAM_WRITE_AUTHORIZATION));
+  EXPECT_EQ(NVRAM_POLICY_PCR0, policy);
+}
+
+TEST_F(Tpm2NvramTest, GetSpaceInfoSuccessAlt) {
+  uint32_t index = 42;
+  SetupExistingSpace(index, 100,
+                     trunks::TPMA_NV_AUTHREAD | trunks::TPMA_NV_AUTHWRITE |
+                         trunks::TPMA_NV_PPREAD,
+                     NO_EXPECT_AUTH, POLICY_AUTH);
+  size_t size;
+  bool is_read_locked;
+  bool is_write_locked;
+  std::vector<NvramSpaceAttribute> attributes;
+  NvramSpacePolicy policy;
+  EXPECT_EQ(NVRAM_RESULT_SUCCESS,
+            tpm_nvram_->GetSpaceInfo(index, &size, &is_write_locked,
+                                     &is_read_locked, &attributes, &policy));
+  EXPECT_EQ(100, size);
+  EXPECT_FALSE(is_read_locked);
+  EXPECT_FALSE(is_write_locked);
+  EXPECT_GE(attributes.size(), 3);
+  EXPECT_GE(std::count(attributes.begin(), attributes.end(),
+                       NVRAM_WRITE_AUTHORIZATION), 1);
+  EXPECT_GE(std::count(attributes.begin(), attributes.end(),
+                       NVRAM_READ_AUTHORIZATION), 1);
+  EXPECT_GE(std::count(attributes.begin(), attributes.end(),
+                       NVRAM_PLATFORM_READ), 1);
   EXPECT_EQ(NVRAM_POLICY_PCR0, policy);
 }
 
