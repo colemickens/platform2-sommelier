@@ -119,7 +119,8 @@ bool FirmwareManagementParameters::Create(void) {
 
   // Use a WriteDefine space with no PCR0 locking
   if (!tpm_->DefineNvram(kNvramIndex, nvram_bytes,
-                         Tpm::kTpmNvramWriteDefine)) {
+                         Tpm::kTpmNvramWriteDefine |
+                             Tpm::kTpmNvramFirmwareReadable)) {
     LOG(ERROR) << "Create() failed to defined NVRAM space.";
     return false;
   }

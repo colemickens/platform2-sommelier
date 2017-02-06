@@ -184,6 +184,9 @@ bool Tpm2Impl::DefineNvram(uint32_t index, size_t length, uint32_t flags) {
   if (flags & Tpm::kTpmNvramBindToPCR0) {
     request.set_policy(tpm_manager::NVRAM_POLICY_PCR0);
   }
+  if (flags & Tpm::kTpmNvramFirmwareReadable) {
+    request.add_attributes(tpm_manager::NVRAM_PLATFORM_READ);
+  }
   auto method = base::Bind(&tpm_manager::TpmNvramInterface::DefineSpace,
                            base::Unretained(tpm_nvram_), request);
   tpm_manager::DefineSpaceReply reply;

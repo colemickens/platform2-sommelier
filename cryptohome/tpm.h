@@ -76,6 +76,9 @@ class Tpm {
     // NVRAM space is only accessible if PCR0 has the same value it did
     // when the space was created
     kTpmNvramBindToPCR0 = (1<<1),
+
+    // NVRAM space is readable by firmware (PPREAD is set)
+    kTpmNvramFirmwareReadable = (1<<2),
   };
 
   struct TpmStatusInfo {

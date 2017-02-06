@@ -253,6 +253,22 @@ TEST_F(Tpm2Test, DefineNvramSuccessWithPolicy) {
   EXPECT_EQ(tpm_manager::NVRAM_POLICY_PCR0, last_define_space_request.policy());
 }
 
+TEST_F(Tpm2Test, DefineNvramSuccessFirmwareReadable) {
+  uint32_t index = 2;
+  size_t length = 5;
+  EXPECT_TRUE(tpm_->DefineNvram(
+      index, length,
+      Tpm::kTpmNvramWriteDefine | Tpm::kTpmNvramFirmwareReadable));
+  EXPECT_EQ(index, last_define_space_request.index());
+  EXPECT_EQ(length, last_define_space_request.size());
+  ASSERT_EQ(2, last_define_space_request.attributes_size());
+  EXPECT_EQ(tpm_manager::NVRAM_PERSISTENT_WRITE_LOCK,
+            last_define_space_request.attributes(0));
+  EXPECT_EQ(tpm_manager::NVRAM_PLATFORM_READ,
+            last_define_space_request.attributes(1));
+  EXPECT_EQ(tpm_manager::NVRAM_POLICY_NONE, last_define_space_request.policy());
+}
+
 TEST_F(Tpm2Test, DefineNvramFailure) {
   next_define_space_reply.set_result(NVRAM_RESULT_IPC_ERROR);
   EXPECT_FALSE(tpm_->DefineNvram(0, 0, 0));

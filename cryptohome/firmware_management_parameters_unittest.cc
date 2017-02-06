@@ -161,7 +161,8 @@ TEST_F(FirmwareManagementParametersTest, CreateNew) {
   EXPECT_CALL(tpm_,
               DefineNvram(FirmwareManagementParameters::kNvramIndex,
                           FirmwareManagementParameters::kNvramBytes,
-                          Tpm::kTpmNvramWriteDefine))
+                          Tpm::kTpmNvramWriteDefine |
+                              Tpm::kTpmNvramFirmwareReadable))
     .WillOnce(Return(true));
   EXPECT_TRUE(fwmp_.Create());
 }
@@ -187,7 +188,8 @@ TEST_F(FirmwareManagementParametersTest, CreateOverExisting) {
   EXPECT_CALL(tpm_,
               DefineNvram(FirmwareManagementParameters::kNvramIndex,
                           FirmwareManagementParameters::kNvramBytes,
-                          Tpm::kTpmNvramWriteDefine))
+                          Tpm::kTpmNvramWriteDefine |
+                              Tpm::kTpmNvramFirmwareReadable))
     .WillOnce(Return(true));
   EXPECT_TRUE(fwmp_.Create());
 }
@@ -225,7 +227,8 @@ TEST_F(FirmwareManagementParametersTest, CreateDefineError) {
   EXPECT_CALL(tpm_,
               DefineNvram(FirmwareManagementParameters::kNvramIndex,
                           FirmwareManagementParameters::kNvramBytes,
-                          Tpm::kTpmNvramWriteDefine))
+                          Tpm::kTpmNvramWriteDefine |
+                              Tpm::kTpmNvramFirmwareReadable))
     .WillOnce(Return(false));
   EXPECT_FALSE(fwmp_.Create());
 }
