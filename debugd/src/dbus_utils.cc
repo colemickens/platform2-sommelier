@@ -75,7 +75,7 @@ bool DBusMessageIterToArrayValue(DBus::MessageIter* iter, Value** result) {
   // For an array, create an empty ListValue, then recurse into it.
   ListValue* lv = new ListValue();
   while (!iter->at_end()) {
-    Value* subvalue = NULL;
+    Value* subvalue = nullptr;
     bool r = DBusMessageIterToValue(iter, &subvalue);
     if (!r) {
       delete lv;
@@ -94,8 +94,8 @@ bool DBusMessageIterToDictValue(DBus::MessageIter* iter, Value** result) {
   DictionaryValue* dv = new DictionaryValue();
   while (!iter->at_end()) {
     DBus::MessageIter subiter = iter->recurse();
-    Value* key = NULL;
-    Value* value = NULL;
+    Value* key = nullptr;
+    Value* value = nullptr;
     bool r = DBusMessageIterToValue(&subiter, &key);
     if (!r || key->GetType() != Value::TYPE_STRING) {
       delete dv;
@@ -120,7 +120,7 @@ bool DBusMessageIterToDictValue(DBus::MessageIter* iter, Value** result) {
 
 bool DBusMessageIterToValue(DBus::MessageIter* iter, Value** result) {
   if (iter->at_end()) {
-    *result = NULL;
+    *result = nullptr;
     return true;
   }
   if (!iter->is_array() && !iter->is_dict()) {
@@ -150,7 +150,7 @@ bool debugd::DBusPropertyMapToValue(
   DictionaryValue* dv = new DictionaryValue();
   std::map<std::string, DBus::Variant>::const_iterator it;
   for (it = properties.begin(); it != properties.end(); ++it) {
-    Value* v = NULL;
+    Value* v = nullptr;
     // make a copy so we can take a reference to the MessageIter
     DBus::MessageIter reader = it->second.reader();
     bool r = DBusMessageIterToValue(&reader, &v);

@@ -66,7 +66,7 @@ class ServiceProxy : public org::chromium::flimflam::Service_proxy,
 Value* GetService(DBus::Connection* connection, const DBus::Path& path) {
   ServiceProxy service(connection, path.c_str(), shill::kFlimflamServiceName);
   std::map<std::string, DBus::Variant> props = service.GetProperties();
-  Value* v = NULL;
+  Value* v = nullptr;
   debugd::DBusPropertyMapToValue(props, &v);
   return v;
 }
@@ -89,7 +89,7 @@ Value* GetServices(DBus::Connection* connection, ManagerProxy* flimflam) {
 Value* GetIPConfig(DBus::Connection* connection, const DBus::Path& path) {
   IPConfigProxy ipconfig(connection, path.c_str(), shill::kFlimflamServiceName);
   std::map<std::string, DBus::Variant> props = ipconfig.GetProperties();
-  Value* v = NULL;
+  Value* v = nullptr;
   debugd::DBusPropertyMapToValue(props, &v);
   return v;
 }
@@ -97,7 +97,7 @@ Value* GetIPConfig(DBus::Connection* connection, const DBus::Path& path) {
 Value* GetDevice(DBus::Connection* connection, const DBus::Path& path) {
   DeviceProxy device(connection, path.c_str(), shill::kFlimflamServiceName);
   std::map<std::string, DBus::Variant> props = device.GetProperties();
-  DictionaryValue* ipconfigs = NULL;
+  DictionaryValue* ipconfigs = nullptr;
   if (props.count("IPConfigs") == 1) {
     ipconfigs = new DictionaryValue();
     // Turn IPConfigs into real objects.
@@ -112,7 +112,7 @@ Value* GetDevice(DBus::Connection* connection, const DBus::Path& path) {
     }
     props.erase("IPConfigs");
   }
-  Value* v = NULL;
+  Value* v = nullptr;
   CHECK(debugd::DBusPropertyMapToValue(props, &v));
   DictionaryValue* dv = reinterpret_cast<DictionaryValue*>(v);
   if (ipconfigs)

@@ -58,24 +58,24 @@ class WiMaxStatus {
     try {
       properties_map = properties_proxy.GetAll(interface);
     } catch (const DBus::Error& error) {
-      return NULL;
+      return nullptr;
     }
 
-    Value* properties_value = NULL;
+    Value* properties_value = nullptr;
     if (!debugd::DBusPropertyMapToValue(properties_map, &properties_value))
-      return NULL;
+      return nullptr;
 
-    DictionaryValue* properties_dict = NULL;
+    DictionaryValue* properties_dict = nullptr;
     if (!properties_value->GetAsDictionary(&properties_dict)) {
       delete properties_value;
-      return NULL;
+      return nullptr;
     }
     return properties_dict;
   }
 
   void ExpandNetworkPathsToProperties(DictionaryValue* device_properties) {
     ListValue* networks = new ListValue();
-    const ListValue* network_paths = NULL;
+    const ListValue* network_paths = nullptr;
     if (device_properties->GetList(wimax_manager::kNetworksProperty,
                                    &network_paths)) {
       for (size_t i = 0; i < network_paths->GetSize(); ++i) {
@@ -98,7 +98,7 @@ class WiMaxStatus {
 
   void ExpandDevicePathsToProperties(DictionaryValue* manager_properties) {
     ListValue* devices = new ListValue();
-    const ListValue* device_paths = NULL;
+    const ListValue* device_paths = nullptr;
     if (manager_properties->GetList(wimax_manager::kDevicesProperty,
                                     &device_paths)) {
       for (size_t i = 0; i < device_paths->GetSize(); ++i) {

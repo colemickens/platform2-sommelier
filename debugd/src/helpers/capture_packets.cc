@@ -23,13 +23,13 @@ int perform_capture(char *device, char *output_file) {
                         promiscuous,
                         PACKET_TIMEOUT_MS,
                         errbuf);
-  if (pcap == NULL) {
+  if (pcap == nullptr) {
     fprintf(stderr, "Could not open capture handle.\n");
     return -1;
   }
 
   pcap_dumper_t *dumper  = pcap_dump_open(pcap, output_file);
-  if (dumper == NULL) {
+  if (dumper == nullptr) {
     fprintf(stderr, "Could not open dump file.\n");
     return -1;
   }
@@ -45,14 +45,14 @@ int perform_capture(char *device, char *output_file) {
   sigemptyset(&sigset);
   sigaddset(&sigset, SIGTERM);
   sigaddset(&sigset, SIGINT);
-  sigprocmask(SIG_BLOCK, &sigset, NULL);
+  sigprocmask(SIG_BLOCK, &sigset, nullptr);
   while (sigpending(&sigset) == 0) {
     if (sigismember(&sigset, SIGTERM) || sigismember(&sigset, SIGINT)) {
       break;
     }
     struct pcap_pkthdr header;
     const unsigned char *packet = pcap_next(pcap, &header);
-    if (packet == NULL || header.len == 0) {
+    if (packet == nullptr || header.len == 0) {
       continue;
     }
     ++packet_count;

@@ -16,7 +16,7 @@
 
 namespace {
 const char* kHelpers[] = {
-  NULL,
+  nullptr,
 };
 
 // @brief Enter a VFS namespace.
@@ -34,7 +34,7 @@ void enter_vfs_namespace() {
 // The created tmpfs is mounted at /debugd.
 void make_tmpfs() {
   int r = mount("none", "/debugd", "tmpfs", MS_NODEV | MS_NOSUID | MS_NOEXEC,
-                NULL);
+                nullptr);
   if (r < 0)
     PLOG(FATAL) << "mount() failed";
 }

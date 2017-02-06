@@ -130,7 +130,7 @@ ListValue *flags2list(unsigned int flags) {
       lv->Append(new StringValue(ifflags[i].name));
   if (lv->empty()) {
     delete lv;
-    return NULL;
+    return nullptr;
   }
   return lv;
 }
@@ -185,10 +185,10 @@ class NetInterface {
 NetInterface::NetInterface(int fd, const char *name)
     : fd_(fd),
       name_(name),
-      ipv4_(NULL),
-      ipv6_(NULL),
-      flags_(NULL),
-      signal_strengths_(NULL) {}
+      ipv4_(nullptr),
+      ipv6_(nullptr),
+      flags_(nullptr),
+      signal_strengths_(nullptr) {}
 
 bool NetInterface::Init() {
   mac_ = getmac(fd_, name_);

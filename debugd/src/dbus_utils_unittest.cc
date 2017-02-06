@@ -20,16 +20,16 @@ using base::Value;
 class DBusUtilsTest : public testing::Test {
  protected:
   void ConvertDBusMessageToValues() {
-    Value* value = NULL;
+    Value* value = nullptr;
     ASSERT_TRUE(debugd::DBusMessageToValue(message_, &value));
-    ASSERT_TRUE(value != NULL);
+    ASSERT_NE(nullptr, value);
     raw_value_.reset(value);
     ASSERT_EQ(Value::TYPE_LIST, value->GetType());
-    ListValue* list_values = NULL;
+    ListValue* list_values = nullptr;
     ASSERT_TRUE(value->GetAsList(&list_values));
     values_.clear();
     for (size_t i = 0; i < list_values->GetSize(); i++) {
-      Value* element = NULL;
+      Value* element = nullptr;
       ASSERT_TRUE(list_values->Get(i, &element));
       values_.push_back(element);
     }
@@ -93,21 +93,21 @@ TEST_F(DBusUtilsTest, DBusMessageToValueArray) {
   Value* v = values_[0];
   ASSERT_EQ(Value::TYPE_LIST, v->GetType());
 
-  ListValue* lv = NULL;
+  ListValue* lv = nullptr;
   ASSERT_TRUE(v->GetAsList(&lv));
-  ASSERT_TRUE(lv != NULL);
+  ASSERT_NE(nullptr, lv);
   ASSERT_EQ(2, lv->GetSize());
 
-  Value* v0 = NULL;
+  Value* v0 = nullptr;
   ASSERT_TRUE(lv->Get(0, &v0));
-  ASSERT_TRUE(v0 != NULL);
+  ASSERT_NE(nullptr, v0);
   int v0_new;
   EXPECT_TRUE(v0->GetAsInteger(&v0_new));
   EXPECT_EQ(v0_old, v0_new);
 
-  Value* v1 = NULL;
+  Value* v1 = nullptr;
   ASSERT_TRUE(lv->Get(1, &v1));
-  ASSERT_TRUE(v1 != NULL);
+  ASSERT_NE(nullptr, v1);
   int v1_new;
   EXPECT_TRUE(v1->GetAsInteger(&v1_new));
   EXPECT_EQ(v1_old, v1_new);
@@ -140,7 +140,7 @@ TEST_F(DBusUtilsTest, DBusMessageToValueDictionary) {
 
   Value* v = values_[0];
   EXPECT_EQ(Value::TYPE_DICTIONARY, v->GetType());
-  DictionaryValue* dv = NULL;
+  DictionaryValue* dv = nullptr;
   ASSERT_TRUE(v->GetAsDictionary(&dv));
   int foo_new;
   ASSERT_TRUE(dv->GetInteger("foo", &foo_new));

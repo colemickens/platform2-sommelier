@@ -30,7 +30,7 @@ ProcessWithId* SubprocessTool::CreateProcess(bool sandboxed,
   if (access_root_mount_ns)
     p->AllowAccessRootMountNamespace();
   if (!p->Init() || processes_.count(p->id()) == 1)
-    return NULL;
+    return nullptr;
   processes_[p->id()] = p;
   return p;
 }

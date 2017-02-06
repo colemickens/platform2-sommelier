@@ -85,9 +85,9 @@ Value* FetchOneInterface(DBusPropertiesProxy* properties,
                          const char* interface,
                          DictionaryValue* result) {
   std::map<std::string, DBus::Variant> propsmap = properties->GetAll(interface);
-  Value* propsdict = NULL;
+  Value* propsdict = nullptr;
   if (!debugd::DBusPropertyMapToValue(propsmap, &propsdict))
-    return NULL;
+    return nullptr;
 
   std::string keypath = interface;
   base::ReplaceSubstringsAfterOffset(&keypath, 0, ".", "/");
@@ -101,7 +101,7 @@ Value* Modem::GetStatus(DBus::Connection* conn) {
   result->SetString("path", path_);
 
   ModemSimpleProxy simple(conn, path_.c_str(), service_);
-  Value* status = NULL;
+  Value* status = nullptr;
   std::map<std::string, DBus::Variant> statusmap;
   try {
     statusmap = simple.GetStatus();

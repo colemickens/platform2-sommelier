@@ -171,7 +171,7 @@ const Log common_logs[] = {
   // { "env", "set" },
   // { "setxkbmap", "/usr/bin/setxkbmap -print -query" },
   // { "xrandr", "/usr/bin/xrandr --verbose" }
-  { NULL, NULL }
+  { nullptr, nullptr }
 };
 
 const Log extra_logs[] = {
@@ -180,7 +180,7 @@ const Log extra_logs[] = {
 #endif  // USE_CELLULAR
   { "network-devices", "/usr/bin/connectivity show devices" },
   { "network-services", "/usr/bin/connectivity show services" },
-  { NULL, NULL }
+  { nullptr, nullptr }
 };
 
 const Log feedback_logs[] = {
@@ -189,7 +189,7 @@ const Log feedback_logs[] = {
 #endif  // USE_CELLULAR
   { "network-devices", "/usr/bin/connectivity show-feedback devices" },
   { "network-services", "/usr/bin/connectivity show-feedback services" },
-  { NULL, NULL }
+  { nullptr, nullptr }
 };
 
 // List of log files needed to be part of the feedback report that are huge and
@@ -204,7 +204,7 @@ const Log big_feedback_logs[] = {
     kRoot,
     "10M",
   },
-  { NULL, NULL }
+  { nullptr, nullptr }
 };
 
 // List of log files that must directly be collected by Chrome. This is because
@@ -214,7 +214,7 @@ const Log user_logs[] = {
   {"chrome_user_log", "log/chrome"},
   {"login-times", "login-times"},
   {"logout-times", "logout-times"},
-  { NULL, NULL}
+  { nullptr, nullptr}
 };
 
 class ManagerProxy : public org::chromium::flimflam::Manager_proxy,

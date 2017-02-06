@@ -12,5 +12,5 @@
 
 int main() {
   const char *kClient = "/usr/bin/cras_test_client";
-  return execl(kClient, kClient, "--dump_server_info", NULL);
+  return execl(kClient, kClient, "--dump_server_info", nullptr);
 }
