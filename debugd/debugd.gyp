@@ -246,6 +246,11 @@
       'type': 'executable',
       'sources': ['tools/get_feedback_logs.cc'],
     },
+    {
+      'target_name': 'generate_logs',
+      'type': 'executable',
+      'sources': ['tools/generate_logs.cc'],
+    },
   ],
   'conditions': [
     ['USE_cellular == 1', {
