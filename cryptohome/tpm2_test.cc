@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 #include <tpm_manager/common/mock_tpm_nvram_interface.h>
 #include <tpm_manager/common/mock_tpm_ownership_interface.h>
+#include <tpm_manager/common/tpm_manager_constants.h>
 #include <trunks/mock_authorization_delegate.h>
 #include <trunks/mock_blob_parser.h>
 #include <trunks/mock_hmac_session.h>
@@ -69,6 +70,8 @@ class Tpm2Test : public testing::Test {
     tpm_status_.set_dictionary_attack_counter(kDefaultCounter);
     ON_CALL(mock_tpm_owner_, GetTpmStatus(_, _))
         .WillByDefault(WithArg<1>(Invoke(this, &Tpm2Test::FakeGetTpmStatus)));
+    ON_CALL(mock_tpm_owner_, RemoveOwnerDependency(_, _))
+        .WillByDefault(Invoke(this, &Tpm2Test::FakeRemoveOwnerDependency));
     SetupFakeNvram();
   }
 
@@ -94,6 +97,14 @@ class Tpm2Test : public testing::Test {
       const tpm_manager::TpmOwnershipInterface::GetTpmStatusCallback&
           callback) {
     callback.Run(tpm_status_);
+  }
+
+  void FakeRemoveOwnerDependency(
+      const tpm_manager::RemoveOwnerDependencyRequest& request,
+      const tpm_manager::TpmOwnershipInterface::RemoveOwnerDependencyCallback&
+          callback) {
+    last_remove_owner_dependency_request = request;
+    callback.Run(next_remove_owner_dependency_reply);
   }
 
   void FakeDefineSpace(
@@ -153,6 +164,8 @@ class Tpm2Test : public testing::Test {
   tpm_manager::LockSpaceRequest last_lock_space_request;
   tpm_manager::ListSpacesRequest last_list_spaces_request;
   tpm_manager::GetSpaceInfoRequest last_get_space_info_request;
+  tpm_manager::RemoveOwnerDependencyRequest
+      last_remove_owner_dependency_request;
   tpm_manager::DefineSpaceReply next_define_space_reply;
   tpm_manager::DestroySpaceReply next_destroy_space_reply;
   tpm_manager::WriteSpaceReply next_write_space_reply;
@@ -160,6 +173,7 @@ class Tpm2Test : public testing::Test {
   tpm_manager::LockSpaceReply next_lock_space_reply;
   tpm_manager::ListSpacesReply next_list_spaces_reply;
   tpm_manager::GetSpaceInfoReply next_get_space_info_reply;
+  tpm_manager::RemoveOwnerDependencyReply next_remove_owner_dependency_reply;
 
   trunks::TrunksFactoryForTest factory_;
   Tpm* tpm_;
@@ -1008,6 +1022,34 @@ TEST_F(Tpm2Test, DeclareTpmFirmwareStable) {
   // second attempt.
   tpm_->DeclareTpmFirmwareStable();
   tpm_->DeclareTpmFirmwareStable();
+}
+
+TEST_F(Tpm2Test, RemoveOwnerDependencySuccess) {
+  EXPECT_TRUE(tpm_->RemoveOwnerDependency(
+      Tpm::TpmOwnerDependency::kInstallAttributes));
+  EXPECT_EQ(tpm_manager::kTpmOwnerDependency_Nvram,
+            last_remove_owner_dependency_request.owner_dependency());
+  EXPECT_TRUE(tpm_->RemoveOwnerDependency(
+      Tpm::TpmOwnerDependency::kAttestation));
+  EXPECT_EQ(tpm_manager::kTpmOwnerDependency_Attestation,
+            last_remove_owner_dependency_request.owner_dependency());
+}
+
+TEST_F(Tpm2Test, RemoveOwnerDependencyFailure) {
+  next_remove_owner_dependency_reply.set_status(
+      tpm_manager::STATUS_DEVICE_ERROR);
+  EXPECT_FALSE(tpm_->RemoveOwnerDependency(
+      Tpm::TpmOwnerDependency::kInstallAttributes));
+  EXPECT_EQ(tpm_manager::kTpmOwnerDependency_Nvram,
+            last_remove_owner_dependency_request.owner_dependency());
+}
+
+TEST_F(Tpm2Test, RemoveOwnerDependencyUnknown) {
+  Tpm::TpmOwnerDependency unknown_dep =
+      static_cast<Tpm::TpmOwnerDependency>(100);
+  EXPECT_CALL(mock_tpm_owner_, RemoveOwnerDependency(_, _))
+        .Times(0);
+  EXPECT_TRUE(tpm_->RemoveOwnerDependency(unknown_dep));
 }
 
 }  // namespace cryptohome

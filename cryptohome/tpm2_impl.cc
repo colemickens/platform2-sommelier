@@ -15,6 +15,7 @@
 #include <brillo/bind_lambda.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
+#include <tpm_manager/common/tpm_manager_constants.h>
 #include <trunks/authorization_delegate.h>
 #include <trunks/blob_parser.h>
 #include <trunks/error_codes.h>
@@ -70,6 +71,23 @@ Tpm::TpmRetryAction ResultToRetryAction(TPM_RC result) {
       break;
   }
   return action;
+}
+
+// Sets owner_dependency field in RemoveOwnerDependencyRequest based on
+// the provided Tpm::TpmOwnerDependency value
+void SetOwnerDependency(Tpm::TpmOwnerDependency dependency,
+                        std::string* dependency_field) {
+  switch (dependency) {
+    case Tpm::TpmOwnerDependency::kInstallAttributes:
+        dependency_field->assign(tpm_manager::kTpmOwnerDependency_Nvram);
+        break;
+    case Tpm::TpmOwnerDependency::kAttestation:
+        dependency_field->assign(tpm_manager::kTpmOwnerDependency_Attestation);
+        break;
+    default:
+        dependency_field->clear();
+        break;
+  }
 }
 
 }  // namespace
@@ -1073,8 +1091,22 @@ bool Tpm2Impl::UpdateTpmStatus(RefreshType refresh_type) {
   return (tpm_status_.status() == tpm_manager::STATUS_SUCCESS);
 }
 
-bool Tpm2Impl::RemoveOwnerDependency(TpmOwnerDependency /* dependency */) {
-  return true;
+bool Tpm2Impl::RemoveOwnerDependency(TpmOwnerDependency dependency) {
+  if (!InitializeTpmManagerClients()) {
+    return false;
+  }
+  tpm_manager::RemoveOwnerDependencyRequest request;
+  SetOwnerDependency(dependency, request.mutable_owner_dependency());
+  if (request.owner_dependency().empty()) {
+    VLOG(1) << "Ignoring unused owner dependency " << dependency;
+    return true;
+  }
+  auto method =
+      base::Bind(&tpm_manager::TpmOwnershipInterface::RemoveOwnerDependency,
+                 base::Unretained(tpm_owner_), request);
+  tpm_manager::RemoveOwnerDependencyReply reply;
+  SendTpmManagerRequestAndWait(method, &reply);
+  return (reply.status() == tpm_manager::STATUS_SUCCESS);
 }
 
 }  // namespace cryptohome
