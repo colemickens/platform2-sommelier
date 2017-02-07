@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>
@@ -252,16 +253,11 @@ bool ArcCollector::ArcContext::GetExeBaseName(pid_t pid,
 
 bool ArcCollector::ArcContext::GetCommand(pid_t pid,
                                           std::string *command) const {
-  const FilePath path = GetProcessPath(pid).Append("cmdline");
-  // The /proc/[pid]/cmdline file contains the command line separated and
-  // terminated by a null byte, e.g. "command\0arg\0arg\0". The file is
-  // empty if the process is a zombie.
-  if (!ReadFileToString(path, command))
+  std::vector<std::string> args = collector_->GetCommandLine(pid);
+  if (args.size() == 0)
     return false;
-  const auto pos = command->find('\0');
-  if (pos == std::string::npos)
-    return false;
-  command->erase(pos);  // Discard command-line arguments.
+  // Return the command and discard the arguments.
+  *command = args[0];
   return true;
 }
 

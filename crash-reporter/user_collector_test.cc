@@ -45,6 +45,7 @@ bool IsMetrics() {
 class UserCollectorMock : public UserCollector {
  public:
   MOCK_METHOD0(SetUpDBus, void());
+  MOCK_CONST_METHOD1(GetCommandLine, std::vector<std::string>(pid_t pid));
 };
 
 class UserCollectorTest : public ::testing::Test {
@@ -52,6 +53,11 @@ class UserCollectorTest : public ::testing::Test {
     s_crashes = 0;
 
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
+
+    const std::vector<std::string> default_command_line =
+        {"test_command", "--test-arg"};
+    EXPECT_CALL(collector_, GetCommandLine(testing::_))
+        .WillRepeatedly(testing::Return(default_command_line));
 
     const pid_t pid = getpid();
     collector_.Initialize(CountCrash,
@@ -64,6 +70,7 @@ class UserCollectorTest : public ::testing::Test {
                           [pid](pid_t p) { return p == pid + 1; });
     base::DeleteFile(FilePath("test"), true);
     mkdir("test", 0777);
+    // Setup paths for output files.
     collector_.set_core_pattern_file("test/core_pattern");
     collector_.set_core_pipe_limit_file("test/core_pipe_limit");
     collector_.set_filter_path("test/no_filter");
@@ -285,6 +292,20 @@ TEST_F(UserCollectorTest, HandleSuppliedChromeCrashWithConsent) {
       "Received crash notification for supplied_chrome[0] sig 2"));
   EXPECT_TRUE(FindLog(kChromeIgnoreMsg));
   ASSERT_EQ(s_crashes, 0);
+}
+
+// Verifies chrome --mash crashes are handled by crash_reporter, not chrome.
+TEST_F(UserCollectorTest, HandleChromeMashCrashWithConsent) {
+  s_metrics = true;
+  const std::vector<std::string> chrome_mash_command_line =
+      {"/opt/google/chrome", "--foo", "--mash", "--bar"};
+  EXPECT_CALL(collector_, GetCommandLine(testing::_))
+      .WillRepeatedly(testing::Return(chrome_mash_command_line));
+
+  collector_.HandleCrash("5:2:ignored", "chrome");
+  EXPECT_TRUE(FindLog("Received crash notification for chrome[5] sig 2"));
+  EXPECT_TRUE(FindLog("chrome mash process crash"));
+  EXPECT_EQ(s_crashes, 1);
 }
 
 TEST_F(UserCollectorTest, GetProcessPath) {

@@ -16,6 +16,7 @@
 #include "crash-reporter/user_collector_base.h"
 
 using base::FilePath;
+using base::ReadFileToString;
 using base::StringPrintf;
 
 namespace {
@@ -385,6 +386,29 @@ void UserCollectorBase::EnqueueCollectionErrorLog(pid_t pid,
     return;
   }
   WriteCrashMetaData(meta_path, exec, log_path.value());
+}
+
+std::vector<std::string> UserCollectorBase::GetCommandLine(pid_t pid) const {
+  const FilePath path = GetProcessPath(pid).Append("cmdline");
+  // The /proc/[pid]/cmdline file contains the command line separated and
+  // terminated by a null byte, e.g. "command\0arg\0arg\0". The file is
+  // empty if the process is a zombie.
+  std::string cmdline;
+  if (!ReadFileToString(path, &cmdline)) {
+    PLOG(ERROR) << "Could not read " << path.value();
+    return std::vector<std::string>();
+  }
+
+  if (cmdline.empty()) {
+    LOG(ERROR) << "Empty cmdline for " << path.value();
+    return std::vector<std::string>();
+  }
+
+  // Split the string by null bytes.
+  return base::SplitString(cmdline,
+                           std::string(1, '\0'),
+                           base::KEEP_WHITESPACE,
+                           base::SPLIT_WANT_ALL);
 }
 
 #if USE_DIRENCRYPTION

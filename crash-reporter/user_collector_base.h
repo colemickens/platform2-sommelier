@@ -85,6 +85,10 @@ class UserCollectorBase : public CrashCollector {
   void EnqueueCollectionErrorLog(pid_t pid, ErrorType error_type,
                                  const std::string &exec_name);
 
+  // Returns the command and arguments for process |pid|. Returns an empty list
+  // on failure or if the process is a zombie. Virtual for testing.
+  virtual std::vector<std::string> GetCommandLine(pid_t pid) const;
+
   bool initialized_ = false;
 
   static const char *kUserId;

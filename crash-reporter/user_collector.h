@@ -104,6 +104,12 @@ class UserCollector : public UserCollectorBase {
 
   bool RunFilter(pid_t pid);
 
+  // Returns true if process |pid| is the chrome mash root process or a child
+  // mojo service (e.g. the "ash" system UI). This does not include the
+  // content_browser service or its children (e.g. renderers) which handle their
+  // own stack dumping internally.
+  bool IsChromeMashProcess(int pid) const;
+
   bool ShouldDump(pid_t pid,
                   bool has_owner_consent,
                   bool is_developer,
@@ -127,6 +133,7 @@ class UserCollector : public UserCollectorBase {
   std::string our_path_;
   std::string filter_path_;
 
+  // Force a core2md failure for testing.
   bool core2md_failure_;
 
   FilterOutFunction filter_out_;

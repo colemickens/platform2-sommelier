@@ -9,8 +9,10 @@
 #include <fcntl.h>
 #include <stdint.h>
 
+#include <algorithm>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -248,6 +250,14 @@ bool UserCollector::RunFilter(pid_t pid) {
   return filter.Run() == 0;
 }
 
+bool UserCollector::IsChromeMashProcess(int pid) const {
+  std::vector<std::string> args = GetCommandLine(pid);
+  // Flag must be kept in sync with chrome's switches::kMash, see
+  // src/chrome/common/chrome_switches.cc.
+  static const char kMashFlag[] = "--mash";
+  return std::find(args.begin(), args.end(), kMashFlag) != args.end();
+}
+
 bool UserCollector::ShouldDump(pid_t pid,
                                bool has_owner_consent,
                                bool is_developer,
@@ -265,9 +275,14 @@ bool UserCollector::ShouldDump(pid_t pid,
   // crashes towards user crashes, so user crashes really mean non-Chrome
   // user-space crashes.
   if (!handle_chrome_crashes && IsChromeExecName(exec)) {
-    *reason = "ignoring call by kernel - chrome crash; "
-              "waiting for chrome to call us directly";
-    return false;
+    if (!IsChromeMashProcess(pid)) {
+      *reason = "ignoring call by kernel - chrome crash; "
+                "waiting for chrome to call us directly";
+      return false;
+    }
+    // For mustash, chrome --mash and its non-browser mojo services are
+    // considered system services and are handled as user crashes.
+    LOG(INFO) << "chrome mash process crash";
   }
 
   if (!RunFilter(pid)) {

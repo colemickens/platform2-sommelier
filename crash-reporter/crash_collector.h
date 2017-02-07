@@ -116,7 +116,9 @@ class CrashCollector {
                               const std::string &basename,
                               const std::string &extension);
 
+  // Returns the path /proc/<pid>.
   static base::FilePath GetProcessPath(pid_t pid);
+
   bool GetSymlinkTarget(const base::FilePath &symlink,
                         base::FilePath *target);
   virtual bool GetExecutableBaseNameFromPid(pid_t pid,

@@ -187,6 +187,8 @@ bool ChromeCollector::HandleCrash(const FilePath &file_path,
   // We're done.
   WriteCrashMetaData(meta_path, exe_name, minidump_path.value());
 
+  // In production |output_file_ptr_| must be stdout because chrome expects to
+  // read the magic string there.
   fprintf(output_file_ptr_, "%s", kSuccessMagic);
   fflush(output_file_ptr_);
 
@@ -328,5 +330,6 @@ std::map<std::string, base::FilePath> ChromeCollector::GetAdditionalLogs(
   return logs;
 }
 
+// See chrome's src/components/crash/content/app/breakpad_linux.cc.
 // static
 const char ChromeCollector::kSuccessMagic[] = "_sys_cr_finished";
