@@ -12,11 +12,13 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/json/json_string_value_serializer.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/sha1.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
@@ -1804,16 +1806,16 @@ bool Mount::EnsureUserMountPoints(const Credentials& credentials) const {
   return true;
 }
 
-base::Value* Mount::GetStatus() {
+std::unique_ptr<base::Value> Mount::GetStatus() {
   std::string user;
   SerializedVaultKeyset keyset;
-  base::DictionaryValue* dv = new base::DictionaryValue();
+  auto dv = base::MakeUnique<base::DictionaryValue>();
   current_user_->GetObfuscatedUsername(&user);
-  base::ListValue* keysets = new base::ListValue();
+  auto keysets = base::MakeUnique<base::ListValue>();
   std::vector<int> key_indices;
   if (user.length() && homedirs_->GetVaultKeysets(user, &key_indices)) {
     for (auto key_index : key_indices) {
-      base::DictionaryValue* keyset_dict = new base::DictionaryValue();
+      auto keyset_dict = base::MakeUnique<base::DictionaryValue>();
       if (LoadVaultKeysetForUser(user, key_index, &keyset)) {
         bool tpm = keyset.flags() & SerializedVaultKeyset::TPM_WRAPPED;
         bool scrypt = keyset.flags() & SerializedVaultKeyset::SCRYPT_WRAPPED;
@@ -1835,14 +1837,14 @@ base::Value* Mount::GetStatus() {
           key_index == current_user_->key_index())
         keyset_dict->SetBoolean("current", true);
       keyset_dict->SetInteger("index", key_index);
-      keysets->Append(keyset_dict);
+      keysets->Append(std::move(keyset_dict));
     }
   }
-  dv->Set("keysets", keysets);
+  dv->Set("keysets", std::move(keysets));
   dv->SetBoolean("mounted", IsMounted());
   dv->SetString("owner", GetObfuscatedOwner());
   dv->SetBoolean("enterprise", enterprise_owned_);
-  return dv;
+  return std::move(dv);
 }
 
 // static

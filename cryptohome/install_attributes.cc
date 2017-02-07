@@ -8,9 +8,11 @@
 
 #include <limits>
 #include <string>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/time/time.h>
 
 #include "cryptohome/lockbox.h"
@@ -313,8 +315,8 @@ bool InstallAttributes::SerializeAttributes(brillo::Blob* out_bytes) {
   return true;
 }
 
-base::Value* InstallAttributes::GetStatus() {
-  base::DictionaryValue* dv = new base::DictionaryValue();
+std::unique_ptr<base::Value> InstallAttributes::GetStatus() {
+  auto dv = base::MakeUnique<base::DictionaryValue>();
   dv->SetBoolean("initialized", is_initialized());
   dv->SetInteger("version", version());
   dv->SetInteger("lockbox_index", lockbox()->nvram_index());
@@ -324,7 +326,7 @@ base::Value* InstallAttributes::GetStatus() {
   dv->SetBoolean("first_install", is_first_install());
   dv->SetInteger("size", Count());
   if (Count()) {
-    base::DictionaryValue* attrs = new base::DictionaryValue();
+    auto attrs = base::MakeUnique<base::DictionaryValue>();
     std::string key;
     brillo::Blob value;
     for (int i = 0; i < Count(); i++) {
@@ -332,9 +334,9 @@ base::Value* InstallAttributes::GetStatus() {
       std::string value_str(reinterpret_cast<const char*>(value.data()));
       attrs->SetString(key, value_str);
     }
-    dv->Set("attrs", attrs);
+    dv->Set("attrs", std::move(attrs));
   }
-  return dv;
+  return std::move(dv);
 }
 
 }  // namespace cryptohome

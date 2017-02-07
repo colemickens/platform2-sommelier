@@ -9,16 +9,19 @@
 #include "cryptohome/service_monolithic.h"
 
 #include <inttypes.h>
-#include <memory>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+
+#include <memory>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/command_line.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/sys_string_conversions.h>
 #include <base/time/time.h>
@@ -2826,18 +2829,18 @@ gboolean Service::RemoveFirmwareManagementParameters(const GArray* request,
 
 gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   base::DictionaryValue dv;
-  base::ListValue* mounts = new base::ListValue();
+  auto mounts = base::MakeUnique<base::ListValue>();
   mounts_lock_.Acquire();
   for (const auto& mount_pair : mounts_) {
     mounts->Append(mount_pair.second->GetStatus());
   }
   mounts_lock_.Release();
-  base::Value* attrs = install_attrs_->GetStatus();
+  auto attrs = install_attrs_->GetStatus();
 
   Tpm::TpmStatusInfo tpm_status_info;
   tpm_->GetStatus(tpm_init_->GetCryptohomeKey(),
                   &tpm_status_info);
-  base::DictionaryValue* tpm = new base::DictionaryValue();
+  auto tpm = base::MakeUnique<base::DictionaryValue>();
   tpm->SetBoolean("can_connect", tpm_status_info.can_connect);
   tpm->SetBoolean("can_load_srk", tpm_status_info.can_load_srk);
   tpm->SetBoolean("can_load_srk_pubkey",
@@ -2854,9 +2857,9 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   tpm->SetBoolean("owned", tpm_->IsOwned());
   tpm->SetBoolean("being_owned", tpm_->IsBeingOwned());
 
-  dv.Set("mounts", mounts);
-  dv.Set("installattrs", attrs);
-  dv.Set("tpm", tpm);
+  dv.Set("mounts", std::move(mounts));
+  dv.Set("installattrs", std::move(attrs));
+  dv.Set("tpm", std::move(tpm));
   std::string json;
   base::JSONWriter::WriteWithOptions(dv, base::JSONWriter::OPTIONS_PRETTY_PRINT,
                                      &json);

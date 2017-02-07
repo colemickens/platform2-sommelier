@@ -156,7 +156,7 @@ class InstallAttributes {
   //
   // The Value is a DictionaryValue, with keys "initialized", "version",
   // "lockbox_index", "secure", "invalid", "first_install" and "size".
-  virtual base::Value* GetStatus();
+  virtual std::unique_ptr<base::Value> GetStatus();
 
   void AddObserver(Observer* obs) {
     observer_list_.AddObserver(obs);
