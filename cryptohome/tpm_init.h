@@ -27,11 +27,6 @@ class TpmInit {
   // PlatformThread::Delegate
   friend class TpmInitTask;
  public:
-  enum TpmOwnerDependency {
-      kInstallAttributes,
-      kAttestation
-  };
-
   class TpmInitCallback {
    public:
     virtual void InitializeTpmComplete(bool status, bool took_ownership) = 0;
@@ -113,7 +108,7 @@ class TpmInit {
   //
   // Parameters
   //   dependency - The dependency (on TPM ownership) to be removed
-  virtual void RemoveTpmOwnerDependency(TpmOwnerDependency dependency);
+  virtual void RemoveTpmOwnerDependency(Tpm::TpmOwnerDependency dependency);
 
   virtual void set_tpm(Tpm* value);
 

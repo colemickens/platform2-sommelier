@@ -81,6 +81,11 @@ class Tpm {
     kTpmNvramFirmwareReadable = (1<<2),
   };
 
+  enum class TpmOwnerDependency {
+    kInstallAttributes,
+    kAttestation,
+  };
+
   struct TpmStatusInfo {
     uint32_t last_tpm_error;
     bool can_connect;
@@ -528,6 +533,13 @@ class Tpm {
   // version stable and invalidate previous versions, if any.
   // For TPMs with fixed firmware: NOP.
   virtual void DeclareTpmFirmwareStable() = 0;
+
+  // Performs TPM-specific actions to remove the specified |dependency| on
+  // retaining the TPM owner password. When all dependencies have been removed
+  // the owner password can be cleared.
+  // Returns true if the dependency has been successfully removed or was
+  // already removed by the time this function is called.
+  virtual bool RemoveOwnerDependency(TpmOwnerDependency dependency) = 0;
 
  private:
   static Tpm* singleton_;

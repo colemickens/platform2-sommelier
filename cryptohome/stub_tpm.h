@@ -152,6 +152,8 @@ class StubTpm : public Tpm {
       const SecureBlob& delegate_blob,
       const SecureBlob& delegate_secret) override { return false; }
   void DeclareTpmFirmwareStable() override {}
+  bool RemoveOwnerDependency(TpmOwnerDependency dependency) override
+    { return true; }
 };
 
 }  // namespace cryptohome

@@ -1073,4 +1073,8 @@ bool Tpm2Impl::UpdateTpmStatus(RefreshType refresh_type) {
   return (tpm_status_.status() == tpm_manager::STATUS_SUCCESS);
 }
 
+bool Tpm2Impl::RemoveOwnerDependency(TpmOwnerDependency /* dependency */) {
+  return true;
+}
+
 }  // namespace cryptohome

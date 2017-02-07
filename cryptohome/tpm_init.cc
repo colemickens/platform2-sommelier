@@ -458,17 +458,20 @@ bool TpmInit::StoreOwnerPassword(const brillo::Blob& owner_password,
   return true;
 }
 
-void TpmInit::RemoveTpmOwnerDependency(TpmOwnerDependency dependency) {
+void TpmInit::RemoveTpmOwnerDependency(Tpm::TpmOwnerDependency dependency) {
   int32_t flag_to_clear = TpmStatus::NONE;
   switch (dependency) {
-    case kInstallAttributes:
+    case Tpm::TpmOwnerDependency::kInstallAttributes:
       flag_to_clear = TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER;
       break;
-    case kAttestation:
+    case Tpm::TpmOwnerDependency::kAttestation:
       flag_to_clear = TpmStatus::ATTESTATION_NEEDS_OWNER;
       break;
     default:
       CHECK(false);
+  }
+  if (!get_tpm()->RemoveOwnerDependency(dependency)) {
+    return;
   }
   TpmStatus tpm_status;
   if (!LoadTpmStatus(&tpm_status))

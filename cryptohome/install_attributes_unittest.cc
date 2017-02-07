@@ -82,9 +82,8 @@ class InstallAttributesTest : public ::testing::Test {
     if (install_attrs->is_secure()) {
       EXPECT_CALL(lockbox_, Create(_))
         .WillOnce(Return(true));
-      EXPECT_CALL(tpm_init_,
-                  RemoveTpmOwnerDependency(
-                      TpmInit::kInstallAttributes))
+      EXPECT_CALL(tpm_init_, RemoveTpmOwnerDependency(
+          Tpm::TpmOwnerDependency::kInstallAttributes))
         .Times(1);
     }
     EXPECT_TRUE(install_attrs->Init(&tpm_init_));

@@ -148,6 +148,7 @@ class Tpm2Impl : public Tpm {
       const brillo::SecureBlob& delegate_blob,
       const brillo::SecureBlob& delegate_secret) override;
   void DeclareTpmFirmwareStable() override;
+  bool RemoveOwnerDependency(TpmOwnerDependency dependency) override;
 
  private:
   // This object may be used across multiple threads but the Trunks D-Bus proxy
