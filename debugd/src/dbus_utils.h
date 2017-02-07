@@ -6,6 +6,7 @@
 #define DEBUGD_SRC_DBUS_UTILS_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/values.h>
@@ -25,20 +26,22 @@ namespace debugd {
 //
 // Parameters
 //  message - Message to convert.
-//  value - Result pointer.
+//  result - Result pointer.
 // Returns
 //  True if conversion succeeded, false if it didn't.
-bool DBusMessageToValue(const DBus::Message& message, base::Value** v);
+bool DBusMessageToValue(const DBus::Message& message,
+                        std::unique_ptr<base::Value>* result);
 
 // Convert a DBus property map to a Value.
 //
 // Parameters
 //  message - Message to convert.
-//  value - Result pointer.
+//  result - Result pointer.
 // Returns
 //  True if conversion succeeded, false if it didn't.
 bool DBusPropertyMapToValue(
-    const std::map<std::string, DBus::Variant>& properties, base::Value** v);
+    const std::map<std::string, DBus::Variant>& properties,
+    std::unique_ptr<base::Value>* result);
 
 }  // namespace debugd
 

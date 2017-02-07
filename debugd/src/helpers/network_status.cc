@@ -5,7 +5,11 @@
 #include <dbus-c++/dbus.h>
 #include <stdio.h>
 
+#include <memory>
+#include <utility>
+
 #include <base/json/json_writer.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
@@ -63,76 +67,82 @@ class ServiceProxy : public org::chromium::flimflam::Service_proxy,
   void PropertyChanged(const std::string&, const DBus::Variant&) override {}
 };
 
-Value* GetService(DBus::Connection* connection, const DBus::Path& path) {
+std::unique_ptr<Value> GetService(DBus::Connection* connection,
+                                  const DBus::Path& path) {
   ServiceProxy service(connection, path.c_str(), shill::kFlimflamServiceName);
   std::map<std::string, DBus::Variant> props = service.GetProperties();
-  Value* v = nullptr;
+  std::unique_ptr<Value> v;
   debugd::DBusPropertyMapToValue(props, &v);
   return v;
 }
 
-Value* GetServices(DBus::Connection* connection, ManagerProxy* flimflam) {
+std::unique_ptr<Value> GetServices(DBus::Connection* connection,
+                                   ManagerProxy* flimflam) {
   std::map<std::string, DBus::Variant> props = flimflam->GetProperties();
-  DictionaryValue* dv = new DictionaryValue();
+  auto dv = base::MakeUnique<DictionaryValue>();
   const DBus::Variant& services = props["Services"];
   std::vector<DBus::Path> paths = services;
   for (std::vector<DBus::Path>::iterator it = paths.begin();
        it != paths.end();
        ++it) {
-    Value* v = GetService(connection, *it);
+    auto v = GetService(connection, *it);
     if (v)
-      dv->Set(*it, v);
+      dv->Set(*it, std::move(v));
   }
-  return dv;
+  return std::move(dv);
 }
 
-Value* GetIPConfig(DBus::Connection* connection, const DBus::Path& path) {
+std::unique_ptr<Value> GetIPConfig(DBus::Connection* connection,
+                                   const DBus::Path& path) {
   IPConfigProxy ipconfig(connection, path.c_str(), shill::kFlimflamServiceName);
   std::map<std::string, DBus::Variant> props = ipconfig.GetProperties();
-  Value* v = nullptr;
+  std::unique_ptr<Value> v;
   debugd::DBusPropertyMapToValue(props, &v);
   return v;
 }
 
-Value* GetDevice(DBus::Connection* connection, const DBus::Path& path) {
+std::unique_ptr<Value> GetDevice(DBus::Connection* connection,
+                                 const DBus::Path& path) {
   DeviceProxy device(connection, path.c_str(), shill::kFlimflamServiceName);
   std::map<std::string, DBus::Variant> props = device.GetProperties();
-  DictionaryValue* ipconfigs = nullptr;
+  std::unique_ptr<DictionaryValue> ipconfigs;
   if (props.count("IPConfigs") == 1) {
-    ipconfigs = new DictionaryValue();
+    ipconfigs = base::MakeUnique<DictionaryValue>();
     // Turn IPConfigs into real objects.
     DBus::Variant& ipconfig_paths = props["IPConfigs"];
     std::vector<DBus::Path> paths = ipconfig_paths;
     for (std::vector<DBus::Path>::iterator it = paths.begin();
          it != paths.end();
          ++it) {
-      Value* v = GetIPConfig(connection, *it);
+      auto v = GetIPConfig(connection, *it);
       if (v)
-        ipconfigs->Set(*it, v);
+        ipconfigs->Set(*it, std::move(v));
     }
     props.erase("IPConfigs");
   }
-  Value* v = nullptr;
+  std::unique_ptr<Value> v;
   CHECK(debugd::DBusPropertyMapToValue(props, &v));
-  DictionaryValue* dv = reinterpret_cast<DictionaryValue*>(v);
+  DictionaryValue* dv = nullptr;
+  CHECK(v->GetAsDictionary(&dv));
   if (ipconfigs)
-    dv->Set("ipconfigs", ipconfigs);
+    dv->Set("ipconfigs", std::move(ipconfigs));
   return v;
 }
 
-Value* GetDevices(DBus::Connection* connection, ManagerProxy* flimflam) {
+std::unique_ptr<Value> GetDevices(DBus::Connection* connection,
+                                  ManagerProxy* flimflam) {
   std::map<std::string, DBus::Variant> props = flimflam->GetProperties();
-  DictionaryValue* dv = new DictionaryValue();
+  auto dv = base::MakeUnique<DictionaryValue>();
   const DBus::Variant& devices = props["Devices"];
   std::vector<DBus::Path> paths = devices;
   for (std::vector<DBus::Path>::iterator it = paths.begin();
        it != paths.end();
        ++it) {
-    Value* v = GetDevice(connection, *it);
+    auto v = GetDevice(connection, *it);
     if (v)
-      dv->Set(*it, v);
+      dv->Set(*it, std::move(v));
   }
-  return dv;
+  return std::move(dv);
 }
 
 int main() {
@@ -143,12 +153,8 @@ int main() {
                        shill::kFlimflamServicePath,
                        shill::kFlimflamServiceName);
   DictionaryValue result;
-
-  Value* devices = GetDevices(&connection, &manager);
-  result.Set("devices", devices);
-
-  Value* services = GetServices(&connection, &manager);
-  result.Set("services", services);
+  result.Set("devices", GetDevices(&connection, &manager));
+  result.Set("services", GetServices(&connection, &manager));
 
   std::string json;
   base::JSONWriter::WriteWithOptions(

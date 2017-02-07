@@ -4,7 +4,10 @@
 
 #include "debugd/src/dbus_utils.h"
 
+#include <utility>
+
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
 #include <dbus/dbus.h>
@@ -18,49 +21,54 @@ using base::Value;
 
 namespace {
 
-bool DBusMessageIterToValue(DBus::MessageIter* iter, Value** result);
+bool DBusMessageIterToValue(DBus::MessageIter* iter,
+                            std::unique_ptr<Value>* result);
 
-bool DBusMessageIterToPrimitiveValue(DBus::MessageIter* iter, Value** result) {
+bool DBusMessageIterToPrimitiveValue(DBus::MessageIter* iter,
+                                     std::unique_ptr<Value>* result) {
   DBus::MessageIter subiter;
   switch (iter->type()) {
     case DBUS_TYPE_BYTE:
-      *result = new FundamentalValue(iter->get_byte());
+      *result = base::MakeUnique<FundamentalValue>(iter->get_byte());
       return true;
     case DBUS_TYPE_BOOLEAN:
-      *result = new FundamentalValue(iter->get_bool());
+      *result = base::MakeUnique<FundamentalValue>(iter->get_bool());
       return true;
     case DBUS_TYPE_INT16:
-      *result = new FundamentalValue(iter->get_int16());
+      *result = base::MakeUnique<FundamentalValue>(iter->get_int16());
       return true;
     case DBUS_TYPE_UINT16:
-      *result = new FundamentalValue(iter->get_uint16());
+      *result = base::MakeUnique<FundamentalValue>(iter->get_uint16());
       return true;
     case DBUS_TYPE_INT32:
-      *result = new FundamentalValue(iter->get_int32());
+      *result = base::MakeUnique<FundamentalValue>(iter->get_int32());
       return true;
     case DBUS_TYPE_UINT32:
-      *result = new StringValue(base::UintToString(iter->get_uint32()));
+      *result =
+          base::MakeUnique<StringValue>(base::UintToString(iter->get_uint32()));
       return true;
     case DBUS_TYPE_INT64:
-      *result = new StringValue(base::Int64ToString(iter->get_int64()));
+      *result =
+          base::MakeUnique<StringValue>(base::Int64ToString(iter->get_int64()));
       return true;
     case DBUS_TYPE_UINT64:
-      *result = new StringValue(base::Uint64ToString(iter->get_uint64()));
+      *result = base::MakeUnique<StringValue>(
+          base::Uint64ToString(iter->get_uint64()));
       return true;
     case DBUS_TYPE_DOUBLE:
-      *result = new FundamentalValue(iter->get_double());
+      *result = base::MakeUnique<FundamentalValue>(iter->get_double());
       return true;
     case DBUS_TYPE_STRING:
-      *result = new StringValue(iter->get_string());
+      *result = base::MakeUnique<StringValue>(iter->get_string());
       return true;
     case DBUS_TYPE_OBJECT_PATH:
-      *result = new StringValue(iter->get_path());
+      *result = base::MakeUnique<StringValue>(iter->get_path());
       return true;
     case DBUS_TYPE_SIGNATURE:
-      *result = new StringValue(iter->get_signature());
+      *result = base::MakeUnique<StringValue>(iter->get_signature());
       return true;
     case DBUS_TYPE_UNIX_FD:
-      *result = new FundamentalValue(iter->get_int32());
+      *result = base::MakeUnique<FundamentalValue>(iter->get_int32());
       return true;
     case DBUS_TYPE_VARIANT:
       subiter = iter->recurse();
@@ -71,54 +79,52 @@ bool DBusMessageIterToPrimitiveValue(DBus::MessageIter* iter, Value** result) {
   }
 }
 
-bool DBusMessageIterToArrayValue(DBus::MessageIter* iter, Value** result) {
+bool DBusMessageIterToArrayValue(DBus::MessageIter* iter,
+                                 std::unique_ptr<Value>* result) {
   // For an array, create an empty ListValue, then recurse into it.
-  ListValue* lv = new ListValue();
+  auto lv = base::MakeUnique<ListValue>();
   while (!iter->at_end()) {
-    Value* subvalue = nullptr;
+    std::unique_ptr<Value> subvalue;
     bool r = DBusMessageIterToValue(iter, &subvalue);
     if (!r) {
-      delete lv;
       return false;
     }
-    lv->Append(subvalue);
+    lv->Append(std::move(subvalue));
     (*iter)++;
   }
-  *result = lv;
+  *result = std::move(lv);
   return true;
 }
 
-bool DBusMessageIterToDictValue(DBus::MessageIter* iter, Value** result) {
+bool DBusMessageIterToDictValue(DBus::MessageIter* iter,
+                                std::unique_ptr<Value>* result) {
   // For a dict, create an empty DictionaryValue, then walk the subcontainers
   // with the key-value pairs, adding them to the dict.
-  DictionaryValue* dv = new DictionaryValue();
+  auto dv = base::MakeUnique<DictionaryValue>();
   while (!iter->at_end()) {
     DBus::MessageIter subiter = iter->recurse();
-    Value* key = nullptr;
-    Value* value = nullptr;
+    std::unique_ptr<Value> key;
+    std::unique_ptr<Value> value;
     bool r = DBusMessageIterToValue(&subiter, &key);
     if (!r || key->GetType() != Value::TYPE_STRING) {
-      delete dv;
       return false;
     }
     subiter++;
     r = DBusMessageIterToValue(&subiter, &value);
     if (!r) {
-      delete key;
-      delete dv;
       return false;
     }
     std::string keystr;
     key->GetAsString(&keystr);
-    dv->Set(keystr, value);
-    delete key;
+    dv->Set(keystr, std::move(value));
     (*iter)++;
   }
-  *result = dv;
+  *result = std::move(dv);
   return true;
 }
 
-bool DBusMessageIterToValue(DBus::MessageIter* iter, Value** result) {
+bool DBusMessageIterToValue(DBus::MessageIter* iter,
+                            std::unique_ptr<Value>* result) {
   if (iter->at_end()) {
     *result = nullptr;
     return true;
@@ -140,26 +146,27 @@ bool DBusMessageIterToValue(DBus::MessageIter* iter, Value** result) {
 
 }  // namespace
 
-bool debugd::DBusMessageToValue(const DBus::Message& message, Value** v) {
+bool debugd::DBusMessageToValue(const DBus::Message& message,
+                                std::unique_ptr<Value>* result) {
   DBus::MessageIter r = message.reader();
-  return DBusMessageIterToArrayValue(&r, v);
+  return DBusMessageIterToArrayValue(&r, result);
 }
 
 bool debugd::DBusPropertyMapToValue(
-    const std::map<std::string, DBus::Variant>& properties, Value** v) {
-  DictionaryValue* dv = new DictionaryValue();
+    const std::map<std::string, DBus::Variant>& properties,
+    std::unique_ptr<Value>* result) {
+  auto dv = base::MakeUnique<DictionaryValue>();
   std::map<std::string, DBus::Variant>::const_iterator it;
   for (it = properties.begin(); it != properties.end(); ++it) {
-    Value* v = nullptr;
+    std::unique_ptr<Value> v;
     // make a copy so we can take a reference to the MessageIter
     DBus::MessageIter reader = it->second.reader();
     bool r = DBusMessageIterToValue(&reader, &v);
     if (!r) {
-      delete dv;
       return false;
     }
-    dv->Set(it->first, v);
+    dv->Set(it->first, std::move(v));
   }
-  *v = dv;
+  *result = std::move(dv);
   return true;
 }

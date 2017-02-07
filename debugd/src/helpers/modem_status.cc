@@ -5,7 +5,11 @@
 #include <dbus-c++/dbus.h>
 #include <stdio.h>
 
+#include <memory>
+#include <utility>
+
 #include <base/json/json_writer.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
@@ -75,44 +79,44 @@ struct Modem {
   Modem(const char* service, const DBus::Path& path)
       : service_(service), path_(path) {}
 
-  Value* GetStatus(DBus::Connection* conn);
+  std::unique_ptr<Value> GetStatus(DBus::Connection* conn);
 
   const char* service_;
   DBus::Path path_;
 };
 
-Value* FetchOneInterface(DBusPropertiesProxy* properties,
-                         const char* interface,
-                         DictionaryValue* result) {
+void FetchOneInterface(DBusPropertiesProxy* properties,
+                       const char* interface,
+                       DictionaryValue* result) {
   std::map<std::string, DBus::Variant> propsmap = properties->GetAll(interface);
-  Value* propsdict = nullptr;
+  std::unique_ptr<Value> propsdict;
   if (!debugd::DBusPropertyMapToValue(propsmap, &propsdict))
-    return nullptr;
+    return;
 
   std::string keypath = interface;
   base::ReplaceSubstringsAfterOffset(&keypath, 0, ".", "/");
-  result->Set(keypath, propsdict);
-  return propsdict;
+  result->Set(keypath, std::move(propsdict));
 }
 
-Value* Modem::GetStatus(DBus::Connection* conn) {
-  DictionaryValue* result = new DictionaryValue();
+std::unique_ptr<Value> Modem::GetStatus(DBus::Connection* conn) {
+  auto result = base::MakeUnique<DictionaryValue>();
   result->SetString("service", service_);
   result->SetString("path", path_);
 
   ModemSimpleProxy simple(conn, path_.c_str(), service_);
-  Value* status = nullptr;
   std::map<std::string, DBus::Variant> statusmap;
   try {
     statusmap = simple.GetStatus();
     // cpplint thinks this is a function call
-  } catch(DBus::Error e) {}
+  } catch (DBus::Error e) {
+  }
 
+  std::unique_ptr<Value> status;
   if (debugd::DBusPropertyMapToValue(statusmap, &status))
-    result->Set("status", status);
+    result->Set("status", std::move(status));
 
   ModemProxy modem(conn, path_.c_str(), service_);
-  DictionaryValue* infodict = new DictionaryValue();
+  auto infodict = base::MakeUnique<DictionaryValue>();
   try {
     DBus::Struct<std::string,
                  std::string,
@@ -121,24 +125,26 @@ Value* Modem::GetStatus(DBus::Connection* conn) {
     infodict->SetString("modem", infomap._2);
     infodict->SetString("version", infomap._3);
     // cpplint thinks this is a function call
-  } catch(DBus::Error e) {}
-  result->Set("info", infodict);
+  } catch (DBus::Error e) {
+  }
+  result->Set("info", std::move(infodict));
 
-  DictionaryValue* props = new DictionaryValue();
+  auto props = base::MakeUnique<DictionaryValue>();
   DBusPropertiesProxy properties(conn, path_.c_str(), service_);
-  FetchOneInterface(&properties, cromo::kModemInterface, props);
-  FetchOneInterface(&properties, cromo::kModemSimpleInterface, props);
+  FetchOneInterface(&properties, cromo::kModemInterface, props.get());
+  FetchOneInterface(&properties, cromo::kModemSimpleInterface, props.get());
   uint32_t type = modem.Type();
   if (type == kModemTypeGsm) {
-    FetchOneInterface(&properties, cromo::kModemGsmInterface, props);
-    FetchOneInterface(&properties, cromo::kModemGsmCardInterface, props);
-    FetchOneInterface(&properties, cromo::kModemGsmNetworkInterface, props);
+    FetchOneInterface(&properties, cromo::kModemGsmInterface, props.get());
+    FetchOneInterface(&properties, cromo::kModemGsmCardInterface, props.get());
+    FetchOneInterface(
+        &properties, cromo::kModemGsmNetworkInterface, props.get());
   } else {
-    FetchOneInterface(&properties, cromo::kModemCdmaInterface, props);
+    FetchOneInterface(&properties, cromo::kModemCdmaInterface, props.get());
   }
-  result->Set("properties", props);
+  result->Set("properties", std::move(props));
 
-  return result;
+  return std::move(result);
 }
 
 int main() {

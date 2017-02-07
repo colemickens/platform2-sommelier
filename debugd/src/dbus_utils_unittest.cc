@@ -20,13 +20,11 @@ using base::Value;
 class DBusUtilsTest : public testing::Test {
  protected:
   void ConvertDBusMessageToValues() {
-    Value* value = nullptr;
-    ASSERT_TRUE(debugd::DBusMessageToValue(message_, &value));
-    ASSERT_NE(nullptr, value);
-    raw_value_.reset(value);
-    ASSERT_EQ(Value::TYPE_LIST, value->GetType());
+    ASSERT_TRUE(debugd::DBusMessageToValue(message_, &raw_value_));
+    ASSERT_NE(nullptr, raw_value_);
+    ASSERT_EQ(Value::TYPE_LIST, raw_value_->GetType());
     ListValue* list_values = nullptr;
-    ASSERT_TRUE(value->GetAsList(&list_values));
+    ASSERT_TRUE(raw_value_->GetAsList(&list_values));
     values_.clear();
     for (size_t i = 0; i < list_values->GetSize(); i++) {
       Value* element = nullptr;
