@@ -22,6 +22,7 @@
 #include <base/logging.h>
 #include <trunks/error_codes.h>
 #include <trunks/policy_session.h>
+#include <trunks/scoped_global_session.h>
 #include <trunks/tpm_constants.h>
 #include <trunks/tpm_utility.h>
 
@@ -32,6 +33,9 @@ using trunks::TPM_RC;
 using trunks::TPM_RC_SUCCESS;
 
 namespace {
+
+// Enable encryption for global session.
+const bool kGlobalSessionEncryption = true;
 
 void MapAttributesFromTpm(trunks::TPMA_NV tpm_flags,
                           std::vector<NvramSpaceAttribute>* attributes) {
@@ -140,7 +144,9 @@ Tpm2NvramImpl::Tpm2NvramImpl(const trunks::TrunksFactory& factory,
     : trunks_factory_(factory),
       local_data_store_(local_data_store),
       initialized_(false),
+#ifndef TRUNKS_USE_PER_OP_SESSIONS
       trunks_session_(trunks_factory_.GetHmacSession()),
+#endif
       trunks_utility_(trunks_factory_.GetTpmUtility()) {}
 
 NvramResult Tpm2NvramImpl::DefineSpace(
@@ -150,6 +156,12 @@ NvramResult Tpm2NvramImpl::DefineSpace(
     const std::string& authorization_value,
     NvramSpacePolicy policy) {
   if (!Initialize()) {
+    return NVRAM_RESULT_DEVICE_ERROR;
+  }
+  trunks::ScopedGlobalHmacSession session_scope(&trunks_factory_,
+                                                kGlobalSessionEncryption,
+                                                &trunks_session_);
+  if (!trunks_session_) {
     return NVRAM_RESULT_DEVICE_ERROR;
   }
   if (!SetupOwnerSession()) {
@@ -191,6 +203,12 @@ NvramResult Tpm2NvramImpl::DestroySpace(uint32_t index) {
   if (!Initialize()) {
     return NVRAM_RESULT_DEVICE_ERROR;
   }
+  trunks::ScopedGlobalHmacSession session_scope(&trunks_factory_,
+                                                kGlobalSessionEncryption,
+                                                &trunks_session_);
+  if (!trunks_session_) {
+    return NVRAM_RESULT_DEVICE_ERROR;
+  }
   if (!SetupOwnerSession()) {
     return NVRAM_RESULT_OPERATION_DISABLED;
   }
@@ -208,6 +226,12 @@ NvramResult Tpm2NvramImpl::WriteSpace(uint32_t index,
                                       const std::string& data,
                                       const std::string& authorization_value) {
   if (!Initialize()) {
+    return NVRAM_RESULT_DEVICE_ERROR;
+  }
+  trunks::ScopedGlobalHmacSession session_scope(&trunks_factory_,
+                                                kGlobalSessionEncryption,
+                                                &trunks_session_);
+  if (!trunks_session_) {
     return NVRAM_RESULT_DEVICE_ERROR;
   }
   trunks::TPMS_NV_PUBLIC nvram_public;
@@ -268,6 +292,12 @@ NvramResult Tpm2NvramImpl::ReadSpace(uint32_t index,
                                      std::string* data,
                                      const std::string& authorization_value) {
   if (!Initialize()) {
+    return NVRAM_RESULT_DEVICE_ERROR;
+  }
+  trunks::ScopedGlobalHmacSession session_scope(&trunks_factory_,
+                                                kGlobalSessionEncryption,
+                                                &trunks_session_);
+  if (!trunks_session_) {
     return NVRAM_RESULT_DEVICE_ERROR;
   }
   trunks::TPMS_NV_PUBLIC nvram_public;
@@ -331,6 +361,12 @@ NvramResult Tpm2NvramImpl::LockSpace(uint32_t index,
                                      bool lock_write,
                                      const std::string& authorization_value) {
   if (!Initialize()) {
+    return NVRAM_RESULT_DEVICE_ERROR;
+  }
+  trunks::ScopedGlobalHmacSession session_scope(&trunks_factory_,
+                                                kGlobalSessionEncryption,
+                                                &trunks_session_);
+  if (!trunks_session_) {
     return NVRAM_RESULT_DEVICE_ERROR;
   }
   trunks::TPMS_NV_PUBLIC nvram_public;
@@ -474,6 +510,7 @@ NvramResult Tpm2NvramImpl::GetSpaceInfo(
 }
 
 bool Tpm2NvramImpl::Initialize() {
+#ifndef TRUNKS_USE_PER_OP_SESSIONS
   if (initialized_) {
     return true;
   }
@@ -485,6 +522,7 @@ bool Tpm2NvramImpl::Initialize() {
     return false;
   }
   initialized_ = true;
+#endif
   return true;
 }
 
