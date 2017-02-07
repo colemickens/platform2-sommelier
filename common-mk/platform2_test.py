@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/env python2
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -86,11 +86,13 @@ def _ReapUntilProcessExits(monitored_pid):
 # through.
 ENV_PASSTHRU_REGEX_LIST = map(re.compile, [
     # Used by various sanitizers.
-    '[AL]SAN_OPTIONS$',
+    r'[AL]SAN_OPTIONS$',
     # Used by QEMU.
-    'QEMU_',
+    r'QEMU_',
     # Used to select profiling output location for gcov.
-    'GCOV_',
+    r'GCOV_',
+    # Used by unit tests to access test binaries.
+    r'^OUT$',
 ])
 
 
@@ -335,6 +337,9 @@ class Platform2Test(object):
       # child creates after the child terminates.
       os.setpgid(0, 0)
 
+      # Remove sysroot from OUT environment variable.
+      if 'OUT' in os.environ:
+        os.environ['OUT'] = self.removeSysrootPrefix(os.environ['OUT'])
       # The TERM the user is leveraging might not exist in the sysroot.
       # Force a sane default that supports standard color sequences.
       os.environ['TERM'] = 'ansi'
