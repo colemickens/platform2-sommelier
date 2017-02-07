@@ -24,7 +24,7 @@ bool FromValue(const base::Value& in_value,
   const base::ListValue* list = nullptr;
   if (!in_value.GetAsList(&list))
     return false;
-  out_value->reset(list->DeepCopy());
+  *out_value = list->CreateDeepCopy();
   return true;
 }
 
@@ -33,7 +33,7 @@ bool FromValue(const base::Value& in_value,
   const base::DictionaryValue* dict = nullptr;
   if (!in_value.GetAsDictionary(&dict))
     return false;
-  out_value->reset(dict->DeepCopy());
+  *out_value = dict->CreateDeepCopy();
   return true;
 }
 
