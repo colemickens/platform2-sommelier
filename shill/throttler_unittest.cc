@@ -34,23 +34,11 @@ namespace shill {
 
 class ThrottlerTest : public Test {
  public:
-  ThrottlerTest() {
-    control_interface_ = new NiceMock<MockControl>();
-    dispatcher_ = new NiceMock<MockEventDispatcher>();
-    mock_manager_ =
-        new StrictMock<MockManager>(control_interface_, dispatcher_, nullptr);
-    mock_process_manager_ = new NiceMock<MockProcessManager>();
-    mock_file_io_ = new NiceMock<MockFileIO>();
-    throttler_ = new Throttler(dispatcher_, mock_manager_);
-    throttler_->process_manager_ = mock_process_manager_;
-    throttler_->file_io_ = mock_file_io_;
-  }
-
-  virtual ~ThrottlerTest() {
-    delete mock_manager_;
-    delete mock_process_manager_;
-    delete throttler_;
-    delete mock_file_io_;
+  ThrottlerTest()
+      : mock_manager_(&control_interface_, &dispatcher_, nullptr),
+        throttler_(&dispatcher_, &mock_manager_) {
+    throttler_.process_manager_ = &mock_process_manager_;
+    throttler_.file_io_ = &mock_file_io_;
   }
 
  protected:
@@ -62,12 +50,12 @@ class ThrottlerTest : public Test {
   static const pid_t kPID3;
   static const uint32_t kThrottleRate;
 
-  MockControl* control_interface_;
-  MockEventDispatcher* dispatcher_;
-  MockManager* mock_manager_;
-  MockFileIO* mock_file_io_;
-  MockProcessManager* mock_process_manager_;
-  Throttler* throttler_;
+  MockControl control_interface_;
+  MockEventDispatcher dispatcher_;
+  StrictMock<MockManager> mock_manager_;
+  NiceMock<MockProcessManager> mock_process_manager_;
+  NiceMock<MockFileIO> mock_file_io_;
+  Throttler throttler_;
 };
 
 const char ThrottlerTest::kIfaceName0[] = "eth0";
@@ -82,9 +70,9 @@ TEST_F(ThrottlerTest, ThrottleCallsTCExpectedTimesAndSetsState) {
   std::vector<std::string> interfaces;
   interfaces.push_back(kIfaceName0);
   interfaces.push_back(kIfaceName1);
-  EXPECT_CALL(*mock_manager_, GetDeviceInterfaceNames())
+  EXPECT_CALL(mock_manager_, GetDeviceInterfaceNames())
       .WillOnce(Return(interfaces));
-  EXPECT_CALL(*mock_process_manager_,
+  EXPECT_CALL(mock_process_manager_,
               StartProcessInMinijailWithPipes(
                   _, base::FilePath(Throttler::kTCPath), _, Throttler::kTCUser,
                   Throttler::kTCGroup, CAP_TO_MASK(CAP_NET_ADMIN), _, _,
@@ -92,57 +80,57 @@ TEST_F(ThrottlerTest, ThrottleCallsTCExpectedTimesAndSetsState) {
       .Times(interfaces.size())
       .WillOnce(Return(kPID1))
       .WillOnce(Return(kPID2));
-  EXPECT_CALL(*mock_file_io_, SetFdNonBlocking(_))
+  EXPECT_CALL(mock_file_io_, SetFdNonBlocking(_))
       .Times(interfaces.size())
       .WillRepeatedly(Return(false));
   const ResultCallback callback;
-  throttler_->ThrottleInterfaces(callback, kThrottleRate, kThrottleRate);
-  throttler_->OnProcessExited(0);
-  throttler_->OnProcessExited(0);
-  EXPECT_TRUE(throttler_->desired_throttling_enabled_);
-  EXPECT_EQ(throttler_->desired_upload_rate_kbits_, kThrottleRate);
-  EXPECT_EQ(throttler_->desired_download_rate_kbits_, kThrottleRate);
+  throttler_.ThrottleInterfaces(callback, kThrottleRate, kThrottleRate);
+  throttler_.OnProcessExited(0);
+  throttler_.OnProcessExited(0);
+  EXPECT_TRUE(throttler_.desired_throttling_enabled_);
+  EXPECT_EQ(throttler_.desired_upload_rate_kbits_, kThrottleRate);
+  EXPECT_EQ(throttler_.desired_download_rate_kbits_, kThrottleRate);
 }
 
 TEST_F(ThrottlerTest, NewlyAddedInterfaceIsThrottled) {
-  throttler_->desired_throttling_enabled_ = true;
-  throttler_->desired_upload_rate_kbits_ = kThrottleRate;
-  throttler_->desired_download_rate_kbits_ = kThrottleRate;
-  EXPECT_CALL(*mock_process_manager_,
+  throttler_.desired_throttling_enabled_ = true;
+  throttler_.desired_upload_rate_kbits_ = kThrottleRate;
+  throttler_.desired_download_rate_kbits_ = kThrottleRate;
+  EXPECT_CALL(mock_process_manager_,
               StartProcessInMinijailWithPipes(
                   _, base::FilePath(Throttler::kTCPath), _, Throttler::kTCUser,
                   Throttler::kTCGroup, CAP_TO_MASK(CAP_NET_ADMIN), _, _,
                   nullptr, nullptr))
       .Times(1)
       .WillOnce(Return(kPID3));
-  EXPECT_CALL(*mock_file_io_, SetFdNonBlocking(_)).WillOnce(Return(false));
-  throttler_->ApplyThrottleToNewInterface(kIfaceName2);
+  EXPECT_CALL(mock_file_io_, SetFdNonBlocking(_)).WillOnce(Return(false));
+  throttler_.ApplyThrottleToNewInterface(kIfaceName2);
 }
 
 TEST_F(ThrottlerTest, DisablingThrottleClearsState) {
-  throttler_->desired_throttling_enabled_ = true;
-  throttler_->desired_upload_rate_kbits_ = kThrottleRate;
-  throttler_->desired_download_rate_kbits_ = kThrottleRate;
+  throttler_.desired_throttling_enabled_ = true;
+  throttler_.desired_upload_rate_kbits_ = kThrottleRate;
+  throttler_.desired_download_rate_kbits_ = kThrottleRate;
   std::vector<std::string> interfaces;
   interfaces.push_back(kIfaceName0);
-  EXPECT_CALL(*mock_manager_, GetDeviceInterfaceNames())
+  EXPECT_CALL(mock_manager_, GetDeviceInterfaceNames())
       .WillOnce(Return(interfaces));
-  EXPECT_CALL(*mock_process_manager_,
+  EXPECT_CALL(mock_process_manager_,
               StartProcessInMinijailWithPipes(
                   _, base::FilePath(Throttler::kTCPath), _, Throttler::kTCUser,
                   Throttler::kTCGroup, CAP_TO_MASK(CAP_NET_ADMIN), _, _,
                   nullptr, nullptr))
       .Times(1)
       .WillOnce(Return(kPID1));
-  EXPECT_CALL(*mock_file_io_, SetFdNonBlocking(_))
+  EXPECT_CALL(mock_file_io_, SetFdNonBlocking(_))
       .Times(interfaces.size())
       .WillRepeatedly(Return(false));
   const ResultCallback callback;
-  throttler_->DisableThrottlingOnAllInterfaces(callback);
-  throttler_->OnProcessExited(0);
-  EXPECT_FALSE(throttler_->desired_throttling_enabled_);
-  EXPECT_EQ(throttler_->desired_upload_rate_kbits_, 0);
-  EXPECT_EQ(throttler_->desired_download_rate_kbits_, 0);
+  throttler_.DisableThrottlingOnAllInterfaces(callback);
+  throttler_.OnProcessExited(0);
+  EXPECT_FALSE(throttler_.desired_throttling_enabled_);
+  EXPECT_EQ(throttler_.desired_upload_rate_kbits_, 0);
+  EXPECT_EQ(throttler_.desired_download_rate_kbits_, 0);
 }
 
 }  // namespace shill
