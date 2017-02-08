@@ -17,6 +17,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 using base::FilePath;
@@ -277,6 +278,148 @@ TEST_F(PlatformTest, HasExtendedFileAttribute) {
         FilePath("file_not_exist"), name));
   EXPECT_FALSE(platform_.HasExtendedFileAttribute(
         filename, "user.name_not_exist"));
+}
+
+TEST_F(PlatformTest, ListExtendedFileAttribute) {
+  const FilePath filename(GetTempName());
+  const std::string content("blablabla");
+  ASSERT_TRUE(platform_.WriteStringToFile(filename, content));
+  const std::string name("user.foo");
+  const std::string value("bar");
+  const std::string name2("user.foo2");
+  const std::string value2("bar2");
+
+  ASSERT_EQ(0,
+            setxattr(filename.value().c_str(),
+                     name.c_str(),
+                     value.c_str(),
+                     value.length(),
+                     0));
+  ASSERT_EQ(0,
+            setxattr(filename.value().c_str(),
+                     name2.c_str(),
+                     value2.c_str(),
+                     value2.length(),
+                     0));
+
+  std::vector<std::string> attrs;
+
+  EXPECT_TRUE(platform_.ListExtendedFileAttributes(filename, &attrs));
+  EXPECT_THAT(attrs, testing::UnorderedElementsAre(name, name2));
+
+  attrs.clear();
+  EXPECT_FALSE(
+      platform_.ListExtendedFileAttributes(FilePath("file_not_exist"), &attrs));
+  EXPECT_TRUE(attrs.empty());
+}
+
+TEST_F(PlatformTest, GetExtendedAttributeAsString) {
+  const FilePath filename(GetTempName());
+  const std::string content("blablabla");
+  ASSERT_TRUE(platform_.WriteStringToFile(filename, content));
+  const std::string name("user.foo");
+  const std::string value("bar");
+
+  ASSERT_EQ(0,
+            setxattr(filename.value().c_str(),
+                     name.c_str(),
+                     value.c_str(),
+                     value.length(),
+                     0));
+
+  std::string got;
+  EXPECT_TRUE(platform_.GetExtendedFileAttributeAsString(filename, name, &got));
+  EXPECT_EQ(value, got);
+
+  EXPECT_FALSE(platform_.GetExtendedFileAttributeAsString(
+      FilePath("file_not_exist"), name, &got));
+  EXPECT_FALSE(platform_.GetExtendedFileAttributeAsString(
+      filename, "user.name_not_exist", &got));
+}
+
+TEST_F(PlatformTest, GetExtendedAttribute) {
+  const FilePath filename(GetTempName());
+  const std::string content("blablabla");
+  ASSERT_TRUE(platform_.WriteStringToFile(filename, content));
+  const std::string name("user.foo");
+  const int value = 42;
+
+  ASSERT_EQ(
+      0,
+      setxattr(
+          filename.value().c_str(), name.c_str(), &value, sizeof(value), 0));
+
+  int got;
+  EXPECT_TRUE(platform_.GetExtendedFileAttribute(
+      filename, name, reinterpret_cast<char*>(&got), sizeof(got)));
+  EXPECT_EQ(value, got);
+
+  EXPECT_FALSE(platform_.GetExtendedFileAttribute(FilePath("file_not_exist"),
+                                                  name,
+                                                  reinterpret_cast<char*>(&got),
+                                                  sizeof(got)));
+  EXPECT_FALSE(platform_.GetExtendedFileAttribute(filename,
+                                                  "user.name_not_exist",
+                                                  reinterpret_cast<char*>(&got),
+                                                  sizeof(got)));
+  EXPECT_FALSE(platform_.GetExtendedFileAttribute(
+      filename, name, reinterpret_cast<char*>(&got), sizeof(got) - 1));
+  EXPECT_FALSE(platform_.GetExtendedFileAttribute(
+      filename, name, reinterpret_cast<char*>(&got), sizeof(got) + 1));
+}
+
+TEST_F(PlatformTest, SetExtendedAttribute) {
+  const FilePath filename(GetTempName());
+  const std::string content("blablabla");
+  ASSERT_TRUE(platform_.WriteStringToFile(filename, content));
+  const std::string name("user.foo");
+  std::string value("bar");
+  EXPECT_TRUE(platform_.SetExtendedFileAttribute(
+      filename, name, value.c_str(), value.length()));
+
+  std::vector<char> got(value.length());
+  EXPECT_EQ(
+      value.length(),
+      getxattr(
+          filename.value().c_str(), name.c_str(), got.data(), value.length()));
+
+  EXPECT_EQ(value, std::string(got.data(), got.size()));
+
+  EXPECT_FALSE(platform_.SetExtendedFileAttribute(
+      FilePath("file_not_exist"), name, value.c_str(), sizeof(value)));
+}
+
+TEST_F(PlatformTest, GetExtFileAttributes) {
+  const FilePath filename(GetTempName());
+  const std::string content("blablabla");
+  ASSERT_TRUE(platform_.WriteStringToFile(filename, content));
+
+  int fd;
+  ASSERT_GT(fd = HANDLE_EINTR(open(filename.value().c_str(), O_RDONLY)), 0);
+  int flags = FS_UNRM_FL | FS_NODUMP_FL;
+  ASSERT_GE(ioctl(fd, FS_IOC_SETFLAGS, &flags), 0);
+
+  int got;
+  EXPECT_TRUE(platform_.GetExtFileAttributes(filename, &got));
+  EXPECT_EQ(flags, got);
+  close(fd);
+}
+
+TEST_F(PlatformTest, SetExtFileAttributes) {
+  const FilePath filename(GetTempName());
+  const std::string content("blablabla");
+  ASSERT_TRUE(platform_.WriteStringToFile(filename, content));
+
+  int flags = FS_UNRM_FL | FS_NODUMP_FL;
+  EXPECT_TRUE(platform_.SetExtFileAttributes(filename, flags));
+
+  int fd;
+  ASSERT_GT(fd = HANDLE_EINTR(open(filename.value().c_str(), O_RDONLY)), 0);
+  int new_flags;
+  ASSERT_GE(ioctl(fd, FS_IOC_GETFLAGS, &new_flags), 0);
+
+  EXPECT_EQ(flags, new_flags);
+  close(fd);
 }
 
 TEST_F(PlatformTest, HasNoDumpFileAttribute) {

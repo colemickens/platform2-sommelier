@@ -434,6 +434,68 @@ class Platform {
   virtual bool HasExtendedFileAttribute(const base::FilePath& path,
                                         const std::string& name);
 
+  // Add all extended attribute names on |path| to |attr_list|, possibly
+  // following symlink.  Returns false on failure.
+  //
+  // Parameters
+  //  path - absolute file or directory path to list attributes for.
+  //  attr_list - vector to store attribute names in to.
+  virtual bool ListExtendedFileAttributes(const base::FilePath& path,
+                                          std::vector<std::string>* attr_list);
+
+  // Return true if extended attribute |name| could be read from |path|,
+  // storing the value in |value|, possibly following symlink;
+  //
+  // Parameters
+  //  path - absolute file or directory path to get attributes for
+  //  name - name including a namespace prefix. See getxattr(2)
+  //  value - variable to store the resulting value in
+  virtual bool GetExtendedFileAttributeAsString(const base::FilePath& path,
+                                                const std::string& name,
+                                                std::string* value);
+
+  // Return true if extended attribute |name| could be read from |path|,
+  // storing the value in |value|, possibly following symlink;
+  //
+  // Parameters
+  //  path - absolute file or directory path to get attributes for
+  //  name - name including a namespace prefix. See getxattr(2)
+  //  value - pointer to store the resulting value in
+  //  size - The expected size of the extended attribute.  If this does not
+  //  match the actual size false will be returned.
+  virtual bool GetExtendedFileAttribute(const base::FilePath& path,
+                                        const std::string& name,
+                                        char* value,
+                                        ssize_t size);
+
+  // Return true if the extended attribute |name| could be set with value
+  // |value| on |path|.
+  //
+  // Parameters
+  //  path - absolute file or directory path to set attributes for
+  //  name - name including a namespace prefix. See getxattr(2)
+  //  value - value to set for the extended attribute
+  virtual bool SetExtendedFileAttribute(const base::FilePath& path,
+                                        const std::string& name,
+                                        const char* value,
+                                        size_t size);
+
+  // Return true if the ext file attributes for |name| could be succesfully set
+  // in |flags|, possibly following symlink.
+  //
+  // Parameters
+  //  path - absolute file or directory path to get attributes for
+  //  flags - the pointer which will store the read flags
+  virtual bool GetExtFileAttributes(const base::FilePath& path, int* flags);
+
+  // Return true if the ext file attributes for |name| could be changed to
+  // |flags|, possibly following symlink.
+  //
+  // Parameters
+  //  path - absolute file or directory path to get attributes for
+  //  flags - the value to update the ext attributes to
+  virtual bool SetExtFileAttributes(const base::FilePath& path, int flags);
+
   // Return if ext file attributes associated with the |name| has FS_NODUMP_FL,
   // possibly following symlink.
   //

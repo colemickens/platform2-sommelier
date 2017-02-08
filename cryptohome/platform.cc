@@ -756,7 +756,65 @@ bool Platform::HasExtendedFileAttribute(const FilePath& path,
   return true;
 }
 
-bool Platform::HasNoDumpFileAttribute(const FilePath& path) {
+bool Platform::ListExtendedFileAttributes(const FilePath& path,
+                                          std::vector<std::string>* attr_list) {
+  ssize_t sz = listxattr(path.value().c_str(), nullptr, 0);
+  if (sz < 0) {
+    PLOG(ERROR) << "listxattr: " << path.value();
+    return false;
+  }
+  std::vector<char> names(sz);
+  if (listxattr(path.value().c_str(), names.data(), sz) < 0) {
+    PLOG(ERROR) << "listxattr: " << path.value();
+    return false;
+  }
+  int pos = 0;
+  while (pos < sz) {
+    attr_list->emplace_back(names.data() + pos);
+    pos += attr_list->back().length() + 1;
+  }
+  return true;
+}
+
+bool Platform::GetExtendedFileAttributeAsString(const base::FilePath& path,
+                                                const std::string& name,
+                                                std::string* value) {
+  ssize_t sz = getxattr(path.value().c_str(), name.c_str(), nullptr, 0);
+  if (sz < 0) {
+    PLOG(ERROR) << "getxattr: " << path.value();
+    return false;
+  }
+  std::vector<char> value_vector(sz);
+  if (!GetExtendedFileAttribute(path, name, value_vector.data(), sz)) {
+    return false;
+  }
+  value->assign(value_vector.data(), sz);
+  return true;
+}
+
+bool Platform::GetExtendedFileAttribute(const base::FilePath& path,
+                                        const std::string& name,
+                                        char* value,
+                                        ssize_t size) {
+  if (getxattr(path.value().c_str(), name.c_str(), value, size) != size) {
+    PLOG(ERROR) << "getxattr: " << path.value();
+    return false;
+  }
+  return true;
+}
+
+bool Platform::SetExtendedFileAttribute(const base::FilePath& path,
+                                        const std::string& name,
+                                        const char* value,
+                                        size_t size) {
+  if (setxattr(path.value().c_str(), name.c_str(), value, size, 0) != 0) {
+    PLOG(ERROR) << "setxattr: " << path.value();
+    return false;
+  }
+  return true;
+}
+
+bool Platform::GetExtFileAttributes(const FilePath& path, int* flags) {
   int fd = HANDLE_EINTR(open(path.value().c_str(), O_RDONLY));
   if (fd < 0) {
     PLOG(ERROR) << "open: " << path.value();
@@ -765,14 +823,37 @@ bool Platform::HasNoDumpFileAttribute(const FilePath& path) {
   // FS_IOC_GETFLAGS actually takes int*
   // though the signature suggests long*.
   // https://lwn.net/Articles/575846/
-  int flags;
-  if (ioctl(fd, FS_IOC_GETFLAGS, &flags) < 0) {
+  if (ioctl(fd, FS_IOC_GETFLAGS, flags) < 0) {
     PLOG(ERROR) << "ioctl: " << path.value();
     IGNORE_EINTR(close(fd));
     return false;
   }
   IGNORE_EINTR(close(fd));
-  return (flags & FS_NODUMP_FL) == FS_NODUMP_FL;
+  return true;
+}
+
+bool Platform::SetExtFileAttributes(const FilePath& path, int flags) {
+  int fd = HANDLE_EINTR(open(path.value().c_str(), O_RDONLY));
+  if (fd < 0) {
+    PLOG(ERROR) << "open: " << path.value();
+    return false;
+  }
+  // FS_IOC_SETFLAGS actually takes int*
+  // though the signature suggests long*.
+  // https://lwn.net/Articles/575846/
+  if (ioctl(fd, FS_IOC_SETFLAGS, &flags) < 0) {
+    PLOG(ERROR) << "ioctl: " << path.value();
+    IGNORE_EINTR(close(fd));
+    return false;
+  }
+  IGNORE_EINTR(close(fd));
+  return true;
+}
+
+bool Platform::HasNoDumpFileAttribute(const FilePath& path) {
+  int flags;
+  return GetExtFileAttributes(path, &flags) &&
+      (flags & FS_NODUMP_FL) == FS_NODUMP_FL;
 }
 
 bool Platform::Rename(const FilePath& from, const FilePath& to) {

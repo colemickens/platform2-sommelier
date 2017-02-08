@@ -122,6 +122,18 @@ class MockPlatform : public Platform {
   MOCK_METHOD2(Stat, bool(const base::FilePath&, struct stat*));
   MOCK_METHOD2(HasExtendedFileAttribute,
                bool(const base::FilePath&, const std::string&));
+  MOCK_METHOD2(ListExtendedFileAttributes,
+               bool(const base::FilePath&, std::vector<std::string>*));
+  MOCK_METHOD3(GetExtendedFileAttributeAsString,
+               bool(const base::FilePath&, const std::string&, std::string*));
+  MOCK_METHOD4(
+      GetExtendedFileAttribute,
+      bool(const base::FilePath&, const std::string&, char*, ssize_t size));
+  MOCK_METHOD4(
+      SetExtendedFileAttribute,
+      bool(const base::FilePath&, const std::string&, const char*, size_t));
+  MOCK_METHOD2(GetExtFileAttributes, bool(const base::FilePath&, int*));
+  MOCK_METHOD2(SetExtFileAttributes, bool(const base::FilePath&, int));
   MOCK_METHOD1(HasNoDumpFileAttribute, bool(const base::FilePath&));
   MOCK_METHOD2(ReadFile, bool(const base::FilePath&, brillo::Blob*));
   MOCK_METHOD2(ReadFileToString, bool(const base::FilePath&, std::string*));
