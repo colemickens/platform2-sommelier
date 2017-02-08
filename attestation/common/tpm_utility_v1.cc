@@ -730,4 +730,10 @@ bool TpmUtilityV1::GetRSAPublicKeyFromTpmPublicKey(
   return true;
 }
 
+bool TpmUtilityV1::RemoveOwnerDependency() {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  return false;
+}
+
+
 }  // namespace attestation

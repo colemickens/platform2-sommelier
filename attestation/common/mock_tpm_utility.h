@@ -86,6 +86,7 @@ class MockTpmUtility : public TpmUtility {
   MOCK_CONST_METHOD2(ReadPCR, bool(int, std::string*));
   MOCK_METHOD2(GetRSAPublicKeyFromTpmPublicKey,
                bool(const std::string&, std::string*));
+  MOCK_METHOD0(RemoveOwnerDependency, bool());
 };
 
 }  // namespace attestation

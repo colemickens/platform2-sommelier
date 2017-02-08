@@ -324,6 +324,9 @@ void AttestationService::InitializeTask() {
     worker_thread_->task_runner()->PostTask(
         FROM_HERE, base::Bind(&AttestationService::PrepareForEnrollment,
                               base::Unretained(this)));
+  } else {
+    // Ignore errors. If failed this time, will be re-attempted on next boot.
+    tpm_utility_->RemoveOwnerDependency();
   }
 }
 
@@ -1277,6 +1280,9 @@ void AttestationService::PrepareForEnrollment() {
     LOG(ERROR) << "Attestation: Failed to write database.";
     return;
   }
+  // Ignore errors when removing dependency. If failed this time, will be
+  // re-attempted on next boot.
+  tpm_utility_->RemoveOwnerDependency();
   base::TimeDelta delta = (base::TimeTicks::Now() - start);
   LOG(INFO) << "Attestation: Prepared successfully (" << delta.InMilliseconds()
             << "ms).";

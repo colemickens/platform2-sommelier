@@ -91,6 +91,7 @@ class TpmUtilityV2 : public TpmUtility {
                std::string* pcr_value) const override;
   bool GetRSAPublicKeyFromTpmPublicKey(const std::string& tpm_public_key_object,
                                        std::string* public_key_der) override;
+  bool RemoveOwnerDependency() override;
 
  private:
   // Sends a request to tpm_managerd and waits for a response. The given

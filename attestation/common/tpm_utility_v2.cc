@@ -23,6 +23,7 @@
 #include <crypto/sha2.h>
 #include <openssl/rsa.h>
 
+#include "tpm_manager/common/tpm_manager_constants.h"
 #include "trunks/authorization_delegate.h"
 #include "trunks/error_codes.h"
 #include "trunks/tpm_generated.h"
@@ -866,6 +867,21 @@ bool TpmUtilityV2::GetEndorsementKey(KeyType key_type, TPM_HANDLE* key_handle) {
     return false;
   }
   endorsement_keys_[key_type] = *key_handle;
+  return true;
+}
+
+bool TpmUtilityV2::RemoveOwnerDependency() {
+  tpm_manager::RemoveOwnerDependencyReply reply;
+  tpm_manager::RemoveOwnerDependencyRequest request;
+  request.set_owner_dependency(tpm_manager::kTpmOwnerDependency_Attestation);
+  SendTpmManagerRequestAndWait(
+      base::Bind(&tpm_manager::TpmOwnershipInterface::RemoveOwnerDependency,
+                 base::Unretained(tpm_owner_), request),
+      &reply);
+  if (reply.status() != tpm_manager::STATUS_SUCCESS) {
+    LOG(WARNING) << __func__ << ": Failed to remove the dependency.";
+    return false;
+  }
   return true;
 }
 

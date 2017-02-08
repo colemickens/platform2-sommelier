@@ -21,6 +21,7 @@
 #include "attestation/common/tpm_utility_v2.h"
 #include "tpm_manager/common/mock_tpm_nvram_interface.h"
 #include "tpm_manager/common/mock_tpm_ownership_interface.h"
+#include "tpm_manager/common/tpm_manager_constants.h"
 #include "trunks/mock_blob_parser.h"
 #include "trunks/mock_tpm.h"
 #include "trunks/mock_tpm_utility.h"
@@ -73,6 +74,9 @@ class TpmUtilityTest : public testing::Test {
     ON_CALL(mock_tpm_owner_, GetTpmStatus(_, _))
         .WillByDefault(
             WithArg<1>(Invoke(this, &TpmUtilityTest::FakeGetTpmStatus)));
+    ON_CALL(mock_tpm_owner_, RemoveOwnerDependency(_, _))
+        .WillByDefault(Invoke(this,
+                              &TpmUtilityTest::FakeRemoveOwnerDependency));
     // Setup fake nvram.
     ON_CALL(mock_tpm_nvram_, ReadSpace(_, _))
         .WillByDefault(Invoke(this, &TpmUtilityTest::FakeReadSpace));
@@ -103,6 +107,14 @@ class TpmUtilityTest : public testing::Test {
     callback.Run(next_read_space_reply_);
   }
 
+  void FakeRemoveOwnerDependency(
+      const tpm_manager::RemoveOwnerDependencyRequest& request,
+      const tpm_manager::TpmOwnershipInterface::RemoveOwnerDependencyCallback&
+          callback) {
+    last_remove_dependency_request_ = request;
+    callback.Run(next_remove_dependency_reply_);
+  }
+
   trunks::TPMT_PUBLIC GetValidPublicKey(std::string* bytes_when_serialized) {
     trunks::TPMT_PUBLIC public_area;
     memset(&public_area, 0, sizeof(public_area));
@@ -120,6 +132,8 @@ class TpmUtilityTest : public testing::Test {
   tpm_manager::GetTpmStatusReply tpm_status_;
   tpm_manager::ReadSpaceRequest last_read_space_request_;
   tpm_manager::ReadSpaceReply next_read_space_reply_;
+  tpm_manager::RemoveOwnerDependencyRequest last_remove_dependency_request_;
+  tpm_manager::RemoveOwnerDependencyReply next_remove_dependency_reply_;
 
   NiceMock<tpm_manager::MockTpmOwnershipInterface> mock_tpm_owner_;
   NiceMock<tpm_manager::MockTpmNvramInterface> mock_tpm_nvram_;
@@ -494,6 +508,14 @@ TEST_F(TpmUtilityTest, GetRSAPublicKeyFromTpmPublicKey) {
 TEST_F(TpmUtilityTest, GetRSAPublicKeyFromTpmPublicKeyBadKey) {
   std::string der;
   EXPECT_FALSE(tpm_utility_->GetRSAPublicKeyFromTpmPublicKey("bad_key", &der));
+}
+
+TEST_F(TpmUtilityTest, RemoveOwnerDependency) {
+  EXPECT_TRUE(tpm_utility_->RemoveOwnerDependency());
+  EXPECT_EQ(tpm_manager::kTpmOwnerDependency_Attestation,
+            last_remove_dependency_request_.owner_dependency());
+  next_remove_dependency_reply_.set_status(tpm_manager::STATUS_DEVICE_ERROR);
+  EXPECT_FALSE(tpm_utility_->RemoveOwnerDependency());
 }
 
 }  // namespace attestation

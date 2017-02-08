@@ -85,6 +85,8 @@ MockTpmUtility::MockTpmUtility() {
   ON_CALL(*this, ReadPCR(_, _)).WillByDefault(Return(true));
   ON_CALL(*this, GetRSAPublicKeyFromTpmPublicKey(_, _))
       .WillByDefault(Return(true));
+  ON_CALL(*this, RemoveOwnerDependency())
+      .WillByDefault(Return(true));
 }
 
 MockTpmUtility::~MockTpmUtility() {}

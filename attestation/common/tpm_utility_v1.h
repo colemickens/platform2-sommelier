@@ -84,6 +84,7 @@ class TpmUtilityV1 : public TpmUtility {
                std::string* pcr_value) const override;
   bool GetRSAPublicKeyFromTpmPublicKey(const std::string& tpm_public_key_object,
                                        std::string* public_key_der) override;
+  bool RemoveOwnerDependency() override;
 
  private:
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with

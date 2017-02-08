@@ -154,6 +154,11 @@ class TpmUtility {
   virtual bool GetRSAPublicKeyFromTpmPublicKey(
       const std::string& tpm_public_key_object,
       std::string* public_key_der) = 0;
+
+  // Signals to remove Attestation dependency on owner password.
+  // Returns true if the dependency was removed this time, or it already has
+  // been removed earlier; false otherwise.
+  virtual bool RemoveOwnerDependency() = 0;
 };
 
 }  // namespace attestation
