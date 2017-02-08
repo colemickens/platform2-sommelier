@@ -44,11 +44,10 @@ class SambaInterface {
   // |user_principal_name| (format: user_name@workgroup.domain). If a TGT
   // already exists, it is renewed. The password must be readable from the pipe
   // referenced by the file descriptor |password_fd|. On success, the user's
-  // object GUID is returned in |account_id|. The GUID uniquely identifies
-  // the user's account.
+  // account information is returned in |account_info|.
   ErrorType AuthenticateUser(const std::string& user_principal_name,
                              int password_fd,
-                             std::string* account_id);
+                             protos::AccountInfo* account_info);
 
   // Joins the local device with name |machine_name| to an Active Directory
   // domain. A user principal name and password are required for authentication

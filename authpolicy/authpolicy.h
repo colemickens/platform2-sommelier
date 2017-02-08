@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <brillo/dbus/async_event_sequencer.h>
 #include <dbus/object_proxy.h>
@@ -44,11 +45,12 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
   void RegisterAsync(
       const AsyncEventSequencer::CompletionAction& completion_callback);
 
-  // org::chromium::AuthPolicyInterface: (see org.chromium.AuthPolicy.xml)
+  // org::chromium::AuthPolicyInterface: (see org.chromium.AuthPolicy.xml).
+  // |account_data_blob| is a serialized ActiveDirectoryAccountData protobuf.
   void AuthenticateUser(const std::string& user_principal_name,
                         const dbus::FileDescriptor& password_fd,
                         int32_t* error,
-                        std::string* account_id) override;
+                        std::vector<uint8_t>* account_data_blob) override;
 
   int32_t JoinADDomain(const std::string& machine_name,
                        const std::string& user_principal_name,

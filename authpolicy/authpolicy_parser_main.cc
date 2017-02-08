@@ -32,7 +32,6 @@
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/cloud_policy.pb.h"
 
-namespace ap = authpolicy::protos;
 namespace ai = authpolicy::internal;
 namespace em = enterprise_management;
 
@@ -136,16 +135,22 @@ int OutputForCaller(const std::string& str) {
 // Parses the output of net ads search to get the user's objectGUID and prints
 // it to stdout.
 int ParseAccountInfo(const std::string& net_out) {
-  std::string object_guid, sam_account_name;
+  std::string object_guid, sam_account_name, display_name, given_name;
   if (!ai::FindToken(net_out, ':', "objectGUID", &object_guid) ||
-      !ai::FindToken(net_out, ':', "sAMAccountName", &sam_account_name)) {
+      !ai::FindToken(net_out, ':', "sAMAccountName", &sam_account_name) ||
+      !ai::FindToken(net_out, ':', "displayName", &display_name) ||
+      !ai::FindToken(net_out, ':', "givenName", &given_name)) {
+    LOG(ERROR) << "Failed to parse account info";
     return EXIT_CODE_FIND_TOKEN_FAILED;
   }
 
   // Output data as proto blob.
-  ap::AccountInfo account_info_proto;
+  protos::AccountInfo account_info_proto;
   account_info_proto.set_object_guid(object_guid);
   account_info_proto.set_sam_account_name(sam_account_name);
+  account_info_proto.set_display_name(display_name);
+  account_info_proto.set_given_name(given_name);
+
   std::string account_info_blob;
   if (!account_info_proto.SerializeToString(&account_info_blob)) {
     LOG(ERROR) << "Failed to convert account info proto to string";
@@ -168,7 +173,7 @@ int ParseRealmInfo(const std::string& net_out) {
   size_t dot_pos = dc_name.find('.');
   dc_name = dc_name.substr(0, dot_pos);
 
-  ap::RealmInfo realm_info_proto;
+  protos::RealmInfo realm_info_proto;
   realm_info_proto.set_dc_name(dc_name);
   realm_info_proto.set_kdc_ip(kdc_ip);
   std::string realm_info_blob;
@@ -271,7 +276,7 @@ int ParseGpoList(const std::string& net_out, PolicyScope scope) {
   }
 
   // Convert to proto.
-  ap::GpoList gpo_list_proto;
+  protos::GpoList gpo_list_proto;
   for (const GpoEntry& gpo : gpo_list) {
     // Split the filesyspath, e.g.
     //   \\chrome.lan\SysVol\chrome.lan\Policies\{3507856D-...-CF144DC5CC3A}
@@ -292,7 +297,7 @@ int ParseGpoList(const std::string& net_out, PolicyScope scope) {
         std::vector<std::string>(file_parts.begin() + 4, file_parts.end());
     std::string directory = base::JoinString(file_parts, "\\");
 
-    ap::GpoEntry* gpo_proto = gpo_list_proto.add_entries();
+    protos::GpoEntry* gpo_proto = gpo_list_proto.add_entries();
     gpo_proto->set_name(gpo.name);
     gpo_proto->set_basepath(basepath);
     gpo_proto->set_directory(directory);
@@ -309,10 +314,10 @@ int ParseGpoList(const std::string& net_out, PolicyScope scope) {
 
 // Parses a set of GPO files and assembles a user or device policy proto. Writes
 // the serialized policy blob to stdout. |gpo_file_paths_blob| is expected to be
-// a serialized |ap::FilePathList| proto blob.
+// a serialized |protos::FilePathList| proto blob.
 int ParsePreg(const std::string& gpo_file_paths_blob, PolicyScope scope) {
   // Parse FilePathList proto blob.
-  ap::FilePathList gpo_file_paths_proto;
+  protos::FilePathList gpo_file_paths_proto;
   if (!gpo_file_paths_proto.ParseFromString(gpo_file_paths_blob)) {
     LOG(ERROR) << "Failed to parse file paths blob";
     return EXIT_CODE_READ_INPUT_FAILED;

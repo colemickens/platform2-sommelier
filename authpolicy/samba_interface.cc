@@ -26,7 +26,6 @@
 #include "bindings/authpolicy_containers.pb.h"
 
 namespace ai = authpolicy::internal;
-namespace ap = authpolicy::protos;
 
 namespace authpolicy {
 namespace {
@@ -550,7 +549,7 @@ ErrorType SambaInterface::ReadConfiguration() {
     return ERROR_LOCAL_IO;
   }
 
-  auto config = base::MakeUnique<ap::ActiveDirectoryConfig>();
+  auto config = base::MakeUnique<protos::ActiveDirectoryConfig>();
   if (!config->ParseFromString(config_blob)) {
     LOG(ERROR) << "Failed to parse configuration from string";
     return ERROR_LOCAL_IO;
@@ -567,8 +566,8 @@ ErrorType SambaInterface::ReadConfiguration() {
   return ERROR_NONE;
 }
 
-ErrorType SambaInterface::GetAccountInfo(const std::string& search_string,
-                                         ap::AccountInfo* account_info) const {
+ErrorType SambaInterface::GetAccountInfo(
+    const std::string& search_string, protos::AccountInfo* account_info) const {
   // Call net ads search to find the user's account info.
   ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "search",
                            search_string, "-s", paths_->Get(Path::SMB_CONF)});
@@ -597,7 +596,7 @@ ErrorType SambaInterface::GetAccountInfo(const std::string& search_string,
 
 ErrorType SambaInterface::GetGpoList(const std::string& user_or_machine_name,
                                      PolicyScope scope,
-                                     ap::GpoList* gpo_list) const {
+                                     protos::GpoList* gpo_list) const {
   DCHECK(gpo_list);
   LOG(INFO) << "Getting GPO list for " << user_or_machine_name;
 
@@ -640,7 +639,7 @@ struct GpoPaths {
 };
 
 ErrorType SambaInterface::DownloadGpos(
-    const ap::GpoList& gpo_list,
+    const protos::GpoList& gpo_list,
     const std::string& domain_controller_name,
     PolicyScope scope,
     std::vector<base::FilePath>* gpo_file_paths) const {
@@ -656,7 +655,7 @@ ErrorType SambaInterface::DownloadGpos(
   std::string gpo_basepath;
   std::vector<GpoPaths> gpo_paths;
   for (int entry_idx = 0; entry_idx < gpo_list.entries_size(); ++entry_idx) {
-    const ap::GpoEntry& gpo = gpo_list.entries(entry_idx);
+    const protos::GpoEntry& gpo = gpo_list.entries(entry_idx);
 
     // Security check, make sure nobody sneaks in smbclient commands.
     if (gpo.basepath().find(';') != std::string::npos ||
@@ -800,7 +799,7 @@ ErrorType SambaInterface::ParseGposIntoProtobuf(
     std::string* policy_blob) const {
   // Convert file paths to proto blob.
   std::string gpo_file_paths_blob;
-  ap::FilePathList fp_proto;
+  protos::FilePathList fp_proto;
   for (const auto& fp : gpo_file_paths)
     *fp_proto.add_entries() = fp.value();
   if (!fp_proto.SerializeToString(&gpo_file_paths_blob)) {
@@ -870,7 +869,7 @@ ErrorType SambaInterface::Initialize(bool expect_config) {
 ErrorType SambaInterface::AuthenticateUser(
     const std::string& user_principal_name,
     int password_fd,
-    std::string* account_id) {
+    protos::AccountInfo* account_info) {
   // Split user_principal_name into parts and normalize.
   std::string user_name, realm, workgroup, normalized_upn;
   if (!ai::ParseUserPrincipalName(user_principal_name, &user_name, &realm,
@@ -884,7 +883,7 @@ ErrorType SambaInterface::AuthenticateUser(
     return error;
 
   // Make sure we have realm info.
-  ap::RealmInfo realm_info;
+  protos::RealmInfo realm_info;
   error = GetRealmInfo(&realm_info);
   if (error != ERROR_NONE)
     return error;
@@ -926,25 +925,24 @@ ErrorType SambaInterface::AuthenticateUser(
   // sAMAccountName or userPrincipalName (the two can be different!). Search by
   // sAMAccountName first since that's what kinit/Windows prefer. If that fails,
   // search by userPrincipalName.
-  ap::AccountInfo account_info;
   std::string search_string =
       base::StringPrintf("(sAMAccountName=%s)", user_name.c_str());
-  error = GetAccountInfo(search_string, &account_info);
+  error = GetAccountInfo(search_string, account_info);
   if (error == ERROR_PARSE_FAILED) {
     LOG(WARNING) << "Object GUID not found by sAMAccountName. "
                  << "Trying userPrincipalName.";
     search_string =
         base::StringPrintf("(userPrincipalName=%s)", normalized_upn.c_str());
-    error = GetAccountInfo(search_string, &account_info);
+    error = GetAccountInfo(search_string, account_info);
   }
   if (error != ERROR_NONE)
     return error;
-  *account_id = account_info.object_guid();
 
   // Store sAMAccountName for policy fetch. Note that net ads gpo list always
   // wants the sAMAccountName.
-  const std::string account_id_key(kActiveDirectoryPrefix + *account_id);
-  user_id_name_map_[account_id_key] = account_info.sam_account_name();
+  const std::string account_id_key(kActiveDirectoryPrefix +
+                                   account_info->object_guid());
+  user_id_name_map_[account_id_key] = account_info->sam_account_name();
   return ERROR_NONE;
 }
 
@@ -961,7 +959,7 @@ ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
   // Wipe and (re-)create config. Note that all session data is wiped to make
   // testing easier.
   Reset();
-  config_ = base::MakeUnique<ap::ActiveDirectoryConfig>();
+  config_ = base::MakeUnique<protos::ActiveDirectoryConfig>();
   config_->set_machine_name(base::ToUpperASCII(machine_name));
   config_->set_realm(realm);
 
@@ -1019,7 +1017,7 @@ ErrorType SambaInterface::FetchUserGpos(const std::string& account_id_key,
     return error;
 
   // Make sure we have the domain controller name.
-  ap::RealmInfo realm_info;
+  protos::RealmInfo realm_info;
   error = GetRealmInfo(&realm_info);
   if (error != ERROR_NONE)
     return error;
@@ -1028,7 +1026,7 @@ ErrorType SambaInterface::FetchUserGpos(const std::string& account_id_key,
   // to do that here since we're reusing the TGT generated in AuthenticateUser.
 
   // Get the list of GPOs for the given user name.
-  ap::GpoList gpo_list;
+  protos::GpoList gpo_list;
   error = GetGpoList(sam_account_name, PolicyScope::USER, &gpo_list);
   if (error != ERROR_NONE)
     return error;
@@ -1055,7 +1053,7 @@ ErrorType SambaInterface::FetchDeviceGpos(std::string* policy_blob) {
     return error;
 
   // Get realm info.
-  ap::RealmInfo realm_info;
+  protos::RealmInfo realm_info;
   error = GetRealmInfo(&realm_info);
   if (error != ERROR_NONE)
     return error;
@@ -1114,7 +1112,7 @@ ErrorType SambaInterface::FetchDeviceGpos(std::string* policy_blob) {
     return error;
 
   // Get the list of GPOs for the machine.
-  ap::GpoList gpo_list;
+  protos::GpoList gpo_list;
   error = GetGpoList(config_->machine_name() + "$", PolicyScope::MACHINE,
                      &gpo_list);
   if (error != ERROR_NONE)

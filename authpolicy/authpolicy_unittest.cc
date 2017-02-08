@@ -189,10 +189,10 @@ TEST_F(AuthPolicyTest, UserPolicyFailsNotLoggedIn) {
 // Authentication fails if the machine is not joined.
 TEST_F(AuthPolicyTest, AuthFailsNotJoined) {
   int32_t error = ERROR_NONE;
-  std::string account_id;
+  std::vector<uint8_t> account_data_blob;
   authpolicy_->AuthenticateUser(
-      kUserPrincipal, password_fd_, &error, &account_id);
-  EXPECT_TRUE(account_id.empty());
+      kUserPrincipal, password_fd_, &error, &account_data_blob);
+  EXPECT_TRUE(account_data_blob.empty());
   EXPECT_EQ(ERROR_NOT_JOINED, error);
 }
 

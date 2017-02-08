@@ -15,10 +15,10 @@
 
 #include "authpolicy/authpolicy_metrics.h"
 #include "authpolicy/path_service.h"
+#include "authpolicy/proto_bindings/active_directory_account_data.pb.h"
 #include "authpolicy/samba_interface.h"
 #include "bindings/device_management_backend.pb.h"
 
-namespace ap = authpolicy::protos;
 namespace em = enterprise_management;
 
 using brillo::dbus_utils::DBusObject;
@@ -90,12 +90,26 @@ void AuthPolicy::RegisterAsync(
 void AuthPolicy::AuthenticateUser(const std::string& user_principal_name,
                                   const dbus::FileDescriptor& password_fd,
                                   int32_t* int_error,
-                                  std::string* account_id) {
+                                  std::vector<uint8_t>* account_data_blob) {
   LOG(INFO) << "Received 'AuthenticateUser' request";
   ScopedTimerReporter timer(TIMER_AUTHENTICATE_USER);
 
+  protos::AccountInfo account_info;
   ErrorType error = samba_.AuthenticateUser(
-      user_principal_name, password_fd.value(), account_id);
+      user_principal_name, password_fd.value(), &account_info);
+  if (error == ERROR_NONE) {
+    authpolicy::ActiveDirectoryAccountData account_data;
+    account_data.set_account_id(account_info.object_guid());
+    account_data.set_display_name(account_info.display_name());
+    account_data.set_given_name(account_info.given_name());
+    std::string buffer;
+    if (!account_data.SerializeToString(&buffer)) {
+      LOG(ERROR) << "Failed to serialize account data";
+      error = ERROR_PARSE_FAILED;
+    } else {
+      account_data_blob->assign(buffer.begin(), buffer.end());
+    }
+  }
   PrintError("AuthenticateUser", error);
   metrics_->ReportDBusResult(DBUS_CALL_AUTHENTICATE_USER, error);
   *int_error = static_cast<int>(error);
