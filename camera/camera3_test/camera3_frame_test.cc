@@ -46,7 +46,7 @@ int32_t Camera3FrameFixture::CreateCaptureRequest(int32_t type) {
       .frame_number = request_frame_number_,
       .settings = default_settings,
       .input_buffer = NULL,
-      .num_output_buffers = output_buffers.size(),
+      .num_output_buffers = static_cast<uint32_t>(output_buffers.size()),
       .output_buffers = output_buffers.data()};
 
   // Process capture request
