@@ -7,6 +7,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
@@ -328,7 +329,7 @@ bool Manager::UpdateDeviceInfo(brillo::ErrorPtr* brillo_error,
   parameters->SetString("name", name);
   parameters->SetString("description", description);
   parameters->SetString("location", location);
-  command.Set("parameters", parameters.release());
+  command.Set("parameters", std::move(parameters));
 
   std::string id;
   weave::ErrorPtr weave_error;

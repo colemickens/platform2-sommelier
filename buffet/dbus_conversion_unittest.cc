@@ -65,8 +65,7 @@ std::unique_ptr<base::DictionaryValue> CreateRandomDictionary(int children) {
   while (children > 0) {
     int sub_children = base::RandInt(1, children);
     children -= sub_children;
-    result->Set(base::GenerateGUID(),
-                CreateRandomValue(sub_children).release());
+    result->Set(base::GenerateGUID(), CreateRandomValue(sub_children));
   }
 
   return result;
@@ -83,7 +82,7 @@ std::unique_ptr<base::ListValue> CreateRandomList(int children) {
             : children;
     size_t sub_children = base::RandInt(1, max_children);
     children -= sub_children;
-    result->Append(CreateRandomValue(sub_children, type).release());
+    result->Append(CreateRandomValue(sub_children, type));
   }
 
   return result;

@@ -5,6 +5,8 @@
 #ifndef BUFFET_DBUS_CONVERSION_H_
 #define BUFFET_DBUS_CONVERSION_H_
 
+#include <memory>
+
 #include <base/values.h>
 #include <brillo/any.h>
 #include <brillo/errors/error.h>

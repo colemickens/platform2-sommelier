@@ -6,6 +6,7 @@
 
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <brillo/type_name_undecorate.h>
@@ -157,7 +158,7 @@ std::unique_ptr<base::ListValue> CreateListValue(const std::vector<T>& value,
     auto item = CreateValue(i, error);
     if (!item)
       return nullptr;
-    list->Append(item.release());
+    list->Append(std::move(item));
   }
 
   return list;
@@ -237,7 +238,7 @@ std::unique_ptr<base::DictionaryValue> DictionaryFromDBusVariantDictionary(
     auto value = CreateValue(pair.second, error);
     if (!value)
       return nullptr;
-    result->Set(pair.first, value.release());
+    result->Set(pair.first, std::move(value));
   }
 
   return result;
