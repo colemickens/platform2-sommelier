@@ -111,6 +111,10 @@ class BinderService : public brillo::Daemon {
         const std::vector<uint8_t>& command_proto,
         const android::sp<android::tpm_manager::ITpmManagerClient>& client)
         override;
+    android::binder::Status ClearStoredOwnerPassword(
+        const std::vector<uint8_t>& command_proto,
+        const android::sp<android::tpm_manager::ITpmManagerClient>& client)
+        override;
 
    private:
     TpmOwnershipInterface* ownership_service_;

@@ -78,6 +78,12 @@ void DBusService::RegisterDBusObjectsAsync(
           RemoveOwnerDependencyRequest, RemoveOwnerDependencyReply,
           &TpmOwnershipInterface::RemoveOwnerDependency>);
 
+  ownership_dbus_interface->AddMethodHandler(
+      kClearStoredOwnerPassword, base::Unretained(this),
+      &DBusService::HandleOwnershipDBusMethod<
+          ClearStoredOwnerPasswordRequest, ClearStoredOwnerPasswordReply,
+          &TpmOwnershipInterface::ClearStoredOwnerPassword>);
+
   brillo::dbus_utils::DBusInterface* nvram_dbus_interface =
       dbus_object_->AddOrGetInterface(kTpmNvramInterface);
 

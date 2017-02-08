@@ -50,6 +50,7 @@ namespace tpm_manager {
 constexpr char kGetTpmStatusCommand[] = "status";
 constexpr char kTakeOwnershipCommand[] = "take_ownership";
 constexpr char kRemoveOwnerDependencyCommand[] = "remove_dependency";
+constexpr char kClearStoredOwnerPasswordCommand[] = "clear_owner_password";
 constexpr char kDefineSpaceCommand[] = "define_space";
 constexpr char kDestroySpaceCommand[] = "destroy_space";
 constexpr char kWriteSpaceCommand[] = "write_space";
@@ -78,6 +79,8 @@ Commands:
       Takes ownership of the Tpm with a random password.
   remove_dependency --dependency=<owner_dependency>
       Removes the named Tpm owner dependency. E.g. \"Nvram\" or \"Attestation\".
+  clear_owner_password
+      Clears stored owner password if all dependencies have been removed.
   define_space --index=<index> --size=<size> [--attributes=<attribute_list>]
                [--password=<password>] [--bind_to_pcr0]
       Defines an NV space. The attribute format is a '|' separated list of:
@@ -228,6 +231,9 @@ class ClientLoop : public ClientLoopBase {
       task = base::Bind(&ClientLoop::HandleRemoveOwnerDependency,
                         weak_factory_.GetWeakPtr(),
                         command_line->GetSwitchValueASCII(kDependencySwitch));
+    } else if (command == kClearStoredOwnerPasswordCommand) {
+      task = base::Bind(&ClientLoop::HandleClearStoredOwnerPassword,
+                        weak_factory_.GetWeakPtr());
     } else if (command == kDefineSpaceCommand) {
       if (!command_line->HasSwitch(kIndexSwitch) ||
           !command_line->HasSwitch(kSizeSwitch)) {
@@ -326,6 +332,15 @@ class ClientLoop : public ClientLoopBase {
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<RemoveOwnerDependencyReply>,
                    weak_factory_.GetWeakPtr()));
+  }
+
+  void HandleClearStoredOwnerPassword() {
+    ClearStoredOwnerPasswordRequest request;
+    tpm_ownership_->ClearStoredOwnerPassword(
+        request,
+        base::Bind(
+            &ClientLoop::PrintReplyAndQuit<ClearStoredOwnerPasswordReply>,
+            weak_factory_.GetWeakPtr()));
   }
 
   bool DecodeAttribute(const std::string& attribute_str,

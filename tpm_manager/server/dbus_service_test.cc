@@ -166,6 +166,23 @@ TEST_F(DBusServiceTest, RemoveOwnerDependency) {
   EXPECT_EQ(STATUS_SUCCESS, reply.status());
 }
 
+TEST_F(DBusServiceTest, ClearStoredOwnerPassword) {
+  ClearStoredOwnerPasswordRequest request;
+  EXPECT_CALL(mock_ownership_service_, ClearStoredOwnerPassword(_, _))
+      .WillOnce(Invoke([](
+          const ClearStoredOwnerPasswordRequest& request,
+          const TpmOwnershipInterface::ClearStoredOwnerPasswordCallback&
+              callback) {
+        ClearStoredOwnerPasswordReply reply;
+        reply.set_status(STATUS_SUCCESS);
+        callback.Run(reply);
+      }));
+  ClearStoredOwnerPasswordReply reply;
+  ExecuteMethod(kClearStoredOwnerPassword, request, &reply,
+                kTpmOwnershipInterface);
+  EXPECT_EQ(STATUS_SUCCESS, reply.status());
+}
+
 TEST_F(DBusServiceTest, DefineSpace) {
   uint32_t nvram_index = 5;
   size_t nvram_length = 32;

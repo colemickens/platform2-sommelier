@@ -25,6 +25,7 @@ constexpr char kTpmOwnershipInterface[] = "org.chromium.TpmOwnership";
 constexpr char kGetTpmStatus[] = "GetTpmStatus";
 constexpr char kTakeOwnership[] = "TakeOwnership";
 constexpr char kRemoveOwnerDependency[] = "RemoveOwnerDependency";
+constexpr char kClearStoredOwnerPassword[] = "ClearStoredOwnerPassword";
 
 }  // namespace tpm_manager
 

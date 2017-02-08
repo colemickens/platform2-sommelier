@@ -235,4 +235,18 @@ BinderService::OwnershipServiceInternal::RemoveOwnerDependency(
   return android::binder::Status::ok();
 }
 
+android::binder::Status
+BinderService::OwnershipServiceInternal::ClearStoredOwnerPassword(
+    const std::vector<uint8_t>& command_proto,
+    const android::sp<android::tpm_manager::ITpmManagerClient>& client) {
+  RequestHandler<ClearStoredOwnerPasswordRequest,
+                 ClearStoredOwnerPasswordReply>(
+      command_proto,
+      base::Bind(&TpmOwnershipInterface::ClearStoredOwnerPassword,
+                 base::Unretained(ownership_service_)),
+      base::Bind(CreateOwnershipErrorResponse<ClearStoredOwnerPasswordReply>),
+      client);
+  return android::binder::Status::ok();
+}
+
 }  // namespace tpm_manager

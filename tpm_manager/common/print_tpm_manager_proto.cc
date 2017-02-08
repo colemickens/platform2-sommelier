@@ -815,4 +815,41 @@ std::string GetProtoDebugStringWithIndent(
   return output;
 }
 
+std::string GetProtoDebugString(const ClearStoredOwnerPasswordRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const ClearStoredOwnerPasswordRequest& value,
+    int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const ClearStoredOwnerPasswordReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const ClearStoredOwnerPasswordReply& value,
+    int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
 }  // namespace tpm_manager

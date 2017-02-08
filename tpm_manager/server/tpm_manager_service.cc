@@ -20,6 +20,22 @@
 #include <base/command_line.h>
 #include <brillo/bind_lambda.h>
 
+namespace {
+
+// Clears owner password in |local_data| if all dependencies have been removed
+// and it has not yet been cleared.
+// Returns true if |local_data| has been modified, false otherwise.
+bool ClearOwnerPasswordIfPossible(tpm_manager::LocalData* local_data) {
+  if (local_data->has_owner_password() &&
+      local_data->owner_dependency().empty()) {
+    local_data->clear_owner_password();
+    return true;
+  }
+  return false;
+}
+
+}  // namespace
+
 namespace tpm_manager {
 
 TpmManagerService::TpmManagerService(bool wait_for_ownership)
@@ -164,6 +180,9 @@ void TpmManagerService::RemoveOwnerDependencyTask(
     return;
   }
   RemoveOwnerDependencyFromLocalData(request.owner_dependency(), &local_data);
+  if (auto_clear_stored_owner_password_) {
+    ClearOwnerPasswordIfPossible(&local_data);
+  }
   if (!local_data_store_->Write(local_data)) {
     reply->set_status(STATUS_DEVICE_ERROR);
     return;
@@ -183,11 +202,31 @@ void TpmManagerService::RemoveOwnerDependencyFromLocalData(
       break;
     }
   }
-  if (dependencies->empty()) {
-    local_data->clear_owner_password();
-    local_data->clear_endorsement_password();
-    local_data->clear_lockout_password();
+}
+
+void TpmManagerService::ClearStoredOwnerPassword(
+    const ClearStoredOwnerPasswordRequest& request,
+    const ClearStoredOwnerPasswordCallback& callback) {
+  PostTaskToWorkerThread<ClearStoredOwnerPasswordReply>(
+      request, callback, &TpmManagerService::ClearStoredOwnerPasswordTask);
+}
+
+void TpmManagerService::ClearStoredOwnerPasswordTask(
+    const ClearStoredOwnerPasswordRequest& request,
+    const std::shared_ptr<ClearStoredOwnerPasswordReply>& reply) {
+  VLOG(1) << __func__;
+  LocalData local_data;
+  if (!local_data_store_->Read(&local_data)) {
+    reply->set_status(STATUS_DEVICE_ERROR);
+    return;
   }
+  if (ClearOwnerPasswordIfPossible(&local_data)) {
+    if (!local_data_store_->Write(local_data)) {
+      reply->set_status(STATUS_DEVICE_ERROR);
+      return;
+    }
+  }
+  reply->set_status(STATUS_SUCCESS);
 }
 
 void TpmManagerService::DefineSpace(const DefineSpaceRequest& request,

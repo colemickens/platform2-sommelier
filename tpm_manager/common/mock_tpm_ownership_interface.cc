@@ -40,6 +40,9 @@ MockTpmOwnershipInterface::MockTpmOwnershipInterface() {
   ON_CALL(*this, RemoveOwnerDependency(_, _))
       .WillByDefault(
           WithArgs<1>(Invoke(RunCallback<RemoveOwnerDependencyReply>)));
+  ON_CALL(*this, ClearStoredOwnerPassword(_, _))
+      .WillByDefault(
+          WithArgs<1>(Invoke(RunCallback<ClearStoredOwnerPasswordReply>)));
 }
 
 MockTpmOwnershipInterface::~MockTpmOwnershipInterface() {}

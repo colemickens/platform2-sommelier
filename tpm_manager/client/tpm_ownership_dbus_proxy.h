@@ -52,6 +52,9 @@ class TPM_MANAGER_EXPORT TpmOwnershipDBusProxy : public TpmOwnershipInterface {
   void RemoveOwnerDependency(
       const RemoveOwnerDependencyRequest& request,
       const RemoveOwnerDependencyCallback& callback) override;
+  void ClearStoredOwnerPassword(
+      const ClearStoredOwnerPasswordRequest& request,
+      const ClearStoredOwnerPasswordCallback& callback) override;
 
   void set_object_proxy(dbus::ObjectProxy* object_proxy) {
     object_proxy_ = object_proxy;

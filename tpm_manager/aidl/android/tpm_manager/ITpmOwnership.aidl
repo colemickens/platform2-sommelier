@@ -26,4 +26,6 @@ interface ITpmOwnership {
                             in ITpmManagerClient client);
   oneway void RemoveOwnerDependency(in byte[] command_proto,
                                     in ITpmManagerClient client);
+  oneway void ClearStoredOwnerPassword(in byte[] command_proto,
+                                       in ITpmManagerClient client);
 }

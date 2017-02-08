@@ -93,4 +93,17 @@ void TpmOwnershipBinderProxy::RemoveOwnerDependency(
   helper.SendRequest(request);
 }
 
+void TpmOwnershipBinderProxy::ClearStoredOwnerPassword(
+    const ClearStoredOwnerPasswordRequest& request,
+    const ClearStoredOwnerPasswordCallback& callback) {
+  auto method = base::Bind(&ITpmOwnership::ClearStoredOwnerPassword,
+                           base::Unretained(binder_));
+  auto get_error =
+      base::Bind(&CreateErrorResponse<ClearStoredOwnerPasswordReply>);
+  BinderProxyHelper<ClearStoredOwnerPasswordRequest,
+                    ClearStoredOwnerPasswordReply>helper(method, callback,
+                                                         get_error);
+  helper.SendRequest(request);
+}
+
 }  // namespace tpm_manager

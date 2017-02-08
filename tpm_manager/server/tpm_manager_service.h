@@ -95,6 +95,9 @@ class TpmManagerService : public TpmNvramInterface,
   void RemoveOwnerDependency(
       const RemoveOwnerDependencyRequest& request,
       const RemoveOwnerDependencyCallback& callback) override;
+  void ClearStoredOwnerPassword(
+      const ClearStoredOwnerPasswordRequest& request,
+      const ClearStoredOwnerPasswordCallback& callback) override;
 
   // TpmNvramInterface methods.
   void DefineSpace(const DefineSpaceRequest& request,
@@ -160,6 +163,12 @@ class TpmManagerService : public TpmNvramInterface,
       const std::string& owner_dependency,
       LocalData* local_data);
 
+  // Blocking implementation of ClearStoredOwnerPassword that can be executed
+  // on the background worker thread.
+  void ClearStoredOwnerPasswordTask(
+      const ClearStoredOwnerPasswordRequest& request,
+      const std::shared_ptr<ClearStoredOwnerPasswordReply>& result);
+
   // Blocking implementation of DefineSpace that can be executed on the
   // background worker thread.
   void DefineSpaceTask(const DefineSpaceRequest& request,
@@ -217,6 +226,9 @@ class TpmManagerService : public TpmNvramInterface,
   std::unique_ptr<TpmNvramImpl> default_tpm_nvram_;
 #endif
 
+  // Whether to clear the stored owner password automatically upon removing all
+  // dependencies.
+  bool auto_clear_stored_owner_password_ = false;
   // Whether to wait for an explicit call to 'TakeOwnership' before initializing
   // the TPM. Normally tracks the --wait_for_ownership command line option.
   bool wait_for_ownership_;

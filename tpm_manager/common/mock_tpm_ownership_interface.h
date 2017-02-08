@@ -37,6 +37,9 @@ class MockTpmOwnershipInterface : public TpmOwnershipInterface {
   MOCK_METHOD2(RemoveOwnerDependency,
                void(const RemoveOwnerDependencyRequest& request,
                     const RemoveOwnerDependencyCallback& callback));
+  MOCK_METHOD2(ClearStoredOwnerPassword,
+               void(const ClearStoredOwnerPasswordRequest& request,
+                    const ClearStoredOwnerPasswordCallback& callback));
 };
 
 }  // namespace tpm_manager

@@ -150,4 +150,35 @@ TEST_F(TpmOwnershipDBusProxyTest, RemoveOwnerDependency) {
   EXPECT_EQ(1, callback_count);
 }
 
+TEST_F(TpmOwnershipDBusProxyTest, ClearStoredOwnerPassword) {
+  auto fake_dbus_call = [](
+      dbus::MethodCall* method_call,
+      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
+    // Verify request protobuf.
+    dbus::MessageReader reader(method_call);
+    ClearStoredOwnerPasswordRequest request;
+    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request));
+    // Create reply protobuf.
+    auto response = dbus::Response::CreateEmpty();
+    dbus::MessageWriter writer(response.get());
+    ClearStoredOwnerPasswordReply reply;
+    reply.set_status(STATUS_SUCCESS);
+    writer.AppendProtoAsArrayOfBytes(reply);
+    response_callback.Run(response.get());
+  };
+  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
+
+  // Set expectations on the outputs.
+  int callback_count = 0;
+  auto callback =
+      [&callback_count](const ClearStoredOwnerPasswordReply& reply) {
+    callback_count++;
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  };
+  ClearStoredOwnerPasswordRequest request;
+  proxy_.ClearStoredOwnerPassword(request, base::Bind(callback));
+  EXPECT_EQ(1, callback_count);
+}
+
 }  // namespace tpm_manager

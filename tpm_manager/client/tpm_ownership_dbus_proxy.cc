@@ -66,6 +66,13 @@ void TpmOwnershipDBusProxy::RemoveOwnerDependency(
                                          request, callback);
 }
 
+void TpmOwnershipDBusProxy::ClearStoredOwnerPassword(
+    const ClearStoredOwnerPasswordRequest& request,
+    const ClearStoredOwnerPasswordCallback& callback) {
+  CallMethod<ClearStoredOwnerPasswordReply>(
+      tpm_manager::kClearStoredOwnerPassword, request, callback);
+}
+
 template <typename ReplyProtobufType,
           typename RequestProtobufType,
           typename CallbackType>

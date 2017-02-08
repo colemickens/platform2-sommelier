@@ -104,6 +104,14 @@ std::string GetProtoDebugStringWithIndent(
     const RemoveOwnerDependencyReply& value,
     int indent_size);
 std::string GetProtoDebugString(const RemoveOwnerDependencyReply& value);
+std::string GetProtoDebugStringWithIndent(
+    const ClearStoredOwnerPasswordRequest& value,
+    int indent_size);
+std::string GetProtoDebugString(const ClearStoredOwnerPasswordRequest& value);
+std::string GetProtoDebugStringWithIndent(
+    const ClearStoredOwnerPasswordReply& value,
+    int indent_size);
+std::string GetProtoDebugString(const ClearStoredOwnerPasswordReply& value);
 
 }  // namespace tpm_manager
 

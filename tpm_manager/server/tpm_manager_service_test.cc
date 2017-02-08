@@ -294,7 +294,7 @@ TEST_F(TpmManagerServiceTest, RemoveOwnerDependencyCleared) {
   auto callback = [this, &local_data](const RemoveOwnerDependencyReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ(0, local_data.owner_dependency_size());
-    EXPECT_FALSE(local_data.has_owner_password());
+    EXPECT_TRUE(local_data.has_owner_password());
     Quit();
   };
   RemoveOwnerDependencyRequest request;
@@ -322,6 +322,75 @@ TEST_F(TpmManagerServiceTest, RemoveOwnerDependencyNotPresent) {
   RemoveOwnerDependencyRequest request;
   request.set_owner_dependency(kOtherDependency);
   service_->RemoveOwnerDependency(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(TpmManagerServiceTest, ClearStoredOwnerPasswordReadFailure) {
+  EXPECT_CALL(mock_local_data_store_, Read(_)).WillRepeatedly(Return(false));
+  auto callback = [this](const ClearStoredOwnerPasswordReply& reply) {
+    EXPECT_EQ(STATUS_DEVICE_ERROR, reply.status());
+    Quit();
+  };
+  ClearStoredOwnerPasswordRequest request;
+  service_->ClearStoredOwnerPassword(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(TpmManagerServiceTest, ClearStoredOwnerPasswordWriteFailure) {
+  LocalData local_data;
+  local_data.set_owner_password(kOwnerPassword);
+  EXPECT_CALL(mock_local_data_store_, Read(_))
+      .WillOnce(DoAll(SetArgPointee<0>(local_data), Return(true)));
+  EXPECT_CALL(mock_local_data_store_, Write(_)).WillRepeatedly(Return(false));
+  auto callback = [this](const ClearStoredOwnerPasswordReply& reply) {
+    EXPECT_EQ(STATUS_DEVICE_ERROR, reply.status());
+    Quit();
+  };
+  ClearStoredOwnerPasswordRequest request;
+  service_->ClearStoredOwnerPassword(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(TpmManagerServiceTest, ClearStoredOwnerPasswordRemainingDependencies) {
+  LocalData local_data;
+  local_data.set_owner_password(kOwnerPassword);
+  local_data.add_owner_dependency(kOwnerDependency);
+  local_data.add_owner_dependency(kOtherDependency);
+  EXPECT_CALL(mock_local_data_store_, Read(_))
+      .WillOnce(DoAll(SetArgPointee<0>(local_data), Return(true)));
+  EXPECT_CALL(mock_local_data_store_, Write(_))
+      .Times(0);
+  auto callback =
+      [this, &local_data](const ClearStoredOwnerPasswordReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(local_data.has_owner_password());
+    EXPECT_EQ(kOwnerPassword, local_data.owner_password());
+    Quit();
+  };
+  ClearStoredOwnerPasswordRequest request;
+  service_->ClearStoredOwnerPassword(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(TpmManagerServiceTest, ClearStoredOwnerPasswordNoDependencies) {
+  LocalData local_data;
+  local_data.set_owner_password(kOwnerPassword);
+  local_data.set_endorsement_password("endorsement password");
+  local_data.set_lockout_password("lockout password");
+  EXPECT_CALL(mock_local_data_store_, Read(_))
+      .WillOnce(DoAll(SetArgPointee<0>(local_data), Return(true)));
+  EXPECT_CALL(mock_local_data_store_, Write(_))
+      .WillOnce(DoAll(SaveArg<0>(&local_data), Return(true)));
+  auto callback =
+      [this, &local_data](const ClearStoredOwnerPasswordReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(local_data.has_owner_password());
+    EXPECT_TRUE(local_data.has_endorsement_password());
+    EXPECT_TRUE(local_data.has_lockout_password());
+    Quit();
+  };
+  ClearStoredOwnerPasswordRequest request;
+  service_->ClearStoredOwnerPassword(request, base::Bind(callback));
   Run();
 }
 

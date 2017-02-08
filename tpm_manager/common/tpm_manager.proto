@@ -120,8 +120,8 @@ message NvramPolicyRecord {
 // When TPM ownership is taken, this protobuf is populated with the passwords
 // used to take ownership, and with a list of clients who have a dependency on
 // the owner password (like Attestation, InstallAttributes and BootLockbox).
-// when all the clients have the owner password injected, this protobuf is
-// cleared of all passwords.
+// When all the clients have the owner password injected, the owner password
+// is cleared from this protobuf.
 message LocalData {
   optional bytes owner_password = 2;
   repeated string owner_dependency = 3;
@@ -244,5 +244,12 @@ message RemoveOwnerDependencyRequest {
 }
 
 message RemoveOwnerDependencyReply {
+  optional TpmManagerStatus status = 1;
+}
+
+message ClearStoredOwnerPasswordRequest {
+}
+
+message ClearStoredOwnerPasswordReply {
   optional TpmManagerStatus status = 1;
 }

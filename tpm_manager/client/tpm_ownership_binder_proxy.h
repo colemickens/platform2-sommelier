@@ -46,6 +46,9 @@ class TPM_MANAGER_EXPORT TpmOwnershipBinderProxy
   void RemoveOwnerDependency(
       const RemoveOwnerDependencyRequest& request,
       const RemoveOwnerDependencyCallback& callback) override;
+  void ClearStoredOwnerPassword(
+      const ClearStoredOwnerPasswordRequest& request,
+      const ClearStoredOwnerPasswordCallback& callback) override;
 
  private:
   android::sp<android::tpm_manager::ITpmOwnership> default_binder_;
