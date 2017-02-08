@@ -873,7 +873,12 @@ bool MetricsDaemon::ReportZram(const base::FilePath& zram_dir) {
   // The compression ratio is multiplied by 100 for better resolution.  The
   // ratios of interest are between 1 and 6 (100% and 600% as reported).  We
   // don't want samples when very little memory is being compressed.
-  if (compr_data_size_mb >= 1) {
+  //
+  // A race in older versions of zram can make orig_data_size underflow and
+  // be reported as a large positive number, so we also need to ensure that
+  // orig_data_size multiplied by 100 isn't going to overflow.
+  if (compr_data_size_mb >= 1 &&
+      orig_data_size < (1ull << (sizeof(orig_data_size) * 8 - 1)) / 100) {
     SendSample("Platform.ZramCompressionRatioPercent",
                orig_data_size * 100 / compr_data_size, 100, 600, 50);
   }
