@@ -87,7 +87,7 @@ std::string getmac(int fd, const char *ifname) {
 }
 
 std::string sockaddr2str(struct sockaddr *sa) {
-  char *buf = new char[INET6_ADDRSTRLEN];
+  char buf[INET6_ADDRSTRLEN];
   void *addr;
   // These need NOLINT because cpplint thinks we're taking the address of a
   // cast, which we aren't - we're taking the address of a member after casting
@@ -98,7 +98,8 @@ std::string sockaddr2str(struct sockaddr *sa) {
     addr = &((struct sockaddr_in6 *)sa)->sin6_addr; // NOLINT
   else
     return "unknown";
-  return inet_ntop(sa->sa_family, addr, buf, INET6_ADDRSTRLEN);
+  const char *result = inet_ntop(sa->sa_family, addr, buf, sizeof(buf));
+  return result ?: "invalid";
 }
 
 struct ifflag {
