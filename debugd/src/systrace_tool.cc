@@ -23,10 +23,8 @@ void AddCategoryArgs(ProcessWithOutput* p, const std::string& categories) {
   std::vector<std::string> pieces =
       base::SplitString(categories, " ", base::KEEP_WHITESPACE,
                         base::SPLIT_WANT_ALL);
-  for (std::vector<std::string>::iterator it = pieces.begin();
-       it != pieces.end();
-       it++)
-    p->AddArg(*it);
+  for (const auto& category : pieces)
+    p->AddArg(category);
 }
 
 }  // namespace

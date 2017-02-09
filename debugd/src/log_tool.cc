@@ -363,10 +363,8 @@ LogTool::LogMap LogTool::GetUserLogFiles(DBus::Error* error) {
 }
 
 void LogTool::AnonymizeLogMap(LogMap* log_map) {
-  for (LogMap::iterator it = log_map->begin();
-       it != log_map->end(); ++it) {
-    it->second = anonymizer_.Anonymize(it->second);
-  }
+  for (auto& entry : *log_map)
+    entry.second = anonymizer_.Anonymize(entry.second);
 }
 
 }  // namespace debugd

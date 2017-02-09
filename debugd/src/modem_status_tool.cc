@@ -76,10 +76,10 @@ string ModemStatusTool::SendATCommand(const string& command) {
 string ModemStatusTool::CollapseNewLines(const string& input) {
   string out;
   bool collapsing = false;
-  for (string::const_iterator it = input.begin(); it != input.end(); ++it) {
-    if (*it != '\n' && *it != '\r') {
+  for (auto ch : input) {
+    if (ch != '\n' && ch != '\r') {
       collapsing = false;
-      out += *it;
+      out += ch;
       continue;
     }
     if (collapsing) {

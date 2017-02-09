@@ -33,13 +33,12 @@ string ICMPTool::TestICMPWithOptions(const string& host,
     return "<can't create process>";
   p.AddArg(path);
 
-  for (map<string, string>::const_iterator it = options.begin();
-       it != options.end();
-       it++) {
+  for (const auto& option : options) {
     // No need to quote here because chromeos:ProcessImpl (base class of
     // ProcessWithOutput) passes arguments as is to helpers/icmp, which will
     // check arguments before executing in the shell.
-    p.AddArg(StringPrintf("--%s=%s", it->first.c_str(), it->second.c_str()));
+    p.AddArg(
+        StringPrintf("--%s=%s", option.first.c_str(), option.second.c_str()));
   }
 
   p.AddArg(host);

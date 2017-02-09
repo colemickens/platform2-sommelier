@@ -156,16 +156,14 @@ bool debugd::DBusPropertyMapToValue(
     const std::map<std::string, DBus::Variant>& properties,
     std::unique_ptr<Value>* result) {
   auto dv = base::MakeUnique<DictionaryValue>();
-  std::map<std::string, DBus::Variant>::const_iterator it;
-  for (it = properties.begin(); it != properties.end(); ++it) {
+  for (const auto& property : properties) {
     std::unique_ptr<Value> v;
     // make a copy so we can take a reference to the MessageIter
-    DBus::MessageIter reader = it->second.reader();
-    bool r = DBusMessageIterToValue(&reader, &v);
-    if (!r) {
+    DBus::MessageIter reader = property.second.reader();
+    if (!DBusMessageIterToValue(&reader, &v)) {
       return false;
     }
-    dv->Set(it->first, std::move(v));
+    dv->Set(property.first, std::move(v));
   }
   *result = std::move(dv);
   return true;

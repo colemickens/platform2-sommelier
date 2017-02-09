@@ -82,12 +82,10 @@ std::unique_ptr<Value> GetServices(DBus::Connection* connection,
   auto dv = base::MakeUnique<DictionaryValue>();
   const DBus::Variant& services = props["Services"];
   std::vector<DBus::Path> paths = services;
-  for (std::vector<DBus::Path>::iterator it = paths.begin();
-       it != paths.end();
-       ++it) {
-    auto v = GetService(connection, *it);
+  for (const auto& path : paths) {
+    auto v = GetService(connection, path);
     if (v)
-      dv->Set(*it, std::move(v));
+      dv->Set(path, std::move(v));
   }
   return std::move(dv);
 }
@@ -111,12 +109,10 @@ std::unique_ptr<Value> GetDevice(DBus::Connection* connection,
     // Turn IPConfigs into real objects.
     DBus::Variant& ipconfig_paths = props["IPConfigs"];
     std::vector<DBus::Path> paths = ipconfig_paths;
-    for (std::vector<DBus::Path>::iterator it = paths.begin();
-         it != paths.end();
-         ++it) {
-      auto v = GetIPConfig(connection, *it);
+    for (const auto& path : paths) {
+      auto v = GetIPConfig(connection, path);
       if (v)
-        ipconfigs->Set(*it, std::move(v));
+        ipconfigs->Set(path, std::move(v));
     }
     props.erase("IPConfigs");
   }
@@ -135,12 +131,10 @@ std::unique_ptr<Value> GetDevices(DBus::Connection* connection,
   auto dv = base::MakeUnique<DictionaryValue>();
   const DBus::Variant& devices = props["Devices"];
   std::vector<DBus::Path> paths = devices;
-  for (std::vector<DBus::Path>::iterator it = paths.begin();
-       it != paths.end();
-       ++it) {
-    auto v = GetDevice(connection, *it);
+  for (const auto& path : paths) {
+    auto v = GetDevice(connection, path);
     if (v)
-      dv->Set(*it, std::move(v));
+      dv->Set(path, std::move(v));
   }
   return std::move(dv);
 }

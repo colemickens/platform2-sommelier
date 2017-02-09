@@ -270,9 +270,9 @@ void AddSignalStrengths(
   if (strcmp(devices.signature().c_str(), "ao"))
     return;
   std::vector<DBus::Path> paths = devices;
-  for (std::vector<DBus::Path>::iterator it = paths.begin();
-       it != paths.end(); ++it) {
-    ServiceProxy service(&connection, it->c_str(), shill::kFlimflamServiceName);
+  for (const auto& path : paths) {
+    ServiceProxy service(
+        &connection, path.c_str(), shill::kFlimflamServiceName);
     std::map<std::string, DBus::Variant> props = service.GetProperties();
     if (   props.count("Strength") != 1
         || props.count("Name") != 1
