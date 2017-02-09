@@ -319,3 +319,14 @@ install_hybrid_mbr() {
     blockdev --rereadpt "${1}"
   fi
 }
+
+ext4_dir_encryption_supported() {
+  # Can be set in the ebuild.
+  local direncryption_enabled=false
+
+  # Return true if kernel support ext4 directory encryption.
+  ${direncryption_enabled} && \
+  ! LC_LANG=C e4crypt get_policy / | grep -qF \
+    -e "Operation not supported" \
+    -e "Inappropriate ioctl for device"
+}

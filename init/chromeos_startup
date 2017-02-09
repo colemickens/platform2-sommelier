@@ -113,13 +113,28 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
     STATE_FLAGS="${STATE_FLAGS},commit=${COMMIT_INTERVAL}"
   fi
 
+  # Check if we enable ext4 crypto.
+  if [ "${FS_FORMAT_STATE}" = "ext4" ]; then
+    # Enable directory encryption for existing install.
+    if ! dumpe2fs -h "${STATE_DEV}" 2>/dev/null | \
+         grep -qe "^Filesystem features:.* encrypt.*"; then
+      # The stateful partition is not set for encryption.
+      # Check if we should migrate.
+      if ext4_dir_encryption_supported; then
+        # The kernel support encryption, do it!
+        tune2fs -O encrypt "${STATE_DEV}"
+      fi
+    fi
+  fi
+
   # Mount stateful partition from STATE_DEV.
   if ! mount -n -t ${FS_FORMAT_STATE} -o ${STATE_FLAGS} \
-         "$STATE_DEV" /mnt/stateful_partition; then
+         "${STATE_DEV}" /mnt/stateful_partition; then
     # Try to rebuild the stateful partition by clobber-state
     # (for security concern, we don't use fast mode)
     chromeos-boot-alert self_repair
-    clobber-log --repair "$STATE_DEV" "Self-repair corrupted stateful partition"
+    clobber-log --repair "${STATE_DEV}" \
+        "Self-repair corrupted stateful partition"
     exec clobber-state "keepimg"
   fi
 
