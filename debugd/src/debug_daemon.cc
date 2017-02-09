@@ -7,6 +7,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus-c++/dbus.h>
 
@@ -28,37 +29,37 @@ DebugDaemon::DebugDaemon(DBus::Connection* connection,
       dispatcher_(dispatcher) {}
 
 bool DebugDaemon::Init() {
-  battery_tool_ = new BatteryTool();
-  crash_sender_tool_ = new CrashSenderTool();
-  cups_tool_ = new CupsTool();
-  debug_logs_tool_ = new DebugLogsTool();
-  debug_mode_tool_ = new DebugModeTool(dbus_);
+  battery_tool_ = base::MakeUnique<BatteryTool>();
+  crash_sender_tool_ = base::MakeUnique<CrashSenderTool>();
+  cups_tool_ = base::MakeUnique<CupsTool>();
+  debug_logs_tool_ = base::MakeUnique<DebugLogsTool>();
+  debug_mode_tool_ = base::MakeUnique<DebugModeTool>(dbus_);
   dev_features_tool_wrapper_ =
-      new RestrictedToolWrapper<DevFeaturesTool>(dbus_);
-  example_tool_ = new ExampleTool();
-  icmp_tool_ = new ICMPTool();
-  modem_status_tool_ = new ModemStatusTool();
-  netif_tool_ = new NetifTool();
-  network_status_tool_ = new NetworkStatusTool();
-  oom_adj_tool_ = new OomAdjTool();
-  packet_capture_tool_ = new PacketCaptureTool();
-  ping_tool_ = new PingTool();
-  route_tool_ = new RouteTool();
-  sysrq_tool_ = new SysrqTool();
-  systrace_tool_ = new SystraceTool();
-  tracepath_tool_ = new TracePathTool();
-  log_tool_ = new LogTool();
-  perf_tool_ = new PerfTool();
-  storage_tool_ = new StorageTool();
-  swap_tool_ = new SwapTool();
-  memory_tool_ = new MemtesterTool();
-  wifi_debug_tool_ = new WifiDebugTool();
-  wimax_status_tool_ = new WiMaxStatusTool();
+      base::MakeUnique<RestrictedToolWrapper<DevFeaturesTool>>(dbus_);
+  example_tool_ = base::MakeUnique<ExampleTool>();
+  icmp_tool_ = base::MakeUnique<ICMPTool>();
+  modem_status_tool_ = base::MakeUnique<ModemStatusTool>();
+  netif_tool_ = base::MakeUnique<NetifTool>();
+  network_status_tool_ = base::MakeUnique<NetworkStatusTool>();
+  oom_adj_tool_ = base::MakeUnique<OomAdjTool>();
+  packet_capture_tool_ = base::MakeUnique<PacketCaptureTool>();
+  ping_tool_ = base::MakeUnique<PingTool>();
+  route_tool_ = base::MakeUnique<RouteTool>();
+  sysrq_tool_ = base::MakeUnique<SysrqTool>();
+  systrace_tool_ = base::MakeUnique<SystraceTool>();
+  tracepath_tool_ = base::MakeUnique<TracePathTool>();
+  log_tool_ = base::MakeUnique<LogTool>();
+  perf_tool_ = base::MakeUnique<PerfTool>();
+  storage_tool_ = base::MakeUnique<StorageTool>();
+  swap_tool_ = base::MakeUnique<SwapTool>();
+  memory_tool_ = base::MakeUnique<MemtesterTool>();
+  wifi_debug_tool_ = base::MakeUnique<WifiDebugTool>();
+  wimax_status_tool_ = base::MakeUnique<WiMaxStatusTool>();
   if (!dbus_->acquire_name(kDebugdServiceName)) {
     LOG(ERROR) << "Failed to acquire D-Bus name " << kDebugdServiceName;
     return false;
   }
-  session_manager_proxy_.reset(new SessionManagerProxy(dbus_));
+  session_manager_proxy_ = base::MakeUnique<SessionManagerProxy>(dbus_);
   if (dev_features_tool_wrapper_->restriction().InDevMode() &&
       base::PathExists(
       base::FilePath(debugd::kDevFeaturesChromeRemoteDebuggingFlagPath))) {

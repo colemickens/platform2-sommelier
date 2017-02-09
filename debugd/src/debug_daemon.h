@@ -56,35 +56,6 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   bool Init();
   void Run();
 
-  // Setters for tools - used for dependency injection in tests
-  void set_debug_logs_tool(DebugLogsTool* tool) {
-    debug_logs_tool_ = tool;
-  }
-  void set_ping_tool(PingTool* tool) {
-    ping_tool_ = tool;
-  }
-  void set_route_tool(RouteTool* tool) {
-    route_tool_ = tool;
-  }
-  void set_tracepath_tool(TracePathTool* tool) {
-    tracepath_tool_ = tool;
-  }
-  void set_systrace_tool(SystraceTool* tool) {
-    systrace_tool_ = tool;
-  }
-  void set_modem_status_tool(ModemStatusTool* tool) {
-    modem_status_tool_ = tool;
-  }
-  void set_network_status_tool(NetworkStatusTool* tool) {
-    network_status_tool_ = tool;
-  }
-  void set_wimax_status_tool(WiMaxStatusTool* tool) {
-    wimax_status_tool_ = tool;
-  }
-  void set_log_tool(LogTool* tool) {
-    log_tool_ = tool;
-  }
-
   // Public methods below this point are part of the DBus interface presented by
   // this object, and are documented in </share/org.chromium.debugd.xml>.
   std::string BatteryFirmware(const std::string& option,
@@ -219,33 +190,32 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   DBus::BusDispatcher* dispatcher_;
 
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
-
-  // TODO(xiaohuic) Consider using unique_ptr for the pointers below.
-  CrashSenderTool* crash_sender_tool_ = nullptr;
-  CupsTool* cups_tool_ = nullptr;
-  DebugLogsTool* debug_logs_tool_ = nullptr;
-  DebugModeTool* debug_mode_tool_ = nullptr;
-  RestrictedToolWrapper<DevFeaturesTool>* dev_features_tool_wrapper_ = nullptr;
-  ExampleTool* example_tool_ = nullptr;
-  ICMPTool* icmp_tool_ = nullptr;
-  LogTool* log_tool_ = nullptr;
-  MemtesterTool* memory_tool_ = nullptr;
-  ModemStatusTool* modem_status_tool_ = nullptr;
-  NetifTool* netif_tool_ = nullptr;
-  NetworkStatusTool* network_status_tool_ = nullptr;
-  OomAdjTool* oom_adj_tool_ = nullptr;
-  PacketCaptureTool* packet_capture_tool_ = nullptr;
-  PerfTool* perf_tool_ = nullptr;
-  PingTool* ping_tool_ = nullptr;
-  RouteTool* route_tool_ = nullptr;
-  StorageTool* storage_tool_ = nullptr;
-  SwapTool* swap_tool_ = nullptr;
-  BatteryTool* battery_tool_ = nullptr;
-  SysrqTool* sysrq_tool_ = nullptr;
-  SystraceTool* systrace_tool_ = nullptr;
-  TracePathTool* tracepath_tool_ = nullptr;
-  WifiDebugTool* wifi_debug_tool_ = nullptr;
-  WiMaxStatusTool* wimax_status_tool_ = nullptr;
+  std::unique_ptr<CrashSenderTool> crash_sender_tool_;
+  std::unique_ptr<CupsTool> cups_tool_;
+  std::unique_ptr<DebugLogsTool> debug_logs_tool_;
+  std::unique_ptr<DebugModeTool> debug_mode_tool_;
+  std::unique_ptr<RestrictedToolWrapper<DevFeaturesTool>>
+      dev_features_tool_wrapper_;
+  std::unique_ptr<ExampleTool> example_tool_;
+  std::unique_ptr<ICMPTool> icmp_tool_;
+  std::unique_ptr<LogTool> log_tool_;
+  std::unique_ptr<MemtesterTool> memory_tool_;
+  std::unique_ptr<ModemStatusTool> modem_status_tool_;
+  std::unique_ptr<NetifTool> netif_tool_;
+  std::unique_ptr<NetworkStatusTool> network_status_tool_;
+  std::unique_ptr<OomAdjTool> oom_adj_tool_;
+  std::unique_ptr<PacketCaptureTool> packet_capture_tool_;
+  std::unique_ptr<PerfTool> perf_tool_;
+  std::unique_ptr<PingTool> ping_tool_;
+  std::unique_ptr<RouteTool> route_tool_;
+  std::unique_ptr<StorageTool> storage_tool_;
+  std::unique_ptr<SwapTool> swap_tool_;
+  std::unique_ptr<BatteryTool> battery_tool_;
+  std::unique_ptr<SysrqTool> sysrq_tool_;
+  std::unique_ptr<SystraceTool> systrace_tool_;
+  std::unique_ptr<TracePathTool> tracepath_tool_;
+  std::unique_ptr<WifiDebugTool> wifi_debug_tool_;
+  std::unique_ptr<WiMaxStatusTool> wimax_status_tool_;
 };
 
 }  // namespace debugd
