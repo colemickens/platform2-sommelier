@@ -109,7 +109,6 @@ class AuthPolicyTest : public testing::Test {
     const ObjectPath object_path(std::string("/object/path"));
     auto dbus_object =
         base::MakeUnique<DBusObject>(nullptr, mock_bus_, object_path);
-    authpolicy_.reset(new AuthPolicy(std::move(dbus_object)));
 
     // Create path service with all paths pointing into a temp directory.
     CHECK(base::CreateNewTempDirectory("" /* prefix (ignored) */, &base_path_));
@@ -129,10 +128,12 @@ class AuthPolicyTest : public testing::Test {
                              kDebugFlags,
                              strlen(kDebugFlags)));
 
-    // Initialize authpolicy and mock out D-Bus initialization.
-    EXPECT_EQ(
-        ERROR_NONE,
-        authpolicy_->Initialize(std::move(paths), false /* expect_config */));
+    authpolicy_.reset(new AuthPolicy(std::move(dbus_object),
+                                     base::MakeUnique<AuthPolicyMetrics>(),
+                                     std::move(paths)));
+    EXPECT_EQ(ERROR_NONE, authpolicy_->Initialize(false /* expect_config */));
+
+    // Mock out D-Bus initialization.
     mock_exported_object_ =
         new MockExportedObject(mock_bus_.get(), object_path);
     EXPECT_CALL(*mock_bus_, GetExportedObject(object_path))

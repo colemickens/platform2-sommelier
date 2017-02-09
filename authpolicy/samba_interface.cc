@@ -120,13 +120,13 @@ const char kKrb5TraceEnvKey[] = "KRB5_TRACE";
 // Prefix for some environment variable values that specify a file path.
 const char kFilePrefix[] = "FILE:";
 
-// Maximum kinit retries for a recently created machine account.
-const int kMachineKinitMaxRetries = 60;
-// Wait interval between two kinit retries.
+// Maximum kinit tries for a recently created machine account.
+const int kMachineKinitMaxTries = 60;
+// Wait interval between two kinit tries.
 const int kMachineKinitRetryWaitSeconds = 1;
-// Maximum smbclient retries.
-const int kSmbClientMaxRetries = 5;
-// Wait interval between two smbclient retries.
+// Maximum smbclient tries.
+const int kSmbClientMaxTries = 5;
+// Wait interval between two smbclient tries.
 const int kSmbClientRetryWaitSeconds = 1;
 
 // Keys for interpreting kinit output.
@@ -161,7 +161,8 @@ const char kKeyObjectNameNotFound[] =
 }  // namespace
 
 bool SambaInterface::SetupJailAndRun(ProcessExecutor* cmd,
-                                     Path seccomp_path_key) const {
+                                     Path seccomp_path_key,
+                                     TimerType timer_type) const {
   // Limit the system calls that the process can do.
   DCHECK(cmd);
   if (!disable_seccomp_filters_) {
@@ -183,6 +184,9 @@ bool SambaInterface::SetupJailAndRun(ProcessExecutor* cmd,
   //   1) Tighter seccomp filters, no need to allow execve and others.
   //   2) Ability to log seccomp filter failures. Without this, it is hard to
   //      know which syscall has to be added to the filter policy file.
+  auto timer = timer_type != TIMER_NONE
+                   ? base::MakeUnique<ScopedTimerReporter>(timer_type)
+                   : nullptr;
   ScopedSwitchToSavedUid switch_scope;
   return cmd->Execute();
 }
@@ -309,16 +313,15 @@ ErrorType GetSmbclientError(const ProcessExecutor& smb_client_cmd) {
 ErrorType SambaInterface::GetRealmInfo(protos::RealmInfo* realm_info) const {
   authpolicy::ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "info",
                                        "-s", paths_->Get(Path::SMB_CONF)});
-  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP)) {
+  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_INFO))
     return GetNetError(net_cmd, "info");
-  }
   const std::string& net_out = net_cmd.GetStdout();
 
   // Parse the output to find the domain controller name. Enclose in a sandbox
   // for security considerations.
   ProcessExecutor parse_cmd({paths_->Get(Path::PARSER), kCmdParseRealmInfo});
   parse_cmd.SetInputString(net_out);
-  if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP)) {
+  if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP, TIMER_NONE)) {
     LOG(ERROR) << "authpolicy_parser parse_realm_info failed with exit code "
                << parse_cmd.GetExitCode();
     return ERROR_PARSE_FAILED;
@@ -339,15 +342,17 @@ ErrorType SambaInterface::EnsureWorkgroup() {
 
   ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "workgroup", "-s",
                            paths_->Get(Path::SMB_CONF)});
-  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP))
+  if (!SetupJailAndRun(
+          &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_WORKGROUP)) {
     return GetNetError(net_cmd, "workgroup");
+  }
   const std::string& net_out = net_cmd.GetStdout();
 
   // Parse the output to find the workgroup. Enclose in a sandbox for security
   // considerations.
   ProcessExecutor parse_cmd({paths_->Get(Path::PARSER), kCmdParseWorkgroup});
   parse_cmd.SetInputString(net_out);
-  if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP)) {
+  if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP, TIMER_NONE)) {
     LOG(ERROR) << "authpolicy_parser parse_workgroup failed with exit code "
                << parse_cmd.GetExitCode();
     return ERROR_PARSE_FAILED;
@@ -567,16 +572,15 @@ ErrorType SambaInterface::GetAccountInfo(const std::string& search_string,
   // Call net ads search to find the user's account info.
   ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "search",
                            search_string, "-s", paths_->Get(Path::SMB_CONF)});
-  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP)) {
+  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_SEARCH))
     return GetNetError(net_cmd, "search");
-  }
   const std::string& net_out = net_cmd.GetStdout();
 
   // Parse the output to find the account info proto blob. Enclose in a sandbox
   // for security considerations.
   ProcessExecutor parse_cmd({paths_->Get(Path::PARSER), kCmdParseAccountInfo});
   parse_cmd.SetInputString(net_out);
-  if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP)) {
+  if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP, TIMER_NONE)) {
     LOG(ERROR) << "Failed to get user account id. Net response: " << net_out;
     return ERROR_PARSE_FAILED;
   }
@@ -602,7 +606,7 @@ ErrorType SambaInterface::GetGpoList(const std::string& user_or_machine_name,
   authpolicy::ProcessExecutor net_cmd(
       {paths_->Get(Path::NET), "ads", "gpo", "list", user_or_machine_name, "-s",
        paths_->Get(Path::SMB_CONF), "-d", "10"});
-  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP))
+  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_GPO_LIST))
     return GetNetError(net_cmd, "gpo list");
 
   // GPO data is written to stderr, not stdin!
@@ -613,7 +617,7 @@ ErrorType SambaInterface::GetGpoList(const std::string& user_or_machine_name,
                                                : kCmdParseDeviceGpoList;
   ProcessExecutor parse_cmd({paths_->Get(Path::PARSER), cmd});
   parse_cmd.SetInputString(net_out);
-  if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP)) {
+  if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP, TIMER_NONE)) {
     LOG(ERROR) << "Failed to parse GPO list";
     return ERROR_PARSE_FAILED;
   }
@@ -640,6 +644,7 @@ ErrorType SambaInterface::DownloadGpos(
     const std::string& domain_controller_name,
     PolicyScope scope,
     std::vector<base::FilePath>* gpo_file_paths) const {
+  metrics_->Report(METRIC_DOWNLOAD_GPO_COUNT, gpo_list.entries_size());
   if (gpo_list.entries_size() == 0) {
     LOG(INFO) << "No GPOs to download";
     return ERROR_NONE;
@@ -722,13 +727,15 @@ ErrorType SambaInterface::DownloadGpos(
   smb_client_cmd.SetEnv(kKrb5ConfEnvKey,  // Kerberos configuration file path.
                         kFilePrefix + paths_->Get(Path::KRB5_CONF));
   bool success = false;
-  for (int tries = 0; tries < kSmbClientMaxRetries; ++tries) {
+  int tries;
+  for (tries = 1; tries <= kSmbClientMaxTries; ++tries) {
     // Sleep after it tried with both types of krb5.conf.
-    if (tries > 1) {
+    if (tries > 2) {
       base::PlatformThread::Sleep(
           base::TimeDelta::FromSeconds(kSmbClientRetryWaitSeconds));
     }
-    success = SetupJailAndRun(&smb_client_cmd, Path::SMBCLIENT_SECCOMP);
+    success = SetupJailAndRun(
+        &smb_client_cmd, Path::SMBCLIENT_SECCOMP, TIMER_SMBCLIENT);
     if (success) {
       error = ERROR_NONE;
       break;
@@ -738,7 +745,7 @@ ErrorType SambaInterface::DownloadGpos(
         error != ERROR_CONTACTING_KDC_FAILED) {
       break;
     }
-    if (tries == 0) {
+    if (tries == 1) {
       LOG(WARNING)
           << "Retrying smbclient without KDC IP config in the krb5.conf";
       error = WriteKrb5Conf(config_->realm(), std::string() /* kdc_ip */);
@@ -746,6 +753,8 @@ ErrorType SambaInterface::DownloadGpos(
         return error;
     }
   }
+  metrics_->Report(METRIC_SMBCLIENT_TRY_COUNT,
+                   std::min(tries, kSmbClientMaxTries));
 
   if (!success) {
     // The exit code of smbclient corresponds to the LAST command issued. Thus,
@@ -802,7 +811,7 @@ ErrorType SambaInterface::ParseGposIntoProtobuf(
   // Load GPOs into protobuf. Enclose in a sandbox for security considerations.
   ProcessExecutor parse_cmd({paths_->Get(Path::PARSER), parser_cmd_string});
   parse_cmd.SetInputString(gpo_file_paths_blob);
-  if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP)) {
+  if (!SetupJailAndRun(&parse_cmd, Path::PARSER_SECCOMP, TIMER_NONE)) {
     LOG(ERROR) << "Failed to parse preg files";
     return ERROR_PARSE_PREG_FAILED;
   }
@@ -810,14 +819,11 @@ ErrorType SambaInterface::ParseGposIntoProtobuf(
   return ERROR_NONE;
 }
 
-SambaInterface::SambaInterface() {
-}
+SambaInterface::SambaInterface(AuthPolicyMetrics* metrics,
+                               std::unique_ptr<PathService> path_service)
+    : metrics_(metrics), paths_(std::move(path_service)) {}
 
-ErrorType SambaInterface::Initialize(std::unique_ptr<PathService> path_service,
-                                     bool expect_config) {
-  DCHECK(path_service);
-  paths_ = std::move(path_service);
-
+ErrorType SambaInterface::Initialize(bool expect_config) {
   ErrorType error = ERROR_NONE;
   for (const auto& dir_and_mode : kDirsAndMode) {
     const base::FilePath dir(paths_->Get(dir_and_mode.first));
@@ -899,7 +905,7 @@ ErrorType SambaInterface::AuthenticateUser(
   kinit_cmd.SetEnv(kKrb5ConfEnvKey,  // Kerberos configuration file path.
                    kFilePrefix + paths_->Get(Path::KRB5_CONF));
   SetupKinitTrace(&kinit_cmd);
-  if (!SetupJailAndRun(&kinit_cmd, Path::KINIT_SECCOMP)) {
+  if (!SetupJailAndRun(&kinit_cmd, Path::KINIT_SECCOMP, TIMER_KINIT)) {
     OutputKinitTrace();
     error = GetKinitError(kinit_cmd);
     if (error != ERROR_CONTACTING_KDC_FAILED)
@@ -910,7 +916,7 @@ ErrorType SambaInterface::AuthenticateUser(
     if (error != ERROR_NONE)
       return error;
     kinit_cmd.SetInputFile(password_dup.get());
-    if (!SetupJailAndRun(&kinit_cmd, Path::KINIT_SECCOMP)) {
+    if (!SetupJailAndRun(&kinit_cmd, Path::KINIT_SECCOMP, TIMER_KINIT)) {
       OutputKinitTrace();
       return GetKinitError(kinit_cmd);
     }
@@ -972,7 +978,7 @@ ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
   net_cmd.SetInputFile(password_fd);
   net_cmd.SetEnv(kMachineKTEnvKey,  // Machine keytab file path.
                  kFilePrefix + paths_->Get(Path::MACHINE_KT_TEMP));
-  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP)) {
+  if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_JOIN)) {
     Reset();
     return GetNetError(net_cmd, "join");
   }
@@ -1075,14 +1081,15 @@ ErrorType SambaInterface::FetchDeviceGpos(std::string* policy_blob) {
   // deployment.
   bool success = false;
   const int max_tries =
-      retry_machine_kinit_ ? std::max(kMachineKinitMaxRetries, 2) : 2;
-  for (int tries = 0; tries < max_tries; ++tries) {
+      retry_machine_kinit_ ? std::max(kMachineKinitMaxTries, 2) : 2;
+  int tries;
+  for (tries = 1; tries <= max_tries; ++tries) {
     // Sleep after it tried with both types of krb5.conf.
-    if (tries > 1) {
+    if (tries > 2) {
       base::PlatformThread::Sleep(
           base::TimeDelta::FromSeconds(kMachineKinitRetryWaitSeconds));
     }
-    success = SetupJailAndRun(&kinit_cmd, Path::KINIT_SECCOMP);
+    success = SetupJailAndRun(&kinit_cmd, Path::KINIT_SECCOMP, TIMER_KINIT);
     if (success) {
       error = ERROR_NONE;
       break;
@@ -1093,13 +1100,15 @@ ErrorType SambaInterface::FetchDeviceGpos(std::string* policy_blob) {
         error != ERROR_CONTACTING_KDC_FAILED) {
       break;
     }
-    if (tries == 0) {
+    if (tries == 1) {
       LOG(WARNING) << "Retrying kinit without KDC IP config in the krb5.conf";
       error = WriteKrb5Conf(config_->realm(), std::string());
       if (error != ERROR_NONE)
         break;
     }
   }
+  metrics_->Report(METRIC_KINIT_TRY_COUNT, std::min(tries, max_tries));
+
   retry_machine_kinit_ = false;
   if (!success)
     return error;

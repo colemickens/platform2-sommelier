@@ -39,14 +39,16 @@ class Daemon : public brillo::DBusServiceDaemon {
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
-    auth_policy_ = base::MakeUnique<AuthPolicy>(object_manager_.get());
+    auth_policy_ = base::MakeUnique<AuthPolicy>(
+        AuthPolicy::GetDBusObject(object_manager_.get()),
+        base::MakeUnique<AuthPolicyMetrics>(),
+        base::MakeUnique<PathService>());
     auth_policy_->RegisterAsync(
         sequencer->GetHandler("AuthPolicy.RegisterAsync() failed.", true));
-    std::unique_ptr<PathService> path_service = base::MakeUnique<PathService>();
-    ErrorType error =
-        auth_policy_->Initialize(std::move(path_service), expect_config_);
+    ErrorType error = auth_policy_->Initialize(expect_config_);
     if (error != ERROR_NONE) {
-      LOG(ERROR) << "Failed to initialize SambaInterface. Error: " << error;
+      LOG(ERROR) << "SambaInterface failed to initialize with error code "
+                 << error;
       exit(kExitCodeStartupFailure);
     }
   }

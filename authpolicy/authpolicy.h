@@ -11,6 +11,7 @@
 #include <brillo/dbus/async_event_sequencer.h>
 #include <dbus/object_proxy.h>
 
+#include "authpolicy/authpolicy_metrics.h"
 #include "authpolicy/org.chromium.AuthPolicy.h"
 #include "authpolicy/samba_interface.h"
 
@@ -18,20 +19,26 @@ using brillo::dbus_utils::AsyncEventSequencer;
 
 namespace authpolicy {
 
+class AuthPolicyMetrics;
+class PathService;
+
 class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
                    public org::chromium::AuthPolicyInterface {
  public:
   using PolicyResponseCallback =
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<int32_t>>;
 
-  explicit AuthPolicy(
+  // Helper method to get the D-Bus object for the given |object_manager|.
+  static std::unique_ptr<brillo::dbus_utils::DBusObject> GetDBusObject(
       brillo::dbus_utils::ExportedObjectManager* object_manager);
+
+  AuthPolicy(std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
+             std::unique_ptr<AuthPolicyMetrics> metrics,
+             std::unique_ptr<PathService> path_service);
   ~AuthPolicy() override = default;
 
-  // Initializes internals. See SambaInterface::Initialize for an explanation of
-  // |path_service| and |expect_config|.
-  ErrorType Initialize(std::unique_ptr<PathService> path_service,
-                       bool expect_config);
+  // Initializes internals. See SambaInterface::Initialize() for details.
+  ErrorType Initialize(bool expect_config);
 
   // Register the D-Bus object and interfaces.
   void RegisterAsync(
@@ -53,24 +60,21 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
   void RefreshDevicePolicy(PolicyResponseCallback callback) override;
 
  private:
-  friend class AuthPolicyTest;
-
-  // Used in unit tests to inject mocks.
-  explicit AuthPolicy(
-      std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object);
-
   // Sends policy to SessionManager. Assumes |policy_blob| contains user policy
   // if account_id is not nullptr, otherwise assumes it's device policy.
   void StorePolicy(const std::string& policy_blob,
                    const std::string* account_id,
+                   std::unique_ptr<ScopedTimerReporter> timer,
                    PolicyResponseCallback callback);
 
   // Response callback from SessionManager, logs the result and calls callback.
-  void OnPolicyStored(const char* method, PolicyResponseCallback callback,
+  void OnPolicyStored(bool is_user_policy,
+                      std::unique_ptr<ScopedTimerReporter> timer,
+                      PolicyResponseCallback callback,
                       dbus::Response* response);
 
+  std::unique_ptr<AuthPolicyMetrics> metrics_;
   SambaInterface samba_;
-
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   dbus::ObjectProxy* session_manager_proxy_ = nullptr;
   base::WeakPtrFactory<AuthPolicy> weak_ptr_factory_;

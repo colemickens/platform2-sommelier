@@ -14,6 +14,7 @@
 #include <base/macros.h>
 #include <dbus/authpolicy/dbus-constants.h>
 
+#include "authpolicy/authpolicy_metrics.h"
 #include "authpolicy/constants.h"
 #include "authpolicy/path_service.h"
 #include "bindings/authpolicy_containers.pb.h"
@@ -24,18 +25,20 @@
 
 namespace authpolicy {
 
+class AuthPolicyMetrics;
+class PathService;
 class ProcessExecutor;
 
 class SambaInterface {
  public:
-  SambaInterface();
+  SambaInterface(AuthPolicyMetrics* metrics,
+                 std::unique_ptr<PathService> path_service);
 
   // Creates directories required by Samba code and loads configuration, if it
   // exists. Also loads the debug flags file. Returns error
   // - if a directory failed to create or
   // - if |expect_config| is true and the config file fails to load.
-  ErrorType Initialize(std::unique_ptr<PathService> path_service,
-                       bool expect_config);
+  ErrorType Initialize(bool expect_config);
 
   // Calls kinit to get a Kerberos ticket-granting-ticket (TGT) for the given
   // |user_principal_name| (format: user_name@workgroup.domain). If a TGT
@@ -71,8 +74,11 @@ class SambaInterface {
 
  private:
   // Sets up minijail and executes |cmd|. |seccomp_path_key| specifies the path
-  // of the seccomp filter to use.
-  bool SetupJailAndRun(ProcessExecutor* cmd, Path seccomp_path_key) const;
+  // of the seccomp filter to use. |timer_type| is the UMA timer metric to
+  // report. Passing |TIMER_NONE| won't report anything.
+  bool SetupJailAndRun(ProcessExecutor* cmd,
+                       Path seccomp_path_key,
+                       TimerType timer_type) const;
 
   // Sets up trace logging for kinit.
   void SetupKinitTrace(ProcessExecutor* kinit_cmd) const;
@@ -156,6 +162,9 @@ class SambaInterface {
   bool disable_seccomp_filters_ = false;
   bool log_seccomp_filters_ = false;
   bool trace_kinit_ = false;
+
+  // UMA statistics, not owned.
+  AuthPolicyMetrics* metrics_;
 
   // Lookup for file paths.
   std::unique_ptr<PathService> paths_;

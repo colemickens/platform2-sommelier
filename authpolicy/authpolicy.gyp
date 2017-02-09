@@ -1,16 +1,4 @@
 {
-  'target_defaults': {
-    'variables': {
-      'deps': [
-        'dbus-1',
-        'protobuf-lite',
-        'libbrillo-<(libbase_ver)',
-        'libcap',
-        'libchrome-<(libbase_ver)',
-        'libminijail',
-      ],
-    },
-  },
   'targets': [
     # D-Bus code generator.
     {
@@ -48,8 +36,16 @@
         'dbus_code_generator',
         'container-protos',
       ],
+      'variables': {
+        'deps': [
+          'dbus-1',
+          'libbrillo-<(libbase_ver)',
+          'libchrome-<(libbase_ver)',
+        ],
+      },
       'sources': [
         'authpolicy.cc',
+        'authpolicy_metrics.cc',
         'path_service.cc',
         'policy/device_policy_encoder.cc',
         'policy/policy_encoder_helper.cc',
@@ -68,6 +64,14 @@
       'target_name': 'authpolicy_parser',
       'type': 'executable',
       'dependencies': ['libauthpolicy'],
+      'variables': {
+        'deps': [
+          'libbrillo-<(libbase_ver)',
+          'libcap',
+          'libchrome-<(libbase_ver)',
+          'protobuf-lite',
+        ],
+      },
       'sources': [
         'authpolicy_parser_main.cc',
       ],
@@ -80,6 +84,16 @@
         'libauthpolicy',
         'authpolicy_parser',
       ],
+      'variables': {
+        'deps': [
+          'libbrillo-<(libbase_ver)',
+          'libcap',
+          'libchrome-<(libbase_ver)',
+          'libmetrics-<(libbase_ver)',
+          'libminijail',
+          'protobuf-lite',
+        ],
+      },
       'sources': ['authpolicy_main.cc'],
       'link_settings': {
         'libraries': [
@@ -100,7 +114,13 @@
           'dependencies': ['libauthpolicy'],
           'variables': {
             'deps': [
+              'libbrillo-<(libbase_ver)',
+              'libcap',
+              'libchrome-<(libbase_ver)',
               'libchrome-test-<(libbase_ver)',
+              'libmetrics-<(libbase_ver)',
+              'libminijail',
+              'protobuf-lite',
             ],
           },
           'sources': [
@@ -113,6 +133,11 @@
         {
           'target_name': 'stub_common',
           'type': 'static_library',
+          'variables': {
+            'deps': [
+              'libchrome-<(libbase_ver)',
+            ],
+          },
           'sources': ['stub_common.cc'],
         },
         {
@@ -122,6 +147,11 @@
             'libauthpolicy',
             'stub_common',
           ],
+          'variables': {
+            'deps': [
+              'libchrome-<(libbase_ver)',
+            ],
+          },
           'sources': ['stub_net_main.cc'],
         },
         {
@@ -131,6 +161,11 @@
             'libauthpolicy',
             'stub_common',
           ],
+          'variables': {
+            'deps': [
+              'libchrome-<(libbase_ver)',
+            ],
+          },
           'sources': ['stub_kinit_main.cc'],
         },
       ],
