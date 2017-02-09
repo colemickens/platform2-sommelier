@@ -171,7 +171,7 @@ class NetInterface {
   bool Init();
   void AddAddress(struct ifaddrs *ifa);
   void AddSignalStrength(const std::string& name, int strength);
-  std::unique_ptr<Value> ToValue();
+  std::unique_ptr<Value> ToValue() const;
 
  private:
   int fd_;
@@ -233,7 +233,7 @@ void NetInterface::AddAddress(struct ifaddrs *ifa) {
   }
 }
 
-std::unique_ptr<Value> NetInterface::ToValue() {
+std::unique_ptr<Value> NetInterface::ToValue() const {
   auto dv = base::MakeUnique<DictionaryValue>();
   if (ipv4_)
     dv->Set("ipv4", ipv4_->CreateDeepCopy());
@@ -254,7 +254,8 @@ std::string DevicePathToName(const std::string& path) {
   return "?";
 }
 
-void AddSignalStrengths(std::map<std::string, NetInterface*> *interfaces) {
+void AddSignalStrengths(
+    std::map<std::string, std::unique_ptr<NetInterface>> *interfaces) {
   DBus::BusDispatcher dispatcher;
   DBus::default_dispatcher = &dispatcher;
   DBus::Connection connection = DBus::Connection::SystemBus();
@@ -292,7 +293,7 @@ int main() {
   struct ifaddrs *ifaddrs;
   int fd;
   DictionaryValue result;
-  std::map<std::string, NetInterface*> interfaces;
+  std::map<std::string, std::unique_ptr<NetInterface>> interfaces;
 
   if (getifaddrs(&ifaddrs) == -1) {
     perror("getifaddrs");
@@ -306,18 +307,18 @@ int main() {
   }
 
   for (struct ifaddrs *ifa = ifaddrs; ifa; ifa = ifa->ifa_next) {
-    if (!interfaces.count(ifa->ifa_name)) {
-      interfaces[ifa->ifa_name] = new NetInterface(fd, ifa->ifa_name);
-      interfaces[ifa->ifa_name]->Init();
+    auto& interface = interfaces[ifa->ifa_name];
+    if (!interface) {
+      interface = base::MakeUnique<NetInterface>(fd, ifa->ifa_name);
+      interface->Init();
     }
-    interfaces[ifa->ifa_name]->AddAddress(ifa);
+    interface->AddAddress(ifa);
   }
 
   AddSignalStrengths(&interfaces);
 
-  for (std::map<std::string, NetInterface*>::iterator it = interfaces.begin();
-       it != interfaces.end(); ++it)
-    result.Set(it->first, it->second->ToValue());
+  for (const auto& interface : interfaces)
+    result.Set(interface.first, interface.second->ToValue());
 
   std::string json;
   base::JSONWriter::WriteWithOptions(
