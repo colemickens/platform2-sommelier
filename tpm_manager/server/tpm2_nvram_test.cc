@@ -28,6 +28,8 @@
 
 namespace {
 
+constexpr uint32_t kSomeNvramIndex = 42;
+constexpr size_t kSomeNvramSize = 20;
 constexpr char kTestOwnerPassword[] = "owner";
 constexpr char kFakePolicyDigest[] = "fake_policy_digest";
 constexpr char kFakePCRValue[] = "fake_pcr_value";
@@ -147,6 +149,7 @@ class Tpm2NvramTest : public testing::Test {
   }
 
  protected:
+  const std::string kSomeData{"data"};
   trunks::TrunksFactoryForTest factory_;
   NiceMock<trunks::MockHmacSession> mock_hmac_session_;
   NiceMock<trunks::MockPolicySession> mock_policy_session_;
@@ -180,12 +183,10 @@ TEST_F(Tpm2NvramTest, DefineSpaceSuccess) {
       .Times(AtLeast(1));
   EXPECT_CALL(mock_trial_session_, PolicyAuthValue()).Times(0);
   EXPECT_CALL(mock_trial_session_, PolicyPCR(_, _)).Times(0);
-  uint32_t index = 42;
-  size_t size = 20;
   std::vector<NvramSpaceAttribute> attributes{NVRAM_PERSISTENT_WRITE_LOCK};
   EXPECT_CALL(
       mock_tpm_utility_,
-      DefineNVSpace(index, size,
+      DefineNVSpace(kSomeNvramIndex, kSomeNvramSize,
                     trunks::TPMA_NV_WRITEDEFINE | trunks::TPMA_NV_AUTHWRITE |
                         trunks::TPMA_NV_AUTHREAD,
                     kFakeAuthorizationValue, std::string() /* policy */,
@@ -193,11 +194,12 @@ TEST_F(Tpm2NvramTest, DefineSpaceSuccess) {
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(
       NVRAM_RESULT_SUCCESS,
-      tpm_nvram_->DefineSpace(index, size, attributes, kFakeAuthorizationValue,
+      tpm_nvram_->DefineSpace(kSomeNvramIndex, kSomeNvramSize,
+                              attributes, kFakeAuthorizationValue,
                               NVRAM_POLICY_NONE));
   const LocalData& local_data = mock_data_store_.GetFakeData();
   EXPECT_EQ(1, local_data.nvram_policy_size());
-  EXPECT_EQ(index, local_data.nvram_policy(0).index());
+  EXPECT_EQ(kSomeNvramIndex, local_data.nvram_policy(0).index());
   EXPECT_EQ(NVRAM_POLICY_NONE, local_data.nvram_policy(0).policy());
 }
 
@@ -208,13 +210,11 @@ TEST_F(Tpm2NvramTest, DefineSpaceSuccessPlatformReadable) {
       .Times(AtLeast(1));
   EXPECT_CALL(mock_trial_session_, PolicyAuthValue()).Times(0);
   EXPECT_CALL(mock_trial_session_, PolicyPCR(_, _)).Times(0);
-  uint32_t index = 42;
-  size_t size = 20;
   std::vector<NvramSpaceAttribute> attributes{NVRAM_PERSISTENT_WRITE_LOCK,
                                               NVRAM_PLATFORM_READ};
   EXPECT_CALL(
       mock_tpm_utility_,
-      DefineNVSpace(index, size,
+      DefineNVSpace(kSomeNvramIndex, kSomeNvramSize,
                     trunks::TPMA_NV_WRITEDEFINE | trunks::TPMA_NV_AUTHWRITE |
                         trunks::TPMA_NV_AUTHREAD | trunks::TPMA_NV_PPREAD,
                     kFakeAuthorizationValue, std::string() /* policy */,
@@ -222,24 +222,24 @@ TEST_F(Tpm2NvramTest, DefineSpaceSuccessPlatformReadable) {
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(
       NVRAM_RESULT_SUCCESS,
-      tpm_nvram_->DefineSpace(index, size, attributes, kFakeAuthorizationValue,
+      tpm_nvram_->DefineSpace(kSomeNvramIndex, kSomeNvramSize,
+                              attributes, kFakeAuthorizationValue,
                               NVRAM_POLICY_NONE));
   const LocalData& local_data = mock_data_store_.GetFakeData();
   EXPECT_EQ(1, local_data.nvram_policy_size());
-  EXPECT_EQ(index, local_data.nvram_policy(0).index());
+  EXPECT_EQ(kSomeNvramIndex, local_data.nvram_policy(0).index());
   EXPECT_EQ(NVRAM_POLICY_NONE, local_data.nvram_policy(0).policy());
 }
 
 TEST_F(Tpm2NvramTest, DefineSpaceFailure) {
   SetupOwnerPassword();
-  uint32_t index = 42;
-  size_t size = 20;
   std::vector<NvramSpaceAttribute> attributes{NVRAM_PERSISTENT_WRITE_LOCK};
   EXPECT_CALL(mock_tpm_utility_, DefineNVSpace(_, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_NE(
       NVRAM_RESULT_SUCCESS,
-      tpm_nvram_->DefineSpace(index, size, attributes, "", NVRAM_POLICY_NONE));
+      tpm_nvram_->DefineSpace(kSomeNvramIndex, kSomeNvramSize,
+                              attributes, "", NVRAM_POLICY_NONE));
 }
 
 TEST_F(Tpm2NvramTest, DefineSpaceNoClobberOnError) {
@@ -248,12 +248,14 @@ TEST_F(Tpm2NvramTest, DefineSpaceNoClobberOnError) {
       .WillOnce(Return(TPM_RC_SUCCESS))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_EQ(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->DefineSpace(0, 32, {}, "", NVRAM_POLICY_NONE));
+            tpm_nvram_->DefineSpace(kSomeNvramIndex, kSomeNvramSize, {}, "",
+                                    NVRAM_POLICY_NONE));
   EXPECT_NE(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->DefineSpace(0, 32, {}, "", NVRAM_POLICY_PCR0));
+            tpm_nvram_->DefineSpace(kSomeNvramIndex, kSomeNvramSize, {}, "",
+                                    NVRAM_POLICY_PCR0));
   const LocalData& local_data = mock_data_store_.GetFakeData();
   EXPECT_EQ(1, local_data.nvram_policy_size());
-  EXPECT_EQ(0, local_data.nvram_policy(0).index());
+  EXPECT_EQ(kSomeNvramIndex, local_data.nvram_policy(0).index());
   EXPECT_EQ(NVRAM_POLICY_NONE, local_data.nvram_policy(0).policy());
 }
 
@@ -268,18 +270,17 @@ TEST_F(Tpm2NvramTest, DefineSpaceWithPolicy) {
           DoAll(SetArgPointee<1>(kFakePCRValue), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_trial_session_, PolicyPCR(0, kFakePCRValue))
       .Times(AtLeast(1));
-  uint32_t index = 42;
-  size_t size = 20;
   std::vector<NvramSpaceAttribute> attributes{NVRAM_WRITE_AUTHORIZATION};
   EXPECT_CALL(
       mock_tpm_utility_,
-      DefineNVSpace(index, size,
+      DefineNVSpace(kSomeNvramIndex, kSomeNvramSize,
                     trunks::TPMA_NV_POLICYWRITE | trunks::TPMA_NV_POLICYREAD,
                     kFakeAuthorizationValue, kFakePolicyDigest, kHMACAuth))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(
       NVRAM_RESULT_SUCCESS,
-      tpm_nvram_->DefineSpace(index, size, attributes, kFakeAuthorizationValue,
+      tpm_nvram_->DefineSpace(kSomeNvramIndex, kSomeNvramSize,
+                              attributes, kFakeAuthorizationValue,
                               NVRAM_POLICY_PCR0));
 }
 
@@ -289,10 +290,12 @@ TEST_F(Tpm2NvramTest, DefineSpaceWithExistingLocalData) {
   local_data.add_nvram_policy()->set_index(0);
   local_data.add_nvram_policy()->set_index(4);
   local_data.add_nvram_policy()->set_index(1);
+  uint32_t index = 5;  // not in {0, 4, 1} added above
   EXPECT_EQ(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->DefineSpace(5, 32, {}, "", NVRAM_POLICY_NONE));
+            tpm_nvram_->DefineSpace(index, kSomeNvramSize, {}, "",
+                                    NVRAM_POLICY_NONE));
   EXPECT_EQ(4, local_data.nvram_policy_size());
-  EXPECT_EQ(5, local_data.nvram_policy(3).index());
+  EXPECT_EQ(index, local_data.nvram_policy(3).index());
 }
 
 TEST_F(Tpm2NvramTest, DefineSpaceClobberExistingLocalData) {
@@ -302,7 +305,8 @@ TEST_F(Tpm2NvramTest, DefineSpaceClobberExistingLocalData) {
   local_data.add_nvram_policy()->set_index(4);
   local_data.add_nvram_policy()->set_index(1);
   EXPECT_EQ(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->DefineSpace(4, 32, {}, "", NVRAM_POLICY_NONE));
+            tpm_nvram_->DefineSpace(4, kSomeNvramSize, {}, "",
+                                    NVRAM_POLICY_NONE));
   EXPECT_EQ(3, local_data.nvram_policy_size());
   EXPECT_NE(local_data.nvram_policy(0).index(),
             local_data.nvram_policy(1).index());
@@ -315,25 +319,23 @@ TEST_F(Tpm2NvramTest, DefineSpaceClobberExistingLocalData) {
 TEST_F(Tpm2NvramTest, DestroySpaceSuccess) {
   SetupOwnerPassword();
   LocalData& local_data = mock_data_store_.GetMutableFakeData();
-  uint32_t index = 42;
-  local_data.add_nvram_policy()->set_index(index);
+  local_data.add_nvram_policy()->set_index(kSomeNvramIndex);
   EXPECT_CALL(mock_hmac_session_,
               SetEntityAuthorizationValue(kTestOwnerPassword))
       .Times(AtLeast(1));
-  EXPECT_CALL(mock_tpm_utility_, DestroyNVSpace(index, kHMACAuth))
+  EXPECT_CALL(mock_tpm_utility_, DestroyNVSpace(kSomeNvramIndex, kHMACAuth))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_EQ(NVRAM_RESULT_SUCCESS, tpm_nvram_->DestroySpace(index));
+  EXPECT_EQ(NVRAM_RESULT_SUCCESS, tpm_nvram_->DestroySpace(kSomeNvramIndex));
   EXPECT_EQ(0, local_data.nvram_policy_size());
 }
 
 TEST_F(Tpm2NvramTest, DestroySpaceFailure) {
   SetupOwnerPassword();
-  uint32_t index = 42;
   LocalData& local_data = mock_data_store_.GetMutableFakeData();
-  local_data.add_nvram_policy()->set_index(index);
-  EXPECT_CALL(mock_tpm_utility_, DestroyNVSpace(index, _))
+  local_data.add_nvram_policy()->set_index(kSomeNvramIndex);
+  EXPECT_CALL(mock_tpm_utility_, DestroyNVSpace(kSomeNvramIndex, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_NE(NVRAM_RESULT_SUCCESS, tpm_nvram_->DestroySpace(index));
+  EXPECT_NE(NVRAM_RESULT_SUCCESS, tpm_nvram_->DestroySpace(kSomeNvramIndex));
   EXPECT_EQ(1, local_data.nvram_policy_size());
 }
 
@@ -343,214 +345,233 @@ TEST_F(Tpm2NvramTest, DestroySpaceWithExistingLocalData) {
   local_data.add_nvram_policy()->set_index(0);
   local_data.add_nvram_policy()->set_index(1);
   local_data.add_nvram_policy()->set_index(2);
-  EXPECT_CALL(mock_tpm_utility_, DestroyNVSpace(1, kHMACAuth))
+  uint32_t destroyed_index = 1;  // one of {0, 1, 2} added above
+  EXPECT_CALL(mock_tpm_utility_, DestroyNVSpace(destroyed_index, kHMACAuth))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_EQ(NVRAM_RESULT_SUCCESS, tpm_nvram_->DestroySpace(1));
+  EXPECT_EQ(NVRAM_RESULT_SUCCESS, tpm_nvram_->DestroySpace(destroyed_index));
   EXPECT_EQ(2, local_data.nvram_policy_size());
-  EXPECT_NE(1, local_data.nvram_policy(0).index());
-  EXPECT_NE(1, local_data.nvram_policy(1).index());
+  EXPECT_NE(destroyed_index, local_data.nvram_policy(0).index());
+  EXPECT_NE(destroyed_index, local_data.nvram_policy(1).index());
 }
 
 TEST_F(Tpm2NvramTest, WriteSpaceSuccess) {
-  uint32_t index = 42;
-  SetupExistingSpace(index, 20, kNoExtraAttributes, EXPECT_AUTH, NORMAL_AUTH);
-  std::string data("data");
+  SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize, kNoExtraAttributes,
+                     EXPECT_AUTH, NORMAL_AUTH);
   EXPECT_CALL(mock_tpm_utility_,
-              WriteNVSpace(index, 0, data, false, false, kHMACAuth))
+              WriteNVSpace(kSomeNvramIndex, 0, kSomeData, false, false,
+                           kHMACAuth))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->WriteSpace(index, data, kFakeAuthorizationValue));
+            tpm_nvram_->WriteSpace(kSomeNvramIndex, kSomeData,
+                                   kFakeAuthorizationValue));
 }
 
 TEST_F(Tpm2NvramTest, WriteSpaceExtend) {
-  uint32_t index = 42;
-  SetupExistingSpace(index, 20, trunks::TPMA_NV_EXTEND, EXPECT_AUTH,
-                     NORMAL_AUTH);
-  std::string data("data");
+  SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize, trunks::TPMA_NV_EXTEND,
+                     EXPECT_AUTH, NORMAL_AUTH);
   EXPECT_CALL(mock_tpm_utility_,
-              WriteNVSpace(index, 0, data, false, true, kHMACAuth))
+              WriteNVSpace(kSomeNvramIndex, 0, kSomeData, false, true,
+                           kHMACAuth))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->WriteSpace(index, data, kFakeAuthorizationValue));
+            tpm_nvram_->WriteSpace(kSomeNvramIndex, kSomeData,
+                                   kFakeAuthorizationValue));
 }
 
 TEST_F(Tpm2NvramTest, WriteSpaceNonexistant) {
-  uint32_t index = 42;
-  EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(index, _))
+  EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(kSomeNvramIndex, _))
       .WillRepeatedly(Return(TPM_RC_HANDLE));
   std::string read_data;
   EXPECT_EQ(NVRAM_RESULT_SPACE_DOES_NOT_EXIST,
-            tpm_nvram_->WriteSpace(index, "data", kFakeAuthorizationValue));
+            tpm_nvram_->WriteSpace(kSomeNvramIndex, "data",
+                                   kFakeAuthorizationValue));
 }
 
 TEST_F(Tpm2NvramTest, WriteSpaceFailure) {
-  uint32_t index = 42;
-  SetupExistingSpace(index, 20, kNoExtraAttributes, EXPECT_AUTH, NORMAL_AUTH);
-  EXPECT_CALL(mock_tpm_utility_, WriteNVSpace(index, _, _, _, _, _))
+  SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize, kNoExtraAttributes,
+                     EXPECT_AUTH, NORMAL_AUTH);
+  EXPECT_CALL(mock_tpm_utility_, WriteNVSpace(kSomeNvramIndex, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_NE(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->WriteSpace(index, "data", kFakeAuthorizationValue));
+            tpm_nvram_->WriteSpace(kSomeNvramIndex, "data",
+                                   kFakeAuthorizationValue));
 }
 
 TEST_F(Tpm2NvramTest, WriteSpacePolicy) {
-  uint32_t index = 42;
-  SetupExistingSpace(index, 20, kNoExtraAttributes, EXPECT_AUTH, POLICY_AUTH);
-  std::string data("data");
+  SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize, kNoExtraAttributes,
+                     EXPECT_AUTH, POLICY_AUTH);
   EXPECT_CALL(mock_tpm_utility_,
-              WriteNVSpace(index, 0, data, false, false, kPolicyAuth))
+              WriteNVSpace(kSomeNvramIndex, 0, kSomeData, false, false,
+                           kPolicyAuth))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->WriteSpace(index, data, kFakeAuthorizationValue));
+            tpm_nvram_->WriteSpace(kSomeNvramIndex, kSomeData,
+                                   kFakeAuthorizationValue));
 }
 
 TEST_F(Tpm2NvramTest, WriteSpaceOwner) {
-  uint32_t index = 42;
   SetupOwnerPassword();
-  SetupExistingSpace(index, 20, kNoExtraAttributes, EXPECT_AUTH, OWNER_AUTH);
-  std::string data("data");
+  SetupExistingSpace(kSomeNvramIndex, kSomeData.size(), kNoExtraAttributes,
+                     EXPECT_AUTH, OWNER_AUTH);
   EXPECT_CALL(mock_tpm_utility_,
-              WriteNVSpace(index, 0, data, true, false, kHMACAuth))
+              WriteNVSpace(kSomeNvramIndex, 0, kSomeData, true, false,
+                           kHMACAuth))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->WriteSpace(index, data, kFakeAuthorizationValue));
+            tpm_nvram_->WriteSpace(kSomeNvramIndex, kSomeData,
+                                   kFakeAuthorizationValue));
 }
 
 TEST_F(Tpm2NvramTest, ReadSpaceSuccess) {
-  uint32_t index = 42;
-  SetupExistingSpace(index, 32, trunks::TPMA_NV_WRITTEN, EXPECT_AUTH,
-                     NORMAL_AUTH);
-  std::string tpm_data("data");
-  EXPECT_CALL(mock_tpm_utility_, ReadNVSpace(index, 0, 32, false, _, kHMACAuth))
-      .WillOnce(DoAll(SetArgPointee<4>(tpm_data), Return(TPM_RC_SUCCESS)));
+  SetupExistingSpace(kSomeNvramIndex, kSomeData.size(), trunks::TPMA_NV_WRITTEN,
+                     EXPECT_AUTH, NORMAL_AUTH);
+  EXPECT_CALL(mock_tpm_utility_,
+              ReadNVSpace(kSomeNvramIndex, 0, kSomeData.size(), false, _,
+                          kHMACAuth))
+      .WillOnce(DoAll(SetArgPointee<4>(kSomeData), Return(TPM_RC_SUCCESS)));
   std::string read_data;
   EXPECT_EQ(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->ReadSpace(index, &read_data, kFakeAuthorizationValue));
-  EXPECT_EQ(read_data, tpm_data);
+            tpm_nvram_->ReadSpace(kSomeNvramIndex, &read_data,
+                                  kFakeAuthorizationValue));
+  EXPECT_EQ(kSomeData, read_data);
 }
 
 TEST_F(Tpm2NvramTest, ReadSpaceNonexistant) {
-  uint32_t index = 42;
-  EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(index, _))
+  EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(kSomeNvramIndex, _))
       .WillRepeatedly(Return(TPM_RC_HANDLE));
   std::string read_data;
   EXPECT_EQ(NVRAM_RESULT_SPACE_DOES_NOT_EXIST,
-            tpm_nvram_->ReadSpace(index, &read_data, kFakeAuthorizationValue));
+            tpm_nvram_->ReadSpace(kSomeNvramIndex, &read_data,
+                                  kFakeAuthorizationValue));
 }
 
 TEST_F(Tpm2NvramTest, ReadSpaceFailure) {
-  uint32_t index = 42;
-  SetupExistingSpace(index, 32, trunks::TPMA_NV_WRITTEN, EXPECT_AUTH,
-                     NORMAL_AUTH);
-  EXPECT_CALL(mock_tpm_utility_, ReadNVSpace(index, _, _, _, _, _))
+  SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize, trunks::TPMA_NV_WRITTEN,
+                     EXPECT_AUTH, NORMAL_AUTH);
+  EXPECT_CALL(mock_tpm_utility_, ReadNVSpace(kSomeNvramIndex, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   std::string read_data;
   EXPECT_NE(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->ReadSpace(index, &read_data, kFakeAuthorizationValue));
+            tpm_nvram_->ReadSpace(kSomeNvramIndex, &read_data,
+                                  kFakeAuthorizationValue));
 }
 
 TEST_F(Tpm2NvramTest, ReadSpacePolicy) {
-  uint32_t index = 42;
-  SetupExistingSpace(index, 32, trunks::TPMA_NV_WRITTEN, EXPECT_AUTH,
-                     POLICY_AUTH);
-  std::string tpm_data("data");
+  SetupExistingSpace(kSomeNvramIndex, kSomeData.size(), trunks::TPMA_NV_WRITTEN,
+                     EXPECT_AUTH, POLICY_AUTH);
   EXPECT_CALL(mock_tpm_utility_,
-              ReadNVSpace(index, 0, 32, false, _, kPolicyAuth))
-      .WillOnce(DoAll(SetArgPointee<4>(tpm_data), Return(TPM_RC_SUCCESS)));
+              ReadNVSpace(kSomeNvramIndex, 0, kSomeData.size(), false, _,
+                          kPolicyAuth))
+      .WillOnce(DoAll(SetArgPointee<4>(kSomeData), Return(TPM_RC_SUCCESS)));
   std::string read_data;
   EXPECT_EQ(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->ReadSpace(index, &read_data, kFakeAuthorizationValue));
-  EXPECT_EQ(read_data, tpm_data);
+            tpm_nvram_->ReadSpace(kSomeNvramIndex, &read_data,
+                                  kFakeAuthorizationValue));
+  EXPECT_EQ(kSomeData, read_data);
 }
 
 TEST_F(Tpm2NvramTest, ReadSpaceOwner) {
-  uint32_t index = 42;
   SetupOwnerPassword();
-  SetupExistingSpace(index, 32, trunks::TPMA_NV_WRITTEN, EXPECT_AUTH,
-                     OWNER_AUTH);
-  std::string tpm_data("data");
-  EXPECT_CALL(mock_tpm_utility_, ReadNVSpace(index, 0, 32, true, _, kHMACAuth))
-      .WillOnce(DoAll(SetArgPointee<4>(tpm_data), Return(TPM_RC_SUCCESS)));
+  SetupExistingSpace(kSomeNvramIndex, kSomeData.size(), trunks::TPMA_NV_WRITTEN,
+                     EXPECT_AUTH, OWNER_AUTH);
+  EXPECT_CALL(mock_tpm_utility_,
+              ReadNVSpace(kSomeNvramIndex, 0, kSomeData.size(), true, _,
+                          kHMACAuth))
+      .WillOnce(DoAll(SetArgPointee<4>(kSomeData), Return(TPM_RC_SUCCESS)));
   std::string read_data;
   EXPECT_EQ(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->ReadSpace(index, &read_data, kFakeAuthorizationValue));
-  EXPECT_EQ(read_data, tpm_data);
+            tpm_nvram_->ReadSpace(kSomeNvramIndex, &read_data,
+                                  kFakeAuthorizationValue));
+  EXPECT_EQ(kSomeData, read_data);
 }
 
 TEST_F(Tpm2NvramTest, LockSpaceSuccess) {
-  uint32_t index = 42;
-  SetupExistingSpace(index, 32, kNoExtraAttributes, EXPECT_AUTH, NORMAL_AUTH);
-  EXPECT_CALL(mock_tpm_utility_, LockNVSpace(index, true, _, false, kHMACAuth))
+  SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize, kNoExtraAttributes,
+                     EXPECT_AUTH, NORMAL_AUTH);
+  EXPECT_CALL(mock_tpm_utility_,
+              LockNVSpace(kSomeNvramIndex, true, _, false, kHMACAuth))
       .Times(AtLeast(1));
-  EXPECT_CALL(mock_tpm_utility_, LockNVSpace(index, _, true, false, kHMACAuth))
+  EXPECT_CALL(mock_tpm_utility_,
+              LockNVSpace(kSomeNvramIndex, _, true, false, kHMACAuth))
       .Times(AtLeast(1));
   EXPECT_EQ(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->LockSpace(index, true, true, kFakeAuthorizationValue));
+            tpm_nvram_->LockSpace(kSomeNvramIndex, true, true,
+                                  kFakeAuthorizationValue));
 }
 
 TEST_F(Tpm2NvramTest, LockSpaceNonexistant) {
-  uint32_t index = 42;
-  EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(index, _))
+  EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(kSomeNvramIndex, _))
       .WillOnce(Return(trunks::TPM_RC_HANDLE));
   EXPECT_EQ(NVRAM_RESULT_SPACE_DOES_NOT_EXIST,
-            tpm_nvram_->LockSpace(index, true, true, kFakeAuthorizationValue));
+            tpm_nvram_->LockSpace(kSomeNvramIndex, true, true,
+                                  kFakeAuthorizationValue));
 }
 
 TEST_F(Tpm2NvramTest, LockSpaceFailure) {
-  uint32_t index = 42;
-  SetupExistingSpace(index, 32, kNoExtraAttributes, EXPECT_AUTH, NORMAL_AUTH);
+  SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize, kNoExtraAttributes,
+                     EXPECT_AUTH, NORMAL_AUTH);
   EXPECT_CALL(mock_tpm_utility_, LockNVSpace(_, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_NE(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->LockSpace(index, true, true, kFakeAuthorizationValue));
+            tpm_nvram_->LockSpace(kSomeNvramIndex, true, true,
+                                  kFakeAuthorizationValue));
 }
 
 TEST_F(Tpm2NvramTest, LockSpacePolicy) {
-  uint32_t index = 42;
-  SetupExistingSpace(index, 32, kNoExtraAttributes, EXPECT_AUTH, POLICY_AUTH);
+  SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize, kNoExtraAttributes,
+                     EXPECT_AUTH, POLICY_AUTH);
   EXPECT_CALL(mock_tpm_utility_,
-              LockNVSpace(index, true, _, false, kPolicyAuth))
+              LockNVSpace(kSomeNvramIndex, true, _, false, kPolicyAuth))
       .Times(AtLeast(1));
   EXPECT_CALL(mock_tpm_utility_,
-              LockNVSpace(index, _, true, false, kPolicyAuth))
+              LockNVSpace(kSomeNvramIndex, _, true, false, kPolicyAuth))
       .Times(AtLeast(1));
   EXPECT_EQ(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->LockSpace(index, true, true, kFakeAuthorizationValue));
+            tpm_nvram_->LockSpace(kSomeNvramIndex, true, true,
+                                  kFakeAuthorizationValue));
 }
 
 TEST_F(Tpm2NvramTest, LockSpaceOwner) {
-  uint32_t index = 42;
   SetupOwnerPassword();
-  SetupExistingSpace(index, 32, kNoExtraAttributes, EXPECT_AUTH, OWNER_AUTH);
-  EXPECT_CALL(mock_tpm_utility_, LockNVSpace(index, true, _, true, kHMACAuth))
+  SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize, kNoExtraAttributes,
+                     EXPECT_AUTH, OWNER_AUTH);
+  EXPECT_CALL(mock_tpm_utility_,
+              LockNVSpace(kSomeNvramIndex, true, _, true, kHMACAuth))
       .Times(AtLeast(1));
-  EXPECT_CALL(mock_tpm_utility_, LockNVSpace(index, _, true, true, kHMACAuth))
+  EXPECT_CALL(mock_tpm_utility_,
+              LockNVSpace(kSomeNvramIndex, _, true, true, kHMACAuth))
       .Times(AtLeast(1));
   EXPECT_EQ(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->LockSpace(index, true, true, kFakeAuthorizationValue));
+            tpm_nvram_->LockSpace(kSomeNvramIndex, true, true,
+                                  kFakeAuthorizationValue));
 }
 
 TEST_F(Tpm2NvramTest, LockSpaceRead) {
-  uint32_t index = 42;
-  SetupExistingSpace(index, 32, kNoExtraAttributes, EXPECT_AUTH, NORMAL_AUTH);
+  SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize, kNoExtraAttributes,
+                     EXPECT_AUTH, NORMAL_AUTH);
   EXPECT_CALL(mock_tpm_utility_,
-              LockNVSpace(index, true, false, false, kHMACAuth))
+              LockNVSpace(kSomeNvramIndex, true, false, false, kHMACAuth))
       .Times(AtLeast(1));
-  EXPECT_CALL(mock_tpm_utility_, LockNVSpace(index, _, true, false, kHMACAuth))
+  EXPECT_CALL(mock_tpm_utility_,
+              LockNVSpace(kSomeNvramIndex, _, true, false, kHMACAuth))
       .Times(0);
   EXPECT_EQ(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->LockSpace(index, true, false, kFakeAuthorizationValue));
+            tpm_nvram_->LockSpace(kSomeNvramIndex, true, false,
+                                  kFakeAuthorizationValue));
 }
 
 TEST_F(Tpm2NvramTest, LockSpaceWrite) {
-  uint32_t index = 42;
-  SetupExistingSpace(index, 32, kNoExtraAttributes, EXPECT_AUTH, NORMAL_AUTH);
+  SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize, kNoExtraAttributes,
+                     EXPECT_AUTH, NORMAL_AUTH);
   EXPECT_CALL(mock_tpm_utility_,
-              LockNVSpace(index, false, true, false, kHMACAuth))
+              LockNVSpace(kSomeNvramIndex, false, true, false, kHMACAuth))
       .Times(AtLeast(1));
-  EXPECT_CALL(mock_tpm_utility_, LockNVSpace(index, true, _, false, kHMACAuth))
+  EXPECT_CALL(mock_tpm_utility_,
+              LockNVSpace(kSomeNvramIndex, true, _, false, kHMACAuth))
       .Times(0);
   EXPECT_EQ(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->LockSpace(index, false, true, kFakeAuthorizationValue));
+            tpm_nvram_->LockSpace(kSomeNvramIndex, false, true,
+                                  kFakeAuthorizationValue));
 }
 
 TEST_F(Tpm2NvramTest, ListSpacesSuccess) {
@@ -561,7 +582,7 @@ TEST_F(Tpm2NvramTest, ListSpacesSuccess) {
       .WillRepeatedly(
           DoAll(SetArgPointee<0>(expected_spaces), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(NVRAM_RESULT_SUCCESS, tpm_nvram_->ListSpaces(&spaces));
-  EXPECT_EQ(spaces, expected_spaces);
+  EXPECT_EQ(expected_spaces, spaces);
 }
 
 TEST_F(Tpm2NvramTest, ListSpacesFailure) {
@@ -572,8 +593,7 @@ TEST_F(Tpm2NvramTest, ListSpacesFailure) {
 }
 
 TEST_F(Tpm2NvramTest, GetSpaceInfoSuccess) {
-  uint32_t index = 42;
-  SetupExistingSpace(index, 100,
+  SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize,
                      trunks::TPMA_NV_READLOCKED | trunks::TPMA_NV_WRITELOCKED,
                      NO_EXPECT_AUTH, POLICY_AUTH);
   size_t size;
@@ -582,9 +602,9 @@ TEST_F(Tpm2NvramTest, GetSpaceInfoSuccess) {
   std::vector<NvramSpaceAttribute> attributes;
   NvramSpacePolicy policy;
   EXPECT_EQ(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->GetSpaceInfo(index, &size, &is_write_locked,
+            tpm_nvram_->GetSpaceInfo(kSomeNvramIndex, &size, &is_write_locked,
                                      &is_read_locked, &attributes, &policy));
-  EXPECT_EQ(size, 100);
+  EXPECT_EQ(kSomeNvramSize, size);
   EXPECT_TRUE(is_read_locked);
   EXPECT_TRUE(is_write_locked);
   EXPECT_GE(attributes.size(), 1);
@@ -594,8 +614,7 @@ TEST_F(Tpm2NvramTest, GetSpaceInfoSuccess) {
 }
 
 TEST_F(Tpm2NvramTest, GetSpaceInfoSuccessAlt) {
-  uint32_t index = 42;
-  SetupExistingSpace(index, 100,
+  SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize,
                      trunks::TPMA_NV_AUTHREAD | trunks::TPMA_NV_AUTHWRITE |
                          trunks::TPMA_NV_PPREAD,
                      NO_EXPECT_AUTH, POLICY_AUTH);
@@ -605,9 +624,9 @@ TEST_F(Tpm2NvramTest, GetSpaceInfoSuccessAlt) {
   std::vector<NvramSpaceAttribute> attributes;
   NvramSpacePolicy policy;
   EXPECT_EQ(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->GetSpaceInfo(index, &size, &is_write_locked,
+            tpm_nvram_->GetSpaceInfo(kSomeNvramIndex, &size, &is_write_locked,
                                      &is_read_locked, &attributes, &policy));
-  EXPECT_EQ(100, size);
+  EXPECT_EQ(kSomeNvramSize, size);
   EXPECT_FALSE(is_read_locked);
   EXPECT_FALSE(is_write_locked);
   EXPECT_GE(attributes.size(), 3);
@@ -621,8 +640,7 @@ TEST_F(Tpm2NvramTest, GetSpaceInfoSuccessAlt) {
 }
 
 TEST_F(Tpm2NvramTest, GetSpaceInfoFailure) {
-  uint32_t index = 42;
-  EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(index, _))
+  EXPECT_CALL(mock_tpm_utility_, GetNVSpacePublicArea(kSomeNvramIndex, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   size_t size;
   bool is_read_locked;
@@ -630,7 +648,7 @@ TEST_F(Tpm2NvramTest, GetSpaceInfoFailure) {
   std::vector<NvramSpaceAttribute> attributes;
   NvramSpacePolicy policy;
   EXPECT_NE(NVRAM_RESULT_SUCCESS,
-            tpm_nvram_->GetSpaceInfo(index, &size, &is_write_locked,
+            tpm_nvram_->GetSpaceInfo(kSomeNvramIndex, &size, &is_write_locked,
                                      &is_read_locked, &attributes, &policy));
 }
 
