@@ -1051,12 +1051,15 @@ bool Platform::AddDirCryptoKeyToKeyring(const brillo::SecureBlob& key,
   /* Set the permission on the key.
    * Possessor: (everyone given the key is in a session keyring belonging to
    * init):
-   * -- View
-   * -- Search
-   * User, Other, Group:
+   * -- View, Search
+   * User: (root)
+   * -- Write, Setattr
+   * Group, Other:
    * -- None
    */
-  if (keyctl_setperm(*key_id, KEY_POS_VIEW | KEY_POS_SEARCH) != 0) {
+  const key_perm_t kPermissions = KEY_POS_VIEW | KEY_POS_SEARCH |
+      KEY_USR_WRITE | KEY_USR_SETATTR;
+  if (keyctl_setperm(*key_id, kPermissions) != 0) {
     PLOG(ERROR) << "Could not change permission on key " << *key_id;
     InvalidateDirCryptoKey(*key_id);
     return false;
