@@ -551,6 +551,10 @@ class Platform {
   virtual bool ReportFilesystemDetails(const base::FilePath &filesystem,
                                        const base::FilePath &logfile);
 
+  // Sets up a process keyring which links to the user keyring and the session
+  // keyring.
+  virtual bool SetupProcessKeyring();
+
   // Returns the state of the directory's encryption key.
   virtual dircrypto::KeyState GetDirCryptoKeyState(const base::FilePath& dir);
 

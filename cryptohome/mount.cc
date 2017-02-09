@@ -486,6 +486,11 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
+  if (!platform_->SetupProcessKeyring()) {
+    LOG(INFO) << "Failed to set up a process keyring.";
+    *mount_error = MOUNT_ERROR_FATAL;
+    return false;
+  }
   std::string ecryptfs_options;
   switch (mount_type_) {
     case MountType::ECRYPTFS: {

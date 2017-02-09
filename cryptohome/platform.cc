@@ -1160,6 +1160,26 @@ bool Platform::SendFile(const base::File& to,
   return true;
 }
 
+bool Platform::SetupProcessKeyring() {
+  // We have patched upstart to set up a session keyring in init.
+  // This results in the user keyring not present under the session keyring and
+  // it breaks eCryptfs. Set up a process keyring and link the user keyring to
+  // it to fix this.
+  if (keyctl_link(KEY_SPEC_USER_KEYRING, KEY_SPEC_PROCESS_KEYRING)) {
+    PLOG(ERROR) << "Failed to link the user keyring to the process keyring.";
+    return false;
+  }
+  // When we have a process keyring, it hides the session keyring and it breaks
+  // ext4 encryption.
+  // Link the session keyring to the process keyring so that request_key() can
+  // find keys under the session keyring too.
+  if (keyctl_link(KEY_SPEC_SESSION_KEYRING, KEY_SPEC_PROCESS_KEYRING)) {
+    PLOG(ERROR) << "Failed to link the session keyring to the process keyring.";
+    return false;
+  }
+  return true;
+}
+
 // Encapsulate these helpers to avoid include conflicts.
 namespace ecryptfs {
 extern "C" {

@@ -170,6 +170,7 @@ class MockPlatform : public Platform {
   MOCK_METHOD2(DeleteFileDurable, bool(const base::FilePath&, bool));
   MOCK_METHOD1(DirectoryExists, bool(const base::FilePath&));
   MOCK_METHOD1(CreateDirectory, bool(const base::FilePath&));
+  MOCK_METHOD0(SetupProcessKeyring, bool());
   MOCK_METHOD1(GetDirCryptoKeyState,
                dircrypto::KeyState(const base::FilePath&));
   MOCK_METHOD2(SetDirCryptoKey, bool(const base::FilePath&,
