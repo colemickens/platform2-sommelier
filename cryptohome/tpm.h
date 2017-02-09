@@ -541,6 +541,11 @@ class Tpm {
   // already removed by the time this function is called.
   virtual bool RemoveOwnerDependency(TpmOwnerDependency dependency) = 0;
 
+  // Clears the stored owner password.
+  // Returns true if the password is cleared by this method, or was already
+  // clear when we called it.
+  virtual bool ClearStoredPassword() = 0;
+
  private:
   static Tpm* singleton_;
   static base::Lock singleton_lock_;

@@ -171,8 +171,7 @@ void TpmInit::ClearStoredTpmPassword() {
       StoreTpmStatus(tpm_status);
     }
   }
-  SecureBlob empty;
-  get_tpm()->SetOwnerPassword(empty);
+  get_tpm()->ClearStoredPassword();
 }
 
 void TpmInit::ThreadMain() {

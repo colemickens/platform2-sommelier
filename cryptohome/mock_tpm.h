@@ -127,6 +127,7 @@ class MockTpm : public Tpm {
                bool(const brillo::SecureBlob&, const brillo::SecureBlob&));
   MOCK_METHOD0(DeclareTpmFirmwareStable, void());
   MOCK_METHOD1(RemoveOwnerDependency, bool(TpmOwnerDependency));
+  MOCK_METHOD0(ClearStoredPassword, bool());
 
  private:
   TpmRetryAction Xor(TpmKeyHandle _key,

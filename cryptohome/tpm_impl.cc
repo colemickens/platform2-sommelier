@@ -2869,4 +2869,10 @@ bool TpmImpl::RemoveOwnerDependency(TpmOwnerDependency /* dependency */) {
   return true;
 }
 
+bool TpmImpl::ClearStoredPassword() {
+  brillo::SecureBlob empty;
+  SetOwnerPassword(empty);
+  return true;
+}
+
 }  // namespace cryptohome

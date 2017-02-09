@@ -72,6 +72,8 @@ class Tpm2Test : public testing::Test {
         .WillByDefault(WithArg<1>(Invoke(this, &Tpm2Test::FakeGetTpmStatus)));
     ON_CALL(mock_tpm_owner_, RemoveOwnerDependency(_, _))
         .WillByDefault(Invoke(this, &Tpm2Test::FakeRemoveOwnerDependency));
+    ON_CALL(mock_tpm_owner_, ClearStoredOwnerPassword(_, _))
+        .WillByDefault(Invoke(this, &Tpm2Test::FakeClearStoredOwnerPassword));
     SetupFakeNvram();
   }
 
@@ -105,6 +107,13 @@ class Tpm2Test : public testing::Test {
           callback) {
     last_remove_owner_dependency_request = request;
     callback.Run(next_remove_owner_dependency_reply);
+  }
+
+  void FakeClearStoredOwnerPassword(
+      const tpm_manager::ClearStoredOwnerPasswordRequest& /* request */,
+      const tpm_manager::TpmOwnershipInterface::
+          ClearStoredOwnerPasswordCallback& callback) {
+    callback.Run(next_clear_stored_password_reply);
   }
 
   void FakeDefineSpace(
@@ -174,6 +183,7 @@ class Tpm2Test : public testing::Test {
   tpm_manager::ListSpacesReply next_list_spaces_reply;
   tpm_manager::GetSpaceInfoReply next_get_space_info_reply;
   tpm_manager::RemoveOwnerDependencyReply next_remove_owner_dependency_reply;
+  tpm_manager::ClearStoredOwnerPasswordReply next_clear_stored_password_reply;
 
   trunks::TrunksFactoryForTest factory_;
   Tpm* tpm_;
@@ -1050,6 +1060,24 @@ TEST_F(Tpm2Test, RemoveOwnerDependencyUnknown) {
   EXPECT_CALL(mock_tpm_owner_, RemoveOwnerDependency(_, _))
         .Times(0);
   EXPECT_TRUE(tpm_->RemoveOwnerDependency(unknown_dep));
+}
+
+TEST_F(Tpm2Test, ClearStoredPasswordSuccess) {
+  EXPECT_CALL(mock_tpm_owner_, ClearStoredOwnerPassword(_, _))
+      .Times(1);
+  EXPECT_CALL(mock_tpm_owner_, GetTpmStatus(_, _))
+      .Times(1);
+  EXPECT_TRUE(tpm_->ClearStoredPassword());
+}
+
+TEST_F(Tpm2Test, ClearStoredPasswordFailure) {
+  next_clear_stored_password_reply.set_status(
+      tpm_manager::STATUS_DEVICE_ERROR);
+  EXPECT_CALL(mock_tpm_owner_, ClearStoredOwnerPassword(_, _))
+      .Times(1);
+  EXPECT_CALL(mock_tpm_owner_, GetTpmStatus(_, _))
+      .Times(0);
+  EXPECT_FALSE(tpm_->ClearStoredPassword());
 }
 
 }  // namespace cryptohome

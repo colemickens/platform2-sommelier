@@ -233,6 +233,11 @@ void ServiceDistributed::AttestationInitializeTpm() {
 
 void ServiceDistributed::AttestationInitializeTpmComplete() {
   VLOG(1) << __func__;
+  // PrepareForEnrollment is done by attestationd. It will remove
+  // the Attestation dependency with tpm_manager. Here we just clear
+  // it in local TpmStatus stored by cryptohomed, so that it doesn't
+  // prevent ClearStoredOwnerPassword from being sent to tpm_manager.
+  tpm_init_->RemoveTpmOwnerDependency(Tpm::TpmOwnerDependency::kAttestation);
 }
 
 void ServiceDistributed::AttestationGetTpmStatus(GetTpmStatusReply* reply_out) {

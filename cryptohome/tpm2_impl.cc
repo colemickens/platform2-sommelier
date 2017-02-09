@@ -1109,4 +1109,21 @@ bool Tpm2Impl::RemoveOwnerDependency(TpmOwnerDependency dependency) {
   return (reply.status() == tpm_manager::STATUS_SUCCESS);
 }
 
+bool Tpm2Impl::ClearStoredPassword() {
+  if (!InitializeTpmManagerClients()) {
+    return false;
+  }
+  tpm_manager::ClearStoredOwnerPasswordRequest request;
+  auto method =
+      base::Bind(&tpm_manager::TpmOwnershipInterface::ClearStoredOwnerPassword,
+                 base::Unretained(tpm_owner_), request);
+  tpm_manager::ClearStoredOwnerPasswordReply reply;
+  SendTpmManagerRequestAndWait(method, &reply);
+  if (reply.status() != tpm_manager::STATUS_SUCCESS) {
+    LOG(WARNING) << "Failed to clear stored owner password.";
+    return false;
+  }
+  return UpdateTpmStatus(RefreshType::FORCE_REFRESH);
+}
+
 }  // namespace cryptohome
