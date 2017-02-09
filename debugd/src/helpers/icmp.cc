@@ -29,6 +29,8 @@
 using base::StringPrintf;
 using std::string;
 
+namespace {
+
 static const char kHelpMessage[] =
     "Usage: icmp [<switches>] <ip>\n\n"
     "Available switches:\n"
@@ -56,6 +58,8 @@ static int GetIntSwitch(const base::CommandLine* cl, const string& name,
   }
   return val;
 }
+
+}  // namespace
 
 int main(int argc, char *argv[]) {
   char outbuf[1024];

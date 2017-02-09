@@ -11,15 +11,19 @@
 
 #include <base/strings/stringprintf.h>
 
-namespace {
-const size_t kMaxWaitAttempts = 3;
-const unsigned int kDelayUSec = 1000;
-}
-
 namespace debugd {
 
-const char *SandboxedProcess::kDefaultUser = "debugd";
-const char *SandboxedProcess::kDefaultGroup = "debugd";
+namespace {
+
+const size_t kMaxWaitAttempts = 3;
+const unsigned int kDelayUSec = 1000;
+
+const char kMiniJail[] = "/sbin/minijail0";
+
+}  // namespace
+
+const char SandboxedProcess::kDefaultUser[] = "debugd";
+const char SandboxedProcess::kDefaultGroup[] = "debugd";
 
 SandboxedProcess::SandboxedProcess()
     : sandboxing_(true),
@@ -52,8 +56,6 @@ bool SandboxedProcess::GetHelperPath(const std::string& relative_path,
 }
 
 bool SandboxedProcess::Init() {
-  const char *kMiniJail = "/sbin/minijail0";
-
   AddArg(kMiniJail);
   // Enter a new mount namespace. This is done for every process to avoid
   // affecting the original mount namespace.

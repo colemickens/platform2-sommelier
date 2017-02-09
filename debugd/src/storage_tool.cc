@@ -11,9 +11,13 @@ using base::StringPrintf;
 
 namespace debugd {
 
-const char* kSmartctl = "/usr/sbin/smartctl";
-const char* kBadblocks = "/sbin/badblocks";
-const char* kDevice = "/dev/sda";
+namespace {
+
+const char kSmartctl[] = "/usr/sbin/smartctl";
+const char kBadblocks[] = "/sbin/badblocks";
+const char kDevice[] = "/dev/sda";
+
+}  // namespace
 
 std::string StorageTool::Smartctl(const std::string& option,
                                   DBus::Error* error) {

@@ -10,6 +10,7 @@
 #include <base/strings/string_split.h>
 #include <brillo/process.h>
 
+#include "debugd/src/constants.h"
 #include "debugd/src/process_with_output.h"
 #include "debugd/src/sandboxed_process.h"
 
@@ -28,8 +29,6 @@ void AddCategoryArgs(ProcessWithOutput* p, const std::string& categories) {
 }
 
 }  // namespace
-
-extern const char *kDebugfsGroup;
 
 std::string SystraceTool::Start(const std::string& categories,
                                 DBus::Error* error) {

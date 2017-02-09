@@ -17,6 +17,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <shill/dbus_proxies/org.chromium.flimflam.Manager.h>
 
+#include "debugd/src/constants.h"
 #include "debugd/src/process_with_output.h"
 
 namespace debugd {
@@ -26,12 +27,10 @@ using std::vector;
 
 using Strings = vector<string>;
 
-const char *kDebugfsGroup = "debugfs-access";
-const char *kRoot = "root";
-
 namespace {
 
-const char *kShell = "/bin/sh";
+const char kRoot[] = "root";
+const char kShell[] = "/bin/sh";
 
 // Minimum time in seconds needed to allow shill to test active connections.
 const int kConnectionTesterTimeoutSeconds = 5;

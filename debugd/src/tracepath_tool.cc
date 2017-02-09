@@ -8,8 +8,12 @@
 
 namespace debugd {
 
+namespace {
+
 const char kTracepath[] = "/usr/sbin/tracepath";
 const char kTracepath6[] = "/usr/sbin/tracepath6";
+
+}  // namespace
 
 std::string TracePathTool::Start(
     const DBus::FileDescriptor& outfd,

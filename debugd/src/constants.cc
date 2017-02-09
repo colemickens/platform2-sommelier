@@ -15,4 +15,6 @@ const char kDevFeaturesChromeRemoteDebuggingFlagPath[] =
 const char kDeviceCoredumpUploadFlagPath[] =
     "/var/lib/crash_reporter/device_coredump_upload_allowed";
 
+const char kDebugfsGroup[] = "debugfs-access";
+
 }  // namespace debugd

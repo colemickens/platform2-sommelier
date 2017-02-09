@@ -10,7 +10,11 @@
 
 namespace debugd {
 
-const char* kIpTool = "/bin/ip";
+namespace {
+
+const char kIpTool[] = "/bin/ip";
+
+}  // namespace
 
 std::vector<std::string> RouteTool::GetRoutes(
     const std::map<std::string, DBus::Variant>& options, DBus::Error* error) {

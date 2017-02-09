@@ -11,9 +11,14 @@
 
 namespace debugd {
 
-const char* kSetuidHack = "/usr/libexec/debugd/helpers/minijail-setuid-hack.sh";
-const char* kPing = "/bin/ping";
-const char* kPing6 = "/bin/ping6";
+namespace {
+
+const char kSetuidHack[] =
+    "/usr/libexec/debugd/helpers/minijail-setuid-hack.sh";
+const char kPing[] = "/bin/ping";
+const char kPing6[] = "/bin/ping6";
+
+}  // namespace
 
 std::string PingTool::Start(const DBus::FileDescriptor& outfd,
                             const std::string& destination,

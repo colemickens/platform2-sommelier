@@ -43,8 +43,8 @@ class SandboxedProcess : public brillo::ProcessImpl {
   // Kill the sandboxed process' process group.
   virtual bool KillProcessGroup();
 
-  static const char *kDefaultUser;
-  static const char *kDefaultGroup;
+  static const char kDefaultUser[];
+  static const char kDefaultGroup[];
 
  private:
   bool sandboxing_;

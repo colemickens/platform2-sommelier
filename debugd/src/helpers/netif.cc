@@ -248,7 +248,7 @@ std::unique_ptr<Value> NetInterface::ToValue() const {
 }
 
 std::string DevicePathToName(const std::string& path) {
-  const char *kPrefix = "/device/";
+  static const char kPrefix[] = "/device/";
   if (path.find(kPrefix) == 0)
     return path.substr(strlen(kPrefix));
   return "?";

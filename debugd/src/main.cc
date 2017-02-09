@@ -8,16 +8,12 @@
 
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <brillo/process.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/libminijail.h>
 
 #include "debugd/src/debug_daemon.h"
 
 namespace {
-const char* kHelpers[] = {
-  nullptr,
-};
 
 // @brief Enter a VFS namespace.
 //
@@ -47,16 +43,6 @@ void setup_dirs() {
     PLOG(FATAL) << "mkdir(\"/debugd/touchpad\") failed";
 }
 
-// @brief Launch all our helper programs.
-void launch_helpers() {
-  for (int i = 0; kHelpers[i]; ++i) {
-    brillo::ProcessImpl p;
-    p.AddArg(kHelpers[i]);
-    p.Start();
-    p.Release();
-  }
-}
-
 // @brief Start the debugd DBus interface.
 void start() {
   DBus::BusDispatcher dispatcher;
@@ -68,7 +54,8 @@ void start() {
   debugd.Run();
   LOG(FATAL) << "debugd.Run() returned";
 }
-};  // namespace
+
+}  // namespace
 
 int __attribute__((visibility("default"))) main(int argc, char* argv[]) {
   base::CommandLine::Init(argc, argv);
@@ -76,7 +63,6 @@ int __attribute__((visibility("default"))) main(int argc, char* argv[]) {
   enter_vfs_namespace();
   make_tmpfs();
   setup_dirs();
-  launch_helpers();
   start();
   return 0;
 }

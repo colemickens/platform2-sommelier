@@ -16,12 +16,16 @@
 
 namespace debugd {
 
+namespace {
+
 const int kFlimflamLogLevelVerbose3 = -3;
 const int kFlimflamLogLevelInfo = 0;
 
-const char* const kSupplicantPath = "/fi/w1/wpa_supplicant1";
-const char* const kSupplicantService = "fi.w1.wpa_supplicant1";
-const char* const kSupplicantIface = "fi.w1.wpa_supplicant1";
+const char kSupplicantPath[] = "/fi/w1/wpa_supplicant1";
+const char kSupplicantService[] = "fi.w1.wpa_supplicant1";
+const char kSupplicantIface[] = "fi.w1.wpa_supplicant1";
+
+}  // namespace
 
 class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
                      public DBus::ObjectProxy {
@@ -37,8 +41,12 @@ class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
 
 #if USE_CELLULAR
 
-const char* const kDBusListNames = "ListNames";
-const char* const kModemManager = "ModemManager";
+namespace {
+
+const char kDBusListNames[] = "ListNames";
+const char kModemManager[] = "ModemManager";
+
+}  // namespace
 
 class ModemManagerProxy : public org::freedesktop::ModemManager_proxy,
                           public DBus::ObjectProxy {

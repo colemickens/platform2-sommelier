@@ -10,7 +10,12 @@
 
 #include <unistd.h>
 
+namespace {
+
+const char kClient[] = "/usr/bin/cras_test_client";
+
+}  // namespace
+
 int main() {
-  const char *kClient = "/usr/bin/cras_test_client";
   return execl(kClient, kClient, "--dump_server_info", nullptr);
 }
