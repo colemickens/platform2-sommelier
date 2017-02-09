@@ -22,7 +22,7 @@ namespace debugd {
 // By default both stdout and stderr are included in the output.
 class ProcessWithOutput : public SandboxedProcess {
  public:
-  typedef std::vector<std::string> ArgList;
+  using ArgList = std::vector<std::string>;
   enum { kRunError = -1 };
 
   ProcessWithOutput();

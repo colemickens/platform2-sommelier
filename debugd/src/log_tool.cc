@@ -24,7 +24,7 @@ namespace debugd {
 using std::string;
 using std::vector;
 
-typedef vector<string> Strings;
+using Strings = vector<string>;
 
 const char *kDebugfsGroup = "debugfs-access";
 const char *kRoot = "root";

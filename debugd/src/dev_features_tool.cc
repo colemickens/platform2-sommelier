@@ -14,7 +14,7 @@ namespace debugd {
 
 namespace {
 
-typedef ProcessWithOutput::ArgList ArgList;
+using ArgList = ProcessWithOutput::ArgList;
 
 const char kDefaultRootPassword[] = "test0000";
 
@@ -166,7 +166,7 @@ void DevFeaturesTool::EnableChromeDevFeatures(const std::string& root_password,
 namespace {
 
 struct Query {
-  typedef std::function<bool(void)> Function;
+  using Function = std::function<bool(void)>;
 
   Query(Function _function, DevFeatureFlag _flag)
       : function(_function), flag(_flag) {

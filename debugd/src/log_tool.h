@@ -20,7 +20,7 @@ class LogTool {
   LogTool() = default;
   ~LogTool() = default;
 
-  typedef std::map<std::string, std::string> LogMap;
+  using LogMap = std::map<std::string, std::string>;
 
   std::string GetLog(const std::string& name, DBus::Error* error);
   LogMap GetAllLogs(DBus::Connection* connection, DBus::Error* error);
