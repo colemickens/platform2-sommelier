@@ -64,7 +64,7 @@ TEST_F(TpmOwnershipDBusProxyTest, GetTpmStatus) {
     reply.set_dictionary_attack_lockout_in_effect(true);
     reply.set_dictionary_attack_lockout_seconds_remaining(5);
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.release());
+    response_callback.Run(response.get());
   };
   EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
@@ -100,7 +100,7 @@ TEST_F(TpmOwnershipDBusProxyTest, TakeOwnership) {
     TakeOwnershipReply reply;
     reply.set_status(STATUS_SUCCESS);
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.release());
+    response_callback.Run(response.get());
   };
   EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
@@ -133,7 +133,7 @@ TEST_F(TpmOwnershipDBusProxyTest, RemoveOwnerDependency) {
     RemoveOwnerDependencyReply reply;
     reply.set_status(STATUS_SUCCESS);
     writer.AppendProtoAsArrayOfBytes(reply);
-    response_callback.Run(response.release());
+    response_callback.Run(response.get());
   };
   EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
