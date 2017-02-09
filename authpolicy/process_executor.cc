@@ -11,12 +11,32 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 #include <libminijail.h>
 
 #include "authpolicy/pipe_helper.h"
 
 namespace ah = authpolicy::helper;
+
+namespace {
+
+// Splits string into lines and logs the lines. This works around a restriction
+// of syslog of 8kb per log and fixes unreadable logs where \n is replaced by
+// #012.
+void LogLongString(const char* header, const std::string& str) {
+  std::vector<std::string> lines = base::SplitString(
+      str, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  if (lines.size() <= 1) {
+    LOG(INFO) << header << str;
+  } else {
+    LOG(INFO) << header;
+    for (const std::string& line : lines)
+      LOG(INFO) << line;
+  }
+}
+
+}  // namespace
 
 namespace authpolicy {
 
@@ -131,8 +151,8 @@ bool ProcessExecutor::Execute() {
     return false;
   }
 
-  LOG(INFO) << "Stdout: " << out_data_;
-  LOG(INFO) << "Stderr: " << err_data_;
+  LogLongString("Stdout: ", out_data_);
+  LogLongString("Stderr: ", err_data_);
   LOG(INFO) << "Exit code: " << exit_code_;
   return exit_code_ == 0;
 }
