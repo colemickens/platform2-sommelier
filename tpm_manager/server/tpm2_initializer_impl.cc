@@ -19,6 +19,7 @@
 #include <string>
 
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <trunks/error_codes.h>
 #include <trunks/tpm_utility.h>
 #include <trunks/trunks_factory_impl.h>
@@ -31,7 +32,11 @@ using trunks::TPM_RC;
 using trunks::TPM_RC_SUCCESS;
 
 namespace {
-const size_t kDefaultPasswordSize = 20;
+// Owner password is human-readable, so produce N random bytes and then
+// hexdump them into N*2 password characters. For other passwords, just
+// generate N*2 random bytes.
+const size_t kOwnerPasswordRandomBytes = 10;
+const size_t kDefaultPasswordSize = kOwnerPasswordRandomBytes * 2;
 }  // namespace
 
 namespace tpm_manager {
@@ -79,10 +84,14 @@ bool Tpm2InitializerImpl::InitializeTpm() {
     endorsement_password.assign(local_data.endorsement_password());
     lockout_password.assign(local_data.lockout_password());
   } else {
-    if (!GetTpmRandomData(kDefaultPasswordSize, &owner_password)) {
+    // Generate a human-readable owner password as a hexdump of random bytes.
+    std::string random_bytes;
+    if (!GetTpmRandomData(kOwnerPasswordRandomBytes, &random_bytes)) {
       LOG(ERROR) << "Error generating a random owner password.";
       return false;
     }
+    owner_password = base::HexEncode(random_bytes.data(), random_bytes.size());
+    // Other passwords don't have to be printable.
     if (!GetTpmRandomData(kDefaultPasswordSize, &endorsement_password)) {
       LOG(ERROR) << "Error generating a random endorsement password.";
       return false;

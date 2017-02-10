@@ -20,6 +20,7 @@
 
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <trousers/scoped_tss_type.h>
 
 #include "tpm_manager/server/local_data_store.h"
@@ -32,7 +33,11 @@ namespace {
 
 // Don't use directly, use GetDefaultOwnerPassword().
 const char kDefaultOwnerPassword[] = TSS_WELL_KNOWN_SECRET;
-const size_t kDefaultPasswordSize = 20;
+// Owner password is human-readable, so produce N random bytes and then
+// hexdump them into N*2 password bytes. For other passwords, just generate
+// N*2 random bytes.
+const size_t kOwnerPasswordRandomBytes = 10;
+const size_t kDefaultPasswordSize = kOwnerPasswordRandomBytes * 2;
 const int kMaxOwnershipTimeoutRetries = 5;
 const char* kWellKnownSrkSecret = "well_known_srk_secret";
 
@@ -60,9 +65,11 @@ bool TpmInitializerImpl::InitializeTpm() {
     return false;
   }
   std::string owner_password;
-  if (!openssl_util_.GetRandomBytes(kDefaultPasswordSize, &owner_password)) {
+  std::string random_bytes;
+  if (!openssl_util_.GetRandomBytes(kOwnerPasswordRandomBytes, &random_bytes)) {
     return false;
   }
+  owner_password = base::HexEncode(random_bytes.data(), random_bytes.size());
   LocalData local_data;
   local_data.clear_owner_dependency();
   for (auto value : kInitialTpmOwnerDependencies) {

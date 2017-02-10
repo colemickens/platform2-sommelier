@@ -18,6 +18,7 @@
 
 #include <memory>
 
+#include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <trunks/mock_tpm_utility.h>
@@ -105,18 +106,27 @@ TEST_F(Tpm2InitializerTest, InitializeTpmOwnershipError) {
 
 TEST_F(Tpm2InitializerTest, InitializeTpmSuccess) {
   EXPECT_CALL(mock_tpm_status_, IsTpmOwned()).WillOnce(Return(false));
-  std::string password = "hunter2";
+  std::string owner_random_bytes("\xFF\xF7\x00\x01\xD2\xA3", 6);
+  std::string owner_password =
+      base::HexEncode(owner_random_bytes.data(), owner_random_bytes.size());
+  EXPECT_EQ(owner_random_bytes.size() * 2, owner_password.size());
+  std::string endorsement_password = "hunter2";
+  std::string lockout_password = "sesame";
   EXPECT_CALL(mock_tpm_utility_, GenerateRandom(_, _, _))
       .Times(3)  // Once for owner, endorsement and lockout passwords
-      .WillRepeatedly(
-          DoAll(SetArgPointee<2>(password), Return(trunks::TPM_RC_SUCCESS)));
+      .WillOnce(DoAll(SetArgPointee<2>(owner_random_bytes),
+                      Return(trunks::TPM_RC_SUCCESS)))
+      .WillOnce(DoAll(SetArgPointee<2>(endorsement_password),
+                      Return(trunks::TPM_RC_SUCCESS)))
+      .WillOnce(DoAll(SetArgPointee<2>(lockout_password),
+                      Return(trunks::TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_, TakeOwnership(_, _, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
   EXPECT_TRUE(tpm_initializer_->InitializeTpm());
   EXPECT_LT(0, fake_local_data_.owner_dependency_size());
-  EXPECT_EQ(password, fake_local_data_.owner_password());
-  EXPECT_EQ(password, fake_local_data_.endorsement_password());
-  EXPECT_EQ(password, fake_local_data_.lockout_password());
+  EXPECT_EQ(owner_password, fake_local_data_.owner_password());
+  EXPECT_EQ(endorsement_password, fake_local_data_.endorsement_password());
+  EXPECT_EQ(lockout_password, fake_local_data_.lockout_password());
 }
 
 TEST_F(Tpm2InitializerTest, InitializeTpmSuccessAfterError) {
