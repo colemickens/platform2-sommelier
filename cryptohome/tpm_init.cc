@@ -475,8 +475,10 @@ void TpmInit::RemoveTpmOwnerDependency(Tpm::TpmOwnerDependency dependency) {
   TpmStatus tpm_status;
   if (!LoadTpmStatus(&tpm_status))
     return;
-  tpm_status.set_flags(tpm_status.flags() & ~flag_to_clear);
-  StoreTpmStatus(tpm_status);
+  if (tpm_status.flags() & flag_to_clear) {
+    tpm_status.set_flags(tpm_status.flags() & ~flag_to_clear);
+    StoreTpmStatus(tpm_status);
+  }
 }
 
 bool TpmInit::CheckSysfsForOne(const FilePath& file_name) const {

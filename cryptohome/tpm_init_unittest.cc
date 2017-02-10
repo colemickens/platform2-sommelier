@@ -22,16 +22,8 @@ using ::testing::Return;
 
 namespace cryptohome {
 
-extern const base::FilePath kMiscTpmCheckEnabledFile;
-extern const base::FilePath kMiscTpmCheckOwnedFile;
-extern const base::FilePath kTpmTpmCheckEnabledFile;
-extern const base::FilePath kTpmTpmCheckOwnedFile;
-extern const base::FilePath kTpmOwnedFileOld;
-extern const base::FilePath kTpmStatusFileOld;
 extern const base::FilePath kTpmOwnedFile;
-extern const base::FilePath kTpmStatusFile;
-extern const base::FilePath kOpenCryptokiPath;
-extern const base::FilePath kDefaultCryptohomeKeyFile;
+const base::FilePath kTpmStatusFile("/mnt/stateful_partition/.tpm_status");
 
 // Tests that need to do more setup work before calling Service::Initialize can
 // use this instead of ServiceTest.
@@ -120,6 +112,19 @@ class TpmInitTest : public ::testing::Test {
                        const brillo::Blob& blob,
                        mode_t /* mode */) {
     return FileWrite(path, blob);
+  }
+
+  void SetTpmStatus(const TpmStatus& tpm_status) {
+    brillo::Blob file_data(tpm_status.ByteSize());
+    tpm_status.SerializeWithCachedSizesToArray(file_data.data());
+    EXPECT_TRUE(FileWrite(kTpmStatusFile, file_data));
+  }
+
+  void GetTpmStatus(TpmStatus* tpm_status) {
+    brillo::Blob file_data;
+    tpm_status->Clear();
+    EXPECT_TRUE(FileRead(kTpmStatusFile, &file_data));
+    EXPECT_TRUE(tpm_status->ParseFromArray(file_data.data(), file_data.size()));
   }
 
   void SetUp() override {
@@ -289,6 +294,58 @@ TEST_F(TpmInitTest, ContinueInterruptedInitializeSrk) {
   EXPECT_TRUE(IsTpmOwned());
   EXPECT_FALSE(IsTpmBeingOwned());
   EXPECT_TRUE(FileExists(kTpmOwnedFile));
+}
+
+TEST_F(TpmInitTest, RemoveTpmOwnerDependencySuccess) {
+  TpmStatus tpm_status;
+  tpm_status.set_flags(TpmStatus::ATTESTATION_NEEDS_OWNER |
+                       TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER);
+  SetTpmStatus(tpm_status);
+  Tpm::TpmOwnerDependency dependency = Tpm::TpmOwnerDependency::kAttestation;
+  EXPECT_CALL(tpm_, RemoveOwnerDependency(dependency))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(kTpmStatusFile, _, _))
+      .Times(1);
+  tpm_init_.RemoveTpmOwnerDependency(dependency);
+  GetTpmStatus(&tpm_status);
+  EXPECT_EQ(TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER, tpm_status.flags());
+}
+
+TEST_F(TpmInitTest, RemoveTpmOwnerDependencyAlreadyRemoved) {
+  TpmStatus tpm_status;
+  tpm_status.set_flags(TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER);
+  SetTpmStatus(tpm_status);
+  Tpm::TpmOwnerDependency dependency = Tpm::TpmOwnerDependency::kAttestation;
+  EXPECT_CALL(tpm_, RemoveOwnerDependency(dependency))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(kTpmStatusFile, _, _))
+      .Times(0);
+  tpm_init_.RemoveTpmOwnerDependency(dependency);
+  GetTpmStatus(&tpm_status);
+  EXPECT_EQ(TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER, tpm_status.flags());
+}
+
+TEST_F(TpmInitTest, RemoveTpmOwnerDependencyTpmFailure) {
+  TpmStatus tpm_status;
+  tpm_status.set_flags(TpmStatus::ATTESTATION_NEEDS_OWNER);
+  SetTpmStatus(tpm_status);
+  Tpm::TpmOwnerDependency dependency = Tpm::TpmOwnerDependency::kAttestation;
+  EXPECT_CALL(tpm_, RemoveOwnerDependency(dependency))
+      .WillOnce(Return(false));
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(kTpmStatusFile, _, _))
+      .Times(0);
+  tpm_init_.RemoveTpmOwnerDependency(dependency);
+  GetTpmStatus(&tpm_status);
+  EXPECT_EQ(TpmStatus::ATTESTATION_NEEDS_OWNER, tpm_status.flags());
+}
+
+TEST_F(TpmInitTest, RemoveTpmOwnerDependencyNoTpmStatus) {
+  Tpm::TpmOwnerDependency dependency = Tpm::TpmOwnerDependency::kAttestation;
+  EXPECT_CALL(tpm_, RemoveOwnerDependency(dependency))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(kTpmStatusFile, _, _))
+      .Times(0);
+  tpm_init_.RemoveTpmOwnerDependency(dependency);
 }
 
 }  // namespace cryptohome
