@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -168,11 +169,11 @@ class Biometric {
   virtual void SetScannedHandler(const ScanCallback& on_scan) = 0;
 
   // Invoked from authentication mode to indicate either a bad scan of any kind,
-  // or a successful scan. In the case of successful scan, recognized_user_ids
-  // shall be a (possibly zero-length) array of strings that are equal to all
-  // enrollments user IDs that match the scan.
-  using AttemptCallback = base::Callback<void(
-      ScanResult, std::vector<std::string> recognized_user_ids)>;
+  // or a successful scan. In the case of successful scan, AttemptMatches is a
+  // map of user id keys to a vector of enrollment label values.
+  using AttemptMatches =
+      std::unordered_map<std::string, std::vector<std::string>>;
+  using AttemptCallback = base::Callback<void(ScanResult, AttemptMatches)>;
   virtual void SetAttemptHandler(const AttemptCallback& on_attempt) = 0;
 
   // Invoked during any mode to indicate that the mode as ended with failure.

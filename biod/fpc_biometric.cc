@@ -434,11 +434,10 @@ void FpcBiometric::OnScan(Biometric::ScanResult result, bool done) {
     on_scan_.Run(result, done);
 }
 
-void FpcBiometric::OnAttempt(
-    Biometric::ScanResult result,
-    const std::vector<std::string>& recognized_user_ids) {
+void FpcBiometric::OnAttempt(Biometric::ScanResult result,
+                             const Biometric::AttemptMatches& matches) {
   if (!on_attempt_.is_null())
-    on_attempt_.Run(result, recognized_user_ids);
+    on_attempt_.Run(result, matches);
 }
 
 void FpcBiometric::OnFailure() {
@@ -600,7 +599,7 @@ void FpcBiometric::DoAuthenticationTask(
   if (kill_task_)
     return;
 
-  std::vector<std::string> recognized_user_ids;
+  Biometric::AttemptMatches matches;
 
   for (;;) {
     ScanData scan = ScanImage();
@@ -612,7 +611,7 @@ void FpcBiometric::DoAuthenticationTask(
 
     Biometric::ScanResult result = scan.result;
     if (result == Biometric::ScanResult::kSuccess) {
-      recognized_user_ids.clear();
+      matches.clear();
 
       base::AutoLock guard(enrollments_lock_);
       for (auto& kv : enrollments_) {
@@ -625,7 +624,8 @@ void FpcBiometric::DoAuthenticationTask(
           case BIO_TEMPLATE_MATCH_UPDATED:  // enrollment.tmpl got updated
             updated_enrollment_ids->insert(kv.first);
           case BIO_TEMPLATE_MATCH:
-            recognized_user_ids.emplace_back(enrollment.user_id);
+            matches.emplace(enrollment.user_id,
+                            std::vector<std::string>() /* empty label list */);
             break;
           case BIO_TEMPLATE_LOW_QUALITY:
             result = Biometric::ScanResult::kInsufficient;
@@ -643,7 +643,7 @@ void FpcBiometric::DoAuthenticationTask(
 
     // Assuming there was at least one match, we don't want to bother the user
     // with error messages.
-    if (!recognized_user_ids.empty())
+    if (!matches.empty())
       result = Biometric::ScanResult::kSuccess;
 
     bool task_will_run =
@@ -651,7 +651,7 @@ void FpcBiometric::DoAuthenticationTask(
                               base::Bind(&FpcBiometric::OnAttempt,
                                          base::Unretained(this),
                                          result,
-                                         std::move(recognized_user_ids)));
+                                         std::move(matches)));
     if (!task_will_run) {
       LOG(ERROR) << "Failed to schedule Attempt callback";
       return;

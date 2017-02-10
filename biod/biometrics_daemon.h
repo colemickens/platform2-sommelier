@@ -50,6 +50,8 @@ class BiometricWrapper {
 
     const dbus::ObjectPath& path() const { return object_path_; }
 
+    const std::string& GetUserId() const { return enrollment_->GetUserId(); }
+
    private:
     BiometricWrapper* biometric_;
     std::unique_ptr<Biometric::Enrollment> enrollment_;
@@ -87,7 +89,7 @@ class BiometricWrapper {
 
   void OnScanned(Biometric::ScanResult scan_result, bool done);
   void OnAttempt(Biometric::ScanResult scan_result,
-                 std::vector<std::string> recognized_user_ids);
+                 Biometric::AttemptMatches matches);
   void OnFailure();
 
   bool StartEnroll(brillo::ErrorPtr* error,
@@ -95,8 +97,9 @@ class BiometricWrapper {
                    const std::string& user_id,
                    const std::string& label,
                    dbus::ObjectPath* enroll_path);
-  bool GetEnrollments(brillo::ErrorPtr* error,
-                      std::vector<dbus::ObjectPath>* out);
+  bool GetEnrollmentsForUser(brillo::ErrorPtr* error,
+                             const std::string& user_id,
+                             std::vector<dbus::ObjectPath>* out);
   bool DestroyAllEnrollments(brillo::ErrorPtr* error);
   bool StartAuthentication(brillo::ErrorPtr* error,
                            dbus::Message* message,

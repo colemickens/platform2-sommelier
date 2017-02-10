@@ -31,7 +31,8 @@ static const char kHelpText[] =
     "and label.\n"
     "  authenticate <biometric> - Performs authentication with the given "
     "biometric until the program is interrupted.\n"
-    "  list - Lists all biometrics and their enrollments.\n"
+    "  list [<user_id>] - Lists available biometrics and optionally user's "
+    "enrollments.\n"
     "  unenroll <enrollment> - Removes the given enrollment.\n"
     "  set_label <enrollment> <label> - Sets the label for the given "
     "enrollment to <label>.\n"
@@ -40,9 +41,7 @@ static const char kHelpText[] =
     "The <biometric> parameter is the D-Bus object path of the biometric, and "
     "can be abbreviated as the path's basename (the part after the last "
     "forward slash)\n\n"
-    "The <enrollment> parameter is also a D-Bus object path that can be "
-    "abbreviated but must include the biometric name in the path (e.g. "
-    "FakeBiometric/Enrollment55).";
+    "The <enrollment> parameter is also a D-Bus object path.";
 
 static const int kDbusTimeoutMs = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
 static const char kBiodServiceName[] = "org.chromium.BiometricsDaemon";
@@ -181,8 +180,6 @@ class BiometricProxy {
         "Failure",
         base::Bind(&BiometricProxy::OnFailure, base::Unretained(this)),
         base::Bind(&BiometricProxy::OnSignalConnected, base::Unretained(this)));
-
-    GetEnrollments();
   }
 
   const dbus::ObjectPath& path() const { return proxy_->object_path(); }
@@ -235,29 +232,30 @@ class BiometricProxy {
     return !!proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
   }
 
-  std::vector<EnrollmentProxy>& enrollments() { return enrollments_; }
+  std::vector<EnrollmentProxy> GetEnrollmentsForUser(
+      const std::string& user_id) const {
+    dbus::MethodCall method_call(kBiodBiometricInterface,
+                                 "GetEnrollmentsForUser");
+    dbus::MessageWriter method_writer(&method_call);
+    method_writer.AppendString(user_id);
 
-  const std::vector<EnrollmentProxy>& enrollments() const {
-    return enrollments_;
-  }
-
- private:
-  void GetEnrollments() {
-    dbus::MethodCall method_call(kBiodBiometricInterface, "GetEnrollments");
     std::unique_ptr<dbus::Response> response =
         proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
     CHECK(response);
 
+    std::vector<EnrollmentProxy> enrollments;
     dbus::MessageReader response_reader(response.get());
     dbus::MessageReader enrollments_reader(nullptr);
     CHECK(response_reader.PopArray(&enrollments_reader));
     while (enrollments_reader.HasMoreData()) {
       dbus::ObjectPath enrollment_path;
       CHECK(enrollments_reader.PopObjectPath(&enrollment_path));
-      enrollments_.emplace_back(bus_, enrollment_path);
+      enrollments.emplace_back(bus_, enrollment_path);
     }
+    return enrollments;
   }
 
+ private:
   void OnFinish(bool success) {
     if (!on_finish_.is_null())
       on_finish_.Run(success);
@@ -290,22 +288,32 @@ class BiometricProxy {
     dbus::MessageReader signal_reader(signal);
 
     ScanResult scan_result;
-    dbus::MessageReader user_ids_reader(nullptr);
+    dbus::MessageReader matches_reader(nullptr);
     std::vector<std::string> user_ids;
 
     CHECK(signal_reader.PopUint32(reinterpret_cast<uint32_t*>(&scan_result)));
-    CHECK(signal_reader.PopArray(&user_ids_reader));
+    LOG(INFO) << "Authentication: " << ToString(scan_result);
 
-    std::stringstream user_ids_joined;
+    CHECK(signal_reader.PopArray(&matches_reader));
+    while (matches_reader.HasMoreData()) {
+      dbus::MessageReader entry_reader(nullptr);
+      CHECK(matches_reader.PopDictEntry(&entry_reader));
 
-    while (user_ids_reader.HasMoreData()) {
-      user_ids.emplace_back();
-      CHECK(user_ids_reader.PopString(&user_ids.back()));
-      user_ids_joined << user_ids.back() << " ";
+      std::string user_id;
+      CHECK(entry_reader.PopString(&user_id));
+
+      dbus::MessageReader labels_reader(nullptr);
+      CHECK(entry_reader.PopArray(&labels_reader));
+      std::stringstream labels_joined;
+      while (labels_reader.HasMoreData()) {
+        std::string label;
+        CHECK(labels_reader.PopString(&label));
+        labels_joined << '"' << label << "\" ";
+      }
+
+      LOG(INFO) << "Recognized user ID \"" << user_id << "\" with labels "
+                << labels_joined.str();
     }
-
-    LOG(INFO) << "Authentication: " << ToString(scan_result) << ", recognized "
-              << user_ids.size() << " user IDs: " << user_ids_joined.str();
   }
 
   void OnFailure(dbus::Signal* signal) {
@@ -391,47 +399,6 @@ class BiodProxy {
     return nullptr;
   }
 
-  EnrollmentProxy* GetEnrollment(base::StringPiece path) {
-    bool short_path =
-        !base::StartsWith(path, "/", base::CompareCase::SENSITIVE);
-
-    if (short_path) {
-      std::vector<base::StringPiece> parts = base::SplitStringPiece(
-          path, "/", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
-      if (parts.size() != 2) {
-        LOG(ERROR)
-            << "Expected a single path separator in short enrollment path";
-        return nullptr;
-      }
-
-      base::StringPiece biometric_name = parts[0];
-      BiometricProxy* biometric = GetBiometric(biometric_name);
-      if (!biometric)
-        return nullptr;
-
-      base::StringPiece enrollment_name = parts[1];
-      for (EnrollmentProxy& enrollment : biometric->enrollments()) {
-        if (base::EndsWith(enrollment.path().value(),
-                           enrollment_name,
-                           base::CompareCase::SENSITIVE)) {
-          return &enrollment;
-        }
-      }
-
-      return nullptr;
-    } else {
-      for (BiometricProxy& biometric : biometrics_) {
-        for (EnrollmentProxy& enrollment : biometric.enrollments()) {
-          if (enrollment.path().value() == path) {
-            return &enrollment;
-          }
-        }
-      }
-    }
-
-    return nullptr;
-  }
-
   std::vector<BiometricProxy>& biometrics() { return biometrics_; }
 
  private:
@@ -500,7 +467,7 @@ int DoAuthenticate(BiometricProxy* biometric) {
   return ret;
 }
 
-int DoList(BiodProxy* biod) {
+int DoList(BiodProxy* biod, const std::string& user_id) {
   LOG(INFO) << kBiodRootPath << " : BioD Root Object Path";
   for (const BiometricProxy& biometric : biod->biometrics()) {
     base::StringPiece biometric_path = biometric.path().value();
@@ -513,7 +480,11 @@ int DoList(BiodProxy* biod) {
 
     biometric_path = biometric.path().value();
 
-    for (const EnrollmentProxy& enrollment : biometric.enrollments()) {
+    if (user_id.empty())
+      continue;
+
+    for (const EnrollmentProxy& enrollment :
+         biometric.GetEnrollmentsForUser(user_id)) {
       base::StringPiece enrollment_path(enrollment.path().value());
       if (base::StartsWith(
               enrollment_path, biometric_path, base::CompareCase::SENSITIVE)) {
@@ -568,7 +539,7 @@ int main(int argc, char* argv[]) {
   }
 
   if (command == "list") {
-    return DoList(&biod);
+    return DoList(&biod, args.size() < 2 ? "" : args[1]);
   }
 
   if (command == "unenroll") {
@@ -576,9 +547,8 @@ int main(int argc, char* argv[]) {
       LOG(ERROR) << "Expected 1 parameter for unenroll command.";
       return 1;
     }
-    EnrollmentProxy* enrollment = biod.GetEnrollment(args[1]);
-    CHECK(enrollment) << "Failed to find enrollment with given path";
-    return enrollment->Remove() ? 0 : 1;
+    EnrollmentProxy enrollment(bus, dbus::ObjectPath(args[1]));
+    return enrollment.Remove() ? 0 : 1;
   }
 
   if (command == "set_label") {
@@ -586,9 +556,8 @@ int main(int argc, char* argv[]) {
       LOG(ERROR) << "Expected 2 parameters for set_enroll command.";
       return 1;
     }
-    EnrollmentProxy* enrollment = biod.GetEnrollment(args[1]);
-    CHECK(enrollment) << "Failed to find enrollment with given path";
-    return enrollment->SetLabel(args[2]);
+    EnrollmentProxy enrollment(bus, dbus::ObjectPath(args[1]));
+    return enrollment.SetLabel(args[2]);
   }
 
   if (command == "destroy_all") {

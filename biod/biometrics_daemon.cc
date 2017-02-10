@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/memory/ptr_util.h>
 #include <brillo/dbus/async_event_sequencer.h>
 
 #include "biod/fake_biometric.h"
@@ -94,8 +95,9 @@ BiometricWrapper::BiometricWrapper(
       "StartEnroll",
       base::Bind(&BiometricWrapper::StartEnroll, base::Unretained(this)));
   bio_interface->AddSimpleMethodHandlerWithError(
-      "GetEnrollments",
-      base::Bind(&BiometricWrapper::GetEnrollments, base::Unretained(this)));
+      "GetEnrollmentsForUser",
+      base::Bind(&BiometricWrapper::GetEnrollmentsForUser,
+                 base::Unretained(this)));
   bio_interface->AddSimpleMethodHandlerWithError(
       "DestroyAllEnrollments",
       base::Bind(&BiometricWrapper::DestroyAllEnrollments,
@@ -223,12 +225,21 @@ void BiometricWrapper::OnScanned(Biometric::ScanResult scan_result, bool done) {
 }
 
 void BiometricWrapper::OnAttempt(Biometric::ScanResult scan_result,
-                                 std::vector<std::string> recognized_user_ids) {
+                                 Biometric::AttemptMatches matches) {
   if (authentication_dbus_object_) {
     dbus::Signal attempt_signal(dbus_constants::kBiometricInterface, "Attempt");
     dbus::MessageWriter writer(&attempt_signal);
     writer.AppendUint32(static_cast<uint32_t>(scan_result));
-    writer.AppendArrayOfStrings(recognized_user_ids);
+    dbus::MessageWriter matches_writer(nullptr);
+    writer.OpenArray("{sas}", &matches_writer);
+    for (const auto& match : matches) {
+      dbus::MessageWriter entry_writer(nullptr);
+      matches_writer.OpenDictEntry(&entry_writer);
+      entry_writer.AppendString(match.first);
+      entry_writer.AppendArrayOfStrings(match.second);
+      matches_writer.CloseContainer(&entry_writer);
+    }
+    writer.CloseContainer(&matches_writer);
     dbus_object_.SendSignal(&attempt_signal);
   }
 }
@@ -279,15 +290,14 @@ bool BiometricWrapper::StartEnroll(brillo::ErrorPtr* error,
   return true;
 }
 
-bool BiometricWrapper::GetEnrollments(brillo::ErrorPtr* error,
-                                      std::vector<ObjectPath>* out) {
-  out->resize(enrollments_.size());
-  std::transform(enrollments_.begin(),
-                 enrollments_.end(),
-                 out->begin(),
-                 [this](std::unique_ptr<EnrollmentWrapper>& enrollment) {
-                   return enrollment->path();
-                 });
+bool BiometricWrapper::GetEnrollmentsForUser(brillo::ErrorPtr* error,
+                                             const std::string& user_id,
+                                             std::vector<ObjectPath>* out) {
+  for (const auto& enrollment : enrollments_) {
+    if (enrollment->GetUserId() == user_id)
+      out->emplace_back(enrollment->path());
+  }
+
   return true;
 }
 
@@ -395,7 +405,7 @@ BiometricsDaemon::BiometricsDaemon() {
 
   ObjectPath fake_bio_path =
       ObjectPath(dbus_constants::kServicePath + std::string("/FakeBiometric"));
-  biometrics_.emplace_back(new BiometricWrapper(
+  biometrics_.emplace_back(base::MakeUnique<BiometricWrapper>(
       std::unique_ptr<Biometric>(new FakeBiometric),
       object_manager_.get(),
       fake_bio_path,
@@ -405,7 +415,7 @@ BiometricsDaemon::BiometricsDaemon() {
       ObjectPath(dbus_constants::kServicePath + std::string("/FpcBiometric"));
   std::unique_ptr<Biometric> fpc_bio = FpcBiometric::Create();
   CHECK(fpc_bio);
-  biometrics_.emplace_back(new BiometricWrapper(
+  biometrics_.emplace_back(base::MakeUnique<BiometricWrapper>(
       std::move(fpc_bio),
       object_manager_.get(),
       fpc_bio_path,

@@ -140,7 +140,7 @@ class FpcBiometric : public Biometric {
   //   posting tasks onto the main thread from the sensor thread.
   void OnScan(Biometric::ScanResult result, bool done);
   void OnAttempt(Biometric::ScanResult result,
-                 const std::vector<std::string>& recognized_user_ids);
+                 const Biometric::AttemptMatches& matches);
   void OnFailure();
 
   // This function are sensor thread only.

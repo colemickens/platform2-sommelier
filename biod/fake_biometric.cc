@@ -196,7 +196,7 @@ void FakeBiometric::OnFileCanReadWithoutBlocking(int fd) {
   const uint8_t magic_start[] = {FAKE_BIOMETRIC_MAGIC_BYTES};
   while (magic_index < sizeof(magic_start)) {
     uint8_t magic;
-    if (read(fd, &magic, 1) != 1)
+    if (read(fd, &magic, sizeof(magic)) != sizeof(magic))
       return;
     if (magic == magic_start[magic_index])
       magic_index++;
@@ -205,44 +205,69 @@ void FakeBiometric::OnFileCanReadWithoutBlocking(int fd) {
   }
 
   uint8_t cmd;
-  if (read(fd, &cmd, 1) != 1)
+  if (read(fd, &cmd, sizeof(cmd)) != sizeof(cmd))
     return;
   switch (cmd) {
     case 'A': {
       uint8_t res_code;
-      if (read(fd, &res_code, 1) != 1)
+      if (read(fd, &res_code, sizeof(res_code)) != sizeof(res_code))
         return;
       Biometric::ScanResult res = static_cast<Biometric::ScanResult>(res_code);
 
-      uint8_t recognized_count;
-      if (read(fd, &recognized_count, 1) != 1)
+      uint8_t match_user_count;
+      if (read(fd, &match_user_count, sizeof(match_user_count)) !=
+          sizeof(match_user_count))
         return;
 
-      std::vector<std::string> recognized_user_ids(recognized_count);
-      for (size_t i = 0; i < recognized_count; i++) {
+      Biometric::AttemptMatches matches;
+      for (uint8_t match_index = 0; match_index < match_user_count;
+           match_index++) {
         uint8_t id_size;
-        if (read(fd, &id_size, 1) != 1)
+        if (read(fd, &id_size, sizeof(id_size)) != sizeof(id_size))
           return;
 
-        std::string& user_id = recognized_user_ids[i];
-        user_id.resize(id_size);
-        if (read(fd, &user_id.front(), id_size) != id_size)
+        std::string user_id(id_size, '\0');
+        if (read(fd, &user_id.front(), user_id.size()) != user_id.size())
           return;
+
+        // These labels are interpreted as enrollment identifiers by biod and
+        // its clients.
+        std::vector<std::string>& labels = matches[user_id];
+
+        uint8_t label_count;
+        if (read(fd, &label_count, sizeof(label_count)) != sizeof(label_count))
+          return;
+
+        for (uint8_t label_index = 0; label_index < label_count;
+             label_index++) {
+          uint8_t label_size;
+          if (read(fd, &label_size, sizeof(label_size)) != sizeof(label_size))
+            return;
+
+          std::string label(label_size, '\0');
+          int ret = read(fd, &label.front(), label.size());
+          if (ret != label.size()) {
+            LOG(ERROR) << "failed to read label " << errno;
+            return;
+          }
+
+          labels.emplace_back(std::move(label));
+        }
         LOG(INFO) << "Recognized User " << user_id;
       }
 
       if (!on_attempt_.is_null() && mode_ == Mode::kAuthentication)
-        on_attempt_.Run(res, recognized_user_ids);
+        on_attempt_.Run(res, matches);
       return;
     }
     case 'S': {
       uint8_t res_code;
-      if (read(fd, &res_code, 1) != 1)
+      if (read(fd, &res_code, sizeof(res_code)) != sizeof(res_code))
         return;
       Biometric::ScanResult res = static_cast<Biometric::ScanResult>(res_code);
 
       uint8_t done;
-      if (read(fd, &done, 1) != 1)
+      if (read(fd, &done, sizeof(done)) != sizeof(done))
         return;
 
       LOG(INFO) << "Scan result " << static_cast<int>(res_code) << " done "
@@ -261,7 +286,6 @@ void FakeBiometric::OnFileCanReadWithoutBlocking(int fd) {
                       new base::StringValue("Hello, world!")))) {
             enrollments_.erase(enrollment_id);
           }
-
           mode_ = Mode::kNone;
           session_weak_factory_.InvalidateWeakPtrs();
         }
