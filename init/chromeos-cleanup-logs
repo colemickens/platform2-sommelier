@@ -76,7 +76,7 @@ remove_old_files() {
     find "${subdir}" -name "${file_pattern}" -mtime "+${mtime}" -delete
     if [ $(du -s --block-size=1M "${subdir}" | cut -f 1) -gt \
          ${MAX_SUBDIR_SIZE} ]; then
-      : $(( d -= 1 ))
+      : $(( mtime -= 1 ))
     else
       break
     fi
