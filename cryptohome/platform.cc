@@ -1151,12 +1151,12 @@ bool Platform::AddDirCryptoKeyToKeyring(const brillo::SecureBlob& key,
    * init):
    * -- View, Search
    * User: (root)
-   * -- Write, Setattr
+   * -- View, Search, Write, Setattr
    * Group, Other:
    * -- None
    */
   const key_perm_t kPermissions = KEY_POS_VIEW | KEY_POS_SEARCH |
-      KEY_USR_WRITE | KEY_USR_SETATTR;
+      KEY_USR_VIEW | KEY_USR_WRITE | KEY_USR_SEARCH | KEY_USR_SETATTR;
   if (keyctl_setperm(*key_id, kPermissions) != 0) {
     PLOG(ERROR) << "Could not change permission on key " << *key_id;
     InvalidateDirCryptoKey(*key_id);
@@ -1166,19 +1166,31 @@ bool Platform::AddDirCryptoKeyToKeyring(const brillo::SecureBlob& key,
 }
 
 bool Platform::InvalidateDirCryptoKey(key_serial_t key_id) {
-  if (keyctl_invalidate(key_id) != 0) {
-    PLOG(ERROR) << "Failed to invalidate the key " << key_id;
+  // Unlink the key.
+  // NOTE: Even after this, the key will still stay valid as long as the
+  // encrypted contents are on the page cache.
+  if (!dircrypto::UnlinkKey(key_id)) {
+    LOG(ERROR) << "Failed to unlink the key.";
     return false;
   }
   // Run Sync() to make all dirty cache clear.
   Sync();
-  // Use drop_caches to drop all clear cache. Otherwise, cached dypcrypted data
-  // will stay visible.
+  // Use drop_caches to drop all clear cache. Otherwise, cached dycrypted data
+  // will stay visible. This should invalidate the key provided no one touches
+  // the encrypted directories while this function is running.
   constexpr char kData[] = "3\n";
   if (!base::WriteFile(FilePath(FILE_PATH_LITERAL(
           "/proc/sys/vm/drop_caches")), kData, sizeof(kData))) {
     LOG(ERROR) << "Failed to drop cache.";
     return false;
+  }
+  // At this point, the key should be invalidated, but try to invalidate it just
+  // in case.
+  // If the key was already invaldated, this should fail with ENOKEY.
+  if (keyctl_invalidate(key_id) == 0) {
+    LOG(ERROR) << "We ended up invalidating key " << key_id;
+  } else if (errno != ENOKEY) {
+    PLOG(ERROR) << "Failed to invalidate key" << key_id;
   }
   return true;
 }

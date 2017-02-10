@@ -115,4 +115,18 @@ key_serial_t AddKeyToKeyring(const brillo::SecureBlob& key,
   return key_serial;
 }
 
+bool UnlinkKey(key_serial_t key) {
+  key_serial_t keyring = keyctl_search(
+      KEY_SPEC_SESSION_KEYRING, "keyring", kKeyringName, 0);
+  if (keyring == kInvalidKeySerial) {
+    PLOG(ERROR) << "keyctl_search failed";
+    return false;
+  }
+  if (keyctl_unlink(key, keyring) == -1) {
+    PLOG(ERROR) << "Failed to unlink the key.";
+    return false;
+  }
+  return true;
+}
+
 }  // namespace dircrypto

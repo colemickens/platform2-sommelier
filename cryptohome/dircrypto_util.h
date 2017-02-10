@@ -36,6 +36,9 @@ KeyState GetDirectoryKeyState(const base::FilePath& dir);
 key_serial_t AddKeyToKeyring(const brillo::SecureBlob& key,
                              const brillo::SecureBlob& key_descriptor);
 
+// Unlinks the key from the dircrypto keyring.
+bool UnlinkKey(key_serial_t key);
+
 }  // namespace dircrypto
 
 #endif  // CRYPTOHOME_DIRCRYPTO_UTIL_H_
