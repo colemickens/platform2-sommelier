@@ -45,6 +45,7 @@ to 0 by current writers.
     DEVELOPER_ENABLE_USB = 8;
     DEVELOPER_ENABLE_LEGACY = 16;
     DEVELOPER_USE_KEY_HASH = 32;
+    DEVELOPER_DISABLE_CASE_CLOSED_DEBUGGING_UNLOCK = 64;
 
 The developer_key_hash is a SHA-256 hash of the developer key data
 (vb2_packed_key.key_size bytes at offset vb2_packed_key.key_offset
