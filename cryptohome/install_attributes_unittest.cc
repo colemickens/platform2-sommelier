@@ -82,9 +82,7 @@ class InstallAttributesTest : public ::testing::Test {
     if (install_attrs->is_secure()) {
       EXPECT_CALL(lockbox_, Create(_))
         .WillOnce(Return(true));
-      EXPECT_CALL(tpm_init_, RemoveTpmOwnerDependency(
-          Tpm::TpmOwnerDependency::kInstallAttributes))
-        .Times(1);
+      ExpectRemovingOwnerDependency();
     }
     EXPECT_TRUE(install_attrs->Init(&tpm_init_));
 
@@ -129,6 +127,17 @@ class InstallAttributesTest : public ::testing::Test {
     Mock::VerifyAndClearExpectations(&platform_);
   }
 
+  void ExpectRemovingOwnerDependency() {
+    EXPECT_CALL(tpm_init_, RemoveTpmOwnerDependency(
+        Tpm::TpmOwnerDependency::kInstallAttributes))
+      .Times(1);
+  }
+
+  void ExpectNotRemovingOwnerDependency() {
+    EXPECT_CALL(tpm_init_, RemoveTpmOwnerDependency(_))
+      .Times(0);
+  }
+
   static const char* kTestName;
   static const char* kTestData;
 
@@ -163,6 +172,7 @@ TEST_F(InstallAttributesTest, OobeWithoutTpm) {
   EXPECT_CALL(platform_, ReadFile(_, _))
     .Times(1)
     .WillOnce(Return(false));
+  ExpectNotRemovingOwnerDependency();
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_TRUE(install_attrs_.is_first_install());
 }
@@ -177,6 +187,7 @@ TEST_F(InstallAttributesTest, OobeWithTpmBadWrite) {
     .WillRepeatedly(Return(&tpm_));
   EXPECT_CALL(lockbox_, Create(_))
     .WillOnce(Return(true));
+  ExpectRemovingOwnerDependency();
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
 
   brillo::Blob data;
@@ -214,6 +225,7 @@ TEST_F(InstallAttributesTest, NormalBootWithTpm) {
   EXPECT_CALL(lockbox_, Verify(_, _))
     .Times(1)
     .WillOnce(Return(true));
+  ExpectRemovingOwnerDependency();
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
@@ -241,6 +253,7 @@ TEST_F(InstallAttributesTest, NormalBootWithoutTpm) {
     .Times(1)
     .WillOnce(DoAll(SetArgPointee<1>(serialized_data), Return(true)));
 
+  ExpectRemovingOwnerDependency();
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
@@ -273,6 +286,7 @@ TEST_F(InstallAttributesTest, NormalBootUnlocked) {
   EXPECT_CALL(lockbox_, Load(_))
     .Times(1)
     .WillOnce(DoAll(SetArgPointee<0>(error_id), Return(false)));
+  ExpectRemovingOwnerDependency();
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_TRUE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
@@ -304,6 +318,7 @@ TEST_F(InstallAttributesTest, NormalBootNoSpace) {
   EXPECT_CALL(lockbox_, Create(_))
     .Times(1)
     .WillOnce(Return(true));
+  ExpectRemovingOwnerDependency();
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_TRUE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
@@ -323,6 +338,7 @@ TEST_F(InstallAttributesTest, NormalBootLoadError) {
   EXPECT_CALL(lockbox_, Load(_))
     .Times(1)
     .WillOnce(DoAll(SetArgPointee<0>(error_id), Return(false)));
+  ExpectNotRemovingOwnerDependency();
   EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_TRUE(install_attrs_.is_invalid());
@@ -344,6 +360,7 @@ TEST_F(InstallAttributesTest, NormalBootReadFileError) {
   EXPECT_CALL(platform_, ReadFile(_, _))
     .Times(1)
     .WillOnce(Return(false));
+  ExpectNotRemovingOwnerDependency();
   EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_TRUE(install_attrs_.is_invalid());
@@ -372,6 +389,7 @@ TEST_F(InstallAttributesTest, NormalBootVerifyError) {
     .Times(1)
     .WillOnce(DoAll(SetArgPointee<1>(error_id), Return(false)));
 
+  ExpectNotRemovingOwnerDependency();
   EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_TRUE(install_attrs_.is_invalid());
@@ -395,6 +413,7 @@ TEST_F(InstallAttributesTest, LegacyBoot) {
   EXPECT_CALL(lockbox_, Create(_))
     .Times(1)
     .WillOnce(DoAll(SetArgPointee<0>(create_error_id), Return(false)));
+  ExpectRemovingOwnerDependency();
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
@@ -420,6 +439,7 @@ TEST_F(InstallAttributesTest, LegacyBootUnexpected) {
   EXPECT_CALL(lockbox_, Create(_))
     .Times(1)
     .WillOnce(DoAll(SetArgPointee<0>(create_error_id), Return(false)));
+  ExpectRemovingOwnerDependency();
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());

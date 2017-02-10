@@ -135,6 +135,8 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
         set_is_first_install(true);
       }
       set_is_initialized(true);
+      tpm_init->RemoveTpmOwnerDependency(
+          Tpm::TpmOwnerDependency::kInstallAttributes);
       // No data.
       return true;
       break;
@@ -142,6 +144,8 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
       LOG(INFO) << "Resuming interrupted InstallAttributes. (Store needed.)";
       set_is_first_install(true);
       set_is_initialized(true);
+      tpm_init->RemoveTpmOwnerDependency(
+          Tpm::TpmOwnerDependency::kInstallAttributes);
       // Since we write when we finalize, we don't try to reparse.
       return true;
       break;
@@ -185,6 +189,11 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
   }
 
   set_is_initialized(true);
+  // If everything went well, we know that NVRAM space was created OK, and
+  // don't need to hold owner dependency. So, repeat removing owner dependency
+  // in case it didn't succeed during the first boot.
+  tpm_init->RemoveTpmOwnerDependency(
+      Tpm::TpmOwnerDependency::kInstallAttributes);
   return true;
 }
 
