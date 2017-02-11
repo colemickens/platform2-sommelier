@@ -220,9 +220,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     base::DeleteFile(data_dir.Append("Local State"), false);
   }
 
-  if (builder->UseFlagIsSet("stylus"))
-    builder->AddArg("--ash-enable-palette");
-
   if (builder->UseFlagIsSet("kevin")) {
     builder->AddFeatureEnableOverride("Pepper3DImageChromium");
     // TODO(jdufault): Remove this once quick unlock launches on all boards.
