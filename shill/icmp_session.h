@@ -140,7 +140,6 @@ class IcmpSession {
   base::DefaultTickClock default_tick_clock_;
   base::CancelableClosure timeout_callback_;
   IcmpSessionResultCallback result_callback_;
-  IOHandler::InputCallback echo_reply_callback_;
   std::unique_ptr<IOHandler> echo_reply_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(IcmpSession);

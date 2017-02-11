@@ -52,9 +52,7 @@ IcmpSession::IcmpSession(EventDispatcher* dispatcher)
       icmp_(new Icmp()),
       echo_id_(kNextUniqueEchoId),
       current_sequence_number_(0),
-      tick_clock_(&default_tick_clock_),
-      echo_reply_callback_(Bind(&IcmpSession::OnEchoReplyReceived,
-                                weak_ptr_factory_.GetWeakPtr())) {
+      tick_clock_(&default_tick_clock_) {
   // Each IcmpSession will have a unique echo ID to identify requests and reply
   // messages.
   ++kNextUniqueEchoId;
@@ -78,7 +76,8 @@ bool IcmpSession::Start(const IPAddress& destination,
     return false;
   }
   echo_reply_handler_.reset(dispatcher_->CreateInputHandler(
-      icmp_->socket(), echo_reply_callback_,
+      icmp_->socket(),
+      Bind(&IcmpSession::OnEchoReplyReceived, weak_ptr_factory_.GetWeakPtr()),
       Bind(&IcmpSession::OnEchoReplyError, weak_ptr_factory_.GetWeakPtr())));
   result_callback_ = result_callback;
   timeout_callback_.Reset(Bind(&IcmpSession::ReportResultAndStopSession,
