@@ -8,6 +8,9 @@
 # and possibly reset the other root filesystem
 
 . /usr/share/misc/chromeos-common.sh
+. /usr/sbin/write_gpt.sh
+load_base_vars
+
 SCRIPT="$0"
 
 # stateful partition isn't around for logging, so dump to the screen:

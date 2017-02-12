@@ -12,6 +12,8 @@
 # filesystems prefer 4096-byte blocks. These functions help with alignment
 # issues.
 
+# These fixed partition numbers are deprecated.
+# We should use values derived from disk_layout.
 PARTITION_NUM_STATE=1
 PARTITION_NUM_KERN_A=2
 PARTITION_NUM_ROOT_A=3
