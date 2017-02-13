@@ -29,7 +29,6 @@
 #include <base/macros.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
-#include <chromeos/dbus/service_constants.h>
 
 #include "container_utils/device_jail/fs_data.h"
 
