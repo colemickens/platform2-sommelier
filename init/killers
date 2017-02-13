@@ -45,18 +45,31 @@ term_process() {
   echo "term_process($process)" "PIDs ["$pid"] not dead after SIGKILL"
 }
 
+# Parses the output of `lsof -Fn` in the format (p<pid>\n(n<filename>\n)*)*,
+# and returns the list of <pid>s followed by a non-empty list of filenames.
+# This is an utility function for use in kill_open_file_on().
+_lsofFn_filter() {
+  # Save all the most recent 'p' line in the buffer.
+  # When we get a matching 'n' line, pull the last 'p' line out
+  # of the buffer and show it (w/out the leading 'p' char).
+  sed -n -E -e '/^p/h' -e "\\%^n($1)%{x;s:^p::;p}" | sort -u
+}
 
-# For a given mountpoint, this will kill all processes with open files
-# on that mountpoint so that it can be unmounted. It starts off by sending
-# a TERM and if the process hasn't exited quickly enough it will send KILL.
+# For a given path pattern regex (the first argument) and given mountpoints
+# (the rest), this will kill all processes with open files on that mountpoint
+# with its path matches the regex, so that it can be unmounted. It starts off
+# by sending a TERM and if the process hasn't exited quickly enough it will
+# send KILL.
 #
 # Since a typical shutdown should have no processes with open files on a
 # partition that we care about at this point, we log the set of processes
 # to /var/log/shutdown_force_kill_processes
-kill_with_open_files_on() {
+kill_with_open_files_on_path_and_mountpoints() {
   local pids pid i
+  local paths="$1"
+  shift
 
-  pids=$(lsof -t "$@" | sort -n -u)
+  pids=$(lsof -Fn "$@" | _lsofFn_filter "${paths}")
   if [ -z "${pids}" ] ; then
     return  # The typical case; no open files at this point.
   fi
@@ -69,7 +82,7 @@ kill_with_open_files_on() {
     for pid in ${pids} ; do
       ! kill -TERM ${pid}
     done
-    pids=$(lsof -t "$@" | sort -n -u)
+    pids=$(lsof -Fn "$@" | _lsofFn_filter "${paths}")
     if [ -z "${pids}" ] ; then
       return
     fi
@@ -77,15 +90,21 @@ kill_with_open_files_on() {
   done
 
   # Now kill -KILL as necessary
-  pids=$(lsof -t "$@" | sort -n -u)
   for i in 1 2 3 4 5 6 7 8 9 10; do
     for pid in ${pids} ; do
       ! kill -KILL ${pid}
     done
-    pids=$(lsof -t "$@" | sort -n -u)
+    pids=$(lsof -Fn "$@" | _lsofFn_filter "${paths}")
     if [ -z "${pids}" ] ; then
       return
     fi
     sleep .1
   done
+}
+
+# For a given mountpoint, this will kill all processes with open files
+# on that mountpoint so that it can be unmounted. It starts off by sending
+# a TERM and if the process hasn't exited quickly enough it will send KILL.
+kill_with_open_files_on() {
+  kill_with_open_files_on_path_and_mountpoints . "$@"
 }

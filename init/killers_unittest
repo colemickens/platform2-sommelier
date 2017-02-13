@@ -58,7 +58,7 @@ runBackgroundProcess() {
   if [[ $# -gt 0 && "$1" == "untermable" ]]; then
     untermable="trap : SIGTERM;"
   fi
-  local tmpfile=$(mktemp -p "${SHUNIT_TMPDIR}" "killers_$$_XXXXXXXX")
+  local tmpfile=$(mktemp -p "${SHUNIT_TMPDIR}" "killers_$$_$1_XXXXXXXX")
   touch "${tmpfile}" || fail "Could not create ${tmpfile}"
   bash -c "exec 3<'${tmpfile}'; ${untermable} kill -STOP \$\$" &
   pollForPid $!
@@ -105,6 +105,19 @@ testKillWithOpenFiles_UnresolvedGlob() {
   assertNotNull "${before_pids}"
   assertNotNull "${after_pids}"
   assertEquals "${error_out}" "${before_pids}" "${after_pids}"
+}
+
+testKillWithOpenFiles_PathFilter() {
+  local pid1 pid2
+  runBackgroundProcess foo
+  pid1=$!
+  runBackgroundProcess bar
+  pid2=$!
+
+  kill_with_open_files_on_path_and_mountpoints ".*_foo_" "${SHUNIT_TMPDIR}"/*
+
+  assertNoPid "${pid1}"
+  assertPid "${pid2}"
 }
 
 main() {
