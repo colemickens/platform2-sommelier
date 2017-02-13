@@ -215,7 +215,7 @@ class SHILL_EXPORT NetlinkManager {
 
   // Install a NetlinkManager NetlinkMessageHandler.  The handler is a
   // user-supplied object to be called by the system for user-bound messages
-  // that do not have a corresponding messaage-specific callback.
+  // that do not have a corresponding message-specific callback.
   // |AddBroadcastHandler| should be called before |SubscribeToEvents| since
   // the result of this call are used for that call.
   virtual bool AddBroadcastHandler(

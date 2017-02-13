@@ -38,9 +38,9 @@ class Sockets;
 
 // This singleton class is responsible for interacting with the RTNL subsystem.
 // RTNL provides (among other things) access to interface discovery (add/remove
-// events), interface state monitoring and the ability to change interace flags.
-// Similar functionality also exists for IP address configuration for interfaces
-// and IP routing tables.
+// events), interface state monitoring and the ability to change interface
+// flags. Similar functionality also exists for IP address configuration for
+// interfaces and IP routing tables.
 //
 // RTNLHandler provides access to these events through a callback system and
 // provides utility functions to make changes to interface, address and routing
@@ -172,7 +172,7 @@ class SHILL_EXPORT RTNLHandler {
   // Saves an error mask to be associated with this sequence number.
   void SetErrorMask(uint32_t sequence, const ErrorMask& error_mask);
 
-  // Destructively retrieves the error mask associated with this sequeunce
+  // Destructively retrieves the error mask associated with this sequence
   // number.  If this sequence number now lies outside the receive window
   // or no error mask was assigned, an empty ErrorMask is returned.
   ErrorMask GetAndClearErrorMask(uint32_t sequence);

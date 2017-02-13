@@ -40,7 +40,7 @@ class SHILL_EXPORT NetlinkPacket {
   bool IsValid() const;
 
   // Returns the entire packet length (including the nlmsghdr).  Callers
-  // can consder this to be the number of bytes consumed from |buf| in the
+  // can consider this to be the number of bytes consumed from |buf| in the
   // constructor.  This value will not change as data is consumed -- use
   // GetRemainingLength() instead for this.
   size_t GetLength() const;
