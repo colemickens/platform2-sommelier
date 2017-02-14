@@ -3,7 +3,6 @@
     'variables': {
       'deps': [
         'dbus-1',
-        'dbus-c++-1',
         'protobuf-lite',
         'libbrillo-<(libbase_ver)',
         'libcap',
