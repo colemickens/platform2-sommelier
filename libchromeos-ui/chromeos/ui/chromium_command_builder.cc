@@ -217,10 +217,10 @@ bool ChromiumCommandBuilder::SetUpChromium() {
   SetUpPepperPlugins();
   AddUiFlags();
 
-  if (UseFlagIsSet("cheets"))
-    AddArg("--arc-available");
   if (UseFlagIsSet("arc") || (UseFlagIsSet("cheets") && IsTestBuild(lsb_data)))
-    AddArg("--enable-arc");
+    AddArg("--arc-availability=officially-supported");
+  else if (UseFlagIsSet("cheets"))
+    AddArg("--arc-availability=installed");
 
   if (UseFlagIsSet("pointer_events"))
     AddFeatureEnableOverride("PointerEvent");
