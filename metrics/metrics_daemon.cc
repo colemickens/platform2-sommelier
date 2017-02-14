@@ -865,7 +865,6 @@ bool MetricsDaemon::ReportZram(const base::FilePath& zram_dir) {
 
   const int compr_data_size_mb = compr_data_size >> 20;
   const int savings_mb = (orig_data_size - compr_data_size) >> 20;
-  const int zero_ratio_percent = zero_pages * page_size * 100 / orig_data_size;
 
   // Report compressed size in megabytes.  100 MB or less has little impact.
   SendSample("Platform.ZramCompressedSize", compr_data_size_mb, 100, 4000, 50);
@@ -885,7 +884,11 @@ bool MetricsDaemon::ReportZram(const base::FilePath& zram_dir) {
   // The values of interest for zero_pages are between 1MB and 1GB.  The units
   // are number of pages.
   SendSample("Platform.ZramZeroPages", zero_pages, 256, 256 * 1024, 50);
-  SendSample("Platform.ZramZeroRatioPercent", zero_ratio_percent, 1, 50, 50);
+  // Send ratio sample only when the ratio exists.
+  if (orig_data_size > 0) {
+    const int zero_percent = zero_pages * page_size * 100 / orig_data_size;
+    SendSample("Platform.ZramZeroRatioPercent", zero_percent, 1, 50, 50);
+  }
 
   return true;
 }
