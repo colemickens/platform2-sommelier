@@ -238,7 +238,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
       // The new mode of rialto operation. See crbug.com/574923
       builder->AddArg("--login-manager");
       builder->AddArg("--enterprise-enable-zero-touch-enrollment=hands-off");
-      builder->AddArg("--allow-data-roaming-by-default");
+      builder->AddArg("--cellular-first");
       builder->AddArg(
           "--app-mode-oem-manifest=/etc/rialto_overlay_oem_manifest.json");
     } else {
@@ -247,7 +247,10 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
       builder->AddArg("--kiosk");
       builder->AddArg("--login-user=chronos");
       builder->AddArg("--ash-hide-notifications-for-factory");
+      // TODO(kumarniranjan): Remove --allow-data-roaming-by-default once all
+      // Rialto devices are on newer builds of Chromium. See crbug.com/693206
       builder->AddArg("--allow-data-roaming-by-default");
+      builder->AddArg("--cellular-first");
       builder->AddArg("--load-and-launch-app=/usr/share/app_shell/apps/rialto");
       builder->AddArg("--enable-logging=stderr");
       builder->AddArg("--log-level=0");
