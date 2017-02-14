@@ -53,9 +53,6 @@ const char kInstallAttributesPath[] = "/home/.shadow/install_attributes.pb";
 // static
 const char DevicePolicyService::kPolicyPath[] = "/var/lib/whitelist/policy";
 // static
-const char DevicePolicyService::kSerialRecoveryFlagFile[] =
-    "/var/lib/enterprise_serial_number_recovery";
-// static
 const char DevicePolicyService::kDevicePolicyType[] = "google/chromeos/device";
 // static
 const char DevicePolicyService::kAttrEnterpriseMode[] = "enterprise.mode";
@@ -74,7 +71,6 @@ DevicePolicyService* DevicePolicyService::Create(
     Crossystem* crossystem,
     VpdProcess* vpd_process) {
   return new DevicePolicyService(
-      base::FilePath(kSerialRecoveryFlagFile),
       base::FilePath(kPolicyPath),
       base::FilePath(kInstallAttributesPath),
       std::unique_ptr<PolicyStore>(
@@ -152,7 +148,6 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
 }
 
 DevicePolicyService::DevicePolicyService(
-    const base::FilePath& serial_recovery_flag_file,
     const base::FilePath& policy_file,
     const base::FilePath& install_attributes_file,
     std::unique_ptr<PolicyStore> policy_store,
@@ -163,7 +158,6 @@ DevicePolicyService::DevicePolicyService(
     Crossystem* crossystem,
     VpdProcess* vpd_process)
     : PolicyService(std::move(policy_store), policy_key),
-      serial_recovery_flag_file_(serial_recovery_flag_file),
       policy_file_(policy_file),
       install_attributes_file_(install_attributes_file),
       metrics_(metrics),
@@ -200,7 +194,6 @@ bool DevicePolicyService::Initialize() {
   }
 
   ReportPolicyFileMetrics(key_success, policy_success);
-  UpdateSerialNumberRecoveryFlagFile();
   return key_success;
 }
 
@@ -213,8 +206,6 @@ bool DevicePolicyService::Store(const uint8_t* policy_blob,
                                      signature_check);
 
   if (result) {
-    UpdateSerialNumberRecoveryFlagFile();
-
     // Flush the settings cache, the next read will decode the new settings.
     settings_.reset();
   }
@@ -429,52 +420,6 @@ bool DevicePolicyService::GivenUserIsOwner(const std::string& current_user) {
             poldata.has_username() && poldata.username() == current_user);
   }
   return false;
-}
-
-void DevicePolicyService::UpdateSerialNumberRecoveryFlagFile() {
-  bool recovery_needed = false;
-  int64_t policy_size = 0;
-  if (!base::GetFileSize(base::FilePath(policy_file_), &policy_size) ||
-      !policy_size) {
-    LOG(WARNING) << "Policy file empty or missing.";
-    recovery_needed = true;
-  }
-
-  const em::PolicyFetchResponse& policy(store()->Get());
-  em::PolicyData policy_data;
-  bool policy_parsed = policy.has_policy_data() &&
-                       policy_data.ParseFromString(policy.policy_data());
-
-  if (policy_parsed && !policy_data.request_token().empty() &&
-      policy_data.valid_serial_number_missing()) {
-    LOG(WARNING) << "Serial number missing flag encountered in policy data.";
-    recovery_needed = true;
-  }
-
-  // Expose serial number on "spontaneously unenrolled" devices to allow them to
-  // go through the enrollment flow again:  https://crbug.com/389481
-  if (policy_parsed && policy_data.request_token().empty() &&
-      InstallAttributesEnterpriseMode()) {
-    LOG(WARNING) << "DM token missing on enrolled device.";
-    recovery_needed = true;
-  }
-
-  // We need to recreate the machine info file if |valid_serial_number_missing|
-  // is set to true in the protobuf or if the policy file is missing or empty
-  // and we need to re-enroll.
-  // TODO(pastarmovj,wad): Only check if file is missing if enterprise enrolled.
-  // To check that we need to access the install attributes here.
-  // For more info see: http://crosbug.com/31537
-  if (recovery_needed) {
-    if (base::WriteFile(serial_recovery_flag_file_, NULL, 0) != 0) {
-      PLOG(WARNING) << "Failed to write " << serial_recovery_flag_file_.value();
-    }
-  } else {
-    if (!base::DeleteFile(serial_recovery_flag_file_, false)) {
-      PLOG(WARNING) << "Failed to delete "
-                    << serial_recovery_flag_file_.value();
-    }
-  }
 }
 
 void DevicePolicyService::PersistPolicyOnLoop(const Completion& completion) {

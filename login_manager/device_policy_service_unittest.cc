@@ -73,8 +73,6 @@ class DevicePolicyServiceTest : public ::testing::Test {
   virtual void SetUp() {
     fake_loop_.SetAsCurrent();
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    serial_recovery_flag_file_ =
-        tmpdir_.path().AppendASCII("serial_recovery_flag");
     policy_file_ = tmpdir_.path().AppendASCII("policy");
     install_attributes_file_ =
         tmpdir_.path().AppendASCII("install_attributes.pb");
@@ -117,8 +115,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
     store_ = new StrictMock<MockPolicyStore>;
     metrics_.reset(new MockMetrics);
     mitigator_.reset(new StrictMock<MockMitigator>);
-    service_.reset(new DevicePolicyService(serial_recovery_flag_file_,
-                                           policy_file_,
+    service_.reset(new DevicePolicyService(policy_file_,
                                            install_attributes_file_,
                                            std::unique_ptr<PolicyStore>(store_),
                                            &key_,
@@ -299,7 +296,6 @@ class DevicePolicyServiceTest : public ::testing::Test {
   brillo::FakeMessageLoop fake_loop_{nullptr};
 
   base::ScopedTempDir tmpdir_;
-  base::FilePath serial_recovery_flag_file_;
   base::FilePath policy_file_;
   base::FilePath install_attributes_file_;
 
@@ -888,39 +884,6 @@ TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyNoPolicyExtantPrefs) {
   service_->ReportPolicyFileMetrics(true, true);
 }
 
-TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileInitialization) {
-  MockNssUtil nss;
-  InitService(&nss);
-
-  EXPECT_CALL(nss, CheckPublicKeyBlob(fake_key_vector_))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, PopulateFromDiskIfPossible()).WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, HaveCheckedDisk()).WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*store_, LoadOrCreate()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
-  EXPECT_CALL(*store_, DefunctPrefsFilePresent()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*metrics_.get(), SendPolicyFilesStatus(_)).Times(AnyNumber());
-
-  // Fake the policy file existence.
-  base::WriteFile(policy_file_, ".", 1);
-
-  em::ChromeDeviceSettingsProto settings;
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t", true));
-  EXPECT_TRUE(service_->Initialize());
-  EXPECT_TRUE(base::PathExists(serial_recovery_flag_file_));
-
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
-  EXPECT_TRUE(service_->Initialize());
-  EXPECT_FALSE(base::PathExists(serial_recovery_flag_file_));
-
-  // Fake the policy file gone.
-  base::DeleteFile(policy_file_, false);
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
-  EXPECT_TRUE(service_->Initialize());
-  EXPECT_TRUE(base::PathExists(serial_recovery_flag_file_));
-}
-
 TEST_F(DevicePolicyServiceTest, RecoverOwnerKeyFromPolicy) {
   MockNssUtil nss;
   InitService(&nss);
@@ -943,90 +906,6 @@ TEST_F(DevicePolicyServiceTest, RecoverOwnerKeyFromPolicy) {
 
   policy_proto_.set_new_public_key(fake_key_);
   EXPECT_TRUE(service_->Initialize());
-}
-
-TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
-  // Fake the policy file existence.
-  base::WriteFile(policy_file_, ".", 1);
-
-  MockNssUtil nss;
-  InitService(&nss);
-  em::ChromeDeviceSettingsProto settings;
-  EXPECT_FALSE(base::PathExists(serial_recovery_flag_file_));
-
-  EXPECT_CALL(key_, Verify(_, _, _, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
-  EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
-
-  // Installing a policy blob that doesn't have a request token (indicates local
-  // owner) should not create the file.
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", true));
-  EXPECT_TRUE(
-      service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
-                      policy_str_.size(),
-                      completion_,
-                      PolicyService::KEY_CLOBBER,
-                      SignatureCheck::kEnabled));
-  EXPECT_FALSE(base::PathExists(serial_recovery_flag_file_));
-
-  // Storing an enterprise policy blob with the |valid_serial_number_missing|
-  // flag set should create the flag file.
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t", true));
-  EXPECT_TRUE(
-      service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
-                      policy_str_.size(),
-                      completion_,
-                      PolicyService::KEY_CLOBBER,
-                      SignatureCheck::kEnabled));
-  EXPECT_TRUE(base::PathExists(serial_recovery_flag_file_));
-
-  // Storing bad policy shouldn't remove the file.
-  EXPECT_FALSE(
-      service_->Store(NULL, 0, completion_, PolicyService::KEY_CLOBBER,
-                      SignatureCheck::kEnabled));
-  EXPECT_TRUE(base::PathExists(serial_recovery_flag_file_));
-
-  // Clearing the flag should remove the file.
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t", false));
-  EXPECT_TRUE(
-      service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
-                      policy_str_.size(),
-                      completion_,
-                      PolicyService::KEY_CLOBBER,
-                      SignatureCheck::kEnabled));
-  EXPECT_FALSE(base::PathExists(serial_recovery_flag_file_));
-
-  // Create install attributes file to mock enterprise enrolled device.
-  cryptohome::SerializedInstallAttributes install_attributes;
-  cryptohome::SerializedInstallAttributes_Attribute* attribute =
-      install_attributes.add_attributes();
-  attribute->set_name(DevicePolicyService::kAttrEnterpriseMode);
-  attribute->set_value(std::string(DevicePolicyService::kEnterpriseDeviceMode) +
-                       "\0");  // Sadly, values contain trailing zeroes.
-  std::string serialized;
-  EXPECT_TRUE(install_attributes.SerializeToString(&serialized));
-  base::WriteFile(
-      install_attributes_file_, serialized.c_str(), serialized.size());
-
-  // In case DM tokens exists, the flag file should not be created.
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t", false));
-  EXPECT_TRUE(
-      service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
-                      policy_str_.size(),
-                      completion_,
-                      PolicyService::KEY_CLOBBER,
-                      SignatureCheck::kEnabled));
-  EXPECT_FALSE(base::PathExists(serial_recovery_flag_file_));
-
-  // Missing DM token should lead to creation of flag file.
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
-  EXPECT_TRUE(
-      service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
-                      policy_str_.size(),
-                      completion_,
-                      PolicyService::KEY_CLOBBER,
-                      SignatureCheck::kEnabled));
-  EXPECT_TRUE(base::PathExists(serial_recovery_flag_file_));
 }
 
 TEST_F(DevicePolicyServiceTest, GetSettings) {

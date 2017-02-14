@@ -137,8 +137,7 @@ class DevicePolicyService : public PolicyService {
   friend class MockDevicePolicyService;
 
   // Takes ownership of |policy_store|.
-  DevicePolicyService(const base::FilePath& serial_recovery_flag_file,
-                      const base::FilePath& policy_file,
+  DevicePolicyService(const base::FilePath& policy_file,
                       const base::FilePath& install_attributes_file,
                       std::unique_ptr<PolicyStore> policy_store,
                       PolicyKey* owner_key,
@@ -174,11 +173,6 @@ class DevicePolicyService : public PolicyService {
   // device owner.  Returns false if not, or if that cannot be determined.
   bool GivenUserIsOwner(const std::string& current_user);
 
-  // Checks the serial number recovery flag and updates the flag file.
-  // TODO(mnissler): Remove once bogus enterprise serials are fixed.
-  void UpdateSerialNumberRecoveryFlagFile();
-
-  const base::FilePath serial_recovery_flag_file_;
   const base::FilePath policy_file_;
   const base::FilePath install_attributes_file_;
   LoginMetrics* metrics_;

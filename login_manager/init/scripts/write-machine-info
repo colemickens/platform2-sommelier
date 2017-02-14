@@ -6,14 +6,15 @@
 
 set -e
 
-if [ -e /var/lib/enterprise_serial_number_recovery -o \
-     ! -e /var/lib/whitelist/owner.key ]; then
-  touch $MACHINE_INFO
-  chmod 0644 $MACHINE_INFO
-  if crossystem "mainfw_type?nonchrome"; then
-    echo "serial_number=\"nonchrome-$(date -u +%s)\""
-  else
-    # Dump full information in the VPD, including the serial number.
-    dump_vpd_log --full --stdout
-  fi >> $MACHINE_INFO
-fi
+# As of Chrome OS 58, we dump VPD information unconditionally, so it is always
+# available on the login screen, even after OOBE (see crbug.com/216422). Note
+# that the machine-info.conf upstart config file takes care of deleting the
+# $MACHINE_INFO file before a user session starts.
+touch $MACHINE_INFO
+chmod 0644 $MACHINE_INFO
+if crossystem "mainfw_type?nonchrome"; then
+  echo "serial_number=\"nonchrome-$(date -u +%s)\""
+else
+  # Dump full information in the VPD, including the serial number.
+  dump_vpd_log --full --stdout
+fi >> $MACHINE_INFO
