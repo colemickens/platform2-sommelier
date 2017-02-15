@@ -4,11 +4,9 @@
 
 #include "debugd/src/subprocess_tool.h"
 
-#include <signal.h>
+#include <utility>
 
-#include <dbus-c++/dbus.h>
-
-#include "debugd/src/process_with_id.h"
+#include <base/memory/ptr_util.h>
 
 namespace debugd {
 
@@ -24,15 +22,19 @@ ProcessWithId* SubprocessTool::CreateProcess(bool sandboxed) {
 
 ProcessWithId* SubprocessTool::CreateProcess(bool sandboxed,
                                              bool access_root_mount_ns) {
-  ProcessWithId* p = new ProcessWithId();
+  auto process = base::MakeUnique<ProcessWithId>();
   if (!sandboxed)
-    p->DisableSandbox();
+    process->DisableSandbox();
+
   if (access_root_mount_ns)
-    p->AllowAccessRootMountNamespace();
-  if (!p->Init() || processes_.count(p->id()) == 1)
+    process->AllowAccessRootMountNamespace();
+
+  if (!process->Init() || processes_.count(process->id()) == 1)
     return nullptr;
-  processes_[p->id()] = p;
-  return p;
+
+  ProcessWithId* process_ptr = process.get();
+  processes_[process->id()] = std::move(process);
+  return process_ptr;
 }
 
 void SubprocessTool::Stop(const std::string& handle, DBus::Error* error) {
@@ -40,10 +42,9 @@ void SubprocessTool::Stop(const std::string& handle, DBus::Error* error) {
     error->set(kErrorNoSuchProcess, handle.c_str());
     return;
   }
-  ProcessWithId* p = processes_[handle];
-  p->KillProcessGroup();
+  ProcessWithId* process_ptr = processes_[handle].get();
+  process_ptr->KillProcessGroup();
   processes_.erase(handle);
-  delete p;
 }
 
 }  // namespace debugd
