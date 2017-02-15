@@ -12,6 +12,6 @@ Coding conventions
 
 Please use clang-format before commiting changes, e.g. by running
 ```bash
-CHROMIUM_BUILDTOOLS_PATH=~/chromium/src/buildtools git clang-format HEAD^
+CHROMIUM_BUILDTOOLS_PATH=~/chromium/src/buildtools git clang-format --style=file HEAD^
 ```
 before `repo upload` for single-commit uploads.
