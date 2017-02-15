@@ -13,6 +13,7 @@
 #include <base/strings/stringprintf.h>
 
 #include "authpolicy/platform_helper.h"
+#include "authpolicy/samba_interface_internal.h"
 #include "authpolicy/stub_common.h"
 
 namespace authpolicy {
@@ -41,7 +42,7 @@ bool Krb5ConfContainsKdcIp() {
 
   std::string krb5_conf;
   CHECK(base::ReadFileToString(base::FilePath(krb5_conf_path), &krb5_conf));
-  return Contains(krb5_conf, kKdcIpKey);
+  return internal::Contains(krb5_conf, kKdcIpKey);
 }
 
 }  // namespace

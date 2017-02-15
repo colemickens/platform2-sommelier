@@ -25,8 +25,15 @@ const char kGpoCacheDir[] = "/gpo_cache";
 
 // Configuration files.
 const char kConfigPath[] = "/config.dat";
-const char kKrb5ConfPath[] = "/krb5.conf";
 const char kSmbConfPath[] = "/smb.conf";
+
+// Kerberos configuration paths.
+const char kUserKrb5ConfPath[] = "/krb5_user.conf";
+const char kDeviceKrb5ConfPath[] = "/krb5_device.conf";
+
+// Credential cache paths.
+const char kUserCredentialCache[] = "/krb5cc_user";
+const char kDeviceCredentialCache[] = "/krb5cc_device";
 
 // Machine keytab.
 const char kMachineKeyTabPath[] = "/krb5_machine.keytab";
@@ -80,10 +87,15 @@ void PathService::Initialize() {
   Insert(Path::GPO_LOCAL_DIR, temp_dir + kSambaDir + kCacheDir + kGpoCacheDir);
 
   Insert(Path::CONFIG_DAT, state_dir + kConfigPath);
-  Insert(Path::KRB5_CONF, temp_dir + kKrb5ConfPath);
   Insert(Path::SMB_CONF, temp_dir + kSmbConfPath);
 
+  Insert(Path::USER_KRB5_CONF, temp_dir + kUserKrb5ConfPath);
+  Insert(Path::DEVICE_KRB5_CONF, temp_dir + kDeviceKrb5ConfPath);
+
   const std::string& samba_dir = Get(Path::SAMBA_DIR);
+  Insert(Path::USER_CREDENTIAL_CACHE, samba_dir + kUserCredentialCache);
+  Insert(Path::DEVICE_CREDENTIAL_CACHE, samba_dir + kDeviceCredentialCache);
+
   Insert(Path::MACHINE_KT_STATE, state_dir + kMachineKeyTabPath);
   Insert(Path::MACHINE_KT_TEMP, samba_dir + kMachineKeyTabPath);
 

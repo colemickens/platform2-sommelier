@@ -37,9 +37,6 @@ std::string GetCommandLine(int argc, const char* const* argv);
 // Shortcut for base::StartsWith with case-sensitive comparison.
 bool StartsWithCaseSensitive(const std::string& str, const char* search_for);
 
-// Returns true if the string contains the given substring.
-bool Contains(const std::string& str, const std::string& substr);
-
 // Writes to stdout and stderr.
 void WriteOutput(const std::string& stdout_str, const std::string& stderr_str);
 

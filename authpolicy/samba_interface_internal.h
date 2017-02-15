@@ -6,11 +6,9 @@
 #define AUTHPOLICY_SAMBA_INTERFACE_INTERNAL_H_
 
 #include <string>
-#include <vector>
-
-#include <base/files/file_path.h>
 
 namespace authpolicy {
+
 namespace internal {
 
 // Group policy flags.
@@ -43,6 +41,9 @@ bool ParseGpoVersion(const std::string& str, unsigned int* version);
 // Parses a group policy flags string, which consists of a number 0-3 and a
 // descriptive name. See |kGpFlag*| for possible values.
 bool ParseGpFlags(const std::string& str, int* gp_flags);
+
+// Returns true if the string contains the given substring.
+bool Contains(const std::string& str, const std::string& substr);
 
 }  // namespace internal
 }  // namespace authpolicy

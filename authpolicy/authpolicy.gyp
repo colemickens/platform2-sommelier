@@ -53,6 +53,8 @@
       'sources': [
         'authpolicy.cc',
         'authpolicy_metrics.cc',
+        'constants.cc',
+        'jail_helper.cc',
         'path_service.cc',
         'platform_helper.cc',
         'policy/device_policy_encoder.cc',
@@ -64,6 +66,7 @@
         'process_executor.cc',
         'samba_interface.cc',
         'samba_interface_internal.cc',
+        'tgt_manager.cc',
       ],
     },
     # Parser tool.
@@ -76,6 +79,8 @@
           'libbrillo-<(libbase_ver)',
           'libcap',
           'libchrome-<(libbase_ver)',
+          'libmetrics-<(libbase_ver)',
+          'libminijail',
           'protobuf-lite',
         ],
       },

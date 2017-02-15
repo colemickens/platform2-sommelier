@@ -1,0 +1,23 @@
+// Copyright 2017 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "authpolicy/constants.h"
+
+namespace authpolicy {
+
+const char kCmdParseRealmInfo[] = "parse_realm_info";
+const char kCmdParseWorkgroup[] = "parse_workgroup";
+const char kCmdParseAccountInfo[] = "parse_account_info";
+const char kCmdParseUserGpoList[] = "parse_user_gpo_list";
+const char kCmdParseDeviceGpoList[] = "parse_device_gpo_list";
+const char kCmdParseUserPreg[] = "parse_user_preg";
+const char kCmdParseDevicePreg[] = "parse_device_preg";
+
+const char kKrb5KTEnvKey[] = "KRB5_KTNAME";
+const char kKrb5CCEnvKey[] = "KRB5CCNAME";
+const char kKrb5ConfEnvKey[] = "KRB5_CONFIG";
+
+const char kFilePrefix[] = "FILE:";
+
+}  // namespace authpolicy

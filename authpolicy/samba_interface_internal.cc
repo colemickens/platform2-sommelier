@@ -4,11 +4,15 @@
 
 #include "authpolicy/samba_interface_internal.h"
 
+#include <vector>
+
+#include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
 namespace {
 
+// Flags for parsing GPO.
 const char* const kGpFlagsStr[] = {
   "0 GPFLAGS_ALL_ENABLED",
   "1 GPFLAGS_USER_SETTINGS_DISABLED",
@@ -81,6 +85,10 @@ bool ParseGpFlags(const std::string& str, int* gp_flags) {
     }
   }
   return false;
+}
+
+bool Contains(const std::string& str, const std::string& substr) {
+  return str.find(substr) != std::string::npos;
 }
 
 }  // namespace internal

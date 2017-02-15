@@ -8,13 +8,22 @@
 namespace authpolicy {
 
 // Commands for the parser.
-const char kCmdParseRealmInfo[] = "parse_realm_info";
-const char kCmdParseWorkgroup[] = "parse_workgroup";
-const char kCmdParseAccountInfo[] = "parse_account_info";
-const char kCmdParseUserGpoList[] = "parse_user_gpo_list";
-const char kCmdParseDeviceGpoList[] = "parse_device_gpo_list";
-const char kCmdParseUserPreg[] = "parse_user_preg";
-const char kCmdParseDevicePreg[] = "parse_device_preg";
+extern const char kCmdParseRealmInfo[];
+extern const char kCmdParseWorkgroup[];
+extern const char kCmdParseAccountInfo[];
+extern const char kCmdParseUserGpoList[];
+extern const char kCmdParseDeviceGpoList[];
+extern const char kCmdParseUserPreg[];
+extern const char kCmdParseDevicePreg[];
+
+// Env variable for the Kerberos keytab (machine password).
+extern const char kKrb5KTEnvKey[];
+// Env variable for the Kerberos credentials cache.
+extern const char kKrb5CCEnvKey[];
+// Env variable for krb5.conf file.
+extern const char kKrb5ConfEnvKey[];
+// Prefix for some environment variable values that specify a file path.
+extern const char kFilePrefix[];
 
 enum ExitCodes {
   EXIT_CODE_OK = 0,

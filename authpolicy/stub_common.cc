@@ -7,6 +7,8 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 
+#include "authpolicy/constants.h"
+
 namespace authpolicy {
 
 const int kExitCodeOk = 0;
@@ -31,10 +33,6 @@ const char kWrongPassword[] = "pAzzwI5d";
 const char kExpiredPassword[] = "rootpw";
 
 namespace {
-
-const char kKeytabEnvKey[] = "KRB5_KTNAME";
-const char kKrb5ConfEnvKey[] = "KRB5_CONFIG";
-const char kFilePrefix[] = "FILE:";
 
 // Looks up the environment variable with key |env_key|, which is expected to be
 // 'FILE:<path>', and returns <path>. Returns and empty string if the variable
@@ -68,10 +66,6 @@ bool StartsWithCaseSensitive(const std::string& str, const char* search_for) {
   return base::StartsWith(str, search_for, base::CompareCase::SENSITIVE);
 }
 
-bool Contains(const std::string& str, const std::string& substr) {
-  return str.find(substr) != std::string::npos;
-}
-
 void WriteOutput(const std::string& stdout_str, const std::string& stderr_str) {
   CHECK(base::WriteFileDescriptor(
       STDOUT_FILENO, stdout_str.c_str(), stdout_str.size()));
@@ -80,7 +74,7 @@ void WriteOutput(const std::string& stdout_str, const std::string& stderr_str) {
 }
 
 std::string GetKeytabFilePath() {
-  return GetFileFromEnv(kKeytabEnvKey);
+  return GetFileFromEnv(kKrb5KTEnvKey);
 }
 
 std::string GetKrb5ConfFilePath() {

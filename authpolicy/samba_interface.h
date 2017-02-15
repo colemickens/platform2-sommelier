@@ -16,7 +16,10 @@
 
 #include "authpolicy/authpolicy_metrics.h"
 #include "authpolicy/constants.h"
+#include "authpolicy/jail_helper.h"
 #include "authpolicy/path_service.h"
+#include "authpolicy/samba_interface_internal.h"
+#include "authpolicy/tgt_manager.h"
 #include "bindings/authpolicy_containers.pb.h"
 
 // Helper methods for Samba Active Directory authentication, machine (device)
@@ -77,13 +80,6 @@ class SambaInterface {
   ErrorType FetchDeviceGpos(std::string* policy_blob);
 
  private:
-  // Sets up minijail and executes |cmd|. |seccomp_path_key| specifies the path
-  // of the seccomp filter to use. |timer_type| is the UMA timer metric to
-  // report. Passing |TIMER_NONE| won't report anything.
-  bool SetupJailAndRun(ProcessExecutor* cmd,
-                       Path seccomp_path_key,
-                       TimerType timer_type) const;
-
   // Sets up trace logging for kinit.
   void SetupKinitTrace(ProcessExecutor* kinit_cmd) const;
 
@@ -110,10 +106,6 @@ class SambaInterface {
   // workgroup is queried from the server and the string is updated. Workgroups
   // are only queried once a session, they are expected to change very rarely.
   ErrorType EnsureWorkgroupAndWriteSmbConf();
-
-  // Writes the krb5 configuration file.
-  ErrorType WriteKrb5Conf(const std::string& realm,
-                          const std::string& kdc_ip) const;
 
   // Writes the file with configuration information.
   ErrorType WriteConfiguration() const;
@@ -159,19 +151,24 @@ class SambaInterface {
   std::unique_ptr<protos::ActiveDirectoryConfig> config_;
   std::string workgroup_;
 
-  // Whether kinit calls may return false negatives and must be retried.
-  bool retry_machine_kinit_ = false;
-
-  // Debug flags.
-  bool disable_seccomp_filters_ = false;
-  bool log_seccomp_filters_ = false;
-  bool trace_kinit_ = false;
+  // The order of members is carefully chosen to match initialization order, so
+  // don't mess with it unless you have a reason.
 
   // UMA statistics, not owned.
   AuthPolicyMetrics* metrics_;
 
   // Lookup for file paths.
   std::unique_ptr<PathService> paths_;
+
+  // Helper to setup and run minijailed processes.
+  JailHelper jail_helper_;
+
+  // User and device ticket-granting-ticket managers.
+  TgtManager user_tgt_manager_;
+  TgtManager device_tgt_manager_;
+
+  // Whether kinit calls may return false negatives and must be retried.
+  bool retry_machine_kinit_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(SambaInterface);
 };

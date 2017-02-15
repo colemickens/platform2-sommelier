@@ -140,9 +140,10 @@ class AuthPolicyTest : public testing::Test {
     base::FilePath state_path(paths->Get(Path::STATE_DIR));
     CHECK(base::CreateDirectory(state_path));
 
-    authpolicy_.reset(new AuthPolicy(std::move(dbus_object),
+    authpolicy_ =
+        base::MakeUnique<AuthPolicy>(std::move(dbus_object),
                                      base::MakeUnique<AuthPolicyMetrics>(),
-                                     std::move(paths)));
+                                     std::move(paths));
     EXPECT_EQ(ERROR_NONE, authpolicy_->Initialize(false /* expect_config */));
 
     // Mock out D-Bus initialization.

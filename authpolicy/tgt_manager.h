@@ -1,0 +1,102 @@
+// Copyright 2017 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef AUTHPOLICY_TGT_MANAGER_H_
+#define AUTHPOLICY_TGT_MANAGER_H_
+
+#include <string>
+
+#include <base/macros.h>
+#include <dbus/authpolicy/dbus-constants.h>
+
+#include "authpolicy/path_service.h"
+
+namespace authpolicy {
+
+class AuthPolicyMetrics;
+class JailHelper;
+class PathService;
+class ProcessExecutor;
+
+// Responsible for acquiring a ticket-tranting-ticket (TGT) from an Active
+// Directory key distribution center (KDC) and managing the TGT. The TGT is
+// kept in a file, the credentials cache. Supports authentication via a password
+// or a keytab file.
+class TgtManager {
+ public:
+  TgtManager(const PathService* path_service,
+             AuthPolicyMetrics* metrics,
+             const JailHelper* jail_helper,
+             Path config_path,
+             Path credential_cache_path);
+  ~TgtManager();
+
+  // Acquires a TGT with the given user |principal| (user@REALM) and password
+  // file descriptor |password_fd|. |realm| is the Active Directory realm (e.g.
+  // ENG.EXAMPLE.COM). |kdc_ip| is the key distribution center IP. If the KDC
+  // cannot be contacted, the method retries once without prescribing the KDC IP
+  // in the Kerberos configuration.
+  ErrorType AcquireTgtWithPassword(const std::string& principal,
+                                   int password_fd,
+                                   const std::string& realm,
+                                   const std::string& kdc_ip);
+
+  // Acquires a TGT with the given machine |principal| (machine$@REALM) and
+  // keytab file |keytab_path|. If the machine account has just been created, it
+  // might not have propagated through Active Directory yet. In this case, set
+  // |propagation_retry| to true. The method will then retry a few times if an
+  // error occurs that indicates a propagation issue. |realm| is the Active
+  // Directory realm (e.g. ENG.EXAMPLE.COM). |kdc_ip| is the key distribution
+  // center IP. If the KDC cannot be contacted, the method tries again (in
+  // addition to potential propagation retries) without prescribing the KDC IP
+  // in the Kerberos configuration.
+  ErrorType AcquireTgtWithKeytab(const std::string& principal,
+                                 Path keytab_path,
+                                 bool propagation_retry,
+                                 const std::string& realm,
+                                 const std::string& kdc_ip);
+
+  // Toggles debug logging.
+  void SetKinitTraceEnabled(bool enabled) { trace_kinit_ = enabled; }
+
+  // Returns the file path of the Kerberos configuration file.
+  Path GetConfigPath() const { return config_path_; }
+
+  // Returns the file path of the Kerberos credential cache.
+  Path GetCredentialCachePath() const { return credential_cache_path_; }
+
+ private:
+  // Writes the Kerberos configuration and runs |kinit_cmd|. If
+  // |propagation_retry| is true, tries up to |kKinitMaxRetries| times as long
+  // as kinit returns an error indicating that the account hasn't propagated
+  // through Active Directory yet.
+  ErrorType RunKinit(ProcessExecutor* kinit_cmd, bool propagation_retry) const;
+
+  // Writes the krb5 configuration file.
+  ErrorType WriteKrb5Conf() const;
+
+  // Turns on kinit trace logging if |trace_kinit_| is enabled.
+  void SetupKinitTrace(ProcessExecutor* kinit_cmd) const;
+
+  // Logs the kinit trace if |trace_kinit_| is enabled.
+  void OutputKinitTrace() const;
+
+  const PathService* paths_ = nullptr;       // File paths, not owned.
+  AuthPolicyMetrics* metrics_ = nullptr;     // UMA statistics, not owned.
+  const JailHelper* jail_helper_ = nullptr;  // Minijail related, not owned.
+  Path config_path_ = Path::INVALID;
+  Path credential_cache_path_ = Path::INVALID;
+  bool trace_kinit_ = false;
+
+  // Realm and key distribution center IP address written to the krb5
+  // configuration file.
+  std::string realm_;
+  std::string kdc_ip_;
+
+  DISALLOW_COPY_AND_ASSIGN(TgtManager);
+};
+
+}  // namespace authpolicy
+
+#endif  // AUTHPOLICY_TGT_MANAGER_H_

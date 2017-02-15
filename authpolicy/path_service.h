@@ -13,6 +13,9 @@
 namespace authpolicy {
 
 enum class Path {
+  // Invalid path, not set, triggers a DCHECK in PathService::Get().
+  INVALID,
+
   // Base directories.
   TEMP_DIR,
   STATE_DIR,
@@ -23,16 +26,23 @@ enum class Path {
   SAMBA_CACHE_DIR,
   SAMBA_STATE_DIR,
   SAMBA_PRIVATE_DIR,
-  GPO_LOCAL_DIR,              // Location of downloaded GPOs.
+  GPO_LOCAL_DIR,  // Location of downloaded GPOs.
 
   // Configuration files.
-  CONFIG_DAT,                 // Authpolicy configuration.
-  KRB5_CONF,                  // Kerberos configuration.
-  SMB_CONF,                   // Samba configuration.
+  CONFIG_DAT,  // Authpolicy configuration.
+  SMB_CONF,    // Samba configuration.
+
+  // Kerberos configuration.
+  USER_KRB5_CONF,
+  DEVICE_KRB5_CONF,
+
+  // Credential cache paths.
+  USER_CREDENTIAL_CACHE,
+  DEVICE_CREDENTIAL_CACHE,
 
   // Keytab files.
-  MACHINE_KT_STATE,           // Persistent machine keytab.
-  MACHINE_KT_TEMP,            // Temp machine keytab.
+  MACHINE_KT_STATE,  // Persistent machine keytab.
+  MACHINE_KT_TEMP,   // Temp machine keytab.
 
   // Samba/Kerberos/parser executables.
   KINIT,
@@ -47,8 +57,8 @@ enum class Path {
   SMBCLIENT_SECCOMP,
 
   // Misc.
-  DEBUG_FLAGS,                // File with debug flags.
-  KRB5_TRACE,                 // kinit trace log.
+  DEBUG_FLAGS,  // File with debug flags.
+  KRB5_TRACE,   // kinit trace log.
 };
 
 // Simple path service.

@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/files/scoped_file.h>
+#include <base/macros.h>
 
 namespace authpolicy {
 
@@ -15,7 +16,7 @@ namespace authpolicy {
 // If fd is a blocking pipe this call will block until the pipe is closed.
 // Returns true iff the whole pipe was successfully read and the pipe was
 // smaller than some limit (see code).
-extern bool ReadPipeToString(int fd, std::string* out);
+bool ReadPipeToString(int fd, std::string* out);
 
 // Performs concurrent IO for three different pipes:
 // - Reads data from |stdout_fd| into |stdout|.
@@ -23,17 +24,17 @@ extern bool ReadPipeToString(int fd, std::string* out);
 // - Writes data from |input_str| into |stdin_fd|.
 //   If |input_fd| is not -1, splices the whole pipe into |stdin_fd| first.
 // Returns false on error. May block if any of the pipes is a blocking pipe.
-extern bool PerformPipeIo(int stdin_fd,
-                          int stdout_fd,
-                          int stderr_fd,
-                          int input_fd,
-                          const std::string& input_str,
-                          std::string* stdout,
-                          std::string* stderr);
+bool PerformPipeIo(int stdin_fd,
+                   int stdout_fd,
+                   int stderr_fd,
+                   int input_fd,
+                   const std::string& input_str,
+                   std::string* stdout,
+                   std::string* stderr);
 
 // Duplicating pipe content from |src_fd|. Returns valid base::ScopedFD on
 // success. Should never block.
-extern base::ScopedFD DuplicatePipe(int src_fd);
+base::ScopedFD DuplicatePipe(int src_fd);
 
 // Gets a user id by name. Dies on error.
 uid_t GetUserId(const char* user_name);
@@ -53,10 +54,10 @@ class ScopedSwitchToSavedUid {
  public:
   ScopedSwitchToSavedUid();
   ~ScopedSwitchToSavedUid();
-
  private:
-  uid_t real_and_effective_uid_;
-  uid_t saved_uid_;
+  uid_t real_and_effective_uid_ = -1;
+  uid_t saved_uid_ = -1;
+  DISALLOW_COPY_AND_ASSIGN(ScopedSwitchToSavedUid);
 };
 
 }  // namespace authpolicy

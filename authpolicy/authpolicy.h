@@ -23,6 +23,8 @@ namespace authpolicy {
 class AuthPolicyMetrics;
 class PathService;
 
+// Implementation of authpolicy's D-Bus interface. Mainly routes stuff between
+// D-Bus and SambaInterface.
 class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
                    public org::chromium::AuthPolicyInterface {
  public:
@@ -36,7 +38,6 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
   AuthPolicy(std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
              std::unique_ptr<AuthPolicyMetrics> metrics,
              std::unique_ptr<PathService> path_service);
-  ~AuthPolicy() override = default;
 
   // Initializes internals. See SambaInterface::Initialize() for details.
   ErrorType Initialize(bool expect_config);

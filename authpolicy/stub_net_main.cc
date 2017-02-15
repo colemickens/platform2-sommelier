@@ -168,31 +168,34 @@ int HandleJoin(const std::string& command_line,
   }
 
   // Stub insufficient quota error.
-  if (Contains(command_line, kUserFlag + kInsufficientQuotaUserPrincipal)) {
+  if (internal::Contains(command_line,
+                         kUserFlag + kInsufficientQuotaUserPrincipal)) {
     WriteOutput(kInsufficientQuotaError, "");
     return kExitCodeError;
   }
 
   // Stub non-existing account error (same error as 'wrong password' error).
-  if (Contains(command_line, kUserFlag + kNonExistingUserPrincipal)) {
+  if (internal::Contains(command_line, kUserFlag + kNonExistingUserPrincipal)) {
     WriteOutput(kWrongPasswordError, "");
     return kExitCodeError;
   }
 
   // Stub network error.
-  if (Contains(command_line, kUserFlag + kNetworkErrorUserPrincipal)) {
+  if (internal::Contains(command_line,
+                         kUserFlag + kNetworkErrorUserPrincipal)) {
     WriteOutput("", kNetworkError);
     return kExitCodeError;
   }
 
   // Stub access denied error.
-  if (Contains(command_line, kUserFlag + kAccessDeniedUserPrincipal)) {
+  if (internal::Contains(command_line,
+                         kUserFlag + kAccessDeniedUserPrincipal)) {
     WriteOutput(kJoinAccessDeniedError, "");
     return kExitCodeError;
   }
 
   // Stub valid user principal. Switch behavior based on password.
-  if (Contains(command_line, kUserFlag + kUserPrincipal)) {
+  if (internal::Contains(command_line, kUserFlag + kUserPrincipal)) {
     // Stub wrong password.
     if (password == kWrongPassword) {
       WriteOutput(kWrongPasswordError, "");
