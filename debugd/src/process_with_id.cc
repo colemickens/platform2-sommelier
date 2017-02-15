@@ -4,33 +4,28 @@
 
 #include "debugd/src/process_with_id.h"
 
-#include <fcntl.h>
-#include <unistd.h>
-
+#include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 
 namespace debugd {
 
+namespace {
+
+constexpr int kNumRandomBytesInId = 16;
+
+}  // namespace
+
 bool ProcessWithId::Init() {
-  return SandboxedProcess::Init() && GenerateId();
+  if (SandboxedProcess::Init()) {
+    GenerateId();
+    return true;
+  }
+  return false;
 }
 
-bool ProcessWithId::GenerateId() {
-  char buf[16];
-  FILE* urandom = fopen("/dev/urandom", "r");
-  if (!urandom) {
-      PLOG(ERROR) << "Can't open /dev/urandom";
-      return false;
-  }
-  if (fread(&buf, sizeof(buf), 1, urandom) != 1) {
-      PLOG(ERROR) << "Can't read";
-      fclose(urandom);
-      return false;
-  }
-
-  id_ = base::HexEncode(buf, sizeof(buf));
-  fclose(urandom);
-  return true;
+void ProcessWithId::GenerateId() {
+  std::string random_bytes = base::RandBytesAsString(kNumRandomBytesInId);
+  id_ = base::HexEncode(random_bytes.data(), random_bytes.size());
 }
 
 }  // namespace debugd

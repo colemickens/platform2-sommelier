@@ -25,7 +25,7 @@ class ProcessWithId : public SandboxedProcess {
   const std::string& id() const { return id_; }
 
  private:
-  bool GenerateId();
+  void GenerateId();
 
   std::string id_;
 };
