@@ -187,6 +187,7 @@ class MockPlatform : public Platform {
                                                   int));
   MOCK_METHOD0(FirmwareWriteProtected, bool(void));
   MOCK_METHOD1(DataSyncFile, bool(const base::FilePath&));
+  MOCK_METHOD1(SyncFile, bool(const base::FilePath&));
   MOCK_METHOD1(SyncDirectory, bool(const base::FilePath&));
   MOCK_METHOD0(Sync, void());
   MOCK_METHOD0(GetHardwareID, std::string(void));

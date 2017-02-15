@@ -1041,8 +1041,11 @@ bool Platform::FirmwareWriteProtected() {
   return VbGetSystemPropertyInt("wpsw_boot") != 0;
 }
 
-bool Platform::SyncFileOrDirectory(const FilePath& path, bool is_directory) {
+bool Platform::SyncFileOrDirectory(const FilePath& path,
+                                   bool is_directory,
+                                   bool data_sync) {
   const base::TimeTicks start = base::TimeTicks::Now();
+  data_sync = data_sync && !is_directory;
 
   int flags = (is_directory ? O_RDONLY|O_DIRECTORY : O_WRONLY);
   int fd = HANDLE_EINTR(open(path.value().c_str(), flags));
@@ -1053,7 +1056,7 @@ bool Platform::SyncFileOrDirectory(const FilePath& path, bool is_directory) {
   // POSIX specifies EINTR as a possible return value of fsync() but not for
   // fdatasync().  To be on the safe side, it is handled in both cases.
   int result =
-      (is_directory ? HANDLE_EINTR(fsync(fd)) : HANDLE_EINTR(fdatasync(fd)));
+      (data_sync ? HANDLE_EINTR(fdatasync(fd)) : HANDLE_EINTR(fsync(fd)));
   if (result < 0) {
     PLOG(WARNING) << "Failed to sync " << path.value();
     close(fd);
@@ -1068,20 +1071,24 @@ bool Platform::SyncFileOrDirectory(const FilePath& path, bool is_directory) {
 
   const base::TimeDelta delta = base::TimeTicks::Now() - start;
   if (delta > base::TimeDelta::FromSeconds(kLongSyncSec)) {
-    LOG(WARNING) << "Long " << (is_directory ? "fsync" : "fdatasync")
-                 << "() of " << path.value() << ": " << delta.InSeconds()
-                 << " seconds";
+    LOG(WARNING) << "Long " << (data_sync ? "fdatasync" : "fsync") << "() of "
+                 << path.value() << ": " << delta.InSeconds() << " seconds";
   }
 
   return true;
 }
 
 bool Platform::DataSyncFile(const FilePath& path) {
-  return SyncFileOrDirectory(path, false /* directory */);
+  return SyncFileOrDirectory(path, false /* directory */, true /* data_sync */);
+}
+
+bool Platform::SyncFile(const FilePath& path) {
+  return SyncFileOrDirectory(
+      path, false /* directory */, false /* data_sync */);
 }
 
 bool Platform::SyncDirectory(const FilePath& path) {
-  return SyncFileOrDirectory(path, true /* directory */);
+  return SyncFileOrDirectory(path, true /* directory */, false /* data_sync */);
 }
 
 void Platform::Sync() {

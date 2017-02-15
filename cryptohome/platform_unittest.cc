@@ -250,6 +250,18 @@ TEST_F(PlatformTest, DataSyncFileHasSaneReturnCodes) {
   platform_.DeleteFile(dirname, true /* recursive */);
 }
 
+TEST_F(PlatformTest, SyncFileHasSaneReturnCodes) {
+  const FilePath filename(GetTempName());
+  const FilePath dirname(GetTempName());
+  platform_.CreateDirectory(dirname);
+  EXPECT_FALSE(platform_.SyncFile(dirname));
+  EXPECT_FALSE(platform_.SyncFile(filename));
+  EXPECT_TRUE(platform_.WriteStringToFile(filename, "bla"));
+  EXPECT_TRUE(platform_.SyncFile(filename));
+  platform_.DeleteFile(filename, false /* recursive */);
+  platform_.DeleteFile(dirname, true /* recursive */);
+}
+
 TEST_F(PlatformTest, SyncDirectoryHasSaneReturnCodes) {
   const FilePath filename(GetTempName());
   const FilePath dirname(GetTempName());

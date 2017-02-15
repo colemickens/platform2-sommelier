@@ -595,6 +595,11 @@ class Platform {
   // success.
   virtual bool DataSyncFile(const base::FilePath& path);
 
+  // Syncs file data to disk for the given |path|. All metadata is synced as
+  // well as file contents. This method is expensive and synchronous, use with
+  // care.  Returns true on success.
+  virtual bool SyncFile(const base::FilePath& path);
+
   // Calls fsync() on directory.  Returns true on success.
   //
   // Parameters
@@ -645,13 +650,16 @@ class Platform {
   // string in case of error.
   virtual std::string GetRandomSuffix();
 
-  // Calls fdatasync() on file or fsync() on directory.  Returns true on
-  // success.
+  // Calls fdatasync() on file if data_sync is true or fsync() on directory or
+  // file when data_sync is false.  Returns true on success.
   //
   // Parameters
   //   path - File/directory to be sync'ed
   //   is_directory - True if |path| is a directory
-  bool SyncFileOrDirectory(const base::FilePath& path, bool is_directory);
+  //   data_sync - True if |path| does not need metadata to be synced
+  bool SyncFileOrDirectory(const base::FilePath& path,
+                           bool is_directory,
+                           bool data_sync);
 
   // Calls |callback| with |path| and, if |path| is a directory, with every
   // entry recursively.  Order is not guaranteed, see base::FileEnumerator.  If
