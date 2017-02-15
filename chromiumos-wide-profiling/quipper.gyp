@@ -68,8 +68,8 @@
       'sources': [
         'dso_test_utils.cc',
         'perf_test_files.cc',
-        'test_utils.cc',
         'test_perf_data.cc',
+        'test_utils.cc',
       ],
       'dependencies': [
         'common',

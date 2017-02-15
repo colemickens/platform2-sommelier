@@ -20,9 +20,9 @@
       'target_name': 'libl2tpipsec_vpn',
       'type': 'static_library',
       'sources': [
+        'daemon.cc',
         'ipsec_manager.cc',
         'l2tp_manager.cc',
-        'daemon.cc',
         'service_manager.cc',
       ],
     },

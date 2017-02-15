@@ -159,8 +159,8 @@
         },
       },
       'sources': [
-        'http_server/server.cc',
         'http_server/connection_delegate.cc',
+        'http_server/server.cc',
       ],
     },
     {
@@ -221,8 +221,8 @@
           'sources': [
             'common/server_message_unittest.cc',
             'common/struct_serializer_unittest.cc',
-            'common/testutil_unittest.cc',
             'common/testrunner.cc',
+            'common/testutil_unittest.cc',
           ],
         },
         # p2p-client tests

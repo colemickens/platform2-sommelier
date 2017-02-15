@@ -69,9 +69,9 @@
             'libimage-burner',
           ],
           'sources': [
-            'unittest_runner.cc',
             'image_burner_impl_unittest.cc',
             'image_burner_utils_unittest.cc',
+            'unittest_runner.cc',
           ],
         },
       ],

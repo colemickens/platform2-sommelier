@@ -49,9 +49,9 @@
             'proxy_path_in_mocks': 'wimax_manager/dbus-proxies.h',
           },
           'sources': [
-            'dbus_bindings/org.chromium.WiMaxManager.xml',
             'dbus_bindings/org.chromium.WiMaxManager.Device.xml',
             'dbus_bindings/org.chromium.WiMaxManager.Network.xml',
+            'dbus_bindings/org.chromium.WiMaxManager.xml',
           ],
           'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },
@@ -70,9 +70,9 @@
             'xml2cpp_out_dir': 'include/wimax_manager/dbus_adaptors',
           },
           'sources': [
-            '<(xml2cpp_in_dir)/org.chromium.WiMaxManager.xml',
             '<(xml2cpp_in_dir)/org.chromium.WiMaxManager.Device.xml',
             '<(xml2cpp_in_dir)/org.chromium.WiMaxManager.Network.xml',
+            '<(xml2cpp_in_dir)/org.chromium.WiMaxManager.xml',
           ],
           'includes': ['../common-mk/xml2cpp.gypi'],
         },

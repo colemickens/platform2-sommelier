@@ -29,8 +29,8 @@
         '-fvisibility=default',
       ],
       'sources': [
-        'libcontainer.c',
         'container_cgroup.c',
+        'libcontainer.c',
       ],
     },
   ],

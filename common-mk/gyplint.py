@@ -9,6 +9,7 @@
 from __future__ import print_function
 
 import collections
+import difflib
 import os
 import re
 import sys
@@ -102,6 +103,26 @@ def GypLintCommonTesting(gypdata):
       if '-lgtest' in value or '-lgmock' in value:
         ret.append('use common-mk/common_test.gypi for tests instead of '
                    'linking against -lgtest/-lgmock directly')
+    return ret
+
+  return WalkGyp(CheckNode, gypdata)
+
+
+def GypLintOrderedFiles(gypdata):
+  """Files should be kept sorted.
+
+  Python's sorted() function relies on __cmp__ of the objects it is sorting.
+  Since we're feeding it ASCII strings, it will do byte-wise comparing.  This
+  matches clang-format behavior when it sorts include files.
+  """
+  def CheckNode(key, value):
+    ret = []
+    if key == 'sources':
+      lines = list(difflib.unified_diff(value, sorted(value), lineterm=''))
+      if lines:
+        # Skip the first three entries as those are the diff header.
+        ret.append('source files should be kept sorted:\n%s' %
+                   ('\n'.join(lines[3:]),))
     return ret
 
   return WalkGyp(CheckNode, gypdata)

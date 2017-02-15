@@ -54,10 +54,10 @@
         },
       },
       'sources': [
-        'device_jail/device_jail_control.h',
         'device_jail/device_jail_control.cc',
-        'device_jail/device_jail_server.h',
+        'device_jail/device_jail_control.h',
         'device_jail/device_jail_server.cc',
+        'device_jail/device_jail_server.h',
       ],
     },
     {

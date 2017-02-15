@@ -79,6 +79,13 @@ class GypLintTests(LintTestCase):
         {'libraries': ['-lgmock', '-lgtest']},
     ))
 
+  def testGypLintOrderedFiles(self):
+    """Verify GypLintOrderedFiles catches bad inputs."""
+    self._CheckLinter(gyplint.GypLintOrderedFiles, (
+        {'sources': ['b.h', 'b.cc']},
+        {'sources': ['zzz.cc', 'a.h']},
+    ))
+
   def testGypLintPkgConfigs(self):
     """Verify GypLintPkgConfigs catches bad inputs."""
     self._CheckLinter(gyplint.GypLintPkgConfigs, (

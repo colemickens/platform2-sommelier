@@ -54,8 +54,8 @@
         'rule_engine.cc',
         'tty_subsystem_udev_rule.cc',
         'udev_scopers.cc',
-        'usb_subsystem_udev_rule.cc',
         'usb_driver_tracker.cc',
+        'usb_subsystem_udev_rule.cc',
       ],
       'conditions': [
         ['USE_containers == 1', {
