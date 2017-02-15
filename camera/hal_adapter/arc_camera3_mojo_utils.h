@@ -21,22 +21,10 @@
 #include "arc/common.h"
 #include "arc/future.h"
 #include "hal_adapter/arc_camera3.mojom.h"
+#include "hal_adapter/common_types.h"
 #include "hardware/camera3.h"
 
 namespace internal {
-
-// Common data types.
-
-struct CameraMetadataDeleter {
-  inline void operator()(camera_metadata_t* metadata) const {
-    free_camera_metadata(metadata);
-  }
-};
-
-typedef std::unique_ptr<camera_metadata_t, CameraMetadataDeleter>
-    CameraMetadataUniquePtr;
-
-typedef std::map<uint64_t, std::unique_ptr<camera3_stream_t>> UniqueStreams;
 
 // Serialize / deserialize helper functions.
 
@@ -48,9 +36,6 @@ arc::mojom::HandlePtr SerializeHandle(int handle);
 
 int DeserializeHandle(const arc::mojom::HandlePtr& handle);
 
-int DeserializeNativeHandle(const arc::mojom::NativeHandlePtr& ptr,
-                            native_handle_t* handle);
-
 // SerializeStreamBuffer is used in CameraDeviceAdapter::ProcessCaptureResult to
 // pass a result buffer handle to ARC++.  For the input / output buffers, we do
 // not need to serialize the whole native handle but instead we can simply
@@ -60,11 +45,17 @@ int DeserializeNativeHandle(const arc::mojom::NativeHandlePtr& ptr,
 arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
     const camera3_stream_buffer_t* buffer,
     const UniqueStreams& streams,
-    const std::unordered_map<buffer_handle_t, uint64_t>& buffer_handles);
+    const std::unordered_map<uint64_t,
+                             internal::ArcCameraBufferHandleUniquePtr>&
+        buffer_handles);
 
-int DeserializeStreamBuffer(const arc::mojom::Camera3StreamBufferPtr& ptr,
-                            const UniqueStreams& streams,
-                            camera3_stream_buffer_t* buffer);
+int DeserializeStreamBuffer(
+    const arc::mojom::Camera3StreamBufferPtr& ptr,
+    const UniqueStreams& streams,
+    const std::unordered_map<uint64_t,
+                             internal::ArcCameraBufferHandleUniquePtr>&
+        buffer_handles_,
+    camera3_stream_buffer_t* buffer);
 
 int32_t SerializeCameraMetadata(
     mojo::ScopedDataPipeProducerHandle* producer_handle,

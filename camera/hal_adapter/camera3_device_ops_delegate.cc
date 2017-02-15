@@ -60,4 +60,20 @@ void Camera3DeviceOpsDelegate::Flush(const FlushCallback& callback) {
   callback.Run(camera_device_adapter_->Flush());
 }
 
+void Camera3DeviceOpsDelegate::RegisterBuffer(
+    uint64_t buffer_id,
+    mojom::Camera3DeviceOps::BufferType type,
+    mojo::Array<mojo::ScopedHandle> fds,
+    uint32_t format,
+    uint32_t width,
+    uint32_t height,
+    mojo::Array<uint32_t> strides,
+    mojo::Array<uint32_t> offsets,
+    const RegisterBufferCallback& callback) {
+  VLOGF_ENTER();
+  callback.Run(camera_device_adapter_->RegisterBuffer(
+      buffer_id, type, std::move(fds), format, width, height,
+      std::move(strides), std::move(offsets)));
+}
+
 }  // namespace arc

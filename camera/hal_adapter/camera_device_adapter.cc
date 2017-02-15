@@ -15,9 +15,21 @@
 #include <base/bind_helpers.h>
 #include <base/logging.h>
 
+#include "arc/camera_buffer_mapper.h"
 #include "arc/common.h"
+#include "common/camera_buffer_handle.h"
 #include "hal_adapter/camera3_callback_ops_delegate.h"
 #include "hal_adapter/camera3_device_ops_delegate.h"
+
+namespace {
+
+const size_t kCameraBufferHandleNumFds = kMaxPlanes;
+const size_t kCameraBufferHandleNumInts =
+    (sizeof(camera_buffer_handle_t) - sizeof(native_handle_t) -
+     (sizeof(int32_t) * kMaxPlanes)) /
+    sizeof(int);
+
+}  // namespace
 
 namespace arc {
 
@@ -153,7 +165,8 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
   }
 
   // Deserialize input buffer.
-  std::unique_ptr<camera3_stream_buffer_t> input_buffer;
+  buffer_handle_t input_buffer_handle;
+  camera3_stream_buffer_t input_buffer;
   if (request->input_buffer->is_none()) {
     req.input_buffer = nullptr;
   } else {
@@ -161,13 +174,11 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
     base::AutoLock buffer_handles_lock(buffer_handles_lock_);
     mojom::Camera3StreamBufferPtr& in_buf_ptr =
         request->input_buffer->get_input_buffer();
-    input_buffer.reset(new camera3_stream_buffer_t);
-    buffer_handle_t input_buffer_handle = native_handle_create(
-        in_buf_ptr->buffer->num_fds, in_buf_ptr->buffer->num_ints);
-    buffer_handles_[input_buffer_handle] = in_buf_ptr->buffer->handle_id;
-    input_buffer->buffer = &input_buffer_handle;
-    internal::DeserializeStreamBuffer(in_buf_ptr, streams_, input_buffer.get());
-    req.input_buffer = input_buffer.get();
+    input_buffer.buffer =
+        const_cast<const native_handle_t**>(&input_buffer_handle);
+    internal::DeserializeStreamBuffer(in_buf_ptr, streams_, buffer_handles_,
+                                      &input_buffer);
+    req.input_buffer = &input_buffer;
   }
 
   // Deserialize output buffers.
@@ -180,16 +191,12 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
   {
     base::AutoLock streams_lock(streams_lock_);
     base::AutoLock buffer_handles_lock(buffer_handles_lock_);
-    for (unsigned int i = 0; i < request->num_output_buffers; ++i) {
+    for (size_t i = 0; i < request->num_output_buffers; ++i) {
       mojom::Camera3StreamBufferPtr& out_buf_ptr =
           request->output_buffers->get_output_buffers()[i];
-      buffer_handle_t output_buffer_handle = native_handle_create(
-          out_buf_ptr->buffer->num_fds, out_buf_ptr->buffer->num_ints);
-      buffer_handles_[output_buffer_handle] = out_buf_ptr->buffer->handle_id;
-      output_buffer_handles.at(i) = output_buffer_handle;
       output_buffers.at(i).buffer =
           const_cast<const native_handle_t**>(&output_buffer_handles.at(i));
-      internal::DeserializeStreamBuffer(out_buf_ptr, streams_,
+      internal::DeserializeStreamBuffer(out_buf_ptr, streams_, buffer_handles_,
                                         &output_buffers.at(i));
     }
     req.output_buffers =
@@ -208,6 +215,45 @@ void CameraDeviceAdapter::Dump(mojo::ScopedHandle fd) {
 int32_t CameraDeviceAdapter::Flush() {
   VLOGF_ENTER();
   return camera_device_->ops->flush(camera_device_);
+}
+
+int32_t CameraDeviceAdapter::RegisterBuffer(
+    uint64_t buffer_id,
+    mojom::Camera3DeviceOps::BufferType type,
+    mojo::Array<mojo::ScopedHandle> fds,
+    uint32_t format,
+    uint32_t width,
+    uint32_t height,
+    mojo::Array<uint32_t> strides,
+    mojo::Array<uint32_t> offsets) {
+  size_t num_planes = fds.size();
+
+  native_handle_t* native_handle = native_handle_create(
+      kCameraBufferHandleNumFds, kCameraBufferHandleNumInts);
+  if (!native_handle) {
+    LOG(ERROR) << "Failed to allocate native handle";
+    return -ENOMEM;
+  }
+  camera_buffer_handle_t* buffer_handle =
+      reinterpret_cast<camera_buffer_handle_t*>(native_handle);
+
+  buffer_handle->magic = kCameraBufferMagic;
+  buffer_handle->buffer_id = buffer_id;
+  buffer_handle->type = static_cast<int32_t>(type);
+  buffer_handle->format = format;
+  buffer_handle->width = width;
+  buffer_handle->height = height;
+  for (size_t i = 0; i < num_planes; ++i) {
+    buffer_handle->fds[i] = internal::UnwrapPlatformHandle(std::move(fds[i]));
+    buffer_handle->strides[i] = strides[i];
+    buffer_handle->offsets[i] = offsets[i];
+  }
+  buffer_handles_[buffer_id].reset(buffer_handle);
+
+  VLOGF(1) << std::hex << "Buffer 0x" << buffer_id << " registered: "
+           << "format: 0x" << format << " dimension: " << std::dec << width
+           << "x" << height << " num_planes: " << num_planes;
+  return 0;
 }
 
 mojom::Camera3CaptureResultPtr CameraDeviceAdapter::ProcessCaptureResult(
@@ -244,17 +290,14 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::ProcessCaptureResult(
     base::AutoLock streams_lock(streams_lock_);
     base::AutoLock buffer_handles_lock(buffer_handles_lock_);
     mojo::Array<mojom::Camera3StreamBufferPtr> output_buffers_array;
-    for (unsigned int i = 0; i < result->num_output_buffers; i++) {
+    for (size_t i = 0; i < result->num_output_buffers; i++) {
       mojom::Camera3StreamBufferPtr out_buf = internal::SerializeStreamBuffer(
           result->output_buffers + i, streams_, buffer_handles_);
       if (out_buf.is_null()) {
         LOGF(ERROR) << "Failed to serialize output stream buffer";
         // TODO(jcliang): Handle error?
       }
-      buffer_handle_t handle = *(result->output_buffers + i)->buffer;
-      buffer_handles_.erase(handle);
-      native_handle_close(const_cast<native_handle_t*>(handle));
-      native_handle_delete(const_cast<native_handle_t*>(handle));
+      RemoveBuffer(*(result->output_buffers + i)->buffer);
       output_buffers_array.push_back(std::move(out_buf));
     }
     output_buffers->set_output_buffers(std::move(output_buffers_array));
@@ -275,10 +318,7 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::ProcessCaptureResult(
       LOGF(ERROR) << "Failed to serialize input stream buffer";
     }
     input_buffer->set_input_buffer(std::move(in_buf));
-    buffer_handle_t handle = *result->input_buffer->buffer;
-    buffer_handles_.erase(handle);
-    native_handle_close(const_cast<native_handle_t*>(handle));
-    native_handle_delete(const_cast<native_handle_t*>(handle));
+    RemoveBuffer(*result->input_buffer->buffer);
   }
   r->input_buffer = std::move(input_buffer);
 
@@ -320,6 +360,18 @@ mojom::Camera3NotifyMsgPtr CameraDeviceAdapter::Notify(
   }
 
   return m;
+}
+
+void CameraDeviceAdapter::RemoveBuffer(buffer_handle_t buffer) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return;
+  }
+  if (buffer_handles_.erase(handle->buffer_id)) {
+    VLOGF(1) << "Buffer 0x" << std::hex << handle->buffer_id << " removed";
+  } else {
+    NOTREACHED() << "Invalid buffer 0x" << std::hex << handle->buffer_id;
+  }
 }
 
 }  // namespace arc

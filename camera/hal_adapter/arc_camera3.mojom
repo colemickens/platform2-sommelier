@@ -28,18 +28,9 @@ union Handle {
   handle h;
 };
 
-struct NativeHandle {
-  int32 version;
-  int32 num_fds;
-  int32 num_ints;
-  array<Handle>? fds;
-  array<int32>? ints;
-  uint64 handle_id;
-};
-
 struct Camera3StreamBuffer {
   uint64 stream_id;
-  NativeHandle buffer;
+  uint64 buffer_id;
   int32 status;
   Handle acquire_fence;
   Handle release_fence;
@@ -81,6 +72,17 @@ interface Camera3DeviceOps {
   Dump@4(handle fd) => ();
 
   Flush@5() => (int32 result);
+
+  enum BufferType {
+    GRALLOC = 0,  // gralloc buffer. Needs to be imported through GBM.
+    SHM = 1,      // shared memory buffer. Can be mmapped directly.
+    // Add DMABUF when needed.
+  };
+
+  RegisterBuffer@6(uint64 buffer_id, BufferType type, array<handle> fds,
+                   uint32 format, uint32 width, uint32 height,
+                   array<uint32> strides, array<uint32> offsets) =>
+      (int32 result);
 };
 
 struct Camera3CaptureResult {

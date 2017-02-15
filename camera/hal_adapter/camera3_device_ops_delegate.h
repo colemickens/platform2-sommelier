@@ -40,6 +40,16 @@ class Camera3DeviceOpsDelegate
 
   void Flush(const FlushCallback& callback) override;
 
+  void RegisterBuffer(uint64_t buffer_id,
+                      mojom::Camera3DeviceOps::BufferType type,
+                      mojo::Array<mojo::ScopedHandle> fds,
+                      uint32_t format,
+                      uint32_t width,
+                      uint32_t height,
+                      mojo::Array<uint32_t> strides,
+                      mojo::Array<uint32_t> offsets,
+                      const RegisterBufferCallback& callback) override;
+
   CameraDeviceAdapter* camera_device_adapter_;
 
   DISALLOW_COPY_AND_ASSIGN(Camera3DeviceOpsDelegate);

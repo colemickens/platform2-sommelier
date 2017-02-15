@@ -61,33 +61,12 @@ int DeserializeHandle(const arc::mojom::HandlePtr& handle) {
   return UnwrapPlatformHandle(std::move(handle->get_h()));
 }
 
-// The caller must allocate the memory for out_handle.
-int DeserializeNativeHandle(const arc::mojom::NativeHandlePtr& ptr,
-                            native_handle_t* out_handle) {
-  out_handle->version = ptr->version;
-  out_handle->numFds = ptr->num_fds;
-  out_handle->numInts = ptr->num_ints;
-  for (int i = 0; i < ptr->num_fds; i++) {
-    int unwrapped_handle = DeserializeHandle(ptr->fds[i]);
-    if (unwrapped_handle == -EINVAL) {
-      LOGF(ERROR) << "Failed to get native fd";
-      for (int j = 0; j < i; j++) {
-        close(out_handle->data[j]);
-      }
-      return -EINVAL;
-    }
-    out_handle->data[i] = unwrapped_handle;
-  }
-  for (int i = 0; i < ptr->num_ints; i++) {
-    out_handle->data[ptr->num_fds + i] = ptr->ints[i];
-  }
-  return 0;
-}
-
 arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
     const camera3_stream_buffer_t* buffer,
     const UniqueStreams& streams,
-    const std::unordered_map<buffer_handle_t, uint64_t>& buffer_handles) {
+    const std::unordered_map<uint64_t,
+                             internal::ArcCameraBufferHandleUniquePtr>&
+        buffer_handles) {
   arc::mojom::Camera3StreamBufferPtr ret =
       arc::mojom::Camera3StreamBuffer::New();
 
@@ -109,18 +88,17 @@ arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
   }
   ret->stream_id = it->first;
 
-  if (buffer_handles.find(*buffer->buffer) == buffer_handles.end()) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(*buffer->buffer);
+  if (!handle) {
+    ret.reset();
+    return ret;
+  }
+  if (buffer_handles.find(handle->buffer_id) == buffer_handles.end()) {
     LOGF(ERROR) << "Unknown buffer handle";
     ret.reset();
     return ret;
   }
-  // Since we only need to return the handle IDs we can set all the other fields
-  // in the buffer handle to 0.
-  ret->buffer = arc::mojom::NativeHandle::New();
-  ret->buffer->version = 0;
-  ret->buffer->num_fds = 0;
-  ret->buffer->num_ints = 0;
-  ret->buffer->handle_id = buffer_handles.at(*buffer->buffer);
+  ret->buffer_id = handle->buffer_id;
 
   ret->status = buffer->status;
 
@@ -141,9 +119,13 @@ arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
   return ret;
 }
 
-int DeserializeStreamBuffer(const arc::mojom::Camera3StreamBufferPtr& ptr,
-                            const UniqueStreams& streams,
-                            camera3_stream_buffer_t* out_buffer) {
+int DeserializeStreamBuffer(
+    const arc::mojom::Camera3StreamBufferPtr& ptr,
+    const UniqueStreams& streams,
+    const std::unordered_map<uint64_t,
+                             internal::ArcCameraBufferHandleUniquePtr>&
+        buffer_handles_,
+    camera3_stream_buffer_t* out_buffer) {
   auto it = streams.find(ptr->stream_id);
   if (it == streams.end()) {
     LOGF(ERROR) << "Unknown stream: " << ptr->stream_id;
@@ -151,18 +133,20 @@ int DeserializeStreamBuffer(const arc::mojom::Camera3StreamBufferPtr& ptr,
   }
   out_buffer->stream = it->second.get();
 
-  int ret = DeserializeNativeHandle(
-      ptr->buffer, *const_cast<native_handle**>(out_buffer->buffer));
-  if (ret) {
-    return ret;
+  auto buffer_handle = buffer_handles_.find(ptr->buffer_id);
+  if (buffer_handle == buffer_handles_.end()) {
+    LOG(ERROR) << "Invalid buffer id: " << ptr->buffer_id;
+    return -EINVAL;
   }
+  *out_buffer->buffer =
+      reinterpret_cast<buffer_handle_t>(buffer_handle->second.get());
+
   out_buffer->status = ptr->status;
 
   int unwrapped_handle;
   unwrapped_handle = DeserializeHandle(ptr->acquire_fence);
   if (unwrapped_handle == -EINVAL) {
     LOGF(ERROR) << "Failed to get acquire_fence";
-    native_handle_close(*(out_buffer->buffer));
     return -EINVAL;
   }
   out_buffer->acquire_fence = unwrapped_handle;
@@ -170,7 +154,6 @@ int DeserializeStreamBuffer(const arc::mojom::Camera3StreamBufferPtr& ptr,
   unwrapped_handle = DeserializeHandle(ptr->release_fence);
   if (unwrapped_handle == -EINVAL) {
     LOGF(ERROR) << "Failed to get release_fence";
-    native_handle_close(*(out_buffer->buffer));
     close(out_buffer->acquire_fence);
     return -EINVAL;
   }
