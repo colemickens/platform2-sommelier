@@ -47,6 +47,13 @@
         'syslog/main.cc',
       ],
     },
+    {
+      'target_name': 'virtwl_guest_proxy',
+      'type': 'executable',
+      'sources': [
+        'virtwl_guest_proxy/main.c',
+      ],
+    },
   ],
   'conditions': [
     ['USE_test == 1', {
