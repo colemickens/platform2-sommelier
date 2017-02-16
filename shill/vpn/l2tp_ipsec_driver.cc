@@ -196,7 +196,9 @@ void L2TPIPSecDriver::Cleanup(Service::ConnectState state,
                 << Service::ConnectFailureToString(failure) << ")";
   StopConnectTimeout();
   DeleteTemporaryFiles();
-  external_task_.reset();
+  if (external_task_) {
+    external_task_.release()->DestroyLater(dispatcher());
+  }
   if (device_) {
     device_->DropConnection();
     device_->SetEnabled(false);
