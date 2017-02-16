@@ -94,6 +94,30 @@ class TpmUtilityV2 : public TpmUtility {
   bool RemoveOwnerDependency() override;
 
  private:
+  // Tpm_manager communication thread class that cleans up after stopping.
+  class TpmManagerThread : public base::Thread {
+   public:
+    TpmManagerThread(TpmUtilityV2* tpm_utility)
+        : base::Thread("tpm_manager_thread"), tpm_utility_(tpm_utility) {
+      DCHECK(tpm_utility_);
+    }
+    ~TpmManagerThread() override {
+      Stop();
+    }
+
+   private:
+    void CleanUp() override {
+      tpm_utility_->ShutdownTask();
+    }
+
+    TpmUtilityV2* const tpm_utility_;
+
+    DISALLOW_COPY_AND_ASSIGN(TpmManagerThread);
+  };
+
+  // Shutdown operation that must be performed on the tpm_manager thread.
+  void ShutdownTask();
+
   // Sends a request to tpm_managerd and waits for a response. The given
   // interface |method| will be called and a |reply_proto| will be populated.
   //
@@ -126,20 +150,29 @@ class TpmUtilityV2 : public TpmUtility {
   // the |key_handle|.
   bool GetEndorsementKey(KeyType key_type, trunks::TPM_HANDLE* key_handle);
 
-  // A message loop thread dedicated for asynchronous communication with
-  // tpm_managerd.
-  base::Thread tpm_manager_thread_{"tpm_manager_thread"};
   bool is_ready_{false};
   std::string endorsement_password_;
   std::string owner_password_;
   std::map<KeyType, trunks::TPM_HANDLE> endorsement_keys_;
+  // |tpm_owner_| and |tpm_nvram_| typically point to |default_tpm_owner_| and
+  // |default_tpm_nvram_| respectively, created/destroyed on the
+  // |tpm_manager_thread_|. As such, should not be accessed after that thread
+  // is stopped/destroyed.
   tpm_manager::TpmOwnershipInterface* tpm_owner_{nullptr};
   tpm_manager::TpmNvramInterface* tpm_nvram_{nullptr};
   trunks::TrunksFactory* trunks_factory_{nullptr};
+  // |default_tpm_owner_| and |default_tpm_nvram_| are created and destroyed
+  // on the |tpm_manager_thread_|, and are not available after the thread is
+  // stopped/destroyed.
   std::unique_ptr<tpm_manager::TpmOwnershipDBusProxy> default_tpm_owner_;
   std::unique_ptr<tpm_manager::TpmNvramDBusProxy> default_tpm_nvram_;
   std::unique_ptr<trunks::TrunksFactoryImpl> default_trunks_factory_;
   std::unique_ptr<trunks::TpmUtility> trunks_utility_;
+
+  // A message loop thread dedicated for asynchronous communication with
+  // tpm_managerd. Declared last, so that it is destroyed before the
+  // objects it uses.
+  TpmManagerThread tpm_manager_thread_{this};
 
   DISALLOW_COPY_AND_ASSIGN(TpmUtilityV2);
 };

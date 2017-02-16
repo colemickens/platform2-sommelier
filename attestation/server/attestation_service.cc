@@ -286,7 +286,7 @@ AttestationService::AttestationService()
 
 bool AttestationService::Initialize() {
   if (!worker_thread_) {
-    worker_thread_.reset(new base::Thread("Attestation Service Worker"));
+    worker_thread_.reset(new ServiceWorkerThread(this));
     worker_thread_->StartWithOptions(
         base::Thread::Options(base::MessageLoop::TYPE_IO, 0));
     LOG(INFO) << "Attestation service started.";
@@ -328,6 +328,11 @@ void AttestationService::InitializeTask() {
     // Ignore errors. If failed this time, will be re-attempted on next boot.
     tpm_utility_->RemoveOwnerDependency();
   }
+}
+
+void AttestationService::ShutdownTask() {
+  tpm_utility_ = nullptr;
+  default_tpm_utility_.reset(nullptr);
 }
 
 void AttestationService::CreateGoogleAttestedKey(

@@ -161,6 +161,27 @@ class AttestationService : public AttestationInterface {
     kGetCertificate,  // Issues a certificate for a TPM-backed key.
   };
 
+  // Attestation service worker thread class that cleans up after stopping.
+  class ServiceWorkerThread : public base::Thread {
+   public:
+    ServiceWorkerThread(AttestationService* service)
+        : base::Thread("Attestation Service Worker"), service_(service) {
+      DCHECK(service_);
+    }
+    ~ServiceWorkerThread() override {
+      Stop();
+    }
+
+   private:
+    void CleanUp() override {
+      service_->ShutdownTask();
+    }
+
+    AttestationService* const service_;
+
+    DISALLOW_COPY_AND_ASSIGN(ServiceWorkerThread);
+  };
+
   // A relay callback which allows the use of weak pointer semantics for a reply
   // to TaskRunner::PostTaskAndReply.
   template <typename ReplyProtobufType>
@@ -172,6 +193,9 @@ class AttestationService : public AttestationInterface {
 
   // Initialization to be run on the worker thread.
   void InitializeTask();
+
+  // Shutdown to be run on the worker thread.
+  void ShutdownTask();
 
   // A blocking implementation of CreateGoogleAttestedKey appropriate to run on
   // the worker thread.
@@ -477,6 +501,9 @@ class AttestationService : public AttestationInterface {
   Database* database_{nullptr};
   std::shared_ptr<brillo::http::Transport> http_transport_;
   KeyStore* key_store_{nullptr};
+  // |tpm_utility_| typically points to |default_tpm_utility_| created/destroyed
+  // on the |worker_thread_|. As such, should not be accessed after that thread
+  // is stopped/destroyed.
   TpmUtility* tpm_utility_{nullptr};
   std::string hwid_;
   CertRequestMap pending_cert_requests_;
@@ -489,12 +516,14 @@ class AttestationService : public AttestationInterface {
   std::unique_ptr<DatabaseImpl> default_database_;
   std::unique_ptr<Pkcs11KeyStore> default_key_store_;
   std::unique_ptr<chaps::TokenManagerClient> pkcs11_token_manager_;
+  // |default_tpm_utility_| is created and destroyed on the |worker_thread_|,
+  // and is not available after the thread is stopped/destroyed.
   std::unique_ptr<TpmUtility> default_tpm_utility_;
 
   // All work is done in the background. This serves to serialize requests and
   // allow synchronous implementation of complex methods. This is intentionally
   // declared after the thread-owned members.
-  std::unique_ptr<base::Thread> worker_thread_;
+  std::unique_ptr<ServiceWorkerThread> worker_thread_;
 
   // Declared last so any weak pointers are destroyed first.
   base::WeakPtrFactory<AttestationService> weak_factory_;

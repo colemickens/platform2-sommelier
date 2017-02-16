@@ -165,6 +165,13 @@ TpmUtilityV2::~TpmUtilityV2() {
   }
 }
 
+void TpmUtilityV2::ShutdownTask() {
+  tpm_owner_ = nullptr;
+  tpm_nvram_ = nullptr;
+  default_tpm_owner_.reset(nullptr);
+  default_tpm_nvram_.reset(nullptr);
+}
+
 bool TpmUtilityV2::Initialize() {
   if (!tpm_manager_thread_.StartWithOptions(base::Thread::Options(
           base::MessageLoopForIO::TYPE_IO, 0 /* Default stack size. */))) {
