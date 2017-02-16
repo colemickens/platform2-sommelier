@@ -760,10 +760,6 @@ main() {
   prepare_disk
   locate_gpt
 
-  # Load the GPT helper functions and the image settings.
-  . "${ROOT}/usr/sbin/write_gpt.sh"
-  load_base_vars
-
   # Special handling for payload_image. This is passed in for recovery images
   # and usb installs. This is done first so we can read the gpt partition
   # file below.
@@ -775,6 +771,10 @@ main() {
     loop_offset_setup "${SRC}" $(partoffset "${SRC}" ${PARTITION_NUM_STATE})
     tracked_mount -o ro "${LOOP_DEV}" "${ROOT}"/mnt/stateful_partition
   fi
+
+  # Load the GPT helper functions and the image settings.
+  . "${ROOT}/usr/sbin/write_gpt.sh"
+  load_base_vars
 
   # This was moved out of check_payload_image because DEFAULT_ROOTDEV
   # is not defined until after the GPT helper functions are loaded.
