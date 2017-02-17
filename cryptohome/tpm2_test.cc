@@ -35,6 +35,7 @@ using testing::SaveArg;
 using testing::SetArgPointee;
 using testing::WithArg;
 using tpm_manager::NVRAM_RESULT_IPC_ERROR;
+using trunks::TPM_RC;
 using trunks::TPM_RC_FAILURE;
 using trunks::TPM_RC_SUCCESS;
 using trunks::TrunksFactory;
@@ -895,6 +896,37 @@ TEST_F(Tpm2Test, LoadWrappedKeyFailure) {
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(tpm_->LoadWrappedKey(wrapped_key, &key_handle),
             Tpm::kTpmRetryFailNoRetry);
+}
+
+TEST_F(Tpm2Test, LoadWrappedKeyRetryActions) {
+  constexpr TPM_RC error_code_fmt0 = trunks::TPM_RC_REFERENCE_H0;
+  constexpr TPM_RC error_code_fmt1 = trunks::TPM_RC_HANDLE | trunks::TPM_RC_2;
+  SecureBlob wrapped_key("wrapped_key");
+  ScopedKeyHandle key_handle;
+  // For hardware TPM and Resource Manager, should use the error number to
+  // determine the corresponding retry action.
+  for (TPM_RC layer_code : {trunks::kResourceManagerTpmErrorBase, TPM_RC(0)}) {
+    EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
+        .WillOnce(Return(error_code_fmt0 | layer_code))
+        .WillOnce(Return(error_code_fmt1 | layer_code))
+        .RetiresOnSaturation();
+    EXPECT_EQ(tpm_->LoadWrappedKey(wrapped_key, &key_handle),
+              Tpm::kTpmRetryInvalidHandle);
+    EXPECT_EQ(tpm_->LoadWrappedKey(wrapped_key, &key_handle),
+              Tpm::kTpmRetryInvalidHandle);
+  }
+  // For response codes produced by other layers (e.g. trunks, SAPI), should
+  // always return FailNoRetry, even if lower 12 bits match hardware TPM errors.
+  for (TPM_RC layer_code : {trunks::kSapiErrorBase, trunks::kTrunksErrorBase}) {
+    EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
+        .WillOnce(Return(error_code_fmt0 | layer_code))
+        .WillOnce(Return(error_code_fmt1 | layer_code))
+        .RetiresOnSaturation();
+    EXPECT_EQ(tpm_->LoadWrappedKey(wrapped_key, &key_handle),
+              Tpm::kTpmRetryFailNoRetry);
+    EXPECT_EQ(tpm_->LoadWrappedKey(wrapped_key, &key_handle),
+              Tpm::kTpmRetryFailNoRetry);
+  }
 }
 
 TEST_F(Tpm2Test, CloseHandle) {
