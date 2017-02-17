@@ -59,7 +59,7 @@ const Log kCommandLogs[] = {
   { "board-specific",
     "/usr/share/userfeedback/scripts/get_board_specific_info" },
   { "buddyinfo", "/bin/cat /proc/buddyinfo" },
-  { "cbi_info", "/usr/share/userfeedback/scripts/cbi_info" },
+  { "cbi_info", "/usr/share/userfeedback/scripts/cbi_info", kRoot, },
   { "cheets_log", "/usr/bin/collect-cheets-logs 2>&1" },
   { "clobber.log", "/bin/cat /var/log/clobber.log 2> /dev/null" },
   { "clobber-state.log", "/bin/cat /var/log/clobber-state.log 2> /dev/null" },
