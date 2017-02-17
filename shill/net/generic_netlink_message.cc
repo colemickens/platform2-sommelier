@@ -18,6 +18,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "shill/net/netlink_attribute.h"
@@ -136,7 +137,7 @@ GetFamilyMessage::GetFamilyMessage()
 }
 
 // static
-NetlinkMessage* ControlNetlinkMessage::CreateMessage(
+std::unique_ptr<NetlinkMessage> ControlNetlinkMessage::CreateMessage(
     const NetlinkPacket& packet) {
   genlmsghdr header;
   if (!packet.GetGenlMsgHdr(&header)) {
@@ -146,14 +147,13 @@ NetlinkMessage* ControlNetlinkMessage::CreateMessage(
 
   switch (header.cmd) {
     case NewFamilyMessage::kCommand:
-      return new NewFamilyMessage();
+      return base::MakeUnique<NewFamilyMessage>();
     case GetFamilyMessage::kCommand:
-      return new GetFamilyMessage();
+      return base::MakeUnique<GetFamilyMessage>();
     default:
       LOG(WARNING) << "Unknown/unhandled netlink control message "
                    << header.cmd;
-      return new UnknownControlMessage(header.cmd);
-      break;
+      return base::MakeUnique<UnknownControlMessage>(header.cmd);
   }
   return nullptr;
 }

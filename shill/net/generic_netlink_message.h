@@ -17,6 +17,8 @@
 #ifndef SHILL_NET_GENERIC_NETLINK_MESSAGE_H_
 #define SHILL_NET_GENERIC_NETLINK_MESSAGE_H_
 
+#include <memory>
+
 #include "shill/net/attribute_list.h"
 #include "shill/net/byte_string.h"
 #include "shill/net/netlink_message.h"
@@ -113,7 +115,8 @@ class SHILL_EXPORT ControlNetlinkMessage : public GenericNetlinkMessage {
   bool InitFromPacket(NetlinkPacket* packet, MessageContext context);
 
   // Message factory for all types of Control netlink message.
-  static NetlinkMessage* CreateMessage(const NetlinkPacket& packet);
+  static std::unique_ptr<NetlinkMessage> CreateMessage(
+      const NetlinkPacket& packet);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ControlNetlinkMessage);

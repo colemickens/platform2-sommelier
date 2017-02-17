@@ -18,6 +18,7 @@
 #define SHILL_NET_NL80211_MESSAGE_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/lazy_instance.h>
@@ -61,7 +62,8 @@ class SHILL_EXPORT Nl80211Message : public GenericNetlinkMessage {
   static std::string StringFromStatus(uint16_t status);
 
   // Message factory for all types of Nl80211 message.
-  static NetlinkMessage* CreateMessage(const NetlinkPacket& packet);
+  static std::unique_ptr<NetlinkMessage> CreateMessage(
+      const NetlinkPacket& packet);
 
  private:
   static std::map<uint16_t, std::string>* reason_code_string_;

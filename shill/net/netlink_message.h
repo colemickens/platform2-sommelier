@@ -20,6 +20,7 @@
 #include <linux/netlink.h>
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/bind.h>
@@ -236,8 +237,8 @@ class SHILL_EXPORT UnknownMessage : public NetlinkMessage {
 
 class SHILL_EXPORT NetlinkMessageFactory {
  public:
-  using FactoryMethod =
-      base::Callback<NetlinkMessage*(const NetlinkPacket& packet)>;
+  using FactoryMethod = base::Callback<std::unique_ptr<NetlinkMessage>(
+      const NetlinkPacket& packet)>;
 
   NetlinkMessageFactory() {}
 
@@ -245,10 +246,8 @@ class SHILL_EXPORT NetlinkMessageFactory {
   // at initialization.
   bool AddFactoryMethod(uint16_t message_type, FactoryMethod factory);
 
-  // Ownership of the message is passed to the caller and, as such, he should
-  // delete it.
-  NetlinkMessage* CreateMessage(NetlinkPacket* packet,
-                                NetlinkMessage::MessageContext context) const;
+  std::unique_ptr<NetlinkMessage> CreateMessage(
+      NetlinkPacket* packet, NetlinkMessage::MessageContext context) const;
 
  private:
   std::map<uint16_t, FactoryMethod> factories_;

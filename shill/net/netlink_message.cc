@@ -25,6 +25,7 @@
 
 #include <base/format_macros.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 
@@ -280,30 +281,31 @@ bool NetlinkMessageFactory::AddFactoryMethod(uint16_t message_type,
   return true;
 }
 
-NetlinkMessage* NetlinkMessageFactory::CreateMessage(
+std::unique_ptr<NetlinkMessage> NetlinkMessageFactory::CreateMessage(
     NetlinkPacket* packet, NetlinkMessage::MessageContext context) const {
   std::unique_ptr<NetlinkMessage> message;
 
   auto message_type = packet->GetMessageType();
   if (message_type == NoopMessage::kMessageType) {
-    message.reset(new NoopMessage());
+    message = base::MakeUnique<NoopMessage>();
   } else if (message_type == DoneMessage::kMessageType) {
-    message.reset(new DoneMessage());
+    message = base::MakeUnique<DoneMessage>();
   } else if (message_type == OverrunMessage::kMessageType) {
-    message.reset(new OverrunMessage());
+    message = base::MakeUnique<OverrunMessage>();
   } else if (message_type == ErrorAckMessage::kMessageType) {
-    message.reset(new ErrorAckMessage());
+    message = base::MakeUnique<ErrorAckMessage>();
   } else if (ContainsKey(factories_, message_type)) {
     map<uint16_t, FactoryMethod>::const_iterator factory;
     factory = factories_.find(message_type);
-    message.reset(factory->second.Run(*packet));
+    message = factory->second.Run(*packet);
   }
 
   // If no factory exists for this message _or_ if a factory exists but it
   // failed, there'll be no message.  Handle either of those cases, by
   // creating an |UnknownMessage|.
   if (!message) {
-    message.reset(new UnknownMessage(message_type, packet->GetPayload()));
+    message =
+        base::MakeUnique<UnknownMessage>(message_type, packet->GetPayload());
   }
 
   if (!message->InitFromPacket(packet, context)) {
@@ -311,7 +313,7 @@ NetlinkMessage* NetlinkMessageFactory::CreateMessage(
     return nullptr;
   }
 
-  return message.release();
+  return message;
 }
 
 }  // namespace shill.

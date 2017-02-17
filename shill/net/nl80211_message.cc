@@ -44,6 +44,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 #include <endian.h>
 
@@ -628,90 +629,89 @@ GetMeshProxyPathMessage::GetMeshProxyPathMessage()
 }
 
 // static
-NetlinkMessage* Nl80211Message::CreateMessage(const NetlinkPacket& packet) {
+std::unique_ptr<NetlinkMessage> Nl80211Message::CreateMessage(
+    const NetlinkPacket& packet) {
   genlmsghdr header;
   if (!packet.GetGenlMsgHdr(&header)) {
     LOG(ERROR) << "Could not read genl header.";
     return nullptr;
   }
-  std::unique_ptr<NetlinkMessage> message;
 
   switch (header.cmd) {
     case AssociateMessage::kCommand:
-      return new AssociateMessage();
+      return base::MakeUnique<AssociateMessage>();
     case AuthenticateMessage::kCommand:
-      return new AuthenticateMessage();
+      return base::MakeUnique<AuthenticateMessage>();
     case CancelRemainOnChannelMessage::kCommand:
-      return new CancelRemainOnChannelMessage();
+      return base::MakeUnique<CancelRemainOnChannelMessage>();
     case ConnectMessage::kCommand:
-      return new ConnectMessage();
+      return base::MakeUnique<ConnectMessage>();
     case DeauthenticateMessage::kCommand:
-      return new DeauthenticateMessage();
+      return base::MakeUnique<DeauthenticateMessage>();
     case DeleteStationMessage::kCommand:
-      return new DeleteStationMessage();
+      return base::MakeUnique<DeleteStationMessage>();
     case DisassociateMessage::kCommand:
-      return new DisassociateMessage();
+      return base::MakeUnique<DisassociateMessage>();
     case DisconnectMessage::kCommand:
-      return new DisconnectMessage();
+      return base::MakeUnique<DisconnectMessage>();
     case FrameTxStatusMessage::kCommand:
-      return new FrameTxStatusMessage();
+      return base::MakeUnique<FrameTxStatusMessage>();
     case GetInterfaceMessage::kCommand:
-      return new GetInterfaceMessage();
+      return base::MakeUnique<GetInterfaceMessage>();
     case GetWakeOnPacketConnMessage::kCommand:
-      return new GetWakeOnPacketConnMessage();
+      return base::MakeUnique<GetWakeOnPacketConnMessage>();
     case GetRegMessage::kCommand:
-      return new GetRegMessage();
+      return base::MakeUnique<GetRegMessage>();
     case GetStationMessage::kCommand:
-      return new GetStationMessage();
+      return base::MakeUnique<GetStationMessage>();
     case GetWiphyMessage::kCommand:
-      return new GetWiphyMessage();
+      return base::MakeUnique<GetWiphyMessage>();
     case JoinIbssMessage::kCommand:
-      return new JoinIbssMessage();
+      return base::MakeUnique<JoinIbssMessage>();
     case MichaelMicFailureMessage::kCommand:
-      return new MichaelMicFailureMessage();
+      return base::MakeUnique<MichaelMicFailureMessage>();
     case NewInterfaceMessage::kCommand:
-      return new NewInterfaceMessage();
+      return base::MakeUnique<NewInterfaceMessage>();
     case NewScanResultsMessage::kCommand:
-      return new NewScanResultsMessage();
+      return base::MakeUnique<NewScanResultsMessage>();
     case NewStationMessage::kCommand:
-      return new NewStationMessage();
+      return base::MakeUnique<NewStationMessage>();
     case NewWiphyMessage::kCommand:
-      return new NewWiphyMessage();
+      return base::MakeUnique<NewWiphyMessage>();
     case NotifyCqmMessage::kCommand:
-      return new NotifyCqmMessage();
+      return base::MakeUnique<NotifyCqmMessage>();
     case PmksaCandidateMessage::kCommand:
-      return new PmksaCandidateMessage();
+      return base::MakeUnique<PmksaCandidateMessage>();
     case RegBeaconHintMessage::kCommand:
-      return new RegBeaconHintMessage();
+      return base::MakeUnique<RegBeaconHintMessage>();
     case RegChangeMessage::kCommand:
-      return new RegChangeMessage();
+      return base::MakeUnique<RegChangeMessage>();
     case RemainOnChannelMessage::kCommand:
-      return new RemainOnChannelMessage();
+      return base::MakeUnique<RemainOnChannelMessage>();
     case RoamMessage::kCommand:
-      return new RoamMessage();
+      return base::MakeUnique<RoamMessage>();
     case SetWakeOnPacketConnMessage::kCommand:
-      return new SetWakeOnPacketConnMessage();
+      return base::MakeUnique<SetWakeOnPacketConnMessage>();
     case ScanAbortedMessage::kCommand:
-      return new ScanAbortedMessage();
+      return base::MakeUnique<ScanAbortedMessage>();
     case TriggerScanMessage::kCommand:
-      return new TriggerScanMessage();
+      return base::MakeUnique<TriggerScanMessage>();
     case UnprotDeauthenticateMessage::kCommand:
-      return new UnprotDeauthenticateMessage();
+      return base::MakeUnique<UnprotDeauthenticateMessage>();
     case UnprotDisassociateMessage::kCommand:
-      return new UnprotDisassociateMessage();
+      return base::MakeUnique<UnprotDisassociateMessage>();
     case GetSurveyMessage::kCommand:
-      return new GetSurveyMessage();
+      return base::MakeUnique<GetSurveyMessage>();
     case SurveyResultsMessage::kCommand:
-      return new SurveyResultsMessage();
+      return base::MakeUnique<SurveyResultsMessage>();
     case GetMeshPathInfoMessage::kCommand:
-      return new GetMeshPathInfoMessage();
+      return base::MakeUnique<GetMeshPathInfoMessage>();
     case GetMeshProxyPathMessage::kCommand:
-      return new GetMeshProxyPathMessage();
+      return base::MakeUnique<GetMeshProxyPathMessage>();
     default:
       LOG(WARNING) << base::StringPrintf(
           "Unknown/unhandled netlink nl80211 message 0x%02x", header.cmd);
-      return new UnknownNl80211Message(header.cmd);
-      break;
+      return base::MakeUnique<UnknownNl80211Message>(header.cmd);
   }
   return nullptr;
 }
