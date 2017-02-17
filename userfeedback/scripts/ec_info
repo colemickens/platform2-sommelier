@@ -25,3 +25,10 @@ for ec_type in ec pd sh; do
     echo "${out}" >> ${EC_INFO_FILE}
   fi
 done
+
+p=0
+while out=$(mosys -l pd chip ${p} 2> /dev/null); do
+	echo "TCPC Port${p}:" >> "${EC_INFO_FILE}"
+	echo "${out}" >> "${EC_INFO_FILE}"
+	: $(( p += 1 ))
+done
