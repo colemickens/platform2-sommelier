@@ -69,3 +69,4 @@ ARM_set_tls: 1
 prctl: arg0 == 0xf
 setpriority: 1
 getrandom: 1
+nanosleep: 1
