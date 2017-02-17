@@ -10,7 +10,6 @@
     {
       'target_name': 'libcros_config',
       'type': 'shared_library',
-      'includes': ['../common-mk/common_test.gypi'],
       'sources': [
         'libcros_config/cros_config.cc',
         'libcros_config/fake_cros_config.cc',
@@ -21,18 +20,25 @@
         ],
       },
     },
-    {
-      'target_name': 'cros_config_unittest',
-      'type': 'executable',
-      'include_dirs': [
-        'libcros_config',
+  ],
+  'conditions': [
+    ['USE_test == 1', {
+      'targets': [
+        {
+          'target_name': 'cros_config_unittest',
+          'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'include_dirs': [
+            'libcros_config',
+          ],
+          'dependencies': [
+            'libcros_config',
+          ],
+          'sources': [
+            'libcros_config/cros_config_unittest.cc',
+          ],
+        },
       ],
-      'dependencies': [
-        'libcros_config',
-      ],
-      'sources': [
-        'libcros_config/cros_config_unittest.cc',
-      ],
-    },
+    }],
   ],
 }
