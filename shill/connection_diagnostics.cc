@@ -361,7 +361,7 @@ void ConnectionDiagnostics::ResolveTargetServerIPAddress(
   if (!dns_client_->Start(target_url_->host(), &e)) {
     LOG(ERROR) << __func__ << ": could not start DNS -- " << e.message();
     AddEventWithMessage(kTypeResolveTargetServerIP, kPhaseStart, kResultFailure,
-                        e.message().c_str());
+                        e.message());
     ReportResultAndStop(kIssueInternalError);
     return;
   }

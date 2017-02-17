@@ -243,11 +243,11 @@ vector<string> DHCPv4Config::GetFlags() {
   // Apply options from DhcpProperties when applicable.
   if (!hostname_.empty()) {
     flags.push_back("-h");  // Request hostname from server
-    flags.push_back(hostname_.c_str());
+    flags.push_back(hostname_);
   }
   if (!vendor_class_.empty()) {
     flags.push_back("-i");
-    flags.push_back(vendor_class_.c_str());
+    flags.push_back(vendor_class_);
   }
 
   if (arp_gateway_) {

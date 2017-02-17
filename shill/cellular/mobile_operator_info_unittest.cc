@@ -1633,8 +1633,8 @@ class MobileOperatorInfoOverrideTest
       this->operator_info_impl_.reset(
           new MobileOperatorInfoImpl(&dispatcher_,
                                      "Operator",
-                                     db_path_.c_str(),
-                                     override_db_path_.c_str()));
+                                     db_path_,
+                                     override_db_path_));
   }
 
   void SetUp() override {
