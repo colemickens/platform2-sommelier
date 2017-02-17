@@ -133,18 +133,6 @@
               'libcros_config',
             ],
           },
-          # TODO(sjg@chromium.org): See if I can send a .pc file upstream to
-          # libfdt.
-          'ldflags': [
-            '-lfdt',
-          ],
-
-          # TODO(sjg@chromium.org): Why do I need the above, instead of this?:
-          'link_settings': {
-            'libraries': [
-              '-lfdt',
-            ],
-          },
           'sources': [
             'browser_job_unittest.cc',
             'child_exit_handler_unittest.cc',
