@@ -788,6 +788,12 @@ main() {
   prepare_disk
   locate_gpt
 
+  # Discover last known partition numbers.
+  # We don't expect these to change, but we do want to populate the
+  # variables generically.
+  . "/usr/sbin/write_gpt.sh"
+  load_base_vars
+
   # Special handling for payload_image. This is passed in for recovery images
   # and usb installs. This is done first so we can read the gpt partition
   # file below.
@@ -800,7 +806,7 @@ main() {
     tracked_mount -o ro "${LOOP_DEV}" "${ROOT}"/mnt/stateful_partition
   fi
 
-  # Load the GPT helper functions and the image settings.
+  # Reload the GPT helper functions and the image settings from target root.
   . "${ROOT}/usr/sbin/write_gpt.sh"
   load_base_vars
 
