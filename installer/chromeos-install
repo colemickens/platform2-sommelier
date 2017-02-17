@@ -742,6 +742,34 @@ do_post_install() {
   fi
 }
 
+legacy_offset_size_export() {
+  # Exports all the variables that install_gpt did previously.
+  # This should disappear eventually, but it's here to make existing
+  # code work for now.
+
+  START_STATEFUL=$(partoffset $1 ${PARTITION_NUM_STATE})
+  START_KERN_A=$(partoffset $1 ${PARTITION_NUM_KERN_A})
+  START_ROOTFS_A=$(partoffset $1 ${PARTITION_NUM_ROOT_A})
+  START_KERN_B=$(partoffset $1 ${PARTITION_NUM_KERN_B})
+  START_ROOTFS_B=$(partoffset $1 ${PARTITION_NUM_ROOT_B})
+  START_OEM=$(partoffset $1 ${PARTITION_NUM_OEM})
+  START_RWFW=$(partoffset $1 ${PARTITION_NUM_RWFW})
+  START_ESP=$(partoffset $1 ${PARTITION_NUM_EFI_SYSTEM})
+
+  NUM_STATEFUL_SECTORS=$(partsize $1 ${PARTITION_NUM_STATE})
+  NUM_KERN_SECTORS=$(partsize $1 ${PARTITION_NUM_KERN_A})
+  NUM_ROOTFS_SECTORS=$(partsize $1 ${PARTITION_NUM_ROOT_A})
+  NUM_OEM_SECTORS=$(partsize $1 ${PARTITION_NUM_OEM})
+  NUM_RWFW_SECTORS=$(partsize $1 ${PARTITION_NUM_RWFW})
+  NUM_ESP_SECTORS=$(partsize $1 ${PARTITION_NUM_EFI_SYSTEM})
+
+  STATEFUL_IMG_SECTORS=$(partsize $1 ${PARTITION_NUM_STATE})
+  KERNEL_IMG_SECTORS=$(partsize $1 ${PARTITION_NUM_KERN_A})
+  ROOTFS_IMG_SECTORS=$(partsize $1 ${PARTITION_NUM_ROOT_A})
+  OEM_IMG_SECTORS=$(partsize $1 ${PARTITION_NUM_OEM})
+  ESP_IMG_SECTORS=$(partsize $1 ${PARTITION_NUM_EFI_SYSTEM})
+}
+
 main() {
   # Be aggressive.
   set -eu
