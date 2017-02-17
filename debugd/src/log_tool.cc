@@ -78,6 +78,7 @@ const Log common_logs[] = {
     kDebugfsGroup
   },
   { "font_info", "/usr/share/userfeedback/scripts/font_info" },
+  { "sensor_info", "/usr/share/userfeedback/scripts/sensor_info" },
   { "hardware_class", "/usr/bin/crossystem hwid" },
   { "hostname", "/bin/hostname" },
   { "hw_platform", "/usr/bin/uname -i" },
