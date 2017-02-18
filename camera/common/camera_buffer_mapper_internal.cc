@@ -1,0 +1,60 @@
+/*
+ * Copyright 2017 The Chromium OS Authors. All rights reserved.
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file.
+ */
+
+#include "common/camera_buffer_mapper_internal.h"
+
+#include <xf86drm.h>
+
+#include "arc/common.h"
+
+namespace {
+
+const int32_t kDrmNumNodes = 64;
+const int32_t kMinNodeNumber = 128;
+
+}  // namespace
+
+namespace arc {
+
+namespace internal {
+
+struct gbm_device* CreateGbmDevice() {
+  int fd;
+  int32_t min_node = kMinNodeNumber;
+  int32_t max_node = kMinNodeNumber + kDrmNumNodes;
+  struct gbm_device* gbm = nullptr;
+
+  for (int i = min_node; i < max_node; i++) {
+    fd = drmOpenRender(i);
+    if (fd < 0) {
+      continue;
+    }
+
+    drmVersionPtr version = drmGetVersion(fd);
+    if (!strcmp("vgem", version->name)) {
+      drmFreeVersion(version);
+      close(fd);
+      continue;
+    }
+
+    gbm = gbm_create_device(fd);
+    if (!gbm) {
+      drmFreeVersion(version);
+      close(fd);
+      continue;
+    }
+
+    VLOGF(1) << "Opened gbm device on render node " << version->name;
+    drmFreeVersion(version);
+    return gbm;
+  }
+
+  return nullptr;
+}
+
+}  // namespace internal
+
+}  // namespace arc

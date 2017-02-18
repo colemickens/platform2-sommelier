@@ -22,6 +22,10 @@ hal_adapter:
 
 .PHONY: hal_adapter
 
+libcbm: common/libcbm
+
+.PHONY: libcbm
+
 camera_hal_usb: usb/camera_hal
 
 .PHONY: camera_hal_usb
