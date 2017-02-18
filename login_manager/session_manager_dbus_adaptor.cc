@@ -653,10 +653,8 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StartArcInstance(
     return CreateInvalidArgsError(call, call->GetSignature());
 
   bool disable_boot_completed_broadcast = false;
-  if (!reader.PopBool(&disable_boot_completed_broadcast)) {
-    // TODO(xzhou): Return an error after Chrome has been updated to pass this.
-    LOG(WARNING) << "Failed to pop disable_boot_completed_broadcast";
-  }
+  if (!reader.PopBool(&disable_boot_completed_broadcast))
+    return CreateInvalidArgsError(call, call->GetSignature());
 
   SessionManagerImpl::Error error;
   impl_->StartArcInstance(account_id, disable_boot_completed_broadcast, &error);
