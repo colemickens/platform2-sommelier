@@ -263,16 +263,10 @@ bool ServiceDistributed::AttestationGetDelegateCredentials(
     brillo::SecureBlob* blob,
     brillo::SecureBlob* secret,
     bool* has_reset_lock_permissions) {
-  // TODO(apronin):
-  // Decide what to do here for TPM1.2 and 2.0. Possibly re-work the
-  // DA reset logic in Service.
-  //
-  // This method is only called from ResetDictionaryAttackMitigation,
-  // where the delegate credentials are used to reset the DA counter.
-  // If we just return false here, and the DA counter is > 0, the
-  // ResetDictionaryAttackMitigation will exit with kDelegateNotAvailable.
-  LOG(WARNING) << __func__ << ": Not implemented";
-  return false;
+  // tpm_managerd handles resetting DA counter and doesn't require any
+  // secrets to be provided by cryptohomed.
+  *has_reset_lock_permissions = true;
+  return true;
 }
 
 gboolean ServiceDistributed::TpmIsAttestationPrepared(gboolean* OUT_prepared,
