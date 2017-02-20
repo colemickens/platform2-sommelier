@@ -30,9 +30,6 @@ namespace ai = authpolicy::internal;
 namespace authpolicy {
 namespace {
 
-// Must match Chromium AccountId::kKeyAdIdPrefix.
-const char kActiveDirectoryPrefix[] = "a-";
-
 // Samba configuration file data.
 const char kSmbConfData[] =
     "[global]\n"
@@ -158,6 +155,8 @@ const char kKeyObjectNameNotFound[] =
     "NT_STATUS_OBJECT_NAME_NOT_FOUND opening remote file ";
 
 }  // namespace
+
+const char kActiveDirectoryPrefix[] = "a-";
 
 bool SambaInterface::SetupJailAndRun(ProcessExecutor* cmd,
                                      Path seccomp_path_key,

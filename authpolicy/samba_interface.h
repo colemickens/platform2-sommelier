@@ -29,6 +29,11 @@ class AuthPolicyMetrics;
 class PathService;
 class ProcessExecutor;
 
+// Prefix for Active Directory account ids. A prefixed |account_id| is usually
+// called |account_id_key|. Must match Chromium AccountId::kKeyAdIdPrefix.
+// Exposed for unit tests.
+extern const char kActiveDirectoryPrefix[];
+
 class SambaInterface {
  public:
   SambaInterface(AuthPolicyMetrics* metrics,

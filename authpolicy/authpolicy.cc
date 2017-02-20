@@ -129,13 +129,13 @@ int32_t AuthPolicy::JoinADDomain(const std::string& machine_name,
 }
 
 void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
-                                   const std::string& account_id) {
+                                   const std::string& account_id_key) {
   LOG(INFO) << "Received 'RefreshUserPolicy' request";
   auto timer = base::MakeUnique<ScopedTimerReporter>(TIMER_REFRESH_USER_POLICY);
 
   // Fetch GPOs for the current user.
   std::string policy_blob;
-  ErrorType error = samba_.FetchUserGpos(account_id, &policy_blob);
+  ErrorType error = samba_.FetchUserGpos(account_id_key, &policy_blob);
   PrintError("User policy fetch and parsing", error);
 
   // Return immediately on error.
@@ -146,7 +146,8 @@ void AuthPolicy::RefreshUserPolicy(PolicyResponseCallback callback,
   }
 
   // Send policy to Session Manager.
-  StorePolicy(policy_blob, &account_id, std::move(timer), std::move(callback));
+  StorePolicy(
+      policy_blob, &account_id_key, std::move(timer), std::move(callback));
 }
 
 void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
@@ -171,12 +172,12 @@ void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
 }
 
 void AuthPolicy::StorePolicy(const std::string& policy_blob,
-                             const std::string* account_id,
+                             const std::string* account_id_key,
                              std::unique_ptr<ScopedTimerReporter> timer,
                              PolicyResponseCallback callback) {
   // Note: Only policy_value required here, the other data only impacts
   // signature, but since we don't sign, we don't need it.
-  const bool is_user_policy = account_id != nullptr;
+  const bool is_user_policy = account_id_key != nullptr;
   const char* const policy_type =
       is_user_policy ? kChromeUserPolicyType : kChromeDevicePolicyType;
 
@@ -200,7 +201,8 @@ void AuthPolicy::StorePolicy(const std::string& policy_blob,
   LOG(INFO) << "Calling Session Manager D-Bus method " << method;
   dbus::MethodCall method_call(login_manager::kSessionManagerInterface, method);
   dbus::MessageWriter writer(&method_call);
-  if (account_id) writer.AppendString(*account_id);
+  if (account_id_key)
+    writer.AppendString(*account_id_key);
   writer.AppendArrayOfBytes(
       reinterpret_cast<const uint8_t*>(response_blob.data()),
       response_blob.size());

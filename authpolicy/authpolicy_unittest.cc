@@ -21,6 +21,9 @@
 #include <gtest/gtest.h>
 
 #include "authpolicy/path_service.h"
+#include "authpolicy/proto_bindings/active_directory_account_data.pb.h"
+#include "authpolicy/samba_interface.h"
+#include "authpolicy/stub_common.h"
 
 using brillo::dbus_utils::DBusObject;
 using dbus::MessageWriter;
@@ -38,9 +41,15 @@ using testing::SaveArg;
 namespace authpolicy {
 namespace {
 
-const char kMachineName[] = "TESTCOMP";
-const char kUserPrincipal[] = "user@realm.com";
-const char kPassword[] = "p4zzw!5d";
+// Some arbitrary D-Bus message serial number. Required for mocking D-Bus calls.
+const int kDBusSerial = 123;
+
+// Checks and casts an integer |error| to the corresponding ErrorType.
+ErrorType CastError(int error) {
+  EXPECT_GE(error, 0);
+  EXPECT_LT(error, ERROR_COUNT);
+  return static_cast<ErrorType>(error);
+}
 
 // Create a file descriptor pointing to a pipe that contains the given data.
 dbus::FileDescriptor MakeFileDescriptor(const char* data) {
@@ -53,6 +62,12 @@ dbus::FileDescriptor MakeFileDescriptor(const char* data) {
   EXPECT_TRUE(
       base::WriteFileDescriptor(write_scoped_fd.get(), data, strlen(data)));
   return read_dbus_fd;
+}
+
+// Shortcut to create a file descriptor from a valid password (valid in the
+// sense that the stub executables won't trigger any error behavior).
+dbus::FileDescriptor MakePasswordFd() {
+  return MakeFileDescriptor(kPassword);
 }
 
 // Fake completion callback for RegisterAsync().
@@ -80,23 +95,33 @@ class TestPathService : public PathService {
 };
 
 // Helper to check the ErrorType value returned by authpolicy D-Bus calls.
-void CheckError(ErrorType expected_error, std::unique_ptr<Response> response) {
+// |was_called| is a marker used by the code that queues this callback to make
+// sure that this callback was indeed called.
+void CheckError(ErrorType expected_error,
+                bool* was_called,
+                std::unique_ptr<Response> response) {
   EXPECT_TRUE(response.get());
   dbus::MessageReader reader(response.get());
   int32_t int_error;
   EXPECT_TRUE(reader.PopInt32(&int_error));
-  EXPECT_GE(int_error, 0);
-  EXPECT_LT(int_error, ERROR_COUNT);
-  ErrorType actual_error = static_cast<ErrorType>(int_error);
+  ErrorType actual_error = CastError(int_error);
   EXPECT_EQ(expected_error, actual_error);
+  EXPECT_TRUE(was_called);
+  EXPECT_FALSE(*was_called);
+  *was_called = true;
 }
 
 }  // namespace
 
-// End-to-end test for the authpolicyd D-Bus interface.
+// Integration test for the authpolicyd D-Bus interface.
 //
 // Since the Active Directory protocols are a black box to us, a stub local
 // server cannot be used. Instead, the Samba/Kerberos binaries are stubbed out.
+//
+// Error behavior is triggered by passing special user principals or passwords
+// to the stub binaries. For instance, using |kNonExistingUserPrincipal| makes
+// stub_kinit behave as if the requested account does not exist on the server.
+// The same principle is used throughout this test.
 //
 // During policy fetch, authpolicy sends D-Bus messages to Session Manager. This
 // communication is mocked out.
@@ -143,7 +168,6 @@ class AuthPolicyTest : public testing::Test {
         .WillRepeatedly(SaveArg<2>(&policy_store_callback_));
 
     authpolicy_->RegisterAsync(base::Bind(&DoNothing));
-    password_fd_ = MakeFileDescriptor(kPassword);
   }
 
   void TearDown() override {
@@ -152,25 +176,79 @@ class AuthPolicyTest : public testing::Test {
     base::DeleteFile(base_path_, true /* recursive */);
   }
 
+ protected:
+  // Joins a (stub) Active Directory domain. Returns the error code.
+  ErrorType Join() {
+    return CastError(authpolicy_->JoinADDomain(
+        kMachineName, kUserPrincipal, MakePasswordFd()));
+  }
+
+  // A authenticates to a (stub) Active Directory domain with the given
+  // credentials and returns the error code. If |account_id_key| is not nullptr,
+  // assigns the (prefixed) account id key.
+  ErrorType Auth(const std::string& user_principal,
+                 dbus::FileDescriptor password_fd,
+                 std::string* account_id_key = nullptr) {
+    int32_t error = ERROR_NONE;
+    std::vector<uint8_t> account_data_blob;
+    authpolicy_->AuthenticateUser(
+        user_principal, password_fd, &error, &account_data_blob);
+    if (error == ERROR_NONE) {
+      EXPECT_FALSE(account_data_blob.empty());
+      authpolicy::ActiveDirectoryAccountData account_data;
+      EXPECT_TRUE(account_data.ParseFromArray(
+          account_data_blob.data(),
+          static_cast<int>(account_data_blob.size())));
+      if (account_id_key)
+        *account_id_key = kActiveDirectoryPrefix + account_data.account_id();
+    } else {
+      EXPECT_TRUE(account_data_blob.empty());
+    }
+    return CastError(error);
+  }
+
   scoped_refptr<MockBus> mock_bus_ = new MockBus(dbus::Bus::Options());
   scoped_refptr<MockExportedObject> mock_exported_object_;
   scoped_refptr<MockObjectProxy> mock_session_manager_proxy_;
   ObjectProxy::ResponseCallback policy_store_callback_;
   std::unique_ptr<AuthPolicy> authpolicy_;
   base::FilePath base_path_;
-  dbus::FileDescriptor password_fd_;
 };
 
-// Can't fetch policy if the user is not logged in.
+// Can't fetch user policy if the user is not logged in.
 TEST_F(AuthPolicyTest, UserPolicyFailsNotLoggedIn) {
-  std::string account_id;
   dbus::MethodCall method_call(kAuthPolicyInterface,
                                kAuthPolicyRefreshUserPolicy);
-  method_call.SetSerial(123);
+  method_call.SetSerial(kDBusSerial);
+  bool callback_was_called = false;
   AuthPolicy::PolicyResponseCallback callback =
       base::MakeUnique<brillo::dbus_utils::DBusMethodResponse<int32_t>>(
-          &method_call, base::Bind(&CheckError, ERROR_NOT_LOGGED_IN));
+          &method_call,
+          base::Bind(&CheckError, ERROR_NOT_LOGGED_IN, &callback_was_called));
   authpolicy_->RefreshUserPolicy(std::move(callback), "account_id");
+
+  // RefreshUserPolicy() should early out and call the callback immediately,
+  // the asynchronous method call to SessionManager shouldn't be queued.
+  EXPECT_TRUE(callback_was_called);
+  EXPECT_TRUE(policy_store_callback_.is_null());
+}
+
+// Can't fetch device policy if the device is not joined.
+TEST_F(AuthPolicyTest, DevicePolicyFailsNotJoined) {
+  dbus::MethodCall method_call(kAuthPolicyInterface,
+                               kAuthPolicyRefreshDevicePolicy);
+  method_call.SetSerial(kDBusSerial);
+  bool callback_was_called = false;
+  AuthPolicy::PolicyResponseCallback callback =
+      base::MakeUnique<brillo::dbus_utils::DBusMethodResponse<int32_t>>(
+          &method_call,
+          base::Bind(&CheckError, ERROR_NOT_JOINED, &callback_was_called));
+  authpolicy_->RefreshDevicePolicy(std::move(callback));
+
+  // RefreshDevicePolicy() should early out and call the callback immediately,
+  // the asynchronous method call to SessionManager shouldn't be queued.
+  EXPECT_TRUE(callback_was_called);
+  EXPECT_TRUE(policy_store_callback_.is_null());
 }
 
 // Authentication fails if the machine is not joined.
@@ -178,39 +256,173 @@ TEST_F(AuthPolicyTest, AuthFailsNotJoined) {
   int32_t error = ERROR_NONE;
   std::vector<uint8_t> account_data_blob;
   authpolicy_->AuthenticateUser(
-      kUserPrincipal, password_fd_, &error, &account_data_blob);
+      kUserPrincipal, MakePasswordFd(), &error, &account_data_blob);
   EXPECT_TRUE(account_data_blob.empty());
   EXPECT_EQ(ERROR_NOT_JOINED, error);
 }
 
 // Successful domain join.
 TEST_F(AuthPolicyTest, JoinSucceeds) {
-  EXPECT_EQ(
-      ERROR_NONE,
-      authpolicy_->JoinADDomain(kMachineName, kUserPrincipal, password_fd_));
+  EXPECT_EQ(ERROR_NONE, Join());
 }
 
-// Successful domain join and user auth.
-TEST_F(AuthPolicyTest, JoinAndDevicePolicyFetchSucceed) {
+// Successful user authentication.
+TEST_F(AuthPolicyTest, AuthSucceeds) {
+  EXPECT_EQ(ERROR_NONE, Join());
+  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, MakePasswordFd()));
+}
+
+// Authentication fails for badly formatted user principal name.
+TEST_F(AuthPolicyTest, AuthFailsInvalidUpn) {
+  EXPECT_EQ(ERROR_NONE, Join());
+  EXPECT_EQ(ERROR_PARSE_UPN_FAILED,
+            Auth(kInvalidUserPrincipal, MakePasswordFd()));
+}
+
+// Authentication fails for non-existing user principal name.
+TEST_F(AuthPolicyTest, AuthFailsBadUpn) {
+  EXPECT_EQ(ERROR_NONE, Join());
+  EXPECT_EQ(ERROR_BAD_USER_NAME,
+            Auth(kNonExistingUserPrincipal, MakePasswordFd()));
+}
+
+// Authentication fails for wrong password.
+TEST_F(AuthPolicyTest, AuthFailsBadPassword) {
+  EXPECT_EQ(ERROR_NONE, Join());
+  EXPECT_EQ(ERROR_BAD_PASSWORD,
+            Auth(kUserPrincipal, MakeFileDescriptor(kWrongPassword)));
+}
+
+// Authentication fails for expired password.
+TEST_F(AuthPolicyTest, AuthFailsExpiredPassword) {
+  EXPECT_EQ(ERROR_NONE, Join());
+  EXPECT_EQ(ERROR_PASSWORD_EXPIRED,
+            Auth(kUserPrincipal, MakeFileDescriptor(kExpiredPassword)));
+}
+
+// Authentication fails if there's a network issue.
+TEST_F(AuthPolicyTest, AuthFailsNetworkProblem) {
+  EXPECT_EQ(ERROR_NONE, Join());
+  EXPECT_EQ(ERROR_NETWORK_PROBLEM,
+            Auth(kNetworkErrorUserPrincipal, MakePasswordFd()));
+}
+
+// Authentication fails if there's a network issue.
+TEST_F(AuthPolicyTest, AuthSucceedsKdcRetry) {
+  EXPECT_EQ(ERROR_NONE, Join());
+  EXPECT_EQ(ERROR_NONE, Auth(kKdcRetryUserPrincipal, MakePasswordFd()));
+}
+
+// Join fails if there's a network issue.
+TEST_F(AuthPolicyTest, JoinFailsNetworkProblem) {
+  EXPECT_EQ(ERROR_NETWORK_PROBLEM,
+            authpolicy_->JoinADDomain(
+                kMachineName, kNetworkErrorUserPrincipal, MakePasswordFd()));
+}
+
+// Join fails for badly formatted user principal name.
+TEST_F(AuthPolicyTest, JoinFailsInvalidUpn) {
+  EXPECT_EQ(ERROR_PARSE_UPN_FAILED,
+            authpolicy_->JoinADDomain(
+                kMachineName, kInvalidUserPrincipal, MakePasswordFd()));
+}
+
+// Join fails for non-existing user principal name, but the error message is the
+// same as for wrong password.
+TEST_F(AuthPolicyTest, JoinFailsBadUpn) {
+  EXPECT_EQ(ERROR_BAD_PASSWORD,
+            authpolicy_->JoinADDomain(
+                kMachineName, kNonExistingUserPrincipal, MakePasswordFd()));
+}
+
+// Join fails for wrong password.
+TEST_F(AuthPolicyTest, JoinFailsBadPassword) {
   EXPECT_EQ(
-      ERROR_NONE,
-      authpolicy_->JoinADDomain(kMachineName, kUserPrincipal, password_fd_));
-  std::string account_id;
+      ERROR_BAD_PASSWORD,
+      authpolicy_->JoinADDomain(
+          kMachineName, kUserPrincipal, MakeFileDescriptor(kWrongPassword)));
+}
+
+// Join fails if user can't join a machine to the domain.
+TEST_F(AuthPolicyTest, JoinFailsAccessDenied) {
+  EXPECT_EQ(ERROR_JOIN_ACCESS_DENIED,
+            authpolicy_->JoinADDomain(
+                kMachineName, kAccessDeniedUserPrincipal, MakePasswordFd()));
+}
+
+// Join fails if the machine name is too long.
+TEST_F(AuthPolicyTest, JoinFailsMachineNameTooLong) {
+  EXPECT_EQ(ERROR_MACHINE_NAME_TOO_LONG,
+            authpolicy_->JoinADDomain(
+                kTooLongMachineName, kUserPrincipal, MakePasswordFd()));
+}
+
+// Join fails if the machine name contains invalid characters.
+TEST_F(AuthPolicyTest, JoinFailsBadMachineName) {
+  EXPECT_EQ(ERROR_BAD_MACHINE_NAME,
+            authpolicy_->JoinADDomain(
+                kBadMachineName, kUserPrincipal, MakePasswordFd()));
+}
+
+// Join fails if the user can't join additional machines.
+TEST_F(AuthPolicyTest, JoinFailsInsufficientQuota) {
+  EXPECT_EQ(
+      ERROR_USER_HIT_JOIN_QUOTA,
+      authpolicy_->JoinADDomain(
+          kMachineName, kInsufficientQuotaUserPrincipal, MakePasswordFd()));
+}
+
+// Successful device policy fetch.
+TEST_F(AuthPolicyTest, UserPolicyFetchSucceeds) {
+  std::string account_id_key;
+  EXPECT_EQ(ERROR_NONE, Join());
+  EXPECT_EQ(ERROR_NONE,
+            Auth(kUserPrincipal, MakePasswordFd(), &account_id_key));
+
   dbus::MethodCall method_call(kAuthPolicyInterface,
-                               kAuthPolicyRefreshDevicePolicy);
-  method_call.SetSerial(123);
+                               kAuthPolicyRefreshUserPolicy);
+  method_call.SetSerial(kDBusSerial);
+  bool callback_was_called = false;
   AuthPolicy::PolicyResponseCallback callback =
       base::MakeUnique<brillo::dbus_utils::DBusMethodResponse<int32_t>>(
-          &method_call, base::Bind(&CheckError, ERROR_NONE));
-  authpolicy_->RefreshDevicePolicy(std::move(callback));
+          &method_call,
+          base::Bind(&CheckError, ERROR_NONE, &callback_was_called));
+  authpolicy_->RefreshUserPolicy(std::move(callback), account_id_key);
 
-  // Authpolicy should now call our mock Session Manager to store policy,
-  // answer "true".
+  // Authpolicy should have queued a call to Session Manager to store policy,
+  // Answering "true" should call our |callback|.
+  EXPECT_FALSE(callback_was_called);
   EXPECT_FALSE(policy_store_callback_.is_null());
   auto response = Response::CreateEmpty();
   MessageWriter writer(response.get());
   writer.AppendBool(true);
   policy_store_callback_.Run(response.get());
+  EXPECT_TRUE(callback_was_called);
+}
+
+// Successful device policy fetch.
+TEST_F(AuthPolicyTest, DevicePolicyFetchSucceeds) {
+  EXPECT_EQ(ERROR_NONE, Join());
+  std::string account_id;
+  dbus::MethodCall method_call(kAuthPolicyInterface,
+                               kAuthPolicyRefreshDevicePolicy);
+  method_call.SetSerial(kDBusSerial);
+  bool callback_was_called = false;
+  AuthPolicy::PolicyResponseCallback callback =
+      base::MakeUnique<brillo::dbus_utils::DBusMethodResponse<int32_t>>(
+          &method_call,
+          base::Bind(&CheckError, ERROR_NONE, &callback_was_called));
+  authpolicy_->RefreshDevicePolicy(std::move(callback));
+
+  // Authpolicy should have queued a call to Session Manager to store policy,
+  // Answering "true" should call our |callback|.
+  EXPECT_FALSE(callback_was_called);
+  EXPECT_FALSE(policy_store_callback_.is_null());
+  auto response = Response::CreateEmpty();
+  MessageWriter writer(response.get());
+  writer.AppendBool(true);
+  policy_store_callback_.Run(response.get());
+  EXPECT_TRUE(callback_was_called);
 }
 
 }  // namespace authpolicy

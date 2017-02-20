@@ -114,7 +114,10 @@
           'type': 'executable',
           'includes': ['../common-mk/common_test.gypi'],
           'defines': ['UNIT_TEST'],
-          'dependencies': ['libauthpolicy'],
+          'dependencies': [
+            'libauthpolicy',
+            'stub_common',
+          ],
           'variables': {
             'deps': [
               'libbrillo-<(libbase_ver)',
@@ -156,6 +159,7 @@
           ],
           'variables': {
             'deps': [
+              'libcap',
               'libchrome-<(libbase_ver)',
             ],
           },
@@ -170,6 +174,7 @@
           ],
           'variables': {
             'deps': [
+              'libcap',
               'libchrome-<(libbase_ver)',
             ],
           },

@@ -57,15 +57,15 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
                        const dbus::FileDescriptor& password_fd) override;
 
   void RefreshUserPolicy(PolicyResponseCallback callback,
-                         const std::string& account_id) override;
+                         const std::string& account_id_key) override;
 
   void RefreshDevicePolicy(PolicyResponseCallback callback) override;
 
  private:
   // Sends policy to SessionManager. Assumes |policy_blob| contains user policy
-  // if account_id is not nullptr, otherwise assumes it's device policy.
+  // if |account_id_key| is not nullptr, otherwise assumes it's device policy.
   void StorePolicy(const std::string& policy_blob,
-                   const std::string* account_id,
+                   const std::string* account_id_key,
                    std::unique_ptr<ScopedTimerReporter> timer,
                    PolicyResponseCallback callback);
 
