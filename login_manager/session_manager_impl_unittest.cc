@@ -1093,8 +1093,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
       .Times(1);
   EXPECT_CALL(upstart_signal_emitter_delegate_,
               OnSignalEmitted(StrEq(SessionManagerImpl::kArcStopSignal),
-                              ElementsAre(std::string("ANDROID_PID=") +
-                                          std::to_string(kAndroidPid))))
+                              ElementsAre()))
       .Times(1);
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
@@ -1154,8 +1153,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
       .Times(1);
   EXPECT_CALL(upstart_signal_emitter_delegate_,
               OnSignalEmitted(StrEq(SessionManagerImpl::kArcStopSignal),
-                              ElementsAre(std::string("ANDROID_PID=") +
-                                          std::to_string(kAndroidPid))))
+                              ElementsAre()))
       .Times(1);
   EXPECT_CALL(
       dbus_emitter_,

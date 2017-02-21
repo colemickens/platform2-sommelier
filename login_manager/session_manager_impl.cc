@@ -1179,8 +1179,7 @@ void SessionManagerImpl::OnAndroidContainerStopped(pid_t pid, bool clean) {
 
   login_metrics_->StopTrackingArcUseTime();
   if (!init_controller_->TriggerImpulse(
-          kArcStopSignal, {"ANDROID_PID=" + std::to_string(pid)},
-          InitDaemonController::TriggerMode::SYNC)) {
+          kArcStopSignal, {}, InitDaemonController::TriggerMode::SYNC)) {
     static const char msg[] = "Emitting stop-arc-instance init signal failed.";
     LOG(ERROR) << msg;
   }
