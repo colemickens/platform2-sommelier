@@ -27,10 +27,10 @@ using brillo::dbus_utils::ExtractMethodCallResults;
 
 namespace authpolicy {
 
-namespace {
-
 const char kChromeUserPolicyType[] = "google/chromeos/user";
 const char kChromeDevicePolicyType[] = "google/chromeos/device";
+
+namespace {
 
 void PrintError(const char* msg, ErrorType error) {
   if (error == ERROR_NONE)

@@ -19,7 +19,6 @@
 #include "authpolicy/stub_common.h"
 
 namespace authpolicy {
-
 namespace {
 
 const char kStubKeytab[] = "Stub keytab file";
@@ -60,7 +59,7 @@ Last machine account password change:
 Wed, 31 Dec 1969 16:00:00 PST)!!!";
 
 // Stub net ads gpo list response.
-const char kStubGpoList[] = R"!!!(---------------------
+const char kStubLocalGpo[] = R"!!!(---------------------
 name:   Local Policy
 displayname:  Local Policy
 version:  0 (0x00000000)
@@ -71,7 +70,23 @@ dspath:  (null)
 options:  0 GPFLAGS_ALL_ENABLED
 link:   (null)
 link_type:  5 machine_extensions: (null)
-user_extensions: (null))!!!";
+user_extensions: (null)
+)!!!";
+
+const char kStubRemoteGpo[] = R"!!!(---------------------
+name:   %s
+displayname:  test-user-policy
+version:  %u (0x%04x%04x)
+version_user:  %u (0x%04x)
+version_machine: %u (0x%04x)
+filesyspath:  \\realm.com\SysVol\realm.com\Policies\%s
+dspath:  cn=%s,cn=policies,cn=system,DC=chrome,DC=lan
+options:  %s
+link:   OU=test-ou,DC=chrome,DC=lan
+link_type:  4 GP_LINK_OU
+machine_extensions: (null)
+user_extensions: [{D02B1F73-3407-48AE-BA88-E8213C6761F1}]
+)!!!";
 
 // Stub net ads search response.
 const char kStubSearch[] = R"!!!(Got 1 replies
@@ -106,7 +121,7 @@ accountExpires: 9223372036854775807
 logonCount: 1453
 sAMAccountName: jdoe
 sAMAccountType: 805306368
-userPrincipalName: jdoe@chrome.lan
+userPrincipalName: jdoe@realm.com
 objectCategory: CN=Person,CN=Schema,CN=Configuration,DC=chrome,DC=lan
 dSCorePropagationData: 20161024075536.0Z
 dSCorePropagationData: 20161024075311.0Z
@@ -114,6 +129,27 @@ dSCorePropagationData: 20161019075502.0Z
 dSCorePropagationData: 16010101000000.0Z
 lastLogonTimestamp: 131318125471489990
 msDS-SupportedEncryptionTypes: 0)!!!";
+
+// Prints custom stub net ads gpo list output corresponding to one remote GPO
+// with the given properties. For |gpflags| see internal::kGpFlag*.
+std::string PrintGpo(const char* guid,
+                     uint32_t version_user,
+                     uint32_t version_machine,
+                     int gpflags) {
+  DCHECK(gpflags >= 0 && gpflags < internal::kGpFlagCount);
+  return base::StringPrintf(kStubRemoteGpo,
+                            guid,
+                            (version_user << 16) | version_machine,
+                            version_user,
+                            version_machine,
+                            version_user,
+                            version_user,
+                            version_machine,
+                            version_machine,
+                            guid,
+                            guid,
+                            internal::kGpFlagsStr[gpflags]);
+}
 
 // Writes a fake keytab file.
 void WriteKeytabFile() {
@@ -134,9 +170,8 @@ std::string GetMachineNameFromSmbConf(const std::string& smb_conf_path) {
   return machine_name;
 }
 
-}  // namespace
-
-// Handles a stub 'net ads join' call.
+// Handles a stub 'net ads join' call. Different behavior is triggered by
+// passing different user principals, passwords and machine names (in smb.conf).
 int HandleJoin(const std::string& command_line,
                const std::string& smb_conf_path) {
   // Read the password from stdin.
@@ -148,7 +183,7 @@ int HandleJoin(const std::string& command_line,
   const std::string kUserFlag = "-U ";
 
   // Read machine name from smb.conf.
-  std::string machine_name = GetMachineNameFromSmbConf(smb_conf_path);
+  const std::string machine_name = GetMachineNameFromSmbConf(smb_conf_path);
   CHECK(!machine_name.empty());
 
   // Stub too long machine name error.
@@ -214,6 +249,44 @@ int HandleJoin(const std::string& command_line,
   return kExitCodeError;
 }
 
+// Handles a stub 'net ads gpo list' call. Different behavior is triggered by
+// passing different machine names (in smb.conf).
+int HandleGpoList(const std::string& smb_conf_path) {
+  // Read machine name from smb.conf.
+  const std::string machine_name = GetMachineNameFromSmbConf(smb_conf_path);
+  CHECK(!machine_name.empty());
+
+  // Stub empty GPO list.
+  if (machine_name == base::ToUpperASCII(kEmptyGpoMachineName))
+    return kExitCodeOk;
+
+  // All other GPO lists use the local GPO.
+  std::string gpos = kStubLocalGpo;
+
+  if (machine_name == base::ToUpperASCII(kGpoDownloadErrorMachineName)) {
+    // Stub GPO list that triggers a download error in smbclient.
+    gpos += PrintGpo(kErrorGpoGuid, 1, 1, internal::kGpFlagAllEnabled);
+  } else if (machine_name == base::ToUpperASCII(kOneGpoMachineName)) {
+    // Stub GPO list that downloads one GPO if present.
+    gpos += PrintGpo(kGpo1Guid, 1, 1, internal::kGpFlagAllEnabled);
+  } else if (machine_name == base::ToUpperASCII(kTwoGposMachineName)) {
+    // Stub GPO list that downloads two GPOs if present.
+    gpos += PrintGpo(kGpo1Guid, 1, 1, internal::kGpFlagAllEnabled);
+    gpos += PrintGpo(kGpo2Guid, 1, 1, internal::kGpFlagAllEnabled);
+  } else if (machine_name == base::ToUpperASCII(kZeroUserVersionMachineName)) {
+    // Stub GPO list that contains a GPO with version_user == 0 (should be
+    // ignored during user policy fetch).
+    gpos += PrintGpo(kGpo1Guid, 0, 1, internal::kGpFlagAllEnabled);
+  } else if (machine_name == base::ToUpperASCII(kDisableUserFlagMachineName)) {
+    // Stub GPO list that contains a GPO with kGpFlagUserDisabled set (should be
+    // ignored during user policy fetch).
+    gpos += PrintGpo(kGpo1Guid, 1, 1, internal::kGpFlagUserDisabled);
+  }
+
+  WriteOutput("", gpos);
+  return kExitCodeOk;
+}
+
 int HandleCommandLine(const std::string& command_line,
                       const std::string& smb_conf_path) {
   // Stub net ads workgroup, return a fake workgroup.
@@ -232,11 +305,9 @@ int HandleCommandLine(const std::string& command_line,
     return kExitCodeOk;
   }
 
-  // Stub net ads gpo list, return stub GPO list.
-  if (StartsWithCaseSensitive(command_line, "ads gpo list")) {
-    WriteOutput("", kStubGpoList);
-    return kExitCodeOk;
-  }
+  // Stub net ads gpo list.
+  if (StartsWithCaseSensitive(command_line, "ads gpo list"))
+    return HandleGpoList(smb_conf_path);
 
   // Stub net ads search, return stub search result.
   if (StartsWithCaseSensitive(command_line, "ads search")) {
@@ -248,6 +319,7 @@ int HandleCommandLine(const std::string& command_line,
   return kExitCodeError;
 }
 
+}  // namespace
 }  // namespace authpolicy
 
 int main(int argc, char* argv[]) {

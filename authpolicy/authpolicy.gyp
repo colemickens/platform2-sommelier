@@ -200,11 +200,21 @@
             'stub_common',
           ],
           'variables': {
-            'deps': [
-              'libchrome-<(libbase_ver)',
-            ],
+            'deps': ['libchrome-<(libbase_ver)'],
           },
           'sources': ['stub_klist_main.cc'],
+        },
+        {
+          'target_name': 'stub_smbclient',
+          'type': 'executable',
+          'dependencies': [
+            'libauthpolicy',
+            'stub_common',
+          ],
+          'variables': {
+            'deps': ['libchrome-<(libbase_ver)'],
+          },
+          'sources': ['stub_smbclient_main.cc'],
         },
       ],
     }],

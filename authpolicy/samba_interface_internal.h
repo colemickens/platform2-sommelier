@@ -12,9 +12,14 @@ namespace authpolicy {
 namespace internal {
 
 // Group policy flags.
+const int kGpFlagAllEnabled = 0x00;
 const int kGpFlagUserDisabled = 0x01;
 const int kGpFlagMachineDisabled = 0x02;
+const int kGpFlagAllDisabled = 0x03;
+const int kGpFlagCount = 0x04;
 const int kGpFlagInvalid = 0x04;
+
+extern const char* const kGpFlagsStr[];
 
 // Parses user_name@some.realm into its components and normalizes (uppercases)
 // the part behind the @. |user_name| is 'user_name', |realm| is |SOME.REALM|

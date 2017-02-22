@@ -23,6 +23,9 @@ namespace authpolicy {
 class AuthPolicyMetrics;
 class PathService;
 
+extern const char kChromeUserPolicyType[];
+extern const char kChromeDevicePolicyType[];
+
 // Implementation of authpolicy's D-Bus interface. Mainly routes stuff between
 // D-Bus and SambaInterface.
 class AuthPolicy : public org::chromium::AuthPolicyAdaptor,

@@ -19,6 +19,10 @@ class RegistryDict;
 
 namespace helper {
 
+// Gets the Chrome OS or the Chromium OS registry key, depending on the branding
+// of the build.
+std::string GetRegistryKey();
+
 // Checks a PReg file for existence and loads it into |dict|.
 bool LoadPRegFile(const base::FilePath& preg_file, RegistryDict* dict);
 

@@ -10,6 +10,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "authpolicy/platform_helper.h"
@@ -17,7 +18,6 @@
 #include "authpolicy/stub_common.h"
 
 namespace authpolicy {
-
 namespace {
 
 // kinit error messages. stub_kinit reproduces kinit errors because authpolicy
@@ -35,6 +35,15 @@ const char kNetworkError[] = "Cannot resolve network address for KDC in realm";
 const char kCannotContactKdc[] = "Cannot contact any KDC";
 const char kKdcIpKey[] = "kdc = [";
 
+// For a given |machine_name|, tests if the |command_line| starts with the
+// corresponding machine principal (using a testing realm)..
+bool TestMachinePrincipal(const std::string& command_line,
+                          const std::string& machine_name) {
+  const std::string machine_principal =
+      base::ToUpperASCII(machine_name) + "$@" + kRealm;
+  return StartsWithCaseSensitive(command_line, machine_principal.c_str());
+}
+
 // Checks whether the Kerberos configuration file contains the KDC IP.
 bool Krb5ConfContainsKdcIp() {
   std::string krb5_conf_path = GetKrb5ConfFilePath();
@@ -44,8 +53,6 @@ bool Krb5ConfContainsKdcIp() {
   CHECK(base::ReadFileToString(base::FilePath(krb5_conf_path), &krb5_conf));
   return internal::Contains(krb5_conf, kKdcIpKey);
 }
-
-}  // namespace
 
 int HandleCommandLine(const std::string& command_line) {
   // Read the password from stdin.
@@ -101,7 +108,11 @@ int HandleCommandLine(const std::string& command_line) {
   }
 
   // Stub valid machine authentication.
-  if (StartsWithCaseSensitive(command_line, kMachinePrincipal)) {
+  if (TestMachinePrincipal(command_line, kMachineName) ||
+      TestMachinePrincipal(command_line, kEmptyGpoMachineName) ||
+      TestMachinePrincipal(command_line, kGpoDownloadErrorMachineName) ||
+      TestMachinePrincipal(command_line, kOneGpoMachineName) ||
+      TestMachinePrincipal(command_line, kTwoGposMachineName)) {
     // Machine authentication requires a keytab, not a password.
     CHECK(password.empty());
     std::string keytab_path = GetKeytabFilePath();
@@ -113,6 +124,7 @@ int HandleCommandLine(const std::string& command_line) {
   return kExitCodeError;
 }
 
+}  // namespace
 }  // namespace authpolicy
 
 int main(int argc, char* argv[]) {

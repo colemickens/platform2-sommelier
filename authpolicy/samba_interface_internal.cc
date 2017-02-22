@@ -10,7 +10,8 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
-namespace {
+namespace authpolicy {
+namespace internal {
 
 // Flags for parsing GPO.
 const char* const kGpFlagsStr[] = {
@@ -19,11 +20,6 @@ const char* const kGpFlagsStr[] = {
   "2 GPFLAGS_MACHINE_SETTINGS_DISABLED",
   "3 GPFLAGS_ALL_DISABLED",
 };
-
-}  // namespace
-
-namespace authpolicy {
-namespace internal {
 
 bool ParseUserPrincipalName(const std::string& user_principal_name,
                             std::string* user_name,

@@ -28,8 +28,14 @@ const char kChromeOSReleaseNameValue[] = "Chrome OS";
 
 // TODO(ljusten): Copied from latest Chromium base::Value::GetTypeName, remove
 // once the latest code is merged.
-const char* const kTypeNames[] = {"null",   "boolean", "integer",    "double",
-                                  "string", "binary",  "dictionary", "list"};
+const char* const kTypeNames[] = {"null",
+                                  "boolean",
+                                  "integer",
+                                  "double",
+                                  "string",
+                                  "binary",
+                                  "dictionary",
+                                  "list"};
 static_assert(arraysize(kTypeNames) == base::Value::TYPE_LIST + 1,
               "kTypeNames Has Wrong Size");
 
@@ -39,23 +45,20 @@ const char* GetValueTypeName(const base::Value* value) {
   return kTypeNames[value->GetType()];
 }
 
-// Gets the Chrome OS or the Chromium OS registry key, depending on the branding
-// of the build. Returns false on error.
-bool GetRegistryKey(base::string16* key) {
-  std::string value;
-  if (!base::SysInfo::GetLsbReleaseValue(kChromeOSReleaseNameKey, &value))
-    return false;
-  const bool is_chrome_branded = (value == kChromeOSReleaseNameValue);
-  const char* key_ascii =
-      is_chrome_branded ? kRegistryKeyChromeOS : kRegistryKeyChromiumOS;
-  *key = base::ASCIIToUTF16(key_ascii);
-  return true;
-}
-
 }  // namespace
 
 namespace policy {
 namespace helper {
+
+std::string GetRegistryKey() {
+  // Note: GetLsbReleaseValue might fail when running unit tests. Default to
+  // Chromium OS branding in this case.
+  std::string value;
+  const bool is_chrome_branded =
+      (base::SysInfo::GetLsbReleaseValue(kChromeOSReleaseNameKey, &value) &&
+       value == kChromeOSReleaseNameValue);
+  return is_chrome_branded ? kRegistryKeyChromeOS : kRegistryKeyChromiumOS;
+}
 
 bool LoadPRegFile(const base::FilePath& preg_file, RegistryDict* dict) {
   if (!base::PathExists(preg_file)) {
@@ -63,13 +66,8 @@ bool LoadPRegFile(const base::FilePath& preg_file, RegistryDict* dict) {
     return false;
   }
 
-  base::string16 registry_key;
-  if (!GetRegistryKey(&registry_key)) {
-    LOG(ERROR) << "Failed to get registry key";
-    return false;
-  }
-
   PolicyLoadStatusSample status;
+  const base::string16 registry_key = base::ASCIIToUTF16(GetRegistryKey());
   if (!preg_parser::ReadFile(preg_file, registry_key, dict, &status)) {
     LOG(ERROR) << "Failed to parse preg file '" << preg_file.value() << "'";
     return false;
@@ -101,7 +99,8 @@ bool GetAsString(const base::Value* value, std::string* string_value) {
 }
 
 // Prints an error log. Used if value cannot be converted to a target type.
-void PrintConversionError(const base::Value* value, const char* target_type,
+void PrintConversionError(const base::Value* value,
+                          const char* target_type,
                           const char* policy_name,
                           const std::string* index_str) {
   LOG(ERROR) << "Failed to convert value '" << *value << " of type '"
