@@ -463,6 +463,9 @@ void ChromiumCommandBuilder::AddUiFlags() {
     AddArg("--touch-noise-filtering");
   }
 
+  if (UseFlagIsSet("edge_touch_filtering"))
+    AddArg("--edge-touch-filtering");
+
   AddArg(std::string("--gpu-sandbox-failures-fatal=") +
       (is_chrome_os_hardware() ? "yes" : "no"));
 
