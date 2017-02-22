@@ -1844,6 +1844,24 @@ std::unique_ptr<base::Value> Mount::GetStatus() {
   dv->SetBoolean("mounted", IsMounted());
   dv->SetString("owner", GetObfuscatedOwner());
   dv->SetBoolean("enterprise", enterprise_owned_);
+
+  std::string mount_type_string;
+  switch (mount_type_) {
+    case MountType::NONE:
+      mount_type_string = "none";
+      break;
+    case MountType::ECRYPTFS:
+      mount_type_string = "ecryptfs";
+      break;
+    case MountType::DIR_CRYPTO:
+      mount_type_string = "dircrypto";
+      break;
+    case MountType::EPHEMERAL:
+      mount_type_string = "ephemeral";
+      break;
+  }
+  dv->SetString("type", mount_type_string);
+
   return std::move(dv);
 }
 
