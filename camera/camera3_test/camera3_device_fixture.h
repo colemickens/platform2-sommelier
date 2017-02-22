@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -62,6 +62,9 @@ class Camera3Device {
   // Destroy
   void Destroy();
 
+  // Whether or not the template is supported
+  bool IsTemplateSupported(int32_t type);
+
   // Construct default request settings
   const camera_metadata_t* ConstructDefaultRequestSettings(int type);
 
@@ -81,6 +84,12 @@ class Camera3Device {
 
   // Process capture request
   int ProcessCaptureRequest(camera3_capture_request_t* request);
+
+  // Flush all currently in-process captures and all buffers in the pipeline
+  int Flush();
+
+  class StaticInfo;
+  std::unique_ptr<StaticInfo> static_info_;
 
  private:
   const int cam_id_;
@@ -109,6 +118,70 @@ class Camera3Device {
   DISALLOW_COPY_AND_ASSIGN(Camera3Device);
 };
 
+class Camera3Device::StaticInfo {
+ public:
+  StaticInfo(const camera_info& cam_info);
+
+  // Determine whether or not all the keys are available
+  bool IsKeyAvailable(uint32_t tag) const;
+  bool AreKeysAvailable(std::vector<uint32_t> tags) const;
+
+  // Whether or not the hardware level reported is legacy
+  bool IsHardwareLevelLegacy() const;
+
+  // Whether or not the hardware level reported is at least full
+  bool IsHardwareLevelAtLeastFull() const;
+
+  // Whether or not the hardware level reported is at least limited
+  bool IsHardwareLevelAtLeastLimited() const;
+
+  // Determine whether the current device supports a capability or not
+  bool IsCapabilitySupported(int capability) const;
+
+  // Check if depth output is supported, based on the depth capability
+  bool IsDepthOutputSupported() const;
+
+  // Check if standard outputs (PRIVATE, YUV, JPEG) outputs are supported,
+  // based on the backwards-compatible capability
+  bool IsColorOutputSupported() const;
+
+  // Get available edge modes
+  std::set<uint8_t> GetAvailableEdgeModes() const;
+
+  // Get available noise reduction modes
+  std::set<uint8_t> GetAvailableNoiseReductionModes() const;
+
+  // Get available noise reduction modes
+  std::set<uint8_t> GetAvailableColorAberrationModes() const;
+
+  // Get available tone map modes
+  std::set<uint8_t> GetAvailableToneMapModes() const;
+
+  // Get available formats for a given direction
+  // direction: ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT or
+  //            ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_INPUT
+  std::set<int32_t> GetAvailableFormats(int32_t direction) const;
+
+  // Determine if camera device support AE lock control
+  bool IsAELockSupported() const;
+
+  // Determine if camera device support AWB lock control
+  bool IsAWBLockSupported() const;
+
+ private:
+  // Return the supported hardware level of the device, or fail if no value is
+  // reported
+  int32_t GetHardwareLevel() const;
+
+  bool IsHardwareLevelAtLeast(int32_t level) const;
+
+  std::set<uint8_t> GetAvailableModes(int32_t key,
+                                      int32_t min_value,
+                                      int32_t max_value) const;
+
+  const camera_metadata_t* characteristics_;
+};
+
 class Camera3DeviceFixture : public testing::Test,
                              protected camera3_callback_ops {
  public:
@@ -124,6 +197,9 @@ class Camera3DeviceFixture : public testing::Test,
 
   // Callback functions to handle notifications
   virtual void Notify(const camera3_notify_msg* msg);
+
+  // Whether or not the request template is unsupported by LEGACY mode
+  bool IsTemplateSupportedByLegacyMode(int32_t type) const;
 
   Camera3Module cam_module_;
 

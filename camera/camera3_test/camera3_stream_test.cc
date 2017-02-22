@@ -93,7 +93,7 @@ void Camera3StreamFixture::BuildOutputResolutions() {
   if (output_resolutions_.empty()) {
     camera_info info;
     ASSERT_EQ(0, cam_module_.GetCameraInfo(cam_id_, &info))
-        << "Can't get camera info for" << cam_id_;
+        << "Can't get camera info for " << cam_id_;
 
     camera_metadata_ro_entry_t available_config;
     ASSERT_EQ(
