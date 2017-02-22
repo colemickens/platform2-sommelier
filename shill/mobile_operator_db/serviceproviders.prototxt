@@ -14564,6 +14564,23 @@ mno {
 
 mno {
   data {
+    uuid : "9f08a247-80f6-4cab-a7f2-8056289fac7a"
+    country : "us"
+    provider_type : GSM
+    localized_name {
+      name : "GCI"
+    }
+    mccmnc : "310430"
+    mccmnc : "311370"
+    mobile_apn {
+      apn : "web.gci"
+      plan : POSTPAID
+    }
+  }
+}
+
+mno {
+  data {
     uuid : "ef2610a8-bb51-4f2d-a3aa-e53834482690"
     country : "us"
     provider_type : CDMA
