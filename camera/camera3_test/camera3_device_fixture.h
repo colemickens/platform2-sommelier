@@ -43,6 +43,10 @@ class Camera3TestGralloc {
   uint32_t GrallocConvertFormat(int format);
 
   gbm_device* gbm_dev_;
+
+  // Real format of flexible YUV 420; it may be GBM_FORMAT_YVU420 or
+  // GBM_FORMAT_NV12
+  uint32_t flexible_yuv_420_format_;
 };
 
 class Camera3Device {
@@ -74,8 +78,17 @@ class Camera3Device {
   // Configure streams
   int ConfigureStreams();
 
-  // Allocate stream buffers
+  // Allocate output buffers
   int AllocateOutputStreamBuffers(
+      std::vector<camera3_stream_buffer_t>* output_buffers);
+
+  // Allocate output buffers by given streams. This function is designed
+  // specifically for testing exceptional cases like unconfigured streams. Don't
+  // use it otherwise. However, if |streams| is empty, this function will use
+  // the streams configured by |AddOutputStream| and |ConfigureStreams|; i.e. it
+  // will behave exacly the same as |AllocateOutputStreamBuffers| does.
+  int AllocateOutputStreamBuffersByStreams(
+      const std::vector<camera3_stream_t>& streams,
       std::vector<camera3_stream_buffer_t>* output_buffers);
 
   // Free stream buffers

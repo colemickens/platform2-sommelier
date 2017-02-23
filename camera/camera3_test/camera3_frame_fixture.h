@@ -33,7 +33,10 @@ class Camera3FrameFixture : public Camera3StreamFixture {
   int CreateCaptureRequest(int type);
 
   // Wait for capture result with timeout
-  void WaitCaptureResult(int ms);
+  void WaitCaptureResult(const struct timespec& timeout);
+
+  // Take a peek at number of received capture results
+  int GetNumberOfCaptureResults();
 
   // Callback functions from HAL device
   virtual void ProcessCaptureResult(

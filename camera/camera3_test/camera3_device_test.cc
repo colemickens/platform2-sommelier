@@ -17,6 +17,21 @@ int32_t Camera3TestGralloc::Initialize() {
     return -ENODEV;
   }
 
+  uint32_t formats[] = {GBM_FORMAT_YVU420, GBM_FORMAT_NV12, GBM_FORMAT_YUV422,
+                        GBM_FORMAT_NV21};
+  size_t i = 0;
+  for (; i < arraysize(formats); i++) {
+    if (gbm_device_is_format_supported(gbm_dev_, formats[i],
+                                       GBM_BO_USE_RENDERING)) {
+      flexible_yuv_420_format_ = formats[i];
+      break;
+    }
+  }
+  if (i == arraysize(formats)) {
+    LOG(ERROR) << "Can't detect flexible YUV 420 format";
+    return -EINVAL;
+  }
+
   return 0;
 }
 
@@ -173,7 +188,7 @@ uint32_t Camera3TestGralloc::GrallocConvertFormat(int32_t format) {
     case HAL_PIXEL_FORMAT_RGBX_8888:
       return GBM_FORMAT_XBGR8888;
     case HAL_PIXEL_FORMAT_YCbCr_420_888:
-      return GBM_FORMAT_YUV420;
+      return flexible_yuv_420_format_;
     case HAL_PIXEL_FORMAT_YV12:
       return GBM_FORMAT_YVU420;
     case HAL_PIXEL_FORMAT_BLOB:
@@ -300,13 +315,23 @@ int Camera3Device::ConfigureStreams() {
 
 int Camera3Device::AllocateOutputStreamBuffers(
     std::vector<camera3_stream_buffer_t>* output_buffers) {
+  std::vector<camera3_stream_t> streams;
+  return AllocateOutputStreamBuffersByStreams(streams, output_buffers);
+}
+
+int Camera3Device::AllocateOutputStreamBuffersByStreams(
+    const std::vector<camera3_stream_t>& streams,
+    std::vector<camera3_stream_buffer_t>* output_buffers) {
   base::AutoLock l1(stream_lock_);
 
-  if (cam_stream_[cam_stream_idx_].size() == 0 || !output_buffers) {
+  if (!output_buffers ||
+      (streams.empty() && cam_stream_[cam_stream_idx_].size() == 0)) {
     return -EINVAL;
   }
 
-  for (const auto& it : cam_stream_[cam_stream_idx_]) {
+  const std::vector<camera3_stream_t>* streams_ptr =
+      streams.empty() ? &cam_stream_[cam_stream_idx_] : &streams;
+  for (const auto& it : *streams_ptr) {
     int32_t format = it.format;
     uint32_t width = it.width;
     uint32_t height = it.height;

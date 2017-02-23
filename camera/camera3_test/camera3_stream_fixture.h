@@ -35,6 +35,7 @@ class Camera3StreamFixture : public Camera3DeviceFixture {
   explicit Camera3StreamFixture(int32_t cam_id)
       : Camera3DeviceFixture(cam_id),
         cam_id_(cam_id),
+        default_format_(HAL_PIXEL_FORMAT_YCbCr_420_888),
         default_width_(640),
         default_height_(480) {}
 
@@ -54,6 +55,8 @@ class Camera3StreamFixture : public Camera3DeviceFixture {
 
  protected:
   const int32_t cam_id_;
+
+  int32_t default_format_;
 
   int32_t default_width_;
 
