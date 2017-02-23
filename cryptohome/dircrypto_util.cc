@@ -88,8 +88,12 @@ KeyState GetDirectoryKeyState(const base::FilePath& dir) {
 
 key_serial_t AddKeyToKeyring(const brillo::SecureBlob& key,
                              const brillo::SecureBlob& key_descriptor) {
-  DCHECK_EQ(static_cast<size_t>(EXT4_KEY_DESCRIPTOR_SIZE),
-            key_descriptor.size());
+  if (key.size() > EXT4_MAX_KEY_SIZE ||
+      key_descriptor.size() != EXT4_KEY_DESCRIPTOR_SIZE) {
+    LOG(ERROR) << "Invalid arguments: key.size() = " << key.size()
+               << "key_descriptor.size() = " << key_descriptor.size();
+    return kInvalidKeySerial;
+  }
   key_serial_t keyring = keyctl_search(
       KEY_SPEC_SESSION_KEYRING, "keyring", kKeyringName, 0);
   if (keyring == kInvalidKeySerial) {
@@ -99,7 +103,7 @@ key_serial_t AddKeyToKeyring(const brillo::SecureBlob& key,
   ext4_encryption_key ext4_key = {};
   ext4_key.mode = EXT4_ENCRYPTION_MODE_AES_256_XTS;
   memcpy(ext4_key.raw, key.char_data(), key.size());
-  ext4_key.size = sizeof(ext4_key.raw);
+  ext4_key.size = key.size();
   std::string key_name = kKeyNamePrefix + base::ToLowerASCII(
       base::HexEncode(key_descriptor.data(), key_descriptor.size()));
   key_serial_t key_serial = add_key(kKeyType, key_name.c_str(), &ext4_key,
