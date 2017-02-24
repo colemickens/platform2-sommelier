@@ -37,7 +37,6 @@
 #include "shill/manager.h"
 #include "shill/property_accessor.h"
 #include "shill/service.h"
-#include "shill/store_factory.h"
 #include "shill/store_interface.h"
 #include "shill/stub_storage.h"
 
@@ -107,8 +106,8 @@ Profile::~Profile() {}
 
 bool Profile::InitStorage(InitStorageOption storage_option, Error* error) {
   CHECK(!persistent_profile_path_.empty());
-  std::unique_ptr<StoreInterface> storage(
-      StoreFactory::GetInstance()->CreateStore(persistent_profile_path_));
+  std::unique_ptr<StoreInterface> storage =
+      CreateStore(persistent_profile_path_);
   bool already_exists = storage->IsNonEmpty();
   if (!already_exists && storage_option != kCreateNew &&
       storage_option != kCreateOrOpenExisting) {

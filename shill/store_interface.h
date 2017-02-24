@@ -17,9 +17,12 @@
 #ifndef SHILL_STORE_INTERFACE_H_
 #define SHILL_STORE_INTERFACE_H_
 
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
+
+#include <base/files/file_path.h>
 
 namespace shill {
 
@@ -165,6 +168,12 @@ class StoreInterface {
                                 const std::string& key,
                                 const std::string& value) = 0;
 };
+
+// Creates a store, implementing StoreInterface, at the specified |path|.
+// If ENABLE_JSON_STORE is defined, the implementation is provided by
+// json_store.cc. Otherwise, the implementation is provided by
+// key_file_store.cc.
+std::unique_ptr<StoreInterface> CreateStore(const base::FilePath& path);
 
 }  // namespace shill
 

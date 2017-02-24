@@ -16,8 +16,9 @@
 
 #include "shill/key_file_store.h"
 
-#include <base/files/important_file_writer.h>
 #include <base/files/file_util.h>
+#include <base/files/important_file_writer.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <fcntl.h>
@@ -408,6 +409,10 @@ bool KeyFileStore::DoesGroupMatchProperties(
     }
   }
   return true;
+}
+
+std::unique_ptr<StoreInterface> CreateStore(const base::FilePath& path) {
+  return base::MakeUnique<KeyFileStore>(path);
 }
 
 }  // namespace shill

@@ -23,7 +23,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_store.h"
-#include "shill/store_factory.h"
+#include "shill/store_interface.h"
 
 using ::testing::_;
 using ::testing::DoAll;

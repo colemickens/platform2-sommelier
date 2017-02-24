@@ -19,7 +19,6 @@
 #include <utility>
 
 #include "shill/logging.h"
-#include "shill/store_factory.h"
 #include "shill/store_interface.h"
 
 using base::FilePath;
@@ -104,8 +103,7 @@ bool PendingActivationStore::InitStorage(const FilePath& storage_path) {
     return false;
   }
   FilePath path = storage_path.Append(kStorageFileName);
-  std::unique_ptr<StoreInterface> storage(
-    StoreFactory::GetInstance()->CreateStore(path));
+  std::unique_ptr<StoreInterface> storage = CreateStore(path);
   bool already_exists = storage->IsNonEmpty();
   if (!storage->Open()) {
     LOG(ERROR) << "Failed to open file at '" << path.AsUTF8Unsafe()  << "'";

@@ -60,7 +60,6 @@
 #include "shill/property_store_unittest.h"
 #include "shill/resolver.h"
 #include "shill/service_under_test.h"
-#include "shill/store_factory.h"
 #include "shill/testing.h"
 #include "shill/upstart/mock_upstart.h"
 #include "shill/wimax/wimax_service.h"
@@ -246,12 +245,10 @@ class ManagerTest : public PropertyStoreTest {
                                     const string& user_identifier,
                                     const string& profile_identifier,
                                     const string& service_name) {
-    std::unique_ptr<StoreInterface> store(
-        StoreFactory::GetInstance()->CreateStore(
-            Profile::GetFinalStoragePath(
-                temp_dir->path(),
-                Profile::Identifier(user_identifier,
-                                    profile_identifier))));
+    std::unique_ptr<StoreInterface> store =
+        CreateStore(Profile::GetFinalStoragePath(
+            temp_dir->path(),
+            Profile::Identifier(user_identifier, profile_identifier)));
     return store->Open() &&
         store->SetString(service_name, "rather", "irrelevant") &&
         store->Close();

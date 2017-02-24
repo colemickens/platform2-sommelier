@@ -521,7 +521,6 @@
         'socket_info.cc',
         'socket_info_reader.cc',
         'static_ip_parameters.cc',
-        'store_factory.cc',
         'technology.cc',
         'tethering.cc',
         'throttler.cc',

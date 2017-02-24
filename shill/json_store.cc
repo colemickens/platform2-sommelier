@@ -690,4 +690,8 @@ bool JsonStore::WriteSetting(
   }
 }
 
+std::unique_ptr<StoreInterface> CreateStore(const base::FilePath& path) {
+  return base::MakeUnique<JsonStore>(path);
+}
+
 }  // namespace shill

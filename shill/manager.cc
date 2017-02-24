@@ -61,7 +61,6 @@
 #include "shill/result_aggregator.h"
 #include "shill/service.h"
 #include "shill/service_sorter.h"
-#include "shill/store_factory.h"
 #include "shill/technology.h"
 #include "shill/throttler.h"
 #include "shill/vpn/vpn_provider.h"

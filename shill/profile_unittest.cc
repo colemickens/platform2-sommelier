@@ -33,7 +33,6 @@
 #include "shill/mock_store.h"
 #include "shill/property_store_unittest.h"
 #include "shill/service_under_test.h"
-#include "shill/store_factory.h"
 
 using base::FilePath;
 using std::string;
