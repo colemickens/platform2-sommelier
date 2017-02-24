@@ -783,26 +783,26 @@ void SessionManagerImpl::StartArcInstance(const std::string& account_id,
 
   const base::FilePath android_data_dir =
       GetAndroidDataDirForUser(actual_account_id);
+  const base::FilePath android_data_old_dir =
+      GetAndroidDataOldDirForUser(actual_account_id);
+
   // When GetDevModeState() returns UNKNOWN, assign true to |is_dev_mode|.
   const bool is_dev_mode =
       system_->GetDevModeState() != DevModeState::DEV_MODE_OFF;
   // When GetVmState() returns UNKNOWN, assign false to |is_inside_vm|.
   const bool is_inside_vm = system_->GetVmState() == VmState::INSIDE_VM;
 
-  std::vector<std::string> keyvals = {
+  const std::vector<std::string> keyvals = {
       base::StringPrintf("ANDROID_DATA_DIR=%s",
                          android_data_dir.value().c_str()),
+      base::StringPrintf("ANDROID_DATA_OLD_DIR=%s",
+                         android_data_old_dir.value().c_str()),
       base::StringPrintf("CHROMEOS_USER=%s", actual_account_id.c_str()),
       base::StringPrintf("CHROMEOS_DEV_MODE=%d", is_dev_mode),
       base::StringPrintf("CHROMEOS_INSIDE_VM=%d", is_inside_vm),
       base::StringPrintf("DISABLE_BOOT_COMPLETED_BROADCAST=%d",
                          disable_boot_completed_broadcast),
   };
-
-  const base::FilePath android_data_old_dir =
-      GetAndroidDataOldDirForUser(actual_account_id);
-  keyvals.emplace_back(base::StringPrintf(
-      "ANDROID_DATA_OLD_DIR=%s", android_data_old_dir.value().c_str()));
 
   if (!init_controller_->TriggerImpulse(
           kArcStartSignal, keyvals, InitDaemonController::TriggerMode::SYNC)) {

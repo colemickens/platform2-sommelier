@@ -1076,20 +1076,14 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
   impl_.GetArcStartTime(&start_time_error);
   EXPECT_EQ(dbus_error::kNotStarted, start_time_error.name());
 
-  // Check that StartArcInstance emits the signal with ANDROID_DATA_OLD_DIR=
-  // when |android_data_old_dir_| is not empty.
-  ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
-  ASSERT_TRUE(
-      utils_.AtomicFileWrite(android_data_old_dir_.Append("foo"), "test"));
-
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
       OnSignalEmitted(StrEq(SessionManagerImpl::kArcStartSignal),
                       ElementsAre(StartsWith("ANDROID_DATA_DIR="),
+                                  StartsWith("ANDROID_DATA_OLD_DIR="),
                                   std::string("CHROMEOS_USER=") + kSaneEmail,
                                   "CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                                  "DISABLE_BOOT_COMPLETED_BROADCAST=0",
-                                  StartsWith("ANDROID_DATA_OLD_DIR="))))
+                                  "DISABLE_BOOT_COMPLETED_BROADCAST=0")))
       .Times(1);
   EXPECT_CALL(upstart_signal_emitter_delegate_,
               OnSignalEmitted(StrEq(SessionManagerImpl::kArcStopSignal),
@@ -1146,10 +1140,10 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
       upstart_signal_emitter_delegate_,
       OnSignalEmitted(StrEq(SessionManagerImpl::kArcStartSignal),
                       ElementsAre(StartsWith("ANDROID_DATA_DIR="),
+                                  StartsWith("ANDROID_DATA_OLD_DIR="),
                                   std::string("CHROMEOS_USER=") + kSaneEmail,
                                   "CHROMEOS_DEV_MODE=1", "CHROMEOS_INSIDE_VM=0",
-                                  "DISABLE_BOOT_COMPLETED_BROADCAST=0",
-                                  StartsWith("ANDROID_DATA_OLD_DIR="))))
+                                  "DISABLE_BOOT_COMPLETED_BROADCAST=0")))
       .Times(1);
   EXPECT_CALL(upstart_signal_emitter_delegate_,
               OnSignalEmitted(StrEq(SessionManagerImpl::kArcStopSignal),
