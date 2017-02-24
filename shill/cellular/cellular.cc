@@ -737,7 +737,7 @@ void Cellular::Connect(Error* error) {
     return;
   }
 
-  if (!capability_->AllowRoaming() &&
+  if (!IsRoamingAllowedOrRequired() &&
       service_->roaming_state() == kRoamingStateRoaming) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotOnHomeNetwork,
                           "Roaming disallowed; connection request ignored.");
@@ -796,8 +796,8 @@ void Cellular::OnConnected() {
   if (!service_) {
     LOG(INFO) << "Disconnecting due to no cellular service.";
     Disconnect(nullptr, "no celluar service");
-  } else if (!capability_->AllowRoaming() &&
-      service_->roaming_state() == kRoamingStateRoaming) {
+  } else if (!IsRoamingAllowedOrRequired() &&
+             service_->roaming_state() == kRoamingStateRoaming) {
     LOG(INFO) << "Disconnecting due to roaming.";
     Disconnect(nullptr, "roaming");
   } else {
@@ -1002,6 +1002,10 @@ bool Cellular::IsActivating() const {
   return capability_->IsActivating();
 }
 
+bool Cellular::IsRoamingAllowedOrRequired() const {
+  return allow_roaming_ || provider_requires_roaming_;
+}
+
 bool Cellular::SetAllowRoaming(const bool& value, Error* /*error*/) {
   SLOG(this, 2) << __func__
                 << "(" << allow_roaming_ << "->" << value << ")";
@@ -1011,10 +1015,10 @@ bool Cellular::SetAllowRoaming(const bool& value, Error* /*error*/) {
   allow_roaming_ = value;
   manager()->UpdateDevice(this);
 
-  // Use AllowRoaming() instead of allow_roaming_ in order to
-  // incorporate provider preferences when evaluating if a disconnect
-  // is required.
-  if (!capability_->AllowRoaming() &&
+  // Use IsRoamingAllowedOrRequired() instead of |allow_roaming_| in order to
+  // incorporate provider preferences when evaluating if a disconnect is
+  // required.
+  if (!IsRoamingAllowedOrRequired() &&
       capability_->GetRoamingStateString() == kRoamingStateRoaming) {
     Error error;
     Disconnect(&error, __func__);

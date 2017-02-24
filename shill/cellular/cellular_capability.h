@@ -208,11 +208,6 @@ class CellularCapability {
 
   virtual std::string GetRoamingStateString() const = 0;
 
-  // Should this device allow roaming?
-  // The decision to allow roaming or not is based on the home provider as well
-  // as on the user modifiable "allow_roaming" property.
-  virtual bool AllowRoaming() = 0;
-
   // Returns true if the cellular device should initiate passive traffic
   // monitoring to trigger active out-of-credit detection checks. The default
   // implementation returns false by default.
@@ -298,18 +293,12 @@ class CellularCapability {
 
   static void OnUnsupportedOperation(const char* operation, Error* error);
 
-  // Accessor for subclasses to read the 'allow roaming' property.
-  bool allow_roaming_property() const {
-    return cellular_->allow_roaming_property();
-  }
-
  private:
   friend class CellularCapabilityGSMTest;
   friend class CellularCapabilityTest;
   friend class CellularCapabilityUniversalTest;
   friend class CellularCapabilityUniversalCDMATest;
   friend class CellularTest;
-  FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateActiveBearer);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, TearDown);

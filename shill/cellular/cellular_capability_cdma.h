@@ -58,7 +58,6 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   void OnServiceCreated() override;
   std::string GetNetworkTechnologyString() const override;
   std::string GetRoamingStateString() const override;
-  bool AllowRoaming() override;
   void GetSignalQuality() override;
   void SetupConnectProperties(KeyValueStore* properties) override;
   void DisconnectCleanup() override;

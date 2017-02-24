@@ -101,7 +101,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   void OnServiceCreated() override;
   std::string GetNetworkTechnologyString() const override;
   std::string GetRoamingStateString() const override;
-  bool AllowRoaming() override;
   void GetSignalQuality() override;
   void SetupConnectProperties(KeyValueStore* properties) override;
   void Connect(const KeyValueStore& properties,
@@ -200,7 +199,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   friend class CellularCapabilityUniversalTest;
   friend class CellularCapabilityUniversalCDMATest;
   FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, PropertiesChanged);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               ActivationWaitForRegisterTimeout);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Connect);

@@ -1431,6 +1431,19 @@ TEST_F(CellularTest, StopModemCallbackFail) {
   EXPECT_FALSE(device_->service_.get());
 }
 
+TEST_F(CellularTest, IsRoamingAllowedOrRequired) {
+  EXPECT_FALSE(device_->allow_roaming_);
+  EXPECT_FALSE(device_->provider_requires_roaming());
+  EXPECT_FALSE(device_->IsRoamingAllowedOrRequired());
+
+  device_->set_provider_requires_roaming(true);
+  EXPECT_TRUE(device_->IsRoamingAllowedOrRequired());
+
+  device_->set_provider_requires_roaming(false);
+  device_->allow_roaming_ = true;
+  EXPECT_TRUE(device_->IsRoamingAllowedOrRequired());
+}
+
 TEST_F(CellularTest, SetAllowRoaming) {
   EXPECT_FALSE(device_->allow_roaming_);
   EXPECT_CALL(*modem_info_.mock_manager(), UpdateDevice(_));

@@ -701,7 +701,8 @@ void CellularCapabilityUniversal::FillConnectPropertyMap(
   // TODO(jglasgow): Is this really needed anymore?
   properties->SetString(kConnectNumber, kPhoneNumber);
 
-  properties->SetBool(kConnectAllowRoaming, AllowRoaming());
+  properties->SetBool(kConnectAllowRoaming,
+                      cellular()->IsRoamingAllowedOrRequired());
 
   if (!apn_try_list_.empty()) {
     // Leave the APN at the front of the list, so that it can be recorded
@@ -754,10 +755,6 @@ void CellularCapabilityUniversal::OnConnectReply(const ResultCallback& callback,
     callback.Run(error);
 
   UpdatePendingActivationState();
-}
-
-bool CellularCapabilityUniversal::AllowRoaming() {
-  return cellular()->provider_requires_roaming() || allow_roaming_property();
 }
 
 void CellularCapabilityUniversal::GetProperties() {

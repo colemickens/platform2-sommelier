@@ -276,7 +276,7 @@ void CellularCapabilityGSM::FillConnectPropertyMap(
     KeyValueStore* properties) {
   properties->SetString(kConnectPropertyPhoneNumber, kPhoneNumber);
 
-  if (!AllowRoaming())
+  if (!cellular()->IsRoamingAllowedOrRequired())
     properties->SetBool(kConnectPropertyHomeOnly, true);
 
   if (!apn_try_list_.empty()) {
@@ -333,10 +333,6 @@ void CellularCapabilityGSM::OnConnectReply(const ResultCallback& callback,
   }
   if (!callback.is_null())
     callback.Run(error);
-}
-
-bool CellularCapabilityGSM::AllowRoaming() {
-  return cellular()->provider_requires_roaming() || allow_roaming_property();
 }
 
 // always called from an async context

@@ -230,6 +230,10 @@ class Cellular : public Device, public RPCTaskDelegate {
   // Is the underlying device in the process of activating?
   bool IsActivating() const;
 
+  // Returns true if roaming is allowed by the user (via the user modifiable
+  // "allow_roaming" property) or required by the mobile provider.
+  bool IsRoamingAllowedOrRequired() const;
+
   // Initiate PPP link. Called from capabilities.
   virtual void StartPPP(const std::string& serial_device);
   // Callback for |ppp_task_|.
@@ -316,7 +320,6 @@ class Cellular : public Device, public RPCTaskDelegate {
   friend class ModemTest;
   friend class SubscriptionStateOutOfCreditsDetectorTest;
   FRIEND_TEST(CellularCapabilityCDMATest, GetRegistrationState);
-  FRIEND_TEST(CellularCapabilityGSMTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityTest, EnableModemFail);
   FRIEND_TEST(CellularCapabilityTest, EnableModemSucceed);
@@ -324,7 +327,6 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularCapabilityTest, GetModemInfo);
   FRIEND_TEST(CellularCapabilityTest, GetModemStatus);
   FRIEND_TEST(CellularCapabilityUniversalCDMATest, OnCDMARegistrationChanged);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Connect);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsServiceActivationRequired);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StartModemAlreadyEnabled);
@@ -360,6 +362,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest,
               HandleNewRegistrationStateForServiceRequiringActivation);
   FRIEND_TEST(CellularTest, HomeProviderServingOperator);
+  FRIEND_TEST(CellularTest, IsRoamingAllowedOrRequired);
   FRIEND_TEST(CellularTest, LinkEventUpWithPPP);
   FRIEND_TEST(CellularTest, LinkEventUpWithoutPPP);
   FRIEND_TEST(CellularTest, LinkEventWontDestroyService);

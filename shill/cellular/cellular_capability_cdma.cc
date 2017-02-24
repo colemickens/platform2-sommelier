@@ -116,11 +116,6 @@ bool CellularCapabilityCDMA::AreProxiesInitialized() const {
   return (CellularCapabilityClassic::AreProxiesInitialized() && proxy_.get());
 }
 
-bool CellularCapabilityCDMA::AllowRoaming() {
-  return allow_roaming_property();
-}
-
-
 void CellularCapabilityCDMA::OnServiceCreated() {
   SLOG(this, 2) << __func__;
   cellular()->service()->SetUsageURL(usage_url_);

@@ -609,17 +609,6 @@ TEST_F(CellularCapabilityGSMTest, SetAccessTechnology) {
   EXPECT_EQ(kNetworkTechnologyGprs, cellular_->service()->network_technology());
 }
 
-TEST_F(CellularCapabilityGSMTest, AllowRoaming) {
-  EXPECT_FALSE(cellular_->allow_roaming_);
-  EXPECT_FALSE(cellular_->provider_requires_roaming());
-  EXPECT_FALSE(capability_->AllowRoaming());
-  cellular_->set_provider_requires_roaming(true);
-  EXPECT_TRUE(capability_->AllowRoaming());
-  cellular_->set_provider_requires_roaming(false);
-  cellular_->allow_roaming_ = true;
-  EXPECT_TRUE(capability_->AllowRoaming());
-}
-
 TEST_F(CellularCapabilityGSMTest, GetNetworkTechnologyString) {
   EXPECT_EQ("", capability_->GetNetworkTechnologyString());
   SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GSM);

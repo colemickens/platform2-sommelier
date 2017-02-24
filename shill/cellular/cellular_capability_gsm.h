@@ -67,7 +67,6 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   void OnServiceCreated() override;
   std::string GetNetworkTechnologyString() const override;
   std::string GetRoamingStateString() const override;
-  bool AllowRoaming() override;
   void GetSignalQuality() override;
   void SetupConnectProperties(KeyValueStore* properties) override;
   void Connect(const KeyValueStore& properties,
@@ -114,7 +113,6 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   friend class CellularTest;
   friend class CellularCapabilityGSMTest;
   friend class CellularCapabilityTest;
-  FRIEND_TEST(CellularCapabilityGSMTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityGSMTest, CreateDeviceFromProperties);
   FRIEND_TEST(CellularCapabilityGSMTest, GetIMEI);
   FRIEND_TEST(CellularCapabilityGSMTest, GetIMSI);

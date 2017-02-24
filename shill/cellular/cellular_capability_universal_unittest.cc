@@ -1477,17 +1477,6 @@ TEST_F(CellularCapabilityUniversalMainTest, GetTypeString) {
   ASSERT_EQ(capability_->GetTypeString(), "");
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, AllowRoaming) {
-  EXPECT_FALSE(cellular_->allow_roaming_);
-  EXPECT_FALSE(cellular_->provider_requires_roaming());
-  EXPECT_FALSE(capability_->AllowRoaming());
-  cellular_->set_provider_requires_roaming(true);
-  EXPECT_TRUE(capability_->AllowRoaming());
-  cellular_->set_provider_requires_roaming(false);
-  cellular_->allow_roaming_ = true;
-  EXPECT_TRUE(capability_->AllowRoaming());
-}
-
 TEST_F(CellularCapabilityUniversalMainTest, GetMdnForOLP) {
   const string kVzwUUID = "c83d6597-dc91-4d48-a3a7-d86b80123751";
   const string kFooUUID = "foo";
