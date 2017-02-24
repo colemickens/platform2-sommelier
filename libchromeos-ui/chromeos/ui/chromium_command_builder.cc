@@ -466,6 +466,9 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("edge_touch_filtering"))
     AddArg("--edge-touch-filtering");
 
+  if (UseFlagIsSet("native_gpu_memory_buffers"))
+    AddArg("--enable-native-gpu-memory-buffers");
+
   AddArg(std::string("--gpu-sandbox-failures-fatal=") +
       (is_chrome_os_hardware() ? "yes" : "no"));
 
