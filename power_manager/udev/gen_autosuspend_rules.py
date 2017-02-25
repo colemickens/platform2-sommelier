@@ -198,7 +198,7 @@ def main():
   for dev_ids in USB_IDS:
     vid, pid = dev_ids.split(':')
 
-    print('ATTR{idVendor}=="%s", ATTR{idProduct}=="%s"'
+    print('ATTR{idVendor}=="%s", ATTR{idProduct}=="%s", '
           'GOTO="autosuspend_enable"' % (vid, pid))
 
   print(UDEV_RULE_TAIL)
