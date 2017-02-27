@@ -70,6 +70,7 @@ shutdown: 1
 # socket: arg0 == PF_INET || arg0 == PF_LOCAL || arg0 == PF_INET6 || arg0 == PF_NETLINK
 socket: arg0 == 2 || arg0 == 1 || arg0 == 10 || arg0 == 16
 stat: 1
+sysinfo: 1
 umask: 1
 uname: 1
 unlink: 1
