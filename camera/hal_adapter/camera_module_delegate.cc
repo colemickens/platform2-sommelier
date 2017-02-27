@@ -23,7 +23,9 @@ CameraModuleDelegate::~CameraModuleDelegate() {}
 void CameraModuleDelegate::OpenDevice(int32_t device_id,
                                       const OpenDeviceCallback& callback) {
   VLOGF_ENTER();
-  callback.Run(camera_hal_adapter_->OpenDevice(device_id));
+  mojom::Camera3DeviceOpsPtr device_ops;
+  int32_t result = camera_hal_adapter_->OpenDevice(device_id, &device_ops);
+  callback.Run(result, std::move(device_ops));
 }
 
 void CameraModuleDelegate::CloseDevice(int32_t device_id,
@@ -42,7 +44,9 @@ void CameraModuleDelegate::GetCameraInfo(
     int32_t device_id,
     const GetCameraInfoCallback& callback) {
   VLOGF_ENTER();
-  callback.Run(camera_hal_adapter_->GetCameraInfo(device_id));
+  mojom::CameraInfoPtr camera_info;
+  int32_t result = camera_hal_adapter_->GetCameraInfo(device_id, &camera_info);
+  callback.Run(result, std::move(camera_info));
 }
 
 void CameraModuleDelegate::SetCallbacks(

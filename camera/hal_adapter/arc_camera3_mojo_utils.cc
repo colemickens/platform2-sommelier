@@ -39,28 +39,6 @@ int UnwrapPlatformHandle(mojo::ScopedHandle handle) {
   return scoped_platform_handle.release().handle;
 }
 
-arc::mojom::HandlePtr SerializeHandle(int handle) {
-  arc::mojom::HandlePtr ret = arc::mojom::Handle::New();
-  if (handle == -1) {
-    ret->set_none(true);
-  } else if (handle >= 0) {
-    ret->set_h(WrapPlatformHandle(handle));
-  } else {
-    LOGF(ERROR) << "Invalid handle to wrap";
-    // Simply return an invalid handle to indicate that an error has occurred.
-    ret->set_h(mojo::ScopedHandle(mojo::Handle()));
-  }
-  return ret;
-}
-
-// Transfers ownership of the handle.
-int DeserializeHandle(const arc::mojom::HandlePtr& handle) {
-  if (handle->is_none()) {
-    return -1;
-  }
-  return UnwrapPlatformHandle(std::move(handle->get_h()));
-}
-
 arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
     const camera3_stream_buffer_t* buffer,
     const UniqueStreams& streams,
@@ -102,18 +80,22 @@ arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
 
   ret->status = buffer->status;
 
-  ret->acquire_fence = SerializeHandle(buffer->acquire_fence);
-  if (ret->acquire_fence->is_h() && !ret->acquire_fence->get_h().is_valid()) {
-    LOGF(ERROR) << "Failed to wrap acquire_fence";
-    ret.reset();
-    return ret;
+  if (buffer->acquire_fence != -1) {
+    ret->acquire_fence = WrapPlatformHandle(buffer->acquire_fence);
+    if (!ret->acquire_fence.is_valid()) {
+      LOGF(ERROR) << "Failed to wrap acquire_fence";
+      ret.reset();
+      return ret;
+    }
   }
 
-  ret->release_fence = SerializeHandle(buffer->release_fence);
-  if (ret->release_fence->is_h() && !ret->release_fence->get_h().is_valid()) {
-    LOGF(ERROR) << "Failed to wrap release_fence";
-    ret.reset();
-    return ret;
+  if (buffer->release_fence != -1) {
+    ret->release_fence = WrapPlatformHandle(buffer->release_fence);
+    if (!ret->release_fence.is_valid()) {
+      LOGF(ERROR) << "Failed to wrap release_fence";
+      ret.reset();
+      return ret;
+    }
   }
 
   return ret;
@@ -143,21 +125,28 @@ int DeserializeStreamBuffer(
 
   out_buffer->status = ptr->status;
 
-  int unwrapped_handle;
-  unwrapped_handle = DeserializeHandle(ptr->acquire_fence);
-  if (unwrapped_handle == -EINVAL) {
-    LOGF(ERROR) << "Failed to get acquire_fence";
-    return -EINVAL;
+  if (ptr->acquire_fence.is_valid()) {
+    out_buffer->acquire_fence =
+        UnwrapPlatformHandle(std::move(ptr->acquire_fence));
+    if (out_buffer->acquire_fence == -EINVAL) {
+      LOGF(ERROR) << "Failed to get acquire_fence";
+      return -EINVAL;
+    }
+  } else {
+    out_buffer->acquire_fence = -1;
   }
-  out_buffer->acquire_fence = unwrapped_handle;
 
-  unwrapped_handle = DeserializeHandle(ptr->release_fence);
-  if (unwrapped_handle == -EINVAL) {
-    LOGF(ERROR) << "Failed to get release_fence";
-    close(out_buffer->acquire_fence);
-    return -EINVAL;
+  if (ptr->release_fence.is_valid()) {
+    out_buffer->release_fence =
+        UnwrapPlatformHandle(std::move(ptr->release_fence));
+    if (out_buffer->release_fence == -EINVAL) {
+      LOGF(ERROR) << "Failed to get release_fence";
+      close(out_buffer->acquire_fence);
+      return -EINVAL;
+    }
+  } else {
+    out_buffer->release_fence = -1;
   }
-  out_buffer->release_fence = unwrapped_handle;
 
   return 0;
 }

@@ -40,13 +40,13 @@ class CameraHalAdapter : public mojo::edk::ProcessDelegate {
   void OnShutdownComplete() override;
 
   // Callback interface for CameraModuleDelegate..
-  mojom::OpenDeviceResultPtr OpenDevice(int32_t device_id);
+  int32_t OpenDevice(int32_t device_id, mojom::Camera3DeviceOpsPtr* device_ops);
 
   int32_t CloseDevice(int32_t device_id);
 
   int32_t GetNumberOfCameras();
 
-  mojom::GetCameraInfoResultPtr GetCameraInfo(int32_t device_id);
+  int32_t GetCameraInfo(int32_t device_id, mojom::CameraInfoPtr* camera_info);
 
   int32_t SetCallbacks(mojom::CameraModuleCallbacksPtr callbacks);
 

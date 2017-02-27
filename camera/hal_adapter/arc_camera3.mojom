@@ -23,17 +23,12 @@ struct Camera3StreamConfiguration {
   int32 error;  // Used to piggyback error code returned by driver.
 };
 
-union Handle {
-  bool none;
-  handle h;
-};
-
 struct Camera3StreamBuffer {
   uint64 stream_id;
   uint64 buffer_id;
   int32 status;
-  Handle acquire_fence;
-  Handle release_fence;
+  handle? acquire_fence;
+  handle? release_fence;
 };
 
 union CameraMetadata {
@@ -41,22 +36,12 @@ union CameraMetadata {
   handle<data_pipe_consumer> metadata_handle;
 };
 
-union Camera3CaptureInputBuffer {
-  bool none;
-  Camera3StreamBuffer input_buffer;
-};
-
-union Camera3CaptureOutputBuffers {
-  bool none;
-  array<Camera3StreamBuffer> output_buffers;
-};
-
 struct Camera3CaptureRequest {
   uint32 frame_number;
   CameraMetadata settings;
-  Camera3CaptureInputBuffer input_buffer;
+  Camera3StreamBuffer? input_buffer;
   uint32 num_output_buffers;
-  Camera3CaptureOutputBuffers output_buffers;
+  array<Camera3StreamBuffer> output_buffers;
 };
 
 interface Camera3DeviceOps {
@@ -89,8 +74,8 @@ struct Camera3CaptureResult {
   uint32 frame_number;
   CameraMetadata result;
   uint32 num_output_buffers;
-  Camera3CaptureOutputBuffers output_buffers;
-  Camera3CaptureInputBuffer input_buffer;
+  array<Camera3StreamBuffer>? output_buffers;
+  Camera3StreamBuffer? input_buffer;
   uint32 partial_result;
 };
 
@@ -122,11 +107,6 @@ interface Camera3CallbackOps {
   Notify@1(Camera3NotifyMsg msg) => ();
 };
 
-union OpenDeviceResult {
-  int32 error;
-  Camera3DeviceOps device_ops;
-};
-
 struct CameraInfo {
   int32 facing;
   int32 orientation;
@@ -137,19 +117,14 @@ struct CameraInfo {
   // conflicting_devices_length is not valid in CAMERA_MODULE_API_VERSION_2_3 or lower.
 };
 
-union GetCameraInfoResult {
-  int32 error;
-  CameraInfo info;
-};
-
 interface CameraModule {
-  OpenDevice@0(int32 camera_id) => (OpenDeviceResult result);
+  OpenDevice@0(int32 camera_id) => (int32 result, Camera3DeviceOps device_ops);
 
   CloseDevice@1(int32 camera_id) => (int32 result);
 
   GetNumberOfCameras@2() => (int32 result);
 
-  GetCameraInfo@3(int32 camera_id) => (GetCameraInfoResult result);
+  GetCameraInfo@3(int32 camera_id) => (int32 result, CameraInfo camera_info);
 
   SetCallbacks@4(CameraModuleCallbacks callbacks) => (int32 result);
 };

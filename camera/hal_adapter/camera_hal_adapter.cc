@@ -106,19 +106,18 @@ void CameraHalAdapter::OnShutdownComplete() {
 
 // Callback interface for camera_module_t APIs.
 
-mojom::OpenDeviceResultPtr CameraHalAdapter::OpenDevice(int32_t device_id) {
+int32_t CameraHalAdapter::OpenDevice(int32_t device_id,
+                                     mojom::Camera3DeviceOpsPtr* device_ops) {
   VLOGF_ENTER();
-  mojom::OpenDeviceResultPtr result = mojom::OpenDeviceResult::New();
-
   if (device_id < 0) {
     LOGF(ERROR) << "Invalid camera device id: " << device_id;
-    result->set_error(-EINVAL);
-    return result;
+    device_ops->reset();
+    return -EINVAL;
   }
   if (device_adapters_.find(device_id) != device_adapters_.end()) {
     LOGF(WARNING) << "Multiple calls to OpenDevice on device " << device_id;
-    result->set_error(-EBUSY);
-    return result;
+    device_ops->reset();
+    return -EBUSY;
   }
   camera3_device_t* camera_device;
   char name[16];
@@ -127,14 +126,14 @@ mojom::OpenDeviceResultPtr CameraHalAdapter::OpenDevice(int32_t device_id) {
       &camera_module_->common, name,
       reinterpret_cast<hw_device_t**>(&camera_device));
   if (ret) {
-    result->set_error(ret);
+    LOGF(ERROR) << "Failed to open camera device " << device_id;
+    device_ops->reset();
+    return ret;
   } else {
     device_adapters_[device_id].reset(new CameraDeviceAdapter(camera_device));
-    mojom::Camera3DeviceOpsPtr device_ops =
-        device_adapters_.at(device_id)->GetDeviceOpsPtr();
-    result->set_device_ops(std::move(device_ops));
+    *device_ops = device_adapters_.at(device_id)->GetDeviceOpsPtr();
   }
-  return result;
+  return 0;
 }
 
 int32_t CameraHalAdapter::CloseDevice(int32_t device_id) {
@@ -158,21 +157,21 @@ int32_t CameraHalAdapter::GetNumberOfCameras() {
   return camera_module_->get_number_of_cameras();
 }
 
-mojom::GetCameraInfoResultPtr CameraHalAdapter::GetCameraInfo(
-    int32_t device_id) {
+int32_t CameraHalAdapter::GetCameraInfo(int32_t device_id,
+                                        mojom::CameraInfoPtr* camera_info) {
   VLOGF_ENTER();
-  mojom::GetCameraInfoResultPtr result = mojom::GetCameraInfoResult::New();
 
   if (device_id < 0) {
     LOGF(ERROR) << "Invalid camera device id: " << device_id;
-    result->set_error(-EINVAL);
-    return result;
+    camera_info->reset();
+    return -EINVAL;
   }
   camera_info_t info;
   int32_t ret = camera_module_->get_camera_info(device_id, &info);
   if (ret) {
-    result->set_error(ret);
-    return result;
+    LOGF(ERROR) << "Failed to get info of camera " << device_id;
+    camera_info->reset();
+    return ret;
   }
 
   if (VLOG_IS_ON(1)) {
@@ -190,13 +189,13 @@ mojom::GetCameraInfoResultPtr CameraHalAdapter::GetCameraInfo(
   if (ret) {
     LOGF(ERROR) << "Failed to send camera metadata in GetCameraInfo";
     // The returned error code is -EIO but HAL need -EINVAL.
-    result->set_error(-EINVAL);
-    return result;
+    camera_info->reset();
+    return -EINVAL;
   }
   info_ptr->metadata_handle = std::move(consumer_handle);
 
-  result->set_info(std::move(info_ptr));
-  return result;
+  *camera_info = std::move(info_ptr);
+  return 0;
 }
 
 int32_t CameraHalAdapter::SetCallbacks(

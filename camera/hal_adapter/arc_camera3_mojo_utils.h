@@ -32,10 +32,6 @@ mojo::ScopedHandle WrapPlatformHandle(int handle);
 
 int UnwrapPlatformHandle(mojo::ScopedHandle handle);
 
-arc::mojom::HandlePtr SerializeHandle(int handle);
-
-int DeserializeHandle(const arc::mojom::HandlePtr& handle);
-
 // SerializeStreamBuffer is used in CameraDeviceAdapter::ProcessCaptureResult to
 // pass a result buffer handle to ARC++.  For the input / output buffers, we do
 // not need to serialize the whole native handle but instead we can simply
