@@ -74,9 +74,6 @@ class TestPathService : public PathService {
     Insert(Path::NET, stub_path.Append("stub_net").value());
     Insert(Path::SMBCLIENT, stub_path.Append("stub_smbclient").value());
 
-    // TODO(ljusten): Remove when authpolicy is disabled on x86. crbug/693471.
-    Insert(Path::DEBUG_FLAGS, base_path.Append("authpolicyd_flags").value());
-
     // Fill in the rest of the paths and build dependend paths.
     Initialize();
   }
@@ -117,16 +114,6 @@ class AuthPolicyTest : public testing::Test {
     // Create the state directory since authpolicyd assumes its existence.
     base::FilePath state_path(paths->Get(Path::STATE_DIR));
     CHECK(base::CreateDirectory(state_path));
-
-    // Workaround for seccomp filters containing syscalls that don't exist on
-    // x86. Turning seccomp logging on will ignore this error.
-    // TODO(ljusten): Remove when authpolicy is disabled on x86. crbug/693471.
-    const char kDebugFlags[] = "log_seccomp";
-    LOG(INFO) << paths->Get(Path::DEBUG_FLAGS);
-    CHECK_NE(-1,
-             base::WriteFile(base::FilePath(paths->Get(Path::DEBUG_FLAGS)),
-                             kDebugFlags,
-                             strlen(kDebugFlags)));
 
     authpolicy_.reset(new AuthPolicy(std::move(dbus_object),
                                      base::MakeUnique<AuthPolicyMetrics>(),

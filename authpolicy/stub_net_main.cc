@@ -13,6 +13,8 @@
 
 namespace {
 
+const char kStubKeytab[] = "Stub keytab file";
+
 const char kStubInfo[] = R"__INFO__(LDAP server: 111.222.33.44
 LDAP server name: dcname.realm.com
 Realm: REALM.COM
@@ -49,16 +51,13 @@ int HandleCommandLine(const std::string command_line) {
   }
 
   if (StartsWithCaseSensitive(command_line, "ads join")) {
-    // Write a fake keytab file.
+    // Write a stub keytab file.
     std::string keytab_path = GetKeytabFilePath();
     CHECK(!keytab_path.empty());
     // Note: base::WriteFile triggers a seccomp failure, so do it old-school.
     FILE* kt_file = fopen(keytab_path.c_str(), "w");
     CHECK(kt_file);
-    // TODO(ljusten): Add back when authpolicy is disabled on x86 (causes
-    // seccomp failure). crbug/693471.
-    // const char data[] = "Fake keytab file";
-    // CHECK_EQ(1U, fwrite(data, strlen(data), 1, kt_file));
+    CHECK_EQ(1U, fwrite(kStubKeytab, strlen(kStubKeytab), 1, kt_file));
     CHECK_EQ(0, fclose(kt_file));
     return kExitCodeOk;
   }
