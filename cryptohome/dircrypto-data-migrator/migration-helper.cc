@@ -18,6 +18,7 @@
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
+#include <chromeos/dbus/service_constants.h>
 
 extern "C" {
 #include <attr/xattr.h>
@@ -34,6 +35,10 @@ constexpr char kAtimeXattrName[] = "trusted.CrosDirCryptoMigrationAtime";
 
 constexpr base::FilePath::CharType kMigrationStartedFileName[] =
     "crypto-migration.started";
+// TODO(dspaid): Determine performance impact so we can potentially increase
+// frequency.
+constexpr base::TimeDelta kStatusSignalInterval =
+    base::TimeDelta::FromSeconds(1);
 
 MigrationHelper::MigrationHelper(Platform* platform,
                                  const base::FilePath& status_files_dir,
@@ -41,40 +46,85 @@ MigrationHelper::MigrationHelper(Platform* platform,
     : platform_(platform),
       status_files_dir_(status_files_dir),
       chunk_size_(chunk_size),
+      total_byte_count_(0),
+      migrated_byte_count_(0),
       namespaced_mtime_xattr_name_(kMtimeXattrName),
       namespaced_atime_xattr_name_(kAtimeXattrName) {}
 
 MigrationHelper::~MigrationHelper() {}
 
 bool MigrationHelper::Migrate(const base::FilePath& from,
-                              const base::FilePath& to) {
+                              const base::FilePath& to,
+                              const ProgressCallback& progress_callback) {
+  if (progress_callback.is_null()) {
+    LOG(ERROR) << "Invalid progress callback";
+    return false;
+  }
+  progress_callback_ = progress_callback;
+  ReportStatus(DIRCRYPTO_MIGRATION_INITIALIZING);
   if (!from.IsAbsolute() || !to.IsAbsolute()) {
     LOG(ERROR) << "Migrate must be given absolute paths";
+    ReportStatus(DIRCRYPTO_MIGRATION_FAILED);
     return false;
   }
 
   if (!platform_->TouchFileDurable(
           status_files_dir_.Append(kMigrationStartedFileName))) {
     LOG(ERROR) << "Failed to create migration-started file";
+    ReportStatus(DIRCRYPTO_MIGRATION_FAILED);
     return false;
   }
 
+  CalculateDataToMigrate(from);
+  ReportStatus(DIRCRYPTO_MIGRATION_IN_PROGRESS);
   struct stat from_stat;
   if (!platform_->Stat(from, &from_stat)) {
     PLOG(ERROR) << "Failed to stat from directory";
+    ReportStatus(DIRCRYPTO_MIGRATION_FAILED);
     return false;
   }
   if (!MigrateDir(from,
                   to,
                   base::FilePath(""),
-                  FileEnumerator::FileInfo(from, from_stat)))
+                  FileEnumerator::FileInfo(from, from_stat))) {
+    ReportStatus(DIRCRYPTO_MIGRATION_FAILED);
     return false;
+  }
+
+  // One more progress update to say that we've hit 100%
+  ReportStatus(DIRCRYPTO_MIGRATION_SUCCESS);
   return true;
 }
 
 bool MigrationHelper::IsMigrationStarted() const {
   return platform_->FileExists(
       status_files_dir_.Append(kMigrationStartedFileName));
+}
+
+void MigrationHelper::CalculateDataToMigrate(const base::FilePath& from) {
+  total_byte_count_ = 0;
+  migrated_byte_count_ = 0;
+  FileEnumerator* enumerator = platform_->GetFileEnumerator(
+      from,
+      true /* recursive */,
+      base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES |
+          base::FileEnumerator::SHOW_SYM_LINKS);
+  for (base::FilePath entry = enumerator->Next(); !entry.empty();
+       entry = enumerator->Next()) {
+    FileEnumerator::FileInfo info = enumerator->GetInfo();
+    total_byte_count_ += info.GetSize();
+  }
+}
+
+void MigrationHelper::IncrementMigratedBytes(uint64_t bytes) {
+  migrated_byte_count_ += bytes;
+  if (next_report_ < base::TimeTicks::Now())
+    ReportStatus(DIRCRYPTO_MIGRATION_IN_PROGRESS);
+}
+
+void MigrationHelper::ReportStatus(DircryptoMigrationStatus status) {
+  progress_callback_.Run(migrated_byte_count_, total_byte_count_, status);
+  next_report_ = base::TimeTicks::Now() + kStatusSignalInterval;
 }
 
 bool MigrationHelper::MigrateDir(const base::FilePath& from,
@@ -108,10 +158,12 @@ bool MigrationHelper::MigrateDir(const base::FilePath& from,
       // Symlink
       if (!MigrateLink(from, to, child.Append(entry.BaseName()), entry_info))
         return false;
+      IncrementMigratedBytes(entry_info.GetSize());
     } else if (S_ISDIR(mode)) {
       // Directory.
       if (!MigrateDir(from, to, child.Append(entry.BaseName()), entry_info))
         return false;
+      IncrementMigratedBytes(entry_info.GetSize());
     } else if (S_ISREG(mode)) {
       // File
       if (!MigrateFile(entry, new_path, entry_info))
@@ -235,6 +287,8 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
       LOG(ERROR) << "Failed to flush " << to.value();
       return false;
     }
+    IncrementMigratedBytes(to_read);
+
     if (new_file) {
       if (!platform_->SyncDirectory(to.DirName()))
         return false;

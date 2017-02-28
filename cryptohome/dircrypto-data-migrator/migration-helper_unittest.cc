@@ -5,6 +5,7 @@
 #include "cryptohome/dircrypto-data-migrator/migration-helper.h"
 
 #include <string>
+#include <vector>
 
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -15,6 +16,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -55,10 +57,21 @@ class MigrationHelperTest : public ::testing::Test {
     EXPECT_TRUE(to_dir_.Delete());
   }
 
+  void ProgressCaptor(uint64_t migrated,
+                      uint64_t total,
+                      DircryptoMigrationStatus status) {
+    migrated_values_.push_back(migrated);
+    total_values_.push_back(total);
+    status_values_.push_back(status);
+  }
+
  protected:
   ScopedTempDir status_files_dir_;
   ScopedTempDir from_dir_;
   ScopedTempDir to_dir_;
+  std::vector<uint64_t> migrated_values_;
+  std::vector<uint64_t> total_values_;
+  std::vector<DircryptoMigrationStatus> status_values_;
 };
 
 TEST_F(MigrationHelperTest, EmptyTest) {
@@ -71,7 +84,13 @@ TEST_F(MigrationHelperTest, EmptyTest) {
   ASSERT_TRUE(base::IsDirectoryEmpty(from_dir_.path()));
   ASSERT_TRUE(base::IsDirectoryEmpty(to_dir_.path()));
 
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
+                             to_dir_.path(),
+                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                        base::Unretained(this))));
+  EXPECT_GT(status_values_.size(), 1);
+  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
+            status_values_[status_values_.size() - 1]);
 }
 
 TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
@@ -112,18 +131,24 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
 
   struct stat from_stat;
   ASSERT_TRUE(platform.Stat(kFromDirPath, &from_stat));
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
+                             to_dir_.path(),
+                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                        base::Unretained(this))));
+  EXPECT_GT(status_values_.size(), 1);
+  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
+            status_values_[status_values_.size() - 1]);
 
   const FilePath kToDirPath = to_dir_.path().Append(kDirectory);
   struct stat to_stat;
   ASSERT_TRUE(platform.Stat(kToDirPath, &to_stat));
   EXPECT_TRUE(platform.DirectoryExists(kToDirPath));
 
-  // Verify timestamps were coppied
+  // Verify mtime was coppied.  atime for directories is not
+  // well-preserved because we have to traverse the directories to determine
+  // migration size.
   EXPECT_EQ(from_stat.st_mtim.tv_sec, to_stat.st_mtim.tv_sec);
   EXPECT_EQ(from_stat.st_mtim.tv_nsec, to_stat.st_mtim.tv_nsec);
-  EXPECT_EQ(from_stat.st_atim.tv_sec, to_stat.st_atim.tv_sec);
-  EXPECT_EQ(from_stat.st_atim.tv_nsec, to_stat.st_atim.tv_nsec);
 
   // Verify Permissions and xattrs were copied
   mode_t to_mode;
@@ -170,7 +195,13 @@ TEST_F(MigrationHelperTest, DirectoryPartiallyMigrated) {
                       sizeof(kAtime),
                       XATTR_CREATE));
 
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
+                             to_dir_.path(),
+                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                        base::Unretained(this))));
+  EXPECT_GT(status_values_.size(), 1);
+  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
+            status_values_[status_values_.size() - 1]);
   struct stat to_stat;
 
   // Verify that stored timestamps for in-progress migrations are respected
@@ -213,7 +244,13 @@ TEST_F(MigrationHelperTest, CopySymlink) {
   struct stat from_stat;
   ASSERT_TRUE(platform.Stat(kFromRelLinkPath, &from_stat));
 
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
+                             to_dir_.path(),
+                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                        base::Unretained(this))));
+  EXPECT_GT(status_values_.size(), 1);
+  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
+            status_values_[status_values_.size() - 1]);
 
   const FilePath kToFilePath = to_dir_.path().Append(kFileName);
   const FilePath kToRelLinkPath = to_dir_.path().Append(kRelLinkName);
@@ -256,7 +293,13 @@ TEST_F(MigrationHelperTest, OneEmptyFile) {
   ASSERT_TRUE(platform.TouchFileDurable(from_dir_.path().Append(kFileName)));
   ASSERT_TRUE(base::IsDirectoryEmpty(to_dir_.path()));
 
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
+                             to_dir_.path(),
+                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                        base::Unretained(this))));
+  EXPECT_GT(status_values_.size(), 1);
+  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
+            status_values_[status_values_.size() - 1]);
 
   // The file is moved.
   EXPECT_FALSE(platform.FileExists(from_dir_.path().Append(kFileName)));
@@ -281,7 +324,13 @@ TEST_F(MigrationHelperTest, OneEmptyFileInDirectory) {
       from_dir_.path().Append(kDir1).Append(kDir2).Append(kFileName)));
   ASSERT_TRUE(base::IsDirectoryEmpty(to_dir_.path()));
 
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
+                             to_dir_.path(),
+                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                        base::Unretained(this))));
+  EXPECT_GT(status_values_.size(), 1);
+  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
+            status_values_[status_values_.size() - 1]);
 
   // The file is moved.
   EXPECT_FALSE(platform.FileExists(
@@ -289,6 +338,40 @@ TEST_F(MigrationHelperTest, OneEmptyFileInDirectory) {
   EXPECT_TRUE(base::IsDirectoryEmpty(from_dir_.path().Append(kDir1)));
   EXPECT_TRUE(platform.FileExists(
       to_dir_.path().Append(kDir1).Append(kDir2).Append(kFileName)));
+}
+
+TEST_F(MigrationHelperTest, UnreadableFile) {
+  Platform platform;
+  MigrationHelper helper(
+      &platform, status_files_dir_.path(), kDefaultChunkSize);
+  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
+  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+
+  constexpr char kDir1[] = "directory1";
+  constexpr char kDir2[] = "directory2";
+  constexpr char kFileName[] = "empty_file";
+
+  // Create directory1/directory2/empty_file in from_dir_.  File will be
+  // unreadable to test failure case.
+  ASSERT_TRUE(
+      platform.CreateDirectory(from_dir_.path().Append(kDir1).Append(kDir2)));
+  ASSERT_TRUE(platform.TouchFileDurable(
+      from_dir_.path().Append(kDir1).Append(kDir2).Append(kFileName)));
+  ASSERT_TRUE(base::IsDirectoryEmpty(to_dir_.path()));
+  ASSERT_TRUE(platform.SetPermissions(
+      from_dir_.path().Append(kDir1).Append(kDir2).Append(kFileName), S_IWUSR));
+
+  EXPECT_FALSE(helper.Migrate(from_dir_.path(),
+                              to_dir_.path(),
+                              base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                         base::Unretained(this))));
+  EXPECT_GT(status_values_.size(), 1);
+  EXPECT_EQ(DIRCRYPTO_MIGRATION_FAILED,
+            status_values_[status_values_.size() - 1]);
+
+  // The file is not moved.
+  EXPECT_TRUE(platform.FileExists(
+      from_dir_.path().Append(kDir1).Append(kDir2).Append(kFileName)));
 }
 
 TEST_F(MigrationHelperTest, CopyAttributesFile) {
@@ -412,7 +495,13 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
 
   struct stat from_stat;
   ASSERT_TRUE(real_platform.Stat(kFromFilePath, &from_stat));
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
+                             to_dir_.path(),
+                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                        base::Unretained(this))));
+  EXPECT_GT(status_values_.size(), 1);
+  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
+            status_values_[status_values_.size() - 1]);
 
   struct stat to_stat;
   ASSERT_TRUE(real_platform.Stat(kToFilePath, &to_stat));
@@ -460,7 +549,13 @@ TEST_F(MigrationHelperTest, MigrateNestedDir) {
       from_dir_.path().Append(kDir1).Append(kDir2).Append(kFileName)));
   ASSERT_TRUE(base::IsDirectoryEmpty(to_dir_.path()));
 
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
+                             to_dir_.path(),
+                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                        base::Unretained(this))));
+  EXPECT_GT(status_values_.size(), 1);
+  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
+            status_values_[status_values_.size() - 1]);
 
   // The file is moved.
   EXPECT_TRUE(platform.FileExists(
@@ -484,7 +579,13 @@ TEST_F(MigrationHelperTest, MigrateInProgress) {
   constexpr char kFile2[] = "kFile2";
   ASSERT_TRUE(platform.TouchFileDurable(from_dir_.path().Append(kFile1)));
   ASSERT_TRUE(platform.TouchFileDurable(to_dir_.path().Append(kFile2)));
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
+                             to_dir_.path(),
+                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                        base::Unretained(this))));
+  EXPECT_GT(status_values_.size(), 1);
+  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
+            status_values_[status_values_.size() - 1]);
 
   // Both files have been moved to to_dir_
   EXPECT_TRUE(platform.FileExists(to_dir_.path().Append(kFile1)));
@@ -508,7 +609,13 @@ TEST_F(MigrationHelperTest, MigrateInProgressDuplicateFile) {
   ASSERT_TRUE(platform.TouchFileDurable(from_dir_.path().Append(kFile1)));
   ASSERT_TRUE(platform.TouchFileDurable(to_dir_.path().Append(kFile1)));
   ASSERT_TRUE(platform.TouchFileDurable(to_dir_.path().Append(kFile2)));
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
+                             to_dir_.path(),
+                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                        base::Unretained(this))));
+  EXPECT_GT(status_values_.size(), 1);
+  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
+            status_values_[status_values_.size() - 1]);
 
   // Both files have been moved to to_dir_
   EXPECT_TRUE(platform.FileExists(to_dir_.path().Append(kFile1)));
@@ -547,7 +654,13 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFile) {
   ASSERT_EQ(kFinalFileSize, kToFile.GetLength());
   kToFile.Close();
 
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
+                             to_dir_.path(),
+                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                        base::Unretained(this))));
+  EXPECT_GT(status_values_.size(), 1);
+  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
+            status_values_[status_values_.size() - 1]);
 
   // File has been moved to to_dir_
   char to_contents[kFinalFileSize];
@@ -589,7 +702,13 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFileDuplicateData) {
   ASSERT_EQ(kFinalFileSize, kToFile.GetLength());
   kToFile.Close();
 
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
+                             to_dir_.path(),
+                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                        base::Unretained(this))));
+  EXPECT_GT(status_values_.size(), 1);
+  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
+            status_values_[status_values_.size() - 1]);
 
   // File has been moved to to_dir_
   char to_contents[kFinalFileSize];
@@ -598,6 +717,73 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFileDuplicateData) {
   EXPECT_EQ(std::string(full_contents, kFinalFileSize),
             std::string(to_contents, kFinalFileSize));
   EXPECT_FALSE(platform.FileExists(kFromFilePath));
+}
+
+TEST_F(MigrationHelperTest, ProgressCallback) {
+  Platform platform;
+  MigrationHelper helper(
+      &platform, status_files_dir_.path(), kDefaultChunkSize);
+  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
+  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+
+  constexpr char kFileName[] = "file";
+  constexpr char kLinkName[] = "link";
+  constexpr char kDirName[] = "dir";
+  const FilePath kFromSubdir = from_dir_.path().Append(kDirName);
+  const FilePath kFromFile = kFromSubdir.Append(kFileName);
+  const FilePath kFromLink = kFromSubdir.Append(kLinkName);
+  const FilePath kToSubdir = to_dir_.path().Append(kDirName);
+  const FilePath kToFile = kToSubdir.Append(kFileName);
+
+  const size_t kFileSize = kDefaultChunkSize;
+  char from_contents[kFileSize];
+  base::RandBytes(from_contents, kFileSize);
+  ASSERT_TRUE(base::CreateDirectory(kFromSubdir));
+  ASSERT_TRUE(base::CreateSymbolicLink(kFromFile.BaseName(), kFromLink));
+  ASSERT_EQ(kFileSize, base::WriteFile(kFromFile, from_contents, kFileSize));
+
+  int64_t expected_size = kFileSize;
+  expected_size += kFromFile.BaseName().value().length();
+  int64_t dir_size;
+  ASSERT_TRUE(platform.GetFileSize(kFromSubdir, &dir_size));
+  expected_size += dir_size;
+
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
+                             to_dir_.path(),
+                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                        base::Unretained(this))));
+  EXPECT_GT(status_values_.size(), 1);
+  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
+            status_values_[status_values_.size() - 1]);
+
+  ASSERT_EQ(migrated_values_.size(), total_values_.size());
+  int callbacks = migrated_values_.size();
+  EXPECT_GT(callbacks, 2);
+  EXPECT_EQ(callbacks, total_values_.size());
+  EXPECT_EQ(callbacks, status_values_.size());
+
+  // Verify that the progress goes from initializing to in_progress to success
+  EXPECT_EQ(DIRCRYPTO_MIGRATION_INITIALIZING, status_values_[0]);
+  for (int i = 1; i < callbacks - 1; i++) {
+    SCOPED_TRACE(i);
+    EXPECT_EQ(DIRCRYPTO_MIGRATION_IN_PROGRESS, status_values_[i]);
+  }
+  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS, status_values_[callbacks - 1]);
+
+  // Verify that migrated value starts at 0 and increases to total
+  EXPECT_EQ(0, migrated_values_[1]);
+  for (int i = 2; i < callbacks - 1; i++) {
+    SCOPED_TRACE(i);
+    EXPECT_GE(migrated_values_[i], migrated_values_[i - 1]);
+  }
+  EXPECT_EQ(expected_size, migrated_values_[callbacks - 1]);
+
+  // Verify that total always matches the expected size
+  EXPECT_EQ(callbacks, total_values_.size());
+  for (int i = 1; i < callbacks; i++) {
+    SCOPED_TRACE(i);
+    EXPECT_EQ(expected_size, total_values_[i]);
+  }
 }
 
 class DataMigrationTest : public MigrationHelperTest,
@@ -619,7 +805,13 @@ TEST_P(DataMigrationTest, CopyFileData) {
   base::RandBytes(from_contents, kFileSize);
   ASSERT_EQ(kFileSize, base::WriteFile(kFromFile, from_contents, kFileSize));
 
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
+                             to_dir_.path(),
+                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                        base::Unretained(this))));
+  EXPECT_GT(status_values_.size(), 1);
+  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
+            status_values_[status_values_.size() - 1]);
 
   char to_contents[kFileSize];
   EXPECT_EQ(kFileSize, base::ReadFile(kToFile, to_contents, kFileSize));

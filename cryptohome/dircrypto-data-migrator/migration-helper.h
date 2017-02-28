@@ -6,8 +6,10 @@
 
 #include <string>
 
+#include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "cryptohome/platform.h"
 
@@ -32,6 +34,14 @@ extern const base::FilePath::CharType kMigrationStartedFileName[];
 //   option.
 class MigrationHelper {
  public:
+  // Callback for monitoring migration progress.  The first parameter is the
+  // number of bytes migrated so far, and the second parameter is the total
+  // number of bytes that need to be migrated, including what has already been
+  // migrated.  If status is DIRCRYPTO_MIGRATION_INITIALIZING the values in
+  // migrated should be ignored as they are undefined.
+  using ProgressCallback = base::Callback<void(
+      uint64_t migrated, uint64_t total, DircryptoMigrationStatus status)>;
+
   MigrationHelper(Platform* platform,
                   const base::FilePath& status_files_dir,
                   uint64_t chunk_size);
@@ -52,12 +62,27 @@ class MigrationHelper {
   // Parameters
   //   from - Where to move files from.  Must be an absolute path.
   //   to - Where to move files into.  Must be an absolute path.
-  bool Migrate(const base::FilePath& from, const base::FilePath& to);
+  //   progress_callback - function that will be called regularly to update on
+  //   the progress of the migration.  Callback will be executed from the same
+  //   thread as the migration, so long-running callbacks may block the
+  //   migration.  May not be null.
+  bool Migrate(const base::FilePath& from,
+               const base::FilePath& to,
+               const ProgressCallback& progress_callback);
 
   // Returns true if the migration has been started, but not finished.
   bool IsMigrationStarted() const;
 
  private:
+  // Calculate the total number of bytes to be migrated, populating
+  // |total_byte_count_| with the result.
+  void CalculateDataToMigrate(const base::FilePath& from);
+  // Increment the number of bytes migrated, potentially reporting the status if
+  // its time for a new report.
+  void IncrementMigratedBytes(uint64_t bytes);
+  // Call |progress_callback_| with the number of bytes already migrated, the
+  // total number of bytes to be migrated, and the migration status.
+  void ReportStatus(DircryptoMigrationStatus status);
   // Creates a new directory that is the result of appending |child| to |to|,
   // migrating recursively all contents of the source directory.
   //
@@ -93,8 +118,12 @@ class MigrationHelper {
                                         ssize_t size);
 
   Platform* platform_;
+  ProgressCallback progress_callback_;
   const base::FilePath status_files_dir_;
   const uint64_t chunk_size_;
+  uint64_t total_byte_count_;
+  uint64_t migrated_byte_count_;
+  base::TimeTicks next_report_;
   std::string namespaced_mtime_xattr_name_;
   std::string namespaced_atime_xattr_name_;
 
