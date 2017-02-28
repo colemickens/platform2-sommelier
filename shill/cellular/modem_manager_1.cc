@@ -16,7 +16,10 @@
 
 #include "shill/cellular/modem_manager.h"
 
+#include <utility>
+
 #include <base/bind.h>
+#include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
 #include <ModemManager/ModemManager.h>
 
@@ -27,7 +30,6 @@
 
 using base::Bind;
 using std::string;
-using std::shared_ptr;
 using std::vector;
 
 namespace shill {
@@ -88,19 +90,16 @@ void ModemManager1::AddModem1(const string& path,
   if (ModemExists(path)) {
     return;
   }
-  shared_ptr<Modem1> modem1(new Modem1(service(),
-                                       path,
-                                       modem_info(),
-                                       control_interface()));
-  RecordAddedModem(modem1);
-  InitModem1(modem1, properties);
+
+  auto modem = base::MakeUnique<Modem1>(
+      service(), path, modem_info(), control_interface());
+  InitModem1(modem.get(), properties);
+
+  RecordAddedModem(std::move(modem));
 }
 
-void ModemManager1::InitModem1(shared_ptr<Modem1> modem,
+void ModemManager1::InitModem1(Modem1* modem,
                                const InterfaceToProperties& properties) {
-  if (modem == nullptr) {
-    return;
-  }
   modem->CreateDeviceMM1(properties);
 }
 

@@ -16,6 +16,9 @@
 
 #include "shill/cellular/modem_manager.h"
 
+#include <utility>
+
+#include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
 #include <mm/mm-modem.h>
 
@@ -27,7 +30,6 @@
 #include "shill/manager.h"
 
 using std::string;
-using std::shared_ptr;
 using std::vector;
 
 namespace shill {
@@ -75,8 +77,8 @@ bool ModemManager::ModemExists(const std::string& path) const {
   }
 }
 
-void ModemManager::RecordAddedModem(shared_ptr<Modem> modem) {
-  modems_[modem->path()] = modem;
+void ModemManager::RecordAddedModem(std::unique_ptr<Modem> modem) {
+  modems_[modem->path()] = std::move(modem);
 }
 
 void ModemManager::RemoveModem(const string& path) {
@@ -135,24 +137,20 @@ void ModemManagerClassic::AddModemClassic(const string& path) {
   if (ModemExists(path)) {
     return;
   }
-  shared_ptr<ModemClassic> modem(new ModemClassic(service(),
-                                                  path,
-                                                  modem_info(),
-                                                  control_interface()));
-  RecordAddedModem(modem);
-  InitModemClassic(modem);
+
+  auto modem = base::MakeUnique<ModemClassic>(
+      service(), path, modem_info(), control_interface());
+  InitModemClassic(modem.get());
+
+  RecordAddedModem(std::move(modem));
 }
 
 void ModemManagerClassic::Disconnect() {
   ModemManager::Disconnect();
 }
 
-void ModemManagerClassic::InitModemClassic(shared_ptr<ModemClassic> modem) {
+void ModemManagerClassic::InitModemClassic(ModemClassic* modem) {
   // TODO(rochberg): Switch to asynchronous calls (crbug.com/200687).
-  if (modem == nullptr) {
-    return;
-  }
-
   std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy(
       control_interface()->CreateDBusPropertiesProxy(modem->path(),
                                                      modem->service()));

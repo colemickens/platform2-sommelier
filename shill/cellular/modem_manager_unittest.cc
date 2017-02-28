@@ -16,6 +16,7 @@
 
 #include "shill/cellular/modem_manager.h"
 
+#include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
 #include <ModemManager/ModemManager.h>
 
@@ -30,7 +31,6 @@
 #include "shill/testing.h"
 
 using std::string;
-using std::shared_ptr;
 using std::vector;
 using testing::_;
 using testing::Pointee;
@@ -47,17 +47,15 @@ class ModemManagerTest : public Test {
       : manager_(&control_, &dispatcher_, nullptr),
         modem_info_(&control_, &dispatcher_, nullptr, &manager_) {}
 
-  virtual void SetUp() {
-    modem_.reset(
-        new StrictModem(kService, kModemPath, &modem_info_, &control_));
-  }
-
  protected:
   static const char kService[];
   static const char kPath[];
   static const char kModemPath[];
 
-  shared_ptr<StrictModem> modem_;
+  std::unique_ptr<StrictModem> CreateModem() {
+    return base::MakeUnique<StrictModem>(
+        kService, kModemPath, &modem_info_, &control_);
+  }
 
   EventDispatcherForTest dispatcher_;
   MockControl control_;
@@ -96,7 +94,7 @@ TEST_F(ModemManagerCoreTest, ConnectDisconnect) {
   modem_manager_.Connect();
   EXPECT_TRUE(modem_manager_.service_connected_);
 
-  modem_manager_.RecordAddedModem(modem_);
+  modem_manager_.RecordAddedModem(CreateModem());
   EXPECT_EQ(1, modem_manager_.modems_.size());
 
   modem_manager_.ModemManager::Disconnect();
@@ -112,11 +110,11 @@ TEST_F(ModemManagerCoreTest, AddRemoveModem) {
   modem_manager_.RemoveModem(kModemPath);
   EXPECT_FALSE(modem_manager_.ModemExists(kModemPath));
 
-  modem_manager_.RecordAddedModem(modem_);
+  modem_manager_.RecordAddedModem(CreateModem());
   EXPECT_TRUE(modem_manager_.ModemExists(kModemPath));
 
   // Add an already added modem.
-  modem_manager_.RecordAddedModem(modem_);
+  modem_manager_.RecordAddedModem(CreateModem());
   EXPECT_TRUE(modem_manager_.ModemExists(kModemPath));
 
   modem_manager_.RemoveModem(kModemPath);
@@ -135,7 +133,7 @@ class ModemManagerClassicMockInit : public ModemManagerClassic {
                               ModemInfo* modem_info_) :
       ModemManagerClassic(control_interface, service, path, modem_info_) {}
 
-  MOCK_METHOD1(InitModemClassic, void(shared_ptr<ModemClassic>));
+  MOCK_METHOD1(InitModemClassic, void(ModemClassic*));
 };
 
 class ModemManagerClassicTest : public ModemManagerTest {
@@ -183,8 +181,7 @@ class ModemManager1MockInit : public ModemManager1 {
                         const string& path,
                         ModemInfo* modem_info_) :
       ModemManager1(control_interface, service, path, modem_info_) {}
-  MOCK_METHOD2(InitModem1, void(shared_ptr<Modem1>,
-                                const InterfaceToProperties&));
+  MOCK_METHOD2(InitModem1, void(Modem1*, const InterfaceToProperties&));
 };
 
 
