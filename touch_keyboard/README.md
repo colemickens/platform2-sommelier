@@ -16,6 +16,11 @@ When you build this package it will generate an executable called
 /usr/bin/touch\_keyboard\_handler that gets started automatically on boot by
 an upstart script.
 
+This package also includes a command line tool to test the vibrator
+for the touch keyboard: /usr/bin/touchkb\_haptic\_test. It operates the
+symlink of left vibrator and right vibrator under /dev/left\_vibrator
+and /dev/right\_vibrator. The proper symlink should be created by udev rules.
+
 ## Class descriptions
 
 ### FakeTouchpad
@@ -42,3 +47,22 @@ module, and then generate input event programmatically.
 This class processes Evdev events into a more manageable format
 by mimicking the kernel's state machine, and allows us to make sense
 of the events captured from the source touch sensor.
+
+## Haptic Test
+
+### Usage
+| parameter     |  explain   |
+|---------------|------------|
+help            |    Show help message.
+duramtion\_ms   |    Set the duration of vibration in ms. Default is 1000.
+magnitude       |    Set the strength of vibration, the value is from 0.0 to 1.0. Default is 1.0.
+vibrator        |    Select left or right motor. Default is "left".
+
+### Example
+Drive the left vibrator at max strength for 500ms:
+
+    $touchkb\_haptic\_test --vibrator=left --magnitude=1.0 --duration\_ms=500
+
+Drive the right vibrator at half strength for 300ms:
+
+    $touchkb\_haptic\_test --vibrator=right --magnitude=0.5 --duration\_ms=300
