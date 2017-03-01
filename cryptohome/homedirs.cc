@@ -10,7 +10,6 @@
 
 #include <base/bind.h>
 #include <base/files/file_path.h>
-#include <base/json/json_file_value_serializer.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
@@ -39,6 +38,7 @@ const FilePath::CharType *kShadowRoot = "/home/.shadow";
 const char *kEmptyOwner = "";
 const char kGCacheFilesAttribute[] = "user.GCacheFiles";
 const char kAndroidCacheFilesAttribute[] = "user.AndroidCache";
+const char kTrackedDirectoryNameAttribute[] = "user.TrackedDirectoryName";
 
 HomeDirs::HomeDirs()
     : default_platform_(new Platform()),
@@ -830,68 +830,39 @@ void HomeDirs::RemoveNonOwnerDirectories(const FilePath& prefix) {
 
 bool HomeDirs::GetTrackedDirectory(
     const FilePath& user_dir, const FilePath& tracked_dir_name, FilePath* out) {
-  FilePath json_path = user_dir.Append(kTrackedDirectoriesJsonFile);
-  if (platform_->FileExists(json_path)) {
-    // This is dircrypto. Use the JSON file to locate the directory.
-    JSONFileValueDeserializer deserializer(json_path);
-    std::string err_msg;
-    std::unique_ptr<base::Value> value(
-        deserializer.Deserialize(nullptr, &err_msg));
-    if (!value) {
-      LOG(ERROR) << "Unable to deserialize " << json_path.value() << " : "
-                 << err_msg;
-      return false;
-    }
-    const base::DictionaryValue* dictionary = nullptr;
-    if (!value->GetAsDictionary(&dictionary)) {
-      LOG(ERROR) << "JSON value is not a dictionary.";
-      return false;
-    }
-    return GetTrackedDirectoryForDirCrypto(
-        user_dir.Append(kMountDir), tracked_dir_name, *dictionary, out);
-  } else {
+  FilePath vault_path = user_dir.Append(kVaultDir);
+  if (platform_->DirectoryExists(vault_path)) {
     // On Ecryptfs, tracked directories' names are not encrypted.
     *out = user_dir.Append(kVaultDir).Append(tracked_dir_name);
     return true;
   }
+  // This is dircrypto. Use the xattr to locate the directory.
+  return GetTrackedDirectoryForDirCrypto(
+      user_dir.Append(kMountDir), tracked_dir_name, out);
 }
 
 bool HomeDirs::GetTrackedDirectoryForDirCrypto(
     const FilePath& mount_dir,
     const FilePath& tracked_dir_name,
-    const base::DictionaryValue& name_to_inode,
     FilePath* out) {
   FilePath current_name;
   FilePath current_path = mount_dir;
 
-  // Iterate over name components.
+  // Iterate over name components. This way, we don't have to inspect every
+  // directory under |mount_dir|.
   std::vector<std::string> name_components;
   tracked_dir_name.GetComponents(&name_components);
   for (const auto& name_component : name_components) {
-    // Get the inode to find.
-    current_name = current_name.Append(name_component);
-    std::string inode_string;
-    if (!name_to_inode.GetStringWithoutPathExpansion(
-            current_name.AsUTF8Unsafe(), &inode_string)) {
-      LOG(ERROR) << "Unknown tracked dir " << tracked_dir_name.value();
-      return false;
-    }
-    uint64_t inode_to_find = 0;
-    if (!base::StringToUint64(inode_string, &inode_to_find)) {
-      LOG(ERROR) << "Failed to parse inode value " << inode_string;
-      return false;
-    }
-    // Find a directory with the inode value.
     FilePath next_path;
     std::unique_ptr<FileEnumerator> enumerator(
         platform_->GetFileEnumerator(current_path, false /* recursive */,
                                      base::FileEnumerator::DIRECTORIES));
     for (FilePath dir = enumerator->Next(); !dir.empty();
          dir = enumerator->Next()) {
-      const auto inode = enumerator->GetInfo().stat().st_ino;
-      static_assert(sizeof(inode) <= sizeof(inode_to_find),
-                    "inode shouldn't be larger than 64 bits.");
-      if (inode == inode_to_find) {
+      std::string name;
+      if (platform_->GetExtendedFileAttributeAsString(
+              dir, kTrackedDirectoryNameAttribute, &name) &&
+          name == name_component) {
         // This is the directory we're looking for.
         next_path = dir;
         break;

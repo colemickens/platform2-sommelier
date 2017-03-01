@@ -9,7 +9,6 @@
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/json/json_file_value_serializer.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/cryptohome.h>
@@ -111,12 +110,6 @@ class HomeDirsTest : public ::testing::Test {
   virtual ~HomeDirsTest() { }
 
   void SetUp() {
-    // Pretend we are not using dircrypto.
-    // TODO(hashimoto): Remove this.
-    EXPECT_CALL(platform_, FileExists(
-        Property(&FilePath::value, EndsWith(kTrackedDirectoriesJsonFile))))
-        .WillRepeatedly(Return(false));
-
     test_helper_.SetUpSystemSalt();
     // TODO(wad) Only generate the user data we need. This is time consuming.
     // TODO(hashimoto): Test both force_ecryptfs=true/false cases.
@@ -265,16 +258,17 @@ TEST_F(HomeDirsTest, ComputeSizeWithNonexistentUser) {
 }
 
 TEST_F(HomeDirsTest, GetTrackedDirectoryForDirCrypto) {
+  Platform real_platform;
   // Use real PathExists.
   EXPECT_CALL(platform_, FileExists(_)).WillRepeatedly(
-      Invoke([](const FilePath& path) {
-        return base::PathExists(path);
-      }));
+      Invoke(&real_platform, &Platform::FileExists));
   // Use real FileEnumerator.
   EXPECT_CALL(platform_, GetFileEnumerator(_, _, _)).WillRepeatedly(
-      Invoke([](const FilePath& root_path, bool recursive, int file_type) {
-        return new FileEnumerator(root_path, recursive, file_type);
-      }));
+      Invoke(&real_platform, &Platform::GetFileEnumerator));
+  // Use real GetExtendedFileAttributeAsString
+  EXPECT_CALL(platform_, GetExtendedFileAttributeAsString(_, _, _))
+      .WillRepeatedly(Invoke(&real_platform,
+                             &Platform::GetExtendedFileAttributeAsString));
 
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
@@ -287,20 +281,14 @@ TEST_F(HomeDirsTest, GetTrackedDirectoryForDirCrypto) {
     FILE_PATH_LITERAL("bbb/ccc"),
     FILE_PATH_LITERAL("bbb/ccc/ddd"),
   };
-  // Prepare directories and a dictionary.
-  base::DictionaryValue name_to_inode;
+  // Prepare directories.
   for (const auto& directory : kDirectories) {
     const FilePath path = mount_dir.Append(FilePath(directory));
     ASSERT_TRUE(base::CreateDirectory(path));
-    struct stat buf = {};
-    EXPECT_EQ(0, lstat(path.value().c_str(), &buf));
-    name_to_inode.SetStringWithoutPathExpansion(
-        directory, base::Uint64ToString(buf.st_ino));
+    std::string name = path.BaseName().value();
+    ASSERT_TRUE(real_platform.SetExtendedFileAttribute(
+        path, kTrackedDirectoryNameAttribute, name.data(), name.length()));
   }
-  // Save the dictionary.
-  JSONFileValueSerializer serializer(temp_dir.path().Append(
-      FilePath(kTrackedDirectoriesJsonFile)));
-  ASSERT_TRUE(serializer.Serialize(name_to_inode));
 
   // Use GetTrackedDirectoryForDirCrypto() to get the path.
   // When dircrypto is being used and we don't have the key, the returned path
@@ -484,12 +472,6 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
       FileExists(
         Property(&FilePath::value, StartsWith(homedir_paths_[0].value()))))
     .WillRepeatedly(Return(true));
-  // Pretend we are not using dircrypto.
-  // TODO(hashimoto): Remove this.
-  EXPECT_CALL(platform_,
-      FileExists(
-        Property(&FilePath::value, EndsWith(kTrackedDirectoriesJsonFile))))
-    .WillRepeatedly(Return(false));
 
   MockVaultKeyset* vk[arraysize(kHomedirs)];
   EXPECT_CALL(vault_keyset_factory_, New(_, _))

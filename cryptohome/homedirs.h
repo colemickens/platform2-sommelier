@@ -18,7 +18,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/time/time.h>
-#include <base/values.h>
 #include <chaps/token_manager_client.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
@@ -38,6 +37,7 @@ const int64_t kFreeSpaceThresholdToTriggerCleanup = 1LL << 30;
 const int64_t kTargetFreeSpaceAfterCleanup = 2LL << 30;
 extern const char kGCacheFilesAttribute[];
 extern const char kAndroidCacheFilesAttribute[];
+extern const char kTrackedDirectoryNameAttribute[];
 
 class Credentials;
 class Platform;
@@ -225,7 +225,6 @@ class HomeDirs {
   bool GetTrackedDirectoryForDirCrypto(
       const base::FilePath& mount_dir,
       const base::FilePath& tracked_dir_name,
-      const base::DictionaryValue& name_to_inode,
       base::FilePath* out);
   typedef base::Callback<void(const base::FilePath&)> CryptohomeCallback;
   // Runs the supplied callback for every unmounted cryptohome with the user dir

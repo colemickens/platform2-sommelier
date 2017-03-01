@@ -65,8 +65,6 @@ extern const int kKeyFileMax;
 extern const char kEphemeralMountType[];
 extern const base::FilePath::CharType kEphemeralDir[];
 extern const base::FilePath::CharType kGuestMountPath[];
-// JSON file to remember inode of tracked directories.
-extern const base::FilePath::CharType kTrackedDirectoriesJsonFile[];
 
 class BootLockbox;
 class ChapsClientFactory;
@@ -502,13 +500,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Parameters
   //   credentials - The credentials representing the user
   base::FilePath GetUserMountDirectory(
-      const std::string& obfuscated_username) const;
-
-  // Gets the user's tracked directory JSON file used for dircrypto.
-  //
-  // Parameters
-  //   obfuscated_username - Obfuscated username field of the credentials.
-  base::FilePath GetUserTrackedDirectoriesJsonFilePath(
       const std::string& obfuscated_username) const;
 
   // Returns the path of a user passthrough inside a vault

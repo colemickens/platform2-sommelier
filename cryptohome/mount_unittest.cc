@@ -17,7 +17,6 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/json/json_string_value_serializer.h>
 #include <base/logging.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
@@ -61,6 +60,7 @@ using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::SetArgPointee;
 using ::testing::StartsWith;
+using ::testing::StrEq;
 using ::testing::StrictMock;
 using ::testing::Unused;
 using ::testing::WithArgs;
@@ -1591,40 +1591,16 @@ TEST_P(MountTest, CreateTrackedSubdirectories) {
         SetOwnership(tracked_dir_path, chronos_uid_, chronos_gid_, true))
         .WillOnce(Return(true));
     if (!ShouldTestEcryptfs()) {
-      EXPECT_CALL(platform_, Stat(tracked_dir_path, _))
-        .WillOnce(Return(true));
+      // For dircrypto, xattr should be set.
+      EXPECT_CALL(platform_, SetExtendedFileAttribute(
+          tracked_dir_path,
+          kTrackedDirectoryNameAttribute,
+          StrEq(tracked_dir_path.BaseName().value()),
+          tracked_dir_path.BaseName().value().size())).WillOnce(Return(true));
     }
-  }
-  // For dircrypto, JSON file should be written.
-  std::string json_string;
-  if (!ShouldTestEcryptfs()) {
-    EXPECT_CALL(platform_,
-                WriteStringToFile(user->tracked_directories_json_path, _))
-      .WillOnce(DoAll(SaveArg<1>(&json_string), Return(true)));
   }
   // Run the method.
   EXPECT_TRUE(mount_->CreateTrackedSubdirectories(up, true /* is_new */));
-
-  // For dircrypto, check the contents of the JSON file.
-  if (!ShouldTestEcryptfs()) {
-    std::unique_ptr<base::Value> value = JSONStringValueDeserializer(
-        json_string).Deserialize(nullptr, nullptr);
-    ASSERT_TRUE(value.get());
-    base::DictionaryValue* dictionary = nullptr;
-    ASSERT_TRUE(value->GetAsDictionary(&dictionary));
-
-    // The dictionary should contain all tracked subdirectories and their
-    // parents.
-    for (const auto& tracked_dir : Mount::GetTrackedSubdirectories()) {
-      SCOPED_TRACE(tracked_dir.value());
-      for (FilePath current = tracked_dir;
-           current.value() != FilePath::kCurrentDirectory;
-           current = current.DirName()) {
-        SCOPED_TRACE(current.value());
-        EXPECT_TRUE(dictionary->HasKey(current.AsUTF8Unsafe()));
-      }
-    }
-  }
 }
 
 // Test setup that initially has no cryptohomes.

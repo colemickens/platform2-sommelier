@@ -16,7 +16,6 @@
 
 #include <base/bind.h>
 #include <base/files/file_path.h>
-#include <base/json/json_string_value_serializer.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/sha1.h>
@@ -89,8 +88,6 @@ const FilePath::CharType kEphemeralDir[] = "ephemeralfs";
 const char kEphemeralMountType[] = "tmpfs";
 const FilePath::CharType kGuestMountPath[] = "guestfs";
 const char kEphemeralMountPerms[] = "mode=0700";
-const FilePath::CharType kTrackedDirectoriesJsonFile[] =
-    "tracked_directories.json";
 
 const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
 const gid_t kDaemonStoreGid = 400;
@@ -928,7 +925,6 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
   // want to have as many of the specified tracked directories created as
   // possible.
   bool result = true;
-  base::DictionaryValue name_to_inode;
   for (const auto& tracked_dir : GetTrackedSubdirectories()) {
     const FilePath tracked_dir_path = dest_dir.Append(tracked_dir);
     if (mount_type_ == MountType::ECRYPTFS) {
@@ -957,30 +953,17 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
       }
     }
     if (mount_type_ == MountType::DIR_CRYPTO) {
-      // Remember inode values of tracked directories.
-      struct stat buf = {};
-      if (!platform_->Stat(tracked_dir_path, &buf)) {
-        PLOG(ERROR) << "Unable to stat " << tracked_dir_path.value();
+      // Set xattr to make this directory trackable.
+      std::string name = tracked_dir_path.BaseName().value();
+      if (!platform_->SetExtendedFileAttribute(
+              tracked_dir_path,
+              kTrackedDirectoryNameAttribute,
+              name.data(),
+              name.length())) {
+        PLOG(ERROR) << "Unable to set xattr " << tracked_dir_path.value();
         result = false;
         continue;
       }
-      static_assert(sizeof(buf.st_ino) <= sizeof(uint64_t),
-                    "inode shouldn't be larger than 64 bits.");
-      name_to_inode.SetStringWithoutPathExpansion(
-          tracked_dir.AsUTF8Unsafe(), base::Uint64ToString(buf.st_ino));
-    }
-  }
-  if (mount_type_ == MountType::DIR_CRYPTO) {
-    // HomeDirs::GetTrackedDirectory() needs inode values of tracked directories
-    // and all their parents to locate directories.
-    std::string json_string;
-    JSONStringValueSerializer serializer(&json_string);
-    if (!serializer.Serialize(name_to_inode) ||
-        !platform_->WriteStringToFile(
-            GetUserTrackedDirectoriesJsonFilePath(obfuscated_username),
-            json_string)) {
-      LOG(ERROR) << "Failed to write tracked directories' inode values.";
-      result = false;
     }
   }
   return result;
@@ -1378,12 +1361,6 @@ FilePath Mount::GetUserVaultPath(
 FilePath Mount::GetUserMountDirectory(
     const std::string& obfuscated_username) const {
   return shadow_root_.Append(obfuscated_username).Append(kMountDir);
-}
-
-FilePath Mount::GetUserTrackedDirectoriesJsonFilePath(
-    const std::string& obfuscated_username) const {
-  return shadow_root_.Append(obfuscated_username).Append(
-      kTrackedDirectoriesJsonFile);
 }
 
 FilePath Mount::VaultPathToUserPath(const FilePath& vault) const {
