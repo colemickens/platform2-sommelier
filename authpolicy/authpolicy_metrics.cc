@@ -21,10 +21,11 @@ std::string MakeFullName(const char* metric_name) {
   return std::string(kMetricNamePrefix) + metric_name;
 }
 
-// UMA histogram parameters. The bucket layout is exponential. See
-// MetricsLibrary::SendToUMA and base::Histogram for more details. |enum_value|
-// is a safety parameter to make sure that the array index matches the enum
-// value.
+// UMA histogram parameters. The bucket layout is exponential with implicit
+// underflow and overflow buckets for [0, min_sample - 1) and [max_sample, inf),
+// respectively, counting towards |num_buckets|. See MetricsLibrary::SendToUMA
+// and base::Histogram for more details. |enum_value| is a safety parameter to
+// make sure that the array index matches the enum value.
 struct HistogramParams {
   int enum_value;
   const char* metric_name;
@@ -35,25 +36,26 @@ struct HistogramParams {
 
 // |max_sample| is the max time in milliseconds. Keep in sync with TimerType!
 constexpr HistogramParams kTimerHistogramParams[TIMER_COUNT] = {
-    {TIMER_NET_ADS_GPO_LIST, "TimeToRunNetAdsGpo", 0, 120000, 50},
-    {TIMER_NET_ADS_INFO, "TimeToRunNetAdsInfo", 0, 120000, 50},
-    {TIMER_NET_ADS_JOIN, "TimeToRunNetAdsJoin", 0, 120000, 50},
-    {TIMER_NET_ADS_SEARCH, "TimeToRunNetAdsSearch", 0, 120000, 50},
-    {TIMER_NET_ADS_WORKGROUP, "TimeToRunNetAdsWorkgroup", 0, 120000, 50},
-    {TIMER_KINIT, "TimeToRunKinit", 0, 120000, 50},
-    {TIMER_SMBCLIENT, "TimeToRunSmbclient", 0, 120000, 50},
-    {TIMER_AUTHENTICATE_USER, "TimeToAuthenticateUser", 0, 600000, 50},
-    {TIMER_JOIN_AD_DOMAIN, "TimeToJoinADDomain", 0, 600000, 50},
-    {TIMER_REFRESH_USER_POLICY, "TimeToRefreshUserPolicy", 0, 600000, 50},
-    {TIMER_REFRESH_DEVICE_POLICY, "TimeToRefreshDevicePolicy", 0, 600000, 50},
+    {TIMER_NET_ADS_GPO_LIST, "TimeToRunNetAdsGpo", 1, 120000, 50},
+    {TIMER_NET_ADS_INFO, "TimeToRunNetAdsInfo", 1, 120000, 50},
+    {TIMER_NET_ADS_JOIN, "TimeToRunNetAdsJoin", 1, 120000, 50},
+    {TIMER_NET_ADS_SEARCH, "TimeToRunNetAdsSearch", 1, 120000, 50},
+    {TIMER_NET_ADS_WORKGROUP, "TimeToRunNetAdsWorkgroup", 1, 120000, 50},
+    {TIMER_KINIT, "TimeToRunKinit", 1, 120000, 50},
+    {TIMER_SMBCLIENT, "TimeToRunSmbclient", 1, 120000, 50},
+    {TIMER_AUTHENTICATE_USER, "TimeToAuthenticateUser", 1, 600000, 50},
+    {TIMER_JOIN_AD_DOMAIN, "TimeToJoinADDomain", 1, 600000, 50},
+    {TIMER_REFRESH_USER_POLICY, "TimeToRefreshUserPolicy", 1, 600000, 50},
+    {TIMER_REFRESH_DEVICE_POLICY, "TimeToRefreshDevicePolicy", 1, 600000, 50},
 };
 
-// UMA histogram parameters. The bucket layout is exponential. See
-// Keep in sync with MetricType!
+// UMA histogram parameters. The |max_sample| for the *_TRY_COUNT stats to
+// (max_tries - 1), so that the overflow bucket captures everything that failed
+// too many times. Keep in sync with MetricType!
 constexpr HistogramParams kMetricHistogramParams[METRIC_COUNT] = {
-    {METRIC_KINIT_TRY_COUNT, "TriesOfKinit", 1, 61, 30},
-    {METRIC_SMBCLIENT_TRY_COUNT, "TriesOfSmbClient", 1, 6, 7},
-    {METRIC_DOWNLOAD_GPO_COUNT, "NumGposToDownload", 0, 1000, 50},
+    {METRIC_KINIT_FAILED_TRY_COUNT, "FailedTriesOfKinit", 1, 59, 30},
+    {METRIC_SMBCLIENT_FAILED_TRY_COUNT, "FailedTriesOfSmbClient", 1, 4, 5},
+    {METRIC_DOWNLOAD_GPO_COUNT, "NumGposToDownload", 1, 1000, 50},
 };
 
 // D-Bus metric name plus a parameter to make sure array indices match enum

@@ -726,7 +726,7 @@ ErrorType SambaInterface::DownloadGpos(
   smb_client_cmd.SetEnv(kKrb5ConfEnvKey,  // Kerberos configuration file path.
                         kFilePrefix + paths_->Get(Path::KRB5_CONF));
   bool success = false;
-  int tries;
+  int tries, failed_tries = 0;
   for (tries = 1; tries <= kSmbClientMaxTries; ++tries) {
     // Sleep after it tried with both types of krb5.conf.
     if (tries > 2) {
@@ -739,6 +739,7 @@ ErrorType SambaInterface::DownloadGpos(
       error = ERROR_NONE;
       break;
     }
+    failed_tries++;
     error = GetSmbclientError(smb_client_cmd);
     if (error != ERROR_NETWORK_PROBLEM &&
         error != ERROR_CONTACTING_KDC_FAILED) {
@@ -752,8 +753,7 @@ ErrorType SambaInterface::DownloadGpos(
         return error;
     }
   }
-  metrics_->Report(METRIC_SMBCLIENT_TRY_COUNT,
-                   std::min(tries, kSmbClientMaxTries));
+  metrics_->Report(METRIC_SMBCLIENT_FAILED_TRY_COUNT, failed_tries);
 
   if (!success) {
     // The exit code of smbclient corresponds to the LAST command issued. Thus,
@@ -1080,7 +1080,7 @@ ErrorType SambaInterface::FetchDeviceGpos(std::string* policy_blob) {
   bool success = false;
   const int max_tries =
       retry_machine_kinit_ ? std::max(kMachineKinitMaxTries, 2) : 2;
-  int tries;
+  int tries, failed_tries = 0;
   for (tries = 1; tries <= max_tries; ++tries) {
     // Sleep after it tried with both types of krb5.conf.
     if (tries > 2) {
@@ -1093,6 +1093,7 @@ ErrorType SambaInterface::FetchDeviceGpos(std::string* policy_blob) {
       break;
     }
     OutputKinitTrace();
+    failed_tries++;
     error = GetKinitError(kinit_cmd);
     if (error != ERROR_BAD_USER_NAME && error != ERROR_BAD_PASSWORD &&
         error != ERROR_CONTACTING_KDC_FAILED) {
@@ -1105,7 +1106,7 @@ ErrorType SambaInterface::FetchDeviceGpos(std::string* policy_blob) {
         break;
     }
   }
-  metrics_->Report(METRIC_KINIT_TRY_COUNT, std::min(tries, max_tries));
+  metrics_->Report(METRIC_KINIT_FAILED_TRY_COUNT, failed_tries);
 
   retry_machine_kinit_ = false;
   if (!success)

@@ -36,10 +36,10 @@ enum TimerType {
 
 // Normal exponential metrics. Keep in sync with kMetricHistogramParams!
 enum MetricType {
-  METRIC_KINIT_TRY_COUNT,      // Number of kinit tries.
-  METRIC_SMBCLIENT_TRY_COUNT,  // Number of smbclient tries.
-  METRIC_DOWNLOAD_GPO_COUNT,   // Number of GPOs to download.
-  METRIC_COUNT,                // Total number of metrics.
+  METRIC_KINIT_FAILED_TRY_COUNT,      // Number of failed kinit tries.
+  METRIC_SMBCLIENT_FAILED_TRY_COUNT,  // Number of failed smbclient tries.
+  METRIC_DOWNLOAD_GPO_COUNT,          // Number of GPOs to download.
+  METRIC_COUNT,                       // Total number of metrics.
 };
 
 // Enum metric for error types returned from D-Bus calls. Should map to
