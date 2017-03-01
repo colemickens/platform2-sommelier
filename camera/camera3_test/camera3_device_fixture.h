@@ -67,7 +67,7 @@ class Camera3Device {
   void Destroy();
 
   // Whether or not the template is supported
-  bool IsTemplateSupported(int32_t type);
+  bool IsTemplateSupported(int32_t type) const;
 
   // Construct default request settings
   const camera_metadata_t* ConstructDefaultRequestSettings(int type);
@@ -94,6 +94,9 @@ class Camera3Device {
   // Free stream buffers
   int FreeOutputStreamBuffers(
       const std::vector<camera3_stream_buffer_t>& output_buffers);
+
+  // Free all stream buffers
+  void ClearOutputStreamBuffers();
 
   // Process capture request
   int ProcessCaptureRequest(camera3_capture_request_t* request);
@@ -139,9 +142,6 @@ class Camera3Device::StaticInfo {
   bool IsKeyAvailable(uint32_t tag) const;
   bool AreKeysAvailable(std::vector<uint32_t> tags) const;
 
-  // Whether or not the hardware level reported is legacy
-  bool IsHardwareLevelLegacy() const;
-
   // Whether or not the hardware level reported is at least full
   bool IsHardwareLevelAtLeastFull() const;
 
@@ -181,6 +181,9 @@ class Camera3Device::StaticInfo {
   // Determine if camera device support AWB lock control
   bool IsAWBLockSupported() const;
 
+  // Get the maximum number of partial result a request can expect
+  int32_t GetPartialResultCount() const;
+
  private:
   // Return the supported hardware level of the device, or fail if no value is
   // reported
@@ -210,9 +213,6 @@ class Camera3DeviceFixture : public testing::Test,
 
   // Callback functions to handle notifications
   virtual void Notify(const camera3_notify_msg* msg);
-
-  // Whether or not the request template is unsupported by LEGACY mode
-  bool IsTemplateSupportedByLegacyMode(int32_t type) const;
 
   Camera3Module cam_module_;
 

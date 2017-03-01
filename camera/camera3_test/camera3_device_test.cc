@@ -92,8 +92,8 @@ int32_t Camera3TestGralloc::Allocate(int32_t width,
 int32_t Camera3TestGralloc::Free(buffer_handle_t handle) {
   auto hnd = camera_buffer_handle_t::FromBufferHandle(handle);
   if (hnd) {
-    EXPECT_TRUE(hnd->buffer_id != 0) << "Buffer handle mapping fails";
-    if (testing::Test::HasFailure()) {
+    if (hnd->buffer_id == 0) {
+      ADD_FAILURE() << "Buffer handle mapping fails";
       delete hnd;
       return -EINVAL;
     }
@@ -213,8 +213,8 @@ int Camera3Device::Initialize(const Camera3Module* cam_module,
   }
 
   EXPECT_GE(((const hw_device_t*)cam_device_)->version,
-            (uint16_t)HARDWARE_MODULE_API_VERSION(3, 0))
-      << "The device does not support HAL3";
+            (uint16_t)HARDWARE_MODULE_API_VERSION(3, 3))
+      << "The device must support at least HALv3.3";
 
   // Initialize camera device
   EXPECT_EQ(0, cam_device_->ops->initialize(cam_device_, callback_ops))
@@ -225,6 +225,8 @@ int Camera3Device::Initialize(const Camera3Module* cam_module,
   camera_info cam_info;
   EXPECT_EQ(0, cam_module->GetCameraInfo(cam_id_, &cam_info));
   static_info_.reset(new StaticInfo(cam_info));
+  EXPECT_TRUE(static_info_->IsHardwareLevelAtLeastLimited())
+      << "The device must support at least LIMITED hardware level";
 
   if (testing::Test::HasFailure()) {
     return -EINVAL;
@@ -236,14 +238,9 @@ int Camera3Device::Initialize(const Camera3Module* cam_module,
 
 void Camera3Device::Destroy() {
   // Buffers are expected to be freed in ProcessCaptureResult callback in the
-  // test
+  // test.
   EXPECT_TRUE(stream_buffers_.empty()) << "Buffers are not freed correctly";
-  // Free frame buffers
-  for (auto const& it : stream_buffers_) {
-    for (auto const& buffer : it.second) {
-      EXPECT_EQ(0, gralloc_.Free(*buffer)) << "Buffer is not freed correctly";
-    }
-  }
+  ClearOutputStreamBuffers();
 
   gralloc_.Destroy();
 
@@ -251,7 +248,7 @@ void Camera3Device::Destroy() {
       << "Camera device close failed";
 }
 
-bool Camera3Device::IsTemplateSupported(int32_t type) {
+bool Camera3Device::IsTemplateSupported(int32_t type) const {
   return (type != CAMERA3_TEMPLATE_MANUAL ||
           static_info_->IsCapabilitySupported(
               ANDROID_REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR)) &&
@@ -406,6 +403,18 @@ int Camera3Device::FreeOutputStreamBuffers(
   return 0;
 }
 
+void Camera3Device::ClearOutputStreamBuffers() {
+  base::AutoLock l(stream_buffers_lock_);
+
+  // Free frame buffers
+  for (auto const& it : stream_buffers_) {
+    for (auto const& buffer : it.second) {
+      EXPECT_EQ(0, gralloc_.Free(*buffer)) << "Buffer is not freed correctly";
+    }
+  }
+  stream_buffers_.clear();
+}
+
 int Camera3Device::ProcessCaptureRequest(camera3_capture_request_t* request) {
   if (!initialized_) {
     return -ENODEV;
@@ -460,10 +469,6 @@ bool Camera3Device::StaticInfo::IsHardwareLevelAtLeast(int32_t level) const {
   }
   // Level is not LEGACY, can use numerical sort
   return dev_level >= level;
-}
-
-bool Camera3Device::StaticInfo::IsHardwareLevelLegacy() const {
-  return GetHardwareLevel() == ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY;
 }
 
 bool Camera3Device::StaticInfo::IsHardwareLevelAtLeastFull() const {
@@ -539,12 +544,11 @@ std::set<uint8_t> Camera3Device::StaticInfo::GetAvailableEdgeModes() const {
         << "Full device must contain OFF and FAST edge modes";
   }
 
-  if (IsHardwareLevelAtLeastLimited()) {
-    // FAST and HIGH_QUALITY mode must be both present or both not present
-    EXPECT_TRUE((modes.find(ANDROID_EDGE_MODE_FAST) != modes.end()) ==
-                (modes.find(ANDROID_EDGE_MODE_HIGH_QUALITY) != modes.end()))
-        << "FAST and HIGH_QUALITY mode must both present or both not present";
-  }
+  // FAST and HIGH_QUALITY mode must be both present or both not present
+  EXPECT_TRUE((modes.find(ANDROID_EDGE_MODE_FAST) != modes.end()) ==
+              (modes.find(ANDROID_EDGE_MODE_HIGH_QUALITY) != modes.end()))
+      << "FAST and HIGH_QUALITY mode must both present or both not present";
+
   return modes;
 }
 
@@ -562,13 +566,12 @@ std::set<uint8_t> Camera3Device::StaticInfo::GetAvailableNoiseReductionModes()
         << "Full device must contain OFF and FAST noise reduction modes";
   }
 
-  if (IsHardwareLevelAtLeastLimited()) {
-    // FAST and HIGH_QUALITY mode must be both present or both not present
-    EXPECT_TRUE(
-        (modes.find(ANDROID_NOISE_REDUCTION_MODE_FAST) != modes.end()) ==
-        (modes.find(ANDROID_NOISE_REDUCTION_MODE_HIGH_QUALITY) != modes.end()))
-        << "FAST and HIGH_QUALITY mode must both present or both not present";
-  }
+  // FAST and HIGH_QUALITY mode must be both present or both not present
+  EXPECT_TRUE(
+      (modes.find(ANDROID_NOISE_REDUCTION_MODE_FAST) != modes.end()) ==
+      (modes.find(ANDROID_NOISE_REDUCTION_MODE_HIGH_QUALITY) != modes.end()))
+      << "FAST and HIGH_QUALITY mode must both present or both not present";
+
   return modes;
 }
 
@@ -585,15 +588,14 @@ std::set<uint8_t> Camera3Device::StaticInfo::GetAvailableColorAberrationModes()
                modes.end()))
       << "Camera devices must always support either OFF or FAST mode";
 
-  if (IsHardwareLevelAtLeastLimited()) {
-    // FAST and HIGH_QUALITY mode must be both present or both not present
-    EXPECT_TRUE(
-        (modes.find(ANDROID_COLOR_CORRECTION_ABERRATION_MODE_FAST) !=
-         modes.end()) ==
-        (modes.find(ANDROID_COLOR_CORRECTION_ABERRATION_MODE_HIGH_QUALITY) !=
-         modes.end()))
-        << "FAST and HIGH_QUALITY mode must both present or both not present";
-  }
+  // FAST and HIGH_QUALITY mode must be both present or both not present
+  EXPECT_TRUE(
+      (modes.find(ANDROID_COLOR_CORRECTION_ABERRATION_MODE_FAST) !=
+       modes.end()) ==
+      (modes.find(ANDROID_COLOR_CORRECTION_ABERRATION_MODE_HIGH_QUALITY) !=
+       modes.end()))
+      << "FAST and HIGH_QUALITY mode must both present or both not present";
+
   return modes;
 }
 
@@ -605,11 +607,10 @@ std::set<uint8_t> Camera3Device::StaticInfo::GetAvailableToneMapModes() const {
   EXPECT_TRUE(modes.find(ANDROID_TONEMAP_MODE_FAST) != modes.end())
       << "Camera devices must always support FAST mode";
 
-  if (IsHardwareLevelAtLeastLimited()) {
-    // FAST and HIGH_QUALITY mode must be both present
-    EXPECT_TRUE(modes.find(ANDROID_TONEMAP_MODE_HIGH_QUALITY) != modes.end())
-        << "FAST and HIGH_QUALITY mode must both present";
-  }
+  // FAST and HIGH_QUALITY mode must be both present
+  EXPECT_TRUE(modes.find(ANDROID_TONEMAP_MODE_HIGH_QUALITY) != modes.end())
+      << "FAST and HIGH_QUALITY mode must both present";
+
   return modes;
 }
 
@@ -661,6 +662,17 @@ bool Camera3Device::StaticInfo::IsAWBLockSupported() const {
   return entry.data.i32[0] == ANDROID_CONTROL_AWB_LOCK_AVAILABLE_TRUE;
 }
 
+int32_t Camera3Device::StaticInfo::GetPartialResultCount() const {
+  camera_metadata_ro_entry_t entry;
+  if (find_camera_metadata_ro_entry(characteristics_,
+                                    ANDROID_REQUEST_PARTIAL_RESULT_COUNT,
+                                    &entry) != 0) {
+    // Optional key. Default value is 1 if key is missing.
+    return 1;
+  }
+  return entry.data.i32[0];
+}
+
 // Test fixture
 
 void Camera3DeviceFixture::SetUp() {
@@ -687,12 +699,6 @@ void Camera3DeviceFixture::ProcessCaptureResult(
 
 void Camera3DeviceFixture::Notify(const camera3_notify_msg* msg) {
   // Do nothing in this callback
-}
-
-bool Camera3DeviceFixture::IsTemplateSupportedByLegacyMode(int32_t type) const {
-  return type != CAMERA3_TEMPLATE_VIDEO_SNAPSHOT &&
-         type != CAMERA3_TEMPLATE_ZERO_SHUTTER_LAG &&
-         type != CAMERA3_TEMPLATE_MANUAL;
 }
 
 void Camera3DeviceFixture::ProcessCaptureResultCallback(
@@ -775,9 +781,6 @@ TEST_P(Camera3DeviceDefaultSettings, ConstructDefaultSettings) {
 
   // Reference: camera2/cts/CameraDeviceTest.java#captureTemplateTestByCamera
   if (!cam_device_.IsTemplateSupported(type)) {
-    return;
-  } else if (!IsTemplateSupportedByLegacyMode(type) &&
-             static_info->IsHardwareLevelLegacy()) {
     return;
   } else if (type != CAMERA3_TEMPLATE_PREVIEW &&
              static_info->IsDepthOutputSupported() &&
