@@ -142,7 +142,6 @@ bool CreateDirectoryWithMode(const base::FilePath& full_path, int mode) {
 
 bool CreateMountPointIfNeeded(const base::FilePath& mount_point,
                               bool* already_mounted) {
-  LOG(INFO) << "In CreateMountPoint if needed";
   *already_mounted = false;
   // Is this mount point somehow already taken?
   struct stat st;
@@ -169,7 +168,6 @@ bool CreateMountPointIfNeeded(const base::FilePath& mount_point,
         LOG(ERROR) << "File system is not the expected type.";
         return false;
       }
-      LOG(INFO) << "The mount point already exists: " << mount_point.value();
       *already_mounted = true;
       return true;
     }
