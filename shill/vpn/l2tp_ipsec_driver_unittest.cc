@@ -80,6 +80,17 @@ class L2TPIPSecDriverTest : public testing::Test,
     driver_->device_ = nullptr;
     driver_->service_ = nullptr;
     ASSERT_TRUE(temp_dir_.Delete());
+
+    // The ExternalTask instance initially held by |driver_->external_task_|
+    // could be scheduled to be destroyed after |driver_| is destroyed. To
+    // avoid leaking any ExternalTask instance when the test finishes, we
+    // explicitly destroy |service_| here, which indirectly destroys |driver_|
+    // and in turn schedules the destruction of |driver_->external_task_| in
+    // the message loop. Then we run until the message loop becomes idle to
+    // exercise the destruction task of ExternalTask.
+    service_ = nullptr;
+    dispatcher_.PostTask(FROM_HERE, base::MessageLoop::QuitWhenIdleClosure());
+    dispatcher_.DispatchForever();
   }
 
  protected:
