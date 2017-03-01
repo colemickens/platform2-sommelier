@@ -210,11 +210,14 @@ bool ChromiumCommandBuilder::SetUpChromium() {
         base::FilePath(kDefaultZoneinfoPath), time_zone_symlink));
   }
 
-  // Increase maximum file descriptors to 2048 (default is otherwise 1024).
+  // Increase soft limit of file descriptors to 2048 (default is 1024).
+  // Increase hard limit of file descriptors to 16384 (default is 4096).
   // Some offline websites using IndexedDB are particularly hungry for
   // descriptors, so the default is insufficient. See crbug.com/251385.
+  // Native GPU memory buffer requires a FD per texture. See crbug.com/629521.
   struct rlimit limit;
-  limit.rlim_cur = limit.rlim_max = 2048;
+  limit.rlim_cur = 2048;
+  limit.rlim_max = 16384;
   if (setrlimit(RLIMIT_NOFILE, &limit) < 0)
     PLOG(ERROR) << "Setting max FDs with setrlimit() failed";
 
