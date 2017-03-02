@@ -720,6 +720,12 @@ int update_camera_metadata_entry(camera_metadata_t *dst,
     size_t data_bytes =
             calculate_camera_metadata_entry_data_size(entry->type,
                     data_count);
+
+    if (entry->type >= NUM_TYPES) {
+      ALOGE("%s: Entry index %zu had a bad type %d",
+            __FUNCTION__, index, entry->type);
+      return ERROR;
+    }
     size_t data_payload_bytes =
             data_count * camera_metadata_type_size[entry->type];
 
