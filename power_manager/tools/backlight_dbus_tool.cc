@@ -54,12 +54,21 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(set, false, "Set the brightness to --percent");
   DEFINE_double(percent, 0, "Percent to set, in the range [0.0, 100.0]");
   DEFINE_bool(gradual, true, "Transition gradually");
+  DEFINE_bool(decrease_keyboard, false,
+              "Decrease the keyboard brightness by one step");
+  DEFINE_bool(increase_keyboard, false,
+              "Increase the keyboard brightness by one step");
 
   brillo::FlagHelper::Init(
       argc, argv, "Query or change the panel backlight brightness via powerd.");
 
-  CHECK_LE(FLAGS_decrease + FLAGS_increase + FLAGS_set, 1)
-      << "Exactly zero or one of --decrease, --increase, and --set may be set";
+  CHECK_LE(FLAGS_decrease +
+           FLAGS_increase +
+           FLAGS_set +
+           FLAGS_decrease_keyboard +
+           FLAGS_increase_keyboard,
+           1)
+      << "You cannot set more than one action flag";
 
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
@@ -83,6 +92,14 @@ int main(int argc, char* argv[]) {
     }
     CHECK(powerd_proxy->CallMethodAndBlock(
         &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
+  } else if (FLAGS_decrease_keyboard || FLAGS_increase_keyboard) {
+    dbus::MethodCall method_call(
+        power_manager::kPowerManagerInterface,
+        FLAGS_decrease_keyboard ?
+            power_manager::kDecreaseKeyboardBrightnessMethod :
+            power_manager::kIncreaseKeyboardBrightnessMethod);
+    CHECK(powerd_proxy->CallMethodAndBlock(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
   } else {
     double percent = 0.0;
     CHECK(GetCurrentBrightness(powerd_proxy, &percent));
