@@ -43,6 +43,7 @@ setsockopt: 1
 getsockopt: 1
 
 epoll_create: 1
+epoll_create1: 1
 epoll_wait: 1
 epoll_ctl: 1
 poll: 1
