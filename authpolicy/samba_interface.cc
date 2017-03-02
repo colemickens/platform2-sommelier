@@ -310,8 +310,13 @@ ErrorType GetSmbclientError(const ProcessExecutor& smb_client_cmd) {
 }  // namespace
 
 ErrorType SambaInterface::GetRealmInfo(protos::RealmInfo* realm_info) const {
-  authpolicy::ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "info",
-                                       "-s", paths_->Get(Path::SMB_CONF)});
+  authpolicy::ProcessExecutor net_cmd({paths_->Get(Path::NET),
+                                       "ads",
+                                       "info",
+                                       "-s",
+                                       paths_->Get(Path::SMB_CONF),
+                                       "-d",
+                                       "10"});
   if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_INFO))
     return GetNetError(net_cmd, "info");
   const std::string& net_out = net_cmd.GetStdout();
@@ -339,8 +344,13 @@ ErrorType SambaInterface::EnsureWorkgroup() {
   if (!workgroup_.empty())
     return ERROR_NONE;
 
-  ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "workgroup", "-s",
-                           paths_->Get(Path::SMB_CONF)});
+  ProcessExecutor net_cmd({paths_->Get(Path::NET),
+                           "ads",
+                           "workgroup",
+                           "-s",
+                           paths_->Get(Path::SMB_CONF),
+                           "-d",
+                           "10"});
   if (!SetupJailAndRun(
           &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_WORKGROUP)) {
     return GetNetError(net_cmd, "workgroup");
@@ -569,8 +579,14 @@ ErrorType SambaInterface::ReadConfiguration() {
 ErrorType SambaInterface::GetAccountInfo(
     const std::string& search_string, protos::AccountInfo* account_info) const {
   // Call net ads search to find the user's account info.
-  ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "search",
-                           search_string, "-s", paths_->Get(Path::SMB_CONF)});
+  ProcessExecutor net_cmd({paths_->Get(Path::NET),
+                           "ads",
+                           "search",
+                           search_string,
+                           "-s",
+                           paths_->Get(Path::SMB_CONF),
+                           "-d",
+                           "10"});
   if (!SetupJailAndRun(&net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_SEARCH))
     return GetNetError(net_cmd, "search");
   const std::string& net_out = net_cmd.GetStdout();
@@ -971,8 +987,15 @@ ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
   }
 
   // Call net ads join to join the machine to the Active Directory domain.
-  ProcessExecutor net_cmd({paths_->Get(Path::NET), "ads", "join", "-U",
-                           normalized_upn, "-s", paths_->Get(Path::SMB_CONF)});
+  ProcessExecutor net_cmd({paths_->Get(Path::NET),
+                           "ads",
+                           "join",
+                           "-U",
+                           normalized_upn,
+                           "-s",
+                           paths_->Get(Path::SMB_CONF),
+                           "-d",
+                           "10"});
   net_cmd.SetInputFile(password_fd);
   net_cmd.SetEnv(kMachineKTEnvKey,  // Machine keytab file path.
                  kFilePrefix + paths_->Get(Path::MACHINE_KT_TEMP));
