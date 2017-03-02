@@ -74,6 +74,17 @@ sysctl -q --system
 crossystem "cros_debug?1"
 CROS_DEBUG=$((! $?))
 
+# Developer mode functions (defined in dev_utils.sh and will be loaded
+# only when CROS_DEBUG=1).
+dev_check_block_dev_mode() { true; }
+dev_update_stateful_partition() { true; }
+dev_gather_logs() { true; }
+dev_mount_packages() { true; }
+
+if [ "${CROS_DEBUG}" -eq 1 ]; then
+  . /usr/share/cros/dev_utils.sh
+fi
+
 # Prepare to mount stateful partition
 ROOT_DEV=$(rootdev -s)
 ROOTDEV_RET_CODE=$?
@@ -158,45 +169,11 @@ if [ $(date +%Y) -lt 1970 ]; then
   date 010200001970.00
 fi
 
-# This file indicates a blocked developer mode transition attempt has occurred.
+# The file indicates a blocked developer mode transition attempt has occurred.
 BLOCKED_DEV_MODE_FILE="/mnt/stateful_partition/.blocked_dev_mode"
 
-# Check whether the device is allowed to boot in dev mode.
-# 1. If a debug build is already installed on the system, ignore block_devmode.
-#    It is pointless in this case, as the device is already in a state where the
-#    local user has full control.
-# 2. According to recovery mode only boot with signed images, the block_devmode
-#    could be ignored here -- otherwise factory shim will be blocked expecially
-#    that RMA center can't reset this device.
-#
-# The up-front CROS_DEBUG check avoids forking a crossystem process in verified
-# mode, thus keeping the check as lightweight as possible for normal boot.
-if [ $CROS_DEBUG -eq 1 ] && \
-   crossystem "devsw_boot?1" "debug_build?0" "recovery_reason?0"; then
-  # Checks ordered by run time: First try reading VPD through sysfs.
-  VPD_BLOCK_DEVMODE_FILE=/sys/firmware/vpd/rw/block_devmode
-  if [ -f "${VPD_BLOCK_DEVMODE_FILE}" ] &&
-     [ "$(cat "${VPD_BLOCK_DEVMODE_FILE}")" = "1" ]; then
-    BLOCK_DEVMODE=1
-  # Second try crossystem.
-  elif crossystem "block_devmode?1"; then
-    BLOCK_DEVMODE=1
-  # Third re-read VPD directly from SPI flash (slow!) but only for systems that
-  # don't have VPD in sysfs and only when NVRAM indicates that it has been
-  # cleared.
-  elif [ ! -d /sys/firmware/vpd/rw ] &&
-     crossystem "nvram_cleared?1" &&
-     [ "$(vpd -i RW_VPD -g block_devmode)" = "1" ]; then
-    BLOCK_DEVMODE=1
-  fi
-
-  if [ -n "${BLOCK_DEVMODE}" ]; then
-    # Put a flag file into place that will trigger a stateful partition wipe
-    # after reboot in verified mode.
-    touch ${BLOCKED_DEV_MODE_FILE}
-    chromeos-boot-alert block_devmode
-  fi
-fi
+# Checks if developer mode is blocked.
+dev_check_block_dev_mode "${BLOCKED_DEV_MODE_FILE}"
 
 # 'firmware-boot-update' is provided by chromeos-firmware for legacy systems.
 # On most new boards, it should be simply an empty file.
@@ -267,63 +244,8 @@ if [ -O ${RESET_FILE} ]; then
   exec clobber-state "$ARGS"
 fi
 
-# Check if we have an update to stateful pending.
-STATEFUL_UPDATE="/mnt/stateful_partition/.update_available"
-if [ $CROS_DEBUG -eq 1 -a -f "$STATEFUL_UPDATE" ] ; then
-  # To remain compatible with the prior update_stateful tarballs, expect
-  # the "var_new" unpack location, but move it into the new "var_overlay"
-  # target location.
-  VAR_TARGET="/mnt/stateful_partition/var"
-  VAR_NEW="${VAR_TARGET}_new"
-  VAR_OLD="${VAR_TARGET}_old"
-  VAR_TARGET="${VAR_TARGET}_overlay"
-  DEVELOPER_TARGET="/mnt/stateful_partition/dev_image"
-  DEVELOPER_NEW="${DEVELOPER_TARGET}_new"
-  DEVELOPER_OLD="${DEVELOPER_TARGET}_old"
-  STATEFUL_UPDATE_ARGS=$(cat "$STATEFUL_UPDATE")
-
-  # Only replace the developer and var_overlay directories if new replacements
-  # are available.
-  if [ -d "$DEVELOPER_NEW" -a -d "$VAR_NEW" ]; then
-    clobber-log -- "Updating from $DEVELOPER_NEW && $VAR_NEW."
-    rm -rf "$DEVELOPER_OLD" "$VAR_OLD"
-    mv "$VAR_TARGET" "$VAR_OLD" || true
-    mv "$DEVELOPER_TARGET" "$DEVELOPER_OLD" || true
-    mv "$VAR_NEW" "$VAR_TARGET"
-    mv "$DEVELOPER_NEW" "$DEVELOPER_TARGET"
-  else
-    clobber-log -- "Stateful update did not find $DEVELOPER_NEW && $VAR_NEW."
-    clobber-log -- "Keeping old development tools."
-  fi
-
-  # Check for clobber.
-  if [ "$STATEFUL_UPDATE_ARGS" = "clobber" ] ; then
-    PRESERVE_DIR="/mnt/stateful_partition/unencrypted/preserve"
-
-    # Find everything in stateful and delete it, except for protected paths, and
-    # non-empty directories. The non-empty directories contain protected content
-    # or they would already be empty from depth first traversal.
-
-    find "/mnt/stateful_partition"  -depth -mindepth 1 \
-        -not -path "/mnt/stateful_partition/.labmachine" \
-        -not -path "${DEVELOPER_TARGET}/*" \
-        -not -path "${VAR_TARGET}/*" \
-        -not -path "${PRESERVE_DIR}/*" \
-        -not -type d -print0 | xargs --null -r rm -f
-
-    find "/mnt/stateful_partition"  -depth -mindepth 1 \
-        -not -path "${DEVELOPER_TARGET}/*" \
-        -not -path "${VAR_TARGET}/*" \
-        -not -path "${PRESERVE_DIR}/*" \
-        -type d -print0 | xargs --null -r rmdir --ignore-fail-on-non-empty
-
-    # Let's really be done before coming back.
-    sync
-  fi
-
-  # Backgrounded to take off boot path.
-  rm -rf "$STATEFUL_UPDATE" "$DEVELOPER_OLD" "$VAR_OLD" &
-fi
+# Checks and updates stateful partition.
+dev_update_stateful_partition
 
 # Make sure unencrypted stateful partition has the needed common directories.
 # Any non-common directories should be created in the device implementation of
@@ -342,23 +264,8 @@ remember_mount /var
 remember_mount /home/chronos
 mount_var_and_home_chronos ${FACTORY_MODE} || cleanup_mounts "var and home"
 
-# For dev/test images, if .gatherme presents, copy files listed in .gatherme to
-# /mnt/stateful_partition/unencrypted/prior_logs.
-LAB_PRESERVE_LOGS="/mnt/stateful_partition/.gatherme"
-PRIOR_LOG_DIR="/mnt/stateful_partition/unencrypted/prior_logs"
-
-if [ ${CROS_DEBUG} -eq 1 -a -f "${LAB_PRESERVE_LOGS}" ]; then
-  for log_path in $(sed -e '/^#/ d' -e '/^$/ d' "${LAB_PRESERVE_LOGS}"); do
-    if [ -d "${log_path}" ]; then
-      cp -a -r --parents "${log_path}" "${PRIOR_LOG_DIR}" || true
-    elif [ -f "${log_path}" ]; then
-      cp -a "${log_path}" "${PRIOR_LOG_DIR}" || true
-    fi
-  done
-  rm -rf /var/*
-  rm -rf /home/chronos/*
-  rm "${LAB_PRESERVE_LOGS}"
-fi
+# Gather log if needed.
+dev_gather_logs
 
 # /run is now tmpfs used for runtime data. Make sure /var/run and /var/lock
 # are sym links to /run and /run/lock respectively for backwards compatibility.
@@ -396,50 +303,8 @@ chattr +i /var/empty || :
 # "--make-shared" to let ARC container access mount points under /media.
 mount --make-shared -n -t tmpfs -o nodev,noexec,nosuid media /media
 
-# Mount stateful partition for dev packages.
-if [ ${CROS_DEBUG} -eq 1 ]; then
-  # Set up the logging dir that ASAN compiled programs will write to.  We want
-  # any privileged account to be able to write here so unittests need not worry
-  # about settings things up ahead of time.  See crbug.com/453579 for details.
-  mkdir -p /var/log/asan
-  chmod 1777 /var/log/asan
-
-  # Capture a snapshot of "normal" mount state here, for auditability,
-  # before we start applying devmode-specific changes.
-  cat /proc/mounts > /var/log/mount_options.log
-  # Create dev_image directory in base images in developer mode.
-  if [ ! -d /mnt/stateful_partition/dev_image ]; then
-    mkdir -p -m 0755 /mnt/stateful_partition/dev_image
-  fi
-  # Mount and then remount to enable exec/suid.
-  mount_or_fail --bind /mnt/stateful_partition/dev_image /usr/local
-  mount -n -o remount,exec,suid /usr/local
-
-  # Set up /var elements needed by gmerge.
-  # TODO(keescook) Use dev/test package installs instead of piling more
-  # things here (crosbug.com/14091).
-  BASE=/mnt/stateful_partition/var_overlay
-  if [ -d ${BASE} ]; then
-    # Keep this list in sync with the var_overlay elements in the DIRLIST
-    # found in chromeos-install from chromeos-base/chromeos-installer.
-    DIRLIST="
-      db/pkg
-      lib/portage
-    "
-    for DIR in ${DIRLIST}; do
-      if [ ! -d ${BASE}/${DIR} ]; then
-        continue
-      fi
-      DEST=/var/${DIR}
-      if [ -e ${DEST} ]; then
-        continue
-      fi
-      PARENT=$(dirname ${DEST})
-      mkdir -p ${PARENT}
-      ln -sf ${BASE}/${DIR} ${DEST}
-    done
-  fi
-fi
+# Mount dev packages.
+dev_mount_packages
 
 bootstat post-startup
 
