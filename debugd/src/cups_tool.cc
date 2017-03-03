@@ -23,6 +23,7 @@
 #include <base/strings/string_util.h>
 #include <brillo/flag_helper.h>
 #include <brillo/userdb_utils.h>
+#include <chromeos/dbus/debugd/dbus-constants.h>
 
 #include "debugd/src/constants.h"
 #include "debugd/src/process_with_output.h"
@@ -41,26 +42,10 @@ const char kTestPPDSeccompPolicy[] =
 const char kLpadminUser[] = "lpadmin";
 const char kLpadminGroup[] = "lpadmin";
 const char kLpGroup[] = "lp";
-const char kDownloadsFolder[] = "Downloads";
-
-// Max PPD size we'll allow, in bytes.
-const int kMaxPPDSize = 250000;
 
 // Temporary name for the ppd file, zipped and unzipped variants.
 const char kTempPPDFileName[] = "tmp.ppd";
 const char kGZippedTempPPDFileName[] = "tmp.ppd.gz";
-
-// This pathname has to match the path generated in
-// //chrome/browser/ui/webui/settings/chromeos/cups_printers_handler.cc
-const char kPPDCacheFolder[] = "PPDCache";
-
-bool IsHexDigits(base::StringPiece digits) {
-  for (char digit : digits) {
-    if (!base::IsHexDigit(digit))
-      return false;
-  }
-  return true;
-}
 
 // Determine whether or not the contents look like gzipped data by
 // looking for the magic number in the header.
@@ -68,56 +53,6 @@ bool IsGZipped(const std::vector<uint8_t>& contents) {
   // Min header size is 10 bytes, min footer size is 8 bytes, so 18 bytes is a
   // lower bound on size for gzip contents.
   return contents.size() >= 18 && contents[0] == 0x1f && contents[1] == 0x8b;
-}
-
-bool MatchesUserString(base::StringPiece input) {
-  std::vector<base::StringPiece> pieces = base::SplitStringPiece(
-      input, "-", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
-  return pieces.size() == 2 && pieces[0] == "u" && IsHexDigits(pieces[1]);
-}
-
-bool IsInPPDCache(const std::vector<std::string>& path_components) {
-  // {/, home, chronos, u-HEX, PPDCache, <FileName>}
-  return path_components.size() == 6 && path_components[0] == "/" &&
-         path_components[1] == "home" && path_components[2] == "chronos" &&
-         MatchesUserString(path_components[3]) &&
-         path_components[4] == kPPDCacheFolder;
-}
-
-// Returns true if the path is a child of the primary user's Downloads folder.
-bool MatchesPrimaryUserDownloads(
-    const std::vector<std::string>& path_components) {
-  std::vector<std::string> primary_user = {"/", "home", "chronos", "user",
-                                           kDownloadsFolder};
-  return path_components.size() >= primary_user.size() &&
-         std::equal(primary_user.begin(), primary_user.end(),
-                    path_components.begin());
-}
-
-// Matches the path reported by Chrome for the Downloads folder.
-bool MatchesChromeDownloadsPath(
-    const std::vector<std::string>& path_components) {
-  return path_components.size() > 5 && path_components[0] == "/" &&
-         path_components[1] == "home" && path_components[2] == "chronos" &&
-         MatchesUserString(path_components[3]) &&
-         path_components[4] == kDownloadsFolder;
-}
-
-// Returns true if the path is a child of the user's Downloads folder in a
-// multi-user environment.
-bool MatchesMultiUserDownloads(
-    const std::vector<std::string>& path_components) {
-  // Path consists of /home/user/<hex string>/Downloads.
-  return path_components.size() > 5 && path_components[0] == "/" &&
-         path_components[1] == "home" && path_components[2] == "user" &&
-         IsHexDigits(path_components[3]) &&
-         path_components[4] == kDownloadsFolder;
-}
-
-bool IsDownload(const std::vector<std::string>& path_components) {
-  return MatchesChromeDownloadsPath(path_components) ||
-         MatchesPrimaryUserDownloads(path_components) ||
-         MatchesMultiUserDownloads(path_components);
 }
 
 bool SetPerms(const base::FilePath& fpath, mode_t mode, uid_t uid, gid_t gid) {
@@ -182,7 +117,7 @@ int RunAsUserWithMount(const std::string& user, const std::string& group,
                        const std::string& command,
                        const std::string& seccomp_policy,
                        const ProcessWithOutput::ArgList& arg_list,
-                       bool root_mount_ns, DBus::Error* error) {
+                       bool root_mount_ns, DBus::Error* /*error*/) {
   ProcessWithOutput process;
   process.set_separate_stderr(true);
   process.SandboxAs(user, group);
@@ -205,7 +140,7 @@ int RunAsUserWithMount(const std::string& user, const std::string& group,
   if (result != 0) {
     std::string error_msg;
     process.GetError(&error_msg);
-    PLOG(ERROR) << error_msg;
+    PLOG(ERROR) << "Child process failed" << error_msg;
   }
 
   return result;
@@ -222,11 +157,12 @@ int RunAsUser(const std::string& user, const std::string& group,
                             false, error);
 }
 
-// Runs cupstestppd on |file_name| returns true if it is a valid ppd file.
-bool TestPPD(const std::string& path, DBus::Error* error) {
+// Runs cupstestppd on |file_name| returns the result code.  0 is the expected
+// success code.
+int TestPPD(const std::string& path, DBus::Error* error) {
   // TODO(skau): Run cupstestppd in seccomp crbug.com/633383.
   return RunAsUser(kLpadminUser, kLpadminGroup, kTestPPDCommand,
-                   kTestPPDSeccompPolicy, {path}, error) == 0;
+                   kTestPPDSeccompPolicy, {path}, error);
 }
 
 // Runs lpadmin with the provided |arg_list|.
@@ -282,67 +218,11 @@ bool WriteTempPPDFile(const base::FilePath& temp_ppd_dir,
   return true;
 }
 
-// Returns true if the path is one from which we allow copying.  i.e. user's
-// Downloads directories or the PPD cache.
-bool ValidatePPDPath(const base::FilePath& path) {
-  if (!path.IsAbsolute()) {
-    LOG(ERROR) << "Path must be absolute " << path.value();
-    return false;
-  }
-
-  if (path.ReferencesParent()) {
-    LOG(ERROR) << "Parent references are not allowed " << path.value();
-    return false;
-  }
-
-  std::vector<std::string> path_components;
-  path.GetComponents(&path_components);
-
-  if (!IsInPPDCache(path_components) && !IsDownload(path_components)) {
-    LOG(ERROR) << "Illegal path " << path.value();
-    return false;
-  }
-
-  return true;
-}
-
 }  // namespace
 
-// Invokes lpadmin with arguments to configure a new printer.  For IPP
-// printers, it can attempt autoconf using '-m everywhere'.
-bool CupsTool::AddPrinter(const std::string& name, const std::string& uri,
-                          const std::string& ppd_file, bool ipp_everywhere,
-                          DBus::Error* error) {
-  if (ipp_everywhere)
-    return AddAutoConfiguredPrinter(name, uri, error);
-
-  if (ppd_file.empty()) {
-    LOG(ERROR) << "A ppd path must be provided";
-    return false;
-  }
-
-  base::FilePath src_ppd(ppd_file);
-  if (!ValidatePPDPath(src_ppd))
-    return false;
-
-  // Read the file contents into memory and hand it off to
-  // AddManuallyConfiguredPrinter() to do the real work.
-  std::string ppd_contents;
-
-  if (!ReadFileToStringWithMaxSize(src_ppd, &ppd_contents, kMaxPPDSize)) {
-    LOG(ERROR) << "Failed to read " << ppd_file;
-    return false;
-  }
-
-  return AddManuallyConfiguredPrinter(
-      name,
-      uri,
-      std::vector<uint8_t>(ppd_contents.begin(), ppd_contents.end()),
-      error);
-}
-
 // Invokes lpadmin with arguments to configure a new printer using '-m
-// everywhere'.
+// everywhere'.  Returns 0 for success, 1 for failure, 4 if configuration
+// failed.
 int32_t CupsTool::AddAutoConfiguredPrinter(const std::string& name,
                                            const std::string& uri,
                                            DBus::Error* error) {
@@ -350,16 +230,15 @@ int32_t CupsTool::AddAutoConfiguredPrinter(const std::string& name,
   if (!base::StartsWith(uri, "ipp://", base::CompareCase::INSENSITIVE_ASCII) &&
       !base::StartsWith(uri, "ipps://", base::CompareCase::INSENSITIVE_ASCII)) {
     LOG(WARNING) << "IPP or IPPS required for IPP Everywhere: " << uri;
-    return false;
+    return CupsResult::CUPS_FATAL;
   }
 
-  bool success = (Lpadmin({"-v", uri, "-p", name, "-m", "everywhere", "-E"},
-                          error) == EXIT_SUCCESS);
-  if (success) {
-    return 0;
+  if (Lpadmin({"-v", uri, "-p", name, "-m", "everywhere", "-E"}, error) !=
+      EXIT_SUCCESS) {
+    return CupsResult::CUPS_AUTOCONF_FAILURE;
   }
-  // TODO(skau) - Use this channel to return better failure code information.
-  return 1;
+
+  return CupsResult::CUPS_SUCCESS;
 }
 
 int32_t CupsTool::AddManuallyConfiguredPrinter(
@@ -371,30 +250,33 @@ int32_t CupsTool::AddManuallyConfiguredPrinter(
   base::ScopedTempDir temp_dir;
   if (!temp_dir.CreateUniqueTempDir()) {
     LOG(ERROR) << "Could not create temp directory";
-    return false;
+    return CupsResult::CUPS_FATAL;
   }
 
   base::FilePath temp_ppd;
   if (!WriteTempPPDFile(temp_dir.path(), ppd_contents, &temp_ppd, error)) {
-    return false;
+    return CupsResult::CUPS_FATAL;
   }
 
-  if (!TestPPD(temp_ppd.value(), error)) {
+  int result = TestPPD(temp_ppd.value(), error);
+  if (result != EXIT_SUCCESS) {
     LOG(ERROR) << "PPD failed validation";
-    return false;
+    return CupsResult::CUPS_INVALID_PPD;
   }
-  bool success = (Lpadmin({"-v", uri, "-p", name, "-P", temp_ppd.value(), "-E"},
-                          error) == EXIT_SUCCESS);
-  if (success) {
-    return 0;
+
+  // lpadmin only returns 0 for success and 1 for failure.
+  result =
+      Lpadmin({"-v", uri, "-p", name, "-P", temp_ppd.value(), "-E"}, error);
+  if (result != EXIT_SUCCESS) {
+    return CupsResult::CUPS_LPADMIN_FAILURE;
   }
-  // TODO(skau) - Use this channel for better error reporting.
-  return 1;
+
+  return CupsResult::CUPS_SUCCESS;
 }
 
 // Invokes lpadmin with -x to delete a printer.
 bool CupsTool::RemovePrinter(const std::string& name, DBus::Error* error) {
-  return Lpadmin({"-x", name}, error) == 0;
+  return Lpadmin({"-x", name}, error) == EXIT_SUCCESS;
 }
 
 // Stop cupsd and clear its state.  Needs to launch helper with root

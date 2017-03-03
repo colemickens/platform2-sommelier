@@ -212,14 +212,6 @@ std::string DebugDaemon::GetExample(DBus::Error& error) {  // NOLINT
   return example_tool_->GetExample(&error);
 }
 
-bool DebugDaemon::CupsAddPrinter(const std::string& name,
-                                 const std::string& uri,
-                                 const std::string& ppd_path,
-                                 const bool& ipp_everywhere,
-                                 DBus::Error& error) { // NOLINT
-  return cups_tool_->AddPrinter(name, uri, ppd_path, ipp_everywhere, &error);
-}
-
 int32_t DebugDaemon::CupsAddAutoConfiguredPrinter(
     const std::string& name,
     const std::string& uri,

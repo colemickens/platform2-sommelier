@@ -115,14 +115,6 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   std::map<std::string, std::string> GetUserLogFiles(
       DBus::Error& error) override;  // NOLINT
   std::string GetExample(DBus::Error& error) override;  // NOLINT
-
-  // CupsAddPrinter is deprecated and will be removed.  Use
-  // CupsAdd{Auto|Manually}ConfiguredPrinter instead.
-  bool CupsAddPrinter(const std::string& name,
-                      const std::string& uri,
-                      const std::string& ppd_path,
-                      const bool& ipp_everywhere,
-                      DBus::Error& error) override;  // NOLINT
   int32_t CupsAddAutoConfiguredPrinter(const std::string& name,
                                        const std::string& uri,
                                        DBus::Error& error) override;  // NOLINT

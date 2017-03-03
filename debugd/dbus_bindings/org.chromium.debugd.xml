@@ -322,28 +322,6 @@
       </tp:docstring>
       <arg name="result" type="s" direction="out" />
     </method>
-    <!-- CupsAddPrinter is deprecated and will be removed.  Use
-         CupsAdd{Auto|Manually}ConfiguredPrinter instead. -->
-    <method name="CupsAddPrinter">
-      <tp:docstring>
-        Add a printer to CUPS.  Immediately attempt to connect.  Returns true if
-        setup was successful.
-      </tp:docstring>
-      <arg name="result" type="b" direction="out" />
-      <arg name="name" type="s" direction="in" />
-      <arg name="uri" type="s" direction="in" />
-      <arg name="ppd_path" type="s" direction="in">
-        <tp:docstring>
-          The path to the ppd file on disk.
-        </tp:docstring>
-      </arg>
-      <arg name="ipp_everywhere" type="b" direction="in">
-        <tp:docstring>
-          Indicate if the printer should be autoconfigured.  ppd_path will be
-          ignored if this is true.
-        </tp:docstring>
-      </arg>
-    </method>
     <method name="CupsAddAutoConfiguredPrinter">
       <tp:docstring>
         Add a printer that can be auto-configured to CUPS.  Immediately attempt

@@ -18,14 +18,6 @@ class CupsTool {
   CupsTool() = default;
   ~CupsTool() = default;
 
-  // Add a printer to CUPS using lpadmin.
-  // Deprecated, will be removed.
-  bool AddPrinter(const std::string& name,
-                  const std::string& uri,
-                  const std::string& ppd_path,
-                  bool ipp_everywhere,
-                  DBus::Error* error);
-
   // Add a printer that can be configured automatically.
   int32_t AddAutoConfiguredPrinter(const std::string& name,
                                    const std::string& uri,
