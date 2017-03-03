@@ -623,14 +623,15 @@ std::set<int32_t> Camera3Device::StaticInfo::GetAvailableFormats(
              &available_config));
   EXPECT_NE(0u, available_config.count)
       << "Camera stream configuration is empty";
-  EXPECT_EQ(0u, available_config.count % 4)
+  EXPECT_EQ(0u, available_config.count % kNumOfElementsInStreamConfigEntry)
       << "Camera stream configuration parsing error";
 
   if (testing::Test::HasFailure()) {
     return std::set<int32_t>();
   }
   std::set<int32_t> formats;
-  for (size_t i = 0; i < available_config.count; i += 4) {
+  for (size_t i = 0; i < available_config.count;
+       i += kNumOfElementsInStreamConfigEntry) {
     int32_t format = available_config.data.i32[i];
     int32_t in_or_out = available_config.data.i32[i + 3];
     if (in_or_out == direction) {

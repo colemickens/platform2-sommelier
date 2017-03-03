@@ -1,32 +1,20 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
+#include <algorithm>
 
 #include "camera3_stream_fixture.h"
 
 namespace camera3_test {
 
-int32_t ResolutionInfo::Width() const {
-  return width_;
-}
-
-int32_t ResolutionInfo::Height() const {
-  return height_;
-}
-
-int32_t ResolutionInfo::Area() const {
-  return width_ * height_;
-}
-
 void Camera3StreamFixture::SetUp() {
   Camera3DeviceFixture::SetUp();
 
-  BuildOutputResolutions();
-
-  std::vector<ResolutionInfo> resolutions;
-  ASSERT_TRUE((GetResolutionList(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
-                                 &resolutions) == 0) &&
-              !resolutions.empty())
+  std::vector<ResolutionInfo> resolutions =
+      cam_module_.GetSortedOutputResolutions(
+          cam_id_, HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED);
+  ASSERT_TRUE(!resolutions.empty())
       << "Failed to find resolutions for implementation defined format";
 
   default_width_ = resolutions[0].Width();
@@ -37,15 +25,15 @@ void Camera3StreamFixture::TearDown() {
   Camera3DeviceFixture::TearDown();
 }
 
-int32_t Camera3StreamFixture::GetMinResolution(
-    int32_t format,
-    ResolutionInfo* resolution) const {
+int32_t Camera3StreamFixture::GetMinResolution(int32_t format,
+                                               ResolutionInfo* resolution) {
   if (!resolution) {
     return -EINVAL;
   }
 
-  std::vector<ResolutionInfo> resolutions;
-  if ((GetResolutionList(format, &resolutions) < 0) || resolutions.empty()) {
+  std::vector<ResolutionInfo> resolutions =
+      cam_module_.GetSortedOutputResolutions(cam_id_, format);
+  if (resolutions.empty()) {
     return -EIO;
   }
 
@@ -59,15 +47,15 @@ int32_t Camera3StreamFixture::GetMinResolution(
   return 0;
 }
 
-int32_t Camera3StreamFixture::GetMaxResolution(
-    int32_t format,
-    ResolutionInfo* resolution) const {
+int32_t Camera3StreamFixture::GetMaxResolution(int32_t format,
+                                               ResolutionInfo* resolution) {
   if (!resolution) {
     return -EINVAL;
   }
 
-  std::vector<ResolutionInfo> resolutions;
-  if ((GetResolutionList(format, &resolutions) < 0) || resolutions.empty()) {
+  std::vector<ResolutionInfo> resolutions =
+      cam_module_.GetSortedOutputResolutions(cam_id_, format);
+  if (resolutions.empty()) {
     return -EIO;
   }
 
@@ -87,50 +75,6 @@ ResolutionInfo Camera3StreamFixture::CapResolution(ResolutionInfo input,
     return limit;
   }
   return input;
-}
-
-void Camera3StreamFixture::BuildOutputResolutions() {
-  if (output_resolutions_.empty()) {
-    camera_info info;
-    ASSERT_EQ(0, cam_module_.GetCameraInfo(cam_id_, &info))
-        << "Can't get camera info for " << cam_id_;
-
-    camera_metadata_ro_entry_t available_config;
-    ASSERT_EQ(
-        0,
-        find_camera_metadata_ro_entry(
-            const_cast<camera_metadata_t*>(info.static_camera_characteristics),
-            ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS, &available_config));
-    ASSERT_NE(0u, available_config.count)
-        << "Camera stream configuration is empty";
-    ASSERT_EQ(0u, available_config.count % 4)
-        << "Camera stream configuration parsing error";
-
-    for (uint32_t i = 0; i < available_config.count; i += 4) {
-      int32_t format = available_config.data.i32[i];
-      int32_t width = available_config.data.i32[i + 1];
-      int32_t height = available_config.data.i32[i + 2];
-      int32_t in_or_out = available_config.data.i32[i + 3];
-      if (in_or_out == ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT) {
-        output_resolutions_[format].push_back(ResolutionInfo(width, height));
-      }
-    }
-  }
-}
-
-int32_t Camera3StreamFixture::GetResolutionList(
-    int32_t format,
-    std::vector<ResolutionInfo>* resolutions) const {
-  if (!resolutions || !cam_module_.IsFormatAvailable(cam_id_, format)) {
-    return -EINVAL;
-  }
-
-  if (output_resolutions_.end() == output_resolutions_.find(format)) {
-    return -EIO;
-  }
-
-  *resolutions = output_resolutions_.at(format);
-  return 0;
 }
 
 // Test spec:
@@ -153,6 +97,36 @@ TEST_P(Camera3StreamTest, CreateStream) {
   } else {
     ASSERT_NE(0, cam_device_.ConfigureStreams())
         << "Configuring stream of unsupported format succeeds";
+  }
+}
+
+// Test spec:
+// - Camera ID
+// - Output stream format
+class Camera3BadResultionStreamTest
+    : public Camera3StreamFixture,
+      public ::testing::WithParamInterface<std::tuple<int32_t, int32_t>> {
+ public:
+  Camera3BadResultionStreamTest()
+      : Camera3StreamFixture(std::get<0>(GetParam())) {}
+};
+
+TEST_P(Camera3BadResultionStreamTest, CreateStream) {
+  int cam_id = std::get<0>(GetParam());
+  int32_t format = std::get<1>(GetParam());
+
+  if (cam_module_.IsFormatAvailable(cam_id_, format)) {
+    int32_t bad_width = default_width_ + 1;
+    std::vector<ResolutionInfo> available_resolutions =
+        cam_module_.GetSortedOutputResolutions(cam_id, format);
+    while (std::find(available_resolutions.begin(), available_resolutions.end(),
+                     ResolutionInfo(bad_width, default_height_)) !=
+           available_resolutions.end()) {
+      bad_width++;
+    }
+    cam_device_.AddOutputStream(format, bad_width, default_height_);
+    ASSERT_NE(0, cam_device_.ConfigureStreams())
+        << "Configuring stream of bad resolution succeeds";
   }
 }
 
@@ -198,6 +172,20 @@ TEST_P(Camera3MultiStreamTest, CreateStream) {
 INSTANTIATE_TEST_CASE_P(
     CreateStream,
     Camera3StreamTest,
+    ::testing::Combine(
+        ::testing::ValuesIn(Camera3Module().GetCameraIds()),
+        ::testing::Values(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
+                          HAL_PIXEL_FORMAT_YCbCr_420_888,
+                          HAL_PIXEL_FORMAT_YCrCb_420_SP,
+                          HAL_PIXEL_FORMAT_BLOB,
+                          HAL_PIXEL_FORMAT_YV12,
+                          HAL_PIXEL_FORMAT_Y8,
+                          HAL_PIXEL_FORMAT_Y16,
+                          HAL_PIXEL_FORMAT_RAW16)));
+
+INSTANTIATE_TEST_CASE_P(
+    CreateStream,
+    Camera3BadResultionStreamTest,
     ::testing::Combine(
         ::testing::ValuesIn(Camera3Module().GetCameraIds()),
         ::testing::Values(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
