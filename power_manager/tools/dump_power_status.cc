@@ -39,6 +39,7 @@ int main(int argc, char** argv) {
   printf("line_power_connected %d\n", status.line_power_on);
   printf("battery_present %d\n", status.battery_is_present);
   printf("battery_percent %0.2f\n", status.battery_percentage);
+  printf("battery_display_percent %0.2f\n", status.display_battery_percentage);
   printf("battery_charge %0.2f\n", status.battery_charge);
   printf("battery_charge_full %0.2f\n", status.battery_charge_full);
   printf("battery_charge_full_design %0.2f\n",
