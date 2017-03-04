@@ -75,6 +75,12 @@ TPM_RC TpmHandle::SendCommandInternal(const std::string& command,
                                       std::string* response) {
   CHECK_NE(fd_, kInvalidFileDescriptor);
   int result = HANDLE_EINTR(write(fd_, command.data(), command.length()));
+  if (result < 0 && errno == EREMOTEIO) {
+    // Retry once in case the error is caused by late wakeup from sleep.
+    // Repeated error should lead to failure.
+    LOG(WARNING) << "TPM: Retrying write after Remote I/O error.";
+    result = HANDLE_EINTR(write(fd_, command.data(), command.length()));
+  }
   if (result < 0) {
     PLOG(ERROR) << "TPM: Error writing to TPM handle.";
     return TRUNKS_RC_WRITE_ERROR;
