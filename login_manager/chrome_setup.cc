@@ -241,6 +241,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
       builder->AddArg("--cellular-first");
       builder->AddArg(
           "--app-mode-oem-manifest=/etc/rialto_overlay_oem_manifest.json");
+      builder->AddArg("--log-level=0");
     } else {
       // The current mode of rialto operation.
       builder->AddArg("--disable-demo-mode");
