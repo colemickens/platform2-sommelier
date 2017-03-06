@@ -116,7 +116,7 @@ class DiskManager : public MountManager,
                          const std::vector<std::string>& options) const;
 
   // Returns a Filesystem object if a given filesystem type is supported.
-  // Otherwise, it returns NULL.
+  // Otherwise, it returns NULL. This pointer is owned by the DiskManager.
   const Filesystem* GetFilesystem(const std::string& filesystem_type) const;
 
   // An EnumerateBlockDevices callback that emulates a block device event
