@@ -82,8 +82,7 @@ class MojoInterfaceDelegate {
   explicit MojoInterfaceDelegate(mojo::InterfacePtrInfo<T> interface_ptr_info)
       : thread_("Delegate thread") {
     VLOGF_ENTER();
-    if (!thread_.StartWithOptions(
-            base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
+    if (!thread_.Start()) {
       LOGF(ERROR) << "Delegate thread failed to start";
       exit(-1);
     }
@@ -160,8 +159,7 @@ class MojoBindingDelegate : public T {
   explicit MojoBindingDelegate(base::Closure quit_cb = base::Closure())
       : thread_("Delegate thread"), binding_(this) {
     VLOGF_ENTER();
-    if (!thread_.StartWithOptions(
-            base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
+    if (!thread_.Start()) {
       LOGF(ERROR) << "Delegate thread failed to start";
       exit(-1);
     }
