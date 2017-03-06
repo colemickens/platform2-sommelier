@@ -83,9 +83,6 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(wifi_transmit_power_tablet,
               false,
               "Set wifi transmit power mode to tablet mode");
-  DEFINE_string(wifi_transmit_power_iwl_power_table,
-                "",
-                "Power table for iwlwifi driver");
   brillo::FlagHelper::Init(argc, argv, "powerd setuid helper");
 
   if (FLAGS_action == "mosys_eventlog") {
@@ -102,15 +99,7 @@ int main(int argc, char* argv[]) {
   } else if (FLAGS_action == "set_wifi_transmit_power") {
     const char* tablet =
         FLAGS_wifi_transmit_power_tablet ? "--tablet" : "--notablet";
-    std::string power_table;
-    if (!FLAGS_wifi_transmit_power_iwl_power_table.empty()) {
-      power_table =
-          "--iwl_power_table=" + FLAGS_wifi_transmit_power_iwl_power_table;
-    }
-    RunCommand("set_wifi_transmit_power",
-               tablet,
-               (power_table.empty() ? NULL : power_table.c_str()),
-               NULL);
+    RunCommand("set_wifi_transmit_power", tablet, NULL);
   } else if (FLAGS_action == "shut_down") {
     std::string reason_arg;
     if (!FLAGS_shutdown_reason.empty()) {

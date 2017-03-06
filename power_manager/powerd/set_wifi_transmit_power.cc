@@ -39,11 +39,13 @@
 #define INTEL_OUI 0x001735
 
 // Vendor sub command
-#define IWL_MVM_VENDOR_CMD_SET_NIC_TXPOWER_LIMIT 13
+#define IWL_MVM_VENDOR_CMD_SET_SAR_PROFILE 28
 
-#define IWL_MVM_VENDOR_ATTR_TXP_LIMIT_24 13
-#define IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52L 14
-#define IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52H 15
+#define IWL_MVM_VENDOR_ATTR_SAR_CHAIN_A_PROFILE 58
+#define IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE 59
+
+#define IWL_TABLET_PROFILE_INDEX 1
+#define IWL_CLAMSHELL_PROFILE_INDEX 2
 
 namespace {
 
@@ -80,9 +82,7 @@ class SetWiFiTransmitPower {
   ~SetWiFiTransmitPower();
 
   // Set power mode according to tablet mode state.
-  // |iwl_power_table| is only required when the system has a Intel WiFi device
-  // (iwlwifi driver). Returns 0 on success and a negative number on error.
-  void SetPowerMode(bool tablet, const std::string& iwl_power_table);
+  void SetPowerMode(bool tablet);
 
  private:
   static WirelessDriver GetWirelessDriverType();
@@ -94,9 +94,7 @@ class SetWiFiTransmitPower {
   void FillMessageMwifiex(struct nl_msg* msg, bool tablet);
 
   // Fill in nl80211 message for the iwl driver.
-  void FillMessageIwl(struct nl_msg* msg,
-                      bool tablet,
-                      const std::string iwl_power_table);
+  void FillMessageIwl(struct nl_msg* msg, bool tablet);
 
   struct nl_sock* nl_sock_;
   struct nl_cb* cb_;
@@ -171,63 +169,33 @@ void SetWiFiTransmitPower::FillMessageMwifiex(struct nl_msg* msg, bool tablet) {
   CHECK(!err) << "Failed in nla_nest_end";
 }
 
-void SetWiFiTransmitPower::FillMessageIwl(struct nl_msg* msg,
-                                          bool tablet,
-                                          const std::string iwl_power_table) {
+void SetWiFiTransmitPower::FillMessageIwl(struct nl_msg* msg, bool tablet) {
   int err = 0;
-
-  CHECK(!iwl_power_table.empty()) << "No power table information available";
-
-  // The iwl_power_table string has 6 unsigned integers separated by colon.
-  // The first three integers represent the power value of 24, 52L, 52H bands
-  // in clamshell mode, while the last three integers represent that of the
-  // power value for tablet mode.
-  std::vector<std::string> str_values = base::SplitString(
-      iwl_power_table, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-
-  CHECK_EQ(str_values.size(), static_cast<size_t>(6))
-      << "Wrong number of power table literal";
-
-  // Parse string value to unsigned integers.
-  std::vector<unsigned> values;
-  for (const auto& str_value : str_values) {
-    unsigned output;
-    CHECK(base::StringToUint(str_value, &output))
-        << "Invalid power table literal \"" << str_value << "\"";
-    values.push_back(output);
-  }
 
   err = nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, INTEL_OUI);
   CHECK(!err) << "Failed to put NL80211_ATTR_VENDOR_ID";
 
   err = nla_put_u32(msg,
                     NL80211_ATTR_VENDOR_SUBCMD,
-                    IWL_MVM_VENDOR_CMD_SET_NIC_TXPOWER_LIMIT);
+                    IWL_MVM_VENDOR_CMD_SET_SAR_PROFILE);
   CHECK(!err) << "Failed to put NL80211_ATTR_VENDOR_SUBCMD";
 
   struct nlattr* limits = nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA);
   CHECK(limits) << "Failed in nla_nest_start";
 
-  int group = tablet ? 1 : 0;
+  int index = tablet ? IWL_TABLET_PROFILE_INDEX : IWL_CLAMSHELL_PROFILE_INDEX;
 
-  err = nla_put_u32(
-      msg, IWL_MVM_VENDOR_ATTR_TXP_LIMIT_24, values[group * 3 + 0] * 8);
-  CHECK(!err) << "Failed to put MWIFIEX_VENDOR_CMD_ATTR_TXP_LIMIT_24";
+  err = nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_SAR_CHAIN_A_PROFILE, index);
+  CHECK(!err) << "Failed to put IWL_MVM_VENDOR_ATTR_SAR_CHAIN_A_PROFILE";
 
-  err = nla_put_u32(
-      msg, IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52L, values[group * 3 + 1] * 8);
-  CHECK(!err) << "Failed to put MWIFIEX_VENDOR_CMD_ATTR_TXP_LIMIT_52L";
-
-  err = nla_put_u32(
-      msg, IWL_MVM_VENDOR_ATTR_TXP_LIMIT_52H, values[group * 3 + 2] * 8);
-  CHECK(!err) << "Failed to put MWIFIEX_VENDOR_CMD_ATTR_TXP_LIMIT_52H";
+  err = nla_put_u32(msg, IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE, index);
+  CHECK(!err) << "Failed to put IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE";
 
   err = nla_nest_end(msg, limits);
   CHECK(!err) << "Failed in nla_nest_end";
 }
 
-void SetWiFiTransmitPower::SetPowerMode(bool tablet,
-                                        const std::string& iwl_power_table) {
+void SetWiFiTransmitPower::SetPowerMode(bool tablet) {
   int err = 0;
 
   err = genl_connect(nl_sock_);
@@ -252,7 +220,7 @@ void SetWiFiTransmitPower::SetPowerMode(bool tablet,
       FillMessageMwifiex(msg, tablet);
       break;
     case WirelessDriver::IWL:
-      FillMessageIwl(msg, tablet, iwl_power_table);
+      FillMessageIwl(msg, tablet);
       break;
     default:
       LOG(FATAL) << "no valid wireless driver found";
@@ -271,13 +239,8 @@ void SetWiFiTransmitPower::SetPowerMode(bool tablet,
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(tablet, false, "Set wifi transmit power mode to tablet mode");
-  DEFINE_string(iwl_power_table,
-                "",
-                "Power table for iwlwifi driver. "
-                "The argument should be a string containing 6 integers "
-                "separated by colons");
   brillo::FlagHelper::Init(argc, argv, "Set wifi transmit power mode");
 
-  SetWiFiTransmitPower().SetPowerMode(FLAGS_tablet, FLAGS_iwl_power_table);
+  SetWiFiTransmitPower().SetPowerMode(FLAGS_tablet);
   return 0;
 }

@@ -272,10 +272,6 @@ class Daemon : public policy::BacklightControllerObserver,
   void SetBacklightsSuspended(bool suspended);
   void SetBacklightsDocked(bool docked);
 
-  // Parses kIwlWifiTransmitPowerTablePref if set and updates
-  // |iwl_wifi_power_table_|.
-  void PopulateIwlWifiTransmitPowerTable();
-
   // Updates wifi transmit power for |mode|. Should only be called if
   // |set_wifi_transmit_power_for_tablet_mode_| is true.
   void UpdateWifiTransmitPowerForTabletMode(TabletMode mode);
@@ -385,9 +381,6 @@ class Daemon : public policy::BacklightControllerObserver,
 
   // Set wifi transmit power for tablet mode.
   bool set_wifi_transmit_power_for_tablet_mode_;
-
-  // Intel iwlwifi driver power table.
-  std::string iwl_wifi_power_table_;
 
   // Used to log video, user, and audio activity and hovering.
   std::unique_ptr<PeriodicActivityLogger> video_activity_logger_;

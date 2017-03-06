@@ -357,10 +357,8 @@ void Daemon::Init() {
 
   prefs_->GetBool(kSetWifiTransmitPowerForTabletModePref,
                   &set_wifi_transmit_power_for_tablet_mode_);
-  if (set_wifi_transmit_power_for_tablet_mode_) {
-    PopulateIwlWifiTransmitPowerTable();
+  if (set_wifi_transmit_power_for_tablet_mode_)
     UpdateWifiTransmitPowerForTabletMode(tablet_mode);
-  }
 
   prefs_->GetBool(kMosysEventlogPref, &log_suspend_with_mosys_eventlog_);
   prefs_->GetBool(kSuspendToIdlePref, &suspend_to_idle_);
@@ -1598,43 +1596,11 @@ void Daemon::SetBacklightsDocked(bool docked) {
     controller->SetDocked(docked);
 }
 
-void Daemon::PopulateIwlWifiTransmitPowerTable() {
-  if (!prefs_->GetString(kIwlWifiTransmitPowerTablePref,
-                         &iwl_wifi_power_table_))
-    return;
-
-  // Perform format checking to ensure no one can inject shell command.
-  std::vector<std::string> str_values = base::SplitString(
-      iwl_wifi_power_table_, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-
-  if (str_values.size() != 6) {
-    LOG(ERROR) << "Wrong number of power table literal "
-               << "(expected: 6; got: " << str_values.size() << ")";
-    iwl_wifi_power_table_.clear();
-    return;
-  }
-
-  // Parse string value to unsigned integers.
-  for (const auto& str_value : str_values) {
-    unsigned output;
-    if (!base::StringToUint(str_value, &output)) {
-      LOG(ERROR) << "Invalid power table literal \"" << str_value << "\"";
-      iwl_wifi_power_table_.clear();
-      return;
-    }
-  }
-}
-
 void Daemon::UpdateWifiTransmitPowerForTabletMode(TabletMode mode) {
   DCHECK(set_wifi_transmit_power_for_tablet_mode_);
   std::string args = (mode == TabletMode::ON)
                          ? "--wifi_transmit_power_tablet"
                          : "--nowifi_transmit_power_tablet";
-
-  // Intel iwlwifi driver requires extra power table.
-  if (!iwl_wifi_power_table_.empty()) {
-    args += " --wifi_transmit_power_iwl_power_table=" + iwl_wifi_power_table_;
-  }
 
   LOG(INFO) << ((mode == TabletMode::ON) ? "Enabling" : "Disabling")
             << " tablet mode wifi transmit power";
