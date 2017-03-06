@@ -247,9 +247,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
       builder->AddArg("--kiosk");
       builder->AddArg("--login-user=chronos");
       builder->AddArg("--ash-hide-notifications-for-factory");
-      // TODO(kumarniranjan): Remove --allow-data-roaming-by-default once all
-      // Rialto devices are on newer builds of Chromium. See crbug.com/693206
-      builder->AddArg("--allow-data-roaming-by-default");
       builder->AddArg("--cellular-first");
       builder->AddArg("--load-and-launch-app=/usr/share/app_shell/apps/rialto");
       builder->AddArg("--enable-logging=stderr");
