@@ -75,7 +75,7 @@ mojom::Camera3StreamConfigurationPtr CameraDeviceAdapter::ConfigureStreams(
     stream->stream_type = s->stream_type;
     stream->width = s->width;
     stream->height = s->height;
-    stream->format = s->format;
+    stream->format = static_cast<int32_t>(s->format);
     stream->usage = s->usage;
     stream->max_buffers = s->max_buffers;
     stream->data_space = static_cast<android_dataspace_t>(s->data_space);
@@ -105,6 +105,7 @@ mojom::Camera3StreamConfigurationPtr CameraDeviceAdapter::ConfigureStreams(
     for (const auto& s : streams_) {
       mojom::Camera3StreamPtr ptr = mojom::Camera3Stream::New();
       ptr->id = s.first;
+      ptr->format = static_cast<mojom::HalPixelFormat>(s.second->format);
       // HAL should only change usage and max_buffers.
       ptr->usage = s.second->usage;
       ptr->max_buffers = s.second->max_buffers;

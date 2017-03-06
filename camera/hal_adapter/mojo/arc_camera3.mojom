@@ -6,12 +6,25 @@ module arc.mojom;
 
 import "arc_camera3_metadata.mojom";
 
+[Extensible]
+enum HalPixelFormat {
+  HAL_PIXEL_FORMAT_RGBA_8888 = 0x1,
+  HAL_PIXEL_FORMAT_RGBX_8888 = 0x2,
+  HAL_PIXEL_FORMAT_BGRA_8888 = 0x5,
+  HAL_PIXEL_FORMAT_YCrCb_420_SP = 0x11,
+  HAL_PIXEL_FORMAT_YCbCr_422_I = 0x14,
+  HAL_PIXEL_FORMAT_BLOB = 0x21,
+  HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED = 0x22,
+  HAL_PIXEL_FORMAT_YCbCr_420_888 = 0x23,
+  HAL_PIXEL_FORMAT_YV12 = 0x32315659,
+};
+
 struct Camera3Stream {
   uint64 id;
   int32 stream_type;
   uint32 width;
   uint32 height;
-  int32 format;
+  HalPixelFormat format;
   uint32 usage;
   uint32 max_buffers;
   uint32 data_space;
