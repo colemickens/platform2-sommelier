@@ -12,7 +12,7 @@
 #include <base/files/file_util.h>
 #include <brillo/flag_helper.h>
 
-#include "biod/fake_biometric_common.h"
+#include "biod/fake_biometrics_manager_common.h"
 
 #ifndef VCSID
 #define VCSID "<not set>"

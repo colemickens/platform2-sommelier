@@ -8,65 +8,72 @@ users of the device.
 
 ## KEYWORDS
 
-Enroll - the act of registering a specific piece of biometric data.
+Record - a specific piece of biometric data that a user registers along with its
+metadata.
 
-Enrollment - the biometric data that the users register along with its metadata.
+Enroll - the act of registering a record.
+
+EnrollSession - the session during which enrolling of a record happens.
 
 Authenticate - the act of checking a new piece of biometric data against stored
-enrollments.
+records.
 
-Biometric - a piece of device/hardware/sensor for collecting a specific type of
-biometric data. Each Biometric is in charge of storing the enrollments that it
-generated.
+AuthSession - the session during which authenticating a new piece of biometric
+data against stored records happens.
+
+BiometricsManager - manager for a piece of device/hardware/sensor for collecting
+a specific type of biometric data. Each BiometricsManager is in charge of
+storing the records that it enrolled.
 
 ## STORAGE
 
-The enrollments are stored under the directory:
-/home/root/[hash_of_user_id]/biod/[name_of_biometric]/
+The records are stored under the directory:
+/home/root/[hash_of_user_id]/biod/[name_of_biometrics_manager]/
 with the file name:
-Enrollment[UUID].
+Record[UUID].
 
 UUID has the form of XXXXXXXX_XXXX_XXXX_XXXX_XXXXXXXXXXXX where X represents a
 lowercase hex digit. UUID is a 128-bit random number generated with guid, so it
 will highly unlikely repeat. '_' are used instead of '-' because this UUID is
 used in biod D-bus object paths, which do not allow '-'.
 
-Currently each enrollment file is stored in JSON format, and contains one
-enrollment and its metadata.
+Each record file is stored in JSON format, and contains one record and its
+metadata.
 
 ## HARDWARE
 
 ### FakeBiometric
 
-FakeBiometric is a fake biometric which simulates a real biometric sensor and
-its interaction with biod. It is used to test biod.
+FakeBiometric is the biometrics manager for a fake sensor which simulates a real
+biometric sensor and its interaction with biod. It is used to test biod.
 
 ### FpcBiometric
 
-FpcBiometric is a real sensor and has its own algorithms library (called
-libfp.so) for building, serializing, updating and matching enrollments. libfp.so
-is provided by the hardware vendor and dynamically loaded at runtime.
+FpcBiometric is the biometrics manager for a real sensor and has its own
+algorithms library (called libfp.so) for building, serializing, updating and
+matching records. libfp.so is provided by the hardware vendor and dynamically
+loaded at runtime.
 
 ## CHROME
 
 Biod communicates with Chrome via D-bus messages. Chrome provides the graphical
 interface for users to enroll new biometric data and manage their own
-enrollments. Chrome is also responsible for the visual display during
+records. Chrome is also responsible for the visual display during
 authentication.
 
 ## LOGIN MANAGER
 
 When a user logs in or biod starts, biod will ask login manager for a list of
-currently logged-in users, and load from storage the enrollments of the newly
+currently logged-in users, and load from storage the records of the newly
 logged-in users.
 
 When a user logs out, all users log out at the same time, biod receives a
-signal from login manager and remove all enrollments in the memory.
+signal from login manager and remove all records in the memory.
 
 ## CRYPTOHOME
 
-Because the enrollments are stored in per user stateful under /home/root/
-[hash_of_user_id], they are naturally encrypted by cryptohome. Enrollments are
+Because the records are stored in per user stateful under /home/root/
+[hash_of_user_id], they are naturally encrypted by cryptohome. Records are
 encrypted when the users log out and decrypted when the users log in. Cryptohome
 provides a layer of security to biod.
 

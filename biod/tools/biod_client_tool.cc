@@ -20,56 +20,57 @@
 #include <dbus/bus.h>
 #include <dbus/object_manager.h>
 
-#include "biod/biometric.h"
+#include "biod/biometrics_manager.h"
 
 static const char kHelpText[] =
     "biod_client_tool, used to pretend to be a biometrics client, like a lock "
     "screen or fingerprint enrollment app\n\n"
     "commands:\n"
-    "  enroll <biometric> <user id> <label> - Starts an enrollment session for "
-    "the biometric that will result in an enrollment with the given user ID "
-    "and label.\n"
-    "  authenticate <biometric> - Performs authentication with the given "
-    "biometric until the program is interrupted.\n"
-    "  list [<user_id>] - Lists available biometrics and optionally user's "
-    "enrollments.\n"
-    "  unenroll <enrollment> - Removes the given enrollment.\n"
-    "  set_label <enrollment> <label> - Sets the label for the given "
-    "enrollment to <label>.\n"
-    "  destroy_all [biometric] - Destroys all enrollments for the given "
-    "biometric, or all biometrics if no object path is given.\n\n"
-    "The <biometric> parameter is the D-Bus object path of the biometric, and "
-    "can be abbreviated as the path's basename (the part after the last "
-    "forward slash)\n\n"
-    "The <enrollment> parameter is also a D-Bus object path.";
+    "  enroll <biometrics manager> <user id> <label> - Starts an enroll "
+    "session for the biometrics manager that will result in the enrollment of "
+    "a record with the given user ID and label.\n"
+    "  authenticate <biometrics manager> - Performs authentication with the "
+    "given biometrics manager until the program is interrupted.\n"
+    "  list [<user_id>] - Lists available biometrics managers and optionally "
+    "user's records.\n"
+    "  unenroll <record> - Removes the given record.\n"
+    "  set_label <record> <label> - Sets the label for the given record to "
+    "<label>.\n"
+    "  destroy_all [<biometrics manager>] - Destroys all records for the given "
+    "biometrics manager, or all biometrics managers if no object path is "
+    "given.\n\n"
+    "The <biometrics manager> parameter is the D-Bus object path of the "
+    "biometrics manager, and can be abbreviated as the path's basename (the "
+    "part after the last forward slash)\n\n"
+    "The <record> parameter is also a D-Bus object path.";
 
 static const int kDbusTimeoutMs = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
 static const char kBiodServiceName[] = "org.chromium.BiometricsDaemon";
 static const char kBiodRootPath[] = "/org/chromium/BiometricsDaemon";
-static const char kBiodBiometricInterface[] =
-    "org.chromium.BiometricsDaemon.Biometric";
-static const char kBiodEnrollInterface[] =
-    "org.chromium.BiometricsDaemon.Enroll";
-static const char kBiodAuthenticationInterface[] =
-    "org.chromium.BiometricsDaemon.Authentication";
-static const char kBiodEnrollmentInterface[] =
-    "org.chromium.BiometricsDaemon.Enrollment";
+static const char kBiodBiometricsManagerInterface[] =
+    "org.chromium.BiometricsDaemon.BiometricsManager";
+static const char kBiodEnrollSessionInterface[] =
+    "org.chromium.BiometricsDaemon.EnrollSession";
+static const char kBiodAuthSessionInterface[] =
+    "org.chromium.BiometricsDaemon.AuthSession";
+static const char kBiodRecordInterface[] =
+    "org.chromium.BiometricsDaemon.Record";
 
-using BiometricType = biod::Biometric::Type;
-using ScanResult = biod::Biometric::ScanResult;
-using ScanCallback = biod::Biometric::ScanCallback;
-using AttemptCallback = biod::Biometric::AttemptCallback;
-using FailureCallback = biod::Biometric::FailureCallback;
+using BiometricsManagerType = biod::BiometricsManager::Type;
+using ScanResult = biod::BiometricsManager::ScanResult;
+using EnrollScanDoneCallback = biod::BiometricsManager::EnrollScanDoneCallback;
+using AuthScanDoneCallback = biod::BiometricsManager::AuthScanDoneCallback;
+using SessionFailedCallback = biod::BiometricsManager::SessionFailedCallback;
 
-std::string ToString(BiometricType type) {
+std::string ToString(BiometricsManagerType type) {
   switch (type) {
-    case BiometricType::kFingerprint:
+    case BiometricsManagerType::kFingerprint:
       return "Fingerprint";
-    case BiometricType::kRetina:
+    case BiometricsManagerType::kRetina:
       return "Retina";
-    case BiometricType::kFace:
+    case BiometricsManagerType::kFace:
       return "Face";
-    case BiometricType::kVoice:
+    case BiometricsManagerType::kVoice:
       return "Voice";
     default:
       return "Unknown";
@@ -97,10 +98,9 @@ std::string ToString(ScanResult result) {
   }
 }
 
-class EnrollmentProxy {
+class RecordProxy {
  public:
-  EnrollmentProxy(const scoped_refptr<dbus::Bus>& bus,
-                  const dbus::ObjectPath& path)
+  RecordProxy(const scoped_refptr<dbus::Bus>& bus, const dbus::ObjectPath& path)
       : bus_(bus), path_(path) {
     proxy_ = bus_->GetObjectProxy(kBiodServiceName, path_);
     GetLabel();
@@ -110,14 +110,14 @@ class EnrollmentProxy {
   const std::string& label() const { return label_; }
 
   bool SetLabel(const std::string& label) {
-    dbus::MethodCall method_call(kBiodEnrollmentInterface, "SetLabel");
+    dbus::MethodCall method_call(kBiodRecordInterface, "SetLabel");
     dbus::MessageWriter method_writer(&method_call);
     method_writer.AppendString(label);
     return !!proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
   }
 
   bool Remove() {
-    dbus::MethodCall method_call(kBiodEnrollmentInterface, "Remove");
+    dbus::MethodCall method_call(kBiodRecordInterface, "Remove");
     return !!proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
   }
 
@@ -126,7 +126,7 @@ class EnrollmentProxy {
     dbus::MethodCall method_call(dbus::kPropertiesInterface,
                                  dbus::kPropertiesGet);
     dbus::MessageWriter method_writer(&method_call);
-    method_writer.AppendString(kBiodEnrollmentInterface);
+    method_writer.AppendString(kBiodRecordInterface);
     method_writer.AppendString("Label");
     std::unique_ptr<dbus::Response> response =
         proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
@@ -143,13 +143,13 @@ class EnrollmentProxy {
   std::string label_;
 };
 
-class BiometricProxy {
+class BiometricsManagerProxy {
  public:
   using FinishCallback = base::Callback<void(bool success)>;
 
-  BiometricProxy(const scoped_refptr<dbus::Bus>& bus,
-                 const dbus::ObjectPath& path,
-                 dbus::MessageReader* pset_reader)
+  BiometricsManagerProxy(const scoped_refptr<dbus::Bus>& bus,
+                         const dbus::ObjectPath& path,
+                         dbus::MessageReader* pset_reader)
       : bus_(bus) {
     proxy_ = bus_->GetObjectProxy(kBiodServiceName, path);
 
@@ -166,32 +166,39 @@ class BiometricProxy {
     }
 
     proxy_->ConnectToSignal(
-        kBiodBiometricInterface,
-        "Scanned",
-        base::Bind(&BiometricProxy::OnScanned, base::Unretained(this)),
-        base::Bind(&BiometricProxy::OnSignalConnected, base::Unretained(this)));
+        kBiodBiometricsManagerInterface,
+        "EnrollScanDone",
+        base::Bind(&BiometricsManagerProxy::OnEnrollScanDone,
+                   base::Unretained(this)),
+        base::Bind(&BiometricsManagerProxy::OnSignalConnected,
+                   base::Unretained(this)));
     proxy_->ConnectToSignal(
-        kBiodBiometricInterface,
-        "Attempt",
-        base::Bind(&BiometricProxy::OnAttempt, base::Unretained(this)),
-        base::Bind(&BiometricProxy::OnSignalConnected, base::Unretained(this)));
+        kBiodBiometricsManagerInterface,
+        "AuthScanDone",
+        base::Bind(&BiometricsManagerProxy::OnAuthScanDone,
+                   base::Unretained(this)),
+        base::Bind(&BiometricsManagerProxy::OnSignalConnected,
+                   base::Unretained(this)));
     proxy_->ConnectToSignal(
-        kBiodBiometricInterface,
-        "Failure",
-        base::Bind(&BiometricProxy::OnFailure, base::Unretained(this)),
-        base::Bind(&BiometricProxy::OnSignalConnected, base::Unretained(this)));
+        kBiodBiometricsManagerInterface,
+        "SessionFailed",
+        base::Bind(&BiometricsManagerProxy::OnSessionFailed,
+                   base::Unretained(this)),
+        base::Bind(&BiometricsManagerProxy::OnSignalConnected,
+                   base::Unretained(this)));
   }
 
   const dbus::ObjectPath& path() const { return proxy_->object_path(); }
-  BiometricType type() const { return type_; }
+  BiometricsManagerType type() const { return type_; }
 
   void SetFinishHandler(const FinishCallback& on_finish) {
     on_finish_ = on_finish;
   }
 
-  dbus::ObjectProxy* StartEnroll(const std::string& user_id,
-                                 const std::string& label) {
-    dbus::MethodCall method_call(kBiodBiometricInterface, "StartEnroll");
+  dbus::ObjectProxy* StartEnrollSession(const std::string& user_id,
+                                        const std::string& label) {
+    dbus::MethodCall method_call(kBiodBiometricsManagerInterface,
+                                 "StartEnrollSession");
     dbus::MessageWriter method_writer(&method_call);
     method_writer.AppendString(user_id);
     method_writer.AppendString(label);
@@ -202,16 +209,16 @@ class BiometricProxy {
       return nullptr;
 
     dbus::MessageReader response_reader(response.get());
-    dbus::ObjectPath enroll_path;
-    CHECK(response_reader.PopObjectPath(&enroll_path));
-    dbus::ObjectProxy* enroll_proxy =
-        bus_->GetObjectProxy(kBiodServiceName, enroll_path);
-    return enroll_proxy;
+    dbus::ObjectPath enroll_session_path;
+    CHECK(response_reader.PopObjectPath(&enroll_session_path));
+    dbus::ObjectProxy* enroll_session_proxy =
+        bus_->GetObjectProxy(kBiodServiceName, enroll_session_path);
+    return enroll_session_proxy;
   }
 
-  dbus::ObjectProxy* StartAuthentication() {
-    dbus::MethodCall method_call(kBiodBiometricInterface,
-                                 "StartAuthentication");
+  dbus::ObjectProxy* StartAuthSession() {
+    dbus::MethodCall method_call(kBiodBiometricsManagerInterface,
+                                 "StartAuthSession");
 
     std::unique_ptr<dbus::Response> response =
         proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
@@ -226,16 +233,15 @@ class BiometricProxy {
     return auth_proxy;
   }
 
-  bool DestroyAllEnrollments() {
-    dbus::MethodCall method_call(kBiodBiometricInterface,
-                                 "DestroyAllEnrollments");
+  bool DestroyAllRecords() {
+    dbus::MethodCall method_call(kBiodBiometricsManagerInterface,
+                                 "DestroyAllRecords");
     return !!proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
   }
 
-  std::vector<EnrollmentProxy> GetEnrollmentsForUser(
-      const std::string& user_id) const {
-    dbus::MethodCall method_call(kBiodBiometricInterface,
-                                 "GetEnrollmentsForUser");
+  std::vector<RecordProxy> GetRecordsForUser(const std::string& user_id) const {
+    dbus::MethodCall method_call(kBiodBiometricsManagerInterface,
+                                 "GetRecordsForUser");
     dbus::MessageWriter method_writer(&method_call);
     method_writer.AppendString(user_id);
 
@@ -243,16 +249,16 @@ class BiometricProxy {
         proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
     CHECK(response);
 
-    std::vector<EnrollmentProxy> enrollments;
+    std::vector<RecordProxy> records;
     dbus::MessageReader response_reader(response.get());
-    dbus::MessageReader enrollments_reader(nullptr);
-    CHECK(response_reader.PopArray(&enrollments_reader));
-    while (enrollments_reader.HasMoreData()) {
-      dbus::ObjectPath enrollment_path;
-      CHECK(enrollments_reader.PopObjectPath(&enrollment_path));
-      enrollments.emplace_back(bus_, enrollment_path);
+    dbus::MessageReader records_reader(nullptr);
+    CHECK(response_reader.PopArray(&records_reader));
+    while (records_reader.HasMoreData()) {
+      dbus::ObjectPath record_path;
+      CHECK(records_reader.PopObjectPath(&record_path));
+      records.emplace_back(bus_, record_path);
     }
-    return enrollments;
+    return records;
   }
 
  private:
@@ -261,7 +267,7 @@ class BiometricProxy {
       on_finish_.Run(success);
   }
 
-  void OnScanned(dbus::Signal* signal) {
+  void OnEnrollScanDone(dbus::Signal* signal) {
     dbus::MessageReader signal_reader(signal);
 
     ScanResult scan_result;
@@ -284,7 +290,7 @@ class BiometricProxy {
     }
   }
 
-  void OnAttempt(dbus::Signal* signal) {
+  void OnAuthScanDone(dbus::Signal* signal) {
     dbus::MessageReader signal_reader(signal);
 
     ScanResult scan_result;
@@ -316,7 +322,7 @@ class BiometricProxy {
     }
   }
 
-  void OnFailure(dbus::Signal* signal) {
+  void OnSessionFailed(dbus::Signal* signal) {
     LOG(ERROR) << "Biometric device failed";
     OnFinish(false);
   }
@@ -334,8 +340,8 @@ class BiometricProxy {
   scoped_refptr<dbus::Bus> bus_;
   dbus::ObjectProxy* proxy_;
 
-  BiometricType type_;
-  std::vector<EnrollmentProxy> enrollments_;
+  BiometricsManagerType type_;
+  std::vector<RecordProxy> records_;
 
   FinishCallback on_finish_;
 };
@@ -351,7 +357,7 @@ class BiodProxy {
 
     std::unique_ptr<dbus::Response> objects_msg =
         proxy_->CallMethodAndBlock(&get_objects_method, kDbusTimeoutMs);
-    CHECK(objects_msg) << "Failed to retrieve biometrics.";
+    CHECK(objects_msg) << "Failed to retrieve biometrics managers.";
 
     dbus::MessageReader reader(objects_msg.get());
     dbus::MessageReader array_reader(nullptr);
@@ -374,38 +380,55 @@ class BiodProxy {
 
         dbus::MessageReader pset_reader(nullptr);
         CHECK(interface_entry_reader.PopArray(&pset_reader));
-        if (interface_name == kBiodBiometricInterface) {
-          biometrics_.emplace_back(bus_, object_path, &pset_reader);
+        if (interface_name == kBiodBiometricsManagerInterface) {
+          biometrics_managers_.emplace_back(bus_, object_path, &pset_reader);
         }
       }
     }
   }
 
-  BiometricProxy* GetBiometric(base::StringPiece path) {
+  BiometricsManagerProxy* GetBiometricsManager(base::StringPiece path) {
     bool short_path =
         !base::StartsWith(path, "/", base::CompareCase::SENSITIVE);
 
-    for (BiometricProxy& biometric : biometrics_) {
-      const std::string& biometric_path = biometric.path().value();
+    for (BiometricsManagerProxy& biometrics_manager : biometrics_managers_) {
+      const std::string& biometrics_manager_path =
+          biometrics_manager.path().value();
       if (short_path) {
         if (base::EndsWith(
-                biometric_path, path, base::CompareCase::SENSITIVE)) {
-          return &biometric;
+                biometrics_manager_path, path, base::CompareCase::SENSITIVE)) {
+          return &biometrics_manager;
         }
-      } else if (biometric_path == path) {
-        return &biometric;
+      } else if (biometrics_manager_path == path) {
+        return &biometrics_manager;
       }
     }
     return nullptr;
   }
 
-  std::vector<BiometricProxy>& biometrics() { return biometrics_; }
+  const std::vector<BiometricsManagerProxy>& biometrics_managers() const {
+    return biometrics_managers_;
+  }
+
+  int DestroyAllRecords() {
+    int ret = 0;
+    for (BiometricsManagerProxy& biometrics_manager : biometrics_managers_) {
+      if (!biometrics_manager.DestroyAllRecords()) {
+        LOG(ERROR) << "Failed to destroy record from BiometricsManager at "
+                   << biometrics_manager.path().value();
+        ret = 1;
+      }
+    }
+    if (ret)
+      LOG(WARNING) << "Not all records were destroyed";
+    return ret;
+  }
 
  private:
   scoped_refptr<dbus::Bus> bus_;
   dbus::ObjectProxy* proxy_;
 
-  std::vector<BiometricProxy> biometrics_;
+  std::vector<BiometricsManagerProxy> biometrics_managers_;
 };
 
 void OnFinish(base::RunLoop* run_loop, int* ret_ptr, bool success) {
@@ -413,12 +436,13 @@ void OnFinish(base::RunLoop* run_loop, int* ret_ptr, bool success) {
   run_loop->Quit();
 }
 
-int DoEnroll(BiometricProxy* biometric,
+int DoEnroll(BiometricsManagerProxy* biometrics_manager,
              const std::string& user_id,
              const std::string& label) {
-  dbus::ObjectProxy* enroll_object = biometric->StartEnroll(user_id, label);
+  dbus::ObjectProxy* enroll_session_object =
+      biometrics_manager->StartEnrollSession(user_id, label);
 
-  if (enroll_object) {
+  if (enroll_session_object) {
     LOG(INFO) << "Biometric enrollment started";
   } else {
     LOG(ERROR) << "Biometric enrollment failed to start";
@@ -428,23 +452,24 @@ int DoEnroll(BiometricProxy* biometric,
   base::RunLoop run_loop;
 
   int ret = 1;
-  biometric->SetFinishHandler(base::Bind(&OnFinish, &run_loop, &ret));
+  biometrics_manager->SetFinishHandler(base::Bind(&OnFinish, &run_loop, &ret));
 
   run_loop.Run();
 
   if (ret) {
     LOG(INFO) << "Ending biometric enrollment";
-    dbus::MethodCall cancel_call(kBiodEnrollInterface, "Cancel");
-    enroll_object->CallMethodAndBlock(&cancel_call, kDbusTimeoutMs);
+    dbus::MethodCall cancel_call(kBiodEnrollSessionInterface, "Cancel");
+    enroll_session_object->CallMethodAndBlock(&cancel_call, kDbusTimeoutMs);
   }
 
   return ret;
 }
 
-int DoAuthenticate(BiometricProxy* biometric) {
-  dbus::ObjectProxy* auth_object = biometric->StartAuthentication();
+int DoAuthenticate(BiometricsManagerProxy* biometrics_manager) {
+  dbus::ObjectProxy* auth_session_object =
+      biometrics_manager->StartAuthSession();
 
-  if (auth_object) {
+  if (auth_session_object) {
     LOG(INFO) << "Biometric authentication started";
   } else {
     LOG(ERROR) << "Biometric authentication failed to start";
@@ -454,14 +479,14 @@ int DoAuthenticate(BiometricProxy* biometric) {
   base::RunLoop run_loop;
 
   int ret = 1;
-  biometric->SetFinishHandler(base::Bind(&OnFinish, &run_loop, &ret));
+  biometrics_manager->SetFinishHandler(base::Bind(&OnFinish, &run_loop, &ret));
 
   run_loop.Run();
 
   if (ret) {
     LOG(INFO) << "Ending biometric authentication";
-    dbus::MethodCall end_call(kBiodAuthenticationInterface, "End");
-    auth_object->CallMethodAndBlock(&end_call, kDbusTimeoutMs);
+    dbus::MethodCall end_call(kBiodAuthSessionInterface, "End");
+    auth_session_object->CallMethodAndBlock(&end_call, kDbusTimeoutMs);
   }
 
   return ret;
@@ -469,29 +494,34 @@ int DoAuthenticate(BiometricProxy* biometric) {
 
 int DoList(BiodProxy* biod, const std::string& user_id) {
   LOG(INFO) << kBiodRootPath << " : BioD Root Object Path";
-  for (const BiometricProxy& biometric : biod->biometrics()) {
-    base::StringPiece biometric_path = biometric.path().value();
-    if (base::StartsWith(
-            biometric_path, kBiodRootPath, base::CompareCase::SENSITIVE)) {
-      biometric_path = biometric_path.substr(sizeof(kBiodRootPath));
+  for (const BiometricsManagerProxy& biometrics_manager :
+       biod->biometrics_managers()) {
+    base::StringPiece biometrics_manager_path =
+        biometrics_manager.path().value();
+    if (base::StartsWith(biometrics_manager_path,
+                         kBiodRootPath,
+                         base::CompareCase::SENSITIVE)) {
+      biometrics_manager_path =
+          biometrics_manager_path.substr(sizeof(kBiodRootPath));
     }
-    LOG(INFO) << "  " << biometric_path << " : " << ToString(biometric.type())
-              << " Biometric";
+    LOG(INFO) << "  " << biometrics_manager_path << " : "
+              << ToString(biometrics_manager.type()) << " Biometric";
 
-    biometric_path = biometric.path().value();
+    biometrics_manager_path = biometrics_manager.path().value();
 
     if (user_id.empty())
       continue;
 
-    for (const EnrollmentProxy& enrollment :
-         biometric.GetEnrollmentsForUser(user_id)) {
-      base::StringPiece enrollment_path(enrollment.path().value());
-      if (base::StartsWith(
-              enrollment_path, biometric_path, base::CompareCase::SENSITIVE)) {
-        enrollment_path = enrollment_path.substr(biometric_path.size() + 1);
+    for (const RecordProxy& record :
+         biometrics_manager.GetRecordsForUser(user_id)) {
+      base::StringPiece record_path(record.path().value());
+      if (base::StartsWith(record_path,
+                           biometrics_manager_path,
+                           base::CompareCase::SENSITIVE)) {
+        record_path = record_path.substr(biometrics_manager_path.size() + 1);
       }
-      LOG(INFO) << "    " << enrollment_path
-                << " : Enrollment Label=" << enrollment.label();
+      LOG(INFO) << "    " << record_path
+                << " : Record Label=" << record.label();
     }
   }
   return 0;
@@ -523,9 +553,11 @@ int main(int argc, char* argv[]) {
       LOG(ERROR) << "Expected 3 parameters for enroll command.";
       return 1;
     }
-    BiometricProxy* biometric = biod.GetBiometric(args[1]);
-    CHECK(biometric) << "Failed to find biometric with given path";
-    return DoEnroll(biometric, args[2], args[3]);
+    BiometricsManagerProxy* biometrics_manager =
+        biod.GetBiometricsManager(args[1]);
+    CHECK(biometrics_manager)
+        << "Failed to find biometrics manager with given path";
+    return DoEnroll(biometrics_manager, args[2], args[3]);
   }
 
   if (command == "authenticate") {
@@ -533,9 +565,11 @@ int main(int argc, char* argv[]) {
       LOG(ERROR) << "Expected 2 parameters for authenticate command.";
       return 1;
     }
-    BiometricProxy* biometric = biod.GetBiometric(args[1]);
-    CHECK(biometric) << "Failed to find biometric with given path";
-    return DoAuthenticate(biometric);
+    BiometricsManagerProxy* biometrics_manager =
+        biod.GetBiometricsManager(args[1]);
+    CHECK(biometrics_manager)
+        << "Failed to find biometrics manager with given path";
+    return DoAuthenticate(biometrics_manager);
   }
 
   if (command == "list") {
@@ -547,35 +581,28 @@ int main(int argc, char* argv[]) {
       LOG(ERROR) << "Expected 1 parameter for unenroll command.";
       return 1;
     }
-    EnrollmentProxy enrollment(bus, dbus::ObjectPath(args[1]));
-    return enrollment.Remove() ? 0 : 1;
+    RecordProxy record(bus, dbus::ObjectPath(args[1]));
+    return record.Remove() ? 0 : 1;
   }
 
   if (command == "set_label") {
     if (args.size() < 3) {
-      LOG(ERROR) << "Expected 2 parameters for set_enroll command.";
+      LOG(ERROR) << "Expected 2 parameters for set_label command.";
       return 1;
     }
-    EnrollmentProxy enrollment(bus, dbus::ObjectPath(args[1]));
-    return enrollment.SetLabel(args[2]);
+    RecordProxy record(bus, dbus::ObjectPath(args[1]));
+    return record.SetLabel(args[2]);
   }
 
   if (command == "destroy_all") {
     if (args.size() >= 2) {
-      BiometricProxy* biometric = biod.GetBiometric(args[1]);
-      CHECK(biometric) << "Failed to find biometric with given path";
-      return biometric->DestroyAllEnrollments() ? 0 : 1;
+      BiometricsManagerProxy* biometrics_manager =
+          biod.GetBiometricsManager(args[1]);
+      CHECK(biometrics_manager)
+          << "Failed to find biometrics_manager with given path";
+      return biometrics_manager->DestroyAllRecords() ? 0 : 1;
     } else {
-      int ret = 0;
-      for (BiometricProxy& biometric : biod.biometrics()) {
-        if (!biometric.DestroyAllEnrollments()) {
-          LOG(ERROR) << "Failed to destroy enrollment from Biometric at "
-                     << biometric.path().value();
-        }
-      }
-      if (ret)
-        LOG(WARNING) << "Not all enrollments were destroyed";
-      return ret;
+      return biod.DestroyAllRecords();
     }
   }
 
