@@ -14,6 +14,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
@@ -395,10 +396,11 @@ void DiskManager::RegisterFilesystem(const Filesystem& filesystem) {
   filesystems_.insert(std::make_pair(filesystem.type(), filesystem));
 }
 
-Mounter* DiskManager::CreateMounter(const Disk& disk,
-                                    const Filesystem& filesystem,
-                                    const string& target_path,
-                                    const vector<string>& options) const {
+unique_ptr<Mounter> DiskManager::CreateMounter(
+        const Disk& disk,
+        const Filesystem& filesystem,
+        const string& target_path,
+        const vector<string>& options) const {
   const vector<string>& extra_options = filesystem.extra_mount_options();
   vector<string> extended_options;
   extended_options.reserve(options.size() + extra_options.size());
@@ -424,22 +426,22 @@ Mounter* DiskManager::CreateMounter(const Disk& disk,
 
   const string& mounter_type = filesystem.mounter_type();
   if (mounter_type == SystemMounter::kMounterType)
-    return new(std::nothrow) SystemMounter(disk.device_file(), target_path,
+    return base::MakeUnique<SystemMounter>(disk.device_file(), target_path,
                                            filesystem.mount_type(),
                                            mount_options);
 
   if (mounter_type == ExternalMounter::kMounterType)
-    return new(std::nothrow) ExternalMounter(disk.device_file(), target_path,
+    return base::MakeUnique<ExternalMounter>(disk.device_file(), target_path,
                                              filesystem.mount_type(),
                                              mount_options);
 
   if (mounter_type == ExFATMounter::kMounterType)
-    return new(std::nothrow) ExFATMounter(disk.device_file(), target_path,
+    return base::MakeUnique<ExFATMounter>(disk.device_file(), target_path,
                                           filesystem.mount_type(),
                                           mount_options, platform());
 
   if (mounter_type == NTFSMounter::kMounterType)
-    return new(std::nothrow) NTFSMounter(disk.device_file(), target_path,
+    return base::MakeUnique<NTFSMounter>(disk.device_file(), target_path,
                                          filesystem.mount_type(),
                                          mount_options, platform());
 

@@ -8,6 +8,7 @@
 #include <libudev.h>
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -110,10 +111,11 @@ class DiskManager : public MountManager,
 
  private:
   // Creates an appropriate mounter object for a given filesystem.
-  // The caller is responsible for deleting the mounter object.
-  Mounter* CreateMounter(const Disk& disk, const Filesystem& filesystem,
-                         const std::string& target_path,
-                         const std::vector<std::string>& options) const;
+  std::unique_ptr<Mounter> CreateMounter(
+        const Disk& disk,
+        const Filesystem& filesystem,
+        const std::string& target_path,
+        const std::vector<std::string>& options) const;
 
   // Returns a Filesystem object if a given filesystem type is supported.
   // Otherwise, it returns NULL. This pointer is owned by the DiskManager.
