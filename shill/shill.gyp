@@ -36,7 +36,7 @@
     ],
     'defines': [
       'ENABLE_CHROMEOS_DBUS',
-      'RUNDIR="/var/run/shill"',
+      'RUNDIR="/run/shill"',
       'SHIMDIR="<(libdir)/shill/shims"',
     ],
     'conditions': [

@@ -19,12 +19,12 @@
 # Perform login tasks for shill.  This script is called by the "login"
 # init script.
 
-# Shill expects to find a user profile in /var/run/shill/user_profiles.
+# Shill expects to find a user profile in /run/shill/user_profiles.
 # There are 3 possible places a user profile could exist.  We should
 # use them in the following priority order:
 #
 #  - "New style" cryptohome store -- we create a link to it in
-#    /var/run/shill/user_profiles so if shill restarts while the
+#    /run/shill/user_profiles so if shill restarts while the
 #    user is logged in, shill can regain access to the profile.
 #  - User profile in ~chronos/shill -- if the above does not
 #    exist, we validate this profile and move it to the cryptohome.
@@ -42,7 +42,7 @@ script_name=$(basename $0)
 
 profile_user=chronos
 profile_name="~${profile_user}/shill"
-shill_state_root=/var/run/shill
+shill_state_root=/run/shill
 profile_link_root="${shill_state_root}/user_profiles"
 profile_link_dir="$profile_link_root/$profile_user"
 log_link_dir="${shill_state_root}/log"

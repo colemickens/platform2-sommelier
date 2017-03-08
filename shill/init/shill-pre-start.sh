@@ -18,17 +18,17 @@
 bootstat shill-start
 
 # Create state directory
-mkdir -p /var/run/shill
+mkdir -p /run/shill
 
 # Create storage for the shill global profile.
 mkdir -p /var/cache/shill
 
 # Set up dhcpcd's /var/{lib|run} dirs to run as user 'dhcp'.
 mkdir -m 0755 -p /var/lib/dhcpcd
-mkdir -m 0755 -p /var/run/dhcpcd
+mkdir -m 0755 -p /run/dhcpcd
 chmod -R u+rwX,g+rX,o+rX /var/lib/dhcpcd
 chown -R dhcp:dhcp /var/lib/dhcpcd
-chown -R dhcp:dhcp /var/run/dhcpcd
+chown -R dhcp:dhcp /run/dhcpcd
 
 # Use flimflam's default profile if shill doesn't have one.
 if [ ! -f /var/cache/shill/default.profile -a \
