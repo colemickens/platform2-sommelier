@@ -21,7 +21,7 @@ using base::FilePath;
 namespace vpn_manager {
 
 const FilePath* ServiceManager::temp_path_ = nullptr;
-const char ServiceManager::kDefaultTempBasePath[] = "/var/run/l2tpipsec_vpn";
+const char ServiceManager::kDefaultTempBasePath[] = "/run/l2tpipsec_vpn";
 const char ServiceManager::kPersistentSubdir[] = "current";
 const char* ServiceManager::temp_base_path_ =
     ServiceManager::kDefaultTempBasePath;

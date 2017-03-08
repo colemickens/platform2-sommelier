@@ -40,12 +40,12 @@ const char kIpsecCaCertsName[] = "cacert.der";
 const char kIpsecStarterConfName[] = "ipsec.conf";
 const char kIpsecSecretsName[] = "ipsec.secrets";
 const char kIpsecGroupName[] = "ipsec";
-const char kIpsecRunPath[] = "/var/run/ipsec";
-const char kIpsecUpFile[] = "/var/run/ipsec/up";
+const char kIpsecRunPath[] = "/run/ipsec";
+const char kIpsecUpFile[] = "/run/ipsec/up";
 const char kIpsecServiceName[] = "ipsec";
-const char kStarterPidFile[] = "/var/run/starter.pid";
+const char kStarterPidFile[] = "/run/starter.pid";
 const char kStrongswanConfName[] = "strongswan.conf";
-const char kCharonPidFile[] = "/var/run/charon.pid";
+const char kCharonPidFile[] = "/run/charon.pid";
 const mode_t kIpsecRunPathMode = S_IRWXU | S_IRWXG;
 const mode_t kPersistentPathMode =
     S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
@@ -459,7 +459,7 @@ bool IpsecManager::MakeSymbolicLink(const std::string& output_name,
 bool IpsecManager::WriteConfigFiles() {
   // The strongSwan binaries have hard-coded paths to /etc, which on a
   // ChromeOS image are symlinks to a fixed place |persistent_path_|.
-  // We create the configuration files in /var/run and link from the
+  // We create the configuration files in /run and link from the
   // |persistent_path_| to these newly created files.
   if (!base::CreateDirectory(persistent_path_)) {
     LOG(ERROR) << "Unable to create container directory "
