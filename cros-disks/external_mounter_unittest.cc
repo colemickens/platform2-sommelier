@@ -14,10 +14,7 @@
 
 namespace cros_disks {
 
-class ExternalMounterTest : public ::testing::Test {
-};
-
-TEST_F(ExternalMounterTest, RunAsRootMount) {
+TEST(ExternalMounterTest, RunAsRootMount) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   ExternalMounter mounter("/dev/null", temp_dir.path().value(),
@@ -31,7 +28,7 @@ TEST_F(ExternalMounterTest, RunAsRootMount) {
   }
 }
 
-TEST_F(ExternalMounterTest, RunAsRootMountWithNonexistentSourcePath) {
+TEST(ExternalMounterTest, RunAsRootMountWithNonexistentSourcePath) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   // To test mounting a nonexistent source path, use ext2 as the
@@ -42,12 +39,12 @@ TEST_F(ExternalMounterTest, RunAsRootMountWithNonexistentSourcePath) {
   EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, mounter.Mount());
 }
 
-TEST_F(ExternalMounterTest, RunAsRootMountWithNonexistentTargetPath) {
+TEST(ExternalMounterTest, RunAsRootMountWithNonexistentTargetPath) {
   ExternalMounter mounter("/dev/null", "/nonexistent", "tmpfs", MountOptions());
   EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, mounter.Mount());
 }
 
-TEST_F(ExternalMounterTest, RunAsRootMountWithNonexistentFilesystemType) {
+TEST(ExternalMounterTest, RunAsRootMountWithNonexistentFilesystemType) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   ExternalMounter mounter("/dev/null", temp_dir.path().value(),

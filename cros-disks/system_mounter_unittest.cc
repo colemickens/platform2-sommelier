@@ -17,10 +17,7 @@ using std::string;
 
 namespace cros_disks {
 
-class SystemMounterTest : public ::testing::Test {
-};
-
-TEST_F(SystemMounterTest, RunAsRootMount) {
+TEST(SystemMounterTest, RunAsRootMount) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   SystemMounter mounter("/dev/null", temp_dir.path().value(),
@@ -29,7 +26,7 @@ TEST_F(SystemMounterTest, RunAsRootMount) {
   umount2(temp_dir.path().value().c_str(), MNT_FORCE);
 }
 
-TEST_F(SystemMounterTest, RunAsRootMountWithNonexistentSourcePath) {
+TEST(SystemMounterTest, RunAsRootMountWithNonexistentSourcePath) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   // To test mounting a nonexistent source path, use ext2 as the
@@ -40,12 +37,12 @@ TEST_F(SystemMounterTest, RunAsRootMountWithNonexistentSourcePath) {
   EXPECT_EQ(MOUNT_ERROR_INVALID_PATH, mounter.Mount());
 }
 
-TEST_F(SystemMounterTest, RunAsRootMountWithNonexistentTargetPath) {
+TEST(SystemMounterTest, RunAsRootMountWithNonexistentTargetPath) {
   SystemMounter mounter("/dev/null", "/nonexistent", "tmpfs", MountOptions());
   EXPECT_EQ(MOUNT_ERROR_INVALID_PATH, mounter.Mount());
 }
 
-TEST_F(SystemMounterTest, RunAsRootMountWithNonexistentFilesystemType) {
+TEST(SystemMounterTest, RunAsRootMountWithNonexistentFilesystemType) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   SystemMounter mounter("/dev/null", temp_dir.path().value(),
