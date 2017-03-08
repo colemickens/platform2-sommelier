@@ -319,7 +319,6 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // Different behavior is seen from different displays and these messages are
   // used to determine what happened within feedback reports.
   builder->AddVmodulePattern("*/ui/display/manager/chromeos/*=1");
-  builder->AddVmodulePattern("*/ash/display/*=1");
 
   // Turn on basic logging for Ozone platform implementations.
   builder->AddVmodulePattern("*/ui/ozone/*=1");
