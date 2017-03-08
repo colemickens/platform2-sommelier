@@ -459,6 +459,11 @@ gboolean cryptohome_remove_firmware_management_parameters(
     GArray* request,
     DBusGMethodInvocation* resp);
 
+gboolean cryptohome_migrate_to_dircrypto(Cryptohome* self,
+                                         GArray* id,
+                                         GArray* auth,
+                                         GError** error);
+
 }  // namespace gobject
 }  // namespace cryptohome
 #endif  // CRYPTOHOME_INTERFACE_H_

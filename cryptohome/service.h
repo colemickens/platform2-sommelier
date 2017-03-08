@@ -380,6 +380,13 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual gboolean TpmCanAttemptOwnership(GError** error);
   virtual gboolean TpmClearStoredPassword(GError** error);
 
+  virtual gboolean MigrateToDircrypto(const GArray* account_id,
+                                      const GArray* authorization_request,
+                                      GError** error);
+  // Runs on the mount thread.
+  virtual void DoMigrateToDircrypto(AccountIdentifier* identifier,
+                                    AuthorizationRequest* authorization);
+
   // Attestation functionality is implemented in descendant classes
 
   // Attestation-related hooks.
@@ -660,6 +667,7 @@ class Service : public brillo::dbus::AbstractDbusService,
   guint async_data_complete_signal_;
   guint tpm_init_signal_;
   guint low_disk_space_signal_;
+  guint dircrypto_migration_progress_signal_;
   CryptohomeEventSource event_source_;
   CryptohomeEventSourceSink* event_source_sink_;
   int auto_cleanup_period_;
@@ -756,6 +764,13 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual void SendLegacyAsyncReply(MountTaskMount* mount_task,
                                     MountError return_code,
                                     bool return_status);
+
+  // Sends a signal for notifying the migration progress.
+  // Runs on the mount thread.
+  virtual void SendDircryptoMigrationProgressSignal(
+      DircryptoMigrationStatus status,
+      uint64_t current_bytes,
+      uint64_t total_bytes);
 
   // Stop processing tasks on dbus and mount threads.
   // Must be called from derived destructors. Otherwise, after derived

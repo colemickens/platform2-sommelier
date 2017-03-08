@@ -527,6 +527,17 @@
       <arg type="ay" name="request" direction="in" />
       <arg type="ay" name="reply" direction="out" />
     </method>
+    <!-- Both arguments are protobufs. Since the migration process may
+         take arbitrary long time, this dbus method just kicks it and
+         returns immediately. The actual results are notified back by:
+         DircryptoMigrationProgress signal.
+         account_id: AccountIdentifier
+         authorization_request: AuthorizationRequest
+    -->
+    <method name="MigrateToDircrypto">
+      <arg type="ay" name="account_id" direction="in" />
+      <arg type="ay" name="authorization_request" direction="in" />
+    </method>
 
     <!-- Signals:
            TpmInitStatus: Emitted when TPM initialization status changes.
@@ -536,6 +547,8 @@
                finished and the call returns status and data.
            LowDiskSpace: Emitted when the system is running low on disk space
                for home directories.
+           DircryptoMigrationProgress: Periodically emitted when the migration
+               of a home directory is in progress, to notify the updates to UI.
     -->
     <signal name="TpmInitStatus">
       <arg type="b" name="ready" />
@@ -554,6 +567,11 @@
     </signal>
     <signal name="LowDiskSpace">
       <arg type="t" name="disk_free_bytes" />
+    </signal>
+    <signal name="DircryptoMigrationProgress">
+      <arg type="i" name="status" />
+      <arg type="t" name="current_bytes" />
+      <arg type="t" name="total_bytes" />
     </signal>
   </interface>
 </node>

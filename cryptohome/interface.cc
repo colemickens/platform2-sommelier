@@ -773,6 +773,13 @@ gboolean cryptohome_remove_firmware_management_parameters(
   CRYPTOHOME_WRAP_METHOD(RemoveFirmwareManagementParameters, request);
 }
 
+gboolean cryptohome_migrate_to_dircrypto(Cryptohome* self,
+                                         GArray* id,
+                                         GArray* auth,
+                                         GError** error) {
+  CRYPTOHOME_WRAP_METHOD(MigrateToDircrypto, id, auth);
+}
+
 #undef CRYPTOHOME_WRAP_METHOD
 
 }  // namespace gobject

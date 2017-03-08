@@ -157,6 +157,7 @@ Service::Service()
       async_data_complete_signal_(-1),
       tpm_init_signal_(-1),
       low_disk_space_signal_(-1),
+      dircrypto_migration_progress_signal_(-1),
       event_source_(),
       event_source_sink_(this),
       auto_cleanup_period_(kAutoCleanupPeriodMS),
@@ -490,6 +491,24 @@ bool Service::Initialize() {
                                           G_TYPE_NONE,
                                           1,
                                           G_TYPE_UINT64);
+  }
+
+  dircrypto_migration_progress_signal_ = g_signal_lookup(
+      "dircrypto_migration_progress",
+      gobject::cryptohome_get_type());
+  if (!dircrypto_migration_progress_signal_) {
+    dircrypto_migration_progress_signal_ = g_signal_new(
+        "dircrypto_migration_progress",
+        gobject::cryptohome_get_type(),
+        G_SIGNAL_RUN_LAST,
+        0,
+        NULL,
+        NULL,
+        nullptr,
+        G_TYPE_NONE,
+        2,
+        G_TYPE_UINT64,
+        G_TYPE_UINT64);
   }
 
   mount_thread_.Start();
@@ -1936,6 +1955,15 @@ void Service::SendLegacyAsyncReply(MountTaskMount* mount_task,
     return;
 }
 
+void Service::SendDircryptoMigrationProgressSignal(
+    DircryptoMigrationStatus status,
+    uint64_t current_bytes,
+    uint64_t total_bytes) {
+    g_signal_emit(cryptohome_, dircrypto_migration_progress_signal_,
+                  0 /* signal detail (not used) */,
+                  static_cast<int32_t>(status), current_bytes, total_bytes);
+}
+
 // This function implements the _old_ style Mounts.  It should be removed
 // once MountEx is used everywhere.
 // Pass in the MountTaskMount so the async_id stays consistent.
@@ -3128,6 +3156,35 @@ void Service::PostAsyncCallResultForUser(const std::string& user_id,
 
 void Service::DispatchEvents() {
   event_source_.HandleDispatch();
+}
+
+gboolean Service::MigrateToDircrypto(const GArray* account_id,
+                                     const GArray* authorization_request,
+                                     GError** error) {
+  std::unique_ptr<AccountIdentifier> identifier(new AccountIdentifier);
+  std::unique_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
+
+  // On parsing failure, pass along a NULL.
+  if (!identifier->ParseFromArray(account_id->data, account_id->len))
+    identifier.reset(NULL);
+  if (!authorization->ParseFromArray(authorization_request->data,
+                                     authorization_request->len))
+    authorization.reset(NULL);
+
+  // This Dbus method just kicks the migration task on the mount thread,
+  // and replies immediately.
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoMigrateToDircrypto,
+                 base::Unretained(this),
+                 base::Owned(identifier.release()),
+                 base::Owned(authorization.release())));
+  return TRUE;
+}
+
+void Service::DoMigrateToDircrypto(AccountIdentifier* identifier,
+                                   AuthorizationRequest* authorization) {
+  // TODO(dspaid): Run the actual migration. It should return the progress
+  // and the result by SendDircryptoMigrationProgressSignal().
 }
 
 }  // namespace cryptohome
