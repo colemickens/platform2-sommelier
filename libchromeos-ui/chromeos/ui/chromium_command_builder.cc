@@ -28,7 +28,7 @@ namespace ui {
 namespace {
 
 // Location where GPU debug information is bind-mounted.
-const char kDebugfsGpuPath[] = "/var/run/debugfs_gpu";
+const char kDebugfsGpuPath[] = "/run/debugfs_gpu";
 
 // Name of the release track field.
 constexpr char kChromeosReleaseTrack[] = "CHROMEOS_RELEASE_TRACK";
