@@ -16,7 +16,7 @@ namespace cros_disks {
 // that it would like to observe.
 class FormatManagerObserverInterface {
  public:
-  virtual ~FormatManagerObserverInterface() {}
+  virtual ~FormatManagerObserverInterface() = default;
 
   // This method is called when a formatting operation on a device has
   // completed. |error_type| indicates whether the operation succeeded

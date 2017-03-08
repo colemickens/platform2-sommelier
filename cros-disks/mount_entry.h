@@ -26,7 +26,7 @@ class MountEntry {
              MountSourceType source_type,
              const std::string& mount_path,
              bool is_read_only);
-  ~MountEntry();
+  ~MountEntry() = default;
 
   DBusMountEntry ToDBusFormat() const;
 

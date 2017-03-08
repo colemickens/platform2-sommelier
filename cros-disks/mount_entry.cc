@@ -19,8 +19,6 @@ MountEntry::MountEntry(MountErrorType error_type,
       mount_path_(mount_path),
       is_read_only_(is_read_only) {}
 
-MountEntry::~MountEntry() {}
-
 DBusMountEntry MountEntry::ToDBusFormat() const {
   return {error_type_, source_path_, source_type_, mount_path_};
 }

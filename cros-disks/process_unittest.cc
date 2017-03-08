@@ -12,7 +12,7 @@ namespace cros_disks {
 // A mock process class for testing the process base class.
 class ProcessUnderTest : public Process {
  public:
-  ProcessUnderTest() {}
+  ProcessUnderTest() = default;
 
   MOCK_METHOD0(Start, bool());
 };

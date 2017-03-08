@@ -12,7 +12,7 @@ struct DeviceEvent;
 // An interface class for dispatching device events.
 class DeviceEventDispatcherInterface {
  public:
-  virtual ~DeviceEventDispatcherInterface() {}
+  virtual ~DeviceEventDispatcherInterface() = default;
 
   // Implemented by a derived class to dispatch a device event.
   virtual void DispatchDeviceEvent(const DeviceEvent& event) = 0;

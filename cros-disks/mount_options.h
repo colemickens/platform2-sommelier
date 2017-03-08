@@ -28,8 +28,8 @@ class MountOptions {
   static const char kOptionSynchronous[];
   static const char kOptionUtf8[];
 
-  MountOptions() {}
-  ~MountOptions() {}
+  MountOptions() = default;
+  ~MountOptions() = default;
 
   // Initializes the mount options with a list of option strings.
   //

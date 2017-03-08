@@ -12,7 +12,7 @@ namespace cros_disks {
 // that it would like to observe.
 class SessionManagerObserverInterface {
  public:
-  virtual ~SessionManagerObserverInterface() {}
+  virtual ~SessionManagerObserverInterface() = default;
 
   // This method is called when the screen is locked.
   virtual void OnScreenIsLocked() = 0;

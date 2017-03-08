@@ -46,7 +46,7 @@ namespace cros_disks {
 // A mock platform class for testing the mount manager base class.
 class MockPlatform : public Platform {
  public:
-  MockPlatform() {}
+  MockPlatform() = default;
 
   MOCK_CONST_METHOD1(CreateDirectory, bool(const string& path));
   MOCK_CONST_METHOD1(CreateOrReuseEmptyDirectory, bool(const string& path));
