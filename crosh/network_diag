@@ -791,8 +791,8 @@ diag_flimflam () {
   fi
   local pid="$(echo ${status} | awk '{print $4}')"
   ps jx | awk '/^ *'${pid}'/ {print $10,$11,$12}' | sort | uniq -c
-  echo "Listing of /var/run/shill"
-  ls -al /var/run/shill
+  echo "Listing of /run/shill"
+  ls -al /run/shill
   diag_flimflam_dbus
 }
 
