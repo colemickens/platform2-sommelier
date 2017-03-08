@@ -34,7 +34,7 @@ static ModemHandler* mm;
 
 static const int kDevicePollIntervalSecs = 1;
 static const char* kQCDeviceName = "QCQMI";
-static const char* kUSBDeviceListFile = "/var/run/cromo/usb-devices";
+static const char* kUSBDeviceListFile = "/run/cromo/usb-devices";
 
 static void udev_callback(void* data, const char *action, const char *device) {
   GobiModemHandler* handler = static_cast<GobiModemHandler*>(data);
