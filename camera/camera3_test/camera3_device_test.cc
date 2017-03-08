@@ -60,7 +60,7 @@ int32_t Camera3TestGralloc::Allocate(int32_t width,
   hnd->width = gbm_bo_get_width(bo);
   hnd->height = gbm_bo_get_height(bo);
   hnd->stride = gbm_bo_get_stride(bo);
-  hnd->format = gbm_bo_get_format(bo);
+  hnd->format = format;
   hnd->usage = usage;
   hnd->data = reinterpret_cast<intptr_t>(bo);
   hnd->magic = GRALLOC_DRM_HANDLE_MAGIC;
