@@ -12,7 +12,7 @@
 #   -b -- indicates that this script is invoked at boot time.
 
 # Directory where temporary state files are written by the root user.
-root_run_dir=/var/run/power_manager/root
+root_run_dir=/run/power_manager/root
 
 # Directory where persistent state files are written by the root user.
 root_spool_dir=/var/spool/power_manager/root
