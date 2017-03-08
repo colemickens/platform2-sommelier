@@ -171,7 +171,92 @@ bool MigrationHelper::MigrateLink(const base::FilePath& from,
 bool MigrationHelper::MigrateFile(const base::FilePath& from,
                                   const base::FilePath& to,
                                   const FileEnumerator::FileInfo& info) {
-  NOTIMPLEMENTED();
+  // TODO(dspaid): Create a Platform method for opening these files to be
+  // consistent with the rest of our file operations.
+  base::File from_file(
+      from,
+      base::File::FLAG_OPEN | base::File::FLAG_READ | base::File::FLAG_WRITE);
+  if (!from_file.IsValid()) {
+    LOG(ERROR) << "Failed to open file " << from.value();
+    return false;
+  }
+
+  base::File to_file(to, base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_WRITE);
+  if (!to_file.IsValid()) {
+    LOG(ERROR) << "Failed to open file " << to.value();
+    return false;
+  }
+
+  int64_t from_length = from_file.GetLength();
+  int64_t to_length = to_file.GetLength();
+  if (from_length < 0) {
+    LOG(ERROR) << "Failed to get length of " << from.value();
+    return false;
+  }
+  if (to_length < 0) {
+    LOG(ERROR) << "Failed to get length of " << to.value();
+    return false;
+  }
+  bool new_file = to_file.created();
+  if (to_length < from_length) {
+    // SetLength will call truncate, which on filesystems supporting sparse
+    // files should not cause any actual disk space usage.  Instead only the
+    // file's metadata is updated to reflect the new size.  Actual block
+    // allocation will occur when attempting to write into space in the file
+    // which is not yet allocated.
+    if (!to_file.SetLength(from_length)) {
+      LOG(ERROR) << "Failed to set file length of " << to.value();
+      return false;
+    }
+  }
+
+  if (!CopyAttributes(from, to, info))
+    return false;
+
+  int64_t length;
+  while ((length = from_file.GetLength()) > 0) {
+    size_t to_read = length % chunk_size_;
+    if (to_read == 0) {
+      to_read = chunk_size_;
+    }
+    off_t offset = length - to_read;
+    if (to_file.Seek(base::File::FROM_BEGIN, offset) != offset) {
+      LOG(ERROR) << "Failed to seek in " << to.value();
+      return false;
+    }
+    // Sendfile is used here instead of a read to memory then write since it is
+    // more efficient for transferring data from one file to another.  In
+    // particular the data is passed directly from the read call to the write
+    // in the kernel, never making a trip back out to user space.
+    if (!platform_->SendFile(to_file, from_file, offset, to_read)) {
+      return false;
+    }
+    if (!to_file.Flush()) {
+      LOG(ERROR) << "Failed to flush " << to.value();
+      return false;
+    }
+    if (new_file) {
+      if (!platform_->SyncDirectory(to.DirName()))
+        return false;
+      new_file = false;
+    }
+    if (!from_file.SetLength(offset)) {
+      LOG(ERROR) << "Failed to truncate file " << from.value();
+      return false;
+    }
+  }
+  if (length < 0) {
+    LOG(ERROR) << "Failed to get length of " << from.value();
+    return false;
+  }
+
+  from_file.Close();
+  to_file.Close();
+  if (!FixTimes(to))
+    return false;
+  if (!platform_->SyncFile(to))
+    return false;
+
   return true;
 }
 

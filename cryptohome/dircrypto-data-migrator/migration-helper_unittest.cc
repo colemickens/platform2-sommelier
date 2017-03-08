@@ -244,5 +244,401 @@ TEST_F(MigrationHelperTest, CopySymlink) {
   EXPECT_EQ(kExpectedTargetInMigrationDirAbsLinkTarget.value(), target.value());
 }
 
+TEST_F(MigrationHelperTest, OneEmptyFile) {
+  Platform platform;
+  MigrationHelper helper(
+      &platform, status_files_dir_.path(), kDefaultChunkSize);
+  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
+  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+
+  constexpr char kFileName[] = "empty_file";
+
+  ASSERT_TRUE(platform.TouchFileDurable(from_dir_.path().Append(kFileName)));
+  ASSERT_TRUE(base::IsDirectoryEmpty(to_dir_.path()));
+
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+
+  // The file is moved.
+  EXPECT_FALSE(platform.FileExists(from_dir_.path().Append(kFileName)));
+  EXPECT_TRUE(platform.FileExists(to_dir_.path().Append(kFileName)));
+}
+
+TEST_F(MigrationHelperTest, OneEmptyFileInDirectory) {
+  Platform platform;
+  MigrationHelper helper(
+      &platform, status_files_dir_.path(), kDefaultChunkSize);
+  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
+  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+
+  constexpr char kDir1[] = "directory1";
+  constexpr char kDir2[] = "directory2";
+  constexpr char kFileName[] = "empty_file";
+
+  // Create directory1/directory2/empty_file in from_dir_.
+  ASSERT_TRUE(
+      platform.CreateDirectory(from_dir_.path().Append(kDir1).Append(kDir2)));
+  ASSERT_TRUE(platform.TouchFileDurable(
+      from_dir_.path().Append(kDir1).Append(kDir2).Append(kFileName)));
+  ASSERT_TRUE(base::IsDirectoryEmpty(to_dir_.path()));
+
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+
+  // The file is moved.
+  EXPECT_FALSE(platform.FileExists(
+      from_dir_.path().Append(kDir1).Append(kDir2).Append(kFileName)));
+  EXPECT_TRUE(base::IsDirectoryEmpty(from_dir_.path().Append(kDir1)));
+  EXPECT_TRUE(platform.FileExists(
+      to_dir_.path().Append(kDir1).Append(kDir2).Append(kFileName)));
+}
+
+TEST_F(MigrationHelperTest, CopyAttributesFile) {
+  testing::NiceMock<MockPlatform> mock_platform;
+  Platform real_platform;
+  MigrationHelper helper(
+      &mock_platform, status_files_dir_.path(), kDefaultChunkSize);
+  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
+  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+
+  constexpr char kFileName[] = "file";
+  const FilePath kFromFilePath = from_dir_.path().Append(kFileName);
+  const FilePath kToFilePath = to_dir_.path().Append(kFileName);
+
+  // Set up default mock actions to call through for supported methods
+  ON_CALL(mock_platform, TouchFileDurable(testing::_))
+      .WillByDefault(
+          testing::Invoke(&real_platform, &Platform::TouchFileDurable));
+  ON_CALL(mock_platform, DeleteFile(testing::_, testing::_))
+      .WillByDefault(testing::Invoke(&real_platform, &Platform::DeleteFile));
+  ON_CALL(mock_platform, SyncDirectory(testing::_))
+      .WillByDefault(testing::Invoke(&real_platform, &Platform::SyncDirectory));
+  ON_CALL(mock_platform, DataSyncFile(testing::_))
+      .WillByDefault(testing::Invoke(&real_platform, &Platform::DataSyncFile));
+  ON_CALL(mock_platform, SyncFile(testing::_))
+      .WillByDefault(testing::Invoke(&real_platform, &Platform::SyncFile));
+  ON_CALL(mock_platform, GetFileEnumerator(testing::_, testing::_, testing::_))
+      .WillByDefault(
+          testing::Invoke(&real_platform, &Platform::GetFileEnumerator));
+  ON_CALL(mock_platform, SetPermissions(testing::_, testing::_))
+      .WillByDefault(
+          testing::Invoke(&real_platform, &Platform::SetPermissions));
+  ON_CALL(mock_platform, GetPermissions(testing::_, testing::_))
+      .WillByDefault(
+          testing::Invoke(&real_platform, &Platform::GetPermissions));
+  ON_CALL(mock_platform, FileExists(testing::_))
+      .WillByDefault(testing::Invoke(&real_platform, &Platform::FileExists));
+  ON_CALL(mock_platform, CreateDirectory(testing::_))
+      .WillByDefault(
+          testing::Invoke(&real_platform, &Platform::CreateDirectory));
+  ON_CALL(mock_platform, HasExtendedFileAttribute(testing::_, testing::_))
+      .WillByDefault(
+          testing::Invoke(&real_platform, &Platform::HasExtendedFileAttribute));
+  ON_CALL(mock_platform, ListExtendedFileAttributes(testing::_, testing::_))
+      .WillByDefault(testing::Invoke(&real_platform,
+                                     &Platform::ListExtendedFileAttributes));
+  ON_CALL(
+      mock_platform,
+      SetExtendedFileAttribute(testing::_, testing::_, testing::_, testing::_))
+      .WillByDefault(
+          testing::Invoke(&real_platform, &Platform::SetExtendedFileAttribute));
+  ON_CALL(
+      mock_platform,
+      GetExtendedFileAttribute(testing::_, testing::_, testing::_, testing::_))
+      .WillByDefault(
+          testing::Invoke(&real_platform, &Platform::GetExtendedFileAttribute));
+  ON_CALL(mock_platform,
+          GetExtendedFileAttributeAsString(testing::_, testing::_, testing::_))
+      .WillByDefault(testing::Invoke(
+          &real_platform, &Platform::GetExtendedFileAttributeAsString));
+  ON_CALL(mock_platform, GetExtFileAttributes(testing::_, testing::_))
+      .WillByDefault(
+          testing::Invoke(&real_platform, &Platform::GetExtFileAttributes));
+  ON_CALL(mock_platform, SetExtFileAttributes(testing::_, testing::_))
+      .WillByDefault(
+          testing::Invoke(&real_platform, &Platform::SetExtFileAttributes));
+  ON_CALL(mock_platform,
+          SetFileTimes(testing::_, testing::_, testing::_, testing::_))
+      .WillByDefault(testing::Invoke(&real_platform, &Platform::SetFileTimes));
+  ON_CALL(mock_platform,
+          SendFile(testing::_, testing::_, testing::_, testing::_))
+      .WillByDefault(testing::Invoke(&real_platform, &Platform::SendFile));
+
+  // Create modified stat of root directory.  Note that we can't easily test
+  // changing ownership on nested files since we can't change the ownership of
+  // on-disk files and the ownership is obtained indirectly via FileEnumerator.
+  uid_t user_id = 1;
+  gid_t group_id = 2;
+  struct stat dir_stat;
+  ASSERT_EQ(0, stat(from_dir_.path().value().c_str(), &dir_stat));
+  dir_stat.st_uid = user_id;
+  dir_stat.st_gid = group_id;
+
+  // Set up mock expectations for methods not supported in tests
+  EXPECT_CALL(mock_platform, Stat(from_dir_.path(), testing::_))
+      .WillOnce(testing::DoAll(testing::SetArgPointee<1>(dir_stat),
+                               testing::Return(true)));
+  EXPECT_CALL(mock_platform,
+              SetOwnership(to_dir_.path(), user_id, group_id, false))
+      .WillOnce(testing::Return(true));
+  EXPECT_CALL(mock_platform,
+              SetOwnership(kToFilePath, testing::_, testing::_, testing::_))
+      .WillOnce(testing::Return(true));
+
+  ASSERT_TRUE(
+      real_platform.TouchFileDurable(from_dir_.path().Append(kFileName)));
+  // Set some attributes to this file.
+
+  mode_t mode = S_ISVTX | S_IRUSR | S_IWUSR | S_IXUSR;
+  ASSERT_TRUE(real_platform.SetPermissions(kFromFilePath, mode));
+  // GetPermissions call is needed because some bits to mode are applied
+  // automatically, so our original |mode| value is not what the resulting file
+  // actually has.
+  ASSERT_TRUE(real_platform.GetPermissions(kFromFilePath, &mode));
+
+  constexpr char kAttrName[] = "user.attr";
+  constexpr char kValue[] = "value";
+  ASSERT_EQ(0,
+            lsetxattr(kFromFilePath.value().c_str(),
+                      kAttrName,
+                      kValue,
+                      sizeof(kValue),
+                      XATTR_CREATE));
+
+  // Set ext2 attributes
+  base::ScopedFD from_fd(
+      HANDLE_EINTR(::open(kFromFilePath.value().c_str(), O_RDONLY)));
+  ASSERT_TRUE(from_fd.is_valid());
+  int ext2_attrs = FS_SYNC_FL | FS_NODUMP_FL;
+  EXPECT_EQ(0, ::ioctl(from_fd.get(), FS_IOC_SETFLAGS, &ext2_attrs));
+
+  struct stat from_stat;
+  ASSERT_TRUE(real_platform.Stat(kFromFilePath, &from_stat));
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+
+  struct stat to_stat;
+  ASSERT_TRUE(real_platform.Stat(kToFilePath, &to_stat));
+  EXPECT_EQ(from_stat.st_atim.tv_sec, to_stat.st_atim.tv_sec);
+  EXPECT_EQ(from_stat.st_atim.tv_nsec, to_stat.st_atim.tv_nsec);
+  EXPECT_EQ(from_stat.st_mtim.tv_sec, to_stat.st_mtim.tv_sec);
+  EXPECT_EQ(from_stat.st_mtim.tv_nsec, to_stat.st_mtim.tv_nsec);
+
+  EXPECT_TRUE(real_platform.FileExists(kToFilePath));
+
+  mode_t permission;
+  ASSERT_TRUE(real_platform.GetPermissions(kToFilePath, &permission));
+  EXPECT_EQ(mode, permission);
+  char value[sizeof(kValue) + 1];
+  EXPECT_EQ(
+      sizeof(kValue),
+      lgetxattr(
+          kToFilePath.value().c_str(), kAttrName, &value, sizeof(kValue)));
+  value[sizeof(kValue)] = '\0';
+  EXPECT_STREQ(kValue, value);
+
+  base::ScopedFD to_fd(
+      HANDLE_EINTR(::open(kToFilePath.value().c_str(), O_RDONLY)));
+  EXPECT_TRUE(to_fd.is_valid());
+  int new_ext2_attrs;
+  EXPECT_EQ(0, ::ioctl(to_fd.get(), FS_IOC_GETFLAGS, &new_ext2_attrs));
+  EXPECT_EQ(FS_SYNC_FL | FS_NODUMP_FL, new_ext2_attrs);
+}
+
+TEST_F(MigrationHelperTest, MigrateNestedDir) {
+  Platform platform;
+  MigrationHelper helper(
+      &platform, status_files_dir_.path(), kDefaultChunkSize);
+  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
+  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+
+  constexpr char kDir1[] = "directory1";
+  constexpr char kDir2[] = "directory2";
+  constexpr char kFileName[] = "empty_file";
+
+  // Create directory1/directory2/empty_file in from_dir_.
+  ASSERT_TRUE(
+      platform.CreateDirectory(from_dir_.path().Append(kDir1).Append(kDir2)));
+  ASSERT_TRUE(platform.TouchFileDurable(
+      from_dir_.path().Append(kDir1).Append(kDir2).Append(kFileName)));
+  ASSERT_TRUE(base::IsDirectoryEmpty(to_dir_.path()));
+
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+
+  // The file is moved.
+  EXPECT_TRUE(platform.FileExists(
+      to_dir_.path().Append(kDir1).Append(kDir2).Append(kFileName)));
+  EXPECT_FALSE(platform.FileExists(
+      from_dir_.path().Append(kDir1).Append(kDir2).Append(kFileName)));
+  EXPECT_TRUE(base::IsDirectoryEmpty(from_dir_.path().Append(kDir1)));
+}
+
+TEST_F(MigrationHelperTest, MigrateInProgress) {
+  // Test the case where the migration was interrupted part way through, but in
+  // a clean way such that the two directory trees are consistent (files are
+  // only present in one or the other)
+  Platform platform;
+  MigrationHelper helper(
+      &platform, status_files_dir_.path(), kDefaultChunkSize);
+  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
+  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+
+  constexpr char kFile1[] = "kFile1";
+  constexpr char kFile2[] = "kFile2";
+  ASSERT_TRUE(platform.TouchFileDurable(from_dir_.path().Append(kFile1)));
+  ASSERT_TRUE(platform.TouchFileDurable(to_dir_.path().Append(kFile2)));
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+
+  // Both files have been moved to to_dir_
+  EXPECT_TRUE(platform.FileExists(to_dir_.path().Append(kFile1)));
+  EXPECT_TRUE(platform.FileExists(to_dir_.path().Append(kFile2)));
+  EXPECT_FALSE(platform.FileExists(from_dir_.path().Append(kFile1)));
+  EXPECT_FALSE(platform.FileExists(from_dir_.path().Append(kFile2)));
+}
+
+TEST_F(MigrationHelperTest, MigrateInProgressDuplicateFile) {
+  // Test the case where the migration was interrupted part way through,
+  // resulting in files that were successfully written to destination but not
+  // yet removed from the source.
+  Platform platform;
+  MigrationHelper helper(
+      &platform, status_files_dir_.path(), kDefaultChunkSize);
+  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
+  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+
+  constexpr char kFile1[] = "kFile1";
+  constexpr char kFile2[] = "kFile2";
+  ASSERT_TRUE(platform.TouchFileDurable(from_dir_.path().Append(kFile1)));
+  ASSERT_TRUE(platform.TouchFileDurable(to_dir_.path().Append(kFile1)));
+  ASSERT_TRUE(platform.TouchFileDurable(to_dir_.path().Append(kFile2)));
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+
+  // Both files have been moved to to_dir_
+  EXPECT_TRUE(platform.FileExists(to_dir_.path().Append(kFile1)));
+  EXPECT_TRUE(platform.FileExists(to_dir_.path().Append(kFile2)));
+  EXPECT_FALSE(platform.FileExists(from_dir_.path().Append(kFile1)));
+  EXPECT_FALSE(platform.FileExists(from_dir_.path().Append(kFile2)));
+}
+
+TEST_F(MigrationHelperTest, MigrateInProgressPartialFile) {
+  // Test the case where the migration was interrupted part way through, with a
+  // file having been partially copied to the destination but not fully.
+  Platform platform;
+  MigrationHelper helper(
+      &platform, status_files_dir_.path(), kDefaultChunkSize);
+  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
+  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+
+  constexpr char kFileName[] = "file";
+  const FilePath kFromFilePath = from_dir_.path().Append(kFileName);
+  const FilePath kToFilePath = to_dir_.path().Append(kFileName);
+
+  const size_t kFinalFileSize = kDefaultChunkSize * 2;
+  const size_t kFromFileSize = kDefaultChunkSize;
+  const size_t kToFileSize = kDefaultChunkSize;
+  char full_contents[kFinalFileSize];
+  base::RandBytes(full_contents, kFinalFileSize);
+  ASSERT_EQ(kDefaultChunkSize,
+            base::WriteFile(kFromFilePath, full_contents, kFromFileSize));
+  base::File kToFile =
+      base::File(kToFilePath, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+  kToFile.SetLength(kFinalFileSize);
+  const size_t kToFileOffset = kFinalFileSize - kToFileSize;
+  ASSERT_EQ(
+      kToFileSize,
+      kToFile.Write(kToFileOffset, full_contents + kToFileOffset, kToFileSize));
+  ASSERT_EQ(kFinalFileSize, kToFile.GetLength());
+  kToFile.Close();
+
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+
+  // File has been moved to to_dir_
+  char to_contents[kFinalFileSize];
+  EXPECT_EQ(kFinalFileSize,
+            base::ReadFile(kToFilePath, to_contents, kFinalFileSize));
+  EXPECT_EQ(std::string(full_contents, kFinalFileSize),
+            std::string(to_contents, kFinalFileSize));
+  EXPECT_FALSE(platform.FileExists(kFromFilePath));
+}
+
+TEST_F(MigrationHelperTest, MigrateInProgressPartialFileDuplicateData) {
+  // Test the case where the migration was interrupted part way through, with a
+  // file having been partially copied to the destination but the source file
+  // not yet having been truncated to reflect that.
+  Platform platform;
+  MigrationHelper helper(
+      &platform, status_files_dir_.path(), kDefaultChunkSize);
+  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
+  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+
+  constexpr char kFileName[] = "file";
+  const FilePath kFromFilePath = from_dir_.path().Append(kFileName);
+  const FilePath kToFilePath = to_dir_.path().Append(kFileName);
+
+  const size_t kFinalFileSize = kDefaultChunkSize * 2;
+  const size_t kFromFileSize = kFinalFileSize;
+  const size_t kToFileSize = kDefaultChunkSize;
+  char full_contents[kFinalFileSize];
+  base::RandBytes(full_contents, kFinalFileSize);
+  ASSERT_EQ(kFromFileSize,
+            base::WriteFile(kFromFilePath, full_contents, kFromFileSize));
+  base::File kToFile =
+      base::File(kToFilePath, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+  kToFile.SetLength(kFinalFileSize);
+  const size_t kToFileOffset = kFinalFileSize - kToFileSize;
+  ASSERT_EQ(
+      kDefaultChunkSize,
+      kToFile.Write(kToFileOffset, full_contents + kToFileOffset, kToFileSize));
+  ASSERT_EQ(kFinalFileSize, kToFile.GetLength());
+  kToFile.Close();
+
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+
+  // File has been moved to to_dir_
+  char to_contents[kFinalFileSize];
+  EXPECT_EQ(kFinalFileSize,
+            base::ReadFile(kToFilePath, to_contents, kFinalFileSize));
+  EXPECT_EQ(std::string(full_contents, kFinalFileSize),
+            std::string(to_contents, kFinalFileSize));
+  EXPECT_FALSE(platform.FileExists(kFromFilePath));
+}
+
+class DataMigrationTest : public MigrationHelperTest,
+                          public ::testing::WithParamInterface<size_t> {};
+
+TEST_P(DataMigrationTest, CopyFileData) {
+  Platform platform;
+  MigrationHelper helper(
+      &platform, status_files_dir_.path(), kDefaultChunkSize);
+  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
+  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+
+  constexpr char kFileName[] = "file";
+  const FilePath kFromFile = from_dir_.path().Append(kFileName);
+  const FilePath kToFile = to_dir_.path().Append(kFileName);
+
+  const size_t kFileSize = GetParam();
+  char from_contents[kFileSize];
+  base::RandBytes(from_contents, kFileSize);
+  ASSERT_EQ(kFileSize, base::WriteFile(kFromFile, from_contents, kFileSize));
+
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(), to_dir_.path()));
+
+  char to_contents[kFileSize];
+  EXPECT_EQ(kFileSize, base::ReadFile(kToFile, to_contents, kFileSize));
+  EXPECT_EQ(0, strncmp(from_contents, to_contents, kFileSize));
+  EXPECT_FALSE(platform.FileExists(kFromFile));
+}
+
+INSTANTIATE_TEST_CASE_P(WithRandomData,
+                        DataMigrationTest,
+                        ::testing::Values(kDefaultChunkSize / 2,
+                                          kDefaultChunkSize,
+                                          kDefaultChunkSize * 2,
+                                          kDefaultChunkSize * 2 +
+                                              kDefaultChunkSize / 2,
+                                          kDefaultChunkSize * 10,
+                                          kDefaultChunkSize * 100,
+                                          123456,
+                                          1,
+                                          2));
+
 }  // namespace dircrypto_data_migrator
 }  // namespace cryptohome
