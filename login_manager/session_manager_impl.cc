@@ -63,7 +63,7 @@ const char SessionManagerImpl::kStopping[] = "stopping";
 const char SessionManagerImpl::kStopped[] = "stopped";
 
 const char SessionManagerImpl::kLoggedInFlag[] =
-    "/var/run/session_manager/logged_in";
+    "/run/session_manager/logged_in";
 const char SessionManagerImpl::kResetFile[] =
     "/mnt/stateful_partition/factory_install_reset";
 

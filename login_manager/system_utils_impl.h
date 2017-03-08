@@ -63,7 +63,7 @@ class SystemUtilsImpl : public SystemUtils {
   }
 
   // Returns the given path "chrooted" inside |base_dir_for_testing_| if set.
-  // Ex: /var/run/foo -> /tmp/.org.Chromium.whatever/var/run/foo
+  // Ex: /run/foo -> /tmp/.org.Chromium.whatever/run/foo
   base::FilePath PutInsideBaseDirForTesting(const base::FilePath& path);
 
  private:

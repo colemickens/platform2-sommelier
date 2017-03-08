@@ -150,17 +150,17 @@ const char kCgroupParent[] = "test_cgroup";
 
 const char kTestcMountinfo[] = R"(
 104 99 0:57 / /proc rw,relatime - proc none rw
-73 15 7:1 /container.bin /var/run/containers/testc/rootfs_path ro,relatime -
+73 15 7:1 /container.bin /run/containers/testc/rootfs_path ro,relatime -
 )";
 
 const char kAndroidReadonlyMountinfo[] = R"(
 104 99 0:57 / /proc rw,relatime - proc none rw
-73 15 7:1 /container.bin /var/run/containers/android/rootfs_path ro,relatime -
+73 15 7:1 /container.bin /run/containers/android/rootfs_path ro,relatime -
 )";
 
 const char kAndroidWritableMountinfo[] = R"(
 104 99 0:57 / /proc rw,relatime - proc none rw
-73 15 7:1 /container.bin /var/run/containers/android/rootfs_path rw,relatime -
+73 15 7:1 /container.bin /run/containers/android/rootfs_path rw,relatime -
 )";
 
 }  // anonymous namespace
@@ -168,7 +168,7 @@ const char kAndroidWritableMountinfo[] = R"(
 namespace login_manager {
 
 TEST(ContainerConfigParserTest, TestBasicConfig) {
-  const base::FilePath kNamedContainerPath("/var/run/containers/testc");
+  const base::FilePath kNamedContainerPath("/run/containers/testc");
 
   ContainerConfigPtr config(container_config_create(),
                             &container_config_destroy);
@@ -195,7 +195,7 @@ TEST(ContainerConfigParserTest, TestBasicConfig) {
 }
 
 TEST(ContainerConfigParserTest, TestBasicConfigAndroid) {
-  const base::FilePath kNamedContainerPath("/var/run/containers/android");
+  const base::FilePath kNamedContainerPath("/run/containers/android");
   const base::FilePath kSetfilesPath("/sbin/setfiles");
 
   ContainerConfigPtr config(container_config_create(),
@@ -219,7 +219,7 @@ TEST(ContainerConfigParserTest, TestBasicConfigAndroid) {
 }
 
 TEST(ContainerConfigParserTest, TestWritableMountConfigAndroid) {
-  const base::FilePath kNamedContainerPath("/var/run/containers/android");
+  const base::FilePath kNamedContainerPath("/run/containers/android");
 
   ContainerConfigPtr config(container_config_create(),
                             &container_config_destroy);
@@ -234,7 +234,7 @@ TEST(ContainerConfigParserTest, TestWritableMountConfigAndroid) {
 
 TEST(ContainerConfigParserTest, TestFailedConfigRootDictEmpty) {
   const std::string kEmptyJsonConfigData = "{}";
-  const base::FilePath kNamedContainerPath("/var/run/containers/testc");
+  const base::FilePath kNamedContainerPath("/run/containers/testc");
 
   ContainerConfigPtr config(container_config_create(),
                             &container_config_destroy);
@@ -247,7 +247,7 @@ TEST(ContainerConfigParserTest, TestFailedConfigRootDictEmpty) {
 
 TEST(ContainerConfigParserTest, TestFailedConfigUnknownMount) {
   // A mount specified in config but not detailed in runtime should fail.
-  const base::FilePath kNamedContainerPath("/var/run/containers/testc");
+  const base::FilePath kNamedContainerPath("/run/containers/testc");
 
   ContainerConfigPtr config(container_config_create(),
                             &container_config_destroy);
@@ -259,7 +259,7 @@ TEST(ContainerConfigParserTest, TestFailedConfigUnknownMount) {
 }
 
 TEST(ContainerConfigParserTest, TestCpuCgroupConfig) {
-  const base::FilePath kNamedContainerPath("/var/run/containers/testc");
+  const base::FilePath kNamedContainerPath("/run/containers/testc");
 
   ContainerConfigPtr config(container_config_create(),
                             &container_config_destroy);

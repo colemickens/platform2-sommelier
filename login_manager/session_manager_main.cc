@@ -62,7 +62,7 @@ static const char kChromeCommandDefault[] = "/opt/google/chrome/chrome";
 static const char kDisableChromeRestartFile[] = "disable-chrome-restart-file";
 // The default path to this file.
 static const char kDisableChromeRestartFileDefault[] =
-    "/var/run/disable_chrome_restart";
+    "/run/disable_chrome_restart";
 
 // Flag that causes session manager to show the help message and exit.
 static const char kHelp[] = "help";
@@ -77,7 +77,7 @@ static const char kHelpMessage[] =
     "    another program. (default: /opt/google/chrome/chrome)\n"
     "  --disable-chrome-restart-file=</path/to/file>\n"
     "    Magic file that causes this program to stop restarting the\n"
-    "    chrome binary and exit. (default: /var/run/disable_chrome_restart)\n";
+    "    chrome binary and exit. (default: /run/disable_chrome_restart)\n";
 }  // namespace switches
 
 using login_manager::BrowserJob;
@@ -89,7 +89,7 @@ using login_manager::SessionManagerService;
 using login_manager::SystemUtilsImpl;
 
 // Directory in which per-boot metrics flag files will be stored.
-static const char kFlagFileDir[] = "/var/run/session_manager";
+static const char kFlagFileDir[] = "/run/session_manager";
 
 // Hang-detection magic file and constants.
 static const char kHangDetectionFlagFile[] = "enable_hang_detection";

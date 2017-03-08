@@ -156,7 +156,7 @@ class SessionManagerImplTest : public ::testing::Test {
 
     // AtomicFileWrite calls in TEST_F assume that these directories exist.
     ASSERT_TRUE(utils_.CreateDir(
-        base::FilePath(FILE_PATH_LITERAL("/var/run/session_manager"))));
+        base::FilePath(FILE_PATH_LITERAL("/run/session_manager"))));
     ASSERT_TRUE(utils_.CreateDir(
         base::FilePath(FILE_PATH_LITERAL("/mnt/stateful_partition"))));
 

@@ -90,20 +90,20 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   CHECK(EnsureDirectoryExists(data_dir.Append("Default"), uid, gid, 0755));
 
   // TODO(cmasone,derat): Stop using this directory and delete this code.
-  const base::FilePath state_dir("/var/run/state");
+  const base::FilePath state_dir("/run/state");
   CHECK(base::DeleteFile(state_dir, true));
   CHECK(EnsureDirectoryExists(state_dir, kRootUid, kRootGid, 0710));
 
   // Create a directory where the session manager can store a copy of the user
   // policy key, that will be readable by the chrome process as chronos.
-  const base::FilePath policy_dir("/var/run/user_policy");
+  const base::FilePath policy_dir("/run/user_policy");
   CHECK(base::DeleteFile(policy_dir, true));
   CHECK(EnsureDirectoryExists(policy_dir, kRootUid, gid, 0710));
 
   // Create a directory where the chrome process can store a reboot request so
   // that it persists across browser crashes but is always removed on reboot.
   CHECK(EnsureDirectoryExists(
-      base::FilePath("/var/run/chrome"), uid, gid, 0700));
+      base::FilePath("/run/chrome"), uid, gid, 0700));
 
   // Ensure the existence of the directory in which the whitelist and other
   // ownership-related state will live. Yes, it should be owned by root. The

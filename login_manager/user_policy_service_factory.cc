@@ -45,7 +45,7 @@ const base::FilePath::CharType kPolicyKeyFile[] = FILE_PATH_LITERAL("key");
 // chrome process can read them; the authoritative version of the key is still
 // the vault's.
 const base::FilePath::CharType kPolicyKeyCopyDir[] =
-    FILE_PATH_LITERAL("/var/run/user_policy");
+    FILE_PATH_LITERAL("/run/user_policy");
 // Name of the policy key files.
 const base::FilePath::CharType kPolicyKeyCopyFile[] =
     FILE_PATH_LITERAL("policy.pub");
