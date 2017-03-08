@@ -713,7 +713,8 @@ TEST_P(MountTest, CreateCryptohomeTest) {
     .WillOnce(DoAll(SaveArg<1>(&creds), Return(true)));
 
   bool created;
-  ASSERT_TRUE(mount_->EnsureCryptohome(up, ShouldTestEcryptfs(), &created));
+  ASSERT_EQ(MOUNT_ERROR_NONE,
+            mount_->EnsureCryptohome(up, ShouldTestEcryptfs(), &created));
   ASSERT_TRUE(created);
   ASSERT_NE(creds.size(), 0);
   ASSERT_FALSE(mount_->AreValid(up));

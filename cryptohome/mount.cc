@@ -216,16 +216,16 @@ bool Mount::Init(Platform* platform, Crypto* crypto,
   return result;
 }
 
-bool Mount::EnsureCryptohome(const Credentials& credentials,
-                             bool force_ecryptfs,
-                             bool* created) {
+MountError Mount::EnsureCryptohome(const Credentials& credentials,
+                                   bool force_ecryptfs,
+                                   bool* created) {
   // If the user has an old-style cryptohome, delete it
   FilePath old_image_path = GetUserDirectory(credentials).Append("image");
   if (platform_->FileExists(old_image_path)) {
     platform_->DeleteFile(GetUserDirectory(credentials), true);
   }
   if (!EnsureUserMountPoints(credentials)) {
-    return false;
+    return MOUNT_ERROR_FATAL;
   }
   // Now check for the presence of a cryptohome.
   if (DoesCryptohomeExist(credentials)) {
@@ -238,7 +238,7 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
       mount_type_ = MountType::DIR_CRYPTO;
     }
     *created = false;
-    return true;
+    return MOUNT_ERROR_NONE;
   }
   // Create the cryptohome from scratch.
   // If the kernel supports it, steer toward ext4 crypto.
@@ -250,7 +250,7 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
       case dircrypto::KeyState::UNKNOWN:
       case dircrypto::KeyState::ENCRYPTED:
         LOG(ERROR) << "Unexpected state " << state;
-        return false;
+        return MOUNT_ERROR_FATAL;
       case dircrypto::KeyState::NOT_SUPPORTED:
         mount_type_ = MountType::ECRYPTFS;
         break;
@@ -260,7 +260,7 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
     }
   }
   *created = CreateCryptohome(credentials);
-  return *created;
+  return *created ? MOUNT_ERROR_NONE : MOUNT_ERROR_FATAL;
 }
 
 bool Mount::DoesCryptohomeExist(const Credentials& credentials) const {
@@ -400,9 +400,11 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   }
 
   bool created = false;
-  if (!EnsureCryptohome(credentials, mount_args.force_ecryptfs, &created)) {
+  MountError ensure_error = EnsureCryptohome(
+      credentials, mount_args.force_ecryptfs, &created);
+  if (ensure_error != MOUNT_ERROR_NONE) {
     LOG(ERROR) << "Error creating cryptohome.";
-    *mount_error = MOUNT_ERROR_FATAL;
+    *mount_error = ensure_error;
     return false;
   }
 
