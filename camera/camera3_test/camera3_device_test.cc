@@ -4,7 +4,9 @@
 
 #include <algorithm>
 
+#include "arc/camera_buffer_mapper.h"
 #include "camera3_device_fixture.h"
+#include "common/camera_buffer_handle.h"
 
 namespace camera3_test {
 
@@ -29,8 +31,7 @@ int32_t Camera3TestGralloc::Allocate(int32_t width,
                                      int32_t height,
                                      int32_t format,
                                      int32_t usage,
-                                     buffer_handle_t* handle,
-                                     int32_t* stride) {
+                                     buffer_handle_t* handle) {
   uint64_t gbm_usage;
   uint32_t gbm_format;
   struct gbm_bo* bo;
@@ -49,37 +50,40 @@ int32_t Camera3TestGralloc::Allocate(int32_t width,
     return -ENOBUFS;
   }
 
-  gralloc_drm_handle_t* hnd = new gralloc_drm_handle_t();
-  memset(hnd, 0, sizeof(gralloc_drm_handle_t));
+  camera_buffer_handle_t* hnd = new camera_buffer_handle_t();
+  memset(hnd, 0, sizeof(*hnd));
 
   hnd->base.version = sizeof(hnd->base);
-  hnd->base.numInts = GRALLOC_DRM_HANDLE_NUM_INTS;
-  hnd->base.numFds = GRALLOC_DRM_HANDLE_NUM_FDS;
+  hnd->base.numInts = kCameraBufferHandleNumInts;
+  hnd->base.numFds = kCameraBufferHandleNumFds;
 
-  hnd->prime_fd = gbm_bo_get_fd(bo);
+  hnd->magic = kCameraBufferMagic;
+  hnd->buffer_id = reinterpret_cast<uint64_t>(bo);
+  hnd->type = arc::GRALLOC;
+  hnd->format = gbm_bo_get_format(bo);
   hnd->width = gbm_bo_get_width(bo);
   hnd->height = gbm_bo_get_height(bo);
-  hnd->stride = gbm_bo_get_stride(bo);
-  hnd->format = format;
-  hnd->usage = usage;
-  hnd->data = reinterpret_cast<intptr_t>(bo);
-  hnd->magic = GRALLOC_DRM_HANDLE_MAGIC;
+  for (size_t i = 0; i < gbm_bo_get_num_planes(bo); ++i) {
+    hnd->fds[i] = gbm_bo_get_plane_fd(bo, i);
+    hnd->strides[i] = gbm_bo_get_plane_stride(bo, i);
+    hnd->offsets[i] = gbm_bo_get_plane_offset(bo, i);
+  }
 
   *handle = reinterpret_cast<buffer_handle_t>(hnd);
-  *stride = hnd->stride;
 
   return 0;
 }
 
 int32_t Camera3TestGralloc::Free(buffer_handle_t handle) {
-  gralloc_drm_handle_t* hnd = gralloc_drm_handle(handle);
+  auto hnd = camera_buffer_handle_t::FromBufferHandle(handle);
   if (hnd) {
-    EXPECT_TRUE(hnd->data != 0) << "Buffer handle mapping fails";
+    EXPECT_TRUE(hnd->buffer_id != 0) << "Buffer handle mapping fails";
     if (testing::Test::HasFailure()) {
+      delete hnd;
       return -EINVAL;
     }
 
-    gbm_bo_destroy(reinterpret_cast<struct gbm_bo*>(hnd->data));
+    gbm_bo_destroy(reinterpret_cast<struct gbm_bo*>(hnd->buffer_id));
     delete hnd;
     return 0;
   }
@@ -304,12 +308,11 @@ int Camera3Device::AllocateOutputStreamBuffers(
     }
 
     std::unique_ptr<buffer_handle_t> buffer(new buffer_handle_t);
-    int32_t stride;
 
     EXPECT_EQ(0, gralloc_.Allocate(width, height, format,
                                    GRALLOC_USAGE_SW_WRITE_OFTEN |
                                        GRALLOC_USAGE_HW_CAMERA_WRITE,
-                                   buffer.get(), &stride))
+                                   buffer.get()))
         << "Gralloc allocation fails";
 
     camera3_stream_buffer_t stream_buffer;

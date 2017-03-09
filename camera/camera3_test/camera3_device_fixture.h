@@ -10,7 +10,6 @@
 
 #include <base/synchronization/lock.h>
 #include <gbm.h>
-#include <gralloc_drm_handle.h>
 #include <gtest/gtest.h>
 #include <hardware/camera3.h>
 #include <hardware/hardware.h>
@@ -30,8 +29,7 @@ class Camera3TestGralloc {
                int height,
                int format,
                int usage,
-               buffer_handle_t* handle,
-               int* stride);
+               buffer_handle_t* handle);
 
   int Free(buffer_handle_t handle);
 

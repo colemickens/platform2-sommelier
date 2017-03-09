@@ -49,4 +49,10 @@ typedef struct camera_buffer_handle {
   }
 } camera_buffer_handle_t;
 
+const size_t kCameraBufferHandleNumFds = kMaxPlanes;
+const size_t kCameraBufferHandleNumInts =
+    (sizeof(struct camera_buffer_handle) - sizeof(native_handle_t) -
+     (sizeof(int32_t) * kMaxPlanes)) /
+    sizeof(int);
+
 #endif  // COMMON_CAMERA_BUFFER_HANDLE_H_

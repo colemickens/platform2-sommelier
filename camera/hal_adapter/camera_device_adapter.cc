@@ -21,16 +21,6 @@
 #include "hal_adapter/camera3_callback_ops_delegate.h"
 #include "hal_adapter/camera3_device_ops_delegate.h"
 
-namespace {
-
-const size_t kCameraBufferHandleNumFds = kMaxPlanes;
-const size_t kCameraBufferHandleNumInts =
-    (sizeof(camera_buffer_handle_t) - sizeof(native_handle_t) -
-     (sizeof(int32_t) * kMaxPlanes)) /
-    sizeof(int);
-
-}  // namespace
-
 namespace arc {
 
 CameraDeviceAdapter::CameraDeviceAdapter(camera3_device_t* camera_device)
