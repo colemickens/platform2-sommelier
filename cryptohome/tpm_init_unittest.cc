@@ -24,6 +24,8 @@ namespace cryptohome {
 
 extern const base::FilePath kTpmOwnedFile;
 const base::FilePath kTpmStatusFile("/mnt/stateful_partition/.tpm_status");
+const base::FilePath kDefaultCryptohomeKeyFile("/home/.shadow/cryptohome.key");
+const TpmKeyHandle kTestKeyHandle = 17;  // any non-zero value
 
 // Tests that need to do more setup work before calling Service::Initialize can
 // use this instead of ServiceTest.
@@ -113,6 +115,10 @@ class TpmInitTest : public ::testing::Test {
                        mode_t /* mode */) {
     return FileWrite(path, blob);
   }
+  bool FileWriteString(const base::FilePath& path, const std::string& str) {
+    brillo::Blob blob(str.begin(), str.end());
+    return FileWrite(path, blob);
+  }
 
   void SetTpmStatus(const TpmStatus& tpm_status) {
     brillo::Blob file_data(tpm_status.ByteSize());
@@ -188,6 +194,48 @@ class TpmInitTest : public ::testing::Test {
  private:
   DISALLOW_COPY_AND_ASSIGN(TpmInitTest);
 };
+
+MATCHER_P(HasStoredCryptohomeKey, str, "") {
+  std::string stored_key;
+  if (!arg->FileReadToString(kDefaultCryptohomeKeyFile, &stored_key)) {
+    *result_listener << "has no stored cryptohome key";
+    return false;
+  }
+  if (stored_key != str) {
+    *result_listener << "has stored cryptohome key \"" << stored_key << "\"";
+    return false;
+  }
+  return true;
+}
+
+MATCHER_P(HasLoadedCryptohomeKey, handle, "") {
+  if (!arg->HasCryptohomeKey()) {
+    *result_listener << "has no loaded cryptohome key";
+    return false;
+  }
+  TpmKeyHandle loaded_handle = arg->GetCryptohomeKey();
+  if (loaded_handle != handle) {
+    *result_listener << "has loaded cryptohome key " << loaded_handle;
+    return false;
+  }
+  return true;
+}
+
+MATCHER(HasNoLoadedCryptohomeKey, "") {
+  TpmKeyHandle loaded_handle = arg->GetCryptohomeKey();
+  *result_listener << "has loaded cryptohome key " << loaded_handle;
+  return !arg->HasCryptohomeKey() && loaded_handle == kInvalidKeyHandle;
+}
+
+ACTION_P(GenerateWrappedKey, wrapped_key) {
+  *arg2 = brillo::SecureBlob(wrapped_key);
+  return true;
+}
+
+ACTION_P(LoadWrappedKeyToHandle, handle) {
+  arg1->reset(nullptr, handle);
+  return Tpm::kTpmRetryNone;
+}
 
 TEST_F(TpmInitTest, AlreadyOwnedSuccess) {
   bool took_ownership = false;
@@ -346,6 +394,90 @@ TEST_F(TpmInitTest, RemoveTpmOwnerDependencyNoTpmStatus) {
   EXPECT_CALL(platform_, WriteFileAtomicDurable(kTpmStatusFile, _, _))
       .Times(0);
   tpm_init_.RemoveTpmOwnerDependency(dependency);
+}
+
+TEST_F(TpmInitTest, LoadCryptohomeKeySuccess) {
+  SetIsTpmInitialized(true);
+  FileTouch(kDefaultCryptohomeKeyFile);
+  EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
+    .WillOnce(LoadWrappedKeyToHandle(kTestKeyHandle));
+  tpm_init_.SetupTpm(true);
+  EXPECT_THAT(&tpm_init_, HasLoadedCryptohomeKey(kTestKeyHandle));
+}
+
+TEST_F(TpmInitTest, LoadCryptohomeKeyTransientFailure) {
+  // Transient failure on the first attempt leads to key not being loaded.
+  // But the key is not re-created. Success on the second attempt loads the
+  // old key.
+  SetIsTpmInitialized(true);
+  FileWriteString(kDefaultCryptohomeKeyFile, "old-key");
+  EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
+    .WillOnce(Return(Tpm::kTpmRetryCommFailure))
+    .WillOnce(LoadWrappedKeyToHandle(kTestKeyHandle));
+  EXPECT_CALL(tpm_, IsTransient(Tpm::kTpmRetryCommFailure))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_, WrapRsaKey(_, _, _))
+    .Times(0);
+  tpm_init_.SetupTpm(true);
+  EXPECT_THAT(&tpm_init_, HasNoLoadedCryptohomeKey());
+  tpm_init_.SetupTpm(true);
+  EXPECT_THAT(&tpm_init_, HasLoadedCryptohomeKey(kTestKeyHandle));
+  EXPECT_THAT(this, HasStoredCryptohomeKey("old-key"));
+}
+
+TEST_F(TpmInitTest, ReCreateCryptohomeKeyAfterLoadFailure) {
+  // Permanent failure while loading the key leads to re-creating, storing
+  // and loading the new key.
+  SetIsTpmInitialized(true);
+  FileWriteString(kDefaultCryptohomeKeyFile, "old-key");
+  EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
+    .WillOnce(Return(Tpm::kTpmRetryFailNoRetry))
+    .WillOnce(LoadWrappedKeyToHandle(kTestKeyHandle));
+  EXPECT_CALL(tpm_, IsTransient(Tpm::kTpmRetryFailNoRetry))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(tpm_, WrapRsaKey(_, _, _))
+    .WillOnce(GenerateWrappedKey("new-key"));
+  tpm_init_.SetupTpm(true);
+  EXPECT_THAT(&tpm_init_, HasLoadedCryptohomeKey(kTestKeyHandle));
+  EXPECT_THAT(this, HasStoredCryptohomeKey("new-key"));
+}
+
+TEST_F(TpmInitTest, ReCreateCryptohomeKeyFailureDuringKeyCreation) {
+  // Permanent failure while loading the key leads to an attempt to re-create
+  // the key. Which fails. So, nothing new is stored or loaded.
+  SetIsTpmInitialized(true);
+  FileWriteString(kDefaultCryptohomeKeyFile, "old-key");
+  EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
+    .WillOnce(Return(Tpm::kTpmRetryFailNoRetry));
+  EXPECT_CALL(tpm_, IsTransient(Tpm::kTpmRetryFailNoRetry))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(tpm_, WrapRsaKey(_, _, _))
+    .WillOnce(Return(false));
+  tpm_init_.SetupTpm(true);
+  EXPECT_THAT(&tpm_init_, HasNoLoadedCryptohomeKey());
+  EXPECT_THAT(this, HasStoredCryptohomeKey("old-key"));
+}
+
+TEST_F(TpmInitTest, ReCreateCryptohomeKeyFailureDuringKeyLoading) {
+  // Permanent failure while loading the key leads to re-creating the key.
+  // It is stored. But then loading fails.
+  // Still, on the next attempt, the key is loaded, and not re-created again.
+  SetIsTpmInitialized(true);
+  FileWriteString(kDefaultCryptohomeKeyFile, "old-key");
+  EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
+    .WillOnce(Return(Tpm::kTpmRetryFailNoRetry))
+    .WillOnce(Return(Tpm::kTpmRetryFailNoRetry))
+    .WillOnce(LoadWrappedKeyToHandle(kTestKeyHandle));
+  EXPECT_CALL(tpm_, IsTransient(Tpm::kTpmRetryFailNoRetry))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(tpm_, WrapRsaKey(_, _, _))
+    .WillOnce(GenerateWrappedKey("new-key"));
+  tpm_init_.SetupTpm(true);
+  EXPECT_THAT(&tpm_init_, HasNoLoadedCryptohomeKey());
+  EXPECT_THAT(this, HasStoredCryptohomeKey("new-key"));
+  tpm_init_.SetupTpm(true);
+  EXPECT_THAT(&tpm_init_, HasLoadedCryptohomeKey(kTestKeyHandle));
+  EXPECT_THAT(this, HasStoredCryptohomeKey("new-key"));
 }
 
 }  // namespace cryptohome

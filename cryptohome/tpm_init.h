@@ -160,7 +160,7 @@ class TpmInit {
 
   bool SaveCryptohomeKey(const brillo::SecureBlob& wrapped_key);
 
-  bool LoadCryptohomeKey(ScopedKeyHandle* key_handle);
+  Tpm::TpmRetryAction LoadCryptohomeKey(ScopedKeyHandle* key_handle);
 
   bool CreateCryptohomeKey();
 

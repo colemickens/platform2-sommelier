@@ -530,7 +530,7 @@ bool TpmInit::SaveCryptohomeKey(const brillo::SecureBlob& raw_key) {
   return ok;
 }
 
-bool TpmInit::LoadCryptohomeKey(ScopedKeyHandle* key_handle) {
+Tpm::TpmRetryAction TpmInit::LoadCryptohomeKey(ScopedKeyHandle* key_handle) {
   CHECK(key_handle);
   // First, try loading the key from the key file
   {
@@ -538,11 +538,9 @@ bool TpmInit::LoadCryptohomeKey(ScopedKeyHandle* key_handle) {
     if (platform_->ReadFile(kDefaultCryptohomeKeyFile, &raw_key)) {
       Tpm::TpmRetryAction retry_action = get_tpm()->LoadWrappedKey(
           raw_key, key_handle);
-      if (retry_action == Tpm::kTpmRetryNone) {
-        return true;
-      }
-      if (get_tpm()->IsTransient(retry_action)) {
-        return false;
+      if (retry_action == Tpm::kTpmRetryNone ||
+          get_tpm()->IsTransient(retry_action)) {
+        return retry_action;
       }
     }
   }
@@ -551,32 +549,30 @@ bool TpmInit::LoadCryptohomeKey(ScopedKeyHandle* key_handle) {
   SecureBlob raw_key;
   if (!get_tpm()->LegacyLoadCryptohomeKey(key_handle,
                                           &raw_key)) {
-    return false;
+    return Tpm::kTpmRetryFailNoRetry;
   }
 
   // Save the cryptohome key to the well-known location
   if (!SaveCryptohomeKey(raw_key)) {
     LOG(ERROR) << "Couldn't save cryptohome key";
-    return false;
+    return Tpm::kTpmRetryFailNoRetry;
   }
-  return true;
+  return Tpm::kTpmRetryNone;
 }
 
 bool TpmInit::LoadOrCreateCryptohomeKey(ScopedKeyHandle* key_handle) {
   CHECK(key_handle);
   // Try to load the cryptohome key.
-  if (LoadCryptohomeKey(key_handle)) {
-    return true;
-  }
-
-  // Otherwise, the key couldn't be loaded, and it wasn't due to a transient
-  // error, so we must create the key.
-  if (CreateCryptohomeKey()) {
-    if (LoadCryptohomeKey(key_handle)) {
-      return true;
+  Tpm::TpmRetryAction retry_action = LoadCryptohomeKey(key_handle);
+  if (retry_action != Tpm::kTpmRetryNone &&
+      !get_tpm()->IsTransient(retry_action)) {
+    // The key couldn't be loaded, and it wasn't due to a transient error,
+    // so we must create the key.
+    if (CreateCryptohomeKey()) {
+      retry_action = LoadCryptohomeKey(key_handle);
     }
   }
-  return false;
+  return retry_action == Tpm::kTpmRetryNone;
 }
 
 bool TpmInit::HasCryptohomeKey() {
@@ -596,7 +592,7 @@ bool TpmInit::ReloadCryptohomeKey() {
   // TODO(crbug.com/687330): change to closing the handle and ignoring errors
   // once checking for stale virtual handles is implemented in trunksd.
   cryptohome_key_.release();
-  if (!LoadCryptohomeKey(&cryptohome_key_)) {
+  if (LoadCryptohomeKey(&cryptohome_key_) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Error reloading Cryptohome key.";
     return false;
   }
