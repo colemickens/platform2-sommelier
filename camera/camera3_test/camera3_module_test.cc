@@ -5,6 +5,8 @@
 #include "camera3_module_fixture.h"
 
 #include <base/at_exit.h>
+#include <base/command_line.h>
+#include <base/logging.h>
 
 namespace camera3_test {
 
@@ -213,6 +215,12 @@ TEST_F(Camera3ModuleFixture, RequiredFormats) {
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
+
+  // Set up logging so we can enable VLOGs with -v / --vmodule.
+  base::CommandLine::Init(argc, argv);
+  logging::LoggingSettings settings;
+  settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
+  LOG_ASSERT(logging::InitLogging(settings));
 
   // Open camera HAL and get module
   void* cam_hal_handle = NULL;
