@@ -3,8 +3,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef USB_IMAGE_PROCESSOR_H_
-#define USB_IMAGE_PROCESSOR_H_
+#ifndef HAL_USB_IMAGE_PROCESSOR_H_
+#define HAL_USB_IMAGE_PROCESSOR_H_
 
 #include <stdint.h>
 
@@ -16,7 +16,7 @@
 // Declarations of HAL_PIXEL_FORMAT_XXX.
 #include <system/graphics.h>
 
-#include "usb/frame_buffer.h"
+#include "hal/usb/frame_buffer.h"
 
 namespace arc {
 
@@ -44,4 +44,4 @@ struct ImageProcessor {
 
 }  // namespace arc
 
-#endif  // USB_IMAGE_PROCESSOR_H_
+#endif  // HAL_USB_IMAGE_PROCESSOR_H_

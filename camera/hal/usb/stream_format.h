@@ -3,12 +3,12 @@
  * found in the LICENSE file.
  */
 
-#ifndef USB_STREAM_FORMAT_H_
-#define USB_STREAM_FORMAT_H_
+#ifndef HAL_USB_STREAM_FORMAT_H_
+#define HAL_USB_STREAM_FORMAT_H_
 
 #include <vector>
 
-#include "usb/common_types.h"
+#include "hal/usb/common_types.h"
 
 namespace arc {
 
@@ -21,4 +21,4 @@ SupportedFormats GetQualifiedFormats(const SupportedFormats& supported_formats);
 
 }  // namespace arc
 
-#endif  // USB_STREAM_FORMAT_H_
+#endif  // HAL_USB_STREAM_FORMAT_H_

@@ -4,15 +4,15 @@
  * found in the LICENSE file.
  */
 
-#ifndef USB_CAMERA_CHARACTERISTICS_H_
-#define USB_CAMERA_CHARACTERISTICS_H_
+#ifndef HAL_USB_CAMERA_CHARACTERISTICS_H_
+#define HAL_USB_CAMERA_CHARACTERISTICS_H_
 
 #include <string>
 #include <unordered_map>
 
 #include <base/macros.h>
 
-#include "usb/common_types.h"
+#include "hal/usb/common_types.h"
 
 namespace arc {
 
@@ -65,4 +65,4 @@ class CameraCharacteristics {
 
 }  // namespace arc
 
-#endif  // USB_CAMERA_CHARACTERISTICS_H_
+#endif  // HAL_USB_CAMERA_CHARACTERISTICS_H_

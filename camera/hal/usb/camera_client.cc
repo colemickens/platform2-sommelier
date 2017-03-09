@@ -3,17 +3,17 @@
  * found in the LICENSE file.
  */
 
-#include "usb/camera_client.h"
+#include "hal/usb/camera_client.h"
 
 #include <vector>
 
 #include <system/camera_metadata.h>
 
 #include "arc/common.h"
-#include "usb/camera_hal.h"
-#include "usb/camera_hal_device_ops.h"
-#include "usb/camera_metadata.h"
-#include "usb/stream_format.h"
+#include "hal/usb/camera_hal.h"
+#include "hal/usb/camera_hal_device_ops.h"
+#include "hal/usb/camera_metadata.h"
+#include "hal/usb/stream_format.h"
 
 namespace arc {
 

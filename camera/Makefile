@@ -26,7 +26,7 @@ libcbm: common/libcbm
 
 .PHONY: libcbm
 
-camera_hal_usb: usb/camera_hal
+camera_hal_usb: hal/usb/camera_hal
 
 .PHONY: camera_hal_usb
 

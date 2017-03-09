@@ -3,12 +3,12 @@
  * found in the LICENSE file.
  */
 
-#ifndef USB_CACHED_FRAME_H_
-#define USB_CACHED_FRAME_H_
+#ifndef HAL_USB_CACHED_FRAME_H_
+#define HAL_USB_CACHED_FRAME_H_
 
 #include <memory>
 
-#include "usb/image_processor.h"
+#include "hal/usb/image_processor.h"
 
 namespace arc {
 
@@ -81,4 +81,4 @@ class CachedFrame {
 
 }  // namespace arc
 
-#endif  // USB_CACHED_FRAME_H_
+#endif  // HAL_USB_CACHED_FRAME_H_

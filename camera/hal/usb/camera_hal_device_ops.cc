@@ -3,10 +3,10 @@
  * found in the LICENSE file.
  */
 
-#include "usb/camera_hal_device_ops.h"
+#include "hal/usb/camera_hal_device_ops.h"
 
 #include "arc/common.h"
-#include "usb/camera_client.h"
+#include "hal/usb/camera_client.h"
 
 namespace arc {
 

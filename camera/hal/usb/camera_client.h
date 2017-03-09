@@ -3,8 +3,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef USB_CAMERA_CLIENT_H_
-#define USB_CAMERA_CLIENT_H_
+#ifndef HAL_USB_CAMERA_CLIENT_H_
+#define HAL_USB_CAMERA_CLIENT_H_
 
 #include <memory>
 #include <string>
@@ -15,9 +15,9 @@
 #include <hardware/camera3.h>
 #include <hardware/hardware.h>
 
-#include "usb/camera_metadata.h"
-#include "usb/common_types.h"
-#include "usb/v4l2_camera_device.h"
+#include "hal/usb/camera_metadata.h"
+#include "hal/usb/common_types.h"
+#include "hal/usb/v4l2_camera_device.h"
 
 namespace arc {
 
@@ -91,4 +91,4 @@ class CameraClient {
 
 }  // namespace arc
 
-#endif  // USB_CAMERA_CLIENT_H_
+#endif  // HAL_USB_CAMERA_CLIENT_H_

@@ -3,13 +3,13 @@
  * found in the LICENSE file.
  */
 
-#include "usb/image_processor.h"
+#include "hal/usb/image_processor.h"
 
 #include <errno.h>
 #include <libyuv.h>
 
 #include "arc/common.h"
-#include "usb/common_types.h"
+#include "hal/usb/common_types.h"
 
 namespace arc {
 

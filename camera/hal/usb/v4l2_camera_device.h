@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef USB_V4L2_CAMERA_DEVICE_H_
-#define USB_V4L2_CAMERA_DEVICE_H_
+#ifndef HAL_USB_V4L2_CAMERA_DEVICE_H_
+#define HAL_USB_V4L2_CAMERA_DEVICE_H_
 
 #include <string>
 #include <unordered_map>
@@ -13,7 +13,7 @@
 
 #include <base/files/scoped_file.h>
 
-#include "usb/common_types.h"
+#include "hal/usb/common_types.h"
 
 namespace arc {
 
@@ -97,4 +97,4 @@ class V4L2CameraDevice {
 
 }  // namespace arc
 
-#endif  // USB_V4L2_CAMERA_DEVICE_H_
+#endif  // HAL_USB_V4L2_CAMERA_DEVICE_H_

@@ -3,8 +3,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef USB_CAMERA_HAL_H_
-#define USB_CAMERA_HAL_H_
+#ifndef HAL_USB_CAMERA_HAL_H_
+#define HAL_USB_CAMERA_HAL_H_
 
 #include <map>
 #include <memory>
@@ -14,8 +14,8 @@
 #include <base/threading/thread_checker.h>
 #include <hardware/camera_common.h>
 
-#include "usb/camera_client.h"
-#include "usb/common_types.h"
+#include "hal/usb/camera_client.h"
+#include "hal/usb/common_types.h"
 
 namespace arc {
 
@@ -66,4 +66,4 @@ int camera_device_close(struct hw_device_t* hw_device);
 
 extern camera_module_t HAL_MODULE_INFO_SYM;
 
-#endif  // USB_CAMERA_HAL_H_
+#endif  // HAL_USB_CAMERA_HAL_H_

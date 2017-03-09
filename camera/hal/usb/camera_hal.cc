@@ -3,13 +3,13 @@
  * found in the LICENSE file.
  */
 
-#include "usb/camera_hal.h"
+#include "hal/usb/camera_hal.h"
 
 #include "arc/common.h"
-#include "usb/camera_metadata.h"
-#include "usb/common_types.h"
-#include "usb/stream_format.h"
-#include "usb/v4l2_camera_device.h"
+#include "hal/usb/camera_metadata.h"
+#include "hal/usb/common_types.h"
+#include "hal/usb/stream_format.h"
+#include "hal/usb/v4l2_camera_device.h"
 
 namespace arc {
 

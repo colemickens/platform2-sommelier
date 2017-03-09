@@ -3,14 +3,14 @@
  * found in the LICENSE file.
  */
 
-#include "usb/camera_metadata.h"
+#include "hal/usb/camera_metadata.h"
 
 #include <cmath>
 #include <limits>
 #include <vector>
 
 #include "arc/common.h"
-#include "usb/stream_format.h"
+#include "hal/usb/stream_format.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 

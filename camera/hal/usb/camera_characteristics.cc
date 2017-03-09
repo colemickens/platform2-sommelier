@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "usb/camera_characteristics.h"
+#include "hal/usb/camera_characteristics.h"
 
 #include <vector>
 

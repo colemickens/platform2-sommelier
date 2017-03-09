@@ -3,12 +3,12 @@
  * found in the LICENSE file.
  */
 
-#include "usb/stream_format.h"
+#include "hal/usb/stream_format.h"
 
 #include <linux/videodev2.h>
 
 #include "arc/common.h"
-#include "usb/camera_metadata.h"
+#include "hal/usb/camera_metadata.h"
 
 namespace arc {
 

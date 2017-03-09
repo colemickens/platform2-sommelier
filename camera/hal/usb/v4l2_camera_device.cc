@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "usb/v4l2_camera_device.h"
+#include "hal/usb/v4l2_camera_device.h"
 
 #include <fcntl.h>
 #include <linux/videodev2.h>
@@ -19,7 +19,7 @@
 #include <base/strings/stringprintf.h>
 
 #include "arc/common.h"
-#include "usb/camera_characteristics.h"
+#include "hal/usb/camera_characteristics.h"
 
 namespace arc {
 

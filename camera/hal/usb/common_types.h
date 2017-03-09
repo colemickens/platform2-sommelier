@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef USB_COMMON_TYPES_H_
-#define USB_COMMON_TYPES_H_
+#ifndef HAL_USB_COMMON_TYPES_H_
+#define HAL_USB_COMMON_TYPES_H_
 
 #include <string>
 #include <vector>
@@ -57,4 +57,4 @@ typedef std::vector<SupportedFormat> SupportedFormats;
 
 }  // namespace arc
 
-#endif  // USB_COMMON_TYPES_H_
+#endif  // HAL_USB_COMMON_TYPES_H_

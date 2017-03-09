@@ -3,13 +3,13 @@
  * found in the LICENSE file.
  */
 
-#include "usb/cached_frame.h"
+#include "hal/usb/cached_frame.h"
 
 #include <errno.h>
 #include <libyuv.h>
 
 #include "arc/common.h"
-#include "usb/common_types.h"
+#include "hal/usb/common_types.h"
 
 namespace arc {
 

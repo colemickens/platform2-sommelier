@@ -3,8 +3,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef USB_FRAME_BUFFER_H_
-#define USB_FRAME_BUFFER_H_
+#ifndef HAL_USB_FRAME_BUFFER_H_
+#define HAL_USB_FRAME_BUFFER_H_
 
 #include <stdint.h>
 
@@ -23,4 +23,4 @@ struct FrameBuffer {
 
 }  // namespace arc
 
-#endif  // USB_FRAME_BUFFER_H_
+#endif  // HAL_USB_FRAME_BUFFER_H_
