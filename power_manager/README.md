@@ -1,47 +1,53 @@
 # Chrome OS Power Management
 
-`powerd` makes power-related policy decisions via C++ code running in userspace.
+The Chrome OS power manager consists of several components:
+
+-   `powerd`: C++ system daemon running as the `power` user that initiates
+    dimming the screen, suspending the system, etc.
+-   `powerd_setuid_helper`: setuid root binary used by powerd to perform actions
+    requiring additional privileges.
+-   `powerd_dbus_suspend`: shell script executed by powerd (by way of
+    `powerd_setuid_helper`) to suspend and resume the system.
+-   `send_metrics_on_resume`: shell script executed by `powerd_suspend` and by
+    the `send-boot-metrics` Upstart job to report suspend-related metrics.
+
+## Documentation
+
+The [`docs/`](docs/) subdirectory contains additional documentation. Along with 
+answers to [frequently-asked questions](docs/faq.md), the following information
+is available:
+
+-   [Battery Notifications](docs/battery_notifications.md) describes when
+    low-battery notifications are shown by the UI.
+-   [Inactivity Delays](docs/inactivity_delays.md) describes powerd's logic for
+    taking action (e.g. dimming the backlight or suspending) when the user is
+    inactive.
+-   [Input](docs/input.md) describes how powerd handle's input events.
+-   [Keyboard Backlight](docs/keyboard_backlight.md) describes powerd's logic
+    for controlling the keyboard backlight.
+-   [Logging](docs/logging.md) describes where and how powerd logs informative
+    messages.
+-   [Screen Brightness](docs/screen_brightness.md) describes powerd's logic for
+    controlling the display backlight.
+-   [Suspend and Resume](docs/suspend_resume.md) describes powerd's process for
+    suspending and resuming the system.
 
 ## Code Overview
 
-This repository contains the following directories:
+This repository contains the following subdirectories:
 
 | Subdirectory    | Description |
 |-----------------|-------------|
 | `common`        | Code shared between powerd and tools |
 | `dbus`          | D-Bus policy configuration files |
 | `default_prefs` | Default pref files installed to `/usr/share/power_manager` |
+| `docs`          | Detailed documentation in Markdown format |
 | `init/shared`   | Scripts shared between Upstart and systemd |
 | `init/systemd`  | systemd-specific config files |
 | `init/upstart`  | Upstart-specific config files installed to `/etc/init` |
 | `optional_prefs`| Pref files conditionally installed based on USE flags |
-| `powerd`        | Power manager daemon running as the `power` user |
-| `powerd/policy` | High-level parts of `powerd` that make policy decisions |
-| `powerd/system` | Low-level parts of `powerd` that communicate with the kernel |
+| `powerd`        | Power manager daemon |
+| `powerd/policy` | High-level parts of powerd that make policy decisions |
+| `powerd/system` | Low-level parts of powerd that communicate with the kernel |
 | `tools`         | Utility programs; may depend on `powerd` code |
 | `udev`          | udev configuration files and scripts |
-
-## Logging Guidelines
-
-`powerd` receives input (e.g. user/video/audio activity, lid events, etc.) and
-performs actions sporadically; thirty-second intervals where nothing happens are
-common for an idle system. Having logs of these events is essential to
-reconstruct the past when investigating user feedback reports.
-
-`powerd`'s unit tests, on the other hand, send a bunch of input very quickly.
-Logging all events drowns out the rest of the testing output.
-
-To produce useful output when running in production while producing readable
-output from tests, `powerd` logs messages at the `INFO` level and above by
-default, while unit tests log `WARNING` and above.
-
-Please use logging macros as follows within `powerd`:
-
-| Macro          | Usage |
-|----------------|-------|
-| `VLOG(1)`      | Debugging info that is hidden by default but can be selectively enabled by developers |
-| `LOG(INFO)`    | Input from other systems or actions performed by `powerd` (i.e. things that would be useful when trying to figure out what `powerd` was thinking when investigating a bug report) |
-| `LOG(WARNING)` | Minor errors (e.g. bad input from other daemons) |
-| `LOG(ERROR)`   | Major errors (e.g. problems communicating with the kernel) |
-| `LOG(FATAL)`   | Critical problems that make `powerd` unusable or that indicate problems in the readonly system image (e.g. malformed preference defaults) |
-| `CHECK(...)`   | Same as `LOG(FATAL)` |
