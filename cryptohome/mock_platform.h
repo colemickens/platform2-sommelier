@@ -191,6 +191,9 @@ class MockPlatform : public Platform {
   MOCK_METHOD1(SyncDirectory, bool(const base::FilePath&));
   MOCK_METHOD0(Sync, void());
   MOCK_METHOD0(GetHardwareID, std::string(void));
+  MOCK_METHOD2(CreateSymbolicLink,
+               bool(const base::FilePath&, const base::FilePath&));
+  MOCK_METHOD2(ReadLink, bool(const base::FilePath&, base::FilePath*));
 
   MockFileEnumerator* mock_enumerator() { return mock_enumerator_.get(); }
 

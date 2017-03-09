@@ -614,6 +614,24 @@ class Platform {
   // extend the TPM's PCR_1.
   virtual std::string GetHardwareID();
 
+  // Creates a new symbolic link at |path| pointing to |target|.  Returns false
+  // if the link could not be created successfully.
+  //
+  // Parametesr
+  //   path - The path to create the symbolic link at.
+  //   target - The path that the symbolic link should point to.
+  virtual bool CreateSymbolicLink(const base::FilePath& path,
+                                  const base::FilePath& target);
+
+  // Reads the target of a symbolic link at |path| into |target|.  If |path| is
+  // not a symbolic link or the target cannot be read false is returned.
+  //
+  // Parameters
+  //   path - The path of the symbolic link to read
+  //   target - The path to fill with the symbolic link target.  If an error is
+  //   encounted and false is returned, target will be cleared.
+  virtual bool ReadLink(const base::FilePath& path, base::FilePath* target);
+
  private:
   // Returns the process and open file information for the specified process id
   // with files open on the given path
@@ -639,12 +657,6 @@ class Platform {
   //   parent - The parent directory
   //   child - The child directory/file
   bool IsPathChild(const base::FilePath& parent, const base::FilePath& child);
-
-  // Returns the target of the specified link
-  //
-  // Parameters
-  //   link_path - The link to check
-  base::FilePath ReadLink(const base::FilePath& link_path);
 
   // Creates a random string suitable to append to a filename.  Returns empty
   // string in case of error.

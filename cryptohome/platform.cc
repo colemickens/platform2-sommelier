@@ -250,16 +250,6 @@ void Platform::GetProcessesWithOpenFiles(
   }
 }
 
-FilePath Platform::ReadLink(const FilePath& link_path) {
-  char link_buf[PATH_MAX];
-  ssize_t link_length = readlink(link_path.value().c_str(), link_buf,
-                                 sizeof(link_buf));
-  if (link_length > 0) {
-    return FilePath(std::string(link_buf, link_length));
-  }
-  return FilePath();
-}
-
 void Platform::GetProcessOpenFileInformation(pid_t pid,
                                              const FilePath& file_in,
                                              ProcessInformation* process_info) {
@@ -280,7 +270,8 @@ void Platform::GetProcessOpenFileInformation(pid_t pid,
   FilePath file_path = file_in.AsEndingWithSeparator();
 
   FilePath cwd_path = pid_path.Append("cwd");
-  FilePath link_val = ReadLink(cwd_path);
+  FilePath link_val;
+  ReadLink(cwd_path, &link_val);
   std::string value = link_val.value();
   if (IsPathChild(file_path, link_val)) {
     process_info->set_cwd(&value);
@@ -300,7 +291,7 @@ void Platform::GetProcessOpenFileInformation(pid_t pid,
   for (FilePath fd_path = fd_dir_enum.Next();
        !fd_path.empty();
        fd_path = fd_dir_enum.Next()) {
-    link_val = ReadLink(fd_path);
+    ReadLink(fd_path, &link_val);
     if (IsPathChild(file_path, link_val)) {
       open_files.insert(link_val);
     }
@@ -328,7 +319,8 @@ void Platform::LookForOpenFiles(const FilePath& path_in,
     }
 
     FilePath cwd_path = pid_path.Append("cwd");
-    FilePath cwd_link = ReadLink(cwd_path);
+    FilePath cwd_link;
+    ReadLink(cwd_path, &cwd_link);
     if (IsPathChild(file_path, cwd_link)) {
       pids->push_back(pid);
       continue;
@@ -344,7 +336,8 @@ void Platform::LookForOpenFiles(const FilePath& path_in,
     for (FilePath fd_path = fd_dir_enum.Next();
          !fd_path.empty();
          fd_path = fd_dir_enum.Next()) {
-      FilePath fd_link = ReadLink(fd_path);
+      FilePath fd_link;
+      ReadLink(fd_path, &fd_link);
       if (IsPathChild(file_path, fd_link)) {
         pids->push_back(pid);
         break;
@@ -1110,6 +1103,23 @@ std::string Platform::GetHardwareID() {
 
   LOG(WARNING) << "Could not read hwid property";
   return std::string();
+}
+
+bool Platform::CreateSymbolicLink(const base::FilePath& path,
+                                  const base::FilePath& target) {
+  if (!base::CreateSymbolicLink(target, path)) {
+    PLOG(ERROR) << "Failed to create link " << path.value();
+    return false;
+  }
+  return true;
+}
+
+bool Platform::ReadLink(const base::FilePath& path, base::FilePath* target) {
+  if (!base::ReadSymbolicLink(path, target)) {
+    PLOG(ERROR) << "Failed to read link " << path.value();
+    return false;
+  }
+  return true;
 }
 
 // Encapsulate these helpers to avoid include conflicts.

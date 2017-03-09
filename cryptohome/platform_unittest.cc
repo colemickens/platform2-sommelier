@@ -557,4 +557,28 @@ TEST_F(PlatformTest, GetMountsBySourcePrefixECryptFs) {
   EXPECT_TRUE(base::DeleteFile(mount_info, false));
 }
 
+TEST_F(PlatformTest, CreateSymbolicLink) {
+  const base::FilePath link(GetTempName());
+  const base::FilePath target(GetTempName());
+  const base::FilePath existing_file(GetTempName());
+  ASSERT_TRUE(platform_.TouchFileDurable(existing_file));
+  EXPECT_TRUE(platform_.CreateSymbolicLink(link, target));
+  EXPECT_FALSE(platform_.CreateSymbolicLink(existing_file, target));
+  base::FilePath read_target;
+  ASSERT_TRUE(base::ReadSymbolicLink(link, &read_target));
+  EXPECT_EQ(target.value(), read_target.value());
+}
+
+TEST_F(PlatformTest, ReadLink) {
+  const base::FilePath valid_link(GetTempName());
+  const base::FilePath not_link(GetTempName());
+  const base::FilePath target(GetTempName());
+  ASSERT_TRUE(base::CreateSymbolicLink(target, valid_link));
+  ASSERT_TRUE(platform_.TouchFileDurable(not_link));
+  base::FilePath read_target;
+  EXPECT_TRUE(platform_.ReadLink(valid_link, &read_target));
+  EXPECT_EQ(target.value(), read_target.value());
+  EXPECT_FALSE(platform_.ReadLink(not_link, &read_target));
+}
+
 }  // namespace cryptohome
