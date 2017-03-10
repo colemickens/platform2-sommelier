@@ -39,11 +39,11 @@ class FsData {
   const std::string& mount_point() { return mount_point_; }
 
  private:
-  FsData(int root_fd,
+  FsData(base::ScopedFD root_fd,
          std::string dev_dir,
          std::string mount_point,
          std::unique_ptr<DeviceJailControl> jail_control)
-    : root_fd_(base::ScopedFD(root_fd)),
+    : root_fd_(std::move(root_fd)),
       dev_dir_(std::move(dev_dir)),
       mount_point_(std::move(mount_point)),
       jail_control_(std::move(jail_control)) {}

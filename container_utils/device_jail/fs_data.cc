@@ -27,8 +27,9 @@ FsData::~FsData() {
 // static
 std::unique_ptr<FsData> FsData::Create(const std::string& dev_dir,
                                        const std::string& mount_point) {
-  int root_fd = open(dev_dir.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
-  if (root_fd < 0) {
+  base::ScopedFD root_fd(
+      open(dev_dir.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC));
+  if (!root_fd.is_valid()) {
     PLOG(ERROR) << "couldn't open root directory";
     return std::unique_ptr<FsData>();
   }
@@ -49,8 +50,8 @@ std::unique_ptr<FsData> FsData::Create(const std::string& dev_dir,
   std::string mount_point_copy(real_mount_point);
   free(real_mount_point);
 
-  return std::unique_ptr<FsData>(
-      new FsData(root_fd, dev_dir, mount_point_copy, std::move(jail_control)));
+  return std::unique_ptr<FsData>(new FsData(
+      std::move(root_fd), dev_dir, mount_point_copy, std::move(jail_control)));
 }
 
 int FsData::GetStatForJail(const std::string& path, struct stat* file_stat) {

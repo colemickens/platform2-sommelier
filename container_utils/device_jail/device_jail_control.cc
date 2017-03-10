@@ -32,8 +32,8 @@ namespace device_jail {
 
 // static
 std::unique_ptr<DeviceJailControl> DeviceJailControl::Create() {
-  int control_fd = open(kJailControlPath, O_RDWR);
-  if (control_fd < 0) {
+  base::ScopedFD control_fd(open(kJailControlPath, O_RDWR));
+  if (!control_fd.is_valid()) {
     PLOG(ERROR) << "unable to open control device";
     return std::unique_ptr<DeviceJailControl>();
   }
@@ -45,7 +45,7 @@ std::unique_ptr<DeviceJailControl> DeviceJailControl::Create() {
   }
 
   return std::unique_ptr<DeviceJailControl>(
-      new DeviceJailControl(control_fd, udev));
+      new DeviceJailControl(std::move(control_fd), udev));
 }
 
 DeviceJailControl::~DeviceJailControl() {

@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <libudev.h>
 
@@ -30,8 +31,8 @@ class DeviceJailControl {
   bool RemoveDevice(const std::string& path);
 
  private:
-  DeviceJailControl(int control_fd, struct udev* udev)
-    : control_fd_(base::ScopedFD(control_fd)), udev_(udev) {}
+  DeviceJailControl(base::ScopedFD control_fd, struct udev* udev)
+      : control_fd_(std::move(control_fd)), udev_(udev) {}
 
   base::ScopedFD control_fd_;
 
