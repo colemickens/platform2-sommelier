@@ -53,14 +53,11 @@ int DeserializeStreamBuffer(
         buffer_handles_,
     camera3_stream_buffer_t* buffer);
 
-int32_t SerializeCameraMetadata(
-    mojo::ScopedDataPipeProducerHandle* producer_handle,
-    mojo::ScopedDataPipeConsumerHandle* consumer_handle,
+arc::mojom::CameraMetadataPtr SerializeCameraMetadata(
     const camera_metadata_t* metadata);
 
-CameraMetadataUniquePtr DeserializeCameraMetadata(
-    mojo::DataPipeConsumerHandle consumer_handle);
-
+internal::CameraMetadataUniquePtr DeserializeCameraMetadata(
+    const arc::mojom::CameraMetadataPtr& metadata);
 // Template classes for Mojo IPC delegates
 
 template <typename T>

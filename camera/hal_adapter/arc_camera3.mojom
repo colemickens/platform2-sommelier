@@ -31,9 +31,8 @@ struct Camera3StreamBuffer {
   handle? release_fence;
 };
 
-union CameraMetadata {
-  bool none;
-  handle<data_pipe_consumer> metadata_handle;
+struct CameraMetadata {
+  array<uint8>? data;
 };
 
 struct Camera3CaptureRequest {
@@ -111,7 +110,7 @@ struct CameraInfo {
   int32 facing;
   int32 orientation;
   uint32 device_version;
-  handle<data_pipe_consumer> metadata_handle;
+  CameraMetadata static_camera_characteristics;
   // resource cost is not valid in CAMERA_MODULE_API_VERSION_2_3 or lower.
   // conflicting_devices is not valid in CAMERA_MODULE_API_VERSION_2_3 or lower.
   // conflicting_devices_length is not valid in CAMERA_MODULE_API_VERSION_2_3 or lower.

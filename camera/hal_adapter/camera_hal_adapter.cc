@@ -182,17 +182,8 @@ int32_t CameraHalAdapter::GetCameraInfo(int32_t device_id,
   info_ptr->facing = info.facing;
   info_ptr->orientation = info.orientation;
   info_ptr->device_version = info.device_version;
-  mojo::ScopedDataPipeProducerHandle producer_handle;
-  mojo::ScopedDataPipeConsumerHandle consumer_handle;
-  ret = internal::SerializeCameraMetadata(&producer_handle, &consumer_handle,
-                                          info.static_camera_characteristics);
-  if (ret) {
-    LOGF(ERROR) << "Failed to send camera metadata in GetCameraInfo";
-    // The returned error code is -EIO but HAL need -EINVAL.
-    camera_info->reset();
-    return -EINVAL;
-  }
-  info_ptr->metadata_handle = std::move(consumer_handle);
+  info_ptr->static_camera_characteristics =
+      internal::SerializeCameraMetadata(info.static_camera_characteristics);
 
   *camera_info = std::move(info_ptr);
   return 0;

@@ -118,21 +118,7 @@ mojom::CameraMetadataPtr CameraDeviceAdapter::ConstructDefaultRequestSettings(
   const camera_metadata_t* metadata =
       camera_device_->ops->construct_default_request_settings(camera_device_,
                                                               type);
-  mojom::CameraMetadataPtr settings = mojom::CameraMetadata::New();
-  if (!metadata) {
-    settings->set_none(true);
-  } else {
-    mojo::ScopedDataPipeProducerHandle producer_handle;
-    mojo::ScopedDataPipeConsumerHandle consumer_handle;
-    int ret = internal::SerializeCameraMetadata(&producer_handle,
-                                                &consumer_handle, metadata);
-    if (ret) {
-      settings->set_none(true);
-    } else {
-      settings->set_metadata_handle(std::move(consumer_handle));
-    }
-  }
-  return settings;
+  return internal::SerializeCameraMetadata(metadata);
 }
 
 int32_t CameraDeviceAdapter::ProcessCaptureRequest(
@@ -142,17 +128,9 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
 
   req.frame_number = request->frame_number;
 
-  internal::CameraMetadataUniquePtr settings;
-  if (request->settings->is_none()) {
-    req.settings = nullptr;
-  } else {
-    settings = internal::DeserializeCameraMetadata(
-        request->settings->get_metadata_handle().get());
-    if (!settings) {
-      return -EINVAL;
-    }
-    req.settings = settings.get();
-  }
+  internal::CameraMetadataUniquePtr settings =
+      internal::DeserializeCameraMetadata(request->settings);
+  req.settings = settings.get();
 
   // Deserialize input buffer.
   buffer_handle_t input_buffer_handle;
@@ -255,21 +233,7 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::ProcessCaptureResult(
 
   r->frame_number = result->frame_number;
 
-  mojom::CameraMetadataPtr metadata = mojom::CameraMetadata::New();
-  mojo::ScopedDataPipeProducerHandle producer_handle;
-  mojo::ScopedDataPipeConsumerHandle consumer_handle;
-  if (!result->result) {
-    metadata->set_none(true);
-  } else {
-    int ret = internal::SerializeCameraMetadata(
-        &producer_handle, &consumer_handle, result->result);
-    if (ret) {
-      metadata->set_none(true);
-    } else {
-      metadata->set_metadata_handle(std::move(consumer_handle));
-    }
-  }
-  r->result = std::move(metadata);
+  r->result = internal::SerializeCameraMetadata(result->result);
 
   // num_output_buffers may be 0.
   r->num_output_buffers = result->num_output_buffers;

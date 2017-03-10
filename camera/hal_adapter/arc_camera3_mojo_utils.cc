@@ -8,6 +8,7 @@
 
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/edk/embedder/scoped_platform_handle.h>
@@ -151,53 +152,29 @@ int DeserializeStreamBuffer(
   return 0;
 }
 
-int32_t SerializeCameraMetadata(
-    mojo::ScopedDataPipeProducerHandle* producer_handle,
-    mojo::ScopedDataPipeConsumerHandle* consumer_handle,
+arc::mojom::CameraMetadataPtr SerializeCameraMetadata(
     const camera_metadata_t* metadata) {
-  if (!metadata) {
-    return -EINVAL;
+  arc::mojom::CameraMetadataPtr result = arc::mojom::CameraMetadata::New();
+  if (metadata) {
+    size_t data_size = get_camera_metadata_size(metadata);
+    std::vector<uint8_t> m(data_size);
+    memcpy(m.data(), reinterpret_cast<const uint8_t*>(metadata), data_size);
+    result->data = std::move(m);
+    VLOGF(1) << "Serialized metadata size=" << data_size;
   }
-  // Serialize camera metadata.
-  uint32_t data_size = get_camera_metadata_size(metadata);
-  VLOGF(1) << "Camera metadata size: " << data_size;
-  struct MojoCreateDataPipeOptions options = {
-      sizeof(struct MojoCreateDataPipeOptions),
-      MOJO_CREATE_DATA_PIPE_OPTIONS_FLAG_NONE, 1, data_size};
-  mojo::CreateDataPipe(&options, producer_handle, consumer_handle);
-  mojo::WriteDataRaw(producer_handle->get(), metadata, &data_size,
-                     MOJO_WRITE_DATA_FLAG_ALL_OR_NONE);
-  if (!data_size) {
-    LOGF(ERROR) << "Failed to write camera metadata through data pipe";
-    return -EIO;
-  }
-  VLOGF(1) << "Data written to pipe: " << data_size;
-  return 0;
+  return result;
 }
 
-CameraMetadataUniquePtr DeserializeCameraMetadata(
-    mojo::DataPipeConsumerHandle consumer_handle) {
-  uint32_t data_size = 0;
-  mojo::edk::HandleSignalsState state;
-  MojoWait(consumer_handle.value(), MOJO_HANDLE_SIGNAL_READABLE,
-           MOJO_DEADLINE_INDEFINITE, &state);
-  DCHECK(MOJO_HANDLE_SIGNAL_READABLE == state.satisfied_signals);
-
-  mojo::ReadDataRaw(consumer_handle, nullptr, &data_size,
-                    MOJO_READ_DATA_FLAG_QUERY);
-  VLOGF(1) << "Data size in pipe: " << data_size;
-
-  camera_metadata_t* metadata =
-      reinterpret_cast<camera_metadata_t*>(new uint8_t[data_size]);
-  mojo::ReadDataRaw(consumer_handle, metadata, &data_size,
-                    MOJO_READ_DATA_FLAG_ALL_OR_NONE);
-  if (!data_size) {
-    LOGF(ERROR) << "Failed to read camera metadata from data pipe";
-    // Simply return an invalid pointer to indicate that an error has occurred.
-    return CameraMetadataUniquePtr();
+internal::CameraMetadataUniquePtr DeserializeCameraMetadata(
+    const arc::mojom::CameraMetadataPtr& metadata) {
+  internal::CameraMetadataUniquePtr result;
+  if (!metadata->data.is_null()) {
+    size_t data_size = metadata->data.size();
+    uint8_t* data = new uint8_t[data_size];
+    memcpy(data, metadata->data.storage().data(), data_size);
+    result.reset(reinterpret_cast<camera_metadata_t*>(data));
+    VLOGF(1) << "Deserialized metadata size=" << data_size;
   }
-  VLOGF(1) << "Metadata size=" << get_camera_metadata_size(metadata);
-  return CameraMetadataUniquePtr(metadata);
+  return result;
 }
-
 }  // namespace internal
