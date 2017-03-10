@@ -38,8 +38,6 @@ const mode_t kMountDirectoryPermissions = S_IRWXU | S_IRWXG;
 const char kMountOptionMountLabelPrefix[] = "mountlabel=";
 // Literal for mount option: "remount".
 const char kMountOptionRemount[] = "remount";
-// Literal for unmount option: "force".
-const char kUnmountOptionForce[] = "force";
 // Literal for unmount option: "lazy".
 const char kUnmountOptionLazy[] = "lazy";
 // Maximum number of trials on creating a mount directory using
@@ -425,9 +423,7 @@ bool MountManager::ExtractUnmountOptions(const vector<string>& options,
 
   *unmount_flags = 0;
   for (const auto& option : options) {
-    if (option == kUnmountOptionForce) {
-      *unmount_flags |= MNT_FORCE;
-    } else if (option == kUnmountOptionLazy) {
+    if (option == kUnmountOptionLazy) {
       *unmount_flags |= MNT_DETACH;
     } else {
       LOG(ERROR) << "Got unsupported unmount option: " << option;

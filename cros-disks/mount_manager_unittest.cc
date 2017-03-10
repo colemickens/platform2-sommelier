@@ -1208,22 +1208,8 @@ TEST_F(MountManagerTest, ExtractMountLabelFromOptionsWithTwoMountLabels) {
 // unmount options and returns true.
 TEST_F(MountManagerTest, ExtractSupportedUnmountOptions) {
   int unmount_flags = 0;
-  int expected_unmount_flags = MNT_FORCE;
-  options_.push_back("force");
-  EXPECT_TRUE(manager_.ExtractUnmountOptions(options_, &unmount_flags));
-  EXPECT_EQ(expected_unmount_flags, unmount_flags);
-
-  unmount_flags = 0;
-  expected_unmount_flags = MNT_DETACH;
+  int expected_unmount_flags = MNT_DETACH;
   options_.clear();
-  options_.push_back("lazy");
-  EXPECT_TRUE(manager_.ExtractUnmountOptions(options_, &unmount_flags));
-  EXPECT_EQ(expected_unmount_flags, unmount_flags);
-
-  unmount_flags = 0;
-  expected_unmount_flags = MNT_FORCE | MNT_DETACH;
-  options_.clear();
-  options_.push_back("force");
   options_.push_back("lazy");
   EXPECT_TRUE(manager_.ExtractUnmountOptions(options_, &unmount_flags));
   EXPECT_EQ(expected_unmount_flags, unmount_flags);
@@ -1233,7 +1219,7 @@ TEST_F(MountManagerTest, ExtractSupportedUnmountOptions) {
 // unsupported unmount options are given.
 TEST_F(MountManagerTest, ExtractUnsupportedUnmountOptions) {
   int unmount_flags = 0;
-  options_.push_back("foo");
+  options_.push_back("force");
   EXPECT_FALSE(manager_.ExtractUnmountOptions(options_, &unmount_flags));
   EXPECT_EQ(0, unmount_flags);
 }

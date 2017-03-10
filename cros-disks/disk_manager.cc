@@ -514,17 +514,11 @@ MountErrorType DiskManager::DoUnmount(const string& path,
                                       const vector<string>& options) {
   CHECK(!path.empty()) << "Invalid path argument";
 
-  // TODO(benchan): Deprecate "force" unmount options after updating the
-  // cros-disks client on the Chrome side.
   int unmount_flags;
   if (!ExtractUnmountOptions(options, &unmount_flags)) {
     LOG(ERROR) << "Invalid unmount options";
     return MOUNT_ERROR_INVALID_UNMOUNT_OPTIONS;
   }
-
-  // Temporarily filter out the force unmount flag set by Chrome.
-  // TODO(benchan): Remove this after the force unmount option is deprecated.
-  unmount_flags &= ~MNT_FORCE;
 
   // The USB or SD drive on some system may be powered off after the system
   // goes into the S3 suspend state. To avoid leaving a mount point in a stale
