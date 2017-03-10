@@ -13,7 +13,7 @@ The Chrome OS power manager consists of several components:
 
 ## Documentation
 
-The [`docs/`](docs/) subdirectory contains additional documentation. Along with 
+The [`docs/`](docs/) subdirectory contains additional documentation. Along with
 answers to [frequently-asked questions](docs/faq.md), the following information
 is available:
 

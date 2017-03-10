@@ -21,7 +21,7 @@ for more details.
 
 Chrome also displays notifications to the user when the battery reaches certain
 levels; see
-[`ash::TrayPower`](https://chromium.googlesource.com/chromium/src/+/master/ash/common/system/chromeos/power/tray_power.cc)`:
+[`ash::TrayPower`](https://chromium.googlesource.com/chromium/src/+/master/ash/common/system/chromeos/power/tray_power.cc):
 
 ### With no external power source connected:
 
