@@ -11,7 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/values.h>
 
-#include "oci_config.h"
+#include "container_utils/oci_config.h"
 
 namespace container_utils {
 

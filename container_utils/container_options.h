@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/files/file_util.h>
+#include <base/files/file_path.h>
 
 namespace container_utils {
 

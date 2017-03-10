@@ -11,7 +11,7 @@
 #include <base/values.h>
 #include <gtest/gtest.h>
 
-#include "oci_config.h"
+#include "container_utils/oci_config.h"
 
 namespace {
 
@@ -405,7 +405,7 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(dev->path, "/dev/fuse");
   EXPECT_EQ(dev->fileMode, 438);
   EXPECT_EQ(dev->uid, 0);
-  EXPECT_EQ(dev->gid, 3221225472); // INT32_MAX < id < UINT32_MAX
+  EXPECT_EQ(dev->gid, 3221225472);  // INT32_MAX < id < UINT32_MAX
   // Namespace Maps
   ASSERT_EQ(1, basic_config->linux_config.uidMappings.size());
   OciLinuxNamespaceMapping *id_map =

@@ -6,8 +6,8 @@
 
 #include <unistd.h>
 
+#include <regex>  // NOLINT(build/c++11)
 #include <string>
-#include <regex>
 #include <vector>
 
 #include <base/json/json_reader.h>
@@ -231,7 +231,7 @@ bool ParseDeviceList(const base::DictionaryValue& linux_dict,
 
 // Parses the list of ID mappings and fills |mappings_out| with them.
 bool ParseLinuxIdMappings(const base::ListValue* id_map_list,
-                          std::vector<OciLinuxNamespaceMapping>& mappings_out) {
+                          std::vector<OciLinuxNamespaceMapping>* mappings_out) {
   for (size_t i = 0; i < id_map_list->GetSize(); ++i) {
     OciLinuxNamespaceMapping new_map;
     const base::DictionaryValue* map;
@@ -245,7 +245,7 @@ bool ParseLinuxIdMappings(const base::ListValue* id_map_list,
       return false;
     if (!ParseUint32FromDict(*map, "size", &new_map.size))
       return false;
-    mappings_out.push_back(new_map);
+    mappings_out->push_back(new_map);
   }
   return true;
 }
@@ -347,7 +347,7 @@ bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
     LOG(ERROR) << "Fail to get uid mappings list";
     return false;
   }
-  ParseLinuxIdMappings(uid_map_list, config_out->linux_config.uidMappings);
+  ParseLinuxIdMappings(uid_map_list, &config_out->linux_config.uidMappings);
 
   // |gid_map_list| is owned by |linux_dict|
   const base::ListValue* gid_map_list = nullptr;
@@ -355,7 +355,7 @@ bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
     LOG(ERROR) << "Fail to get gid mappings list";
     return false;
   }
-  ParseLinuxIdMappings(gid_map_list, config_out->linux_config.gidMappings);
+  ParseLinuxIdMappings(gid_map_list, &config_out->linux_config.gidMappings);
 
   if (!ParseDeviceList(*linux_dict, config_out))
     return false;
@@ -432,7 +432,7 @@ bool ParseConfigDict(const base::DictionaryValue& config_root_dict,
   return true;
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
 bool ParseContainerConfig(const std::string& config_json_data,
                           OciConfigPtr const& config_out) {
@@ -454,4 +454,4 @@ bool ParseContainerConfig(const std::string& config_json_data,
   return true;
 }
 
-} // namespace container_utils
+}  // namespace container_utils
