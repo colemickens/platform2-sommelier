@@ -27,6 +27,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/macros.h>
+#include <base/memory/free_deleter.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
@@ -74,18 +75,14 @@ static int jail_stat(const char* path, struct stat* file_stat) {
   // If it's a symlink and the path is relative, check that it's not
   // broken in the new filesystem.
   if (S_ISLNK(file_stat->st_mode)) {
-    char* resolved_path = realpath(real_path.c_str(), nullptr);
+    std::unique_ptr<char, base::FreeDeleter> resolved_path(
+        realpath(real_path.c_str(), nullptr));
     if (!resolved_path)
       return -1;
 
-    std::string resolved_path_copy(resolved_path);
-    free(resolved_path);
-
     // If it doesn't end up somewhere in devfs, it doesn't matter to
     // us. Let it through.
-    if (strncmp(resolved_path_copy.c_str(),
-                kDevfsPath,
-                strlen(kDevfsPath)) != 0)
+    if (strncmp(resolved_path.get(), kDevfsPath, strlen(kDevfsPath)) != 0)
       return 0;
 
     // If this link ends up somewhere in devfs, check to make sure
@@ -93,8 +90,7 @@ static int jail_stat(const char* path, struct stat* file_stat) {
     struct stat link_stat;
     // The path relative from our root is going to be after "/dev", so
     // move the pointer up accordingly.
-    return jail_stat(resolved_path_copy.c_str() + strlen(kDevfsPath),
-                     &link_stat);
+    return jail_stat(resolved_path.get() + strlen(kDevfsPath), &link_stat);
   }
 
   // Allow all other files that aren't device files through.

@@ -15,6 +15,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/memory/free_deleter.h>
 
 namespace device_jail {
 
@@ -39,19 +40,17 @@ std::unique_ptr<FsData> FsData::Create(const std::string& dev_dir,
   if (!jail_control)
     return std::unique_ptr<FsData>();
 
-  char* real_mount_point = realpath(mount_point.c_str(), nullptr);
+  std::unique_ptr<char, base::FreeDeleter> real_mount_point(
+      realpath(mount_point.c_str(), nullptr));
   if (!real_mount_point) {
     PLOG(ERROR) << "couldn't resolve mount point";
     return std::unique_ptr<FsData>();
   }
 
-  // realpath returns a string allocated with malloc, so we copy it to
-  // a std::string and free the malloc'd one after.
-  std::string mount_point_copy(real_mount_point);
-  free(real_mount_point);
-
-  return std::unique_ptr<FsData>(new FsData(
-      std::move(root_fd), dev_dir, mount_point_copy, std::move(jail_control)));
+  return std::unique_ptr<FsData>(new FsData(std::move(root_fd),
+                                            dev_dir,
+                                            real_mount_point.get(),
+                                            std::move(jail_control)));
 }
 
 int FsData::GetStatForJail(const std::string& path, struct stat* file_stat) {
