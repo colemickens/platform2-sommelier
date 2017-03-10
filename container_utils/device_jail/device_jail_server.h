@@ -12,6 +12,8 @@
 #include <utility>
 
 #include <base/files/scoped_file.h>
+#include <base/logging.h>
+#include <base/macros.h>
 #include <base/message_loop/message_loop.h>
 
 namespace device_jail {
@@ -46,6 +48,8 @@ class DeviceJailServer : base::MessageLoopForIO::Watcher {
 
   base::ScopedFD fd_;
   base::MessageLoopForIO::FileDescriptorWatcher watcher_;
+
+  DISALLOW_COPY_AND_ASSIGN(DeviceJailServer);
 };
 
 }  // namespace device_jail

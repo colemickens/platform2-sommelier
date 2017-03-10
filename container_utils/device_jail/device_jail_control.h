@@ -12,6 +12,7 @@
 #include <libudev.h>
 
 #include <base/files/scoped_file.h>
+#include <base/macros.h>
 #include <base/synchronization/lock.h>
 
 namespace device_jail {
@@ -38,6 +39,8 @@ class DeviceJailControl {
 
   struct udev* udev_;
   base::Lock udev_lock_;
+
+  DISALLOW_COPY_AND_ASSIGN(DeviceJailControl);
 };
 
 }  // namespace device_jail

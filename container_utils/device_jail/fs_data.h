@@ -11,7 +11,7 @@
 #include <vector>
 
 #include <base/files/scoped_file.h>
-#include <base/synchronization/lock.h>
+#include <base/macros.h>
 
 #include "container_utils/device_jail/device_jail_control.h"
 
@@ -34,9 +34,9 @@ class FsData {
   // Returns -1 and sets errno on error, or 0 on success.
   int GetStatForJail(const std::string& path, struct stat* file_stat);
 
-  int root_fd() { return root_fd_.get(); }
+  int root_fd() const { return root_fd_.get(); }
 
-  const std::string& mount_point() { return mount_point_; }
+  const std::string& mount_point() const { return mount_point_; }
 
  private:
   FsData(base::ScopedFD root_fd,
@@ -58,6 +58,8 @@ class FsData {
   std::unique_ptr<DeviceJailControl> jail_control_;
   // Jails this FS should destroy when it is unmounted.
   std::vector<std::string> owned_devices_;
+
+  DISALLOW_COPY_AND_ASSIGN(FsData);
 };
 
 }  // namespace device_jail
