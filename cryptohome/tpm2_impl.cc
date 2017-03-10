@@ -70,6 +70,10 @@ Tpm::TpmRetryAction ResultToRetryAction(TPM_RC result) {
     case trunks::TPM_RC_REBOOT:
       action = Tpm::kTpmRetryReboot;
       break;
+    case trunks::TRUNKS_RC_WRITE_ERROR:
+    case trunks::TRUNKS_RC_READ_ERROR:
+      action = Tpm::kTpmRetryCommFailure;
+      break;
     default:
       action = Tpm::kTpmRetryFailNoRetry;
       break;
@@ -512,7 +516,19 @@ bool Tpm2Impl::TestTpmAuth(const SecureBlob& owner_password) {
 }
 
 bool Tpm2Impl::IsTransient(TpmRetryAction retry_action) {
-  return false;
+  bool transient = false;
+  switch (retry_action) {
+    case kTpmRetryCommFailure:
+    case kTpmRetryInvalidHandle:
+    case kTpmRetryDefendLock:
+    case kTpmRetryLoadFail:
+    case kTpmRetryFatal:
+      transient = true;
+      break;
+    default:
+      break;
+  }
+  return transient;
 }
 
 bool Tpm2Impl::Sign(const SecureBlob& key_blob,

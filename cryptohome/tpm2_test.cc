@@ -898,6 +898,16 @@ TEST_F(Tpm2Test, LoadWrappedKeyFailure) {
             Tpm::kTpmRetryFailNoRetry);
 }
 
+TEST_F(Tpm2Test, LoadWrappedKeyTransientDevWriteFailure) {
+  SecureBlob wrapped_key("wrapped_key");
+  ScopedKeyHandle key_handle;
+  EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
+      .WillOnce(Return(trunks::TRUNKS_RC_WRITE_ERROR));
+  EXPECT_EQ(tpm_->LoadWrappedKey(wrapped_key, &key_handle),
+            Tpm::kTpmRetryCommFailure);
+  EXPECT_TRUE(tpm_->IsTransient(Tpm::kTpmRetryCommFailure));
+}
+
 TEST_F(Tpm2Test, LoadWrappedKeyRetryActions) {
   constexpr TPM_RC error_code_fmt0 = trunks::TPM_RC_REFERENCE_H0;
   constexpr TPM_RC error_code_fmt1 = trunks::TPM_RC_HANDLE | trunks::TPM_RC_2;
