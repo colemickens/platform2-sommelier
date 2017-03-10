@@ -12,7 +12,6 @@
 #include <grp.h>
 #include <limits.h>
 #include <mntent.h>
-#include <memory>
 #include <pwd.h>
 #include <signal.h>
 #include <stdint.h>
@@ -22,10 +21,12 @@
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/xattr.h>
 #include <unistd.h>
+#include <memory>
 
 #include <limits>
 #include <sstream>
@@ -1117,6 +1118,21 @@ bool Platform::CreateSymbolicLink(const base::FilePath& path,
 bool Platform::ReadLink(const base::FilePath& path, base::FilePath* target) {
   if (!base::ReadSymbolicLink(path, target)) {
     PLOG(ERROR) << "Failed to read link " << path.value();
+    return false;
+  }
+  return true;
+}
+
+bool Platform::SetFileTimes(const base::FilePath& path,
+                            const struct timespec& atime,
+                            const struct timespec& mtime,
+                            bool follow_links) {
+  const struct timespec times[2] = {atime, mtime};
+  if (utimensat(AT_FDCWD,
+                path.value().c_str(),
+                times,
+                follow_links ? 0 : AT_SYMLINK_NOFOLLOW)) {
+    PLOG(ERROR) << "Failed to update times for file " << path.value();
     return false;
   }
   return true;

@@ -581,4 +581,35 @@ TEST_F(PlatformTest, ReadLink) {
   EXPECT_FALSE(platform_.ReadLink(not_link, &read_target));
 }
 
+TEST_F(PlatformTest, SetFileTimes) {
+  struct timespec atime1 = {123, 45};
+  struct timespec mtime1 = {234, 56};
+  struct timespec atime2 = {345, 67};
+  struct timespec mtime2 = {456, 78};
+  const base::FilePath regular_file(GetTempName());
+  const base::FilePath link(GetTempName());
+  ASSERT_TRUE(platform_.TouchFileDurable(regular_file));
+  ASSERT_TRUE(platform_.CreateSymbolicLink(link, regular_file));
+
+  EXPECT_TRUE(platform_.SetFileTimes(regular_file, atime1, mtime1, true));
+  struct stat stat;
+  ASSERT_TRUE(platform_.Stat(regular_file, &stat));
+  EXPECT_EQ(atime1.tv_sec, stat.st_atim.tv_sec);
+  EXPECT_EQ(atime1.tv_nsec, stat.st_atim.tv_nsec);
+  EXPECT_EQ(mtime1.tv_sec, stat.st_mtim.tv_sec);
+  EXPECT_EQ(mtime1.tv_nsec, stat.st_mtim.tv_nsec);
+
+  EXPECT_TRUE(platform_.SetFileTimes(link, atime2, mtime2, true));
+  ASSERT_TRUE(platform_.Stat(regular_file, &stat));
+  EXPECT_EQ(atime2.tv_sec, stat.st_atim.tv_sec);
+  EXPECT_EQ(atime2.tv_nsec, stat.st_atim.tv_nsec);
+  EXPECT_EQ(mtime2.tv_sec, stat.st_mtim.tv_sec);
+  EXPECT_EQ(mtime2.tv_nsec, stat.st_mtim.tv_nsec);
+  ASSERT_TRUE(platform_.Stat(link, &stat));
+  EXPECT_NE(atime2.tv_sec, stat.st_atim.tv_sec);
+  EXPECT_NE(atime2.tv_nsec, stat.st_atim.tv_nsec);
+  EXPECT_NE(mtime2.tv_sec, stat.st_mtim.tv_sec);
+  EXPECT_NE(mtime2.tv_nsec, stat.st_mtim.tv_nsec);
+}
+
 }  // namespace cryptohome

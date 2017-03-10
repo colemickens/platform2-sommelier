@@ -194,6 +194,11 @@ class MockPlatform : public Platform {
   MOCK_METHOD2(CreateSymbolicLink,
                bool(const base::FilePath&, const base::FilePath&));
   MOCK_METHOD2(ReadLink, bool(const base::FilePath&, base::FilePath*));
+  MOCK_METHOD4(SetFileTimes,
+               bool(const base::FilePath&,
+                    const struct timespec&,
+                    const struct timespec&,
+                    bool));
 
   MockFileEnumerator* mock_enumerator() { return mock_enumerator_.get(); }
 

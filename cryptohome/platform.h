@@ -632,6 +632,22 @@ class Platform {
   //   encounted and false is returned, target will be cleared.
   virtual bool ReadLink(const base::FilePath& path, base::FilePath* target);
 
+  // Sets the atime and mtime of a file to the provided values, optionally
+  // following symlinks.
+  //
+  // Parameters
+  //   path - The path of the file to set times for.  If this is a relative
+  //   path, it is interpreted as relative to the current working directory of
+  //   the calling process.
+  //   atime - The time to set as the file's last access time.
+  //   mtime - The time to set as the file's last modified time.
+  //   follow_links - If set to true, symlinks will be dereferenced and their
+  //   targets will be updated.
+  virtual bool SetFileTimes(const base::FilePath& path,
+                            const struct timespec& atime,
+                            const struct timespec& mtime,
+                            bool follow_links);
+
  private:
   // Returns the process and open file information for the specified process id
   // with files open on the given path
