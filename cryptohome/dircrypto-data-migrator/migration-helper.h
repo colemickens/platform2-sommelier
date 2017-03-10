@@ -42,9 +42,14 @@ class MigrationHelper {
   using ProgressCallback = base::Callback<void(
       uint64_t migrated, uint64_t total, DircryptoMigrationStatus status)>;
 
+  // Creates a new MigrationHelper.  Status files will be stored in
+  // |status_files_dir|, which should not be in the directory tree to be
+  // migrated.  |max_chunk_size| is treated as a hint for the desired size of
+  // data to transfer at once, but may be reduced if thee is not enough free
+  // space on disk or the provided max_chunk_size is inefficient.
   MigrationHelper(Platform* platform,
                   const base::FilePath& status_files_dir,
-                  uint64_t chunk_size);
+                  uint64_t max_chunk_size);
   virtual ~MigrationHelper();
 
   void set_namespaced_mtime_xattr_name_for_testing(const std::string& name) {
@@ -57,7 +62,8 @@ class MigrationHelper {
   // Moves all files under |from| into |to|.
   //
   // This function copies chunks of a file at a time, requiring minimal free
-  // space overhead.
+  // space overhead.  This method should only ever be called once in the
+  // lifetime of the object.
   //
   // Parameters
   //   from - Where to move files from.  Must be an absolute path.
@@ -120,7 +126,8 @@ class MigrationHelper {
   Platform* platform_;
   ProgressCallback progress_callback_;
   const base::FilePath status_files_dir_;
-  const uint64_t chunk_size_;
+  uint64_t max_chunk_size_;
+  uint64_t effective_chunk_size_;
   uint64_t total_byte_count_;
   uint64_t migrated_byte_count_;
   base::TimeTicks next_report_;

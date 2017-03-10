@@ -39,6 +39,81 @@ namespace {
 constexpr uint64_t kDefaultChunkSize = 128;
 constexpr char kMtimeXattrName[] = "user.mtime";
 constexpr char kAtimeXattrName[] = "user.atime";
+
+// Connects all used calls on MockPlatform to the concrete implementations in
+// real_platform by default.  Tests wishing to mock out only some methods from
+// platform may call this initially and then set mock expectations for only the
+// methods they care about.
+void PassThroughPlatformMethods(MockPlatform* mock_platform,
+                                Platform* real_platform) {
+  ON_CALL(*mock_platform, TouchFileDurable(testing::_))
+      .WillByDefault(
+          testing::Invoke(real_platform, &Platform::TouchFileDurable));
+  ON_CALL(*mock_platform, DeleteFile(testing::_, testing::_))
+      .WillByDefault(testing::Invoke(real_platform, &Platform::DeleteFile));
+  ON_CALL(*mock_platform, SyncDirectory(testing::_))
+      .WillByDefault(testing::Invoke(real_platform, &Platform::SyncDirectory));
+  ON_CALL(*mock_platform, DataSyncFile(testing::_))
+      .WillByDefault(testing::Invoke(real_platform, &Platform::DataSyncFile));
+  ON_CALL(*mock_platform, SyncFile(testing::_))
+      .WillByDefault(testing::Invoke(real_platform, &Platform::SyncFile));
+  ON_CALL(*mock_platform, GetFileEnumerator(testing::_, testing::_, testing::_))
+      .WillByDefault(
+          testing::Invoke(real_platform, &Platform::GetFileEnumerator));
+  ON_CALL(*mock_platform, SetPermissions(testing::_, testing::_))
+      .WillByDefault(testing::Invoke(real_platform, &Platform::SetPermissions));
+  ON_CALL(*mock_platform, GetPermissions(testing::_, testing::_))
+      .WillByDefault(testing::Invoke(real_platform, &Platform::GetPermissions));
+  ON_CALL(*mock_platform, FileExists(testing::_))
+      .WillByDefault(testing::Invoke(real_platform, &Platform::FileExists));
+  ON_CALL(*mock_platform, CreateDirectory(testing::_))
+      .WillByDefault(
+          testing::Invoke(real_platform, &Platform::CreateDirectory));
+  ON_CALL(*mock_platform, HasExtendedFileAttribute(testing::_, testing::_))
+      .WillByDefault(
+          testing::Invoke(real_platform, &Platform::HasExtendedFileAttribute));
+  ON_CALL(*mock_platform, ListExtendedFileAttributes(testing::_, testing::_))
+      .WillByDefault(testing::Invoke(real_platform,
+                                     &Platform::ListExtendedFileAttributes));
+  ON_CALL(
+      *mock_platform,
+      SetExtendedFileAttribute(testing::_, testing::_, testing::_, testing::_))
+      .WillByDefault(
+          testing::Invoke(real_platform, &Platform::SetExtendedFileAttribute));
+  ON_CALL(
+      *mock_platform,
+      GetExtendedFileAttribute(testing::_, testing::_, testing::_, testing::_))
+      .WillByDefault(
+          testing::Invoke(real_platform, &Platform::GetExtendedFileAttribute));
+  ON_CALL(*mock_platform,
+          GetExtendedFileAttributeAsString(testing::_, testing::_, testing::_))
+      .WillByDefault(testing::Invoke(
+          real_platform, &Platform::GetExtendedFileAttributeAsString));
+  ON_CALL(*mock_platform, GetExtFileAttributes(testing::_, testing::_))
+      .WillByDefault(
+          testing::Invoke(real_platform, &Platform::GetExtFileAttributes));
+  ON_CALL(*mock_platform, SetExtFileAttributes(testing::_, testing::_))
+      .WillByDefault(
+          testing::Invoke(real_platform, &Platform::SetExtFileAttributes));
+  ON_CALL(*mock_platform,
+          GetOwnership(testing::_, testing::_, testing::_, testing::_))
+      .WillByDefault(testing::Invoke(real_platform, &Platform::GetOwnership));
+  ON_CALL(*mock_platform,
+          SetOwnership(testing::_, testing::_, testing::_, testing::_))
+      .WillByDefault(testing::Invoke(real_platform, &Platform::SetOwnership));
+  ON_CALL(*mock_platform,
+          SetFileTimes(testing::_, testing::_, testing::_, testing::_))
+      .WillByDefault(testing::Invoke(real_platform, &Platform::SetFileTimes));
+  ON_CALL(*mock_platform, Stat(testing::_, testing::_))
+      .WillByDefault(testing::Invoke(real_platform, &Platform::Stat));
+  ON_CALL(*mock_platform,
+          SendFile(testing::_, testing::_, testing::_, testing::_))
+      .WillByDefault(testing::Invoke(real_platform, &Platform::SendFile));
+  ON_CALL(*mock_platform, AmountOfFreeDiskSpace(testing::_))
+      .WillByDefault(
+          testing::Invoke(real_platform, &Platform::AmountOfFreeDiskSpace));
+}
+
 }  // namespace
 
 class MigrationHelperTest : public ::testing::Test {
@@ -379,71 +454,14 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   Platform real_platform;
   MigrationHelper helper(
       &mock_platform, status_files_dir_.path(), kDefaultChunkSize);
+  PassThroughPlatformMethods(&mock_platform, &real_platform);
+
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   constexpr char kFileName[] = "file";
   const FilePath kFromFilePath = from_dir_.path().Append(kFileName);
   const FilePath kToFilePath = to_dir_.path().Append(kFileName);
-
-  // Set up default mock actions to call through for supported methods
-  ON_CALL(mock_platform, TouchFileDurable(testing::_))
-      .WillByDefault(
-          testing::Invoke(&real_platform, &Platform::TouchFileDurable));
-  ON_CALL(mock_platform, DeleteFile(testing::_, testing::_))
-      .WillByDefault(testing::Invoke(&real_platform, &Platform::DeleteFile));
-  ON_CALL(mock_platform, SyncDirectory(testing::_))
-      .WillByDefault(testing::Invoke(&real_platform, &Platform::SyncDirectory));
-  ON_CALL(mock_platform, DataSyncFile(testing::_))
-      .WillByDefault(testing::Invoke(&real_platform, &Platform::DataSyncFile));
-  ON_CALL(mock_platform, SyncFile(testing::_))
-      .WillByDefault(testing::Invoke(&real_platform, &Platform::SyncFile));
-  ON_CALL(mock_platform, GetFileEnumerator(testing::_, testing::_, testing::_))
-      .WillByDefault(
-          testing::Invoke(&real_platform, &Platform::GetFileEnumerator));
-  ON_CALL(mock_platform, SetPermissions(testing::_, testing::_))
-      .WillByDefault(
-          testing::Invoke(&real_platform, &Platform::SetPermissions));
-  ON_CALL(mock_platform, GetPermissions(testing::_, testing::_))
-      .WillByDefault(
-          testing::Invoke(&real_platform, &Platform::GetPermissions));
-  ON_CALL(mock_platform, FileExists(testing::_))
-      .WillByDefault(testing::Invoke(&real_platform, &Platform::FileExists));
-  ON_CALL(mock_platform, CreateDirectory(testing::_))
-      .WillByDefault(
-          testing::Invoke(&real_platform, &Platform::CreateDirectory));
-  ON_CALL(mock_platform, HasExtendedFileAttribute(testing::_, testing::_))
-      .WillByDefault(
-          testing::Invoke(&real_platform, &Platform::HasExtendedFileAttribute));
-  ON_CALL(mock_platform, ListExtendedFileAttributes(testing::_, testing::_))
-      .WillByDefault(testing::Invoke(&real_platform,
-                                     &Platform::ListExtendedFileAttributes));
-  ON_CALL(
-      mock_platform,
-      SetExtendedFileAttribute(testing::_, testing::_, testing::_, testing::_))
-      .WillByDefault(
-          testing::Invoke(&real_platform, &Platform::SetExtendedFileAttribute));
-  ON_CALL(
-      mock_platform,
-      GetExtendedFileAttribute(testing::_, testing::_, testing::_, testing::_))
-      .WillByDefault(
-          testing::Invoke(&real_platform, &Platform::GetExtendedFileAttribute));
-  ON_CALL(mock_platform,
-          GetExtendedFileAttributeAsString(testing::_, testing::_, testing::_))
-      .WillByDefault(testing::Invoke(
-          &real_platform, &Platform::GetExtendedFileAttributeAsString));
-  ON_CALL(mock_platform, GetExtFileAttributes(testing::_, testing::_))
-      .WillByDefault(
-          testing::Invoke(&real_platform, &Platform::GetExtFileAttributes));
-  ON_CALL(mock_platform, SetExtFileAttributes(testing::_, testing::_))
-      .WillByDefault(
-          testing::Invoke(&real_platform, &Platform::SetExtFileAttributes));
-  ON_CALL(mock_platform,
-          SetFileTimes(testing::_, testing::_, testing::_, testing::_))
-      .WillByDefault(testing::Invoke(&real_platform, &Platform::SetFileTimes));
-  ON_CALL(mock_platform,
-          SendFile(testing::_, testing::_, testing::_, testing::_))
-      .WillByDefault(testing::Invoke(&real_platform, &Platform::SendFile));
 
   // Create modified stat of root directory.  Note that we can't easily test
   // changing ownership on nested files since we can't change the ownership of
@@ -784,6 +802,59 @@ TEST_F(MigrationHelperTest, ProgressCallback) {
     SCOPED_TRACE(i);
     EXPECT_EQ(expected_size, total_values_[i]);
   }
+}
+
+TEST_F(MigrationHelperTest, NotEnoughFreeSpace) {
+  testing::NiceMock<MockPlatform> mock_platform;
+  Platform real_platform;
+  PassThroughPlatformMethods(&mock_platform, &real_platform);
+  MigrationHelper helper(
+      &mock_platform, status_files_dir_.path(), kDefaultChunkSize);
+
+  EXPECT_CALL(mock_platform, AmountOfFreeDiskSpace(testing::_))
+      .WillOnce(testing::Return(0));
+  EXPECT_FALSE(helper.Migrate(from_dir_.path(),
+                              to_dir_.path(),
+                              base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                         base::Unretained(this))));
+}
+
+TEST_F(MigrationHelperTest, ForceSmallerChunkSize) {
+  testing::NiceMock<MockPlatform> mock_platform;
+  Platform real_platform;
+  PassThroughPlatformMethods(&mock_platform, &real_platform);
+  constexpr int kMaxChunkSize = 128 << 20;  // 128MB
+  MigrationHelper helper(
+      &mock_platform, status_files_dir_.path(), kMaxChunkSize);
+  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
+  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+
+  constexpr int kFreeSpace = 9 << 20;
+  // Chunk size should be limited to a multiple of 4MB (kErasureBlockSize)
+  // smaller than kFreeSpace - kFreeSpaceBuffer (4MB)
+  constexpr int kExpectedChunkSize = 4 << 20;
+  constexpr int kFileSize = 7 << 20;
+  const FilePath kFromFilePath = from_dir_.path().Append("file");
+  base::File from_file(kFromFilePath,
+                       base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+  from_file.SetLength(kFileSize);
+  from_file.Close();
+
+  EXPECT_CALL(mock_platform, AmountOfFreeDiskSpace(testing::_))
+      .WillOnce(testing::Return(kFreeSpace));
+  EXPECT_CALL(mock_platform,
+              SendFile(testing::_,
+                       testing::_,
+                       kExpectedChunkSize,
+                       kFileSize - kExpectedChunkSize))
+      .WillOnce(testing::Return(true));
+  EXPECT_CALL(mock_platform,
+              SendFile(testing::_, testing::_, 0, kExpectedChunkSize))
+      .WillOnce(testing::Return(true));
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
+                             to_dir_.path(),
+                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                        base::Unretained(this))));
 }
 
 class DataMigrationTest : public MigrationHelperTest,

@@ -31,6 +31,13 @@ namespace dircrypto_data_migrator {
 namespace {
 constexpr char kMtimeXattrName[] = "trusted.CrosDirCryptoMigrationMtime";
 constexpr char kAtimeXattrName[] = "trusted.CrosDirCryptoMigrationAtime";
+// Expected maximum erasure block size on devices (4MB).
+constexpr uint64_t kErasureBlockSize = 4 << 20;
+// Minimum amount of free space required to begin migrating.
+constexpr uint64_t kMinFreeSpace = kErasureBlockSize * 2;
+// Free space required for migration overhead (FS metadata, duplicated
+// in-progress directories, etc).  Must be smaller than kMinFreeSpace.
+constexpr uint64_t kFreeSpaceBuffer = kErasureBlockSize;
 }  // namespace
 
 constexpr base::FilePath::CharType kMigrationStartedFileName[] =
@@ -42,10 +49,11 @@ constexpr base::TimeDelta kStatusSignalInterval =
 
 MigrationHelper::MigrationHelper(Platform* platform,
                                  const base::FilePath& status_files_dir,
-                                 uint64_t chunk_size)
+                                 uint64_t max_chunk_size)
     : platform_(platform),
       status_files_dir_(status_files_dir),
-      chunk_size_(chunk_size),
+      max_chunk_size_(max_chunk_size),
+      effective_chunk_size_(0),
       total_byte_count_(0),
       migrated_byte_count_(0),
       namespaced_mtime_xattr_name_(kMtimeXattrName),
@@ -74,6 +82,23 @@ bool MigrationHelper::Migrate(const base::FilePath& from,
     ReportStatus(DIRCRYPTO_MIGRATION_FAILED);
     return false;
   }
+
+  int64_t free_space = platform_->AmountOfFreeDiskSpace(to);
+  if (free_space < 0) {
+    LOG(ERROR) << "Failed to determine free disk space";
+    ReportStatus(DIRCRYPTO_MIGRATION_FAILED);
+    return false;
+  }
+  if (static_cast<uint64_t>(free_space) < kMinFreeSpace) {
+    LOG(ERROR) << "Not enough space to begin the migration";
+    ReportStatus(DIRCRYPTO_MIGRATION_FAILED);
+    return false;
+  }
+  effective_chunk_size_ =
+      std::min(max_chunk_size_, free_space - kFreeSpaceBuffer);
+  if (effective_chunk_size_ > kErasureBlockSize)
+    effective_chunk_size_ =
+        effective_chunk_size_ - (effective_chunk_size_ % kErasureBlockSize);
 
   CalculateDataToMigrate(from);
   ReportStatus(DIRCRYPTO_MIGRATION_IN_PROGRESS);
@@ -267,9 +292,9 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
 
   int64_t length;
   while ((length = from_file.GetLength()) > 0) {
-    size_t to_read = length % chunk_size_;
+    size_t to_read = length % effective_chunk_size_;
     if (to_read == 0) {
-      to_read = chunk_size_;
+      to_read = effective_chunk_size_;
     }
     off_t offset = length - to_read;
     if (to_file.Seek(base::File::FROM_BEGIN, offset) != offset) {
