@@ -6,6 +6,8 @@
 #ifndef INCLUDE_ARC_COMMON_H_
 #define INCLUDE_ARC_COMMON_H_
 
+#include <string>
+
 #include <base/logging.h>
 
 #define LOGF(level) LOG(level) << __FUNCTION__ << "(): "
@@ -18,5 +20,9 @@
 
 #define VLOGF_ENTER() VLOGF(1) << "enter"
 #define VLOGF_EXIT() VLOGF(1) << "exit"
+
+inline std::string FormatToString(int32_t format) {
+  return std::string(reinterpret_cast<char*>(&format), 4);
+}
 
 #endif  // INCLUDE_ARC_COMMON_H_

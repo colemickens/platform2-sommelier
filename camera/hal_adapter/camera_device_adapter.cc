@@ -255,8 +255,8 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
   buffer_handles_[buffer_id].reset(buffer_handle);
 
   VLOGF(1) << std::hex << "Buffer 0x" << buffer_id << " registered: "
-           << "format: 0x" << format << " dimension: " << std::dec << width
-           << "x" << height << " num_planes: " << num_planes;
+           << "format: " << FormatToString(format) << " dimension: " << std::dec
+           << width << "x" << height << " num_planes: " << num_planes;
   return 0;
 }
 

@@ -61,7 +61,8 @@ int CameraBufferMapper::Register(buffer_handle_t buffer) {
       bo_info->bo = gbm_bo_import(gbm_device_.get(), GBM_BO_IMPORT_FD_PLANAR,
                                   &import_data, GBM_BO_USE_RENDERING);
       if (!bo_info->bo) {
-        LOG(ERROR) << "Failed to import buffer " << handle->buffer_id;
+        LOG(ERROR) << "Failed to import buffer 0x" << std::hex
+                   << handle->buffer_id;
         return -EIO;
       }
       bo_info->usage = 1;
@@ -92,7 +93,7 @@ int CameraBufferMapper::Deregister(buffer_handle_t buffer) {
   if (handle->type == GRALLOC) {
     auto bo_cache = gbm_bo_.find(buffer);
     if (bo_cache == gbm_bo_.end()) {
-      LOG(ERROR) << "Unknown buffer " << handle->buffer_id;
+      LOG(ERROR) << "Unknown buffer 0x" << std::hex << handle->buffer_id;
       return -EINVAL;
     }
     if (!--bo_cache->second->usage) {
@@ -144,9 +145,9 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
 
   VLOGF(1) << "buffer info:";
   VLOGF(1) << "\tfd: " << handle->fds[plane];
-  VLOGF(1) << "\tbuffer_id: " << handle->buffer_id;
+  VLOGF(1) << "\tbuffer_id: 0x" << std::hex << handle->buffer_id;
   VLOGF(1) << "\ttype: " << handle->type;
-  VLOGF(1) << "\tformat: 0x" << std::hex << handle->format;
+  VLOGF(1) << "\tformat: " << FormatToString(handle->format);
   VLOGF(1) << "\twidth: " << handle->width;
   VLOGF(1) << "\theight: " << handle->height;
   VLOGF(1) << "\tstride: " << handle->strides[plane];
@@ -165,7 +166,8 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
       info->type = static_cast<enum BufferType>(handle->type);
       auto bo_cache = gbm_bo_.find(buffer);
       if (bo_cache == gbm_bo_.end()) {
-        LOG(ERROR) << "Buffer " << handle->buffer_id << " is not registered";
+        LOG(ERROR) << "Buffer 0x" << std::hex << handle->buffer_id
+                   << " is not registered";
         return MAP_FAILED;
       }
       info->bo = bo_cache->second->bo;
@@ -187,8 +189,8 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
     if (info_cache == buffer_info_.end()) {
       buffer_info_[key].reset(info);
     }
-    VLOGF(1) << "Plane " << plane << " of gralloc buffer " << handle->buffer_id
-             << " mapped";
+    VLOGF(1) << "Plane " << plane << " of gralloc buffer 0x" << std::hex
+             << handle->buffer_id << " mapped";
     return out_addr;
   } else if (handle->type == SHM) {
     // TODO(jcliang): Implement map for shared memory buffers.
@@ -211,8 +213,8 @@ int CameraBufferMapper::Unmap(buffer_handle_t buffer, uint32_t plane) {
   auto key = MappedBufferInfoCache::key_type(buffer, plane);
   auto info_cache = buffer_info_.find(key);
   if (info_cache == buffer_info_.end()) {
-    LOG(ERROR) << "Plane " << plane << " of buffer " << handle->buffer_id
-               << " was not mapped";
+    LOG(ERROR) << "Plane " << plane << " of buffer 0x" << std::hex
+               << handle->buffer_id << " was not mapped";
     return -EINVAL;
   }
 
@@ -233,7 +235,7 @@ int CameraBufferMapper::Unmap(buffer_handle_t buffer, uint32_t plane) {
         << "Unmap for shared memory buffer handle is not yet implemented";
     return -EINVAL;
   }
-  VLOGF(1) << "buffer " << handle->buffer_id << " unmapped";
+  VLOGF(1) << "buffer 0x" << std::hex << handle->buffer_id << " unmapped";
   return 0;
 }
 
@@ -299,7 +301,7 @@ int CameraBufferMapper::GetNumPlanes(buffer_handle_t buffer) {
       return 3;
   }
 
-  LOG(ERROR) << "Unknown format: 0x" << std::hex << handle->format;
+  LOG(ERROR) << "Unknown format: " << FormatToString(handle->format);
   return -EINVAL;
 }
 
