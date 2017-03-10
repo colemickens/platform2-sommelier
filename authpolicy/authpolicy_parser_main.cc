@@ -137,19 +137,21 @@ int OutputForCaller(const std::string& str) {
 int ParseAccountInfo(const std::string& net_out) {
   std::string object_guid, sam_account_name, display_name, given_name;
   if (!ai::FindToken(net_out, ':', "objectGUID", &object_guid) ||
-      !ai::FindToken(net_out, ':', "sAMAccountName", &sam_account_name) ||
-      !ai::FindToken(net_out, ':', "displayName", &display_name) ||
-      !ai::FindToken(net_out, ':', "givenName", &given_name)) {
+      !ai::FindToken(net_out, ':', "sAMAccountName", &sam_account_name)) {
     LOG(ERROR) << "Failed to parse account info";
     return EXIT_CODE_FIND_TOKEN_FAILED;
   }
-
   // Output data as proto blob.
   protos::AccountInfo account_info_proto;
   account_info_proto.set_object_guid(object_guid);
   account_info_proto.set_sam_account_name(sam_account_name);
-  account_info_proto.set_display_name(display_name);
-  account_info_proto.set_given_name(given_name);
+
+  // Attributes 'displayName' and 'givenName' are optional. May be missing for
+  // accounts like 'Administrator' or for partially set up accounts.
+  if (ai::FindToken(net_out, ':', "displayName", &display_name))
+    account_info_proto.set_display_name(display_name);
+  if (ai::FindToken(net_out, ':', "givenName", &given_name))
+    account_info_proto.set_given_name(given_name);
 
   std::string account_info_blob;
   if (!account_info_proto.SerializeToString(&account_info_blob)) {
