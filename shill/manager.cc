@@ -1453,6 +1453,12 @@ void Manager::DeregisterService(const ServiceRefPtr& to_forget) {
           << " still has a connection (in call to " << __func__ << ")";
       (*it)->Unload();
       (*it)->SetProfile(nullptr);
+      // We expect the service being deregistered to be destroyed here as well,
+      // so need to remove any remaining reference to it.
+      if (*it == last_default_physical_service_) {
+        last_default_physical_service_ = nullptr;
+        last_default_physical_service_connected_ = false;
+      }
       services_.erase(it);
       SortServices();
       return;
