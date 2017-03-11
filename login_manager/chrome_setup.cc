@@ -277,6 +277,9 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--ash-animate-from-boot-splash-screen");
   }
 
+  if (builder->UseFlagIsSet("voice_interaction"))
+    builder->AddArg("--enable-voice-interaction");
+
   SetUpWallpaperFlags(builder, cros_config, base::Bind(base::PathExists));
 
   // TODO(yongjaek): Remove the following flag when the kiosk mode app is ready
