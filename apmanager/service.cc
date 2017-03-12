@@ -31,9 +31,9 @@ namespace apmanager {
 #if !defined(__ANDROID__)
 const char Service::kHostapdPath[] = "/usr/sbin/hostapd";
 const char Service::kHostapdConfigPathFormat[] =
-    "/var/run/apmanager/hostapd/hostapd-%d.conf";
+    "/run/apmanager/hostapd/hostapd-%d.conf";
 const char Service::kHostapdControlInterfacePath[] =
-    "/var/run/apmanager/hostapd/ctrl_iface";
+    "/run/apmanager/hostapd/ctrl_iface";
 #else
 const char Service::kHostapdPath[] = "/system/bin/hostapd";
 const char Service::kHostapdConfigPathFormat[] =

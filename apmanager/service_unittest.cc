@@ -43,7 +43,7 @@ namespace {
 #if !defined(__ANDROID__)
   const char kBinSleep[] = "/bin/sleep";
   const char kHostapdConfigFilePath[] =
-      "/var/run/apmanager/hostapd/hostapd-1.conf";
+      "/run/apmanager/hostapd/hostapd-1.conf";
 #else
   const char kBinSleep[] = "/system/bin/sleep";
   const char kHostapdConfigFilePath[] =

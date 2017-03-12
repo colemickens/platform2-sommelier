@@ -36,7 +36,7 @@ namespace {
 const char kSsid[] = "TestSsid";
 const char kInterface[] = "uap0";
 const char kBridgeInterface[] = "br0";
-const char kControlInterfacePath[] = "/var/run/apmanager/hostapd/ctrl_iface";
+const char kControlInterfacePath[] = "/run/apmanager/hostapd/ctrl_iface";
 const char kPassphrase[] = "Passphrase";
 const char k24GHzHTCapab[] = "[LDPC SMPS-STATIC GF SHORT-GI-20]";
 const char k5GHzHTCapab[] =
@@ -67,7 +67,7 @@ const char kExpected80211gCtrlIfaceConfigContent[] =
     "channel=6\n"
     "interface=uap0\n"
     "hw_mode=g\n"
-    "ctrl_interface=/var/run/apmanager/hostapd/ctrl_iface\n"
+    "ctrl_interface=/run/apmanager/hostapd/ctrl_iface\n"
 #if !defined(__ANDROID__)
     "ctrl_interface_group=apmanager\n"
 #else

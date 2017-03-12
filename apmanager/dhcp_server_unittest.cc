@@ -36,7 +36,7 @@ namespace {
       "interface=test_interface\n"
 #if !defined(__ANDROID__)
       "user=apmanager\n"
-      "dhcp-leasefile=/var/run/apmanager/dnsmasq/dhcpd-1.leases\n";
+      "dhcp-leasefile=/run/apmanager/dnsmasq/dhcpd-1.leases\n";
 #else
       "user=system\n"
       "dhcp-leasefile=/data/misc/apmanager/dnsmasq/dhcpd-1.leases\n";
@@ -45,7 +45,7 @@ namespace {
 #if !defined(__ANDROID__)
   const char kBinSleep[] = "/bin/sleep";
   const char kDnsmasqConfigFilePath[] =
-      "/var/run/apmanager/dnsmasq/dhcpd-1.conf";
+      "/run/apmanager/dnsmasq/dhcpd-1.conf";
 #else
   const char kBinSleep[] = "/system/bin/sleep";
   const char kDnsmasqConfigFilePath[] =

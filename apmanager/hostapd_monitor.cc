@@ -24,7 +24,7 @@ namespace apmanager {
 // static.
 #if !defined(__ANDROID__)
 const char HostapdMonitor::kLocalPathFormat[] =
-    "/var/run/apmanager/hostapd/hostapd_ctrl_%s";
+    "/run/apmanager/hostapd/hostapd_ctrl_%s";
 #else
 const char HostapdMonitor::kLocalPathFormat[] =
     "/data/misc/apmanager/hostapd/hostapd_ctrl_%s";

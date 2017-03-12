@@ -19,9 +19,9 @@ namespace apmanager {
 #if !defined(__ANDROID__)
 const char DHCPServer::kDnsmasqPath[] = "/usr/sbin/dnsmasq";
 const char DHCPServer::kDnsmasqConfigFilePathFormat[] =
-    "/var/run/apmanager/dnsmasq/dhcpd-%d.conf";
+    "/run/apmanager/dnsmasq/dhcpd-%d.conf";
 const char DHCPServer::kDHCPLeasesFilePathFormat[] =
-    "/var/run/apmanager/dnsmasq/dhcpd-%d.leases";
+    "/run/apmanager/dnsmasq/dhcpd-%d.leases";
 #else
 const char DHCPServer::kDnsmasqPath[] = "/system/bin/dnsmasq";
 const char DHCPServer::kDnsmasqConfigFilePathFormat[] =
@@ -91,7 +91,7 @@ bool DHCPServer::Start() {
   dnsmasq_process_->AddArg(base::StringPrintf("--conf-file=%s",
                                               file_name.c_str()));
 #if defined(__ANDROID__)
-  // dnsmasq normally creates a pid file in /var/run/dnsmasq.pid. Overwrite
+  // dnsmasq normally creates a pid file in /run/dnsmasq.pid. Overwrite
   // this file path for Android.
   dnsmasq_process_->AddArg(
       base::StringPrintf("--pid-file=%s", kDnsmasqPidFilePath));
