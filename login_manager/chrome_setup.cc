@@ -221,7 +221,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   }
 
   if (builder->UseFlagIsSet("kevin")) {
-    builder->AddFeatureEnableOverride("Pepper3DImageChromium");
     // TODO(jdufault): Remove this once quick unlock launches on all boards.
     builder->AddFeatureEnableOverride("QuickUnlockPin");
 
