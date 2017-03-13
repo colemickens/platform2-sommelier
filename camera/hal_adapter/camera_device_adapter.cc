@@ -228,14 +228,18 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
     mojo::Array<uint32_t> offsets) {
   size_t num_planes = fds.size();
 
-  native_handle_t* native_handle = native_handle_create(
-      kCameraBufferHandleNumFds, kCameraBufferHandleNumInts);
-  if (!native_handle) {
+  camera_buffer_handle_t* buffer_handle = new camera_buffer_handle_t();
+  if (!buffer_handle) {
     LOG(ERROR) << "Failed to allocate native handle";
     return -ENOMEM;
   }
-  camera_buffer_handle_t* buffer_handle =
-      reinterpret_cast<camera_buffer_handle_t*>(native_handle);
+  memset(buffer_handle, 0, sizeof(*buffer_handle));
+  buffer_handle->base.version = sizeof(buffer_handle->base);
+  buffer_handle->base.numFds = kCameraBufferHandleNumFds;
+  buffer_handle->base.numInts = kCameraBufferHandleNumInts;
+  for (size_t i = 0; i < kCameraBufferHandleNumFds; ++i) {
+    buffer_handle->fds[i] = -1;
+  }
 
   buffer_handle->magic = kCameraBufferMagic;
   buffer_handle->buffer_id = buffer_id;

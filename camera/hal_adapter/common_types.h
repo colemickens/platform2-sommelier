@@ -30,9 +30,15 @@ typedef std::map<uint64_t, std::unique_ptr<camera3_stream_t>> UniqueStreams;
 
 struct ArcCameraBufferHandleDeleter {
   inline void operator()(camera_buffer_handle_t* handle) const {
-    native_handle_t* native_handle = &handle->base;
-    native_handle_close(native_handle);
-    native_handle_delete(native_handle);
+    // We can't use native_handle_close() on |handle| directly because it may
+    // close the wrong handles in case where the number of valid physical planes
+    // in |handle| is less than kMaxPlanes.
+    for (int i = 0; i < kMaxPlanes; ++i) {
+      if (handle->fds[i] >= 0) {
+        close(handle->fds[i]);
+      }
+    }
+    delete handle;
   }
 };
 
