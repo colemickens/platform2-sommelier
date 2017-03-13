@@ -7,7 +7,6 @@
 
 #include <memory>
 
-#include <base/logging.h>
 #include <base/macros.h>
 #include <dbus-c++/dbus.h>
 
@@ -25,9 +24,8 @@ class DBusAdaptable {
     if (dbus_adaptor_.get())
       return;
 
-    dbus_adaptor_.reset(new(std::nothrow) Adaptor(
-        DBusControl::GetConnection(), static_cast<Adaptee *>(this)));
-    CHECK(dbus_adaptor_.get());
+    dbus_adaptor_.reset(
+        new Adaptor(DBusControl::GetConnection(), static_cast<Adaptee*>(this)));
   }
 
   Adaptor *dbus_adaptor() const { return dbus_adaptor_.get(); }

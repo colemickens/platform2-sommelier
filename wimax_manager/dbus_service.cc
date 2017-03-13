@@ -25,7 +25,7 @@ DBusService::~DBusService() {
 
 void DBusService::Initialize() {
   if (NameHasOwner(power_manager::kPowerManagerServiceName))
-    SetPowerManager(new(std::nothrow) PowerManager(manager_));
+    SetPowerManager(new PowerManager(manager_));
 }
 
 void DBusService::Finalize() {
@@ -54,7 +54,7 @@ void DBusService::OnNameOwnerChanged(const std::string &name,
     if (new_owner.empty())
       SetPowerManager(nullptr);
     else
-      SetPowerManager(new(std::nothrow) PowerManager(manager_));
+      SetPowerManager(new PowerManager(manager_));
   }
 }
 

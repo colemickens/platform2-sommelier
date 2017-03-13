@@ -7,7 +7,6 @@
 
 #include <memory>
 
-#include <base/logging.h>
 #include <base/macros.h>
 #include <dbus-c++/dbus.h>
 
@@ -25,9 +24,8 @@ class DBusProxiable {
     if (dbus_proxy_.get())
       return;
 
-    dbus_proxy_.reset(new(std::nothrow) Proxy(
-        DBusControl::GetConnection(), static_cast<Self *>(this)));
-    CHECK(dbus_proxy_.get());
+    dbus_proxy_.reset(
+        new Proxy(DBusControl::GetConnection(), static_cast<Self*>(this)));
   }
 
   void InvalidateDBusProxy() {

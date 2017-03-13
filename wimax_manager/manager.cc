@@ -10,6 +10,7 @@
 
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/posix/eintr_wrapper.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
@@ -56,12 +57,7 @@ bool Manager::Initialize() {
   dbus_service_.CreateDBusProxy();
   dbus_service_.Initialize();
 
-  driver_.reset(new(std::nothrow) GdmDriver(this));
-  if (!driver_.get()) {
-    LOG(ERROR) << "Failed to create driver";
-    return false;
-  }
-
+  driver_.reset(new GdmDriver(this));
   if (!driver_->Initialize()) {
     LOG(ERROR) << "Failed to initialize driver";
     return false;
@@ -162,7 +158,7 @@ bool Manager::LoadConfig(const base::FilePath &file_path) {
   base::ScopedFD scoped_fd(fd);
   google::protobuf::io::FileInputStream file_stream(fd);
 
-  std::unique_ptr<Config> config(new(std::nothrow) Config());
+  auto config = base::MakeUnique<Config>();
   if (!google::protobuf::TextFormat::Parse(&file_stream, config.get()))
     return false;
 

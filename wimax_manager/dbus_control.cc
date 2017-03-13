@@ -36,14 +36,11 @@ DBus::Connection *DBusControl::GetConnection() {
 }
 
 void DBusControl::Initialize() {
-  bus_dispatcher_.reset(new(std::nothrow) DBus::Glib::BusDispatcher());
-  CHECK(bus_dispatcher_.get());
+  bus_dispatcher_.reset(new DBus::Glib::BusDispatcher());
   DBus::default_dispatcher = bus_dispatcher_.get();
   bus_dispatcher_->attach(nullptr);
 
-  connection_.reset(
-      new(std::nothrow) DBus::Connection(DBus::Connection::SystemBus()));
-  CHECK(connection_.get());
+  connection_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
   CHECK(connection_->acquire_name(kWiMaxManagerServiceName))
       << "Failed to acquire D-Bus name " << kWiMaxManagerServiceName;
 }

@@ -10,9 +10,8 @@
 namespace wimax_manager {
 
 EventDispatcher::EventDispatcher()
-    : dont_use_directly_(new(std::nothrow) base::MessageLoopForUI),
+    : dont_use_directly_(new base::MessageLoopForUI()),
       task_runner_(base::ThreadTaskRunnerHandle::Get()) {
-  CHECK(dont_use_directly_.get());
 }
 
 void EventDispatcher::DispatchForever() {

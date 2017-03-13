@@ -9,6 +9,7 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/utf_string_conversions.h>
 
@@ -233,9 +234,8 @@ bool GdmDriver::GetDevices(vector<std::unique_ptr<Device>> *devices) {
                                   device_name.c_str(),
                                   device_index);
 
-    std::unique_ptr<GdmDevice> device(new(std::nothrow) GdmDevice(
-        manager(), device_index, device_name, AsWeakPtr()));
-    CHECK(device);
+    auto device = base::MakeUnique<GdmDevice>(
+        manager(), device_index, device_name, AsWeakPtr());
     // The WiMAX device changes its MAC address to the actual value after the
     // firmware is loaded. Opening the device seems to be enough to trigger the
     // update of the MAC address. So open the device here before
@@ -431,9 +431,8 @@ bool GdmDriver::GetNetworksForDevice(GdmDevice *device,
         network_name.c_str(), GetNetworkTypeDescription(network_type).c_str(),
         network_id, network_cinr, network_rssi);
 
-    NetworkRefPtr network = new(std::nothrow) Network(
+    NetworkRefPtr network = new Network(
         network_id, network_name, network_type, network_cinr, network_rssi);
-    CHECK(network);
     networks->push_back(network);
   }
   return true;
