@@ -125,6 +125,7 @@ const Log common_logs[] = {
   },
   { "platform_info", "/bin/cat /var/log/platform_info.txt" },
   { "power_supply_info", "/usr/bin/power_supply_info" },
+  { "power_supply_sysfs", "/usr/bin/print_sysfs_power_supply_data" },
   { "powerd.LATEST", "/bin/cat /var/log/power_manager/powerd.LATEST" },
   { "powerd.PREVIOUS", "/bin/cat /var/log/power_manager/powerd.PREVIOUS" },
   { "powerd.out", "/bin/cat /var/log/powerd.out" },
