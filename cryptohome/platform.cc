@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
+#include <sys/sendfile.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <sys/time.h>
@@ -34,6 +35,7 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/location.h>
@@ -1134,6 +1136,26 @@ bool Platform::SetFileTimes(const base::FilePath& path,
                 follow_links ? 0 : AT_SYMLINK_NOFOLLOW)) {
     PLOG(ERROR) << "Failed to update times for file " << path.value();
     return false;
+  }
+  return true;
+}
+
+bool Platform::SendFile(const base::File& to,
+                        const base::File& from,
+                        off_t offset,
+                        size_t count) {
+  while (count > 0) {
+    ssize_t written =
+        sendfile(to.GetPlatformFile(), from.GetPlatformFile(), &offset, count);
+    if (written < 0) {
+      PLOG(ERROR) << "sendfile failed to copy data";
+      return false;
+    }
+    if (written == 0) {
+      LOG(ERROR) << "Attempting to read past the end of the file";
+      return false;
+    }
+    count -= written;
   }
   return true;
 }

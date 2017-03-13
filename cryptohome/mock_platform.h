@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/time/time.h>
@@ -199,6 +200,8 @@ class MockPlatform : public Platform {
                     const struct timespec&,
                     const struct timespec&,
                     bool));
+  MOCK_METHOD4(SendFile,
+               bool(const base::File&, const base::File&, off_t, size_t));
 
   MockFileEnumerator* mock_enumerator() { return mock_enumerator_.get(); }
 

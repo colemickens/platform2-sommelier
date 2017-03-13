@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <base/callback_forward.h>
+#include <base/files/file.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
@@ -647,6 +648,22 @@ class Platform {
                             const struct timespec& atime,
                             const struct timespec& mtime,
                             bool follow_links);
+
+  // Copies |count| bytes of data from |from| to |to|, starting at |offset| in
+  // |from| and the current file offset in |to|.  If
+  // the copy fails or is only partially successful (bytes written does not
+  // equal |count|) false is returned.
+  //
+  // Parameters
+  //   to - The file to copy data to.
+  //   from - The file to copy data from.
+  //   offset - The location in |from| to begin copying data from.  This has no
+  //   impact on the location in |to| that data is written to.
+  //   count - The number of bytes to copy.
+  virtual bool SendFile(const base::File& to,
+                        const base::File& from,
+                        off_t offset,
+                        size_t count);
 
  private:
   // Returns the process and open file information for the specified process id
