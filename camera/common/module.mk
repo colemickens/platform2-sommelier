@@ -44,4 +44,11 @@ common/libcbm: CXX_LIBRARY(common/libcbm.so)
 
 # To link against object files under common/, add $(COMMON_OBJECTS) to the
 # dependency list of your target.
-COMMON_OBJECTS := common/future.o common/metadata_base.o
+COMMON_OBJECTS := \
+	common/future.o
+
+COMMON_OBJECTS_FOR_USB_HAL := \
+	common/exif_utils.o \
+	common/future.o \
+	common/jpeg_compressor.o \
+	common/metadata_base.o
