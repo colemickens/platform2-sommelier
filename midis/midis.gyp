@@ -2,7 +2,9 @@
   'target_defaults': {
     'variables': {
       'deps': [
+        'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
+        'libudev',
       ],
     },
   },
@@ -16,6 +18,8 @@
         ],
       },
       'sources': [
+        'daemon.cc',
+        'device_tracker.cc',
         'main.cc',
       ],
     },
