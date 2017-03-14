@@ -19,7 +19,6 @@ namespace authpolicy {
 class ProcessExecutor {
  public:
   explicit ProcessExecutor(std::vector<std::string> args);
-  ~ProcessExecutor();
 
   // Set a file descriptor that gets piped into stdin during execution.
   // The file descriptor must stay valid until |Execute| is called.
@@ -66,15 +65,18 @@ class ProcessExecutor {
   // Resets the output variables that are populated by |Execute|.
   void ResetOutput();
 
-  minijail* jail_ = nullptr;
   std::vector<std::string> args_;
   std::map<std::string, std::string> env_map_;
   int input_fd_ = -1;
   std::string input_str_;
   std::string out_data_, err_data_;
   int exit_code_ = 0;
+  std::string seccomp_policy_file_;
+  bool log_seccomp_failures_ = false;
+  bool no_new_privs_ = false;
+  bool keep_supplementary_flags_ = false;
 
-  // We better not copy/assign because of jail_.
+  // We better not copy/assign because of |input_fd_|.
   DISALLOW_COPY_AND_ASSIGN(ProcessExecutor);
 };
 

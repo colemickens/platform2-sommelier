@@ -33,8 +33,8 @@
       'dependencies': [
         '../common-mk/external_dependencies.gyp:policy-protos',
         '../common-mk/external_dependencies.gyp:user_policy-protos',
-        'dbus_code_generator',
         'container-protos',
+        'dbus_code_generator',
       ],
       'variables': {
         'deps': [

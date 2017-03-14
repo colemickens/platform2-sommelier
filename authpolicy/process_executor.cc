@@ -14,6 +14,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 #include <libminijail.h>
+#include <scoped_minijail.h>
 
 #include "authpolicy/platform_helper.h"
 
@@ -39,11 +40,7 @@ void LogLongString(const char* header, const std::string& str) {
 namespace authpolicy {
 
 ProcessExecutor::ProcessExecutor(std::vector<std::string> args)
-    : jail_(minijail_new()), args_(std::move(args)) {}
-
-ProcessExecutor::~ProcessExecutor() {
-  minijail_destroy(jail_);
-}
+    : args_(std::move(args)) {}
 
 void ProcessExecutor::SetInputFile(int fd) {
   input_fd_ = fd;
@@ -58,20 +55,19 @@ void ProcessExecutor::SetEnv(const std::string& key, const std::string& value) {
 }
 
 void ProcessExecutor::SetSeccompFilter(const std::string& policy_file) {
-  minijail_parse_seccomp_filters(jail_, policy_file.c_str());
-  minijail_use_seccomp_filter(jail_);
+  seccomp_policy_file_ = policy_file;
 }
 
 void ProcessExecutor::LogSeccompFilterFailures() {
-  minijail_log_seccomp_filter_failures(jail_);
+  log_seccomp_failures_ = true;
 }
 
 void ProcessExecutor::SetNoNewPrivs() {
-  minijail_no_new_privs(jail_);
+  no_new_privs_ = true;
 }
 
 void ProcessExecutor::KeepSupplementaryGroups() {
-  minijail_keep_supplementary_gids(jail_);
+  keep_supplementary_flags_ = true;
 }
 
 bool ProcessExecutor::Execute() {
@@ -109,11 +105,29 @@ bool ProcessExecutor::Execute() {
     putenv(const_cast<char*>(env_list.back().c_str()));
   }
 
+  // Prepare minijail.
+  ScopedMinijail jail(minijail_new());
+  if (log_seccomp_failures_)
+    minijail_log_seccomp_filter_failures(jail.get());
+  if (!seccomp_policy_file_.empty()) {
+    minijail_parse_seccomp_filters(jail.get(), seccomp_policy_file_.c_str());
+    minijail_use_seccomp_filter(jail.get());
+  }
+  if (no_new_privs_)
+    minijail_no_new_privs(jail.get());
+  if (keep_supplementary_flags_)
+    minijail_keep_supplementary_gids(jail.get());
+
   // Execute the command.
   pid_t pid = -1;
   int child_stdin = -1, child_stdout = -1, child_stderr = -1;
-  minijail_run_pid_pipes(jail_, args_ptr[0], args_ptr.data(), &pid,
-                         &child_stdin, &child_stdout, &child_stderr);
+  minijail_run_pid_pipes(jail.get(),
+                         args_ptr[0],
+                         args_ptr.data(),
+                         &pid,
+                         &child_stdin,
+                         &child_stdout,
+                         &child_stderr);
 
   // Make sure the pipes never block.
   if (!base::SetNonBlocking(child_stdin))
@@ -139,7 +153,8 @@ bool ProcessExecutor::Execute() {
                                   &err_data_);
 
   // Wait for the process to exit.
-  exit_code_ = minijail_wait(jail_);
+  exit_code_ = minijail_wait(jail.get());
+  jail.reset();
 
   // Print out a useful error message for seccomp failures.
   if (exit_code_ == MINIJAIL_ERR_JAIL)
