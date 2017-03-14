@@ -20,6 +20,8 @@
         'statemachine/statemachine.cc',
         'statemachine/eventkey.cc',
         'statemachine/slot.cc',
+        'haptic/ff_driver.cc',
+        'haptic/touch_ff_manager.cc',
       ],
     },
     {

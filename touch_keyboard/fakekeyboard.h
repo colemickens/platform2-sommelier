@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "touch_keyboard/evdevsource.h"
+#include "touch_keyboard/haptic/touch_ff_manager.h"
 #include "touch_keyboard/statemachine/statemachine.h"
 #include "touch_keyboard/uinputdevice.h"
 
@@ -216,6 +217,9 @@ class FakeKeyboard : public UinputDevice, public EvdevSource {
   // true if t1 comes *after* than t2.
   static bool TimespecIsLater(struct timespec const& t1,
                               struct timespec const& t2);
+
+  // The touch force feedback manager used to play ff effects.
+  TouchFFManager ff_manager_;
 
   // This group of Key objects stores the full layout of the keyboard.
   std::vector<Key> layout_;

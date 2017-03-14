@@ -44,7 +44,7 @@ constexpr float kEnterWidth = 32.0 * kWidthPitch;
 constexpr float kTabWidth = 27.0 * kWidthPitch;
 constexpr float kBackspaceWidth = 27.0 * kWidthPitch;
 
-FakeKeyboard::FakeKeyboard() {
+FakeKeyboard::FakeKeyboard() : ff_manager_(kInputWidth) {
   SetUpLayout();
 }
 
@@ -322,6 +322,8 @@ void FakeKeyboard::ProcessIncomingSnapshot(
 
       if (ev_code_ == kNoKey) {
         data.rejection_status_ = RejectionStatus::kRejectTouchdownOffKey;
+      } else {
+        ff_manager_.EventTriggered(TouchKeyboardEvent::FingerDown, finger.x);
       }
 
       // TODO(charliemooney): Add more data here that can be used for
