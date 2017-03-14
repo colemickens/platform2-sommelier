@@ -814,6 +814,10 @@ Nl80211AttributeStaInfo::Nl80211AttributeStaInfo()
       AttrDataPair(NL80211_STA_INFO_BEACON_LOSS,
                    NestedData(kTypeU32, "NL80211_STA_INFO_BEACON_LOSS",
                    false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_STA_INFO_BEACON_SIGNAL_AVG,
+                   NestedData(kTypeU8, "NL80211_STA_INFO_BEACON_SIGNAL_AVG",
+                              false)));
 }
 
 const int Nl80211AttributeSurveyInfo::kName = NL80211_ATTR_SURVEY_INFO;
