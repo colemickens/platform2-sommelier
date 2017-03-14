@@ -20,6 +20,7 @@
 #include <base/memory/ptr_util.h>
 
 #include "trunks/blob_parser.h"
+#include "trunks/error_codes.h"
 #include "trunks/hmac_session_impl.h"
 #include "trunks/password_authorization_delegate.h"
 #include "trunks/policy_session_impl.h"
@@ -33,7 +34,109 @@
 #include "trunks/trunks_dbus_proxy.h"
 #endif
 
+namespace {
+
+constexpr int kDefaultRetryDelayInMS = 250;
+constexpr int kDefaultRetryTimeoutInMS = 10*1000;
+constexpr int kDefaultRetries = kDefaultRetryTimeoutInMS/kDefaultRetryDelayInMS;
+constexpr base::TimeDelta kDefaultRetryDelay =
+    base::TimeDelta::FromMilliseconds(kDefaultRetryDelayInMS);
+
+}  // namespace
+
 namespace trunks {
+
+// A post-processing transceiver that attaches on top of the transceiver passed
+// to TrunksFactoryImpl. Peforms the following functions:
+// - Checks the response in SendCommandAndWait and retries the command
+//   in case the response code requests a retry. See RetryNeededFor() for
+//   details.
+class TrunksFactoryImpl::PostProcessingTransceiver : public CommandTransceiver {
+ public:
+
+  explicit PostProcessingTransceiver(CommandTransceiver* transceiver)
+      : command_retry_delay_(kDefaultRetryDelay),
+        max_command_retries_(kDefaultRetries),
+        transceiver_(transceiver) {
+    CHECK(transceiver_);
+  }
+
+  void set_max_command_retries(int max_command_retries) {
+    max_command_retries_ = max_command_retries;
+  }
+
+  void set_command_retry_delay(base::TimeDelta command_retry_delay) {
+    command_retry_delay_ = command_retry_delay;
+  }
+
+  bool Init() override { return transceiver_->Init(); }
+
+  void SendCommand(const std::string& command,
+                   const ResponseCallback& callback) override {
+    transceiver_->SendCommand(command, callback);
+  }
+
+  std::string SendCommandAndWait(const std::string& command) override {
+    int attempt_num = 0;
+    std::string response;
+    do {
+      if (attempt_num > 0) {
+        base::PlatformThread::Sleep(command_retry_delay_);
+      }
+      response = transceiver_->SendCommandAndWait(command);
+    } while (RetryNeededFor(response, ++attempt_num));
+    VLOG_IF(2, attempt_num > 1) << "Command sent " << attempt_num << " times.";
+    return response;
+  }
+
+ private:
+  bool RetryNeededFor(const std::string& response, int attempt_num) {
+    if (attempt_num > max_command_retries_) {
+      LOG(WARNING) << "Gave up retrying command after "
+                   << attempt_num << " attempts.";
+      return false;
+    }
+    TPM_RC rc;
+    if (!GetResponseCode(response, &rc)) {
+      return false;
+    }
+    switch (rc) {
+      case TPM_RC_RETRY:
+      case TPM_RC_NV_RATE:
+        if (attempt_num == 1) {
+          LOG(WARNING) << "Retrying command after " << GetErrorString(rc);
+        } else {
+          VLOG(2) << "Retrying command after " << GetErrorString(rc);
+        }
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  bool GetResponseCode(const std::string& response, TPM_RC* rc) {
+    DCHECK(rc);
+    std::string buffer(response);
+    trunks::TPM_ST tag;
+    if (Parse_TPM_ST(&buffer, &tag, nullptr) != TPM_RC_SUCCESS) {
+      return false;
+    }
+    trunks::UINT32 response_size;
+    if (Parse_UINT32(&buffer, &response_size, nullptr) != TPM_RC_SUCCESS) {
+      return false;
+    }
+    if (response_size != response.size()) {
+      return false;
+    }
+    return Parse_TPM_RC(&buffer, rc, nullptr) == TPM_RC_SUCCESS;
+  }
+
+  base::TimeDelta command_retry_delay_;
+  int max_command_retries_;
+  CommandTransceiver* transceiver_;
+
+  DISALLOW_COPY_AND_ASSIGN(PostProcessingTransceiver);
+};
 
 TrunksFactoryImpl::TrunksFactoryImpl() {
 #if defined(USE_BINDER_IPC)
@@ -41,11 +144,11 @@ TrunksFactoryImpl::TrunksFactoryImpl() {
 #else
   default_transceiver_.reset(new TrunksDBusProxy());
 #endif
-  transceiver_ = default_transceiver_.get();
+  transceiver_.reset(new PostProcessingTransceiver(default_transceiver_.get()));
 }
 
 TrunksFactoryImpl::TrunksFactoryImpl(CommandTransceiver* transceiver) {
-  transceiver_ = transceiver;
+  transceiver_.reset(new PostProcessingTransceiver(transceiver));
 }
 
 TrunksFactoryImpl::~TrunksFactoryImpl() {}
@@ -54,8 +157,8 @@ bool TrunksFactoryImpl::Initialize() {
   if (initialized_) {
     return true;
   }
-  tpm_.reset(new Tpm(transceiver_));
-  if (transceiver_ != default_transceiver_.get()) {
+  tpm_.reset(new Tpm(transceiver_.get()));
+  if (!IsDefaultTransceiverUsed()) {
     initialized_ = true;
   } else {
     initialized_ = transceiver_->Init();
@@ -102,6 +205,15 @@ std::unique_ptr<PolicySession> TrunksFactoryImpl::GetTrialSession() const {
 
 std::unique_ptr<BlobParser> TrunksFactoryImpl::GetBlobParser() const {
   return base::MakeUnique<BlobParser>();
+}
+
+void TrunksFactoryImpl::set_max_command_retries(int max_command_retries) {
+  transceiver_->set_max_command_retries(max_command_retries);
+}
+
+void TrunksFactoryImpl::set_command_retry_delay(
+    base::TimeDelta command_retry_delay) {
+  transceiver_->set_command_retry_delay(command_retry_delay);
 }
 
 }  // namespace trunks

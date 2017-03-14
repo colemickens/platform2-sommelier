@@ -1,0 +1,121 @@
+//
+// Copyright (C) 2017 The Android Open Source Project
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+#include <string>
+
+#include <base/bind.h>
+#include <brillo/bind_lambda.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
+#include "trunks/mock_command_transceiver.h"
+#include "trunks/trunks_factory_impl.h"
+
+using testing::_;
+using testing::Invoke;
+using testing::NiceMock;
+using testing::Return;
+
+namespace trunks {
+
+class TrunksFactoryTest : public testing::Test {
+ public:
+  TrunksFactoryTest() : factory_(&mock_transceiver_) {}
+  void SetUp() override {
+    ON_CALL(mock_transceiver_, SendCommand(_, _))
+        .WillByDefault(Invoke(this, &TrunksFactoryTest::SendCommand));
+    ON_CALL(mock_transceiver_, SendCommandAndWait(_))
+        .WillByDefault(Invoke(this, &TrunksFactoryTest::SendCommandAndWait));
+  }
+
+ protected:
+  static std::string BuildSimpleResponse(TPM_RC rc) {
+    constexpr int kResponseHeaderSize = 10;
+    std::string response;
+    Serialize_TPMI_ST_COMMAND_TAG(TPM_ST_NO_SESSIONS, &response);
+    Serialize_UINT32(kResponseHeaderSize, &response);
+    Serialize_TPM_RC(rc, &response);
+    CHECK_EQ(response.size(), kResponseHeaderSize);
+    return response;
+  }
+
+  void SendCommand(const std::string& command,
+                   const CommandTransceiver::ResponseCallback& callback) {
+    callback.Run(SendCommandAndWait(command));
+  }
+
+  std::string SendCommandAndWait(const std::string& command) {
+    last_command_ = command;
+    return next_response_;
+  }
+
+  std::string last_command_;
+  std::string next_response_;
+  NiceMock<MockCommandTransceiver> mock_transceiver_;
+  TrunksFactoryImpl factory_;
+};
+
+TEST_F(TrunksFactoryTest, TpmSendCommand) {
+  EXPECT_TRUE(factory_.Initialize());
+  for (TPM_RC expected_code : {TPM_RC_SUCCESS, TPM_RC_FAILURE}) {
+    next_response_ = BuildSimpleResponse(expected_code);
+    auto callback = [expected_code](TPM_RC response_code) {
+      EXPECT_EQ(expected_code, response_code);
+    };
+    factory_.GetTpm()->Startup(TPM_SU_CLEAR, nullptr, base::Bind(callback));
+    EXPECT_EQ(expected_code,
+              factory_.GetTpm()->StartupSync(TPM_SU_CLEAR, nullptr));
+  }
+}
+
+TEST_F(TrunksFactoryTest, TpmSendCommandRetry) {
+  EXPECT_TRUE(factory_.Initialize());
+  // Async versions of Tpm commands return responses "as is" without any
+  // retry logic.
+  next_response_ = BuildSimpleResponse(TPM_RC_RETRY);
+  auto callback = [](TPM_RC response_code) {
+    EXPECT_EQ(TPM_RC_RETRY, response_code);
+  };
+  factory_.GetTpm()->Startup(TPM_SU_CLEAR, nullptr, base::Bind(callback));
+  // Sync versions of Tpm commands that call SendCommandAndWait should
+  // retry when TPM_RC_RETRY and similar response codes are received.
+  factory_.set_command_retry_delay(base::TimeDelta());
+  factory_.set_max_command_retries(2);
+  // Retries for (max_command_retries-1) attempts.
+  EXPECT_CALL(mock_transceiver_, SendCommandAndWait(_))
+      .WillOnce(Return(BuildSimpleResponse(TPM_RC_RETRY)))
+      .WillOnce(Return(BuildSimpleResponse(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            factory_.GetTpm()->StartupSync(TPM_SU_CLEAR, nullptr));
+  // Retries for max_command_retries attempts.
+  testing::Mock::VerifyAndClearExpectations(&mock_transceiver_);
+  EXPECT_CALL(mock_transceiver_, SendCommandAndWait(_))
+      .WillOnce(Return(BuildSimpleResponse(TPM_RC_RETRY)))
+      .WillOnce(Return(BuildSimpleResponse(TPM_RC_RETRY)))
+      .WillOnce(Return(BuildSimpleResponse(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            factory_.GetTpm()->StartupSync(TPM_SU_CLEAR, nullptr));
+  // Retries for >max_command_retries attempts.
+  // Sync versions should give up after max number of retries.
+  testing::Mock::VerifyAndClearExpectations(&mock_transceiver_);
+  EXPECT_CALL(mock_transceiver_, SendCommandAndWait(_))
+      .Times(3)
+      .WillRepeatedly(Return(BuildSimpleResponse(TPM_RC_RETRY)));
+  EXPECT_EQ(TPM_RC_RETRY,
+            factory_.GetTpm()->StartupSync(TPM_SU_CLEAR, nullptr));
+}
+
+}  // namespace trunks
