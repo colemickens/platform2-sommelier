@@ -45,7 +45,7 @@ std::string GetIdMapString(const OciLinuxNamespaceMapping& map) {
 std::string IdStringFromMap(const std::vector<OciLinuxNamespaceMapping>& maps) {
   std::ostringstream oss;
   bool first = true;
-  for (auto & map : maps) {
+  for (const auto& map : maps) {
     if (first)
       first = false;
     else
@@ -64,7 +64,7 @@ std::string ParseMountOptions(const std::vector<std::string>& options,
   *flags_out = 0;
   *loopback_out = 0;
 
-  for (auto & option : options) {
+  for (const auto& option : options) {
     if (option == "nodev") {
       *flags_out |= MS_NODEV;
     } else if (option == "noexec") {
@@ -118,7 +118,7 @@ int SanitizeFlags(const std::string &type, int flags) {
 void ConfigureMounts(const std::vector<OciMount>& mounts,
                      uid_t uid, gid_t gid,
                      container_config* config_out) {
-  for (auto & mount : mounts) {
+  for (const auto& mount : mounts) {
     int flags, loopback;
     std::string verity_options;
     std::string options = ParseMountOptions(mount.options, &flags, &loopback,
@@ -148,7 +148,7 @@ void ConfigureMounts(const std::vector<OciMount>& mounts,
 // Adds the devices specified in |devices| to |config_out|.
 void ConfigureDevices(const std::vector<OciLinuxDevice>& devices,
                       container_config* config_out) {
-  for (auto & device : devices) {
+  for (const auto& device : devices) {
     container_config_add_device(config_out,
                                 device.type.c_str()[0],
                                 device.path.c_str(),
@@ -178,9 +178,9 @@ bool ContainerConfigFromOci(const OciConfig& oci,
   container_config_premounted_runfs(config_out, root_dir.value().c_str());
 
   std::vector<const char *> argv;
-  for (auto & arg : oci.process.args)
+  for (const auto& arg : oci.process.args)
     argv.push_back(arg.c_str());
-  for (auto & arg : extra_args)
+  for (const auto& arg : extra_args)
     argv.push_back(arg.c_str());
   container_config_program_argv(config_out, argv.data(), argv.size());
 
@@ -199,7 +199,7 @@ bool ContainerConfigFromOci(const OciConfig& oci,
 // Reads json configuration of a container from |config_path| and filles
 // |oci_out| with the specified container configuration.
 bool OciConfigFromFile(const base::FilePath& config_path,
-                       OciConfigPtr const& oci_out) {
+                       const OciConfigPtr& oci_out) {
   std::string config_json_data;
   if (!base::ReadFileToString(config_path, &config_json_data)) {
     PLOG(ERROR) << "Fail to config container.";
