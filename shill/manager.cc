@@ -2573,9 +2573,16 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
 
   SetupServiceInProfile(service, profile, args, error);
 
-  // Although we have succeeded, this service will not exist, so its
-  // path is of no use to the caller.
+  // If we encountered an error when configuring the temporary service, we
+  // report the error as it is. Otherwise, we still need to report an error as
+  // the temporary service won't be usable by the caller.
   DCHECK(service->HasOneRef());
+  if (error->IsSuccess()) {
+    Error::PopulateAndLog(FROM_HERE,
+                          error,
+                          Error::kNotFound,
+                          "Temporary service configured but not usable");
+  }
   return nullptr;
 }
 

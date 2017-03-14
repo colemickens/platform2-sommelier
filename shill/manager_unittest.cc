@@ -2386,7 +2386,9 @@ TEST_F(ManagerTest,
   Error error;
   ServiceRefPtr service =
       manager()->ConfigureServiceForProfile(kProfileName0, args, &error);
-  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_FALSE(error.IsSuccess());
+  EXPECT_EQ(Error::kNotFound, error.type());
+  EXPECT_EQ("Temporary service configured but not usable", error.message());
   EXPECT_EQ(nullptr, service.get());
   EXPECT_EQ(profile1.get(), matching_service->profile().get());
 }
