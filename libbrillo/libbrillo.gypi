@@ -4,7 +4,6 @@
       'deps': [
         'libchrome-<(libbase_ver)'
       ],
-      'USE_dbus%': '1',
     },
     'include_dirs': [
       '../libbrillo',
@@ -39,7 +38,13 @@
       'type': 'shared_library',
       'variables': {
         'exported_deps': [
-          'dbus-1',
+        ],
+        'conditions': [
+          ['USE_dbus == 1', {
+            'exported_deps': [
+              'dbus-1',
+            ],
+          }],
         ],
         'deps': ['<@(exported_deps)'],
       },
@@ -51,25 +56,10 @@
         },
       },
       'libraries': ['-lmodp_b64'],
-      #TODO(deymo): Split DBus code from libbrillo-core the same way is split in
-      # the Android.mk, based on the <(USE_dbus) variable.
       'sources': [
-        'brillo/any.cc',
         'brillo/asynchronous_signal_handler.cc',
-        'brillo/daemons/dbus_daemon.cc',
         'brillo/daemons/daemon.cc',
         'brillo/data_encoding.cc',
-        'brillo/dbus/async_event_sequencer.cc',
-        'brillo/dbus/data_serialization.cc',
-        'brillo/dbus/dbus_connection.cc',
-        'brillo/dbus/dbus_method_invoker.cc',
-        'brillo/dbus/dbus_method_response.cc',
-        'brillo/dbus/dbus_object.cc',
-        'brillo/dbus/dbus_service_watcher.cc',
-        'brillo/dbus/dbus_signal.cc',
-        'brillo/dbus/exported_object_manager.cc',
-        'brillo/dbus/exported_property_set.cc',
-        'brillo/dbus/utils.cc',
         'brillo/errors/error.cc',
         'brillo/errors/error_codes.cc',
         'brillo/file_utils.cc',
@@ -90,6 +80,25 @@
         'brillo/url_utils.cc',
         'brillo/userdb_utils.cc',
         'brillo/value_conversion.cc',
+      ],
+      'conditions': [
+        ['USE_dbus == 1', {
+          'sources': [
+            'brillo/any.cc',
+            'brillo/daemons/dbus_daemon.cc',
+            'brillo/dbus/async_event_sequencer.cc',
+            'brillo/dbus/data_serialization.cc',
+            'brillo/dbus/dbus_connection.cc',
+            'brillo/dbus/dbus_method_invoker.cc',
+            'brillo/dbus/dbus_method_response.cc',
+            'brillo/dbus/dbus_object.cc',
+            'brillo/dbus/dbus_service_watcher.cc',
+            'brillo/dbus/dbus_signal.cc',
+            'brillo/dbus/exported_object_manager.cc',
+            'brillo/dbus/exported_property_set.cc',
+            'brillo/dbus/utils.cc',
+          ],
+        }],
       ],
     },
     {
@@ -275,10 +284,16 @@
       ],
       'variables': {
         'exported_deps': [
-          'dbus-1',
-          'dbus-glib-1',
           'glib-2.0',
           'gobject-2.0',
+        ],
+        'conditions': [
+          ['USE_dbus == 1', {
+            'exported_deps': [
+              'dbus-1',
+              'dbus-glib-1',
+            ],
+          }],
         ],
         'deps': ['<@(exported_deps)'],
       },
@@ -294,11 +309,17 @@
         },
       },
       'sources': [
-        'brillo/glib/abstract_dbus_service.cc',
-        'brillo/glib/dbus.cc',
         'brillo/message_loops/glib_message_loop.cc',
       ],
       'includes': ['../common-mk/deps.gypi'],
+      'conditions': [
+        ['USE_dbus == 1', {
+          'sources': [
+            'brillo/glib/abstract_dbus_service.cc',
+            'brillo/glib/dbus.cc',
+          ],
+        }],
+      ],
     },
   ],
   'conditions': [
@@ -339,19 +360,8 @@
             }],
           ],
           'sources': [
-            'brillo/any_unittest.cc',
-            'brillo/any_internal_impl_unittest.cc',
             'brillo/asynchronous_signal_handler_unittest.cc',
             'brillo/data_encoding_unittest.cc',
-            'brillo/dbus/async_event_sequencer_unittest.cc',
-            'brillo/dbus/data_serialization_unittest.cc',
-            'brillo/dbus/dbus_method_invoker_unittest.cc',
-            'brillo/dbus/dbus_object_unittest.cc',
-            'brillo/dbus/dbus_param_reader_unittest.cc',
-            'brillo/dbus/dbus_param_writer_unittest.cc',
-            'brillo/dbus/dbus_signal_handler_unittest.cc',
-            'brillo/dbus/exported_object_manager_unittest.cc',
-            'brillo/dbus/exported_property_set_unittest.cc',
             'brillo/errors/error_codes_unittest.cc',
             'brillo/errors/error_unittest.cc',
             'brillo/file_utils_unittest.cc',
@@ -385,11 +395,28 @@
             'brillo/type_name_undecorate_unittest.cc',
             'brillo/unittest_utils.cc',
             'brillo/url_utils_unittest.cc',
-            'brillo/variant_dictionary_unittest.cc',
             'brillo/value_conversion_unittest.cc',
             'testrunner.cc',
-            '<(proto_in_dir)/test.proto',
-          ]
+          ],
+          'conditions': [
+            ['USE_dbus == 1', {
+              'sources': [
+                'brillo/any_unittest.cc',
+                'brillo/any_internal_impl_unittest.cc',
+                'brillo/dbus/async_event_sequencer_unittest.cc',
+                'brillo/dbus/data_serialization_unittest.cc',
+                'brillo/dbus/dbus_method_invoker_unittest.cc',
+                'brillo/dbus/dbus_object_unittest.cc',
+                'brillo/dbus/dbus_param_reader_unittest.cc',
+                'brillo/dbus/dbus_param_writer_unittest.cc',
+                'brillo/dbus/dbus_signal_handler_unittest.cc',
+                'brillo/dbus/exported_object_manager_unittest.cc',
+                'brillo/dbus/exported_property_set_unittest.cc',
+                'brillo/variant_dictionary_unittest.cc',
+                '<(proto_in_dir)/test.proto',
+              ],
+            }],
+          ],
         },
         {
           'target_name': 'libinstallattributes-<(libbase_ver)_unittests',
