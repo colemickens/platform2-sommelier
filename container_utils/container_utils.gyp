@@ -60,40 +60,6 @@
         'device_jail/device_jail_server.h',
       ],
     },
-    {
-      'target_name': 'device_jail_fs',
-      'type': 'executable',
-      'variables': {
-        'deps': [
-          'fuse',
-          'libbrillo-<(libbase_ver)',
-          'libminijail',
-        ],
-      },
-      'dependencies': [
-        'libdevice_jail',
-      ],
-      'sources': [
-        'device_jail/device_jail_fs.cc',
-        'device_jail/fs_data.cc',
-        'device_jail/fs_data.h',
-      ],
-    },
-    {
-      'target_name': 'device_jail_utility',
-      'type': 'executable',
-      'variables': {
-        'deps': [
-          'libbrillo-<(libbase_ver)',
-        ],
-      },
-      'dependencies': [
-        'libdevice_jail',
-      ],
-      'sources': [
-        'device_jail/device_jail_utility.cc',
-      ],
-    },
   ],
   'conditions': [
     ['USE_test == 1', {
@@ -116,5 +82,43 @@
         },
       ]},
     ],
+    ['USE_device_jail == 1', {
+      'targets': [
+        {
+          'target_name': 'device_jail_fs',
+          'type': 'executable',
+          'variables': {
+            'deps': [
+              'fuse',
+              'libbrillo-<(libbase_ver)',
+              'libminijail',
+            ],
+          },
+          'dependencies': [
+            'libdevice_jail',
+          ],
+          'sources': [
+            'device_jail/device_jail_fs.cc',
+            'device_jail/fs_data.cc',
+            'device_jail/fs_data.h',
+          ],
+        },
+        {
+          'target_name': 'device_jail_utility',
+          'type': 'executable',
+          'variables': {
+            'deps': [
+              'libbrillo-<(libbase_ver)',
+            ],
+          },
+          'dependencies': [
+            'libdevice_jail',
+          ],
+          'sources': [
+            'device_jail/device_jail_utility.cc',
+          ],
+        },
+      ],
+    }],
   ],
 }
