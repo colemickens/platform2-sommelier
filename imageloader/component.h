@@ -74,7 +74,7 @@ class Component {
   bool LoadManifest(const std::vector<uint8_t>& public_key);
   bool ParseManifest();
   bool CopyComponentFile(const base::FilePath& src, const base::FilePath& dest,
-                       const std::vector<uint8_t>& expected_hash);
+                         const std::vector<uint8_t>& expected_hash);
   // This reads the contents of |file|, hashes it with |sha256|, and if
   // |out_file| is not null, copies it into |out_file|.
   bool ReadHashAndCopyFile(base::File* file, std::vector<uint8_t>* sha256,

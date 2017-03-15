@@ -89,7 +89,8 @@ bool WriteFileToDisk(const base::FilePath& path, const std::string& contents) {
 
 bool GetSHA256FromString(const std::string& hash_str,
                          std::vector<uint8_t>* bytes) {
-  if (!base::HexStringToBytes(hash_str, bytes)) return false;
+  if (!base::HexStringToBytes(hash_str, bytes))
+    return false;
   return bytes->size() == crypto::kSHA256Length;
 }
 
@@ -275,15 +276,17 @@ bool Component::CopyTo(const base::FilePath& dest_dir) {
 }
 
 bool Component::CopyComponentFile(const base::FilePath& src,
-                                const base::FilePath& dest_path,
-                                const std::vector<uint8_t>& expected_hash) {
+                                  const base::FilePath& dest_path,
+                                  const std::vector<uint8_t>& expected_hash) {
   base::File file(src, base::File::FLAG_OPEN | base::File::FLAG_READ);
-  if (!file.IsValid()) return false;
+  if (!file.IsValid())
+    return false;
 
   base::ScopedFD dest(
       HANDLE_EINTR(open(dest_path.value().c_str(), O_CREAT | O_WRONLY | O_EXCL,
                         kComponentFilePerms)));
-  if (!dest.is_valid()) return false;
+  if (!dest.is_valid())
+    return false;
 
   base::File out_file(dest.release());
   std::unique_ptr<crypto::SecureHash> sha256(
@@ -308,7 +311,8 @@ bool Component::ReadHashAndCopyFile(base::File* file,
   std::unique_ptr<crypto::SecureHash> sha256(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   int size = file->GetLength();
-  if (size <= 0) return false;
+  if (size <= 0)
+    return false;
 
   int rv = 0, bytes_read = 0;
   char buf[4096];
@@ -341,7 +345,8 @@ bool Component::CopyFingerprintFile(const base::FilePath& src,
       return false;
     }
 
-    if (!IsValidFingerprintFile(fingerprint_contents)) return false;
+    if (!IsValidFingerprintFile(fingerprint_contents))
+      return false;
 
     if (!WriteFileToDisk(GetFingerprintPath(dest), fingerprint_contents)) {
       return false;
