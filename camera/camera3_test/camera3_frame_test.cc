@@ -543,6 +543,10 @@ TEST_P(Camera3SingleFrameTest, GetFrame) {
       ASSERT_EQ(0, GetMinResolution(format, &resolution))
           << "Failed to get min resolution for format " << format;
     }
+    VLOGF(1) << "Device " << cam_id_;
+    VLOGF(1) << "Format 0x" << std::hex << format;
+    VLOGF(1) << "Resolution " << resolution.Width() << "x"
+             << resolution.Height();
 
     cam_device_.AddOutputStream(format, resolution.Width(),
                                 resolution.Height());

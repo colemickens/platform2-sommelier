@@ -6,202 +6,7 @@
 
 #include <algorithm>
 
-#include <base/bind.h>
-
-#include "arc/camera_buffer_mapper.h"
-#include "common/camera_buffer_handle.h"
-
 namespace camera3_test {
-
-int32_t Camera3TestGralloc::Initialize() {
-  gbm_dev_ = CreateGbmDevice();
-  if (!gbm_dev_) {
-    LOG(ERROR) << "Can't create gbm device";
-    return -ENODEV;
-  }
-
-  uint32_t formats[] = {GBM_FORMAT_YVU420, GBM_FORMAT_NV12, GBM_FORMAT_YUV422,
-                        GBM_FORMAT_NV21};
-  size_t i = 0;
-  for (; i < arraysize(formats); i++) {
-    if (gbm_device_is_format_supported(gbm_dev_, formats[i],
-                                       GBM_BO_USE_RENDERING)) {
-      flexible_yuv_420_format_ = formats[i];
-      break;
-    }
-  }
-  if (i == arraysize(formats)) {
-    LOG(ERROR) << "Can't detect flexible YUV 420 format";
-    return -EINVAL;
-  }
-
-  return 0;
-}
-
-void Camera3TestGralloc::Destroy() {
-  if (gbm_dev_) {
-    close(gbm_device_get_fd(gbm_dev_));
-    gbm_device_destroy(gbm_dev_);
-  }
-}
-
-int32_t Camera3TestGralloc::Allocate(int32_t width,
-                                     int32_t height,
-                                     int32_t format,
-                                     int32_t usage,
-                                     buffer_handle_t* handle) {
-  uint64_t gbm_usage;
-  uint32_t gbm_format;
-  struct gbm_bo* bo;
-
-  gbm_format = GrallocConvertFormat(format);
-  gbm_usage = GrallocConvertFlags(usage);
-
-  if (!gbm_device_is_format_supported(gbm_dev_, gbm_format, gbm_usage)) {
-    LOG(ERROR) << "Unsupported format " << gbm_format;
-    return -EINVAL;
-  }
-
-  bo = gbm_bo_create(gbm_dev_, width, height, gbm_format, gbm_usage);
-  if (!bo) {
-    LOG(ERROR) << "Failed to create bo (" << width << "x" << height << ")";
-    return -ENOBUFS;
-  }
-
-  camera_buffer_handle_t* hnd = new camera_buffer_handle_t();
-
-  hnd->base.version = sizeof(hnd->base);
-  hnd->base.numInts = kCameraBufferHandleNumInts;
-  hnd->base.numFds = kCameraBufferHandleNumFds;
-
-  hnd->magic = kCameraBufferMagic;
-  hnd->buffer_id = reinterpret_cast<uint64_t>(bo);
-  hnd->type = arc::GRALLOC;
-  hnd->drm_format = gbm_bo_get_format(bo);
-  hnd->hal_pixel_format = format;
-  hnd->width = gbm_bo_get_width(bo);
-  hnd->height = gbm_bo_get_height(bo);
-  for (size_t i = 0; i < gbm_bo_get_num_planes(bo); ++i) {
-    hnd->fds[i].reset(gbm_bo_get_plane_fd(bo, i));
-    hnd->strides[i] = gbm_bo_get_plane_stride(bo, i);
-    hnd->offsets[i] = gbm_bo_get_plane_offset(bo, i);
-  }
-
-  *handle = reinterpret_cast<buffer_handle_t>(hnd);
-
-  return 0;
-}
-
-int32_t Camera3TestGralloc::Free(buffer_handle_t handle) {
-  auto hnd = camera_buffer_handle_t::FromBufferHandle(handle);
-  if (hnd) {
-    if (hnd->buffer_id == 0) {
-      ADD_FAILURE() << "Buffer handle mapping fails";
-      delete hnd;
-      return -EINVAL;
-    }
-
-    gbm_bo_destroy(reinterpret_cast<struct gbm_bo*>(hnd->buffer_id));
-    delete hnd;
-    return 0;
-  }
-
-  return -EINVAL;
-}
-
-struct gbm_device* Camera3TestGralloc::CreateGbmDevice() {
-  int32_t fd;
-  int32_t num_nodes = 63;
-  int32_t min_node = 128;
-  int32_t max_node = min_node + num_nodes;
-  struct gbm_device* gbm = nullptr;
-
-  // Try to get hardware-backed device first
-  for (int32_t i = min_node; i < max_node; i++) {
-    fd = drmOpenRender(i);
-    if (fd < 0) {
-      continue;
-    }
-
-    drmVersionPtr version = drmGetVersion(fd);
-    if (!strcmp("vgem", version->name)) {
-      drmFreeVersion(version);
-      close(fd);
-      continue;
-    }
-
-    gbm = gbm_create_device(fd);
-    if (!gbm) {
-      drmFreeVersion(version);
-      close(fd);
-      continue;
-    }
-
-    drmFreeVersion(version);
-    return gbm;
-  }
-
-  // Fall back to vgem if not hardware-backed device is found
-  for (int32_t i = min_node; i < max_node; i++) {
-    fd = drmOpenRender(i);
-    if (fd < 0) {
-      continue;
-    }
-
-    drmVersionPtr version = drmGetVersion(fd);
-    if (strcmp("vgem", drmGetVersion(fd)->name)) {
-      drmFreeVersion(version);
-      close(fd);
-      continue;
-    }
-
-    gbm = gbm_create_device(fd);
-    if (!gbm) {
-      close(fd);
-      return nullptr;
-    }
-
-    drmFreeVersion(version);
-    return gbm;
-  }
-
-  return nullptr;
-}
-
-uint64_t Camera3TestGralloc::GrallocConvertFlags(int32_t flags) {
-  uint64_t usage = GBM_BO_USE_RENDERING;
-
-  // TODO: conversion from Gralloc flags to GBM flags
-
-  return usage;
-}
-
-uint32_t Camera3TestGralloc::GrallocConvertFormat(int32_t format) {
-  switch (format) {
-    case HAL_PIXEL_FORMAT_BGRA_8888:
-      return GBM_FORMAT_ARGB8888;
-    case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
-      return GBM_FORMAT_ARGB8888;
-    case HAL_PIXEL_FORMAT_RGB_565:
-      return GBM_FORMAT_RGB565;
-    case HAL_PIXEL_FORMAT_RGB_888:
-      return GBM_FORMAT_RGB888;
-    case HAL_PIXEL_FORMAT_RGBA_8888:
-      return GBM_FORMAT_ABGR8888;
-    case HAL_PIXEL_FORMAT_RGBX_8888:
-      return GBM_FORMAT_XBGR8888;
-    case HAL_PIXEL_FORMAT_YCbCr_420_888:
-      return flexible_yuv_420_format_;
-    case HAL_PIXEL_FORMAT_YV12:
-      return GBM_FORMAT_YVU420;
-    case HAL_PIXEL_FORMAT_BLOB:
-      return GBM_FORMAT_ARGB8888;
-    default:
-      LOG(ERROR) << "Unsupported format conversion " << format;
-  }
-
-  return GBM_FORMAT_ARGB8888;
-}
 
 int Camera3Device::Initialize(Camera3Module* cam_module,
                               const camera3_callback_ops_t* callback_ops) {
@@ -226,7 +31,7 @@ int Camera3Device::Initialize(Camera3Module* cam_module,
                                       &result));
   EXPECT_EQ(0, result) << "Camera device initialization fails";
 
-  EXPECT_EQ(0, gralloc_.Initialize()) << "Gralloc initialization fails";
+  EXPECT_NE(nullptr, gralloc_) << "Gralloc initialization fails";
 
   camera_info cam_info;
   EXPECT_EQ(0, cam_module->GetCameraInfo(cam_id_, &cam_info));
@@ -246,9 +51,6 @@ void Camera3Device::Destroy() {
   // Buffers are expected to be freed in ProcessCaptureResult callback in the
   // test.
   EXPECT_TRUE(stream_buffers_.empty()) << "Buffers are not freed correctly";
-  ClearOutputStreamBuffers();
-
-  gralloc_.Destroy();
 
   int result = -EIO;
   hal_thread_.PostTaskSync(base::Bind(&Camera3Device::CloseOnHalThread,
@@ -344,17 +146,11 @@ int Camera3Device::AllocateOutputStreamBuffersByStreams(
   const std::vector<camera3_stream_t>* streams_ptr =
       streams.empty() ? &cam_stream_[cam_stream_idx_] : &streams;
   for (const auto& it : *streams_ptr) {
-    std::unique_ptr<buffer_handle_t> buffer(new buffer_handle_t);
-
-    // Buffers of blob format must have a height of 1, and width equal to
-    // their size in bytes.
-    EXPECT_EQ(
-        0, gralloc_.Allocate(
-               (it.format == HAL_PIXEL_FORMAT_BLOB) ? jpeg_max_size : it.width,
-               (it.format == HAL_PIXEL_FORMAT_BLOB) ? 1 : it.height, it.format,
-               GRALLOC_USAGE_SW_WRITE_OFTEN | GRALLOC_USAGE_HW_CAMERA_WRITE,
-               buffer.get()))
-        << "Gralloc allocation fails";
+    BufferHandleUniquePtr buffer = gralloc_->Allocate(
+        (it.format == HAL_PIXEL_FORMAT_BLOB) ? jpeg_max_size : it.width,
+        (it.format == HAL_PIXEL_FORMAT_BLOB) ? 1 : it.height, it.format,
+        GRALLOC_USAGE_SW_WRITE_OFTEN | GRALLOC_USAGE_HW_CAMERA_WRITE);
+    EXPECT_NE(nullptr, buffer) << "Gralloc allocation fails";
 
     camera3_stream_buffer_t stream_buffer;
     {
@@ -388,11 +184,6 @@ int Camera3Device::FreeOutputStreamBuffers(
     bool found = false;
     for (const auto& it : stream_buffers_[output_buffer.stream]) {
       if (*it == *output_buffer.buffer) {
-        int result = gralloc_.Free(*it);
-        if (result != 0) {
-          LOG(ERROR) << "Failed to free output buffer";
-          return result;
-        }
         stream_buffers_[output_buffer.stream].erase(it);
         if (stream_buffers_[output_buffer.stream].empty()) {
           stream_buffers_.erase(output_buffer.stream);
@@ -411,13 +202,7 @@ int Camera3Device::FreeOutputStreamBuffers(
 
 void Camera3Device::ClearOutputStreamBuffers() {
   base::AutoLock l(stream_buffers_lock_);
-
   // Free frame buffers
-  for (auto const& it : stream_buffers_) {
-    for (auto const& buffer : it.second) {
-      EXPECT_EQ(0, gralloc_.Free(*buffer)) << "Buffer is not freed correctly";
-    }
-  }
   stream_buffers_.clear();
 }
 

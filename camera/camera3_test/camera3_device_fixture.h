@@ -9,45 +9,15 @@
 #include <unordered_map>
 
 #include <base/synchronization/lock.h>
-#include <gbm.h>
 #include <gtest/gtest.h>
 #include <hardware/camera3.h>
 #include <hardware/hardware.h>
-#include <xf86drm.h>
 
 #include "camera3_module_fixture.h"
+#include "camera3_test_gralloc.h"
+#include "common/camera_buffer_handle.h"
 
 namespace camera3_test {
-
-class Camera3TestGralloc {
- public:
-  int Initialize();
-
-  void Destroy();
-
-  int Allocate(int width,
-               int height,
-               int format,
-               int usage,
-               buffer_handle_t* handle);
-
-  int Free(buffer_handle_t handle);
-
- private:
-  struct gbm_device* CreateGbmDevice();
-
-  // Conversion from HAL to GBM usage flags
-  uint64_t GrallocConvertFlags(int flags);
-
-  // Conversion from HAL to fourcc-based GBM formats
-  uint32_t GrallocConvertFormat(int format);
-
-  gbm_device* gbm_dev_;
-
-  // Real format of flexible YUV 420; it may be GBM_FORMAT_YVU420 or
-  // GBM_FORMAT_NV12
-  uint32_t flexible_yuv_420_format_;
-};
 
 class Camera3Device {
  public:
@@ -56,7 +26,8 @@ class Camera3Device {
         initialized_(false),
         cam_device_(NULL),
         hal_thread_(GetThreadName(cam_id).c_str()),
-        cam_stream_idx_(0) {}
+        cam_stream_idx_(0),
+        gralloc_(Camera3TestGralloc::GetInstance()) {}
 
   ~Camera3Device() {}
 
@@ -148,11 +119,10 @@ class Camera3Device {
   // Index of active streams
   int cam_stream_idx_;
 
-  Camera3TestGralloc gralloc_;
+  Camera3TestGralloc* gralloc_;
 
   // Store allocated buffers while easy to lookup and remove
-  std::unordered_map<camera3_stream_t*,
-                     std::set<std::unique_ptr<buffer_handle_t>>>
+  std::unordered_map<camera3_stream_t*, std::set<BufferHandleUniquePtr>>
       stream_buffers_;
 
   base::Lock stream_lock_;
