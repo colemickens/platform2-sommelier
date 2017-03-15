@@ -259,11 +259,15 @@ void FakeKeyboard::HandleLeavingFinger(int tid, FingerData finger,
   // finger, or have just marked in guaranteed.  Either way we have to enqueue
   // a guaranteed up event now if there isn't one already.
   if (!up_event_guaranteed) {
-    Event up_event(layout_[finger.starting_key_number_].event_code_,
-                   kKeyUpEvent, AddMsToTimespec(now, kEventDelayMS), kOldTID);
-    up_event.is_guaranteed_ = true;
-    EnqueueEvent(up_event);
+    EnqueueKeyUpEvent(layout_[finger.starting_key_number_].event_code_, now);
   }
+}
+
+void FakeKeyboard::EnqueueKeyUpEvent(int ev_code, timespec now) {
+  Event up_event(ev_code, kKeyUpEvent,
+                 AddMsToTimespec(now, kEventDelayMS), kOldTID);
+  up_event.is_guaranteed_ = true;
+  EnqueueEvent(up_event);
 }
 
 bool FakeKeyboard::StillOnFirstKey(
@@ -325,12 +329,21 @@ void FakeKeyboard::ProcessIncomingSnapshot(
       finger_data_[tid] = data;
     } else if (data_for_tid_it->second.rejection_status_ ==
                RejectionStatus::kNotRejectedYet) {
-      // If we've seen this finger before, update the data on it
+      // If we've seen this finger before, update the data on it.
+      // First, Check if the maxium pressure has changed.
       data_for_tid_it->second.max_pressure_ =
           std::max(data_for_tid_it->second.max_pressure_, finger.p);
+
+      // Check if the finger has left the key it started on
       if (!StillOnFirstKey(finger, data_for_tid_it->second)) {
         RejectFinger(data_for_tid_it->first,
                      RejectionStatus::kRejectMovedOffKey);
+        if (data_for_tid_it->second.down_sent_) {
+          // Send a KeyUp event to cancel any held-down buttons.
+          EnqueueKeyUpEvent(
+              layout_[data_for_tid_it->second.starting_key_number_].event_code_,
+              now);
+        }
       }
 
       // TODO(charliemooney): Update the additional data here, once it's added.
@@ -339,7 +352,6 @@ void FakeKeyboard::ProcessIncomingSnapshot(
 
   // Next we need to check if there are any fingers missing that we saw before
   // which would indicate a finger leaving the touchscreen.
-
   std::unordered_map<int, FingerData>::iterator data_it = finger_data_.begin();
   while (data_it != finger_data_.end()) {
     int tid = data_it->first;
@@ -373,8 +385,9 @@ void FakeKeyboard::EnqueueEvent(Event ev) {
 }
 
 void FakeKeyboard::Consume() {
-  bool needs_syn = false;
   while (1) {
+    bool needs_syn = false;
+
     // Compute how long to wait for a timeout. (At most until the next pending
     // event is set to fire)
     struct timespec now;
@@ -438,7 +451,7 @@ void FakeKeyboard::Consume() {
         if (!next_event.is_guaranteed_ || next_event.is_down_) {
           LOG(ERROR) << "No finger data for event that should have some! " <<
                        "(guaranteed: " << next_event.is_guaranteed_ << ", " <<
-                       "(is_down: " << next_event.is_down_ << ")";
+                       "is_down: " << next_event.is_down_ << ")";
         }
       }
 

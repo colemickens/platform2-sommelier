@@ -185,6 +185,10 @@ class FakeKeyboard : public UinputDevice, public EvdevSource {
   // the deadlines.
   void EnqueueEvent(Event ev);
 
+  // Convenience function to build a guaranteed key-up event and enqueue it for
+  // the given event code using the default deadline.
+  void EnqueueKeyUpEvent(int ev_code, timespec now);
+
   // Mark a given contact as rejected for the stated reason.  This scans for
   // all pending events associated with this tracking ID and rejects them all.
   void RejectFinger(int tid, RejectionStatus reason);
