@@ -44,6 +44,9 @@ constexpr float kEnterWidth = 32.0 * kWidthPitch;
 constexpr float kTabWidth = 27.0 * kWidthPitch;
 constexpr float kBackspaceWidth = 27.0 * kWidthPitch;
 
+constexpr int kMinTapPressure = 50;
+constexpr int kMaxTapPressure = 110;
+
 FakeKeyboard::FakeKeyboard() : ff_manager_(kInputWidth) {
   SetUpLayout();
 }
@@ -442,10 +445,21 @@ void FakeKeyboard::Consume() {
       std::unordered_map<int, FingerData>::iterator it;
       it = finger_data_.find(next_event.tid_);
       if (it != finger_data_.end()) {
-        // TODO(charliemooney): See if this event is still valid!  Currently,
-        // this just assumes they are valid because there are no invalidating
-        // conditions at the deadline yet.  Something like "pressure never
-        // exceeded a threshold" would be a good check to add here later.
+        // Here we check to see if this event is still valid before firing it
+        // off to the OS.  Currently there is only a pressure check here, but
+        // more could easily be added later.
+
+        // This checks if the maximum pressure a finger reported is within
+        // range.  An exception is made for the spacebar since it is often
+        // pressed by a user's thumb, which may have unusually high pressure.
+        if (it->second.max_pressure_ < kMinTapPressure ||
+            (layout_[it->second.starting_key_number_].event_code_ !=
+             KEY_SPACE && it->second.max_pressure_ > kMaxTapPressure)) {
+          LOG(INFO) << "Tap rejected!  Pressure of " <<
+                    it->second.max_pressure_ << " is out of range " <<
+                    kMinTapPressure << "->" << kMaxTapPressure;
+          continue;
+        }
       } else {
         // The finger has already left -- that's OK as long as it is
         // "guaranteed" to fire.
