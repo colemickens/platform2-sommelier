@@ -445,13 +445,13 @@ void FakeKeyboard::Consume() {
         // conditions at the deadline yet.  Something like "pressure never
         // exceeded a threshold" would be a good check to add here later.
       } else {
-        // The finger has already left -- that's OK as long as the even is
-        // a "guaranteed" key-up event.  Those are enqueued as a finger leaves
-        // prior to the deadline occuring.  Otherwise, something is amiss.
-        if (!next_event.is_guaranteed_ || next_event.is_down_) {
+        // The finger has already left -- that's OK as long as it is
+        // "guaranteed" to fire.
+        if (!next_event.is_guaranteed_) {
           LOG(ERROR) << "No finger data for event that should have some! " <<
                        "(guaranteed: " << next_event.is_guaranteed_ << ", " <<
-                       "is_down: " << next_event.is_down_ << ")";
+                       "is_down: " << next_event.is_down_ << ", " <<
+                       "tid: " << next_event.tid_ << ")";
         }
       }
 
