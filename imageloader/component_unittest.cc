@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include <list>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -44,12 +45,14 @@ class ComponentTest : public testing::Test {
     if (!base::SetPosixFilePermissions(bad_component_dir, kComponentDirPerms))
       return false;
 
-    Component component(GetTestComponentPath());
-    if (!component.Init(key_) || !component.CopyTo(bad_component_dir))
+    std::unique_ptr<Component> component =
+        Component::Create(GetTestComponentPath(), key_);
+    if (!component || !component->CopyTo(bad_component_dir))
       return false;
 
-    Component bad_component(bad_component_dir);
-    if (!bad_component.Init(key_)) return false;
+    std::unique_ptr<Component> bad_component =
+        Component::Create(bad_component_dir, key_);
+    if (!bad_component) return false;
 
     base::FilePath file = bad_component_dir.Append(file_name);
     const char data[] = "c";
@@ -61,7 +64,7 @@ class ComponentTest : public testing::Test {
 
     if (!base::SetPosixFilePermissions(bad_component_dest, kComponentDirPerms))
       return false;
-    return bad_component.CopyTo(bad_component_dest) == false;
+    return bad_component->CopyTo(bad_component_dest) == false;
   }
 
   bool TestInitComponentWithCorruptFile(const std::string& component_name,
@@ -71,8 +74,9 @@ class ComponentTest : public testing::Test {
     if (!base::SetPosixFilePermissions(bad_component_dir, kComponentDirPerms))
       return false;
 
-    Component component(GetTestComponentPath());
-    if (!component.Init(key_) || !component.CopyTo(bad_component_dir))
+    std::unique_ptr<Component> component =
+        Component::Create(GetTestComponentPath(), key_);
+    if (!component || !component->CopyTo(bad_component_dir))
       return false;
 
     base::FilePath file = bad_component_dir.Append(file_name);
@@ -86,8 +90,9 @@ class ComponentTest : public testing::Test {
       return false;
     }
 
-    Component bad_component(bad_component_dir);
-    return bad_component.Init(key_) == false;
+    std::unique_ptr<Component> bad_component =
+        Component::Create(bad_component_dir, key_);
+    return bad_component == nullptr;
   }
 
   bool CompareFileContents(const base::FilePath& src,
@@ -114,29 +119,33 @@ class ComponentTest : public testing::Test {
 };
 
 TEST_F(ComponentTest, InitComponentAndCheckManifest) {
-  Component component(GetTestComponentPath());
-  ASSERT_TRUE(component.Init(key_));
-  EXPECT_EQ(1, component.manifest().manifest_version);
-  EXPECT_EQ(kTestDataVersion, component.manifest().version);
+  std::unique_ptr<Component> component =
+      Component::Create(GetTestComponentPath(), key_);
+  ASSERT_NE(nullptr, component);
+
+  EXPECT_EQ(1, component->manifest().manifest_version);
+  EXPECT_EQ(kTestDataVersion, component->manifest().version);
   // Don't hardcode the sha256 hashes, but run some sanity checks.
-  EXPECT_EQ(crypto::kSHA256Length, component.manifest().image_sha256.size());
-  EXPECT_EQ(crypto::kSHA256Length, component.manifest().table_sha256.size());
-  EXPECT_NE(component.manifest().image_sha256,
-            component.manifest().table_sha256);
+  EXPECT_EQ(crypto::kSHA256Length, component->manifest().image_sha256.size());
+  EXPECT_EQ(crypto::kSHA256Length, component->manifest().table_sha256.size());
+  EXPECT_NE(component->manifest().image_sha256,
+            component->manifest().table_sha256);
 }
 
 TEST_F(ComponentTest, TestCopyAndMountComponent) {
-  Component component(GetTestComponentPath());
-  ASSERT_TRUE(component.Init(key_));
+  std::unique_ptr<Component> component =
+      Component::Create(GetTestComponentPath(), key_);
+  ASSERT_NE(nullptr, component);
 
   const base::FilePath copied_dir = temp_dir_.Append("dest");
   ASSERT_TRUE(base::CreateDirectory(copied_dir));
   ASSERT_TRUE(base::SetPosixFilePermissions(copied_dir, kComponentDirPerms));
 
-  ASSERT_TRUE(component.CopyTo(copied_dir));
+  ASSERT_TRUE(component->CopyTo(copied_dir));
 
-  Component copied_component(copied_dir);
-  ASSERT_TRUE(copied_component.Init(key_));
+  std::unique_ptr<Component> copied_component =
+      Component::Create(copied_dir, key_);
+  ASSERT_NE(nullptr, copied_component);
 
   const base::FilePath mount_dir = temp_dir_.Append("mount");
   ASSERT_TRUE(base::CreateDirectory(copied_dir));
@@ -149,21 +158,23 @@ TEST_F(ComponentTest, TestCopyAndMountComponent) {
   EXPECT_CALL(*helper_mock, SendMountCommand(_, _, _)).Times(1);
   ON_CALL(*helper_mock, SendMountCommand(_, _, _))
       .WillByDefault(testing::Return(true));
-  ASSERT_TRUE(copied_component.Mount(helper_mock.get(), mount_dir));
+  ASSERT_TRUE(copied_component->Mount(helper_mock.get(), mount_dir));
 }
 
 TEST_F(ComponentTest, CheckFilesAfterCopy) {
-  Component component(GetTestComponentPath());
-  ASSERT_TRUE(component.Init(key_));
+  std::unique_ptr<Component> component =
+      Component::Create(GetTestComponentPath(), key_);
+  ASSERT_NE(nullptr, component);
 
   const base::FilePath copied_dir = temp_dir_.Append("dest");
   ASSERT_TRUE(base::CreateDirectory(copied_dir));
   ASSERT_TRUE(base::SetPosixFilePermissions(copied_dir, kComponentDirPerms));
 
-  ASSERT_TRUE(component.CopyTo(copied_dir));
+  ASSERT_TRUE(component->CopyTo(copied_dir));
 
-  Component copied_component(copied_dir);
-  ASSERT_TRUE(copied_component.Init(key_));
+  std::unique_ptr<Component> copied_component =
+      Component::Create(copied_dir, key_);
+  ASSERT_NE(nullptr, copied_component);
 
   // Check that all the files are present, except for the manifest.json which
   // should be discarded.
@@ -185,15 +196,14 @@ TEST_F(ComponentTest, CheckFilesAfterCopy) {
 }
 
 TEST_F(ComponentTest, IsValidFingerprintFile) {
-  Component component(base::FilePath("/nonexistant"));
   const std::string valid_manifest =
       "1.3464353b1ed78574e05f3ffe84b52582572b2fe7202f3824a3761e54ace8bb1";
-  EXPECT_TRUE(component.IsValidFingerprintFile(valid_manifest));
+  EXPECT_TRUE(Component::IsValidFingerprintFile(valid_manifest));
 
   const std::string invalid_unicode_manifest = "Ё Ђ Ѓ Є Ѕ І Ї Ј Љ ";
-  EXPECT_FALSE(component.IsValidFingerprintFile(invalid_unicode_manifest));
+  EXPECT_FALSE(Component::IsValidFingerprintFile(invalid_unicode_manifest));
 
-  EXPECT_FALSE(component.IsValidFingerprintFile("\x49\x34\x19-43.*+abc"));
+  EXPECT_FALSE(Component::IsValidFingerprintFile("\x49\x34\x19-43.*+abc"));
 }
 
 TEST_F(ComponentTest, InitComponentWithBadFiles) {

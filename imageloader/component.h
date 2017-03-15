@@ -15,6 +15,7 @@
 #ifndef IMAGELOADER_COMPONENT_H_
 #define IMAGELOADER_COMPONENT_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -42,12 +43,12 @@ class Component {
     std::vector<uint8_t> table_sha256;
     std::string version;
   };
-  explicit Component(const base::FilePath& component_dir);
 
-  // Verifies and parses the manifest. This must be called successfully before
-  // calling any other methods. |public_key| is the public_key used to check the manifest
-  // signature.
-  bool Init(const std::vector<uint8_t>& public_key) WARN_UNUSED_RESULT;
+  // Creates a Component. Returns nullptr if initialization and verification
+  // fails.
+  static std::unique_ptr<Component> Create(
+        const base::FilePath& component_dir,
+        const std::vector<uint8_t>& public_key);
 
   // Copies the component into |dest_dir|. |dest_dir| must already exist. In
   // order to be robust against files being modified on disk, this function
@@ -63,7 +64,13 @@ class Component {
   const Manifest& manifest();
 
  private:
-  // Loads and verifies the manfiest. Returns false on failure.
+  // Constructs a Component. We want to avoid using this where possible since
+  // you need to load the manifest before doing anything anyway, so use the
+  // static factory method above.
+  explicit Component(const base::FilePath& component_dir);
+
+  // Loads and verifies the manfiest. Returns false on failure. |public_key| is
+  // the public key used to check the manifest signature.
   bool LoadManifest(const std::vector<uint8_t>& public_key);
   bool ParseManifest();
   bool CopyComponentFile(const base::FilePath& src, const base::FilePath& dest,
@@ -76,13 +83,12 @@ class Component {
   bool CopyFingerprintFile(const base::FilePath& src,
                            const base::FilePath& dest);
   // Sanity check the fingerprint file.
-  bool IsValidFingerprintFile(const std::string& contents);
+  static bool IsValidFingerprintFile(const std::string& contents);
 
   FRIEND_TEST_ALL_PREFIXES(ComponentTest, IsValidFingerprintFile);
   FRIEND_TEST_ALL_PREFIXES(ComponentTest, CopyValidImage);
 
   const base::FilePath component_dir_;
-  bool initialized_;
   std::string manifest_raw_;
   std::string manifest_sig_;
   Manifest manifest_;

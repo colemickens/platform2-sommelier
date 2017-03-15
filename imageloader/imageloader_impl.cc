@@ -8,6 +8,7 @@
 #include <sys/vfs.h>
 #include </usr/include/linux/magic.h>
 
+#include <memory>
 #include <string>
 
 #include <base/containers/adapters.h>
@@ -55,14 +56,15 @@ bool ImageLoaderImpl::LoadComponent(const std::string& name,
     return false;
   }
 
-  Component component(component_path);
-  if (!component.Init(config_.key)) {
+  std::unique_ptr<Component> component =
+      Component::Create(component_path, config_.key);
+  if (!component) {
     LOG(ERROR) << "Failed to initialize component: " << name;
     return false;
   }
 
   base::FilePath mount_point(mount_point_str);
-  return component.Mount(process, mount_point);
+  return component->Mount(process, mount_point);
 }
 
 std::string ImageLoaderImpl::LoadComponent(const std::string& name,
@@ -72,16 +74,17 @@ std::string ImageLoaderImpl::LoadComponent(const std::string& name,
     return kBadResult;
   }
 
-  Component component(component_path);
-  if (!component.Init(config_.key)) {
+  std::unique_ptr<Component> component =
+      Component::Create(component_path, config_.key);
+  if (!component) {
     LOG(ERROR) << "Failed to initialize component: " << name;
     return kBadResult;
   }
 
   base::FilePath mount_point(
-      GetMountPoint(config_.mount_path, name, component.manifest().version));
-  return component.Mount(process, mount_point) ? mount_point.value()
-                                               : kBadResult;
+      GetMountPoint(config_.mount_path, name, component->manifest().version));
+  return component->Mount(process, mount_point) ? mount_point.value()
+                                                : kBadResult;
 }
 
 bool ImageLoaderImpl::RegisterComponent(
@@ -125,12 +128,12 @@ bool ImageLoaderImpl::RegisterComponent(
     }
   }
 
-  base::FilePath component_path(component_folder_abs_path);
-  Component component(component_path);
-  if (!component.Init(config_.key)) return false;
+  std::unique_ptr<Component> component =
+      Component::Create(base::FilePath(component_folder_abs_path), config_.key);
+  if (!component) return false;
 
   // Check that the reported version matches the component manifest version.
-  if (component.manifest().version != version) {
+  if (component->manifest().version != version) {
     LOG(ERROR) << "Version in signed manifest does not match the reported "
                   "component version.";
     return false;
@@ -149,7 +152,7 @@ bool ImageLoaderImpl::RegisterComponent(
     return false;
   }
 
-  if (!component.CopyTo(version_path)) {
+  if (!component->CopyTo(version_path)) {
     base::DeleteFile(version_path, /*recursive=*/true);
     return false;
   }
@@ -176,10 +179,11 @@ std::string ImageLoaderImpl::GetComponentVersion(const std::string& name) {
     return kBadResult;
   }
 
-  Component component(component_path);
-  if (!component.Init(config_.key)) return kBadResult;
+  std::unique_ptr<Component> component =
+      Component::Create(component_path, config_.key);
+  if (!component) return kBadResult;
 
-  return component.manifest().version;
+  return component->manifest().version;
 }
 
 base::FilePath ImageLoaderImpl::GetLatestVersionFilePath(

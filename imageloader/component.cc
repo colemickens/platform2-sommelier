@@ -115,29 +115,23 @@ bool GetAndVerifyTable(const base::FilePath& path,
 }  // namespace
 
 Component::Component(const base::FilePath& component_dir)
-    : component_dir_(component_dir), initialized_(false) {}
+    : component_dir_(component_dir) {}
 
-bool Component::Init(const std::vector<uint8_t>& public_key) {
-  if (initialized_) {
-    NOTREACHED() << "Component already initialized";
-    return false;
-  }
-  initialized_ = LoadManifest(public_key);
-  return initialized_;
+std::unique_ptr<Component> Component::Create(
+        const base::FilePath& component_dir,
+        const std::vector<uint8_t>& public_key) {
+  std::unique_ptr<Component> component(new Component(component_dir));
+  if (!component->LoadManifest(public_key))
+    return nullptr;
+  return component;
 }
 
 const Component::Manifest& Component::manifest() {
-  // If the manifest is accessed without initialization, crash.
-  CHECK(initialized_);
   return manifest_;
 }
 
 bool Component::Mount(HelperProcess* mounter, const base::FilePath& dest_dir) {
-  if (!initialized_) {
-    NOTREACHED() << "Component not initialized";
-    return false;
-  }
-  // Now read the table in and verify the hash.
+  // Read the table in and verify the hash.
   std::string table;
   if (!GetAndVerifyTable(GetTablePath(component_dir_), manifest_.table_sha256,
                          &table)) {
@@ -252,11 +246,6 @@ bool Component::LoadManifest(const std::vector<uint8_t>& public_key) {
 }
 
 bool Component::CopyTo(const base::FilePath& dest_dir) {
-  if (!initialized_) {
-    NOTREACHED() << "Component not initialized";
-    return false;
-  }
-
   if (!WriteFileToDisk(GetManifestPath(dest_dir), manifest_raw_) ||
       !WriteFileToDisk(GetSignaturePath(dest_dir), manifest_sig_)) {
     LOG(ERROR) << "Could not write manifest and signature to disk.";
