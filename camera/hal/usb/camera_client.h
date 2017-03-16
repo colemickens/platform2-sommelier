@@ -19,6 +19,7 @@
 #include <hardware/camera3.h>
 #include <hardware/hardware.h>
 
+#include "arc/camera_metadata.h"
 #include "hal/usb/cached_frame.h"
 #include "hal/usb/capture_request.h"
 #include "hal/usb/common_types.h"
@@ -107,7 +108,7 @@ class CameraClient {
   base::ThreadChecker ops_thread_checker_;
 
   // Metadata containing persistent camera characteristics.
-  MetadataHandler metadata_;
+  CameraMetadata metadata_;
 
   // Methods used to call back into the framework.
   const camera3_callback_ops_t* callback_ops_;

@@ -13,30 +13,17 @@
 #include "hal/usb/stream_format.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
+#define UPDATE(tag, data, size)                      \
+  {                                                  \
+    if (metadata->Update((tag), (data), (size))) {   \
+      LOGF(ERROR) << "Update " << #tag << " failed"; \
+      return -EINVAL;                                \
+    }                                                \
+  }
 
 namespace arc {
 
-MetadataHandler::MetadataHandler() {}
-
-MetadataHandler::MetadataHandler(camera_metadata_t* buffer)
-    : CameraMetadata(buffer) {}
-
-MetadataHandler::MetadataHandler(const MetadataHandler& other)
-    : CameraMetadata(other) {}
-
-MetadataHandler& MetadataHandler::operator=(const MetadataHandler& other) {
-  CameraMetadata::operator=(other);
-  return *this;
-}
-
-MetadataHandler& MetadataHandler::operator=(const camera_metadata_t* buffer) {
-  CameraMetadata::operator=(buffer);
-  return *this;
-}
-
-MetadataHandler::~MetadataHandler() {}
-
-int MetadataHandler::FillDefaultMetadata() {
+int MetadataHandler::FillDefaultMetadata(CameraMetadata* metadata) {
   uint8_t hardware_level = ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED;
   UPDATE(ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL, &hardware_level, 1);
 
@@ -155,7 +142,8 @@ int MetadataHandler::FillDefaultMetadata() {
 }
 
 int MetadataHandler::FillMetadataFromSupportedFormats(
-    const SupportedFormats& supported_formats) {
+    const SupportedFormats& supported_formats,
+    CameraMetadata* metadata) {
   if (supported_formats.empty()) {
     return -EINVAL;
   }
@@ -257,7 +245,8 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
   return 0;
 }
 
-int MetadataHandler::FillMetadataFromDeviceInfo(const DeviceInfo& device_info) {
+int MetadataHandler::FillMetadataFromDeviceInfo(const DeviceInfo& device_info,
+                                                CameraMetadata* metadata) {
   UPDATE(ANDROID_SENSOR_ORIENTATION, &device_info.sensor_orientation, 1);
 
   uint8_t lens_facing = device_info.lens_facing;
@@ -288,7 +277,12 @@ int MetadataHandler::FillMetadataFromDeviceInfo(const DeviceInfo& device_info) {
   return 0;
 }
 
+bool MetadataHandler::IsValidTemplateType(int type) {
+  return type > 0 && type < CAMERA3_TEMPLATE_COUNT;
+}
+
 CameraMetadataUniquePtr MetadataHandler::CreateDefaultRequestSettings(
+    const CameraMetadata& metadata,
     int template_type) {
   uint8_t capture_intent;
   switch (template_type) {
@@ -315,18 +309,14 @@ CameraMetadataUniquePtr MetadataHandler::CreateDefaultRequestSettings(
       return NULL;
   }
 
-  MetadataHandler metadata(*this);
+  CameraMetadata data(metadata);
   uint8_t control_mode = ANDROID_CONTROL_MODE_AUTO;
 
-  if (metadata.Update(ANDROID_CONTROL_MODE, &control_mode, 1) ||
-      metadata.Update(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1)) {
+  if (data.Update(ANDROID_CONTROL_MODE, &control_mode, 1) ||
+      data.Update(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1)) {
     return CameraMetadataUniquePtr();
   }
-  return CameraMetadataUniquePtr(metadata.Release());
-}
-
-bool MetadataHandler::IsValidTemplateType(int type) {
-  return type > 0 && type < CAMERA3_TEMPLATE_COUNT;
+  return CameraMetadataUniquePtr(data.Release());
 }
 
 }  // namespace arc

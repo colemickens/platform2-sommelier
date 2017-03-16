@@ -11,14 +11,6 @@
 #include "arc/camera_metadata.h"
 #include "hal/usb/common_types.h"
 
-#define UPDATE(tag, data, size)                      \
-  {                                                  \
-    if (Update((tag), (data), (size))) {             \
-      LOGF(ERROR) << "Update " << #tag << " failed"; \
-      return -EINVAL;                                \
-    }                                                \
-  }
-
 namespace arc {
 
 struct CameraMetadataDeleter {
@@ -30,32 +22,23 @@ struct CameraMetadataDeleter {
 typedef std::unique_ptr<camera_metadata_t, CameraMetadataDeleter>
     CameraMetadataUniquePtr;
 
-class MetadataHandler : public CameraMetadata {
+class MetadataHandler {
  public:
-  // Creates an empty object.
-  MetadataHandler();
-  // Takes ownership of passed-in buffer.
-  explicit MetadataHandler(camera_metadata_t* buffer);
-  // Clones the metadata.
-  MetadataHandler(const MetadataHandler& other);
+  static int FillDefaultMetadata(CameraMetadata* metadata);
 
-  // Assignment clones metadata buffer.
-  MetadataHandler& operator=(const MetadataHandler& other);
-  MetadataHandler& operator=(const camera_metadata_t* buffer);
+  static int FillMetadataFromSupportedFormats(
+      const SupportedFormats& supported_formats,
+      CameraMetadata* metadata);
 
-  ~MetadataHandler();
-
-  int FillDefaultMetadata();
-
-  int FillMetadataFromSupportedFormats(
-      const SupportedFormats& supported_formats);
-
-  int FillMetadataFromDeviceInfo(const DeviceInfo& device_info);
-
-  // Return a copy of metadata. Caller takes the ownership.
-  CameraMetadataUniquePtr CreateDefaultRequestSettings(int template_type);
+  static int FillMetadataFromDeviceInfo(const DeviceInfo& device_info,
+                                        CameraMetadata* metadata);
 
   static bool IsValidTemplateType(int type);
+
+  // Return a copy of metadata. Caller takes the ownership.
+  static CameraMetadataUniquePtr CreateDefaultRequestSettings(
+      const CameraMetadata& metadata,
+      int template_type);
 };
 
 }  // namespace arc

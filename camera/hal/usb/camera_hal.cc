@@ -21,14 +21,15 @@ CameraHal::CameraHal() {
   VLOGF(1) << "Number of cameras is " << GetNumberOfCameras();
 
   for (auto& device_info : device_infos_) {
-    MetadataHandler metadata;
-    metadata.FillDefaultMetadata();
-    metadata.FillMetadataFromDeviceInfo(device_info);
+    CameraMetadata metadata;
+    MetadataHandler::FillDefaultMetadata(&metadata);
+    MetadataHandler::FillMetadataFromDeviceInfo(device_info, &metadata);
 
     SupportedFormats supported_formats =
         device->GetDeviceSupportedFormats(device_info.device_path);
     SupportedFormats qualified_formats = GetQualifiedFormats(supported_formats);
-    metadata.FillMetadataFromSupportedFormats(qualified_formats);
+    MetadataHandler::FillMetadataFromSupportedFormats(qualified_formats,
+                                                      &metadata);
 
     static_infos_.push_back(CameraMetadataUniquePtr(metadata.Release()));
   }

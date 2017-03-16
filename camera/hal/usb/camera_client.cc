@@ -15,7 +15,6 @@
 #include "hal/usb/cached_frame.h"
 #include "hal/usb/camera_hal.h"
 #include "hal/usb/camera_hal_device_ops.h"
-#include "hal/usb/metadata_handler.h"
 #include "hal/usb/stream_format.h"
 
 namespace arc {
@@ -82,7 +81,8 @@ int CameraClient::Initialize(const camera3_callback_ops_t* callback_ops) {
 
   // camera3_request_template_t starts at 1.
   for (int i = 1; i < CAMERA3_TEMPLATE_COUNT; i++) {
-    template_settings_[i] = metadata_.CreateDefaultRequestSettings(i);
+    template_settings_[i] =
+        MetadataHandler::CreateDefaultRequestSettings(metadata_, i);
     if (template_settings_[i].get() == nullptr) {
       LOGFID(ERROR, id_) << "metadata for template type (" << i << ") is NULL";
       return -ENODATA;
