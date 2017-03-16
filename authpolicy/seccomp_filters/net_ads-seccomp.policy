@@ -41,7 +41,8 @@ ioctl: arg1 == 0x5401 || arg1 == 0x5402 || arg1 == 0x5404 || arg1 == 0x541b || a
 lseek: 1
 lstat: 1
 mkdir: 1
-mmap: 1
+# Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
+mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 mprotect: 1
 msync: 1
 munmap: 1

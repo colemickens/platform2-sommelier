@@ -11,7 +11,9 @@ fcntl: 1
 fstat: 1
 futex: 1
 lseek: 1
-mmap: 1
+# Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
+mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+mremap: 1
 munmap: 1
 open: 1
 read: 1
