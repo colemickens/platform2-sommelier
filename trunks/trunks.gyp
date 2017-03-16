@@ -195,6 +195,7 @@
             'tpm_generated_test.cc',
             'tpm_state_test.cc',
             'tpm_utility_test.cc',
+            'trunks_dbus_proxy_test.cc',
             'trunks_factory_test.cc',
             'trunks_testrunner.cc',
           ],

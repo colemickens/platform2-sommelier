@@ -22,6 +22,15 @@
 
 namespace {
 
+#if defined(USE_TPM2)
+// Timeout waiting for Trunks daemon readiness.
+constexpr base::TimeDelta kTrunksDaemonTimeout =
+    base::TimeDelta::FromSeconds(30);
+// Delay between subsequent attempts to initialize connection to Trunks daemon.
+constexpr base::TimeDelta kTrunksDaemonInitAttemptDelay =
+    base::TimeDelta::FromMicroseconds(300);
+#endif
+
 // Clears owner password in |local_data| if all dependencies have been removed
 // and it has not yet been cleared.
 // Returns true if |local_data| has been modified, false otherwise.
@@ -69,12 +78,10 @@ void TpmManagerService::InitializeTask() {
     // Setup default objects.
 #if defined(USE_TPM2)
     // Tolerate some delay in trunksd being up and ready.
-    constexpr int kTrunksDaemonTimeoutMS = 30000;  // 30 seconds
-    int ms_waited = 0;
+    base::TimeTicks deadline = base::TimeTicks::Now() + kTrunksDaemonTimeout;
     while (!default_trunks_factory_.Initialize() &&
-           ms_waited < kTrunksDaemonTimeoutMS) {
-      usleep(300000);
-      ms_waited += 300;
+           base::TimeTicks::Now() < deadline) {
+      base::PlatformThread::Sleep(kTrunksDaemonInitAttemptDelay);
     }
     local_data_store_ = &default_local_data_store_;
     default_tpm_status_ =

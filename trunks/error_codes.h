@@ -71,6 +71,7 @@ const TPM_RC SAPI_RC_INSUFFICIENT_RESPONSE = kSapiErrorBase + 12;
 const TPM_RC SAPI_RC_INCOMPATIBLE_TCTI = kSapiErrorBase + 13;
 const TPM_RC SAPI_RC_MALFORMED_RESPONSE = kSapiErrorBase + 14;
 const TPM_RC SAPI_RC_BAD_TCTI_STRUCTURE = kSapiErrorBase + 15;
+const TPM_RC SAPI_RC_NO_CONNECTION = kSapiErrorBase + 16;
 
 // Returns a description of |error|.
 TRUNKS_EXPORT std::string GetErrorString(TPM_RC error);

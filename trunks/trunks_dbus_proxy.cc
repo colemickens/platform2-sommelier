@@ -18,7 +18,6 @@
 
 #include <base/bind.h>
 #include <brillo/bind_lambda.h>
-#include <brillo/dbus/dbus_method_invoker.h>
 
 #include "trunks/dbus_interface.h"
 #include "trunks/error_codes.h"
@@ -36,8 +35,6 @@ const int kDBusMaxTimeout = 5 * 60 * 1000;
 
 namespace trunks {
 
-TrunksDBusProxy::TrunksDBusProxy() : weak_factory_(this) {}
-
 TrunksDBusProxy::~TrunksDBusProxy() {
   if (bus_) {
     bus_->ShutdownAndBlock();
@@ -45,13 +42,45 @@ TrunksDBusProxy::~TrunksDBusProxy() {
 }
 
 bool TrunksDBusProxy::Init() {
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  bus_ = new dbus::Bus(options);
-  object_proxy_ = bus_->GetObjectProxy(
-      trunks::kTrunksServiceName, dbus::ObjectPath(trunks::kTrunksServicePath));
   origin_thread_id_ = base::PlatformThread::CurrentId();
-  return (object_proxy_ != nullptr);
+  if (!bus_) {
+    dbus::Bus::Options options;
+    options.bus_type = dbus::Bus::SYSTEM;
+    bus_ = new dbus::Bus(options);
+  }
+  if (!bus_->Connect()) {
+    return false;
+  }
+  if (!object_proxy_) {
+    object_proxy_ =
+        bus_->GetObjectProxy(trunks::kTrunksServiceName,
+                             dbus::ObjectPath(trunks::kTrunksServicePath));
+    if (!object_proxy_) {
+      return false;
+    }
+  }
+  base::TimeTicks deadline = base::TimeTicks::Now() + init_timeout_;
+  while (!IsServiceReady(false /* force_check */) &&
+         base::TimeTicks::Now() < deadline) {
+    base::PlatformThread::Sleep(init_attempt_delay_);
+  }
+  return IsServiceReady(false /* force_check */);
+}
+
+bool TrunksDBusProxy::IsServiceReady(bool force_check) {
+  if (!service_ready_ || force_check) {
+    service_ready_ = CheckIfServiceReady();
+  }
+  return service_ready_;
+}
+
+bool TrunksDBusProxy::CheckIfServiceReady() {
+  if (!bus_ || !object_proxy_) {
+    return false;
+  }
+  std::string owner = bus_->GetServiceOwnerAndBlock(trunks::kTrunksServiceName,
+                                                    dbus::Bus::SUPPRESS_ERRORS);
+  return !owner.empty();
 }
 
 void TrunksDBusProxy::SendCommand(const std::string& command,
@@ -59,27 +88,41 @@ void TrunksDBusProxy::SendCommand(const std::string& command,
   if (origin_thread_id_ != base::PlatformThread::CurrentId()) {
     LOG(ERROR) << "Error TrunksDBusProxy cannot be shared by multiple threads.";
     callback.Run(CreateErrorResponse(TRUNKS_RC_IPC_ERROR));
+    return;
+  }
+  if (!IsServiceReady(false /* force_check */)) {
+    LOG(ERROR) << "Error TrunksDBusProxy cannot connect to trunksd.";
+    callback.Run(CreateErrorResponse(SAPI_RC_NO_CONNECTION));
+    return;
   }
   SendCommandRequest tpm_command_proto;
   tpm_command_proto.set_command(command);
   auto on_success = [callback](const SendCommandResponse& response) {
     callback.Run(response.response());
   };
-  auto on_error = [callback](brillo::Error* error) {
-    SendCommandResponse response;
-    response.set_response(CreateErrorResponse(SAPI_RC_NO_RESPONSE_RECEIVED));
-    callback.Run(response.response());
-  };
   brillo::dbus_utils::CallMethodWithTimeout(
       kDBusMaxTimeout, object_proxy_, trunks::kTrunksInterface,
-      trunks::kSendCommand, base::Bind(on_success), base::Bind(on_error),
+      trunks::kSendCommand, base::Bind(on_success),
+      base::Bind(&TrunksDBusProxy::OnError, GetWeakPtr(), callback),
       tpm_command_proto);
+}
+
+void TrunksDBusProxy::OnError(const ResponseCallback& callback,
+                              brillo::Error* error) {
+  TPM_RC error_code = IsServiceReady(true /* force_check */)
+                          ? SAPI_RC_NO_RESPONSE_RECEIVED
+                          : SAPI_RC_NO_CONNECTION;
+  callback.Run(CreateErrorResponse(error_code));
 }
 
 std::string TrunksDBusProxy::SendCommandAndWait(const std::string& command) {
   if (origin_thread_id_ != base::PlatformThread::CurrentId()) {
     LOG(ERROR) << "Error TrunksDBusProxy cannot be shared by multiple threads.";
     return CreateErrorResponse(TRUNKS_RC_IPC_ERROR);
+  }
+  if (!IsServiceReady(false /* force_check */)) {
+    LOG(ERROR) << "Error TrunksDBusProxy cannot connect to trunksd.";
+    return CreateErrorResponse(SAPI_RC_NO_CONNECTION);
   }
   SendCommandRequest tpm_command_proto;
   tpm_command_proto.set_command(command);
@@ -96,7 +139,15 @@ std::string TrunksDBusProxy::SendCommandAndWait(const std::string& command) {
   } else {
     LOG(ERROR) << "TrunksProxy could not parse response: "
                << error->GetMessage();
-    return CreateErrorResponse(SAPI_RC_MALFORMED_RESPONSE);
+    TPM_RC error_code;
+    if (!IsServiceReady(true /* force_check */)) {
+      error_code = SAPI_RC_NO_CONNECTION;
+    } else if (dbus_response == nullptr) {
+      error_code = SAPI_RC_NO_RESPONSE_RECEIVED;
+    } else {
+      error_code = SAPI_RC_MALFORMED_RESPONSE;
+    }
+    return CreateErrorResponse(error_code);
   }
 }
 

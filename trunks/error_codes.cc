@@ -294,6 +294,8 @@ std::string GetErrorStringInternal(trunks::TPM_RC error) {
       return "SAPI_RC_MALFORMED_RESPONSE";
     case trunks::SAPI_RC_BAD_TCTI_STRUCTURE:
       return "SAPI_RC_BAD_TCTI_STRUCTURE";
+    case trunks::SAPI_RC_NO_CONNECTION:
+      return "SAPI_RC_NO_CONNECTION";
     default:
       return std::string();
   }
