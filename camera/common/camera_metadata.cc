@@ -3,7 +3,7 @@
  * found in the LICENSE file.
  */
 
-#include "arc/metadata_base.h"
+#include "arc/camera_metadata.h"
 
 #include <system/camera_metadata.h>
 
@@ -11,24 +11,24 @@
 
 namespace arc {
 
-MetadataBase::MetadataBase() : buffer_(NULL), locked_(false) {}
+CameraMetadata::CameraMetadata() : buffer_(NULL), locked_(false) {}
 
-MetadataBase::MetadataBase(camera_metadata_t* buffer)
+CameraMetadata::CameraMetadata(camera_metadata_t* buffer)
     : buffer_(NULL), locked_(false) {
   Acquire(buffer);
 }
 
-MetadataBase::MetadataBase(const MetadataBase& other) : locked_(false) {
+CameraMetadata::CameraMetadata(const CameraMetadata& other) : locked_(false) {
   buffer_ = clone_camera_metadata(other.buffer_);
 }
 
-MetadataBase& MetadataBase::operator=(const MetadataBase& other) {
+CameraMetadata& CameraMetadata::operator=(const CameraMetadata& other) {
   return operator=(other.buffer_);
 }
 
-MetadataBase& MetadataBase::operator=(const camera_metadata_t* buffer) {
+CameraMetadata& CameraMetadata::operator=(const camera_metadata_t* buffer) {
   if (locked_) {
-    LOGF(ERROR) << "Assignment to a locked MetadataBase!";
+    LOGF(ERROR) << "Assignment to a locked CameraMetadata!";
     return *this;
   }
 
@@ -40,32 +40,32 @@ MetadataBase& MetadataBase::operator=(const camera_metadata_t* buffer) {
   return *this;
 }
 
-MetadataBase::~MetadataBase() {
+CameraMetadata::~CameraMetadata() {
   locked_ = false;
   Clear();
 }
 
-const camera_metadata_t* MetadataBase::GetAndLock() const {
+const camera_metadata_t* CameraMetadata::GetAndLock() const {
   locked_ = true;
   return buffer_;
 }
 
-int MetadataBase::Unlock(const camera_metadata_t* buffer) {
+int CameraMetadata::Unlock(const camera_metadata_t* buffer) {
   if (!locked_) {
-    LOGF(ERROR) << "Can't unlock a non-locked MetadataBase!";
+    LOGF(ERROR) << "Can't unlock a non-locked CameraMetadata!";
     return -EINVAL;
   }
   if (buffer != buffer_) {
-    LOGF(ERROR) << "Can't unlock MetadataBase with wrong pointer!";
+    LOGF(ERROR) << "Can't unlock CameraMetadata with wrong pointer!";
     return -EINVAL;
   }
   locked_ = false;
   return 0;
 }
 
-camera_metadata_t* MetadataBase::Release() {
+camera_metadata_t* CameraMetadata::Release() {
   if (locked_) {
-    LOGF(ERROR) << "MetadataBase is locked";
+    LOGF(ERROR) << "CameraMetadata is locked";
     return NULL;
   }
   camera_metadata_t* released = buffer_;
@@ -73,9 +73,9 @@ camera_metadata_t* MetadataBase::Release() {
   return released;
 }
 
-void MetadataBase::Clear() {
+void CameraMetadata::Clear() {
   if (locked_) {
-    LOGF(ERROR) << "MetadataBase is locked";
+    LOGF(ERROR) << "CameraMetadata is locked";
     return;
   }
   if (buffer_) {
@@ -84,9 +84,9 @@ void MetadataBase::Clear() {
   }
 }
 
-void MetadataBase::Acquire(camera_metadata_t* buffer) {
+void CameraMetadata::Acquire(camera_metadata_t* buffer) {
   if (locked_) {
-    LOGF(ERROR) << "MetadataBase is locked";
+    LOGF(ERROR) << "CameraMetadata is locked";
     return;
   }
   Clear();
@@ -97,21 +97,21 @@ void MetadataBase::Acquire(camera_metadata_t* buffer) {
   }
 }
 
-void MetadataBase::Acquire(MetadataBase* other) {
+void CameraMetadata::Acquire(CameraMetadata* other) {
   if (locked_) {
-    LOGF(ERROR) << "MetadataBase is locked";
+    LOGF(ERROR) << "CameraMetadata is locked";
     return;
   }
   Acquire(other->Release());
 }
 
-int MetadataBase::Append(const MetadataBase& other) {
+int CameraMetadata::Append(const CameraMetadata& other) {
   return Append(other.buffer_);
 }
 
-int MetadataBase::Append(const camera_metadata_t* other) {
+int CameraMetadata::Append(const camera_metadata_t* other) {
   if (locked_) {
-    LOGF(ERROR) << "MetadataBase is locked";
+    LOGF(ERROR) << "CameraMetadata is locked";
     return -EBUSY;
   }
   size_t extra_entries = get_camera_metadata_entry_count(other);
@@ -121,23 +121,23 @@ int MetadataBase::Append(const camera_metadata_t* other) {
   return append_camera_metadata(buffer_, other);
 }
 
-size_t MetadataBase::EntryCount() const {
+size_t CameraMetadata::EntryCount() const {
   return (buffer_ == NULL) ? 0 : get_camera_metadata_entry_count(buffer_);
 }
 
-bool MetadataBase::IsEmpty() const {
+bool CameraMetadata::IsEmpty() const {
   return EntryCount() == 0;
 }
 
-int MetadataBase::Sort() {
+int CameraMetadata::Sort() {
   if (locked_) {
-    LOGF(ERROR) << "MetadataBase is locked";
+    LOGF(ERROR) << "CameraMetadata is locked";
     return -EBUSY;
   }
   return sort_camera_metadata(buffer_);
 }
 
-int MetadataBase::CheckType(uint32_t tag, uint8_t expected_type) {
+int CameraMetadata::CheckType(uint32_t tag, uint8_t expected_type) {
   int tagType = get_camera_metadata_tag_type(tag);
   if (tagType == -1) {
     LOGF(ERROR) << "Update metadata entry: Unknown tag " << tag;
@@ -154,10 +154,12 @@ int MetadataBase::CheckType(uint32_t tag, uint8_t expected_type) {
   return 0;
 }
 
-int MetadataBase::Update(uint32_t tag, const int32_t* data, size_t data_count) {
+int CameraMetadata::Update(uint32_t tag,
+                           const int32_t* data,
+                           size_t data_count) {
   int res;
   if (locked_) {
-    LOGF(ERROR) << "MetadataBase is locked";
+    LOGF(ERROR) << "CameraMetadata is locked";
     return -EBUSY;
   }
   if ((res = CheckType(tag, TYPE_INT32))) {
@@ -166,10 +168,12 @@ int MetadataBase::Update(uint32_t tag, const int32_t* data, size_t data_count) {
   return UpdateImpl(tag, (const void*)data, data_count);
 }
 
-int MetadataBase::Update(uint32_t tag, const uint8_t* data, size_t data_count) {
+int CameraMetadata::Update(uint32_t tag,
+                           const uint8_t* data,
+                           size_t data_count) {
   int res;
   if (locked_) {
-    LOGF(ERROR) << "MetadataBase is locked";
+    LOGF(ERROR) << "CameraMetadata is locked";
     return -EBUSY;
   }
   if ((res = CheckType(tag, TYPE_BYTE))) {
@@ -178,10 +182,10 @@ int MetadataBase::Update(uint32_t tag, const uint8_t* data, size_t data_count) {
   return UpdateImpl(tag, (const void*)data, data_count);
 }
 
-int MetadataBase::Update(uint32_t tag, const float* data, size_t data_count) {
+int CameraMetadata::Update(uint32_t tag, const float* data, size_t data_count) {
   int res;
   if (locked_) {
-    LOGF(ERROR) << "MetadataBase is locked";
+    LOGF(ERROR) << "CameraMetadata is locked";
     return -EBUSY;
   }
   if ((res = CheckType(tag, TYPE_FLOAT))) {
@@ -190,10 +194,12 @@ int MetadataBase::Update(uint32_t tag, const float* data, size_t data_count) {
   return UpdateImpl(tag, (const void*)data, data_count);
 }
 
-int MetadataBase::Update(uint32_t tag, const int64_t* data, size_t data_count) {
+int CameraMetadata::Update(uint32_t tag,
+                           const int64_t* data,
+                           size_t data_count) {
   int res;
   if (locked_) {
-    LOGF(ERROR) << "MetadataBase is locked";
+    LOGF(ERROR) << "CameraMetadata is locked";
     return -EBUSY;
   }
   if ((res = CheckType(tag, TYPE_INT64))) {
@@ -202,10 +208,12 @@ int MetadataBase::Update(uint32_t tag, const int64_t* data, size_t data_count) {
   return UpdateImpl(tag, (const void*)data, data_count);
 }
 
-int MetadataBase::Update(uint32_t tag, const double* data, size_t data_count) {
+int CameraMetadata::Update(uint32_t tag,
+                           const double* data,
+                           size_t data_count) {
   int res;
   if (locked_) {
-    LOGF(ERROR) << "MetadataBase is locked";
+    LOGF(ERROR) << "CameraMetadata is locked";
     return -EBUSY;
   }
   if ((res = CheckType(tag, TYPE_DOUBLE))) {
@@ -214,12 +222,12 @@ int MetadataBase::Update(uint32_t tag, const double* data, size_t data_count) {
   return UpdateImpl(tag, (const void*)data, data_count);
 }
 
-int MetadataBase::Update(uint32_t tag,
-                         const camera_metadata_rational_t* data,
-                         size_t data_count) {
+int CameraMetadata::Update(uint32_t tag,
+                           const camera_metadata_rational_t* data,
+                           size_t data_count) {
   int res;
   if (locked_) {
-    LOGF(ERROR) << "MetadataBase is locked";
+    LOGF(ERROR) << "CameraMetadata is locked";
     return -EBUSY;
   }
   if ((res = CheckType(tag, TYPE_RATIONAL))) {
@@ -228,10 +236,10 @@ int MetadataBase::Update(uint32_t tag,
   return UpdateImpl(tag, (const void*)data, data_count);
 }
 
-int MetadataBase::Update(uint32_t tag, const std::string& string) {
+int CameraMetadata::Update(uint32_t tag, const std::string& string) {
   int res;
   if (locked_) {
-    LOGF(ERROR) << "MetadataBase is locked";
+    LOGF(ERROR) << "CameraMetadata is locked";
     return -EBUSY;
   }
   if ((res = CheckType(tag, TYPE_BYTE))) {
@@ -241,12 +249,12 @@ int MetadataBase::Update(uint32_t tag, const std::string& string) {
   return UpdateImpl(tag, (const void*)string.c_str(), string.size() + 1);
 }
 
-int MetadataBase::UpdateImpl(uint32_t tag,
-                             const void* data,
-                             size_t data_count) {
+int CameraMetadata::UpdateImpl(uint32_t tag,
+                               const void* data,
+                               size_t data_count) {
   int res;
   if (locked_) {
-    LOGF(ERROR) << "MetadataBase is locked";
+    LOGF(ERROR) << "CameraMetadata is locked";
     return -EBUSY;
   }
   int type = get_camera_metadata_tag_type(tag);
@@ -295,16 +303,16 @@ int MetadataBase::UpdateImpl(uint32_t tag,
   return res;
 }
 
-bool MetadataBase::Exists(uint32_t tag) const {
+bool CameraMetadata::Exists(uint32_t tag) const {
   camera_metadata_ro_entry entry;
   return find_camera_metadata_ro_entry(buffer_, tag, &entry) == 0;
 }
 
-camera_metadata_entry_t MetadataBase::Find(uint32_t tag) {
+camera_metadata_entry_t CameraMetadata::Find(uint32_t tag) {
   int res;
   camera_metadata_entry entry;
   if (locked_) {
-    LOGF(ERROR) << "MetadataBase is locked";
+    LOGF(ERROR) << "CameraMetadata is locked";
     entry.count = 0;
     return entry;
   }
@@ -316,7 +324,7 @@ camera_metadata_entry_t MetadataBase::Find(uint32_t tag) {
   return entry;
 }
 
-camera_metadata_ro_entry_t MetadataBase::Find(uint32_t tag) const {
+camera_metadata_ro_entry_t CameraMetadata::Find(uint32_t tag) const {
   int res;
   camera_metadata_ro_entry entry;
   res = find_camera_metadata_ro_entry(buffer_, tag, &entry);
@@ -327,11 +335,11 @@ camera_metadata_ro_entry_t MetadataBase::Find(uint32_t tag) const {
   return entry;
 }
 
-int MetadataBase::Erase(uint32_t tag) {
+int CameraMetadata::Erase(uint32_t tag) {
   camera_metadata_entry_t entry;
   int res;
   if (locked_) {
-    LOGF(ERROR) << "MetadataBase is locked";
+    LOGF(ERROR) << "CameraMetadata is locked";
     return -EBUSY;
   }
   res = find_camera_metadata_entry(buffer_, tag, &entry);
@@ -354,11 +362,11 @@ int MetadataBase::Erase(uint32_t tag) {
   return res;
 }
 
-void MetadataBase::Dump(int fd, int verbosity, int indentation) const {
+void CameraMetadata::Dump(int fd, int verbosity, int indentation) const {
   dump_indented_camera_metadata(buffer_, fd, verbosity, indentation);
 }
 
-int MetadataBase::ResizeIfNeeded(size_t extra_entries, size_t extra_data) {
+int CameraMetadata::ResizeIfNeeded(size_t extra_entries, size_t extra_data) {
   if (buffer_ == NULL) {
     buffer_ = allocate_camera_metadata(extra_entries * 2, extra_data * 2);
     if (buffer_ == NULL) {

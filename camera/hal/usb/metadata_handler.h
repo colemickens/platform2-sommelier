@@ -3,12 +3,12 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_USB_CAMERA_METADATA_H_
-#define HAL_USB_CAMERA_METADATA_H_
+#ifndef HAL_USB_METADATA_HANDLER_H_
+#define HAL_USB_METADATA_HANDLER_H_
 
 #include <memory>
 
-#include "arc/metadata_base.h"
+#include "arc/camera_metadata.h"
 #include "hal/usb/common_types.h"
 
 #define UPDATE(tag, data, size)                      \
@@ -30,20 +30,20 @@ struct CameraMetadataDeleter {
 typedef std::unique_ptr<camera_metadata_t, CameraMetadataDeleter>
     CameraMetadataUniquePtr;
 
-class CameraMetadata : public MetadataBase {
+class MetadataHandler : public CameraMetadata {
  public:
   // Creates an empty object.
-  CameraMetadata();
+  MetadataHandler();
   // Takes ownership of passed-in buffer.
-  explicit CameraMetadata(camera_metadata_t* buffer);
+  explicit MetadataHandler(camera_metadata_t* buffer);
   // Clones the metadata.
-  CameraMetadata(const CameraMetadata& other);
+  MetadataHandler(const MetadataHandler& other);
 
   // Assignment clones metadata buffer.
-  CameraMetadata& operator=(const CameraMetadata& other);
-  CameraMetadata& operator=(const camera_metadata_t* buffer);
+  MetadataHandler& operator=(const MetadataHandler& other);
+  MetadataHandler& operator=(const camera_metadata_t* buffer);
 
-  ~CameraMetadata();
+  ~MetadataHandler();
 
   int FillDefaultMetadata();
 
@@ -60,4 +60,4 @@ class CameraMetadata : public MetadataBase {
 
 }  // namespace arc
 
-#endif  // HAL_USB_CAMERA_METADATA_H_
+#endif  // HAL_USB_METADATA_HANDLER_H_

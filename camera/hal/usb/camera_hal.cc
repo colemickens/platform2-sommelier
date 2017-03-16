@@ -8,8 +8,8 @@
 #include <base/bind.h>
 
 #include "arc/common.h"
-#include "hal/usb/camera_metadata.h"
 #include "hal/usb/common_types.h"
+#include "hal/usb/metadata_handler.h"
 #include "hal/usb/stream_format.h"
 #include "hal/usb/v4l2_camera_device.h"
 
@@ -21,7 +21,7 @@ CameraHal::CameraHal() {
   VLOGF(1) << "Number of cameras is " << GetNumberOfCameras();
 
   for (auto& device_info : device_infos_) {
-    CameraMetadata metadata;
+    MetadataHandler metadata;
     metadata.FillDefaultMetadata();
     metadata.FillMetadataFromDeviceInfo(device_info);
 

@@ -3,7 +3,7 @@
  * found in the LICENSE file.
  */
 
-#include "hal/usb/camera_metadata.h"
+#include "hal/usb/metadata_handler.h"
 
 #include <cmath>
 #include <limits>
@@ -16,27 +16,27 @@
 
 namespace arc {
 
-CameraMetadata::CameraMetadata() {}
+MetadataHandler::MetadataHandler() {}
 
-CameraMetadata::CameraMetadata(camera_metadata_t* buffer)
-    : MetadataBase(buffer) {}
+MetadataHandler::MetadataHandler(camera_metadata_t* buffer)
+    : CameraMetadata(buffer) {}
 
-CameraMetadata::CameraMetadata(const CameraMetadata& other)
-    : MetadataBase(other) {}
+MetadataHandler::MetadataHandler(const MetadataHandler& other)
+    : CameraMetadata(other) {}
 
-CameraMetadata& CameraMetadata::operator=(const CameraMetadata& other) {
-  MetadataBase::operator=(other);
+MetadataHandler& MetadataHandler::operator=(const MetadataHandler& other) {
+  CameraMetadata::operator=(other);
   return *this;
 }
 
-CameraMetadata& CameraMetadata::operator=(const camera_metadata_t* buffer) {
-  MetadataBase::operator=(buffer);
+MetadataHandler& MetadataHandler::operator=(const camera_metadata_t* buffer) {
+  CameraMetadata::operator=(buffer);
   return *this;
 }
 
-CameraMetadata::~CameraMetadata() {}
+MetadataHandler::~MetadataHandler() {}
 
-int CameraMetadata::FillDefaultMetadata() {
+int MetadataHandler::FillDefaultMetadata() {
   uint8_t hardware_level = ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED;
   UPDATE(ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL, &hardware_level, 1);
 
@@ -154,7 +154,7 @@ int CameraMetadata::FillDefaultMetadata() {
   return 0;
 }
 
-int CameraMetadata::FillMetadataFromSupportedFormats(
+int MetadataHandler::FillMetadataFromSupportedFormats(
     const SupportedFormats& supported_formats) {
   if (supported_formats.empty()) {
     return -EINVAL;
@@ -257,7 +257,7 @@ int CameraMetadata::FillMetadataFromSupportedFormats(
   return 0;
 }
 
-int CameraMetadata::FillMetadataFromDeviceInfo(const DeviceInfo& device_info) {
+int MetadataHandler::FillMetadataFromDeviceInfo(const DeviceInfo& device_info) {
   UPDATE(ANDROID_SENSOR_ORIENTATION, &device_info.sensor_orientation, 1);
 
   uint8_t lens_facing = device_info.lens_facing;
@@ -288,7 +288,7 @@ int CameraMetadata::FillMetadataFromDeviceInfo(const DeviceInfo& device_info) {
   return 0;
 }
 
-CameraMetadataUniquePtr CameraMetadata::CreateDefaultRequestSettings(
+CameraMetadataUniquePtr MetadataHandler::CreateDefaultRequestSettings(
     int template_type) {
   uint8_t capture_intent;
   switch (template_type) {
@@ -315,7 +315,7 @@ CameraMetadataUniquePtr CameraMetadata::CreateDefaultRequestSettings(
       return NULL;
   }
 
-  CameraMetadata metadata(*this);
+  MetadataHandler metadata(*this);
   uint8_t control_mode = ANDROID_CONTROL_MODE_AUTO;
 
   if (metadata.Update(ANDROID_CONTROL_MODE, &control_mode, 1) ||
@@ -325,7 +325,7 @@ CameraMetadataUniquePtr CameraMetadata::CreateDefaultRequestSettings(
   return CameraMetadataUniquePtr(metadata.Release());
 }
 
-bool CameraMetadata::IsValidTemplateType(int type) {
+bool MetadataHandler::IsValidTemplateType(int type) {
   return type > 0 && type < CAMERA3_TEMPLATE_COUNT;
 }
 

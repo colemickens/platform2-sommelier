@@ -10,7 +10,7 @@
 
 #include <hardware/camera3.h>
 
-#include "hal/usb/camera_metadata.h"
+#include "arc/camera_metadata.h"
 
 namespace arc {
 

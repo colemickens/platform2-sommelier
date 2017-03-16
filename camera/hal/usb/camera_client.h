@@ -20,10 +20,10 @@
 #include <hardware/hardware.h>
 
 #include "hal/usb/cached_frame.h"
-#include "hal/usb/camera_metadata.h"
 #include "hal/usb/capture_request.h"
 #include "hal/usb/common_types.h"
 #include "hal/usb/frame_buffer.h"
+#include "hal/usb/metadata_handler.h"
 #include "hal/usb/v4l2_camera_device.h"
 
 namespace arc {
@@ -107,7 +107,7 @@ class CameraClient {
   base::ThreadChecker ops_thread_checker_;
 
   // Metadata containing persistent camera characteristics.
-  CameraMetadata metadata_;
+  MetadataHandler metadata_;
 
   // Methods used to call back into the framework.
   const camera3_callback_ops_t* callback_ops_;

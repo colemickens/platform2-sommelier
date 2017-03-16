@@ -3,8 +3,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_ARC_METADATA_BASE_H_
-#define INCLUDE_ARC_METADATA_BASE_H_
+#ifndef INCLUDE_ARC_CAMERA_METADATA_H_
+#define INCLUDE_ARC_CAMERA_METADATA_H_
 
 #include <string>
 #include <vector>
@@ -14,40 +14,40 @@
 
 namespace arc {
 
-// MetadataBase is a convenience class for dealing with libcamera_metadata
-class MetadataBase {
+// CameraMetadata is a convenience class for dealing with libcamera_metadata
+class CameraMetadata {
  public:
   // Creates an empty object; best used when expecting to acquire contents
   // from elsewhere
-  MetadataBase();
+  CameraMetadata();
   // Takes ownership of passed-in buffer
-  explicit MetadataBase(camera_metadata_t* buffer);
+  explicit CameraMetadata(camera_metadata_t* buffer);
   // Clones the metadata
-  MetadataBase(const MetadataBase& other);
+  CameraMetadata(const CameraMetadata& other);
 
   // Assignment clones metadata buffer.
-  MetadataBase& operator=(const MetadataBase& other);
-  MetadataBase& operator=(const camera_metadata_t* buffer);
+  CameraMetadata& operator=(const CameraMetadata& other);
+  CameraMetadata& operator=(const camera_metadata_t* buffer);
 
-  ~MetadataBase();
+  ~CameraMetadata();
 
   // Get reference to the underlying metadata buffer. Ownership remains with
-  // the MetadataBase object, but non-const MetadataBase methods will not
+  // the CameraMetadata object, but non-const CameraMetadata methods will not
   // work until unlock() is called. Note that the lock has nothing to do with
   // thread-safety, it simply prevents the camera_metadata_t pointer returned
-  // here from being accidentally invalidated by MetadataBase operations.
+  // here from being accidentally invalidated by CameraMetadata operations.
   const camera_metadata_t* GetAndLock() const;
 
-  // Unlock the MetadataBase for use again. After this unlock, the pointer
+  // Unlock the CameraMetadata for use again. After this unlock, the pointer
   // given from getAndLock() may no longer be used. The pointer passed out
   // from getAndLock must be provided to guarantee that the right object is
   // being unlocked.
   int Unlock(const camera_metadata_t* buffer);
 
   // Release a raw metadata buffer to the caller. After this call,
-  // MetadataBase no longer references the buffer, and the caller takes
+  // CameraMetadata no longer references the buffer, and the caller takes
   // responsibility for freeing the raw metadata buffer (using
-  // free_camera_metadata()), or for handing it to another MetadataBase
+  // free_camera_metadata()), or for handing it to another CameraMetadata
   // instance.
   camera_metadata_t* Release();
 
@@ -56,15 +56,15 @@ class MetadataBase {
 
   // Acquire a raw metadata buffer from the caller. After this call,
   // the caller no longer owns the raw buffer, and must not free or manipulate
-  // it. If MetadataBase already contains metadata, it is freed.
+  // it. If CameraMetadata already contains metadata, it is freed.
   void Acquire(camera_metadata_t* buffer);
 
-  // Acquires raw buffer from other MetadataBase object. After the call, the
+  // Acquires raw buffer from other CameraMetadata object. After the call, the
   // argument object no longer has any metadata.
-  void Acquire(MetadataBase* other);
+  void Acquire(CameraMetadata* other);
 
-  // Append metadata from another MetadataBase object.
-  int Append(const MetadataBase& other);
+  // Append metadata from another CameraMetadata object.
+  int Append(const CameraMetadata& other);
 
   // Append metadata from a raw camera_metadata buffer.
   int Append(const camera_metadata* other);
@@ -133,4 +133,4 @@ class MetadataBase {
 
 }  // namespace arc
 
-#endif  // INCLUDE_ARC_METADATA_BASE_H_
+#endif  // INCLUDE_ARC_CAMERA_METADATA_H_

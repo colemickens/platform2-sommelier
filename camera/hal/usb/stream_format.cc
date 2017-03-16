@@ -8,7 +8,7 @@
 #include <linux/videodev2.h>
 
 #include "arc/common.h"
-#include "hal/usb/camera_metadata.h"
+#include "hal/usb/metadata_handler.h"
 
 namespace arc {
 

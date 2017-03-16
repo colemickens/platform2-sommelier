@@ -48,7 +48,7 @@ COMMON_OBJECTS := \
 	common/future.o
 
 COMMON_OBJECTS_FOR_USB_HAL := \
+	common/camera_metadata.o \
 	common/exif_utils.o \
 	common/future.o \
-	common/jpeg_compressor.o \
-	common/metadata_base.o
+	common/jpeg_compressor.o

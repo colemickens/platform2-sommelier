@@ -15,7 +15,7 @@
 #include "hal/usb/cached_frame.h"
 #include "hal/usb/camera_hal.h"
 #include "hal/usb/camera_hal_device_ops.h"
-#include "hal/usb/camera_metadata.h"
+#include "hal/usb/metadata_handler.h"
 #include "hal/usb/stream_format.h"
 
 namespace arc {
@@ -160,7 +160,7 @@ const camera_metadata_t* CameraClient::ConstructDefaultRequestSettings(
   VLOGFID(1, id_) << "type=" << type;
   DCHECK(ops_thread_checker_.CalledOnValidThread());
 
-  if (!CameraMetadata::IsValidTemplateType(type)) {
+  if (!MetadataHandler::IsValidTemplateType(type)) {
     LOGFID(ERROR, id_) << "Invalid template request type: " << type;
     return nullptr;
   }
