@@ -104,7 +104,7 @@ IAPFirmwareUpdater::IAPFirmwareUpdater(uint8_t i2cBusMin, uint8_t i2cBusMax,
                                        uint8_t slaveAddress) {
   char dev_path[kMaxI2CDevicePathLen];
 
-  for (uint8_t i = i2cBusMin; i <= i2cBusMax; i++) {
+  for (uint8_t i = i2cBusMax; i >= i2cBusMin; i--) {
     snprintf(dev_path, kMaxI2CDevicePathLen, "/dev/i2c-%d", i);
     LOG(INFO) << "Attempting to probe <" << dev_path << "> for a touchpad";
     i2c_fd_ = open(dev_path, O_RDWR);
