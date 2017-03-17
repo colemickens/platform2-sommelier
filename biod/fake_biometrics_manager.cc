@@ -226,39 +226,46 @@ void FakeBiometricsManager::OnFileCanReadWithoutBlocking(int fd) {
       BiometricsManager::AttemptMatches matches;
       for (uint8_t match_index = 0; match_index < match_user_count;
            match_index++) {
-        uint8_t id_size;
-        if (read(fd, &id_size, sizeof(id_size)) != sizeof(id_size))
+        uint8_t user_id_size;
+        if (read(fd, &user_id_size, sizeof(user_id_size)) !=
+            sizeof(user_id_size))
           return;
 
-        std::string user_id(id_size, '\0');
+        std::string user_id(user_id_size, '\0');
         if (read(fd, &user_id.front(), user_id.size()) != user_id.size())
           return;
 
-        // These labels are interpreted as enrollment identifiers by biod and
+        // These record IDs are interpreted as record identifiers by biod and
         // its clients.
-        // TODO(mqg): labels -> record ids
-        std::vector<std::string>& labels = matches[user_id];
+        std::vector<std::string>& record_ids = matches[user_id];
 
-        uint8_t label_count;
-        if (read(fd, &label_count, sizeof(label_count)) != sizeof(label_count))
+        uint8_t record_id_count;
+        if (read(fd, &record_id_count, sizeof(record_id_count)) !=
+            sizeof(record_id_count))
           return;
 
-        for (uint8_t label_index = 0; label_index < label_count;
-             label_index++) {
-          uint8_t label_size;
-          if (read(fd, &label_size, sizeof(label_size)) != sizeof(label_size))
+        for (uint8_t record_id_index = 0; record_id_index < record_id_count;
+             record_id_index++) {
+          uint8_t record_id_size;
+          if (read(fd, &record_id_size, sizeof(record_id_size)) !=
+              sizeof(record_id_size))
             return;
 
-          std::string label(label_size, '\0');
-          int ret = read(fd, &label.front(), label.size());
-          if (ret != label.size()) {
-            LOG(ERROR) << "failed to read label " << errno;
+          std::string record_id(record_id_size, '\0');
+          int ret = read(fd, &record_id.front(), record_id.size());
+          if (ret != record_id.size()) {
+            LOG(ERROR) << "failed to read record id " << errno;
             return;
           }
 
-          labels.emplace_back(std::move(label));
+          record_ids.emplace_back(std::move(record_id));
         }
-        LOG(INFO) << "Recognized User " << user_id;
+        std::string record_ids_joined;
+        for (const auto& record_id : record_ids) {
+          record_ids_joined += " \"" + record_id + "\"";
+        }
+        LOG(INFO) << "Recognized User " << user_id
+                  << " with record ids:" << record_ids_joined;
       }
 
       if (!on_auth_scan_done_.is_null() && mode_ == Mode::kAuthSession)

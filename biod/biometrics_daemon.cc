@@ -239,12 +239,21 @@ void BiometricsManagerWrapper::OnAuthScanDone(
     dbus::MessageWriter writer(&auth_scan_done_signal);
     writer.AppendUint32(static_cast<uint32_t>(scan_result));
     dbus::MessageWriter matches_writer(nullptr);
-    writer.OpenArray("{sas}", &matches_writer);
+    writer.OpenArray("{sao}", &matches_writer);
     for (const auto& match : matches) {
       dbus::MessageWriter entry_writer(nullptr);
       matches_writer.OpenDictEntry(&entry_writer);
       entry_writer.AppendString(match.first);
-      entry_writer.AppendArrayOfStrings(match.second);
+      std::vector<ObjectPath> record_object_paths;
+      record_object_paths.resize(match.second.size());
+      std::transform(match.second.begin(),
+                     match.second.end(),
+                     record_object_paths.begin(),
+                     [this](const std::string& record_id) {
+                       return ObjectPath(object_path_.value() +
+                                         std::string("/Record") + record_id);
+                     });
+      entry_writer.AppendArrayOfObjectPaths(record_object_paths);
       matches_writer.CloseContainer(&entry_writer);
     }
     writer.CloseContainer(&matches_writer);

@@ -629,12 +629,12 @@ void FpcBiometricsManager::DoAuthSessionTask(
             break;
           case BIO_TEMPLATE_MATCH_UPDATED:  // record.tmpl got updated
             updated_record_ids->insert(kv.first);
-          case BIO_TEMPLATE_MATCH:
-            // TODO(mqg): insert record id into vector of string
-            matches.emplace(
-                record.user_id,
-                std::vector<std::string>() /* empty record id list */);
+          case BIO_TEMPLATE_MATCH: {
+            auto emplace_result =
+                matches.emplace(record.user_id, std::vector<std::string>());
+            emplace_result.first->second.emplace_back(kv.first);
             break;
+          }
           case BIO_TEMPLATE_LOW_QUALITY:
             result = BiometricsManager::ScanResult::kInsufficient;
             break;

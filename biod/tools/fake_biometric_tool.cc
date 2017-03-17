@@ -32,9 +32,10 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(attempt,
                -1,
                "signal an authentication attempt with the given scan result "
-               "code; user IDs and associated labels are specified with the "
-               "remaining arguments and each user ID/label set is delimited "
-               "with '-', for example '0001 thumb index - 0002 big pinky'.");
+               "code; user IDs and associated record IDs are specified with "
+               "the remaining arguments and each user ID/record ID set is "
+               "delimited with '-', for example '0001 Record1 - 0002 Record2 "
+               "Record3'.");
 
   brillo::FlagHelper::Init(argc,
                            argv,
@@ -70,11 +71,11 @@ int main(int argc, char* argv[]) {
   if (FLAGS_attempt >= 0) {
     std::unordered_map<std::string, std::vector<std::string>> matches;
     bool new_match = true;
-    std::vector<std::string>* labels = nullptr;
+    std::vector<std::string>* record_ids = nullptr;
     for (const auto& arg : base::CommandLine::ForCurrentProcess()->GetArgs()) {
       if (arg == "-") {
         new_match = true;
-        labels = nullptr;
+        record_ids = nullptr;
         continue;
       }
 
@@ -88,25 +89,26 @@ int main(int argc, char* argv[]) {
         auto emplace_result = matches.emplace(arg, std::vector<std::string>());
         if (!emplace_result.second)
           LOG(WARNING) << "User ID " << arg << " was repeated.";
-        labels = &emplace_result.first->second;
+        record_ids = &emplace_result.first->second;
         new_match = false;
         continue;
       }
 
-      if (!labels)
+      if (!record_ids)
         continue;
 
-      if (labels->size() >= UINT8_MAX) {
-        LOG(WARNING) << "Only " << UINT8_MAX << " labels pe match can be sent. "
-                     << "The remaining labels will be truncated.";
+      if (record_ids->size() >= UINT8_MAX) {
+        LOG(WARNING) << "Only " << UINT8_MAX
+                     << " record IDs per match can be sent. "
+                     << "The remaining record IDs will be truncated.";
         continue;
       }
 
-      labels->emplace_back(arg);
-      if (labels->back().size() > UINT8_MAX) {
-        LOG(WARNING) << "Label \"" << arg << "\" is longer than " << UINT8_MAX
-                     << ". This label will be truncated.";
-        labels->back().resize(UINT8_MAX);
+      record_ids->emplace_back(arg);
+      if (record_ids->back().size() > UINT8_MAX) {
+        LOG(WARNING) << "Record ID \"" << arg << "\" is longer than "
+                     << UINT8_MAX << ". This Record ID will be truncated.";
+        record_ids->back().resize(UINT8_MAX);
       }
     }
     std::vector<uint8_t> cmd = {FAKE_BIOMETRIC_MAGIC_BYTES,
@@ -115,13 +117,13 @@ int main(int argc, char* argv[]) {
                                 static_cast<uint8_t>(matches.size())};
     for (const auto& match : matches) {
       const std::string& user_id = match.first;
-      const std::vector<std::string>& labels = match.second;
+      const std::vector<std::string>& record_ids = match.second;
       cmd.push_back(static_cast<uint8_t>(user_id.size()));
       cmd.insert(cmd.end(), user_id.begin(), user_id.end());
-      cmd.push_back(static_cast<uint8_t>(labels.size()));
-      for (const auto& label : labels) {
-        cmd.push_back(static_cast<uint8_t>(label.size()));
-        cmd.insert(cmd.end(), label.begin(), label.end());
+      cmd.push_back(static_cast<uint8_t>(record_ids.size()));
+      for (const auto& record_id : record_ids) {
+        cmd.push_back(static_cast<uint8_t>(record_id.size()));
+        cmd.insert(cmd.end(), record_id.begin(), record_id.end());
       }
     }
     CHECK(write(fake_input.get(), cmd.data(), cmd.size()) ==

@@ -308,17 +308,19 @@ class BiometricsManagerProxy {
       std::string user_id;
       CHECK(entry_reader.PopString(&user_id));
 
-      dbus::MessageReader labels_reader(nullptr);
-      CHECK(entry_reader.PopArray(&labels_reader));
-      std::stringstream labels_joined;
-      while (labels_reader.HasMoreData()) {
-        std::string label;
-        CHECK(labels_reader.PopString(&label));
-        labels_joined << '"' << label << "\" ";
+      dbus::MessageReader record_object_paths_reader(nullptr);
+      CHECK(entry_reader.PopArray(&record_object_paths_reader));
+      std::stringstream record_object_paths_joined;
+      while (record_object_paths_reader.HasMoreData()) {
+        dbus::ObjectPath record_object_path;
+        CHECK(record_object_paths_reader.PopObjectPath(&record_object_path));
+        record_object_paths_joined << " \"" << record_object_path.value()
+                                   << "\"";
       }
 
-      LOG(INFO) << "Recognized user ID \"" << user_id << "\" with labels "
-                << labels_joined.str();
+      LOG(INFO) << "Recognized user ID \"" << user_id
+                << "\" with record object paths"
+                << record_object_paths_joined.str();
     }
   }
 
