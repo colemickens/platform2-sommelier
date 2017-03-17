@@ -243,15 +243,6 @@ if [ -O ${RESET_FILE} ]; then
   chromeos-boot-alert power_wash
 elif [ -z "$FACTORY_MODE" -a "$FIRMWARE_TYPE" != "recovery" ]; then
   if crossystem "devsw_boot?1" ; then
-    # We've booted in dev mode.  For platforms using separated
-    # normal/developer firmware, we need to display an extra boot
-    # alert for the developer mode warning plus the 30-second delay.
-    # Note that we want this message and the delay regardless of
-    # whether we plan to wipe.
-    if [ "$FIRMWARE_TYPE" != "developer" ]; then
-      chromeos-boot-alert warn_dev
-    fi
-
     if [ ! -O ${DEV_MODE_FILE} ] && crossystem "debug_build?0"; then
       # We're transitioning from verified boot to dev mode.
       # TODO(wad,wfrichar) Have user provide sudo/vt2 password here.
