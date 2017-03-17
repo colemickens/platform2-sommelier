@@ -421,6 +421,15 @@ std::string DebugDaemon::SwapStatus(DBus::Error& error) {  // NOLINT
   return swap_tool_->SwapStatus(&error);
 }
 
+std::string DebugDaemon::SwapShowMargin(DBus::Error& error) {  // NOLINT
+  return swap_tool_->SwapShowMargin(&error);
+}
+
+std::string DebugDaemon::SwapSetMargin(const uint32_t& margin,
+                                       DBus::Error& error) {  // NOLINT
+  return swap_tool_->SwapSetMargin(margin, &error);
+}
+
 bool DebugDaemon::SetWifiDriverDebug(const int32_t& flags,
                                      DBus::Error& error) {  // NOLINT
   return wifi_debug_tool_->SetEnabled(debugd::WifiDebugFlag(flags), &error);

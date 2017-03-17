@@ -777,6 +777,27 @@
         Free-form text reporting status.
       </arg>
     </method>
+    <method name="SwapShowMargin">
+      <tp:docstring>
+        Show current low-memory notifier margin.
+      </tp:docstring>
+      <arg name="margin" type="s" direction="out">
+        Unsigned integer with memory margin in MB.
+      </arg>
+    </method>
+    <method name="SwapSetMargin">
+      <tp:docstring>
+        Set low-memory notifier threshold in MB persistently.
+      </tp:docstring>
+      <arg name="status" type="s" direction="out">
+        Free-form text reporting status.
+      </arg>
+      <arg name="margin" type="u" direction="in">
+        <tp:docstring>
+          Threshold (in MB) for memory notifier.
+        </tp:docstring>
+      </arg>
+    </method>
     <method name="SetWifiDriverDebug">
       <tp:docstring>
         Enable/disable Wifi driver debugging.
