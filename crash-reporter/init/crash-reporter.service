@@ -1,14 +1,8 @@
 [Unit]
 Description=Initialize Crash Reporter
-DefaultDependencies=no
-Conflicts=shutdown.target
-Requires=syslog.socket
-Before=sysinit.target shutdown.target
-After=local-fs.target syslog.socket
 
 [Service]
 Type=oneshot
-RemainAfterExit=yes
 ExecStart=/sbin/crash_reporter --init
 
 [Install]

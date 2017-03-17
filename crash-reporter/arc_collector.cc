@@ -373,7 +373,6 @@ void ArcCollector::AddArcMetaData(const std::string &process,
 
   int64_t start_time;
   brillo::ErrorPtr error;
-  SetUpDBus();
   if (session_manager_proxy_->GetArcStartTimeTicks(&start_time, &error)) {
     const uint64_t delta = static_cast<uint64_t>((TimeTicks::Now() -
         TimeTicks::FromInternalValue(start_time)).InSeconds());
