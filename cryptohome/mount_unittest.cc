@@ -203,7 +203,7 @@ class MountTest
 
   Mount::MountArgs GetDefaultMountArgs() const {
     Mount::MountArgs args;
-    args.force_ecryptfs = ShouldTestEcryptfs();
+    args.create_as_ecryptfs = ShouldTestEcryptfs();
     return args;
   }
 

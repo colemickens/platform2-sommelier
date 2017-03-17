@@ -398,7 +398,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   bool created = false;
   MountError ensure_error = EnsureCryptohome(
-      credentials, mount_args.force_ecryptfs, &created);
+      credentials, mount_args.create_as_ecryptfs, &created);
   if (ensure_error != MOUNT_ERROR_NONE) {
     LOG(ERROR) << "Error creating cryptohome.";
     *mount_error = ensure_error;
@@ -464,6 +464,9 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     *mount_error = MOUNT_ERROR_KEY_FAILURE;
     return false;
   }
+
+  // TODO(kinaba): Detect incomplete migration to dircrypto and return error.
+  // TODO(kinaba): Check regarding mount_args.force_dircrypto.
 
   std::string ecryptfs_options;
   switch (mount_type_) {

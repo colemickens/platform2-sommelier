@@ -85,17 +85,22 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   struct MountArgs {
     bool create_if_missing;
     bool ensure_ephemeral;
-    bool force_ecryptfs;
+    // When creating a new cryptohome from scratch, use ecryptfs.
+    bool create_as_ecryptfs;
+    // Forces dircrypto, i.e., makes it an error to mount ecryptfs.
+    bool force_dircrypto;
 
     MountArgs() : create_if_missing(false),
                   ensure_ephemeral(false),
-                  force_ecryptfs(false) {
+                  create_as_ecryptfs(false),
+                  force_dircrypto(false) {
     }
 
     void CopyFrom(const MountArgs& rhs) {
       this->create_if_missing = rhs.create_if_missing;
       this->ensure_ephemeral = rhs.ensure_ephemeral;
-      this->force_ecryptfs = rhs.force_ecryptfs;
+      this->create_as_ecryptfs = rhs.create_as_ecryptfs;
+      this->force_dircrypto = rhs.force_dircrypto;
     }
   };
 

@@ -1676,7 +1676,10 @@ gboolean Service::Mount(const gchar *userid,
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
   mount_args.ensure_ephemeral = ensure_ephemeral;
-  mount_args.force_ecryptfs = force_ecryptfs_;
+  mount_args.create_as_ecryptfs = force_ecryptfs_;
+  // TODO(kinaba): Currently Mount is not used for type of accounts that
+  // we need to force dircrypto. Add an option when it becomes necessary.
+  mount_args.force_dircrypto = false;
   scoped_refptr<MountTaskMount> mount_task = new MountTaskMount(
                                                             NULL,
                                                             user_mount.get(),
@@ -1865,7 +1868,10 @@ void Service::DoMountEx(AccountIdentifier* identifier,
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = request->has_create();
   mount_args.ensure_ephemeral = request->require_ephemeral();
-  mount_args.force_ecryptfs = force_ecryptfs_;
+  mount_args.create_as_ecryptfs = force_ecryptfs_;
+  // Force_ecryptfs_ wins.
+  mount_args.force_dircrypto =
+      !force_ecryptfs_ && request->force_dircrypto_if_available();
   bool status = user_mount->MountCryptohome(credentials,
                                             mount_args,
                                             &code);
@@ -2037,7 +2043,10 @@ gboolean Service::AsyncMount(const gchar *userid,
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
   mount_args.ensure_ephemeral = ensure_ephemeral;
-  mount_args.force_ecryptfs = force_ecryptfs_;
+  mount_args.create_as_ecryptfs = force_ecryptfs_;
+  // TODO(kinaba): Currently AsyncMount is not used for type of accounts that
+  // we need to force dircrypto. Add an option when it becomes necessary.
+  mount_args.force_dircrypto = false;
   std::unique_ptr<SecureBlob> key_blob(new SecureBlob(key, key + strlen(key)));
   UsernamePasskey credentials(userid, *key_blob);
   scoped_refptr<MountTaskMount> mount_task = new MountTaskMount(
@@ -2172,7 +2181,10 @@ gboolean Service::AsyncMountPublic(const gchar* public_mount_id,
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
   mount_args.ensure_ephemeral = ensure_ephemeral;
-  mount_args.force_ecryptfs = force_ecryptfs_;
+  mount_args.create_as_ecryptfs = force_ecryptfs_;
+  // TODO(kinaba): Currently AsyncMount is not used for type of accounts that
+  // we need to force dircrypto. Add an option when it becomes necessary.
+  mount_args.force_dircrypto = false;
   std::unique_ptr<SecureBlob> key_blob(new SecureBlob());
   UsernamePasskey credentials(public_mount_id, *key_blob);
   scoped_refptr<MountTaskMount> mount_task = new MountTaskMount(
