@@ -18,6 +18,7 @@
 
 struct native_handle;
 typedef const native_handle* buffer_handle_t;
+struct android_ycbcr;
 
 namespace arc {
 
@@ -123,25 +124,41 @@ typedef std::unordered_map<MappedBufferInfoKeyType,
 //    /* Error handling */
 //  }
 //  mapper->Register(buffer_handle);
-//  void* addr = mapper->Map(buffer_handle, ...);
-//  /* access the buffer mapped to |addr| */
-//  mapper->Unmap(buffer_handle, ...);
+//  void* addr;
+//  mapper->Lock(buffer_handle, ..., &addr);
+//  /* Access the buffer mapped to |addr| */
+//  mapper->Unlock(buffer_handle);
 //  mapper->Deregister(buffer_handle);
-//
+
 class EXPORTED CameraBufferMapper {
  public:
   // Gets the singleton instance.  Returns nullptr if any error occurrs during
   // instance creation.
   static CameraBufferMapper* GetInstance();
 
-  // Registers |buffer|.  This needs to be called before |buffer| can be mapped.
+  // This method is analogous to the register() function in Android gralloc
+  // module.  This method needs to be called before |buffer| can be mapped.
+  //
+  // Args:
+  //    |buffer|: The buffer handle to register.
+  //
+  // Returns:
+  //    0 on success; corresponding error code on failure.
   int Register(buffer_handle_t buffer);
 
-  // Deregisters |buffer|.  After |buffer| is unregistered, calling Map or Unmap
-  // on |buffer| will fail.
+  // This method is analogous to the unregister() function in Android gralloc
+  // module.  After |buffer| is deregistered, calling Lock(), LockYCbCr(), or
+  // Unlock() on |buffer| will fail.
+  //
+  // Args:
+  //    |buffer|: The buffer handle to deregister.
+  //
+  // Returns:
+  //    0 on success; corresponding error code on failure.
   int Deregister(buffer_handle_t buffer);
 
-  // Maps |buffer| and returns the mapped address.
+  // This method is analogous to the lock() function in Android gralloc module.
+  // Here the buffer handle is mapped with the given args.
   //
   // Args:
   //    |buffer|: The buffer handle to map.
@@ -150,29 +167,60 @@ class EXPORTED CameraBufferMapper {
   //    |y|: The base y coordinate in pixels.
   //    |width|: The width in pixels of the area to map.
   //    |height|: The height in pixels of the area to map.
-  //    |plane|: The plane to map.
-  //    |out_stride|: The stride in pixels of the mapped area.
+  //    |out_addr|: The mapped address.
   //
   // Returns:
-  //    The mapped address on success; MAP_FAILED on failure.
-  void* Map(buffer_handle_t buffer,
-            uint32_t flags,
-            uint32_t x,
-            uint32_t y,
-            uint32_t width,
-            uint32_t height,
-            uint32_t plane,
-            uint32_t* out_stride);
+  //    0 on success with |out_addr| set with the mapped address;
+  //    -EINVAL on invalid buffer handle or invalid buffer format.
+  int Lock(buffer_handle_t buffer,
+           uint32_t flags,
+           uint32_t x,
+           uint32_t y,
+           uint32_t width,
+           uint32_t height,
+           void** out_addr);
 
-  // Unmaps |buffer|.
+  // This method is analogous to the lock_ycbcr() function in Android gralloc
+  // module.  Here all the physical planes of the buffer handle are mapped with
+  // the given args.
+  //
+  // Args:
+  //    |buffer|: The buffer handle to map.
+  //    |flags|:  Currently omitted and is reserved for future use.
+  //    |x|: The base x coordinate in pixels.
+  //    |y|: The base y coordinate in pixels.
+  //    |width|: The width in pixels of the area to map.
+  //    |height|: The height in pixels of the area to map.
+  //    |out_ycbcr|: The mapped addresses, plane strides and chroma offset.
+  //        - |out_ycbcr.y| stores the mapped address of the Y-plane.
+  //        - |out_ycbcr.cb| stores the mapped address of the Cb-plane.
+  //        - |out_ycbcr.cr| stores the mapped address of the Cr-plane.
+  //        - |out_ycbcr.ystride| stores the stride of the Y-plane.
+  //        - |out_ycbcr.cstride| stores the stride of the chroma planes.
+  //        - |out_ycbcr.chroma_step| stores the distance between two adjacent
+  //          pixels on the chroma plane. The value is 1 for normal planar
+  //          formats, and 2 for semi-planar formats.
+  //
+  // Returns:
+  //    0 on success with |out_ycbcr.y| set with the mapped buffer info;
+  //    -EINVAL on invalid buffer handle or invalid buffer format.
+  int LockYCbCr(buffer_handle_t buffer,
+                uint32_t flags,
+                uint32_t x,
+                uint32_t y,
+                uint32_t width,
+                uint32_t height,
+                struct android_ycbcr* out_ycbcr);
+
+  // This method is analogous to the unlock() function in Android gralloc
+  // module.  Here the buffer is simply unmapped.
   //
   // Args:
   //    |buffer|: The buffer handle to unmap.
-  //    |plane|: The plane to unmap.
   //
   // Returns:
-  //    0 on success; -EINVAL if |buffer| is invalid.
-  int Unmap(buffer_handle_t buffer, uint32_t plane);
+  //    0 on success; -EINVAL on invalid buffer handle.
+  int Unlock(buffer_handle_t buffer);
 
   // Get the number of physical planes associated with |buffer|.
   //
@@ -188,6 +236,37 @@ class EXPORTED CameraBufferMapper {
   friend class tests::CameraBufferMapperTest;
 
   CameraBufferMapper();
+
+  // Maps |buffer| and returns the mapped address.
+  //
+  // Args:
+  //    |buffer|: The buffer handle to map.
+  //    |flags|:  Currently omitted and is reserved for future use.
+  //    |x|: The base x coordinate in pixels.
+  //    |y|: The base y coordinate in pixels.
+  //    |width|: The width in pixels of the area to map.
+  //    |height|: The height in pixels of the area to map.
+  //    |plane|: The plane to map.
+  //
+  // Returns:
+  //    The mapped address on success; MAP_FAILED on failure.
+  void* Map(buffer_handle_t buffer,
+            uint32_t flags,
+            uint32_t x,
+            uint32_t y,
+            uint32_t width,
+            uint32_t height,
+            uint32_t plane);
+
+  // Unmaps |buffer|.
+  //
+  // Args:
+  //    |buffer|: The buffer handle to unmap.
+  //    |plane|: The plane to unmap.
+  //
+  // Returns:
+  //    0 on success; -EINVAL if |buffer| is invalid.
+  int Unmap(buffer_handle_t buffer, uint32_t plane);
 
   // Lock to guard access member variables..
   base::Lock lock_;

@@ -41,6 +41,10 @@ typedef struct camera_buffer_handle {
   static const struct camera_buffer_handle* FromBufferHandle(
       buffer_handle_t handle) {
     auto h = reinterpret_cast<const struct camera_buffer_handle*>(handle);
+    if (!h) {
+      LOG(ERROR) << "Invalid buffer handle";
+      return nullptr;
+    }
     if (h->magic != kCameraBufferMagic) {
       LOG(ERROR) << "Invalid buffer handle: magic=" << h->magic;
       return nullptr;

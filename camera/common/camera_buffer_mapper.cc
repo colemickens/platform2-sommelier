@@ -6,6 +6,8 @@
 
 #include "arc/camera_buffer_mapper.h"
 
+#include <vector>
+
 #include <sys/mman.h>
 
 #include <drm_fourcc.h>
@@ -14,6 +16,7 @@
 #include "arc/common.h"
 #include "common/camera_buffer_handle.h"
 #include "common/camera_buffer_mapper_internal.h"
+#include "system/graphics.h"
 
 namespace arc {
 
@@ -123,14 +126,125 @@ int CameraBufferMapper::Deregister(buffer_handle_t buffer) {
   }
 }
 
+int CameraBufferMapper::Lock(buffer_handle_t buffer,
+                             uint32_t flags,
+                             uint32_t x,
+                             uint32_t y,
+                             uint32_t width,
+                             uint32_t height,
+                             void** out_addr) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return -EINVAL;
+  }
+  int num_planes = GetNumPlanes(buffer);
+  if (num_planes <= 0) {
+    return -EINVAL;
+  }
+  if (num_planes > 1) {
+    LOG(ERROR) << "Lock called on multi-planar buffer 0x" << std::hex
+               << handle->buffer_id;
+    return -EINVAL;
+  }
+
+  *out_addr = Map(buffer, flags, x, y, width, height, 0);
+  if (*out_addr == MAP_FAILED) {
+    return -EINVAL;
+  }
+  return 0;
+}
+
+int CameraBufferMapper::LockYCbCr(buffer_handle_t buffer,
+                                  uint32_t flags,
+                                  uint32_t x,
+                                  uint32_t y,
+                                  uint32_t width,
+                                  uint32_t height,
+                                  struct android_ycbcr* out_ycbcr) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return -EINVAL;
+  }
+  int num_planes = GetNumPlanes(buffer);
+  if (num_planes <= 0) {
+    return -EINVAL;
+  }
+  if (num_planes < 2) {
+    LOG(ERROR) << "Lock called on single-planar buffer 0x" << std::hex
+               << handle->buffer_id;
+    return -EINVAL;
+  }
+
+  DCHECK_LE(num_planes, 3);
+  std::vector<uint8_t*> addr(3);
+  for (size_t i = 0; i < num_planes; ++i) {
+    void* a = Map(buffer, flags, x, y, width, height, i);
+    if (a == MAP_FAILED) {
+      return -EINVAL;
+    }
+    addr[i] = reinterpret_cast<uint8_t*>(a);
+  }
+  out_ycbcr->y = addr[0];
+  out_ycbcr->ystride = handle->strides[0];
+  out_ycbcr->cstride = handle->strides[1];
+
+  if (num_planes == 2) {
+    out_ycbcr->chroma_step = 2;
+    switch (handle->format) {
+      case DRM_FORMAT_NV12:
+        out_ycbcr->cb = addr[1] + handle->offsets[1];
+        out_ycbcr->cr = addr[1] + handle->offsets[1] + 1;
+        break;
+
+      case DRM_FORMAT_NV21:
+        out_ycbcr->cb = addr[1] + handle->offsets[1] + 1;
+        out_ycbcr->cr = addr[1] + handle->offsets[1];
+        break;
+
+      default:
+        LOG(ERROR) << "Unsupported semi-planar format: "
+                   << FormatToString(handle->format);
+        return -EINVAL;
+    }
+  } else {  // num_planes == 3
+    out_ycbcr->chroma_step = 1;
+    switch (handle->format) {
+      case DRM_FORMAT_YUV420:
+        out_ycbcr->cb = addr[1] + handle->offsets[1];
+        out_ycbcr->cr = addr[2] + handle->offsets[2];
+        break;
+
+      case DRM_FORMAT_YVU420:
+        out_ycbcr->cb = addr[2] + handle->offsets[2];
+        out_ycbcr->cr = addr[1] + handle->offsets[1];
+        break;
+
+      default:
+        LOG(ERROR) << "Unsupported semi-planar format: "
+                   << FormatToString(handle->format);
+        return -EINVAL;
+    }
+  }
+  return 0;
+}
+
+int CameraBufferMapper::Unlock(buffer_handle_t buffer) {
+  for (size_t i = 0; i < GetNumPlanes(buffer); ++i) {
+    int ret = Unmap(buffer, i);
+    if (ret) {
+      return ret;
+    }
+  }
+  return 0;
+}
+
 void* CameraBufferMapper::Map(buffer_handle_t buffer,
                               uint32_t flags,
                               uint32_t x,
                               uint32_t y,
                               uint32_t width,
                               uint32_t height,
-                              uint32_t plane,
-                              uint32_t* out_stride) {
+                              uint32_t plane) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
   if (!handle) {
     return MAP_FAILED;
@@ -181,8 +295,9 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
       DCHECK(gbm_bo_.find(buffer) != gbm_bo_.end());
       info = info_cache->second.get();
     }
-    void* out_addr = gbm_bo_map(info->bo, x, y, width, height, flags,
-                                out_stride, &info->map_data, plane);
+    uint32_t stride;
+    void* out_addr = gbm_bo_map(info->bo, x, y, width, height, flags, &stride,
+                                &info->map_data, plane);
     if (out_addr == MAP_FAILED) {
       LOG(ERROR) << "Failed to map buffer: " << strerror(errno);
       return MAP_FAILED;
@@ -300,7 +415,9 @@ int CameraBufferMapper::GetNumPlanes(buffer_handle_t buffer) {
     case DRM_FORMAT_YVYU:
       return 1;
     case DRM_FORMAT_NV12:
+    case DRM_FORMAT_NV21:
       return 2;
+    case DRM_FORMAT_YUV420:
     case DRM_FORMAT_YVU420:
       return 3;
   }

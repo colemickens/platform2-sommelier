@@ -15,7 +15,7 @@ tests: CXX_BINARY(common/future_unittest)
 camera_buffer_mapper_unittest_OBJS = \
 	common/camera_buffer_mapper.o \
 	common/camera_buffer_mapper_unittest.o
-camera_buffer_mapper_unittest_PC_DEPS := libdrm
+camera_buffer_mapper_unittest_PC_DEPS := gbm libdrm
 camera_buffer_mapper_unittest_CPPFLAGS = \
 	$(call get_pc_cflags,$(camera_buffer_mapper_unittest_PC_DEPS))
 camera_buffer_mapper_unittest_LIBS = \
