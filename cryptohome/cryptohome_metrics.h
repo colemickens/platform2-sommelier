@@ -39,6 +39,7 @@ enum TimerType {
   kTpmTakeOwnershipTimer,
   kPkcs11InitTimer,
   kMountExTimer,
+  kDircryptoMigrationTimer,
   kNumTimerTypes  // For the number of timer types.
 };
 
@@ -59,6 +60,20 @@ enum ChecksumStatus {
   kChecksumMismatch,
   kChecksumOutOfSync,
   kChecksumStatusNumBuckets
+};
+
+enum DircryptoMigrationStartStatus {
+  kMigrationStarted = 1,
+  kMigrationResumed = 2,
+  kMigrationStartStatusNumBuckets
+};
+
+enum DircryptoMigrationEndStatus {
+  kNewMigrationFailed = 1,
+  kNewMigrationFinished = 2,
+  kResumedMigrationFailed = 3,
+  kResumedMigrationFinished = 4,
+  kMigrationEndStatusNumBuckets
 };
 
 // Cros events emitted by cryptohome.
@@ -103,6 +118,16 @@ void ReportChecksum(ChecksumStatus status);
 // Reports removed GCache size by cryptohome to the
 // "Cryptohome.FreedGCacheDiskSpaceInMb" histogram.
 void ReportFreedGCacheDiskSpaceInMb(int mb);
+
+// The |status| value is reported to the
+// "Cryptohome.DircryptoMigrationStartStatus"
+// enum histogram.
+void ReportDircryptoMigrationStartStatus(DircryptoMigrationStartStatus status);
+
+// The |status| value is reported to the
+// "Cryptohome.DircryptoMigrationEndStatus"
+// enum histogram.
+void ReportDircryptoMigrationEndStatus(DircryptoMigrationEndStatus status);
 
 // Initialization helper.
 class ScopedMetricsInitializer {

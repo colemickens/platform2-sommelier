@@ -29,24 +29,28 @@ constexpr char kChecksumStatusHistogram[] = "Cryptohome.ChecksumStatus";
 constexpr char kCryptohomeTpmResultsHistogram[] = "Cryptohome.TpmResults";
 constexpr char kCryptohomeFreedGCacheDiskSpaceInMbHistogram[] =
     "Cryptohome.FreedGCacheDiskSpaceInMb";
+constexpr char kCryptohomeDircryptoMigrationStartStatusHistogram[] =
+    "Cryptohome.DircryptoMigrationStartStatus";
+constexpr char kCryptohomeDircryptoMigrationEndStatusHistogram[] =
+    "Cryptohome.DircryptoMigrationEndStatus";
 
 // Histogram parameters. This should match the order of 'TimerType'.
 // Min and max samples are in milliseconds.
 const TimerHistogramParams kTimerHistogramParams[cryptohome::kNumTimerTypes] = {
-  {"Cryptohome.TimeToMountAsync", 0, 4000, 50},
-  {"Cryptohome.TimeToMountSync", 0, 4000, 50},
-  {"Cryptohome.TimeToMountGuestAsync", 0, 4000, 50},
-  {"Cryptohome.TimeToMountGuestSync", 0, 4000, 50},
-  {"Cryptohome.TimeToTakeTpmOwnership", 0, 100000, 50},
-  // A note on the PKCS#11 initialization time:
-  // Max sample for PKCS#11 initialization time is 100s; we are interested
-  // in recording the very first PKCS#11 initialization time, which may be a
-  // lengthy one. Subsequent initializations are fast (under 1s) because they
-  // just check if PKCS#11 was previously initialized, returning immediately.
-  // These will all fall into the first histogram bucket.
-  {"Cryptohome.TimeToInitPkcs11", 1000, 100000, 50},
-  {"Cryptohome.TimeToMountEx", 0, 4000, 50}
-};
+    {"Cryptohome.TimeToMountAsync", 0, 4000, 50},
+    {"Cryptohome.TimeToMountSync", 0, 4000, 50},
+    {"Cryptohome.TimeToMountGuestAsync", 0, 4000, 50},
+    {"Cryptohome.TimeToMountGuestSync", 0, 4000, 50},
+    {"Cryptohome.TimeToTakeTpmOwnership", 0, 100000, 50},
+    // A note on the PKCS#11 initialization time:
+    // Max sample for PKCS#11 initialization time is 100s; we are interested
+    // in recording the very first PKCS#11 initialization time, which may be a
+    // lengthy one. Subsequent initializations are fast (under 1s) because they
+    // just check if PKCS#11 was previously initialized, returning immediately.
+    // These will all fall into the first histogram bucket.
+    {"Cryptohome.TimeToInitPkcs11", 1000, 100000, 50},
+    {"Cryptohome.TimeToMountEx", 0, 4000, 50},
+    {"Cryptohome.TimeToCompleteDircryptoMigration", 0, 60 * 60 * 1000, 50}};
 
 MetricsLibrary* g_metrics = NULL;
 chromeos_metrics::TimerReporter* g_timers[cryptohome::kNumTimerTypes] = {NULL};
@@ -171,4 +175,21 @@ void ReportFreedGCacheDiskSpaceInMb(int mb) {
                        50 /* number of buckets */);
 }
 
+void ReportDircryptoMigrationStartStatus(DircryptoMigrationStartStatus status) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendEnumToUMA(kCryptohomeDircryptoMigrationStartStatusHistogram,
+                           status,
+                           kMigrationStartStatusNumBuckets);
+}
+
+void ReportDircryptoMigrationEndStatus(DircryptoMigrationEndStatus status) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendEnumToUMA(kCryptohomeDircryptoMigrationEndStatusHistogram,
+                           status,
+                           kMigrationEndStatusNumBuckets);
+}
 }  // namespace cryptohome

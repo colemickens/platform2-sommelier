@@ -20,6 +20,8 @@
 #include <base/files/file_path.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "cryptohome/cryptohome_metrics.h"
+
 extern "C" {
 #include <attr/xattr.h>
 #include <linux/fs.h>
@@ -64,30 +66,54 @@ MigrationHelper::~MigrationHelper() {}
 bool MigrationHelper::Migrate(const base::FilePath& from,
                               const base::FilePath& to,
                               const ProgressCallback& progress_callback) {
+  bool resumed = IsMigrationStarted();
+  DircryptoMigrationEndStatus failed_status;
+  DircryptoMigrationEndStatus finished_status;
+  if (resumed) {
+    ReportDircryptoMigrationStartStatus(kMigrationResumed);
+    failed_status = kResumedMigrationFailed;
+    finished_status = kResumedMigrationFinished;
+  } else {
+    ReportDircryptoMigrationStartStatus(kMigrationStarted);
+    failed_status = kNewMigrationFailed;
+    finished_status = kNewMigrationFinished;
+  }
+
   if (progress_callback.is_null()) {
     LOG(ERROR) << "Invalid progress callback";
+    ReportDircryptoMigrationEndStatus(failed_status);
     return false;
   }
   progress_callback_ = progress_callback;
   ReportStatus(DIRCRYPTO_MIGRATION_INITIALIZING);
   if (!from.IsAbsolute() || !to.IsAbsolute()) {
     LOG(ERROR) << "Migrate must be given absolute paths";
+    ReportDircryptoMigrationEndStatus(failed_status);
+    return false;
+  }
+
+  if (!platform_->DirectoryExists(from)) {
+    LOG(ERROR) << "Directory does not exist: " << from.value();
+    ReportDircryptoMigrationEndStatus(failed_status);
     return false;
   }
 
   if (!platform_->TouchFileDurable(
           status_files_dir_.Append(kMigrationStartedFileName))) {
     LOG(ERROR) << "Failed to create migration-started file";
+    ReportDircryptoMigrationEndStatus(failed_status);
     return false;
   }
 
   int64_t free_space = platform_->AmountOfFreeDiskSpace(to);
   if (free_space < 0) {
     LOG(ERROR) << "Failed to determine free disk space";
+    ReportDircryptoMigrationEndStatus(failed_status);
     return false;
   }
   if (static_cast<uint64_t>(free_space) < kMinFreeSpace) {
     LOG(ERROR) << "Not enough space to begin the migration";
+    ReportDircryptoMigrationEndStatus(failed_status);
     return false;
   }
   effective_chunk_size_ =
@@ -101,17 +127,24 @@ bool MigrationHelper::Migrate(const base::FilePath& from,
   struct stat from_stat;
   if (!platform_->Stat(from, &from_stat)) {
     PLOG(ERROR) << "Failed to stat from directory";
+    ReportDircryptoMigrationEndStatus(failed_status);
     return false;
   }
+  ReportTimerStart(kDircryptoMigrationTimer);
   if (!MigrateDir(from,
                   to,
                   base::FilePath(""),
                   FileEnumerator::FileInfo(from, from_stat))) {
+    LOG(ERROR) << "Migration Failed, aborting.";
+    ReportDircryptoMigrationEndStatus(failed_status);
     return false;
   }
+  if (!resumed)
+    ReportTimerStop(kDircryptoMigrationTimer);
 
   // One more progress update to say that we've hit 100%
   ReportStatus(DIRCRYPTO_MIGRATION_IN_PROGRESS);
+  ReportDircryptoMigrationEndStatus(finished_status);
   return true;
 }
 
