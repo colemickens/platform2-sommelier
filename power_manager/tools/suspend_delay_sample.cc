@@ -10,6 +10,7 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 #include <chromeos/dbus/service_constants.h>
@@ -155,7 +156,7 @@ int main(int argc, char* argv[]) {
                                 base::Bind(&HandleSuspendDone),
                                 base::Bind(&DBusSignalConnected));
 
-  message_loop.Run();
+  base::RunLoop().Run();
 
   // powerd will automatically unregister this process's suspend delay when the
   // process disconnects from D-Bus.

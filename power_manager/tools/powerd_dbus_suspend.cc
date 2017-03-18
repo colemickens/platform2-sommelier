@@ -18,6 +18,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
@@ -120,6 +121,6 @@ int main(int argc, char* argv[]) {
         base::TimeDelta::FromSeconds(FLAGS_timeout));
   }
 
-  message_loop.Run();
+  base::RunLoop().Run();
   return 0;
 }

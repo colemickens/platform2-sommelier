@@ -16,6 +16,7 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/flag_helper.h>
@@ -324,6 +325,6 @@ int main(int argc, char* argv[]) {
   power_manager::Daemon daemon(&delegate, (base::FilePath(FLAGS_run_dir)));
   daemon.Init();
 
-  message_loop.Run();
+  base::RunLoop().Run();
   return 0;
 }
