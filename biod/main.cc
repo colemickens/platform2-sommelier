@@ -10,6 +10,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/flag_helper.h>
@@ -48,6 +49,8 @@ std::string GetTimeAsString(time_t utime) {
 }  // namespace
 
 int main(int argc, char* argv[]) {
+  base::AtExitManager at_exit_manager;
+
   DEFINE_string(log_dir, "/var/log/", "Directory where logs are written.");
 
   brillo::FlagHelper::Init(
@@ -69,11 +72,7 @@ int main(int argc, char* argv[]) {
   LOG(INFO) << "vcsid " << VCSID;
 
   base::MessageLoopForIO message_loop;
-  base::AtExitManager at_exit_manager;
-
   biod::BiometricsDaemon bio_daemon;
-
-
-  message_loop.Run();
+  base::RunLoop().Run();
   return 0;
 }
