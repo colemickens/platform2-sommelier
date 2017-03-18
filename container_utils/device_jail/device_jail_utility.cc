@@ -11,6 +11,7 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <brillo/flag_helper.h>
 
 #include "container_utils/device_jail/device_jail_control.h"
@@ -68,7 +69,7 @@ int main(int argc, char** argv) {
                                           &message_loop);
     if (!server)
       LOG(FATAL) << "could not initialize device jail server";
-    message_loop.Run();
+    base::RunLoop().Run();
     return 0;
   }
 
