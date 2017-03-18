@@ -96,7 +96,9 @@ class CameraDeviceAdapter {
   mojom::Camera3NotifyMsgPtr Notify(const camera3_notify_msg_t* msg);
 
  private:
-  void RemoveBuffer(buffer_handle_t buffer);
+  // Waits until |fence| is signaled and then erases |buffer| from
+  // |buffer_handles_|.
+  void RemoveBufferOnFenceSyncThread(int fence, buffer_handle_t buffer);
 
   // The delegate that handles the Camera3DeviceOps mojo IPC.
   std::unique_ptr<Camera3DeviceOpsDelegate> device_ops_delegate_;
@@ -106,6 +108,10 @@ class CameraDeviceAdapter {
 
   // The real camera device.
   camera3_device_t* camera_device_;
+
+  // A thread to asynchronously wait for release fences and destroy
+  // corresponding buffer handles.
+  base::Thread fence_sync_thread_;
 
   // A mapping from Andoird HAL for all the configured streams.
   internal::UniqueStreams streams_;
