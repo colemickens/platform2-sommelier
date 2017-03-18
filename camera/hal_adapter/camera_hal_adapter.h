@@ -39,7 +39,9 @@ class CameraHalAdapter : public mojo::edk::ProcessDelegate {
   // ProcessDelegate implementation.
   void OnShutdownComplete() override;
 
-  // Callback interface for CameraModuleDelegate..
+  // Callback interface for CameraModuleDelegate.
+  // These methods are callbacks for |module_delegate_| and are executed on
+  // the mojo IPC handler thread in |module_delegate_|.
   int32_t OpenDevice(int32_t device_id, mojom::Camera3DeviceOpsPtr* device_ops);
 
   int32_t CloseDevice(int32_t device_id);
@@ -51,17 +53,22 @@ class CameraHalAdapter : public mojo::edk::ProcessDelegate {
   int32_t SetCallbacks(mojom::CameraModuleCallbacksPtr callbacks);
 
  private:
+  // The handle to the camera HAL dlopen()'d on process start.
   camera_module_t* camera_module_;
 
+  // The unix domain socket used to establish the mojo IPC channel.
   base::ScopedFD socket_fd_;
 
   // Thread used in mojo to send and receive IPC messages.
   base::Thread ipc_thread_;
 
+  // The delegate that handles the CameraModule mojo IPC.
   std::unique_ptr<CameraModuleDelegate> module_delegate_;
 
+  // The delegate that handles the CameraModuleCallbacks mojo IPC.
   std::unique_ptr<CameraModuleCallbacksDelegate> callbacks_delegate_;
 
+  // The handles to the opened camera devices.
   std::map<int32_t, std::unique_ptr<CameraDeviceAdapter>> device_adapters_;
 
   DISALLOW_COPY_AND_ASSIGN(CameraHalAdapter);

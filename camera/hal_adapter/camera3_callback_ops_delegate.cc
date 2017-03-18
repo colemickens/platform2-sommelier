@@ -62,6 +62,8 @@ void Camera3CallbackOpsDelegate::Notify(const camera3_callback_ops_t* ops,
 void Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread(
     const camera3_capture_result_t* result,
     const base::Callback<void()>& cb) {
+  VLOGF_ENTER();
+  DCHECK(thread_checker_.CalledOnValidThread());
   interface_ptr_->ProcessCaptureResult(
       camera_device_adapter_->ProcessCaptureResult(result), cb);
 }
@@ -69,6 +71,8 @@ void Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread(
 void Camera3CallbackOpsDelegate::NotifyOnThread(
     const camera3_notify_msg_t* msg,
     const base::Callback<void()>& cb) {
+  VLOGF_ENTER();
+  DCHECK(thread_checker_.CalledOnValidThread());
   interface_ptr_->Notify(camera_device_adapter_->Notify(msg), cb);
 }
 

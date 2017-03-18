@@ -148,10 +148,10 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
   }
 
   // Deserialize output buffers.
-  CHECK_GT(request->num_output_buffers, 0);
+  DCHECK_GT(request->num_output_buffers, 0);
   req.num_output_buffers = request->num_output_buffers;
 
-  CHECK(!request->output_buffers.is_null());
+  DCHECK(!request->output_buffers.is_null());
   std::vector<camera3_stream_buffer_t> output_buffers(
       request->num_output_buffers);
   std::vector<buffer_handle_t> output_buffer_handles(

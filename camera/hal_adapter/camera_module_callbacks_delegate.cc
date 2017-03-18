@@ -45,6 +45,8 @@ void CameraModuleCallbacksDelegate::CameraDeviceStatusChangeOnThread(
     int camera_id,
     int new_status,
     const base::Callback<void()>& cb) {
+  VLOGF_ENTER();
+  DCHECK(thread_checker_.CalledOnValidThread());
   interface_ptr_->CameraDeviceStatusChange(camera_id, new_status, cb);
 }
 

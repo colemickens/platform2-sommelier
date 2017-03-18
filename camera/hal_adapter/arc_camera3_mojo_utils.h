@@ -15,6 +15,7 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/threading/thread.h>
+#include <base/threading/thread_checker.h>
 #include <mojo/public/cpp/bindings/binding.h>
 #include <mojo/public/cpp/system/data_pipe.h>
 
@@ -70,7 +71,7 @@ class MojoInterfaceDelegate {
       LOGF(ERROR) << "Delegate thread failed to start";
       exit(-1);
     }
-    thread_.WaitUntilThreadStarted();
+    thread_checker_.DetachFromThread();
 
     auto future = internal::Future<void>::Create(&relay_);
     thread_.task_runner()->PostTask(
@@ -96,6 +97,8 @@ class MojoInterfaceDelegate {
  protected:
   base::Thread thread_;
 
+  base::ThreadChecker thread_checker_;
+
   mojo::InterfacePtr<T> interface_ptr_;
 
   CancellationRelay relay_;
@@ -103,6 +106,8 @@ class MojoInterfaceDelegate {
  private:
   void BindOnThread(mojo::InterfacePtrInfo<T> interface_ptr_info,
                     const base::Callback<void()>& cb) {
+    VLOGF_ENTER();
+    DCHECK(thread_checker_.CalledOnValidThread());
     interface_ptr_ = mojo::MakeProxy(std::move(interface_ptr_info));
     if (!interface_ptr_.is_bound()) {
       LOGF(ERROR) << "Failed to bind interface_ptr_";
@@ -119,17 +124,21 @@ class MojoInterfaceDelegate {
 
   void OnIpcConnectionLostOnThread() {
     VLOGF_ENTER();
+    DCHECK(thread_checker_.CalledOnValidThread());
     LOGF(INFO) << "Mojo interface connection lost";
     relay_.CancelAllFutures();
     interface_ptr_.reset();
   }
 
   void OnQueryVersionOnThread(uint32_t version) {
+    VLOGF_ENTER();
+    DCHECK(thread_checker_.CalledOnValidThread());
     LOGF(INFO) << "Bridge ready (version=" << version << ")";
   }
 
   void ResetInterfacePtrOnThread(const base::Callback<void()>& cb) {
     VLOGF_ENTER();
+    DCHECK(thread_checker_.CalledOnValidThread());
     interface_ptr_.reset();
     cb.Run();
   }
@@ -147,7 +156,7 @@ class MojoBindingDelegate : public T {
       LOGF(ERROR) << "Delegate thread failed to start";
       exit(-1);
     }
-    thread_.WaitUntilThreadStarted();
+    thread_checker_.DetachFromThread();
     quit_cb_ = quit_cb;
   }
 
@@ -163,6 +172,7 @@ class MojoBindingDelegate : public T {
   }
 
   mojo::InterfacePtr<T> CreateInterfacePtr() {
+    VLOGF_ENTER();
     auto future = internal::Future<mojo::InterfacePtr<T>>::Create(&relay_);
     thread_.task_runner()->PostTask(
         FROM_HERE,
@@ -173,6 +183,7 @@ class MojoBindingDelegate : public T {
   }
 
   void Bind(mojo::ScopedMessagePipeHandle handle) {
+    VLOGF_ENTER();
     auto future = internal::Future<void>::Create(&relay_);
     thread_.task_runner()->PostTask(
         FROM_HERE, base::Bind(&MojoBindingDelegate<T>::BindOnThread,
@@ -181,9 +192,13 @@ class MojoBindingDelegate : public T {
     future->Wait();
   }
 
+ protected:
+  base::ThreadChecker thread_checker_;
+
  private:
   void CloseBindingOnThread(const base::Callback<void()>& cb) {
     VLOGF_ENTER();
+    DCHECK(thread_checker_.CalledOnValidThread());
     if (binding_.is_bound()) {
       binding_.Close();
     }
@@ -196,6 +211,8 @@ class MojoBindingDelegate : public T {
   void CreateInterfacePtrOnThread(
       const base::Callback<void(mojo::InterfacePtr<T>)>& cb) {
     // Call CreateInterfacePtrAndBind() on thread_ to serve the RPC.
+    VLOGF_ENTER();
+    DCHECK(thread_checker_.CalledOnValidThread());
     mojo::InterfacePtr<T> interfacePtr = binding_.CreateInterfacePtrAndBind();
     binding_.set_connection_error_handler(
         base::Bind(&MojoBindingDelegate<T>::OnChannelClosedOnThread,
@@ -205,6 +222,8 @@ class MojoBindingDelegate : public T {
 
   void BindOnThread(mojo::ScopedMessagePipeHandle handle,
                     const base::Callback<void()>& cb) {
+    VLOGF_ENTER();
+    DCHECK(thread_checker_.CalledOnValidThread());
     binding_.Bind(std::move(handle));
     binding_.set_connection_error_handler(
         base::Bind(&MojoBindingDelegate<T>::OnChannelClosedOnThread,
@@ -214,6 +233,7 @@ class MojoBindingDelegate : public T {
 
   void OnChannelClosedOnThread() {
     VLOGF_ENTER();
+    DCHECK(thread_checker_.CalledOnValidThread());
     LOGF(INFO) << "Mojo binding channel closed";
     if (binding_.is_bound()) {
       relay_.CancelAllFutures();

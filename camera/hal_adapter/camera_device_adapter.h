@@ -41,11 +41,26 @@ class CameraDeviceAdapter {
 
   ~CameraDeviceAdapter();
 
+  // GetDeviceOpsPtr() and Close() are Called by CameraHalAdapter on the mojo
+  // IPC handler thread in |module_delegate_|. GetDeviceOpsPtr() is called in
+  // DeviceOpen() of CameraHalAdapter; and Close() in DeviceClose() of
+  // CameraHalAdapter.
+  //
+  // While is not thread-safe by itself, the Android frameworks guarantees that
+  // DeviceOpen() and DeviceClose() will not be called concurrent to any of the
+  // Camera3DeviceOps and Camera3CallbackOps functions.
+  //
+  // TODO(jcliang): Move DeviceClose() to Camera3DeviceOps to make this truely
+  //                thread-safe (b/36358221).
+
   mojom::Camera3DeviceOpsPtr GetDeviceOpsPtr();
 
   int Close();
 
   // Callback interface for Camera3DeviceOpsDelegate.
+  // These methods are callbacks for |device_ops_delegate_| and are executed on
+  // the mojo IPC handler thread in |device_ops_delegate_|.
+
   int32_t Initialize(mojom::Camera3CallbackOpsPtr callback_ops);
 
   mojom::Camera3StreamConfigurationPtr ConfigureStreams(
@@ -69,6 +84,8 @@ class CameraDeviceAdapter {
                          mojo::Array<uint32_t> offsets);
 
   // Callback interface for Camera3CallbackOpsDelegate.
+  // These methods are callbacks for |callback_ops_delegate_| and are executed
+  // on the mojo IPC handler thread in |callback_ops_delegate_|.
 
   // NOTE: All the fds in |result| (e.g. fences and buffer handles) will be
   // closed after the function returns.  The caller needs to dup a fd in
@@ -81,8 +98,10 @@ class CameraDeviceAdapter {
  private:
   void RemoveBuffer(buffer_handle_t buffer);
 
+  // The delegate that handles the Camera3DeviceOps mojo IPC.
   std::unique_ptr<Camera3DeviceOpsDelegate> device_ops_delegate_;
 
+  // The delegate that handles the Camera3CallbackOps mojo IPC.
   std::unique_ptr<Camera3CallbackOpsDelegate> callback_ops_delegate_;
 
   // The real camera device.
@@ -91,6 +110,7 @@ class CameraDeviceAdapter {
   // A mapping from Andoird HAL for all the configured streams.
   internal::UniqueStreams streams_;
 
+  // A mutex to guard |streams_|.
   base::Lock streams_lock_;
 
   // A mapping from the locally created buffer handle to the Android HAL handle
@@ -100,6 +120,7 @@ class CameraDeviceAdapter {
   std::unordered_map<uint64_t, internal::ArcCameraBufferHandleUniquePtr>
       buffer_handles_;
 
+  // A mutex to guard |buffer_handles_|.
   base::Lock buffer_handles_lock_;
 
   DISALLOW_COPY_AND_ASSIGN(CameraDeviceAdapter);

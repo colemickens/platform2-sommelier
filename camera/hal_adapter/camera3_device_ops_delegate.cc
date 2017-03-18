@@ -23,6 +23,7 @@ void Camera3DeviceOpsDelegate::Initialize(
     mojom::Camera3CallbackOpsPtr callback_ops,
     const InitializeCallback& callback) {
   VLOGF_ENTER();
+  DCHECK(thread_checker_.CalledOnValidThread());
   callback.Run(camera_device_adapter_->Initialize(std::move(callback_ops)));
 }
 
@@ -30,6 +31,7 @@ void Camera3DeviceOpsDelegate::ConfigureStreams(
     mojom::Camera3StreamConfigurationPtr config,
     const ConfigureStreamsCallback& callback) {
   VLOGF_ENTER();
+  DCHECK(thread_checker_.CalledOnValidThread());
   callback.Run(camera_device_adapter_->ConfigureStreams(std::move(config)));
 }
 
@@ -37,6 +39,7 @@ void Camera3DeviceOpsDelegate::ConstructDefaultRequestSettings(
     int32_t type,
     const ConstructDefaultRequestSettingsCallback& callback) {
   VLOGF_ENTER();
+  DCHECK(thread_checker_.CalledOnValidThread());
   callback.Run(camera_device_adapter_->ConstructDefaultRequestSettings(type));
 }
 
@@ -44,6 +47,7 @@ void Camera3DeviceOpsDelegate::ProcessCaptureRequest(
     mojom::Camera3CaptureRequestPtr request,
     const ProcessCaptureRequestCallback& callback) {
   VLOGF_ENTER();
+  DCHECK(thread_checker_.CalledOnValidThread());
   callback.Run(
       camera_device_adapter_->ProcessCaptureRequest(std::move(request)));
 }
@@ -51,12 +55,14 @@ void Camera3DeviceOpsDelegate::ProcessCaptureRequest(
 void Camera3DeviceOpsDelegate::Dump(mojo::ScopedHandle fd,
                                     const DumpCallback& callback) {
   VLOGF_ENTER();
+  DCHECK(thread_checker_.CalledOnValidThread());
   camera_device_adapter_->Dump(std::move(fd));
   callback.Run();
 }
 
 void Camera3DeviceOpsDelegate::Flush(const FlushCallback& callback) {
   VLOGF_ENTER();
+  DCHECK(thread_checker_.CalledOnValidThread());
   callback.Run(camera_device_adapter_->Flush());
 }
 
@@ -71,6 +77,7 @@ void Camera3DeviceOpsDelegate::RegisterBuffer(
     mojo::Array<uint32_t> offsets,
     const RegisterBufferCallback& callback) {
   VLOGF_ENTER();
+  DCHECK(thread_checker_.CalledOnValidThread());
   callback.Run(camera_device_adapter_->RegisterBuffer(
       buffer_id, type, std::move(fds), format, width, height,
       std::move(strides), std::move(offsets)));
