@@ -22,8 +22,8 @@ import yaml
 
 # The regular expression to check values in Region.keyboards and Region.locales.
 # Keyboards should come with xkb: protocol, or the input methods (ime:, m17n:).
-# Examples: xkb:us:intl:eng, ime:ime:zh-t:cangjie
-KEYBOARD_PATTERN = re.compile(r'^xkb:\w+:\w*:\w+$|'
+# Examples: xkb:us:intl:eng, ime:ime:zh-t:cangjie, xkb:us:altgr-intl:eng
+KEYBOARD_PATTERN = re.compile(r'^xkb:\w+:[\w-]*:\w+$|'
                               r'^(ime|m17n|t13n):[\w:-]+$')
 # Locale should be a combination of language and location.
 # Examples: en-US, ja.
@@ -468,7 +468,10 @@ REGIONS_LIST = [
         ['tr', 'en-GB'], _KML.ISO, 'Turkey', None, 224),
     Region(
         'ar', 'xkb:latam::spa', 'America/Argentina/Buenos_Aires',
-        ['es-AR'], _KML.ANSI, 'Argentina', None, 251)]
+        ['es-AR'], _KML.ANSI, 'Argentina', None, 251),
+    Region(
+        'gb.usext', 'xkb:us:altgr-intl:eng', 'Europe/London', 'en-GB',
+        _KML.ISO, 'UK', 'GB with US extended keyboard', 258)]
 
 """A list of :py:class:`regions.Region` objects for
 all **confirmed** regions.  A confirmed region is a region whose
