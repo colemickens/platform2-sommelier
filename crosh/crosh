@@ -347,8 +347,7 @@ https://chrome.google.com/webstore/detail/pnhechapfaindjhompbnflcldabbghjo
 EOF
 )
 
-USAGE_swap='[enable <size (MB)> | disable | start | stop |
- status | show_margin | set_margin <discard threshold (MB)>]'
+USAGE_swap='[enable <size (MB)> | disable | start | stop | status]'
 HELP_swap='
   Manage the system swap file.
 
@@ -361,12 +360,6 @@ HELP_swap='
   Warning: If swap is heavily used, then turning it off might cause the system
   to hang while the kernel tries to release pages and free up memory.  In some
   extreme situations, this can take a long time to finish.
-
-  The show_margin option shows the low-memory margin in MB.
-
-  The set_margin option changes the low-memory warning margin immediately and
-  persistently to the chosen amount (in MB).  A value of 0, or the string
-  "default", restore the default behavior.
 '
 cmd_swap() (
   local cmd="${1:-}"
@@ -380,15 +373,9 @@ cmd_swap() (
       return 1
     fi
     ;;
-  disable|start|stop|status|show_margin|"")
+  disable|start|stop|status|"")
     if [ $# -ne 0 ]; then
       help "${cmd} takes no arguments"
-      return 1
-    fi
-    ;;
-  set_margin)
-    if [ $# -ne 1 ]; then
-      help "${cmd} takes one argument"
       return 1
     fi
     ;;
@@ -412,24 +399,6 @@ cmd_swap() (
     ;;
   "stop")
     debugd SwapStartStop "boolean:false"
-    ;;
-  "show_margin")
-    debugd SwapShowMargin
-    ;;
-  "set_margin")
-    local margin="$1"
-    if [ "${margin}" = "default" ]; then
-      margin=0
-    fi
-    if ! echo "${margin}" | grep -q '[0-9][0-9]*'; then
-      help "${cmd} takes an integer argument"
-      return 1
-    fi
-    if [ ${margin} -ge 16000 ]; then
-      help "${cmd} margin must be less than 16000"
-      return 1
-    fi
-    debugd SwapSetMargin "uint32:${margin}"
     ;;
   "status"|"")
     debugd SwapStatus
