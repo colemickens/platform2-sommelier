@@ -40,6 +40,7 @@
 #include "power_manager/powerd/system/power_supply_stub.h"
 #include "power_manager/powerd/system/udev_stub.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
+#include "power_manager/proto_bindings/switch_states.pb.h"
 
 namespace power_manager {
 namespace {
@@ -544,6 +545,39 @@ TEST_F(DaemonTest, DontReportTabletModeChangeFromInit) {
   // notification about it changing.
   EXPECT_EQ(0, internal_backlight_controller_->tablet_mode_changes().size());
   EXPECT_EQ(0, keyboard_backlight_controller_->tablet_mode_changes().size());
+}
+
+TEST_F(DaemonTest, GetSwitchStates) {
+  input_watcher_->set_tablet_mode(TabletMode::ON);
+  input_watcher_->set_lid_state(LidState::OPEN);
+  Init();
+
+  dbus::MethodCall method_call(kPowerManagerInterface, kGetSwitchStatesMethod);
+  auto response = CallSyncDBusMethod(&method_call);
+  ASSERT_TRUE(response.get());
+  SwitchStates proto;
+  ASSERT_TRUE(
+      dbus::MessageReader(response.get()).PopArrayOfBytesAsProto(&proto));
+  EXPECT_EQ(SwitchStates_TabletMode_ON, proto.tablet_mode());
+  EXPECT_EQ(SwitchStates_LidState_OPEN, proto.lid_state());
+
+  input_watcher_->set_tablet_mode(TabletMode::OFF);
+  input_watcher_->set_lid_state(LidState::CLOSED);
+  response = CallSyncDBusMethod(&method_call);
+  ASSERT_TRUE(response.get());
+  ASSERT_TRUE(
+      dbus::MessageReader(response.get()).PopArrayOfBytesAsProto(&proto));
+  EXPECT_EQ(SwitchStates_TabletMode_OFF, proto.tablet_mode());
+  EXPECT_EQ(SwitchStates_LidState_CLOSED, proto.lid_state());
+
+  input_watcher_->set_tablet_mode(TabletMode::UNSUPPORTED);
+  input_watcher_->set_lid_state(LidState::NOT_PRESENT);
+  response = CallSyncDBusMethod(&method_call);
+  ASSERT_TRUE(response.get());
+  ASSERT_TRUE(
+      dbus::MessageReader(response.get()).PopArrayOfBytesAsProto(&proto));
+  EXPECT_EQ(SwitchStates_TabletMode_UNSUPPORTED, proto.tablet_mode());
+  EXPECT_EQ(SwitchStates_LidState_NOT_PRESENT, proto.lid_state());
 }
 
 TEST_F(DaemonTest, GetBacklightBrightness) {

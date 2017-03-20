@@ -52,6 +52,7 @@
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
+#include "power_manager/proto_bindings/switch_states.pb.h"
 
 #if USE_BUFFET
 namespace dbus {
@@ -900,6 +901,7 @@ void Daemon::InitDBus() {
        &Daemon::HandleIncreaseKeyboardBrightnessMethod},
       {kGetPowerSupplyPropertiesMethod,
        &Daemon::HandleGetPowerSupplyPropertiesMethod},
+      {kGetSwitchStatesMethod, &Daemon::HandleGetSwitchStatesMethod},
       {kHandleVideoActivityMethod, &Daemon::HandleVideoActivityMethod},
       {kHandleUserActivityMethod, &Daemon::HandleUserActivityMethod},
       {kSetIsProjectingMethod, &Daemon::HandleSetIsProjectingMethod},
@@ -1305,6 +1307,39 @@ std::unique_ptr<dbus::Response> Daemon::HandleGetPowerSupplyPropertiesMethod(
   PowerSupplyProperties protobuf;
   system::CopyPowerStatusToProtocolBuffer(power_supply_->GetPowerStatus(),
                                           &protobuf);
+  std::unique_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(method_call));
+  dbus::MessageWriter writer(response.get());
+  writer.AppendProtoAsArrayOfBytes(protobuf);
+  return response;
+}
+
+std::unique_ptr<dbus::Response> Daemon::HandleGetSwitchStatesMethod(
+    dbus::MethodCall* method_call) {
+  SwitchStates protobuf;
+  switch (input_watcher_->GetTabletMode()) {
+    case TabletMode::ON:
+      protobuf.set_tablet_mode(SwitchStates_TabletMode_ON);
+      break;
+    case TabletMode::OFF:
+      protobuf.set_tablet_mode(SwitchStates_TabletMode_OFF);
+      break;
+    case TabletMode::UNSUPPORTED:
+      protobuf.set_tablet_mode(SwitchStates_TabletMode_UNSUPPORTED);
+      break;
+  }
+  switch (input_watcher_->QueryLidState()) {
+    case LidState::OPEN:
+      protobuf.set_lid_state(SwitchStates_LidState_OPEN);
+      break;
+    case LidState::CLOSED:
+      protobuf.set_lid_state(SwitchStates_LidState_CLOSED);
+      break;
+    case LidState::NOT_PRESENT:
+      protobuf.set_lid_state(SwitchStates_LidState_NOT_PRESENT);
+      break;
+  }
+
   std::unique_ptr<dbus::Response> response(
       dbus::Response::FromMethodCall(method_call));
   dbus::MessageWriter writer(response.get());

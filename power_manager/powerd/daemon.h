@@ -229,6 +229,8 @@ class Daemon : public policy::BacklightControllerObserver,
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleGetPowerSupplyPropertiesMethod(
       dbus::MethodCall* method_call);
+  std::unique_ptr<dbus::Response> HandleGetSwitchStatesMethod(
+      dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleVideoActivityMethod(
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleUserActivityMethod(
