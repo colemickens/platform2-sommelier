@@ -22,6 +22,7 @@ class SwapTool {
   std::string SwapDisable(bool change_now, DBus::Error* error) const;
   std::string SwapStartStop(bool on, DBus::Error* error) const;
   std::string SwapStatus(DBus::Error* error) const;
+  std::string SwapSetMargin(uint32_t size, DBus::Error* error) const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SwapTool);

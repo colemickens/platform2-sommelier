@@ -755,6 +755,19 @@
         Free-form text reporting status.
       </arg>
     </method>
+    <method name="SwapSetMargin">
+      <tp:docstring>
+        Set low-memory notifier threshold in MiB persistently.
+      </tp:docstring>
+      <arg name="status" type="s" direction="out">
+        Free-form text reporting status.
+      </arg>
+      <arg name="margin" type="u" direction="in">
+        <tp:docstring>
+          Threshold (in MiB) for memory notifier.
+        </tp:docstring>
+      </arg>
+    </method>
     <method name="SetWifiDriverDebug">
       <tp:docstring>
         Enable/disable Wifi driver debugging.

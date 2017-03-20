@@ -78,4 +78,13 @@ std::string SwapTool::SwapStatus(DBus::Error* error) const {
   return RunSwapHelper({"status", }, &result);
 }
 
+
+std::string SwapTool::SwapSetMargin(uint32_t margin, DBus::Error* error) const {
+  int result;
+  std::string output, buf;
+
+  buf = base::StringPrintf("%u", margin);
+  return RunSwapHelper({"set_margin", buf}, &result);
+}
+
 }  // namespace debugd

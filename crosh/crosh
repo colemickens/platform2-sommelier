@@ -199,6 +199,12 @@ shell_history_init() {
   shell_history -r "${HISTFILE}"
 }
 
+# Returns status 0 if the argument is a valid positive integer
+# (i.e. it's not the null string, and contains only digits).
+is_numeric() {
+  ! echo "$1" | grep -qE '[^0-9]|^$'
+}
+
 # Prints the value corresponding to the passed-in field in the output from
 # dump_power_status.
 get_power_status_field() {
@@ -347,7 +353,8 @@ https://chrome.google.com/webstore/detail/pnhechapfaindjhompbnflcldabbghjo
 EOF
 )
 
-USAGE_swap='[enable <size (MB)> | disable | start | stop | status]'
+USAGE_swap='[enable <size (MB)> | disable | start | stop |
+ status | set_margin <discard threshold (MB)>]'
 HELP_swap='
   Manage the system swap file.
 
@@ -360,6 +367,11 @@ HELP_swap='
   Warning: If swap is heavily used, then turning it off might cause the system
   to hang while the kernel tries to release pages and free up memory.  In some
   extreme situations, this can take a long time to finish.
+
+  The set_margin option changes the low-memory warning margin immediately and
+  persistently to the chosen amount (in MiB).  A value of 0, or the string
+  "default", restore the default behavior.  The current value is shown with
+  "swap status".
 '
 cmd_swap() (
   local cmd="${1:-}"
@@ -379,6 +391,12 @@ cmd_swap() (
       return 1
     fi
     ;;
+  set_margin)
+    if [ $# -ne 1 ]; then
+      help "${cmd} takes one argument"
+      return 1
+    fi
+    ;;
   *)
     help "unknown option: ${cmd}"
     return 1
@@ -389,6 +407,9 @@ cmd_swap() (
   case "${cmd}" in
   "enable")
     local size="${1:-}"
+    if [ "${size}" ] && ! is_numeric "${size}"; then
+      help "'${size}' is not a valid number"
+    fi
     debugd SwapEnable "uint32:${size}" "boolean:false"
     ;;
   "disable")
@@ -399,6 +420,17 @@ cmd_swap() (
     ;;
   "stop")
     debugd SwapStartStop "boolean:false"
+    ;;
+  "set_margin")
+    local margin="$1"
+    if [ "${margin}" = "default" ]; then
+      margin=0
+    fi
+    if ! is_numeric "${margin}"; then
+      help "${cmd} takes an integer argument"
+      return 1
+    fi
+    debugd SwapSetMargin "uint32:${margin}"
     ;;
   "status"|"")
     debugd SwapStatus
@@ -1109,7 +1141,7 @@ cmd_memory_test() (
   # Getting total free memory in KB.
   mem=$(cat /proc/meminfo | grep MemFree | tr -s " " | cut -d" " -f 2)
 
-  # Converting to MB.
+  # Converting to MiB.
   mem=$(($mem / 1024))
 
   # Giving OS 200MB free memory before hogging the rest of it.
