@@ -37,8 +37,9 @@ class MockSignalSender : public SignalSender {
   MOCK_METHOD3(SendProgressSignal, void(int64_t, int64_t, const char*));
 };
 
-class MockRootPathGetter : public RootPathGetter {
+class MockPathGetter : public PathGetter {
  public:
+  MOCK_METHOD2(GetRealPath, bool(const char*, std::string*));
   MOCK_METHOD1(GetRootPath, bool(std::string*));
 };
 

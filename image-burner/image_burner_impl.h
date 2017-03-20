@@ -24,7 +24,9 @@ enum ErrorCode {
   IMAGEBURN_ERROR_FAILED_READING_SOURCE,
   IMAGEBURN_ERROR_FAILED_WRITING_TO_TARGET,
   IMAGEBURN_ERROR_FAILED_SYNCING_TARGET,
-  IMAGEBURN_ERROR_BURNER_NOT_INITIALIZED
+  IMAGEBURN_ERROR_BURNER_NOT_INITIALIZED,
+  IMAGEBURN_ERROR_SOURCE_REAL_PATH_NOT_DETERMINED,
+  IMAGEBURN_ERROR_SOURCE_PATH_NOT_ALLOWED,
 };
 
 class BurnerImpl {
@@ -32,7 +34,7 @@ class BurnerImpl {
   BurnerImpl(FileSystemWriter* writer,
              FileSystemReader* reader,
              SignalSender* signal_sender,
-             RootPathGetter* root_path_getter);
+             PathGetter* path_getter);
 
   // Returns error code (error code for success == 0)
   ErrorCode BurnImage(const char* from_path, const char* to_path);
@@ -46,13 +48,15 @@ class BurnerImpl {
 
  private:
   bool ValidateTargetPath(const char* path, ErrorCode* error);
-  bool ValidateSourcePath(const char* path, ErrorCode* error);
+  bool ValidateSourcePath(const char* path,
+                          std::string* resolved_path,
+                          ErrorCode* error);
   bool DoBurn(const char* from_path, const char* to_path, ErrorCode* error);
 
   FileSystemWriter* writer_;
   FileSystemReader* reader_;
   SignalSender* signal_sender_;
-  RootPathGetter* root_path_getter_;
+  PathGetter* path_getter_;
 
   int data_block_size_;
 };

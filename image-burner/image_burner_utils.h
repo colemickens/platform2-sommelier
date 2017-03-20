@@ -48,15 +48,16 @@ class BurnReader : public FileSystemReader {
   DISALLOW_COPY_AND_ASSIGN(BurnReader);
 };
 
-class BurnRootPathGetter : public RootPathGetter {
+class BurnPathGetter : public PathGetter {
  public:
-  BurnRootPathGetter();
-  ~BurnRootPathGetter() override = default;
+  BurnPathGetter() = default;
+  ~BurnPathGetter() override = default;
 
+  bool GetRealPath(const char* path, std::string* real_path) override;
   bool GetRootPath(std::string* path) override;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(BurnRootPathGetter);
+  DISALLOW_COPY_AND_ASSIGN(BurnPathGetter);
 };
 
 }  // namespace imageburn

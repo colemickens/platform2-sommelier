@@ -10,40 +10,54 @@
 
 #include <memory>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 
 namespace imageburn {
+
+namespace {
+
 const int kBurningBlockSize = 4 * 1024;  // 4 KiB
 
 const char* kFilePathPatterns[] =
     { "/dev/sd[a-z]+$", "/dev/mmcblk[0-9]+$" };
 const int kFilePathPatternCount = 2;
 
+const char* const kValidSourcePathParents[] = {
+    "/home/chronos/user/Downloads",  // Download folder
+    "/home/chronos/user/GCache",     // Drive sync cache
+    "/media/archive",                // Mounted archive
+    "/media/removable",              // Mounted removable drive
+};
+
+}  // namespace
+
 BurnerImpl::BurnerImpl(FileSystemWriter* writer,
                        FileSystemReader* reader,
                        SignalSender* signal_sender,
-                       RootPathGetter* root_path_getter)
+                       PathGetter* path_getter)
     : writer_(writer),
       reader_(reader),
       signal_sender_(signal_sender),
-      root_path_getter_(root_path_getter),
+      path_getter_(path_getter),
       data_block_size_(kBurningBlockSize) {
 }
 
 ErrorCode BurnerImpl::BurnImage(const char* from_path, const char* to_path) {
   ErrorCode err = IMAGEBURN_OK;
 
-  if (!writer_ || !reader_ || !signal_sender_ || !root_path_getter_)
+  if (!writer_ || !reader_ || !signal_sender_ || !path_getter_)
     err = IMAGEBURN_ERROR_BURNER_NOT_INITIALIZED;
 
   if (!err)
     ValidateTargetPath(to_path, &err);
 
+  std::string resolved_from_path;
   if (!err)
-    ValidateSourcePath(from_path, &err);
+    ValidateSourcePath(from_path, &resolved_from_path, &err);
 
   if (!err)
-    DoBurn(from_path, to_path, &err);
+    DoBurn(resolved_from_path.c_str(), to_path, &err);
 
   // TODO(tbarzic) send error specific error message.
   signal_sender_->SendFinishedSignal(to_path, !err,
@@ -85,7 +99,7 @@ bool BurnerImpl::ValidateTargetPath(const char* path, ErrorCode* error) {
   std::string root_path;
   // This will return roots file path, so we can compare target path, which
   // should also be devices file path, to it.
-  bool got_root_path = root_path_getter_->GetRootPath(&root_path);
+  bool got_root_path = path_getter_->GetRootPath(&root_path);
   if (!got_root_path ||
       strncmp(root_path.c_str(), path, root_path.length()) == 0) {
     *error = IMAGEBURN_ERROR_TARGET_PATH_ON_ROOT;
@@ -96,12 +110,36 @@ bool BurnerImpl::ValidateTargetPath(const char* path, ErrorCode* error) {
   return true;
 }
 
-bool BurnerImpl::ValidateSourcePath(const char* path, ErrorCode* error) {
+bool BurnerImpl::ValidateSourcePath(const char* path,
+                                    std::string* resolved_path,
+                                    ErrorCode* error) {
+  resolved_path->clear();
   if (!path) {
     *error = IMAGEBURN_ERROR_NULL_SOURCE_PATH;
     LOG(ERROR) << "Source path set to NULL.";
     return false;
   }
+
+  if (!path_getter_->GetRealPath(path, resolved_path)) {
+    *error = IMAGEBURN_ERROR_SOURCE_REAL_PATH_NOT_DETERMINED;
+    return false;
+  }
+
+  bool is_valid = false;
+  for (const char* parent : kValidSourcePathParents) {
+    base::FilePath parent_path(parent);
+    if (parent_path.IsParent(base::FilePath(*resolved_path))) {
+      is_valid = true;
+      break;
+    }
+  }
+
+  if (!is_valid) {
+    *error = IMAGEBURN_ERROR_SOURCE_PATH_NOT_ALLOWED;
+    LOG(ERROR) << "Source path is not from one of the allowed locations.";
+    return false;
+  }
+
   return true;
 }
 

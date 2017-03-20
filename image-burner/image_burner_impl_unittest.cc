@@ -12,19 +12,17 @@ namespace imageburn {
 
 using ::testing::_;
 using ::testing::AnyNumber;
+using ::testing::AtMost;
 using ::testing::DoAll;
 using ::testing::Return;
-using ::testing::AtMost;
+using ::testing::SetArgPointee;
 using ::testing::StrEq;
 
 const int kTestDataBlockSize = 8;
 const char kDataBlockLength8[] = {'1', '2', '3', '4', '5', '6', '7', 0};
 const char kDataBlockLength3[] = {'a', 'b', 0};
 const char kDataBlockLength1[] = {0};
-
-ACTION_P(SetArgPointee, value) {
-  *arg0 = value;
-}
+const char kResolvedSourcePath[] = "/media/removable/usb/a.img";
 
 ACTION_P(SetArgCharString, value) {
   strncpy(arg0, value, arg1);
@@ -36,7 +34,7 @@ class ImageBurnerImplTest : public ::testing::Test {
     burner_.reset(new BurnerImpl(&writer_,
                                  &reader_,
                                  &signal_sender_,
-                                 &root_path_getter_));
+                                 &path_getter_));
     EXPECT_CALL(signal_sender_, SendProgressSignal(_, _, _))
         .Times(0);
     EXPECT_CALL(writer_, Open(_))
@@ -53,9 +51,13 @@ class ImageBurnerImplTest : public ::testing::Test {
         .Times(0);
     EXPECT_CALL(reader_, GetSize())
         .Times(0);
-    EXPECT_CALL(root_path_getter_, GetRootPath(_))
+    EXPECT_CALL(path_getter_, GetRealPath(_, _))
         .Times(AtMost(1))
-        .WillRepeatedly(DoAll(SetArgPointee("/dev/sda"),
+        .WillRepeatedly(DoAll(SetArgPointee<1>(kResolvedSourcePath),
+                              Return(true)));
+    EXPECT_CALL(path_getter_, GetRootPath(_))
+        .Times(AtMost(1))
+        .WillRepeatedly(DoAll(SetArgPointee<0>("/dev/sda"),
                               Return(true)));
     burner_->SetDataBlockSize(kTestDataBlockSize);
   }
@@ -84,7 +86,7 @@ class ImageBurnerImplTest : public ::testing::Test {
   }
 
   virtual void SetUpDefaultOpenAndCloseMocks() {
-    EXPECT_CALL(reader_, Open("some_path"))
+    EXPECT_CALL(reader_, Open(StrEq(kResolvedSourcePath)))
        .WillOnce(Return(true));
     EXPECT_CALL(writer_, Close())
         .WillOnce(Return(true));
@@ -95,7 +97,7 @@ class ImageBurnerImplTest : public ::testing::Test {
   }
 
   virtual void SetUpOpenAndCloseMocksForSDCard() {
-    EXPECT_CALL(reader_, Open("some_path"))
+    EXPECT_CALL(reader_, Open(StrEq(kResolvedSourcePath)))
        .WillOnce(Return(true));
     EXPECT_CALL(writer_, Close())
         .WillOnce(Return(true));
@@ -110,7 +112,7 @@ class ImageBurnerImplTest : public ::testing::Test {
   MockFileSystemWriter writer_;
   MockFileSystemReader reader_;
   MockSignalSender signal_sender_;
-  MockRootPathGetter root_path_getter_;
+  MockPathGetter path_getter_;
 };
 
 TEST_F(ImageBurnerImplTest, BlankTargetPath) {
@@ -184,8 +186,8 @@ TEST_F(ImageBurnerImplTest, TargetPathIsOnTheRootPath) {
 
 TEST_F(ImageBurnerImplTest, TargetPathEqualsRootPathOtherThanSda) {
   SetFinishedSignalExpectation("/dev/sdb", false);
-  EXPECT_CALL(root_path_getter_, GetRootPath(_))
-      .WillOnce(DoAll(SetArgPointee("/dev/sdb"),
+  EXPECT_CALL(path_getter_, GetRootPath(_))
+      .WillOnce(DoAll(SetArgPointee<0>("/dev/sdb"),
                       Return(true)));
   EXPECT_EQ(burner_->BurnImage("some_path", "/dev/sdb"),
             imageburn::IMAGEBURN_ERROR_TARGET_PATH_ON_ROOT);
@@ -193,10 +195,25 @@ TEST_F(ImageBurnerImplTest, TargetPathEqualsRootPathOtherThanSda) {
 
 TEST_F(ImageBurnerImplTest, RootPathCannotBeFound) {
   SetFinishedSignalExpectation("/dev/sdb", false);
-  EXPECT_CALL(root_path_getter_, GetRootPath(_))
+  EXPECT_CALL(path_getter_, GetRootPath(_))
       .WillOnce(Return(false));
   EXPECT_EQ(burner_->BurnImage("some_path", "/dev/sdb"),
             imageburn::IMAGEBURN_ERROR_TARGET_PATH_ON_ROOT);
+}
+
+TEST_F(ImageBurnerImplTest, SourceRealPathCannotBeDetermined) {
+  SetFinishedSignalExpectation("/dev/sdb", false);
+  EXPECT_CALL(path_getter_, GetRealPath(_, _)).WillOnce(Return(false));
+  EXPECT_EQ(burner_->BurnImage("some_path", "/dev/sdb"),
+            imageburn::IMAGEBURN_ERROR_SOURCE_REAL_PATH_NOT_DETERMINED);
+}
+
+TEST_F(ImageBurnerImplTest, SourcePathIsNotAllowed) {
+  SetFinishedSignalExpectation("/dev/sdb", false);
+  EXPECT_CALL(path_getter_, GetRealPath("some_path", _))
+      .WillOnce(DoAll(SetArgPointee<1>("/media/foo/a.img"), Return(true)));
+  EXPECT_EQ(burner_->BurnImage("some_path", "/dev/sdb"),
+            imageburn::IMAGEBURN_ERROR_SOURCE_PATH_NOT_ALLOWED);
 }
 
 TEST_F(ImageBurnerImplTest, SourceFileCannotBeOpened) {
@@ -207,7 +224,7 @@ TEST_F(ImageBurnerImplTest, SourceFileCannotBeOpened) {
       .WillOnce(Return(true));
   EXPECT_CALL(reader_, Close())
       .WillOnce(Return(true));
-  EXPECT_CALL(reader_, Open("some_path"))
+  EXPECT_CALL(reader_, Open(StrEq(kResolvedSourcePath)))
       .WillOnce(Return(false));
   // We should not try to open target file if we don't open source file.
   EXPECT_CALL(writer_, Open("/dev/sdb"))
@@ -221,7 +238,7 @@ TEST_F(ImageBurnerImplTest, TargetFileCannotBeOpened) {
   SetFinishedSignalExpectation("/dev/sdb", false);
   SetUpEmptyFileMocks();
 
-  EXPECT_CALL(reader_, Open("some_path"))
+  EXPECT_CALL(reader_, Open(StrEq(kResolvedSourcePath)))
      .WillOnce(Return(true));
   EXPECT_CALL(writer_, Close())
       .WillOnce(Return(true));
@@ -238,7 +255,7 @@ TEST_F(ImageBurnerImplTest, TargetFileCannotBeClosed) {
   SetFinishedSignalExpectation("/dev/sdb", false);
   SetUpEmptyFileMocks();
 
-  EXPECT_CALL(reader_, Open("some_path"))
+  EXPECT_CALL(reader_, Open(StrEq(kResolvedSourcePath)))
      .WillOnce(Return(true));
   EXPECT_CALL(writer_, Open("/dev/sdb"))
       .WillOnce(Return(true));
@@ -255,7 +272,7 @@ TEST_F(ImageBurnerImplTest, SourceFileCannotBeClosed) {
   SetFinishedSignalExpectation("/dev/sdb", false);
   SetUpEmptyFileMocks();
 
-  EXPECT_CALL(reader_, Open("some_path"))
+  EXPECT_CALL(reader_, Open(StrEq(kResolvedSourcePath)))
      .WillOnce(Return(true));
   EXPECT_CALL(writer_, Open("/dev/sdb"))
       .WillOnce(Return(true));
@@ -272,7 +289,7 @@ TEST_F(ImageBurnerImplTest, TargetAndSourceFilesCannotBeClosed) {
   SetFinishedSignalExpectation("/dev/sdb", false);
   SetUpEmptyFileMocks();
 
-  EXPECT_CALL(reader_, Open("some_path"))
+  EXPECT_CALL(reader_, Open(StrEq(kResolvedSourcePath)))
      .WillOnce(Return(true));
   EXPECT_CALL(writer_, Open("/dev/sdb"))
       .WillOnce(Return(true));
@@ -289,7 +306,7 @@ TEST_F(ImageBurnerImplTest, CloseTargetErrorDoesNotOverwritePreviousErrors) {
   SetFinishedSignalExpectation("/dev/sdb", false);
   SetUpEmptyFileMocks();
 
-  EXPECT_CALL(reader_, Open("some_path"))
+  EXPECT_CALL(reader_, Open(StrEq(kResolvedSourcePath)))
      .WillOnce(Return(true));
   EXPECT_CALL(reader_, Close())
       .WillOnce(Return(true));
@@ -307,7 +324,7 @@ TEST_F(ImageBurnerImplTest, CloseSourceErrorDoesNotOverwritePreviousErrors) {
   SetFinishedSignalExpectation("/dev/sdb", false);
   SetUpEmptyFileMocks();
 
-  EXPECT_CALL(reader_, Open("some_path"))
+  EXPECT_CALL(reader_, Open(StrEq(kResolvedSourcePath)))
      .WillOnce(Return(true));
   EXPECT_CALL(writer_, Close())
       .WillOnce(Return(true));

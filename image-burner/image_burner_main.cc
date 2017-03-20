@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
 
   imageburn::BurnWriter writer;
   imageburn::BurnReader reader;
-  imageburn::BurnRootPathGetter path_getter;
+  imageburn::BurnPathGetter path_getter;
   std::unique_ptr<imageburn::BurnerImpl> burner(
       new imageburn::BurnerImpl(&writer, &reader, NULL, &path_getter));
 

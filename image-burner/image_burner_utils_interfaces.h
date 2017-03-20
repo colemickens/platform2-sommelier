@@ -28,9 +28,10 @@ class FileSystemReader {
   virtual int64_t GetSize() = 0;
 };
 
-class RootPathGetter {
+class PathGetter {
  public:
-  virtual ~RootPathGetter() {}
+  virtual ~PathGetter() {}
+  virtual bool GetRealPath(const char* path, std::string* real_path) = 0;
   virtual bool GetRootPath(std::string* path) = 0;
 };
 

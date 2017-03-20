@@ -4,8 +4,11 @@
 
 #include "image-burner/image_burner_utils.h"
 
+#include <memory>
+
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/memory/free_deleter.h>
 #include <rootdev/rootdev.h>
 
 namespace imageburn {
@@ -92,9 +95,17 @@ int64_t BurnReader::GetSize() {
   return file_.GetLength();
 }
 
-BurnRootPathGetter::BurnRootPathGetter() {}
+bool BurnPathGetter::GetRealPath(const char* path, std::string* real_path) {
+  std::unique_ptr<char, base::FreeDeleter> result(realpath(path, nullptr));
+  if (!result) {
+    PLOG(ERROR) << "Couldn't get real path of " << path;
+    return false;
+  }
+  *real_path = result.get();
+  return true;
+}
 
-bool BurnRootPathGetter::GetRootPath(std::string* path) {
+bool BurnPathGetter::GetRootPath(std::string* path) {
   char root_path[PATH_MAX];
   if (rootdev(root_path, sizeof(root_path), true, true)) {
     // Coult not get root path.
