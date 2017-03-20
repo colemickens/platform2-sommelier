@@ -446,22 +446,22 @@ REGIONS_LIST = [
         _KML.ANSI, 'Switzerland (US Intl)',
         'Switzerland with US International keyboard layout.', 50),
     Region(
-        'pe', 'xkb:latam::spa', 'America/Lima', 'es-PE',
+        'pe', 'xkb:latam::spa', 'America/Lima', 'es-419',
         _KML.ANSI, 'Peru', None, 115),
     Region(
-        'sa', 'xkb:us::eng', 'Asia/Riyadh', ['ar-SA', 'en'], _KML.ANSI,
+        'sa', 'xkb:us::eng', 'Asia/Riyadh', ['ar', 'en'], _KML.ANSI,
         'Saudi Arabia', None, 128),
     Region(
         'mx', 'xkb:latam::spa', 'America/Mexico_City', 'es-MX', _KML.ANSI,
         'Mexico', None, 154),
     Region(
-        'cl', 'xkb:latam::spa', 'America/Santiago', 'es-CL', _KML.ANSI, 'Chile',
-        None, 176),
+        'cl', 'xkb:latam::spa', 'America/Santiago', 'es-419', _KML.ANSI,
+        'Chile', None, 176),
     Region(
         'kw', ['xkb:us::eng', 'm17n:ar', 't13n:ar'], 'Asia/Kuwait',
-        ['ar-KW', 'en'], _KML.ANSI, 'Kuwait', None, 201),
+        ['ar', 'en'], _KML.ANSI, 'Kuwait', None, 201),
     Region(
-        'uy', 'xkb:latam::spa', 'America/Montevideo', 'es-UY', _KML.ANSI,
+        'uy', 'xkb:latam::spa', 'America/Montevideo', 'es-419', _KML.ANSI,
         'Uruguay', None, 216),
     Region(
         'tr', ['xkb:tr::tur', 'xkb:tr:f:tur'], 'Europe/Istanbul',
@@ -508,10 +508,10 @@ UNCONFIRMED_REGIONS_LIST = [
         'bn', 'xkb:bn::msa', 'Asia/Brunei', ['ms-BN', 'en-BN'],
         _KML.ANSI, 'Brunei', None, 59),
     Region(
-        'bo', 'xkb:latam::spa', 'America/La_Paz', ['es-BO', 'qu', 'ay'],
+        'bo', 'xkb:latam::spa', 'America/La_Paz', ['es-419', 'qu', 'ay'],
         _KML.ANSI, 'Bolivia', None, 60),
     Region(
-        'bh', 'xkb:bh::ara', 'Asia/Bahrain', ['ar-BH', 'en', 'fa', 'ur'],
+        'bh', 'xkb:bh::ara', 'Asia/Bahrain', ['ar', 'en', 'fa', 'ur'],
         _KML.ANSI, 'Bahrain', None, 61),
     Region(
         'bi', 'xkb:bi::fra', 'Africa/Bujumbura', ['fr-BI', 'rn'],
@@ -574,13 +574,13 @@ UNCONFIRMED_REGIONS_LIST = [
         'gu', 'xkb:gu::eng', 'Pacific/Guam', ['en-GU', 'ch-GU'],
         _KML.ANSI, 'Guam', None, 81),
     Region(
-        'gt', 'xkb:latam::spa', 'America/Guatemala', 'es-GT', _KML.ANSI,
+        'gt', 'xkb:latam::spa', 'America/Guatemala', 'es-419', _KML.ANSI,
         'Guatemala', None, 82),
     Region(
         'gs', 'xkb:gs::eng', 'Atlantic/South_Georgia', 'en', _KML.ANSI,
         'South Georgia and the South Sandwich Islands', None, 83),
     Region(
-        'gq', 'xkb:gq::spa', 'Africa/Malabo', ['es-GQ', 'fr'],
+        'gq', 'xkb:gq::spa', 'Africa/Malabo', ['es-419', 'fr'],
         _KML.ANSI, 'Equatorial Guinea', None, 84),
     Region(
         'gp', 'xkb:gp::fra', 'America/Guadeloupe', 'fr-GP', _KML.ANSI,
@@ -604,7 +604,7 @@ UNCONFIRMED_REGIONS_LIST = [
         'ga', 'xkb:ga::fra', 'Africa/Libreville', 'fr-GA', _KML.ANSI,
         'Gabon', None, 91),
     Region(
-        'sv', 'xkb:latam::spa', 'America/El_Salvador', 'es-SV', _KML.ANSI,
+        'sv', 'xkb:latam::spa', 'America/El_Salvador', 'es-419', _KML.ANSI,
         'El Salvador', None, 92),
     Region(
         'gn', 'xkb:gn::fra', 'Africa/Conakry', 'fr-GN', _KML.ANSI,
@@ -624,13 +624,13 @@ UNCONFIRMED_REGIONS_LIST = [
         'gh', 'xkb:gh::eng', 'Africa/Accra', ['en-GH', 'ak', 'ee', 'tw'],
         _KML.ANSI, 'Ghana', None, 97),
     Region(
-        'om', 'xkb:om::ara', 'Asia/Muscat', ['ar-OM', 'en', 'bal', 'ur'],
+        'om', 'xkb:om::ara', 'Asia/Muscat', ['ar', 'en', 'bal', 'ur'],
         _KML.ANSI, 'Oman', None, 98),
     Region(
-        'tn', 'xkb:tn::ara', 'Africa/Tunis', ['ar-TN', 'fr'], _KML.ANSI,
+        'tn', 'xkb:tn::ara', 'Africa/Tunis', ['ar', 'fr'], _KML.ANSI,
         'Tunisia', None, 99),
     Region(
-        'jo', 'xkb:jo::ara', 'Asia/Amman', ['ar-JO', 'en'], _KML.ANSI,
+        'jo', 'xkb:jo::ara', 'Asia/Amman', ['ar', 'en'], _KML.ANSI,
         'Jordan', None, 100),
     Region(
         'hr', 'xkb:hr::scr', 'Europe/Zagreb', ['hr', 'en-GB'],
@@ -642,16 +642,16 @@ UNCONFIRMED_REGIONS_LIST = [
         'hu', ['xkb:us::eng', 'xkb:hu::hun'], 'Europe/Budapest',
         ['hu', 'en-GB'], _KML.ISO, 'Hungary', None, 103),
     Region(
-        'hn', 'xkb:latam::spa', 'America/Tegucigalpa', 'es-HN', _KML.ANSI,
+        'hn', 'xkb:latam::spa', 'America/Tegucigalpa', 'es-419', _KML.ANSI,
         'Honduras', None, 104),
     Region(
-        've', 'xkb:latam::spa', 'America/Caracas', 'es-VE', _KML.ANSI,
+        've', 'xkb:latam::spa', 'America/Caracas', 'es-419', _KML.ANSI,
         'Venezuela', None, 105),
     Region(
-        'pr', 'xkb:pr::eng', 'America/Puerto_Rico', ['en-PR', 'es-PR'],
+        'pr', 'xkb:pr::eng', 'America/Puerto_Rico', ['en-PR', 'es-419'],
         _KML.ANSI, 'Puerto Rico', None, 106),
     Region(
-        'ps', 'xkb:ps::ara', ['Asia/Gaza', 'Asia/Hebron'], 'ar-PS',
+        'ps', 'xkb:ps::ara', ['Asia/Gaza', 'Asia/Hebron'], 'ar',
         _KML.ANSI, 'Palestinian Territory', None, 107),
     Region(
         'pw', 'xkb:us::eng', 'Pacific/Palau',
@@ -661,13 +661,13 @@ UNCONFIRMED_REGIONS_LIST = [
         'sj', 'xkb:sj::nor', 'Arctic/Longyearbyen', ['no', 'ru'],
         _KML.ANSI, 'Svalbard and Jan Mayen', None, 109),
     Region(
-        'py', 'xkb:latam::spa', 'America/Asuncion', ['es-PY', 'gn'],
+        'py', 'xkb:latam::spa', 'America/Asuncion', ['es-419', 'gn'],
         _KML.ANSI, 'Paraguay', None, 110),
     Region(
-        'iq', 'xkb:iq::ara', 'Asia/Baghdad', ['ar-IQ', 'ku', 'hy'],
+        'iq', 'xkb:iq::ara', 'Asia/Baghdad', ['ar', 'ku', 'hy'],
         _KML.ANSI, 'Iraq', None, 111),
     Region(
-        'pa', 'xkb:latam::spa', 'America/Panama', ['es-PA', 'en'],
+        'pa', 'xkb:latam::spa', 'America/Panama', ['es-419', 'en'],
         _KML.ANSI, 'Panama', None, 112),
     Region(
         'pf', 'xkb:pf::fra',
@@ -699,11 +699,11 @@ UNCONFIRMED_REGIONS_LIST = [
         'ee', 'xkb:ee::est', 'Europe/Tallinn', ['et', 'ru', 'en-GB'], _KML.ISO,
         'Estonia', None, 121),
     Region(
-        'eg', 'xkb:eg::ara', 'Africa/Cairo', ['ar-EG', 'en', 'fr'],
+        'eg', 'xkb:eg::ara', 'Africa/Cairo', ['ar', 'en', 'fr'],
         _KML.ANSI, 'Egypt', None, 122),
     Region(
         'ec', 'xkb:latam::spa', ['America/Guayaquil', 'Pacific/Galapagos'],
-        'es-EC', _KML.ANSI, 'Ecuador', None, 123),
+        'es-419', _KML.ANSI, 'Ecuador', None, 123),
     Region(
         'sb', 'xkb:sb::eng', 'Pacific/Guadalcanal', ['en-SB', 'tpi'],
         _KML.ANSI, 'Solomon Islands', None, 124),
@@ -713,7 +713,7 @@ UNCONFIRMED_REGIONS_LIST = [
         'Ethiopia', None, 125),
     Region(
         'so', 'xkb:so::som', 'Africa/Mogadishu',
-        ['so-SO', 'ar-SO', 'it', 'en-SO'], _KML.ANSI, 'Somalia', None, 126),
+        ['so-SO', 'ar', 'it', 'en-SO'], _KML.ANSI, 'Somalia', None, 126),
     Region(
         'zw', 'xkb:zw::eng', 'Africa/Harare', ['en-ZW', 'sn', 'nr', 'nd'],
         _KML.ANSI, 'Zimbabwe', None, 127),
@@ -735,7 +735,7 @@ UNCONFIRMED_REGIONS_LIST = [
         'mf', 'xkb:mf::fra', 'America/Marigot', 'fr', _KML.ANSI,
         'Saint Martin', None, 133),
     Region(
-        'ma', 'xkb:ma::ara', 'Africa/Casablanca', ['ar-MA', 'fr'],
+        'ma', 'xkb:ma::ara', 'Africa/Casablanca', ['ar', 'fr'],
         _KML.ANSI, 'Morocco', None, 134),
     Region(
         'mc', 'xkb:mc::fra', 'Europe/Monaco', ['fr-MC', 'en', 'it'],
@@ -786,7 +786,7 @@ UNCONFIRMED_REGIONS_LIST = [
         'Montserrat', None, 149),
     Region(
         'mr', 'xkb:mr::ara', 'Africa/Nouakchott',
-        ['ar-MR', 'fuc', 'snk', 'fr', 'mey', 'wo'], _KML.ANSI,
+        ['ar', 'fuc', 'snk', 'fr', 'mey', 'wo'], _KML.ANSI,
         'Mauritania', None, 150),
     Region(
         'im', 'xkb:im::eng', 'Europe/Isle_of_Man', ['en', 'gv'],
@@ -818,7 +818,7 @@ UNCONFIRMED_REGIONS_LIST = [
         'fo', 'xkb:fo::fao', 'Atlantic/Faroe', ['fo', 'da-FO'],
         _KML.ANSI, 'Faroe Islands', None, 160),
     Region(
-        'ni', 'xkb:latam::spa', 'America/Managua', ['es-NI', 'en'],
+        'ni', 'xkb:latam::spa', 'America/Managua', ['es-419', 'en'],
         _KML.ANSI, 'Nicaragua', None, 161),
     Region(
         'no', 'xkb:no::nor', 'Europe/Oslo',
@@ -854,7 +854,7 @@ UNCONFIRMED_REGIONS_LIST = [
         'ci', 'xkb:ci::fra', 'Africa/Abidjan', 'fr-CI', _KML.ANSI,
         'Ivory Coast', None, 172),
     Region(
-        'co', 'xkb:latem::spa', 'America/Bogota', 'es-CO', _KML.ANSI,
+        'co', 'xkb:latam::spa', 'America/Bogota', 'es-419', _KML.ANSI,
         'Colombia', None, 173),
     Region(
         'cn', 'xkb:us::eng', 'Asia/Shanghai', 'zh-CN', _KML.ANSI, 'China',
@@ -883,7 +883,7 @@ UNCONFIRMED_REGIONS_LIST = [
         'cx', 'xkb:cx::eng', 'Indian/Christmas', ['en', 'zh', 'ms-CC'],
         _KML.ANSI, 'Christmas Island', None, 182),
     Region(
-        'cr', 'xkb:latam::spa', 'America/Costa_Rica', ['es-CR', 'en'],
+        'cr', 'xkb:latam::spa', 'America/Costa_Rica', ['es-419', 'en'],
         _KML.ANSI, 'Costa Rica', None, 183),
     Region(
         'cw', 'xkb:cw::nld', 'America/Curacao', ['nl', 'pap'],
@@ -892,14 +892,14 @@ UNCONFIRMED_REGIONS_LIST = [
         'cv', 'xkb:cv::por', 'Atlantic/Cape_Verde', 'pt-CV', _KML.ANSI,
         'Cape Verde', None, 185),
     Region(
-        'cu', 'xkb:latam::spa', 'America/Havana', 'es-CU', _KML.ANSI, 'Cuba',
+        'cu', 'xkb:latam::spa', 'America/Havana', 'es-419', _KML.ANSI, 'Cuba',
         None, 186),
     Region(
         'sz', 'xkb:sz::eng', 'Africa/Mbabane', ['en-SZ', 'ss-SZ'],
         _KML.ANSI, 'Swaziland', None, 187),
     Region(
         'sy', 'xkb:sy::ara', 'Asia/Damascus',
-        ['ar-SY', 'ku', 'hy', 'arc', 'fr', 'en'], _KML.ANSI, 'Syria', None,
+        ['ar', 'ku', 'hy', 'arc', 'fr', 'en'], _KML.ANSI, 'Syria', None,
         188),
     Region(
         'sx', 'xkb:sx::nld', 'America/Lower_Princes', ['nl', 'en'],
@@ -959,10 +959,10 @@ UNCONFIRMED_REGIONS_LIST = [
         'ky', 'xkb:ky::eng', 'America/Cayman', 'en-KY', _KML.ANSI,
         'Cayman Islands', None, 207),
     Region(
-        'sd', 'xkb:sd::ara', 'Africa/Khartoum', ['ar-SD', 'en', 'fia'],
+        'sd', 'xkb:sd::ara', 'Africa/Khartoum', ['ar', 'en', 'fia'],
         _KML.ANSI, 'Sudan', None, 208),
     Region(
-        'do', 'xkb:latam::spa', 'America/Santo_Domingo', 'es-DO',
+        'do', 'xkb:latam::spa', 'America/Santo_Domingo', 'es-419',
         _KML.ANSI, 'Dominican Republic', None, 209),
     Region(
         'dm', 'xkb:dm::eng', 'America/Dominica', 'en-DM', _KML.ANSI,
@@ -977,10 +977,10 @@ UNCONFIRMED_REGIONS_LIST = [
         'vg', 'xkb:vg::eng', 'America/Tortola', 'en-VG', _KML.ANSI,
         'British Virgin Islands', None, 213),
     Region(
-        'ye', 'xkb:ye::ara', 'Asia/Aden', 'ar-YE', _KML.ANSI, 'Yemen',
+        'ye', 'xkb:ye::ara', 'Asia/Aden', 'ar', _KML.ANSI, 'Yemen',
         None, 214),
     Region(
-        'dz', 'xkb:dz::ara', 'Africa/Algiers', 'ar-DZ', _KML.ANSI,
+        'dz', 'xkb:dz::ara', 'Africa/Algiers', 'ar', _KML.ANSI,
         'Algeria', None, 215),
     Region(
         'yt', 'xkb:yt::fra', 'Indian/Mayotte', 'fr-YT', _KML.ANSI,
@@ -991,7 +991,7 @@ UNCONFIRMED_REGIONS_LIST = [
         _KML.ANSI, 'United States Minor Outlying Islands', None, 218),
     Region(
         'lb', 'xkb:lb::ara', 'Asia/Beirut',
-        ['ar-LB', 'fr-LB', 'en', 'hy'], _KML.ANSI, 'Lebanon', None, 219),
+        ['ar', 'fr-LB', 'en', 'hy'], _KML.ANSI, 'Lebanon', None, 219),
     Region(
         'lc', 'xkb:lc::eng', 'America/St_Lucia', 'en-LC', _KML.ANSI,
         'Saint Lucia', None, 220),
@@ -1037,13 +1037,13 @@ UNCONFIRMED_REGIONS_LIST = [
         ['fr-TG', 'ee', 'hna', 'kbp', 'dag', 'ha'], _KML.ANSI, 'Togo',
         None, 234),
     Region(
-        'td', 'xkb:td::fra', 'Africa/Ndjamena', ['fr-TD', 'ar-TD', 'sre'],
+        'td', 'xkb:td::fra', 'Africa/Ndjamena', ['fr-TD', 'ar', 'sre'],
         _KML.ANSI, 'Chad', None, 235),
     Region(
         'tc', 'xkb:tc::eng', 'America/Grand_Turk', 'en-TC', _KML.ANSI,
         'Turks and Caicos Islands', None, 236),
     Region(
-        'ly', 'xkb:ly::ara', 'Africa/Tripoli', ['ar-LY', 'it', 'en'],
+        'ly', 'xkb:ly::ara', 'Africa/Tripoli', ['ar', 'it', 'en'],
         _KML.ANSI, 'Libya', None, 237),
     Region(
         'va', 'xkb:va::lat', 'Europe/Vatican', ['la', 'it', 'fr'],
@@ -1098,7 +1098,7 @@ UNCONFIRMED_REGIONS_LIST = [
         ['Europe/Kiev', 'Europe/Uzhgorod', 'Europe/Zaporozhye'],
         ['uk', 'ru-UA', 'rom', 'pl', 'hu'], _KML.ANSI, 'Ukraine', None, 255),
     Region(
-        'qa', 'xkb:qa::ara', 'Asia/Bahrain', ['ar-QA', 'en'], _KML.ANSI,
+        'qa', 'xkb:qa::ara', 'Asia/Bahrain', ['ar', 'en'], _KML.ANSI,
         'Qatar', None, 256),
     Region(
         'mz', 'xkb:mz::por', 'Africa/Maputo', ['pt-MZ', 'vmw'],
