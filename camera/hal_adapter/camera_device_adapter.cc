@@ -24,8 +24,11 @@
 
 namespace arc {
 
-CameraDeviceAdapter::CameraDeviceAdapter(camera3_device_t* camera_device)
-    : camera_device_(camera_device), fence_sync_thread_("Fence sync thread") {
+CameraDeviceAdapter::CameraDeviceAdapter(camera3_device_t* camera_device,
+                                         base::Callback<void()> close_callback)
+    : close_callback_(close_callback),
+      camera_device_(camera_device),
+      fence_sync_thread_("Fence sync thread") {
   VLOGF_ENTER() << ":" << camera_device_;
   device_ops_delegate_.reset(new Camera3DeviceOpsDelegate(this));
 }
@@ -36,12 +39,6 @@ CameraDeviceAdapter::~CameraDeviceAdapter() {
 
 mojom::Camera3DeviceOpsPtr CameraDeviceAdapter::GetDeviceOpsPtr() {
   return device_ops_delegate_->CreateInterfacePtr();
-}
-
-int CameraDeviceAdapter::Close() {
-  // Close the device.
-  fence_sync_thread_.Stop();
-  return camera_device_->common.close(&camera_device_->common);
 }
 
 int32_t CameraDeviceAdapter::Initialize(
@@ -232,6 +229,16 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
            << "format: " << FormatToString(format) << " dimension: " << std::dec
            << width << "x" << height << " num_planes: " << num_planes;
   return 0;
+}
+
+int32_t CameraDeviceAdapter::Close() {
+  // Close the device.
+  VLOGF_ENTER();
+  fence_sync_thread_.Stop();
+  int32_t ret = camera_device_->common.close(&camera_device_->common);
+  DCHECK_EQ(ret, 0);
+  close_callback_.Run();
+  return ret;
 }
 
 mojom::Camera3CaptureResultPtr CameraDeviceAdapter::ProcessCaptureResult(

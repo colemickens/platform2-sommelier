@@ -67,6 +67,8 @@ interface Camera3DeviceOps {
                    uint32 format, uint32 width, uint32 height,
                    array<uint32> strides, array<uint32> offsets) =>
       (int32 result);
+
+  Close@7() => (int32 result);
 };
 
 struct Camera3CaptureResult {
@@ -119,13 +121,11 @@ struct CameraInfo {
 interface CameraModule {
   OpenDevice@0(int32 camera_id) => (int32 result, Camera3DeviceOps device_ops);
 
-  CloseDevice@1(int32 camera_id) => (int32 result);
+  GetNumberOfCameras@1() => (int32 result);
 
-  GetNumberOfCameras@2() => (int32 result);
+  GetCameraInfo@2(int32 camera_id) => (int32 result, CameraInfo camera_info);
 
-  GetCameraInfo@3(int32 camera_id) => (int32 result, CameraInfo camera_info);
-
-  SetCallbacks@4(CameraModuleCallbacks callbacks) => (int32 result);
+  SetCallbacks@3(CameraModuleCallbacks callbacks) => (int32 result);
 };
 
 interface CameraModuleCallbacks {

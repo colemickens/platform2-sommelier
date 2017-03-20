@@ -44,15 +44,20 @@ class CameraHalAdapter : public mojo::edk::ProcessDelegate {
   // the mojo IPC handler thread in |module_delegate_|.
   int32_t OpenDevice(int32_t device_id, mojom::Camera3DeviceOpsPtr* device_ops);
 
-  int32_t CloseDevice(int32_t device_id);
-
   int32_t GetNumberOfCameras();
 
   int32_t GetCameraInfo(int32_t device_id, mojom::CameraInfoPtr* camera_info);
 
   int32_t SetCallbacks(mojom::CameraModuleCallbacksPtr callbacks);
 
+  // A callback for the camera devices opened in OpenDevice().  Used to run
+  // CloseDevice() on the same thread that OpenDevice() runs on.
+  void CloseDeviceCallback(base::TaskRunner* runner, int32_t device_id);
+
  private:
+  // Clean up the camera device specified by |device_id| in |device_adapters_|.
+  void CloseDevice(int32_t device_id);
+
   // The handle to the camera HAL dlopen()'d on process start.
   camera_module_t* camera_module_;
 
@@ -68,7 +73,10 @@ class CameraHalAdapter : public mojo::edk::ProcessDelegate {
   // The delegate that handles the CameraModuleCallbacks mojo IPC.
   std::unique_ptr<CameraModuleCallbacksDelegate> callbacks_delegate_;
 
-  // The handles to the opened camera devices.
+  // The handles to the opened camera devices.  |device_adapters_| is accessed
+  // only in OpenDevice() and CloseDevice().  In order to do lock-free access to
+  // |device_adapters_|, we run OpenDevice() and CloseDevice() on the same
+  // thread (i.e. the mojo IPC handler thread in |module_delegate_|).
   std::map<int32_t, std::unique_ptr<CameraDeviceAdapter>> device_adapters_;
 
   DISALLOW_COPY_AND_ASSIGN(CameraHalAdapter);

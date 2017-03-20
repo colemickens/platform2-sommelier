@@ -37,7 +37,8 @@ class Camera3CallbackOpsDelegate;
 
 class CameraDeviceAdapter {
  public:
-  explicit CameraDeviceAdapter(camera3_device_t* camera_device);
+  explicit CameraDeviceAdapter(camera3_device_t* camera_device,
+                               base::Callback<void()> close_callback);
 
   ~CameraDeviceAdapter();
 
@@ -54,8 +55,6 @@ class CameraDeviceAdapter {
   //                thread-safe (b/36358221).
 
   mojom::Camera3DeviceOpsPtr GetDeviceOpsPtr();
-
-  int Close();
 
   // Callback interface for Camera3DeviceOpsDelegate.
   // These methods are callbacks for |device_ops_delegate_| and are executed on
@@ -83,6 +82,8 @@ class CameraDeviceAdapter {
                          mojo::Array<uint32_t> strides,
                          mojo::Array<uint32_t> offsets);
 
+  int32_t Close();
+
   // Callback interface for Camera3CallbackOpsDelegate.
   // These methods are callbacks for |callback_ops_delegate_| and are executed
   // on the mojo IPC handler thread in |callback_ops_delegate_|.
@@ -105,6 +106,9 @@ class CameraDeviceAdapter {
 
   // The delegate that handles the Camera3CallbackOps mojo IPC.
   std::unique_ptr<Camera3CallbackOpsDelegate> callback_ops_delegate_;
+
+  // The callback to run when the device is closed.
+  base::Callback<void()> close_callback_;
 
   // The real camera device.
   camera3_device_t* camera_device_;

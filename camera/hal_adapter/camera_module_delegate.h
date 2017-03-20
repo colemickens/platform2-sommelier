@@ -26,9 +26,6 @@ class CameraModuleDelegate
   void OpenDevice(int32_t device_id,
                   const OpenDeviceCallback& callback) override;
 
-  void CloseDevice(int32_t device_id,
-                   const CloseDeviceCallback& callback) override;
-
   void GetNumberOfCameras(const GetNumberOfCamerasCallback& callback) override;
 
   void GetCameraInfo(int32_t device_id,

@@ -83,4 +83,10 @@ void Camera3DeviceOpsDelegate::RegisterBuffer(
       std::move(strides), std::move(offsets)));
 }
 
+void Camera3DeviceOpsDelegate::Close(const CloseCallback& callback) {
+  VLOGF_ENTER();
+  DCHECK(thread_checker_.CalledOnValidThread());
+  callback.Run(camera_device_adapter_->Close());
+}
+
 }  // namespace arc

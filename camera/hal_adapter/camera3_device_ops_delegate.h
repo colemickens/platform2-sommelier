@@ -50,6 +50,8 @@ class Camera3DeviceOpsDelegate
                       mojo::Array<uint32_t> offsets,
                       const RegisterBufferCallback& callback) override;
 
+  void Close(const CloseCallback& callback) override;
+
   CameraDeviceAdapter* camera_device_adapter_;
 
   DISALLOW_COPY_AND_ASSIGN(Camera3DeviceOpsDelegate);

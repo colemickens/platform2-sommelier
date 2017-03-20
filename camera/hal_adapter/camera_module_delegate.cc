@@ -29,13 +29,6 @@ void CameraModuleDelegate::OpenDevice(int32_t device_id,
   callback.Run(result, std::move(device_ops));
 }
 
-void CameraModuleDelegate::CloseDevice(int32_t device_id,
-                                       const CloseDeviceCallback& callback) {
-  VLOGF_ENTER();
-  DCHECK(thread_checker_.CalledOnValidThread());
-  callback.Run(camera_hal_adapter_->CloseDevice(device_id));
-}
-
 void CameraModuleDelegate::GetNumberOfCameras(
     const GetNumberOfCamerasCallback& callback) {
   VLOGF_ENTER();

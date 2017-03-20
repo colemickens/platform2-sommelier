@@ -130,26 +130,20 @@ int32_t CameraHalAdapter::OpenDevice(int32_t device_id,
     device_ops->reset();
     return ret;
   } else {
-    device_adapters_[device_id].reset(new CameraDeviceAdapter(camera_device));
+    // This method is called by |camera_module_delegate_| on its mojo IPC
+    // handler thread.
+    // The CameraHalAdapter (and hence |camera_module_delegate_|) must out-live
+    // the CameraDeviceAdapters, so it's safe to keep a reference to the task
+    // runner of the current thread in the callback functor.
+    base::Callback<void()> close_callback = base::Bind(
+        &CameraHalAdapter::CloseDeviceCallback, base::Unretained(this),
+        base::RetainedRef(base::MessageLoop::current()->task_runner()),
+        device_id);
+    device_adapters_[device_id].reset(
+        new CameraDeviceAdapter(camera_device, close_callback));
     *device_ops = device_adapters_.at(device_id)->GetDeviceOpsPtr();
   }
   return 0;
-}
-
-int32_t CameraHalAdapter::CloseDevice(int32_t device_id) {
-  VLOGF_ENTER();
-  if (device_id < 0) {
-    LOGF(ERROR) << "Invalid camera device id: " << device_id;
-    return -EINVAL;
-  }
-  if (device_adapters_.find(device_id) == device_adapters_.end()) {
-    LOGF(ERROR) << "Failed to close camera device " << device_id
-                << ": device is not opened";
-    return -ENODEV;
-  }
-  int32_t result = device_adapters_.at(device_id)->Close();
-  device_adapters_.erase(device_id);
-  return result;
 }
 
 int32_t CameraHalAdapter::GetNumberOfCameras() {
@@ -195,6 +189,26 @@ int32_t CameraHalAdapter::SetCallbacks(
   callbacks_delegate_.reset(
       new CameraModuleCallbacksDelegate(callbacks.PassInterface()));
   return camera_module_->set_callbacks(callbacks_delegate_.get());
+}
+
+void CameraHalAdapter::CloseDeviceCallback(base::TaskRunner* runner,
+                                           int32_t device_id) {
+  runner->PostTask(FROM_HERE, base::Bind(&CameraHalAdapter::CloseDevice,
+                                         base::Unretained(this), device_id));
+}
+
+void CameraHalAdapter::CloseDevice(int32_t device_id) {
+  VLOGF_ENTER();
+  if (device_id < 0) {
+    LOGF(ERROR) << "Invalid camera device id: " << device_id;
+    return;
+  }
+  if (device_adapters_.find(device_id) == device_adapters_.end()) {
+    LOGF(ERROR) << "Failed to close camera device " << device_id
+                << ": device is not opened";
+    return;
+  }
+  device_adapters_.erase(device_id);
 }
 
 }  // namespace arc
