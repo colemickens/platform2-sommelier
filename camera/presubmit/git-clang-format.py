@@ -42,6 +42,12 @@ def main(argv):
          args.commit]
   stdout = subprocess.check_output(cmd, universal_newlines=True)
 
+  cmd = ['git', 'log', '%s^..%s' % (args.commit, args.commit),
+         '--pretty=oneline']
+  stdout = subprocess.check_output(cmd, universal_newlines=True)
+  commit_hash, commit_message = stdout.split(' ', 1)
+  print('[Commit %s] %s' % (commit_hash[:8], commit_message), file=sys.stderr)
+
   if stdout.strip() == 'no modified files to format':
     return 0
 
