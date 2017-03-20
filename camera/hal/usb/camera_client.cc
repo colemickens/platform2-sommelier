@@ -395,6 +395,7 @@ void CameraClient::RequestHandler::HandleRequest(
                          << ", Number of output buffers: "
                          << capture_result.num_output_buffers;
 
+  CameraMetadata* metadata = request->GetMetadata();
   // Handle each stream output buffer and convert it to corresponding format.
   for (size_t i = 0; i < capture_result.num_output_buffers; i++) {
     camera3_stream_buffer_t* buffer =
@@ -414,10 +415,9 @@ void CameraClient::RequestHandler::HandleRequest(
       return;
     }
 
-    input_frame_.Convert(&output_frame);
+    input_frame_.Convert(*metadata, &output_frame);
   }
 
-  CameraMetadata* metadata = request->GetMetadata();
   int64_t timestamp;
   NotifyShutter(capture_result.frame_number, &timestamp);
   metadata->Update(ANDROID_SENSOR_TIMESTAMP, &timestamp, 1);

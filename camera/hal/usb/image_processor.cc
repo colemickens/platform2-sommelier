@@ -7,8 +7,11 @@
 
 #include <errno.h>
 #include <libyuv.h>
+#include <time.h>
 
 #include "arc/common.h"
+#include "arc/exif_utils.h"
+#include "arc/jpeg_compressor.h"
 #include "hal/usb/common_types.h"
 
 namespace arc {
@@ -54,6 +57,13 @@ static int YU12ToYV12(const void* yv12,
                       int dst_stride_y,
                       int dst_stride_uv);
 static int YU12ToNV21(const void* yv12, void* nv21, int width, int height);
+static bool ConvertToJpeg(const CameraMetadata& metadata,
+                          const FrameBuffer& in_frame,
+                          FrameBuffer* out_frame);
+static bool SetExifTags(const CameraMetadata& metadata, ExifUtils* utils);
+
+// How precise the float-to-rational conversion for EXIF tags would be.
+static const int kRationalPrecision = 10000;
 
 inline static size_t Align16(size_t value) {
   return (value + 15) & ~15;
@@ -78,14 +88,15 @@ size_t ImageProcessor::GetConvertedSize(int fourcc,
     case V4L2_PIX_FMT_RGB32:
       return width * height * 4;
     default:
-      LOGF(ERROR) << "Pixel format 0x" << std::hex << fourcc
+      LOGF(ERROR) << "Pixel format " << FormatToString(fourcc)
                   << " is unsupported.";
       return 0;
   }
 }
 
-int ImageProcessor::Convert(const FrameBuffer& in_frame,
-                            FrameBuffer* out_frame) {
+int ImageProcessor::ConvertFormat(const CameraMetadata& metadata,
+                                  const FrameBuffer& in_frame,
+                                  FrameBuffer* out_frame) {
   if ((in_frame.GetWidth() % 2) || (in_frame.GetHeight() % 2)) {
     LOGF(ERROR) << "Width or height is not even (" << in_frame.GetWidth()
                 << " x " << in_frame.GetHeight() << ")";
@@ -165,6 +176,11 @@ int ImageProcessor::Convert(const FrameBuffer& in_frame,
         LOGF_IF(ERROR, res) << "I420ToABGR() returns " << res;
         return res ? -EINVAL : 0;
       }
+      case V4L2_PIX_FMT_JPEG: {
+        int res = ConvertToJpeg(metadata, in_frame, out_frame);
+        LOGF_IF(ERROR, res) << "ConvertToJpeg() returns " << res;
+        return res ? -EINVAL : 0;
+      }
       default:
         LOGF(ERROR) << "Destination pixel format "
                     << FormatToString(out_frame->GetFourcc())
@@ -200,6 +216,43 @@ int ImageProcessor::Convert(const FrameBuffer& in_frame,
                 << FormatToString(in_frame.GetFourcc());
     return -EINVAL;
   }
+}
+
+int ImageProcessor::Scale(const FrameBuffer& in_frame, FrameBuffer* out_frame) {
+  if (in_frame.GetFourcc() != V4L2_PIX_FMT_YUV420) {
+    LOGF(ERROR) << "Pixel format " << FormatToString(in_frame.GetFourcc())
+                << " is unsupported.";
+    return -EINVAL;
+  }
+
+  size_t data_size = GetConvertedSize(
+      in_frame.GetFourcc(), out_frame->GetWidth(), out_frame->GetHeight());
+
+  if (out_frame->SetDataSize(data_size)) {
+    LOGF(ERROR) << "Set data size failed";
+    return -EINVAL;
+  }
+  out_frame->SetFourcc(in_frame.GetFourcc());
+
+  VLOGF(1) << "Scale image from " << in_frame.GetWidth() << "x"
+           << in_frame.GetHeight() << " to " << out_frame->GetWidth() << "x"
+           << out_frame->GetHeight();
+
+  int ret = libyuv::I420Scale(
+      in_frame.GetData(), in_frame.GetWidth(),
+      in_frame.GetData() + in_frame.GetWidth() * in_frame.GetHeight(),
+      in_frame.GetWidth() / 2,
+      in_frame.GetData() + in_frame.GetWidth() * in_frame.GetHeight() * 5 / 4,
+      in_frame.GetWidth() / 2, in_frame.GetWidth(), in_frame.GetHeight(),
+      out_frame->GetData(), out_frame->GetWidth(),
+      out_frame->GetData() + out_frame->GetWidth() * out_frame->GetHeight(),
+      out_frame->GetWidth() / 2,
+      out_frame->GetData() +
+          out_frame->GetWidth() * out_frame->GetHeight() * 5 / 4,
+      out_frame->GetWidth() / 2, out_frame->GetWidth(), out_frame->GetHeight(),
+      libyuv::FilterMode::kFilterNone);
+  LOGF_IF(ERROR, ret) << "I420Scale failed: " << ret;
+  return ret;
 }
 
 static int YU12ToYV12(const void* yu12,
@@ -254,6 +307,146 @@ static int YU12ToNV21(const void* yu12, void* nv21, int width, int height) {
     }
   }
   return 0;
+}
+
+static bool ConvertToJpeg(const CameraMetadata& metadata,
+                          const FrameBuffer& in_frame,
+                          FrameBuffer* out_frame) {
+  ExifUtils utils;
+  int jpeg_quality, thumbnail_jpeg_quality;
+  camera_metadata_ro_entry entry = metadata.Find(ANDROID_JPEG_QUALITY);
+  if (entry.count) {
+    jpeg_quality = entry.data.u8[0];
+  } else {
+    LOGF(ERROR) << "Cannot find jpeg quality in metadata.";
+    return false;
+  }
+  if (metadata.Exists(ANDROID_JPEG_THUMBNAIL_QUALITY)) {
+    entry = metadata.Find(ANDROID_JPEG_THUMBNAIL_QUALITY);
+    thumbnail_jpeg_quality = entry.data.u8[0];
+  } else {
+    thumbnail_jpeg_quality = jpeg_quality;
+  }
+
+  if (!utils.Initialize(in_frame.GetData(), in_frame.GetWidth(),
+                        in_frame.GetHeight(), thumbnail_jpeg_quality)) {
+    LOGF(ERROR) << "ExifUtils initialization failed.";
+    return false;
+  }
+  if (!SetExifTags(metadata, &utils)) {
+    LOGF(ERROR) << "Setting Exif tags failed.";
+    return false;
+  }
+  if (!utils.GenerateApp1()) {
+    LOGF(ERROR) << "Generating APP1 segment failed.";
+    return false;
+  }
+  JpegCompressor compressor;
+  if (!compressor.CompressImage(in_frame.GetData(), in_frame.GetWidth(),
+                                in_frame.GetHeight(), jpeg_quality,
+                                utils.GetApp1Buffer(), utils.GetApp1Length())) {
+    LOGF(ERROR) << "JPEG image compression failed";
+    return false;
+  }
+  size_t buffer_length = compressor.GetCompressedImageSize();
+  memcpy(out_frame->GetData(), compressor.GetCompressedImagePtr(),
+         buffer_length);
+  return true;
+}
+
+static bool SetExifTags(const CameraMetadata& metadata, ExifUtils* utils) {
+  time_t raw_time = 0;
+  struct tm time_info;
+  bool time_available = time(&raw_time) != -1;
+  localtime_r(&raw_time, &time_info);
+  if (!utils->SetDateTime(time_info)) {
+    LOGF(ERROR) << "Setting data time failed.";
+    return false;
+  }
+
+  float focal_length;
+  camera_metadata_ro_entry entry = metadata.Find(ANDROID_LENS_FOCAL_LENGTH);
+  if (entry.count) {
+    focal_length = entry.data.f[0];
+  } else {
+    LOGF(ERROR) << "Cannot find focal length in metadata.";
+    return false;
+  }
+  if (!utils->SetFocalLength(
+          static_cast<uint32_t>(focal_length * kRationalPrecision),
+          kRationalPrecision)) {
+    LOGF(ERROR) << "Setting focal length failed.";
+    return false;
+  }
+
+  if (metadata.Exists(ANDROID_JPEG_GPS_COORDINATES)) {
+    entry = metadata.Find(ANDROID_JPEG_GPS_COORDINATES);
+    if (entry.count < 3) {
+      LOGF(ERROR) << "Gps coordinates in metadata is not complete.";
+      return false;
+    }
+    if (!utils->SetGpsLatitude(entry.data.d[0])) {
+      LOGF(ERROR) << "Setting gps latitude failed.";
+      return false;
+    }
+    if (!utils->SetGpsLongitude(entry.data.d[1])) {
+      LOGF(ERROR) << "Setting gps longitude failed.";
+      return false;
+    }
+    if (!utils->SetGpsAltitude(entry.data.d[2])) {
+      LOGF(ERROR) << "Setting gps altitude failed.";
+      return false;
+    }
+  }
+
+  if (metadata.Exists(ANDROID_JPEG_GPS_PROCESSING_METHOD)) {
+    entry = metadata.Find(ANDROID_JPEG_GPS_PROCESSING_METHOD);
+    std::string method_str(reinterpret_cast<const char*>(entry.data.u8));
+    if (!utils->SetGpsProcessingMethod(method_str)) {
+      LOGF(ERROR) << "Setting gps processing method failed.";
+      return false;
+    }
+  }
+
+  if (time_available && metadata.Exists(ANDROID_JPEG_GPS_TIMESTAMP)) {
+    entry = metadata.Find(ANDROID_JPEG_GPS_TIMESTAMP);
+    time_t timestamp = static_cast<time_t>(entry.data.i64[0]);
+    if (gmtime_r(&timestamp, &time_info)) {
+      if (!utils->SetGpsTimestamp(time_info)) {
+        LOGF(ERROR) << "Setting gps timestamp failed.";
+        return false;
+      }
+    } else {
+      LOGF(ERROR) << "Time tranformation failed.";
+      return false;
+    }
+  }
+
+  if (metadata.Exists(ANDROID_JPEG_ORIENTATION)) {
+    entry = metadata.Find(ANDROID_JPEG_ORIENTATION);
+    if (!utils->SetOrientation(entry.data.i32[0])) {
+      LOGF(ERROR) << "Setting orientation failed.";
+      return false;
+    }
+  }
+
+  if (metadata.Exists(ANDROID_JPEG_THUMBNAIL_SIZE)) {
+    entry = metadata.Find(ANDROID_JPEG_THUMBNAIL_SIZE);
+    if (entry.count < 2) {
+      LOGF(ERROR) << "Thumbnail size in metadata is not complete.";
+      return false;
+    }
+    int thumbnail_width = entry.data.i32[0];
+    int thumbnail_height = entry.data.i32[1];
+    if (thumbnail_width > 0 && thumbnail_height > 0) {
+      if (!utils->SetThumbnailSize(static_cast<uint16_t>(thumbnail_width),
+                                   static_cast<uint16_t>(thumbnail_height))) {
+        LOGF(ERROR) << "Setting thumbnail size failed.";
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 }  // namespace arc

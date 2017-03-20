@@ -8,6 +8,7 @@
 
 #include <memory>
 
+#include "arc/camera_metadata.h"
 #include "hal/usb/image_processor.h"
 
 namespace arc {
@@ -45,12 +46,15 @@ class CachedFrame {
   // 0 on error.
   size_t GetConvertedSize(int fourcc) const;
 
-  // Caller should fill |fourcc|, |data|, and |buffer_size| of |out_frame|. The
-  // function will fill other members in |out_frame|.
+  // Caller should fill everything except |data_size| and |fd| of |out_frame|.
+  // The function will do format conversion and scale to fit |out_frame|
+  // requirement.
   // If |video_hack| is true, it outputs YU12 when |hal_pixel_format| is YV12
   // (swapping U/V planes). Caller should fill |fourcc|, |data|, and
   // Return non-zero error code on failure; return 0 on success.
-  int Convert(FrameBuffer* out_frame, bool video_hack = false);
+  int Convert(const CameraMetadata& metadata,
+              FrameBuffer* out_frame,
+              bool video_hack = false);
 
  private:
   int ConvertToYU12();
@@ -71,6 +75,9 @@ class CachedFrame {
 
   // Cache YU12 decoded results.
   std::unique_ptr<AllocatedFrameBuffer> yu12_frame_;
+
+  // Temporary buffer for scaled results.
+  std::unique_ptr<AllocatedFrameBuffer> scaled_frame_;
 };
 
 }  // namespace arc

@@ -72,11 +72,31 @@ size_t CachedFrame::GetConvertedSize(int fourcc) const {
                                           yu12_frame_->GetHeight());
 }
 
-int CachedFrame::Convert(FrameBuffer* out_frame, bool video_hack) {
+int CachedFrame::Convert(const CameraMetadata& metadata,
+                         FrameBuffer* out_frame,
+                         bool video_hack) {
   if (video_hack && out_frame->GetFourcc() == V4L2_PIX_FMT_YVU420) {
     out_frame->SetFourcc(V4L2_PIX_FMT_YUV420);
   }
-  return ImageProcessor::Convert(*yu12_frame_.get(), out_frame);
+
+  FrameBuffer* source_frame = yu12_frame_.get();
+  if (GetWidth() != out_frame->GetWidth() ||
+      GetHeight() != out_frame->GetHeight()) {
+    size_t cache_size = ImageProcessor::GetConvertedSize(
+        yu12_frame_->GetFourcc(), out_frame->GetWidth(),
+        out_frame->GetHeight());
+    if (cache_size == 0) {
+      return -EINVAL;
+    } else if (cache_size > scaled_frame_->GetBufferSize()) {
+      scaled_frame_.reset(new AllocatedFrameBuffer(cache_size));
+    }
+    scaled_frame_->SetWidth(out_frame->GetWidth());
+    scaled_frame_->SetHeight(out_frame->GetHeight());
+    ImageProcessor::Scale(*yu12_frame_.get(), scaled_frame_.get());
+
+    source_frame = scaled_frame_.get();
+  }
+  return ImageProcessor::ConvertFormat(metadata, *source_frame, out_frame);
 }
 
 int CachedFrame::ConvertToYU12() {
@@ -91,7 +111,8 @@ int CachedFrame::ConvertToYU12() {
   yu12_frame_->SetWidth(source_frame_->GetWidth());
   yu12_frame_->SetHeight(source_frame_->GetHeight());
 
-  int res = ImageProcessor::Convert(*source_frame_, yu12_frame_.get());
+  int res = ImageProcessor::ConvertFormat(CameraMetadata(), *source_frame_,
+                                          yu12_frame_.get());
   if (res) {
     LOGF(ERROR) << "Convert from " << FormatToString(source_frame_->GetFourcc())
                 << " to YU12 fails.";

@@ -6,9 +6,9 @@
 #include "hal/usb/stream_format.h"
 
 #include <linux/videodev2.h>
+#include <system/graphics.h>
 
 #include "arc/common.h"
-#include "hal/usb/metadata_handler.h"
 
 namespace arc {
 
@@ -80,7 +80,7 @@ int HalPixelFormatToFourcc(uint32_t hal_pixel_format) {
     case HAL_PIXEL_FORMAT_RGBA_8888:
       return V4L2_PIX_FMT_RGB32;
     case HAL_PIXEL_FORMAT_BLOB:
-      return V4L2_PIX_FMT_MJPEG;
+      return V4L2_PIX_FMT_JPEG;
     case HAL_PIXEL_FORMAT_YCbCr_420_888:
       // This is a flexible YUV format that depends on platform. Different
       // platform may have different format. It can be YVU420 or NV12. Now we
