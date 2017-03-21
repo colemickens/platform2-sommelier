@@ -9,7 +9,9 @@ include common.mk
 GEN_MOJO_TEMPLATES_DIR := $(OUT)/hal_adapter/templates
 MOJOM_BINDINGS_GENERATOR := \
 	$(SYSROOT)/usr/src/libmojo-$(BASE_VER)/mojo/mojom_bindings_generator.py
-MOJOM_FILES := hal_adapter/mojo/arc_camera3.mojom
+MOJOM_FILES := \
+	hal_adapter/mojo/arc_camera3.mojom \
+	hal_adapter/mojo/camera_metadata_tags.mojom
 GENERATED_SOURCES := $(patsubst %.mojom,%.mojom.cc,$(MOJOM_FILES))
 $(GENERATED_SOURCES):
 	$(QUIET)echo generate_mojo_templates: $(GEN_MOJO_TEMPLATES_DIR)
