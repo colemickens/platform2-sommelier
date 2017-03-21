@@ -67,7 +67,7 @@ class Component {
   // Constructs a Component. We want to avoid using this where possible since
   // you need to load the manifest before doing anything anyway, so use the
   // static factory method above.
-  explicit Component(const base::FilePath& component_dir);
+  Component(const base::FilePath& component_dir, int key_number);
 
   // Loads and verifies the manfiest. Returns false on failure. |public_key| is
   // the public key used to check the manifest signature.
@@ -89,6 +89,7 @@ class Component {
   FRIEND_TEST_ALL_PREFIXES(ComponentTest, CopyValidImage);
 
   const base::FilePath component_dir_;
+  int key_number_;
   std::string manifest_raw_;
   std::string manifest_sig_;
   Manifest manifest_;

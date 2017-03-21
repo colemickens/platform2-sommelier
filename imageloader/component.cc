@@ -8,17 +8,19 @@
 
 #include <algorithm>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/json/json_string_value_serializer.h>
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <crypto/secure_hash.h>
 #include <crypto/sha2.h>
@@ -35,7 +37,7 @@ constexpr char kManifestName[] = "imageloader.json";
 // The name of the fingerprint file.
 constexpr char kFingerprintName[] = "manifest.fingerprint";
 // The manifest signature.
-constexpr char kManifestSignatureName[] = "imageloader.sig.1";
+constexpr char kManifestSignatureNamePattern[] = "imageloader.sig.1";
 // The current version of the manifest file.
 constexpr int kCurrentManifestVersion = 1;
 // The name of the version field in the manifest.
@@ -57,8 +59,39 @@ base::FilePath GetManifestPath(const base::FilePath& component_dir) {
   return component_dir.Append(kManifestName);
 }
 
-base::FilePath GetSignaturePath(const base::FilePath& component_dir) {
-  return component_dir.Append(kManifestSignatureName);
+bool GetSignaturePath(const base::FilePath& component_dir,
+                      base::FilePath* signature_path,
+                      int* key_number) {
+  DCHECK(signature_path);
+  DCHECK(key_number);
+
+  base::FileEnumerator files(component_dir,
+                             false,
+                             base::FileEnumerator::FileType::FILES,
+                             kManifestSignatureNamePattern);
+  for (base::FilePath path = files.Next(); !path.empty(); path = files.Next()) {
+    // Extract the key number.
+    std::string key_ext = path.FinalExtension();
+    if (key_ext.empty())
+      continue;
+
+    int ext_number;
+    if (!base::StringToInt(key_ext.substr(1), &ext_number))
+      continue;
+
+    *signature_path = path;
+    *key_number = ext_number;
+    return true;
+  }
+  return false;
+}
+
+base::FilePath GetSignaturePathForKey(const base::FilePath& component_dir,
+                                      int key_number) {
+  std::string signature_name(kManifestSignatureNamePattern);
+  signature_name =
+      signature_name.substr(0, signature_name.find_last_of('.') + 1);
+  return component_dir.Append(signature_name + base::IntToString(key_number));
 }
 
 base::FilePath GetFingerprintPath(const base::FilePath& component_dir) {
@@ -115,13 +148,21 @@ bool GetAndVerifyTable(const base::FilePath& path,
 
 }  // namespace
 
-Component::Component(const base::FilePath& component_dir)
-    : component_dir_(component_dir) {}
+Component::Component(const base::FilePath& component_dir, int key_number)
+    : component_dir_(component_dir), key_number_(key_number) {}
 
 std::unique_ptr<Component> Component::Create(
         const base::FilePath& component_dir,
         const std::vector<uint8_t>& public_key) {
-  std::unique_ptr<Component> component(new Component(component_dir));
+  base::FilePath signature_path;
+  int key_number;
+  if (!GetSignaturePath(component_dir, &signature_path, &key_number)) {
+    LOG(ERROR) << "Could not find manifest signature";
+    return nullptr;
+  }
+
+  std::unique_ptr<Component> component(
+      new Component(component_dir, key_number));
   if (!component->LoadManifest(public_key))
     return nullptr;
   return component;
@@ -219,8 +260,9 @@ bool Component::LoadManifest(const std::vector<uint8_t>& public_key) {
     LOG(ERROR) << "Could not read manifest file.";
     return false;
   }
-  if (!base::ReadFileToStringWithMaxSize(GetSignaturePath(component_dir_),
-                                         &manifest_sig_, kMaximumFilesize)) {
+  if (!base::ReadFileToStringWithMaxSize(
+          GetSignaturePathForKey(component_dir_, key_number_),
+          &manifest_sig_, kMaximumFilesize)) {
     LOG(ERROR) << "Could not read signature file.";
     return false;
   }
@@ -248,7 +290,8 @@ bool Component::LoadManifest(const std::vector<uint8_t>& public_key) {
 
 bool Component::CopyTo(const base::FilePath& dest_dir) {
   if (!WriteFileToDisk(GetManifestPath(dest_dir), manifest_raw_) ||
-      !WriteFileToDisk(GetSignaturePath(dest_dir), manifest_sig_)) {
+      !WriteFileToDisk(GetSignaturePathForKey(dest_dir, key_number_),
+          manifest_sig_)) {
     LOG(ERROR) << "Could not write manifest and signature to disk.";
     return false;
   }

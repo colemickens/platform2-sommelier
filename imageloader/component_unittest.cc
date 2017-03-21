@@ -238,7 +238,7 @@ TEST_F(ComponentTest, CopyValidImage) {
   sha256->Update(image.data(), image.size());
   sha256->Finish(hash.data(), hash.size());
 
-  Component component(GetTestComponentPath());
+  Component component(GetTestComponentPath(), 1);
   base::FilePath image_dest = temp_dir_.Append("image.copied");
   ASSERT_TRUE(component.CopyComponentFile(image_path, image_dest, hash));
 
