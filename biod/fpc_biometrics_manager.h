@@ -32,7 +32,7 @@ class FpcBiometricsManager : public BiometricsManager {
   // BiometricsManager overrides:
   ~FpcBiometricsManager() override;
 
-  BiometricsManager::Type GetType() override;
+  BiometricType GetType() override;
   BiometricsManager::EnrollSession StartEnrollSession(
       std::string user_id, std::string label) override;
   BiometricsManager::AuthSession StartAuthSession() override;
@@ -64,8 +64,7 @@ class FpcBiometricsManager : public BiometricsManager {
     struct Killed {};
     ScanData() = default;
     explicit ScanData(const Killed&) : killed(true) {}
-    explicit ScanData(BiometricsManager::ScanResult r)
-        : success(true), result(r) {}
+    explicit ScanData(ScanResult r) : success(true), result(r) {}
     explicit ScanData(BioImage i) : success(true), image(std::move(i)) {}
 
     // True if the scan ended because of kill_task_
@@ -74,14 +73,13 @@ class FpcBiometricsManager : public BiometricsManager {
     bool success = false;
     // Meaningless if success is false, kSuccess on a good scan, user
     // correctable error otherwise
-    BiometricsManager::ScanResult result =
-        BiometricsManager::ScanResult::kSuccess;
+    ScanResult result = ScanResult::SCAN_RESULT_SUCCESS;
     // If success and result is kSuccess, this contains the scanned image
     BioImage image;
 
     explicit operator bool() {
-      return !killed && success &&
-             result == BiometricsManager::ScanResult::kSuccess && image;
+      return !killed && success && result == ScanResult::SCAN_RESULT_SUCCESS &&
+             image;
     }
   };
 
@@ -143,8 +141,8 @@ class FpcBiometricsManager : public BiometricsManager {
   // - these will always work even if the underlying callbacks are null
   // - the address of these methods never changes, which is important when
   //   posting tasks onto the main thread from the sensor thread.
-  void OnEnrollScanDone(BiometricsManager::ScanResult result, bool done);
-  void OnAuthScanDone(BiometricsManager::ScanResult result,
+  void OnEnrollScanDone(ScanResult result, bool done);
+  void OnAuthScanDone(ScanResult result,
                       const BiometricsManager::AttemptMatches& matches);
   void OnSessionFailed();
 

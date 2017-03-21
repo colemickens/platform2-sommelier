@@ -100,8 +100,8 @@ FakeBiometricsManager::FakeBiometricsManager()
       << "Failed to watch FakeBiometricsManager input";
 }
 
-BiometricsManager::Type FakeBiometricsManager::GetType() {
-  return BiometricsManager::Type::kFingerprint;
+BiometricType FakeBiometricsManager::GetType() {
+  return BIOMETRIC_TYPE_FINGERPRINT;
 }
 
 BiometricsManager::EnrollSession FakeBiometricsManager::StartEnrollSession(
@@ -215,8 +215,7 @@ void FakeBiometricsManager::OnFileCanReadWithoutBlocking(int fd) {
       uint8_t res_code;
       if (read(fd, &res_code, sizeof(res_code)) != sizeof(res_code))
         return;
-      BiometricsManager::ScanResult res =
-          static_cast<BiometricsManager::ScanResult>(res_code);
+      ScanResult res = static_cast<ScanResult>(res_code);
 
       uint8_t match_user_count;
       if (read(fd, &match_user_count, sizeof(match_user_count)) !=
@@ -276,8 +275,7 @@ void FakeBiometricsManager::OnFileCanReadWithoutBlocking(int fd) {
       uint8_t res_code;
       if (read(fd, &res_code, sizeof(res_code)) != sizeof(res_code))
         return;
-      BiometricsManager::ScanResult res =
-          static_cast<BiometricsManager::ScanResult>(res_code);
+      ScanResult res = static_cast<ScanResult>(res_code);
 
       uint8_t done;
       if (read(fd, &done, sizeof(done)) != sizeof(done))

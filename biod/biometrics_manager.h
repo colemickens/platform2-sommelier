@@ -13,6 +13,7 @@
 
 #include <base/callback.h>
 #include <base/memory/weak_ptr.h>
+#include <chromeos/dbus/service_constants.h>
 
 namespace biod {
 
@@ -30,26 +31,6 @@ namespace biod {
 // valid outstanding EnrollSession or AuthSession object in the wild.
 class BiometricsManager {
  public:
-  enum class Type {
-    kFingerprint = 0,
-    kRetina = 1,
-    kFace = 2,
-    kVoice = 3,
-  };
-
-  // Results of any type of any scan operation can fail due to user error. These
-  // codes tell the user a little bit about what they did wrong, so they should
-  // be conveyed to the user somehow after unsuccessful scan attempts.
-  enum class ScanResult {
-    kSuccess = 0,
-    kPartial = 1,
-    kInsufficient = 2,
-    kSensorDirty = 3,
-    kTooSlow = 4,
-    kTooFast = 5,
-    kImmobile = 6,
-  };
-
   struct EnrollSessionEnder {
     void operator()(BiometricsManager* biometrics_manager) {
       biometrics_manager->EndEnrollSession();
@@ -129,7 +110,7 @@ class BiometricsManager {
   };
 
   virtual ~BiometricsManager() {}
-  virtual Type GetType() = 0;
+  virtual BiometricType GetType() = 0;
 
   // Puts this BiometricsManager into EnrollSession mode, which can be ended by
   // letting the returned session fall out of scope. The user_id is arbitrary

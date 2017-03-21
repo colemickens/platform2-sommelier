@@ -17,6 +17,8 @@
 
 #include <brillo/flag_helper.h>
 
+#include <chromeos/dbus/service_constants.h>
+
 #include <dbus/bus.h>
 #include <dbus/object_manager.h>
 
@@ -45,33 +47,19 @@ static const char kHelpText[] =
     "The <record> parameter is also a D-Bus object path.";
 
 static const int kDbusTimeoutMs = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
-static const char kBiodServiceName[] = "org.chromium.BiometricsDaemon";
-static const char kBiodRootPath[] = "/org/chromium/BiometricsDaemon";
-static const char kBiodBiometricsManagerInterface[] =
-    "org.chromium.BiometricsDaemon.BiometricsManager";
-static const char kBiodEnrollSessionInterface[] =
-    "org.chromium.BiometricsDaemon.EnrollSession";
-static const char kBiodAuthSessionInterface[] =
-    "org.chromium.BiometricsDaemon.AuthSession";
-static const char kBiodRecordInterface[] =
-    "org.chromium.BiometricsDaemon.Record";
 
-using BiometricsManagerType = biod::BiometricsManager::Type;
-using ScanResult = biod::BiometricsManager::ScanResult;
+using BiometricsManagerType = biod::BiometricType;
+using ScanResult = biod::ScanResult;
 using EnrollScanDoneCallback = biod::BiometricsManager::EnrollScanDoneCallback;
 using AuthScanDoneCallback = biod::BiometricsManager::AuthScanDoneCallback;
 using SessionFailedCallback = biod::BiometricsManager::SessionFailedCallback;
 
 std::string ToString(BiometricsManagerType type) {
   switch (type) {
-    case BiometricsManagerType::kFingerprint:
+    case BiometricsManagerType::BIOMETRIC_TYPE_UNKNOWN:
+      return "Unknown";
+    case BiometricsManagerType::BIOMETRIC_TYPE_FINGERPRINT:
       return "Fingerprint";
-    case BiometricsManagerType::kRetina:
-      return "Retina";
-    case BiometricsManagerType::kFace:
-      return "Face";
-    case BiometricsManagerType::kVoice:
-      return "Voice";
     default:
       return "Unknown";
   }
@@ -79,19 +67,19 @@ std::string ToString(BiometricsManagerType type) {
 
 std::string ToString(ScanResult result) {
   switch (result) {
-    case ScanResult::kSuccess:
+    case ScanResult::SCAN_RESULT_SUCCESS:
       return "Success";
-    case ScanResult::kPartial:
+    case ScanResult::SCAN_RESULT_PARTIAL:
       return "Partial";
-    case ScanResult::kInsufficient:
+    case ScanResult::SCAN_RESULT_INSUFFICIENT:
       return "Insufficient";
-    case ScanResult::kSensorDirty:
+    case ScanResult::SCAN_RESULT_SENSOR_DIRTY:
       return "Sensor Dirty";
-    case ScanResult::kTooSlow:
+    case ScanResult::SCAN_RESULT_TOO_SLOW:
       return "Too Slow";
-    case ScanResult::kTooFast:
+    case ScanResult::SCAN_RESULT_TOO_FAST:
       return "Too Fast";
-    case ScanResult::kImmobile:
+    case ScanResult::SCAN_RESULT_IMMOBILE:
       return "Immobile";
     default:
       return "Unknown Result";
@@ -102,7 +90,7 @@ class RecordProxy {
  public:
   RecordProxy(const scoped_refptr<dbus::Bus>& bus, const dbus::ObjectPath& path)
       : bus_(bus), path_(path) {
-    proxy_ = bus_->GetObjectProxy(kBiodServiceName, path_);
+    proxy_ = bus_->GetObjectProxy(biod::kBiodServiceName, path_);
     GetLabel();
   }
 
@@ -110,14 +98,16 @@ class RecordProxy {
   const std::string& label() const { return label_; }
 
   bool SetLabel(const std::string& label) {
-    dbus::MethodCall method_call(kBiodRecordInterface, "SetLabel");
+    dbus::MethodCall method_call(biod::kRecordInterface,
+                                 biod::kRecordSetLabelMethod);
     dbus::MessageWriter method_writer(&method_call);
     method_writer.AppendString(label);
     return !!proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
   }
 
   bool Remove() {
-    dbus::MethodCall method_call(kBiodRecordInterface, "Remove");
+    dbus::MethodCall method_call(biod::kRecordInterface,
+                                 biod::kRecordRemoveMethod);
     return !!proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
   }
 
@@ -126,8 +116,8 @@ class RecordProxy {
     dbus::MethodCall method_call(dbus::kPropertiesInterface,
                                  dbus::kPropertiesGet);
     dbus::MessageWriter method_writer(&method_call);
-    method_writer.AppendString(kBiodRecordInterface);
-    method_writer.AppendString("Label");
+    method_writer.AppendString(biod::kRecordInterface);
+    method_writer.AppendString(biod::kRecordLabelProperty);
     std::unique_ptr<dbus::Response> response =
         proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
     CHECK(response);
@@ -151,7 +141,7 @@ class BiometricsManagerProxy {
                          const dbus::ObjectPath& path,
                          dbus::MessageReader* pset_reader)
       : bus_(bus) {
-    proxy_ = bus_->GetObjectProxy(kBiodServiceName, path);
+    proxy_ = bus_->GetObjectProxy(biod::kBiodServiceName, path);
 
     while (pset_reader->HasMoreData()) {
       dbus::MessageReader pset_entry_reader(nullptr);
@@ -159,29 +149,29 @@ class BiometricsManagerProxy {
       CHECK(pset_reader->PopDictEntry(&pset_entry_reader));
       CHECK(pset_entry_reader.PopString(&property_name));
 
-      if (property_name == "Type") {
+      if (property_name == biod::kBiometricsManagerBiometricTypeProperty) {
         CHECK(pset_entry_reader.PopVariantOfUint32(
             reinterpret_cast<uint32_t*>(&type_)));
       }
     }
 
     proxy_->ConnectToSignal(
-        kBiodBiometricsManagerInterface,
-        "EnrollScanDone",
+        biod::kBiometricsManagerInterface,
+        biod::kBiometricsManagerEnrollScanDoneSignal,
         base::Bind(&BiometricsManagerProxy::OnEnrollScanDone,
                    base::Unretained(this)),
         base::Bind(&BiometricsManagerProxy::OnSignalConnected,
                    base::Unretained(this)));
     proxy_->ConnectToSignal(
-        kBiodBiometricsManagerInterface,
-        "AuthScanDone",
+        biod::kBiometricsManagerInterface,
+        biod::kBiometricsManagerAuthScanDoneSignal,
         base::Bind(&BiometricsManagerProxy::OnAuthScanDone,
                    base::Unretained(this)),
         base::Bind(&BiometricsManagerProxy::OnSignalConnected,
                    base::Unretained(this)));
     proxy_->ConnectToSignal(
-        kBiodBiometricsManagerInterface,
-        "SessionFailed",
+        biod::kBiometricsManagerInterface,
+        biod::kBiometricsManagerSessionFailedSignal,
         base::Bind(&BiometricsManagerProxy::OnSessionFailed,
                    base::Unretained(this)),
         base::Bind(&BiometricsManagerProxy::OnSignalConnected,
@@ -197,8 +187,9 @@ class BiometricsManagerProxy {
 
   dbus::ObjectProxy* StartEnrollSession(const std::string& user_id,
                                         const std::string& label) {
-    dbus::MethodCall method_call(kBiodBiometricsManagerInterface,
-                                 "StartEnrollSession");
+    dbus::MethodCall method_call(
+        biod::kBiometricsManagerInterface,
+        biod::kBiometricsManagerStartEnrollSessionMethod);
     dbus::MessageWriter method_writer(&method_call);
     method_writer.AppendString(user_id);
     method_writer.AppendString(label);
@@ -212,13 +203,14 @@ class BiometricsManagerProxy {
     dbus::ObjectPath enroll_session_path;
     CHECK(response_reader.PopObjectPath(&enroll_session_path));
     dbus::ObjectProxy* enroll_session_proxy =
-        bus_->GetObjectProxy(kBiodServiceName, enroll_session_path);
+        bus_->GetObjectProxy(biod::kBiodServiceName, enroll_session_path);
     return enroll_session_proxy;
   }
 
   dbus::ObjectProxy* StartAuthSession() {
-    dbus::MethodCall method_call(kBiodBiometricsManagerInterface,
-                                 "StartAuthSession");
+    dbus::MethodCall method_call(
+        biod::kBiometricsManagerInterface,
+        biod::kBiometricsManagerStartAuthSessionMethod);
 
     std::unique_ptr<dbus::Response> response =
         proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
@@ -229,19 +221,21 @@ class BiometricsManagerProxy {
     dbus::ObjectPath auth_path;
     CHECK(response_reader.PopObjectPath(&auth_path));
     dbus::ObjectProxy* auth_proxy =
-        bus_->GetObjectProxy(kBiodServiceName, auth_path);
+        bus_->GetObjectProxy(biod::kBiodServiceName, auth_path);
     return auth_proxy;
   }
 
   bool DestroyAllRecords() {
-    dbus::MethodCall method_call(kBiodBiometricsManagerInterface,
-                                 "DestroyAllRecords");
+    dbus::MethodCall method_call(
+        biod::kBiometricsManagerInterface,
+        biod::kBiometricsManagerDestroyAllRecordsMethod);
     return !!proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
   }
 
   std::vector<RecordProxy> GetRecordsForUser(const std::string& user_id) const {
-    dbus::MethodCall method_call(kBiodBiometricsManagerInterface,
-                                 "GetRecordsForUser");
+    dbus::MethodCall method_call(
+        biod::kBiometricsManagerInterface,
+        biod::kBiometricsManagerGetRecordsForUserMethod);
     dbus::MessageWriter method_writer(&method_call);
     method_writer.AppendString(user_id);
 
@@ -351,8 +345,8 @@ class BiometricsManagerProxy {
 class BiodProxy {
  public:
   explicit BiodProxy(const scoped_refptr<dbus::Bus>& bus) : bus_(bus) {
-    proxy_ =
-        bus_->GetObjectProxy(kBiodServiceName, dbus::ObjectPath(kBiodRootPath));
+    proxy_ = bus_->GetObjectProxy(biod::kBiodServiceName,
+                                  dbus::ObjectPath(biod::kBiodServicePath));
 
     dbus::MethodCall get_objects_method(dbus::kObjectManagerInterface,
                                         dbus::kObjectManagerGetManagedObjects);
@@ -382,7 +376,7 @@ class BiodProxy {
 
         dbus::MessageReader pset_reader(nullptr);
         CHECK(interface_entry_reader.PopArray(&pset_reader));
-        if (interface_name == kBiodBiometricsManagerInterface) {
+        if (interface_name == biod::kBiometricsManagerInterface) {
           biometrics_managers_.emplace_back(bus_, object_path, &pset_reader);
         }
       }
@@ -460,7 +454,8 @@ int DoEnroll(BiometricsManagerProxy* biometrics_manager,
 
   if (ret) {
     LOG(INFO) << "Ending biometric enrollment";
-    dbus::MethodCall cancel_call(kBiodEnrollSessionInterface, "Cancel");
+    dbus::MethodCall cancel_call(biod::kEnrollSessionInterface,
+                                 biod::kEnrollSessionCancelMethod);
     enroll_session_object->CallMethodAndBlock(&cancel_call, kDbusTimeoutMs);
   }
 
@@ -487,7 +482,8 @@ int DoAuthenticate(BiometricsManagerProxy* biometrics_manager) {
 
   if (ret) {
     LOG(INFO) << "Ending biometric authentication";
-    dbus::MethodCall end_call(kBiodAuthSessionInterface, "End");
+    dbus::MethodCall end_call(biod::kAuthSessionInterface,
+                              biod::kAuthSessionEndMethod);
     auth_session_object->CallMethodAndBlock(&end_call, kDbusTimeoutMs);
   }
 
@@ -495,16 +491,16 @@ int DoAuthenticate(BiometricsManagerProxy* biometrics_manager) {
 }
 
 int DoList(BiodProxy* biod, const std::string& user_id) {
-  LOG(INFO) << kBiodRootPath << " : BioD Root Object Path";
+  LOG(INFO) << biod::kBiodServicePath << " : BioD Root Object Path";
   for (const BiometricsManagerProxy& biometrics_manager :
        biod->biometrics_managers()) {
     base::StringPiece biometrics_manager_path =
         biometrics_manager.path().value();
     if (base::StartsWith(biometrics_manager_path,
-                         kBiodRootPath,
+                         biod::kBiodServicePath,
                          base::CompareCase::SENSITIVE)) {
       biometrics_manager_path =
-          biometrics_manager_path.substr(sizeof(kBiodRootPath));
+          biometrics_manager_path.substr(sizeof(biod::kBiodServicePath));
     }
     LOG(INFO) << "  " << biometrics_manager_path << " : "
               << ToString(biometrics_manager.type()) << " Biometric";

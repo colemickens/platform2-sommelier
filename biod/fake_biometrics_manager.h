@@ -31,7 +31,7 @@ class FakeBiometricsManager : public BiometricsManager,
   void OnFileCanReadWithoutBlocking(int fd) override;
 
   // BiometricsManager overrides:
-  BiometricsManager::Type GetType() override;
+  BiometricType GetType() override;
   BiometricsManager::EnrollSession StartEnrollSession(
       std::string user_id, std::string label) override;
   BiometricsManager::AuthSession StartAuthSession() override;

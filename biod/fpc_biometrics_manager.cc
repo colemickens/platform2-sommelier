@@ -258,8 +258,8 @@ std::unique_ptr<BiometricsManager> FpcBiometricsManager::Create() {
   return std::unique_ptr<BiometricsManager>(std::move(biometrics_manager));
 }
 
-BiometricsManager::Type FpcBiometricsManager::GetType() {
-  return BiometricsManager::Type::kFingerprint;
+BiometricType FpcBiometricsManager::GetType() {
+  return BIOMETRIC_TYPE_FINGERPRINT;
 }
 
 BiometricsManager::EnrollSession FpcBiometricsManager::StartEnrollSession(
@@ -431,15 +431,13 @@ bool FpcBiometricsManager::Init() {
   return true;
 }
 
-void FpcBiometricsManager::OnEnrollScanDone(
-    BiometricsManager::ScanResult result, bool done) {
+void FpcBiometricsManager::OnEnrollScanDone(ScanResult result, bool done) {
   if (!on_enroll_scan_done_.is_null())
     on_enroll_scan_done_.Run(result, done);
 }
 
 void FpcBiometricsManager::OnAuthScanDone(
-    BiometricsManager::ScanResult result,
-    const BiometricsManager::AttemptMatches& matches) {
+    ScanResult result, const BiometricsManager::AttemptMatches& matches) {
   if (!on_auth_scan_done_.is_null())
     on_auth_scan_done_.Run(result, matches);
 }
@@ -474,9 +472,9 @@ FpcBiometricsManager::ScanData FpcBiometricsManager::ScanImage() {
     case 0:
       break;
     case FP_SENSOR_TOO_FAST:
-      return ScanData(BiometricsManager::ScanResult::kTooFast);
+      return ScanData(ScanResult::SCAN_RESULT_TOO_FAST);
     case FP_SENSOR_LOW_IMAGE_QUALITY:
-      return ScanData(BiometricsManager::ScanResult::kInsufficient);
+      return ScanData(ScanResult::SCAN_RESULT_INSUFFICIENT);
     default:
       LOG(ERROR) << "Unexpected result from acquiring image: "
                  << acquire_result;
@@ -506,20 +504,20 @@ void FpcBiometricsManager::DoEnrollSessionTask(
     if (scan.killed || !scan.success)
       return;
 
-    BiometricsManager::ScanResult scan_result = scan.result;
+    ScanResult scan_result = scan.result;
     if (scan) {
       int add_result = enrollment.AddImage(scan.image);
       switch (add_result) {
         case BIO_ENROLLMENT_OK:
           break;
         case BIO_ENROLLMENT_IMMOBILE:
-          scan_result = BiometricsManager::ScanResult::kImmobile;
+          scan_result = ScanResult::SCAN_RESULT_IMMOBILE;
           break;
         case BIO_ENROLLMENT_LOW_COVERAGE:
-          scan_result = BiometricsManager::ScanResult::kPartial;
+          scan_result = ScanResult::SCAN_RESULT_PARTIAL;
           break;
         case BIO_ENROLLMENT_LOW_QUALITY:
-          scan_result = BiometricsManager::ScanResult::kInsufficient;
+          scan_result = ScanResult::SCAN_RESULT_INSUFFICIENT;
           break;
         default:
           LOG(ERROR) << "Unexpected result from add image: " << add_result;
@@ -594,7 +592,7 @@ void FpcBiometricsManager::OnEnrollSessionComplete(
     return;
   }
 
-  OnEnrollScanDone(BiometricsManager::ScanResult::kSuccess, true);
+  OnEnrollScanDone(ScanResult::SCAN_RESULT_SUCCESS, true);
 }
 
 void FpcBiometricsManager::DoAuthSessionTask(
@@ -615,8 +613,8 @@ void FpcBiometricsManager::DoAuthSessionTask(
     if (scan.killed || !scan.success)
       break;
 
-    BiometricsManager::ScanResult result = scan.result;
-    if (result == BiometricsManager::ScanResult::kSuccess) {
+    ScanResult result = scan.result;
+    if (result == ScanResult::SCAN_RESULT_SUCCESS) {
       matches.clear();
 
       base::AutoLock guard(records_lock_);
@@ -636,10 +634,10 @@ void FpcBiometricsManager::DoAuthSessionTask(
             break;
           }
           case BIO_TEMPLATE_LOW_QUALITY:
-            result = BiometricsManager::ScanResult::kInsufficient;
+            result = ScanResult::SCAN_RESULT_INSUFFICIENT;
             break;
           case BIO_TEMPLATE_LOW_COVERAGE:
-            result = BiometricsManager::ScanResult::kPartial;
+            result = ScanResult::SCAN_RESULT_PARTIAL;
             break;
           default:
             LOG(ERROR) << "Unexpected result from matching templates: "
@@ -652,7 +650,7 @@ void FpcBiometricsManager::DoAuthSessionTask(
     // Assuming there was at least one match, we don't want to bother the user
     // with error messages.
     if (!matches.empty())
-      result = BiometricsManager::ScanResult::kSuccess;
+      result = ScanResult::SCAN_RESULT_SUCCESS;
 
     bool task_will_run =
         task_runner->PostTask(FROM_HERE,

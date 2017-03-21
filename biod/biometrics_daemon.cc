@@ -10,6 +10,7 @@
 #include <base/bind.h>
 #include <base/memory/ptr_util.h>
 #include <brillo/dbus/async_event_sequencer.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "biod/fake_biometrics_manager.h"
 #include "biod/fpc_biometrics_manager.h"
@@ -25,23 +26,6 @@ using brillo::dbus_utils::ExportedPropertySet;
 using dbus::ObjectPath;
 
 namespace dbus_constants {
-const char kBusServiceName[] = "org.freedesktop.DBus";
-const char kBusServicePath[] = "/org/freedesktop/DBus";
-const char kBusInterface[] = "org.freedesktop.DBus";
-const char kServiceName[] = "org.chromium.BiometricsDaemon";
-const char kServicePath[] = "/org/chromium/BiometricsDaemon";
-const char kBiometricsManagerInterface[] =
-    "org.chromium.BiometricsDaemon.BiometricsManager";
-const char kAuthSessionInterface[] =
-    "org.chromium.BiometricsDaemon.AuthSession";
-const char kEnrollSessionInterface[] =
-    "org.chromium.BiometricsDaemon.EnrollSession";
-const char kRecordInterface[] = "org.chromium.BiometricsDaemon.Record";
-const char kSessionManagerInterface[] = "org.chromium.SessionManagerInterface";
-const char kSessionManagerServicePath[] = "/org/chromium/SessionManager";
-const char kSessionManagerServiceName[] = "org.chromium.SessionManager";
-const char kSessionManagerRetrieveActiveSessions[] = "RetrieveActiveSessions";
-const char kSessionManagerSessionStateChanged[] = "SessionStateChanged";
 const int kDbusTimeoutMs = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
 const char kSessionStateStarted[] = "started";
 const char kSessionStateStopping[] = "stopping";
@@ -81,34 +65,34 @@ BiometricsManagerWrapper::BiometricsManagerWrapper(
       &BiometricsManagerWrapper::OnSessionFailed, base::Unretained(this)));
 
   dbus::ObjectProxy* bus_proxy = object_manager->GetBus()->GetObjectProxy(
-      dbus_constants::kBusServiceName,
-      dbus::ObjectPath(dbus_constants::kBusServicePath));
+      dbus::kDBusServiceName, dbus::ObjectPath(dbus::kDBusServicePath));
   bus_proxy->ConnectToSignal(
-      dbus_constants::kBusInterface,
+      dbus::kDBusInterface,
       "NameOwnerChanged",
       base::Bind(&BiometricsManagerWrapper::OnNameOwnerChanged,
                  base::Unretained(this)),
       base::Bind(&LogOnSignalConnected));
 
-  DBusInterface* bio_interface = dbus_object_.AddOrGetInterface(
-      dbus_constants::kBiometricsManagerInterface);
+  DBusInterface* bio_interface =
+      dbus_object_.AddOrGetInterface(kBiometricsManagerInterface);
   property_type_.SetValue(
       static_cast<uint32_t>(biometrics_manager_->GetType()));
-  bio_interface->AddProperty("Type", &property_type_);
+  bio_interface->AddProperty(kBiometricsManagerBiometricTypeProperty,
+                             &property_type_);
   bio_interface->AddSimpleMethodHandlerWithErrorAndMessage(
-      "StartEnrollSession",
+      kBiometricsManagerStartEnrollSessionMethod,
       base::Bind(&BiometricsManagerWrapper::StartEnrollSession,
                  base::Unretained(this)));
   bio_interface->AddSimpleMethodHandlerWithError(
-      "GetRecordsForUser",
+      kBiometricsManagerGetRecordsForUserMethod,
       base::Bind(&BiometricsManagerWrapper::GetRecordsForUser,
                  base::Unretained(this)));
   bio_interface->AddSimpleMethodHandlerWithError(
-      "DestroyAllRecords",
+      kBiometricsManagerDestroyAllRecordsMethod,
       base::Bind(&BiometricsManagerWrapper::DestroyAllRecords,
                  base::Unretained(this)));
   bio_interface->AddSimpleMethodHandlerWithErrorAndMessage(
-      "StartAuthSession",
+      kBiometricsManagerStartAuthSessionMethod,
       base::Bind(&BiometricsManagerWrapper::StartAuthSession,
                  base::Unretained(this)));
   dbus_object_.RegisterAsync(completion_callback);
@@ -126,13 +110,15 @@ BiometricsManagerWrapper::RecordWrapper::RecordWrapper(
       dbus_object_(object_manager, object_manager->GetBus(), object_path),
       object_path_(object_path) {
   DBusInterface* record_interface =
-      dbus_object_.AddOrGetInterface(dbus_constants::kRecordInterface);
+      dbus_object_.AddOrGetInterface(kRecordInterface);
   property_label_.SetValue(record_->GetLabel());
-  record_interface->AddProperty("Label", &property_label_);
+  record_interface->AddProperty(kRecordLabelProperty, &property_label_);
   record_interface->AddSimpleMethodHandlerWithError(
-      "SetLabel", base::Bind(&RecordWrapper::SetLabel, base::Unretained(this)));
+      kRecordSetLabelMethod,
+      base::Bind(&RecordWrapper::SetLabel, base::Unretained(this)));
   record_interface->AddSimpleMethodHandlerWithError(
-      "Remove", base::Bind(&RecordWrapper::Remove, base::Unretained(this)));
+      kRecordRemoveMethod,
+      base::Bind(&RecordWrapper::Remove, base::Unretained(this)));
   dbus_object_.RegisterAndBlock();
 }
 
@@ -214,11 +200,11 @@ void BiometricsManagerWrapper::OnNameOwnerChanged(dbus::Signal* sig) {
   }
 }
 
-void BiometricsManagerWrapper::OnEnrollScanDone(
-    BiometricsManager::ScanResult scan_result, bool done) {
+void BiometricsManagerWrapper::OnEnrollScanDone(ScanResult scan_result,
+                                                bool done) {
   if (enroll_session_dbus_object_) {
     dbus::Signal enroll_scan_done_signal(
-        dbus_constants::kBiometricsManagerInterface, "EnrollScanDone");
+        kBiometricsManagerInterface, kBiometricsManagerEnrollScanDoneSignal);
     dbus::MessageWriter writer(&enroll_scan_done_signal);
     writer.AppendUint32(static_cast<uint32_t>(scan_result));
     writer.AppendBool(done);
@@ -231,11 +217,10 @@ void BiometricsManagerWrapper::OnEnrollScanDone(
 }
 
 void BiometricsManagerWrapper::OnAuthScanDone(
-    BiometricsManager::ScanResult scan_result,
-    BiometricsManager::AttemptMatches matches) {
+    ScanResult scan_result, BiometricsManager::AttemptMatches matches) {
   if (auth_session_dbus_object_) {
-    dbus::Signal auth_scan_done_signal(
-        dbus_constants::kBiometricsManagerInterface, "AuthScanDone");
+    dbus::Signal auth_scan_done_signal(kBiometricsManagerInterface,
+                                       kBiometricsManagerAuthScanDoneSignal);
     dbus::MessageWriter writer(&auth_scan_done_signal);
     writer.AppendUint32(static_cast<uint32_t>(scan_result));
     dbus::MessageWriter matches_writer(nullptr);
@@ -262,17 +247,15 @@ void BiometricsManagerWrapper::OnAuthScanDone(
 }
 
 void BiometricsManagerWrapper::OnSessionFailed() {
-  const char kSessionFailedSignal[] = "SessionFailed";
-
   if (enroll_session_dbus_object_) {
-    dbus::Signal session_failed_signal(
-        dbus_constants::kBiometricsManagerInterface, kSessionFailedSignal);
+    dbus::Signal session_failed_signal(kBiometricsManagerInterface,
+                                       kBiometricsManagerSessionFailedSignal);
     dbus_object_.SendSignal(&session_failed_signal);
     FinalizeEnrollSessionObject();
   }
   if (auth_session_dbus_object_) {
-    dbus::Signal session_failed_signal(
-        dbus_constants::kBiometricsManagerInterface, kSessionFailedSignal);
+    dbus::Signal session_failed_signal(kBiometricsManagerInterface,
+                                       kBiometricsManagerSessionFailedSignal);
     dbus_object_.SendSignal(&session_failed_signal);
     FinalizeAuthSessionObject();
   }
@@ -298,10 +281,9 @@ bool BiometricsManagerWrapper::StartEnrollSession(
   enroll_session_dbus_object_.reset(
       new DBusObject(NULL, dbus_object_.GetBus(), enroll_session_object_path_));
   DBusInterface* enroll_session_interface =
-      enroll_session_dbus_object_->AddOrGetInterface(
-          dbus_constants::kEnrollSessionInterface);
+      enroll_session_dbus_object_->AddOrGetInterface(kEnrollSessionInterface);
   enroll_session_interface->AddSimpleMethodHandlerWithError(
-      "Cancel",
+      kEnrollSessionCancelMethod,
       base::Bind(&BiometricsManagerWrapper::EnrollSessionCancel,
                  base::Unretained(this)));
   enroll_session_dbus_object_->RegisterAndBlock();
@@ -350,10 +332,9 @@ bool BiometricsManagerWrapper::StartAuthSession(brillo::ErrorPtr* error,
   auth_session_dbus_object_.reset(
       new DBusObject(NULL, dbus_object_.GetBus(), auth_session_object_path_));
   DBusInterface* auth_session_interface =
-      auth_session_dbus_object_->AddOrGetInterface(
-          dbus_constants::kAuthSessionInterface);
+      auth_session_dbus_object_->AddOrGetInterface(kAuthSessionInterface);
   auth_session_interface->AddSimpleMethodHandlerWithError(
-      "End",
+      kAuthSessionEndMethod,
       base::Bind(&BiometricsManagerWrapper::AuthSessionEnd,
                  base::Unretained(this)));
   auth_session_dbus_object_->RegisterAndBlock();
@@ -416,15 +397,15 @@ BiometricsDaemon::BiometricsDaemon() {
   bus_ = new dbus::Bus(options);
   CHECK(bus_->Connect()) << "Failed to connect to system D-Bus";
 
-  object_manager_.reset(new ExportedObjectManager(
-      bus_, ObjectPath(dbus_constants::kServicePath)));
+  object_manager_.reset(
+      new ExportedObjectManager(bus_, ObjectPath(kBiodServicePath)));
 
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   object_manager_->RegisterAsync(
       sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
 
-  ObjectPath fake_bio_path = ObjectPath(dbus_constants::kServicePath +
-                                        std::string("/FakeBiometricsManager"));
+  ObjectPath fake_bio_path =
+      ObjectPath(kBiodServicePath + std::string("/FakeBiometricsManager"));
   biometrics_managers_.emplace_back(base::MakeUnique<BiometricsManagerWrapper>(
       std::unique_ptr<BiometricsManager>(new FakeBiometricsManager),
       object_manager_.get(),
@@ -432,8 +413,8 @@ BiometricsDaemon::BiometricsDaemon() {
       sequencer->GetHandler("Failed to register FakeBiometricsManager object",
                             true)));
 
-  ObjectPath fpc_bio_path = ObjectPath(dbus_constants::kServicePath +
-                                       std::string("/FpcBiometricsManager"));
+  ObjectPath fpc_bio_path =
+      ObjectPath(kBiodServicePath + std::string("/FpcBiometricsManager"));
   std::unique_ptr<BiometricsManager> fpc_bio = FpcBiometricsManager::Create();
   CHECK(fpc_bio);
   biometrics_managers_.emplace_back(base::MakeUnique<BiometricsManagerWrapper>(
@@ -444,8 +425,8 @@ BiometricsDaemon::BiometricsDaemon() {
                             true)));
 
   session_manager_proxy_ = bus_->GetObjectProxy(
-      dbus_constants::kSessionManagerServiceName,
-      dbus::ObjectPath(dbus_constants::kSessionManagerServicePath));
+      login_manager::kSessionManagerServiceName,
+      dbus::ObjectPath(login_manager::kSessionManagerServicePath));
 
   std::unordered_set<std::string> new_active_users;
   if (RetrieveNewActiveSessions(&new_active_users)) {
@@ -456,21 +437,21 @@ BiometricsDaemon::BiometricsDaemon() {
   }
 
   session_manager_proxy_->ConnectToSignal(
-      dbus_constants::kSessionManagerInterface,
-      dbus_constants::kSessionManagerSessionStateChanged,
+      login_manager::kSessionManagerInterface,
+      login_manager::kSessionStateChangedSignal,
       base::Bind(&BiometricsDaemon::OnSessionStateChanged,
                  base::Unretained(this)),
       base::Bind(&LogOnSignalConnected));
 
-  CHECK(bus_->RequestOwnershipAndBlock(dbus_constants::kServiceName,
+  CHECK(bus_->RequestOwnershipAndBlock(kBiodServiceName,
                                        dbus::Bus::REQUIRE_PRIMARY));
 }
 
 bool BiometricsDaemon::RetrieveNewActiveSessions(
     std::unordered_set<std::string>* new_active_users) {
   dbus::MethodCall method_call(
-      dbus_constants::kSessionManagerInterface,
-      dbus_constants::kSessionManagerRetrieveActiveSessions);
+      login_manager::kSessionManagerInterface,
+      login_manager::kSessionManagerRetrieveActiveSessions);
   std::unique_ptr<dbus::Response> response =
       session_manager_proxy_->CallMethodAndBlock(
           &method_call, dbus_constants::kDbusTimeoutMs);
