@@ -12,11 +12,27 @@
 
 #include "component.h"
 
+namespace {
+
+base::FilePath GetTestDataPath(const std::string& subdir) {
+  const char* src_dir = getenv("CROS_WORKON_SRCROOT");
+  CHECK(src_dir != nullptr);
+  base::FilePath component_path(src_dir);
+  component_path = component_path.Append("src")
+                       .Append("platform")
+                       .Append("imageloader")
+                       .Append("testdata")
+                       .Append(subdir);
+  return component_path;
+}
+
+}  // namespace
+
 namespace base {
 void PrintTo(const base::FilePath& path, std::ostream* stream) {
   *stream << path.value();
 }
-}
+}  // namespace base
 
 namespace imageloader {
 
@@ -25,15 +41,11 @@ base::FilePath GetTestComponentPath() {
 }
 
 base::FilePath GetTestComponentPath(const std::string& version) {
-  const char* src_dir = getenv("CROS_WORKON_SRCROOT");
-  CHECK(src_dir != nullptr);
-  base::FilePath component_path(src_dir);
-  component_path = component_path.Append("src")
-                       .Append("platform")
-                       .Append("imageloader")
-                       .Append("testdata")
-                       .Append(version + "_chromeos_intel64_PepperFlashPlayer");
-  return component_path;
+  return GetTestDataPath(version + "_chromeos_intel64_PepperFlashPlayer");
+}
+
+base::FilePath GetTestOciComponentPath() {
+  return GetTestDataPath(kTestOciComponentName);
 }
 
 void GetFilesInDir(const base::FilePath& dir, std::list<std::string>* files) {

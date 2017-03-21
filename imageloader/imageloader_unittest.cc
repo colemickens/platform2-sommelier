@@ -35,9 +35,12 @@ class ImageLoaderTest : public testing::Test {
   }
 
   ImageLoaderConfig GetConfig(const char* path) {
-    std::vector<uint8_t> key(std::begin(kDevPublicKey),
-                             std::end(kDevPublicKey));
-    ImageLoaderConfig config(key, path, "/foo");
+    Keys keys;
+    keys.push_back(std::vector<uint8_t>(std::begin(kDevPublicKey),
+                                        std::end(kDevPublicKey)));
+    keys.push_back(std::vector<uint8_t>(std::begin(kOciDevPublicKey),
+                                        std::end(kOciDevPublicKey)));
+    ImageLoaderConfig config(keys, path, "/foo");
     return config;
   }
 
@@ -110,7 +113,10 @@ TEST_F(ImageLoaderTest, RegisterComponentAfterCrash) {
 }
 
 TEST_F(ImageLoaderTest, MountValidImage) {
-  std::vector<uint8_t> key(std::begin(kDevPublicKey), std::end(kDevPublicKey));
+  Keys keys;
+  keys.push_back(std::vector<uint8_t>(std::begin(kDevPublicKey),
+                                      std::end(kDevPublicKey)));
+
   auto helper_mock = base::MakeUnique<MockHelperProcess>();
   EXPECT_CALL(*helper_mock, SendMountCommand(_, _, _)).Times(2);
   ON_CALL(*helper_mock, SendMountCommand(_, _, _))
@@ -119,7 +125,7 @@ TEST_F(ImageLoaderTest, MountValidImage) {
   base::ScopedTempDir scoped_mount_dir;
   ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
 
-  ImageLoaderConfig config(key, temp_dir_.value().c_str(),
+  ImageLoaderConfig config(keys, temp_dir_.value().c_str(),
                            scoped_mount_dir.path().value().c_str());
   ImageLoaderImpl loader(std::move(config));
 
@@ -141,7 +147,10 @@ TEST_F(ImageLoaderTest, MountValidImage) {
 }
 
 TEST_F(ImageLoaderTest, MountInvalidImage) {
-  std::vector<uint8_t> key(std::begin(kDevPublicKey), std::end(kDevPublicKey));
+  Keys keys;
+  keys.push_back(std::vector<uint8_t>(std::begin(kDevPublicKey),
+                                      std::end(kDevPublicKey)));
+
   auto helper_mock = base::MakeUnique<MockHelperProcess>();
   EXPECT_CALL(*helper_mock, SendMountCommand(_, _, _)).Times(0);
   ON_CALL(*helper_mock, SendMountCommand(_, _, _))
@@ -150,7 +159,7 @@ TEST_F(ImageLoaderTest, MountInvalidImage) {
   base::ScopedTempDir scoped_mount_dir;
   ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
 
-  ImageLoaderConfig config(key, temp_dir_.value().c_str(),
+  ImageLoaderConfig config(keys, temp_dir_.value().c_str(),
                            scoped_mount_dir.path().value().c_str());
   ImageLoaderImpl loader(std::move(config));
 
@@ -199,6 +208,19 @@ TEST_F(ImageLoaderTest, SetupTable) {
   std::string good_table_error = base_table + " error_behavior=eio\n";
   EXPECT_TRUE(VerityMounter::SetupTable(&good_table_error, "/dev/loop6"));
   EXPECT_EQ(known_good_table, good_table_error);
+}
+
+TEST_F(ImageLoaderTest, SecondKey) {
+  ImageLoaderImpl loader(GetConfig(temp_dir_.value().c_str()));
+  ASSERT_TRUE(loader.RegisterComponent(kTestOciComponentName,
+                                       kTestOciComponentVersion,
+                                       GetTestOciComponentPath().value()));
+
+  base::FilePath comp_dir = temp_dir_.Append(kTestOciComponentName);
+  ASSERT_TRUE(base::DirectoryExists(comp_dir));
+
+  base::FilePath version_dir = comp_dir.Append(kTestOciComponentVersion);
+  ASSERT_TRUE(base::DirectoryExists(version_dir));
 }
 
 }   // namespace imageloader

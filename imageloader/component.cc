@@ -37,7 +37,7 @@ constexpr char kManifestName[] = "imageloader.json";
 // The name of the fingerprint file.
 constexpr char kFingerprintName[] = "manifest.fingerprint";
 // The manifest signature.
-constexpr char kManifestSignatureNamePattern[] = "imageloader.sig.1";
+constexpr char kManifestSignatureNamePattern[] = "imageloader.sig.[1-2]";
 // The current version of the manifest file.
 constexpr int kCurrentManifestVersion = 1;
 // The name of the version field in the manifest.
@@ -153,17 +153,21 @@ Component::Component(const base::FilePath& component_dir, int key_number)
 
 std::unique_ptr<Component> Component::Create(
         const base::FilePath& component_dir,
-        const std::vector<uint8_t>& public_key) {
+        const Keys& public_keys) {
   base::FilePath signature_path;
   size_t key_number;
   if (!GetSignaturePath(component_dir, &signature_path, &key_number)) {
     LOG(ERROR) << "Could not find manifest signature";
     return nullptr;
   }
+  if (key_number < 1 || key_number > public_keys.size()) {
+    LOG(ERROR) << "Invalid key number";
+    return nullptr;
+  }
 
   std::unique_ptr<Component> component(
       new Component(component_dir, key_number));
-  if (!component->LoadManifest(public_key))
+  if (!component->LoadManifest(public_keys[key_number - 1]))
     return nullptr;
   return component;
 }

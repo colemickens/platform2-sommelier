@@ -11,9 +11,6 @@
 #include <string>
 #include <vector>
 
-#include "mock_helper_process.h"
-#include "test_utilities.h"
-
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -24,6 +21,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "imageloader_impl.h"
+#include "mock_helper_process.h"
+#include "test_utilities.h"
+
 namespace imageloader {
 
 using testing::_;
@@ -31,8 +32,8 @@ using testing::_;
 class ComponentTest : public testing::Test {
  public:
   ComponentTest() {
-    key_ = std::vector<uint8_t>(std::begin(kDevPublicKey),
-                                std::end(kDevPublicKey));
+    keys_.push_back(std::vector<uint8_t>(std::begin(kDevPublicKey),
+                                         std::end(kDevPublicKey)));
     CHECK(scoped_temp_dir_.CreateUniqueTempDir());
     temp_dir_ = scoped_temp_dir_.path();
     CHECK(base::SetPosixFilePermissions(temp_dir_, kComponentDirPerms));
@@ -46,12 +47,12 @@ class ComponentTest : public testing::Test {
       return false;
 
     std::unique_ptr<Component> component =
-        Component::Create(GetTestComponentPath(), key_);
+        Component::Create(GetTestComponentPath(), keys_);
     if (!component || !component->CopyTo(bad_component_dir))
       return false;
 
     std::unique_ptr<Component> bad_component =
-        Component::Create(bad_component_dir, key_);
+        Component::Create(bad_component_dir, keys_);
     if (!bad_component) return false;
 
     base::FilePath file = bad_component_dir.Append(file_name);
@@ -75,7 +76,7 @@ class ComponentTest : public testing::Test {
       return false;
 
     std::unique_ptr<Component> component =
-        Component::Create(GetTestComponentPath(), key_);
+        Component::Create(GetTestComponentPath(), keys_);
     if (!component || !component->CopyTo(bad_component_dir))
       return false;
 
@@ -91,7 +92,7 @@ class ComponentTest : public testing::Test {
     }
 
     std::unique_ptr<Component> bad_component =
-        Component::Create(bad_component_dir, key_);
+        Component::Create(bad_component_dir, keys_);
     return bad_component == nullptr;
   }
 
@@ -113,14 +114,14 @@ class ComponentTest : public testing::Test {
     return true;
   }
 
-  std::vector<uint8_t> key_;
+  Keys keys_;
   base::ScopedTempDir scoped_temp_dir_;
   base::FilePath temp_dir_;
 };
 
 TEST_F(ComponentTest, InitComponentAndCheckManifest) {
   std::unique_ptr<Component> component =
-      Component::Create(GetTestComponentPath(), key_);
+      Component::Create(GetTestComponentPath(), keys_);
   ASSERT_NE(nullptr, component);
 
   EXPECT_EQ(1, component->manifest().manifest_version);
@@ -134,7 +135,7 @@ TEST_F(ComponentTest, InitComponentAndCheckManifest) {
 
 TEST_F(ComponentTest, TestCopyAndMountComponent) {
   std::unique_ptr<Component> component =
-      Component::Create(GetTestComponentPath(), key_);
+      Component::Create(GetTestComponentPath(), keys_);
   ASSERT_NE(nullptr, component);
 
   const base::FilePath copied_dir = temp_dir_.Append("dest");
@@ -144,7 +145,7 @@ TEST_F(ComponentTest, TestCopyAndMountComponent) {
   ASSERT_TRUE(component->CopyTo(copied_dir));
 
   std::unique_ptr<Component> copied_component =
-      Component::Create(copied_dir, key_);
+      Component::Create(copied_dir, keys_);
   ASSERT_NE(nullptr, copied_component);
 
   const base::FilePath mount_dir = temp_dir_.Append("mount");
@@ -163,7 +164,7 @@ TEST_F(ComponentTest, TestCopyAndMountComponent) {
 
 TEST_F(ComponentTest, CheckFilesAfterCopy) {
   std::unique_ptr<Component> component =
-      Component::Create(GetTestComponentPath(), key_);
+      Component::Create(GetTestComponentPath(), keys_);
   ASSERT_NE(nullptr, component);
 
   const base::FilePath copied_dir = temp_dir_.Append("dest");
@@ -173,7 +174,7 @@ TEST_F(ComponentTest, CheckFilesAfterCopy) {
   ASSERT_TRUE(component->CopyTo(copied_dir));
 
   std::unique_ptr<Component> copied_component =
-      Component::Create(copied_dir, key_);
+      Component::Create(copied_dir, keys_);
   ASSERT_NE(nullptr, copied_component);
 
   // Check that all the files are present, except for the manifest.json which

@@ -57,7 +57,7 @@ bool ImageLoaderImpl::LoadComponent(const std::string& name,
   }
 
   std::unique_ptr<Component> component =
-      Component::Create(component_path, config_.key);
+      Component::Create(component_path, config_.keys);
   if (!component) {
     LOG(ERROR) << "Failed to initialize component: " << name;
     return false;
@@ -75,7 +75,7 @@ std::string ImageLoaderImpl::LoadComponent(const std::string& name,
   }
 
   std::unique_ptr<Component> component =
-      Component::Create(component_path, config_.key);
+      Component::Create(component_path, config_.keys);
   if (!component) {
     LOG(ERROR) << "Failed to initialize component: " << name;
     return kBadResult;
@@ -129,7 +129,8 @@ bool ImageLoaderImpl::RegisterComponent(
   }
 
   std::unique_ptr<Component> component =
-      Component::Create(base::FilePath(component_folder_abs_path), config_.key);
+      Component::Create(base::FilePath(component_folder_abs_path),
+                        config_.keys);
   if (!component) return false;
 
   // Check that the reported version matches the component manifest version.
@@ -180,7 +181,7 @@ std::string ImageLoaderImpl::GetComponentVersion(const std::string& name) {
   }
 
   std::unique_ptr<Component> component =
-      Component::Create(component_path, config_.key);
+      Component::Create(component_path, config_.keys);
   if (!component) return kBadResult;
 
   return component->manifest().version;

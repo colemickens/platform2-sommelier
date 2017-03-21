@@ -26,6 +26,7 @@
 #include <crypto/secure_hash.h>
 
 #include "helper_process.h"
+#include "imageloader_impl.h"
 
 namespace imageloader {
 
@@ -46,9 +47,8 @@ class Component {
 
   // Creates a Component. Returns nullptr if initialization and verification
   // fails.
-  static std::unique_ptr<Component> Create(
-        const base::FilePath& component_dir,
-        const std::vector<uint8_t>& public_key);
+  static std::unique_ptr<Component> Create(const base::FilePath& component_dir,
+                                           const Keys& public_keys);
 
   // Copies the component into |dest_dir|. |dest_dir| must already exist. In
   // order to be robust against files being modified on disk, this function

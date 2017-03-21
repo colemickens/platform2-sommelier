@@ -15,14 +15,16 @@
 
 namespace imageloader {
 
+using Keys = std::vector<std::vector<uint8_t>>;
+
 struct ImageLoaderConfig {
-  ImageLoaderConfig(const std::vector<uint8_t> key, const char* storage_path,
+  ImageLoaderConfig(const Keys& keys, const char* storage_path,
                     const char* mount_path)
-      : key(key),
+      : keys(keys),
         storage_dir(storage_path),
         mount_path(mount_path) {}
 
-  std::vector<uint8_t> key;
+  Keys keys;
   base::FilePath storage_dir;
   base::FilePath mount_path;
 };

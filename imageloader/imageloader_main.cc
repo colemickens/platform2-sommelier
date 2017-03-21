@@ -52,9 +52,12 @@ int main(int argc, char** argv) {
     return mount_helper.Run();
   }
 
-  std::vector<uint8_t> key(std::begin(kProdPublicKey),
-                           std::end(kProdPublicKey));
-  imageloader::ImageLoaderConfig config(key, kComponentsPath, kMountPath);
+  imageloader::Keys keys;
+  // The order of key addition below is important.
+  // 1. Prod key, used to sign Flash.
+  keys.push_back(std::vector<uint8_t>(std::begin(kProdPublicKey),
+                                      std::end(kProdPublicKey)));
+  imageloader::ImageLoaderConfig config(keys, kComponentsPath, kMountPath);
   auto helper_process = base::MakeUnique<imageloader::HelperProcess>();
   helper_process->Start(argc, argv, "--mount_helper_fd");
 
