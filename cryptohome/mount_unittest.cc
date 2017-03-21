@@ -1136,7 +1136,7 @@ TEST_P(MountTest, MountCryptohomeNoCreate) {
   EXPECT_CALL(platform_,
       DirectoryExists(AnyOf(user->vault_path, user->vault_mount_path,
                             user->user_vault_path)))
-    .Times(3)
+    .Times(4)
     .WillRepeatedly(Return(false));
 
   // Not legacy
@@ -1601,6 +1601,43 @@ TEST_P(MountTest, CreateTrackedSubdirectories) {
   }
   // Run the method.
   EXPECT_TRUE(mount_->CreateTrackedSubdirectories(up, true /* is_new */));
+}
+
+TEST_P(MountTest, MountCryptohomePreviousMigrationIncomplete) {
+  // Checks that if both ecryptfs and dircrypto home directories
+  // exist, fails with an error.
+  EXPECT_CALL(platform_, DirectoryExists(kImageDir))
+    .WillRepeatedly(Return(true));
+  EXPECT_TRUE(DoMountInit());
+
+  // Prepare a dummy user and a key.
+  InsertTestUsers(&kDefaultUsers[10], 1);
+  TestUser* user = &helper_.users[0];
+  user->InjectKeyset(&platform_, false);
+  UsernamePasskey up(user->username, user->passkey);
+
+  std::vector<int> key_indices;
+  key_indices.push_back(0);
+  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
+    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
+                          Return(true)));
+  // Not legacy
+  EXPECT_CALL(platform_, FileExists(user->image_path))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, CreateDirectory(_))
+    .WillRepeatedly(Return(true));
+
+  // Mock the situation that both types of data directory exists.
+  EXPECT_CALL(platform_,
+    DirectoryExists(AnyOf(user->vault_path, user->vault_mount_path,
+                          user->user_vault_path)))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, GetDirCryptoKeyState(user->vault_mount_path))
+    .WillRepeatedly(Return(dircrypto::KeyState::ENCRYPTED));
+
+  MountError error = MOUNT_ERROR_NONE;
+  ASSERT_FALSE(mount_->MountCryptohome(up, GetDefaultMountArgs(), &error));
+  ASSERT_EQ(MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE, error);
 }
 
 // Test setup that initially has no cryptohomes.

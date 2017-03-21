@@ -333,6 +333,22 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //     should be checked.
   virtual bool DoesCryptohomeExist(const Credentials& credentials) const;
 
+  // Specialized version of DoesCryptohomeExist only deals with Ecryptfs.
+  //
+  // Parameters
+  //   credentials - The Credentials representing the user whose cryptohome
+  //     should be checked.
+  virtual bool DoesEcryptfsCryptohomeExist(
+      const Credentials& credentials) const;
+
+  // Specialized version of DoesCryptohomeExist only deals with Dircrypto.
+  //
+  // Parameters
+  //   credentials - The Credentials representing the user whose cryptohome
+  //     should be checked.
+  virtual bool DoesDircryptoCryptohomeExist(
+      const Credentials& credentials) const;
+
   // Returns the names of all tracked subdirectories.
   static std::vector<base::FilePath> GetTrackedSubdirectories();
 

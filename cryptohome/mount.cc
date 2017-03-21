@@ -261,20 +261,23 @@ MountError Mount::EnsureCryptohome(const Credentials& credentials,
 }
 
 bool Mount::DoesCryptohomeExist(const Credentials& credentials) const {
+  return DoesEcryptfsCryptohomeExist(credentials) ||
+      DoesDircryptoCryptohomeExist(credentials);
+}
+
+bool Mount::DoesEcryptfsCryptohomeExist(const Credentials& credentials) const {
   // Check for the presence of a vault directory for ecryptfs.
-  if (platform_->DirectoryExists(GetUserVaultPath(
-          credentials.GetObfuscatedUsername(system_salt_)))) {
-    return true;
-  }
+  return platform_->DirectoryExists(GetUserVaultPath(
+      credentials.GetObfuscatedUsername(system_salt_)));
+}
+
+bool Mount::DoesDircryptoCryptohomeExist(const Credentials& credentials) const {
   // Check for the presence of an encrypted mount directory for dircrypto.
   FilePath mount_path = GetUserMountDirectory(
       credentials.GetObfuscatedUsername(system_salt_));
-  if (platform_->DirectoryExists(mount_path) &&
+  return platform_->DirectoryExists(mount_path) &&
       platform_->GetDirCryptoKeyState(mount_path) ==
-      dircrypto::KeyState::ENCRYPTED) {
-    return true;
-  }
-  return false;
+      dircrypto::KeyState::ENCRYPTED;
 }
 
 bool Mount::MountCryptohome(const Credentials& credentials,
@@ -465,8 +468,18 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
-  // TODO(kinaba): Detect incomplete migration to dircrypto and return error.
-  // TODO(kinaba): Check regarding mount_args.force_dircrypto.
+  // Checks whether migration from ecryptfs to dircrypto is needed, and returns
+  // an error when necessary. Do this after the check by DecryptVaultKeyset,
+  // because a correct credential is required before switching to migration UI.
+  if (DoesEcryptfsCryptohomeExist(credentials)) {
+    if (DoesDircryptoCryptohomeExist(credentials)) {
+      // If both types of home directory existed, it implies that the migration
+      // attempt was aborted in the middle before doing clean up.
+      *mount_error = MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE;
+      return false;
+    }
+    // TODO(kinaba): Check regarding mount_args.force_dircrypto.
+  }
 
   std::string ecryptfs_options;
   switch (mount_type_) {
