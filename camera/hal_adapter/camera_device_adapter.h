@@ -15,9 +15,9 @@
 #include <mojo/public/cpp/bindings/binding.h>
 
 #include "arc/camera_buffer_mapper.h"
-#include "hal_adapter/arc_camera3.mojom.h"
 #include "hal_adapter/arc_camera3_mojo_utils.h"
 #include "hal_adapter/common_types.h"
+#include "hal_adapter/mojo/arc_camera3.mojom.h"
 #include "hardware/camera3.h"
 
 namespace arc {

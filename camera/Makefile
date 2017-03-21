@@ -17,7 +17,7 @@ CXXFLAGS += -std=c++11 -Wpointer-arith
 CFLAGS += -std=c99
 
 hal_adapter:
-	$(MAKE) hal_adapter/mojo_templates
+	$(MAKE) hal_adapter/mojo/mojo_templates
 	$(MAKE) hal_adapter/arc_camera3_service
 
 .PHONY: hal_adapter

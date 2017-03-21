@@ -14,7 +14,7 @@
 #include <base/threading/thread.h>
 #include <mojo/edk/embedder/process_delegate.h>
 
-#include "hal_adapter/arc_camera3.mojom.h"
+#include "hal_adapter/mojo/arc_camera3.mojom.h"
 #include "hardware/camera3.h"
 
 namespace arc {
