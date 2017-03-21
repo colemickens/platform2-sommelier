@@ -32,9 +32,10 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#define OK         0
-#define ERROR      1
-#define NOT_FOUND -ENOENT
+#define OK              0
+#define ERROR           1
+#define NOT_FOUND       -ENOENT
+#define SN_EVENT_LOG_ID 0x534e4554
 
 #define ALIGN_TO(val, alignment) \
     (((uintptr_t)(val) + ((alignment) - 1)) & ~((alignment) - 1))
@@ -306,6 +307,37 @@ camera_metadata_t* copy_camera_metadata(void *dst, size_t dst_size,
     return metadata;
 }
 
+// This method should be used when the camera metadata cannot be trusted. For example, when it's
+// read from Parcel.
+static int validate_and_calculate_camera_metadata_entry_data_size(size_t *data_size, uint8_t type,
+        size_t data_count) {
+    if (type >= NUM_TYPES) return ERROR;
+
+    // Check for overflow
+    if (data_count != 0 &&
+            camera_metadata_type_size[type] > (SIZE_MAX - DATA_ALIGNMENT + 1) / data_count) {
+        return ERROR;
+    }
+
+    size_t data_bytes = data_count * camera_metadata_type_size[type];
+
+    if (data_size) {
+        *data_size = data_bytes <= 4 ? 0 : ALIGN_TO(data_bytes, DATA_ALIGNMENT);
+    }
+
+    return OK;
+}
+
+size_t calculate_camera_metadata_entry_data_size(uint8_t type,
+        size_t data_count) {
+    if (type >= NUM_TYPES) return 0;
+
+    size_t data_bytes = data_count *
+            camera_metadata_type_size[type];
+
+    return data_bytes <= 4 ? 0 : ALIGN_TO(data_bytes, DATA_ALIGNMENT);
+}
+
 int validate_camera_metadata_structure(const camera_metadata_t *metadata,
                                        const size_t *expected_size) {
 
@@ -364,8 +396,17 @@ int validate_camera_metadata_structure(const camera_metadata_t *metadata,
         return ERROR;
     }
 
+    if (metadata->data_count > metadata->data_capacity) {
+        ALOGE("%s: Data count (%" PRIu32 ") should be <= data capacity "
+              "(%" PRIu32 ")",
+              __FUNCTION__, metadata->data_count, metadata->data_capacity);
+        return ERROR;
+    }
+
     const metadata_uptrdiff_t entries_end =
         metadata->entries_start + metadata->entry_capacity;
+
+
     if (entries_end < metadata->entries_start || // overflow check
         entries_end > metadata->data_start) {
 
@@ -421,9 +462,13 @@ int validate_camera_metadata_structure(const camera_metadata_t *metadata,
             return ERROR;
         }
 
-        size_t data_size =
-                calculate_camera_metadata_entry_data_size(entry.type,
-                                                          entry.count);
+        size_t data_size;
+        if (validate_and_calculate_camera_metadata_entry_data_size(&data_size, entry.type,
+                entry.count) != OK) {
+            ALOGE("%s: Entry data size is invalid. type: %u count: %u", __FUNCTION__, entry.type,
+                    entry.count);
+            return ERROR;
+        }
 
         if (data_size != 0) {
             camera_metadata_data_t *data =
@@ -466,6 +511,10 @@ int append_camera_metadata(camera_metadata_t *dst,
         const camera_metadata_t *src) {
     if (dst == NULL || src == NULL ) return ERROR;
 
+    // Check for overflow
+    if (src->entry_count + dst->entry_count < src->entry_count) return ERROR;
+    if (src->data_count + dst->data_count < src->data_count) return ERROR;
+    // Check for space
     if (dst->entry_capacity < src->entry_count + dst->entry_count) return ERROR;
     if (dst->data_capacity < src->data_count + dst->data_count) return ERROR;
 
@@ -515,14 +564,6 @@ camera_metadata_t *clone_camera_metadata(const camera_metadata_t *src) {
     return clone;
 }
 
-size_t calculate_camera_metadata_entry_data_size(uint8_t type,
-        size_t data_count) {
-    if (type >= NUM_TYPES) return 0;
-    size_t data_bytes = data_count *
-            camera_metadata_type_size[type];
-    return data_bytes <= 4 ? 0 : ALIGN_TO(data_bytes, DATA_ALIGNMENT);
-}
-
 static int add_camera_metadata_entry_raw(camera_metadata_t *dst,
         uint32_t tag,
         uint8_t  type,
@@ -531,7 +572,7 @@ static int add_camera_metadata_entry_raw(camera_metadata_t *dst,
 
     if (dst == NULL) return ERROR;
     if (dst->entry_count == dst->entry_capacity) return ERROR;
-    if (data == NULL) return ERROR;
+    if (data_count && data == NULL) return ERROR;
 
     size_t data_bytes =
             calculate_camera_metadata_entry_data_size(type, data_count);
@@ -722,9 +763,9 @@ int update_camera_metadata_entry(camera_metadata_t *dst,
                     data_count);
 
     if (entry->type >= NUM_TYPES) {
-      ALOGE("%s: Entry index %zu had a bad type %d",
-            __FUNCTION__, index, entry->type);
-      return ERROR;
+        ALOGE("%s: Entry index %zu had a bad type %d",
+              __FUNCTION__, index, entry->type);
+        return ERROR;
     }
     size_t data_payload_bytes =
             data_count * camera_metadata_type_size[entry->type];
@@ -836,6 +877,7 @@ int get_camera_metadata_tag_type(uint32_t tag) {
 
 int set_camera_metadata_vendor_tag_ops(const vendor_tag_query_ops_t* ops) {
     // **DEPRECATED**
+    (void) ops;
     ALOGE("%s: This function has been deprecated", __FUNCTION__);
     return ERROR;
 }
