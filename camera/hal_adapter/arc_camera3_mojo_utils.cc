@@ -152,15 +152,46 @@ int DeserializeStreamBuffer(
   return 0;
 }
 
+const size_t CameraMetadataTypeSize[NUM_TYPES] =
+    {[TYPE_BYTE] = sizeof(uint8_t),
+     [TYPE_INT32] = sizeof(int32_t),
+     [TYPE_FLOAT] = sizeof(float),
+     [TYPE_INT64] = sizeof(int64_t),
+     [TYPE_DOUBLE] = sizeof(double),
+     [TYPE_RATIONAL] = sizeof(camera_metadata_rational_t)};
+
 arc::mojom::CameraMetadataPtr SerializeCameraMetadata(
     const camera_metadata_t* metadata) {
   arc::mojom::CameraMetadataPtr result = arc::mojom::CameraMetadata::New();
   if (metadata) {
-    size_t data_size = get_camera_metadata_size(metadata);
-    std::vector<uint8_t> m(data_size);
-    memcpy(m.data(), reinterpret_cast<const uint8_t*>(metadata), data_size);
-    result->data = std::move(m);
-    VLOGF(1) << "Serialized metadata size=" << data_size;
+    result->size = get_camera_metadata_size(metadata);
+    result->entry_count = get_camera_metadata_entry_count(metadata);
+    result->entry_capacity = get_camera_metadata_entry_capacity(metadata);
+    result->data_count = get_camera_metadata_data_count(metadata);
+    result->data_capacity = get_camera_metadata_data_capacity(metadata);
+
+    for (size_t i = 0; i < result->entry_count; ++i) {
+      camera_metadata_ro_entry_t src;
+      get_camera_metadata_ro_entry(metadata, i, &src);
+      if (src.type >= NUM_TYPES) {
+        LOGF(ERROR) << "Invalid camera metadata entry type: " << src.type;
+        result.reset();
+        return result;
+      }
+
+      arc::mojom::CameraMetadataEntryPtr dst =
+          arc::mojom::CameraMetadataEntry::New();
+      dst->index = src.index;
+      dst->tag = static_cast<arc::mojom::CameraMetadataTag>(src.tag);
+      dst->type = static_cast<arc::mojom::EntryType>(src.type);
+      dst->count = src.count;
+      size_t src_data_size = src.count * CameraMetadataTypeSize[src.type];
+      std::vector<uint8_t> dst_data(src_data_size);
+      memcpy(dst_data.data(), src.data.u8, src_data_size);
+      dst->data = std::move(dst_data);
+      result->entries.push_back(std::move(dst));
+    }
+    VLOGF(1) << "Serialized metadata size=" << result->size;
   }
   return result;
 }
@@ -168,12 +199,27 @@ arc::mojom::CameraMetadataPtr SerializeCameraMetadata(
 internal::CameraMetadataUniquePtr DeserializeCameraMetadata(
     const arc::mojom::CameraMetadataPtr& metadata) {
   internal::CameraMetadataUniquePtr result;
-  if (!metadata->data.is_null()) {
-    size_t data_size = metadata->data.size();
-    uint8_t* data = new uint8_t[data_size];
-    memcpy(data, metadata->data.storage().data(), data_size);
-    result.reset(reinterpret_cast<camera_metadata_t*>(data));
-    VLOGF(1) << "Deserialized metadata size=" << data_size;
+  if (!metadata->entries.is_null()) {
+    camera_metadata_t* allocated_data = allocate_camera_metadata(
+        metadata->entry_capacity, metadata->data_capacity);
+    if (!allocated_data) {
+      LOGF(ERROR) << "Failed to allocate camera metadata";
+      return result;
+    }
+    result.reset(allocated_data);
+    for (size_t i = 0; i < metadata->entry_count; ++i) {
+      int ret = add_camera_metadata_entry(
+          result.get(), static_cast<uint32_t>(metadata->entries[i]->tag),
+          metadata->entries[i]->data.storage().data(),
+          metadata->entries[i]->count);
+      if (ret) {
+        LOGF(ERROR) << "Failed to add camera metadata entry";
+        result.reset();
+        return result;
+      }
+    }
+    VLOGF(1) << "Deserialized metadata size="
+             << get_camera_metadata_size(result.get());
   }
   return result;
 }

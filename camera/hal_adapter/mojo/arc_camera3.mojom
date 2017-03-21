@@ -4,6 +4,8 @@
 
 module arc.mojom;
 
+import "arc_camera3_metadata.mojom";
+
 struct Camera3Stream {
   uint64 id;
   int32 stream_type;
@@ -29,10 +31,6 @@ struct Camera3StreamBuffer {
   int32 status;
   handle? acquire_fence;
   handle? release_fence;
-};
-
-struct CameraMetadata {
-  array<uint8>? data;
 };
 
 struct Camera3CaptureRequest {
