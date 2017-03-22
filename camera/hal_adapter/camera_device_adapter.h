@@ -42,17 +42,8 @@ class CameraDeviceAdapter {
 
   ~CameraDeviceAdapter();
 
-  // GetDeviceOpsPtr() and Close() are Called by CameraHalAdapter on the mojo
-  // IPC handler thread in |module_delegate_|. GetDeviceOpsPtr() is called in
-  // DeviceOpen() of CameraHalAdapter; and Close() in DeviceClose() of
-  // CameraHalAdapter.
-  //
-  // While is not thread-safe by itself, the Android frameworks guarantees that
-  // DeviceOpen() and DeviceClose() will not be called concurrent to any of the
-  // Camera3DeviceOps and Camera3CallbackOps functions.
-  //
-  // TODO(jcliang): Move DeviceClose() to Camera3DeviceOps to make this truely
-  //                thread-safe (b/36358221).
+  // GetDeviceOpsPtr() is called by CameraHalAdapter in OpenDevice() on the mojo
+  // IPC handler thread in |module_delegate_|.
 
   mojom::Camera3DeviceOpsPtr GetDeviceOpsPtr();
 
