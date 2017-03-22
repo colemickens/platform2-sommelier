@@ -7,8 +7,11 @@
 
 #include <dlfcn.h>
 #include <base/logging.h>
+#include <base/synchronization/lock.h>
 #include <gtest/gtest.h>
 #include <hardware/camera3.h>
+
+#include "camera3_test_thread.h"
 
 namespace camera3_test {
 
@@ -50,49 +53,67 @@ class Camera3Module {
   int Initialize();
 
   // Get number of cameras
-  int GetNumberOfCameras() const;
+  int GetNumberOfCameras();
 
   // Get list of camera IDs
-  std::vector<int> GetCameraIds() const;
-
-  // Check if a stream format is supported
-  bool IsFormatAvailable(int cam_id, int format) const;
+  std::vector<int> GetCameraIds();
 
   // Open camera device
-  camera3_device* OpenDevice(int cam_id) const;
+  camera3_device* OpenDevice(int cam_id);
+
+  // Close camera device
+  int CloseDevice(camera3_device& cam_device);
+
+  // Check if a stream format is supported
+  bool IsFormatAvailable(int cam_id, int format);
 
   // Get camera information
-  int GetCameraInfo(int cam_id, camera_info* info) const;
+  int GetCameraInfo(int cam_id, camera_info* info);
 
   // Get the image output formats in this stream configuration
-  std::vector<int32_t> GetOutputFormats(int cam_id) const;
+  std::vector<int32_t> GetOutputFormats(int cam_id);
 
   // Get the image output resolutions in this stream configuration
   std::vector<ResolutionInfo> GetSortedOutputResolutions(int cam_id,
-                                                         int32_t format) const;
+                                                         int32_t format);
 
   // Get the stall duration for the format/size combination (in nanoseconds)
   int64_t GetOutputStallDuration(int cam_id,
                                  int32_t format,
-                                 const ResolutionInfo& resolution) const;
+                                 const ResolutionInfo& resolution);
 
   //  Get the minimum frame duration
   int64_t GetOutputMinFrameDuration(int cam_id,
                                     int32_t format,
-                                    const ResolutionInfo& resolution) const;
+                                    const ResolutionInfo& resolution);
 
  private:
+  void GetNumberOfCamerasOnHalThread(int* result);
+
+  void GetCameraInfoOnHalThread(int cam_id, camera_info* info, int* result);
+
+  void OpenDeviceOnHalThread(int cam_id, camera3_device_t** cam_device);
+
+  void CloseDeviceOnHalThread(camera3_device_t* cam_device, int* result);
+
   void GetStreamConfigEntry(int cam_id,
                             int32_t key,
-                            camera_metadata_ro_entry_t* entry) const;
+                            camera_metadata_ro_entry_t* entry);
 
   int64_t GetOutputKeyParameterI64(int cam_id,
                                    int32_t format,
                                    const ResolutionInfo& resolution,
                                    int32_t key,
-                                   int32_t index) const;
+                                   int32_t index);
 
   const camera_module_t* cam_module_;
+
+  // This thread is needed because of the ARC++ HAL assumption that all the
+  // camera_module functions should be called on the same Chromium thread.
+  // It is expected to start this thread before gtest initialization in main()
+  // because test case instantiation needs it running to get the camera ID
+  // list.
+  Camera3TestThread* hal_thread_;
 
   DISALLOW_COPY_AND_ASSIGN(Camera3Module);
 };

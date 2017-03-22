@@ -55,12 +55,13 @@ class Camera3Device {
       : cam_id_(cam_id),
         initialized_(false),
         cam_device_(NULL),
+        hal_thread_(GetThreadName(cam_id).c_str()),
         cam_stream_idx_(0) {}
 
   ~Camera3Device() {}
 
   // Initialize
-  int Initialize(const Camera3Module* cam_module,
+  int Initialize(Camera3Module* cam_module,
                  const camera3_callback_ops_t* callback_ops);
 
   // Destroy
@@ -109,6 +110,25 @@ class Camera3Device {
   const StaticInfo* GetStaticInfo() const;
 
  private:
+  const std::string GetThreadName(int cam_id);
+
+  void InitializeOnHalThread(const camera3_callback_ops_t* callback_ops,
+                             int* result);
+
+  void ConstructDefaultRequestSettingsOnHalThread(
+      int type,
+      const camera_metadata_t** result);
+
+  void ConfigureStreamsOnHalThread(camera3_stream_configuration_t* config,
+                                   int* result);
+
+  void ProcessCaptureRequestOnHalThread(camera3_capture_request_t* request,
+                                        int* result);
+
+  void FlushOnHalThread(int* result);
+
+  void CloseOnHalThread(int* result);
+
   const int cam_id_;
 
   bool initialized_;
@@ -116,6 +136,11 @@ class Camera3Device {
   camera3_device* cam_device_;
 
   std::unique_ptr<StaticInfo> static_info_;
+
+  // This thread is needed because of the ARC++ HAL assumption that all the
+  // camera3_device_ops functions, except dump, should be called on the same
+  // thread. Each device is accessed through a different thread.
+  Camera3TestThread hal_thread_;
 
   // Two bins of streams for swapping while configuring new streams
   std::vector<camera3_stream_t> cam_stream_[2];
@@ -178,6 +203,12 @@ class Camera3Device::StaticInfo {
   //            ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_INPUT
   std::set<int32_t> GetAvailableFormats(int32_t direction) const;
 
+  // Check if a stream format is supported
+  bool IsFormatAvailable(int format) const;
+
+  // Get the image output resolutions in this stream configuration
+  std::vector<ResolutionInfo> GetSortedOutputResolutions(int32_t format) const;
+
   // Determine if camera device support AE lock control
   bool IsAELockSupported() const;
 
@@ -203,6 +234,8 @@ class Camera3Device::StaticInfo {
   std::set<uint8_t> GetAvailableModes(int32_t key,
                                       int32_t min_value,
                                       int32_t max_value) const;
+
+  void GetStreamConfigEntry(camera_metadata_ro_entry_t* entry) const;
 
   const camera_metadata_t* characteristics_;
 };

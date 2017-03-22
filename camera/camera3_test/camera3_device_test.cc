@@ -2,10 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "camera3_device_fixture.h"
+
 #include <algorithm>
 
+#include <base/bind.h>
+
 #include "arc/camera_buffer_mapper.h"
-#include "camera3_device_fixture.h"
 #include "common/camera_buffer_handle.h"
 
 namespace camera3_test {
@@ -200,9 +203,9 @@ uint32_t Camera3TestGralloc::GrallocConvertFormat(int32_t format) {
   return GBM_FORMAT_ARGB8888;
 }
 
-int Camera3Device::Initialize(const Camera3Module* cam_module,
+int Camera3Device::Initialize(Camera3Module* cam_module,
                               const camera3_callback_ops_t* callback_ops) {
-  if (!cam_module) {
+  if (!cam_module || !hal_thread_.Start()) {
     return -EINVAL;
   }
 
@@ -217,8 +220,11 @@ int Camera3Device::Initialize(const Camera3Module* cam_module,
       << "The device must support at least HALv3.3";
 
   // Initialize camera device
-  EXPECT_EQ(0, cam_device_->ops->initialize(cam_device_, callback_ops))
-      << "Camera device initialization fails";
+  int result = -EIO;
+  hal_thread_.PostTaskSync(base::Bind(&Camera3Device::InitializeOnHalThread,
+                                      base::Unretained(this), callback_ops,
+                                      &result));
+  EXPECT_EQ(0, result) << "Camera device initialization fails";
 
   EXPECT_EQ(0, gralloc_.Initialize()) << "Gralloc initialization fails";
 
@@ -244,8 +250,11 @@ void Camera3Device::Destroy() {
 
   gralloc_.Destroy();
 
-  EXPECT_EQ(0, cam_device_->common.close(&cam_device_->common))
-      << "Camera device close failed";
+  int result = -EIO;
+  hal_thread_.PostTaskSync(base::Bind(&Camera3Device::CloseOnHalThread,
+                                      base::Unretained(this), &result));
+  EXPECT_EQ(0, result) << "Camera device close failed";
+  hal_thread_.Stop();
 }
 
 bool Camera3Device::IsTemplateSupported(int32_t type) const {
@@ -262,9 +271,11 @@ const camera_metadata_t* Camera3Device::ConstructDefaultRequestSettings(
   if (!initialized_) {
     return NULL;
   }
-
-  return cam_device_->ops->construct_default_request_settings(cam_device_,
-                                                              type);
+  const camera_metadata_t* metadata = nullptr;
+  hal_thread_.PostTaskSync(
+      base::Bind(&Camera3Device::ConstructDefaultRequestSettingsOnHalThread,
+                 base::Unretained(this), type, &metadata));
+  return metadata;
 }
 
 void Camera3Device::AddOutputStream(int format, int width, int height) {
@@ -300,8 +311,10 @@ int Camera3Device::ConfigureStreams() {
   cam_stream_config.operation_mode = CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE;
 
   // Configure streams now
-  int ret =
-      cam_device_->ops->configure_streams(cam_device_, &cam_stream_config);
+  int ret = -EIO;
+  hal_thread_.PostTaskSync(
+      base::Bind(&Camera3Device::ConfigureStreamsOnHalThread,
+                 base::Unretained(this), &cam_stream_config, &ret));
 
   // Swap to the other bin
   cam_stream_[cam_stream_idx_].clear();
@@ -412,16 +425,64 @@ int Camera3Device::ProcessCaptureRequest(camera3_capture_request_t* request) {
   if (!initialized_) {
     return -ENODEV;
   }
-
-  return cam_device_->ops->process_capture_request(cam_device_, request);
+  int ret = -EIO;
+  hal_thread_.PostTaskSync(
+      base::Bind(&Camera3Device::ProcessCaptureRequestOnHalThread,
+                 base::Unretained(this), request, &ret));
+  return ret;
 }
 
 int Camera3Device::Flush() {
   if (!initialized_) {
     return -ENODEV;
   }
+  int ret = -EIO;
+  hal_thread_.PostTaskSync(base::Bind(&Camera3Device::FlushOnHalThread,
+                                      base::Unretained(this), &ret));
+  return ret;
+}
 
-  return cam_device_->ops->flush(cam_device_);
+const std::string Camera3Device::GetThreadName(int cam_id) {
+  const size_t kThreadNameLength = 30;
+  char thread_name[kThreadNameLength];
+  snprintf(thread_name, kThreadNameLength, "Camera3 Test Device %d Thread",
+           cam_id);
+  return std::string(thread_name);
+}
+
+void Camera3Device::InitializeOnHalThread(
+    const camera3_callback_ops_t* callback_ops,
+    int* result) {
+  *result = cam_device_->ops->initialize(cam_device_, callback_ops);
+}
+
+void Camera3Device::ConstructDefaultRequestSettingsOnHalThread(
+    int type,
+    const camera_metadata_t** result) {
+  *result =
+      cam_device_->ops->construct_default_request_settings(cam_device_, type);
+}
+
+void Camera3Device::ConfigureStreamsOnHalThread(
+    camera3_stream_configuration_t* config,
+    int* result) {
+  *result = cam_device_->ops->configure_streams(cam_device_, config);
+}
+
+void Camera3Device::ProcessCaptureRequestOnHalThread(
+    camera3_capture_request_t* request,
+    int* result) {
+  *result = cam_device_->ops->process_capture_request(cam_device_, request);
+}
+
+void Camera3Device::FlushOnHalThread(int* result) {
+  *result = cam_device_->ops->flush(cam_device_);
+}
+
+void Camera3Device::CloseOnHalThread(int* result) {
+  ASSERT_NE(nullptr, cam_device_->common.close)
+      << "Camera close() is not implemented";
+  *result = cam_device_->common.close(&cam_device_->common);
 }
 
 const Camera3Device::StaticInfo* Camera3Device::GetStaticInfo() const {
@@ -611,31 +672,71 @@ std::set<uint8_t> Camera3Device::StaticInfo::GetAvailableToneMapModes() const {
   return modes;
 }
 
-std::set<int32_t> Camera3Device::StaticInfo::GetAvailableFormats(
-    int32_t direction) const {
-  camera_metadata_ro_entry_t available_config;
-  EXPECT_EQ(
+void Camera3Device::StaticInfo::GetStreamConfigEntry(
+    camera_metadata_ro_entry_t* entry) const {
+  entry->count = 0;
+
+  camera_metadata_ro_entry_t local_entry = {};
+  ASSERT_EQ(
       0, find_camera_metadata_ro_entry(
              characteristics_, ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
-             &available_config));
-  EXPECT_NE(0u, available_config.count)
-      << "Camera stream configuration is empty";
-  EXPECT_EQ(0u, available_config.count % kNumOfElementsInStreamConfigEntry)
+             &local_entry))
+      << "Fail to find metadata key "
+         "ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS";
+  ASSERT_NE(0u, local_entry.count) << "Camera stream configuration is empty";
+  ASSERT_EQ(0u, local_entry.count % kNumOfElementsInStreamConfigEntry)
       << "Camera stream configuration parsing error";
+  *entry = local_entry;
+}
 
-  if (testing::Test::HasFailure()) {
-    return std::set<int32_t>();
-  }
+std::set<int32_t> Camera3Device::StaticInfo::GetAvailableFormats(
+    int32_t direction) const {
+  camera_metadata_ro_entry_t available_config = {};
+  GetStreamConfigEntry(&available_config);
   std::set<int32_t> formats;
   for (size_t i = 0; i < available_config.count;
        i += kNumOfElementsInStreamConfigEntry) {
-    int32_t format = available_config.data.i32[i];
-    int32_t in_or_out = available_config.data.i32[i + 3];
+    int32_t format = available_config.data.i32[i + STREAM_CONFIG_FORMAT_INDEX];
+    int32_t in_or_out =
+        available_config.data.i32[i + STREAM_CONFIG_DIRECTION_INDEX];
     if (in_or_out == direction) {
       formats.insert(format);
     }
   }
   return formats;
+}
+
+bool Camera3Device::StaticInfo::IsFormatAvailable(int format) const {
+  camera_metadata_ro_entry_t available_config = {};
+  GetStreamConfigEntry(&available_config);
+  for (uint32_t i = 0; i < available_config.count;
+       i += kNumOfElementsInStreamConfigEntry) {
+    if (available_config.data.i32[i + STREAM_CONFIG_FORMAT_INDEX] == format) {
+      return true;
+    }
+  }
+  return false;
+}
+
+std::vector<ResolutionInfo>
+Camera3Device::StaticInfo::GetSortedOutputResolutions(int32_t format) const {
+  camera_metadata_ro_entry_t available_config = {};
+  GetStreamConfigEntry(&available_config);
+  std::vector<ResolutionInfo> available_resolutions;
+  for (uint32_t i = 0; i < available_config.count;
+       i += kNumOfElementsInStreamConfigEntry) {
+    int32_t fmt = available_config.data.i32[i + STREAM_CONFIG_FORMAT_INDEX];
+    int32_t width = available_config.data.i32[i + STREAM_CONFIG_WIDTH_INDEX];
+    int32_t height = available_config.data.i32[i + STREAM_CONFIG_HEIGHT_INDEX];
+    int32_t in_or_out =
+        available_config.data.i32[i + STREAM_CONFIG_DIRECTION_INDEX];
+    if ((fmt == format) &&
+        (in_or_out == ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT)) {
+      available_resolutions.emplace_back(width, height);
+    }
+  }
+  std::sort(available_resolutions.begin(), available_resolutions.end());
+  return available_resolutions;
 }
 
 bool Camera3Device::StaticInfo::IsAELockSupported() const {

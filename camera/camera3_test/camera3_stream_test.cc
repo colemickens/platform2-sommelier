@@ -12,8 +12,8 @@ void Camera3StreamFixture::SetUp() {
   Camera3DeviceFixture::SetUp();
 
   std::vector<ResolutionInfo> resolutions =
-      cam_module_.GetSortedOutputResolutions(
-          cam_id_, HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED);
+      cam_device_.GetStaticInfo()->GetSortedOutputResolutions(
+          HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED);
   ASSERT_TRUE(!resolutions.empty())
       << "Failed to find resolutions for implementation defined format";
 
@@ -32,7 +32,7 @@ int32_t Camera3StreamFixture::GetMinResolution(int32_t format,
   }
 
   std::vector<ResolutionInfo> resolutions =
-      cam_module_.GetSortedOutputResolutions(cam_id_, format);
+      cam_device_.GetStaticInfo()->GetSortedOutputResolutions(format);
   if (resolutions.empty()) {
     return -EIO;
   }
@@ -54,7 +54,7 @@ int32_t Camera3StreamFixture::GetMaxResolution(int32_t format,
   }
 
   std::vector<ResolutionInfo> resolutions =
-      cam_module_.GetSortedOutputResolutions(cam_id_, format);
+      cam_device_.GetStaticInfo()->GetSortedOutputResolutions(format);
   if (resolutions.empty()) {
     return -EIO;
   }
@@ -91,7 +91,7 @@ TEST_P(Camera3StreamTest, CreateStream) {
   int32_t format = std::get<1>(GetParam());
 
   cam_device_.AddOutputStream(format, default_width_, default_height_);
-  if (cam_module_.IsFormatAvailable(cam_id_, format)) {
+  if (cam_device_.GetStaticInfo()->IsFormatAvailable(format)) {
     ASSERT_EQ(0, cam_device_.ConfigureStreams())
         << "Configuring stream of supported format fails";
   } else {
@@ -112,13 +112,12 @@ class Camera3BadResultionStreamTest
 };
 
 TEST_P(Camera3BadResultionStreamTest, CreateStream) {
-  int cam_id = std::get<0>(GetParam());
   int32_t format = std::get<1>(GetParam());
 
-  if (cam_module_.IsFormatAvailable(cam_id_, format)) {
+  if (cam_device_.GetStaticInfo()->IsFormatAvailable(format)) {
     int32_t bad_width = default_width_ + 1;
     std::vector<ResolutionInfo> available_resolutions =
-        cam_module_.GetSortedOutputResolutions(cam_id, format);
+        cam_device_.GetStaticInfo()->GetSortedOutputResolutions(format);
     while (std::find(available_resolutions.begin(), available_resolutions.end(),
                      ResolutionInfo(bad_width, default_height_)) !=
            available_resolutions.end()) {

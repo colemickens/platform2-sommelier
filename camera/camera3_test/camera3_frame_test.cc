@@ -534,7 +534,7 @@ TEST_P(Camera3SingleFrameTest, GetFrame) {
     return;
   }
 
-  if (cam_module_.IsFormatAvailable(cam_id_, format)) {
+  if (cam_device_.GetStaticInfo()->IsFormatAvailable(format)) {
     ResolutionInfo resolution(0, 0);
     if (std::get<3>(GetParam())) {
       ASSERT_EQ(0, GetMaxResolution(format, &resolution))

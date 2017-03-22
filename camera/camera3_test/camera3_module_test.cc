@@ -7,12 +7,14 @@
 #include <algorithm>
 
 #include <base/at_exit.h>
+#include <base/bind.h>
 #include <base/command_line.h>
 #include <base/logging.h>
 
 namespace camera3_test {
 
 static camera_module_t* g_cam_module = NULL;
+static Camera3TestThread g_module_thread("Camera3 Test Module Thread");
 
 int32_t ResolutionInfo::Width() const {
   return width_;
@@ -41,15 +43,16 @@ static void InitCameraModule(void*& cam_hal_handle) {
   cam_hal_handle = dlopen(kCameraHalDllName, RTLD_NOW);
   ASSERT_NE(nullptr, cam_hal_handle) << "Failed to dlopen: " << dlerror();
 
-  g_cam_module = static_cast<camera_module_t*>(
+  camera_module_t* cam_module = static_cast<camera_module_t*>(
       dlsym(cam_hal_handle, HAL_MODULE_INFO_SYM_AS_STR));
-  ASSERT_NE(nullptr, g_cam_module) << "Camera module is invalid";
-  ASSERT_NE(nullptr, g_cam_module->get_number_of_cameras)
+  ASSERT_NE(nullptr, cam_module) << "Camera module is invalid";
+  ASSERT_NE(nullptr, cam_module->get_number_of_cameras)
       << "get_number_of_cameras is not implemented";
-  ASSERT_NE(nullptr, g_cam_module->get_camera_info)
+  ASSERT_NE(nullptr, cam_module->get_camera_info)
       << "get_camera_info is not implemented";
-  ASSERT_NE(nullptr, g_cam_module->common.methods->open)
+  ASSERT_NE(nullptr, cam_module->common.methods->open)
       << "open() is unimplemented";
+  g_cam_module = cam_module;
 }
 
 static camera_module_t* GetCameraModule() {
@@ -58,26 +61,30 @@ static camera_module_t* GetCameraModule() {
 
 // Camera module
 
-Camera3Module::Camera3Module() : cam_module_(GetCameraModule()) {}
+Camera3Module::Camera3Module()
+    : cam_module_(GetCameraModule()), hal_thread_(&g_module_thread) {}
 
 int Camera3Module::Initialize() {
   return cam_module_ ? 0 : -ENODEV;
 }
 
-int Camera3Module::GetNumberOfCameras() const {
+int Camera3Module::GetNumberOfCameras() {
   if (!cam_module_) {
     return -ENODEV;
   }
-
-  return cam_module_->get_number_of_cameras();
+  int result = -EINVAL;
+  hal_thread_->PostTaskSync(
+      base::Bind(&Camera3Module::GetNumberOfCamerasOnHalThread,
+                 base::Unretained(this), &result));
+  return result;
 }
 
-std::vector<int> Camera3Module::GetCameraIds() const {
+std::vector<int> Camera3Module::GetCameraIds() {
   if (!cam_module_) {
     return std::vector<int>();
   }
 
-  int num_cams = cam_module_->get_number_of_cameras();
+  int num_cams = GetNumberOfCameras();
   std::vector<int> ids(num_cams);
   for (int i = 0; i < num_cams; i++) {
     ids[i] = i;
@@ -86,15 +93,14 @@ std::vector<int> Camera3Module::GetCameraIds() const {
   return ids;
 }
 
-void Camera3Module::GetStreamConfigEntry(
-    int cam_id,
-    int32_t key,
-    camera_metadata_ro_entry_t* entry) const {
+void Camera3Module::GetStreamConfigEntry(int cam_id,
+                                         int32_t key,
+                                         camera_metadata_ro_entry_t* entry) {
   entry->count = 0;
 
   camera_info info;
-  ASSERT_EQ(0, cam_module_->get_camera_info(cam_id, &info))
-      << "Can't get camera info for" << cam_id;
+  ASSERT_EQ(0, GetCameraInfo(cam_id, &info)) << "Can't get camera info for"
+                                             << cam_id;
 
   camera_metadata_ro_entry_t local_entry = {};
   ASSERT_EQ(
@@ -108,7 +114,7 @@ void Camera3Module::GetStreamConfigEntry(
   *entry = local_entry;
 }
 
-bool Camera3Module::IsFormatAvailable(int cam_id, int format) const {
+bool Camera3Module::IsFormatAvailable(int cam_id, int format) {
   if (!cam_module_) {
     return false;
   }
@@ -127,32 +133,40 @@ bool Camera3Module::IsFormatAvailable(int cam_id, int format) const {
   return false;
 }
 
-camera3_device* Camera3Module::OpenDevice(int cam_id) const {
+camera3_device* Camera3Module::OpenDevice(int cam_id) {
   if (!cam_module_) {
     return NULL;
   }
-
-  hw_device_t* device = NULL;
-  char cam_id_name[3];
-  snprintf(cam_id_name, 3, "%d", cam_id);
-
-  if (cam_module_->common.methods->open((const hw_module_t*)cam_module_,
-                                        cam_id_name, &device) == 0) {
-    return reinterpret_cast<camera3_device_t*>(device);
-  }
-
-  return NULL;
+  camera3_device_t* cam_device = nullptr;
+  hal_thread_->PostTaskSync(base::Bind(&Camera3Module::OpenDeviceOnHalThread,
+                                       base::Unretained(this), cam_id,
+                                       &cam_device));
+  return cam_device;
 }
 
-int Camera3Module::GetCameraInfo(int cam_id, camera_info* info) const {
+int Camera3Module::CloseDevice(camera3_device& cam_device) {
   if (!cam_module_) {
     return -ENODEV;
   }
-
-  return cam_module_->get_camera_info(cam_id, info);
+  int result = -ENODEV;
+  hal_thread_->PostTaskSync(base::Bind(&Camera3Module::CloseDeviceOnHalThread,
+                                       base::Unretained(this), &cam_device,
+                                       &result));
+  return result;
 }
 
-std::vector<int32_t> Camera3Module::GetOutputFormats(int cam_id) const {
+int Camera3Module::GetCameraInfo(int cam_id, camera_info* info) {
+  if (!cam_module_) {
+    return -ENODEV;
+  }
+  int result = -ENODEV;
+  hal_thread_->PostTaskSync(base::Bind(&Camera3Module::GetCameraInfoOnHalThread,
+                                       base::Unretained(this), cam_id, info,
+                                       &result));
+  return result;
+}
+
+std::vector<int32_t> Camera3Module::GetOutputFormats(int cam_id) {
   if (!cam_module_) {
     return std::vector<int32_t>();
   }
@@ -177,7 +191,7 @@ std::vector<int32_t> Camera3Module::GetOutputFormats(int cam_id) const {
 
 std::vector<ResolutionInfo> Camera3Module::GetSortedOutputResolutions(
     int cam_id,
-    int32_t format) const {
+    int32_t format) {
   if (!cam_module_) {
     return std::vector<ResolutionInfo>();
   }
@@ -208,7 +222,7 @@ int64_t Camera3Module::GetOutputKeyParameterI64(
     int32_t format,
     const ResolutionInfo& resolution,
     int32_t key,
-    int32_t index) const {
+    int32_t index) {
   if (!cam_module_) {
     return -EINVAL;
   }
@@ -233,7 +247,7 @@ int64_t Camera3Module::GetOutputKeyParameterI64(
 int64_t Camera3Module::GetOutputStallDuration(
     int cam_id,
     int32_t format,
-    const ResolutionInfo& resolution) const {
+    const ResolutionInfo& resolution) {
   return GetOutputKeyParameterI64(cam_id, format, resolution,
                                   ANDROID_SCALER_AVAILABLE_STALL_DURATIONS,
                                   STREAM_CONFIG_STALL_DURATION_INDEX);
@@ -242,10 +256,39 @@ int64_t Camera3Module::GetOutputStallDuration(
 int64_t Camera3Module::GetOutputMinFrameDuration(
     int cam_id,
     int32_t format,
-    const ResolutionInfo& resolution) const {
+    const ResolutionInfo& resolution) {
   return GetOutputKeyParameterI64(cam_id, format, resolution,
                                   ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS,
                                   STREAM_CONFIG_MIN_DURATION_INDEX);
+}
+
+void Camera3Module::GetNumberOfCamerasOnHalThread(int* result) {
+  *result = cam_module_->get_number_of_cameras();
+}
+
+void Camera3Module::GetCameraInfoOnHalThread(int cam_id,
+                                             camera_info* info,
+                                             int* result) {
+  *result = cam_module_->get_camera_info(cam_id, info);
+}
+
+void Camera3Module::OpenDeviceOnHalThread(int cam_id,
+                                          camera3_device_t** cam_device) {
+  *cam_device = nullptr;
+  hw_device_t* device = nullptr;
+  char cam_id_name[3];
+  snprintf(cam_id_name, 3, "%d", cam_id);
+  if (cam_module_->common.methods->open((const hw_module_t*)cam_module_,
+                                        cam_id_name, &device) == 0) {
+    *cam_device = reinterpret_cast<camera3_device_t*>(device);
+  }
+}
+
+void Camera3Module::CloseDeviceOnHalThread(camera3_device_t* cam_device,
+                                           int* result) {
+  ASSERT_NE(nullptr, cam_device->common.close)
+      << "Camera close() is not implemented";
+  *result = cam_device->common.close(&cam_device->common);
 }
 
 // Test fixture
@@ -306,9 +349,7 @@ TEST_F(Camera3ModuleFixture, OpenDevice) {
   for (int cam_id = 0; cam_id < cam_module_.GetNumberOfCameras(); cam_id++) {
     camera3_device* cam_dev = cam_module_.OpenDevice(cam_id);
     ASSERT_NE(nullptr, cam_dev) << "Camera open() returned a NULL device";
-    ASSERT_NE(nullptr, cam_dev->common.close)
-        << "Camera close() is not implemented";
-    cam_dev->common.close(&cam_dev->common);
+    cam_module_.CloseDevice(*cam_dev);
   }
 }
 
@@ -320,9 +361,7 @@ TEST_F(Camera3ModuleFixture, OpenDeviceTwice) {
     camera3_device* cam_bad_dev = cam_module_.OpenDevice(cam_id);
     ASSERT_EQ(nullptr, cam_bad_dev) << "Opening camera device " << cam_id
                                     << " should have failed";
-    ASSERT_NE(nullptr, cam_dev->common.close)
-        << "Camera close() is not implemented";
-    cam_dev->common.close(&cam_dev->common);
+    cam_module_.CloseDevice(*cam_dev);
   }
 }
 
@@ -874,6 +913,7 @@ int main(int argc, char** argv) {
   // Open camera HAL and get module
   void* cam_hal_handle = NULL;
   camera3_test::InitCameraModule(cam_hal_handle);
+  camera3_test::g_module_thread.Start();
 
   int result = EXIT_FAILURE;
   if (!testing::Test::HasFailure()) {
@@ -882,6 +922,7 @@ int main(int argc, char** argv) {
     result = RUN_ALL_TESTS();
   }
 
+  camera3_test::g_module_thread.Stop();
   if (cam_hal_handle) {
     // Close Camera HAL
     dlclose(cam_hal_handle);
