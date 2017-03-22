@@ -7,11 +7,16 @@
 #include <base/memory/ptr_util.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+#include <openssl/evp.h>
+#include <openssl/pem.h>
+#include <openssl/x509.h>
 
 #include "helper_process.h"
 #include "imageloader.h"
 #include "imageloader_impl.h"
 #include "mount_helper.h"
+
+namespace {
 
 constexpr uint8_t kProdPublicKey[] = {
     0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02,
@@ -27,6 +32,48 @@ constexpr uint8_t kProdPublicKey[] = {
 constexpr char kComponentsPath[] = "/var/lib/imageloader";
 // The base path where the components are mounted.
 constexpr char kMountPath[] = "/run/imageloader";
+// The location of the container public key.
+constexpr char kContainerPublicKeyPath[] =
+    "/usr/share/misc/oci-container-key-pub.pem";
+
+struct ScopedPubkeyCloser {
+  inline void operator()(EVP_PKEY* pubkey) {
+    if (pubkey)
+      EVP_PKEY_free(pubkey);
+  }
+};
+using ScopedPubkey = std::unique_ptr<EVP_PKEY, ScopedPubkeyCloser>;
+
+bool LoadKeyFromFile(const std::string& file, std::vector<uint8_t>* key_out) {
+  CHECK(key_out);
+
+  base::ScopedFILE key_file(fopen(file.c_str(), "r"));
+  if (!key_file) {
+    LOG(WARNING) << "Could not find key file " << file;
+    return false;
+  }
+
+  ScopedPubkey pubkey(
+      PEM_read_PUBKEY(key_file.get(), nullptr, nullptr, nullptr));
+  if (!pubkey) {
+    LOG(WARNING) << "Key file " << file << " was not a public key";
+    return false;
+  }
+
+  uint8_t *der_key;
+  int der_len = i2d_PUBKEY(pubkey.get(), &der_key);
+  if (der_len < 0) {
+    LOG(WARNING) << "Failed to export public key in DER format";
+    return false;
+  }
+
+  key_out->clear();
+  key_out->insert(key_out->begin(), der_key, der_key + der_len);
+  OPENSSL_free(der_key);
+  return true;
+}
+
+}  // namespace
 
 int main(int argc, char** argv) {
   DEFINE_bool(mount, false,
@@ -57,6 +104,11 @@ int main(int argc, char** argv) {
   // 1. Prod key, used to sign Flash.
   keys.push_back(std::vector<uint8_t>(std::begin(kProdPublicKey),
                                       std::end(kProdPublicKey)));
+  // 2. Container key.
+  std::vector<uint8_t> container_key;
+  if (LoadKeyFromFile(kContainerPublicKeyPath, &container_key))
+    keys.push_back(container_key);
+
   imageloader::ImageLoaderConfig config(keys, kComponentsPath, kMountPath);
   auto helper_process = base::MakeUnique<imageloader::HelperProcess>();
   helper_process->Start(argc, argv, "--mount_helper_fd");

@@ -7,6 +7,7 @@
       'deps': [
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
+        'libcrypto',
         'libminijail',
         'protobuf-lite',
       ],
