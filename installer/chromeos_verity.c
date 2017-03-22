@@ -56,6 +56,11 @@ static ssize_t get_ubi_leb_size(const char *dev) {
     return -1;
   }
 
+  if (!S_ISCHR(stat_buf.st_mode)) {
+    /* Not a character device, not a UBI device */
+    return -1;
+  }
+
   /* Make sure this is UBI. */
   int dev_major = major(stat_buf.st_rdev);
   int dev_minor = minor(stat_buf.st_rdev);
