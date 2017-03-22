@@ -1640,6 +1640,73 @@ TEST_P(MountTest, MountCryptohomePreviousMigrationIncomplete) {
   ASSERT_EQ(MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE, error);
 }
 
+TEST_P(MountTest, MountCryptohomeForceDircrypto) {
+  // Checks that the force-dircrypto flag correctly rejects to mount ecryptfs.
+  EXPECT_CALL(platform_, DirectoryExists(kImageDir))
+    .WillRepeatedly(Return(true));
+  EXPECT_TRUE(DoMountInit());
+
+  // Prepare a dummy user and a key.
+  InsertTestUsers(&kDefaultUsers[10], 1);
+  TestUser* user = &helper_.users[0];
+  user->InjectKeyset(&platform_, false);
+  user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_, shared_gid_,
+                        kDaemonGid, ShouldTestEcryptfs());
+
+  std::vector<int> key_indices;
+  key_indices.push_back(0);
+  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
+    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
+                          Return(true)));
+  EXPECT_CALL(platform_, CreateDirectory(_))
+    .WillRepeatedly(Return(true));
+
+  // Mock setup for successful mount when dircrypto is tested.
+  if (!ShouldTestEcryptfs()) {
+    ExpectCryptohomeMount(*user);
+
+    EXPECT_CALL(platform_, IsDirectoryMounted(user->vault_mount_path))
+        .WillOnce(Return(false));  // mount precondition
+    EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
+        .WillOnce(Return(false));  // bind precondition for first mount
+    EXPECT_CALL(platform_, Bind(_, _))
+        .Times(4)
+        .WillRepeatedly(Return(true));
+
+    // Expectations for tracked subdirectories
+    EXPECT_CALL(platform_, DirectoryExists(
+        Property(&FilePath::value, StartsWith(user->vault_mount_path.value()))))
+      .WillRepeatedly(Return(true));
+    EXPECT_CALL(platform_, SetExtendedFileAttribute(
+        Property(&FilePath::value, StartsWith(user->vault_mount_path.value())),
+        _, _, _))
+      .WillRepeatedly(Return(true));
+    EXPECT_CALL(platform_, FileExists(
+        Property(&FilePath::value, StartsWith(user->vault_mount_path.value()))))
+      .WillRepeatedly(Return(true));
+    EXPECT_CALL(platform_, SetGroupAccessible(
+        Property(&FilePath::value, StartsWith(user->vault_mount_path.value())),
+        _, _))
+      .WillRepeatedly(Return(true));
+  }
+
+  UsernamePasskey up(user->username, user->passkey);
+
+  MountError error = MOUNT_ERROR_NONE;
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
+  mount_args.force_dircrypto = true;
+
+  if (ShouldTestEcryptfs()) {
+    // Should reject mounting ecryptfs vault.
+    EXPECT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
+    EXPECT_EQ(MOUNT_ERROR_OLD_ENCRYPTION, error);
+  } else {
+    // Should succeed in mounting in dircrypto.
+    EXPECT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
+    EXPECT_EQ(MOUNT_ERROR_NONE, error);
+  }
+}
+
 // Test setup that initially has no cryptohomes.
 const TestUserInfo kNoUsers[] = {
   {"user0@invalid.domain", "zero", false},

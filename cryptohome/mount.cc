@@ -471,14 +471,21 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   // Checks whether migration from ecryptfs to dircrypto is needed, and returns
   // an error when necessary. Do this after the check by DecryptVaultKeyset,
   // because a correct credential is required before switching to migration UI.
-  if (DoesEcryptfsCryptohomeExist(credentials)) {
-    if (DoesDircryptoCryptohomeExist(credentials)) {
-      // If both types of home directory existed, it implies that the migration
-      // attempt was aborted in the middle before doing clean up.
-      *mount_error = MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE;
-      return false;
-    }
-    // TODO(kinaba): Check regarding mount_args.force_dircrypto.
+  if (DoesEcryptfsCryptohomeExist(credentials) &&
+      DoesDircryptoCryptohomeExist(credentials)) {
+    // If both types of home directory existed, it implies that the migration
+    // attempt was aborted in the middle before doing clean up.
+    LOG(INFO) << "Mount failed because both ecryptfs and dircrypto home "
+        "directory is found. Need to resume and finish migration first.";
+    *mount_error = MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE;
+    return false;
+  }
+
+  if (mount_type_ == MountType::ECRYPTFS && mount_args.force_dircrypto) {
+    // If dircrypto is forced, it's an error to mount ecryptfs home.
+    LOG(INFO) << "Mount attempt with force_dircrypto on ecryptfs.";
+    *mount_error = MOUNT_ERROR_OLD_ENCRYPTION;
+    return false;
   }
 
   std::string ecryptfs_options;
