@@ -321,33 +321,26 @@ int Camera3Device::AllocateOutputStreamBuffersByStreams(
     std::vector<camera3_stream_buffer_t>* output_buffers) {
   base::AutoLock l1(stream_lock_);
 
+  int32_t jpeg_max_size = static_info_->GetJpegMaxSize();
   if (!output_buffers ||
-      (streams.empty() && cam_stream_[cam_stream_idx_].size() == 0)) {
+      (streams.empty() && cam_stream_[cam_stream_idx_].size() == 0) ||
+      jpeg_max_size <= 0) {
     return -EINVAL;
   }
 
   const std::vector<camera3_stream_t>* streams_ptr =
       streams.empty() ? &cam_stream_[cam_stream_idx_] : &streams;
   for (const auto& it : *streams_ptr) {
-    int32_t format = it.format;
-    uint32_t width = it.width;
-    uint32_t height = it.height;
-
-    // Allocate general-purpose buffer if it is implementation defined or blob
-    // format
-    if ((format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) ||
-        (format == HAL_PIXEL_FORMAT_BLOB)) {
-      format = HAL_PIXEL_FORMAT_RGBA_8888;
-      width = width * height;
-      height = 1;
-    }
-
     std::unique_ptr<buffer_handle_t> buffer(new buffer_handle_t);
 
-    EXPECT_EQ(0, gralloc_.Allocate(width, height, format,
-                                   GRALLOC_USAGE_SW_WRITE_OFTEN |
-                                       GRALLOC_USAGE_HW_CAMERA_WRITE,
-                                   buffer.get()))
+    // Buffers of blob format must have a height of 1, and width equal to
+    // their size in bytes.
+    EXPECT_EQ(
+        0, gralloc_.Allocate(
+               (it.format == HAL_PIXEL_FORMAT_BLOB) ? jpeg_max_size : it.width,
+               (it.format == HAL_PIXEL_FORMAT_BLOB) ? 1 : it.height, it.format,
+               GRALLOC_USAGE_SW_WRITE_OFTEN | GRALLOC_USAGE_HW_CAMERA_WRITE,
+               buffer.get()))
         << "Gralloc allocation fails";
 
     camera3_stream_buffer_t stream_buffer;
@@ -670,6 +663,16 @@ int32_t Camera3Device::StaticInfo::GetPartialResultCount() const {
                                     &entry) != 0) {
     // Optional key. Default value is 1 if key is missing.
     return 1;
+  }
+  return entry.data.i32[0];
+}
+
+int32_t Camera3Device::StaticInfo::GetJpegMaxSize() const {
+  camera_metadata_ro_entry_t entry;
+  if (find_camera_metadata_ro_entry(characteristics_, ANDROID_JPEG_MAX_SIZE,
+                                    &entry) != 0) {
+    ADD_FAILURE() << "Cannot find the metadata ANDROID_JPEG_MAX_SIZE";
+    return -EINVAL;
   }
   return entry.data.i32[0];
 }

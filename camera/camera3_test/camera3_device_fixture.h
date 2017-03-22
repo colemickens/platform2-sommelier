@@ -184,6 +184,9 @@ class Camera3Device::StaticInfo {
   // Get the maximum number of partial result a request can expect
   int32_t GetPartialResultCount() const;
 
+  // Get the maxium size of JPEG image
+  int32_t GetJpegMaxSize() const;
+
  private:
   // Return the supported hardware level of the device, or fail if no value is
   // reported
