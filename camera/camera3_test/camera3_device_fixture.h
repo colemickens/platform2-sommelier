@@ -187,6 +187,9 @@ class Camera3Device::StaticInfo {
   // Get the maxium size of JPEG image
   int32_t GetJpegMaxSize() const;
 
+  // Get the sensor orientation
+  int32_t GetSensorOrientation() const;
+
  private:
   // Return the supported hardware level of the device, or fail if no value is
   // reported

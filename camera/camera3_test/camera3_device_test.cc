@@ -677,6 +677,16 @@ int32_t Camera3Device::StaticInfo::GetJpegMaxSize() const {
   return entry.data.i32[0];
 }
 
+int32_t Camera3Device::StaticInfo::GetSensorOrientation() const {
+  camera_metadata_ro_entry_t entry;
+  if (find_camera_metadata_ro_entry(characteristics_,
+                                    ANDROID_SENSOR_ORIENTATION, &entry) != 0) {
+    ADD_FAILURE() << "Cannot find the metadata ANDROID_SENSOR_ORIENTATION";
+    return -EINVAL;
+  }
+  return entry.data.i32[0];
+}
+
 // Test fixture
 
 void Camera3DeviceFixture::SetUp() {
@@ -723,6 +733,21 @@ void Camera3DeviceFixture::NotifyCallback(const camera3_callback_ops* cb,
 }
 
 // Test cases
+
+// Test spec:
+// - Camera ID
+class Camera3DeviceSimpleTest : public Camera3DeviceFixture,
+                                public ::testing::WithParamInterface<int> {
+ public:
+  Camera3DeviceSimpleTest() : Camera3DeviceFixture(GetParam()) {}
+};
+
+TEST_P(Camera3DeviceSimpleTest, SensorOrientationTest) {
+  // Chromebook has a hardware requirement that the top of the camera should
+  // match the top of the display in tablet mode.
+  ASSERT_EQ(0, cam_device_.static_info_->GetSensorOrientation())
+      << "Invalid camera sensor orientation";
+}
 
 // Test spec:
 // - Camera ID
@@ -1073,8 +1098,12 @@ TEST_P(CreateInvalidTemplate, ConstructDefaultSettings) {
       << "Should get error due to an invalid template ID";
 }
 
+INSTANTIATE_TEST_CASE_P(Camera3DeviceTest,
+                        Camera3DeviceSimpleTest,
+                        ::testing::ValuesIn(Camera3Module().GetCameraIds()));
+
 INSTANTIATE_TEST_CASE_P(
-    ConstructDefaultSettings,
+    Camera3DeviceTest,
     Camera3DeviceDefaultSettings,
     ::testing::Combine(::testing::ValuesIn(Camera3Module().GetCameraIds()),
                        ::testing::Values(CAMERA3_TEMPLATE_PREVIEW,
@@ -1085,7 +1114,7 @@ INSTANTIATE_TEST_CASE_P(
                                          CAMERA3_TEMPLATE_MANUAL)));
 
 INSTANTIATE_TEST_CASE_P(
-    ConstructDefaultSettings,
+    Camera3DeviceTest,
     CreateInvalidTemplate,
     ::testing::Combine(::testing::ValuesIn(Camera3Module().GetCameraIds()),
                        ::testing::Values(CAMERA3_TEMPLATE_PREVIEW - 1,
