@@ -122,7 +122,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
                                uint32_t height,
                                uint32_t pixel_format,
                                float frame_rate,
-                               std::vector<int>* fds,
+                               std::vector<base::ScopedFD>* fds,
                                uint32_t* buffer_size) {
   if (!device_fd_.is_valid()) {
     LOGF(ERROR) << "Device is not opened";
@@ -237,7 +237,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
   }
 
   for (size_t i = 1; i < temp_fds.size(); i++) {
-    fds->push_back(temp_fds[i].release());
+    fds->push_back(std::move(temp_fds[i]));
   }
 
   stream_on_ = true;

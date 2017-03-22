@@ -42,7 +42,7 @@ class V4L2CameraDevice {
                uint32_t height,
                uint32_t pixel_format,
                float frame_rate,
-               std::vector<int>* fds,
+               std::vector<base::ScopedFD>* fds,
                uint32_t* buffer_size);
 
   // Disable camera device stream. Return 0 if device disables stream

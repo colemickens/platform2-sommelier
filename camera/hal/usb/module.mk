@@ -5,7 +5,7 @@
 include common.mk
 include pc_utils.mk
 
-hal_usb_PC_DEPS = libexif libyuv
+hal_usb_PC_DEPS = libcbm libexif libyuv
 hal_usb_CPPFLAGS := $(call get_pc_cflags,$(hal_usb_PC_DEPS))
 hal_usb_LDLIBS := $(call get_pc_libs,$(hal_usb_PC_DEPS)) -ljpeg
 

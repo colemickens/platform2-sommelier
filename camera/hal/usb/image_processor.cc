@@ -86,111 +86,118 @@ size_t ImageProcessor::GetConvertedSize(int fourcc,
 
 int ImageProcessor::Convert(const FrameBuffer& in_frame,
                             FrameBuffer* out_frame) {
-  if ((in_frame.width % 2) || (in_frame.height % 2)) {
-    LOGF(ERROR) << "Width or height is not even (" << in_frame.width << " x "
-                << in_frame.height << ")";
+  if ((in_frame.GetWidth() % 2) || (in_frame.GetHeight() % 2)) {
+    LOGF(ERROR) << "Width or height is not even (" << in_frame.GetWidth()
+                << " x " << in_frame.GetHeight() << ")";
     return -EINVAL;
   }
 
-  size_t data_size =
-      GetConvertedSize(out_frame->fourcc, in_frame.width, in_frame.height);
+  size_t data_size = GetConvertedSize(
+      out_frame->GetFourcc(), in_frame.GetWidth(), in_frame.GetHeight());
 
-  if (data_size > out_frame->buffer_size) {
-    LOGF(ERROR) << "Buffer overflow: Buffer only has " << out_frame->buffer_size
-                << ", but data needs " << data_size;
+  if (out_frame->SetDataSize(data_size)) {
+    LOGF(ERROR) << "Set data size failed";
     return -EINVAL;
   }
 
-  out_frame->data_size = data_size;
-  out_frame->width = in_frame.width;
-  out_frame->height = in_frame.height;
-
-  if (in_frame.fourcc == V4L2_PIX_FMT_YUYV) {
-    switch (out_frame->fourcc) {
+  if (in_frame.GetFourcc() == V4L2_PIX_FMT_YUYV) {
+    switch (out_frame->GetFourcc()) {
       case V4L2_PIX_FMT_YUV420:  // YU12
       {
         int res = libyuv::YUY2ToI420(
-            in_frame.data, in_frame.width * 2, out_frame->data, in_frame.width,
-            out_frame->data + in_frame.width * in_frame.height,
-            in_frame.width / 2,
-            out_frame->data + in_frame.width * in_frame.height * 5 / 4,
-            in_frame.width / 2, in_frame.width, in_frame.height);
+            in_frame.GetData(), in_frame.GetWidth() * 2, out_frame->GetData(),
+            out_frame->GetWidth(),
+            out_frame->GetData() +
+                out_frame->GetWidth() * out_frame->GetHeight(),
+            out_frame->GetWidth() / 2,
+            out_frame->GetData() +
+                out_frame->GetWidth() * out_frame->GetHeight() * 5 / 4,
+            out_frame->GetWidth() / 2, in_frame.GetWidth(),
+            in_frame.GetHeight());
         LOGF_IF(ERROR, res) << "YUY2ToI420() for YU12 returns " << res;
         return res ? -EINVAL : 0;
       }
       default:
-        LOGF(ERROR) << "Destination pixel format " << std::hex
-                    << out_frame->fourcc
+        LOGF(ERROR) << "Destination pixel format "
+                    << FormatToString(out_frame->GetFourcc())
                     << " is unsupported for YUYV source format.";
         return -EINVAL;
     }
-  } else if (in_frame.fourcc == V4L2_PIX_FMT_YUV420) {
+  } else if (in_frame.GetFourcc() == V4L2_PIX_FMT_YUV420) {
     // V4L2_PIX_FMT_YVU420 is YV12. I420 is usually referred to YU12
     // (V4L2_PIX_FMT_YUV420), and YV12 is similar to YU12 except that U/V
     // planes are swapped.
-    switch (out_frame->fourcc) {
+    switch (out_frame->GetFourcc()) {
       case V4L2_PIX_FMT_YVU420:  // YV12
       {
-        int ystride = Align16(in_frame.width);
-        int uvstride = Align16(in_frame.width / 2);
-        int res = YU12ToYV12(in_frame.data, out_frame->data, in_frame.width,
-                             in_frame.height, ystride, uvstride);
+        int ystride = Align16(in_frame.GetWidth());
+        int uvstride = Align16(in_frame.GetWidth() / 2);
+        int res = YU12ToYV12(in_frame.GetData(), out_frame->GetData(),
+                             in_frame.GetWidth(), in_frame.GetHeight(), ystride,
+                             uvstride);
         LOGF_IF(ERROR, res) << "YU12ToYV12() returns " << res;
         return res ? -EINVAL : 0;
       }
       case V4L2_PIX_FMT_YUV420:  // YU12
       {
-        memcpy(out_frame->data, in_frame.data, in_frame.data_size);
+        memcpy(out_frame->GetData(), in_frame.GetData(),
+               in_frame.GetDataSize());
         return 0;
       }
       case V4L2_PIX_FMT_NV21:  // NV21
       {
         // TODO(henryhsu): Use libyuv::I420ToNV21.
-        int res = YU12ToNV21(in_frame.data, out_frame->data, in_frame.width,
-                             in_frame.height);
+        int res = YU12ToNV21(in_frame.GetData(), out_frame->GetData(),
+                             in_frame.GetWidth(), in_frame.GetHeight());
         LOGF_IF(ERROR, res) << "YU12ToNV21() returns " << res;
         return res ? -EINVAL : 0;
       }
       case V4L2_PIX_FMT_BGR32: {
         int res = libyuv::I420ToARGB(
-            in_frame.data, in_frame.width,
-            in_frame.data + in_frame.width * in_frame.height,
-            in_frame.width / 2,
-            in_frame.data + in_frame.width * in_frame.height * 5 / 4,
-            in_frame.width / 2, out_frame->data, in_frame.width * 4,
-            in_frame.width, in_frame.height);
+            in_frame.GetData(), in_frame.GetWidth(),
+            in_frame.GetData() + in_frame.GetWidth() * in_frame.GetHeight(),
+            in_frame.GetWidth() / 2,
+            in_frame.GetData() +
+                in_frame.GetWidth() * in_frame.GetHeight() * 5 / 4,
+            in_frame.GetWidth() / 2, out_frame->GetData(),
+            out_frame->GetWidth() * 4, in_frame.GetWidth(),
+            in_frame.GetHeight());
         LOGF_IF(ERROR, res) << "I420ToARGB() returns " << res;
         return res ? -EINVAL : 0;
       }
       default:
-        LOGF(ERROR) << "Destination pixel format " << std::hex
-                    << out_frame->fourcc
+        LOGF(ERROR) << "Destination pixel format "
+                    << FormatToString(out_frame->GetFourcc())
                     << " is unsupported for YU12 source format.";
         return -EINVAL;
     }
-  } else if (in_frame.fourcc == V4L2_PIX_FMT_MJPEG) {
-    switch (out_frame->fourcc) {
+  } else if (in_frame.GetFourcc() == V4L2_PIX_FMT_MJPEG) {
+    switch (out_frame->GetFourcc()) {
       case V4L2_PIX_FMT_YUV420:  // YU12
       {
         int res = libyuv::MJPGToI420(
-            in_frame.data, in_frame.data_size, out_frame->data, in_frame.width,
-            out_frame->data + in_frame.width * in_frame.height,
-            in_frame.width / 2,
-            out_frame->data + in_frame.width * in_frame.height * 5 / 4,
-            in_frame.width / 2, in_frame.width, in_frame.height, in_frame.width,
-            in_frame.height);
+            in_frame.GetData(), in_frame.GetDataSize(), out_frame->GetData(),
+            out_frame->GetWidth(),
+            out_frame->GetData() +
+                out_frame->GetWidth() * out_frame->GetHeight(),
+            out_frame->GetWidth() / 2,
+            out_frame->GetData() +
+                out_frame->GetWidth() * out_frame->GetHeight() * 5 / 4,
+            out_frame->GetWidth() / 2, in_frame.GetWidth(),
+            in_frame.GetHeight(), out_frame->GetWidth(),
+            out_frame->GetHeight());
         LOGF_IF(ERROR, res) << "MJPEGToI420() returns " << res;
         return res ? -EINVAL : 0;
       }
       default:
-        LOGF(ERROR) << "Destination pixel format " << std::hex
-                    << out_frame->fourcc
+        LOGF(ERROR) << "Destination pixel format "
+                    << FormatToString(out_frame->GetFourcc())
                     << " is unsupported for MJPEG source format.";
         return -EINVAL;
     }
   } else {
     LOGF(ERROR) << "Convert format doesn't support source format "
-                << "FOURCC 0x" << std::hex << in_frame.fourcc;
+                << FormatToString(in_frame.GetFourcc());
     return -EINVAL;
   }
 }

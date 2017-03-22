@@ -102,7 +102,7 @@ class CameraClient {
   SupportedFormats qualified_formats_;
 
   // Memory mapped buffers which are shared from |camera_delegate_|.
-  std::vector<FrameBuffer> buffers_;
+  std::vector<std::unique_ptr<V4L2FrameBuffer>> buffers_;
 
   // Maximum resolution in configure streams.
   SupportedFormat stream_on_resolution_;

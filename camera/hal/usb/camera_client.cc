@@ -5,9 +5,9 @@
 
 #include "hal/usb/camera_client.h"
 
+#include <utility>
 #include <vector>
 
-#include <sys/mman.h>
 #include <system/camera_metadata.h>
 
 #include "arc/common.h"
@@ -242,9 +242,9 @@ int CameraClient::StreamOn() {
   }
   VLOGFID(1, id_) << "streamOn with width " << format->width << ", height "
                   << format->height << ", fps " << max_fps << ", format "
-                  << std::hex << format->fourcc;
+                  << FormatToString(format->fourcc);
 
-  std::vector<int> fds;
+  std::vector<base::ScopedFD> fds;
   uint32_t buffer_size;
   int ret;
   if ((ret = device_->StreamOn(format->width, format->height, format->fourcc,
@@ -253,25 +253,19 @@ int CameraClient::StreamOn() {
     return ret;
   }
 
-  FrameBuffer frame;
-  frame.data_size = 0;
-  frame.buffer_size = buffer_size;
-  frame.width = format->width;
-  frame.height = format->height;
-  frame.fourcc = format->fourcc;
-
   for (size_t i = 0; i < fds.size(); i++) {
-    void* addr = mmap(NULL, buffer_size, PROT_READ, MAP_SHARED, fds[i], 0);
-    if (addr == MAP_FAILED) {
-      LOGFID(ERROR, id_) << "mmap() (" << i << ") failed: " << strerror(errno);
+    std::unique_ptr<V4L2FrameBuffer> frame(
+        new V4L2FrameBuffer(std::move(fds[i]), buffer_size, format->width,
+                            format->height, format->fourcc));
+    ret = frame->Map();
+    if (ret) {
       StreamOff();
       return -errno;
     }
-    frame.fd = fds[i];
-    frame.data = static_cast<uint8_t*>(addr);
-    VLOGFID(1, id_) << "Buffer " << i << ", fd: " << fds[i]
-                    << " address: " << std::hex << addr;
-    buffers_.push_back(frame);
+    VLOGFID(1, id_) << "Buffer " << i << ", fd: " << fds[i].get()
+                    << " address: " << std::hex
+                    << reinterpret_cast<uintptr_t>(frame->GetData());
+    buffers_.push_back(std::move(frame));
   }
   return 0;
 }
@@ -286,15 +280,6 @@ int CameraClient::StreamOff() {
 }
 
 void CameraClient::ReleaseBuffers() {
-  for (auto const& frame : buffers_) {
-    if (munmap(frame.data, frame.buffer_size)) {
-      LOGFID(ERROR, id_) << "mummap() failed: " << strerror(errno);
-    }
-    if (close(frame.fd)) {
-      LOGFID(ERROR, id_) << "close(" << frame.fd
-                         << ") failed: " << strerror(errno);
-    }
-  }
   buffers_.clear();
 }
 
