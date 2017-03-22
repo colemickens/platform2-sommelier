@@ -24,4 +24,24 @@
       ],
     },
   ],
+  'conditions': [
+    ['USE_test == 1', {
+      'targets': [
+        {
+          'target_name': 'device_tracker_test',
+          'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'variables': {
+            'deps': [
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
+          'sources': [
+            'device_tracker.cc',
+          'device_tracker_test.cc',
+          ],
+        },
+      ],
+    }],
+  ],
 }

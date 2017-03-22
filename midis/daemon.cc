@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/memory/ptr_util.h>
+
 #include "midis/daemon.h"
 
 namespace midis {
 
-Daemon::Daemon() : device_tracker_(new DeviceTracker()) {}
+Daemon::Daemon() : device_tracker_(base::MakeUnique<DeviceTracker>()) {}
 
 Daemon::~Daemon() {}
 
