@@ -33,7 +33,7 @@ constexpr char kAtimeXattrName[] = "trusted.CrosDirCryptoMigrationAtime";
 }  // namespace
 
 constexpr base::FilePath::CharType kMigrationStartedFileName[] =
-    ".crypto-migration.started";
+    "crypto-migration.started";
 
 MigrationHelper::MigrationHelper(Platform* platform,
                                  const base::FilePath& status_files_dir,
