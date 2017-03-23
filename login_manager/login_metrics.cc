@@ -9,10 +9,10 @@
 #include <string>
 
 #include <base/files/file_util.h>
+#include <base/memory/ptr_util.h>
 #include <base/sys_info.h>
 #include <base/time/default_clock.h>
 #include <base/time/default_tick_clock.h>
-#include <brillo/make_unique_ptr.h>
 #include <metrics/bootstat.h>
 #include <metrics/metrics_library.h>
 
@@ -54,8 +54,8 @@ LoginMetrics::LoginMetrics(const base::FilePath& per_boot_flag_dir)
         kArcCumulativeUseTimeMetric,
         &metrics_lib_,
         base::FilePath(kMetricsDir),
-        brillo::make_unique_ptr(new base::DefaultClock()),
-        brillo::make_unique_ptr(new base::DefaultTickClock())));
+        base::MakeUnique<base::DefaultClock>(),
+        base::MakeUnique<base::DefaultTickClock>()));
     std::string version;
     base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_VERSION", &version);
     arc_cumulative_use_time_->Init(version);

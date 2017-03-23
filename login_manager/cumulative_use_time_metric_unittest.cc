@@ -10,6 +10,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/single_thread_task_runner.h>
@@ -17,7 +18,6 @@
 #include <base/test/simple_test_tick_clock.h>
 #include <base/time/time.h>
 #include <base/threading/thread_task_runner_handle.h>
-#include <brillo/make_unique_ptr.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library.h>
 
@@ -269,9 +269,11 @@ class CumulativeUseTimeMetricTest : public testing::Test {
   // the time is in line with current test state.
   void ResetCumulativeUseTimeMetric() {
     cumulative_use_time_metric_.reset(new CumulativeUseTimeMetric(
-        kTestMetricName, &metrics_library_, temp_dir_.path(),
-        brillo::make_unique_ptr(new TestClockCopy(&clock_)),
-        brillo::make_unique_ptr(new TestTickClockCopy(&tick_clock_))));
+        kTestMetricName,
+        &metrics_library_,
+        temp_dir_.path(),
+        base::MakeUnique<TestClockCopy>(&clock_),
+        base::MakeUnique<TestTickClockCopy>(&tick_clock_)));
   }
 
   // Advances time in UpdateCycle chunks, running message loop on each
