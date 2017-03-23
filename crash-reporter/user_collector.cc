@@ -38,6 +38,17 @@ const char kCoreToMinidumpConverterPath[] = "/usr/bin/core2md";
 
 const char kFilterPath[] = "/opt/google/crash-reporter/filter";
 
+// Metadata fields for crash server.
+const char kProductNameField[] = "prod";
+const char kProcessTypeField[] = "ptype";
+
+// Product name of Chrome for Chrome OS on the crash server. See
+// ChromeCrashReporterClient::GetProductNameAndVersion().
+const char kChromeProductName[] = "Chrome_ChromeOS";
+
+// Process type for chrome --mash crashes.
+const char kMashProcessType[] = "mash";
+
 // Returns true if the given executable name matches that of Chrome.  This
 // includes checks for threads that Chrome has renamed.
 bool IsChromeExecName(const std::string &exec);
@@ -339,6 +350,17 @@ UserCollector::ErrorType UserCollector::ConvertCoreToMinidump(
   }
 
   return kErrorNone;
+}
+
+void UserCollector::AddExtraMetadata(const std::string &exec, pid_t pid) {
+  if (!IsChromeExecName(exec) || !IsChromeMashProcess(pid))
+    return;
+
+  // For mustash, chrome --mash crash reports are handled as user crashes but
+  // are tagged as the chrome product on crash server so the crash dashboard
+  // can show chrome tooling and they show up in chrome crash triage.
+  AddCrashMetaUploadData(kProductNameField, kChromeProductName);
+  AddCrashMetaUploadData(kProcessTypeField, kMashProcessType);
 }
 
 namespace {

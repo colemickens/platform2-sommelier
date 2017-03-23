@@ -122,11 +122,11 @@ class UserCollector : public UserCollectorBase {
                   uid_t uid,
                   const std::string &exec,
                   std::string *reason) override;
-
   ErrorType ConvertCoreToMinidump(pid_t pid,
                                   const base::FilePath &container_dir,
                                   const base::FilePath &core_path,
                                   const base::FilePath &minidump_path) override;
+  void AddExtraMetadata(const std::string &exec, pid_t pid) override;
 
   std::string core_pattern_file_;
   std::string core_pipe_limit_file_;

@@ -104,6 +104,8 @@ bool UserCollectorBase::HandleCrash(const std::string &crash_attributes,
   if (dump) {
     count_crash_function_();
 
+    AddExtraMetadata(exec, pid);
+
     if (generate_diagnostics_) {
       bool out_of_capacity = false;
       ErrorType error_type =

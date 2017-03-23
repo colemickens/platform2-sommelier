@@ -146,8 +146,9 @@ class CrashCollector {
 
   // Add non-standard meta data to the crash metadata file.
   // Data added though this call will be uploaded to the crash reporter server,
-  // appearing as a form field.
-  void AddCrashMetaUploadData(const std::string &key, const std::string &value);
+  // appearing as a form field. Virtual for testing.
+  virtual void AddCrashMetaUploadData(const std::string &key,
+                                      const std::string &value);
 
   // Like AddCrashMetaUploadData, but loads the value from the file at |path|.
   // The file is not uploaded as an attachment, unlike AddCrashMetaUploadFile.

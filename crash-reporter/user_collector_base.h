@@ -106,6 +106,9 @@ class UserCollectorBase : public CrashCollector {
       const base::FilePath &core_path,
       const base::FilePath &minidump_path) = 0;
 
+  // Adds additional metadata for a crash of executable |exec| with |pid|.
+  virtual void AddExtraMetadata(const std::string &exec, pid_t pid) {}
+
   ErrorType ConvertAndEnqueueCrash(pid_t pid,
                                    const std::string &exec,
                                    uid_t supplied_ruid,

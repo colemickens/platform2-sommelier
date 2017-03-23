@@ -46,6 +46,8 @@ class UserCollectorMock : public UserCollector {
  public:
   MOCK_METHOD0(SetUpDBus, void());
   MOCK_CONST_METHOD1(GetCommandLine, std::vector<std::string>(pid_t pid));
+  MOCK_METHOD2(AddCrashMetaUploadData,
+               void(const std::string &key, const std::string &value));
 };
 
 class UserCollectorTest : public ::testing::Test {
@@ -301,6 +303,10 @@ TEST_F(UserCollectorTest, HandleChromeMashCrashWithConsent) {
       {"/opt/google/chrome", "--foo", "--mash", "--bar"};
   EXPECT_CALL(collector_, GetCommandLine(testing::_))
       .WillRepeatedly(testing::Return(chrome_mash_command_line));
+
+  // Verify crashes have the chrome product name and mash process type.
+  EXPECT_CALL(collector_, AddCrashMetaUploadData("prod", "Chrome_ChromeOS"));
+  EXPECT_CALL(collector_, AddCrashMetaUploadData("ptype", "mash"));
 
   collector_.HandleCrash("5:2:ignored", "chrome");
   EXPECT_TRUE(FindLog("Received crash notification for chrome[5] sig 2"));
