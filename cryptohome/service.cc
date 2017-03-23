@@ -1887,7 +1887,8 @@ void Service::DoMountEx(AccountIdentifier* identifier,
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = request->has_create();
   mount_args.ensure_ephemeral = request->require_ephemeral();
-  mount_args.create_as_ecryptfs = force_ecryptfs_;
+  mount_args.create_as_ecryptfs = force_ecryptfs_ ||
+      (request->has_create() && request->create().force_ecryptfs());
   // Force_ecryptfs_ wins.
   mount_args.force_dircrypto =
       !force_ecryptfs_ && request->force_dircrypto_if_available();

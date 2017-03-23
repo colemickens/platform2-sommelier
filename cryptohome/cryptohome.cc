@@ -227,6 +227,7 @@ namespace switches {
   static const char kFromDirectorySwitch[] = "from_directory";
   static const char kToDirectorySwitch[] = "to_directory";
   static const char kChunkSizeSwitch[] = "chunk_size";
+  static const char kEcryptfsSwitch[] = "ecryptfs";
 }  // namespace switches
 
 #define DBUS_METHOD(method_name) \
@@ -731,6 +732,9 @@ int main(int argc, char **argv) {
     if (cl->HasSwitch(switches::kCreateSwitch)) {
       cryptohome::CreateRequest* create = mount_req.mutable_create();
       create->set_copy_authorization_key(true);
+      if (cl->HasSwitch(switches::kEcryptfsSwitch)) {
+        create->set_force_ecryptfs(true);
+      }
     }
 
     brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
