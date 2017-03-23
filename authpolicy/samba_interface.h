@@ -12,6 +12,7 @@
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
+#include <base/memory/ref_counted.h>
 #include <dbus/authpolicy/dbus-constants.h>
 
 #include "authpolicy/authpolicy_metrics.h"
@@ -39,7 +40,8 @@ extern const char kActiveDirectoryPrefix[];
 
 class SambaInterface {
  public:
-  SambaInterface(AuthPolicyMetrics* metrics,
+  SambaInterface(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+                 AuthPolicyMetrics* metrics,
                  std::unique_ptr<PathService> path_service);
 
   // Creates directories required by Samba code and loads configuration, if it

@@ -25,6 +25,7 @@ enum TimerType {
   TIMER_NET_ADS_SEARCH,         // net ads search.
   TIMER_NET_ADS_WORKGROUP,      // net ads workgroup.
   TIMER_KINIT,                  // kinit.
+  TIMER_KLIST,                  // klist.
   TIMER_SMBCLIENT,              // smbclient.
   TIMER_AUTHENTICATE_USER,      // User authentication D-Bus call.
   TIMER_JOIN_AD_DOMAIN,         // Domain join D-Bus call.

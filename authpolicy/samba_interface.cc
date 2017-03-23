@@ -13,6 +13,7 @@
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
+#include <base/single_thread_task_runner.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -683,17 +684,21 @@ ErrorType SambaInterface::ParseGposIntoProtobuf(
   return ERROR_NONE;
 }
 
-SambaInterface::SambaInterface(AuthPolicyMetrics* metrics,
-                               std::unique_ptr<PathService> path_service)
+SambaInterface::SambaInterface(
+    scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+    AuthPolicyMetrics* metrics,
+    std::unique_ptr<PathService> path_service)
     : metrics_(metrics),
       paths_(std::move(path_service)),
       jail_helper_(paths_.get()),
-      user_tgt_manager_(paths_.get(),
+      user_tgt_manager_(task_runner,
+                        paths_.get(),
                         metrics_,
                         &jail_helper_,
                         Path::USER_KRB5_CONF,
                         Path::USER_CREDENTIAL_CACHE),
-      device_tgt_manager_(paths_.get(),
+      device_tgt_manager_(task_runner,
+                          paths_.get(),
                           metrics_,
                           &jail_helper_,
                           Path::DEVICE_KRB5_CONF,
@@ -776,6 +781,10 @@ ErrorType SambaInterface::AuthenticateUser(
       normalized_upn, password_fd, realm, realm_info.kdc_ip());
   if (error != ERROR_NONE)
     return error;
+
+  // Renew TGT periodically. The usual validity lifetime is about 10 hours, so
+  // this won't happen too often.
+  user_tgt_manager_.EnableTgtAutoRenewal(true);
 
   // Get account info for the user. user_name is allowed to be either
   // sAMAccountName or userPrincipalName (the two can be different!). Search by

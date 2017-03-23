@@ -7,12 +7,18 @@
 
 #include <string>
 
+#include <base/cancelable_callback.h>
 #include <base/macros.h>
+#include <base/single_thread_task_runner.h>
 #include <dbus/authpolicy/dbus-constants.h>
 
 #include "authpolicy/path_service.h"
 
 namespace authpolicy {
+
+namespace protos {
+class TgtLifetime;
+}  // namespace protos
 
 class AuthPolicyMetrics;
 class JailHelper;
@@ -25,7 +31,8 @@ class ProcessExecutor;
 // or a keytab file.
 class TgtManager {
  public:
-  TgtManager(const PathService* path_service,
+  TgtManager(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+             const PathService* path_service,
              AuthPolicyMetrics* metrics,
              const JailHelper* jail_helper,
              Path config_path,
@@ -57,6 +64,18 @@ class TgtManager {
                                  const std::string& realm,
                                  const std::string& kdc_ip);
 
+  // If enabled, the TGT renews automatically by scheduling RenewTgt()
+  // periodically on the |task_runner_| (usually the D-Bus thread). Renewal must
+  // happen within the the TGT's validity lifetime. The scheduling delay is a
+  // fraction of that lifetime.
+  void EnableTgtAutoRenewal(bool enabled);
+
+  // Renews a TGT. Must happen within its validity lifetime.
+  ErrorType RenewTgt();
+
+  // Returns the lifetime of a TGT.
+  ErrorType GetTgtLifetime(protos::TgtLifetime* lifetime);
+
   // Toggles debug logging.
   void SetKinitTraceEnabled(bool enabled) { trace_kinit_ = enabled; }
 
@@ -82,6 +101,16 @@ class TgtManager {
   // Logs the kinit trace if |trace_kinit_| is enabled.
   void OutputKinitTrace() const;
 
+  // Cancels |tgt_renewal_callback_|. If |tgt_autorenewal_enabled_| is true and
+  // the TGT is valid, schedules RenewTgt() with a delay of a fraction of the
+  // TGT's validity lifetime.
+  void UpdateTgtAutoRenewal();
+
+  // Callback scheduled to renew the TGT. Calls RenewTgt() internally and prints
+  // appropriate error messages.
+  void AutoRenewTgt();
+
+  scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
   const PathService* paths_ = nullptr;       // File paths, not owned.
   AuthPolicyMetrics* metrics_ = nullptr;     // UMA statistics, not owned.
   const JailHelper* jail_helper_ = nullptr;  // Minijail related, not owned.
@@ -89,10 +118,17 @@ class TgtManager {
   Path credential_cache_path_ = Path::INVALID;
   bool trace_kinit_ = false;
 
-  // Realm and key distribution center IP address written to the krb5
-  // configuration file.
+  // Realm and key distribution center (KDC) IP address written to the Kerberos
+  // configuration file. |kdc_ip_| is optional, if empty, it is not written.
+  // |kdc_ip_| may be cleared programmatically if fetching a TGT with prescribed
+  // KDC IP fails with an error code that indicates that the KDC could not be
+  // reached. In that case, the code retries and lets Samba query the KDC IP.
   std::string realm_;
   std::string kdc_ip_;
+
+  // Callback for automatic TGT renewal.
+  base::CancelableClosure tgt_renewal_callback_;
+  bool tgt_autorenewal_enabled_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(TgtManager);
 };

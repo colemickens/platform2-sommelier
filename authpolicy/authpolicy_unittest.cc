@@ -10,6 +10,7 @@
 #include <base/callback.h>
 #include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
+#include <base/message_loop/message_loop.h>
 #include <dbus/bus.h>
 #include <dbus/login_manager/dbus-constants.h>
 #include <dbus/message.h>
@@ -86,6 +87,7 @@ class TestPathService : public PathService {
     Insert(Path::TEMP_DIR, base_path.Append("temp").value());
     Insert(Path::STATE_DIR, base_path.Append("state").value());
     Insert(Path::KINIT, stub_path.Append("stub_kinit").value());
+    Insert(Path::KLIST, stub_path.Append("stub_klist").value());
     Insert(Path::NET, stub_path.Append("stub_net").value());
     Insert(Path::SMBCLIENT, stub_path.Append("stub_smbclient").value());
 
@@ -128,6 +130,10 @@ void CheckError(ErrorType expected_error,
 class AuthPolicyTest : public testing::Test {
  public:
   void SetUp() override {
+    // The message loop registers a task runner with the current thread, which
+    // is used by TgtManager to post automatic TGT renewal tasks.
+    message_loop_ = base::MakeUnique<base::MessageLoop>();
+
     const ObjectPath object_path(std::string("/object/path"));
     auto dbus_object =
         base::MakeUnique<DBusObject>(nullptr, mock_bus_, object_path);
@@ -208,6 +214,7 @@ class AuthPolicyTest : public testing::Test {
     return CastError(error);
   }
 
+  std::unique_ptr<base::MessageLoop> message_loop_;
   scoped_refptr<MockBus> mock_bus_ = new MockBus(dbus::Bus::Options());
   scoped_refptr<MockExportedObject> mock_exported_object_;
   scoped_refptr<MockObjectProxy> mock_session_manager_proxy_;

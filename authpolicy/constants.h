@@ -15,6 +15,7 @@ extern const char kCmdParseUserGpoList[];
 extern const char kCmdParseDeviceGpoList[];
 extern const char kCmdParseUserPreg[];
 extern const char kCmdParseDevicePreg[];
+extern const char kCmdParseTgtLifetime[];
 
 // Env variable for the Kerberos keytab (machine password).
 extern const char kKrb5KTEnvKey[];

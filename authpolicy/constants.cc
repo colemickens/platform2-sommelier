@@ -13,6 +13,7 @@ const char kCmdParseUserGpoList[] = "parse_user_gpo_list";
 const char kCmdParseDeviceGpoList[] = "parse_device_gpo_list";
 const char kCmdParseUserPreg[] = "parse_user_preg";
 const char kCmdParseDevicePreg[] = "parse_device_preg";
+const char kCmdParseTgtLifetime[] = "parse_tgt_lifetime";
 
 const char kKrb5KTEnvKey[] = "KRB5_KTNAME";
 const char kKrb5CCEnvKey[] = "KRB5CCNAME";

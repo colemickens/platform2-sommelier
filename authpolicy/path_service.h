@@ -46,12 +46,14 @@ enum class Path {
 
   // Samba/Kerberos/parser executables.
   KINIT,
+  KLIST,
   NET,
   SMBCLIENT,
   PARSER,
 
   // Seccomp filter policies.
   KINIT_SECCOMP,
+  KLIST_SECCOMP,
   NET_ADS_SECCOMP,
   PARSER_SECCOMP,
   SMBCLIENT_SECCOMP,

@@ -44,6 +44,7 @@ const char kKrb5TracePath[] = "/krb5_trace";
 
 // Executable paths.
 const char kKInitPath[] = "/usr/bin/kinit";
+const char kKListPath[] = "/usr/bin/klist";
 const char kNetPath[] = "/usr/bin/net";
 const char kParserPath[] = "/usr/sbin/authpolicy_parser";
 const char kSmbClientPath[] = "/usr/bin/smbclient";
@@ -51,6 +52,7 @@ const char kSmbClientPath[] = "/usr/bin/smbclient";
 // Seccomp filters.
 const char kKInitSeccompFilter[] =
     "/usr/share/policy/kinit-seccomp.policy";
+const char kKListSeccompFilter[] = "/usr/share/policy/klist-seccomp.policy";
 const char kNetAdsSeccompFilter[] =
     "/usr/share/policy/net_ads-seccomp.policy";
 const char kParserSeccompFilter[] =
@@ -100,11 +102,13 @@ void PathService::Initialize() {
   Insert(Path::MACHINE_KT_TEMP, samba_dir + kMachineKeyTabPath);
 
   Insert(Path::KINIT, kKInitPath);
+  Insert(Path::KLIST, kKListPath);
   Insert(Path::NET, kNetPath);
   Insert(Path::PARSER, kParserPath);
   Insert(Path::SMBCLIENT, kSmbClientPath);
 
   Insert(Path::KINIT_SECCOMP, kKInitSeccompFilter);
+  Insert(Path::KLIST_SECCOMP, kKListSeccompFilter);
   Insert(Path::NET_ADS_SECCOMP, kNetAdsSeccompFilter);
   Insert(Path::PARSER_SECCOMP, kParserSeccompFilter);
   Insert(Path::SMBCLIENT_SECCOMP, kSmbClientSeccompFilter);

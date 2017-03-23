@@ -9,6 +9,7 @@
 
 #include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <dbus/authpolicy/dbus-constants.h>
 #include <dbus/login_manager/dbus-constants.h>
@@ -69,9 +70,21 @@ AuthPolicy::AuthPolicy(
       // note that |metrics_| has to be initialized before |samba_| or else
       // |samba_|'s metrics pointer isn't valid in |samba_|'s destructor.
       metrics_(std::move(metrics)),
-      samba_(metrics_.get(), std::move(path_service)),
+      samba_(base::ThreadTaskRunnerHandle::Get(),
+             metrics_.get(),
+             std::move(path_service)),
       dbus_object_(std::move(dbus_object)),
-      weak_ptr_factory_(this) {}
+      weak_ptr_factory_(this) {
+  // Make sure the task runner passed to |samba_| is actually the D-Bus task
+  // runner. This guarantees that automatic TGT renewal won't interfere with
+  // D-Bus calls. Note that |GetDBusTaskRunner()| returns a TaskRunner, which is
+  // a base class of SingleThreadTaskRunner accepted by |samba_|.
+  // |dbus_task_runner| may be NULL in tests.
+  const base::TaskRunner* dbus_task_runner =
+      dbus_object_->GetBus()->GetDBusTaskRunner();
+  if (dbus_task_runner)
+    CHECK_EQ(base::ThreadTaskRunnerHandle::Get(), dbus_task_runner);
+}
 
 ErrorType AuthPolicy::Initialize(bool expect_config) {
   return samba_.Initialize(expect_config);

@@ -192,6 +192,20 @@
           },
           'sources': ['stub_kinit_main.cc'],
         },
+        {
+          'target_name': 'stub_klist',
+          'type': 'executable',
+          'dependencies': [
+            'libauthpolicy',
+            'stub_common',
+          ],
+          'variables': {
+            'deps': [
+              'libchrome-<(libbase_ver)',
+            ],
+          },
+          'sources': ['stub_klist_main.cc'],
+        },
       ],
     }],
   ],

@@ -42,6 +42,7 @@ constexpr HistogramParams kTimerHistogramParams[TIMER_COUNT] = {
     {TIMER_NET_ADS_SEARCH, "TimeToRunNetAdsSearch", 1, 120000, 50},
     {TIMER_NET_ADS_WORKGROUP, "TimeToRunNetAdsWorkgroup", 1, 120000, 50},
     {TIMER_KINIT, "TimeToRunKinit", 1, 120000, 50},
+    {TIMER_KLIST, "TimeToRunKlist", 1, 120000, 50},
     {TIMER_SMBCLIENT, "TimeToRunSmbclient", 1, 120000, 50},
     {TIMER_AUTHENTICATE_USER, "TimeToAuthenticateUser", 1, 600000, 50},
     {TIMER_JOIN_AD_DOMAIN, "TimeToJoinADDomain", 1, 600000, 50},

@@ -4,7 +4,11 @@
 
 #include "authpolicy/tgt_manager.h"
 
+#include <algorithm>
+#include <vector>
+
 #include <base/files/file_util.h>
+#include <base/location.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
 
@@ -14,10 +18,27 @@
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/process_executor.h"
 #include "authpolicy/samba_interface_internal.h"
+#include "bindings/authpolicy_containers.pb.h"
 
 namespace authpolicy {
 
 namespace {
+
+// Requested TGT lifetimes in the kinit command. Format is 1d2h3m. If a server
+// has a lower maximum lifetimes, the lifetimes of the TGT are capped.
+const char kRequestedTgtValidityLifetime[] = "1d";
+const char kRequestedTgtRenewalLifetime[] = "7d";
+
+// Don't try to renew TGTs more often than this interval.
+const int kMinTgtRenewDelaySeconds = 300;
+static_assert(kMinTgtRenewDelaySeconds > 0, "");
+
+// Fraction of the TGT validity lifetime to schedule automatic TGT renewal. For
+// instance, if the TGT is valid for another 1000 seconds and the factor is 0.8,
+// the TGT would be renewed after 800 seconds. Must be strictly between 0 and 1.
+constexpr float kTgtRenewValidityLifetimeFraction = 0.8f;
+static_assert(kTgtRenewValidityLifetimeFraction > 0.0f, "");
+static_assert(kTgtRenewValidityLifetimeFraction < 1.0f, "");
 
 // Kerberos configuration file data.
 const char kKrb5ConfData[] =
@@ -59,8 +80,38 @@ const char kKeyPasswordExpiredStderr[] =
 const char kKeyCannotResolve[] =
     "Cannot resolve network address for KDC in realm";
 const char kKeyCannotContactKDC[] = "Cannot contact any KDC";
+const char kKeyNoCrentialsCache[] = "No credentials cache found";
+const char kKeyTicketExpired[] = "Ticket expired while renewing credentials";
 
+// Nice marker for TGT renewal related logs, for easy grepping.
+const char kTgtRenewalHeader[] = "TGT RENEWAL - ";
+
+// Formats a time delta in 1h 2m 3s format.
+std::string FormatTimeDelta(int delta_seconds) {
+  int h = delta_seconds / 3600;
+  int m = (delta_seconds / 60) % 60;
+  int s = delta_seconds % 60;
+
+  std::string str;
+  if (h > 0)
+    str += base::StringPrintf("%ih", h);
+  if (h > 0 || m > 0)
+    str += base::StringPrintf("%s%im", str.size() > 0 ? " " : "", m);
+  str += base::StringPrintf("%s%is", str.size() > 0 ? " " : "", s);
+  return str;
+}
+
+std::ostream& operator<<(std::ostream& os,
+                         const protos::TgtLifetime& lifetime) {
+  os << "(valid for " << FormatTimeDelta(lifetime.validity_seconds())
+     << ", renewable for " << FormatTimeDelta(lifetime.renewal_seconds())
+     << ")";
+  return os;
+}
+
+// In case kinit failed, checks the output and returns appropriate error codes.
 ErrorType GetKinitError(const ProcessExecutor& kinit_cmd) {
+  DCHECK_NE(0, kinit_cmd.GetExitCode());
   const std::string& kinit_out = kinit_cmd.GetStdout();
   const std::string& kinit_err = kinit_cmd.GetStderr();
 
@@ -87,18 +138,52 @@ ErrorType GetKinitError(const ProcessExecutor& kinit_cmd) {
     LOG(ERROR) << "kinit failed - cannot resolve KDC realm";
     return ERROR_NETWORK_PROBLEM;
   }
+  if (internal::Contains(kinit_err, kKeyNoCrentialsCache)) {
+    LOG(ERROR) << "kinit failed - no credentials cache found";
+    return ERROR_NO_CREDENTIALS_CACHE_FOUND;
+  }
+  if (internal::Contains(kinit_err, kKeyTicketExpired)) {
+    LOG(ERROR) << "kinit failed - ticket expired";
+    return ERROR_KERBEROS_TICKET_EXPIRED;
+  }
   LOG(ERROR) << "kinit failed with exit code " << kinit_cmd.GetExitCode();
   return ERROR_KINIT_FAILED;
 }
 
+// In case klist failed, checks the output and returns appropriate error codes.
+ErrorType GetKListError(const ProcessExecutor& klist_cmd) {
+  DCHECK_NE(0, klist_cmd.GetExitCode());
+  const std::string& klist_out = klist_cmd.GetStdout();
+  const std::string& klist_err = klist_cmd.GetStderr();
+
+  if (internal::Contains(klist_err, kKeyNoCrentialsCache)) {
+    LOG(ERROR) << "klist failed - no credentials cache found";
+    return ERROR_NO_CREDENTIALS_CACHE_FOUND;
+  }
+
+  // Test the return value of klist -s. The command returns 1 if the TGT is
+  // invalid and 0 otherwise. Does not print anything.
+  const std::vector<std::string>& args = klist_cmd.GetArgs();
+  if (klist_out.empty() && klist_err.empty() &&
+      std::find(args.begin(), args.end(), "-s") != args.end()) {
+    LOG(ERROR) << "klist failed - ticket expired";
+    return ERROR_KERBEROS_TICKET_EXPIRED;
+  }
+
+  LOG(ERROR) << "klist failed with exit code " << klist_cmd.GetExitCode();
+  return ERROR_KLIST_FAILED;
+}
+
 }  // namespace
 
-TgtManager::TgtManager(const PathService* path_service,
+TgtManager::TgtManager(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+                       const PathService* path_service,
                        AuthPolicyMetrics* metrics,
                        const JailHelper* jail_helper,
                        Path config_path,
                        Path credential_cache_path)
-    : paths_(path_service),
+    : task_runner_(task_runner),
+      paths_(path_service),
       metrics_(metrics),
       jail_helper_(jail_helper),
       config_path_(config_path),
@@ -110,6 +195,9 @@ TgtManager::~TgtManager() {
                    false /* recursive */);
   base::DeleteFile(base::FilePath(paths_->Get(credential_cache_path_)),
                    false /* recursive */);
+
+  // Note that the destuctor of |tgt_renewal_callback_| does not cancel.
+  tgt_renewal_callback_.Cancel();
 }
 
 ErrorType TgtManager::AcquireTgtWithPassword(const std::string& principal,
@@ -124,16 +212,25 @@ ErrorType TgtManager::AcquireTgtWithPassword(const std::string& principal,
   if (!password_dup.is_valid())
     return ERROR_LOCAL_IO;
 
-  ProcessExecutor kinit_cmd({paths_->Get(Path::KINIT), principal});
+  ProcessExecutor kinit_cmd({paths_->Get(Path::KINIT),
+                             principal,
+                             "-l",
+                             kRequestedTgtValidityLifetime,
+                             "-r",
+                             kRequestedTgtRenewalLifetime});
   kinit_cmd.SetInputFile(password_fd);
   ErrorType error = RunKinit(&kinit_cmd, false /* propagation_retry */);
-  if (error != ERROR_CONTACTING_KDC_FAILED)
-    return error;
+  if (error == ERROR_CONTACTING_KDC_FAILED) {
+    LOG(WARNING) << "Retrying kinit without KDC IP config in the krb5.conf";
+    kdc_ip_.clear();
+    kinit_cmd.SetInputFile(password_dup.get());
+    error = RunKinit(&kinit_cmd, false /* propagation_retry */);
+  }
 
-  LOG(WARNING) << "Retrying kinit without KDC IP config in the krb5.conf";
-  kdc_ip_.clear();
-  kinit_cmd.SetInputFile(password_dup.get());
-  return RunKinit(&kinit_cmd, false /* propagation_retry */);
+  // If it worked, re-trigger the TGT renewal task.
+  if (error == ERROR_NONE && tgt_autorenewal_enabled_)
+    UpdateTgtAutoRenewal();
+  return error;
 }
 
 ErrorType TgtManager::AcquireTgtWithKeytab(const std::string& principal,
@@ -145,15 +242,85 @@ ErrorType TgtManager::AcquireTgtWithKeytab(const std::string& principal,
   kdc_ip_ = kdc_ip;
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
-  ProcessExecutor kinit_cmd({paths_->Get(Path::KINIT), principal, "-k"});
+  ProcessExecutor kinit_cmd({paths_->Get(Path::KINIT),
+                             principal,
+                             "-k",
+                             "-l",
+                             kRequestedTgtValidityLifetime,
+                             "-r",
+                             kRequestedTgtRenewalLifetime});
   kinit_cmd.SetEnv(kKrb5KTEnvKey, kFilePrefix + paths_->Get(keytab_path));
   ErrorType error = RunKinit(&kinit_cmd, propagation_retry);
-  if (error != ERROR_CONTACTING_KDC_FAILED)
-    return error;
+  if (error == ERROR_CONTACTING_KDC_FAILED) {
+    LOG(WARNING) << "Retrying kinit without KDC IP config in the krb5.conf";
+    kdc_ip_.clear();
+    error = RunKinit(&kinit_cmd, propagation_retry);
+  }
 
-  LOG(WARNING) << "Retrying kinit without KDC IP config in the krb5.conf";
-  kdc_ip_.clear();
-  return RunKinit(&kinit_cmd, propagation_retry);
+  // If it worked, re-trigger the TGT renewal task.
+  if (error == ERROR_NONE && tgt_autorenewal_enabled_)
+    UpdateTgtAutoRenewal();
+  return error;
+}
+
+void TgtManager::EnableTgtAutoRenewal(bool enabled) {
+  if (tgt_autorenewal_enabled_ != enabled) {
+    tgt_autorenewal_enabled_ = enabled;
+    UpdateTgtAutoRenewal();
+  }
+}
+
+ErrorType TgtManager::RenewTgt() {
+  // kinit -R renews the TGT.
+  ProcessExecutor kinit_cmd({paths_->Get(Path::KINIT), "-R"});
+  ErrorType error = RunKinit(&kinit_cmd, false);
+
+  // No matter if it worked or not, reschedule auto-renewal. We might be offline
+  // and want to try again later.
+  UpdateTgtAutoRenewal();
+  return error;
+}
+
+ErrorType TgtManager::GetTgtLifetime(protos::TgtLifetime* lifetime) {
+  // Call klist -s to find out whether the TGT is still valid.
+  {
+    ProcessExecutor klist_cmd({paths_->Get(Path::KLIST),
+                               "-s",
+                               "-c",
+                               paths_->Get(credential_cache_path_)});
+    if (!jail_helper_->SetupJailAndRun(
+            &klist_cmd, Path::KLIST_SECCOMP, TIMER_KLIST)) {
+      return GetKListError(klist_cmd);
+    }
+  }
+
+  // Now that we know the TGT is valid, call klist again (without -s) and parse
+  // the output to get the TGT lifetime.
+  {
+    ProcessExecutor klist_cmd(
+        {paths_->Get(Path::KLIST), "-c", paths_->Get(credential_cache_path_)});
+    if (!jail_helper_->SetupJailAndRun(
+            &klist_cmd, Path::KLIST_SECCOMP, TIMER_KLIST)) {
+      return GetKListError(klist_cmd);
+    }
+
+    // Parse the output to find the lifetime. Enclose in a sandbox for security
+    // considerations.
+    ProcessExecutor parse_cmd(
+        {paths_->Get(Path::PARSER), kCmdParseTgtLifetime});
+    parse_cmd.SetInputString(klist_cmd.GetStdout());
+    if (!jail_helper_->SetupJailAndRun(
+            &parse_cmd, Path::PARSER_SECCOMP, TIMER_NONE)) {
+      LOG(ERROR) << "authpolicy_parser parse_tgt_lifetime failed with "
+                 << "exit code " << parse_cmd.GetExitCode();
+      return ERROR_PARSE_FAILED;
+    }
+    if (!lifetime->ParseFromString(parse_cmd.GetStdout())) {
+      LOG(ERROR) << "Failed to parse TGT lifetime protobuf from string";
+      return ERROR_PARSE_FAILED;
+    }
+    return ERROR_NONE;
+  }
 }
 
 ErrorType TgtManager::RunKinit(ProcessExecutor* kinit_cmd,
@@ -233,6 +400,57 @@ void TgtManager::OutputKinitTrace() const {
     base::ReadFileToString(base::FilePath(trace_path), &trace);
   }
   LOG(INFO) << "Kinit trace:\n" << trace;
+}
+
+void TgtManager::UpdateTgtAutoRenewal() {
+  // Cancel an existing callback if there is any.
+  if (!tgt_renewal_callback_.IsCancelled())
+    tgt_renewal_callback_.Cancel();
+
+  if (tgt_autorenewal_enabled_) {
+    // Find out how long the TGT is valid.
+    protos::TgtLifetime lifetime;
+    ErrorType error = GetTgtLifetime(&lifetime);
+    if (error == ERROR_NONE && lifetime.validity_seconds() > 0) {
+      if (lifetime.validity_seconds() >= lifetime.renewal_seconds()) {
+        // If we TGT got renewed a lot and/or is not renewable, the validity
+        // lifetime is bounded by the renewal lifetime.
+        LOG(WARNING) << kTgtRenewalHeader << "TGT cannot be renewed anymore "
+                     << lifetime;
+      } else {
+        // Trigger the renewal somewhere in the validity lifetime of the TGT.
+        int delay_seconds = static_cast<int>(lifetime.validity_seconds() *
+                                             kTgtRenewValidityLifetimeFraction);
+
+        // Make sure we don't trigger excessively often in case the renewal
+        // fails and we're getting close to the end of the validity lifetime.
+        delay_seconds = std::max(delay_seconds, kMinTgtRenewDelaySeconds);
+
+        LOG(INFO) << kTgtRenewalHeader << "Scheduling renewal in "
+                  << FormatTimeDelta(delay_seconds) << " " << lifetime;
+
+        tgt_renewal_callback_.Reset(
+            base::Bind(&TgtManager::AutoRenewTgt, base::Unretained(this)));
+        task_runner_->PostDelayedTask(
+            FROM_HERE,
+            tgt_renewal_callback_.callback(),
+            base::TimeDelta::FromSeconds(delay_seconds));
+      }
+    } else if (error == ERROR_KERBEROS_TICKET_EXPIRED) {
+      // Expiry is the most likely error, print a nice message.
+      LOG(WARNING) << kTgtRenewalHeader << "TGT expired, reinitializing "
+                   << "requires credentials";
+    }
+  }
+}
+
+void TgtManager::AutoRenewTgt() {
+  LOG(INFO) << kTgtRenewalHeader << "Running scheduled TGT renewal";
+  ErrorType error = RenewTgt();
+  if (error == ERROR_NONE)
+    LOG(INFO) << kTgtRenewalHeader << "Succeeded";
+  else
+    LOG(INFO) << kTgtRenewalHeader << "Failed with error " << error;
 }
 
 }  // namespace authpolicy

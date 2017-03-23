@@ -14,6 +14,8 @@
 //
 // Logs to syslog.
 
+#include <time.h>
+
 #include <string>
 #include <vector>
 
@@ -47,6 +49,18 @@ const char kGpoToken_VersionUser[] = "version_user";
 const char kGpoToken_VersionMachine[] = "version_machine";
 const char kGpoToken_Options[] = "options";
 
+// Length of the klist date/time format (mm/dd/yy HH:MM:SS).
+const int kDateTimeStringLength = 18;
+
+// Various offsets from the beginning of a line of date/time strings in the
+// klist output.
+const size_t kValidFromOffset = 0;
+const size_t kExpiresOffset = 19;
+const size_t kRenewUntilOffset = 11;
+
+// String in klist output that prefixes the renewal lifetime.
+const char kRenewUntil[] = "renew until ";
+
 struct GpoEntry {
   GpoEntry() { Clear(); }
 
@@ -73,7 +87,7 @@ struct GpoEntry {
     LOG(INFO) << "  Name:        " << name;
     LOG(INFO) << "  Filesyspath: " << filesyspath;
     LOG(INFO) << "  Version:     " << version_user << " (user) "
-                                   << version_machine << " (machine)";
+              << version_machine << " (machine)";
     LOG(INFO) << "  GPFLags:     " << gp_flags;
   }
 
@@ -132,6 +146,30 @@ int OutputForCaller(const std::string& str) {
   return EXIT_CODE_OK;
 }
 
+// Parses the substring starting at offset |offset| of |str| for a date/time
+// formatted mm/dd/yy HH:MM:SS. The time is interpreted as local time. Sets
+// |time| to the number of seconds in the epoch or 0 on error. Returns true on
+// success.
+bool ParseTgtDateTime(const std::string& str, size_t offset, time_t* time) {
+  *time = 0;
+  if (offset >= str.size())
+    return false;
+
+  std::string datetime = str.substr(offset, kDateTimeStringLength);
+  if (datetime.size() < kDateTimeStringLength)
+    return false;
+
+  struct tm tm = {};
+  if (!strptime(datetime.c_str(), "%m/%d/%y %H:%M:%S", &tm))
+    return false;
+
+  // Figure out daylight saving time (strptime doesn't set this).
+  tm.tm_isdst = -1;
+
+  *time = mktime(&tm);
+  return true;
+}
+
 // Parses the output of net ads search to get the user's objectGUID and prints
 // it to stdout.
 int ParseAccountInfo(const std::string& net_out) {
@@ -142,19 +180,19 @@ int ParseAccountInfo(const std::string& net_out) {
     return EXIT_CODE_FIND_TOKEN_FAILED;
   }
   // Output data as proto blob.
-  protos::AccountInfo account_info_proto;
-  account_info_proto.set_object_guid(object_guid);
-  account_info_proto.set_sam_account_name(sam_account_name);
+  protos::AccountInfo account_info;
+  account_info.set_object_guid(object_guid);
+  account_info.set_sam_account_name(sam_account_name);
 
   // Attributes 'displayName' and 'givenName' are optional. May be missing for
   // accounts like 'Administrator' or for partially set up accounts.
   if (ai::FindToken(net_out, ':', kSearchDisplayName, &display_name))
-    account_info_proto.set_display_name(display_name);
+    account_info.set_display_name(display_name);
   if (ai::FindToken(net_out, ':', kSearchGivenName, &given_name))
-    account_info_proto.set_given_name(given_name);
+    account_info.set_given_name(given_name);
 
   std::string account_info_blob;
-  if (!account_info_proto.SerializeToString(&account_info_blob)) {
+  if (!account_info.SerializeToString(&account_info_blob)) {
     LOG(ERROR) << "Failed to convert account info proto to string";
     return EXIT_CODE_WRITE_OUTPUT_FAILED;
   }
@@ -175,11 +213,11 @@ int ParseRealmInfo(const std::string& net_out) {
   size_t dot_pos = dc_name.find('.');
   dc_name = dc_name.substr(0, dot_pos);
 
-  protos::RealmInfo realm_info_proto;
-  realm_info_proto.set_dc_name(dc_name);
-  realm_info_proto.set_kdc_ip(kdc_ip);
+  protos::RealmInfo realm_info;
+  realm_info.set_dc_name(dc_name);
+  realm_info.set_kdc_ip(kdc_ip);
   std::string realm_info_blob;
-  if (!realm_info_proto.SerializeToString(&realm_info_blob)) {
+  if (!realm_info.SerializeToString(&realm_info_blob)) {
     LOG(ERROR) << "Failed to convert realm info proto to string";
     return EXIT_CODE_WRITE_OUTPUT_FAILED;
   }
@@ -361,6 +399,55 @@ int ParsePreg(const std::string& gpo_file_paths_blob, PolicyScope scope) {
   return OutputForCaller(policy_blob);
 }
 
+// Parses the validity and renewal lifetimes of a TGT from the output of klist.
+// Writes the serialized lifetime protobuf blob to stdout. For sample klist
+// output see stub_klist_main.cc.
+int ParseTgtLifetime(const std::string& klist_out) {
+  std::vector<std::string> lines = base::SplitString(
+      klist_out, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+
+  time_t valid_from, expires, renew_until = 0;
+  for (size_t n = 0; n < lines.size(); ++n) {
+    if (internal::Contains(lines[n], "krbtgt/") &&
+        ParseTgtDateTime(lines[n], kValidFromOffset, &valid_from) &&
+        ParseTgtDateTime(lines[n], kExpiresOffset, &expires)) {
+      if (n + 1 < lines.size() &&
+          base::StartsWith(
+              lines[n + 1], kRenewUntil, base::CompareCase::SENSITIVE) &&
+          ParseTgtDateTime(lines[n + 1], kRenewUntilOffset, &renew_until)) {
+        ++n;
+      }
+
+      // If the caller checked klist -s beforehand, the TGT should be valid and
+      // these warnings should never be printed.
+      time_t now = time(NULL);
+      if (now < valid_from) {
+        LOG(WARNING) << "TGT not yet valid? (now=" << now
+                     << ", valid_from=" << valid_from << ")";
+      }
+      if (now > expires) {
+        LOG(WARNING) << "TGT already expired? (now=" << now
+                     << ", expires=" << expires << ")";
+      }
+
+      // Output lifetime as protobuf blob.
+      protos::TgtLifetime lifetime;
+      lifetime.set_validity_seconds(std::max<int64_t>(expires - now, 0));
+      lifetime.set_renewal_seconds(std::max<int64_t>(renew_until - now, 0));
+
+      std::string lifetime_blob;
+      if (!lifetime.SerializeToString(&lifetime_blob)) {
+        LOG(ERROR) << "Failed to convert lifetime proto to string";
+        return EXIT_CODE_WRITE_OUTPUT_FAILED;
+      }
+      return OutputForCaller(lifetime_blob);
+    }
+  }
+
+  LOG(ERROR) << "Failed to find krbtgt in klist output";
+  return EXIT_CODE_PARSE_INPUT_FAILED;
+}
+
 int HandleCommand(const std::string& cmd, const std::string& arg) {
   if (cmd == kCmdParseRealmInfo)
     return ParseRealmInfo(arg);
@@ -376,6 +463,8 @@ int HandleCommand(const std::string& cmd, const std::string& arg) {
     return ParsePreg(arg, PolicyScope::USER);
   if (cmd == kCmdParseDevicePreg)
     return ParsePreg(arg, PolicyScope::MACHINE);
+  if (cmd == kCmdParseTgtLifetime)
+    return ParseTgtLifetime(arg);
 
   LOG(ERROR) << "Bad command '" << cmd << "'";
   return EXIT_CODE_BAD_COMMAND;

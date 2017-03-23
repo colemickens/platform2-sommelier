@@ -54,3 +54,16 @@ message RealmInfo {
   optional string dc_name = 1;
   optional string kdc_ip = 2;
 }
+
+// Validity and renewal lifetimes of a Kerberos ticket-granting-ticket.
+message TgtLifetime {
+  // Number of seconds the TGT is still valid and can be used to query service
+  // tickets.
+  optional int64 validity_seconds = 1;
+
+  // Number of seconds until the TGT cannot be renewed again. Zero in case the
+  // TGT cannot be renewed. Otherwise, not smaller than |validity_seconds|.
+  // Note that this is just an upper bound on total validity time. Renewal must
+  // still happen within the validity lifetime.
+  optional int64 renewal_seconds = 2;
+}
