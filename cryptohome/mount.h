@@ -148,9 +148,9 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //     should be ensured.
   //   force_ecryptfs - Force usage of ecryptfs, do not use dircrypto.
   //   created (OUT) - Whether the cryptohome was created
-  virtual MountError EnsureCryptohome(const Credentials& credentials,
-                                      bool force_ecryptfs,
-                                      bool* created);
+  virtual bool EnsureCryptohome(const Credentials& credentials,
+                                bool force_ecryptfs,
+                                bool* created);
 
   // Updates current user activity timestamp. This is called daily.
   // So we may not consider current user as old (and delete it soon after she
