@@ -573,6 +573,7 @@ TEST_F(Camera3ModuleFixture, StaticKeysTest) {
 // Reference:
 // camera2/cts/ExtendedCameraCharacteristicsTest.java#testKeys
 #define IGNORE_HARDWARE_LEVEL INT32_MAX
+#define IGNORE_CAPABILITY -1
   for (int cam_id = 0; cam_id < cam_module_.GetNumberOfCameras(); cam_id++) {
     camera_info info;
     ASSERT_EQ(0, cam_module_.GetCameraInfo(cam_id, &info))
@@ -628,7 +629,7 @@ TEST_F(Camera3ModuleFixture, StaticKeysTest) {
     // ANDROID_CONTROL_MAX_REGIONS_AWB
     ExpectKeyAvailable(c, ANDROID_EDGE_AVAILABLE_EDGE_MODES,
                        ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_FULL,
-                       std::vector<int32_t>());
+                       IGNORE_CAPABILITY);
     ExpectKeyAvailable(
         c, ANDROID_FLASH_INFO_AVAILABLE, IGNORE_HARDWARE_LEVEL,
         ANDROID_REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE);
@@ -778,6 +779,22 @@ TEST_F(Camera3ModuleFixture, StaticKeysTest) {
         c, ANDROID_TONEMAP_MAX_CURVE_POINTS,
         ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_FULL,
         ANDROID_REQUEST_AVAILABLE_CAPABILITIES_MANUAL_POST_PROCESSING);
+    camera_metadata_ro_entry_t entry;
+    if (find_camera_metadata_ro_entry(c, ANDROID_SENSOR_REFERENCE_ILLUMINANT2,
+                                      &entry) == 0) {
+      ExpectKeyAvailable(c, ANDROID_SENSOR_REFERENCE_ILLUMINANT2,
+                         IGNORE_HARDWARE_LEVEL,
+                         ANDROID_REQUEST_AVAILABLE_CAPABILITIES_RAW);
+      ExpectKeyAvailable(c, ANDROID_SENSOR_COLOR_TRANSFORM2,
+                         IGNORE_HARDWARE_LEVEL,
+                         ANDROID_REQUEST_AVAILABLE_CAPABILITIES_RAW);
+      ExpectKeyAvailable(c, ANDROID_SENSOR_CALIBRATION_TRANSFORM2,
+                         IGNORE_HARDWARE_LEVEL,
+                         ANDROID_REQUEST_AVAILABLE_CAPABILITIES_RAW);
+      ExpectKeyAvailable(c, ANDROID_SENSOR_FORWARD_MATRIX2,
+                         IGNORE_HARDWARE_LEVEL,
+                         ANDROID_REQUEST_AVAILABLE_CAPABILITIES_RAW);
+    }
   }
 }
 
