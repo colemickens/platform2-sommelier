@@ -34,6 +34,18 @@
         'run_oci.cc',
       ],
     },
+    {
+      'target_name': 'mount_extension_image',
+      'type': 'executable',
+      'variables': {
+        'deps': [
+          'libbrillo-<(libbase_ver)',
+        ],
+      },
+      'sources': [
+        'mount_extension_image.cc',
+      ],
+    },
   ],
   'conditions': [
     ['USE_test == 1', {
