@@ -251,9 +251,6 @@
       },
       'conditions': [
         ['USE_cellular == 1', {
-          'dependencies': [
-            '../common-mk/external_dependencies.gyp:modemmanager-dbus-proxies',
-          ],
           'variables': {
             'deps': [
               'ModemManager',
