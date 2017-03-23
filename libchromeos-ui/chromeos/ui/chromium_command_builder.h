@@ -86,7 +86,13 @@ class ChromiumCommandBuilder {
   //     Calls AddArg("--some-flag=some-value").
   //
   //   !--flag-prefix
-  //     Remove all arguments beginning with "--flag-prefix".
+  //     Removes all arguments beginning with "--flag-prefix".
+  //
+  //   vmodule=foo=1
+  //     Prepends a "foo=1" entry to the --vmodule flag.
+  //
+  //   enable-features=foo
+  //     Appends a "foo" entry to the --enable-features flag.
   //
   //   NAME=VALUE
   //     Calls AddEnvVar("NAME", "VALUE").
@@ -111,10 +117,10 @@ class ChromiumCommandBuilder {
   // Adds a command-line argument.
   void AddArg(const std::string& arg);
 
-  // Adds |pattern| to the --vmodule flag in |arguments_|.
+  // Prepends |pattern| to the --vmodule flag in |arguments_|.
   void AddVmodulePattern(const std::string& pattern);
 
-  // Adds |feature_name| to the --enable-features flag in |arguments_|.
+  // Appends |feature_name| to the --enable-features flag in |arguments_|.
   void AddFeatureEnableOverride(const std::string& feature_name);
 
  private:
@@ -126,11 +132,14 @@ class ChromiumCommandBuilder {
   // flag like "--my-list=foo,bar", |flag_prefix| would be "--my-list=",
   // |entry_separator| would be ",", and |new_entry| would be "foo" or "bar".
   // |flag_argument_index|'s memory holds the flag's position within
-  // |arguments_| or -1 if the flag is not yet set.
+  // |arguments_| or -1 if the flag is not yet set. If |prepend| is true,
+  // |new_entry| will be prepended before existing values; otherwise it will be
+  // appended after them.
   void AddListFlagEntry(int* flag_argument_index,
                         const std::string& flag_prefix,
                         const std::string& entry_separator,
-                        const std::string& new_entry);
+                        const std::string& new_entry,
+                        bool prepend);
 
   // Checks if an ASAN build was requested, doing appropriate initialization and
   // returning true if so. Called by InitChromium().

@@ -320,13 +320,20 @@ void ChromiumCommandBuilder::AddArg(const std::string& arg) {
 }
 
 void ChromiumCommandBuilder::AddVmodulePattern(const std::string& pattern) {
-  AddListFlagEntry(&vmodule_argument_index_, "--vmodule=", ",", pattern);
+  // Chrome's code for handling --vmodule applies the first matching pattern.
+  // Prepend patterns here so that more-specific later patterns will override
+  // more-general earlier ones.
+  AddListFlagEntry(
+      &vmodule_argument_index_, "--vmodule=", ",", pattern, true /* prepend */);
 }
 
 void ChromiumCommandBuilder::AddFeatureEnableOverride(
     const std::string& feature_name) {
-  AddListFlagEntry(&enable_features_argument_index_, "--enable-features=", ",",
-                   feature_name);
+  AddListFlagEntry(&enable_features_argument_index_,
+                   "--enable-features=",
+                   ",",
+                   feature_name,
+                   false /* prepend */);
 }
 
 base::FilePath ChromiumCommandBuilder::GetPath(const std::string& path) const {
@@ -337,7 +344,8 @@ void ChromiumCommandBuilder::AddListFlagEntry(
     int* flag_argument_index,
     const std::string& flag_prefix,
     const std::string& entry_separator,
-    const std::string& new_entry) {
+    const std::string& new_entry,
+    bool prepend) {
   DCHECK(flag_argument_index);
   if (new_entry.empty())
     return;
@@ -345,6 +353,12 @@ void ChromiumCommandBuilder::AddListFlagEntry(
   if (*flag_argument_index < 0) {
     AddArg(flag_prefix + new_entry);
     *flag_argument_index = arguments_.size() - 1;
+  } else if (prepend) {
+      const std::string old = arguments_[*flag_argument_index];
+      DCHECK_EQ(old.substr(0, flag_prefix.size()), flag_prefix);
+      arguments_[*flag_argument_index] =
+          flag_prefix + new_entry + entry_separator +
+          old.substr(flag_prefix.size(), old.size() - flag_prefix.size());
   } else {
     arguments_[*flag_argument_index] += entry_separator + new_entry;
   }

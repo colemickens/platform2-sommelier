@@ -174,12 +174,12 @@ TEST_F(ChromiumCommandBuilderTest, VmoduleFlag) {
   builder_.AddVmodulePattern("foo=1");
   ASSERT_EQ("--vmodule=foo=1", GetFirstArgWithPrefix(kVmodulePrefix));
   builder_.AddVmodulePattern("bar=2");
-  ASSERT_EQ("--vmodule=foo=1,bar=2", GetFirstArgWithPrefix(kVmodulePrefix));
+  ASSERT_EQ("--vmodule=bar=2,foo=1", GetFirstArgWithPrefix(kVmodulePrefix));
 
   // Add another argument and check that --vmodule still gets updated.
   builder_.AddArg("--blah");
   builder_.AddVmodulePattern("baz=1");
-  ASSERT_EQ("--vmodule=foo=1,bar=2,baz=1",
+  ASSERT_EQ("--vmodule=baz=1,bar=2,foo=1",
             GetFirstArgWithPrefix(kVmodulePrefix));
 }
 
@@ -247,7 +247,7 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigVmodule) {
   ASSERT_EQ(strlen(kConfig), base::WriteFile(path, kConfig, strlen(kConfig)));
   ASSERT_TRUE(builder_.ApplyUserConfig(path));
   builder_.AddVmodulePattern("b=1");
-  ASSERT_EQ("--vmodule=a=2,b=1", GetFirstArgWithPrefix(kPrefix));
+  ASSERT_EQ("--vmodule=b=1,a=2", GetFirstArgWithPrefix(kPrefix));
 
   // Delete the --vmodule flag.
   const char kConfig2[] = "!--vmodule=";
@@ -265,7 +265,7 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigVmodule) {
   ASSERT_EQ(strlen(kConfig3),
             base::WriteFile(path, kConfig3, strlen(kConfig3)));
   ASSERT_TRUE(builder_.ApplyUserConfig(path));
-  ASSERT_EQ("--vmodule=c=1,a=1,b=2", GetFirstArgWithPrefix(kPrefix));
+  ASSERT_EQ("--vmodule=b=2,a=1,c=1", GetFirstArgWithPrefix(kPrefix));
 
   // Also check that literal "vmodule=..." arguments don't get added.
   ASSERT_EQ("", GetFirstArgWithPrefix("vmodule="));
