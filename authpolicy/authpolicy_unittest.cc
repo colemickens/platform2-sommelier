@@ -71,7 +71,7 @@ dbus::FileDescriptor MakePasswordFd() {
 }
 
 // Fake completion callback for RegisterAsync().
-void DoNothing(bool unused) {}
+void DoNothing(bool /* unused */) {}
 
 // Helper class that points some paths to convenient locations we can write to.
 class TestPathService : public PathService {

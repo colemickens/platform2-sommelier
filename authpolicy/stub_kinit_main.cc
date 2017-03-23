@@ -114,7 +114,7 @@ int HandleCommandLine(const std::string& command_line) {
 
 }  // namespace authpolicy
 
-int main(int argc, const char* const* argv) {
+int main(int argc, char* argv[]) {
   std::string command_line = authpolicy::GetCommandLine(argc, argv);
   return authpolicy::HandleCommandLine(command_line);
 }

@@ -67,7 +67,7 @@ class Daemon : public brillo::DBusServiceDaemon {
 
 }  // namespace authpolicy
 
-int main(int argc, char* argv[]) {
+int main(int /* argc */, char* /* argv */ []) {
   brillo::OpenLog("authpolicyd", true);
   brillo::InitLog(brillo::kLogToSyslog);
 

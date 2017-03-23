@@ -1,4 +1,11 @@
 {
+  'target_defaults': {
+    'cflags': [
+      '-Wunused',
+      '-Wshadow',
+      '-Wextra',
+    ],
+  },
   'targets': [
     # D-Bus code generator.
     {

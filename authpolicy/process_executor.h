@@ -55,7 +55,7 @@ class ProcessExecutor {
   // Populated after execute call.
   const std::string& GetStdout() const { return out_data_; }
   const std::string& GetStderr() const { return err_data_; }
-  const int GetExitCode() const { return exit_code_; }
+  int GetExitCode() const { return exit_code_; }
 
   // GetExitCode() returns this if some internal error in Execute() occurred,
   // e.g. failed to copy stdin pipes. Not an actual return code from execve.

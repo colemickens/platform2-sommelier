@@ -215,10 +215,11 @@ void AuthPolicy::StorePolicy(const std::string& policy_blob,
                                                 base::Passed(&callback)));
 }
 
-void AuthPolicy::OnPolicyStored(bool is_user_policy,
-                                std::unique_ptr<ScopedTimerReporter> timer,
-                                PolicyResponseCallback callback,
-                                dbus::Response* response) {
+void AuthPolicy::OnPolicyStored(
+    bool is_user_policy,
+    std::unique_ptr<ScopedTimerReporter> /* timer */,
+    PolicyResponseCallback callback,
+    dbus::Response* response) {
   const char* const method = GetSessionManagerStoreMethod(is_user_policy);
   brillo::ErrorPtr brillo_error;
   bool done = false;

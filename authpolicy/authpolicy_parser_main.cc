@@ -199,7 +199,7 @@ int ParseWorkgroup(const std::string& net_out) {
 // serialized GpoList blob to stdout.
 int ParseGpoList(const std::string& net_out, PolicyScope scope) {
   // Parse net output.
-  GpoEntry gpo;
+  GpoEntry current_gpo;
   std::vector<GpoEntry> gpo_list;
   std::vector<std::string> lines = base::SplitString(
       net_out, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
@@ -208,8 +208,8 @@ int ParseGpoList(const std::string& net_out, PolicyScope scope) {
   for (const std::string& line : lines) {
     if (line.find(kGpoToken_Separator) == 0) {
       // Separator between entries. Process last gpo if any.
-      PushGpo(gpo, scope, &gpo_list);
-      gpo.Clear();
+      PushGpo(current_gpo, scope, &gpo_list);
+      current_gpo.Clear();
       found_separator = true;
       continue;
     }
@@ -226,20 +226,20 @@ int ParseGpoList(const std::string& net_out, PolicyScope scope) {
     bool version_error = false;
     bool flags_error = false;
     if (key == kGpoToken_Name) {
-      already_set = !gpo.name.empty();
-      gpo.name = value;
+      already_set = !current_gpo.name.empty();
+      current_gpo.name = value;
     } else if (key == kGpoToken_Filesyspath) {
-      already_set = !gpo.filesyspath.empty();
-      gpo.filesyspath = value;
+      already_set = !current_gpo.filesyspath.empty();
+      current_gpo.filesyspath = value;
     } else if (key == kGpoToken_VersionUser) {
-      already_set = gpo.version_user != 0;
-      version_error = !ai::ParseGpoVersion(value, &gpo.version_user);
+      already_set = current_gpo.version_user != 0;
+      version_error = !ai::ParseGpoVersion(value, &current_gpo.version_user);
     } else if (key == kGpoToken_VersionMachine) {
-      already_set = gpo.version_machine != 0;
-      version_error = !ai::ParseGpoVersion(value, &gpo.version_machine);
+      already_set = current_gpo.version_machine != 0;
+      version_error = !ai::ParseGpoVersion(value, &current_gpo.version_machine);
     } else if (key == kGpoToken_Options) {
-      already_set = gpo.gp_flags != ai::kGpFlagInvalid;
-      flags_error = !ai::ParseGpFlags(value, &gpo.gp_flags);
+      already_set = current_gpo.gp_flags != ai::kGpFlagInvalid;
+      flags_error = !ai::ParseGpFlags(value, &current_gpo.gp_flags);
     }
 
     // Sanity check that we don't miss separators between GPOs.
@@ -260,7 +260,7 @@ int ParseGpoList(const std::string& net_out, PolicyScope scope) {
   }
 
   // Just in case there's no separator in the end.
-  PushGpo(gpo, scope, &gpo_list);
+  PushGpo(current_gpo, scope, &gpo_list);
 
   if (!found_separator) {
     // This usually happens when something went wrong, e.g. connection error.
