@@ -26,6 +26,9 @@ readonly MEMORY_TEST_SUSPEND_MIN_DELAY=10
 # Location of disable_dark_resume preference file.
 readonly DISABLE_DARK_RESUME=/var/lib/power_manager/disable_dark_resume
 
+# Scheduling priority of memory_suspend_test
+readonly MEMORY_TEST_PRIORITY=-8
+
 # Location of the temporary preference file. Set by disable_dark_resume.
 MUTABLE_PREF_FILE=
 
@@ -131,7 +134,9 @@ if [ ${FLAGS_backup_rtc} -eq ${FLAGS_TRUE} ] &&
 fi
 
 if [ ${FLAGS_memory_check} -eq ${FLAGS_TRUE} ]; then
-  suspend_cmd="memory_suspend_test"
+  # Increase priority to make it less likely that memory_suspend_test takes
+  # so long to free memory that the wake alarm fires prematurely.
+  suspend_cmd="nice -n ${MEMORY_TEST_PRIORITY} memory_suspend_test"
 
   # Writing to memory can take a while. Make it less likely that the
   # wake alarm will fire before the system has suspended.
@@ -190,6 +195,11 @@ last_ignore_count=0
 while true; do
   : $(( cur += 1 ))
   printf "Suspend %5d of ${FLAGS_count}: " "${cur}"
+
+  # Flush file system buffer before setting wake alarm to make it
+  # less likely that the kernel's sys_sync() call takes so long
+  # that the alarm fires early.
+  sync
 
   sus_time=$(( ( $(random) % suspend_interval ) + FLAGS_suspend_min ))
   printf "sleep for %2d seconds..." "${sus_time}"
