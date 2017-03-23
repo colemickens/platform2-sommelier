@@ -21,9 +21,13 @@ namespace arc {
 CameraClient::CameraClient(int id,
                            const std::string& device_path,
                            const camera_metadata_t& static_info,
+                           base::Callback<void()> close_callback,
                            const hw_module_t* module,
                            hw_device_t** hw_device)
-    : id_(id), device_path_(device_path), device_(new V4L2CameraDevice()) {
+    : id_(id),
+      device_path_(device_path),
+      close_callback_(close_callback),
+      device_(new V4L2CameraDevice()) {
   memset(&camera3_device_, 0, sizeof(camera3_device_));
   camera3_device_.common.tag = HARDWARE_DEVICE_TAG;
   camera3_device_.common.version = CAMERA_DEVICE_API_VERSION_3_3;
@@ -59,10 +63,12 @@ int CameraClient::OpenDevice() {
 
 int CameraClient::CloseDevice() {
   VLOGFID(1, id_);
-  DCHECK(thread_checker_.CalledOnValidThread());
+  DCHECK(ops_thread_checker_.CalledOnValidThread());
 
   StreamOff();
   device_->Disconnect();
+
+  close_callback_.Run();
   return 0;
 }
 

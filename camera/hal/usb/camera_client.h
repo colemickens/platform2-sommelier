@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/macros.h>
 #include <base/threading/thread_checker.h>
 #include <hardware/camera3.h>
@@ -22,17 +23,18 @@
 
 namespace arc {
 
-// CameraClient class is not thread-safe. Constructor, OpenDevice, and
-// ClsoeDevice are called on hal thread. Camera v3 Device Operations are called
-// on device ops thread. But Android framework synchronizes Constructor,
-// OpenDevice, CloseDevice, and device ops. The functions on hal thread and
-// device ops thread won't be called at the same time.
+// CameraClient class is not thread-safe. Constructor and OpenDevice are called
+// on hal thread. Camera v3 Device Operations and Close are called on device ops
+// thread. But Android framework synchronizes Constructor, OpenDevice,
+// CloseDevice, and device ops. OpenDevice on hal thread and device ops
+// thread won't be called at the same time.
 class CameraClient {
  public:
   // id is used to distinguish cameras. 0 <= id < number of cameras.
   CameraClient(int id,
                const std::string& device_path,
                const camera_metadata_t& static_info,
+               base::Callback<void()> close_callback,
                const hw_module_t* module,
                hw_device_t** hw_device);
   ~CameraClient();
@@ -73,6 +75,9 @@ class CameraClient {
 
   // Camera device path.
   const std::string device_path_;
+
+  // The callback to run when the device is closed.
+  base::Callback<void()> close_callback_;
 
   // Camera device handle returned to framework for use.
   camera3_device_t camera3_device_;

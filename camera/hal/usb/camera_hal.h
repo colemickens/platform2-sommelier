@@ -39,9 +39,13 @@ class CameraHal {
   int GetCameraInfo(int id, camera_info* info);
   int SetCallbacks(const camera_module_callbacks_t* callbacks);
 
-  int CloseDevice(int id);
-
  private:
+  // A callback for the camera devices opened in OpenDevice().  Used to run
+  // CloseDevice() on the same thread that OpenDevice() runs on.
+  void CloseDeviceCallback(base::TaskRunner* runner, int id);
+
+  void CloseDevice(int id);
+
   // Cache device information because querying the information is very slow.
   DeviceInfos device_infos_;
 

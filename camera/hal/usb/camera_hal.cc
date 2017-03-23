@@ -5,6 +5,9 @@
 
 #include "hal/usb/camera_hal.h"
 
+#include <base/bind.h>
+#include <base/threading/thread.h>
+
 #include "arc/common.h"
 #include "hal/usb/camera_metadata.h"
 #include "hal/usb/common_types.h"
@@ -54,9 +57,12 @@ int CameraHal::OpenDevice(int id,
     LOGF(ERROR) << "Camera " << id << " is already opened";
     return -EBUSY;
   }
+  base::Callback<void()> close_callback = base::Bind(
+      &CameraHal::CloseDeviceCallback, base::Unretained(this),
+      base::RetainedRef(base::MessageLoop::current()->task_runner()), id);
   cameras_[id].reset(new CameraClient(id, device_infos_[id].device_path,
-                                      *static_infos_[id].get(), module,
-                                      hw_device));
+                                      *static_infos_[id].get(), close_callback,
+                                      module, hw_device));
   if (cameras_[id]->OpenDevice()) {
     cameras_.erase(id);
     return -ENODEV;
@@ -99,18 +105,21 @@ int CameraHal::SetCallbacks(const camera_module_callbacks_t* callbacks) {
   return 0;
 }
 
-int CameraHal::CloseDevice(int id) {
+void CameraHal::CloseDeviceCallback(base::TaskRunner* runner, int id) {
+  runner->PostTask(FROM_HERE, base::Bind(&CameraHal::CloseDevice,
+                                         base::Unretained(this), id));
+}
+
+void CameraHal::CloseDevice(int id) {
   VLOGFID(1, id);
   DCHECK(thread_checker_.CalledOnValidThread());
 
   if (cameras_.find(id) == cameras_.end()) {
     LOGF(ERROR) << "Failed to close camera device " << id
                 << ": device is not opened";
-    return -EINVAL;
+    return;
   }
-  int ret = cameras_[id]->CloseDevice();
   cameras_.erase(id);
-  return ret;
 }
 
 static int camera_device_open(const hw_module_t* module,
@@ -154,7 +163,7 @@ int camera_device_close(struct hw_device_t* hw_device) {
     return -EIO;
   }
   cam_dev->priv = NULL;
-  return CameraHal::GetInstance().CloseDevice(cam->GetId());
+  return cam->CloseDevice();
 }
 
 }  // namespace arc
