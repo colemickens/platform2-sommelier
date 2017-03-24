@@ -10,7 +10,6 @@
     },
     'cflags': [
       '-Wextra',
-      '-Wno-unused-parameter',  # base/lazy_instance.h, etc.
     ],
     'cflags_cc': [
       '-Woverloaded-virtual',

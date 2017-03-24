@@ -319,7 +319,8 @@ endif
 # The same goes for CFLAGS.
 COMMON_CFLAGS-gcc := -fvisibility=internal -ggdb3 -Wa,--noexecstack
 COMMON_CFLAGS-clang := -fvisibility=hidden -ggdb
-COMMON_CFLAGS := -Wall -Werror -fno-strict-aliasing $(SSP_CFLAGS) -O1 -Wformat=2
+COMMON_CFLAGS := -Wall -Wunused -Wno-unused-parameter -Werror -Wformat=2 \
+  -fno-strict-aliasing $(SSP_CFLAGS) -O1
 CXXFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CXXDRIVER)) -std=gnu++11
 CFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CDRIVER)) -std=gnu11
 CPPFLAGS += -D_FORTIFY_SOURCE=2

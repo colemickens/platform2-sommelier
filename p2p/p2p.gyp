@@ -11,7 +11,6 @@
       '-Wextra',
       # To allow { 0 } initializations.
       '-Wno-missing-field-initializers',
-      '-Wno-unused-parameter',
     ],
     'cflags_cc': [
       '-fno-strict-aliasing',

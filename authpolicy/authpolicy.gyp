@@ -1,7 +1,6 @@
 {
   'target_defaults': {
     'cflags': [
-      '-Wunused',
       '-Wshadow',
       '-Wextra',
     ],

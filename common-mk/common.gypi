@@ -92,6 +92,8 @@
     'cflags': [
       '-Wall',
       '-Wno-psabi',
+      '-Wunused',
+      '-Wno-unused-parameter',
       '-ggdb3',
       '-fstack-protector-strong',
       '-Wformat=2',
