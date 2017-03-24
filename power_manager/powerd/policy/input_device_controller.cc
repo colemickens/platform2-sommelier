@@ -19,6 +19,8 @@ namespace policy {
 
 namespace {
 
+// Returns true if |device| has a "usable_when_[mode]" tag corresponding to
+// |mode|.
 bool IsUsableInMode(const system::TaggedDevice& device,
                     InputDeviceController::Mode mode) {
   switch (mode) {
@@ -37,6 +39,34 @@ bool IsUsableInMode(const system::TaggedDevice& device,
   return false;
 }
 
+// Returns true if |device| has any "wakeup_when_[mode]" tags.
+bool HasModeWakeupTags(const system::TaggedDevice& device) {
+  return device.HasTag(InputDeviceController::kTagWakeupWhenDocked) ||
+         device.HasTag(InputDeviceController::kTagWakeupWhenDisplayOff) ||
+         device.HasTag(InputDeviceController::kTagWakeupWhenLaptop) ||
+         device.HasTag(InputDeviceController::kTagWakeupWhenTablet);
+}
+
+// Returns true if |device| has a "wakeup_when_[mode]" tag corresponding to
+// |mode|.
+bool IsWakeupEnabledInMode(const system::TaggedDevice& device,
+                           InputDeviceController::Mode mode) {
+  switch (mode) {
+    case InputDeviceController::Mode::CLOSED:
+      return false;
+    case InputDeviceController::Mode::DOCKED:
+      return device.HasTag(InputDeviceController::kTagWakeupWhenDocked);
+    case InputDeviceController::Mode::DISPLAY_OFF:
+      return device.HasTag(InputDeviceController::kTagWakeupWhenDisplayOff);
+    case InputDeviceController::Mode::LAPTOP:
+      return device.HasTag(InputDeviceController::kTagWakeupWhenLaptop);
+    case InputDeviceController::Mode::TABLET:
+      return device.HasTag(InputDeviceController::kTagWakeupWhenTablet);
+  }
+  NOTREACHED() << "Invalid mode " << static_cast<int>(mode);
+  return false;
+}
+
 }  // namespace
 
 const char InputDeviceController::kTagInhibit[] = "inhibit";
@@ -46,6 +76,11 @@ const char InputDeviceController::kTagUsableWhenDisplayOff[] =
 const char InputDeviceController::kTagUsableWhenLaptop[] = "usable_when_laptop";
 const char InputDeviceController::kTagUsableWhenTablet[] = "usable_when_tablet";
 const char InputDeviceController::kTagWakeup[] = "wakeup";
+const char InputDeviceController::kTagWakeupWhenDocked[] = "wakeup_when_docked";
+const char InputDeviceController::kTagWakeupWhenDisplayOff[] =
+    "wakeup_when_display_off";
+const char InputDeviceController::kTagWakeupWhenLaptop[] = "wakeup_when_laptop";
+const char InputDeviceController::kTagWakeupWhenTablet[] = "wakeup_when_tablet";
 const char InputDeviceController::kTagWakeupOnlyWhenUsable[] =
     "wakeup_only_when_usable";
 const char InputDeviceController::kTagWakeupDisabled[] = "wakeup_disabled";
@@ -182,6 +217,8 @@ void InputDeviceController::ConfigureWakeup(
     wakeup = false;
   else if (device.HasTag(kTagWakeupOnlyWhenUsable))
     wakeup = IsUsableInMode(device, mode_);
+  else if (HasModeWakeupTags(device))
+    wakeup = IsWakeupEnabledInMode(device, mode_);
 
   SetWakeupFromS3(device, wakeup);
 }

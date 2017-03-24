@@ -36,6 +36,10 @@ class InputDeviceController : public policy::BacklightControllerObserver,
   static const char kTagUsableWhenLaptop[];
   static const char kTagUsableWhenTablet[];
   static const char kTagWakeup[];
+  static const char kTagWakeupWhenDocked[];
+  static const char kTagWakeupWhenDisplayOff[];
+  static const char kTagWakeupWhenLaptop[];
+  static const char kTagWakeupWhenTablet[];
   static const char kTagWakeupOnlyWhenUsable[];
   static const char kTagWakeupDisabled[];
 

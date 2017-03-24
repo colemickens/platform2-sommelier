@@ -32,6 +32,8 @@ const char* const kTagUsableWhenLaptop =
 const char* const kTagUsableWhenTablet =
     InputDeviceController::kTagUsableWhenTablet;
 const char* const kTagWakeup = InputDeviceController::kTagWakeup;
+const char* const kTagWakeupWhenLaptop =
+    InputDeviceController::kTagWakeupWhenLaptop;
 const char* const kTagWakeupOnlyWhenUsable =
     InputDeviceController::kTagWakeupOnlyWhenUsable;
 const char* const kTagWakeupDisabled =
@@ -346,6 +348,33 @@ TEST_F(InputDeviceControllerTest, HandleTabletMode) {
   EXPECT_EQ(kEnabled, GetSysattr(kKeyboardSyspath, kPowerWakeup));
   EXPECT_EQ("1", GetSysattr(kTouchscreenSyspath, kInhibited));
   EXPECT_EQ(kDisabled, GetSysattr(kTouchscreenSyspath, kPowerWakeup));
+}
+
+TEST_F(InputDeviceControllerTest, UsableWithoutWakeup) {
+  // Add a keyboard device that should remain usable while in tablet mode (say,
+  // because it also produces power button events: http://crbug.com/703691) but
+  // that should only wake the device while in laptop mode.
+  const char kKeyboardSyspath[] = "/sys/devices/keyboard/0";
+  AddDeviceWithTags(kKeyboardSyspath,
+                    kTagInhibit,
+                    kTagUsableWhenLaptop,
+                    kTagUsableWhenTablet,
+                    kTagWakeup,
+                    kTagWakeupWhenLaptop,
+                    nullptr);
+
+  initial_tablet_mode_ = TabletMode::OFF;
+  InitInputDeviceController();
+  EXPECT_EQ("0", GetSysattr(kKeyboardSyspath, kInhibited));
+  EXPECT_EQ(kEnabled, GetSysattr(kKeyboardSyspath, kPowerWakeup));
+
+  input_device_controller_.SetTabletMode(TabletMode::ON);
+  EXPECT_EQ("0", GetSysattr(kKeyboardSyspath, kInhibited));
+  EXPECT_EQ(kDisabled, GetSysattr(kKeyboardSyspath, kPowerWakeup));
+
+  input_device_controller_.SetTabletMode(TabletMode::OFF);
+  EXPECT_EQ("0", GetSysattr(kKeyboardSyspath, kInhibited));
+  EXPECT_EQ(kEnabled, GetSysattr(kKeyboardSyspath, kPowerWakeup));
 }
 
 TEST_F(InputDeviceControllerTest, InitWithoutBacklightController) {
