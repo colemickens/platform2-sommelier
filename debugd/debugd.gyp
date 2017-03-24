@@ -260,7 +260,6 @@
           'type': 'executable',
           'dependencies': [
             'debugd_dbus_utils',
-            'debugd-proxies',
           ],
           'sources': [
             'src/helpers/modem_status.cc',

@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <dbus-c++/dbus.h>
 #include <stdio.h>
 
 #include <memory>
@@ -10,169 +9,132 @@
 
 #include <base/json/json_writer.h>
 #include <base/memory/ptr_util.h>
-#include <base/strings/string_util.h>
 #include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
-#include <debugd/src/dbus_utils.h>
 
-#include "dbus_proxies/org.freedesktop.DBus.Properties.h"
-#include "dbus_proxies/org.freedesktop.ModemManager.h"
-#include "dbus_proxies/org.freedesktop.ModemManager.Modem.h"
-#include "dbus_proxies/org.freedesktop.ModemManager.Modem.Simple.h"
+#include "debugd/src/helpers/system_service_proxy.h"
 
-using base::DictionaryValue;
-using base::ListValue;
-using base::Value;
+namespace debugd {
+namespace {
 
-// These are lifted from modemmanager's XML files, since dbus-c++ currently
-// doesn't emit constants for enums defined in headers.
-// TODO(ellyjones): fix that
-const uint32_t kModemTypeGsm = 1;
+const char* const kModemInterfaces[] = {
+    cromo::kModemInterface,
+    cromo::kModemSimpleInterface,
+    cromo::kModemGsmInterface,
+    cromo::kModemGsmCardInterface,
+    cromo::kModemGsmNetworkInterface,
+    cromo::kModemCdmaInterface,
+};
 
-class DBusPropertiesProxy : public org::freedesktop::DBus::Properties_proxy,
-                            public DBus::ObjectProxy {
+const char kModemManagerInterface[] = "org.freedesktop.ModemManager";
+const char kModemManangerEnumerateDevicesMethod[] = "EnumerateDevices";
+const char kModemManangerGetStatusMethod[] = "GetStatus";
+const char kModemManangerGetInfoMethod[] = "GetInfo";
+
+class CromoProxy : public SystemServiceProxy {
  public:
-  DBusPropertiesProxy(DBus::Connection* connection,
-                      const char* path,
-                      const char* service)
-      : DBus::ObjectProxy(*connection, path, service) {}
-  ~DBusPropertiesProxy() override = default;
-};
+  static std::unique_ptr<CromoProxy> Create() {
+    scoped_refptr<dbus::Bus> bus = ConnectToSystemBus();
+    if (!bus)
+      return nullptr;
 
-class ModemManagerProxy : public org::freedesktop::ModemManager_proxy,
-                          public DBus::ObjectProxy {
- public:
-  ModemManagerProxy(DBus::Connection* connection,
-                    const char* path,
-                    const char* service)
-      : DBus::ObjectProxy(*connection, path, service) {}
-  ~ModemManagerProxy() override = default;
-  void DeviceAdded(const DBus::Path&) override {}
-  void DeviceRemoved(const DBus::Path&) override {}
-};
-
-class ModemSimpleProxy
-    : public org::freedesktop::ModemManager::Modem::Simple_proxy,
-      public DBus::ObjectProxy {
- public:
-  ModemSimpleProxy(DBus::Connection* connection,
-                   const char* path,
-                   const char* service)
-      : DBus::ObjectProxy(*connection, path, service) {}
-  ~ModemSimpleProxy() override = default;
-};
-
-class ModemProxy : public org::freedesktop::ModemManager::Modem_proxy,
-                   public DBus::ObjectProxy {
- public:
-  ModemProxy(DBus::Connection* connection,
-             const char* path,
-             const char* service)
-      : DBus::ObjectProxy(*connection, path, service) {}
-  ~ModemProxy() override = default;
-  void StateChanged(const uint32_t& old_state,
-                    const uint32_t& new_state,
-                    const uint32_t& reason) override {}
-};
-
-struct Modem {
-  Modem(const char* service, const DBus::Path& path)
-      : service_(service), path_(path) {}
-
-  std::unique_ptr<Value> GetStatus(DBus::Connection* conn);
-
-  const char* service_;
-  DBus::Path path_;
-};
-
-void FetchOneInterface(DBusPropertiesProxy* properties,
-                       const char* interface,
-                       DictionaryValue* result) {
-  std::map<std::string, DBus::Variant> propsmap = properties->GetAll(interface);
-  std::unique_ptr<Value> propsdict;
-  if (!debugd::DBusPropertyMapToValue(propsmap, &propsdict))
-    return;
-
-  std::string keypath = interface;
-  base::ReplaceSubstringsAfterOffset(&keypath, 0, ".", "/");
-  result->Set(keypath, std::move(propsdict));
-}
-
-std::unique_ptr<Value> Modem::GetStatus(DBus::Connection* conn) {
-  auto result = base::MakeUnique<DictionaryValue>();
-  result->SetString("service", service_);
-  result->SetString("path", path_);
-
-  ModemSimpleProxy simple(conn, path_.c_str(), service_);
-  std::map<std::string, DBus::Variant> statusmap;
-  try {
-    statusmap = simple.GetStatus();
-    // cpplint thinks this is a function call
-  } catch (DBus::Error e) {
+    return std::unique_ptr<CromoProxy>(new CromoProxy(bus));
   }
 
-  std::unique_ptr<Value> status;
-  if (debugd::DBusPropertyMapToValue(statusmap, &status))
-    result->Set("status", std::move(status));
+  ~CromoProxy() override = default;
 
-  ModemProxy modem(conn, path_.c_str(), service_);
-  auto infodict = base::MakeUnique<DictionaryValue>();
-  try {
-    DBus::Struct<std::string,
-                 std::string,
-                 std::string> infomap = modem.GetInfo();
-    infodict->SetString("manufacturer", infomap._1);
-    infodict->SetString("modem", infomap._2);
-    infodict->SetString("version", infomap._3);
-    // cpplint thinks this is a function call
-  } catch (DBus::Error e) {
+  std::unique_ptr<base::ListValue> EnumerateDevices() {
+    dbus::MethodCall method_call(kModemManagerInterface,
+                                 kModemManangerEnumerateDevicesMethod);
+    auto result = base::ListValue::From(CallMethodAndGetResponse(
+        dbus::ObjectPath(cromo::kCromoServicePath), &method_call));
+    return result ? std::move(result) : base::MakeUnique<base::ListValue>();
   }
-  result->Set("info", std::move(infodict));
 
-  auto props = base::MakeUnique<DictionaryValue>();
-  DBusPropertiesProxy properties(conn, path_.c_str(), service_);
-  FetchOneInterface(&properties, cromo::kModemInterface, props.get());
-  FetchOneInterface(&properties, cromo::kModemSimpleInterface, props.get());
-  uint32_t type = modem.Type();
-  if (type == kModemTypeGsm) {
-    FetchOneInterface(&properties, cromo::kModemGsmInterface, props.get());
-    FetchOneInterface(&properties, cromo::kModemGsmCardInterface, props.get());
-    FetchOneInterface(
-        &properties, cromo::kModemGsmNetworkInterface, props.get());
-  } else {
-    FetchOneInterface(&properties, cromo::kModemCdmaInterface, props.get());
+  std::unique_ptr<base::DictionaryValue> GetModemProperties(
+      const dbus::ObjectPath& object_path) {
+    auto result = base::MakeUnique<base::DictionaryValue>();
+    result->SetString("service", cromo::kCromoServicePath);
+    result->SetString("path", object_path.value());
+    result->Set("status", GetStatus(object_path));
+    result->Set("info", GetInfo(object_path));
+    result->Set("properties", GetInterfaceProperties(object_path));
+    return result;
   }
-  result->Set("properties", std::move(props));
 
+  std::unique_ptr<base::DictionaryValue> GetStatus(
+      const dbus::ObjectPath& object_path) {
+    dbus::MethodCall method_call(cromo::kModemSimpleInterface,
+                                 kModemManangerGetStatusMethod);
+    auto result = base::DictionaryValue::From(
+        CallMethodAndGetResponse(object_path, &method_call));
+    return result ? std::move(result)
+                  : base::MakeUnique<base::DictionaryValue>();
+  }
+
+  std::unique_ptr<base::DictionaryValue> GetInfo(
+      const dbus::ObjectPath& object_path) {
+    dbus::MethodCall method_call(cromo::kModemInterface,
+                                 kModemManangerGetInfoMethod);
+    auto result = base::MakeUnique<base::DictionaryValue>();
+    auto info = base::ListValue::From(
+        CallMethodAndGetResponse(object_path, &method_call));
+    if (info && info->GetSize() == 3) {
+      std::string manufacturer, modem, version;
+      if (info->GetString(0, &manufacturer) && info->GetString(1, &modem) &&
+          info->GetString(2, &version)) {
+        result->SetString("manufacturer", manufacturer);
+        result->SetString("modem", modem);
+        result->SetString("version", version);
+      }
+    }
+    return result;
+  }
+
+  std::unique_ptr<base::DictionaryValue> GetInterfaceProperties(
+      const dbus::ObjectPath& object_path) {
+    auto result = base::MakeUnique<base::DictionaryValue>();
+    for (std::string interface : kModemInterfaces) {
+      auto interface_properties = GetProperties(interface, object_path);
+      if (interface_properties) {
+        result->Set(interface, std::move(interface_properties));
+      }
+    }
+    return result;
+  }
+
+ private:
+  explicit CromoProxy(scoped_refptr<dbus::Bus> bus)
+      : SystemServiceProxy(bus, cromo::kCromoServiceName) {}
+
+  DISALLOW_COPY_AND_ASSIGN(CromoProxy);
+};
+
+std::unique_ptr<base::Value> CollectModemStatus() {
+  auto result = base::MakeUnique<base::ListValue>();
+
+  auto proxy = CromoProxy::Create();
+  if (!proxy)
+    return std::move(result);
+
+  auto modem_paths = proxy->EnumerateDevices();
+  for (size_t i = 0; i < modem_paths->GetSize(); ++i) {
+    std::string modem_path;
+    if (modem_paths->GetString(i, &modem_path)) {
+      result->Append(proxy->GetModemProperties(dbus::ObjectPath(modem_path)));
+    }
+  }
   return std::move(result);
 }
 
+}  // namespace
+}  // namespace debugd
+
 int main() {
-  DBus::BusDispatcher dispatcher;
-  DBus::default_dispatcher = &dispatcher;
-  DBus::Connection conn = DBus::Connection::SystemBus();
-  ModemManagerProxy cromo(&conn,
-                          cromo::kCromoServicePath,
-                          cromo::kCromoServiceName);
-  std::vector<Modem> modems;
-
-  // The try-catch block is to account for cromo not being present.
-  // We don't want to crash if cromo isn't running, so we swallow the
-  // DBus exception we get from the failed attempt to enumerate devices.
-  try {
-    std::vector<DBus::Path> cromo_modems = cromo.EnumerateDevices();
-    for (size_t i = 0; i < cromo_modems.size(); ++i)
-      modems.push_back(Modem(cromo::kCromoServiceName, cromo_modems[i]));
-    // cpplint thinks this is a function call
-  } catch(DBus::Error e) {}
-
-  ListValue result;
-  for (size_t i = 0; i < modems.size(); ++i)
-    result.Append(modems[i].GetStatus(&conn));
-
+  auto result = debugd::CollectModemStatus();
   std::string json;
   base::JSONWriter::WriteWithOptions(
-      result, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
+      *result, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
   printf("%s\n", json.c_str());
   return 0;
 }
