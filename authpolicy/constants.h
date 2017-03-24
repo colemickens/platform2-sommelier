@@ -25,6 +25,12 @@ extern const char kKrb5ConfEnvKey[];
 // Prefix for some environment variable values that specify a file path.
 extern const char kFilePrefix[];
 
+// Net ads search keys.
+const char kSearchObjectGUID[] = "objectGUID";
+const char kSearchSAMAccountName[] = "sAMAccountName";
+const char kSearchDisplayName[] = "displayName";
+const char kSearchGivenName[] = "givenName";
+
 enum ExitCodes {
   EXIT_CODE_OK = 0,
   EXIT_CODE_BAD_COMMAND,

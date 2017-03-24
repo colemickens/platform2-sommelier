@@ -136,8 +136,8 @@ int OutputForCaller(const std::string& str) {
 // it to stdout.
 int ParseAccountInfo(const std::string& net_out) {
   std::string object_guid, sam_account_name, display_name, given_name;
-  if (!ai::FindToken(net_out, ':', "objectGUID", &object_guid) ||
-      !ai::FindToken(net_out, ':', "sAMAccountName", &sam_account_name)) {
+  if (!ai::FindToken(net_out, ':', kSearchObjectGUID, &object_guid) ||
+      !ai::FindToken(net_out, ':', kSearchSAMAccountName, &sam_account_name)) {
     LOG(ERROR) << "Failed to parse account info";
     return EXIT_CODE_FIND_TOKEN_FAILED;
   }
@@ -148,9 +148,9 @@ int ParseAccountInfo(const std::string& net_out) {
 
   // Attributes 'displayName' and 'givenName' are optional. May be missing for
   // accounts like 'Administrator' or for partially set up accounts.
-  if (ai::FindToken(net_out, ':', "displayName", &display_name))
+  if (ai::FindToken(net_out, ':', kSearchDisplayName, &display_name))
     account_info_proto.set_display_name(display_name);
-  if (ai::FindToken(net_out, ':', "givenName", &given_name))
+  if (ai::FindToken(net_out, ':', kSearchGivenName, &given_name))
     account_info_proto.set_given_name(given_name);
 
   std::string account_info_blob;
