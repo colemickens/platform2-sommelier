@@ -111,6 +111,11 @@ typedef std::unordered_map<MappedBufferInfoKeyType,
                            struct MappedBufferInfoKeyHash>
     MappedBufferInfoCache;
 
+// A V4L2 extension format which represents 32bit RGBX-8-8-8-8 format. This
+// corresponds to DRM_FORMAT_XBGR8888 which is used as the underlying format for
+// the HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINEND format on all CrOS boards.
+#define V4L2_PIX_FMT_RGBX32 v4l2_fourcc('X', 'B', '2', '4')
+
 // Generic camera buffer mapper.  The class is for a camera HAL to map and unmap
 // the buffer handles received in camera3_stream_buffer_t.
 //
@@ -230,6 +235,15 @@ class EXPORTED CameraBufferMapper {
   // Returns:
   //    Number of planes on success; -EINVAL if |buffer| is invalid.
   static int GetNumPlanes(buffer_handle_t buffer);
+
+  // Gets the V4L2 pixel format for the buffer handle.
+  //
+  // Args:
+  //    |buffer|: The buffer handle to query.
+  //
+  // Returns:
+  //    The V4L2 pixel format; 0 on error.
+  static uint32_t GetV4L2PixelFormat(buffer_handle_t buffer);
 
  private:
   // Allow unit tests to call constructor directly.

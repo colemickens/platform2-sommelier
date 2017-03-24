@@ -8,6 +8,7 @@
 
 #include <vector>
 
+#include <linux/videodev2.h>
 #include <sys/mman.h>
 
 #include <drm_fourcc.h>
@@ -424,6 +425,48 @@ int CameraBufferMapper::GetNumPlanes(buffer_handle_t buffer) {
 
   LOGF(ERROR) << "Unknown format: " << FormatToString(handle->format);
   return -EINVAL;
+}
+
+// static
+uint32_t CameraBufferMapper::GetV4L2PixelFormat(buffer_handle_t buffer) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return 0;
+  }
+
+  switch (handle->format) {
+    case DRM_FORMAT_ARGB8888:
+      return V4L2_PIX_FMT_ABGR32;
+
+    // There is no standard V4L2 pixel format corresponding to
+    // DRM_FORMAT_xBGR8888.  We use our own V4L2 format extension
+    // V4L2_PIX_FMT_RGBX32 here.
+    case DRM_FORMAT_ABGR8888:
+      return V4L2_PIX_FMT_RGBX32;
+    case DRM_FORMAT_XBGR8888:
+      return V4L2_PIX_FMT_RGBX32;
+
+    // DRM_FORMAT_R8 is used as the underlying buffer format for
+    // HAL_PIXEL_FORMAT_BLOB which corresponds to JPEG buffer.
+    case DRM_FORMAT_R8:
+      return V4L2_PIX_FMT_JPEG;
+
+    // Semi-planar formats.
+    case DRM_FORMAT_NV12:
+      return V4L2_PIX_FMT_NV21M;
+    case DRM_FORMAT_NV21:
+      return V4L2_PIX_FMT_NV12M;
+
+    // Multi-planar formats.
+    case DRM_FORMAT_YUV420:
+      return V4L2_PIX_FMT_YUV420M;
+    case DRM_FORMAT_YVU420:
+      return V4L2_PIX_FMT_YVU420M;
+  }
+
+  LOGF(ERROR) << "Could not convert format " << FormatToString(handle->format)
+              << " to V4L2 pixel format";
+  return 0;
 }
 
 }  // namespace arc
