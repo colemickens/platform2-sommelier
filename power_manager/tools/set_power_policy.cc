@@ -112,6 +112,15 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(battery_idle_delay,
                -1,
                "Delay before idle action on battery power, in seconds");
+  DEFINE_int32(dim_wake_lock,
+               -1,
+               "Report dim wake lock (1 is true, 0 is false, -1 is unset");
+  DEFINE_int32(screen_wake_lock,
+               -1,
+               "Report screen wake lock (1 is true, 0 is false, -1 is unset");
+  DEFINE_int32(system_wake_lock,
+               -1,
+               "Report system wake lock (1 is true, 0 is false, -1 is unset");
   DEFINE_int32(use_audio_activity,
                -1,
                "Honor audio activity (1 is true, 0 is false, -1 is unset");
@@ -180,6 +189,9 @@ int main(int argc, char* argv[]) {
   SET_BOOL_FIELD(use_video_activity, policy);
   SET_BOOL_FIELD(wait_for_initial_user_activity, policy);
   SET_BOOL_FIELD(force_nonzero_brightness_for_user_activity, policy);
+  SET_BOOL_FIELD(dim_wake_lock, policy);
+  SET_BOOL_FIELD(screen_wake_lock, policy);
+  SET_BOOL_FIELD(system_wake_lock, policy);
 
   SET_DOUBLE_FIELD(ac_brightness_percent, policy, 0.0);
   SET_DOUBLE_FIELD(battery_brightness_percent, policy, 0.0);

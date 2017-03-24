@@ -1185,6 +1185,81 @@ TEST_F(StateControllerTest, IdleWarnings) {
             delegate_.GetActions());
 }
 
+// Tests that wake locks reported via policy messages defer actions
+// appropriately.
+TEST_F(StateControllerTest, WakeLocks) {
+  Init();
+
+  const base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(60);
+  const base::TimeDelta kOffDelay = base::TimeDelta::FromSeconds(70);
+  const base::TimeDelta kLockDelay = base::TimeDelta::FromSeconds(80);
+  const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(90);
+
+  PowerManagementPolicy policy;
+  policy.mutable_ac_delays()->set_screen_dim_ms(kDimDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_screen_off_ms(kOffDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_screen_lock_ms(kLockDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_idle_ms(kIdleDelay.InMilliseconds());
+  policy.set_ac_idle_action(PowerManagementPolicy_Action_SUSPEND);
+  policy.set_system_wake_lock(true);
+  controller_.HandlePolicyChange(policy);
+
+  // Step the time forward and check that the system doesn't suspend.
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kOffDelay));
+  EXPECT_EQ(kScreenOff, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kLockDelay));
+  EXPECT_EQ(kScreenLock, delegate_.GetActions());
+  EXPECT_TRUE(test_api_.action_timer_time().is_null());
+
+  // Sending an updated policy with a on-but-dimmed wake lock should turn the
+  // screen on immediately but leave it dimmed.
+  policy.set_dim_wake_lock(true);
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(kScreenOn, delegate_.GetActions());
+
+  // A full-brightness wake lock should undim the screen.
+  policy.set_screen_wake_lock(true);
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(kScreenUndim, delegate_.GetActions());
+  controller_.HandleUserActivity();
+  EXPECT_EQ("", delegate_.GetActions());
+
+  // Set a dim wake lock. The screen should be dimmed but no further actions
+  // should be taken.
+  policy.set_screen_wake_lock(false);
+  policy.set_dim_wake_lock(true);
+  policy.set_system_wake_lock(false);
+  controller_.HandlePolicyChange(policy);
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kDimDelay));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  EXPECT_TRUE(test_api_.action_timer_time().is_null());
+  controller_.HandleUserActivity();
+  EXPECT_EQ(kScreenUndim, delegate_.GetActions());
+
+  // Now try the same thing with a full-brightness wake lock. No actions should
+  // be scheduled.
+  policy.set_screen_wake_lock(true);
+  policy.set_dim_wake_lock(false);
+  policy.set_system_wake_lock(false);
+  controller_.HandlePolicyChange(policy);
+  EXPECT_TRUE(test_api_.action_timer_time().is_null());
+
+  // Remove the wake lock and check that the normal actions are performed.
+  policy.set_screen_wake_lock(false);
+  controller_.HandlePolicyChange(policy);
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kOffDelay));
+  EXPECT_EQ(kScreenOff, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kLockDelay));
+  EXPECT_EQ(kScreenLock, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+}
+
 // Tests that the system avoids suspending on lid-closed when an external
 // display is connected.
 TEST_F(StateControllerTest, DockedMode) {

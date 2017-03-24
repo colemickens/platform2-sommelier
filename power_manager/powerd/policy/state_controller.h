@@ -236,8 +236,8 @@ class StateController : public PrefsObserver {
   bool IsScreenLockBlocked() const;
 
   // Returns the last time at which activity occurred that should defer
-  // |idle_action_|, taking |on_ac_|, |use_audio_activity_|, and
-  // |use_video_activity_| into account.
+  // |idle_action_|, taking |on_ac_|, |use_audio_activity_|,
+  // |use_video_activity_|, and |*_wake_lock_| into account.
   base::TimeTicks GetLastActivityTimeForIdle(base::TimeTicks now) const;
 
   // Returns the last time at which activity occurred that should defer the
@@ -390,8 +390,12 @@ class StateController : public PrefsObserver {
   base::TimeTicks last_user_activity_time_;
   base::TimeTicks last_video_activity_time_;
 
-  // Information about audio activity.
+  // Information about audio activity and full-brightness, screen-on-but-dimmed,
+  // and system-level wake locks.
   std::unique_ptr<ActivityInfo> audio_activity_;
+  std::unique_ptr<ActivityInfo> screen_wake_lock_;
+  std::unique_ptr<ActivityInfo> dim_wake_lock_;
+  std::unique_ptr<ActivityInfo> system_wake_lock_;
 
   // Most recent externally-supplied policy.
   PowerManagementPolicy policy_;

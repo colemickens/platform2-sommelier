@@ -219,6 +219,16 @@ std::string StateController::GetPolicyDebugString(
            ActionToString(ProtoActionToAction(policy.lid_closed_action())) +
            " ";
   }
+  if (policy.has_screen_wake_lock()) {
+    str += "screen_wake_lock=" + base::IntToString(policy.screen_wake_lock()) +
+           " ";
+  }
+  if (policy.has_dim_wake_lock())
+    str += "dim_wake_lock=" + base::IntToString(policy.dim_wake_lock()) + " ";
+  if (policy.has_system_wake_lock()) {
+    str += "system_wake_lock=" + base::IntToString(policy.system_wake_lock()) +
+           " ";
+  }
   if (policy.has_use_audio_activity())
     str += "use_audio=" + base::IntToString(policy.use_audio_activity()) + " ";
   if (policy.has_use_video_activity())
@@ -253,7 +263,10 @@ std::string StateController::GetPolicyDebugString(
 
 StateController::StateController()
     : clock_(new Clock()),
-      audio_activity_(new ActivityInfo()) {}
+      audio_activity_(new ActivityInfo()),
+      screen_wake_lock_(new ActivityInfo()),
+      dim_wake_lock_(new ActivityInfo()),
+      system_wake_lock_(new ActivityInfo()) {}
 
 StateController::~StateController() {
   if (prefs_)
@@ -376,6 +389,12 @@ void StateController::HandlePolicyChange(const PowerManagementPolicy& policy) {
     got_initial_policy_ = true;
     MaybeStopInitialStateTimer();
   }
+
+  const base::TimeTicks now = clock_->GetCurrentTime();
+  screen_wake_lock_->SetActive(policy.screen_wake_lock(), now);
+  dim_wake_lock_->SetActive(policy.dim_wake_lock(), now);
+  system_wake_lock_->SetActive(policy.system_wake_lock(), now);
+
   UpdateSettingsAndState();
 }
 
@@ -569,23 +588,23 @@ void StateController::MaybeStopInitialStateTimer() {
 }
 
 bool StateController::IsIdleBlocked() const {
-  return use_audio_activity_ && audio_activity_->active();
+  return (use_audio_activity_ && audio_activity_->active()) ||
+         screen_wake_lock_->active() || dim_wake_lock_->active() ||
+         system_wake_lock_->active();
 }
 
 bool StateController::IsScreenDimBlocked() const {
-  // Nothing currently persistently blocks the screen from dimming; it's only
-  // deferred by periodic reports of activity.
-  return false;
+  return screen_wake_lock_->active();
 }
 
 bool StateController::IsScreenOffBlocked() const {
   // If HDMI audio is active, the screen needs to be kept on.
-  return IsScreenDimBlocked() ||
+  return IsScreenDimBlocked() || dim_wake_lock_->active() ||
          (delegate_->IsHdmiAudioActive() && audio_activity_->active());
 }
 
 bool StateController::IsScreenLockBlocked() const {
-  return IsScreenDimBlocked();
+  return IsScreenDimBlocked() || dim_wake_lock_->active();
 }
 
 base::TimeTicks StateController::GetLastActivityTimeForIdle(
@@ -596,6 +615,12 @@ base::TimeTicks StateController::GetLastActivityTimeForIdle(
     last_time = std::max(last_time, audio_activity_->GetLastActiveTime(now));
   if (use_video_activity_)
     last_time = std::max(last_time, last_video_activity_time_);
+
+  // All types of wake locks defer the idle action.
+  last_time = std::max(last_time, screen_wake_lock_->GetLastActiveTime(now));
+  last_time = std::max(last_time, dim_wake_lock_->GetLastActiveTime(now));
+  last_time = std::max(last_time, system_wake_lock_->GetLastActiveTime(now));
+
   return last_time;
 }
 
@@ -605,12 +630,19 @@ base::TimeTicks StateController::GetLastActivityTimeForScreenDim(
       waiting_for_initial_user_activity() ? now : last_user_activity_time_;
   if (use_video_activity_)
     last_time = std::max(last_time, last_video_activity_time_);
+
+  // Only full-brightness wake locks keep the screen from dimming.
+  last_time = std::max(last_time, screen_wake_lock_->GetLastActiveTime(now));
+
   return last_time;
 }
 
 base::TimeTicks StateController::GetLastActivityTimeForScreenOff(
     base::TimeTicks now) const {
   base::TimeTicks last_time = GetLastActivityTimeForScreenDim(now);
+
+  // On-but-dimmed wake locks keep the screen on.
+  last_time = std::max(last_time, dim_wake_lock_->GetLastActiveTime(now));
 
   // If HDMI audio is active, the screen needs to be kept on.
   if (delegate_->IsHdmiAudioActive())
@@ -621,7 +653,10 @@ base::TimeTicks StateController::GetLastActivityTimeForScreenOff(
 
 base::TimeTicks StateController::GetLastActivityTimeForScreenLock(
     base::TimeTicks now) const {
-  return GetLastActivityTimeForScreenDim(now);
+  // On-but-dimmed wake locks also keep the screen from locking.
+  return std::max(
+      GetLastActivityTimeForScreenDim(now),
+      dim_wake_lock_->GetLastActiveTime(now));
 }
 
 void StateController::UpdateLastUserActivityTime() {
@@ -795,6 +830,13 @@ void StateController::UpdateSettingsAndState() {
             << " lid_closed=" << ActionToString(lid_closed_action_)
             << " use_audio=" << use_audio_activity_
             << " use_video=" << use_video_activity_;
+  if (screen_wake_lock_->active() || dim_wake_lock_->active() ||
+      system_wake_lock_->active()) {
+    LOG(INFO) << "Wake locks:"
+              << (screen_wake_lock_->active() ? " screen" : "")
+              << (dim_wake_lock_->active() ? " dim" : "")
+              << (system_wake_lock_->active() ? " system" : "");
+  }
   if (wait_for_initial_user_activity_) {
     LOG(INFO) << "Deferring inactivity-triggered actions until user activity "
               << "is observed each time a session starts";
