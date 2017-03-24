@@ -5,147 +5,65 @@
 #include <stdio.h>
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/json/json_writer.h>
 #include <base/memory/ptr_util.h>
 #include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
-#include <dbus-c++/dbus.h>
-#include <debugd/src/dbus_utils.h>
 
-#include "dbus_proxies/org.freedesktop.DBus.Properties.h"
+#include "debugd/src/helpers/system_service_proxy.h"
 
-using base::DictionaryValue;
-using base::ListValue;
-using base::Value;
-using std::map;
-using std::string;
+namespace debugd {
+namespace {
 
-class DBusPropertiesProxy : public org::freedesktop::DBus::Properties_proxy,
-                            public DBus::ObjectProxy {
- public:
-  DBusPropertiesProxy(DBus::Connection* connection,
-                      const string& path,
-                      const string& service)
-      : DBus::ObjectProxy(*connection, path, service.c_str()) {}
+std::unique_ptr<base::Value> CollectWiMaxStatus() {
+  auto proxy =
+      SystemServiceProxy::Create(wimax_manager::kWiMaxManagerServiceName);
+  if (!proxy)
+    return base::MakeUnique<base::DictionaryValue>();
 
-  ~DBusPropertiesProxy() override = default;
-};
+  // Gets the manager properties from which we can identify the list of device
+  // object paths.
+  auto manager_properties = proxy->GetProperties(
+      wimax_manager::kWiMaxManagerInterface,
+      dbus::ObjectPath(wimax_manager::kWiMaxManagerServicePath));
+  if (!manager_properties)
+    return base::MakeUnique<base::DictionaryValue>();
 
-class WiMaxStatus {
- public:
-  explicit WiMaxStatus(DBus::Connection* connection)
-      : connection_(connection) {}
+  // Gets the device properties of all listed devices.
+  auto device_paths = proxy->GetObjectPaths(*manager_properties,
+                                            wimax_manager::kDevicesProperty);
+  auto devices = proxy->BuildObjectPropertiesMap(
+      wimax_manager::kWiMaxManagerDeviceInterface, device_paths);
 
-  ~WiMaxStatus() = default;
-
-  string GetJsonOutput() {
-    string json;
-    std::unique_ptr<DictionaryValue> manager_properties(GetManagerProperties());
-    if (manager_properties) {
-      base::JSONWriter::WriteWithOptions(
-          *manager_properties, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
-    }
-    return json;
+  // Each device is associated with a list of network object paths. Expand the
+  // network object paths into network properties.
+  for (const auto& device_path : device_paths) {
+    base::DictionaryValue* device_properties = nullptr;
+    CHECK(devices->GetDictionary(device_path.value(), &device_properties));
+    auto network_paths = proxy->GetObjectPaths(
+        *device_properties, wimax_manager::kNetworksProperty);
+    auto networks = proxy->BuildObjectPropertiesMap(
+        wimax_manager::kWiMaxManagerNetworkInterface, network_paths);
+    device_properties->SetWithoutPathExpansion(wimax_manager::kNetworksProperty,
+                                               std::move(device_properties));
   }
 
- private:
-  std::unique_ptr<DictionaryValue> GetDBusProperties(const string& path,
-                                                     const string& service,
-                                                     const string& interface) {
-    DBusPropertiesProxy properties_proxy(connection_, path, service);
-    map<string, DBus::Variant> properties_map;
-    try {
-      properties_map = properties_proxy.GetAll(interface);
-    } catch (const DBus::Error& error) {
-      return nullptr;
-    }
+  manager_properties->SetWithoutPathExpansion(wimax_manager::kDevicesProperty,
+                                              std::move(devices));
+  return std::move(manager_properties);
+}
 
-    std::unique_ptr<Value> properties_value;
-    if (!debugd::DBusPropertyMapToValue(properties_map, &properties_value))
-      return nullptr;
-
-    return DictionaryValue::From(std::move(properties_value));
-  }
-
-  std::unique_ptr<DictionaryValue> ExpandNetworkPathsToProperties(
-      std::unique_ptr<DictionaryValue> device_properties) {
-    auto networks = base::MakeUnique<ListValue>();
-    const ListValue* network_paths = nullptr;
-    if (device_properties->GetList(wimax_manager::kNetworksProperty,
-                                   &network_paths)) {
-      for (size_t i = 0; i < network_paths->GetSize(); ++i) {
-        string network_path;
-        if (!network_paths->GetString(i, &network_path))
-          continue;
-
-        auto network_properties =
-            GetDBusProperties(network_path,
-                              wimax_manager::kWiMaxManagerServiceName,
-                              wimax_manager::kWiMaxManagerNetworkInterface);
-        if (!network_properties)
-          continue;
-
-        networks->Append(std::move(network_properties));
-      }
-    }
-    device_properties->Set(wimax_manager::kNetworksProperty,
-                           std::move(networks));
-    return device_properties;
-  }
-
-  std::unique_ptr<DictionaryValue> ExpandDevicePathsToProperties(
-      std::unique_ptr<DictionaryValue> manager_properties) {
-    auto devices = base::MakeUnique<ListValue>();
-    const ListValue* device_paths = nullptr;
-    if (manager_properties->GetList(wimax_manager::kDevicesProperty,
-                                    &device_paths)) {
-      for (size_t i = 0; i < device_paths->GetSize(); ++i) {
-        string device_path;
-        if (!device_paths->GetString(i, &device_path))
-          continue;
-
-        auto device_properties =
-            GetDBusProperties(device_path,
-                              wimax_manager::kWiMaxManagerServiceName,
-                              wimax_manager::kWiMaxManagerDeviceInterface);
-        if (!device_properties)
-          continue;
-
-        device_properties =
-            ExpandNetworkPathsToProperties(std::move(device_properties));
-        devices->Append(std::move(device_properties));
-      }
-    }
-    manager_properties->Set(wimax_manager::kDevicesProperty,
-                            std::move(devices));
-    return manager_properties;
-  }
-
-  std::unique_ptr<DictionaryValue> GetManagerProperties() {
-    auto manager_properties =
-        GetDBusProperties(wimax_manager::kWiMaxManagerServicePath,
-                          wimax_manager::kWiMaxManagerServiceName,
-                          wimax_manager::kWiMaxManagerInterface);
-    if (manager_properties) {
-      manager_properties =
-          ExpandDevicePathsToProperties(std::move(manager_properties));
-    }
-    return manager_properties;
-  }
-
- private:
-  DBus::Connection* connection_;
-
-  DISALLOW_COPY_AND_ASSIGN(WiMaxStatus);
-};
+}  // namespace
+}  // namespace debugd
 
 int main() {
-  DBus::BusDispatcher dispatcher;
-  DBus::default_dispatcher = &dispatcher;
-  DBus::Connection connection = DBus::Connection::SystemBus();
-  WiMaxStatus status(&connection);
-  printf("%s\n", status.GetJsonOutput().c_str());
+  auto result = debugd::CollectWiMaxStatus();
+  std::string json;
+  base::JSONWriter::WriteWithOptions(
+      *result, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
+  printf("%s\n", json.c_str());
   return 0;
 }
