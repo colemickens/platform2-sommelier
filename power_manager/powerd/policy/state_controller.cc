@@ -212,41 +212,7 @@ std::string StateController::GetPolicyDebugString(
   return str.empty() ? "[empty]" : str;
 }
 
-StateController::StateController()
-    : delegate_(NULL),
-      prefs_(NULL),
-      clock_(new Clock),
-      initialized_(false),
-      got_initial_display_mode_(false),
-      got_initial_policy_(false),
-      power_source_(PowerSource::AC),
-      lid_state_(LidState::NOT_PRESENT),
-      session_state_(SessionState::STOPPED),
-      updater_state_(UpdaterState::IDLE),
-      display_mode_(DisplayMode::NORMAL),
-      screen_dimmed_(false),
-      screen_turned_off_(false),
-      requested_screen_lock_(false),
-      sent_idle_warning_(false),
-      idle_action_performed_(false),
-      lid_closed_action_performed_(false),
-      turned_panel_off_for_docked_mode_(false),
-      resend_idle_warning_(false),
-      saw_user_activity_soon_after_screen_dim_or_off_(false),
-      saw_user_activity_during_current_session_(false),
-      require_usb_input_device_to_suspend_(false),
-      avoid_suspend_when_headphone_jack_plugged_(false),
-      disable_idle_suspend_(false),
-      allow_docked_mode_(false),
-      ignore_external_policy_(false),
-      tpm_dictionary_attack_count_(0),
-      tpm_dictionary_attack_suspend_threshold_(0),
-      audio_is_active_(false),
-      idle_action_(Action::DO_NOTHING),
-      lid_closed_action_(Action::DO_NOTHING),
-      use_audio_activity_(true),
-      use_video_activity_(true),
-      wait_for_initial_user_activity_(false) {}
+StateController::StateController() : clock_(new Clock) {}
 
 StateController::~StateController() {
   if (prefs_)

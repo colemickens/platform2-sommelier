@@ -277,19 +277,19 @@ class StateController : public PrefsObserver {
   // weren't received in a reasonable amount of time after Init() was called.
   void HandleInitialStateTimeout();
 
-  Delegate* delegate_;  // not owned
+  Delegate* delegate_ = nullptr;  // not owned
 
-  PrefsInterface* prefs_;  // not owned
+  PrefsInterface* prefs_ = nullptr;  // not owned
 
   std::unique_ptr<Clock> clock_;
 
   // Has Init() been called?
-  bool initialized_;
+  bool initialized_ = false;
 
   // Have initial values for |display_mode_| and |policy_| been received? The
   // lid-closed action is deferred while waiting for the initial state.
-  bool got_initial_display_mode_;
-  bool got_initial_policy_;
+  bool got_initial_display_mode_ = false;
+  bool got_initial_policy_ = false;
 
   // Runs HandleActionTimeout().
   base::OneShotTimer action_timer_;
@@ -301,36 +301,36 @@ class StateController : public PrefsObserver {
   base::TimeTicks action_timer_time_for_testing_;
 
   // Current power source.
-  PowerSource power_source_;
+  PowerSource power_source_ = PowerSource::AC;
 
   // Current state of the lid.
-  LidState lid_state_;
+  LidState lid_state_ = LidState::NOT_PRESENT;
 
   // Current user session state.
-  SessionState session_state_;
+  SessionState session_state_ = SessionState::STOPPED;
 
   // Current system update state.
-  UpdaterState updater_state_;
+  UpdaterState updater_state_ = UpdaterState::IDLE;
 
   // Whether the system is presenting or not.
-  DisplayMode display_mode_;
+  DisplayMode display_mode_ = DisplayMode::NORMAL;
 
   // These track whether various actions have already been performed by
   // UpdateState().
-  bool screen_dimmed_;
-  bool screen_turned_off_;
-  bool requested_screen_lock_;
-  bool sent_idle_warning_;
-  bool idle_action_performed_;
-  bool lid_closed_action_performed_;
-  bool turned_panel_off_for_docked_mode_;
+  bool screen_dimmed_ = false;
+  bool screen_turned_off_ = false;
+  bool requested_screen_lock_ = false;
+  bool sent_idle_warning_ = false;
+  bool idle_action_performed_ = false;
+  bool lid_closed_action_performed_ = false;
+  bool turned_panel_off_for_docked_mode_ = false;
 
   // Set to true by UpdateSettingsAndState() if UpdateState() should send
   // another warning if the delay has elapsed, even if |sent_idle_warning_| is
   // true. Warnings contain the remaining time until the idle action will be
   // performed, so they are re-sent when this interval is likely to have
   // changed.
-  bool resend_idle_warning_;
+  bool resend_idle_warning_ = false;
 
   // Time at which the screen was turned off, or null if
   // |screen_turned_off_| is false.  Used for updating
@@ -341,47 +341,47 @@ class StateController : public PrefsObserver {
   // after it was turned off (which can result in delays being lengthened
   // to not annoy the user the next time).  Reset when the session state
   // changes.
-  bool saw_user_activity_soon_after_screen_dim_or_off_;
+  bool saw_user_activity_soon_after_screen_dim_or_off_ = false;
 
   // True if user activity has been observed during the current session.
-  bool saw_user_activity_during_current_session_;
+  bool saw_user_activity_during_current_session_ = false;
 
   // Should the system only idle-suspend if a USB input device is
   // connected?  This is controlled by the
   // |kRequireUsbInputDeviceToSuspendPref| pref and set on hardware that
   // doesn't wake in response to Bluetooth input devices.
-  bool require_usb_input_device_to_suspend_;
+  bool require_usb_input_device_to_suspend_ = false;
 
   // Should the system avoid suspending when something is plugged in to the
   // headphone jack? This is controlled by the
   // |kAvoidSuspendWhenHeadphoneJackPluggedPref| pref and set for hardware that
   // generates noise on the headphone jack when suspended.
-  bool avoid_suspend_when_headphone_jack_plugged_;
+  bool avoid_suspend_when_headphone_jack_plugged_ = false;
 
   // Should the system be prevented from suspending in response to
   // inactivity?  This is controlled by the |kDisableIdleSuspendPref| pref
   // and overrides |policy_|.
-  bool disable_idle_suspend_;
+  bool disable_idle_suspend_ = false;
 
   // True if docked mode is allowed.
-  bool allow_docked_mode_;
+  bool allow_docked_mode_ = false;
 
   // Should |policy_| be ignored?  Used by tests and developers.
-  bool ignore_external_policy_;
+  bool ignore_external_policy_ = false;
 
   // TPM dictionary-attack counter value.
-  int tpm_dictionary_attack_count_;
+  int tpm_dictionary_attack_count_ = 0;
 
   // |tpm_dictionary_attack_count_| value at or above which the system will
   // suspend instead of shutting down in some cases (see
   // http://crbug.com/462428), or 0 if disabled.
-  int tpm_dictionary_attack_suspend_threshold_;
+  int tpm_dictionary_attack_suspend_threshold_ = 0;
 
   base::TimeTicks last_user_activity_time_;
   base::TimeTicks last_video_activity_time_;
 
   // Is audio currently active?
-  bool audio_is_active_;
+  bool audio_is_active_ = false;
 
   // If audio is inactive, the time at which it transitioned from the active
   // state to the inactive state. Unset if audio is active.
@@ -391,12 +391,12 @@ class StateController : public PrefsObserver {
   PowerManagementPolicy policy_;
 
   // Current settings (|pref_*| with |policy_| layered on top).
-  Action idle_action_;
-  Action lid_closed_action_;
+  Action idle_action_ = Action::DO_NOTHING;
+  Action lid_closed_action_ = Action::DO_NOTHING;
   Delays delays_;
-  bool use_audio_activity_;
-  bool use_video_activity_;
-  bool wait_for_initial_user_activity_;
+  bool use_audio_activity_ = true;
+  bool use_video_activity_ = true;
+  bool wait_for_initial_user_activity_ = false;
 
   // Default settings loaded from prefs.
   Delays pref_ac_delays_;
