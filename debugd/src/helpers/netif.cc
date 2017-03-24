@@ -58,6 +58,8 @@
 #include <unistd.h>
 
 #include <memory>
+#include <string>
+#include <utility>
 
 #include <base/json/json_writer.h>
 #include <base/memory/ptr_util.h>
@@ -65,9 +67,8 @@
 #include <base/strings/string_util.h>
 #include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
-#include <debugd/src/dbus_utils.h>
-#include <shill/dbus_proxies/org.chromium.flimflam.Manager.h>
-#include <shill/dbus_proxies/org.chromium.flimflam.Service.h>
+
+#include "debugd/src/helpers/shill_proxy.h"
 
 using base::DictionaryValue;
 using base::ListValue;
@@ -137,31 +138,6 @@ std::unique_ptr<ListValue> flags2list(unsigned int flags) {
     return nullptr;
   return lv;
 }
-
-// Duplicated from </src/helpers/network_status.cc>. Need to figure out how to
-// refactor these.
-class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
-                     public DBus::ObjectProxy {
- public:
-  ManagerProxy(DBus::Connection* connection,
-               const char* path,
-               const char* service)
-      : DBus::ObjectProxy(*connection, path, service) {}
-  ~ManagerProxy() override = default;
-  void PropertyChanged(const std::string&, const DBus::Variant&) override {}
-  void StateChanged(const std::string&) override {}
-};
-
-class ServiceProxy : public org::chromium::flimflam::Service_proxy,
-                     public DBus::ObjectProxy {
- public:
-  ServiceProxy(DBus::Connection* connection,
-               const char* path,
-               const char* service)
-      : DBus::ObjectProxy(*connection, path, service) {}
-  ~ServiceProxy() override = default;
-  void PropertyChanged(const std::string&, const DBus::Variant&) override {}
-};
 
 class NetInterface {
  public:
@@ -257,34 +233,31 @@ std::string DevicePathToName(const std::string& path) {
 }
 
 void AddSignalStrengths(
-    std::map<std::string, std::unique_ptr<NetInterface>> *interfaces) {
-  DBus::BusDispatcher dispatcher;
-  DBus::default_dispatcher = &dispatcher;
-  DBus::Connection connection = DBus::Connection::SystemBus();
-  ManagerProxy manager(&connection,
-                       shill::kFlimflamServicePath,
-                       shill::kFlimflamServiceName);
+    std::map<std::string, std::unique_ptr<NetInterface>>* interfaces) {
+  auto proxy = debugd::ShillProxy::Create();
+  if (!proxy)
+    return;
 
-  std::map<std::string, DBus::Variant> props = manager.GetProperties();
-  if (props.count("Services") != 1)
+  auto manager_properties =
+      proxy->GetProperties(shill::kFlimflamManagerInterface,
+                           dbus::ObjectPath(shill::kFlimflamServicePath));
+  if (!manager_properties)
     return;
-  DBus::Variant& devices = props["Services"];
-  if (strcmp(devices.signature().c_str(), "ao"))
-    return;
-  std::vector<DBus::Path> paths = devices;
-  for (const auto& path : paths) {
-    ServiceProxy service(
-        &connection, path.c_str(), shill::kFlimflamServiceName);
-    std::map<std::string, DBus::Variant> props = service.GetProperties();
-    if (   props.count("Strength") != 1
-        || props.count("Name") != 1
-        || props.count("Device") != 1)
+
+  auto service_paths =
+      proxy->GetObjectPaths(*manager_properties, shill::kServicesProperty);
+  for (const auto& service_path : service_paths) {
+    auto service_properties =
+        proxy->GetProperties(shill::kFlimflamServiceInterface, service_path);
+    int strength;
+    std::string name;
+    std::string device;
+    if (!service_properties->GetInteger("Strength", &strength) ||
+        !service_properties->GetString("Name", &name) ||
+        !service_properties->GetString("Device", &device)) {
       continue;
-    uint8_t strength = props["Strength"];
-    std::string name = props["Name"];
-    DBus::Variant& varpath = props["Device"];
-    DBus::Path devpath = varpath;
-    std::string devname = DevicePathToName(devpath);
+    }
+    std::string devname = DevicePathToName(device);
     if (interfaces->count(devname)) {
       interfaces->find(devname)->second->AddSignalStrength(name, strength);
     }
