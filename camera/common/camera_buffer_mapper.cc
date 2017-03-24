@@ -24,7 +24,7 @@ namespace arc {
 CameraBufferMapper* CameraBufferMapper::GetInstance() {
   static CameraBufferMapper instance;
   if (!instance.gbm_device_) {
-    LOG(ERROR) << "Failed to create GBM device for CameraBufferMapper";
+    LOGF(ERROR) << "Failed to create GBM device for CameraBufferMapper";
     return nullptr;
   }
   return &instance;
@@ -68,8 +68,8 @@ int CameraBufferMapper::Register(buffer_handle_t buffer) {
       bo_info->bo = gbm_bo_import(gbm_device_.get(), GBM_BO_IMPORT_FD_PLANAR,
                                   &import_data, usage);
       if (!bo_info->bo) {
-        LOG(ERROR) << "Failed to import buffer 0x" << std::hex
-                   << handle->buffer_id;
+        LOGF(ERROR) << "Failed to import buffer 0x" << std::hex
+                    << handle->buffer_id;
         return -EIO;
       }
       bo_info->usage = 1;
@@ -80,7 +80,7 @@ int CameraBufferMapper::Register(buffer_handle_t buffer) {
     return 0;
   } else if (handle->type == SHM) {
     // TODO(jcliang): Implement register for shared memory buffers.
-    LOG(ERROR)
+    LOGF(ERROR)
         << "Register for shared memory buffer handle is not yet implemented";
     return -EINVAL;
   } else {
@@ -100,7 +100,7 @@ int CameraBufferMapper::Deregister(buffer_handle_t buffer) {
   if (handle->type == GRALLOC) {
     auto bo_cache = gbm_bo_.find(buffer);
     if (bo_cache == gbm_bo_.end()) {
-      LOG(ERROR) << "Unknown buffer 0x" << std::hex << handle->buffer_id;
+      LOGF(ERROR) << "Unknown buffer 0x" << std::hex << handle->buffer_id;
       return -EINVAL;
     }
     if (!--bo_cache->second->usage) {
@@ -117,7 +117,7 @@ int CameraBufferMapper::Deregister(buffer_handle_t buffer) {
     return 0;
   } else if (handle->type == SHM) {
     // TODO(jcliang): Implement unregister for shared memory buffers.
-    LOG(ERROR)
+    LOGF(ERROR)
         << "Unegister for shared memory buffer handle is not yet implemented";
     return -EINVAL;
   } else {
@@ -142,8 +142,8 @@ int CameraBufferMapper::Lock(buffer_handle_t buffer,
     return -EINVAL;
   }
   if (num_planes > 1) {
-    LOG(ERROR) << "Lock called on multi-planar buffer 0x" << std::hex
-               << handle->buffer_id;
+    LOGF(ERROR) << "Lock called on multi-planar buffer 0x" << std::hex
+                << handle->buffer_id;
     return -EINVAL;
   }
 
@@ -170,8 +170,8 @@ int CameraBufferMapper::LockYCbCr(buffer_handle_t buffer,
     return -EINVAL;
   }
   if (num_planes < 2) {
-    LOG(ERROR) << "Lock called on single-planar buffer 0x" << std::hex
-               << handle->buffer_id;
+    LOGF(ERROR) << "Lock called on single-planar buffer 0x" << std::hex
+                << handle->buffer_id;
     return -EINVAL;
   }
 
@@ -202,8 +202,8 @@ int CameraBufferMapper::LockYCbCr(buffer_handle_t buffer,
         break;
 
       default:
-        LOG(ERROR) << "Unsupported semi-planar format: "
-                   << FormatToString(handle->format);
+        LOGF(ERROR) << "Unsupported semi-planar format: "
+                    << FormatToString(handle->format);
         return -EINVAL;
     }
   } else {  // num_planes == 3
@@ -220,8 +220,8 @@ int CameraBufferMapper::LockYCbCr(buffer_handle_t buffer,
         break;
 
       default:
-        LOG(ERROR) << "Unsupported semi-planar format: "
-                   << FormatToString(handle->format);
+        LOGF(ERROR) << "Unsupported semi-planar format: "
+                    << FormatToString(handle->format);
         return -EINVAL;
     }
   }
@@ -256,8 +256,8 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
   }
   if (!(plane < kMaxPlanes && plane < num_planes &&
         (x + width) <= handle->width && (y + height) <= handle->height)) {
-    LOG(ERROR) << "Invalid args: x=" << x << " y=" << y << " width=" << width
-               << " height=" << height << " plane=" << plane;
+    LOGF(ERROR) << "Invalid args: x=" << x << " y=" << y << " width=" << width
+                << " height=" << height << " plane=" << plane;
     return MAP_FAILED;
   }
 
@@ -284,8 +284,8 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
       info->type = static_cast<enum BufferType>(handle->type);
       auto bo_cache = gbm_bo_.find(buffer);
       if (bo_cache == gbm_bo_.end()) {
-        LOG(ERROR) << "Buffer 0x" << std::hex << handle->buffer_id
-                   << " is not registered";
+        LOGF(ERROR) << "Buffer 0x" << std::hex << handle->buffer_id
+                    << " is not registered";
         return MAP_FAILED;
       }
       info->bo = bo_cache->second->bo;
@@ -299,7 +299,7 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
     void* out_addr = gbm_bo_map(info->bo, x, y, width, height, flags, &stride,
                                 &info->map_data, plane);
     if (out_addr == MAP_FAILED) {
-      LOG(ERROR) << "Failed to map buffer: " << strerror(errno);
+      LOGF(ERROR) << "Failed to map buffer: " << strerror(errno);
       return MAP_FAILED;
     }
     // Only increase the usage count and insert |info| into the cache after the
@@ -313,7 +313,7 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
     return out_addr;
   } else if (handle->type == SHM) {
     // TODO(jcliang): Implement map for shared memory buffers.
-    LOG(ERROR) << "Map for shared memory buffer handle is not yet implemented";
+    LOGF(ERROR) << "Map for shared memory buffer handle is not yet implemented";
     return MAP_FAILED;
   } else {
     NOTREACHED() << "Invalid buffer type: " << handle->type;
@@ -332,8 +332,8 @@ int CameraBufferMapper::Unmap(buffer_handle_t buffer, uint32_t plane) {
   auto key = MappedBufferInfoCache::key_type(buffer, plane);
   auto info_cache = buffer_info_.find(key);
   if (info_cache == buffer_info_.end()) {
-    LOG(ERROR) << "Plane " << plane << " of buffer 0x" << std::hex
-               << handle->buffer_id << " was not mapped";
+    LOGF(ERROR) << "Plane " << plane << " of buffer 0x" << std::hex
+                << handle->buffer_id << " was not mapped";
     return -EINVAL;
   }
 
@@ -350,7 +350,7 @@ int CameraBufferMapper::Unmap(buffer_handle_t buffer, uint32_t plane) {
   } else if (info->type == SHM) {
     // TODO(jcliang): Implement unmap for shared memory buffers.
     buffer_info_.erase(info_cache);
-    LOG(ERROR)
+    LOGF(ERROR)
         << "Unmap for shared memory buffer handle is not yet implemented";
     return -EINVAL;
   }
@@ -422,7 +422,7 @@ int CameraBufferMapper::GetNumPlanes(buffer_handle_t buffer) {
       return 3;
   }
 
-  LOG(ERROR) << "Unknown format: " << FormatToString(handle->format);
+  LOGF(ERROR) << "Unknown format: " << FormatToString(handle->format);
   return -EINVAL;
 }
 

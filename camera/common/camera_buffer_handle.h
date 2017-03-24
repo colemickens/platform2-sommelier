@@ -9,6 +9,7 @@
 
 #include <base/logging.h>
 
+#include "arc/common.h"
 #include "system/window.h"
 
 const uint32_t kCameraBufferMagic = 0xD1DAD1DA;
@@ -42,11 +43,11 @@ typedef struct camera_buffer_handle {
       buffer_handle_t handle) {
     auto h = reinterpret_cast<const struct camera_buffer_handle*>(handle);
     if (!h) {
-      LOG(ERROR) << "Invalid buffer handle";
+      LOGF(ERROR) << "Invalid buffer handle";
       return nullptr;
     }
     if (h->magic != kCameraBufferMagic) {
-      LOG(ERROR) << "Invalid buffer handle: magic=" << h->magic;
+      LOGF(ERROR) << "Invalid buffer handle: magic=" << h->magic;
       return nullptr;
     }
     return h;

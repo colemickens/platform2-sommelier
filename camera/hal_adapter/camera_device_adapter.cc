@@ -200,7 +200,7 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
 
   camera_buffer_handle_t* buffer_handle = new camera_buffer_handle_t();
   if (!buffer_handle) {
-    LOG(ERROR) << "Failed to allocate native handle";
+    LOGF(ERROR) << "Failed to allocate native handle";
     return -ENOMEM;
   }
   memset(buffer_handle, 0, sizeof(*buffer_handle));
@@ -268,7 +268,7 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::ProcessCaptureResult(
       if (release_fence != -1) {
         release_fence = dup(release_fence);
         if (release_fence == -1) {
-          LOG(ERROR) << "Failed to dup release_fence: " << strerror(errno);
+          LOGF(ERROR) << "Failed to dup release_fence: " << strerror(errno);
         }
       }
       fence_sync_thread_.task_runner()->PostTask(
@@ -295,7 +295,7 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::ProcessCaptureResult(
     if (release_fence != -1) {
       release_fence = dup(release_fence);
       if (release_fence == -1) {
-        LOG(ERROR) << "Failed to dup release_fence: " << strerror(errno);
+        LOGF(ERROR) << "Failed to dup release_fence: " << strerror(errno);
       }
     }
     fence_sync_thread_.task_runner()->PostTask(

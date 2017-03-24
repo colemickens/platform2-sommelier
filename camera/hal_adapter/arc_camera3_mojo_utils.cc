@@ -118,7 +118,7 @@ int DeserializeStreamBuffer(
 
   auto buffer_handle = buffer_handles_.find(ptr->buffer_id);
   if (buffer_handle == buffer_handles_.end()) {
-    LOG(ERROR) << "Invalid buffer id: " << ptr->buffer_id;
+    LOGF(ERROR) << "Invalid buffer id: " << ptr->buffer_id;
     return -EINVAL;
   }
   *out_buffer->buffer =
