@@ -293,17 +293,7 @@ void Camera3FrameFixture::GetWaiverKeys(std::set<int32_t>* waiver_keys) const {
     waiver_keys->insert(ANDROID_SENSOR_NOISE_PROFILE);
   }
 
-  // Keys for depth output capability
-  if (!cam_device_.static_info_->IsCapabilitySupported(
-          ANDROID_REQUEST_AVAILABLE_CAPABILITIES_DEPTH_OUTPUT)) {
-    waiver_keys->insert(ANDROID_LENS_POSE_ROTATION);
-    waiver_keys->insert(ANDROID_LENS_POSE_TRANSLATION);
-    waiver_keys->insert(ANDROID_LENS_INTRINSIC_CALIBRATION);
-    waiver_keys->insert(ANDROID_LENS_RADIAL_DISTORTION);
-  }
-
   // TODO: CONTROL_AE_REGIONS, CONTROL_AWB_REGIONS, CONTROL_AF_REGIONS?
-  // TODO: SENSOR_DYNAMIC_BLACK_LEVEL, SENSOR_DYNAMIC_WHITE_LEVEL
 
   if (cam_device_.static_info_->IsHardwareLevelAtLeastFull()) {
     return;
@@ -344,20 +334,15 @@ void Camera3FrameFixture::GetWaiverKeys(std::set<int32_t>* waiver_keys) const {
   // Keys not required if neither MANUAL_SENSOR nor READ_SENSOR_SETTINGS is
   // supported
   if (!cam_device_.static_info_->IsCapabilitySupported(
-          ANDROID_REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR) &&
-      !cam_device_.static_info_->IsCapabilitySupported(
-          ANDROID_REQUEST_AVAILABLE_CAPABILITIES_READ_SENSOR_SETTINGS)) {
-    waiver_keys->insert(ANDROID_SENSOR_EXPOSURE_TIME);
-    waiver_keys->insert(ANDROID_SENSOR_SENSITIVITY);
-    waiver_keys->insert(ANDROID_LENS_FOCUS_DISTANCE);
-    waiver_keys->insert(ANDROID_LENS_APERTURE);
-  }
-  if (!cam_device_.static_info_->IsCapabilitySupported(
           ANDROID_REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR)) {
+    waiver_keys->insert(ANDROID_SENSOR_EXPOSURE_TIME);
     waiver_keys->insert(ANDROID_SENSOR_FRAME_DURATION);
+    waiver_keys->insert(ANDROID_SENSOR_SENSITIVITY);
     waiver_keys->insert(ANDROID_BLACK_LEVEL_LOCK);
     waiver_keys->insert(ANDROID_LENS_FOCUS_RANGE);
+    waiver_keys->insert(ANDROID_LENS_FOCUS_DISTANCE);
     waiver_keys->insert(ANDROID_LENS_STATE);
+    waiver_keys->insert(ANDROID_LENS_APERTURE);
     waiver_keys->insert(ANDROID_LENS_FILTER_DENSITY);
   }
 }
