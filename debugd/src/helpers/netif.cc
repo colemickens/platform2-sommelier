@@ -195,7 +195,9 @@ bool NetInterface::Init() {
 void NetInterface::AddSignalStrength(const std::string& name, int strength) {
   if (!signal_strengths_)
     signal_strengths_ = base::MakeUnique<DictionaryValue>();
-  signal_strengths_->SetInteger(name, strength);
+  // Use DictionaryValue::SetIntegerWithoutPathExpansion instead of
+  // DictionaryValue::SetInteger as |name| may contain ".".
+  signal_strengths_->SetIntegerWithoutPathExpansion(name, strength);
 }
 
 void NetInterface::AddAddressTo(DictionaryValue *dv, struct sockaddr *sa) {
