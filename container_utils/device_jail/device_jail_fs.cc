@@ -186,7 +186,7 @@ static int djfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
     if (bytes_read == 0)
       break;
 
-    for (size_t i = 0; i < bytes_read;) {
+    for (ssize_t i = 0; i < bytes_read;) {
       auto d = reinterpret_cast<struct linux_dirent64*>(getdents_buf + i);
 
       base::FilePath full_path = base::FilePath(path).Append(d->d_name);

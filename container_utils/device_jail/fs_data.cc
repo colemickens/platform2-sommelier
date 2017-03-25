@@ -62,6 +62,9 @@ int FsData::GetStatForJail(const std::string& path, struct stat* file_stat) {
   case DeviceJailControl::AddResult::ALREADY_EXISTS:
     return stat(jail_path.c_str(), file_stat);
   }
+
+  LOG(FATAL) << "Unhandled AddDevice return";
+  return -ENOENT;
 }
 
 }  // namespace device_jail
