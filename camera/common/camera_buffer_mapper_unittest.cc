@@ -409,10 +409,10 @@ TEST_F(CameraBufferMapperTest, LockYCbCrTest) {
   EXPECT_EQ(
       cbm_->LockYCbCr(handle, 0, 0, 0, kBufferWidth, kBufferHeight, &ycbcr), 0);
   EXPECT_EQ(ycbcr.y, dummy_addr);
-  EXPECT_EQ(ycbcr.cb, reinterpret_cast<uint8_t*>(dummy_addr) + 1 +
-                          buffer->offsets[1] + 1);
-  EXPECT_EQ(ycbcr.cr,
+  EXPECT_EQ(ycbcr.cb,
             reinterpret_cast<uint8_t*>(dummy_addr) + 1 + buffer->offsets[1]);
+  EXPECT_EQ(ycbcr.cr, reinterpret_cast<uint8_t*>(dummy_addr) + 1 +
+                          buffer->offsets[1] + 1);
   EXPECT_EQ(ycbcr.ystride, buffer->strides[0]);
   EXPECT_EQ(ycbcr.cstride, buffer->strides[1]);
   EXPECT_EQ(ycbcr.chroma_step, 2);

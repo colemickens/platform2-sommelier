@@ -193,13 +193,13 @@ int CameraBufferMapper::LockYCbCr(buffer_handle_t buffer,
     out_ycbcr->chroma_step = 2;
     switch (handle->format) {
       case DRM_FORMAT_NV12:
-        out_ycbcr->cb = addr[1] + handle->offsets[1];
-        out_ycbcr->cr = addr[1] + handle->offsets[1] + 1;
+        out_ycbcr->cb = addr[1] + handle->offsets[1] + 1;
+        out_ycbcr->cr = addr[1] + handle->offsets[1];
         break;
 
       case DRM_FORMAT_NV21:
-        out_ycbcr->cb = addr[1] + handle->offsets[1] + 1;
-        out_ycbcr->cr = addr[1] + handle->offsets[1];
+        out_ycbcr->cb = addr[1] + handle->offsets[1];
+        out_ycbcr->cr = addr[1] + handle->offsets[1] + 1;
         break;
 
       default:
