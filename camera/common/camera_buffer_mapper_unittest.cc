@@ -203,23 +203,26 @@ class CameraBufferMapperTest : public ::testing::Test {
     EXPECT_EQ(::testing::Mock::VerifyAndClear(&gbm_), true);
   }
 
-  std::unique_ptr<camera_buffer_handle_t> CreateBuffer(uint32_t buffer_id,
-                                                       BufferType type,
-                                                       uint32_t format,
-                                                       uint32_t width,
-                                                       uint32_t height) {
+  std::unique_ptr<camera_buffer_handle_t> CreateBuffer(
+      uint32_t buffer_id,
+      BufferType type,
+      uint32_t drm_format,
+      uint32_t hal_pixel_format,
+      uint32_t width,
+      uint32_t height) {
     std::unique_ptr<camera_buffer_handle_t> buffer(new camera_buffer_handle_t);
     memset(buffer.get(), 0, sizeof(*buffer.get()));
     buffer->fds[0] = dummy_fd;
     buffer->magic = kCameraBufferMagic;
     buffer->buffer_id = buffer_id;
     buffer->type = type;
-    buffer->format = format;
+    buffer->drm_format = drm_format;
+    buffer->hal_pixel_format = hal_pixel_format;
     buffer->width = width;
     buffer->height = height;
     buffer->strides[0] = width;
     buffer->offsets[0] = 0;
-    switch (format) {
+    switch (drm_format) {
       case DRM_FORMAT_NV12:
       case DRM_FORMAT_NV21:
         buffer->strides[1] = width;
@@ -252,8 +255,9 @@ class CameraBufferMapperTest : public ::testing::Test {
 TEST_F(CameraBufferMapperTest, LockTest) {
   // Create a dummy buffer.
   const int kBufferWidth = 1280, kBufferHeight = 720;
-  auto buffer = CreateBuffer(1, GRALLOC, DRM_FORMAT_ABGR8888, kBufferWidth,
-                             kBufferHeight);
+  auto buffer = CreateBuffer(1, GRALLOC, DRM_FORMAT_XBGR8888,
+                             HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
+                             kBufferWidth, kBufferHeight);
   buffer_handle_t handle = reinterpret_cast<buffer_handle_t>(buffer.get());
 
   // Register the buffer.
@@ -308,7 +312,8 @@ TEST_F(CameraBufferMapperTest, LockYCbCrTest) {
   // Create a dummy buffer.
   const int kBufferWidth = 1280, kBufferHeight = 720;
   auto buffer =
-      CreateBuffer(1, GRALLOC, DRM_FORMAT_YUV420, kBufferWidth, kBufferHeight);
+      CreateBuffer(1, GRALLOC, DRM_FORMAT_YUV420,
+                   HAL_PIXEL_FORMAT_YCbCr_420_888, kBufferWidth, kBufferHeight);
   buffer_handle_t handle = reinterpret_cast<buffer_handle_t>(buffer.get());
 
   // Register the buffer.
@@ -391,7 +396,8 @@ TEST_F(CameraBufferMapperTest, LockYCbCrTest) {
 
   // Test semi-planar buffer.
   buffer =
-      CreateBuffer(2, GRALLOC, DRM_FORMAT_NV21, kBufferWidth, kBufferHeight);
+      CreateBuffer(2, GRALLOC, DRM_FORMAT_NV21, HAL_PIXEL_FORMAT_YCbCr_420_888,
+                   kBufferWidth, kBufferHeight);
   handle = reinterpret_cast<buffer_handle_t>(buffer.get());
 
   EXPECT_CALL(gbm_, GbmBoImport(&dummy_device, A<uint32_t>(), A<void*>(),

@@ -14,6 +14,7 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/logging.h>
+#include <drm_fourcc.h>
 
 #include "arc/camera_buffer_mapper.h"
 #include "arc/common.h"
@@ -188,15 +189,49 @@ int32_t CameraDeviceAdapter::Flush() {
   return camera_device_->ops->flush(camera_device_);
 }
 
+static bool IsMatchingFormat(mojom::HalPixelFormat hal_pixel_format,
+                             uint32_t drm_format) {
+  switch (hal_pixel_format) {
+    case mojom::HalPixelFormat::HAL_PIXEL_FORMAT_RGBA_8888:
+      return drm_format == DRM_FORMAT_ABGR8888;
+    case mojom::HalPixelFormat::HAL_PIXEL_FORMAT_RGBX_8888:
+      return drm_format == DRM_FORMAT_XBGR8888;
+    case mojom::HalPixelFormat::HAL_PIXEL_FORMAT_BGRA_8888:
+      return drm_format == DRM_FORMAT_ARGB8888;
+    case mojom::HalPixelFormat::HAL_PIXEL_FORMAT_YCrCb_420_SP:
+      return drm_format == DRM_FORMAT_NV12;
+    case mojom::HalPixelFormat::HAL_PIXEL_FORMAT_YCbCr_422_I:
+      return drm_format == DRM_FORMAT_YUYV;
+    case mojom::HalPixelFormat::HAL_PIXEL_FORMAT_BLOB:
+      return drm_format == DRM_FORMAT_R8;
+    case mojom::HalPixelFormat::HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
+      // We can't really check implementation defined formats.
+      return true;
+    case mojom::HalPixelFormat::HAL_PIXEL_FORMAT_YCbCr_420_888:
+      return (drm_format == DRM_FORMAT_YUV420 ||
+              drm_format == DRM_FORMAT_YVU420 ||
+              drm_format == DRM_FORMAT_NV21 || drm_format == DRM_FORMAT_NV12);
+    case mojom::HalPixelFormat::HAL_PIXEL_FORMAT_YV12:
+      return drm_format == DRM_FORMAT_YVU420;
+  }
+  return false;
+}
+
 int32_t CameraDeviceAdapter::RegisterBuffer(
     uint64_t buffer_id,
     mojom::Camera3DeviceOps::BufferType type,
     mojo::Array<mojo::ScopedHandle> fds,
-    uint32_t format,
+    uint32_t drm_format,
+    mojom::HalPixelFormat hal_pixel_format,
     uint32_t width,
     uint32_t height,
     mojo::Array<uint32_t> strides,
     mojo::Array<uint32_t> offsets) {
+  if (!IsMatchingFormat(hal_pixel_format, drm_format)) {
+    LOG(ERROR) << "HAL pixel format " << hal_pixel_format
+               << " does not match DRM format " << FormatToString(drm_format);
+    return -EINVAL;
+  }
   size_t num_planes = fds.size();
 
   camera_buffer_handle_t* buffer_handle = new camera_buffer_handle_t();
@@ -215,7 +250,8 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
   buffer_handle->magic = kCameraBufferMagic;
   buffer_handle->buffer_id = buffer_id;
   buffer_handle->type = static_cast<int32_t>(type);
-  buffer_handle->format = format;
+  buffer_handle->drm_format = drm_format;
+  buffer_handle->hal_pixel_format = static_cast<uint32_t>(hal_pixel_format);
   buffer_handle->width = width;
   buffer_handle->height = height;
   for (size_t i = 0; i < num_planes; ++i) {
@@ -227,8 +263,9 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
   buffer_handles_[buffer_id].reset(buffer_handle);
 
   VLOGF(1) << std::hex << "Buffer 0x" << buffer_id << " registered: "
-           << "format: " << FormatToString(format) << " dimension: " << std::dec
-           << width << "x" << height << " num_planes: " << num_planes;
+           << "format: " << FormatToString(drm_format)
+           << " dimension: " << std::dec << width << "x" << height
+           << " num_planes: " << num_planes;
   return 0;
 }
 

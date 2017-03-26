@@ -7,7 +7,7 @@ include pc_utils.mk
 
 ### Rules to generate the hal_adapter/arc_camera3_service binary.
 
-hal_adapter_PC_DEPS := libbrillo-$(BASE_VER) libmojo-$(BASE_VER)
+hal_adapter_PC_DEPS := libbrillo-$(BASE_VER) libmojo-$(BASE_VER) libdrm
 hal_adapter_CPPFLAGS := $(call get_pc_cflags,$(hal_adapter_PC_DEPS))
 hal_adapter_LDLIBS := $(call get_pc_libs,$(hal_adapter_PC_DEPS)) -ldl
 

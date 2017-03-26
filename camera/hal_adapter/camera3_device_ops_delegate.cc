@@ -70,7 +70,8 @@ void Camera3DeviceOpsDelegate::RegisterBuffer(
     uint64_t buffer_id,
     mojom::Camera3DeviceOps::BufferType type,
     mojo::Array<mojo::ScopedHandle> fds,
-    uint32_t format,
+    uint32_t drm_format,
+    mojom::HalPixelFormat hal_pixel_format,
     uint32_t width,
     uint32_t height,
     mojo::Array<uint32_t> strides,
@@ -79,8 +80,8 @@ void Camera3DeviceOpsDelegate::RegisterBuffer(
   VLOGF_ENTER();
   DCHECK(thread_checker_.CalledOnValidThread());
   callback.Run(camera_device_adapter_->RegisterBuffer(
-      buffer_id, type, std::move(fds), format, width, height,
-      std::move(strides), std::move(offsets)));
+      buffer_id, type, std::move(fds), drm_format, hal_pixel_format, width,
+      height, std::move(strides), std::move(offsets)));
 }
 
 void Camera3DeviceOpsDelegate::Close(const CloseCallback& callback) {

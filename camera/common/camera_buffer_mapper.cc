@@ -51,7 +51,7 @@ int CameraBufferMapper::Register(buffer_handle_t buffer) {
       memset(&import_data, 0, sizeof(import_data));
       import_data.width = handle->width;
       import_data.height = handle->height;
-      import_data.format = handle->format;
+      import_data.format = handle->drm_format;
       int num_planes = GetNumPlanes(buffer);
       if (num_planes <= 0) {
         return -EINVAL;
@@ -191,7 +191,7 @@ int CameraBufferMapper::LockYCbCr(buffer_handle_t buffer,
 
   if (num_planes == 2) {
     out_ycbcr->chroma_step = 2;
-    switch (handle->format) {
+    switch (handle->drm_format) {
       case DRM_FORMAT_NV12:
         out_ycbcr->cb = addr[1] + handle->offsets[1] + 1;
         out_ycbcr->cr = addr[1] + handle->offsets[1];
@@ -204,12 +204,12 @@ int CameraBufferMapper::LockYCbCr(buffer_handle_t buffer,
 
       default:
         LOGF(ERROR) << "Unsupported semi-planar format: "
-                    << FormatToString(handle->format);
+                    << FormatToString(handle->drm_format);
         return -EINVAL;
     }
   } else {  // num_planes == 3
     out_ycbcr->chroma_step = 1;
-    switch (handle->format) {
+    switch (handle->drm_format) {
       case DRM_FORMAT_YUV420:
         out_ycbcr->cb = addr[1] + handle->offsets[1];
         out_ycbcr->cr = addr[2] + handle->offsets[2];
@@ -222,7 +222,7 @@ int CameraBufferMapper::LockYCbCr(buffer_handle_t buffer,
 
       default:
         LOGF(ERROR) << "Unsupported semi-planar format: "
-                    << FormatToString(handle->format);
+                    << FormatToString(handle->drm_format);
         return -EINVAL;
     }
   }
@@ -266,7 +266,7 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
   VLOGF(1) << "\tfd: " << handle->fds[plane];
   VLOGF(1) << "\tbuffer_id: 0x" << std::hex << handle->buffer_id;
   VLOGF(1) << "\ttype: " << handle->type;
-  VLOGF(1) << "\tformat: " << FormatToString(handle->format);
+  VLOGF(1) << "\tformat: " << FormatToString(handle->drm_format);
   VLOGF(1) << "\twidth: " << handle->width;
   VLOGF(1) << "\theight: " << handle->height;
   VLOGF(1) << "\tstride: " << handle->strides[plane];
@@ -366,7 +366,7 @@ int CameraBufferMapper::GetNumPlanes(buffer_handle_t buffer) {
     return -EINVAL;
   }
 
-  switch (handle->format) {
+  switch (handle->drm_format) {
     case DRM_FORMAT_ABGR1555:
     case DRM_FORMAT_ABGR2101010:
     case DRM_FORMAT_ABGR4444:
@@ -423,7 +423,7 @@ int CameraBufferMapper::GetNumPlanes(buffer_handle_t buffer) {
       return 3;
   }
 
-  LOGF(ERROR) << "Unknown format: " << FormatToString(handle->format);
+  LOGF(ERROR) << "Unknown format: " << FormatToString(handle->drm_format);
   return -EINVAL;
 }
 
@@ -434,7 +434,7 @@ uint32_t CameraBufferMapper::GetV4L2PixelFormat(buffer_handle_t buffer) {
     return 0;
   }
 
-  switch (handle->format) {
+  switch (handle->drm_format) {
     case DRM_FORMAT_ARGB8888:
       return V4L2_PIX_FMT_ABGR32;
 
@@ -464,8 +464,8 @@ uint32_t CameraBufferMapper::GetV4L2PixelFormat(buffer_handle_t buffer) {
       return V4L2_PIX_FMT_YVU420M;
   }
 
-  LOGF(ERROR) << "Could not convert format " << FormatToString(handle->format)
-              << " to V4L2 pixel format";
+  LOGF(ERROR) << "Could not convert format "
+              << FormatToString(handle->drm_format) << " to V4L2 pixel format";
   return 0;
 }
 

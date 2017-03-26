@@ -29,7 +29,9 @@ typedef struct camera_buffer_handle {
   // BufferType.
   int32_t type;
   // The DRM fourcc code of the buffer.
-  uint32_t format;
+  uint32_t drm_format;
+  // The HAL pixel format of the buffer.
+  uint32_t hal_pixel_format;
   // The width of the buffer in pixels.
   uint32_t width;
   // The height of the buffer in pixels.

@@ -75,8 +75,9 @@ interface Camera3DeviceOps {
   };
 
   RegisterBuffer@6(uint64 buffer_id, BufferType type, array<handle> fds,
-                   uint32 format, uint32 width, uint32 height,
-                   array<uint32> strides, array<uint32> offsets) =>
+                   uint32 drm_format, HalPixelFormat hal_pixel_format,
+                   uint32 width, uint32 height, array<uint32> strides,
+                   array<uint32> offsets) =>
       (int32 result);
 
   Close@7() => (int32 result);
