@@ -165,13 +165,6 @@ void DebugDaemon::GetPerfOutputFd(
       duration_sec, perf_args, stdout_fd, &error);
 }
 
-void DebugDaemon::GetDebugLogs(const DBus::FileDescriptor& fd,
-                               DBus::Error& error) {  // NOLINT
-  debug_logs_tool_->GetDebugLogs(true,  // is_compressed,
-                                 fd,
-                                 &error);
-}
-
 void DebugDaemon::DumpDebugLogs(const bool& is_compressed,
                                 const DBus::FileDescriptor& fd,
                                 DBus::Error& error) {  // NOLINT
