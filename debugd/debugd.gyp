@@ -124,6 +124,7 @@
       'type': 'static_library',
       'sources': [
         'src/dbus_utils.cc',
+        'src/helpers/system_service_proxy.cc',
       ],
     },
     {
