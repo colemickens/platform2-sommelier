@@ -237,7 +237,6 @@
       'type': 'executable',
       'dependencies': [
         'debugd_dbus_utils',
-        'debugd-proxies',
       ],
       'sources': [
         'src/helpers/network_status.cc',
