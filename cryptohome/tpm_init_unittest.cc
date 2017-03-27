@@ -313,19 +313,8 @@ TEST_F(TpmInitTest, ContinueInterruptedInitializeSrk) {
   EXPECT_FALSE(FileExists(kTpmOwnedFile));
   ::testing::Mock::VerifyAndClearExpectations(&tpm_);
 
-  // Attempt 2: repeat SetupTpm and InitializeTpm.
-  SetIsTpmInitialized(false);
-  EXPECT_CALL(tpm_, SetIsOwned(true))
-    .Times(1);
-  EXPECT_CALL(tpm_, SetIsEnabled(true))
-    .Times(1);
-  EXPECT_TRUE(tpm_init_.SetupTpm(false));
-  EXPECT_TRUE(IsTpmInitialized());
-  EXPECT_TRUE(IsTpmOwned());
-  EXPECT_FALSE(FileExists(kTpmOwnedFile));
-  ::testing::Mock::VerifyAndClearExpectations(&tpm_);
-
-  // InitializeTpm() should pick up where it left off. This time initialize SRK.
+  // Attempt 2: Repeat initialization. This time, SetupTpm() should launch
+  // InitializeTpm(), which should complete the remaining steps.
   EXPECT_CALL(tpm_, IsEndorsementKeyAvailable())
     .Times(0);
   EXPECT_CALL(tpm_, TestTpmAuth(_))
@@ -336,9 +325,11 @@ TEST_F(TpmInitTest, ContinueInterruptedInitializeSrk) {
     .WillOnce(Return(true));
   EXPECT_CALL(tpm_, SetOwnerPassword(_))
     .Times(1);
-  took_ownership = false;
-  EXPECT_TRUE(tpm_init_.InitializeTpm(&took_ownership));
-  EXPECT_FALSE(took_ownership);
+  EXPECT_TRUE(tpm_init_.init_thread_.is_null());
+  tpm_init_.Init(nullptr);
+  ASSERT_FALSE(tpm_init_.init_thread_.is_null());
+  base::PlatformThread::Join(tpm_init_.init_thread_);
+  tpm_init_.init_thread_ = base::PlatformThreadHandle();
   EXPECT_TRUE(IsTpmOwned());
   EXPECT_FALSE(IsTpmBeingOwned());
   EXPECT_TRUE(FileExists(kTpmOwnedFile));

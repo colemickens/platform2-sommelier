@@ -207,6 +207,12 @@ bool TpmInit::SetupTpm(bool load_key) {
     RestoreTpmStateFromStorage();
   }
 
+  // In case of interrupted initialization, continue it.
+  if (IsTpmOwned() && !platform_->FileExists(kTpmOwnedFile)) {
+    LOG(WARNING) << "Initialization was interrupted, continuing.";
+    AsyncInitializeTpm();
+  }
+
   if (load_key) {
     // load cryptohome key
     LoadOrCreateCryptohomeKey(&cryptohome_key_);
@@ -340,23 +346,28 @@ bool TpmInit::InitializeTpm(bool* OUT_took_ownership) {
                          TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
                          TpmStatus::ATTESTATION_NEEDS_OWNER);
     if (!StoreOwnerPassword(owner_password, &tpm_status)) {
+      LOG(ERROR) << "Couldn't store the owner password.";
       tpm_status.clear_owner_password();
+      return false;
     }
     StoreTpmStatus(tpm_status);
 
-    if ((get_tpm()->ChangeOwnerPassword(default_owner_password,
-                                        owner_password))) {
-      get_tpm()->SetOwnerPassword(owner_password);
+    if ((!get_tpm()->ChangeOwnerPassword(default_owner_password,
+                                         owner_password))) {
+      LOG(ERROR) << "Couldn't change the owner password.";
+      return false;
     }
+    get_tpm()->SetOwnerPassword(owner_password);
+  }
+
+  // If we fall through here, either (1) we successfully completed the
+  // initialization, or (2) then the TPM owned file doesn't exist, but we
+  // couldn't auth with the well-known password. In the second case, we must
+  // assume that the TPM has already been owned and set to a random password.
+  // In any case, it's time to touch the TPM owned file to indicate that we
+  // don't need to re-attempt completing initialization on the next boot.
+  if (!platform_->FileExists(kTpmOwnedFile)) {
     platform_->TouchFileDurable(kTpmOwnedFile);
-  } else {
-    // If we fall through here, then the TPM owned file doesn't exist, but we
-    // couldn't auth with the well-known password.  In this case, we must assume
-    // that the TPM has already been owned and set to a random password, so
-    // touch the TPM owned file.
-    if (!platform_->FileExists(kTpmOwnedFile)) {
-      platform_->TouchFileDurable(kTpmOwnedFile);
-    }
   }
 
   SetTpmBeingOwned(false);

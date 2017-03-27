@@ -11,6 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <brillo/secure_blob.h>
+#include <gtest/gtest_prod.h>
 
 #include "cryptohome/tpm.h"
 
@@ -121,6 +122,8 @@ class TpmInit {
   virtual bool ReloadCryptohomeKey();
 
  private:
+  FRIEND_TEST(TpmInitTest, ContinueInterruptedInitializeSrk);
+
   virtual void ThreadMain();
 
   // Invoked by SetupTpm to restore TPM state from saved state in storage.
