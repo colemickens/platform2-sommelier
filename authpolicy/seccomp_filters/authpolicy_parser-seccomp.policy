@@ -30,7 +30,8 @@ arch_prctl: 1
 brk: 1
 execve: 1
 getrlimit: 1
-mprotect: 1
+# Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
+mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 stat: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
