@@ -20,15 +20,22 @@ namespace biod {
 
 class BiodStorage {
  public:
-  using ReadRecordsCallback = base::Callback<bool(std::string user_id,
-                                                  std::string label,
-                                                  std::string record_id,
-                                                  base::Value* data)>;
+  using ReadRecordsCallback = base::Callback<bool(const std::string& user_id,
+                                                  const std::string& label,
+                                                  const std::string& record_id,
+                                                  const base::Value& data)>;
 
   // Constructor set the file path to be
   // /home/root/<hash of user id>/biod/<BiometricsManager>/RecordUUID.
-  explicit BiodStorage(const std::string& biometrics_manager_path,
-                       const ReadRecordsCallback& load_record);
+  // Callback load_record is run synchronously as each record is read back from
+  // storage and loaded into biod.
+  // TODO(mqg): Instead of callback, update ReadRecords to use out-parameter or
+  // lambda.
+  BiodStorage(const std::string& biometrics_manager_name,
+              const ReadRecordsCallback& load_record);
+
+  // Set root path to a different path for testing purpose only
+  void SetRootPathForTesting(const base::FilePath& root_path);
 
   // Write one record to file in per user stateful. This is called whenever
   // we enroll a new record.
@@ -50,7 +57,7 @@ class BiodStorage {
 
  private:
   base::FilePath root_path_;
-  base::FilePath biometrics_manager_path_;
+  std::string biometrics_manager_name_;
   ReadRecordsCallback load_record_;
 
   // Read all records from disk for a single user. Uses a file enumerator to

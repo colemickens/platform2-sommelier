@@ -170,10 +170,10 @@ class FpcBiometricsManager : public BiometricsManager {
 
   void OnTaskComplete();
 
-  bool LoadRecord(std::string user_id,
-                  std::string label,
-                  std::string record_id,
-                  base::Value* data);
+  bool LoadRecord(const std::string& user_id,
+                  const std::string& label,
+                  const std::string& record_id,
+                  const base::Value& data);
   bool WriteRecord(const BiometricsManager::Record& record,
                    uint8_t* tmpl_data,
                    size_t tmpl_size);

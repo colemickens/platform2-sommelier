@@ -312,11 +312,11 @@ void FakeBiometricsManager::OnFileCanReadWithoutBlocking(int fd) {
   }
 }
 
-bool FakeBiometricsManager::LoadRecord(std::string user_id,
-                                       std::string label,
-                                       std::string record_id,
-                                       base::Value* data) {
-  InternalRecord internal_record = {std::move(user_id), std::move(label)};
+bool FakeBiometricsManager::LoadRecord(const std::string& user_id,
+                                       const std::string& label,
+                                       const std::string& record_id,
+                                       const base::Value& data) {
+  InternalRecord internal_record = {user_id, label};
   records_[record_id] = std::move(internal_record);
   LOG(INFO) << "Load record " << record_id << " from disk.";
   return true;

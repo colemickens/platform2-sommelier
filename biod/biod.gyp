@@ -9,6 +9,18 @@
   },
   'targets': [
     {
+      'target_name': 'libbiod',
+      'type': 'static_library',
+      'sources': [
+        'bio_library.cc',
+        'biod_storage.cc',
+        'biometrics_daemon.cc',
+        'fake_biometrics_manager.cc',
+        'fpc_biometrics_manager.cc',
+        'scoped_umask.cc',
+      ],
+    },
+    {
       'target_name': 'biod',
       'type': 'executable',
       'link_settings': {
@@ -16,14 +28,9 @@
           '-ldl',
         ],
       },
+      'dependencies': ['libbiod'],
       'sources': [
-        'bio_library.cc',
-        'biod_storage.cc',
-        'biometrics_daemon.cc',
-        'fake_biometrics_manager.cc',
-        'fpc_biometrics_manager.cc',
         'main.cc',
-        'scoped_umask.cc',
       ],
     },
     {
@@ -36,5 +43,26 @@
       'type': 'executable',
       'sources': ['tools/fake_biometric_tool.cc'],
     },
+  ],
+  'conditions': [
+    ['USE_test == 1', {
+      'targets': [
+        {
+          'target_name': 'biod_test_runner',
+          'type': 'executable',
+          'dependencies': ['libbiod'],
+          'includes': ['../common-mk/common_test.gypi'],
+          'variables': {
+            'deps': [
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
+          'sources': [
+            'biod_storage_unittest.cc',
+            'test_runner.cc',
+          ],
+        },
+      ],
+    }],
   ],
 }

@@ -699,12 +699,12 @@ void FpcBiometricsManager::OnTaskComplete() {
   running_task_ = false;
 }
 
-bool FpcBiometricsManager::LoadRecord(std::string user_id,
-                                      std::string label,
-                                      std::string record_id,
-                                      base::Value* data) {
+bool FpcBiometricsManager::LoadRecord(const std::string& user_id,
+                                      const std::string& label,
+                                      const std::string& record_id,
+                                      const base::Value& data) {
   std::string tmpl_data_base64;
-  if (!data->GetAsString(&tmpl_data_base64)) {
+  if (!data.GetAsString(&tmpl_data_base64)) {
     LOG(ERROR) << "Cannot load data string from record " << record_id << ".";
     return false;
   }
@@ -716,8 +716,7 @@ bool FpcBiometricsManager::LoadRecord(std::string user_id,
   std::vector<uint8_t> tmpl_data_vector(tmpl_data_str.begin(),
                                         tmpl_data_str.end());
   BioTemplate tmpl(bio_lib_->DeserializeTemplate(tmpl_data_vector));
-  InternalRecord internal_record = {
-      std::move(user_id), std::move(label), std::move(tmpl)};
+  InternalRecord internal_record = {user_id, label, std::move(tmpl)};
   {
     base::AutoLock guard(records_lock_);
     records_[record_id] = std::move(internal_record);

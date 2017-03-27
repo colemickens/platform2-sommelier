@@ -104,10 +104,10 @@ class FakeBiometricsManager : public BiometricsManager,
 
   BiodStorage biod_storage_;
 
-  bool LoadRecord(std::string user_id,
-                  std::string label,
-                  std::string record_id,
-                  base::Value* data);
+  bool LoadRecord(const std::string& user_id,
+                  const std::string& label,
+                  const std::string& record_id,
+                  const base::Value& data);
 
   DISALLOW_COPY_AND_ASSIGN(FakeBiometricsManager);
 };

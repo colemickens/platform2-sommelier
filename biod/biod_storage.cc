@@ -36,11 +36,15 @@ const char kRecordId[] = "record_id";
 const char kData[] = "data";
 }
 
-BiodStorage::BiodStorage(const std::string& biometrics_manager_path,
+BiodStorage::BiodStorage(const std::string& biometrics_manager_name,
                          const ReadRecordsCallback& load_record)
     : root_path_(kRootPath),
-      biometrics_manager_path_(biometrics_manager_path),
+      biometrics_manager_name_(biometrics_manager_name),
       load_record_(load_record) {}
+
+void BiodStorage::SetRootPathForTesting(const base::FilePath& root_path) {
+  root_path_ = root_path;
+}
 
 bool BiodStorage::WriteRecord(const BiometricsManager::Record& record,
                               std::unique_ptr<base::Value> data) {
@@ -62,7 +66,7 @@ bool BiodStorage::WriteRecord(const BiometricsManager::Record& record,
 
   FilePath record_storage_filename = root_path_.Append(record.GetUserId())
                                          .Append(kBiod)
-                                         .Append(biometrics_manager_path_)
+                                         .Append(biometrics_manager_name_)
                                          .Append(kRecordFileName + record_id);
   if (!base::CreateDirectory(record_storage_filename.DirName())) {
     LOG(ERROR) << "Cannot create directory: "
@@ -93,7 +97,7 @@ bool BiodStorage::ReadRecords(const std::unordered_set<std::string>& user_ids) {
 
 bool BiodStorage::ReadRecordsForSingleUser(const std::string& user_id) {
   FilePath biod_path =
-      root_path_.Append(user_id).Append(kBiod).Append(biometrics_manager_path_);
+      root_path_.Append(user_id).Append(kBiod).Append(biometrics_manager_name_);
   base::FileEnumerator enum_records(biod_path,
                                     false,
                                     base::FileEnumerator::FILES,
@@ -151,7 +155,7 @@ bool BiodStorage::ReadRecordsForSingleUser(const std::string& user_id) {
       continue;
     }
 
-    base::Value* data;
+    base::Value* data = nullptr;
 
     if (!(record_dictionary->Get(kData, &data))) {
       LOG(ERROR) << "Cannot read data from " << record_path.value() << ".";
@@ -159,7 +163,7 @@ bool BiodStorage::ReadRecordsForSingleUser(const std::string& user_id) {
       continue;
     }
 
-    if (!load_record_.Run(user_id, label, record_id, data)) {
+    if (!load_record_.Run(user_id, label, record_id, *data)) {
       LOG(ERROR) << "Cannot load record from " << record_path.value() << ".";
       read_all_records_successfully = false;
       continue;
@@ -172,7 +176,7 @@ bool BiodStorage::DeleteRecord(const std::string& user_id,
                                const std::string& record_id) {
   FilePath record_storage_filename = root_path_.Append(user_id)
                                          .Append(kBiod)
-                                         .Append(biometrics_manager_path_)
+                                         .Append(biometrics_manager_name_)
                                          .Append(kRecordFileName + record_id);
 
   if (!base::PathExists(record_storage_filename)) {
