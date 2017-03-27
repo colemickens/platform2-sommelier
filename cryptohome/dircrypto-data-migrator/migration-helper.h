@@ -80,6 +80,8 @@ class MigrationHelper {
   bool IsMigrationStarted() const;
 
  private:
+  FRIEND_TEST(MigrationHelperTest, CopyOwnership);
+
   // Calculate the total number of bytes to be migrated, populating
   // |total_byte_count_| with the result.
   void CalculateDataToMigrate(const base::FilePath& from);

@@ -169,6 +169,8 @@ TEST_F(MigrationHelperTest, EmptyTest) {
 }
 
 TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
+  // This test only covers permissions and xattrs.  Ownership copying requires
+  // more extensive mocking and is covered in CopyOwnership test.
   Platform platform;
   MigrationHelper helper(
       &platform, status_files_dir_.path(), kDefaultChunkSize);
@@ -292,6 +294,9 @@ TEST_F(MigrationHelperTest, DirectoryPartiallyMigrated) {
 }
 
 TEST_F(MigrationHelperTest, CopySymlink) {
+  // This test does not cover setting ownership values as that requires more
+  // extensive mocking.  Ownership copying instead is covered by the
+  // CopyOwnership test.
   Platform platform;
   MigrationHelper helper(
       &platform, status_files_dir_.path(), kDefaultChunkSize);
@@ -450,11 +455,12 @@ TEST_F(MigrationHelperTest, UnreadableFile) {
 }
 
 TEST_F(MigrationHelperTest, CopyAttributesFile) {
-  testing::NiceMock<MockPlatform> mock_platform;
-  Platform real_platform;
+  // This test does not cover setting ownership values as that requires more
+  // extensive mocking.  Ownership copying instead is covered by the
+  // CopyOwnership test.
+  Platform platform;
   MigrationHelper helper(
-      &mock_platform, status_files_dir_.path(), kDefaultChunkSize);
-  PassThroughPlatformMethods(&mock_platform, &real_platform);
+      &platform, status_files_dir_.path(), kDefaultChunkSize);
 
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
@@ -463,37 +469,15 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   const FilePath kFromFilePath = from_dir_.path().Append(kFileName);
   const FilePath kToFilePath = to_dir_.path().Append(kFileName);
 
-  // Create modified stat of root directory.  Note that we can't easily test
-  // changing ownership on nested files since we can't change the ownership of
-  // on-disk files and the ownership is obtained indirectly via FileEnumerator.
-  uid_t user_id = 1;
-  gid_t group_id = 2;
-  struct stat dir_stat;
-  ASSERT_EQ(0, stat(from_dir_.path().value().c_str(), &dir_stat));
-  dir_stat.st_uid = user_id;
-  dir_stat.st_gid = group_id;
-
-  // Set up mock expectations for methods not supported in tests
-  EXPECT_CALL(mock_platform, Stat(from_dir_.path(), testing::_))
-      .WillOnce(testing::DoAll(testing::SetArgPointee<1>(dir_stat),
-                               testing::Return(true)));
-  EXPECT_CALL(mock_platform,
-              SetOwnership(to_dir_.path(), user_id, group_id, false))
-      .WillOnce(testing::Return(true));
-  EXPECT_CALL(mock_platform,
-              SetOwnership(kToFilePath, testing::_, testing::_, testing::_))
-      .WillOnce(testing::Return(true));
-
-  ASSERT_TRUE(
-      real_platform.TouchFileDurable(from_dir_.path().Append(kFileName)));
+  ASSERT_TRUE(platform.TouchFileDurable(from_dir_.path().Append(kFileName)));
   // Set some attributes to this file.
 
   mode_t mode = S_ISVTX | S_IRUSR | S_IWUSR | S_IXUSR;
-  ASSERT_TRUE(real_platform.SetPermissions(kFromFilePath, mode));
+  ASSERT_TRUE(platform.SetPermissions(kFromFilePath, mode));
   // GetPermissions call is needed because some bits to mode are applied
   // automatically, so our original |mode| value is not what the resulting file
   // actually has.
-  ASSERT_TRUE(real_platform.GetPermissions(kFromFilePath, &mode));
+  ASSERT_TRUE(platform.GetPermissions(kFromFilePath, &mode));
 
   constexpr char kAttrName[] = "user.attr";
   constexpr char kValue[] = "value";
@@ -512,7 +496,7 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   EXPECT_EQ(0, ::ioctl(from_fd.get(), FS_IOC_SETFLAGS, &ext2_attrs));
 
   struct stat from_stat;
-  ASSERT_TRUE(real_platform.Stat(kFromFilePath, &from_stat));
+  ASSERT_TRUE(platform.Stat(kFromFilePath, &from_stat));
   EXPECT_TRUE(helper.Migrate(from_dir_.path(),
                              to_dir_.path(),
                              base::Bind(&MigrationHelperTest::ProgressCaptor,
@@ -522,16 +506,16 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
             status_values_[status_values_.size() - 1]);
 
   struct stat to_stat;
-  ASSERT_TRUE(real_platform.Stat(kToFilePath, &to_stat));
+  ASSERT_TRUE(platform.Stat(kToFilePath, &to_stat));
   EXPECT_EQ(from_stat.st_atim.tv_sec, to_stat.st_atim.tv_sec);
   EXPECT_EQ(from_stat.st_atim.tv_nsec, to_stat.st_atim.tv_nsec);
   EXPECT_EQ(from_stat.st_mtim.tv_sec, to_stat.st_mtim.tv_sec);
   EXPECT_EQ(from_stat.st_mtim.tv_nsec, to_stat.st_mtim.tv_nsec);
 
-  EXPECT_TRUE(real_platform.FileExists(kToFilePath));
+  EXPECT_TRUE(platform.FileExists(kToFilePath));
 
   mode_t permission;
-  ASSERT_TRUE(real_platform.GetPermissions(kToFilePath, &permission));
+  ASSERT_TRUE(platform.GetPermissions(kToFilePath, &permission));
   EXPECT_EQ(mode, permission);
   char value[sizeof(kValue) + 1];
   EXPECT_EQ(
@@ -547,6 +531,64 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   int new_ext2_attrs;
   EXPECT_EQ(0, ::ioctl(to_fd.get(), FS_IOC_GETFLAGS, &new_ext2_attrs));
   EXPECT_EQ(FS_SYNC_FL | FS_NODUMP_FL, new_ext2_attrs);
+}
+
+TEST_F(MigrationHelperTest, CopyOwnership) {
+  // Ownership changes for regular files and symlinks can't be tested normally
+  // due to how we get ownership information via file enumerator.  Instead we
+  // directly test CopyAttributes with modified FileInfo arguments.
+  testing::NiceMock<MockPlatform> mock_platform;
+  Platform real_platform;
+  PassThroughPlatformMethods(&mock_platform, &real_platform);
+  MigrationHelper helper(
+      &mock_platform, status_files_dir_.path(), kDefaultChunkSize);
+  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
+  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+
+  const base::FilePath kLinkTarget = base::FilePath("foo");
+  const base::FilePath kFromLink = from_dir_.path().Append("link");
+  const base::FilePath kFromFile = from_dir_.path().Append("file");
+  const base::FilePath kFromDir = from_dir_.path().Append("dir");
+  const base::FilePath kToLink = to_dir_.path().Append("link");
+  const base::FilePath kToFile = to_dir_.path().Append("file");
+  const base::FilePath kToDir = to_dir_.path().Append("dir");
+  uid_t file_uid = 1;
+  gid_t file_gid = 2;
+  uid_t link_uid = 3;
+  gid_t link_gid = 4;
+  uid_t dir_uid = 5;
+  gid_t dir_gid = 6;
+  ASSERT_TRUE(real_platform.TouchFileDurable(kFromFile));
+  ASSERT_TRUE(base::CreateSymbolicLink(kLinkTarget, kFromLink));
+  ASSERT_TRUE(real_platform.CreateDirectory(kFromDir));
+  ASSERT_TRUE(real_platform.TouchFileDurable(kToFile));
+  ASSERT_TRUE(base::CreateSymbolicLink(kLinkTarget, kToLink));
+  ASSERT_TRUE(real_platform.CreateDirectory(kToDir));
+
+  struct stat stat;
+  ASSERT_TRUE(real_platform.Stat(kFromFile, &stat));
+  stat.st_uid = file_uid;
+  stat.st_gid = file_gid;
+  EXPECT_CALL(mock_platform, SetOwnership(kToFile, file_uid, file_gid, false))
+      .WillOnce(testing::Return(true));
+  EXPECT_TRUE(helper.CopyAttributes(
+      kFromFile, kToFile, FileEnumerator::FileInfo(kFromFile, stat)));
+
+  ASSERT_TRUE(real_platform.Stat(kFromLink, &stat));
+  stat.st_uid = link_uid;
+  stat.st_gid = link_gid;
+  EXPECT_CALL(mock_platform, SetOwnership(kToLink, link_uid, link_gid, false))
+      .WillOnce(testing::Return(true));
+  EXPECT_TRUE(helper.CopyAttributes(
+      kFromLink, kToLink, FileEnumerator::FileInfo(kFromLink, stat)));
+
+  ASSERT_TRUE(real_platform.Stat(kFromDir, &stat));
+  stat.st_uid = dir_uid;
+  stat.st_gid = dir_gid;
+  EXPECT_CALL(mock_platform, SetOwnership(kToDir, dir_uid, dir_gid, false))
+      .WillOnce(testing::Return(true));
+  EXPECT_TRUE(helper.CopyAttributes(
+      kFromDir, kToDir, FileEnumerator::FileInfo(kFromDir, stat)));
 }
 
 TEST_F(MigrationHelperTest, MigrateNestedDir) {
