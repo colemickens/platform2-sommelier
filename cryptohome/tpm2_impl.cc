@@ -72,6 +72,9 @@ Tpm::TpmRetryAction ResultToRetryAction(TPM_RC result) {
       break;
     case trunks::TRUNKS_RC_WRITE_ERROR:
     case trunks::TRUNKS_RC_READ_ERROR:
+    case trunks::SAPI_RC_NO_CONNECTION:
+    case trunks::SAPI_RC_NO_RESPONSE_RECEIVED:
+    case trunks::SAPI_RC_MALFORMED_RESPONSE:
       action = Tpm::kTpmRetryCommFailure;
       break;
     default:
