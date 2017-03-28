@@ -1,3 +1,2 @@
-android/include/*
-android/src/*
+android/*
 presubmit/upstream-git-clang-format
