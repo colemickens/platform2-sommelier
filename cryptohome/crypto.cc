@@ -191,10 +191,12 @@ Crypto::CryptoError Crypto::TpmErrorToCrypto(
     Tpm::TpmRetryAction retry_action) const {
   switch (retry_action) {
     case Tpm::kTpmRetryFatal:
+    case Tpm::kTpmRetryFailNoRetry:
       return Crypto::CE_TPM_FATAL;
     case Tpm::kTpmRetryCommFailure:
     case Tpm::kTpmRetryInvalidHandle:
     case Tpm::kTpmRetryLoadFail:
+    case Tpm::kTpmRetryLater:
       return Crypto::CE_TPM_COMM_ERROR;
     case Tpm::kTpmRetryDefendLock:
       return Crypto::CE_TPM_DEFEND_LOCK;

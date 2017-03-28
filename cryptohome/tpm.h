@@ -59,14 +59,24 @@ class Tpm {
   };
 
   enum TpmRetryAction {
+    // Action succeeded - no retry needed.
     kTpmRetryNone,
+    // Action failed - retry not possible.
     kTpmRetryFailNoRetry,
+    // Action failed - TPM communication failure.
     kTpmRetryCommFailure,
+    // Action failed - TPM is in dictionary attack defense mode.
     kTpmRetryDefendLock,
+    // Action failed - other caused (used in tests only).
     kTpmRetryFatal,
+    // Action failed - target key/object handle is invalid.
     kTpmRetryInvalidHandle,
+    // Action failed - can't load a key or other object.
     kTpmRetryLoadFail,
+    // Action failed - TPM is in the state that requires reboot.
     kTpmRetryReboot,
+    // Action failed - TPM requested retrying the action later.
+    kTpmRetryLater,
   };
 
   enum TpmNvramFlags {

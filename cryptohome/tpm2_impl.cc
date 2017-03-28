@@ -77,6 +77,10 @@ Tpm::TpmRetryAction ResultToRetryAction(TPM_RC result) {
     case trunks::SAPI_RC_MALFORMED_RESPONSE:
       action = Tpm::kTpmRetryCommFailure;
       break;
+    case trunks::TPM_RC_RETRY:
+    case trunks::TPM_RC_NV_RATE:
+      action = Tpm::kTpmRetryLater;
+      break;
     default:
       action = Tpm::kTpmRetryFailNoRetry;
       break;
