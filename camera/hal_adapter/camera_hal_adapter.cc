@@ -16,6 +16,7 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <mojo/edk/embedder/embedder.h>
+#include <mojo/edk/embedder/platform_channel_pair.h>
 #include <mojo/edk/embedder/platform_channel_utils_posix.h>
 #include <mojo/edk/embedder/platform_handle_vector.h>
 #include <mojo/edk/embedder/scoped_platform_handle.h>
@@ -70,31 +71,29 @@ bool CameraHalAdapter::Start() {
     return false;
   }
 
-  char buf[1] = {};
-  std::deque<mojo::edk::PlatformHandle> platform_handles;
-  mojo::edk::PlatformChannelRecvmsg(handle.get(), buf, sizeof(buf),
-                                    &platform_handles, true);
-  if (platform_handles.size() != 1) {
-    LOGF(ERROR) << "Unexpected number of handles received, expected 1: "
-                << platform_handles.size();
+  // Set up mojo connection to child.
+  mojo::edk::PlatformChannelPair channel_pair;
+  mojo::edk::ChildProcessLaunched(0x0, channel_pair.PassServerHandle());
+
+  mojo::edk::ScopedPlatformHandleVectorPtr handles(
+      new mojo::edk::PlatformHandleVector(
+          {channel_pair.PassClientHandle().release()}));
+
+  std::string token = mojo::edk::GenerateRandomToken();
+  LOGF(INFO) << "Generated token: " << token;
+  mojo::ScopedMessagePipeHandle parent_pipe =
+      mojo::edk::CreateParentMessagePipe(token);
+
+  struct iovec iov = {const_cast<char*>(token.c_str()), token.length()};
+  ssize_t result = mojo::edk::PlatformChannelSendmsgWithHandles(
+      handle.get(), &iov, 1, handles->data(), handles->size());
+  if (result == -1) {
+    LOGF(ERROR) << "PlatformChannelSendmsgWithHandles failed: "
+                << strerror(errno);
     return false;
   }
-  mojo::edk::ScopedPlatformHandle parent_pipe(platform_handles.back());
-  platform_handles.pop_back();
-  if (!parent_pipe.is_valid()) {
-    LOGF(ERROR) << "Invalid parent pipe";
-    return false;
-  }
-  mojo::edk::SetParentPipeHandle(std::move(parent_pipe));
 
-  char token[64] = {0};
-  mojo::edk::PlatformChannelRecvmsg(handle.get(), token, sizeof(token),
-                                    &platform_handles, true);
-  VLOGF(1) << "Got token: " << token;
-  mojo::ScopedMessagePipeHandle child_pipe =
-      mojo::edk::CreateChildMessagePipe(std::string(token));
-
-  module_delegate_->Bind(std::move(child_pipe));
+  module_delegate_->Bind(std::move(parent_pipe));
 
   VLOGF(1) << "CameraHalAdapter started";
   return true;
