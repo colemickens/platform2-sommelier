@@ -29,13 +29,13 @@
 
 #include "authpolicy/path_service.h"
 #include "authpolicy/policy/policy_encoder_helper.h"
-#include "authpolicy/policy/policy_keys.h"
 #include "authpolicy/proto_bindings/active_directory_account_data.pb.h"
 #include "authpolicy/samba_interface.h"
 #include "authpolicy/stub_common.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/cloud_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
+#include "bindings/policy_constants.h"
 
 using brillo::dbus_utils::DBusObject;
 using brillo::dbus_utils::ExtractMethodCallResults;
@@ -892,19 +892,19 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsWithData) {
   writer.AppendInteger(policy::key::kDeviceLocalAccountAutoLoginDelay,
                        kPolicyInt);
   writer.AppendString(policy::key::kSystemTimezone, kTimezone);
-  const std::vector<std::string> apps = {"App1", "App2"};
-  writer.AppendStringList(policy::key::kLoginApps, apps);
+  const std::vector<std::string> flags = {"flag1", "flag2"};
+  writer.AppendStringList(policy::key::kDeviceStartUpFlags, flags);
   writer.WriteToFile(stub_gpo1_path_);
 
-  validate_device_policy_ = [apps](
+  validate_device_policy_ = [flags](
                                 const em::ChromeDeviceSettingsProto& policy) {
     EXPECT_EQ(kPolicyBool, policy.guest_mode_enabled().guest_mode_enabled());
     EXPECT_EQ(kPolicyInt, policy.device_local_accounts().auto_login_delay());
     EXPECT_EQ(kTimezone, policy.system_timezone().timezone());
-    const em::LoginAppsProto& apps_proto = policy.login_apps();
-    EXPECT_EQ(apps_proto.login_apps_size(), static_cast<int>(apps.size()));
-    for (int n = 0; n < apps_proto.login_apps_size(); ++n)
-      EXPECT_EQ(apps_proto.login_apps(n), apps.at(n));
+    const em::StartUpFlagsProto& flags_proto = policy.start_up_flags();
+    EXPECT_EQ(flags_proto.flags_size(), static_cast<int>(flags.size()));
+    for (int n = 0; n < flags_proto.flags_size(); ++n)
+      EXPECT_EQ(flags_proto.flags(n), flags.at(n));
   };
   EXPECT_EQ(ERROR_NONE, Join(kOneGpoMachineName));
   FetchAndValidateDevicePolicy(ERROR_NONE);
@@ -925,8 +925,8 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchGposOverride) {
   writer1.AppendInteger(policy::key::kDeviceLocalAccountAutoLoginDelay,
                         kPolicyInt);
   writer1.AppendString(policy::key::kSystemTimezone, kTimezone);
-  const std::vector<std::string> apps1 = {"App1", "App2", "App3"};
-  writer1.AppendStringList(policy::key::kLoginApps, apps1);
+  const std::vector<std::string> flags1 = {"flag1", "flag2", "flag3"};
+  writer1.AppendStringList(policy::key::kDeviceStartUpFlags, flags1);
   writer1.WriteToFile(stub_gpo1_path_);
 
   PRegPolicyWriter writer2;
@@ -934,20 +934,20 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchGposOverride) {
   writer2.AppendInteger(policy::key::kDeviceLocalAccountAutoLoginDelay,
                         kOtherPolicyInt);
   writer2.AppendString(policy::key::kSystemTimezone, kAltTimezone);
-  const std::vector<std::string> apps2 = {"App4", "App5"};
-  writer2.AppendStringList(policy::key::kLoginApps, apps2);
+  const std::vector<std::string> flags2 = {"flag4", "flag5"};
+  writer2.AppendStringList(policy::key::kDeviceStartUpFlags, flags2);
   writer2.WriteToFile(stub_gpo2_path_);
 
-  validate_device_policy_ = [apps2](
+  validate_device_policy_ = [flags2](
                                 const em::ChromeDeviceSettingsProto& policy) {
     EXPECT_EQ(kPolicyBool, policy.guest_mode_enabled().guest_mode_enabled());
     EXPECT_EQ(kOtherPolicyInt,
               policy.device_local_accounts().auto_login_delay());
     EXPECT_EQ(kAltTimezone, policy.system_timezone().timezone());
-    const em::LoginAppsProto& apps_proto = policy.login_apps();
-    EXPECT_EQ(apps_proto.login_apps_size(), static_cast<int>(apps2.size()));
-    for (int n = 0; n < apps_proto.login_apps_size(); ++n)
-      EXPECT_EQ(apps_proto.login_apps(n), apps2.at(n));
+    const em::StartUpFlagsProto& flags_proto = policy.start_up_flags();
+    EXPECT_EQ(flags_proto.flags_size(), static_cast<int>(flags2.size()));
+    for (int n = 0; n < flags_proto.flags_size(); ++n)
+      EXPECT_EQ(flags_proto.flags(n), flags2.at(n));
   };
   EXPECT_EQ(ERROR_NONE, Join(kTwoGposMachineName));
   FetchAndValidateDevicePolicy(ERROR_NONE);

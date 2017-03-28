@@ -13,8 +13,8 @@
 #include <dbus/shill/dbus-constants.h>
 
 #include "authpolicy/policy/policy_encoder_helper.h"
-#include "authpolicy/policy/policy_keys.h"
 #include "bindings/chrome_device_policy.pb.h"
+#include "bindings/policy_constants.h"
 
 namespace em = enterprise_management;
 
@@ -54,6 +54,21 @@ bool DecodeConnectionType(const std::string& value,
 
   LOG(ERROR) << "Invalid connection type '" << value << "'.";
   return false;
+}
+
+std::unique_ptr<base::DictionaryValue> JsonToDictionary(const std::string& json,
+                                                        std::string* error) {
+  DCHECK(error);
+  std::unique_ptr<base::Value> root = base::JSONReader::ReadAndReturnError(
+      json, base::JSON_ALLOW_TRAILING_COMMAS, NULL, error);
+  if (!root)
+    return nullptr;
+
+  std::unique_ptr<base::DictionaryValue> dict_value =
+      base::DictionaryValue::From(std::move(root));
+  if (!dict_value)
+    *error = "Json is not a dictionary: '" + json + "'";
+  return dict_value;
 }
 
 }  //  namespace
@@ -138,11 +153,24 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
                      for (const std::string& value : values)
                        list->add_urls(value);
                    });
-  EncodeStringList(key::kLoginApps,
+  EncodeStringList(key::kDeviceLoginScreenAppInstallList,
                    [policy](const std::vector<std::string>& values) {
-                     auto list = policy->mutable_login_apps();
+                     auto list =
+                         policy->mutable_device_login_screen_app_install_list();
                      for (const std::string& value : values)
-                       list->add_login_apps(value);
+                       list->add_device_login_screen_app_install_list(value);
+                   });
+  EncodeStringList(key::kDeviceLoginScreenLocales,
+                   [policy](const std::vector<std::string>& values) {
+                     auto list = policy->mutable_login_screen_locales();
+                     for (const std::string& value : values)
+                       list->add_login_screen_locales(value);
+                   });
+  EncodeStringList(key::kDeviceLoginScreenInputMethods,
+                   [policy](const std::vector<std::string>& values) {
+                     auto list = policy->mutable_login_screen_input_methods();
+                     for (const std::string& value : values)
+                       list->add_login_screen_input_methods(value);
                    });
 }
 
@@ -151,6 +179,33 @@ void DevicePolicyEncoder::EncodeNetworkPolicies(
   EncodeBoolean(key::kDeviceDataRoamingEnabled, [policy](Bool value) {
     policy->mutable_data_roaming_enabled()->set_data_roaming_enabled(value);
   });
+
+  EncodeString(
+      key::kNetworkThrottlingEnabled, [policy](const std::string& value) {
+        std::string error;
+        std::unique_ptr<base::DictionaryValue> dict_value =
+            JsonToDictionary(value, &error);
+        bool enabled;
+        int upload_rate_kbits, download_rate_kbits;
+        if (!dict_value || !dict_value->GetBoolean("enabled", &enabled) ||
+            !dict_value->GetInteger("upload_rate_kbits", &upload_rate_kbits) ||
+            !dict_value->GetInteger("download_rate_kbits",
+                                    &download_rate_kbits)) {
+          LOG(ERROR) << "Invalid JSON string '"
+                     << (!error.empty() ? error : value) << "' for policy '"
+                     << key::kNetworkThrottlingEnabled
+                     << "', ignoring. Expected: "
+                     << "'{\"enabled\"=<True/False>, \"upload_rate_kbits\""
+                     << "=<kbits>, \"download_rate_kbits\"=<kbits>}'.";
+          return;
+        }
+        em::NetworkThrottlingEnabledProto* entry =
+            policy->mutable_network_throttling();
+        entry->set_enabled(enabled);
+        entry->set_upload_rate_kbits(upload_rate_kbits);
+        entry->set_download_rate_kbits(download_rate_kbits);
+      });
+
   EncodeString(key::kDeviceOpenNetworkConfiguration,
                [policy](const std::string& value) {
                  policy->mutable_open_network_configuration()
@@ -366,13 +421,10 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
         auto list = policy->mutable_usb_detachable_whitelist();
         for (const std::string& value : values) {
           std::string error;
-          std::unique_ptr<base::Value> root =
-              base::JSONReader::ReadAndReturnError(
-                  value, base::JSON_ALLOW_TRAILING_COMMAS, NULL, &error);
-          base::DictionaryValue* dict_value;
+          std::unique_ptr<base::DictionaryValue> dict_value =
+              JsonToDictionary(value, &error);
           int vid, pid;
-          if (!root || !root->GetAsDictionary(&dict_value) ||
-              !dict_value->GetInteger("vendor_id", &vid) ||
+          if (!dict_value || !dict_value->GetInteger("vendor_id", &vid) ||
               !dict_value->GetInteger("product_id", &pid)) {
             LOG(ERROR) << "Invalid JSON string '"
                        << (!error.empty() ? error : value) << "' for policy '"
@@ -391,6 +443,10 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   EncodeBoolean(key::kDeviceQuirksDownloadEnabled, [policy](Bool value) {
     policy->mutable_quirks_download_enabled()->set_quirks_download_enabled(
         value);
+  });
+
+  EncodeString(key::kDeviceWallpaperImage, [policy](const std::string& value) {
+    policy->mutable_device_wallpaper_image()->set_device_wallpaper_image(value);
   });
 }
 

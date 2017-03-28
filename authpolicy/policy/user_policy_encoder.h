@@ -27,38 +27,22 @@ enum PolicyLevel {
   POLICY_LEVEL_MANDATORY,    // Values are enforced on user.
 };
 
+struct BooleanPolicyAccess;
+struct IntegerPolicyAccess;
+struct StringPolicyAccess;
+struct StringListPolicyAccess;
+
 // Private helper class used to convert a RegistryDict into a user policy
 // protobuf. Don't include directly, use |preg_policy_encoder.h| instead.
 class UserPolicyEncoder {
  public:
-  UserPolicyEncoder(const RegistryDict* dict, PolicyLevel level)
-      : dict_(dict), level_(level) {}
+  UserPolicyEncoder(const RegistryDict* dict, PolicyLevel level);
 
   // Extracts all user policies from |dict_| and puts them into |policy|.
   void EncodeUserPolicy(
       enterprise_management::CloudPolicySettings* policy) const;
 
  private:
-  // Note: Split up into two functions to satisfy the linter. This will go away
-  // once the code is auto-generated at compile time.
-  void EncodeUserPolicy1(
-      enterprise_management::CloudPolicySettings* policy) const;
-  void EncodeUserPolicy2(
-      enterprise_management::CloudPolicySettings* policy) const;
-
-  // We only want to create protobuf fields for policies that are actually
-  // contained in the registry dictionary. Therefore, it is necessary to use
-  // callbacks to mutable_<policy name> methods instead of calling them
-  // directly.
-  using BooleanPolicyCallback =
-      base::Callback<enterprise_management::BooleanPolicyProto*()>;
-  using IntegerPolicyCallback =
-      base::Callback<enterprise_management::IntegerPolicyProto*()>;
-  using StringPolicyCallback =
-      base::Callback<enterprise_management::StringPolicyProto*()>;
-  using StringListPolicyCallback =
-      base::Callback<enterprise_management::StringListPolicyProto*()>;
-
   // Marks a policy recommended or mandatory.
   void SetPolicyOptions(enterprise_management::PolicyOptions* options) const;
 
@@ -66,24 +50,39 @@ class UserPolicyEncoder {
   const char* GetLevelStr() const;
 
   // Boolean policies.
-  void EncodeBoolean(const char* policy_name,
-                     const BooleanPolicyCallback& create_proto) const;
+  void EncodeBoolean(enterprise_management::CloudPolicySettings* policy,
+                     const BooleanPolicyAccess* access) const;
 
   // Integer policies.
-  void EncodeInteger(const char* policy_name,
-                     const IntegerPolicyCallback& create_proto) const;
+  void EncodeInteger(enterprise_management::CloudPolicySettings* policy,
+                     const IntegerPolicyAccess* access) const;
 
   // String policies.
-  void EncodeString(const char* policy_name,
-                    const StringPolicyCallback& create_proto) const;
+  void EncodeString(enterprise_management::CloudPolicySettings* policy,
+                    const StringPolicyAccess* access) const;
 
   // String list policies are a little different. Unlike the basic types they
   // are not stored as registry value, but as registry key with values 1, 2, ...
   // for the entries.
-  void EncodeStringList(const char* policy_name,
-                        const StringListPolicyCallback& create_proto) const;
+  void EncodeStringList(enterprise_management::CloudPolicySettings* policy,
+                        const StringListPolicyAccess* access) const;
 
  private:
+  // Template for the Encode*() methods above, to be passed into EncodeList().
+  template <typename T_Access>
+  using Encoder = void (UserPolicyEncoder::*)(
+      enterprise_management::CloudPolicySettings* policy,
+      const T_Access* access) const;
+
+  // Encodes all policies of one of the types above. |access| is a pointer to a
+  // NULL-terminated list of policies of a certain type from policy_constants.h.
+  // |encode| is a pointer to one of the encoders above, e.g.
+  // &UserPolicyEncoder::EncodeBoolean.
+  template <typename T_Access>
+  void EncodeList(enterprise_management::CloudPolicySettings* policy,
+                  const T_Access* access,
+                  Encoder<T_Access> encode) const;
+
   const RegistryDict* dict_;
   PolicyLevel level_;
 };
