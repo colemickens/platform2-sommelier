@@ -379,23 +379,6 @@ bool TpmImpl::ResetDictionaryAttackMitigation(
   return true;
 }
 
-bool TpmImpl::IsTransient(TpmRetryAction retry_action) {
-  bool transient = false;
-  switch (retry_action) {
-    case kTpmRetryCommFailure:
-    case kTpmRetryInvalidHandle:
-    case kTpmRetryDefendLock:
-    // TODO(fes): We're considering this a transient failure for now
-    case kTpmRetryLoadFail:
-    case kTpmRetryFatal:
-      transient = true;
-      break;
-    default:
-      break;
-  }
-  return transient;
-}
-
 bool TpmImpl::OpenAndConnectTpm(TSS_HCONTEXT* context_handle,
                                 TSS_RESULT* result) {
   TSS_RESULT local_result;

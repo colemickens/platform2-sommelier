@@ -130,7 +130,6 @@ class Tpm2Impl : public Tpm {
                            const brillo::SecureBlob& owner_password) override;
   bool TestTpmAuth(const brillo::SecureBlob& owner_password) override;
   void SetOwnerPassword(const brillo::SecureBlob& owner_password) override;
-  bool IsTransient(TpmRetryAction retry_action) override;
   bool WrapRsaKey(const brillo::SecureBlob& public_modulus,
                   const brillo::SecureBlob& prime_factor,
                   brillo::SecureBlob* wrapped_key) override;

@@ -518,22 +518,6 @@ bool Tpm2Impl::TestTpmAuth(const SecureBlob& owner_password) {
   return false;
 }
 
-bool Tpm2Impl::IsTransient(TpmRetryAction retry_action) {
-  bool transient = false;
-  switch (retry_action) {
-    case kTpmRetryCommFailure:
-    case kTpmRetryInvalidHandle:
-    case kTpmRetryDefendLock:
-    case kTpmRetryLoadFail:
-    case kTpmRetryFatal:
-      transient = true;
-      break;
-    default:
-      break;
-  }
-  return transient;
-}
-
 bool Tpm2Impl::Sign(const SecureBlob& key_blob,
                     const SecureBlob& input,
                     int bound_pcr_index,

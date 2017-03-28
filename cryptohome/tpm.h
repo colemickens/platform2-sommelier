@@ -475,7 +475,14 @@ class Tpm {
   //   owner_password - The owner password for the TPM
   virtual void SetOwnerPassword(const brillo::SecureBlob& owner_password) = 0;
 
-  virtual bool IsTransient(TpmRetryAction retry_action) = 0;
+  // Returns true if |retry_action| represents a transient error.
+  //
+  // Parameters
+  //   retry_action - The result of a performed action.
+  virtual bool IsTransient(TpmRetryAction retry_action) {
+    return !(retry_action == kTpmRetryNone ||
+             retry_action == kTpmRetryFailNoRetry);
+  }
 
   // Wrapps a provided RSA key with the TPM's Storage Root Key.
   //
