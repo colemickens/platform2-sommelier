@@ -227,21 +227,24 @@ class StateController : public PrefsObserver {
   // |got_initial_policy_| are both true.
   void MaybeStopInitialStateTimer();
 
+  // Returns true if the idle, screen-dim, screen-lock, or screen-off actions
+  // are currently blocked and can't occur until something changes via a call to
+  // UpdateState().
+  bool IsIdleBlocked() const;
+  bool IsScreenDimBlocked() const;
+  bool IsScreenOffBlocked() const;
+  bool IsScreenLockBlocked() const;
+
   // Returns the last time at which activity occurred that should defer
   // |idle_action_|, taking |on_ac_|, |use_audio_activity_|, and
   // |use_video_activity_| into account.
   base::TimeTicks GetLastActivityTimeForIdle(base::TimeTicks now) const;
 
   // Returns the last time at which activity occurred that should defer the
-  // screen getting dimmed or locked.
-  base::TimeTicks GetLastActivityTimeForScreenDimOrLock(
-      base::TimeTicks now) const;
-
-  // Returns the last time at which activity occurred that should defer the
-  // screen getting turned off.  This is generally the same as
-  // GetLastActivityTimeForScreenDimOrLock() but may differ if the screen needs
-  // to be kept on for audio playback.
+  // screen getting dimmed, turned off, or locked.
+  base::TimeTicks GetLastActivityTimeForScreenDim(base::TimeTicks now) const;
   base::TimeTicks GetLastActivityTimeForScreenOff(base::TimeTicks now) const;
+  base::TimeTicks GetLastActivityTimeForScreenLock(base::TimeTicks now) const;
 
   // Updates |last_user_activity_time_| to contain the current time and
   // calls |delegate_|'s ReportUserActivityMetrics() method.
@@ -376,6 +379,7 @@ class StateController : public PrefsObserver {
   // http://crbug.com/462428), or 0 if disabled.
   int tpm_dictionary_attack_suspend_threshold_ = 0;
 
+  // Time of the last report of user or video activity.
   base::TimeTicks last_user_activity_time_;
   base::TimeTicks last_video_activity_time_;
 

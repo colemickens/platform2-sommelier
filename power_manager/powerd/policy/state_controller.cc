@@ -568,6 +568,26 @@ void StateController::MaybeStopInitialStateTimer() {
     initial_state_timer_.Stop();
 }
 
+bool StateController::IsIdleBlocked() const {
+  return use_audio_activity_ && audio_activity_->active();
+}
+
+bool StateController::IsScreenDimBlocked() const {
+  // Nothing currently persistently blocks the screen from dimming; it's only
+  // deferred by periodic reports of activity.
+  return false;
+}
+
+bool StateController::IsScreenOffBlocked() const {
+  // If HDMI audio is active, the screen needs to be kept on.
+  return IsScreenDimBlocked() ||
+         (delegate_->IsHdmiAudioActive() && audio_activity_->active());
+}
+
+bool StateController::IsScreenLockBlocked() const {
+  return IsScreenDimBlocked();
+}
+
 base::TimeTicks StateController::GetLastActivityTimeForIdle(
     base::TimeTicks now) const {
   base::TimeTicks last_time =
@@ -579,7 +599,7 @@ base::TimeTicks StateController::GetLastActivityTimeForIdle(
   return last_time;
 }
 
-base::TimeTicks StateController::GetLastActivityTimeForScreenDimOrLock(
+base::TimeTicks StateController::GetLastActivityTimeForScreenDim(
     base::TimeTicks now) const {
   base::TimeTicks last_time =
       waiting_for_initial_user_activity() ? now : last_user_activity_time_;
@@ -590,13 +610,18 @@ base::TimeTicks StateController::GetLastActivityTimeForScreenDimOrLock(
 
 base::TimeTicks StateController::GetLastActivityTimeForScreenOff(
     base::TimeTicks now) const {
-  base::TimeTicks last_time =
-      waiting_for_initial_user_activity() ? now : last_user_activity_time_;
-  if (use_video_activity_)
-    last_time = std::max(last_time, last_video_activity_time_);
+  base::TimeTicks last_time = GetLastActivityTimeForScreenDim(now);
+
+  // If HDMI audio is active, the screen needs to be kept on.
   if (delegate_->IsHdmiAudioActive())
     last_time = std::max(last_time, audio_activity_->GetLastActiveTime(now));
+
   return last_time;
+}
+
+base::TimeTicks StateController::GetLastActivityTimeForScreenLock(
+    base::TimeTicks now) const {
+  return GetLastActivityTimeForScreenDim(now);
 }
 
 void StateController::UpdateLastUserActivityTime() {
@@ -788,14 +813,16 @@ void StateController::PerformAction(Action action) {
 void StateController::UpdateState() {
   base::TimeTicks now = clock_->GetCurrentTime();
   base::TimeDelta idle_duration = now - GetLastActivityTimeForIdle(now);
-  base::TimeDelta screen_dim_or_lock_duration =
-      now - GetLastActivityTimeForScreenDimOrLock(now);
+  base::TimeDelta screen_dim_duration =
+      now - GetLastActivityTimeForScreenDim(now);
   base::TimeDelta screen_off_duration =
       now - GetLastActivityTimeForScreenOff(now);
+  base::TimeDelta screen_lock_duration =
+      now - GetLastActivityTimeForScreenLock(now);
 
   const bool screen_was_dimmed = screen_dimmed_;
   HandleDelay(delays_.screen_dim,
-              screen_dim_or_lock_duration,
+              screen_dim_duration,
               base::Bind(&Delegate::DimScreen, base::Unretained(delegate_)),
               base::Bind(&Delegate::UndimScreen, base::Unretained(delegate_)),
               "Dimming screen",
@@ -821,7 +848,7 @@ void StateController::UpdateState() {
     screen_turned_off_time_ = base::TimeTicks();
 
   HandleDelay(delays_.screen_lock,
-              screen_dim_or_lock_duration,
+              screen_lock_duration,
               base::Bind(&Delegate::LockScreen, base::Unretained(delegate_)),
               base::Closure(),
               "Locking screen",
@@ -929,24 +956,34 @@ void StateController::UpdateState() {
 void StateController::ScheduleActionTimeout(base::TimeTicks now) {
   // Find the minimum of the delays that haven't yet occurred.
   base::TimeDelta timeout_delay;
-  UpdateActionTimeout(now,
-                      GetLastActivityTimeForScreenDimOrLock(now),
-                      delays_.screen_dim,
-                      &timeout_delay);
-  UpdateActionTimeout(now,
-                      GetLastActivityTimeForScreenOff(now),
-                      delays_.screen_off,
-                      &timeout_delay);
-  UpdateActionTimeout(now,
-                      GetLastActivityTimeForScreenDimOrLock(now),
-                      delays_.screen_lock,
-                      &timeout_delay);
-  UpdateActionTimeout(now,
-                      GetLastActivityTimeForIdle(now),
-                      delays_.idle_warning,
-                      &timeout_delay);
-  UpdateActionTimeout(
-      now, GetLastActivityTimeForIdle(now), delays_.idle, &timeout_delay);
+  if (!IsScreenDimBlocked()) {
+    UpdateActionTimeout(now,
+                        GetLastActivityTimeForScreenDim(now),
+                        delays_.screen_dim,
+                        &timeout_delay);
+  }
+  if (!IsScreenOffBlocked()) {
+    UpdateActionTimeout(now,
+                        GetLastActivityTimeForScreenOff(now),
+                        delays_.screen_off,
+                        &timeout_delay);
+  }
+  if (!IsScreenLockBlocked()) {
+    UpdateActionTimeout(now,
+                        GetLastActivityTimeForScreenLock(now),
+                        delays_.screen_lock,
+                        &timeout_delay);
+  }
+  if (!IsIdleBlocked()) {
+    UpdateActionTimeout(now,
+                        GetLastActivityTimeForIdle(now),
+                        delays_.idle_warning,
+                        &timeout_delay);
+    UpdateActionTimeout(now,
+                        GetLastActivityTimeForIdle(now),
+                        delays_.idle,
+                        &timeout_delay);
+  }
 
   if (timeout_delay > base::TimeDelta()) {
     action_timer_.Start(

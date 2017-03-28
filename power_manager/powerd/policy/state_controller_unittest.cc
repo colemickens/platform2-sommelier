@@ -346,7 +346,7 @@ TEST_F(StateControllerTest, VideoDefersDimming) {
 
 // Tests that the screen dims, is turned off, and is locked while audio is
 // playing.
-TEST_F(StateControllerTest, AudioDefersSuspend) {
+TEST_F(StateControllerTest, AudioBlocksSuspend) {
   Init();
 
   const base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(300);
@@ -371,14 +371,9 @@ TEST_F(StateControllerTest, AudioDefersSuspend) {
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kLockDelay));
   EXPECT_EQ(kScreenLock, delegate_.GetActions());
 
-  // The next timeout will be set based on the last audio activity time, which
-  // was "now" at the time of the last call to UpdateState(). When that timeout
-  // occurs, it should schedule another timeout after the idle delay without
-  // triggering any actions.
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleDelay));
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleDelay));
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  // The idle action is blocked until audio activity stops, so no further
+  // timeouts should be scheduled.
+  EXPECT_TRUE(test_api_.action_timer_time().is_null());
 
   // After the audio stops, the controller should wait for the full suspend
   // delay before suspending.
@@ -1406,11 +1401,14 @@ TEST_F(StateControllerTest, IgnoreUserActivityWhileLidClosed) {
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
 }
 
-// Tests that active audio activity doesn't result in a very-short timeout due
-// to the passage of time between successive measurements of "now" in
-// StateController (http://crbug.com/308419).
+// Tests that the timer doesn't run at all when all delays are disabled or
+// blocked: http://crbug.com/308419
 TEST_F(StateControllerTest, AudioDelay) {
   Init();
+
+  // Make "now" advance if GetCurrentTime() is called multiple times.
+  test_api_.clock()->set_time_step_for_testing(
+      base::TimeDelta::FromMilliseconds(1));
 
   const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(600);
   PowerManagementPolicy policy;
@@ -1420,16 +1418,9 @@ TEST_F(StateControllerTest, AudioDelay) {
   policy.mutable_ac_delays()->set_idle_ms(kIdleDelay.InMilliseconds());
   controller_.HandlePolicyChange(policy);
 
-  // Make "now" advance if GetCurrentTime() is called multiple times; then check
-  // that the delay that's scheduled after audio starts is somewhere in the
-  // ballpark of kIdleDelay.
-  const base::TimeTicks start_time = test_api_.clock()->GetCurrentTime();
-  test_api_.clock()->set_time_step_for_testing(
-      base::TimeDelta::FromMilliseconds(1));
+  // When no delays are active, the timer shouldn't run.
   controller_.HandleAudioStateChange(true);
-  const base::TimeDelta timeout = test_api_.action_timer_time() - start_time;
-  EXPECT_GT(timeout.InSeconds(), (kIdleDelay / 2).InSeconds());
-  EXPECT_LE(timeout.InSeconds(), kIdleDelay.InSeconds());
+  EXPECT_TRUE(test_api_.action_timer_time().is_null());
 }
 
 // Tests that when |wait_for_initial_user_activity| policy field is set,
