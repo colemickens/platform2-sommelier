@@ -249,10 +249,10 @@ void ConnectionDiagnostics::Stop() {
 
 // static
 string ConnectionDiagnostics::EventToString(const Event& event) {
-  string message("");
-  message.append(StringPrintf("Event: %-26sPhase: %-17sResult: %-10s",
-                              kEventNames[event.type], kPhaseNames[event.phase],
-                              kResultNames[event.result]));
+  string message = StringPrintf("Event: %-26sPhase: %-17sResult: %-10s",
+                                kEventNames[event.type],
+                                kPhaseNames[event.phase],
+                                kResultNames[event.result]);
   if (!event.message.empty()) {
     message.append(StringPrintf("Msg: %s", event.message.c_str()));
   }

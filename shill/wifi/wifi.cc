@@ -860,7 +860,7 @@ void WiFi::DisconnectReasonChanged(const int32_t new_disconnect_reason) {
   if (new_disconnect_reason == kDefaultDisconnectReason) {
     SLOG(this, 3) << "WiFi clearing DisconnectReason for " << link_name();
   } else {
-    string update = "";
+    string update;
     if (supplicant_disconnect_reason_ != kDefaultDisconnectReason) {
       update = StringPrintf(" (was %d)", supplicant_disconnect_reason_);
     }
