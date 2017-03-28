@@ -123,7 +123,6 @@
       'target_name': 'debugd_dbus_utils',
       'type': 'static_library',
       'sources': [
-        'src/dbus_utils.cc',
         'src/helpers/shill_proxy.cc',
         'src/helpers/system_service_proxy.cc',
       ],
@@ -285,7 +284,6 @@
           'libraries': ['-lm',],
           'sources': [
             'src/anonymizer_tool_test.cc',
-            'src/dbus_utils_unittest.cc',
             'src/dev_mode_no_owner_restriction_test.cc',
             'src/helpers/dev_features_password_utils.cc',
             'src/helpers/dev_features_password_utils_test.cc',
