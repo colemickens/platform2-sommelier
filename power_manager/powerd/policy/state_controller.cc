@@ -158,6 +158,45 @@ bool StateController::TestApi::TriggerInitialStateTimeout() {
   return true;
 }
 
+class StateController::ActivityInfo {
+ public:
+  ActivityInfo() = default;
+  ~ActivityInfo() = default;
+
+  bool active() const { return active_; }
+
+  // Returns |now| if the activity is currently active or the last time that it
+  // was active otherwise (or an unset time if it was never active).
+  //
+  // This method provides a convenient shorthand for callers that are trying to
+  // compute a most-recent-activity timestamp across several different
+  // activities. This method's return value should not be compared against the
+  // current time to determine if the activity is currently active; call
+  // active() instead.
+  base::TimeTicks GetLastActiveTime(base::TimeTicks now) const {
+    return active_ ? now : last_active_time_;
+  }
+
+  // Updates the current state of the activity.
+  void SetActive(bool active, base::TimeTicks now) {
+    if (active == active_)
+      return;
+
+    active_ = active;
+    last_active_time_ = active ? base::TimeTicks() : now;
+  }
+
+ private:
+  // True if the activity is currently active.
+  bool active_ = false;
+
+  // If the activity is currently inactive, the time at which it was last
+  // active. Unset if it is currently active or was never active.
+  base::TimeTicks last_active_time_;
+
+  DISALLOW_COPY_AND_ASSIGN(ActivityInfo);
+};
+
 const int StateController::kUserActivityAfterScreenOffIncreaseDelaysMs = 60000;
 
 // static
@@ -212,7 +251,9 @@ std::string StateController::GetPolicyDebugString(
   return str.empty() ? "[empty]" : str;
 }
 
-StateController::StateController() : clock_(new Clock) {}
+StateController::StateController()
+    : clock_(new Clock()),
+      audio_activity_(new ActivityInfo()) {}
 
 StateController::~StateController() {
   if (prefs_)
@@ -383,11 +424,7 @@ void StateController::HandleVideoActivity() {
 
 void StateController::HandleAudioStateChange(bool active) {
   CHECK(initialized_);
-  if (active)
-    audio_inactive_time_ = base::TimeTicks();
-  else if (audio_is_active_)
-    audio_inactive_time_ = clock_->GetCurrentTime();
-  audio_is_active_ = active;
+  audio_activity_->SetActive(active, clock_->GetCurrentTime());
   UpdateState();
 }
 
@@ -531,23 +568,12 @@ void StateController::MaybeStopInitialStateTimer() {
     initial_state_timer_.Stop();
 }
 
-base::TimeTicks StateController::GetLastAudioActivityTime(
-    base::TimeTicks now) const {
-  // Unlike user and video activity, which are reported as discrete events,
-  // audio activity is only reported when it starts or stops. If audio is
-  // currently active, report the last-active time as |now|. This means that
-  // a timeout will be scheduled unnecessarily, but if audio is still active
-  // later, the subsequent call to UpdateState() will again see audio as
-  // recently being active and not perform any actions.
-  return audio_is_active_ ? now : audio_inactive_time_;
-}
-
 base::TimeTicks StateController::GetLastActivityTimeForIdle(
     base::TimeTicks now) const {
   base::TimeTicks last_time =
       waiting_for_initial_user_activity() ? now : last_user_activity_time_;
   if (use_audio_activity_)
-    last_time = std::max(last_time, GetLastAudioActivityTime(now));
+    last_time = std::max(last_time, audio_activity_->GetLastActiveTime(now));
   if (use_video_activity_)
     last_time = std::max(last_time, last_video_activity_time_);
   return last_time;
@@ -569,7 +595,7 @@ base::TimeTicks StateController::GetLastActivityTimeForScreenOff(
   if (use_video_activity_)
     last_time = std::max(last_time, last_video_activity_time_);
   if (delegate_->IsHdmiAudioActive())
-    last_time = std::max(last_time, GetLastAudioActivityTime(now));
+    last_time = std::max(last_time, audio_activity_->GetLastActiveTime(now));
   return last_time;
 }
 
@@ -775,7 +801,7 @@ void StateController::UpdateState() {
               "Dimming screen",
               "Undimming screen",
               &screen_dimmed_);
-  if (screen_dimmed_ && !screen_was_dimmed && audio_is_active_ &&
+  if (screen_dimmed_ && !screen_was_dimmed && audio_activity_->active() &&
       delegate_->IsHdmiAudioActive()) {
     LOG(INFO) << "Audio is currently being sent to display; screen will not be "
               << "turned off for inactivity";

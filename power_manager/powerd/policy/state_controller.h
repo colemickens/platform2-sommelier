@@ -169,6 +169,9 @@ class StateController : public PrefsObserver {
     base::TimeDelta screen_lock;
   };
 
+  // Tracks the state of an activity that starts and stops.
+  class ActivityInfo;
+
   // These correspond to the identically-named values in the
   // PowerManagementPolicy_Action enum.
   enum class Action {
@@ -223,10 +226,6 @@ class StateController : public PrefsObserver {
   // Stops |initial_state_timer_| if |got_initial_display_mode_| and
   // |got_initial_policy_| are both true.
   void MaybeStopInitialStateTimer();
-
-  // Returns the last time at which audio was active. If audio is currently
-  // active, returns |now|. If audio has never been active, returns a null time.
-  base::TimeTicks GetLastAudioActivityTime(base::TimeTicks now) const;
 
   // Returns the last time at which activity occurred that should defer
   // |idle_action_|, taking |on_ac_|, |use_audio_activity_|, and
@@ -380,12 +379,8 @@ class StateController : public PrefsObserver {
   base::TimeTicks last_user_activity_time_;
   base::TimeTicks last_video_activity_time_;
 
-  // Is audio currently active?
-  bool audio_is_active_ = false;
-
-  // If audio is inactive, the time at which it transitioned from the active
-  // state to the inactive state. Unset if audio is active.
-  base::TimeTicks audio_inactive_time_;
+  // Information about audio activity.
+  std::unique_ptr<ActivityInfo> audio_activity_;
 
   // Most recent externally-supplied policy.
   PowerManagementPolicy policy_;
