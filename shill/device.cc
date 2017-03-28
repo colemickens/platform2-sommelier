@@ -176,10 +176,7 @@ Device::Device(ControlInterface* control_interface,
       connection_tester_callback_(Bind(&Device::ConnectionTesterCallback,
                                        weak_ptr_factory_.GetWeakPtr())),
       is_loose_routing_(false),
-      is_multi_homed_(false),
-      connection_diagnostics_callback_(
-          Bind(&Device::ConnectionDiagnosticsCallback,
-               weak_ptr_factory_.GetWeakPtr())) {
+      is_multi_homed_(false) {
   store_.RegisterConstString(kAddressProperty, &hardware_address_);
 
   // kBgscanMethodProperty: Registered in WiFi
@@ -1388,9 +1385,13 @@ void Device::StopPortalDetection() {
 
 bool Device::StartConnectionDiagnosticsAfterPortalDetection(
     const PortalDetector::Result& result) {
-  connection_diagnostics_.reset(new ConnectionDiagnostics(
-      connection_, dispatcher_, metrics_, manager_->device_info(),
-      connection_diagnostics_callback_));
+  connection_diagnostics_.reset(
+      new ConnectionDiagnostics(connection_,
+                                dispatcher_,
+                                metrics_,
+                                manager_->device_info(),
+                                Bind(&Device::ConnectionDiagnosticsCallback,
+                                     weak_ptr_factory_.GetWeakPtr())));
   if (!connection_diagnostics_->StartAfterPortalDetection(
       manager_->GetPortalCheckURL(), result)) {
     LOG(ERROR) << "Device " << FriendlyName()

@@ -894,9 +894,6 @@ class Device : public base::RefCounted<Device> {
   std::set<std::string> written_flags_;
 
   std::unique_ptr<ConnectionDiagnostics> connection_diagnostics_;
-  base::Callback<void(const std::string&,
-                      const std::vector<ConnectionDiagnostics::Event>&)>
-      connection_diagnostics_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };
