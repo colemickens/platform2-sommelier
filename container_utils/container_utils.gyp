@@ -34,32 +34,6 @@
         'run_oci.cc',
       ],
     },
-    {
-      'target_name': 'libdevice_jail',
-      'type': 'static_library',
-      'variables': {
-        'exported_deps': [
-          'libbrillo-<(libbase_ver)',
-          'libudev',
-        ],
-        'deps': [
-          '<@(exported_deps)',
-        ],
-      },
-      'direct_dependent_settings': {
-        'variables': {
-          'deps': [
-            '<@(exported_deps)',
-          ],
-        },
-      },
-      'sources': [
-        'device_jail/device_jail_control.cc',
-        'device_jail/device_jail_control.h',
-        'device_jail/device_jail_server.cc',
-        'device_jail/device_jail_server.h',
-      ],
-    },
   ],
   'conditions': [
     ['USE_test == 1', {
@@ -116,6 +90,32 @@
           ],
           'sources': [
             'device_jail/device_jail_utility.cc',
+          ],
+        },
+        {
+          'target_name': 'libdevice_jail',
+          'type': 'static_library',
+          'variables': {
+            'exported_deps': [
+              'libbrillo-<(libbase_ver)',
+              'libudev',
+            ],
+            'deps': [
+              '<@(exported_deps)',
+            ],
+          },
+          'direct_dependent_settings': {
+            'variables': {
+              'deps': [
+                '<@(exported_deps)',
+              ],
+            },
+          },
+          'sources': [
+            'device_jail/device_jail_control.cc',
+            'device_jail/device_jail_control.h',
+            'device_jail/device_jail_server.cc',
+            'device_jail/device_jail_server.h',
           ],
         },
       ],
