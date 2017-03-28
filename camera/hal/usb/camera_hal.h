@@ -11,9 +11,11 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <base/single_thread_task_runner.h>
 #include <base/threading/thread_checker.h>
 #include <hardware/camera_common.h>
 
+#include "arc/future.h"
 #include "hal/usb/camera_client.h"
 #include "hal/usb/common_types.h"
 
@@ -39,12 +41,12 @@ class CameraHal {
   int GetCameraInfo(int id, camera_info* info);
   int SetCallbacks(const camera_module_callbacks_t* callbacks);
 
- private:
-  // A callback for the camera devices opened in OpenDevice().  Used to run
-  // CloseDevice() on the same thread that OpenDevice() runs on.
-  void CloseDeviceCallback(base::TaskRunner* runner, int id);
+  // Runs on device ops thread. Post a task to the thread which is used for
+  // OpenDevice.
+  void CloseDeviceOnOpsThread(int id);
 
-  void CloseDevice(int id);
+ private:
+  void CloseDevice(int id, scoped_refptr<internal::Future<void>> future);
 
   // Cache device information because querying the information is very slow.
   DeviceInfos device_infos_;
@@ -59,6 +61,9 @@ class CameraHal {
 
   // Used to report camera info at anytime.
   std::vector<CameraMetadataUniquePtr> static_infos_;
+
+  // Used to post CloseDevice to run on the same thread.
+  scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 
   DISALLOW_COPY_AND_ASSIGN(CameraHal);
 };

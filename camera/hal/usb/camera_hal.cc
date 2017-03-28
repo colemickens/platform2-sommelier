@@ -33,6 +33,8 @@ CameraHal::CameraHal() {
 
     static_infos_.push_back(CameraMetadataUniquePtr(metadata.Release()));
   }
+
+  task_runner_ = base::MessageLoop::current()->task_runner();
 }
 
 CameraHal::~CameraHal() {}
@@ -57,12 +59,9 @@ int CameraHal::OpenDevice(int id,
     LOGF(ERROR) << "Camera " << id << " is already opened";
     return -EBUSY;
   }
-  base::Callback<void()> close_callback = base::Bind(
-      &CameraHal::CloseDeviceCallback, base::Unretained(this),
-      base::RetainedRef(base::MessageLoop::current()->task_runner()), id);
   cameras_[id].reset(new CameraClient(id, device_infos_[id].device_path,
-                                      *static_infos_[id].get(), close_callback,
-                                      module, hw_device));
+                                      *static_infos_[id].get(), module,
+                                      hw_device));
   if (cameras_[id]->OpenDevice()) {
     cameras_.erase(id);
     return -ENODEV;
@@ -105,21 +104,27 @@ int CameraHal::SetCallbacks(const camera_module_callbacks_t* callbacks) {
   return 0;
 }
 
-void CameraHal::CloseDeviceCallback(base::TaskRunner* runner, int id) {
-  runner->PostTask(FROM_HERE, base::Bind(&CameraHal::CloseDevice,
-                                         base::Unretained(this), id));
+void CameraHal::CloseDeviceOnOpsThread(int id) {
+  auto future = internal::Future<void>::Create(nullptr);
+  task_runner_->PostTask(
+      FROM_HERE, base::Bind(&CameraHal::CloseDevice, base::Unretained(this), id,
+                            base::RetainedRef(future)));
+  future->Wait();
 }
 
-void CameraHal::CloseDevice(int id) {
+void CameraHal::CloseDevice(int id,
+                            scoped_refptr<internal::Future<void>> future) {
   VLOGFID(1, id);
   DCHECK(thread_checker_.CalledOnValidThread());
 
   if (cameras_.find(id) == cameras_.end()) {
     LOGF(ERROR) << "Failed to close camera device " << id
                 << ": device is not opened";
+    future->Set();
     return;
   }
   cameras_.erase(id);
+  future->Set();
 }
 
 static int camera_device_open(const hw_module_t* module,
@@ -163,7 +168,9 @@ int camera_device_close(struct hw_device_t* hw_device) {
     return -EIO;
   }
   cam_dev->priv = NULL;
-  return cam->CloseDevice();
+  int ret = cam->CloseDevice();
+  CameraHal::GetInstance().CloseDeviceOnOpsThread(cam->GetId());
+  return ret;
 }
 
 }  // namespace arc

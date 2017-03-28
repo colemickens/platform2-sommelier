@@ -34,7 +34,6 @@ class CameraClient {
   CameraClient(int id,
                const std::string& device_path,
                const camera_metadata_t& static_info,
-               base::Callback<void()> close_callback,
                const hw_module_t* module,
                hw_device_t** hw_device);
   ~CameraClient();
@@ -75,9 +74,6 @@ class CameraClient {
 
   // Camera device path.
   const std::string device_path_;
-
-  // The callback to run when the device is closed.
-  base::Callback<void()> close_callback_;
 
   // Camera device handle returned to framework for use.
   camera3_device_t camera3_device_;
