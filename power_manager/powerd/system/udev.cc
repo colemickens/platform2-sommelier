@@ -263,13 +263,14 @@ void Udev::HandleTaggedDevice(UdevAction action, struct udev_device* dev) {
 
 void Udev::TaggedDeviceChanged(const std::string& syspath,
                                const std::string& tags) {
+  if (!tags.empty()) {
+    LOG(INFO) << (tagged_devices_.count(syspath) ? "Updating" : "Adding")
+              << " device " << syspath << " with tags " << tags;
+  }
+
   // Replace existing device with same syspath.
   tagged_devices_[syspath] = TaggedDevice(syspath, tags);
   const TaggedDevice& device = tagged_devices_[syspath];
-
-  VLOG(1) << "Tagged device changed: syspath=" << syspath
-          << ", tags: " << (tags.empty() ? "(none)" : tags);
-
   FOR_EACH_OBSERVER(UdevTaggedDeviceObserver,
                     tagged_device_observers_,
                     OnTaggedDeviceChanged(device));
@@ -277,10 +278,9 @@ void Udev::TaggedDeviceChanged(const std::string& syspath,
 
 void Udev::TaggedDeviceRemoved(const std::string& syspath) {
   TaggedDevice device = tagged_devices_[syspath];
+  if (!device.tags().empty())
+    LOG(INFO) << "Removing device " << syspath;
   tagged_devices_.erase(syspath);
-
-  VLOG(1) << "Tagged device removed: syspath=" << syspath;
-
   FOR_EACH_OBSERVER(UdevTaggedDeviceObserver,
                     tagged_device_observers_,
                     OnTaggedDeviceRemoved(device));
@@ -288,8 +288,6 @@ void Udev::TaggedDeviceRemoved(const std::string& syspath) {
 
 bool Udev::EnumerateTaggedDevices() {
   DCHECK(udev_);
-
-  VLOG(1) << "Enumerating existing tagged devices";
 
   struct udev_enumerate* enumerate = udev_enumerate_new(udev_);
   if (!enumerate) {
@@ -320,8 +318,8 @@ bool Udev::EnumerateTaggedDevices() {
     const char* tags_cstr =
         udev_device_get_property_value(device, kPowerdTagsVar);
     const std::string tags = tags_cstr ? tags_cstr : "";
-    VLOG(1) << "Pre-existing tagged device: syspath=" << syspath
-            << ", tags: " << (tags.empty() ? "(none)" : tags);
+    if (!tags.empty())
+      LOG(INFO) << "Adding device " << syspath << " with tags " << tags;
     tagged_devices_[syspath] = TaggedDevice(syspath, tags);
     udev_device_unref(device);
   }

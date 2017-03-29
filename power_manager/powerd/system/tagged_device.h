@@ -19,8 +19,8 @@ class TaggedDevice {
   TaggedDevice(const std::string& syspath, const std::string& tags);
   ~TaggedDevice();
 
-  // Returns the syspath of the device.
   const std::string& syspath() const { return syspath_; }
+  const std::unordered_set<std::string> tags() const { return tags_; }
 
   // Returns true if the device has the given tag.
   bool HasTag(const std::string& tag) const;
