@@ -1157,7 +1157,7 @@ class Metrics {
     TimerReportersByState stop_on_state;
   };
   using ServiceMetricsLookupMap =
-      std::map<const Service*, std::shared_ptr<ServiceMetrics>>;
+      std::map<const Service*, std::unique_ptr<ServiceMetrics>>;
 
   struct DeviceMetrics {
     DeviceMetrics() : auto_connect_tries(0) {}
@@ -1172,7 +1172,7 @@ class Metrics {
     int auto_connect_tries;
   };
   using DeviceMetricsLookupMap =
-      std::map<const int, std::shared_ptr<DeviceMetrics>>;
+      std::map<const int, std::unique_ptr<DeviceMetrics>>;
 
   static const uint16_t kWiFiBandwidth5MHz;
   static const uint16_t kWiFiBandwidth20MHz;

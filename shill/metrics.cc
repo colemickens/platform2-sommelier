@@ -36,7 +36,6 @@
 #include "shill/logging.h"
 
 using std::string;
-using std::shared_ptr;
 
 namespace shill {
 
@@ -668,8 +667,7 @@ void Metrics::RegisterService(const Service& service) {
   SLOG(this, 2) << __func__;
   LOG_IF(WARNING, ContainsKey(services_metrics_, &service))
       << "Repeatedly registering " << service.unique_name();
-  shared_ptr<ServiceMetrics> service_metrics(new ServiceMetrics());
-  services_metrics_[&service] = service_metrics;
+  services_metrics_[&service] = base::MakeUnique<ServiceMetrics>();
   InitializeCommonServiceMetrics(service);
 }
 
@@ -1073,8 +1071,7 @@ void Metrics::Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
 void Metrics::RegisterDevice(int interface_index,
                              Technology::Identifier technology) {
   SLOG(this, 2) << __func__ << ": " << interface_index;
-  shared_ptr<DeviceMetrics> device_metrics(new DeviceMetrics);
-  devices_metrics_[interface_index] = device_metrics;
+  auto device_metrics = base::MakeUnique<DeviceMetrics>();
   device_metrics->technology = technology;
   string histogram = GetFullMetricName(
       kMetricTimeToInitializeMillisecondsSuffix, technology);
@@ -1133,6 +1130,7 @@ void Metrics::RegisterDevice(int interface_index,
           kMetricCellularAutoConnectTotalTimeMin,
           kMetricCellularAutoConnectTotalTimeMax,
           kMetricCellularAutoConnectTotalTimeNumBuckets));
+  devices_metrics_[interface_index] = std::move(device_metrics);
 }
 
 bool Metrics::IsDeviceRegistered(int interface_index,
