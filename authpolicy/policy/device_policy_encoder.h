@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace enterprise_management {
@@ -14,6 +15,13 @@ class ChromeDeviceSettingsProto;
 }  // namespace enterprise_management
 
 namespace policy {
+
+// Connection types for the key::kDeviceUpdateAllowedConnectionTypes policy,
+// exposed for tests. The int is actually enterprise_management::
+// AutoUpdateSettingsProto_ConnectionType, but we don't want to include
+// chrome_device_policy.pb.h here in this header.
+extern const std::pair<const char*, int> kConnectionTypes[];
+extern const size_t kConnectionTypesSize;
 
 class RegistryDict;
 
@@ -29,29 +37,10 @@ class DevicePolicyEncoder {
       enterprise_management::ChromeDeviceSettingsProto* policy) const;
 
  private:
-  // For BooleanPolicyCallback and IntegerPolicyCallback we have to wrap bools
-  // and ints in order to prevent implicit type conversion of lambda functions.
-  // If we use bool and int, both
-  //   EncodeBoolean(key::kPolicy, [policy](int value) { /* set value */ });
-  // and
-  //   EncodeInteger(key::kPolicy, [policy](bool value) { /* set value */ });
-  // are perfectly legal, which is very error prone.
-  struct Bool {
-    explicit Bool(bool value) : value_(value) { }
-    operator bool() const { return value_; }
-    bool value_;
-  };
-
-  struct Int {
-    explicit Int(int value) : value_(value) { }
-    operator int() const { return value_; }
-    int value_;
-  };
-
   // Callbacks to set policy values. StringListPolicyCallback actually appends
   // a string to the list. It does not set the whole list.
-  using BooleanPolicyCallback = std::function<void(Bool)>;
-  using IntegerPolicyCallback = std::function<void(Int)>;
+  using BooleanPolicyCallback = std::function<void(bool)>;
+  using IntegerPolicyCallback = std::function<void(int)>;
   using StringPolicyCallback = std::function<void(const std::string&)>;
   using StringListPolicyCallback =
       std::function<void(const std::vector<std::string>&)>;

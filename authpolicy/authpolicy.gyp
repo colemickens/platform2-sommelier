@@ -181,6 +181,7 @@
           'sources': [
             'authpolicy_testrunner.cc',
             'authpolicy_unittest.cc',
+            'policy/device_policy_encoder_unittest.cc',
             'process_executor_unittest.cc',
             'samba_interface_internal_unittest.cc',
           ],
