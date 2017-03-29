@@ -264,7 +264,9 @@ void TestUser::GenerateCredentials(bool force_ecryptfs) {
   // Grab the generated credential
   EXPECT_CALL(platform, WriteFileAtomicDurable(keyset_path, _, _))
     .WillOnce(DoAll(SaveArg<1>(&credentials), Return(true)));
-  mount->EnsureCryptohome(up, force_ecryptfs, &created);
+  Mount::MountArgs mount_args;
+  mount_args.create_as_ecryptfs = force_ecryptfs;
+  mount->EnsureCryptohome(up, mount_args, &created);
   DCHECK(created && credentials.size());
 }
 

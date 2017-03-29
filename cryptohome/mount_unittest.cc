@@ -210,18 +210,28 @@ class MountTest
   // Sets expectations for cryptohome key setup.
   void ExpectCryptohomeKeySetup(const TestUser& user) {
     if (ShouldTestEcryptfs()) {
-      EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
-          .Times(2)
-          .WillRepeatedly(Return(true));
+      ExpectCryptohomeKeySetupForEcryptfs(user);
     } else {
-      const key_serial_t kDirCryptoKeyId = 12345;
-      EXPECT_CALL(platform_, AddDirCryptoKeyToKeyring(_, _, _))
-          .WillOnce(DoAll(SetArgPointee<2>(kDirCryptoKeyId), Return(true)));
-      EXPECT_CALL(platform_, SetDirCryptoKey(user.vault_mount_path, _))
-          .WillOnce(Return(true));
-      EXPECT_CALL(platform_, InvalidateDirCryptoKey(kDirCryptoKeyId))
-          .WillRepeatedly(Return(true));
+      ExpectCryptohomeKeySetupForDircrypto(user);
     }
+  }
+
+  // Sets expectations for cryptohome key setup for ecryptfs.
+  void ExpectCryptohomeKeySetupForEcryptfs(const TestUser& user) {
+    EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
+        .Times(2)
+        .WillRepeatedly(Return(true));
+  }
+
+  // Sets expectations for cryptohome key setup for dircrypto.
+  void ExpectCryptohomeKeySetupForDircrypto(const TestUser& user) {
+    const key_serial_t kDirCryptoKeyId = 12345;
+    EXPECT_CALL(platform_, AddDirCryptoKeyToKeyring(_, _, _))
+        .WillOnce(DoAll(SetArgPointee<2>(kDirCryptoKeyId), Return(true)));
+    EXPECT_CALL(platform_, SetDirCryptoKey(user.vault_mount_path, _))
+        .WillOnce(Return(true));
+    EXPECT_CALL(platform_, InvalidateDirCryptoKey(kDirCryptoKeyId))
+        .WillRepeatedly(Return(true));
   }
 
   // Sets expectations for cryptohome mount.
@@ -713,7 +723,7 @@ TEST_P(MountTest, CreateCryptohomeTest) {
     .WillOnce(DoAll(SaveArg<1>(&creds), Return(true)));
 
   bool created;
-  ASSERT_TRUE(mount_->EnsureCryptohome(up, ShouldTestEcryptfs(), &created));
+  ASSERT_TRUE(mount_->EnsureCryptohome(up, GetDefaultMountArgs(), &created));
   ASSERT_TRUE(created);
   ASSERT_NE(creds.size(), 0);
   ASSERT_FALSE(mount_->AreValid(up));
@@ -1637,6 +1647,73 @@ TEST_P(MountTest, MountCryptohomePreviousMigrationIncomplete) {
   MountError error = MOUNT_ERROR_NONE;
   ASSERT_FALSE(mount_->MountCryptohome(up, GetDefaultMountArgs(), &error));
   ASSERT_EQ(MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE, error);
+}
+
+TEST_P(MountTest, MountCryptohomeToMigrateFromEcryptfs) {
+  // Checks that to_migrate_from_ecryptfs option is handled correctly.
+  // When the existing vault is ecryptfs, mount it to a temporary location while
+  // setting up a new dircrypto directory.
+  // When the existing vault is dircrypto, just fail.
+  InsertTestUsers(&kDefaultUsers[10], 1);
+  EXPECT_CALL(platform_, DirectoryExists(kImageDir))
+    .WillRepeatedly(Return(true));
+  EXPECT_TRUE(DoMountInit());
+
+  TestUser *user = &helper_.users[0];
+  UsernamePasskey up(user->username, user->passkey);
+
+  user->InjectKeyset(&platform_, false);
+
+  std::vector<int> key_indices;
+  key_indices.push_back(0);
+  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
+    .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices),
+                          Return(true)));
+
+  // Inject dircrypto user paths.
+  user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_, shared_gid_,
+                        kDaemonGid, false /* is_ecryptfs */);
+
+  if (ShouldTestEcryptfs()) {
+    // Inject user ecryptfs paths too.
+    user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_, shared_gid_,
+                          kDaemonGid, true /* is_ecryptfs */);
+
+    // When an ecryptfs vault exists, mount it to a temporary location.
+    FilePath temporary_mount = user->base_path.Append(kTemporaryMountDir);
+    EXPECT_CALL(platform_, CreateDirectory(temporary_mount))
+      .WillOnce(Return(true));
+    EXPECT_CALL(platform_, Mount(user->vault_path, temporary_mount,
+                                 "ecryptfs", _))
+      .WillOnce(Return(true));
+
+    // Key set up for both dircrypto and ecryptfs.
+    ExpectCryptohomeKeySetupForDircrypto(*user);
+    ExpectCryptohomeKeySetupForEcryptfs(*user);
+
+    EXPECT_CALL(platform_, DirectoryExists(user->vault_path))
+      .WillRepeatedly(Return(true));
+
+    EXPECT_CALL(platform_, IsDirectoryMounted(user->vault_mount_path))
+      .WillOnce(Return(false));
+
+    EXPECT_CALL(platform_, CreateDirectory(user->vault_mount_path))
+      .WillRepeatedly(Return(true));
+  }
+
+  EXPECT_CALL(platform_,
+              CreateDirectory(mount_->GetNewUserPath(user->username)))
+    .WillRepeatedly(Return(true));
+
+  MountError error = MOUNT_ERROR_NONE;
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
+  mount_args.to_migrate_from_ecryptfs = true;
+  if (ShouldTestEcryptfs()) {
+    EXPECT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
+  } else {
+    // Fail if the existing vault is not ecryptfs.
+    EXPECT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
+  }
 }
 
 TEST_P(MountTest, MountCryptohomeForceDircrypto) {

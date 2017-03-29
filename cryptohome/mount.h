@@ -55,6 +55,8 @@ extern const char kUserHomeSuffix[];
 extern const char kRootHomeSuffix[];
 // Name of the mount directory.
 extern const base::FilePath::CharType kMountDir[];
+// Name of the temporary mount directory.
+extern const base::FilePath::CharType kTemporaryMountDir[];
 // Name of the key file.
 extern const base::FilePath::CharType kKeyFile[];
 // Automatic label prefix of a legacy key ("%s%d")
@@ -89,11 +91,15 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
     bool create_as_ecryptfs;
     // Forces dircrypto, i.e., makes it an error to mount ecryptfs.
     bool force_dircrypto;
+    // Mount the existing ecryptfs vault to a temporary location while setting
+    // up a new dircrypto directory.
+    bool to_migrate_from_ecryptfs;
 
     MountArgs() : create_if_missing(false),
                   ensure_ephemeral(false),
                   create_as_ecryptfs(false),
-                  force_dircrypto(false) {
+                  force_dircrypto(false),
+                  to_migrate_from_ecryptfs(false) {
     }
 
     void CopyFrom(const MountArgs& rhs) {
@@ -101,6 +107,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
       this->ensure_ephemeral = rhs.ensure_ephemeral;
       this->create_as_ecryptfs = rhs.create_as_ecryptfs;
       this->force_dircrypto = rhs.force_dircrypto;
+      this->to_migrate_from_ecryptfs = rhs.to_migrate_from_ecryptfs;
     }
   };
 
@@ -146,10 +153,10 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Parameters
   //   credentials - The Credentials representing the user whose cryptohome
   //     should be ensured.
-  //   force_ecryptfs - Force usage of ecryptfs, do not use dircrypto.
+  //   mount_args - The options for the call to mount.
   //   created (OUT) - Whether the cryptohome was created
   virtual bool EnsureCryptohome(const Credentials& credentials,
-                                bool force_ecryptfs,
+                                const MountArgs& mount_args,
                                 bool* created);
 
   // Updates current user activity timestamp. This is called daily.
@@ -521,6 +528,13 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Parameters
   //   credentials - The credentials representing the user
   base::FilePath GetUserMountDirectory(
+      const std::string& obfuscated_username) const;
+
+  // Gets the directory to temporarily mount the user's cryptohome at.
+  //
+  // Parameters
+  //   obfuscated_username - Obfuscated username field of the credentials.
+  base::FilePath GetUserTemporaryMountDirectory(
       const std::string& obfuscated_username) const;
 
   // Returns the path of a user passthrough inside a vault

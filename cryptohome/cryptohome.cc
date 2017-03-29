@@ -230,6 +230,7 @@ namespace switches {
   static const char kToDirectorySwitch[] = "to_directory";
   static const char kChunkSizeSwitch[] = "chunk_size";
   static const char kEcryptfsSwitch[] = "ecryptfs";
+  static const char kToMigrateFromEcryptfsSwitch[] = "to_migrate_from_ecryptfs";
 }  // namespace switches
 
 #define DBUS_METHOD(method_name) \
@@ -731,6 +732,8 @@ int main(int argc, char **argv) {
     cryptohome::MountRequest mount_req;
     mount_req.set_require_ephemeral(
         cl->HasSwitch(switches::kEnsureEphemeralSwitch));
+    mount_req.set_to_migrate_from_ecryptfs(
+        cl->HasSwitch(switches::kToMigrateFromEcryptfsSwitch));
     if (cl->HasSwitch(switches::kCreateSwitch)) {
       cryptohome::CreateRequest* create = mount_req.mutable_create();
       create->set_copy_authorization_key(true);

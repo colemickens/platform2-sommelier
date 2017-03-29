@@ -1889,6 +1889,7 @@ void Service::DoMountEx(AccountIdentifier* identifier,
   mount_args.ensure_ephemeral = request->require_ephemeral();
   mount_args.create_as_ecryptfs = force_ecryptfs_ ||
       (request->has_create() && request->create().force_ecryptfs());
+  mount_args.to_migrate_from_ecryptfs = request->to_migrate_from_ecryptfs();
   // Force_ecryptfs_ wins.
   mount_args.force_dircrypto =
       !force_ecryptfs_ && request->force_dircrypto_if_available();

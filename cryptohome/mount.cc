@@ -79,6 +79,7 @@ const FilePath::CharType kGCacheTmpDir[] = "tmp";
 const char kUserHomeSuffix[] = "user";
 const char kRootHomeSuffix[] = "root";
 const FilePath::CharType kMountDir[] = "mount";
+const FilePath::CharType kTemporaryMountDir[] = "temporary_mount";
 const FilePath::CharType kSkeletonDir[] = "skeleton";
 const FilePath::CharType kKeyFile[] = "master";
 const int kKeyFileMax = 100;  // master.0 ... master.99
@@ -214,7 +215,7 @@ bool Mount::Init(Platform* platform, Crypto* crypto,
 }
 
 bool Mount::EnsureCryptohome(const Credentials& credentials,
-                             bool force_ecryptfs,
+                             const MountArgs& mount_args,
                              bool* created) {
   // If the user has an old-style cryptohome, delete it
   FilePath old_image_path = GetUserDirectory(credentials).Append("image");
@@ -226,20 +227,31 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
   }
   // Now check for the presence of a cryptohome.
   if (DoesCryptohomeExist(credentials)) {
-    // Now check for the presence of a vault directory
+    // Now check for the presence of a vault directory.
     FilePath vault_path = GetUserVaultPath(
         credentials.GetObfuscatedUsername(system_salt_));
     if (platform_->DirectoryExists(vault_path)) {
-      mount_type_ = MountType::ECRYPTFS;
+      if (mount_args.to_migrate_from_ecryptfs) {
+        // When migrating, set the mount_type_ to dircrypto even if there is an
+        // eCryptfs vault.
+        mount_type_ = MountType::DIR_CRYPTO;
+      } else {
+        mount_type_ = MountType::ECRYPTFS;
+      }
     } else {
-      mount_type_ = MountType::DIR_CRYPTO;
+      if (mount_args.to_migrate_from_ecryptfs) {
+        LOG(ERROR) << "No eCryptfs vault to migrate.";
+        return false;
+      } else {
+        mount_type_ = MountType::DIR_CRYPTO;
+      }
     }
     *created = false;
     return true;
   }
   // Create the cryptohome from scratch.
   // If the kernel supports it, steer toward ext4 crypto.
-  if (force_ecryptfs) {
+  if (mount_args.create_as_ecryptfs) {
     mount_type_ = MountType::ECRYPTFS;
   } else {
     dircrypto::KeyState state = platform_->GetDirCryptoKeyState(shadow_root_);
@@ -400,7 +412,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   }
 
   bool created = false;
-  if (!EnsureCryptohome(credentials, mount_args.create_as_ecryptfs, &created)) {
+  if (!EnsureCryptohome(credentials, mount_args, &created)) {
     LOG(ERROR) << "Error creating cryptohome.";
     *mount_error = MOUNT_ERROR_FATAL;
     return false;
@@ -470,7 +482,8 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   // an error when necessary. Do this after the check by DecryptVaultKeyset,
   // because a correct credential is required before switching to migration UI.
   if (DoesEcryptfsCryptohomeExist(credentials) &&
-      DoesDircryptoCryptohomeExist(credentials)) {
+      DoesDircryptoCryptohomeExist(credentials) &&
+      !mount_args.to_migrate_from_ecryptfs) {
     // If both types of home directory existed, it implies that the migration
     // attempt was aborted in the middle before doing clean up.
     LOG(INFO) << "Mount failed because both ecryptfs and dircrypto home "
@@ -491,44 +504,45 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
+  // When migrating, mount both eCryptfs and dircrypto.
+  const bool should_mount_ecryptfs = mount_type_ == MountType::ECRYPTFS ||
+      mount_args.to_migrate_from_ecryptfs;
+  const bool should_mount_dircrypto = mount_type_ == MountType::DIR_CRYPTO;
+  if (!should_mount_ecryptfs && !should_mount_dircrypto) {
+    NOTREACHED() << "Unexpected mount type " << mount_type_;
+    *mount_error = MOUNT_ERROR_FATAL;
+    return false;
+  }
   std::string ecryptfs_options;
-  switch (mount_type_) {
-    case MountType::ECRYPTFS: {
-      // Add the decrypted key to the keyring so that ecryptfs can use it.
-      std::string key_signature, fnek_signature;
-      if (!AddEcryptfsAuthToken(vault_keyset, &key_signature,
-                                &fnek_signature)) {
-        LOG(INFO) << "Cryptohome mount failed because of keyring failure.";
-        *mount_error = MOUNT_ERROR_FATAL;
-        return false;
-      }
-      // Specify the ecryptfs options for mounting the user's cryptohome.
-      ecryptfs_options = StringPrintf(
-          "ecryptfs_cipher=aes"
-          ",ecryptfs_key_bytes=%d"
-          ",ecryptfs_fnek_sig=%s"
-          ",ecryptfs_sig=%s"
-          ",ecryptfs_unlink_sigs",
-          kDefaultEcryptfsKeySize,
-          fnek_signature.c_str(),
-          key_signature.c_str());
-      break;
-    }
-    case MountType::DIR_CRYPTO:
-      LOG_IF(WARNING, dircrypto_key_id_ != dircrypto::kInvalidKeySerial)
-          << "Already mounting with key " << dircrypto_key_id_;
-      if (!platform_->AddDirCryptoKeyToKeyring(
-              vault_keyset.fek(), vault_keyset.fek_sig(), &dircrypto_key_id_)) {
-        LOG(INFO) << "Error adding dircrypto key.";
-        *mount_error = MOUNT_ERROR_FATAL;
-        return false;
-      }
-      break;
-    case MountType::NONE:
-    case MountType::EPHEMERAL:
-      NOTREACHED() << "Unexpected mount type " << mount_type_;
+  if (should_mount_ecryptfs) {
+    // Add the decrypted key to the keyring so that ecryptfs can use it.
+    std::string key_signature, fnek_signature;
+    if (!AddEcryptfsAuthToken(vault_keyset, &key_signature,
+                              &fnek_signature)) {
+      LOG(INFO) << "Cryptohome mount failed because of keyring failure.";
       *mount_error = MOUNT_ERROR_FATAL;
       return false;
+    }
+    // Specify the ecryptfs options for mounting the user's cryptohome.
+    ecryptfs_options = StringPrintf(
+        "ecryptfs_cipher=aes"
+        ",ecryptfs_key_bytes=%d"
+        ",ecryptfs_fnek_sig=%s"
+        ",ecryptfs_sig=%s"
+        ",ecryptfs_unlink_sigs",
+        kDefaultEcryptfsKeySize,
+        fnek_signature.c_str(),
+        key_signature.c_str());
+  }
+  if (should_mount_dircrypto) {
+    LOG_IF(WARNING, dircrypto_key_id_ != dircrypto::kInvalidKeySerial)
+        << "Already mounting with key " << dircrypto_key_id_;
+    if (!platform_->AddDirCryptoKeyToKeyring(
+            vault_keyset.fek(), vault_keyset.fek_sig(), &dircrypto_key_id_)) {
+      LOG(INFO) << "Error adding dircrypto key.";
+      *mount_error = MOUNT_ERROR_FATAL;
+      return false;
+    }
   }
 
   // Mount cryptohome
@@ -554,6 +568,17 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
+  if (mount_args.to_migrate_from_ecryptfs) {
+    FilePath temporary_mount_point =
+        GetUserTemporaryMountDirectory(obfuscated_username);
+    if (!platform_->CreateDirectory(temporary_mount_point)) {
+      PLOG(ERROR) << "Directory creation failed for "
+                  << temporary_mount_point.value();
+      UnmountAll();
+      *mount_error = MOUNT_ERROR_FATAL;
+      return false;
+    }
+  }
 
   // Since Service::Mount cleans up stale mounts, we should only reach
   // this point if someone attempts to re-mount an in-use mount point.
@@ -564,39 +589,32 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     *mount_error = MOUNT_ERROR_FATAL;
     return false;
   }
-  switch (mount_type_) {
-    case MountType::ECRYPTFS:
-      // Create vault_path/user as a passthrough directory, move all the
-      // (encrypted) contents of vault_path into vault_path/user, create
-      // vault_path/root.
-      MigrateToUserHome(vault_path);
+  if (should_mount_ecryptfs) {
+    // Create vault_path/user as a passthrough directory, move all the
+    // (encrypted) contents of vault_path into vault_path/user, create
+    // vault_path/root.
+    MigrateToUserHome(vault_path);
 
-      if (!RememberMount(vault_path, mount_point_, "ecryptfs",
-                         ecryptfs_options)) {
-        PLOG(ERROR) << "Cryptohome mount failed for vault "
-                    << vault_path.value();
-        UnmountAll();
-        *mount_error = MOUNT_ERROR_FATAL;
-        return false;
-      }
-      break;
-    case MountType::DIR_CRYPTO:
-      if (!platform_->SetDirCryptoKey(mount_point_, vault_keyset.fek_sig())) {
-        LOG(ERROR) << "Failed to set directory encryption policy "
-                   << mount_point_.value();
-        UnmountAll();
-        *mount_error = MOUNT_ERROR_FATAL;
-        return false;
-      }
-      // Create user & root directories.
-      MigrateToUserHome(mount_point_);
-      break;
-    case MountType::NONE:
-    case MountType::EPHEMERAL:
-      NOTREACHED() << "Unexpected mount type " << mount_type_;
+    FilePath dest = mount_args.to_migrate_from_ecryptfs ?
+        GetUserTemporaryMountDirectory(obfuscated_username) : mount_point_;
+    if (!RememberMount(vault_path, dest, "ecryptfs", ecryptfs_options)) {
+      PLOG(ERROR) << "Cryptohome mount failed for vault "
+                  << vault_path.value();
       UnmountAll();
       *mount_error = MOUNT_ERROR_FATAL;
       return false;
+    }
+  }
+  if (should_mount_dircrypto) {
+    if (!platform_->SetDirCryptoKey(mount_point_, vault_keyset.fek_sig())) {
+      LOG(ERROR) << "Failed to set directory encryption policy "
+                 << mount_point_.value();
+      UnmountAll();
+      *mount_error = MOUNT_ERROR_FATAL;
+      return false;
+    }
+    // Create user & root directories.
+    MigrateToUserHome(mount_point_);
   }
 
   // Set the current user here so we can rely on it in the helpers..
@@ -622,36 +640,39 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
-  if (legacy_mount_)
-    MountLegacyHome(user_home, mount_error);
+  // When migrating, it's better to avoid exposing the new ext4 crypto dir.
+  if (!mount_args.to_migrate_from_ecryptfs) {
+    if (legacy_mount_)
+      MountLegacyHome(user_home, mount_error);
 
-  FilePath user_multi_home = GetUserPath(username);
-  if (!RememberBind(user_home, user_multi_home)) {
-    PLOG(ERROR) << "Bind mount failed: " << user_home.value() << " -> "
-                << user_multi_home.value();
-    UnmountAll();
-    *mount_error = MOUNT_ERROR_FATAL;
-    return false;
-  }
+    FilePath user_multi_home = GetUserPath(username);
+    if (!RememberBind(user_home, user_multi_home)) {
+      PLOG(ERROR) << "Bind mount failed: " << user_home.value() << " -> "
+                  << user_multi_home.value();
+      UnmountAll();
+      *mount_error = MOUNT_ERROR_FATAL;
+      return false;
+    }
 
-  // Mount /home/chronos/u<s_h_o_u>.
-  FilePath multi_home = GetNewUserPath(username);
-  if (!RememberBind(user_home, multi_home)) {
-    PLOG(ERROR) << "Bind mount failed: " << user_home.value() << " -> "
-                << multi_home.value();
-    UnmountAll();
-    *mount_error = MOUNT_ERROR_FATAL;
-    return false;
-  }
+    // Mount /home/chronos/u<s_h_o_u>.
+    FilePath multi_home = GetNewUserPath(username);
+    if (!RememberBind(user_home, multi_home)) {
+      PLOG(ERROR) << "Bind mount failed: " << user_home.value() << " -> "
+                  << multi_home.value();
+      UnmountAll();
+      *mount_error = MOUNT_ERROR_FATAL;
+      return false;
+    }
 
-  FilePath root_home = GetMountedRootHomePath(obfuscated_username);
-  FilePath root_multi_home = GetRootPath(username);
-  if (!RememberBind(root_home, root_multi_home)) {
-    PLOG(ERROR) << "Bind mount failed: " << root_home.value() << " -> "
-                << root_multi_home.value();
-    UnmountAll();
-    *mount_error = MOUNT_ERROR_FATAL;
-    return false;
+    FilePath root_home = GetMountedRootHomePath(obfuscated_username);
+    FilePath root_multi_home = GetRootPath(username);
+    if (!RememberBind(root_home, root_multi_home)) {
+      PLOG(ERROR) << "Bind mount failed: " << root_home.value() << " -> "
+                  << root_multi_home.value();
+      UnmountAll();
+      *mount_error = MOUNT_ERROR_FATAL;
+      return false;
+    }
   }
 
   // TODO(ellyjones): Expose the path to the root directory over dbus for use by
@@ -1387,6 +1408,11 @@ FilePath Mount::GetUserVaultPath(
 FilePath Mount::GetUserMountDirectory(
     const std::string& obfuscated_username) const {
   return shadow_root_.Append(obfuscated_username).Append(kMountDir);
+}
+
+FilePath Mount::GetUserTemporaryMountDirectory(
+    const std::string& obfuscated_username) const {
+  return shadow_root_.Append(obfuscated_username).Append(kTemporaryMountDir);
 }
 
 FilePath Mount::VaultPathToUserPath(const FilePath& vault) const {
