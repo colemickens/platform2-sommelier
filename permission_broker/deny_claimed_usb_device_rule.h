@@ -23,6 +23,10 @@ namespace permission_broker {
 // within the USB subsystem whose device node property is the same as the |path|
 // parameter. If such a matching device exists, the path is rejected as it has
 // been demonstrated to be claimed by another udev entry.
+// Android devices with USB debugging enabled may have an unclaimed interface
+// for ADB but other claimed interfaces for e.g. mass storage. In this case,
+// we can allow access even if there are claimed interfaces, though we'll detach
+// first.
 class DenyClaimedUsbDeviceRule : public UsbSubsystemUdevRule {
  public:
   DenyClaimedUsbDeviceRule();
@@ -42,6 +46,11 @@ class DenyClaimedUsbDeviceRule : public UsbSubsystemUdevRule {
   // Returns whether a USB device is whitelisted inside the device settings
   // to be detached from its kernel driver.
   bool IsDeviceDetachable(udev_device* device);
+
+  // Returns whether a USB interface represents the Android Debug Bridge.
+  // If so, then its parent node is an Android device with USB debugging
+  // enabled and we can detach its other interfaces to use it.
+  bool IsInterfaceAdb(udev_device* device);
 
   DISALLOW_COPY_AND_ASSIGN(DenyClaimedUsbDeviceRule);
 };

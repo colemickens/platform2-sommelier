@@ -13,6 +13,21 @@
 
 using policy::DevicePolicy;
 
+namespace {
+
+const uint32_t kAdbClass = 0xff;
+const uint32_t kAdbSubclass = 0x42;
+const uint32_t kAdbProtocol = 0x1;
+
+bool GetUIntSysattr(udev_device* device, const char* key, uint32_t* val) {
+  CHECK(val);
+
+  const char *str_val = udev_device_get_sysattr_value(device, key);
+  return str_val && base::HexStringToUInt(str_val, val);
+}
+
+}  // namespace
+
 namespace permission_broker {
 
 DenyClaimedUsbDeviceRule::DenyClaimedUsbDeviceRule()
@@ -44,13 +59,10 @@ bool DenyClaimedUsbDeviceRule::IsDeviceDetachable(udev_device* device) {
   if (!policy_loaded_)
     return false;
 
-  // Check whether this USB device is whitelisted
-  const char *str_vid = udev_device_get_sysattr_value(device, "idVendor");
-  const char *str_pid = udev_device_get_sysattr_value(device, "idProduct");
-  unsigned vendor_id, product_id;
-  if (!str_vid || !base::HexStringToUInt(str_vid, &vendor_id))
-    return false;
-  if (!str_pid || !base::HexStringToUInt(str_pid, &product_id))
+  // Check whether this USB device is whitelisted.
+  uint32_t vendor_id, product_id;
+  if (!GetUIntSysattr(device, "idVendor", &vendor_id) ||
+      !GetUIntSysattr(device, "idProduct", &product_id))
     return false;
 
   for (const DevicePolicy::UsbDeviceId &id : usb_whitelist_) {
@@ -60,6 +72,17 @@ bool DenyClaimedUsbDeviceRule::IsDeviceDetachable(udev_device* device) {
   }
 
   return false;
+}
+
+bool DenyClaimedUsbDeviceRule::IsInterfaceAdb(udev_device* device) {
+  uint32_t intf_class, intf_subclass, intf_protocol;
+  if (!GetUIntSysattr(device, "bInterfaceClass", &intf_class) ||
+      !GetUIntSysattr(device, "bInterfaceSubClass", &intf_subclass) ||
+      !GetUIntSysattr(device, "bInterfaceProtocol", &intf_protocol))
+    return false;
+
+  return intf_class == kAdbClass && intf_subclass == kAdbSubclass &&
+      intf_protocol == kAdbProtocol;
 }
 
 Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {
@@ -74,6 +97,7 @@ Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {
 
   bool found_claimed_interface = false;
   bool found_unclaimed_interface = false;
+  bool found_adb_interface = false;
   struct udev_list_entry *entry = nullptr;
   udev_list_entry_foreach(entry,
                           udev_enumerate_get_list_entry(enumerate.get())) {
@@ -102,10 +126,12 @@ Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {
     } else {
       found_unclaimed_interface = true;
     }
+
+    found_adb_interface |= IsInterfaceAdb(child.get());
   }
 
   if (found_claimed_interface) {
-    if (IsDeviceDetachable(device))
+    if (IsDeviceDetachable(device) || found_adb_interface)
       return ALLOW_WITH_DETACH;
     else
       return found_unclaimed_interface ? ALLOW_WITH_LOCKDOWN : DENY;
