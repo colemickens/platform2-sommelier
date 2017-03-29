@@ -47,7 +47,8 @@ void CameraModuleCallbacksDelegate::CameraDeviceStatusChangeOnThread(
     const base::Callback<void()>& cb) {
   VLOGF_ENTER();
   DCHECK(thread_checker_.CalledOnValidThread());
-  interface_ptr_->CameraDeviceStatusChange(camera_id, new_status, cb);
+  interface_ptr_->CameraDeviceStatusChange(
+      camera_id, static_cast<mojom::CameraDeviceStatus>(new_status), cb);
 }
 
 }  // namespace arc

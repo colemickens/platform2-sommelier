@@ -19,29 +19,82 @@ enum HalPixelFormat {
   HAL_PIXEL_FORMAT_YV12 = 0x32315659,
 };
 
+// The following enums are from Android's camera HAL v3 API header.
+// (hardware/libhardware/include/hardware/camera3.h)
+
+enum CameraFacing {
+  CAMERA_FACING_BACK = 0,
+  CAMERA_FACING_FRONT = 1,
+  CAMERA_FACING_EXTERNAL = 2,
+};
+
+enum Camera3StreamType {
+  CAMERA3_STREAM_OUTPUT = 0,
+  CAMERA3_STREAM_INPUT = 1,
+  CAMERA3_STREAM_BIDIRECTIONAL = 2,
+  CAMERA3_NUM_STREAM_TYPES,
+};
+
+enum Camera3StreamRotation {
+  CAMERA3_STREAM_ROTATION_0 = 0,
+  CAMERA3_STREAM_ROTATION_90 = 1,
+  CAMERA3_STREAM_ROTATION_180 = 2,
+  CAMERA3_STREAM_ROTATION_270 = 3,
+};
+
+[Extensible]
+enum Camera3StreamConfigurationMode {
+  CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE = 0,
+  CAMERA3_STREAM_CONFIGURATION_CONSTRAINED_HIGH_SPEED_MODE =1,
+  CAMERA3_VENDOR_STREAM_CONFIGURATION_MODE_START = 0x8000,
+};
+
+[Extensible]
+enum Camera3RequestTemplate {
+  CAMERA3_TEMPLATE_PREVIEW = 1,
+  CAMERA3_TEMPLATE_STILL_CAPTURE = 2,
+  CAMERA3_TEMPLATE_VIDEO_RECORD = 3,
+  CAMERA3_TEMPLATE_VIDEO_SNAPSHOT = 4,
+  CAMERA3_TEMPLATE_ZERO_SHUTTER_LAG = 5,
+  CAMERA3_TEMPLATE_MANUAL = 6,
+  CAMERA3_TEMPLATE_COUNT,
+  CAMERA3_VENDOR_TEMPLATE_START = 0x40000000,
+};
+
+enum Camera3BufferStatus {
+  CAMERA3_BUFFER_STATUS_OK = 0,
+  CAMERA3_BUFFER_STATUS_ERROR = 1,
+};
+
+enum Camera3MsgType {
+  CAMERA3_MSG_ERROR = 1,
+  CAMERA3_MSG_SHUTTER = 2,
+  CAMEAR3_NUM_MESSAGES,
+};
+
 struct Camera3Stream {
   uint64 id;
-  int32 stream_type;
+  Camera3StreamType stream_type;
   uint32 width;
   uint32 height;
   HalPixelFormat format;
   uint32 usage;
   uint32 max_buffers;
   uint32 data_space;
-  int32 rotation;
+  Camera3StreamRotation rotation;
 };
 
 struct Camera3StreamConfiguration {
   uint32 num_streams;
   array<Camera3Stream> streams;
-  uint32 operation_mode;
+  Camera3StreamConfigurationMode operation_mode;
   int32 error;  // Used to piggyback error code returned by driver.
 };
 
 struct Camera3StreamBuffer {
   uint64 stream_id;
   uint64 buffer_id;
-  int32 status;
+  Camera3BufferStatus status;
   handle? acquire_fence;
   handle? release_fence;
 };
@@ -60,7 +113,8 @@ interface Camera3DeviceOps {
   ConfigureStreams@1(Camera3StreamConfiguration config) =>
       (Camera3StreamConfiguration updated_config);
 
-  ConstructDefaultRequestSettings@2(int32 type) => (CameraMetadata settings);
+  ConstructDefaultRequestSettings@2(Camera3RequestTemplate type) =>
+      (CameraMetadata? settings);
 
   ProcessCaptureRequest@3(Camera3CaptureRequest request) => (int32 result);
 
@@ -110,7 +164,7 @@ union Camera3NotifyMsgMessage {
 };
 
 struct Camera3NotifyMsg {
-  int32 type;
+  Camera3MsgType type;
   Camera3NotifyMsgMessage message;
 };
 
@@ -121,7 +175,7 @@ interface Camera3CallbackOps {
 };
 
 struct CameraInfo {
-  int32 facing;
+  CameraFacing facing;
   int32 orientation;
   uint32 device_version;
   CameraMetadata static_camera_characteristics;
@@ -131,15 +185,22 @@ struct CameraInfo {
 };
 
 interface CameraModule {
-  OpenDevice@0(int32 camera_id) => (int32 result, Camera3DeviceOps device_ops);
+  OpenDevice@0(int32 camera_id) => (int32 result, Camera3DeviceOps? device_ops);
 
   GetNumberOfCameras@1() => (int32 result);
 
-  GetCameraInfo@2(int32 camera_id) => (int32 result, CameraInfo camera_info);
+  GetCameraInfo@2(int32 camera_id) => (int32 result, CameraInfo? camera_info);
 
   SetCallbacks@3(CameraModuleCallbacks callbacks) => (int32 result);
 };
 
+enum CameraDeviceStatus {
+  CAMERA_DEVICE_STATUS_NOT_PRESENT = 0,
+  CAMERA_DEVICE_STATUS_PRESENT = 1,
+  CAMERA_DEVICE_STATUS_ENUMERATING = 2,
+};
+
 interface CameraModuleCallbacks {
-  CameraDeviceStatusChange@0(int32 camera_id, int32 new_status) => ();
+  CameraDeviceStatusChange@0(int32 camera_id, CameraDeviceStatus new_status) =>
+    ();
 };

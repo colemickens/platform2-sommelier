@@ -73,21 +73,22 @@ mojom::Camera3StreamConfigurationPtr CameraDeviceAdapter::ConfigureStreams(
       VLOGF(1) << "Update existing stream: " << id;
       stream.swap(it->second);
     }
-    stream->stream_type = s->stream_type;
+    stream->stream_type = static_cast<camera3_stream_type_t>(s->stream_type);
     stream->width = s->width;
     stream->height = s->height;
     stream->format = static_cast<int32_t>(s->format);
     stream->usage = s->usage;
     stream->max_buffers = s->max_buffers;
     stream->data_space = static_cast<android_dataspace_t>(s->data_space);
-    stream->rotation = s->rotation;
+    stream->rotation = static_cast<camera3_stream_rotation_t>(s->rotation);
   }
   streams_.swap(new_streams);
 
   camera3_stream_configuration_t stream_list;
   stream_list.num_streams = config->num_streams;
   stream_list.streams = new camera3_stream_t*[config->num_streams];
-  stream_list.operation_mode = config->operation_mode;
+  stream_list.operation_mode =
+      static_cast<camera3_stream_configuration_mode_t>(config->operation_mode);
   int i = 0;
   for (auto it = streams_.begin(); it != streams_.end(); it++) {
     stream_list.streams[i++] = it->second.get();
@@ -118,11 +119,11 @@ mojom::Camera3StreamConfigurationPtr CameraDeviceAdapter::ConfigureStreams(
 }
 
 mojom::CameraMetadataPtr CameraDeviceAdapter::ConstructDefaultRequestSettings(
-    int32_t type) {
+    mojom::Camera3RequestTemplate type) {
   VLOGF_ENTER();
   const camera_metadata_t* metadata =
-      camera_device_->ops->construct_default_request_settings(camera_device_,
-                                                              type);
+      camera_device_->ops->construct_default_request_settings(
+          camera_device_, static_cast<int32_t>(type));
   return internal::SerializeCameraMetadata(metadata);
 }
 
@@ -325,7 +326,7 @@ mojom::Camera3NotifyMsgPtr CameraDeviceAdapter::Notify(
     const camera3_notify_msg_t* msg) {
   // Fill in the data from msg...
   mojom::Camera3NotifyMsgPtr m = mojom::Camera3NotifyMsg::New();
-  m->type = msg->type;
+  m->type = static_cast<mojom::Camera3MsgType>(msg->type);
   m->message = mojom::Camera3NotifyMsgMessage::New();
 
   if (msg->type == CAMERA3_MSG_ERROR) {

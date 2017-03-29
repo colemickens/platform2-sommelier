@@ -57,7 +57,8 @@ class CameraDeviceAdapter {
   mojom::Camera3StreamConfigurationPtr ConfigureStreams(
       mojom::Camera3StreamConfigurationPtr config);
 
-  mojom::CameraMetadataPtr ConstructDefaultRequestSettings(int32_t type);
+  mojom::CameraMetadataPtr ConstructDefaultRequestSettings(
+      mojom::Camera3RequestTemplate type);
 
   int32_t ProcessCaptureRequest(mojom::Camera3CaptureRequestPtr request);
 

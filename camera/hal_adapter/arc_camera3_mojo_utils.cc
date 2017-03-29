@@ -78,7 +78,7 @@ arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
   }
   ret->buffer_id = handle->buffer_id;
 
-  ret->status = buffer->status;
+  ret->status = static_cast<arc::mojom::Camera3BufferStatus>(buffer->status);
 
   if (buffer->acquire_fence != -1) {
     ret->acquire_fence = WrapPlatformHandle(buffer->acquire_fence);
@@ -122,7 +122,7 @@ int DeserializeStreamBuffer(
   *out_buffer->buffer =
       reinterpret_cast<buffer_handle_t>(buffer_handle->second.get());
 
-  out_buffer->status = ptr->status;
+  out_buffer->status = static_cast<int>(ptr->status);
 
   if (ptr->acquire_fence.is_valid()) {
     out_buffer->acquire_fence =

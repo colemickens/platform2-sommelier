@@ -36,7 +36,7 @@ void Camera3DeviceOpsDelegate::ConfigureStreams(
 }
 
 void Camera3DeviceOpsDelegate::ConstructDefaultRequestSettings(
-    int32_t type,
+    mojom::Camera3RequestTemplate type,
     const ConstructDefaultRequestSettingsCallback& callback) {
   VLOGF_ENTER();
   DCHECK(thread_checker_.CalledOnValidThread());

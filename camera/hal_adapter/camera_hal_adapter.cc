@@ -172,7 +172,7 @@ int32_t CameraHalAdapter::GetCameraInfo(int32_t device_id,
   }
 
   mojom::CameraInfoPtr info_ptr = mojom::CameraInfo::New();
-  info_ptr->facing = info.facing;
+  info_ptr->facing = static_cast<mojom::CameraFacing>(info.facing);
   info_ptr->orientation = info.orientation;
   info_ptr->device_version = info.device_version;
   info_ptr->static_camera_characteristics =

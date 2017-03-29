@@ -29,7 +29,7 @@ class Camera3DeviceOpsDelegate
                         const ConfigureStreamsCallback& callback) override;
 
   void ConstructDefaultRequestSettings(
-      int32_t type,
+      mojom::Camera3RequestTemplate type,
       const ConstructDefaultRequestSettingsCallback& callback) override;
 
   void ProcessCaptureRequest(
