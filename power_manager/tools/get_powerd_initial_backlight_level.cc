@@ -35,6 +35,9 @@ int main(int argc, char* argv[]) {
               "backlight brightness. The level corresponds to that used when "
               "hovering is detected and ambient light is at its lowest level "
               "(if applicable).");
+  DEFINE_bool(force_battery,
+              false,
+              "Force the battery brightness to be used.");
   brillo::FlagHelper::Init(argc, argv, "Print initial backlight levels.");
 
   base::AtExitManager at_exit_manager;
@@ -98,7 +101,7 @@ int main(int argc, char* argv[]) {
                     false /* log_shutdown_thresholds */);
   CHECK(power_supply.RefreshImmediately());
   const power_manager::PowerSource power_source =
-      power_supply.GetPowerStatus().line_power_on
+      (!FLAGS_force_battery && power_supply.GetPowerStatus().line_power_on)
           ? power_manager::PowerSource::AC
           : power_manager::PowerSource::BATTERY;
 
