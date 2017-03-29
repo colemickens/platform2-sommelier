@@ -61,7 +61,7 @@ const char kOpenFailedError[] = "open_failed";
 
 namespace permission_broker {
 
-#if USE_CONTAINERS
+#if USE_DEVICE_JAIL
 class JailRequestHandler : public device_jail::DeviceJailServer::Delegate {
  public:
   explicit JailRequestHandler(RuleEngine* rule_engine)
@@ -119,7 +119,7 @@ PermissionBroker::PermissionBroker(
   rule_engine_.AddRule(new DenyClaimedHidrawDeviceRule());
   rule_engine_.AddRule(new DenyUnsafeHidrawDeviceRule());
 
-#if USE_CONTAINERS
+#if USE_DEVICE_JAIL
   // Try to serve device_jail requests. If we can't, it's not a huge deal.
   jail_server_ = device_jail::DeviceJailServer::CreateAndListen(
       base::MakeUnique<JailRequestHandler>(&rule_engine_),
