@@ -75,17 +75,17 @@ class ScopedTimerReporter {
   DISALLOW_COPY_AND_ASSIGN(ScopedTimerReporter);
 };
 
-// Submits UMA metrics for authpolicy.
+// Submits UMA metrics for authpolicy. Some methods are virtual for tests.
 class AuthPolicyMetrics {
  public:
   AuthPolicyMetrics();
-  ~AuthPolicyMetrics();
+  virtual ~AuthPolicyMetrics();
 
   // Report a |sample| for the given |metric_type|.
-  void Report(MetricType metric_type, int sample);
+  virtual void Report(MetricType metric_type, int sample);
 
   // Report an |ErrorType| return value from DBus query.
-  void ReportDBusResult(DBusCallType call_type, ErrorType error);
+  virtual void ReportDBusResult(DBusCallType call_type, ErrorType error);
 
  private:
   MetricsLibrary metrics_;

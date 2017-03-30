@@ -65,6 +65,9 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
 
   void RefreshDevicePolicy(PolicyResponseCallback callback) override;
 
+  // Metrics accessor for unit tests.
+  AuthPolicyMetrics* GetMetricsForTesting() const { return metrics_.get(); }
+
  private:
   // Sends policy to SessionManager. Assumes |policy_blob| contains user policy
   // if |account_id_key| is not nullptr, otherwise assumes it's device policy.
