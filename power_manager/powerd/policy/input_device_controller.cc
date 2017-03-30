@@ -19,6 +19,24 @@ namespace policy {
 
 namespace {
 
+// Returns a string describing |mode|.
+const char* ModeToString(InputDeviceController::Mode mode) {
+  switch (mode) {
+    case InputDeviceController::Mode::CLOSED:
+      return "closed";
+    case InputDeviceController::Mode::DOCKED:
+      return "docked";
+    case InputDeviceController::Mode::DISPLAY_OFF:
+      return "display_off";
+    case InputDeviceController::Mode::LAPTOP:
+      return "laptop";
+    case InputDeviceController::Mode::TABLET:
+      return "tablet";
+  }
+  NOTREACHED() << "Invalid mode " << static_cast<int>(mode);
+  return "unknown";
+}
+
 // Returns true if |device| has a "usable_when_[mode]" tag corresponding to
 // |mode|.
 bool IsUsableInMode(const system::TaggedDevice& device,
@@ -271,8 +289,7 @@ void InputDeviceController::UpdatePolicy() {
 
   mode_ = new_mode;
 
-  VLOG(1) << "Policy changed, re-configuring existing devices";
-
+  LOG(INFO) << "Configuring devices for mode \"" << ModeToString(mode_) << "\"";
   std::vector<system::TaggedDevice> devices = udev_->GetTaggedDevices();
   // Configure inhibit first, as it is somewhat time-critical (we want to block
   // events as fast as possible), and wakeup takes a few milliseconds to set.

@@ -57,7 +57,6 @@ class InputDeviceController : public policy::BacklightControllerObserver,
 
   // Describes which mode the system is currently in, depending on e.g. the
   // state of the lid.
-  // TODO(derat): Track tablet mode: http://crbug.com/661368
   enum class Mode {
     CLOSED = 0,   // Lid closed, no external monitor attached.
     DOCKED,       // Lid closed, external monitor attached.

@@ -307,6 +307,8 @@ void Daemon::Init() {
   input_watcher_ = delegate_->CreateInputWatcher(prefs_.get(), udev_.get());
 
   const TabletMode tablet_mode = input_watcher_->GetTabletMode();
+  if (tablet_mode == TabletMode::ON)
+    LOG(INFO) << "Tablet mode enabled at startup";
   const LidState lid_state = input_watcher_->QueryLidState();
   if (lid_state == LidState::CLOSED)
     LOG(INFO) << "Lid closed at startup";
