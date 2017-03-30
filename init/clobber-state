@@ -464,6 +464,20 @@ tag_developer_mode_flags() {
   fi
 }
 
+# Removes the following keys from the vpd when transitioning
+# between developer and verified mode. Do not do this for a safe wipe.
+#   first_active_omaha_ping_sent
+#   recovery_count
+remove_vpd_keys() {
+  local key=""
+  if [ "${SAFE_WIPE}" != "safe" ]; then
+    for key in "recovery_count" "first_active_omaha_ping_sent"; do
+      # Do not report failures as the key might not even exist in the vpd.
+      vpd -i RW_VPD -d "${key}"
+    done
+  fi
+}
+
 main() {
   ensure_root_account
   redirect_log_start
@@ -493,6 +507,9 @@ main() {
 
   restore_preserved_files
   tag_developer_mode_flags
+
+  # Remove extra vpd keys when switching to developer mode.
+  remove_vpd_keys
 
   # Flush linux caches.
   sync
