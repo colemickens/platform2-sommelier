@@ -83,9 +83,6 @@ using IPConfigRefPtr = scoped_refptr<IPConfig>;
 class DHCPConfig;
 using DHCPConfigRefPtr = scoped_refptr<DHCPConfig>;
 
-class Throttler;
-using ThrottlerRefPtr = scoped_refptr<Throttler>;
-
 class Profile;
 using ProfileConstRefPtr = scoped_refptr<const Profile>;
 using ProfileRefPtr = scoped_refptr<Profile>;

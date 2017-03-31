@@ -65,6 +65,7 @@ class ManagerAdaptorInterface;
 class Resolver;
 class StoreInterface;
 class VPNProvider;
+class Throttler;
 
 #if !defined(DISABLE_WIFI)
 class WiFiProvider;
