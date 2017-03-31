@@ -666,6 +666,7 @@ void VbExError(const char* format, ...) {
   va_list ap;
   va_start(ap, format);
   fprintf(stderr, "ERROR: ");
+  vfprintf(stderr, format, ap);
   va_end(ap);
 }
 
