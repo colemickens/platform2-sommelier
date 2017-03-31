@@ -25,6 +25,9 @@ using std::map;
 using std::string;
 using std::vector;
 
+// TODO(benchan): Remove entire archive manager after deprecating the rar
+// support (see chromium:707327).
+
 namespace {
 
 // Mapping from a base path to its corresponding path inside the AVFS mount.
@@ -176,20 +179,12 @@ string ArchiveManager::SuggestMountPath(const string& source_path) const {
 }
 
 void ArchiveManager::RegisterDefaultFileExtensions() {
-  // TODO(benchan): Perhaps these settings can be read from a config file.
+  // Different archive formats can now be supported via an extension (built-in
+  // or installed by user) using the chrome.fileSystemProvider API. Thus, zip,
+  // tar, and gzip/bzip2 compressed tar formats are no longer supported here.
 
-  // zip
-  RegisterFileExtension("zip", "#uzip");
-  // tar
-  RegisterFileExtension("tar", "#utar");
-  // All variants of bzip2-compessed tar
-  RegisterFileExtension("tar.bz2", "#ubz2#utar");
-  RegisterFileExtension("tbz", "#ubz2#utar");
-  RegisterFileExtension("tbz2", "#ubz2#utar");
-  // All variants of gzip-compessed tar
-  RegisterFileExtension("tar.gz", "#ugz#utar");
-  RegisterFileExtension("tgz", "#ugz#utar");
-  // rar
+  // rar is still supported until there is a replacement using a built-in
+  // extension.
   RegisterFileExtension("rar", "#urar");
 }
 
