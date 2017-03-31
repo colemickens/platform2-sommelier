@@ -11,11 +11,11 @@
 #include <string>
 #include <vector>
 
+#include <arc/camera_buffer_mapper.h>
 #include <base/bind.h>
 #include <base/macros.h>
 #include <base/threading/thread.h>
 #include <base/threading/thread_checker.h>
-#include <camera_buffer_mapper.h>
 #include <hardware/camera3.h>
 #include <hardware/hardware.h>
 

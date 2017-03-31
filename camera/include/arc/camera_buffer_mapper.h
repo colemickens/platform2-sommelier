@@ -7,18 +7,16 @@
 #ifndef INCLUDE_ARC_CAMERA_BUFFER_MAPPER_H_
 #define INCLUDE_ARC_CAMERA_BUFFER_MAPPER_H_
 
-#include <memory>
-#include <unordered_map>
-#include <utility>
-
 #include <base/synchronization/lock.h>
-#include <gbm.h>
+
+#include "arc/camera_buffer_mapper_typedefs.h"
 
 #define EXPORTED __attribute__((__visibility__("default")))
 
-struct native_handle;
-typedef const native_handle* buffer_handle_t;
-struct android_ycbcr;
+// A V4L2 extension format which represents 32bit RGBX-8-8-8-8 format. This
+// corresponds to DRM_FORMAT_XBGR8888 which is used as the underlying format for
+// the HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINEND format on all CrOS boards.
+#define V4L2_PIX_FMT_RGBX32 v4l2_fourcc('X', 'B', '2', '4')
 
 namespace arc {
 
@@ -28,94 +26,6 @@ class CameraBufferMapperTest;
 
 }  // namespace tests
 
-// The enum definition here should match |Camera3DeviceOps::BufferType| in
-// hal_adapter/arc_camera3.mojom.
-enum BufferType {
-  GRALLOC = 0,
-  SHM = 1,
-};
-
-struct GbmDeviceDeleter {
-  inline void operator()(struct gbm_device* device) {
-    if (device) {
-      close(gbm_device_get_fd(device));
-      gbm_device_destroy(device);
-    }
-  }
-};
-
-typedef std::unique_ptr<struct gbm_device, struct GbmDeviceDeleter>
-    GbmDeviceUniquePtr;
-
-struct GbmBoInfo {
-  struct gbm_bo* bo;
-  uint32_t usage;
-
-  GbmBoInfo() : bo(nullptr), usage(0) {}
-};
-
-struct GbmBoInfoDeleter {
-  inline void operator()(struct GbmBoInfo* info) {
-    if (info->bo) {
-      gbm_bo_destroy(info->bo);
-    }
-  }
-};
-
-typedef std::unique_ptr<struct GbmBoInfo, struct GbmBoInfoDeleter>
-    GbmBoInfoUniquePtr;
-typedef std::unordered_map<buffer_handle_t, GbmBoInfoUniquePtr> GbmBoCache;
-
-struct MappedBufferInfo {
-  enum BufferType type;
-  // The gbm_bo associated with the imported buffer (for gralloc buffer only).
-  struct gbm_bo* bo;
-  // The per-bo data returned by gbm_bo_map() (for gralloc buffer only).
-  void* map_data;
-  // For refcounting.
-  uint32_t usage;
-
-  MappedBufferInfo() : bo(nullptr), map_data(nullptr), usage(0) {}
-};
-
-struct MappedBufferInfoDeleter {
-  inline void operator()(struct MappedBufferInfo* info) {
-    if (info->type == GRALLOC) {
-      // Unmap the bo once for each active usage.
-      while (info->usage) {
-        gbm_bo_unmap(info->bo, info->map_data);
-        --info->usage;
-      }
-    } else if (info->type == SHM) {
-      // TODO(jcliang): Implement deleter for shared memory buffer.
-      return;
-    }
-  }
-};
-
-typedef std::unique_ptr<struct MappedBufferInfo, struct MappedBufferInfoDeleter>
-    MappedBufferInfoUniquePtr;
-typedef std::pair<buffer_handle_t, uint32_t> MappedBufferInfoKeyType;
-
-struct MappedBufferInfoKeyHash {
-  size_t operator()(const MappedBufferInfoKeyType& key) const {
-    // The key is (buffer_handle_t pointer, plane number).  Plane number is less
-    // than 4, so shifting the pointer value left by 8 and filling the lowest
-    // byte with the plane number gives us a unique value to represent a key.
-    return (reinterpret_cast<size_t>(key.first) << 8 | key.second);
-  }
-};
-
-typedef std::unordered_map<MappedBufferInfoKeyType,
-                           MappedBufferInfoUniquePtr,
-                           struct MappedBufferInfoKeyHash>
-    MappedBufferInfoCache;
-
-// A V4L2 extension format which represents 32bit RGBX-8-8-8-8 format. This
-// corresponds to DRM_FORMAT_XBGR8888 which is used as the underlying format for
-// the HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINEND format on all CrOS boards.
-#define V4L2_PIX_FMT_RGBX32 v4l2_fourcc('X', 'B', '2', '4')
-
 // Generic camera buffer mapper.  The class is for a camera HAL to map and unmap
 // the buffer handles received in camera3_stream_buffer_t.
 //
@@ -123,7 +33,7 @@ typedef std::unordered_map<MappedBufferInfoKeyType,
 //
 // Example usage:
 //
-//  #include <camera_buffer_mapper.h>
+//  #include <arc/camera_buffer_mapper.h>
 //  CameraBufferMapper* mapper = CameraBufferMapper::GetInstance();
 //  if (!mapper) {
 //    /* Error handling */
@@ -291,15 +201,19 @@ class EXPORTED CameraBufferMapper {
   // The handle to the opened GBM device.
   GbmDeviceUniquePtr gbm_device_;
 
-  // A cache which stores all the imported GBM buffer objects.  |gbm_bo_| needs
-  // to be placed before |buffer_info_| to make sure the GBM buffer objects are
-  // valid when we unmap them in |buffer_info_|'s destructor.
-  GbmBoCache gbm_bo_;
+  // A cache which stores all the context of the registered buffers.
+  // For gralloc buffers the context stores the imported GBM buffer objects.
+  // For shm buffers the context stores the mapped address and the buffer size.
+  // |buffer_context_| needs to be placed before |buffer_info_| to make sure the
+  // GBM buffer objects are valid when we unmap them in |buffer_info_|'s
+  // destructor.
+  BufferContextCache buffer_context_;
 
   // The private info about all the mapped (buffer, plane) pairs.
   // |buffer_info_| has to be placed after |gbm_device_| so that the GBM device
-  // is still valid when we delete the MappedBufferInfoUniquePtr.
-  MappedBufferInfoCache buffer_info_;
+  // is still valid when we delete the MappedGrallocBufferInfoUniquePtr.
+  // This is only used by gralloc buffers.
+  MappedGrallocBufferInfoCache buffer_info_;
 
   // ** End of lock_ scope **
 

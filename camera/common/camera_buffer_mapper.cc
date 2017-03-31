@@ -43,9 +43,9 @@ int CameraBufferMapper::Register(buffer_handle_t buffer) {
   base::AutoLock l(lock_);
 
   if (handle->type == GRALLOC) {
-    auto bo_cache = gbm_bo_.find(buffer);
-    if (bo_cache == gbm_bo_.end()) {
-      GbmBoInfoUniquePtr bo_info(new struct GbmBoInfo);
+    auto it = buffer_context_.find(buffer);
+    if (it == buffer_context_.end()) {
+      BufferContextUniquePtr buffer_context(new struct BufferContext);
       // Import the buffer if we haven't done so.
       struct gbm_import_fd_planar_data import_data;
       memset(&import_data, 0, sizeof(import_data));
@@ -66,24 +66,47 @@ int CameraBufferMapper::Register(buffer_handle_t buffer) {
       if (import_data.format == DRM_FORMAT_R8) {
         usage = GBM_BO_USE_LINEAR;
       }
-      bo_info->bo = gbm_bo_import(gbm_device_.get(), GBM_BO_IMPORT_FD_PLANAR,
-                                  &import_data, usage);
-      if (!bo_info->bo) {
+      buffer_context->bo = gbm_bo_import(
+          gbm_device_.get(), GBM_BO_IMPORT_FD_PLANAR, &import_data, usage);
+      if (!buffer_context->bo) {
         LOGF(ERROR) << "Failed to import buffer 0x" << std::hex
                     << handle->buffer_id;
         return -EIO;
       }
-      bo_info->usage = 1;
-      gbm_bo_[buffer] = std::move(bo_info);
+      buffer_context->usage = 1;
+      buffer_context_[buffer] = std::move(buffer_context);
     } else {
-      bo_cache->second->usage++;
+      it->second->usage++;
     }
     return 0;
   } else if (handle->type == SHM) {
-    // TODO(jcliang): Implement register for shared memory buffers.
-    LOGF(ERROR)
-        << "Register for shared memory buffer handle is not yet implemented";
-    return -EINVAL;
+    // The shared memory buffer is a contiguous area of memory which is large
+    // enough to hold all the physical planes.  We mmap the buffer on Register
+    // and munmap on Deregister.
+    auto it = buffer_context_.find(buffer);
+    if (it == buffer_context_.end()) {
+      BufferContextUniquePtr buffer_context(new struct BufferContext);
+      buffer_context->shm_buffer_size =
+          lseek(handle->fds[0].get(), 0, SEEK_END);
+      if (buffer_context->shm_buffer_size == -1) {
+        LOGF(ERROR) << "Failed to get shm buffer size through lseek: "
+                    << strerror(errno);
+        return -errno;
+      }
+      lseek(handle->fds[0].get(), 0, SEEK_SET);
+      buffer_context->mapped_addr =
+          mmap(nullptr, buffer_context->shm_buffer_size, PROT_READ | PROT_WRITE,
+               MAP_SHARED, handle->fds[0].get(), 0);
+      if (buffer_context->mapped_addr == MAP_FAILED) {
+        LOGF(ERROR) << "Failed to mmap shm buffer: " << strerror(errno);
+        return -errno;
+      }
+      buffer_context->usage = 1;
+      buffer_context_[buffer] = std::move(buffer_context);
+    } else {
+      it->second->usage++;
+    }
+    return 0;
   } else {
     NOTREACHED() << "Invalid buffer type: " << handle->type;
     return -EINVAL;
@@ -98,29 +121,35 @@ int CameraBufferMapper::Deregister(buffer_handle_t buffer) {
 
   base::AutoLock l(lock_);
 
+  auto it = buffer_context_.find(buffer);
+  if (it == buffer_context_.end()) {
+    LOGF(ERROR) << "Unknown buffer 0x" << std::hex << handle->buffer_id;
+    return -EINVAL;
+  }
+  auto buffer_context = it->second.get();
   if (handle->type == GRALLOC) {
-    auto bo_cache = gbm_bo_.find(buffer);
-    if (bo_cache == gbm_bo_.end()) {
-      LOGF(ERROR) << "Unknown buffer 0x" << std::hex << handle->buffer_id;
-      return -EINVAL;
-    }
-    if (!--bo_cache->second->usage) {
+    if (!--buffer_context->usage) {
       // Unmap all the existing mapping of bo.
       for (auto it = buffer_info_.begin(); it != buffer_info_.end();) {
-        if (it->second->bo == bo_cache->second->bo) {
+        if (it->second->bo == it->second->bo) {
           it = buffer_info_.erase(it);
         } else {
           ++it;
         }
       }
-      gbm_bo_.erase(bo_cache);
+      buffer_context_.erase(it);
     }
     return 0;
   } else if (handle->type == SHM) {
-    // TODO(jcliang): Implement unregister for shared memory buffers.
-    LOGF(ERROR)
-        << "Unegister for shared memory buffer handle is not yet implemented";
-    return -EINVAL;
+    if (!--buffer_context->usage) {
+      int ret =
+          munmap(buffer_context->mapped_addr, buffer_context->shm_buffer_size);
+      if (ret == -1) {
+        LOGF(ERROR) << "Failed to munmap shm buffer: " << strerror(errno);
+      }
+      buffer_context_.erase(it);
+    }
+    return 0;
   } else {
     NOTREACHED() << "Invalid buffer type: " << handle->type;
     return -EINVAL;
@@ -274,26 +303,24 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
 
   base::AutoLock l(lock_);
 
-  auto key = MappedBufferInfoCache::key_type(buffer, plane);
-
   if (handle->type == GRALLOC) {
-    struct MappedBufferInfo* info;
+    struct MappedGrallocBufferInfo* info;
+    auto key = MappedGrallocBufferInfoCache::key_type(buffer, plane);
     auto info_cache = buffer_info_.find(key);
     if (info_cache == buffer_info_.end()) {
       // We haven't mapped |plane| of |buffer| yet.
-      info = new struct MappedBufferInfo;
-      info->type = static_cast<enum BufferType>(handle->type);
-      auto bo_cache = gbm_bo_.find(buffer);
-      if (bo_cache == gbm_bo_.end()) {
+      info = new struct MappedGrallocBufferInfo;
+      auto it = buffer_context_.find(buffer);
+      if (it == buffer_context_.end()) {
         LOGF(ERROR) << "Buffer 0x" << std::hex << handle->buffer_id
                     << " is not registered";
         return MAP_FAILED;
       }
-      info->bo = bo_cache->second->bo;
+      info->bo = it->second->bo;
     } else {
       // We have mapped |plane| on |buffer| before: we can simply call
       // gbm_bo_map() on the existing bo.
-      DCHECK(gbm_bo_.find(buffer) != gbm_bo_.end());
+      DCHECK(buffer_context_.find(buffer) != buffer_context_.end());
       info = info_cache->second.get();
     }
     uint32_t stride;
@@ -313,9 +340,21 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
              << handle->buffer_id << " mapped";
     return out_addr;
   } else if (handle->type == SHM) {
-    // TODO(jcliang): Implement map for shared memory buffers.
-    LOGF(ERROR) << "Map for shared memory buffer handle is not yet implemented";
-    return MAP_FAILED;
+    // We can't call mmap() here because each mmap call may return different
+    // mapped virtual addresses and may lead to virtual memory address leak.
+    // Instead we call mmap() only once in Register.
+    auto it = buffer_context_.find(buffer);
+    if (it == buffer_context_.end()) {
+      LOGF(ERROR) << "Unknown buffer 0x" << std::hex << handle->buffer_id;
+      return MAP_FAILED;
+    }
+    auto buffer_context = it->second.get();
+    void* out_addr = reinterpret_cast<void*>(
+        reinterpret_cast<uintptr_t>(buffer_context->mapped_addr) +
+        handle->offsets[plane] + y * handle->strides[plane] + x);
+    VLOGF(1) << "Plane " << plane << " of shm buffer 0x" << std::hex
+             << handle->buffer_id << " mapped";
+    return out_addr;
   } else {
     NOTREACHED() << "Invalid buffer type: " << handle->type;
     return MAP_FAILED;
@@ -328,18 +367,16 @@ int CameraBufferMapper::Unmap(buffer_handle_t buffer, uint32_t plane) {
     return -EINVAL;
   }
 
-  base::AutoLock l(lock_);
-
-  auto key = MappedBufferInfoCache::key_type(buffer, plane);
-  auto info_cache = buffer_info_.find(key);
-  if (info_cache == buffer_info_.end()) {
-    LOGF(ERROR) << "Plane " << plane << " of buffer 0x" << std::hex
-                << handle->buffer_id << " was not mapped";
-    return -EINVAL;
-  }
-
-  auto& info = info_cache->second;
-  if (info->type == GRALLOC) {
+  if (handle->type == GRALLOC) {
+    base::AutoLock l(lock_);
+    auto key = MappedGrallocBufferInfoCache::key_type(buffer, plane);
+    auto info_cache = buffer_info_.find(key);
+    if (info_cache == buffer_info_.end()) {
+      LOGF(ERROR) << "Plane " << plane << " of buffer 0x" << std::hex
+                  << handle->buffer_id << " was not mapped";
+      return -EINVAL;
+    }
+    auto& info = info_cache->second;
     if (info->usage) {
       // We rely on GBM's internal refcounting mechanism to unmap the bo when
       // appropriate.
@@ -348,11 +385,10 @@ int CameraBufferMapper::Unmap(buffer_handle_t buffer, uint32_t plane) {
         buffer_info_.erase(info_cache);
       }
     }
-  } else if (info->type == SHM) {
-    // TODO(jcliang): Implement unmap for shared memory buffers.
-    buffer_info_.erase(info_cache);
-    LOGF(ERROR)
-        << "Unmap for shared memory buffer handle is not yet implemented";
+  } else if (handle->type == SHM) {
+    // No-op for SHM buffers.
+  } else {
+    NOTREACHED() << "Invalid buffer type: " << handle->type;
     return -EINVAL;
   }
   VLOGF(1) << "buffer 0x" << std::hex << handle->buffer_id << " unmapped";

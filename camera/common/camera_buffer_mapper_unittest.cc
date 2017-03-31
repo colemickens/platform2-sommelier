@@ -53,6 +53,11 @@ static std::function<void*(struct gbm_bo* bo,
     _gbm_bo_map;
 static std::function<void(struct gbm_bo* bo, void* map_data)> _gbm_bo_unmap;
 static std::function<void(struct gbm_bo* bo)> _gbm_bo_destroy;
+static std::function<
+    void*(void* addr, size_t length, int prot, int flags, int fd, off_t offset)>
+    _mmap;
+static std::function<int(void* addr, size_t length)> _munmap;
+static std::function<off_t(int fd, off_t offset, int whence)> _lseek;
 
 // Implementations of the mock functions.
 struct MockGbm {
@@ -93,6 +98,22 @@ struct MockGbm {
 
     EXPECT_EQ(_gbm_bo_destroy, nullptr);
     _gbm_bo_destroy = [this](struct gbm_bo* bo) { GbmBoDestroy(bo); };
+
+    EXPECT_EQ(_mmap, nullptr);
+    _mmap = [this](void* addr, size_t length, int prot, int flags, int fd,
+                   off_t offset) {
+      return Mmap(addr, length, prot, flags, fd, offset);
+    };
+
+    EXPECT_EQ(_munmap, nullptr);
+    _munmap = [this](void* addr, size_t length) {
+      return Munmap(addr, length);
+    };
+
+    EXPECT_EQ(_lseek, nullptr);
+    _lseek = [this](int fd, off_t offset, int whence) {
+      return Lseek(fd, offset, whence);
+    };
   }
 
   ~MockGbm() {
@@ -104,6 +125,9 @@ struct MockGbm {
     _gbm_bo_map = nullptr;
     _gbm_bo_unmap = nullptr;
     _gbm_bo_destroy = nullptr;
+    _mmap = nullptr;
+    _munmap = nullptr;
+    _lseek = nullptr;
   }
 
   MOCK_METHOD1(Close, int(int fd));
@@ -127,6 +151,15 @@ struct MockGbm {
                      size_t plane));
   MOCK_METHOD2(GbmBoUnmap, void(struct gbm_bo* bo, void* map_data));
   MOCK_METHOD1(GbmBoDestroy, void(struct gbm_bo* bo));
+  MOCK_METHOD6(Mmap,
+               void*(void* addr,
+                     size_t length,
+                     int prot,
+                     int flags,
+                     int fd,
+                     off_t offset));
+  MOCK_METHOD2(Munmap, int(void* addr, size_t length));
+  MOCK_METHOD3(Lseek, off_t(int fd, off_t offset, int whence));
 };
 
 // global scope mock functions. These functions indirectly invoke the mock
@@ -172,6 +205,23 @@ void gbm_bo_unmap(struct gbm_bo* bo, void* map_data) {
 
 void gbm_bo_destroy(struct gbm_bo* bo) {
   return _gbm_bo_destroy(bo);
+}
+
+void* mmap(void* addr,
+           size_t length,
+           int prot,
+           int flags,
+           int fd,
+           off_t offset) {
+  return _mmap(addr, length, prot, flags, fd, offset);
+}
+
+int munmap(void* addr, size_t length) {
+  return _munmap(addr, length);
+}
+
+off_t lseek(int fd, off_t offset, int whence) {
+  return _lseek(fd, offset, whence);
 }
 
 namespace base {
@@ -451,6 +501,47 @@ TEST_F(CameraBufferMapperTest, LockYCbCrTest) {
 
   // The fd of the buffer plane should be closed.
   EXPECT_CALL(gbm_, Close(dummy_fd)).Times(1);
+}
+
+TEST_F(CameraBufferMapperTest, ShmBufferTest) {
+  // Create a dummy buffer.
+  const int kBufferWidth = 1280, kBufferHeight = 720;
+  auto buffer = CreateBuffer(1, SHM, DRM_FORMAT_XBGR8888,
+                             HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
+                             kBufferWidth, kBufferHeight);
+  const size_t kBufferSize = kBufferWidth * kBufferHeight * 4;
+  buffer_handle_t handle = reinterpret_cast<buffer_handle_t>(buffer.get());
+
+  // Register the buffer.
+  EXPECT_CALL(gbm_, Lseek(dummy_fd, 0, SEEK_END))
+      .Times(1)
+      .WillOnce(Return(kBufferSize));
+  EXPECT_CALL(gbm_, Lseek(dummy_fd, 0, SEEK_SET)).Times(1);
+  EXPECT_CALL(gbm_, Mmap(nullptr, kBufferSize, PROT_READ | PROT_WRITE,
+                         MAP_SHARED, dummy_fd, 0))
+      .Times(1)
+      .WillOnce(Return(dummy_addr));
+  EXPECT_EQ(cbm_->Register(handle), 0);
+
+  // The call to Lock |handle| should fail due to invalid width and height.
+  void* addr;
+  EXPECT_EQ(cbm_->Lock(handle, 0, 0, 0, 1920, 1080, &addr), -EINVAL);
+
+  // Now the call to Lock |handle| should succeed with valid width and height.
+  EXPECT_EQ(cbm_->Lock(handle, 0, 0, 0, kBufferWidth, kBufferHeight, &addr), 0);
+  EXPECT_EQ(addr, dummy_addr);
+
+  // Another call to Lock |handle| should return the same mapped address.
+  EXPECT_EQ(cbm_->Lock(handle, 0, 0, 0, kBufferWidth, kBufferHeight, &addr), 0);
+  EXPECT_EQ(addr, dummy_addr);
+
+  // And the call to Unlock on |handle| should also succeed.
+  EXPECT_EQ(cbm_->Unlock(handle), 0);
+  EXPECT_EQ(cbm_->Unlock(handle), 0);
+
+  // Finally the shm buffer should be unmapped when we deregister the buffer.
+  EXPECT_CALL(gbm_, Munmap(dummy_addr, kBufferSize)).Times(1);
+  EXPECT_EQ(cbm_->Deregister(handle), 0);
 }
 
 }  // namespace tests
