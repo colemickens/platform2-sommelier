@@ -14,6 +14,7 @@
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
+#include <base/time/time.h>
 
 namespace chromeos {
 namespace ui {
@@ -51,6 +52,7 @@ class ChromiumCommandBuilder {
   gid_t gid() const { return gid_; }
   bool is_chrome_os_hardware() const { return is_chrome_os_hardware_; }
   bool is_developer_end_user() const { return is_developer_end_user_; }
+  bool is_test_build() const { return is_test_build_; }
   const StringMap& environment_variables() const {
     return environment_variables_;
   }
@@ -97,8 +99,10 @@ class ChromiumCommandBuilder {
   //   NAME=VALUE
   //     Calls AddEnvVar("NAME", "VALUE").
   //
+  // Any flags beginning with prefixes in |disallowed_prefixes| are disregarded.
   // Returns true on success.
-  bool ApplyUserConfig(const base::FilePath& path);
+  bool ApplyUserConfig(const base::FilePath& path,
+                       const std::set<std::string>& disallowed_prefixes);
 
   // Returns true if a USE flag named |flag| was set when the system image was
   // built.
@@ -167,6 +171,16 @@ class ChromiumCommandBuilder {
 
   // True if this is a developer system, per the is_developer_end_user command.
   bool is_developer_end_user_;
+
+  // True if this is a test build, per CHROMEOS_RELEASE_TRACK in
+  // /etc/lsb-release.
+  bool is_test_build_;
+
+  // Data in /etc/lsb-release.
+  std::string lsb_data_;
+
+  // Creation time of /etc/lsb-release.
+  base::Time lsb_release_time_;
 
   // Environment variables that the caller should export before starting the
   // executable.

@@ -112,8 +112,7 @@ TEST_F(ChromiumCommandBuilderTest, UseFlags) {
 
 TEST_F(ChromiumCommandBuilderTest, MissingLsbReleaseFile) {
   write_lsb_release_file_ = false;
-  ASSERT_TRUE(Init());
-  EXPECT_FALSE(builder_.SetUpChromium());
+  EXPECT_FALSE(Init());
 }
 
 TEST_F(ChromiumCommandBuilderTest, LsbRelease) {
@@ -123,6 +122,13 @@ TEST_F(ChromiumCommandBuilderTest, LsbRelease) {
 
   EXPECT_EQ(lsb_release_data_, ReadEnvVar("LSB_RELEASE"));
   EXPECT_FALSE(ReadEnvVar("LSB_RELEASE_TIME").empty());
+  EXPECT_FALSE(builder_.is_test_build());
+}
+
+TEST_F(ChromiumCommandBuilderTest, IsTestBuild) {
+  lsb_release_data_ = "abc\nCHROMEOS_RELEASE_TRACK=testabc\ndef";
+  ASSERT_TRUE(Init());
+  EXPECT_TRUE(builder_.is_test_build());
 }
 
 TEST_F(ChromiumCommandBuilderTest, TimeZone) {
@@ -223,13 +229,42 @@ TEST_F(ChromiumCommandBuilderTest, UserConfig) {
       "!--blah\n";
   base::FilePath path(util::GetReparentedPath("/config.txt", base_path_));
   ASSERT_EQ(strlen(kConfig), base::WriteFile(path, kConfig, strlen(kConfig)));
+  std::set<std::string> disallowed_prefixes;
 
-  ASSERT_TRUE(builder_.ApplyUserConfig(path));
+  ASSERT_TRUE(builder_.ApplyUserConfig(path, disallowed_prefixes));
   ASSERT_EQ(2U, builder_.arguments().size());
   EXPECT_EQ("--foo=1", builder_.arguments()[0]);
   EXPECT_EQ("--bar=3", builder_.arguments()[1]);
   EXPECT_EQ("3", ReadEnvVar("FOO"));
   EXPECT_EQ("4", ReadEnvVar("BAR"));
+}
+
+TEST_F(ChromiumCommandBuilderTest, UserConfigWithDisallowedPrefixes) {
+  ASSERT_TRUE(Init());
+  ASSERT_TRUE(builder_.SetUpChromium());
+
+  size_t default_size = builder_.arguments().size();
+
+  const char kConfig[] =
+      "# Here's a comment followed by 3 lines with disallowed prefixes and\n"
+      "# 2 lines without disallowed prefixes.\n"
+      "--disallowed-prefix1=bar\n"
+      "  --disallowed-prefix2=bar\n"
+      "--notallowed-prefix3=bar\n"
+      "--Disallowed-prefix=foo\n"
+      "--allowed-prefix=foo";
+
+  base::FilePath path(util::GetReparentedPath("/config.txt", base_path_));
+  ASSERT_EQ(strlen(kConfig), base::WriteFile(path, kConfig, strlen(kConfig)));
+  std::set<std::string> disallowed_prefixes;
+
+  disallowed_prefixes.insert("--disallowed-prefix");
+  disallowed_prefixes.insert("--notallowed-prefix");
+  ASSERT_TRUE(builder_.ApplyUserConfig(path, disallowed_prefixes));
+
+  ASSERT_EQ(default_size + 2, builder_.arguments().size());
+  EXPECT_EQ("--Disallowed-prefix=foo", builder_.arguments()[default_size]);
+  EXPECT_EQ("--allowed-prefix=foo", builder_.arguments()[default_size + 1]);
 }
 
 TEST_F(ChromiumCommandBuilderTest, UserConfigVmodule) {
@@ -245,7 +280,9 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigVmodule) {
   const char kConfig[] = "!--foo\n!--bar";
   base::FilePath path(util::GetReparentedPath("/config.txt", base_path_));
   ASSERT_EQ(strlen(kConfig), base::WriteFile(path, kConfig, strlen(kConfig)));
-  ASSERT_TRUE(builder_.ApplyUserConfig(path));
+  std::set<std::string> disallowed_prefixes;
+
+  ASSERT_TRUE(builder_.ApplyUserConfig(path, disallowed_prefixes));
   builder_.AddVmodulePattern("b=1");
   ASSERT_EQ("--vmodule=b=1,a=2", GetFirstArgWithPrefix(kPrefix));
 
@@ -253,7 +290,7 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigVmodule) {
   const char kConfig2[] = "!--vmodule=";
   ASSERT_EQ(strlen(kConfig2),
             base::WriteFile(path, kConfig2, strlen(kConfig2)));
-  ASSERT_TRUE(builder_.ApplyUserConfig(path));
+  ASSERT_TRUE(builder_.ApplyUserConfig(path, disallowed_prefixes));
   EXPECT_TRUE(builder_.arguments().empty());
 
   // Now add another vmodule pattern and check that the flag is re-added.
@@ -264,7 +301,7 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigVmodule) {
   const char kConfig3[] = "vmodule=a=1\nvmodule=b=2";
   ASSERT_EQ(strlen(kConfig3),
             base::WriteFile(path, kConfig3, strlen(kConfig3)));
-  ASSERT_TRUE(builder_.ApplyUserConfig(path));
+  ASSERT_TRUE(builder_.ApplyUserConfig(path, disallowed_prefixes));
   ASSERT_EQ("--vmodule=b=2,a=1,c=1", GetFirstArgWithPrefix(kPrefix));
 
   // Also check that literal "vmodule=..." arguments don't get added.
@@ -282,9 +319,11 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigEnableFeatures) {
   // Check that we don't get confused when deleting flags surrounding the
   // feature flag.
   const char kConfig[] = "!--foo\n!--bar";
+  std::set<std::string> disallowed_prefixes;
+
   base::FilePath path(util::GetReparentedPath("/config.txt", base_path_));
   ASSERT_EQ(strlen(kConfig), base::WriteFile(path, kConfig, strlen(kConfig)));
-  ASSERT_TRUE(builder_.ApplyUserConfig(path));
+  ASSERT_TRUE(builder_.ApplyUserConfig(path, disallowed_prefixes));
   builder_.AddFeatureEnableOverride("b");
   ASSERT_EQ("--enable-features=a,b", GetFirstArgWithPrefix(kPrefix));
 
@@ -292,7 +331,7 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigEnableFeatures) {
   const char kConfig2[] = "!--enable-features=";
   ASSERT_EQ(strlen(kConfig2),
             base::WriteFile(path, kConfig2, strlen(kConfig2)));
-  ASSERT_TRUE(builder_.ApplyUserConfig(path));
+  ASSERT_TRUE(builder_.ApplyUserConfig(path, disallowed_prefixes));
   EXPECT_TRUE(builder_.arguments().empty());
 
   // Now add another feature and check that the flag is re-added.
@@ -303,7 +342,7 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigEnableFeatures) {
   const char kConfig3[] = "enable-features=d\nenable-features=e";
   ASSERT_EQ(strlen(kConfig3),
             base::WriteFile(path, kConfig3, strlen(kConfig3)));
-  ASSERT_TRUE(builder_.ApplyUserConfig(path));
+  ASSERT_TRUE(builder_.ApplyUserConfig(path, disallowed_prefixes));
   ASSERT_EQ("--enable-features=c,d,e", GetFirstArgWithPrefix(kPrefix));
 
   // Also check that literal "enable-features=..." arguments don't get added.

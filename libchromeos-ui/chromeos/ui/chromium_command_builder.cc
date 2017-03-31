@@ -97,6 +97,15 @@ bool IsTestBuild(const std::string& lsb_data) {
   return false;
 }
 
+// Returns true if |str| has prefix in |prefixes|.
+bool HasPrefix(const std::string& str, const std::set<std::string>& prefixes) {
+  for (const auto& prefix : prefixes) {
+    if (base::StartsWith(str, prefix, base::CompareCase::SENSITIVE))
+      return true;
+  }
+  return false;
+}
+
 }  // namespace
 
 const char ChromiumCommandBuilder::kUser[] = "chronos";
@@ -114,6 +123,7 @@ ChromiumCommandBuilder::ChromiumCommandBuilder()
       gid_(0),
       is_chrome_os_hardware_(false),
       is_developer_end_user_(false),
+      is_test_build_(false),
       vmodule_argument_index_(-1),
       enable_features_argument_index_(-1) {
 }
@@ -149,6 +159,17 @@ bool ChromiumCommandBuilder::Init() {
   is_developer_end_user_ = base::GetAppOutput(
       base::CommandLine(base::FilePath("is_developer_end_user")), &output);
 
+  // Provide /etc/lsb-release contents and timestamp so that they are available
+  // to Chrome immediately without requiring a blocking file read.
+  const base::FilePath lsb_path(GetPath(kLsbReleasePath));
+  base::File::Info info;
+  if (!base::ReadFileToString(lsb_path, &lsb_data_) ||
+      !base::GetFileInfo(lsb_path, &info)) {
+    LOG(ERROR) << "Unable to read or stat " << kLsbReleasePath;
+    return false;
+  }
+  lsb_release_time_ = info.creation_time;
+  is_test_build_ = IsTestBuild(lsb_data_);
   return true;
 }
 
@@ -165,19 +186,8 @@ bool ChromiumCommandBuilder::SetUpChromium() {
   if (!util::EnsureDirectoryExists(data_dir, uid_, gid_, 0755))
     return false;
 
-  // Provide /etc/lsb-release contents and timestamp so that they are available
-  // to Chrome immediately without requiring a blocking file read.
-  const base::FilePath lsb_path(GetPath(kLsbReleasePath));
-  std::string lsb_data;
-  base::File::Info info;
-  if (!base::ReadFileToString(lsb_path, &lsb_data) ||
-      !base::GetFileInfo(lsb_path, &info)) {
-    LOG(ERROR) << "Unable to read or stat " << kLsbReleasePath;
-    return false;
-  }
-  AddEnvVar("LSB_RELEASE", lsb_data);
-  AddEnvVar("LSB_RELEASE_TIME",
-            base::IntToString(info.creation_time.ToTimeT()));
+  AddEnvVar("LSB_RELEASE", lsb_data_);
+  AddEnvVar("LSB_RELEASE_TIME", base::IntToString(lsb_release_time_.ToTimeT()));
 
   // By default, libdbus treats all warnings as fatal errors. That's too strict.
   AddEnvVar("DBUS_FATAL_WARNINGS", "0");
@@ -217,11 +227,6 @@ bool ChromiumCommandBuilder::SetUpChromium() {
   SetUpPepperPlugins();
   AddUiFlags();
 
-  if (UseFlagIsSet("arc") || (UseFlagIsSet("cheets") && IsTestBuild(lsb_data)))
-    AddArg("--arc-availability=officially-supported");
-  else if (UseFlagIsSet("cheets"))
-    AddArg("--arc-availability=installed");
-
   if (UseFlagIsSet("pointer_events"))
     AddFeatureEnableOverride("PointerEvent");
 
@@ -249,7 +254,8 @@ void ChromiumCommandBuilder::EnableCoreDumps() {
                   kPattern.c_str(), kPattern.size());
 }
 
-bool ChromiumCommandBuilder::ApplyUserConfig(const base::FilePath& path) {
+bool ChromiumCommandBuilder::ApplyUserConfig(const base::FilePath& path,
+    const std::set<std::string>& disallowed_prefixes) {
   std::string data;
   if (!base::ReadFileToString(path, &data)) {
     PLOG(WARNING) << "Unable to read " << path.value();
@@ -292,7 +298,7 @@ bool ChromiumCommandBuilder::ApplyUserConfig(const base::FilePath& path) {
         AddFeatureEnableOverride(pairs[0].second);
       else if (pairs.size() == 1U && IsEnvironmentVariableName(pairs[0].first))
         AddEnvVar(pairs[0].first, pairs[0].second);
-      else
+      else if (!HasPrefix(line, disallowed_prefixes))
         AddArg(line);
     }
   }

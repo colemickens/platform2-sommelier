@@ -7,6 +7,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <set>
+
 #include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -67,6 +69,23 @@ bool AddWallpaperFlags(
                                      flag_type.c_str(),
                                      small_path.value().c_str()));
   return true;
+}
+
+// Adds ARC related flags.
+void AddArcFlags(ChromiumCommandBuilder* builder,
+                 std::set<std::string>* disallowed_params_out) {
+  if (builder->UseFlagIsSet("arc") ||
+      (builder->UseFlagIsSet("cheets") && builder->is_test_build())) {
+    builder->AddArg("--arc-availability=officially-supported");
+  } else if (builder->UseFlagIsSet("cheets")) {
+    builder->AddArg("--arc-availability=installed");
+  } else {
+    // Don't pass ARC availability related flags in chrome_dev.conf to Chrome if
+    // ARC is not installed at all.
+    disallowed_params_out->insert("--arc-availability");
+    disallowed_params_out->insert("--enable-arc");
+    disallowed_params_out->insert("--arc-available");
+  }
 }
 
 // Ensures that necessary directory exist with the correct permissions and sets
@@ -373,13 +392,15 @@ void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
   DCHECK(uid_out);
 
   ChromiumCommandBuilder builder;
+  std::set<std::string> disallowed_prefixes;
   CHECK(builder.Init());
-  builder.SetUpChromium();
+  CHECK(builder.SetUpChromium());
 
   // Please add new code to the most-appropriate helper function instead of
   // putting it here. Things that to all Chromium-derived binaries (e.g.
   // app_shell, content_shell, etc.) rather than just to Chrome belong in the
   // ChromiumCommandBuilder class instead.
+  AddArcFlags(&builder, &disallowed_prefixes);
   CreateDirectories(&builder);
   InitCrashHandling(&builder);
   AddSystemFlags(&builder);
@@ -388,8 +409,10 @@ void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
   AddVmodulePatterns(&builder);
 
   // Apply any modifications requested by the developer.
-  if (builder.is_developer_end_user())
-    builder.ApplyUserConfig(base::FilePath(kChromeDevConfigPath));
+  if (builder.is_developer_end_user()) {
+    builder.ApplyUserConfig(base::FilePath(kChromeDevConfigPath),
+                            disallowed_prefixes);
+  }
 
   *is_developer_end_user_out = builder.is_developer_end_user();
   *env_vars_out = builder.environment_variables();
