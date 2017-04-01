@@ -1232,6 +1232,52 @@ static int mount_runfs(struct container *c, const struct container_config *confi
 	return 0;
 }
 
+static int device_setup(struct container *c,
+			const struct container_config *config)
+{
+	int rc, i;
+
+	c->cgroup->ops->deny_all_devices(c->cgroup);
+
+	for (i = 0; i < config->num_devices; i++) {
+		const struct container_device *dev = &config->devices[i];
+		int minor = dev->minor;
+
+		if (dev->copy_minor) {
+			struct stat st_buff;
+			if (stat(dev->path, &st_buff) < 0)
+				continue;
+			minor = minor(st_buff.st_rdev);
+		}
+		if (minor >= 0) {
+			rc = container_create_device(c, config, dev, minor);
+			if (rc)
+				return rc;
+		}
+
+		rc = c->cgroup->ops->add_device(c->cgroup, dev->major,
+						minor, dev->read_allowed,
+						dev->write_allowed,
+						dev->modify_allowed, dev->type);
+		if (rc)
+			return rc;
+	}
+
+	for (i = 0; i < c->num_loopdevs; ++i) {
+		struct stat st;
+
+		if (stat(c->loopdevs[i], &st) < 0)
+			return rc;
+		rc = c->cgroup->ops->add_device(c->cgroup, major(st.st_rdev),
+						minor(st.st_rdev),
+						1, 0, 0, 'b');
+		if (rc)
+			return rc;
+	}
+
+	return 0;
+}
+
 int container_start(struct container *c, const struct container_config *config)
 {
 	int rc = 0;
@@ -1298,43 +1344,8 @@ int container_start(struct container *c, const struct container_config *config)
 
 	/* Must be root to modify device cgroup or mknod */
 	if (getuid() == 0) {
-		c->cgroup->ops->deny_all_devices(c->cgroup);
-
-		for (i = 0; i < config->num_devices; i++) {
-			const struct container_device *dev = &config->devices[i];
-			int minor = dev->minor;
-
-			if (dev->copy_minor) {
-				struct stat st_buff;
-				if (stat(dev->path, &st_buff) < 0)
-					continue;
-				/* Use the minor macro to extract the device number. */
-				minor = minor(st_buff.st_rdev);
-			}
-			if (minor >= 0) {
-				rc = container_create_device(c, config, dev, minor);
-				if (rc)
-					goto error_rmdir;
-			}
-
-			rc = c->cgroup->ops->add_device(c->cgroup, dev->major,
-							minor, dev->read_allowed,
-							dev->write_allowed,
-							dev->modify_allowed, dev->type);
-			if (rc)
-				goto error_rmdir;
-		}
-
-		for (i = 0; i < c->num_loopdevs; ++i) {
-			struct stat st;
-
-			if (stat(c->loopdevs[i], &st) < 0)
-				goto error_rmdir;
-			rc = c->cgroup->ops->add_device(c->cgroup, major(st.st_rdev),
-							minor(st.st_rdev), 1, 0, 0, 'b');
-			if (rc)
-				goto error_rmdir;
-		}
+		if (device_setup(c, config))
+			goto error_rmdir;
 	}
 
 	/* Potentailly run setfiles on mounts configured outside of the jail */
