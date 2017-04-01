@@ -266,9 +266,9 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
 int32_t CameraDeviceAdapter::Close() {
   // Close the device.
   VLOGF_ENTER();
-  fence_sync_thread_.Stop();
   int32_t ret = camera_device_->common.close(&camera_device_->common);
   DCHECK_EQ(ret, 0);
+  fence_sync_thread_.Stop();
   close_callback_.Run();
   return ret;
 }
