@@ -1,6 +1,7 @@
 // Copyright 2017 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
 #include "midis/device_tracker.h"
 
 #include <fcntl.h>
@@ -68,12 +69,8 @@ bool UdevHandler::InitUdevHandler() {
   udev_monitor_fd_ = base::ScopedFD(udev_monitor_get_fd(udev_monitor_.get()));
 
   brillo::MessageLoop::current()->WatchFileDescriptor(
-      FROM_HERE,
-      udev_monitor_fd_.get(),
-      brillo::MessageLoop::kWatchRead,
-      true,
-      base::Bind(&UdevHandler::ProcessUdevFd,
-                 weak_factory_.GetWeakPtr(),
+      FROM_HERE, udev_monitor_fd_.get(), brillo::MessageLoop::kWatchRead, true,
+      base::Bind(&UdevHandler::ProcessUdevFd, weak_factory_.GetWeakPtr(),
                  udev_monitor_fd_.get()));
   return true;
 }
@@ -104,8 +101,8 @@ std::string UdevHandler::GetMidiDeviceDname(struct udev_device* udev_device) {
     return result;
   }
 
-  base::FileEnumerator enume(
-      base::FilePath(syspath), false, base::FileEnumerator::DIRECTORIES);
+  base::FileEnumerator enume(base::FilePath(syspath), false,
+                             base::FileEnumerator::DIRECTORIES);
   for (base::FilePath name = enume.Next(); !name.empty(); name = enume.Next()) {
     const std::string cur_name = name.BaseName().value();
     if (base::StartsWith(cur_name, kMidiPrefix, base::CompareCase::SENSITIVE)) {
@@ -136,8 +133,7 @@ std::unique_ptr<struct snd_rawmidi_info> UdevHandler::GetDeviceInfo(
   for (int retry_counter = 0; retry_counter < kIoctlMaxRetries;
        ++retry_counter) {
     fd = base::ScopedFD(open(dev_path.value().c_str(), O_RDWR | O_CLOEXEC));
-    if (fd.is_valid())
-      break;
+    if (fd.is_valid()) break;
 
     base::PlatformThread::Sleep(
         base::TimeDelta::FromMilliseconds(2 * (retry_counter + 1)));
@@ -185,14 +181,14 @@ std::unique_ptr<Device> UdevHandler::CreateDevice(
 
   std::string dev_name(reinterpret_cast<char*>(info->name));
 
-  return base::MakeUnique<Device>(
-      dev_name, info->card, info->device, info->subdevices_count, info->flags);
+  return Device::Create(dev_name, info->card, info->device,
+                        info->subdevices_count, info->flags);
 }
 
 void DeviceTracker::AddDevice(std::unique_ptr<Device> dev) {
-  devices_.emplace(
-      udev_handler_->GenerateDeviceId(dev->GetCard(), dev->GetDeviceNum()),
-      std::move(dev));
+  uint32_t device_id =
+      udev_handler_->GenerateDeviceId(dev->GetCard(), dev->GetDeviceNum());
+  devices_.emplace(device_id, std::move(dev));
 }
 
 void DeviceTracker::RemoveDevice(uint32_t sys_num, uint32_t dev_num) {
@@ -222,37 +218,23 @@ void UdevHandler::ProcessUdevEvent(struct udev_device* udev_device) {
     action = kUdevActionChange;
   }
 
+  uint32_t sys_num;
+  if (!base::StringToUint(GetDeviceSysNum(udev_device), &sys_num)) {
+    LOG(ERROR) << "Error retrieving sysnum of device.";
+    return;
+  }
+
+  uint32_t dev_num = static_cast<uint32_t>(GetDeviceDevNum(udev_device));
   if (strncmp(action, kUdevActionChange, sizeof(kUdevActionChange) - 1) == 0) {
     std::unique_ptr<Device> new_dev = CreateDevice(udev_device);
     if (new_dev) {
       dev_tracker_->AddDevice(std::move(new_dev));
     }
-  } else if (strncmp(action,
-                     kUdevActionRemove,
+  } else if (strncmp(action, kUdevActionRemove,
                      sizeof(kUdevActionRemove) - 1) == 0) {
-    uint32_t sys_num;
-    if (!base::StringToUint(GetDeviceSysNum(udev_device), &sys_num)) {
-      LOG(ERROR) << "Error retrieving sysnum of device.";
-      return;
-    }
-
-    uint32_t dev_num = static_cast<uint32_t>(GetDeviceDevNum(udev_device));
     dev_tracker_->RemoveDevice(sys_num, dev_num);
   } else {
     LOG(ERROR) << "Unknown action: " << action;
   }
-}
-
-Device::Device(const std::string& name,
-               uint32_t card,
-               uint32_t device,
-               uint32_t num_subdevices,
-               uint32_t flags)
-    : name_(name),
-      card_(card),
-      device_(device),
-      num_subdevices_(num_subdevices),
-      flags_(flags) {
-  LOG(INFO) << "Device created: " << name_;
 }
 }  // namespace midis

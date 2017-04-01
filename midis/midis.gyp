@@ -19,7 +19,9 @@
       },
       'sources': [
         'daemon.cc',
+        'device.cc',
         'device_tracker.cc',
+        'file_handler.cc',
         'main.cc',
       ],
     },
@@ -37,8 +39,10 @@
             ],
           },
           'sources': [
+            'device.cc',
             'device_tracker.cc',
             'device_tracker_test.cc',
+            'file_handler.cc',
           ],
         },
         {
@@ -51,8 +55,25 @@
             ],
           },
           'sources': [
+            'device.cc',
             'device_tracker.cc',
+            'file_handler.cc',
             'udev_handler_test.cc',
+          ],
+        },
+        {
+          'target_name': 'device_test',
+          'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'variables': {
+            'deps': [
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
+          'sources': [
+            'device.cc',
+            'device_test.cc',
+            'file_handler.cc',
           ],
         },
       ],

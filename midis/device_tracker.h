@@ -16,36 +16,9 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>
 
+#include "midis/device.h"
+
 namespace midis {
-
-// Class which holds information related to a MIDI device.
-// We use the name variable (derived from the ioctl) as a basis
-// to arrive at an identifier.
-class Device {
- public:
-  Device(const std::string& name,
-         uint32_t card,
-         uint32_t device,
-         uint32_t num_subdevices,
-         uint32_t flags);
-  std::string GetName() const { return name_; }
-  uint32_t GetCard() const { return card_; }
-  uint32_t GetDeviceNum() const { return device_; }
-
- private:
-  friend class DeviceTrackerTest;
-  FRIEND_TEST(DeviceTrackerTest, Add2DevicesPositive);
-  FRIEND_TEST(DeviceTrackerTest, AddRemoveDevicePositive);
-  FRIEND_TEST(DeviceTrackerTest, AddDeviceRemoveNegative);
-
-  std::string name_;
-  uint32_t card_;
-  uint32_t device_;
-  uint32_t num_subdevices_;
-  uint32_t flags_;
-
-  DISALLOW_COPY_AND_ASSIGN(Device);
-};
 
 class DeviceTracker;
 

@@ -8,6 +8,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <brillo/daemons/daemon.h>
 #include <brillo/test_helpers.h>
 #include <gtest/gtest.h>
 
@@ -39,16 +40,16 @@ const char kBlankDname[] = "";
 
 }  // namespace
 
-class UdevHandlerTest : public ::testing::Test {
+class UdevHandlerTest : public ::testing::Test, public brillo::Daemon {
  public:
   UdevHandlerTest() : udev_handler_mock_(new UdevHandlerMock()) {}
 
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     info1_ = base::MakeUnique<snd_rawmidi_info>();
     memset(info1_.get(), 0, sizeof(snd_rawmidi_info));
-    strncpy(
-        reinterpret_cast<char*>(info1_->name), kFakeName1, sizeof(kFakeName1));
+    strncpy(reinterpret_cast<char*>(info1_->name), kFakeName1,
+            sizeof(kFakeName1));
     info1_->card = kFakeSysNum1;
     info1_->device = kFakeDevNum1;
     info1_->subdevices_count = kFakeSubdevs1;
@@ -56,17 +57,48 @@ class UdevHandlerTest : public ::testing::Test {
 
     info2_ = base::MakeUnique<snd_rawmidi_info>();
     memset(info2_.get(), 0, sizeof(snd_rawmidi_info));
-    strncpy(
-        reinterpret_cast<char*>(info2_->name), kFakeName2, sizeof(kFakeName2));
+    strncpy(reinterpret_cast<char*>(info2_->name), kFakeName2,
+            sizeof(kFakeName2));
     info2_->card = kFakeSysNum2;
     info2_->device = kFakeDevNum2;
     info2_->subdevices_count = kFakeSubdevs2;
     info2_->flags = kFakeFlags2;
+
+    // Create fake dev nod files
+    CreateNewTempDirectory(base::FilePath::StringType(), &temp_fp_);
+    if (temp_fp_.empty()) {
+      LOG(ERROR) << "Unable to create temporary directory.";
+      return;
+    }
+
+    base::FilePath dev_path = CreateFakeDevSndDir(temp_fp_);
+    if (dev_path.value() == "") {
+      LOG(ERROR) << "Unable to fake dev/snd directory.";
+      return;
+    }
+
+    base::FilePath dev_node_path =
+        CreateDevNodeFileName(dev_path, kFakeSysNum1, kFakeDevNum1);
+    int ret = base::WriteFile(dev_node_path, nullptr, 0);
+    if (ret == -1) {
+      LOG(ERROR) << "Unabled to create fake devnode.";
+      return;
+    }
+
+    dev_node_path = CreateDevNodeFileName(dev_path, kFakeSysNum2, kFakeDevNum2);
+    ret = base::WriteFile(dev_node_path, nullptr, 0);
+    if (ret == -1) {
+      LOG(ERROR) << "Unabled to create fake devnode.";
+      return;
+    }
   }
+
+  void TearDown() override { base::DeleteFile(temp_fp_, true); }
 
   std::unique_ptr<UdevHandlerMock> udev_handler_mock_;
   std::unique_ptr<snd_rawmidi_info> info1_;
   std::unique_ptr<snd_rawmidi_info> info2_;
+  base::FilePath temp_fp_;
 };
 
 // Check whether Device gets created successfully.
@@ -78,6 +110,9 @@ TEST_F(UdevHandlerTest, CreateDevicePositive) {
       .WillOnce(Return(info1_.release()))
       .WillOnce(Return(info2_.release()));
 
+  ASSERT_FALSE(temp_fp_.empty());
+
+  Device::SetBaseDirForTesting(temp_fp_);
   // Usually, we need to get a reference to a device, but we have mocked
   // the functions that rely on the reference, so it's not necessary.
   // CreateDevice actually needs a udev_device reference, but since we
