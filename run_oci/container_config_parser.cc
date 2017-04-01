@@ -22,7 +22,6 @@ bool ParseUint32FromDict(const base::DictionaryValue& dict, const char *name,
                          uint32_t* val_out) {
   double double_val;
   if (!dict.GetDouble(name, &double_val)) {
-    LOG(ERROR) << "Failed to get " << name << " uint32_t value from config";
     return false;
   }
   *val_out = double_val;
@@ -34,7 +33,6 @@ bool ParseUint64FromDict(const base::DictionaryValue& dict, const char *name,
                          uint64_t* val_out) {
   double double_val;
   if (!dict.GetDouble(name, &double_val)) {
-    LOG(ERROR) << "Failed to get " << name << " uid info from config";
     return false;
   }
   *val_out = double_val;
@@ -182,6 +180,44 @@ bool ParseMounts(const base::DictionaryValue& config_root_dict,
 
     config_out->mounts.push_back(mount);
   }
+  return true;
+}
+
+// Parses the linux resource list
+bool ParseResources(const base::DictionaryValue& resources_dict,
+                    OciLinuxResources* resources_out) {
+  // |device_list| is owned by |resources_dict|
+  const base::ListValue* device_list = nullptr;
+  if (!resources_dict.GetList("devices", &device_list)) {
+    // The device list is optional.
+    return true;
+  }
+  size_t num_devices = device_list->GetSize();
+  for (size_t i = 0; i < num_devices; ++i) {
+    OciLinuxCgroupDevice device;
+
+    const base::DictionaryValue* dev;
+    if (!device_list->GetDictionary(i, &dev)) {
+      LOG(ERROR) << "Fail to get device " << i;
+      return false;
+    }
+
+    if (!dev->GetBoolean("allow", &device.allow)) {
+      LOG(ERROR) << "Fail to get allow value for device " << i;
+      return false;
+    }
+    if (!dev->GetString("access", &device.access))
+      device.access = "rwm";  // Optional, default to all perms.
+    if (!dev->GetString("type", &device.type))
+      device.type = "a";  // Optional, default to both a means all.
+    if (!ParseUint32FromDict(*dev, "major", &device.major))
+      device.major = -1;  // Optional, -1 will map to all devices.
+    if (!ParseUint32FromDict(*dev, "minor", &device.minor))
+      device.minor = -1;  // Optional, -1 will map to all devices.
+
+    resources_out->devices.push_back(device);
+  }
+
   return true;
 }
 
@@ -359,6 +395,12 @@ bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
 
   if (!ParseDeviceList(*linux_dict, config_out))
     return false;
+
+  const base::DictionaryValue* resources_dict = nullptr;
+  if (linux_dict->GetDictionary("resources", &resources_dict)) {
+    if (!ParseResources(*resources_dict, &config_out->linux_config.resources))
+      return false;
+  }
 
   const base::DictionaryValue* seccomp_dict = nullptr;
   if (linux_dict->GetDictionary("seccomp", &seccomp_dict)) {

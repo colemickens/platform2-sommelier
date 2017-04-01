@@ -75,6 +75,19 @@ struct OciSeccompSyscall {
   std::vector<OciSeccompArg> args;  // Optional
 };
 
+struct OciLinuxCgroupDevice {
+    bool allow;
+    std::string access; // Optional
+    std::string type; // Optional
+    uint32_t major; // Optional
+    uint32_t minor; // Optional
+};
+
+struct OciLinuxResources {
+    std::vector<OciLinuxCgroupDevice> devices;
+    // Other fields remain unused.
+};
+
 struct OciSeccomp {
   std::string defaultAction;
   std::vector<std::string> architectures;
@@ -84,7 +97,8 @@ struct OciSeccomp {
 struct OciLinux {
   std::vector<OciLinuxDevice> devices;  // Optional
   std::string cgroupsPath;  // Optional
-  // Unused: resources, namespace
+  // Unused: namespaces
+  OciLinuxResources resources;  // Optional
   std::vector<OciLinuxNamespaceMapping> uidMappings;  // Optional
   std::vector<OciLinuxNamespaceMapping> gidMappings;  // Optional
   OciSeccomp seccomp;  // Optional

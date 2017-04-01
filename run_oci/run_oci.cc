@@ -151,9 +151,27 @@ void ConfigureDevices(const std::vector<OciLinuxDevice>& devices,
                                 0,
                                 device.uid,
                                 device.gid,
-                                1,   // TODO(dgreid) read perms from cgroups.
-                                1,   // TODO(dgreid) write perms from cgroups.
-                                0);  // TODO(dgreid) modify perms from cgroups.
+                                0,  // Cgroup permission are now in 'resources'.
+                                0,
+                                0);
+  }
+}
+
+// Adds the cgroup device permissions specified in |devices| to |config_out|.
+void ConfigureCgroupDevices(const std::vector<OciLinuxCgroupDevice>& devices,
+                            container_config* config_out) {
+  for (const auto& device : devices) {
+    bool read_set = device.access.find('r') != std::string::npos;
+    bool write_set = device.access.find('w') != std::string::npos;
+    bool make_set = device.access.find('m') != std::string::npos;
+    container_config_add_cgroup_device(config_out,
+                                       device.allow,
+                                       device.type.c_str()[0],
+                                       device.major,
+                                       device.minor,
+                                       read_set,
+                                       write_set,
+                                       make_set);
   }
 }
 
@@ -185,6 +203,7 @@ bool ContainerConfigFromOci(const OciConfig& oci,
   ConfigureMounts(oci.mounts, oci.process.user.uid,
                   oci.process.user.gid, config_out);
   ConfigureDevices(oci.linux_config.devices, config_out);
+  ConfigureCgroupDevices(oci.linux_config.resources.devices, config_out);
 
   return true;
 }
