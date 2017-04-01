@@ -119,6 +119,27 @@ int container_config_add_mount(struct container_config *c,
 			       int loopback);
 
 /*
+ * Add a device cgroup permission.
+ *
+ * c - The container config in which to add the mount.
+ * allow - If true allow access to the specified r/w/m.
+ * type - 'c', 'b', or 'a' for char, block, or all respectively.
+ * major - Major device number.
+ * minor - Minor device number.
+ * read - If true set reading of device to |allow|.
+ * write - If true set writing of device to |allow|.
+ * modify - If true set modifying of device to |allow|.
+ */
+int container_config_add_cgroup_device(struct container_config *c,
+				       int allow,
+				       char type,
+				       int major,
+				       int minor,
+				       int read,
+				       int write,
+				       int modify);
+
+/*
  * Add a device node to create.
  *
  * c - The container config in which to add the mount.

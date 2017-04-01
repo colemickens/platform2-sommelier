@@ -28,8 +28,8 @@ struct cgroup_ops {
 	int (*freeze)(const struct container_cgroup *cg);
 	int (*thaw)(const struct container_cgroup *cg);
 	int (*deny_all_devices)(const struct container_cgroup *cg);
-	int (*add_device)(const struct container_cgroup *cg, int major,
-			  int minor, int read, int write, int modify,
+	int (*add_device)(const struct container_cgroup *cg, int allow,
+			  int major, int minor, int read, int write, int modify,
 			  char type);
 	int (*set_cpu_shares)(const struct container_cgroup *cg, int shares);
 	int (*set_cpu_quota)(const struct container_cgroup *cg, int quota);

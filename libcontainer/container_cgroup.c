@@ -133,33 +133,55 @@ static int deny_all_devices(const struct container_cgroup *cg)
 				 "devices.deny", "a\n");
 }
 
-static int add_device(const struct container_cgroup *cg, int major, int minor,
-		      int read, int write, int modify, char type)
+static char *get_device_string(const int major, const int minor) {
+	char *string_out = NULL;
+	int rc = 0;
+	if (major >= 0 && minor >= 0)
+		rc = asprintf(&string_out, "%d:%d", major, minor);
+	else if (major >= 0)
+		rc = asprintf(&string_out, "%d:*", major);
+	else if (minor >= 0)
+		rc = asprintf(&string_out, "*:%d", minor);
+	else
+		rc = asprintf(&string_out, "*:*");
+	if (rc < 0)
+		return NULL;
+	return string_out;
+}
+
+static int add_device(const struct container_cgroup *cg, int allow, int major,
+		      int minor, int read, int write, int modify, char type)
 {
+	char *device_string = NULL;
 	char *perm_string = NULL;
 	int rc;
 
-	if (type != 'b' && type != 'c')
+	if (type != 'b' && type != 'c' && type != 'a')
 		return -EINVAL;
-	if (!read && !write)
+	if (!read && !write && !modify)
 		return -EINVAL;
 
-	if (minor >= 0) {
-		if (asprintf(&perm_string, "%c %d:%d %s%s%s\n",
-			     type, major, minor,
-			     read ? "r" : "", write ? "w" : "",
-			     modify ? "m" : "") < 0)
-			return -errno;
-	} else {
-		/* Set perms for all devices with this major number. */
-		if (asprintf(&perm_string, "%c %d:* %s%s%s\n",
-			     type, major,
-			     read ? "r" : "", write ? "w" : "",
-			     modify ? "m" : "") < 0)
-			return -errno;
+	device_string = get_device_string(major, minor);
+	if (!device_string)
+		return -errno;
+
+	/*
+	 * The device file format is:
+	 * <type, c, b, or a> major:minor rmw
+	 */
+	if (asprintf(&perm_string, "%c %s %s%s%s\n",
+		     type, device_string,
+		     read ? "r" : "",
+		     write ? "w" : "",
+		     modify ? "m" : "") < 0) {
+		rc = -errno;
+		goto error_out;
 	}
 	rc = write_cgroup_file(cg->cgroup_paths[CGROUP_DEVICES],
-			      "devices.allow", perm_string);
+			       allow ? "devices.allow" : "devices.deny",
+			       perm_string);
+error_out:
+	free(device_string);
 	free(perm_string);
 	return rc;
 }

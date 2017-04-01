@@ -67,6 +67,7 @@ struct mock_cgroup {
 	int init_called_count;
 	int deny_all_devs_called_count;
 
+	int add_dev_allow[MAX_ADD_DEVICE_CALLS];
 	int add_dev_major[MAX_ADD_DEVICE_CALLS];
 	int add_dev_minor[MAX_ADD_DEVICE_CALLS];
 	int add_dev_read[MAX_ADD_DEVICE_CALLS];
@@ -103,14 +104,15 @@ static int mock_deny_all_devices(const struct container_cgroup *cg)
 	return mcg->deny_all_devs_ret;
 }
 
-static int mock_add_device(const struct container_cgroup *cg, int major,
-			   int minor, int read, int write, int modify,
-			   char type)
+static int mock_add_device(const struct container_cgroup *cg, int allow,
+			   int major, int minor, int read, int write,
+			   int modify, char type)
 {
 	struct mock_cgroup *mcg = (struct mock_cgroup *)cg;
 
 	if (mcg->add_dev_called_count >= MAX_ADD_DEVICE_CALLS)
 		return mcg->add_device_ret;
+	mcg->add_dev_allow[mcg->add_dev_called_count] = allow;
 	mcg->add_dev_major[mcg->add_dev_called_count] = major;
 	mcg->add_dev_minor[mcg->add_dev_called_count] = minor;
 	mcg->add_dev_read[mcg->add_dev_called_count] = read;
@@ -350,6 +352,7 @@ TEST_F(container_test, test_mount_tmp_start)
 	EXPECT_EQ(1, minijail_run_as_init_called);
 	EXPECT_EQ(1, gmcg.deny_all_devs_called_count);
 
+	EXPECT_EQ(1, gmcg.add_dev_allow[0]);
 	EXPECT_EQ(245, gmcg.add_dev_major[0]);
 	EXPECT_EQ(2, gmcg.add_dev_minor[0]);
 	EXPECT_EQ(1, gmcg.add_dev_read[0]);
@@ -357,6 +360,7 @@ TEST_F(container_test, test_mount_tmp_start)
 	EXPECT_EQ(0, gmcg.add_dev_modify[0]);
 	EXPECT_EQ('c', gmcg.add_dev_type[0]);
 
+	EXPECT_EQ(1, gmcg.add_dev_allow[1]);
 	EXPECT_EQ(1, gmcg.add_dev_major[1]);
 	EXPECT_EQ(3, gmcg.add_dev_minor[1]);
 	EXPECT_EQ(1, gmcg.add_dev_read[1]);

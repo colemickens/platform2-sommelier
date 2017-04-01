@@ -78,9 +78,16 @@ struct container_device {
 	int copy_minor; /* Copy the minor from existing node, ignores |minor| */
 	int uid;
 	int gid;
-	int read_allowed;
-	int write_allowed;
-	int modify_allowed;
+};
+
+struct container_cgroup_device {
+	int allow;
+	char type;
+	int major; /* -1 means all */
+	int minor; /* -1 means all */
+	int read;
+	int write;
+	int modify;
 };
 
 struct container_cpu_cgroup {
@@ -110,6 +117,8 @@ struct container_cpu_cgroup {
  * num_mounts - Number of above.
  * devices - Device nodes to create.
  * num_devices - Number of above.
+ * cgroup_devices - Device node cgroup permissions.
+ * num_cgroup_devices - Number of above.
  * run_setfiles - Should run setfiles on mounts to enable selinux.
  * cpu_cgparams - CPU cgroup params.
  * cgroup_parent - Parent dir for cgroup creation
@@ -135,6 +144,8 @@ struct container_config {
 	size_t num_mounts;
 	struct container_device *devices;
 	size_t num_devices;
+	struct container_cgroup_device *cgroup_devices;
+	size_t num_cgroup_devices;
 	char *run_setfiles;
 	struct container_cpu_cgroup cpu_cgparams;
 	char *cgroup_parent;
@@ -387,6 +398,39 @@ error_free_return:
 	return -ENOMEM;
 }
 
+int container_config_add_cgroup_device(struct container_config *c,
+				       int allow,
+				       char type,
+				       int major,
+				       int minor,
+				       int read,
+				       int write,
+				       int modify)
+{
+	struct container_cgroup_device *dev_ptr;
+	struct container_cgroup_device *current_dev;
+
+	dev_ptr = realloc(c->cgroup_devices,
+			  sizeof(c->cgroup_devices[0]) *
+					(c->num_cgroup_devices + 1));
+	if (!dev_ptr)
+		return -ENOMEM;
+	c->cgroup_devices = dev_ptr;
+
+	current_dev = &c->cgroup_devices[c->num_cgroup_devices];
+	memset(current_dev, 0, sizeof(struct container_cgroup_device));
+	current_dev->allow = allow;
+	current_dev->type = type;
+	current_dev->major = major;
+	current_dev->minor = minor;
+	current_dev->read = read;
+	current_dev->write = write;
+	current_dev->modify = modify;
+	++c->num_cgroup_devices;
+
+	return 0;
+}
+
 int container_config_add_device(struct container_config *c,
 				char type,
 				const char *path,
@@ -426,9 +470,17 @@ int container_config_add_device(struct container_config *c,
 	current_dev->copy_minor = copy_minor;
 	current_dev->uid = uid;
 	current_dev->gid = gid;
-	current_dev->read_allowed = read_allowed;
-	current_dev->write_allowed = write_allowed;
-	current_dev->modify_allowed = modify_allowed;
+	if (read_allowed || write_allowed || modify_allowed) {
+		if (container_config_add_cgroup_device(c,
+						       1,
+						       type,
+						       major,
+						       minor,
+						       read_allowed,
+						       write_allowed,
+						       modify_allowed))
+			goto error_free_return;
+	}
 	++c->num_devices;
 	return 0;
 
@@ -1239,6 +1291,21 @@ static int device_setup(struct container *c,
 
 	c->cgroup->ops->deny_all_devices(c->cgroup);
 
+	for (i = 0; i < config->num_cgroup_devices; i++) {
+		const struct container_cgroup_device *dev =
+			&config->cgroup_devices[i];
+		rc = c->cgroup->ops->add_device(c->cgroup,
+						dev->allow,
+						dev->major,
+						dev->minor,
+						dev->read,
+						dev->write,
+						dev->modify,
+						dev->type);
+		if (rc)
+			return rc;
+	}
+
 	for (i = 0; i < config->num_devices; i++) {
 		const struct container_device *dev = &config->devices[i];
 		int minor = dev->minor;
@@ -1254,13 +1321,6 @@ static int device_setup(struct container *c,
 			if (rc)
 				return rc;
 		}
-
-		rc = c->cgroup->ops->add_device(c->cgroup, dev->major,
-						minor, dev->read_allowed,
-						dev->write_allowed,
-						dev->modify_allowed, dev->type);
-		if (rc)
-			return rc;
 	}
 
 	for (i = 0; i < c->num_loopdevs; ++i) {
@@ -1268,7 +1328,7 @@ static int device_setup(struct container *c,
 
 		if (stat(c->loopdevs[i], &st) < 0)
 			return rc;
-		rc = c->cgroup->ops->add_device(c->cgroup, major(st.st_rdev),
+		rc = c->cgroup->ops->add_device(c->cgroup, 1, major(st.st_rdev),
 						minor(st.st_rdev),
 						1, 0, 0, 'b');
 		if (rc)

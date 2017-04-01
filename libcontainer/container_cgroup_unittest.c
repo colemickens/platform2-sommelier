@@ -315,20 +315,20 @@ TEST_F(basic_manipulation, default_all_devs_disallow)
 
 TEST_F(basic_manipulation, add_device_invalid_type)
 {
-	EXPECT_NE(0, self->ccg->ops->add_device(self->ccg, 14, 3, 1, 1, 0,
+	EXPECT_NE(0, self->ccg->ops->add_device(self->ccg, 1, 14, 3, 1, 1, 0,
 						'x'));
 }
 
 TEST_F(basic_manipulation, add_device_no_perms)
 {
-	EXPECT_NE(0, self->ccg->ops->add_device(self->ccg, 14, 3, 0, 0, 0,
+	EXPECT_NE(0, self->ccg->ops->add_device(self->ccg, 1, 14, 3, 0, 0, 0,
 						'c'));
 }
 
 TEST_F(basic_manipulation, add_device_rw)
 {
 	char path[256];
-	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 14, 3, 1, 1, 0,
+	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 1, 14, 3, 1, 1, 0,
 						'c'));
 	snprintf(path, sizeof(path), "%s/devices.allow", self->devices_cg);
 	EXPECT_TRUE(file_has_line(path, "c 14:3 rw\n"));
@@ -337,7 +337,7 @@ TEST_F(basic_manipulation, add_device_rw)
 TEST_F(basic_manipulation, add_device_rwm)
 {
 	char path[256];
-	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 14, 3, 1, 1, 1,
+	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 1, 14, 3, 1, 1, 1,
 						'c'));
 	snprintf(path, sizeof(path), "%s/devices.allow", self->devices_cg);
 	EXPECT_TRUE(file_has_line(path, "c 14:3 rwm\n"));
@@ -346,7 +346,7 @@ TEST_F(basic_manipulation, add_device_rwm)
 TEST_F(basic_manipulation, add_device_ro)
 {
 	char path[256];
-	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 14, 3, 1, 0, 0,
+	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 1, 14, 3, 1, 0, 0,
 						'c'));
 	snprintf(path, sizeof(path), "%s/devices.allow", self->devices_cg);
 	EXPECT_TRUE(file_has_line(path, "c 14:3 r\n"));
@@ -355,7 +355,7 @@ TEST_F(basic_manipulation, add_device_ro)
 TEST_F(basic_manipulation, add_device_wo)
 {
 	char path[256];
-	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 14, 3, 0, 1, 0,
+	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 1, 14, 3, 0, 1, 0,
 						'c'));
 	snprintf(path, sizeof(path), "%s/devices.allow", self->devices_cg);
 	EXPECT_TRUE(file_has_line(path, "c 14:3 w\n"));
@@ -364,16 +364,34 @@ TEST_F(basic_manipulation, add_device_wo)
 TEST_F(basic_manipulation, add_device_major_wide)
 {
 	char path[256];
-	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 14, -1, 0, 1, 0,
+	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 1, 14, -1, 0, 1, 0,
 						'c'));
 	snprintf(path, sizeof(path), "%s/devices.allow", self->devices_cg);
 	EXPECT_TRUE(file_has_line(path, "c 14:* w\n"));
 }
 
+TEST_F(basic_manipulation, add_device_major_minor_wildcard)
+{
+	char path[256];
+	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 1, -1, -1, 0, 1, 0,
+						'c'));
+	snprintf(path, sizeof(path), "%s/devices.allow", self->devices_cg);
+	EXPECT_TRUE(file_has_line(path, "c *:* w\n"));
+}
+
+TEST_F(basic_manipulation, add_device_deny_all)
+{
+	char path[256];
+	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 0, -1, -1, 1, 1, 1,
+						'a'));
+	snprintf(path, sizeof(path), "%s/devices.deny", self->devices_cg);
+	EXPECT_TRUE(file_has_line(path, "a *:* rwm\n"));
+}
+
 TEST_F(basic_manipulation, add_device_block)
 {
 	char path[256];
-	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 14, 3, 1, 1, 0,
+	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 1, 14, 3, 1, 1, 0,
 						'b'));
 	snprintf(path, sizeof(path), "%s/devices.allow", self->devices_cg);
 	EXPECT_TRUE(file_has_line(path, "b 14:3 rw\n"));
