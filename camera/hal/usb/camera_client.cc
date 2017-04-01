@@ -171,6 +171,11 @@ int CameraClient::ProcessCaptureRequest(camera3_capture_request_t* request) {
   VLOGFID(1, id_);
   DCHECK(ops_thread_checker_.CalledOnValidThread());
 
+  if (!request_handler_.get()) {
+    LOG(INFO) << "Request handler has stopped; ignoring request";
+    return -ENODEV;
+  }
+
   if (request == nullptr) {
     LOGFID(ERROR, id_) << "NULL request recieved";
     return -EINVAL;
@@ -327,8 +332,8 @@ int CameraClient::StreamOff() {
     LOGFID(ERROR, id_) << "StreamOff failed: " << strerror(-ret);
   }
 
-  request_handler_.reset();
   request_thread_.Stop();
+  request_handler_.reset();
   return ret;
 }
 
@@ -373,7 +378,7 @@ void CameraClient::RequestHandler::HandleRequest(
   uint32_t buffer_id, data_size;
   ret = device_->GetNextFrameBuffer(&buffer_id, &data_size);
   if (ret) {
-    LOGFID(ERROR, device_id_) << "GetNextFrameBuffer failed: %s"
+    LOGFID(ERROR, device_id_) << "GetNextFrameBuffer failed: "
                               << strerror(-ret);
     return;
   }
