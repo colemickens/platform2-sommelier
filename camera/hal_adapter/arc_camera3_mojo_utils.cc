@@ -43,8 +43,7 @@ int UnwrapPlatformHandle(mojo::ScopedHandle handle) {
 arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
     const camera3_stream_buffer_t* buffer,
     const UniqueStreams& streams,
-    const std::unordered_map<uint64_t,
-                             internal::ArcCameraBufferHandleUniquePtr>&
+    const std::unordered_map<uint64_t, std::unique_ptr<camera_buffer_handle_t>>&
         buffer_handles) {
   arc::mojom::Camera3StreamBufferPtr ret =
       arc::mojom::Camera3StreamBuffer::New();
@@ -105,9 +104,8 @@ arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
 int DeserializeStreamBuffer(
     const arc::mojom::Camera3StreamBufferPtr& ptr,
     const UniqueStreams& streams,
-    const std::unordered_map<uint64_t,
-                             internal::ArcCameraBufferHandleUniquePtr>&
-        buffer_handles_,
+    const std::unordered_map<uint64_t, std::unique_ptr<camera_buffer_handle_t>>&
+        buffer_handles,
     camera3_stream_buffer_t* out_buffer) {
   auto it = streams.find(ptr->stream_id);
   if (it == streams.end()) {
@@ -116,8 +114,8 @@ int DeserializeStreamBuffer(
   }
   out_buffer->stream = it->second.get();
 
-  auto buffer_handle = buffer_handles_.find(ptr->buffer_id);
-  if (buffer_handle == buffer_handles_.end()) {
+  auto buffer_handle = buffer_handles.find(ptr->buffer_id);
+  if (buffer_handle == buffer_handles.end()) {
     LOGF(ERROR) << "Invalid buffer id: " << ptr->buffer_id;
     return -EINVAL;
   }

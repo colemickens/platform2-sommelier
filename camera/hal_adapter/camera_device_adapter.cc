@@ -234,18 +234,11 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
   }
   size_t num_planes = fds.size();
 
-  camera_buffer_handle_t* buffer_handle = new camera_buffer_handle_t();
-  if (!buffer_handle) {
-    LOGF(ERROR) << "Failed to allocate native handle";
-    return -ENOMEM;
-  }
-  memset(buffer_handle, 0, sizeof(*buffer_handle));
+  std::unique_ptr<camera_buffer_handle_t> buffer_handle(
+      new camera_buffer_handle_t());
   buffer_handle->base.version = sizeof(buffer_handle->base);
   buffer_handle->base.numFds = kCameraBufferHandleNumFds;
   buffer_handle->base.numInts = kCameraBufferHandleNumInts;
-  for (size_t i = 0; i < kCameraBufferHandleNumFds; ++i) {
-    buffer_handle->fds[i] = -1;
-  }
 
   buffer_handle->magic = kCameraBufferMagic;
   buffer_handle->buffer_id = buffer_id;
@@ -255,12 +248,13 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
   buffer_handle->width = width;
   buffer_handle->height = height;
   for (size_t i = 0; i < num_planes; ++i) {
-    buffer_handle->fds[i] = internal::UnwrapPlatformHandle(std::move(fds[i]));
+    buffer_handle->fds[i].reset(
+        internal::UnwrapPlatformHandle(std::move(fds[i])));
     buffer_handle->strides[i] = strides[i];
     buffer_handle->offsets[i] = offsets[i];
   }
   DCHECK(buffer_handles_.find(buffer_id) == buffer_handles_.end());
-  buffer_handles_[buffer_id].reset(buffer_handle);
+  buffer_handles_[buffer_id] = std::move(buffer_handle);
 
   VLOGF(1) << std::hex << "Buffer 0x" << buffer_id << " registered: "
            << "format: " << FormatToString(drm_format)

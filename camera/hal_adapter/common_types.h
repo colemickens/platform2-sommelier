@@ -28,23 +28,6 @@ typedef std::unique_ptr<camera_metadata_t, CameraMetadataDeleter>
 
 typedef std::map<uint64_t, std::unique_ptr<camera3_stream_t>> UniqueStreams;
 
-struct ArcCameraBufferHandleDeleter {
-  inline void operator()(camera_buffer_handle_t* handle) const {
-    // We can't use native_handle_close() on |handle| directly because it may
-    // close the wrong handles in case where the number of valid physical planes
-    // in |handle| is less than kMaxPlanes.
-    for (int i = 0; i < kMaxPlanes; ++i) {
-      if (handle->fds[i] >= 0) {
-        close(handle->fds[i]);
-      }
-    }
-    delete handle;
-  }
-};
-
-typedef std::unique_ptr<camera_buffer_handle_t, ArcCameraBufferHandleDeleter>
-    ArcCameraBufferHandleUniquePtr;
-
 }  // namespace internal
 
 #endif  // HAL_ADAPTER_COMMON_TYPES_H_

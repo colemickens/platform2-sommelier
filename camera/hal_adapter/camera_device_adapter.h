@@ -121,7 +121,7 @@ class CameraDeviceAdapter {
   // ID.  We need to return the correct handle ID in ProcessCaptureResult so ARC
   // can restore the buffer handle in the capture result before passing up to
   // the frameworks.
-  std::unordered_map<uint64_t, internal::ArcCameraBufferHandleUniquePtr>
+  std::unordered_map<uint64_t, std::unique_ptr<camera_buffer_handle_t>>
       buffer_handles_;
 
   // A mutex to guard |buffer_handles_|.

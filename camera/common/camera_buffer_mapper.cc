@@ -57,7 +57,7 @@ int CameraBufferMapper::Register(buffer_handle_t buffer) {
         return -EINVAL;
       }
       for (size_t i = 0; i < num_planes; ++i) {
-        import_data.fds[i] = handle->fds[i];
+        import_data.fds[i] = handle->fds[i].get();
         import_data.strides[i] = handle->strides[i];
         import_data.offsets[i] = handle->offsets[i];
       }
@@ -263,7 +263,7 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
   }
 
   VLOGF(1) << "buffer info:";
-  VLOGF(1) << "\tfd: " << handle->fds[plane];
+  VLOGF(1) << "\tfd: " << handle->fds[plane].get();
   VLOGF(1) << "\tbuffer_id: 0x" << std::hex << handle->buffer_id;
   VLOGF(1) << "\ttype: " << handle->type;
   VLOGF(1) << "\tformat: " << FormatToString(handle->drm_format);

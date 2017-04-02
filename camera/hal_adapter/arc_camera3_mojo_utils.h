@@ -42,16 +42,14 @@ int UnwrapPlatformHandle(mojo::ScopedHandle handle);
 arc::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
     const camera3_stream_buffer_t* buffer,
     const UniqueStreams& streams,
-    const std::unordered_map<uint64_t,
-                             internal::ArcCameraBufferHandleUniquePtr>&
+    const std::unordered_map<uint64_t, std::unique_ptr<camera_buffer_handle_t>>&
         buffer_handles);
 
 int DeserializeStreamBuffer(
     const arc::mojom::Camera3StreamBufferPtr& ptr,
     const UniqueStreams& streams,
-    const std::unordered_map<uint64_t,
-                             internal::ArcCameraBufferHandleUniquePtr>&
-        buffer_handles_,
+    const std::unordered_map<uint64_t, std::unique_ptr<camera_buffer_handle_t>>&
+        buffer_handles,
     camera3_stream_buffer_t* buffer);
 
 arc::mojom::CameraMetadataPtr SerializeCameraMetadata(

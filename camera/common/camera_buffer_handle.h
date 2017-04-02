@@ -7,19 +7,21 @@
 #ifndef COMMON_CAMERA_BUFFER_HANDLE_H_
 #define COMMON_CAMERA_BUFFER_HANDLE_H_
 
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 
 #include "arc/common.h"
 #include "system/window.h"
 
 const uint32_t kCameraBufferMagic = 0xD1DAD1DA;
+const uint64_t kInvalidBufferId = 0xFFFFFFFFFFFFFFFF;
 
 const size_t kMaxPlanes = 4;
 
 typedef struct camera_buffer_handle {
   native_handle_t base;
   // The fds for each plane.
-  int32_t fds[kMaxPlanes];
+  base::ScopedFD fds[kMaxPlanes];
   // Should be kCameraBufferMagic.  This is for basic sanity check.
   uint32_t magic;
   // Used to identify the buffer object on the other end of the IPC channel
@@ -40,6 +42,17 @@ typedef struct camera_buffer_handle {
   uint32_t strides[kMaxPlanes];
   // The offset to the start of each plane in bytes.
   uint32_t offsets[kMaxPlanes];
+
+  camera_buffer_handle()
+      : magic(kCameraBufferMagic),
+        buffer_id(kInvalidBufferId),
+        type(-1),
+        drm_format(0),
+        hal_pixel_format(0),
+        width(0),
+        height(0),
+        strides{},
+        offsets{} {}
 
   static const struct camera_buffer_handle* FromBufferHandle(
       buffer_handle_t handle) {

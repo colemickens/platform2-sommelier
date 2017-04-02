@@ -66,7 +66,6 @@ int32_t Camera3TestGralloc::Allocate(int32_t width,
   }
 
   camera_buffer_handle_t* hnd = new camera_buffer_handle_t();
-  memset(hnd, 0, sizeof(*hnd));
 
   hnd->base.version = sizeof(hnd->base);
   hnd->base.numInts = kCameraBufferHandleNumInts;
@@ -75,11 +74,12 @@ int32_t Camera3TestGralloc::Allocate(int32_t width,
   hnd->magic = kCameraBufferMagic;
   hnd->buffer_id = reinterpret_cast<uint64_t>(bo);
   hnd->type = arc::GRALLOC;
-  hnd->format = gbm_bo_get_format(bo);
+  hnd->drm_format = gbm_bo_get_format(bo);
+  hnd->hal_pixel_format = format;
   hnd->width = gbm_bo_get_width(bo);
   hnd->height = gbm_bo_get_height(bo);
   for (size_t i = 0; i < gbm_bo_get_num_planes(bo); ++i) {
-    hnd->fds[i] = gbm_bo_get_plane_fd(bo, i);
+    hnd->fds[i].reset(gbm_bo_get_plane_fd(bo, i));
     hnd->strides[i] = gbm_bo_get_plane_stride(bo, i);
     hnd->offsets[i] = gbm_bo_get_plane_offset(bo, i);
   }
