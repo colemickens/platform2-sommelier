@@ -10,6 +10,7 @@
 #include <memory>
 #include <unordered_map>
 
+#include <base/files/scoped_file.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 #include <mojo/public/cpp/bindings/binding.h>
@@ -91,7 +92,8 @@ class CameraDeviceAdapter {
  private:
   // Waits until |fence| is signaled and then erases |buffer| from
   // |buffer_handles_|.
-  void RemoveBufferOnFenceSyncThread(int fence, buffer_handle_t buffer);
+  void RemoveBufferOnFenceSyncThread(base::ScopedFD fence,
+                                     buffer_handle_t buffer);
 
   // The delegate that handles the Camera3DeviceOps mojo IPC.
   std::unique_ptr<Camera3DeviceOpsDelegate> device_ops_delegate_;

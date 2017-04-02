@@ -303,16 +303,19 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::ProcessCaptureResult(
         // TODO(jcliang): Handle error?
       }
       int release_fence = (result->output_buffers + i)->release_fence;
+      base::ScopedFD scoped_release_fence;
       if (release_fence != -1) {
         release_fence = dup(release_fence);
         if (release_fence == -1) {
           LOGF(ERROR) << "Failed to dup release_fence: " << strerror(errno);
         }
+        scoped_release_fence.reset(release_fence);
       }
       fence_sync_thread_.task_runner()->PostTask(
           FROM_HERE,
           base::Bind(&CameraDeviceAdapter::RemoveBufferOnFenceSyncThread,
-                     base::Unretained(this), release_fence,
+                     base::Unretained(this),
+                     base::Passed(&scoped_release_fence),
                      base::Unretained(*(result->output_buffers + i)->buffer)));
       output_buffers.push_back(std::move(out_buf));
     }
@@ -330,16 +333,18 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::ProcessCaptureResult(
       LOGF(ERROR) << "Failed to serialize input stream buffer";
     }
     int release_fence = result->input_buffer->release_fence;
+    base::ScopedFD scoped_release_fence;
     if (release_fence != -1) {
       release_fence = dup(release_fence);
       if (release_fence == -1) {
         LOGF(ERROR) << "Failed to dup release_fence: " << strerror(errno);
       }
+      scoped_release_fence.reset(release_fence);
     }
     fence_sync_thread_.task_runner()->PostTask(
         FROM_HERE,
         base::Bind(&CameraDeviceAdapter::RemoveBufferOnFenceSyncThread,
-                   base::Unretained(this), release_fence,
+                   base::Unretained(this), base::Passed(&scoped_release_fence),
                    base::Unretained(*result->input_buffer->buffer)));
     r->input_buffer = std::move(input_buffer);
   }
@@ -385,7 +390,7 @@ mojom::Camera3NotifyMsgPtr CameraDeviceAdapter::Notify(
 }
 
 void CameraDeviceAdapter::RemoveBufferOnFenceSyncThread(
-    int fence,
+    base::ScopedFD fence,
     buffer_handle_t buffer) {
   // In theory the release fence should be signaled by HAL as soon as possible,
   // and we could just set a large value for the timeout.  The timeout here is
@@ -397,16 +402,12 @@ void CameraDeviceAdapter::RemoveBufferOnFenceSyncThread(
     return;
   }
 
-  DCHECK_GE(fence, -1);
-  if (fence == -1 || !sync_wait(fence, kSyncWaitTimeoutMs)) {
+  if (!fence.is_valid() || !sync_wait(fence.get(), kSyncWaitTimeoutMs)) {
     base::AutoLock l(buffer_handles_lock_);
     if (buffer_handles_.erase(handle->buffer_id)) {
       VLOGF(1) << "Buffer 0x" << std::hex << handle->buffer_id << " removed";
     } else {
       NOTREACHED() << "Invalid buffer 0x" << std::hex << handle->buffer_id;
-    }
-    if (fence != -1) {
-      close(fence);
     }
   } else {
     // sync_wait() timeout. Reschedule and try to remove the buffer again.
@@ -415,7 +416,8 @@ void CameraDeviceAdapter::RemoveBufferOnFenceSyncThread(
     fence_sync_thread_.task_runner()->PostTask(
         FROM_HERE,
         base::Bind(&CameraDeviceAdapter::RemoveBufferOnFenceSyncThread,
-                   base::Unretained(this), fence, base::Unretained(buffer)));
+                   base::Unretained(this), base::Passed(&fence),
+                   base::Unretained(buffer)));
   }
 }
 
