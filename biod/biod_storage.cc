@@ -31,7 +31,6 @@ namespace {
 const char kRootPath[] = "/home/root";
 const char kRecordFileName[] = "Record";
 const char kBiod[] = "biod";
-const char kUserId[] = "user_id";
 const char kLabel[] = "label";
 const char kRecordId[] = "record_id";
 const char kData[] = "data";
@@ -45,10 +44,8 @@ BiodStorage::BiodStorage(const std::string& biometrics_manager_path,
 
 bool BiodStorage::WriteRecord(const BiometricsManager::Record& record,
                               std::unique_ptr<base::Value> data) {
-  const std::string& user_id(record.GetUserId());
   const std::string& record_id(record.GetId());
   base::DictionaryValue record_value;
-  record_value.SetString(kUserId, user_id);
   record_value.SetString(kLabel, record.GetLabel());
   record_value.SetString(kRecordId, record_id);
   record_value.Set(kData, std::move(data));
@@ -63,7 +60,7 @@ bool BiodStorage::WriteRecord(const BiometricsManager::Record& record,
 
   std::unique_ptr<ScopedUmask> owner_only_umask(new ScopedUmask(~(0700)));
 
-  FilePath record_storage_filename = root_path_.Append(user_id)
+  FilePath record_storage_filename = root_path_.Append(record.GetUserId())
                                          .Append(kBiod)
                                          .Append(biometrics_manager_path_)
                                          .Append(kRecordFileName + record_id);
@@ -134,14 +131,6 @@ bool BiodStorage::ReadRecordsForSingleUser(const std::string& user_id) {
     if (!record_value->GetAsDictionary(&record_dictionary)) {
       LOG(ERROR) << "Cannot cast " << record_path.value()
                  << " to a dictionary value.";
-      read_all_records_successfully = false;
-      continue;
-    }
-
-    std::string user_id;
-
-    if (!record_dictionary->GetString(kUserId, &user_id)) {
-      LOG(ERROR) << "Cannot read user id from " << record_path.value() << ".";
       read_all_records_successfully = false;
       continue;
     }

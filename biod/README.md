@@ -38,7 +38,7 @@ will highly unlikely repeat. '_' are used instead of '-' because this UUID is
 used in biod D-bus object paths, which do not allow '-'.
 
 Each record file is stored in JSON format, and contains one record and its
-metadata.
+record id and label.
 
 ## HARDWARE
 
