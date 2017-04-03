@@ -225,8 +225,15 @@ bool MigrationHelper::MigrateLink(const base::FilePath& from,
     from.AppendRelativePath(target, &new_target);
     target = new_target;
   }
-  if (!platform_->CreateSymbolicLink(new_path, target))
+  // In the case that the link was already created by a previous migration
+  // it should be removed to prevent errors recreating it below.
+  if (!platform_->DeleteFile(new_path, false /* recursive */)) {
+    PLOG(ERROR) << "Failed to delete existing symlink " << new_path.value();
     return false;
+  }
+  if (!platform_->CreateSymbolicLink(new_path, target)) {
+    return false;
+  }
 
   if (!CopyAttributes(source, new_path, info))
     return false;
