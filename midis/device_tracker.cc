@@ -1,9 +1,9 @@
 // Copyright 2017 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+#include "midis/device_tracker.h"
 
 #include <fcntl.h>
-#include <string.h>
 #include <sys/ioctl.h>
 
 #include <utility>
@@ -18,8 +18,6 @@
 #include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/message_loops/message_loop.h>
-
-#include "midis/device_tracker.h"
 
 namespace {
 
@@ -39,11 +37,6 @@ const int kIoctlMaxRetries = 10;
 namespace midis {
 
 DeviceTracker::DeviceTracker() : udev_handler_(new UdevHandler(this)) {}
-
-uint32_t DeviceTracker::GenerateDeviceId(uint32_t sys_num,
-                                         uint32_t device_num) {
-  return (sys_num << 8) | device_num;
-}
 
 UdevHandler::UdevHandler(DeviceTracker* ptr)
     : dev_tracker_(ptr), weak_factory_(this) {}
@@ -85,10 +78,6 @@ bool UdevHandler::InitUdevHandler() {
   return true;
 }
 
-struct udev_device* UdevHandler::MonitorReceiveDevice() {
-  return udev_monitor_receive_device(udev_monitor_.get());
-}
-
 bool DeviceTracker::InitDeviceTracker() {
   if (!udev_handler_->InitUdevHandler()) {
     LOG(ERROR) << "Failed to init UdevHandler.";
@@ -99,16 +88,17 @@ bool DeviceTracker::InitDeviceTracker() {
 }
 
 void UdevHandler::ProcessUdevFd(int fd) {
-  struct udev_device* dev = MonitorReceiveDevice();
+  std::unique_ptr<udev_device, UdevHandler::UdevDeviceDeleter> dev(
+      udev_monitor_receive_device(udev_monitor_.get()));
   if (dev) {
-    ProcessUdevEvent(dev);
+    ProcessUdevEvent(dev.get());
   }
 }
 
-std::string UdevHandler::GetMidiDeviceDname(struct udev_device* device) {
+std::string UdevHandler::GetMidiDeviceDname(struct udev_device* udev_device) {
   std::string result;
 
-  const char* syspath = udev_device_get_syspath(device);
+  const char* syspath = udev_device_get_syspath(udev_device);
   if (syspath == nullptr) {
     LOG(ERROR) << "udev_device_get_syspath failed.";
     return result;
@@ -170,59 +160,43 @@ std::unique_ptr<struct snd_rawmidi_info> UdevHandler::GetDeviceInfo(
   return info;
 }
 
-dev_t UdevHandler::GetDeviceDevNum(struct udev_device* device) {
-  return udev_device_get_devnum(device);
+dev_t UdevHandler::GetDeviceDevNum(struct udev_device* udev_device) {
+  return udev_device_get_devnum(udev_device);
 }
 
-const char* UdevHandler::GetDeviceSysNum(struct udev_device* device) {
-  return udev_device_get_sysnum(device);
+const char* UdevHandler::GetDeviceSysNum(struct udev_device* udev_device) {
+  return udev_device_get_sysnum(udev_device);
 }
 
-void DeviceTracker::AddDevice(struct udev_device* device) {
-  std::string dname = udev_handler_->GetMidiDeviceDname(device);
+std::unique_ptr<Device> UdevHandler::CreateDevice(
+    struct udev_device* udev_device) {
+  std::string dname = GetMidiDeviceDname(udev_device);
 
   if (dname.empty()) {
     LOG(INFO) << "Device connected wasn't a MIDI device.";
-    return;
+    return nullptr;
   }
 
-  auto info = udev_handler_->GetDeviceInfo(dname);
+  auto info = GetDeviceInfo(dname);
   if (!info) {
     LOG(ERROR) << "Couldn't parse info for device: " << dname;
-    return;
+    return nullptr;
   }
 
-  dev_t dev_num = udev_handler_->GetDeviceDevNum(device);
-
-  uint32_t sys_num;
-  if (!base::StringToUint(udev_handler_->GetDeviceSysNum(device), &sys_num)) {
-    LOG(ERROR) << "Error retrieving sysnum of device: " << dname;
-    return;
-  }
-
-  uint32_t device_id = GenerateDeviceId(static_cast<uint32_t>(sys_num),
-                                        static_cast<uint32_t>(dev_num));
   std::string dev_name(reinterpret_cast<char*>(info->name));
 
-  devices_.emplace(device_id,
-                   base::MakeUnique<Device>(dev_name,
-                                            info->card,
-                                            info->device,
-                                            info->subdevices_count,
-                                            info->flags));
+  return base::MakeUnique<Device>(
+      dev_name, info->card, info->device, info->subdevices_count, info->flags);
 }
 
-void DeviceTracker::RemoveDevice(struct udev_device* device) {
-  uint32_t sys_num;
-  if (!base::StringToUint(udev_handler_->GetDeviceSysNum(device), &sys_num)) {
-    LOG(ERROR) << "Error retrieving sysnum of device.";
-    return;
-  }
+void DeviceTracker::AddDevice(std::unique_ptr<Device> dev) {
+  devices_.emplace(
+      udev_handler_->GenerateDeviceId(dev->GetCard(), dev->GetDeviceNum()),
+      std::move(dev));
+}
 
-  uint32_t dev_num =
-      static_cast<uint32_t>(udev_handler_->GetDeviceDevNum(device));
-
-  auto it = devices_.find(GenerateDeviceId(sys_num, dev_num));
+void DeviceTracker::RemoveDevice(uint32_t sys_num, uint32_t dev_num) {
+  auto it = devices_.find(udev_handler_->GenerateDeviceId(sys_num, dev_num));
   if (it != devices_.end()) {
     // TODO(pmalani): Whole bunch of book-keeping has to be done here.
     // and notifications need to be sent to all clients.
@@ -233,25 +207,37 @@ void DeviceTracker::RemoveDevice(struct udev_device* device) {
   }
 }
 
-void UdevHandler::ProcessUdevEvent(struct udev_device* device) {
+void UdevHandler::ProcessUdevEvent(struct udev_device* udev_device) {
   // We're only interested in card devices, and that too those that are
   // initialized.
-  if (!udev_device_get_property_value(device, kUdevPropertySoundInitialized))
+  if (!udev_device_get_property_value(udev_device,
+                                      kUdevPropertySoundInitialized)) {
     return;
+  }
 
   // Get the action. If no action, then we are doing first time enumeration
   // and the device is treated as new.
-  const char* action = udev_device_get_action(device);
+  const char* action = udev_device_get_action(udev_device);
   if (!action) {
     action = kUdevActionChange;
   }
 
   if (strncmp(action, kUdevActionChange, sizeof(kUdevActionChange) - 1) == 0) {
-    dev_tracker_->AddDevice(device);
+    std::unique_ptr<Device> new_dev = CreateDevice(udev_device);
+    if (new_dev) {
+      dev_tracker_->AddDevice(std::move(new_dev));
+    }
   } else if (strncmp(action,
                      kUdevActionRemove,
                      sizeof(kUdevActionRemove) - 1) == 0) {
-    dev_tracker_->RemoveDevice(device);
+    uint32_t sys_num;
+    if (!base::StringToUint(GetDeviceSysNum(udev_device), &sys_num)) {
+      LOG(ERROR) << "Error retrieving sysnum of device.";
+      return;
+    }
+
+    uint32_t dev_num = static_cast<uint32_t>(GetDeviceDevNum(udev_device));
+    dev_tracker_->RemoveDevice(sys_num, dev_num);
   } else {
     LOG(ERROR) << "Unknown action: " << action;
   }

@@ -15,14 +15,17 @@
 
 namespace midis {
 
-class UdevHandlerMock : public UdevHandlerInterface {
+class UdevHandlerMock : public UdevHandler {
  public:
-  MOCK_METHOD0(InitUdevHandler, bool());
-  MOCK_METHOD1(GetMidiDeviceDname, std::string(struct udev_device* device));
-  MOCK_METHOD1(GetDeviceDevNum, dev_t(struct udev_device* device));
-  MOCK_METHOD1(GetDeviceSysNum, const char*(struct udev_device* device));
-
+  UdevHandlerMock() : UdevHandler(nullptr) {}
+  MOCK_METHOD1(GetMidiDeviceDnameMock,
+               std::string(struct udev_device* udev_device));
   MOCK_METHOD1(GetDeviceInfoMock, snd_rawmidi_info*(const std::string& name));
+
+  std::string GetMidiDeviceDname(struct udev_device* udev_device) override {
+    return GetMidiDeviceDnameMock(udev_device);
+  }
+
   std::unique_ptr<snd_rawmidi_info> GetDeviceInfo(
       const std::string& name) override {
     return std::unique_ptr<snd_rawmidi_info>(GetDeviceInfoMock(name));

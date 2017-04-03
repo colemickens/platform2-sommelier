@@ -38,7 +38,21 @@
           },
           'sources': [
             'device_tracker.cc',
-          'device_tracker_test.cc',
+            'device_tracker_test.cc',
+          ],
+        },
+        {
+          'target_name': 'udev_handler_test',
+          'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'variables': {
+            'deps': [
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
+          'sources': [
+            'device_tracker.cc',
+            'udev_handler_test.cc',
           ],
         },
       ],

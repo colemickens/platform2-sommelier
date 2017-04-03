@@ -47,32 +47,31 @@ class Device {
   DISALLOW_COPY_AND_ASSIGN(Device);
 };
 
-class UdevHandlerInterface {
- public:
-  virtual ~UdevHandlerInterface() = default;
-  virtual bool InitUdevHandler() = 0;
-  virtual std::string GetMidiDeviceDname(struct udev_device* device) = 0;
-  virtual std::unique_ptr<snd_rawmidi_info> GetDeviceInfo(
-      const std::string& dname) = 0;
-  virtual dev_t GetDeviceDevNum(struct udev_device* device) = 0;
-  virtual const char* GetDeviceSysNum(struct udev_device* device) = 0;
-};
-
 class DeviceTracker;
 
-class UdevHandler : public UdevHandlerInterface {
+class UdevHandler {
  public:
   explicit UdevHandler(DeviceTracker* device_tracker);
+  virtual ~UdevHandler() {}
 
-  bool InitUdevHandler() override;
-  struct udev_device* MonitorReceiveDevice();
-  std::string GetMidiDeviceDname(struct udev_device* device) override;
-  std::unique_ptr<snd_rawmidi_info> GetDeviceInfo(
-      const std::string& dname) override;
-  dev_t GetDeviceDevNum(struct udev_device* device) override;
-  const char* GetDeviceSysNum(struct udev_device* device) override;
-  void ProcessUdevEvent(struct udev_device* device);
+  bool InitUdevHandler();
+  std::unique_ptr<Device> CreateDevice(struct udev_device* udev_device);
+
+  struct UdevDeviceDeleter {
+    void operator()(udev_device* dev) const { udev_device_unref(dev); }
+  };
+
+  virtual std::string GetMidiDeviceDname(struct udev_device* device);
+  virtual std::unique_ptr<snd_rawmidi_info> GetDeviceInfo(
+      const std::string& dname);
+  dev_t GetDeviceDevNum(struct udev_device* udev_device);
+  const char* GetDeviceSysNum(struct udev_device* udev_device);
+  void ProcessUdevEvent(struct udev_device* udev_device);
   void ProcessUdevFd(int fd);
+
+  static uint32_t GenerateDeviceId(uint32_t sys_num, uint32_t device_num) {
+    return (sys_num << 8) | device_num;
+  }
 
  private:
   struct UdevDeleter {
@@ -86,6 +85,7 @@ class UdevHandler : public UdevHandlerInterface {
   };
 
   std::unique_ptr<udev_monitor, UdevMonitorDeleter> udev_monitor_;
+
   base::ScopedFD udev_monitor_fd_;
   DeviceTracker* dev_tracker_;
   base::WeakPtrFactory<UdevHandler> weak_factory_;
@@ -97,11 +97,10 @@ class DeviceTracker {
  public:
   DeviceTracker();
 
-  explicit DeviceTracker(std::unique_ptr<UdevHandlerInterface> handler);
-  void AddDevice(struct udev_device* device);
-  void RemoveDevice(struct udev_device* device);
+  explicit DeviceTracker(std::unique_ptr<UdevHandler> handler);
+  void AddDevice(std::unique_ptr<Device> dev);
+  void RemoveDevice(uint32_t sys_num, uint32_t dev_num);
   bool InitDeviceTracker();
-  static uint32_t GenerateDeviceId(uint32_t sys_num, uint32_t device_num);
 
  private:
   friend class DeviceTrackerTest;
@@ -110,7 +109,7 @@ class DeviceTracker {
   FRIEND_TEST(DeviceTrackerTest, AddDeviceRemoveNegative);
 
   std::map<uint32_t, std::unique_ptr<Device>> devices_;
-  std::unique_ptr<UdevHandlerInterface> udev_handler_;
+  std::unique_ptr<UdevHandler> udev_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceTracker);
 };
