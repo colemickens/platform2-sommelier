@@ -7,8 +7,8 @@
 #include <base/at_exit.h>
 #include <base/memory/ptr_util.h>
 #include <base/sys_info.h>
-#include <brillo/syslog_logging.h>
 #include <brillo/daemons/dbus_daemon.h>
+#include <brillo/syslog_logging.h>
 #include <install_attributes/libinstallattributes.h>
 
 #include "authpolicy/authpolicy.h"
@@ -112,9 +112,8 @@ int main(int /* argc */, char* /* argv */ []) {
   bool expect_config = false;
   InstallAttributesReader install_attributes_reader;
   if (install_attributes_reader.IsLocked()) {
-    const std::string& mode =
-        install_attributes_reader.GetAttribute(
-            InstallAttributesReader::kAttrMode);
+    const std::string& mode = install_attributes_reader.GetAttribute(
+        InstallAttributesReader::kAttrMode);
     if (mode != InstallAttributesReader::kDeviceModeEnterpriseAD) {
       LOG(ERROR) << "OOBE completed but device not in Active Directory "
                     "management mode.";

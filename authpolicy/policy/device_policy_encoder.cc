@@ -12,6 +12,7 @@
 #include <components/policy/core/common/registry_dict.h>
 #include <dbus/shill/dbus-constants.h>
 
+#include "authpolicy/log_level.h"
 #include "authpolicy/policy/policy_encoder_helper.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/policy_constants.h"
@@ -475,8 +476,8 @@ void DevicePolicyEncoder::EncodeBoolean(
     return;
   }
 
-  LOG(INFO) << " bool " << policy_name << " = "
-            << (bool_value ? "true" : "false");
+  LOG_IF(INFO, authpolicy::kLogEncoder)
+      << " bool " << policy_name << " = " << (bool_value ? "true" : "false");
 
   // Create proto and set value.
   set_policy(bool_value);
@@ -496,7 +497,8 @@ void DevicePolicyEncoder::EncodeInteger(
     return;
   }
 
-  LOG(INFO) << " int " << policy_name << " = " << int_value;
+  LOG_IF(INFO, authpolicy::kLogEncoder)
+      << " int " << policy_name << " = " << int_value;
 
   // Create proto and set value.
   set_policy(int_value);
@@ -516,7 +518,8 @@ void DevicePolicyEncoder::EncodeString(
     return;
   }
 
-  LOG(INFO) << " str " << policy_name << " = " << string_value;
+  LOG_IF(INFO, authpolicy::kLogEncoder)
+      << " str " << policy_name << " = " << string_value;
 
   // Create proto and set value.
   set_policy(string_value);
@@ -546,9 +549,11 @@ void DevicePolicyEncoder::EncodeStringList(
     string_values.push_back(string_value);
   }
 
-  LOG(INFO) << " strlist " << policy_name;
-  for (const std::string& value : string_values)
-    LOG(INFO) << "  " << value;
+  if (authpolicy::kLogEncoder && LOG_IS_ON(INFO)) {
+    LOG(INFO) << " strlist " << policy_name;
+    for (const std::string& value : string_values)
+      LOG(INFO) << "  " << value;
+  }
 
   // Create proto and set values.
   set_policy(string_values);
@@ -560,7 +565,8 @@ void DevicePolicyEncoder::HandleUnsupported(const char* policy_name) const {
   if (!value)
     return;
 
-  LOG(INFO) << "Ignoring unsupported policy '" << policy_name << "'.";
+  LOG_IF(INFO, authpolicy::kLogEncoder)
+      << "Ignoring unsupported policy '" << policy_name << "'.";
 }
 
 }  // namespace policy

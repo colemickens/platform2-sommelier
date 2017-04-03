@@ -27,6 +27,7 @@
 #include <brillo/syslog_logging.h>
 
 #include "authpolicy/constants.h"
+#include "authpolicy/log_level.h"
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/policy/preg_policy_encoder.h"
 #include "authpolicy/samba_interface_internal.h"
@@ -84,11 +85,11 @@ struct GpoEntry {
   }
 
   void Log() const {
-    LOG(INFO) << "  Name:        " << name;
-    LOG(INFO) << "  Filesyspath: " << filesyspath;
-    LOG(INFO) << "  Version:     " << version_user << " (user) "
-              << version_machine << " (machine)";
-    LOG(INFO) << "  GPFLags:     " << gp_flags;
+    LOG_IF(INFO, kLogGpo) << "  Name:        " << name;
+    LOG_IF(INFO, kLogGpo) << "  Filesyspath: " << filesyspath;
+    LOG_IF(INFO, kLogGpo) << "  Version:     " << version_user << " (user) "
+                          << version_machine << " (machine)";
+    LOG_IF(INFO, kLogGpo) << "  GPFLags:     " << gp_flags;
   }
 
   std::string name;
@@ -105,7 +106,7 @@ void PushGpo(const GpoEntry& gpo,
     return;
 
   if (!gpo.IsValid()) {
-    LOG(INFO) << "Ignoring invalid GPO";
+    LOG_IF(INFO, kLogGpo) << "Ignoring invalid GPO";
     gpo.Log();
     return;
   }
@@ -129,7 +130,7 @@ void PushGpo(const GpoEntry& gpo,
       break;
   }
   if (filter_reason) {
-    LOG(INFO) << "Filtered out GPO (" << filter_reason << ")";
+    LOG_IF(INFO, kLogGpo) << "Filtered out GPO (" << filter_reason << ")";
     gpo.Log();
   } else {
     gpo_list->push_back(gpo);
@@ -243,7 +244,7 @@ int ParseGpoList(const std::string& net_out, PolicyScope scope) {
   std::vector<GpoEntry> gpo_list;
   std::vector<std::string> lines = base::SplitString(
       net_out, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  LOG(INFO) << "Parsing GPO list (" << lines.size() << " lines)";
+  LOG_IF(INFO, kLogGpo) << "Parsing GPO list (" << lines.size() << " lines)";
   bool found_separator = false;
   for (const std::string& line : lines) {
     if (line.find(kGpoToken_Separator) == 0) {
@@ -309,10 +310,12 @@ int ParseGpoList(const std::string& net_out, PolicyScope scope) {
     return EXIT_CODE_PARSE_INPUT_FAILED;
   }
 
-  LOG(INFO) << "Found " << gpo_list.size() << " GPOs.";
-  for (size_t n = 0; n < gpo_list.size(); ++n) {
-    LOG(INFO) << n + 1 << ")";
-    gpo_list[n].Log();
+  if (authpolicy::kLogGpo && LOG_IS_ON(INFO)) {
+    LOG(INFO) << "Found " << gpo_list.size() << " GPOs.";
+    for (size_t n = 0; n < gpo_list.size(); ++n) {
+      LOG(INFO) << n + 1 << ")";
+      gpo_list[n].Log();
+    }
   }
 
   // Convert to proto.

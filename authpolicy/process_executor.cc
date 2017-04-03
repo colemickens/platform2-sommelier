@@ -4,8 +4,8 @@
 
 #include "authpolicy/process_executor.h"
 
-#include <algorithm>
 #include <stdlib.h>
+#include <algorithm>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -16,14 +16,19 @@
 #include <libminijail.h>
 #include <scoped_minijail.h>
 
+#include "authpolicy/log_level.h"
 #include "authpolicy/platform_helper.h"
 
+namespace authpolicy {
 namespace {
 
 // Splits string into lines and logs the lines. This works around a restriction
 // of syslog of 8kb per log and fixes unreadable logs where \n is replaced by
 // #012.
 void LogLongString(const char* header, const std::string& str) {
+  if (!(kLogExecutorOutput && LOG_IS_ON(INFO)))
+    return;
+
   std::vector<std::string> lines = base::SplitString(
       str, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   if (lines.size() <= 1) {
@@ -36,8 +41,6 @@ void LogLongString(const char* header, const std::string& str) {
 }
 
 }  // namespace
-
-namespace authpolicy {
 
 ProcessExecutor::ProcessExecutor(std::vector<std::string> args)
     : args_(std::move(args)) {}
@@ -72,7 +75,8 @@ void ProcessExecutor::KeepSupplementaryGroups() {
 
 bool ProcessExecutor::Execute() {
   ResetOutput();
-  if (args_.empty() || args_[0].empty()) return true;
+  if (args_.empty() || args_[0].empty())
+    return true;
 
   if (!base::FilePath(args_[0]).IsAbsolute()) {
     LOG(ERROR) << "Command must be specified by absolute path.";
@@ -80,7 +84,7 @@ bool ProcessExecutor::Execute() {
     return false;
   }
 
-  if (LOG_IS_ON(INFO)) {
+  if (kLogExecutorCommand && LOG_IS_ON(INFO)) {
     std::string cmd = args_[0];
     for (size_t n = 1; n < args_.size(); ++n)
       cmd += base::StringPrintf(" '%s'", args_[n].c_str());
@@ -170,7 +174,8 @@ bool ProcessExecutor::Execute() {
 
   LogLongString("Stdout: ", out_data_);
   LogLongString("Stderr: ", err_data_);
-  LOG(INFO) << "Exit code: " << exit_code_;
+  LOG_IF(INFO, kLogExecutorCommand) << "Exit code: " << exit_code_;
+
   return exit_code_ == 0;
 }
 

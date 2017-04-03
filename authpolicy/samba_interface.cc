@@ -21,6 +21,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 
+#include "authpolicy/log_level.h"
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/process_executor.h"
 #include "bindings/authpolicy_containers.pb.h"
@@ -70,11 +71,11 @@ const int kFileMode_rwxrwx =
 // access. The Samba directories need full group rwx access since Samba reads
 // and writes files there.
 constexpr std::pair<Path, int> kDirsAndMode[] = {
-    {Path::TEMP_DIR,          kFileMode_rwxrx },
-    {Path::SAMBA_DIR,         kFileMode_rwxrwx},
-    {Path::SAMBA_LOCK_DIR,    kFileMode_rwxrwx},
-    {Path::SAMBA_CACHE_DIR,   kFileMode_rwxrwx},
-    {Path::SAMBA_STATE_DIR,   kFileMode_rwxrwx},
+    {Path::TEMP_DIR, kFileMode_rwxrx},
+    {Path::SAMBA_DIR, kFileMode_rwxrwx},
+    {Path::SAMBA_LOCK_DIR, kFileMode_rwxrwx},
+    {Path::SAMBA_CACHE_DIR, kFileMode_rwxrwx},
+    {Path::SAMBA_STATE_DIR, kFileMode_rwxrwx},
     {Path::SAMBA_PRIVATE_DIR, kFileMode_rwxrwx}};
 
 // Directory / filenames for user and device policy.
@@ -167,7 +168,7 @@ ErrorType SambaInterface::GetRealmInfo(protos::RealmInfo* realm_info) const {
                                        "-s",
                                        paths_->Get(Path::SMB_CONF),
                                        "-d",
-                                       "10"});
+                                       kNetLogLevel});
   if (!jail_helper_.SetupJailAndRun(
           &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_INFO)) {
     return GetNetError(net_cmd, "info");
@@ -204,7 +205,7 @@ ErrorType SambaInterface::EnsureWorkgroup() {
                            "-s",
                            paths_->Get(Path::SMB_CONF),
                            "-d",
-                           "10"});
+                           kNetLogLevel});
   if (!jail_helper_.SetupJailAndRun(
           &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_WORKGROUP)) {
     return GetNetError(net_cmd, "workgroup");
@@ -326,12 +327,14 @@ ErrorType SambaInterface::WriteSmbConf() const {
   }
 
   std::string data =
-    base::StringPrintf(kSmbConfData, config_->machine_name().c_str(),
-                        workgroup_.c_str(), config_->realm().c_str(),
-                        paths_->Get(Path::SAMBA_LOCK_DIR).c_str(),
-                        paths_->Get(Path::SAMBA_CACHE_DIR).c_str(),
-                        paths_->Get(Path::SAMBA_STATE_DIR).c_str(),
-                        paths_->Get(Path::SAMBA_PRIVATE_DIR).c_str());
+      base::StringPrintf(kSmbConfData,
+                         config_->machine_name().c_str(),
+                         workgroup_.c_str(),
+                         config_->realm().c_str(),
+                         paths_->Get(Path::SAMBA_LOCK_DIR).c_str(),
+                         paths_->Get(Path::SAMBA_CACHE_DIR).c_str(),
+                         paths_->Get(Path::SAMBA_STATE_DIR).c_str(),
+                         paths_->Get(Path::SAMBA_PRIVATE_DIR).c_str());
 
   const base::FilePath smbconf_path(paths_->Get(Path::SMB_CONF));
   const int data_size = static_cast<int>(data.size());
@@ -391,8 +394,8 @@ ErrorType SambaInterface::ReadConfiguration() {
   }
 
   std::string config_blob;
-  if (!base::ReadFileToStringWithMaxSize(config_path, &config_blob,
-                                         kConfigSizeLimit)) {
+  if (!base::ReadFileToStringWithMaxSize(
+          config_path, &config_blob, kConfigSizeLimit)) {
     LOG(ERROR) << "Failed to read configuration file '" << config_path.value()
                << "'";
     return ERROR_LOCAL_IO;
@@ -429,7 +432,7 @@ ErrorType SambaInterface::GetAccountInfo(
                            "-s",
                            paths_->Get(Path::SMB_CONF),
                            "-d",
-                           "10"});
+                           kNetLogLevel});
   net_cmd.SetEnv(kKrb5CCEnvKey,
                  paths_->Get(user_tgt_manager_.GetCredentialCachePath()));
   if (!jail_helper_.SetupJailAndRun(
@@ -465,10 +468,15 @@ ErrorType SambaInterface::GetGpoList(const std::string& user_or_machine_name,
   LOG(INFO) << "Getting GPO list for " << user_or_machine_name;
 
   // Machine names are names ending with $, anything else is a user name.
-  // TODO(tnagel): Revisit the amount of logging. https://crbug.com/666691
-  authpolicy::ProcessExecutor net_cmd(
-      {paths_->Get(Path::NET), "ads", "gpo", "list", user_or_machine_name, "-s",
-       paths_->Get(Path::SMB_CONF), "-d", "10"});
+  authpolicy::ProcessExecutor net_cmd({paths_->Get(Path::NET),
+                                       "ads",
+                                       "gpo",
+                                       "list",
+                                       user_or_machine_name,
+                                       "-s",
+                                       paths_->Get(Path::SMB_CONF),
+                                       "-d",
+                                       kNetLogLevel});
   const TgtManager& tgt_manager =
       scope == PolicyScope::USER ? user_tgt_manager_ : device_tgt_manager_;
   net_cmd.SetEnv(kKrb5CCEnvKey,
@@ -562,14 +570,17 @@ ErrorType SambaInterface::DownloadGpos(
     // Set group rwx permissions recursively, so that smbclient can write GPOs
     // there and the parser tool can read the GPOs later.
     error = SetFilePermissionsRecursive(
-        linux_dir_fp, base::FilePath(paths_->Get(Path::SAMBA_DIR)),
+        linux_dir_fp,
+        base::FilePath(paths_->Get(Path::SAMBA_DIR)),
         kFileMode_rwxrwx);
     if (error != ERROR_NONE)
       return error;
 
     // Build command for smbclient.
-    smb_command += base::StringPrintf("cd %s;lcd %s;get %s;", smb_dir.c_str(),
-                                      linux_dir.c_str(), kPRegFileName);
+    smb_command += base::StringPrintf("cd %s;lcd %s;get %s;",
+                                      smb_dir.c_str(),
+                                      linux_dir.c_str(),
+                                      kPRegFileName);
 
     // Record output file paths.
     gpo_paths.push_back(GpoPaths(smb_dir + "\\" + kPRegFileName,
@@ -591,8 +602,12 @@ ErrorType SambaInterface::DownloadGpos(
   // Download GPO into local directory. Retry a couple of times in case of
   // network errors, Kerberos authentication may be flaky in some deployments,
   // see crbug.com/684733.
-  ProcessExecutor smb_client_cmd({paths_->Get(Path::SMBCLIENT), service, "-s",
-                                  paths_->Get(Path::SMB_CONF), "-k", "-c",
+  ProcessExecutor smb_client_cmd({paths_->Get(Path::SMBCLIENT),
+                                  service,
+                                  "-s",
+                                  paths_->Get(Path::SMB_CONF),
+                                  "-k",
+                                  "-c",
                                   smb_command});
   const TgtManager& tgt_manager =
       scope == PolicyScope::USER ? user_tgt_manager_ : device_tgt_manager_;
@@ -643,7 +658,7 @@ ErrorType SambaInterface::DownloadGpos(
       // Gracefully handle non-existing GPOs. Testing revealed these cases do
       // exist, see crbug.com/680921.
       const std::string no_file_error_key(
-        base::ToLowerASCII(kKeyObjectNameNotFound + gpo_path.server_));
+          base::ToLowerASCII(kKeyObjectNameNotFound + gpo_path.server_));
       if (internal::Contains(smbclient_out_lower, no_file_error_key)) {
         LOG(WARNING) << "Ignoring missing preg file '"
                      << gpo_path.local_.value() << "'";
@@ -760,8 +775,8 @@ ErrorType SambaInterface::AuthenticateUser(
     protos::AccountInfo* account_info) {
   // Split user_principal_name into parts and normalize.
   std::string user_name, realm, workgroup, normalized_upn;
-  if (!ai::ParseUserPrincipalName(user_principal_name, &user_name, &realm,
-                                  &normalized_upn)) {
+  if (!ai::ParseUserPrincipalName(
+          user_principal_name, &user_name, &realm, &normalized_upn)) {
     return ERROR_PARSE_UPN_FAILED;
   }
 
@@ -816,8 +831,8 @@ ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
                                       int password_fd) {
   // Split user principal name into parts.
   std::string user_name, realm, normalized_upn;
-  if (!ai::ParseUserPrincipalName(user_principal_name, &user_name, &realm,
-                                  &normalized_upn)) {
+  if (!ai::ParseUserPrincipalName(
+          user_principal_name, &user_name, &realm, &normalized_upn)) {
     return ERROR_PARSE_UPN_FAILED;
   }
 
@@ -844,7 +859,7 @@ ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
                            "-s",
                            paths_->Get(Path::SMB_CONF),
                            "-d",
-                           "10"});
+                           kNetLogLevel});
   net_cmd.SetInputFile(password_fd);
   net_cmd.SetEnv(kKrb5KTEnvKey,  // Machine keytab file path.
                  kFilePrefix + paths_->Get(Path::MACHINE_KT_TEMP));
@@ -948,8 +963,8 @@ ErrorType SambaInterface::FetchDeviceGpos(std::string* policy_blob) {
 
   // Get the list of GPOs for the machine.
   protos::GpoList gpo_list;
-  error = GetGpoList(config_->machine_name() + "$", PolicyScope::MACHINE,
-                     &gpo_list);
+  error = GetGpoList(
+      config_->machine_name() + "$", PolicyScope::MACHINE, &gpo_list);
   if (error != ERROR_NONE)
     return error;
 
