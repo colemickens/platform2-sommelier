@@ -9,11 +9,25 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
+#include <base/strings/stringprintf.h>
 #include <rootdev/rootdev.h>
 
 namespace imageburn {
+namespace {
 
 const int kFsyncRatio = 1024;
+
+bool RealPath(const char* path, std::string* real_path) {
+  std::unique_ptr<char, base::FreeDeleter> result(realpath(path, nullptr));
+  if (!result) {
+    PLOG(ERROR) << "Couldn't get real path of " << path;
+    return false;
+  }
+  *real_path = result.get();
+  return true;
+}
+
+}  // namespace
 
 BurnWriter::BurnWriter() {}
 
@@ -69,10 +83,27 @@ bool BurnReader::Open(const char* path) {
   if (!file_.IsValid()) {
     PLOG(ERROR) << "Couldn't open source path " << path;
     return false;
-  } else {
-    LOG(INFO) << path << " opened";
-    return true;
   }
+
+  // Obtains the real path of the file associated with the opened file
+  // descriptor by resolving the /proc/self/fd/<descriptor> symlink. Compares
+  // |path| against the real path determined by /proc/self/fd/<descriptor> to
+  // make sure |path| specifies the real path and avoids a potential TOCTOU
+  // race between the underlying realpath() and open() call.
+  int fd = file_.GetPlatformFile();
+  std::string fd_path;
+  if (!RealPath(base::StringPrintf("/proc/self/fd/%d", fd).c_str(), &fd_path)) {
+    file_.Close();
+    return false;
+  }
+  if (fd_path != path) {
+    LOG(ERROR) << path << " isn't a fully resolved path";
+    file_.Close();
+    return false;
+  }
+
+  LOG(INFO) << path << " opened";
+  return true;
 }
 
 bool BurnReader::Close() {
@@ -96,13 +127,7 @@ int64_t BurnReader::GetSize() {
 }
 
 bool BurnPathGetter::GetRealPath(const char* path, std::string* real_path) {
-  std::unique_ptr<char, base::FreeDeleter> result(realpath(path, nullptr));
-  if (!result) {
-    PLOG(ERROR) << "Couldn't get real path of " << path;
-    return false;
-  }
-  *real_path = result.get();
-  return true;
+  return RealPath(path, real_path);
 }
 
 bool BurnPathGetter::GetRootPath(std::string* path) {
