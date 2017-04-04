@@ -662,6 +662,7 @@ extern "C" {
 // The external dumpkernelconfig.a library depends on this symbol
 // existing, so I redefined it here. I deserve to suffer
 // very, very painfully for this, but hey.
+__attribute__((__format__(__printf__, 1, 2)))
 void VbExError(const char* format, ...) {
   va_list ap;
   va_start(ap, format);
