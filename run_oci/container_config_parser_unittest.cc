@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "container_utils/container_config_parser.h"
+#include "run_oci/container_config_parser.h"
 
 #include <stddef.h>
 #include <sys/mount.h>
@@ -11,7 +11,7 @@
 #include <base/values.h>
 #include <gtest/gtest.h>
 
-#include "container_utils/oci_config.h"
+#include "run_oci/oci_config.h"
 
 namespace {
 
@@ -373,7 +373,7 @@ const char kInvalidHostnameJsonData[] = R"json(
 
 }  // anonymous namespace
 
-namespace container_utils {
+namespace run_oci {
 
 TEST(OciConfigParserTest, TestBasicConfig) {
   OciConfigPtr basic_config(new OciConfig());
@@ -439,7 +439,7 @@ TEST(OciConfigParserTest, TestInvalidHostnameConfig) {
                                     invalid_config));
 }
 
-}  // namespace container_utils
+}  // namespace run_oci
 
 int main(int argc, char **argv) {
   base::AtExitManager exit_manager;

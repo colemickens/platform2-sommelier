@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CONTAINER_UTILS_CONTAINER_CONFIG_PARSER_H_
-#define CONTAINER_UTILS_CONTAINER_CONFIG_PARSER_H_
+#ifndef RUN_OCI_CONTAINER_CONFIG_PARSER_H_
+#define RUN_OCI_CONTAINER_CONFIG_PARSER_H_
 
 #include <memory>
 #include <string>
@@ -11,9 +11,9 @@
 #include <base/files/file_path.h>
 #include <base/values.h>
 
-#include "container_utils/oci_config.h"
+#include "run_oci/oci_config.h"
 
-namespace container_utils {
+namespace run_oci {
 
 using OciConfigPtr = std::unique_ptr<OciConfig>;
 
@@ -24,6 +24,6 @@ using OciConfigPtr = std::unique_ptr<OciConfig>;
 bool ParseContainerConfig(const std::string& config_json_data,
                           OciConfigPtr const& config_out);
 
-}  // namespace container_utils
+}  // namespace run_oci
 
-#endif  // CONTAINER_UTILS_CONTAINER_CONFIG_PARSER_H_
+#endif  // RUN_OCI_CONTAINER_CONFIG_PARSER_H_

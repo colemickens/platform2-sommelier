@@ -5,8 +5,8 @@
 // Container configuration from the config.json data as specified in
 // https://github.com/opencontainers/runtime-spec/tree/v1.0.0-rc2
 
-#ifndef CONTAINER_UTILS_OCI_CONFIG_H_
-#define CONTAINER_UTILS_OCI_CONFIG_H_
+#ifndef RUN_OCI_OCI_CONFIG_H_
+#define RUN_OCI_OCI_CONFIG_H_
 
 #include <stdint.h>
 
@@ -103,4 +103,4 @@ struct OciConfig {
   // Unused: hooks, annotations
 };
 
-#endif  // CONTAINER_UTILS_OCI_CONFIG_H_
+#endif  // RUN_OCI_OCI_CONFIG_H_

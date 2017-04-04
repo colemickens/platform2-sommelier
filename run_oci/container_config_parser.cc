@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "container_utils/container_config_parser.h"
+#include "run_oci/container_config_parser.h"
 
 #include <unistd.h>
 
@@ -13,7 +13,7 @@
 #include <base/json/json_reader.h>
 #include <base/values.h>
 
-namespace container_utils {
+namespace run_oci {
 
 namespace {
 
@@ -454,4 +454,4 @@ bool ParseContainerConfig(const std::string& config_json_data,
   return true;
 }
 
-}  // namespace container_utils
+}  // namespace run_oci

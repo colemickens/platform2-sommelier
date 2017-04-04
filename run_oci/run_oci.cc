@@ -18,15 +18,15 @@
 
 #include <libcontainer/libcontainer.h>
 
-#include "container_utils/container_config_parser.h"
-#include "container_utils/container_options.h"
+#include "run_oci/container_config_parser.h"
+#include "run_oci/container_options.h"
 
 namespace {
 
-using container_utils::BindMount;
-using container_utils::BindMounts;
-using container_utils::ContainerOptions;
-using container_utils::OciConfigPtr;
+using run_oci::BindMount;
+using run_oci::BindMounts;
+using run_oci::ContainerOptions;
+using run_oci::OciConfigPtr;
 
 using ContainerConfigPtr = std::unique_ptr<container_config,
                                            decltype(&container_config_destroy)>;
@@ -206,7 +206,7 @@ bool OciConfigFromFile(const base::FilePath& config_path,
     return false;
   }
 
-  if (!container_utils::ParseContainerConfig(config_json_data, oci_out)) {
+  if (!run_oci::ParseContainerConfig(config_json_data, oci_out)) {
     LOG(ERROR) << "Fail to parse config.json.";
     return false;
   }

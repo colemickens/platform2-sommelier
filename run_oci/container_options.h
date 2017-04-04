@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CONTAINER_UTILS_CONTAINER_OPTIONS_H_
-#define CONTAINER_UTILS_CONTAINER_OPTIONS_H_
+#ifndef RUN_OCI_CONTAINER_OPTIONS_H_
+#define RUN_OCI_CONTAINER_OPTIONS_H_
 
 #include <string>
 #include <utility>
@@ -11,7 +11,7 @@
 
 #include <base/files/file_path.h>
 
-namespace container_utils {
+namespace run_oci {
 
 using BindMount = std::pair<base::FilePath, base::FilePath>;
 using BindMounts = std::vector<BindMount>;
@@ -33,6 +33,6 @@ struct ContainerOptions {
     use_signatures(true) {}
 };
 
-}  // namespace container_utils
+}  // namespace run_oci
 
-#endif  // CONTAINER_UTILS_CONTAINER_OPTIONS_H_
+#endif  // RUN_OCI_CONTAINER_OPTIONS_H_
