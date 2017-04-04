@@ -48,7 +48,10 @@ class CromoProxy : public SystemServiceProxy {
                                  kModemManangerEnumerateDevicesMethod);
     auto result = base::ListValue::From(CallMethodAndGetResponse(
         dbus::ObjectPath(cromo::kCromoServicePath), &method_call));
-    return result ? std::move(result) : base::MakeUnique<base::ListValue>();
+    if (result)
+      return result;
+
+    return base::MakeUnique<base::ListValue>();
   }
 
   std::unique_ptr<base::DictionaryValue> GetModemProperties(
@@ -68,8 +71,10 @@ class CromoProxy : public SystemServiceProxy {
                                  kModemManangerGetStatusMethod);
     auto result = base::DictionaryValue::From(
         CallMethodAndGetResponse(object_path, &method_call));
-    return result ? std::move(result)
-                  : base::MakeUnique<base::DictionaryValue>();
+    if (result)
+      return result;
+
+    return base::MakeUnique<base::DictionaryValue>();
   }
 
   std::unique_ptr<base::DictionaryValue> GetInfo(
