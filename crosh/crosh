@@ -540,7 +540,7 @@ cmd_network_logging() (
   if [ -n "$1" ]; then
     case "$1" in
       "wifi")
-        echo; /usr/bin/ff_debug +service+wifi+inet+device+manager
+        echo; /usr/bin/ff_debug +service+wifi+inet+device+manager+dhcp
         echo; /usr/bin/ff_debug --level -2
         echo; /usr/bin/wpa_debug msgdump
         echo; printf "Enable wifi debugging: "; debugd SetWifiDriverDebug int32:1
@@ -551,7 +551,7 @@ cmd_network_logging() (
         echo; /usr/bin/modem set-logging debug
         ;;
       "ethernet")
-        echo; /usr/bin/ff_debug +service+ethernet+device+manager
+        echo; /usr/bin/ff_debug +service+ethernet+device+manager+dhcp
         echo; /usr/bin/ff_debug --level -2
         ;;
       "reset")
