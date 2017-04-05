@@ -5,20 +5,18 @@
 #include "authpolicy/authpolicy.h"
 
 #include <map>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include <base/bind_helpers.h>
 #include <base/callback.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
 #include <base/message_loop/message_loop.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
-#include <base/strings/utf_string_conversions.h>
 #include <brillo/dbus/dbus_method_invoker.h>
-#include <components/policy/core/common/policy_types.h>
-#include <components/policy/core/common/preg_parser.h>
 #include <dbus/bus.h>
 #include <dbus/login_manager/dbus-constants.h>
 #include <dbus/message.h>
@@ -31,8 +29,8 @@
 
 #include "authpolicy/path_service.h"
 #include "authpolicy/policy/policy_encoder_helper.h"
+#include "authpolicy/policy/preg_policy_writer.h"
 #include "authpolicy/proto_bindings/active_directory_account_data.pb.h"
-#include "authpolicy/samba_interface.h"
 #include "authpolicy/stub_common.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/cloud_policy.pb.h"
@@ -207,158 +205,6 @@ void CheckError(ErrorType expected_error,
   EXPECT_FALSE(*was_called);
   *was_called = true;
 }
-
-const char kRecommendedKey[] = "\\Recommended";
-const char kActionTriggerDelVals[] = "**delvals";
-
-// Constants for PReg file delimiters.
-const base::char16 kDelimBracketOpen = L'[';
-const base::char16 kDelimBracketClose = L']';
-const base::char16 kDelimSemicolon = L';';
-const base::char16 kDelimZero = L'\0';
-
-// Registry data type constants. Values have to match REG_* constants on
-// Windows. Does not check data types or whether a policy can be recommended or
-// not. This is checked when GPO is converted to a policy proto.
-const uint32_t kRegSz = 1;
-const uint32_t kRegDwordLittleEndian = 4;
-
-// Helper class to write valid registry.pol ("PREG") files with the specified
-// policy values. Test cases can create these files and expose them to
-// authpolicy through stub_smbclient.
-class PRegPolicyWriter {
- public:
-  PRegPolicyWriter()
-      : mandatory_key_(policy::helper::GetRegistryKey()),
-        recommended_key_(mandatory_key_ + kRecommendedKey) {
-    DCHECK(!mandatory_key_.empty());
-    buffer_.append(policy::preg_parser::kPRegFileHeader,
-                   policy::preg_parser::kPRegFileHeader +
-                       arraysize(policy::preg_parser::kPRegFileHeader));
-  }
-
-  // Appends a boolean policy value.
-  void AppendBoolean(
-      const char* policy_name,
-      bool value,
-      policy::PolicyLevel level = policy::POLICY_LEVEL_MANDATORY) {
-    StartEntry(
-        GetKey(level), policy_name, kRegDwordLittleEndian, sizeof(uint32_t));
-    AppendUnsignedInt(value ? 1 : 0);
-    EndEntry();
-  }
-
-  // Appends an integer policy value.
-  void AppendInteger(
-      const char* policy_name,
-      uint32_t value,
-      policy::PolicyLevel level = policy::POLICY_LEVEL_MANDATORY) {
-    StartEntry(
-        GetKey(level), policy_name, kRegDwordLittleEndian, sizeof(uint32_t));
-    AppendUnsignedInt(value);
-    EndEntry();
-  }
-
-  // Appends a string policy value.
-  void AppendString(
-      const char* policy_name,
-      const std::string& value,
-      policy::PolicyLevel level = policy::POLICY_LEVEL_MANDATORY) {
-    // size * 2 + 2 because of char16 and the 0-terminator.
-    StartEntry(GetKey(level),
-               policy_name,
-               kRegSz,
-               static_cast<uint32_t>(value.size()) * 2 + 2);
-    AppendString(value);
-    AppendChar16(kDelimZero);
-    EndEntry();
-  }
-
-  // Appends a string list policy value.
-  void AppendStringList(
-      const char* policy_name,
-      const std::vector<std::string>& values,
-      policy::PolicyLevel level = policy::POLICY_LEVEL_MANDATORY) {
-    // Add entry to wipe previous values.
-    std::string key = GetKey(level) + "\\" + policy_name;
-    StartEntry(key, kActionTriggerDelVals, kRegSz, 2);
-    AppendString("");
-    AppendChar16(kDelimZero);
-    EndEntry();
-
-    // Add an entry for each value.
-    for (int n = 0; n < static_cast<int>(values.size()); ++n) {
-      StartEntry(key,
-                 base::IntToString(n + 1),
-                 kRegSz,
-                 static_cast<uint32_t>(values[n].size()) * 2 + 2);
-      AppendString(values[n]);
-      AppendChar16(kDelimZero);
-      EndEntry();
-    }
-  }
-
-  // Writes the policy data to a file. Returns true on success.
-  bool WriteToFile(const base::FilePath& path) {
-    int size = static_cast<int>(buffer_.size());
-    return base::WriteFile(path, buffer_.data(), size) == size;
-  }
-
- private:
-  // Starts a policy entry.
-  void StartEntry(const std::string& key_name,
-                  const std::string& value_name,
-                  uint32_t data_type,
-                  uint32_t data_size) {
-    AppendChar16(kDelimBracketOpen);
-
-    AppendString(key_name);
-    AppendChar16(kDelimZero);
-    AppendChar16(kDelimSemicolon);
-
-    AppendString(value_name);
-    AppendChar16(kDelimZero);
-    AppendChar16(kDelimSemicolon);
-
-    AppendUnsignedInt(data_type);
-    AppendChar16(kDelimSemicolon);
-
-    AppendUnsignedInt(data_size);
-    AppendChar16(kDelimSemicolon);
-  }
-
-  // Ends a policy entry.
-  void EndEntry() { AppendChar16(kDelimBracketClose); }
-
-  // Appends a string to the internal buffer. Note that all strings are written
-  // as char16s.
-  void AppendString(const std::string& str) {
-    for (char ch : str)
-      AppendChar16(static_cast<base::char16>(ch));
-  }
-
-  // Appends an unsigned integer to the internal buffer.
-  void AppendUnsignedInt(uint32_t value) {
-    AppendChar16(value & 0xffff);
-    AppendChar16(value >> 16);
-  }
-
-  // Appends a char16 to the internal buffer.
-  void AppendChar16(base::char16 ch) {
-    buffer_.append(1, ch & 0xff);
-    buffer_.append(1, ch >> 8);
-  }
-
-  // Returns the registry key that belongs to the given |level|.
-  const std::string& GetKey(policy::PolicyLevel level) {
-    return level == policy::POLICY_LEVEL_RECOMMENDED ? recommended_key_
-                                                     : mandatory_key_;
-  }
-
-  std::string mandatory_key_;
-  std::string recommended_key_;
-  std::string buffer_;
-};
 
 }  // namespace
 
@@ -856,7 +702,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceeds) {
 TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithData) {
   // Write a preg file with all basic data types. The file is picked up by
   // stub_net and "downloaded" by stub_smbclient.
-  PRegPolicyWriter writer;
+  policy::PRegPolicyWriter writer(policy::helper::GetRegistryKey());
   writer.AppendBoolean(policy::key::kSearchSuggestEnabled, kPolicyBool);
   writer.AppendInteger(policy::key::kPolicyRefreshRate, kPolicyInt);
   writer.AppendString(policy::key::kHomepageLocation, kHomepageUrl);
@@ -890,7 +736,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithData) {
 // Verify that PolicyLevel is encoded properly.
 TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithPolicyLevel) {
   // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
-  PRegPolicyWriter writer;
+  policy::PRegPolicyWriter writer(policy::helper::GetRegistryKey());
   writer.AppendBoolean(policy::key::kSearchSuggestEnabled,
                        kPolicyBool,
                        policy::POLICY_LEVEL_RECOMMENDED);
@@ -921,7 +767,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithPolicyLevel) {
 // POLICY_LEVEL_RECOMMENDED policy.
 TEST_F(AuthPolicyTest, UserPolicyFetchMandatoryTakesPreference) {
   // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
-  PRegPolicyWriter writer1;
+  policy::PRegPolicyWriter writer1(policy::helper::GetRegistryKey());
   writer1.AppendBoolean(policy::key::kSearchSuggestEnabled,
                         kPolicyBool,
                         policy::POLICY_LEVEL_MANDATORY);
@@ -930,7 +776,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchMandatoryTakesPreference) {
   // Normally, the latter GPO file overrides the former
   // (DevicePolicyFetchGposOverwrite), but POLICY_LEVEL_RECOMMENDED does not
   // beat POLICY_LEVEL_MANDATORY.
-  PRegPolicyWriter writer2;
+  policy::PRegPolicyWriter writer2(policy::helper::GetRegistryKey());
   writer2.AppendBoolean(policy::key::kSearchSuggestEnabled,
                         kOtherPolicyBool,
                         policy::POLICY_LEVEL_RECOMMENDED);
@@ -962,7 +808,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreBadDataType) {
   // Set policies with wrong data type, e.g. kPinnedLauncherApps is a string
   // list, but it is set as a string. See UserPolicyFetchSucceedsWithData for
   // the logic of policy testing.
-  PRegPolicyWriter writer;
+  policy::PRegPolicyWriter writer(policy::helper::GetRegistryKey());
   writer.AppendBoolean(policy::key::kPolicyRefreshRate, kPolicyBool);
   writer.AppendInteger(policy::key::kHomepageLocation, kPolicyInt);
   writer.AppendString(policy::key::kPinnedLauncherApps, kHomepageUrl);
@@ -990,7 +836,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreBadDataType) {
 // GPOs with version 0 should be ignored.
 TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreZeroVersion) {
   // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
-  PRegPolicyWriter writer;
+  policy::PRegPolicyWriter writer(policy::helper::GetRegistryKey());
   writer.AppendBoolean(policy::key::kSearchSuggestEnabled, kPolicyBool);
   writer.WriteToFile(stub_gpo1_path_);
 
@@ -1018,7 +864,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreZeroVersion) {
 // GPOs with an ignore flag set should be ignored. Sounds reasonable, hmm?
 TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreFlagSet) {
   // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
-  PRegPolicyWriter writer;
+  policy::PRegPolicyWriter writer(policy::helper::GetRegistryKey());
   writer.AppendBoolean(policy::key::kSearchSuggestEnabled, kPolicyBool);
   writer.WriteToFile(stub_gpo1_path_);
 
@@ -1095,7 +941,7 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchSucceeds) {
 // Successful device policy fetch with actual data.
 TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsWithData) {
   // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
-  PRegPolicyWriter writer;
+  policy::PRegPolicyWriter writer(policy::helper::GetRegistryKey());
   writer.AppendBoolean(policy::key::kDeviceGuestModeEnabled, kPolicyBool);
   writer.AppendInteger(policy::key::kDeviceLocalAccountAutoLoginDelay,
                        kPolicyInt);
@@ -1137,7 +983,7 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchFailsEmptyGpoList) {
 // A GPO later in the list overrides prior GPOs.
 TEST_F(AuthPolicyTest, DevicePolicyFetchGposOverride) {
   // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
-  PRegPolicyWriter writer1;
+  policy::PRegPolicyWriter writer1(policy::helper::GetRegistryKey());
   writer1.AppendBoolean(policy::key::kDeviceGuestModeEnabled, kOtherPolicyBool);
   writer1.AppendInteger(policy::key::kDeviceLocalAccountAutoLoginDelay,
                         kPolicyInt);
@@ -1146,7 +992,7 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchGposOverride) {
   writer1.AppendStringList(policy::key::kDeviceStartUpFlags, flags1);
   writer1.WriteToFile(stub_gpo1_path_);
 
-  PRegPolicyWriter writer2;
+  policy::PRegPolicyWriter writer2(policy::helper::GetRegistryKey());
   writer2.AppendBoolean(policy::key::kDeviceGuestModeEnabled, kPolicyBool);
   writer2.AppendInteger(policy::key::kDeviceLocalAccountAutoLoginDelay,
                         kOtherPolicyInt);

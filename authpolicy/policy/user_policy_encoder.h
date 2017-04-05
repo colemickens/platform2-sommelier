@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <components/policy/core/common/policy_types.h>
 
 namespace enterprise_management {
 class PolicyOptions;
@@ -21,11 +22,6 @@ class CloudPolicySettings;
 namespace policy {
 
 class RegistryDict;
-
-enum PolicyLevel {
-  POLICY_LEVEL_RECOMMENDED,  // Values are defaults, can be overridden by users.
-  POLICY_LEVEL_MANDATORY,    // Values are enforced on user.
-};
 
 struct BooleanPolicyAccess;
 struct IntegerPolicyAccess;
