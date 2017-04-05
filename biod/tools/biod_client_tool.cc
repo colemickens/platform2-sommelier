@@ -10,6 +10,8 @@
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
+#include <base/memory/weak_ptr.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
 #include <base/strings/string_split.h>
@@ -140,7 +142,7 @@ class BiometricsManagerProxy {
   BiometricsManagerProxy(const scoped_refptr<dbus::Bus>& bus,
                          const dbus::ObjectPath& path,
                          dbus::MessageReader* pset_reader)
-      : bus_(bus) {
+      : bus_(bus), weak_factory_(this) {
     proxy_ = bus_->GetObjectProxy(biod::kBiodServiceName, path);
 
     while (pset_reader->HasMoreData()) {
@@ -159,23 +161,23 @@ class BiometricsManagerProxy {
         biod::kBiometricsManagerInterface,
         biod::kBiometricsManagerEnrollScanDoneSignal,
         base::Bind(&BiometricsManagerProxy::OnEnrollScanDone,
-                   base::Unretained(this)),
+                   weak_factory_.GetWeakPtr()),
         base::Bind(&BiometricsManagerProxy::OnSignalConnected,
-                   base::Unretained(this)));
+                   weak_factory_.GetWeakPtr()));
     proxy_->ConnectToSignal(
         biod::kBiometricsManagerInterface,
         biod::kBiometricsManagerAuthScanDoneSignal,
         base::Bind(&BiometricsManagerProxy::OnAuthScanDone,
-                   base::Unretained(this)),
+                   weak_factory_.GetWeakPtr()),
         base::Bind(&BiometricsManagerProxy::OnSignalConnected,
-                   base::Unretained(this)));
+                   weak_factory_.GetWeakPtr()));
     proxy_->ConnectToSignal(
         biod::kBiometricsManagerInterface,
         biod::kBiometricsManagerSessionFailedSignal,
         base::Bind(&BiometricsManagerProxy::OnSessionFailed,
-                   base::Unretained(this)),
+                   weak_factory_.GetWeakPtr()),
         base::Bind(&BiometricsManagerProxy::OnSignalConnected,
-                   base::Unretained(this)));
+                   weak_factory_.GetWeakPtr()));
   }
 
   const dbus::ObjectPath& path() const { return proxy_->object_path(); }
@@ -253,6 +255,10 @@ class BiometricsManagerProxy {
       records.emplace_back(bus_, record_path);
     }
     return records;
+  }
+
+  base::WeakPtr<BiometricsManagerProxy> GetWeakPtr() {
+    return weak_factory_.GetWeakPtr();
   }
 
  private:
@@ -340,6 +346,10 @@ class BiometricsManagerProxy {
   std::vector<RecordProxy> records_;
 
   FinishCallback on_finish_;
+
+  base::WeakPtrFactory<BiometricsManagerProxy> weak_factory_;
+
+  DISALLOW_COPY_AND_ASSIGN(BiometricsManagerProxy);
 };
 
 class BiodProxy {
@@ -377,41 +387,45 @@ class BiodProxy {
         dbus::MessageReader pset_reader(nullptr);
         CHECK(interface_entry_reader.PopArray(&pset_reader));
         if (interface_name == biod::kBiometricsManagerInterface) {
-          biometrics_managers_.emplace_back(bus_, object_path, &pset_reader);
+          biometrics_managers_.emplace_back(
+              base::MakeUnique<BiometricsManagerProxy>(
+                  bus_, object_path, &pset_reader));
         }
       }
     }
   }
 
-  BiometricsManagerProxy* GetBiometricsManager(base::StringPiece path) {
+  base::WeakPtr<BiometricsManagerProxy> GetBiometricsManager(
+      base::StringPiece path) {
     bool short_path =
         !base::StartsWith(path, "/", base::CompareCase::SENSITIVE);
 
-    for (BiometricsManagerProxy& biometrics_manager : biometrics_managers_) {
+    for (auto& biometrics_manager : biometrics_managers_) {
       const std::string& biometrics_manager_path =
-          biometrics_manager.path().value();
+          biometrics_manager->path().value();
       if (short_path) {
         if (base::EndsWith(
                 biometrics_manager_path, path, base::CompareCase::SENSITIVE)) {
-          return &biometrics_manager;
+          return biometrics_manager->GetWeakPtr();
         }
       } else if (biometrics_manager_path == path) {
-        return &biometrics_manager;
+        return biometrics_manager->GetWeakPtr();
       }
     }
     return nullptr;
   }
 
-  const std::vector<BiometricsManagerProxy>& biometrics_managers() const {
+  const std::vector<std::unique_ptr<BiometricsManagerProxy>>&
+  biometrics_managers() const {
     return biometrics_managers_;
   }
 
   int DestroyAllRecords() {
     int ret = 0;
-    for (BiometricsManagerProxy& biometrics_manager : biometrics_managers_) {
-      if (!biometrics_manager.DestroyAllRecords()) {
+    for (auto& biometrics_manager : biometrics_managers_) {
+      if (!biometrics_manager->DestroyAllRecords()) {
         LOG(ERROR) << "Failed to destroy record from BiometricsManager at "
-                   << biometrics_manager.path().value();
+                   << biometrics_manager->path().value();
         ret = 1;
       }
     }
@@ -424,7 +438,7 @@ class BiodProxy {
   scoped_refptr<dbus::Bus> bus_;
   dbus::ObjectProxy* proxy_;
 
-  std::vector<BiometricsManagerProxy> biometrics_managers_;
+  std::vector<std::unique_ptr<BiometricsManagerProxy>> biometrics_managers_;
 };
 
 void OnFinish(base::RunLoop* run_loop, int* ret_ptr, bool success) {
@@ -432,7 +446,7 @@ void OnFinish(base::RunLoop* run_loop, int* ret_ptr, bool success) {
   run_loop->Quit();
 }
 
-int DoEnroll(BiometricsManagerProxy* biometrics_manager,
+int DoEnroll(base::WeakPtr<BiometricsManagerProxy> biometrics_manager,
              const std::string& user_id,
              const std::string& label) {
   dbus::ObjectProxy* enroll_session_object =
@@ -462,7 +476,7 @@ int DoEnroll(BiometricsManagerProxy* biometrics_manager,
   return ret;
 }
 
-int DoAuthenticate(BiometricsManagerProxy* biometrics_manager) {
+int DoAuthenticate(base::WeakPtr<BiometricsManagerProxy> biometrics_manager) {
   dbus::ObjectProxy* auth_session_object =
       biometrics_manager->StartAuthSession();
 
@@ -492,10 +506,9 @@ int DoAuthenticate(BiometricsManagerProxy* biometrics_manager) {
 
 int DoList(BiodProxy* biod, const std::string& user_id) {
   LOG(INFO) << biod::kBiodServicePath << " : BioD Root Object Path";
-  for (const BiometricsManagerProxy& biometrics_manager :
-       biod->biometrics_managers()) {
+  for (const auto& biometrics_manager : biod->biometrics_managers()) {
     base::StringPiece biometrics_manager_path =
-        biometrics_manager.path().value();
+        biometrics_manager->path().value();
     if (base::StartsWith(biometrics_manager_path,
                          biod::kBiodServicePath,
                          base::CompareCase::SENSITIVE)) {
@@ -503,15 +516,15 @@ int DoList(BiodProxy* biod, const std::string& user_id) {
           biometrics_manager_path.substr(sizeof(biod::kBiodServicePath));
     }
     LOG(INFO) << "  " << biometrics_manager_path << " : "
-              << ToString(biometrics_manager.type()) << " Biometric";
+              << ToString(biometrics_manager->type()) << " Biometric";
 
-    biometrics_manager_path = biometrics_manager.path().value();
+    biometrics_manager_path = biometrics_manager->path().value();
 
     if (user_id.empty())
       continue;
 
     for (const RecordProxy& record :
-         biometrics_manager.GetRecordsForUser(user_id)) {
+         biometrics_manager->GetRecordsForUser(user_id)) {
       base::StringPiece record_path(record.path().value());
       if (base::StartsWith(record_path,
                            biometrics_manager_path,
@@ -551,7 +564,7 @@ int main(int argc, char* argv[]) {
       LOG(ERROR) << "Expected 3 parameters for enroll command.";
       return 1;
     }
-    BiometricsManagerProxy* biometrics_manager =
+    base::WeakPtr<BiometricsManagerProxy> biometrics_manager =
         biod.GetBiometricsManager(args[1]);
     CHECK(biometrics_manager)
         << "Failed to find biometrics manager with given path";
@@ -563,7 +576,7 @@ int main(int argc, char* argv[]) {
       LOG(ERROR) << "Expected 2 parameters for authenticate command.";
       return 1;
     }
-    BiometricsManagerProxy* biometrics_manager =
+    base::WeakPtr<BiometricsManagerProxy> biometrics_manager =
         biod.GetBiometricsManager(args[1]);
     CHECK(biometrics_manager)
         << "Failed to find biometrics manager with given path";
@@ -594,7 +607,7 @@ int main(int argc, char* argv[]) {
 
   if (command == "destroy_all") {
     if (args.size() >= 2) {
-      BiometricsManagerProxy* biometrics_manager =
+      base::WeakPtr<BiometricsManagerProxy> biometrics_manager =
           biod.GetBiometricsManager(args[1]);
       CHECK(biometrics_manager)
           << "Failed to find biometrics_manager with given path";
