@@ -33,11 +33,6 @@ class AuthPolicyMetrics;
 class PathService;
 class ProcessExecutor;
 
-// Prefix for Active Directory account ids. A prefixed |account_id| is usually
-// called |account_id_key|. Must match Chromium AccountId::kKeyAdIdPrefix.
-// Exposed for unit tests.
-extern const char kActiveDirectoryPrefix[];
-
 class SambaInterface {
  public:
   SambaInterface(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
@@ -82,12 +77,6 @@ class SambaInterface {
   ErrorType FetchDeviceGpos(std::string* policy_blob);
 
  private:
-  // Sets up trace logging for kinit.
-  void SetupKinitTrace(ProcessExecutor* kinit_cmd) const;
-
-  // Prints out the trace log of kinit.
-  void OutputKinitTrace() const;
-
   // Retrieves the name of the domain controller (DC) and the IP of the key
   // distribution center (KDC). If the full server name is 'server.realm', the
   // DC name is set to 'server'. The DC name is required for proper kerberized
