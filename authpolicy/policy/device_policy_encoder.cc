@@ -84,7 +84,7 @@ std::unique_ptr<base::DictionaryValue> JsonToDictionary(const std::string& json,
 
 }  //  namespace
 
-void DevicePolicyEncoder::EncodeDevicePolicy(
+void DevicePolicyEncoder::EncodePolicy(
     em::ChromeDeviceSettingsProto* policy) const {
   EncodeLoginPolicies(policy);
   EncodeNetworkPolicies(policy);

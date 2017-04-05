@@ -2,19 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <memory>
 #include <unordered_set>
-#include <utility>
 
-#include <base/memory/ptr_util.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
-#include <base/values.h>
 #include <components/policy/core/common/registry_dict.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "authpolicy/policy/device_policy_encoder.h"
+#include "authpolicy/policy/policy_encoder_test_base.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/policy_constants.h"
 
@@ -40,74 +36,39 @@ std::vector<int> ToVector(
 
 // Checks whether all device policies are properly encoded from RegistryDict
 // into em::ChromeDeviceSettingsProto. Makes sure no device policy is missing.
-class DevicePolicyEncoderTest : public ::testing::Test {
+class DevicePolicyEncoderTest
+    : public PolicyEncoderTestBase<em::ChromeDeviceSettingsProto> {
  public:
   DevicePolicyEncoderTest() {}
   ~DevicePolicyEncoderTest() override {}
 
  protected:
-  // Clears |policy|, encodes |value| as value for the boolean policy |key| and
-  // marks |key| as handled.
-  void EncodeBoolean(em::ChromeDeviceSettingsProto* policy,
-                     const char* key,
-                     bool value) {
-    EncodeValue(policy, key, base::MakeUnique<base::FundamentalValue>(value));
-  }
-
-  // Clears |policy|, encodes |value| as value for the integer policy |key| and
-  // marks |key| as handled.
-  void EncodeInteger(em::ChromeDeviceSettingsProto* policy,
-                     const char* key,
-                     int value) {
-    EncodeValue(policy, key, base::MakeUnique<base::FundamentalValue>(value));
-  }
-
-  // Clears |policy|, encodes |value| as value for the string policy |key| and
-  // marks |key| as handled.
-  void EncodeString(em::ChromeDeviceSettingsProto* policy,
-                    const char* key,
-                    const std::string& value) {
-    EncodeValue(policy, key, base::MakeUnique<base::StringValue>(value));
-  }
-
-  // Clears |policy|, encodes |value| as value for the string list policy |key|
-  // and marks |key| as handled.
-  void EncodeStringList(em::ChromeDeviceSettingsProto* policy,
-                        const char* key,
-                        const std::vector<std::string>& value) {
-    auto value_dict = base::MakeUnique<RegistryDict>();
-    for (int n = 0; n < static_cast<int>(value.size()); ++n) {
-      value_dict->SetValue(base::IntToString(n + 1),
-                           base::MakeUnique<base::StringValue>(value[n]));
-    }
-    RegistryDict root_dict;
-    root_dict.SetKey(key, std::move(value_dict));
-    DevicePolicyEncoder encoder(&root_dict);
+  void EncodeDict(em::ChromeDeviceSettingsProto* policy,
+                  const RegistryDict* dict) override {
+    DevicePolicyEncoder encoder(dict);
     *policy = em::ChromeDeviceSettingsProto();
-    encoder.EncodeDevicePolicy(policy);
+    encoder.EncodePolicy(policy);
+  }
+
+  void MarkHandled(const char* key) override {
     handled_policy_keys_.insert(key);
   }
 
-  // Marks a policy |key| as handled.
-  void HandleUnsupported(const char* key) { handled_policy_keys_.insert(key); }
+  // Returns a vector of all policy keys that were not encoded or otherwise
+  // marked handled (e.g. unsupported policies).
+  std::vector<std::string> GetUnhandledPolicyKeys() const {
+    std::vector<std::string> unhandled_policy_keys;
+    for (const char** key = kDevicePolicyKeys; *key; ++key) {
+      if (handled_policy_keys_.find(*key) == handled_policy_keys_.end())
+        unhandled_policy_keys.push_back(*key);
+    }
+    return unhandled_policy_keys;
+  }
 
+ private:
   // Keeps track of handled device policies. Used to detect device policies that
   // device_policy_encoder forgets to encode.
   std::unordered_set<std::string> handled_policy_keys_;
-
- private:
-  // Clears |policy|, encodes |value| as value for the given |key| and marks
-  // |key| as handled.
-  void EncodeValue(em::ChromeDeviceSettingsProto* policy,
-                   const char* key,
-                   std::unique_ptr<base::Value> value) {
-    RegistryDict dict;
-    dict.SetValue(key, std::move(value));
-    DevicePolicyEncoder encoder(&dict);
-    *policy = em::ChromeDeviceSettingsProto();
-    encoder.EncodeDevicePolicy(policy);
-    handled_policy_keys_.insert(key);
-  }
 
   DISALLOW_COPY_AND_ASSIGN(DevicePolicyEncoderTest);
 };
@@ -143,8 +104,9 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeBoolean(&policy, key::kDeviceEphemeralUsersEnabled, kBool);
   EXPECT_EQ(kBool, policy.ephemeral_users_enabled().ephemeral_users_enabled());
 
-  // Unsupported, see device_policy_encoder.cc for explanation.
-  HandleUnsupported(key::kDeviceLocalAccounts);
+  // Unsupported, see device_policy_encoder.cc for explanation, simply mark
+  // handled.
+  MarkHandled(key::kDeviceLocalAccounts);
   EncodeString(&policy, key::kDeviceLocalAccountAutoLoginId, kString);
   EXPECT_EQ(kString, policy.device_local_accounts().auto_login_id());
   EncodeInteger(&policy, key::kDeviceLocalAccountAutoLoginDelay, kInt);
@@ -400,11 +362,7 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   // Check whether all device policies have been handled.
   //
 
-  std::vector<std::string> unhandled_policy_keys;
-  for (const char** key = kDevicePolicyKeys; *key; ++key) {
-    if (handled_policy_keys_.find(*key) == handled_policy_keys_.end())
-      unhandled_policy_keys.push_back(*key);
-  }
+  std::vector<std::string> unhandled_policy_keys = GetUnhandledPolicyKeys();
   EXPECT_TRUE(unhandled_policy_keys.empty())
       << "Unhandled policy detected.\n"
       << "Please handle the following policies in "

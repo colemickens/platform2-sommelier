@@ -39,8 +39,7 @@ class UserPolicyEncoder {
   UserPolicyEncoder(const RegistryDict* dict, PolicyLevel level);
 
   // Extracts all user policies from |dict_| and puts them into |policy|.
-  void EncodeUserPolicy(
-      enterprise_management::CloudPolicySettings* policy) const;
+  void EncodePolicy(enterprise_management::CloudPolicySettings* policy) const;
 
  private:
   // Marks a policy recommended or mandatory.

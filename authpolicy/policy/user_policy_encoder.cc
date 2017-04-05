@@ -24,8 +24,7 @@ UserPolicyEncoder::UserPolicyEncoder(const RegistryDict* dict,
                                      PolicyLevel level)
     : dict_(dict), level_(level) {}
 
-void UserPolicyEncoder::EncodeUserPolicy(
-    em::CloudPolicySettings* policy) const {
+void UserPolicyEncoder::EncodePolicy(em::CloudPolicySettings* policy) const {
   EncodeList(policy, kBooleanPolicyAccess, &UserPolicyEncoder::EncodeBoolean);
   EncodeList(policy, kIntegerPolicyAccess, &UserPolicyEncoder::EncodeInteger);
   EncodeList(policy, kStringPolicyAccess, &UserPolicyEncoder::EncodeString);

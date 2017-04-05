@@ -50,12 +50,12 @@ bool ParsePRegFilesIntoUserPolicy(const std::vector<base::FilePath>& preg_files,
   // mandatory, it will be overwritten to be mandatory below.
   {
     UserPolicyEncoder enc(&merged_recommended_dict, POLICY_LEVEL_RECOMMENDED);
-    enc.EncodeUserPolicy(policy);
+    enc.EncodePolicy(policy);
   }
 
   {
     UserPolicyEncoder enc(&merged_mandatory_dict, POLICY_LEVEL_MANDATORY);
-    enc.EncodeUserPolicy(policy);
+    enc.EncodePolicy(policy);
   }
 
   return true;
@@ -73,7 +73,7 @@ bool ParsePRegFilesIntoDevicePolicy(
   }
 
   DevicePolicyEncoder encoder(&policy_dict);
-  encoder.EncodeDevicePolicy(policy);
+  encoder.EncodePolicy(policy);
 
   return true;
 }

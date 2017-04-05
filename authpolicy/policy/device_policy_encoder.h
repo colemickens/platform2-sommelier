@@ -33,7 +33,7 @@ class DevicePolicyEncoder {
 
   // Extracts all supported device policies from |dict| and puts them into
   // |policy|.
-  void EncodeDevicePolicy(
+  void EncodePolicy(
       enterprise_management::ChromeDeviceSettingsProto* policy) const;
 
  private:
