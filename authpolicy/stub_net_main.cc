@@ -15,7 +15,7 @@
 #include <base/strings/stringprintf.h>
 
 #include "authpolicy/platform_helper.h"
-#include "authpolicy/samba_interface_internal.h"
+#include "authpolicy/samba_helper.h"
 #include "authpolicy/stub_common.h"
 
 namespace authpolicy {
@@ -131,12 +131,12 @@ lastLogonTimestamp: 131318125471489990
 msDS-SupportedEncryptionTypes: 0)!!!";
 
 // Prints custom stub net ads gpo list output corresponding to one remote GPO
-// with the given properties. For |gpflags| see internal::kGpFlag*.
+// with the given properties. For |gpflags| see kGpFlag*.
 std::string PrintGpo(const char* guid,
                      uint32_t version_user,
                      uint32_t version_machine,
                      int gpflags) {
-  DCHECK(gpflags >= 0 && gpflags < internal::kGpFlagCount);
+  DCHECK(gpflags >= 0 && gpflags < kGpFlagCount);
   return base::StringPrintf(kStubRemoteGpo,
                             guid,
                             (version_user << 16) | version_machine,
@@ -148,7 +148,7 @@ std::string PrintGpo(const char* guid,
                             version_machine,
                             guid,
                             guid,
-                            internal::kGpFlagsStr[gpflags]);
+                            kGpFlagsStr[gpflags]);
 }
 
 // Writes a fake keytab file.
@@ -166,7 +166,7 @@ std::string GetMachineNameFromSmbConf(const std::string& smb_conf_path) {
   std::string smb_conf;
   CHECK(base::ReadFileToString(base::FilePath(smb_conf_path), &smb_conf));
   std::string machine_name;
-  CHECK(internal::FindToken(smb_conf, '=', "netbios name", &machine_name));
+  CHECK(FindToken(smb_conf, '=', "netbios name", &machine_name));
   return machine_name;
 }
 
@@ -203,34 +203,31 @@ int HandleJoin(const std::string& command_line,
   }
 
   // Stub insufficient quota error.
-  if (internal::Contains(command_line,
-                         kUserFlag + kInsufficientQuotaUserPrincipal)) {
+  if (Contains(command_line, kUserFlag + kInsufficientQuotaUserPrincipal)) {
     WriteOutput(kInsufficientQuotaError, "");
     return kExitCodeError;
   }
 
   // Stub non-existing account error (same error as 'wrong password' error).
-  if (internal::Contains(command_line, kUserFlag + kNonExistingUserPrincipal)) {
+  if (Contains(command_line, kUserFlag + kNonExistingUserPrincipal)) {
     WriteOutput(kWrongPasswordError, "");
     return kExitCodeError;
   }
 
   // Stub network error.
-  if (internal::Contains(command_line,
-                         kUserFlag + kNetworkErrorUserPrincipal)) {
+  if (Contains(command_line, kUserFlag + kNetworkErrorUserPrincipal)) {
     WriteOutput("", kNetworkError);
     return kExitCodeError;
   }
 
   // Stub access denied error.
-  if (internal::Contains(command_line,
-                         kUserFlag + kAccessDeniedUserPrincipal)) {
+  if (Contains(command_line, kUserFlag + kAccessDeniedUserPrincipal)) {
     WriteOutput(kJoinAccessDeniedError, "");
     return kExitCodeError;
   }
 
   // Stub valid user principal. Switch behavior based on password.
-  if (internal::Contains(command_line, kUserFlag + kUserPrincipal)) {
+  if (Contains(command_line, kUserFlag + kUserPrincipal)) {
     // Stub wrong password.
     if (password == kWrongPassword) {
       WriteOutput(kWrongPasswordError, "");
@@ -265,22 +262,22 @@ int HandleGpoList(const std::string& smb_conf_path) {
 
   if (machine_name == base::ToUpperASCII(kGpoDownloadErrorMachineName)) {
     // Stub GPO list that triggers a download error in smbclient.
-    gpos += PrintGpo(kErrorGpoGuid, 1, 1, internal::kGpFlagAllEnabled);
+    gpos += PrintGpo(kErrorGpoGuid, 1, 1, kGpFlagAllEnabled);
   } else if (machine_name == base::ToUpperASCII(kOneGpoMachineName)) {
     // Stub GPO list that downloads one GPO if present.
-    gpos += PrintGpo(kGpo1Guid, 1, 1, internal::kGpFlagAllEnabled);
+    gpos += PrintGpo(kGpo1Guid, 1, 1, kGpFlagAllEnabled);
   } else if (machine_name == base::ToUpperASCII(kTwoGposMachineName)) {
     // Stub GPO list that downloads two GPOs if present.
-    gpos += PrintGpo(kGpo1Guid, 1, 1, internal::kGpFlagAllEnabled);
-    gpos += PrintGpo(kGpo2Guid, 1, 1, internal::kGpFlagAllEnabled);
+    gpos += PrintGpo(kGpo1Guid, 1, 1, kGpFlagAllEnabled);
+    gpos += PrintGpo(kGpo2Guid, 1, 1, kGpFlagAllEnabled);
   } else if (machine_name == base::ToUpperASCII(kZeroUserVersionMachineName)) {
     // Stub GPO list that contains a GPO with version_user == 0 (should be
     // ignored during user policy fetch).
-    gpos += PrintGpo(kGpo1Guid, 0, 1, internal::kGpFlagAllEnabled);
+    gpos += PrintGpo(kGpo1Guid, 0, 1, kGpFlagAllEnabled);
   } else if (machine_name == base::ToUpperASCII(kDisableUserFlagMachineName)) {
     // Stub GPO list that contains a GPO with kGpFlagUserDisabled set (should be
     // ignored during user policy fetch).
-    gpos += PrintGpo(kGpo1Guid, 1, 1, internal::kGpFlagUserDisabled);
+    gpos += PrintGpo(kGpo1Guid, 1, 1, kGpFlagUserDisabled);
   }
 
   WriteOutput("", gpos);

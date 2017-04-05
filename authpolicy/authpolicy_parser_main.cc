@@ -30,12 +30,11 @@
 #include "authpolicy/log_level.h"
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/policy/preg_policy_encoder.h"
-#include "authpolicy/samba_interface_internal.h"
+#include "authpolicy/samba_helper.h"
 #include "bindings/authpolicy_containers.pb.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/cloud_policy.pb.h"
 
-namespace ai = authpolicy::internal;
 namespace em = enterprise_management;
 
 namespace authpolicy {
@@ -70,18 +69,18 @@ struct GpoEntry {
     filesyspath.clear();
     version_user = 0;
     version_machine = 0;
-    gp_flags = ai::kGpFlagInvalid;
+    gp_flags = kGpFlagInvalid;
   }
 
   bool IsValid() const {
     return !name.empty() && !filesyspath.empty() &&
            !(version_user == 0 && version_machine == 0) &&
-           gp_flags != ai::kGpFlagInvalid;
+           gp_flags != kGpFlagInvalid;
   }
 
   bool IsEmpty() const {
     return name.empty() && filesyspath.empty() && version_user == 0 &&
-           version_machine == 0 && gp_flags == ai::kGpFlagInvalid;
+           version_machine == 0 && gp_flags == kGpFlagInvalid;
   }
 
   void Log() const {
@@ -119,13 +118,13 @@ void PushGpo(const GpoEntry& gpo,
     case PolicyScope::USER:
       if (gpo.version_user == 0)
         filter_reason = "user version is 0";
-      else if (gpo.gp_flags & ai::kGpFlagUserDisabled)
+      else if (gpo.gp_flags & kGpFlagUserDisabled)
         filter_reason = "user disabled flag is set";
       break;
     case PolicyScope::MACHINE:
       if (gpo.version_machine == 0)
         filter_reason = "machine version is 0";
-      else if (gpo.gp_flags & ai::kGpFlagMachineDisabled)
+      else if (gpo.gp_flags & kGpFlagMachineDisabled)
         filter_reason = "machine disabled flag is set";
       break;
   }
@@ -175,8 +174,8 @@ bool ParseTgtDateTime(const std::string& str, size_t offset, time_t* time) {
 // it to stdout.
 int ParseAccountInfo(const std::string& net_out) {
   std::string object_guid, sam_account_name, display_name, given_name;
-  if (!ai::FindToken(net_out, ':', kSearchObjectGUID, &object_guid) ||
-      !ai::FindToken(net_out, ':', kSearchSAMAccountName, &sam_account_name)) {
+  if (!FindToken(net_out, ':', kSearchObjectGUID, &object_guid) ||
+      !FindToken(net_out, ':', kSearchSAMAccountName, &sam_account_name)) {
     LOG(ERROR) << "Failed to parse account info";
     return EXIT_CODE_FIND_TOKEN_FAILED;
   }
@@ -187,9 +186,9 @@ int ParseAccountInfo(const std::string& net_out) {
 
   // Attributes 'displayName' and 'givenName' are optional. May be missing for
   // accounts like 'Administrator' or for partially set up accounts.
-  if (ai::FindToken(net_out, ':', kSearchDisplayName, &display_name))
+  if (FindToken(net_out, ':', kSearchDisplayName, &display_name))
     account_info.set_display_name(display_name);
-  if (ai::FindToken(net_out, ':', kSearchGivenName, &given_name))
+  if (FindToken(net_out, ':', kSearchGivenName, &given_name))
     account_info.set_given_name(given_name);
 
   std::string account_info_blob;
@@ -205,8 +204,8 @@ int ParseAccountInfo(const std::string& net_out) {
 int ParseRealmInfo(const std::string& net_out) {
   // Parse output for dc_name in 'LDAP server name: dc_name.some.domain'.
   std::string dc_name, kdc_ip;
-  if (!ai::FindToken(net_out, ':', "LDAP server name", &dc_name) ||
-      !ai::FindToken(net_out, ':', "KDC server", &kdc_ip)) {
+  if (!FindToken(net_out, ':', "LDAP server name", &dc_name) ||
+      !FindToken(net_out, ':', "KDC server", &kdc_ip)) {
     return EXIT_CODE_FIND_TOKEN_FAILED;
   }
 
@@ -230,7 +229,7 @@ int ParseRealmInfo(const std::string& net_out) {
 // stdout.
 int ParseWorkgroup(const std::string& net_out) {
   std::string workgroup;
-  if (!ai::FindToken(net_out, ':', "Workgroup", &workgroup))
+  if (!FindToken(net_out, ':', "Workgroup", &workgroup))
     return EXIT_CODE_FIND_TOKEN_FAILED;
 
   return OutputForCaller(workgroup);
@@ -274,13 +273,13 @@ int ParseGpoList(const std::string& net_out, PolicyScope scope) {
       current_gpo.filesyspath = value;
     } else if (key == kGpoToken_VersionUser) {
       already_set = current_gpo.version_user != 0;
-      version_error = !ai::ParseGpoVersion(value, &current_gpo.version_user);
+      version_error = !ParseGpoVersion(value, &current_gpo.version_user);
     } else if (key == kGpoToken_VersionMachine) {
       already_set = current_gpo.version_machine != 0;
-      version_error = !ai::ParseGpoVersion(value, &current_gpo.version_machine);
+      version_error = !ParseGpoVersion(value, &current_gpo.version_machine);
     } else if (key == kGpoToken_Options) {
-      already_set = current_gpo.gp_flags != ai::kGpFlagInvalid;
-      flags_error = !ai::ParseGpFlags(value, &current_gpo.gp_flags);
+      already_set = current_gpo.gp_flags != kGpFlagInvalid;
+      flags_error = !ParseGpFlags(value, &current_gpo.gp_flags);
     }
 
     // Sanity check that we don't miss separators between GPOs.
@@ -411,7 +410,7 @@ int ParseTgtLifetime(const std::string& klist_out) {
 
   time_t valid_from, expires, renew_until = 0;
   for (size_t n = 0; n < lines.size(); ++n) {
-    if (internal::Contains(lines[n], "krbtgt/") &&
+    if (Contains(lines[n], "krbtgt/") &&
         ParseTgtDateTime(lines[n], kValidFromOffset, &valid_from) &&
         ParseTgtDateTime(lines[n], kExpiresOffset, &expires)) {
       if (n + 1 < lines.size() &&

@@ -14,7 +14,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
-#include "authpolicy/samba_interface_internal.h"
+#include "authpolicy/samba_helper.h"
 #include "authpolicy/stub_common.h"
 
 namespace authpolicy {
@@ -73,11 +73,11 @@ int HandleCommandLine(const std::string& command_line) {
   for (const DownloadItem& item : items) {
     base::FilePath source_path;
     bool download_error = false;
-    if (internal::Contains(item.local_path_, kGpo1Guid))
+    if (Contains(item.local_path_, kGpo1Guid))
       source_path = gpo_dir.Append(kGpo1Filename);
-    else if (internal::Contains(item.local_path_, kGpo2Guid))
+    else if (Contains(item.local_path_, kGpo2Guid))
       source_path = gpo_dir.Append(kGpo2Filename);
-    else if (internal::Contains(item.local_path_, kErrorGpoGuid))
+    else if (Contains(item.local_path_, kErrorGpoGuid))
       download_error = true;
     else
       NOTREACHED();

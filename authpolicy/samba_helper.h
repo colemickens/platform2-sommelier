@@ -2,14 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef AUTHPOLICY_SAMBA_INTERFACE_INTERNAL_H_
-#define AUTHPOLICY_SAMBA_INTERFACE_INTERNAL_H_
+#ifndef AUTHPOLICY_SAMBA_HELPER_H_
+#define AUTHPOLICY_SAMBA_HELPER_H_
 
 #include <string>
 
 namespace authpolicy {
-
-namespace internal {
 
 // Group policy flags.
 const int kGpFlagAllEnabled = 0x00;
@@ -50,7 +48,6 @@ bool ParseGpFlags(const std::string& str, int* gp_flags);
 // Returns true if the string contains the given substring.
 bool Contains(const std::string& str, const std::string& substr);
 
-}  // namespace internal
 }  // namespace authpolicy
 
-#endif  // AUTHPOLICY_SAMBA_INTERFACE_INTERNAL_H_
+#endif  // AUTHPOLICY_SAMBA_HELPER_H_

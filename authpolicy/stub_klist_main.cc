@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "authpolicy/samba_interface_internal.h"
+#include "authpolicy/samba_helper.h"
 #include "authpolicy/stub_common.h"
 
 namespace authpolicy {
@@ -29,7 +29,7 @@ Valid starting     Expires            Service principal
 
 int HandleCommandLine(const std::string& command_line) {
   // klist -s just returns 0 if the TGT is valid and 1 otherwise.
-  if (internal::Contains(command_line, "-s"))
+  if (Contains(command_line, "-s"))
     return kExitCodeTgtValid;
 
   WriteOutput(kStubList, "");

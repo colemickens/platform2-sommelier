@@ -97,8 +97,8 @@
         'policy/preg_policy_encoder.cc',
         'policy/user_policy_encoder.cc',
         'process_executor.cc',
+        'samba_helper.cc',
         'samba_interface.cc',
-        'samba_interface_internal.cc',
         'tgt_manager.cc',
       ],
     },
@@ -183,7 +183,7 @@
             'authpolicy_unittest.cc',
             'policy/device_policy_encoder_unittest.cc',
             'process_executor_unittest.cc',
-            'samba_interface_internal_unittest.cc',
+            'samba_helper_unittest.cc',
           ],
         },
         {

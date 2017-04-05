@@ -5,10 +5,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "authpolicy/samba_helper.h"
 #include "authpolicy/samba_interface.h"
-#include "authpolicy/samba_interface_internal.h"
-
-namespace ai = authpolicy::internal;
 
 namespace authpolicy {
 
@@ -24,22 +22,23 @@ class SambaInterfaceTest : public ::testing::Test {
   std::string normalized_upn_;
 
   bool ParseUserPrincipalName(const char* user_principal_name_) {
-    return ai::ParseUserPrincipalName(user_principal_name_, &user_name_,
-                                      &realm_, &normalized_upn_);
+    return ::authpolicy::ParseUserPrincipalName(
+        user_principal_name_, &user_name_, &realm_, &normalized_upn_);
   }
 
   // Helpers for FindToken.
   std::string find_token_result_;
 
   bool FindToken(const char* in_str, char token_separator, const char* token) {
-    return ai::FindToken(in_str, token_separator, token, &find_token_result_);
+    return ::authpolicy::FindToken(
+        in_str, token_separator, token, &find_token_result_);
   }
 
   // Helpers for ParseGpoVersion
   unsigned int gpo_version_ = 0;
 
   // Helpers for ParseGpFLags
-  int gp_flags_ = ai::kGpFlagInvalid;
+  int gp_flags_ = kGpFlagInvalid;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SambaInterfaceTest);
@@ -163,93 +162,92 @@ TEST_F(SambaInterfaceTest, FindTokenFail_Whitespace) {
 
 // Parsing valid GPO version strings.
 TEST_F(SambaInterfaceTest, ParseGpoVersionSuccess) {
-  EXPECT_TRUE(ai::ParseGpoVersion("0 (0x0000)", &gpo_version_));
+  EXPECT_TRUE(ParseGpoVersion("0 (0x0000)", &gpo_version_));
   EXPECT_EQ(gpo_version_, 0);
-  EXPECT_TRUE(ai::ParseGpoVersion("1 (0x0001)", &gpo_version_));
+  EXPECT_TRUE(ParseGpoVersion("1 (0x0001)", &gpo_version_));
   EXPECT_EQ(gpo_version_, 1);
-  EXPECT_TRUE(ai::ParseGpoVersion("9 (0x0009)", &gpo_version_));
+  EXPECT_TRUE(ParseGpoVersion("9 (0x0009)", &gpo_version_));
   EXPECT_EQ(gpo_version_, 9);
-  EXPECT_TRUE(ai::ParseGpoVersion("15 (0x000f)", &gpo_version_));
+  EXPECT_TRUE(ParseGpoVersion("15 (0x000f)", &gpo_version_));
   EXPECT_EQ(gpo_version_, 15);
-  EXPECT_TRUE(ai::ParseGpoVersion("65535 (0xffff)", &gpo_version_));
+  EXPECT_TRUE(ParseGpoVersion("65535 (0xffff)", &gpo_version_));
   EXPECT_EQ(gpo_version_, 0xffff);
 }
 
 // Empty string
 TEST_F(SambaInterfaceTest, ParseGpoVersionFail_EmptyString) {
-  EXPECT_FALSE(ai::ParseGpoVersion("", &gpo_version_));
+  EXPECT_FALSE(ParseGpoVersion("", &gpo_version_));
 }
 
 // Base-10 and Base-16 (hex) numbers not matching
 TEST_F(SambaInterfaceTest, ParseGpoVersionFail_NotMatching) {
-  EXPECT_FALSE(ai::ParseGpoVersion("15 (0x000e)", &gpo_version_));
+  EXPECT_FALSE(ParseGpoVersion("15 (0x000e)", &gpo_version_));
 }
 
 // Non-numeric characters fail
 TEST_F(SambaInterfaceTest, ParseGpoVersionFail_NonNumericCharacters) {
-  EXPECT_FALSE(ai::ParseGpoVersion("15a (0x00f)", &gpo_version_));
-  EXPECT_FALSE(ai::ParseGpoVersion("15 (0xg0f)", &gpo_version_));
-  EXPECT_FALSE(ai::ParseGpoVersion("dead", &gpo_version_));
+  EXPECT_FALSE(ParseGpoVersion("15a (0x00f)", &gpo_version_));
+  EXPECT_FALSE(ParseGpoVersion("15 (0xg0f)", &gpo_version_));
+  EXPECT_FALSE(ParseGpoVersion("dead", &gpo_version_));
 }
 
 // Missing 0x in hex string fails
 TEST_F(SambaInterfaceTest, ParseGpoVersionFail_Missing0x) {
-  EXPECT_FALSE(ai::ParseGpoVersion("15 (000f)", &gpo_version_));
+  EXPECT_FALSE(ParseGpoVersion("15 (000f)", &gpo_version_));
 }
 
 // Missing brackets in hex string fail
 TEST_F(SambaInterfaceTest, ParseGpoVersionFail_MissingBrackets) {
-  EXPECT_FALSE(ai::ParseGpoVersion("15 000f", &gpo_version_));
+  EXPECT_FALSE(ParseGpoVersion("15 000f", &gpo_version_));
 }
 
 // Missing hex string fails
 TEST_F(SambaInterfaceTest, ParseGpoVersionFail_MissingHex) {
-  EXPECT_FALSE(ai::ParseGpoVersion("10", &gpo_version_));
+  EXPECT_FALSE(ParseGpoVersion("10", &gpo_version_));
 }
 
 // Only hex string fails
 TEST_F(SambaInterfaceTest, ParseGpoVersionFail_HexOnly) {
-  EXPECT_FALSE(ai::ParseGpoVersion("0x000f", &gpo_version_));
+  EXPECT_FALSE(ParseGpoVersion("0x000f", &gpo_version_));
 }
 
 // Only hex string in brackets fails
 TEST_F(SambaInterfaceTest, ParseGpoVersionFail_BracketsHexOnly) {
-  EXPECT_FALSE(ai::ParseGpoVersion("(0x000f)", &gpo_version_));
+  EXPECT_FALSE(ParseGpoVersion("(0x000f)", &gpo_version_));
 }
 
 // Successfully parsing GP flags
 TEST_F(SambaInterfaceTest, ParseGpFlagsSuccess) {
-  EXPECT_TRUE(ai::ParseGpFlags("0 GPFLAGS_ALL_ENABLED", &gp_flags_));
+  EXPECT_TRUE(ParseGpFlags("0 GPFLAGS_ALL_ENABLED", &gp_flags_));
   EXPECT_EQ(0, gp_flags_);
-  EXPECT_TRUE(ai::ParseGpFlags("1 GPFLAGS_USER_SETTINGS_DISABLED", &gp_flags_));
+  EXPECT_TRUE(ParseGpFlags("1 GPFLAGS_USER_SETTINGS_DISABLED", &gp_flags_));
   EXPECT_EQ(1, gp_flags_);
-  EXPECT_TRUE(ai::ParseGpFlags("2 GPFLAGS_MACHINE_SETTINGS_DISABLED",
-                               &gp_flags_));
+  EXPECT_TRUE(ParseGpFlags("2 GPFLAGS_MACHINE_SETTINGS_DISABLED", &gp_flags_));
   EXPECT_EQ(2, gp_flags_);
-  EXPECT_TRUE(ai::ParseGpFlags("3 GPFLAGS_ALL_DISABLED", &gp_flags_));
+  EXPECT_TRUE(ParseGpFlags("3 GPFLAGS_ALL_DISABLED", &gp_flags_));
   EXPECT_EQ(3, gp_flags_);
 }
 
 // Strings don't match numbers
 TEST_F(SambaInterfaceTest, ParseGpFlagsFail_StringNotMatching) {
-  EXPECT_FALSE(ai::ParseGpFlags("1 GPFLAGS_ALL_ENABLED", &gp_flags_));
-  EXPECT_FALSE(ai::ParseGpFlags("2 GPFLAGS_ALL_DISABLED", &gp_flags_));
+  EXPECT_FALSE(ParseGpFlags("1 GPFLAGS_ALL_ENABLED", &gp_flags_));
+  EXPECT_FALSE(ParseGpFlags("2 GPFLAGS_ALL_DISABLED", &gp_flags_));
 }
 
 // Missing string
 TEST_F(SambaInterfaceTest, ParseGpFlagsFail_MissingString) {
-  EXPECT_FALSE(ai::ParseGpFlags("0", &gp_flags_));
+  EXPECT_FALSE(ParseGpFlags("0", &gp_flags_));
 }
 
 // Missing number
 TEST_F(SambaInterfaceTest, ParseGpFlagsFail_MissingNumber) {
-  EXPECT_FALSE(ai::ParseGpFlags("GPFLAGS_ALL_ENABLED", &gp_flags_));
+  EXPECT_FALSE(ParseGpFlags("GPFLAGS_ALL_ENABLED", &gp_flags_));
 }
 
 // String not trimmed
 TEST_F(SambaInterfaceTest, ParseGpFlagsFail_NotTrimmed) {
-  EXPECT_FALSE(ai::ParseGpFlags(" 0 GPFLAGS_ALL_ENABLED", &gp_flags_));
-  EXPECT_FALSE(ai::ParseGpFlags("0 GPFLAGS_ALL_ENABLED ", &gp_flags_));
+  EXPECT_FALSE(ParseGpFlags(" 0 GPFLAGS_ALL_ENABLED", &gp_flags_));
+  EXPECT_FALSE(ParseGpFlags("0 GPFLAGS_ALL_ENABLED ", &gp_flags_));
 }
 
 }  // namespace authpolicy

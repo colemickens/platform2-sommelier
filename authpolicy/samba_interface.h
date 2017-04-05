@@ -19,7 +19,7 @@
 #include "authpolicy/constants.h"
 #include "authpolicy/jail_helper.h"
 #include "authpolicy/path_service.h"
-#include "authpolicy/samba_interface_internal.h"
+#include "authpolicy/samba_helper.h"
 #include "authpolicy/tgt_manager.h"
 #include "bindings/authpolicy_containers.pb.h"
 

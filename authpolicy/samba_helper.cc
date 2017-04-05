@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "authpolicy/samba_interface_internal.h"
+#include "authpolicy/samba_helper.h"
 
 #include <vector>
 
@@ -11,14 +11,13 @@
 #include <base/strings/string_util.h>
 
 namespace authpolicy {
-namespace internal {
 
 // Flags for parsing GPO.
 const char* const kGpFlagsStr[] = {
-  "0 GPFLAGS_ALL_ENABLED",
-  "1 GPFLAGS_USER_SETTINGS_DISABLED",
-  "2 GPFLAGS_MACHINE_SETTINGS_DISABLED",
-  "3 GPFLAGS_ALL_DISABLED",
+    "0 GPFLAGS_ALL_ENABLED",
+    "1 GPFLAGS_USER_SETTINGS_DISABLED",
+    "2 GPFLAGS_MACHINE_SETTINGS_DISABLED",
+    "3 GPFLAGS_ALL_DISABLED",
 };
 
 bool ParseUserPrincipalName(const std::string& user_principal_name,
@@ -48,11 +47,11 @@ bool FindToken(const std::string& in_str,
     size_t sep_pos = line.find(token_separator);
     if (sep_pos != std::string::npos) {
       std::string line_token;
-      base::TrimWhitespaceASCII(line.substr(0, sep_pos), base::TRIM_ALL,
-                                &line_token);
+      base::TrimWhitespaceASCII(
+          line.substr(0, sep_pos), base::TRIM_ALL, &line_token);
       if (line_token == token) {
-        base::TrimWhitespaceASCII(line.substr(sep_pos + 1), base::TRIM_ALL,
-                                  result);
+        base::TrimWhitespaceASCII(
+            line.substr(sep_pos + 1), base::TRIM_ALL, result);
         if (!result->empty())
           return true;
       }
@@ -87,5 +86,4 @@ bool Contains(const std::string& str, const std::string& substr) {
   return str.find(substr) != std::string::npos;
 }
 
-}  // namespace internal
 }  // namespace authpolicy

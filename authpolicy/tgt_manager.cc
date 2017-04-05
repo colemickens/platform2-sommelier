@@ -17,7 +17,7 @@
 #include "authpolicy/jail_helper.h"
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/process_executor.h"
-#include "authpolicy/samba_interface_internal.h"
+#include "authpolicy/samba_helper.h"
 #include "bindings/authpolicy_containers.pb.h"
 
 namespace authpolicy {
@@ -115,34 +115,34 @@ ErrorType GetKinitError(const ProcessExecutor& kinit_cmd) {
   const std::string& kinit_out = kinit_cmd.GetStdout();
   const std::string& kinit_err = kinit_cmd.GetStderr();
 
-  if (internal::Contains(kinit_err, kKeyCannotContactKDC)) {
+  if (Contains(kinit_err, kKeyCannotContactKDC)) {
     LOG(ERROR) << "kinit failed - failed to contact KDC";
     return ERROR_CONTACTING_KDC_FAILED;
   }
-  if (internal::Contains(kinit_err, kKeyBadUserName)) {
+  if (Contains(kinit_err, kKeyBadUserName)) {
     LOG(ERROR) << "kinit failed - bad user name";
     return ERROR_BAD_USER_NAME;
   }
-  if (internal::Contains(kinit_err, kKeyBadPassword)) {
+  if (Contains(kinit_err, kKeyBadPassword)) {
     LOG(ERROR) << "kinit failed - bad password";
     return ERROR_BAD_PASSWORD;
   }
   // Check both stderr and stdout here since any kinit error in the change-
   // password-workflow would otherwise be interpreted as 'password expired'.
-  if (internal::Contains(kinit_out, kKeyPasswordExpiredStdout) &&
-      internal::Contains(kinit_err, kKeyPasswordExpiredStderr)) {
+  if (Contains(kinit_out, kKeyPasswordExpiredStdout) &&
+      Contains(kinit_err, kKeyPasswordExpiredStderr)) {
     LOG(ERROR) << "kinit failed - password expired";
     return ERROR_PASSWORD_EXPIRED;
   }
-  if (internal::Contains(kinit_err, kKeyCannotResolve)) {
+  if (Contains(kinit_err, kKeyCannotResolve)) {
     LOG(ERROR) << "kinit failed - cannot resolve KDC realm";
     return ERROR_NETWORK_PROBLEM;
   }
-  if (internal::Contains(kinit_err, kKeyNoCrentialsCache)) {
+  if (Contains(kinit_err, kKeyNoCrentialsCache)) {
     LOG(ERROR) << "kinit failed - no credentials cache found";
     return ERROR_NO_CREDENTIALS_CACHE_FOUND;
   }
-  if (internal::Contains(kinit_err, kKeyTicketExpired)) {
+  if (Contains(kinit_err, kKeyTicketExpired)) {
     LOG(ERROR) << "kinit failed - ticket expired";
     return ERROR_KERBEROS_TICKET_EXPIRED;
   }
@@ -156,7 +156,7 @@ ErrorType GetKListError(const ProcessExecutor& klist_cmd) {
   const std::string& klist_out = klist_cmd.GetStdout();
   const std::string& klist_err = klist_cmd.GetStderr();
 
-  if (internal::Contains(klist_err, kKeyNoCrentialsCache)) {
+  if (Contains(klist_err, kKeyNoCrentialsCache)) {
     LOG(ERROR) << "klist failed - no credentials cache found";
     return ERROR_NO_CREDENTIALS_CACHE_FOUND;
   }

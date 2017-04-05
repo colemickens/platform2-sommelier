@@ -26,8 +26,6 @@
 #include "authpolicy/process_executor.h"
 #include "bindings/authpolicy_containers.pb.h"
 
-namespace ai = authpolicy::internal;
-
 namespace authpolicy {
 namespace {
 
@@ -115,28 +113,28 @@ ErrorType GetNetError(const ProcessExecutor& executor,
   const std::string& net_err = executor.GetStderr();
   const std::string error_msg("net ads " + net_command + " failed: ");
 
-  if (internal::Contains(net_out, kKeyJoinFailedToFindDC) ||
-      internal::Contains(net_err, kKeyNoLogonServers)) {
+  if (Contains(net_out, kKeyJoinFailedToFindDC) ||
+      Contains(net_err, kKeyNoLogonServers)) {
     LOG(ERROR) << error_msg << "network problem";
     return ERROR_NETWORK_PROBLEM;
   }
-  if (internal::Contains(net_out, kKeyJoinLogonFailure)) {
+  if (Contains(net_out, kKeyJoinLogonFailure)) {
     LOG(ERROR) << error_msg << "logon failure";
     return ERROR_BAD_PASSWORD;
   }
-  if (internal::Contains(net_out, kKeyJoinAccessDenied)) {
+  if (Contains(net_out, kKeyJoinAccessDenied)) {
     LOG(ERROR) << error_msg << "user is not permitted to join the domain";
     return ERROR_JOIN_ACCESS_DENIED;
   }
-  if (internal::Contains(net_out, kKeyBadMachineName)) {
+  if (Contains(net_out, kKeyBadMachineName)) {
     LOG(ERROR) << error_msg << "incorrect machine name";
     return ERROR_BAD_MACHINE_NAME;
   }
-  if (internal::Contains(net_out, kKeyMachineNameTooLong)) {
+  if (Contains(net_out, kKeyMachineNameTooLong)) {
     LOG(ERROR) << error_msg << "machine name is too long";
     return ERROR_MACHINE_NAME_TOO_LONG;
   }
-  if (internal::Contains(net_out, kKeyUserHitJoinQuota)) {
+  if (Contains(net_out, kKeyUserHitJoinQuota)) {
     LOG(ERROR) << error_msg << "user joined max number of machines";
     return ERROR_USER_HIT_JOIN_QUOTA;
   }
@@ -146,8 +144,8 @@ ErrorType GetNetError(const ProcessExecutor& executor,
 
 ErrorType GetSmbclientError(const ProcessExecutor& smb_client_cmd) {
   const std::string& smb_client_out = smb_client_cmd.GetStdout();
-  if (internal::Contains(smb_client_out, kKeyNetworkTimeout) ||
-      internal::Contains(smb_client_out, kKeyConnectionReset)) {
+  if (Contains(smb_client_out, kKeyNetworkTimeout) ||
+      Contains(smb_client_out, kKeyConnectionReset)) {
     LOG(ERROR) << "smbclient failed - network problem";
     return ERROR_NETWORK_PROBLEM;
   }
@@ -245,15 +243,15 @@ ErrorType SambaInterface::Initialize(bool expect_config) {
   std::string flags;
   const std::string& flags_path = paths_->Get(Path::DEBUG_FLAGS);
   if (base::ReadFileToString(base::FilePath(flags_path), &flags)) {
-    if (internal::Contains(flags, kFlagDisableSeccomp)) {
+    if (Contains(flags, kFlagDisableSeccomp)) {
       LOG(WARNING) << "Seccomp filters disabled";
       disable_seccomp_filters = true;
     }
-    if (internal::Contains(flags, kFlagLogSeccomp)) {
+    if (Contains(flags, kFlagLogSeccomp)) {
       LOG(WARNING) << "Logging seccomp filter failures";
       log_seccomp_filters = true;
     }
-    if (internal::Contains(flags, kFlagTraceKinit)) {
+    if (Contains(flags, kFlagTraceKinit)) {
       LOG(WARNING) << "Trace kinit";
       trace_kinit = true;
     }
@@ -273,7 +271,7 @@ ErrorType SambaInterface::AuthenticateUser(
     protos::AccountInfo* account_info) {
   // Split user_principal_name into parts and normalize.
   std::string user_name, realm, workgroup, normalized_upn;
-  if (!ai::ParseUserPrincipalName(
+  if (!ParseUserPrincipalName(
           user_principal_name, &user_name, &realm, &normalized_upn)) {
     return ERROR_PARSE_UPN_FAILED;
   }
@@ -329,7 +327,7 @@ ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
                                       int password_fd) {
   // Split user principal name into parts.
   std::string user_name, realm, normalized_upn;
-  if (!ai::ParseUserPrincipalName(
+  if (!ParseUserPrincipalName(
           user_principal_name, &user_name, &realm, &normalized_upn)) {
     return ERROR_PARSE_UPN_FAILED;
   }
@@ -937,7 +935,7 @@ ErrorType SambaInterface::DownloadGpos(
       // exist, see crbug.com/680921.
       const std::string no_file_error_key(
           base::ToLowerASCII(kKeyObjectNameNotFound + gpo_path.server_));
-      if (internal::Contains(smbclient_out_lower, no_file_error_key)) {
+      if (Contains(smbclient_out_lower, no_file_error_key)) {
         LOG(WARNING) << "Ignoring missing preg file '"
                      << gpo_path.local_.value() << "'";
       } else {
