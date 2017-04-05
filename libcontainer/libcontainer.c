@@ -1288,7 +1288,8 @@ static int mount_runfs(struct container *c, const struct container_config *confi
 static int device_setup(struct container *c,
 			const struct container_config *config)
 {
-	int rc, i;
+	int rc;
+	size_t i;
 
 	c->cgroup->ops->deny_all_devices(c->cgroup);
 
@@ -1327,8 +1328,9 @@ static int device_setup(struct container *c,
 	for (i = 0; i < c->num_loopdevs; ++i) {
 		struct stat st;
 
-		if (stat(c->loopdevs[i], &st) < 0)
-			return rc;
+		rc = stat(c->loopdevs[i], &st);
+		if (rc < 0)
+			return -errno;
 		rc = c->cgroup->ops->add_device(c->cgroup, 1, major(st.st_rdev),
 						minor(st.st_rdev),
 						1, 0, 0, 'b');
