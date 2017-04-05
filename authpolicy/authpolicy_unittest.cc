@@ -801,7 +801,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreBadDataType) {
   writer.AppendStringList(policy::key::kSearchSuggestEnabled, apps);
   writer.WriteToFile(stub_gpo1_path_);
 
-  validate_user_policy_ = [apps](const em::CloudPolicySettings& policy) {
+  validate_user_policy_ = [](const em::CloudPolicySettings& policy) {
     EXPECT_FALSE(policy.has_searchsuggestenabled());
     EXPECT_FALSE(policy.has_pinnedlauncherapps());
     EXPECT_FALSE(policy.has_homepagelocation());
