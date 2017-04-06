@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/dircrypto-data-migrator/migration-helper.h"
+#include "cryptohome/dircrypto_data_migrator/migration_helper.h"
 
 #include <algorithm>
 #include <string>
