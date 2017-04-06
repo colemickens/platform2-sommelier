@@ -9,9 +9,12 @@
 #include <stdint.h>
 
 #include <memory>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
+#include <brillo/cryptohome.h>
 
 namespace imageburn {
 
@@ -23,12 +26,20 @@ const char* kFilePathPatterns[] =
     { "/dev/sd[a-z]+$", "/dev/mmcblk[0-9]+$" };
 const int kFilePathPatternCount = 2;
 
-const char* const kValidSourcePathParents[] = {
-    "/home/chronos/user/Downloads",  // Download folder
-    "/home/chronos/user/GCache",     // Drive sync cache
-    "/media/archive",                // Mounted archive
-    "/media/removable",              // Mounted removable drive
-};
+const char kMediaDirectory[] = "/media";
+const char kUserRootDirectory[] = "/home/chronos";
+
+bool IsUserOrUserHash(const std::string& path) {
+  if (path == "user")
+    return true;
+
+  if (base::StartsWith(path, "u-", base::CompareCase::INSENSITIVE_ASCII) &&
+      brillo::cryptohome::home::IsSanitizedUserName(path.substr(2))) {
+    return true;
+  }
+
+  return false;
+}
 
 }  // namespace
 
@@ -125,16 +136,7 @@ bool BurnerImpl::ValidateSourcePath(const char* path,
     return false;
   }
 
-  bool is_valid = false;
-  for (const char* parent : kValidSourcePathParents) {
-    base::FilePath parent_path(parent);
-    if (parent_path.IsParent(base::FilePath(*resolved_path))) {
-      is_valid = true;
-      break;
-    }
-  }
-
-  if (!is_valid) {
+  if (!IsSourcePathAllowed(*resolved_path)) {
     *error = IMAGEBURN_ERROR_SOURCE_PATH_NOT_ALLOWED;
     LOG(ERROR) << "Source path is not from one of the allowed locations.";
     return false;
@@ -191,6 +193,44 @@ bool BurnerImpl::DoBurn(const char* from_path, const char* to_path,
     *error = IMAGEBURN_ERROR_CANNOT_CLOSE_SOURCE;
   }
   return success;
+}
+
+// Derived from cros-disks::ArchiveManager::CanMount().
+bool BurnerImpl::IsSourcePathAllowed(const std::string& source_path) const {
+  // The following paths are allowed:
+  //     /home/chronos/user/Downloads/...<file>
+  //     /home/chronos/user/GCache/...<file>
+  //     /home/chronos/u-<user-id>/Downloads/...<file>
+  //     /home/chronos/u-<user-id>/GCache/...<file>
+  //     /media/<dir>/<dir>/...<file>
+  //
+  base::FilePath file_path(source_path);
+  if (base::FilePath(kUserRootDirectory).IsParent(file_path)) {
+    std::vector<base::FilePath::StringType> components;
+    file_path.StripTrailingSeparators().GetComponents(&components);
+    // The file path of an image file under a user's Downloads or GCache
+    // directory path is split into the following components:
+    //   '/', 'home', 'chronos', 'user', 'Downloads', ..., <file>
+    //   '/', 'home', 'chronos', 'user', 'GCache', ..., <file>
+    //   '/', 'home', 'chronos', 'u-<userid>', 'Downloads', ..., <file>
+    //   '/', 'home', 'chronos', 'u-<userid>', 'GCache', ..., <file>
+    if (components.size() > 5 && IsUserOrUserHash(components[3]) &&
+        (components[4] == "Downloads" || components[4] == "GCache")) {
+      return true;
+    }
+  }
+
+  if (base::FilePath(kMediaDirectory).IsParent(file_path)) {
+    std::vector<base::FilePath::StringType> components;
+    file_path.StripTrailingSeparators().GetComponents(&components);
+    // A mount directory is always created under /media/<sub type>/<mount dir>,
+    // so the file path of an image file under a mount directory is split
+    // into more than 4 components:
+    //   '/', 'media', 'removable', 'usb', ..., <file>
+    if (components.size() > 4)
+      return true;
+  }
+  return false;
 }
 
 }  // namespace imageburn

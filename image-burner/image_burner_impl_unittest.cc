@@ -620,4 +620,60 @@ TEST_F(ImageBurnerImplTest, FileSizeNotDivisibleByDAtaBlockSizeSDCard) {
             imageburn::IMAGEBURN_OK);
 }
 
+TEST_F(ImageBurnerImplTest, IsSourcePathAllowed) {
+  static const char* const kPathsNotAllowed[] = {
+      "",
+      "/",
+      "/dev/sda1",
+      "/home/chronos/Downloads/file",
+      "/home/chronos/GCache/file",
+      "/home/chronos/foo/Downloads/file",
+      "/home/chronos/foo/GCache/file",
+      "/home/chronos/u-/Downloads/file",
+      "/home/chronos/u-0123456789abcdef0123456789abcdef0123456/Downloads/file",
+      "/home/chronos/u-0123456789abcdef0123456789abcdef01234567/Downloads",
+      "/home/chronos/u-0123456789abcdef0123456789abcdef01234567/Downloads/",
+      "/home/chronos/u-0123456789abcdef0123456789abcdef01234567/GCache",
+      "/home/chronos/u-0123456789abcdef0123456789abcdef01234567/GCache/",
+      "/home/chronos/u-0123456789abcdef0123456789abcdef01234567/file",
+      "/home/chronos/u-xyz3456789abcdef0123456789abcdef01234567/Downloads/file",
+      "/home/chronos/user/Downloads",
+      "/home/chronos/user/Downloads/",
+      "/home/chronos/user/GCache",
+      "/home/chronos/user/GCache/",
+      "/home/chronos/user/file",
+      "/media/archive",
+      "/media/archive/",
+      "/media/archive/test 1.zip",
+      "/media/archive/test.zip",
+      "/media/archive/test.zip/",
+      "/media/removable",
+      "/media/removable/",
+      "/media/removable/disk 1",
+      "/media/removable/disk1",
+      "/media/removable/disk1/",
+      "/tmp",
+      "/tmp/chronos/user/Downloads/file",
+  };
+
+  for (const char* path : kPathsNotAllowed) {
+    EXPECT_FALSE(burner_->IsSourcePathAllowed(path));
+  }
+
+  static const char* const kPathsAllowed[] = {
+      "/media/removable/disk1/file",
+      "/media/removable/disk1/file",
+      "/media/removable/disk1/dir1/file",
+      "/media/removable/test.zip/file",
+      "/home/chronos/u-0123456789abcdef0123456789abcdef01234567/Downloads/file",
+      "/home/chronos/u-0123456789abcdef0123456789abcdef01234567/GCache/file",
+      "/home/chronos/user/Downloads/file",
+      "/home/chronos/user/GCache/file",
+  };
+
+  for (const char* path : kPathsAllowed) {
+    EXPECT_TRUE(burner_->IsSourcePathAllowed(path));
+  }
+}
+
 }  // namespace imageburn

@@ -9,6 +9,8 @@
 
 #include "image-burner/image_burner_utils_interfaces.h"
 
+#include <gtest/gtest_prod.h>
+
 namespace imageburn {
 
 enum ErrorCode {
@@ -47,6 +49,10 @@ class BurnerImpl {
   }
 
  private:
+  FRIEND_TEST(ImageBurnerImplTest, IsSourcePathAllowed);
+
+  bool IsSourcePathAllowed(const std::string& path) const;
+
   bool ValidateTargetPath(const char* path, ErrorCode* error);
   bool ValidateSourcePath(const char* path,
                           std::string* resolved_path,
