@@ -263,10 +263,11 @@ bool UserCollector::RunFilter(pid_t pid) {
 
 bool UserCollector::IsChromeMashProcess(int pid) const {
   std::vector<std::string> args = GetCommandLine(pid);
-  // Flag must be kept in sync with chrome's switches::kMash, see
+  // Flags must be kept in sync with chrome's switches::kMash and kMus, see
   // src/chrome/common/chrome_switches.cc.
-  static const char kMashFlag[] = "--mash";
-  return std::find(args.begin(), args.end(), kMashFlag) != args.end();
+  static const char kMashFlag[] = "--mash";  // "ash" process
+  static const char kMusFlag[] = "--mus";  // "mus-ws" and "mus-gpu" processes
+  return ContainsValue(args, kMashFlag) || ContainsValue(args, kMusFlag);
 }
 
 bool UserCollector::ShouldDump(pid_t pid,
