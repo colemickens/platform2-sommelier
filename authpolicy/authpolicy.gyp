@@ -182,6 +182,7 @@
             'authpolicy_testrunner.cc',
             'authpolicy_unittest.cc',
             'policy/device_policy_encoder_unittest.cc',
+            'policy/preg_policy_encoder_unittest.cc',
             'policy/preg_policy_writer.cc',
             'policy/user_policy_encoder_unittest.cc',
             'process_executor_unittest.cc',

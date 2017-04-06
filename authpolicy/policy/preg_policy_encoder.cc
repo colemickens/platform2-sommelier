@@ -28,33 +28,26 @@ bool ParsePRegFilesIntoUserPolicy(const std::vector<base::FilePath>& preg_files,
                                   em::CloudPolicySettings* policy) {
   DCHECK(policy);
 
-  RegistryDict merged_mandatory_dict;
-  RegistryDict merged_recommended_dict;
+  RegistryDict mandatory_dict;
   for (const base::FilePath& preg_file : preg_files) {
-    RegistryDict mandatory_dict;
     if (!helper::LoadPRegFile(preg_file, &mandatory_dict))
       return false;
-
-    // Recommended policies are stored in their own registry key. This can be
-    // nullptr if there is no recommended policy.
-    std::unique_ptr<RegistryDict> recommended_dict =
-        mandatory_dict.RemoveKey(kRecommendedKey);
-
-    // Merge into cumulative dicts. The rhs overwrites same policies in the lhs.
-    merged_mandatory_dict.Merge(mandatory_dict);
-    if (recommended_dict)
-      merged_recommended_dict.Merge(*recommended_dict);
   }
+
+  // Recommended policies are stored in their own registry key. This can be
+  // nullptr if there is no recommended policy.
+  std::unique_ptr<RegistryDict> recommended_dict =
+      mandatory_dict.RemoveKey(kRecommendedKey);
 
   // Convert recommended policies first. If a policy is both recommended and
   // mandatory, it will be overwritten to be mandatory below.
-  {
-    UserPolicyEncoder enc(&merged_recommended_dict, POLICY_LEVEL_RECOMMENDED);
+  if (recommended_dict) {
+    UserPolicyEncoder enc(recommended_dict.get(), POLICY_LEVEL_RECOMMENDED);
     enc.EncodePolicy(policy);
   }
 
   {
-    UserPolicyEncoder enc(&merged_mandatory_dict, POLICY_LEVEL_MANDATORY);
+    UserPolicyEncoder enc(&mandatory_dict, POLICY_LEVEL_MANDATORY);
     enc.EncodePolicy(policy);
   }
 

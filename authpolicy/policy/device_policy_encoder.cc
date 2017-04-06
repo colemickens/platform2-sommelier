@@ -111,6 +111,7 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
   EncodeStringList(key::kDeviceUserWhitelist,
                    [policy](const std::vector<std::string>& values) {
                      auto list = policy->mutable_user_whitelist();
+                     list->clear_user_whitelist();
                      for (const std::string& value : values)
                        list->add_user_whitelist(value);
                    });
@@ -161,6 +162,7 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
                    [policy](const std::vector<std::string>& values) {
                      auto list =
                          policy->mutable_login_video_capture_allowed_urls();
+                     list->clear_urls();
                      for (const std::string& value : values)
                        list->add_urls(value);
                    });
@@ -168,18 +170,21 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
                    [policy](const std::vector<std::string>& values) {
                      auto list =
                          policy->mutable_device_login_screen_app_install_list();
+                     list->clear_device_login_screen_app_install_list();
                      for (const std::string& value : values)
                        list->add_device_login_screen_app_install_list(value);
                    });
   EncodeStringList(key::kDeviceLoginScreenLocales,
                    [policy](const std::vector<std::string>& values) {
                      auto list = policy->mutable_login_screen_locales();
+                     list->clear_login_screen_locales();
                      for (const std::string& value : values)
                        list->add_login_screen_locales(value);
                    });
   EncodeStringList(key::kDeviceLoginScreenInputMethods,
                    [policy](const std::vector<std::string>& values) {
                      auto list = policy->mutable_login_screen_input_methods();
+                     list->clear_login_screen_input_methods();
                      for (const std::string& value : values)
                        list->add_login_screen_input_methods(value);
                    });
@@ -295,6 +300,7 @@ void DevicePolicyEncoder::EncodeAutoUpdatePolicies(
   EncodeStringList(key::kDeviceUpdateAllowedConnectionTypes,
                    [policy](const std::vector<std::string>& values) {
                      auto list = policy->mutable_auto_update_settings();
+                     list->clear_allowed_connection_types();
                      for (const std::string& value : values) {
                        em::AutoUpdateSettingsProto_ConnectionType type;
                        if (DecodeConnectionType(value, &type))
@@ -384,6 +390,7 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   EncodeStringList(key::kDeviceStartUpFlags,
                    [policy](const std::vector<std::string>& values) {
                      auto list = policy->mutable_start_up_flags();
+                     list->clear_flags();
                      for (const std::string& value : values)
                        list->add_flags(value);
                    });
@@ -431,6 +438,7 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
       key::kUsbDetachableWhitelist,
       [policy](const std::vector<std::string>& values) {
         auto list = policy->mutable_usb_detachable_whitelist();
+        list->clear_id();
         for (const std::string& value : values) {
           std::string error;
           std::unique_ptr<base::DictionaryValue> dict_value =

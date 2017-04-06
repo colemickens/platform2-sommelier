@@ -156,6 +156,7 @@ void UserPolicyEncoder::EncodeStringList(
   DCHECK(proto);
   em::StringList* proto_list = proto->mutable_value();
   DCHECK(proto_list);
+  proto_list->clear_entries();
   for (const std::string& value : string_values)
     *proto_list->add_entries() = value;
   SetPolicyOptions(proto->mutable_policy_options());

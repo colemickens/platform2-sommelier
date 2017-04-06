@@ -99,12 +99,12 @@ TEST_F(UserPolicyEncoderTest, TestEncodingPolicyLevel) {
   em::CloudPolicySettings policy;
 
   policy_level_ = POLICY_LEVEL_RECOMMENDED;
-  EncodeBoolean(&policy, policy::key::kSearchSuggestEnabled, true);
+  EncodeBoolean(&policy, key::kSearchSuggestEnabled, true);
   EXPECT_EQ(em::PolicyOptions_PolicyMode_RECOMMENDED,
             policy.searchsuggestenabled().policy_options().mode());
 
   policy_level_ = POLICY_LEVEL_MANDATORY;
-  EncodeBoolean(&policy, policy::key::kSearchSuggestEnabled, true);
+  EncodeBoolean(&policy, key::kSearchSuggestEnabled, true);
   EXPECT_EQ(em::PolicyOptions_PolicyMode_MANDATORY,
             policy.searchsuggestenabled().policy_options().mode());
 }
