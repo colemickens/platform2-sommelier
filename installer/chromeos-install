@@ -788,16 +788,13 @@ main() {
   prepare_disk
   locate_gpt
 
-  # Discover last known partition numbers.
-  # We don't expect these to change, but we do want to populate the
-  # variables generically.
-  . "/usr/sbin/write_gpt.sh"
-  load_base_vars
-
   # Special handling for payload_image. This is passed in for recovery images
   # and usb installs. This is done first so we can read the gpt partition
   # file below.
   if [ -n "${FLAGS_payload_image}" ]; then
+    PARTITION_NUM_ROOT_A=$(cgpt find -n -l ROOT-A "${FLAGS_payload_image}")
+    PARTITION_NUM_STATE=$(cgpt find -n -l STATE "${FLAGS_payload_image}")
+
     SRC="${FLAGS_payload_image}"
     # Mount files that are required to be referenced (when not already mounted).
     loop_offset_setup "${SRC}" $(partoffset "${SRC}" ${PARTITION_NUM_ROOT_A})
