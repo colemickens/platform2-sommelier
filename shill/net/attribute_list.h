@@ -37,15 +37,13 @@ using AttributeListRefPtr = scoped_refptr<AttributeList>;
 
 class ByteString;
 class NetlinkAttribute;
-class NetlinkRawAttribute;
 
 class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
  public:
-  using AttributePointer = std::shared_ptr<NetlinkAttribute>;
   using NewFromIdMethod = base::Callback<NetlinkAttribute*(int id)>;
   using AttributeMethod = base::Callback<bool(int id, const ByteString& value)>;
 
-  AttributeList() {}
+  AttributeList();
 
   // Instantiates an NetlinkAttribute of the appropriate type from |id|,
   // and adds it to |attributes_|.
@@ -137,12 +135,14 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
 
  protected:
   friend class base::RefCounted<AttributeList>;
-  virtual ~AttributeList() {}
+
+  virtual ~AttributeList();
 
  private:
-  using AttributeMap = std::map<int, AttributePointer>;
   friend class AttributeIdIterator;
   friend class NetlinkNestedAttribute;
+
+  using AttributeMap = std::map<int, std::unique_ptr<NetlinkAttribute>>;
 
   // Using this to get around issues with const and operator[].
   SHILL_PRIVATE NetlinkAttribute* GetAttribute(int id) const;

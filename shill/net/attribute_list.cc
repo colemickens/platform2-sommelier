@@ -20,19 +20,22 @@
 #include <linux/nl80211.h>
 
 #include <iomanip>
-#include <map>
 #include <string>
 
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
 
 #include "shill/net/netlink_attribute.h"
 #include "shill/net/netlink_message.h"
 
-using std::map;
 using std::string;
 
 namespace shill {
+
+AttributeList::AttributeList() {}
+
+AttributeList::~AttributeList() {}
 
 bool AttributeList::CreateAttribute(
     int id, AttributeList::NewFromIdMethod factory) {
@@ -40,7 +43,7 @@ bool AttributeList::CreateAttribute(
     VLOG(7) << "Trying to re-add attribute " << id << ", not overwriting";
     return true;
   }
-  attributes_[id] = AttributePointer(factory.Run(id));
+  attributes_[id] = base::WrapUnique(factory.Run(id));
   return true;
 }
 
@@ -139,8 +142,7 @@ bool AttributeList::CreateU8Attribute(int id, const char* id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = AttributePointer(
-      new NetlinkU8Attribute(id, id_string));
+  attributes_[id] = base::MakeUnique<NetlinkU8Attribute>(id, id_string);
   return true;
 }
 
@@ -166,8 +168,7 @@ bool AttributeList::CreateU16Attribute(int id, const char* id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = AttributePointer(
-      new NetlinkU16Attribute(id, id_string));
+  attributes_[id] = base::MakeUnique<NetlinkU16Attribute>(id, id_string);
   return true;
 }
 
@@ -192,8 +193,7 @@ bool AttributeList::CreateU32Attribute(int id, const char* id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = AttributePointer(
-      new NetlinkU32Attribute(id, id_string));
+  attributes_[id] = base::MakeUnique<NetlinkU32Attribute>(id, id_string);
   return true;
 }
 
@@ -218,8 +218,7 @@ bool AttributeList::CreateU64Attribute(int id, const char* id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = AttributePointer(
-      new NetlinkU64Attribute(id, id_string));
+  attributes_[id] = base::MakeUnique<NetlinkU64Attribute>(id, id_string);
   return true;
 }
 
@@ -244,8 +243,7 @@ bool AttributeList::CreateFlagAttribute(int id, const char* id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = AttributePointer(
-      new NetlinkFlagAttribute(id, id_string));
+  attributes_[id] = base::MakeUnique<NetlinkFlagAttribute>(id, id_string);
   return true;
 }
 
@@ -278,8 +276,7 @@ bool AttributeList::CreateStringAttribute(int id, const char* id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = AttributePointer(
-      new NetlinkStringAttribute(id, id_string));
+  attributes_[id] = base::MakeUnique<NetlinkStringAttribute>(id, id_string);
   return true;
 }
 
@@ -288,8 +285,7 @@ bool AttributeList::CreateSsidAttribute(int id, const char* id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = AttributePointer(
-      new NetlinkSsidAttribute(id, id_string));
+  attributes_[id] = base::MakeUnique<NetlinkSsidAttribute>(id, id_string);
   return true;
 }
 
@@ -330,8 +326,7 @@ bool AttributeList::CreateNestedAttribute(int id, const char* id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = AttributePointer(
-      new NetlinkNestedAttribute(id, id_string));
+  attributes_[id] = base::MakeUnique<NetlinkNestedAttribute>(id, id_string);
   return true;
 }
 
@@ -366,7 +361,7 @@ bool AttributeList::CreateRawAttribute(int id, const char* id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = AttributePointer(new NetlinkRawAttribute(id, id_string));
+  attributes_[id] = base::MakeUnique<NetlinkRawAttribute>(id, id_string);
   return true;
 }
 
@@ -379,8 +374,7 @@ bool AttributeList::GetAttributeAsString(int id, std::string* value) const {
 }
 
 NetlinkAttribute* AttributeList::GetAttribute(int id) const {
-  map<int, AttributePointer>::const_iterator i;
-  i = attributes_.find(id);
+  AttributeMap::const_iterator i = attributes_.find(id);
   if (i == attributes_.end()) {
     return nullptr;
   }
