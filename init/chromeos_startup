@@ -93,6 +93,9 @@ mkdir -p /dev/pts /dev/shm
 mount -n -t tmpfs -o nodev,noexec,nosuid shmfs /dev/shm
 mount -n -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts
 
+# Mount securityfs as it is used to configure inode security policies below.
+mount -n -t securityfs -o nodev,noexec,nosuid securityfs /sys/kernel/security
+
 # Initialize kernel sysctl settings early so that they take effect for boot
 # processes.
 sysctl -q --system
@@ -148,6 +151,20 @@ else
   load_base_vars
 fi
 
+# Path to the securityfs directory for configuring inode security policies.
+LSM_INODE_POLICIES="/sys/kernel/security/chromiumos/inode_security_policies"
+
+# Block symlink and fifo access on the given path.
+block_symlink_and_fifo() {
+  printf "$1" > "${LSM_INODE_POLICIES}/block_symlink"
+  printf "$1" > "${LSM_INODE_POLICIES}/block_fifo"
+}
+
+# Allow symlink access on the given path.
+allow_symlink() {
+  printf "$1" > "${LSM_INODE_POLICIES}/allow_symlink"
+}
+
 # Check if we are booted on physical media. rootdev will fail if we are in
 # an initramfs or tmpfs rootfs (ex, factory installer images. Note recovery
 # image also uses initramfs but it never reach here). When using initrd+tftpboot
@@ -198,6 +215,10 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
         "Self-repair corrupted stateful partition"
     exec clobber-state "keepimg"
   fi
+
+  # Block symlink traversal and opening of FIFOs on stateful. Note that we set
+  # up exceptions for developer mode later on.
+  block_symlink_and_fifo /mnt/stateful_partition
 
   # Mount the OEM partition.
   # mount_or_fail isn't used since this partition only has a filesystem
@@ -321,8 +342,41 @@ if is_var_full; then
   echo "Startup.ReclaimFullVar" > /mnt/stateful_partition/.reclaim_full_var
 fi
 
-# Gather log if needed.
+# Gather logs if needed.  This might clear /var, so all init has to be after
+# this.
 dev_gather_logs
+
+# Set up symlink traversal and FIFO blocking policy for /var, which may reside
+# on a separate file system than /mnt/stateful_partition. Block symlink
+# traversal and opening of FIFOs by default, but allow exceptions for symlinks
+# in the few instances where they are used intentionally.
+block_symlink_and_fifo /var
+# Generic symlink exceptions.
+for symlink_exception in /var/cache/echo /var/cache/vpd /var/lib/timezone \
+                         /var/log /home; do
+  mkdir -p "${symlink_exception}"
+  allow_symlink "${symlink_exception}"
+done
+# Project-specific symlink exceptions. Projects may add exceptions by adding a
+# file under /usr/share/cros/startup/symlink_exceptions/ whose contents contains
+# a list of paths (one per line) for which an exception should be made. File
+# name should use the following format: <project-name>-symlink-exceptions.txt
+for path_file in /usr/share/cros/startup/symlink_exceptions/*; do
+  if [ -f "${path_file}" ]; then
+    while read -r path; do
+      case "${path}" in
+      # Ignore blank lines.
+      "") ;;
+      # Ignore comments.
+      "#"*) ;;
+      *)
+        mkdir -p "${path}"
+        allow_symlink "${path}"
+        ;;
+      esac
+    done < "${path_file}"
+  fi
+done
 
 # /run is now tmpfs used for runtime data. Make sure /var/run and /var/lock are
 # bind-mounted to /run and /run/lock respectively for backwards compatibility.
@@ -336,7 +390,7 @@ mount -o bind /run/lock /var/lock
 
 # Make sure required /var subdirectories exist.
 mkdir -p -m 0755 /var/cache /var/db /var/empty /var/log/metrics \
-                 /var/spool /var/tmp /var/lib/misc
+                 /var/tmp /var/lib/misc
 
 # Before operating on them, verify that all stateful partition paths are
 # directories (as opposed to say, symlinks).
@@ -356,7 +410,8 @@ chgrp syslog /var/log
 chmod 1775 /var/log
 # /var/cache, /var/db, and /var/empty may already exist with wrong permissions.
 # Force the correct ones.
-chmod 0755 /var/cache /var/db /var/empty /var/spool /var/lib /var/lib/misc
+chmod 0755 /var/cache /var/db /var/empty /var/spool /var/lib /var/lib/misc \
+           /var/lib/ap
 # Make sure the empty dir stays empty (only works on ext4).
 chattr +i /var/empty || :
 
@@ -365,6 +420,10 @@ mount --make-shared -n -t tmpfs -o nodev,noexec,nosuid media /media
 
 # Mount dev packages.
 dev_mount_packages
+
+# Unmount securityfs so that further modifications to inode security policies
+# are not possible.
+umount /sys/kernel/security
 
 bootstat post-startup
 
