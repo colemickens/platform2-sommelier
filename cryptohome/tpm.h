@@ -67,7 +67,7 @@ class Tpm {
     kTpmRetryCommFailure,
     // Action failed - TPM is in dictionary attack defense mode.
     kTpmRetryDefendLock,
-    // Action failed - other caused (used in tests only).
+    // Action failed - fatal error.
     kTpmRetryFatal,
     // Action failed - target key/object handle is invalid.
     kTpmRetryInvalidHandle,
