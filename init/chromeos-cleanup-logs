@@ -102,6 +102,8 @@ rotate_file() {
   done
   mv -f "${basename}${extension}" "${basename}.1${extension}"
   touch "${basename}${extension}"
+  chmod --reference="${basename}.1${extension}" "${basename}${extension}"
+  chown --reference="${basename}.1${extension}" "${basename}${extension}"
 }
 
 rotate_logs() {
@@ -109,7 +111,6 @@ rotate_logs() {
   for x in messages secure net.log faillog session_manager atrus.log; do
     rotate_file "/var/log/${x}"
   done
-  chown syslog /var/log/messages /var/log/secure /var/log/net.log
   sudo pkill -HUP rsyslogd
 }
 
