@@ -106,7 +106,7 @@ rotate_file() {
 
 rotate_logs() {
   echo Rotating rsyslogd logs
-  for x in messages secure net.log faillog session_manager; do
+  for x in messages secure net.log faillog session_manager atrus.log; do
     rotate_file "/var/log/${x}"
   done
   chown syslog /var/log/messages /var/log/secure /var/log/net.log
