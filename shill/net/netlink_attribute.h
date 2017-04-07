@@ -60,8 +60,8 @@ class SHILL_EXPORT NetlinkAttribute {
 
   // Static factories generate the appropriate attribute object from the
   // raw nlattr data.
-  static NetlinkAttribute* NewControlAttributeFromId(int id);
-  static NetlinkAttribute* NewNl80211AttributeFromId(
+  static std::unique_ptr<NetlinkAttribute> NewControlAttributeFromId(int id);
+  static std::unique_ptr<NetlinkAttribute> NewNl80211AttributeFromId(
       NetlinkMessage::MessageContext context, int id);
 
   virtual bool InitFromValue(const ByteString& input);

@@ -24,6 +24,7 @@
 
 #include <base/format_macros.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "shill/net/attribute_list.h"
@@ -47,250 +48,171 @@ NetlinkAttribute::NetlinkAttribute(int id,
       datatype_string_(datatype_string) {}
 
 // static
-NetlinkAttribute* NetlinkAttribute::NewNl80211AttributeFromId(
+std::unique_ptr<NetlinkAttribute> NetlinkAttribute::NewNl80211AttributeFromId(
     NetlinkMessage::MessageContext context, int id) {
-  unique_ptr<NetlinkAttribute> attr;
   switch (id) {
     case NL80211_ATTR_BSS:
-      attr.reset(new Nl80211AttributeBss());
-      break;
+      return base::MakeUnique<Nl80211AttributeBss>();
     case NL80211_ATTR_CIPHER_SUITES:
-      attr.reset(new Nl80211AttributeCipherSuites());
-      break;
+      return base::MakeUnique<Nl80211AttributeCipherSuites>();
     case NL80211_ATTR_CONTROL_PORT_ETHERTYPE:
-      attr.reset(new Nl80211AttributeControlPortEthertype());
-      break;
+      return base::MakeUnique<Nl80211AttributeControlPortEthertype>();
     case NL80211_ATTR_COOKIE:
-      attr.reset(new Nl80211AttributeCookie());
-      break;
+      return base::MakeUnique<Nl80211AttributeCookie>();
     case NL80211_ATTR_CQM:
-      attr.reset(new Nl80211AttributeCqm());
-      break;
+      return base::MakeUnique<Nl80211AttributeCqm>();
     case NL80211_ATTR_DEVICE_AP_SME:
-      attr.reset(new Nl80211AttributeDeviceApSme());
-      break;
+      return base::MakeUnique<Nl80211AttributeDeviceApSme>();
     case NL80211_ATTR_DFS_REGION:
-      attr.reset(new Nl80211AttributeDfsRegion());
-      break;
+      return base::MakeUnique<Nl80211AttributeDfsRegion>();
     case NL80211_ATTR_DISCONNECTED_BY_AP:
-      attr.reset(new Nl80211AttributeDisconnectedByAp());
-      break;
+      return base::MakeUnique<Nl80211AttributeDisconnectedByAp>();
     case NL80211_ATTR_DURATION:
-      attr.reset(new Nl80211AttributeDuration());
-      break;
+      return base::MakeUnique<Nl80211AttributeDuration>();
     case NL80211_ATTR_FEATURE_FLAGS:
-      attr.reset(new Nl80211AttributeFeatureFlags());
-      break;
+      return base::MakeUnique<Nl80211AttributeFeatureFlags>();
     case NL80211_ATTR_FRAME:
-      attr.reset(new Nl80211AttributeFrame());
-      break;
+      return base::MakeUnique<Nl80211AttributeFrame>();
     case NL80211_ATTR_GENERATION:
-      attr.reset(new Nl80211AttributeGeneration());
-      break;
+      return base::MakeUnique<Nl80211AttributeGeneration>();
     case NL80211_ATTR_HT_CAPABILITY_MASK:
-      attr.reset(new Nl80211AttributeHtCapabilityMask());
-      break;
+      return base::MakeUnique<Nl80211AttributeHtCapabilityMask>();
     case NL80211_ATTR_IFINDEX:
-      attr.reset(new Nl80211AttributeIfindex());
-      break;
+      return base::MakeUnique<Nl80211AttributeIfindex>();
     case NL80211_ATTR_IFTYPE:
-      attr.reset(new Nl80211AttributeIftype());
-      break;
+      return base::MakeUnique<Nl80211AttributeIftype>();
     case NL80211_ATTR_KEY_IDX:
-      attr.reset(new Nl80211AttributeKeyIdx());
-      break;
+      return base::MakeUnique<Nl80211AttributeKeyIdx>();
     case NL80211_ATTR_KEY_SEQ:
-      attr.reset(new Nl80211AttributeKeySeq());
-      break;
+      return base::MakeUnique<Nl80211AttributeKeySeq>();
     case NL80211_ATTR_KEY_TYPE:
-      attr.reset(new Nl80211AttributeKeyType());
-      break;
+      return base::MakeUnique<Nl80211AttributeKeyType>();
     case NL80211_ATTR_MAC:
-      attr.reset(new Nl80211AttributeMac());
-      break;
+      return base::MakeUnique<Nl80211AttributeMac>();
     case NL80211_ATTR_MAX_MATCH_SETS:
-      attr.reset(new Nl80211AttributeMaxMatchSets());
-      break;
+      return base::MakeUnique<Nl80211AttributeMaxMatchSets>();
     case NL80211_ATTR_MAX_NUM_PMKIDS:
-      attr.reset(new Nl80211AttributeMaxNumPmkids());
-      break;
+      return base::MakeUnique<Nl80211AttributeMaxNumPmkids>();
     case NL80211_ATTR_MAX_NUM_SCAN_SSIDS:
-      attr.reset(new Nl80211AttributeMaxNumScanSsids());
-      break;
+      return base::MakeUnique<Nl80211AttributeMaxNumScanSsids>();
     case NL80211_ATTR_MAX_NUM_SCHED_SCAN_SSIDS:
-      attr.reset(new Nl80211AttributeMaxNumSchedScanSsids());
-      break;
+      return base::MakeUnique<Nl80211AttributeMaxNumSchedScanSsids>();
     case NL80211_ATTR_MAX_REMAIN_ON_CHANNEL_DURATION:
-      attr.reset(new Nl80211AttributeMaxRemainOnChannelDuration());
-      break;
+      return base::MakeUnique<Nl80211AttributeMaxRemainOnChannelDuration>();
     case NL80211_ATTR_MAX_SCAN_IE_LEN:
-      attr.reset(new Nl80211AttributeMaxScanIeLen());
-      break;
+      return base::MakeUnique<Nl80211AttributeMaxScanIeLen>();
     case NL80211_ATTR_MAX_SCHED_SCAN_IE_LEN:
-      attr.reset(new Nl80211AttributeMaxSchedScanIeLen());
-      break;
+      return base::MakeUnique<Nl80211AttributeMaxSchedScanIeLen>();
     case NL80211_ATTR_MPATH_INFO:
-      attr.reset(new Nl80211AttributeMPathInfo());
-      break;
+      return base::MakeUnique<Nl80211AttributeMPathInfo>();
     case NL80211_ATTR_OFFCHANNEL_TX_OK:
-      attr.reset(new Nl80211AttributeOffchannelTxOk());
-      break;
+      return base::MakeUnique<Nl80211AttributeOffchannelTxOk>();
     case NL80211_ATTR_PROBE_RESP_OFFLOAD:
-      attr.reset(new Nl80211AttributeProbeRespOffload());
-      break;
+      return base::MakeUnique<Nl80211AttributeProbeRespOffload>();
     case NL80211_ATTR_REASON_CODE:
-      attr.reset(new Nl80211AttributeReasonCode());
-      break;
+      return base::MakeUnique<Nl80211AttributeReasonCode>();
     case NL80211_ATTR_REG_ALPHA2:
-      attr.reset(new Nl80211AttributeRegAlpha2());
-      break;
+      return base::MakeUnique<Nl80211AttributeRegAlpha2>();
     case NL80211_ATTR_REG_INITIATOR:
-      attr.reset(new Nl80211AttributeRegInitiator());
-      break;
+      return base::MakeUnique<Nl80211AttributeRegInitiator>();
     case NL80211_ATTR_REG_RULES:
-      attr.reset(new Nl80211AttributeRegRules());
-      break;
+      return base::MakeUnique<Nl80211AttributeRegRules>();
     case NL80211_ATTR_REG_TYPE:
-      attr.reset(new Nl80211AttributeRegType());
-      break;
+      return base::MakeUnique<Nl80211AttributeRegType>();
     case NL80211_ATTR_RESP_IE:
-      attr.reset(new Nl80211AttributeRespIe());
-      break;
+      return base::MakeUnique<Nl80211AttributeRespIe>();
     case NL80211_ATTR_ROAM_SUPPORT:
-      attr.reset(new Nl80211AttributeRoamSupport());
-      break;
+      return base::MakeUnique<Nl80211AttributeRoamSupport>();
     case NL80211_ATTR_SCAN_FREQUENCIES:
-      attr.reset(new Nl80211AttributeScanFrequencies());
-      break;
+      return base::MakeUnique<Nl80211AttributeScanFrequencies>();
     case NL80211_ATTR_SCAN_SSIDS:
-      attr.reset(new Nl80211AttributeScanSsids());
-      break;
+      return base::MakeUnique<Nl80211AttributeScanSsids>();
     case NL80211_ATTR_STA_INFO:
-      attr.reset(new Nl80211AttributeStaInfo());
-      break;
+      return base::MakeUnique<Nl80211AttributeStaInfo>();
     case NL80211_ATTR_STATUS_CODE:
-      attr.reset(new Nl80211AttributeStatusCode());
-      break;
+      return base::MakeUnique<Nl80211AttributeStatusCode>();
     case NL80211_ATTR_SUPPORT_AP_UAPSD:
-      attr.reset(new Nl80211AttributeSupportApUapsd());
-      break;
+      return base::MakeUnique<Nl80211AttributeSupportApUapsd>();
     case NL80211_ATTR_SUPPORT_IBSS_RSN:
-      attr.reset(new Nl80211AttributeSupportIbssRsn());
-      break;
+      return base::MakeUnique<Nl80211AttributeSupportIbssRsn>();
     case NL80211_ATTR_SUPPORT_MESH_AUTH:
-      attr.reset(new Nl80211AttributeSupportMeshAuth());
-      break;
+      return base::MakeUnique<Nl80211AttributeSupportMeshAuth>();
     case NL80211_ATTR_SUPPORTED_IFTYPES:
-      attr.reset(new Nl80211AttributeSupportedIftypes());
-      break;
+      return base::MakeUnique<Nl80211AttributeSupportedIftypes>();
     case NL80211_ATTR_TDLS_EXTERNAL_SETUP:
-      attr.reset(new Nl80211AttributeTdlsExternalSetup());
-      break;
+      return base::MakeUnique<Nl80211AttributeTdlsExternalSetup>();
     case NL80211_ATTR_TDLS_SUPPORT:
-      attr.reset(new Nl80211AttributeTdlsSupport());
-      break;
+      return base::MakeUnique<Nl80211AttributeTdlsSupport>();
     case NL80211_ATTR_TIMED_OUT:
-      attr.reset(new Nl80211AttributeTimedOut());
-      break;
+      return base::MakeUnique<Nl80211AttributeTimedOut>();
     case NL80211_ATTR_WIPHY_ANTENNA_AVAIL_RX:
-      attr.reset(new Nl80211AttributeWiphyAntennaAvailRx());
-      break;
+      return base::MakeUnique<Nl80211AttributeWiphyAntennaAvailRx>();
     case NL80211_ATTR_WIPHY_ANTENNA_AVAIL_TX:
-      attr.reset(new Nl80211AttributeWiphyAntennaAvailTx());
-      break;
+      return base::MakeUnique<Nl80211AttributeWiphyAntennaAvailTx>();
     case NL80211_ATTR_WIPHY_ANTENNA_RX:
-      attr.reset(new Nl80211AttributeWiphyAntennaRx());
-      break;
+      return base::MakeUnique<Nl80211AttributeWiphyAntennaRx>();
     case NL80211_ATTR_WIPHY_ANTENNA_TX:
-      attr.reset(new Nl80211AttributeWiphyAntennaTx());
-      break;
+      return base::MakeUnique<Nl80211AttributeWiphyAntennaTx>();
     case NL80211_ATTR_WIPHY_BANDS:
-      attr.reset(new Nl80211AttributeWiphyBands());
-      break;
+      return base::MakeUnique<Nl80211AttributeWiphyBands>();
     case NL80211_ATTR_WIPHY_COVERAGE_CLASS:
-      attr.reset(new Nl80211AttributeWiphyCoverageClass());
-      break;
+      return base::MakeUnique<Nl80211AttributeWiphyCoverageClass>();
     case NL80211_ATTR_WIPHY_FRAG_THRESHOLD:
-      attr.reset(new Nl80211AttributeWiphyFragThreshold());
-      break;
+      return base::MakeUnique<Nl80211AttributeWiphyFragThreshold>();
     case NL80211_ATTR_WIPHY_FREQ:
-      attr.reset(new Nl80211AttributeWiphyFreq());
-      break;
+      return base::MakeUnique<Nl80211AttributeWiphyFreq>();
     case NL80211_ATTR_WIPHY_CHANNEL_TYPE:
-      attr.reset(new Nl80211AttributeChannelType());
-      break;
+      return base::MakeUnique<Nl80211AttributeChannelType>();
     case NL80211_ATTR_CHANNEL_WIDTH:
-      attr.reset(new Nl80211AttributeChannelWidth());
-      break;
+      return base::MakeUnique<Nl80211AttributeChannelWidth>();
     case NL80211_ATTR_CENTER_FREQ1:
-      attr.reset(new Nl80211AttributeCenterFreq1());
-      break;
+      return base::MakeUnique<Nl80211AttributeCenterFreq1>();
     case NL80211_ATTR_CENTER_FREQ2:
-      attr.reset(new Nl80211AttributeCenterFreq2());
-      break;
+      return base::MakeUnique<Nl80211AttributeCenterFreq2>();
     case NL80211_ATTR_WIPHY:
-      attr.reset(new Nl80211AttributeWiphy());
-      break;
+      return base::MakeUnique<Nl80211AttributeWiphy>();
     case NL80211_ATTR_WIPHY_NAME:
-      attr.reset(new Nl80211AttributeWiphyName());
-      break;
+      return base::MakeUnique<Nl80211AttributeWiphyName>();
     case NL80211_ATTR_WIPHY_RETRY_LONG:
-      attr.reset(new Nl80211AttributeWiphyRetryLong());
-      break;
+      return base::MakeUnique<Nl80211AttributeWiphyRetryLong>();
     case NL80211_ATTR_WIPHY_RETRY_SHORT:
-      attr.reset(new Nl80211AttributeWiphyRetryShort());
-      break;
+      return base::MakeUnique<Nl80211AttributeWiphyRetryShort>();
     case NL80211_ATTR_WIPHY_RTS_THRESHOLD:
-      attr.reset(new Nl80211AttributeWiphyRtsThreshold());
-      break;
+      return base::MakeUnique<Nl80211AttributeWiphyRtsThreshold>();
 #if !defined(DISABLE_WAKE_ON_WIFI)
     case NL80211_ATTR_WOWLAN_TRIGGERS:
-      attr.reset(new Nl80211AttributeWowlanTriggers(context));
-      break;
+      return base::MakeUnique<Nl80211AttributeWowlanTriggers>(context);
     case NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED:
-      attr.reset(new Nl80211AttributeWowlanTriggersSupported());
-      break;
+      return base::MakeUnique<Nl80211AttributeWowlanTriggersSupported>();
 #endif  // DISABLE_WAKE_ON_WIFI
     case NL80211_ATTR_SURVEY_INFO:
-      attr.reset(new Nl80211AttributeSurveyInfo());
-      break;
+      return base::MakeUnique<Nl80211AttributeSurveyInfo>();
     default:
-      attr.reset(new NetlinkAttributeGeneric(id));
-      break;
+      return base::MakeUnique<NetlinkAttributeGeneric>(id);
   }
-  return attr.release();
 }
 
 // static
-NetlinkAttribute* NetlinkAttribute::NewControlAttributeFromId(int id) {
-  unique_ptr<NetlinkAttribute> attr;
+std::unique_ptr<NetlinkAttribute> NetlinkAttribute::NewControlAttributeFromId(
+    int id) {
   switch (id) {
     case CTRL_ATTR_FAMILY_ID:
-      attr.reset(new ControlAttributeFamilyId());
-      break;
+      return base::MakeUnique<ControlAttributeFamilyId>();
     case CTRL_ATTR_FAMILY_NAME:
-      attr.reset(new ControlAttributeFamilyName());
-      break;
+      return base::MakeUnique<ControlAttributeFamilyName>();
     case CTRL_ATTR_VERSION:
-      attr.reset(new ControlAttributeVersion());
-      break;
+      return base::MakeUnique<ControlAttributeVersion>();
     case CTRL_ATTR_HDRSIZE:
-      attr.reset(new ControlAttributeHdrSize());
-      break;
+      return base::MakeUnique<ControlAttributeHdrSize>();
     case CTRL_ATTR_MAXATTR:
-      attr.reset(new ControlAttributeMaxAttr());
-      break;
+      return base::MakeUnique<ControlAttributeMaxAttr>();
     case CTRL_ATTR_OPS:
-      attr.reset(new ControlAttributeAttrOps());
-      break;
+      return base::MakeUnique<ControlAttributeAttrOps>();
     case CTRL_ATTR_MCAST_GROUPS:
-      attr.reset(new ControlAttributeMcastGroups());
-      break;
+      return base::MakeUnique<ControlAttributeMcastGroups>();
     default:
-      attr.reset(new NetlinkAttributeGeneric(id));
-      break;
+      return base::MakeUnique<NetlinkAttributeGeneric>(id);
   }
-  return attr.release();
 }
 
 // Duplicate attribute data, store in map indexed on |id|.

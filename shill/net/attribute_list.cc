@@ -43,7 +43,7 @@ bool AttributeList::CreateAttribute(
     VLOG(7) << "Trying to re-add attribute " << id << ", not overwriting";
     return true;
   }
-  attributes_[id] = base::WrapUnique(factory.Run(id));
+  attributes_[id] = factory.Run(id);
   return true;
 }
 
