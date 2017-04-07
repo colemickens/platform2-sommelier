@@ -170,6 +170,8 @@ dev_mount_packages() {
     # dev_image subtree.
     printf "/mnt/stateful_partition/dev_image" \
         > /sys/kernel/security/chromiumos/inode_security_policies/allow_symlink
+    printf "/mnt/stateful_partition/dev_image" \
+        > /sys/kernel/security/chromiumos/inode_security_policies/allow_fifo
   fi
 
   # Set up /var elements needed by gmerge.
