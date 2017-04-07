@@ -89,7 +89,7 @@ class Component {
   FRIEND_TEST_ALL_PREFIXES(ComponentTest, CopyValidImage);
 
   const base::FilePath component_dir_;
-  int key_number_;
+  size_t key_number_;
   std::string manifest_raw_;
   std::string manifest_sig_;
   Manifest manifest_;

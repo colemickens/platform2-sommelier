@@ -61,7 +61,7 @@ base::FilePath GetManifestPath(const base::FilePath& component_dir) {
 
 bool GetSignaturePath(const base::FilePath& component_dir,
                       base::FilePath* signature_path,
-                      int* key_number) {
+                      size_t* key_number) {
   DCHECK(signature_path);
   DCHECK(key_number);
 
@@ -75,8 +75,8 @@ bool GetSignaturePath(const base::FilePath& component_dir,
     if (key_ext.empty())
       continue;
 
-    int ext_number;
-    if (!base::StringToInt(key_ext.substr(1), &ext_number))
+    size_t ext_number;
+    if (!base::StringToSizeT(key_ext.substr(1), &ext_number))
       continue;
 
     *signature_path = path;
@@ -87,11 +87,11 @@ bool GetSignaturePath(const base::FilePath& component_dir,
 }
 
 base::FilePath GetSignaturePathForKey(const base::FilePath& component_dir,
-                                      int key_number) {
+                                      size_t key_number) {
   std::string signature_name(kManifestSignatureNamePattern);
   signature_name =
       signature_name.substr(0, signature_name.find_last_of('.') + 1);
-  return component_dir.Append(signature_name + base::IntToString(key_number));
+  return component_dir.Append(signature_name + base::SizeTToString(key_number));
 }
 
 base::FilePath GetFingerprintPath(const base::FilePath& component_dir) {
@@ -155,7 +155,7 @@ std::unique_ptr<Component> Component::Create(
         const base::FilePath& component_dir,
         const std::vector<uint8_t>& public_key) {
   base::FilePath signature_path;
-  int key_number;
+  size_t key_number;
   if (!GetSignaturePath(component_dir, &signature_path, &key_number)) {
     LOG(ERROR) << "Could not find manifest signature";
     return nullptr;
