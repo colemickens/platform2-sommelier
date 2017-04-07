@@ -237,13 +237,19 @@ std::unique_ptr<Cgroup> Cgroup::Create(base::StringPiece name,
     // cpuset is special: we need to copy parent's cpus or mems,
     // otherwise we'll start with "empty" cpuset and nothing can
     // run in it/be moved into it.
+    //
+    // Chromium OS and Android use the legacy noprefix mount option (i.e.
+    // no "cpuset." in front of cpus/mems), but we also check for the
+    // prefixed files.
     if (i == Type::CPUSET) {
-      if (!CopyCgroupParent(cg->cgroup_paths_[i], "cpus")) {
+      if (!CopyCgroupParent(cg->cgroup_paths_[i], "cpus") &&
+          !CopyCgroupParent(cg->cgroup_paths_[i], "cpuset.cpus")) {
         PLOG(ERROR) << "Failed to copy " << cg->cgroup_paths_[i].value()
                     << "/cpus from parent";
         return nullptr;
       }
-      if (!CopyCgroupParent(cg->cgroup_paths_[i], "mems")) {
+      if (!CopyCgroupParent(cg->cgroup_paths_[i], "mems") &&
+          !CopyCgroupParent(cg->cgroup_paths_[i], "cpuset.mems")) {
         PLOG(ERROR) << "Failed to copy " << cg->cgroup_paths_[i].value()
                     << "/mems from parent";
         return nullptr;
