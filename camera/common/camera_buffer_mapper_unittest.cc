@@ -174,6 +174,21 @@ void gbm_bo_destroy(struct gbm_bo* bo) {
   return _gbm_bo_destroy(bo);
 }
 
+namespace base {
+
+namespace internal {
+
+// A fake implementation of ScopedFDCloseTraits::Free for ScopedFD.
+
+// static
+void ScopedFDCloseTraits::Free(int fd) {
+  close(fd);
+}
+
+}  // namespace internal
+
+}  // namespace base
+
 namespace arc {
 
 namespace tests {
@@ -211,8 +226,7 @@ class CameraBufferMapperTest : public ::testing::Test {
       uint32_t width,
       uint32_t height) {
     std::unique_ptr<camera_buffer_handle_t> buffer(new camera_buffer_handle_t);
-    memset(buffer.get(), 0, sizeof(*buffer.get()));
-    buffer->fds[0] = dummy_fd;
+    buffer->fds[0].reset(dummy_fd);
     buffer->magic = kCameraBufferMagic;
     buffer->buffer_id = buffer_id;
     buffer->type = type;
@@ -306,6 +320,9 @@ TEST_F(CameraBufferMapperTest, LockTest) {
   EXPECT_CALL(gbm_, GbmBoUnmap(&dummy_bo, A<void*>())).Times(1);
   EXPECT_CALL(gbm_, GbmBoDestroy(&dummy_bo)).Times(1);
   EXPECT_EQ(cbm_->Deregister(handle), 0);
+
+  // The fd of the buffer plane should be closed.
+  EXPECT_CALL(gbm_, Close(dummy_fd)).Times(1);
 }
 
 TEST_F(CameraBufferMapperTest, LockYCbCrTest) {
@@ -394,6 +411,9 @@ TEST_F(CameraBufferMapperTest, LockYCbCrTest) {
   EXPECT_CALL(gbm_, GbmBoDestroy(&dummy_bo)).Times(1);
   EXPECT_EQ(cbm_->Deregister(handle), 0);
 
+  // The fd of the buffer plane should be closed.
+  EXPECT_CALL(gbm_, Close(dummy_fd)).Times(1);
+
   // Test semi-planar buffer.
   buffer =
       CreateBuffer(2, GRALLOC, DRM_FORMAT_NV21, HAL_PIXEL_FORMAT_YCbCr_420_888,
@@ -428,6 +448,9 @@ TEST_F(CameraBufferMapperTest, LockYCbCrTest) {
 
   EXPECT_CALL(gbm_, GbmBoDestroy(&dummy_bo)).Times(1);
   EXPECT_EQ(cbm_->Deregister(handle), 0);
+
+  // The fd of the buffer plane should be closed.
+  EXPECT_CALL(gbm_, Close(dummy_fd)).Times(1);
 }
 
 }  // namespace tests
