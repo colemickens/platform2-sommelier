@@ -191,6 +191,8 @@ Crypto::CryptoError Crypto::TpmErrorToCrypto(
     Tpm::TpmRetryAction retry_action) const {
   switch (retry_action) {
     case Tpm::kTpmRetryFatal:
+      // All errors mapped here will cause re-creating the cryptohome if
+      // they occur when decrypting the keyset.
       return Crypto::CE_TPM_FATAL;
     case Tpm::kTpmRetryCommFailure:
     case Tpm::kTpmRetryInvalidHandle:
@@ -202,6 +204,8 @@ Crypto::CryptoError Crypto::TpmErrorToCrypto(
     case Tpm::kTpmRetryReboot:
       return Crypto::CE_TPM_REBOOT;
     default:
+      // TODO(chromium:709646): kTpmRetryFailNoRetry maps here now. Find
+      // a better corresponding CryptoError.
       return Crypto::CE_NONE;
   }
 }

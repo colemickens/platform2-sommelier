@@ -61,7 +61,7 @@ class Tpm {
   enum TpmRetryAction {
     // Action succeeded - no retry needed.
     kTpmRetryNone,
-    // Action failed - retry not possible.
+    // Action failed - retrying won't change the outcome, so don't retry.
     kTpmRetryFailNoRetry,
     // Action failed - TPM communication failure.
     kTpmRetryCommFailure,
