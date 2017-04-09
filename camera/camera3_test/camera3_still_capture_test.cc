@@ -408,6 +408,13 @@ void Camera3SingleStillCaptureTest::ValidateExifKeys(
                      GetExifTagInteger(exif_data, EXIF_IFD_0,
                                        EXIF_TAG_IMAGE_LENGTH, byte_order)))
       << "EXIF JPEG size should match requested size";
+  EXPECT_EQ(
+      expected_jpeg_size,
+      ResolutionInfo(GetExifTagInteger(exif_data, EXIF_IFD_EXIF,
+                                       EXIF_TAG_PIXEL_X_DIMENSION, byte_order),
+                     GetExifTagInteger(exif_data, EXIF_IFD_EXIF,
+                                       EXIF_TAG_PIXEL_Y_DIMENSION, byte_order)))
+      << "EXIF JPEG pixel dimension should match requested size";
   EXPECT_EQ(jpeg_resolution, jpeg_exif_info.jpeg_resolution)
       << "JPEG size result and request should match";
 
