@@ -242,6 +242,29 @@ class MountTest
                                    "ecryptfs", _))
           .WillOnce(Return(true));
     }
+    EXPECT_CALL(platform_, CreateDirectory(user.vault_mount_path))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(platform_,
+                CreateDirectory(Mount::GetNewUserPath(user.username)))
+        .WillRepeatedly(Return(true));
+
+    EXPECT_CALL(platform_, IsDirectoryMounted(user.vault_mount_path))
+        .WillOnce(Return(false));
+    EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
+        .WillOnce(Return(false));
+
+    EXPECT_CALL(platform_, Bind(user.user_vault_mount_path,
+                                user.user_mount_path))
+        .WillOnce(Return(true));
+    EXPECT_CALL(platform_, Bind(user.user_vault_mount_path,
+                                user.legacy_user_mount_path))
+        .WillOnce(Return(true));
+    EXPECT_CALL(platform_, Bind(user.user_vault_mount_path,
+                                Mount::GetNewUserPath(user.username)))
+        .WillOnce(Return(true));
+    EXPECT_CALL(platform_, Bind(user.root_vault_mount_path,
+                                user.root_mount_path))
+        .WillOnce(Return(true));
   }
 
  protected:
@@ -410,22 +433,7 @@ TEST_P(MountTest, MountCryptohomeHasPrivileges) {
   EXPECT_CALL(platform_, ClearUserKeyring())
     .WillOnce(Return(true));
 
-  EXPECT_CALL(platform_, CreateDirectory(user->vault_mount_path))
-    .WillRepeatedly(Return(true));
-
-  EXPECT_CALL(platform_,
-              CreateDirectory(mount_->GetNewUserPath(user->username)))
-    .WillRepeatedly(Return(true));
-
-  EXPECT_CALL(platform_, IsDirectoryMounted(user->vault_mount_path))
-    .WillOnce(Return(false));
   // user exists, so there'll be no skel copy after.
-  // Only one mount, so the legacy mount point is used.
-  EXPECT_CALL(platform_,
-      IsDirectoryMounted(FilePath("/home/chronos/user")))
-    .WillOnce(Return(false));
-  EXPECT_CALL(platform_, Bind(_, _))
-    .WillRepeatedly(Return(true));
 
   MountError error = MOUNT_ERROR_NONE;
   ASSERT_TRUE(mount_->MountCryptohome(up, GetDefaultMountArgs(), &error));
@@ -906,21 +914,7 @@ TEST_P(MountTest, MountCryptohome) {
   EXPECT_CALL(platform_, ClearUserKeyring())
     .WillRepeatedly(Return(true));
 
-  EXPECT_CALL(platform_, CreateDirectory(user->vault_mount_path))
-    .WillRepeatedly(Return(true));
-
-  EXPECT_CALL(platform_,
-              CreateDirectory(mount_->GetNewUserPath(user->username)))
-    .WillRepeatedly(Return(true));
-
-  EXPECT_CALL(platform_, IsDirectoryMounted(user->vault_mount_path))
-    .WillOnce(Return(false));
   // user exists, so there'll be no skel copy after.
-  // Only one mount, so the legacy mount point is used.
-  EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
-    .WillOnce(Return(false));
-  EXPECT_CALL(platform_, Bind(_, _))
-    .WillRepeatedly(Return(true));
 
   MountError error = MOUNT_ERROR_NONE;
   EXPECT_TRUE(mount_->MountCryptohome(up, GetDefaultMountArgs(), &error));
@@ -961,13 +955,6 @@ TEST_P(MountTest, MountCryptohomeChapsKey) {
                         shared_gid_, kDaemonGid, ShouldTestEcryptfs());
 
   ExpectCryptohomeMount(*user);
-  EXPECT_CALL(platform_, CreateDirectory(user->vault_mount_path))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_,
-              CreateDirectory(mount_->GetNewUserPath(user->username)))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Bind(_, _))
-      .WillRepeatedly(Return(true));
 
   ASSERT_TRUE(mount_->MountCryptohome(up, GetDefaultMountArgs(), &error));
 
@@ -1033,13 +1020,6 @@ TEST_P(MountTest, MountCryptohomeNoChapsKey) {
                         shared_gid_, kDaemonGid, ShouldTestEcryptfs());
 
   ExpectCryptohomeMount(*user);
-  EXPECT_CALL(platform_, CreateDirectory(user->vault_mount_path))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_,
-              CreateDirectory(mount_->GetNewUserPath(user->username)))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Bind(_, _))
-      .WillRepeatedly(Return(true));
 
   ASSERT_TRUE(mount_->MountCryptohome(up, GetDefaultMountArgs(), &error));
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
@@ -1081,14 +1061,6 @@ TEST_P(MountTest, MountCryptohomeNoChange) {
                         shared_gid_, kDaemonGid, ShouldTestEcryptfs());
 
   ExpectCryptohomeMount(*user);
-  EXPECT_CALL(platform_, CreateDirectory(user->vault_mount_path))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_,
-              CreateDirectory(mount_->GetNewUserPath(user->username)))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Bind(_, _))
-      .Times(4)
-      .WillRepeatedly(Return(true));
 
   ASSERT_TRUE(mount_->MountCryptohome(up, GetDefaultMountArgs(), &error));
 
@@ -1160,13 +1132,6 @@ TEST_P(MountTest, MountCryptohomeNoCreate) {
     .WillRepeatedly(Return(true));
 
   ExpectCryptohomeMount(*user);
-  EXPECT_CALL(platform_, IsDirectoryMounted(user->vault_mount_path))
-    .WillOnce(Return(false));  // mount precondition
-  EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
-    .WillOnce(Return(false));  // bind precondition for first mount
-  EXPECT_CALL(platform_, Bind(_, _))
-      .Times(4)
-      .WillRepeatedly(Return(true));
 
   // Fake successful mount to /home/chronos/user/*
   EXPECT_CALL(platform_,
@@ -1213,9 +1178,6 @@ TEST_P(MountTest, UserActivityTimestampUpdated) {
   // Mount()
   MountError error;
   ExpectCryptohomeMount(*user);
-  EXPECT_CALL(platform_, Bind(_, _))
-      .Times(4)
-      .WillRepeatedly(Return(true));
   ASSERT_TRUE(mount_->MountCryptohome(up, GetDefaultMountArgs(), &error));
 
   // Update the timestamp. Normally it is called in MountTaskMount::Run() in
@@ -1740,14 +1702,6 @@ TEST_P(MountTest, MountCryptohomeForceDircrypto) {
   // Mock setup for successful mount when dircrypto is tested.
   if (!ShouldTestEcryptfs()) {
     ExpectCryptohomeMount(*user);
-
-    EXPECT_CALL(platform_, IsDirectoryMounted(user->vault_mount_path))
-        .WillOnce(Return(false));  // mount precondition
-    EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
-        .WillOnce(Return(false));  // bind precondition for first mount
-    EXPECT_CALL(platform_, Bind(_, _))
-        .Times(4)
-        .WillRepeatedly(Return(true));
 
     // Expectations for tracked subdirectories
     EXPECT_CALL(platform_, DirectoryExists(
@@ -2356,8 +2310,6 @@ TEST_P(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, FileExists(_))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, IsDirectoryMounted(_))
-    .WillRepeatedly(Return(false));
 
   std::vector<int> key_indices;
   key_indices.push_back(0);
@@ -2367,8 +2319,6 @@ TEST_P(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
 
   EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
       .Times(0);
-  EXPECT_CALL(platform_, Bind(_, _))
-      .WillRepeatedly(Return(true));
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
