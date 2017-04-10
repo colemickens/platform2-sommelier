@@ -26,12 +26,28 @@ namespace {
 const int kMsInSec = 1000;
 
 // Given a command-line flag containing a duration in seconds, a
-// power_manager::PowerManagementPolicy::Delays |submessage|, and the name
-// of a milliseconds field in |submessage|, sets the field if the flag is
-// greater than or equal to 0.
+// PowerManagementPolicy::Delays* |submessage|, and the name of a milliseconds
+// field in |submessage|, sets the field if the flag is greater than or equal to
+// 0.
 #define SET_DELAY_FIELD(flag, submessage, field) \
   if (flag >= 0) {                               \
-    submessage->set_##field(flag* kMsInSec);     \
+    submessage->set_##field(flag * kMsInSec);    \
+  }
+
+// Given |name| (a string) and |proto| (a PowerManagementPolicy), sets |proto|'s
+// |name| bool field to true if |FLAGS_<name>| is positive or to false if it's
+// zero, leaving it unset if it's negative.
+#define SET_BOOL_FIELD(name, proto)      \
+  if (FLAGS_##name >= 0) {               \
+    proto.set_##name(FLAGS_##name != 0); \
+  }
+
+// Given |name| (a string), |proto| (a PowerManagementPolicy), and |min| (a
+// double), sets |proto|'s |name| double field to |FLAGS_<name>| if
+// |FLAGS_<name>| is >= |min|, leaving it unset otherwise.
+#define SET_DOUBLE_FIELD(name, proto, min) \
+  if (FLAGS_##name >= min) {               \
+    proto.set_##name(FLAGS_##name);        \
   }
 
 // Given a string from a flag describing an action, returns the
@@ -160,30 +176,15 @@ int main(int argc, char* argv[]) {
   SET_DELAY_FIELD(FLAGS_battery_idle_warning_delay, delays, idle_warning_ms);
   SET_DELAY_FIELD(FLAGS_battery_idle_delay, delays, idle_ms);
 
-  if (FLAGS_use_audio_activity >= 0)
-    policy.set_use_audio_activity(FLAGS_use_audio_activity != 0);
-  if (FLAGS_use_video_activity >= 0)
-    policy.set_use_video_activity(FLAGS_use_video_activity != 0);
-  if (FLAGS_ac_brightness_percent >= 0.0)
-    policy.set_ac_brightness_percent(FLAGS_ac_brightness_percent);
-  if (FLAGS_battery_brightness_percent >= 0.0)
-    policy.set_battery_brightness_percent(FLAGS_battery_brightness_percent);
-  if (FLAGS_presentation_screen_dim_delay_factor >= 1.0) {
-    policy.set_presentation_screen_dim_delay_factor(
-        FLAGS_presentation_screen_dim_delay_factor);
-  }
-  if (FLAGS_user_activity_screen_dim_delay_factor >= 1.0) {
-    policy.set_user_activity_screen_dim_delay_factor(
-        FLAGS_user_activity_screen_dim_delay_factor);
-  }
-  if (FLAGS_wait_for_initial_user_activity >= 0) {
-    policy.set_wait_for_initial_user_activity(
-        FLAGS_wait_for_initial_user_activity != 0);
-  }
-  if (FLAGS_force_nonzero_brightness_for_user_activity >= 0) {
-    policy.set_force_nonzero_brightness_for_user_activity(
-        FLAGS_force_nonzero_brightness_for_user_activity != 0);
-  }
+  SET_BOOL_FIELD(use_audio_activity, policy);
+  SET_BOOL_FIELD(use_video_activity, policy);
+  SET_BOOL_FIELD(wait_for_initial_user_activity, policy);
+  SET_BOOL_FIELD(force_nonzero_brightness_for_user_activity, policy);
+
+  SET_DOUBLE_FIELD(ac_brightness_percent, policy, 0.0);
+  SET_DOUBLE_FIELD(battery_brightness_percent, policy, 0.0);
+  SET_DOUBLE_FIELD(presentation_screen_dim_delay_factor, policy, 1.0);
+  SET_DOUBLE_FIELD(user_activity_screen_dim_delay_factor, policy, 1.0);
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
