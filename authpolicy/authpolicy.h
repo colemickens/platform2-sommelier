@@ -51,10 +51,17 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
 
   // org::chromium::AuthPolicyInterface: (see org.chromium.AuthPolicy.xml).
   // |account_data_blob| is a serialized ActiveDirectoryAccountData protobuf.
+  // TODO(ljusten): Temp wrapper to handle addition of |account_id|.
+  // crbug.com/709371
+  void AuthenticateUser(dbus::MethodCall* method_call,
+                        brillo::dbus_utils::ResponseSender sender) override;
+
+  // TODO(ljusten): Add override keyword. crbug.com/709371
   void AuthenticateUser(const std::string& user_principal_name,
+                        const std::string& account_id,
                         const dbus::FileDescriptor& password_fd,
                         int32_t* error,
-                        std::vector<uint8_t>* account_data_blob) override;
+                        std::vector<uint8_t>* account_data_blob);
 
   int32_t JoinADDomain(const std::string& machine_name,
                        const std::string& user_principal_name,

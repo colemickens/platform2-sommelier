@@ -89,7 +89,7 @@ user_extensions: [{D02B1F73-3407-48AE-BA88-E8213C6761F1}]
 )!!!";
 
 // Stub net ads search response.
-const char kStubSearch[] = R"!!!(Got 1 replies
+const char kStubSearchFormat[] = R"!!!(Got 1 replies
 objectClass: top
 objectClass: person
 objectClass: organizationalPerson
@@ -106,7 +106,7 @@ displayName: John Doe
 uSNCreated: 287406
 uSNChanged: 307152
 name: John Doe
-objectGUID: d3c6a5b1-be2f-49b9-8d03-1d7f6dedc1d7
+objectGUID: %s
 userAccountControl: 512
 badPwdCount: 0
 codePage: 0
@@ -119,7 +119,7 @@ primaryGroupID: 513
 objectSid: S-1-5-21-250062649-3667841115-373469193-1134
 accountExpires: 9223372036854775807
 logonCount: 1453
-sAMAccountName: jdoe
+sAMAccountName: %s
 sAMAccountType: 805306368
 userPrincipalName: jdoe@realm.com
 objectCategory: CN=Person,CN=Schema,CN=Configuration,DC=chrome,DC=lan
@@ -129,6 +129,23 @@ dSCorePropagationData: 20161019075502.0Z
 dSCorePropagationData: 16010101000000.0Z
 lastLogonTimestamp: 131318125471489990
 msDS-SupportedEncryptionTypes: 0)!!!";
+
+// Search that doesn't find anything.
+const char kStubBadSearch[] = "Got 0 replies";
+
+// Searches |str| for (|searchKey|=value) and returns value. Returns an empty
+// string if the key could not be found or if the value is empty.
+std::string FindSearchValue(const std::string& str, const char* search_key) {
+  const std::string full_key = base::StringPrintf("(%s=", search_key);
+  size_t idx1 = str.find(full_key);
+  if (idx1 == std::string::npos)
+    return "";
+  const size_t idx2 = str.find(")", idx1 + full_key.size());
+  if (idx2 == std::string::npos)
+    return "";
+  idx1 += full_key.size();
+  return str.substr(idx1, idx2 - idx1);
+}
 
 // Prints custom stub net ads gpo list output corresponding to one remote GPO
 // with the given properties. For |gpflags| see kGpFlag*.
@@ -308,7 +325,27 @@ int HandleCommandLine(const std::string& command_line,
 
   // Stub net ads search, return stub search result.
   if (StartsWithCaseSensitive(command_line, "ads search")) {
-    WriteOutput(kStubSearch, "");
+    std::string sam_account_name =
+        FindSearchValue(command_line, "sAMAccountName");
+    std::string object_guid = FindSearchValue(command_line, "objectGUID");
+    std::string search_result;
+    if (object_guid == kAccountId) {
+      // Search by valid account id, return valid search result for the default
+      // user.
+      search_result =
+          base::StringPrintf(kStubSearchFormat, kAccountId, kUserName);
+    } else if (object_guid == kBadAccountId) {
+      // Search by invalid account id, return bad "not found" search result.
+      search_result = kStubBadSearch;
+    } else if (!sam_account_name.empty()) {
+      // Search by sAMAccountName account id, return valid search result for the
+      // user that was searched.
+      search_result = base::StringPrintf(
+          kStubSearchFormat, kAccountId, sam_account_name.c_str());
+    } else {
+      NOTREACHED();
+    }
+    WriteOutput(search_result, "");
     return kExitCodeOk;
   }
 

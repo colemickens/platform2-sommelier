@@ -267,6 +267,7 @@ ErrorType SambaInterface::Initialize(bool expect_config) {
 
 ErrorType SambaInterface::AuthenticateUser(
     const std::string& user_principal_name,
+    const std::string& account_id,
     int password_fd,
     protos::AccountInfo* account_info) {
   // Split user_principal_name into parts and normalize.
@@ -287,6 +288,17 @@ ErrorType SambaInterface::AuthenticateUser(
   if (error != ERROR_NONE)
     return error;
 
+  // Get account info for the user.
+  error = GetAccountInfo(
+      user_name, normalized_upn, account_id, realm_info, account_info);
+  if (error != ERROR_NONE)
+    return error;
+
+  // Update normalized_upn. This handles the situation when the user name
+  // changes on the server and the user logs in with his old user name (e.g.
+  // from the pods screen in Chrome).
+  normalized_upn = account_info->sam_account_name() + "@" + realm;
+
   // Call kinit to get the Kerberos ticket-granting-ticket.
   error = user_tgt_manager_.AcquireTgtWithPassword(
       normalized_upn, password_fd, realm, realm_info.kdc_ip());
@@ -296,23 +308,6 @@ ErrorType SambaInterface::AuthenticateUser(
   // Renew TGT periodically. The usual validity lifetime is about 10 hours, so
   // this won't happen too often.
   user_tgt_manager_.EnableTgtAutoRenewal(true);
-
-  // Get account info for the user. user_name is allowed to be either
-  // sAMAccountName or userPrincipalName (the two can be different!). Search by
-  // sAMAccountName first since that's what kinit/Windows prefer. If that fails,
-  // search by userPrincipalName.
-  std::string search_string =
-      base::StringPrintf("(sAMAccountName=%s)", user_name.c_str());
-  error = GetAccountInfo(search_string, account_info);
-  if (error == ERROR_PARSE_FAILED) {
-    LOG(WARNING) << "Object GUID not found by sAMAccountName. "
-                 << "Trying userPrincipalName.";
-    search_string =
-        base::StringPrintf("(userPrincipalName=%s)", normalized_upn.c_str());
-    error = GetAccountInfo(search_string, account_info);
-  }
-  if (error != ERROR_NONE)
-    return error;
 
   // Store sAMAccountName for policy fetch. Note that net ads gpo list always
   // wants the sAMAccountName.
@@ -694,8 +689,48 @@ ErrorType SambaInterface::SecureMachineKeyTab() const {
   return ERROR_NONE;
 }
 
-ErrorType SambaInterface::GetAccountInfo(
-    const std::string& search_string, protos::AccountInfo* account_info) const {
+ErrorType SambaInterface::GetAccountInfo(const std::string& user_name,
+                                         const std::string& normalized_upn,
+                                         const std::string& account_id,
+                                         const protos::RealmInfo& realm_info,
+                                         protos::AccountInfo* account_info) {
+  // Refresh the device TGT. Note that the user TGT might not be accessible at
+  // this point (we need the sAMAccountName returned in |account_info| to fetch
+  // the user TGT).
+  std::string machine_principal =
+      config_->machine_name() + "$@" + config_->realm();
+  ErrorType error =
+      device_tgt_manager_.AcquireTgtWithKeytab(machine_principal,
+                                               Path::MACHINE_KT_STATE,
+                                               false,
+                                               config_->realm(),
+                                               realm_info.kdc_ip());
+  if (error != ERROR_NONE)
+    return error;
+
+  // If |account_id| is provided, search by objectGUID only.
+  if (!account_id.empty()) {
+    std::string search_string =
+        base::StringPrintf("(objectGUID=%s)", account_id.c_str());
+    return SearchAccountInfo(search_string, account_info);
+  }
+
+  // Otherwise, search by sAMAccountName, then by userPrincipalName.
+  std::string search_string =
+      base::StringPrintf("(sAMAccountName=%s)", user_name.c_str());
+  error = SearchAccountInfo(search_string, account_info);
+  if (error != ERROR_PARSE_FAILED)  // ERROR_PARSE_FAILED usually means there
+    return error;                   // are zero search results.
+
+  LOG(WARNING) << "Account info not found by sAMAccountName. "
+               << "Trying userPrincipalName.";
+  search_string =
+      base::StringPrintf("(userPrincipalName=%s)", normalized_upn.c_str());
+  return SearchAccountInfo(search_string, account_info);
+}
+
+ErrorType SambaInterface::SearchAccountInfo(const std::string& search_string,
+                                            protos::AccountInfo* account_info) {
   // Call net ads search to find the user's account info.
   ProcessExecutor net_cmd({paths_->Get(Path::NET),
                            "ads",
@@ -709,8 +744,9 @@ ErrorType SambaInterface::GetAccountInfo(
                            paths_->Get(Path::SMB_CONF),
                            "-d",
                            kNetLogLevel});
+  // Use the machine TGT to query the account info.
   net_cmd.SetEnv(kKrb5CCEnvKey,
-                 paths_->Get(user_tgt_manager_.GetCredentialCachePath()));
+                 paths_->Get(device_tgt_manager_.GetCredentialCachePath()));
   if (!jail_helper_.SetupJailAndRun(
           &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_SEARCH)) {
     return GetNetError(net_cmd, "search");

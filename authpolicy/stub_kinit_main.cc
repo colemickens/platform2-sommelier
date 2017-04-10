@@ -112,7 +112,9 @@ int HandleCommandLine(const std::string& command_line) {
       TestMachinePrincipal(command_line, kEmptyGpoMachineName) ||
       TestMachinePrincipal(command_line, kGpoDownloadErrorMachineName) ||
       TestMachinePrincipal(command_line, kOneGpoMachineName) ||
-      TestMachinePrincipal(command_line, kTwoGposMachineName)) {
+      TestMachinePrincipal(command_line, kTwoGposMachineName) ||
+      TestMachinePrincipal(command_line, kZeroUserVersionMachineName) ||
+      TestMachinePrincipal(command_line, kDisableUserFlagMachineName)) {
     // Machine authentication requires a keytab, not a password.
     CHECK(password.empty());
     std::string keytab_path = GetKeytabFilePath();

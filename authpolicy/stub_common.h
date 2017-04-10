@@ -17,6 +17,8 @@ extern const int kExitCodeError;
 // Default realm.
 extern const char kRealm[];
 
+// Default, valid user name.
+extern const char kUserName[];
 // Default, valid user principal.
 extern const char kUserPrincipal[];
 // Triggers a parse error in SambaInterface code (UPN malformed).
@@ -32,6 +34,11 @@ extern const char kAccessDeniedUserPrincipal[];
 extern const char kKdcRetryUserPrincipal[];
 // Triggers quota error in net ads join (user cannot add additional machines).
 extern const char kInsufficientQuotaUserPrincipal[];
+
+// Default, valid account id (aka objectGUID).
+extern const char kAccountId[];
+// Triggers a net ads search error when searching for this objectGUID.
+extern const char kBadAccountId[];
 
 // Default, valid password.
 extern const char kPassword[];

@@ -16,6 +16,7 @@ const int kExitCodeError = 1;
 
 const char kRealm[] = "REALM.COM";
 
+const char kUserName[] = "user";
 const char kUserPrincipal[] = "user@REALM.COM";
 const char kInvalidUserPrincipal[] = "user.REALM.COM";
 const char kNonExistingUserPrincipal[] = "non_existing_user@REALM.COM";
@@ -24,6 +25,9 @@ const char kAccessDeniedUserPrincipal[] = "access_denied_user@REALM.COM";
 const char kKdcRetryUserPrincipal[] = "kdc_retry_user@REALM.COM";
 const char kInsufficientQuotaUserPrincipal[] =
     "insufficient_quota_user@REALM.COM";
+
+const char kAccountId[] = "ACCOUNT_GUID";
+const char kBadAccountId[] = "BAD_ACCOUNT_GUID";
 
 const char kPassword[] = "p4zzw!5d";
 const char kWrongPassword[] = "pAzzwI5d";

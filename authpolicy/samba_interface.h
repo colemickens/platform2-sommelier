@@ -49,8 +49,14 @@ class SambaInterface {
   // |user_principal_name| (format: user_name@workgroup.domain). If a TGT
   // already exists, it is renewed. The password must be readable from the pipe
   // referenced by the file descriptor |password_fd|. On success, the user's
-  // account information is returned in |account_info|.
+  // account information is returned in |account_info|. If |account_id| is
+  // non-empty, the |account_info| is queried by |account_id| instead of by
+  // user name. This is safer since the account id is invariant, whereas the
+  // user name can change. The updated user name (or rather the sAMAccountName)
+  // is returned in the |account_info|. Thus, |account_id| should be set if
+  // known and left empty if unknown.
   ErrorType AuthenticateUser(const std::string& user_principal_name,
+                             const std::string& account_id,
                              int password_fd,
                              protos::AccountInfo* account_info);
 
@@ -108,9 +114,22 @@ class SambaInterface {
   // authpolicyd, so that authpolicyd_exec cannot modify it anymore.
   ErrorType SecureMachineKeyTab() const;
 
-  // Calls net ads search with given |search_string| to retrieve account info.
-  ErrorType GetAccountInfo(const std::string& search_string,
-                           protos::AccountInfo* account_info) const;
+  // Gets user account info. If |account_id| is not empty, searches by
+  // objectGUID = |account_id| only. Otherwise, searches by sAMAccountName =
+  // |user_name| and - if that fails - by userPrincipalName = |normalized_upn|.
+  // Note that sAMAccountName can be different from the name-part of the
+  // userPrincipalName and that kinit/Windows prefer sAMAccountName over
+  // userPrincipalName. Refreshes the device TGT.
+  ErrorType GetAccountInfo(const std::string& user_name,
+                           const std::string& normalized_upn,
+                           const std::string& account_id,
+                           const protos::RealmInfo& realm_info,
+                           protos::AccountInfo* account_info);
+
+  // Calls net ads search with given |search_string| to retrieve |account_info|.
+  // Authenticates with the device TGT.
+  ErrorType SearchAccountInfo(const std::string& search_string,
+                              protos::AccountInfo* account_info);
 
   // Calls net ads gpo list to retrieve a list of GPOs. |user_or_machine_name|
   // may be a user or machine sAMAccountName. (The machine sAMAccountName is the

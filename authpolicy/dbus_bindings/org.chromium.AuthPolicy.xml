@@ -6,6 +6,7 @@
     <!--
          AuthenticateUser:
          @user_principal_name: user@workgroup.domain.
+         @account_id: Object GUID of the user account, empty if unknown (yet).
          @password_fd: File descriptor of the user's password.
          @error_code: Returned error code, 0 means success.
          @account_data_blob: Serialized ActiveDirectoryAccountData protobuf.
@@ -14,10 +15,14 @@
     -->
     <method name="AuthenticateUser">
       <arg name="user_principal_name" type="s" direction="in"/>
+      <arg name="account_id" type="s" direction="in"/>
       <arg name="password_fd" type="h" direction="in"/>
       <arg name="error_code" type="i" direction="out"/>
       <arg name="account_data_blob" type="ay" direction="out" />
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <!-- TODO(ljusten): Using value="raw" to handle missing |account_id| (was
+           added after the fact). Change back to "simple" once Chrome always
+           sends an account_id. crbug.com/709371 -->
+      <annotation name="org.chromium.DBus.Method.Kind" value="raw"/>
     </method>
 
     <!--

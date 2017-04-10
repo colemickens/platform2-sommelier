@@ -79,11 +79,8 @@ AuthPolicy::AuthPolicy(
   // runner. This guarantees that automatic TGT renewal won't interfere with
   // D-Bus calls. Note that |GetDBusTaskRunner()| returns a TaskRunner, which is
   // a base class of SingleThreadTaskRunner accepted by |samba_|.
-  // |dbus_task_runner| may be NULL in tests.
-  const base::TaskRunner* dbus_task_runner =
-      dbus_object_->GetBus()->GetDBusTaskRunner();
-  if (dbus_task_runner)
-    CHECK_EQ(base::ThreadTaskRunnerHandle::Get(), dbus_task_runner);
+  CHECK_EQ(base::ThreadTaskRunnerHandle::Get(),
+           dbus_object_->GetBus()->GetDBusTaskRunner());
 }
 
 ErrorType AuthPolicy::Initialize(bool expect_config) {
@@ -100,7 +97,43 @@ void AuthPolicy::RegisterAsync(
   DCHECK(session_manager_proxy_);
 }
 
+void AuthPolicy::AuthenticateUser(dbus::MethodCall* method_call,
+                                  brillo::dbus_utils::ResponseSender sender) {
+  // Read input arguments.
+  std::string user_principal_name;
+  std::string account_id;
+  dbus::FileDescriptor password_fd;
+  dbus::MessageReader reader(method_call);
+  bool success = reader.PopString(&user_principal_name);
+  if (success)
+    reader.PopString(&account_id);  // Optional, ignore return value!
+  success = success && reader.PopFileDescriptor(&password_fd);
+
+  // Call actual AuthenticateUser method.
+  int32_t int_error;
+  std::vector<uint8_t> account_data_blob;
+  if (success) {
+    password_fd.CheckValidity();
+    AuthenticateUser(user_principal_name,
+                     account_id,
+                     password_fd,
+                     &int_error,
+                     &account_data_blob);
+  } else {
+    int_error = ERROR_DBUS_FAILURE;
+  }
+
+  // Send response.
+  std::unique_ptr<dbus::Response> response =
+      dbus::Response::FromMethodCall(method_call);
+  dbus::MessageWriter writer(response.get());
+  writer.AppendInt32(int_error);
+  writer.AppendArrayOfBytes(account_data_blob.data(), account_data_blob.size());
+  sender.Run(std::move(response));
+}
+
 void AuthPolicy::AuthenticateUser(const std::string& user_principal_name,
+                                  const std::string& account_id,
                                   const dbus::FileDescriptor& password_fd,
                                   int32_t* int_error,
                                   std::vector<uint8_t>* account_data_blob) {
@@ -109,7 +142,7 @@ void AuthPolicy::AuthenticateUser(const std::string& user_principal_name,
 
   protos::AccountInfo account_info;
   ErrorType error = samba_.AuthenticateUser(
-      user_principal_name, password_fd.value(), &account_info);
+      user_principal_name, account_id, password_fd.value(), &account_info);
   if (error == ERROR_NONE) {
     authpolicy::ActiveDirectoryAccountData account_data;
     account_data.set_account_id(account_info.object_guid());
@@ -134,8 +167,8 @@ int32_t AuthPolicy::JoinADDomain(const std::string& machine_name,
   LOG(INFO) << "Received 'JoinADDomain' request";
   ScopedTimerReporter timer(TIMER_JOIN_AD_DOMAIN);
 
-  ErrorType error = samba_.JoinMachine(machine_name, user_principal_name,
-                                       password_fd.value());
+  ErrorType error = samba_.JoinMachine(
+      machine_name, user_principal_name, password_fd.value());
   PrintError("JoinADDomain", error);
   metrics_->ReportDBusResult(DBUS_CALL_JOIN_AD_DOMAIN, error);
   return error;
