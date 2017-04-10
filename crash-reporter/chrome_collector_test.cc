@@ -127,7 +127,7 @@ TEST_F(ChromeCollectorTest, HandleCrash) {
   ASSERT_EQ(strlen(kCrashFormatWithFile),
             base::WriteFile(dump_file, kCrashFormatWithFile,
                             strlen(kCrashFormatWithFile)));
-  collector_.ForceCrashDirectory(dir);
+  collector_.set_crash_directory_for_test(dir);
 
   FilePath log_file;
   {

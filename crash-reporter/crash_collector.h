@@ -27,6 +27,16 @@ class CrashCollector {
 
   virtual ~CrashCollector();
 
+  void set_lsb_release_for_test(const base::FilePath &lsb_release) {
+    lsb_release_ = lsb_release;
+  }
+
+  // For testing, set the directory always returned by
+  // GetCreatedCrashDirectoryByEuid.
+  void set_crash_directory_for_test(const base::FilePath &forced_directory) {
+    forced_crash_directory_ = forced_directory;
+  }
+
   // Initialize the crash collector for detection of crashes, given a
   // crash counting function, and metrics collection enabled oracle.
   void Initialize(CountCrashFunction count_crash,
@@ -64,6 +74,9 @@ class CrashCollector {
   // Set maximum enqueued crashes in a crash directory.
   static const int kMaxCrashDirectorySize;
 
+  // UID for root account.
+  static const uid_t kRootUid;
+
   // Set up D-Bus.
   virtual void SetUpDBus();
 
@@ -75,12 +88,6 @@ class CrashCollector {
   // Return a filename that has only [a-z0-1_] characters by mapping
   // all others into '_'.
   std::string Sanitize(const std::string &name);
-
-  // For testing, set the directory always returned by
-  // GetCreatedCrashDirectoryByEuid.
-  void ForceCrashDirectory(const base::FilePath &forced_directory) {
-    forced_crash_directory_ = forced_directory;
-  }
 
   virtual bool GetActiveUserSessions(
       std::map<std::string, std::string> *sessions);
@@ -176,7 +183,8 @@ class CrashCollector {
   IsFeedbackAllowedFunction is_feedback_allowed_function_;
   std::string extra_metadata_;
   base::FilePath forced_crash_directory_;
-  std::string lsb_release_;
+  base::FilePath lsb_release_;
+  base::FilePath system_crash_path_;
   base::FilePath log_config_path_;
 
   scoped_refptr<dbus::Bus> bus_;

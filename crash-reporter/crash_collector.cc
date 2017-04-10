@@ -63,7 +63,6 @@ const mode_t kUserCrashPathMode = 0755;
 // Directory mode of the system crash spool directory.
 const mode_t kSystemCrashPathMode = 01755;
 
-const uid_t kRootOwner = 0;
 const uid_t kRootGroup = 0;
 
 }  // namespace
@@ -80,6 +79,8 @@ const char * const CrashCollector::kUnknownVersion = "unknown";
 // number of core files or minidumps reaches this number.
 const int CrashCollector::kMaxCrashDirectorySize = 32;
 
+const uid_t CrashCollector::kRootUid = 0;
+
 using base::FilePath;
 using base::StringPrintf;
 
@@ -89,6 +90,7 @@ CrashCollector::CrashCollector()
 
 CrashCollector::CrashCollector(bool force_user_crash_dir)
     : lsb_release_(kLsbRelease),
+      system_crash_path_(kSystemCrashPath),
       log_config_path_(kDefaultLogConfig),
       force_user_crash_dir_(force_user_crash_dir) {
 }
@@ -225,9 +227,9 @@ FilePath CrashCollector::GetCrashDirectoryInfo(
     return GetUserCrashPath();
   } else {
     *mode = kSystemCrashPathMode;
-    *directory_owner = kRootOwner;
+    *directory_owner = kRootUid;
     *directory_group = kRootGroup;
-    return FilePath(kSystemCrashPath);
+    return system_crash_path_;
   }
 }
 
@@ -462,15 +464,22 @@ void CrashCollector::AddCrashMetaUploadText(const std::string &key,
 
 std::string CrashCollector::GetVersion() const {
   brillo::KeyValueStore store;
-  if (!store.Load(FilePath(lsb_release_))) {
-    LOG(ERROR) << "Problem parsing " << lsb_release_;
+  if (!store.Load(lsb_release_)) {
+    LOG(WARNING) << "Problem parsing " << lsb_release_.value();
     // Even though there was some failure, take as much as we could read.
+  }
+  FilePath saved_lsb = system_crash_path_.Append(lsb_release_.BaseName());
+  if (!store.Load(saved_lsb)) {
+    if (base::PathExists(saved_lsb)) {
+      LOG(WARNING) << "Unable to parse " << saved_lsb.value();
+      // We already loaded the system file, so no need to error out here.
+    }
   }
 
   std::string version = kUnknownVersion;
   if (!store.GetString(kLsbVersionKey, &version)) {
-    LOG(ERROR) << "Unable to read " << kLsbVersionKey << " from "
-               << lsb_release_;
+    LOG(WARNING) << "Unable to read " << kLsbVersionKey << " from "
+                 << saved_lsb.value() << " or " << lsb_release_.value();
   }
 
   return version;

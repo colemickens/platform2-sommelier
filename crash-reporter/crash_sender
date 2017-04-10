@@ -82,6 +82,9 @@ TMP_DIR=""
 # Chrome's crash report log file.
 CHROME_CRASH_LOG="/var/log/chrome/Crash Reports/uploads.log"
 
+# Directory where system crashes and version info files are saved.
+CRASH_SPOOL="/var/spool/crash"
+
 lecho() {
   logger -t "${TAG}" "$@"
 }
@@ -235,6 +238,38 @@ get_key_value() {
   echo "${value:-undefined}"
 }
 
+# Try to find $key in a cached version of $file, then look in /etc
+# if not found.  Return "undefined" if $key is not found in either.
+get_cached_key_value() {
+  local file="$1" key="$2"
+
+  local value=$(get_key_value "${CRASH_SPOOL}/${file}" "${key}")
+  if [ "${value}" = "undefined" ]; then
+    value=$(get_key_value "/etc/${file}" "${key}")
+  fi
+
+  echo "${value}"
+}
+
+# Try to find a value in a cached version of os-release, then look in /etc if
+# not found.  Try each key in the arguments in order (looking in both files for
+# each one), and return "undefined" if neither file contains a value for any
+# key.
+get_os_key_value() {
+  # TODO(bmgordon): This should also look in os-release.d.  See
+  # libbrillo/brillo/osrelease_reader.cc for an example.
+  local key value
+  for key in "$@"; do
+    value="$(get_cached_key_value "os-release" "${key}")"
+    if [ "${value}" != "undefined" ]; then
+      echo "${value}"
+      return
+    fi
+  done
+
+  echo "undefined"
+}
+
 get_keys() {
   local file="$1" regex="$2"
 
@@ -244,13 +279,13 @@ get_keys() {
 
 # Return the board name.
 get_board() {
-  get_key_value "/etc/lsb-release" "CHROMEOS_RELEASE_BOARD"
+  get_cached_key_value "lsb-release" "CHROMEOS_RELEASE_BOARD"
 }
 
 # Return the channel name (sans "-channel" suffix).
 get_channel() {
-  get_key_value "/etc/lsb-release" "CHROMEOS_RELEASE_TRACK" |
-    sed 's:-channel$::'
+  get_cached_key_value "lsb-release" "CHROMEOS_RELEASE_TRACK" |
+      sed 's:-channel$::'
 }
 
 # Return the hardware class or "undefined".
@@ -340,12 +375,9 @@ send_crash() {
   # content. If not available there product gets assigned default product name
   # and version is derived from CHROMEOS_RELEASE_VERSION in /etc/lsb-release.
 
-  local key
-  for key in GOOGLE_CRASH_ID ID; do
-    if [ "${product}" = "undefined" ]; then
-      product="$(get_key_value /etc/os-release "${key}")"
-    fi
-  done
+  if [ "${product}" = "undefined" ]; then
+    product=$(get_os_key_value GOOGLE_CRASH_ID ID)
+  fi
   if [ "${product}" = "undefined" ]; then
     product="${CHROMEOS_PRODUCT}"
   fi
@@ -353,11 +385,9 @@ send_crash() {
   if [ "${version}" = "undefined" ]; then
     version="${chromeos_version}"
   fi
-  for key in GOOGLE_CRASH_VERSION_ID BUILD_ID VERSION_ID; do
-    if [ "${version}" = "undefined" ]; then
-      version="$(get_key_value /etc/os-release "${key}")"
-    fi
-  done
+  if [ "${version}" = "undefined" ]; then
+    version=$(get_os_key_value GOOGLE_CRASH_VERSION_ID BUILD_ID VERSION_ID)
+  fi
 
   local image_type
   if is_test_image; then
@@ -707,7 +737,7 @@ main() {
   TMP_DIR="$(mktemp -d /tmp/crash_sender.XXXXXX)"
 
   # Send system-wide crashes
-  send_crashes "/var/spool/crash"
+  send_crashes "${CRASH_SPOOL}"
 
   # Send user-specific crashes
   local d

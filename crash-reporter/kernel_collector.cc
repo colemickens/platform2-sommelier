@@ -34,7 +34,6 @@ const pid_t kKernelPid = 0;
 const char kKernelSignatureKey[] = "sig";
 // Byte length of maximum human readable portion of a kernel crash signature.
 const size_t kMaxHumanStringLength = 40;
-const uid_t kRootUid = 0;
 // Time in seconds from the final kernel log message for a call stack
 // to count towards the signature of the kcrash.
 const int kSignatureTimestampWindow = 2;

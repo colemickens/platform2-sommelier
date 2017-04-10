@@ -228,7 +228,7 @@ TEST_F(CrashCollectorTest, MetaData) {
   FilePath lsb_release = test_dir_.Append("lsb-release");
   FilePath payload_file = test_dir_.Append("payload-file");
   std::string contents;
-  collector_.lsb_release_ = lsb_release.value();
+  collector_.set_lsb_release_for_test(lsb_release);
   const char kLsbContents[] =
       "CHROMEOS_RELEASE_BOARD=lumpy\n"
       "CHROMEOS_RELEASE_VERSION=6727.0.2015_01_26_0853\n"

@@ -117,7 +117,7 @@ class UdevCollectorTest : public ::testing::Test {
     FilePath log_config_path =
         temp_dir_generator_.path().Append(kLogConfigFileName);
     collector_.log_config_path_ = log_config_path;
-    collector_.ForceCrashDirectory(temp_dir_generator_.path());
+    collector_.set_crash_directory_for_test(temp_dir_generator_.path());
 
     FilePath dev_coredump_path =
         temp_dir_generator_.path().Append(kDevCoredumpDirectory);

@@ -17,6 +17,10 @@ class UncleanShutdownCollector : public CrashCollector {
   UncleanShutdownCollector();
   ~UncleanShutdownCollector() override;
 
+  void set_os_release_for_test(const base::FilePath &os_release) {
+    os_release_path_ = os_release;
+  }
+
   // Enable collection - signal that a boot has started.
   bool Enable();
 
@@ -26,6 +30,10 @@ class UncleanShutdownCollector : public CrashCollector {
 
   // Disable collection - signal that the system has been shutdown cleanly.
   bool Disable();
+
+  // Save version data from the running OS for collection after an unclean
+  // shutdown or kernel crash.
+  bool SaveVersionData();
 
  private:
   friend class UncleanShutdownCollectorTest;
@@ -41,6 +49,7 @@ class UncleanShutdownCollector : public CrashCollector {
   const char *unclean_shutdown_file_;
   base::FilePath powerd_trace_path_;
   base::FilePath powerd_suspended_file_;
+  base::FilePath os_release_path_;
 
   DISALLOW_COPY_AND_ASSIGN(UncleanShutdownCollector);
 };

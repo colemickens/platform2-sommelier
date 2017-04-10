@@ -262,13 +262,13 @@ TEST_F(KernelCollectorTest, CollectBadDirectory) {
 }
 
 void KernelCollectorTest::SetUpSuccessfulCollect() {
-  collector_.ForceCrashDirectory(test_crash_directory());
+  collector_.set_crash_directory_for_test(test_crash_directory());
   WriteStringToFile(kcrash_file(), "====1.1\nsomething");
   ASSERT_EQ(0, s_crashes);
 }
 
 void KernelCollectorTest::SetUpSuccessfulWatchdog() {
-  collector_.ForceCrashDirectory(test_crash_directory());
+  collector_.set_crash_directory_for_test(test_crash_directory());
   WriteStringToFile(eventlog_file(),
     "112 | 2016-03-24 15:09:39 | System boot | 0\n"
     "113 | 2016-03-24 15:11:20 | System boot | 0\n"

@@ -149,6 +149,11 @@ static int BootCollect(KernelCollector *kernel_collector,
   // Must enable the unclean shutdown collector *after* collecting.
   unclean_shutdown_collector->Enable();
 
+  // Copy lsb-release and os-release into system crash spool.  Done after
+  // collecting so that boot-time collected crashes will be associated with the
+  // previous boot.
+  unclean_shutdown_collector->SaveVersionData();
+
   return 0;
 }
 

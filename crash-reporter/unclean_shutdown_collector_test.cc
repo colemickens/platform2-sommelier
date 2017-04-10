@@ -6,7 +6,10 @@
 
 #include <unistd.h>
 
+#include <string>
+
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_util.h>
 #include <brillo/syslog_logging.h>
 #include <gmock/gmock.h>
@@ -54,6 +57,10 @@ class UncleanShutdownCollectorTest : public ::testing::Test {
     // Set up an alternate power manager state file as well
     collector_.powerd_suspended_file_ = FilePath(kTestSuspended);
     brillo::ClearLog();
+
+    ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
+    test_dir_ = scoped_temp_dir_.path();
+    test_crash_spool_ = test_dir_.Append("crash");
   }
 
  protected:
@@ -64,6 +71,9 @@ class UncleanShutdownCollectorTest : public ::testing::Test {
 
   UncleanShutdownCollectorMock collector_;
   FilePath test_unclean_;
+  FilePath test_dir_;
+  FilePath test_crash_spool_;
+  base::ScopedTempDir scoped_temp_dir_;
 };
 
 TEST_F(UncleanShutdownCollectorTest, EnableWithoutParent) {
@@ -132,4 +142,33 @@ TEST_F(UncleanShutdownCollectorTest, CantDisable) {
       << test_unclean_.Append("foo").value() << "': " << strerror(errno);
   ASSERT_FALSE(collector_.Disable());
   rmdir(kTestUnclean);
+}
+
+TEST_F(UncleanShutdownCollectorTest, SaveVersionData) {
+  ASSERT_TRUE(base::CreateDirectory(test_crash_spool_));
+  FilePath lsb_release = test_dir_.Append("lsb-release");
+  const char kLsbContents[] =
+      "CHROMEOS_RELEASE_BOARD=lumpy\n"
+      "CHROMEOS_RELEASE_VERSION=6727.0.2015_01_26_0853\n"
+      "CHROMEOS_RELEASE_NAME=Chromium OS\n";
+  ASSERT_TRUE(base::WriteFile(lsb_release, kLsbContents, strlen(kLsbContents)));
+
+  FilePath os_release = test_dir_.Append("os-release");
+  const char kOsContents[] =
+      "BUILD_ID=9428.0.2017_04_04_0853\n"
+      "ID=chromeos\n"
+      "VERSION_ID=59\n";
+  ASSERT_TRUE(base::WriteFile(os_release, kOsContents, strlen(kOsContents)));
+
+  collector_.set_lsb_release_for_test(lsb_release);
+  collector_.set_os_release_for_test(os_release);
+  collector_.set_crash_directory_for_test(test_crash_spool_);
+  ASSERT_TRUE(collector_.SaveVersionData());
+
+  std::string contents;
+  base::ReadFileToString(test_crash_spool_.Append("lsb-release"), &contents);
+  ASSERT_EQ(contents, kLsbContents);
+
+  base::ReadFileToString(test_crash_spool_.Append("os-release"), &contents);
+  ASSERT_EQ(contents, kOsContents);
 }

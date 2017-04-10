@@ -73,7 +73,7 @@ class ECCollectorTest : public ::testing::Test {
 
     ASSERT_TRUE(temp_dir_generator_.CreateUniqueTempDir());
 
-    collector_.ForceCrashDirectory(temp_dir_generator_.path());
+    collector_.set_crash_directory_for_test(temp_dir_generator_.path());
 
     FilePath debugfs_path =
         temp_dir_generator_.path().Append(kDevCoredumpDirectory);

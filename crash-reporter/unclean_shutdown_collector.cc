@@ -7,20 +7,27 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
-static const char kUncleanShutdownFile[] =
+namespace {
+
+const char kOsRelease[] = "/etc/os-release";
+
+const char kUncleanShutdownFile[] =
     "/var/lib/crash_reporter/pending_clean_shutdown";
 
 // Files created by power manager used for crash reporting.
-static const char kPowerdTracePath[] = "/var/lib/power_manager";
+const char kPowerdTracePath[] = "/var/lib/power_manager";
 // Presence of this file indicates that the system was suspended
-static const char kPowerdSuspended[] = "powerd_suspended";
+const char kPowerdSuspended[] = "powerd_suspended";
+
+}  // namespace
 
 using base::FilePath;
 
 UncleanShutdownCollector::UncleanShutdownCollector()
     : unclean_shutdown_file_(kUncleanShutdownFile),
       powerd_trace_path_(kPowerdTracePath),
-      powerd_suspended_file_(powerd_trace_path_.Append(kPowerdSuspended)) {
+      powerd_suspended_file_(powerd_trace_path_.Append(kPowerdSuspended)),
+      os_release_path_(kOsRelease) {
 }
 
 UncleanShutdownCollector::~UncleanShutdownCollector() {
@@ -68,6 +75,33 @@ bool UncleanShutdownCollector::Collect() {
 bool UncleanShutdownCollector::Disable() {
   LOG(INFO) << "Clean shutdown signalled";
   return DeleteUncleanShutdownFiles();
+}
+
+bool UncleanShutdownCollector::SaveVersionData() {
+  FilePath crash_directory;
+  if (!GetCreatedCrashDirectoryByEuid(kRootUid, &crash_directory, nullptr)) {
+    return false;
+  }
+
+  FilePath saved_lsb_release =
+      crash_directory.Append(lsb_release_.BaseName());
+  if (!base::CopyFile(lsb_release_, saved_lsb_release)) {
+    PLOG(ERROR) << "Failed to copy " << lsb_release_.value() << " to "
+                << saved_lsb_release.value();
+    return false;
+  }
+
+  FilePath saved_os_release =
+      crash_directory.Append(os_release_path_.BaseName());
+  if (!base::CopyFile(os_release_path_, saved_os_release)) {
+    PLOG(ERROR) << "Failed to copy " << os_release_path_.value() << " to "
+                << saved_os_release.value();
+    return false;
+  }
+
+  // TODO(bmgordon): When crash_sender reads from os-release.d, copy it also.
+
+  return true;
 }
 
 bool UncleanShutdownCollector::DeadBatteryCausedUncleanShutdown() {
