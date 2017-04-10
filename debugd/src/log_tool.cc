@@ -113,7 +113,7 @@ const Log common_logs[] = {
   { "meminfo", "cat /proc/meminfo" },
   { "memory_spd_info", "/bin/cat /var/log/memory_spd_info.txt" },
   { "mount-encrypted", "/bin/cat /var/log/mount-encrypted.log" },
-  { "mountinfo", "/bin/cat /proc/self/mountinfo" },
+  { "mountinfo", "/bin/cat /proc/1/mountinfo" },
   { "net-diags.net.log", "/bin/cat /var/log/net-diags.net.log" },
   { "netlog", "/usr/share/userfeedback/scripts/getmsgs --last '2 hours'"
               " /var/log/net.log" },
