@@ -463,6 +463,10 @@ gboolean cryptohome_migrate_to_dircrypto(Cryptohome* self,
                                          GArray* id,
                                          GArray* auth,
                                          GError** error);
+gboolean cryptohome_needs_dircrypto_migration(Cryptohome* self,
+                                              GArray* identifier,
+                                              gboolean* OUT_needs_migration,
+                                              GError** error);
 
 }  // namespace gobject
 }  // namespace cryptohome

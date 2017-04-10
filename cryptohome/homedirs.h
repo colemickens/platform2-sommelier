@@ -186,6 +186,10 @@ class HomeDirs {
   virtual base::FilePath GetChapsTokenSaltPath(
       const std::string& username) const;
 
+  // Returns true if the cryptohome for the Credentials (username) should
+  // migrate to dircrypto.
+  virtual bool NeedsDircryptoMigration(const Credentials& credentials) const;
+
   // Accessors. Mostly used for unit testing. These do not take ownership of
   // passed-in pointers.
   // TODO(wad) Should this update default_crypto_.set_platform()?

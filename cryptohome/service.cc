@@ -3188,4 +3188,23 @@ void Service::DoMigrateToDircrypto(AccountIdentifier* identifier,
   // and the result by SendDircryptoMigrationProgressSignal().
 }
 
+gboolean Service::NeedsDircryptoMigration(const GArray* account_id,
+                                          gboolean* OUT_needs_migration,
+                                          GError** error) {
+  std::unique_ptr<AccountIdentifier> identifier(new AccountIdentifier);
+  if (!identifier->ParseFromArray(account_id->data, account_id->len)) {
+    LOG(ERROR) << "No user supplied.";
+    return FALSE;
+  }
+
+  UsernamePasskey credentials(GetAccountId(*identifier).c_str(), SecureBlob());
+  if (!homedirs_->Exists(credentials)) {
+    LOG(ERROR) << "Unknown user.";
+    return FALSE;
+  }
+
+  *OUT_needs_migration = homedirs_->NeedsDircryptoMigration(credentials);
+  return TRUE;
+}
+
 }  // namespace cryptohome

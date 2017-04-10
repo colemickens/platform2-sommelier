@@ -538,6 +538,13 @@
       <arg type="ay" name="account_id" direction="in" />
       <arg type="ay" name="authorization_request" direction="in" />
     </method>
+    <!-- Whether the user identified by |account_id| needs to migrate to
+         dircrypto. Returns true if the migration has not started or incomplete.
+    -->
+    <method name="NeedsDircryptoMigration">
+      <arg type="ay" name="account_id" direction="in" />
+      <arg type="b" name="needs_dircrypto_migration" direction="out" />
+    </method>
 
     <!-- Signals:
            TpmInitStatus: Emitted when TPM initialization status changes.

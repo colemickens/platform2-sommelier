@@ -387,6 +387,10 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual void DoMigrateToDircrypto(AccountIdentifier* identifier,
                                     AuthorizationRequest* authorization);
 
+  virtual gboolean NeedsDircryptoMigration(const GArray* account_id,
+                                           gboolean* OUT_needs_migration,
+                                           GError** error);
+
   // Attestation functionality is implemented in descendant classes
 
   // Attestation-related hooks.

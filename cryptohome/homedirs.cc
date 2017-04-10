@@ -1294,4 +1294,23 @@ FilePath HomeDirs::GetChapsTokenSaltPath(const std::string& user) const {
   return GetChapsTokenDir(user).Append(kChapsSaltName);
 }
 
+bool HomeDirs::NeedsDircryptoMigration(const Credentials& credentials) const {
+  // Bail if dircrypto is not supported.
+  const dircrypto::KeyState state =
+      platform_->GetDirCryptoKeyState(shadow_root_);
+  if (state == dircrypto::KeyState::UNKNOWN ||
+      state == dircrypto::KeyState::NOT_SUPPORTED) {
+    return false;
+  }
+
+  // Use the existence of eCryptfs vault as a single of whether the user needs
+  // dircrypto migration. eCryptfs test is adapted from
+  // Mount::DoesEcryptfsCryptohomeExist.
+  const std::string obfuscated =
+      credentials.GetObfuscatedUsername(system_salt_);
+  const FilePath user_ecryptfs_vault_dir =
+      shadow_root_.Append(obfuscated).Append(kVaultDir);
+  return platform_->DirectoryExists(user_ecryptfs_vault_dir);
+}
+
 }  // namespace cryptohome

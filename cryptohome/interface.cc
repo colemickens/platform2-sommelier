@@ -780,6 +780,14 @@ gboolean cryptohome_migrate_to_dircrypto(Cryptohome* self,
   CRYPTOHOME_WRAP_METHOD(MigrateToDircrypto, id, auth);
 }
 
+gboolean cryptohome_needs_dircrypto_migration(Cryptohome* self,
+                                              GArray* identifier,
+                                              gboolean* OUT_needs_migration,
+                                              GError** error) {
+  CRYPTOHOME_WRAP_METHOD(
+      NeedsDircryptoMigration, identifier, OUT_needs_migration);
+}
+
 #undef CRYPTOHOME_WRAP_METHOD
 
 }  // namespace gobject

@@ -139,6 +139,7 @@ namespace switches {
                                    "set_firmware_management_parameters",
                                    "remove_firmware_management_parameters",
                                    "start_dircrypto_data_migration",
+                                   "needs_dircrypto_migration",
                                    NULL};
   enum ActionEnum {
     ACTION_MOUNT,
@@ -202,6 +203,7 @@ namespace switches {
     ACTION_SET_FIRMWARE_MANAGEMENT_PARAMETERS,
     ACTION_REMOVE_FIRMWARE_MANAGEMENT_PARAMETERS,
     ACTION_DIRCRYPTO_DATA_MIGRATION_START,
+    ACTION_NEEDS_DIRCRYPTO_MIGRATION,
   };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
@@ -2657,6 +2659,33 @@ int main(int argc, char **argv) {
 
     LOG(ERROR) << "Not implemented yet.";
     return 1;
+  } else if (!strcmp(
+                 switches::kActions[switches::ACTION_NEEDS_DIRCRYPTO_MIGRATION],
+                 action.c_str())) {
+    cryptohome::AccountIdentifier id;
+    if (!BuildAccountId(cl, &id)) {
+      printf("No account_id specified.\n");
+      return 1;
+    }
+
+    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
+    if (!account_ary.get())
+      return -1;
+
+    brillo::glib::ScopedError error;
+    gboolean needs_migration = false;
+    if (!org_chromium_CryptohomeInterface_needs_dircrypto_migration(
+            proxy.gproxy(),
+            account_ary.get(),
+            &needs_migration,
+            &brillo::Resetter(&error).lvalue())) {
+      printf("NeedsDirCryptoMigration call failed: %s.\n", error->message);
+      return 1;
+    }
+    if (needs_migration)
+      printf("Yes\n");
+    else
+      printf("No\n");
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)
