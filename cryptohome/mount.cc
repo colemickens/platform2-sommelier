@@ -35,6 +35,7 @@
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptolib.h"
+#include "cryptohome/dircrypto_data_migrator/migration_helper.h"
 #include "cryptohome/dircrypto_util.h"
 #include "cryptohome/homedirs.h"
 #include "cryptohome/pkcs11_init.h"
@@ -1921,6 +1922,38 @@ bool Mount::MountLegacyHome(const FilePath& from, MountError* mount_error) {
     return false;
   }
 
+  return true;
+}
+
+bool Mount::MigrateToDircrypto(
+    const dircrypto_data_migrator::MigrationHelper::ProgressCallback&
+    callback) {
+  std::string obfuscated_username;
+  current_user_->GetObfuscatedUsername(&obfuscated_username);
+  FilePath temporary_mount =
+      GetUserTemporaryMountDirectory(obfuscated_username);
+  if (!IsMounted() || mount_type_ != MountType::DIR_CRYPTO ||
+      !platform_->DirectoryExists(temporary_mount) ||
+      !mounts_.ContainsDest(temporary_mount)) {
+    LOG(ERROR) << "Not mounted for eCryptfs->dircrypto migration.";
+    return false;
+  }
+  // Do migration.
+  constexpr uint64_t kMaxChunkSize = 128 * 1024 * 1024;
+  dircrypto_data_migrator::MigrationHelper migrator(
+      platform_, GetUserDirectoryForUser(obfuscated_username), kMaxChunkSize);
+  if (!migrator.Migrate(temporary_mount, mount_point_, callback)) {
+    LOG(ERROR) << "Failed to migrate.";
+    return false;
+  }
+  // Clean up.
+  UnmountAll();
+  FilePath vault_path = GetUserVaultPath(obfuscated_username);
+  if (!platform_->DeleteFile(temporary_mount, true /* recursive */) ||
+      !platform_->DeleteFile(vault_path, true /* recursive */)) {
+    LOG(ERROR) << "Failed to delete the old vault.";
+    return false;
+  }
   return true;
 }
 

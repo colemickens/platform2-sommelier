@@ -37,10 +37,10 @@ class MigrationHelper {
   // Callback for monitoring migration progress.  The first parameter is the
   // number of bytes migrated so far, and the second parameter is the total
   // number of bytes that need to be migrated, including what has already been
-  // migrated.  If status is DIRCRYPTO_MIGRATION_INITIALIZING the values in
+  // migrated.  If status is not DIRCRYPTO_MIGRATION_IN_PROGRESS the values in
   // migrated should be ignored as they are undefined.
   using ProgressCallback = base::Callback<void(
-      uint64_t migrated, uint64_t total, DircryptoMigrationStatus status)>;
+      DircryptoMigrationStatus status, uint64_t migrated, uint64_t total)>;
 
   // Creates a new MigrationHelper.  Status files will be stored in
   // |status_files_dir|, which should not be in the directory tree to be

@@ -132,9 +132,9 @@ class MigrationHelperTest : public ::testing::Test {
     EXPECT_TRUE(to_dir_.Delete());
   }
 
-  void ProgressCaptor(uint64_t migrated,
-                      uint64_t total,
-                      DircryptoMigrationStatus status) {
+  void ProgressCaptor(DircryptoMigrationStatus status,
+                      uint64_t migrated,
+                      uint64_t total) {
     migrated_values_.push_back(migrated);
     total_values_.push_back(total);
     status_values_.push_back(status);
@@ -163,9 +163,6 @@ TEST_F(MigrationHelperTest, EmptyTest) {
                              to_dir_.path(),
                              base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
-  EXPECT_GT(status_values_.size(), 1);
-  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
-            status_values_[status_values_.size() - 1]);
 }
 
 TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
@@ -212,9 +209,6 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
                              to_dir_.path(),
                              base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
-  EXPECT_GT(status_values_.size(), 1);
-  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
-            status_values_[status_values_.size() - 1]);
 
   const FilePath kToDirPath = to_dir_.path().Append(kDirectory);
   struct stat to_stat;
@@ -276,9 +270,6 @@ TEST_F(MigrationHelperTest, DirectoryPartiallyMigrated) {
                              to_dir_.path(),
                              base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
-  EXPECT_GT(status_values_.size(), 1);
-  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
-            status_values_[status_values_.size() - 1]);
   struct stat to_stat;
 
   // Verify that stored timestamps for in-progress migrations are respected
@@ -328,9 +319,6 @@ TEST_F(MigrationHelperTest, CopySymlink) {
                              to_dir_.path(),
                              base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
-  EXPECT_GT(status_values_.size(), 1);
-  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
-            status_values_[status_values_.size() - 1]);
 
   const FilePath kToFilePath = to_dir_.path().Append(kFileName);
   const FilePath kToRelLinkPath = to_dir_.path().Append(kRelLinkName);
@@ -377,9 +365,6 @@ TEST_F(MigrationHelperTest, OneEmptyFile) {
                              to_dir_.path(),
                              base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
-  EXPECT_GT(status_values_.size(), 1);
-  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
-            status_values_[status_values_.size() - 1]);
 
   // The file is moved.
   EXPECT_FALSE(platform.FileExists(from_dir_.path().Append(kFileName)));
@@ -408,9 +393,6 @@ TEST_F(MigrationHelperTest, OneEmptyFileInDirectory) {
                              to_dir_.path(),
                              base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
-  EXPECT_GT(status_values_.size(), 1);
-  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
-            status_values_[status_values_.size() - 1]);
 
   // The file is moved.
   EXPECT_FALSE(platform.FileExists(
@@ -445,9 +427,6 @@ TEST_F(MigrationHelperTest, UnreadableFile) {
                               to_dir_.path(),
                               base::Bind(&MigrationHelperTest::ProgressCaptor,
                                          base::Unretained(this))));
-  EXPECT_GT(status_values_.size(), 1);
-  EXPECT_EQ(DIRCRYPTO_MIGRATION_FAILED,
-            status_values_[status_values_.size() - 1]);
 
   // The file is not moved.
   EXPECT_TRUE(platform.FileExists(
@@ -501,9 +480,6 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
                              to_dir_.path(),
                              base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
-  EXPECT_GT(status_values_.size(), 1);
-  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
-            status_values_[status_values_.size() - 1]);
 
   struct stat to_stat;
   ASSERT_TRUE(platform.Stat(kToFilePath, &to_stat));
@@ -613,9 +589,6 @@ TEST_F(MigrationHelperTest, MigrateNestedDir) {
                              to_dir_.path(),
                              base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
-  EXPECT_GT(status_values_.size(), 1);
-  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
-            status_values_[status_values_.size() - 1]);
 
   // The file is moved.
   EXPECT_TRUE(platform.FileExists(
@@ -643,9 +616,6 @@ TEST_F(MigrationHelperTest, MigrateInProgress) {
                              to_dir_.path(),
                              base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
-  EXPECT_GT(status_values_.size(), 1);
-  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
-            status_values_[status_values_.size() - 1]);
 
   // Both files have been moved to to_dir_
   EXPECT_TRUE(platform.FileExists(to_dir_.path().Append(kFile1)));
@@ -673,9 +643,6 @@ TEST_F(MigrationHelperTest, MigrateInProgressDuplicateFile) {
                              to_dir_.path(),
                              base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
-  EXPECT_GT(status_values_.size(), 1);
-  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
-            status_values_[status_values_.size() - 1]);
 
   // Both files have been moved to to_dir_
   EXPECT_TRUE(platform.FileExists(to_dir_.path().Append(kFile1)));
@@ -718,9 +685,6 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFile) {
                              to_dir_.path(),
                              base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
-  EXPECT_GT(status_values_.size(), 1);
-  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
-            status_values_[status_values_.size() - 1]);
 
   // File has been moved to to_dir_
   char to_contents[kFinalFileSize];
@@ -766,9 +730,6 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFileDuplicateData) {
                              to_dir_.path(),
                              base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
-  EXPECT_GT(status_values_.size(), 1);
-  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
-            status_values_[status_values_.size() - 1]);
 
   // File has been moved to to_dir_
   char to_contents[kFinalFileSize];
@@ -812,9 +773,6 @@ TEST_F(MigrationHelperTest, ProgressCallback) {
                              to_dir_.path(),
                              base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
-  EXPECT_GT(status_values_.size(), 1);
-  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
-            status_values_[status_values_.size() - 1]);
 
   ASSERT_EQ(migrated_values_.size(), total_values_.size());
   int callbacks = migrated_values_.size();
@@ -822,13 +780,12 @@ TEST_F(MigrationHelperTest, ProgressCallback) {
   EXPECT_EQ(callbacks, total_values_.size());
   EXPECT_EQ(callbacks, status_values_.size());
 
-  // Verify that the progress goes from initializing to in_progress to success
+  // Verify that the progress goes from initializing to in_progress.
   EXPECT_EQ(DIRCRYPTO_MIGRATION_INITIALIZING, status_values_[0]);
-  for (int i = 1; i < callbacks - 1; i++) {
+  for (int i = 1; i < callbacks; i++) {
     SCOPED_TRACE(i);
     EXPECT_EQ(DIRCRYPTO_MIGRATION_IN_PROGRESS, status_values_[i]);
   }
-  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS, status_values_[callbacks - 1]);
 
   // Verify that migrated value starts at 0 and increases to total
   EXPECT_EQ(0, migrated_values_[1]);
@@ -922,9 +879,6 @@ TEST_P(DataMigrationTest, CopyFileData) {
                              to_dir_.path(),
                              base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
-  EXPECT_GT(status_values_.size(), 1);
-  EXPECT_EQ(DIRCRYPTO_MIGRATION_SUCCESS,
-            status_values_[status_values_.size() - 1]);
 
   char to_contents[kFileSize];
   EXPECT_EQ(kFileSize, base::ReadFile(kToFile, to_contents, kFileSize));

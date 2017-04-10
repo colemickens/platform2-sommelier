@@ -60,10 +60,6 @@ const int kSetCurrentUserOldOffsetInDays = 92;
 
 // Five minutes is enough to wait for any TPM operations, sync() calls, etc.
 const int kDefaultTimeoutMs = 300000;
-
-// Default size of a chunk that the start_dircrypto_data_migration action uses
-// when splitting a file into chunks.
-constexpr uint64_t kDefaultChunkSize = 1 << 20;  // 1MB
 }  // namespace
 
 namespace switches {
@@ -138,7 +134,7 @@ namespace switches {
                                    "get_firmware_management_parameters",
                                    "set_firmware_management_parameters",
                                    "remove_firmware_management_parameters",
-                                   "start_dircrypto_data_migration",
+                                   "migrate_to_dircrypto",
                                    "needs_dircrypto_migration",
                                    NULL};
   enum ActionEnum {
@@ -202,7 +198,7 @@ namespace switches {
     ACTION_GET_FIRMWARE_MANAGEMENT_PARAMETERS,
     ACTION_SET_FIRMWARE_MANAGEMENT_PARAMETERS,
     ACTION_REMOVE_FIRMWARE_MANAGEMENT_PARAMETERS,
-    ACTION_DIRCRYPTO_DATA_MIGRATION_START,
+    ACTION_MIGRATE_TO_DIRCRYPTO,
     ACTION_NEEDS_DIRCRYPTO_MIGRATION,
   };
   static const char kUserSwitch[] = "user";
@@ -226,9 +222,6 @@ namespace switches {
   static const char kProtobufSwitch[] = "protobuf";
   static const char kFlagsSwitch[] = "flags";
   static const char kDevKeyHashSwitch[] = "developer_key_hash";
-  static const char kFromDirectorySwitch[] = "from_directory";
-  static const char kToDirectorySwitch[] = "to_directory";
-  static const char kChunkSizeSwitch[] = "chunk_size";
   static const char kEcryptfsSwitch[] = "ecryptfs";
   static const char kToMigrateFromEcryptfsSwitch[] = "to_migrate_from_ecryptfs";
 }  // namespace switches
@@ -2625,43 +2618,25 @@ int main(int argc, char **argv) {
       return -1;
     }
     printf("RemoveFirmwareManagementParameters success.\n");
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_DIRCRYPTO_DATA_MIGRATION_START],
+  } else if (!strcmp(switches::kActions[switches::ACTION_MIGRATE_TO_DIRCRYPTO],
                      action.c_str())) {
-    if (!cl->HasSwitch(switches::kFromDirectorySwitch) ||
-        !cl->HasSwitch(switches::kToDirectorySwitch)) {
-      LOG(ERROR) << "Use --from=<dir> and --to=<dir> "
-                 << "(and optionally [--chunk=<size>])";
-      return 1;
-    }
+    cryptohome::AccountIdentifier id;
+    if (!BuildAccountId(cl, &id))
+      return -1;
 
-    const base::FilePath from =
-        cl->GetSwitchValuePath(switches::kFromDirectorySwitch);
-    const base::FilePath to =
-        cl->GetSwitchValuePath(switches::kToDirectorySwitch);
+    brillo::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
+    if (!account_ary.get())
+      return -1;
 
-    if (!platform.DirectoryExists(from)) {
-      LOG(ERROR) << "Directory \"" << from.value() << "\" doesn't exist";
-      return 1;
+    brillo::glib::ScopedError error;
+    if (!org_chromium_CryptohomeInterface_migrate_to_dircrypto(
+            proxy.gproxy(),
+            account_ary.get(),
+            &brillo::Resetter(&error).lvalue())) {
+      printf("MigrateToDircrypto call failed: %s\n", error->message);
+      return -1;
     }
-    if (!platform.DirectoryExists(to)) {
-      LOG(ERROR) << "Directory \"" << to.value() << "\" doesn't exist";
-      return 1;
-    }
-
-    uint64_t chunk_size = kDefaultChunkSize;
-    if (cl->HasSwitch(switches::kChunkSizeSwitch)) {
-      if (!base::StringToUint64(
-              cl->GetSwitchValueASCII(switches::kChunkSizeSwitch),
-              &chunk_size)) {
-        LOG(ERROR) << "Failed to parse --" << switches::kChunkSizeSwitch
-                   << " switch value";
-        return 1;
-      }
-    }
-
-    LOG(ERROR) << "Not implemented yet.";
-    return 1;
+    printf("MigrateToDircrypto call succeeded.\n");
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_NEEDS_DIRCRYPTO_MIGRATION],
                  action.c_str())) {

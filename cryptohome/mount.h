@@ -30,6 +30,7 @@
 
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/dircrypto_data_migrator/migration_helper.h"
 #include "cryptohome/homedirs.h"
 #include "cryptohome/mount_stack.h"
 #include "cryptohome/platform.h"
@@ -286,6 +287,12 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Returns true if this Mount instances owns the mount path.
   virtual bool OwnsMountPoint(const base::FilePath& path) const;
+
+  // Migrates the data from eCryptfs to dircrypto.
+  // Call MountCryptohome with to_migrate_from_ecryptfs beforehand.
+  bool MigrateToDircrypto(
+      const dircrypto_data_migrator::MigrationHelper::ProgressCallback&
+      callback);
 
   // Used to override the policy provider for testing (takes ownership)
   // TODO(wad) move this in line with other testing accessors

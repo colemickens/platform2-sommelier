@@ -775,9 +775,8 @@ gboolean cryptohome_remove_firmware_management_parameters(
 
 gboolean cryptohome_migrate_to_dircrypto(Cryptohome* self,
                                          GArray* id,
-                                         GArray* auth,
                                          GError** error) {
-  CRYPTOHOME_WRAP_METHOD(MigrateToDircrypto, id, auth);
+  CRYPTOHOME_WRAP_METHOD(MigrateToDircrypto, id);
 }
 
 gboolean cryptohome_needs_dircrypto_migration(Cryptohome* self,

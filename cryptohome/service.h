@@ -381,11 +381,9 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual gboolean TpmClearStoredPassword(GError** error);
 
   virtual gboolean MigrateToDircrypto(const GArray* account_id,
-                                      const GArray* authorization_request,
                                       GError** error);
   // Runs on the mount thread.
-  virtual void DoMigrateToDircrypto(AccountIdentifier* identifier,
-                                    AuthorizationRequest* authorization);
+  virtual void DoMigrateToDircrypto(AccountIdentifier* identifier);
 
   virtual gboolean NeedsDircryptoMigration(const GArray* account_id,
                                            gboolean* OUT_needs_migration,

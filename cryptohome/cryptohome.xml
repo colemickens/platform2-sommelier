@@ -536,7 +536,6 @@
     -->
     <method name="MigrateToDircrypto">
       <arg type="ay" name="account_id" direction="in" />
-      <arg type="ay" name="authorization_request" direction="in" />
     </method>
     <!-- Whether the user identified by |account_id| needs to migrate to
          dircrypto. Returns true if the migration has not started or incomplete.

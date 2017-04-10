@@ -3162,32 +3162,41 @@ void Service::DispatchEvents() {
 }
 
 gboolean Service::MigrateToDircrypto(const GArray* account_id,
-                                     const GArray* authorization_request,
                                      GError** error) {
   std::unique_ptr<AccountIdentifier> identifier(new AccountIdentifier);
-  std::unique_ptr<AuthorizationRequest> authorization(new AuthorizationRequest);
 
-  // On parsing failure, pass along a NULL.
-  if (!identifier->ParseFromArray(account_id->data, account_id->len))
-    identifier.reset(NULL);
-  if (!authorization->ParseFromArray(authorization_request->data,
-                                     authorization_request->len))
-    authorization.reset(NULL);
+  if (!identifier->ParseFromArray(account_id->data, account_id->len)) {
+    LOG(ERROR) << "Failed to parse identifier.";
+    return FALSE;
+  }
 
   // This Dbus method just kicks the migration task on the mount thread,
   // and replies immediately.
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&Service::DoMigrateToDircrypto,
                  base::Unretained(this),
-                 base::Owned(identifier.release()),
-                 base::Owned(authorization.release())));
+                 base::Owned(identifier.release())));
   return TRUE;
 }
 
-void Service::DoMigrateToDircrypto(AccountIdentifier* identifier,
-                                   AuthorizationRequest* authorization) {
-  // TODO(dspaid): Run the actual migration. It should return the progress
-  // and the result by SendDircryptoMigrationProgressSignal().
+void Service::DoMigrateToDircrypto(AccountIdentifier* identifier) {
+  scoped_refptr<cryptohome::Mount> mount =
+      GetMountForUser(GetAccountId(*identifier));
+  if (!mount.get()) {
+    LOG(ERROR) << "Failed to get mount.";
+    SendDircryptoMigrationProgressSignal(DIRCRYPTO_MIGRATION_FAILED, 0, 0);
+    return;
+  }
+  LOG(INFO) << "Migrating to dircrypto.";
+  if (!mount->MigrateToDircrypto(
+          base::Bind(&Service::SendDircryptoMigrationProgressSignal,
+                     base::Unretained(this)))) {
+    LOG(ERROR) << "Failed to migrate.";
+    SendDircryptoMigrationProgressSignal(DIRCRYPTO_MIGRATION_FAILED, 0, 0);
+    return;
+  }
+  LOG(INFO) << "Migration done.";
+  SendDircryptoMigrationProgressSignal(DIRCRYPTO_MIGRATION_SUCCESS, 0, 0);
 }
 
 gboolean Service::NeedsDircryptoMigration(const GArray* account_id,

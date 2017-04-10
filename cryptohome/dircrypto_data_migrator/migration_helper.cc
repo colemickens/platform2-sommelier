@@ -72,26 +72,22 @@ bool MigrationHelper::Migrate(const base::FilePath& from,
   ReportStatus(DIRCRYPTO_MIGRATION_INITIALIZING);
   if (!from.IsAbsolute() || !to.IsAbsolute()) {
     LOG(ERROR) << "Migrate must be given absolute paths";
-    ReportStatus(DIRCRYPTO_MIGRATION_FAILED);
     return false;
   }
 
   if (!platform_->TouchFileDurable(
           status_files_dir_.Append(kMigrationStartedFileName))) {
     LOG(ERROR) << "Failed to create migration-started file";
-    ReportStatus(DIRCRYPTO_MIGRATION_FAILED);
     return false;
   }
 
   int64_t free_space = platform_->AmountOfFreeDiskSpace(to);
   if (free_space < 0) {
     LOG(ERROR) << "Failed to determine free disk space";
-    ReportStatus(DIRCRYPTO_MIGRATION_FAILED);
     return false;
   }
   if (static_cast<uint64_t>(free_space) < kMinFreeSpace) {
     LOG(ERROR) << "Not enough space to begin the migration";
-    ReportStatus(DIRCRYPTO_MIGRATION_FAILED);
     return false;
   }
   effective_chunk_size_ =
@@ -105,19 +101,17 @@ bool MigrationHelper::Migrate(const base::FilePath& from,
   struct stat from_stat;
   if (!platform_->Stat(from, &from_stat)) {
     PLOG(ERROR) << "Failed to stat from directory";
-    ReportStatus(DIRCRYPTO_MIGRATION_FAILED);
     return false;
   }
   if (!MigrateDir(from,
                   to,
                   base::FilePath(""),
                   FileEnumerator::FileInfo(from, from_stat))) {
-    ReportStatus(DIRCRYPTO_MIGRATION_FAILED);
     return false;
   }
 
   // One more progress update to say that we've hit 100%
-  ReportStatus(DIRCRYPTO_MIGRATION_SUCCESS);
+  ReportStatus(DIRCRYPTO_MIGRATION_IN_PROGRESS);
   return true;
 }
 
@@ -148,7 +142,7 @@ void MigrationHelper::IncrementMigratedBytes(uint64_t bytes) {
 }
 
 void MigrationHelper::ReportStatus(DircryptoMigrationStatus status) {
-  progress_callback_.Run(migrated_byte_count_, total_byte_count_, status);
+  progress_callback_.Run(status, migrated_byte_count_, total_byte_count_);
   next_report_ = base::TimeTicks::Now() + kStatusSignalInterval;
 }
 
