@@ -34,7 +34,6 @@
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
-#include "login_manager/dbus_error_types.h"
 #include "login_manager/device_local_account_policy_service.h"
 #include "login_manager/fake_container_manager.h"
 #include "login_manager/fake_crossystem.h"

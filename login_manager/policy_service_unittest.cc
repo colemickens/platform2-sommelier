@@ -15,11 +15,11 @@
 #include <base/run_loop.h>
 #include <base/threading/thread.h>
 #include <brillo/message_loops/fake_message_loop.h>
+#include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "bindings/device_management_backend.pb.h"
-#include "login_manager/dbus_error_types.h"
 #include "login_manager/matchers.h"
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"

@@ -14,6 +14,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/run_loop.h>
 #include <brillo/message_loops/fake_message_loop.h>
+#include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

@@ -24,6 +24,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
+#include <chromeos/dbus/service_constants.h>
 #include <crypto/scoped_nss_types.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
@@ -32,7 +33,6 @@
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "login_manager/crossystem.h"
-#include "login_manager/dbus_error_types.h"
 #include "login_manager/dbus_signal_emitter.h"
 #include "login_manager/device_local_account_policy_service.h"
 #include "login_manager/device_policy_service.h"

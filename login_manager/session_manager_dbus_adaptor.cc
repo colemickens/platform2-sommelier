@@ -19,7 +19,6 @@
 #include <dbus/file_descriptor.h>
 #include <dbus/message.h>
 
-#include "login_manager/dbus_error_types.h"
 #include "login_manager/policy_service.h"
 
 namespace login_manager {

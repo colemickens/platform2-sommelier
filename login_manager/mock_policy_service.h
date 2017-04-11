@@ -13,9 +13,8 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
-
-#include "login_manager/dbus_error_types.h"
 
 namespace login_manager {
 MATCHER_P(PolicyErrorEq, error_code, "") {

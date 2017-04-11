@@ -13,9 +13,9 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "bindings/device_management_backend.pb.h"
-#include "login_manager/dbus_error_types.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_store.h"
 #include "login_manager/system_utils.h"

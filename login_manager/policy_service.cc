@@ -15,9 +15,9 @@
 #include <base/logging.h>
 #include <base/synchronization/waitable_event.h>
 #include <brillo/message_loops/message_loop.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "bindings/device_management_backend.pb.h"
-#include "login_manager/dbus_error_types.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_store.h"
@@ -176,7 +176,7 @@ void PolicyService::OnKeyPersisted(bool status) {
 }
 
 void PolicyService::OnPolicyPersisted(const Completion& completion,
-                                      const char* dbus_error_type) {
+                                      const std::string& dbus_error_type) {
   std::string msg;
   if (dbus_error_type == dbus_error::kNone) {
     LOG(INFO) << "Persisted policy to disk.";

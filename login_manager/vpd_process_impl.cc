@@ -9,8 +9,8 @@
 
 #include <base/strings/string_util.h>
 #include <base/sys_info.h>
+#include <chromeos/dbus/service_constants.h>
 
-#include "login_manager/dbus_error_types.h"
 #include "metrics/metrics_library.h"
 
 namespace {

@@ -15,9 +15,9 @@
 #include <base/memory/ref_counted.h>
 #include <base/strings/string_util.h>
 #include <brillo/cryptohome.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "bindings/chrome_device_policy.pb.h"
-#include "login_manager/dbus_error_types.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/policy_store.h"

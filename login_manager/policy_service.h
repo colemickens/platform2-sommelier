@@ -135,7 +135,7 @@ class PolicyService {
   // that case the reporting part is not done. |dbus_error_type| is a dbus_error
   // constant and can be a non-error, like kNone.
   void OnPolicyPersisted(const Completion& completion,
-                         const char* dbus_error_type);
+                         const std::string& dbus_error_type);
 
  private:
   // Persists key() to disk synchronously and passes the result to

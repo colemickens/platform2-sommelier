@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <chromeos/dbus/service_constants.h>
 #include <chromeos/switches/chrome_switches.h>
 #include <crypto/rsa_private_key.h>
 #include <crypto/scoped_nss_types.h>
@@ -20,7 +21,6 @@
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "bindings/install_attributes.pb.h"
-#include "login_manager/dbus_error_types.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
