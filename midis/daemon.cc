@@ -8,12 +8,18 @@
 
 namespace midis {
 
-Daemon::Daemon() : device_tracker_(base::MakeUnique<DeviceTracker>()) {}
+Daemon::Daemon()
+    : device_tracker_(base::MakeUnique<DeviceTracker>()),
+      client_tracker_(base::MakeUnique<ClientTracker>()) {}
 
 Daemon::~Daemon() {}
 
 int Daemon::OnInit() {
   if (!device_tracker_->InitDeviceTracker()) {
+    return -1;
+  }
+
+  if (!client_tracker_->InitClientTracker()) {
     return -1;
   }
 

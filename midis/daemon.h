@@ -9,6 +9,7 @@
 
 #include <brillo/daemons/daemon.h>
 
+#include "midis/client_tracker.h"
 #include "midis/device_tracker.h"
 
 namespace midis {
@@ -23,6 +24,7 @@ class Daemon : public brillo::Daemon {
 
  private:
   std::unique_ptr<DeviceTracker> device_tracker_;
+  std::unique_ptr<ClientTracker> client_tracker_;
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
 }  // namespace midis

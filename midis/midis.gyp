@@ -18,6 +18,8 @@
         ],
       },
       'sources': [
+        'client.cc',
+        'client_tracker.cc',
         'daemon.cc',
         'device.cc',
         'device_tracker.cc',
