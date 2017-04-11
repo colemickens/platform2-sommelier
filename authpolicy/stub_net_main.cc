@@ -96,13 +96,13 @@ objectClass: organizationalPerson
 objectClass: user
 cn: John Doe
 sn: Doe
-givenName: John
+givenName: %s
 initials: JD
 distinguishedName: CN=John Doe,OU=some-ou,DC=realm,DC=com
 instanceType: 4
 whenCreated: 20161018155136.0Z
 whenChanged: 20170217134227.0Z
-displayName: John Doe
+displayName: %s
 uSNCreated: 287406
 uSNChanged: 307152
 name: John Doe
@@ -332,16 +332,19 @@ int HandleCommandLine(const std::string& command_line,
     if (object_guid == kAccountId) {
       // Search by valid account id, return valid search result for the default
       // user.
-      search_result =
-          base::StringPrintf(kStubSearchFormat, kAccountId, kUserName);
+      search_result = base::StringPrintf(
+          kStubSearchFormat, kGivenName, kDisplayName, kAccountId, kUserName);
     } else if (object_guid == kBadAccountId) {
       // Search by invalid account id, return bad "not found" search result.
       search_result = kStubBadSearch;
     } else if (!sam_account_name.empty()) {
       // Search by sAMAccountName account id, return valid search result for the
       // user that was searched.
-      search_result = base::StringPrintf(
-          kStubSearchFormat, kAccountId, sam_account_name.c_str());
+      search_result = base::StringPrintf(kStubSearchFormat,
+                                         kGivenName,
+                                         kDisplayName,
+                                         kAccountId,
+                                         sam_account_name.c_str());
     } else {
       NOTREACHED();
     }

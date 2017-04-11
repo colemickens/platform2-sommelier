@@ -26,6 +26,9 @@ const char kKdcRetryUserPrincipal[] = "kdc_retry_user@REALM.COM";
 const char kInsufficientQuotaUserPrincipal[] =
     "insufficient_quota_user@REALM.COM";
 
+const char kDisplayName[] = "John Doe";
+const char kGivenName[] = "John";
+
 const char kAccountId[] = "ACCOUNT_GUID";
 const char kBadAccountId[] = "BAD_ACCOUNT_GUID";
 

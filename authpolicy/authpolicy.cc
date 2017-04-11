@@ -148,6 +148,7 @@ void AuthPolicy::AuthenticateUser(const std::string& user_principal_name,
     account_data.set_account_id(account_info.object_guid());
     account_data.set_display_name(account_info.display_name());
     account_data.set_given_name(account_info.given_name());
+    account_data.set_sam_account_name(account_info.sam_account_name());
     std::string buffer;
     if (!account_data.SerializeToString(&buffer)) {
       LOG(ERROR) << "Failed to serialize account data";

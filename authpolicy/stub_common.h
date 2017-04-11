@@ -35,6 +35,11 @@ extern const char kKdcRetryUserPrincipal[];
 // Triggers quota error in net ads join (user cannot add additional machines).
 extern const char kInsufficientQuotaUserPrincipal[];
 
+// Misc account information, used to test whether they're properly parsed and
+// encoded.
+extern const char kDisplayName[];
+extern const char kGivenName[];
+
 // Default, valid account id (aka objectGUID).
 extern const char kAccountId[];
 // Triggers a net ads search error when searching for this objectGUID.

@@ -147,13 +147,13 @@ class TestMetrics : public AuthPolicyMetrics {
     std::string log_str;
     for (const auto& kv : metrics_report_count_) {
       log_str += base::StringPrintf(
-          "\nEXPECT_EQ(%i, Metrics()->GetMetricReportCount(%s));",
+          "\n  EXPECT_EQ(%i, Metrics()->GetMetricReportCount(%s));",
           kv.second,
           metrics_str[kv.first]);
     }
     for (const auto& kv : dbus_report_count_) {
       log_str += base::StringPrintf(
-          "\nEXPECT_EQ(%i, Metrics()->GetDBusReportCount(%s));",
+          "\n  EXPECT_EQ(%i, Metrics()->GetDBusReportCount(%s));",
           kv.second,
           dbus_str[kv.first]);
     }
@@ -528,22 +528,22 @@ class AuthPolicyTest : public testing::Test {
   // Authenticates to a (stub) Active Directory domain with the given
   // credentials and returns the error code. If |account_id_key| is not nullptr,
   // assigns the (prefixed) account id key.
-  ErrorType Auth(const std::string& user_principal,
-                 const std::string& account_id,
-                 dbus::FileDescriptor password_fd,
-                 std::string* account_id_key = nullptr) {
+  ErrorType Auth(
+      const std::string& user_principal,
+      const std::string& account_id,
+      dbus::FileDescriptor password_fd,
+      authpolicy::ActiveDirectoryAccountData* account_data = nullptr) {
     int32_t error = ERROR_NONE;
     std::vector<uint8_t> account_data_blob;
     authpolicy_->AuthenticateUser(
         user_principal, account_id, password_fd, &error, &account_data_blob);
     if (error == ERROR_NONE) {
       EXPECT_FALSE(account_data_blob.empty());
-      authpolicy::ActiveDirectoryAccountData account_data;
-      EXPECT_TRUE(account_data.ParseFromArray(
-          account_data_blob.data(),
-          static_cast<int>(account_data_blob.size())));
-      if (account_id_key)
-        *account_id_key = kActiveDirectoryPrefix + account_data.account_id();
+      if (account_data) {
+        EXPECT_TRUE(account_data->ParseFromArray(
+            account_data_blob.data(),
+            static_cast<int>(account_data_blob.size())));
+      }
     } else {
       EXPECT_TRUE(account_data_blob.empty());
     }
@@ -553,10 +553,10 @@ class AuthPolicyTest : public testing::Test {
   // Authenticates to a (stub) Active Directory domain with default credentials.
   // Returns the account id key.
   std::string DefaultAuth() {
-    std::string account_id_key;
+    authpolicy::ActiveDirectoryAccountData account_data;
     EXPECT_EQ(ERROR_NONE,
-              Auth(kUserPrincipal, "", MakePasswordFd(), &account_id_key));
-    return account_id_key;
+              Auth(kUserPrincipal, "", MakePasswordFd(), &account_data));
+    return kActiveDirectoryPrefix + account_data.account_id();
   }
 
   // Calls AuthPolicy::RefreshUserPolicy(). Verifies that
@@ -676,12 +676,11 @@ TEST_F(AuthPolicyTest, AuthSucceeds) {
 
 // Successful user authentication with given account id.
 TEST_F(AuthPolicyTest, AuthSucceedsWithKnownAccountId) {
-  std::string account_id_key;
+  authpolicy::ActiveDirectoryAccountData account_data;
   EXPECT_EQ(ERROR_NONE, Join(kMachineName));
-  EXPECT_EQ(
-      ERROR_NONE,
-      Auth(kUserPrincipal, kAccountId, MakePasswordFd(), &account_id_key));
-  EXPECT_EQ(account_id_key, std::string(kActiveDirectoryPrefix) + kAccountId);
+  EXPECT_EQ(ERROR_NONE,
+            Auth(kUserPrincipal, kAccountId, MakePasswordFd(), &account_data));
+  EXPECT_EQ(kAccountId, account_data.account_id());
   EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
   EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
@@ -695,6 +694,21 @@ TEST_F(AuthPolicyTest, AuthFailsWithBadAccountId) {
   EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
   EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+}
+
+// Successful user authentication.
+TEST_F(AuthPolicyTest, AuthSetsAccountInfo) {
+  authpolicy::ActiveDirectoryAccountData account_data;
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName));
+  EXPECT_EQ(ERROR_NONE,
+            Auth(kUserPrincipal, "", MakePasswordFd(), &account_data));
+  EXPECT_EQ(kAccountId, account_data.account_id());
+  EXPECT_EQ(kDisplayName, account_data.display_name());
+  EXPECT_EQ(kGivenName, account_data.given_name());
+  EXPECT_EQ(kUserName, account_data.sam_account_name());
+  EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
 }
 
 // Authentication fails for badly formatted user principal name.
