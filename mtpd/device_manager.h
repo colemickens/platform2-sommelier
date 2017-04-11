@@ -213,15 +213,14 @@ class DeviceManager {
   void AddDevices(GSource* source);
 
   // Re-reads the storage advertised by an already known device
-  // on the USB bus. Returns the new device structure used by libmtp.
-  LIBMTP_mtpdevice_t* UpdateDevice(const std::string& usb_bus_name);
+  // on the USB bus.
+  void UpdateDevice(const std::string& usb_bus_name);
 
   // Shared code for both AddDevices and UpdateDevice.
   // |add_update| is set true for add. |usb_bus_name| is only used
-  // for update which returns the new libmtp device structure,
-  // otherwise NULL.
-  LIBMTP_mtpdevice_t* AddOrUpdateDevices(bool add_update,
-                                         const std::string& usb_bus_name);
+  // for update.
+  void AddOrUpdateDevices(bool add_update,
+                          const std::string& usb_bus_name);
 
   // Iterates through attached devices and find ones that have been detached.
   // Then removes the detached devices from |device_map_|.

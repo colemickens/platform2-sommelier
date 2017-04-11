@@ -618,10 +618,9 @@ void DeviceManager::PollDevice(LIBMTP_mtpdevice_t* mtp_device,
   LIBMTP_event_t event;
   uint32_t extra;
   while (LIBMTP_Read_Event(mtp_device, &event, &extra) == 0) {
-    if (event == LIBMTP_EVENT_STORE_ADDED) {
-      LIBMTP_mtpdevice_t* new_device = UpdateDevice(usb_bus_name);
-      if (new_device)
-        mtp_device = new_device;
+    if (event == LIBMTP_EVENT_STORE_ADDED ||
+        event == LIBMTP_EVENT_STORE_REMOVED) {
+      UpdateDevice(usb_bus_name);
     }
   }
 }
@@ -636,15 +635,14 @@ void DeviceManager::AddDevices(GSource* source) {
   AddOrUpdateDevices(true /* add */, "");
 }
 
-LIBMTP_mtpdevice_t* DeviceManager::UpdateDevice(
+void DeviceManager::UpdateDevice(
     const std::string& usb_bus_name) {
-  return AddOrUpdateDevices(false /* update */, usb_bus_name);
+  AddOrUpdateDevices(false /* update */, usb_bus_name);
 }
 
-LIBMTP_mtpdevice_t* DeviceManager::AddOrUpdateDevices(
+void DeviceManager::AddOrUpdateDevices(
     bool add_update,
     const std::string& changed_usb_device_name) {
-  LIBMTP_mtpdevice_t* new_device = NULL;
   base::AutoLock al(device_map_lock_);
 
   // Get raw devices.
@@ -654,7 +652,7 @@ LIBMTP_mtpdevice_t* DeviceManager::AddOrUpdateDevices(
       LIBMTP_Detect_Raw_Devices(&raw_devices, &raw_devices_count);
   if (err != LIBMTP_ERROR_NONE) {
     LOG(ERROR) << "LIBMTP_Detect_Raw_Devices failed with " << err;
-    return NULL;
+    return;
   }
   // Iterate through raw devices. Look for target device, if updating.
   for (int i = 0; i < raw_devices_count; ++i) {
@@ -669,24 +667,27 @@ LIBMTP_mtpdevice_t* DeviceManager::AddOrUpdateDevices(
       if (usb_bus_str != changed_usb_device_name)
         continue;
     }
-    // Open the mtp device.
-    LIBMTP_mtpdevice_t* mtp_device =
-        LIBMTP_Open_Raw_Device_Uncached(&raw_devices[i]);
-    if (!mtp_device) {
-      LOG(ERROR) << "LIBMTP_Open_Raw_Device_Uncached failed for "
-                 << usb_bus_str;
-      if (add_update)
+
+    LIBMTP_mtpdevice_t* mtp_device = NULL;
+    if (add_update) {
+      // Open the mtp device.
+      mtp_device = LIBMTP_Open_Raw_Device_Uncached(&raw_devices[i]);
+      if (!mtp_device) {
+        LOG(ERROR) << "LIBMTP_Open_Raw_Device_Uncached failed for "
+                   << usb_bus_str;
         continue;
-      else
+      }
+    } else {
+      mtp_device = device_map_[usb_bus_str].first;
+
+      // For existing devices, update the storage lists.
+      if (LIBMTP_Get_Storage(mtp_device, LIBMTP_STORAGE_SORTBY_NOTSORTED) < 0) {
+        LOG(ERROR) << "LIBMTP_Get_Storage failed for "
+                   << usb_bus_str;
         break;
+      }
     }
-    if (!add_update) {
-      // We have an updated device. Replace the one in the map.
-      // Prepare to return the new one to caller.
-      LIBMTP_Release_Device(device_map_[usb_bus_str].first);
-      device_map_[usb_bus_str].first = mtp_device;
-      new_device = mtp_device;
-    }
+
     // Fetch fallback vendor / product info.
     std::unique_ptr<char, base::FreeDeleter> duplicated_string;
     duplicated_string.reset(LIBMTP_Get_Manufacturername(mtp_device));
@@ -763,7 +764,6 @@ LIBMTP_mtpdevice_t* DeviceManager::AddOrUpdateDevices(
     }
   }
   free(raw_devices);
-  return new_device;
 }
 
 void DeviceManager::RemoveDevices(bool remove_all) {
