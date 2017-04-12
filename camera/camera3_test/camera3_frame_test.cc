@@ -28,7 +28,7 @@ void Camera3FrameFixture::SetUp() {
   sem_init(&shutter_sem_, 0, 0);
   sem_init(&capture_result_sem_, 0, 0);
 
-  num_partial_results_ = cam_device_.static_info_->GetPartialResultCount();
+  num_partial_results_ = cam_device_.GetStaticInfo()->GetPartialResultCount();
 }
 
 void Camera3FrameFixture::TearDown() {
@@ -286,7 +286,7 @@ void Camera3FrameFixture::GetWaiverKeys(std::set<int32_t>* waiver_keys) const {
   waiver_keys->insert(ANDROID_REPROCESS_EFFECTIVE_EXPOSURE_FACTOR);
 
   // Keys not required if RAW is not supported
-  if (!cam_device_.static_info_->IsCapabilitySupported(
+  if (!cam_device_.GetStaticInfo()->IsCapabilitySupported(
           ANDROID_REQUEST_AVAILABLE_CAPABILITIES_RAW)) {
     waiver_keys->insert(ANDROID_SENSOR_NEUTRAL_COLOR_POINT);
     waiver_keys->insert(ANDROID_SENSOR_GREEN_SPLIT);
@@ -295,45 +295,46 @@ void Camera3FrameFixture::GetWaiverKeys(std::set<int32_t>* waiver_keys) const {
 
   // TODO: CONTROL_AE_REGIONS, CONTROL_AWB_REGIONS, CONTROL_AF_REGIONS?
 
-  if (cam_device_.static_info_->IsHardwareLevelAtLeastFull()) {
+  if (cam_device_.GetStaticInfo()->IsHardwareLevelAtLeastFull()) {
     return;
   }
 
-  if (!cam_device_.static_info_->IsKeyAvailable(
+  if (!cam_device_.GetStaticInfo()->IsKeyAvailable(
           ANDROID_COLOR_CORRECTION_MODE)) {
     waiver_keys->insert(ANDROID_COLOR_CORRECTION_GAINS);
     waiver_keys->insert(ANDROID_COLOR_CORRECTION_MODE);
     waiver_keys->insert(ANDROID_COLOR_CORRECTION_TRANSFORM);
   }
 
-  if (!cam_device_.static_info_->IsKeyAvailable(
+  if (!cam_device_.GetStaticInfo()->IsKeyAvailable(
           ANDROID_COLOR_CORRECTION_ABERRATION_MODE)) {
     waiver_keys->insert(ANDROID_COLOR_CORRECTION_ABERRATION_MODE);
   }
 
-  if (!cam_device_.static_info_->IsKeyAvailable(ANDROID_TONEMAP_MODE)) {
+  if (!cam_device_.GetStaticInfo()->IsKeyAvailable(ANDROID_TONEMAP_MODE)) {
     waiver_keys->insert(ANDROID_TONEMAP_MODE);
   }
 
-  if (!cam_device_.static_info_->IsKeyAvailable(ANDROID_EDGE_MODE)) {
+  if (!cam_device_.GetStaticInfo()->IsKeyAvailable(ANDROID_EDGE_MODE)) {
     waiver_keys->insert(ANDROID_EDGE_MODE);
   }
 
-  if (!cam_device_.static_info_->IsKeyAvailable(ANDROID_HOT_PIXEL_MODE)) {
+  if (!cam_device_.GetStaticInfo()->IsKeyAvailable(ANDROID_HOT_PIXEL_MODE)) {
     waiver_keys->insert(ANDROID_HOT_PIXEL_MODE);
   }
 
-  if (!cam_device_.static_info_->IsKeyAvailable(ANDROID_NOISE_REDUCTION_MODE)) {
+  if (!cam_device_.GetStaticInfo()->IsKeyAvailable(
+          ANDROID_NOISE_REDUCTION_MODE)) {
     waiver_keys->insert(ANDROID_NOISE_REDUCTION_MODE);
   }
 
-  if (!cam_device_.static_info_->IsKeyAvailable(ANDROID_SHADING_MODE)) {
+  if (!cam_device_.GetStaticInfo()->IsKeyAvailable(ANDROID_SHADING_MODE)) {
     waiver_keys->insert(ANDROID_SHADING_MODE);
   }
 
   // Keys not required if neither MANUAL_SENSOR nor READ_SENSOR_SETTINGS is
   // supported
-  if (!cam_device_.static_info_->IsCapabilitySupported(
+  if (!cam_device_.GetStaticInfo()->IsCapabilitySupported(
           ANDROID_REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR)) {
     waiver_keys->insert(ANDROID_SENSOR_EXPOSURE_TIME);
     waiver_keys->insert(ANDROID_SENSOR_FRAME_DURATION);

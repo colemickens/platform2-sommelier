@@ -104,8 +104,9 @@ class Camera3Device {
   // Flush all currently in-process captures and all buffers in the pipeline
   int Flush();
 
+  // Get static information
   class StaticInfo;
-  std::unique_ptr<StaticInfo> static_info_;
+  const StaticInfo* GetStaticInfo() const;
 
  private:
   const int cam_id_;
@@ -113,6 +114,8 @@ class Camera3Device {
   bool initialized_;
 
   camera3_device* cam_device_;
+
+  std::unique_ptr<StaticInfo> static_info_;
 
   // Two bins of streams for swapping while configuring new streams
   std::vector<camera3_stream_t> cam_stream_[2];

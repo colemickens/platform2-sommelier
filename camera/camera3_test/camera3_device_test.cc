@@ -424,6 +424,10 @@ int Camera3Device::Flush() {
   return cam_device_->ops->flush(cam_device_);
 }
 
+const Camera3Device::StaticInfo* Camera3Device::GetStaticInfo() const {
+  return static_info_.get();
+}
+
 Camera3Device::StaticInfo::StaticInfo(const camera_info& cam_info)
     : characteristics_(const_cast<camera_metadata_t*>(
           cam_info.static_camera_characteristics)) {}
@@ -745,7 +749,7 @@ class Camera3DeviceSimpleTest : public Camera3DeviceFixture,
 TEST_P(Camera3DeviceSimpleTest, SensorOrientationTest) {
   // Chromebook has a hardware requirement that the top of the camera should
   // match the top of the display in tablet mode.
-  ASSERT_EQ(0, cam_device_.static_info_->GetSensorOrientation())
+  ASSERT_EQ(0, cam_device_.GetStaticInfo()->GetSensorOrientation())
       << "Invalid camera sensor orientation";
 }
 
@@ -806,7 +810,7 @@ TEST_P(Camera3DeviceDefaultSettings, ConstructDefaultSettings) {
   default_settings = cam_device_.ConstructDefaultRequestSettings(type);
   ASSERT_NE(nullptr, default_settings) << "Camera default settings are NULL";
 
-  Camera3Device::StaticInfo* static_info = cam_device_.static_info_.get();
+  auto static_info = cam_device_.GetStaticInfo();
 
   // Reference: camera2/cts/CameraDeviceTest.java#captureTemplateTestByCamera
   if (!cam_device_.IsTemplateSupported(type)) {
