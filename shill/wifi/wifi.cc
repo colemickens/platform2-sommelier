@@ -772,12 +772,12 @@ bool WiFi::SetRandomMACEnabled(const bool& enabled, Error* error) {
     return false;
   }
 
+  if (random_mac_enabled_ == enabled) {
+    return false;
+  }
   if (!random_mac_supported_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
             "This WiFi device does not support MAC address randomization");
-    return false;
-  }
-  if (random_mac_enabled_ == enabled) {
     return false;
   }
   if ((enabled &&
