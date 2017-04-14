@@ -506,7 +506,8 @@ bool Service::Initialize() {
         NULL,
         nullptr,
         G_TYPE_NONE,
-        2,
+        3,
+        G_TYPE_INT,
         G_TYPE_UINT64,
         G_TYPE_UINT64);
   }
