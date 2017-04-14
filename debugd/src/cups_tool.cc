@@ -110,14 +110,14 @@ int ClearCupsState() {
   return ret;
 }
 
-// Returns the exit code for the executed process.  Supports RunAsUser except
-// that access to the root mount namespace is enabled if |root_mount_ns| is
-// true.
-int RunAsUserWithMount(const std::string& user, const std::string& group,
-                       const std::string& command,
-                       const std::string& seccomp_policy,
-                       const ProcessWithOutput::ArgList& arg_list,
-                       bool root_mount_ns, DBus::Error* /*error*/) {
+// Returns the exit code for the executed process.
+// By default disallow root mount namespace. Passing true as optional argument
+// enables root mount namespace.
+int RunAsUser(const std::string& user, const std::string& group,
+              const std::string& command,
+              const std::string& seccomp_policy,
+              const ProcessWithOutput::ArgList& arg_list,
+              DBus::Error* /*error*/, bool root_mount_ns = false) {
   ProcessWithOutput process;
   process.set_separate_stderr(true);
   process.SandboxAs(user, group);
@@ -146,23 +146,13 @@ int RunAsUserWithMount(const std::string& user, const std::string& group,
   return result;
 }
 
-// Runs |command| as |user|:|group| with args |arg_list|.  If |seccomp_policy|
-// is non-empty, apply it to restrict syscalls.  Returns the exit code
-// for the executed process.
-int RunAsUser(const std::string& user, const std::string& group,
-              const std::string& command,
-              const std::string& seccomp_policy,
-              const ProcessWithOutput::ArgList& arg_list, DBus::Error* error) {
-  return RunAsUserWithMount(user, group, command, seccomp_policy, arg_list,
-                            false, error);
-}
-
 // Runs cupstestppd on |file_name| returns the result code.  0 is the expected
 // success code.
 int TestPPD(const std::string& path, DBus::Error* error) {
   // TODO(skau): Run cupstestppd in seccomp crbug.com/633383.
   return RunAsUser(kLpadminUser, kLpadminGroup, kTestPPDCommand,
-                   kTestPPDSeccompPolicy, {path}, error);
+                   kTestPPDSeccompPolicy, {path}, error,
+                   true /* root_mount_ns */);
 }
 
 // Runs lpadmin with the provided |arg_list|.
