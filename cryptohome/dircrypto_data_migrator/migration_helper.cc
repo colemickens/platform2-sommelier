@@ -130,7 +130,7 @@ void MigrationHelper::CalculateDataToMigrate(const base::FilePath& from) {
           base::FileEnumerator::SHOW_SYM_LINKS);
   for (base::FilePath entry = enumerator->Next(); !entry.empty();
        entry = enumerator->Next()) {
-    FileEnumerator::FileInfo info = enumerator->GetInfo();
+    const FileEnumerator::FileInfo& info = enumerator->GetInfo();
     total_byte_count_ += info.GetSize();
   }
 }
@@ -170,7 +170,7 @@ bool MigrationHelper::MigrateDir(const base::FilePath& from,
 
   for (base::FilePath entry = enumerator->Next(); !entry.empty();
        entry = enumerator->Next()) {
-    FileEnumerator::FileInfo entry_info = enumerator->GetInfo();
+    const FileEnumerator::FileInfo& entry_info = enumerator->GetInfo();
     base::FilePath new_path = to_dir.Append(entry.BaseName());
     mode_t mode = entry_info.stat().st_mode;
     if (S_ISLNK(mode)) {
@@ -355,16 +355,16 @@ bool MigrationHelper::CopyAttributes(const base::FilePath& from,
   if (!platform_->SetPermissions(to, mode))
     return false;
 
-  struct timespec mtime = info.stat().st_mtim;
-  struct timespec atime = info.stat().st_atim;
+  const auto& mtime = info.stat().st_mtim;
+  const auto& atime = info.stat().st_atim;
   if (!SetExtendedAttributeIfNotPresent(to,
                                         namespaced_mtime_xattr_name_,
-                                        reinterpret_cast<char*>(&mtime),
+                                        reinterpret_cast<const char*>(&mtime),
                                         sizeof(mtime)))
     return false;
   if (!SetExtendedAttributeIfNotPresent(to,
                                         namespaced_atime_xattr_name_,
-                                        reinterpret_cast<char*>(&atime),
+                                        reinterpret_cast<const char*>(&atime),
                                         sizeof(atime)))
     return false;
   if (!CopyExtendedAttributes(from, to))
@@ -404,7 +404,7 @@ bool MigrationHelper::CopyExtendedAttributes(const base::FilePath& from,
   if (!platform_->ListExtendedFileAttributes(from, &xattr_names))
     return false;
 
-  for (const std::string name : xattr_names) {
+  for (const std::string& name : xattr_names) {
     std::string value;
     if (name == namespaced_mtime_xattr_name_ ||
         name == namespaced_atime_xattr_name_)
@@ -422,7 +422,7 @@ bool MigrationHelper::CopyExtendedAttributes(const base::FilePath& from,
 bool MigrationHelper::SetExtendedAttributeIfNotPresent(
     const base::FilePath& file,
     const std::string& xattr,
-    char* value,
+    const char* value,
     ssize_t size) {
   // If the attribute already exists we assume it was set during a previous
   // migration attempt and use the existing one instead of writing a new one.

@@ -122,7 +122,7 @@ class MigrationHelper {
                               const base::FilePath& to);
   bool SetExtendedAttributeIfNotPresent(const base::FilePath& file,
                                         const std::string& xattr,
-                                        char* value,
+                                        const char* value,
                                         ssize_t size);
 
   Platform* platform_;
