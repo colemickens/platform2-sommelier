@@ -20,6 +20,19 @@
         ],
       },
     },
+    {
+      'target_name': 'cros_config',
+      'type': 'executable',
+      'variables': {
+        'deps': [
+          'libbrillo-<(libbase_ver)',
+        ],
+      },
+      'dependencies': ['libcros_config'],
+      'sources': [
+        'cros_config_main.cc',
+      ],
+    },
   ],
   'conditions': [
     ['USE_test == 1', {
@@ -36,6 +49,17 @@
           ],
           'sources': [
             'libcros_config/cros_config_unittest.cc',
+          ],
+        },
+        {
+          'target_name': 'cros_config_main_unittest',
+          'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'dependencies': [
+            'cros_config',
+          ],
+          'sources': [
+            'cros_config_main_unittest.cc',
           ],
         },
       ],
