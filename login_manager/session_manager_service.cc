@@ -391,7 +391,6 @@ void SessionManagerService::SetUpHandlers() {
   }
 }
 
-// This _must_ be async signal safe. No library calls or malloc'ing allowed.
 void SessionManagerService::RevertHandlers() {
   struct sigaction action = {};
   action.sa_handler = SIG_DFL;

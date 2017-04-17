@@ -146,11 +146,27 @@ bool ChildJobInterface::Subprocess::ForkAndExec(
   saved_fds.push_back(base::InjectionArc(STDOUT_FILENO, STDOUT_FILENO, false));
   saved_fds.push_back(base::InjectionArc(STDERR_FILENO, STDERR_FILENO, false));
 
-  // TODO(cmasone): Block signals here, so they're blocked in the child from
-  // the get-go. http://crbug.com/493161
+  // Block all signals before the fork so that we can avoid a race in which the
+  // child executes configured signal handlers before the default handlers are
+  // installed, below. In the parent, we restore original signal blocks
+  // immediately after fork.
+  sigset_t new_sigset, old_sigset;
+  sigfillset(&new_sigset);
+  CHECK_EQ(0, sigprocmask(SIG_SETMASK, &new_sigset, &old_sigset));
   pid_ = system_->fork();
   if (pid_ == 0) {
-    SessionManagerService::RevertHandlers();
+    // Reset signal handlers to default and masks to none per 'man 7 daemon'.
+    struct sigaction action = {};
+    action.sa_handler = SIG_DFL;
+
+    for (int i = 1; i < _NSIG; i++) {
+      // Don't check rvalue because some signals can't have handlers (e.g.
+      // KILL).
+      sigaction(i, &action, nullptr);
+    }
+
+    CHECK_EQ(0, sigprocmask(SIG_UNBLOCK, &new_sigset, nullptr));
+
     // We try to set our UID/GID to the desired UID, and then exec
     // the command passed in.
     if (desired_uid_ != 0) {
@@ -170,6 +186,7 @@ bool ChildJobInterface::Subprocess::ForkAndExec(
     _exit(errno == E2BIG ? kCantSetEnv : kCantExec);
     return false;  // To make the compiler happy.
   }
+  CHECK_EQ(0, sigprocmask(SIG_SETMASK, &old_sigset, nullptr));
   return pid_ > 0;
 }
 
