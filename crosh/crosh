@@ -212,6 +212,12 @@ get_power_status_field() {
   dump_power_status | awk -v field="${field}" '$1 == field { print $2 }'
 }
 
+# Returns value of variable with given name.
+expand_var() {
+  local var="$1"
+  eval echo "\"\$${var}\""
+}
+
 USAGE_help='[command]'
 HELP_help='
   Display general help, or details for a specific command.
@@ -228,14 +234,17 @@ cmd_help() (
     ;;
   1)
     cmd="$1"
-    if check_command "${cmd}"; then
-      local usage="USAGE_${cmd}" help="HELP_${cmd}"
-      printf "${cmd} "
-      eval printf %s "\"\$${usage}\""
-      eval echo "\"  \$${help}\""
-    else
+    if ! registered_crosh_command "${cmd}"; then
       echo "help: unknown command '${cmd}'"
       return 1
+    elif ! check_command_available "${cmd}"; then
+      echo "help: command '${cmd}' is not available"
+      return 1
+    else
+      local usage="$(expand_var "USAGE_${cmd}")"
+      local help="$(expand_var "HELP_${cmd}")"
+
+      printf '%s %s  %s\n\n' "${cmd}" "${usage}" "${help}"
     fi
     ;;
   *)
@@ -272,7 +281,9 @@ cmd_help_advanced() (
   commands=$(set | grep -o '^HELP_[^=]*' | \
              sed -e 's:^HELP_::' -e 's:=$::' | sort)
   for cmd in ${commands}; do
-    cmd_help "${cmd}"
+    if check_command_available "${cmd}"; then
+      cmd_help "${cmd}"
+    fi
   done
 )
 
@@ -995,11 +1006,12 @@ HELP_inputcontrol='
   Manually adjust advanced touchpad and mouse settings. Run
   "inputcontrol help" for full list of options.
 '
+EXEC_inputcontrol='/opt/google/input/inputcontrol'
 cmd_inputcontrol() (
   if [ "$1" = "help" ]; then
     set -- -h
   fi
-  /opt/google/input/inputcontrol "$@"
+  "${EXEC_inputcontrol}" "$@"
 )
 
 USAGE_rlz='< status | enable | disable >'
@@ -1447,11 +1459,21 @@ substr() {
   printf '%s' "${str}" | cut -c${start}-${end}
 }
 
-# Return true if the first arg is a valid command.
-check_command() {
+# Return true if the first arg is a valid crosh command.
+registered_crosh_command() {
   local command="$1"
 
   type "cmd_${command}" 2>/dev/null | head -1 | grep -q "function"
+}
+
+# Return true if the first arg is a command available on
+# the system. We assume that all commands that do not
+# define EXEC_<command> variable are always available. For
+# commands that do define EXEC_<command> variable, we
+# ensure that it contains name of a valid shell command.
+check_command_available() {
+  local exec="$(expand_var "EXEC_$1")"
+  [ -z "${exec}" ] || command -v "${exec}" >/dev/null
 }
 
 dispatch() {
@@ -1469,8 +1491,10 @@ dispatch() {
     params=$(substr "$line" "$space_pos")
   fi
 
-  if ! check_command "${command}"; then
+  if ! registered_crosh_command "${command}"; then
     help "unknown command: ${command}"
+  elif ! check_command_available "${command}"; then
+    help "command '${command}' is not available"
   else
     # Only add valid commands to the history.
     shell_history -s "$LINE_"
