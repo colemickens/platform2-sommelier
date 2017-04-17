@@ -1358,7 +1358,7 @@ cmd_dmesg() (
   # We whitelist only a few options.
   local opt
   for opt in "$@"; do
-    if ! printf '%s' "${opt}" | grep -sqE "^-[dkrtux]+$"; then
+    if ! printf '%s' "${opt}" | grep -sqE '^-[dkrtux]+$'; then
       help "unknown option: $*"
       return 1
     fi
@@ -1409,7 +1409,7 @@ cmd_uname() (
   # We whitelist only a few options.
   local opt
   for opt in "$@"; do
-    if ! printf '%s' "${opt}" | grep -sqE "^-[asnrvmpio]+$"; then
+    if ! printf '%s' "${opt}" | grep -sqE '^-[asnrvmpio]+$'; then
       help "unknown option: $*"
       return 1
     fi
@@ -1417,17 +1417,20 @@ cmd_uname() (
   uname "$@"
 )
 
-USAGE_vmstat=''
+USAGE_vmstat='[-a|-d|-f|-m|-n|-s|-w] [delay [count]]'
 HELP_vmstat='
-  Run "vmstat 1", which prints memory, I/O, and load statistics every second.
+  Report virtual memory statistics
 '
 cmd_vmstat() (
-  if [ $# -eq 0 ]; then
-    vmstat 1
-  else
-    help "This command takes no arguments."
-    return 1
-  fi
+  # We whitelist only a few options.
+  local opt
+  for opt in "$@"; do
+    if ! printf '%s' "${opt}" | grep -sqE '^(-[adfmnsw]+|[0-9]+)$'; then
+      help "unknown option: ${opt}"
+      return 1
+    fi
+  done
+  vmstat "$@"
 )
 
 substr() {
