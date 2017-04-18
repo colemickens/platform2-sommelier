@@ -10,7 +10,8 @@ is_factory_test_mode() {
 }
 
 is_factory_installer_mode() {
-  [ -f /root/.factory_installer ]
+  grep -wq 'cros_factory_install' /proc/cmdline || \
+    [ -f /root/.factory_installer ]
 }
 
 is_factory_mode() {
@@ -18,7 +19,7 @@ is_factory_mode() {
 }
 
 inhibit_if_factory_mode() {
-  if is_factory_mode && [ $disable_inhibit -eq 0 ]; then
-    initctl stop --no-wait $1
+  if is_factory_mode && [ "${disable_inhibit}" -eq 0 ]; then
+    initctl stop --no-wait "$1"
   fi
 }
