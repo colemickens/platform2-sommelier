@@ -689,7 +689,7 @@ TEST_F(AuthPolicyTest, AuthSucceedsWithKnownAccountId) {
 // User authentication fails with bad (non-existent) account id.
 TEST_F(AuthPolicyTest, AuthFailsWithBadAccountId) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName));
-  EXPECT_EQ(ERROR_PARSE_FAILED,
+  EXPECT_EQ(ERROR_BAD_USER_NAME,
             Auth(kUserPrincipal, kBadAccountId, MakePasswordFd()));
   EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));

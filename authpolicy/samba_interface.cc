@@ -719,8 +719,8 @@ ErrorType SambaInterface::GetAccountInfo(const std::string& user_name,
   std::string search_string =
       base::StringPrintf("(sAMAccountName=%s)", user_name.c_str());
   error = SearchAccountInfo(search_string, account_info);
-  if (error != ERROR_PARSE_FAILED)  // ERROR_PARSE_FAILED usually means there
-    return error;                   // are zero search results.
+  if (error != ERROR_BAD_USER_NAME)  // ERROR_BAD_USER_NAME means there were
+    return error;                    // no search results.
 
   LOG(WARNING) << "Account info not found by sAMAccountName. "
                << "Trying userPrincipalName.";
@@ -765,7 +765,12 @@ ErrorType SambaInterface::SearchAccountInfo(const std::string& search_string,
   const std::string& account_info_blob = parse_cmd.GetStdout();
 
   // Parse account info protobuf.
-  if (!account_info->ParseFromString(account_info_blob)) {
+  if (account_info_blob.empty()) {
+    // No search results. Return ERROR_BAD_USER_NAME since it usually means that
+    // the user mistyped his user name.
+    LOG(WARNING) << "Search yielded no results";
+    return ERROR_BAD_USER_NAME;
+  } else if (!account_info->ParseFromString(account_info_blob)) {
     LOG(ERROR) << "Failed to parse account info protobuf";
     return ERROR_PARSE_FAILED;
   }

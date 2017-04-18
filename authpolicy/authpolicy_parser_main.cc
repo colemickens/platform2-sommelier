@@ -41,13 +41,16 @@ namespace authpolicy {
 
 namespace {
 
-// 'net ads gpo list'' tokens.
+// 'net ads gpo list' tokens.
 const char kGpoToken_Separator[] = "---------------------";
 const char kGpoToken_Name[] = "name";
 const char kGpoToken_Filesyspath[] = "filesyspath";
 const char kGpoToken_VersionUser[] = "version_user";
 const char kGpoToken_VersionMachine[] = "version_machine";
 const char kGpoToken_Options[] = "options";
+
+// 'net ads search' tokens.
+const char kNoResults[] = "Got 0 replies";
 
 // Length of the klist date/time format (mm/dd/yy HH:MM:SS).
 const int kDateTimeStringLength = 18;
@@ -170,9 +173,13 @@ bool ParseTgtDateTime(const std::string& str, size_t offset, time_t* time) {
   return true;
 }
 
-// Parses the output of net ads search to get the user's objectGUID and prints
-// it to stdout.
+// Parses the output of net ads search to get the user's account info and prints
+// it to stdout. Prints an empty string in case of no search results.
 int ParseAccountInfo(const std::string& net_out) {
+  // Return an empty string, but no error, if no results have been found.
+  if (base::StartsWith(net_out, kNoResults, base::CompareCase::SENSITIVE))
+    return OutputForCaller("");
+
   std::string object_guid, sam_account_name, display_name, given_name;
   if (!FindToken(net_out, ':', kSearchObjectGUID, &object_guid) ||
       !FindToken(net_out, ':', kSearchSAMAccountName, &sam_account_name)) {
