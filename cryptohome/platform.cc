@@ -205,8 +205,12 @@ bool Platform::Mount(const FilePath& from, const FilePath& to,
 }
 
 bool Platform::Bind(const FilePath& from, const FilePath& to) {
-  if (mount(from.value().c_str(), to.value().c_str(), NULL,
-            kDefaultMountOptions | MS_BIND, NULL))
+  // To apply options specific to a bind mount, we have to call mount(2) twice.
+  if (mount(from.value().c_str(), to.value().c_str(), nullptr, MS_BIND,
+            nullptr))
+    return false;
+  if (mount(nullptr, to.value().c_str(), nullptr,
+            MS_REMOUNT | MS_BIND | kDefaultMountOptions, nullptr))
     return false;
   return true;
 }
