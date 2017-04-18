@@ -86,10 +86,10 @@ if [ -f "${FIRMWARE_UPDATE_LOG}" ]; then
   echo "------------------------------------------"
 fi
 
-# Run the firmware updater
-FIRMWARE_UPDATE_SCRIPT='/usr/sbin/chromeos-firmwareupdate'
-if [ -x "${FIRMWARE_UPDATE_SCRIPT}" ]; then
-  "${FIRMWARE_UPDATE_SCRIPT}" --mode=bootok
+# Set firmware as 'good' if possible.
+SET_GOOD_FIRMWARE_SCRIPT='/usr/sbin/chromeos-setgoodfirmware'
+if [ -x "${SET_GOOD_FIRMWARE_SCRIPT}" ]; then
+  "${SET_GOOD_FIRMWARE_SCRIPT}"
 fi
 
 # Run the verified boot debugging tool now, because we won't be able to run it
