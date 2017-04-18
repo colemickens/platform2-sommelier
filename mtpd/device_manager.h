@@ -35,7 +35,9 @@ class DeviceEventDelegate;
 class DeviceManager {
  public:
   // Function to process path components. Exposed for testing.
-  typedef bool (*ProcessPathComponentFunc)(const LIBMTP_file_t*, size_t, size_t,
+  typedef bool (*ProcessPathComponentFunc)(const LIBMTP_file_t*,
+                                           size_t,
+                                           size_t,
                                            uint32_t*);
 
   explicit DeviceManager(DeviceEventDelegate* delegate);
@@ -109,8 +111,7 @@ class DeviceManager {
 
   // Delete |object_id|. For deleting a directory, the directory should be
   // empty. On success, this method returns true.
-  bool DeleteObject(const std::string& storage_name,
-                    const uint32_t object_id);
+  bool DeleteObject(const std::string& storage_name, const uint32_t object_id);
 
   // Renames |object_id| to |new_name|.
   bool RenameObject(const std::string& storage_name,
@@ -142,12 +143,13 @@ class DeviceManager {
 
     MtpDevice() : first(NULL) {}
 
-    MtpDevice(LIBMTP_mtpdevice_t* d, const MtpStorageMap& m,
+    MtpDevice(LIBMTP_mtpdevice_t* d,
+              const MtpStorageMap& m,
               base::SimpleThread* t)
-      : first(d), second(m), third(t) {}
+        : first(d), second(m), third(t) {}
 
     MtpDevice(const MtpDevice& rhs)
-      : first(rhs.first), second(rhs.second), third(rhs.third) {}
+        : first(rhs.first), second(rhs.second), third(rhs.third) {}
   };
   // Key: device bus location, Value: MtpDevice.
   typedef std::map<std::string, MtpDevice> MtpDeviceMap;
@@ -219,8 +221,7 @@ class DeviceManager {
   // Shared code for both AddDevices and UpdateDevice.
   // |add_update| is set true for add. |usb_bus_name| is only used
   // for update.
-  void AddOrUpdateDevices(bool add_update,
-                          const std::string& usb_bus_name);
+  void AddOrUpdateDevices(bool add_update, const std::string& usb_bus_name);
 
   // Iterates through attached devices and find ones that have been detached.
   // Then removes the detached devices from |device_map_|.

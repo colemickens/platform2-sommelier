@@ -27,22 +27,19 @@ void SetInvalidHandleError(const std::string& handle, DBus::Error* error) {
   error->set(kMtpdServiceError, error_msg.c_str());
 }
 
-template<typename ReturnType>
+template <typename ReturnType>
 ReturnType InvalidHandle(const std::string& handle, DBus::Error* error) {
   SetInvalidHandleError(handle, error);
   return ReturnType();
 }
 
-
 }  // namespace
 
 MtpdServer::MtpdServer(DBus::Connection& connection)
     : DBus::ObjectAdaptor(connection, kMtpdServicePath),
-      device_manager_(this) {
-}
+      device_manager_(this) {}
 
-MtpdServer::~MtpdServer() {
-}
+MtpdServer::~MtpdServer() {}
 
 std::vector<std::string> MtpdServer::EnumerateStorages(DBus::Error& error) {
   return device_manager_.EnumerateStorages();
@@ -104,8 +101,7 @@ std::vector<uint32_t> MtpdServer::ReadDirectoryEntryIds(
     return directory_listing;
   }
 
-  if (!device_manager_.ReadDirectoryEntryIds(storage_name,
-                                             fileId,
+  if (!device_manager_.ReadDirectoryEntryIds(storage_name, fileId,
                                              &directory_listing)) {
     error.set(kMtpdServiceError, "ReadDirectoryEntryIds failed");
   }
@@ -166,10 +162,8 @@ void MtpdServer::CopyFileFromLocal(const std::string& handle,
   if (storage_name.empty() || !IsOpenedWithWrite(handle))
     return InvalidHandle<void>(handle, &error);
 
-  if (!device_manager_.CopyFileFromLocal(storage_name,
-                                         fileDescriptor.get(),
-                                         parentId,
-                                         fileName)) {
+  if (!device_manager_.CopyFileFromLocal(storage_name, fileDescriptor.get(),
+                                         parentId, fileName)) {
     error.set(kMtpdServiceError, "CopyFileFromLocal failed");
   }
 }

@@ -37,12 +37,10 @@ class MtpdServer : public org::chromium::Mtpd_adaptor,
   std::string OpenStorage(const std::string& storageName,
                           const std::string& mode,
                           DBus::Error& error) override;
-  void CloseStorage(const std::string& handle,
-                    DBus::Error& error) override;
-  std::vector<uint32_t> ReadDirectoryEntryIds(
-      const std::string& handle,
-      const uint32_t& fileId,
-      DBus::Error& error) override;
+  void CloseStorage(const std::string& handle, DBus::Error& error) override;
+  std::vector<uint32_t> ReadDirectoryEntryIds(const std::string& handle,
+                                              const uint32_t& fileId,
+                                              DBus::Error& error) override;
   std::vector<uint8_t> GetFileInfo(const std::string& handle,
                                    const std::vector<uint32_t>& fileIds,
                                    DBus::Error& error) override;

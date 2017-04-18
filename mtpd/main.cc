@@ -69,10 +69,11 @@ gboolean TerminationSignalCallback(GIOChannel* /* source */,
 }
 
 int main(int argc, char** argv) {
-  // g_type_init() is deprecated since glib 2.36.
 #if !(GLIB_CHECK_VERSION(2, 36, 0))
+  // g_type_init() is deprecated since glib 2.36.
   ::g_type_init();
 #endif
+#if !(GLIB_CHECK_VERSION(2, 32, 0))
   // g_thread_init() is deprecated since glib 2.32 and the symbol is no longer
   // exported since glib 2.34:
   //
@@ -80,7 +81,6 @@ int main(int argc, char** argv) {
   //
   // To be compatible with various versions of glib, only call g_thread_init()
   // when using glib older than 2.32.0.
-#if !(GLIB_CHECK_VERSION(2, 32, 0))
   g_thread_init(NULL);
 #endif
 
@@ -109,9 +109,7 @@ int main(int argc, char** argv) {
   g_io_add_watch_full(g_io_channel_unix_new(daemon.GetDeviceEventDescriptor()),
                       G_PRIORITY_HIGH_IDLE,
                       GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP | G_IO_NVAL),
-                      DeviceEventCallback,
-                      &daemon,
-                      NULL);
+                      DeviceEventCallback, &daemon, NULL);
 
   // TODO(thestig) Switch back to g_unix_signal_add() once Chromium no longer
   // supports a Linux system with glib older than 2.30.
@@ -125,12 +123,9 @@ int main(int argc, char** argv) {
   PCHECK(signal_fd >= 0);
 
   // Set up a monitor for |signal_fd|.
-  g_io_add_watch_full(g_io_channel_unix_new(signal_fd),
-                      G_PRIORITY_HIGH_IDLE,
+  g_io_add_watch_full(g_io_channel_unix_new(signal_fd), G_PRIORITY_HIGH_IDLE,
                       GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP | G_IO_NVAL),
-                      TerminationSignalCallback,
-                      loop,
-                      NULL);
+                      TerminationSignalCallback, loop, NULL);
 
   g_main_loop_run(loop);
 

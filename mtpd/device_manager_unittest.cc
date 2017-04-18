@@ -23,11 +23,11 @@ TEST(DeviceManagerTest, ParseStorageName) {
     const char* expected_bus;
     uint32_t expected_storage_id;
   } test_cases[] = {
-    { "usb:123:4", true, "usb:123", 4 },
-    { "usb:1,2,3:4", true, "usb:1,2,3", 4 },
-    { "notusb:123:4", false, "", 0 },
-    { "usb:123:4:badfield", false, "", 0 },
-    { "usb:123:not_number", false, "", 0 },
+      {"usb:123:4", true, "usb:123", 4},
+      {"usb:1,2,3:4", true, "usb:1,2,3", 4},
+      {"notusb:123:4", false, "", 0},
+      {"usb:123:4:badfield", false, "", 0},
+      {"usb:123:not_number", false, "", 0},
   };
 
   for (size_t i = 0; i < arraysize(test_cases); ++i) {
@@ -59,8 +59,7 @@ class TestDeviceEventDelegate : public DeviceEventDelegate {
 class TestDeviceManager : public DeviceManager {
  public:
   explicit TestDeviceManager(DeviceEventDelegate* delegate)
-      : DeviceManager(delegate) {
-  }
+      : DeviceManager(delegate) {}
   ~TestDeviceManager() {}
 
   bool AddStorage(const std::string& storage_name,

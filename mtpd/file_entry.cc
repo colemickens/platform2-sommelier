@@ -51,11 +51,9 @@ FileEntry::FileEntry()
       parent_id_(kInvalidFileId),
       file_size_(0),
       modification_time_(0),
-      file_type_(LIBMTP_FILETYPE_UNKNOWN) {
-}
+      file_type_(LIBMTP_FILETYPE_UNKNOWN) {}
 
-FileEntry::~FileEntry() {
-}
+FileEntry::~FileEntry() {}
 
 MtpFileEntry FileEntry::ToProtobuf() const {
   MtpFileEntry protobuf;

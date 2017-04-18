@@ -6,12 +6,9 @@
 
 namespace mtpd {
 
-Daemon::Daemon(DBus::Connection* dbus_connection)
-    : server_(*dbus_connection) {
-}
+Daemon::Daemon(DBus::Connection* dbus_connection) : server_(*dbus_connection) {}
 
-Daemon::~Daemon() {
-}
+Daemon::~Daemon() {}
 
 int Daemon::GetDeviceEventDescriptor() const {
   return server_.GetDeviceEventDescriptor();

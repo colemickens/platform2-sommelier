@@ -44,11 +44,9 @@ StorageInfo::StorageInfo()
       access_capability_(0),
       max_capacity_(0),
       free_space_in_bytes_(0),
-      free_space_in_objects_(0) {
-}
+      free_space_in_objects_(0) {}
 
-StorageInfo::~StorageInfo() {
-}
+StorageInfo::~StorageInfo() {}
 
 void StorageInfo::Update(const LIBMTP_devicestorage_t& storage) {
   storage_type_ = storage.StorageType;
