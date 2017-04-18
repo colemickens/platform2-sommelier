@@ -8,27 +8,19 @@
 #include <string>
 #include <vector>
 
-#include <base/cancelable_callback.h>
 #include <base/command_line.h>
-#include <base/files/file_util.h>
-#include <base/memory/weak_ptr.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
-#include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
-
-#include "libcrosservice/dbus-proxies.h"
-
-using std::unique_ptr;
+#include <dbus/bus.h>
+#include <dbus/message.h>
+#include <dbus/object_proxy.h>
+#include <chromeos/dbus/service_constants.h>
 
 namespace {
 
-const char kLibCrosProxyResolvedSignalInterface[] =
-    "org.chromium.CrashReporterLibcrosProxyResolvedInterface";
-const char kLibCrosProxyResolvedName[] = "ProxyResolved";
-const char kLibCrosServiceName[] = "org.chromium.LibCrosService";
 const char kNoProxy[] = "direct://";
 
 const int kTimeoutDefaultSeconds = 5;
@@ -91,150 +83,40 @@ std::vector<std::string> ParseProxyString(const std::string& input) {
   return ret;
 }
 
-// A class for interfacing with Chrome to resolve proxies for a given source
-// url.  The class is initialized with the given source url to check, the
-// signal interface and name that Chrome will reply to, and how long to wait
-// for the resolve request to timeout.  Once initialized, the Run() function
-// must be called, which blocks on the D-Bus call to Chrome.  The call returns
-// after either the timeout or the proxy has been resolved.  The resolved
-// proxies can then be accessed through the proxies() function.
-class ProxyResolver : public brillo::DBusDaemon {
- public:
-  ProxyResolver(const std::string& source_url,
-                const std::string& signal_interface,
-                const std::string& signal_name,
-                base::TimeDelta timeout)
-      : source_url_(source_url),
-        signal_interface_(signal_interface),
-        signal_name_(signal_name),
-        timeout_(timeout),
-        weak_ptr_factory_(this),
-        timeout_callback_(base::Bind(&ProxyResolver::HandleBrowserTimeout,
-                                     weak_ptr_factory_.GetWeakPtr())) {}
-
-  ~ProxyResolver() override {}
-
-  const std::vector<std::string>& proxies() {
-    return proxies_;
-  }
-
-  int Run() override {
-    // Add task for if the browser proxy call times out.
-    base::MessageLoop::current()->PostDelayedTask(
-        FROM_HERE,
-        timeout_callback_.callback(),
-        timeout_);
-
-    return brillo::DBusDaemon::Run();
-  }
-
- protected:
-  // If the browser times out, quit the run loop.
-  void HandleBrowserTimeout() {
-    LOG(ERROR) << "Timeout while waiting for browser to resolve proxy";
-    Quit();
-  }
-
-  // If the signal handler connects successfully, call the browser's
-  // ResolveNetworkProxy D-Bus method.  Otherwise, don't do anything and let
-  // the timeout task quit the run loop.
-  void HandleDBusSignalConnected(const std::string& interface,
-                                 const std::string& signal,
-                                 bool success) {
-    if (!success) {
-      LOG(ERROR) << "Could not connect to signal " << interface << "."
-                 << signal;
-      timeout_callback_.Cancel();
-      Quit();
-      return;
-    }
-
-    brillo::ErrorPtr error;
-    call_proxy_->ResolveNetworkProxy(source_url_,
-                                     signal_interface_,
-                                     signal_name_,
-                                     &error);
-
-    if (error) {
-      LOG(ERROR) << "Call to ResolveNetworkProxy failed: "
-                 << error->GetMessage();
-      timeout_callback_.Cancel();
-      Quit();
-    }
-  }
-
-  // Handle incoming ProxyResolved signal.
-  void HandleProxyResolvedSignal(const std::string& source_url,
-                                 const std::string& proxy_info,
-                                 const std::string& error_message) {
-    timeout_callback_.Cancel();
-    proxies_ = ParseProxyString(proxy_info);
-    LOG(INFO) << "Found proxies via browser signal: "
-              << base::JoinString(proxies_, "x");
-
-    Quit();
-  }
-
-  int OnInit() override {
-    int return_code = brillo::DBusDaemon::OnInit();
-    if (return_code != EX_OK)
-      return return_code;
-
-    // Initialize D-Bus proxies.
-    call_proxy_.reset(
-        new org::chromium::LibCrosServiceInterfaceProxy(bus_,
-                                                        kLibCrosServiceName));
-    signal_proxy_.reset(
-        new org::chromium::CrashReporterLibcrosProxyResolvedInterfaceProxy(
-            bus_,
-            kLibCrosServiceName));
-
-    // Set up the D-Bus signal handler.
-    // TODO(crbug.com/446115): Update ResolveNetworkProxy call to use an
-    //     asynchronous return value rather than a return signal.
-    signal_proxy_->RegisterProxyResolvedSignalHandler(
-        base::Bind(&ProxyResolver::HandleProxyResolvedSignal,
-                   weak_ptr_factory_.GetWeakPtr()),
-        base::Bind(&ProxyResolver::HandleDBusSignalConnected,
-                   weak_ptr_factory_.GetWeakPtr()));
-
-    return EX_OK;
-  }
-
- private:
-  unique_ptr<org::chromium::LibCrosServiceInterfaceProxy> call_proxy_;
-  unique_ptr<org::chromium::CrashReporterLibcrosProxyResolvedInterfaceProxy>
-      signal_proxy_;
-
-  const std::string source_url_;
-  const std::string signal_interface_;
-  const std::string signal_name_;
-  base::TimeDelta timeout_;
-
-  std::vector<std::string> proxies_;
-  base::WeakPtrFactory<ProxyResolver> weak_ptr_factory_;
-
-  base::CancelableClosure timeout_callback_;
-
-  DISALLOW_COPY_AND_ASSIGN(ProxyResolver);
-};
-
-static bool ShowBrowserProxies(std::string url, base::TimeDelta timeout) {
-  // Initialize and run the proxy resolver to watch for signals.
-  ProxyResolver resolver(url,
-                         kLibCrosProxyResolvedSignalInterface,
-                         kLibCrosProxyResolvedName,
-                         timeout);
-  resolver.Run();
-
-  std::vector<std::string> proxies = resolver.proxies();
-
-  // If proxies is empty, then the timeout was reached waiting for the proxy
-  // resolved signal.  If no proxies are defined, proxies will be populated
-  // with "direct://".
-  if (proxies.empty())
+bool ShowBrowserProxies(const std::string& url, base::TimeDelta timeout) {
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
+  if (!bus->Connect()) {
+    LOG(ERROR) << "Failed to connect to system bus";
     return false;
+  }
 
+  dbus::MethodCall method_call(
+      chromeos::kNetworkProxyServiceInterface,
+      chromeos::kNetworkProxyServiceResolveProxyMethod);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(url);
+
+  dbus::ObjectProxy* proxy = bus->GetObjectProxy(
+      chromeos::kNetworkProxyServiceName,
+      dbus::ObjectPath(chromeos::kNetworkProxyServicePath));
+  std::unique_ptr<dbus::Response> response =
+      proxy->CallMethodAndBlock(&method_call, timeout.InMilliseconds());
+  if (!response) {
+    LOG(ERROR) << "Failed to get response";
+    return false;
+  }
+
+  dbus::MessageReader reader(response.get());
+  std::string proxy_info, error;
+  if (!reader.PopString(&proxy_info) || !reader.PopString(&error)) {
+    LOG(ERROR) << "Invalid arguments in response";
+    return false;
+  }
+
+  std::vector<std::string> proxies = ParseProxyString(proxy_info);
+  LOG(INFO) << "Got proxies: " << base::JoinString(proxies, "x");
   for (const auto& proxy : proxies) {
     printf("%s\n", proxy.c_str());
   }
@@ -281,7 +163,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (!ShowBrowserProxies(url, base::TimeDelta::FromSeconds(timeout))) {
-    LOG(ERROR) << "Error resolving proxies via the browser";
+    LOG(ERROR) << "Error resolving proxies";
     LOG(INFO) << "Assuming direct proxy";
     printf("%s\n", kNoProxy);
   }

@@ -81,18 +81,6 @@
       'sources': [
         'list_proxies.cc',
       ],
-      'actions': [
-        {
-          'action_name': 'generate-lib-cros-service-proxies',
-          'variables': {
-            'proxy_output_file': 'include/libcrosservice/dbus-proxies.h',
-          },
-          'sources': [
-            './dbus_bindings/org.chromium.LibCrosService.xml',
-          ],
-          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-        },
-      ],
     },
     {
       'target_name': 'warn_collector',
