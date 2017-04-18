@@ -81,32 +81,24 @@ bool PolicyService::Retrieve(std::vector<uint8_t>* policy_blob) {
   return (static_cast<size_t>(end - start) == policy_blob->size());
 }
 
-bool PolicyService::PersistPolicySync() {
-  if (store()->Persist()) {
-    OnPolicyPersisted(Completion(), dbus_error::kNone);
-    return true;
-  } else {
-    OnPolicyPersisted(Completion(), dbus_error::kSigEncodeFail);
-    return false;
-  }
+void PolicyService::PersistPolicy(const Completion& completion) {
+  const bool success = store()->Persist();
+  OnPolicyPersisted(completion,
+                    success ? dbus_error::kNone : dbus_error::kSigEncodeFail);
 }
 
-void PolicyService::PersistKey() {
+void PolicyService::PostPersistKeyTask() {
   brillo::MessageLoop::current()->PostTask(
-      FROM_HERE, base::Bind(&PolicyService::PersistKeyOnLoop,
-                            weak_ptr_factory_.GetWeakPtr()));
+      FROM_HERE,
+      base::Bind(&PolicyService::PersistKey, weak_ptr_factory_.GetWeakPtr()));
 }
 
-void PolicyService::PersistPolicy() {
+void PolicyService::PostPersistPolicyTask(const Completion& completion) {
   brillo::MessageLoop::current()->PostTask(
-      FROM_HERE, base::Bind(&PolicyService::PersistPolicyOnLoop,
-                            weak_ptr_factory_.GetWeakPtr(), Completion()));
-}
-
-void PolicyService::PersistPolicyWithCompletion(const Completion& completion) {
-  brillo::MessageLoop::current()->PostTask(
-      FROM_HERE, base::Bind(&PolicyService::PersistPolicyOnLoop,
-                            weak_ptr_factory_.GetWeakPtr(), completion));
+      FROM_HERE,
+      base::Bind(&PolicyService::PersistPolicy,
+                 weak_ptr_factory_.GetWeakPtr(),
+                 completion));
 }
 
 bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
@@ -115,7 +107,7 @@ bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
                                 SignatureCheck signature_check) {
   if (signature_check == SignatureCheck::kDisabled) {
     store()->Set(policy);
-    PersistPolicyWithCompletion(completion);
+    PostPersistPolicyTask(completion);
     return true;
   }
 
@@ -152,7 +144,7 @@ bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
     }
 
     // If here, need to persist the key just loaded into memory to disk.
-    PersistKey();
+    PostPersistKeyTask();
   }
 
   // Validate signature on policy and persist to disk.
@@ -170,7 +162,7 @@ bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
   }
 
   store()->Set(policy);
-  PersistPolicyWithCompletion(completion);
+  PostPersistPolicyTask(completion);
   return true;
 }
 
@@ -181,18 +173,6 @@ void PolicyService::OnKeyPersisted(bool status) {
     LOG(ERROR) << "Failed to persist policy key to disk.";
   if (delegate_)
     delegate_->OnKeyPersisted(status);
-}
-
-void PolicyService::PersistKeyOnLoop() {
-  OnKeyPersisted(key()->Persist());
-}
-
-void PolicyService::PersistPolicyOnLoop(const Completion& completion) {
-  if (store()->Persist()) {
-    OnPolicyPersisted(completion, dbus_error::kNone);
-  } else {
-    OnPolicyPersisted(completion, dbus_error::kSigEncodeFail);
-  }
 }
 
 void PolicyService::OnPolicyPersisted(const Completion& completion,
@@ -210,6 +190,10 @@ void PolicyService::OnPolicyPersisted(const Completion& completion,
 
   if (delegate_)
     delegate_->OnPolicyPersisted(dbus_error_type == dbus_error::kNone);
+}
+
+void PolicyService::PersistKey() {
+  OnKeyPersisted(key()->Persist());
 }
 
 }  // namespace login_manager

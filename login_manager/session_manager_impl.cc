@@ -327,11 +327,11 @@ bool SessionManagerImpl::Initialize() {
 }
 
 void SessionManagerImpl::Finalize() {
-  device_policy_->PersistPolicySync();
+  device_policy_->PersistPolicy(PolicyService::Completion());
   for (UserSessionMap::const_iterator it = user_sessions_.begin();
        it != user_sessions_.end(); ++it) {
     if (it->second)
-      it->second->policy_service->PersistPolicySync();
+      it->second->policy_service->PersistPolicy(PolicyService::Completion());
   }
   // We want to stop any running containers.  Containers are per-session and
   // cannot persist across sessions.

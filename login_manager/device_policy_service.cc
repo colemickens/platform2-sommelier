@@ -139,8 +139,8 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
   // TODO(cmasone): Remove this as well once the browser can tolerate it:
   // http://crbug.com/472132
   if (StoreOwnerProperties(current_user, signing_key.get(), &error)) {
-    PersistKey();
-    PersistPolicy();
+    PostPersistKeyTask();
+    PostPersistPolicyTask(Completion());
   } else {
     LOG(WARNING) << "Could not immediately store owner properties in policy";
   }
@@ -190,7 +190,7 @@ bool DevicePolicyService::Initialize() {
     NssUtil::BlobFromBuffer(store()->Get().new_public_key(), &pub_key);
     key_success = key()->PopulateFromBuffer(pub_key);
     if (key_success)
-      PersistKey();
+      PostPersistKeyTask();
   }
 
   ReportPolicyFileMetrics(key_success, policy_success);
@@ -422,7 +422,7 @@ bool DevicePolicyService::GivenUserIsOwner(const std::string& current_user) {
   return false;
 }
 
-void DevicePolicyService::PersistPolicyOnLoop(const Completion& completion) {
+void DevicePolicyService::PersistPolicy(const Completion& completion) {
   if (!store()->Persist()) {
     OnPolicyPersisted(completion, dbus_error::kSigEncodeFail);
     return;

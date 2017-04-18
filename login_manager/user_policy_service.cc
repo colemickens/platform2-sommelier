@@ -81,11 +81,11 @@ bool UserPolicyService::Store(const uint8_t* policy_blob,
     // Also clear the key.
     if (key()->IsPopulated()) {
       key()->ClobberCompromisedKey(std::vector<uint8_t>());
-      PersistKey();
+      PostPersistKeyTask();
     }
 
     store()->Set(policy);
-    PersistPolicyWithCompletion(completion);
+    PostPersistPolicyTask(completion);
     return true;
   }
 

@@ -415,16 +415,16 @@ TEST_F(PolicyServiceTest, Retrieve) {
       std::equal(policy_str_.begin(), policy_str_.end(), policy_data.begin()));
 }
 
-TEST_F(PolicyServiceTest, PersistPolicySyncSuccess) {
+TEST_F(PolicyServiceTest, PersistPolicySuccess) {
   EXPECT_CALL(*store_, Persist()).WillOnce(Return(true));
   EXPECT_CALL(delegate_, OnPolicyPersisted(true)).Times(1);
-  service_->PersistPolicySync();
+  service_->PersistPolicy(PolicyService::Completion());
 }
 
-TEST_F(PolicyServiceTest, PersistPolicySyncFailure) {
+TEST_F(PolicyServiceTest, PersistPolicyFailure) {
   EXPECT_CALL(*store_, Persist()).WillOnce(Return(false));
   EXPECT_CALL(delegate_, OnPolicyPersisted(false)).Times(1);
-  service_->PersistPolicySync();
+  service_->PersistPolicy(PolicyService::Completion());
 }
 
 }  // namespace login_manager

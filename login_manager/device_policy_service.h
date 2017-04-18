@@ -118,7 +118,7 @@ class DevicePolicyService : public PolicyService {
              const Completion& completion,
              int key_flags,
              SignatureCheck signature_check) override;
-  void PersistPolicyOnLoop(const Completion& completion) override;
+  void PersistPolicy(const Completion& completion) override;
 
   static const char kPolicyPath[];
   static const char kSerialRecoveryFlagFile[];

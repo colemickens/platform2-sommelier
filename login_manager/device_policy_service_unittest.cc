@@ -163,8 +163,8 @@ class DevicePolicyServiceTest : public ::testing::Test {
     return service->UpdateSystemSettings(completion_);
   }
 
-  void PersistPolicyOnLoop(DevicePolicyService* service) {
-    service->PersistPolicyOnLoop(completion_);
+  void PersistPolicy(DevicePolicyService* service) {
+    service->PersistPolicy(completion_);
   }
 
   void RecordNewPolicy(const em::PolicyFetchResponse& policy) {
@@ -641,7 +641,7 @@ TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
       .Times(1)
       .WillOnce(Return(true));
 
-  PersistPolicyOnLoop(&service);
+  PersistPolicy(&service);
 }
 
 // Ensure enrolled device gets VPD updated. A MockDevicePolicyService object is
@@ -682,7 +682,7 @@ TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
       .Times(1)
       .WillOnce(Return(true));
 
-  PersistPolicyOnLoop(&service);
+  PersistPolicy(&service);
 }
 
 // Check enrolled device that fails at VPD update.

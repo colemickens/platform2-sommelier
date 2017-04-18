@@ -29,9 +29,6 @@ class MockPolicyService : public PolicyService {
   MOCK_METHOD5(Store, bool(const uint8_t*, uint32_t, const Completion&, int,
                            SignatureCheck));
   MOCK_METHOD1(Retrieve, bool(std::vector<uint8_t>*));
-  MOCK_METHOD0(PersistKey, void(void));
-  MOCK_METHOD1(PersistPolicy, void(Completion));
-  MOCK_METHOD0(PersistPolicySync, bool(void));
 
   static Completion CreateDoNothing() {
     return base::Bind(&MockPolicyService::DoNothingWithError);
