@@ -18,6 +18,22 @@ is_factory_mode() {
   is_factory_test_mode || is_factory_installer_mode
 }
 
+factory_install_cros_payloads() {
+  local script
+  local scripts_root="/mnt/stateful_partition/cros_payloads/install"
+  local log_file="${scripts_root}/log"
+  for script in "${scripts_root}"/*.sh; do
+    if [ ! -f "${script}" ]; then
+      continue
+    fi
+    echo "$(date): Installing [${script}]..." >>"${log_file}"
+    # /mnt/stateful_partition is mounted as 'noexec' so we have to invoke the
+    # installer with shell explicitly.
+    (cd "${scripts_root}"; sh "${script}" >>"${log_file}" 2>&1) && \
+      rm -f "${script}"
+  done
+}
+
 inhibit_if_factory_mode() {
   if is_factory_mode && [ "${disable_inhibit}" -eq 0 ]; then
     initctl stop --no-wait "$1"
