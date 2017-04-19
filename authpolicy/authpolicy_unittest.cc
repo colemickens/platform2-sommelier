@@ -159,13 +159,21 @@ class TestMetrics : public AuthPolicyMetrics {
                                  << "If this looks right, add " << log_str;
   }
 
-  void Report(MetricType metric_type, int /* sample */) override {
+  void Report(MetricType metric_type, int sample) override {
+    last_metrics_sample_[metric_type] = sample;
     metrics_report_count_[metric_type]++;
   }
 
   void ReportDBusResult(DBusCallType call_type,
                         ErrorType /* error */) override {
     dbus_report_count_[call_type]++;
+  }
+
+  // Returns the most recently reported sample for the given |metric_type| or
+  // -1 if the metric has not been reported.
+  int GetLastMetricSample(MetricType metric_type) {
+    auto iter = last_metrics_sample_.find(metric_type);
+    return iter != last_metrics_sample_.end() ? iter->second : -1;
   }
 
   // Returns how often Report() was called with given |metric_type| and erases
@@ -185,6 +193,7 @@ class TestMetrics : public AuthPolicyMetrics {
   }
 
  private:
+  std::map<MetricType, int> last_metrics_sample_;
   std::map<MetricType, int> metrics_report_count_;
   std::map<DBusCallType, int> dbus_report_count_;
 };
@@ -265,6 +274,9 @@ class AuthPolicyTest : public testing::Test {
                                                base::MakeUnique<TestMetrics>(),
                                                std::move(paths));
     EXPECT_EQ(ERROR_NONE, authpolicy_->Initialize(false /* expect_config */));
+
+    // Don't sleep for kinit/smbclient retries, it just prolongs our tests.
+    authpolicy_->DisableRetrySleepForTesting();
 
     // Set up mock object proxy for session manager called from authpolicy.
     mock_session_manager_proxy_ = new MockObjectProxy(
@@ -485,6 +497,20 @@ class AuthPolicyTest : public testing::Test {
   std::function<void(const em::CloudPolicySettings&)> validate_user_policy_;
   std::function<void(const em::ChromeDeviceSettingsProto&)>
       validate_device_policy_;
+
+  // Shortcuts to check for empty policy.
+  std::function<void(const em::CloudPolicySettings&)> check_user_policy_empty_ =
+      [](const em::CloudPolicySettings& policy) {
+        em::CloudPolicySettings empty_policy;
+        EXPECT_EQ(policy.ByteSize(), empty_policy.ByteSize());
+      };
+
+  std::function<void(const em::ChromeDeviceSettingsProto&)>
+      check_device_policy_empty_ =
+          [](const em::ChromeDeviceSettingsProto& policy) {
+            em::ChromeDeviceSettingsProto empty_policy;
+            EXPECT_EQ(policy.ByteSize(), empty_policy.ByteSize());
+          };
 };
 
 // Can't fetch user policy if the user is not logged in.
@@ -666,10 +692,10 @@ TEST_F(AuthPolicyTest, JoinFailsMachineNameTooLong) {
 }
 
 // Join fails if the machine name contains invalid characters.
-TEST_F(AuthPolicyTest, JoinFailsBadMachineName) {
-  EXPECT_EQ(ERROR_BAD_MACHINE_NAME,
+TEST_F(AuthPolicyTest, JoinFailsInvalidMachineName) {
+  EXPECT_EQ(ERROR_INVALID_MACHINE_NAME,
             authpolicy_->JoinADDomain(
-                kBadMachineName, kUserPrincipal, MakePasswordFd()));
+                kInvalidMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
 }
 
@@ -684,11 +710,7 @@ TEST_F(AuthPolicyTest, JoinFailsInsufficientQuota) {
 
 // Successful user policy fetch with empty policy.
 TEST_F(AuthPolicyTest, UserPolicyFetchSucceeds) {
-  // Verify that the GPO is actually empty.
-  validate_user_policy_ = [](const em::CloudPolicySettings& policy) {
-    em::CloudPolicySettings empty_policy;
-    EXPECT_EQ(policy.ByteSize(), empty_policy.ByteSize());
-  };
+  validate_user_policy_ = check_user_policy_empty_;
   EXPECT_EQ(ERROR_NONE, Join(kMachineName));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
   EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
@@ -893,11 +915,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreFlagSet) {
 // This test looks for stub_gpo1_path_ and won't find it because we don't create
 // it.
 TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsMissingFile) {
-  // Verify that the GPO is actually empty.
-  validate_user_policy_ = [](const em::CloudPolicySettings& policy) {
-    em::CloudPolicySettings empty_policy;
-    EXPECT_EQ(policy.ByteSize(), empty_policy.ByteSize());
-  };
+  validate_user_policy_ = check_user_policy_empty_;
   EXPECT_EQ(ERROR_NONE, Join(kOneGpoMachineName));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
   EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
@@ -925,14 +943,34 @@ TEST_F(AuthPolicyTest, UserPolicyFetchFailsDownloadError) {
 
 // Successful device policy fetch with empty policy.
 TEST_F(AuthPolicyTest, DevicePolicyFetchSucceeds) {
-  // Verify that the GPO is actually empty.
-  validate_device_policy_ = [](const em::ChromeDeviceSettingsProto& policy) {
-    em::ChromeDeviceSettingsProto empty_policy;
-    EXPECT_EQ(policy.ByteSize(), empty_policy.ByteSize());
-  };
+  validate_device_policy_ = check_device_policy_empty_;
   EXPECT_EQ(ERROR_NONE, Join(kMachineName));
   FetchAndValidateDevicePolicy(ERROR_NONE);
   EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
+  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_REFRESH_DEVICE_POLICY));
+}
+
+// Device policy fetch fails if the machine account doesn't exist.
+TEST_F(AuthPolicyTest, DevicePolicyFetchFailsBadMachineName) {
+  validate_device_policy_ = check_device_policy_empty_;
+  EXPECT_EQ(ERROR_NONE, Join(kNonExistingMachineName));
+  FetchAndValidateDevicePolicy(ERROR_BAD_MACHINE_NAME);
+  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_REFRESH_DEVICE_POLICY));
+}
+
+// Successful device policy fetch with a few kinit retries because the machine
+// account hasn't propagated yet.
+TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsPropagationRetry) {
+  validate_device_policy_ = check_device_policy_empty_;
+  EXPECT_EQ(ERROR_NONE, Join(kPropagationRetryMachineName));
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(kNumPropagationRetries,
+            Metrics()->GetLastMetricSample(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
   EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
   EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_REFRESH_DEVICE_POLICY));

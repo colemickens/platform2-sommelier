@@ -56,8 +56,10 @@ extern const char kExpiredPassword[];
 extern const char kMachineName[];
 // Triggers an error indicating that the machine name is too long.
 extern const char kTooLongMachineName[];
-// Triggers a 'bad machine name' error (machine name contains invalid chars).
-extern const char kBadMachineName[];
+// Triggers an invalid machine name error (machine name contains invalid chars).
+extern const char kInvalidMachineName[];
+// Triggers bad machine error in kinit (machine doesn't exist), but not in join.
+extern const char kNonExistingMachineName[];
 // Triggers a completely empty GPO list.
 extern const char kEmptyGpoMachineName[];
 // Triggers a GPO download error.
@@ -70,6 +72,13 @@ extern const char kTwoGposMachineName[];
 extern const char kZeroUserVersionMachineName[];
 // Triggers downloading a GPO with the kGpFlagUserDisabled flag set.
 extern const char kDisableUserFlagMachineName[];
+// Triggers kinit to be retried a few times for the machine TGT (simulates that
+// the account hasn't propagated yet).
+extern const char kPropagationRetryMachineName[];
+
+// How many times an account propagation error is simulated if
+// |kPropagationRetryMachineName| is used.
+const int kNumPropagationRetries = 15;
 
 // Stub GPO GUID, triggers a "download" of testing GPO 1 in stub_smbclient.
 extern const char kGpo1Guid[];

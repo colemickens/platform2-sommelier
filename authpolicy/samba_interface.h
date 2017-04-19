@@ -82,6 +82,12 @@ class SambaInterface {
   // which is used for authentication for policy fetch.
   ErrorType FetchDeviceGpos(std::string* policy_blob);
 
+  // Disable retry sleep for unit tests.
+  void DisableRetrySleepForTesting() {
+    smbclient_retry_sleep_enabled_ = false;
+    device_tgt_manager_.DisableRetrySleepForTesting();
+  }
+
  private:
   // Retrieves the name of the domain controller (DC) and the IP of the key
   // distribution center (KDC). If the full server name is 'server.realm', the
@@ -179,6 +185,9 @@ class SambaInterface {
 
   // Whether kinit calls may return false negatives and must be retried.
   bool retry_machine_kinit_ = false;
+
+  // Whether to sleep when retrying smbclient (disable for testing).
+  bool smbclient_retry_sleep_enabled_ = true;
 
   DISALLOW_COPY_AND_ASSIGN(SambaInterface);
 };

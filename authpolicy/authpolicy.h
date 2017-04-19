@@ -75,6 +75,9 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
   // Metrics accessor for unit tests.
   AuthPolicyMetrics* GetMetricsForTesting() const { return metrics_.get(); }
 
+  // Disable retry sleep for unit tests.
+  void DisableRetrySleepForTesting() { samba_.DisableRetrySleepForTesting(); }
+
  private:
   // Sends policy to SessionManager. Assumes |policy_blob| contains user policy
   // if |account_id_key| is not nullptr, otherwise assumes it's device policy.

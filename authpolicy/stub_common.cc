@@ -39,13 +39,15 @@ const char kExpiredPassword[] = "rootpw";
 
 const char kMachineName[] = "testcomp";
 const char kTooLongMachineName[] = "too_long_machine_name";
-const char kBadMachineName[] = "bad?na:me";
+const char kInvalidMachineName[] = "invalid?na:me";
+const char kNonExistingMachineName[] = "nonexisting";
 const char kEmptyGpoMachineName[] = "emptygpo";
 const char kGpoDownloadErrorMachineName[] = "gpodownloaderr";
 const char kOneGpoMachineName[] = "onegpo";
 const char kTwoGposMachineName[] = "twogpos";
 const char kZeroUserVersionMachineName[] = "zerouserversion";
 const char kDisableUserFlagMachineName[] = "disableuserflag";
+const char kPropagationRetryMachineName[] = "propagat.nretry";
 
 extern const char kGpo1Guid[] = "{11111111-1111-1111-1111-111111111111}";
 extern const char kGpo2Guid[] = "{22222222-2222-2222-2222-222222222222}";

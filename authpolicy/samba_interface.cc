@@ -93,7 +93,7 @@ const int kSmbClientRetryWaitSeconds = 1;
 
 // Keys for interpreting net output.
 const char kKeyJoinAccessDenied[] = "NT_STATUS_ACCESS_DENIED";
-const char kKeyBadMachineName[] = "Improperly formed account name";
+const char kKeyInvalidMachineName[] = "Improperly formed account name";
 const char kKeyMachineNameTooLong[] = "Our netbios name can be at most";
 const char kKeyUserHitJoinQuota[] =
     "Insufficient quota exists to complete the operation";
@@ -126,9 +126,9 @@ ErrorType GetNetError(const ProcessExecutor& executor,
     LOG(ERROR) << error_msg << "user is not permitted to join the domain";
     return ERROR_JOIN_ACCESS_DENIED;
   }
-  if (Contains(net_out, kKeyBadMachineName)) {
-    LOG(ERROR) << error_msg << "incorrect machine name";
-    return ERROR_BAD_MACHINE_NAME;
+  if (Contains(net_out, kKeyInvalidMachineName)) {
+    LOG(ERROR) << error_msg << "invalid machine name";
+    return ERROR_INVALID_MACHINE_NAME;
   }
   if (Contains(net_out, kKeyMachineNameTooLong)) {
     LOG(ERROR) << error_msg << "machine name is too long";
@@ -938,7 +938,7 @@ ErrorType SambaInterface::DownloadGpos(
   bool success = false;
   int tries, failed_tries = 0;
   for (tries = 1; tries <= kSmbClientMaxTries; ++tries) {
-    if (tries > 1) {
+    if (tries > 1 && smbclient_retry_sleep_enabled_) {
       base::PlatformThread::Sleep(
           base::TimeDelta::FromSeconds(kSmbClientRetryWaitSeconds));
     }

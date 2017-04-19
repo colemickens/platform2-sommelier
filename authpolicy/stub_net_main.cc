@@ -37,7 +37,7 @@ const char kMachineNameTooLongError[] =
     "Our netbios name can be at most %zd chars long, \"%s\" is %zd chars long\n"
     "Failed to join domain: The format of the specified computer name is "
     "invalid.";
-const char kBadMachineNameError[] =
+const char kInvalidMachineNameError[] =
     "Failed to join domain: failed to join domain 'REALM.COM' over rpc: "
     "Improperly formed account name";
 const char kInsufficientQuotaError[] =
@@ -214,8 +214,8 @@ int HandleJoin(const std::string& command_line,
   }
 
   // Stub bad machine name error.
-  if (machine_name == base::ToUpperASCII(kBadMachineName)) {
-    WriteOutput(kBadMachineNameError, "");
+  if (machine_name == base::ToUpperASCII(kInvalidMachineName)) {
+    WriteOutput(kInvalidMachineNameError, "");
     return kExitCodeError;
   }
 

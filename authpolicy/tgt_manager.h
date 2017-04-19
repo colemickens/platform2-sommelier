@@ -39,18 +39,18 @@ class TgtManager {
              Path credential_cache_path);
   ~TgtManager();
 
-  // Acquires a TGT with the given user |principal| (user@REALM) and password
-  // file descriptor |password_fd|. |realm| is the Active Directory realm (e.g.
-  // ENG.EXAMPLE.COM). |kdc_ip| is the key distribution center IP. If the KDC
-  // cannot be contacted, the method retries once without prescribing the KDC IP
-  // in the Kerberos configuration.
+  // Acquires a TGT with the given |principal| (user@REALM or machine$@REALM)
+  // and password file descriptor |password_fd|. |realm| is the Active Directory
+  // realm (e.g. ENG.EXAMPLE.COM). |kdc_ip| is the key distribution center IP.
+  // If the KDC cannot be contacted, the method retries once without prescribing
+  // the KDC IP in the Kerberos configuration.
   ErrorType AcquireTgtWithPassword(const std::string& principal,
                                    int password_fd,
                                    const std::string& realm,
                                    const std::string& kdc_ip);
 
-  // Acquires a TGT with the given machine |principal| (machine$@REALM) and
-  // keytab file |keytab_path|. If the machine account has just been created, it
+  // Acquires a TGT with the given |principal| (user@REALM or machine$@REALM)
+  // and keytab file |keytab_path|. If the account has just been created, it
   // might not have propagated through Active Directory yet. In this case, set
   // |propagation_retry| to true. The method will then retry a few times if an
   // error occurs that indicates a propagation issue. |realm| is the Active
@@ -84,6 +84,9 @@ class TgtManager {
 
   // Returns the file path of the Kerberos credential cache.
   Path GetCredentialCachePath() const { return credential_cache_path_; }
+
+  // Disable retry sleep for unit tests.
+  void DisableRetrySleepForTesting() { kinit_retry_sleep_enabled_ = false; }
 
  private:
   // Writes the Kerberos configuration and runs |kinit_cmd|. If
@@ -126,9 +129,16 @@ class TgtManager {
   std::string realm_;
   std::string kdc_ip_;
 
+  // Whether the TGT was acquired for a user or machine principal. Determines
+  // what error code is returned if the principal was bad.
+  bool is_machine_principal_ = false;
+
   // Callback for automatic TGT renewal.
   base::CancelableClosure tgt_renewal_callback_;
   bool tgt_autorenewal_enabled_ = false;
+
+  // Whether to sleep when retrying kinit (disable for testing).
+  bool kinit_retry_sleep_enabled_ = true;
 
   DISALLOW_COPY_AND_ASSIGN(TgtManager);
 };

@@ -69,7 +69,7 @@ const int kKinitMaxTries = 60;
 const int kKinitRetryWaitSeconds = 1;
 
 // Keys for interpreting kinit output.
-const char kKeyBadUserName[] =
+const char kKeyBadPrincipal[] =
     "not found in Kerberos database while getting initial credentials";
 const char kKeyBadPassword[] =
     "Preauthentication failed while getting initial credentials";
@@ -85,6 +85,11 @@ const char kKeyTicketExpired[] = "Ticket expired while renewing credentials";
 
 // Nice marker for TGT renewal related logs, for easy grepping.
 const char kTgtRenewalHeader[] = "TGT RENEWAL - ";
+
+// Returns true if the given principal is a machine principal.
+bool IsMachine(const std::string& principal) {
+  return Contains(principal, "$@");
+}
 
 // Formats a time delta in 1h 2m 3s format.
 std::string FormatTimeDelta(int delta_seconds) {
@@ -110,7 +115,8 @@ std::ostream& operator<<(std::ostream& os,
 }
 
 // In case kinit failed, checks the output and returns appropriate error codes.
-ErrorType GetKinitError(const ProcessExecutor& kinit_cmd) {
+ErrorType GetKinitError(const ProcessExecutor& kinit_cmd,
+                        bool is_machine_principal) {
   DCHECK_NE(0, kinit_cmd.GetExitCode());
   const std::string& kinit_out = kinit_cmd.GetStdout();
   const std::string& kinit_err = kinit_cmd.GetStderr();
@@ -119,9 +125,10 @@ ErrorType GetKinitError(const ProcessExecutor& kinit_cmd) {
     LOG(ERROR) << "kinit failed - failed to contact KDC";
     return ERROR_CONTACTING_KDC_FAILED;
   }
-  if (Contains(kinit_err, kKeyBadUserName)) {
-    LOG(ERROR) << "kinit failed - bad user name";
-    return ERROR_BAD_USER_NAME;
+  if (Contains(kinit_err, kKeyBadPrincipal)) {
+    LOG(ERROR) << "kinit failed - bad "
+               << (is_machine_principal ? "machine" : "user") << " name";
+    return is_machine_principal ? ERROR_BAD_MACHINE_NAME : ERROR_BAD_USER_NAME;
   }
   if (Contains(kinit_err, kKeyBadPassword)) {
     LOG(ERROR) << "kinit failed - bad password";
@@ -206,6 +213,7 @@ ErrorType TgtManager::AcquireTgtWithPassword(const std::string& principal,
                                              const std::string& kdc_ip) {
   realm_ = realm;
   kdc_ip_ = kdc_ip;
+  is_machine_principal_ = IsMachine(principal);
 
   // Duplicate password pipe in case we'll need to retry kinit.
   base::ScopedFD password_dup(DuplicatePipe(password_fd));
@@ -240,6 +248,7 @@ ErrorType TgtManager::AcquireTgtWithKeytab(const std::string& principal,
                                            const std::string& kdc_ip) {
   realm_ = realm;
   kdc_ip_ = kdc_ip;
+  is_machine_principal_ = IsMachine(principal);
 
   // Call kinit to get the Kerberos ticket-granting-ticket.
   ProcessExecutor kinit_cmd({paths_->Get(Path::KINIT),
@@ -338,7 +347,7 @@ ErrorType TgtManager::RunKinit(ProcessExecutor* kinit_cmd,
   const int max_tries = (propagation_retry ? kKinitMaxTries : 1);
   int tries, failed_tries = 0;
   for (tries = 1; tries <= max_tries; ++tries) {
-    if (tries > 1) {
+    if (tries > 1 && kinit_retry_sleep_enabled_) {
       base::PlatformThread::Sleep(
           base::TimeDelta::FromSeconds(kKinitRetryWaitSeconds));
     }
@@ -350,11 +359,13 @@ ErrorType TgtManager::RunKinit(ProcessExecutor* kinit_cmd,
     }
     failed_tries++;
     OutputKinitTrace();
-    error = GetKinitError(*kinit_cmd);
+    error = GetKinitError(*kinit_cmd, is_machine_principal_);
     // If kinit fails because credentials are not propagated yet, these are
     // the error types you get.
-    if (error != ERROR_BAD_USER_NAME && error != ERROR_BAD_PASSWORD)
+    if (error != ERROR_BAD_USER_NAME && error != ERROR_BAD_MACHINE_NAME &&
+        error != ERROR_BAD_PASSWORD) {
       break;
+    }
   }
   metrics_->Report(METRIC_KINIT_FAILED_TRY_COUNT, failed_tries);
   return error;
