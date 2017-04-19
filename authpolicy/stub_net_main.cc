@@ -361,13 +361,7 @@ int HandleCommandLine(const std::string& command_line,
 
 int main(int argc, char* argv[]) {
   // Find Samba configuration path ("-s" argument).
-  std::string smb_conf_path;
-  for (int n = 1; n < argc; ++n) {
-    if (strcmp(argv[n], "-s") == 0 && n + 1 < argc) {
-      smb_conf_path = argv[n + 1];
-      break;
-    }
-  }
+  const std::string smb_conf_path = authpolicy::GetArgValue(argc, argv, "-s");
   if (smb_conf_path.empty()) {
     authpolicy::WriteOutput("", authpolicy::kSmbConfArgMissingError);
     return authpolicy::kExitCodeError;

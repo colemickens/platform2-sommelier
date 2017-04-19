@@ -28,6 +28,7 @@ enum TimerType {
   TIMER_KLIST,                  // klist.
   TIMER_SMBCLIENT,              // smbclient.
   TIMER_AUTHENTICATE_USER,      // User authentication D-Bus call.
+  TIMER_GET_USER_STATUS,        // User status query D-Bus call.
   TIMER_JOIN_AD_DOMAIN,         // Domain join D-Bus call.
   TIMER_REFRESH_USER_POLICY,    // User/device policy fetch D-Bus calls,
   TIMER_REFRESH_DEVICE_POLICY,  //   including the Session Manager calls.
@@ -48,6 +49,7 @@ enum MetricType {
 // kDBusHistogramParams!
 enum DBusCallType {
   DBUS_CALL_AUTHENTICATE_USER,
+  DBUS_CALL_GET_USER_STATUS,
   DBUS_CALL_JOIN_AD_DOMAIN,
   DBUS_CALL_REFRESH_USER_POLICY,
   DBUS_CALL_REFRESH_DEVICE_POLICY,

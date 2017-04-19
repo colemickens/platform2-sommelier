@@ -34,19 +34,6 @@ message FilePathList {
   repeated string entries = 1;
 }
 
-// Account details obtained from "net ads search ...".
-message AccountInfo {
-  // The unique identifier for an Active Directory object. |objectGUID|
-  // attribute is used.
-  optional string object_guid = 1;
-  // The logon name. |sAMAccountName| attribute is used.
-  optional string sam_account_name = 2;
-  // Display name of the user. |displayName| attribute is used.
-  optional string display_name = 3;
-  // Given name of the user. AKA first name. |givenName| attribute is used.
-  optional string given_name = 4;
-}
-
 // Selected data from net ads info. |dc_name| is the name of the domain
 // controller and |kdc_ip| is the IPv4 or IPv6 address of the key distribution
 // center.

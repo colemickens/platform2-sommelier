@@ -25,6 +25,7 @@ const char kAccessDeniedUserPrincipal[] = "access_denied_user@REALM.COM";
 const char kKdcRetryUserPrincipal[] = "kdc_retry_user@REALM.COM";
 const char kInsufficientQuotaUserPrincipal[] =
     "insufficient_quota_user@REALM.COM";
+const char kExpiredTgtUserPrincipal[] = "tgt_expired@REALM.COM";
 
 const char kDisplayName[] = "John Doe";
 const char kGivenName[] = "John";
@@ -32,6 +33,9 @@ const char kGivenName[] = "John";
 // Should still be valid GUIDs, so GuidToOctetString() works.
 const char kAccountId[] = "f892eb9d-9e11-4a74-b894-0647e218c4df";
 const char kBadAccountId[] = "88adef4f-74ec-420d-b0a5-3726dbe711eb";
+
+const char kValidKrb5CCData[] = "valid";
+const char kExpiredKrb5CCData[] = "expired";
 
 const char kPassword[] = "p4zzw!5d";
 const char kWrongPassword[] = "pAzzwI5d";
@@ -58,13 +62,16 @@ const char kGpo2Filename[] = "stub_registry_2.pol";
 
 namespace {
 
-// Looks up the environment variable with key |env_key|, which is expected to be
-// 'FILE:<path>', and returns <path>. Returns and empty string if the variable
-// does not exist or does not have the prefix.
-std::string GetPathFromEnv(const char* env_key) {
+// Looks up the environment variable with key |env_key|. If |remove_prefix| is
+// false, returns its value. If |remove_prefix| is true, the value is expected
+// to be 'FILE:<path>' and only <path> is returned. Returns an empty string if
+// the variable does not exist or does not have the expected prefix.
+std::string GetPathFromEnv(const char* env_key, bool remove_prefix) {
   const char* env_value = getenv(env_key);
   if (!env_value)
     return std::string();
+  if (!remove_prefix)
+    return env_value;
 
   // Remove FILE: prefix.
   std::string prefixed_path = env_value;
@@ -86,6 +93,14 @@ std::string GetCommandLine(int argc, const char* const* argv) {
   return command_line;
 }
 
+std::string GetArgValue(int argc, const char* const* argv, const char* name) {
+  for (int n = 1; n + 1 < argc; ++n) {
+    if (strcmp(argv[n], name) == 0)
+      return argv[n + 1];
+  }
+  return std::string();
+}
+
 bool StartsWithCaseSensitive(const std::string& str, const char* search_for) {
   return base::StartsWith(str, search_for, base::CompareCase::SENSITIVE);
 }
@@ -104,11 +119,15 @@ void WriteOutput(const std::string& stdout_str, const std::string& stderr_str) {
 }
 
 std::string GetKeytabFilePath() {
-  return GetPathFromEnv(kKrb5KTEnvKey);
+  return GetPathFromEnv(kKrb5KTEnvKey, true /* remove_prefix */);
 }
 
 std::string GetKrb5ConfFilePath() {
-  return GetPathFromEnv(kKrb5ConfEnvKey);
+  return GetPathFromEnv(kKrb5ConfEnvKey, true /* remove_prefix */);
+}
+
+std::string GetKrb5CCFilePath() {
+  return GetPathFromEnv(kKrb5CCEnvKey, false /* remove_prefix */);
 }
 
 }  // namespace authpolicy

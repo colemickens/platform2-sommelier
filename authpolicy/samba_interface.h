@@ -19,6 +19,7 @@
 #include "authpolicy/constants.h"
 #include "authpolicy/jail_helper.h"
 #include "authpolicy/path_service.h"
+#include "authpolicy/proto_bindings/active_directory_info.pb.h"
 #include "authpolicy/samba_helper.h"
 #include "authpolicy/tgt_manager.h"
 #include "bindings/authpolicy_containers.pb.h"
@@ -58,7 +59,14 @@ class SambaInterface {
   ErrorType AuthenticateUser(const std::string& user_principal_name,
                              const std::string& account_id,
                              int password_fd,
-                             protos::AccountInfo* account_info);
+                             ActiveDirectoryAccountInfo* account_info);
+
+  // Retrieves the status of the user account given by |account_id| (aka
+  // objectGUID). The status contains general ActiveDirectoryAccountInfo as well
+  // as the status of the user's |ticket-granting-ticket (TGT). Does not fill
+  // |user_status| on error.
+  ErrorType GetUserStatus(const std::string& account_id,
+                          ActiveDirectoryUserStatus* user_status);
 
   // Joins the local device with name |machine_name| to an Active Directory
   // domain. A user principal name and password are required for authentication
@@ -97,6 +105,11 @@ class SambaInterface {
   // after Active Directory domain join.
   ErrorType GetRealmInfo(protos::RealmInfo* realm_info) const;
 
+  // Gets the status of the user's ticket-granting-ticket (TGT). Uses klist
+  // internally to check whether the ticket is valid, expired or not present.
+  // Does not perform any server-side checks.
+  ErrorType GetUserTgtStatus(ActiveDirectoryUserStatus::TgtStatus* tgt_status);
+
   // Retrieves the name of the workgroup. Since the workgroup is expected to
   // change very rarely, this function earlies out and returns ERROR_NONE if the
   // workgroup has already been fetched.
@@ -130,12 +143,12 @@ class SambaInterface {
                            const std::string& normalized_upn,
                            const std::string& account_id,
                            const protos::RealmInfo& realm_info,
-                           protos::AccountInfo* account_info);
+                           ActiveDirectoryAccountInfo* account_info);
 
   // Calls net ads search with given |search_string| to retrieve |account_info|.
   // Authenticates with the device TGT.
   ErrorType SearchAccountInfo(const std::string& search_string,
-                              protos::AccountInfo* account_info);
+                              ActiveDirectoryAccountInfo* account_info);
 
   // Calls net ads gpo list to retrieve a list of GPOs. |user_or_machine_name|
   // may be a user or machine sAMAccountName. (The machine sAMAccountName is the

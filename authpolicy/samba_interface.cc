@@ -269,7 +269,7 @@ ErrorType SambaInterface::AuthenticateUser(
     const std::string& user_principal_name,
     const std::string& account_id,
     int password_fd,
-    protos::AccountInfo* account_info) {
+    ActiveDirectoryAccountInfo* account_info) {
   // Split user_principal_name into parts and normalize.
   std::string user_name, realm, workgroup, normalized_upn;
   if (!ParseUserPrincipalName(
@@ -312,8 +312,43 @@ ErrorType SambaInterface::AuthenticateUser(
   // Store sAMAccountName for policy fetch. Note that net ads gpo list always
   // wants the sAMAccountName.
   const std::string account_id_key(kActiveDirectoryPrefix +
-                                   account_info->object_guid());
+                                   account_info->account_id());
   user_id_name_map_[account_id_key] = account_info->sam_account_name();
+  return ERROR_NONE;
+}
+
+ErrorType SambaInterface::GetUserStatus(
+    const std::string& account_id, ActiveDirectoryUserStatus* user_status) {
+  // Write Samba configuration file.
+  ErrorType error = EnsureWorkgroupAndWriteSmbConf();
+  if (error != ERROR_NONE)
+    return error;
+
+  // Make sure we have realm info.
+  protos::RealmInfo realm_info;
+  error = GetRealmInfo(&realm_info);
+  if (error != ERROR_NONE)
+    return error;
+
+  // Get account info for the user.
+  ActiveDirectoryAccountInfo account_info;
+  error = GetAccountInfo("" /* user_name unused */,
+                         "" /* normalized_upn unused */,
+                         account_id,
+                         realm_info,
+                         &account_info);
+  if (error != ERROR_NONE)
+    return error;
+
+  // Determine the status of the TGT.
+  ActiveDirectoryUserStatus::TgtStatus tgt_status =
+      ActiveDirectoryUserStatus::TGT_VALID;
+  error = GetUserTgtStatus(&tgt_status);
+  if (error != ERROR_NONE)
+    return error;
+
+  *user_status->mutable_account_info() = account_info;
+  user_status->set_tgt_status(tgt_status);
   return ERROR_NONE;
 }
 
@@ -509,6 +544,30 @@ ErrorType SambaInterface::GetRealmInfo(protos::RealmInfo* realm_info) const {
   return ERROR_NONE;
 }
 
+ErrorType SambaInterface::GetUserTgtStatus(
+    ActiveDirectoryUserStatus::TgtStatus* tgt_status) {
+  protos::TgtLifetime lifetime;
+  ErrorType error = user_tgt_manager_.GetTgtLifetime(&lifetime);
+  if (error == ERROR_NONE) {
+    *tgt_status = lifetime.validity_seconds() > 0
+                      ? ActiveDirectoryUserStatus::TGT_VALID
+                      : ActiveDirectoryUserStatus::TGT_EXPIRED;
+    return ERROR_NONE;
+  }
+
+  // Eat two errors and convert them to TgtStatus values instead.
+  if (error == ERROR_NO_CREDENTIALS_CACHE_FOUND) {
+    *tgt_status = ActiveDirectoryUserStatus::TGT_NOT_FOUND;
+    return ERROR_NONE;
+  }
+  if (error == ERROR_KERBEROS_TICKET_EXPIRED) {
+    *tgt_status = ActiveDirectoryUserStatus::TGT_EXPIRED;
+    return ERROR_NONE;
+  }
+
+  return error;
+}
+
 ErrorType SambaInterface::EnsureWorkgroup() {
   if (!workgroup_.empty())
     return ERROR_NONE;
@@ -689,11 +748,12 @@ ErrorType SambaInterface::SecureMachineKeyTab() const {
   return ERROR_NONE;
 }
 
-ErrorType SambaInterface::GetAccountInfo(const std::string& user_name,
-                                         const std::string& normalized_upn,
-                                         const std::string& account_id,
-                                         const protos::RealmInfo& realm_info,
-                                         protos::AccountInfo* account_info) {
+ErrorType SambaInterface::GetAccountInfo(
+    const std::string& user_name,
+    const std::string& normalized_upn,
+    const std::string& account_id,
+    const protos::RealmInfo& realm_info,
+    ActiveDirectoryAccountInfo* account_info) {
   // Refresh the device TGT. Note that the user TGT might not be accessible at
   // this point (we need the sAMAccountName returned in |account_info| to fetch
   // the user TGT).
@@ -732,8 +792,9 @@ ErrorType SambaInterface::GetAccountInfo(const std::string& user_name,
   return SearchAccountInfo(search_string, account_info);
 }
 
-ErrorType SambaInterface::SearchAccountInfo(const std::string& search_string,
-                                            protos::AccountInfo* account_info) {
+ErrorType SambaInterface::SearchAccountInfo(
+    const std::string& search_string,
+    ActiveDirectoryAccountInfo* account_info) {
   // Call net ads search to find the user's account info.
   ProcessExecutor net_cmd({paths_->Get(Path::NET),
                            "ads",

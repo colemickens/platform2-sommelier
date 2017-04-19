@@ -20,6 +20,7 @@ using brillo::dbus_utils::AsyncEventSequencer;
 
 namespace authpolicy {
 
+class ActiveDirectoryAccountInfo;
 class AuthPolicyMetrics;
 class PathService;
 
@@ -50,7 +51,7 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
       const AsyncEventSequencer::CompletionAction& completion_callback);
 
   // org::chromium::AuthPolicyInterface: (see org.chromium.AuthPolicy.xml).
-  // |account_data_blob| is a serialized ActiveDirectoryAccountData protobuf.
+  // |account_info_blob| is a serialized ActiveDirectoryAccountInfo protobuf.
   // TODO(ljusten): Temp wrapper to handle addition of |account_id|.
   // crbug.com/709371
   void AuthenticateUser(dbus::MethodCall* method_call,
@@ -61,7 +62,11 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
                         const std::string& account_id,
                         const dbus::FileDescriptor& password_fd,
                         int32_t* error,
-                        std::vector<uint8_t>* account_data_blob);
+                        std::vector<uint8_t>* account_info_blob);
+
+  void GetUserStatus(const std::string& account_id,
+                     int32_t* error,
+                     std::vector<uint8_t>* user_status_blob) override;
 
   int32_t JoinADDomain(const std::string& machine_name,
                        const std::string& user_principal_name,

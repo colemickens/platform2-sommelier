@@ -30,7 +30,8 @@
 #include "authpolicy/path_service.h"
 #include "authpolicy/policy/policy_encoder_helper.h"
 #include "authpolicy/policy/preg_policy_writer.h"
-#include "authpolicy/proto_bindings/active_directory_account_data.pb.h"
+#include "authpolicy/proto_bindings/active_directory_info.pb.h"
+#include "authpolicy/samba_interface.h"
 #include "authpolicy/stub_common.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/cloud_policy.pb.h"
@@ -132,15 +133,18 @@ class TestMetrics : public AuthPolicyMetrics {
     metrics_str[METRIC_SMBCLIENT_FAILED_TRY_COUNT] =
         "METRIC_SMBCLIENT_FAILED_TRY_COUNT";
     metrics_str[METRIC_DOWNLOAD_GPO_COUNT] = "METRIC_DOWNLOAD_GPO_COUNT";
+    CHECK_EQ(METRIC_COUNT, metrics_str.size());
     static_assert(METRIC_COUNT == 3, "Add new values!");
 
     std::map<DBusCallType, const char*> dbus_str;
     dbus_str[DBUS_CALL_AUTHENTICATE_USER] = "DBUS_CALL_AUTHENTICATE_USER";
+    dbus_str[DBUS_CALL_GET_USER_STATUS] = "DBUS_CALL_GET_USER_STATUS";
     dbus_str[DBUS_CALL_JOIN_AD_DOMAIN] = "DBUS_CALL_JOIN_AD_DOMAIN";
     dbus_str[DBUS_CALL_REFRESH_USER_POLICY] = "DBUS_CALL_REFRESH_USER_POLICY";
     dbus_str[DBUS_CALL_REFRESH_DEVICE_POLICY] =
         "DBUS_CALL_REFRESH_DEVICE_POLICY";
-    static_assert(DBUS_CALL_COUNT == 4, "Add new values!");
+    CHECK_EQ(DBUS_CALL_COUNT, dbus_str.size());
+    static_assert(DBUS_CALL_COUNT == 5, "Add new values!");
 
     std::string log_str;
     for (const auto& kv : metrics_report_count_) {
@@ -267,7 +271,7 @@ class AuthPolicyTest : public testing::Test {
         .Times(1)
         .WillOnce(Return(message_loop_->task_runner().get()));
     EXPECT_CALL(*mock_exported_object_.get(), ExportMethod(_, _, _, _))
-        .Times(7);
+        .Times(8);
 
     // Create AuthPolicy instance.
     authpolicy_ = base::MakeUnique<AuthPolicy>(std::move(dbus_object),
@@ -384,26 +388,48 @@ class AuthPolicyTest : public testing::Test {
   }
 
   // Authenticates to a (stub) Active Directory domain with the given
-  // credentials and returns the error code. If |account_id_key| is not nullptr,
-  // assigns the (prefixed) account id key.
+  // credentials and returns the error code. Assigns the user account info to
+  // |account_info| if a non-nullptr is provided.
   ErrorType Auth(
       const std::string& user_principal,
       const std::string& account_id,
       dbus::FileDescriptor password_fd,
-      authpolicy::ActiveDirectoryAccountData* account_data = nullptr) {
+      authpolicy::ActiveDirectoryAccountInfo* account_info = nullptr) {
     int32_t error = ERROR_NONE;
-    std::vector<uint8_t> account_data_blob;
+    std::vector<uint8_t> account_info_blob;
     authpolicy_->AuthenticateUser(
-        user_principal, account_id, password_fd, &error, &account_data_blob);
+        user_principal, account_id, password_fd, &error, &account_info_blob);
     if (error == ERROR_NONE) {
-      EXPECT_FALSE(account_data_blob.empty());
-      if (account_data) {
-        EXPECT_TRUE(account_data->ParseFromArray(
-            account_data_blob.data(),
-            static_cast<int>(account_data_blob.size())));
+      EXPECT_FALSE(account_info_blob.empty());
+      if (account_info) {
+        EXPECT_TRUE(account_info->ParseFromArray(
+            account_info_blob.data(),
+            static_cast<int>(account_info_blob.size())));
       }
     } else {
-      EXPECT_TRUE(account_data_blob.empty());
+      EXPECT_TRUE(account_info_blob.empty());
+    }
+    return CastError(error);
+  }
+
+  // Gets a fake user status from a (stub) Active Directory service.
+  // |account_id| is the id (aka objectGUID) of the user. Assigns the user's
+  // status to |user_status| if a non-nullptr is given.
+  ErrorType GetUserStatus(
+      const std::string& account_id,
+      authpolicy::ActiveDirectoryUserStatus* user_status = nullptr) {
+    int32_t error = ERROR_NONE;
+    std::vector<uint8_t> user_status_blob;
+    authpolicy_->GetUserStatus(account_id, &error, &user_status_blob);
+    if (error == ERROR_NONE) {
+      EXPECT_FALSE(user_status_blob.empty());
+      if (user_status) {
+        EXPECT_TRUE(user_status->ParseFromArray(
+            user_status_blob.data(),
+            static_cast<int>(user_status_blob.size())));
+      }
+    } else {
+      EXPECT_TRUE(user_status_blob.empty());
     }
     return CastError(error);
   }
@@ -411,10 +437,10 @@ class AuthPolicyTest : public testing::Test {
   // Authenticates to a (stub) Active Directory domain with default credentials.
   // Returns the account id key.
   std::string DefaultAuth() {
-    authpolicy::ActiveDirectoryAccountData account_data;
+    authpolicy::ActiveDirectoryAccountInfo account_info;
     EXPECT_EQ(ERROR_NONE,
-              Auth(kUserPrincipal, "", MakePasswordFd(), &account_data));
-    return kActiveDirectoryPrefix + account_data.account_id();
+              Auth(kUserPrincipal, "", MakePasswordFd(), &account_info));
+    return kActiveDirectoryPrefix + account_info.account_id();
   }
 
   // Calls AuthPolicy::RefreshUserPolicy(). Verifies that
@@ -548,11 +574,11 @@ TEST_F(AuthPolicyTest, AuthSucceeds) {
 
 // Successful user authentication with given account id.
 TEST_F(AuthPolicyTest, AuthSucceedsWithKnownAccountId) {
-  authpolicy::ActiveDirectoryAccountData account_data;
+  authpolicy::ActiveDirectoryAccountInfo account_info;
   EXPECT_EQ(ERROR_NONE, Join(kMachineName));
   EXPECT_EQ(ERROR_NONE,
-            Auth(kUserPrincipal, kAccountId, MakePasswordFd(), &account_data));
-  EXPECT_EQ(kAccountId, account_data.account_id());
+            Auth(kUserPrincipal, kAccountId, MakePasswordFd(), &account_info));
+  EXPECT_EQ(kAccountId, account_info.account_id());
   EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
   EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
@@ -570,14 +596,14 @@ TEST_F(AuthPolicyTest, AuthFailsWithBadAccountId) {
 
 // Successful user authentication.
 TEST_F(AuthPolicyTest, AuthSetsAccountInfo) {
-  authpolicy::ActiveDirectoryAccountData account_data;
+  authpolicy::ActiveDirectoryAccountInfo account_info;
   EXPECT_EQ(ERROR_NONE, Join(kMachineName));
   EXPECT_EQ(ERROR_NONE,
-            Auth(kUserPrincipal, "", MakePasswordFd(), &account_data));
-  EXPECT_EQ(kAccountId, account_data.account_id());
-  EXPECT_EQ(kDisplayName, account_data.display_name());
-  EXPECT_EQ(kGivenName, account_data.given_name());
-  EXPECT_EQ(kUserName, account_data.sam_account_name());
+            Auth(kUserPrincipal, "", MakePasswordFd(), &account_info));
+  EXPECT_EQ(kAccountId, account_info.account_id());
+  EXPECT_EQ(kDisplayName, account_info.display_name());
+  EXPECT_EQ(kGivenName, account_info.given_name());
+  EXPECT_EQ(kUserName, account_info.sam_account_name());
   EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
   EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
@@ -639,6 +665,62 @@ TEST_F(AuthPolicyTest, AuthSucceedsKdcRetry) {
   EXPECT_EQ(3, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
   EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+}
+
+// Can't get user status before domain join.
+TEST_F(AuthPolicyTest, GetUserStatusFailsNotJoined) {
+  EXPECT_EQ(ERROR_NOT_JOINED, GetUserStatus(kAccountId));
+  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_GET_USER_STATUS));
+}
+
+// GetUserStatus fails with bad account id.
+TEST_F(AuthPolicyTest, GetUserStatusFailsBadAccountId) {
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName));
+  EXPECT_EQ(ERROR_BAD_USER_NAME, GetUserStatus(kBadAccountId));
+  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_GET_USER_STATUS));
+}
+
+// GetUserStatus succeeds without auth, but tgt is invalid.
+TEST_F(AuthPolicyTest, GetUserStatusSucceedsTgtNotFound) {
+  ActiveDirectoryUserStatus status;
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName));
+  EXPECT_EQ(ERROR_NONE, GetUserStatus(kAccountId, &status));
+  EXPECT_EQ(ActiveDirectoryUserStatus::TGT_NOT_FOUND, status.tgt_status());
+  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_GET_USER_STATUS));
+}
+
+// GetUserStatus succeeds with join and auth, but with an expired TGT.
+TEST_F(AuthPolicyTest, GetUserStatusSucceedsTgtExpired) {
+  ActiveDirectoryUserStatus status;
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName));
+  EXPECT_EQ(ERROR_NONE, Auth(kExpiredTgtUserPrincipal, "", MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE, GetUserStatus(kAccountId, &status));
+  EXPECT_EQ(ActiveDirectoryUserStatus::TGT_EXPIRED, status.tgt_status());
+  EXPECT_EQ(3, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_GET_USER_STATUS));
+}
+
+// GetUserStatus succeeds with join and auth.
+TEST_F(AuthPolicyTest, GetUserStatusSucceeds) {
+  ActiveDirectoryUserStatus status;
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName));
+  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE, GetUserStatus(kAccountId, &status));
+  EXPECT_EQ(kAccountId, status.account_info().account_id());
+  EXPECT_EQ(kDisplayName, status.account_info().display_name());
+  EXPECT_EQ(kGivenName, status.account_info().given_name());
+  EXPECT_EQ(kUserName, status.account_info().sam_account_name());
+  EXPECT_EQ(ActiveDirectoryUserStatus::TGT_VALID, status.tgt_status());
+  EXPECT_EQ(3, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_GET_USER_STATUS));
 }
 
 // Join fails if there's a network issue.

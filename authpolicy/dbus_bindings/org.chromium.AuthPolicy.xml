@@ -8,8 +8,8 @@
          @user_principal_name: user@workgroup.domain.
          @account_id: Object GUID of the user account, empty if unknown (yet).
          @password_fd: File descriptor of the user's password.
-         @error_code: Returned error code, 0 means success.
-         @account_data_blob: Serialized ActiveDirectoryAccountData protobuf.
+         @error_code: Returned error code, see ErrorType enum.
+         @account_info_blob: Serialized ActiveDirectoryAccountInfo protobuf.
 
          Authenticates the user with an Active Directory domain.
     -->
@@ -18,7 +18,7 @@
       <arg name="account_id" type="s" direction="in"/>
       <arg name="password_fd" type="h" direction="in"/>
       <arg name="error_code" type="i" direction="out"/>
-      <arg name="account_data_blob" type="ay" direction="out" />
+      <arg name="account_info_blob" type="ay" direction="out" />
       <!-- TODO(ljusten): Using value="raw" to handle missing |account_id| (was
            added after the fact). Change back to "simple" once Chrome always
            sends an account_id. crbug.com/709371 -->
@@ -26,11 +26,26 @@
     </method>
 
     <!--
+         GetUserStatus:
+         @account_id: Object GUID of the user account.
+         @error_code: Returned error code, see ErrorType enum.
+         @user_status_blob: Serialized ActiveDirectoryUserStatus protobuf.
+
+         Gets the status of the given Active Directory user account.
+    -->
+    <method name="GetUserStatus">
+      <arg name="account_id" type="s" direction="in"/>
+      <arg name="error_code" type="i" direction="out"/>
+      <arg name="user_status_blob" type="ay" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
+    <!--
          JoinADDomain:
          @machine_name: Netbios name of the machine (aka device) to join.
          @user_principal_name: user@workgroup.domain, used for authentication.
          @password_fd: File descriptor of the user's password.
-         @error_code: Returned error code, 0 means success.
+         @error_code: Returned error code, see ErrorType enum.
 
          Joins the given machine with an Active Directory domain.
     -->
@@ -46,7 +61,7 @@
          RefreshUserPolicy:
          @account_id_key: Unique account id key of the user to fetch policy for.
                           It's prefixed account_id.
-         @error_code: Returned error code, 0 means success.
+         @error_code: Returned error code, see ErrorType enum.
 
          Retrieves user policy for the currently authenticated user and sends it
          to Session Manager. Must be authenticated, see |AuthenticateUser|.
@@ -59,7 +74,7 @@
 
     <!--
          RefreshDevicePolicy:
-         @error_code: Returned error code, 0 means success.
+         @error_code: Returned error code, see ErrorType enum.
 
          Retrieves device policy and sends it to Session Manager. Must be joined
          to an Active Directory domain, see |JoinADDomain|.

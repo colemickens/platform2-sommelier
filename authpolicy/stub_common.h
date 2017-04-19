@@ -34,6 +34,8 @@ extern const char kAccessDeniedUserPrincipal[];
 extern const char kKdcRetryUserPrincipal[];
 // Triggers quota error in net ads join (user cannot add additional machines).
 extern const char kInsufficientQuotaUserPrincipal[];
+// Triggers stub_kinit to produce a TGT that stub_klist interprets as expired.
+extern const char kExpiredTgtUserPrincipal[];
 
 // Misc account information, used to test whether they're properly parsed and
 // encoded.
@@ -44,6 +46,11 @@ extern const char kGivenName[];
 extern const char kAccountId[];
 // Triggers a net ads search error when searching for this objectGUID.
 extern const char kBadAccountId[];
+
+// Default, valid Kerberos crendentials cache contents (in particular, TGT).
+extern const char kValidKrb5CCData[];
+// Triggers stub_klist to think that the TGT expired.
+extern const char kExpiredKrb5CCData[];
 
 // Default, valid password.
 extern const char kPassword[];
@@ -98,6 +105,10 @@ extern const char kGpo2Filename[];
 // Returns |argv[1] + " " + argv[2] + " " + ... + argv[argc-1]|.
 std::string GetCommandLine(int argc, const char* const* argv);
 
+// Gets the arg value following |name|, e.g. in a command line
+// "kinit -c krb5cc_file", calling GetArgValue("-c") would return 'krb5cc_file'.
+std::string GetArgValue(int argc, const char* const* argv, const char* name);
+
 // Shortcut for base::StartsWith with case-sensitive comparison.
 bool StartsWithCaseSensitive(const std::string& str, const char* search_for);
 
@@ -111,6 +122,10 @@ std::string GetKeytabFilePath();
 // Reads the Kerberos configuration file path from the environment. Returns an
 // empty string on error.
 std::string GetKrb5ConfFilePath();
+
+// Reads the Kerberos credentials cache file path from the environment. Returns
+// an empty string on error.
+std::string GetKrb5CCFilePath();
 
 }  // namespace authpolicy
 

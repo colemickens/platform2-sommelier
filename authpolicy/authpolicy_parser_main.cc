@@ -30,6 +30,7 @@
 #include "authpolicy/log_level.h"
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/policy/preg_policy_encoder.h"
+#include "authpolicy/proto_bindings/active_directory_info.pb.h"
 #include "authpolicy/samba_helper.h"
 #include "bindings/authpolicy_containers.pb.h"
 #include "bindings/chrome_device_policy.pb.h"
@@ -187,8 +188,8 @@ int ParseAccountInfo(const std::string& net_out) {
     return EXIT_CODE_FIND_TOKEN_FAILED;
   }
   // Output data as proto blob.
-  protos::AccountInfo account_info;
-  account_info.set_object_guid(object_guid);
+  ActiveDirectoryAccountInfo account_info;
+  account_info.set_account_id(object_guid);
   account_info.set_sam_account_name(sam_account_name);
 
   // Attributes 'displayName' and 'givenName' are optional. May be missing for

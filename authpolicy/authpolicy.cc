@@ -16,7 +16,7 @@
 
 #include "authpolicy/authpolicy_metrics.h"
 #include "authpolicy/path_service.h"
-#include "authpolicy/proto_bindings/active_directory_account_data.pb.h"
+#include "authpolicy/proto_bindings/active_directory_info.pb.h"
 #include "authpolicy/samba_interface.h"
 #include "bindings/device_management_backend.pb.h"
 
@@ -111,14 +111,14 @@ void AuthPolicy::AuthenticateUser(dbus::MethodCall* method_call,
 
   // Call actual AuthenticateUser method.
   int32_t int_error;
-  std::vector<uint8_t> account_data_blob;
+  std::vector<uint8_t> account_info_blob;
   if (success) {
     password_fd.CheckValidity();
     AuthenticateUser(user_principal_name,
                      account_id,
                      password_fd,
                      &int_error,
-                     &account_data_blob);
+                     &account_info_blob);
   } else {
     int_error = ERROR_DBUS_FAILURE;
   }
@@ -128,7 +128,7 @@ void AuthPolicy::AuthenticateUser(dbus::MethodCall* method_call,
       dbus::Response::FromMethodCall(method_call);
   dbus::MessageWriter writer(response.get());
   writer.AppendInt32(int_error);
-  writer.AppendArrayOfBytes(account_data_blob.data(), account_data_blob.size());
+  writer.AppendArrayOfBytes(account_info_blob.data(), account_info_blob.size());
   sender.Run(std::move(response));
 }
 
@@ -136,29 +136,46 @@ void AuthPolicy::AuthenticateUser(const std::string& user_principal_name,
                                   const std::string& account_id,
                                   const dbus::FileDescriptor& password_fd,
                                   int32_t* int_error,
-                                  std::vector<uint8_t>* account_data_blob) {
+                                  std::vector<uint8_t>* account_info_blob) {
   LOG(INFO) << "Received 'AuthenticateUser' request";
   ScopedTimerReporter timer(TIMER_AUTHENTICATE_USER);
 
-  protos::AccountInfo account_info;
+  authpolicy::ActiveDirectoryAccountInfo account_info;
   ErrorType error = samba_.AuthenticateUser(
       user_principal_name, account_id, password_fd.value(), &account_info);
   if (error == ERROR_NONE) {
-    authpolicy::ActiveDirectoryAccountData account_data;
-    account_data.set_account_id(account_info.object_guid());
-    account_data.set_display_name(account_info.display_name());
-    account_data.set_given_name(account_info.given_name());
-    account_data.set_sam_account_name(account_info.sam_account_name());
     std::string buffer;
-    if (!account_data.SerializeToString(&buffer)) {
+    if (!account_info.SerializeToString(&buffer)) {
       LOG(ERROR) << "Failed to serialize account data";
       error = ERROR_PARSE_FAILED;
     } else {
-      account_data_blob->assign(buffer.begin(), buffer.end());
+      account_info_blob->assign(buffer.begin(), buffer.end());
     }
   }
   PrintError("AuthenticateUser", error);
   metrics_->ReportDBusResult(DBUS_CALL_AUTHENTICATE_USER, error);
+  *int_error = static_cast<int>(error);
+}
+
+void AuthPolicy::GetUserStatus(const std::string& account_id,
+                               int32_t* int_error,
+                               std::vector<uint8_t>* user_status_blob) {
+  LOG(INFO) << "Received 'GetUserStatus' request";
+  ScopedTimerReporter timer(TIMER_GET_USER_STATUS);
+
+  authpolicy::ActiveDirectoryUserStatus user_status;
+  ErrorType error = samba_.GetUserStatus(account_id, &user_status);
+  if (error == ERROR_NONE) {
+    std::string buffer;
+    if (!user_status.SerializeToString(&buffer)) {
+      LOG(ERROR) << "Failed to serialize user status";
+      error = ERROR_PARSE_FAILED;
+    } else {
+      user_status_blob->assign(buffer.begin(), buffer.end());
+    }
+  }
+  PrintError("GetUserStatus", error);
+  metrics_->ReportDBusResult(DBUS_CALL_GET_USER_STATUS, error);
   *int_error = static_cast<int>(error);
 }
 

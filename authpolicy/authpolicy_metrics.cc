@@ -45,6 +45,7 @@ constexpr HistogramParams kTimerHistogramParams[TIMER_COUNT] = {
     {TIMER_KLIST, "TimeToRunKlist", 1, 120000, 50},
     {TIMER_SMBCLIENT, "TimeToRunSmbclient", 1, 120000, 50},
     {TIMER_AUTHENTICATE_USER, "TimeToAuthenticateUser", 1, 600000, 50},
+    {TIMER_GET_USER_STATUS, "TimeToGetUserStatus", 1, 600000, 50},
     {TIMER_JOIN_AD_DOMAIN, "TimeToJoinADDomain", 1, 600000, 50},
     {TIMER_REFRESH_USER_POLICY, "TimeToRefreshUserPolicy", 1, 600000, 50},
     {TIMER_REFRESH_DEVICE_POLICY, "TimeToRefreshDevicePolicy", 1, 600000, 50},
@@ -69,6 +70,7 @@ struct DBusMetricParams {
 // Keep in sync with DBusCallType!
 constexpr DBusMetricParams kDBusMetricParams[DBUS_CALL_COUNT] = {
     {DBUS_CALL_AUTHENTICATE_USER, "ErrorTypeOfAuthenticateUser"},
+    {DBUS_CALL_GET_USER_STATUS, "ErrorTypeOfGetUserStatus"},
     {DBUS_CALL_JOIN_AD_DOMAIN, "ErrorTypeOfJoinADDomain"},
     {DBUS_CALL_REFRESH_USER_POLICY, "ErrorTypeOfRefreshUserPolicy"},
     {DBUS_CALL_REFRESH_DEVICE_POLICY, "ErrorTypeOfRefreshDevicePolicy"},

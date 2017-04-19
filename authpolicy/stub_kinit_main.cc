@@ -9,6 +9,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -80,6 +81,17 @@ bool HasStubAccountPropagated() {
   return false;
 }
 
+// Writes a stub Kerberos credentials cache to the file path given by the
+// kKrb5CCEnvKey environment variable.
+void WriteKrb5CC(const std::string& data) {
+  const std::string krb5cc_path = GetKrb5CCFilePath();
+  CHECK(!krb5cc_path.empty());
+  // Note: base::WriteFile triggers a seccomp failure, so do it old-school.
+  base::ScopedFILE krb5cc_file(fopen(krb5cc_path.c_str(), "w"));
+  CHECK(krb5cc_file);
+  CHECK_EQ(1U, fwrite(data.c_str(), data.size(), 1, krb5cc_file.get()));
+}
+
 // Checks whether the Kerberos configuration file contains the KDC IP.
 bool Krb5ConfContainsKdcIp() {
   std::string krb5_conf_path = GetKrb5ConfFilePath();
@@ -118,6 +130,13 @@ int HandleCommandLine(const std::string& command_line) {
       WriteOutput("", kCannotContactKdc);
       return kExitCodeError;
     }
+    WriteKrb5CC(kValidKrb5CCData);
+    return kExitCodeOk;
+  }
+
+  // Stub expired credentials cache.
+  if (StartsWithCaseSensitive(command_line, kExpiredTgtUserPrincipal)) {
+    WriteKrb5CC(kExpiredKrb5CCData);
     return kExitCodeOk;
   }
 
@@ -136,8 +155,10 @@ int HandleCommandLine(const std::string& command_line) {
     }
 
     // Stub valid password.
-    if (password == kPassword)
+    if (password == kPassword) {
+      WriteKrb5CC(kValidKrb5CCData);
       return kExitCodeOk;
+    }
 
     LOG(ERROR) << "UNHANDLED PASSWORD " << password;
     return kExitCodeError;
@@ -173,6 +194,7 @@ int HandleCommandLine(const std::string& command_line) {
     }
 
     // All other machine principles just pass.
+    WriteKrb5CC(kValidKrb5CCData);
     return kExitCodeOk;
   }
 
