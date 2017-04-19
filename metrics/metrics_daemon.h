@@ -156,13 +156,6 @@ class MetricsDaemon : public brillo::DBusDaemon {
                                          DBusMessage* message,
                                          void* user_data);
 
-  // Updates the daily usage file, if necessary, by adding |seconds|
-  // of active use to the |day| since Epoch. If there's usage data for
-  // day in the past in the usage file, that data is sent to UMA and
-  // removed from the file. If there's already usage data for |day| in
-  // the usage file, the |seconds| are accumulated.
-  void LogDailyUseRecord(int day, int seconds);
-
   // Updates the active use time and logs time between user-space
   // process crashes.
   void ProcessUserCrash();
