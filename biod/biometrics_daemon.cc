@@ -9,11 +9,14 @@
 
 #include <base/bind.h>
 #include <base/memory/ptr_util.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "biod/fake_biometrics_manager.h"
 #include "biod/fpc_biometrics_manager.h"
+#include "biod/proto_bindings/constants.pb.h"
+#include "biod/proto_bindings/messages.pb.h"
 
 namespace biod {
 
@@ -200,50 +203,58 @@ void BiometricsManagerWrapper::OnNameOwnerChanged(dbus::Signal* sig) {
   }
 }
 
-void BiometricsManagerWrapper::OnEnrollScanDone(ScanResult scan_result,
-                                                bool done) {
-  if (enroll_session_dbus_object_) {
-    dbus::Signal enroll_scan_done_signal(
-        kBiometricsManagerInterface, kBiometricsManagerEnrollScanDoneSignal);
-    dbus::MessageWriter writer(&enroll_scan_done_signal);
-    writer.AppendUint32(static_cast<uint32_t>(scan_result));
-    writer.AppendBool(done);
-    dbus_object_.SendSignal(&enroll_scan_done_signal);
-    if (done) {
-      FinalizeEnrollSessionObject();
-      RefreshRecordObjects();
-    }
+void BiometricsManagerWrapper::OnEnrollScanDone(
+    ScanResult scan_result,
+    const BiometricsManager::EnrollStatus& enroll_status) {
+  if (!enroll_session_dbus_object_)
+    return;
+
+  dbus::Signal enroll_scan_done_signal(kBiometricsManagerInterface,
+                                       kBiometricsManagerEnrollScanDoneSignal);
+  dbus::MessageWriter writer(&enroll_scan_done_signal);
+  EnrollScanDone proto;
+  proto.set_scan_result(scan_result);
+  proto.set_done(enroll_status.done);
+  if (enroll_status.percent_complete >= 0) {
+    proto.set_percent_complete(enroll_status.percent_complete);
+  }
+  writer.AppendProtoAsArrayOfBytes(proto);
+  dbus_object_.SendSignal(&enroll_scan_done_signal);
+  if (enroll_status.done) {
+    FinalizeEnrollSessionObject();
+    RefreshRecordObjects();
   }
 }
 
 void BiometricsManagerWrapper::OnAuthScanDone(
     ScanResult scan_result, BiometricsManager::AttemptMatches matches) {
-  if (auth_session_dbus_object_) {
-    dbus::Signal auth_scan_done_signal(kBiometricsManagerInterface,
-                                       kBiometricsManagerAuthScanDoneSignal);
-    dbus::MessageWriter writer(&auth_scan_done_signal);
-    writer.AppendUint32(static_cast<uint32_t>(scan_result));
-    dbus::MessageWriter matches_writer(nullptr);
-    writer.OpenArray("{sao}", &matches_writer);
-    for (const auto& match : matches) {
-      dbus::MessageWriter entry_writer(nullptr);
-      matches_writer.OpenDictEntry(&entry_writer);
-      entry_writer.AppendString(match.first);
-      std::vector<ObjectPath> record_object_paths;
-      record_object_paths.resize(match.second.size());
-      std::transform(match.second.begin(),
-                     match.second.end(),
-                     record_object_paths.begin(),
-                     [this](const std::string& record_id) {
-                       return ObjectPath(object_path_.value() +
-                                         std::string("/Record") + record_id);
-                     });
-      entry_writer.AppendArrayOfObjectPaths(record_object_paths);
-      matches_writer.CloseContainer(&entry_writer);
-    }
-    writer.CloseContainer(&matches_writer);
-    dbus_object_.SendSignal(&auth_scan_done_signal);
+  if (!auth_session_dbus_object_)
+    return;
+
+  dbus::Signal auth_scan_done_signal(kBiometricsManagerInterface,
+                                     kBiometricsManagerAuthScanDoneSignal);
+  dbus::MessageWriter writer(&auth_scan_done_signal);
+  writer.AppendUint32(static_cast<uint32_t>(scan_result));
+  dbus::MessageWriter matches_writer(nullptr);
+  writer.OpenArray("{sao}", &matches_writer);
+  for (const auto& match : matches) {
+    dbus::MessageWriter entry_writer(nullptr);
+    matches_writer.OpenDictEntry(&entry_writer);
+    entry_writer.AppendString(match.first);
+    std::vector<ObjectPath> record_object_paths;
+    record_object_paths.resize(match.second.size());
+    std::transform(match.second.begin(),
+                   match.second.end(),
+                   record_object_paths.begin(),
+                   [this](const std::string& record_id) {
+                     return ObjectPath(object_path_.value() +
+                                       std::string("/Record") + record_id);
+                   });
+    entry_writer.AppendArrayOfObjectPaths(record_object_paths);
+    matches_writer.CloseContainer(&entry_writer);
   }
+  writer.CloseContainer(&matches_writer);
+  dbus_object_.SendSignal(&auth_scan_done_signal);
 }
 
 void BiometricsManagerWrapper::OnSessionFailed() {
@@ -404,8 +415,8 @@ BiometricsDaemon::BiometricsDaemon() {
   object_manager_->RegisterAsync(
       sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
 
-  ObjectPath fake_bio_path =
-      ObjectPath(kBiodServicePath + std::string("/FakeBiometricsManager"));
+  ObjectPath fake_bio_path = ObjectPath(base::StringPrintf(
+      "%s/%s", kBiodServicePath, kFakeBiometricsManagerName));
   biometrics_managers_.emplace_back(base::MakeUnique<BiometricsManagerWrapper>(
       std::unique_ptr<BiometricsManager>(new FakeBiometricsManager),
       object_manager_.get(),
@@ -413,8 +424,8 @@ BiometricsDaemon::BiometricsDaemon() {
       sequencer->GetHandler("Failed to register FakeBiometricsManager object",
                             true)));
 
-  ObjectPath fpc_bio_path =
-      ObjectPath(kBiodServicePath + std::string("/FpcBiometricsManager"));
+  ObjectPath fpc_bio_path = ObjectPath(
+      base::StringPrintf("%s/%s", kBiodServicePath, kFpcBiometricsManagerName));
   std::unique_ptr<BiometricsManager> fpc_bio = FpcBiometricsManager::Create();
   CHECK(fpc_bio);
   biometrics_managers_.emplace_back(base::MakeUnique<BiometricsManagerWrapper>(

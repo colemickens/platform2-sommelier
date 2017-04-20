@@ -15,6 +15,8 @@
 #include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "biod/proto_bindings/constants.pb.h"
+
 namespace biod {
 
 // A BiometricsManager object represents one biometric input device and all of
@@ -146,13 +148,21 @@ class BiometricsManager {
 
   // The callbacks should remain valid as long as this object is valid.
 
+  // Enrollment progress passed to EnrollScanDoneCallback.
+  struct EnrollStatus {
+    // True if enrollment is complete (which may take multiple scans).
+    bool done;
+    // Percentage of the enrollment process that is complete, in the range [0,
+    // 100]. -1 if the sensor library did not provide a percentage.
+    int percent_complete;
+  };
   // Invoked from EnrollSession mode whenever the user attempts a scan. The
-  // first parameter tells whether the scan was successful. If it was
-  // successful, the second parameter MAY be true to indicate that the record
-  // was complete and is now over. However, it make take many successful scans
-  // before this is true. When the record is complete, EnrollSession mode will
-  // automatically be ended.
-  using EnrollScanDoneCallback = base::Callback<void(ScanResult, bool done)>;
+  // first parameter ScanResult tells whether the scan was successful. The
+  // second parameter EnrollStatus indicates whether the enrollment is complete.
+  // It may take multiple successful scans before enrollment is complete.  When
+  // the record is complete, EnrollSession mode will automatically be ended.
+  using EnrollScanDoneCallback =
+      base::Callback<void(ScanResult, const EnrollStatus&)>;
   virtual void SetEnrollScanDoneHandler(
       const EnrollScanDoneCallback& on_enroll_scan_done) = 0;
 

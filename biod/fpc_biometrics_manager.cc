@@ -400,7 +400,7 @@ FpcBiometricsManager::FpcBiometricsManager()
     : sensor_thread_("fpc_sensor"),
       session_weak_factory_(this),
       weak_factory_(this),
-      biod_storage_("FpcBiometricsManager",
+      biod_storage_(kFpcBiometricsManagerName,
                     base::Bind(&FpcBiometricsManager::LoadRecord,
                                base::Unretained(this))) {}
 
@@ -431,9 +431,10 @@ bool FpcBiometricsManager::Init() {
   return true;
 }
 
-void FpcBiometricsManager::OnEnrollScanDone(ScanResult result, bool done) {
+void FpcBiometricsManager::OnEnrollScanDone(
+    ScanResult result, const BiometricsManager::EnrollStatus& enroll_status) {
   if (!on_enroll_scan_done_.is_null())
-    on_enroll_scan_done_.Run(result, done);
+    on_enroll_scan_done_.Run(result, enroll_status);
 }
 
 void FpcBiometricsManager::OnAuthScanDone(
@@ -533,6 +534,9 @@ void FpcBiometricsManager::DoEnrollSessionTask(
       *tmpl = enrollment.Finish();
       return;
     } else {
+      BiometricsManager::EnrollStatus enroll_status = {
+          false, enrollment.GetPercentComplete()};
+
       // Notice we will only ever post the on_enroll_scan_done task on an
       // incomplete enrollment. The complete on_enroll_scan_done task is only
       // posted after the enrollment is added to the enrollments(records) map,
@@ -542,7 +546,7 @@ void FpcBiometricsManager::DoEnrollSessionTask(
           base::Bind(&FpcBiometricsManager::OnEnrollScanDone,
                      base::Unretained(this),
                      scan_result,
-                     false));
+                     enroll_status));
       if (!task_will_run) {
         LOG(ERROR) << "Failed to schedule EnrollScanDone callback";
         return;
@@ -592,7 +596,8 @@ void FpcBiometricsManager::OnEnrollSessionComplete(
     return;
   }
 
-  OnEnrollScanDone(ScanResult::SCAN_RESULT_SUCCESS, true);
+  BiometricsManager::EnrollStatus enroll_status = {true, 100};
+  OnEnrollScanDone(ScanResult::SCAN_RESULT_SUCCESS, enroll_status);
 }
 
 void FpcBiometricsManager::DoAuthSessionTask(

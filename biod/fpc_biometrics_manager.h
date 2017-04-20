@@ -141,7 +141,8 @@ class FpcBiometricsManager : public BiometricsManager {
   // - these will always work even if the underlying callbacks are null
   // - the address of these methods never changes, which is important when
   //   posting tasks onto the main thread from the sensor thread.
-  void OnEnrollScanDone(ScanResult result, bool done);
+  void OnEnrollScanDone(ScanResult result,
+                        const BiometricsManager::EnrollStatus& enroll_status);
   void OnAuthScanDone(ScanResult result,
                       const BiometricsManager::AttemptMatches& matches);
   void OnSessionFailed();

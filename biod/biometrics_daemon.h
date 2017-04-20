@@ -53,41 +53,24 @@ class BiometricsManagerWrapper {
     const std::string& GetUserId() const { return record_->GetUserId(); }
 
    private:
+    bool SetLabel(brillo::ErrorPtr* error, const std::string& new_label);
+    bool Remove(brillo::ErrorPtr* error);
+
     BiometricsManagerWrapper* biometrics_manager_;
     std::unique_ptr<BiometricsManager::Record> record_;
     brillo::dbus_utils::DBusObject dbus_object_;
     dbus::ObjectPath object_path_;
     brillo::dbus_utils::ExportedProperty<std::string> property_label_;
 
-    bool SetLabel(brillo::ErrorPtr* error, const std::string& new_label);
-    bool Remove(brillo::ErrorPtr* error);
-
     DISALLOW_COPY_AND_ASSIGN(RecordWrapper);
   };
-
-  std::unique_ptr<BiometricsManager> biometrics_manager_;
-
-  brillo::dbus_utils::DBusObject dbus_object_;
-  dbus::ObjectPath object_path_;
-  brillo::dbus_utils::ExportedProperty<uint32_t> property_type_;
-  std::vector<std::unique_ptr<RecordWrapper>> records_;
-
-  BiometricsManager::EnrollSession enroll_session_;
-  std::string enroll_session_owner_;
-  dbus::ObjectPath enroll_session_object_path_;
-  std::unique_ptr<brillo::dbus_utils::DBusObject> enroll_session_dbus_object_;
-
-  BiometricsManager::AuthSession auth_session_;
-  std::string auth_session_owner_;
-  dbus::ObjectPath auth_session_object_path_;
-  std::unique_ptr<brillo::dbus_utils::DBusObject> auth_session_dbus_object_;
 
   void FinalizeEnrollSessionObject();
   void FinalizeAuthSessionObject();
 
   void OnNameOwnerChanged(dbus::Signal* signal);
-
-  void OnEnrollScanDone(ScanResult scan_result, bool done);
+  void OnEnrollScanDone(ScanResult scan_result,
+                        const BiometricsManager::EnrollStatus& enroll_status);
   void OnAuthScanDone(ScanResult scan_result,
                       BiometricsManager::AttemptMatches matches);
   void OnSessionFailed();
@@ -106,8 +89,24 @@ class BiometricsManagerWrapper {
                         dbus::ObjectPath* auth_session_path);
 
   bool EnrollSessionCancel(brillo::ErrorPtr* error);
-
   bool AuthSessionEnd(brillo::ErrorPtr* error);
+
+  std::unique_ptr<BiometricsManager> biometrics_manager_;
+
+  brillo::dbus_utils::DBusObject dbus_object_;
+  dbus::ObjectPath object_path_;
+  brillo::dbus_utils::ExportedProperty<uint32_t> property_type_;
+  std::vector<std::unique_ptr<RecordWrapper>> records_;
+
+  BiometricsManager::EnrollSession enroll_session_;
+  std::string enroll_session_owner_;
+  dbus::ObjectPath enroll_session_object_path_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> enroll_session_dbus_object_;
+
+  BiometricsManager::AuthSession auth_session_;
+  std::string auth_session_owner_;
+  dbus::ObjectPath auth_session_object_path_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> auth_session_dbus_object_;
 
   DISALLOW_COPY_AND_ASSIGN(BiometricsManagerWrapper);
 };
@@ -117,6 +116,13 @@ class BiometricsDaemon {
   BiometricsDaemon();
 
  private:
+  // Gets the set of active users since the last time this method was called.
+  bool RetrieveNewActiveSessions(
+      std::unordered_set<std::string>* new_active_users);
+
+  // Read or delete records in memory when users log in or out.
+  void OnSessionStateChanged(dbus::Signal* signal);
+
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<brillo::dbus_utils::ExportedObjectManager> object_manager_;
   std::vector<std::unique_ptr<BiometricsManagerWrapper>> biometrics_managers_;
@@ -125,13 +131,6 @@ class BiometricsDaemon {
   scoped_refptr<dbus::ObjectProxy> session_manager_proxy_;
   // Keep track of currently logged in users.
   std::unordered_set<std::string> current_active_users_;
-
-  // Gets the set of active users since the last time this method was called.
-  bool RetrieveNewActiveSessions(
-      std::unordered_set<std::string>* new_active_users);
-
-  // Read or delete records in memory when users log in or out.
-  void OnSessionStateChanged(dbus::Signal* signal);
 
   DISALLOW_COPY_AND_ASSIGN(BiometricsDaemon);
 };

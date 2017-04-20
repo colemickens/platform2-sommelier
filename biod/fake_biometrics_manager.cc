@@ -75,7 +75,7 @@ FakeBiometricsManager::Record::GetInternal() const {
 FakeBiometricsManager::FakeBiometricsManager()
     : session_weak_factory_(this),
       weak_factory_(this),
-      biod_storage_("FakeBiometricsManager",
+      biod_storage_(kFakeBiometricsManagerName,
                     base::Bind(&FakeBiometricsManager::LoadRecord,
                                base::Unretained(this))) {
   const char kFakeInputPath[] = "/tmp/fake_biometric";
@@ -300,8 +300,10 @@ void FakeBiometricsManager::OnFileCanReadWithoutBlocking(int fd) {
           session_weak_factory_.InvalidateWeakPtrs();
         }
 
-        if (!on_enroll_scan_done_.is_null())
-          on_enroll_scan_done_.Run(res, done);
+        if (!on_enroll_scan_done_.is_null()) {
+          BiometricsManager::EnrollStatus enroll_status = {done > 0, -1};
+          on_enroll_scan_done_.Run(res, enroll_status);
+        }
       }
       return;
     }

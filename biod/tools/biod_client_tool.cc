@@ -25,6 +25,8 @@
 #include <dbus/object_manager.h>
 
 #include "biod/biometrics_manager.h"
+#include "biod/proto_bindings/constants.pb.h"
+#include "biod/proto_bindings/messages.pb.h"
 
 static const char kHelpText[] =
     "biod_client_tool, used to pretend to be a biometrics client, like a lock "
@@ -56,7 +58,7 @@ using EnrollScanDoneCallback = biod::BiometricsManager::EnrollScanDoneCallback;
 using AuthScanDoneCallback = biod::BiometricsManager::AuthScanDoneCallback;
 using SessionFailedCallback = biod::BiometricsManager::SessionFailedCallback;
 
-std::string ToString(BiometricsManagerType type) {
+const char* BiometricsManagerTypeToString(BiometricsManagerType type) {
   switch (type) {
     case BiometricsManagerType::BIOMETRIC_TYPE_UNKNOWN:
       return "Unknown";
@@ -67,7 +69,7 @@ std::string ToString(BiometricsManagerType type) {
   }
 }
 
-std::string ToString(ScanResult result) {
+const char* ScanResultToString(ScanResult result) {
   switch (result) {
     case ScanResult::SCAN_RESULT_SUCCESS:
       return "Success";
@@ -269,22 +271,22 @@ class BiometricsManagerProxy {
 
   void OnEnrollScanDone(dbus::Signal* signal) {
     dbus::MessageReader signal_reader(signal);
-
-    ScanResult scan_result;
-    bool complete;
-    uint8_t percent_complete;
-
-    CHECK(signal_reader.PopUint32(reinterpret_cast<uint32_t*>(&scan_result)));
-    CHECK(signal_reader.PopBool(&complete));
-    if (signal_reader.HasMoreData()) {
-      CHECK(signal_reader.PopByte(&percent_complete));
-      LOG(INFO) << "Biometric Scanned: " << ToString(scan_result) << " "
-                << static_cast<int>(percent_complete) << "% complete";
+    biod::EnrollScanDone proto;
+    if (!signal_reader.PopArrayOfBytesAsProto(&proto)) {
+      LOG(ERROR) << "Unable to decode protocol buffer from "
+                 << biod::kBiometricsManagerEnrollScanDoneSignal << " signal.";
+      return;
+    }
+    if (proto.has_percent_complete()) {
+      LOG(INFO) << "Biometric Scanned: "
+                << ScanResultToString(proto.scan_result()) << " "
+                << proto.percent_complete() << "% complete";
     } else {
-      LOG(INFO) << "Biometric Scanned: " << ToString(scan_result);
+      LOG(INFO) << "Biometric Scanned: "
+                << ScanResultToString(proto.scan_result());
     }
 
-    if (complete) {
+    if (proto.done()) {
       LOG(INFO) << "Biometric enrollment complete";
       OnFinish(true);
     }
@@ -298,7 +300,7 @@ class BiometricsManagerProxy {
     std::vector<std::string> user_ids;
 
     CHECK(signal_reader.PopUint32(reinterpret_cast<uint32_t*>(&scan_result)));
-    LOG(INFO) << "Authentication: " << ToString(scan_result);
+    LOG(INFO) << "Authentication: " << ScanResultToString(scan_result);
 
     CHECK(signal_reader.PopArray(&matches_reader));
     while (matches_reader.HasMoreData()) {
@@ -516,7 +518,8 @@ int DoList(BiodProxy* biod, const std::string& user_id) {
           biometrics_manager_path.substr(sizeof(biod::kBiodServicePath));
     }
     LOG(INFO) << "  " << biometrics_manager_path << " : "
-              << ToString(biometrics_manager->type()) << " Biometric";
+              << BiometricsManagerTypeToString(biometrics_manager->type())
+              << " Biometric";
 
     biometrics_manager_path = biometrics_manager->path().value();
 
