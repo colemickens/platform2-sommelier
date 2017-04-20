@@ -34,6 +34,7 @@ struct BoardConfig {
   uint8_t i2cBusMin;
   uint8_t i2cBusMax;
   uint8_t i2cSlaveAddress;
+  uint32_t flash_size;
   uint32_t flash_address;
   uint32_t fwInfoAddress;
   int32_t bootGPIO;
@@ -48,6 +49,7 @@ static std::map<std::string, struct BoardConfig> boardConfigs = {
       .i2cBusMin = 7,
       .i2cBusMax = 8,
       .i2cSlaveAddress = 0x46,
+      .flash_size = 512 * 1024,
       .flash_address = 0x08000000,
       .fwInfoAddress = 0x80001c4,
       .bootGPIO = 432,
@@ -73,6 +75,7 @@ class IAPFirmwareUpdater {
                      uint8_t slaveAddress);
 
   void Flash(uint32_t address, std::string path, bool verify);
+  void ReadFirmware(std::string filename);
   void GetFirmwareVersion();
   bool EnterBootloader();
   void LeaveBootLoader();
@@ -201,6 +204,15 @@ void IAPFirmwareUpdater::GetFirmwareVersion() {
   LeaveBootLoader();
 }
 
+void IAPFirmwareUpdater::ReadFirmware(std::string filename) {
+  std::vector<uint8_t> firmware = ReadFlash(config.flash_address,
+                                            config.flash_size);
+  WriteToFile(filename, std::string(firmware.begin(), firmware.end()));
+  LOG(INFO) << "Firmware saved to " << filename;
+
+  LeaveBootLoader();
+}
+
 bool IAPFirmwareUpdater::EnterBootloader() {
   // Bootloader (IAP mode) can be entered by first asserting the BOOT pin
   // then toggle the reset pin.
@@ -266,7 +278,7 @@ void IAPFirmwareUpdater::WriteFlash(uint32_t address,
 }
 
 std::vector<uint8_t> IAPFirmwareUpdater::ReadFlash(uint32_t address,
-                                              uint32_t length) {
+                                                   uint32_t length) {
   const uint32_t chunkSize = 200;
   std::vector<uint8_t> data(length, 0);
   uint8_t* buffer = data.data();
@@ -403,6 +415,7 @@ bool IAPFirmwareUpdater::WriteToFile(std::string path, std::string value) {
 
 int main(int argc, const char *argv[]) {
   DEFINE_string(board, "", "Target board to update");
+  DEFINE_string(read, "", "Read current firmware content to file");
   DEFINE_bool(fw_version, false, "Get current firmware version");
   DEFINE_bool(enter_bootloader, false, "Enter bootloader mode");
   DEFINE_bool(leave_bootloader, false, "Leave bootloader mode");
@@ -422,6 +435,8 @@ int main(int argc, const char *argv[]) {
 
   if (FLAGS_fw_version) {
     updater.GetFirmwareVersion();
+  } else if (FLAGS_read.length()) {
+    updater.ReadFirmware(FLAGS_read);
   } else if (FLAGS_enter_bootloader) {
     // Do nothing as the constructor already enters bootloader
   } else if (FLAGS_leave_bootloader) {
