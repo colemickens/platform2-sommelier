@@ -8,6 +8,18 @@
 #include "authpolicy/samba_helper.h"
 #include "authpolicy/samba_interface.h"
 
+namespace {
+
+// See e.g.
+// http://stackoverflow.com/questions/1545630/searching-for-a-objectguid-in-ad.
+const char kGuid[] = "10a9cbf6-3a09-444c-a5f6-95dd0b94e3ae";
+const char kOctetStr[] =
+    "\\F6\\CB\\A9\\10\\09\\3A\\4C\\44\\A5\\F6\\95\\DD\\0B\\94\\E3\\AE";
+
+const char kInvalidGuid[] = "10a9cbf6-3a09-444c-a5f6";
+
+}  // namespace
+
 namespace authpolicy {
 
 class SambaInterfaceTest : public ::testing::Test {
@@ -248,6 +260,16 @@ TEST_F(SambaInterfaceTest, ParseGpFlagsFail_MissingNumber) {
 TEST_F(SambaInterfaceTest, ParseGpFlagsFail_NotTrimmed) {
   EXPECT_FALSE(ParseGpFlags(" 0 GPFLAGS_ALL_ENABLED", &gp_flags_));
   EXPECT_FALSE(ParseGpFlags("0 GPFLAGS_ALL_ENABLED ", &gp_flags_));
+}
+
+// Valid GUID to octet string conversion.
+TEST_F(SambaInterfaceTest, GuidToOctetSuccess) {
+  EXPECT_EQ(kOctetStr, GuidToOctetString(kGuid));
+}
+
+// Invalid GUID to octet string conversion should yield empty string.
+TEST_F(SambaInterfaceTest, GuidToOctetFailInvalidGuid) {
+  EXPECT_EQ("", GuidToOctetString(kInvalidGuid));
 }
 
 }  // namespace authpolicy

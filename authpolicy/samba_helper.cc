@@ -6,9 +6,34 @@
 
 #include <vector>
 
+#include <base/guid.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+
+namespace {
+
+// Map GUID position to octet position for each byte xx.
+// The bytes of the first 3 groups have to be reversed.
+// GUID:
+//   |0    |6 |9|1114|1619|21|24       |34
+//   xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+// Octet:
+//    |1       |10|13|16|19|22|25|28|31            |46
+//   \XX\XX\XX\XX\XX\XX\XX\XX\XX\XX\XX\XX\XX\XX\XX\XX
+// clang-format off
+const int octet_pos_map[16][2] = {  // Maps GUID position to octet position.
+  {0, 10}, {2, 7}, {4, 4}, {6, 1},  // First group, reversed byte order.
+  {9, 16}, {11, 13},                // Second group, reversed byte order.
+  {14, 22}, {16, 19},               // Third group, reversed byte order.
+  {19, 25}, {21, 28},               // Fourth group, same byte order.
+  {24, 31}, {26, 34}, {28, 37}, {30, 40}, {32, 43}, {34, 46}};  // Last group.
+// clang-format on
+
+const size_t kGuidSize = 36;   // 16 bytes, xx each byte, plus 4 '-'.
+const size_t kOctetSize = 48;  // 16 bytes, \XX each byte.
+
+}  // namespace
 
 namespace authpolicy {
 
@@ -84,6 +109,23 @@ bool ParseGpFlags(const std::string& str, int* gp_flags) {
 
 bool Contains(const std::string& str, const std::string& substr) {
   return str.find(substr) != std::string::npos;
+}
+
+std::string GuidToOctetString(const std::string& guid) {
+  std::string octet_str;
+  if (!base::IsValidGUID(guid))
+    return octet_str;
+  DCHECK_EQ(kGuidSize, guid.size());
+
+  octet_str.assign(kOctetSize, '\\');
+  for (size_t n = 0; n < arraysize(octet_pos_map); ++n) {
+    for (int hex_digit = 0; hex_digit < 2; ++hex_digit) {
+      octet_str.at(octet_pos_map[n][1] + hex_digit) =
+          toupper(guid.at(octet_pos_map[n][0] + hex_digit));
+    }
+  }
+
+  return octet_str;
 }
 
 }  // namespace authpolicy

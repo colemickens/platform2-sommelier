@@ -329,12 +329,12 @@ int HandleCommandLine(const std::string& command_line,
         FindSearchValue(command_line, "sAMAccountName");
     std::string object_guid = FindSearchValue(command_line, "objectGUID");
     std::string search_result;
-    if (object_guid == kAccountId) {
+    if (object_guid == GuidToOctetString(kAccountId)) {
       // Search by valid account id, return valid search result for the default
       // user.
       search_result = base::StringPrintf(
           kStubSearchFormat, kGivenName, kDisplayName, kAccountId, kUserName);
-    } else if (object_guid == kBadAccountId) {
+    } else if (object_guid == GuidToOctetString(kBadAccountId)) {
       // Search by invalid account id, return bad "not found" search result.
       search_result = kStubBadSearch;
     } else if (!sam_account_name.empty()) {

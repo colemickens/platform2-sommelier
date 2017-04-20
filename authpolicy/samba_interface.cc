@@ -710,8 +710,11 @@ ErrorType SambaInterface::GetAccountInfo(const std::string& user_name,
 
   // If |account_id| is provided, search by objectGUID only.
   if (!account_id.empty()) {
+    // Searching by objectGUID has to use the octet string representation!
+    // Note: If |account_id| is malformed, the search yields no results.
+    const std::string account_id_octet = GuidToOctetString(account_id);
     std::string search_string =
-        base::StringPrintf("(objectGUID=%s)", account_id.c_str());
+        base::StringPrintf("(objectGUID=%s)", account_id_octet.c_str());
     return SearchAccountInfo(search_string, account_info);
   }
 

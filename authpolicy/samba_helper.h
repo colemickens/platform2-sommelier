@@ -48,6 +48,11 @@ bool ParseGpFlags(const std::string& str, int* gp_flags);
 // Returns true if the string contains the given substring.
 bool Contains(const std::string& str, const std::string& substr);
 
+// Converts a valid GUID (see base::IsValidGUID()) to an octet string, see e.g.
+// http://stackoverflow.com/questions/1545630/searching-for-a-objectguid-in-ad.
+// Returns an empty string on error.
+std::string GuidToOctetString(const std::string& guid);
+
 }  // namespace authpolicy
 
 #endif  // AUTHPOLICY_SAMBA_HELPER_H_
