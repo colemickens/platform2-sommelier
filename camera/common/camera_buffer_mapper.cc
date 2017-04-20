@@ -52,7 +52,7 @@ int CameraBufferMapper::Register(buffer_handle_t buffer) {
       import_data.width = handle->width;
       import_data.height = handle->height;
       import_data.format = handle->drm_format;
-      int num_planes = GetNumPlanes(buffer);
+      uint32_t num_planes = GetNumPlanes(buffer);
       if (num_planes <= 0) {
         return -EINVAL;
       }
@@ -138,8 +138,8 @@ int CameraBufferMapper::Lock(buffer_handle_t buffer,
   if (!handle) {
     return -EINVAL;
   }
-  int num_planes = GetNumPlanes(buffer);
-  if (num_planes <= 0) {
+  uint32_t num_planes = GetNumPlanes(buffer);
+  if (!num_planes) {
     return -EINVAL;
   }
   if (num_planes > 1) {
@@ -166,8 +166,8 @@ int CameraBufferMapper::LockYCbCr(buffer_handle_t buffer,
   if (!handle) {
     return -EINVAL;
   }
-  int num_planes = GetNumPlanes(buffer);
-  if (num_planes <= 0) {
+  uint32_t num_planes = GetNumPlanes(buffer);
+  if (!num_planes) {
     return -EINVAL;
   }
   if (num_planes < 2) {
@@ -176,7 +176,7 @@ int CameraBufferMapper::LockYCbCr(buffer_handle_t buffer,
     return -EINVAL;
   }
 
-  DCHECK_LE(num_planes, 3);
+  DCHECK_LE(num_planes, 3u);
   std::vector<uint8_t*> addr(3);
   for (size_t i = 0; i < num_planes; ++i) {
     void* a = Map(buffer, flags, x, y, width, height, i);
@@ -251,8 +251,8 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
     return MAP_FAILED;
   }
 
-  int num_planes = GetNumPlanes(buffer);
-  if (num_planes <= 0) {
+  uint32_t num_planes = GetNumPlanes(buffer);
+  if (!num_planes) {
     return MAP_FAILED;
   }
   if (!(plane < kMaxPlanes && plane < num_planes &&
@@ -360,10 +360,10 @@ int CameraBufferMapper::Unmap(buffer_handle_t buffer, uint32_t plane) {
 }
 
 // static
-int CameraBufferMapper::GetNumPlanes(buffer_handle_t buffer) {
+uint32_t CameraBufferMapper::GetNumPlanes(buffer_handle_t buffer) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
   if (!handle) {
-    return -EINVAL;
+    return 0;
   }
 
   switch (handle->drm_format) {
@@ -424,7 +424,7 @@ int CameraBufferMapper::GetNumPlanes(buffer_handle_t buffer) {
   }
 
   LOGF(ERROR) << "Unknown format: " << FormatToString(handle->drm_format);
-  return -EINVAL;
+  return 0;
 }
 
 // static

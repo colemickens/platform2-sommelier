@@ -233,8 +233,9 @@ class EXPORTED CameraBufferMapper {
   //    |buffer|: The buffer handle to query.
   //
   // Returns:
-  //    Number of planes on success; -EINVAL if |buffer| is invalid.
-  static int GetNumPlanes(buffer_handle_t buffer);
+  //    Number of planes on success; 0 if |buffer| is invalid or unrecognized
+  //    pixel format.
+  static uint32_t GetNumPlanes(buffer_handle_t buffer);
 
   // Gets the V4L2 pixel format for the buffer handle.
   //
