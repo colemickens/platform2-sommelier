@@ -35,9 +35,8 @@ using std::map;
 using std::string;
 using std::vector;
 
+namespace chromeos_metrics {
 namespace {
-
-#define SAFE_MESSAGE(e) (e.message ? e.message : "unknown error")
 
 const char kCrashReporterInterface[] = "org.chromium.CrashReporter";
 const char kCrashReporterUserCrashSignal[] = "UserCrash";
@@ -65,6 +64,10 @@ const int kMaximumMemorySizeInKB = 32 * 1000 * 1000;
 const char kKernelCrashDetectedFile[] = "/run/kernel-crash-detected";
 const char kUncleanShutdownDetectedFile[] =
     "/run/unclean-shutdown-detected";
+
+constexpr base::TimeDelta kVmlogInterval = base::TimeDelta::FromSeconds(2);
+
+constexpr char kVmlogDir[] = "/var/log/vmlog";
 
 }  // namespace
 
@@ -311,6 +314,9 @@ int MetricsDaemon::OnInit() {
   if (testing_)
     return EX_OK;
 
+  vmlog_writer_.reset(new chromeos_metrics::VmlogWriter(
+      base::FilePath(kVmlogDir),
+      kVmlogInterval));
   bus_->AssertOnDBusThread();
   CHECK(bus_->SetUpAsyncOperations());
 
@@ -566,56 +572,6 @@ bool MetricsDaemon::DiskStatsReadStats(uint64_t* read_sectors,
   }
   IGNORE_EINTR(close(file));
   return success;
-}
-
-bool MetricsDaemon::VmStatsParseStats(const char* stats,
-                                      struct VmstatRecord* record) {
-  // a mapping of string name to field in VmstatRecord and whether we found it
-  struct mapping {
-    const string name;
-    uint64_t* value_p;
-    bool found;
-  } map[] =
-      { { .name = "pgmajfault",
-          .value_p = &record->page_faults_,
-          .found = false },
-        { .name = "pswpin",
-          .value_p = &record->swap_in_,
-          .found = false },
-        { .name = "pswpout",
-          .value_p = &record->swap_out_,
-          .found = false }, };
-
-  // Each line in the file has the form
-  // <ID> <VALUE>
-  // for instance:
-  // nr_free_pages 213427
-  vector<string> lines = base::SplitString(stats, "\n", base::KEEP_WHITESPACE,
-                                           base::SPLIT_WANT_NONEMPTY);
-  for (vector<string>::iterator it = lines.begin();
-       it != lines.end(); ++it) {
-    vector<string> tokens = base::SplitString(*it, " ", base::KEEP_WHITESPACE,
-                                              base::SPLIT_WANT_ALL);
-    if (tokens.size() == 2) {
-      for (unsigned int i = 0; i < sizeof(map)/sizeof(struct mapping); i++) {
-        if (!tokens[0].compare(map[i].name)) {
-          if (!base::StringToUint64(tokens[1], map[i].value_p))
-            return false;
-          map[i].found = true;
-        }
-      }
-    } else {
-      LOG(WARNING) << "unexpected vmstat format";
-    }
-  }
-  // make sure we got all the stats
-  for (unsigned i = 0; i < sizeof(map)/sizeof(struct mapping); i++) {
-    if (map[i].found == false) {
-      LOG(WARNING) << "vmstat missing " << map[i].name;
-      return false;
-    }
-  }
-  return true;
 }
 
 bool MetricsDaemon::VmStatsReadStats(struct VmstatRecord* stats) {
@@ -1220,3 +1176,5 @@ void MetricsDaemon::HandleUpdateStatsTimeout() {
                  base::Unretained(this)),
       base::TimeDelta::FromMilliseconds(kUpdateStatsIntervalMs));
 }
+
+}  // namespace chromeos_metrics

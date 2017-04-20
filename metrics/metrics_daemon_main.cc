@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
 
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
-  MetricsDaemon daemon;
+  chromeos_metrics::MetricsDaemon daemon;
   daemon.Init(FLAGS_uploader_test,
               FLAGS_uploader | FLAGS_uploader_test,
               &metrics_lib,

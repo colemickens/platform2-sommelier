@@ -31,7 +31,8 @@ using ::testing::AnyNumber;
 using ::testing::AtLeast;
 using ::testing::Return;
 using ::testing::StrictMock;
-using chromeos_metrics::PersistentIntegerMock;
+
+namespace chromeos_metrics {
 
 static const char kFakeDiskStatsName[] = "fake-disk-stats";
 static const char kFakeDiskStatsFormat[] =
@@ -315,16 +316,6 @@ TEST_F(MetricsDaemonTest, ProcessMeminfo2) {
   EXPECT_FALSE(daemon_.ProcessMeminfo(meminfo));
 }
 
-TEST_F(MetricsDaemonTest, ParseVmStats) {
-  static char kVmStats[] = "pswpin 1345\npswpout 8896\n"
-    "foo 100\nbar 200\npgmajfault 42\netcetc 300\n";
-  struct MetricsDaemon::VmstatRecord stats;
-  EXPECT_TRUE(daemon_.VmStatsParseStats(kVmStats, &stats));
-  EXPECT_EQ(stats.page_faults_, 42);
-  EXPECT_EQ(stats.swap_in_, 1345);
-  EXPECT_EQ(stats.swap_out_, 8896);
-}
-
 TEST_F(MetricsDaemonTest, ReadFreqToInt) {
   const int fake_scaled_freq = 1666999;
   const int fake_max_freq = 2000000;
@@ -385,6 +376,8 @@ TEST_F(MetricsDaemonTest, SendZramMetrics) {
 
   EXPECT_TRUE(daemon_.ReportZram(base::FilePath(".")));
 }
+
+}  // namespace chromeos_metrics
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

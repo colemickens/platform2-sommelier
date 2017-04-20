@@ -19,9 +19,10 @@
 
 #include "metrics/metrics_library.h"
 #include "metrics/persistent_integer.h"
+#include "metrics/vmlog_writer.h"
 #include "uploader/upload_service.h"
 
-using chromeos_metrics::PersistentInteger;
+namespace chromeos_metrics {
 
 class MetricsDaemon : public brillo::DBusDaemon {
  public:
@@ -67,7 +68,6 @@ class MetricsDaemon : public brillo::DBusDaemon {
   FRIEND_TEST(MetricsDaemonTest, GetHistogramPath);
   FRIEND_TEST(MetricsDaemonTest, IsNewEpoch);
   FRIEND_TEST(MetricsDaemonTest, MessageFilter);
-  FRIEND_TEST(MetricsDaemonTest, ParseVmStats);
   FRIEND_TEST(MetricsDaemonTest, ProcessKernelCrash);
   FRIEND_TEST(MetricsDaemonTest, ProcessMeminfo);
   FRIEND_TEST(MetricsDaemonTest, ProcessMeminfo2);
@@ -114,13 +114,6 @@ class MetricsDaemon : public brillo::DBusDaemon {
     const char* match;       // string to match in output of /proc/meminfo
     MeminfoOp op;            // histogram scale selector, or other operator
     int value;               // value from /proc/meminfo
-  };
-
-  // Record for retrieving and reporting values from /proc/vmstat
-  struct VmstatRecord {
-    uint64_t page_faults_;    // major faults
-    uint64_t swap_in_;        // pages swapped in
-    uint64_t swap_out_;       // pages swapped out
   };
 
   // Metric parameters.
@@ -221,9 +214,6 @@ class MetricsDaemon : public brillo::DBusDaemon {
 
   // Reads cumulative vm statistics from procfs.  Returns true for success.
   bool VmStatsReadStats(struct VmstatRecord* stats);
-
-  // Parse cumulative vm statistics from a C string.  Returns true for success.
-  bool VmStatsParseStats(const char* stats, struct VmstatRecord* record);
 
   // Reports disk and vm statistics.
   void StatsCallback();
@@ -367,6 +357,11 @@ class MetricsDaemon : public brillo::DBusDaemon {
   std::string metrics_file_;
 
   std::unique_ptr<UploadService> upload_service_;
+  std::unique_ptr<VmlogWriter> vmlog_writer_;
+
+  DISALLOW_COPY_AND_ASSIGN(MetricsDaemon);
 };
+
+}  // namespace chromeos_metrics
 
 #endif  // METRICS_METRICS_DAEMON_H_

@@ -29,6 +29,7 @@
         'metrics_daemon.cc',
         'metrics_daemon_main.cc',
         'persistent_integer.cc',
+        'vmlog_writer.cc',
       ],
       'include_dirs': ['.'],
     },
@@ -175,6 +176,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'metrics_daemon_test.cc',
+            'vmlog_writer_test.cc',
           ],
           'include_dirs': ['.'],
         },
