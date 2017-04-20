@@ -69,8 +69,8 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   static const char kModemPseudoDeviceNamePrefix[];
   // Device name prefix for virtual ethernet devices used in testing.
   static const char kEthernetPseudoDeviceNamePrefix[];
-  // Device name prefix for virtual ethernet devices that should be ignored.
-  static const char kIgnoredDeviceNamePrefix[];
+  // Device name prefixes for virtual devices that should be ignored.
+  static const char* const kIgnoredDeviceNamePrefixes[];
   // Time interval for polling for link statistics.
   static const int kRequestLinkStatisticsIntervalMilliseconds;
 

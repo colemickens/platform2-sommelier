@@ -1469,11 +1469,19 @@ TEST_F(DeviceInfoTechnologyTest, Unknown) {
   EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
 }
 
-TEST_F(DeviceInfoTechnologyTest, IgnoredPrefix) {
+TEST_F(DeviceInfoTechnologyTest, IgnoredVeth) {
   test_device_name_ = "veth0";
   // A new uevent file is needed since the device name has changed.
   CreateInfoFile("uevent", "xxx");
   // A device with a "veth" prefix should be ignored.
+  EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
+}
+
+TEST_F(DeviceInfoTechnologyTest, IgnoredVm) {
+  test_device_name_ = "vmtap0";
+  // A new uevent file is needed since the device name has changed.
+  CreateInfoFile("uevent", "xxx");
+  // A device with a "vm" prefix should be ignored.
   EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
 }
 

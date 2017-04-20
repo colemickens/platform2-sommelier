@@ -85,7 +85,6 @@ static string ObjectID(const DeviceInfo* d) { return "(device_info)"; }
 // static
 const char DeviceInfo::kModemPseudoDeviceNamePrefix[] = "pseudomodem";
 const char DeviceInfo::kEthernetPseudoDeviceNamePrefix[] = "pseudoethernet";
-const char DeviceInfo::kIgnoredDeviceNamePrefix[] = "veth";
 const char DeviceInfo::kDeviceInfoRoot[] = "/sys/class/net";
 const char DeviceInfo::kDriverCdcEther[] = "cdc_ether";
 const char DeviceInfo::kDriverCdcNcm[] = "cdc_ncm";
@@ -98,6 +97,10 @@ const char DeviceInfo::kInterfaceDevice[] = "device";
 const char DeviceInfo::kInterfaceDriver[] = "device/driver";
 const char DeviceInfo::kInterfaceTunFlags[] = "tun_flags";
 const char DeviceInfo::kInterfaceType[] = "type";
+const char* const DeviceInfo::kIgnoredDeviceNamePrefixes[] = {
+    "veth",
+    "vm"
+};
 const char* const DeviceInfo::kModemDrivers[] = {
     "gobi",
     "QCUSBNet2k",
@@ -316,10 +319,12 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
   }
 
   // Special case for devices which should be ignored.
-  if (iface_name.find(kIgnoredDeviceNamePrefix) == 0) {
-    SLOG(this, 2) << StringPrintf(
-        "%s: device %s should be ignored", __func__, iface_name.c_str());
-    return Technology::kUnknown;
+  for (const char* prefix : kIgnoredDeviceNamePrefixes) {
+    if (iface_name.find(prefix) == 0) {
+      SLOG(this, 2) << StringPrintf(
+          "%s: device %s should be ignored", __func__, iface_name.c_str());
+      return Technology::kUnknown;
+    }
   }
 
   FilePath driver_path;
