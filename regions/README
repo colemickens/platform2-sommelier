@@ -1,6 +1,6 @@
 This folder contains ChromeOS region database.
 
-The database is created in JSON format and availalbe in
+The database is created in JSON format and available in
  /usr/share/misc/cros-regions.json.
 
 Every ChromeOS device should have a "region" VPD entry that can be directly

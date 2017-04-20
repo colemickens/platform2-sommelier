@@ -115,7 +115,7 @@ report_available_fields() {
   if [ ! -f "${CROS_REGIONS_DATABASE}" ]; then
     return
   fi
-  echo "Availalbe fields in current system:"
+  echo "Available fields in current system:"
   # Region 'us' should be always available.
   jq -c -r ".us|keys[]" "${CROS_REGIONS_DATABASE}" | sed 's/^/\t/'
 }
