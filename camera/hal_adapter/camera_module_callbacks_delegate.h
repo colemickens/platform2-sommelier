@@ -13,11 +13,12 @@
 namespace arc {
 
 class CameraModuleCallbacksDelegate
-    : public internal::MojoInterfaceDelegate<mojom::CameraModuleCallbacks>,
+    : public internal::MojoChannel<mojom::CameraModuleCallbacks>,
       public camera_module_callbacks_t {
  public:
   CameraModuleCallbacksDelegate(
-      mojo::InterfacePtrInfo<mojom::CameraModuleCallbacks> callbacks_ptr_info);
+      mojo::InterfacePtrInfo<mojom::CameraModuleCallbacks> callbacks_ptr_info,
+      scoped_refptr<base::SingleThreadTaskRunner> task_runner);
 
   ~CameraModuleCallbacksDelegate() = default;
 
@@ -32,7 +33,7 @@ class CameraModuleCallbacksDelegate
                                         int new_status,
                                         const base::Callback<void()>& cb);
 
-  DISALLOW_COPY_AND_ASSIGN(CameraModuleCallbacksDelegate);
+  DISALLOW_IMPLICIT_CONSTRUCTORS(CameraModuleCallbacksDelegate);
 };
 
 }  // namespace arc

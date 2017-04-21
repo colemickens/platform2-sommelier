@@ -6,8 +6,6 @@
 
 #include "hal_adapter/arc_camera3_mojo_utils.h"
 
-#include <unordered_map>
-#include <utility>
 #include <vector>
 
 #include <mojo/edk/embedder/embedder.h>

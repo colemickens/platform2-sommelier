@@ -16,12 +16,13 @@ namespace arc {
 class CameraDeviceAdapter;
 
 class Camera3CallbackOpsDelegate
-    : public internal::MojoInterfaceDelegate<mojom::Camera3CallbackOps>,
+    : public internal::MojoChannel<mojom::Camera3CallbackOps>,
       public camera3_callback_ops_t {
  public:
   Camera3CallbackOpsDelegate(
       CameraDeviceAdapter* camera_device_adapter,
-      mojo::InterfacePtrInfo<mojom::Camera3CallbackOps> callback_ops_ptr_info);
+      mojo::InterfacePtrInfo<mojom::Camera3CallbackOps> callback_ops_ptr_info,
+      scoped_refptr<base::SingleThreadTaskRunner> task_runner);
 
   ~Camera3CallbackOpsDelegate() = default;
 
@@ -41,7 +42,7 @@ class Camera3CallbackOpsDelegate
 
   CameraDeviceAdapter* camera_device_adapter_;
 
-  DISALLOW_COPY_AND_ASSIGN(Camera3CallbackOpsDelegate);
+  DISALLOW_IMPLICIT_CONSTRUCTORS(Camera3CallbackOpsDelegate);
 };
 
 }  // end of namespace arc

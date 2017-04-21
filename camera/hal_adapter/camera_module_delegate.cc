@@ -13,9 +13,11 @@
 
 namespace arc {
 
-CameraModuleDelegate::CameraModuleDelegate(CameraHalAdapter* camera_hal_adapter,
-                                           base::Closure quit_cb)
-    : internal::MojoBindingDelegate<mojom::CameraModule>(quit_cb),
+CameraModuleDelegate::CameraModuleDelegate(
+    CameraHalAdapter* camera_hal_adapter,
+    scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+    base::Closure quit_cb)
+    : internal::MojoBinding<mojom::CameraModule>(task_runner, quit_cb),
       camera_hal_adapter_(camera_hal_adapter) {}
 
 CameraModuleDelegate::~CameraModuleDelegate() {}
@@ -23,7 +25,7 @@ CameraModuleDelegate::~CameraModuleDelegate() {}
 void CameraModuleDelegate::OpenDevice(int32_t device_id,
                                       const OpenDeviceCallback& callback) {
   VLOGF_ENTER();
-  DCHECK(thread_checker_.CalledOnValidThread());
+  DCHECK(task_runner_->BelongsToCurrentThread());
   mojom::Camera3DeviceOpsPtr device_ops;
   int32_t result = camera_hal_adapter_->OpenDevice(device_id, &device_ops);
   callback.Run(result, std::move(device_ops));
@@ -32,7 +34,7 @@ void CameraModuleDelegate::OpenDevice(int32_t device_id,
 void CameraModuleDelegate::GetNumberOfCameras(
     const GetNumberOfCamerasCallback& callback) {
   VLOGF_ENTER();
-  DCHECK(thread_checker_.CalledOnValidThread());
+  DCHECK(task_runner_->BelongsToCurrentThread());
   callback.Run(camera_hal_adapter_->GetNumberOfCameras());
 }
 
@@ -40,7 +42,7 @@ void CameraModuleDelegate::GetCameraInfo(
     int32_t device_id,
     const GetCameraInfoCallback& callback) {
   VLOGF_ENTER();
-  DCHECK(thread_checker_.CalledOnValidThread());
+  DCHECK(task_runner_->BelongsToCurrentThread());
   mojom::CameraInfoPtr camera_info;
   int32_t result = camera_hal_adapter_->GetCameraInfo(device_id, &camera_info);
   callback.Run(result, std::move(camera_info));
@@ -50,7 +52,7 @@ void CameraModuleDelegate::SetCallbacks(
     mojom::CameraModuleCallbacksPtr callbacks,
     const SetCallbacksCallback& callback) {
   VLOGF_ENTER();
-  DCHECK(thread_checker_.CalledOnValidThread());
+  DCHECK(task_runner_->BelongsToCurrentThread());
   callback.Run(camera_hal_adapter_->SetCallbacks(std::move(callbacks)));
 }
 

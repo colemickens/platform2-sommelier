@@ -33,8 +33,11 @@ CameraHalAdapter::CameraHalAdapter(camera_module_t* camera_module,
                                    int socket_fd,
                                    base::Closure quit_cb)
     : camera_module_(camera_module),
+      quit_cb_(std::move(quit_cb)),
       socket_fd_(socket_fd),
-      ipc_thread_("Mojo IPC thread") {
+      ipc_thread_("MojoIpcThread"),
+      camera_module_thread_("CameraModuleThread"),
+      camera_module_callbacks_thread_("CameraModuleCallbacksThread") {
   VLOGF_ENTER();
   mojo::edk::Init();
   if (!ipc_thread_.StartWithOptions(
@@ -43,12 +46,20 @@ CameraHalAdapter::CameraHalAdapter(camera_module_t* camera_module,
     return;
   }
   mojo::edk::InitIPCSupport(this, ipc_thread_.task_runner());
-  module_delegate_.reset(new CameraModuleDelegate(this, quit_cb));
 }
 
 CameraHalAdapter::~CameraHalAdapter() {
   VLOGF_ENTER();
+  camera_module_thread_.task_runner()->PostTask(
+      FROM_HERE, base::Bind(&CameraHalAdapter::ResetModuleDelegateOnThread,
+                            base::Unretained(this)));
+  camera_module_callbacks_thread_.task_runner()->PostTask(
+      FROM_HERE, base::Bind(&CameraHalAdapter::ResetCallbacksDelegateOnThread,
+                            base::Unretained(this)));
+  camera_module_thread_.Stop();
+  camera_module_callbacks_thread_.Stop();
   mojo::edk::ShutdownIPCSupport();
+  ipc_thread_.Stop();
 }
 
 bool CameraHalAdapter::Start() {
@@ -93,6 +104,16 @@ bool CameraHalAdapter::Start() {
     return false;
   }
 
+  if (!camera_module_thread_.Start()) {
+    LOGF(ERROR) << "Failed to start CameraModuleThread";
+    return false;
+  }
+  if (!camera_module_callbacks_thread_.Start()) {
+    LOGF(ERROR) << "Failed to start CameraCallbacksThread";
+    return false;
+  }
+  module_delegate_.reset(new CameraModuleDelegate(
+      this, camera_module_thread_.task_runner(), quit_cb_));
   module_delegate_->Bind(std::move(parent_pipe));
 
   VLOGF(1) << "CameraHalAdapter started";
@@ -140,6 +161,10 @@ int32_t CameraHalAdapter::OpenDevice(int32_t device_id,
         device_id);
     device_adapters_[device_id].reset(
         new CameraDeviceAdapter(camera_device, close_callback));
+    if (!device_adapters_[device_id]->Start()) {
+      device_adapters_.erase(device_id);
+      return -ENODEV;
+    }
     *device_ops = device_adapters_.at(device_id)->GetDeviceOpsPtr();
   }
   return 0;
@@ -185,8 +210,10 @@ int32_t CameraHalAdapter::GetCameraInfo(int32_t device_id,
 int32_t CameraHalAdapter::SetCallbacks(
     mojom::CameraModuleCallbacksPtr callbacks) {
   VLOGF_ENTER();
-  callbacks_delegate_.reset(
-      new CameraModuleCallbacksDelegate(callbacks.PassInterface()));
+  DCHECK(!callbacks_delegate_);
+  callbacks_delegate_.reset(new CameraModuleCallbacksDelegate(
+      callbacks.PassInterface(),
+      camera_module_callbacks_thread_.task_runner()));
   return camera_module_->set_callbacks(callbacks_delegate_.get());
 }
 
@@ -208,6 +235,17 @@ void CameraHalAdapter::CloseDevice(int32_t device_id) {
     return;
   }
   device_adapters_.erase(device_id);
+}
+
+void CameraHalAdapter::ResetModuleDelegateOnThread() {
+  DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
+  module_delegate_.reset();
+}
+
+void CameraHalAdapter::ResetCallbacksDelegateOnThread() {
+  DCHECK(
+      camera_module_callbacks_thread_.task_runner()->BelongsToCurrentThread());
+  callbacks_delegate_.reset();
 }
 
 }  // namespace arc

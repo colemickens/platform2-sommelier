@@ -16,9 +16,11 @@
 namespace arc {
 
 CameraModuleCallbacksDelegate::CameraModuleCallbacksDelegate(
-    mojo::InterfacePtrInfo<mojom::CameraModuleCallbacks> callbacks_ptr_info)
-    : internal::MojoInterfaceDelegate<mojom::CameraModuleCallbacks>(
-          std::move(callbacks_ptr_info)) {
+    mojo::InterfacePtrInfo<mojom::CameraModuleCallbacks> callbacks_ptr_info,
+    scoped_refptr<base::SingleThreadTaskRunner> task_runner)
+    : internal::MojoChannel<mojom::CameraModuleCallbacks>(
+          std::move(callbacks_ptr_info),
+          task_runner) {
   camera_module_callbacks_t::camera_device_status_change =
       CameraDeviceStatusChange;
 }
@@ -32,11 +34,11 @@ void CameraModuleCallbacksDelegate::CameraDeviceStatusChange(
       const_cast<CameraModuleCallbacksDelegate*>(
           static_cast<const CameraModuleCallbacksDelegate*>(callbacks));
   auto future = internal::Future<void>::Create(&delegate->relay_);
-  delegate->thread_.task_runner()->PostTask(
+  delegate->task_runner_->PostTask(
       FROM_HERE,
       base::Bind(
           &CameraModuleCallbacksDelegate::CameraDeviceStatusChangeOnThread,
-          base::Unretained(delegate), camera_id, new_status,
+          base::AsWeakPtr(delegate), camera_id, new_status,
           internal::GetFutureCallback(future)));
   future->Wait();
 }
@@ -46,7 +48,7 @@ void CameraModuleCallbacksDelegate::CameraDeviceStatusChangeOnThread(
     int new_status,
     const base::Callback<void()>& cb) {
   VLOGF_ENTER();
-  DCHECK(thread_checker_.CalledOnValidThread());
+  DCHECK(task_runner_->BelongsToCurrentThread());
   interface_ptr_->CameraDeviceStatusChange(
       camera_id, static_cast<mojom::CameraDeviceStatus>(new_status), cb);
 }

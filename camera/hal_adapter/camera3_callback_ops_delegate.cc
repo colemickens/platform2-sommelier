@@ -19,9 +19,11 @@ namespace arc {
 
 Camera3CallbackOpsDelegate::Camera3CallbackOpsDelegate(
     CameraDeviceAdapter* camera_device_adapter,
-    mojo::InterfacePtrInfo<mojom::Camera3CallbackOps> callback_ops_ptr_info)
-    : internal::MojoInterfaceDelegate<mojom::Camera3CallbackOps>(
-          std::move(callback_ops_ptr_info)),
+    mojo::InterfacePtrInfo<mojom::Camera3CallbackOps> callback_ops_ptr_info,
+    scoped_refptr<base::SingleThreadTaskRunner> task_runner)
+    : internal::MojoChannel<mojom::Camera3CallbackOps>(
+          std::move(callback_ops_ptr_info),
+          task_runner),
       camera_device_adapter_(camera_device_adapter) {
   camera3_callback_ops_t::process_capture_result = ProcessCaptureResult;
   camera3_callback_ops_t::notify = Notify;
@@ -36,10 +38,10 @@ void Camera3CallbackOpsDelegate::ProcessCaptureResult(
           static_cast<const Camera3CallbackOpsDelegate*>(ops));
 
   auto future = internal::Future<void>::Create(&delegate->relay_);
-  delegate->thread_.task_runner()->PostTask(
+  delegate->task_runner_->PostTask(
       FROM_HERE,
       base::Bind(&Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread,
-                 base::Unretained(delegate), base::Unretained(result),
+                 base::AsWeakPtr(delegate), base::Unretained(result),
                  internal::GetFutureCallback(future)));
   future->Wait();
 }
@@ -52,9 +54,9 @@ void Camera3CallbackOpsDelegate::Notify(const camera3_callback_ops_t* ops,
           static_cast<const Camera3CallbackOpsDelegate*>(ops));
 
   auto future = internal::Future<void>::Create(&delegate->relay_);
-  delegate->thread_.task_runner()->PostTask(
+  delegate->task_runner_->PostTask(
       FROM_HERE, base::Bind(&Camera3CallbackOpsDelegate::NotifyOnThread,
-                            base::Unretained(delegate), base::Unretained(msg),
+                            base::AsWeakPtr(delegate), base::Unretained(msg),
                             internal::GetFutureCallback(future)));
   future->Wait();
 }
@@ -63,7 +65,7 @@ void Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread(
     const camera3_capture_result_t* result,
     const base::Callback<void()>& cb) {
   VLOGF_ENTER();
-  DCHECK(thread_checker_.CalledOnValidThread());
+  DCHECK(task_runner_->BelongsToCurrentThread());
   interface_ptr_->ProcessCaptureResult(
       camera_device_adapter_->ProcessCaptureResult(result), cb);
 }
@@ -72,7 +74,7 @@ void Camera3CallbackOpsDelegate::NotifyOnThread(
     const camera3_notify_msg_t* msg,
     const base::Callback<void()>& cb) {
   VLOGF_ENTER();
-  DCHECK(thread_checker_.CalledOnValidThread());
+  DCHECK(task_runner_->BelongsToCurrentThread());
   interface_ptr_->Notify(camera_device_adapter_->Notify(msg), cb);
 }
 

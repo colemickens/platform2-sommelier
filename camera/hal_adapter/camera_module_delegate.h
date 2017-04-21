@@ -14,29 +14,29 @@ namespace arc {
 
 class CameraHalAdapter;
 
-class CameraModuleDelegate
-    : public internal::MojoBindingDelegate<mojom::CameraModule> {
+class CameraModuleDelegate final
+    : public internal::MojoBinding<mojom::CameraModule> {
  public:
   CameraModuleDelegate(CameraHalAdapter* camera_hal_adapter,
+                       scoped_refptr<base::SingleThreadTaskRunner> task_runner,
                        base::Closure quit_cb);
 
   ~CameraModuleDelegate();
 
  private:
-  void OpenDevice(int32_t device_id,
-                  const OpenDeviceCallback& callback) override;
+  void OpenDevice(int32_t device_id, const OpenDeviceCallback& callback) final;
 
-  void GetNumberOfCameras(const GetNumberOfCamerasCallback& callback) override;
+  void GetNumberOfCameras(const GetNumberOfCamerasCallback& callback) final;
 
   void GetCameraInfo(int32_t device_id,
-                     const GetCameraInfoCallback& callback) override;
+                     const GetCameraInfoCallback& callback) final;
 
   void SetCallbacks(mojom::CameraModuleCallbacksPtr callbacks,
-                    const SetCallbacksCallback& callback) override;
+                    const SetCallbacksCallback& callback) final;
 
   CameraHalAdapter* camera_hal_adapter_;
 
-  DISALLOW_COPY_AND_ASSIGN(CameraModuleDelegate);
+  DISALLOW_IMPLICIT_CONSTRUCTORS(CameraModuleDelegate);
 };
 
 }  // namespace arc

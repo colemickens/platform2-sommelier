@@ -58,14 +58,27 @@ class CameraHalAdapter : public mojo::edk::ProcessDelegate {
   // Clean up the camera device specified by |device_id| in |device_adapters_|.
   void CloseDevice(int32_t device_id);
 
+  void ResetModuleDelegateOnThread();
+  void ResetCallbacksDelegateOnThread();
+
   // The handle to the camera HAL dlopen()'d on process start.
   camera_module_t* camera_module_;
+
+  // A callback passed to |module_delegate_| to be called to exit the process.
+  base::Closure quit_cb_;
 
   // The unix domain socket used to establish the mojo IPC channel.
   base::ScopedFD socket_fd_;
 
   // Thread used in mojo to send and receive IPC messages.
   base::Thread ipc_thread_;
+
+  // The thread that all camera module functions operate on.
+  base::Thread camera_module_thread_;
+
+  // The thread that all the Mojo communication of camera module callbacks
+  // operate on.
+  base::Thread camera_module_callbacks_thread_;
 
   // The delegate that handles the CameraModule mojo IPC.
   std::unique_ptr<CameraModuleDelegate> module_delegate_;
@@ -79,7 +92,7 @@ class CameraHalAdapter : public mojo::edk::ProcessDelegate {
   // thread (i.e. the mojo IPC handler thread in |module_delegate_|).
   std::map<int32_t, std::unique_ptr<CameraDeviceAdapter>> device_adapters_;
 
-  DISALLOW_COPY_AND_ASSIGN(CameraHalAdapter);
+  DISALLOW_IMPLICIT_CONSTRUCTORS(CameraHalAdapter);
 };
 
 }  // namespace arc

@@ -43,6 +43,10 @@ class CameraDeviceAdapter {
 
   ~CameraDeviceAdapter();
 
+  // Starts the camera device adapter.  This method must be called before all
+  // the other methods are called.
+  bool Start();
+
   // GetDeviceOpsPtr() is called by CameraHalAdapter in OpenDevice() on the mojo
   // IPC handler thread in |module_delegate_|.
 
@@ -99,6 +103,20 @@ class CameraDeviceAdapter {
       base::ScopedFD release_fence,
       std::unique_ptr<camera_buffer_handle_t> buffer);
 
+  void ResetDeviceOpsDelegateOnThread();
+  void ResetCallbackOpsDelegateOnThread();
+
+  // The thread that all the camera3 device ops operate on.
+  base::Thread camera_device_ops_thread_;
+
+  // The thread that all the Mojo communications of camera3 callback ops operate
+  // on.
+  base::Thread camera_callback_ops_thread_;
+
+  // A thread to asynchronously wait for release fences and destroy
+  // corresponding buffer handles.
+  base::Thread fence_sync_thread_;
+
   // The delegate that handles the Camera3DeviceOps mojo IPC.
   std::unique_ptr<Camera3DeviceOpsDelegate> device_ops_delegate_;
 
@@ -110,10 +128,6 @@ class CameraDeviceAdapter {
 
   // The real camera device.
   camera3_device_t* camera_device_;
-
-  // A thread to asynchronously wait for release fences and destroy
-  // corresponding buffer handles.
-  base::Thread fence_sync_thread_;
 
   // A mapping from Andoird HAL for all the configured streams.
   internal::UniqueStreams streams_;
@@ -131,7 +145,7 @@ class CameraDeviceAdapter {
   // A mutex to guard |buffer_handles_|.
   base::Lock buffer_handles_lock_;
 
-  DISALLOW_COPY_AND_ASSIGN(CameraDeviceAdapter);
+  DISALLOW_IMPLICIT_CONSTRUCTORS(CameraDeviceAdapter);
 };
 
 }  // namespace arc

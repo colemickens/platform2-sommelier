@@ -27,15 +27,40 @@ namespace arc {
 
 CameraDeviceAdapter::CameraDeviceAdapter(camera3_device_t* camera_device,
                                          base::Callback<void()> close_callback)
-    : close_callback_(close_callback),
-      camera_device_(camera_device),
-      fence_sync_thread_("Fence sync thread") {
+    : camera_device_ops_thread_("CameraDeviceOpsThread"),
+      camera_callback_ops_thread_("CameraCallbackOpsThread"),
+      fence_sync_thread_("FenceSyncThread"),
+      close_callback_(close_callback),
+      camera_device_(camera_device) {
   VLOGF_ENTER() << ":" << camera_device_;
-  device_ops_delegate_.reset(new Camera3DeviceOpsDelegate(this));
 }
 
 CameraDeviceAdapter::~CameraDeviceAdapter() {
   VLOGF_ENTER() << ":" << camera_device_;
+  camera_device_ops_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&CameraDeviceAdapter::ResetDeviceOpsDelegateOnThread,
+                 base::Unretained(this)));
+  camera_callback_ops_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&CameraDeviceAdapter::ResetCallbackOpsDelegateOnThread,
+                 base::Unretained(this)));
+  camera_device_ops_thread_.Stop();
+  camera_callback_ops_thread_.Stop();
+}
+
+bool CameraDeviceAdapter::Start() {
+  if (!camera_device_ops_thread_.Start()) {
+    LOGF(ERROR) << "Failed to start CameraDeviceOpsThread";
+    return false;
+  }
+  if (!camera_callback_ops_thread_.Start()) {
+    LOGF(ERROR) << "Failed to start CameraCallbackOpsThread";
+    return false;
+  }
+  device_ops_delegate_.reset(new Camera3DeviceOpsDelegate(
+      this, camera_device_ops_thread_.task_runner()));
+  return true;
 }
 
 mojom::Camera3DeviceOpsPtr CameraDeviceAdapter::GetDeviceOpsPtr() {
@@ -45,12 +70,14 @@ mojom::Camera3DeviceOpsPtr CameraDeviceAdapter::GetDeviceOpsPtr() {
 int32_t CameraDeviceAdapter::Initialize(
     mojom::Camera3CallbackOpsPtr callback_ops) {
   VLOGF_ENTER();
+  DCHECK(!callback_ops_delegate_);
   if (!fence_sync_thread_.Start()) {
     LOGF(ERROR) << "Fence sync thread failed to start";
     return -ENODEV;
   }
-  callback_ops_delegate_.reset(
-      new Camera3CallbackOpsDelegate(this, callback_ops.PassInterface()));
+  callback_ops_delegate_.reset(new Camera3CallbackOpsDelegate(
+      this, callback_ops.PassInterface(),
+      camera_callback_ops_thread_.task_runner()));
   return camera_device_->ops->initialize(camera_device_,
                                          callback_ops_delegate_.get());
 }
@@ -406,6 +433,16 @@ void CameraDeviceAdapter::RemoveBufferOnFenceSyncThread(
                    base::Unretained(this), base::Passed(&release_fence),
                    base::Passed(&buffer)));
   }
+}
+
+void CameraDeviceAdapter::ResetDeviceOpsDelegateOnThread() {
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
+  device_ops_delegate_.reset();
+}
+
+void CameraDeviceAdapter::ResetCallbackOpsDelegateOnThread() {
+  DCHECK(camera_callback_ops_thread_.task_runner()->BelongsToCurrentThread());
+  callback_ops_delegate_.reset();
 }
 
 }  // namespace arc

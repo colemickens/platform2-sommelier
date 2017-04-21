@@ -14,31 +14,33 @@ namespace arc {
 
 class CameraDeviceAdapter;
 
-class Camera3DeviceOpsDelegate
-    : public internal::MojoBindingDelegate<mojom::Camera3DeviceOps> {
+class Camera3DeviceOpsDelegate final
+    : public internal::MojoBinding<mojom::Camera3DeviceOps> {
  public:
-  explicit Camera3DeviceOpsDelegate(CameraDeviceAdapter* camera_device_adapter);
+  Camera3DeviceOpsDelegate(
+      CameraDeviceAdapter* camera_device_adapter,
+      scoped_refptr<base::SingleThreadTaskRunner> task_runner);
 
   ~Camera3DeviceOpsDelegate();
 
  private:
   void Initialize(mojom::Camera3CallbackOpsPtr callback_ops,
-                  const InitializeCallback& callback) override;
+                  const InitializeCallback& callback) final;
 
   void ConfigureStreams(mojom::Camera3StreamConfigurationPtr config,
-                        const ConfigureStreamsCallback& callback) override;
+                        const ConfigureStreamsCallback& callback) final;
 
   void ConstructDefaultRequestSettings(
       mojom::Camera3RequestTemplate type,
-      const ConstructDefaultRequestSettingsCallback& callback) override;
+      const ConstructDefaultRequestSettingsCallback& callback) final;
 
   void ProcessCaptureRequest(
       mojom::Camera3CaptureRequestPtr request,
-      const ProcessCaptureRequestCallback& callback) override;
+      const ProcessCaptureRequestCallback& callback) final;
 
-  void Dump(mojo::ScopedHandle fd, const DumpCallback& callback) override;
+  void Dump(mojo::ScopedHandle fd, const DumpCallback& callback) final;
 
-  void Flush(const FlushCallback& callback) override;
+  void Flush(const FlushCallback& callback) final;
 
   void RegisterBuffer(uint64_t buffer_id,
                       mojom::Camera3DeviceOps::BufferType type,
@@ -49,13 +51,13 @@ class Camera3DeviceOpsDelegate
                       uint32_t height,
                       mojo::Array<uint32_t> strides,
                       mojo::Array<uint32_t> offsets,
-                      const RegisterBufferCallback& callback) override;
+                      const RegisterBufferCallback& callback) final;
 
-  void Close(const CloseCallback& callback) override;
+  void Close(const CloseCallback& callback) final;
 
   CameraDeviceAdapter* camera_device_adapter_;
 
-  DISALLOW_COPY_AND_ASSIGN(Camera3DeviceOpsDelegate);
+  DISALLOW_IMPLICIT_CONSTRUCTORS(Camera3DeviceOpsDelegate);
 };
 
 }  // namespace arc
