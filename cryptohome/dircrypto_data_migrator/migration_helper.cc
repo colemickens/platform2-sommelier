@@ -19,6 +19,7 @@
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
+#include <base/timer/elapsed_timer.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "cryptohome/cryptohome_metrics.h"
@@ -76,6 +77,7 @@ MigrationHelper::~MigrationHelper() {}
 bool MigrationHelper::Migrate(const base::FilePath& from,
                               const base::FilePath& to,
                               const ProgressCallback& progress_callback) {
+  base::ElapsedTimer timer;
   bool resumed = IsMigrationStarted();
   DircryptoMigrationEndStatus failed_status;
   DircryptoMigrationEndStatus finished_status;
@@ -141,6 +143,8 @@ bool MigrationHelper::Migrate(const base::FilePath& from,
     return false;
   }
   ReportTimerStart(kDircryptoMigrationTimer);
+  LOG(INFO) << "Preparation took " << timer.Elapsed().InMilliseconds()
+            << " ms.";
   if (!MigrateDir(from,
                   to,
                   base::FilePath(""),
@@ -155,6 +159,10 @@ bool MigrationHelper::Migrate(const base::FilePath& from,
   // One more progress update to say that we've hit 100%
   ReportStatus(DIRCRYPTO_MIGRATION_IN_PROGRESS);
   ReportDircryptoMigrationEndStatus(finished_status);
+  const int elapsed_ms = timer.Elapsed().InMilliseconds();
+  const int speed_kb_per_s = elapsed_ms ? (total_byte_count_ / elapsed_ms) : 0;
+  LOG(INFO) << "Migrated " << total_byte_count_ << " bytes in " <<  elapsed_ms
+            << " ms at " <<  speed_kb_per_s << " KB/s.";
   return true;
 }
 
@@ -166,6 +174,7 @@ bool MigrationHelper::IsMigrationStarted() const {
 void MigrationHelper::CalculateDataToMigrate(const base::FilePath& from) {
   total_byte_count_ = 0;
   migrated_byte_count_ = 0;
+  int n_files = 0, n_dirs = 0, n_symlinks = 0;
   std::unique_ptr<FileEnumerator> enumerator(platform_->GetFileEnumerator(
       from,
       true /* recursive */,
@@ -175,7 +184,17 @@ void MigrationHelper::CalculateDataToMigrate(const base::FilePath& from) {
        entry = enumerator->Next()) {
     const FileEnumerator::FileInfo& info = enumerator->GetInfo();
     total_byte_count_ += info.GetSize();
+
+    if (S_ISREG(info.stat().st_mode))
+      ++n_files;
+    if (S_ISDIR(info.stat().st_mode))
+      ++n_dirs;
+    if (S_ISLNK(info.stat().st_mode))
+      ++n_symlinks;
   }
+  LOG(INFO) << "Number of files: " << n_files;
+  LOG(INFO) << "Number of directories: " << n_dirs;
+  LOG(INFO) << "Number of symlinks: " << n_symlinks;
 }
 
 void MigrationHelper::IncrementMigratedBytes(uint64_t bytes) {
