@@ -18,8 +18,7 @@ class CameraModuleDelegate final
     : public internal::MojoBinding<mojom::CameraModule> {
  public:
   CameraModuleDelegate(CameraHalAdapter* camera_hal_adapter,
-                       scoped_refptr<base::SingleThreadTaskRunner> task_runner,
-                       base::Closure quit_cb);
+                       scoped_refptr<base::SingleThreadTaskRunner> task_runner);
 
   ~CameraModuleDelegate();
 

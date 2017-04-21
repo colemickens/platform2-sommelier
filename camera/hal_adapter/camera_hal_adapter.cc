@@ -6,21 +6,12 @@
 
 #include "hal_adapter/camera_hal_adapter.h"
 
-#include <fcntl.h>
-
-#include <deque>
 #include <utility>
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/logging.h>
-#include <base/posix/eintr_wrapper.h>
 #include <base/threading/thread_task_runner_handle.h>
-#include <mojo/edk/embedder/embedder.h>
-#include <mojo/edk/embedder/platform_channel_pair.h>
-#include <mojo/edk/embedder/platform_channel_utils_posix.h>
-#include <mojo/edk/embedder/platform_handle_vector.h>
-#include <mojo/edk/embedder/scoped_platform_handle.h>
 
 #include "arc/common.h"
 #include "hal_adapter/arc_camera3_mojo_utils.h"
@@ -30,23 +21,21 @@
 
 namespace arc {
 
-CameraHalAdapter::CameraHalAdapter(camera_module_t* camera_module,
-                                   int socket_fd,
-                                   base::Closure quit_cb)
+namespace {
+
+// A special id used in ResetModuleDelegateOnThread and
+// ResetCallbacksDelegateOnThread to specify all the entries present in the
+// |module_delegates_| and |callbacks_delegates_| maps.
+const uint32_t kIdAll = 0xFFFFFFFF;
+
+}  // namespace
+
+CameraHalAdapter::CameraHalAdapter(camera_module_t* camera_module)
     : camera_module_(camera_module),
-      quit_cb_(std::move(quit_cb)),
-      socket_fd_(socket_fd),
-      ipc_thread_("MojoIpcThread"),
       camera_module_thread_("CameraModuleThread"),
-      camera_module_callbacks_thread_("CameraModuleCallbacksThread") {
+      camera_module_callbacks_thread_("CameraModuleCallbacksThread"),
+      module_id_(0) {
   VLOGF_ENTER();
-  mojo::edk::Init();
-  if (!ipc_thread_.StartWithOptions(
-          base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
-    LOGF(ERROR) << "Mojo IPC thread failed to start";
-    return;
-  }
-  mojo::edk::InitIPCSupport(this, ipc_thread_.task_runner());
   camera_module_callbacks_t::camera_device_status_change =
       CameraDeviceStatusChange;
 }
@@ -55,58 +44,16 @@ CameraHalAdapter::~CameraHalAdapter() {
   VLOGF_ENTER();
   camera_module_thread_.task_runner()->PostTask(
       FROM_HERE, base::Bind(&CameraHalAdapter::ResetModuleDelegateOnThread,
-                            base::Unretained(this)));
+                            base::Unretained(this), kIdAll));
   camera_module_callbacks_thread_.task_runner()->PostTask(
       FROM_HERE, base::Bind(&CameraHalAdapter::ResetCallbacksDelegateOnThread,
-                            base::Unretained(this)));
+                            base::Unretained(this), kIdAll));
   camera_module_thread_.Stop();
   camera_module_callbacks_thread_.Stop();
-  mojo::edk::ShutdownIPCSupport();
-  ipc_thread_.Stop();
 }
 
 bool CameraHalAdapter::Start() {
-  if (!socket_fd_.is_valid()) {
-    LOGF(ERROR) << "Invalid socket fd: " << socket_fd_.get();
-    return false;
-  }
-  mojo::edk::ScopedPlatformHandle handle(
-      mojo::edk::PlatformHandle(socket_fd_.release()));
-
-  // Make socket non-blocking.
-  int flags = HANDLE_EINTR(fcntl(handle.get().handle, F_GETFL));
-  if (flags == -1) {
-    PLOG(ERROR) << "fcntl(F_GETFL)";
-    return false;
-  }
-  if (HANDLE_EINTR(fcntl(handle.get().handle, F_SETFL, flags | O_NONBLOCK)) ==
-      -1) {
-    PLOG(ERROR) << "fcntl(F_SETFL) failed to enable O_NONBLOCK";
-    return false;
-  }
-
-  // Set up mojo connection to child.
-  mojo::edk::PlatformChannelPair channel_pair;
-  mojo::edk::ChildProcessLaunched(0x0, channel_pair.PassServerHandle());
-
-  mojo::edk::ScopedPlatformHandleVectorPtr handles(
-      new mojo::edk::PlatformHandleVector(
-          {channel_pair.PassClientHandle().release()}));
-
-  std::string token = mojo::edk::GenerateRandomToken();
-  LOGF(INFO) << "Generated token: " << token;
-  mojo::ScopedMessagePipeHandle parent_pipe =
-      mojo::edk::CreateParentMessagePipe(token);
-
-  struct iovec iov = {const_cast<char*>(token.c_str()), token.length()};
-  ssize_t result = mojo::edk::PlatformChannelSendmsgWithHandles(
-      handle.get(), &iov, 1, handles->data(), handles->size());
-  if (result == -1) {
-    LOGF(ERROR) << "PlatformChannelSendmsgWithHandles failed: "
-                << strerror(errno);
-    return false;
-  }
-
+  VLOGF_ENTER();
   if (!camera_module_thread_.Start()) {
     LOGF(ERROR) << "Failed to start CameraModuleThread";
     return false;
@@ -115,16 +62,23 @@ bool CameraHalAdapter::Start() {
     LOGF(ERROR) << "Failed to start CameraCallbacksThread";
     return false;
   }
-  module_delegate_.reset(new CameraModuleDelegate(
-      this, camera_module_thread_.task_runner(), quit_cb_));
-  module_delegate_->Bind(std::move(parent_pipe));
-
   VLOGF(1) << "CameraHalAdapter started";
   return true;
 }
 
-void CameraHalAdapter::OnShutdownComplete() {
-  ipc_thread_.Stop();
+void CameraHalAdapter::OpenCameraHal(
+    mojom::CameraModuleRequest camera_module_request) {
+  VLOGF_ENTER();
+  auto module_delegate = base::MakeUnique<CameraModuleDelegate>(
+      this, camera_module_thread_.task_runner());
+  uint32_t module_id = module_id_++;
+  module_delegate->Bind(
+      camera_module_request.PassMessagePipe(),
+      base::Bind(&CameraHalAdapter::ResetModuleDelegateOnThread,
+                 base::Unretained(this), module_id));
+  base::AutoLock l(module_delegates_lock_);
+  module_delegates_[module_id] = std::move(module_delegate);
+  VLOGF(1) << "CameraModule " << module_id << " connected";
 }
 
 // Callback interface for camera_module_t APIs.
@@ -210,11 +164,23 @@ int32_t CameraHalAdapter::GetCameraInfo(int32_t device_id,
 int32_t CameraHalAdapter::SetCallbacks(
     mojom::CameraModuleCallbacksPtr callbacks) {
   VLOGF_ENTER();
-  DCHECK(!callbacks_delegate_);
-  callbacks_delegate_.reset(new CameraModuleCallbacksDelegate(
+  auto callbacks_delegate = base::MakeUnique<CameraModuleCallbacksDelegate>(
+      camera_module_callbacks_thread_.task_runner());
+  uint32_t callbacks_id = callbacks_id_++;
+  callbacks_delegate->Bind(
       callbacks.PassInterface(),
-      camera_module_callbacks_thread_.task_runner()));
-  return camera_module_->set_callbacks(this);
+      base::Bind(&CameraHalAdapter::ResetCallbacksDelegateOnThread,
+                 base::Unretained(this), callbacks_id));
+  base::AutoLock l(callbacks_delegates_lock_);
+  if (callbacks_delegates_.empty()) {
+    int32_t ret = camera_module_->set_callbacks(this);
+    if (ret) {
+      LOGF(ERROR) << "Failed to set camera module callbacks";
+      return ret;
+    }
+  }
+  callbacks_delegates_[callbacks_id] = std::move(callbacks_delegate);
+  return 0;
 }
 
 void CameraHalAdapter::CloseDeviceCallback(
@@ -233,7 +199,10 @@ void CameraHalAdapter::CameraDeviceStatusChange(
   VLOGF_ENTER();
   CameraHalAdapter* self = const_cast<CameraHalAdapter*>(
       static_cast<const CameraHalAdapter*>(callbacks));
-  self->callbacks_delegate_->CameraDeviceStatusChange(camera_id, new_status);
+  base::AutoLock l(self->callbacks_delegates_lock_);
+  for (auto& it : self->callbacks_delegates_) {
+    it.second->CameraDeviceStatusChange(camera_id, new_status);
+  }
 }
 
 void CameraHalAdapter::CloseDevice(int32_t device_id) {
@@ -250,15 +219,27 @@ void CameraHalAdapter::CloseDevice(int32_t device_id) {
   device_adapters_.erase(device_id);
 }
 
-void CameraHalAdapter::ResetModuleDelegateOnThread() {
+void CameraHalAdapter::ResetModuleDelegateOnThread(uint32_t module_id) {
+  VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  module_delegate_.reset();
+  base::AutoLock l(module_delegates_lock_);
+  if (module_id == kIdAll) {
+    module_delegates_.clear();
+  } else {
+    module_delegates_.erase(module_id);
+  }
 }
 
-void CameraHalAdapter::ResetCallbacksDelegateOnThread() {
+void CameraHalAdapter::ResetCallbacksDelegateOnThread(uint32_t callbacks_id) {
+  VLOGF_ENTER();
   DCHECK(
       camera_module_callbacks_thread_.task_runner()->BelongsToCurrentThread());
-  callbacks_delegate_.reset();
+  base::AutoLock l(callbacks_delegates_lock_);
+  if (callbacks_id == kIdAll) {
+    callbacks_delegates_.clear();
+  } else {
+    callbacks_delegates_.erase(callbacks_id);
+  }
 }
 
 }  // namespace arc

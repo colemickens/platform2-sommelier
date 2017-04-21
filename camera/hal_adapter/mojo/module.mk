@@ -12,9 +12,10 @@ MOJOM_BINDINGS_GENERATOR := \
 MOJOM_FILES := \
 	hal_adapter/mojo/arc_camera3.mojom \
 	hal_adapter/mojo/arc_camera3_metadata.mojom \
+	hal_adapter/mojo/arc_camera3_service.mojom \
 	hal_adapter/mojo/camera_metadata_tags.mojom
-GENERATED_SOURCES := $(patsubst %.mojom,%.mojom.cc,$(MOJOM_FILES))
-$(GENERATED_SOURCES):
+
+hal_adapter/mojo/mojo_templates:
 	$(QUIET)echo generate_mojo_templates: $(GEN_MOJO_TEMPLATES_DIR)
 	$(QUIET)rm -rf $(GEN_MOJO_TEMPLATES_DIR)
 	$(QUIET)mkdir -p $(GEN_MOJO_TEMPLATES_DIR)
@@ -27,9 +28,6 @@ $(GENERATED_SOURCES):
 		-o $(SRC) \
 		--bytecode_path $(abspath $(GEN_MOJO_TEMPLATES_DIR)) \
 		-g c++
-
-hal_adapter/mojo/mojo_templates: \
-	$(MOJOM_BINDINGS_GENERATOR) $(GENERATED_SOURCES)
 
 clean: CLEAN($(patsubst %,%.h,$(MOJOM_FILES)))
 clean: CLEAN($(patsubst %,%.cc,$(MOJOM_FILES)))

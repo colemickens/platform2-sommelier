@@ -16,7 +16,6 @@ class CameraModuleCallbacksDelegate
     : public internal::MojoChannel<mojom::CameraModuleCallbacks> {
  public:
   CameraModuleCallbacksDelegate(
-      mojo::InterfacePtrInfo<mojom::CameraModuleCallbacks> callbacks_ptr_info,
       scoped_refptr<base::SingleThreadTaskRunner> task_runner);
 
   ~CameraModuleCallbacksDelegate() = default;

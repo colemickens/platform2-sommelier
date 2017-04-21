@@ -13,7 +13,6 @@
 
 #include <base/single_thread_task_runner.h>
 #include <base/threading/thread.h>
-#include <mojo/edk/embedder/process_delegate.h>
 
 #include "hal_adapter/mojo/arc_camera3.mojom.h"
 #include "hardware/camera3.h"
@@ -26,20 +25,18 @@ class CameraModuleDelegate;
 
 class CameraModuleCallbacksDelegate;
 
-class CameraHalAdapter : public mojo::edk::ProcessDelegate,
-                         public camera_module_callbacks_t {
+class CameraHalAdapter : public camera_module_callbacks_t {
  public:
-  CameraHalAdapter(camera_module_t* camera_module,
-                   int socket_fd,
-                   base::Closure quit_cb);
+  explicit CameraHalAdapter(camera_module_t* camera_module);
 
   ~CameraHalAdapter();
 
-  // Create a mojo connection to container.
+  // Starts the camera HAL adapter.  This method must be called before calling
+  // any other methods.
   bool Start();
 
-  // ProcessDelegate implementation.
-  void OnShutdownComplete() override;
+  // Creates the CameraModule Mojo connection from |camera_module_request|.
+  void OpenCameraHal(mojom::CameraModuleRequest camera_module_request);
 
   // Callback interface for CameraModuleDelegate.
   // These methods are callbacks for |module_delegate_| and are executed on
@@ -69,20 +66,11 @@ class CameraHalAdapter : public mojo::edk::ProcessDelegate,
   // Clean up the camera device specified by |device_id| in |device_adapters_|.
   void CloseDevice(int32_t device_id);
 
-  void ResetModuleDelegateOnThread();
-  void ResetCallbacksDelegateOnThread();
+  void ResetModuleDelegateOnThread(uint32_t module_id);
+  void ResetCallbacksDelegateOnThread(uint32_t callbacks_id);
 
   // The handle to the camera HAL dlopen()'d on process start.
   camera_module_t* camera_module_;
-
-  // A callback passed to |module_delegate_| to be called to exit the process.
-  base::Closure quit_cb_;
-
-  // The unix domain socket used to establish the mojo IPC channel.
-  base::ScopedFD socket_fd_;
-
-  // Thread used in mojo to send and receive IPC messages.
-  base::Thread ipc_thread_;
 
   // The thread that all camera module functions operate on.
   base::Thread camera_module_thread_;
@@ -91,11 +79,25 @@ class CameraHalAdapter : public mojo::edk::ProcessDelegate,
   // operate on.
   base::Thread camera_module_callbacks_thread_;
 
-  // The delegate that handles the CameraModule mojo IPC.
-  std::unique_ptr<CameraModuleDelegate> module_delegate_;
+  // The delegates that handle the CameraModule mojo IPC.  The key of the map is
+  // got from |module_id_|.
+  std::map<uint32_t, std::unique_ptr<CameraModuleDelegate>> module_delegates_;
 
-  // The delegate that handles the CameraModuleCallbacks mojo IPC.
-  std::unique_ptr<CameraModuleCallbacksDelegate> callbacks_delegate_;
+  // The delegate that handles the CameraModuleCallbacks mojo IPC.  The key of
+  // the map is got from |callbacks_id_|.
+  std::map<uint32_t, std::unique_ptr<CameraModuleCallbacksDelegate>>
+      callbacks_delegates_;
+
+  // Protects |module_delegates_|.
+  base::Lock module_delegates_lock_;
+  // Protects |callbacks_delegates_|.
+  base::Lock callbacks_delegates_lock_;
+
+  // Strictly increasing integers used as the key for new CameraModuleDelegate
+  // and CameraModuleCallbacksDelegate instances in |module_delegates_| and
+  // |callback_delegates_|.
+  uint32_t module_id_;
+  uint32_t callbacks_id_;
 
   // The handles to the opened camera devices.  |device_adapters_| is accessed
   // only in OpenDevice() and CloseDevice().  In order to do lock-free access to

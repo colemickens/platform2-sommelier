@@ -62,14 +62,19 @@ internal::CameraMetadataUniquePtr DeserializeCameraMetadata(
 template <typename T>
 class MojoChannel : public base::SupportsWeakPtr<MojoChannel<T>> {
  public:
-  MojoChannel(mojo::InterfacePtrInfo<T> interface_ptr_info,
-              scoped_refptr<base::SingleThreadTaskRunner> task_runner)
+  explicit MojoChannel(scoped_refptr<base::SingleThreadTaskRunner> task_runner)
       : task_runner_(task_runner) {
+    VLOGF_ENTER();
+  }
+
+  void Bind(mojo::InterfacePtrInfo<T> interface_ptr_info,
+            const base::Closure& connection_error_handler) {
     VLOGF_ENTER();
     task_runner_->PostTask(
         FROM_HERE,
         base::Bind(&MojoChannel<T>::BindOnThread, base::AsWeakPtr(this),
-                   base::Passed(&interface_ptr_info)));
+                   base::Passed(&interface_ptr_info),
+                   connection_error_handler));
   }
 
   ~MojoChannel() {
@@ -99,7 +104,8 @@ class MojoChannel : public base::SupportsWeakPtr<MojoChannel<T>> {
   CancellationRelay relay_;
 
  private:
-  void BindOnThread(mojo::InterfacePtrInfo<T> interface_ptr_info) {
+  void BindOnThread(mojo::InterfacePtrInfo<T> interface_ptr_info,
+                    const base::Closure& connection_error_handler) {
     VLOGF_ENTER();
     DCHECK(task_runner_->BelongsToCurrentThread());
     interface_ptr_ = mojo::MakeProxy(std::move(interface_ptr_info));
@@ -107,18 +113,9 @@ class MojoChannel : public base::SupportsWeakPtr<MojoChannel<T>> {
       LOGF(ERROR) << "Failed to bind interface_ptr_";
       return;
     }
-    interface_ptr_.set_connection_error_handler(base::Bind(
-        &MojoChannel<T>::OnIpcConnectionLostOnThread, base::AsWeakPtr(this)));
+    interface_ptr_.set_connection_error_handler(connection_error_handler);
     interface_ptr_.QueryVersion(base::Bind(
         &MojoChannel<T>::OnQueryVersionOnThread, base::AsWeakPtr(this)));
-  }
-
-  void OnIpcConnectionLostOnThread() {
-    VLOGF_ENTER();
-    DCHECK(task_runner_->BelongsToCurrentThread());
-    LOGF(INFO) << "Mojo interface connection lost";
-    relay_.CancelAllFutures();
-    interface_ptr_.reset();
   }
 
   void OnQueryVersionOnThread(uint32_t version) {
@@ -142,12 +139,8 @@ class MojoChannel : public base::SupportsWeakPtr<MojoChannel<T>> {
 template <typename T>
 class MojoBinding : public T {
  public:
-  MojoBinding(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
-              base::Closure quit_cb = base::Closure())
-      : task_runner_(task_runner),
-        quit_cb_(quit_cb),
-        binding_(this),
-        weak_ptr_factory_(this) {
+  explicit MojoBinding(scoped_refptr<base::SingleThreadTaskRunner> task_runner)
+      : task_runner_(task_runner), binding_(this), weak_ptr_factory_(this) {
     VLOGF_ENTER();
   }
 
@@ -168,25 +161,30 @@ class MojoBinding : public T {
     future->Wait();
   }
 
-  mojo::InterfacePtr<T> CreateInterfacePtr() {
+  mojo::InterfacePtr<T> CreateInterfacePtr(
+      const base::Closure& connection_error_handler) {
     VLOGF_ENTER();
     auto future = internal::Future<mojo::InterfacePtr<T>>::Create(nullptr);
     if (task_runner_->BelongsToCurrentThread()) {
-      CreateInterfacePtrOnThread(internal::GetFutureCallback(future));
+      CreateInterfacePtrOnThread(connection_error_handler,
+                                 internal::GetFutureCallback(future));
     } else {
       task_runner_->PostTask(
-          FROM_HERE, base::Bind(&MojoBinding<T>::CreateInterfacePtrOnThread,
-                                weak_ptr_factory_.GetWeakPtr(),
-                                internal::GetFutureCallback(future)));
+          FROM_HERE,
+          base::Bind(&MojoBinding<T>::CreateInterfacePtrOnThread,
+                     weak_ptr_factory_.GetWeakPtr(), connection_error_handler,
+                     internal::GetFutureCallback(future)));
     }
     return future->Get();
   }
 
-  void Bind(mojo::ScopedMessagePipeHandle handle) {
+  void Bind(mojo::ScopedMessagePipeHandle handle,
+            const base::Closure& connection_error_handler) {
     VLOGF_ENTER();
-    task_runner_->PostTask(FROM_HERE, base::Bind(&MojoBinding<T>::BindOnThread,
-                                                 weak_ptr_factory_.GetWeakPtr(),
-                                                 base::Passed(&handle)));
+    task_runner_->PostTask(
+        FROM_HERE, base::Bind(&MojoBinding<T>::BindOnThread,
+                              weak_ptr_factory_.GetWeakPtr(),
+                              base::Passed(&handle), connection_error_handler));
   }
 
  protected:
@@ -200,46 +198,27 @@ class MojoBinding : public T {
     if (binding_.is_bound()) {
       binding_.Close();
     }
-    if (!quit_cb_.is_null()) {
-      quit_cb_.Run();
-    }
     callback.Run();
   }
 
   void CreateInterfacePtrOnThread(
+      const base::Closure& connection_error_handler,
       const base::Callback<void(mojo::InterfacePtr<T>)>& cb) {
     // Call CreateInterfacePtrAndBind() on thread_ to serve the RPC.
     VLOGF_ENTER();
     DCHECK(task_runner_->BelongsToCurrentThread());
     mojo::InterfacePtr<T> interfacePtr = binding_.CreateInterfacePtrAndBind();
-    binding_.set_connection_error_handler(
-        base::Bind(&MojoBinding<T>::OnChannelClosedOnThread,
-                   weak_ptr_factory_.GetWeakPtr()));
+    binding_.set_connection_error_handler(connection_error_handler);
     cb.Run(std::move(interfacePtr));
   }
 
-  void BindOnThread(mojo::ScopedMessagePipeHandle handle) {
+  void BindOnThread(mojo::ScopedMessagePipeHandle handle,
+                    const base::Closure& connection_error_handler) {
     VLOGF_ENTER();
     DCHECK(task_runner_->BelongsToCurrentThread());
     binding_.Bind(std::move(handle));
-    binding_.set_connection_error_handler(
-        base::Bind(&MojoBinding<T>::OnChannelClosedOnThread,
-                   weak_ptr_factory_.GetWeakPtr()));
+    binding_.set_connection_error_handler(connection_error_handler);
   }
-
-  void OnChannelClosedOnThread() {
-    VLOGF_ENTER();
-    DCHECK(task_runner_->BelongsToCurrentThread());
-    LOGF(INFO) << "Mojo binding channel closed";
-    if (binding_.is_bound()) {
-      binding_.Close();
-    }
-    if (!quit_cb_.is_null()) {
-      quit_cb_.Run();
-    }
-  }
-
-  base::Closure quit_cb_;
 
   mojo::Binding<T> binding_;
 

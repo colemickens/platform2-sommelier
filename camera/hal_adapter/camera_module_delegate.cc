@@ -15,9 +15,8 @@ namespace arc {
 
 CameraModuleDelegate::CameraModuleDelegate(
     CameraHalAdapter* camera_hal_adapter,
-    scoped_refptr<base::SingleThreadTaskRunner> task_runner,
-    base::Closure quit_cb)
-    : internal::MojoBinding<mojom::CameraModule>(task_runner, quit_cb),
+    scoped_refptr<base::SingleThreadTaskRunner> task_runner)
+    : internal::MojoBinding<mojom::CameraModule>(task_runner),
       camera_hal_adapter_(camera_hal_adapter) {}
 
 CameraModuleDelegate::~CameraModuleDelegate() {}

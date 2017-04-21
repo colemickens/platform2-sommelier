@@ -67,7 +67,11 @@ bool CameraDeviceAdapter::Start() {
 
 void CameraDeviceAdapter::Bind(
     mojom::Camera3DeviceOpsRequest device_ops_request) {
-  device_ops_delegate_->Bind(device_ops_request.PassMessagePipe());
+  device_ops_delegate_->Bind(
+      device_ops_request.PassMessagePipe(),
+      // Close the device when the Mojo channel breaks.
+      base::Bind(base::IgnoreResult(&CameraDeviceAdapter::Close),
+                 base::Unretained(this)));
 }
 
 int32_t CameraDeviceAdapter::Initialize(
@@ -78,9 +82,15 @@ int32_t CameraDeviceAdapter::Initialize(
     LOGF(ERROR) << "Fence sync thread failed to start";
     return -ENODEV;
   }
+  // Unlike the camera module, only one peer is allowed to access a camera
+  // device at any time.
+  DCHECK(!callback_ops_delegate_);
   callback_ops_delegate_.reset(new Camera3CallbackOpsDelegate(
-      this, callback_ops.PassInterface(),
-      camera_callback_ops_thread_.task_runner()));
+      this, camera_callback_ops_thread_.task_runner()));
+  callback_ops_delegate_->Bind(
+      callback_ops.PassInterface(),
+      base::Bind(&CameraDeviceAdapter::ResetCallbackOpsDelegateOnThread,
+                 base::Unretained(this)));
   return camera_device_->ops->initialize(camera_device_, this);
 }
 

@@ -19,13 +19,9 @@ namespace arc {
 
 Camera3CallbackOpsDelegate::Camera3CallbackOpsDelegate(
     CameraDeviceAdapter* camera_device_adapter,
-    mojo::InterfacePtrInfo<mojom::Camera3CallbackOps> callback_ops_ptr_info,
     scoped_refptr<base::SingleThreadTaskRunner> task_runner)
-    : internal::MojoChannel<mojom::Camera3CallbackOps>(
-          std::move(callback_ops_ptr_info),
-          task_runner),
-      camera_device_adapter_(camera_device_adapter) {
-}
+    : internal::MojoChannel<mojom::Camera3CallbackOps>(task_runner),
+      camera_device_adapter_(camera_device_adapter) {}
 
 void Camera3CallbackOpsDelegate::ProcessCaptureResult(
     mojom::Camera3CaptureResultPtr result) {

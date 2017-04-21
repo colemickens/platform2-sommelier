@@ -12,44 +12,54 @@
 #include <sys/un.h>
 
 #include <base/files/file_util.h>
-#include <base/files/scoped_file.h>
 
 #include "arc/common.h"
 
 namespace internal {
 
-static const size_t kMaxSocketNameLength = 104;
+namespace {
 
 // The following four functions were taken from
 // ipc/unix_domain_socket_util.{h,cc}.
-int MakeUnixAddrForPath(const std::string& socket_name,
-                        struct sockaddr_un* unix_addr,
-                        size_t* unix_addr_len) {
+
+static const size_t kMaxSocketNameLength = 104;
+
+bool CreateUnixDomainSocket(base::ScopedFD* out_fd) {
+  DCHECK(out_fd);
+
+  // Create the unix domain socket.
+  base::ScopedFD fd(socket(AF_UNIX, SOCK_STREAM, 0));
+  if (!fd.is_valid()) {
+    PLOGF(ERROR) << "Failed to create AF_UNIX socket:";
+    return false;
+  }
+
+  // Now set it as non-blocking.
+  if (!base::SetNonBlocking(fd.get())) {
+    PLOGF(ERROR) << "base::SetNonBlocking() on " << fd.get() << " failed:";
+    return false;
+  }
+
+  fd.swap(*out_fd);
+
+  return true;
+}
+
+bool MakeUnixAddrForPath(const std::string& socket_name,
+                         struct sockaddr_un* unix_addr,
+                         size_t* unix_addr_len) {
   DCHECK(unix_addr);
   DCHECK(unix_addr_len);
 
   if (socket_name.length() == 0) {
     LOGF(ERROR) << "Empty socket name provided for unix socket address.";
-    return -1;
+    return false;
   }
   // We reject socket_name.length() == kMaxSocketNameLength to make room for
   // the NUL terminator at the end of the string.
   if (socket_name.length() >= kMaxSocketNameLength) {
     LOGF(ERROR) << "Socket name too long: " << socket_name;
-    return -1;
-  }
-
-  // Create socket.
-  base::ScopedFD fd(socket(AF_UNIX, SOCK_STREAM, 0));
-  if (!fd.is_valid()) {
-    PLOG(ERROR) << "socket";
-    return -1;
-  }
-
-  // Make socket non-blocking
-  if (HANDLE_EINTR(fcntl(fd.get(), F_SETFL, O_NONBLOCK)) < 0) {
-    PLOG(ERROR) << "fcntl(O_NONBLOCK)";
-    return -1;
+    return false;
   }
 
   // Create unix_addr structure.
@@ -58,8 +68,15 @@ int MakeUnixAddrForPath(const std::string& socket_name,
   strncpy(unix_addr->sun_path, socket_name.c_str(), kMaxSocketNameLength);
   *unix_addr_len =
       offsetof(struct sockaddr_un, sun_path) + socket_name.length();
-  return fd.release();
+  return true;
 }
+
+bool IsRecoverableError(int err) {
+  return errno == ECONNABORTED || errno == EMFILE || errno == ENFILE ||
+         errno == ENOMEM || errno == ENOBUFS;
+}
+
+}  // namespace
 
 bool CreateServerUnixDomainSocket(const base::FilePath& socket_path,
                                   int* server_listen_fd) {
@@ -70,10 +87,14 @@ bool CreateServerUnixDomainSocket(const base::FilePath& socket_path,
 
   struct sockaddr_un unix_addr;
   size_t unix_addr_len;
-  base::ScopedFD fd(
-      MakeUnixAddrForPath(socket_name, &unix_addr, &unix_addr_len));
-  if (!fd.is_valid())
+  if (!MakeUnixAddrForPath(socket_name, &unix_addr, &unix_addr_len)) {
     return false;
+  }
+
+  base::ScopedFD fd;
+  if (!CreateUnixDomainSocket(&fd)) {
+    return false;
+  }
 
   // Make sure the path we need exists.
   if (!base::CreateDirectory(socket_dir)) {
@@ -105,11 +126,6 @@ bool CreateServerUnixDomainSocket(const base::FilePath& socket_path,
   return true;
 }
 
-bool IsRecoverableError(int err) {
-  return errno == ECONNABORTED || errno == EMFILE || errno == ENFILE ||
-         errno == ENOMEM || errno == ENOBUFS;
-}
-
 bool ServerAcceptConnection(int server_listen_fd, int* server_socket) {
   DCHECK(server_socket);
   *server_socket = -1;
@@ -126,6 +142,25 @@ bool ServerAcceptConnection(int server_listen_fd, int* server_socket) {
 
   *server_socket = accept_fd.release();
   return true;
+}
+
+base::ScopedFD CreateClientUnixDomainSocket(const base::FilePath& socket_path) {
+  struct sockaddr_un unix_addr;
+  size_t unix_addr_len;
+  if (!MakeUnixAddrForPath(socket_path.value(), &unix_addr, &unix_addr_len))
+    return base::ScopedFD();
+
+  base::ScopedFD fd;
+  if (!CreateUnixDomainSocket(&fd))
+    return base::ScopedFD();
+
+  if (HANDLE_EINTR(connect(fd.get(), reinterpret_cast<sockaddr*>(&unix_addr),
+                           unix_addr_len)) < 0) {
+    PLOGF(ERROR) << "connect " << socket_path.value();
+    return base::ScopedFD();
+  }
+
+  return fd;
 }
 
 }  // namespace internal

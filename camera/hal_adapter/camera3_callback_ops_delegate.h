@@ -20,7 +20,6 @@ class Camera3CallbackOpsDelegate
  public:
   Camera3CallbackOpsDelegate(
       CameraDeviceAdapter* camera_device_adapter,
-      mojo::InterfacePtrInfo<mojom::Camera3CallbackOps> callback_ops_ptr_info,
       scoped_refptr<base::SingleThreadTaskRunner> task_runner);
 
   ~Camera3CallbackOpsDelegate() = default;

@@ -16,12 +16,8 @@
 namespace arc {
 
 CameraModuleCallbacksDelegate::CameraModuleCallbacksDelegate(
-    mojo::InterfacePtrInfo<mojom::CameraModuleCallbacks> callbacks_ptr_info,
     scoped_refptr<base::SingleThreadTaskRunner> task_runner)
-    : internal::MojoChannel<mojom::CameraModuleCallbacks>(
-          std::move(callbacks_ptr_info),
-          task_runner) {
-}
+    : internal::MojoChannel<mojom::CameraModuleCallbacks>(task_runner) {}
 
 void CameraModuleCallbacksDelegate::CameraDeviceStatusChange(int camera_id,
                                                              int new_status) {

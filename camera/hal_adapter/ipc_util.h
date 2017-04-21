@@ -9,6 +9,8 @@
 
 #include <string>
 
+#include <base/files/scoped_file.h>
+
 namespace base {
 class FilePath;
 }  // namespace base
@@ -17,7 +19,10 @@ namespace internal {
 
 bool CreateServerUnixDomainSocket(const base::FilePath& socket_path,
                                   int* server_listen_fd);
+
 bool ServerAcceptConnection(int server_listen_fd, int* server_socket);
+
+base::ScopedFD CreateClientUnixDomainSocket(const base::FilePath& socket_path);
 
 }  // namespace internal
 
