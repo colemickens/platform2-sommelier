@@ -1942,12 +1942,13 @@ bool Mount::MigrateToDircrypto(
   constexpr uint64_t kMaxChunkSize = 128 * 1024 * 1024;
   dircrypto_data_migrator::MigrationHelper migrator(
       platform_, GetUserDirectoryForUser(obfuscated_username), kMaxChunkSize);
-  if (!migrator.Migrate(temporary_mount, mount_point_, callback)) {
+  bool success = migrator.Migrate(temporary_mount, mount_point_, callback);
+  UnmountAll();
+  if (!success) {
     LOG(ERROR) << "Failed to migrate.";
     return false;
   }
   // Clean up.
-  UnmountAll();
   FilePath vault_path = GetUserVaultPath(obfuscated_username);
   if (!platform_->DeleteFile(temporary_mount, true /* recursive */) ||
       !platform_->DeleteFile(vault_path, true /* recursive */)) {
