@@ -147,8 +147,6 @@ USB_IDS += [
   "1050:0211",
   # Yubico.com (HID firmware)
   "1050:0200",
-  # Google Cr50 (HID)
-  "18d1:5014",
   # Google Titan key
   "18d1:5026",
 ]
