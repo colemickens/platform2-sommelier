@@ -434,6 +434,41 @@ bool DevicePolicyImpl::GetUsbDetachableWhitelist(
   return true;
 }
 
+bool DevicePolicyImpl::GetAutoLaunchedKioskAppId(
+    std::string* app_id_out) const {
+  if (!device_policy_.has_device_local_accounts())
+    return false;
+
+  const enterprise_management::DeviceLocalAccountsProto& local_accounts =
+      device_policy_.device_local_accounts();
+
+  // For auto-launched kiosk apps, the delay needs to be 0.
+  if (local_accounts.has_auto_login_delay() &&
+      local_accounts.auto_login_delay() != 0)
+    return false;
+
+  for (const enterprise_management::DeviceLocalAccountInfoProto& account :
+       local_accounts.account()) {
+    // If this isn't an auto-login account, move to the next one.
+    if (account.account_id() != local_accounts.auto_login_id())
+      continue;
+
+    // If the auto-launched account is not a kiosk app, bail out, we aren't
+    // running in auto-launched kiosk mode.
+    if (account.type() !=
+            enterprise_management::DeviceLocalAccountInfoProto::
+                ACCOUNT_TYPE_KIOSK_APP) {
+      return false;
+    }
+
+    *app_id_out = account.kiosk_app().app_id();
+    return true;
+  }
+
+  // No auto-launched account found.
+  return false;
+}
+
 bool DevicePolicyImpl::VerifyPolicyFiles() {
   // Both the policy and its signature have to exist.
   if (!base::PathExists(policy_path_) || !base::PathExists(keyfile_path_)) {

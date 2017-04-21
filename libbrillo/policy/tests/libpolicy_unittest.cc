@@ -172,6 +172,9 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   ASSERT_EQ(0x0403, list_device[1].vendor_id);
   ASSERT_EQ(0x6001, list_device[1].product_id);
 
+  ASSERT_TRUE(policy.GetAutoLaunchedKioskAppId(&string_value));
+  ASSERT_EQ("my_kiosk_app", string_value);
+
   // Reloading the protobuf should succeed.
   ASSERT_TRUE(provider.Reload());
 }
