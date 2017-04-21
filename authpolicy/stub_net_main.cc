@@ -14,6 +14,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
+#include "authpolicy/constants.h"
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/samba_helper.h"
 #include "authpolicy/stub_common.h"
@@ -107,14 +108,14 @@ uSNCreated: 287406
 uSNChanged: 307152
 name: John Doe
 objectGUID: %s
-userAccountControl: 512
+userAccountControl: %u
 badPwdCount: 0
 codePage: 0
 countryCode: 0
 badPasswordTime: 131309487458845506
 lastLogoff: 0
 lastLogon: 131320568639495686
-pwdLastSet: 131292078840924254
+pwdLastSet: %lu
 primaryGroupID: 513
 objectSid: S-1-5-21-250062649-3667841115-373469193-1134
 accountExpires: 9223372036854775807
@@ -132,6 +133,67 @@ msDS-SupportedEncryptionTypes: 0)!!!";
 
 // Search that doesn't find anything.
 const char kStubBadSearch[] = "Got 0 replies";
+
+// Builder for custom search results (without having a 7-line base::StringPrintf
+// every time). Usage:
+//   search_result = SearchBuilder().SetDisplayName("John Doe").GetResult();
+class SearchBuilder {
+ public:
+  // Prints out a stub net ads search result with the set parameters.
+  std::string GetResult() {
+    return base::StringPrintf(kStubSearchFormat,
+                              given_name_.c_str(),
+                              display_name_.c_str(),
+                              object_guid_.c_str(),
+                              user_account_control_,
+                              pwd_last_set_,
+                              sam_account_name_.c_str());
+  }
+
+  // Sets the value of the givenName key.
+  SearchBuilder& SetGivenName(const std::string& value) {
+    given_name_ = value;
+    return *this;
+  }
+
+  // Sets the value of the displayName key.
+  SearchBuilder& SetDisplayName(const std::string& value) {
+    display_name_ = value;
+    return *this;
+  }
+
+  // Sets the value of the objectUID key.
+  SearchBuilder& SetObjectGuid(const std::string& value) {
+    object_guid_ = value;
+    return *this;
+  }
+
+  // Sets the value of the sAMAccountName key.
+  SearchBuilder& SetSAMAccountName(const std::string& value) {
+    sam_account_name_ = value;
+    return *this;
+  }
+
+  // Sets the value of the userAccountControl key.
+  SearchBuilder& SetUserAccountControl(const uint32_t value) {
+    user_account_control_ = value;
+    return *this;
+  }
+
+  // Sets the value of the pwdLastSet key.
+  SearchBuilder& SetPwdLastSet(const uint64_t value) {
+    pwd_last_set_ = value;
+    return *this;
+  }
+
+ private:
+  std::string given_name_ = kGivenName;
+  std::string display_name_ = kDisplayName;
+  std::string object_guid_ = kAccountId;
+  std::string sam_account_name_ = kUserName;
+  uint32_t user_account_control_ = kUserAccountControl;
+  uint64_t pwd_last_set_ = kPwdLastSet;
+};
 
 // Searches |str| for (|searchKey|=value) and returns value. Returns an empty
 // string if the key could not be found or if the value is empty.
@@ -185,6 +247,54 @@ std::string GetMachineNameFromSmbConf(const std::string& smb_conf_path) {
   std::string machine_name;
   CHECK(FindToken(smb_conf, '=', "netbios name", &machine_name));
   return machine_name;
+}
+
+// Returns different stub net ads search results depending on |object_guid|.
+std::string GetSearchResultFromObjectGUID(const std::string& object_guid) {
+  SearchBuilder search_builder;
+  search_builder.SetObjectGuid(object_guid);
+
+  // Valid account id, return valid search result for the default user.
+  if (object_guid == kAccountId)
+    return search_builder.GetResult();
+
+  // Invalid account id, return bad "nothing found" search result.
+  if (object_guid == kBadAccountId)
+    return kStubBadSearch;
+
+  // Pretend that the password expired.
+  if (object_guid == kExpiredPasswordAccountId)
+    return search_builder.SetPwdLastSet(0).GetResult();
+
+  // Pretend that the password never expires.
+  if (object_guid == kNeverExpirePasswordAccountId) {
+    return search_builder.SetPwdLastSet(0)
+        .SetUserAccountControl(UF_DONT_EXPIRE_PASSWD)
+        .GetResult();
+  }
+
+  // Pretend that the password changed on the server.
+  if (object_guid == kPasswordChangedAccountId)
+    return search_builder.SetPwdLastSet(kPwdLastSet + 1).GetResult();
+
+  NOTREACHED() << "UNHANDLED OBJECT GUID " << object_guid;
+  return std::string();
+}
+
+// Returns different stub net ads search results depending on
+// |sam_account_name|.
+std::string GetSearchResultFromSAMAccountName(
+    const std::string& sam_account_name) {
+  SearchBuilder search_builder;
+  search_builder.SetSAMAccountName(sam_account_name);
+
+  // Set a special |kPasswordChangedAccountId|, required during auth for a
+  // test that uses that id in GetUserStatus().
+  if (sam_account_name == kPasswordChangedUserName)
+    return search_builder.SetObjectGuid(kPasswordChangedAccountId).GetResult();
+
+  // In all cases, just return a search result with the proper sAMAccountName.
+  return search_builder.GetResult();
 }
 
 // Handles a stub 'net ads join' call. Different behavior is triggered by
@@ -255,11 +365,11 @@ int HandleJoin(const std::string& command_line,
       WriteKeytabFile();
       return kExitCodeOk;
     }
-    LOG(ERROR) << "UNHANDLED PASSWORD " << password;
+    NOTREACHED() << "UNHANDLED PASSWORD " << password;
     return kExitCodeError;
   }
 
-  LOG(ERROR) << "UNHANDLED COMMAND LINE " << command_line;
+  NOTREACHED() << "UNHANDLED COMMAND LINE " << command_line;
   return kExitCodeError;
 }
 
@@ -327,32 +437,25 @@ int HandleCommandLine(const std::string& command_line,
   if (StartsWithCaseSensitive(command_line, "ads search")) {
     std::string sam_account_name =
         FindSearchValue(command_line, "sAMAccountName");
-    std::string object_guid = FindSearchValue(command_line, "objectGUID");
+    std::string object_guid_octet = FindSearchValue(command_line, "objectGUID");
     std::string search_result;
-    if (object_guid == GuidToOctetString(kAccountId)) {
-      // Search by valid account id, return valid search result for the default
-      // user.
-      search_result = base::StringPrintf(
-          kStubSearchFormat, kGivenName, kDisplayName, kAccountId, kUserName);
-    } else if (object_guid == GuidToOctetString(kBadAccountId)) {
-      // Search by invalid account id, return bad "not found" search result.
-      search_result = kStubBadSearch;
+    if (!object_guid_octet.empty()) {
+      // Search by objectGUID aka account id.
+      std::string object_guid = OctetStringToGuidForTesting(object_guid_octet);
+      search_result = GetSearchResultFromObjectGUID(object_guid);
     } else if (!sam_account_name.empty()) {
-      // Search by sAMAccountName account id, return valid search result for the
-      // user that was searched.
-      search_result = base::StringPrintf(kStubSearchFormat,
-                                         kGivenName,
-                                         kDisplayName,
-                                         kAccountId,
-                                         sam_account_name.c_str());
+      // Search by sAMAccountName.
+      search_result = GetSearchResultFromSAMAccountName(sam_account_name);
     } else {
-      NOTREACHED();
+      LOG(ERROR) << "SEARCH TERM NOT RECOGNIZED IN COMMAND LINE "
+                 << command_line;
     }
+
     WriteOutput(search_result, "");
     return kExitCodeOk;
   }
 
-  LOG(ERROR) << "UNHANDLED COMMAND LINE " << command_line;
+  NOTREACHED() << "UNHANDLED COMMAND LINE " << command_line;
   return kExitCodeError;
 }
 

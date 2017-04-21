@@ -182,19 +182,35 @@ int ParseAccountInfo(const std::string& net_out) {
   if (base::StartsWith(net_out, kNoResults, base::CompareCase::SENSITIVE))
     return OutputForCaller("");
 
-  std::string object_guid, sam_account_name, display_name, given_name;
+  std::string object_guid, sam_account_name;
+  std::string pwd_last_set_str, user_account_control_str;
   if (!FindToken(net_out, ':', kSearchObjectGUID, &object_guid) ||
-      !FindToken(net_out, ':', kSearchSAMAccountName, &sam_account_name)) {
+      !FindToken(net_out, ':', kSearchSAMAccountName, &sam_account_name) ||
+      !FindToken(net_out, ':', kSearchPwdLastSet, &pwd_last_set_str) ||
+      !FindToken(
+          net_out, ':', kSearchUserAccountControl, &user_account_control_str)) {
     LOG(ERROR) << "Failed to parse account info";
     return EXIT_CODE_FIND_TOKEN_FAILED;
   }
+
+  uint64_t pwd_last_set = 0;
+  uint32_t user_account_control = 0;
+  if (!base::StringToUint64(pwd_last_set_str, &pwd_last_set) ||
+      !base::StringToUint(user_account_control_str, &user_account_control)) {
+    LOG(ERROR) << "Failed to parse account info";
+    return EXIT_CODE_PARSE_INPUT_FAILED;
+  }
+
   // Output data as proto blob.
   ActiveDirectoryAccountInfo account_info;
   account_info.set_account_id(object_guid);
   account_info.set_sam_account_name(sam_account_name);
+  account_info.set_pwd_last_set(pwd_last_set);
+  account_info.set_user_account_control(user_account_control);
 
   // Attributes 'displayName' and 'givenName' are optional. May be missing for
   // accounts like 'Administrator' or for partially set up accounts.
+  std::string display_name, given_name;
   if (FindToken(net_out, ':', kSearchDisplayName, &display_name))
     account_info.set_display_name(display_name);
   if (FindToken(net_out, ':', kSearchGivenName, &given_name))

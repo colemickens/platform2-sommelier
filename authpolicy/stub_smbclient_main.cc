@@ -80,7 +80,7 @@ int HandleCommandLine(const std::string& command_line) {
     else if (Contains(item.local_path_, kErrorGpoGuid))
       download_error = true;
     else
-      NOTREACHED();
+      NOTREACHED() << "UNHANDLED DOWNLOAD ITEM '" << item.local_path_ << "'";
 
     if (download_error) {
       // Print "download error" warning.

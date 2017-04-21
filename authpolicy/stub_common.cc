@@ -26,13 +26,21 @@ const char kKdcRetryUserPrincipal[] = "kdc_retry_user@REALM.COM";
 const char kInsufficientQuotaUserPrincipal[] =
     "insufficient_quota_user@REALM.COM";
 const char kExpiredTgtUserPrincipal[] = "tgt_expired@REALM.COM";
+const char kPasswordChangedUserPrincipal[] = "password_changed@REALM.COM";
+const char kPasswordChangedUserName[] = "password_changed";
 
 const char kDisplayName[] = "John Doe";
 const char kGivenName[] = "John";
+const uint64_t kPwdLastSet = 131292078840924254ul;
+const uint32_t kUserAccountControl = 512;
 
 // Should still be valid GUIDs, so GuidToOctetString() works.
 const char kAccountId[] = "f892eb9d-9e11-4a74-b894-0647e218c4df";
 const char kBadAccountId[] = "88adef4f-74ec-420d-b0a5-3726dbe711eb";
+const char kExpiredPasswordAccountId[] = "21094d26-2720-4ba4-942c-c8cd12a6f83b";
+const char kNeverExpirePasswordAccountId[] =
+    "a95a88c0-862d-48f1-b9f6-ee726d0190f6";
+const char kPasswordChangedAccountId[] = "c7297a6d-2b7f-4063-bfa2-c7223e635549";
 
 const char kValidKrb5CCData[] = "valid";
 const char kExpiredKrb5CCData[] = "expired";

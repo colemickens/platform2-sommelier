@@ -295,6 +295,13 @@ ErrorType TgtManager::RenewTgt() {
 }
 
 ErrorType TgtManager::GetTgtLifetime(protos::TgtLifetime* lifetime) {
+  // Check local file first before calling klist -s, since that would respond
+  // ERROR_KERBEROS_TICKET_EXPIRED instead of ERROR_NO_CREDENTIALS_CACHE_FOUND.
+  if (!base::PathExists(base::FilePath(paths_->Get(credential_cache_path_)))) {
+    LOG(ERROR) << "GetTgtLifetime failed - no credentials cache found";
+    return ERROR_NO_CREDENTIALS_CACHE_FOUND;
+  }
+
   // Call klist -s to find out whether the TGT is still valid.
   {
     ProcessExecutor klist_cmd({paths_->Get(Path::KLIST),

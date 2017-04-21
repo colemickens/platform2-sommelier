@@ -26,5 +26,7 @@ const char kSearchObjectGUID[] = "objectGUID";
 const char kSearchSAMAccountName[] = "sAMAccountName";
 const char kSearchDisplayName[] = "displayName";
 const char kSearchGivenName[] = "givenName";
+const char kSearchPwdLastSet[] = "pwdLastSet";
+const char kSearchUserAccountControl[] = "userAccountControl";
 
 }  // namespace authpolicy

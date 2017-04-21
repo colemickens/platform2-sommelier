@@ -67,7 +67,7 @@ class SambaInterface {
 
   // Retrieves the status of the user account given by |account_id| (aka
   // objectGUID). The status contains general ActiveDirectoryAccountInfo as well
-  // as the status of the user's |ticket-granting-ticket (TGT). Does not fill
+  // as the status of the user's ticket-granting-ticket (TGT). Does not fill
   // |user_status| on error.
   ErrorType GetUserStatus(const std::string& account_id,
                           ActiveDirectoryUserStatus* user_status);
@@ -101,6 +101,13 @@ class SambaInterface {
   }
 
  private:
+  // Actual implementation of AuthenticateUser() (see above). The method is
+  // wrapped in order to catch and memorize the returned error.
+  ErrorType AuthenticateUserInternal(const std::string& user_principal_name,
+                                     const std::string& account_id,
+                                     int password_fd,
+                                     ActiveDirectoryAccountInfo* account_info);
+
   // Retrieves the name of the domain controller (DC) and the IP of the key
   // distribution center (KDC). If the full server name is 'server.realm', the
   // DC name is set to 'server'. The DC name is required for proper kerberized
@@ -113,6 +120,13 @@ class SambaInterface {
   // internally to check whether the ticket is valid, expired or not present.
   // Does not perform any server-side checks.
   ErrorType GetUserTgtStatus(ActiveDirectoryUserStatus::TgtStatus* tgt_status);
+
+  // Determines the password status by comparing the store last change timestamp
+  // to the timestamp we just got from the server. |prev_pw_last_set| is the
+  // timestamp of the last password change stored in UserData.
+  ActiveDirectoryUserStatus::PasswordStatus GetUserPasswordStatus(
+      const ActiveDirectoryAccountInfo& account_info,
+      uint64_t* prev_pw_last_set);
 
   // Retrieves the name of the workgroup. Since the workgroup is expected to
   // change very rarely, this function earlies out and returns ERROR_NONE if the
@@ -185,8 +199,18 @@ class SambaInterface {
   // file does not exist, so this is no performance concern.
   void ReloadDebugFlags();
 
-  // Maps the account id key ("a-" + user object GUID) to sAMAccountName.
-  std::unordered_map<std::string, std::string> user_id_name_map_;
+  // Data we memorize for each user.
+  struct UserData {
+    std::string sam_account_name_;  // Logon name.
+    uint64_t pwd_last_set_ = 0;  // Timestamp of last password change on server.
+    ErrorType last_auth_error_ = ERROR_NONE;  // Last AuthenticateUser() error.
+    UserData() = default;
+    UserData(const std::string& sam_account_name, uint64_t pwd_last_set)
+        : sam_account_name_(sam_account_name), pwd_last_set_(pwd_last_set) {}
+  };
+
+  // Maps the account id key ("a-" + user object GUID) to user data.
+  std::unordered_map<std::string, UserData> user_data_;
   std::unique_ptr<protos::ActiveDirectoryConfig> config_;
   std::string workgroup_;
 

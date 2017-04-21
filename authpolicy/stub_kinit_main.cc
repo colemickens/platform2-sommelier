@@ -141,7 +141,8 @@ int HandleCommandLine(const std::string& command_line) {
   }
 
   // Stub valid user principal. Switch behavior based on password.
-  if (StartsWithCaseSensitive(command_line, kUserPrincipal)) {
+  if (StartsWithCaseSensitive(command_line, kUserPrincipal) ||
+      StartsWithCaseSensitive(command_line, kPasswordChangedUserPrincipal)) {
     // Stub wrong password error.
     if (password == kWrongPassword) {
       WriteOutput("", kWrongPasswordError);
@@ -160,7 +161,7 @@ int HandleCommandLine(const std::string& command_line) {
       return kExitCodeOk;
     }
 
-    LOG(ERROR) << "UNHANDLED PASSWORD " << password;
+    NOTREACHED() << "UNHANDLED PASSWORD " << password;
     return kExitCodeError;
   }
 
@@ -198,7 +199,7 @@ int HandleCommandLine(const std::string& command_line) {
     return kExitCodeOk;
   }
 
-  LOG(ERROR) << "UNHANDLED COMMAND LINE " << command_line;
+  NOTREACHED() << "UNHANDLED COMMAND LINE " << command_line;
   return kExitCodeError;
 }
 

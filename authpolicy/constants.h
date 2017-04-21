@@ -36,6 +36,11 @@ extern const char kSearchObjectGUID[];
 extern const char kSearchSAMAccountName[];
 extern const char kSearchDisplayName[];
 extern const char kSearchGivenName[];
+extern const char kSearchPwdLastSet[];
+extern const char kSearchUserAccountControl[];
+
+// User account control flag specifying that the password never expires.
+const unsigned int UF_DONT_EXPIRE_PASSWD = 0x00010000;
 
 enum ExitCodes {
   EXIT_CODE_OK = 0,

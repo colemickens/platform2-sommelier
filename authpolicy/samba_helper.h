@@ -53,6 +53,11 @@ bool Contains(const std::string& str, const std::string& substr);
 // Returns an empty string on error.
 std::string GuidToOctetString(const std::string& guid);
 
+// Converts an octet string to a GUID. Inverse of GuidToOctetString(). Only for
+// testing! Just performs basic size checks, no strict format checks. Returns an
+// empty string on error.
+std::string OctetStringToGuidForTesting(const std::string& octet_str);
+
 // Splits string into lines and logs the lines. This works around a restriction
 // of syslog of 8kb per log and fixes unreadable logs where \n is replaced by
 // #012.

@@ -36,16 +36,31 @@ extern const char kKdcRetryUserPrincipal[];
 extern const char kInsufficientQuotaUserPrincipal[];
 // Triggers stub_kinit to produce a TGT that stub_klist interprets as expired.
 extern const char kExpiredTgtUserPrincipal[];
+// Triggers net ads search to return |kPasswordChangedAccountId| as objectGUID.
+extern const char kPasswordChangedUserPrincipal[];
+// Corresponding user name.
+extern const char kPasswordChangedUserName[];
 
 // Misc account information, used to test whether they're properly parsed and
 // encoded.
 extern const char kDisplayName[];
 extern const char kGivenName[];
+extern const uint64_t kPwdLastSet;
+extern const uint32_t kUserAccountControl;
 
 // Default, valid account id (aka objectGUID).
 extern const char kAccountId[];
 // Triggers a net ads search error when searching for this objectGUID.
 extern const char kBadAccountId[];
+// Triggers pwdLastSet=0 in net ads search.
+extern const char kExpiredPasswordAccountId[];
+// Triggers pwdLastSet=0 and a userAccountControl flag to never expire the
+// password in net ads search.
+extern const char kNeverExpirePasswordAccountId[];
+// Triggers a different pwdLastSet timestamp in net ads search.
+extern const char kPasswordChangedAccountId[];
+// User name corresponding to |kPasswordChangedAccountId|.
+extern const char kPasswordChangedUserName[];
 
 // Default, valid Kerberos crendentials cache contents (in particular, TGT).
 extern const char kValidKrb5CCData[];

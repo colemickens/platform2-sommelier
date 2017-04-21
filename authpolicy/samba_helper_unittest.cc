@@ -272,4 +272,10 @@ TEST_F(SambaInterfaceTest, GuidToOctetFailInvalidGuid) {
   EXPECT_EQ("", GuidToOctetString(kInvalidGuid));
 }
 
+// OctetStringToGuidForTesting() reverses GuidToOctetString().
+TEST_F(SambaInterfaceTest, OctetToGuidSuccess) {
+  const std::string octet_str = GuidToOctetString(kGuid);
+  EXPECT_EQ(kGuid, OctetStringToGuidForTesting(octet_str));
+}
+
 }  // namespace authpolicy

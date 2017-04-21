@@ -273,6 +273,32 @@ ErrorType SambaInterface::AuthenticateUser(
     ActiveDirectoryAccountInfo* account_info) {
   ReloadDebugFlags();
 
+  ErrorType error = AuthenticateUserInternal(
+      user_principal_name, account_id, password_fd, account_info);
+
+  // Memorize the last auth error (if we have an account id as key). Note that
+  // account_id can be empty on first auth and account_info->account_id() can be
+  // empty on error.
+  const std::string& actual_account_id = !account_info->account_id().empty()
+                                             ? account_info->account_id()
+                                             : account_id;
+  if (!actual_account_id.empty()) {
+    // The account id may not change.
+    CHECK(account_id.empty() || account_info->account_id().empty() ||
+          account_id == actual_account_id);
+
+    const std::string account_id_key(kActiveDirectoryPrefix +
+                                     actual_account_id);
+    user_data_[account_id_key].last_auth_error_ = error;
+  }
+  return error;
+}
+
+ErrorType SambaInterface::AuthenticateUserInternal(
+    const std::string& user_principal_name,
+    const std::string& account_id,
+    int password_fd,
+    ActiveDirectoryAccountInfo* account_info) {
   // Split user_principal_name into parts and normalize.
   std::string user_name, realm, workgroup, normalized_upn;
   if (!ParseUserPrincipalName(
@@ -314,10 +340,13 @@ ErrorType SambaInterface::AuthenticateUser(
   user_tgt_manager_.EnableTgtAutoRenewal(true);
 
   // Store sAMAccountName for policy fetch. Note that net ads gpo list always
-  // wants the sAMAccountName.
+  // wants the sAMAccountName. Also note that pwd_last_set is zero and stale
+  // at this point if AcquireTgtWithPassword() set a new password, but that's
+  // fine, the timestamp is updated in the next GetUserStatus() call.
   const std::string account_id_key(kActiveDirectoryPrefix +
                                    account_info->account_id());
-  user_id_name_map_[account_id_key] = account_info->sam_account_name();
+  user_data_[account_id_key] =
+      UserData(account_info->sam_account_name(), account_info->pwd_last_set());
   return ERROR_NONE;
 }
 
@@ -353,8 +382,19 @@ ErrorType SambaInterface::GetUserStatus(
   if (error != ERROR_NONE)
     return error;
 
+  // Note: This might create a new UserData() entry, which is fine.
+  const std::string account_id_key(kActiveDirectoryPrefix +
+                                   account_info.account_id());
+  UserData& user_data_entry = user_data_[account_id_key];
+
+  // Determine the status of the password.
+  ActiveDirectoryUserStatus::PasswordStatus password_status =
+      GetUserPasswordStatus(account_info, &user_data_entry.pwd_last_set_);
+
   *user_status->mutable_account_info() = account_info;
   user_status->set_tgt_status(tgt_status);
+  user_status->set_password_status(password_status);
+  user_status->set_last_auth_error(user_data_entry.last_auth_error_);
   return ERROR_NONE;
 }
 
@@ -429,12 +469,12 @@ ErrorType SambaInterface::FetchUserGpos(const std::string& account_id_key,
 
   // Get sAMAccountName from account id key (must be logged in to fetch user
   // policy).
-  auto iter = user_id_name_map_.find(account_id_key);
-  if (iter == user_id_name_map_.end()) {
+  auto iter = user_data_.find(account_id_key);
+  if (iter == user_data_.end() || iter->second.sam_account_name_.empty()) {
     LOG(ERROR) << "User not logged in. Please call AuthenticateUser first.";
     return ERROR_NOT_LOGGED_IN;
   }
-  const std::string& sam_account_name = iter->second;
+  const std::string& sam_account_name = iter->second.sam_account_name_;
 
   // Write Samba configuration file.
   ErrorType error = EnsureWorkgroupAndWriteSmbConf();
@@ -564,24 +604,52 @@ ErrorType SambaInterface::GetUserTgtStatus(
     ActiveDirectoryUserStatus::TgtStatus* tgt_status) {
   protos::TgtLifetime lifetime;
   ErrorType error = user_tgt_manager_.GetTgtLifetime(&lifetime);
-  if (error == ERROR_NONE) {
-    *tgt_status = lifetime.validity_seconds() > 0
-                      ? ActiveDirectoryUserStatus::TGT_VALID
-                      : ActiveDirectoryUserStatus::TGT_EXPIRED;
-    return ERROR_NONE;
+  switch (error) {
+    case ERROR_NONE:
+      *tgt_status = lifetime.validity_seconds() > 0
+                        ? ActiveDirectoryUserStatus::TGT_VALID
+                        : ActiveDirectoryUserStatus::TGT_EXPIRED;
+      return ERROR_NONE;
+    // Eat two errors and convert them to TgtStatus values instead.
+    case ERROR_NO_CREDENTIALS_CACHE_FOUND:
+      *tgt_status = ActiveDirectoryUserStatus::TGT_NOT_FOUND;
+      return ERROR_NONE;
+    case ERROR_KERBEROS_TICKET_EXPIRED:
+      *tgt_status = ActiveDirectoryUserStatus::TGT_EXPIRED;
+      return ERROR_NONE;
+    default:
+      return error;
+  }
+}
+
+ActiveDirectoryUserStatus::PasswordStatus SambaInterface::GetUserPasswordStatus(
+    const ActiveDirectoryAccountInfo& account_info,
+    uint64_t* prev_pw_last_set) {
+  // See https://msdn.microsoft.com/en-us/library/ms679430(v=vs.85).aspx.
+
+  // Password is always valid if it never expires.
+  if ((account_info.user_account_control() & UF_DONT_EXPIRE_PASSWD) != 0)
+    return ActiveDirectoryUserStatus::PASSWORD_VALID;
+
+  // Password expired, user will have to enter a new password.
+  if (account_info.pwd_last_set() == 0)
+    return ActiveDirectoryUserStatus::PASSWORD_EXPIRED;
+
+  // Memorize pwd_last_set if it wasn't set yet. This happens after
+  // the password expired and was reset by AuthenticateUser().
+  if (*prev_pw_last_set == 0) {
+    *prev_pw_last_set = account_info.pwd_last_set();
+    return ActiveDirectoryUserStatus::PASSWORD_VALID;
   }
 
-  // Eat two errors and convert them to TgtStatus values instead.
-  if (error == ERROR_NO_CREDENTIALS_CACHE_FOUND) {
-    *tgt_status = ActiveDirectoryUserStatus::TGT_NOT_FOUND;
-    return ERROR_NONE;
-  }
-  if (error == ERROR_KERBEROS_TICKET_EXPIRED) {
-    *tgt_status = ActiveDirectoryUserStatus::TGT_EXPIRED;
-    return ERROR_NONE;
-  }
+  // Password changed on the server. Note: Don't update pwd_last_set_ here,
+  // update it in AuthenticateUser() when we know that Chrome sent the right
+  // password.
+  if (*prev_pw_last_set != account_info.pwd_last_set())
+    return ActiveDirectoryUserStatus::PASSWORD_CHANGED;
 
-  return error;
+  // pwd_last_set did not change, password is still valid.
+  return ActiveDirectoryUserStatus::PASSWORD_VALID;
 }
 
 ErrorType SambaInterface::EnsureWorkgroup() {
@@ -832,6 +900,8 @@ ErrorType SambaInterface::SearchAccountInfo(
                            kSearchSAMAccountName,
                            kSearchDisplayName,
                            kSearchGivenName,
+                           kSearchPwdLastSet,
+                           kSearchUserAccountControl,
                            "-s",
                            paths_->Get(Path::SMB_CONF),
                            "-d",
@@ -1114,7 +1184,7 @@ ErrorType SambaInterface::ParseGposIntoProtobuf(
 }
 
 void SambaInterface::Reset() {
-  user_id_name_map_.clear();
+  user_data_.clear();
   config_.reset();
   workgroup_.clear();
   retry_machine_kinit_ = false;

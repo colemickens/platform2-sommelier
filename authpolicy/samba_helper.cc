@@ -128,6 +128,21 @@ std::string GuidToOctetString(const std::string& guid) {
   return octet_str;
 }
 
+std::string OctetStringToGuidForTesting(const std::string& octet_str) {
+  std::string guid;
+  if (octet_str.size() != kOctetSize)
+    return guid;
+
+  guid.assign(kGuidSize, '-');
+  for (size_t n = 0; n < arraysize(octet_pos_map); ++n) {
+    for (int hex_digit = 0; hex_digit < 2; ++hex_digit) {
+      guid.at(octet_pos_map[n][0] + hex_digit) =
+          tolower(octet_str.at(octet_pos_map[n][1] + hex_digit));
+    }
+  }
+  return guid;
+}
+
 void LogLongString(const char* header, const std::string& str) {
   if (!LOG_IS_ON(INFO))
     return;

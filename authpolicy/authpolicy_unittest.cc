@@ -121,12 +121,28 @@ class TestPathService : public PathService {
   }
 };
 
+// Metrics library that eats in particular timer errors.
+class TestMetricsLibrary : public MetricsLibrary {
+ public:
+  bool SendToUMA(const std::string&, int, int, int, int) override {
+    return true;
+  }
+};
+
 // Version of AuthPolicyMetrics that just counts stats.
 class TestMetrics : public AuthPolicyMetrics {
  public:
+  TestMetrics() {
+    // Prevent some error messages from timers.
+    test_metrics_.Init();
+    chromeos_metrics::TimerReporter::set_metrics_lib(&test_metrics_);
+  }
+
   // Prints out a list of untested metrics activity. This makes sure that no
   // metrics are reported that are not expected by the tests.
   ~TestMetrics() override {
+    chromeos_metrics::TimerReporter::set_metrics_lib(nullptr);
+
     std::map<MetricType, const char*> metrics_str;
     metrics_str[METRIC_KINIT_FAILED_TRY_COUNT] =
         "METRIC_KINIT_FAILED_TRY_COUNT";
@@ -197,6 +213,7 @@ class TestMetrics : public AuthPolicyMetrics {
   }
 
  private:
+  TestMetricsLibrary test_metrics_;
   std::map<MetricType, int> last_metrics_sample_;
   std::map<MetricType, int> metrics_report_count_;
   std::map<DBusCallType, int> dbus_report_count_;
@@ -626,6 +643,8 @@ TEST_F(AuthPolicyTest, AuthSetsAccountInfo) {
   EXPECT_EQ(kDisplayName, account_info.display_name());
   EXPECT_EQ(kGivenName, account_info.given_name());
   EXPECT_EQ(kUserName, account_info.sam_account_name());
+  EXPECT_EQ(kPwdLastSet, account_info.pwd_last_set());
+  EXPECT_EQ(kUserAccountControl, account_info.user_account_control());
   EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
@@ -712,11 +731,76 @@ TEST_F(AuthPolicyTest, GetUserStatusSucceeds) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE, GetUserStatus(kAccountId, &status));
-  EXPECT_EQ(kAccountId, status.account_info().account_id());
-  EXPECT_EQ(kDisplayName, status.account_info().display_name());
-  EXPECT_EQ(kGivenName, status.account_info().given_name());
-  EXPECT_EQ(kUserName, status.account_info().sam_account_name());
-  EXPECT_EQ(ActiveDirectoryUserStatus::TGT_VALID, status.tgt_status());
+
+  ActiveDirectoryUserStatus expected_status;
+  ActiveDirectoryAccountInfo& expected_account_info =
+      *expected_status.mutable_account_info();
+  expected_account_info.set_account_id(kAccountId);
+  expected_account_info.set_display_name(kDisplayName);
+  expected_account_info.set_given_name(kGivenName);
+  expected_account_info.set_sam_account_name(kUserName);
+  expected_account_info.set_pwd_last_set(kPwdLastSet);
+  expected_account_info.set_user_account_control(kUserAccountControl);
+  expected_status.set_tgt_status(ActiveDirectoryUserStatus::TGT_VALID);
+  expected_status.set_password_status(
+      ActiveDirectoryUserStatus::PASSWORD_VALID);
+  expected_status.set_last_auth_error(ERROR_NONE);
+
+  // Note that protobuf equality comparison is not supported.
+  std::string status_blob, expected_status_blob;
+  EXPECT_TRUE(status.SerializeToString(&status_blob));
+  EXPECT_TRUE(expected_status.SerializeToString(&expected_status_blob));
+  EXPECT_EQ(expected_status_blob, status_blob);
+
+  EXPECT_EQ(3, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+}
+
+// GetUserStatus actually contains the last auth error.
+TEST_F(AuthPolicyTest, GetUserStatusReportsLastAuthError) {
+  ActiveDirectoryUserStatus status;
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_PASSWORD_EXPIRED,
+            Auth(kUserPrincipal, "", MakeFileDescriptor(kExpiredPassword)));
+  EXPECT_EQ(ERROR_NONE, GetUserStatus(kAccountId, &status));
+  EXPECT_EQ(ERROR_PASSWORD_EXPIRED, status.last_auth_error());
+  EXPECT_EQ(3, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+}
+
+// GetUserStatus reports to expire the password.
+TEST_F(AuthPolicyTest, GetUserStatusReportsExpiredPasswords) {
+  ActiveDirectoryUserStatus status;
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE,
+            Auth(kUserPrincipal, kExpiredPasswordAccountId, MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE, GetUserStatus(kExpiredPasswordAccountId, &status));
+  EXPECT_EQ(ActiveDirectoryUserStatus::PASSWORD_EXPIRED,
+            status.password_status());
+  EXPECT_EQ(3, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+}
+
+// GetUserStatus does not report expired passwords if UF_DONT_EXPIRE_PASSWD is
+// set.
+TEST_F(AuthPolicyTest, GetUserStatusDontReportNeverExpirePasswords) {
+  ActiveDirectoryUserStatus status;
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(
+      ERROR_NONE,
+      Auth(kUserPrincipal, kNeverExpirePasswordAccountId, MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE, GetUserStatus(kNeverExpirePasswordAccountId, &status));
+  EXPECT_EQ(ActiveDirectoryUserStatus::PASSWORD_VALID,
+            status.password_status());
+  EXPECT_EQ(3, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+}
+
+// GetUserStatus reports password changes.
+TEST_F(AuthPolicyTest, GetUserStatusReportChangedPasswords) {
+  ActiveDirectoryUserStatus status;
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE,
+            Auth(kPasswordChangedUserPrincipal, "", MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE, GetUserStatus(kPasswordChangedAccountId, &status));
+  EXPECT_EQ(ActiveDirectoryUserStatus::PASSWORD_CHANGED,
+            status.password_status());
   EXPECT_EQ(3, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
