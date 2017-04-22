@@ -6,24 +6,19 @@
 
 #include <glib.h>
 #include <glib-object.h>
-#include <signal.h>
-#include <sys/signalfd.h>
-
-#include <dbus-c++/glib-integration.h>
+#include <glib-unix.h>
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/strings/string_number_conversions.h>
-
-#include "build_config.h"
-#include "daemon.h"
-#include "service_constants.h"
-
-#if defined(CROS_BUILD)
 #include <brillo/syslog_logging.h>
-#endif
+#include <chromeos/dbus/service_constants.h>
+#include <dbus-c++/glib-integration.h>
+
+#include "daemon.h"
+
 
 using base::CommandLine;
 using mtpd::Daemon;
@@ -32,9 +27,7 @@ using mtpd::Daemon;
 static const char kMinLogLevelSwitch[] = "minloglevel";
 
 void SetupLogging() {
-#if defined(CROS_BUILD)
   brillo::InitLog(brillo::kLogToSyslog);
-#endif
 
   std::string log_level_str =
       CommandLine::ForCurrentProcess()->GetSwitchValueASCII(kMinLogLevelSwitch);
@@ -56,9 +49,7 @@ gboolean DeviceEventCallback(GIOChannel* /* source */,
 }
 
 // This callback will be inovked when this process receives SIGINT or SIGTERM.
-gboolean TerminationSignalCallback(GIOChannel* /* source */,
-                                   GIOCondition /* condition */,
-                                   gpointer data) {
+gboolean TerminationSignalCallback(gpointer data) {
   LOG(INFO) << "Received a signal to terminate the daemon";
   GMainLoop* loop = reinterpret_cast<GMainLoop*>(data);
   g_main_loop_quit(loop);
@@ -69,21 +60,6 @@ gboolean TerminationSignalCallback(GIOChannel* /* source */,
 }
 
 int main(int argc, char** argv) {
-#if !(GLIB_CHECK_VERSION(2, 36, 0))
-  // g_type_init() is deprecated since glib 2.36.
-  ::g_type_init();
-#endif
-#if !(GLIB_CHECK_VERSION(2, 32, 0))
-  // g_thread_init() is deprecated since glib 2.32 and the symbol is no longer
-  // exported since glib 2.34:
-  //
-  //   https://developer.gnome.org/glib/2.32/glib-Deprecated-Thread-APIs.html
-  //
-  // To be compatible with various versions of glib, only call g_thread_init()
-  // when using glib older than 2.32.0.
-  g_thread_init(NULL);
-#endif
-
   // Needed by base::RandBytes() and other Chromium bits that expects
   // an AtExitManager to exist.
   base::AtExitManager exit_manager;
@@ -95,10 +71,14 @@ int main(int argc, char** argv) {
   GMainLoop* loop = g_main_loop_new(g_main_context_default(), FALSE);
   CHECK(loop) << "Failed to create a GMainLoop";
 
+  // Set up a signal handler for handling SIGINT and SIGTERM.
+  g_unix_signal_add(SIGINT, TerminationSignalCallback, loop);
+  g_unix_signal_add(SIGTERM, TerminationSignalCallback, loop);
+
   LOG(INFO) << "Creating the D-Bus dispatcher";
   DBus::Glib::BusDispatcher dispatcher;
   DBus::default_dispatcher = &dispatcher;
-  dispatcher.attach(NULL);
+  dispatcher.attach(nullptr);
 
   LOG(INFO) << "Creating the mtpd server";
   DBus::Connection server_conn = DBus::Connection::SystemBus();
@@ -109,23 +89,7 @@ int main(int argc, char** argv) {
   g_io_add_watch_full(g_io_channel_unix_new(daemon.GetDeviceEventDescriptor()),
                       G_PRIORITY_HIGH_IDLE,
                       GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP | G_IO_NVAL),
-                      DeviceEventCallback, &daemon, NULL);
-
-  // TODO(thestig) Switch back to g_unix_signal_add() once Chromium no longer
-  // supports a Linux system with glib older than 2.30.
-  //
-  // Set up a signal socket and monitor it.
-  sigset_t signal_set;
-  CHECK_EQ(0, sigemptyset(&signal_set));
-  CHECK_EQ(0, sigaddset(&signal_set, SIGINT));
-  CHECK_EQ(0, sigaddset(&signal_set, SIGTERM));
-  int signal_fd = signalfd(-1, &signal_set, 0);
-  PCHECK(signal_fd >= 0);
-
-  // Set up a monitor for |signal_fd|.
-  g_io_add_watch_full(g_io_channel_unix_new(signal_fd), G_PRIORITY_HIGH_IDLE,
-                      GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP | G_IO_NVAL),
-                      TerminationSignalCallback, loop, NULL);
+                      DeviceEventCallback, &daemon, nullptr);
 
   g_main_loop_run(loop);
 

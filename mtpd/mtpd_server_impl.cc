@@ -8,8 +8,7 @@
 #include <base/rand_util.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
-
-#include "service_constants.h"
+#include <chromeos/dbus/service_constants.h>
 
 namespace mtpd {
 
