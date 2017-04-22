@@ -23,6 +23,15 @@ namespace power_manager {
 
 namespace {
 
+// Default directories where read/write and read-only preference files are
+// stored.
+constexpr char kReadWritePrefsDir[] = "/var/lib/power_manager";
+constexpr char kReadOnlyPrefsDir[] = "/usr/share/power_manager";
+
+// Subdirectory within the read-only prefs dir where board-specific prefs are
+// stored.
+constexpr char kBoardSpecificPrefsSubdir[] = "board_specific";
+
 // Minimum time between batches of prefs being written to disk, in
 // milliseconds.
 const int kDefaultWriteIntervalMs = 1000;
@@ -49,6 +58,14 @@ Prefs::Prefs()
 Prefs::~Prefs() {
   if (write_prefs_timer_.IsRunning())
     WritePrefs();
+}
+
+// static
+std::vector<base::FilePath> Prefs::GetDefaultPaths() {
+  return std::vector<base::FilePath>{
+      base::FilePath(kReadWritePrefsDir),
+      base::FilePath(kReadOnlyPrefsDir).Append(kBoardSpecificPrefsSubdir),
+      base::FilePath(kReadOnlyPrefsDir)};
 }
 
 bool Prefs::Init(const std::vector<base::FilePath>& pref_paths) {

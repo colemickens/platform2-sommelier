@@ -13,7 +13,6 @@
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
-#include "power_manager/common/util.h"
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(ambient_light_sensor,
@@ -54,9 +53,7 @@ int main(int argc, char* argv[]) {
       << "Exactly one flag must be set";
 
   power_manager::Prefs prefs;
-  CHECK(prefs.Init(power_manager::util::GetPrefPaths(
-      base::FilePath(power_manager::kReadWritePrefsDir),
-      base::FilePath(power_manager::kReadOnlyPrefsDir))));
+  CHECK(prefs.Init(power_manager::Prefs::GetDefaultPaths()));
 
   if (FLAGS_ambient_light_sensor) {
     bool als_enabled = false;

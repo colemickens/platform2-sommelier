@@ -20,7 +20,6 @@
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
-#include "power_manager/common/util.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/udev_stub.h"
 
@@ -90,9 +89,7 @@ int main(int argc, char** argv) {
   base::MessageLoopForIO message_loop;
 
   power_manager::Prefs prefs;
-  CHECK(prefs.Init(power_manager::util::GetPrefPaths(
-      base::FilePath(power_manager::kReadWritePrefsDir),
-      base::FilePath(power_manager::kReadOnlyPrefsDir))));
+  CHECK(prefs.Init(power_manager::Prefs::GetDefaultPaths()));
 
   power_manager::system::UdevStub udev;
   base::FilePath path(power_manager::kPowerStatusPath);

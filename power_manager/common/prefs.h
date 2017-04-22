@@ -74,6 +74,9 @@ class Prefs : public PrefsInterface {
   Prefs();
   virtual ~Prefs();
 
+  // Returns the default paths where prefs are stored, to be passed to Init().
+  static std::vector<base::FilePath> GetDefaultPaths();
+
   // Earlier directories in |pref_paths_| take precedence over later ones.  Only
   // the first directory is watched for changes.
   bool Init(const std::vector<base::FilePath>& pref_paths);

@@ -81,9 +81,6 @@ const char kSetWifiTransmitPowerForTabletModePref[] =
     "set_wifi_transmit_power_for_tablet_mode";
 
 // Miscellaneous constants.
-const char kReadWritePrefsDir[] = "/var/lib/power_manager";
-const char kReadOnlyPrefsDir[] = "/usr/share/power_manager";
-const char kBoardSpecificPrefsSubdir[] = "board_specific";
 const char kInternalBacklightPath[] = "/sys/class/backlight";
 const char kInternalBacklightPattern[] = "*";
 const char kKeyboardBacklightPath[] = "/sys/class/leds";

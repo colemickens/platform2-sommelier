@@ -20,12 +20,6 @@ double ClampPercent(double percent);
 // Returns |delta| as a string of the format "4h3m45s".
 std::string TimeDeltaToString(base::TimeDelta delta);
 
-// Returns a list of paths to pass when creating a Prefs object. For a given
-// preference, |read_write_path| will be checked first, then the board-specific
-// subdirectory within |read_only_path|, and finally |read_only_path|.
-std::vector<base::FilePath> GetPrefPaths(const base::FilePath& read_write_path,
-                                         const base::FilePath& read_only_path);
-
 // Writes the given buffer into the file, overwriting any data that was
 // previously there.  Returns true if all bytes are written or false otherwise.
 bool WriteFileFully(const base::FilePath& filename, const char* data, int size);

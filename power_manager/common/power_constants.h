@@ -203,15 +203,6 @@ extern const char kSetWifiTransmitPowerForTabletModePref[];
 
 // Miscellaneous constants.
 
-// Default directories where read/write and read-only powerd preference files
-// are stored.
-extern const char kReadWritePrefsDir[];
-extern const char kReadOnlyPrefsDir[];
-
-// Subdirectory within the read-only prefs dir where board-specific prefs are
-// stored.
-extern const char kBoardSpecificPrefsSubdir[];
-
 // sysfs directory containing internal backlight devices and a glob-style
 // pattern matching device names.
 extern const char kInternalBacklightPath[];

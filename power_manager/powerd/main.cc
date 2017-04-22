@@ -80,17 +80,13 @@ namespace power_manager {
 
 class DaemonDelegateImpl : public DaemonDelegate {
  public:
-  DaemonDelegateImpl(const base::FilePath& read_write_prefs_dir,
-                     const base::FilePath& read_only_prefs_dir)
-      : read_write_prefs_dir_(read_write_prefs_dir),
-        read_only_prefs_dir_(read_only_prefs_dir) {}
-  ~DaemonDelegateImpl() override {}
+  DaemonDelegateImpl() = default;
+  ~DaemonDelegateImpl() override = default;
 
   // DaemonDelegate:
   std::unique_ptr<PrefsInterface> CreatePrefs() override {
     auto prefs = base::WrapUnique(new Prefs());
-    CHECK(prefs->Init(
-        util::GetPrefPaths(read_write_prefs_dir_, read_only_prefs_dir_)));
+    CHECK(prefs->Init(Prefs::GetDefaultPaths()));
     return std::move(prefs);
   }
 
@@ -279,12 +275,6 @@ class DaemonDelegateImpl : public DaemonDelegate {
 }  // namespace power_manager
 
 int main(int argc, char* argv[]) {
-  DEFINE_string(prefs_dir,
-                power_manager::kReadWritePrefsDir,
-                "Directory holding read/write preferences.");
-  DEFINE_string(default_prefs_dir,
-                power_manager::kReadOnlyPrefsDir,
-                "Directory holding read-only default settings.");
   DEFINE_string(log_dir, "", "Directory where logs are written.");
   DEFINE_string(run_dir, "", "Directory where stateful data is written.");
   // This flag is handled by libbase/libchrome's logging library instead of
@@ -296,7 +286,6 @@ int main(int argc, char* argv[]) {
   brillo::FlagHelper::Init(
       argc, argv, "powerd, the Chromium OS userspace power manager.");
 
-  CHECK(!FLAGS_prefs_dir.empty()) << "--prefs_dir is required";
   CHECK(!FLAGS_log_dir.empty()) << "--log_dir is required";
   CHECK(!FLAGS_run_dir.empty()) << "--run_dir is required";
 
@@ -318,10 +307,8 @@ int main(int argc, char* argv[]) {
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
 
+  power_manager::DaemonDelegateImpl delegate;
   // Extra parens to avoid http://en.wikipedia.org/wiki/Most_vexing_parse.
-  power_manager::DaemonDelegateImpl delegate(
-      (base::FilePath(FLAGS_prefs_dir)),
-      (base::FilePath(FLAGS_default_prefs_dir)));
   power_manager::Daemon daemon(&delegate, (base::FilePath(FLAGS_run_dir)));
   daemon.Init();
 

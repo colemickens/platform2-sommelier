@@ -18,7 +18,6 @@
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
-#include "power_manager/common/util.h"
 #include "power_manager/powerd/policy/internal_backlight_controller.h"
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
@@ -57,9 +56,7 @@ int main(int argc, char* argv[]) {
       real_backlight.GetCurrentBrightnessLevel());
 
   power_manager::Prefs prefs;
-  CHECK(prefs.Init(power_manager::util::GetPrefPaths(
-      base::FilePath(power_manager::kReadWritePrefsDir),
-      base::FilePath(power_manager::kReadOnlyPrefsDir))));
+  CHECK(prefs.Init(power_manager::Prefs::GetDefaultPaths()));
 
   std::unique_ptr<power_manager::system::AmbientLightSensorStub> light_sensor;
   bool has_als = false;

@@ -49,15 +49,6 @@ std::string TimeDeltaToString(base::TimeDelta delta) {
   return output;
 }
 
-std::vector<base::FilePath> GetPrefPaths(const base::FilePath& read_write_path,
-                                         const base::FilePath& read_only_path) {
-  std::vector<base::FilePath> paths;
-  paths.push_back(read_write_path);
-  paths.push_back(read_only_path.Append(kBoardSpecificPrefsSubdir));
-  paths.push_back(read_only_path);
-  return paths;
-}
-
 bool WriteFileFully(const base::FilePath& filename,
                     const char* data,
                     int size) {
