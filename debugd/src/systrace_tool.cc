@@ -30,8 +30,7 @@ void AddCategoryArgs(ProcessWithOutput* p, const std::string& categories) {
 
 }  // namespace
 
-std::string SystraceTool::Start(const std::string& categories,
-                                DBus::Error* error) {
+std::string SystraceTool::Start(const std::string& categories) {
   std::string path;
   if (!SandboxedProcess::GetHelperPath(kSystraceHelper, &path))
     return "";
@@ -49,7 +48,7 @@ std::string SystraceTool::Start(const std::string& categories,
   return out;
 }
 
-void SystraceTool::Stop(const DBus::FileDescriptor& outfd, DBus::Error* error) {
+void SystraceTool::Stop(const DBus::FileDescriptor& outfd) {
   std::string path;
   if (!SandboxedProcess::GetHelperPath(kSystraceHelper, &path))
     return;
@@ -64,7 +63,7 @@ void SystraceTool::Stop(const DBus::FileDescriptor& outfd, DBus::Error* error) {
   p.Run();
 }
 
-std::string SystraceTool::Status(DBus::Error* error) {
+std::string SystraceTool::Status() {
   std::string path;
   if (!SandboxedProcess::GetHelperPath(kSystraceHelper, &path))
     return "";

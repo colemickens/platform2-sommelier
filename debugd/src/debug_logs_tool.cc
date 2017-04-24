@@ -34,8 +34,7 @@ void WriteArcBugreport(const base::FilePath& arc_bugreport_file) {
 }  // namespace
 
 void DebugLogsTool::GetDebugLogs(bool is_compressed,
-                                 const DBus::FileDescriptor& fd,
-                                 DBus::Error* error) {
+                                 const DBus::FileDescriptor& fd) {
   base::ScopedTempDir arc_temp_dir;
 
   // Create a temporary file and write ARC log to the file if ARC is running.

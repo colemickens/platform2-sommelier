@@ -9,7 +9,6 @@
 #include <string>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
 
 namespace debugd {
 
@@ -18,11 +17,10 @@ class ICMPTool {
   ICMPTool() = default;
   ~ICMPTool() = default;
 
-  std::string TestICMP(const std::string& host, DBus::Error* error);
+  std::string TestICMP(const std::string& host);
   std::string TestICMPWithOptions(
       const std::string& host,
-      const std::map<std::string, std::string>& options,
-      DBus::Error* error);
+      const std::map<std::string, std::string>& options);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ICMPTool);

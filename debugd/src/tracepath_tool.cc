@@ -18,8 +18,7 @@ const char kTracepath6[] = "/usr/sbin/tracepath6";
 std::string TracePathTool::Start(
     const DBus::FileDescriptor& outfd,
     const std::string& destination,
-    const std::map<std::string, DBus::Variant>& options,
-    DBus::Error* error) {
+    const std::map<std::string, DBus::Variant>& options) {
   ProcessWithId* p = CreateProcess(true);
   if (!p)
     return "";

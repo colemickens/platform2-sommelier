@@ -8,7 +8,7 @@
 
 namespace debugd {
 
-std::string NetworkStatusTool::GetNetworkStatus(DBus::Error* error) {
+std::string NetworkStatusTool::GetNetworkStatus() {
   std::string path;
   if (!SandboxedProcess::GetHelperPath("network_status", &path))
     return "";

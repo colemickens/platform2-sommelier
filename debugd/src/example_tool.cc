@@ -12,13 +12,12 @@
 
 namespace debugd {
 
-// Tool methods have a similar signature as the generated DBus adaptors, except
-// for the DBus::Error argument, which is passed in as a pointer instead of a
-// reference. Tool methods are generally written in can't-fail style, since
+// Tool methods have a similar signature as the generated DBus adaptors.
+// Tool methods are generally written in can't-fail style, since
 // their output is usually going to be displayed to the user; instead of
 // returning a DBus exception, we tend to return a string indicating what went
 // wrong.
-std::string ExampleTool::GetExample(DBus::Error* error) {
+std::string ExampleTool::GetExample() {
   std::string path;
   if (!SandboxedProcess::GetHelperPath("example", &path))
     return "<path too long>";

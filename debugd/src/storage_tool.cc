@@ -19,8 +19,7 @@ const char kDevice[] = "/dev/sda";
 
 }  // namespace
 
-std::string StorageTool::Smartctl(const std::string& option,
-                                  DBus::Error* error) {
+std::string StorageTool::Smartctl(const std::string& option) {
   std::string path;
   if (!SandboxedProcess::GetHelperPath("storage", &path))
     return "<path too long>";
@@ -55,8 +54,7 @@ std::string StorageTool::Smartctl(const std::string& option,
   return output;
 }
 
-std::string StorageTool::Start(const DBus::FileDescriptor& outfd,
-                               DBus::Error* error) {
+std::string StorageTool::Start(const DBus::FileDescriptor& outfd) {
   ProcessWithId* p = CreateProcess(false);
   if (!p)
     return "";

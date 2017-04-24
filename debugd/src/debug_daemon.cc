@@ -80,7 +80,7 @@ void DebugDaemon::Run() {
 
 std::string DebugDaemon::SetOomScoreAdj(const std::map<pid_t, int32_t>& scores,
                                         DBus::Error& error) {
-  return oom_adj_tool_->Set(scores, &error);
+  return oom_adj_tool_->Set(scores);
 }
 
 std::string DebugDaemon::PingStart(
@@ -101,7 +101,7 @@ std::string DebugDaemon::TracePathStart(
     const std::string& destination,
     const std::map<std::string, DBus::Variant>& options,
     DBus::Error& error) {  // NOLINT
-  return tracepath_tool_->Start(outfd, destination, options, &error);
+  return tracepath_tool_->Start(outfd, destination, options);
 }
 
 void DebugDaemon::TracePathStop(const std::string& handle,
@@ -111,26 +111,26 @@ void DebugDaemon::TracePathStop(const std::string& handle,
 
 void DebugDaemon::SystraceStart(const std::string& categories,
                                 DBus::Error& error) {  // NOLINT
-  (void) systrace_tool_->Start(categories, &error);
+  (void) systrace_tool_->Start(categories);
 }
 
 void DebugDaemon::SystraceStop(const DBus::FileDescriptor& outfd,
                                DBus::Error& error) { // NOLINT
-  return systrace_tool_->Stop(outfd, &error);
+  return systrace_tool_->Stop(outfd);
 }
 
 std::string DebugDaemon::SystraceStatus(DBus::Error& error) {  // NOLINT
-  return systrace_tool_->Status(&error);
+  return systrace_tool_->Status();
 }
 
 std::vector<std::string> DebugDaemon::GetRoutes(
     const std::map<std::string, DBus::Variant>& options,
     DBus::Error& error) {  // NOLINT
-  return route_tool_->GetRoutes(options, &error);
+  return route_tool_->GetRoutes(options);
 }
 
 std::string DebugDaemon::GetModemStatus(DBus::Error& error) {  // NOLINT
-  return modem_status_tool_->GetModemStatus(&error);
+  return modem_status_tool_->GetModemStatus();
 }
 
 std::string DebugDaemon::RunModemCommand(const std::string& command,
@@ -139,11 +139,11 @@ std::string DebugDaemon::RunModemCommand(const std::string& command,
 }
 
 std::string DebugDaemon::GetNetworkStatus(DBus::Error& error) { // NOLINT
-  return network_status_tool_->GetNetworkStatus(&error);
+  return network_status_tool_->GetNetworkStatus();
 }
 
 std::string DebugDaemon::GetWiMaxStatus(DBus::Error& error) { // NOLINT
-  return wimax_status_tool_->GetWiMaxStatus(&error);
+  return wimax_status_tool_->GetWiMaxStatus();
 }
 
 void DebugDaemon::GetPerfOutput(
@@ -169,48 +169,48 @@ void DebugDaemon::GetPerfOutputFd(
 void DebugDaemon::DumpDebugLogs(const bool& is_compressed,
                                 const DBus::FileDescriptor& fd,
                                 DBus::Error& error) {  // NOLINT
-  debug_logs_tool_->GetDebugLogs(is_compressed, fd, &error);
+  debug_logs_tool_->GetDebugLogs(is_compressed, fd);
 }
 
 void DebugDaemon::SetDebugMode(const std::string& subsystem,
                                DBus::Error& error) {  // NOLINT
-  debug_mode_tool_->SetDebugMode(subsystem, &error);
+  debug_mode_tool_->SetDebugMode(subsystem);
 }
 
 std::string DebugDaemon::GetLog(const std::string& name,
                                 DBus::Error& error) {  // NOLINT
-  return log_tool_->GetLog(name, &error);
+  return log_tool_->GetLog(name);
 }
 
 std::map<std::string, std::string> DebugDaemon::GetAllLogs(
     DBus::Error& error) {  // NOLINT
-  return log_tool_->GetAllLogs(dbus_, &error);
+  return log_tool_->GetAllLogs(dbus_);
 }
 
 std::map<std::string, std::string> DebugDaemon::GetFeedbackLogs(
     DBus::Error& error) {  // NOLINT
-  return log_tool_->GetFeedbackLogs(dbus_, &error);
+  return log_tool_->GetFeedbackLogs(dbus_);
 }
 
 void DebugDaemon::GetBigFeedbackLogs(const DBus::FileDescriptor& fd,
                                      DBus::Error& error) {  // NOLINT
-  log_tool_->GetBigFeedbackLogs(dbus_, fd, &error);
+  log_tool_->GetBigFeedbackLogs(dbus_, fd);
 }
 
 std::map<std::string, std::string> DebugDaemon::GetUserLogFiles(
     DBus::Error& error) {  // NOLINT
-  return log_tool_->GetUserLogFiles(&error);
+  return log_tool_->GetUserLogFiles();
 }
 
 std::string DebugDaemon::GetExample(DBus::Error& error) {  // NOLINT
-  return example_tool_->GetExample(&error);
+  return example_tool_->GetExample();
 }
 
 int32_t DebugDaemon::CupsAddAutoConfiguredPrinter(
     const std::string& name,
     const std::string& uri,
     DBus::Error& error) {  // NOLINT
-  return cups_tool_->AddAutoConfiguredPrinter(name, uri, &error);
+  return cups_tool_->AddAutoConfiguredPrinter(name, uri);
 }
 
 int32_t DebugDaemon::CupsAddManuallyConfiguredPrinter(
@@ -219,48 +219,48 @@ int32_t DebugDaemon::CupsAddManuallyConfiguredPrinter(
     const std::vector<uint8_t>& ppd_contents,
     DBus::Error& error) {  // NOLINT
   return cups_tool_->AddManuallyConfiguredPrinter(
-      name, uri, ppd_contents, &error);
+      name, uri, ppd_contents);
 }
 
 bool DebugDaemon::CupsRemovePrinter(const std::string& name,
                                     DBus::Error& error) { // NOLINT
-  return cups_tool_->RemovePrinter(name, &error);
+  return cups_tool_->RemovePrinter(name);
 }
 
 void DebugDaemon::CupsResetState(DBus::Error& error) { // NOLINT
-  cups_tool_->ResetState(&error);
+  cups_tool_->ResetState();
 }
 
 std::string DebugDaemon::GetInterfaces(DBus::Error& error) {  // NOLINT
-  return netif_tool_->GetInterfaces(&error);
+  return netif_tool_->GetInterfaces();
 }
 
 std::string DebugDaemon::TestICMP(const std::string& host,
                                   DBus::Error& error) {  // NOLINT
-  return icmp_tool_->TestICMP(host, &error);
+  return icmp_tool_->TestICMP(host);
 }
 
 std::string DebugDaemon::TestICMPWithOptions(
     const std::string& host,
     const std::map<std::string, std::string>& options,
     DBus::Error& error) {  // NOLINT
-  return icmp_tool_->TestICMPWithOptions(host, options, &error);
+  return icmp_tool_->TestICMPWithOptions(host, options);
 }
 
 std::string DebugDaemon::BatteryFirmware(const std::string& option,
                                          DBus::Error& error) {  // NOLINT
-  return battery_tool_->BatteryFirmware(option, &error);
+  return battery_tool_->BatteryFirmware(option);
 }
 
 std::string DebugDaemon::Smartctl(const std::string& option,
                                   DBus::Error& error) {  // NOLINT
-  return storage_tool_->Smartctl(option, &error);
+  return storage_tool_->Smartctl(option);
 }
 
 std::string DebugDaemon::MemtesterStart(const DBus::FileDescriptor& outfd,
                                         const uint32_t& memory,
                                         DBus::Error& error) {  // NOLINT
-  return memory_tool_->Start(outfd, memory, &error);
+  return memory_tool_->Start(outfd, memory);
 }
 
 void DebugDaemon::MemtesterStop(const std::string& handle,
@@ -270,7 +270,7 @@ void DebugDaemon::MemtesterStop(const std::string& handle,
 
 std::string DebugDaemon::BadblocksStart(const DBus::FileDescriptor& outfd,
                                         DBus::Error& error) {  // NOLINT
-  return storage_tool_->Start(outfd, &error);
+  return storage_tool_->Start(outfd);
 }
 
 void DebugDaemon::BadblocksStop(const std::string& handle,
@@ -296,7 +296,7 @@ void DebugDaemon::LogKernelTaskStates(DBus::Error& error) {  // NOLINT
 }
 
 void DebugDaemon::UploadCrashes(DBus::Error& error) {  // NOLINT
-  crash_sender_tool_->UploadCrashes(&error);
+  crash_sender_tool_->UploadCrashes();
 }
 
 void DebugDaemon::RemoveRootfsVerification(DBus::Error& error) {  // NOLINT
@@ -390,26 +390,26 @@ void DebugDaemon::DisableDevCoredumpUpload(DBus::Error& error) {  // NOLINT
 std::string DebugDaemon::SwapEnable(const uint32_t& size,
                                     const bool& change_now,
                                     DBus::Error& error) {  // NOLINT
-  return swap_tool_->SwapEnable(size, change_now, &error);
+  return swap_tool_->SwapEnable(size, change_now);
 }
 
 std::string DebugDaemon::SwapDisable(const bool& change_now,
                                      DBus::Error& error) {  // NOLINT
-  return swap_tool_->SwapDisable(change_now, &error);
+  return swap_tool_->SwapDisable(change_now);
 }
 
 std::string DebugDaemon::SwapStartStop(const bool& on,
                                        DBus::Error& error) {  // NOLINT
-  return swap_tool_->SwapStartStop(on, &error);
+  return swap_tool_->SwapStartStop(on);
 }
 
 std::string DebugDaemon::SwapStatus(DBus::Error& error) {  // NOLINT
-  return swap_tool_->SwapStatus(&error);
+  return swap_tool_->SwapStatus();
 }
 
 std::string DebugDaemon::SwapSetMargin(const uint32_t& margin,
                                        DBus::Error& error) {  // NOLINT
-  return swap_tool_->SwapSetMargin(margin, &error);
+  return swap_tool_->SwapSetMargin(margin);
 }
 
 bool DebugDaemon::SetWifiDriverDebug(const int32_t& flags,

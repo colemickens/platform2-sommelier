@@ -316,7 +316,7 @@ void LogTool::CreateConnectivityReport(DBus::Connection* connection) {
   sleep(kConnectionTesterTimeoutSeconds);
 }
 
-string LogTool::GetLog(const string& name, DBus::Error* error) {
+string LogTool::GetLog(const string& name) {
   string result;
      GetNamedLogFrom(name, common_logs, &result)
   || GetNamedLogFrom(name, extra_logs, &result)
@@ -324,8 +324,7 @@ string LogTool::GetLog(const string& name, DBus::Error* error) {
   return result;
 }
 
-LogTool::LogMap LogTool::GetAllLogs(DBus::Connection* connection,
-                                    DBus::Error* error) {
+LogTool::LogMap LogTool::GetAllLogs(DBus::Connection* connection) {
   CreateConnectivityReport(connection);
   LogMap result;
   GetLogsFrom(common_logs, &result);
@@ -333,8 +332,7 @@ LogTool::LogMap LogTool::GetAllLogs(DBus::Connection* connection,
   return result;
 }
 
-LogTool::LogMap LogTool::GetFeedbackLogs(DBus::Connection* connection,
-                                         DBus::Error* error) {
+LogTool::LogMap LogTool::GetFeedbackLogs(DBus::Connection* connection) {
   CreateConnectivityReport(connection);
   LogMap result;
   GetLogsFrom(common_logs, &result);
@@ -344,8 +342,7 @@ LogTool::LogMap LogTool::GetFeedbackLogs(DBus::Connection* connection,
 }
 
 void LogTool::GetBigFeedbackLogs(DBus::Connection* connection,
-                                 const DBus::FileDescriptor& fd,
-                                 DBus::Error* error) {
+                                 const DBus::FileDescriptor& fd) {
   CreateConnectivityReport(connection);
   base::DictionaryValue dictionary;
   GetLogsInDictionary(common_logs, &anonymizer_, &dictionary);
@@ -358,7 +355,7 @@ void LogTool::GetBigFeedbackLogs(DBus::Connection* connection,
   close(fd.get());
 }
 
-LogTool::LogMap LogTool::GetUserLogFiles(DBus::Error* error) {
+LogTool::LogMap LogTool::GetUserLogFiles() {
   LogMap result;
   for (size_t i = 0; user_logs[i].name; ++i)
     result[user_logs[i].name] = user_logs[i].command;

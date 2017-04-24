@@ -12,7 +12,6 @@
 #include <string>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
 
 #include "debugd/src/subprocess_tool.h"
 
@@ -23,9 +22,7 @@ class OomAdjTool : public SubprocessTool {
   OomAdjTool() = default;
   ~OomAdjTool() override = default;
 
-  std::string Set(
-      const std::map<pid_t, int32_t>& scores,
-      DBus::Error* error);
+  std::string Set(const std::map<pid_t, int32_t>& scores);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(OomAdjTool);

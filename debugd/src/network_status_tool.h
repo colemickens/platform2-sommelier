@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
 
 namespace debugd {
 
@@ -17,7 +16,7 @@ class NetworkStatusTool {
   NetworkStatusTool() = default;
   ~NetworkStatusTool() = default;
 
-  std::string GetNetworkStatus(DBus::Error* error);
+  std::string GetNetworkStatus();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NetworkStatusTool);

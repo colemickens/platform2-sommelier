@@ -17,8 +17,7 @@ const char kMemtesterpath[] = "/usr/sbin/memtester";
 }  // namespace
 
 std::string MemtesterTool::Start(const DBus::FileDescriptor& outfd,
-                                 const uint32_t& memory,
-                                 DBus::Error* error) {
+                                 const uint32_t& memory) {
   ProcessWithId* p = CreateProcess(false);
   if (!p)
     return "";

@@ -18,7 +18,7 @@ class DebugModeTool {
   explicit DebugModeTool(DBus::Connection* connection);
   virtual ~DebugModeTool() = default;
 
-  virtual void SetDebugMode(const std::string& subsystem, DBus::Error* error);
+  virtual void SetDebugMode(const std::string& subsystem);
 
  private:
   void GetAllModemManagers(std::vector<std::string>* managers);

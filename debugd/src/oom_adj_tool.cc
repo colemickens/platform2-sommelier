@@ -214,9 +214,7 @@ bool OomScoreSetter::IsValidOwner(const pid_t pid, std::string* errors) {
 
 }  // namespace
 
-std::string OomAdjTool::Set(
-    const std::map<pid_t, int32_t>& scores, DBus::Error* error) {
-
+std::string OomAdjTool::Set(const std::map<pid_t, int32_t>& scores) {
   OomScoreSetter setter;
   return setter.Set(scores);
 }

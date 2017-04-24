@@ -22,8 +22,7 @@ class TracePathTool : public SubprocessTool {
 
   std::string Start(const DBus::FileDescriptor& outfd,
                     const std::string& destination,
-                    const std::map<std::string, DBus::Variant>& options,
-                    DBus::Error* error);
+                    const std::map<std::string, DBus::Variant>& options);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TracePathTool);

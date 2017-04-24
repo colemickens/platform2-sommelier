@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
 
 namespace debugd {
 
@@ -16,7 +15,7 @@ class ModemStatusTool {
  public:
   ModemStatusTool() = default;
   ~ModemStatusTool() = default;
-  std::string GetModemStatus(DBus::Error* error);
+  std::string GetModemStatus();
   std::string RunModemCommand(const std::string& command);
 
  private:

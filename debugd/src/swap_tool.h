@@ -17,12 +17,11 @@ class SwapTool {
   SwapTool() = default;
   ~SwapTool() = default;
 
-  std::string SwapEnable(uint32_t size, bool change_now,
-                         DBus::Error* error) const;
-  std::string SwapDisable(bool change_now, DBus::Error* error) const;
-  std::string SwapStartStop(bool on, DBus::Error* error) const;
-  std::string SwapStatus(DBus::Error* error) const;
-  std::string SwapSetMargin(uint32_t size, DBus::Error* error) const;
+  std::string SwapEnable(uint32_t size, bool change_now) const;
+  std::string SwapDisable(bool change_now) const;
+  std::string SwapStartStop(bool on) const;
+  std::string SwapStatus() const;
+  std::string SwapSetMargin(uint32_t size) const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SwapTool);

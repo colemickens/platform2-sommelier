@@ -85,8 +85,7 @@ class PropertiesProxy : public org::freedesktop::DBus::Properties_proxy,
 DebugModeTool::DebugModeTool(DBus::Connection* connection)
     : connection_(connection) {}
 
-void DebugModeTool::SetDebugMode(const std::string& subsystem,
-                                 DBus::Error*) {
+void DebugModeTool::SetDebugMode(const std::string& subsystem) {
   ManagerProxy flimflam(connection_,
                         shill::kFlimflamServicePath,
                         shill::kFlimflamServiceName);

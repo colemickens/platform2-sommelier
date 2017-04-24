@@ -16,14 +16,13 @@ using std::string;
 
 namespace debugd {
 
-string ICMPTool::TestICMP(const string& host, DBus::Error* error) {
+string ICMPTool::TestICMP(const string& host) {
   map<string, string> options;
-  return TestICMPWithOptions(host, options, error);
+  return TestICMPWithOptions(host, options);
 }
 
 string ICMPTool::TestICMPWithOptions(const string& host,
-                                     const map<string, string>& options,
-                                     DBus::Error* error) {
+                                     const map<string, string>& options) {
   string path;
   if (!SandboxedProcess::GetHelperPath("icmp", &path))
     return "<path too long>";

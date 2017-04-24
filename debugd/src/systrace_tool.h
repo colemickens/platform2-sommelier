@@ -19,9 +19,9 @@ class SystraceTool {
   SystraceTool() = default;
   ~SystraceTool() = default;
 
-  std::string Start(const std::string& categories, DBus::Error* error);
-  void Stop(const DBus::FileDescriptor& outfd, DBus::Error* error);
-  std::string Status(DBus::Error* error);
+  std::string Start(const std::string& categories);
+  void Stop(const DBus::FileDescriptor& outfd);
+  std::string Status();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SystraceTool);

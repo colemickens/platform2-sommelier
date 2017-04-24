@@ -8,7 +8,7 @@
 
 namespace debugd {
 
-std::string NetifTool::GetInterfaces(DBus::Error* error) {
+std::string NetifTool::GetInterfaces() {
   std::string path;
   if (!SandboxedProcess::GetHelperPath("netif", &path))
     return "<path too long>";

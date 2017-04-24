@@ -20,7 +20,7 @@ class RouteTool {
   ~RouteTool() = default;
 
   std::vector<std::string> GetRoutes(
-      const std::map<std::string, DBus::Variant>& options, DBus::Error* error);
+      const std::map<std::string, DBus::Variant>& options);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(RouteTool);

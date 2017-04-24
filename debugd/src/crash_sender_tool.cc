@@ -8,7 +8,7 @@
 
 namespace debugd {
 
-void CrashSenderTool::UploadCrashes(DBus::Error* error) {
+void CrashSenderTool::UploadCrashes() {
   // 'crash_sender' requires accessing user mounts to upload user crashes.
   ProcessWithId* p =
       CreateProcess(false /* sandboxed */, true /* access_root_mount_ns */);

@@ -16,8 +16,7 @@ class DebugLogsTool {
   ~DebugLogsTool() = default;
 
   void GetDebugLogs(bool is_compressed,
-                    const DBus::FileDescriptor& fd,
-                    DBus::Error* error);
+                    const DBus::FileDescriptor& fd);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DebugLogsTool);

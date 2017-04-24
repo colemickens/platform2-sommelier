@@ -6,7 +6,6 @@
 #define DEBUGD_SRC_CRASH_SENDER_TOOL_H_
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
 
 #include "debugd/src/subprocess_tool.h"
 
@@ -17,7 +16,7 @@ class CrashSenderTool : public SubprocessTool {
   CrashSenderTool() = default;
   ~CrashSenderTool() override = default;
 
-  void UploadCrashes(DBus::Error* error);
+  void UploadCrashes();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CrashSenderTool);

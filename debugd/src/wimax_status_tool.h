@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
 
 namespace debugd {
 
@@ -17,7 +16,7 @@ class WiMaxStatusTool {
   WiMaxStatusTool() = default;
   ~WiMaxStatusTool() = default;
 
-  std::string GetWiMaxStatus(DBus::Error* error);
+  std::string GetWiMaxStatus();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(WiMaxStatusTool);

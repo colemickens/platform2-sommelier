@@ -19,8 +19,8 @@ class StorageTool : public SubprocessTool {
   StorageTool() = default;
   ~StorageTool() override = default;
 
-  std::string Smartctl(const std::string& option, DBus::Error* error);
-  std::string Start(const DBus::FileDescriptor& outfd, DBus::Error* error);
+  std::string Smartctl(const std::string& option);
+  std::string Start(const DBus::FileDescriptor& outfd);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(StorageTool);

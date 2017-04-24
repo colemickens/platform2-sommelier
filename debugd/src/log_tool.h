@@ -22,13 +22,12 @@ class LogTool {
 
   using LogMap = std::map<std::string, std::string>;
 
-  std::string GetLog(const std::string& name, DBus::Error* error);
-  LogMap GetAllLogs(DBus::Connection* connection, DBus::Error* error);
-  LogMap GetFeedbackLogs(DBus::Connection* connection, DBus::Error* error);
+  std::string GetLog(const std::string& name);
+  LogMap GetAllLogs(DBus::Connection* connection);
+  LogMap GetFeedbackLogs(DBus::Connection* connection);
   void GetBigFeedbackLogs(DBus::Connection* connection,
-                          const DBus::FileDescriptor& fd,
-                          DBus::Error* error);
-  LogMap GetUserLogFiles(DBus::Error* error);
+                          const DBus::FileDescriptor& fd);
+  LogMap GetUserLogFiles();
 
  private:
   friend class LogToolTest;

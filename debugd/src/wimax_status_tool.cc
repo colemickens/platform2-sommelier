@@ -12,7 +12,7 @@ using base::StringPrintf;
 
 namespace debugd {
 
-std::string WiMaxStatusTool::GetWiMaxStatus(DBus::Error* error) {
+std::string WiMaxStatusTool::GetWiMaxStatus() {
   if (!USE_WIMAX)
     return "";
 

@@ -10,7 +10,7 @@ using std::string;
 
 namespace debugd {
 
-std::string ModemStatusTool::GetModemStatus(DBus::Error* error) {
+std::string ModemStatusTool::GetModemStatus() {
   if (!USE_CELLULAR)
     return "";
 

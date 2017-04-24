@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
 
 #include "debugd/src/subprocess_tool.h"
 
@@ -19,7 +18,7 @@ class BatteryTool : public SubprocessTool {
   BatteryTool() = default;
   ~BatteryTool() override = default;
 
-  std::string BatteryFirmware(const std::string& option, DBus::Error* error);
+  std::string BatteryFirmware(const std::string& option);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BatteryTool);

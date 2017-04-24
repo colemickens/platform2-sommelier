@@ -10,7 +10,6 @@
 #include <string>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
 
 namespace debugd {
 
@@ -19,7 +18,7 @@ class ExampleTool {
   ExampleTool() = default;
   ~ExampleTool() = default;
 
-  std::string GetExample(DBus::Error* error);
+  std::string GetExample();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ExampleTool);

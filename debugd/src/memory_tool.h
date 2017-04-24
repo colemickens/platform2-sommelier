@@ -20,8 +20,7 @@ class MemtesterTool : public SubprocessTool {
   ~MemtesterTool() override = default;
 
   std::string Start(const DBus::FileDescriptor& outfd,
-                    const uint32_t& memory,
-                    DBus::Error* error);
+                    const uint32_t& memory);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MemtesterTool);

@@ -27,8 +27,7 @@ std::string RunSwapHelper(const ProcessWithOutput::ArgList& arguments,
 
 }  // namespace
 
-std::string SwapTool::SwapEnable(uint32_t size, bool change_now,
-                                 DBus::Error* error) const {
+std::string SwapTool::SwapEnable(uint32_t size, bool change_now) const {
   int result;
   std::string output, buf;
 
@@ -38,12 +37,12 @@ std::string SwapTool::SwapEnable(uint32_t size, bool change_now,
     return output;
 
   if (change_now)
-    output = SwapStartStop(true, error);
+    output = SwapStartStop(true);
 
   return output;
 }
 
-std::string SwapTool::SwapDisable(bool change_now, DBus::Error* error) const {
+std::string SwapTool::SwapDisable(bool change_now) const {
   int result;
   std::string output;
 
@@ -52,12 +51,12 @@ std::string SwapTool::SwapDisable(bool change_now, DBus::Error* error) const {
     return output;
 
   if (change_now)
-    output = SwapStartStop(false, error);
+    output = SwapStartStop(false);
 
   return output;
 }
 
-std::string SwapTool::SwapStartStop(bool on, DBus::Error* error) const {
+std::string SwapTool::SwapStartStop(bool on) const {
   int result;
   std::string output;
 
@@ -73,13 +72,13 @@ std::string SwapTool::SwapStartStop(bool on, DBus::Error* error) const {
   return output;
 }
 
-std::string SwapTool::SwapStatus(DBus::Error* error) const {
+std::string SwapTool::SwapStatus() const {
   int result;
   return RunSwapHelper({"status", }, &result);
 }
 
 
-std::string SwapTool::SwapSetMargin(uint32_t margin, DBus::Error* error) const {
+std::string SwapTool::SwapSetMargin(uint32_t margin) const {
   int result;
   std::string output, buf;
 

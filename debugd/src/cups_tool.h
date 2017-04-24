@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
 
 namespace debugd {
 
@@ -20,20 +19,19 @@ class CupsTool {
 
   // Add a printer that can be configured automatically.
   int32_t AddAutoConfiguredPrinter(const std::string& name,
-                                   const std::string& uri,
-                                   DBus::Error* error);
+                                   const std::string& uri);
 
   // Add a printer configured with the ppd found in |ppd_contents|.
-  int32_t AddManuallyConfiguredPrinter(const std::string& name,
-                                       const std::string& uri,
-                                       const std::vector<uint8_t>& ppd_contents,
-                                       DBus::Error* error);
+  int32_t AddManuallyConfiguredPrinter(
+      const std::string& name,
+      const std::string& uri,
+      const std::vector<uint8_t>& ppd_contents);
 
   // Remove a printer from CUPS using lpadmin.
-  bool RemovePrinter(const std::string& name, DBus::Error* error);
+  bool RemovePrinter(const std::string& name);
 
   // Clear CUPS state.
-  void ResetState(DBus::Error* error);
+  void ResetState();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CupsTool);

@@ -17,7 +17,7 @@ const char kIpTool[] = "/bin/ip";
 }  // namespace
 
 std::vector<std::string> RouteTool::GetRoutes(
-    const std::map<std::string, DBus::Variant>& options, DBus::Error* error) {
+    const std::map<std::string, DBus::Variant>& options) {
   std::vector<std::string> result;
   ProcessWithOutput p;
   if (!p.Init())

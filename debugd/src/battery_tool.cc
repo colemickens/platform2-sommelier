@@ -23,8 +23,7 @@ const char kUnsupportedMessage[] =
 
 namespace debugd {
 
-std::string BatteryTool::BatteryFirmware(const std::string& option,
-                                         DBus::Error* error) {
+std::string BatteryTool::BatteryFirmware(const std::string& option) {
   const char *tool_name;
   std::string output;
   ProcessWithOutput process;

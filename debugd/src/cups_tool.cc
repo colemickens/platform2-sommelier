@@ -70,7 +70,7 @@ bool SetPerms(const base::FilePath& fpath, mode_t mode, uid_t uid, gid_t gid) {
   return true;
 }
 
-int StopCups(DBus::Error* error) {
+int StopCups() {
   int result;
 
   result = ProcessWithOutput::RunProcess("initctl", {"stop", kJobName},
@@ -78,7 +78,7 @@ int StopCups(DBus::Error* error) {
                                          nullptr,  // stdin
                                          nullptr,  // stdout
                                          nullptr,  // stderr
-                                         error);
+                                         nullptr);
 
   // Don't log errors, since job may not be started.
   return result;
@@ -117,7 +117,7 @@ int RunAsUser(const std::string& user, const std::string& group,
               const std::string& command,
               const std::string& seccomp_policy,
               const ProcessWithOutput::ArgList& arg_list,
-              DBus::Error* /*error*/, bool root_mount_ns = false) {
+              bool root_mount_ns = false) {
   ProcessWithOutput process;
   process.set_separate_stderr(true);
   process.SandboxAs(user, group);
@@ -148,19 +148,19 @@ int RunAsUser(const std::string& user, const std::string& group,
 
 // Runs cupstestppd on |file_name| returns the result code.  0 is the expected
 // success code.
-int TestPPD(const std::string& path, DBus::Error* error) {
+int TestPPD(const std::string& path) {
   // TODO(skau): Run cupstestppd in seccomp crbug.com/633383.
   return RunAsUser(kLpadminUser, kLpadminGroup, kTestPPDCommand,
-                   kTestPPDSeccompPolicy, {path}, error,
+                   kTestPPDSeccompPolicy, {path},
                    true /* root_mount_ns */);
 }
 
 // Runs lpadmin with the provided |arg_list|.
-int Lpadmin(const ProcessWithOutput::ArgList& arg_list, DBus::Error* error) {
+int Lpadmin(const ProcessWithOutput::ArgList& arg_list) {
   // TODO(skau): Run lpadmin in seccomp crbug.com/637160.
   // Run in lp group so we can read and write /run/cups/cups.sock.
   return RunAsUser(kLpadminUser, kLpGroup, kLpadminCommand,
-                   kLpadminSeccompPolicy, arg_list, error);
+                   kLpadminSeccompPolicy, arg_list);
 }
 
 // Write |contents| to |filename| in |temp_ppd_dir| and set permissions so
@@ -174,8 +174,7 @@ int Lpadmin(const ProcessWithOutput::ArgList& arg_list, DBus::Error* error) {
 // file if the write is successful.
 bool WriteTempPPDFile(const base::FilePath& temp_ppd_dir,
                       const std::vector<uint8_t>& contents,
-                      base::FilePath* temp_ppd_file,
-                      DBus::Error* error) {
+                      base::FilePath* temp_ppd_file) {
   *temp_ppd_file = temp_ppd_dir.Append(
       IsGZipped(contents) ? kGZippedTempPPDFileName : kTempPPDFileName);
   if (!base::WriteFile(*temp_ppd_file,
@@ -214,8 +213,7 @@ bool WriteTempPPDFile(const base::FilePath& temp_ppd_dir,
 // everywhere'.  Returns 0 for success, 1 for failure, 4 if configuration
 // failed.
 int32_t CupsTool::AddAutoConfiguredPrinter(const std::string& name,
-                                           const std::string& uri,
-                                           DBus::Error* error) {
+                                           const std::string& uri) {
   // Autoconfiguration requires ipp or ipps.
   if (!base::StartsWith(uri, "ipp://", base::CompareCase::INSENSITIVE_ASCII) &&
       !base::StartsWith(uri, "ipps://", base::CompareCase::INSENSITIVE_ASCII)) {
@@ -223,7 +221,7 @@ int32_t CupsTool::AddAutoConfiguredPrinter(const std::string& name,
     return CupsResult::CUPS_FATAL;
   }
 
-  if (Lpadmin({"-v", uri, "-p", name, "-m", "everywhere", "-E"}, error) !=
+  if (Lpadmin({"-v", uri, "-p", name, "-m", "everywhere", "-E"}) !=
       EXIT_SUCCESS) {
     return CupsResult::CUPS_AUTOCONF_FAILURE;
   }
@@ -234,8 +232,7 @@ int32_t CupsTool::AddAutoConfiguredPrinter(const std::string& name,
 int32_t CupsTool::AddManuallyConfiguredPrinter(
     const std::string& name,
     const std::string& uri,
-    const std::vector<uint8_t>& ppd_contents,
-    DBus::Error* error) {
+    const std::vector<uint8_t>& ppd_contents) {
   // Scoped temp dir will cleanup the directory when we're done.
   base::ScopedTempDir temp_dir;
   if (!temp_dir.CreateUniqueTempDir()) {
@@ -244,19 +241,18 @@ int32_t CupsTool::AddManuallyConfiguredPrinter(
   }
 
   base::FilePath temp_ppd;
-  if (!WriteTempPPDFile(temp_dir.path(), ppd_contents, &temp_ppd, error)) {
+  if (!WriteTempPPDFile(temp_dir.path(), ppd_contents, &temp_ppd)) {
     return CupsResult::CUPS_FATAL;
   }
 
-  int result = TestPPD(temp_ppd.value(), error);
+  int result = TestPPD(temp_ppd.value());
   if (result != EXIT_SUCCESS) {
     LOG(ERROR) << "PPD failed validation";
     return CupsResult::CUPS_INVALID_PPD;
   }
 
   // lpadmin only returns 0 for success and 1 for failure.
-  result =
-      Lpadmin({"-v", uri, "-p", name, "-P", temp_ppd.value(), "-E"}, error);
+  result = Lpadmin({"-v", uri, "-p", name, "-P", temp_ppd.value(), "-E"});
   if (result != EXIT_SUCCESS) {
     return CupsResult::CUPS_LPADMIN_FAILURE;
   }
@@ -265,16 +261,15 @@ int32_t CupsTool::AddManuallyConfiguredPrinter(
 }
 
 // Invokes lpadmin with -x to delete a printer.
-bool CupsTool::RemovePrinter(const std::string& name, DBus::Error* error) {
-  return Lpadmin({"-x", name}, error) == EXIT_SUCCESS;
+bool CupsTool::RemovePrinter(const std::string& name) {
+  return Lpadmin({"-x", name}) == EXIT_SUCCESS;
 }
 
 // Stop cupsd and clear its state.  Needs to launch helper with root
 // permissions, so we can restart Upstart jobs, and clear privileged
 // directories.
-void CupsTool::ResetState(DBus::Error* error) {
-  // Ignore errors; CUPS may not even be started.
-  StopCups(error);
+void CupsTool::ResetState() {
+  StopCups();
 
   // There's technically a race -- cups can be restarted in the meantime -- but
   // (a) we don't expect applications to be racing with this (e.g., this method
