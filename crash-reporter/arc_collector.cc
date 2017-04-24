@@ -485,7 +485,10 @@ bool ArcCollector::CreateReportForJavaCrash(const std::string &crash_type,
   if (exception_info.empty()) {
     if (const char * const tag = GetSubjectTag(crash_type)) {
       std::ostringstream out;
-      out << '[' << tag << "] " << GetCrashLogHeader(map, kSubjectKey);
+      out << '[' << tag << ']';
+      const auto it = map.find(kSubjectKey);
+      if (it != map.end())
+        out << ' ' << it->second;
 
       AddCrashMetaData(kSignatureField, out.str());
     } else {
@@ -540,6 +543,7 @@ bool HasExceptionInfo(const std::string &type) {
 
 const char *GetSubjectTag(const std::string &type) {
   static const std::unordered_map<std::string, const char *> kTags = {
+    { "data_app_native_crash", "native app crash" },
     { "system_app_anr", "ANR" },
     { "system_server_watchdog", "system server watchdog" }
   };
