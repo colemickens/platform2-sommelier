@@ -54,12 +54,10 @@ void Camera3DeviceOpsDelegate::ProcessCaptureRequest(
       camera_device_adapter_->ProcessCaptureRequest(std::move(request)));
 }
 
-void Camera3DeviceOpsDelegate::Dump(mojo::ScopedHandle fd,
-                                    const DumpCallback& callback) {
+void Camera3DeviceOpsDelegate::Dump(mojo::ScopedHandle fd) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   camera_device_adapter_->Dump(std::move(fd));
-  callback.Run();
 }
 
 void Camera3DeviceOpsDelegate::Flush(const FlushCallback& callback) {

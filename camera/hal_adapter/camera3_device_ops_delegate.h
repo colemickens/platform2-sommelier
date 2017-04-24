@@ -38,7 +38,7 @@ class Camera3DeviceOpsDelegate final
       mojom::Camera3CaptureRequestPtr request,
       const ProcessCaptureRequestCallback& callback) final;
 
-  void Dump(mojo::ScopedHandle fd, const DumpCallback& callback) final;
+  void Dump(mojo::ScopedHandle fd) final;
 
   void Flush(const FlushCallback& callback) final;
 

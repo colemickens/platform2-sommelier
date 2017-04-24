@@ -34,11 +34,9 @@ class Camera3CallbackOpsDelegate
   static void Notify(const camera3_callback_ops_t* ops,
                      const camera3_notify_msg_t* msg);
 
-  void ProcessCaptureResultOnThread(const camera3_capture_result_t* result,
-                                    const base::Callback<void()>& cb);
+  void ProcessCaptureResultOnThread(mojom::Camera3CaptureResultPtr result);
 
-  void NotifyOnThread(const camera3_notify_msg_t* msg,
-                      const base::Callback<void()>& cb);
+  void NotifyOnThread(mojom::Camera3NotifyMsgPtr msg);
 
   CameraDeviceAdapter* camera_device_adapter_;
 

@@ -33,24 +33,20 @@ void CameraModuleCallbacksDelegate::CameraDeviceStatusChange(
   CameraModuleCallbacksDelegate* delegate =
       const_cast<CameraModuleCallbacksDelegate*>(
           static_cast<const CameraModuleCallbacksDelegate*>(callbacks));
-  auto future = internal::Future<void>::Create(&delegate->relay_);
   delegate->task_runner_->PostTask(
       FROM_HERE,
       base::Bind(
           &CameraModuleCallbacksDelegate::CameraDeviceStatusChangeOnThread,
-          base::AsWeakPtr(delegate), camera_id, new_status,
-          internal::GetFutureCallback(future)));
-  future->Wait();
+          base::AsWeakPtr(delegate), camera_id, new_status));
 }
 
 void CameraModuleCallbacksDelegate::CameraDeviceStatusChangeOnThread(
     int camera_id,
-    int new_status,
-    const base::Callback<void()>& cb) {
+    int new_status) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   interface_ptr_->CameraDeviceStatusChange(
-      camera_id, static_cast<mojom::CameraDeviceStatus>(new_status), cb);
+      camera_id, static_cast<mojom::CameraDeviceStatus>(new_status));
 }
 
 }  // namespace arc

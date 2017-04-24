@@ -37,13 +37,12 @@ void Camera3CallbackOpsDelegate::ProcessCaptureResult(
       const_cast<Camera3CallbackOpsDelegate*>(
           static_cast<const Camera3CallbackOpsDelegate*>(ops));
 
-  auto future = internal::Future<void>::Create(&delegate->relay_);
+  mojom::Camera3CaptureResultPtr result_ptr =
+      delegate->camera_device_adapter_->ProcessCaptureResult(result);
   delegate->task_runner_->PostTask(
       FROM_HERE,
       base::Bind(&Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread,
-                 base::AsWeakPtr(delegate), base::Unretained(result),
-                 internal::GetFutureCallback(future)));
-  future->Wait();
+                 base::AsWeakPtr(delegate), base::Passed(&result_ptr)));
 }
 
 void Camera3CallbackOpsDelegate::Notify(const camera3_callback_ops_t* ops,
@@ -53,29 +52,25 @@ void Camera3CallbackOpsDelegate::Notify(const camera3_callback_ops_t* ops,
       const_cast<Camera3CallbackOpsDelegate*>(
           static_cast<const Camera3CallbackOpsDelegate*>(ops));
 
-  auto future = internal::Future<void>::Create(&delegate->relay_);
+  mojom::Camera3NotifyMsgPtr msg_ptr =
+      delegate->camera_device_adapter_->Notify(msg);
   delegate->task_runner_->PostTask(
       FROM_HERE, base::Bind(&Camera3CallbackOpsDelegate::NotifyOnThread,
-                            base::AsWeakPtr(delegate), base::Unretained(msg),
-                            internal::GetFutureCallback(future)));
-  future->Wait();
+                            base::AsWeakPtr(delegate), base::Passed(&msg_ptr)));
 }
 
 void Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread(
-    const camera3_capture_result_t* result,
-    const base::Callback<void()>& cb) {
+    mojom::Camera3CaptureResultPtr result) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
-  interface_ptr_->ProcessCaptureResult(
-      camera_device_adapter_->ProcessCaptureResult(result), cb);
+  interface_ptr_->ProcessCaptureResult(std::move(result));
 }
 
 void Camera3CallbackOpsDelegate::NotifyOnThread(
-    const camera3_notify_msg_t* msg,
-    const base::Callback<void()>& cb) {
+    mojom::Camera3NotifyMsgPtr msg) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
-  interface_ptr_->Notify(camera_device_adapter_->Notify(msg), cb);
+  interface_ptr_->Notify(std::move(msg));
 }
 
 }  // end of namespace arc

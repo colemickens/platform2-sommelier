@@ -117,7 +117,7 @@ interface Camera3DeviceOps {
 
   ProcessCaptureRequest@3(Camera3CaptureRequest request) => (int32 result);
 
-  Dump@4(handle fd) => ();
+  Dump@4(handle fd);
 
   Flush@5() => (int32 result);
 
@@ -175,9 +175,9 @@ struct Camera3NotifyMsg {
 };
 
 interface Camera3CallbackOps {
-  ProcessCaptureResult@0(Camera3CaptureResult result) => ();
+  ProcessCaptureResult@0(Camera3CaptureResult result);
 
-  Notify@1(Camera3NotifyMsg msg) => ();
+  Notify@1(Camera3NotifyMsg msg);
 };
 
 struct CameraInfo {
@@ -207,6 +207,5 @@ enum CameraDeviceStatus {
 };
 
 interface CameraModuleCallbacks {
-  CameraDeviceStatusChange@0(int32 camera_id, CameraDeviceStatus new_status) =>
-    ();
+  CameraDeviceStatusChange@0(int32 camera_id, CameraDeviceStatus new_status);
 };

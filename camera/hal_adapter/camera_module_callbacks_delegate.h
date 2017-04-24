@@ -29,9 +29,7 @@ class CameraModuleCallbacksDelegate
       int camera_id,
       int new_status);
 
-  void CameraDeviceStatusChangeOnThread(int camera_id,
-                                        int new_status,
-                                        const base::Callback<void()>& cb);
+  void CameraDeviceStatusChangeOnThread(int camera_id, int new_status);
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(CameraModuleCallbacksDelegate);
 };
