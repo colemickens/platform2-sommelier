@@ -5,6 +5,7 @@
 #include "cryptohome/dircrypto_data_migrator/migration_helper.h"
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -156,11 +157,11 @@ bool MigrationHelper::IsMigrationStarted() const {
 void MigrationHelper::CalculateDataToMigrate(const base::FilePath& from) {
   total_byte_count_ = 0;
   migrated_byte_count_ = 0;
-  FileEnumerator* enumerator = platform_->GetFileEnumerator(
+  std::unique_ptr<FileEnumerator> enumerator(platform_->GetFileEnumerator(
       from,
       true /* recursive */,
       base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES |
-          base::FileEnumerator::SHOW_SYM_LINKS);
+      base::FileEnumerator::SHOW_SYM_LINKS));
   for (base::FilePath entry = enumerator->Next(); !entry.empty();
        entry = enumerator->Next()) {
     const FileEnumerator::FileInfo& info = enumerator->GetInfo();
@@ -195,11 +196,11 @@ bool MigrationHelper::MigrateDir(const base::FilePath& from,
   if (!CopyAttributes(from_dir, to_dir, info))
     return false;
 
-  FileEnumerator* enumerator = platform_->GetFileEnumerator(
+  std::unique_ptr<FileEnumerator> enumerator(platform_->GetFileEnumerator(
       from_dir,
       false /* is_recursive */,
       base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES |
-          base::FileEnumerator::SHOW_SYM_LINKS);
+      base::FileEnumerator::SHOW_SYM_LINKS));
 
   for (base::FilePath entry = enumerator->Next(); !entry.empty();
        entry = enumerator->Next()) {
