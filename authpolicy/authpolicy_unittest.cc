@@ -149,13 +149,13 @@ class TestMetrics : public AuthPolicyMetrics {
     std::string log_str;
     for (const auto& kv : metrics_report_count_) {
       log_str += base::StringPrintf(
-          "\n  EXPECT_EQ(%i, Metrics()->GetMetricReportCount(%s));",
+          "\n  EXPECT_EQ(%i, metrics_->GetMetricReportCount(%s));",
           kv.second,
           metrics_str[kv.first]);
     }
     for (const auto& kv : dbus_report_count_) {
       log_str += base::StringPrintf(
-          "\n  EXPECT_EQ(%i, Metrics()->GetDBusReportCount(%s));",
+          "\n  EXPECT_EQ(%i, metrics_->GetDBusReportCount(%s));",
           kv.second,
           dbus_str[kv.first]);
     }
@@ -244,20 +244,23 @@ class AuthPolicyTest : public testing::Test {
     auto dbus_object =
         base::MakeUnique<DBusObject>(nullptr, mock_bus_, object_path);
 
+    metrics_ = base::MakeUnique<TestMetrics>();
+
     // Create path service with all paths pointing into a temp directory.
     CHECK(base::CreateNewTempDirectory("" /* prefix (ignored) */, &base_path_));
-    auto paths = base::MakeUnique<TestPathService>(base_path_);
+    paths_ = base::MakeUnique<TestPathService>(base_path_);
 
     // Create the state directory since authpolicyd assumes its existence.
-    base::FilePath state_path(paths->Get(Path::STATE_DIR));
+    const base::FilePath state_path =
+        base::FilePath(paths_->Get(Path::STATE_DIR));
     CHECK(base::CreateDirectory(state_path));
 
     // Set stub preg path. Since it is not trivial to pass the full path to the
     // stub binaries, we simply use the directory from the krb5.conf file.
     const base::FilePath gpo_dir =
-        base::FilePath(paths->Get(Path::USER_KRB5_CONF)).DirName();
+        base::FilePath(paths_->Get(Path::USER_KRB5_CONF)).DirName();
     DCHECK(gpo_dir ==
-           base::FilePath(paths->Get(Path::DEVICE_KRB5_CONF)).DirName());
+           base::FilePath(paths_->Get(Path::DEVICE_KRB5_CONF)).DirName());
     stub_gpo1_path_ = gpo_dir.Append(kGpo1Filename);
     stub_gpo2_path_ = gpo_dir.Append(kGpo2Filename);
 
@@ -274,9 +277,7 @@ class AuthPolicyTest : public testing::Test {
         .Times(8);
 
     // Create AuthPolicy instance.
-    authpolicy_ = base::MakeUnique<AuthPolicy>(std::move(dbus_object),
-                                               base::MakeUnique<TestMetrics>(),
-                                               std::move(paths));
+    authpolicy_ = base::MakeUnique<AuthPolicy>(metrics_.get(), paths_.get());
     EXPECT_EQ(ERROR_NONE, authpolicy_->Initialize(false /* expect_config */));
 
     // Don't sleep for kinit/smbclient retries, it just prolongs our tests.
@@ -296,7 +297,7 @@ class AuthPolicyTest : public testing::Test {
         .WillRepeatedly(
             Invoke(this, &AuthPolicyTest::StubCallStorePolicyMethod));
 
-    authpolicy_->RegisterAsync(base::Bind(&DoNothing));
+    authpolicy_->RegisterAsync(std::move(dbus_object), base::Bind(&DoNothing));
   }
 
   // Stub method called by the Session Manager mock to store policy. Validates
@@ -376,11 +377,6 @@ class AuthPolicyTest : public testing::Test {
   }
 
  protected:
-  // Accessor for testing metrics.
-  TestMetrics* Metrics() const {
-    return static_cast<TestMetrics*>(authpolicy_->GetMetricsForTesting());
-  }
-
   // Joins a (stub) Active Directory domain. Returns the error code.
   ErrorType Join(const std::string& machine_name) {
     return CastError(authpolicy_->JoinADDomain(
@@ -507,7 +503,12 @@ class AuthPolicyTest : public testing::Test {
   scoped_refptr<MockBus> mock_bus_ = new MockBus(dbus::Bus::Options());
   scoped_refptr<MockExportedObject> mock_exported_object_;
   scoped_refptr<MockObjectProxy> mock_session_manager_proxy_;
+
+  // Keep this order! auth_policy_ must be last as it depends on the other two.
+  std::unique_ptr<TestMetrics> metrics_;
+  std::unique_ptr<TestPathService> paths_;
   std::unique_ptr<AuthPolicy> authpolicy_;
+
   base::FilePath base_path_;
   base::FilePath stub_gpo1_path_;
   base::FilePath stub_gpo2_path_;
@@ -542,34 +543,34 @@ class AuthPolicyTest : public testing::Test {
 // Can't fetch user policy if the user is not logged in.
 TEST_F(AuthPolicyTest, UserPolicyFailsNotLoggedIn) {
   FetchAndValidateUserPolicy("account_id_key", ERROR_NOT_LOGGED_IN);
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_REFRESH_USER_POLICY));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_REFRESH_USER_POLICY));
 }
 
 // Can't fetch device policy if the device is not joined.
 TEST_F(AuthPolicyTest, DevicePolicyFailsNotJoined) {
   FetchAndValidateDevicePolicy(ERROR_NOT_JOINED);
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_REFRESH_DEVICE_POLICY));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_REFRESH_DEVICE_POLICY));
 }
 
 // Authentication fails if the machine is not joined.
 TEST_F(AuthPolicyTest, AuthFailsNotJoined) {
   EXPECT_EQ(ERROR_NOT_JOINED, Auth(kUserPrincipal, "", MakePasswordFd()));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
 }
 
 // Successful domain join.
 TEST_F(AuthPolicyTest, JoinSucceeds) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
 }
 
 // Successful user authentication.
 TEST_F(AuthPolicyTest, AuthSucceeds) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName));
   EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
-  EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
 }
 
 // Successful user authentication with given account id.
@@ -579,9 +580,9 @@ TEST_F(AuthPolicyTest, AuthSucceedsWithKnownAccountId) {
   EXPECT_EQ(ERROR_NONE,
             Auth(kUserPrincipal, kAccountId, MakePasswordFd(), &account_info));
   EXPECT_EQ(kAccountId, account_info.account_id());
-  EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
 }
 
 // User authentication fails with bad (non-existent) account id.
@@ -589,9 +590,9 @@ TEST_F(AuthPolicyTest, AuthFailsWithBadAccountId) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName));
   EXPECT_EQ(ERROR_BAD_USER_NAME,
             Auth(kUserPrincipal, kBadAccountId, MakePasswordFd()));
-  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
 }
 
 // Successful user authentication.
@@ -604,9 +605,9 @@ TEST_F(AuthPolicyTest, AuthSetsAccountInfo) {
   EXPECT_EQ(kDisplayName, account_info.display_name());
   EXPECT_EQ(kGivenName, account_info.given_name());
   EXPECT_EQ(kUserName, account_info.sam_account_name());
-  EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
 }
 
 // Authentication fails for badly formatted user principal name.
@@ -614,8 +615,8 @@ TEST_F(AuthPolicyTest, AuthFailsInvalidUpn) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName));
   EXPECT_EQ(ERROR_PARSE_UPN_FAILED,
             Auth(kInvalidUserPrincipal, "", MakePasswordFd()));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
 }
 
 // Authentication fails for non-existing user principal name.
@@ -623,9 +624,9 @@ TEST_F(AuthPolicyTest, AuthFailsBadUpn) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName));
   EXPECT_EQ(ERROR_BAD_USER_NAME,
             Auth(kNonExistingUserPrincipal, "", MakePasswordFd()));
-  EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
 }
 
 // Authentication fails for wrong password.
@@ -633,9 +634,9 @@ TEST_F(AuthPolicyTest, AuthFailsBadPassword) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName));
   EXPECT_EQ(ERROR_BAD_PASSWORD,
             Auth(kUserPrincipal, "", MakeFileDescriptor(kWrongPassword)));
-  EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
 }
 
 // Authentication fails for expired password.
@@ -643,9 +644,9 @@ TEST_F(AuthPolicyTest, AuthFailsExpiredPassword) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName));
   EXPECT_EQ(ERROR_PASSWORD_EXPIRED,
             Auth(kUserPrincipal, "", MakeFileDescriptor(kExpiredPassword)));
-  EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
 }
 
 // Authentication fails if there's a network issue.
@@ -653,33 +654,33 @@ TEST_F(AuthPolicyTest, AuthFailsNetworkProblem) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName));
   EXPECT_EQ(ERROR_NETWORK_PROBLEM,
             Auth(kNetworkErrorUserPrincipal, "", MakePasswordFd()));
-  EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
 }
 
 // Authentication retries without KDC if it fails the first time.
 TEST_F(AuthPolicyTest, AuthSucceedsKdcRetry) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName));
   EXPECT_EQ(ERROR_NONE, Auth(kKdcRetryUserPrincipal, "", MakePasswordFd()));
-  EXPECT_EQ(3, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(3, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
 }
 
 // Can't get user status before domain join.
 TEST_F(AuthPolicyTest, GetUserStatusFailsNotJoined) {
   EXPECT_EQ(ERROR_NOT_JOINED, GetUserStatus(kAccountId));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_GET_USER_STATUS));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_GET_USER_STATUS));
 }
 
 // GetUserStatus fails with bad account id.
 TEST_F(AuthPolicyTest, GetUserStatusFailsBadAccountId) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName));
   EXPECT_EQ(ERROR_BAD_USER_NAME, GetUserStatus(kBadAccountId));
-  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_GET_USER_STATUS));
+  EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_GET_USER_STATUS));
 }
 
 // GetUserStatus succeeds without auth, but tgt is invalid.
@@ -688,9 +689,9 @@ TEST_F(AuthPolicyTest, GetUserStatusSucceedsTgtNotFound) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName));
   EXPECT_EQ(ERROR_NONE, GetUserStatus(kAccountId, &status));
   EXPECT_EQ(ActiveDirectoryUserStatus::TGT_NOT_FOUND, status.tgt_status());
-  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_GET_USER_STATUS));
+  EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_GET_USER_STATUS));
 }
 
 // GetUserStatus succeeds with join and auth, but with an expired TGT.
@@ -700,10 +701,10 @@ TEST_F(AuthPolicyTest, GetUserStatusSucceedsTgtExpired) {
   EXPECT_EQ(ERROR_NONE, Auth(kExpiredTgtUserPrincipal, "", MakePasswordFd()));
   EXPECT_EQ(ERROR_NONE, GetUserStatus(kAccountId, &status));
   EXPECT_EQ(ActiveDirectoryUserStatus::TGT_EXPIRED, status.tgt_status());
-  EXPECT_EQ(3, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_GET_USER_STATUS));
+  EXPECT_EQ(3, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_GET_USER_STATUS));
 }
 
 // GetUserStatus succeeds with join and auth.
@@ -717,10 +718,10 @@ TEST_F(AuthPolicyTest, GetUserStatusSucceeds) {
   EXPECT_EQ(kGivenName, status.account_info().given_name());
   EXPECT_EQ(kUserName, status.account_info().sam_account_name());
   EXPECT_EQ(ActiveDirectoryUserStatus::TGT_VALID, status.tgt_status());
-  EXPECT_EQ(3, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_GET_USER_STATUS));
+  EXPECT_EQ(3, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_GET_USER_STATUS));
 }
 
 // Join fails if there's a network issue.
@@ -728,7 +729,7 @@ TEST_F(AuthPolicyTest, JoinFailsNetworkProblem) {
   EXPECT_EQ(ERROR_NETWORK_PROBLEM,
             authpolicy_->JoinADDomain(
                 kMachineName, kNetworkErrorUserPrincipal, MakePasswordFd()));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
 }
 
 // Join fails for badly formatted user principal name.
@@ -736,7 +737,7 @@ TEST_F(AuthPolicyTest, JoinFailsInvalidUpn) {
   EXPECT_EQ(ERROR_PARSE_UPN_FAILED,
             authpolicy_->JoinADDomain(
                 kMachineName, kInvalidUserPrincipal, MakePasswordFd()));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
 }
 
 // Join fails for non-existing user principal name, but the error message is the
@@ -745,7 +746,7 @@ TEST_F(AuthPolicyTest, JoinFailsBadUpn) {
   EXPECT_EQ(ERROR_BAD_PASSWORD,
             authpolicy_->JoinADDomain(
                 kMachineName, kNonExistingUserPrincipal, MakePasswordFd()));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
 }
 
 // Join fails for wrong password.
@@ -754,7 +755,7 @@ TEST_F(AuthPolicyTest, JoinFailsBadPassword) {
       ERROR_BAD_PASSWORD,
       authpolicy_->JoinADDomain(
           kMachineName, kUserPrincipal, MakeFileDescriptor(kWrongPassword)));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
 }
 
 // Join fails if user can't join a machine to the domain.
@@ -762,7 +763,7 @@ TEST_F(AuthPolicyTest, JoinFailsAccessDenied) {
   EXPECT_EQ(ERROR_JOIN_ACCESS_DENIED,
             authpolicy_->JoinADDomain(
                 kMachineName, kAccessDeniedUserPrincipal, MakePasswordFd()));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
 }
 
 // Join fails if the machine name is too long.
@@ -770,7 +771,7 @@ TEST_F(AuthPolicyTest, JoinFailsMachineNameTooLong) {
   EXPECT_EQ(ERROR_MACHINE_NAME_TOO_LONG,
             authpolicy_->JoinADDomain(
                 kTooLongMachineName, kUserPrincipal, MakePasswordFd()));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
 }
 
 // Join fails if the machine name contains invalid characters.
@@ -778,7 +779,7 @@ TEST_F(AuthPolicyTest, JoinFailsInvalidMachineName) {
   EXPECT_EQ(ERROR_INVALID_MACHINE_NAME,
             authpolicy_->JoinADDomain(
                 kInvalidMachineName, kUserPrincipal, MakePasswordFd()));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
 }
 
 // Join fails if the user can't join additional machines.
@@ -787,7 +788,7 @@ TEST_F(AuthPolicyTest, JoinFailsInsufficientQuota) {
       ERROR_USER_HIT_JOIN_QUOTA,
       authpolicy_->JoinADDomain(
           kMachineName, kInsufficientQuotaUserPrincipal, MakePasswordFd()));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
 }
 
 // Successful user policy fetch with empty policy.
@@ -795,11 +796,11 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceeds) {
   validate_user_policy_ = check_user_policy_empty_;
   EXPECT_EQ(ERROR_NONE, Join(kMachineName));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_REFRESH_USER_POLICY));
+  EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_REFRESH_USER_POLICY));
 }
 
 // Successful user policy fetch with actual data.
@@ -828,13 +829,13 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithData) {
   };
   EXPECT_EQ(ERROR_NONE, Join(kOneGpoMachineName));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
-            Metrics()->GetMetricReportCount(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_REFRESH_USER_POLICY));
+            metrics_->GetMetricReportCount(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_REFRESH_USER_POLICY));
 }
 
 // Verify that PolicyLevel is encoded properly.
@@ -858,13 +859,13 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithPolicyLevel) {
   };
   EXPECT_EQ(ERROR_NONE, Join(kOneGpoMachineName));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
-            Metrics()->GetMetricReportCount(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_REFRESH_USER_POLICY));
+            metrics_->GetMetricReportCount(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_REFRESH_USER_POLICY));
 }
 
 // Verifies that a POLICY_LEVEL_MANDATORY policy is not overwritten by a
@@ -895,13 +896,13 @@ TEST_F(AuthPolicyTest, UserPolicyFetchMandatoryTakesPreference) {
   };
   EXPECT_EQ(ERROR_NONE, Join(kTwoGposMachineName));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
-            Metrics()->GetMetricReportCount(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_REFRESH_USER_POLICY));
+            metrics_->GetMetricReportCount(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_REFRESH_USER_POLICY));
 }
 
 // Verify that GPO containing policies with the wrong data type are not set.
@@ -928,13 +929,13 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreBadDataType) {
   };
   EXPECT_EQ(ERROR_NONE, Join(kOneGpoMachineName));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
-            Metrics()->GetMetricReportCount(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_REFRESH_USER_POLICY));
+            metrics_->GetMetricReportCount(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_REFRESH_USER_POLICY));
 }
 
 // GPOs with version 0 should be ignored.
@@ -956,13 +957,13 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreZeroVersion) {
   };
   EXPECT_EQ(ERROR_NONE, Join(kOneGpoMachineName));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(4, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(4, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
-            Metrics()->GetMetricReportCount(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
-  EXPECT_EQ(2, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
-  EXPECT_EQ(2, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(2, Metrics()->GetDBusReportCount(DBUS_CALL_REFRESH_USER_POLICY));
+            metrics_->GetMetricReportCount(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
+  EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
+  EXPECT_EQ(2, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(2, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(2, metrics_->GetDBusReportCount(DBUS_CALL_REFRESH_USER_POLICY));
 }
 
 // GPOs with an ignore flag set should be ignored. Sounds reasonable, hmm?
@@ -984,13 +985,13 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreFlagSet) {
   };
   EXPECT_EQ(ERROR_NONE, Join(kOneGpoMachineName));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(4, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(4, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
-            Metrics()->GetMetricReportCount(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
-  EXPECT_EQ(2, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
-  EXPECT_EQ(2, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(2, Metrics()->GetDBusReportCount(DBUS_CALL_REFRESH_USER_POLICY));
+            metrics_->GetMetricReportCount(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
+  EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
+  EXPECT_EQ(2, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(2, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(2, metrics_->GetDBusReportCount(DBUS_CALL_REFRESH_USER_POLICY));
 }
 
 // User policy fetch should ignore GPO files that are missing on the server.
@@ -1000,13 +1001,13 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsMissingFile) {
   validate_user_policy_ = check_user_policy_empty_;
   EXPECT_EQ(ERROR_NONE, Join(kOneGpoMachineName));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
-  EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
-            Metrics()->GetMetricReportCount(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_REFRESH_USER_POLICY));
+            metrics_->GetMetricReportCount(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_REFRESH_USER_POLICY));
 }
 
 // User policy fetch fails if a file fails to download (unless it's missing,
@@ -1014,13 +1015,13 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsMissingFile) {
 TEST_F(AuthPolicyTest, UserPolicyFetchFailsDownloadError) {
   EXPECT_EQ(ERROR_NONE, Join(kGpoDownloadErrorMachineName));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_SMBCLIENT_FAILED);
-  EXPECT_EQ(2, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
-            Metrics()->GetMetricReportCount(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_REFRESH_USER_POLICY));
+            metrics_->GetMetricReportCount(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_REFRESH_USER_POLICY));
 }
 
 // Successful device policy fetch with empty policy.
@@ -1028,10 +1029,10 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchSucceeds) {
   validate_device_policy_ = check_device_policy_empty_;
   EXPECT_EQ(ERROR_NONE, Join(kMachineName));
   FetchAndValidateDevicePolicy(ERROR_NONE);
-  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_REFRESH_DEVICE_POLICY));
+  EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_REFRESH_DEVICE_POLICY));
 }
 
 // Device policy fetch fails if the machine account doesn't exist.
@@ -1039,9 +1040,9 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchFailsBadMachineName) {
   validate_device_policy_ = check_device_policy_empty_;
   EXPECT_EQ(ERROR_NONE, Join(kNonExistingMachineName));
   FetchAndValidateDevicePolicy(ERROR_BAD_MACHINE_NAME);
-  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_REFRESH_DEVICE_POLICY));
+  EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_REFRESH_DEVICE_POLICY));
 }
 
 // Successful device policy fetch with a few kinit retries because the machine
@@ -1050,12 +1051,12 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsPropagationRetry) {
   validate_device_policy_ = check_device_policy_empty_;
   EXPECT_EQ(ERROR_NONE, Join(kPropagationRetryMachineName));
   FetchAndValidateDevicePolicy(ERROR_NONE);
-  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(kNumPropagationRetries,
-            Metrics()->GetLastMetricSample(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_REFRESH_DEVICE_POLICY));
+            metrics_->GetLastMetricSample(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_REFRESH_DEVICE_POLICY));
 }
 
 // Successful device policy fetch with actual data.
@@ -1082,12 +1083,12 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsWithData) {
   };
   EXPECT_EQ(ERROR_NONE, Join(kOneGpoMachineName));
   FetchAndValidateDevicePolicy(ERROR_NONE);
-  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
-            Metrics()->GetMetricReportCount(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_REFRESH_DEVICE_POLICY));
+            metrics_->GetMetricReportCount(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_REFRESH_DEVICE_POLICY));
 }
 
 // Completely empty GPO list fails. GPO lists should always contain at least
@@ -1095,9 +1096,9 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsWithData) {
 TEST_F(AuthPolicyTest, DevicePolicyFetchFailsEmptyGpoList) {
   EXPECT_EQ(ERROR_NONE, Join(kEmptyGpoMachineName));
   FetchAndValidateDevicePolicy(ERROR_PARSE_FAILED);
-  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_REFRESH_DEVICE_POLICY));
+  EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_REFRESH_DEVICE_POLICY));
 }
 
 // A GPO later in the list overrides prior GPOs.
@@ -1134,12 +1135,26 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchGposOverride) {
   };
   EXPECT_EQ(ERROR_NONE, Join(kTwoGposMachineName));
   FetchAndValidateDevicePolicy(ERROR_NONE);
-  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
   EXPECT_EQ(1,
-            Metrics()->GetMetricReportCount(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
-  EXPECT_EQ(1, Metrics()->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
-  EXPECT_EQ(1, Metrics()->GetDBusReportCount(DBUS_CALL_REFRESH_DEVICE_POLICY));
+            metrics_->GetMetricReportCount(METRIC_SMBCLIENT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_REFRESH_DEVICE_POLICY));
+}
+
+// Make sure cleaning state works.
+TEST_F(AuthPolicyTest, CleanStateDir) {
+  const base::FilePath state_path =
+      base::FilePath(paths_->Get(Path::STATE_DIR));
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName));
+  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
+  EXPECT_FALSE(base::IsDirectoryEmpty(state_path));
+  EXPECT_TRUE(AuthPolicy::CleanState(paths_.get()));
+  EXPECT_TRUE(base::IsDirectoryEmpty(state_path));
+  EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_AUTHENTICATE_USER));
+  EXPECT_EQ(1, metrics_->GetDBusReportCount(DBUS_CALL_JOIN_AD_DOMAIN));
 }
 
 }  // namespace authpolicy

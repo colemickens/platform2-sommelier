@@ -61,34 +61,29 @@ std::unique_ptr<DBusObject> AuthPolicy::GetDBusObject(
       org::chromium::AuthPolicyAdaptor::GetObjectPath());
 }
 
-AuthPolicy::AuthPolicy(
-    std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-    std::unique_ptr<AuthPolicyMetrics> metrics,
-    std::unique_ptr<PathService> path_service)
+AuthPolicy::AuthPolicy(AuthPolicyMetrics* metrics,
+                       const PathService* path_service)
     : org::chromium::AuthPolicyAdaptor(this),
-      // Note: We own |metrics|, but SambaInterface owns |path_service|. Also
-      // note that |metrics_| has to be initialized before |samba_| or else
-      // |samba_|'s metrics pointer isn't valid in |samba_|'s destructor.
-      metrics_(std::move(metrics)),
-      samba_(base::ThreadTaskRunnerHandle::Get(),
-             metrics_.get(),
-             std::move(path_service)),
-      dbus_object_(std::move(dbus_object)),
-      weak_ptr_factory_(this) {
-  // Make sure the task runner passed to |samba_| is actually the D-Bus task
-  // runner. This guarantees that automatic TGT renewal won't interfere with
-  // D-Bus calls. Note that |GetDBusTaskRunner()| returns a TaskRunner, which is
-  // a base class of SingleThreadTaskRunner accepted by |samba_|.
-  CHECK_EQ(base::ThreadTaskRunnerHandle::Get(),
-           dbus_object_->GetBus()->GetDBusTaskRunner());
-}
+      metrics_(metrics),
+      samba_(base::ThreadTaskRunnerHandle::Get(), metrics, path_service),
+      weak_ptr_factory_(this) {}
 
 ErrorType AuthPolicy::Initialize(bool expect_config) {
   return samba_.Initialize(expect_config);
 }
 
 void AuthPolicy::RegisterAsync(
+    std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
     const AsyncEventSequencer::CompletionAction& completion_callback) {
+  DCHECK(!dbus_object_);
+  dbus_object_ = std::move(dbus_object);
+  // Make sure the task runner passed to |samba_| in the constructor is actually
+  // the D-Bus task runner. This guarantees that automatic TGT renewal won't
+  // interfere with D-Bus calls. Note that |GetDBusTaskRunner()| returns a
+  // TaskRunner, which is a base class of SingleThreadTaskRunner accepted by
+  // |samba_|.
+  CHECK_EQ(base::ThreadTaskRunnerHandle::Get(),
+           dbus_object_->GetBus()->GetDBusTaskRunner());
   RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(completion_callback);
   session_manager_proxy_ = dbus_object_->GetBus()->GetObjectProxy(

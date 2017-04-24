@@ -38,13 +38,16 @@ class SambaInterface {
  public:
   SambaInterface(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
                  AuthPolicyMetrics* metrics,
-                 std::unique_ptr<PathService> path_service);
+                 const PathService* path_service);
 
   // Creates directories required by Samba code and loads configuration, if it
   // exists. Also loads the debug flags file. Returns error
   // - if a directory failed to create or
   // - if |expect_config| is true and the config file fails to load.
   ErrorType Initialize(bool expect_config);
+
+  // Cleans all persistent state files. Returns true if all files were cleared.
+  static bool CleanState(const PathService* path_service);
 
   // Calls kinit to get a Kerberos ticket-granting-ticket (TGT) for the given
   // |user_principal_name| (format: user_name@workgroup.domain). If a TGT
@@ -186,8 +189,8 @@ class SambaInterface {
   // UMA statistics, not owned.
   AuthPolicyMetrics* metrics_;
 
-  // Lookup for file paths.
-  std::unique_ptr<PathService> paths_;
+  // Lookup for file paths, not owned.
+  const PathService* paths_;
 
   // Helper to setup and run minijailed processes.
   JailHelper jail_helper_;

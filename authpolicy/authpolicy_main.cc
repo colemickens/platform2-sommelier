@@ -37,15 +37,19 @@ class Daemon : public brillo::DBusServiceDaemon {
       : DBusServiceDaemon(kAuthPolicyServiceName, kObjectServicePath),
         expect_config_(expect_config) {}
 
+  // Cleans the authpolicy daemon state directory. Returns true if all files
+  // were cleared.
+  static bool CleanState() {
+    PathService path_service;
+    return AuthPolicy::CleanState(&path_service);
+  }
+
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
-    auth_policy_ = base::MakeUnique<AuthPolicy>(
+    auth_policy_.RegisterAsync(
         AuthPolicy::GetDBusObject(object_manager_.get()),
-        base::MakeUnique<AuthPolicyMetrics>(),
-        base::MakeUnique<PathService>());
-    auth_policy_->RegisterAsync(
         sequencer->GetHandler("AuthPolicy.RegisterAsync() failed.", true));
-    ErrorType error = auth_policy_->Initialize(expect_config_);
+    ErrorType error = auth_policy_.Initialize(expect_config_);
     if (error != ERROR_NONE) {
       LOG(ERROR) << "SambaInterface failed to initialize with error code "
                  << error;
@@ -55,12 +59,15 @@ class Daemon : public brillo::DBusServiceDaemon {
 
   void OnShutdown(int* return_code) override {
     DBusServiceDaemon::OnShutdown(return_code);
-    auth_policy_.reset();
   }
 
  private:
   bool expect_config_;
-  std::unique_ptr<AuthPolicy> auth_policy_;
+
+  // Keep this order! auth_policy_ must be last as it depends on the other two.
+  AuthPolicyMetrics metrics_;
+  PathService path_service_;
+  AuthPolicy auth_policy_{&metrics_, &path_service_};
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
@@ -116,7 +123,8 @@ int main(int /* argc */, char* /* argv */ []) {
         InstallAttributesReader::kAttrMode);
     if (mode != InstallAttributesReader::kDeviceModeEnterpriseAD) {
       LOG(ERROR) << "OOBE completed but device not in Active Directory "
-                    "management mode.";
+                    "management mode. Cleaning state and exiting.";
+      CHECK(authpolicy::Daemon::CleanState());
       exit(kExitCodeStartupFailure);
     } else {
       LOG(INFO) << "Install attributes locked to Active Directory mode.";
@@ -125,7 +133,8 @@ int main(int /* argc */, char* /* argv */ []) {
       expect_config = true;
     }
   } else {
-    LOG(INFO) << "No install attributes found.";
+    LOG(INFO) << "No install attributes found. Cleaning state.";
+    CHECK(authpolicy::Daemon::CleanState());
   }
 
   // Run daemon.

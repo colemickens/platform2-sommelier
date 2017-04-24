@@ -198,18 +198,18 @@ ErrorType SetFilePermissionsRecursive(const base::FilePath& fp,
 SambaInterface::SambaInterface(
     scoped_refptr<base::SingleThreadTaskRunner> task_runner,
     AuthPolicyMetrics* metrics,
-    std::unique_ptr<PathService> path_service)
+    const PathService* path_service)
     : metrics_(metrics),
-      paths_(std::move(path_service)),
-      jail_helper_(paths_.get()),
+      paths_(path_service),
+      jail_helper_(paths_),
       user_tgt_manager_(task_runner,
-                        paths_.get(),
+                        paths_,
                         metrics_,
                         &jail_helper_,
                         Path::USER_KRB5_CONF,
                         Path::USER_CREDENTIAL_CACHE),
       device_tgt_manager_(task_runner,
-                          paths_.get(),
+                          paths_,
                           metrics_,
                           &jail_helper_,
                           Path::DEVICE_KRB5_CONF,
@@ -263,6 +263,20 @@ ErrorType SambaInterface::Initialize(bool expect_config) {
   device_tgt_manager_.SetKinitTraceEnabled(trace_kinit);
 
   return ERROR_NONE;
+}
+
+// static
+bool SambaInterface::CleanState(const PathService* path_service) {
+  // Note: We're not permitted to delete the folder and DeleteFile apparently
+  // doesn't support wildcards, so DeleteFile returns false.
+  DCHECK(path_service);
+  base::FilePath state_dir(path_service->Get(Path::STATE_DIR));
+  base::DeleteFile(state_dir, true /* recursive */);
+  if (!base::IsDirectoryEmpty(state_dir)) {
+    LOG(ERROR) << "Failed to clean state dir '" << state_dir.value() << "'";
+    return false;
+  }
+  return true;
 }
 
 ErrorType SambaInterface::AuthenticateUser(

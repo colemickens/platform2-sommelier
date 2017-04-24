@@ -39,16 +39,20 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
   static std::unique_ptr<brillo::dbus_utils::DBusObject> GetDBusObject(
       brillo::dbus_utils::ExportedObjectManager* object_manager);
 
-  AuthPolicy(std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-             std::unique_ptr<AuthPolicyMetrics> metrics,
-             std::unique_ptr<PathService> path_service);
+  AuthPolicy(AuthPolicyMetrics* metrics, const PathService* path_service);
 
   // Initializes internals. See SambaInterface::Initialize() for details.
   ErrorType Initialize(bool expect_config);
 
-  // Register the D-Bus object and interfaces.
+  // Registers the D-Bus object and interfaces.
   void RegisterAsync(
+      std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
       const AsyncEventSequencer::CompletionAction& completion_callback);
+
+  // Cleans all persistent state files. Returns true if all files were cleared.
+  static bool CleanState(const PathService* path_service) {
+    return SambaInterface::CleanState(path_service);
+  }
 
   // org::chromium::AuthPolicyInterface: (see org.chromium.AuthPolicy.xml).
   // |account_info_blob| is a serialized ActiveDirectoryAccountInfo protobuf.
@@ -77,9 +81,6 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
 
   void RefreshDevicePolicy(PolicyResponseCallback callback) override;
 
-  // Metrics accessor for unit tests.
-  AuthPolicyMetrics* GetMetricsForTesting() const { return metrics_.get(); }
-
   // Disable retry sleep for unit tests.
   void DisableRetrySleepForTesting() { samba_.DisableRetrySleepForTesting(); }
 
@@ -97,7 +98,7 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
                       PolicyResponseCallback callback,
                       dbus::Response* response);
 
-  std::unique_ptr<AuthPolicyMetrics> metrics_;
+  AuthPolicyMetrics* metrics_;  // Not owned.
   SambaInterface samba_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   dbus::ObjectProxy* session_manager_proxy_ = nullptr;
