@@ -25,7 +25,8 @@ class CameraModuleDelegate;
 
 class CameraModuleCallbacksDelegate;
 
-class CameraHalAdapter : public mojo::edk::ProcessDelegate {
+class CameraHalAdapter : public mojo::edk::ProcessDelegate,
+                         public camera_module_callbacks_t {
  public:
   CameraHalAdapter(camera_module_t* camera_module,
                    int socket_fd,
@@ -55,6 +56,12 @@ class CameraHalAdapter : public mojo::edk::ProcessDelegate {
   void CloseDeviceCallback(base::TaskRunner* runner, int32_t device_id);
 
  private:
+  // Implementation of camera_module_callbacks_t.
+  static void CameraDeviceStatusChange(
+      const camera_module_callbacks_t* callbacks,
+      int camera_id,
+      int new_status);
+
   // Clean up the camera device specified by |device_id| in |device_adapters_|.
   void CloseDevice(int32_t device_id);
 

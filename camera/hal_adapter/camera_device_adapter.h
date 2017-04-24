@@ -36,7 +36,7 @@ class Camera3DeviceOpsDelegate;
 
 class Camera3CallbackOpsDelegate;
 
-class CameraDeviceAdapter {
+class CameraDeviceAdapter : public camera3_callback_ops_t {
  public:
   explicit CameraDeviceAdapter(camera3_device_t* camera_device,
                                base::Callback<void()> close_callback);
@@ -82,19 +82,22 @@ class CameraDeviceAdapter {
 
   int32_t Close();
 
-  // Callback interface for Camera3CallbackOpsDelegate.
-  // These methods are callbacks for |callback_ops_delegate_| and are executed
-  // on the mojo IPC handler thread in |callback_ops_delegate_|.
+ private:
+  // Implementation of camera3_callback_ops_t.
+  static void ProcessCaptureResult(const camera3_callback_ops_t* ops,
+                                   const camera3_capture_result_t* result);
+
+  static void Notify(const camera3_callback_ops_t* ops,
+                     const camera3_notify_msg_t* msg);
 
   // NOTE: All the fds in |result| (e.g. fences and buffer handles) will be
   // closed after the function returns.  The caller needs to dup a fd in
   // |result| if the fd will be accessed after calling ProcessCaptureResult.
-  mojom::Camera3CaptureResultPtr ProcessCaptureResult(
+  mojom::Camera3CaptureResultPtr PrepareCaptureResult(
       const camera3_capture_result_t* result);
 
-  mojom::Camera3NotifyMsgPtr Notify(const camera3_notify_msg_t* msg);
+  mojom::Camera3NotifyMsgPtr PrepareNotifyMsg(const camera3_notify_msg_t* msg);
 
- private:
   // Caller must hold |buffer_handles_lock_|.
   void RemoveBufferLocked(const camera3_stream_buffer_t& buffer);
 

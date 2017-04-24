@@ -33,6 +33,8 @@ CameraDeviceAdapter::CameraDeviceAdapter(camera3_device_t* camera_device,
       close_callback_(close_callback),
       camera_device_(camera_device) {
   VLOGF_ENTER() << ":" << camera_device_;
+  camera3_callback_ops_t::process_capture_result = ProcessCaptureResult;
+  camera3_callback_ops_t::notify = Notify;
 }
 
 CameraDeviceAdapter::~CameraDeviceAdapter() {
@@ -78,8 +80,7 @@ int32_t CameraDeviceAdapter::Initialize(
   callback_ops_delegate_.reset(new Camera3CallbackOpsDelegate(
       this, callback_ops.PassInterface(),
       camera_callback_ops_thread_.task_runner()));
-  return camera_device_->ops->initialize(camera_device_,
-                                         callback_ops_delegate_.get());
+  return camera_device_->ops->initialize(camera_device_, this);
 }
 
 mojom::Camera3StreamConfigurationPtr CameraDeviceAdapter::ConfigureStreams(
@@ -291,7 +292,29 @@ int32_t CameraDeviceAdapter::Close() {
   return ret;
 }
 
-mojom::Camera3CaptureResultPtr CameraDeviceAdapter::ProcessCaptureResult(
+// static
+void CameraDeviceAdapter::ProcessCaptureResult(
+    const camera3_callback_ops_t* ops,
+    const camera3_capture_result_t* result) {
+  VLOGF_ENTER();
+  CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
+      static_cast<const CameraDeviceAdapter*>(ops));
+  mojom::Camera3CaptureResultPtr result_ptr =
+      self->PrepareCaptureResult(result);
+  self->callback_ops_delegate_->ProcessCaptureResult(std::move(result_ptr));
+}
+
+// static
+void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
+                                 const camera3_notify_msg_t* msg) {
+  VLOGF_ENTER();
+  CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
+      static_cast<const CameraDeviceAdapter*>(ops));
+  mojom::Camera3NotifyMsgPtr msg_ptr = self->PrepareNotifyMsg(msg);
+  self->callback_ops_delegate_->Notify(std::move(msg_ptr));
+}
+
+mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
     const camera3_capture_result_t* result) {
   mojom::Camera3CaptureResultPtr r = mojom::Camera3CaptureResult::New();
 
@@ -336,7 +359,7 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::ProcessCaptureResult(
   return r;
 }
 
-mojom::Camera3NotifyMsgPtr CameraDeviceAdapter::Notify(
+mojom::Camera3NotifyMsgPtr CameraDeviceAdapter::PrepareNotifyMsg(
     const camera3_notify_msg_t* msg) {
   // Fill in the data from msg...
   mojom::Camera3NotifyMsgPtr m = mojom::Camera3NotifyMsg::New();

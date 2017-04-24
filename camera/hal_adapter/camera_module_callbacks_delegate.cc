@@ -21,23 +21,16 @@ CameraModuleCallbacksDelegate::CameraModuleCallbacksDelegate(
     : internal::MojoChannel<mojom::CameraModuleCallbacks>(
           std::move(callbacks_ptr_info),
           task_runner) {
-  camera_module_callbacks_t::camera_device_status_change =
-      CameraDeviceStatusChange;
 }
 
-void CameraModuleCallbacksDelegate::CameraDeviceStatusChange(
-    const camera_module_callbacks_t* callbacks,
-    int camera_id,
-    int new_status) {
+void CameraModuleCallbacksDelegate::CameraDeviceStatusChange(int camera_id,
+                                                             int new_status) {
   VLOGF_ENTER();
-  CameraModuleCallbacksDelegate* delegate =
-      const_cast<CameraModuleCallbacksDelegate*>(
-          static_cast<const CameraModuleCallbacksDelegate*>(callbacks));
-  delegate->task_runner_->PostTask(
+  task_runner_->PostTask(
       FROM_HERE,
       base::Bind(
           &CameraModuleCallbacksDelegate::CameraDeviceStatusChangeOnThread,
-          base::AsWeakPtr(delegate), camera_id, new_status));
+          base::AsWeakPtr(this), camera_id, new_status));
 }
 
 void CameraModuleCallbacksDelegate::CameraDeviceStatusChangeOnThread(

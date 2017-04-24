@@ -16,8 +16,7 @@ namespace arc {
 class CameraDeviceAdapter;
 
 class Camera3CallbackOpsDelegate
-    : public internal::MojoChannel<mojom::Camera3CallbackOps>,
-      public camera3_callback_ops_t {
+    : public internal::MojoChannel<mojom::Camera3CallbackOps> {
  public:
   Camera3CallbackOpsDelegate(
       CameraDeviceAdapter* camera_device_adapter,
@@ -26,14 +25,11 @@ class Camera3CallbackOpsDelegate
 
   ~Camera3CallbackOpsDelegate() = default;
 
+  void ProcessCaptureResult(mojom::Camera3CaptureResultPtr result);
+
+  void Notify(mojom::Camera3NotifyMsgPtr msg);
+
  private:
-  // Interface for camera3_callback_ops_t.
-  static void ProcessCaptureResult(const camera3_callback_ops_t* ops,
-                                   const camera3_capture_result_t* result);
-
-  static void Notify(const camera3_callback_ops_t* ops,
-                     const camera3_notify_msg_t* msg);
-
   void ProcessCaptureResultOnThread(mojom::Camera3CaptureResultPtr result);
 
   void NotifyOnThread(mojom::Camera3NotifyMsgPtr msg);

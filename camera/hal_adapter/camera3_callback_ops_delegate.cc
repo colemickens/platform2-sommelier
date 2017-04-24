@@ -25,38 +25,22 @@ Camera3CallbackOpsDelegate::Camera3CallbackOpsDelegate(
           std::move(callback_ops_ptr_info),
           task_runner),
       camera_device_adapter_(camera_device_adapter) {
-  camera3_callback_ops_t::process_capture_result = ProcessCaptureResult;
-  camera3_callback_ops_t::notify = Notify;
 }
 
 void Camera3CallbackOpsDelegate::ProcessCaptureResult(
-    const camera3_callback_ops_t* ops,
-    const camera3_capture_result_t* result) {
+    mojom::Camera3CaptureResultPtr result) {
   VLOGF_ENTER();
-  Camera3CallbackOpsDelegate* delegate =
-      const_cast<Camera3CallbackOpsDelegate*>(
-          static_cast<const Camera3CallbackOpsDelegate*>(ops));
-
-  mojom::Camera3CaptureResultPtr result_ptr =
-      delegate->camera_device_adapter_->ProcessCaptureResult(result);
-  delegate->task_runner_->PostTask(
+  task_runner_->PostTask(
       FROM_HERE,
       base::Bind(&Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread,
-                 base::AsWeakPtr(delegate), base::Passed(&result_ptr)));
+                 base::AsWeakPtr(this), base::Passed(&result)));
 }
 
-void Camera3CallbackOpsDelegate::Notify(const camera3_callback_ops_t* ops,
-                                        const camera3_notify_msg_t* msg) {
+void Camera3CallbackOpsDelegate::Notify(mojom::Camera3NotifyMsgPtr msg) {
   VLOGF_ENTER();
-  Camera3CallbackOpsDelegate* delegate =
-      const_cast<Camera3CallbackOpsDelegate*>(
-          static_cast<const Camera3CallbackOpsDelegate*>(ops));
-
-  mojom::Camera3NotifyMsgPtr msg_ptr =
-      delegate->camera_device_adapter_->Notify(msg);
-  delegate->task_runner_->PostTask(
-      FROM_HERE, base::Bind(&Camera3CallbackOpsDelegate::NotifyOnThread,
-                            base::AsWeakPtr(delegate), base::Passed(&msg_ptr)));
+  task_runner_->PostTask(FROM_HERE,
+                         base::Bind(&Camera3CallbackOpsDelegate::NotifyOnThread,
+                                    base::AsWeakPtr(this), base::Passed(&msg)));
 }
 
 void Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread(

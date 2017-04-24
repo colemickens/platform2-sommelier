@@ -46,6 +46,8 @@ CameraHalAdapter::CameraHalAdapter(camera_module_t* camera_module,
     return;
   }
   mojo::edk::InitIPCSupport(this, ipc_thread_.task_runner());
+  camera_module_callbacks_t::camera_device_status_change =
+      CameraDeviceStatusChange;
 }
 
 CameraHalAdapter::~CameraHalAdapter() {
@@ -214,13 +216,24 @@ int32_t CameraHalAdapter::SetCallbacks(
   callbacks_delegate_.reset(new CameraModuleCallbacksDelegate(
       callbacks.PassInterface(),
       camera_module_callbacks_thread_.task_runner()));
-  return camera_module_->set_callbacks(callbacks_delegate_.get());
+  return camera_module_->set_callbacks(this);
 }
 
 void CameraHalAdapter::CloseDeviceCallback(base::TaskRunner* runner,
                                            int32_t device_id) {
   runner->PostTask(FROM_HERE, base::Bind(&CameraHalAdapter::CloseDevice,
                                          base::Unretained(this), device_id));
+}
+
+// static
+void CameraHalAdapter::CameraDeviceStatusChange(
+    const camera_module_callbacks_t* callbacks,
+    int camera_id,
+    int new_status) {
+  VLOGF_ENTER();
+  CameraHalAdapter* self = const_cast<CameraHalAdapter*>(
+      static_cast<const CameraHalAdapter*>(callbacks));
+  self->callbacks_delegate_->CameraDeviceStatusChange(camera_id, new_status);
 }
 
 void CameraHalAdapter::CloseDevice(int32_t device_id) {

@@ -13,8 +13,7 @@
 namespace arc {
 
 class CameraModuleCallbacksDelegate
-    : public internal::MojoChannel<mojom::CameraModuleCallbacks>,
-      public camera_module_callbacks_t {
+    : public internal::MojoChannel<mojom::CameraModuleCallbacks> {
  public:
   CameraModuleCallbacksDelegate(
       mojo::InterfacePtrInfo<mojom::CameraModuleCallbacks> callbacks_ptr_info,
@@ -22,13 +21,9 @@ class CameraModuleCallbacksDelegate
 
   ~CameraModuleCallbacksDelegate() = default;
 
- private:
-  // Interface for camera_module_callbacks_t.
-  static void CameraDeviceStatusChange(
-      const camera_module_callbacks_t* callbacks,
-      int camera_id,
-      int new_status);
+  void CameraDeviceStatusChange(int camera_id, int new_status);
 
+ private:
   void CameraDeviceStatusChangeOnThread(int camera_id, int new_status);
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(CameraModuleCallbacksDelegate);
