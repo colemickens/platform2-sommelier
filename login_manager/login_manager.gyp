@@ -55,6 +55,7 @@
         'libraries': [
           '-lbootstat',
           '-linstallattributes-<(libbase_ver)',
+          '-lpolicy-<(libbase_ver)',
         ],
       },
       'sources': [

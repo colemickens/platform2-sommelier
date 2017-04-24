@@ -13,10 +13,15 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/macros.h>
+#include <base/sha1.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/ui/chromium_command_builder.h>
 #include <chromeos/ui/util.h>
 #include <chromeos-config/libcros_config/cros_config_interface.h>
+#include <policy/device_policy.h>
+#include <policy/libpolicy.h>
 
 using chromeos::ui::ChromiumCommandBuilder;
 using chromeos::ui::util::EnsureDirectoryExists;
@@ -24,6 +29,21 @@ using chromeos::ui::util::EnsureDirectoryExists;
 namespace login_manager {
 
 const char kWallpaperProperty[] = "wallpaper";
+
+// These hashes are only being used temporarily till we can determine if a
+// device is a Chromebox for Meetings or not from the Install Time attributes.
+// TODO(rkc, pbos): Remove these and related code once crbug.com/706523 is
+// fixed.
+const char* kChromeboxForMeetingAppIdHashes[] = {
+    "E703483CEF33DEC18B4B6DD84B5C776FB9182BDB",
+    "A3BC37E2148AC4E99BE4B16AF9D42DD1E592BBBE",
+    "1C93BD3CF875F4A73C0B2A163BB8FBDA8B8B3D80",
+    "307E96539209F95A1A8740C713E6998A73657D96",
+    "4F25792AF1AA7483936DE29C07806F203C7170A0",
+    "BD8781D757D830FC2E85470A1B6E8A718B7EE0D9",
+    "4AC2B6C63C6480D150DFDA13E4A5956EB1D0DDBB",
+    "81986D4F846CEDDDB962643FA501D1780DD441BB",
+};
 
 namespace {
 
@@ -86,6 +106,34 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
     disallowed_params_out->insert("--enable-arc");
     disallowed_params_out->insert("--arc-available");
   }
+}
+
+// Blatantly copied from //components/crx_file/id_util.cc.
+// TODO(rkc): Remove when crbug.com/706523 is fixed.
+std::string HashedIdInHex(const std::string& id) {
+  const std::string id_hash = base::SHA1HashString(id);
+  DCHECK_EQ(base::kSHA1Length, id_hash.length());
+  return base::HexEncode(id_hash.c_str(), id_hash.length());
+}
+
+// Returns true if the ID matches any of the IDs of the kiosk apps run on
+// Chromebox for Meetings.
+bool IsChromeboxForMeetingsAppId(const std::string& id) {
+  const std::string hash = HashedIdInHex(id);
+  const char** end = kChromeboxForMeetingAppIdHashes +
+      arraysize(kChromeboxForMeetingAppIdHashes);
+  return std::find(kChromeboxForMeetingAppIdHashes, end, hash) != end;
+}
+
+// Returns true if current device is enrolled as a Chromebox for Meetings.
+bool IsEnrolledChromeboxForMeetings() {
+  policy::PolicyProvider provider;
+  if (!provider.Reload())
+    return false;
+  const policy::DevicePolicy& policy = provider.GetDevicePolicy();
+  std::string kiosk_app_id;
+  return policy.GetAutoLaunchedKioskAppId(&kiosk_app_id) &&
+      IsChromeboxForMeetingsAppId(kiosk_app_id);
 }
 
 // Ensures that necessary directory exist with the correct permissions and sets
@@ -252,6 +300,14 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   }
   if (builder->UseFlagIsSet("veyron_minnie"))
     builder->AddArg("--enable-hardware-overlays=single-fullscreen");
+
+  // Chromebox for meetings devices need to start with this flag till
+  // crbug.com/653531 gets fixed. TODO(pbos): Remove this once this feature is
+  // enabled by default.
+  if (builder->UseFlagIsSet("cfm_enabled_device") &&
+      IsEnrolledChromeboxForMeetings()) {
+    builder->AddArg("--enable-blink-features=MediaStreamTrackContentHint");
+  }
 
   if (builder->UseFlagIsSet("rialto")) {
     if (builder->UseFlagIsSet("rialto_enterprise_enrollment")) {
