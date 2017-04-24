@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/file.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
 #include <sys/sendfile.h>
@@ -520,6 +521,10 @@ void Platform::InitializeFile(base::File* file,
                               const base::FilePath& path,
                               uint32_t flags) {
   return file->Initialize(path, flags);
+}
+
+bool Platform::LockFile(int fd) {
+  return HANDLE_EINTR(flock(fd, LOCK_EX)) == 0;
 }
 
 bool Platform::WriteOpenFile(FILE* fp, const brillo::Blob& blob) {

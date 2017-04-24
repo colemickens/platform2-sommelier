@@ -5,6 +5,7 @@
 #include "cryptohome/dircrypto_data_migrator/migration_helper.h"
 
 #include <algorithm>
+#include <deque>
 #include <memory>
 #include <string>
 #include <vector>
@@ -18,9 +19,14 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <base/bind.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
+#include <base/memory/ptr_util.h>
 #include <base/timer/elapsed_timer.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/sys_info.h>
+#include <base/threading/thread.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "cryptohome/cryptohome_metrics.h"
@@ -38,11 +44,12 @@ constexpr char kMtimeXattrName[] = "trusted.CrosDirCryptoMigrationMtime";
 constexpr char kAtimeXattrName[] = "trusted.CrosDirCryptoMigrationAtime";
 // Expected maximum erasure block size on devices (4MB).
 constexpr uint64_t kErasureBlockSize = 4 << 20;
-// Minimum amount of free space required to begin migrating.
-constexpr uint64_t kMinFreeSpace = kErasureBlockSize * 2;
 // Free space required for migration overhead (FS metadata, duplicated
 // in-progress directories, etc).  Must be smaller than kMinFreeSpace.
 constexpr uint64_t kFreeSpaceBuffer = kErasureBlockSize;
+
+// The maximum size of job list.
+constexpr size_t kDefaultMaxJobListSize = 100000;
 
 // Sends the UMA stat for the start/end status of migration respectively in the
 // constructor/destructor. By default the "generic error" end status is set, so
@@ -116,6 +123,125 @@ constexpr base::FilePath::CharType kSkippedFileListFileName[] =
 constexpr base::TimeDelta kStatusSignalInterval =
     base::TimeDelta::FromSeconds(1);
 
+// Job represents a job to migrate a file or a symlink.
+struct MigrationHelper::Job {
+  Job() = default;
+  ~Job() = default;
+  base::FilePath child;
+  FileEnumerator::FileInfo info;
+};
+
+// WorkerPool manages jobs and job threads.
+// All public methods must be called on the main thread.
+class MigrationHelper::WorkerPool {
+ public:
+  WorkerPool(MigrationHelper* migration_helper,
+             size_t num_job_threads,
+             size_t max_job_list_size)
+      : migration_helper_(migration_helper),
+        job_threads_(num_job_threads),
+        job_thread_results_(num_job_threads, false),
+        max_job_list_size_(max_job_list_size),
+        job_thread_wakeup_condition_(&jobs_lock_),
+        main_thread_wakeup_condition_(&jobs_lock_) {}
+
+  ~WorkerPool() {
+    Join();
+  }
+
+  // Starts job threads.
+  bool Start() {
+    for (size_t i = 0; i < job_threads_.size(); ++i) {
+      job_threads_[i] = base::MakeUnique<base::Thread>(
+          "MigrationHelper worker #" + base::IntToString(i));
+      base::Thread::Options options;
+      options.message_loop_type = base::MessageLoop::TYPE_IO;
+      if (!job_threads_[i]->StartWithOptions(options)) {
+        LOG(ERROR) << "Failed to start a job thread.";
+        return false;
+      }
+      job_threads_[i]->task_runner()->PostTask(
+          FROM_HERE,
+          base::Bind(&WorkerPool::ProcessJobs, base::Unretained(this),
+                     &job_thread_results_[i]));
+    }
+    return true;
+  }
+
+  // Adds a job to the job list.
+  void PushJob(const Job& job) {
+    base::AutoLock lock(jobs_lock_);
+    while (jobs_.size() >= max_job_list_size_) {
+      main_thread_wakeup_condition_.Wait();
+    }
+    jobs_.push_back(job);
+    // Let a job thread process the new job.
+    job_thread_wakeup_condition_.Signal();
+  }
+
+  // Waits for job threads to process all pushed jobs and returns true if there
+  // was no error.
+  bool Join() {
+    {
+      // Wake up all waiting job threads.
+      base::AutoLock lock(jobs_lock_);
+      no_more_new_jobs_ = true;
+      job_thread_wakeup_condition_.Broadcast();
+    }
+    job_threads_.clear();  // Join threads.
+    return std::count(job_thread_results_.begin(), job_thread_results_.end(),
+                      false) == 0;
+  }
+
+ private:
+  // Processes jobs fed by the main thread.
+  // Must be called on a job thread.
+  void ProcessJobs(bool* result) {
+    // Continue running on a job thread while the main thread feeds jobs.
+    while (true) {
+      Job job;
+      if (!PopJob(&job)) {  // No more new jobs.
+        *result = true;
+        return;
+      }
+      if (!migration_helper_->ProcessJob(job)) {
+        LOG(ERROR) << "Failed to migrate \"" << job.child.value() << "\"";
+        *result = false;
+        return;
+      }
+    }
+  }
+
+  // Pops a job from the job list. Returns false when the thread should stop.
+  // Must be called on a job thread.
+  bool PopJob(Job* job) {
+    base::AutoLock lock(jobs_lock_);
+    while (jobs_.empty()) {
+      if (no_more_new_jobs_)
+        return false;
+      job_thread_wakeup_condition_.Wait();
+    }
+    *job = jobs_.front();
+    jobs_.pop_front();
+    // Let the main thread feed new jobs.
+    main_thread_wakeup_condition_.Signal();
+    return true;
+  }
+
+  MigrationHelper* migration_helper_;
+  std::vector<std::unique_ptr<base::Thread>> job_threads_;  // The job threads.
+  // deque instead of vector to avoid vector<bool> specialization.
+  std::deque<bool> job_thread_results_;
+  const size_t max_job_list_size_;
+  std::deque<Job> jobs_;  // The FIFO job list.
+  bool no_more_new_jobs_ = false;
+  base::Lock jobs_lock_;  // Lock for jobs_ and no_more_new_jobs_.
+  base::ConditionVariable job_thread_wakeup_condition_;
+  base::ConditionVariable main_thread_wakeup_condition_;
+
+  DISALLOW_COPY_AND_ASSIGN(WorkerPool);
+};
+
 MigrationHelper::MigrationHelper(Platform* platform,
                                  const base::FilePath& from,
                                  const base::FilePath& to,
@@ -128,12 +254,15 @@ MigrationHelper::MigrationHelper(Platform* platform,
       max_chunk_size_(max_chunk_size),
       effective_chunk_size_(0),
       total_byte_count_(0),
+      total_directory_byte_count_(0),
       migrated_byte_count_(0),
       namespaced_mtime_xattr_name_(kMtimeXattrName),
       namespaced_atime_xattr_name_(kAtimeXattrName),
       failed_operation_type_(kMigrationFailedAtOtherOperation),
       failed_path_type_(kMigrationFailedUnderOther),
-      failed_error_type_(base::File::FILE_OK) {}
+      failed_error_type_(base::File::FILE_OK),
+      num_job_threads_(base::SysInfo::NumberOfProcessors() * 2),
+      max_job_list_size_(kDefaultMaxJobListSize) {}
 
 MigrationHelper::~MigrationHelper() {}
 
@@ -170,13 +299,19 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
     LOG(ERROR) << "Failed to determine free disk space";
     return false;
   }
-  if (static_cast<uint64_t>(free_space) < kMinFreeSpace) {
+  const uint64_t kRequiredFreeSpaceForMainThread =
+      kFreeSpaceBuffer + total_directory_byte_count_;
+  const uint64_t kRequiredFreeSpace =
+      kRequiredFreeSpaceForMainThread + num_job_threads_ * kErasureBlockSize;
+  if (static_cast<uint64_t>(free_space) < kRequiredFreeSpace) {
     LOG(ERROR) << "Not enough space to begin the migration";
     status_reporter.SetLowDiskSpaceFailure();
     return false;
   }
-  effective_chunk_size_ =
-      std::min(max_chunk_size_, free_space - kFreeSpaceBuffer);
+  effective_chunk_size_ = std::min(
+      max_chunk_size_,
+      (free_space - kRequiredFreeSpaceForMainThread) / num_job_threads_);
+  // TODO(hashimoto): Reduce the number of threads when disk space is limited.
   if (effective_chunk_size_ > kErasureBlockSize)
     effective_chunk_size_ =
         effective_chunk_size_ - (effective_chunk_size_ % kErasureBlockSize);
@@ -194,8 +329,14 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
   ReportTimerStart(kDircryptoMigrationTimer);
   LOG(INFO) << "Preparation took " << timer.Elapsed().InMilliseconds()
             << " ms.";
-  if (!MigrateDir(base::FilePath(""),
-                  FileEnumerator::FileInfo(from_base_path_, from_stat))) {
+  // MigrateDir() recursively traverses the directory tree on the main thread,
+  // while the job threads migrate files and symlinks.
+  WorkerPool worker_pool(this, num_job_threads_, max_job_list_size_);
+  if (!worker_pool.Start() ||
+      !MigrateDir(base::FilePath(base::FilePath::kCurrentDirectory),
+                  FileEnumerator::FileInfo(from_base_path_, from_stat),
+                  &worker_pool) ||
+      !worker_pool.Join()) {
     LOG(ERROR) << "Migration Failed, aborting.";
     status_reporter.SetFileErrorFailure(
         failed_operation_type_, failed_error_type_);
@@ -221,6 +362,7 @@ bool MigrationHelper::IsMigrationStarted() const {
 
 void MigrationHelper::CalculateDataToMigrate(const base::FilePath& from) {
   total_byte_count_ = 0;
+  total_directory_byte_count_ = 0;
   migrated_byte_count_ = 0;
   int n_files = 0, n_dirs = 0, n_symlinks = 0;
   std::unique_ptr<FileEnumerator> enumerator(platform_->GetFileEnumerator(
@@ -235,8 +377,10 @@ void MigrationHelper::CalculateDataToMigrate(const base::FilePath& from) {
 
     if (S_ISREG(info.stat().st_mode))
       ++n_files;
-    if (S_ISDIR(info.stat().st_mode))
+    if (S_ISDIR(info.stat().st_mode)) {
+      total_directory_byte_count_ += info.GetSize();
       ++n_dirs;
+    }
     if (S_ISLNK(info.stat().st_mode))
       ++n_symlinks;
   }
@@ -246,6 +390,7 @@ void MigrationHelper::CalculateDataToMigrate(const base::FilePath& from) {
 }
 
 void MigrationHelper::IncrementMigratedBytes(uint64_t bytes) {
+  base::AutoLock lock(migrated_byte_count_lock_);
   migrated_byte_count_ += bytes;
   if (next_report_ < base::TimeTicks::Now())
     ReportStatus(DIRCRYPTO_MIGRATION_IN_PROGRESS);
@@ -257,7 +402,8 @@ void MigrationHelper::ReportStatus(DircryptoMigrationStatus status) {
 }
 
 bool MigrationHelper::MigrateDir(const base::FilePath& child,
-                                 const FileEnumerator::FileInfo& info) {
+                                 const FileEnumerator::FileInfo& info,
+                                 WorkerPool* worker_pool) {
   const base::FilePath from_dir = from_base_path_.Append(child);
   const base::FilePath to_dir = to_base_path_.Append(child);
 
@@ -273,6 +419,8 @@ bool MigrationHelper::MigrateDir(const base::FilePath& child,
   if (!CopyAttributes(child, info))
     return false;
 
+  // Dummy child count increment to protect this directory while reading.
+  IncrementChildCount(child);
   std::unique_ptr<FileEnumerator> enumerator(platform_->GetFileEnumerator(
       from_dir,
       false /* is_recursive */,
@@ -284,38 +432,22 @@ bool MigrationHelper::MigrateDir(const base::FilePath& child,
     const FileEnumerator::FileInfo& entry_info = enumerator->GetInfo();
     const base::FilePath& new_child = child.Append(entry.BaseName());
     mode_t mode = entry_info.stat().st_mode;
-    if (S_ISLNK(mode)) {
-      // Symlink
-      if (!MigrateLink(new_child, entry_info))
-        return false;
-      IncrementMigratedBytes(entry_info.GetSize());
-    } else if (S_ISDIR(mode)) {
+    IncrementChildCount(child);
+    if (S_ISDIR(mode)) {
       // Directory.
-      if (!MigrateDir(new_child, entry_info))
+      if (!MigrateDir(new_child, entry_info, worker_pool))
         return false;
       IncrementMigratedBytes(entry_info.GetSize());
-    } else if (S_ISREG(mode)) {
-      // File
-      if (!MigrateFile(new_child, entry_info))
-        return false;
     } else {
-      LOG(ERROR) << "Unknown file type: " << entry.value();
-    }
-
-    if (!platform_->DeleteFile(entry, false /* recursive */)) {
-      LOG(ERROR) << "Failed to delete file " << entry.value();
-      RecordFileErrorWithCurrentErrno(kMigrationFailedAtDelete, new_child);
-      return false;
+      Job job;
+      job.child = new_child;
+      job.info = entry_info;
+      worker_pool->PushJob(job);
     }
   }
-  if (!FixTimes(child))
-    return false;
-  if (!platform_->SyncDirectory(to_dir)) {
-    RecordFileErrorWithCurrentErrno(kMigrationFailedAtSync, child);
-    return false;
-  }
-
-  return true;
+  enumerator.reset();
+  // Decrement the dummy child count.
+  return DecrementChildCountAndDeleteIfNecessary(child);
 }
 
 bool MigrationHelper::MigrateLink(const base::FilePath& child,
@@ -647,10 +779,12 @@ void MigrationHelper::RecordFileError(
   ReportDircryptoMigrationFailedPathType(path);
   ReportDircryptoMigrationFailedErrorCode(error);
 
-  // Record the data for the final end-status report.
-  failed_operation_type_ = operation;
-  failed_path_type_ = path;
-  failed_error_type_ = error;
+  {  // Record the data for the final end-status report.
+    base::AutoLock lock(failure_info_lock_);
+    failed_operation_type_ = operation;
+    failed_path_type_ = path;
+    failed_error_type_ = error;
+  }
 }
 
 void MigrationHelper::RecordFileErrorWithCurrentErrno(
@@ -671,10 +805,16 @@ void MigrationHelper::RecordSkippedFile(const base::FilePath& rel_path) {
                 << " not added";
     return;
   }
+  if (!platform_->LockFile(skipped_file_list.GetPlatformFile())) {
+    PLOG(ERROR) << "Failed to lock " << skipped_file_list_path_.value();
+    return;
+  }
   std::string data = rel_path.value() + "\n";
   int write_size = data.size();
-  if (write_size != skipped_file_list.Write(
-                        0 /* offset ignored */, data.data(), write_size)) {
+  // O_APPEND was used to open, so write is always done at the end of the file
+  // even without seek.
+  if (write_size != skipped_file_list.WriteAtCurrentPos(
+          data.data(), write_size)) {
     PLOG(ERROR) << "Failed to write " << rel_path.value()
                 << " to the list of skipped files";
     return;
@@ -684,11 +824,77 @@ void MigrationHelper::RecordSkippedFile(const base::FilePath& rel_path) {
                 << " to the list of skipped files";
   }
   if (skipped_file_list.created()) {
+    // Sync the parent directory to persist the file.
     if (!platform_->SyncDirectory(skipped_file_list_path_.DirName()))
       PLOG(ERROR) << "Failed to sync parent directory when creating list of "
                      "skipped files "
                   << skipped_file_list_path_.value();
   }
+}
+
+bool MigrationHelper::ProcessJob(const Job& job) {
+  if (S_ISLNK(job.info.stat().st_mode)) {
+    // Symlink
+    if (!MigrateLink(job.child, job.info))
+      return false;
+    IncrementMigratedBytes(job.info.GetSize());
+  } else if (S_ISREG(job.info.stat().st_mode)) {
+    // File
+    if (!MigrateFile(job.child, job.info))
+      return false;
+  } else {
+    LOG(ERROR) << "Unknown file type: " << job.child.value();
+  }
+  if (!platform_->DeleteFile(from_base_path_.Append(job.child),
+                             false /* recursive */)) {
+    LOG(ERROR) << "Failed to delete file " << job.child.value();
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtDelete, job.child);
+    return false;
+  }
+  // The file/symlink was removed.
+  // Decrement the child count of the parent directory.
+  return DecrementChildCountAndDeleteIfNecessary(job.child.DirName());
+}
+
+void MigrationHelper::IncrementChildCount(const base::FilePath& child) {
+  base::AutoLock lock(child_counts_lock_);
+  ++child_counts_[child];
+}
+
+bool MigrationHelper::DecrementChildCountAndDeleteIfNecessary(
+    const base::FilePath& child) {
+  {
+    base::AutoLock lock(child_counts_lock_);
+    auto it = child_counts_.find(child);
+    --(it->second);
+    if (it->second > 0)  // This directory is not empty yet.
+      return true;
+    child_counts_.erase(it);
+  }
+  // The last child was removed. Finish migrating this directory.
+  const base::FilePath from_dir = from_base_path_.Append(child);
+  const base::FilePath to_dir = to_base_path_.Append(child);
+  if (!FixTimes(child)) {
+    LOG(ERROR) << "Failed to fix times " << child.value();
+    return false;
+  }
+  if (!platform_->SyncDirectory(to_dir)) {
+    LOG(ERROR) << "Failed to sync " << child.value();
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtSync, child);
+    return false;
+  }
+
+  // Don't delete the top directory.
+  if (child.value() == base::FilePath::kCurrentDirectory)
+    return true;
+
+  if (!platform_->DeleteFile(from_dir, false /* recursive */)) {
+    PLOG(ERROR) << "Failed to delete " << child.value();
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtDelete, child);
+    return false;
+  }
+  // Decrement the parent directory's child count.
+  return DecrementChildCountAndDeleteIfNecessary(child.DirName());
 }
 
 }  // namespace dircrypto_data_migrator

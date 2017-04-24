@@ -318,6 +318,13 @@ class Platform {
                               const base::FilePath& path,
                               uint32_t flags);
 
+  // Applies an exclusive advisory lock on the file.
+  // The lock will be released when the file is closed.
+  //
+  // Parameters
+  //  fd - File descriptor to lock.
+  virtual bool LockFile(int fd);
+
   // Reads a file completely into a blob/string.
   //
   // Parameters

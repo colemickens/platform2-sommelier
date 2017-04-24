@@ -21,6 +21,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/rand_util.h>
+#include <base/strings/string_number_conversions.h>
 
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/platform.h"
@@ -114,6 +115,8 @@ void PassThroughPlatformMethods(MockPlatform* mock_platform,
           testing::Invoke(real_platform, &Platform::AmountOfFreeDiskSpace));
   ON_CALL(*mock_platform, InitializeFile(testing::_, testing::_, testing::_))
       .WillByDefault(testing::Invoke(real_platform, &Platform::InitializeFile));
+  ON_CALL(*mock_platform, LockFile(testing::_))
+      .WillByDefault(testing::Invoke(real_platform, &Platform::LockFile));
 }
 
 }  // namespace
@@ -813,15 +816,17 @@ TEST_F(MigrationHelperTest, ForceSmallerChunkSize) {
   Platform real_platform;
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   constexpr int kMaxChunkSize = 128 << 20;  // 128MB
+  constexpr int kNumJobThreads = 2;
   MigrationHelper helper(
       &mock_platform, from_dir_.path(), to_dir_.path(),
       status_files_dir_.path(), kMaxChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+  helper.set_num_job_threads_for_testing(kNumJobThreads);
 
-  constexpr int kFreeSpace = 9 << 20;
+  constexpr int kFreeSpace = 13 << 20;
   // Chunk size should be limited to a multiple of 4MB (kErasureBlockSize)
-  // smaller than kFreeSpace - kFreeSpaceBuffer (4MB)
+  // smaller than (kFreeSpace - kFreeSpaceBuffer) / kNumJobThreads (4MB)
   constexpr int kExpectedChunkSize = 4 << 20;
   constexpr int kFileSize = 7 << 20;
   const FilePath kFromFilePath = from_dir_.path().Append("file");
@@ -924,6 +929,59 @@ INSTANTIATE_TEST_CASE_P(WithRandomData,
                                           123456,
                                           1,
                                           2));
+
+// MigrationHelperJobListTest verifies that the job list size limit doesn't
+// cause dead lock, however small (or big) the limit is.
+class MigrationHelperJobListTest
+    : public MigrationHelperTest,
+      public ::testing::WithParamInterface<size_t> {};
+
+TEST_P(MigrationHelperJobListTest, ProcessJobs) {
+  Platform platform;
+  MigrationHelper helper(&platform, from_dir_.path(), to_dir_.path(),
+                         status_files_dir_.path(), kDefaultChunkSize);
+  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
+  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+  helper.set_max_job_list_size_for_testing(GetParam());
+
+  // Prepare many files and directories.
+  constexpr int kNumDirectories = 100;
+  constexpr int kNumFilesPerDirectory = 10;
+  for (int i = 0; i < kNumDirectories; ++i) {
+    SCOPED_TRACE(i);
+    FilePath dir = from_dir_.path().AppendASCII(base::IntToString(i));
+    ASSERT_TRUE(platform.CreateDirectory(dir));
+    for (int j = 0 ; j < kNumFilesPerDirectory; ++j) {
+      SCOPED_TRACE(j);
+      const std::string data = base::IntToString(i * kNumFilesPerDirectory + j);
+      ASSERT_EQ(data.size(),
+                base::WriteFile(dir.AppendASCII(base::IntToString(j)),
+                                data.data(), data.size()));
+    }
+  }
+
+  // Migrate.
+  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                        base::Unretained(this))));
+
+  // The files and directories are moved.
+  for (int i = 0; i < kNumDirectories; ++i) {
+    SCOPED_TRACE(i);
+    FilePath dir = to_dir_.path().AppendASCII(base::IntToString(i));
+    EXPECT_TRUE(platform.DirectoryExists(dir));
+    for (int j = 0 ; j < kNumFilesPerDirectory; ++j) {
+      SCOPED_TRACE(j);
+      std::string data;
+      EXPECT_TRUE(base::ReadFileToString(dir.AppendASCII(base::IntToString(j)),
+                                         &data));
+      EXPECT_EQ(base::IntToString(i * kNumFilesPerDirectory + j), data);
+    }
+  }
+  EXPECT_TRUE(base::IsDirectoryEmpty(from_dir_.path()));
+}
+
+INSTANTIATE_TEST_CASE_P(JobListSize, MigrationHelperJobListTest,
+                        ::testing::Values(1, 10, 100, 1000));
 
 }  // namespace dircrypto_data_migrator
 }  // namespace cryptohome
