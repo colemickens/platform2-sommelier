@@ -8,8 +8,10 @@
 #include <string>
 
 #include <base/at_exit.h>
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
+#include <base/time/time.h>
 #include <brillo/asynchronous_signal_handler.h>
 #include <brillo/brillo_export.h>
 #include <brillo/message_loops/base_message_loop.h>
@@ -108,6 +110,17 @@ class BRILLO_EXPORT Daemon : public AsynchronousSignalHandlerInterface {
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
+
+// Moves |latest_log_symlink| to |previous_log_symlink| and creates a relative
+// symlink at |latest_log_symlink| pointing to |log_file|.
+// |latest_log_symlink| does not need to exist.
+BRILLO_EXPORT void UpdateLogSymlinks(const base::FilePath& latest_log_symlink,
+                                     const base::FilePath& previous_log_symlink,
+                                     const base::FilePath& log_file);
+
+// Formats the current time with "%Y%m%d-%H%M%S".
+// Commonly used for naming log files.
+BRILLO_EXPORT std::string GetTimeAsLogString(const base::Time& time);
 
 }  // namespace brillo
 
