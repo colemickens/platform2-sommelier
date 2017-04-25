@@ -77,13 +77,13 @@ std::string SwapTool::SwapStatus() const {
   return RunSwapHelper({"status", }, &result);
 }
 
-
-std::string SwapTool::SwapSetMargin(uint32_t margin) const {
+std::string SwapTool::SwapSetParameter(const std::string& parameter_name,
+                                       const uint32_t parameter_value) const {
   int result;
-  std::string output, buf;
+  std::string buf;
 
-  buf = base::StringPrintf("%u", margin);
-  return RunSwapHelper({"set_margin", buf}, &result);
+  buf = base::StringPrintf("%u", parameter_value);
+  return RunSwapHelper({"set_parameter", parameter_name, buf}, &result);
 }
 
 }  // namespace debugd

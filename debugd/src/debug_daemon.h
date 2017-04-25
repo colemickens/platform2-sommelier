@@ -173,8 +173,9 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   std::string SwapStartStop(const bool& on,
                             DBus::Error& error) override;  // NOLINT
   std::string SwapStatus(DBus::Error& error) override;  // NOLINT
-  std::string SwapSetMargin(const uint32_t& size,
-                            DBus::Error& error) override;  // NOLINT
+  std::string SwapSetParameter(const std::string& parameter_name,
+                               const uint32_t& parameter_value,
+                               DBus::Error& error) override;  // NOLINT
   bool SetWifiDriverDebug(const int32_t& flags,
                           DBus::Error& error) override;  // NOLINT
   void ContainerStarted(DBus::Error& error) override;  // NOLINT

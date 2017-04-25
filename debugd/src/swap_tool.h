@@ -21,7 +21,8 @@ class SwapTool {
   std::string SwapDisable(bool change_now) const;
   std::string SwapStartStop(bool on) const;
   std::string SwapStatus() const;
-  std::string SwapSetMargin(uint32_t size) const;
+  std::string SwapSetParameter(const std::string& parameter_name,
+                               const uint32_t parameter_value) const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SwapTool);

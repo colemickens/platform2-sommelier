@@ -364,8 +364,9 @@ https://chrome.google.com/webstore/detail/pnhechapfaindjhompbnflcldabbghjo
 EOF
 )
 
-USAGE_swap='[enable <size (MB)> | disable | start | stop |
- status | set_margin <discard threshold (MB)>]'
+USAGE_swap='[ enable <size (MB)> | disable | start | stop | status
+ | set_margin <discard threshold (MB)> | set_extra_free <amount (MB)>
+ | set_min_filelist <amount (MB)> ]'
 HELP_swap='
   Manage the system swap file.
 
@@ -383,6 +384,9 @@ HELP_swap='
   persistently to the chosen amount (in MiB).  A value of 0, or the string
   "default", restore the default behavior.  The current value is shown with
   "swap status".
+
+  Similarly, the set_min_filelist and set_extra_free change obscure kernel
+  parameters (which are similarly named) in the same way.
 '
 cmd_swap() (
   local cmd="${1:-}"
@@ -402,7 +406,7 @@ cmd_swap() (
       return 1
     fi
     ;;
-  set_margin)
+  set_margin|set_extra_free|set_min_filelist)
     if [ $# -ne 1 ]; then
       help "${cmd} takes one argument"
       return 1
@@ -432,16 +436,16 @@ cmd_swap() (
   "stop")
     debugd SwapStartStop "boolean:false"
     ;;
-  "set_margin")
-    local margin="$1"
-    if [ "${margin}" = "default" ]; then
-      margin=0
+  "set_margin"|"set_extra_free"|"set_min_filelist")
+    local amount="$1"
+    if [ "${amount}" = "default" ]; then
+      amount=0
     fi
-    if ! is_numeric "${margin}"; then
+    if ! is_numeric "${amount}"; then
       help "${cmd} takes an integer argument"
       return 1
     fi
-    debugd SwapSetMargin "uint32:${margin}"
+    debugd SwapSetParameter "string:${cmd#set_}" "uint32:${amount}"
     ;;
   "status"|"")
     debugd SwapStatus

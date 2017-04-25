@@ -743,16 +743,21 @@
         Free-form text reporting status.
       </arg>
     </method>
-    <method name="SwapSetMargin">
+    <method name="SwapSetParameter">
       <tp:docstring>
-        Set low-memory notifier threshold in MiB persistently.
+        Persistently change the value of various parameters.
       </tp:docstring>
       <arg name="status" type="s" direction="out">
         Free-form text reporting status.
       </arg>
-      <arg name="margin" type="u" direction="in">
+      <arg name="command_name" type="s" direction="in">
         <tp:docstring>
-          Threshold (in MiB) for memory notifier.
+          The name of the swap subcommand, usually set_something.
+        </tp:docstring>
+      </arg>
+      <arg name="value" type="u" direction="in">
+        <tp:docstring>
+          The unsigned integer value that some parameter is set to.
         </tp:docstring>
       </arg>
     </method>
