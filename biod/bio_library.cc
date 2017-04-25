@@ -18,6 +18,7 @@ BioImage::BioImage(BioImage&& rhs) {
   lib_.swap(rhs.lib_);
 
   image_ = rhs.image_;
+  data_ = std::move(rhs.data_);
   rhs.image_ = nullptr;
 }
 
@@ -32,13 +33,14 @@ BioImage& BioImage::operator=(BioImage&& rhs) {
   lib_.swap(rhs.lib_);
 
   image_ = rhs.image_;
+  data_ = std::move(rhs.data_);
   rhs.image_ = nullptr;
 
   return *this;
 }
 
-bool BioImage::SetData(std::vector<uint8_t> data) {
-  data_ = std::move(data);
+bool BioImage::SetData(std::vector<uint8_t>* data) {
+  data_ = std::move(*data);
   int ret = lib_->image_set_data_(image_, data_.data(), data_.size());
   if (ret)
     LOG(ERROR) << "Failed to set image data: " << ret;
@@ -236,6 +238,11 @@ BioImage BioSensor::CreateImage() {
     LOG(ERROR) << "Failed to create image: " << ret;
     return BioImage();
   }
+  ret = lib_->image_set_size_(image, width_, height_);
+  if (ret) {
+    LOG(ERROR) << "Failed to set image size: " << ret;
+    return BioImage();
+  }
 
   return BioImage(lib_, image);
 }
@@ -335,6 +342,7 @@ bool BioLibrary::Init(const base::FilePath& path) {
   // Use RTLD_NOW here because it would be better to fail now if there are any
   // unresolved symbols then some random point later on in the usage of this
   // library.
+  // TODO(b/35585898): Move the dlopen() to fpc_biometrics_manager.cc.
   handle_ = dlopen(path.value().c_str(), RTLD_NOW | RTLD_LOCAL);
   if (handle_ == NULL) {
     LOG(ERROR) << "Failed to load bio library from " << path.value() << ": "
@@ -342,9 +350,11 @@ bool BioLibrary::Init(const base::FilePath& path) {
     return false;
   }
 
+  // TODO(b/35585898): DLSYM isn't a good name anymore, symbols are coming from
+  // a static library.
 #define BIO_DLSYM(x)                                                  \
   do {                                                                \
-    x##_ = reinterpret_cast<bio_##x##_fp>(dlsym(handle_, "bio_" #x)); \
+    x##_ = bio_##x;                                                   \
     if (!x##_) {                                                      \
       LOG(ERROR) << "bio_" #x " is missing from library";             \
       return false;                                                   \
@@ -353,7 +363,7 @@ bool BioLibrary::Init(const base::FilePath& path) {
 
 #define BIO_DLSYM_OPTIONAL(x)                                         \
   do {                                                                \
-    x##_ = reinterpret_cast<bio_##x##_fp>(dlsym(handle_, "bio_" #x)); \
+    x##_ = bio_##x;                                                   \
   } while (0)
 
   BIO_DLSYM(algorithm_init);
@@ -368,6 +378,7 @@ bool BioLibrary::Init(const base::FilePath& path) {
   BIO_DLSYM(sensor_set_format);
   BIO_DLSYM(sensor_set_size);
   BIO_DLSYM(image_create);
+  BIO_DLSYM(image_set_size);
   BIO_DLSYM(image_set_data);
   BIO_DLSYM(image_destroy);
   BIO_DLSYM(template_image_match);

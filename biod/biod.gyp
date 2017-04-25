@@ -31,10 +31,17 @@
       'link_settings': {
         'libraries': [
           '-ldl',
+          '-L<(sysroot)/opt/fpc/lib/ -lfpalgorithm',
+        ],
+        'ldflags': [
+          # pass --export-dynamic to the linker so libfpsensor.so can see the
+          # fp_pal_* symbols at dlopen() time.
+          '-Wl,--export-dynamic',
         ],
       },
       'dependencies': ['libbiod'],
       'sources': [
+        'fpc/fpc_platform_utils.cc',
         'main.cc',
       ],
     },

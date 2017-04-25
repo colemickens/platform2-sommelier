@@ -28,6 +28,13 @@ namespace biod {
 class FpcBiometricsManager : public BiometricsManager {
  public:
   static std::unique_ptr<BiometricsManager> Create();
+  // The current fp_pal API requires direct operations on the sensor without
+  // passing the context back to the caller, so we need to make the context
+  // accessible globally.
+  // Make the FD accessible to the PAL. There's only one sensor, opened on biod
+  // startup and closed on exit, so the FD is const after Init().
+  static int g_sensor_fd;
+  static const int kIRQTimeoutMs = 10000;
 
   // BiometricsManager overrides:
   ~FpcBiometricsManager() override;

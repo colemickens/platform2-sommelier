@@ -37,7 +37,7 @@ class BioImage {
 
   bio_image_t get() const { return image_; }
 
-  bool SetData(std::vector<uint8_t> data);
+  bool SetData(std::vector<uint8_t>* data);
   bool Destroy();
 
  private:
@@ -227,6 +227,7 @@ class BioLibrary : public std::enable_shared_from_this<BioLibrary> {
   bio_sensor_set_format_fp sensor_set_format_;
   bio_sensor_set_size_fp sensor_set_size_;
   bio_image_create_fp image_create_;
+  bio_image_set_size_fp image_set_size_;
   bio_image_set_data_fp image_set_data_;
   bio_image_destroy_fp image_destroy_;
   bio_template_image_match_fp template_image_match_;

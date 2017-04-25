@@ -13,6 +13,19 @@ extern "C" {
 #include <stdint.h>
 #include <sys/types.h>
 
+#define FP_MAX_REG_SIZE 30
+#define FP_MAX_SETUP_REGS 16
+
+struct fp_setup_xfer_t {
+    uint8_t xfer_buf[FP_MAX_REG_SIZE];
+    int32_t xfer_size;
+};
+
+struct fp_settings_data_t {
+    struct fp_setup_xfer_t xfers[FP_MAX_SETUP_REGS];
+    int32_t number_of_xfres;
+};
+
 /*
  * Opens the sensor library.
  *
@@ -76,9 +89,11 @@ int fp_sensor_get_image_dimensions(uint32_t *width, uint32_t *height);
  * - negative value on error
  * - FP_SENSOR_LOW_IMAGE_QUALITY on image captured but quality is too low
  * - FP_SENSOR_TOO_FAST on finger removed before image was captured
+ * - FP_SENSOR_LOW_SENSOR_COVERAGE on sensor not fully covered by finger
  */
 #define FP_SENSOR_LOW_IMAGE_QUALITY    1
 #define FP_SENSOR_TOO_FAST             2
+#define FP_SENSOR_LOW_SENSOR_COVERAGE  3
 int fp_sensor_acquire_image(uint8_t *image_data, size_t size);
 
 /*
@@ -97,6 +112,13 @@ int fp_sensor_wait_finger_up(void);
  * Returns 0 on success, negative error code on failure.
  */
 int fp_sensor_cancel(void);
+
+/*
+ * Get sensor specfic settings data.
+ *
+ * Returns 0 on success, negative error code on failure.
+ */
+int fp_sensor_get_settings(struct fp_settings_data_t *settings);
 
 #ifdef __cplusplus
 }

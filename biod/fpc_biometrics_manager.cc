@@ -94,7 +94,7 @@ std::tuple<int, BioImage> FpcBiometricsManager::SensorLibrary::AcquireImage() {
     return std::tuple<int, BioImage>(acquire_result, BioImage());
 
   BioImage image = bio_sensor_.CreateImage();
-  if (!image || !image.SetData(image_data))
+  if (!image || !image.SetData(&image_data))
     return std::tuple<int, BioImage>(acquire_result, BioImage());
 
   return std::tuple<int, BioImage>(0 /* success */, std::move(image));
@@ -249,6 +249,8 @@ bool FpcBiometricsManager::Record::Remove() {
   return WithInternal(
       [this](RecordIterator i) { biometrics_manager_->records_.erase(i); });
 }
+
+int FpcBiometricsManager::g_sensor_fd = -1;
 
 std::unique_ptr<BiometricsManager> FpcBiometricsManager::Create() {
   std::unique_ptr<FpcBiometricsManager> biometrics_manager(
@@ -410,12 +412,13 @@ FpcBiometricsManager::~FpcBiometricsManager() {}
 bool FpcBiometricsManager::Init() {
   const char kFpcSensorPath[] = "/dev/fpc_sensor0";
   sensor_fd_ = base::ScopedFD(open(kFpcSensorPath, O_RDWR));
+  g_sensor_fd = sensor_fd_.get();
   if (sensor_fd_.get() < 0) {
     LOG(ERROR) << "Failed to open " << kFpcSensorPath;
     return false;
   }
 
-  const char kFpcLibName[] = "/opt/fpc/lib/libfp.so";
+  const char kFpcLibName[] = "/opt/fpc/lib/libfpsensor.so";
   bio_lib_ = BioLibrary::Load(base::FilePath(kFpcLibName));
   if (!bio_lib_)
     return false;
