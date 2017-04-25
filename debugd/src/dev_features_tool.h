@@ -22,24 +22,12 @@ class DevFeaturesTool {
   ~DevFeaturesTool() = default;
 
   void RemoveRootfsVerification(DBus::Error* error) const;
-  bool RemoveRootfsVerificationQuery(DBus::Error* error) const;
-
   void EnableBootFromUsb(DBus::Error* error) const;
-  bool EnableBootFromUsbQuery(DBus::Error* error) const;
-
   void ConfigureSshServer(DBus::Error* error) const;
-  bool ConfigureSshServerQuery(DBus::Error* error) const;
-
   void SetUserPassword(const std::string& username,
                        const std::string& password,
                        DBus::Error* error) const;
-  bool SetUserPasswordQuery(const std::string& username,
-                            bool system,
-                            DBus::Error* error) const;
-
   void EnableChromeRemoteDebugging(DBus::Error* error) const;
-  bool EnableChromeRemoteDebuggingQuery(DBus::Error* error) const;
-
   void EnableChromeDevFeatures(const std::string& root_password,
                                DBus::Error* error) const;
 
