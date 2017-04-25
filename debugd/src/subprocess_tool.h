@@ -25,7 +25,7 @@ class SubprocessTool {
   virtual ProcessWithId* CreateProcess(bool sandboxed,
                                        bool allow_root_mount_ns);
 
-  virtual void Stop(const std::string& handle, DBus::Error* error);
+  virtual bool Stop(const std::string& handle, DBus::Error* error);
 
  private:
   std::map<std::string, std::unique_ptr<ProcessWithId>> processes_;

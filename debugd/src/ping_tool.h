@@ -20,10 +20,11 @@ class PingTool : public SubprocessTool {
   PingTool() = default;
   ~PingTool() override = default;
 
-  std::string Start(const DBus::FileDescriptor& outfd,
-                    const std::string& destination,
-                    const std::map<std::string, DBus::Variant>& options,
-                    DBus::Error* error);
+  bool Start(const DBus::FileDescriptor& outfd,
+             const std::string& destination,
+             const std::map<std::string, DBus::Variant>& options,
+             std::string* out_id,
+             DBus::Error* error);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(PingTool);

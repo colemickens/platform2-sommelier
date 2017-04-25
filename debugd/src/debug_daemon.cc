@@ -88,12 +88,16 @@ std::string DebugDaemon::PingStart(
     const std::string& destination,
     const std::map<std::string, DBus::Variant>& options,
     DBus::Error& error) {  // NOLINT
-  return ping_tool_->Start(outfd, destination, options, &error);
+  std::string id;
+  if (!ping_tool_->Start(outfd, destination, options, &id, &error))
+    return "";
+
+  return id;
 }
 
 void DebugDaemon::PingStop(const std::string& handle,
                            DBus::Error& error) {  // NOLINT
-  return ping_tool_->Stop(handle, &error);
+  ping_tool_->Stop(handle, &error);
 }
 
 std::string DebugDaemon::TracePathStart(
@@ -106,7 +110,7 @@ std::string DebugDaemon::TracePathStart(
 
 void DebugDaemon::TracePathStop(const std::string& handle,
                                 DBus::Error& error) {  // NOLINT
-  return tracepath_tool_->Stop(handle, &error);
+  tracepath_tool_->Stop(handle, &error);
 }
 
 void DebugDaemon::SystraceStart(const std::string& categories,
@@ -116,7 +120,7 @@ void DebugDaemon::SystraceStart(const std::string& categories,
 
 void DebugDaemon::SystraceStop(const DBus::FileDescriptor& outfd,
                                DBus::Error& error) { // NOLINT
-  return systrace_tool_->Stop(outfd);
+  systrace_tool_->Stop(outfd);
 }
 
 std::string DebugDaemon::SystraceStatus(DBus::Error& error) {  // NOLINT
@@ -265,7 +269,7 @@ std::string DebugDaemon::MemtesterStart(const DBus::FileDescriptor& outfd,
 
 void DebugDaemon::MemtesterStop(const std::string& handle,
                                 DBus::Error& error) {  // NOLINT
-  return memory_tool_->Stop(handle, &error);
+  memory_tool_->Stop(handle, &error);
 }
 
 std::string DebugDaemon::BadblocksStart(const DBus::FileDescriptor& outfd,
@@ -275,7 +279,7 @@ std::string DebugDaemon::BadblocksStart(const DBus::FileDescriptor& outfd,
 
 void DebugDaemon::BadblocksStop(const std::string& handle,
                                 DBus::Error& error) {  // NOLINT
-  return storage_tool_->Stop(handle, &error);
+  storage_tool_->Stop(handle, &error);
 }
 
 std::string DebugDaemon::PacketCaptureStart(
@@ -283,12 +287,16 @@ std::string DebugDaemon::PacketCaptureStart(
     const DBus::FileDescriptor& outfd,
     const std::map<std::string, DBus::Variant>& options,
     DBus::Error& error) {  // NOLINT
-  return packet_capture_tool_->Start(statfd, outfd, options, &error);
+  std::string id;
+  if (!packet_capture_tool_->Start(statfd, outfd, options, &id, &error))
+    return "";
+
+  return id;
 }
 
 void DebugDaemon::PacketCaptureStop(const std::string& handle,
                                     DBus::Error& error) {  // NOLINT
-  return packet_capture_tool_->Stop(handle, &error);
+  packet_capture_tool_->Stop(handle, &error);
 }
 
 void DebugDaemon::LogKernelTaskStates(DBus::Error& error) {  // NOLINT
@@ -353,7 +361,7 @@ int32_t DebugDaemon::QueryDevFeatures(DBus::Error& error) {  // NOLINT
   int32_t features = DEV_FEATURES_DISABLED;
   dev_features_tool_wrapper_->CallToolFunction(
       [&features, &error](DevFeaturesTool* tool) {
-        features = tool->QueryDevFeatures(&error);
+        tool->QueryDevFeatures(&features, &error);
       },
       nullptr);
   return features;

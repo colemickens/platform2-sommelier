@@ -33,7 +33,7 @@ class PerfTool {
   // and returns either a perf_data or perf_stat protobuf in serialized form
   // over the passed stdout_fd file descriptor, or nothing if there was an
   // error.
-  void GetPerfOutputFd(const uint32_t& duration_secs,
+  bool GetPerfOutputFd(const uint32_t& duration_secs,
                        const std::vector<std::string>& perf_args,
                        const DBus::FileDescriptor& stdout_fd,
                        DBus::Error* error);

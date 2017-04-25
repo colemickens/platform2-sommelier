@@ -37,14 +37,15 @@ ProcessWithId* SubprocessTool::CreateProcess(bool sandboxed,
   return process_ptr;
 }
 
-void SubprocessTool::Stop(const std::string& handle, DBus::Error* error) {
+bool SubprocessTool::Stop(const std::string& handle, DBus::Error* error) {
   if (processes_.count(handle) != 1) {
     error->set(kErrorNoSuchProcess, handle.c_str());
-    return;
+    return false;
   }
   ProcessWithId* process_ptr = processes_[handle].get();
   process_ptr->KillProcessGroup();
   processes_.erase(handle);
+  return true;
 }
 
 }  // namespace debugd

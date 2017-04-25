@@ -12,18 +12,19 @@ using base::StringPrintf;
 
 namespace debugd {
 
-std::string PacketCaptureTool::Start(
+bool PacketCaptureTool::Start(
     const DBus::FileDescriptor& status_fd,
     const DBus::FileDescriptor& output_fd,
     const std::map<std::string, DBus::Variant>& options,
+    std::string* out_id,
     DBus::Error* error) {
   std::string exec_path;
   if (!SandboxedProcess::GetHelperPath("capture_utility.sh", &exec_path))
-    return "<path too long>";
+    return false;
 
   ProcessWithId* p = CreateProcess(false);
   if (!p)
-    return "<create process failed>";
+    return false;
   p->AddArg(exec_path);
   AddValidatedStringOption(options, "device", "--device", p);
   if (options.count("frequency") == 1) {
@@ -47,7 +48,8 @@ std::string PacketCaptureTool::Start(
   p->BindFd(status_fd.get(), STDERR_FILENO);
   LOG(INFO) << "packet_capture: running process id: " << p->id();
   p->Start();
-  return p->id();
+  *out_id = p->id();
+  return true;
 }
 
 bool PacketCaptureTool::AddValidatedStringOption(
@@ -55,17 +57,16 @@ bool PacketCaptureTool::AddValidatedStringOption(
     const std::string &dbus_option,
     const std::string &command_line_option,
     ProcessWithId* p) {
-  if (options.count(dbus_option) != 1) {
+  if (options.count(dbus_option) != 1)
     return false;
-  }
+
   const std::string &option_value = options.find(dbus_option)->second;
   for (size_t i = 0; i < option_value.length(); ++i) {
     const char c = option_value[i];
     // These are the only plausible interface name characters.
     if (!base::IsAsciiAlpha(c) &&
-        !base::IsAsciiDigit(c) && c != '-' && c != '_') {
+        !base::IsAsciiDigit(c) && c != '-' && c != '_')
       return false;
-    }
   }
 
   p->AddStringOption(command_line_option, option_value);

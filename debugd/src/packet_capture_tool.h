@@ -22,11 +22,11 @@ class PacketCaptureTool : public SubprocessTool {
   PacketCaptureTool() = default;
   ~PacketCaptureTool() override = default;
 
-  std::string Start(
-      const DBus::FileDescriptor& status_fd,
-      const DBus::FileDescriptor& output_fd,
-      const std::map<std::string, DBus::Variant>& options,
-      DBus::Error* error);
+  bool Start(const DBus::FileDescriptor& status_fd,
+             const DBus::FileDescriptor& output_fd,
+             const std::map<std::string, DBus::Variant>& options,
+             std::string* out_id,
+             DBus::Error* error);
 
  private:
   static bool AddValidatedStringOption(

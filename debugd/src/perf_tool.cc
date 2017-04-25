@@ -106,7 +106,7 @@ int PerfTool::GetPerfOutput(const uint32_t& duration_secs,
   return result;
 }
 
-void PerfTool::GetPerfOutputFd(const uint32_t& duration_secs,
+bool PerfTool::GetPerfOutputFd(const uint32_t& duration_secs,
                                const std::vector<std::string>& perf_args,
                                const DBus::FileDescriptor& stdout_fd,
                                DBus::Error* error) {
@@ -115,14 +115,14 @@ void PerfTool::GetPerfOutputFd(const uint32_t& duration_secs,
     error->set(kUnsupportedPerfToolErrorName,
                "perf_args must begin with {\"perf\", \"record\"}, "
                " {\"perf\", \"stat\"}, or {\"perf\", \"mem\"}");
-    return;
+    return false;
   }
 
   SandboxedProcess process;
   process.SandboxAs("root", "root");
   if (!process.Init()) {
     error->set(kProcessErrorName, "Process initialization failure.");
-    return;
+    return false;
   }
 
   AddQuipperArguments(&process, duration_secs, perf_args);
@@ -132,7 +132,9 @@ void PerfTool::GetPerfOutputFd(const uint32_t& duration_secs,
 
   if (process.Run() != 0) {
     error->set(kProcessErrorName, "Process start failure.");
+    return false;
   }
+  return true;
 }
 
 int PerfTool::GetPerfOutputHelper(const uint32_t& duration_secs,

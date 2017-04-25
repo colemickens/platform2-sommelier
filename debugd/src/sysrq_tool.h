@@ -15,7 +15,7 @@ class SysrqTool {
   SysrqTool() = default;
   ~SysrqTool() = default;
 
-  void LogKernelTaskStates(DBus::Error* error);
+  bool LogKernelTaskStates(DBus::Error* error);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SysrqTool);

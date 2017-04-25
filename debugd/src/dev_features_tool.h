@@ -21,17 +21,17 @@ class DevFeaturesTool {
   DevFeaturesTool() = default;
   ~DevFeaturesTool() = default;
 
-  void RemoveRootfsVerification(DBus::Error* error) const;
-  void EnableBootFromUsb(DBus::Error* error) const;
-  void ConfigureSshServer(DBus::Error* error) const;
-  void SetUserPassword(const std::string& username,
+  bool RemoveRootfsVerification(DBus::Error* error) const;
+  bool EnableBootFromUsb(DBus::Error* error) const;
+  bool ConfigureSshServer(DBus::Error* error) const;
+  bool SetUserPassword(const std::string& username,
                        const std::string& password,
                        DBus::Error* error) const;
-  void EnableChromeRemoteDebugging(DBus::Error* error) const;
-  void EnableChromeDevFeatures(const std::string& root_password,
+  bool EnableChromeRemoteDebugging(DBus::Error* error) const;
+  bool EnableChromeDevFeatures(const std::string& root_password,
                                DBus::Error* error) const;
 
-  int32_t QueryDevFeatures(DBus::Error* error) const;
+  bool QueryDevFeatures(int32_t* flags, DBus::Error* error) const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DevFeaturesTool);

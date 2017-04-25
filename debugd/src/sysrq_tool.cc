@@ -15,18 +15,19 @@ const char kErrorSysrq[] = "org.chromium.debugd.error.sysrq";
 
 }  // namespace
 
-void SysrqTool::LogKernelTaskStates(DBus::Error* error) {
+bool SysrqTool::LogKernelTaskStates(DBus::Error* error) {
   int sysrq_trigger = open("/proc/sysrq-trigger", O_WRONLY | O_CLOEXEC);
   if (sysrq_trigger < 0) {
     error->set(kErrorSysrq, "open");
-    return;
+    return false;
   }
   ssize_t written = write(sysrq_trigger, "t", 1);
   close(sysrq_trigger);
   if (written < 1) {
     error->set(kErrorSysrq, "write");
-    return;
+    return false;
   }
+  return true;
 }
 
 }  // namespace debugd

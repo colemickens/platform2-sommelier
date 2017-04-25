@@ -20,13 +20,14 @@ const char kPing6[] = "/bin/ping6";
 
 }  // namespace
 
-std::string PingTool::Start(const DBus::FileDescriptor& outfd,
-                            const std::string& destination,
-                            const std::map<std::string, DBus::Variant>& options,
-                            DBus::Error* error) {
+bool PingTool::Start(const DBus::FileDescriptor& outfd,
+                     const std::string& destination,
+                     const std::map<std::string, DBus::Variant>& options,
+                     std::string* out_id,
+                     DBus::Error* error) {
   ProcessWithId* p = CreateProcess(true);
   if (!p)
-    return "";
+    return false;
   p->AddArg(kSetuidHack);
 
   auto option_iter = options.find("v6");
@@ -61,7 +62,8 @@ std::string PingTool::Start(const DBus::FileDescriptor& outfd,
   p->BindFd(outfd.get(), STDERR_FILENO);
   LOG(INFO) << "ping: running process id: " << p->id();
   p->Start();
-  return p->id();
+  *out_id = p->id();
+  return true;
 }
 
 }  // namespace debugd
