@@ -460,14 +460,29 @@ FpcBiometricsManager::ScanData FpcBiometricsManager::ScanImage() {
   if (!success)
     return ScanData();
 
-  int acquire_result;
+  int acquire_result, attempts = 0;
   BioImage image;
-  std::tie(acquire_result, image) = sensor_lib_->AcquireImage();
-  {
-    base::AutoLock guard(kill_task_lock_);
-    if (kill_task_)
-      return ScanData(ScanData::Killed());
-  }
+  // If the finger is positioned slightly off the sensor, retry a few times
+  // before failing. Typically the user has put their finger down and is now
+  // moving their finger to the correct position on the sensor. Instead of
+  // immediately failing, retry until we get a good image.
+  // Retry 20 times, which takes ~5s on Eve, before giving up and sending an
+  // error back to the user. Assume ~1s for user noticing that no matching
+  // happened, some time to move the finger on the sensor to allow a full
+  // capture and another 1s for the second matching attempt. 5s gives a bit of
+  // margin to avoid interrupting the user while they're moving the finger on
+  // the sensor.
+  const int kMaxPartialAttempts = 20;
+  do {
+    std::tie(acquire_result, image) = sensor_lib_->AcquireImage();
+    {
+      base::AutoLock guard(kill_task_lock_);
+      if (kill_task_)
+        return ScanData(ScanData::Killed());
+    }
+    ++attempts;
+  } while (acquire_result == FP_SENSOR_LOW_SENSOR_COVERAGE &&
+           attempts < kMaxPartialAttempts);
 
   switch (acquire_result) {
     case 0:
@@ -476,6 +491,8 @@ FpcBiometricsManager::ScanData FpcBiometricsManager::ScanImage() {
       return ScanData(ScanResult::SCAN_RESULT_TOO_FAST);
     case FP_SENSOR_LOW_IMAGE_QUALITY:
       return ScanData(ScanResult::SCAN_RESULT_INSUFFICIENT);
+    case FP_SENSOR_LOW_SENSOR_COVERAGE:
+      return ScanData(ScanResult::SCAN_RESULT_PARTIAL);
     default:
       LOG(ERROR) << "Unexpected result from acquiring image: "
                  << acquire_result;
