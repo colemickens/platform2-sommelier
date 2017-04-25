@@ -33,6 +33,8 @@ constexpr char kCryptohomeDircryptoMigrationStartStatusHistogram[] =
     "Cryptohome.DircryptoMigrationStartStatus";
 constexpr char kCryptohomeDircryptoMigrationEndStatusHistogram[] =
     "Cryptohome.DircryptoMigrationEndStatus";
+constexpr char kHomedirEncryptionTypeHistogram[] =
+    "Cryptohome.HomedirEncryptionType";
 
 // Histogram parameters. This should match the order of 'TimerType'.
 // Min and max samples are in milliseconds.
@@ -191,5 +193,16 @@ void ReportDircryptoMigrationEndStatus(DircryptoMigrationEndStatus status) {
   g_metrics->SendEnumToUMA(kCryptohomeDircryptoMigrationEndStatusHistogram,
                            status,
                            kMigrationEndStatusNumBuckets);
+}
+
+void ReportHomedirEncryptionType(HomedirEncryptionType type) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendEnumToUMA(
+      kHomedirEncryptionTypeHistogram,
+      static_cast<int>(type),
+      static_cast<int>(
+          HomedirEncryptionType::kHomedirEncryptionTypeNumBuckets));
 }
 }  // namespace cryptohome

@@ -76,6 +76,12 @@ enum DircryptoMigrationEndStatus {
   kMigrationEndStatusNumBuckets
 };
 
+enum class HomedirEncryptionType {
+  kEcryptfs = 1,
+  kDircrypto = 2,
+  kHomedirEncryptionTypeNumBuckets
+};
+
 // Cros events emitted by cryptohome.
 const char kAttestationOriginSpecificIdentifiersExhausted[] =
     "Attestation.OriginSpecificExhausted";
@@ -128,6 +134,10 @@ void ReportDircryptoMigrationStartStatus(DircryptoMigrationStartStatus status);
 // "Cryptohome.DircryptoMigrationEndStatus"
 // enum histogram.
 void ReportDircryptoMigrationEndStatus(DircryptoMigrationEndStatus status);
+
+// The |type| value is reported to the "Cryptohome.HomedirEncryptionType" enum
+// histogram.
+void ReportHomedirEncryptionType(HomedirEncryptionType type);
 
 // Initialization helper.
 class ScopedMetricsInitializer {

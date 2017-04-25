@@ -681,6 +681,19 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   *mount_error = MOUNT_ERROR_NONE;
 
+  switch (mount_type_) {
+    case MountType::ECRYPTFS:
+      ReportHomedirEncryptionType(HomedirEncryptionType::kEcryptfs);
+      break;
+    case MountType::DIR_CRYPTO:
+      ReportHomedirEncryptionType(HomedirEncryptionType::kDircrypto);
+      break;
+    default:
+      // We're only interested in encrypted home directories.
+      NOTREACHED() << "Unknown homedir encryption type: " << mount_type_;
+      break;
+  }
+
   if (is_pkcs11_passkey_migration_required_) {
     credentials.GetPasskey(&legacy_pkcs11_passkey_);
   }
