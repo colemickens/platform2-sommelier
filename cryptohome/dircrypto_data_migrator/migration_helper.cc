@@ -298,6 +298,8 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
     PLOG(ERROR) << "Failed to open file " << to.value();
     return false;
   }
+  if (!platform_->SyncDirectory(to.DirName()))
+    return false;
 
   int64_t from_length = from_file.GetLength();
   int64_t to_length = to_file.GetLength();
@@ -309,7 +311,6 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
     LOG(ERROR) << "Failed to get length of " << to.value();
     return false;
   }
-  bool new_file = to_file.created();
   if (to_length < from_length) {
     // SetLength will call truncate, which on filesystems supporting sparse
     // files should not cause any actual disk space usage.  Instead only the
@@ -349,11 +350,6 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
     }
     IncrementMigratedBytes(to_read);
 
-    if (new_file) {
-      if (!platform_->SyncDirectory(to.DirName()))
-        return false;
-      new_file = false;
-    }
     if (!from_file.SetLength(offset)) {
       PLOG(ERROR) << "Failed to truncate file " << from.value();
       return false;
