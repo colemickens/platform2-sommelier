@@ -326,13 +326,12 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
   if (!CopyAttributes(from, to, info))
     return false;
 
-  int64_t length;
-  while ((length = from_file.GetLength()) > 0) {
-    size_t to_read = length % effective_chunk_size_;
+  while (from_length > 0) {
+    size_t to_read = from_length % effective_chunk_size_;
     if (to_read == 0) {
       to_read = effective_chunk_size_;
     }
-    off_t offset = length - to_read;
+    off_t offset = from_length - to_read;
     if (to_file.Seek(base::File::FROM_BEGIN, offset) != offset) {
       LOG(ERROR) << "Failed to seek in " << to.value();
       return false;
@@ -344,20 +343,20 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
     if (!platform_->SendFile(to_file, from_file, offset, to_read)) {
       return false;
     }
-    if (!to_file.Flush()) {
-      PLOG(ERROR) << "Failed to flush " << to.value();
-      return false;
+    // For the last chunk, SyncFile will be called later so no need to flush
+    // here. The same goes for SetLength as from_file will be deleted soon.
+    if (offset > 0) {
+      if (!to_file.Flush()) {
+        PLOG(ERROR) << "Failed to flush " << to.value();
+        return false;
+      }
+      if (!from_file.SetLength(offset)) {
+        PLOG(ERROR) << "Failed to truncate file " << from.value();
+        return false;
+      }
     }
+    from_length = offset;
     IncrementMigratedBytes(to_read);
-
-    if (!from_file.SetLength(offset)) {
-      PLOG(ERROR) << "Failed to truncate file " << from.value();
-      return false;
-    }
-  }
-  if (length < 0) {
-    LOG(ERROR) << "Failed to get length of " << from.value();
-    return false;
   }
 
   from_file.Close();
