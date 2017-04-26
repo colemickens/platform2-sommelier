@@ -65,31 +65,24 @@ mojom::Camera3StreamConfigurationPtr CameraDeviceAdapter::ConfigureStreams(
   for (const auto& s : config->streams) {
     uint64_t id = s->id;
     std::unique_ptr<camera3_stream_t>& stream = new_streams[id];
-    auto it = streams_.find(id);
-    if (it == streams_.end()) {
-      VLOGF(1) << "Add new stream: " << id;
-      stream.reset(new camera3_stream_t);
-    } else {
-      VLOGF(1) << "Update existing stream: " << id;
-      stream.swap(it->second);
-    }
+    stream.reset(new camera3_stream_t);
+    memset(stream.get(), 0, sizeof(*stream.get()));
     stream->stream_type = static_cast<camera3_stream_type_t>(s->stream_type);
     stream->width = s->width;
     stream->height = s->height;
     stream->format = static_cast<int32_t>(s->format);
-    stream->usage = s->usage;
-    stream->max_buffers = s->max_buffers;
     stream->data_space = static_cast<android_dataspace_t>(s->data_space);
     stream->rotation = static_cast<camera3_stream_rotation_t>(s->rotation);
   }
   streams_.swap(new_streams);
 
   camera3_stream_configuration_t stream_list;
+  std::vector<camera3_stream_t*> streams(config->num_streams);
   stream_list.num_streams = config->num_streams;
-  stream_list.streams = new camera3_stream_t*[config->num_streams];
+  stream_list.streams = streams.data();
   stream_list.operation_mode =
       static_cast<camera3_stream_configuration_mode_t>(config->operation_mode);
-  int i = 0;
+  size_t i = 0;
   for (auto it = streams_.begin(); it != streams_.end(); it++) {
     stream_list.streams[i++] = it->second.get();
   }
@@ -99,8 +92,6 @@ mojom::Camera3StreamConfigurationPtr CameraDeviceAdapter::ConfigureStreams(
 
   updated_config->error =
       camera_device_->ops->configure_streams(camera_device_, &stream_list);
-
-  delete[](stream_list.streams);
 
   if (!updated_config->error) {
     updated_config->num_streams = streams_.size();
