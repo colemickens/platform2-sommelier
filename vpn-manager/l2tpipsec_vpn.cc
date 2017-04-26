@@ -110,14 +110,12 @@ int main(int argc, char* argv[]) {
   // IpsecManager related flags.
 
   // Phase 1 ciphersuites:
-  // aes128gcm16-modp3072: secure + more efficient
   // aes128-sha256-modp3072: new strongSwan default
   // aes128-sha1-modp2048: old strongSwan default
   // 3des-sha1-modp1536: strongSwan fallback
   // 3des-sha1-modp1024: for compatibility with Windows RRAS, which requires
   //                     using the modp1024 dh-group
-  DEFINE_string(ike, "aes128gcm16-modp3072,"
-                     "aes128-sha256-modp3072,"
+  DEFINE_string(ike, "aes128-sha256-modp3072,"
                      "aes128-sha1-modp2048,"
                      "3des-sha1-modp1536,"
                      "3des-sha1-modp1024",
