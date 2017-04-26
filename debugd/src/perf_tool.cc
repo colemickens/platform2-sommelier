@@ -143,8 +143,10 @@ int PerfTool::GetPerfOutputHelper(const uint32_t& duration_secs,
   // completion, then gather up its output to return it.
   ProcessWithOutput process;
   process.SandboxAs("root", "root");
-  if (!process.Init())
+  if (!process.Init()) {
     *data_string = "<process init failed>";
+    return -1;
+  }
 
   AddQuipperArguments(&process, duration_secs, perf_args);
 
@@ -152,8 +154,9 @@ int PerfTool::GetPerfOutputHelper(const uint32_t& duration_secs,
   // have to make this asynchronous using .Start().
   int status = process.Run();
   if (status != 0)
-    *data_string = StringPrintf("<process exited with status: %d", status);
-  process.GetOutput(data_string);
+    *data_string = StringPrintf("<process exited with status: %d>", status);
+  else
+    process.GetOutput(data_string);
 
   return status;
 }
