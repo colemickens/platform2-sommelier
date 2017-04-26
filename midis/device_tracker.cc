@@ -237,4 +237,20 @@ void UdevHandler::ProcessUdevEvent(struct udev_device* udev_device) {
     LOG(ERROR) << "Unknown action: " << action;
   }
 }
+
+void DeviceTracker::ListDevices(std::vector<MidisDeviceInfo>* list) {
+  for (auto& id_device_pair : devices_) {
+    struct MidisDeviceInfo cur;
+    memset(&cur, 0, sizeof(MidisDeviceInfo));
+    std::string name = id_device_pair.second->GetName();
+    strncpy(reinterpret_cast<char*>(cur.name),
+            id_device_pair.second->GetName().c_str(), kMidisDeviceInfoNameSize);
+    cur.card = id_device_pair.second->GetCard();
+    cur.device_num = id_device_pair.second->GetDeviceNum();
+    cur.num_subdevices = id_device_pair.second->GetNumSubdevices();
+    cur.flags = id_device_pair.second->GetFlags();
+
+    list->push_back(cur);
+  }
+}
 }  // namespace midis

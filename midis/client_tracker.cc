@@ -82,7 +82,8 @@ void ClientTracker::ProcessClient(int fd) {
     return;
   }
 
-  std::unique_ptr<Client> new_cli = Client::Create(std::move(new_fd));
+  std::unique_ptr<Client> new_cli =
+      Client::Create(std::move(new_fd), device_tracker_);
   if (new_cli) {
     clients_.emplace(client_id_counter_++, std::move(new_cli));
   }

@@ -11,12 +11,14 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>
 
 #include "midis/device.h"
+#include "midis/messages.h"
 
 namespace midis {
 
@@ -74,6 +76,7 @@ class DeviceTracker {
   void AddDevice(std::unique_ptr<Device> dev);
   void RemoveDevice(uint32_t sys_num, uint32_t dev_num);
   bool InitDeviceTracker();
+  void ListDevices(std::vector<MidisDeviceInfo>* list);
 
  private:
   friend class DeviceTrackerTest;

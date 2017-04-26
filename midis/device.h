@@ -34,9 +34,11 @@ class Device {
                                         uint32_t device,
                                         uint32_t num_subdevices,
                                         uint32_t flags);
-  std::string GetName() const { return name_; }
+  const std::string& GetName() const { return name_; }
   uint32_t GetCard() const { return card_; }
   uint32_t GetDeviceNum() const { return device_; }
+  uint32_t GetNumSubdevices() const { return num_subdevices_; }
+  uint32_t GetFlags() const { return flags_; }
   // Callback function which is invoked by the FileHandler object when data is
   // received for a particular subdevice.
 
