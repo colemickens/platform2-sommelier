@@ -12,7 +12,6 @@ hal_usb_LDLIBS := $(call get_pc_libs,$(hal_usb_PC_DEPS)) -ljpeg
 CXX_LIBRARY(hal/usb/camera_hal.so): CPPFLAGS += $(hal_usb_CPPFLAGS)
 CXX_LIBRARY(hal/usb/camera_hal.so): LDLIBS += $(hal_usb_LDLIBS)
 CXX_LIBRARY(hal/usb/camera_hal.so): \
-	$(ANDROID_OBJECTS) \
 	$(COMMON_OBJECTS_FOR_USB_HAL) \
 	$(hal_usb_CXX_OBJECTS)
 

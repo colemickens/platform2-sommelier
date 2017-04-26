@@ -16,7 +16,6 @@ hal_adapter_LDLIBS := $(call get_pc_libs,$(hal_adapter_PC_DEPS)) -ldl
 CXX_BINARY(hal_adapter/arc_camera3_service): CPPFLAGS += $(hal_adapter_CPPFLAGS)
 CXX_BINARY(hal_adapter/arc_camera3_service): LDLIBS += $(hal_adapter_LDLIBS)
 CXX_BINARY(hal_adapter/arc_camera3_service): \
-	$(ANDROID_OBJECTS) \
 	$(COMMON_OBJECTS) \
 	$(hal_adapter_CXX_OBJECTS) \
 	$(hal_adapter_mojo_CXX_OBJECTS)

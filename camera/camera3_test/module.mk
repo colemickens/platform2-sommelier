@@ -18,7 +18,6 @@ camera3_test_CXX_OBJECTS += \
 CXX_BINARY(camera3_test/arc_camera3_test): CPPFLAGS += $(camera3_test_CPPFLAGS)
 CXX_BINARY(camera3_test/arc_camera3_test): LDLIBS += $(camera3_test_LDLIBS)
 CXX_BINARY(camera3_test/arc_camera3_test): \
-	$(ANDROID_OBJECTS) \
 	$(camera3_test_CXX_OBJECTS)
 
 camera3_test/arc_camera3_test: CXX_BINARY(camera3_test/arc_camera3_test)
