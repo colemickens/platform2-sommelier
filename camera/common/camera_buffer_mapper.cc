@@ -268,6 +268,156 @@ int CameraBufferMapper::Unlock(buffer_handle_t buffer) {
   return 0;
 }
 
+// static
+uint32_t CameraBufferMapper::GetNumPlanes(buffer_handle_t buffer) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return 0;
+  }
+
+  switch (handle->drm_format) {
+    case DRM_FORMAT_ABGR1555:
+    case DRM_FORMAT_ABGR2101010:
+    case DRM_FORMAT_ABGR4444:
+    case DRM_FORMAT_ABGR8888:
+    case DRM_FORMAT_ARGB1555:
+    case DRM_FORMAT_ARGB2101010:
+    case DRM_FORMAT_ARGB4444:
+    case DRM_FORMAT_ARGB8888:
+    case DRM_FORMAT_AYUV:
+    case DRM_FORMAT_BGR233:
+    case DRM_FORMAT_BGR565:
+    case DRM_FORMAT_BGR888:
+    case DRM_FORMAT_BGRA1010102:
+    case DRM_FORMAT_BGRA4444:
+    case DRM_FORMAT_BGRA5551:
+    case DRM_FORMAT_BGRA8888:
+    case DRM_FORMAT_BGRX1010102:
+    case DRM_FORMAT_BGRX4444:
+    case DRM_FORMAT_BGRX5551:
+    case DRM_FORMAT_BGRX8888:
+    case DRM_FORMAT_C8:
+    case DRM_FORMAT_GR88:
+    case DRM_FORMAT_R8:
+    case DRM_FORMAT_RG88:
+    case DRM_FORMAT_RGB332:
+    case DRM_FORMAT_RGB565:
+    case DRM_FORMAT_RGB888:
+    case DRM_FORMAT_RGBA1010102:
+    case DRM_FORMAT_RGBA4444:
+    case DRM_FORMAT_RGBA5551:
+    case DRM_FORMAT_RGBA8888:
+    case DRM_FORMAT_RGBX1010102:
+    case DRM_FORMAT_RGBX4444:
+    case DRM_FORMAT_RGBX5551:
+    case DRM_FORMAT_RGBX8888:
+    case DRM_FORMAT_UYVY:
+    case DRM_FORMAT_VYUY:
+    case DRM_FORMAT_XBGR1555:
+    case DRM_FORMAT_XBGR2101010:
+    case DRM_FORMAT_XBGR4444:
+    case DRM_FORMAT_XBGR8888:
+    case DRM_FORMAT_XRGB1555:
+    case DRM_FORMAT_XRGB2101010:
+    case DRM_FORMAT_XRGB4444:
+    case DRM_FORMAT_XRGB8888:
+    case DRM_FORMAT_YUYV:
+    case DRM_FORMAT_YVYU:
+      return 1;
+    case DRM_FORMAT_NV12:
+    case DRM_FORMAT_NV21:
+      return 2;
+    case DRM_FORMAT_YUV420:
+    case DRM_FORMAT_YVU420:
+      return 3;
+  }
+
+  LOGF(ERROR) << "Unknown format: " << FormatToString(handle->drm_format);
+  return 0;
+}
+
+// static
+uint32_t CameraBufferMapper::GetV4L2PixelFormat(buffer_handle_t buffer) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return 0;
+  }
+
+  switch (handle->drm_format) {
+    case DRM_FORMAT_ARGB8888:
+      return V4L2_PIX_FMT_ABGR32;
+
+    // There is no standard V4L2 pixel format corresponding to
+    // DRM_FORMAT_xBGR8888.  We use our own V4L2 format extension
+    // V4L2_PIX_FMT_RGBX32 here.
+    case DRM_FORMAT_ABGR8888:
+      return V4L2_PIX_FMT_RGBX32;
+    case DRM_FORMAT_XBGR8888:
+      return V4L2_PIX_FMT_RGBX32;
+
+    // DRM_FORMAT_R8 is used as the underlying buffer format for
+    // HAL_PIXEL_FORMAT_BLOB which corresponds to JPEG buffer.
+    case DRM_FORMAT_R8:
+      return V4L2_PIX_FMT_JPEG;
+
+    // Semi-planar formats.
+    case DRM_FORMAT_NV12:
+      return V4L2_PIX_FMT_NV21M;
+    case DRM_FORMAT_NV21:
+      return V4L2_PIX_FMT_NV12M;
+
+    // Multi-planar formats.
+    case DRM_FORMAT_YUV420:
+      return V4L2_PIX_FMT_YUV420M;
+    case DRM_FORMAT_YVU420:
+      return V4L2_PIX_FMT_YVU420M;
+  }
+
+  LOGF(ERROR) << "Could not convert format "
+              << FormatToString(handle->drm_format) << " to V4L2 pixel format";
+  return 0;
+}
+
+// static
+size_t CameraBufferMapper::GetPlaneStride(buffer_handle_t buffer,
+                                          size_t plane) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return 0;
+  }
+  if (plane >= GetNumPlanes(buffer)) {
+    LOGF(ERROR) << "Invalid plane: " << plane;
+    return 0;
+  }
+  return handle->strides[plane];
+}
+
+#define DIV_ROUND_UP(n, d) (((n) + (d)-1) / (d))
+
+// static
+size_t CameraBufferMapper::GetPlaneSize(buffer_handle_t buffer, size_t plane) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return 0;
+  }
+  if (plane >= GetNumPlanes(buffer)) {
+    LOGF(ERROR) << "Invalid plane: " << plane;
+    return 0;
+  }
+  uint32_t vertical_subsampling;
+  switch (handle->drm_format) {
+    case DRM_FORMAT_NV12:
+    case DRM_FORMAT_NV21:
+    case DRM_FORMAT_YUV420:
+    case DRM_FORMAT_YVU420:
+      vertical_subsampling = (plane == 0) ? 1 : 2;
+    default:
+      vertical_subsampling = 1;
+  }
+  return (handle->strides[plane] *
+          DIV_ROUND_UP(handle->height, vertical_subsampling));
+}
+
 void* CameraBufferMapper::Map(buffer_handle_t buffer,
                               uint32_t flags,
                               uint32_t x,
@@ -392,116 +542,6 @@ int CameraBufferMapper::Unmap(buffer_handle_t buffer, uint32_t plane) {
     return -EINVAL;
   }
   VLOGF(1) << "buffer 0x" << std::hex << handle->buffer_id << " unmapped";
-  return 0;
-}
-
-// static
-uint32_t CameraBufferMapper::GetNumPlanes(buffer_handle_t buffer) {
-  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
-  if (!handle) {
-    return 0;
-  }
-
-  switch (handle->drm_format) {
-    case DRM_FORMAT_ABGR1555:
-    case DRM_FORMAT_ABGR2101010:
-    case DRM_FORMAT_ABGR4444:
-    case DRM_FORMAT_ABGR8888:
-    case DRM_FORMAT_ARGB1555:
-    case DRM_FORMAT_ARGB2101010:
-    case DRM_FORMAT_ARGB4444:
-    case DRM_FORMAT_ARGB8888:
-    case DRM_FORMAT_AYUV:
-    case DRM_FORMAT_BGR233:
-    case DRM_FORMAT_BGR565:
-    case DRM_FORMAT_BGR888:
-    case DRM_FORMAT_BGRA1010102:
-    case DRM_FORMAT_BGRA4444:
-    case DRM_FORMAT_BGRA5551:
-    case DRM_FORMAT_BGRA8888:
-    case DRM_FORMAT_BGRX1010102:
-    case DRM_FORMAT_BGRX4444:
-    case DRM_FORMAT_BGRX5551:
-    case DRM_FORMAT_BGRX8888:
-    case DRM_FORMAT_C8:
-    case DRM_FORMAT_GR88:
-    case DRM_FORMAT_R8:
-    case DRM_FORMAT_RG88:
-    case DRM_FORMAT_RGB332:
-    case DRM_FORMAT_RGB565:
-    case DRM_FORMAT_RGB888:
-    case DRM_FORMAT_RGBA1010102:
-    case DRM_FORMAT_RGBA4444:
-    case DRM_FORMAT_RGBA5551:
-    case DRM_FORMAT_RGBA8888:
-    case DRM_FORMAT_RGBX1010102:
-    case DRM_FORMAT_RGBX4444:
-    case DRM_FORMAT_RGBX5551:
-    case DRM_FORMAT_RGBX8888:
-    case DRM_FORMAT_UYVY:
-    case DRM_FORMAT_VYUY:
-    case DRM_FORMAT_XBGR1555:
-    case DRM_FORMAT_XBGR2101010:
-    case DRM_FORMAT_XBGR4444:
-    case DRM_FORMAT_XBGR8888:
-    case DRM_FORMAT_XRGB1555:
-    case DRM_FORMAT_XRGB2101010:
-    case DRM_FORMAT_XRGB4444:
-    case DRM_FORMAT_XRGB8888:
-    case DRM_FORMAT_YUYV:
-    case DRM_FORMAT_YVYU:
-      return 1;
-    case DRM_FORMAT_NV12:
-    case DRM_FORMAT_NV21:
-      return 2;
-    case DRM_FORMAT_YUV420:
-    case DRM_FORMAT_YVU420:
-      return 3;
-  }
-
-  LOGF(ERROR) << "Unknown format: " << FormatToString(handle->drm_format);
-  return 0;
-}
-
-// static
-uint32_t CameraBufferMapper::GetV4L2PixelFormat(buffer_handle_t buffer) {
-  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
-  if (!handle) {
-    return 0;
-  }
-
-  switch (handle->drm_format) {
-    case DRM_FORMAT_ARGB8888:
-      return V4L2_PIX_FMT_ABGR32;
-
-    // There is no standard V4L2 pixel format corresponding to
-    // DRM_FORMAT_xBGR8888.  We use our own V4L2 format extension
-    // V4L2_PIX_FMT_RGBX32 here.
-    case DRM_FORMAT_ABGR8888:
-      return V4L2_PIX_FMT_RGBX32;
-    case DRM_FORMAT_XBGR8888:
-      return V4L2_PIX_FMT_RGBX32;
-
-    // DRM_FORMAT_R8 is used as the underlying buffer format for
-    // HAL_PIXEL_FORMAT_BLOB which corresponds to JPEG buffer.
-    case DRM_FORMAT_R8:
-      return V4L2_PIX_FMT_JPEG;
-
-    // Semi-planar formats.
-    case DRM_FORMAT_NV12:
-      return V4L2_PIX_FMT_NV21M;
-    case DRM_FORMAT_NV21:
-      return V4L2_PIX_FMT_NV12M;
-
-    // Multi-planar formats.
-    case DRM_FORMAT_YUV420:
-      return V4L2_PIX_FMT_YUV420M;
-    case DRM_FORMAT_YVU420:
-      return V4L2_PIX_FMT_YVU420M;
-  }
-
-  LOGF(ERROR) << "Could not convert format "
-              << FormatToString(handle->drm_format) << " to V4L2 pixel format";
   return 0;
 }
 

@@ -156,6 +156,26 @@ class EXPORTED CameraBufferMapper {
   //    The V4L2 pixel format; 0 on error.
   static uint32_t GetV4L2PixelFormat(buffer_handle_t buffer);
 
+  // Gets the stride of the specified plane.
+  //
+  // Args:
+  //    |buffer|: The buffer handle to query.
+  //    |plane|: The plane to query.
+  //
+  // Returns:
+  //    The stride of the specified plane; 0 on error.
+  static size_t GetPlaneStride(buffer_handle_t buffer, size_t plane);
+
+  // Gets the size of the specified plane.
+  //
+  // Args:
+  //    |buffer|: The buffer handle to query.
+  //    |plane|: The plane to query.
+  //
+  // Returns:
+  //    The size of the specified plane; 0 on error.
+  static size_t GetPlaneSize(buffer_handle_t buffer, size_t plane);
+
  private:
   // Allow unit tests to call constructor directly.
   friend class tests::CameraBufferMapperTest;

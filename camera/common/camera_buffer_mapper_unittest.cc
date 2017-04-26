@@ -246,6 +246,72 @@ namespace tests {
 using ::testing::A;
 using ::testing::Return;
 
+static size_t GetFormatBpp(uint32_t drm_format) {
+  switch (drm_format) {
+    case DRM_FORMAT_BGR233:
+    case DRM_FORMAT_C8:
+    case DRM_FORMAT_R8:
+    case DRM_FORMAT_RGB332:
+    case DRM_FORMAT_YUV420:
+    case DRM_FORMAT_YVU420:
+    case DRM_FORMAT_NV12:
+    case DRM_FORMAT_NV21:
+      return 1;
+
+    case DRM_FORMAT_ABGR1555:
+    case DRM_FORMAT_ABGR4444:
+    case DRM_FORMAT_ARGB1555:
+    case DRM_FORMAT_ARGB4444:
+    case DRM_FORMAT_BGR565:
+    case DRM_FORMAT_BGRA4444:
+    case DRM_FORMAT_BGRA5551:
+    case DRM_FORMAT_BGRX4444:
+    case DRM_FORMAT_BGRX5551:
+    case DRM_FORMAT_GR88:
+    case DRM_FORMAT_RG88:
+    case DRM_FORMAT_RGB565:
+    case DRM_FORMAT_RGBA4444:
+    case DRM_FORMAT_RGBA5551:
+    case DRM_FORMAT_RGBX4444:
+    case DRM_FORMAT_RGBX5551:
+    case DRM_FORMAT_UYVY:
+    case DRM_FORMAT_VYUY:
+    case DRM_FORMAT_XBGR1555:
+    case DRM_FORMAT_XBGR4444:
+    case DRM_FORMAT_XRGB1555:
+    case DRM_FORMAT_XRGB4444:
+    case DRM_FORMAT_YUYV:
+    case DRM_FORMAT_YVYU:
+      return 2;
+
+    case DRM_FORMAT_BGR888:
+    case DRM_FORMAT_RGB888:
+      return 3;
+
+    case DRM_FORMAT_ABGR2101010:
+    case DRM_FORMAT_ABGR8888:
+    case DRM_FORMAT_ARGB2101010:
+    case DRM_FORMAT_ARGB8888:
+    case DRM_FORMAT_AYUV:
+    case DRM_FORMAT_BGRA1010102:
+    case DRM_FORMAT_BGRA8888:
+    case DRM_FORMAT_BGRX1010102:
+    case DRM_FORMAT_BGRX8888:
+    case DRM_FORMAT_RGBA1010102:
+    case DRM_FORMAT_RGBA8888:
+    case DRM_FORMAT_RGBX1010102:
+    case DRM_FORMAT_RGBX8888:
+    case DRM_FORMAT_XBGR2101010:
+    case DRM_FORMAT_XBGR8888:
+    case DRM_FORMAT_XRGB2101010:
+    case DRM_FORMAT_XRGB8888:
+      return 4;
+  }
+
+  LOG(ERROR) << "Unknown format: " << FormatToString(drm_format);
+  return 0;
+}
+
 class CameraBufferMapperTest : public ::testing::Test {
  public:
   CameraBufferMapperTest() = default;
@@ -284,18 +350,18 @@ class CameraBufferMapperTest : public ::testing::Test {
     buffer->hal_pixel_format = hal_pixel_format;
     buffer->width = width;
     buffer->height = height;
-    buffer->strides[0] = width;
+    buffer->strides[0] = width * GetFormatBpp(drm_format);
     buffer->offsets[0] = 0;
     switch (drm_format) {
       case DRM_FORMAT_NV12:
       case DRM_FORMAT_NV21:
-        buffer->strides[1] = width;
+        buffer->strides[1] = width * GetFormatBpp(drm_format);
         buffer->offsets[1] = buffer->strides[0] * height;
         break;
       case DRM_FORMAT_YUV420:
       case DRM_FORMAT_YVU420:
-        buffer->strides[1] = width / 2;
-        buffer->strides[2] = width / 2;
+        buffer->strides[1] = width * GetFormatBpp(drm_format) / 2;
+        buffer->strides[2] = width * GetFormatBpp(drm_format) / 2;
         buffer->offsets[1] = buffer->strides[0] * height;
         buffer->offsets[2] =
             buffer->offsets[1] + (buffer->strides[1] * height / 2);
@@ -542,6 +608,50 @@ TEST_F(CameraBufferMapperTest, ShmBufferTest) {
   // Finally the shm buffer should be unmapped when we deregister the buffer.
   EXPECT_CALL(gbm_, Munmap(dummy_addr, kBufferSize)).Times(1);
   EXPECT_EQ(cbm_->Deregister(handle), 0);
+}
+
+TEST_F(CameraBufferMapperTest, GetPlaneSizeTest) {
+  const int kBufferWidth = 1280, kBufferHeight = 720;
+
+  auto gralloc_buffer = CreateBuffer(0, GRALLOC, DRM_FORMAT_XBGR8888,
+                                     HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
+                                     kBufferWidth, kBufferHeight);
+  buffer_handle_t rgbx_handle =
+      reinterpret_cast<buffer_handle_t>(gralloc_buffer.get());
+  const size_t kRGBXBufferSize =
+      kBufferWidth * kBufferHeight * GetFormatBpp(DRM_FORMAT_XBGR8888);
+  EXPECT_EQ(CameraBufferMapper::GetPlaneSize(rgbx_handle, 0), kRGBXBufferSize);
+  EXPECT_EQ(CameraBufferMapper::GetPlaneSize(rgbx_handle, 1), 0);
+
+  auto nv12_buffer =
+      CreateBuffer(1, SHM, DRM_FORMAT_NV21, HAL_PIXEL_FORMAT_YCbCr_420_888,
+                   kBufferWidth, kBufferHeight);
+  const size_t kNV12Plane0Size =
+      kBufferWidth * kBufferHeight * GetFormatBpp(DRM_FORMAT_NV21);
+  const size_t kNV12Plane1Size =
+      kBufferWidth * kBufferHeight * GetFormatBpp(DRM_FORMAT_NV21);
+  buffer_handle_t nv12_handle =
+      reinterpret_cast<buffer_handle_t>(nv12_buffer.get());
+  EXPECT_EQ(CameraBufferMapper::GetPlaneSize(nv12_handle, 0), kNV12Plane0Size);
+  EXPECT_EQ(CameraBufferMapper::GetPlaneSize(nv12_handle, 1), kNV12Plane1Size);
+  EXPECT_EQ(CameraBufferMapper::GetPlaneSize(nv12_handle, 2), 0);
+
+  auto yuv420_buffer =
+      CreateBuffer(2, SHM, DRM_FORMAT_YUV420, HAL_PIXEL_FORMAT_YCbCr_420_888,
+                   kBufferWidth, kBufferHeight);
+  const size_t kYuv420Plane0Size =
+      kBufferWidth * kBufferHeight * GetFormatBpp(DRM_FORMAT_YUV420);
+  const size_t kYuv420Plane12Size =
+      kBufferWidth * kBufferHeight * GetFormatBpp(DRM_FORMAT_YUV420) / 2;
+  buffer_handle_t yuv420_handle =
+      reinterpret_cast<buffer_handle_t>(yuv420_buffer.get());
+  EXPECT_EQ(CameraBufferMapper::GetPlaneSize(yuv420_handle, 0),
+            kYuv420Plane0Size);
+  EXPECT_EQ(CameraBufferMapper::GetPlaneSize(yuv420_handle, 1),
+            kYuv420Plane12Size);
+  EXPECT_EQ(CameraBufferMapper::GetPlaneSize(yuv420_handle, 2),
+            kYuv420Plane12Size);
+  EXPECT_EQ(CameraBufferMapper::GetPlaneSize(yuv420_handle, 3), 0);
 }
 
 }  // namespace tests
