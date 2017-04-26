@@ -86,13 +86,13 @@ int CameraBufferMapper::Register(buffer_handle_t buffer) {
     auto it = buffer_context_.find(buffer);
     if (it == buffer_context_.end()) {
       BufferContextUniquePtr buffer_context(new struct BufferContext);
-      buffer_context->shm_buffer_size =
-          lseek(handle->fds[0].get(), 0, SEEK_END);
-      if (buffer_context->shm_buffer_size == -1) {
+      off_t size = lseek(handle->fds[0].get(), 0, SEEK_END);
+      if (size == -1) {
         LOGF(ERROR) << "Failed to get shm buffer size through lseek: "
                     << strerror(errno);
         return -errno;
       }
+      buffer_context->shm_buffer_size = static_cast<uint32_t>(size);
       lseek(handle->fds[0].get(), 0, SEEK_SET);
       buffer_context->mapped_addr =
           mmap(nullptr, buffer_context->shm_buffer_size, PROT_READ | PROT_WRITE,
