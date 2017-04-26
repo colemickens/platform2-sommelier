@@ -190,3 +190,8 @@ dev_mount_packages() {
     done
   fi
 }
+
+# Load more utilities on test image.
+if [ -f /usr/share/cros/test_utils.sh ]; then
+  . /usr/share/cros/test_utils.sh
+fi

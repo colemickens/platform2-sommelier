@@ -58,9 +58,6 @@ bootstat pre-startup
 # different for different targets (e.g., regular Chrome OS vs. embedded).
 . /usr/share/cros/startup_utils.sh
 
-# Factory related functions
-. /usr/share/cros/factory_utils.sh
-
 mkdir -p /dev/pts /dev/shm
 mount -n -t tmpfs -o nodev,noexec,nosuid shmfs /dev/shm
 mount -n -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts
@@ -81,6 +78,10 @@ dev_update_stateful_partition() { true; }
 dev_gather_logs() { true; }
 dev_mount_packages() { true; }
 dev_is_debug_build() { false; }
+
+# do_* are wrapper functions that may be redefined in developer mode or test
+# images. Find more implementation in {dev,test,factory}_utils.sh.
+do_mount_var_and_home_chronos() { mount_var_and_home_chronos; }
 
 if [ "${CROS_DEBUG}" -eq 1 ]; then
   . /usr/share/cros/dev_utils.sh
@@ -182,13 +183,6 @@ dev_check_block_dev_mode "${DEV_MODE_FILE}"
 # On most new boards, it should be simply an empty file.
 firmware-boot-update
 
-# Now that stateful partition is mounted, we can check if we are in factory
-# mode.
-FACTORY_MODE=
-if is_factory_mode; then
-  FACTORY_MODE=factory
-fi
-
 # File used to trigger a stateful reset.  Contains arguments for
 # the "clobber-state" call.  This file may exist at boot time, as
 # some use cases operate by creating this file with the necessary
@@ -260,7 +254,7 @@ mount_or_fail --bind /mnt/stateful_partition/home /home
 
 remember_mount /var
 remember_mount /home/chronos
-mount_var_and_home_chronos ${FACTORY_MODE} || cleanup_mounts "var and home"
+do_mount_var_and_home_chronos || cleanup_mounts "var and home"
 
 # Gather log if needed.
 dev_gather_logs

@@ -1,4 +1,4 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -37,5 +37,14 @@ factory_install_cros_payloads() {
 inhibit_if_factory_mode() {
   if is_factory_mode && [ "${disable_inhibit}" -eq 0 ]; then
     initctl stop --no-wait "$1"
+  fi
+}
+
+# Overrides do_mount_var_and_home_chronos in chromeos_startup.
+do_mount_var_and_home_chronos() {
+  if is_factory_mode; then
+    mount_var_and_home_chronos "factory"
+  else
+    mount_var_and_home_chronos
   fi
 }
