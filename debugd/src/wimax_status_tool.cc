@@ -8,8 +8,6 @@
 
 #include "debugd/src/process_with_output.h"
 
-using base::StringPrintf;
-
 namespace debugd {
 
 std::string WiMaxStatusTool::GetWiMaxStatus() {

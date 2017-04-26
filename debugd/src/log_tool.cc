@@ -23,9 +23,8 @@
 namespace debugd {
 
 using std::string;
-using std::vector;
 
-using Strings = vector<string>;
+using Strings = std::vector<string>;
 
 namespace {
 
@@ -228,8 +227,8 @@ class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
                const char* service)
       : DBus::ObjectProxy(*connection, path, service) {}
   ~ManagerProxy() override = default;
-  void PropertyChanged(const std::string&, const DBus::Variant&) override {}
-  void StateChanged(const std::string&) override {}
+  void PropertyChanged(const string&, const DBus::Variant&) override {}
+  void StateChanged(const string&) override {}
 };
 
 // Returns |value| if |value| is a valid UTF-8 string or a base64-encoded
@@ -238,7 +237,7 @@ string EnsureUTF8String(const string& value) {
   if (base::IsStringUTF8(value))
     return value;
 
-  std::string encoded_value;
+  string encoded_value;
   base::Base64Encode(value, &encoded_value);
   return "<base64>: " + encoded_value;
 }
@@ -247,7 +246,7 @@ string EnsureUTF8String(const string& value) {
 string Run(const Log& log) {
   string output;
   ProcessWithOutput p;
-  string tailed_cmdline = std::string(log.command) + " | tail -c " +
+  string tailed_cmdline = string(log.command) + " | tail -c " +
                           (log.size_cap ? log.size_cap : "512K");
   if (log.user && log.group)
     p.SandboxAs(log.user, log.group);
@@ -277,7 +276,7 @@ void GetLogsInDictionary(const struct Log* logs,
 // format.
 void SerializeLogsAsJSON(const base::DictionaryValue& dictionary,
                          const DBus::FileDescriptor& fd) {
-  std::string logs_json;
+  string logs_json;
   base::JSONWriter::WriteWithOptions(dictionary,
                                      base::JSONWriter::OPTIONS_PRETTY_PRINT,
                                      &logs_json);

@@ -11,8 +11,6 @@
 
 #include "debugd/src/process_with_output.h"
 
-using base::StringPrintf;
-
 namespace debugd {
 
 namespace {
@@ -50,7 +48,7 @@ void AddQuipperArguments(brillo::Process* process,
                          const uint32_t duration_secs,
                          const std::vector<std::string>& perf_args) {
   process->AddArg(kQuipperLocation);
-  process->AddArg(StringPrintf("%u", duration_secs));
+  process->AddArg(base::StringPrintf("%u", duration_secs));
   for (const auto& arg : perf_args) {
     process->AddArg(arg);
   }
@@ -155,10 +153,12 @@ int PerfTool::GetPerfOutputHelper(const uint32_t& duration_secs,
   // Run the process to completion. If the process might take a while, you may
   // have to make this asynchronous using .Start().
   int status = process.Run();
-  if (status != 0)
-    *data_string = StringPrintf("<process exited with status: %d>", status);
-  else
+  if (status != 0) {
+    *data_string =
+        base::StringPrintf("<process exited with status: %d>", status);
+  } else {
     process.GetOutput(data_string);
+  }
 
   return status;
 }

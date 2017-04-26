@@ -7,8 +7,6 @@
 #include "debugd/src/process_with_id.h"
 #include "debugd/src/process_with_output.h"
 
-using base::StringPrintf;
-
 namespace debugd {
 
 namespace {

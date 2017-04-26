@@ -10,9 +10,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
-using base::IntToString;
-using base::StringPrintf;
-using std::map;
 using std::string;
 
 namespace debugd {
@@ -88,11 +85,11 @@ string AnonymizerTool::AnonymizeMACAddresses(const string& input) {
       // If not found, build up a replacement MAC address by generating a new
       // NIC part.
       int mac_id = mac_addresses_.size();
-      replacement_mac = StringPrintf("%s:%02x:%02x:%02x",
-                                     oui.c_str(),
-                                     (mac_id & 0x00ff0000) >> 16,
-                                     (mac_id & 0x0000ff00) >> 8,
-                                     (mac_id & 0x000000ff));
+      replacement_mac = base::StringPrintf("%s:%02x:%02x:%02x",
+                                           oui.c_str(),
+                                           (mac_id & 0x00ff0000) >> 16,
+                                           (mac_id & 0x0000ff00) >> 8,
+                                           (mac_id & 0x000000ff));
       mac_addresses_[mac] = replacement_mac;
     }
 
@@ -117,7 +114,7 @@ string AnonymizerTool::AnonymizeCustomPatterns(const string& input) {
 string AnonymizerTool::AnonymizeCustomPattern(
     const string& input,
     const string& pattern,
-    map<string, string>* identifier_space) {
+    std::map<string, string>* identifier_space) {
   pcrecpp::RE re("(.*?)" + pattern,
                  pcrecpp::RE_Options()
                  .set_multiline(true)
@@ -134,7 +131,7 @@ string AnonymizerTool::AnonymizeCustomPattern(
                     &pre_matched_id, &matched_id, &post_matched_id)) {
     string replacement_id = (*identifier_space)[matched_id];
     if (replacement_id.empty()) {
-      replacement_id = IntToString(identifier_space->size());
+      replacement_id = base::IntToString(identifier_space->size());
       (*identifier_space)[matched_id] = replacement_id;
     }
 

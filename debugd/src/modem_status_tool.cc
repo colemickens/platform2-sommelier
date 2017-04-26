@@ -10,7 +10,7 @@ using std::string;
 
 namespace debugd {
 
-std::string ModemStatusTool::GetModemStatus() {
+string ModemStatusTool::GetModemStatus() {
   if (!USE_CELLULAR)
     return "";
 
@@ -22,7 +22,7 @@ std::string ModemStatusTool::GetModemStatus() {
   p.Init();
   p.AddArg(path);
   p.Run();
-  std::string out;
+  string out;
   p.GetOutput(&out);
   return out;
 }

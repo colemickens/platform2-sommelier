@@ -6,8 +6,6 @@
 
 #include "debugd/src/process_with_id.h"
 
-using base::StringPrintf;
-
 namespace debugd {
 
 namespace {
@@ -23,7 +21,7 @@ std::string MemtesterTool::Start(const DBus::FileDescriptor& outfd,
     return "";
 
   p->AddArg(kMemtesterpath);
-  p->AddArg(StringPrintf("%u", memory));
+  p->AddArg(base::StringPrintf("%u", memory));
   p->AddArg("1");
   p->BindFd(outfd.get(), STDOUT_FILENO);
   p->BindFd(outfd.get(), STDERR_FILENO);

@@ -8,8 +8,6 @@
 
 #include "debugd/src/process_with_id.h"
 
-using base::StringPrintf;
-
 namespace debugd {
 
 bool PacketCaptureTool::Start(
@@ -41,7 +39,7 @@ bool PacketCaptureTool::Start(
   // process.
   int child_output_fd = STDERR_FILENO + 1;
   p->AddStringOption("--output-file",
-                     StringPrintf("/dev/fd/%d", child_output_fd));
+                     base::StringPrintf("/dev/fd/%d", child_output_fd));
   p->BindFd(output_fd.get(), child_output_fd);
 
   p->BindFd(status_fd.get(), STDOUT_FILENO);

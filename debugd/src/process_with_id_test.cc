@@ -6,11 +6,9 @@
 
 #include "debugd/src/process_with_id.h"
 
-using debugd::ProcessWithId;
-
 TEST(ProcessWithId, GeneratedId) {
-  ProcessWithId p0;
-  ProcessWithId p1;
+  debugd::ProcessWithId p0;
+  debugd::ProcessWithId p1;
   EXPECT_EQ(p0.Init(), true);
   EXPECT_EQ(p1.Init(), true);
   EXPECT_NE(p0.id(), p1.id());

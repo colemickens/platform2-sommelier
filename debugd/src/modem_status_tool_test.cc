@@ -6,13 +6,11 @@
 
 #include "debugd/src/modem_status_tool.h"
 
-using std::string;
-
 namespace debugd {
 
 class ModemStatusToolTest : public testing::Test {
  protected:
-  static string CollapseNewLines(const string& input) {
+  static std::string CollapseNewLines(const std::string& input) {
     return ModemStatusTool::CollapseNewLines(input);
   }
 };

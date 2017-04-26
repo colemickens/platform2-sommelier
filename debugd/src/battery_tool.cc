@@ -9,8 +9,6 @@
 #include "debugd/src/process_with_id.h"
 #include "debugd/src/process_with_output.h"
 
-using base::StringPrintf;
-
 namespace {
 
 const char kBatteryFirmware[] = "/usr/sbin/ec_sb_firmware_update";

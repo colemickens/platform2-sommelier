@@ -29,10 +29,6 @@ const char kOwnerAccessErrorString[] =
 const char kOwnerQueryErrorString[] =
     "Error encountered when querying D-Bus, cryptohome may be busy.";
 
-using cryptohome::BaseReply;
-using cryptohome::GetLoginStatusRequest;
-using cryptohome::GetLoginStatusReply;
-
 // Queries the cryptohome GetLoginStatus D-Bus interface.
 //
 // Handles lower-level logic for dbus-c++ methods and the cryptohome protobuf
@@ -43,8 +39,9 @@ using cryptohome::GetLoginStatusReply;
 // |reply| will be filled if a response was received regardless of extension,
 // but the function will only return true if reply is filled and has the
 // correct GetLoginStatusReply extension.
-bool CryptohomeGetLoginStatus(DBus::Connection* system_dbus, BaseReply* reply) {
-  GetLoginStatusRequest request;
+bool CryptohomeGetLoginStatus(DBus::Connection* system_dbus,
+                              cryptohome::BaseReply* reply) {
+  cryptohome::GetLoginStatusRequest request;
   DBus::CallMessage msg;
   std::vector<uint8_t> bytes(request.ByteSize(), 0);
 
@@ -66,7 +63,7 @@ bool CryptohomeGetLoginStatus(DBus::Connection* system_dbus, BaseReply* reply) {
         // Return true only if we can parse the reply successfully and it
         // has the proper GetLoginStatusReply extension.
         return reply->ParseFromArray(response_bytes, response_size) &&
-               reply->HasExtension(GetLoginStatusReply::reply);
+               reply->HasExtension(cryptohome::GetLoginStatusReply::reply);
       }
     } catch (...) {
     }
@@ -129,10 +126,10 @@ bool DevModeNoOwnerRestriction::InDevMode() const {
 bool DevModeNoOwnerRestriction::GetOwnerAndLockboxStatus(
     bool* owner_user_exists,
     bool* boot_lockbox_finalized) {
-  BaseReply base_reply;
+  cryptohome::BaseReply base_reply;
   if (CryptohomeGetLoginStatus(system_dbus_, &base_reply)) {
-    GetLoginStatusReply reply =
-        base_reply.GetExtension(GetLoginStatusReply::reply);
+    cryptohome::GetLoginStatusReply reply =
+        base_reply.GetExtension(cryptohome::GetLoginStatusReply::reply);
     if (reply.has_owner_user_exists() && reply.has_boot_lockbox_finalized()) {
       *owner_user_exists = reply.owner_user_exists();
       *boot_lockbox_finalized = reply.boot_lockbox_finalized();
