@@ -516,6 +516,12 @@ bool Platform::CloseFile(FILE* fp) {
   return base::CloseFile(fp);
 }
 
+void Platform::InitializeFile(base::File* file,
+                              const base::FilePath& path,
+                              uint32_t flags) {
+  return file->Initialize(path, flags);
+}
+
 bool Platform::WriteOpenFile(FILE* fp, const brillo::Blob& blob) {
   return (fwrite(static_cast<const void*>(&blob.at(0)), 1, blob.size(), fp)
             != blob.size());

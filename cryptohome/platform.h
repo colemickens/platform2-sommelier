@@ -307,6 +307,17 @@ class Platform {
   //  path - Pointer to where the file is created if successful.
   virtual FILE* CreateAndOpenTemporaryFile(base::FilePath* path);
 
+  // Initializes a base::File.  The caller is responsible for verifying that
+  // the file was successfully opened by calling base::File::IsValid().
+  //
+  // Parameters
+  //   file - The base::File object to open the file in.
+  //   path - Path of the file to open.
+  //   flags - Flags to use when opening the file.  See base::File::Flags.
+  virtual void InitializeFile(base::File* file,
+                              const base::FilePath& path,
+                              uint32_t flags);
+
   // Reads a file completely into a blob/string.
   //
   // Parameters

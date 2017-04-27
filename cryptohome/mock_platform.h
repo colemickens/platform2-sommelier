@@ -118,6 +118,8 @@ class MockPlatform : public Platform {
   MOCK_METHOD2(GetFileSize, bool(const base::FilePath&, int64_t*));
   MOCK_METHOD1(ComputeDirectorySize, int64_t(const base::FilePath&));
   MOCK_METHOD2(OpenFile, FILE*(const base::FilePath&, const char*));
+  MOCK_METHOD3(InitializeFile,
+               void(base::File*, const base::FilePath&, uint32_t));
   MOCK_METHOD1(CloseFile, bool(FILE*));  // NOLINT(readability/function)
   MOCK_METHOD1(CreateAndOpenTemporaryFile, FILE*(base::FilePath*));
   MOCK_METHOD2(Stat, bool(const base::FilePath&, struct stat*));
