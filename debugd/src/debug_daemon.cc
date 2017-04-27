@@ -308,62 +308,56 @@ void DebugDaemon::UploadCrashes(DBus::Error& error) {  // NOLINT
 }
 
 void DebugDaemon::RemoveRootfsVerification(DBus::Error& error) {  // NOLINT
-  dev_features_tool_wrapper_->CallToolFunction(
-      [&error](DevFeaturesTool* tool) {
-        tool->RemoveRootfsVerification(&error);
-      },
-      &error);
+  auto tool = dev_features_tool_wrapper_->GetTool(&error);
+  if (tool)
+    tool->RemoveRootfsVerification(&error);
 }
 
 void DebugDaemon::EnableBootFromUsb(DBus::Error& error) {  // NOLINT
-  dev_features_tool_wrapper_->CallToolFunction(
-      [&error](DevFeaturesTool* tool) { tool->EnableBootFromUsb(&error); },
-      &error);
+  auto tool = dev_features_tool_wrapper_->GetTool(&error);
+  if (tool)
+    tool->EnableBootFromUsb(&error);
 }
 
 void DebugDaemon::EnableChromeRemoteDebugging(DBus::Error& error) {  // NOLINT
-  dev_features_tool_wrapper_->CallToolFunction(
-      [&error](DevFeaturesTool* tool) {
-        tool->EnableChromeRemoteDebugging(&error);
-      },
-      &error);
+  auto tool = dev_features_tool_wrapper_->GetTool(&error);
+  if (tool)
+    tool->EnableChromeRemoteDebugging(&error);
 }
 
 void DebugDaemon::ConfigureSshServer(DBus::Error& error) {  // NOLINT
-  dev_features_tool_wrapper_->CallToolFunction(
-      [&error](DevFeaturesTool* tool) { tool->ConfigureSshServer(&error); },
-      &error);
+  auto tool = dev_features_tool_wrapper_->GetTool(&error);
+  if (tool)
+    tool->ConfigureSshServer(&error);
 }
 
 void DebugDaemon::SetUserPassword(const std::string& username,
                                   const std::string& password,
                                   DBus::Error& error) {  // NOLINT
-  dev_features_tool_wrapper_->CallToolFunction(
-      [username, password, &error](DevFeaturesTool* tool) {
-        tool->SetUserPassword(username, password, &error);
-      },
-      &error);
+  auto tool = dev_features_tool_wrapper_->GetTool(&error);
+  if (tool)
+    tool->SetUserPassword(username, password, &error);
 }
 
 void DebugDaemon::EnableChromeDevFeatures(const std::string& root_password,
                                           DBus::Error& error) {  // NOLINT
-  dev_features_tool_wrapper_->CallToolFunction(
-      [root_password, &error](DevFeaturesTool* tool) {
-        tool->EnableChromeDevFeatures(root_password, &error);
-      },
-      &error);
+  auto tool = dev_features_tool_wrapper_->GetTool(nullptr);
+  if (tool)
+    tool->EnableChromeDevFeatures(root_password, &error);
 }
 
 int32_t DebugDaemon::QueryDevFeatures(DBus::Error& error) {  // NOLINT
   // Special case: if access fails here, we return DEV_FEATURES_DISABLED rather
   // than a D-Bus error. However, we still want to return an error if we can
-  // access the tool but the tool execution fails so use error in the lambda.
-  int32_t features = DEV_FEATURES_DISABLED;
-  dev_features_tool_wrapper_->CallToolFunction(
-      [&features, &error](DevFeaturesTool* tool) {
-        tool->QueryDevFeatures(&features, &error);
-      },
-      nullptr);
+  // access the tool but the tool execution fails.
+  auto tool = dev_features_tool_wrapper_->GetTool(nullptr);
+  if (!tool)
+    return DEV_FEATURES_DISABLED;
+
+  int32_t features;
+  if (!tool->QueryDevFeatures(&features, &error))
+    return DEV_FEATURES_DISABLED;
+
   return features;
 }
 

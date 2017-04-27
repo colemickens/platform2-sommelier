@@ -13,10 +13,9 @@
 //   // Unwrap and use the tool.
 //   DBus::Error error;
 //   int result = 0;
-//   foo_tool_wrapper_->CallToolFunction([&result, &error] (FooTool* tool) {
-//                                         result = tool->ToolFunction(&error);
-//                                       },
-//                                       &error);
+//   FooTool* tool = foo_tool_wrapper->GetTool(&error);
+//   if (tool)
+//     tool->ToolFunction(&error);
 //
 // Some advantages of using a wrapper rather than putting the condition check
 // inside the tool functions themselves are:
@@ -61,29 +60,12 @@ class RestrictedToolWrapper {
   // Otherwise, returns nullptr and |error| is set (if it's non-null).
   //
   // Do not store the direct tool pointer longer than needed for immediate use,
-  // to avoid bypassing the wrapper's condition checks. Prefer to use
-  // CallToolFunction() when possible to consolidate common access logic.
+  // to avoid bypassing the wrapper's condition checks.
   T* GetTool(DBus::Error* error) {
     if (restriction_.AllowToolUse(error)) {
       return &tool_;
     }
     return nullptr;
-  }
-
-  // Attempts to unwrap the underlying tool and call a function. Typically
-  // |function| will be a lambda to perform whatever task is needed; the only
-  // restriction is that the function must only take a T* as its argument.
-  // |function| will not be called if tool access fails.
-  //
-  // If access fails, returns false and |error| is set (if it's non-null).
-  template <class Func>
-  bool CallToolFunction(Func function, DBus::Error* error) {
-    T* tool = GetTool(error);
-    if (tool) {
-      function(tool);
-      return true;
-    }
-    return false;
   }
 
   const DevModeNoOwnerRestriction& restriction() const {
