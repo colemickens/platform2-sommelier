@@ -11,7 +11,7 @@
 #include <brillo/syslog_logging.h>
 #include <chromeos/libminijail.h>
 
-#include "debugd/src/debug_daemon.h"
+#include "debugd/src/debugd_dbus_adaptor.h"
 
 namespace {
 
@@ -48,7 +48,7 @@ void start() {
   DBus::BusDispatcher dispatcher;
   DBus::default_dispatcher = &dispatcher;
   DBus::Connection conn = DBus::Connection::SystemBus();
-  debugd::DebugDaemon debugd(&conn, &dispatcher);
+  debugd::DebugdDBusAdaptor debugd(&conn, &dispatcher);
   if (!debugd.Init())
     LOG(FATAL) << "debugd.Init() failed";
   debugd.Run();

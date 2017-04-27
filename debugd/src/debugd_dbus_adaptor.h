@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DEBUGD_SRC_DEBUG_DAEMON_H_
-#define DEBUGD_SRC_DEBUG_DAEMON_H_
+#ifndef DEBUGD_SRC_DEBUGD_DBUS_ADAPTOR_H_
+#define DEBUGD_SRC_DEBUGD_DBUS_ADAPTOR_H_
 
 #include <stdint.h>
 #include <sys/types.h>
@@ -47,12 +47,13 @@
 
 namespace debugd {
 
-class DebugDaemon : public org::chromium::debugd_adaptor,
-                    public DBus::ObjectAdaptor,
-                    public DBus::IntrospectableAdaptor {
+class DebugdDBusAdaptor : public org::chromium::debugd_adaptor,
+                          public DBus::ObjectAdaptor,
+                          public DBus::IntrospectableAdaptor {
  public:
-  DebugDaemon(DBus::Connection* connection, DBus::BusDispatcher* dispatcher);
-  ~DebugDaemon() override = default;
+  DebugdDBusAdaptor(DBus::Connection* connection,
+                    DBus::BusDispatcher* dispatcher);
+  ~DebugdDBusAdaptor() override = default;
 
   bool Init();
   void Run();
@@ -217,4 +218,4 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
 
 }  // namespace debugd
 
-#endif  // DEBUGD_SRC_DEBUG_DAEMON_H_
+#endif  // DEBUGD_SRC_DEBUGD_DBUS_ADAPTOR_H_
