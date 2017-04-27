@@ -17,15 +17,14 @@ const char kIpTool[] = "/bin/ip";
 }  // namespace
 
 std::vector<std::string> RouteTool::GetRoutes(
-    const std::map<std::string, DBus::Variant>& options) {
+    const brillo::VariantDictionary& options) {
   std::vector<std::string> result;
   ProcessWithOutput p;
   if (!p.Init())
     return result;
   p.AddArg(kIpTool);
 
-  auto option_iter = options.find("v6");
-  if (option_iter != options.end() && option_iter->second.reader().get_bool())
+  if (brillo::GetVariantValueOrDefault<bool>(options, "v6"))
     p.AddArg("-6");
   p.AddArg("r");  // route
   p.AddArg("s");  // show

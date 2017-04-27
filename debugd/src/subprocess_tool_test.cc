@@ -6,6 +6,8 @@
 
 #include <tuple>
 
+#include <brillo/errors/error.h>
+
 #include "debugd/src/process_with_id.h"
 #include "debugd/src/subprocess_tool.h"
 
@@ -32,14 +34,12 @@ TEST_P(SubprocessToolTest, CreateProcessAndStop) {
 
   std::string handle = process->id();
 
-  DBus::Error error;
-  tool_.Stop(handle, &error);
-  EXPECT_FALSE(error);
+  EXPECT_TRUE(tool_.Stop(handle, nullptr));
   // |process| is now destroyed by SubprocessTool::Stop().
 
-  tool_.Stop(handle, &error);
-  EXPECT_TRUE(error);
-  EXPECT_EQ(handle, error.message());
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(tool_.Stop(handle, &error));
+  EXPECT_EQ(handle, error->GetMessage());
 }
 
 INSTANTIATE_TEST_CASE_P(SubprocessToolCreateProcess,
@@ -48,10 +48,9 @@ INSTANTIATE_TEST_CASE_P(SubprocessToolCreateProcess,
 
 TEST_F(SubprocessToolTest, StopInvalidProcessHandle) {
   std::string invalid_handle = "some_invalid_handle";
-  DBus::Error error;
-  tool_.Stop(invalid_handle, &error);
-  EXPECT_TRUE(error);
-  EXPECT_EQ(invalid_handle, error.message());
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(tool_.Stop(invalid_handle, &error));
+  EXPECT_EQ(invalid_handle, error->GetMessage());
 }
 
 }  // namespace

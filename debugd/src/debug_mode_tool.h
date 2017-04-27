@@ -9,22 +9,26 @@
 #include <vector>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
+#include <base/memory/ref_counted.h>
+#include <dbus/bus.h>
 
 namespace debugd {
 
 class DebugModeTool {
  public:
-  explicit DebugModeTool(DBus::Connection* connection);
+  explicit DebugModeTool(scoped_refptr<dbus::Bus> bus);
   virtual ~DebugModeTool() = default;
 
   virtual void SetDebugMode(const std::string& subsystem);
 
  private:
   void GetAllModemManagers(std::vector<std::string>* managers);
+  void SetModemManagerLogging(const std::string& service_name,
+                              const std::string& service_path,
+                              const std::string& level);
   void SetAllModemManagersLogging(const std::string& level);
 
-  DBus::Connection* connection_;
+  scoped_refptr<dbus::Bus> bus_;
 
   DISALLOW_COPY_AND_ASSIGN(DebugModeTool);
 };

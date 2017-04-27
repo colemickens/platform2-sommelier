@@ -6,7 +6,7 @@
 #define DEBUGD_SRC_SYSRQ_TOOL_H_
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
+#include <brillo/errors/error.h>
 
 namespace debugd {
 
@@ -15,7 +15,7 @@ class SysrqTool {
   SysrqTool() = default;
   ~SysrqTool() = default;
 
-  bool LogKernelTaskStates(DBus::Error* error);
+  bool LogKernelTaskStates(brillo::ErrorPtr* error);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SysrqTool);

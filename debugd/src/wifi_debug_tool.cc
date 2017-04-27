@@ -8,6 +8,8 @@
 
 #include <string.h>
 
+#include "debugd/src/error_utils.h"
+
 namespace debugd {
 
 namespace {
@@ -32,18 +34,18 @@ const char kIwlwifiDisable[] = "0x0";
 }  // namespace
 
 bool WifiDebugTool::WriteSysfsFlags(const char* str, base::FilePath path,
-                                    DBus::Error* error) {
+                                    brillo::ErrorPtr* error) {
   int len = strlen(str);
   if (base::WriteFile(path, str, len) != len) {
-    error->set(kErrorWifiDebug, "write");
+    DEBUGD_ADD_ERROR(error, kErrorWifiDebug, "write");
     return false;
   }
   return true;
 }
 
-bool WifiDebugTool::SetEnabled(WifiDebugFlag flags, DBus::Error* error) {
+bool WifiDebugTool::SetEnabled(WifiDebugFlag flags, brillo::ErrorPtr* error) {
   if (flags & ~WIFI_DEBUG_ENABLED) {
-    error->set(kErrorWifiDebug, "unsupported flags");
+    DEBUGD_ADD_ERROR(error, kErrorWifiDebug, "unsupported flags");
     return false;
   }
 
@@ -59,7 +61,7 @@ bool WifiDebugTool::SetEnabled(WifiDebugFlag flags, DBus::Error* error) {
     str = (flags == WIFI_DEBUG_ENABLED) ? kMwifiexEnable : kMwifiexDisable;
     return WriteSysfsFlags(str, mwifiex_path, error);
   }
-  error->set(kErrorWifiDebug, "unsupported driver");
+  DEBUGD_ADD_ERROR(error, kErrorWifiDebug, "unsupported driver");
   return false;
 }
 

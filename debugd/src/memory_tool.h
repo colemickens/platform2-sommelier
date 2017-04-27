@@ -8,7 +8,7 @@
 #include <string>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
+#include <dbus/file_descriptor.h>
 
 #include "debugd/src/subprocess_tool.h"
 
@@ -19,7 +19,7 @@ class MemtesterTool : public SubprocessTool {
   MemtesterTool() = default;
   ~MemtesterTool() override = default;
 
-  std::string Start(const DBus::FileDescriptor& outfd,
+  std::string Start(const dbus::FileDescriptor& outfd,
                     const uint32_t& memory);
 
  private:

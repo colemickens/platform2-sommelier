@@ -10,12 +10,13 @@
 #include <base/files/file_util.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
 
 #include <chromeos/dbus/service_constants.h>
-#include <shill/dbus_proxies/org.chromium.flimflam.Manager.h>
+#include <shill/dbus-proxies.h>
 
 #include "debugd/src/constants.h"
 #include "debugd/src/process_with_output.h"
@@ -221,18 +222,6 @@ const Log user_logs[] = {
   { nullptr, nullptr}
 };
 
-class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
-                     public DBus::ObjectProxy {
- public:
-  ManagerProxy(DBus::Connection* connection,
-               const char* path,
-               const char* service)
-      : DBus::ObjectProxy(*connection, path, service) {}
-  ~ManagerProxy() override = default;
-  void PropertyChanged(const string&, const DBus::Variant&) override {}
-  void StateChanged(const string&) override {}
-};
-
 // Returns |value| if |value| is a valid UTF-8 string or a base64-encoded
 // string of |value| otherwise.
 string EnsureUTF8String(const string& value) {
@@ -277,12 +266,12 @@ void GetLogsInDictionary(const struct Log* logs,
 // Serializes the |dictionary| into the file with the given |fd| in a JSON
 // format.
 void SerializeLogsAsJSON(const base::DictionaryValue& dictionary,
-                         const DBus::FileDescriptor& fd) {
+                         const dbus::FileDescriptor& fd) {
   string logs_json;
   base::JSONWriter::WriteWithOptions(dictionary,
                                      base::JSONWriter::OPTIONS_PRETTY_PRINT,
                                      &logs_json);
-  base::WriteFileDescriptor(fd.get(), logs_json.c_str(), logs_json.size());
+  base::WriteFileDescriptor(fd.value(), logs_json.c_str(), logs_json.size());
 }
 
 bool GetNamedLogFrom(const string& name, const struct Log* logs,
@@ -304,17 +293,15 @@ void GetLogsFrom(const struct Log* logs, LogTool::LogMap* map) {
 
 }  // namespace
 
-void LogTool::CreateConnectivityReport(DBus::Connection* connection) {
+void LogTool::CreateConnectivityReport(scoped_refptr<dbus::Bus> bus) {
   // Perform ConnectivityTrial to report connection state in feedback log.
-  ManagerProxy shill(connection,
-                     shill::kFlimflamServicePath,
-                     shill::kFlimflamServiceName);
-  shill.CreateConnectivityReport();
+  auto shill = base::MakeUnique<org::chromium::flimflam::ManagerProxy>(bus);
   // Give the connection trial time to test the connection and log the results
   // before collecting the logs for feedback.
   // TODO(silberst): Replace the simple approach of a single timeout with a more
   // coordinated effort.
-  sleep(kConnectionTesterTimeoutSeconds);
+  if (shill && shill->CreateConnectivityReport(nullptr))
+    sleep(kConnectionTesterTimeoutSeconds);
 }
 
 string LogTool::GetLog(const string& name) {
@@ -325,16 +312,16 @@ string LogTool::GetLog(const string& name) {
   return result;
 }
 
-LogTool::LogMap LogTool::GetAllLogs(DBus::Connection* connection) {
-  CreateConnectivityReport(connection);
+LogTool::LogMap LogTool::GetAllLogs(scoped_refptr<dbus::Bus> bus) {
+  CreateConnectivityReport(bus);
   LogMap result;
   GetLogsFrom(common_logs, &result);
   GetLogsFrom(extra_logs, &result);
   return result;
 }
 
-LogTool::LogMap LogTool::GetFeedbackLogs(DBus::Connection* connection) {
-  CreateConnectivityReport(connection);
+LogTool::LogMap LogTool::GetFeedbackLogs(scoped_refptr<dbus::Bus> bus) {
+  CreateConnectivityReport(bus);
   LogMap result;
   GetLogsFrom(common_logs, &result);
   GetLogsFrom(feedback_logs, &result);
@@ -342,18 +329,14 @@ LogTool::LogMap LogTool::GetFeedbackLogs(DBus::Connection* connection) {
   return result;
 }
 
-void LogTool::GetBigFeedbackLogs(DBus::Connection* connection,
-                                 const DBus::FileDescriptor& fd) {
-  CreateConnectivityReport(connection);
+void LogTool::GetBigFeedbackLogs(scoped_refptr<dbus::Bus> bus,
+                                 const dbus::FileDescriptor& fd) {
+  CreateConnectivityReport(bus);
   base::DictionaryValue dictionary;
   GetLogsInDictionary(common_logs, &anonymizer_, &dictionary);
   GetLogsInDictionary(feedback_logs, &anonymizer_, &dictionary);
   GetLogsInDictionary(big_feedback_logs, &anonymizer_, &dictionary);
   SerializeLogsAsJSON(dictionary, fd);
-
-  // We need to manually close the FD here to enable the client to read the
-  // contents via a pipe.
-  close(fd.get());
 }
 
 LogTool::LogMap LogTool::GetUserLogFiles() {

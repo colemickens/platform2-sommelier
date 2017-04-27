@@ -8,6 +8,8 @@
 
 #include <base/memory/ptr_util.h>
 
+#include "debugd/src/error_utils.h"
+
 namespace debugd {
 
 namespace {
@@ -37,9 +39,9 @@ ProcessWithId* SubprocessTool::CreateProcess(bool sandboxed,
   return process_ptr;
 }
 
-bool SubprocessTool::Stop(const std::string& handle, DBus::Error* error) {
+bool SubprocessTool::Stop(const std::string& handle, brillo::ErrorPtr* error) {
   if (processes_.count(handle) != 1) {
-    error->set(kErrorNoSuchProcess, handle.c_str());
+    DEBUGD_ADD_ERROR(error, kErrorNoSuchProcess, handle.c_str());
     return false;
   }
   ProcessWithId* process_ptr = processes_[handle].get();

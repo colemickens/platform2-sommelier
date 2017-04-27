@@ -8,7 +8,7 @@
 #include <string>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
+#include <dbus/file_descriptor.h>
 
 #include "debugd/src/subprocess_tool.h"
 
@@ -20,7 +20,7 @@ class SystraceTool {
   ~SystraceTool() = default;
 
   std::string Start(const std::string& categories);
-  void Stop(const DBus::FileDescriptor& outfd);
+  void Stop(const dbus::FileDescriptor& outfd);
   std::string Status();
 
  private:

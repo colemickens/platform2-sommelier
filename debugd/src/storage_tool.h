@@ -8,7 +8,7 @@
 #include <string>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
+#include <dbus/file_descriptor.h>
 
 #include "debugd/src/subprocess_tool.h"
 
@@ -20,7 +20,7 @@ class StorageTool : public SubprocessTool {
   ~StorageTool() override = default;
 
   std::string Smartctl(const std::string& option);
-  std::string Start(const DBus::FileDescriptor& outfd);
+  std::string Start(const dbus::FileDescriptor& outfd);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(StorageTool);

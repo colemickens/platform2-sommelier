@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
+#include <brillo/variant_dictionary.h>
 
 namespace debugd {
 
@@ -19,8 +19,7 @@ class RouteTool {
   RouteTool() = default;
   ~RouteTool() = default;
 
-  std::vector<std::string> GetRoutes(
-      const std::map<std::string, DBus::Variant>& options);
+  std::vector<std::string> GetRoutes(const brillo::VariantDictionary& options);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(RouteTool);

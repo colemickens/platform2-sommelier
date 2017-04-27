@@ -10,7 +10,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
-#include <dbus-c++/error.h>
+#include <brillo/errors/error.h>
 
 #include "debugd/src/sandboxed_process.h"
 
@@ -62,7 +62,7 @@ class ProcessWithOutput : public SandboxedProcess {
                         const std::string* stdin,
                         std::string* stdout,
                         std::string* stderr,
-                        DBus::Error* error);
+                        brillo::ErrorPtr* error);
 
   // Like RunProcess() but to run helper programs. |helper| should be specified
   // relative to the helpers/ directory.
@@ -72,7 +72,7 @@ class ProcessWithOutput : public SandboxedProcess {
                        const std::string* stdin,
                        std::string* stdout,
                        std::string* stderr,
-                       DBus::Error* error);
+                       brillo::ErrorPtr* error);
 
   // Like RunProcess() but from within helper programs. This function will
   // not use minijail0 or any sandboxing (since helper programs should already
@@ -94,7 +94,7 @@ class ProcessWithOutput : public SandboxedProcess {
                           const std::string* stdin,
                           std::string* stdout,
                           std::string* stderr,
-                          DBus::Error* error,
+                          brillo::ErrorPtr* error,
                           ProcessWithOutput* process);
 };
 

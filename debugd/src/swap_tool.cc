@@ -78,7 +78,7 @@ std::string SwapTool::SwapStatus() const {
 }
 
 std::string SwapTool::SwapSetParameter(const std::string& parameter_name,
-                                       const uint32_t parameter_value) const {
+                                       uint32_t parameter_value) const {
   int result;
   std::string buf;
 

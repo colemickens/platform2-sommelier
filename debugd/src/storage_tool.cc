@@ -52,7 +52,7 @@ std::string StorageTool::Smartctl(const std::string& option) {
   return output;
 }
 
-std::string StorageTool::Start(const DBus::FileDescriptor& outfd) {
+std::string StorageTool::Start(const dbus::FileDescriptor& outfd) {
   ProcessWithId* p = CreateProcess(false);
   if (!p)
     return "";
@@ -60,8 +60,8 @@ std::string StorageTool::Start(const DBus::FileDescriptor& outfd) {
   p->AddArg(kBadblocks);
   p->AddArg("-sv");
   p->AddArg(kDevice);
-  p->BindFd(outfd.get(), STDOUT_FILENO);
-  p->BindFd(outfd.get(), STDERR_FILENO);
+  p->BindFd(outfd.value(), STDOUT_FILENO);
+  p->BindFd(outfd.value(), STDERR_FILENO);
   LOG(INFO) << "badblocks: running process id: " << p->id();
   p->Start();
   return p->id();

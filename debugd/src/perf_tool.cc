@@ -9,6 +9,7 @@
 #include <base/bind.h>
 #include <base/strings/stringprintf.h>
 
+#include "debugd/src/error_utils.h"
 #include "debugd/src/process_with_output.h"
 
 namespace debugd {
@@ -18,6 +19,9 @@ namespace {
 const char kUnsupportedPerfToolErrorName[] =
     "org.chromium.debugd.error.UnsupportedPerfTool";
 const char kProcessErrorName[] = "org.chromium.debugd.error.RunProcess";
+
+const char kArgsError[] = "perf_args must begin with {\"perf\", \"record\"}, "
+                          " {\"perf\", \"stat\"}, or {\"perf\", \"mem\"}";
 
 // Location of quipper on ChromeOS.
 const char kQuipperLocation[] = "/usr/bin/quipper";
@@ -75,18 +79,16 @@ int PerfTool::GetPerfOutput(const uint32_t& duration_secs,
                             const std::vector<std::string>& perf_args,
                             std::vector<uint8_t>* perf_data,
                             std::vector<uint8_t>* perf_stat,
-                            DBus::Error* error) {
+                            brillo::ErrorPtr* error) {
   PerfSubcommand subcommand = GetPerfSubcommandType(perf_args);
   if (subcommand == PERF_COMMAND_UNSUPPORTED) {
-    error->set(kUnsupportedPerfToolErrorName,
-               "perf_args must begin with {\"perf\", \"record\"}, "
-               " {\"perf\", \"stat\"}, or {\"perf\", \"mem\"}");
+    DEBUGD_ADD_ERROR(error, kUnsupportedPerfToolErrorName, kArgsError);
     return -1;
   }
 
   std::string output_string;
   int result =
-      GetPerfOutputHelper(duration_secs, perf_args, error, &output_string);
+      GetPerfOutputHelper(duration_secs, perf_args, &output_string);
 
   switch (subcommand) {
   case PERF_COMMAND_RECORD:
@@ -106,30 +108,29 @@ int PerfTool::GetPerfOutput(const uint32_t& duration_secs,
 
 bool PerfTool::GetPerfOutputFd(const uint32_t& duration_secs,
                                const std::vector<std::string>& perf_args,
-                               const DBus::FileDescriptor& stdout_fd,
-                               DBus::Error* error) {
+                               const dbus::FileDescriptor& stdout_fd,
+                               brillo::ErrorPtr* error) {
   PerfSubcommand subcommand = GetPerfSubcommandType(perf_args);
   if (subcommand == PERF_COMMAND_UNSUPPORTED) {
-    error->set(kUnsupportedPerfToolErrorName,
-               "perf_args must begin with {\"perf\", \"record\"}, "
-               " {\"perf\", \"stat\"}, or {\"perf\", \"mem\"}");
+    DEBUGD_ADD_ERROR(error, kUnsupportedPerfToolErrorName, kArgsError);
     return false;
   }
 
   SandboxedProcess process;
   process.SandboxAs("root", "root");
   if (!process.Init()) {
-    error->set(kProcessErrorName, "Process initialization failure.");
+    DEBUGD_ADD_ERROR(
+        error, kProcessErrorName, "Process initialization failure.");
     return false;
   }
 
   AddQuipperArguments(&process, duration_secs, perf_args);
 
   process.SetPreExecCallback(base::Bind(Orphan));
-  process.BindFd(stdout_fd.get(), 1);
+  process.BindFd(stdout_fd.value(), 1);
 
   if (process.Run() != 0) {
-    error->set(kProcessErrorName, "Process start failure.");
+    DEBUGD_ADD_ERROR(error, kProcessErrorName, "Process start failure.");
     return false;
   }
   return true;
@@ -137,7 +138,6 @@ bool PerfTool::GetPerfOutputFd(const uint32_t& duration_secs,
 
 int PerfTool::GetPerfOutputHelper(const uint32_t& duration_secs,
                                   const std::vector<std::string>& perf_args,
-                                  DBus::Error* error,
                                   std::string* data_string) {
   // This whole method is synchronous, so we create a subprocess, let it run to
   // completion, then gather up its output to return it.

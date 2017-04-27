@@ -8,7 +8,7 @@
 #include <string>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
+#include <brillo/errors/error.h>
 
 namespace debugd {
 
@@ -21,17 +21,17 @@ class DevFeaturesTool {
   DevFeaturesTool() = default;
   ~DevFeaturesTool() = default;
 
-  bool RemoveRootfsVerification(DBus::Error* error) const;
-  bool EnableBootFromUsb(DBus::Error* error) const;
-  bool ConfigureSshServer(DBus::Error* error) const;
+  bool RemoveRootfsVerification(brillo::ErrorPtr* error) const;
+  bool EnableBootFromUsb(brillo::ErrorPtr* error) const;
+  bool ConfigureSshServer(brillo::ErrorPtr* error) const;
   bool SetUserPassword(const std::string& username,
                        const std::string& password,
-                       DBus::Error* error) const;
-  bool EnableChromeRemoteDebugging(DBus::Error* error) const;
+                       brillo::ErrorPtr* error) const;
+  bool EnableChromeRemoteDebugging(brillo::ErrorPtr* error) const;
   bool EnableChromeDevFeatures(const std::string& root_password,
-                               DBus::Error* error) const;
+                               brillo::ErrorPtr* error) const;
 
-  bool QueryDevFeatures(int32_t* flags, DBus::Error* error) const;
+  bool QueryDevFeatures(int32_t* flags, brillo::ErrorPtr* error) const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DevFeaturesTool);

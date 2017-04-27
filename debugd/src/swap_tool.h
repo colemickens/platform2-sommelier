@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
 
 namespace debugd {
 
@@ -22,7 +21,7 @@ class SwapTool {
   std::string SwapStartStop(bool on) const;
   std::string SwapStatus() const;
   std::string SwapSetParameter(const std::string& parameter_name,
-                               const uint32_t parameter_value) const;
+                               uint32_t parameter_value) const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SwapTool);

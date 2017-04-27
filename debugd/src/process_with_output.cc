@@ -9,6 +9,8 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_split.h>
 
+#include "debugd/src/error_utils.h"
+
 namespace debugd {
 
 namespace {
@@ -18,13 +20,6 @@ const char kInitErrorString[] = "Process initialization failure.";
 const char kStartErrorString[] = "Process start failure.";
 const char kInputErrorString[] = "Process input write failure.";
 const char kPathLengthErrorString[] = "Path length is too long.";
-
-// Sets the D-Bus error if it's non-NULL.
-void SetError(const char* message, DBus::Error* error) {
-  if (error) {
-    error->set(kDBusErrorString, message);
-  }
-}
 
 }  // namespace
 
@@ -95,7 +90,7 @@ int ProcessWithOutput::RunProcess(const std::string& command,
                                   const std::string* stdin,
                                   std::string* stdout,
                                   std::string* stderr,
-                                  DBus::Error* error) {
+                                  brillo::ErrorPtr* error) {
   ProcessWithOutput process;
   if (requires_root) {
     process.SandboxAs("root", "root");
@@ -110,10 +105,10 @@ int ProcessWithOutput::RunHelper(const std::string& helper,
                                  const std::string* stdin,
                                  std::string* stdout,
                                  std::string* stderr,
-                                 DBus::Error* error) {
+                                 brillo::ErrorPtr* error) {
   std::string helper_path;
   if (!SandboxedProcess::GetHelperPath(helper, &helper_path)) {
-    SetError(kPathLengthErrorString, error);
+    DEBUGD_ADD_ERROR(error, kDBusErrorString, kPathLengthErrorString);
     return kRunError;
   }
   return RunProcess(
@@ -137,11 +132,11 @@ int ProcessWithOutput::DoRunProcess(const std::string& command,
                                     const std::string* stdin,
                                     std::string* stdout,
                                     std::string* stderr,
-                                    DBus::Error* error,
+                                    brillo::ErrorPtr* error,
                                     ProcessWithOutput* process) {
   process->set_separate_stderr(true);
   if (!process->Init()) {
-    SetError(kInitErrorString, error);
+    DEBUGD_ADD_ERROR(error, kDBusErrorString, kInitErrorString);
     return kRunError;
   }
 
@@ -160,22 +155,22 @@ int ProcessWithOutput::DoRunProcess(const std::string& command,
                                      stdin->length()) ||
           IGNORE_EINTR(close(stdin_fd)) < 0) {
         process->Kill(SIGKILL, 0);
-        SetError(kInputErrorString, error);
+        DEBUGD_ADD_ERROR(error, kDBusErrorString, kInputErrorString);
       }
       result = process->Wait();
     } else {
-      SetError(kStartErrorString, error);
+      DEBUGD_ADD_ERROR(error, kDBusErrorString, kStartErrorString);
     }
   } else {
     result = process->Run();
   }
 
-  if (stdout) {
+  if (stdout)
     process->GetOutput(stdout);
-  }
-  if (stderr) {
+
+  if (stderr)
     process->GetError(stderr);
-  }
+
   return result;
 }
 

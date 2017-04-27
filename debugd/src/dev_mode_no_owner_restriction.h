@@ -6,7 +6,9 @@
 #define DEBUGD_SRC_DEV_MODE_NO_OWNER_RESTRICTION_H_
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
+#include <base/memory/ref_counted.h>
+#include <brillo/errors/error.h>
+#include <dbus/bus.h>
 
 namespace debugd {
 
@@ -14,7 +16,7 @@ namespace debugd {
 // owner. Used by RestrictedToolWrapper classes to limit access to tools.
 class DevModeNoOwnerRestriction {
  public:
-  explicit DevModeNoOwnerRestriction(DBus::Connection* system_dbus);
+  explicit DevModeNoOwnerRestriction(scoped_refptr<dbus::Bus> bus);
 
   virtual ~DevModeNoOwnerRestriction() = default;
 
@@ -23,12 +25,12 @@ class DevModeNoOwnerRestriction {
   // To get access to the tool, the system must be in dev mode with no owner
   // and the boot lockbox cannot be finalized.
   //
-  // |error| can be NULL or a pointer to a DBus::Error object, in which case
+  // |error| can be NULL or a pointer to a brillo::ErrorPtr, in which case
   // it will be filled with a descriptive error message if tool access is
   // blocked.
   //
   // Returns true if tool access is allowed.
-  bool AllowToolUse(DBus::Error* error);
+  bool AllowToolUse(brillo::ErrorPtr* error);
 
   // Virtual member functions to allow overrides for testing.
   virtual bool InDevMode() const;
@@ -36,7 +38,7 @@ class DevModeNoOwnerRestriction {
                                         bool* boot_lockbox_finalized);
 
  private:
-  DBus::Connection* system_dbus_;
+  scoped_refptr<dbus::Bus> bus_;
 
   DISALLOW_COPY_AND_ASSIGN(DevModeNoOwnerRestriction);
 };

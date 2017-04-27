@@ -6,7 +6,7 @@
 #define DEBUGD_SRC_DEBUG_LOGS_TOOL_H_
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
+#include <dbus/file_descriptor.h>
 
 namespace debugd {
 
@@ -16,7 +16,7 @@ class DebugLogsTool {
   ~DebugLogsTool() = default;
 
   void GetDebugLogs(bool is_compressed,
-                    const DBus::FileDescriptor& fd);
+                    const dbus::FileDescriptor& fd);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DebugLogsTool);

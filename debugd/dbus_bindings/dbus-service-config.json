@@ -1,3 +1,6 @@
 {
-  "service_name": "org.chromium.debugd"
+  "service_name": "org.chromium.debugd",
+  "object_manager": {
+    "object_path": "org/chromium/debugd/ObjectManager"
+  }
 }

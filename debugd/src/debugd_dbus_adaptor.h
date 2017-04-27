@@ -13,7 +13,10 @@
 #include <string>
 #include <vector>
 
-#include <dbus-c++/dbus.h>
+#include <brillo/dbus/exported_object_manager.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
+#include <dbus/file_descriptor.h>
 
 #include "debugd/dbus_adaptors/org.chromium.debugd.h"
 #include "debugd/src/battery_tool.h"
@@ -47,144 +50,114 @@
 
 namespace debugd {
 
-class DebugdDBusAdaptor : public org::chromium::debugd_adaptor,
-                          public DBus::ObjectAdaptor,
-                          public DBus::IntrospectableAdaptor {
+class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
+                          public org::chromium::debugdInterface {
  public:
-  DebugdDBusAdaptor(DBus::Connection* connection,
-                    DBus::BusDispatcher* dispatcher);
+  explicit DebugdDBusAdaptor(
+      brillo::dbus_utils::ExportedObjectManager* object_manager);
   ~DebugdDBusAdaptor() override = default;
 
-  bool Init();
-  void Run();
+  // Register the D-Bus object and interfaces.
+  void RegisterAsync(
+      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
 
-  // Public methods below this point are part of the DBus interface presented by
-  // this object, and are documented in </share/org.chromium.debugd.xml>.
-  std::string BatteryFirmware(const std::string& option,
-                              DBus::Error& error) override;  // NOLINT
-  std::string PingStart(const DBus::FileDescriptor& outfd,
-                        const std::string& dest,
-                        const std::map<std::string, DBus::Variant>& options,
-                        DBus::Error& error) override;  // NOLINT
-  void PingStop(const std::string& handle,
-                DBus::Error& error) override;  // NOLINT
-  std::string TracePathStart(
-      const DBus::FileDescriptor& outfd,
-      const std::string& destination,
-      const std::map<std::string, DBus::Variant>& options,
-      DBus::Error& error) override;  // NOLINT
-  void TracePathStop(const std::string& handle,
-                     DBus::Error& error) override;  // NOLINT
-  void SystraceStart(const std::string& categories,
-                     DBus::Error& error) override;  // NOLINT
-  void SystraceStop(const DBus::FileDescriptor& outfd,
-                    DBus::Error& error) override;  // NOLINT
-  std::string SystraceStatus(DBus::Error& error) override;  // NOLINT
+ private:
+  // D-Bus methods.
+  std::string BatteryFirmware(const std::string& option) override;
+  bool PingStart(brillo::ErrorPtr* error,
+                 const dbus::FileDescriptor& outfd,
+                 const std::string& dest,
+                 const brillo::VariantDictionary& options,
+                 std::string* handle) override;
+  bool PingStop(brillo::ErrorPtr* error,
+                const std::string& handle) override;
+  std::string TracePathStart(const dbus::FileDescriptor& outfd,
+                             const std::string& destination,
+                             const brillo::VariantDictionary& options) override;
+  bool TracePathStop(brillo::ErrorPtr* error,
+                     const std::string& handle) override;
+  void SystraceStart(const std::string& categories) override;
+  void SystraceStop(const dbus::FileDescriptor& outfd) override;
+  std::string SystraceStatus() override;
   std::vector<std::string> GetRoutes(
-      const std::map<std::string, DBus::Variant>& options,
-      DBus::Error& error) override;  // NOLINT
-  std::string GetModemStatus(DBus::Error& error) override;  // NOLINT
-  std::string RunModemCommand(const std::string& command,
-                              DBus::Error& error) override;  // NOLINT
-  std::string GetNetworkStatus(DBus::Error& error) override;  // NOLINT
-  std::string GetWiMaxStatus(DBus::Error& error) override;  // NOLINT
-  void GetPerfOutput(const uint32_t& duration_sec,
+      const brillo::VariantDictionary& options) override;
+  std::string GetModemStatus() override;
+  std::string RunModemCommand(const std::string& command) override;
+  std::string GetNetworkStatus() override;
+  std::string GetWiMaxStatus() override;
+  bool GetPerfOutput(brillo::ErrorPtr* error,
+                     uint32_t duration_sec,
                      const std::vector<std::string>& perf_args,
-                     int32_t& status,
-                     std::vector<uint8_t>& perf_data,
-                     std::vector<uint8_t>& perf_stat,
-                     DBus::Error& error) override;  // NOLINT
-  void GetPerfOutputFd(
-      const uint32_t& duration_sec,
-      const std::vector<std::string>& perf_args,
-      const DBus::FileDescriptor& stdout_fd,
-      DBus::Error& error) override;  // NOLINT
-  void DumpDebugLogs(const bool& is_compressed,
-                     const DBus::FileDescriptor& fd,
-                     DBus::Error& error) override;  // NOLINT
-  void SetDebugMode(const std::string& subsystem,
-                    DBus::Error& error) override;  // NOLINT
-  std::string GetLog(const std::string& name,
-                     DBus::Error& error) override;  // NOLINT
-  std::map<std::string, std::string> GetAllLogs(
-      DBus::Error& error) override;  // NOLINT
-  std::map<std::string, std::string> GetFeedbackLogs(
-      DBus::Error& error) override;  // NOLINT
-  void GetBigFeedbackLogs(const DBus::FileDescriptor& fd,
-                          DBus::Error& error) override;  // NOLINT
-  std::map<std::string, std::string> GetUserLogFiles(
-      DBus::Error& error) override;  // NOLINT
-  std::string GetExample(DBus::Error& error) override;  // NOLINT
+                     int32_t* status,
+                     std::vector<uint8_t>* perf_data,
+                     std::vector<uint8_t>* perf_stat) override;
+  bool GetPerfOutputFd(brillo::ErrorPtr* error,
+                       uint32_t duration_sec,
+                       const std::vector<std::string>& perf_args,
+                       const dbus::FileDescriptor& stdout_fd) override;
+  void DumpDebugLogs(bool is_compressed,
+                     const dbus::FileDescriptor& fd) override;
+  void SetDebugMode(const std::string& subsystem) override;
+  std::string GetLog(const std::string& name) override;
+  std::map<std::string, std::string> GetAllLogs() override;
+  std::map<std::string, std::string> GetFeedbackLogs() override;
+  void GetBigFeedbackLogs(const dbus::FileDescriptor& fd) override;
+  std::map<std::string, std::string> GetUserLogFiles() override;
+  std::string GetExample() override;
   int32_t CupsAddAutoConfiguredPrinter(const std::string& name,
-                                       const std::string& uri,
-                                       DBus::Error& error) override;  // NOLINT
+                                       const std::string& uri) override;
   int32_t CupsAddManuallyConfiguredPrinter(
       const std::string& name,
       const std::string& uri,
-      const std::vector<uint8_t>& ppd_contents,
-      DBus::Error& error) override;  // NOLINT
-  bool CupsRemovePrinter(const std::string& name,
-                         DBus::Error& error) override;  // NOLINT
-  void CupsResetState(DBus::Error& error) override;  // NOLINT
-  std::string GetInterfaces(DBus::Error& error) override;  // NOLINT
-  std::string TestICMP(const std::string& host,
-                       DBus::Error& error) override;  // NOLINT
+      const std::vector<uint8_t>& ppd_contents) override;
+  bool CupsRemovePrinter(const std::string& name) override;
+  void CupsResetState() override;
+  std::string GetInterfaces() override;
+  std::string TestICMP(const std::string& host) override;
   std::string TestICMPWithOptions(
       const std::string& host,
-      const std::map<std::string, std::string>& options,
-      DBus::Error& error) override;  // NOLINT
-  std::string Smartctl(const std::string& option,
-                       DBus::Error& error) override;  // NOLINT
-  std::string MemtesterStart(const DBus::FileDescriptor& outfd,
-                             const uint32_t& memory,
-                             DBus::Error& error) override;  // NOLINT
-  void MemtesterStop(const std::string& handle,
-                     DBus::Error& error) override;  // NOLINT
-  std::string BadblocksStart(const DBus::FileDescriptor& outfd,
-                             DBus::Error& error) override;  // NOLINT
-  void BadblocksStop(const std::string& handle,
-                     DBus::Error& error) override;  // NOLINT
-  std::string PacketCaptureStart(
-      const DBus::FileDescriptor& statfd,
-      const DBus::FileDescriptor& outfd,
-      const std::map<std::string, DBus::Variant>& options,
-      DBus::Error& error) override;  // NOLINT
-  void PacketCaptureStop(const std::string& handle,
-                         DBus::Error& error) override;  // NOLINT
-  void LogKernelTaskStates(DBus::Error& error) override;  // NOLINT
-  void UploadCrashes(DBus::Error& error) override;  // NOLINT
-  void RemoveRootfsVerification(DBus::Error& error) override;  // NOLINT
-  void EnableBootFromUsb(DBus::Error& error) override;  // NOLINT
-  void EnableChromeRemoteDebugging(DBus::Error& error) override;  // NOLINT
-  void ConfigureSshServer(DBus::Error& error) override;  // NOLINT
-  void SetUserPassword(const std::string& username,
-                       const std::string& password,
-                       DBus::Error& error) override;  // NOLINT
-  void EnableChromeDevFeatures(const std::string& root_password,
-                               DBus::Error& error) override;  // NOLINT
-  int32_t QueryDevFeatures(DBus::Error& error) override;  // NOLINT
-  void EnableDevCoredumpUpload(DBus::Error& error) override;  // NOLINT
-  void DisableDevCoredumpUpload(DBus::Error& error) override;  // NOLINT
-  std::string SetOomScoreAdj(const std::map<pid_t, int32_t>& scores,
-                             DBus::Error& error) override;  // NOLINT
-  std::string SwapEnable(const uint32_t& size, const bool& change_now,
-                         DBus::Error& error) override;  // NOLINT
-  std::string SwapDisable(const bool& change_now,
-                          DBus::Error& error) override;  // NOLINT
-  std::string SwapStartStop(const bool& on,
-                            DBus::Error& error) override;  // NOLINT
-  std::string SwapStatus(DBus::Error& error) override;  // NOLINT
+      const std::map<std::string, std::string>& options) override;
+  std::string Smartctl(const std::string& option) override;
+  std::string MemtesterStart(const dbus::FileDescriptor& outfd,
+                             uint32_t memory) override;
+  bool MemtesterStop(brillo::ErrorPtr* error,
+                     const std::string& handle) override;
+  std::string BadblocksStart(const dbus::FileDescriptor& outfd) override;
+  bool BadblocksStop(brillo::ErrorPtr* error,
+                     const std::string& handle) override;
+  bool PacketCaptureStart(brillo::ErrorPtr* error,
+                          const dbus::FileDescriptor& statfd,
+                          const dbus::FileDescriptor& outfd,
+                          const brillo::VariantDictionary& options,
+                          std::string* handle) override;
+  bool PacketCaptureStop(brillo::ErrorPtr* error,
+                         const std::string& handle) override;
+  bool LogKernelTaskStates(brillo::ErrorPtr* error) override;
+  void UploadCrashes() override;
+  bool RemoveRootfsVerification(brillo::ErrorPtr* error) override;
+  bool EnableBootFromUsb(brillo::ErrorPtr* error) override;
+  bool EnableChromeRemoteDebugging(brillo::ErrorPtr* error) override;
+  bool ConfigureSshServer(brillo::ErrorPtr* error) override;
+  bool SetUserPassword(brillo::ErrorPtr* error,
+                       const std::string& username,
+                       const std::string& password) override;
+  bool EnableChromeDevFeatures(brillo::ErrorPtr* error,
+                               const std::string& root_password) override;
+  bool QueryDevFeatures(brillo::ErrorPtr* error, int32_t* features) override;
+  bool EnableDevCoredumpUpload(brillo::ErrorPtr* error) override;
+  bool DisableDevCoredumpUpload(brillo::ErrorPtr* error) override;
+  std::string SetOomScoreAdj(const std::map<pid_t, int32_t>& scores) override;
+  std::string SwapEnable(uint32_t size, bool change_now) override;
+  std::string SwapDisable(bool change_now) override;
+  std::string SwapStartStop(bool on) override;
+  std::string SwapStatus() override;
   std::string SwapSetParameter(const std::string& parameter_name,
-                               const uint32_t& parameter_value,
-                               DBus::Error& error) override;  // NOLINT
-  bool SetWifiDriverDebug(const int32_t& flags,
-                          DBus::Error& error) override;  // NOLINT
-  void ContainerStarted(DBus::Error& error) override;  // NOLINT
-  void ContainerStopped(DBus::Error& error) override;  // NOLINT
+                               uint32_t parameter_value) override;
+  bool SetWifiDriverDebug(int32_t flags) override;
+  void ContainerStarted() override;
+  void ContainerStopped() override;
 
- private:
-  DBus::Connection* dbus_;
-  DBus::BusDispatcher* dispatcher_;
+  brillo::dbus_utils::DBusObject dbus_object_;
 
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
   std::unique_ptr<ContainerTool> container_tool_;

@@ -7,6 +7,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include "debugd/src/error_utils.h"
+
 namespace debugd {
 
 namespace {
@@ -15,16 +17,16 @@ const char kErrorSysrq[] = "org.chromium.debugd.error.sysrq";
 
 }  // namespace
 
-bool SysrqTool::LogKernelTaskStates(DBus::Error* error) {
+bool SysrqTool::LogKernelTaskStates(brillo::ErrorPtr* error) {
   int sysrq_trigger = open("/proc/sysrq-trigger", O_WRONLY | O_CLOEXEC);
   if (sysrq_trigger < 0) {
-    error->set(kErrorSysrq, "open");
+    DEBUGD_ADD_PERROR(error, kErrorSysrq, "open");
     return false;
   }
   ssize_t written = write(sysrq_trigger, "t", 1);
   close(sysrq_trigger);
   if (written < 1) {
-    error->set(kErrorSysrq, "write");
+    DEBUGD_ADD_PERROR(error, kErrorSysrq, "write");
     return false;
   }
   return true;

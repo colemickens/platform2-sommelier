@@ -8,12 +8,16 @@
 
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
+#include <chromeos/dbus/service_constants.h>
 #include <chromeos/libminijail.h>
 
 #include "debugd/src/debugd_dbus_adaptor.h"
 
 namespace {
+
+const char kObjectServicePath[] = "/org/chromium/debugd/ObjectManager";
 
 // @brief Enter a VFS namespace.
 //
@@ -43,17 +47,24 @@ void setup_dirs() {
     PLOG(FATAL) << "mkdir(\"/debugd/touchpad\") failed";
 }
 
-// @brief Start the debugd DBus interface.
-void start() {
-  DBus::BusDispatcher dispatcher;
-  DBus::default_dispatcher = &dispatcher;
-  DBus::Connection conn = DBus::Connection::SystemBus();
-  debugd::DebugdDBusAdaptor debugd(&conn, &dispatcher);
-  if (!debugd.Init())
-    LOG(FATAL) << "debugd.Init() failed";
-  debugd.Run();
-  LOG(FATAL) << "debugd.Run() returned";
-}
+class Daemon : public brillo::DBusServiceDaemon {
+ public:
+  Daemon() : DBusServiceDaemon(debugd::kDebugdServiceName,
+                               dbus::ObjectPath(kObjectServicePath)) {}
+
+ protected:
+  void RegisterDBusObjectsAsync(
+      brillo::dbus_utils::AsyncEventSequencer *sequencer) override {
+    adaptor_.reset(new debugd::DebugdDBusAdaptor(object_manager_.get()));
+    adaptor_->RegisterAsync(sequencer->GetHandler(
+        "RegisterAsync() failed.", true));
+  }
+
+ private:
+  std::unique_ptr<debugd::DebugdDBusAdaptor> adaptor_;
+
+  DISALLOW_COPY_AND_ASSIGN(Daemon);
+};
 
 }  // namespace
 
@@ -63,6 +74,6 @@ int __attribute__((visibility("default"))) main(int argc, char* argv[]) {
   enter_vfs_namespace();
   make_tmpfs();
   setup_dirs();
-  start();
+  Daemon().Run();
   return 0;
 }

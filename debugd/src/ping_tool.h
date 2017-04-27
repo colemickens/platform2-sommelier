@@ -9,7 +9,8 @@
 #include <string>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
 
 #include "debugd/src/subprocess_tool.h"
 
@@ -20,11 +21,11 @@ class PingTool : public SubprocessTool {
   PingTool() = default;
   ~PingTool() override = default;
 
-  bool Start(const DBus::FileDescriptor& outfd,
+  bool Start(const dbus::FileDescriptor& outfd,
              const std::string& destination,
-             const std::map<std::string, DBus::Variant>& options,
+             const brillo::VariantDictionary& options,
              std::string* out_id,
-             DBus::Error* error);
+             brillo::ErrorPtr* error);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(PingTool);

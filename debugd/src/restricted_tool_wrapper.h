@@ -11,7 +11,7 @@
 //       new RestrictedToolWrapper<FooTool>(...);
 //
 //   // Unwrap and use the tool.
-//   DBus::Error error;
+//   brillo::ErrorPtr error;
 //   int result = 0;
 //   FooTool* tool = foo_tool_wrapper->GetTool(&error);
 //   if (tool)
@@ -33,7 +33,7 @@
 #define DEBUGD_SRC_RESTRICTED_TOOL_WRAPPER_H_
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
+#include <brillo/errors/error.h>
 
 #include "debugd/src/dev_mode_no_owner_restriction.h"
 
@@ -48,8 +48,8 @@ class RestrictedToolWrapper {
   // RestrictedToolWrapper classes for additional constructor parameters. If
   // possible, use a tool Initialize() function instead of passing additional
   // parameters to the constructor.
-  explicit RestrictedToolWrapper(DBus::Connection* system_dbus)
-      : restriction_(system_dbus) {}
+  explicit RestrictedToolWrapper(scoped_refptr<dbus::Bus> bus)
+      : restriction_(bus) {}
 
   ~RestrictedToolWrapper() = default;
 
@@ -61,7 +61,7 @@ class RestrictedToolWrapper {
   //
   // Do not store the direct tool pointer longer than needed for immediate use,
   // to avoid bypassing the wrapper's condition checks.
-  T* GetTool(DBus::Error* error) {
+  T* GetTool(brillo::ErrorPtr* error) {
     if (restriction_.AllowToolUse(error)) {
       return &tool_;
     }

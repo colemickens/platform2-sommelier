@@ -10,7 +10,7 @@
 #include <string>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
+#include <brillo/errors/error.h>
 
 #include "debugd/src/process_with_id.h"
 
@@ -25,7 +25,7 @@ class SubprocessTool {
   virtual ProcessWithId* CreateProcess(bool sandboxed,
                                        bool allow_root_mount_ns);
 
-  virtual bool Stop(const std::string& handle, DBus::Error* error);
+  virtual bool Stop(const std::string& handle, brillo::ErrorPtr* error);
 
  private:
   std::map<std::string, std::unique_ptr<ProcessWithId>> processes_;

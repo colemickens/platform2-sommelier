@@ -9,7 +9,9 @@
 #include <string>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
+#include <base/memory/ref_counted.h>
+#include <dbus/bus.h>
+#include <dbus/file_descriptor.h>
 
 #include "debugd/src/anonymizer_tool.h"
 
@@ -23,17 +25,17 @@ class LogTool {
   using LogMap = std::map<std::string, std::string>;
 
   std::string GetLog(const std::string& name);
-  LogMap GetAllLogs(DBus::Connection* connection);
-  LogMap GetFeedbackLogs(DBus::Connection* connection);
-  void GetBigFeedbackLogs(DBus::Connection* connection,
-                          const DBus::FileDescriptor& fd);
+  LogMap GetAllLogs(scoped_refptr<dbus::Bus> bus);
+  LogMap GetFeedbackLogs(scoped_refptr<dbus::Bus> bus);
+  void GetBigFeedbackLogs(scoped_refptr<dbus::Bus> bus,
+                          const dbus::FileDescriptor& fd);
   LogMap GetUserLogFiles();
 
  private:
   friend class LogToolTest;
 
   void AnonymizeLogMap(LogMap* log_map);
-  void CreateConnectivityReport(DBus::Connection* connection);
+  void CreateConnectivityReport(scoped_refptr<dbus::Bus> bus);
 
   AnonymizerTool anonymizer_;
 

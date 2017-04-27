@@ -39,6 +39,7 @@
           Opaque handle for this ping.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="PingStop">
       <tp:docstring>
@@ -48,6 +49,7 @@
         Handle to the ping to stop. If an empty string is passed, stops all
         running pings.
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="SystraceStart">
       <tp:docstring>
@@ -62,6 +64,7 @@
           separated by spaces.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="SystraceStop">
       <tp:docstring>
@@ -72,6 +75,7 @@
           File descriptor to send event data to.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="SystraceStatus">
       <tp:docstring>
@@ -81,6 +85,7 @@
       <arg name="status" type="s" direction="out">
         Free-form text reporting status.
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="TracePathStart">
       <arg name="outfd" type="h" direction="in">
@@ -107,6 +112,7 @@
           Opaque handle for this ping.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="TracePathStop">
       <tp:docstring>
@@ -118,6 +124,7 @@
           all running tracepaths.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="GetRoutes">
       <tp:docstring>
@@ -135,6 +142,7 @@
           The list of routes.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="GetModemStatus">
       <tp:docstring>
@@ -146,6 +154,7 @@
           Modem information as a JSON string.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="RunModemCommand">
       <tp:docstring>
@@ -159,6 +168,7 @@
         </tp:docstring>
       </arg>
       <arg name="status" type="s" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="GetNetworkStatus">
       <tp:docstring>
@@ -170,6 +180,7 @@
           Network information as a JSON string.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="GetWiMaxStatus">
       <tp:docstring>
@@ -181,6 +192,7 @@
           WiMAX information as a JSON string.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="GetPerfOutput">
       <tp:docstring>
@@ -213,6 +225,7 @@
           Perf stat output data as a protobuf.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="GetPerfOutputFd">
       <tp:docstring>
@@ -235,6 +248,7 @@
           quipper's stdout will be connected to this file descriptor.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="DumpDebugLogs">
       <tp:docstring>
@@ -252,6 +266,7 @@
           File descriptor to emit the .tar.gz file over.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="SetDebugMode">
       <tp:docstring>
@@ -263,6 +278,7 @@
           "wimax", "ethernet" or "none".
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="GetLog">
       <tp:docstring>
@@ -271,18 +287,21 @@
       </tp:docstring>
       <arg name="log" type="s" direction="in" />
       <arg name="contents" type="s" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="GetAllLogs">
       <tp:docstring>
         Returns all the system logs.
       </tp:docstring>
       <arg name="logs" type="a{ss}" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="GetFeedbackLogs">
       <tp:docstring>
         Returns system logs for feedback reports.
       </tp:docstring>
       <arg name="logs" type="a{ss}" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="GetBigFeedbackLogs">
       <tp:docstring>
@@ -295,6 +314,7 @@
           File descriptor to emit the logs to.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="GetUserLogFiles">
       <tp:docstring>
@@ -303,12 +323,14 @@
         collected separately for each user.
       </tp:docstring>
       <arg name="user_log_files" type="a{ss}" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="GetExample">
       <tp:docstring>
         Example method. See /doc/hacking.md.
       </tp:docstring>
       <arg name="result" type="s" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="CupsAddAutoConfiguredPrinter">
       <tp:docstring>
@@ -318,6 +340,7 @@
       <arg name="result" type="i" direction="out" />
       <arg name="name" type="s" direction="in" />
       <arg name="uri" type="s" direction="in" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="CupsAddManuallyConfiguredPrinter">
       <tp:docstring>
@@ -333,6 +356,7 @@
           This data may optionally be gzip compressed.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="CupsRemovePrinter">
       <tp:docstring>
@@ -345,17 +369,20 @@
           The name of the printer to remove.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="CupsResetState">
       <tp:docstring>
         Stop CUPS daemon and reset its state.
       </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="GetInterfaces">
       <tp:docstring>
         Returns information about network interfaces as a JSON string.
       </tp:docstring>
       <arg name="result" type="s" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="TestICMP">
       <tp:docstring>
@@ -363,6 +390,7 @@
       </tp:docstring>
       <arg name="host" type="s" direction="in" />
       <arg name="result" type="s" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="TestICMPWithOptions">
       <tp:docstring>
@@ -371,6 +399,7 @@
       <arg name="host" type="s" direction="in" />
       <arg name="options" type="a{ss}" direction="in" />
       <arg name="result" type="s" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="BatteryFirmware">
       <tp:docstring>
@@ -389,6 +418,7 @@
           Battery command output.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="Smartctl">
       <tp:docstring>
@@ -411,6 +441,7 @@
           Smartctl command output.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="MemtesterStart">
       <tp:docstring>
@@ -431,6 +462,7 @@
           Opaque handle to the memtester.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="MemtesterStop">
       <tp:docstring>
@@ -442,6 +474,7 @@
           all running memtests.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="BadblocksStart">
       <tp:docstring>
@@ -457,6 +490,7 @@
           Opaque handle to the badblocks.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="BadblocksStop">
       <tp:docstring>
@@ -468,6 +502,7 @@
           all running badblocks.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="PacketCaptureStart">
       <tp:docstring>
@@ -514,6 +549,7 @@
           Opaque handle for this packet capture.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="PacketCaptureStop">
       <tp:docstring>
@@ -523,28 +559,33 @@
         Handle to the packet capture to stop. If an empty string is passed,
         stops all running packet captures.
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="LogKernelTaskStates">
       <tp:docstring>
         Triggers show-task-states(T) SysRq.
         See https://www.kernel.org/doc/Documentation/sysrq.txt.
       </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="UploadCrashes">
       <tp:docstring>
         Triggers uploading of system crashes (the crash_sender program).
       </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="RemoveRootfsVerification">
       <tp:docstring>
         Removes rootfs verification. Requires a system reboot before it will
         take effect. Restricted to pre-owner dev mode.
       </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="EnableBootFromUsb">
       <tp:docstring>
         Enables OS booting from a USB image. Restricted to pre-owner dev mode.
       </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="ConfigureSshServer">
       <tp:docstring>
@@ -553,6 +594,7 @@
         that rootfs verification has been removed. Restricted to pre-owner dev
         mode.
       </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="SetUserPassword">
       <tp:docstring>
@@ -569,6 +611,7 @@
           Password to assign.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="EnableChromeRemoteDebugging">
       <tp:docstring>
@@ -577,6 +620,7 @@
         Requires that rootfs verification has been removed. Restricted to
         pre-owner dev mode.
       </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="EnableChromeDevFeatures">
       <tp:docstring>
@@ -595,6 +639,7 @@
           default to "test0000".
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="QueryDevFeatures">
       <tp:docstring>
@@ -609,6 +654,7 @@
           Feature enabled flags or DEV_FEATURES_DISABLED flag.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <tp:enum name="DevFeatureFlag" type="i">
       <tp:docstring>
@@ -665,11 +711,13 @@
       <tp:docstring>
         Allow uploading of device coredump files.
       </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="DisableDevCoredumpUpload">
       <tp:docstring>
         Disallow uploading of device coredump files.
       </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="SetOomScoreAdj">
       <tp:docstring>
@@ -690,6 +738,7 @@
           Output from the helper of the operation. Empty on success.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="SwapEnable">
       <tp:docstring>
@@ -708,6 +757,7 @@
           Whether to enable immediately, or wait until next reboot.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="SwapDisable">
       <tp:docstring>
@@ -721,6 +771,7 @@
           Whether to disable immediately, or wait until next reboot.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="SwapStartStop">
       <tp:docstring>
@@ -734,6 +785,7 @@
           Whether to turn it on or off.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="SwapStatus">
       <tp:docstring>
@@ -742,6 +794,7 @@
       <arg name="status" type="s" direction="out">
         Free-form text reporting status.
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="SwapSetParameter">
       <tp:docstring>
@@ -760,6 +813,7 @@
           The unsigned integer value that some parameter is set to.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="SetWifiDriverDebug">
       <tp:docstring>
@@ -773,16 +827,19 @@
         </tp:docstring>
       </arg>
       <arg name="result" type="b" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="ContainerStarted">
       <tp:docstring>
         Notify debugd that a container is starting up.
       </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="ContainerStopped">
       <tp:docstring>
         Notify debugd that a container has stopped.
       </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
   </interface>
 </node>

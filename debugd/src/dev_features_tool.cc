@@ -10,6 +10,7 @@
 #include <base/callback.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "debugd/src/error_utils.h"
 #include "debugd/src/process_with_output.h"
 
 namespace debugd {
@@ -33,7 +34,7 @@ bool RunHelper(const std::string& command,
                bool requires_root,
                const std::string* stdin,
                int* exit_status,
-               DBus::Error* error) {
+               brillo::ErrorPtr* error) {
   std::string stderr;
   int result = ProcessWithOutput::RunHelper(command,
                                             arguments,
@@ -43,8 +44,7 @@ bool RunHelper(const std::string& command,
                                             &stderr,
                                             error);
   if (!stderr.empty()) {
-    if (error && !error->is_set())
-      error->set(kDevFeaturesErrorString, stderr.c_str());
+    DEBUGD_ADD_ERROR(error, kDevFeaturesErrorString, stderr.c_str());
     return false;
   }
 
@@ -53,7 +53,7 @@ bool RunHelper(const std::string& command,
   return true;
 }
 
-bool RemoveRootfsVerificationQuery(int* exit_status, DBus::Error* error) {
+bool RemoveRootfsVerificationQuery(int* exit_status, brillo::ErrorPtr* error) {
   return RunHelper("dev_features_rootfs_verification", ArgList{"-q"},
                    true,  // requires root to check if / is writable by root.
                    nullptr,  // no stdin.
@@ -61,7 +61,7 @@ bool RemoveRootfsVerificationQuery(int* exit_status, DBus::Error* error) {
                    error);
 }
 
-bool EnableBootFromUsbQuery(int* exit_status, DBus::Error* error) {
+bool EnableBootFromUsbQuery(int* exit_status, brillo::ErrorPtr* error) {
   return RunHelper("dev_features_usb_boot", ArgList{"-q"},
                    true,  // requires root for crossystem queries.
                    nullptr,  // no stdin.
@@ -69,7 +69,7 @@ bool EnableBootFromUsbQuery(int* exit_status, DBus::Error* error) {
                    error);
 }
 
-bool ConfigureSshServerQuery(int* exit_status, DBus::Error* error) {
+bool ConfigureSshServerQuery(int* exit_status, brillo::ErrorPtr* error) {
   return RunHelper("dev_features_ssh", ArgList{"-q"},
                    true,  // needs root to check for files in 700 folders.
                    nullptr,  // no stdin.
@@ -77,7 +77,8 @@ bool ConfigureSshServerQuery(int* exit_status, DBus::Error* error) {
                    error);
 }
 
-bool EnableChromeRemoteDebuggingQuery(int* exit_status, DBus::Error* error) {
+bool EnableChromeRemoteDebuggingQuery(int* exit_status,
+                                      brillo::ErrorPtr* error) {
   return RunHelper("dev_features_chrome_remote_debugging", ArgList{"-q"},
                    false,
                    nullptr,  // no stdin.
@@ -88,7 +89,7 @@ bool EnableChromeRemoteDebuggingQuery(int* exit_status, DBus::Error* error) {
 bool SetUserPasswordQuery(const std::string& username,
                           bool system,
                           int* exit_status,
-                          DBus::Error* error) {
+                          brillo::ErrorPtr* error) {
   ArgList args{"-q", "--user=" + username};
   if (system)
     args.push_back("--system");
@@ -102,7 +103,7 @@ bool SetUserPasswordQuery(const std::string& username,
 
 }  // namespace
 
-bool DevFeaturesTool::RemoveRootfsVerification(DBus::Error* error) const {
+bool DevFeaturesTool::RemoveRootfsVerification(brillo::ErrorPtr* error) const {
   return RunHelper("dev_features_rootfs_verification", ArgList{},
                    true,  // requires root for make_dev_ssd.sh script.
                    nullptr,  // no stdin.
@@ -110,7 +111,7 @@ bool DevFeaturesTool::RemoveRootfsVerification(DBus::Error* error) const {
                    error);
 }
 
-bool DevFeaturesTool::EnableBootFromUsb(DBus::Error* error) const {
+bool DevFeaturesTool::EnableBootFromUsb(brillo::ErrorPtr* error) const {
   return RunHelper("dev_features_usb_boot", ArgList{},
                    true,  // requires root for enable_dev_usb_boot script.
                    nullptr,  // no stdin.
@@ -118,11 +119,11 @@ bool DevFeaturesTool::EnableBootFromUsb(DBus::Error* error) const {
                    error);
 }
 
-bool DevFeaturesTool::ConfigureSshServer(DBus::Error* error) const {
+bool DevFeaturesTool::ConfigureSshServer(brillo::ErrorPtr* error) const {
   // SSH server configuration requires writing to rootfs.
   int exit_status;
   if (!RemoveRootfsVerificationQuery(&exit_status, error) || exit_status != 0) {
-    error->set(kDevFeaturesErrorString, kRootfsLockedErrorString);
+    DEBUGD_ADD_ERROR(error, kDevFeaturesErrorString, kRootfsLockedErrorString);
     return false;
   }
 
@@ -133,10 +134,11 @@ bool DevFeaturesTool::ConfigureSshServer(DBus::Error* error) const {
                    error);
 }
 
-bool DevFeaturesTool::EnableChromeRemoteDebugging(DBus::Error* error) const {
+bool DevFeaturesTool::EnableChromeRemoteDebugging(brillo::ErrorPtr* error)
+    const {
   int exit_status;
   if (!RemoveRootfsVerificationQuery(&exit_status, error) || exit_status != 0) {
-    error->set(kDevFeaturesErrorString, kRootfsLockedErrorString);
+    DEBUGD_ADD_ERROR(error, kDevFeaturesErrorString, kRootfsLockedErrorString);
     return false;
   }
 
@@ -149,7 +151,7 @@ bool DevFeaturesTool::EnableChromeRemoteDebugging(DBus::Error* error) const {
 
 bool DevFeaturesTool::SetUserPassword(const std::string& username,
                                       const std::string& password,
-                                      DBus::Error* error) const {
+                                      brillo::ErrorPtr* error) const {
   ArgList args{"--user=" + username};
 
   // Set the devmode password regardless of rootfs verification state.
@@ -175,7 +177,7 @@ bool DevFeaturesTool::SetUserPassword(const std::string& username,
 }
 
 bool DevFeaturesTool::EnableChromeDevFeatures(const std::string& root_password,
-                                              DBus::Error* error) const {
+                                              brillo::ErrorPtr* error) const {
   if (!EnableBootFromUsb(error))
     return false;
 
@@ -194,7 +196,7 @@ struct Query {
   // The callback should launch the query program. If launching fails, return
   // false and set the error. If it succeeds, put the exit status in the
   // integer out-argument.
-  using Function = base::Callback<bool(int*, DBus::Error*)>;
+  using Function = base::Callback<bool(int*, brillo::ErrorPtr*)>;
 
   Function function;
   DevFeatureFlag flag;
@@ -203,7 +205,7 @@ struct Query {
 }  // namespace
 
 bool DevFeaturesTool::QueryDevFeatures(int32_t* flags,
-                                       DBus::Error* error) const {
+                                       brillo::ErrorPtr* error) const {
   DCHECK(flags);
   Query queries[] = {
       {base::Bind(&RemoveRootfsVerificationQuery),

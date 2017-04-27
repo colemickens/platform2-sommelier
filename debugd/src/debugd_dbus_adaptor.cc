@@ -8,10 +8,13 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/memory/ref_counted.h>
+#include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
-#include <dbus-c++/dbus.h>
+#include <dbus/object_path.h>
 
 #include "debugd/src/constants.h"
+#include "debugd/src/error_utils.h"
 
 namespace debugd {
 
@@ -22,21 +25,21 @@ const char kDevCoredumpDBusErrorString[] =
 
 }  // namespace
 
-DebugdDBusAdaptor::DebugdDBusAdaptor(DBus::Connection* connection,
-                                     DBus::BusDispatcher* dispatcher)
-    : DBus::ObjectAdaptor(*connection, kDebugdServicePath),
-      dbus_(connection),
-      dispatcher_(dispatcher) {}
-
-bool DebugdDBusAdaptor::Init() {
+DebugdDBusAdaptor::DebugdDBusAdaptor(
+    brillo::dbus_utils::ExportedObjectManager* object_manager)
+    : org::chromium::debugdAdaptor(this),
+      dbus_object_(object_manager,
+                   object_manager->GetBus(),
+                   dbus::ObjectPath(kDebugdServicePath)) {
+  scoped_refptr<dbus::Bus> bus = object_manager->GetBus();
   battery_tool_ = base::MakeUnique<BatteryTool>();
   container_tool_ = base::MakeUnique<ContainerTool>();
   crash_sender_tool_ = base::MakeUnique<CrashSenderTool>();
   cups_tool_ = base::MakeUnique<CupsTool>();
   debug_logs_tool_ = base::MakeUnique<DebugLogsTool>();
-  debug_mode_tool_ = base::MakeUnique<DebugModeTool>(dbus_);
+  debug_mode_tool_ = base::MakeUnique<DebugModeTool>(bus);
   dev_features_tool_wrapper_ =
-      base::MakeUnique<RestrictedToolWrapper<DevFeaturesTool>>(dbus_);
+      base::MakeUnique<RestrictedToolWrapper<DevFeaturesTool>>(bus);
   example_tool_ = base::MakeUnique<ExampleTool>();
   icmp_tool_ = base::MakeUnique<ICMPTool>();
   modem_status_tool_ = base::MakeUnique<ModemStatusTool>();
@@ -56,379 +59,336 @@ bool DebugdDBusAdaptor::Init() {
   memory_tool_ = base::MakeUnique<MemtesterTool>();
   wifi_debug_tool_ = base::MakeUnique<WifiDebugTool>();
   wimax_status_tool_ = base::MakeUnique<WiMaxStatusTool>();
-  if (!dbus_->acquire_name(kDebugdServiceName)) {
-    LOG(ERROR) << "Failed to acquire D-Bus name " << kDebugdServiceName;
-    return false;
-  }
-  session_manager_proxy_ = base::MakeUnique<SessionManagerProxy>(dbus_);
+  session_manager_proxy_ = base::MakeUnique<SessionManagerProxy>(bus);
   if (dev_features_tool_wrapper_->restriction().InDevMode() &&
       base::PathExists(
       base::FilePath(debugd::kDevFeaturesChromeRemoteDebuggingFlagPath))) {
     session_manager_proxy_->EnableChromeRemoteDebugging();
   }
-  return true;
 }
 
-void DebugdDBusAdaptor::Run() {
-  dispatcher_->enter();
-  while (1) {
-    dispatcher_->do_iteration();
-  }
-  // Unreachable.
-  dispatcher_->leave();
+void DebugdDBusAdaptor::RegisterAsync(
+    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+  RegisterWithDBusObject(&dbus_object_);
+  dbus_object_.RegisterAsync(cb);
 }
 
 std::string DebugdDBusAdaptor::SetOomScoreAdj(
-    const std::map<pid_t, int32_t>& scores, DBus::Error& error) {
+    const std::map<pid_t, int32_t>& scores) {
   return oom_adj_tool_->Set(scores);
 }
 
-std::string DebugdDBusAdaptor::PingStart(
-    const DBus::FileDescriptor& outfd,
-    const std::string& destination,
-    const std::map<std::string, DBus::Variant>& options,
-    DBus::Error& error) {  // NOLINT
-  std::string id;
-  if (!ping_tool_->Start(outfd, destination, options, &id, &error))
-    return "";
-
-  return id;
+bool DebugdDBusAdaptor::PingStart(brillo::ErrorPtr* error,
+                                  const dbus::FileDescriptor& outfd,
+                                  const std::string& destination,
+                                  const brillo::VariantDictionary& options,
+                                  std::string* handle) {
+  return ping_tool_->Start(outfd, destination, options, handle, error);
 }
 
-void DebugdDBusAdaptor::PingStop(const std::string& handle,
-                                 DBus::Error& error) {  // NOLINT
-  ping_tool_->Stop(handle, &error);
+bool DebugdDBusAdaptor::PingStop(brillo::ErrorPtr* error,
+                                 const std::string& handle) {
+  return ping_tool_->Stop(handle, error);
 }
 
 std::string DebugdDBusAdaptor::TracePathStart(
-    const DBus::FileDescriptor& outfd,
+    const dbus::FileDescriptor& outfd,
     const std::string& destination,
-    const std::map<std::string, DBus::Variant>& options,
-    DBus::Error& error) {  // NOLINT
+    const brillo::VariantDictionary& options) {
   return tracepath_tool_->Start(outfd, destination, options);
 }
 
-void DebugdDBusAdaptor::TracePathStop(const std::string& handle,
-                                      DBus::Error& error) {  // NOLINT
-  tracepath_tool_->Stop(handle, &error);
+bool DebugdDBusAdaptor::TracePathStop(brillo::ErrorPtr* error,
+                                      const std::string& handle) {
+  return tracepath_tool_->Stop(handle, error);
 }
 
-void DebugdDBusAdaptor::SystraceStart(const std::string& categories,
-                                      DBus::Error& error) {  // NOLINT
+void DebugdDBusAdaptor::SystraceStart(const std::string& categories) {
   (void) systrace_tool_->Start(categories);
 }
 
-void DebugdDBusAdaptor::SystraceStop(const DBus::FileDescriptor& outfd,
-                                     DBus::Error& error) { // NOLINT
+void DebugdDBusAdaptor::SystraceStop(const dbus::FileDescriptor& outfd) {
   systrace_tool_->Stop(outfd);
 }
 
-std::string DebugdDBusAdaptor::SystraceStatus(DBus::Error& error) {  // NOLINT
+std::string DebugdDBusAdaptor::SystraceStatus() {
   return systrace_tool_->Status();
 }
 
 std::vector<std::string> DebugdDBusAdaptor::GetRoutes(
-    const std::map<std::string, DBus::Variant>& options,
-    DBus::Error& error) {  // NOLINT
+    const brillo::VariantDictionary& options) {
   return route_tool_->GetRoutes(options);
 }
 
-std::string DebugdDBusAdaptor::GetModemStatus(DBus::Error& error) {  // NOLINT
+std::string DebugdDBusAdaptor::GetModemStatus() {
   return modem_status_tool_->GetModemStatus();
 }
 
-std::string DebugdDBusAdaptor::RunModemCommand(const std::string& command,
-                                               DBus::Error& error) {  // NOLINT
+std::string DebugdDBusAdaptor::RunModemCommand(const std::string& command) {
   return modem_status_tool_->RunModemCommand(command);
 }
 
-std::string DebugdDBusAdaptor::GetNetworkStatus(DBus::Error& error) { // NOLINT
+std::string DebugdDBusAdaptor::GetNetworkStatus() {
   return network_status_tool_->GetNetworkStatus();
 }
 
-std::string DebugdDBusAdaptor::GetWiMaxStatus(DBus::Error& error) { // NOLINT
+std::string DebugdDBusAdaptor::GetWiMaxStatus() {
   return wimax_status_tool_->GetWiMaxStatus();
 }
 
-void DebugdDBusAdaptor::GetPerfOutput(
-    const uint32_t& duration_sec,
+bool DebugdDBusAdaptor::GetPerfOutput(
+    brillo::ErrorPtr* error,
+    uint32_t duration_sec,
     const std::vector<std::string>& perf_args,
-    int32_t& status,
-    std::vector<uint8_t>& perf_data,
-    std::vector<uint8_t>& perf_stat,
-    DBus::Error& error) {  // NOLINT
-  status = perf_tool_->GetPerfOutput(
-      duration_sec, perf_args, &perf_data, &perf_stat, &error);
+    int32_t* status,
+    std::vector<uint8_t>* perf_data,
+    std::vector<uint8_t>* perf_stat) {
+  *status = perf_tool_->GetPerfOutput(
+      duration_sec, perf_args, perf_data, perf_stat, error);
+  return *status == 0;
 }
 
-void DebugdDBusAdaptor::GetPerfOutputFd(
-    const uint32_t& duration_sec,
+bool DebugdDBusAdaptor::GetPerfOutputFd(
+    brillo::ErrorPtr* error,
+    uint32_t duration_sec,
     const std::vector<std::string>& perf_args,
-    const DBus::FileDescriptor& stdout_fd,
-    DBus::Error& error) {  // NOLINT
-  perf_tool_->GetPerfOutputFd(
-      duration_sec, perf_args, stdout_fd, &error);
+    const dbus::FileDescriptor& stdout_fd) {
+  return perf_tool_->GetPerfOutputFd(
+      duration_sec, perf_args, stdout_fd, error);
 }
 
-void DebugdDBusAdaptor::DumpDebugLogs(const bool& is_compressed,
-                                      const DBus::FileDescriptor& fd,
-                                      DBus::Error& error) {  // NOLINT
+void DebugdDBusAdaptor::DumpDebugLogs(bool is_compressed,
+                                      const dbus::FileDescriptor& fd) {
   debug_logs_tool_->GetDebugLogs(is_compressed, fd);
 }
 
-void DebugdDBusAdaptor::SetDebugMode(const std::string& subsystem,
-                                     DBus::Error& error) {  // NOLINT
+void DebugdDBusAdaptor::SetDebugMode(const std::string& subsystem) {
   debug_mode_tool_->SetDebugMode(subsystem);
 }
 
-std::string DebugdDBusAdaptor::GetLog(const std::string& name,
-                                      DBus::Error& error) {  // NOLINT
+std::string DebugdDBusAdaptor::GetLog(const std::string& name) {
   return log_tool_->GetLog(name);
 }
 
-std::map<std::string, std::string> DebugdDBusAdaptor::GetAllLogs(
-    DBus::Error& error) {  // NOLINT
-  return log_tool_->GetAllLogs(dbus_);
+std::map<std::string, std::string> DebugdDBusAdaptor::GetAllLogs() {
+  return log_tool_->GetAllLogs(dbus_object_.GetBus());
 }
 
-std::map<std::string, std::string> DebugdDBusAdaptor::GetFeedbackLogs(
-    DBus::Error& error) {  // NOLINT
-  return log_tool_->GetFeedbackLogs(dbus_);
+std::map<std::string, std::string> DebugdDBusAdaptor::GetFeedbackLogs() {
+  return log_tool_->GetFeedbackLogs(dbus_object_.GetBus());
 }
 
-void DebugdDBusAdaptor::GetBigFeedbackLogs(const DBus::FileDescriptor& fd,
-                                           DBus::Error& error) {  // NOLINT
-  log_tool_->GetBigFeedbackLogs(dbus_, fd);
+void DebugdDBusAdaptor::GetBigFeedbackLogs(const dbus::FileDescriptor& fd) {
+  log_tool_->GetBigFeedbackLogs(dbus_object_.GetBus(), fd);
 }
 
-std::map<std::string, std::string> DebugdDBusAdaptor::GetUserLogFiles(
-    DBus::Error& error) {  // NOLINT
+std::map<std::string, std::string> DebugdDBusAdaptor::GetUserLogFiles() {
   return log_tool_->GetUserLogFiles();
 }
 
-std::string DebugdDBusAdaptor::GetExample(DBus::Error& error) {  // NOLINT
+std::string DebugdDBusAdaptor::GetExample() {
   return example_tool_->GetExample();
 }
 
 int32_t DebugdDBusAdaptor::CupsAddAutoConfiguredPrinter(
     const std::string& name,
-    const std::string& uri,
-    DBus::Error& error) {  // NOLINT
+    const std::string& uri) {
   return cups_tool_->AddAutoConfiguredPrinter(name, uri);
 }
 
 int32_t DebugdDBusAdaptor::CupsAddManuallyConfiguredPrinter(
     const std::string& name,
     const std::string& uri,
-    const std::vector<uint8_t>& ppd_contents,
-    DBus::Error& error) {  // NOLINT
+    const std::vector<uint8_t>& ppd_contents) {
   return cups_tool_->AddManuallyConfiguredPrinter(
       name, uri, ppd_contents);
 }
 
-bool DebugdDBusAdaptor::CupsRemovePrinter(const std::string& name,
-                                          DBus::Error& error) { // NOLINT
+bool DebugdDBusAdaptor::CupsRemovePrinter(const std::string& name) {
   return cups_tool_->RemovePrinter(name);
 }
 
-void DebugdDBusAdaptor::CupsResetState(DBus::Error& error) { // NOLINT
+void DebugdDBusAdaptor::CupsResetState() {
   cups_tool_->ResetState();
 }
 
-std::string DebugdDBusAdaptor::GetInterfaces(DBus::Error& error) {  // NOLINT
+std::string DebugdDBusAdaptor::GetInterfaces() {
   return netif_tool_->GetInterfaces();
 }
 
-std::string DebugdDBusAdaptor::TestICMP(const std::string& host,
-                                        DBus::Error& error) {  // NOLINT
+std::string DebugdDBusAdaptor::TestICMP(const std::string& host) {
   return icmp_tool_->TestICMP(host);
 }
 
 std::string DebugdDBusAdaptor::TestICMPWithOptions(
     const std::string& host,
-    const std::map<std::string, std::string>& options,
-    DBus::Error& error) {  // NOLINT
+    const std::map<std::string, std::string>& options) {
   return icmp_tool_->TestICMPWithOptions(host, options);
 }
 
-std::string DebugdDBusAdaptor::BatteryFirmware(const std::string& option,
-                                               DBus::Error& error) {  // NOLINT
+std::string DebugdDBusAdaptor::BatteryFirmware(const std::string& option) {
   return battery_tool_->BatteryFirmware(option);
 }
 
-std::string DebugdDBusAdaptor::Smartctl(const std::string& option,
-                                        DBus::Error& error) {  // NOLINT
+std::string DebugdDBusAdaptor::Smartctl(const std::string& option) {
   return storage_tool_->Smartctl(option);
 }
 
-std::string DebugdDBusAdaptor::MemtesterStart(const DBus::FileDescriptor& outfd,
-                                              const uint32_t& memory,
-                                              DBus::Error& error) {  // NOLINT
+std::string DebugdDBusAdaptor::MemtesterStart(const dbus::FileDescriptor& outfd,
+                                              uint32_t memory) {
   return memory_tool_->Start(outfd, memory);
 }
 
-void DebugdDBusAdaptor::MemtesterStop(const std::string& handle,
-                                      DBus::Error& error) {  // NOLINT
-  memory_tool_->Stop(handle, &error);
+bool DebugdDBusAdaptor::MemtesterStop(brillo::ErrorPtr* error,
+                                      const std::string& handle) {
+  return memory_tool_->Stop(handle, error);
 }
 
-std::string DebugdDBusAdaptor::BadblocksStart(const DBus::FileDescriptor& outfd,
-                                              DBus::Error& error) {  // NOLINT
+std::string DebugdDBusAdaptor::BadblocksStart(
+    const dbus::FileDescriptor& outfd) {
   return storage_tool_->Start(outfd);
 }
 
-void DebugdDBusAdaptor::BadblocksStop(const std::string& handle,
-                                      DBus::Error& error) {  // NOLINT
-  storage_tool_->Stop(handle, &error);
+bool DebugdDBusAdaptor::BadblocksStop(brillo::ErrorPtr* error,
+                                      const std::string& handle) {
+  return storage_tool_->Stop(handle, error);
 }
 
-std::string DebugdDBusAdaptor::PacketCaptureStart(
-    const DBus::FileDescriptor& statfd,
-    const DBus::FileDescriptor& outfd,
-    const std::map<std::string, DBus::Variant>& options,
-    DBus::Error& error) {  // NOLINT
-  std::string id;
-  if (!packet_capture_tool_->Start(statfd, outfd, options, &id, &error))
-    return "";
-
-  return id;
+bool DebugdDBusAdaptor::PacketCaptureStart(
+    brillo::ErrorPtr* error,
+    const dbus::FileDescriptor& statfd,
+    const dbus::FileDescriptor& outfd,
+    const brillo::VariantDictionary& options,
+    std::string* handle) {
+  return packet_capture_tool_->Start(statfd, outfd, options, handle, error);
 }
 
-void DebugdDBusAdaptor::PacketCaptureStop(const std::string& handle,
-                                          DBus::Error& error) {  // NOLINT
-  packet_capture_tool_->Stop(handle, &error);
+bool DebugdDBusAdaptor::PacketCaptureStop(brillo::ErrorPtr* error,
+                                          const std::string& handle) {
+  return packet_capture_tool_->Stop(handle, error);
 }
 
-void DebugdDBusAdaptor::LogKernelTaskStates(DBus::Error& error) {  // NOLINT
-  sysrq_tool_->LogKernelTaskStates(&error);
+bool DebugdDBusAdaptor::LogKernelTaskStates(brillo::ErrorPtr* error) {
+  return sysrq_tool_->LogKernelTaskStates(error);
 }
 
-void DebugdDBusAdaptor::UploadCrashes(DBus::Error& error) {  // NOLINT
+void DebugdDBusAdaptor::UploadCrashes() {
   crash_sender_tool_->UploadCrashes();
 }
 
-void DebugdDBusAdaptor::RemoveRootfsVerification(
-    DBus::Error& error) {  // NOLINT
-  auto tool = dev_features_tool_wrapper_->GetTool(&error);
-  if (tool)
-    tool->RemoveRootfsVerification(&error);
+bool DebugdDBusAdaptor::RemoveRootfsVerification(brillo::ErrorPtr* error) {
+  auto tool = dev_features_tool_wrapper_->GetTool(error);
+  return tool && tool->RemoveRootfsVerification(error);
 }
 
-void DebugdDBusAdaptor::EnableBootFromUsb(DBus::Error& error) {  // NOLINT
-  auto tool = dev_features_tool_wrapper_->GetTool(&error);
-  if (tool)
-    tool->EnableBootFromUsb(&error);
+bool DebugdDBusAdaptor::EnableBootFromUsb(brillo::ErrorPtr* error) {
+  auto tool = dev_features_tool_wrapper_->GetTool(error);
+  return tool && tool->EnableBootFromUsb(error);
 }
 
-void DebugdDBusAdaptor::EnableChromeRemoteDebugging(
-    DBus::Error& error) {  // NOLINT
-  auto tool = dev_features_tool_wrapper_->GetTool(&error);
-  if (tool)
-    tool->EnableChromeRemoteDebugging(&error);
+bool DebugdDBusAdaptor::EnableChromeRemoteDebugging(brillo::ErrorPtr* error) {
+  auto tool = dev_features_tool_wrapper_->GetTool(error);
+  return tool && tool->EnableChromeRemoteDebugging(error);
 }
 
-void DebugdDBusAdaptor::ConfigureSshServer(DBus::Error& error) {  // NOLINT
-  auto tool = dev_features_tool_wrapper_->GetTool(&error);
-  if (tool)
-    tool->ConfigureSshServer(&error);
+bool DebugdDBusAdaptor::ConfigureSshServer(brillo::ErrorPtr* error) {
+  auto tool = dev_features_tool_wrapper_->GetTool(error);
+  return tool && tool->ConfigureSshServer(error);
 }
 
-void DebugdDBusAdaptor::SetUserPassword(const std::string& username,
-                                        const std::string& password,
-                                        DBus::Error& error) {  // NOLINT
-  auto tool = dev_features_tool_wrapper_->GetTool(&error);
-  if (tool)
-    tool->SetUserPassword(username, password, &error);
+bool DebugdDBusAdaptor::SetUserPassword(brillo::ErrorPtr* error,
+                                        const std::string& username,
+                                        const std::string& password) {
+  auto tool = dev_features_tool_wrapper_->GetTool(error);
+  return tool && tool->SetUserPassword(username, password, error);
 }
 
-void DebugdDBusAdaptor::EnableChromeDevFeatures(
-    const std::string& root_password, DBus::Error& error) {  // NOLINT
-  auto tool = dev_features_tool_wrapper_->GetTool(&error);
-  if (tool)
-    tool->EnableChromeDevFeatures(root_password, &error);
+bool DebugdDBusAdaptor::EnableChromeDevFeatures(
+    brillo::ErrorPtr* error,
+    const std::string& root_password) {
+  auto tool = dev_features_tool_wrapper_->GetTool(error);
+  return tool && tool->EnableChromeDevFeatures(root_password, error);
 }
 
-int32_t DebugdDBusAdaptor::QueryDevFeatures(DBus::Error& error) {  // NOLINT
+bool DebugdDBusAdaptor::QueryDevFeatures(brillo::ErrorPtr* error,
+                                         int32_t* features) {
   // Special case: if access fails here, we return DEV_FEATURES_DISABLED rather
   // than a D-Bus error. However, we still want to return an error if we can
   // access the tool but the tool execution fails.
   auto tool = dev_features_tool_wrapper_->GetTool(nullptr);
-  if (!tool)
-    return DEV_FEATURES_DISABLED;
+  if (!tool) {
+    *features = DEV_FEATURES_DISABLED;
+    return true;
+  }
 
-  int32_t features;
-  if (!tool->QueryDevFeatures(&features, &error))
-    return DEV_FEATURES_DISABLED;
-
-  return features;
+  return tool && tool->QueryDevFeatures(features, error);
 }
 
-void DebugdDBusAdaptor::EnableDevCoredumpUpload(DBus::Error& error) {  // NOLINT
+bool DebugdDBusAdaptor::EnableDevCoredumpUpload(brillo::ErrorPtr* error) {
   if (base::PathExists(
       base::FilePath(debugd::kDeviceCoredumpUploadFlagPath))) {
     VLOG(1) << "Device coredump upload already enabled";
-    return;
+    return false;
   }
   if (base::WriteFile(
       base::FilePath(debugd::kDeviceCoredumpUploadFlagPath), "", 0) < 0) {
-    error.set(kDevCoredumpDBusErrorString, "Failed to write flag file.");
+    DEBUGD_ADD_ERROR(error,
+              kDevCoredumpDBusErrorString,
+              "Failed to write flag file.");
     PLOG(ERROR) << "Failed to write flag file.";
-    return;
+    return false;
   }
+  return true;
 }
 
-void DebugdDBusAdaptor::DisableDevCoredumpUpload(
-    DBus::Error& error) {  // NOLINT
+bool DebugdDBusAdaptor::DisableDevCoredumpUpload(brillo::ErrorPtr* error) {
   if (!base::PathExists(
       base::FilePath(debugd::kDeviceCoredumpUploadFlagPath))) {
     VLOG(1) << "Device coredump upload already disabled";
-    return;
+    return false;
   }
   if (!base::DeleteFile(
       base::FilePath(debugd::kDeviceCoredumpUploadFlagPath), false)) {
-    error.set(kDevCoredumpDBusErrorString, "Failed to delete flag file.");
+    DEBUGD_ADD_ERROR(error,
+              kDevCoredumpDBusErrorString,
+              "Failed to delete flag file.");
     PLOG(ERROR) << "Failed to delete flag file.";
-    return;
+    return false;
   }
+  return true;
 }
 
-std::string DebugdDBusAdaptor::SwapEnable(const uint32_t& size,
-                                          const bool& change_now,
-                                          DBus::Error& error) {  // NOLINT
+std::string DebugdDBusAdaptor::SwapEnable(uint32_t size, bool change_now) {
   return swap_tool_->SwapEnable(size, change_now);
 }
 
-std::string DebugdDBusAdaptor::SwapDisable(const bool& change_now,
-                                           DBus::Error& error) {  // NOLINT
+std::string DebugdDBusAdaptor::SwapDisable(bool change_now) {
   return swap_tool_->SwapDisable(change_now);
 }
 
-std::string DebugdDBusAdaptor::SwapStartStop(const bool& on,
-                                             DBus::Error& error) {  // NOLINT
+std::string DebugdDBusAdaptor::SwapStartStop(bool on) {
   return swap_tool_->SwapStartStop(on);
 }
 
-std::string DebugdDBusAdaptor::SwapStatus(DBus::Error& error) {  // NOLINT
+std::string DebugdDBusAdaptor::SwapStatus() {
   return swap_tool_->SwapStatus();
 }
 
 std::string DebugdDBusAdaptor::SwapSetParameter(
     const std::string& parameter_name,
-    const uint32_t& parameter_value,
-    DBus::Error& error) {  // NOLINT
+    uint32_t parameter_value) {
   return swap_tool_->SwapSetParameter(parameter_name, parameter_value);
 }
 
-bool DebugdDBusAdaptor::SetWifiDriverDebug(const int32_t& flags,
-                                           DBus::Error& error) {  // NOLINT
-  return wifi_debug_tool_->SetEnabled(debugd::WifiDebugFlag(flags), &error);
+bool DebugdDBusAdaptor::SetWifiDriverDebug(int32_t flags) {
+  return wifi_debug_tool_->SetEnabled(debugd::WifiDebugFlag(flags), nullptr);
 }
 
-void DebugdDBusAdaptor::ContainerStarted(DBus::Error& error) {  // NOLINT
+void DebugdDBusAdaptor::ContainerStarted() {
   container_tool_->ContainerStarted();
 }
 
-void DebugdDBusAdaptor::ContainerStopped(DBus::Error& error) {  // NOLINT
+void DebugdDBusAdaptor::ContainerStopped() {
   container_tool_->ContainerStopped();
 }
 

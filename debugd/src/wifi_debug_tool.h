@@ -7,7 +7,7 @@
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
+#include <brillo/errors/error.h>
 
 namespace debugd {
 
@@ -21,11 +21,11 @@ class WifiDebugTool {
   WifiDebugTool() = default;
   ~WifiDebugTool() = default;
 
-  bool SetEnabled(WifiDebugFlag flags, DBus::Error* error);
+  bool SetEnabled(WifiDebugFlag flags, brillo::ErrorPtr* error);
 
  private:
   bool WriteSysfsFlags(const char* str, base::FilePath path,
-                       DBus::Error* error);
+                       brillo::ErrorPtr* error);
   DISALLOW_COPY_AND_ASSIGN(WifiDebugTool);
 };
 

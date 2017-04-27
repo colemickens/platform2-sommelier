@@ -4,15 +4,16 @@
 
 #include "debugd/src/debug_mode_tool.h"
 
+#include <memory>
+
+#include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
-#include <shill/dbus_proxies/org.chromium.flimflam.Manager.h>
-
-#include "dbus_proxies/org.freedesktop.DBus.Properties.h"
-
-#if USE_CELLULAR
-#include "dbus_proxies/org.freedesktop.ModemManager.h"
-#include "dbus_proxies/org.freedesktop.ModemManager1.h"
-#endif  // USE_CELLULAR
+#include <dbus/bus.h>
+#include <dbus/message.h>
+#include <dbus/object_proxy.h>
+#include <dbus/property.h>
+#include <shill/dbus-proxies.h>
+#include <supplicant/dbus-proxies.h>
 
 namespace debugd {
 
@@ -21,23 +22,10 @@ namespace {
 const int kFlimflamLogLevelVerbose3 = -3;
 const int kFlimflamLogLevelInfo = 0;
 
-const char kSupplicantPath[] = "/fi/w1/wpa_supplicant1";
-const char kSupplicantService[] = "fi.w1.wpa_supplicant1";
-const char kSupplicantIface[] = "fi.w1.wpa_supplicant1";
+const char kSupplicantServiceName[] = "fi.w1.wpa_supplicant1";
+const char kSupplicantObjectPath[] = "/f1/w1/wpa_supplicant1";
 
 }  // namespace
-
-class ManagerProxy : public org::chromium::flimflam::Manager_proxy,
-                     public DBus::ObjectProxy {
- public:
-  ManagerProxy(DBus::Connection* connection,
-               const char* path,
-               const char* service)
-      : DBus::ObjectProxy(*connection, path, service) {}
-  ~ManagerProxy() override = default;
-  void PropertyChanged(const std::string&, const DBus::Variant&) override {}
-  void StateChanged(const std::string&) override {}
-};
 
 #if USE_CELLULAR
 
@@ -45,54 +33,16 @@ namespace {
 
 const char kDBusListNames[] = "ListNames";
 const char kModemManager[] = "ModemManager";
+const char kSetLogging[] = "SetLogging";
 
 }  // namespace
 
-class ModemManagerProxy : public org::freedesktop::ModemManager_proxy,
-                          public DBus::ObjectProxy {
- public:
-  ModemManagerProxy(DBus::Connection* connection,
-                    const char* path,
-                    const char* service)
-      : DBus::ObjectProxy(*connection, path, service) {}
-  ~ModemManagerProxy() override = default;
-  void DeviceAdded(const DBus::Path&) override {}
-  void DeviceRemoved(const DBus::Path&) override {}
-};
-
-class ModemManager1Proxy : public org::freedesktop::ModemManager1_proxy,
-                           public DBus::ObjectProxy {
- public:
-  ModemManager1Proxy(DBus::Connection* connection,
-                     const char* path,
-                     const char* service)
-      : DBus::ObjectProxy(*connection, path, service) {}
-  ~ModemManager1Proxy() override = default;
-};
-
 #endif  // USE_CELLULAR
 
-class PropertiesProxy : public org::freedesktop::DBus::Properties_proxy,
-                        public DBus::ObjectProxy {
- public:
-  PropertiesProxy(DBus::Connection* connection,
-                  const char* path,
-                  const char* service)
-      : DBus::ObjectProxy(*connection, path, service) {}
-  ~PropertiesProxy() override = default;
-};
-
-DebugModeTool::DebugModeTool(DBus::Connection* connection)
-    : connection_(connection) {}
+DebugModeTool::DebugModeTool(scoped_refptr<dbus::Bus> bus) : bus_(bus) {}
 
 void DebugModeTool::SetDebugMode(const std::string& subsystem) {
-  ManagerProxy flimflam(connection_,
-                        shill::kFlimflamServicePath,
-                        shill::kFlimflamServiceName);
-  PropertiesProxy supplicant(connection_, kSupplicantPath, kSupplicantService);
   std::string flimflam_tags;
-  DBus::Variant supplicant_value;
-  std::string modemmanager_value = "info";
   std::string supplicant_level = "info";
   if (subsystem == "wifi") {
     flimflam_tags = "service+wifi+inet+device+manager";
@@ -106,37 +56,59 @@ void DebugModeTool::SetDebugMode(const std::string& subsystem) {
   } else if (subsystem == "none") {
     flimflam_tags = "";
   }
-  flimflam.SetDebugTags(flimflam_tags);
-  if (flimflam_tags.length()) {
-    flimflam.SetDebugLevel(kFlimflamLogLevelVerbose3);
-  } else {
-    flimflam.SetDebugLevel(kFlimflamLogLevelInfo);
+
+  auto shill = base::MakeUnique<org::chromium::flimflam::ManagerProxy>(bus_);
+  if (shill) {
+    shill->SetDebugTags(flimflam_tags, nullptr);
+    if (flimflam_tags.length()) {
+      shill->SetDebugLevel(kFlimflamLogLevelVerbose3, nullptr);
+    } else {
+      shill->SetDebugLevel(kFlimflamLogLevelInfo, nullptr);
+    }
   }
-  supplicant_value.writer().append_string(supplicant_level.c_str());
-  supplicant.Set(kSupplicantIface, "DebugLevel", supplicant_value);
-  SetAllModemManagersLogging(modemmanager_value);
+
+  auto supplicant = base::MakeUnique<fi::w1::wpa_supplicant1Proxy>(
+      bus_, kSupplicantServiceName, dbus::ObjectPath(kSupplicantObjectPath));
+  if (supplicant)
+    supplicant->GetProperties()->debug_level.SetAndBlock(supplicant_level);
+
+  SetAllModemManagersLogging("info");
 }
 
 void DebugModeTool::GetAllModemManagers(std::vector<std::string>* managers) {
 #if USE_CELLULAR
   managers->clear();
 
-  DBus::CallMessage msg;
-  DBus::MessageIter iter;
-  msg.destination(dbus::kDBusInterface);
-  msg.interface(dbus::kDBusInterface);
-  msg.member(kDBusListNames);
-  msg.path(dbus::kDBusServicePath);
-  DBus::Message ret = connection_->send_blocking(msg, -1);
-  iter = ret.reader();
-  iter = iter.recurse();
-  while (!iter.at_end()) {
-    std::string name(iter.get_string());
+  dbus::ObjectProxy* proxy =
+      bus_->GetObjectProxy(dbus::kDBusServiceName,
+                           dbus::ObjectPath(dbus::kDBusServicePath));
+  dbus::MethodCall method_call(dbus::kDBusInterface, kDBusListNames);
+  std::unique_ptr<dbus::Response> response =
+      proxy->CallMethodAndBlock(&method_call,
+                                dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+
+  std::vector<std::string> names;
+  dbus::MessageReader reader(response.get());
+  if (!reader.PopArrayOfStrings(&names))
+    return;
+
+  for (const auto& name : names) {
     if (name.find(kModemManager) != std::string::npos)
       managers->push_back(name);
-    ++iter;
   }
 #endif  // USE_CELLULAR
+}
+
+void DebugModeTool::SetModemManagerLogging(const std::string& service_name,
+                                           const std::string& service_path,
+                                           const std::string& level) {
+  dbus::ObjectProxy* proxy =
+      bus_->GetObjectProxy(service_name, dbus::ObjectPath(service_path));
+  dbus::MethodCall method_call(service_name, kSetLogging);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(level);
+  proxy->CallMethodAndBlock(&method_call,
+                            dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
 }
 
 void DebugModeTool::SetAllModemManagersLogging(const std::string& level) {
@@ -146,15 +118,13 @@ void DebugModeTool::SetAllModemManagersLogging(const std::string& level) {
   for (size_t i = 0; i < managers.size(); ++i) {
     const std::string& manager = managers[i];
     if (manager == cromo::kCromoServiceName) {
-      ModemManagerProxy modemmanager(connection_,
-                                     cromo::kCromoServicePath,
-                                     cromo::kCromoServiceName);
-      modemmanager.SetLogging(level == "err" ? "error" : level);
+      SetModemManagerLogging(cromo::kCromoServiceName,
+                             cromo::kCromoServicePath,
+                             (level == "err" ? "error" : level));
     } else if (manager == modemmanager::kModemManager1ServiceName) {
-      ModemManager1Proxy modemmanager(connection_,
-                                      modemmanager::kModemManager1ServicePath,
-                                      modemmanager::kModemManager1ServiceName);
-      modemmanager.SetLogging(level);
+      SetModemManagerLogging(modemmanager::kModemManager1ServiceName,
+                             modemmanager::kModemManager1ServicePath,
+                             level);
     }
   }
 #endif  // USE_CELLULAR

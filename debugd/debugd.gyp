@@ -3,7 +3,6 @@
     'variables': {
       'deps': [
         'dbus-1',
-        'dbus-c++-1',
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
         'libminijail',
@@ -38,20 +37,28 @@
       'target_name': 'debugd-adaptors',
       'type': 'none',
       'variables': {
-        'xml2cpp_type': 'adaptor',
-        'xml2cpp_out_dir': 'include/debugd/dbus_adaptors',
+        'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
+        'dbus_adaptors_out_dir': 'include/debugd/dbus_adaptors',
       },
       'sources': [
         'dbus_bindings/org.chromium.debugd.xml',
       ],
-      'includes': ['../common-mk/xml2cpp.gypi'],
+      'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
     },
     {
       'target_name': 'debugd-proxies',
       'type': 'none',
-      'dependencies': [
-        '../common-mk/external_dependencies.gyp:dbus-proxies',
-        '../login_manager/login_manager.gyp:session_manager_proxies',
+      'actions': [
+        {
+          'action_name': 'generate-supplicant-proxies',
+          'variables': {
+            'proxy_output_file': 'include/supplicant/dbus-proxies.h',
+          },
+          'sources': [
+            '../../aosp/system/connectivity/shill/dbus_bindings/supplicant-process.dbus-xml',
+          ],
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+        },
       ],
       'variables': {
         'exported_deps': [
@@ -66,13 +73,6 @@
           ],
         },
       },
-      'conditions': [
-        ['USE_cellular == 1', {
-          'dependencies': [
-            '../common-mk/external_dependencies.gyp:modemmanager-dbus-proxies',
-          ],
-        }],
-      ],
     },
     {
       'target_name': 'libdebugd',
@@ -116,6 +116,7 @@
         'src/sysrq_tool.cc',
         'src/systrace_tool.cc',
         'src/tracepath_tool.cc',
+        'src/variant_utils.cc',
         'src/wifi_debug_tool.cc',
         'src/wimax_status_tool.cc',
       ],
@@ -279,6 +280,7 @@
           'variables': {
             'deps': [
               'protobuf',
+              'libchrome-test-<(libbase_ver)',
             ],
           },
           'includes': ['../common-mk/common_test.gypi'],

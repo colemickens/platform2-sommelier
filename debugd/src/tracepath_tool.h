@@ -9,7 +9,8 @@
 #include <string>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
+#include <brillo/variant_dictionary.h>
+#include <dbus/file_descriptor.h>
 
 #include "debugd/src/subprocess_tool.h"
 
@@ -20,9 +21,9 @@ class TracePathTool : public SubprocessTool {
   TracePathTool() = default;
   ~TracePathTool() override = default;
 
-  std::string Start(const DBus::FileDescriptor& outfd,
+  std::string Start(const dbus::FileDescriptor& outfd,
                     const std::string& destination,
-                    const std::map<std::string, DBus::Variant>& options);
+                    const brillo::VariantDictionary& options);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TracePathTool);

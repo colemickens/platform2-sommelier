@@ -4,11 +4,18 @@
 
 #include "debugd/src/dev_mode_no_owner_restriction.h"
 
+#include <memory>
+#include <string>
 #include <vector>
 
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/bus.h>
+#include <dbus/message.h>
+#include <dbus/object_path.h>
+#include <dbus/object_proxy.h>
 #include <google/protobuf/message_lite.h>
 
+#include "debugd/src/error_utils.h"
 #include "debugd/src/process_with_output.h"
 
 #include "rpc.pb.h"  // NOLINT(build/include)
@@ -16,9 +23,6 @@
 namespace debugd {
 
 namespace {
-
-// Time in milliseconds to wait for a D-Bus response from cryptohome.
-const int kDbusTimeoutMs = 5000;
 
 const char kAccessDeniedErrorString[] =
     "org.chromium.debugd.error.AccessDenied";
@@ -31,7 +35,7 @@ const char kOwnerQueryErrorString[] =
 
 // Queries the cryptohome GetLoginStatus D-Bus interface.
 //
-// Handles lower-level logic for dbus-c++ methods and the cryptohome protobuf
+// Handles lower-level logic for dbus methods and the cryptohome protobuf
 // classes. Cryptohome protobuf responses work by extending the BaseReply class,
 // so if an error occurs it's possible to get a reply that does not contain the
 // GetLoginStatusReply extension.
@@ -39,68 +43,54 @@ const char kOwnerQueryErrorString[] =
 // |reply| will be filled if a response was received regardless of extension,
 // but the function will only return true if reply is filled and has the
 // correct GetLoginStatusReply extension.
-bool CryptohomeGetLoginStatus(DBus::Connection* system_dbus,
-                              cryptohome::BaseReply* reply) {
+bool CryptohomeGetLoginStatus(dbus::Bus* bus, cryptohome::BaseReply* reply) {
   cryptohome::GetLoginStatusRequest request;
-  DBus::CallMessage msg;
-  std::vector<uint8_t> bytes(request.ByteSize(), 0);
 
-  // Set up the message target and protobuf bytes to send.
-  if (request.SerializeToArray(bytes.data(), bytes.size()) &&
-      msg.destination(cryptohome::kCryptohomeServiceName) &&
-      msg.path(cryptohome::kCryptohomeServicePath) &&
-      msg.interface(cryptohome::kCryptohomeInterface) &&
-      msg.member(cryptohome::kCryptohomeGetLoginStatus)) {
-    try {
-      DBus::MessageIter write_iter = msg.writer();
-      write_iter << bytes;
-      // Send the D-Bus message. This can return/throw an error on failure.
-      DBus::Message response = system_dbus->send_blocking(msg, kDbusTimeoutMs);
-      if (!response.is_error()) {
-        const uint8_t* response_bytes;
-        size_t response_size =
-            response.reader().recurse().get_array(&response_bytes);
-        // Return true only if we can parse the reply successfully and it
-        // has the proper GetLoginStatusReply extension.
-        return reply->ParseFromArray(response_bytes, response_size) &&
-               reply->HasExtension(cryptohome::GetLoginStatusReply::reply);
-      }
-    } catch (...) {
-    }
-  }
-  return false;
-}
+  dbus::ObjectProxy* proxy = bus->GetObjectProxy(
+      cryptohome::kCryptohomeServiceName,
+      dbus::ObjectPath(cryptohome::kCryptohomeServicePath));
+  dbus::MethodCall method_call(cryptohome::kCryptohomeInterface,
+                               cryptohome::kCryptohomeGetLoginStatus);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendProtoAsArrayOfBytes(request);
+  std::unique_ptr<dbus::Response> response =
+      proxy->CallMethodAndBlock(&method_call,
+                                dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
 
-// Sets a DBus::Error message if the error is non-NULL and hasn't been set yet.
-void SetErrorIfNotSet(DBus::Error* error, const char* message) {
-  if (error && !error->is_set()) {
-    error->set(kAccessDeniedErrorString, message);
-  }
+  if (!response)
+    return false;
+
+  dbus::MessageReader reader(response.get());
+  return reader.PopArrayOfBytesAsProto(reply);
 }
 
 }  // namespace
 
 DevModeNoOwnerRestriction::DevModeNoOwnerRestriction(
-    DBus::Connection* system_dbus)
-    : system_dbus_(system_dbus) {
-}
+    scoped_refptr<dbus::Bus> bus) : bus_(bus) {}
 
-bool DevModeNoOwnerRestriction::AllowToolUse(DBus::Error* error) {
+bool DevModeNoOwnerRestriction::AllowToolUse(brillo::ErrorPtr* error) {
   // Check dev mode first to avoid unnecessary cryptohome query delays.
-  if (InDevMode()) {
-    bool owner_exists, boot_lockbox_finalized;
-    if (GetOwnerAndLockboxStatus(&owner_exists, &boot_lockbox_finalized)) {
-      if (!(owner_exists || boot_lockbox_finalized)) {
-        return true;
-      }
-      SetErrorIfNotSet(error, kOwnerAccessErrorString);
-    }
-    // We want to specifically indicate when the query failed  since it may
-    // mean that cryptohome is busy and could be tried again later.
-    SetErrorIfNotSet(error, kOwnerQueryErrorString);
+  if (!InDevMode()) {
+    DEBUGD_ADD_ERROR(
+        error, kAccessDeniedErrorString, kDevModeAccessErrorString);
+    return false;
   }
-  SetErrorIfNotSet(error, kDevModeAccessErrorString);
-  return false;
+
+  bool owner_exists, boot_lockbox_finalized;
+  if (!GetOwnerAndLockboxStatus(&owner_exists, &boot_lockbox_finalized)) {
+    // We want to specifically indicate when the query failed since it may
+    // mean that cryptohome is busy and could be tried again later.
+    DEBUGD_ADD_ERROR(error, kAccessDeniedErrorString, kOwnerQueryErrorString);
+    return false;
+  }
+
+  if (owner_exists || boot_lockbox_finalized) {
+    DEBUGD_ADD_ERROR(error, kAccessDeniedErrorString, kOwnerAccessErrorString);
+    return false;
+  }
+
+  return true;
 }
 
 bool DevModeNoOwnerRestriction::InDevMode() const {
@@ -127,7 +117,7 @@ bool DevModeNoOwnerRestriction::GetOwnerAndLockboxStatus(
     bool* owner_user_exists,
     bool* boot_lockbox_finalized) {
   cryptohome::BaseReply base_reply;
-  if (CryptohomeGetLoginStatus(system_dbus_, &base_reply)) {
+  if (CryptohomeGetLoginStatus(bus_.get(), &base_reply)) {
     cryptohome::GetLoginStatusReply reply =
         base_reply.GetExtension(cryptohome::GetLoginStatusReply::reply);
     if (reply.has_owner_user_exists() && reply.has_boot_lockbox_finalized()) {

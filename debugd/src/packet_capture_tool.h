@@ -9,7 +9,9 @@
 #include <string>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
+#include <brillo/errors/error.h>
+#include <brillo/variant_dictionary.h>
+#include <dbus/file_descriptor.h>
 
 #include "debugd/src/subprocess_tool.h"
 
@@ -22,19 +24,13 @@ class PacketCaptureTool : public SubprocessTool {
   PacketCaptureTool() = default;
   ~PacketCaptureTool() override = default;
 
-  bool Start(const DBus::FileDescriptor& status_fd,
-             const DBus::FileDescriptor& output_fd,
-             const std::map<std::string, DBus::Variant>& options,
+  bool Start(const dbus::FileDescriptor& status_fd,
+             const dbus::FileDescriptor& output_fd,
+             const brillo::VariantDictionary& options,
              std::string* out_id,
-             DBus::Error* error);
+             brillo::ErrorPtr* error);
 
  private:
-  static bool AddValidatedStringOption(
-      const std::map<std::string, DBus::Variant>& options,
-      const std::string& dbus_option,
-      const std::string& command_line_option,
-      ProcessWithId* p);
-
   DISALLOW_COPY_AND_ASSIGN(PacketCaptureTool);
 };
 

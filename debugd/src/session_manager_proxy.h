@@ -8,9 +8,14 @@
 #include <string>
 
 #include <base/macros.h>
-#include <chromeos/dbus/service_constants.h>
-#include <dbus-c++/dbus.h>
-#include <session_manager/dbus_proxies/org.chromium.SessionManagerInterface.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/weak_ptr.h>
+#include <dbus/bus.h>
+
+namespace dbus {
+class ObjectProxy;
+class Signal;
+}  // namespace dbus
 
 namespace debugd {
 
@@ -18,34 +23,29 @@ namespace debugd {
 // convenience method to enable Chrome remote debugging and listens to Session
 // Manager signal to ensure Chrome remote debugging is on when it is supposed
 // to be.
-class SessionManagerProxy : public org::chromium::SessionManagerInterface_proxy,
-                            public DBus::ObjectProxy {
+class SessionManagerProxy {
  public:
-  explicit SessionManagerProxy(DBus::Connection* connection)
-      : DBus::ObjectProxy(*connection,
-                          login_manager::kSessionManagerServicePath,
-                          login_manager::kSessionManagerServiceName) {}
-  ~SessionManagerProxy() override = default;
-  void LoginPromptVisible() override;
-
-  // Ignored signals.
-  void SessionStateChanged(const std::string& /* state */) override {}
-  void SetOwnerKeyComplete(const std::string& /* success */) override {}
-  void PropertyChangeComplete(const std::string& /* success */) override {}
-  void ScreenIsLocked() override {}
-  void ScreenIsUnlocked() override {}
-
+  explicit SessionManagerProxy(scoped_refptr<dbus::Bus> bus);
+  ~SessionManagerProxy() = default;
   // Sets up the proxy for Chrome remote debugging and tries to enable it.
   void EnableChromeRemoteDebugging();
+
+  // Handler for LoginPromptVisible signal.
+  void OnLoginPromptVisible(dbus::Signal*);
 
  private:
   // Tries to enable Chrome remote debugging.
   void EnableChromeRemoteDebuggingInternal();
 
+  scoped_refptr<dbus::Bus> bus_;
+  dbus::ObjectProxy* proxy_;  // weak, owned by |bus_|
+
   // Should the proxy try to enable Chrome remote debugging.
   bool should_enable_chrome_remote_debugging_ = false;
   // Whether Chrome remote debugging is already successfully enabled.
   bool is_chrome_remote_debugging_enabled_ = false;
+
+  base::WeakPtrFactory<SessionManagerProxy> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerProxy);
 };

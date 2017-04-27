@@ -12,7 +12,8 @@
 #include <vector>
 
 #include <base/macros.h>
-#include <dbus-c++/dbus.h>
+#include <brillo/errors/error.h>
+#include <dbus/file_descriptor.h>
 
 namespace debugd {
 
@@ -27,7 +28,7 @@ class PerfTool {
                     const std::vector<std::string>& perf_args,
                     std::vector<uint8_t>* perf_data,
                     std::vector<uint8_t>* perf_stat,
-                    DBus::Error* error);
+                    brillo::ErrorPtr* error);
 
   // Runs the perf tool with the request command for |duration_secs| seconds
   // and returns either a perf_data or perf_stat protobuf in serialized form
@@ -35,8 +36,8 @@ class PerfTool {
   // error.
   bool GetPerfOutputFd(const uint32_t& duration_secs,
                        const std::vector<std::string>& perf_args,
-                       const DBus::FileDescriptor& stdout_fd,
-                       DBus::Error* error);
+                       const dbus::FileDescriptor& stdout_fd,
+                       brillo::ErrorPtr* error);
 
  private:
   // Helper function that runs perf for a given |duration_secs| returning the
@@ -44,7 +45,6 @@ class PerfTool {
   // perf.
   int GetPerfOutputHelper(const uint32_t& duration_secs,
                           const std::vector<std::string>& perf_args,
-                          DBus::Error* error,
                           std::string* data_string);
 
   DISALLOW_COPY_AND_ASSIGN(PerfTool);
