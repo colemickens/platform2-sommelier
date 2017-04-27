@@ -34,12 +34,6 @@ class DeviceEventDelegate;
 
 class DeviceManager {
  public:
-  // Function to process path components. Exposed for testing.
-  typedef bool (*ProcessPathComponentFunc)(const LIBMTP_file_t*,
-                                           size_t,
-                                           size_t,
-                                           uint32_t*);
-
   explicit DeviceManager(DeviceEventDelegate* delegate);
   ~DeviceManager();
 
@@ -134,14 +128,14 @@ class DeviceManager {
 
  private:
   // Key: MTP storage id, Value: metadata for the given storage.
-  typedef std::map<uint32_t, StorageInfo> MtpStorageMap;
+  using MtpStorageMap = std::map<uint32_t, StorageInfo>;
   // (device handle, map of storages on the device, device polling thread)
   struct MtpDevice {
     LIBMTP_mtpdevice_t* first;
     MtpStorageMap second;
     linked_ptr<base::SimpleThread> third;
 
-    MtpDevice() : first(NULL) {}
+    MtpDevice() : first(nullptr) {}
 
     MtpDevice(LIBMTP_mtpdevice_t* d,
               const MtpStorageMap& m,
@@ -152,7 +146,7 @@ class DeviceManager {
         : first(rhs.first), second(rhs.second), third(rhs.third) {}
   };
   // Key: device bus location, Value: MtpDevice.
-  typedef std::map<std::string, MtpDevice> MtpDeviceMap;
+  using MtpDeviceMap = std::map<std::string, MtpDevice>;
 
   // Reads entries from |device|'s storage with |storage_id|.
   // |file_id| is the unique identifier for a directory on the given storage.
@@ -231,15 +225,14 @@ class DeviceManager {
   // libudev-related items: the main context, the monitoring context to be
   // notified about changes to device states, and the monitoring context's
   // file descriptor.
-  udev* udev_;
+  udev* const udev_;
   udev_monitor* udev_monitor_;
   int udev_monitor_fd_;
 
-  DeviceEventDelegate* delegate_;
+  DeviceEventDelegate* const delegate_;
 
   // Map of devices and storages. Requires |device_map_lock_| to access.
   MtpDeviceMap device_map_;
-
   base::Lock device_map_lock_;
 
   base::WeakPtrFactory<DeviceManager> weak_ptr_factory_;

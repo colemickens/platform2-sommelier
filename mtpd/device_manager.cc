@@ -72,7 +72,7 @@ namespace mtpd {
 
 DeviceManager::DeviceManager(DeviceEventDelegate* delegate)
     : udev_(udev_new()),
-      udev_monitor_(NULL),
+      udev_monitor_(nullptr),
       udev_monitor_fd_(-1),
       delegate_(delegate),
       weak_ptr_factory_(this) {
@@ -82,7 +82,7 @@ DeviceManager::DeviceManager(DeviceEventDelegate* delegate)
   udev_monitor_ = udev_monitor_new_from_netlink(udev_, kUDevEventType);
   CHECK(udev_monitor_);
   int ret = udev_monitor_filter_add_match_subsystem_devtype(
-      udev_monitor_, kUDevUsbSubsystem, NULL);
+      udev_monitor_, kUDevUsbSubsystem, nullptr);
   CHECK_EQ(0, ret);
   ret = udev_monitor_enable_receiving(udev_monitor_);
   CHECK_EQ(0, ret);
@@ -93,7 +93,7 @@ DeviceManager::DeviceManager(DeviceEventDelegate* delegate)
   LIBMTP_Init();
 
   // Trigger a device scan.
-  AddDevices(NULL /* no callback source */);
+  AddDevices(nullptr /* no callback source */);
 }
 
 DeviceManager::~DeviceManager() {
@@ -153,7 +153,7 @@ std::vector<std::string> DeviceManager::EnumerateStorages() {
 }
 
 bool DeviceManager::HasStorage(const std::string& storage_name) {
-  return GetStorageInfo(storage_name) != NULL;
+  return GetStorageInfo(storage_name) != nullptr;
 }
 
 const StorageInfo* DeviceManager::GetStorageInfo(
@@ -161,16 +161,16 @@ const StorageInfo* DeviceManager::GetStorageInfo(
   std::string usb_bus_str;
   uint32_t storage_id = 0;
   if (!ParseStorageName(storage_name, &usb_bus_str, &storage_id))
-    return NULL;
+    return nullptr;
 
   base::AutoLock al(device_map_lock_);
   MtpDeviceMap::const_iterator device_it = device_map_.find(usb_bus_str);
   if (device_it == device_map_.end())
-    return NULL;
+    return nullptr;
 
   const MtpStorageMap& storage_map = device_it->second.second;
   MtpStorageMap::const_iterator storage_it = storage_map.find(storage_id);
-  return (storage_it != storage_map.end()) ? &(storage_it->second) : NULL;
+  return storage_it != storage_map.end() ? &storage_it->second : nullptr;
 }
 
 const StorageInfo* DeviceManager::GetStorageInfoFromDevice(
@@ -178,18 +178,18 @@ const StorageInfo* DeviceManager::GetStorageInfoFromDevice(
   std::string usb_bus_str;
   uint32_t storage_id = 0;
   if (!ParseStorageName(storage_name, &usb_bus_str, &storage_id))
-    return NULL;
+    return nullptr;
 
   base::AutoLock al(device_map_lock_);
   MtpDeviceMap::iterator device_it = device_map_.find(usb_bus_str);
   if (device_it == device_map_.end())
-    return NULL;
+    return nullptr;
 
   // Update |storage_map| with the latest storage info.
   MtpStorageMap& storage_map = device_it->second.second;
   LIBMTP_mtpdevice_t* mtp_device = device_it->second.first;
   LIBMTP_Get_Storage(mtp_device, LIBMTP_STORAGE_SORTBY_NOTSORTED);
-  for (LIBMTP_devicestorage_t* storage = mtp_device->storage; storage != NULL;
+  for (LIBMTP_devicestorage_t* storage = mtp_device->storage; storage;
        storage = storage->next) {
     MtpStorageMap::iterator storage_it = storage_map.find(storage->id);
     // If |storage->id| does not exist in the map, just ignore here. It should
@@ -202,13 +202,14 @@ const StorageInfo* DeviceManager::GetStorageInfoFromDevice(
 
   // Returns StorageInfo of |storage_id|.
   MtpStorageMap::const_iterator new_storage_it = storage_map.find(storage_id);
-  return new_storage_it == storage_map.end() ? NULL : &(new_storage_it->second);
+  return new_storage_it != storage_map.end() ? &new_storage_it->second
+                                             : nullptr;
 }
 
 bool DeviceManager::ReadDirectoryEntryIds(const std::string& storage_name,
                                           uint32_t file_id,
                                           std::vector<uint32_t>* out) {
-  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  LIBMTP_mtpdevice_t* mtp_device = nullptr;
   uint32_t storage_id = 0;
   if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
     return false;
@@ -232,7 +233,7 @@ bool DeviceManager::ReadDirectoryEntryIds(const std::string& storage_name,
 bool DeviceManager::GetFileInfo(const std::string& storage_name,
                                 const std::vector<uint32_t> file_ids,
                                 std::vector<FileEntry>* out) {
-  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  LIBMTP_mtpdevice_t* mtp_device = nullptr;
   uint32_t storage_id = 0;
   if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
     return false;
@@ -266,7 +267,7 @@ bool DeviceManager::ReadFileChunk(const std::string& storage_name,
                                   uint32_t offset,
                                   uint32_t count,
                                   std::vector<uint8_t>* out) {
-  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  LIBMTP_mtpdevice_t* mtp_device = nullptr;
   uint32_t storage_id = 0;
   if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
     return false;
@@ -278,7 +279,7 @@ bool DeviceManager::CopyFileFromLocal(const std::string& storage_name,
                                       const uint32_t parent_id,
                                       const std::string& file_name) {
   // Get device.
-  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  LIBMTP_mtpdevice_t* mtp_device = nullptr;
   uint32_t storage_id = 0;
   if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
     return false;
@@ -297,7 +298,7 @@ bool DeviceManager::CopyFileFromLocal(const std::string& storage_name,
 
   // Transfer a file.
   int transfer_status = LIBMTP_Send_File_From_File_Descriptor(
-      mtp_device, file_descriptor, new_file.get(), NULL, NULL);
+      mtp_device, file_descriptor, new_file.get(), nullptr, nullptr);
 
   return transfer_status == 0;
 }
@@ -305,7 +306,7 @@ bool DeviceManager::CopyFileFromLocal(const std::string& storage_name,
 bool DeviceManager::DeleteObject(const std::string& storage_name,
                                  const uint32_t object_id) {
   // Get the device.
-  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  LIBMTP_mtpdevice_t* mtp_device = nullptr;
   uint32_t storage_id = 0;
   if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
     return false;
@@ -317,7 +318,7 @@ bool DeviceManager::RenameObject(const std::string& storage_name,
                                  const uint32_t object_id,
                                  const std::string& new_name) {
   // Get the device.
-  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  LIBMTP_mtpdevice_t* mtp_device = nullptr;
   uint32_t storage_id = 0;
   if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
     return false;
@@ -328,7 +329,7 @@ bool DeviceManager::RenameObject(const std::string& storage_name,
 
   // Check the object exists.
   LIBMTP_file_t* file = LIBMTP_Get_Filemetadata(mtp_device, object_id);
-  if (file == NULL)
+  if (!file)
     return false;
   std::unique_ptr<LIBMTP_file_t, LibmtpFileDeleter> current_file(file);
 
@@ -349,7 +350,7 @@ bool DeviceManager::CreateDirectory(const std::string& storage_name,
     return false;
 
   // Get the device.
-  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  LIBMTP_mtpdevice_t* mtp_device = nullptr;
   uint32_t storage_id = 0;
   if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
     return false;
@@ -385,9 +386,7 @@ bool DeviceManager::AddStorageForTest(const std::string& storage_name,
     // New device case.
     MtpStorageMap new_storage_map;
     new_storage_map.insert(std::make_pair(storage_id, storage_info));
-    MtpDevice new_mtp_device(static_cast<LIBMTP_mtpdevice_t*>(NULL),
-                             new_storage_map,
-                             static_cast<base::SimpleThread*>(NULL));
+    MtpDevice new_mtp_device(nullptr, new_storage_map, nullptr);
     device_map_.insert(std::make_pair(device_location, new_mtp_device));
     return true;
   }
@@ -413,7 +412,7 @@ bool DeviceManager::ReadDirectory(LIBMTP_mtpdevice_t* device,
                                   std::vector<FileEntry>* out) {
   LIBMTP_file_t* file =
       LIBMTP_Get_Files_And_Folders(device, storage_id, file_id);
-  while (file != NULL) {
+  while (file) {
     std::unique_ptr<LIBMTP_file_t, LibmtpFileDeleter> current_file(file);
     file = file->next;
     out->push_back(FileEntry(*current_file));
@@ -430,7 +429,7 @@ bool DeviceManager::ReadFileChunk(LIBMTP_mtpdevice_t* device,
   if (file_id == kRootFileId)
     return false;
 
-  uint8_t* data = NULL;
+  uint8_t* data = nullptr;
   uint32_t bytes_read = 0;
   int transfer_status =
       LIBMTP_Get_File_Chunk(device, file_id, offset, count, &data, &bytes_read);
@@ -455,7 +454,7 @@ bool DeviceManager::DeleteObjectInternal(LIBMTP_mtpdevice_t* mtp_device,
 
   // Check the object exists.
   LIBMTP_file_t* file = LIBMTP_Get_Filemetadata(mtp_device, object_id);
-  if (file == NULL)
+  if (!file)
     return false;
   std::unique_ptr<LIBMTP_file_t, LibmtpFileDeleter> current_file(file);
 
@@ -567,8 +566,8 @@ void DeviceManager::HandleDeviceNotification(udev_device* device) {
     GSource* source = g_timeout_source_new_seconds(1);
     base::Closure* cb = new base::Closure(base::Bind(
         &DeviceManager::AddDevices, weak_ptr_factory_.GetWeakPtr(), source));
-    g_source_set_callback(source, &GlibRunClosure, cb, NULL);
-    g_source_attach(source, NULL);
+    g_source_set_callback(source, &GlibRunClosure, cb, nullptr);
+    g_source_attach(source, nullptr);
     return;
   }
   if (kEventAction == "remove") {
@@ -621,7 +620,7 @@ void DeviceManager::AddOrUpdateDevices(
   base::AutoLock al(device_map_lock_);
 
   // Get raw devices.
-  LIBMTP_raw_device_t* raw_devices = NULL;
+  LIBMTP_raw_device_t* raw_devices = nullptr;
   int raw_devices_count = 0;
   LIBMTP_error_number_t err =
       LIBMTP_Detect_Raw_Devices(&raw_devices, &raw_devices_count);
@@ -643,7 +642,7 @@ void DeviceManager::AddOrUpdateDevices(
         continue;
     }
 
-    LIBMTP_mtpdevice_t* mtp_device = NULL;
+    LIBMTP_mtpdevice_t* mtp_device = nullptr;
     if (add_update) {
       // Open the mtp device.
       mtp_device = LIBMTP_Open_Raw_Device_Uncached(&raw_devices[i]);
@@ -687,7 +686,7 @@ void DeviceManager::AddOrUpdateDevices(
     for (const auto& it : *storage_map_ptr) {
       removed_storage_ids.insert(it.first);
     }
-    for (LIBMTP_devicestorage_t* storage = mtp_device->storage; storage != NULL;
+    for (LIBMTP_devicestorage_t* storage = mtp_device->storage; storage;
          storage = storage->next) {
       removed_storage_ids.erase(storage->id);
     }
@@ -699,7 +698,7 @@ void DeviceManager::AddOrUpdateDevices(
     }
 
     // Iterate through storages on the device and add any that are missing.
-    for (LIBMTP_devicestorage_t* storage = mtp_device->storage; storage != NULL;
+    for (LIBMTP_devicestorage_t* storage = mtp_device->storage; storage;
          storage = storage->next) {
       if (ContainsKey(*storage_map_ptr, storage->id))
         continue;
@@ -738,7 +737,7 @@ void DeviceManager::AddOrUpdateDevices(
 }
 
 void DeviceManager::RemoveDevices(bool remove_all) {
-  LIBMTP_raw_device_t* raw_devices = NULL;
+  LIBMTP_raw_device_t* raw_devices = nullptr;
   int raw_devices_count = 0;
 
   if (!remove_all) {

@@ -79,10 +79,10 @@ class MtpdServer : public org::chromium::Mtpd_adaptor,
 
  private:
   // StorageHandleInfo is a pair of StorageName and Mode.
-  typedef std::pair<std::string, std::string> StorageHandleInfo;
+  using StorageHandleInfo = std::pair<std::string, std::string>;
 
   // Handle to StorageHandleInfo map.
-  typedef std::map<std::string, StorageHandleInfo> HandleMap;
+  using HandleMap = std::map<std::string, StorageHandleInfo>;
 
   // Returns the StorageName for a handle, or an empty string on failure.
   std::string LookupHandle(const std::string& handle);

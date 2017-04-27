@@ -39,8 +39,6 @@ LDLIBS += -ludev $(PC_LIBS)
 # To add protobufs from a different location then you need to copy all the proto
 # variables and use a new prefix for them, setting the path variable as you
 # need.
-#
-# TODO(thestig) Use protobuf macros once crosbug.com/30056 has been fixed.
 SYSTEM_API_PROTO_BINDINGS = mtp_file_entry.pb.cc \
                             mtp_storage_info.pb.cc
 SYSTEM_API_PROTO_PATH = $(SYSROOT)/usr/include/chromeos/dbus
