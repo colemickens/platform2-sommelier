@@ -75,14 +75,17 @@ class EXPORTED CameraBufferMapper {
   // This method is analogous to the lock() function in Android gralloc module.
   // Here the buffer handle is mapped with the given args.
   //
+  // This method always maps the entire buffer and |x|, |y|, |width|, |height|
+  // do not affect |out_addr|.
+  //
   // Args:
   //    |buffer|: The buffer handle to map.
   //    |flags|:  Currently omitted and is reserved for future use.
-  //    |x|: The base x coordinate in pixels.
-  //    |y|: The base y coordinate in pixels.
-  //    |width|: The width in pixels of the area to map.
-  //    |height|: The height in pixels of the area to map.
-  //    |out_addr|: The mapped address.
+  //    |x|: Unused and has no effect.
+  //    |y|: Unused and has no effect.
+  //    |width|: Unused and has no effect.
+  //    |height|: Unused and has no effect.
+  //    |out_addr|: The mapped address pointing to the start of the buffer.
   //
   // Returns:
   //    0 on success with |out_addr| set with the mapped address;
@@ -99,17 +102,23 @@ class EXPORTED CameraBufferMapper {
   // module.  Here all the physical planes of the buffer handle are mapped with
   // the given args.
   //
+  // This method always maps the entire buffer and |x|, |y|, |width|, |height|
+  // do not affect |out_ycbcr|.
+  //
   // Args:
   //    |buffer|: The buffer handle to map.
   //    |flags|:  Currently omitted and is reserved for future use.
-  //    |x|: The base x coordinate in pixels.
-  //    |y|: The base y coordinate in pixels.
-  //    |width|: The width in pixels of the area to map.
-  //    |height|: The height in pixels of the area to map.
+  //    |x|: Unused and has no effect.
+  //    |y|: Unused and has no effect.
+  //    |width|: Unused and has no effect.
+  //    |height|: Unused and has no effect.
   //    |out_ycbcr|: The mapped addresses, plane strides and chroma offset.
-  //        - |out_ycbcr.y| stores the mapped address of the Y-plane.
-  //        - |out_ycbcr.cb| stores the mapped address of the Cb-plane.
-  //        - |out_ycbcr.cr| stores the mapped address of the Cr-plane.
+  //        - |out_ycbcr.y| stores the mapped address to the start of the
+  //          Y-plane.
+  //        - |out_ycbcr.cb| stores the mapped address to the start of the
+  //          Cb-plane.
+  //        - |out_ycbcr.cr| stores the mapped address to the start of the
+  //          Cr-plane.
   //        - |out_ycbcr.ystride| stores the stride of the Y-plane.
   //        - |out_ycbcr.cstride| stores the stride of the chroma planes.
   //        - |out_ycbcr.chroma_step| stores the distance between two adjacent
@@ -187,21 +196,11 @@ class EXPORTED CameraBufferMapper {
   // Args:
   //    |buffer|: The buffer handle to map.
   //    |flags|:  Currently omitted and is reserved for future use.
-  //    |x|: The base x coordinate in pixels.
-  //    |y|: The base y coordinate in pixels.
-  //    |width|: The width in pixels of the area to map.
-  //    |height|: The height in pixels of the area to map.
   //    |plane|: The plane to map.
   //
   // Returns:
   //    The mapped address on success; MAP_FAILED on failure.
-  void* Map(buffer_handle_t buffer,
-            uint32_t flags,
-            uint32_t x,
-            uint32_t y,
-            uint32_t width,
-            uint32_t height,
-            uint32_t plane);
+  void* Map(buffer_handle_t buffer, uint32_t flags, uint32_t plane);
 
   // Unmaps |buffer|.
   //

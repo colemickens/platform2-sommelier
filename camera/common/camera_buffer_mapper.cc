@@ -177,7 +177,7 @@ int CameraBufferMapper::Lock(buffer_handle_t buffer,
     return -EINVAL;
   }
 
-  *out_addr = Map(buffer, flags, x, y, width, height, 0);
+  *out_addr = Map(buffer, flags, 0);
   if (*out_addr == MAP_FAILED) {
     return -EINVAL;
   }
@@ -208,7 +208,7 @@ int CameraBufferMapper::LockYCbCr(buffer_handle_t buffer,
   DCHECK_LE(num_planes, 3u);
   std::vector<uint8_t*> addr(3);
   for (size_t i = 0; i < num_planes; ++i) {
-    void* a = Map(buffer, flags, x, y, width, height, i);
+    void* a = Map(buffer, flags, i);
     if (a == MAP_FAILED) {
       return -EINVAL;
     }
@@ -420,10 +420,6 @@ size_t CameraBufferMapper::GetPlaneSize(buffer_handle_t buffer, size_t plane) {
 
 void* CameraBufferMapper::Map(buffer_handle_t buffer,
                               uint32_t flags,
-                              uint32_t x,
-                              uint32_t y,
-                              uint32_t width,
-                              uint32_t height,
                               uint32_t plane) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
   if (!handle) {
@@ -434,10 +430,8 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
   if (!num_planes) {
     return MAP_FAILED;
   }
-  if (!(plane < kMaxPlanes && plane < num_planes &&
-        (x + width) <= handle->width && (y + height) <= handle->height)) {
-    LOGF(ERROR) << "Invalid args: x=" << x << " y=" << y << " width=" << width
-                << " height=" << height << " plane=" << plane;
+  if (!(plane < kMaxPlanes && plane < num_planes)) {
+    LOGF(ERROR) << "Invalid plane: " << plane;
     return MAP_FAILED;
   }
 
@@ -474,8 +468,8 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
       info = info_cache->second.get();
     }
     uint32_t stride;
-    void* out_addr = gbm_bo_map(info->bo, x, y, width, height, flags, &stride,
-                                &info->map_data, plane);
+    void* out_addr = gbm_bo_map(info->bo, 0, 0, handle->width, handle->height,
+                                flags, &stride, &info->map_data, plane);
     if (out_addr == MAP_FAILED) {
       LOGF(ERROR) << "Failed to map buffer: " << strerror(errno);
       return MAP_FAILED;
@@ -501,7 +495,7 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
     auto buffer_context = it->second.get();
     void* out_addr = reinterpret_cast<void*>(
         reinterpret_cast<uintptr_t>(buffer_context->mapped_addr) +
-        handle->offsets[plane] + y * handle->strides[plane] + x);
+        handle->offsets[plane]);
     VLOGF(1) << "Plane " << plane << " of shm buffer 0x" << std::hex
              << handle->buffer_id << " mapped";
     return out_addr;

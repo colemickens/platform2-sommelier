@@ -397,15 +397,12 @@ TEST_F(CameraBufferMapperTest, LockTest) {
       .WillOnce(Return(&dummy_bo));
   EXPECT_EQ(cbm_->Register(handle), 0);
 
-  // The call to Lock |handle| should fail due to invalid width and height.
-  void* addr;
-  EXPECT_EQ(cbm_->Lock(handle, 0, 0, 0, 1920, 1080, &addr), -EINVAL);
-
-  // Now the call to Lock |handle| should succeed with valid width and height.
+  // The call to Lock |handle| should succeed with valid width and height.
   EXPECT_CALL(gbm_, GbmBoMap(&dummy_bo, 0, 0, kBufferWidth, kBufferHeight, 0,
                              A<uint32_t*>(), A<void**>(), 0))
       .Times(1)
       .WillOnce(Return(dummy_addr));
+  void* addr;
   EXPECT_EQ(cbm_->Lock(handle, 0, 0, 0, kBufferWidth, kBufferHeight, &addr), 0);
   EXPECT_EQ(addr, dummy_addr);
 
@@ -456,17 +453,14 @@ TEST_F(CameraBufferMapperTest, LockYCbCrTest) {
       .WillOnce(Return(&dummy_bo));
   EXPECT_EQ(cbm_->Register(handle), 0);
 
-  // The call to Lock |handle| should fail due to invalid width and height.
-  struct android_ycbcr ycbcr;
-  EXPECT_EQ(cbm_->LockYCbCr(handle, 0, 0, 0, 1920, 1080, &ycbcr), -EINVAL);
-
-  // Now the call to Lock |handle| should succeed with valid width and height.
+  // The call to Lock |handle| should succeed with valid width and height.
   for (size_t i = 0; i < 3; ++i) {
     EXPECT_CALL(gbm_, GbmBoMap(&dummy_bo, 0, 0, kBufferWidth, kBufferHeight, 0,
                                A<uint32_t*>(), A<void**>(), i))
         .Times(1)
         .WillOnce(Return(reinterpret_cast<uint8_t*>(dummy_addr) + i));
   }
+  struct android_ycbcr ycbcr;
   EXPECT_EQ(
       cbm_->LockYCbCr(handle, 0, 0, 0, kBufferWidth, kBufferHeight, &ycbcr), 0);
   EXPECT_EQ(ycbcr.y, dummy_addr);
@@ -589,11 +583,8 @@ TEST_F(CameraBufferMapperTest, ShmBufferTest) {
       .WillOnce(Return(dummy_addr));
   EXPECT_EQ(cbm_->Register(handle), 0);
 
-  // The call to Lock |handle| should fail due to invalid width and height.
+  // The call to Lock |handle| should succeed with valid width and height.
   void* addr;
-  EXPECT_EQ(cbm_->Lock(handle, 0, 0, 0, 1920, 1080, &addr), -EINVAL);
-
-  // Now the call to Lock |handle| should succeed with valid width and height.
   EXPECT_EQ(cbm_->Lock(handle, 0, 0, 0, kBufferWidth, kBufferHeight, &addr), 0);
   EXPECT_EQ(addr, dummy_addr);
 
