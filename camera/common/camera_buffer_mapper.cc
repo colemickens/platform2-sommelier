@@ -222,13 +222,13 @@ int CameraBufferMapper::LockYCbCr(buffer_handle_t buffer,
     out_ycbcr->chroma_step = 2;
     switch (handle->drm_format) {
       case DRM_FORMAT_NV12:
-        out_ycbcr->cb = addr[1] + handle->offsets[1] + 1;
-        out_ycbcr->cr = addr[1] + handle->offsets[1];
+        out_ycbcr->cb = addr[1] + handle->offsets[1];
+        out_ycbcr->cr = addr[1] + handle->offsets[1] + 1;
         break;
 
       case DRM_FORMAT_NV21:
-        out_ycbcr->cb = addr[1] + handle->offsets[1];
-        out_ycbcr->cr = addr[1] + handle->offsets[1] + 1;
+        out_ycbcr->cb = addr[1] + handle->offsets[1] + 1;
+        out_ycbcr->cr = addr[1] + handle->offsets[1];
         break;
 
       default:
@@ -362,9 +362,9 @@ uint32_t CameraBufferMapper::GetV4L2PixelFormat(buffer_handle_t buffer) {
 
     // Semi-planar formats.
     case DRM_FORMAT_NV12:
-      return V4L2_PIX_FMT_NV21M;
-    case DRM_FORMAT_NV21:
       return V4L2_PIX_FMT_NV12M;
+    case DRM_FORMAT_NV21:
+      return V4L2_PIX_FMT_NV21M;
 
     // Multi-planar formats.
     case DRM_FORMAT_YUV420:

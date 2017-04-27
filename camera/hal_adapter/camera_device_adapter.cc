@@ -191,7 +191,7 @@ static bool IsMatchingFormat(mojom::HalPixelFormat hal_pixel_format,
     case mojom::HalPixelFormat::HAL_PIXEL_FORMAT_BGRA_8888:
       return drm_format == DRM_FORMAT_ARGB8888;
     case mojom::HalPixelFormat::HAL_PIXEL_FORMAT_YCrCb_420_SP:
-      return drm_format == DRM_FORMAT_NV12;
+      return drm_format == DRM_FORMAT_NV21;
     case mojom::HalPixelFormat::HAL_PIXEL_FORMAT_YCbCr_422_I:
       return drm_format == DRM_FORMAT_YUYV;
     case mojom::HalPixelFormat::HAL_PIXEL_FORMAT_BLOB:

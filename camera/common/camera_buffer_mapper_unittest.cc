@@ -532,7 +532,7 @@ TEST_F(CameraBufferMapperTest, LockYCbCrTest) {
 
   // Test semi-planar buffer.
   buffer =
-      CreateBuffer(2, GRALLOC, DRM_FORMAT_NV21, HAL_PIXEL_FORMAT_YCbCr_420_888,
+      CreateBuffer(2, GRALLOC, DRM_FORMAT_NV12, HAL_PIXEL_FORMAT_YCbCr_420_888,
                    kBufferWidth, kBufferHeight);
   handle = reinterpret_cast<buffer_handle_t>(buffer.get());
 
