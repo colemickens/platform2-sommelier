@@ -10,9 +10,9 @@
 #include <base/cancelable_callback.h>
 #include <base/macros.h>
 #include <base/single_thread_task_runner.h>
-#include <dbus/authpolicy/dbus-constants.h>
 
 #include "authpolicy/path_service.h"
+#include "authpolicy/proto_bindings/active_directory_info.pb.h"
 
 namespace authpolicy {
 

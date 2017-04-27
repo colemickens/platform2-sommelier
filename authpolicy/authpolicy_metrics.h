@@ -6,9 +6,10 @@
 #define AUTHPOLICY_AUTHPOLICY_METRICS_H_
 
 #include <base/macros.h>
-#include <dbus/authpolicy/dbus-constants.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
+
+#include "authpolicy/proto_bindings/active_directory_info.pb.h"
 
 namespace chromeos_metrics {
 class TimerReporter;
