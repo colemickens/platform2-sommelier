@@ -131,6 +131,8 @@ const Log common_logs[] = {
   { "powerwash_count", "/bin/cat /var/log/powerwash_count 2> /dev/null" },
   // Changed from 'ps ux' to 'ps aux' since we're running as debugd, not chronos
   { "ps", "/bin/ps aux" },
+  // /proc/slabinfo is owned by root and has 0400 permission.
+  { "slabinfo", "/bin/cat /proc/slabinfo", kRoot, kRoot, },
   { "storage_info", "/bin/cat /var/log/storage_info.txt" },
   { "syslog", "/usr/share/userfeedback/scripts/getmsgs --last '2 hours'"
               " /var/log/messages" },
