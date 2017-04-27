@@ -43,6 +43,15 @@ constexpr uint64_t kMinFreeSpace = kErasureBlockSize * 2;
 constexpr uint64_t kFreeSpaceBuffer = kErasureBlockSize;
 }  // namespace
 
+// There are some well known cases of data corruption where this file cannot be
+// read (b/36092409).  In these cases it is safe to skip the file entirely
+// instead of aborting the migration.
+const base::FilePath::CharType* const kKnownCorruptions[] = {
+    "root/android-data/data/user/0/com.google.android.gms/databases/"
+    "playlog.db-shm",
+    "root/android-data/data/user/0/com.google.android.gms/databases/"
+    "playlog.db-wal",
+};
 constexpr base::FilePath::CharType kMigrationStartedFileName[] =
     "crypto-migration.started";
 // TODO(dspaid): Determine performance impact so we can potentially increase
@@ -205,21 +214,21 @@ bool MigrationHelper::MigrateDir(const base::FilePath& from,
   for (base::FilePath entry = enumerator->Next(); !entry.empty();
        entry = enumerator->Next()) {
     const FileEnumerator::FileInfo& entry_info = enumerator->GetInfo();
-    base::FilePath new_path = to_dir.Append(entry.BaseName());
+    const base::FilePath& new_child = child.Append(entry.BaseName());
     mode_t mode = entry_info.stat().st_mode;
     if (S_ISLNK(mode)) {
       // Symlink
-      if (!MigrateLink(from, to, child.Append(entry.BaseName()), entry_info))
+      if (!MigrateLink(from, to, new_child, entry_info))
         return false;
       IncrementMigratedBytes(entry_info.GetSize());
     } else if (S_ISDIR(mode)) {
       // Directory.
-      if (!MigrateDir(from, to, child.Append(entry.BaseName()), entry_info))
+      if (!MigrateDir(from, to, new_child, entry_info))
         return false;
       IncrementMigratedBytes(entry_info.GetSize());
     } else if (S_ISREG(mode)) {
       // File
-      if (!MigrateFile(entry, new_path, entry_info))
+      if (!MigrateFile(from, to, new_child, entry_info))
         return false;
     } else {
       LOG(ERROR) << "Unknown file type: " << entry.value();
@@ -282,20 +291,37 @@ bool MigrationHelper::MigrateLink(const base::FilePath& from,
 
 bool MigrationHelper::MigrateFile(const base::FilePath& from,
                                   const base::FilePath& to,
+                                  const base::FilePath& child,
                                   const FileEnumerator::FileInfo& info) {
-  // TODO(dspaid): Create a Platform method for opening these files to be
-  // consistent with the rest of our file operations.
-  base::File from_file(
-      from,
+  const base::FilePath& from_child = from.Append(child);
+  const base::FilePath& to_child = to.Append(child);
+  base::File from_file;
+  platform_->InitializeFile(
+      &from_file,
+      from_child,
       base::File::FLAG_OPEN | base::File::FLAG_READ | base::File::FLAG_WRITE);
   if (!from_file.IsValid()) {
-    PLOG(ERROR) << "Failed to open file " << from.value();
+    if (from_file.error_details() == base::File::FILE_ERROR_IO &&
+        std::find(std::begin(kKnownCorruptions),
+                  std::end(kKnownCorruptions),
+                  child.value()) != std::end(kKnownCorruptions)) {
+      // b/36092409 causes IO errors when opening this file in some cases.  It
+      // is safe to remove this file without migrating it.
+      LOG(WARNING) << "Found unreadable GMS SQLite database, skipping "
+                   << from_child.value();
+      return true;
+    }
+    PLOG(ERROR) << "Failed to open file " << from_child.value();
     return false;
   }
 
-  base::File to_file(to, base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_WRITE);
+  base::File to_file;
+  platform_->InitializeFile(
+      &to_file,
+      to_child,
+      base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_WRITE);
   if (!to_file.IsValid()) {
-    PLOG(ERROR) << "Failed to open file " << to.value();
+    PLOG(ERROR) << "Failed to open file " << to_child.value();
     return false;
   }
   if (!platform_->SyncDirectory(to.DirName()))
@@ -304,11 +330,11 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
   int64_t from_length = from_file.GetLength();
   int64_t to_length = to_file.GetLength();
   if (from_length < 0) {
-    LOG(ERROR) << "Failed to get length of " << from.value();
+    LOG(ERROR) << "Failed to get length of " << from_child.value();
     return false;
   }
   if (to_length < 0) {
-    LOG(ERROR) << "Failed to get length of " << to.value();
+    LOG(ERROR) << "Failed to get length of " << to_child.value();
     return false;
   }
   if (to_length < from_length) {
@@ -318,12 +344,12 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
     // allocation will occur when attempting to write into space in the file
     // which is not yet allocated.
     if (!to_file.SetLength(from_length)) {
-      PLOG(ERROR) << "Failed to set file length of " << to.value();
+      PLOG(ERROR) << "Failed to set file length of " << to_child.value();
       return false;
     }
   }
 
-  if (!CopyAttributes(from, to, info))
+  if (!CopyAttributes(from_child, to_child, info))
     return false;
 
   while (from_length > 0) {
@@ -333,7 +359,7 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
     }
     off_t offset = from_length - to_read;
     if (to_file.Seek(base::File::FROM_BEGIN, offset) != offset) {
-      LOG(ERROR) << "Failed to seek in " << to.value();
+      LOG(ERROR) << "Failed to seek in " << to_child.value();
       return false;
     }
     // Sendfile is used here instead of a read to memory then write since it is
@@ -347,11 +373,11 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
     // here. The same goes for SetLength as from_file will be deleted soon.
     if (offset > 0) {
       if (!to_file.Flush()) {
-        PLOG(ERROR) << "Failed to flush " << to.value();
+        PLOG(ERROR) << "Failed to flush " << to_child.value();
         return false;
       }
       if (!from_file.SetLength(offset)) {
-        PLOG(ERROR) << "Failed to truncate file " << from.value();
+        PLOG(ERROR) << "Failed to truncate file " << from_child.value();
         return false;
       }
     }
@@ -361,9 +387,9 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
 
   from_file.Close();
   to_file.Close();
-  if (!FixTimes(to))
+  if (!FixTimes(to_child))
     return false;
-  if (!platform_->SyncFile(to))
+  if (!platform_->SyncFile(to_child))
     return false;
 
   return true;

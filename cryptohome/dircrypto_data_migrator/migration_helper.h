@@ -17,6 +17,7 @@ namespace cryptohome {
 namespace dircrypto_data_migrator {
 
 extern const base::FilePath::CharType kMigrationStartedFileName[];
+extern const base::FilePath::CharType* const kKnownCorruptions[];
 
 // A helper class for migrating files to new file system with small overhead of
 // diskspace.
@@ -111,8 +112,10 @@ class MigrationHelper {
                    const base::FilePath& to,
                    const base::FilePath& child,
                    const FileEnumerator::FileInfo& info);
+  // Copies data from |from|/|child| to |to|/|child|.
   bool MigrateFile(const base::FilePath& from,
                    const base::FilePath& to,
+                   const base::FilePath& child,
                    const FileEnumerator::FileInfo& info);
   bool CopyAttributes(const base::FilePath& from,
                       const base::FilePath& to,

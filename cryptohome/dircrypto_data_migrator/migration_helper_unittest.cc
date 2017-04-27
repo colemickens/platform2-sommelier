@@ -112,6 +112,8 @@ void PassThroughPlatformMethods(MockPlatform* mock_platform,
   ON_CALL(*mock_platform, AmountOfFreeDiskSpace(testing::_))
       .WillByDefault(
           testing::Invoke(real_platform, &Platform::AmountOfFreeDiskSpace));
+  ON_CALL(*mock_platform, InitializeFile(testing::_, testing::_, testing::_))
+      .WillByDefault(testing::Invoke(real_platform, &Platform::InitializeFile));
 }
 
 }  // namespace
@@ -854,6 +856,37 @@ TEST_F(MigrationHelperTest, ForceSmallerChunkSize) {
                              to_dir_.path(),
                              base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
+}
+
+TEST_F(MigrationHelperTest, SkipInvalidSQLiteFiles) {
+  testing::NiceMock<MockPlatform> mock_platform;
+  Platform real_platform;
+  PassThroughPlatformMethods(&mock_platform, &real_platform);
+  MigrationHelper helper(
+      &mock_platform, status_files_dir_.path(), kDefaultChunkSize);
+  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
+  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+
+  const FilePath kFromSQLiteShm = from_dir_.path().Append(kKnownCorruptions[0]);
+  const FilePath kToSQLiteShm = to_dir_.path().Append(kKnownCorruptions[0]);
+  ASSERT_TRUE(base::CreateDirectory(kFromSQLiteShm.DirName()));
+  ASSERT_TRUE(real_platform.TouchFileDurable(kFromSQLiteShm));
+  EXPECT_CALL(mock_platform, InitializeFile(testing::_, testing::_, testing::_))
+      .WillRepeatedly(testing::DoDefault());
+  EXPECT_CALL(mock_platform,
+              InitializeFile(testing::_, kFromSQLiteShm, testing::_))
+      .WillOnce(testing::Invoke(
+          [](base::File* file, const FilePath& path, uint32_t mode) {
+            *file = base::File(base::File::FILE_ERROR_IO);
+          }));
+
+  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
+                             to_dir_.path(),
+                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                        base::Unretained(this))));
+  EXPECT_TRUE(real_platform.DirectoryExists(kToSQLiteShm.DirName()));
+  EXPECT_FALSE(real_platform.FileExists(kToSQLiteShm));
+  EXPECT_FALSE(real_platform.FileExists(kFromSQLiteShm));
 }
 
 class DataMigrationTest : public MigrationHelperTest,
