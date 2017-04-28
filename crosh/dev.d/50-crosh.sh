@@ -163,7 +163,7 @@ cmd_c() (
     return 1
   fi
   debugd ContainerStarted
-  HOME=/home/user /usr/bin/run_oci --unsigned \
+  HOME=/home/user /usr/bin/run_oci \
     --cgroup_parent=chronos_containers \
     --bind_mount=/home/chronos/user/Downloads:/home/user \
     --bind_mount=/run/djfs:/dev \

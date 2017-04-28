@@ -9,12 +9,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/json/json_reader.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
-#include <crypto/sha2.h>
-#include <openssl/evp.h>
-#include <openssl/pem.h>
 
 #include <libcontainer/libcontainer.h>
 
@@ -30,8 +25,6 @@ using run_oci::OciConfigPtr;
 
 using ContainerConfigPtr = std::unique_ptr<container_config,
                                            decltype(&container_config_destroy)>;
-
-const char kVerificationKey[] = "/usr/share/misc/oci-container-key-pub.pem";
 
 // Converts a single UID map to a string.
 std::string GetIdMapString(const OciLinuxNamespaceMapping& map) {
@@ -240,125 +233,6 @@ bool AppendMounts(const BindMounts& bind_mounts, container_config* config_out) {
   return true;
 }
 
-// Check all the manifests to make sure this container is valid.
-bool CheckManifests(const base::FilePath& container_dir,
-                    base::ScopedTempDir *temp_dir,
-                    base::FilePath *container_config_file_out,
-                    base::FilePath *container_manifest_file_out) {
-  // Copy the configs to a temp dir where we can verify them to avoid TOCTOU.
-  if (!temp_dir->CreateUniqueTempDir()) {
-    PLOG(ERROR) << "Failed to create tempdir";
-    return false;
-  }
-  const base::FilePath& temp_dir_path = temp_dir->path();
-
-  // Copy all the config files over.
-  base::FilePath container_config_file = temp_dir_path.Append("config.json");
-  base::FilePath container_manifest_file =
-      temp_dir_path.Append("manifest.json");
-  base::FilePath manifest_sig_file =
-      temp_dir_path.Append("manifest.json.sig");
-
-  if (!base::CopyFile(container_dir.Append("config.json"),
-                      container_config_file) ||
-      !base::CopyFile(container_dir.Append("manifest.json"),
-                      container_manifest_file) ||
-      !base::CopyFile(container_dir.Append("manifest.json.sig"),
-                      manifest_sig_file)) {
-    PLOG(ERROR) << "Failed to copy container configs";
-    return false;
-  }
-
-  // Verify the manifest signature.
-  std::string manifest_data, manifest_sig_data;
-  if (!base::ReadFileToString(container_manifest_file, &manifest_data) ||
-      !base::ReadFileToString(manifest_sig_file, &manifest_sig_data)) {
-    PLOG(ERROR) << "Failed to read container key data";
-    return false;
-  }
-
-  const EVP_MD *digest = EVP_sha256();
-  FILE *fp = fopen(kVerificationKey, "re");
-  if (fp == NULL) {
-    PLOG(ERROR) << "Couldn't open public key: " << kVerificationKey;
-    return false;
-  }
-  EVP_PKEY *pkey = PEM_read_PUBKEY(fp, nullptr, nullptr, nullptr);
-  fclose(fp);
-  if (pkey == NULL) {
-    LOG(ERROR) << "Couldn't read key file: " << kVerificationKey;
-    return false;
-  }
-  if (EVP_PKEY_id(pkey) != EVP_PKEY_RSA) {
-    PLOG(ERROR) << "Incorrect key type";
-openssl_error:
-    EVP_PKEY_free(pkey);
-    return false;
-  }
-  EVP_MD_CTX ctx;
-  EVP_MD_CTX_init(&ctx);
-
-  if (EVP_DigestVerifyInit(&ctx, nullptr, digest, nullptr, pkey) != 1) {
-    LOG(ERROR) << "Verify init failed";
-    goto openssl_error;
-  }
-  if (EVP_DigestVerifyUpdate(&ctx,
-          reinterpret_cast<const uint8_t*>(manifest_data.c_str()),
-          manifest_data.size()) != 1) {
-    LOG(ERROR) << "Verify update failed";
-    goto openssl_error;
-  }
-  if (EVP_DigestVerifyFinal(&ctx,
-          reinterpret_cast<const uint8_t*>(manifest_sig_data.c_str()),
-          manifest_sig_data.size()) != 1) {
-    LOG(ERROR) << "Verify finalize failed";
-    goto openssl_error;
-  }
-  EVP_PKEY_free(pkey);
-
-  // Verify the config.
-  std::string config_data;
-  if (!base::ReadFileToString(container_config_file, &config_data)) {
-    PLOG(ERROR) << "Failed to read container configs";
-    return false;
-  }
-
-  std::unique_ptr<const base::Value> manifest_root_val =
-      base::JSONReader::Read(manifest_data);
-  if (!manifest_root_val) {
-    LOG(ERROR) << "Failed to parse manifest.json";
-    return false;
-  }
-  const base::DictionaryValue* manifest_dict = nullptr;
-  if (!manifest_root_val->GetAsDictionary(&manifest_dict)) {
-    LOG(ERROR) << "Failed to parse root dictionary from manifest.json";
-    return false;
-  }
-  // Because the Chromium dict parser supports dots as a separator to quickly
-  // access children values, we have to turn dots in filenames to underscores.
-  // It's why we use "config_json" below instead of "config.json".
-  std::string config_json_hash;
-  if (!manifest_dict->GetString("files.config_json.sha256",
-                                &config_json_hash)) {
-    LOG(ERROR) << "Failed to get [files][config_json][sha256] from manifest";
-    return false;
-  }
-  std::string exp_hash;
-  base::TrimWhitespaceASCII(config_json_hash, base::TRIM_ALL, &exp_hash);
-  std::string computed_hash_bytes = crypto::SHA256HashString(config_data);
-  std::string computed_hash = base::HexEncode(computed_hash_bytes.c_str(),
-                                              computed_hash_bytes.size());
-  if (base::CompareCaseInsensitiveASCII(computed_hash, exp_hash) != 0) {
-    LOG(ERROR) << "config.json hash mismatch: " << exp_hash
-               << " != " << computed_hash;
-    return false;
-  }
-
-  *container_config_file_out = container_config_file;
-  *container_manifest_file_out = container_manifest_file;
-  return true;
-}
-
 // Runs an OCI image that is mounted at |container_dir|.  Blocks until the
 // program specified in config.json exits.  Returns -1 on error.
 int RunOci(const base::FilePath& container_dir,
@@ -367,12 +241,6 @@ int RunOci(const base::FilePath& container_dir,
   base::FilePath container_config_file = container_dir.Append("config.json");
   base::FilePath container_manifest_file =
       container_dir.Append("manifest.json");
-
-  if (container_options.use_signatures) {
-    if (!CheckManifests(container_dir, &temp_dir, &container_config_file,
-                        &container_manifest_file))
-      return -1;
-  }
 
   OciConfigPtr oci_config(new OciConfig());
   if (!OciConfigFromFile(container_config_file, oci_config)) {
@@ -437,7 +305,6 @@ const struct option longopts[] = {
   { "cgroup_parent", required_argument, NULL, 'p' },
   { "alt_syscall", required_argument, NULL, 's' },
   { "use_current_user", no_argument, NULL, 'u' },
-  { "unsigned", no_argument, NULL, 'U' },
   { 0, 0, 0, 0 },
 };
 
@@ -448,7 +315,6 @@ void print_help(const char *argv0) {
   printf("  -p, --cgroup_parent=<NAME>     Set parent cgroup for container.\n");
   printf("  -s, --alt_syscall=<NAME>       Set the alt-syscall table.\n");
   printf("  -u, --use_current_user         Map the current user/group only.\n");
-  printf("  -U, --unsigned                 Ignore missing signatures.\n");
   printf("\n");
 }
 
@@ -482,9 +348,6 @@ int main(int argc, char **argv) {
       break;
     case 's':
       container_options.alt_syscall_table = optarg;
-      break;
-    case 'U':
-      container_options.use_signatures = false;
       break;
     case 'h':
       print_help(argv[0]);

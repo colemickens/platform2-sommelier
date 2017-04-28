@@ -26,7 +26,6 @@
         'deps': [
           'libcontainer',
           'libbrillo-<(libbase_ver)',
-          'libcrypto',
         ],
       },
       'sources': [
