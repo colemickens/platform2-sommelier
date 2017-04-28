@@ -1079,7 +1079,7 @@ void Tpm2Impl::SendTpmManagerRequestAndWait(const MethodType& method,
       });
   tpm_manager_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind([this, &method, &callback]() {
+      base::Bind([&method, &callback]() {
         method.Run(callback); }));
   event.Wait();
 }
