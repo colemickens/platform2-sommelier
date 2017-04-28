@@ -71,7 +71,7 @@ class UdevHandlerTest : public ::testing::Test, public brillo::Daemon {
       return;
     }
 
-    base::FilePath dev_path = CreateFakeDevSndDir(temp_fp_);
+    base::FilePath dev_path = CreateFakeTempSubDir(temp_fp_, "dev/snd");
     if (dev_path.value() == "") {
       LOG(ERROR) << "Unable to fake dev/snd directory.";
       return;

@@ -18,9 +18,10 @@
 
 namespace midis {
 
-base::FilePath CreateFakeDevSndDir(base::FilePath temp_path) {
+base::FilePath CreateFakeTempSubDir(base::FilePath temp_path,
+                                    const std::string& subdir_path) {
   // Create the fake dev node file to which we write.
-  temp_path = temp_path.Append("dev/snd");
+  temp_path = temp_path.Append(subdir_path);
   base::File::Error error;
 
   if (!CreateDirectoryAndGetError(temp_path, &error)) {

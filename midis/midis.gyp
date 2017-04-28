@@ -78,6 +78,24 @@
             'file_handler.cc',
           ],
         },
+        {
+          'target_name': 'client_tracker_test',
+          'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'variables': {
+            'deps': [
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
+          'sources': [
+            'client.cc',
+            'client_tracker.cc',
+            'client_tracker_test.cc',
+            'device.cc',
+            'device_tracker.cc',
+            'file_handler.cc',
+          ],
+        },
       ],
     }],
   ],

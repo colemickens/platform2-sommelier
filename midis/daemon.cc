@@ -19,8 +19,7 @@ int Daemon::OnInit() {
     return -1;
   }
 
-  client_tracker_->SetDeviceTracker(device_tracker_.get());
-  if (!client_tracker_->InitClientTracker()) {
+  if (!client_tracker_->InitClientTracker(device_tracker_.get())) {
     return -1;
   }
 

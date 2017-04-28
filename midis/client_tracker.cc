@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <sys/un.h>
 
+#include <string>
 #include <utility>
 
 #include <base/bind.h>
@@ -26,7 +27,8 @@ namespace midis {
 
 ClientTracker::ClientTracker() : client_id_counter_(0), weak_factory_(this) {}
 
-bool ClientTracker::InitClientTracker() {
+bool ClientTracker::InitClientTracker(DeviceTracker* device_tracker) {
+  device_tracker_ = device_tracker;
   server_fd_ =
       base::ScopedFD(socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0));
   if (!server_fd_.is_valid()) {
@@ -36,7 +38,8 @@ bool ClientTracker::InitClientTracker() {
   struct sockaddr_un addr;
   memset(&addr, 0, sizeof(addr));
   addr.sun_family = AF_UNIX;
-  strncpy(addr.sun_path, kSocketPath, sizeof(addr.sun_path));
+  std::string sock_path = basedir_.value() + kSocketPath;
+  strncpy(addr.sun_path, sock_path.c_str(), sizeof(addr.sun_path));
 
   // Calling fchmod before bind prevents the file from being modified.
   // Once bind() completes, we can change the permissions to allow

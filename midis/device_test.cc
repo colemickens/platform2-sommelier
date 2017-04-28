@@ -53,7 +53,7 @@ class DeviceTest : public ::testing::Test, public brillo::Daemon {
 TEST_F(DeviceTest, TestHandleDeviceRead) {
   ASSERT_FALSE(temp_fp_.empty());
 
-  base::FilePath dev_path = CreateFakeDevSndDir(temp_fp_);
+  base::FilePath dev_path = CreateFakeTempSubDir(temp_fp_, "dev/snd");
   ASSERT_NE(dev_path.value(), "");
 
   base::FilePath dev_node_path =

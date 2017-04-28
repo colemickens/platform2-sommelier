@@ -242,7 +242,6 @@ void DeviceTracker::ListDevices(std::vector<MidisDeviceInfo>* list) {
   for (auto& id_device_pair : devices_) {
     struct MidisDeviceInfo cur;
     memset(&cur, 0, sizeof(MidisDeviceInfo));
-    std::string name = id_device_pair.second->GetName();
     strncpy(reinterpret_cast<char*>(cur.name),
             id_device_pair.second->GetName().c_str(), kMidisDeviceInfoNameSize);
     cur.card = id_device_pair.second->GetCard();

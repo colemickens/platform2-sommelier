@@ -8,8 +8,10 @@
 #include <map>
 #include <memory>
 
+#include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
+#include <gtest/gtest_prod.h>
 
 #include "midis/client.h"
 #include "midis/device_tracker.h"
@@ -19,11 +21,18 @@ namespace midis {
 class ClientTracker {
  public:
   ClientTracker();
-  bool InitClientTracker();
+  bool InitClientTracker(DeviceTracker* device_tracker);
   void ProcessClient(int fd);
   void SetDeviceTracker(DeviceTracker* ptr) { device_tracker_ = ptr; }
+  size_t GetNumClientsForTesting() const { return clients_.size(); }
 
  private:
+  friend class ClientTrackerTest;
+  FRIEND_TEST(ClientTrackerTest, AddClientPositive);
+  // Helper function to set the base directory to be used for looking for the
+  // Unix Domain socket path. Helpful for testing, where the we won't be allowed
+  // to create directories in locations other than tempfs.
+  void SetBaseDirForTesting(const base::FilePath& dir) { basedir_ = dir; }
   std::map<uint32_t, std::unique_ptr<Client>> clients_;
   base::ScopedFD server_fd_;
   int client_id_counter_;
@@ -31,6 +40,7 @@ class ClientTracker {
   // As such, it is safe to maintain this pointer as a means to make updates and
   // derive information regarding devices.
   DeviceTracker* device_tracker_;
+  base::FilePath basedir_;
 
   base::WeakPtrFactory<ClientTracker> weak_factory_;
   DISALLOW_COPY_AND_ASSIGN(ClientTracker);
