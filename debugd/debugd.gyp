@@ -8,8 +8,6 @@
         'libminijail',
         'libpcrecpp',
       ],
-      # debugd uses try/catch to interact with dbus-c++.
-      'enable_exceptions': 1,
     },
     'defines': [
       'USE_CELLULAR=<(USE_cellular)',
