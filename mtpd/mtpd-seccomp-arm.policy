@@ -17,7 +17,7 @@ lseek: 1
 getdents: 1
 fcntl64: 1
 sendmsg: 1
-recvmsg :1
+recvmsg: 1
 futex: 1
 timerfd_create: 1
 brk: 1
