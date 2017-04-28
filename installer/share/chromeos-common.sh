@@ -219,18 +219,23 @@ list_fixed_mmc_disks() {
 # NVMe device
 # Exclude disks with size 0, it means they did not spin up properly.
 list_fixed_nvme_disks() {
-  local nvme remo size
+  local nvme remo size nvme_base all_nvme
 
   for nvme in /sys/block/nvme*; do
-    if [ ! -r "${sd}/size" ]; then
+    if [ ! -r "${nvme}/size" ]; then
       continue
     fi
-    size=$(cat "${sd}/size")
-    remo=$(cat "${sd}/removable")
+    size=$(cat "${nvme}/size")
+    remo=$(cat "${nvme}/removable")
     if [ ${remo:-0} -eq 0 -a ${size:-0} -gt 0 ]; then
-      echo "${nvme##*/}"
+       nvme_base="${nvme##*/}"
+       # Store in all_nvme names of nvme devices, without namespace.
+       # In case of nvme device with several namespaces, we will have
+       # redundancy.
+       all_nvme="${all_nvme} ${nvme_base%n*}"
     fi
   done
+  echo "${all_nvme}" | tr '[:space:]' '\n' | sort -u
 }
 
 # Find the drive to install based on the build write_cgpt.sh
