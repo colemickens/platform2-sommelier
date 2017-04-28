@@ -129,22 +129,26 @@ class DeviceManager {
  private:
   // Key: MTP storage id, Value: metadata for the given storage.
   using MtpStorageMap = std::map<uint32_t, StorageInfo>;
+
   // (device handle, map of storages on the device, device polling thread)
   struct MtpDevice {
-    LIBMTP_mtpdevice_t* first;
-    MtpStorageMap second;
-    linked_ptr<base::SimpleThread> third;
+    LIBMTP_mtpdevice_t* device;
+    MtpStorageMap storage_map;
+    linked_ptr<base::SimpleThread> watcher_thread;
 
-    MtpDevice() : first(nullptr) {}
+    MtpDevice() : device(nullptr) {}
 
     MtpDevice(LIBMTP_mtpdevice_t* d,
               const MtpStorageMap& m,
               base::SimpleThread* t)
-        : first(d), second(m), third(t) {}
+        : device(d), storage_map(m), watcher_thread(t) {}
 
     MtpDevice(const MtpDevice& rhs)
-        : first(rhs.first), second(rhs.second), third(rhs.third) {}
+        : device(rhs.device),
+          storage_map(rhs.storage_map),
+          watcher_thread(rhs.watcher_thread) {}
   };
+
   // Key: device bus location, Value: MtpDevice.
   using MtpDeviceMap = std::map<std::string, MtpDevice>;
 

@@ -141,7 +141,7 @@ std::vector<std::string> DeviceManager::EnumerateStorages() {
   for (MtpDeviceMap::const_iterator device_it = device_map_.begin();
        device_it != device_map_.end(); ++device_it) {
     const std::string& usb_bus_str = device_it->first;
-    const MtpStorageMap& storage_map = device_it->second.second;
+    const MtpStorageMap& storage_map = device_it->second.storage_map;
     for (MtpStorageMap::const_iterator storage_it = storage_map.begin();
          storage_it != storage_map.end(); ++storage_it) {
       ret.push_back(StorageToString(usb_bus_str, storage_it->first));
@@ -168,7 +168,7 @@ const StorageInfo* DeviceManager::GetStorageInfo(
   if (device_it == device_map_.end())
     return nullptr;
 
-  const MtpStorageMap& storage_map = device_it->second.second;
+  const MtpStorageMap& storage_map = device_it->second.storage_map;
   MtpStorageMap::const_iterator storage_it = storage_map.find(storage_id);
   return storage_it != storage_map.end() ? &storage_it->second : nullptr;
 }
@@ -186,8 +186,8 @@ const StorageInfo* DeviceManager::GetStorageInfoFromDevice(
     return nullptr;
 
   // Update |storage_map| with the latest storage info.
-  MtpStorageMap& storage_map = device_it->second.second;
-  LIBMTP_mtpdevice_t* mtp_device = device_it->second.first;
+  MtpStorageMap& storage_map = device_it->second.storage_map;
+  LIBMTP_mtpdevice_t* mtp_device = device_it->second.device;
   LIBMTP_Get_Storage(mtp_device, LIBMTP_STORAGE_SORTBY_NOTSORTED);
   for (LIBMTP_devicestorage_t* storage = mtp_device->storage; storage;
        storage = storage->next) {
@@ -394,11 +394,11 @@ bool DeviceManager::AddStorageForTest(const std::string& storage_name,
   // Existing device case.
   // There should be no real LIBMTP_mtpdevice_t device for this dummy storage.
   MtpDevice& existing_mtp_device = it->second;
-  if (existing_mtp_device.first)
+  if (existing_mtp_device.device)
     return false;
 
   // And the storage should not already exist.
-  MtpStorageMap& existing_mtp_storage_map = existing_mtp_device.second;
+  MtpStorageMap& existing_mtp_storage_map = existing_mtp_device.storage_map;
   if (ContainsKey(existing_mtp_storage_map, storage_id))
     return false;
 
@@ -515,12 +515,12 @@ bool DeviceManager::GetDeviceAndStorageId(const std::string& storage_name,
   if (device_it == device_map_.end())
     return false;
 
-  const MtpStorageMap& storage_map = device_it->second.second;
+  const MtpStorageMap& storage_map = device_it->second.storage_map;
   if (!ContainsKey(storage_map, id))
     return false;
 
   *storage_id = id;
-  *mtp_device = device_it->second.first;
+  *mtp_device = device_it->second.device;
   return true;
 }
 
@@ -652,7 +652,7 @@ void DeviceManager::AddOrUpdateDevices(
         continue;
       }
     } else {
-      mtp_device = device_map_[usb_bus_str].first;
+      mtp_device = device_map_[usb_bus_str].device;
 
       // For existing devices, update the storage lists.
       if (LIBMTP_Get_Storage(mtp_device, LIBMTP_STORAGE_SORTBY_NOTSORTED) < 0) {
@@ -678,7 +678,7 @@ void DeviceManager::AddOrUpdateDevices(
     if (add_update)
       storage_map_ptr = &new_storage_map;
     else
-      storage_map_ptr = &device_map_[usb_bus_str].second;
+      storage_map_ptr = &device_map_[usb_bus_str].storage_map;
 
     // Compute the set of storage ids that are contained in the mtpd's
     // storage_map but not in the latest device info. They are removed storages.
@@ -774,7 +774,7 @@ void DeviceManager::RemoveDevices(bool remove_all) {
 
     // Remove all the storages on that device.
     const std::string& usb_bus_str = device_it->first;
-    const MtpStorageMap& storage_map = device_it->second.second;
+    const MtpStorageMap& storage_map = device_it->second.storage_map;
     for (MtpStorageMap::const_iterator storage_it = storage_map.begin();
          storage_it != storage_map.end(); ++storage_it) {
       delegate_->StorageDetached(
@@ -782,8 +782,8 @@ void DeviceManager::RemoveDevices(bool remove_all) {
     }
 
     // Delete the device's map entry and cleanup.
-    LIBMTP_mtpdevice_t* mtp_device = device_it->second.first;
-    linked_ptr<base::SimpleThread> p_thread(device_it->second.third);
+    LIBMTP_mtpdevice_t* mtp_device = device_it->second.device;
+    linked_ptr<base::SimpleThread> p_thread(device_it->second.watcher_thread);
     device_map_.erase(device_it);
 
     // |mtp_device| can be NULL in testing.
