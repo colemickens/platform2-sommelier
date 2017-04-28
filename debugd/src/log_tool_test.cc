@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <dbus/mock_bus.h>
 #include <gtest/gtest.h>
 
 #include "debugd/src/log_tool.h"
@@ -10,7 +11,10 @@ namespace debugd {
 
 class LogToolTest : public testing::Test {
  protected:
-  void AnonymizeLogMap(LogTool::LogMap *log_map) {
+  LogToolTest()
+      : log_tool_(new dbus::MockBus(dbus::Bus::Options())) {}
+
+  void AnonymizeLogMap(LogTool::LogMap* log_map) {
     log_tool_.AnonymizeLogMap(log_map);
   }
 

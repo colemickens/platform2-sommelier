@@ -52,7 +52,7 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(
   sysrq_tool_ = base::MakeUnique<SysrqTool>();
   systrace_tool_ = base::MakeUnique<SystraceTool>();
   tracepath_tool_ = base::MakeUnique<TracePathTool>();
-  log_tool_ = base::MakeUnique<LogTool>();
+  log_tool_ = base::MakeUnique<LogTool>(bus);
   perf_tool_ = base::MakeUnique<PerfTool>();
   storage_tool_ = base::MakeUnique<StorageTool>();
   swap_tool_ = base::MakeUnique<SwapTool>();
@@ -171,15 +171,15 @@ std::string DebugdDBusAdaptor::GetLog(const std::string& name) {
 }
 
 std::map<std::string, std::string> DebugdDBusAdaptor::GetAllLogs() {
-  return log_tool_->GetAllLogs(dbus_object_.GetBus());
+  return log_tool_->GetAllLogs();
 }
 
 std::map<std::string, std::string> DebugdDBusAdaptor::GetFeedbackLogs() {
-  return log_tool_->GetFeedbackLogs(dbus_object_.GetBus());
+  return log_tool_->GetFeedbackLogs();
 }
 
 void DebugdDBusAdaptor::GetBigFeedbackLogs(const dbus::FileDescriptor& fd) {
-  log_tool_->GetBigFeedbackLogs(dbus_object_.GetBus(), fd);
+  log_tool_->GetBigFeedbackLogs(fd);
 }
 
 std::map<std::string, std::string> DebugdDBusAdaptor::GetUserLogFiles() {

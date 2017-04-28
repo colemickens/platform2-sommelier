@@ -19,23 +19,24 @@ namespace debugd {
 
 class LogTool {
  public:
-  LogTool() = default;
+  explicit LogTool(scoped_refptr<dbus::Bus> bus) : bus_(bus) {}
   ~LogTool() = default;
 
   using LogMap = std::map<std::string, std::string>;
 
   std::string GetLog(const std::string& name);
-  LogMap GetAllLogs(scoped_refptr<dbus::Bus> bus);
-  LogMap GetFeedbackLogs(scoped_refptr<dbus::Bus> bus);
-  void GetBigFeedbackLogs(scoped_refptr<dbus::Bus> bus,
-                          const dbus::FileDescriptor& fd);
+  LogMap GetAllLogs();
+  LogMap GetFeedbackLogs();
+  void GetBigFeedbackLogs(const dbus::FileDescriptor& fd);
   LogMap GetUserLogFiles();
 
  private:
   friend class LogToolTest;
 
   void AnonymizeLogMap(LogMap* log_map);
-  void CreateConnectivityReport(scoped_refptr<dbus::Bus> bus);
+  void CreateConnectivityReport();
+
+  scoped_refptr<dbus::Bus> bus_;
 
   AnonymizerTool anonymizer_;
 

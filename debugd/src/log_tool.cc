@@ -293,9 +293,9 @@ void GetLogsFrom(const struct Log* logs, LogTool::LogMap* map) {
 
 }  // namespace
 
-void LogTool::CreateConnectivityReport(scoped_refptr<dbus::Bus> bus) {
+void LogTool::CreateConnectivityReport() {
   // Perform ConnectivityTrial to report connection state in feedback log.
-  auto shill = base::MakeUnique<org::chromium::flimflam::ManagerProxy>(bus);
+  auto shill = base::MakeUnique<org::chromium::flimflam::ManagerProxy>(bus_);
   // Give the connection trial time to test the connection and log the results
   // before collecting the logs for feedback.
   // TODO(silberst): Replace the simple approach of a single timeout with a more
@@ -312,16 +312,16 @@ string LogTool::GetLog(const string& name) {
   return result;
 }
 
-LogTool::LogMap LogTool::GetAllLogs(scoped_refptr<dbus::Bus> bus) {
-  CreateConnectivityReport(bus);
+LogTool::LogMap LogTool::GetAllLogs() {
+  CreateConnectivityReport();
   LogMap result;
   GetLogsFrom(common_logs, &result);
   GetLogsFrom(extra_logs, &result);
   return result;
 }
 
-LogTool::LogMap LogTool::GetFeedbackLogs(scoped_refptr<dbus::Bus> bus) {
-  CreateConnectivityReport(bus);
+LogTool::LogMap LogTool::GetFeedbackLogs() {
+  CreateConnectivityReport();
   LogMap result;
   GetLogsFrom(common_logs, &result);
   GetLogsFrom(feedback_logs, &result);
@@ -329,9 +329,8 @@ LogTool::LogMap LogTool::GetFeedbackLogs(scoped_refptr<dbus::Bus> bus) {
   return result;
 }
 
-void LogTool::GetBigFeedbackLogs(scoped_refptr<dbus::Bus> bus,
-                                 const dbus::FileDescriptor& fd) {
-  CreateConnectivityReport(bus);
+void LogTool::GetBigFeedbackLogs(const dbus::FileDescriptor& fd) {
+  CreateConnectivityReport();
   base::DictionaryValue dictionary;
   GetLogsInDictionary(common_logs, &anonymizer_, &dictionary);
   GetLogsInDictionary(feedback_logs, &anonymizer_, &dictionary);
