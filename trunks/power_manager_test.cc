@@ -169,7 +169,7 @@ class PowerManagerTest : public testing::Test {
   void SetSuspendDelay(int32_t delay_id = kSomeDelayId) {
     EXPECT_CALL(proxy_, RegisterSuspendDelayAsync(_, _, _, _))
         .WillOnce(Invoke(
-            [this, delay_id](const std::vector<uint8_t>& /* request */,
+            [delay_id](const std::vector<uint8_t>& /* request */,
                              const MessageCallback& on_reply,
                              const ErrorCallback& /* on_error */,
                              int /* timeout_ms */) {
