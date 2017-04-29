@@ -5,9 +5,11 @@
 include common.mk
 
 libsync_OBJS = libsync/src/strlcpy.o libsync/src/sync.o
+libsync_INCLUDE = $(abspath $(SRC)/libsync/include)
 
 $(eval $(call add_object_rules,$(libsync_OBJS),CC,c,CFLAGS))
 
+CC_STATIC_LIBRARY(libsync/libsync.pic.a): CPPFLAGS += -I$(libsync_INCLUDE)
 CC_STATIC_LIBRARY(libsync/libsync.pic.a): $(libsync_OBJS)
 
 clean: CLEAN(libsync/libsync.pic.a)
