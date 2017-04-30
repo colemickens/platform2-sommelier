@@ -138,15 +138,12 @@ void DeviceManager::ProcessDeviceEvents() {
 std::vector<std::string> DeviceManager::EnumerateStorages() {
   std::vector<std::string> ret;
   base::AutoLock al(device_map_lock_);
-  for (MtpDeviceMap::const_iterator device_it = device_map_.begin();
-       device_it != device_map_.end(); ++device_it) {
-    const std::string& usb_bus_str = device_it->first;
-    const MtpStorageMap& storage_map = device_it->second.storage_map;
-    for (MtpStorageMap::const_iterator storage_it = storage_map.begin();
-         storage_it != storage_map.end(); ++storage_it) {
-      ret.push_back(StorageToString(usb_bus_str, storage_it->first));
-      LOG(INFO) << "Found storage: "
-                << StorageToString(usb_bus_str, storage_it->first);
+  for (const auto& device : device_map_) {
+    const std::string& usb_bus_str = device.first;
+    for (const auto& storage : device.second.storage_map) {
+      std::string storage_str = StorageToString(usb_bus_str, storage.first);
+      ret.push_back(storage_str);
+      LOG(INFO) << "Found storage: " << storage_str;
     }
   }
   return ret;
@@ -751,22 +748,18 @@ void DeviceManager::RemoveDevices(bool remove_all) {
 
   base::AutoLock al(device_map_lock_);
   // Populate |devices_set| with all known attached devices.
-  typedef std::set<std::string> MtpDeviceSet;
-  MtpDeviceSet devices_set;
-  for (MtpDeviceMap::const_iterator it = device_map_.begin();
-       it != device_map_.end(); ++it) {
-    devices_set.insert(it->first);
-  }
+  std::set<std::string> devices_set;
+  for (const auto& device : device_map_)
+    devices_set.insert(device.first);
 
   // And remove the ones that are still attached.
   for (int i = 0; i < raw_devices_count; ++i)
     devices_set.erase(RawDeviceToString(raw_devices[i]));
 
   // The ones left in the set are the detached devices.
-  for (MtpDeviceSet::const_iterator it = devices_set.begin();
-       it != devices_set.end(); ++it) {
-    LOG(INFO) << "Removed " << *it;
-    MtpDeviceMap::iterator device_it = device_map_.find(*it);
+  for (const auto& device : devices_set) {
+    LOG(INFO) << "Removed " << device;
+    MtpDeviceMap::iterator device_it = device_map_.find(device);
     if (device_it == device_map_.end()) {
       NOTREACHED();
       continue;
@@ -775,10 +768,8 @@ void DeviceManager::RemoveDevices(bool remove_all) {
     // Remove all the storages on that device.
     const std::string& usb_bus_str = device_it->first;
     const MtpStorageMap& storage_map = device_it->second.storage_map;
-    for (MtpStorageMap::const_iterator storage_it = storage_map.begin();
-         storage_it != storage_map.end(); ++storage_it) {
-      delegate_->StorageDetached(
-          StorageToString(usb_bus_str, storage_it->first));
+    for (const auto& storage : storage_map) {
+      delegate_->StorageDetached(StorageToString(usb_bus_str, storage.first));
     }
 
     // Delete the device's map entry and cleanup.
