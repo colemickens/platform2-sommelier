@@ -1187,12 +1187,10 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   driver_->tls_auth_file_ = tls_auth_file;
   // Stop will be called twice -- once by Cleanup and once by the destructor.
   EXPECT_CALL(*management_server_, Stop()).Times(2);
-  // UpdateExitCallback will be called twice -- once to ignore exit,
-  // and once to re-enabling monitoring of exit.
-  EXPECT_CALL(process_manager_, UpdateExitCallback(kPID, _)).Times(2);
+  EXPECT_CALL(process_manager_, UpdateExitCallback(kPID, _));
   EXPECT_CALL(manager_, DeregisterDefaultServiceCallback(kServiceCallbackTag));
-  EXPECT_CALL(process_manager_, StopProcess(kPID));
-  EXPECT_CALL(device_info_, DeleteInterface(_)).Times(0);
+  EXPECT_CALL(process_manager_, StopProcessAndBlock(kPID));
+  EXPECT_CALL(device_info_, DeleteInterface(_));
   EXPECT_CALL(*device_, DropConnection());
   EXPECT_CALL(*device_, SetEnabled(false));
   EXPECT_CALL(*service_, SetFailure(Service::kFailureInternal));
@@ -1357,21 +1355,6 @@ TEST_F(OpenVPNDriverTest, GetEnvironment) {
 
   EXPECT_EQ(0, base::WriteFile(lsb_release_file_, "", 0));
   EXPECT_EQ(0, driver_->GetEnvironment().size());
-}
-
-TEST_F(OpenVPNDriverTest, OnOpenVPNExited) {
-  const int kExitStatus = 1;
-  auto device_info = base::MakeUnique<MockDeviceInfo>(
-      &control_, &dispatcher_, &metrics_, &manager_);
-  EXPECT_CALL(*device_info, DeleteInterface(kInterfaceIndex))
-      .WillOnce(Return(true));
-  WeakPtr<DeviceInfo> weak = device_info->AsWeakPtr();
-  EXPECT_TRUE(weak);
-  OpenVPNDriver::OnOpenVPNExited(weak, kInterfaceIndex, kExitStatus);
-  device_info.reset();
-  EXPECT_FALSE(weak);
-  // Expect no crash.
-  OpenVPNDriver::OnOpenVPNExited(weak, kInterfaceIndex, kExitStatus);
 }
 
 TEST_F(OpenVPNDriverTest, OnDefaultServiceChanged) {

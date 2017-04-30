@@ -154,7 +154,6 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, NotifyFail);
   FRIEND_TEST(OpenVPNDriverTest, OnDefaultServiceChanged);
   FRIEND_TEST(OpenVPNDriverTest, OnOpenVPNDied);
-  FRIEND_TEST(OpenVPNDriverTest, OnOpenVPNExited);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOption);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOptions);
   FRIEND_TEST(OpenVPNDriverTest, ParseIPConfiguration);
@@ -244,14 +243,6 @@ class OpenVPNDriver : public VPNDriver,
 
   // Called when the openpvn process exits.
   void OnOpenVPNDied(int exit_status);
-
-  // Standalone callback used to delete the tunnel interface when the
-  // openvpn process exits as we clean up. ("Exiting" is expected
-  // termination during cleanup, while "dying" is any unexpected
-  // termination.)
-  static void OnOpenVPNExited(const base::WeakPtr<DeviceInfo>& device_info,
-                              int interface_index,
-                              int exit_status);
 
   // Inherit from VPNDriver to add custom properties.
   KeyValueStore GetProvider(Error* error) override;
