@@ -16,6 +16,8 @@ DEFINE_boolean bug_fatal ${FLAGS_TRUE} "Abort on BUG dmesg lines"
 DEFINE_boolean crc_fatal ${FLAGS_TRUE} "Abort on CRC error dmesg lines"
 DEFINE_boolean warn_fatal ${FLAGS_FALSE} "Abort on WARNING dmesg lines"
 DEFINE_boolean errors_fatal ${FLAGS_TRUE} "Abort on errors"
+DEFINE_boolean fw_errors_fatal ${FLAGS_TRUE} \
+               "Abort on firmware errors (subset of --errors_fatal)"
 DEFINE_boolean memory_check ${FLAGS_FALSE} "Use memory_suspend_test to suspend"
 DEFINE_string  ignore_wakeup_source "none" "Wakeup source to ignore" i
 DEFINE_string  record_dmesg_dir "" "dir to record dmesgs for failed iterations"
@@ -165,6 +167,7 @@ echo "  suspend: ${FLAGS_suspend_min}-${FLAGS_suspend_max} seconds"
 echo "  wake: ${FLAGS_wake_min}-${FLAGS_wake_max} seconds"
 echo "  backup_rtc: $(boolean_value ${FLAGS_backup_rtc})"
 echo "  errors_fatal: $(boolean_value ${FLAGS_errors_fatal})"
+echo "  fw_errors_fatal: $(boolean_value ${FLAGS_fw_errors_fatal})"
 echo "  bugs fatal:  $(boolean_value ${FLAGS_bug_fatal})"
 echo "  warnings fatal:  $(boolean_value ${FLAGS_warn_fatal})"
 echo "  crcs fatal:  $(boolean_value ${FLAGS_crc_fatal})"
@@ -217,10 +220,13 @@ while true; do
 
   # Look for errors in firmware log.
   if [ -f /sys/firmware/log ] && grep ERROR /sys/firmware/log; then
-    echo "Firmware error found."
     : $(( firmware_errors += 1 ))
-    if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
+    if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} -a \
+         ${FLAGS_fw_errors_fatal} -eq ${FLAGS_TRUE} ]; then
       exit_loop=1
+      echo "Firmware error found."
+    else
+      echo "Firmware error found (ignoring)."
     fi
   fi
   # Make sure suspend succeeded
