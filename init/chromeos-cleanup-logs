@@ -150,6 +150,9 @@ remove_old_files /var/log/update_engine "update_engine.*-*"
 # Remove old power manager logs
 remove_old_files /var/log/power_manager "power*"
 
+# Remove old vmlog logs (written by metrics_daemon)
+remove_old_files /var/log/vmlog "vmlog.*"
+
 # Rotate other logs
 rotate_logs
 
