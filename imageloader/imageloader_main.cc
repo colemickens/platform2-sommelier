@@ -60,7 +60,7 @@ bool LoadKeyFromFile(const std::string& file, std::vector<uint8_t>* key_out) {
     return false;
   }
 
-  uint8_t *der_key;
+  uint8_t *der_key = nullptr;
   int der_len = i2d_PUBKEY(pubkey.get(), &der_key);
   if (der_len < 0) {
     LOG(WARNING) << "Failed to export public key in DER format";
