@@ -29,6 +29,7 @@ CameraClient::CameraClient(int id,
     : id_(id),
       device_path_(device_path),
       device_(new V4L2CameraDevice()),
+      metadata_handler_(new MetadataHandler(static_info)),
       request_thread_("Capture request thread") {
   memset(&camera3_device_, 0, sizeof(camera3_device_));
   camera3_device_.common.tag = HARDWARE_DEVICE_TAG;
@@ -40,9 +41,6 @@ CameraClient::CameraClient(int id,
   *hw_device = &camera3_device_.common;
 
   ops_thread_checker_.DetachFromThread();
-
-  // MetadataBase::operator= will make a copy of camera_metadata_t.
-  metadata_ = &static_info;
 
   SupportedFormats supported_formats =
       device_->GetDeviceSupportedFormats(device_path_);
@@ -78,16 +76,6 @@ int CameraClient::Initialize(const camera3_callback_ops_t* callback_ops) {
   DCHECK(ops_thread_checker_.CalledOnValidThread());
 
   callback_ops_ = callback_ops;
-
-  // camera3_request_template_t starts at 1.
-  for (int i = 1; i < CAMERA3_TEMPLATE_COUNT; i++) {
-    template_settings_[i] =
-        MetadataHandler::CreateDefaultRequestSettings(metadata_, i);
-    if (template_settings_[i].get() == nullptr) {
-      LOGFID(ERROR, id_) << "metadata for template type (" << i << ") is NULL";
-      return -ENODATA;
-    }
-  }
   return 0;
 }
 
@@ -160,11 +148,7 @@ const camera_metadata_t* CameraClient::ConstructDefaultRequestSettings(
   VLOGFID(1, id_) << "type=" << type;
   DCHECK(ops_thread_checker_.CalledOnValidThread());
 
-  if (!MetadataHandler::IsValidTemplateType(type)) {
-    LOGFID(ERROR, id_) << "Invalid template request type: " << type;
-    return nullptr;
-  }
-  return template_settings_[type].get();
+  return metadata_handler_->GetDefaultRequestSettings(type);
 }
 
 int CameraClient::ProcessCaptureRequest(camera3_capture_request_t* request) {
@@ -318,9 +302,9 @@ int CameraClient::StreamOn(int* num_buffers) {
   }
   request_task_runner_ = request_thread_.task_runner();
 
-  request_handler_.reset(new RequestHandler(id_, device_.get(), callback_ops_,
-                                            std::move(buffers),
-                                            request_task_runner_));
+  request_handler_.reset(
+      new RequestHandler(id_, device_.get(), callback_ops_, std::move(buffers),
+                         request_task_runner_, metadata_handler_.get()));
 
   return 0;
 }
@@ -342,12 +326,14 @@ CameraClient::RequestHandler::RequestHandler(
     V4L2CameraDevice* device,
     const camera3_callback_ops_t* callback_ops,
     std::vector<std::unique_ptr<V4L2FrameBuffer>> input_buffers,
-    const scoped_refptr<base::SingleThreadTaskRunner>& task_runner)
+    const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
+    MetadataHandler* metadata_handler)
     : device_id_(device_id),
       device_(device),
       callback_ops_(callback_ops),
       input_buffers_(std::move(input_buffers)),
-      task_runner_(task_runner) {}
+      task_runner_(task_runner),
+      metadata_handler_(metadata_handler) {}
 
 CameraClient::RequestHandler::~RequestHandler() {}
 
@@ -398,44 +384,18 @@ void CameraClient::RequestHandler::HandleRequest(
   CameraMetadata* metadata = request->GetMetadata();
   // Handle each stream output buffer and convert it to corresponding format.
   for (size_t i = 0; i < capture_result.num_output_buffers; i++) {
-    camera3_stream_buffer_t* buffer =
-        const_cast<camera3_stream_buffer_t*>(&capture_result.output_buffers[i]);
-    VLOGFID(1, device_id_) << "output buffer " << i
-                           << ", stream format: " << buffer->stream->format
-                           << ", buffer ptr: " << *buffer->buffer
-                           << ", width: " << buffer->stream->width
-                           << ", height: " << buffer->stream->height;
-
-    int fourcc = HalPixelFormatToFourcc(buffer->stream->format);
-    GrallocFrameBuffer output_frame(*buffer->buffer, buffer->stream->width,
-                                    buffer->stream->height, fourcc);
-    ret = output_frame.Map();
+    ret = WriteStreamBuffer(*metadata, const_cast<camera3_stream_buffer_t*>(
+                                            &capture_result.output_buffers[i]));
     if (ret) {
-      LOGFID(ERROR, device_id_) << "Failed to map output buffer id: " << i;
+      LOGFID(ERROR, device_id_)
+          << "Handle stream buffer failed for output buffer id: " << i;
       return;
     }
-
-    input_frame_.Convert(*metadata, &output_frame);
   }
 
   int64_t timestamp;
   NotifyShutter(capture_result.frame_number, &timestamp);
-  metadata->Update(ANDROID_SENSOR_TIMESTAMP, &timestamp, 1);
-
-  // For USB camera, we don't know the AE state. Set the state to converged to
-  // indicate the frame should be good to use. Then apps don't have to wait the
-  // AE state.
-  uint8_t ae_state = ANDROID_CONTROL_AE_STATE_CONVERGED;
-  metadata->Update(ANDROID_CONTROL_AE_STATE, &ae_state, 1);
-
-  // For USB camera, AF mode is off. AF state must be inactive.
-  uint8_t af_state = ANDROID_CONTROL_AF_STATE_INACTIVE;
-  metadata->Update(ANDROID_CONTROL_AF_STATE, &af_state, 1);
-
-  // Set AWB state to converged to indicate the frame should be good to use.
-  uint8_t awb_state = ANDROID_CONTROL_AWB_STATE_CONVERGED;
-  metadata->Update(ANDROID_CONTROL_AWB_STATE, &awb_state, 1);
-
+  metadata_handler_->PostHandleRequest(timestamp, metadata);
   capture_result.result = metadata->Release();
 
   // After process_capture_result, HAL cannot access the output buffer in
@@ -446,6 +406,28 @@ void CameraClient::RequestHandler::HandleRequest(
     LOGFID(ERROR, device_id_) << "ReuseFrameBuffer failed: " << strerror(-ret)
                               << " for input buffer id: " << buffer_id;
   }
+}
+
+int CameraClient::RequestHandler::WriteStreamBuffer(
+    const CameraMetadata& metadata,
+    camera3_stream_buffer_t* buffer) {
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  VLOGFID(1, device_id_) << "output buffer stream format: "
+                         << buffer->stream->format
+                         << ", buffer ptr: " << *buffer->buffer
+                         << ", width: " << buffer->stream->width
+                         << ", height: " << buffer->stream->height;
+
+  int fourcc = HalPixelFormatToFourcc(buffer->stream->format);
+  GrallocFrameBuffer output_frame(*buffer->buffer, buffer->stream->width,
+                                  buffer->stream->height, fourcc);
+
+  int ret = output_frame.Map();
+  if (ret) {
+    return -EINVAL;
+  }
+  input_frame_.Convert(metadata, &output_frame);
+  return 0;
 }
 
 int CameraClient::RequestHandler::WaitGrallocBufferSync(

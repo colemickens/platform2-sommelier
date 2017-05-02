@@ -23,6 +23,21 @@
 
 namespace arc {
 
+MetadataHandler::MetadataHandler(const camera_metadata_t& metadata) {
+  // MetadataBase::operator= will make a copy of camera_metadata_t.
+  metadata_ = &metadata;
+
+  // camera3_request_template_t starts at 1.
+  for (int i = 1; i < CAMERA3_TEMPLATE_COUNT; i++) {
+    template_settings_[i] = CreateDefaultRequestSettings(i);
+    if (template_settings_[i].get() == nullptr) {
+      LOGF(ERROR) << "metadata for template type (" << i << ") is NULL";
+    }
+  }
+}
+
+MetadataHandler::~MetadataHandler() {}
+
 int MetadataHandler::FillDefaultMetadata(CameraMetadata* metadata) {
   uint8_t hardware_level = ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED;
   UPDATE(ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL, &hardware_level, 1);
@@ -58,6 +73,10 @@ int MetadataHandler::FillDefaultMetadata(CameraMetadata* metadata) {
 
   int32_t jpeg_max_size[] = {13 * 1024 * 1024};  // 13MB
   UPDATE(ANDROID_JPEG_MAX_SIZE, jpeg_max_size, ARRAY_SIZE(jpeg_max_size));
+
+  uint8_t jpeg_quality = 90;
+  UPDATE(ANDROID_JPEG_QUALITY, &jpeg_quality, 1);
+  UPDATE(ANDROID_JPEG_THUMBNAIL_QUALITY, &jpeg_quality, 1);
 
   // android.scaler
   float scaler_available_max_digital_zoom[] = {1};
@@ -125,7 +144,6 @@ int MetadataHandler::FillDefaultMetadata(CameraMetadata* metadata) {
   uint8_t face_detect_mode = ANDROID_STATISTICS_FACE_DETECT_MODE_OFF;
   UPDATE(ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES, &face_detect_mode,
          1);
-  UPDATE(ANDROID_STATISTICS_FACE_DETECT_MODE, &face_detect_mode, 1);
 
   int32_t max_face_count = 0;
   UPDATE(ANDROID_STATISTICS_INFO_MAX_FACE_COUNT, &max_face_count, 1);
@@ -277,12 +295,39 @@ int MetadataHandler::FillMetadataFromDeviceInfo(const DeviceInfo& device_info,
   return 0;
 }
 
-bool MetadataHandler::IsValidTemplateType(int type) {
-  return type > 0 && type < CAMERA3_TEMPLATE_COUNT;
+const camera_metadata_t* MetadataHandler::GetDefaultRequestSettings(
+    int template_type) {
+  if (!IsValidTemplateType(template_type)) {
+    LOGF(ERROR) << "Invalid template request type: " << template_type;
+    return nullptr;
+  }
+  return template_settings_[template_type].get();
+}
+
+void MetadataHandler::PostHandleRequest(int64_t timestamp,
+                                        CameraMetadata* metadata) {
+  metadata->Update(ANDROID_SENSOR_TIMESTAMP, &timestamp, 1);
+
+  // For USB camera, we don't know the AE state. Set the state to converged to
+  // indicate the frame should be good to use. Then apps don't have to wait the
+  // AE state.
+  uint8_t ae_state = ANDROID_CONTROL_AE_STATE_CONVERGED;
+  metadata->Update(ANDROID_CONTROL_AE_STATE, &ae_state, 1);
+
+  // For USB camera, AF mode is off. AF state must be inactive.
+  uint8_t af_state = ANDROID_CONTROL_AF_STATE_INACTIVE;
+  metadata->Update(ANDROID_CONTROL_AF_STATE, &af_state, 1);
+
+  // Set AWB state to converged to indicate the frame should be good to use.
+  uint8_t awb_state = ANDROID_CONTROL_AWB_STATE_CONVERGED;
+  metadata->Update(ANDROID_CONTROL_AWB_STATE, &awb_state, 1);
+}
+
+bool MetadataHandler::IsValidTemplateType(int template_type) {
+  return template_type > 0 && template_type < CAMERA3_TEMPLATE_COUNT;
 }
 
 CameraMetadataUniquePtr MetadataHandler::CreateDefaultRequestSettings(
-    const CameraMetadata& metadata,
     int template_type) {
   uint8_t capture_intent;
   switch (template_type) {
@@ -309,7 +354,7 @@ CameraMetadataUniquePtr MetadataHandler::CreateDefaultRequestSettings(
       return NULL;
   }
 
-  CameraMetadata data(metadata);
+  CameraMetadata data(metadata_);
   uint8_t control_mode = ANDROID_CONTROL_MODE_AUTO;
 
   if (data.Update(ANDROID_CONTROL_MODE, &control_mode, 1) ||

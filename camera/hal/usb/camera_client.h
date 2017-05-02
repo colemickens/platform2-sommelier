@@ -107,21 +107,17 @@ class CameraClient {
   // Use to check camera v3 device operations are called on the same thread.
   base::ThreadChecker ops_thread_checker_;
 
-  // Metadata containing persistent camera characteristics.
-  CameraMetadata metadata_;
-
   // Methods used to call back into the framework.
   const camera3_callback_ops_t* callback_ops_;
-
-  // Static array of standard camera settings templates. These are owned by
-  // CameraClient.
-  CameraMetadataUniquePtr template_settings_[CAMERA3_TEMPLATE_COUNT];
 
   // The formats used to report to apps.
   SupportedFormats qualified_formats_;
 
   // Maximum resolution in configure streams.
   SupportedFormat stream_on_resolution_;
+
+  // Handle metadata events and store states.
+  std::unique_ptr<MetadataHandler> metadata_handler_;
 
   // RequestHandler is used to handle in-flight requests. All functions in the
   // class run on |request_thread_|. The class will be created in StreamOn and
@@ -133,13 +129,18 @@ class CameraClient {
         V4L2CameraDevice* device,
         const camera3_callback_ops_t* callback_ops,
         std::vector<std::unique_ptr<V4L2FrameBuffer>> input_buffers,
-        const scoped_refptr<base::SingleThreadTaskRunner>& task_runner);
+        const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
+        MetadataHandler* metadata_handler);
     ~RequestHandler();
 
     // Handle one request.
     void HandleRequest(std::unique_ptr<CaptureRequest> request);
 
    private:
+    // Convert |cache_frame_| to the |buffer| with corresponding format.
+    int WriteStreamBuffer(const CameraMetadata& metadata,
+                           camera3_stream_buffer_t* buffer);
+
     // Wait output buffer synced.
     int WaitGrallocBufferSync(camera3_capture_result_t* result);
 
@@ -166,6 +167,10 @@ class CameraClient {
 
     // Used to convert to different output formats.
     CachedFrame input_frame_;
+
+    // Handle metadata events and store states. CameraClient takes the
+    // ownership.
+    MetadataHandler* metadata_handler_;
   };
 
   std::unique_ptr<RequestHandler> request_handler_;
