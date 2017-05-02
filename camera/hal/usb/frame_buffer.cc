@@ -99,9 +99,11 @@ int V4L2FrameBuffer::Unmap() {
 GrallocFrameBuffer::GrallocFrameBuffer(buffer_handle_t buffer,
                                        uint32_t width,
                                        uint32_t height,
-                                       uint32_t fourcc)
+                                       uint32_t fourcc,
+                                       const CameraMetadata& metadata)
     : buffer_(buffer),
       buffer_mapper_(CameraBufferMapper::GetInstance()),
+      jpeg_max_size_(0),
       is_mapped_(false) {
   int ret = buffer_mapper_->Register(buffer_);
   if (ret) {
@@ -111,6 +113,11 @@ GrallocFrameBuffer::GrallocFrameBuffer(buffer_handle_t buffer,
   width_ = width;
   height_ = height;
   fourcc_ = fourcc;
+
+  if (metadata.Exists(ANDROID_JPEG_MAX_SIZE)) {
+    camera_metadata_ro_entry entry = metadata.Find(ANDROID_JPEG_MAX_SIZE);
+    jpeg_max_size_ = entry.data.i32[0];
+  }
 }
 
 GrallocFrameBuffer::~GrallocFrameBuffer() {
@@ -131,22 +138,33 @@ int GrallocFrameBuffer::Map() {
     return -EINVAL;
   }
 
-  // Only accept RGB32 format for preview.
-  if (fourcc_ != V4L2_PIX_FMT_RGB32) {
-    LOGF(ERROR) << "Format " << FormatToString(fourcc_) << " is unsupported";
-    return -EINVAL;
-  }
-
   void* addr;
-  int ret = buffer_mapper_->Lock(buffer_, 0, 0, 0, width_, height_, &addr);
+  int ret;
+  switch (fourcc_) {
+    case V4L2_PIX_FMT_JPEG:
+      if (!jpeg_max_size_) {
+        LOGF(ERROR) << "JPEG_MAX_SIZE is undefined.";
+        return -EINVAL;
+      }
+      buffer_size_ = jpeg_max_size_;
+      ret = buffer_mapper_->Lock(buffer_, 0, 0, 0, jpeg_max_size_, 1, &addr);
+      break;
+    case V4L2_PIX_FMT_RGB32:
+      // We don't know the actually buffer size from framework, calculate it by
+      // attributes.
+      buffer_size_ = ImageProcessor::GetConvertedSize(fourcc_, width_, height_);
+      ret = buffer_mapper_->Lock(buffer_, 0, 0, 0, width_, height_, &addr);
+      break;
+    default:
+      LOGF(ERROR) << "Format " << FormatToString(fourcc_) << " is unsupported";
+      return -EINVAL;
+  }
   if (ret) {
-    LOGF(ERROR) << "Failed to map buffer: ";
+    LOGF(ERROR) << "Failed to map buffer";
     return -EINVAL;
   }
 
   data_ = static_cast<uint8_t*>(addr);
-  buffer_size_ = ImageProcessor::GetConvertedSize(fourcc_, width_, height_);
-
   is_mapped_ = true;
   return 0;
 }
@@ -154,7 +172,7 @@ int GrallocFrameBuffer::Map() {
 int GrallocFrameBuffer::Unmap() {
   base::AutoLock l(lock_);
   if (is_mapped_ && buffer_mapper_->Unlock(buffer_)) {
-    LOGF(ERROR) << "Failed to unmap buffer: ";
+    LOGF(ERROR) << "Failed to unmap buffer";
     return -EINVAL;
   }
   is_mapped_ = false;

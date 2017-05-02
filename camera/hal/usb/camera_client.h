@@ -124,6 +124,9 @@ class CameraClient {
   // Handle metadata events and store states.
   std::unique_ptr<MetadataHandler> metadata_handler_;
 
+  // Metadata for latest request.
+  CameraMetadata latest_request_metadata_;
+
   // RequestHandler is used to handle in-flight requests. All functions in the
   // class run on |request_thread_|. The class will be created in StreamOn and
   // destroyed in StreamOff.

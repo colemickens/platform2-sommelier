@@ -23,7 +23,8 @@
 
 namespace arc {
 
-MetadataHandler::MetadataHandler(const camera_metadata_t& metadata) {
+MetadataHandler::MetadataHandler(const camera_metadata_t& metadata)
+    : af_trigger_(false) {
   // MetadataBase::operator= will make a copy of camera_metadata_t.
   metadata_ = &metadata;
 
@@ -34,6 +35,8 @@ MetadataHandler::MetadataHandler(const camera_metadata_t& metadata) {
       LOGF(ERROR) << "metadata for template type (" << i << ") is NULL";
     }
   }
+
+  thread_checker_.DetachFromThread();
 }
 
 MetadataHandler::~MetadataHandler() {}
@@ -121,7 +124,7 @@ int MetadataHandler::FillDefaultMetadata(CameraMetadata* metadata) {
   // ON means auto-exposure is active with no flash control.
   UPDATE(ANDROID_CONTROL_AE_MODE, &ae_available_modes[0], 1);
 
-  uint8_t af_available_mode = ANDROID_CONTROL_AF_MODE_OFF;
+  uint8_t af_available_mode = ANDROID_CONTROL_AF_MODE_AUTO;
   UPDATE(ANDROID_CONTROL_AF_AVAILABLE_MODES, &af_available_mode, 1);
   UPDATE(ANDROID_CONTROL_AF_MODE, &af_available_mode, 1);
 
@@ -304,8 +307,30 @@ const camera_metadata_t* MetadataHandler::GetDefaultRequestSettings(
   return template_settings_[template_type].get();
 }
 
-void MetadataHandler::PostHandleRequest(int64_t timestamp,
+void MetadataHandler::PreHandleRequest(int frame_number,
+                                       const CameraMetadata& metadata) {
+  DCHECK(thread_checker_.CalledOnValidThread());
+  if (metadata.Exists(ANDROID_CONTROL_AF_TRIGGER)) {
+    camera_metadata_ro_entry entry = metadata.Find(ANDROID_CONTROL_AF_TRIGGER);
+    if (entry.data.u8[0] == ANDROID_CONTROL_AF_TRIGGER_START) {
+      af_trigger_ = true;
+    } else if (entry.data.u8[0] == ANDROID_CONTROL_AF_TRIGGER_CANCEL) {
+      af_trigger_ = false;
+    }
+  }
+  current_frame_number_ = frame_number;
+}
+
+void MetadataHandler::PostHandleRequest(int frame_number,
+                                        int64_t timestamp,
                                         CameraMetadata* metadata) {
+  DCHECK(thread_checker_.CalledOnValidThread());
+  if (current_frame_number_ != frame_number) {
+    LOGF(ERROR)
+        << "Frame number mismatch in PreHandleRequest and PostHandleRequest";
+    return;
+  }
+
   metadata->Update(ANDROID_SENSOR_TIMESTAMP, &timestamp, 1);
 
   // For USB camera, we don't know the AE state. Set the state to converged to
@@ -314,8 +339,15 @@ void MetadataHandler::PostHandleRequest(int64_t timestamp,
   uint8_t ae_state = ANDROID_CONTROL_AE_STATE_CONVERGED;
   metadata->Update(ANDROID_CONTROL_AE_STATE, &ae_state, 1);
 
-  // For USB camera, AF mode is off. AF state must be inactive.
-  uint8_t af_state = ANDROID_CONTROL_AF_STATE_INACTIVE;
+  // For USB camera, the USB camera handles everything and we don't have control
+  // over AF. We only simply fake the AF metadata based on the request
+  // received here.
+  uint8_t af_state;
+  if (af_trigger_) {
+    af_state = ANDROID_CONTROL_AF_STATE_FOCUSED_LOCKED;
+  } else {
+    af_state = ANDROID_CONTROL_AF_STATE_INACTIVE;
+  }
   metadata->Update(ANDROID_CONTROL_AF_STATE, &af_state, 1);
 
   // Set AWB state to converged to indicate the frame should be good to use.

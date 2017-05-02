@@ -15,6 +15,8 @@
 #include <base/files/scoped_file.h>
 #include <base/synchronization/lock.h>
 
+#include "arc/camera_metadata.h"
+
 namespace arc {
 
 class FrameBuffer {
@@ -105,12 +107,15 @@ class V4L2FrameBuffer : public FrameBuffer {
 // CameraBufferMapper to lock and unlock the buffer.
 class GrallocFrameBuffer : public FrameBuffer {
  public:
+  // Fill |width_|, |height_|, |fourcc_| according to the parameters.
   GrallocFrameBuffer(buffer_handle_t buffer,
                      uint32_t width,
                      uint32_t height,
-                     uint32_t fourcc);
+                     uint32_t fourcc,
+                     const CameraMetadata& metadata);
   ~GrallocFrameBuffer();
 
+  // Fill |buffer_size_| and |data_|.
   int Map() override;
   int Unmap() override;
 
@@ -120,6 +125,8 @@ class GrallocFrameBuffer : public FrameBuffer {
 
   // Used to import gralloc buffer.
   CameraBufferMapper* buffer_mapper_;
+
+  int jpeg_max_size_;
 
   bool is_mapped_;
 

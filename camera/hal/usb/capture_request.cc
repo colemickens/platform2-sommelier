@@ -9,10 +9,9 @@ namespace arc {
 
 const int kBufferFenceReady = -1;
 
-CaptureRequest::CaptureRequest(const camera3_capture_request& request)
-    : frame_number_(request.frame_number) {
-  metadata_ = request.settings;
-
+CaptureRequest::CaptureRequest(const camera3_capture_request& request,
+                               const CameraMetadata& metadata)
+    : frame_number_(request.frame_number), metadata_(metadata) {
   // We cannot merge the two loops because the address of elements in
   // buffer_handles_ may be changed when new element is push into the vector.
   for (size_t i = 0; i < request.num_output_buffers; i++) {

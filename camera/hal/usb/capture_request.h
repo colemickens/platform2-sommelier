@@ -16,7 +16,8 @@ namespace arc {
 
 class CaptureRequest {
  public:
-  explicit CaptureRequest(const camera3_capture_request& request);
+  explicit CaptureRequest(const camera3_capture_request& request,
+                          const CameraMetadata& metadata);
   ~CaptureRequest();
 
   const int GetFrameNumber() const { return frame_number_; }

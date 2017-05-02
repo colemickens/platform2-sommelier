@@ -351,6 +351,12 @@ static bool ConvertToJpeg(const CameraMetadata& metadata,
   size_t buffer_length = compressor.GetCompressedImageSize();
   memcpy(out_frame->GetData(), compressor.GetCompressedImagePtr(),
          buffer_length);
+
+  camera3_jpeg_blob_t blob;
+  blob.jpeg_blob_id = CAMERA3_JPEG_BLOB_ID;
+  blob.jpeg_size = buffer_length;
+  memcpy(out_frame->GetData() + out_frame->GetBufferSize() - sizeof(blob),
+         &blob, sizeof(blob));
   return true;
 }
 

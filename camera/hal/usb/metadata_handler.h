@@ -8,6 +8,8 @@
 
 #include <memory>
 
+#include <base/threading/thread_checker.h>
+
 #include "arc/camera_metadata.h"
 #include "hal/usb/common_types.h"
 
@@ -42,9 +44,17 @@ class MetadataHandler {
   // any thread.
   const camera_metadata_t* GetDefaultRequestSettings(int template_type);
 
+  // PreHandleRequest and PostHandleRequest should run on the same thread.
+
+  // Called before the request is processed. This function is used for checking
+  // metadata values to setup related states and image settings.
+  void PreHandleRequest(int frame_number, const CameraMetadata& metadata);
+
   // Called after the request is processed. This function is used to update
-  // required metadata which can be gotten from 3A or image processor.
-  void PostHandleRequest(int64_t timestamp, CameraMetadata* metadata);
+  // required metadata which can be gotton from 3A or image processor.
+  void PostHandleRequest(int frame_number,
+                         int64_t timestamp,
+                         CameraMetadata* metadata);
 
  private:
   // Check |template_type| is valid or not.
@@ -59,6 +69,14 @@ class MetadataHandler {
   // Static array of standard camera settings templates. These are owned by
   // CameraClient.
   CameraMetadataUniquePtr template_settings_[CAMERA3_TEMPLATE_COUNT];
+
+  // Use to check PreHandleRequest and PostHandleRequest are called on the same
+  // thread.
+  base::ThreadChecker thread_checker_;
+
+  int current_frame_number_;
+
+  bool af_trigger_;
 };
 
 }  // namespace arc

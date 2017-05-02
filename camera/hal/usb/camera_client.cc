@@ -181,9 +181,18 @@ int CameraClient::ProcessCaptureRequest(camera3_capture_request_t* request) {
     return -EINVAL;
   }
 
+  if (request->settings) {
+    latest_request_metadata_ = request->settings;
+    if (VLOG_IS_ON(1)) {
+      dump_camera_metadata(request->settings, 1, 1);
+    }
+  }
+
   // We cannot use |request| after this function returns. So we have to copy
-  // necessary information out to |capture_request|.
-  std::unique_ptr<CaptureRequest> capture_request(new CaptureRequest(*request));
+  // necessary information out to |capture_request|. If |request->settings|
+  // doesn't exist, use previous metadata.
+  std::unique_ptr<CaptureRequest> capture_request(
+      new CaptureRequest(*request, latest_request_metadata_));
   request_task_runner_->PostTask(
       FROM_HERE, base::Bind(&CameraClient::RequestHandler::HandleRequest,
                             base::Unretained(request_handler_.get()),
@@ -417,6 +426,9 @@ void CameraClient::RequestHandler::HandleRequest(
     return;
   }
 
+  CameraMetadata* metadata = request->GetMetadata();
+  metadata_handler_->PreHandleRequest(capture_result.frame_number, *metadata);
+
   uint32_t buffer_id, data_size;
   ret = device_->GetNextFrameBuffer(&buffer_id, &data_size);
   if (ret) {
@@ -437,7 +449,6 @@ void CameraClient::RequestHandler::HandleRequest(
                          << ", Number of output buffers: "
                          << capture_result.num_output_buffers;
 
-  CameraMetadata* metadata = request->GetMetadata();
   // Handle each stream output buffer and convert it to corresponding format.
   for (size_t i = 0; i < capture_result.num_output_buffers; i++) {
     ret = WriteStreamBuffer(*metadata, const_cast<camera3_stream_buffer_t*>(
@@ -451,7 +462,8 @@ void CameraClient::RequestHandler::HandleRequest(
 
   int64_t timestamp;
   NotifyShutter(capture_result.frame_number, &timestamp);
-  metadata_handler_->PostHandleRequest(timestamp, metadata);
+  metadata_handler_->PostHandleRequest(capture_result.frame_number, timestamp,
+                                       metadata);
   capture_result.result = metadata->Release();
 
   // After process_capture_result, HAL cannot access the output buffer in
@@ -476,7 +488,7 @@ int CameraClient::RequestHandler::WriteStreamBuffer(
 
   int fourcc = HalPixelFormatToFourcc(buffer->stream->format);
   GrallocFrameBuffer output_frame(*buffer->buffer, buffer->stream->width,
-                                  buffer->stream->height, fourcc);
+                                  buffer->stream->height, fourcc, metadata);
 
   int ret = output_frame.Map();
   if (ret) {
