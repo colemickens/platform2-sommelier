@@ -145,18 +145,17 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
   }
 
   // Deserialize output buffers.
-  DCHECK_GT(request->num_output_buffers, 0);
-  req.num_output_buffers = request->num_output_buffers;
+  size_t num_output_buffers = request->output_buffers.size();
+  DCHECK_GT(num_output_buffers, 0);
+  req.num_output_buffers = num_output_buffers;
 
   DCHECK(!request->output_buffers.is_null());
-  std::vector<camera3_stream_buffer_t> output_buffers(
-      request->num_output_buffers);
-  std::vector<buffer_handle_t> output_buffer_handles(
-      request->num_output_buffers);
+  std::vector<camera3_stream_buffer_t> output_buffers(num_output_buffers);
+  std::vector<buffer_handle_t> output_buffer_handles(num_output_buffers);
   {
     base::AutoLock streams_lock(streams_lock_);
     base::AutoLock buffer_handles_lock(buffer_handles_lock_);
-    for (size_t i = 0; i < request->num_output_buffers; ++i) {
+    for (size_t i = 0; i < num_output_buffers; ++i) {
       mojom::Camera3StreamBufferPtr& out_buf_ptr = request->output_buffers[i];
       output_buffers.at(i).buffer =
           const_cast<const native_handle_t**>(&output_buffer_handles.at(i));
@@ -272,9 +271,6 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::ProcessCaptureResult(
   r->frame_number = result->frame_number;
 
   r->result = internal::SerializeCameraMetadata(result->result);
-
-  // num_output_buffers may be 0.
-  r->num_output_buffers = result->num_output_buffers;
 
   // Serialize output buffers.  This may be none as num_output_buffers may be 0.
   if (result->output_buffers) {

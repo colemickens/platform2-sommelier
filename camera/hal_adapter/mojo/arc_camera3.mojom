@@ -103,7 +103,6 @@ struct Camera3CaptureRequest {
   uint32 frame_number;
   CameraMetadata settings;
   Camera3StreamBuffer? input_buffer;
-  uint32 num_output_buffers;
   array<Camera3StreamBuffer> output_buffers;
 };
 
@@ -140,7 +139,6 @@ interface Camera3DeviceOps {
 struct Camera3CaptureResult {
   uint32 frame_number;
   CameraMetadata result;
-  uint32 num_output_buffers;
   array<Camera3StreamBuffer>? output_buffers;
   Camera3StreamBuffer? input_buffer;
   uint32 partial_result;
