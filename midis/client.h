@@ -18,7 +18,7 @@
 
 namespace midis {
 
-class Client {
+class Client : public DeviceTracker::Observer {
  public:
   ~Client();
   static std::unique_ptr<Client> Create(base::ScopedFD fd,
@@ -48,6 +48,10 @@ class Client {
   // |  num entries |             device1_info                   |  device2_info
   // |....
   uint32_t PrepareDeviceListPayload(uint8_t* payload_buf, size_t buf_len);
+
+  // This function is a DeviceTracker::Observer override.
+  void OnDeviceAddedOrRemoved(const struct MidisDeviceInfo* dev_info,
+                              bool added) override;
 
   base::ScopedFD client_fd_;
   brillo::MessageLoop::TaskId msg_taskid_;

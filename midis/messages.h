@@ -18,6 +18,8 @@ enum ClientMsgType {
 
 enum ServerMsgType {
   LIST_DEVICES_RESPONSE = 0,
+  DEVICE_ADDED = 1,
+  DEVICE_REMOVED = 2,
 };
 
 struct MidisMessageHeader {

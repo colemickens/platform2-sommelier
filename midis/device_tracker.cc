@@ -186,9 +186,14 @@ std::unique_ptr<Device> UdevHandler::CreateDevice(
 }
 
 void DeviceTracker::AddDevice(std::unique_ptr<Device> dev) {
+  // Get info of new Device
+  struct MidisDeviceInfo new_dev;
+  FillMidisDeviceInfo(dev.get(), &new_dev);
+
   uint32_t device_id =
       udev_handler_->GenerateDeviceId(dev->GetCard(), dev->GetDeviceNum());
   devices_.emplace(device_id, std::move(dev));
+  NotifyObserversDeviceAddedOrRemoved(&new_dev, true);
 }
 
 void DeviceTracker::RemoveDevice(uint32_t sys_num, uint32_t dev_num) {
@@ -196,7 +201,10 @@ void DeviceTracker::RemoveDevice(uint32_t sys_num, uint32_t dev_num) {
   if (it != devices_.end()) {
     // TODO(pmalani): Whole bunch of book-keeping has to be done here.
     // and notifications need to be sent to all clients.
+    struct MidisDeviceInfo removed_dev;
+    FillMidisDeviceInfo(it->second.get(), &removed_dev);
     devices_.erase(it);
+    NotifyObserversDeviceAddedOrRemoved(&removed_dev, false);
     LOG(INFO) << "Device: " << sys_num << "," << dev_num << " removed.";
   } else {
     LOG(ERROR) << "Device: " << sys_num << "," << dev_num << " not listed.";
@@ -240,16 +248,34 @@ void UdevHandler::ProcessUdevEvent(struct udev_device* udev_device) {
 
 void DeviceTracker::ListDevices(std::vector<MidisDeviceInfo>* list) {
   for (auto& id_device_pair : devices_) {
-    struct MidisDeviceInfo cur;
-    memset(&cur, 0, sizeof(MidisDeviceInfo));
-    strncpy(reinterpret_cast<char*>(cur.name),
-            id_device_pair.second->GetName().c_str(), kMidisDeviceInfoNameSize);
-    cur.card = id_device_pair.second->GetCard();
-    cur.device_num = id_device_pair.second->GetDeviceNum();
-    cur.num_subdevices = id_device_pair.second->GetNumSubdevices();
-    cur.flags = id_device_pair.second->GetFlags();
-
-    list->push_back(cur);
+    list->emplace_back();
+    FillMidisDeviceInfo(id_device_pair.second.get(), &list->back());
   }
 }
+
+void DeviceTracker::FillMidisDeviceInfo(const Device* dev,
+                                        struct MidisDeviceInfo* dev_info) {
+  memset(dev_info, 0, sizeof(struct MidisDeviceInfo));
+  strncpy(reinterpret_cast<char*>(dev_info->name), dev->GetName().c_str(),
+          kMidisDeviceInfoNameSize);
+  dev_info->card = dev->GetCard();
+  dev_info->device_num = dev->GetDeviceNum();
+  dev_info->num_subdevices = dev->GetNumSubdevices();
+  dev_info->flags = dev->GetFlags();
+}
+
+void DeviceTracker::AddDeviceObserver(Observer* obs) {
+  observer_list_.AddObserver(obs);
+}
+
+void DeviceTracker::RemoveDeviceObserver(Observer* obs) {
+  observer_list_.RemoveObserver(obs);
+}
+
+void DeviceTracker::NotifyObserversDeviceAddedOrRemoved(
+    struct MidisDeviceInfo* dev_info, bool added) {
+  FOR_EACH_OBSERVER(Observer, observer_list_,
+                    OnDeviceAddedOrRemoved(dev_info, added));
+}
+
 }  // namespace midis

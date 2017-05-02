@@ -21,9 +21,14 @@ const int kMaxBufSize = 1024;
 Client::Client(base::ScopedFD fd, DeviceTracker* device_tracker)
     : client_fd_(std::move(fd)),
       device_tracker_(device_tracker),
-      weak_factory_(this) {}
+      weak_factory_(this) {
+  device_tracker_->AddDeviceObserver(this);
+}
 
-Client::~Client() { StopMonitoring(); }
+Client::~Client() {
+  StopMonitoring();
+  device_tracker_->RemoveDeviceObserver(this);
+}
 
 std::unique_ptr<Client> Client::Create(base::ScopedFD fd,
                                        DeviceTracker* device_tracker) {
@@ -61,7 +66,7 @@ uint32_t Client::PrepareDeviceListPayload(uint8_t* payload_buf,
                                           size_t buf_len) {
   std::vector<MidisDeviceInfo> list;
   if (!device_tracker_) {
-    LOG(ERROR) << "Device tracker ptr is nullptr; something bad happened.";
+    LOG(FATAL) << "Device tracker ptr is nullptr; something bad happened.";
     return 0;
   }
   device_tracker_->ListDevices(&list);
@@ -124,6 +129,28 @@ bool Client::StartMonitoring() {
 void Client::StopMonitoring() {
   brillo::MessageLoop::current()->CancelTask(msg_taskid_);
   msg_taskid_ = brillo::MessageLoop::kTaskIdNull;
+}
+
+void Client::OnDeviceAddedOrRemoved(const struct MidisDeviceInfo* dev_info,
+                                    bool added) {
+  // Prepare the payload.
+  struct MidisMessageHeader header;
+  header.type = added ? DEVICE_ADDED : DEVICE_REMOVED;
+  header.payload_size = sizeof(MidisDeviceInfo);
+
+  int ret = HANDLE_EINTR(
+      write(client_fd_.get(), &header, sizeof(struct MidisMessageHeader)));
+  if (ret < 0) {
+    PLOG(ERROR)
+        << "NotifyDeviceAddedOrRemoved() header: write to client_fd failed.";
+    return;
+  }
+
+  ret = HANDLE_EINTR(
+      write(client_fd_.get(), dev_info, sizeof(struct MidisDeviceInfo)));
+  if (ret < 0) {
+    PLOG(ERROR) << "NotifyDeviceAdded() payload: write to client_fd_failed.";
+  }
 }
 
 }  // namespace midis

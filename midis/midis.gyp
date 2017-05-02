@@ -41,6 +41,8 @@
             ],
           },
           'sources': [
+            'client.cc',
+            'client_tracker.cc',
             'device.cc',
             'device_tracker.cc',
             'device_tracker_test.cc',
@@ -57,6 +59,8 @@
             ],
           },
           'sources': [
+            'client.cc',
+            'client_tracker.cc',
             'device.cc',
             'device_tracker.cc',
             'file_handler.cc',

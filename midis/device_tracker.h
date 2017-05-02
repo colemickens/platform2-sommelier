@@ -15,6 +15,7 @@
 
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
+#include <base/observer_list.h>
 #include <gtest/gtest_prod.h>
 
 #include "midis/device.h"
@@ -70,6 +71,9 @@ class UdevHandler {
 
 class DeviceTracker {
  public:
+  // TODO(pmalani): Add factory functions that take care of calling
+  // initialization routines, like InitDeviceTracker(), so that users of the
+  // class don't have to worry about calling a prescribed set of functions.
   DeviceTracker();
 
   explicit DeviceTracker(std::unique_ptr<UdevHandler> handler);
@@ -78,14 +82,35 @@ class DeviceTracker {
   bool InitDeviceTracker();
   void ListDevices(std::vector<MidisDeviceInfo>* list);
 
+  class Observer {
+   public:
+    // Function which is executed when a MIDI device is added or removed
+    // from the h/w. The client registered as an observer can expect
+    // that struct MidisDeviceInfo pointer is allocated and its fields have
+    // been filled out correctly.
+    //
+    // The 'added' argument is set to true if the device was added, and false
+    // otherwise.
+    virtual void OnDeviceAddedOrRemoved(const struct MidisDeviceInfo* dev_info,
+                                        bool added) = 0;
+  };
+
+  void AddDeviceObserver(Observer* obs);
+
+  void RemoveDeviceObserver(Observer* obs);
+
  private:
   friend class DeviceTrackerTest;
   FRIEND_TEST(DeviceTrackerTest, Add2DevicesPositive);
   FRIEND_TEST(DeviceTrackerTest, AddRemoveDevicePositive);
   FRIEND_TEST(DeviceTrackerTest, AddDeviceRemoveNegative);
+  void FillMidisDeviceInfo(const Device* dev, struct MidisDeviceInfo* dev_info);
+  void NotifyObserversDeviceAddedOrRemoved(struct MidisDeviceInfo* dev_info,
+                                           bool added);
 
   std::map<uint32_t, std::unique_ptr<Device>> devices_;
   std::unique_ptr<UdevHandler> udev_handler_;
+  base::ObserverList<Observer> observer_list_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceTracker);
 };

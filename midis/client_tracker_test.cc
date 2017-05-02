@@ -79,7 +79,8 @@ void ConnectToClient(base::FilePath socketDir) {
   EXPECT_EQ(header.type, LIST_DEVICES_RESPONSE);
 
   bytes = read(server_fd.get(), buf, header.payload_size);
-  EXPECT_EQ(bytes, 0);
+  EXPECT_EQ(bytes, 1);
+  EXPECT_EQ(buf[0], 0);
 }
 
 void ServerCheckClientsCallback(ClientTracker* cli_tracker,
@@ -94,9 +95,10 @@ TEST_F(ClientTrackerTest, AddClientPositive) {
   base::FilePath socket_dir = CreateFakeTempSubDir(temp_fp_, "run/midis");
   ASSERT_NE(socket_dir.value(), "");
 
+  DeviceTracker device_tracker;
   ClientTracker cli_tracker;
   cli_tracker.SetBaseDirForTesting(temp_fp_);
-  ASSERT_TRUE(cli_tracker.InitClientTracker(nullptr));
+  ASSERT_TRUE(cli_tracker.InitClientTracker(&device_tracker));
 
   base::Thread client_thread(kClientThreadName);
   ASSERT_TRUE(client_thread.Start());
