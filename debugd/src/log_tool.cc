@@ -148,6 +148,14 @@ const Log common_logs[] = {
               " -e 'synaptics: Touchpad model'"
               " -e 'chromeos-[a-z]*-touch-[a-z]*-update'"
               " /var/log/messages | tail -n 20" },
+  { "atmel_ts_refs", "/opt/google/touch/scripts/atmel_tools.sh ts r",
+    kRoot, kRoot},
+  { "atmel_tp_refs", "/opt/google/touch/scripts/atmel_tools.sh tp r",
+    kRoot, kRoot},
+  { "atmel_ts_deltas", "/opt/google/touch/scripts/atmel_tools.sh ts d",
+    kRoot, kRoot},
+  { "atmel_tp_deltas", "/opt/google/touch/scripts/atmel_tools.sh tp d",
+    kRoot, kRoot},
   {
     "trim",
     "cat /var/lib/trim/stateful_trim_state /var/lib/trim/stateful_trim_data"
