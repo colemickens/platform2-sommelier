@@ -102,6 +102,28 @@ bool KernelConfigToBiosType(const string& kernel_config, BiosType* type) {
   return false;
 }
 
+// Returns zero on success, exit code on failure
+static int TryCr50Update(const string &install_dir) {
+  int result;
+  string script =  install_dir + "/usr/share/cros/cr50-update.sh";
+  string command = script + " " + install_dir;
+
+  if (access(script.c_str(), X_OK)) {
+    // The script is not there, means no cr50 present either, nothing to do.
+    return 0;
+  }
+
+  printf("Starting cr50 updater (%s)\n", command.c_str());
+  result = RunCommand(command);
+
+  if (result)
+    fprintf(stderr, "Cr50 update attempt failed (%d).\n",  result);
+  else
+    printf("Cr50 updater succeeded\n");
+
+  return result;
+}
+
 // Updates firmware. We must activate new firmware only after new kernel is
 // actived (installed and made bootable), otherwise new firmware with all old
 // kernels may lead to recovery screen (due to new key).
@@ -375,6 +397,12 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
 
       return false;
     }
+  }
+
+  if (TryCr50Update(install_config.root.mount())) {
+    fprintf(stderr, "Failed to update cr50 firmware.\n");
+    // Let's not consider cr50 update failure a reason for interrupting
+    // installation.
   }
 
   if (cgpt_manager.Finalize()) {
