@@ -80,6 +80,7 @@ dev_check_block_dev_mode() { true; }
 dev_update_stateful_partition() { true; }
 dev_gather_logs() { true; }
 dev_mount_packages() { true; }
+dev_is_debug_build() { false; }
 
 if [ "${CROS_DEBUG}" -eq 1 ]; then
   . /usr/share/cros/dev_utils.sh
@@ -106,6 +107,7 @@ fi
 # an initramfs or tmpfs rootfs (ex, factory installer images. Note recovery
 # image also uses initramfs but it never reach here). When using initrd+tftpboot
 # (some old netboot factory installer), ROOTDEV_TYPE will be /dev/ram.
+STATE_DEV=""
 if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
   # Find our stateful partition mount point.
   # To support multiple volumes on a single UBI device, if the stateful
@@ -193,13 +195,9 @@ fi
 # arguments and then rebooting.
 RESET_FILE="/mnt/stateful_partition/factory_install_reset"
 
-FIRMWARE_TYPE=$(crossystem mainfw_type)
-
 # Check for whether we need a stateful wipe, and alert the user as
 # necessary.  We can wipe for several different reasons:
-#  + User requested "power wash".  This is signaled in the same
-#    way as the factory reset, but with different arguments in
-#    ${RESET_FILE}.
+#  + User requested "power wash" which will create ${RESET_FILE}.
 #  + Switch from verified mode to dev mode.  We do this if we're in
 #    dev mode, and ${DEV_MODE_FILE} doesn't exist.  clobber-state
 #    in this case will create the file, to prevent re-wipe.
@@ -207,31 +205,35 @@ FIRMWARE_TYPE=$(crossystem mainfw_type)
 #    verified mode, and ${DEV_MODE_FILE} still exists.  (This check
 #    isn't necessarily reliable.)
 #
-# Stateful wipe for dev mode switching is skipped if the build
-# is a debug build or if we've booted in recovery mode (meaning
-# from USB); this protects various development use cases, most
-# especially booting Chromium OS on non-Chrome hardware.
-#
+# Stateful wipe for dev mode switching is skipped if the build is a debug build
+# or if we've booted a non-recovery image in recovery mode (for example, doing
+# Esc-F3-Power on a Chromebook with DEV-signed firmware); this protects various
+# development use cases, most especially prototype units or booting Chromium OS
+# on non-Chrome hardware. And because crossystem is slow on some platforms, we
+# want to do the additional checks only after verified DEV_MODE_FILE existence.
 if [ -O ${RESET_FILE} ]; then
   # Wipe requested on previous boot.
   chromeos-boot-alert power_wash
-elif [ -z "$FACTORY_MODE" -a "$FIRMWARE_TYPE" != "recovery" ]; then
-  if crossystem "devsw_boot?1" ; then
-    if [ ! -O ${DEV_MODE_FILE} ] && crossystem "debug_build?0"; then
-      # We're transitioning from verified boot to dev mode.
-      # TODO(wad,wfrichar) Have user provide sudo/vt2 password here.
-      chromeos-boot-alert enter_dev
-      echo "keepimg" > ${RESET_FILE}
-      clobber-log -- "Enter developer mode"
-    fi
-
-  elif [ -O ${DEV_MODE_FILE} ] && crossystem "debug_build?0"; then
+elif [ -z "${STATE_DEV}" ] || dev_is_debug_build; then
+  # No physical stateful partition available, usually due to initramfs
+  # (recovery image, factory install shim or netboot), or running from a
+  # debug build image. Do not wipe.
+  :
+elif [ -O "${DEV_MODE_FILE}" ]; then
+  if crossystem 'devsw_boot?0' && ! crossystem 'mainfw_type?recovery'; then
     # We're transitioning from dev mode to verified boot.
     # When coming back from developer mode, we don't need to
     # clobber as aggressively.  Fast will do the trick.
     chromeos-boot-alert leave_dev
-    echo "fast keepimg" > ${RESET_FILE}
+    echo "fast keepimg" >"${RESET_FILE}"
     clobber-log -- "Leave developer mode"
+  fi
+else
+  if crossystem 'devsw_boot?1' && ! crossystem 'mainfw_type?recovery'; then
+    # We're transitioning from verified boot to dev mode.
+    chromeos-boot-alert enter_dev
+    echo "keepimg" >"${RESET_FILE}"
+    clobber-log -- "Enter developer mode"
   fi
 fi
 

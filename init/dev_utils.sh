@@ -7,6 +7,11 @@
 
 STATEFUL_PARTITION="/mnt/stateful_partition"
 
+# Returns if we are running on a debug build.
+dev_is_debug_build() {
+  crossystem 'debug_build?1'
+}
+
 # Check whether the device is allowed to boot in dev mode.
 # 1. If a debug build is already installed on the system, ignore block_devmode.
 #    It is pointless in this case, as the device is already in a state where the
