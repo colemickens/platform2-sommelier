@@ -3,8 +3,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef FP_SENSOR_H_
-#define FP_SENSOR_H_
+#ifndef BIOD_FPC_FP_SENSOR_H_
+#define BIOD_FPC_FP_SENSOR_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -102,4 +102,4 @@ int fp_sensor_cancel(void);
 }
 #endif
 
-#endif  /* FP_SENSOR_H_ */
+#endif  /* BIOD_FPC_FP_SENSOR_H_ */

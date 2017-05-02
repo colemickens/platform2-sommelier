@@ -182,8 +182,9 @@ bool FpcBiometricsManager::SensorLibrary::Init(int fd) {
   LOG(INFO) << "FPC Image Info ";
   // Prints the pixel format in FOURCC format.
   const uint32_t a = pixel_format;
-  LOG(INFO) << "  Pixel Format     : " << (char)(a) << (char)(a >> 8)
-            << (char)(a >> 16) << (char)(a >> 24);
+  LOG(INFO) << "  Pixel Format     : " << static_cast<char>(a)
+            << static_cast<char>(a >> 8) << static_cast<char>(a >> 16)
+            << static_cast<char>(a >> 24);
   LOG(INFO) << "  Image Data Size  : " << image_data_size;
   LOG(INFO) << "  Image Dimensions : " << width << "x" << height;
 
