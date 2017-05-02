@@ -73,7 +73,6 @@ class DevicePolicyServiceTest : public ::testing::Test {
   virtual void SetUp() {
     fake_loop_.SetAsCurrent();
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    policy_file_ = tmpdir_.path().AppendASCII("policy");
     install_attributes_file_ =
         tmpdir_.path().AppendASCII("install_attributes.pb");
   }
@@ -115,8 +114,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
     store_ = new StrictMock<MockPolicyStore>;
     metrics_.reset(new MockMetrics);
     mitigator_.reset(new StrictMock<MockMitigator>);
-    service_.reset(new DevicePolicyService(policy_file_,
-                                           install_attributes_file_,
+    service_.reset(new DevicePolicyService(install_attributes_file_,
                                            std::unique_ptr<PolicyStore>(store_),
                                            &key_,
                                            metrics_.get(),
@@ -296,7 +294,6 @@ class DevicePolicyServiceTest : public ::testing::Test {
   brillo::FakeMessageLoop fake_loop_{nullptr};
 
   base::ScopedTempDir tmpdir_;
-  base::FilePath policy_file_;
   base::FilePath install_attributes_file_;
 
   // Use StrictMock to make sure that no unexpected policy or key mutations can

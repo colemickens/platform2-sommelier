@@ -71,7 +71,6 @@ DevicePolicyService* DevicePolicyService::Create(
     Crossystem* crossystem,
     VpdProcess* vpd_process) {
   return new DevicePolicyService(
-      base::FilePath(kPolicyPath),
       base::FilePath(kInstallAttributesPath),
       std::unique_ptr<PolicyStore>(
           new PolicyStore(base::FilePath(kPolicyPath))),
@@ -148,7 +147,6 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
 }
 
 DevicePolicyService::DevicePolicyService(
-    const base::FilePath& policy_file,
     const base::FilePath& install_attributes_file,
     std::unique_ptr<PolicyStore> policy_store,
     PolicyKey* policy_key,
@@ -158,7 +156,6 @@ DevicePolicyService::DevicePolicyService(
     Crossystem* crossystem,
     VpdProcess* vpd_process)
     : PolicyService(std::move(policy_store), policy_key),
-      policy_file_(policy_file),
       install_attributes_file_(install_attributes_file),
       metrics_(metrics),
       mitigator_(mitigator),

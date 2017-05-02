@@ -137,8 +137,7 @@ class DevicePolicyService : public PolicyService {
   friend class MockDevicePolicyService;
 
   // Takes ownership of |policy_store|.
-  DevicePolicyService(const base::FilePath& policy_file,
-                      const base::FilePath& install_attributes_file,
+  DevicePolicyService(const base::FilePath& install_attributes_file,
                       std::unique_ptr<PolicyStore> policy_store,
                       PolicyKey* owner_key,
                       LoginMetrics* metrics,
@@ -173,7 +172,6 @@ class DevicePolicyService : public PolicyService {
   // device owner.  Returns false if not, or if that cannot be determined.
   bool GivenUserIsOwner(const std::string& current_user);
 
-  const base::FilePath policy_file_;
   const base::FilePath install_attributes_file_;
   LoginMetrics* metrics_;
   OwnerKeyLossMitigator* mitigator_;
