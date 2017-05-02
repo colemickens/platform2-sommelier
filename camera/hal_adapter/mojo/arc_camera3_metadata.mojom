@@ -16,14 +16,20 @@ enum EntryType {
   NUM_TYPES
 };
 
+// CameraMetadataEntry is a translation of the camera_metadata_entry_t in
+// Android camera HAL v3 API (https://goo.gl/OC8sOH).  A CameraMetadataEntry
+// holds the values of one type of metadata specified by |tag|.
 struct CameraMetadataEntry {
   uint32 index;
   CameraMetadataTag tag;
   EntryType type;
-  uint32 count;
+  uint32 count;  // The number of data entries as |type| in |data|.
   array<uint8> data;
 };
 
+// CameraMetadata is a translation of the camera_metadata struct in Android
+// camera HAL v3 API (https://goo.gl/G7ligz).  A CameraMetadata holds a
+// collection of metadata tags and their values.
 struct CameraMetadata {
   uint32 size;
   uint32 entry_count;
