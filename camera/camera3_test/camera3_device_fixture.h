@@ -47,28 +47,33 @@ class Camera3Device {
   // Add output stream in preparation for stream configuration
   void AddOutputStream(int format, int width, int height);
 
-  // Configure streams
-  int ConfigureStreams();
+  // Configure streams and return configured streams if |streams| is not null
+  int ConfigureStreams(std::vector<const camera3_stream_t*>* streams);
 
-  // Allocate output buffers
+  // Allocate output buffers for all configured streams and return them
+  // in the stream buffer format, which has the buffer associated to the
+  // corresponding stream. The allocated buffers are owned by Camera3Device.
   int AllocateOutputStreamBuffers(
       std::vector<camera3_stream_buffer_t>* output_buffers);
 
-  // Allocate output buffers by given streams. This function is designed
-  // specifically for testing exceptional cases like unconfigured streams. Don't
-  // use it otherwise. However, if |streams| is empty, this function will use
-  // the streams configured by |AddOutputStream| and |ConfigureStreams|; i.e. it
-  // will behave exacly the same as |AllocateOutputStreamBuffers| does.
-  int AllocateOutputStreamBuffersByStreams(
-      const std::vector<camera3_stream_t>& streams,
+  // Allocate output buffers for given streams |streams| and return them
+  // in the stream buffer format, which has the buffer associated to the
+  // corresponding stream. The allocated buffers are owned by Camera3Device.
+  int AllocateOutputBuffersByStreams(
+      const std::vector<const camera3_stream_t*>& streams,
       std::vector<camera3_stream_buffer_t>* output_buffers);
 
-  // Free stream buffers
-  int FreeOutputStreamBuffers(
-      const std::vector<camera3_stream_buffer_t>& output_buffers);
+  // Get the buffers out of the given stream buffers |output_buffers|. The
+  // buffers are return in the container |unique_buffers|, and the caller of
+  // the function is expected to take the buffer ownership.
+  int GetOutputStreamBufferHandles(
+      const std::vector<camera3_stream_buffer_t>& output_buffers,
+      std::vector<BufferHandleUniquePtr>* unique_buffers);
 
-  // Free all stream buffers
-  void ClearOutputStreamBuffers();
+  // Register buffer |unique_buffer| that is associated with the given stream
+  // |stream|. Camera3Device takes buffer ownership.
+  int RegisterOutputBuffer(const camera3_stream_t& stream,
+                           BufferHandleUniquePtr unique_buffer);
 
   // Process capture request
   int ProcessCaptureRequest(camera3_capture_request_t* request);
@@ -121,8 +126,9 @@ class Camera3Device {
 
   Camera3TestGralloc* gralloc_;
 
-  // Store allocated buffers while easy to lookup and remove
-  std::unordered_map<camera3_stream_t*, std::set<BufferHandleUniquePtr>>
+  // Store allocated buffers with streams as the key
+  std::unordered_map<const camera3_stream_t*,
+                     std::vector<BufferHandleUniquePtr>>
       stream_buffers_;
 
   base::Lock stream_lock_;
@@ -186,13 +192,40 @@ class Camera3Device::StaticInfo {
   bool IsAWBLockSupported() const;
 
   // Get the maximum number of partial result a request can expect
+  // Returns: maximum number of partial results; it is 1 by default.
   int32_t GetPartialResultCount() const;
 
+  // Get the number of maximum pipeline stages a frame has to go through from
+  // when it's exposed to when it's available to the framework
+  // Returns: number of maximum pipeline stages on success; corresponding error
+  // code on failure.
+  int32_t GetRequestPipelineMaxDepth() const;
+
   // Get the maxium size of JPEG image
+  // Returns: maximum size of JPEG image on success; corresponding error code
+  // on failure.
   int32_t GetJpegMaxSize() const;
 
   // Get the sensor orientation
+  // Returns: degrees on success; corresponding error code on failure.
   int32_t GetSensorOrientation() const;
+
+  // Get available thumbnail sizes
+  // Returns: 0 on success; corresponding error code on failure.
+  int32_t GetAvailableThumbnailSizes(
+      std::vector<ResolutionInfo>* resolutions) const;
+
+  // Get available focal lengths
+  // Returns: 0 on success; corresponding error code on failure.
+  int32_t GetAvailableFocalLengths(std::vector<float>* focal_lengths) const;
+
+  // Get available apertures
+  // Returns: 0 on success; corresponding error code on failure.
+  int32_t GetAvailableApertures(std::vector<float>* apertures) const;
+
+  // Get available AF modes
+  // Returns: 0 on success; corresponding error code on failure.
+  int32_t GetAvailableAFModes(std::vector<int32_t>* af_modes) const;
 
  private:
   // Return the supported hardware level of the device, or fail if no value is

@@ -141,6 +141,7 @@ void Camera3FrameFixture::ProcessCaptureResult(
     EXPECT_KEY_VALUE_GT_I64(result->result, ANDROID_SENSOR_TIMESTAMP, 0);
   }
 
+  std::vector<camera3_stream_buffer_t> output_stream_buffers;
   for (uint32_t i = 0; i < result->num_output_buffers; i++) {
     camera3_stream_buffer_t stream_buffer = result->output_buffers[i];
     ASSERT_NE(nullptr, stream_buffer.buffer)
@@ -158,14 +159,8 @@ void Camera3FrameFixture::ProcessCaptureResult(
           << "Error waiting on buffer acquire fence";
       close(stream_buffer.release_fence);
     }
+    output_stream_buffers.push_back(result->output_buffers[i]);
   }
-
-  // Verify and free buffers
-  std::vector<camera3_stream_buffer_t> output_buffers(
-      result->output_buffers,
-      result->output_buffers + result->num_output_buffers);
-  EXPECT_EQ(0, cam_device_.FreeOutputStreamBuffers(output_buffers))
-      << "Buffer returned in capture result is invalid";
 
   capture_result_[result->frame_number].num_output_buffers_ +=
       result->num_output_buffers;
@@ -178,6 +173,14 @@ void Camera3FrameFixture::ProcessCaptureResult(
               completed_request_.find(result->frame_number))
         << "Multiple results are received for the same request";
     completed_request_.insert(result->frame_number);
+
+    // Get the unique pointers of buffers and automatically free them while out
+    // of scope
+    std::vector<BufferHandleUniquePtr> unique_buffers;
+    if (cam_device_.GetOutputStreamBufferHandles(output_stream_buffers,
+                                                 &unique_buffers)) {
+      ADD_FAILURE() << "Failed to get output buffers";
+    }
 
     ASSERT_EQ(result->frame_number, result_frame_number_)
         << "Capture result is out of order";
@@ -550,7 +553,8 @@ TEST_P(Camera3SingleFrameTest, GetFrame) {
 
     cam_device_.AddOutputStream(format, resolution.Width(),
                                 resolution.Height());
-    ASSERT_EQ(0, cam_device_.ConfigureStreams()) << "Configuring stream fails";
+    ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
+        << "Configuring stream fails";
 
     ASSERT_EQ(0, CreateCaptureRequest(type, nullptr))
         << "Creating capture request fails";
@@ -574,7 +578,8 @@ class Camera3MultiFrameTest : public Camera3FrameFixture,
 
 TEST_P(Camera3MultiFrameTest, GetFrame) {
   cam_device_.AddOutputStream(default_format_, default_width_, default_height_);
-  ASSERT_EQ(0, cam_device_.ConfigureStreams()) << "Configuring stream fails";
+  ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
+      << "Configuring stream fails";
 
   int32_t type = std::get<1>(GetParam());
   if (!cam_device_.IsTemplateSupported(type)) {
@@ -605,7 +610,8 @@ class Camera3MixedTemplateMultiFrameTest
 
 TEST_P(Camera3MixedTemplateMultiFrameTest, GetFrame) {
   cam_device_.AddOutputStream(default_format_, default_width_, default_height_);
-  ASSERT_EQ(0, cam_device_.ConfigureStreams()) << "Configuring stream fails";
+  ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
+      << "Configuring stream fails";
 
   int32_t types[] = {CAMERA3_TEMPLATE_PREVIEW, CAMERA3_TEMPLATE_STILL_CAPTURE,
                      CAMERA3_TEMPLATE_VIDEO_RECORD,
@@ -671,7 +677,8 @@ TEST_P(Camera3FlushRequestsTest, GetFrame) {
   // The number of configured streams must match the value of
   // |num_configured_stream_|.
   cam_device_.AddOutputStream(default_format_, default_width_, default_height_);
-  ASSERT_EQ(0, cam_device_.ConfigureStreams()) << "Configuring stream fails";
+  ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
+      << "Configuring stream fails";
 
   int32_t type = std::get<1>(GetParam());
   if (!cam_device_.IsTemplateSupported(type)) {
@@ -690,7 +697,6 @@ TEST_P(Camera3FlushRequestsTest, GetFrame) {
   // requests left in the HAL
   EXPECT_EQ(num_frames, num_capture_results_)
       << "There are requests left in the HAL after flushing";
-  cam_device_.ClearOutputStreamBuffers();
 }
 
 // Test parameters:
@@ -730,7 +736,8 @@ TEST_P(Camera3MultiStreamFrameTest, GetFrame) {
                               capture_resolution.Width(),
                               capture_resolution.Height());
 
-  ASSERT_EQ(0, cam_device_.ConfigureStreams()) << "Configuring stream fails";
+  ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
+      << "Configuring stream fails";
 
   ASSERT_EQ(0, CreateCaptureRequest(CAMERA3_TEMPLATE_PREVIEW, nullptr))
       << "Creating capture request fails";
@@ -763,8 +770,9 @@ TEST_P(Camera3InvalidRequestTest, NullOrUnconfiguredRequest) {
   streams[0].width = static_cast<uint32_t>(default_width_);
   streams[0].height = static_cast<uint32_t>(default_height_);
   streams[0].format = default_format_;
-  ASSERT_EQ(0, cam_device_.AllocateOutputStreamBuffersByStreams(
-                   streams, &output_buffers))
+  std::vector<const camera3_stream_t*> stream_ptrs(1, &streams[0]);
+  ASSERT_EQ(0, cam_device_.AllocateOutputBuffersByStreams(stream_ptrs,
+                                                          &output_buffers))
       << "Failed to allocate buffers for capture request";
   camera3_capture_request_t capture_request = {
       .frame_number = 0,
@@ -774,7 +782,6 @@ TEST_P(Camera3InvalidRequestTest, NullOrUnconfiguredRequest) {
       .output_buffers = output_buffers.data()};
   EXPECT_NE(0, cam_device_.ProcessCaptureRequest(&capture_request))
       << "Capturing with stream unconfigured should fail";
-  cam_device_.FreeOutputStreamBuffers(output_buffers);
 }
 
 // Test parameters:
@@ -795,7 +802,8 @@ TEST_P(Camera3SimpleCaptureFrames, Camera3ResultAllKeysTest) {
   // Reference:
   // camera2/cts/CaptureResultTest.java#testCameraCaptureResultAllKeys
   cam_device_.AddOutputStream(default_format_, default_width_, default_height_);
-  ASSERT_EQ(0, cam_device_.ConfigureStreams()) << "Configuring stream fails";
+  ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
+      << "Configuring stream fails";
 
   for (int32_t i = 0; i < num_frames; i++) {
     ASSERT_EQ(0, CreateCaptureRequest(CAMERA3_TEMPLATE_PREVIEW, nullptr))
@@ -820,7 +828,8 @@ TEST_P(Camera3SimpleCaptureFrames, Camera3PartialResultTest) {
   }
 
   cam_device_.AddOutputStream(default_format_, default_width_, default_height_);
-  ASSERT_EQ(0, cam_device_.ConfigureStreams()) << "Configuring stream fails";
+  ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
+      << "Configuring stream fails";
 
   for (int32_t i = 0; i < num_frames; i++) {
     ASSERT_EQ(0, CreateCaptureRequest(CAMERA3_TEMPLATE_PREVIEW, nullptr))
@@ -849,7 +858,8 @@ TEST_P(Camera3ResultTimestampsTest, GetFrame) {
   // Reference:
   // camera2/cts/CaptureResultTest.java#testResultTimestamps
   cam_device_.AddOutputStream(default_format_, default_width_, default_height_);
-  ASSERT_EQ(0, cam_device_.ConfigureStreams()) << "Configuring stream fails";
+  ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
+      << "Configuring stream fails";
 
   uint32_t frame_number;
   ASSERT_EQ(0, CreateCaptureRequest(CAMERA3_TEMPLATE_PREVIEW, &frame_number))

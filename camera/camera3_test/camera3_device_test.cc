@@ -10,6 +10,7 @@ namespace camera3_test {
 
 int Camera3Device::Initialize(Camera3Module* cam_module,
                               const camera3_callback_ops_t* callback_ops) {
+  VLOGF_ENTER();
   if (!cam_module || !hal_thread_.Start()) {
     return -EINVAL;
   }
@@ -48,11 +49,8 @@ int Camera3Device::Initialize(Camera3Module* cam_module,
 }
 
 void Camera3Device::Destroy() {
-  // Buffers are expected to be freed in ProcessCaptureResult callback in the
-  // test.
-  EXPECT_TRUE(stream_buffers_.empty()) << "Buffers are not freed correctly";
-
-  int result = -EIO;
+  VLOGF_ENTER();
+  int result = -EINVAL;
   hal_thread_.PostTaskSync(base::Bind(&Camera3Device::CloseOnHalThread,
                                       base::Unretained(this), &result));
   EXPECT_EQ(0, result) << "Camera device close failed";
@@ -81,6 +79,7 @@ const camera_metadata_t* Camera3Device::ConstructDefaultRequestSettings(
 }
 
 void Camera3Device::AddOutputStream(int format, int width, int height) {
+  VLOGF_ENTER();
   camera3_stream_t stream = {};
   stream.stream_type = CAMERA3_STREAM_OUTPUT;
   stream.width = width;
@@ -94,7 +93,9 @@ void Camera3Device::AddOutputStream(int format, int width, int height) {
   }
 }
 
-int Camera3Device::ConfigureStreams() {
+int Camera3Device::ConfigureStreams(
+    std::vector<const camera3_stream_t*>* streams) {
+  VLOGF_ENTER();
   base::AutoLock l(stream_lock_);
 
   // Check whether there are streams
@@ -117,52 +118,67 @@ int Camera3Device::ConfigureStreams() {
   hal_thread_.PostTaskSync(
       base::Bind(&Camera3Device::ConfigureStreamsOnHalThread,
                  base::Unretained(this), &cam_stream_config, &ret));
+  // TODO(hywu): validate cam_stream_config.streams[*].max_buffers > 0
 
   // Swap to the other bin
   cam_stream_[cam_stream_idx_].clear();
   cam_stream_idx_ = !cam_stream_idx_;
 
+  if (ret == 0 && streams) {
+    for (auto const& it : cam_stream_[cam_stream_idx_]) {
+      streams->push_back(&it);
+    }
+  }
   return ret;
 }
 
 int Camera3Device::AllocateOutputStreamBuffers(
     std::vector<camera3_stream_buffer_t>* output_buffers) {
-  std::vector<camera3_stream_t> streams;
-  return AllocateOutputStreamBuffersByStreams(streams, output_buffers);
+  std::vector<const camera3_stream_t*> streams;
+  for (const auto& it : cam_stream_[cam_stream_idx_]) {
+    streams.push_back(&it);
+  }
+  return AllocateOutputBuffersByStreams(streams, output_buffers);
 }
 
-int Camera3Device::AllocateOutputStreamBuffersByStreams(
-    const std::vector<camera3_stream_t>& streams,
+int Camera3Device::AllocateOutputBuffersByStreams(
+    const std::vector<const camera3_stream_t*>& streams,
     std::vector<camera3_stream_buffer_t>* output_buffers) {
+  VLOGF_ENTER();
   base::AutoLock l1(stream_lock_);
 
-  int32_t jpeg_max_size = static_info_->GetJpegMaxSize();
-  if (!output_buffers ||
-      (streams.empty() && cam_stream_[cam_stream_idx_].size() == 0) ||
-      jpeg_max_size <= 0) {
+  if (!output_buffers || streams.empty()) {
     return -EINVAL;
   }
+  int32_t jpeg_max_size = 0;
+  if (std::find_if(streams.begin(), streams.end(),
+                   [](const camera3_stream_t* stream) {
+                     return stream->format == HAL_PIXEL_FORMAT_BLOB;
+                   }) != streams.end()) {
+    jpeg_max_size = static_info_->GetJpegMaxSize();
+    if (jpeg_max_size <= 0) {
+      return -EINVAL;
+    }
+  }
 
-  const std::vector<camera3_stream_t>* streams_ptr =
-      streams.empty() ? &cam_stream_[cam_stream_idx_] : &streams;
-  for (const auto& it : *streams_ptr) {
+  for (const auto& it : streams) {
     BufferHandleUniquePtr buffer = gralloc_->Allocate(
-        (it.format == HAL_PIXEL_FORMAT_BLOB) ? jpeg_max_size : it.width,
-        (it.format == HAL_PIXEL_FORMAT_BLOB) ? 1 : it.height, it.format,
+        (it->format == HAL_PIXEL_FORMAT_BLOB) ? jpeg_max_size : it->width,
+        (it->format == HAL_PIXEL_FORMAT_BLOB) ? 1 : it->height, it->format,
         GRALLOC_USAGE_SW_WRITE_OFTEN | GRALLOC_USAGE_HW_CAMERA_WRITE);
     EXPECT_NE(nullptr, buffer) << "Gralloc allocation fails";
 
     camera3_stream_buffer_t stream_buffer;
     {
       base::AutoLock l2(stream_buffers_lock_);
-      camera3_stream_t* stream = const_cast<camera3_stream_t*>(&it);
+      camera3_stream_t* stream = const_cast<camera3_stream_t*>(it);
 
       stream_buffer = {.stream = stream,
                        .buffer = buffer.get(),
                        .status = CAMERA3_BUFFER_STATUS_OK,
                        .acquire_fence = -1,
                        .release_fence = -1};
-      stream_buffers_[stream].insert(std::move(buffer));
+      stream_buffers_[stream].push_back(std::move(buffer));
     }
     output_buffers->push_back(stream_buffer);
   }
@@ -170,8 +186,10 @@ int Camera3Device::AllocateOutputStreamBuffersByStreams(
   return 0;
 }
 
-int Camera3Device::FreeOutputStreamBuffers(
-    const std::vector<camera3_stream_buffer_t>& output_buffers) {
+int Camera3Device::GetOutputStreamBufferHandles(
+    const std::vector<camera3_stream_buffer_t>& output_buffers,
+    std::vector<BufferHandleUniquePtr>* unique_buffers) {
+  VLOGF_ENTER();
   base::AutoLock l(stream_buffers_lock_);
 
   for (const auto& output_buffer : output_buffers) {
@@ -181,18 +199,15 @@ int Camera3Device::FreeOutputStreamBuffers(
       return -EINVAL;
     }
 
-    bool found = false;
-    for (const auto& it : stream_buffers_[output_buffer.stream]) {
-      if (*it == *output_buffer.buffer) {
-        stream_buffers_[output_buffer.stream].erase(it);
-        if (stream_buffers_[output_buffer.stream].empty()) {
-          stream_buffers_.erase(output_buffer.stream);
-        }
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
+    auto stream_buffers = &stream_buffers_[output_buffer.stream];
+    auto it = std::find_if(stream_buffers->begin(), stream_buffers->end(),
+                           [=](const BufferHandleUniquePtr& buffer) {
+                             return *buffer == *output_buffer.buffer;
+                           });
+    if (it != stream_buffers->end()) {
+      unique_buffers->push_back(std::move(*it));
+      stream_buffers->erase(it);
+    } else {
       LOG(ERROR) << "Failed to find output buffer";
       return -EINVAL;
     }
@@ -200,13 +215,18 @@ int Camera3Device::FreeOutputStreamBuffers(
   return 0;
 }
 
-void Camera3Device::ClearOutputStreamBuffers() {
-  base::AutoLock l(stream_buffers_lock_);
-  // Free frame buffers
-  stream_buffers_.clear();
+int Camera3Device::RegisterOutputBuffer(const camera3_stream_t& stream,
+                                        BufferHandleUniquePtr unique_buffer) {
+  VLOGF_ENTER();
+  if (!unique_buffer) {
+    return -EINVAL;
+  }
+  stream_buffers_[&stream].push_back(std::move(unique_buffer));
+  return 0;
 }
 
 int Camera3Device::ProcessCaptureRequest(camera3_capture_request_t* request) {
+  VLOGF_ENTER();
   if (!initialized_) {
     return -ENODEV;
   }
@@ -218,6 +238,7 @@ int Camera3Device::ProcessCaptureRequest(camera3_capture_request_t* request) {
 }
 
 int Camera3Device::Flush() {
+  VLOGF_ENTER();
   if (!initialized_) {
     return -ENODEV;
   }
@@ -257,6 +278,7 @@ void Camera3Device::ConfigureStreamsOnHalThread(
 void Camera3Device::ProcessCaptureRequestOnHalThread(
     camera3_capture_request_t* request,
     int* result) {
+  VLOGF_ENTER();
   *result = cam_device_->ops->process_capture_request(cam_device_, request);
 }
 
@@ -557,6 +579,17 @@ int32_t Camera3Device::StaticInfo::GetPartialResultCount() const {
   return entry.data.i32[0];
 }
 
+int32_t Camera3Device::StaticInfo::GetRequestPipelineMaxDepth() const {
+  camera_metadata_ro_entry_t entry;
+  if (find_camera_metadata_ro_entry(
+          characteristics_, ANDROID_REQUEST_PIPELINE_MAX_DEPTH, &entry) != 0) {
+    ADD_FAILURE()
+        << "Cannot find the metadata ANDROID_REQUEST_PIPELINE_MAX_DEPTH";
+    return -EINVAL;
+  }
+  return entry.data.i32[0];
+}
+
 int32_t Camera3Device::StaticInfo::GetJpegMaxSize() const {
   camera_metadata_ro_entry_t entry;
   if (find_camera_metadata_ro_entry(characteristics_, ANDROID_JPEG_MAX_SIZE,
@@ -575,6 +608,93 @@ int32_t Camera3Device::StaticInfo::GetSensorOrientation() const {
     return -EINVAL;
   }
   return entry.data.i32[0];
+}
+
+int32_t Camera3Device::StaticInfo::GetAvailableThumbnailSizes(
+    std::vector<ResolutionInfo>* resolutions) const {
+  const size_t kNumOfEntriesForSize = 2;
+  enum { WIDTH_ENTRY_INDEX, HEIGHT_ENTRY_INDEX };
+  camera_metadata_ro_entry_t entry;
+  if (find_camera_metadata_ro_entry(characteristics_,
+                                    ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES,
+                                    &entry) != 0) {
+    ADD_FAILURE()
+        << "Cannot find the metadata ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES";
+    return -EINVAL;
+  }
+  if (entry.count % kNumOfEntriesForSize) {
+    ADD_FAILURE() << "Camera JPEG available thumbnail sizes parsing error";
+    return -EINVAL;
+  }
+  for (size_t i = 0; i < entry.count; i += kNumOfEntriesForSize) {
+    resolutions->emplace_back(entry.data.i32[i + WIDTH_ENTRY_INDEX],
+                              entry.data.i32[i + HEIGHT_ENTRY_INDEX]);
+  }
+  return 0;
+}
+
+int32_t Camera3Device::StaticInfo::GetAvailableFocalLengths(
+    std::vector<float>* focal_lengths) const {
+  camera_metadata_ro_entry_t entry;
+  if (find_camera_metadata_ro_entry(characteristics_,
+                                    ANDROID_LENS_INFO_AVAILABLE_FOCAL_LENGTHS,
+                                    &entry) != 0) {
+    ADD_FAILURE()
+        << "Cannot find the metadata ANDROID_LENS_INFO_AVAILABLE_FOCAL_LENGTHS";
+    return -EINVAL;
+  }
+  if (entry.count == 0) {
+    ADD_FAILURE() << "There should be at least one available focal length";
+    return -EINVAL;
+  }
+  for (size_t i = 0; i < entry.count; i++) {
+    EXPECT_LT(0.0f, entry.data.f[i])
+        << "Available focal length " << entry.data.f[i]
+        << " should be positive";
+    focal_lengths->push_back(entry.data.f[i]);
+  }
+  EXPECT_EQ(
+      focal_lengths->size(),
+      std::set<float>(focal_lengths->begin(), focal_lengths->end()).size())
+      << "Avaliable focal lengths should be distinct";
+  return 0;
+}
+
+int32_t Camera3Device::StaticInfo::GetAvailableApertures(
+    std::vector<float>* apertures) const {
+  camera_metadata_ro_entry_t entry;
+  if (find_camera_metadata_ro_entry(characteristics_,
+                                    ANDROID_LENS_INFO_AVAILABLE_APERTURES,
+                                    &entry) != 0) {
+    ADD_FAILURE()
+        << "Cannot find the metadata ANDROID_LENS_INFO_AVAILABLE_APERTURES";
+    return -EINVAL;
+  }
+  if (entry.count == 0) {
+    ADD_FAILURE() << "There should be at least one available apertures";
+    return -EINVAL;
+  }
+  for (size_t i = 0; i < entry.count; i++) {
+    EXPECT_LT(0.0f, entry.data.f[i])
+        << "Available apertures " << entry.data.f[i] << " should be positive";
+    apertures->push_back(entry.data.f[i]);
+  }
+  EXPECT_EQ(apertures->size(),
+            std::set<float>(apertures->begin(), apertures->end()).size())
+      << "Avaliable apertures should be distinct";
+  return 0;
+}
+
+int32_t Camera3Device::StaticInfo::GetAvailableAFModes(
+    std::vector<int32_t>* af_modes) const {
+  camera_metadata_ro_entry_t entry;
+  if (find_camera_metadata_ro_entry(
+          characteristics_, ANDROID_CONTROL_AF_AVAILABLE_MODES, &entry) == 0) {
+    for (size_t i = 0; i < entry.count; i++) {
+      af_modes->push_back(entry.data.i32[i]);
+    }
+  }
+  return 0;
 }
 
 // Test fixture
@@ -983,7 +1103,6 @@ TEST_P(CreateInvalidTemplate, ConstructDefaultSettings) {
   // Reference:
   // camera2/cts/CameraDeviceTest.java#testCameraDeviceCreateCaptureBuilder
   int type = std::get<1>(GetParam());
-  LOG(ERROR) << type;
   ASSERT_EQ(nullptr, cam_device_.ConstructDefaultRequestSettings(type))
       << "Should get error due to an invalid template ID";
 }

@@ -92,10 +92,10 @@ TEST_P(Camera3StreamTest, CreateStream) {
 
   cam_device_.AddOutputStream(format, default_width_, default_height_);
   if (cam_device_.GetStaticInfo()->IsFormatAvailable(format)) {
-    ASSERT_EQ(0, cam_device_.ConfigureStreams())
+    ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
         << "Configuring stream of supported format fails";
   } else {
-    ASSERT_NE(0, cam_device_.ConfigureStreams())
+    ASSERT_NE(0, cam_device_.ConfigureStreams(nullptr))
         << "Configuring stream of unsupported format succeeds";
   }
 }
@@ -124,7 +124,7 @@ TEST_P(Camera3BadResultionStreamTest, CreateStream) {
       bad_width++;
     }
     cam_device_.AddOutputStream(format, bad_width, default_height_);
-    ASSERT_NE(0, cam_device_.ConfigureStreams())
+    ASSERT_NE(0, cam_device_.ConfigureStreams(nullptr))
         << "Configuring stream of bad resolution succeeds";
   }
 }
@@ -165,7 +165,8 @@ TEST_P(Camera3MultiStreamTest, CreateStream) {
                               capture_resolution.Width(),
                               capture_resolution.Height());
 
-  ASSERT_EQ(0, cam_device_.ConfigureStreams()) << "Configuring stream fails";
+  ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
+      << "Configuring stream fails";
 }
 
 INSTANTIATE_TEST_CASE_P(
