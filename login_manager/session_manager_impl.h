@@ -223,6 +223,7 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   void StartArcInstance(const std::string& account_id,
                         bool disable_boot_completed_broadcast,
+                        bool enable_vendor_privileged,
                         Error* error);
   void StopArcInstance(Error* error);
   void SetArcCpuRestriction(ContainerCpuRestrictionState state, Error* error);

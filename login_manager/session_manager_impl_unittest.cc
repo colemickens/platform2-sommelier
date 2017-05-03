@@ -1082,7 +1082,8 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
                                   StartsWith("ANDROID_DATA_OLD_DIR="),
                                   std::string("CHROMEOS_USER=") + kSaneEmail,
                                   "CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                                  "DISABLE_BOOT_COMPLETED_BROADCAST=0")))
+                                  "DISABLE_BOOT_COMPLETED_BROADCAST=0",
+                                  "ENABLE_VENDOR_PRIVILEGED=1")))
       .Times(1);
   EXPECT_CALL(upstart_signal_emitter_delegate_,
               OnSignalEmitted(StrEq(SessionManagerImpl::kArcStopSignal),
@@ -1101,7 +1102,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
               OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStopSignal),
                               ElementsAre()))
       .Times(1);
-  impl_.StartArcInstance(kSaneEmail, false, &error_);
+  impl_.StartArcInstance(kSaneEmail, false, true, &error_);
   EXPECT_TRUE(android_container_.running());
   EXPECT_TRUE(arc_setup_completed_);
   EXPECT_NE(base::TimeTicks(), impl_.GetArcStartTime(&start_time_error));
@@ -1110,7 +1111,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
   EXPECT_FALSE(android_container_.running());
   EXPECT_FALSE(arc_setup_completed_);
 #else
-  impl_.StartArcInstance(kSaneEmail, false, &error_);
+  impl_.StartArcInstance(kSaneEmail, false, false, &error_);
   EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
   impl_.GetArcStartTime(&start_time_error);
   EXPECT_EQ(dbus_error::kNotAvailable, start_time_error.name());
@@ -1119,7 +1120,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
 
 #if USE_CHEETS
 TEST_F(SessionManagerImplTest, ArcInstanceStart_NoSession) {
-  impl_.StartArcInstance(kSaneEmail, false, &error_);
+  impl_.StartArcInstance(kSaneEmail, false, false, &error_);
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error_.name());
 }
 
@@ -1128,7 +1129,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_LowDisk) {
 
   // No free disk space.
   EXPECT_CALL(utils_, AmountOfFreeDiskSpace(_)).WillRepeatedly(Return(0));
-  impl_.StartArcInstance(kSaneEmail, false, &error_);
+  impl_.StartArcInstance(kSaneEmail, false, false, &error_);
   EXPECT_EQ(dbus_error::kLowFreeDisk, error_.name());
 }
 
@@ -1142,7 +1143,8 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
                                   StartsWith("ANDROID_DATA_OLD_DIR="),
                                   std::string("CHROMEOS_USER=") + kSaneEmail,
                                   "CHROMEOS_DEV_MODE=1", "CHROMEOS_INSIDE_VM=0",
-                                  "DISABLE_BOOT_COMPLETED_BROADCAST=0")))
+                                  "DISABLE_BOOT_COMPLETED_BROADCAST=0",
+                                  "ENABLE_VENDOR_PRIVILEGED=0")))
       .Times(1);
   EXPECT_CALL(upstart_signal_emitter_delegate_,
               OnSignalEmitted(StrEq(SessionManagerImpl::kArcStopSignal),
@@ -1169,7 +1171,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
   EXPECT_CALL(utils_, GetDevModeState())
       .WillOnce(Return(DevModeState::DEV_MODE_ON))
       .RetiresOnSaturation();
-  impl_.StartArcInstance(kSaneEmail, false, &error_);
+  impl_.StartArcInstance(kSaneEmail, false, false, &error_);
   EXPECT_TRUE(android_container_.running());
   EXPECT_TRUE(arc_setup_completed_);
   android_container_.SimulateCrash();
@@ -1282,7 +1284,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
   ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
   ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
-  impl_.StartArcInstance(kSaneEmail, false, &error_);
+  impl_.StartArcInstance(kSaneEmail, false, false, &error_);
   impl_.RemoveArcData(kSaneEmail, &error_);
   EXPECT_EQ(dbus_error::kArcInstanceRunning, error_.name());
   EXPECT_TRUE(utils_.Exists(android_data_dir_));
@@ -1295,7 +1297,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
   ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
   ASSERT_TRUE(
       utils_.AtomicFileWrite(android_data_old_dir_.Append("bar"), "test2"));
-  impl_.StartArcInstance(kSaneEmail, false, &error_);
+  impl_.StartArcInstance(kSaneEmail, false, false, &error_);
   impl_.StopArcInstance(&error_);
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_DIR_NOT_EMPTY);

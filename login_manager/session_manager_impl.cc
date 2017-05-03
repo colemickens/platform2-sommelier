@@ -754,9 +754,11 @@ void SessionManagerImpl::InitMachineInfo(const std::string& data,
     error->Set(dbus_error::kInitMachineInfoFail, "Missing parameters.");
 }
 
-void SessionManagerImpl::StartArcInstance(const std::string& account_id,
-                                          bool disable_boot_completed_broadcast,
-                                          Error* error) {
+void SessionManagerImpl::StartArcInstance(
+    const std::string& account_id,
+    bool disable_boot_completed_broadcast,
+    bool enable_vendor_privileged_app_scanning,
+    Error* error) {
 #if USE_CHEETS
   arc_start_time_ = base::TimeTicks::Now();
 
@@ -802,6 +804,8 @@ void SessionManagerImpl::StartArcInstance(const std::string& account_id,
       base::StringPrintf("CHROMEOS_INSIDE_VM=%d", is_inside_vm),
       base::StringPrintf("DISABLE_BOOT_COMPLETED_BROADCAST=%d",
                          disable_boot_completed_broadcast),
+      base::StringPrintf("ENABLE_VENDOR_PRIVILEGED=%d",
+                         enable_vendor_privileged_app_scanning),
   };
 
   if (!init_controller_->TriggerImpulse(

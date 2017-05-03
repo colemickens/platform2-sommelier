@@ -655,8 +655,14 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StartArcInstance(
   if (!reader.PopBool(&disable_boot_completed_broadcast))
     return CreateInvalidArgsError(call, call->GetSignature());
 
+  bool enable_vendor_privileged_app_scanning = false;
+  if (!reader.PopBool(&enable_vendor_privileged_app_scanning)) {
+    LOG(WARNING) << "Failed to get enable_vendor_privileged_app_scanning";
+  }
+
   SessionManagerImpl::Error error;
-  impl_->StartArcInstance(account_id, disable_boot_completed_broadcast, &error);
+  impl_->StartArcInstance(account_id, disable_boot_completed_broadcast,
+                          enable_vendor_privileged_app_scanning, &error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
   return dbus::Response::FromMethodCall(call);
