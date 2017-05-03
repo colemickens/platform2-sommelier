@@ -38,15 +38,15 @@ def main(argv):
                       help='Show the diff output of clang-format.')
   args = parser.parse_args(argv)
 
-  cmd = [CLANG_FORMAT, '--style', 'Chromium', '--diff', '%s^' % args.commit,
-         args.commit]
-  stdout = subprocess.check_output(cmd, universal_newlines=True)
-
   cmd = ['git', 'log', '%s^..%s' % (args.commit, args.commit),
          '--pretty=oneline']
   stdout = subprocess.check_output(cmd, universal_newlines=True)
   commit_hash, commit_message = stdout.split(' ', 1)
   print('[Commit %s] %s' % (commit_hash[:8], commit_message), file=sys.stderr)
+
+  cmd = [CLANG_FORMAT, '--style', 'Chromium', '--diff', '%s^' % args.commit,
+         args.commit]
+  stdout = subprocess.check_output(cmd, universal_newlines=True)
 
   if stdout.strip() == 'no modified files to format':
     return 0
