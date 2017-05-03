@@ -46,6 +46,7 @@ struct Log {
 const Log common_logs[] = {
   { "CLIENT_ID", "/usr/bin/metrics_client -i"},
   { "LOGDATE", "/bin/date" },
+  { "atrus_logs", "/bin/cat /var/log/atrus.log 2> /dev/null" },
   { "bios_info", "/bin/cat /var/log/bios_info.txt" },
   { "bios_log",
     "/bin/cat /sys/firmware/log "
@@ -105,7 +106,7 @@ const Log common_logs[] = {
     "/bin/cat /var/spool/crash/kernel.*.kcrash 2> /dev/null" },
   { "lsmod", "lsmod" },
   { "lspci", "/usr/sbin/lspci" },
-  { "lsusb", "lsusb" },
+  { "lsusb", "lsusb -t" },
   {
     "mali_memory",
     "/bin/cat /sys/class/misc/mali0/device/memory 2> /dev/null"
