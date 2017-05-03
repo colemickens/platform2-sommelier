@@ -41,10 +41,6 @@ CameraClient::CameraClient(int id,
   *hw_device = &camera3_device_.common;
 
   ops_thread_checker_.DetachFromThread();
-
-  SupportedFormats supported_formats =
-      device_->GetDeviceSupportedFormats(device_path_);
-  qualified_formats_ = GetQualifiedFormats(supported_formats);
 }
 
 CameraClient::~CameraClient() {}
@@ -107,7 +103,8 @@ int CameraClient::ConfigureStreams(
 
   VLOGFID(1, id_) << "Number of Streams: " << stream_config->num_streams;
 
-  stream_on_resolution_.width = stream_on_resolution_.height = 0;
+  SupportedFormat stream_on_resolution;
+  stream_on_resolution.width = stream_on_resolution.height = 0;
   std::vector<camera3_stream_t*> streams;
   for (size_t i = 0; i < stream_config->num_streams; i++) {
     VLOGFID(1, id_) << "Stream[" << i
@@ -119,11 +116,15 @@ int CameraClient::ConfigureStreams(
                     << stream_config->streams[i]->format;
     streams.push_back(stream_config->streams[i]);
 
+    // Skip BLOB format to avoid to use too large resolution as preview size.
+    if (stream_config->streams[i]->format == HAL_PIXEL_FORMAT_BLOB)
+      continue;
+
     // Find maximum resolution of stream_config to stream on.
-    if (stream_config->streams[i]->width > stream_on_resolution_.width ||
-        stream_config->streams[i]->height > stream_on_resolution_.height) {
-      stream_on_resolution_.width = stream_config->streams[i]->width;
-      stream_on_resolution_.height = stream_config->streams[i]->height;
+    if (stream_config->streams[i]->width > stream_on_resolution.width ||
+        stream_config->streams[i]->height > stream_on_resolution.height) {
+      stream_on_resolution.width = stream_config->streams[i]->width;
+      stream_on_resolution.height = stream_config->streams[i]->height;
     }
   }
 
@@ -133,9 +134,10 @@ int CameraClient::ConfigureStreams(
   }
 
   int num_buffers;
-  int ret = StreamOn(&num_buffers);
+  int ret = StreamOn(stream_on_resolution, &num_buffers);
   if (ret) {
     LOGFID(ERROR, id_) << "StreamOn failed";
+    StreamOff();
     return ret;
   }
   SetUpStreams(num_buffers, &streams);
@@ -248,16 +250,100 @@ void CameraClient::SetUpStreams(int num_buffers,
   }
 }
 
-int CameraClient::StreamOn(int* num_buffers) {
+int CameraClient::StreamOn(SupportedFormat stream_on_resolution,
+                           int* num_buffers) {
   DCHECK(ops_thread_checker_.CalledOnValidThread());
-  const SupportedFormat* format =
-      FindFormatByResolution(qualified_formats_, stream_on_resolution_.width,
-                             stream_on_resolution_.height);
-  if (format == nullptr) {
-    LOGFID(ERROR, id_) << "Cannot find resolution in supported list: width "
-                       << stream_on_resolution_.width << ", height "
-                       << stream_on_resolution_.height;
+
+  if (!request_thread_.Start()) {
+    LOG(ERROR) << "Request thread failed to start";
     return -EINVAL;
+  }
+  request_task_runner_ = request_thread_.task_runner();
+
+  request_handler_.reset(new RequestHandler(id_, device_path_, device_.get(),
+                                            callback_ops_, request_task_runner_,
+                                            metadata_handler_.get()));
+
+  auto future = internal::Future<int>::Create(nullptr);
+  base::Callback<void(int, int)> streamon_callback =
+      base::Bind(&CameraClient::StreamOnCallback, base::Unretained(this),
+                 base::RetainedRef(future), num_buffers);
+  request_task_runner_->PostTask(
+      FROM_HERE, base::Bind(&CameraClient::RequestHandler::StreamOn,
+                            base::Unretained(request_handler_.get()),
+                            stream_on_resolution, streamon_callback));
+  return future->Get();
+}
+
+void CameraClient::StreamOff() {
+  DCHECK(ops_thread_checker_.CalledOnValidThread());
+
+  auto future = internal::Future<int>::Create(nullptr);
+  base::Callback<void(int)> streamoff_callback =
+      base::Bind(&CameraClient::StreamOffCallback, base::Unretained(this),
+                 base::RetainedRef(future));
+  request_task_runner_->PostTask(
+      FROM_HERE,
+      base::Bind(&CameraClient::RequestHandler::StreamOff,
+                 base::Unretained(request_handler_.get()), streamoff_callback));
+  int ret = future->Get();
+  if (ret) {
+    LOGFID(ERROR, id_) << "StreamOff failed";
+  }
+  request_thread_.Stop();
+  request_handler_.reset();
+}
+
+void CameraClient::StreamOnCallback(scoped_refptr<internal::Future<int>> future,
+                                    int* out_num_buffers,
+                                    int num_buffers,
+                                    int result) {
+  if (!result && out_num_buffers) {
+    *out_num_buffers = num_buffers;
+  }
+  future->Set(std::move(result));
+}
+
+void CameraClient::StreamOffCallback(
+    scoped_refptr<internal::Future<int>> future,
+    int result) {
+  future->Set(std::move(result));
+}
+
+CameraClient::RequestHandler::RequestHandler(
+    const int device_id,
+    const std::string& device_path,
+    V4L2CameraDevice* device,
+    const camera3_callback_ops_t* callback_ops,
+    const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
+    MetadataHandler* metadata_handler)
+    : device_id_(device_id),
+      device_path_(device_path),
+      device_(device),
+      callback_ops_(callback_ops),
+      task_runner_(task_runner),
+      metadata_handler_(metadata_handler) {
+  SupportedFormats supported_formats =
+      device_->GetDeviceSupportedFormats(device_path_);
+  qualified_formats_ = GetQualifiedFormats(supported_formats);
+}
+
+CameraClient::RequestHandler::~RequestHandler() {}
+
+void CameraClient::RequestHandler::StreamOn(
+    SupportedFormat stream_on_resolution,
+    const base::Callback<void(int, int)>& callback) {
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  const SupportedFormat* format =
+      FindFormatByResolution(qualified_formats_, stream_on_resolution.width,
+                             stream_on_resolution.height);
+  if (format == nullptr) {
+    LOGFID(ERROR, device_id_)
+        << "Cannot find resolution in supported list: width "
+        << stream_on_resolution.width << ", height "
+        << stream_on_resolution.height;
+    callback.Run(0, -EINVAL);
+    return;
   }
 
   float max_fps = 0;
@@ -266,76 +352,46 @@ int CameraClient::StreamOn(int* num_buffers) {
       max_fps = frame_rate;
     }
   }
-  VLOGFID(1, id_) << "streamOn with width " << format->width << ", height "
-                  << format->height << ", fps " << max_fps << ", format "
-                  << FormatToString(format->fourcc);
+  VLOGFID(1, device_id_) << "streamOn with width " << format->width
+                         << ", height " << format->height << ", fps " << max_fps
+                         << ", format " << FormatToString(format->fourcc);
 
   std::vector<base::ScopedFD> fds;
   uint32_t buffer_size;
   int ret = device_->StreamOn(format->width, format->height, format->fourcc,
                               max_fps, &fds, &buffer_size);
   if (ret) {
-    LOGFID(ERROR, id_) << "StreamOn failed: " << strerror(-ret);
-    return ret;
+    LOGFID(ERROR, device_id_) << "StreamOn failed: " << strerror(-ret);
+    callback.Run(0, ret);
+    return;
   }
 
-  std::vector<std::unique_ptr<V4L2FrameBuffer>> buffers;
   for (size_t i = 0; i < fds.size(); i++) {
     std::unique_ptr<V4L2FrameBuffer> frame(
         new V4L2FrameBuffer(std::move(fds[i]), buffer_size, format->width,
                             format->height, format->fourcc));
     ret = frame->Map();
     if (ret) {
-      StreamOff();
-      return -errno;
+      callback.Run(0, -errno);
+      return;
     }
-    VLOGFID(1, id_) << "Buffer " << i << ", fd: " << frame->GetFd()
-                    << " address: " << std::hex
-                    << reinterpret_cast<uintptr_t>(frame->GetData());
-    buffers.push_back(std::move(frame));
+    VLOGFID(1, device_id_) << "Buffer " << i << ", fd: " << frame->GetFd()
+                           << " address: " << std::hex
+                           << reinterpret_cast<uintptr_t>(frame->GetData());
+    input_buffers_.push_back(std::move(frame));
   }
-
-  *num_buffers = fds.size();
-  if (!request_thread_.Start()) {
-    LOG(ERROR) << "Request thread failed to start";
-    return -EINVAL;
-  }
-  request_task_runner_ = request_thread_.task_runner();
-
-  request_handler_.reset(
-      new RequestHandler(id_, device_.get(), callback_ops_, std::move(buffers),
-                         request_task_runner_, metadata_handler_.get()));
-
-  return 0;
+  callback.Run(fds.size(), 0);
 }
 
-int CameraClient::StreamOff() {
-  DCHECK(ops_thread_checker_.CalledOnValidThread());
+void CameraClient::RequestHandler::StreamOff(
+    const base::Callback<void(int)>& callback) {
+  DCHECK(task_runner_->BelongsToCurrentThread());
   int ret = device_->StreamOff();
   if (ret) {
-    LOGFID(ERROR, id_) << "StreamOff failed: " << strerror(-ret);
+    LOGFID(ERROR, device_id_) << "StreamOff failed: " << strerror(-ret);
   }
-
-  request_thread_.Stop();
-  request_handler_.reset();
-  return ret;
+  callback.Run(ret);
 }
-
-CameraClient::RequestHandler::RequestHandler(
-    const int device_id,
-    V4L2CameraDevice* device,
-    const camera3_callback_ops_t* callback_ops,
-    std::vector<std::unique_ptr<V4L2FrameBuffer>> input_buffers,
-    const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
-    MetadataHandler* metadata_handler)
-    : device_id_(device_id),
-      device_(device),
-      callback_ops_(callback_ops),
-      input_buffers_(std::move(input_buffers)),
-      task_runner_(task_runner),
-      metadata_handler_(metadata_handler) {}
-
-CameraClient::RequestHandler::~RequestHandler() {}
 
 void CameraClient::RequestHandler::HandleRequest(
     std::unique_ptr<CaptureRequest> request) {

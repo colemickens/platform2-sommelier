@@ -20,6 +20,7 @@
 #include <hardware/hardware.h>
 
 #include "arc/camera_metadata.h"
+#include "arc/future.h"
 #include "hal/usb/cached_frame.h"
 #include "hal/usb/capture_request.h"
 #include "hal/usb/common_types.h"
@@ -82,11 +83,21 @@ class CameraClient {
   // Calculate usage and maximum number of buffers of each stream.
   void SetUpStreams(int num_buffers, std::vector<camera3_stream_t*>* streams);
 
-  // Start streaming.
-  int StreamOn(int* num_buffers);
+  // Start |request_thread_| and streaming.
+  int StreamOn(SupportedFormat stream_on_resolution, int* num_buffers);
 
-  // Stop streaming.
-  int StreamOff();
+  // Stop streaming and |request_thread_|.
+  void StreamOff();
+
+  // Callback function for RequestHandler::StreamOn.
+  void StreamOnCallback(scoped_refptr<internal::Future<int>> future,
+                        int* out_num_buffers,
+                        int num_buffers,
+                        int result);
+
+  // Callback function for RequestHandler::StreamOff.
+  void StreamOffCallback(scoped_refptr<internal::Future<int>> future,
+                         int result);
 
   // Camera device id.
   const int id_;
@@ -110,12 +121,6 @@ class CameraClient {
   // Methods used to call back into the framework.
   const camera3_callback_ops_t* callback_ops_;
 
-  // The formats used to report to apps.
-  SupportedFormats qualified_formats_;
-
-  // Maximum resolution in configure streams.
-  SupportedFormat stream_on_resolution_;
-
   // Handle metadata events and store states.
   std::unique_ptr<MetadataHandler> metadata_handler_;
 
@@ -126,12 +131,19 @@ class CameraClient {
    public:
     RequestHandler(
         const int device_id,
+        const std::string& device_path,
         V4L2CameraDevice* device,
         const camera3_callback_ops_t* callback_ops,
-        std::vector<std::unique_ptr<V4L2FrameBuffer>> input_buffers,
         const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
         MetadataHandler* metadata_handler);
     ~RequestHandler();
+
+    // Synchronous call to start streaming.
+    void StreamOn(SupportedFormat stream_on_resolution,
+                  const base::Callback<void(int, int)>& callback);
+
+    // Synchronous call to stop streaming.
+    void StreamOff(const base::Callback<void(int)>& callback);
 
     // Handle one request.
     void HandleRequest(std::unique_ptr<CaptureRequest> request);
@@ -151,19 +163,24 @@ class CameraClient {
 
     const int device_id_;
 
+    const std::string device_path_;
+
     // Delegate to communicate with camera device. Caller owns the ownership.
     V4L2CameraDevice* device_;
 
     // Methods used to call back into the framework.
     const camera3_callback_ops_t* callback_ops_;
 
-    // Memory mapped buffers which are shared from |device_|.
-    std::vector<std::unique_ptr<V4L2FrameBuffer>> input_buffers_;
-
     // Task runner for request thread.
     const scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 
     // Variables only for RequestHandler:
+
+    // The formats used to report to apps.
+    SupportedFormats qualified_formats_;
+
+    // Memory mapped buffers which are shared from |device_|.
+    std::vector<std::unique_ptr<V4L2FrameBuffer>> input_buffers_;
 
     // Used to convert to different output formats.
     CachedFrame input_frame_;
