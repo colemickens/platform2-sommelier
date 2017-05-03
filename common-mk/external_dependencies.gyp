@@ -111,6 +111,11 @@
     {
       'target_name': 'policy-protos',
       'type': 'static_library',
+      # policy-protos.a is used by a shared_libary object:
+      #   - https://bugs.chromium.org/p/chromium/issues/detail?id=715795
+      # Build it with '-fPIC' instead of '-fPIE'.
+      'cflags!': ['-fPIE'],
+      'cflags': ['-fPIC'],
       'variables': {
         'proto_in_dir': '<(sysroot)/usr/include/proto',
         'proto_out_dir': 'include/bindings',
