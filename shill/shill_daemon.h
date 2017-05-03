@@ -18,6 +18,7 @@
 #define SHILL_SHILL_DAEMON_H_
 
 #include <base/callback.h>
+#include <base/macros.h>
 #include <brillo/daemons/daemon.h>
 
 #include "shill/daemon_task.h"
@@ -27,20 +28,23 @@ namespace shill {
 class Config;
 
 // ShillDaemon is the daemon that will be initialized in shill_main.cc. It
-// inherits the logic of daemon-related tasks (e.g. init/shutdown, start/stop)
-// from DaemonTask, and additionally overrides methods of brillo::Daemon.
-class ShillDaemon : public DaemonTask, public brillo::Daemon {
+// delegates the logic of daemon-related tasks (e.g. init/shutdown, start/stop)
+// to DaemonTask, and additionally overrides methods of brillo::Daemon.
+class ShillDaemon : public brillo::Daemon {
  public:
   ShillDaemon(const base::Closure& startup_callback,
               const shill::DaemonTask::Settings& settings, Config* config);
   virtual ~ShillDaemon();
 
- protected:
+ private:
   // Implementation of brillo::Daemon.
   int OnInit() override;
   void OnShutdown(int* return_code) override;
 
+  DaemonTask daemon_task_;
   base::Closure startup_callback_;
+
+  DISALLOW_COPY_AND_ASSIGN(ShillDaemon);
 };
 
 }  // namespace shill

@@ -27,7 +27,7 @@ namespace shill {
 ShillDaemon::ShillDaemon(const base::Closure& startup_callback,
                          const shill::DaemonTask::Settings& settings,
                          Config* config)
-    : DaemonTask(settings, config), startup_callback_(startup_callback) {}
+    : daemon_task_(settings, config), startup_callback_(startup_callback) {}
 
 ShillDaemon::~ShillDaemon() {}
 
@@ -38,7 +38,7 @@ int ShillDaemon::OnInit() {
     return return_code;
   }
 
-  Init();
+  daemon_task_.Init();
 
   // Signal that we've acquired all resources.
   startup_callback_.Run();
@@ -49,8 +49,8 @@ int ShillDaemon::OnInit() {
 void ShillDaemon::OnShutdown(int* return_code) {
   LOG(INFO) << "ShillDaemon received shutdown.";
 
-  if (!DaemonTask::Quit(base::Bind(&DaemonTask::BreakTerminationLoop,
-                                   base::Unretained(this)))) {
+  if (!daemon_task_.Quit(base::Bind(&DaemonTask::BreakTerminationLoop,
+                                    base::Unretained(&daemon_task_)))) {
     // Run a message loop to allow shill to complete its termination
     // procedures. This is different from the secondary loop in
     // brillo::Daemon. This loop will run until we explicitly

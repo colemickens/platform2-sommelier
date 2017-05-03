@@ -22,6 +22,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/macros.h>
 
 #include "shill/event_dispatcher.h"
 #if !defined(DISABLE_WIFI)
@@ -75,6 +76,8 @@ class DaemonTask {
   DaemonTask(const Settings& settings, Config* config);
   virtual ~DaemonTask();
 
+  void Init();
+
   // Starts the termination actions in the manager. Returns true if
   // termination actions have completed synchronously, and false
   // otherwise. Arranges for |completion_callback| to be invoked after
@@ -85,9 +88,6 @@ class DaemonTask {
   // Break the termination loop started in DaemonTask::OnShutdown. Invoked
   // after shill completes its termination tasks during shutdown.
   void BreakTerminationLoop();
-
- protected:
-  void Init();
 
  private:
   friend class DaemonTaskTest;
@@ -126,6 +126,8 @@ class DaemonTask {
 #endif  // DISABLE_WIFI
   std::unique_ptr<Manager> manager_;
   base::Closure termination_completed_callback_;
+
+  DISALLOW_COPY_AND_ASSIGN(DaemonTask);
 };
 
 }  // namespace shill
