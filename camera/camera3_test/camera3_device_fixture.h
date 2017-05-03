@@ -5,6 +5,8 @@
 #ifndef CAMERA3_TEST_CAMERA3_DEVICE_FIXTURE_H_
 #define CAMERA3_TEST_CAMERA3_DEVICE_FIXTURE_H_
 
+#include <semaphore.h>
+
 #include <memory>
 #include <unordered_map>
 
@@ -19,7 +21,20 @@
 
 namespace camera3_test {
 
-class Camera3Device {
+struct CameraMetadataDeleter {
+  inline void operator()(camera_metadata_t* metadata) {
+    if (metadata) {
+      free_camera_metadata(metadata);
+    }
+  }
+};
+
+typedef std::unique_ptr<camera_metadata_t, struct CameraMetadataDeleter>
+    CameraMetadataUniquePtr;
+
+const uint32_t kInitialFrameNumber = 0;
+
+class Camera3Device : protected camera3_callback_ops {
  public:
   explicit Camera3Device(int cam_id)
       : cam_id_(cam_id),
@@ -27,16 +42,44 @@ class Camera3Device {
         cam_device_(NULL),
         hal_thread_(GetThreadName(cam_id).c_str()),
         cam_stream_idx_(0),
-        gralloc_(Camera3TestGralloc::GetInstance()) {}
+        gralloc_(Camera3TestGralloc::GetInstance()),
+        request_frame_number_(kInitialFrameNumber),
+        result_frame_number_(kInitialFrameNumber) {}
 
   ~Camera3Device() {}
 
   // Initialize
-  int Initialize(Camera3Module* cam_module,
-                 const camera3_callback_ops_t* callback_ops);
+  int Initialize(Camera3Module* cam_module);
 
   // Destroy
   void Destroy();
+
+  typedef base::Callback<void(const camera3_capture_result* result)>
+      ProcessCaptureResultCallback;
+
+  typedef base::Callback<void(const camera3_notify_msg* msg)> NotifyCallback;
+
+  typedef base::Callback<void(uint32_t frame_number,
+                              CameraMetadataUniquePtr metadata,
+                              std::vector<BufferHandleUniquePtr>* buffers)>
+      ProcessResultMetadataOutputBuffersCallback;
+
+  typedef base::Callback<void(
+      std::vector<CameraMetadataUniquePtr>* partial_metadata)>
+      ProcessPartialMetadataCallback;
+
+  // Register callback function to process capture result
+  void RegisterProcessCaptureResultCallback(ProcessCaptureResultCallback cb);
+
+  // Register callback function for notification
+  void RegisterNotifyCallback(NotifyCallback cb);
+
+  // Register callback function to process result metadata and output buffers
+  void RegisterResultMetadataOutputBufferCallback(
+      ProcessResultMetadataOutputBuffersCallback cb);
+
+  // Register callback function to process partial metadata
+  void RegisterPartialMetadataCallback(ProcessPartialMetadataCallback cb);
 
   // Whether or not the template is supported
   bool IsTemplateSupported(int32_t type) const;
@@ -75,8 +118,20 @@ class Camera3Device {
   int RegisterOutputBuffer(const camera3_stream_t& stream,
                            BufferHandleUniquePtr unique_buffer);
 
-  // Process capture request
-  int ProcessCaptureRequest(camera3_capture_request_t* request);
+  // Process given capture request |capture_request|. The frame number field of
+  // |capture_request| will be overwritten if this method returns 0 on success.
+  int ProcessCaptureRequest(camera3_capture_request_t* capture_request);
+
+  // Wait for shutter with timeout. |abs_timeout| specifies an absolute timeout
+  // in seconds and nanoseconds since the Epoch, 1970-01-01 00:00:00 +0000
+  // (UTC), that the call should block if the shutter is immediately available.
+  int WaitShutter(const struct timespec& abs_timeout);
+
+  // Wait for capture result with timeout. |abs_timeout| specifies an absolute
+  // timeout in seconds and nanoseconds since the Epoch, 1970-01-01 00:00:00
+  // +0000 (UTC), that the call should block if the shutter is immediately
+  // available.
+  int WaitCaptureResult(const struct timespec& abs_timeout);
 
   // Flush all currently in-process captures and all buffers in the pipeline
   int Flush();
@@ -85,8 +140,24 @@ class Camera3Device {
   class StaticInfo;
   const StaticInfo* GetStaticInfo() const;
 
+ protected:
+  // Callback functions from HAL device
+  void ProcessCaptureResult(const camera3_capture_result* result);
+
+  // Callback functions from HAL device
+  void Notify(const camera3_notify_msg* msg);
+
  private:
   const std::string GetThreadName(int cam_id);
+
+  // Static callback forwarding methods from HAL to instance
+  static void ProcessCaptureResultForwarder(
+      const camera3_callback_ops* cb,
+      const camera3_capture_result* result);
+
+  // Static callback forwarding methods from HAL to instance
+  static void NotifyForwarder(const camera3_callback_ops* cb,
+                              const camera3_notify_msg* msg);
 
   void InitializeOnHalThread(const camera3_callback_ops_t* callback_ops,
                              int* result);
@@ -104,6 +175,12 @@ class Camera3Device {
   void FlushOnHalThread(int* result);
 
   void CloseOnHalThread(int* result);
+
+  // Whether or not partial result is used
+  bool UsePartialResult() const;
+
+  // Process and handle partial result of one callback
+  void ProcessPartialResult(const camera3_capture_result& result);
 
   const int cam_id_;
 
@@ -129,11 +206,76 @@ class Camera3Device {
   // Store allocated buffers with streams as the key
   std::unordered_map<const camera3_stream_t*,
                      std::vector<BufferHandleUniquePtr>>
-      stream_buffers_;
+      stream_buffer_map_;
 
+  // Lock to protect |cam_stream_|
   base::Lock stream_lock_;
 
-  base::Lock stream_buffers_lock_;
+  // Lock to protect |stream_buffer_map_|
+  base::Lock stream_buffer_map_lock_;
+
+  // Lock to protect |capture_request_map_| and |request_frame_number_|.
+  base::Lock request_lock_;
+
+  uint32_t request_frame_number_;
+
+  uint32_t result_frame_number_;
+
+  // Store created capture requests with frame number as the key
+  std::unordered_map<uint32_t, camera3_capture_request_t> capture_request_map_;
+
+  // Store the frame numbers of capture requests that HAL has finished
+  // processing
+  std::set<uint32_t> completed_request_set_;
+
+  class CaptureResultInfo {
+   public:
+    CaptureResultInfo()
+        : num_output_buffers_(0), have_result_metadata_(false) {}
+
+    // Allocate and copy into partial metadata
+    void AllocateAndCopyMetadata(const camera_metadata_t& src);
+
+    // Determine whether or not the key is available
+    bool IsMetadataKeyAvailable(int32_t key) const;
+
+    // Find and get key value from partial metadata
+    int32_t GetMetadataKeyValue(int32_t key) const;
+
+    // Find and get key value in int64_t from partial metadata
+    int64_t GetMetadataKeyValue64(int32_t key) const;
+
+    // Merge partial metadata into one.
+    CameraMetadataUniquePtr MergePartialMetadata();
+
+    uint32_t num_output_buffers_;
+
+    bool have_result_metadata_;
+
+    std::vector<CameraMetadataUniquePtr> partial_metadata_;
+
+    std::vector<camera3_stream_buffer_t> output_buffers_;
+
+   private:
+    bool GetMetadataKeyEntry(int32_t key,
+                             camera_metadata_ro_entry_t* entry) const;
+  };
+
+  // Store capture result information with frame number as the key
+  std::unordered_map<uint32_t, CaptureResultInfo> capture_result_info_map_;
+
+  sem_t shutter_sem_;
+
+  sem_t capture_result_sem_;
+
+  ProcessCaptureResultCallback process_capture_result_cb_;
+
+  NotifyCallback notify_cb_;
+
+  ProcessResultMetadataOutputBuffersCallback
+      process_result_metadata_output_buffers_cb_;
+
+  ProcessPartialMetadataCallback process_partial_metadata_cb_;
 
   DISALLOW_COPY_AND_ASSIGN(Camera3Device);
 };
@@ -243,8 +385,7 @@ class Camera3Device::StaticInfo {
   const camera_metadata_t* characteristics_;
 };
 
-class Camera3DeviceFixture : public testing::Test,
-                             protected camera3_callback_ops {
+class Camera3DeviceFixture : public testing::Test {
  public:
   explicit Camera3DeviceFixture(int cam_id) : cam_device_(cam_id) {}
 
@@ -253,25 +394,26 @@ class Camera3DeviceFixture : public testing::Test,
   virtual void TearDown() override;
 
  protected:
-  // Callback functions to process capture result
-  virtual void ProcessCaptureResult(const camera3_capture_result* result);
-
-  // Callback functions to handle notifications
-  virtual void Notify(const camera3_notify_msg* msg);
 
   Camera3Module cam_module_;
 
   Camera3Device cam_device_;
 
  private:
-  // Static callback forwarding methods from HAL to instance
-  static void ProcessCaptureResultCallback(
-      const camera3_callback_ops* cb,
-      const camera3_capture_result* result);
+  // Process result metadata and/or output buffers. Tests can override this
+  // function to handle metadata/buffers to suit their purpose. Note that
+  // the metadata |metadata| and output buffers kept in |buffers| will be
+  // freed after returning from this call; a test can "std::move" the unique
+  // pointers to keep the metadata and buffer.
+  virtual void ProcessResultMetadataOutputBuffers(
+      uint32_t frame_number,
+      CameraMetadataUniquePtr metadata,
+      std::vector<BufferHandleUniquePtr>* buffers) {}
 
-  // Static callback forwarding methods from HAL to instance
-  static void NotifyCallback(const camera3_callback_ops* cb,
-                             const camera3_notify_msg* msg);
+  // Process partial metadata. Tests can override this function to handle all
+  // received partial metadata.
+  virtual void ProcessPartialMetadata(
+      std::vector<CameraMetadataUniquePtr>* partial_metadata) {}
 
   DISALLOW_COPY_AND_ASSIGN(Camera3DeviceFixture);
 };
