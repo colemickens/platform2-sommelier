@@ -231,14 +231,23 @@ void PPPoEService::OnPPPConnected(const map<string, string>& params) {
   }
 
   if (ppp_device_) {
-    ppp_device_->SelectService(nullptr);
+    // PPPDevice instance registered with device_info is getting
+    // destroyed when the pppd exit or at shill stop. This constraint
+    // makes, reusing the existing PPPDevice instance to handle the
+    // back to back ip_up_notifier from the pppd.
+
+    // PPPDevice's interface_index and interface_name remains unchanged
+    CHECK((interface_name == ppp_device_->link_name()) &&
+          (interface_index == ppp_device_->interface_index()));
+    ppp_device_->DropConnection();
+  } else {
+    ppp_device_ = ppp_device_factory_->CreatePPPDevice(
+        control_interface_, dispatcher(), metrics(), manager(), interface_name,
+        interface_index);
+    device_info->RegisterDevice(ppp_device_);
+    ppp_device_->SetEnabled(true);
   }
 
-  ppp_device_ = ppp_device_factory_->CreatePPPDevice(
-      control_interface_, dispatcher(), metrics(), manager(), interface_name,
-      interface_index);
-  device_info->RegisterDevice(ppp_device_);
-  ppp_device_->SetEnabled(true);
   ppp_device_->SelectService(this);
   ppp_device_->UpdateIPConfigFromPPP(params, false);
 #ifndef DISABLE_DHCPV6
