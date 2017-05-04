@@ -116,7 +116,6 @@ const char* kSupportedMetadata[] = {
   NULL,
 };
 
-#ifndef QUIPPER_EXTERNAL_TEST_PATHS
 string GetTestInputFilePath(const string& filename) {
   return "testdata/" + filename;
 }
@@ -124,7 +123,6 @@ string GetTestInputFilePath(const string& filename) {
 string GetPerfPath() {
   return "/usr/bin/perf";
 }
-#endif  // !QUIPPER_EXTERNAL_TEST_PATHS
 
 int64_t GetFileSize(const string& filename) {
   FileReader reader(filename);

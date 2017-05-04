@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Do not include this makefile in quipper-9999.ebuild, as this fetches the
+# testdata directory over the network.
+
 # TODO(asharif): Convert this to common.mk.
 CXX ?= g++
 
@@ -36,6 +39,11 @@ TEST_COMMON_SOURCES = \
 	dso_test_utils.cc perf_test_files.cc test_perf_data.cc test_utils.cc
 TEST_COMMON_OBJECTS = $(TEST_COMMON_SOURCES:.cc=.o)
 
+# Testdata must be fetched separately.
+TESTDATA_URL = \
+	https://commondatastorage.googleapis.com/chromeos-localmirror/distfiles/quipper-20160112.tar.gz
+TESTDATA_DIR = testdata
+
 INTEGRATION_TEST_SOURCES = conversion_utils_test.cc
 PERF_RECORDER_TEST_SOURCES = perf_recorder_test.cc
 UNIT_TEST_SOURCES = \
@@ -48,6 +56,7 @@ UNIT_TEST_SOURCES = \
 TEST_SOURCES = $(INTEGRATION_TEST_SOURCES) $(PERF_RECORDER_TEST_SOURCES) \
 	$(UNIT_TEST_SOURCES) $(TEST_COMMON_SOURCES) test_runner.cc
 TEST_OBJECTS = $(TEST_SOURCES:.cc=.o)
+TESTS = integration_tests perf_recorder_test unit_tests
 
 ALL_SOURCES = $(MAIN_SOURCES) $(COMMON_SOURCES) $(TEST_SOURCES)
 
@@ -77,10 +86,14 @@ endif
 $(PROGRAMS): %: %.o $(COMMON_OBJECTS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
+$(TESTDATA_DIR):
+	mkdir -p $(TESTDATA_DIR)
+	curl $(TESTDATA_URL) | tar xz $(TESTDATA_DIR)
+
 INTEGRATION_TEST_OBJECTS = $(INTEGRATION_TEST_SOURCES:.cc=.o) test_runner.o
 integration_tests: LDLIBS += -lgtest
 integration_tests: %: $(COMMON_OBJECTS) $(TEST_COMMON_OBJECTS) \
-		      $(INTEGRATION_TEST_OBJECTS)
+		      $(INTEGRATION_TEST_OBJECTS) | $(TESTDATA_DIR)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 PERF_RECORDER_TEST_OBJECTS = $(PERF_RECORDER_TEST_SOURCES:.cc=.o)
@@ -91,7 +104,8 @@ perf_recorder_test: %: $(COMMON_OBJECTS) $(TEST_COMMON_OBJECTS) \
 
 UNIT_TEST_OBJECTS = $(UNIT_TEST_SOURCES:.cc=.o) test_runner.o
 unit_tests: LDLIBS += -lgtest -lcap
-unit_tests: %: $(COMMON_OBJECTS) $(TEST_COMMON_OBJECTS) $(UNIT_TEST_OBJECTS)
+unit_tests: %: $(COMMON_OBJECTS) $(TEST_COMMON_OBJECTS) \
+		      $(UNIT_TEST_OBJECTS) | $(TESTDATA_DIR)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 # With large perf.data files, the tests will spew a lot of logging.  The
@@ -99,18 +113,12 @@ unit_tests: %: $(COMMON_OBJECTS) $(TEST_COMMON_OBJECTS) $(UNIT_TEST_OBJECTS)
 # build with 'FEATURES="test noclean"' and go to the build directory.
 check: $(TESTS)
 	for test in $(TESTS); do \
-		case $$test in \
-		perf_*_test) \
 			./$$test 2> ./$$test.stderr.log && continue; \
-			echo "See $$test.stderr.log for errors" \
-			;; \
-		*) \
-			./$$test && continue \
-			;; \
-		esac; \
+			echo "See $$test.stderr.log for errors"; \
 		exit 1; \
 	done
 
 clean:
 	rm -f *.o *.d *.d.* *.a $(PROGRAMS) $(TESTS) $(GENERATED_SOURCES) \
-		$(GENERATED_HEADERS)
+		$(GENERATED_HEADERS); \
+	rm -rf $(TESTDATA_DIR)
