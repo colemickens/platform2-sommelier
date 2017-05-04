@@ -150,7 +150,6 @@ Device::Device(ControlInterface* control_interface,
     : enabled_(false),
       enabled_persistent_(true),
       enabled_pending_(enabled_),
-      reconnect_(true),
       hardware_address_(address),
       interface_index_(interface_index),
       running_(false),
@@ -213,9 +212,6 @@ Device::Device(ControlInterface* control_interface,
                                  &Device::GetTechnologyString);
   HelpRegisterConstDerivedUint64(kLinkMonitorResponseTimeProperty,
                                  &Device::GetLinkMonitorResponseTime);
-
-  // TODO(cmasone): Chrome doesn't use this...does anyone?
-  // store_.RegisterConstBool(kReconnectProperty, &reconnect_);
 
   // TODO(cmasone): Figure out what shill concept maps to flimflam's "Network".
   // known_properties_.push_back(kNetworksProperty);

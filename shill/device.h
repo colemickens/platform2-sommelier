@@ -823,7 +823,6 @@ class Device : public base::RefCounted<Device> {
   bool enabled_pending_;
 
   // Other properties
-  bool reconnect_;
   const std::string hardware_address_;
 
   PropertyStore store_;
