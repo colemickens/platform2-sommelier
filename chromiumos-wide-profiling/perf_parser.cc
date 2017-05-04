@@ -740,8 +740,18 @@ std::pair<AddressMapper*, bool> PerfParser::GetOrCreateProcessMapper(
     return std::make_pair(search->second.get(), false);
   }
 
+  auto parent_mapper = process_mappers_.find(ppid);
+  // Recent perf implementations (at least as recent as perf 4.4), add an
+  // explicit FORK event from the swapper process to the init process. There may
+  // be no explicit memory mappings created for the swapper process. In such
+  // cases, we must use the mappings from the kernel process, which are used by
+  // default for a new PID in the absence of an explicit FORK event.
+  // For now, we limit the workaround just for cases where the parent process
+  // is the swapper process.
+  if (parent_mapper == process_mappers_.end() && ppid == kSwapperPid) {
+    parent_mapper = process_mappers_.find(kKernelPid);
+  }
   std::unique_ptr<AddressMapper> mapper;
-  const auto& parent_mapper = process_mappers_.find(ppid);
   if (parent_mapper != process_mappers_.end()) {
     mapper.reset(new AddressMapper(*parent_mapper->second));
   } else {

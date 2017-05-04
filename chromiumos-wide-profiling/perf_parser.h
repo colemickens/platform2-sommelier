@@ -25,6 +25,9 @@
 
 namespace quipper {
 
+// PID associated with the kernel mmap event.
+const uint32_t kKernelPid = static_cast<uint32_t>(-1);
+
 class AddressMapper;
 class PerfDataProto_BranchStackEntry;
 class PerfDataProto_CommEvent;
@@ -253,8 +256,8 @@ class PerfParser {
   // |ppid| from which to copy mappings.
   // Returns (mapper, true) if a new AddressMapper was created, and
   // (mapper, false) if there is an existing mapper.
-  std::pair<AddressMapper*, bool> GetOrCreateProcessMapper(uint32_t pid,
-                                                           uint32_t ppid = -1);
+  std::pair<AddressMapper*, bool> GetOrCreateProcessMapper(
+      uint32_t pid, uint32_t ppid = kKernelPid);
 
   // Points to a PerfReader that contains the input perf data to parse.
   PerfReader* const reader_;
