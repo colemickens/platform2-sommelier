@@ -4,6 +4,8 @@
 
 #include "camera3_frame_fixture.h"
 
+#include <semaphore.h>
+
 #include <list>
 
 #include "base/macros.h"
