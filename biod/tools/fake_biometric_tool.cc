@@ -13,6 +13,7 @@
 #include <brillo/flag_helper.h>
 
 #include "biod/fake_biometrics_manager_common.h"
+#include "biod/proto_bindings/constants.pb.h"
 
 #ifndef VCSID
 #define VCSID "<not set>"
@@ -61,6 +62,10 @@ int main(int argc, char* argv[]) {
   }
 
   if (FLAGS_scan >= 0) {
+    // Biod EnrollScanDone signal cannot accept scan result outside the defined
+    // range.
+    CHECK_LT(FLAGS_scan,
+             static_cast<int32_t>(biod::ScanResult::SCAN_RESULT_MAX));
     uint8_t cmd[] = {FAKE_BIOMETRIC_MAGIC_BYTES,
                      'S',
                      static_cast<uint8_t>(FLAGS_scan),
