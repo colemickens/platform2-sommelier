@@ -26,6 +26,9 @@ const char kCmdTee[] = "/usr/bin/tee";
 const char kCmdPrintEnv[] = "/usr/bin/printenv";
 const char kEnvVar[] = "PROCESS_EXECUTOR_TEST_ENV_VAR";
 const char kEnvVar2[] = "PROCESS_EXECUTOR_TEST_2_ENV_VAR";
+const char kWhitelistedEnvVar[] = "ASAN_OPTIONS";
+const char kShortenedWhitelistedEnvVar[] = "ASAN_OPT";
+const char kExtendedWhitelistedEnvVar[] = "ASAN_OPTIONS_123";
 const char kGrepTestText[] = "This is a test.\n";
 const char kGrepTestToken[] = "test";
 const char kFileDoesNotExist[] = "does_not_exist_khsdgviu";
@@ -129,8 +132,8 @@ TEST_F(ProcessExecutorTest, ReadFromStderr) {
   EXPECT_FALSE(cmd.Execute());
   EXPECT_NE(cmd.GetExitCode(), 0);
   EXPECT_TRUE(cmd.GetStdout().empty());
-  EXPECT_TRUE(base::StartsWith(cmd.GetStderr(), kCmdGrep,
-                               base::CompareCase::SENSITIVE));
+  EXPECT_TRUE(base::StartsWith(
+      cmd.GetStderr(), kCmdGrep, base::CompareCase::SENSITIVE));
 }
 
 // Reading large amounts of output from stdout to test piping (triggers pipe
@@ -212,6 +215,32 @@ TEST_F(ProcessExecutorTest, ClearsEnvVariables) {
   EXPECT_TRUE(cmd.GetStderr().empty());
   EXPECT_STREQ(getenv(kEnvVar), "1");
   EXPECT_EQ(getenv(kEnvVar2), nullptr);
+}
+
+// The executor keeps whitelisted environment variables.
+TEST_F(ProcessExecutorTest, KeepsWhitelistedEnvVariables) {
+  ProcessExecutor cmd({kCmdPrintEnv});
+  EXPECT_TRUE(cmd.Execute());
+  EXPECT_EQ(cmd.GetExitCode(), 0);
+  EXPECT_NE(cmd.GetStdout().find(kWhitelistedEnvVar), std::string::npos);
+  EXPECT_TRUE(cmd.GetStderr().empty());
+}
+
+// Makes sure that XY and XYZ_123 aren't kept if XYZ is whitelisted.
+TEST_F(ProcessExecutorTest, WhitelistedEnvVariablesMustMatchExactly) {
+  ProcessExecutor cmd({kCmdPrintEnv});
+  setenv(kShortenedWhitelistedEnvVar, "1", 1);
+  setenv(kExtendedWhitelistedEnvVar, "1", 1);
+  EXPECT_TRUE(cmd.Execute());
+  EXPECT_EQ(cmd.GetExitCode(), 0);
+  // Note that kShortenedWhitelistedEnvVar is a part of a whitelisted variable,
+  // so we have to add '='.
+  EXPECT_EQ(
+      cmd.GetStdout().find(std::string(kShortenedWhitelistedEnvVar) + "="),
+      std::string::npos);
+  EXPECT_EQ(cmd.GetStdout().find(kExtendedWhitelistedEnvVar),
+            std::string::npos);
+  EXPECT_TRUE(cmd.GetStderr().empty());
 }
 
 // Make sure you can't inject arbitrary commands in args

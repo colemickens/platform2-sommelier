@@ -20,6 +20,26 @@
 #include "authpolicy/samba_helper.h"
 
 namespace authpolicy {
+namespace {
+
+// Prevent some environment variables from being wiped since they're used by
+// tests. crbug.com/718182.
+struct EnvVarDef {
+  const char* name_equals;  // "name="
+  size_t size;              // strlen("name=")
+};
+
+// Note: strlen doesn't work with constexpr.
+#define DEFINE_ENV_VAR(name) \
+  { name "=", sizeof(name "=") - 1 }
+
+constexpr EnvVarDef kWhitelistedEnvVars[]{
+    DEFINE_ENV_VAR("ASAN_OPTIONS"), DEFINE_ENV_VAR("LSAN_OPTIONS"),
+};
+
+#undef DEFINE_ENV_VAR
+
+}  // namespace
 
 ProcessExecutor::ProcessExecutor(std::vector<std::string> args)
     : args_(std::move(args)) {}
@@ -94,10 +114,22 @@ bool ProcessExecutor::Execute() {
   for (char** env = environ; env != nullptr && *env != nullptr; ++env)
     old_environ.push_back(*env);
   clearenv();
+
+  // Store strings in list because putenv requires pointers to stay alive.
   std::vector<std::string> env_list;
   for (const auto& env : env_map_) {
     env_list.push_back(env.first + "=" + env.second);
     putenv(const_cast<char*>(env_list.back().c_str()));
+  }
+
+  // Add back whitelisted env vars. Note that |whitelisted_var.name_equals| is
+  // name= and |env| is name=value. A linear search seems fine, but consider
+  // using a map if kWhitelistedEnvVars grows.
+  for (char* env : old_environ) {
+    for (const EnvVarDef& whitelisted_var : kWhitelistedEnvVars) {
+      if (strncmp(env, whitelisted_var.name_equals, whitelisted_var.size) == 0)
+        putenv(env);
+    }
   }
 
   // Prepare minijail.
