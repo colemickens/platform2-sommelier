@@ -98,12 +98,9 @@ int V4L2FrameBuffer::Unmap() {
 
 GrallocFrameBuffer::GrallocFrameBuffer(buffer_handle_t buffer,
                                        uint32_t width,
-                                       uint32_t height,
-                                       uint32_t fourcc,
-                                       const CameraMetadata& metadata)
+                                       uint32_t height)
     : buffer_(buffer),
       buffer_mapper_(CameraBufferMapper::GetInstance()),
-      jpeg_max_size_(0),
       is_mapped_(false) {
   int ret = buffer_mapper_->Register(buffer_);
   if (ret) {
@@ -112,12 +109,7 @@ GrallocFrameBuffer::GrallocFrameBuffer(buffer_handle_t buffer,
   }
   width_ = width;
   height_ = height;
-  fourcc_ = fourcc;
-
-  if (metadata.Exists(ANDROID_JPEG_MAX_SIZE)) {
-    camera_metadata_ro_entry entry = metadata.Find(ANDROID_JPEG_MAX_SIZE);
-    jpeg_max_size_ = entry.data.i32[0];
-  }
+  fourcc_ = buffer_mapper_->GetV4L2PixelFormat(buffer);
 }
 
 GrallocFrameBuffer::~GrallocFrameBuffer() {
@@ -137,24 +129,25 @@ int GrallocFrameBuffer::Map() {
     LOGF(ERROR) << "The buffer is already mapped";
     return -EINVAL;
   }
+  buffer_size_ = buffer_mapper_->GetPlaneSize(buffer_, 0);
 
   void* addr;
   int ret;
   switch (fourcc_) {
     case V4L2_PIX_FMT_JPEG:
-      if (!jpeg_max_size_) {
-        LOGF(ERROR) << "JPEG_MAX_SIZE is undefined.";
+      ret = buffer_mapper_->Lock(buffer_, 0, 0, 0, buffer_size_, 1, &addr);
+      break;
+    case V4L2_PIX_FMT_RGBX32: {
+      int calculated_size =
+          ImageProcessor::GetConvertedSize(fourcc_, width_, height_);
+      if (calculated_size != buffer_size_) {
+        LOGF(ERROR) << "Buffer size mismatch. Calculated: " << calculated_size
+                    << ", actual: " << buffer_size_;
         return -EINVAL;
       }
-      buffer_size_ = jpeg_max_size_;
-      ret = buffer_mapper_->Lock(buffer_, 0, 0, 0, jpeg_max_size_, 1, &addr);
-      break;
-    case V4L2_PIX_FMT_RGB32:
-      // We don't know the actually buffer size from framework, calculate it by
-      // attributes.
-      buffer_size_ = ImageProcessor::GetConvertedSize(fourcc_, width_, height_);
       ret = buffer_mapper_->Lock(buffer_, 0, 0, 0, width_, height_, &addr);
       break;
+    }
     default:
       LOGF(ERROR) << "Format " << FormatToString(fourcc_) << " is unsupported";
       return -EINVAL;

@@ -24,7 +24,7 @@ namespace arc {
  * -----------------------------------------------------------------------------
  * HAL_PIXEL_FORMAT_YV12         = V4L2_PIX_FMT_YVU420 = FOURCC_YV12
  * HAL_PIXEL_FORMAT_YCrCb_420_SP = V4L2_PIX_FMT_NV21   = FOURCC_NV21
- * HAL_PIXEL_FORMAT_RGBA_8888    = V4L2_PIX_FMT_RGB32  = FOURCC_ABGR
+ * HAL_PIXEL_FORMAT_RGBA_8888    = V4L2_PIX_FMT_RGBX32 = FOURCC_ABGR
  * HAL_PIXEL_FORMAT_YCbCr_422_I  = V4L2_PIX_FMT_YUYV   = FOURCC_YUYV
  *                                                     = FOURCC_YUY2
  *                                 V4L2_PIX_FMT_YUV420 = FOURCC_I420
@@ -85,7 +85,7 @@ size_t ImageProcessor::GetConvertedSize(int fourcc,
     // Fall-through.
     case V4L2_PIX_FMT_NV21:  // NV21
       return width * height * 3 / 2;
-    case V4L2_PIX_FMT_RGB32:
+    case V4L2_PIX_FMT_RGBX32:
       return width * height * 4;
     default:
       LOGF(ERROR) << "Pixel format " << FormatToString(fourcc)
@@ -103,12 +103,14 @@ int ImageProcessor::ConvertFormat(const CameraMetadata& metadata,
     return -EINVAL;
   }
 
-  size_t data_size = GetConvertedSize(
-      out_frame->GetFourcc(), in_frame.GetWidth(), in_frame.GetHeight());
+  if (out_frame->GetFourcc() != V4L2_PIX_FMT_JPEG) {
+    size_t data_size = GetConvertedSize(
+        out_frame->GetFourcc(), in_frame.GetWidth(), in_frame.GetHeight());
 
-  if (out_frame->SetDataSize(data_size)) {
-    LOGF(ERROR) << "Set data size failed";
-    return -EINVAL;
+    if (out_frame->SetDataSize(data_size)) {
+      LOGF(ERROR) << "Set data size failed";
+      return -EINVAL;
+    }
   }
 
   if (in_frame.GetFourcc() == V4L2_PIX_FMT_YUYV) {
@@ -163,7 +165,7 @@ int ImageProcessor::ConvertFormat(const CameraMetadata& metadata,
         LOGF_IF(ERROR, res) << "YU12ToNV21() returns " << res;
         return res ? -EINVAL : 0;
       }
-      case V4L2_PIX_FMT_RGB32: {
+      case V4L2_PIX_FMT_RGBX32: {
         int res = libyuv::I420ToABGR(
             in_frame.GetData(), in_frame.GetWidth(),
             in_frame.GetData() + in_frame.GetWidth() * in_frame.GetHeight(),

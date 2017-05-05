@@ -331,7 +331,8 @@ CameraClient::RequestHandler::RequestHandler(
       device_(device),
       callback_ops_(callback_ops),
       task_runner_(task_runner),
-      metadata_handler_(metadata_handler) {
+      metadata_handler_(metadata_handler),
+      current_v4l2_buffer_id_(-1) {
   SupportedFormats supported_formats =
       device_->GetDeviceSupportedFormats(device_path_);
   qualified_formats_ = GetQualifiedFormats(supported_formats);
@@ -343,62 +344,17 @@ void CameraClient::RequestHandler::StreamOn(
     SupportedFormat stream_on_resolution,
     const base::Callback<void(int, int)>& callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
-  const SupportedFormat* format =
-      FindFormatByResolution(qualified_formats_, stream_on_resolution.width,
-                             stream_on_resolution.height);
-  if (format == nullptr) {
-    LOGFID(ERROR, device_id_)
-        << "Cannot find resolution in supported list: width "
-        << stream_on_resolution.width << ", height "
-        << stream_on_resolution.height;
-    callback.Run(0, -EINVAL);
-    return;
-  }
-
-  float max_fps = 0;
-  for (const auto& frame_rate : format->frameRates) {
-    if (frame_rate > max_fps) {
-      max_fps = frame_rate;
-    }
-  }
-  VLOGFID(1, device_id_) << "streamOn with width " << format->width
-                         << ", height " << format->height << ", fps " << max_fps
-                         << ", format " << FormatToString(format->fourcc);
-
-  std::vector<base::ScopedFD> fds;
-  uint32_t buffer_size;
-  int ret = device_->StreamOn(format->width, format->height, format->fourcc,
-                              max_fps, &fds, &buffer_size);
+  int ret = StreamOnImpl(stream_on_resolution);
   if (ret) {
-    LOGFID(ERROR, device_id_) << "StreamOn failed: " << strerror(-ret);
     callback.Run(0, ret);
-    return;
   }
-
-  for (size_t i = 0; i < fds.size(); i++) {
-    std::unique_ptr<V4L2FrameBuffer> frame(
-        new V4L2FrameBuffer(std::move(fds[i]), buffer_size, format->width,
-                            format->height, format->fourcc));
-    ret = frame->Map();
-    if (ret) {
-      callback.Run(0, -errno);
-      return;
-    }
-    VLOGFID(1, device_id_) << "Buffer " << i << ", fd: " << frame->GetFd()
-                           << " address: " << std::hex
-                           << reinterpret_cast<uintptr_t>(frame->GetData());
-    input_buffers_.push_back(std::move(frame));
-  }
-  callback.Run(fds.size(), 0);
+  callback.Run(input_buffers_.size(), 0);
 }
 
 void CameraClient::RequestHandler::StreamOff(
     const base::Callback<void(int)>& callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
-  int ret = device_->StreamOff();
-  if (ret) {
-    LOGFID(ERROR, device_id_) << "StreamOff failed: " << strerror(-ret);
-  }
+  int ret = StreamOffImpl();
   callback.Run(ret);
 }
 
@@ -429,30 +385,15 @@ void CameraClient::RequestHandler::HandleRequest(
   CameraMetadata* metadata = request->GetMetadata();
   metadata_handler_->PreHandleRequest(capture_result.frame_number, *metadata);
 
-  uint32_t buffer_id, data_size;
-  ret = device_->GetNextFrameBuffer(&buffer_id, &data_size);
-  if (ret) {
-    LOGFID(ERROR, device_id_) << "GetNextFrameBuffer failed: "
-                              << strerror(-ret);
-    return;
-  }
-
-  ret = input_buffers_[buffer_id]->SetDataSize(data_size);
-  if (ret) {
-    LOGFID(ERROR, device_id_) << "Set data size failed for input buffer id: "
-                              << buffer_id;
-    return;
-  }
-  input_frame_.SetSource(input_buffers_[buffer_id].get(), 0);
-
   VLOGFID(1, device_id_) << "Request Frame:" << capture_result.frame_number
                          << ", Number of output buffers: "
                          << capture_result.num_output_buffers;
 
   // Handle each stream output buffer and convert it to corresponding format.
   for (size_t i = 0; i < capture_result.num_output_buffers; i++) {
-    ret = WriteStreamBuffer(*metadata, const_cast<camera3_stream_buffer_t*>(
-                                            &capture_result.output_buffers[i]));
+    ret = WriteStreamBuffer(i, capture_result.num_output_buffers, *metadata,
+                            const_cast<camera3_stream_buffer_t*>(
+                                &capture_result.output_buffers[i]));
     if (ret) {
       LOGFID(ERROR, device_id_)
           << "Handle stream buffer failed for output buffer id: " << i;
@@ -469,14 +410,71 @@ void CameraClient::RequestHandler::HandleRequest(
   // After process_capture_result, HAL cannot access the output buffer in
   // camera3_stream_buffer anymore unless the release fence is not -1.
   callback_ops_->process_capture_result(callback_ops_, &capture_result);
-  ret = device_->ReuseFrameBuffer(buffer_id);
-  if (ret) {
-    LOGFID(ERROR, device_id_) << "ReuseFrameBuffer failed: " << strerror(-ret)
-                              << " for input buffer id: " << buffer_id;
+}
+
+int CameraClient::RequestHandler::StreamOnImpl(
+    SupportedFormat stream_on_resolution) {
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  const SupportedFormat* format =
+      FindFormatByResolution(qualified_formats_, stream_on_resolution.width,
+                             stream_on_resolution.height);
+  if (format == nullptr) {
+    LOGFID(ERROR, device_id_)
+        << "Cannot find resolution in supported list: width "
+        << stream_on_resolution.width << ", height "
+        << stream_on_resolution.height;
+    return -EINVAL;
   }
+
+  float max_fps = 0;
+  for (const auto& frame_rate : format->frameRates) {
+    if (frame_rate > max_fps) {
+      max_fps = frame_rate;
+    }
+  }
+  VLOGFID(1, device_id_) << "streamOn with width " << format->width
+                         << ", height " << format->height << ", fps " << max_fps
+                         << ", format " << FormatToString(format->fourcc);
+
+  std::vector<base::ScopedFD> fds;
+  uint32_t buffer_size;
+  int ret = device_->StreamOn(format->width, format->height, format->fourcc,
+                              max_fps, &fds, &buffer_size);
+  if (ret) {
+    LOGFID(ERROR, device_id_) << "StreamOn failed: " << strerror(-ret);
+    return ret;
+  }
+
+  for (size_t i = 0; i < fds.size(); i++) {
+    std::unique_ptr<V4L2FrameBuffer> frame(
+        new V4L2FrameBuffer(std::move(fds[i]), buffer_size, format->width,
+                            format->height, format->fourcc));
+    ret = frame->Map();
+    if (ret) {
+      return -errno;
+    }
+    VLOGFID(1, device_id_) << "Buffer " << i << ", fd: " << frame->GetFd()
+                           << " address: " << std::hex
+                           << reinterpret_cast<uintptr_t>(frame->GetData());
+    input_buffers_.push_back(std::move(frame));
+  }
+  stream_on_resolution_ = stream_on_resolution;
+  return 0;
+}
+
+int CameraClient::RequestHandler::StreamOffImpl() {
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  input_buffers_.clear();
+  int ret = device_->StreamOff();
+  if (ret) {
+    LOGFID(ERROR, device_id_) << "StreamOff failed: " << strerror(-ret);
+  }
+  return ret;
 }
 
 int CameraClient::RequestHandler::WriteStreamBuffer(
+    int stream_index,
+    int num_streams,
     const CameraMetadata& metadata,
     camera3_stream_buffer_t* buffer) {
   DCHECK(task_runner_->BelongsToCurrentThread());
@@ -486,15 +484,57 @@ int CameraClient::RequestHandler::WriteStreamBuffer(
                          << ", width: " << buffer->stream->width
                          << ", height: " << buffer->stream->height;
 
-  int fourcc = HalPixelFormatToFourcc(buffer->stream->format);
-  GrallocFrameBuffer output_frame(*buffer->buffer, buffer->stream->width,
-                                  buffer->stream->height, fourcc, metadata);
+  // Require different resolution. We have to restart the stream.
+  bool stream_restart = false;
+  int ret = 0;
+  if (buffer->stream->width != stream_on_resolution_.width ||
+      buffer->stream->height != stream_on_resolution_.height) {
+    VLOGFID(1, device_id_) << "Restart stream";
+    // If stream_index is not 0, we have to return the current v4l2 buffer
+    // first.
+    if (stream_index) {
+      ret = EnqueueV4L2Buffer();
+      if (ret) {
+        return ret;
+      }
+    }
+    ret = StreamOffImpl();
+    if (ret) {
+      return ret;
+    }
+    SupportedFormat new_resolution;
+    new_resolution.width = buffer->stream->width;
+    new_resolution.height = buffer->stream->height;
+    ret = StreamOnImpl(new_resolution);
+    if (ret) {
+      return ret;
+    }
+    stream_restart = true;
+  }
 
-  int ret = output_frame.Map();
+  // Get frame data from device only for the first buffer or new stream.
+  if (stream_index == 0 || stream_restart == true) {
+    ret = DequeueV4L2Buffer();
+    if (ret) {
+      return ret;
+    }
+  }
+
+  GrallocFrameBuffer output_frame(*buffer->buffer, buffer->stream->width,
+                                  buffer->stream->height);
+  ret = output_frame.Map();
   if (ret) {
     return -EINVAL;
   }
   input_frame_.Convert(metadata, &output_frame);
+
+  // Return v4l2 buffer when last stream buffer is handled.
+  if (stream_index + 1 == num_streams) {
+    ret = EnqueueV4L2Buffer();
+    if (ret) {
+      return ret;
+    }
+  }
   return 0;
 }
 
@@ -556,6 +596,45 @@ void CameraClient::RequestHandler::NotifyShutter(uint32_t frame_number,
   m.message.shutter.frame_number = frame_number;
   m.message.shutter.timestamp = *timestamp;
   callback_ops_->notify(callback_ops_, &m);
+}
+
+int CameraClient::RequestHandler::DequeueV4L2Buffer() {
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  uint32_t buffer_id, data_size;
+  int ret = device_->GetNextFrameBuffer(&buffer_id, &data_size);
+  if (ret) {
+    LOGFID(ERROR, device_id_)
+        << "GetNextFrameBuffer failed: " << strerror(-ret);
+    return ret;
+  }
+  current_v4l2_buffer_id_ = buffer_id;
+
+  ret = input_buffers_[buffer_id]->SetDataSize(data_size);
+  if (ret) {
+    LOGFID(ERROR, device_id_)
+        << "Set data size failed for input buffer id: " << buffer_id;
+    return ret;
+  }
+  ret = input_frame_.SetSource(input_buffers_[buffer_id].get(), 0);
+  if (ret) {
+    LOGFID(ERROR, device_id_)
+        << "Set image source failed for input buffer id: " << buffer_id;
+    return ret;
+  }
+  return 0;
+}
+
+int CameraClient::RequestHandler::EnqueueV4L2Buffer() {
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  input_frame_.UnsetSource();
+  int ret = device_->ReuseFrameBuffer(current_v4l2_buffer_id_);
+  if (ret) {
+    LOGFID(ERROR, device_id_)
+        << "ReuseFrameBuffer failed: " << strerror(-ret)
+        << " for input buffer id: " << current_v4l2_buffer_id_;
+  }
+  current_v4l2_buffer_id_ = -1;
+  return ret;
 }
 
 }  // namespace arc

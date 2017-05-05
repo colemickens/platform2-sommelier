@@ -24,9 +24,6 @@ SupportedFormat GetMaximumFormat(const SupportedFormats& supported_formats);
 // The resolutions in returned SupportedFormats vector are unique.
 SupportedFormats GetQualifiedFormats(const SupportedFormats& supported_formats);
 
-// Get corresponding FOURCC from HAL_PIXEL_FORMAT.
-int HalPixelFormatToFourcc(uint32_t hal_pixel_format);
-
 }  // namespace arc
 
 #endif  // HAL_USB_STREAM_FORMAT_H_

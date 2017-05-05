@@ -152,15 +152,29 @@ class CameraClient {
     void HandleRequest(std::unique_ptr<CaptureRequest> request);
 
    private:
+    // Start streaming implementation.
+    int StreamOnImpl(SupportedFormat stream_on_resolution);
+
+    // Stop streaming implementation.
+    int StreamOffImpl();
+
     // Convert |cache_frame_| to the |buffer| with corresponding format.
-    int WriteStreamBuffer(const CameraMetadata& metadata,
-                           camera3_stream_buffer_t* buffer);
+    int WriteStreamBuffer(int stream_index,
+                          int num_streams,
+                          const CameraMetadata& metadata,
+                          camera3_stream_buffer_t* buffer);
 
     // Wait output buffer synced.
     int WaitGrallocBufferSync(camera3_capture_result_t* result);
 
     // Notify shutter event.
     void NotifyShutter(uint32_t frame_number, int64_t* timestamp);
+
+    // Dequeue V4L2 frame buffer.
+    int DequeueV4L2Buffer();
+
+    // Enqueue V4L2 frame buffer.
+    int EnqueueV4L2Buffer();
 
     // Variables from CameraClient:
 
@@ -191,6 +205,12 @@ class CameraClient {
     // Handle metadata events and store states. CameraClient takes the
     // ownership.
     MetadataHandler* metadata_handler_;
+
+    // The resolution for stream on.
+    SupportedFormat stream_on_resolution_;
+
+    // Current using buffer id for |input_buffers_|.
+    int current_v4l2_buffer_id_;
   };
 
   std::unique_ptr<RequestHandler> request_handler_;
