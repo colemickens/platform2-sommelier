@@ -4,12 +4,11 @@
 
 #include <signal.h>
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
-#include <openssl/evp.h>
-#include <openssl/pem.h>
-#include <openssl/x509.h>
 
 #include "helper_process.h"
 #include "imageloader.h"
@@ -34,42 +33,23 @@ constexpr char kComponentsPath[] = "/var/lib/imageloader";
 constexpr char kMountPath[] = "/run/imageloader";
 // The location of the container public key.
 constexpr char kContainerPublicKeyPath[] =
-    "/usr/share/misc/oci-container-key-pub.pem";
-
-struct ScopedPubkeyCloser {
-  inline void operator()(EVP_PKEY* pubkey) {
-    if (pubkey)
-      EVP_PKEY_free(pubkey);
-  }
-};
-using ScopedPubkey = std::unique_ptr<EVP_PKEY, ScopedPubkeyCloser>;
+    "/usr/share/misc/oci-container-key-pub.der";
 
 bool LoadKeyFromFile(const std::string& file, std::vector<uint8_t>* key_out) {
   CHECK(key_out);
 
-  base::ScopedFILE key_file(fopen(file.c_str(), "r"));
-  if (!key_file) {
-    LOG(WARNING) << "Could not find key file " << file;
-    return false;
-  }
+  base::FilePath key_file(file);
+  std::string key_data;
 
-  ScopedPubkey pubkey(
-      PEM_read_PUBKEY(key_file.get(), nullptr, nullptr, nullptr));
-  if (!pubkey) {
-    LOG(WARNING) << "Key file " << file << " was not a public key";
-    return false;
-  }
-
-  uint8_t *der_key = nullptr;
-  int der_len = i2d_PUBKEY(pubkey.get(), &der_key);
-  if (der_len < 0) {
-    LOG(WARNING) << "Failed to export public key in DER format";
+  // The key should be pretty small.
+  if (!ReadFileToString(key_file, &key_data)) {
+    LOG(WARNING) << "Could not read key file " << key_file.value();
     return false;
   }
 
   key_out->clear();
-  key_out->insert(key_out->begin(), der_key, der_key + der_len);
-  OPENSSL_free(der_key);
+  key_out->insert(key_out->begin(), key_data.begin(), key_data.end());
+
   return true;
 }
 
