@@ -5,6 +5,8 @@
 #ifndef CAMERA3_TEST_CAMERA3_SERVICE_H_
 #define CAMERA3_TEST_CAMERA3_SERVICE_H_
 
+#include <semaphore.h>
+
 #include "camera3_device_fixture.h"
 
 namespace camera3_test {
@@ -81,6 +83,12 @@ class Camera3Service {
   // Take still capture with settings |metadata|
   void TakeStillCapture(int cam_id, const camera_metadata_t* metadata);
 
+  // Wait for |num_frames| number of preview frames with |timeout_ms|
+  // milliseconds of timeout for each frame.
+  int WaitForPreviewFrames(int cam_id,
+                           uint32_t num_frames,
+                           uint32_t timeout_ms);
+
   // Get device static information
   const Camera3Device::StaticInfo* GetStaticInfo(int cam_id);
 
@@ -98,6 +106,8 @@ class Camera3Service {
   class Camera3DeviceService;
   std::unordered_map<int, std::unique_ptr<Camera3DeviceService>>
       cam_dev_service_map_;
+
+  DISALLOW_IMPLICIT_CONSTRUCTORS(Camera3Service);
 };
 
 class Camera3Service::Camera3DeviceService {
@@ -143,6 +153,10 @@ class Camera3Service::Camera3DeviceService {
 
   // Take still capture with settings |metadata|
   void TakeStillCapture(const camera_metadata_t* metadata);
+
+  // Wait for |num_frames| number of preview frames with |timeout_ms|
+  // milliseconds of timeout for each frame.
+  int WaitForPreviewFrames(uint32_t num_frames, uint32_t timeout_ms);
 
   // Get static information
   const Camera3Device::StaticInfo* GetStaticInfo() const;
@@ -240,6 +254,10 @@ class Camera3Service::Camera3DeviceService {
   };
 
   std::list<MetadataListener> metadata_listener_list_;
+
+  sem_t preview_frame_sem_;
+
+  DISALLOW_IMPLICIT_CONSTRUCTORS(Camera3DeviceService);
 };
 
 }  // namespace camera3_test

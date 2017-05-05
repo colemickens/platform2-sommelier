@@ -127,6 +127,18 @@ void Camera3Service::TakeStillCapture(int cam_id,
   }
 }
 
+int Camera3Service::WaitForPreviewFrames(int cam_id,
+                                         uint32_t num_frames,
+                                         uint32_t timeout_ms) {
+  base::AutoLock l(lock_);
+  if (!initialized_ ||
+      cam_dev_service_map_.find(cam_id) == cam_dev_service_map_.end()) {
+    return -ENODEV;
+  }
+  return cam_dev_service_map_[cam_id]->WaitForPreviewFrames(num_frames,
+                                                            timeout_ms);
+}
+
 const Camera3Device::StaticInfo* Camera3Service::GetStaticInfo(int cam_id) {
   base::AutoLock l(lock_);
   if (initialized_ &&
@@ -164,26 +176,18 @@ int Camera3Service::Camera3DeviceService::Initialize() {
   cam_device_.RegisterResultMetadataOutputBufferCallback(base::Bind(
       &Camera3Service::Camera3DeviceService::ProcessResultMetadataOutputBuffers,
       base::Unretained(this)));
-  number_of_capture_requests_ =
-      cam_device_.GetStaticInfo()->GetRequestPipelineMaxDepth();
-  if (number_of_capture_requests_ == 0) {
-    LOG(ERROR) << "Max request pipeline depth equal to zero";
-    return -EINVAL;
-  }
-  capture_requests_.resize(number_of_capture_requests_);
-  output_stream_buffers_ = std::vector<std::vector<camera3_stream_buffer_t>>(
-      number_of_capture_requests_,
-      std::vector<camera3_stream_buffer_t>(kNumberOfOutputStreamBuffers));
   repeating_preview_metadata_.reset(clone_camera_metadata(
       cam_device_.ConstructDefaultRequestSettings(CAMERA3_TEMPLATE_PREVIEW)));
   if (!repeating_preview_metadata_) {
     LOG(ERROR) << "Failed to create preview metadata";
     return -ENOMEM;
   }
+  sem_init(&preview_frame_sem_, 0, 0);
   return 0;
 }
 
 void Camera3Service::Camera3DeviceService::Destroy() {
+  sem_destroy(&preview_frame_sem_);
   cam_device_.Destroy();
 }
 
@@ -291,6 +295,27 @@ void Camera3Service::Camera3DeviceService::TakeStillCapture(
   future->Wait();
 }
 
+int Camera3Service::Camera3DeviceService::WaitForPreviewFrames(
+    uint32_t num_frames,
+    uint32_t timeout_ms) {
+  VLOGF_ENTER();
+  while (sem_trywait(&preview_frame_sem_) == 0)
+    ;
+  for (uint32_t i = 0; i < num_frames; ++i) {
+    struct timespec timeout = {};
+    if (clock_gettime(CLOCK_REALTIME, &timeout)) {
+      LOGF(ERROR) << "Failed to get clock time";
+      return -errno;
+    }
+    timeout.tv_sec += timeout_ms / 1000;
+    timeout.tv_nsec += (timeout_ms % 1000) * 1000;
+    if (sem_timedwait(&preview_frame_sem_, &timeout) != 0) {
+      return -errno;
+    }
+  }
+  return 0;
+}
+
 const Camera3Device::StaticInfo*
 Camera3Service::Camera3DeviceService::GetStaticInfo() const {
   return cam_device_.GetStaticInfo();
@@ -352,6 +377,11 @@ void Camera3Service::Camera3DeviceService::
   }
   const camera3_stream_t* preview_stream = *it;
 
+  number_of_capture_requests_ = preview_stream->max_buffers;
+  capture_requests_.resize(number_of_capture_requests_);
+  output_stream_buffers_ = std::vector<std::vector<camera3_stream_buffer_t>>(
+      number_of_capture_requests_,
+      std::vector<camera3_stream_buffer_t>(kNumberOfOutputStreamBuffers));
   // Submit initial preview capture requests to fill the HAL pipeline first.
   // Then when a result callback is processed, the corresponding capture
   // request (and output buffer) is recycled and submitted again.
@@ -538,6 +568,7 @@ void Camera3Service::Camera3DeviceService::
           std::move(it));
     }
   }
+  sem_post(&preview_frame_sem_);
 
   if (stopping_preview) {
     VLOGF(1) << "Stopping preview ... (" << number_of_in_flight_requests_

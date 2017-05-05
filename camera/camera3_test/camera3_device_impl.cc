@@ -327,7 +327,15 @@ void Camera3DeviceImpl::ConfigureStreamsOnThread(
   // Configure streams now
   *result =
       cam_device_->ops->configure_streams(cam_device_, &cam_stream_config);
-  // TODO(hywu): validate cam_stream_config.streams[*].max_buffers > 0
+  if (*result == 0) {
+    for (const auto& it : cam_stream_[!cam_stream_idx_]) {
+      if (it.max_buffers == 0) {
+        LOGF(ERROR) << "Max number of buffers equal to zero is invalid";
+        *result = -EINVAL;
+        return;
+      }
+    }
+  }
 
   // Swap to the other bin
   cam_stream_[cam_stream_idx_].clear();
