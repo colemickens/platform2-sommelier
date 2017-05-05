@@ -382,7 +382,7 @@ class Camera3SimpleCaptureFrames
   virtual void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
       CameraMetadataUniquePtr metadata,
-      std::vector<BufferHandleUniquePtr>* buffers) override;
+      std::vector<BufferHandleUniquePtr> buffers) override;
 
   // Validate capture result keys
   void ValidateCaptureResultKeys(
@@ -412,7 +412,7 @@ class Camera3SimpleCaptureFrames
 void Camera3SimpleCaptureFrames::ProcessResultMetadataOutputBuffers(
     uint32_t frame_number,
     CameraMetadataUniquePtr metadata,
-    std::vector<BufferHandleUniquePtr>* buffers) {
+    std::vector<BufferHandleUniquePtr> buffers) {
   result_metadata_.push_back(std::move(metadata));
 }
 
@@ -732,7 +732,7 @@ class Camera3ResultTimestampsTest
   virtual void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
       CameraMetadataUniquePtr metadata,
-      std::vector<BufferHandleUniquePtr>* buffers) override;
+      std::vector<BufferHandleUniquePtr> buffers) override;
 
   // Validate and get one timestamp
   void ValidateAndGetTimestamp(int64_t* timestamp);
@@ -764,7 +764,7 @@ void Camera3ResultTimestampsTest::Notify(const camera3_notify_msg* msg) {
 void Camera3ResultTimestampsTest::ProcessResultMetadataOutputBuffers(
     uint32_t frame_number,
     CameraMetadataUniquePtr metadata,
-    std::vector<BufferHandleUniquePtr>* buffers) {
+    std::vector<BufferHandleUniquePtr> buffers) {
   VLOGF_ENTER();
   result_metadata_.push_back(std::move(metadata));
 }

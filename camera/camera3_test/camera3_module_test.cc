@@ -78,8 +78,8 @@ int Camera3Module::GetNumberOfCameras() {
   }
   int result = -EINVAL;
   hal_thread_->PostTaskSync(
-      base::Bind(&Camera3Module::GetNumberOfCamerasOnHalThread,
-                 base::Unretained(this), &result));
+      FROM_HERE, base::Bind(&Camera3Module::GetNumberOfCamerasOnHalThread,
+                            base::Unretained(this), &result));
   return result;
 }
 
@@ -142,9 +142,9 @@ camera3_device* Camera3Module::OpenDevice(int cam_id) {
     return NULL;
   }
   camera3_device_t* cam_device = nullptr;
-  hal_thread_->PostTaskSync(base::Bind(&Camera3Module::OpenDeviceOnHalThread,
-                                       base::Unretained(this), cam_id,
-                                       &cam_device));
+  hal_thread_->PostTaskSync(
+      FROM_HERE, base::Bind(&Camera3Module::OpenDeviceOnHalThread,
+                            base::Unretained(this), cam_id, &cam_device));
   return cam_device;
 }
 
@@ -154,9 +154,9 @@ int Camera3Module::CloseDevice(camera3_device& cam_device) {
     return -ENODEV;
   }
   int result = -ENODEV;
-  dev_thread_.PostTaskSync(base::Bind(&Camera3Module::CloseDeviceOnDevThread,
-                                      base::Unretained(this), &cam_device,
-                                      &result));
+  dev_thread_.PostTaskSync(
+      FROM_HERE, base::Bind(&Camera3Module::CloseDeviceOnDevThread,
+                            base::Unretained(this), &cam_device, &result));
   return result;
 }
 
@@ -165,9 +165,9 @@ int Camera3Module::GetCameraInfo(int cam_id, camera_info* info) {
     return -ENODEV;
   }
   int result = -ENODEV;
-  hal_thread_->PostTaskSync(base::Bind(&Camera3Module::GetCameraInfoOnHalThread,
-                                       base::Unretained(this), cam_id, info,
-                                       &result));
+  hal_thread_->PostTaskSync(
+      FROM_HERE, base::Bind(&Camera3Module::GetCameraInfoOnHalThread,
+                            base::Unretained(this), cam_id, info, &result));
   return result;
 }
 

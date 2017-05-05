@@ -5,6 +5,7 @@
 #ifndef CAMERA3_TEST_CAMERA3_DEVICE_FIXTURE_H_
 #define CAMERA3_TEST_CAMERA3_DEVICE_FIXTURE_H_
 
+#include <camera/camera_metadata.h>
 #include <gtest/gtest.h>
 #include <hardware/camera3.h>
 #include <hardware/hardware.h>
@@ -29,6 +30,17 @@ class Camera3DeviceImpl;
 typedef std::unique_ptr<camera_metadata_t, struct CameraMetadataDeleter>
     CameraMetadataUniquePtr;
 
+template <typename T>
+int UpdateMetadata(uint32_t tag,
+                   const T* data,
+                   size_t data_count,
+                   CameraMetadataUniquePtr* metadata_unique_ptr) {
+  android::CameraMetadata metadata(metadata_unique_ptr->release());
+  int result = metadata.update(tag, data, data_count);
+  metadata_unique_ptr->reset(metadata.release());
+  return result;
+}
+
 class Camera3Device {
  public:
   explicit Camera3Device(int cam_id);
@@ -48,7 +60,7 @@ class Camera3Device {
 
   typedef base::Callback<void(uint32_t frame_number,
                               CameraMetadataUniquePtr metadata,
-                              std::vector<BufferHandleUniquePtr>* buffers)>
+                              std::vector<BufferHandleUniquePtr> buffers)>
       ProcessResultMetadataOutputBuffersCallback;
 
   typedef base::Callback<void(
@@ -256,7 +268,7 @@ class Camera3DeviceFixture : public testing::Test {
   virtual void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
       CameraMetadataUniquePtr metadata,
-      std::vector<BufferHandleUniquePtr>* buffers) {}
+      std::vector<BufferHandleUniquePtr> buffers) {}
 
   // Process partial metadata. Tests can override this function to handle all
   // received partial metadata.

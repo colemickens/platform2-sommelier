@@ -23,7 +23,15 @@ class Camera3TestThread final {
   void Stop();
 
   // Posts the given task to be run and wait till it is finished
-  int PostTaskSync(base::Closure task);
+  int PostTaskSync(const tracked_objects::Location& from_here,
+                   base::Closure task);
+
+  // Posts the given task to be run asynchronously
+  int PostTaskAsync(const tracked_objects::Location& from_here,
+                    base::Closure task);
+
+  // Returns true if this is the current thread that is running.
+  bool IsCurrentThread() const;
 
  private:
   void ProcessTaskOnThread(const base::Closure& task,

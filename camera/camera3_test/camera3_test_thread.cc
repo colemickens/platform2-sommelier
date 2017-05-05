@@ -21,10 +21,12 @@ void Camera3TestThread::Stop() {
   thread_.Stop();
 }
 
-int Camera3TestThread::PostTaskSync(base::Closure task) {
+int Camera3TestThread::PostTaskSync(const tracked_objects::Location& from_here,
+                                    base::Closure task) {
+  VLOGF_ENTER();
   auto future = internal::Future<void>::Create(&relay_);
   if (!thread_.task_runner()->PostTask(
-          FROM_HERE, base::Bind(&Camera3TestThread::ProcessTaskOnThread,
+          from_here, base::Bind(&Camera3TestThread::ProcessTaskOnThread,
                                 base::Unretained(this), task,
                                 internal::GetFutureCallback(future)))) {
     LOG(ERROR) << "Failed to post task";
@@ -34,8 +36,23 @@ int Camera3TestThread::PostTaskSync(base::Closure task) {
   return 0;
 }
 
+int Camera3TestThread::PostTaskAsync(const tracked_objects::Location& from_here,
+                                     base::Closure task) {
+  VLOGF_ENTER();
+  if (!thread_.task_runner()->PostTask(from_here, task)) {
+    LOG(ERROR) << "Failed to post task";
+    return -EIO;
+  }
+  return 0;
+}
+
+bool Camera3TestThread::IsCurrentThread() const {
+  return thread_.GetThreadId() == base::PlatformThread::CurrentId();
+}
+
 void Camera3TestThread::ProcessTaskOnThread(const base::Closure& task,
                                             const base::Callback<void()>& cb) {
+  VLOGF_ENTER();
   task.Run();
   cb.Run();
 }

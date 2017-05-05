@@ -155,7 +155,7 @@ uint32_t Camera3TestGralloc::GrallocConvertFormat(int32_t format) {
     case HAL_PIXEL_FORMAT_BGRA_8888:
       return DRM_FORMAT_ARGB8888;
     case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
-      return DRM_FORMAT_XBGR8888;
+      return flexible_yuv_420_format_;
     case HAL_PIXEL_FORMAT_RGBA_8888:
       return DRM_FORMAT_ABGR8888;
     case HAL_PIXEL_FORMAT_RGBX_8888:
