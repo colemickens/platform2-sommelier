@@ -25,7 +25,6 @@
       'variables': {
         'deps': [
           'libcontainer',
-          'libbrillo-<(libbase_ver)',
         ],
       },
       'sources': [
@@ -44,7 +43,6 @@
           'defines': ['UNIT_TEST'],
           'variables': {
             'deps': [
-              'libbrillo-test-<(libbase_ver)',
               'libchrome-test-<(libbase_ver)',
             ],
           },
