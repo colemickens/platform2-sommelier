@@ -7,6 +7,7 @@
 
 #include <base/bind.h>
 #include <base/command_line.h>
+#include <base/logging.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/syslog_logging.h>
 
@@ -24,6 +25,15 @@ static void DaemonQuitCallback(base::MessageLoop* message_loop,
   message_loop->PostTask(FROM_HERE, quit_callback);
 }
 
+static void SetLogItems() {
+  const bool kOptionPID = true;
+  const bool kOptionTID = true;
+  const bool kOptionTimestamp = true;
+  const bool kOptionTickcount = true;
+  logging::SetLogItems(kOptionPID, kOptionTID, kOptionTimestamp,
+                       kOptionTickcount);
+}
+
 int main(int argc, char* argv[]) {
   // Init CommandLine for InitLogging.
   base::CommandLine::Init(argc, argv);
@@ -34,6 +44,8 @@ int main(int argc, char* argv[]) {
     log_flags |= brillo::kLogToStderr;
   }
   brillo::InitLog(log_flags);
+  // Override the log items set by brillo::InitLog.
+  SetLogItems();
 
   // ArcCamera3ServiceProvider.Start() waits connection from container
   // forever.
