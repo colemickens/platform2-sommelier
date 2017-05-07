@@ -459,23 +459,25 @@ static int TransferImage(TrunksDBusProxy* proxy,
                          const FirstResponsePdu &rpdu,
                          bool force) {
   int num_txed_sections = 0;
+  uint32_t section_offsets[] = {rpdu.backup_ro_offset, rpdu.backup_rw_offset};
+  int index;
 
-  if (!TransferSection(proxy, update_image, rpdu.backup_ro_offset,
-                       rpdu.shv[0], force)) {
-    if (!force) {
-      return -1;
-    }
-  } else {
-    num_txed_sections++;
-  }
+  //
+  // The cr50 will not accept lower addresses after higher addresses for 60
+  // seconds. Decide what section needs to be transferred first.
+  //
 
-  if (!TransferSection(proxy, update_image, rpdu.backup_rw_offset,
-                       rpdu.shv[1], force)) {
-    if (!force) {
-      return -1;
+  index = section_offsets[0] > section_offsets[1] ? 1 : 0;
+  for (int i = 0; i < arraysize(section_offsets); i++) {
+    if (!TransferSection(proxy, update_image, section_offsets[index],
+                         rpdu.shv[index], force)) {
+      if (!force) {
+        return -1;
+      }
+    } else {
+      num_txed_sections++;
     }
-  } else {
-    num_txed_sections++;
+    index = (index + 1) % arraysize(section_offsets);
   }
 
   return num_txed_sections;
