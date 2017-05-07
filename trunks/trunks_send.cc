@@ -85,6 +85,7 @@ struct TpmCmdHeader{
 
 // Cr50 vendor-specific subcommand codes. 16 bits available.
 enum vendor_cmd_cc {
+  VENDOR_CC_POST_RESET = 7,
   VENDOR_CC_GET_LOCK = 16,
   VENDOR_CC_SET_LOCK = 17,
   VENDOR_CC_SYSINFO = 18,
@@ -500,8 +501,27 @@ static int HandleUpdate(TrunksDBusProxy* proxy, base::CommandLine* cl) {
     return 1;
   }
 
-  if (TransferImage(proxy, update_image, rpdu, cl->HasSwitch(kForce)) < 0) {
+  int rv = TransferImage(proxy, update_image, rpdu, cl->HasSwitch(kForce));
+
+  if (rv < 0) {
     return 1;
+  }
+
+  // Positive rv indicates that some sections were transferred and a Cr50
+  // reboot is required. RW Cr50 versions below 0.0.19 require a posted reset
+  // to switch to the new image.
+  if (rv > 0 &&
+      rpdu.shv[1].minor < 19 &&
+      rpdu.shv[1].major == 0 &&
+      rpdu.shv[1].epoch == 0) {
+    std::string dummy;
+
+    LOG(INFO) << "Will post a reset request.";
+
+    if (VendorCommand(proxy, VENDOR_CC_POST_RESET, dummy, &dummy, true)) {
+      LOG(ERROR) << "Failed to post a reset request.";
+      return 1;
+    }
   }
 
   return 0;
