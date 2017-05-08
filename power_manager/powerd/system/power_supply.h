@@ -262,6 +262,30 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // device be used to deliver power to the system.
   static const char kChargeControlLimitMaxFile[];
 
+  // Different power supply types reported by the kernel; see
+  // drivers/power/power_supply_sysfs.c.
+  static const char kBatteryType[];
+  static const char kUnknownType[];
+  static const char kMainsType[];
+  static const char kUsbType[];
+  static const char kUsbAcaType[];
+  static const char kUsbCdpType[];
+  static const char kUsbDcpType[];
+  static const char kUsbCType[];
+  static const char kUsbPdType[];
+  static const char kUsbPdDrpType[];
+
+  // Battery states reported by the kernel. This is not the full set of
+  // possible states; see drivers/power/power_supply_sysfs.c.
+  static const char kBatteryStatusCharging[];
+  static const char kBatteryStatusDischarging[];
+  static const char kBatteryStatusNotCharging[];
+  static const char kBatteryStatusFull[];
+
+  // Line power status reported by the kernel for a bidirectional port through
+  // which the system is being charged.
+  static const char kLinePowerStatusCharging[];
+
   // Minimum duration of samples that need to be present in |charge_samples_|
   // for the observed battery charge rate to be calculated.
   static const int kObservedBatteryChargeRateMinMs;

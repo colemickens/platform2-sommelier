@@ -46,27 +46,6 @@ const int kDefaultBatteryStabilizedAfterLinePowerConnectedDelayMs = 5000;
 const int kDefaultBatteryStabilizedAfterLinePowerDisconnectedDelayMs = 5000;
 const int kDefaultBatteryStabilizedAfterResumeDelayMs = 5000;
 
-// Different power supply types reported by the kernel.
-const char kBatteryType[] = "Battery";
-const char kUnknownType[] = "Unknown";
-const char kMainsType[] = "Mains";
-const char kUsbType[] = "USB";
-const char kUsbAcaType[] = "USB_ACA";
-const char kUsbCdpType[] = "USB_CDP";
-const char kUsbDcpType[] = "USB_DCP";
-const char kUsbCType[] = "USB_C";
-const char kUsbPdType[] = "USB_PD";
-const char kUsbPdDrpType[] = "USB_PD_DRP";
-
-// Battery states reported by the kernel. This is not the full set of
-// possible states; see drivers/power/power_supply_sysfs.c.
-const char kBatteryStatusCharging[] = "Charging";
-const char kBatteryStatusFull[] = "Full";
-
-// Line power status reported by the kernel for a bidirectional port through
-// which the system is being charged.
-const char kLinePowerStatusCharging[] = "Charging";
-
 // Reads the contents of |filename| within |directory| into |out|, trimming
 // trailing whitespace.  Returns true on success.
 bool ReadAndTrimString(const base::FilePath& directory,
@@ -101,16 +80,14 @@ double ReadScaledDouble(const base::FilePath& directory,
 // Returns true if |type|, a power supply type read from a "type" file in
 // sysfs, indicates USB BC1.2 types.
 bool IsLowPowerUsbChargerType(const std::string& type) {
-  // These are defined in drivers/power/power_supply_sysfs.c in the kernel.
-  return type == kUsbType || type == kUsbDcpType || type == kUsbCdpType ||
-         type == kUsbAcaType;
+  return type == PowerSupply::kUsbType || type == PowerSupply::kUsbDcpType ||
+         type == PowerSupply::kUsbCdpType || type == PowerSupply::kUsbAcaType;
 }
 
 // Returns true if |type|, a power supply type read from a "type" file in
 // sysfs, indicates USB_PD_DRP, meaning a USB Power Delivery Dual Role Port.
 bool IsDualRoleType(const std::string& type) {
-  // This is defined in drivers/power/power_supply_sysfs.c in the kernel.
-  return type == kUsbPdDrpType;
+  return type == PowerSupply::kUsbPdDrpType;
 }
 
 // Returns true if |path|, a sysfs directory, corresponds to an external
@@ -297,21 +274,21 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
 }
 
 metrics::PowerSupplyType GetPowerSupplyTypeMetric(const std::string& type) {
-  if (type == kMainsType)
+  if (type == PowerSupply::kMainsType)
     return metrics::PowerSupplyType::MAINS;
-  else if (type == kUsbType)
+  else if (type == PowerSupply::kUsbType)
     return metrics::PowerSupplyType::USB;
-  else if (type == kUsbAcaType)
+  else if (type == PowerSupply::kUsbAcaType)
     return metrics::PowerSupplyType::USB_ACA;
-  else if (type == kUsbCdpType)
+  else if (type == PowerSupply::kUsbCdpType)
     return metrics::PowerSupplyType::USB_CDP;
-  else if (type == kUsbDcpType)
+  else if (type == PowerSupply::kUsbDcpType)
     return metrics::PowerSupplyType::USB_DCP;
-  else if (type == kUsbCType)
+  else if (type == PowerSupply::kUsbCType)
     return metrics::PowerSupplyType::USB_C;
-  else if (type == kUsbPdType)
+  else if (type == PowerSupply::kUsbPdType)
     return metrics::PowerSupplyType::USB_PD;
-  else if (type == kUsbPdDrpType)
+  else if (type == PowerSupply::kUsbPdDrpType)
     return metrics::PowerSupplyType::USB_PD_DRP;
   else
     return metrics::PowerSupplyType::OTHER;
@@ -425,6 +402,24 @@ bool PowerSupply::TestApi::TriggerPollTimeout() {
 const char PowerSupply::kUdevSubsystem[] = "power_supply";
 const char PowerSupply::kChargeControlLimitMaxFile[] =
     "charge_control_limit_max";
+
+const char PowerSupply::kBatteryType[] = "Battery";
+const char PowerSupply::kUnknownType[] = "Unknown";
+const char PowerSupply::kMainsType[] = "Mains";
+const char PowerSupply::kUsbType[] = "USB";
+const char PowerSupply::kUsbAcaType[] = "USB_ACA";
+const char PowerSupply::kUsbCdpType[] = "USB_CDP";
+const char PowerSupply::kUsbDcpType[] = "USB_DCP";
+const char PowerSupply::kUsbCType[] = "USB_C";
+const char PowerSupply::kUsbPdType[] = "USB_PD";
+const char PowerSupply::kUsbPdDrpType[] = "USB_PD_DRP";
+
+const char PowerSupply::kBatteryStatusCharging[] = "Charging";
+const char PowerSupply::kBatteryStatusDischarging[] = "Discharging";
+const char PowerSupply::kBatteryStatusNotCharging[] = "Not charging";
+const char PowerSupply::kBatteryStatusFull[] = "Full";
+const char PowerSupply::kLinePowerStatusCharging[] = "Charging";
+
 const int PowerSupply::kObservedBatteryChargeRateMinMs = kDefaultPollMs;
 const int PowerSupply::kBatteryStabilizedSlackMs = 50;
 const double PowerSupply::kLowBatteryShutdownSafetyPercent = 5.0;
