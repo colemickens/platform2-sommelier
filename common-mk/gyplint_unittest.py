@@ -126,6 +126,25 @@ class LinesLintTests(LintTestCase):
         ['{', '  0: "blah"', '}'],
     ))
 
+  def testLinesLintCuddled(self):
+    """Verify LinesLintCuddled catches bad inputs."""
+    self._CheckLinter(gyplint.LinesLintCuddled, (
+        ['{', "  'foo': [ 'asdf',", ']', '}'],
+        ['{', "  ['foo',", ']', '}'],
+        ['{', "  {'foo': 'bar',", '}', '}'],
+    ))
+
+  def testLinesLintCuddledValid(self):
+    """Allow various forms."""
+    DATA = (
+        "['deps != []', {",
+        "'foo': [{",
+        "['foo', 'bar'],",
+        "'foo': ['foo', 'bar'],",
+    )
+    for s in DATA:
+      self.assertEqual(gyplint.LinesLintCuddled([s]), [])
+
 
 class RawLintTests(LintTestCase):
   """Tests of various raw linters."""

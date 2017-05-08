@@ -231,6 +231,67 @@ def LinesLintSingleQuotes(lines):
   return ret
 
 
+def LinesLintCuddled(lines):
+  """Allow for cuddled braces only with one liners.
+
+  This is OK:
+    'dependencies': ['libwimax_manager'],
+  But not this:
+    'dependencies': ['libwimax_manager',
+                     'libfoo'],
+  """
+  ret = []
+
+  named_element = re.compile(r"^'[^']+': ([[{].*)$")
+
+  for i, line in enumerate(lines, 1):
+    if LineIsComment(line):
+      continue
+
+    check = line.lstrip()
+
+    # Handle named elements like:
+    # 'foo': [
+    m = named_element.match(check)
+    if m:
+      check = m.group(1)
+
+    # Skip lines that are just one char -- can't be dangling!
+    if len(check) <= 1:
+      continue
+
+    # Skip lines that don't have a list or dict.
+    if check[0] not in ('[', '{'):
+      continue
+
+    # Ignore conditional forms:
+    # ['deps != []', {
+    if check.startswith("['") and check.endswith(', {'):
+      continue
+
+    # Ignore lists of objects form:
+    # 'foo': [{
+    if check == '[{':
+      continue
+
+    # Ignore one-line forms:
+    # ['foo', 'bar'],
+    #
+    # Note: This will not catch lists of lists like:
+    # 'item': [ ['foo', 'bar'],
+    #           ['hungry', 'cat'] ],
+    # But that's OK because those will usually get caught by the indentation
+    # checker.  We'd need to have the AST available here to support it.
+    if check[-1] == ',' and (check[0], check[-2]) == ('[', ']'):
+      continue
+
+    # If we're still here, the line is bad.
+    ret.append('uncuddle lists/dicts with multiple elements: line %i: %s' %
+               (i, line))
+
+  return ret
+
+
 # The regex used to find gyplint options in the file.
 # This matches the regex pylint uses.
 OPTIONS_RE = re.compile(r'^\s*#.*\bgyplint:\s*([^\n;]+)', flags=re.MULTILINE)

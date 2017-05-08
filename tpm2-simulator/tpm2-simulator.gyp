@@ -6,7 +6,7 @@
   'target_defaults': {
     'includes': ['../common-mk/common.gypi'],
     'variables': {
-      'deps': [  # This is a list of pkg-config dependencies
+      'deps': [
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
         'openssl',
