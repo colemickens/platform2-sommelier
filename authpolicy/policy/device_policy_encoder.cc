@@ -479,8 +479,8 @@ void DevicePolicyEncoder::EncodeBoolean(
 
   // Get actual value, doing type conversion if necessary.
   bool bool_value;
-  if (!helper::GetAsBoolean(value, &bool_value)) {
-    helper::PrintConversionError(value, "boolean", policy_name);
+  if (!GetAsBoolean(value, &bool_value)) {
+    PrintConversionError(value, "boolean", policy_name);
     return;
   }
 
@@ -500,8 +500,8 @@ void DevicePolicyEncoder::EncodeInteger(
 
   // Get actual value, doing type conversion if necessary.
   int int_value;
-  if (!helper::GetAsInteger(value, &int_value)) {
-    helper::PrintConversionError(value, "integer", policy_name);
+  if (!GetAsInteger(value, &int_value)) {
+    PrintConversionError(value, "integer", policy_name);
     return;
   }
 
@@ -521,8 +521,8 @@ void DevicePolicyEncoder::EncodeString(
 
   // Get actual value, doing type conversion if necessary.
   std::string string_value;
-  if (!helper::GetAsString(value, &string_value)) {
-    helper::PrintConversionError(value, "string", policy_name);
+  if (!GetAsString(value, &string_value)) {
+    PrintConversionError(value, "string", policy_name);
     return;
   }
 
@@ -549,8 +549,8 @@ void DevicePolicyEncoder::EncodeStringList(
       break;
 
     std::string string_value;
-    if (!helper::GetAsString(value, &string_value)) {
-      helper::PrintConversionError(value, "string", policy_name, &indexStr);
+    if (!GetAsString(value, &string_value)) {
+      PrintConversionError(value, "string", policy_name, &indexStr);
       return;
     }
 

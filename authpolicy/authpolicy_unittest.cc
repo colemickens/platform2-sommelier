@@ -774,7 +774,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceeds) {
 TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithData) {
   // Write a preg file with all basic data types. The file is picked up by
   // stub_net and "downloaded" by stub_smbclient.
-  policy::PRegPolicyWriter writer(policy::helper::GetRegistryKey());
+  policy::PRegPolicyWriter writer(policy::GetRegistryKey());
   writer.AppendBoolean(policy::key::kSearchSuggestEnabled, kPolicyBool);
   writer.AppendInteger(policy::key::kPolicyRefreshRate, kPolicyInt);
   writer.AppendString(policy::key::kHomepageLocation, kHomepageUrl);
@@ -806,7 +806,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithData) {
 // Verify that PolicyLevel is encoded properly.
 TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithPolicyLevel) {
   // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
-  policy::PRegPolicyWriter writer(policy::helper::GetRegistryKey());
+  policy::PRegPolicyWriter writer(policy::GetRegistryKey());
   writer.AppendBoolean(policy::key::kSearchSuggestEnabled,
                        kPolicyBool,
                        policy::POLICY_LEVEL_RECOMMENDED);
@@ -835,7 +835,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchSucceedsWithPolicyLevel) {
 // POLICY_LEVEL_RECOMMENDED policy.
 TEST_F(AuthPolicyTest, UserPolicyFetchMandatoryTakesPreference) {
   // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
-  policy::PRegPolicyWriter writer1(policy::helper::GetRegistryKey());
+  policy::PRegPolicyWriter writer1(policy::GetRegistryKey());
   writer1.AppendBoolean(policy::key::kSearchSuggestEnabled,
                         kPolicyBool,
                         policy::POLICY_LEVEL_MANDATORY);
@@ -844,7 +844,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchMandatoryTakesPreference) {
   // Normally, the latter GPO file overrides the former
   // (DevicePolicyFetchGposOverwrite), but POLICY_LEVEL_RECOMMENDED does not
   // beat POLICY_LEVEL_MANDATORY.
-  policy::PRegPolicyWriter writer2(policy::helper::GetRegistryKey());
+  policy::PRegPolicyWriter writer2(policy::GetRegistryKey());
   writer2.AppendBoolean(policy::key::kSearchSuggestEnabled,
                         kOtherPolicyBool,
                         policy::POLICY_LEVEL_RECOMMENDED);
@@ -874,7 +874,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreBadDataType) {
   // Set policies with wrong data type, e.g. kPinnedLauncherApps is a string
   // list, but it is set as a string. See UserPolicyFetchSucceedsWithData for
   // the logic of policy testing.
-  policy::PRegPolicyWriter writer(policy::helper::GetRegistryKey());
+  policy::PRegPolicyWriter writer(policy::GetRegistryKey());
   writer.AppendBoolean(policy::key::kPolicyRefreshRate, kPolicyBool);
   writer.AppendInteger(policy::key::kHomepageLocation, kPolicyInt);
   writer.AppendString(policy::key::kPinnedLauncherApps, kHomepageUrl);
@@ -900,7 +900,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreBadDataType) {
 // GPOs with version 0 should be ignored.
 TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreZeroVersion) {
   // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
-  policy::PRegPolicyWriter writer(policy::helper::GetRegistryKey());
+  policy::PRegPolicyWriter writer(policy::GetRegistryKey());
   writer.AppendBoolean(policy::key::kSearchSuggestEnabled, kPolicyBool);
   writer.WriteToFile(stub_gpo1_path_);
 
@@ -928,7 +928,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreZeroVersion) {
 // GPOs with an ignore flag set should be ignored. Sounds reasonable, hmm?
 TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreFlagSet) {
   // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
-  policy::PRegPolicyWriter writer(policy::helper::GetRegistryKey());
+  policy::PRegPolicyWriter writer(policy::GetRegistryKey());
   writer.AppendBoolean(policy::key::kSearchSuggestEnabled, kPolicyBool);
   writer.WriteToFile(stub_gpo1_path_);
 
@@ -1015,7 +1015,7 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsPropagationRetry) {
 // Successful device policy fetch with actual data.
 TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsWithData) {
   // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
-  policy::PRegPolicyWriter writer(policy::helper::GetRegistryKey());
+  policy::PRegPolicyWriter writer(policy::GetRegistryKey());
   writer.AppendBoolean(policy::key::kDeviceGuestModeEnabled, kPolicyBool);
   writer.AppendInteger(policy::key::kDeviceLocalAccountAutoLoginDelay,
                        kPolicyInt);
@@ -1055,7 +1055,7 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchFailsEmptyGpoList) {
 // A GPO later in the list overrides prior GPOs.
 TEST_F(AuthPolicyTest, DevicePolicyFetchGposOverride) {
   // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
-  policy::PRegPolicyWriter writer1(policy::helper::GetRegistryKey());
+  policy::PRegPolicyWriter writer1(policy::GetRegistryKey());
   writer1.AppendBoolean(policy::key::kDeviceGuestModeEnabled, kOtherPolicyBool);
   writer1.AppendInteger(policy::key::kDeviceLocalAccountAutoLoginDelay,
                         kPolicyInt);
@@ -1064,7 +1064,7 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchGposOverride) {
   writer1.AppendStringList(policy::key::kDeviceStartUpFlags, flags1);
   writer1.WriteToFile(stub_gpo1_path_);
 
-  policy::PRegPolicyWriter writer2(policy::helper::GetRegistryKey());
+  policy::PRegPolicyWriter writer2(policy::GetRegistryKey());
   writer2.AppendBoolean(policy::key::kDeviceGuestModeEnabled, kPolicyBool);
   writer2.AppendInteger(policy::key::kDeviceLocalAccountAutoLoginDelay,
                         kOtherPolicyInt);

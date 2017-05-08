@@ -17,8 +17,6 @@ namespace policy {
 
 class RegistryDict;
 
-namespace helper {
-
 // Gets the Chrome OS or the Chromium OS registry key, depending on the branding
 // of the build.
 std::string GetRegistryKey();
@@ -37,11 +35,11 @@ bool GetAsInteger(const base::Value* value, int* int_value);
 // Same as base::Value::GetAsString(), no type conversion (yet).
 bool GetAsString(const base::Value* value, std::string* string_value);
 
-void PrintConversionError(const base::Value* value, const char* target_type,
+void PrintConversionError(const base::Value* value,
+                          const char* target_type,
                           const char* policy_name,
                           const std::string* index_str = nullptr);
 
-}  // namespace helper
 }  // namespace policy
 
 #endif  // AUTHPOLICY_POLICY_POLICY_ENCODER_HELPER_H_

@@ -15,6 +15,7 @@
 #include <components/policy/core/common/preg_parser.h>
 #include <components/policy/core/common/registry_dict.h>
 
+namespace policy {
 namespace {
 
 // Registry key for Chrome branded builds.
@@ -47,9 +48,6 @@ const char* GetValueTypeName(const base::Value* value) {
 
 }  // namespace
 
-namespace policy {
-namespace helper {
-
 std::string GetRegistryKey() {
   // Note: GetLsbReleaseValue might fail when running unit tests. Default to
   // Chromium OS branding in this case.
@@ -66,7 +64,12 @@ bool LoadPRegFile(const base::FilePath& preg_file, RegistryDict* dict) {
     return false;
   }
 
-  PolicyLoadStatusSample status;
+  // Note: Don't use PolicyLoadStatusUmaReporter here, it leaks, see
+  // crbug.com/717888. Simply eat the status and report a less fine-grained
+  // ERROR_PARSE_PREG_FAILED error in authpolicy. It would be possible to get
+  // the load status into authpolicy, but that would require a lot of plumbing
+  // since this code usually runs in a sandboxed process.
+  PolicyLoadStatusSampler status;
   const base::string16 registry_key = base::ASCIIToUTF16(GetRegistryKey());
   if (!preg_parser::ReadFile(preg_file, registry_key, dict, &status)) {
     LOG(ERROR) << "Failed to parse preg file '" << preg_file.value() << "'";
@@ -109,5 +112,4 @@ void PrintConversionError(const base::Value* value,
              << (index_str ? " at index " + *index_str : "");
 }
 
-}  // namespace helper
 }  // namespace policy

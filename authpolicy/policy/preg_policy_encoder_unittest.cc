@@ -69,7 +69,7 @@ class PregPolicyEncoderTest : public ::testing::Test {
                                   PolicyLevel level2,
                                   WhoWins who_wins) {
     // Write file 1 with some interesting data. Set policy level to level1.
-    PRegPolicyWriter writer1(helper::GetRegistryKey());
+    PRegPolicyWriter writer1(GetRegistryKey());
     writer1.AppendBoolean(key::kSearchSuggestEnabled, kOtherPolicyBool, level1);
     writer1.AppendInteger(key::kPolicyRefreshRate, kPolicyInt, level1);
     writer1.AppendString(key::kHomepageLocation, kHomepageUrl, level1);
@@ -79,7 +79,7 @@ class PregPolicyEncoderTest : public ::testing::Test {
 
     // Write file 2 with the same policies, but different values. Set policy
     // level to level2.
-    PRegPolicyWriter writer2(helper::GetRegistryKey());
+    PRegPolicyWriter writer2(GetRegistryKey());
     writer2.AppendBoolean(key::kSearchSuggestEnabled, kPolicyBool, level2);
     writer2.AppendInteger(key::kPolicyRefreshRate, kOtherPolicyInt, level2);
     writer2.AppendString(key::kHomepageLocation, kAltHomepageUrl, level2);
@@ -139,7 +139,7 @@ class PregPolicyEncoderTest : public ::testing::Test {
 // Encodes user policies of different types.
 TEST_F(PregPolicyEncoderTest, UserPolicyEncodingWorks) {
   // Create a preg file with some interesting data.
-  PRegPolicyWriter writer(helper::GetRegistryKey());
+  PRegPolicyWriter writer(GetRegistryKey());
   writer.AppendBoolean(key::kSearchSuggestEnabled, kPolicyBool);
   writer.AppendInteger(key::kPolicyRefreshRate, kPolicyInt);
   writer.AppendString(key::kHomepageLocation, kHomepageUrl);
@@ -190,7 +190,7 @@ TEST_F(PregPolicyEncoderTest, UserPolicyMandatoryOverridesRecommended) {
 // Encodes device policies of different types.
 TEST_F(PregPolicyEncoderTest, DevicePolicyEncodingWorks) {
   // Create a preg file with some interesting data.
-  PRegPolicyWriter writer(helper::GetRegistryKey());
+  PRegPolicyWriter writer(GetRegistryKey());
   writer.AppendBoolean(key::kDeviceGuestModeEnabled, kPolicyBool);
   writer.AppendInteger(key::kDeviceLocalAccountAutoLoginDelay, kPolicyInt);
   writer.AppendString(key::kSystemTimezone, kTimezone);
@@ -216,7 +216,7 @@ TEST_F(PregPolicyEncoderTest, DevicePolicyEncodingWorks) {
 TEST_F(PregPolicyEncoderTest, DevicePolicyFileOverride) {
   // Write file 1 with some interesting data. Note that device policy doesn't
   // support mandatory/recommended policies.
-  PRegPolicyWriter writer1(helper::GetRegistryKey());
+  PRegPolicyWriter writer1(GetRegistryKey());
   writer1.AppendBoolean(key::kDeviceGuestModeEnabled, kOtherPolicyBool);
   writer1.AppendInteger(key::kDeviceLocalAccountAutoLoginDelay, kPolicyInt);
   writer1.AppendString(key::kSystemTimezone, kTimezone);
@@ -225,7 +225,7 @@ TEST_F(PregPolicyEncoderTest, DevicePolicyFileOverride) {
   writer1.WriteToFile(preg_1_path_);
 
   // Write file 2 with the same policies, but different values.
-  PRegPolicyWriter writer2(helper::GetRegistryKey());
+  PRegPolicyWriter writer2(GetRegistryKey());
   writer2.AppendBoolean(key::kDeviceGuestModeEnabled, kPolicyBool);
   writer2.AppendInteger(key::kDeviceLocalAccountAutoLoginDelay,
                         kOtherPolicyInt);

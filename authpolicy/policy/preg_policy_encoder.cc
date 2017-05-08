@@ -30,7 +30,7 @@ bool ParsePRegFilesIntoUserPolicy(const std::vector<base::FilePath>& preg_files,
 
   RegistryDict mandatory_dict;
   for (const base::FilePath& preg_file : preg_files) {
-    if (!helper::LoadPRegFile(preg_file, &mandatory_dict))
+    if (!LoadPRegFile(preg_file, &mandatory_dict))
       return false;
   }
 
@@ -61,7 +61,7 @@ bool ParsePRegFilesIntoDevicePolicy(
 
   RegistryDict policy_dict;
   for (const base::FilePath& preg_file : preg_files) {
-    if (!helper::LoadPRegFile(preg_file, &policy_dict))
+    if (!LoadPRegFile(preg_file, &policy_dict))
       return false;
   }
 
