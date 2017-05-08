@@ -25,7 +25,7 @@
             # gen_bidl generates bidl code in addition to normal protobuffers.
             '<(cc_dir)/<(RULE_INPUT_ROOT).pb.cc',
             '<(cc_dir)/<(RULE_INPUT_ROOT).pb.h',
-           ],
+          ],
         }],
         ['gen_python==1', {
           'variables': {

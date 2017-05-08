@@ -145,6 +145,33 @@ class LinesLintTests(LintTestCase):
     for s in DATA:
       self.assertEqual(gyplint.LinesLintCuddled([s]), [])
 
+  def testLinesLintIndent(self):
+    """Verify LinesLintIndent catches bad inputs."""
+    self._CheckLinter(gyplint.LinesLintIndent, (
+        ['    '],
+        ['', '   '],
+    ))
+
+  def testLinesLintIndentValid(self):
+    """Allow various valid indentation levels."""
+    self.assertEqual(gyplint.LinesLintCuddled([
+        '',
+        # Increase by one level.
+        '  ',
+        # Decrease by one level.
+        '',
+        # Incrementally increase by one level.
+        '  ',
+        '    ',
+        '      ',
+        '        ',
+        # Then decrease back down.
+        '      ',
+        '    ',
+        '  ',
+        '',
+    ]), [])
+
 
 class RawLintTests(LintTestCase):
   """Tests of various raw linters."""

@@ -9,7 +9,7 @@
     'cflags': [
       '-ffunction-sections',
       '-Wextra',
-       # To allow { 0 } initializations.
+      # To allow { 0 } initializations.
       '-Wno-missing-field-initializers',
       '-Wno-unused-parameter',
     ],
@@ -176,7 +176,7 @@
     },
   ],
 
-   # Test only.
+  # Test only.
   'conditions': [
     ['USE_test == 1', {
       'targets': [

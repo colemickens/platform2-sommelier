@@ -292,6 +292,29 @@ def LinesLintCuddled(lines):
   return ret
 
 
+def LinesLintIndent(lines):
+  """Make sure indentation levels are correct."""
+  ret = []
+
+  indent = 0
+  for i, line in enumerate(lines, 1):
+    # Always allow blank lines.
+    if not line:
+      continue
+
+    # Allow indent to increase or decrease or stay the same.
+    # Note: We don't currently check overall syntax to make sure the change
+    # is a valid change.  This just checks within common bounds.
+    num_spaces = len(line) - len(line.lstrip())
+    if num_spaces in (indent - 2, indent, indent + 2):
+      indent = num_spaces
+      continue
+
+    ret.append('indent is incorrect: %i: %s' % (i, line))
+
+  return ret
+
+
 # The regex used to find gyplint options in the file.
 # This matches the regex pylint uses.
 OPTIONS_RE = re.compile(r'^\s*#.*\bgyplint:\s*([^\n;]+)', flags=re.MULTILINE)
