@@ -84,6 +84,7 @@ class DeviceTracker {
 
   class Observer {
    public:
+    virtual ~Observer() {}
     // Function which is executed when a MIDI device is added or removed
     // from the h/w. The client registered as an observer can expect
     // that struct MidisDeviceInfo pointer is allocated and its fields have
@@ -98,6 +99,11 @@ class DeviceTracker {
   void AddDeviceObserver(Observer* obs);
 
   void RemoveDeviceObserver(Observer* obs);
+
+  base::ScopedFD AddClientToReadSubdevice(uint32_t sys_num, uint32_t device_num,
+                                          uint32_t subdevice_num,
+                                          uint32_t client_id);
+  void RemoveClientFromDevices(uint32_t client_id);
 
  private:
   friend class DeviceTrackerTest;

@@ -33,7 +33,7 @@ const char kFakeMidiData1[] = "0xDEADBEEF";
 
 // Store the data in a string buffer inside this class.
 void PrintReadData(std::string* data, const char* buffer,
-                   uint32_t subdevice_id) {
+                   uint32_t subdevice_id, int len) {
   *data = buffer;
 }
 

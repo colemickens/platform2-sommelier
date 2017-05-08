@@ -49,7 +49,7 @@ void FileHandler::HandleDeviceRead(uint32_t subdevice_id) {
     StopMonitoring();
     return;
   }
-  device_data_cb_.Run(buffer, subdevice_id);
+  device_data_cb_.Run(buffer, subdevice_id, ret);
 }
 
 void FileHandler::StopMonitoring() {

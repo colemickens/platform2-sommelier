@@ -26,7 +26,7 @@ class Device;
 class FileHandler {
  public:
   using DeviceDataCallback =
-      base::Callback<void(const char* buffer, uint32_t subdevice_id)>;
+      base::Callback<void(const char* buffer, uint32_t subdevice_id, int len)>;
   FileHandler(const std::string& path,
               const DeviceDataCallback& device_data_cb);
   ~FileHandler();

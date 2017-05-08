@@ -20,12 +20,17 @@ namespace midis {
 
 class Client : public DeviceTracker::Observer {
  public:
+  using ClientDeletionCallback = base::Callback<void(uint32_t)>;
   ~Client();
   static std::unique_ptr<Client> Create(base::ScopedFD fd,
-                                        DeviceTracker* device_tracker);
+                                        DeviceTracker* device_tracker,
+                                        uint32_t client_id,
+                                        ClientDeletionCallback del_callback);
+  void NotifyDeviceAddedOrRemoved(struct MidisDeviceInfo* dev_info, bool added);
 
  private:
-  Client(base::ScopedFD fd, DeviceTracker* device_tracker);
+  Client(base::ScopedFD fd, DeviceTracker* device_tracker, uint32_t client_id,
+         ClientDeletionCallback del_cb);
   // Start monitoring the client socket fd for messages from the client.
   bool StartMonitoring();
   // Stop the task which was watching the client socket df.
@@ -53,12 +58,28 @@ class Client : public DeviceTracker::Observer {
   void OnDeviceAddedOrRemoved(const struct MidisDeviceInfo* dev_info,
                               bool added) override;
 
+  // On receipt of a REQUEST_PORT message header, this function contacts
+  // the requisite device, obtains an FD for the relevant subdevice, and
+  // returns the FD.
+  // The FD is returned via the cmsg mechanism. The buffer will contain a
+  // struct MidisRequestPort with information regarding the port requested.
+  // The cmsg header will contain information regarding the information
+  // about the FD to be sent over.
+  //
+  // Just as the sendmsg() protocol is used by the server to send the FD, so too
+  // the client must use the recvmsg() protocol to retrieve said FD.
+  void AddClientToPort();
+
+  void TriggerClientDeletion();
+
   base::ScopedFD client_fd_;
   brillo::MessageLoop::TaskId msg_taskid_;
   // The DeviceTracker can be guaranteed to exist for the lifetime of the
   // service. As such, it is safe to maintain this pointer as a means to make
   // updates and derive information regarding devices.
   DeviceTracker* device_tracker_;
+  uint32_t client_id_;
+  base::Callback<void(uint32_t)> del_cb_;
   base::WeakPtrFactory<Client> weak_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(Client);

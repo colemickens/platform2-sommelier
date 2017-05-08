@@ -25,6 +25,7 @@ class ClientTracker {
   void ProcessClient(int fd);
   void SetDeviceTracker(DeviceTracker* ptr) { device_tracker_ = ptr; }
   size_t GetNumClientsForTesting() const { return clients_.size(); }
+  void RemoveClient(uint32_t client_id);
 
  private:
   friend class ClientTrackerTest;

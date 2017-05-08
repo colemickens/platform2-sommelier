@@ -4,6 +4,7 @@
 #include "midis/device.h"
 
 #include <fcntl.h>
+#include <sys/socket.h>
 
 #include <base/bind.h>
 #include <base/callback.h>
@@ -72,12 +73,73 @@ bool Device::StartMonitoring() {
   return true;
 }
 
-void Device::HandleReceiveData(const char* buffer, uint32_t subdevice) const {
+void Device::HandleReceiveData(const char* buffer, uint32_t subdevice,
+                               int buffer_size) const {
   LOG(INFO) << "Subdevice: " << subdevice
             << ", The read MIDI info is:" << buffer;
   // TODO(pmalani): We have the buffer, we have the subdevice_id. So,
   // once the client code is in place, we should sent this buffer to all
   // the clients that are subscribed to this subdevice.
+  auto list_it = client_fds_.find(subdevice);
+  if (list_it != client_fds_.end()) {
+    for (const auto& id_fd_pair : list_it->second) {
+      ssize_t ret =
+          HANDLE_EINTR(write(id_fd_pair.second.get(), buffer, buffer_size));
+      if (ret != buffer_size) {
+        PLOG(ERROR) << "Error writing to client fd.";
+        // TODO(pmalani): Gracefully delete the client from all places.
+      }
+    }
+  }
+}
+
+void Device::RemoveClientFromDevice(uint32_t client_id) {
+  LOG(INFO) << "Removing the client: " << client_id
+            << " from all device watchers.";
+  for (auto& list_it : client_fds_) {
+    for (auto it = list_it.second.begin(); it != list_it.second.end();) {
+      if (it->first == client_id) {
+        LOG(INFO) << "Found client: " << client_id << " in list. deleting";
+        it = list_it.second.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
+}
+
+base::ScopedFD Device::AddClientToReadSubdevice(uint32_t client_id,
+                                                uint32_t subdevice_id) {
+  int sock_fd[2];
+  int ret = socketpair(AF_UNIX, SOCK_STREAM, 0, sock_fd);
+  if (ret < 0) {
+    PLOG(ERROR) << "socketpair for client_id: " << client_id
+                << " device_id: " << device_ << " subdevice: " << subdevice_id
+                << "failed.";
+    return base::ScopedFD();
+  }
+
+  base::ScopedFD sockfd(sock_fd[0]);
+
+  auto id_fd_pair = client_fds_.find(subdevice_id);
+  if (id_fd_pair == client_fds_.end()) {
+    std::vector<std::pair<uint32_t, base::ScopedFD>> list_pairs;
+    list_pairs.emplace_back(client_id, std::move(sockfd));
+    client_fds_.emplace(subdevice_id, std::move(list_pairs));
+  } else {
+    for (auto const& pair : id_fd_pair->second) {
+      if (pair.first == client_id) {
+        LOG(INFO) << "Client id: " << client_id
+                  << " already registered to"
+                     " subdevice: "
+                  << subdevice_id << ".";
+        return base::ScopedFD();
+      }
+    }
+    id_fd_pair->second.emplace_back(client_id, std::move(sockfd));
+  }
+
+  return base::ScopedFD(sock_fd[1]);
 }
 
 }  // namespace midis

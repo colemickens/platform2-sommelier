@@ -85,11 +85,19 @@ void ClientTracker::ProcessClient(int fd) {
     return;
   }
 
-  std::unique_ptr<Client> new_cli =
-      Client::Create(std::move(new_fd), device_tracker_);
+  client_id_counter_++;
+  std::unique_ptr<Client> new_cli = Client::Create(
+      std::move(new_fd), device_tracker_, client_id_counter_,
+      base::Bind(&ClientTracker::RemoveClient, weak_factory_.GetWeakPtr()));
   if (new_cli) {
-    clients_.emplace(client_id_counter_++, std::move(new_cli));
+    clients_.emplace(client_id_counter_, std::move(new_cli));
   }
+}
+
+void ClientTracker::RemoveClient(uint32_t client_id) {
+  // First delete all references to this device.
+  device_tracker_->RemoveClientFromDevices(client_id);
+  clients_.erase(client_id);
 }
 
 }  // namespace midis

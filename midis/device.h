@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
@@ -39,8 +40,19 @@ class Device {
   uint32_t GetDeviceNum() const { return device_; }
   uint32_t GetNumSubdevices() const { return num_subdevices_; }
   uint32_t GetFlags() const { return flags_; }
-  // Callback function which is invoked by the FileHandler object when data is
-  // received for a particular subdevice.
+  // Adds a client which wishes to read data on a particular subdevice
+  // This function should return one end of a pipe file descriptor
+  // This will be sent back to the client, and it can listen on that for events.
+  // Returns:
+  //   A valid base::ScopedFD on success.
+  //   An empty base::ScopedFD otherwise.
+  base::ScopedFD AddClientToReadSubdevice(uint32_t client_id,
+                                          uint32_t subdevice_id);
+
+  // This function is called when a Client is removed from the service for
+  // orderly or unorderly reasons (like disconnection). The client is removed
+  // from all subdevices.
+  void RemoveClientFromDevice(uint32_t client_id);
 
  private:
   friend class DeviceTest;
@@ -59,7 +71,9 @@ class Device {
   static void SetBaseDirForTesting(const base::FilePath& dir) {
     Device::basedir_ = dir;
   }
-  void HandleReceiveData(const char* buffer, uint32_t subdevice) const;
+  // Callback function which is invoked by the FileHandler object when data is
+  // received for a particular subdevice.
+  void HandleReceiveData(const char* buffer, uint32_t subdevice, int len) const;
 
   std::string name_;
   uint32_t card_;
@@ -67,6 +81,12 @@ class Device {
   uint32_t num_subdevices_;
   uint32_t flags_;
   std::map<uint32_t, std::unique_ptr<FileHandler>> handlers_;
+  // This data-structure performs the following map:
+  //
+  // subdevice ---> (client_1, pipefd_1), (client_2, pipefd_2), ...., (client_n,
+  // pipefd_n).
+  std::map<uint32_t, std::vector<std::pair<uint32_t, base::ScopedFD>>>
+      client_fds_;
   static base::FilePath basedir_;
   base::WeakPtrFactory<Device> weak_factory_;
 

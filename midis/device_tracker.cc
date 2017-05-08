@@ -278,4 +278,22 @@ void DeviceTracker::NotifyObserversDeviceAddedOrRemoved(
                     OnDeviceAddedOrRemoved(dev_info, added));
 }
 
+base::ScopedFD DeviceTracker::AddClientToReadSubdevice(uint32_t sys_num,
+                                                       uint32_t device_num,
+                                                       uint32_t subdevice_num,
+                                                       uint32_t client_id) {
+  auto it = devices_.find(udev_handler_->GenerateDeviceId(sys_num, device_num));
+  if (it != devices_.end()) {
+    // TODO(pmalani): Get the real client id here.
+    return it->second->AddClientToReadSubdevice(client_id, subdevice_num);
+  }
+  return base::ScopedFD();
+}
+
+void DeviceTracker::RemoveClientFromDevices(uint32_t client_id) {
+  for (auto& id_device_pair : devices_) {
+    id_device_pair.second->RemoveClientFromDevice(client_id);
+  }
+}
+
 }  // namespace midis
