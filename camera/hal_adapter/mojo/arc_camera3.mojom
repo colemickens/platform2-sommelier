@@ -144,10 +144,18 @@ struct Camera3CaptureResult {
   uint32 partial_result;
 };
 
+enum Camera3ErrorMsgCode {
+  CAMERA3_MSG_ERROR_DEVICE = 1,
+  CAMERA3_MSG_ERROR_REQUEST = 2,
+  CAMERA3_MSG_ERROR_RESULT = 3,
+  CAMERA3_MSG_ERROR_BUFFER = 4,
+  CAMERA3_MSG_NUM_ERRORS,
+};
+
 struct Camera3ErrorMsg {
   uint32 frame_number;
   uint64 error_stream_id;
-  int32 error_code;
+  Camera3ErrorMsgCode error_code;
 };
 
 struct Camera3ShutterMsg {

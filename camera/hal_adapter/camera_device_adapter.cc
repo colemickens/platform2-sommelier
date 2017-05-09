@@ -330,7 +330,8 @@ mojom::Camera3NotifyMsgPtr CameraDeviceAdapter::Notify(
       }
     }
     error->error_stream_id = stream_id;
-    error->error_code = msg->message.error.error_code;
+    error->error_code =
+        static_cast<mojom::Camera3ErrorMsgCode>(msg->message.error.error_code);
     m->message->set_error(std::move(error));
   } else if (msg->type == CAMERA3_MSG_SHUTTER) {
     mojom::Camera3ShutterMsgPtr shutter = mojom::Camera3ShutterMsg::New();
