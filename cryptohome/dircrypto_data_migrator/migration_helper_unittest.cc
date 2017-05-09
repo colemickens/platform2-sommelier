@@ -854,9 +854,13 @@ TEST_F(MigrationHelperTest, SkipInvalidSQLiteFiles) {
       status_files_dir_.path(), kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
-
-  const FilePath kFromSQLiteShm = from_dir_.path().Append(kKnownCorruptions[0]);
-  const FilePath kToSQLiteShm = to_dir_.path().Append(kKnownCorruptions[0]);
+  const char kCorruptedFilePath[] =
+      "root/android-data/data/user/0/com.google.android.gms/"
+      "databases/playlog.db-shm";
+  const FilePath kFromSQLiteShm = from_dir_.path().Append(kCorruptedFilePath);
+  const FilePath kToSQLiteShm = to_dir_.path().Append(kCorruptedFilePath);
+  const FilePath kSkippedFileLog =
+      to_dir_.path().Append(kSkippedFileListFileName);
   ASSERT_TRUE(base::CreateDirectory(kFromSQLiteShm.DirName()));
   ASSERT_TRUE(real_platform.TouchFileDurable(kFromSQLiteShm));
   EXPECT_CALL(mock_platform, InitializeFile(testing::_, testing::_, testing::_))
@@ -873,6 +877,10 @@ TEST_F(MigrationHelperTest, SkipInvalidSQLiteFiles) {
   EXPECT_TRUE(real_platform.DirectoryExists(kToSQLiteShm.DirName()));
   EXPECT_FALSE(real_platform.FileExists(kToSQLiteShm));
   EXPECT_FALSE(real_platform.FileExists(kFromSQLiteShm));
+  EXPECT_TRUE(real_platform.FileExists(kSkippedFileLog));
+  std::string contents;
+  ASSERT_TRUE(real_platform.ReadFileToString(kSkippedFileLog, &contents));
+  EXPECT_EQ(std::string(kCorruptedFilePath) + "\n", contents);
 }
 
 class DataMigrationTest : public MigrationHelperTest,

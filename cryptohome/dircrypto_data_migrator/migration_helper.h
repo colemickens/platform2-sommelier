@@ -18,7 +18,7 @@ namespace cryptohome {
 namespace dircrypto_data_migrator {
 
 extern const base::FilePath::CharType kMigrationStartedFileName[];
-extern const base::FilePath::CharType* const kKnownCorruptions[];
+extern const base::FilePath::CharType kSkippedFileListFileName[];
 
 // A helper class for migrating files to new file system with small overhead of
 // diskspace.
@@ -130,6 +130,8 @@ class MigrationHelper {
   void RecordFileErrorWithCurrentErrno(
       DircryptoMigrationFailedOperationType operation,
       const base::FilePath& child);
+  // Records the fact that the file at |rel_path| was skipped during migration.
+  void RecordSkippedFile(const base::FilePath& rel_path);
 
   Platform* platform_;
   base::FilePath from_base_path_;
@@ -143,6 +145,7 @@ class MigrationHelper {
   base::TimeTicks next_report_;
   std::string namespaced_mtime_xattr_name_;
   std::string namespaced_atime_xattr_name_;
+  base::FilePath skipped_file_list_path_;
 
   DircryptoMigrationFailedOperationType failed_operation_type_;
   DircryptoMigrationFailedPathType failed_path_type_;

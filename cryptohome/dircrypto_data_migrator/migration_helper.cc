@@ -105,17 +105,12 @@ const PathTypeMapping kPathTypeMappings[] = {
 
 }  // namespace
 
-// There are some well known cases of data corruption where this file cannot be
-// read (b/36092409).  In these cases it is safe to skip the file entirely
-// instead of aborting the migration.
-const base::FilePath::CharType* const kKnownCorruptions[] = {
-    "root/android-data/data/user/0/com.google.android.gms/databases/"
-    "playlog.db-shm",
-    "root/android-data/data/user/0/com.google.android.gms/databases/"
-    "playlog.db-wal",
-};
 constexpr base::FilePath::CharType kMigrationStartedFileName[] =
     "crypto-migration.started";
+// A file to store a list of files skipped during migration.  This lives in
+// root/ of the destination directory so that it is encrypted.
+constexpr base::FilePath::CharType kSkippedFileListFileName[] =
+    "root/crypto-migration.files-skipped";
 // TODO(dspaid): Determine performance impact so we can potentially increase
 // frequency.
 constexpr base::TimeDelta kStatusSignalInterval =
@@ -144,6 +139,7 @@ MigrationHelper::~MigrationHelper() {}
 
 bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
   base::ElapsedTimer timer;
+  skipped_file_list_path_ = to_base_path_.Append(kSkippedFileListFileName);
   const bool resumed = IsMigrationStarted();
   MigrationStartAndEndStatusReporter status_reporter(resumed);
 
@@ -377,16 +373,15 @@ bool MigrationHelper::MigrateFile(const base::FilePath& child,
       from_child,
       base::File::FLAG_OPEN | base::File::FLAG_READ | base::File::FLAG_WRITE);
   if (!from_file.IsValid()) {
-    if (from_file.error_details() == base::File::FILE_ERROR_IO &&
-        std::find(std::begin(kKnownCorruptions),
-                  std::end(kKnownCorruptions),
-                  child.value()) != std::end(kKnownCorruptions)) {
-      // b/36092409 causes IO errors when opening this file in some cases.  It
-      // is safe to remove this file without migrating it.
-      LOG(WARNING) << "Found unreadable GMS SQLite database, skipping "
+    if (from_file.error_details() == base::File::FILE_ERROR_IO) {
+      // b/37444422 causes IO errors when opening this file in some cases.  User
+      // had a unreadable file, skipping this file means user will no longer
+      // have a file but not worse off.
+      LOG(WARNING) << "Found file that cannot be opened with EIO, skipping "
                    << from_child.value();
       RecordFileError(kMigrationFailedAtOpenSourceFileNonFatal, child,
                       from_file.error_details());
+      RecordSkippedFile(child);
       return true;
     }
     PLOG(ERROR) << "Failed to open file " << from_child.value();
@@ -662,6 +657,38 @@ void MigrationHelper::RecordFileErrorWithCurrentErrno(
     DircryptoMigrationFailedOperationType operation,
     const base::FilePath& child) {
   RecordFileError(operation, child, base::File::OSErrorToFileError(errno));
+}
+
+void MigrationHelper::RecordSkippedFile(const base::FilePath& rel_path) {
+  base::File skipped_file_list;
+  platform_->InitializeFile(
+      &skipped_file_list,
+      skipped_file_list_path_,
+      base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_APPEND);
+  if (!skipped_file_list.IsValid()) {
+    PLOG(ERROR) << "Could not open list of skipped files at"
+                << skipped_file_list_path_.value() << ", " << rel_path.value()
+                << " not added";
+    return;
+  }
+  std::string data = rel_path.value() + "\n";
+  int write_size = data.size();
+  if (write_size != skipped_file_list.Write(
+                        0 /* offset ignored */, data.data(), write_size)) {
+    PLOG(ERROR) << "Failed to write " << rel_path.value()
+                << " to the list of skipped files";
+    return;
+  }
+  if (!skipped_file_list.Flush()) {
+    PLOG(ERROR) << "Failed to flush " << rel_path.value()
+                << " to the list of skipped files";
+  }
+  if (skipped_file_list.created()) {
+    if (!platform_->SyncDirectory(skipped_file_list_path_.DirName()))
+      PLOG(ERROR) << "Failed to sync parent directory when creating list of "
+                     "skipped files "
+                  << skipped_file_list_path_.value();
+  }
 }
 
 }  // namespace dircrypto_data_migrator
