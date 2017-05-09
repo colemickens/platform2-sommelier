@@ -154,16 +154,15 @@ class MigrationHelperTest : public ::testing::Test {
 TEST_F(MigrationHelperTest, EmptyTest) {
   Platform platform;
   MigrationHelper helper(
-      &platform, status_files_dir_.path(), kDefaultChunkSize);
+      &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
+      kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   ASSERT_TRUE(base::IsDirectoryEmpty(from_dir_.path()));
   ASSERT_TRUE(base::IsDirectoryEmpty(to_dir_.path()));
 
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
-                             to_dir_.path(),
-                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
 }
 
@@ -172,7 +171,8 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
   // more extensive mocking and is covered in CopyOwnership test.
   Platform platform;
   MigrationHelper helper(
-      &platform, status_files_dir_.path(), kDefaultChunkSize);
+      &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
+      kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -207,9 +207,7 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
 
   struct stat from_stat;
   ASSERT_TRUE(platform.Stat(kFromDirPath, &from_stat));
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
-                             to_dir_.path(),
-                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
 
   const FilePath kToDirPath = to_dir_.path().Append(kDirectory);
@@ -246,7 +244,8 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
 TEST_F(MigrationHelperTest, DirectoryPartiallyMigrated) {
   Platform platform;
   MigrationHelper helper(
-      &platform, status_files_dir_.path(), kDefaultChunkSize);
+      &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
+      kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -268,9 +267,7 @@ TEST_F(MigrationHelperTest, DirectoryPartiallyMigrated) {
                       sizeof(kAtime),
                       XATTR_CREATE));
 
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
-                             to_dir_.path(),
-                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
   struct stat to_stat;
 
@@ -292,7 +289,8 @@ TEST_F(MigrationHelperTest, CopySymlink) {
   // CopyOwnership test.
   Platform platform;
   MigrationHelper helper(
-      &platform, status_files_dir_.path(), kDefaultChunkSize);
+      &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
+      kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
   FilePath target;
@@ -317,9 +315,7 @@ TEST_F(MigrationHelperTest, CopySymlink) {
   struct stat from_stat;
   ASSERT_TRUE(platform.Stat(kFromRelLinkPath, &from_stat));
 
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
-                             to_dir_.path(),
-                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
 
   const FilePath kToFilePath = to_dir_.path().Append(kFileName);
@@ -354,7 +350,8 @@ TEST_F(MigrationHelperTest, CopySymlink) {
 TEST_F(MigrationHelperTest, OneEmptyFile) {
   Platform platform;
   MigrationHelper helper(
-      &platform, status_files_dir_.path(), kDefaultChunkSize);
+      &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
+      kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -363,9 +360,7 @@ TEST_F(MigrationHelperTest, OneEmptyFile) {
   ASSERT_TRUE(platform.TouchFileDurable(from_dir_.path().Append(kFileName)));
   ASSERT_TRUE(base::IsDirectoryEmpty(to_dir_.path()));
 
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
-                             to_dir_.path(),
-                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
 
   // The file is moved.
@@ -376,7 +371,8 @@ TEST_F(MigrationHelperTest, OneEmptyFile) {
 TEST_F(MigrationHelperTest, OneEmptyFileInDirectory) {
   Platform platform;
   MigrationHelper helper(
-      &platform, status_files_dir_.path(), kDefaultChunkSize);
+      &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
+      kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -391,9 +387,7 @@ TEST_F(MigrationHelperTest, OneEmptyFileInDirectory) {
       from_dir_.path().Append(kDir1).Append(kDir2).Append(kFileName)));
   ASSERT_TRUE(base::IsDirectoryEmpty(to_dir_.path()));
 
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
-                             to_dir_.path(),
-                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
 
   // The file is moved.
@@ -407,7 +401,8 @@ TEST_F(MigrationHelperTest, OneEmptyFileInDirectory) {
 TEST_F(MigrationHelperTest, UnreadableFile) {
   Platform platform;
   MigrationHelper helper(
-      &platform, status_files_dir_.path(), kDefaultChunkSize);
+      &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
+      kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -425,9 +420,7 @@ TEST_F(MigrationHelperTest, UnreadableFile) {
   ASSERT_TRUE(platform.SetPermissions(
       from_dir_.path().Append(kDir1).Append(kDir2).Append(kFileName), S_IWUSR));
 
-  EXPECT_FALSE(helper.Migrate(from_dir_.path(),
-                              to_dir_.path(),
-                              base::Bind(&MigrationHelperTest::ProgressCaptor,
+  EXPECT_FALSE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                          base::Unretained(this))));
 
   // The file is not moved.
@@ -441,8 +434,8 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   // CopyOwnership test.
   Platform platform;
   MigrationHelper helper(
-      &platform, status_files_dir_.path(), kDefaultChunkSize);
-
+      &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
+      kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -478,9 +471,7 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
 
   struct stat from_stat;
   ASSERT_TRUE(platform.Stat(kFromFilePath, &from_stat));
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
-                             to_dir_.path(),
-                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
 
   struct stat to_stat;
@@ -519,17 +510,21 @@ TEST_F(MigrationHelperTest, CopyOwnership) {
   Platform real_platform;
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   MigrationHelper helper(
-      &mock_platform, status_files_dir_.path(), kDefaultChunkSize);
+      &mock_platform, from_dir_.path(), to_dir_.path(),
+      status_files_dir_.path(), kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   const base::FilePath kLinkTarget = base::FilePath("foo");
-  const base::FilePath kFromLink = from_dir_.path().Append("link");
-  const base::FilePath kFromFile = from_dir_.path().Append("file");
-  const base::FilePath kFromDir = from_dir_.path().Append("dir");
-  const base::FilePath kToLink = to_dir_.path().Append("link");
-  const base::FilePath kToFile = to_dir_.path().Append("file");
-  const base::FilePath kToDir = to_dir_.path().Append("dir");
+  const base::FilePath kLink(FILE_PATH_LITERAL("link"));
+  const base::FilePath kFile(FILE_PATH_LITERAL("file"));
+  const base::FilePath kDir(FILE_PATH_LITERAL("dir"));
+  const base::FilePath kFromLink = from_dir_.path().Append(kLink);
+  const base::FilePath kFromFile = from_dir_.path().Append(kFile);
+  const base::FilePath kFromDir = from_dir_.path().Append(kDir);
+  const base::FilePath kToLink = to_dir_.path().Append(kLink);
+  const base::FilePath kToFile = to_dir_.path().Append(kFile);
+  const base::FilePath kToDir = to_dir_.path().Append(kDir);
   uid_t file_uid = 1;
   gid_t file_gid = 2;
   uid_t link_uid = 3;
@@ -550,7 +545,7 @@ TEST_F(MigrationHelperTest, CopyOwnership) {
   EXPECT_CALL(mock_platform, SetOwnership(kToFile, file_uid, file_gid, false))
       .WillOnce(testing::Return(true));
   EXPECT_TRUE(helper.CopyAttributes(
-      kFromFile, kToFile, FileEnumerator::FileInfo(kFromFile, stat)));
+      kFile, FileEnumerator::FileInfo(kFromFile, stat)));
 
   ASSERT_TRUE(real_platform.Stat(kFromLink, &stat));
   stat.st_uid = link_uid;
@@ -558,7 +553,7 @@ TEST_F(MigrationHelperTest, CopyOwnership) {
   EXPECT_CALL(mock_platform, SetOwnership(kToLink, link_uid, link_gid, false))
       .WillOnce(testing::Return(true));
   EXPECT_TRUE(helper.CopyAttributes(
-      kFromLink, kToLink, FileEnumerator::FileInfo(kFromLink, stat)));
+      kLink, FileEnumerator::FileInfo(kFromLink, stat)));
 
   ASSERT_TRUE(real_platform.Stat(kFromDir, &stat));
   stat.st_uid = dir_uid;
@@ -566,13 +561,14 @@ TEST_F(MigrationHelperTest, CopyOwnership) {
   EXPECT_CALL(mock_platform, SetOwnership(kToDir, dir_uid, dir_gid, false))
       .WillOnce(testing::Return(true));
   EXPECT_TRUE(helper.CopyAttributes(
-      kFromDir, kToDir, FileEnumerator::FileInfo(kFromDir, stat)));
+      kDir, FileEnumerator::FileInfo(kFromDir, stat)));
 }
 
 TEST_F(MigrationHelperTest, MigrateNestedDir) {
   Platform platform;
   MigrationHelper helper(
-      &platform, status_files_dir_.path(), kDefaultChunkSize);
+      &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
+      kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -587,9 +583,7 @@ TEST_F(MigrationHelperTest, MigrateNestedDir) {
       from_dir_.path().Append(kDir1).Append(kDir2).Append(kFileName)));
   ASSERT_TRUE(base::IsDirectoryEmpty(to_dir_.path()));
 
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
-                             to_dir_.path(),
-                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
 
   // The file is moved.
@@ -606,7 +600,8 @@ TEST_F(MigrationHelperTest, MigrateInProgress) {
   // only present in one or the other)
   Platform platform;
   MigrationHelper helper(
-      &platform, status_files_dir_.path(), kDefaultChunkSize);
+      &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
+      kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -614,9 +609,7 @@ TEST_F(MigrationHelperTest, MigrateInProgress) {
   constexpr char kFile2[] = "kFile2";
   ASSERT_TRUE(platform.TouchFileDurable(from_dir_.path().Append(kFile1)));
   ASSERT_TRUE(platform.TouchFileDurable(to_dir_.path().Append(kFile2)));
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
-                             to_dir_.path(),
-                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
 
   // Both files have been moved to to_dir_
@@ -632,7 +625,8 @@ TEST_F(MigrationHelperTest, MigrateInProgressDuplicateFile) {
   // yet removed from the source.
   Platform platform;
   MigrationHelper helper(
-      &platform, status_files_dir_.path(), kDefaultChunkSize);
+      &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
+      kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -641,9 +635,7 @@ TEST_F(MigrationHelperTest, MigrateInProgressDuplicateFile) {
   ASSERT_TRUE(platform.TouchFileDurable(from_dir_.path().Append(kFile1)));
   ASSERT_TRUE(platform.TouchFileDurable(to_dir_.path().Append(kFile1)));
   ASSERT_TRUE(platform.TouchFileDurable(to_dir_.path().Append(kFile2)));
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
-                             to_dir_.path(),
-                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
 
   // Both files have been moved to to_dir_
@@ -658,7 +650,8 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFile) {
   // file having been partially copied to the destination but not fully.
   Platform platform;
   MigrationHelper helper(
-      &platform, status_files_dir_.path(), kDefaultChunkSize);
+      &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
+      kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -683,9 +676,7 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFile) {
   ASSERT_EQ(kFinalFileSize, kToFile.GetLength());
   kToFile.Close();
 
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
-                             to_dir_.path(),
-                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
 
   // File has been moved to to_dir_
@@ -703,7 +694,8 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFileDuplicateData) {
   // not yet having been truncated to reflect that.
   Platform platform;
   MigrationHelper helper(
-      &platform, status_files_dir_.path(), kDefaultChunkSize);
+      &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
+      kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -728,9 +720,7 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFileDuplicateData) {
   ASSERT_EQ(kFinalFileSize, kToFile.GetLength());
   kToFile.Close();
 
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
-                             to_dir_.path(),
-                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
 
   // File has been moved to to_dir_
@@ -745,7 +735,8 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFileDuplicateData) {
 TEST_F(MigrationHelperTest, ProgressCallback) {
   Platform platform;
   MigrationHelper helper(
-      &platform, status_files_dir_.path(), kDefaultChunkSize);
+      &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
+      kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -771,9 +762,7 @@ TEST_F(MigrationHelperTest, ProgressCallback) {
   ASSERT_TRUE(platform.GetFileSize(kFromSubdir, &dir_size));
   expected_size += dir_size;
 
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
-                             to_dir_.path(),
-                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
 
   ASSERT_EQ(migrated_values_.size(), total_values_.size());
@@ -810,13 +799,12 @@ TEST_F(MigrationHelperTest, NotEnoughFreeSpace) {
   Platform real_platform;
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   MigrationHelper helper(
-      &mock_platform, status_files_dir_.path(), kDefaultChunkSize);
+      &mock_platform, from_dir_.path(), to_dir_.path(),
+      status_files_dir_.path(), kDefaultChunkSize);
 
   EXPECT_CALL(mock_platform, AmountOfFreeDiskSpace(testing::_))
       .WillOnce(testing::Return(0));
-  EXPECT_FALSE(helper.Migrate(from_dir_.path(),
-                              to_dir_.path(),
-                              base::Bind(&MigrationHelperTest::ProgressCaptor,
+  EXPECT_FALSE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                          base::Unretained(this))));
 }
 
@@ -826,7 +814,8 @@ TEST_F(MigrationHelperTest, ForceSmallerChunkSize) {
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   constexpr int kMaxChunkSize = 128 << 20;  // 128MB
   MigrationHelper helper(
-      &mock_platform, status_files_dir_.path(), kMaxChunkSize);
+      &mock_platform, from_dir_.path(), to_dir_.path(),
+      status_files_dir_.path(), kMaxChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -852,9 +841,7 @@ TEST_F(MigrationHelperTest, ForceSmallerChunkSize) {
   EXPECT_CALL(mock_platform,
               SendFile(testing::_, testing::_, 0, kExpectedChunkSize))
       .WillOnce(testing::Return(true));
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
-                             to_dir_.path(),
-                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
 }
 
@@ -863,7 +850,8 @@ TEST_F(MigrationHelperTest, SkipInvalidSQLiteFiles) {
   Platform real_platform;
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   MigrationHelper helper(
-      &mock_platform, status_files_dir_.path(), kDefaultChunkSize);
+      &mock_platform, from_dir_.path(), to_dir_.path(),
+      status_files_dir_.path(), kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -880,9 +868,7 @@ TEST_F(MigrationHelperTest, SkipInvalidSQLiteFiles) {
             *file = base::File(base::File::FILE_ERROR_IO);
           }));
 
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
-                             to_dir_.path(),
-                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
   EXPECT_TRUE(real_platform.DirectoryExists(kToSQLiteShm.DirName()));
   EXPECT_FALSE(real_platform.FileExists(kToSQLiteShm));
@@ -895,7 +881,8 @@ class DataMigrationTest : public MigrationHelperTest,
 TEST_P(DataMigrationTest, CopyFileData) {
   Platform platform;
   MigrationHelper helper(
-      &platform, status_files_dir_.path(), kDefaultChunkSize);
+      &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
+      kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -908,9 +895,7 @@ TEST_P(DataMigrationTest, CopyFileData) {
   base::RandBytes(from_contents, kFileSize);
   ASSERT_EQ(kFileSize, base::WriteFile(kFromFile, from_contents, kFileSize));
 
-  EXPECT_TRUE(helper.Migrate(from_dir_.path(),
-                             to_dir_.path(),
-                             base::Bind(&MigrationHelperTest::ProgressCaptor,
+  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
 
   char to_contents[kFileSize];

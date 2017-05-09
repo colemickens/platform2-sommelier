@@ -44,12 +44,15 @@ class MigrationHelper {
   using ProgressCallback = base::Callback<void(
       DircryptoMigrationStatus status, uint64_t migrated, uint64_t total)>;
 
-  // Creates a new MigrationHelper.  Status files will be stored in
-  // |status_files_dir|, which should not be in the directory tree to be
-  // migrated.  |max_chunk_size| is treated as a hint for the desired size of
-  // data to transfer at once, but may be reduced if thee is not enough free
-  // space on disk or the provided max_chunk_size is inefficient.
+  // Creates a new MigrationHelper for migrating from |from| to |to|.
+  // Status files will be stored in |status_files_dir|, which should not be in
+  // the directory tree to be migrated.  |max_chunk_size| is treated as a hint
+  // for the desired size of data to transfer at once, but may be reduced if
+  // there is not enough free space on disk or the provided max_chunk_size is
+  // inefficient.
   MigrationHelper(Platform* platform,
+                  const base::FilePath& from,
+                  const base::FilePath& to,
                   const base::FilePath& status_files_dir,
                   uint64_t max_chunk_size);
   virtual ~MigrationHelper();
@@ -61,22 +64,18 @@ class MigrationHelper {
     namespaced_atime_xattr_name_ = name;
   }
 
-  // Moves all files under |from| into |to|.
+  // Moves all files under |from| into |to| specified in the constructor.
   //
   // This function copies chunks of a file at a time, requiring minimal free
   // space overhead.  This method should only ever be called once in the
   // lifetime of the object.
   //
   // Parameters
-  //   from - Where to move files from.  Must be an absolute path.
-  //   to - Where to move files into.  Must be an absolute path.
   //   progress_callback - function that will be called regularly to update on
   //   the progress of the migration.  Callback will be executed from the same
   //   thread as the migration, so long-running callbacks may block the
   //   migration.  May not be null.
-  bool Migrate(const base::FilePath& from,
-               const base::FilePath& to,
-               const ProgressCallback& progress_callback);
+  bool Migrate(const ProgressCallback& progress_callback);
 
   // Returns true if the migration has been started, but not finished.
   bool IsMigrationStarted() const;
@@ -97,44 +96,44 @@ class MigrationHelper {
   // migrating recursively all contents of the source directory.
   //
   // Parameters
-  //   from - Base directory which is the root of the migration source.  Should
-  //   be an absolute path.
-  //   to - Base direction which is the root of the migration destination.
-  //   Should be an absolute path.
-  //   child - relative path under |from| and |to| to migrate.
-  bool MigrateDir(const base::FilePath& from,
-                  const base::FilePath& to,
-                  const base::FilePath& child,
+  //   child - relative path under the base path to migrate.
+  bool MigrateDir(const base::FilePath& child,
                   const FileEnumerator::FileInfo& info);
-  // Creates a new link |to|/|child| which has the same attributes and target as
-  // |from|/|child|.  If the target points to an absolute path under |from|, it
-  // is rewritten to point to the same relative path under |to|.
-  bool MigrateLink(const base::FilePath& from,
-                   const base::FilePath& to,
-                   const base::FilePath& child,
+  // Creates a new link |to_base_path_|/|child| which has the same attributes
+  // and target as |from_base_path_|/|child|.  If the target points to an
+  // absolute path under |from_base_path_|, it is rewritten to point to the
+  // same relative path under |to_base_path_|.
+  bool MigrateLink(const base::FilePath& child,
                    const FileEnumerator::FileInfo& info);
-  // Copies data from |from|/|child| to |to|/|child|.
-  bool MigrateFile(const base::FilePath& from,
-                   const base::FilePath& to,
-                   const base::FilePath& child,
+  // Copies data from |from_base_path_|/|child| to |to_base_path_|/|child|.
+  bool MigrateFile(const base::FilePath& child,
                    const FileEnumerator::FileInfo& info);
-  bool CopyAttributes(const base::FilePath& from,
-                      const base::FilePath& to,
+  bool CopyAttributes(const base::FilePath& child,
                       const FileEnumerator::FileInfo& info);
-  bool FixTimes(const base::FilePath& file);
-  bool CopyExtendedAttributes(const base::FilePath& from,
-                              const base::FilePath& to);
+  bool FixTimes(const base::FilePath& child);
+  bool CopyExtendedAttributes(const base::FilePath& child);
   bool SetExtendedAttributeIfNotPresent(const base::FilePath& file,
                                         const std::string& xattr,
                                         const char* value,
                                         ssize_t size);
   // Record the latest file error happened during the migration.
-  // TODO(kinaba): record the path category.
-  // TODO(kinaba): record this info on all file operations
+  // |operation| is the type of the operation cause the |error| and
+  // |child| is the path of migrated file from the root of migration.
+  //
+  // We should record the error immediately after the failed low-level
+  // file operations (|platform_| methods or base:: functions), not after
+  // the batched file operation utility to keep the granularity of the stat
+  // and to avoid unintended duplicated logging.
   void RecordFileError(DircryptoMigrationFailedOperationType operation,
+                       const base::FilePath& child,
                        base::File::Error error);
+  void RecordFileErrorWithCurrentErrno(
+      DircryptoMigrationFailedOperationType operation,
+      const base::FilePath& child);
 
   Platform* platform_;
+  base::FilePath from_base_path_;
+  base::FilePath to_base_path_;
   ProgressCallback progress_callback_;
   const base::FilePath status_files_dir_;
   uint64_t max_chunk_size_;

@@ -33,6 +33,12 @@ constexpr char kCryptohomeDircryptoMigrationStartStatusHistogram[] =
     "Cryptohome.DircryptoMigrationStartStatus";
 constexpr char kCryptohomeDircryptoMigrationEndStatusHistogram[] =
     "Cryptohome.DircryptoMigrationEndStatus";
+constexpr char kCryptohomeDircryptoMigrationFailedErrorCodeHistogram[] =
+    "Cryptohome.DircryptoMigrationFailedErrorCode";
+constexpr char kCryptohomeDircryptoMigrationFailedOperationTypeHistogram[] =
+    "Cryptohome.DircryptoMigrationFailedOperationType";
+constexpr char kCryptohomeDircryptoMigrationFailedPathTypeHistogram[] =
+    "Cryptohome.DircryptoMigrationFailedPathType";
 constexpr char kHomedirEncryptionTypeHistogram[] =
     "Cryptohome.HomedirEncryptionType";
 
@@ -196,6 +202,38 @@ void ReportDircryptoMigrationEndStatus(DircryptoMigrationEndStatus status) {
   g_metrics->SendEnumToUMA(kCryptohomeDircryptoMigrationEndStatusHistogram,
                            status,
                            kMigrationEndStatusNumBuckets);
+}
+
+void ReportDircryptoMigrationFailedErrorCode(base::File::Error error_code) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendEnumToUMA(
+      kCryptohomeDircryptoMigrationFailedErrorCodeHistogram,
+      -error_code,
+      -base::File::FILE_ERROR_MAX);
+}
+
+void ReportDircryptoMigrationFailedOperationType(
+    DircryptoMigrationFailedOperationType type) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendEnumToUMA(
+      kCryptohomeDircryptoMigrationFailedOperationTypeHistogram,
+      type,
+      kMigrationFailedOperationTypeNumBuckets);
+}
+
+void ReportDircryptoMigrationFailedPathType(
+    DircryptoMigrationFailedPathType type) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendEnumToUMA(
+      kCryptohomeDircryptoMigrationFailedPathTypeHistogram,
+      type,
+      kMigrationFailedPathTypeNumBuckets);
 }
 
 void ReportHomedirEncryptionType(HomedirEncryptionType type) {

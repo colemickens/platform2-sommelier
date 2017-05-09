@@ -1954,8 +1954,9 @@ bool Mount::MigrateToDircrypto(
   // Do migration.
   constexpr uint64_t kMaxChunkSize = 128 * 1024 * 1024;
   dircrypto_data_migrator::MigrationHelper migrator(
-      platform_, GetUserDirectoryForUser(obfuscated_username), kMaxChunkSize);
-  bool success = migrator.Migrate(temporary_mount, mount_point_, callback);
+      platform_, temporary_mount, mount_point_,
+      GetUserDirectoryForUser(obfuscated_username), kMaxChunkSize);
+  bool success = migrator.Migrate(callback);
   UnmountAll();
   if (!success) {
     LOG(ERROR) << "Failed to migrate.";

@@ -44,35 +44,64 @@ constexpr uint64_t kMinFreeSpace = kErasureBlockSize * 2;
 // in-progress directories, etc).  Must be smaller than kMinFreeSpace.
 constexpr uint64_t kFreeSpaceBuffer = kErasureBlockSize;
 
-void ReportGenericMigrationFailureStatus(bool resumed) {
-  ReportDircryptoMigrationEndStatus(resumed ?
-    kResumedMigrationFailedGeneric : kNewMigrationFailedGeneric);
-}
-
-void ReportLowDiskSpaceMigrationFailureStatus(bool resumed) {
-  ReportDircryptoMigrationEndStatus(resumed ?
-    kResumedMigrationFailedLowDiskSpace : kNewMigrationFailedLowDiskSpace);
-}
-
-void ReportFileErrorMigrationFailureStatus(
-    bool resumed,
-    DircryptoMigrationFailedOperationType operation,
-    DircryptoMigrationFailedPathType path,
-    base::File::Error error) {
-  DircryptoMigrationEndStatus end_status;
-  // Some notable special cases are given distinct enum values.
-  if (operation == kMigrationFailedAtOpenSourceFile &&
-      error == base::File::FILE_ERROR_IO) {
-    end_status = resumed ?
-      kResumedMigrationFailedFileErrorOpenEIO :
-      kNewMigrationFailedFileErrorOpenEIO;
-  } else {
-    end_status = resumed ?
-      kResumedMigrationFailedFileError : kNewMigrationFailedFileError;
+// Sends the UMA stat for the start/end status of migration respectively in the
+// constructor/destructor. By default the "generic error" end status is set, so
+// to report other status, call an appropriate method to overwrite it.
+class MigrationStartAndEndStatusReporter {
+ public:
+  explicit MigrationStartAndEndStatusReporter(bool resumed) :
+      resumed_(resumed),
+      end_status_(resumed ? kResumedMigrationFailedGeneric :
+                  kNewMigrationFailedGeneric) {
+    ReportDircryptoMigrationStartStatus(
+        resumed_ ? kMigrationResumed : kMigrationStarted);
   }
-  ReportDircryptoMigrationEndStatus(end_status);
-  // TODO(kinaba): Report |operation|, |path|, and |error| individually.
-}
+
+  ~MigrationStartAndEndStatusReporter() {
+    ReportDircryptoMigrationEndStatus(end_status_);
+  }
+
+  void SetSuccess() {
+    end_status_ = resumed_ ? kResumedMigrationFinished : kNewMigrationFinished;
+  }
+
+  void SetLowDiskSpaceFailure() {
+    end_status_ = resumed_ ?
+        kResumedMigrationFailedLowDiskSpace : kNewMigrationFailedLowDiskSpace;
+  }
+
+  void SetFileErrorFailure(DircryptoMigrationFailedOperationType operation,
+                           base::File::Error error) {
+    // Some notable special cases are given distinct enum values.
+    if (operation == kMigrationFailedAtOpenSourceFile &&
+        error == base::File::FILE_ERROR_IO) {
+      end_status_ = resumed_ ?
+          kResumedMigrationFailedFileErrorOpenEIO :
+          kNewMigrationFailedFileErrorOpenEIO;
+    } else {
+      end_status_ = resumed_ ?
+          kResumedMigrationFailedFileError : kNewMigrationFailedFileError;
+    }
+  }
+
+ private:
+  const bool resumed_;
+  DircryptoMigrationEndStatus end_status_;
+
+  DISALLOW_COPY_AND_ASSIGN(MigrationStartAndEndStatusReporter);
+};
+
+struct PathTypeMapping {
+  const base::FilePath::CharType* path;
+  DircryptoMigrationFailedPathType type;
+};
+
+const PathTypeMapping kPathTypeMappings[] = {
+  {FILE_PATH_LITERAL("root/android-data"), kMigrationFailedUnderAndroidOther},
+  {FILE_PATH_LITERAL("user/Downloads"), kMigrationFailedUnderDownloads},
+  {FILE_PATH_LITERAL("user/Cache"), kMigrationFailedUnderCache},
+  {FILE_PATH_LITERAL("user/GCache"), kMigrationFailedUnderGcache},
+};
 
 }  // namespace
 
@@ -93,9 +122,13 @@ constexpr base::TimeDelta kStatusSignalInterval =
     base::TimeDelta::FromSeconds(1);
 
 MigrationHelper::MigrationHelper(Platform* platform,
+                                 const base::FilePath& from,
+                                 const base::FilePath& to,
                                  const base::FilePath& status_files_dir,
                                  uint64_t max_chunk_size)
     : platform_(platform),
+      from_base_path_(from),
+      to_base_path_(to),
       status_files_dir_(status_files_dir),
       max_chunk_size_(max_chunk_size),
       effective_chunk_size_(0),
@@ -109,49 +142,41 @@ MigrationHelper::MigrationHelper(Platform* platform,
 
 MigrationHelper::~MigrationHelper() {}
 
-bool MigrationHelper::Migrate(const base::FilePath& from,
-                              const base::FilePath& to,
-                              const ProgressCallback& progress_callback) {
+bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
   base::ElapsedTimer timer;
   const bool resumed = IsMigrationStarted();
-  ReportDircryptoMigrationStartStatus(
-      resumed ? kMigrationResumed : kMigrationStarted);
+  MigrationStartAndEndStatusReporter status_reporter(resumed);
 
   if (progress_callback.is_null()) {
     LOG(ERROR) << "Invalid progress callback";
-    ReportGenericMigrationFailureStatus(resumed);
     return false;
   }
   progress_callback_ = progress_callback;
   ReportStatus(DIRCRYPTO_MIGRATION_INITIALIZING);
-  if (!from.IsAbsolute() || !to.IsAbsolute()) {
+  if (!from_base_path_.IsAbsolute() || !to_base_path_.IsAbsolute()) {
     LOG(ERROR) << "Migrate must be given absolute paths";
-    ReportGenericMigrationFailureStatus(resumed);
     return false;
   }
 
-  if (!platform_->DirectoryExists(from)) {
-    LOG(ERROR) << "Directory does not exist: " << from.value();
-    ReportGenericMigrationFailureStatus(resumed);
+  if (!platform_->DirectoryExists(from_base_path_)) {
+    LOG(ERROR) << "Directory does not exist: " << from_base_path_.value();
     return false;
   }
 
   if (!platform_->TouchFileDurable(
           status_files_dir_.Append(kMigrationStartedFileName))) {
     LOG(ERROR) << "Failed to create migration-started file";
-    ReportGenericMigrationFailureStatus(resumed);
     return false;
   }
 
-  int64_t free_space = platform_->AmountOfFreeDiskSpace(to);
+  int64_t free_space = platform_->AmountOfFreeDiskSpace(to_base_path_);
   if (free_space < 0) {
     LOG(ERROR) << "Failed to determine free disk space";
-    ReportGenericMigrationFailureStatus(resumed);
     return false;
   }
   if (static_cast<uint64_t>(free_space) < kMinFreeSpace) {
     LOG(ERROR) << "Not enough space to begin the migration";
-    ReportLowDiskSpaceMigrationFailureStatus(resumed);
+    status_reporter.SetLowDiskSpaceFailure();
     return false;
   }
   effective_chunk_size_ =
@@ -160,25 +185,24 @@ bool MigrationHelper::Migrate(const base::FilePath& from,
     effective_chunk_size_ =
         effective_chunk_size_ - (effective_chunk_size_ % kErasureBlockSize);
 
-  CalculateDataToMigrate(from);
+  CalculateDataToMigrate(from_base_path_);
   ReportStatus(DIRCRYPTO_MIGRATION_IN_PROGRESS);
   struct stat from_stat;
-  if (!platform_->Stat(from, &from_stat)) {
+  if (!platform_->Stat(from_base_path_, &from_stat)) {
     PLOG(ERROR) << "Failed to stat from directory";
-    ReportFileErrorMigrationFailureStatus(resumed, failed_operation_type_,
-        failed_path_type_, base::File::OSErrorToFileError(errno));
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtStat, base::FilePath());
+    status_reporter.SetFileErrorFailure(
+        failed_operation_type_, failed_error_type_);
     return false;
   }
   ReportTimerStart(kDircryptoMigrationTimer);
   LOG(INFO) << "Preparation took " << timer.Elapsed().InMilliseconds()
             << " ms.";
-  if (!MigrateDir(from,
-                  to,
-                  base::FilePath(""),
-                  FileEnumerator::FileInfo(from, from_stat))) {
+  if (!MigrateDir(base::FilePath(""),
+                  FileEnumerator::FileInfo(from_base_path_, from_stat))) {
     LOG(ERROR) << "Migration Failed, aborting.";
-    ReportFileErrorMigrationFailureStatus(resumed, failed_operation_type_,
-        failed_path_type_, failed_error_type_);
+    status_reporter.SetFileErrorFailure(
+        failed_operation_type_, failed_error_type_);
     return false;
   }
   if (!resumed)
@@ -186,8 +210,7 @@ bool MigrationHelper::Migrate(const base::FilePath& from,
 
   // One more progress update to say that we've hit 100%
   ReportStatus(DIRCRYPTO_MIGRATION_IN_PROGRESS);
-  ReportDircryptoMigrationEndStatus(
-      resumed ? kResumedMigrationFinished : kNewMigrationFinished);
+  status_reporter.SetSuccess();
   const int elapsed_ms = timer.Elapsed().InMilliseconds();
   const int speed_kb_per_s = elapsed_ms ? (total_byte_count_ / elapsed_ms) : 0;
   LOG(INFO) << "Migrated " << total_byte_count_ << " bytes in " <<  elapsed_ms
@@ -237,20 +260,21 @@ void MigrationHelper::ReportStatus(DircryptoMigrationStatus status) {
   next_report_ = base::TimeTicks::Now() + kStatusSignalInterval;
 }
 
-bool MigrationHelper::MigrateDir(const base::FilePath& from,
-                                 const base::FilePath& to,
-                                 const base::FilePath& child,
+bool MigrationHelper::MigrateDir(const base::FilePath& child,
                                  const FileEnumerator::FileInfo& info) {
-  const base::FilePath from_dir = from.Append(child);
-  const base::FilePath to_dir = to.Append(child);
+  const base::FilePath from_dir = from_base_path_.Append(child);
+  const base::FilePath to_dir = to_base_path_.Append(child);
 
   if (!platform_->CreateDirectory(to_dir)) {
     LOG(ERROR) << "Failed to create directory " << to_dir.value();
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtMkdir, child);
     return false;
   }
-  if (!platform_->SyncDirectory(to_dir.DirName()))
+  if (!platform_->SyncDirectory(to_dir.DirName())) {
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtSync, child);
     return false;
-  if (!CopyAttributes(from_dir, to_dir, info))
+  }
+  if (!CopyAttributes(child, info))
     return false;
 
   std::unique_ptr<FileEnumerator> enumerator(platform_->GetFileEnumerator(
@@ -266,17 +290,17 @@ bool MigrationHelper::MigrateDir(const base::FilePath& from,
     mode_t mode = entry_info.stat().st_mode;
     if (S_ISLNK(mode)) {
       // Symlink
-      if (!MigrateLink(from, to, new_child, entry_info))
+      if (!MigrateLink(new_child, entry_info))
         return false;
       IncrementMigratedBytes(entry_info.GetSize());
     } else if (S_ISDIR(mode)) {
       // Directory.
-      if (!MigrateDir(from, to, new_child, entry_info))
+      if (!MigrateDir(new_child, entry_info))
         return false;
       IncrementMigratedBytes(entry_info.GetSize());
     } else if (S_ISREG(mode)) {
       // File
-      if (!MigrateFile(from, to, new_child, entry_info))
+      if (!MigrateFile(new_child, entry_info))
         return false;
     } else {
       LOG(ERROR) << "Unknown file type: " << entry.value();
@@ -284,43 +308,48 @@ bool MigrationHelper::MigrateDir(const base::FilePath& from,
 
     if (!platform_->DeleteFile(entry, false /* recursive */)) {
       LOG(ERROR) << "Failed to delete file " << entry.value();
+      RecordFileErrorWithCurrentErrno(kMigrationFailedAtDelete, new_child);
       return false;
     }
   }
-  if (!FixTimes(to_dir))
+  if (!FixTimes(child))
     return false;
-  if (!platform_->SyncDirectory(to_dir))
+  if (!platform_->SyncDirectory(to_dir)) {
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtSync, child);
     return false;
+  }
 
   return true;
 }
 
-bool MigrationHelper::MigrateLink(const base::FilePath& from,
-                                  const base::FilePath& to,
-                                  const base::FilePath& child,
+bool MigrationHelper::MigrateLink(const base::FilePath& child,
                                   const FileEnumerator::FileInfo& info) {
-  const base::FilePath source = from.Append(child);
-  const base::FilePath new_path = to.Append(child);
+  const base::FilePath source = from_base_path_.Append(child);
+  const base::FilePath new_path = to_base_path_.Append(child);
   base::FilePath target;
-  if (!platform_->ReadLink(source, &target))
+  if (!platform_->ReadLink(source, &target)) {
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtReadLink, child);
     return false;
+  }
 
-  if (from.IsParent(target)) {
-    base::FilePath new_target = to;
-    from.AppendRelativePath(target, &new_target);
+  if (from_base_path_.IsParent(target)) {
+    base::FilePath new_target = to_base_path_;
+    from_base_path_.AppendRelativePath(target, &new_target);
     target = new_target;
   }
   // In the case that the link was already created by a previous migration
   // it should be removed to prevent errors recreating it below.
   if (!platform_->DeleteFile(new_path, false /* recursive */)) {
     PLOG(ERROR) << "Failed to delete existing symlink " << new_path.value();
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtDelete, child);
     return false;
   }
   if (!platform_->CreateSymbolicLink(new_path, target)) {
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtCreateLink, child);
     return false;
   }
 
-  if (!CopyAttributes(source, new_path, info))
+  if (!CopyAttributes(child, info))
     return false;
   // mtime is copied here instead of in the general CopyAttributes call because
   // symlinks can't (and don't need to) use xattrs to preserve the time during
@@ -330,6 +359,7 @@ bool MigrationHelper::MigrateLink(const base::FilePath& from,
                                info.stat().st_mtim,
                                false /* follow_links */)) {
     PLOG(ERROR) << "Failed to set mtime for " << new_path.value();
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child);
     return false;
   }
   // We can't explicitly f(data)sync symlinks, so we have to do a full FS sync.
@@ -337,12 +367,10 @@ bool MigrationHelper::MigrateLink(const base::FilePath& from,
   return true;
 }
 
-bool MigrationHelper::MigrateFile(const base::FilePath& from,
-                                  const base::FilePath& to,
-                                  const base::FilePath& child,
+bool MigrationHelper::MigrateFile(const base::FilePath& child,
                                   const FileEnumerator::FileInfo& info) {
-  const base::FilePath& from_child = from.Append(child);
-  const base::FilePath& to_child = to.Append(child);
+  const base::FilePath& from_child = from_base_path_.Append(child);
+  const base::FilePath& to_child = to_base_path_.Append(child);
   base::File from_file;
   platform_->InitializeFile(
       &from_file,
@@ -357,10 +385,12 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
       // is safe to remove this file without migrating it.
       LOG(WARNING) << "Found unreadable GMS SQLite database, skipping "
                    << from_child.value();
+      RecordFileError(kMigrationFailedAtOpenSourceFileNonFatal, child,
+                      from_file.error_details());
       return true;
     }
     PLOG(ERROR) << "Failed to open file " << from_child.value();
-    RecordFileError(kMigrationFailedAtOpenSourceFile,
+    RecordFileError(kMigrationFailedAtOpenSourceFile, child,
                     from_file.error_details());
     return false;
   }
@@ -372,21 +402,25 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
       base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_WRITE);
   if (!to_file.IsValid()) {
     PLOG(ERROR) << "Failed to open file " << to_child.value();
-    RecordFileError(kMigrationFailedAtOpenDestinationFile,
+    RecordFileError(kMigrationFailedAtOpenDestinationFile, child,
                     to_file.error_details());
     return false;
   }
-  if (!platform_->SyncDirectory(to_child.DirName()))
+  if (!platform_->SyncDirectory(to_child.DirName())) {
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtSync, child);
     return false;
+  }
 
   int64_t from_length = from_file.GetLength();
   int64_t to_length = to_file.GetLength();
   if (from_length < 0) {
     LOG(ERROR) << "Failed to get length of " << from_child.value();
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtStat, child);
     return false;
   }
   if (to_length < 0) {
     LOG(ERROR) << "Failed to get length of " << to_child.value();
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtStat, child);
     return false;
   }
   if (to_length < from_length) {
@@ -397,11 +431,12 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
     // which is not yet allocated.
     if (!to_file.SetLength(from_length)) {
       PLOG(ERROR) << "Failed to set file length of " << to_child.value();
+      RecordFileErrorWithCurrentErrno(kMigrationFailedAtTruncate, child);
       return false;
     }
   }
 
-  if (!CopyAttributes(from_child, to_child, info))
+  if (!CopyAttributes(child, info))
     return false;
 
   while (from_length > 0) {
@@ -412,6 +447,7 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
     off_t offset = from_length - to_read;
     if (to_file.Seek(base::File::FROM_BEGIN, offset) != offset) {
       LOG(ERROR) << "Failed to seek in " << to_child.value();
+      RecordFileErrorWithCurrentErrno(kMigrationFailedAtSeek, child);
       return false;
     }
     // Sendfile is used here instead of a read to memory then write since it is
@@ -419,6 +455,7 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
     // particular the data is passed directly from the read call to the write
     // in the kernel, never making a trip back out to user space.
     if (!platform_->SendFile(to_file, from_file, offset, to_read)) {
+      RecordFileErrorWithCurrentErrno(kMigrationFailedAtSendfile, child);
       return false;
     }
     // For the last chunk, SyncFile will be called later so no need to flush
@@ -426,10 +463,12 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
     if (offset > 0) {
       if (!to_file.Flush()) {
         PLOG(ERROR) << "Failed to flush " << to_child.value();
+        RecordFileErrorWithCurrentErrno(kMigrationFailedAtSync, child);
         return false;
       }
       if (!from_file.SetLength(offset)) {
         PLOG(ERROR) << "Failed to truncate file " << from_child.value();
+        RecordFileErrorWithCurrentErrno(kMigrationFailedAtTruncate, child);
         return false;
       }
     }
@@ -439,88 +478,120 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
 
   from_file.Close();
   to_file.Close();
-  if (!FixTimes(to_child))
+  if (!FixTimes(child))
     return false;
-  if (!platform_->SyncFile(to_child))
+  if (!platform_->SyncFile(to_child)) {
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtSync, child);
     return false;
+  }
 
   return true;
 }
 
-bool MigrationHelper::CopyAttributes(const base::FilePath& from,
-                                     const base::FilePath& to,
+bool MigrationHelper::CopyAttributes(const base::FilePath& child,
                                      const FileEnumerator::FileInfo& info) {
+  const base::FilePath from = from_base_path_.Append(child);
+  const base::FilePath to = to_base_path_.Append(child);
+
   uid_t user_id = info.stat().st_uid;
   gid_t group_id = info.stat().st_gid;
-  if (!platform_->SetOwnership(to, user_id, group_id, false /* follow_links */))
+  if (!platform_->SetOwnership(to, user_id, group_id,
+                               false /* follow_links */)) {
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child);
     return false;
+  }
 
   mode_t mode = info.stat().st_mode;
   // Symlinks don't support user extended attributes or permissions in linux
   if (S_ISLNK(mode))
     return true;
-  if (!platform_->SetPermissions(to, mode))
+  if (!platform_->SetPermissions(to, mode)) {
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child);
     return false;
+  }
 
   const auto& mtime = info.stat().st_mtim;
   const auto& atime = info.stat().st_atim;
   if (!SetExtendedAttributeIfNotPresent(to,
                                         namespaced_mtime_xattr_name_,
                                         reinterpret_cast<const char*>(&mtime),
-                                        sizeof(mtime)))
+                                        sizeof(mtime))) {
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child);
     return false;
+  }
   if (!SetExtendedAttributeIfNotPresent(to,
                                         namespaced_atime_xattr_name_,
                                         reinterpret_cast<const char*>(&atime),
-                                        sizeof(atime)))
+                                        sizeof(atime))) {
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child);
     return false;
-  if (!CopyExtendedAttributes(from, to))
+  }
+  if (!CopyExtendedAttributes(child))
     return false;
 
   int flags;
-  if (!platform_->GetExtFileAttributes(from, &flags))
+  if (!platform_->GetExtFileAttributes(from, &flags)) {
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtGetAttribute, child);
     return false;
-  if (!platform_->SetExtFileAttributes(to, flags))
-    return false;
-  return true;
-}
-
-bool MigrationHelper::FixTimes(const base::FilePath& file) {
-  struct timespec mtime;
-  if (!platform_->GetExtendedFileAttribute(file,
-                                           namespaced_mtime_xattr_name_,
-                                           reinterpret_cast<char*>(&mtime),
-                                           sizeof(mtime)))
-    return false;
-  struct timespec atime;
-  if (!platform_->GetExtendedFileAttribute(file,
-                                           namespaced_atime_xattr_name_,
-                                           reinterpret_cast<char*>(&atime),
-                                           sizeof(atime)))
-    return false;
-  if (!platform_->SetFileTimes(file, atime, mtime, true /* follow_links */)) {
-    PLOG(ERROR) << "Failed to set mtime on " << file.value();
+  }
+  if (!platform_->SetExtFileAttributes(to, flags)) {
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child);
     return false;
   }
   return true;
 }
 
-bool MigrationHelper::CopyExtendedAttributes(const base::FilePath& from,
-                                             const base::FilePath& to) {
-  std::vector<std::string> xattr_names;
-  if (!platform_->ListExtendedFileAttributes(from, &xattr_names))
+bool MigrationHelper::FixTimes(const base::FilePath& child) {
+  const base::FilePath file = to_base_path_.Append(child);
+
+  struct timespec mtime;
+  if (!platform_->GetExtendedFileAttribute(file,
+                                           namespaced_mtime_xattr_name_,
+                                           reinterpret_cast<char*>(&mtime),
+                                           sizeof(mtime))) {
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtGetAttribute, child);
     return false;
+  }
+  struct timespec atime;
+  if (!platform_->GetExtendedFileAttribute(file,
+                                           namespaced_atime_xattr_name_,
+                                           reinterpret_cast<char*>(&atime),
+                                           sizeof(atime))) {
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtGetAttribute, child);
+    return false;
+  }
+  if (!platform_->SetFileTimes(file, atime, mtime, true /* follow_links */)) {
+    PLOG(ERROR) << "Failed to set mtime on " << file.value();
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child);
+    return false;
+  }
+  return true;
+}
+
+bool MigrationHelper::CopyExtendedAttributes(const base::FilePath& child) {
+  const base::FilePath from = from_base_path_.Append(child);
+  const base::FilePath to = to_base_path_.Append(child);
+
+  std::vector<std::string> xattr_names;
+  if (!platform_->ListExtendedFileAttributes(from, &xattr_names)) {
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtGetAttribute, child);
+    return false;
+  }
 
   for (const std::string& name : xattr_names) {
     std::string value;
     if (name == namespaced_mtime_xattr_name_ ||
         name == namespaced_atime_xattr_name_)
       continue;
-    if (!platform_->GetExtendedFileAttributeAsString(from, name, &value))
+    if (!platform_->GetExtendedFileAttributeAsString(from, name, &value)) {
+      RecordFileErrorWithCurrentErrno(kMigrationFailedAtGetAttribute, child);
       return false;
+    }
     if (!platform_->SetExtendedFileAttribute(
-            to, name, value.data(), value.length()))
+            to, name, value.data(), value.length())) {
+      RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child);
       return false;
+    }
   }
 
   return true;
@@ -546,9 +617,51 @@ bool MigrationHelper::SetExtendedAttributeIfNotPresent(
 
 void MigrationHelper::RecordFileError(
     DircryptoMigrationFailedOperationType operation,
+    const base::FilePath& child,
     base::File::Error error) {
+  DircryptoMigrationFailedPathType path = kMigrationFailedUnderOther;
+  for (const auto& path_type_mapping : kPathTypeMappings) {
+    if (base::FilePath(path_type_mapping.path).IsParent(child)) {
+      path = path_type_mapping.type;
+      break;
+    }
+  }
+  // Android cache files are either under
+  //   root/android-data/data/data/<package name>/cache
+  //   root/android-data/data/media/0/Android/data/<package name>/cache
+  if (path == kMigrationFailedUnderAndroidOther) {
+    std::vector<base::FilePath::StringType> components;
+    child.GetComponents(&components);
+    if ((components.size() >= 7u &&
+         components[2] == FILE_PATH_LITERAL("data") &&
+         components[3] == FILE_PATH_LITERAL("data") &&
+         components[5] == FILE_PATH_LITERAL("cache")) ||
+        (components.size() >= 10u &&
+         components[2] == FILE_PATH_LITERAL("data") &&
+         components[3] == FILE_PATH_LITERAL("media") &&
+         components[4] == FILE_PATH_LITERAL("0") &&
+         components[5] == FILE_PATH_LITERAL("Android") &&
+         components[6] == FILE_PATH_LITERAL("data") &&
+         components[8] == FILE_PATH_LITERAL("cache"))) {
+       path = kMigrationFailedUnderAndroidCache;
+    }
+  }
+
+  // Report UMA stats here for each single error.
+  ReportDircryptoMigrationFailedOperationType(operation);
+  ReportDircryptoMigrationFailedPathType(path);
+  ReportDircryptoMigrationFailedErrorCode(error);
+
+  // Record the data for the final end-status report.
   failed_operation_type_ = operation;
+  failed_path_type_ = path;
   failed_error_type_ = error;
+}
+
+void MigrationHelper::RecordFileErrorWithCurrentErrno(
+    DircryptoMigrationFailedOperationType operation,
+    const base::FilePath& child) {
+  RecordFileError(operation, child, base::File::OSErrorToFileError(errno));
 }
 
 }  // namespace dircrypto_data_migrator

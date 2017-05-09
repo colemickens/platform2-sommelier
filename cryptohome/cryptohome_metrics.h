@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_CRYPTOHOME_METRICS_H_
 #define CRYPTOHOME_CRYPTOHOME_METRICS_H_
 
+#include <base/files/file.h>
+
 #include "cryptohome/tpm.h"
 
 namespace cryptohome {
@@ -91,6 +93,18 @@ enum DircryptoMigrationFailedOperationType {
   kMigrationFailedAtOtherOperation = 1,
   kMigrationFailedAtOpenSourceFile = 2,
   kMigrationFailedAtOpenDestinationFile = 3,
+  kMigrationFailedAtCreateLink = 4,
+  kMigrationFailedAtDelete = 5,
+  kMigrationFailedAtGetAttribute = 6,
+  kMigrationFailedAtMkdir = 7,
+  kMigrationFailedAtReadLink = 8,
+  kMigrationFailedAtSeek = 9,
+  kMigrationFailedAtSendfile = 10,
+  kMigrationFailedAtSetAttribute = 11,
+  kMigrationFailedAtStat = 12,
+  kMigrationFailedAtSync = 13,
+  kMigrationFailedAtTruncate = 14,
+  kMigrationFailedAtOpenSourceFileNonFatal = 15,
   kMigrationFailedOperationTypeNumBuckets
 };
 
@@ -162,6 +176,23 @@ void ReportDircryptoMigrationStartStatus(DircryptoMigrationStartStatus status);
 // "Cryptohome.DircryptoMigrationEndStatus"
 // enum histogram.
 void ReportDircryptoMigrationEndStatus(DircryptoMigrationEndStatus status);
+
+// The |error_code| value is reported to the
+// "Cryptohome.DircryptoMigrationFailedErrorCode"
+// enum histogram.
+void ReportDircryptoMigrationFailedErrorCode(base::File::Error error_code);
+
+// The |type| value is reported to the
+// "Cryptohome.DircryptoMigrationFailedOperationType"
+// enum histogram.
+void ReportDircryptoMigrationFailedOperationType(
+    DircryptoMigrationFailedOperationType type);
+
+// The |type| value is reported to the
+// "Cryptohome.DircryptoMigrationFailedPathType"
+// enum histogram.
+void ReportDircryptoMigrationFailedPathType(
+    DircryptoMigrationFailedPathType type);
 
 // The |type| value is reported to the "Cryptohome.HomedirEncryptionType" enum
 // histogram.
