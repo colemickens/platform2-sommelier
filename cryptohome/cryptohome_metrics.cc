@@ -52,7 +52,10 @@ const TimerHistogramParams kTimerHistogramParams[cryptohome::kNumTimerTypes] = {
     // These will all fall into the first histogram bucket.
     {"Cryptohome.TimeToInitPkcs11", 1000, 100000, 50},
     {"Cryptohome.TimeToMountEx", 0, 4000, 50},
-    {"Cryptohome.TimeToCompleteDircryptoMigration", 0, 60 * 60 * 1000, 50}};
+    // Ext4 crypto migration is expected to takes few minutes in a fast case,
+    // and with many tens of thousands of files it may take hours.
+    {"Cryptohome.TimeToCompleteDircryptoMigration", 1000,
+     10 * 60 * 60 * 1000, 50}};
 
 MetricsLibrary* g_metrics = NULL;
 chromeos_metrics::TimerReporter* g_timers[cryptohome::kNumTimerTypes] = {NULL};
