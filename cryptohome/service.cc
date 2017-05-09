@@ -89,6 +89,8 @@ const int64_t kNotifyDiskSpaceThreshold = 1 << 30;  // 1GB
 const int kDefaultRandomSeedLength = 64;
 const char kMountThreadName[] = "MountThread";
 const char kTpmInitStatusEventType[] = "TpmInitStatus";
+const char kDircryptoMigrationProgressEventType[] =
+                                               "DircryptoMigrationProgress";
 
 // The default entropy source to seed with random data from the TPM on startup.
 const FilePath kDefaultEntropySource("/dev/urandom");
@@ -136,6 +138,32 @@ class TpmInitStatus : public CryptohomeEventBase {
  private:
   bool took_ownership_;
   bool status_;
+};
+
+class DircryptoMigrationProgress : public CryptohomeEventBase {
+ public:
+  DircryptoMigrationProgress(DircryptoMigrationStatus status,
+                             uint64_t current_bytes,
+                             uint64_t total_bytes)
+      : status_(status),
+        current_bytes_(current_bytes),
+        total_bytes_(total_bytes) { }
+  ~DircryptoMigrationProgress() override = default;
+
+  const char* GetEventName() const override {
+    return kDircryptoMigrationProgressEventType;
+  }
+
+  DircryptoMigrationStatus status() const { return status_; }
+  uint64_t current_bytes() const { return current_bytes_; }
+  uint64_t total_bytes() const { return total_bytes_; }
+
+ private:
+  DircryptoMigrationStatus status_;
+  uint64_t current_bytes_;
+  uint64_t total_bytes_;
+
+  DISALLOW_COPY_AND_ASSIGN(DircryptoMigrationProgress);
 };
 
 Service::Service()
@@ -725,6 +753,13 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
   } else if (!strcmp(event->GetEventName(), kDBusReplyEventType)) {
     DBusReply* result = static_cast<DBusReply*>(event);
     result->Run();
+  } else if (!strcmp(event->GetEventName(),
+                     kDircryptoMigrationProgressEventType)) {
+    auto* progress = static_cast<DircryptoMigrationProgress*>(event);
+    g_signal_emit(cryptohome_, dircrypto_migration_progress_signal_,
+                  0 /* signal detail (not used) */,
+                  static_cast<int32_t>(progress->status()),
+                  progress->current_bytes(), progress->total_bytes());
   }
 }
 
@@ -1962,9 +1997,8 @@ void Service::SendDircryptoMigrationProgressSignal(
     DircryptoMigrationStatus status,
     uint64_t current_bytes,
     uint64_t total_bytes) {
-    g_signal_emit(cryptohome_, dircrypto_migration_progress_signal_,
-                  0 /* signal detail (not used) */,
-                  static_cast<int32_t>(status), current_bytes, total_bytes);
+  event_source_.AddEvent(new DircryptoMigrationProgress(
+      status, current_bytes, total_bytes));
 }
 
 // This function implements the _old_ style Mounts.  It should be removed
