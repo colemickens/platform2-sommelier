@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <errno.h>
 #include <fcntl.h>
 #include <string.h>
 #include <sys/capability.h>
@@ -42,6 +43,37 @@ constexpr uint64_t kMinFreeSpace = kErasureBlockSize * 2;
 // Free space required for migration overhead (FS metadata, duplicated
 // in-progress directories, etc).  Must be smaller than kMinFreeSpace.
 constexpr uint64_t kFreeSpaceBuffer = kErasureBlockSize;
+
+void ReportGenericMigrationFailureStatus(bool resumed) {
+  ReportDircryptoMigrationEndStatus(resumed ?
+    kResumedMigrationFailedGeneric : kNewMigrationFailedGeneric);
+}
+
+void ReportLowDiskSpaceMigrationFailureStatus(bool resumed) {
+  ReportDircryptoMigrationEndStatus(resumed ?
+    kResumedMigrationFailedLowDiskSpace : kNewMigrationFailedLowDiskSpace);
+}
+
+void ReportFileErrorMigrationFailureStatus(
+    bool resumed,
+    DircryptoMigrationFailedOperationType operation,
+    DircryptoMigrationFailedPathType path,
+    base::File::Error error) {
+  DircryptoMigrationEndStatus end_status;
+  // Some notable special cases are given distinct enum values.
+  if (operation == kMigrationFailedAtOpenSourceFile &&
+      error == base::File::FILE_ERROR_IO) {
+    end_status = resumed ?
+      kResumedMigrationFailedFileErrorOpenEIO :
+      kNewMigrationFailedFileErrorOpenEIO;
+  } else {
+    end_status = resumed ?
+      kResumedMigrationFailedFileError : kNewMigrationFailedFileError;
+  }
+  ReportDircryptoMigrationEndStatus(end_status);
+  // TODO(kinaba): Report |operation|, |path|, and |error| individually.
+}
+
 }  // namespace
 
 // There are some well known cases of data corruption where this file cannot be
@@ -70,7 +102,10 @@ MigrationHelper::MigrationHelper(Platform* platform,
       total_byte_count_(0),
       migrated_byte_count_(0),
       namespaced_mtime_xattr_name_(kMtimeXattrName),
-      namespaced_atime_xattr_name_(kAtimeXattrName) {}
+      namespaced_atime_xattr_name_(kAtimeXattrName),
+      failed_operation_type_(kMigrationFailedAtOtherOperation),
+      failed_path_type_(kMigrationFailedUnderOther),
+      failed_error_type_(base::File::FILE_OK) {}
 
 MigrationHelper::~MigrationHelper() {}
 
@@ -78,54 +113,45 @@ bool MigrationHelper::Migrate(const base::FilePath& from,
                               const base::FilePath& to,
                               const ProgressCallback& progress_callback) {
   base::ElapsedTimer timer;
-  bool resumed = IsMigrationStarted();
-  DircryptoMigrationEndStatus failed_status;
-  DircryptoMigrationEndStatus finished_status;
-  if (resumed) {
-    ReportDircryptoMigrationStartStatus(kMigrationResumed);
-    failed_status = kResumedMigrationFailed;
-    finished_status = kResumedMigrationFinished;
-  } else {
-    ReportDircryptoMigrationStartStatus(kMigrationStarted);
-    failed_status = kNewMigrationFailed;
-    finished_status = kNewMigrationFinished;
-  }
+  const bool resumed = IsMigrationStarted();
+  ReportDircryptoMigrationStartStatus(
+      resumed ? kMigrationResumed : kMigrationStarted);
 
   if (progress_callback.is_null()) {
     LOG(ERROR) << "Invalid progress callback";
-    ReportDircryptoMigrationEndStatus(failed_status);
+    ReportGenericMigrationFailureStatus(resumed);
     return false;
   }
   progress_callback_ = progress_callback;
   ReportStatus(DIRCRYPTO_MIGRATION_INITIALIZING);
   if (!from.IsAbsolute() || !to.IsAbsolute()) {
     LOG(ERROR) << "Migrate must be given absolute paths";
-    ReportDircryptoMigrationEndStatus(failed_status);
+    ReportGenericMigrationFailureStatus(resumed);
     return false;
   }
 
   if (!platform_->DirectoryExists(from)) {
     LOG(ERROR) << "Directory does not exist: " << from.value();
-    ReportDircryptoMigrationEndStatus(failed_status);
+    ReportGenericMigrationFailureStatus(resumed);
     return false;
   }
 
   if (!platform_->TouchFileDurable(
           status_files_dir_.Append(kMigrationStartedFileName))) {
     LOG(ERROR) << "Failed to create migration-started file";
-    ReportDircryptoMigrationEndStatus(failed_status);
+    ReportGenericMigrationFailureStatus(resumed);
     return false;
   }
 
   int64_t free_space = platform_->AmountOfFreeDiskSpace(to);
   if (free_space < 0) {
     LOG(ERROR) << "Failed to determine free disk space";
-    ReportDircryptoMigrationEndStatus(failed_status);
+    ReportGenericMigrationFailureStatus(resumed);
     return false;
   }
   if (static_cast<uint64_t>(free_space) < kMinFreeSpace) {
     LOG(ERROR) << "Not enough space to begin the migration";
-    ReportDircryptoMigrationEndStatus(failed_status);
+    ReportLowDiskSpaceMigrationFailureStatus(resumed);
     return false;
   }
   effective_chunk_size_ =
@@ -139,7 +165,8 @@ bool MigrationHelper::Migrate(const base::FilePath& from,
   struct stat from_stat;
   if (!platform_->Stat(from, &from_stat)) {
     PLOG(ERROR) << "Failed to stat from directory";
-    ReportDircryptoMigrationEndStatus(failed_status);
+    ReportFileErrorMigrationFailureStatus(resumed, failed_operation_type_,
+        failed_path_type_, base::File::OSErrorToFileError(errno));
     return false;
   }
   ReportTimerStart(kDircryptoMigrationTimer);
@@ -150,7 +177,8 @@ bool MigrationHelper::Migrate(const base::FilePath& from,
                   base::FilePath(""),
                   FileEnumerator::FileInfo(from, from_stat))) {
     LOG(ERROR) << "Migration Failed, aborting.";
-    ReportDircryptoMigrationEndStatus(failed_status);
+    ReportFileErrorMigrationFailureStatus(resumed, failed_operation_type_,
+        failed_path_type_, failed_error_type_);
     return false;
   }
   if (!resumed)
@@ -158,7 +186,8 @@ bool MigrationHelper::Migrate(const base::FilePath& from,
 
   // One more progress update to say that we've hit 100%
   ReportStatus(DIRCRYPTO_MIGRATION_IN_PROGRESS);
-  ReportDircryptoMigrationEndStatus(finished_status);
+  ReportDircryptoMigrationEndStatus(
+      resumed ? kResumedMigrationFinished : kNewMigrationFinished);
   const int elapsed_ms = timer.Elapsed().InMilliseconds();
   const int speed_kb_per_s = elapsed_ms ? (total_byte_count_ / elapsed_ms) : 0;
   LOG(INFO) << "Migrated " << total_byte_count_ << " bytes in " <<  elapsed_ms
@@ -331,6 +360,8 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
       return true;
     }
     PLOG(ERROR) << "Failed to open file " << from_child.value();
+    RecordFileError(kMigrationFailedAtOpenSourceFile,
+                    from_file.error_details());
     return false;
   }
 
@@ -341,6 +372,8 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
       base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_WRITE);
   if (!to_file.IsValid()) {
     PLOG(ERROR) << "Failed to open file " << to_child.value();
+    RecordFileError(kMigrationFailedAtOpenDestinationFile,
+                    to_file.error_details());
     return false;
   }
   if (!platform_->SyncDirectory(to.DirName()))
@@ -509,6 +542,13 @@ bool MigrationHelper::SetExtendedAttributeIfNotPresent(
     return false;
   }
   return platform_->SetExtendedFileAttribute(file, xattr, value, size);
+}
+
+void MigrationHelper::RecordFileError(
+    DircryptoMigrationFailedOperationType operation,
+    base::File::Error error) {
+  failed_operation_type_ = operation;
+  failed_error_type_ = error;
 }
 
 }  // namespace dircrypto_data_migrator

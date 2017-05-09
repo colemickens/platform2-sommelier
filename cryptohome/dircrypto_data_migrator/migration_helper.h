@@ -11,6 +11,7 @@
 #include <base/macros.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/platform.h"
 
 namespace cryptohome {
@@ -127,6 +128,11 @@ class MigrationHelper {
                                         const std::string& xattr,
                                         const char* value,
                                         ssize_t size);
+  // Record the latest file error happened during the migration.
+  // TODO(kinaba): record the path category.
+  // TODO(kinaba): record this info on all file operations
+  void RecordFileError(DircryptoMigrationFailedOperationType operation,
+                       base::File::Error error);
 
   Platform* platform_;
   ProgressCallback progress_callback_;
@@ -138,6 +144,10 @@ class MigrationHelper {
   base::TimeTicks next_report_;
   std::string namespaced_mtime_xattr_name_;
   std::string namespaced_atime_xattr_name_;
+
+  DircryptoMigrationFailedOperationType failed_operation_type_;
+  DircryptoMigrationFailedPathType failed_path_type_;
+  base::File::Error failed_error_type_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(MigrationHelper);
 };

@@ -69,11 +69,39 @@ enum DircryptoMigrationStartStatus {
 };
 
 enum DircryptoMigrationEndStatus {
-  kNewMigrationFailed = 1,
+  kNewMigrationFailedGeneric = 1,
   kNewMigrationFinished = 2,
-  kResumedMigrationFailed = 3,
+  kResumedMigrationFailedGeneric = 3,
   kResumedMigrationFinished = 4,
+  kNewMigrationFailedLowDiskSpace = 5,
+  kResumedMigrationFailedLowDiskSpace = 6,
+  // The detail of the "FileError" failures (the failed file operation,
+  // error code, and the rough classification of the failed path) will be
+  // reported in separate metrics, too. Since there's no good way to relate the
+  // multi-dimensional metric however, we treat some combinations as special
+  // cases and distinguish them here as well.
+  kNewMigrationFailedFileError = 7,
+  kResumedMigrationFailedFileError = 8,
+  kNewMigrationFailedFileErrorOpenEIO = 9,
+  kResumedMigrationFailedFileErrorOpenEIO = 10,
   kMigrationEndStatusNumBuckets
+};
+
+enum DircryptoMigrationFailedOperationType {
+  kMigrationFailedAtOtherOperation = 1,
+  kMigrationFailedAtOpenSourceFile = 2,
+  kMigrationFailedAtOpenDestinationFile = 3,
+  kMigrationFailedOperationTypeNumBuckets
+};
+
+enum DircryptoMigrationFailedPathType {
+  kMigrationFailedUnderOther = 1,
+  kMigrationFailedUnderAndroidOther = 2,
+  kMigrationFailedUnderAndroidCache = 3,
+  kMigrationFailedUnderDownloads = 4,
+  kMigrationFailedUnderCache = 5,
+  kMigrationFailedUnderGcache = 6,
+  kMigrationFailedPathTypeNumBuckets
 };
 
 enum class HomedirEncryptionType {
