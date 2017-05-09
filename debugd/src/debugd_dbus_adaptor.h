@@ -61,8 +61,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   void RegisterAsync(
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
 
- private:
-  // D-Bus methods.
+  // org::chromium::debugdInterface overrides; D-Bus methods.
   std::string BatteryFirmware(const std::string& option) override;
   bool PingStart(brillo::ErrorPtr* error,
                  const dbus::FileDescriptor& outfd,
@@ -157,6 +156,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   void ContainerStarted() override;
   void ContainerStopped() override;
 
+ private:
   brillo::dbus_utils::DBusObject dbus_object_;
 
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
