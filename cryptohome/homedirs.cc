@@ -859,13 +859,17 @@ bool HomeDirs::GetTrackedDirectoryForDirCrypto(
                                      base::FileEnumerator::DIRECTORIES));
     for (FilePath dir = enumerator->Next(); !dir.empty();
          dir = enumerator->Next()) {
-      std::string name;
-      if (platform_->GetExtendedFileAttributeAsString(
-              dir, kTrackedDirectoryNameAttribute, &name) &&
-          name == name_component) {
-        // This is the directory we're looking for.
-        next_path = dir;
-        break;
+      if (platform_->HasExtendedFileAttribute(
+              dir, kTrackedDirectoryNameAttribute)) {
+        std::string name;
+        if (!platform_->GetExtendedFileAttributeAsString(
+                dir, kTrackedDirectoryNameAttribute, &name))
+          return false;
+        if (name == name_component) {
+          // This is the directory we're looking for.
+          next_path = dir;
+          break;
+        }
       }
     }
     if (next_path.empty()) {

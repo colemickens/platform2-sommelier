@@ -275,7 +275,11 @@ TEST_P(HomeDirsTest, GetTrackedDirectoryForDirCrypto) {
   // Use real FileEnumerator.
   EXPECT_CALL(platform_, GetFileEnumerator(_, _, _)).WillRepeatedly(
       Invoke(&real_platform, &Platform::GetFileEnumerator));
-  // Use real GetExtendedFileAttributeAsString
+  // Use real HasExtendedFileAttribute.
+  EXPECT_CALL(platform_, HasExtendedFileAttribute(_, _))
+      .WillRepeatedly(Invoke(&real_platform,
+                             &Platform::HasExtendedFileAttribute));
+  // Use real GetExtendedFileAttributeAsString.
   EXPECT_CALL(platform_, GetExtendedFileAttributeAsString(_, _, _))
       .WillRepeatedly(Invoke(&real_platform,
                              &Platform::GetExtendedFileAttributeAsString));
@@ -356,6 +360,9 @@ class FreeDiskSpaceTest : public HomeDirsTest {
           child, kTrackedDirectoryNameAttribute, _))
           .WillRepeatedly(DoAll(SetArgPointee<2>(child.BaseName().value()),
                                 Return(true)));
+      EXPECT_CALL(platform_, HasExtendedFileAttribute(
+          child, kTrackedDirectoryNameAttribute))
+          .WillRepeatedly(Return(true));
     }
     // |child_directories| should be enumerated as the parent's children.
     auto create_file_enumerator_function = [child_directories]() {
