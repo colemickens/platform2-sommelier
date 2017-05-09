@@ -365,6 +365,10 @@ bool BiometricsManagerWrapper::EnrollSessionCancel(brillo::ErrorPtr* error) {
     return false;
   }
   enroll_session_.End();
+  // TODO(crbug.com/715302): FpcBiometricsManager need to wait here for
+  // EnrollSession to end completely before any other session could start. Wait
+  // time is ~200 milliseconds.
+
   if (enroll_session_dbus_object_) {
     FinalizeEnrollSessionObject();
   }
@@ -381,6 +385,10 @@ bool BiometricsManagerWrapper::AuthSessionEnd(brillo::ErrorPtr* error) {
     return false;
   }
   auth_session_.End();
+  // TODO(crbug.com/715302): FpcBiometricsManager need to wait here for
+  // AuthSession to end completely before any other session could start. Wait
+  // time is ~200 milliseconds.
+
   if (auth_session_dbus_object_) {
     FinalizeAuthSessionObject();
   }
