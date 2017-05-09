@@ -442,6 +442,9 @@
                   ACTION_BOOT_COMPLETED broadcast for 3rd party apps.
         @enable_vendor_privileged_app_scanning: Option to enable package
                   manager service to scan /vendor/priv-app directory.
+        @container_instance_id: Output parameter containing an opaque
+                  identifier for the container instance. The
+                  ArcInstanceStopped signal will contain the same identifier.
 
         Starts an ARC instance. Only one instance of ARC can be executing at a
         given point in time. This method is only available if the board
@@ -452,6 +455,7 @@
       <arg type="b" name="disable_boot_completed_broadcast" direction="in" />
       <arg type="b" name="enable_vendor_privileged_app_scanning" direction="in"
       />
+      <arg type="s" name="container_instance_id" direction="out" />
     </method>
 
     <!--

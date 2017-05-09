@@ -224,6 +224,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   void StartArcInstance(const std::string& account_id,
                         bool disable_boot_completed_broadcast,
                         bool enable_vendor_privileged,
+                        std::string* container_instance_id_out,
                         Error* error);
   void StopArcInstance(Error* error);
   void SetArcCpuRestriction(ContainerCpuRestrictionState state, Error* error);
@@ -247,7 +248,9 @@ class SessionManagerImpl : public SessionManagerInterface,
   using UserSessionMap = std::map<std::string, std::unique_ptr<UserSession>>;
 
   // Called when the Android container is stopped.
-  void OnAndroidContainerStopped(pid_t pid, bool clean);
+  void OnAndroidContainerStopped(const std::string& container_instance_id,
+                                 pid_t pid,
+                                 bool clean);
 
   // Called when the tlsdated service becomes initially available.
   void OnSystemClockServiceAvailable(bool service_available);
@@ -286,7 +289,10 @@ class SessionManagerImpl : public SessionManagerInterface,
   // failure is encountered false will be returned, |dbus_error_out| will be set
   // to a value from login_manager::dbus_error, and |error_message_out| will be
   // filled with a message suitable for logging.
-  bool StartArcInstanceInternal(bool* started_container_out,
+  // In case of ARC stop, OnAndroidContainerStopped() is called with the given
+  // |container_instance_id|.
+  bool StartArcInstanceInternal(const std::string& container_instance_id,
+                                bool* started_container_out,
                                 const char** dbus_error_out,
                                 std::string* error_message_out);
 

@@ -14,10 +14,12 @@
 #include <string>
 #include <utility>
 
+#include <base/base64.h>
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
+#include <base/rand_util.h>
 #include <base/run_loop.h>
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
@@ -107,6 +109,7 @@ const base::FilePath::CharType kDeviceLocalAccountStateDir[] =
 // Path and the amount for the check.
 constexpr base::FilePath::CharType kArcDiskCheckPath[] = "/home";
 constexpr int64_t kArcCriticalDiskFreeBytes = 64 << 20;  // 64MB
+constexpr size_t kArcContainerInstanceIdLength = 16;
 
 // Name of android-data directory.
 const base::FilePath::CharType kAndroidDataDirName[] =
@@ -758,6 +761,7 @@ void SessionManagerImpl::StartArcInstance(
     const std::string& account_id,
     bool disable_boot_completed_broadcast,
     bool enable_vendor_privileged_app_scanning,
+    std::string* container_instance_id_out,
     Error* error) {
 #if USE_CHEETS
   arc_start_time_ = base::TimeTicks::Now();
@@ -819,8 +823,12 @@ void SessionManagerImpl::StartArcInstance(
   bool started_container = false;
   const char* dbus_error = nullptr;
   std::string error_message;
-  if (!StartArcInstanceInternal(&started_container, &dbus_error,
-                                &error_message)) {
+  // Container instance id needs to be valid ASCII/UTF-8, so encode as base64.
+  std::string container_instance_id =
+      base::RandBytesAsString(kArcContainerInstanceIdLength);
+  base::Base64Encode(container_instance_id, &container_instance_id);
+  if (!StartArcInstanceInternal(container_instance_id, &started_container,
+                                &dbus_error, &error_message)) {
     LOG(ERROR) << error_message;
     error->Set(dbus_error, error_message);
     init_controller_->TriggerImpulse(kArcStopSignal, {},
@@ -832,6 +840,7 @@ void SessionManagerImpl::StartArcInstance(
     }
     return;
   }
+  *container_instance_id_out = std::move(container_instance_id);
   start_arc_instance_closure_.Run();
 #else
   error->Set(dbus_error::kNotAvailable, "ARC not supported.");
@@ -1142,6 +1151,7 @@ PolicyService* SessionManagerImpl::GetPolicyService(const std::string& user) {
 }
 
 bool SessionManagerImpl::StartArcInstanceInternal(
+    const std::string& container_instance_id,
     bool* started_container_out,
     const char** dbus_error_out,
     std::string* error_message_out) {
@@ -1150,7 +1160,7 @@ bool SessionManagerImpl::StartArcInstanceInternal(
   error_message_out->clear();
   if (!android_container_->StartContainer(
           base::Bind(&SessionManagerImpl::OnAndroidContainerStopped,
-                     weak_ptr_factory_.GetWeakPtr()))) {
+                     weak_ptr_factory_.GetWeakPtr(), container_instance_id))) {
     *dbus_error_out = dbus_error::kContainerStartupFail;
     *error_message_out = "Starting Android container failed.";
     return false;
@@ -1184,7 +1194,8 @@ bool SessionManagerImpl::StartArcInstanceInternal(
   return true;
 }
 
-void SessionManagerImpl::OnAndroidContainerStopped(pid_t pid, bool clean) {
+void SessionManagerImpl::OnAndroidContainerStopped(
+    const std::string& container_instance_id, pid_t pid, bool clean) {
   if (clean) {
     LOG(INFO) << "Android Container with pid " << pid << " stopped";
   } else {
@@ -1206,7 +1217,8 @@ void SessionManagerImpl::OnAndroidContainerStopped(pid_t pid, bool clean) {
     LOG(ERROR) << msg;
   }
 
-  dbus_emitter_->EmitSignalWithBool(kArcInstanceStopped, clean);
+  dbus_emitter_->EmitSignalWithBoolAndString(
+      kArcInstanceStopped, clean, container_instance_id);
 }
 
 }  // namespace login_manager

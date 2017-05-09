@@ -660,12 +660,19 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StartArcInstance(
     LOG(WARNING) << "Failed to get enable_vendor_privileged_app_scanning";
   }
 
+  std::string container_instance_id;
   SessionManagerImpl::Error error;
   impl_->StartArcInstance(account_id, disable_boot_completed_broadcast,
-                          enable_vendor_privileged_app_scanning, &error);
+                          enable_vendor_privileged_app_scanning,
+                          &container_instance_id, &error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
-  return dbus::Response::FromMethodCall(call);
+
+  std::unique_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(call));
+  dbus::MessageWriter writer(response.get());
+  writer.AppendString(container_instance_id);
+  return response;
 }
 
 std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StopArcInstance(

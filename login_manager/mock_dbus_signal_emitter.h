@@ -24,6 +24,8 @@ class MockDBusSignalEmitter : public DBusSignalEmitterInterface {
   MOCK_METHOD2(EmitSignalWithString, void(const std::string&,
                                           const std::string&));
   MOCK_METHOD2(EmitSignalWithBool, void(const std::string&, bool));
+  MOCK_METHOD3(EmitSignalWithBoolAndString, void(const std::string&, bool,
+                                                 const std::string&));
 };
 
 }  // namespace login_manager

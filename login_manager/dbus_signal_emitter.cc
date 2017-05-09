@@ -54,4 +54,15 @@ void DBusSignalEmitter::EmitSignalWithBool(const std::string& signal_name,
   object_->SendSignal(&signal);
 }
 
+void DBusSignalEmitter::EmitSignalWithBoolAndString(
+    const std::string& signal_name,
+    bool payload1,
+    const std::string& payload2) {
+  dbus::Signal signal(interface_, signal_name);
+  dbus::MessageWriter writer(&signal);
+  writer.AppendBool(payload1);
+  writer.AppendString(payload2);
+  object_->SendSignal(&signal);
+}
+
 }  // namespace login_manager
