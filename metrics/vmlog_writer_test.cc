@@ -39,13 +39,39 @@ class VmlogWriterTest : public testing::Test {};
 
 TEST_F(VmlogWriterTest, ParseVmStats) {
   const char kVmStats[] =
-      "pswpin 1345\npswpout 8896\n"
-      "foo 100\nbar 200\npgmajfault 42\netcetc 300\n";
+    "pswpin 1345\n"
+    "pswpout 8896\n"
+    "foo 100\n"
+    "bar 200\n"
+    "pgmajfault 42\n"
+    "pgmajfault_a 3838\n"
+    "pgmajfault_f 66\n"
+    "etcetc 300\n";
   struct VmstatRecord stats;
   EXPECT_TRUE(VmStatsParseStats(kVmStats, &stats));
   EXPECT_EQ(stats.page_faults_, 42);
+  EXPECT_EQ(stats.anon_page_faults_, 3838);
+  EXPECT_EQ(stats.file_page_faults_, 66);
   EXPECT_EQ(stats.swap_in_, 1345);
   EXPECT_EQ(stats.swap_out_, 8896);
+}
+
+TEST_F(VmlogWriterTest, ParseVmStatsOptionalMissing) {
+  const char kVmStats[] =
+    "pswpin 1345\n"
+    "pswpout 8896\n"
+    "foo 100\n"
+    "bar 200\n"
+    "pgmajfault 42\n"
+    // pgmajfault_a and pgmajfault_f are optional.
+    // The default value when missing is 0.
+    // "pgmajfault_a 3838\n"
+    // "pgmajfault_f 66\n"
+    "etcetc 300\n";
+  struct VmstatRecord stats;
+  EXPECT_TRUE(VmStatsParseStats(kVmStats, &stats));
+  EXPECT_EQ(stats.anon_page_faults_, 0);
+  EXPECT_EQ(stats.file_page_faults_, 0);
 }
 
 TEST_F(VmlogWriterTest, VmlogRotation) {

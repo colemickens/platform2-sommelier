@@ -26,7 +26,8 @@
 namespace chromeos_metrics {
 namespace {
 
-constexpr char kVmlogHeader[] = "time pgmajfault pswpin pswpout\n";
+constexpr char kVmlogHeader[] =
+  "time pgmajfault pgmajfault_f pgmajfault_a pswpin pswpout\n";
 
 // We limit the size of vmlog log files to keep frequent logging from wasting
 // disk space.
@@ -40,10 +41,30 @@ bool VmStatsParseStats(const std::string& stats, struct VmstatRecord* record) {
     const std::string name;
     uint64_t* value_p;
     bool found;
+    bool optional;
   } map[] = {
-      {.name = "pgmajfault", .value_p = &record->page_faults_, .found = false},
-      {.name = "pswpin", .value_p = &record->swap_in_, .found = false},
-      {.name = "pswpout", .value_p = &record->swap_out_, .found = false},
+      {.name = "pgmajfault",
+       .value_p = &record->page_faults_,
+       .found = false,
+       .optional = false},
+      // pgmajfault_f and pgmajfault_a may not be present in all kernels.
+      // Don't fuss if they are not.
+      {.name = "pgmajfault_f",
+       .value_p = &record->file_page_faults_,
+       .found = false,
+       .optional = true},
+      {.name = "pgmajfault_a",
+       .value_p = &record->anon_page_faults_,
+       .found = false,
+       .optional = true},
+      {.name = "pswpin",
+       .value_p = &record->swap_in_,
+       .found = false,
+       .optional = false},
+      {.name = "pswpout",
+       .value_p = &record->swap_out_,
+       .found = false,
+       .optional = false},
   };
 
   // Each line in the file has the form
@@ -67,11 +88,15 @@ bool VmStatsParseStats(const std::string& stats, struct VmstatRecord* record) {
       }
     }
   }
-  // Make sure we got all the stats
+  // Make sure we got all the stats, except the optional ones.
   for (const auto& mapping : map) {
-    if (mapping.found == false) {
-      LOG(WARNING) << "vmstat missing " << mapping.name;
-      return false;
+    if (!mapping.found) {
+      if (mapping.optional) {
+        *mapping.value_p = 0;
+      } else {
+        LOG(WARNING) << "vmstat missing " << mapping.name;
+        return false;
+      }
     }
   }
   return true;
@@ -216,10 +241,13 @@ void VmlogWriter::WriteCallback() {
 
   int64_t uptime_micros = base::SysInfo::Uptime().InMicroseconds();
   std::string out_line = base::StringPrintf(
-      "[%5" PRIu64 ".%" PRIu64 "] %" PRIu64 " %" PRIu64 " %" PRIu64 "\n",
+      "[%5" PRIu64 ".%" PRIu64  "]"
+      " %" PRIu64 " %" PRIu64" %" PRIu64" %" PRIu64 " %" PRIu64 "\n",
       uptime_micros / 1000000,
       uptime_micros % 1000000,
       r.page_faults_,
+      r.file_page_faults_,
+      r.anon_page_faults_,
       r.swap_in_,
       r.swap_out_);
 

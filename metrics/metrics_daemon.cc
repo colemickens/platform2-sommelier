@@ -110,12 +110,22 @@ const int MetricsDaemon::kMetricSectorsBuckets = 50;    // buckets
 const int MetricsDaemon::kMetricPageFaultsMax = kMetricSectorsIOMax / 8;
 const int MetricsDaemon::kMetricPageFaultsBuckets = 50;
 
-// Major page faults, i.e. the ones that require data to be read from disk.
+// Major page faults, i.e. the ones that require data to be read from disk or
+// decompressed from zram.  "Anon" and "File" qualifiers are in grammatically
+// incorrect positions for better sorting in UMA.
 
 const char MetricsDaemon::kMetricPageFaultsLongName[] =
     "Platform.PageFaultsLong";
 const char MetricsDaemon::kMetricPageFaultsShortName[] =
     "Platform.PageFaultsShort";
+const char MetricsDaemon::kMetricFilePageFaultsLongName[] =
+    "Platform.PageFaultsFileLong";
+const char MetricsDaemon::kMetricFilePageFaultsShortName[] =
+    "Platform.PageFaultsFileShort";
+const char MetricsDaemon::kMetricAnonPageFaultsLongName[] =
+    "Platform.PageFaultsAnonLong";
+const char MetricsDaemon::kMetricAnonPageFaultsShortName[] =
+    "Platform.PageFaultsAnonShort";
 
 // Swap in and Swap out
 
@@ -658,9 +668,15 @@ void MetricsDaemon::StatsCallback() {
   int write_sectors_per_second = delta_write / delta_time;
   bool vmstats_success = VmStatsReadStats(&vmstats_now);
   uint64_t delta_faults = vmstats_now.page_faults_ - vmstats_.page_faults_;
+  uint64_t delta_file_faults =
+    vmstats_now.file_page_faults_ - vmstats_.file_page_faults_;
+  uint64_t delta_anon_faults =
+    vmstats_now.anon_page_faults_ - vmstats_.anon_page_faults_;
   uint64_t delta_swap_in = vmstats_now.swap_in_ - vmstats_.swap_in_;
   uint64_t delta_swap_out = vmstats_now.swap_out_ - vmstats_.swap_out_;
   uint64_t page_faults_per_second = delta_faults / delta_time;
+  uint64_t file_page_faults_per_second = delta_file_faults / delta_time;
+  uint64_t anon_page_faults_per_second = delta_anon_faults / delta_time;
   uint64_t swap_in_per_second = delta_swap_in / delta_time;
   uint64_t swap_out_per_second = delta_swap_out / delta_time;
 
@@ -681,6 +697,16 @@ void MetricsDaemon::StatsCallback() {
       if (vmstats_success) {
         SendSample(kMetricPageFaultsShortName,
                    page_faults_per_second,
+                   1,
+                   kMetricPageFaultsMax,
+                   kMetricPageFaultsBuckets);
+        SendSample(kMetricFilePageFaultsShortName,
+                   file_page_faults_per_second,
+                   1,
+                   kMetricPageFaultsMax,
+                   kMetricPageFaultsBuckets);
+        SendSample(kMetricAnonPageFaultsShortName,
+                   anon_page_faults_per_second,
                    1,
                    kMetricPageFaultsMax,
                    kMetricPageFaultsBuckets);
@@ -719,6 +745,16 @@ void MetricsDaemon::StatsCallback() {
       if (vmstats_success) {
         SendSample(kMetricPageFaultsLongName,
                    page_faults_per_second,
+                   1,
+                   kMetricPageFaultsMax,
+                   kMetricPageFaultsBuckets);
+        SendSample(kMetricFilePageFaultsLongName,
+                   file_page_faults_per_second,
+                   1,
+                   kMetricPageFaultsMax,
+                   kMetricPageFaultsBuckets);
+        SendSample(kMetricAnonPageFaultsLongName,
+                   anon_page_faults_per_second,
                    1,
                    kMetricPageFaultsMax,
                    kMetricPageFaultsBuckets);

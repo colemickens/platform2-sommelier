@@ -125,6 +125,10 @@ class MetricsDaemon : public brillo::DBusDaemon {
   static const char kMetricWriteSectorsShortName[];
   static const char kMetricPageFaultsShortName[];
   static const char kMetricPageFaultsLongName[];
+  static const char kMetricFilePageFaultsShortName[];
+  static const char kMetricFilePageFaultsLongName[];
+  static const char kMetricAnonPageFaultsShortName[];
+  static const char kMetricAnonPageFaultsLongName[];
   static const char kMetricSwapInLongName[];
   static const char kMetricSwapInShortName[];
   static const char kMetricSwapOutLongName[];
