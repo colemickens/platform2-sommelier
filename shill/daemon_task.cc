@@ -18,10 +18,6 @@
 
 #include <base/bind.h>
 
-#if !defined(ENABLE_JSON_STORE)
-#include <glib.h>
-#endif  // ENABLE_JSON_STORE
-
 #if defined(ENABLE_BINDER)
 #include "shill/binder/binder_control.h"
 #elif defined(ENABLE_CHROMEOS_DBUS)
