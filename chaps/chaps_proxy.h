@@ -14,7 +14,7 @@
 #include <brillo/secure_blob.h>
 
 #include "chaps/chaps_interface.h"
-#include "chaps/dbus_proxies/chaps_interface.h"
+#include "chaps/dbus_proxies/org.chromium.Chaps.h"
 
 namespace chaps {
 

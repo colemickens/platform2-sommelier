@@ -41,7 +41,7 @@
         'xml2cpp_out_dir': 'include/chaps/dbus_proxies',
       },
       'sources': [
-        '<(xml2cpp_in_dir)/chaps_interface.xml',
+        '<(xml2cpp_in_dir)/dbus_bindings/org.chromium.Chaps.xml',
       ],
       'includes': ['../common-mk/xml2cpp.gypi'],
     },
@@ -54,7 +54,7 @@
         'xml2cpp_out_dir': 'include/chaps/dbus_adaptors',
       },
       'sources': [
-        '<(xml2cpp_in_dir)/chaps_interface.xml',
+        '<(xml2cpp_in_dir)/dbus_bindings/org.chromium.Chaps.xml',
       ],
       'includes': ['../common-mk/xml2cpp.gypi'],
     },

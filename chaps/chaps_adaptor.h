@@ -10,7 +10,7 @@
 
 #include <base/macros.h>
 
-#include "chaps/dbus_adaptors/chaps_interface.h"
+#include "chaps/dbus_adaptors/org.chromium.Chaps.h"
 
 namespace base {
 class Lock;
