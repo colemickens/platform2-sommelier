@@ -22,6 +22,7 @@
 #include <dbus/message.h>
 
 #include "login_manager/policy_service.h"
+#include "login_manager/proto_bindings/arc.pb.h"
 
 namespace login_manager {
 namespace {
@@ -646,24 +647,34 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StopContainer(
 std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StartArcInstance(
     dbus::MethodCall* call) {
   dbus::MessageReader reader(call);
+  login_manager::StartArcInstanceRequest request;
   std::string account_id;
-  if (!reader.PopString(&account_id))
-    return CreateInvalidArgsError(call, call->GetSignature());
+  bool skip_boot_completed_broadcast = false;
+  bool scan_vendor_priv_app = false;
 
-  bool disable_boot_completed_broadcast = false;
-  if (!reader.PopBool(&disable_boot_completed_broadcast))
-    return CreateInvalidArgsError(call, call->GetSignature());
+  if (reader.PopArrayOfBytesAsProto(&request)) {
+    // New message format with proto parameter.
+    if (!request.has_account_id() ||
+        !request.has_skip_boot_completed_broadcast() ||
+        !request.has_scan_vendor_priv_app())
+      return CreateInvalidArgsError(call, call->GetSignature());
 
-  bool enable_vendor_privileged_app_scanning = false;
-  if (!reader.PopBool(&enable_vendor_privileged_app_scanning)) {
-    LOG(WARNING) << "Failed to get enable_vendor_privileged_app_scanning";
+    account_id = request.account_id();
+    skip_boot_completed_broadcast = request.skip_boot_completed_broadcast();
+    scan_vendor_priv_app = request.scan_vendor_priv_app();
+  } else {
+    // TODO(xiaohuic): remove after Chromium side moved to proto.
+    // http://b/37989086
+    if (!reader.PopString(&account_id) ||
+        !reader.PopBool(&skip_boot_completed_broadcast) ||
+        !reader.PopBool(&scan_vendor_priv_app))
+      return CreateInvalidArgsError(call, call->GetSignature());
   }
 
   std::string container_instance_id;
   SessionManagerImpl::Error error;
-  impl_->StartArcInstance(account_id, disable_boot_completed_broadcast,
-                          enable_vendor_privileged_app_scanning,
-                          &container_instance_id, &error);
+  impl_->StartArcInstance(account_id, skip_boot_completed_broadcast,
+                          scan_vendor_priv_app, &container_instance_id, &error);
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
 

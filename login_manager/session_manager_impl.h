@@ -225,8 +225,8 @@ class SessionManagerImpl : public SessionManagerInterface,
   void StopContainer(const std::string& name, Error* error);
 
   void StartArcInstance(const std::string& account_id,
-                        bool disable_boot_completed_broadcast,
-                        bool enable_vendor_privileged,
+                        bool skip_boot_completed_broadcast,
+                        bool scan_vendor_priv_app,
                         std::string* container_instance_id_out,
                         Error* error);
   void StopArcInstance(Error* error);

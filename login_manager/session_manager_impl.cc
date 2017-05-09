@@ -765,8 +765,8 @@ void SessionManagerImpl::InitMachineInfo(const std::string& data,
 
 void SessionManagerImpl::StartArcInstance(
     const std::string& account_id,
-    bool disable_boot_completed_broadcast,
-    bool enable_vendor_privileged_app_scanning,
+    bool skip_boot_completed_broadcast,
+    bool scan_vendor_priv_app,
     std::string* container_instance_id_out,
     Error* error) {
 #if USE_CHEETS
@@ -813,9 +813,9 @@ void SessionManagerImpl::StartArcInstance(
       base::StringPrintf("CHROMEOS_DEV_MODE=%d", is_dev_mode),
       base::StringPrintf("CHROMEOS_INSIDE_VM=%d", is_inside_vm),
       base::StringPrintf("DISABLE_BOOT_COMPLETED_BROADCAST=%d",
-                         disable_boot_completed_broadcast),
+                         skip_boot_completed_broadcast),
       base::StringPrintf("ENABLE_VENDOR_PRIVILEGED=%d",
-                         enable_vendor_privileged_app_scanning),
+                         scan_vendor_priv_app),
   };
 
   if (!init_controller_->TriggerImpulse(

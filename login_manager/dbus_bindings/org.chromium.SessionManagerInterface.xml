@@ -436,12 +436,8 @@
 
     <!--
         StartArcInstance:
-        @account_id: Account ID of the user to start ARC for. This
-                  must be the same as the one given in StartSession.
-        @disable_boot_completed_broadcast: Option to disable
-                  ACTION_BOOT_COMPLETED broadcast for 3rd party apps.
-        @enable_vendor_privileged_app_scanning: Option to enable package
-                  manager service to scan /vendor/priv-app directory.
+        @request: Serialized StartArcInstanceRequest proto message containing
+                  ARC startup options.
         @container_instance_id: Output parameter containing an opaque
                   identifier for the container instance. The
                   ArcInstanceStopped signal will contain the same identifier.
@@ -451,10 +447,7 @@
         supports ARC. This method gets invoked by Chrome.
     -->
     <method name="StartArcInstance">
-      <arg type="s" name="account_id" direction="in" />
-      <arg type="b" name="disable_boot_completed_broadcast" direction="in" />
-      <arg type="b" name="enable_vendor_privileged_app_scanning" direction="in"
-      />
+      <arg type="ay" name="request" direction="in" />
       <arg type="s" name="container_instance_id" direction="out" />
     </method>
 
