@@ -207,6 +207,7 @@ void container_config_destroy(struct container_config *c)
 		container_config_free_device(&c->devices[i]);
 	}
 	FREE_AND_NULL(c->devices);
+	FREE_AND_NULL(c->cgroup_devices);
 	FREE_AND_NULL(c->run_setfiles);
 	FREE_AND_NULL(c->cgroup_parent);
 	FREE_AND_NULL(c);
