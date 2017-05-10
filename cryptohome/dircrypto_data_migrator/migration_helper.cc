@@ -376,7 +376,7 @@ bool MigrationHelper::MigrateFile(const base::FilePath& from,
                     to_file.error_details());
     return false;
   }
-  if (!platform_->SyncDirectory(to.DirName()))
+  if (!platform_->SyncDirectory(to_child.DirName()))
     return false;
 
   int64_t from_length = from_file.GetLength();
