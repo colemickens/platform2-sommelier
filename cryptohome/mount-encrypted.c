@@ -1123,7 +1123,7 @@ static int setup_encrypted(int mode)
 		goto dm_cleanup;
 	}
 	if (mount(dmcrypt_dev, encrypted_mount, kEncryptedFSType,
-		  MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_RELATIME,
+		  MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME,
 		  mount_opts)) {
 		PERROR("mount(%s,%s)", dmcrypt_dev, encrypted_mount);
 		goto dm_cleanup;
