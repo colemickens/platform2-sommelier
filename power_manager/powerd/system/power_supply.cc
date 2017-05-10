@@ -290,6 +290,8 @@ metrics::PowerSupplyType GetPowerSupplyTypeMetric(const std::string& type) {
     return metrics::PowerSupplyType::USB_PD;
   else if (type == PowerSupply::kUsbPdDrpType)
     return metrics::PowerSupplyType::USB_PD_DRP;
+  else if (type == PowerSupply::kBrickIdType)
+    return metrics::PowerSupplyType::BRICK_ID;
   else
     return metrics::PowerSupplyType::OTHER;
 }
@@ -413,6 +415,7 @@ const char PowerSupply::kUsbDcpType[] = "USB_DCP";
 const char PowerSupply::kUsbCType[] = "USB_C";
 const char PowerSupply::kUsbPdType[] = "USB_PD";
 const char PowerSupply::kUsbPdDrpType[] = "USB_PD_DRP";
+const char PowerSupply::kBrickIdType[] = "BrickID";
 
 const char PowerSupply::kBatteryStatusCharging[] = "Charging";
 const char PowerSupply::kBatteryStatusDischarging[] = "Discharging";

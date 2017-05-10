@@ -130,8 +130,9 @@ enum class PowerSupplyType {
   USB_C = 6,
   USB_PD = 7,
   USB_PD_DRP = 8,
+  BRICK_ID = 9,
   // Keep this last and increment it if a new value is inserted.
-  MAX = 9,
+  MAX = 10,
 };
 
 // Values for kConnectedChargingPortsName. Do not renumber.

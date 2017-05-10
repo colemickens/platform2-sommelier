@@ -274,6 +274,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   static const char kUsbCType[];
   static const char kUsbPdType[];
   static const char kUsbPdDrpType[];
+  static const char kBrickIdType[];
 
   // Battery states reported by the kernel. This is not the full set of
   // possible states; see drivers/power/power_supply_sysfs.c.

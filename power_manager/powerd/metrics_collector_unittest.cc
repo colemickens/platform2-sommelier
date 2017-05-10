@@ -696,9 +696,15 @@ TEST_F(MetricsCollectorTest, PowerSupplyType) {
   Init();
 
   power_status_.line_power_on = true;
-  power_status_.line_power_type = "USB_PD";
+  power_status_.line_power_type = system::PowerSupply::kUsbPdType;
   ExpectEnumMetric(kPowerSupplyTypeName,
                    static_cast<int>(PowerSupplyType::USB_PD),
+                   static_cast<int>(PowerSupplyType::MAX));
+  collector_.HandlePowerStatusUpdate(power_status_);
+
+  power_status_.line_power_type = system::PowerSupply::kBrickIdType;
+  ExpectEnumMetric(kPowerSupplyTypeName,
+                   static_cast<int>(PowerSupplyType::BRICK_ID),
                    static_cast<int>(PowerSupplyType::MAX));
   collector_.HandlePowerStatusUpdate(power_status_);
 
