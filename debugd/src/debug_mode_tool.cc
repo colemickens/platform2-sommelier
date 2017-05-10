@@ -13,7 +13,6 @@
 #include <dbus/object_proxy.h>
 #include <dbus/property.h>
 #include <shill/dbus-proxies.h>
-#include <supplicant/dbus-proxies.h>
 
 namespace debugd {
 
@@ -24,6 +23,39 @@ const int kFlimflamLogLevelInfo = 0;
 
 const char kSupplicantServiceName[] = "fi.w1.wpa_supplicant1";
 const char kSupplicantObjectPath[] = "/f1/w1/wpa_supplicant1";
+const char kSupplicantDebugLevel[] = "DebugLevel";
+
+class SupplicantProxy {
+ public:
+  struct Properties : public dbus::PropertySet {
+    dbus::Property<std::string> debug_level;
+
+    explicit Properties(dbus::ObjectProxy* proxy)
+        : dbus::PropertySet(proxy, kSupplicantServiceName,
+                            dbus::PropertySet::PropertyChangedCallback()) {
+      RegisterProperty(kSupplicantDebugLevel, &debug_level);
+    }
+
+    ~Properties() override = default;
+  };
+
+  explicit SupplicantProxy(scoped_refptr<dbus::Bus> bus)
+      : bus_(bus),
+        properties_(bus->GetObjectProxy(
+            kSupplicantServiceName, dbus::ObjectPath(kSupplicantObjectPath))) {}
+
+  ~SupplicantProxy() {}
+
+  void SetDebugLevel(const std::string& level) {
+    properties_.debug_level.SetAndBlock(level);
+  }
+
+ private:
+  scoped_refptr<dbus::Bus> bus_;
+  Properties properties_;
+
+  DISALLOW_COPY_AND_ASSIGN(SupplicantProxy);
+};
 
 }  // namespace
 
@@ -67,10 +99,8 @@ void DebugModeTool::SetDebugMode(const std::string& subsystem) {
     }
   }
 
-  auto supplicant = base::MakeUnique<fi::w1::wpa_supplicant1Proxy>(
-      bus_, kSupplicantServiceName, dbus::ObjectPath(kSupplicantObjectPath));
-  if (supplicant)
-    supplicant->GetProperties()->debug_level.SetAndBlock(supplicant_level);
+  SupplicantProxy supplicant(bus_);
+  supplicant.SetDebugLevel(supplicant_level);
 
   SetAllModemManagersLogging("info");
 }

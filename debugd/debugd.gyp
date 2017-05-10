@@ -46,18 +46,6 @@
     {
       'target_name': 'debugd-proxies',
       'type': 'none',
-      'actions': [
-        {
-          'action_name': 'generate-supplicant-proxies',
-          'variables': {
-            'proxy_output_file': 'include/supplicant/dbus-proxies.h',
-          },
-          'sources': [
-            '../../aosp/system/connectivity/shill/dbus_bindings/supplicant-process.dbus-xml',
-          ],
-          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
-        },
-      ],
       'variables': {
         'exported_deps': [
           'libshill-client',
