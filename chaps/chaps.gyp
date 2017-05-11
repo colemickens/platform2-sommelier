@@ -3,6 +3,10 @@
     'variables': {
       'deps': [
         'dbus-c++-1',
+        # system_api depends on protobuf (or protobuf-lite). It must appear
+        # before protobuf here or the linker flags won't be in the right
+        # order.
+        'system_api',
         'protobuf-lite',
         'openssl',
         'libbrillo-<(libbase_ver)',
@@ -74,6 +78,7 @@
         'chaps_proxy.cc',
         'chaps_utility.cc',
         'isolate_chromeos.cc',
+        'proto_conversion.cc',
         'token_manager_client.cc',
       ],
     },
@@ -91,6 +96,7 @@
         'chaps_proxy.cc',
         'chaps_utility.cc',
         'isolate_chromeos.cc',
+        'proto_conversion.cc',
         'token_manager_client.cc',
       ],
     },
@@ -129,6 +135,7 @@
         'object_store_impl.cc',
         'opencryptoki_importer.cc',
         'platform_globals_chromeos.cc',
+        'proto_conversion.cc',
         'session_impl.cc',
         'slot_manager_impl.cc',
       ],

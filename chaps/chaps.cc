@@ -18,6 +18,7 @@
 #include "chaps/chaps_proxy.h"
 #include "chaps/chaps_utility.h"
 #include "chaps/isolate.h"
+#include "chaps/proto_conversion.h"
 #include "pkcs11/cryptoki.h"
 
 using base::WaitableEvent;
@@ -226,25 +227,11 @@ CK_RV C_GetSlotList(CK_BBOOL tokenPresent,
 CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
-  vector<uint8_t> slot_description;
-  vector<uint8_t> manufacturer_id;
-  CK_RV result = g_proxy->GetSlotInfo(
-      *g_user_isolate,
-      slotID,
-      &slot_description,
-      &manufacturer_id,
-      chaps::PreservedCK_ULONG(&pInfo->flags),
-      static_cast<uint8_t*>(&pInfo->hardwareVersion.major),
-      static_cast<uint8_t*>(&pInfo->hardwareVersion.minor),
-      static_cast<uint8_t*>(&pInfo->firmwareVersion.major),
-      static_cast<uint8_t*>(&pInfo->firmwareVersion.minor));
+  chaps::SlotInfo slot_info;
+  CK_RV result = g_proxy->GetSlotInfo(*g_user_isolate, slotID, &slot_info);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  chaps::CopyVectorToCharBuffer(slot_description,
-                                pInfo->slotDescription,
-                                arraysize(pInfo->slotDescription));
-  chaps::CopyVectorToCharBuffer(manufacturer_id,
-                                pInfo->manufacturerID,
-                                arraysize(pInfo->manufacturerID));
+  LOG_CK_RV_AND_RETURN_IF(!chaps::ProtoToSlotInfo(slot_info, pInfo),
+                          CKR_GENERAL_ERROR);
   VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
@@ -253,45 +240,11 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo) {
 CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
-  vector<uint8_t> label;
-  vector<uint8_t> manufacturer_id;
-  vector<uint8_t> model;
-  vector<uint8_t> serial_number;
-  CK_RV result = g_proxy->GetTokenInfo(
-      *g_user_isolate,
-      slotID,
-      &label,
-      &manufacturer_id,
-      &model,
-      &serial_number,
-      chaps::PreservedCK_ULONG(&pInfo->flags),
-      chaps::PreservedCK_ULONG(&pInfo->ulMaxSessionCount),
-      chaps::PreservedCK_ULONG(&pInfo->ulSessionCount),
-      chaps::PreservedCK_ULONG(&pInfo->ulMaxRwSessionCount),
-      chaps::PreservedCK_ULONG(&pInfo->ulRwSessionCount),
-      chaps::PreservedCK_ULONG(&pInfo->ulMaxPinLen),
-      chaps::PreservedCK_ULONG(&pInfo->ulMinPinLen),
-      chaps::PreservedCK_ULONG(&pInfo->ulTotalPublicMemory),
-      chaps::PreservedCK_ULONG(&pInfo->ulFreePublicMemory),
-      chaps::PreservedCK_ULONG(&pInfo->ulTotalPrivateMemory),
-      chaps::PreservedCK_ULONG(&pInfo->ulFreePrivateMemory),
-      static_cast<uint8_t*>(&pInfo->hardwareVersion.major),
-      static_cast<uint8_t*>(&pInfo->hardwareVersion.minor),
-      static_cast<uint8_t*>(&pInfo->firmwareVersion.major),
-      static_cast<uint8_t*>(&pInfo->firmwareVersion.minor));
+  chaps::TokenInfo token_info;
+  CK_RV result = g_proxy->GetTokenInfo(*g_user_isolate, slotID, &token_info);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  chaps::CopyVectorToCharBuffer(label,
-                                pInfo->label,
-                                arraysize(pInfo->label));
-  chaps::CopyVectorToCharBuffer(manufacturer_id,
-                                pInfo->manufacturerID,
-                                arraysize(pInfo->manufacturerID));
-  chaps::CopyVectorToCharBuffer(model,
-                                pInfo->model,
-                                arraysize(pInfo->model));
-  chaps::CopyVectorToCharBuffer(serial_number,
-                                pInfo->serialNumber,
-                                arraysize(pInfo->serialNumber));
+  LOG_CK_RV_AND_RETURN_IF(!chaps::ProtoToTokenInfo(token_info, pInfo),
+                          CKR_GENERAL_ERROR);
   VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
@@ -348,15 +301,14 @@ CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
                          CK_MECHANISM_INFO_PTR pInfo) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
-  vector<uint64_t> mechanism_list;
-  CK_RV result = g_proxy->GetMechanismInfo(
-      *g_user_isolate,
-      slotID,
-      type,
-      chaps::PreservedCK_ULONG(&pInfo->ulMinKeySize),
-      chaps::PreservedCK_ULONG(&pInfo->ulMaxKeySize),
-      chaps::PreservedCK_ULONG(&pInfo->flags));
+  chaps::MechanismInfo mechanism_info;
+  CK_RV result = g_proxy->GetMechanismInfo(*g_user_isolate,
+                                           slotID,
+                                           type,
+                                           &mechanism_info);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  LOG_CK_RV_AND_RETURN_IF(!chaps::ProtoToMechanismInfo(mechanism_info, pInfo),
+                          CKR_GENERAL_ERROR);
   VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
@@ -449,15 +401,13 @@ CK_RV C_CloseAllSessions(CK_SLOT_ID slotID) {
 CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession, CK_SESSION_INFO_PTR pInfo) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
-
-  CK_RV result = g_proxy->GetSessionInfo(
-      *g_user_isolate,
-      hSession,
-      chaps::PreservedCK_ULONG(&pInfo->slotID),
-      chaps::PreservedCK_ULONG(&pInfo->state),
-      chaps::PreservedCK_ULONG(&pInfo->flags),
-      chaps::PreservedCK_ULONG(&pInfo->ulDeviceError));
+  chaps::SessionInfo session_info;
+  CK_RV result = g_proxy->GetSessionInfo(*g_user_isolate,
+                                         hSession,
+                                         &session_info);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  LOG_CK_RV_AND_RETURN_IF(!chaps::ProtoToSessionInfo(session_info, pInfo),
+                          CKR_GENERAL_ERROR);
   VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }

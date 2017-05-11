@@ -20,7 +20,8 @@
   "-//freedesktop//DTD D-Bus Object Introspection 1.0//EN"
   "http://standards.freedesktop.org/dbus/1.0/introspect.dtd">
 
-<node name="/org/chromium/Chaps">
+<node name="/org/chromium/Chaps"
+      xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
 
   <interface name="org.chromium.ChapsEvents">
   </interface>
@@ -109,13 +110,11 @@
     <method name="GetSlotInfo">
       <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="slot_id" direction="in"/>
-      <arg type="ay" name="slot_description" direction="out"/>
-      <arg type="ay" name="manufacturer_id" direction="out"/>
-      <arg type="t" name="flags" direction="out"/>
-      <arg type="y" name="hardware_version_major" direction="out"/>
-      <arg type="y" name="hardware_version_minor" direction="out"/>
-      <arg type="y" name="firmware_version_major" direction="out"/>
-      <arg type="y" name="firmware_version_minor" direction="out"/>
+      <arg type="ay" name="slot_info" direction="out">
+        <tp:docstring>
+          Slot info packaged as a chaps::SlotInfo protobuf.
+        </tp:docstring>
+      </arg>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -125,25 +124,11 @@
     <method name="GetTokenInfo">
       <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="slot_id" direction="in"/>
-      <arg type="ay" name="label" direction="out"/>
-      <arg type="ay" name="manufacturer_id" direction="out"/>
-      <arg type="ay" name="model" direction="out"/>
-      <arg type="ay" name="serial_number" direction="out"/>
-      <arg type="t" name="flags" direction="out"/>
-      <arg type="t" name="max_session_count" direction="out"/>
-      <arg type="t" name="session_count" direction="out"/>
-      <arg type="t" name="max_session_count_rw" direction="out"/>
-      <arg type="t" name="session_count_rw" direction="out"/>
-      <arg type="t" name="max_pin_len" direction="out"/>
-      <arg type="t" name="min_pin_len" direction="out"/>
-      <arg type="t" name="total_public_memory" direction="out"/>
-      <arg type="t" name="free_public_memory" direction="out"/>
-      <arg type="t" name="total_private_memory" direction="out"/>
-      <arg type="t" name="free_private_memory" direction="out"/>
-      <arg type="y" name="hardware_version_major" direction="out"/>
-      <arg type="y" name="hardware_version_minor" direction="out"/>
-      <arg type="y" name="firmware_version_major" direction="out"/>
-      <arg type="y" name="firmware_version_minor" direction="out"/>
+      <arg type="ay" name="token_info" direction="out">
+        <tp:docstring>
+          Token info packaged as a chaps::TokenInfo protobuf.
+        </tp:docstring>
+      </arg>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -164,9 +149,11 @@
       <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="slot_id" direction="in"/>
       <arg type="t" name="mechanism_type" direction="in"/>
-      <arg type="t" name="min_key_size" direction="out"/>
-      <arg type="t" name="max_key_size" direction="out"/>
-      <arg type="t" name="flags" direction="out"/>
+      <arg type="ay" name="mechanism_info" direction="out">
+        <tp:docstring>
+          Mechanism info packaged as a chaps::TokenInfo protobuf.
+        </tp:docstring>
+      </arg>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -241,10 +228,11 @@
     <method name="GetSessionInfo">
       <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
-      <arg type="t" name="slot_id" direction="out"/>
-      <arg type="t" name="state" direction="out"/>
-      <arg type="t" name="flags" direction="out"/>
-      <arg type="t" name="device_error" direction="out"/>
+      <arg type="ay" name="session_info" direction="out">
+        <tp:docstring>
+          Session info packaged as a chaps::SessionInfo protobuf.
+        </tp:docstring>
+      </arg>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>

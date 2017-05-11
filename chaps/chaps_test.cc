@@ -23,8 +23,10 @@ using std::vector;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Eq;
+using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
+using ::testing::WithArg;
 
 namespace chaps {
 
@@ -221,11 +223,25 @@ TEST_F(TestSlotList, SlotListFailure) {
 }
 
 // Slot Info Tests
+namespace {
+
+void SetSlotInfo(SlotInfo* slot_info) {
+  slot_info->set_slot_description(std::string(64, ' '));
+  slot_info->set_manufacturer_id(std::string(32, ' '));
+  slot_info->set_flags(1);
+  slot_info->mutable_hardware_version()->set_major(2);
+  slot_info->mutable_hardware_version()->set_minor(20);
+  slot_info->mutable_firmware_version()->set_major(3);
+  slot_info->mutable_firmware_version()->set_minor(30);
+}
+
+}  // namespace
+
 TEST(TestSlotInfo, SlotInfoOK) {
   ChapsProxyMock proxy(true);
   EXPECT_CALL(proxy,
-              GetSlotInfo(_, 1, _, _, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<4>(1), Return(CKR_OK)));
+              GetSlotInfo(_, 1, _))
+      .WillOnce(DoAll(WithArg<2>(Invoke(&SetSlotInfo)), Return(CKR_OK)));
   CK_SLOT_INFO info;
   memset(&info, 0, sizeof(info));
   EXPECT_EQ(CKR_OK, C_GetSlotInfo(1, &info));
@@ -234,6 +250,10 @@ TEST(TestSlotInfo, SlotInfoOK) {
   EXPECT_EQ(0, memcmp(spaces, info.slotDescription, 64));
   EXPECT_EQ(0, memcmp(spaces, info.manufacturerID, 32));
   EXPECT_EQ(1, info.flags);
+  EXPECT_EQ(2, info.hardwareVersion.major);
+  EXPECT_EQ(20, info.hardwareVersion.minor);
+  EXPECT_EQ(3, info.firmwareVersion.major);
+  EXPECT_EQ(30, info.firmwareVersion.minor);
 }
 
 TEST(TestSlotInfo, SlotInfoNull) {
@@ -250,23 +270,68 @@ TEST(TestSlotInfo, SlotInfoNotInit) {
 TEST(TestSlotInfo, SlotInfoFailure) {
   ChapsProxyMock proxy(true);
   EXPECT_CALL(proxy,
-              GetSlotInfo(_, 1, _, _, _, _, _, _, _))
+              GetSlotInfo(_, 1, _))
       .WillOnce(Return(CKR_FUNCTION_FAILED));
   CK_SLOT_INFO info;
   EXPECT_EQ(CKR_FUNCTION_FAILED, C_GetSlotInfo(1, &info));
 }
 
 // Token Info Tests
+namespace {
+
+void SetTokenInfo(TokenInfo* token_info) {
+  token_info->set_label(std::string(32, ' '));
+  token_info->set_manufacturer_id(std::string(32, ' '));
+  token_info->set_model(std::string(16, ' '));
+  token_info->set_serial_number(std::string(16, ' '));
+  token_info->set_flags(1);
+  token_info->set_max_session_count(7);
+  token_info->set_session_count(6);
+  token_info->set_max_session_count_rw(5);
+  token_info->set_session_count_rw(2);
+  token_info->set_max_pin_len(8);
+  token_info->set_min_pin_len(4);
+  token_info->set_total_public_memory(1048576);
+  token_info->set_free_public_memory(531441);
+  token_info->set_total_private_memory(2097152);
+  token_info->set_free_private_memory(1594323);
+  token_info->mutable_hardware_version()->set_major(2);
+  token_info->mutable_hardware_version()->set_minor(20);
+  token_info->mutable_firmware_version()->set_major(3);
+  token_info->mutable_firmware_version()->set_minor(30);
+}
+
+}  // namespace
+
 TEST(TestTokenInfo, TokenInfoOK) {
   ChapsProxyMock proxy(true);
   CK_TOKEN_INFO info;
+  EXPECT_CALL(proxy,
+              GetTokenInfo(_, 1, _))
+      .WillOnce(DoAll(WithArg<2>(Invoke(&SetTokenInfo)), Return(CKR_OK)));
   memset(&info, 0, sizeof(info));
   EXPECT_EQ(CKR_OK, C_GetTokenInfo(1, &info));
   uint8_t spaces[64];
   memset(spaces, ' ', arraysize(spaces));
-  // EXPECT_EQ(0, memcmp(spaces, info.serialNumber, 16));
-  // EXPECT_EQ(0, memcmp(spaces, info.manufacturerID, 32));
+  EXPECT_EQ(0, memcmp(spaces, info.label, 32));
+  EXPECT_EQ(0, memcmp(spaces, info.manufacturerID, 32));
+  EXPECT_EQ(0, memcmp(spaces, info.model, 16));
+  EXPECT_EQ(0, memcmp(spaces, info.serialNumber, 16));
   EXPECT_EQ(1, info.flags);
+  EXPECT_EQ(7, info.ulMaxSessionCount);
+  EXPECT_EQ(6, info.ulSessionCount);
+  EXPECT_EQ(5, info.ulMaxRwSessionCount);
+  EXPECT_EQ(2, info.ulRwSessionCount);
+  EXPECT_EQ(8, info.ulMaxPinLen);
+  EXPECT_EQ(4, info.ulMinPinLen);
+  EXPECT_EQ(1048576, info.ulTotalPublicMemory);
+  EXPECT_EQ(531441, info.ulFreePublicMemory);
+  EXPECT_EQ(2097152, info.ulTotalPrivateMemory);
+  EXPECT_EQ(1594323, info.ulFreePrivateMemory);
+  EXPECT_EQ(2, info.hardwareVersion.major);
+  EXPECT_EQ(20, info.hardwareVersion.minor);
+  EXPECT_EQ(3, info.firmwareVersion.major);
+  EXPECT_EQ(30, info.firmwareVersion.minor);
 }
 
 TEST(TestTokenInfo, TokenInfoNull) {
@@ -417,13 +482,25 @@ TEST_F(TestMechList, MechListFailure) {
 }
 
 // Mechanism Info Tests
+namespace {
+
+void SetMechanismInfo(MechanismInfo* mechanism_info) {
+  mechanism_info->set_min_key_size(1024);
+  mechanism_info->set_max_key_size(2048);
+  mechanism_info->set_flags(1);
+}
+
+}  // namespace
+
 TEST(TestMechInfo, MechInfoOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetMechanismInfo(_, 1, 2, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<5>(1), Return(CKR_OK)));
+  EXPECT_CALL(proxy, GetMechanismInfo(_, 1, 2, _))
+      .WillOnce(DoAll(WithArg<3>(Invoke(&SetMechanismInfo)), Return(CKR_OK)));
   CK_MECHANISM_INFO info;
   memset(&info, 0, sizeof(info));
   EXPECT_EQ(CKR_OK, C_GetMechanismInfo(1, 2, &info));
+  EXPECT_EQ(1024, info.ulMinKeySize);
+  EXPECT_EQ(2048, info.ulMaxKeySize);
   EXPECT_EQ(1, info.flags);
 }
 
@@ -440,7 +517,7 @@ TEST(TestMechInfo, MechInfoNotInit) {
 
 TEST(TestMechInfo, MechInfoFailure) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetMechanismInfo(_, 1, 2, _, _, _))
+  EXPECT_CALL(proxy, GetMechanismInfo(_, 1, 2, _))
       .WillOnce(Return(CKR_MECHANISM_INVALID));
   CK_MECHANISM_INFO info;
   EXPECT_EQ(CKR_MECHANISM_INVALID, C_GetMechanismInfo(1, 2, &info));
@@ -621,13 +698,27 @@ TEST(TestCloseSession, CloseAllSessionsFail) {
 }
 
 // Get Session Info Tests
+namespace {
+
+void SetSessionInfo(SessionInfo* session_info) {
+  session_info->set_slot_id(2);
+  session_info->set_state(3);
+  session_info->set_flags(5);
+  session_info->set_device_error(0);
+}
+
+}  // namespace
+
 TEST(TestGetSessionInfo, GetSessionInfoOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetSessionInfo(_, 1, _, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(2), Return(CKR_OK)));
+  EXPECT_CALL(proxy, GetSessionInfo(_, 1, _))
+      .WillOnce(DoAll(WithArg<2>(Invoke(&SetSessionInfo)), Return(CKR_OK)));
   CK_SESSION_INFO info;
   EXPECT_EQ(CKR_OK, C_GetSessionInfo(1, &info));
   EXPECT_EQ(2, info.slotID);
+  EXPECT_EQ(3, info.state);
+  EXPECT_EQ(5, info.flags);
+  EXPECT_EQ(0, info.ulDeviceError);
 }
 
 TEST(TestGetSessionInfo, GetSessionInfoNotInit) {
@@ -643,7 +734,7 @@ TEST(TestGetSessionInfo, GetSessionInfoNull) {
 
 TEST(TestGetSessionInfo, GetSessionInfoFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetSessionInfo(_, 1, _, _, _, _))
+  EXPECT_CALL(proxy, GetSessionInfo(_, 1, _))
       .WillOnce(Return(CKR_SESSION_HANDLE_INVALID));
   CK_SESSION_INFO info;
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, C_GetSessionInfo(1, &info));

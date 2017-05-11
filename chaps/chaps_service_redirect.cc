@@ -16,6 +16,7 @@
 #include "chaps/chaps.h"
 #include "chaps/chaps_utility.h"
 #include "chaps/platform_globals.h"
+#include "chaps/proto_conversion.h"
 
 using std::string;
 using std::vector;
@@ -113,96 +114,26 @@ uint32_t ChapsServiceRedirect::GetSlotList(const SecureBlob& isolate_credential,
 
 uint32_t ChapsServiceRedirect::GetSlotInfo(const SecureBlob& isolate_credential,
                                            uint64_t slot_id,
-                                           vector<uint8_t>* slot_description,
-                                           vector<uint8_t>* manufacturer_id,
-                                           uint64_t* flags,
-                                           uint8_t* hardware_version_major,
-                                           uint8_t* hardware_version_minor,
-                                           uint8_t* firmware_version_major,
-                                           uint8_t* firmware_version_minor) {
+                                           SlotInfo* slot_info) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
-  if (!slot_description || !manufacturer_id || !flags ||
-      !hardware_version_major || !hardware_version_minor ||
-      !firmware_version_major || !firmware_version_minor) {
-    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
-  }
-  CK_SLOT_INFO slot_info;
-  CK_RV result = functions_->C_GetSlotInfo(slot_id, &slot_info);
+  LOG_CK_RV_AND_RETURN_IF(!slot_info, CKR_ARGUMENTS_BAD);
+  CK_SLOT_INFO ck_slot_info;
+  CK_RV result = functions_->C_GetSlotInfo(slot_id, &ck_slot_info);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  *slot_description =
-      ConvertByteBufferToVector(slot_info.slotDescription,
-                                arraysize(slot_info.slotDescription));
-  *manufacturer_id =
-      ConvertByteBufferToVector(slot_info.manufacturerID,
-                                arraysize(slot_info.manufacturerID));
-  *flags = static_cast<uint64_t>(slot_info.flags);
-  *hardware_version_major = slot_info.hardwareVersion.major;
-  *hardware_version_minor = slot_info.hardwareVersion.minor;
-  *firmware_version_major = slot_info.firmwareVersion.major;
-  *firmware_version_minor = slot_info.firmwareVersion.minor;
+  *slot_info = SlotInfoToProto(&ck_slot_info);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::GetTokenInfo(
       const SecureBlob& isolate_credential,
       uint64_t slot_id,
-      vector<uint8_t>* label,
-      vector<uint8_t>* manufacturer_id,
-      vector<uint8_t>* model,
-      vector<uint8_t>* serial_number,
-      uint64_t* flags,
-      uint64_t* max_session_count,
-      uint64_t* session_count,
-      uint64_t* max_session_count_rw,
-      uint64_t* session_count_rw,
-      uint64_t* max_pin_len,
-      uint64_t* min_pin_len,
-      uint64_t* total_public_memory,
-      uint64_t* free_public_memory,
-      uint64_t* total_private_memory,
-      uint64_t* free_private_memory,
-      uint8_t* hardware_version_major,
-      uint8_t* hardware_version_minor,
-      uint8_t* firmware_version_major,
-      uint8_t* firmware_version_minor) {
+      TokenInfo* token_info) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
-  if (!label || !manufacturer_id || !model || !serial_number || !flags ||
-      !max_session_count || !session_count || !max_session_count_rw ||
-      !session_count_rw || !max_pin_len || !min_pin_len ||
-      !total_public_memory || !free_public_memory || !total_private_memory ||
-      !total_public_memory ||
-      !hardware_version_major || !hardware_version_minor ||
-      !firmware_version_major || !firmware_version_minor) {
-    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
-  }
-  CK_TOKEN_INFO token_info;
-  CK_RV result = functions_->C_GetTokenInfo(slot_id, &token_info);
+  LOG_CK_RV_AND_RETURN_IF(!token_info, CKR_ARGUMENTS_BAD);
+  CK_TOKEN_INFO ck_token_info;
+  CK_RV result = functions_->C_GetTokenInfo(slot_id, &ck_token_info);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  *label =
-      ConvertByteBufferToVector(token_info.label, arraysize(token_info.label));
-  *manufacturer_id =
-      ConvertByteBufferToVector(token_info.manufacturerID,
-                                arraysize(token_info.manufacturerID));
-  *model = ConvertByteBufferToVector(token_info.model,
-                                     arraysize(token_info.model));
-  *serial_number =
-      ConvertByteBufferToVector(token_info.serialNumber,
-                                arraysize(token_info.serialNumber));
-  *flags = token_info.flags;
-  *max_session_count = token_info.ulMaxSessionCount;
-  *session_count = token_info.ulSessionCount;
-  *max_session_count_rw = token_info.ulMaxRwSessionCount;
-  *session_count_rw = token_info.ulRwSessionCount;
-  *max_pin_len = token_info.ulMaxPinLen;
-  *min_pin_len = token_info.ulMinPinLen;
-  *total_public_memory = token_info.ulTotalPublicMemory;
-  *free_public_memory = token_info.ulFreePublicMemory;
-  *total_private_memory = token_info.ulTotalPrivateMemory;
-  *free_private_memory = token_info.ulFreePrivateMemory;
-  *hardware_version_major = token_info.hardwareVersion.major;
-  *hardware_version_minor = token_info.hardwareVersion.minor;
-  *firmware_version_major = token_info.firmwareVersion.major;
-  *firmware_version_minor = token_info.firmwareVersion.minor;
+  *token_info = TokenInfoToProto(&ck_token_info);
   return CKR_OK;
 }
 
@@ -232,20 +163,15 @@ uint32_t ChapsServiceRedirect::GetMechanismInfo(
       const SecureBlob& isolate_credential,
       uint64_t slot_id,
       uint64_t mechanism_type,
-      uint64_t* min_key_size,
-      uint64_t* max_key_size,
-      uint64_t* flags) {
+      MechanismInfo* mechanism_info) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
-  if (!min_key_size || !max_key_size || !flags)
-    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
-  CK_MECHANISM_INFO mech_info;
+  LOG_CK_RV_AND_RETURN_IF(!mechanism_info, CKR_ARGUMENTS_BAD);
+  CK_MECHANISM_INFO ck_mech_info;
   CK_RV result = functions_->C_GetMechanismInfo(slot_id,
                                                 mechanism_type,
-                                                &mech_info);
+                                                &ck_mech_info);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  *min_key_size = static_cast<uint64_t>(mech_info.ulMinKeySize);
-  *max_key_size = static_cast<uint64_t>(mech_info.ulMaxKeySize);
-  *flags = static_cast<uint64_t>(mech_info.flags);
+  *mechanism_info = MechanismInfoToProto(&ck_mech_info);
   return CKR_OK;
 }
 
@@ -334,20 +260,13 @@ uint32_t ChapsServiceRedirect::CloseAllSessions(
 uint32_t ChapsServiceRedirect::GetSessionInfo(
       const SecureBlob& isolate_credential,
       uint64_t session_id,
-      uint64_t* slot_id,
-      uint64_t* state,
-      uint64_t* flags,
-      uint64_t* device_error) {
+      SessionInfo* session_info) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
-  if (!slot_id || !state || !flags || !device_error)
-    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
-  CK_SESSION_INFO info;
-  uint32_t result = functions_->C_GetSessionInfo(session_id, &info);
+  LOG_CK_RV_AND_RETURN_IF(!session_info, CKR_ARGUMENTS_BAD);
+  CK_SESSION_INFO ck_session_info;
+  uint32_t result = functions_->C_GetSessionInfo(session_id, &ck_session_info);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  *slot_id = static_cast<uint64_t>(info.slotID);
-  *state = static_cast<uint64_t>(info.state);
-  *flags = static_cast<uint64_t>(info.flags);
-  *device_error = static_cast<uint64_t>(info.ulDeviceError);
+  *session_info = SessionInfoToProto(&ck_session_info);
   return CKR_OK;
 }
 

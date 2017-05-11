@@ -106,50 +106,13 @@ TEST_F(TestService, GetSlotInfo) {
     .WillRepeatedly(SetArgumentPointee<2>(test_info));
 
   // Try bad arguments.
-  void* p[7];
-  for (int i = 0; i < 7; ++i) {
-    memset(p, 1, sizeof(p));
-    p[i] = NULL;
-    EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->GetSlotInfo(
-        ic_,
-        0,
-        reinterpret_cast<vector<uint8_t>*>(p[0]),
-        reinterpret_cast<vector<uint8_t>*>(p[1]),
-        reinterpret_cast<uint64_t*>(p[2]),
-        reinterpret_cast<uint8_t*>(p[3]),
-        reinterpret_cast<uint8_t*>(p[4]),
-        reinterpret_cast<uint8_t*>(p[5]),
-        reinterpret_cast<uint8_t*>(p[6])));
-  }
-  vector<uint8_t> slot_description;
-  vector<uint8_t> manufacturer_id;
-  uint64_t flags;
-  uint8_t hardware_version_major;
-  uint8_t hardware_version_minor;
-  uint8_t firmware_version_major;
-  uint8_t firmware_version_minor;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->GetSlotInfo(ic_, 0, nullptr));
   // Try invalid slot ID.
-  EXPECT_EQ(CKR_SLOT_ID_INVALID,
-            service_->GetSlotInfo(ic_,
-                                  2,
-                                  &slot_description,
-                                  &manufacturer_id,
-                                  &flags,
-                                  &hardware_version_major,
-                                  &hardware_version_minor,
-                                  &firmware_version_major,
-                                  &firmware_version_minor));
+  SlotInfo slot_info;
+  EXPECT_EQ(CKR_SLOT_ID_INVALID, service_->GetSlotInfo(ic_, 2, &slot_info));
   // Try the normal case.
-  EXPECT_EQ(CKR_OK, service_->GetSlotInfo(ic_,
-                                          0,
-                                          &slot_description,
-                                          &manufacturer_id,
-                                          &flags,
-                                          &hardware_version_major,
-                                          &hardware_version_minor,
-                                          &firmware_version_major,
-                                          &firmware_version_minor));
-  EXPECT_EQ(flags, 17);
+  EXPECT_EQ(CKR_OK, service_->GetSlotInfo(ic_, 0, &slot_info));
+  EXPECT_EQ(slot_info.flags(), 17);
 }
 
 TEST_F(TestService, GetTokenInfo) {
@@ -167,120 +130,14 @@ TEST_F(TestService, GetTokenInfo) {
     .WillRepeatedly(SetArgumentPointee<2>(test_info));
 
   // Try bad arguments.
-  void* p[19];
-  for (int i = 0; i < 19; ++i) {
-    memset(p, 1, sizeof(p));
-    p[i] = NULL;
-    EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->GetTokenInfo(
-        ic_,
-        0,
-        reinterpret_cast<vector<uint8_t>*>(p[0]),
-        reinterpret_cast<vector<uint8_t>*>(p[1]),
-        reinterpret_cast<vector<uint8_t>*>(p[2]),
-        reinterpret_cast<vector<uint8_t>*>(p[3]),
-        reinterpret_cast<uint64_t*>(p[4]),
-        reinterpret_cast<uint64_t*>(p[5]),
-        reinterpret_cast<uint64_t*>(p[6]),
-        reinterpret_cast<uint64_t*>(p[7]),
-        reinterpret_cast<uint64_t*>(p[8]),
-        reinterpret_cast<uint64_t*>(p[9]),
-        reinterpret_cast<uint64_t*>(p[10]),
-        reinterpret_cast<uint64_t*>(p[11]),
-        reinterpret_cast<uint64_t*>(p[12]),
-        reinterpret_cast<uint64_t*>(p[13]),
-        reinterpret_cast<uint64_t*>(p[14]),
-        reinterpret_cast<uint8_t*>(p[15]),
-        reinterpret_cast<uint8_t*>(p[16]),
-        reinterpret_cast<uint8_t*>(p[17]),
-        reinterpret_cast<uint8_t*>(p[18])));
-  }
-  vector<uint8_t> label;
-  vector<uint8_t> manufacturer_id;
-  vector<uint8_t> model;
-  vector<uint8_t> serial_number;
-  uint64_t flags;
-  uint64_t max_session_count;
-  uint64_t session_count;
-  uint64_t max_session_count_rw;
-  uint64_t session_count_rw;
-  uint64_t max_pin_len;
-  uint64_t min_pin_len;
-  uint64_t total_public_memory;
-  uint64_t free_public_memory;
-  uint64_t total_private_memory;
-  uint64_t free_private_memory;
-  uint8_t hardware_version_major;
-  uint8_t hardware_version_minor;
-  uint8_t firmware_version_major;
-  uint8_t firmware_version_minor;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->GetTokenInfo(ic_, 0, nullptr));
   // Try invalid slot ID.
-  EXPECT_EQ(CKR_SLOT_ID_INVALID,
-            service_->GetTokenInfo(ic_,
-                                   3,
-                                   &label,
-                                   &manufacturer_id,
-                                   &model,
-                                   &serial_number,
-                                   &flags,
-                                   &max_session_count,
-                                   &session_count,
-                                   &max_session_count_rw,
-                                   &session_count_rw,
-                                   &max_pin_len,
-                                   &min_pin_len,
-                                   &total_public_memory,
-                                   &free_public_memory,
-                                   &total_private_memory,
-                                   &free_private_memory,
-                                   &hardware_version_major,
-                                   &hardware_version_minor,
-                                   &firmware_version_major,
-                                   &firmware_version_minor));
-  EXPECT_EQ(CKR_TOKEN_NOT_PRESENT,
-            service_->GetTokenInfo(ic_,
-                                   0,
-                                   &label,
-                                   &manufacturer_id,
-                                   &model,
-                                   &serial_number,
-                                   &flags,
-                                   &max_session_count,
-                                   &session_count,
-                                   &max_session_count_rw,
-                                   &session_count_rw,
-                                   &max_pin_len,
-                                   &min_pin_len,
-                                   &total_public_memory,
-                                   &free_public_memory,
-                                   &total_private_memory,
-                                   &free_private_memory,
-                                   &hardware_version_major,
-                                   &hardware_version_minor,
-                                   &firmware_version_major,
-                                   &firmware_version_minor));
+  TokenInfo token_info;
+  EXPECT_EQ(CKR_SLOT_ID_INVALID, service_->GetTokenInfo(ic_, 3, &token_info));
+  EXPECT_EQ(CKR_TOKEN_NOT_PRESENT, service_->GetTokenInfo(ic_, 0, &token_info));
   // Try the normal case.
-  EXPECT_EQ(CKR_OK, service_->GetTokenInfo(ic_,
-                                           0,
-                                           &label,
-                                           &manufacturer_id,
-                                           &model,
-                                           &serial_number,
-                                           &flags,
-                                           &max_session_count,
-                                           &session_count,
-                                           &max_session_count_rw,
-                                           &session_count_rw,
-                                           &max_pin_len,
-                                           &min_pin_len,
-                                           &total_public_memory,
-                                           &free_public_memory,
-                                           &total_private_memory,
-                                           &free_private_memory,
-                                           &hardware_version_major,
-                                           &hardware_version_minor,
-                                           &firmware_version_major,
-                                           &firmware_version_minor));
-  EXPECT_EQ(flags, 17);
+  EXPECT_EQ(CKR_OK, service_->GetTokenInfo(ic_, 0, &token_info));
+  EXPECT_EQ(token_info.flags(), 17);
 }
 
 TEST_F(TestService, GetMechanismList) {
@@ -324,26 +181,19 @@ TEST_F(TestService, GetMechanismInfo) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(slot_manager_, GetMechanismInfo(ic_, 0))
     .WillRepeatedly(Return(&test_list));
-  uint64_t min_key, max_key, flags;
   // Try bad arguments.
   EXPECT_EQ(CKR_ARGUMENTS_BAD,
-            service_->GetMechanismInfo(ic_, 0, 123, NULL, &max_key, &flags));
-  EXPECT_EQ(CKR_ARGUMENTS_BAD,
-            service_->GetMechanismInfo(ic_, 0, 123, &min_key, NULL, &flags));
-  EXPECT_EQ(CKR_ARGUMENTS_BAD,
-            service_->GetMechanismInfo(ic_, 0, 123, &min_key, &max_key, NULL));
+            service_->GetMechanismInfo(ic_, 0, 123, nullptr));
   // Try invalid slot ID.
+  MechanismInfo mechanism_info;
   EXPECT_EQ(CKR_SLOT_ID_INVALID,
-            service_->GetMechanismInfo(ic_, 2, 123, &min_key, &max_key,
-                                       &flags));
+            service_->GetMechanismInfo(ic_, 2, 123, &mechanism_info));
   EXPECT_EQ(CKR_TOKEN_NOT_PRESENT,
-            service_->GetMechanismInfo(ic_, 0, 123, &min_key, &max_key,
-                                       &flags));
+            service_->GetMechanismInfo(ic_, 0, 123, &mechanism_info));
   // Try the normal case.
   ASSERT_EQ(CKR_OK,
-            service_->GetMechanismInfo(ic_, 0, 123, &min_key, &max_key,
-                                       &flags));
-  EXPECT_EQ(flags, 17);
+            service_->GetMechanismInfo(ic_, 0, 123, &mechanism_info));
+  EXPECT_EQ(mechanism_info.flags(), 17);
 }
 
 TEST_F(TestService, InitToken) {
@@ -437,23 +287,16 @@ TEST_F(TestService, GetSessionInfo) {
   EXPECT_CALL(session_, IsReadOnly())
     .WillRepeatedly(Return(false));
   // Try bad arguments.
-  uint64_t slot, state, flags, err;
-  EXPECT_EQ(CKR_ARGUMENTS_BAD,
-            service_->GetSessionInfo(ic_, 1, NULL, &state, &flags, &err));
-  EXPECT_EQ(CKR_ARGUMENTS_BAD,
-            service_->GetSessionInfo(ic_, 1, &slot, NULL, &flags, &err));
-  EXPECT_EQ(CKR_ARGUMENTS_BAD,
-            service_->GetSessionInfo(ic_, 1, &slot, &state, NULL, &err));
-  EXPECT_EQ(CKR_ARGUMENTS_BAD,
-            service_->GetSessionInfo(ic_, 1, &slot, &state, &flags, NULL));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->GetSessionInfo(ic_, 1, nullptr));
+  SessionInfo session_info;
+  // Try invalid session handle.
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
-            service_->GetSessionInfo(ic_, 1, &slot, &state, &flags, &err));
+            service_->GetSessionInfo(ic_, 1, &session_info));
   // Try normal case.
-  ASSERT_EQ(CKR_OK, service_->GetSessionInfo(ic_, 1, &slot, &state, &flags,
-                                             &err));
-  EXPECT_EQ(slot, 15);
-  EXPECT_EQ(state, 16);
-  EXPECT_EQ(flags, CKF_RW_SESSION|CKF_SERIAL_SESSION);
+  ASSERT_EQ(CKR_OK, service_->GetSessionInfo(ic_, 1, &session_info));
+  EXPECT_EQ(session_info.slot_id(), 15);
+  EXPECT_EQ(session_info.state(), 16);
+  EXPECT_EQ(session_info.flags(), CKF_RW_SESSION|CKF_SERIAL_SESSION);
 }
 
 TEST_F(TestService, GetOperationState) {

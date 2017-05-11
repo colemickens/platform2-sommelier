@@ -11,6 +11,7 @@
 
 #include <base/macros.h>
 #include <brillo/secure_blob.h>
+#include <chaps/proto_bindings/ck_structs.pb.h>
 
 #include "chaps/chaps.h"
 
@@ -41,35 +42,11 @@ class ChapsInterface {
   // PKCS #11 v2.20 section 11.5 page 108.
   virtual uint32_t GetSlotInfo(const brillo::SecureBlob& isolate_credential,
                                uint64_t slot_id,
-                               std::vector<uint8_t>* slot_description,
-                               std::vector<uint8_t>* manufacturer_id,
-                               uint64_t* flags,
-                               uint8_t* hardware_version_major,
-                               uint8_t* hardware_version_minor,
-                               uint8_t* firmware_version_major,
-                               uint8_t* firmware_version_minor) = 0;
+                               SlotInfo* slot_info) = 0;
   // PKCS #11 v2.20 section 11.5 page 109.
   virtual uint32_t GetTokenInfo(const brillo::SecureBlob& isolate_credential,
                                 uint64_t slot_id,
-                                std::vector<uint8_t>* label,
-                                std::vector<uint8_t>* manufacturer_id,
-                                std::vector<uint8_t>* model,
-                                std::vector<uint8_t>* serial_number,
-                                uint64_t* flags,
-                                uint64_t* max_session_count,
-                                uint64_t* session_count,
-                                uint64_t* max_session_count_rw,
-                                uint64_t* session_count_rw,
-                                uint64_t* max_pin_len,
-                                uint64_t* min_pin_len,
-                                uint64_t* total_public_memory,
-                                uint64_t* free_public_memory,
-                                uint64_t* total_private_memory,
-                                uint64_t* free_private_memory,
-                                uint8_t* hardware_version_major,
-                                uint8_t* hardware_version_minor,
-                                uint8_t* firmware_version_major,
-                                uint8_t* firmware_version_minor) = 0;
+                                TokenInfo* token_info) = 0;
   // PKCS #11 v2.20 section 11.5 page 111.
   virtual uint32_t GetMechanismList(
       const brillo::SecureBlob& isolate_credential,
@@ -80,9 +57,7 @@ class ChapsInterface {
       const brillo::SecureBlob& isolate_credential,
       uint64_t slot_id,
       uint64_t mechanism_type,
-      uint64_t* min_key_size,
-      uint64_t* max_key_size,
-      uint64_t* flags) = 0;
+      MechanismInfo* mechanism_info) = 0;
   // PKCS #11 v2.20 section 11.5 page 113.
   virtual uint32_t InitToken(const brillo::SecureBlob& isolate_credential,
                              uint64_t slot_id,
@@ -111,10 +86,7 @@ class ChapsInterface {
   virtual uint32_t GetSessionInfo(
       const brillo::SecureBlob& isolate_credential,
       uint64_t session_id,
-      uint64_t* slot_id,
-      uint64_t* state,
-      uint64_t* flags,
-      uint64_t* device_error) = 0;
+      SessionInfo* session_info) = 0;
   // PKCS #11 v2.20 section 11.6 page 121.
   virtual uint32_t GetOperationState(
       const brillo::SecureBlob& isolate_credential,

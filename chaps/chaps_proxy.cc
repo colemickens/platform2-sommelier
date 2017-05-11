@@ -185,31 +185,17 @@ uint32_t ChapsProxyImpl::GetSlotList(const SecureBlob& isolate_credential,
 
 uint32_t ChapsProxyImpl::GetSlotInfo(const SecureBlob& isolate_credential,
                                      uint64_t slot_id,
-                                     vector<uint8_t>* slot_description,
-                                     vector<uint8_t>* manufacturer_id,
-                                     uint64_t* flags,
-                                     uint8_t* hardware_version_major,
-                                     uint8_t* hardware_version_minor,
-                                     uint8_t* firmware_version_major,
-                                     uint8_t* firmware_version_minor) {
+                                     SlotInfo* slot_info) {
   AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
-  if (!slot_description || !manufacturer_id || !flags ||
-      !hardware_version_major || !hardware_version_minor ||
-      !firmware_version_major || !firmware_version_minor)
-    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  LOG_CK_RV_AND_RETURN_IF(!slot_info, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
-    proxy_->GetSlotInfo(isolate_credential,
-                        slot_id,
-                        *slot_description,
-                        *manufacturer_id,
-                        *flags,
-                        *hardware_version_major,
-                        *hardware_version_minor,
-                        *firmware_version_major,
-                        *firmware_version_minor,
-                        result);
+    std::vector<uint8_t> proto_bytes;
+    proxy_->GetSlotInfo(isolate_credential, slot_id, proto_bytes, result);
+    LOG_CK_RV_AND_RETURN_IF(
+        !slot_info->ParseFromArray(proto_bytes.data(), proto_bytes.size()),
+        CKR_GENERAL_ERROR);
   } catch (DBus::Error err) {
     result = CKR_GENERAL_ERROR;
     LOG(ERROR) << "DBus::Error - " << err.what();
@@ -219,59 +205,17 @@ uint32_t ChapsProxyImpl::GetSlotInfo(const SecureBlob& isolate_credential,
 
 uint32_t ChapsProxyImpl::GetTokenInfo(const SecureBlob& isolate_credential,
                                       uint64_t slot_id,
-                                      vector<uint8_t>* label,
-                                      vector<uint8_t>* manufacturer_id,
-                                      vector<uint8_t>* model,
-                                      vector<uint8_t>* serial_number,
-                                      uint64_t* flags,
-                                      uint64_t* max_session_count,
-                                      uint64_t* session_count,
-                                      uint64_t* max_session_count_rw,
-                                      uint64_t* session_count_rw,
-                                      uint64_t* max_pin_len,
-                                      uint64_t* min_pin_len,
-                                      uint64_t* total_public_memory,
-                                      uint64_t* free_public_memory,
-                                      uint64_t* total_private_memory,
-                                      uint64_t* free_private_memory,
-                                      uint8_t* hardware_version_major,
-                                      uint8_t* hardware_version_minor,
-                                      uint8_t* firmware_version_major,
-                                      uint8_t* firmware_version_minor) {
+                                      TokenInfo* token_info) {
   AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
-  if (!label || !manufacturer_id || !model || !serial_number || !flags ||
-      !max_session_count || !session_count || !max_session_count_rw ||
-      !session_count_rw || !max_pin_len || !min_pin_len ||
-      !total_public_memory || !free_public_memory || !total_private_memory ||
-      !total_public_memory ||
-      !hardware_version_major || !hardware_version_minor ||
-      !firmware_version_major || !firmware_version_minor)
-    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  LOG_CK_RV_AND_RETURN_IF(!token_info, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
-    proxy_->GetTokenInfo(isolate_credential,
-                         slot_id,
-                         *label,
-                         *manufacturer_id,
-                         *model,
-                         *serial_number,
-                         *flags,
-                         *max_session_count,
-                         *session_count,
-                         *max_session_count_rw,
-                         *session_count_rw,
-                         *max_pin_len,
-                         *min_pin_len,
-                         *total_public_memory,
-                         *free_public_memory,
-                         *total_private_memory,
-                         *free_private_memory,
-                         *hardware_version_major,
-                         *hardware_version_minor,
-                         *firmware_version_major,
-                         *firmware_version_minor,
-                         result);
+    std::vector<uint8_t> proto_bytes;
+    proxy_->GetTokenInfo(isolate_credential, slot_id, proto_bytes, result);
+    LOG_CK_RV_AND_RETURN_IF(
+        !token_info->ParseFromArray(proto_bytes.data(), proto_bytes.size()),
+        CKR_GENERAL_ERROR);
   } catch (DBus::Error err) {
     result = CKR_GENERAL_ERROR;
     LOG(ERROR) << "DBus::Error - " << err.what();
@@ -300,22 +244,18 @@ uint32_t ChapsProxyImpl::GetMechanismList(
 uint32_t ChapsProxyImpl::GetMechanismInfo(const SecureBlob& isolate_credential,
                                           uint64_t slot_id,
                                           uint64_t mechanism_type,
-                                          uint64_t* min_key_size,
-                                          uint64_t* max_key_size,
-                                          uint64_t* flags) {
+                                          MechanismInfo* mechanism_info) {
   AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
-  if (!min_key_size || !max_key_size || !flags)
-    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  LOG_CK_RV_AND_RETURN_IF(!mechanism_info, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
-    proxy_->GetMechanismInfo(isolate_credential,
-                             slot_id,
-                             mechanism_type,
-                             *min_key_size,
-                             *max_key_size,
-                             *flags,
-                             result);
+    std::vector<uint8_t> proto_bytes;
+    proxy_->GetMechanismInfo(
+        isolate_credential, slot_id, mechanism_type, proto_bytes, result);
+    LOG_CK_RV_AND_RETURN_IF(
+        !mechanism_info->ParseFromArray(proto_bytes.data(), proto_bytes.size()),
+        CKR_GENERAL_ERROR);
   } catch (DBus::Error err) {
     result = CKR_GENERAL_ERROR;
     LOG(ERROR) << "DBus::Error - " << err.what();
@@ -431,18 +371,17 @@ uint32_t ChapsProxyImpl::CloseAllSessions(const SecureBlob& isolate_credential,
 
 uint32_t ChapsProxyImpl::GetSessionInfo(const SecureBlob& isolate_credential,
                                         uint64_t session_id,
-                                        uint64_t* slot_id,
-                                        uint64_t* state,
-                                        uint64_t* flags,
-                                        uint64_t* device_error) {
+                                        SessionInfo* session_info) {
   AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
-  if (!slot_id || !state || !flags || !device_error)
-    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  LOG_CK_RV_AND_RETURN_IF(!session_info, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
-    proxy_->GetSessionInfo(isolate_credential, session_id, *slot_id, *state,
-                           *flags, *device_error, result);
+    std::vector<uint8_t> proto_bytes;
+    proxy_->GetSessionInfo(isolate_credential, session_id, proto_bytes, result);
+    LOG_CK_RV_AND_RETURN_IF(
+        !session_info->ParseFromArray(proto_bytes.data(), proto_bytes.size()),
+        CKR_GENERAL_ERROR);
   } catch (DBus::Error err) {
     result = CKR_GENERAL_ERROR;
     LOG(ERROR) << "DBus::Error - " << err.what();

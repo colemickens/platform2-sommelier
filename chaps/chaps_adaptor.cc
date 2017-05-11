@@ -215,13 +215,7 @@ void ChapsAdaptor::GetSlotList(const vector<uint8_t>& isolate_credential,
 
 void ChapsAdaptor::GetSlotInfo(const vector<uint8_t>& isolate_credential,
                                const uint64_t& slot_id,
-                               vector<uint8_t>& slot_description,  // NOLINT - refs
-                               vector<uint8_t>& manufacturer_id,  // NOLINT - refs
-                               uint64_t& flags,  // NOLINT - refs
-                               uint8_t& hardware_version_major,  // NOLINT - refs
-                               uint8_t& hardware_version_minor,  // NOLINT - refs
-                               uint8_t& firmware_version_major,  // NOLINT - refs
-                               uint8_t& firmware_version_minor,  // NOLINT - refs
+                               vector<uint8_t>& slot_info,  // NOLINT - refs
                                uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
@@ -229,57 +223,27 @@ void ChapsAdaptor::GetSlotInfo(const vector<uint8_t>& isolate_credential,
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
   ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+  SlotInfo proto;
   result = service_->GetSlotInfo(isolate_credential_blob,
                                  slot_id,
-                                 &slot_description,
-                                 &manufacturer_id,
-                                 &flags,
-                                 &hardware_version_major,
-                                 &hardware_version_minor,
-                                 &firmware_version_major,
-                                 &firmware_version_minor);
+                                 &proto);
+  slot_info.reserve(proto.ByteSize());
+  proto.SerializeToArray(slot_info.data(), slot_info.size());
   VLOG_IF(2, result == CKR_OK) << "OUT: " << "slot_description="
-                               << ConvertByteVectorToString(slot_description);
+                               << proto.slot_description();
 }
 
 void ChapsAdaptor::GetSlotInfo(const vector<uint8_t>& isolate_credential,
                                const uint64_t& slot_id,
-                               vector<uint8_t>& slot_description,  // NOLINT - refs
-                               vector<uint8_t>& manufacturer_id,  // NOLINT - refs
-                               uint64_t& flags,  // NOLINT - refs
-                               uint8_t& hardware_version_major,  // NOLINT - refs
-                               uint8_t& hardware_version_minor,  // NOLINT - refs
-                               uint8_t& firmware_version_major,  // NOLINT - refs
-                               uint8_t& firmware_version_minor,  // NOLINT - refs
+                               vector<uint8_t>& slot_info,  // NOLINT - refs
                                uint32_t& result,  // NOLINT - refs
                                ::DBus::Error& /*error*/) {
-  GetSlotInfo(isolate_credential, slot_id, slot_description, manufacturer_id,
-              flags, hardware_version_major, hardware_version_minor,
-              firmware_version_major, firmware_version_minor,
-              result);
+  GetSlotInfo(isolate_credential, slot_id, slot_info, result);
 }
 
 void ChapsAdaptor::GetTokenInfo(const vector<uint8_t>& isolate_credential,
                                 const uint64_t& slot_id,
-                                vector<uint8_t>& label,  // NOLINT - refs
-                                vector<uint8_t>& manufacturer_id,  // NOLINT - refs
-                                vector<uint8_t>& model,  // NOLINT - refs
-                                vector<uint8_t>& serial_number,  // NOLINT - refs
-                                uint64_t& flags,  // NOLINT - refs
-                                uint64_t& max_session_count,  // NOLINT - refs
-                                uint64_t& session_count,  // NOLINT - refs
-                                uint64_t& max_session_count_rw,  // NOLINT - refs
-                                uint64_t& session_count_rw,  // NOLINT - refs
-                                uint64_t& max_pin_len,  // NOLINT - refs
-                                uint64_t& min_pin_len,  // NOLINT - refs
-                                uint64_t& total_public_memory,  // NOLINT - refs
-                                uint64_t& free_public_memory,  // NOLINT - refs
-                                uint64_t& total_private_memory,  // NOLINT - refs
-                                uint64_t& free_private_memory,  // NOLINT - refs
-                                uint8_t& hardware_version_major,  // NOLINT - refs
-                                uint8_t& hardware_version_minor,  // NOLINT - refs
-                                uint8_t& firmware_version_major,  // NOLINT - refs
-                                uint8_t& firmware_version_minor,  // NOLINT - refs
+                                vector<uint8_t>& token_info,  // NOLINT - refs
                                 uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
@@ -287,61 +251,21 @@ void ChapsAdaptor::GetTokenInfo(const vector<uint8_t>& isolate_credential,
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
   ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+  TokenInfo proto;
   result = service_->GetTokenInfo(isolate_credential_blob,
                                   slot_id,
-                                  &label,
-                                  &manufacturer_id,
-                                  &model,
-                                  &serial_number,
-                                  &flags,
-                                  &max_session_count,
-                                  &session_count,
-                                  &max_session_count_rw,
-                                  &session_count_rw,
-                                  &max_pin_len,
-                                  &min_pin_len,
-                                  &total_public_memory,
-                                  &free_public_memory,
-                                  &total_private_memory,
-                                  &free_private_memory,
-                                  &hardware_version_major,
-                                  &hardware_version_minor,
-                                  &firmware_version_major,
-                                  &firmware_version_minor);
-  VLOG_IF(2, result == CKR_OK) << "OUT: " << "label="
-                               << ConvertByteVectorToString(label);
+                                  &proto);
+  token_info.reserve(proto.ByteSize());
+  proto.SerializeToArray(token_info.data(), token_info.size());
+  VLOG_IF(2, result == CKR_OK) << "OUT: " << "label=" << proto.label();
 }
 
 void ChapsAdaptor::GetTokenInfo(const vector<uint8_t>& isolate_credential,
                                 const uint64_t& slot_id,
-                                vector<uint8_t>& label,  // NOLINT - refs
-                                vector<uint8_t>& manufacturer_id,  // NOLINT - refs
-                                vector<uint8_t>& model,  // NOLINT - refs
-                                vector<uint8_t>& serial_number,  // NOLINT - refs
-                                uint64_t& flags,  // NOLINT - refs
-                                uint64_t& max_session_count,  // NOLINT - refs
-                                uint64_t& session_count,  // NOLINT - refs
-                                uint64_t& max_session_count_rw,  // NOLINT - refs
-                                uint64_t& session_count_rw,  // NOLINT - refs
-                                uint64_t& max_pin_len,  // NOLINT - refs
-                                uint64_t& min_pin_len,  // NOLINT - refs
-                                uint64_t& total_public_memory,  // NOLINT - refs
-                                uint64_t& free_public_memory,  // NOLINT - refs
-                                uint64_t& total_private_memory,  // NOLINT - refs
-                                uint64_t& free_private_memory,  // NOLINT - refs
-                                uint8_t& hardware_version_major,  // NOLINT - refs
-                                uint8_t& hardware_version_minor,  // NOLINT - refs
-                                uint8_t& firmware_version_major,  // NOLINT - refs
-                                uint8_t& firmware_version_minor,  // NOLINT - refs
+                                vector<uint8_t>& slot_info,  // NOLINT - refs
                                 uint32_t& result,  // NOLINT - refs
                                 ::DBus::Error& /*error*/) {
-  GetTokenInfo(isolate_credential, slot_id, label, manufacturer_id, model,
-               serial_number, flags, max_session_count, session_count,
-               max_session_count_rw, session_count_rw, max_pin_len, min_pin_len,
-               total_public_memory, free_public_memory, total_private_memory,
-               free_private_memory, hardware_version_major,
-               hardware_version_minor, firmware_version_major,
-               firmware_version_minor, result);
+  GetTokenInfo(isolate_credential, slot_id, slot_info, result);
 }
 
 void ChapsAdaptor::GetMechanismList(const vector<uint8_t>& isolate_credential,
@@ -372,9 +296,7 @@ void ChapsAdaptor::GetMechanismList(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::GetMechanismInfo(const vector<uint8_t>& isolate_credential,
                                     const uint64_t& slot_id,
                                     const uint64_t& mechanism_type,
-                                    uint64_t& min_key_size,  // NOLINT - refs
-                                    uint64_t& max_key_size,  // NOLINT - refs
-                                    uint64_t& flags,  // NOLINT - refs
+                                    std::vector<uint8_t>& mechanism_info,  // NOLINT - refs
                                     uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
@@ -383,27 +305,28 @@ void ChapsAdaptor::GetMechanismInfo(const vector<uint8_t>& isolate_credential,
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
   ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+  MechanismInfo proto;
   result = service_->GetMechanismInfo(isolate_credential_blob,
                                       slot_id,
                                       mechanism_type,
-                                      &min_key_size,
-                                      &max_key_size,
-                                      &flags);
-  VLOG_IF(2, result == CKR_OK) << "OUT: " << "min_key_size=" << min_key_size;
-  VLOG_IF(2, result == CKR_OK) << "OUT: " << "max_key_size=" << max_key_size;
-  VLOG_IF(2, result == CKR_OK) << "OUT: " << "flags=" << flags;
+                                      &proto);
+  mechanism_info.reserve(proto.ByteSize());
+  proto.SerializeToArray(mechanism_info.data(), mechanism_info.size());
+  VLOG_IF(2, result == CKR_OK) << "OUT: " << "min_key_size="
+                               << proto.min_key_size();
+  VLOG_IF(2, result == CKR_OK) << "OUT: " << "max_key_size="
+                               << proto.max_key_size();
+  VLOG_IF(2, result == CKR_OK) << "OUT: " << "flags=" << proto.flags();
 }
 
 void ChapsAdaptor::GetMechanismInfo(const vector<uint8_t>& isolate_credential,
                                     const uint64_t& slot_id,
                                     const uint64_t& mechanism_type,
-                                    uint64_t& min_key_size,  // NOLINT - refs
-                                    uint64_t& max_key_size,  // NOLINT - refs
-                                    uint64_t& flags,  // NOLINT - refs
+                                    std::vector<uint8_t>& mechanism_info,  // NOLINT - refs
                                     uint32_t& result,  // NOLINT - refs
                                     ::DBus::Error& /*error*/) {
-  GetMechanismInfo(isolate_credential, slot_id, mechanism_type, min_key_size,
-                   max_key_size, flags, result);
+  GetMechanismInfo(isolate_credential, slot_id, mechanism_type,
+                   mechanism_info, result);
 }
 
 uint32_t ChapsAdaptor::InitToken(const vector<uint8_t>& isolate_credential,
@@ -564,10 +487,7 @@ uint32_t ChapsAdaptor::CloseAllSessions(
 
 void ChapsAdaptor::GetSessionInfo(const vector<uint8_t>& isolate_credential,
                                   const uint64_t& session_id,
-                                  uint64_t& slot_id,  // NOLINT - refs
-                                  uint64_t& state,  // NOLINT - refs
-                                  uint64_t& flags,  // NOLINT - refs
-                                  uint64_t& device_error,  // NOLINT - refs
+                                  std::vector<uint8_t>& session_info,  // NOLINT - refs
                                   uint32_t& result) {  // NOLINT - refs
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
@@ -575,28 +495,25 @@ void ChapsAdaptor::GetSessionInfo(const vector<uint8_t>& isolate_credential,
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
   ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+  SessionInfo proto;
   result = service_->GetSessionInfo(isolate_credential_blob,
                                     session_id,
-                                    &slot_id,
-                                    &state,
-                                    &flags,
-                                    &device_error);
-  VLOG_IF(2, result == CKR_OK) << "OUT: " << "slot_id=" << slot_id;
-  VLOG_IF(2, result == CKR_OK) << "OUT: " << "state=" << state;
-  VLOG_IF(2, result == CKR_OK) << "OUT: " << "flags=" << flags;
-  VLOG_IF(2, result == CKR_OK) << "OUT: " << "device_error=" << device_error;
+                                    &proto);
+  session_info.reserve(proto.ByteSize());
+  proto.SerializeToArray(session_info.data(), session_info.size());
+  VLOG_IF(2, result == CKR_OK) << "OUT: " << "slot_id=" << proto.slot_id();
+  VLOG_IF(2, result == CKR_OK) << "OUT: " << "state=" << proto.state();
+  VLOG_IF(2, result == CKR_OK) << "OUT: " << "flags=" << proto.flags();
+  VLOG_IF(2, result == CKR_OK) << "OUT: " << "device_error="
+                               << proto.device_error();
 }
 
 void ChapsAdaptor::GetSessionInfo(const vector<uint8_t>& isolate_credential,
                                   const uint64_t& session_id,
-                                  uint64_t& slot_id,  // NOLINT - refs
-                                  uint64_t& state,  // NOLINT - refs
-                                  uint64_t& flags,  // NOLINT - refs
-                                  uint64_t& device_error,  // NOLINT - refs
+                                  std::vector<uint8_t>& session_info,  // NOLINT - refs
                                   uint32_t& result,  // NOLINT - refs
                                   ::DBus::Error& /*error*/) {
-  GetSessionInfo(isolate_credential, session_id, slot_id, state, flags,
-                 device_error, result);
+  GetSessionInfo(isolate_credential, session_id, session_info, result);
 }
 
 void ChapsAdaptor::GetOperationState(const vector<uint8_t>& isolate_credential,

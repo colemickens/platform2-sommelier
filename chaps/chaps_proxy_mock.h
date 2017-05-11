@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <brillo/secure_blob.h>
+#include <chaps/proto_bindings/ck_structs.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -38,42 +39,18 @@ class ChapsProxyMock : public ChapsInterface {
 
   MOCK_METHOD3(GetSlotList, uint32_t(const brillo::SecureBlob&, bool,
                                      std::vector<uint64_t>*));
-  MOCK_METHOD9(GetSlotInfo, uint32_t(const brillo::SecureBlob&,
+  MOCK_METHOD3(GetSlotInfo, uint32_t(const brillo::SecureBlob&,
                                      uint64_t,
-                                     std::vector<uint8_t>*,
-                                     std::vector<uint8_t>*,
-                                     uint64_t*,
-                                     uint8_t*, uint8_t*,
-                                     uint8_t*, uint8_t*));
-  virtual uint32_t GetTokenInfo(const brillo::SecureBlob&,
-                                uint64_t slot_id,
-                                std::vector<uint8_t>* label,
-                                std::vector<uint8_t>* manufacturer_id,
-                                std::vector<uint8_t>* model,
-                                std::vector<uint8_t>* serial_number,
-                                uint64_t* flags,
-                                uint64_t* max_session_count,
-                                uint64_t* session_count,
-                                uint64_t* max_session_count_rw,
-                                uint64_t* session_count_rw,
-                                uint64_t* max_pin_len,
-                                uint64_t* min_pin_len,
-                                uint64_t* total_public_memory,
-                                uint64_t* free_public_memory,
-                                uint64_t* total_private_memory,
-                                uint64_t* free_private_memory,
-                                uint8_t* hardware_version_major,
-                                uint8_t* hardware_version_minor,
-                                uint8_t* firmware_version_major,
-                                uint8_t* firmware_version_minor) {
-    *flags = 1;
-    return 0;
-  }
+                                     SlotInfo*));
+  MOCK_METHOD3(GetTokenInfo, uint32_t(const brillo::SecureBlob&,
+                                      uint64_t,
+                                      TokenInfo*));
   MOCK_METHOD3(GetMechanismList, uint32_t(const brillo::SecureBlob&,
                                           uint64_t, std::vector<uint64_t>*));
-  MOCK_METHOD6(GetMechanismInfo, uint32_t(const brillo::SecureBlob&,
-                                          uint64_t, uint64_t, uint64_t*,
-                                          uint64_t*, uint64_t*));
+  MOCK_METHOD4(GetMechanismInfo, uint32_t(const brillo::SecureBlob&,
+                                          uint64_t,
+                                          uint64_t,
+                                          MechanismInfo*));
   MOCK_METHOD4(InitToken, uint32_t(const brillo::SecureBlob&,
                                    uint64_t,
                                    const std::string*,
@@ -88,9 +65,8 @@ class ChapsProxyMock : public ChapsInterface {
   MOCK_METHOD2(CloseSession, uint32_t(const brillo::SecureBlob&, uint64_t));
   MOCK_METHOD2(CloseAllSessions, uint32_t(const brillo::SecureBlob&,
                                           uint64_t));
-  MOCK_METHOD6(GetSessionInfo, uint32_t(const brillo::SecureBlob&, uint64_t,
-                                        uint64_t*, uint64_t*, uint64_t*,
-                                        uint64_t*));
+  MOCK_METHOD3(GetSessionInfo, uint32_t(const brillo::SecureBlob&, uint64_t,
+                                        SessionInfo*));
   MOCK_METHOD3(GetOperationState, uint32_t(const brillo::SecureBlob&,
                                            uint64_t, std::vector<uint8_t>*));
   MOCK_METHOD5(SetOperationState, uint32_t(const brillo::SecureBlob&,

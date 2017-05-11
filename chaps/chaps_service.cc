@@ -10,6 +10,7 @@
 #include "chaps/chaps.h"
 #include "chaps/chaps_utility.h"
 #include "chaps/object.h"
+#include "chaps/proto_conversion.h"
 #include "chaps/session.h"
 #include "chaps/slot_manager.h"
 
@@ -56,100 +57,30 @@ uint32_t ChapsServiceImpl::GetSlotList(const SecureBlob& isolate_credential,
 
 uint32_t ChapsServiceImpl::GetSlotInfo(const SecureBlob& isolate_credential,
                                        uint64_t slot_id,
-                                       vector<uint8_t>* slot_description,
-                                       vector<uint8_t>* manufacturer_id,
-                                       uint64_t* flags,
-                                       uint8_t* hardware_version_major,
-                                       uint8_t* hardware_version_minor,
-                                       uint8_t* firmware_version_major,
-                                       uint8_t* firmware_version_minor) {
-  if (!slot_description || !manufacturer_id || !flags ||
-      !hardware_version_major || !hardware_version_minor ||
-      !firmware_version_major || !firmware_version_minor) {
-    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
-  }
+                                       SlotInfo* slot_info) {
+  LOG_CK_RV_AND_RETURN_IF(!slot_info, CKR_ARGUMENTS_BAD);
   if (static_cast<int>(slot_id) >= slot_manager_->GetSlotCount() ||
       !slot_manager_->IsTokenAccessible(isolate_credential, slot_id))
     LOG_CK_RV_AND_RETURN(CKR_SLOT_ID_INVALID);
-  CK_SLOT_INFO slot_info;
-  slot_manager_->GetSlotInfo(isolate_credential, slot_id, &slot_info);
-  *slot_description =
-      ConvertByteBufferToVector(slot_info.slotDescription,
-                                arraysize(slot_info.slotDescription));
-  *manufacturer_id =
-      ConvertByteBufferToVector(slot_info.manufacturerID,
-                                arraysize(slot_info.manufacturerID));
-  *flags = static_cast<uint64_t>(slot_info.flags);
-  *hardware_version_major = slot_info.hardwareVersion.major;
-  *hardware_version_minor = slot_info.hardwareVersion.minor;
-  *firmware_version_major = slot_info.firmwareVersion.major;
-  *firmware_version_minor = slot_info.firmwareVersion.minor;
+  CK_SLOT_INFO ck_slot_info;
+  slot_manager_->GetSlotInfo(isolate_credential, slot_id, &ck_slot_info);
+  *slot_info = SlotInfoToProto(&ck_slot_info);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceImpl::GetTokenInfo(const SecureBlob& isolate_credential,
                                         uint64_t slot_id,
-                                        vector<uint8_t>* label,
-                                        vector<uint8_t>* manufacturer_id,
-                                        vector<uint8_t>* model,
-                                        vector<uint8_t>* serial_number,
-                                        uint64_t* flags,
-                                        uint64_t* max_session_count,
-                                        uint64_t* session_count,
-                                        uint64_t* max_session_count_rw,
-                                        uint64_t* session_count_rw,
-                                        uint64_t* max_pin_len,
-                                        uint64_t* min_pin_len,
-                                        uint64_t* total_public_memory,
-                                        uint64_t* free_public_memory,
-                                        uint64_t* total_private_memory,
-                                        uint64_t* free_private_memory,
-                                        uint8_t* hardware_version_major,
-                                        uint8_t* hardware_version_minor,
-                                        uint8_t* firmware_version_major,
-                                        uint8_t* firmware_version_minor) {
-  if (!label || !manufacturer_id || !model || !serial_number || !flags ||
-      !max_session_count || !session_count || !max_session_count_rw ||
-      !session_count_rw || !max_pin_len || !min_pin_len ||
-      !total_public_memory || !free_public_memory ||
-      !total_private_memory || !free_private_memory ||
-      !hardware_version_major || !hardware_version_minor ||
-      !firmware_version_major || !firmware_version_minor) {
-    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
-  }
+                                        TokenInfo* token_info) {
+  LOG_CK_RV_AND_RETURN_IF(!token_info, CKR_ARGUMENTS_BAD);
   if (static_cast<int>(slot_id) >= slot_manager_->GetSlotCount() ||
       !slot_manager_->IsTokenAccessible(isolate_credential, slot_id))
     LOG_CK_RV_AND_RETURN(CKR_SLOT_ID_INVALID);
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->IsTokenPresent(isolate_credential,
                                                          slot_id),
                           CKR_TOKEN_NOT_PRESENT);
-  CK_TOKEN_INFO token_info;
-  slot_manager_->GetTokenInfo(isolate_credential, slot_id, &token_info);
-  *label =
-      ConvertByteBufferToVector(token_info.label, arraysize(token_info.label));
-  *manufacturer_id =
-      ConvertByteBufferToVector(token_info.manufacturerID,
-                                arraysize(token_info.manufacturerID));
-  *model = ConvertByteBufferToVector(token_info.model,
-                                     arraysize(token_info.model));
-  *serial_number =
-      ConvertByteBufferToVector(token_info.serialNumber,
-                                arraysize(token_info.serialNumber));
-  *flags = token_info.flags;
-  *max_session_count = token_info.ulMaxSessionCount;
-  *session_count = token_info.ulSessionCount;
-  *max_session_count_rw = token_info.ulMaxRwSessionCount;
-  *session_count_rw = token_info.ulRwSessionCount;
-  *max_pin_len = token_info.ulMaxPinLen;
-  *min_pin_len = token_info.ulMinPinLen;
-  *total_public_memory = token_info.ulTotalPublicMemory;
-  *free_public_memory = token_info.ulFreePublicMemory;
-  *total_private_memory = token_info.ulTotalPrivateMemory;
-  *free_private_memory = token_info.ulFreePrivateMemory;
-  *hardware_version_major = token_info.hardwareVersion.major;
-  *hardware_version_minor = token_info.hardwareVersion.minor;
-  *firmware_version_major = token_info.firmwareVersion.major;
-  *firmware_version_minor = token_info.firmwareVersion.minor;
+  CK_TOKEN_INFO ck_token_info;
+  slot_manager_->GetTokenInfo(isolate_credential, slot_id, &ck_token_info);
+  *token_info = TokenInfoToProto(&ck_token_info);
   return CKR_OK;
 }
 
@@ -180,25 +111,20 @@ uint32_t ChapsServiceImpl::GetMechanismInfo(
       const SecureBlob& isolate_credential,
       uint64_t slot_id,
       uint64_t mechanism_type,
-      uint64_t* min_key_size,
-      uint64_t* max_key_size,
-      uint64_t* flags) {
-  if (!min_key_size || !max_key_size || !flags)
-    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+      MechanismInfo* mechanism_info) {
+  LOG_CK_RV_AND_RETURN_IF(!mechanism_info, CKR_ARGUMENTS_BAD);
   if (static_cast<int>(slot_id) >= slot_manager_->GetSlotCount() ||
       !slot_manager_->IsTokenAccessible(isolate_credential, slot_id))
     LOG_CK_RV_AND_RETURN(CKR_SLOT_ID_INVALID);
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->IsTokenPresent(isolate_credential,
                                                          slot_id),
                           CKR_TOKEN_NOT_PRESENT);
-  const MechanismMap* mechanism_info =
+  const MechanismMap* mechanism_map =
     slot_manager_->GetMechanismInfo(isolate_credential, slot_id);
   CHECK(mechanism_info);
-  MechanismMapIterator it = mechanism_info->find(mechanism_type);
-  LOG_CK_RV_AND_RETURN_IF(it == mechanism_info->end(), CKR_MECHANISM_INVALID);
-  *min_key_size = static_cast<uint64_t>(it->second.ulMinKeySize);
-  *max_key_size = static_cast<uint64_t>(it->second.ulMaxKeySize);
-  *flags = static_cast<uint64_t>(it->second.flags);
+  MechanismMapIterator it = mechanism_map->find(mechanism_type);
+  LOG_CK_RV_AND_RETURN_IF(it == mechanism_map->end(), CKR_MECHANISM_INVALID);
+  *mechanism_info = MechanismInfoToProto(&it->second);
   return CKR_OK;
 }
 
@@ -290,24 +216,22 @@ uint32_t ChapsServiceImpl::CloseAllSessions(
 
 uint32_t ChapsServiceImpl::GetSessionInfo(const SecureBlob& isolate_credential,
                                           uint64_t session_id,
-                                          uint64_t* slot_id,
-                                          uint64_t* state,
-                                          uint64_t* flags,
-                                          uint64_t* device_error) {
-  if (!slot_id || !state || !flags || !device_error)
-    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+                                          SessionInfo* session_info) {
+  LOG_CK_RV_AND_RETURN_IF(!session_info, CKR_ARGUMENTS_BAD);
   Session* session = NULL;
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(isolate_credential,
                                                      session_id,
                                                      &session),
                           CKR_SESSION_HANDLE_INVALID);
   CHECK(session);
-  *slot_id = static_cast<uint64_t>(session->GetSlot());
-  *state = static_cast<uint64_t>(session->GetState());
-  *flags = CKF_SERIAL_SESSION;
+  session_info->set_slot_id(static_cast<uint64_t>(session->GetSlot()));
+  session_info->set_state(static_cast<uint64_t>(session->GetState()));
+  uint64_t flags;
+  flags = CKF_SERIAL_SESSION;
   if (!session->IsReadOnly())
-    *flags |= CKF_RW_SESSION;
-  *device_error = 0;
+    flags |= CKF_RW_SESSION;
+  session_info->set_flags(flags);
+  session_info->set_device_error(0);
   return CKR_OK;
 }
 

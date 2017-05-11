@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <inttypes.h>
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -177,63 +179,22 @@ TEST_F(TestP11, SlotList) {
 }
 
 TEST_F(TestP11, SlotInfo) {
-  vector<uint8_t> description;
-  vector<uint8_t> manufacturer;
-  uint64_t flags;
-  uint8_t version[4];
-  uint32_t result = chaps_->GetSlotInfo(credential_, 0, &description,
-                                        &manufacturer, &flags,
-                                        &version[0], &version[1],
-                                        &version[2], &version[3]);
+  SlotInfo slot_info;
+  uint32_t result = chaps_->GetSlotInfo(credential_, 0, &slot_info);
   EXPECT_EQ(CKR_OK, result);
-  result = chaps_->GetSlotInfo(credential_, 0, NULL, &manufacturer, &flags,
-                               &version[0], &version[1],
-                               &version[2], &version[3]);
+  result = chaps_->GetSlotInfo(credential_, 0, nullptr);
   EXPECT_EQ(CKR_ARGUMENTS_BAD, result);
-  result = chaps_->GetSlotInfo(credential_, 17, &description,
-                               &manufacturer, &flags,
-                               &version[0], &version[1],
-                               &version[2], &version[3]);
+  result = chaps_->GetSlotInfo(credential_, 17, &slot_info);
   EXPECT_NE(CKR_OK, result);
 }
 
 TEST_F(TestP11, TokenInfo) {
-  vector<uint8_t> label;
-  vector<uint8_t> manufacturer;
-  vector<uint8_t> model;
-  vector<uint8_t> serial_number;
-  uint64_t flags;
-  uint8_t version[4];
-  uint64_t not_used[10];
-  uint32_t result = chaps_->GetTokenInfo(credential_, 0, &label, &manufacturer,
-                                         &model, &serial_number, &flags,
-                                         &not_used[0], &not_used[1],
-                                         &not_used[2], &not_used[3],
-                                         &not_used[4], &not_used[5],
-                                         &not_used[6], &not_used[7],
-                                         &not_used[8], &not_used[9],
-                                         &version[0], &version[1],
-                                         &version[2], &version[3]);
+  TokenInfo token_info;
+  uint32_t result = chaps_->GetTokenInfo(credential_, 0, &token_info);
   EXPECT_EQ(CKR_OK, result);
-  result = chaps_->GetTokenInfo(credential_, 0, NULL, &manufacturer,
-                                &model, &serial_number, &flags,
-                                &not_used[0], &not_used[1],
-                                &not_used[2], &not_used[3],
-                                &not_used[4], &not_used[5],
-                                &not_used[6], &not_used[7],
-                                &not_used[8], &not_used[9],
-                                &version[0], &version[1],
-                                &version[2], &version[3]);
+  result = chaps_->GetTokenInfo(credential_, 0, nullptr);
   EXPECT_EQ(CKR_ARGUMENTS_BAD, result);
-  result = chaps_->GetTokenInfo(credential_, 17, &label, &manufacturer,
-                                &model, &serial_number, &flags,
-                                &not_used[0], &not_used[1],
-                                &not_used[2], &not_used[3],
-                                &not_used[4], &not_used[5],
-                                &not_used[6], &not_used[7],
-                                &not_used[8], &not_used[9],
-                                &version[0], &version[1],
-                                &version[2], &version[3]);
+  result = chaps_->GetTokenInfo(credential_, 17, &token_info);
   EXPECT_NE(CKR_OK, result);
 }
 
@@ -250,43 +211,19 @@ TEST_F(TestP11, MechList) {
 }
 
 TEST_F(TestP11, MechInfo) {
-  uint64_t flags;
-  uint64_t min_key_size;
-  uint64_t max_key_size;
+  MechanismInfo mechanism_info;
   uint32_t result = chaps_->GetMechanismInfo(credential_, 0, CKM_RSA_PKCS,
-                                             &min_key_size,
-                                             &max_key_size, &flags);
+                                             &mechanism_info);
   EXPECT_EQ(CKR_OK, result);
-  printf("RSA Key Sizes: %d - %d\n", static_cast<int>(min_key_size),
-         static_cast<int>(max_key_size));
-  result = chaps_->GetMechanismInfo(credential_, 0,
-                                    0xFFFF,
-                                    &min_key_size, &max_key_size,
-                                    &flags);
+  printf("RSA Key Sizes: %" PRIu64 " - %" PRIu64 "\n",
+         mechanism_info.min_key_size(),
+         mechanism_info.max_key_size());
+  result = chaps_->GetMechanismInfo(credential_, 0, 0xFFFF, &mechanism_info);
   EXPECT_EQ(CKR_MECHANISM_INVALID, result);
-  result = chaps_->GetMechanismInfo(credential_, 17,
-                                    CKM_RSA_PKCS,
-                                    &min_key_size,
-                                    &max_key_size,
-                                    &flags);
+  result = chaps_->GetMechanismInfo(credential_, 17, CKM_RSA_PKCS,
+                                    &mechanism_info);
   EXPECT_NE(CKR_OK, result);
-  result = chaps_->GetMechanismInfo(credential_, 0,
-                                    CKM_RSA_PKCS,
-                                    NULL,
-                                    &max_key_size,
-                                    &flags);
-  EXPECT_EQ(CKR_ARGUMENTS_BAD, result);
-  result = chaps_->GetMechanismInfo(credential_, 0,
-                                    CKM_RSA_PKCS,
-                                    &min_key_size,
-                                    NULL,
-                                    &flags);
-  EXPECT_EQ(CKR_ARGUMENTS_BAD, result);
-  result = chaps_->GetMechanismInfo(credential_, 0,
-                                    CKM_RSA_PKCS,
-                                    &min_key_size,
-                                    &max_key_size,
-                                    NULL);
+  result = chaps_->GetMechanismInfo(credential_, 0, CKM_RSA_PKCS, nullptr);
   EXPECT_EQ(CKR_ARGUMENTS_BAD, result);
 }
 
@@ -319,49 +256,28 @@ TEST_F(TestP11, OpenCloseSession) {
 }
 
 TEST_F(TestP11PublicSession, GetSessionInfo) {
-  uint64_t slot_id, state, flags, device_error;
-  EXPECT_EQ(CKR_OK, chaps_->GetSessionInfo(credential_, session_id_, &slot_id,
-                                           &state, &flags, &device_error));
-  EXPECT_EQ(0, slot_id);
-  EXPECT_TRUE(state == CKS_RW_PUBLIC_SESSION || state == CKS_RW_USER_FUNCTIONS);
-  EXPECT_EQ(CKF_SERIAL_SESSION|CKF_RW_SESSION, flags);
+  SessionInfo session_info;
+  EXPECT_EQ(CKR_OK,
+            chaps_->GetSessionInfo(credential_, session_id_, &session_info));
+  EXPECT_EQ(0, session_info.slot_id());
+  EXPECT_TRUE(session_info.state() == CKS_RW_PUBLIC_SESSION ||
+              session_info.state() == CKS_RW_USER_FUNCTIONS);
+  EXPECT_EQ(CKF_SERIAL_SESSION|CKF_RW_SESSION, session_info.flags());
   uint64_t readonly_session_id;
   ASSERT_EQ(CKR_OK, chaps_->OpenSession(credential_, 0, CKF_SERIAL_SESSION,
                                         &readonly_session_id));
-  EXPECT_EQ(CKR_OK, chaps_->GetSessionInfo(credential_, readonly_session_id,
-                                           &slot_id, &state, &flags,
-                                           &device_error));
+  EXPECT_EQ(CKR_OK, chaps_->GetSessionInfo(credential_,
+                                           readonly_session_id,
+                                           &session_info));
   EXPECT_EQ(CKR_OK, chaps_->CloseSession(credential_, readonly_session_id));
-  EXPECT_EQ(0, slot_id);
-  EXPECT_TRUE(state == CKS_RO_PUBLIC_SESSION || state == CKS_RO_USER_FUNCTIONS);
-  EXPECT_EQ(CKF_SERIAL_SESSION, flags);
+  EXPECT_EQ(0, session_info.slot_id());
+  EXPECT_TRUE(session_info.state() == CKS_RO_PUBLIC_SESSION ||
+              session_info.state() == CKS_RO_USER_FUNCTIONS);
+  EXPECT_EQ(CKF_SERIAL_SESSION, session_info.flags());
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
-            chaps_->GetSessionInfo(credential_, 17, &slot_id, &state, &flags,
-                                   &device_error));
-  EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->GetSessionInfo(credential_,
-                                                      session_id_,
-                                                      NULL,
-                                                      &state,
-                                                      &flags,
-                                                      &device_error));
-  EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->GetSessionInfo(credential_,
-                                                      session_id_,
-                                                      &slot_id,
-                                                      NULL,
-                                                      &flags,
-                                                      &device_error));
-  EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->GetSessionInfo(credential_,
-                                                      session_id_,
-                                                      &slot_id,
-                                                      &state,
-                                                      NULL,
-                                                      &device_error));
-  EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->GetSessionInfo(credential_,
-                                                      session_id_,
-                                                      &slot_id,
-                                                      &state,
-                                                      &flags,
-                                                      NULL));
+            chaps_->GetSessionInfo(credential_, 17, &session_info));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD,
+            chaps_->GetSessionInfo(credential_, session_id_, nullptr));
 }
 
 TEST_F(TestP11PublicSession, GetOperationState) {

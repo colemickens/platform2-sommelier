@@ -71,36 +71,12 @@ class ChapsAdaptor : public org::chromium::Chaps_adaptor,
                            ::DBus::Error& error);  // NOLINT - refs
   virtual void GetSlotInfo(const std::vector<uint8_t>& isolate_credential,
                            const uint64_t& slot_id,
-                           std::vector<uint8_t>& slot_description,  // NOLINT - refs
-                           std::vector<uint8_t>& manufacturer_id,  // NOLINT - refs
-                           uint64_t& flags,  // NOLINT - refs
-                           uint8_t& hardware_version_major,  // NOLINT - refs
-                           uint8_t& hardware_version_minor,  // NOLINT - refs
-                           uint8_t& firmware_version_major,  // NOLINT - refs
-                           uint8_t& firmware_version_minor,  // NOLINT - refs
+                           std::vector<uint8_t>& slot_info,  // NOLINT - refs
                            uint32_t& result,  // NOLINT - refs
                            ::DBus::Error& error);  // NOLINT - refs
   virtual void GetTokenInfo(const std::vector<uint8_t>& isolate_credential,
                             const uint64_t& slot_id,
-                            std::vector<uint8_t>& label,  // NOLINT - refs
-                            std::vector<uint8_t>& manufacturer_id,  // NOLINT - refs
-                            std::vector<uint8_t>& model,  // NOLINT - refs
-                            std::vector<uint8_t>& serial_number,  // NOLINT - refs
-                            uint64_t& flags,  // NOLINT - refs
-                            uint64_t& max_session_count,  // NOLINT - refs
-                            uint64_t& session_count,  // NOLINT - refs
-                            uint64_t& max_session_count_rw,  // NOLINT - refs
-                            uint64_t& session_count_rw,  // NOLINT - refs
-                            uint64_t& max_pin_len,  // NOLINT - refs
-                            uint64_t& min_pin_len,  // NOLINT - refs
-                            uint64_t& total_public_memory,  // NOLINT - refs
-                            uint64_t& free_public_memory,  // NOLINT - refs
-                            uint64_t& total_private_memory,  // NOLINT - refs
-                            uint64_t& free_private_memory,  // NOLINT - refs
-                            uint8_t& hardware_version_major,  // NOLINT - refs
-                            uint8_t& hardware_version_minor,  // NOLINT - refs
-                            uint8_t& firmware_version_major,  // NOLINT - refs
-                            uint8_t& firmware_version_minor,  // NOLINT - refs
+                            std::vector<uint8_t>& token_info,  // NOLINT - refs
                             uint32_t& result,  // NOLINT - refs
                             ::DBus::Error& error);  // NOLINT - refs
   virtual void GetMechanismList(const std::vector<uint8_t>& isolate_credential,
@@ -111,9 +87,7 @@ class ChapsAdaptor : public org::chromium::Chaps_adaptor,
   virtual void GetMechanismInfo(const std::vector<uint8_t>& isolate_credential,
                                 const uint64_t& slot_id,
                                 const uint64_t& mechanism_type,
-                                uint64_t& min_key_size,  // NOLINT - refs
-                                uint64_t& max_key_size,  // NOLINT - refs
-                                uint64_t& flags,  // NOLINT - refs
+                                std::vector<uint8_t>& mechanism_info,  // NOLINT - refs
                                 uint32_t& result,  // NOLINT - refs
                                 ::DBus::Error& error);  // NOLINT - refs
   virtual uint32_t InitToken(const std::vector<uint8_t>& isolate_credential,
@@ -148,10 +122,7 @@ class ChapsAdaptor : public org::chromium::Chaps_adaptor,
       ::DBus::Error& error);  // NOLINT - refs
   virtual void GetSessionInfo(const std::vector<uint8_t>& isolate_credential,
                               const uint64_t& session_id,
-                              uint64_t& slot_id,  // NOLINT - refs
-                              uint64_t& state,  // NOLINT - refs
-                              uint64_t& flags,  // NOLINT - refs
-                              uint64_t& device_error,  // NOLINT - refs
+                              std::vector<uint8_t>& session_info,  // NOLINT - refs
                               uint32_t& result,  // NOLINT - refs
                               ::DBus::Error& error);  // NOLINT - refs
   virtual void GetOperationState(const std::vector<uint8_t>& isolate_credential,
@@ -528,35 +499,11 @@ class ChapsAdaptor : public org::chromium::Chaps_adaptor,
                            uint32_t& result);  // NOLINT - refs
   virtual void GetSlotInfo(const std::vector<uint8_t>& isolate_credential,
                            const uint64_t& slot_id,
-                           std::vector<uint8_t>& slot_description,  // NOLINT - refs
-                           std::vector<uint8_t>& manufacturer_id,  // NOLINT - refs
-                           uint64_t& flags,  // NOLINT - refs
-                           uint8_t& hardware_version_major,  // NOLINT - refs
-                           uint8_t& hardware_version_minor,  // NOLINT - refs
-                           uint8_t& firmware_version_major,  // NOLINT - refs
-                           uint8_t& firmware_version_minor,  // NOLINT - refs
+                           std::vector<uint8_t>& slot_info,  // NOLINT - refs
                            uint32_t& result);  // NOLINT - refs
   virtual void GetTokenInfo(const std::vector<uint8_t>& isolate_credential,
                             const uint64_t& slot_id,
-                            std::vector<uint8_t>& label,  // NOLINT - refs
-                            std::vector<uint8_t>& manufacturer_id,  // NOLINT - refs
-                            std::vector<uint8_t>& model,  // NOLINT - refs
-                            std::vector<uint8_t>& serial_number,  // NOLINT - refs
-                            uint64_t& flags,  // NOLINT - refs
-                            uint64_t& max_session_count,  // NOLINT - refs
-                            uint64_t& session_count,  // NOLINT - refs
-                            uint64_t& max_session_count_rw,  // NOLINT - refs
-                            uint64_t& session_count_rw,  // NOLINT - refs
-                            uint64_t& max_pin_len,  // NOLINT - refs
-                            uint64_t& min_pin_len,  // NOLINT - refs
-                            uint64_t& total_public_memory,  // NOLINT - refs
-                            uint64_t& free_public_memory,  // NOLINT - refs
-                            uint64_t& total_private_memory,  // NOLINT - refs
-                            uint64_t& free_private_memory,  // NOLINT - refs
-                            uint8_t& hardware_version_major,  // NOLINT - refs
-                            uint8_t& hardware_version_minor,  // NOLINT - refs
-                            uint8_t& firmware_version_major,  // NOLINT - refs
-                            uint8_t& firmware_version_minor,  // NOLINT - refs
+                            std::vector<uint8_t>& token_info,  // NOLINT - refs
                             uint32_t& result);  // NOLINT - refs
   virtual void GetMechanismList(const std::vector<uint8_t>& isolate_credential,
                                 const uint64_t& slot_id,
@@ -565,9 +512,7 @@ class ChapsAdaptor : public org::chromium::Chaps_adaptor,
   virtual void GetMechanismInfo(const std::vector<uint8_t>& isolate_credential,
                                 const uint64_t& slot_id,
                                 const uint64_t& mechanism_type,
-                                uint64_t& min_key_size,  // NOLINT - refs
-                                uint64_t& max_key_size,  // NOLINT - refs
-                                uint64_t& flags,  // NOLINT - refs
+                                std::vector<uint8_t>& mechanism_info,  // NOLINT - refs
                                 uint32_t& result);  // NOLINT - refs
   virtual uint32_t InitToken(const std::vector<uint8_t>& isolate_credential,
                              const uint64_t& slot_id,
@@ -594,10 +539,7 @@ class ChapsAdaptor : public org::chromium::Chaps_adaptor,
       const uint64_t& slot_id);
   virtual void GetSessionInfo(const std::vector<uint8_t>& isolate_credential,
                               const uint64_t& session_id,
-                              uint64_t& slot_id,  // NOLINT - refs
-                              uint64_t& state,  // NOLINT - refs
-                              uint64_t& flags,  // NOLINT - refs
-                              uint64_t& device_error,  // NOLINT - refs
+                              std::vector<uint8_t>& session_info,  // NOLINT - refs
                               uint32_t& result);  // NOLINT - refs
   virtual void GetOperationState(const std::vector<uint8_t>& isolate_credential,
                                  const uint64_t& session_id,
