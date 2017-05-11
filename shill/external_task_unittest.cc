@@ -157,38 +157,6 @@ TEST_F(ExternalTaskTest, DestroyLater) {
   VerifyStop();
 }
 
-namespace {
-
-// Returns true iff. there is at least one anchored match in |arg|,
-// for each item in |expected_values|. Order of items does not matter.
-//
-// |arg| is a NULL-terminated array of C-strings.
-// |expected_values| is a container of regular expressions (as strings).
-MATCHER_P(HasElementsMatching, expected_values, "") {
-  for (const auto& expected_value : expected_values) {
-    auto regex_matcher(MatchesRegex(expected_value).impl());
-    char** arg_local = arg;
-    while (*arg_local) {
-      if (regex_matcher.MatchAndExplain(*arg_local, result_listener)) {
-        break;
-      }
-      ++arg_local;
-    }
-    if (*arg_local == nullptr) {
-      *result_listener << "missing value " << expected_value << "\n";
-      arg_local = arg;
-      while (*arg_local) {
-        *result_listener << "received: " << *arg_local << "\n";
-        ++arg_local;
-      }
-      return false;
-    }
-  }
-  return true;
-}
-
-}  // namespace
-
 TEST_F(ExternalTaskTest, Start) {
   const string kCommand = "/run/me";
   const vector<string> kCommandOptions{"arg1", "arg2"};

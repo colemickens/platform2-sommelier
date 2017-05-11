@@ -1293,10 +1293,6 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
   EXPECT_EQ(kOperatorName, capability_->spn_);
 }
 
-MATCHER_P(SizeIs, value, "") {
-  return static_cast<size_t>(value) == arg.size();
-}
-
 TEST_F(CellularCapabilityUniversalMainTest, Reset) {
   // Save pointers to proxies before they are lost by the call to InitProxies
   mm1::MockModemProxy* modem_proxy = modem_proxy_.get();

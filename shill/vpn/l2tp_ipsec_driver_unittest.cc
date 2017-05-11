@@ -649,14 +649,6 @@ TEST_F(L2TPIPSecDriverTest, GetProvider) {
   }
 }
 
-namespace {
-MATCHER_P(IsIPAddress, address, "") {
-  IPAddress ip_address(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(ip_address.SetAddressFromString(address));
-  return ip_address.Equals(arg);
-}
-}  // namespace
-
 TEST_F(L2TPIPSecDriverTest, Notify) {
   map<string, string> config{{kPPPInterfaceName, kInterfaceName}};
   MockPPPDeviceFactory* mock_ppp_device_factory =

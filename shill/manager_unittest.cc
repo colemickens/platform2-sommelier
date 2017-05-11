@@ -543,11 +543,6 @@ void SetErrorSuccess(Error* error) {
   error->Reset();
 }
 
-MATCHER_P(IsError, error, "") {
-  return arg.type() == error->type() &&
-         arg.message() == error->message();
-}
-
 TEST_F(ManagerTest, Contains) {
   EXPECT_TRUE(manager()->store().Contains(kStateProperty));
   EXPECT_FALSE(manager()->store().Contains(""));

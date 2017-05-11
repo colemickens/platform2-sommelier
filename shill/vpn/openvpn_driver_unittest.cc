@@ -359,14 +359,6 @@ TEST_F(OpenVPNDriverTest, ConnectTunnelFailure) {
   EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
 }
 
-namespace {
-MATCHER_P(IsIPAddress, address, "") {
-  IPAddress ip_address(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(ip_address.SetAddressFromString(address));
-  return ip_address.Equals(arg);
-}
-}  // namespace
-
 TEST_F(OpenVPNDriverTest, Notify) {
   map<string, string> config;
   driver_->service_ = service_;
