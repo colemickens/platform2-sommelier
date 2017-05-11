@@ -45,54 +45,6 @@ int MetadataHandler::FillDefaultMetadata(CameraMetadata* metadata) {
   const uint8_t hardware_level = ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED;
   UPDATE(ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL, &hardware_level, 1);
 
-  // android.request
-  const uint8_t available_capabilities[] = {
-      ANDROID_REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE};
-  UPDATE(ANDROID_REQUEST_AVAILABLE_CAPABILITIES, available_capabilities,
-         ARRAY_SIZE(available_capabilities));
-
-  const int32_t partial_result_count = 1;
-  UPDATE(ANDROID_REQUEST_PARTIAL_RESULT_COUNT, &partial_result_count, 1);
-
-  // This means pipeline latency of X frame intervals. The maximum number is 4.
-  const uint8_t request_pipeline_max_depth = 4;
-  UPDATE(ANDROID_REQUEST_PIPELINE_MAX_DEPTH, &request_pipeline_max_depth, 1);
-
-  // Three numbers represent the maximum numbers of different types of output
-  // streams simultaneously. The types are raw sensor, processed (but not
-  // stalling), and processed (but stalling). For usb limited mode, raw sensor
-  // is not supported. Stalling stream is JPEG. Non-stalling streams are
-  // YUV_420_888, NV21, or YV12.
-  const int32_t request_max_num_output_streams[] = {0, 2, 1};
-  UPDATE(ANDROID_REQUEST_MAX_NUM_OUTPUT_STREAMS, request_max_num_output_streams,
-         ARRAY_SIZE(request_max_num_output_streams));
-
-  // Limited mode doesn't support reprocessing.
-  const int32_t request_max_num_input_streams = 0;
-  UPDATE(ANDROID_REQUEST_MAX_NUM_INPUT_STREAMS, &request_max_num_input_streams,
-         1);
-
-  // android.jpeg
-  const int32_t jpeg_available_thumbnail_sizes[] = {0, 0, 320, 240};
-  UPDATE(ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES, jpeg_available_thumbnail_sizes,
-         ARRAY_SIZE(jpeg_available_thumbnail_sizes));
-
-  const int32_t jpeg_max_size[] = {13 * 1024 * 1024};  // 13MB
-  UPDATE(ANDROID_JPEG_MAX_SIZE, jpeg_max_size, ARRAY_SIZE(jpeg_max_size));
-
-  const uint8_t jpeg_quality = 90;
-  UPDATE(ANDROID_JPEG_QUALITY, &jpeg_quality, 1);
-  UPDATE(ANDROID_JPEG_THUMBNAIL_QUALITY, &jpeg_quality, 1);
-
-  // android.scaler
-  const float scaler_available_max_digital_zoom[] = {1};
-  UPDATE(ANDROID_SCALER_AVAILABLE_MAX_DIGITAL_ZOOM,
-         scaler_available_max_digital_zoom,
-         ARRAY_SIZE(scaler_available_max_digital_zoom));
-
-  const uint8_t cropping_type = ANDROID_SCALER_CROPPING_TYPE_CENTER_ONLY;
-  UPDATE(ANDROID_SCALER_CROPPING_TYPE, &cropping_type, 1);
-
   // android.colorCorrection
   const uint8_t available_aberration_modes[] = {
       ANDROID_COLOR_CORRECTION_ABERRATION_MODE_FAST,
@@ -184,18 +136,58 @@ int MetadataHandler::FillDefaultMetadata(CameraMetadata* metadata) {
   UPDATE(ANDROID_LENS_OPTICAL_STABILIZATION_MODE, &optical_stabilization_mode,
          1);
 
+  // android.jpeg
+  const int32_t jpeg_available_thumbnail_sizes[] = {0, 0, 320, 240};
+  UPDATE(ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES, jpeg_available_thumbnail_sizes,
+         ARRAY_SIZE(jpeg_available_thumbnail_sizes));
+
+  const int32_t jpeg_max_size[] = {13 * 1024 * 1024};  // 13MB
+  UPDATE(ANDROID_JPEG_MAX_SIZE, jpeg_max_size, ARRAY_SIZE(jpeg_max_size));
+
+  const uint8_t jpeg_quality = 90;
+  UPDATE(ANDROID_JPEG_QUALITY, &jpeg_quality, 1);
+  UPDATE(ANDROID_JPEG_THUMBNAIL_QUALITY, &jpeg_quality, 1);
+
   // android.noiseReduction
   const uint8_t noise_reduction_mode = ANDROID_NOISE_REDUCTION_MODE_OFF;
   UPDATE(ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES,
          &noise_reduction_mode, 1);
 
-  // android.statistics
-  const uint8_t face_detect_mode = ANDROID_STATISTICS_FACE_DETECT_MODE_OFF;
-  UPDATE(ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES, &face_detect_mode,
+  // android.request
+  const uint8_t available_capabilities[] = {
+      ANDROID_REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE};
+  UPDATE(ANDROID_REQUEST_AVAILABLE_CAPABILITIES, available_capabilities,
+         ARRAY_SIZE(available_capabilities));
+
+  const int32_t partial_result_count = 1;
+  UPDATE(ANDROID_REQUEST_PARTIAL_RESULT_COUNT, &partial_result_count, 1);
+
+  // This means pipeline latency of X frame intervals. The maximum number is 4.
+  const uint8_t request_pipeline_max_depth = 4;
+  UPDATE(ANDROID_REQUEST_PIPELINE_MAX_DEPTH, &request_pipeline_max_depth, 1);
+
+  // Three numbers represent the maximum numbers of different types of output
+  // streams simultaneously. The types are raw sensor, processed (but not
+  // stalling), and processed (but stalling). For usb limited mode, raw sensor
+  // is not supported. Stalling stream is JPEG. Non-stalling streams are
+  // YUV_420_888, NV21, or YV12.
+  const int32_t request_max_num_output_streams[] = {0, 2, 1};
+  UPDATE(ANDROID_REQUEST_MAX_NUM_OUTPUT_STREAMS, request_max_num_output_streams,
+         ARRAY_SIZE(request_max_num_output_streams));
+
+  // Limited mode doesn't support reprocessing.
+  const int32_t request_max_num_input_streams = 0;
+  UPDATE(ANDROID_REQUEST_MAX_NUM_INPUT_STREAMS, &request_max_num_input_streams,
          1);
 
-  const int32_t max_face_count = 0;
-  UPDATE(ANDROID_STATISTICS_INFO_MAX_FACE_COUNT, &max_face_count, 1);
+  // android.scaler
+  const float scaler_available_max_digital_zoom[] = {1};
+  UPDATE(ANDROID_SCALER_AVAILABLE_MAX_DIGITAL_ZOOM,
+         scaler_available_max_digital_zoom,
+         ARRAY_SIZE(scaler_available_max_digital_zoom));
+
+  const uint8_t cropping_type = ANDROID_SCALER_CROPPING_TYPE_CENTER_ONLY;
+  UPDATE(ANDROID_SCALER_CROPPING_TYPE, &cropping_type, 1);
 
   // android.sensor
   // UVC driver cannot set ISO sensitivity. Use the minimum range.
@@ -214,6 +206,14 @@ int MetadataHandler::FillDefaultMetadata(CameraMetadata* metadata) {
   // android.shading
   const uint8_t availabe_mode = ANDROID_SHADING_MODE_FAST;
   UPDATE(ANDROID_SHADING_AVAILABLE_MODES, &availabe_mode, 1);
+
+  // android.statistics
+  const uint8_t face_detect_mode = ANDROID_STATISTICS_FACE_DETECT_MODE_OFF;
+  UPDATE(ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES, &face_detect_mode,
+         1);
+
+  const int32_t max_face_count = 0;
+  UPDATE(ANDROID_STATISTICS_INFO_MAX_FACE_COUNT, &max_face_count, 1);
 
   // android.sync
   const int32_t max_latency = ANDROID_SYNC_MAX_LATENCY_UNKNOWN;
