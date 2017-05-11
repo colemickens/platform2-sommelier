@@ -498,6 +498,9 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("gpu_sandbox_start_early"))
     AddArg("--gpu-sandbox-start-early");
 
+  if (UseFlagIsSet("arc_oobe_optin"))
+    AddArg("--enable-arc-oobe-optin");
+
   // Allow Chrome to access GPU memory information despite /sys/kernel/debug
   // being owned by debugd. This limits the security attack surface versus
   // leaving the whole debug directory world-readable: http://crbug.com/175828
