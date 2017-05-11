@@ -5,12 +5,18 @@
 
 #include "hal/usb/stream_format.h"
 
+#include <algorithm>
+
 #include <linux/videodev2.h>
 #include <system/graphics.h>
 
 #include "arc/common.h"
 
 namespace arc {
+
+static std::vector<int> kSupportedHalFormats{
+    HAL_PIXEL_FORMAT_BLOB, HAL_PIXEL_FORMAT_YCbCr_420_888,
+    HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED};
 
 static const std::vector<uint32_t> GetSupportedFourCCs() {
   // The preference of supported fourccs in the list is from high to low.
@@ -66,6 +72,21 @@ SupportedFormats GetQualifiedFormats(
     }
   }
   return qualified_formats;
+}
+
+bool IsFormatSupported(const SupportedFormats& supported_formats,
+                       const camera3_stream_t& stream) {
+  if (std::find(kSupportedHalFormats.begin(), kSupportedHalFormats.end(),
+                stream.format) == kSupportedHalFormats.end()) {
+    return false;
+  }
+  for (const auto& supported_format : supported_formats) {
+    if (stream.width == supported_format.width &&
+        stream.height == supported_format.height) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace arc

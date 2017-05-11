@@ -41,6 +41,10 @@ CameraClient::CameraClient(int id,
   *hw_device = &camera3_device_.common;
 
   ops_thread_checker_.DetachFromThread();
+
+  SupportedFormats supported_formats =
+      device_->GetDeviceSupportedFormats(device_path);
+  qualified_formats_ = GetQualifiedFormats(supported_formats);
 }
 
 CameraClient::~CameraClient() {}
@@ -83,7 +87,6 @@ int CameraClient::ConfigureStreams(
    * 1. Remove all pending requests. Post a task to request thread and wait for
    *    the task to be run.
    * 2. Check configure_streams is called after initialize.
-   * 3. Check format, width, and height are supported.
    */
 
   if (stream_config == nullptr) {
@@ -114,6 +117,14 @@ int CameraClient::ConfigureStreams(
                     << " rotation=" << stream_config->streams[i]->rotation
                     << " format=0x" << std::hex
                     << stream_config->streams[i]->format;
+
+    if (!IsFormatSupported(qualified_formats_, *(stream_config->streams[i]))) {
+      LOGF(ERROR) << "Unsupported stream parameters. Width: "
+                  << stream_config->streams[i]->width
+                  << ", height: " << stream_config->streams[i]->height
+                  << ", format: " << stream_config->streams[i]->format;
+      return -EINVAL;
+    }
     streams.push_back(stream_config->streams[i]);
 
     // Skip BLOB format to avoid to use too large resolution as preview size.
@@ -185,6 +196,17 @@ int CameraClient::ProcessCaptureRequest(camera3_capture_request_t* request) {
     latest_request_metadata_ = request->settings;
     if (VLOG_IS_ON(1)) {
       dump_camera_metadata(request->settings, 1, 1);
+    }
+  }
+
+  for (size_t i = 0; i < request->num_output_buffers; i++) {
+    const camera3_stream_buffer_t* buffer = &request->output_buffers[i];
+    if (!IsFormatSupported(qualified_formats_, *(buffer->stream))) {
+      LOGF(ERROR) << "Unsupported stream parameters. Width: "
+                  << buffer->stream->width
+                  << ", height: " << buffer->stream->height
+                  << ", format: " << buffer->stream->format;
+      return -EINVAL;
     }
   }
 

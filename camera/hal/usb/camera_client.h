@@ -127,6 +127,9 @@ class CameraClient {
   // Metadata for latest request.
   CameraMetadata latest_request_metadata_;
 
+  // The formats used to report to apps.
+  SupportedFormats qualified_formats_;
+
   // RequestHandler is used to handle in-flight requests. All functions in the
   // class run on |request_thread_|. The class will be created in StreamOn and
   // destroyed in StreamOff.

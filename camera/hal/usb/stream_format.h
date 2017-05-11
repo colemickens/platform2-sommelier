@@ -8,6 +8,8 @@
 
 #include <vector>
 
+#include <hardware/camera3.h>
+
 #include "hal/usb/common_types.h"
 
 namespace arc {
@@ -23,6 +25,10 @@ SupportedFormat GetMaximumFormat(const SupportedFormats& supported_formats);
 // Find all formats in preference order.
 // The resolutions in returned SupportedFormats vector are unique.
 SupportedFormats GetQualifiedFormats(const SupportedFormats& supported_formats);
+
+// Check |stream| is supported in |supported_formats|.
+bool IsFormatSupported(const SupportedFormats& supported_formats,
+                       const camera3_stream_t& stream);
 
 }  // namespace arc
 
