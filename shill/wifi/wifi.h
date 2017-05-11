@@ -378,7 +378,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void GetPhyInfo();
   void AppendBgscan(WiFiService* service,
                     KeyValueStore* service_params) const;
-  std::string GetBgscanMethod(const int& argument, Error* error);
+  std::string GetBgscanMethod(Error* error);
   uint16_t GetBgscanShortInterval(Error* /* error */) {
     return bgscan_short_interval_seconds_;
   }
@@ -400,13 +400,12 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   Uint16s GetAllScanFrequencies(Error* /* error */);
 
   bool GetScanPending(Error* /* error */);
-  bool SetBgscanMethod(
-      const int& argument, const std::string& method, Error* error);
+  bool SetBgscanMethod(const std::string& method, Error* error);
   bool SetBgscanShortInterval(const uint16_t& seconds, Error* error);
   bool SetBgscanSignalThreshold(const int32_t& dbm, Error* error);
   bool SetRoamThreshold(const uint16_t& threshold, Error* /*error*/);
   bool SetScanInterval(const uint16_t& seconds, Error* error);
-  void ClearBgscanMethod(const int& argument, Error* error);
+  void ClearBgscanMethod(Error* error);
 
   bool GetRandomMACEnabled(Error* error);
   bool SetRandomMACEnabled(const bool& enabled, Error* error);

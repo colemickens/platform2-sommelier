@@ -184,18 +184,12 @@ WiFi::WiFi(ControlInterface* control_interface,
                                    Bind(&Manager::RecordDarkResumeWakeReason,
                                         manager->AsWeakPtr()))) {
   PropertyStore* store = this->mutable_store();
-  store->RegisterDerivedString(
-      kBgscanMethodProperty,
-      StringAccessor(
-          // TODO(petkov): CustomMappedAccessor is used for convenience because
-          // it provides a way to define a custom clearer (unlike
-          // CustomAccessor). We need to implement a fully custom accessor with
-          // no extra argument.
-          new CustomMappedAccessor<WiFi, string, int>(this,
-                                                      &WiFi::ClearBgscanMethod,
-                                                      &WiFi::GetBgscanMethod,
-                                                      &WiFi::SetBgscanMethod,
-                                                      0)));  // Unused.
+  store->RegisterDerivedString(kBgscanMethodProperty,
+                               StringAccessor(new CustomAccessor<WiFi, string>(
+                                   this,
+                                   &WiFi::GetBgscanMethod,
+                                   &WiFi::SetBgscanMethod,
+                                   &WiFi::ClearBgscanMethod)));
   HelpRegisterDerivedUint16(store,
                             kBgscanShortIntervalProperty,
                             &WiFi::GetBgscanShortInterval,
@@ -691,12 +685,11 @@ void WiFi::AppendBgscan(WiFiService* service,
                            config_string);
 }
 
-string WiFi::GetBgscanMethod(const int& /*argument*/, Error* /* error */) {
+string WiFi::GetBgscanMethod(Error* /* error */) {
   return bgscan_method_.empty() ? kDefaultBgscanMethod : bgscan_method_;
 }
 
-bool WiFi::SetBgscanMethod(
-    const int& /*argument*/, const string& method, Error* error) {
+bool WiFi::SetBgscanMethod(const string& method, Error* error) {
   if (method != WPASupplicant::kNetworkBgscanMethodSimple &&
       method != WPASupplicant::kNetworkBgscanMethodLearn &&
       method != WPASupplicant::kNetworkBgscanMethodNone) {
@@ -791,7 +784,7 @@ bool WiFi::SetRandomMACEnabled(const bool& enabled, Error* error) {
   return false;
 }
 
-void WiFi::ClearBgscanMethod(const int& /*argument*/, Error* /*error*/) {
+void WiFi::ClearBgscanMethod(Error* /*error*/) {
   bgscan_method_.clear();
 }
 
