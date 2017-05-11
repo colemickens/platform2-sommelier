@@ -42,17 +42,20 @@ MetadataHandler::MetadataHandler(const camera_metadata_t& metadata)
 MetadataHandler::~MetadataHandler() {}
 
 int MetadataHandler::FillDefaultMetadata(CameraMetadata* metadata) {
-  uint8_t hardware_level = ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED;
+  const uint8_t hardware_level = ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED;
   UPDATE(ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL, &hardware_level, 1);
 
   // android.request
-  uint8_t available_capabilities[] = {
+  const uint8_t available_capabilities[] = {
       ANDROID_REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE};
   UPDATE(ANDROID_REQUEST_AVAILABLE_CAPABILITIES, available_capabilities,
          ARRAY_SIZE(available_capabilities));
 
+  const int32_t partial_result_count = 1;
+  UPDATE(ANDROID_REQUEST_PARTIAL_RESULT_COUNT, &partial_result_count, 1);
+
   // This means pipeline latency of X frame intervals. The maximum number is 4.
-  uint8_t request_pipeline_max_depth = 4;
+  const uint8_t request_pipeline_max_depth = 4;
   UPDATE(ANDROID_REQUEST_PIPELINE_MAX_DEPTH, &request_pipeline_max_depth, 1);
 
   // Three numbers represent the maximum numbers of different types of output
@@ -60,105 +63,161 @@ int MetadataHandler::FillDefaultMetadata(CameraMetadata* metadata) {
   // stalling), and processed (but stalling). For usb limited mode, raw sensor
   // is not supported. Stalling stream is JPEG. Non-stalling streams are
   // YUV_420_888, NV21, or YV12.
-  int32_t request_max_num_output_streams[] = {0, 2, 1};
+  const int32_t request_max_num_output_streams[] = {0, 2, 1};
   UPDATE(ANDROID_REQUEST_MAX_NUM_OUTPUT_STREAMS, request_max_num_output_streams,
          ARRAY_SIZE(request_max_num_output_streams));
 
   // Limited mode doesn't support reprocessing.
-  int32_t request_max_num_input_streams = 0;
+  const int32_t request_max_num_input_streams = 0;
   UPDATE(ANDROID_REQUEST_MAX_NUM_INPUT_STREAMS, &request_max_num_input_streams,
          1);
 
   // android.jpeg
-  int32_t jpeg_available_thumbnail_sizes[] = {0, 0, 320, 240};
+  const int32_t jpeg_available_thumbnail_sizes[] = {0, 0, 320, 240};
   UPDATE(ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES, jpeg_available_thumbnail_sizes,
          ARRAY_SIZE(jpeg_available_thumbnail_sizes));
 
-  int32_t jpeg_max_size[] = {13 * 1024 * 1024};  // 13MB
+  const int32_t jpeg_max_size[] = {13 * 1024 * 1024};  // 13MB
   UPDATE(ANDROID_JPEG_MAX_SIZE, jpeg_max_size, ARRAY_SIZE(jpeg_max_size));
 
-  uint8_t jpeg_quality = 90;
+  const uint8_t jpeg_quality = 90;
   UPDATE(ANDROID_JPEG_QUALITY, &jpeg_quality, 1);
   UPDATE(ANDROID_JPEG_THUMBNAIL_QUALITY, &jpeg_quality, 1);
 
   // android.scaler
-  float scaler_available_max_digital_zoom[] = {1};
+  const float scaler_available_max_digital_zoom[] = {1};
   UPDATE(ANDROID_SCALER_AVAILABLE_MAX_DIGITAL_ZOOM,
          scaler_available_max_digital_zoom,
          ARRAY_SIZE(scaler_available_max_digital_zoom));
 
+  const uint8_t cropping_type = ANDROID_SCALER_CROPPING_TYPE_CENTER_ONLY;
+  UPDATE(ANDROID_SCALER_CROPPING_TYPE, &cropping_type, 1);
+
+  // android.colorCorrection
+  const uint8_t available_aberration_modes[] = {
+      ANDROID_COLOR_CORRECTION_ABERRATION_MODE_FAST,
+      ANDROID_COLOR_CORRECTION_ABERRATION_MODE_HIGH_QUALITY};
+  UPDATE(ANDROID_COLOR_CORRECTION_AVAILABLE_ABERRATION_MODES,
+         available_aberration_modes, ARRAY_SIZE(available_aberration_modes));
+
   // android.control
   // We don't support AE compensation.
-  int32_t control_ae_compensation_range[] = {0, 0};
+  const int32_t control_ae_compensation_range[] = {0, 0};
   UPDATE(ANDROID_CONTROL_AE_COMPENSATION_RANGE, control_ae_compensation_range,
          ARRAY_SIZE(control_ae_compensation_range));
 
-  camera_metadata_rational_t control_ae_compensation_step[] = {{0, 0}};
+  const camera_metadata_rational_t control_ae_compensation_step[] = {{0, 0}};
   UPDATE(ANDROID_CONTROL_AE_COMPENSATION_STEP, control_ae_compensation_step,
          ARRAY_SIZE(control_ae_compensation_step));
 
-  int32_t control_max_regions[] = {/*AE*/ 0, /*AWB*/ 0, /*AF*/ 0};
+  const int32_t control_max_regions[] = {/*AE*/ 0, /*AWB*/ 0, /*AF*/ 0};
   UPDATE(ANDROID_CONTROL_MAX_REGIONS, control_max_regions,
          ARRAY_SIZE(control_max_regions));
 
-  uint8_t video_stabilization_mode =
+  const uint8_t video_stabilization_mode =
       ANDROID_CONTROL_VIDEO_STABILIZATION_MODE_OFF;
   UPDATE(ANDROID_CONTROL_AVAILABLE_VIDEO_STABILIZATION_MODES,
          &video_stabilization_mode, 1);
   UPDATE(ANDROID_CONTROL_VIDEO_STABILIZATION_MODE, &video_stabilization_mode,
          1);
 
-  uint8_t awb_available_mode = ANDROID_CONTROL_AWB_MODE_AUTO;
+  const uint8_t awb_available_mode = ANDROID_CONTROL_AWB_MODE_AUTO;
   UPDATE(ANDROID_CONTROL_AWB_AVAILABLE_MODES, &awb_available_mode, 1);
   UPDATE(ANDROID_CONTROL_AWB_MODE, &awb_available_mode, 1);
 
-  uint8_t ae_antibanding_mode = ANDROID_CONTROL_AE_ANTIBANDING_MODE_OFF;
+  const uint8_t ae_antibanding_mode = ANDROID_CONTROL_AE_ANTIBANDING_MODE_OFF;
   UPDATE(ANDROID_CONTROL_AE_AVAILABLE_ANTIBANDING_MODES, &ae_antibanding_mode,
          1);
   UPDATE(ANDROID_CONTROL_AE_ANTIBANDING_MODE, &ae_antibanding_mode, 1);
 
-  uint8_t ae_available_modes[] = {ANDROID_CONTROL_AE_MODE_ON,
-                                  ANDROID_CONTROL_AE_MODE_OFF};
+  const uint8_t ae_available_modes[] = {ANDROID_CONTROL_AE_MODE_ON,
+                                        ANDROID_CONTROL_AE_MODE_OFF};
   UPDATE(ANDROID_CONTROL_AE_AVAILABLE_MODES, ae_available_modes,
          ARRAY_SIZE(ae_available_modes));
   // ON means auto-exposure is active with no flash control.
   UPDATE(ANDROID_CONTROL_AE_MODE, &ae_available_modes[0], 1);
 
-  uint8_t af_available_mode = ANDROID_CONTROL_AF_MODE_AUTO;
+  const uint8_t af_available_mode = ANDROID_CONTROL_AF_MODE_AUTO;
   UPDATE(ANDROID_CONTROL_AF_AVAILABLE_MODES, &af_available_mode, 1);
   UPDATE(ANDROID_CONTROL_AF_MODE, &af_available_mode, 1);
 
-  uint8_t available_scene_mode = ANDROID_CONTROL_SCENE_MODE_DISABLED;
+  const uint8_t available_scene_mode = ANDROID_CONTROL_SCENE_MODE_DISABLED;
   UPDATE(ANDROID_CONTROL_AVAILABLE_SCENE_MODES, &available_scene_mode, 1);
   UPDATE(ANDROID_CONTROL_SCENE_MODE, &available_scene_mode, 1);
 
-  uint8_t available_effect = ANDROID_CONTROL_EFFECT_MODE_OFF;
+  const uint8_t available_effect = ANDROID_CONTROL_EFFECT_MODE_OFF;
   UPDATE(ANDROID_CONTROL_AVAILABLE_EFFECTS, &available_effect, 1);
   UPDATE(ANDROID_CONTROL_EFFECT_MODE, &available_effect, 1);
 
+  const uint8_t ae_lock_available = ANDROID_CONTROL_AE_LOCK_AVAILABLE_FALSE;
+  UPDATE(ANDROID_CONTROL_AE_LOCK_AVAILABLE, &ae_lock_available, 1);
+
+  const uint8_t awb_lock_available = ANDROID_CONTROL_AWB_LOCK_AVAILABLE_FALSE;
+  UPDATE(ANDROID_CONTROL_AWB_LOCK_AVAILABLE, &awb_lock_available, 1);
+
+  const uint8_t control_available_modes[] = {ANDROID_CONTROL_MODE_OFF,
+                                             ANDROID_CONTROL_MODE_AUTO};
+  UPDATE(ANDROID_CONTROL_AVAILABLE_MODES, control_available_modes,
+         sizeof(control_available_modes));
+
+  // android.edge
+  const uint8_t available_edge_modes[] = {ANDROID_EDGE_MODE_OFF,
+                                          ANDROID_EDGE_MODE_FAST};
+  UPDATE(ANDROID_EDGE_AVAILABLE_EDGE_MODES, &available_edge_modes[0], 1);
+
   // android.flash
-  uint8_t flash_info = ANDROID_FLASH_INFO_AVAILABLE_FALSE;
+  const uint8_t flash_info = ANDROID_FLASH_INFO_AVAILABLE_FALSE;
   UPDATE(ANDROID_FLASH_INFO_AVAILABLE, &flash_info, 1);
 
-  uint8_t flash_state = ANDROID_FLASH_STATE_UNAVAILABLE;
+  const uint8_t flash_state = ANDROID_FLASH_STATE_UNAVAILABLE;
   UPDATE(ANDROID_FLASH_STATE, &flash_state, 1);
 
+  // This should not be needed.
+  const float hyper_focal_distance = 0.0f;
+  UPDATE(ANDROID_LENS_INFO_HYPERFOCAL_DISTANCE, &hyper_focal_distance, 1);
+
+  // android.lens
+  const uint8_t optical_stabilization_mode =
+      ANDROID_LENS_OPTICAL_STABILIZATION_MODE_OFF;
+  UPDATE(ANDROID_LENS_INFO_AVAILABLE_OPTICAL_STABILIZATION,
+         &optical_stabilization_mode, 1);
+  UPDATE(ANDROID_LENS_OPTICAL_STABILIZATION_MODE, &optical_stabilization_mode,
+         1);
+
+  // android.noiseReduction
+  const uint8_t noise_reduction_mode = ANDROID_NOISE_REDUCTION_MODE_OFF;
+  UPDATE(ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES,
+         &noise_reduction_mode, 1);
+
   // android.statistics
-  uint8_t face_detect_mode = ANDROID_STATISTICS_FACE_DETECT_MODE_OFF;
+  const uint8_t face_detect_mode = ANDROID_STATISTICS_FACE_DETECT_MODE_OFF;
   UPDATE(ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES, &face_detect_mode,
          1);
 
-  int32_t max_face_count = 0;
+  const int32_t max_face_count = 0;
   UPDATE(ANDROID_STATISTICS_INFO_MAX_FACE_COUNT, &max_face_count, 1);
 
   // android.sensor
   // UVC driver cannot set ISO sensitivity. Use the minimum range.
   // Android document says the minimum should be <= 100, and maximum should be
   // >= 800.
-  int32_t sensor_info_sensitivity_range[] = {100, 800};
+  const int32_t sensor_info_sensitivity_range[] = {100, 800};
   UPDATE(ANDROID_SENSOR_INFO_SENSITIVITY_RANGE, sensor_info_sensitivity_range,
          ARRAY_SIZE(sensor_info_sensitivity_range));
 
+  const int32_t test_pattern_mode = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
+  UPDATE(ANDROID_SENSOR_AVAILABLE_TEST_PATTERN_MODES, &test_pattern_mode, 1);
+
+  const uint8_t timestamp_source = ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE_UNKNOWN;
+  UPDATE(ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE, &timestamp_source, 1);
+
+  // android.shading
+  const uint8_t availabe_mode = ANDROID_SHADING_MODE_FAST;
+  UPDATE(ANDROID_SHADING_AVAILABLE_MODES, &availabe_mode, 1);
+
+  // android.sync
+  const int32_t max_latency = ANDROID_SYNC_MAX_LATENCY_UNKNOWN;
+  UPDATE(ANDROID_SYNC_MAX_LATENCY, &max_latency, 1);
   return 0;
 }
 
