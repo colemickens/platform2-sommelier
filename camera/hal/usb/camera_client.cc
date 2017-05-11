@@ -22,12 +22,12 @@ namespace arc {
 const int kBufferFenceReady = -1;
 
 CameraClient::CameraClient(int id,
-                           const std::string& device_path,
+                           const DeviceInfo& device_info,
                            const camera_metadata_t& static_info,
                            const hw_module_t* module,
                            hw_device_t** hw_device)
     : id_(id),
-      device_path_(device_path),
+      device_info_(device_info),
       device_(new V4L2CameraDevice()),
       metadata_handler_(new MetadataHandler(static_info)),
       request_thread_("Capture request thread") {
@@ -43,7 +43,7 @@ CameraClient::CameraClient(int id,
   ops_thread_checker_.DetachFromThread();
 
   SupportedFormats supported_formats =
-      device_->GetDeviceSupportedFormats(device_path);
+      device_->GetDeviceSupportedFormats(device_info_.device_path);
   qualified_formats_ = GetQualifiedFormats(supported_formats);
 }
 
@@ -53,7 +53,7 @@ int CameraClient::OpenDevice() {
   VLOGFID(1, id_);
   DCHECK(thread_checker_.CalledOnValidThread());
 
-  int ret = device_->Connect(device_path_);
+  int ret = device_->Connect(device_info_.device_path);
   if (ret) {
     LOGFID(ERROR, id_) << "Connect failed: " << strerror(-ret);
     return ret;
@@ -291,7 +291,7 @@ int CameraClient::StreamOn(SupportedFormat stream_on_resolution,
   }
   request_task_runner_ = request_thread_.task_runner();
 
-  request_handler_.reset(new RequestHandler(id_, device_path_, device_.get(),
+  request_handler_.reset(new RequestHandler(id_, device_info_, device_.get(),
                                             callback_ops_, request_task_runner_,
                                             metadata_handler_.get()));
 
@@ -343,20 +343,20 @@ void CameraClient::StreamOffCallback(
 
 CameraClient::RequestHandler::RequestHandler(
     const int device_id,
-    const std::string& device_path,
+    const DeviceInfo& device_info,
     V4L2CameraDevice* device,
     const camera3_callback_ops_t* callback_ops,
     const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
     MetadataHandler* metadata_handler)
     : device_id_(device_id),
-      device_path_(device_path),
+      device_info_(device_info),
       device_(device),
       callback_ops_(callback_ops),
       task_runner_(task_runner),
       metadata_handler_(metadata_handler),
       current_v4l2_buffer_id_(-1) {
   SupportedFormats supported_formats =
-      device_->GetDeviceSupportedFormats(device_path_);
+      device_->GetDeviceSupportedFormats(device_info_.device_path);
   qualified_formats_ = GetQualifiedFormats(supported_formats);
 }
 
@@ -480,7 +480,9 @@ int CameraClient::RequestHandler::StreamOnImpl(
                            << reinterpret_cast<uintptr_t>(frame->GetData());
     input_buffers_.push_back(std::move(frame));
   }
+
   stream_on_resolution_ = stream_on_resolution;
+  SkipFramesAfterStreamOn(device_info_.frames_to_skip_after_streamon);
   return 0;
 }
 
@@ -558,6 +560,14 @@ int CameraClient::RequestHandler::WriteStreamBuffer(
     }
   }
   return 0;
+}
+
+void CameraClient::RequestHandler::SkipFramesAfterStreamOn(int num_frames) {
+  for (size_t i = 0; i < num_frames; i++) {
+    uint32_t buffer_id, data_size;
+    device_->GetNextFrameBuffer(&buffer_id, &data_size);
+    device_->ReuseFrameBuffer(buffer_id);
+  }
 }
 
 int CameraClient::RequestHandler::WaitGrallocBufferSync(

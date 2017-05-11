@@ -59,9 +59,8 @@ int CameraHal::OpenDevice(int id,
     LOGF(ERROR) << "Camera " << id << " is already opened";
     return -EBUSY;
   }
-  cameras_[id].reset(new CameraClient(id, device_infos_[id].device_path,
-                                      *static_infos_[id].get(), module,
-                                      hw_device));
+  cameras_[id].reset(new CameraClient(
+      id, device_infos_[id], *static_infos_[id].get(), module, hw_device));
   if (cameras_[id]->OpenDevice()) {
     cameras_.erase(id);
     return -ENODEV;

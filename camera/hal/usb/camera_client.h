@@ -55,7 +55,7 @@ class CameraClient {
  public:
   // id is used to distinguish cameras. 0 <= id < number of cameras.
   CameraClient(int id,
-               const std::string& device_path,
+               const DeviceInfo& device_info,
                const camera_metadata_t& static_info,
                const hw_module_t* module,
                hw_device_t** hw_device);
@@ -102,8 +102,8 @@ class CameraClient {
   // Camera device id.
   const int id_;
 
-  // Camera device path.
-  const std::string device_path_;
+  // Camera device information.
+  const DeviceInfo device_info_;
 
   // Delegate to communicate with camera device.
   std::unique_ptr<V4L2CameraDevice> device_;
@@ -137,7 +137,7 @@ class CameraClient {
    public:
     RequestHandler(
         const int device_id,
-        const std::string& device_path,
+        const DeviceInfo& device_info,
         V4L2CameraDevice* device,
         const camera3_callback_ops_t* callback_ops,
         const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
@@ -167,6 +167,10 @@ class CameraClient {
                           const CameraMetadata& metadata,
                           camera3_stream_buffer_t* buffer);
 
+    // Some devices may output invalid image after stream on. Skip frames
+    // after stream on.
+    void SkipFramesAfterStreamOn(int num_frames);
+
     // Wait output buffer synced.
     int WaitGrallocBufferSync(camera3_capture_result_t* result);
 
@@ -183,7 +187,7 @@ class CameraClient {
 
     const int device_id_;
 
-    const std::string device_path_;
+    const DeviceInfo device_info_;
 
     // Delegate to communicate with camera device. Caller owns the ownership.
     V4L2CameraDevice* device_;
