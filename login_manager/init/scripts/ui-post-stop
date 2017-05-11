@@ -38,9 +38,6 @@ ps -u chronos --no-headers -o pid,stat,args |
 
 bootstat other-processes-terminated
 
-term_process '^X$'
-bootstat x-terminated
-
 cryptohome --action=unmount
 bootstat cryptohome-unmounted
 

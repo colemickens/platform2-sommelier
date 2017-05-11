@@ -21,7 +21,9 @@ if [ -n "$CHROME_LOGOUT_STARTED" ]; then
   CHROME_UI_POST_STOP=$(bootstat_get_last ui-post-stop time-ms)
   CHROME_PROCESSES_TERMINATED=$(bootstat_get_last \
                                 other-processes-terminated time-ms)
-  CHROME_X_TERMINATED=$(bootstat_get_last x-terminated time-ms)
+  # Stub this out since X no longer exists, but the stats below are defined
+  # as transitions to/from the X kill phase.
+  CHROME_X_TERMINATED=${CHROME_PROCESSES_TERMINATED}
   CHROME_CRYPTOHOME_UNMOUNTED=$(bootstat_get_last \
                                 cryptohome-unmounted time-ms)
   CHROME_EXEC=$(bootstat_get_last chrome-exec time-ms)
