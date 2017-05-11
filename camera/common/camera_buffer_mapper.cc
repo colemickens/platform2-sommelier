@@ -436,15 +436,15 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
     return MAP_FAILED;
   }
 
-  VLOGF(1) << "buffer info:";
-  VLOGF(1) << "\tfd: " << handle->fds[plane].get();
-  VLOGF(1) << "\tbuffer_id: 0x" << std::hex << handle->buffer_id;
-  VLOGF(1) << "\ttype: " << handle->type;
-  VLOGF(1) << "\tformat: " << FormatToString(handle->drm_format);
-  VLOGF(1) << "\twidth: " << handle->width;
-  VLOGF(1) << "\theight: " << handle->height;
-  VLOGF(1) << "\tstride: " << handle->strides[plane];
-  VLOGF(1) << "\toffset: " << handle->offsets[plane];
+  VLOGF(2) << "buffer info:";
+  VLOGF(2) << "\tfd: " << handle->fds[plane].get();
+  VLOGF(2) << "\tbuffer_id: 0x" << std::hex << handle->buffer_id;
+  VLOGF(2) << "\ttype: " << handle->type;
+  VLOGF(2) << "\tformat: " << FormatToString(handle->drm_format);
+  VLOGF(2) << "\twidth: " << handle->width;
+  VLOGF(2) << "\theight: " << handle->height;
+  VLOGF(2) << "\tstride: " << handle->strides[plane];
+  VLOGF(2) << "\toffset: " << handle->offsets[plane];
 
   base::AutoLock l(lock_);
 
@@ -481,7 +481,7 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
     if (info_cache == buffer_info_.end()) {
       buffer_info_[key].reset(info);
     }
-    VLOGF(1) << "Plane " << plane << " of gralloc buffer 0x" << std::hex
+    VLOGF(2) << "Plane " << plane << " of gralloc buffer 0x" << std::hex
              << handle->buffer_id << " mapped";
     return out_addr;
   } else if (handle->type == SHM) {
@@ -497,7 +497,7 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
     void* out_addr = reinterpret_cast<void*>(
         reinterpret_cast<uintptr_t>(buffer_context->mapped_addr) +
         handle->offsets[plane]);
-    VLOGF(1) << "Plane " << plane << " of shm buffer 0x" << std::hex
+    VLOGF(2) << "Plane " << plane << " of shm buffer 0x" << std::hex
              << handle->buffer_id << " mapped";
     return out_addr;
   } else {
@@ -536,7 +536,7 @@ int CameraBufferMapper::Unmap(buffer_handle_t buffer, uint32_t plane) {
     NOTREACHED() << "Invalid buffer type: " << handle->type;
     return -EINVAL;
   }
-  VLOGF(1) << "buffer 0x" << std::hex << handle->buffer_id << " unmapped";
+  VLOGF(2) << "buffer 0x" << std::hex << handle->buffer_id << " unmapped";
   return 0;
 }
 
