@@ -483,11 +483,18 @@ static int TransferImage(TrunksDBusProxy* proxy,
   return num_txed_sections;
 }
 
+enum UpdateStatus {
+  UpdateSuccess = 0,
+  UpdateError = 1,
+  UpdateCancelled = 2
+};
+
 // Updathe the Cr50 image on the device.
-static int HandleUpdate(TrunksDBusProxy* proxy, base::CommandLine* cl) {
+static UpdateStatus HandleUpdate(TrunksDBusProxy* proxy,
+                                 base::CommandLine* cl) {
   if (cl->GetArgs().size() != 1) {
     LOG(ERROR) << "A single image file name must be provided.";
-    return 1;
+    return UpdateError;
   }
 
   base::FilePath filename(cl->GetArgs()[0]);
@@ -495,38 +502,48 @@ static int HandleUpdate(TrunksDBusProxy* proxy, base::CommandLine* cl) {
   std::string update_image;
   if (!base::ReadFileToString(filename, &update_image)) {
     LOG(ERROR) << "Failed to read " << filename.value();
-    return 1;
+    return UpdateError;
   }
 
   FirstResponsePdu rpdu;
   if (!SetupConnection(proxy, &rpdu)) {
-    return 1;
+    return UpdateError;
+  }
+
+  // Cr50 images with RW versoin below 0.0.19 process updates differently,
+  // and as such require special treatment.
+  bool running_pre_19 =
+    rpdu.shv[1].minor < 19 &&
+    rpdu.shv[1].major == 0 &&
+    rpdu.shv[1].epoch == 0;
+
+  if (running_pre_19 && !cl->HasSwitch(kForce)) {
+    printf("Not updating from RW 0.0.%d, use --force if necessary\n",
+           rpdu.shv[1].minor);
+    return UpdateCancelled;
   }
 
   int rv = TransferImage(proxy, update_image, rpdu, cl->HasSwitch(kForce));
 
   if (rv < 0) {
-    return 1;
+    return UpdateError;
   }
 
   // Positive rv indicates that some sections were transferred and a Cr50
   // reboot is required. RW Cr50 versions below 0.0.19 require a posted reset
   // to switch to the new image.
-  if (rv > 0 &&
-      rpdu.shv[1].minor < 19 &&
-      rpdu.shv[1].major == 0 &&
-      rpdu.shv[1].epoch == 0) {
+  if (rv > 0 && running_pre_19) {
     std::string dummy;
 
     LOG(INFO) << "Will post a reset request.";
 
     if (VendorCommand(proxy, VENDOR_CC_POST_RESET, dummy, &dummy, true)) {
       LOG(ERROR) << "Failed to post a reset request.";
-      return 1;
+      return UpdateError;
     }
   }
 
-  return 0;
+  return UpdateSuccess;
 }
 
 // Vendor command to get the console lock state
