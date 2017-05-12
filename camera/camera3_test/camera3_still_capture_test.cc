@@ -668,11 +668,76 @@ TEST_P(Camera3SingleStillCaptureTest, TakePictureTest) {
   cam_service_.StopPreview(cam_id_);
 }
 
-// TODO(hywu): test when picture size is different to preview size especially
-// different aspect ratios
+// Test parameters:
+// - Camera ID, preview resolution, JPEG resolution
+class Camera3JpegResolutionTest
+    : public Camera3StillCaptureFixture,
+      public ::testing::WithParamInterface<
+          std::tuple<int32_t, ResolutionInfo, ResolutionInfo>> {
+ public:
+  Camera3JpegResolutionTest()
+      : Camera3StillCaptureFixture(
+            std::vector<int>(1, std::get<0>(GetParam()))),
+        cam_id_(std::get<0>(GetParam())) {}
+
+ protected:
+  int cam_id_;
+};
+
+TEST_P(Camera3JpegResolutionTest, JpegResolutionTest) {
+  ResolutionInfo preview_resolution(std::get<1>(GetParam()));
+  ResolutionInfo jpeg_resolution(std::get<2>(GetParam()));
+  VLOGF(1) << "Device " << cam_id_;
+  VLOGF(1) << "Preview resolution " << preview_resolution.Width() << "x"
+           << preview_resolution.Height();
+  VLOGF(1) << "JPEG resolution " << jpeg_resolution.Width() << "x"
+           << jpeg_resolution.Height();
+
+  cam_service_.PrepareStillCaptureAndStartPreview(cam_id_, jpeg_resolution,
+                                                  preview_resolution);
+  CameraMetadataUniquePtr metadata(
+      clone_camera_metadata(cam_service_.ConstructDefaultRequestSettings(
+          cam_id_, CAMERA3_TEMPLATE_STILL_CAPTURE)));
+  ASSERT_NE(nullptr, metadata.get())
+      << "Failed to create still capture metadata";
+  cam_service_.TakeStillCapture(cam_id_, metadata.get());
+  cam_service_.StopPreview(cam_id_);
+
+  ASSERT_EQ(1, still_capture_results_[cam_id_].buffer_handles.size())
+      << "Incorrect number of still captures received";
+  JpegExifInfo jpeg_exif_info(
+      still_capture_results_[cam_id_].buffer_handles[0],
+      jpeg_max_sizes_[cam_id_]);
+  ASSERT_TRUE(jpeg_exif_info.Initialize());
+  EXPECT_EQ(jpeg_resolution, jpeg_exif_info.jpeg_resolution)
+      << "JPEG size result and request should match";
+}
 
 INSTANTIATE_TEST_CASE_P(Camera3StillCaptureTest,
                         Camera3SingleStillCaptureTest,
                         ::testing::ValuesIn(Camera3Module().GetCameraIds()));
+
+static std::vector<std::tuple<int, ResolutionInfo, ResolutionInfo>>
+IterateCameraIdPreviewJpegResolution() {
+  std::vector<std::tuple<int, ResolutionInfo, ResolutionInfo>> result;
+  auto cam_ids = Camera3Module().GetCameraIds();
+  for (const auto& cam_id : cam_ids) {
+    auto preview_resolutions = Camera3Module().GetSortedOutputResolutions(
+        cam_id, HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED);
+    auto jpeg_resolutions = Camera3Module().GetSortedOutputResolutions(
+        cam_id, HAL_PIXEL_FORMAT_BLOB);
+    for (const auto& preview_resolution : preview_resolutions) {
+      for (const auto& jpeg_resolution : jpeg_resolutions) {
+        result.emplace_back(cam_id, preview_resolution, jpeg_resolution);
+      }
+    }
+  }
+  return result;
+}
+
+INSTANTIATE_TEST_CASE_P(
+    Camera3StillCaptureTest,
+    Camera3JpegResolutionTest,
+    ::testing::ValuesIn(IterateCameraIdPreviewJpegResolution()));
 
 }  // namespace camera3_test
