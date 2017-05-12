@@ -906,6 +906,42 @@ TEST_F(Camera3ModuleFixture, StreamConfigurationMapTest) {
   }
 }
 
+TEST_F(Camera3ModuleFixture, ChromeOSRequiredResolution) {
+  const int required_formats[] = {HAL_PIXEL_FORMAT_BLOB,
+                                  HAL_PIXEL_FORMAT_YCbCr_420_888,
+                                  HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED};
+  const ResolutionInfo required_resolutions[] = {ResolutionInfo(1600, 1200),
+                                                 ResolutionInfo(1280, 960)};
+  for (const auto& cam_id : cam_module_.GetCameraIds()) {
+    camera_info info;
+    ASSERT_EQ(0, cam_module_.GetCameraInfo(cam_id, &info))
+        << "Can't get camera info for " << cam_id;
+    camera_metadata_ro_entry_t entry;
+    ASSERT_EQ(
+        0,
+        find_camera_metadata_ro_entry(
+            const_cast<camera_metadata_t*>(info.static_camera_characteristics),
+            ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE, &entry))
+        << "Can't find the sensor active array size.";
+    ASSERT_GE(entry.count, 2);
+    ResolutionInfo active_array(entry.data.i32[0], entry.data.i32[1]);
+    for (const auto& resolution : required_resolutions) {
+      if ((active_array.Width() >= resolution.Width()) &&
+          (active_array.Height() >= resolution.Height())) {
+        for (const auto& format : required_formats) {
+          auto resolutions =
+              cam_module_.GetSortedOutputResolutions(cam_id, format);
+          EXPECT_NE(resolutions.end(), std::find(resolutions.begin(),
+                                                 resolutions.end(), resolution))
+              << "Required size " << resolution.Width() << "x"
+              << resolution.Height() << " not found for format " << format
+              << " for camera " << cam_id;
+        }
+      }
+    }
+  }
+}
+
 }  // namespace camera3_test
 
 int main(int argc, char** argv) {
