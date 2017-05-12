@@ -618,9 +618,9 @@ TEST_F(CameraBufferMapperTest, GetPlaneSizeTest) {
       CreateBuffer(1, SHM, DRM_FORMAT_NV21, HAL_PIXEL_FORMAT_YCbCr_420_888,
                    kBufferWidth, kBufferHeight);
   const size_t kNV12Plane0Size =
-      kBufferWidth * kBufferHeight * GetFormatBpp(DRM_FORMAT_NV21);
+      kBufferWidth * kBufferHeight * GetFormatBpp(DRM_FORMAT_NV12);
   const size_t kNV12Plane1Size =
-      kBufferWidth * kBufferHeight * GetFormatBpp(DRM_FORMAT_NV21);
+      kBufferWidth * kBufferHeight * GetFormatBpp(DRM_FORMAT_NV12) / 2;
   buffer_handle_t nv12_handle =
       reinterpret_cast<buffer_handle_t>(nv12_buffer.get());
   EXPECT_EQ(CameraBufferMapper::GetPlaneSize(nv12_handle, 0), kNV12Plane0Size);
@@ -633,7 +633,7 @@ TEST_F(CameraBufferMapperTest, GetPlaneSizeTest) {
   const size_t kYuv420Plane0Size =
       kBufferWidth * kBufferHeight * GetFormatBpp(DRM_FORMAT_YUV420);
   const size_t kYuv420Plane12Size =
-      kBufferWidth * kBufferHeight * GetFormatBpp(DRM_FORMAT_YUV420) / 2;
+      kBufferWidth * kBufferHeight * GetFormatBpp(DRM_FORMAT_YUV420) / 4;
   buffer_handle_t yuv420_handle =
       reinterpret_cast<buffer_handle_t>(yuv420_buffer.get());
   EXPECT_EQ(CameraBufferMapper::GetPlaneSize(yuv420_handle, 0),

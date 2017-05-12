@@ -411,6 +411,7 @@ size_t CameraBufferMapper::GetPlaneSize(buffer_handle_t buffer, size_t plane) {
     case DRM_FORMAT_YUV420:
     case DRM_FORMAT_YVU420:
       vertical_subsampling = (plane == 0) ? 1 : 2;
+      break;
     default:
       vertical_subsampling = 1;
   }
