@@ -213,9 +213,6 @@ Device::Device(ControlInterface* control_interface,
   HelpRegisterConstDerivedUint64(kLinkMonitorResponseTimeProperty,
                                  &Device::GetLinkMonitorResponseTime);
 
-  // TODO(cmasone): Figure out what shill concept maps to flimflam's "Network".
-  // known_properties_.push_back(kNetworksProperty);
-
   // kRoamThresholdProperty: Registered in WiFi
   // kScanningProperty: Registered in WiFi, Cellular
   // kScanIntervalProperty: Registered in WiFi, Cellular
