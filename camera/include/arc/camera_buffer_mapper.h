@@ -212,7 +212,7 @@ class EXPORTED CameraBufferMapper {
   //    0 on success; -EINVAL if |buffer| is invalid.
   int Unmap(buffer_handle_t buffer, uint32_t plane);
 
-  // Lock to guard access member variables..
+  // Lock to guard access member variables.
   base::Lock lock_;
 
   // ** Start of lock_ scope **

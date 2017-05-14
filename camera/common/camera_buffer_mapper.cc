@@ -200,7 +200,7 @@ int CameraBufferMapper::LockYCbCr(buffer_handle_t buffer,
     return -EINVAL;
   }
   if (num_planes < 2) {
-    LOGF(ERROR) << "Lock called on single-planar buffer 0x" << std::hex
+    LOGF(ERROR) << "LockYCbCr called on single-planar buffer 0x" << std::hex
                 << handle->buffer_id;
     return -EINVAL;
   }
