@@ -15,6 +15,8 @@
 #include <base/callback.h>
 #include <base/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <brillo/dbus/utils.h>
+#include <brillo/errors/error_codes.h>
 #include <dbus/exported_object.h>
 #include <dbus/file_descriptor.h>
 #include <dbus/message.h>
@@ -55,6 +57,15 @@ std::unique_ptr<dbus::Response> CreateInvalidArgsError(dbus::MethodCall* call,
   return CreateError(call, DBUS_ERROR_INVALID_ARGS, "Signature is: " + message);
 }
 
+std::unique_ptr<dbus::Response> CreateStringResponse(
+    dbus::MethodCall* call,
+    const std::string& payload) {
+  auto response = dbus::Response::FromMethodCall(call);
+  dbus::MessageWriter writer(response.get());
+  writer.AppendString(payload);
+  return response;
+}
+
 // Craft a Response to call that is appropriate, given the contents of error.
 // If error is set, this will be an ErrorResponse. Otherwise, it will be a
 // Response containing payload.
@@ -69,21 +80,6 @@ std::unique_ptr<dbus::Response> CraftAppropriateResponseWithBool(
     response = dbus::Response::FromMethodCall(call);
     dbus::MessageWriter writer(response.get());
     writer.AppendBool(payload);
-  }
-  return response;
-}
-
-std::unique_ptr<dbus::Response> CraftAppropriateResponseWithString(
-    dbus::MethodCall* call,
-    const SessionManagerImpl::Error& error,
-    const std::string& payload) {
-  std::unique_ptr<dbus::Response> response;
-  if (error.is_set()) {
-    response = CreateError(call, error.name(), error.message());
-  } else {
-    response = dbus::Response::FromMethodCall(call);
-    dbus::MessageWriter writer(response.get());
-    writer.AppendString(payload);
   }
   return response;
 }
@@ -341,10 +337,13 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::EnableChromeTesting(
   if (!reader.PopBool(&relaunch) || !reader.PopArrayOfStrings(&extra_args))
     return CreateInvalidArgsError(call, call->GetSignature());
 
-  SessionManagerImpl::Error error;
-  std::string testing_path =
-      impl_->EnableChromeTesting(relaunch, extra_args, &error);
-  return CraftAppropriateResponseWithString(call, error, testing_path);
+  brillo::ErrorPtr error;
+  std::string testing_path;
+  if (!impl_->EnableChromeTesting(
+          &error, relaunch, extra_args, &testing_path)) {
+    return brillo::dbus_utils::GetDBusError(call, error.get());
+  }
+  return CreateStringResponse(call, testing_path);
 }
 
 std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StartSession(

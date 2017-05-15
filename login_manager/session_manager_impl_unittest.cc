@@ -27,6 +27,7 @@
 #include <base/run_loop.h>
 #include <base/strings/string_util.h>
 #include <brillo/cryptohome.h>
+#include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
 #include <crypto/scoped_nss_types.h>
 #include <gmock/gmock.h>
@@ -459,9 +460,7 @@ TEST_F(SessionManagerImplTest, EmitLoginPromptVisible) {
 }
 
 TEST_F(SessionManagerImplTest, EnableChromeTesting) {
-  std::vector<std::string> args;
-  args.push_back("--repeat-arg");
-  args.push_back("--one-time-arg");
+  std::vector<std::string> args = {"--repeat-arg", "--one-time-arg"};
 
   base::FilePath temp_dir;
   ASSERT_TRUE(base::CreateNewTempDirectory("" /* ignored */, &temp_dir));
@@ -471,7 +470,7 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
 
   // Check that RestartBrowserWithArgs() is called with a randomly chosen
   // --testing-channel path name.
-  string expected_testing_path_prefix =
+  const string expected_testing_path_prefix =
       temp_dir.value().substr(0, temp_dir.value().size() - random_suffix_len);
   EXPECT_CALL(manager_,
               RestartBrowserWithArgs(
@@ -480,20 +479,28 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
                   true))
       .Times(1);
 
-  string testing_path = impl_.EnableChromeTesting(false, args, NULL);
-  EXPECT_NE(std::string::npos, testing_path.find(expected_testing_path_prefix))
-      << testing_path;
+  {
+    brillo::ErrorPtr error;
+    std::string testing_path;
+    ASSERT_TRUE(impl_.EnableChromeTesting(&error, false, args, &testing_path));
+    EXPECT_FALSE(error.get());
+    EXPECT_NE(std::string::npos,
+              testing_path.find(expected_testing_path_prefix)) << testing_path;
+  }
 
   // Calling again, without forcing relaunch, should not do anything.
-  testing_path.clear();
-  testing_path = impl_.EnableChromeTesting(false, args, NULL);
-  EXPECT_NE(std::string::npos, testing_path.find(expected_testing_path_prefix))
-      << testing_path;
+  {
+    brillo::ErrorPtr error;
+    std::string testing_path;
+    ASSERT_TRUE(impl_.EnableChromeTesting(&error, false, args, &testing_path));
+    EXPECT_FALSE(error.get());
+    EXPECT_NE(std::string::npos,
+              testing_path.find(expected_testing_path_prefix)) << testing_path;
+  }
 
   // Force relaunch.  Should go through the whole path again.
   args[0] = "--dummy";
   args[1] = "--repeat-arg";
-  testing_path.empty();
   EXPECT_CALL(manager_,
               RestartBrowserWithArgs(
                   ElementsAre(args[0], args[1],
@@ -501,9 +508,14 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
                   true))
       .Times(1);
 
-  testing_path = impl_.EnableChromeTesting(true, args, NULL);
-  EXPECT_NE(std::string::npos, testing_path.find(expected_testing_path_prefix))
-      << testing_path;
+  {
+    brillo::ErrorPtr error;
+    std::string testing_path;
+    ASSERT_TRUE(impl_.EnableChromeTesting(&error, true, args, &testing_path));
+    EXPECT_FALSE(error.get());
+    EXPECT_NE(std::string::npos,
+              testing_path.find(expected_testing_path_prefix)) << testing_path;
+  }
 }
 
 TEST_F(SessionManagerImplTest, StartSession) {

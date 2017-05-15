@@ -26,6 +26,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
+#include <brillo/errors/error_codes.h>
 #include <chromeos/dbus/service_constants.h>
 #include <crypto/scoped_nss_types.h>
 #include <dbus/message.h>
@@ -350,35 +351,40 @@ void SessionManagerImpl::EmitLoginPromptVisible() {
                                    InitDaemonController::TriggerMode::ASYNC);
 }
 
-std::string SessionManagerImpl::EnableChromeTesting(
-    bool relaunch,
-    std::vector<std::string> extra_args,
-    Error* error) {
+bool SessionManagerImpl::EnableChromeTesting(
+    brillo::ErrorPtr* error,
+    bool in_force_relaunch,
+    const std::vector<std::string>& in_extra_arguments,
+    std::string* out_filepath) {
   // Check to see if we already have Chrome testing enabled.
   bool already_enabled = !chrome_testing_path_.empty();
 
   if (!already_enabled) {
     base::FilePath temp_file_path;  // So we don't clobber chrome_testing_path_;
     if (!system_->GetUniqueFilenameInWriteOnlyTempDir(&temp_file_path)) {
-      error->Set(dbus_error::kTestingChannelError,
-                 "Could not create testing channel filename.");
-      return std::string();
+      *error = brillo::Error::Create(
+          FROM_HERE,
+          brillo::errors::dbus::kDomain,
+          dbus_error::kTestingChannelError,
+          "Could not create testing channel filename.");
+      return false;
     }
     chrome_testing_path_ = temp_file_path;
   }
 
-  if (!already_enabled || relaunch) {
+  if (!already_enabled || in_force_relaunch) {
     // Delete testing channel file if it already exists.
     system_->RemoveFile(chrome_testing_path_);
 
     // Add testing channel argument to extra arguments.
     std::string testing_argument = kTestingChannelFlag;
     testing_argument.append(chrome_testing_path_.value());
+    std::vector<std::string> extra_args = in_extra_arguments;
     extra_args.push_back(testing_argument);
-
     manager_->RestartBrowserWithArgs(extra_args, true);
   }
-  return chrome_testing_path_.value();
+  *out_filepath = chrome_testing_path_.value();
+  return true;
 }
 
 bool SessionManagerImpl::StartSession(const std::string& account_id,

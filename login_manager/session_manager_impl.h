@@ -15,6 +15,8 @@
 #include <string>
 #include <vector>
 
+#include <brillo/errors/error.h>
+
 #include "login_manager/container_manager_interface.h"
 #include "login_manager/device_policy_service.h"
 #include "login_manager/key_generator.h"
@@ -167,9 +169,10 @@ class SessionManagerImpl : public SessionManagerInterface,
   // Methods exposed via RPC are defined below.
 
   void EmitLoginPromptVisible();
-  std::string EnableChromeTesting(bool force_relaunch,
-                                  std::vector<std::string> extra_args,
-                                  Error* error);
+  bool EnableChromeTesting(brillo::ErrorPtr* error,
+                           bool in_force_relaunch,
+                           const std::vector<std::string>& in_extra_arguments,
+                           std::string* out_filepath);
   bool StartSession(const std::string& account_id,
                     const std::string& unique_id,
                     Error* error);
