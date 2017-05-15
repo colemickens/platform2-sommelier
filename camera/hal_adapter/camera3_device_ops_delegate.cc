@@ -34,7 +34,10 @@ void Camera3DeviceOpsDelegate::ConfigureStreams(
     const ConfigureStreamsCallback& callback) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
-  callback.Run(camera_device_adapter_->ConfigureStreams(std::move(config)));
+  mojom::Camera3StreamConfigurationPtr updated_config;
+  int32_t result = camera_device_adapter_->ConfigureStreams(std::move(config),
+                                                            &updated_config);
+  callback.Run(result, std::move(updated_config));
 }
 
 void Camera3DeviceOpsDelegate::ConstructDefaultRequestSettings(

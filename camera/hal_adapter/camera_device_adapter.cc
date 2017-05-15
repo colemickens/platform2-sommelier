@@ -83,8 +83,9 @@ int32_t CameraDeviceAdapter::Initialize(
   return camera_device_->ops->initialize(camera_device_, this);
 }
 
-mojom::Camera3StreamConfigurationPtr CameraDeviceAdapter::ConfigureStreams(
-    mojom::Camera3StreamConfigurationPtr config) {
+int32_t CameraDeviceAdapter::ConfigureStreams(
+    mojom::Camera3StreamConfigurationPtr config,
+    mojom::Camera3StreamConfigurationPtr* updated_config) {
   VLOGF_ENTER();
 
   base::AutoLock l(streams_lock_);
@@ -105,8 +106,8 @@ mojom::Camera3StreamConfigurationPtr CameraDeviceAdapter::ConfigureStreams(
   streams_.swap(new_streams);
 
   camera3_stream_configuration_t stream_list;
-  std::vector<camera3_stream_t*> streams(config->num_streams);
-  stream_list.num_streams = config->num_streams;
+  stream_list.num_streams = config->streams.size();
+  std::vector<camera3_stream_t*> streams(stream_list.num_streams);
   stream_list.streams = streams.data();
   stream_list.operation_mode =
       static_cast<camera3_stream_configuration_mode_t>(config->operation_mode);
@@ -115,14 +116,10 @@ mojom::Camera3StreamConfigurationPtr CameraDeviceAdapter::ConfigureStreams(
     stream_list.streams[i++] = it->second.get();
   }
 
-  mojom::Camera3StreamConfigurationPtr updated_config =
-      mojom::Camera3StreamConfiguration::New();
-
-  updated_config->error =
+  int32_t result =
       camera_device_->ops->configure_streams(camera_device_, &stream_list);
-
-  if (!updated_config->error) {
-    updated_config->num_streams = streams_.size();
+  if (!result) {
+    *updated_config = mojom::Camera3StreamConfiguration::New();
     for (const auto& s : streams_) {
       mojom::Camera3StreamPtr ptr = mojom::Camera3Stream::New();
       ptr->id = s.first;
@@ -130,11 +127,11 @@ mojom::Camera3StreamConfigurationPtr CameraDeviceAdapter::ConfigureStreams(
       // HAL should only change usage and max_buffers.
       ptr->usage = s.second->usage;
       ptr->max_buffers = s.second->max_buffers;
-      updated_config->streams.push_back(std::move(ptr));
+      (*updated_config)->streams.push_back(std::move(ptr));
     }
   }
 
-  return updated_config;
+  return result;
 }
 
 mojom::CameraMetadataPtr CameraDeviceAdapter::ConstructDefaultRequestSettings(

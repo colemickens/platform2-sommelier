@@ -58,8 +58,9 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   int32_t Initialize(mojom::Camera3CallbackOpsPtr callback_ops);
 
-  mojom::Camera3StreamConfigurationPtr ConfigureStreams(
-      mojom::Camera3StreamConfigurationPtr config);
+  int32_t ConfigureStreams(
+      mojom::Camera3StreamConfigurationPtr config,
+      mojom::Camera3StreamConfigurationPtr* updated_config);
 
   mojom::CameraMetadataPtr ConstructDefaultRequestSettings(
       mojom::Camera3RequestTemplate type);

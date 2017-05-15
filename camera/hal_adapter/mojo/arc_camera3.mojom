@@ -85,10 +85,8 @@ struct Camera3Stream {
 };
 
 struct Camera3StreamConfiguration {
-  uint32 num_streams;
   array<Camera3Stream> streams;
   Camera3StreamConfigurationMode operation_mode;
-  int32 error;  // Used to piggyback error code returned by driver.
 };
 
 struct Camera3StreamBuffer {
@@ -175,7 +173,7 @@ interface Camera3DeviceOps {
   // ConfigureStreams() is called every time the client needs to set up new set
   // of streams.
   ConfigureStreams@1(Camera3StreamConfiguration config) =>
-      (Camera3StreamConfiguration updated_config);
+      (int32 result, Camera3StreamConfiguration? updated_config);
 
   // ConstructDefaultRequestSettings() is called to get the request settings for
   // common use cases, e.g. preview, still capture, video recording...etc.
