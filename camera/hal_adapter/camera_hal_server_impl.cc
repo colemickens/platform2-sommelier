@@ -176,6 +176,16 @@ void CameraHalServerImpl::RegisterCameraHal() {
     return;
   }
 
+  if (!camera_module->get_number_of_cameras()) {
+    LOGF(WARNING)
+        << "Number of cameras is zero. Assuming camera isn't initialized yet";
+    sleep(3);
+    main_task_runner_->PostTask(
+        FROM_HERE, base::Bind(&CameraHalServerImpl::ExitOnMainThread,
+                              base::Unretained(this), ENODEV));
+    return;
+  }
+
   camera_hal_adapter_.reset(new CameraHalAdapter(camera_module));
   LOGF(INFO) << "Running camera HAL adapter on " << getpid();
 
