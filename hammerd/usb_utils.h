@@ -7,9 +7,10 @@
 #ifndef HAMMERD_USB_UTILS_H_
 #define HAMMERD_USB_UTILS_H_
 
+#include <libusb.h>
 #include <stdint.h>
 
-#include <libusb.h>
+#include <base/macros.h>
 
 namespace hammerd {
 
@@ -26,14 +27,14 @@ void LogUSBError(const char* func_name, int return_code);
 class UsbEndpoint {
  public:
   UsbEndpoint();
-  ~UsbEndpoint();
+  virtual ~UsbEndpoint();
 
   // Initializes the USB endpoint.
-  bool Connect();
+  virtual bool Connect();
   // Releases USB endpoint.
-  void Close();
+  virtual void Close();
   // Returns whether the USB endpoint is initialized.
-  bool IsConnected() const;
+  virtual bool IsConnected() const;
 
   // Sends the data to USB endpoint and then reads the result back.
   // Returns the byte number of the received data. -1 if the process fails.
@@ -45,17 +46,17 @@ class UsbEndpoint {
                unsigned int timeout_ms = 0);
   // Sends the data to USB endpoint.
   // Returns the byte number of the received data.
-  int Send(const void* outbuf, int outlen, unsigned int timeout_ms = 0);
+  virtual int Send(const void* outbuf, int outlen, unsigned int timeout_ms = 0);
   // Receives the data from USB endpoint.
   // Returns the byte number of the received data. -1 if the amount of received
   // data is not as required and `allow_less` argument is false.
-  int Receive(void* inbuf,
-              int inlen,
-              bool allow_less = false,
-              unsigned int timeout_ms = 0);
+  virtual int Receive(void* inbuf,
+                      int inlen,
+                      bool allow_less = false,
+                      unsigned int timeout_ms = 0);
 
   // Gets the chunk length of the USB endpoint.
-  size_t GetChunkLength() const { return chunk_len_; }
+  virtual size_t GetChunkLength() const { return chunk_len_; }
 
  private:
   // Finds the interface number. Returns -1 on error.
@@ -74,6 +75,7 @@ class UsbEndpoint {
   libusb_device_handle* devh_;
   uint8_t ep_num_;
   size_t chunk_len_;
+  DISALLOW_COPY_AND_ASSIGN(UsbEndpoint);
 };
 
 }  // namespace hammerd

@@ -5,6 +5,7 @@
 // hammerd - A daemon to update the firmware of Hammer
 
 #include <stdlib.h>
+
 #include <string>
 
 #include <base/files/file_path.h>
@@ -13,21 +14,34 @@
 #include <brillo/flag_helper.h>
 
 #include "hammerd/hammer_updater.h"
+#include "hammerd/process_lock.h"
+
+namespace {
+// The lock file used to prevent multiple hammerd be invoked at the same time.
+const char kLockFile[] = "/run/lock/hammerd.lock";
+// The path of default EC firmware.
+const char kDefaultImagePath[] = "/lib/firmware/hammer.fw";
+}  // namespace
 
 int main(int argc, const char* argv[]) {
-  DEFINE_string(image, "", "The path of the image file.");
+  DEFINE_string(image, kDefaultImagePath, "The path of the image file.");
   brillo::FlagHelper::Init(argc, argv, "Hammer EC firmware updater daemon.");
 
-  if (!FLAGS_image.length()) {
-    LOG(FATAL) << "No image file is assigned.";
-    return EXIT_FAILURE;
+  base::FilePath file_path(FILE_PATH_LITERAL(kLockFile));
+  hammerd::ProcessLock lock(file_path);
+  if (!lock.Acquire()) {
+    LOG(INFO) << "Other hammerd process has been executed, exit.";
+    return EXIT_SUCCESS;
   }
   std::string image;
   if (!base::ReadFileToString(base::FilePath(FLAGS_image), &image)) {
     LOG(FATAL) << "Image file is not found: " << FLAGS_image;
+    lock.Release();
     return EXIT_FAILURE;
   }
 
   hammerd::HammerUpdater updater(image);
-  return updater.Run() ? EXIT_SUCCESS : EXIT_FAILURE;
+  bool ret = updater.Run();
+  lock.Release();
+  return ret ? EXIT_SUCCESS : EXIT_FAILURE;
 }

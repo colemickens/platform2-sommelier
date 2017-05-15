@@ -1,0 +1,11 @@
+# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# TODO(akahuang): Detect event on a specific USB port instead of VID/PID.
+# TODO(akahuang): Pass the USB device node into hammerd.
+# Note: minijail0 "-N" argument (cgroup namespace) is only supported at
+# kernel >= 3.14. Remove it if the hammerd runs at the kernel < 3.14.
+ACTION=="add", ENV{ID_MODEL}=="Hammer", SUBSYSTEM=="usb", \
+  ATTRS{idVendor}=="18d1", ATTRS{idProduct}=="5022", \
+  RUN+="/sbin/minijail0 -e -N -p -l -u hammerd -g hammerd -i -c 0002 /usr/bin/hammerd"

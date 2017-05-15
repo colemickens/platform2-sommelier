@@ -28,11 +28,15 @@
 #define HAMMERD_UPDATE_FW_H_
 
 #include <stdint.h>
+
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
+#include <gtest/gtest_prod.h>
 
+#include "hammerd/fmap_utils.h"
 #include "hammerd/usb_utils.h"
 
 namespace hammerd {
@@ -66,6 +70,11 @@ struct UpdateFrameHeader {
   uint32_t block_size;  // Total frame size, including this field.
   uint32_t block_digest;
   uint32_t block_base;
+  UpdateFrameHeader() : UpdateFrameHeader(0, 0, 0) {}
+  UpdateFrameHeader(uint32_t size, uint32_t digest, uint32_t base)
+      : block_size(htobe32(size)),
+        block_digest(htobe32(digest)),
+        block_base(htobe32(base)) {}
 };
 
 // Response to the connection establishment request.
@@ -101,15 +110,31 @@ struct FirstResponsePDU {
   uint32_t key_version;       // RO public key version
 };
 
+enum class SectionName {
+  RO,
+  RW,
+  END,
+};
+const char* ToString(SectionName name);
+SectionName OtherSection(SectionName name);
+
 // This array describes all four sections of the new image.
 struct SectionInfo {
-  std::string name;
+  SectionName name;
   uint32_t offset;
   uint32_t size;
   char version[32];
   int32_t rollback;
   int32_t key_version;
-  explicit SectionInfo(std::string name);
+  explicit SectionInfo(SectionName name);
+  SectionInfo(SectionName name,
+              uint32_t offset,
+              uint32_t size,
+              const char* version,
+              int32_t rollback,
+              int32_t key_version);
+  friend bool operator==(const SectionInfo& lhs, const SectionInfo& rhs);
+  friend bool operator!=(const SectionInfo& lhs, const SectionInfo& rhs);
 };
 
 // Implement the core logic of updating firmware.
@@ -121,13 +146,24 @@ class FirmwareUpdater {
 
   // Scans the new image and retrieve versions of RO and RW sections.
   bool LoadImage(const std::string& image);
-  // Prints the information of the RO and RW sections.
-  void ShowHeadersVersions();
 
-  // Transfer the image to the target section.
-  bool TransferImage(const std::string& section_name);
+  // Tries to connect to the USB endpoint during a period of time.
+  bool TryConnectUSB();
 
-  // Send the external command through USB. The format of the payload is:
+  // Closes the connection to the USB endpoint.
+  void CloseUSB();
+
+  // Setups the connection with the EC firmware by sending the first PDU.
+  // Returns true if successfully setup the connection.
+  bool SendFirstPDU();
+
+  // Indicates to the target that update image transfer has been completed. Upon
+  // receipt of this message the target state machine transitions into the
+  // 'rx_idle' state. The host may send an extension command to reset the target
+  // after this.
+  void SendDone();
+
+  // Sends the external command through USB. The format of the payload is:
   //   4 bytes      4 bytes         4 bytes       2 bytes      variable size
   // +-----------+--------------+---------------+-----------+------~~~-------+
   // + total size| block digest |    EXT_CMD    | Vend. sub.|      data      |
@@ -139,26 +175,40 @@ class FirmwareUpdater {
   // as such is guaranteed not to be a valid update PDU destination address.
   bool SendSubcommand(UpdateExtraCommand subcommand);
 
- private:
-  // Setup the connection with the EC firmware by sending the first PDU.
-  // Returns true if successfully setup the connection.
-  bool SendFirstPDU();
+  // Transfers the image to the target section.
+  bool TransferImage(SectionName section_name);
 
-  // Indicate to the target that update image transfer has been completed. Upon
-  // receiveing of this message the target state machine transitions into the
-  // 'rx_idle' state. The host may send an extension command to reset the target
-  // after this.
-  void SendDone();
+  // Returns the current section that EC is running. One of "RO" or "RW".
+  SectionName CurrentSection() const;
 
+  // Determines whether the section need to update.
+  bool IsNeedUpdate(SectionName section_name) const;
+
+  // Determines the section is locked or not.
+  bool IsSectionLocked(SectionName section_name) const;
+
+  // Unlocks the section. Need to send "Reset" command afterward.
+  bool UnLockSection(SectionName section_name);
+
+ protected:
+  // Used in unit tests to inject mocks.
+  explicit FirmwareUpdater(std::shared_ptr<UsbEndpoint> uep,
+                           std::shared_ptr<FmapInterface> fmap);
+
+  // Transfers the data of the target section.
   bool TransferSection(const uint8_t* data_ptr,
                        uint32_t section_addr,
                        size_t data_len);
+
+  // Transfers a block of data.
   bool TransferBlock(UpdateFrameHeader* ufh,
                      const uint8_t* transfer_data_ptr,
                      size_t payload_size);
 
   // The USB endpoint to the hammer EC.
-  UsbEndpoint uep_;
+  std::shared_ptr<UsbEndpoint> uep_;
+  // The fmap function interface.
+  std::shared_ptr<FmapInterface> fmap_;
   // The information of the first response PDU.
   FirstResponsePDU targ_;
   // The image data to be updated.
@@ -166,6 +216,19 @@ class FirmwareUpdater {
   // The information of the RO and RW sections in the image data.
   std::vector<SectionInfo> sections_;
 
+  friend class FirmwareUpdaterTest;
+  FRIEND_TEST(FirmwareUpdaterTest, LoadImage);
+  FRIEND_TEST(FirmwareUpdaterTest, TryConnectUSB_OK);
+  FRIEND_TEST(FirmwareUpdaterTest, TryConnectUSB_FAIL);
+  FRIEND_TEST(FirmwareUpdaterTest, SendFirstPDU);
+  FRIEND_TEST(FirmwareUpdaterTest, SendDone);
+  FRIEND_TEST(FirmwareUpdaterTest, SendSubcommand);
+  FRIEND_TEST(FirmwareUpdaterTest, SendSubcommand_Reset);
+  FRIEND_TEST(FirmwareUpdaterTest, TransferImage);
+  FRIEND_TEST(FirmwareUpdaterTest, CurrentSection);
+  FRIEND_TEST(FirmwareUpdaterTest, IsNeedUpdate);
+
+ private:
   DISALLOW_COPY_AND_ASSIGN(FirmwareUpdater);
 };
 

@@ -4,52 +4,131 @@
 
 #include "hammerd/update_fw.h"
 
-#include <stdint.h>
-#include <unistd.h>
+#include <fmap.h>
 
 #include <algorithm>
 #include <iomanip>
-#include <memory>
-#include <string>
+#include <utility>
 
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
-#include <fmap.h>
+#include <base/threading/platform_thread.h>
+#include <base/time/time.h>
 #include <vboot/vb21_struct.h>
-
-#include "hammerd/usb_utils.h"
 
 namespace hammerd {
 
-SectionInfo::SectionInfo(std::string name)
-    : name(name),
-      offset(0),
-      size(0),
-      version(""),
-      rollback(0),
-      key_version(0) {}
+const char* ToString(SectionName name) {
+  switch (name) {
+    case SectionName::RO:
+      return "RO";
+    case SectionName::RW:
+      return "RW";
+    default:
+      return "UNKNOWN_SECTION";
+  }
+}
 
-FirmwareUpdater::FirmwareUpdater() : uep_(), targ_(), image_(""), sections_() {}
+SectionName OtherSection(SectionName name) {
+  switch (name) {
+    case SectionName::RO:
+      return SectionName::RW;
+    case SectionName::RW:
+      return SectionName::RO;
+    default:
+      return SectionName::END;
+  }
+}
+
+SectionInfo::SectionInfo(SectionName name)
+    : SectionInfo(name, 0, 0, "", 0, 1) {}
+
+SectionInfo::SectionInfo(SectionName name,
+                         uint32_t offset,
+                         uint32_t size,
+                         const char* version_str,
+                         int32_t rollback,
+                         int32_t key_version)
+    : name(name),
+      offset(offset),
+      size(size),
+      rollback(rollback),
+      key_version(key_version) {
+  if (strlen(version_str) >= sizeof(version)) {
+    LOG(ERROR) << "The version name is larger than the reserved size. "
+               << "Discard the extra part.";
+  }
+  snprintf(version, sizeof(version), version_str);
+}
+
+bool operator==(const SectionInfo& lhs, const SectionInfo& rhs) {
+  return lhs.name == rhs.name && lhs.offset == rhs.offset &&
+         lhs.size == rhs.size &&
+         strncmp(lhs.version, rhs.version, sizeof(lhs.version)) == 0 &&
+         lhs.rollback == rhs.rollback && lhs.key_version == rhs.key_version;
+}
+
+bool operator!=(const SectionInfo& lhs, const SectionInfo& rhs) {
+  return !(lhs == rhs);
+}
+
+FirmwareUpdater::FirmwareUpdater()
+    : FirmwareUpdater(std::shared_ptr<UsbEndpoint>(new UsbEndpoint()),
+                      std::shared_ptr<FmapInterface>(new Fmap())) {}
+
+FirmwareUpdater::FirmwareUpdater(std::shared_ptr<UsbEndpoint> uep,
+                                 std::shared_ptr<FmapInterface> fmap)
+    : uep_(uep), fmap_(fmap), targ_(), image_(""), sections_() {}
 
 FirmwareUpdater::~FirmwareUpdater() {}
 
+bool FirmwareUpdater::TryConnectUSB() {
+  const unsigned int kTimeoutMs = 1000;
+  const unsigned int kIntervalMs = 100;
+
+  LOG(INFO) << "Try to connect to USB endpoint.";
+  auto start_time = base::Time::Now();
+  int64_t duration = 0;
+  while (true) {
+    bool ret = uep_->Connect();
+    if (ret) {
+      return true;
+    }
+
+    duration = (base::Time::Now() - start_time).InMilliseconds();
+    if (duration > kTimeoutMs) {
+      break;
+    }
+    base::PlatformThread::Sleep(
+        base::TimeDelta::FromMilliseconds(kIntervalMs));
+  }
+  LOG(ERROR) << "Failed to connect USB endpoint.";
+  return false;
+}
+
+void FirmwareUpdater::CloseUSB() {
+  uep_->Close();
+}
+
 bool FirmwareUpdater::LoadImage(const std::string& image) {
   image_.clear();
-  sections_ = {SectionInfo("RO"), SectionInfo("RW")};
-
+  sections_.clear();
+  for (int idx = 0; idx < static_cast<int>(SectionName::END); idx++) {
+    sections_.push_back(SectionInfo(static_cast<SectionName>(idx)));
+  }
   uint8_t* image_ptr =
       const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(image.data()));
   size_t len = image.size();
 
-  int64_t offset = fmap_find(image_ptr, len);
+  int64_t offset = fmap_->Find(image_ptr, len);
   if (offset < 0) {
     LOG(ERROR) << "Cannot find FMAP in image";
     return false;
   }
 
-  // TODO: validate fmap struct more than this?
+  // TODO(akahuang): validate fmap struct more than this?
   fmap* fmap = reinterpret_cast<struct fmap*>(image_ptr + offset);
   if (fmap->size != len) {
     LOG(ERROR) << "Mismatch between FMAP size and image size";
@@ -62,10 +141,10 @@ bool FirmwareUpdater::LoadImage(const std::string& image) {
     const char* fmap_rollback_name = nullptr;
     const char* fmap_key_name = nullptr;
 
-    if (section.name == "RO") {
+    if (section.name == SectionName::RO) {
       fmap_name = "EC_RO";
       fmap_fwid_name = "RO_FRID";
-    } else if (section.name == "RW") {
+    } else if (section.name == SectionName::RW) {
       fmap_name = "EC_RW";
       fmap_fwid_name = "RW_FWID";
       fmap_rollback_name = "RW_RBVER";
@@ -77,16 +156,15 @@ bool FirmwareUpdater::LoadImage(const std::string& image) {
       return false;
     }
 
-    const fmap_area* fmaparea = fmap_find_area(fmap, fmap_name);
+    const fmap_area* fmaparea = fmap_->FindArea(fmap, fmap_name);
     if (!fmaparea) {
       LOG(ERROR) << "Cannot find FMAP area: " << fmap_name;
       return false;
     }
-    // TODO: endianness?
     section.offset = fmaparea->offset;
     section.size = fmaparea->size;
 
-    fmaparea = fmap_find_area(fmap, fmap_fwid_name);
+    fmaparea = fmap_->FindArea(fmap, fmap_fwid_name);
     if (!fmaparea) {
       LOG(ERROR) << "Cannot find FMAP area: " << fmap_fwid_name;
       return false;
@@ -98,14 +176,14 @@ bool FirmwareUpdater::LoadImage(const std::string& image) {
     memcpy(section.version, image_ptr + fmaparea->offset, fmaparea->size);
 
     if (fmap_rollback_name &&
-        (fmaparea = fmap_find_area(fmap, fmap_rollback_name))) {
+        (fmaparea = fmap_->FindArea(fmap, fmap_rollback_name))) {
       section.rollback =
           *(reinterpret_cast<const int32_t*>(image_ptr + fmaparea->offset));
     } else {
       section.rollback = -1;
     }
 
-    if (fmap_key_name && (fmaparea = fmap_find_area(fmap, fmap_key_name))) {
+    if (fmap_key_name && (fmaparea = fmap_->FindArea(fmap, fmap_key_name))) {
       auto key = reinterpret_cast<const vb21_packed_key*>(image_ptr +
                                                           fmaparea->offset);
       section.key_version = key->key_version;
@@ -115,71 +193,81 @@ bool FirmwareUpdater::LoadImage(const std::string& image) {
   }
 
   image_ = image;
-  ShowHeadersVersions();
+  LOG(INFO) << "Header versions:";
+  for (const auto& section : sections_) {
+    LOG(INFO) << base::StringPrintf(
+        "%s offset=0x%08x/0x%08x version=%s rollback=%d key_version=%d",
+        ToString(section.name),
+        section.offset,
+        section.size,
+        section.version,
+        section.rollback,
+        section.key_version);
+  }
   return true;
 }
 
-void FirmwareUpdater::ShowHeadersVersions() {
-  LOG(INFO) << "Header versions:";
+SectionName FirmwareUpdater::CurrentSection() const {
+  SectionName writable_section;
   for (const auto& section : sections_) {
-    LOG(INFO) << section.name << std::hex << std::setfill('0')
-              << " offset=" << std::setw(8) << section.offset << "/"
-              << std::setw(8) << section.size << " version=" << section.version
-              << std::dec << " rollback=" << section.rollback
-              << " key_version=" << section.key_version;
+    if (targ_.offset == section.offset) {
+      writable_section = section.name;
+    }
+  }
+  return OtherSection(writable_section);
+}
+
+bool FirmwareUpdater::IsNeedUpdate(SectionName section_name) const {
+  if (section_name == SectionName::RW) {
+    auto section = sections_[static_cast<int>(section_name)];
+    // TODO(akahuang): We might still want to update even the version is
+    // identical. Add a flag if we have the request in the future.
+    return (strncmp(targ_.version, section.version,
+                    sizeof(targ_.version)) != 0 &&
+            targ_.min_rollback <= section.rollback &&
+            targ_.key_version == section.key_version);
+  } else {
+    // TODO(akahuang): Confirm the condition of RO update.
+    return false;
   }
 }
 
-bool FirmwareUpdater::TransferImage(const std::string& section_name) {
+bool FirmwareUpdater::IsSectionLocked(SectionName section_name) const {
+  // TODO(akahuang): Implement this.
+  return false;
+}
+
+bool FirmwareUpdater::UnLockSection(SectionName section_name) {
+  // TODO(akahuang): Implement this.
+  return false;
+}
+
+bool FirmwareUpdater::TransferImage(SectionName section_name) {
   if (!SendFirstPDU()) {
+    LOG(ERROR) << "Failed to send the first PDU.";
     return false;
   }
-
   // Determine if the section need to update.
   bool ret = false;
   const uint8_t* image_ptr = reinterpret_cast<const uint8_t*>(image_.data());
-  for (const auto& section : sections_) {
-    if (section.name == section_name) {
-      LOG(INFO) << "Section to be updated: " << section.name;
-      if (section.offset != targ_.offset) {
-        LOG(ERROR) << "The section offset (" << section.offset
-                   << ") is different from the target offset (" << targ_.offset
-                   << ")";
-        return false;
-      }
-      // TODO(akahuang): We might still want to update even the version is
-      // identical. Add a flag if we have the request in the future.
-      if (strncmp(targ_.version, section.version, 32) == 0 ||
-          targ_.min_rollback > section.rollback ||
-          targ_.key_version != section.key_version) {
-        LOG(INFO) << "No need to update.";
-        return true;
-      }
-      if (section.offset + section.size > image_.size()) {
-        LOG(ERROR) << "image length (" << image_.size()
-                   << ") is smaller than transfer requirements: "
-                   << section.offset << " + " << section.size;
-        return false;
-      }
-      ret = TransferSection(
-          image_ptr + section.offset, section.offset, section.size);
-    }
+  auto section = sections_[static_cast<int>(section_name)];
+  LOG(INFO) << "Section to be updated: " << section.name;
+  if (section.offset + section.size > image_.size()) {
+    LOG(ERROR) << "image length (" << image_.size()
+               << ") is smaller than transfer requirements: " << section.offset
+               << " + " << section.size;
+    return false;
   }
+  ret =
+      TransferSection(image_ptr + section.offset, section.offset, section.size);
 
   // Move USB receiver state machine to idle state so that vendor commands can
   // be processed later, if any.
   SendDone();
-  if (ret) {
-    LOG(INFO) << "Update complete. Rebooting the EC.";
-    SendSubcommand(UpdateExtraCommand::kImmediateReset);
-  }
   return ret;
 }
 
-bool FirmwareUpdater::SendSubcommand(enum UpdateExtraCommand subcommand) {
-  if (!SendFirstPDU()) {
-    return false;
-  }
+bool FirmwareUpdater::SendSubcommand(UpdateExtraCommand subcommand) {
   LOG(INFO) << "Send Sub-command: " << subcommand;
   SendDone();
 
@@ -198,9 +286,17 @@ bool FirmwareUpdater::SendSubcommand(enum UpdateExtraCommand subcommand) {
   uint16_t* frame_ptr = reinterpret_cast<uint16_t*>(ufh.get() + 1);
   *frame_ptr = htobe16(subcommand_value);
 
-  int received = uep_.Transfer(
-      ufh.get(), usb_msg_size, &response, sizeof(response), false);
-  bool ret = (received == sizeof(response));
+  bool ret;
+  if (subcommand == UpdateExtraCommand::kImmediateReset) {
+    // When sending reset command, we won't get the response. Therefore just
+    // check the Send action is successful.
+    int received = uep_->Send(ufh.get(), usb_msg_size, false);
+    ret = (received == usb_msg_size);
+  } else {
+    int received = uep_->Transfer(
+        ufh.get(), usb_msg_size, &response, sizeof(response), false);
+    ret = (received == sizeof(response));
+  }
   if (ret) {
     LOG(INFO) << "Sent sub-command: " << std::hex << subcommand << std::dec
               << ", response: " << base::HexEncode(&response, sizeof(response));
@@ -209,22 +305,18 @@ bool FirmwareUpdater::SendSubcommand(enum UpdateExtraCommand subcommand) {
 }
 
 bool FirmwareUpdater::SendFirstPDU() {
-  if (!uep_.Connect()) {
-    return false;
-  }
-
   LOG(INFO) << "Send the first PDU: zero data header.";
   UpdateFrameHeader ufh;
   memset(&ufh, 0, sizeof(ufh));
   ufh.block_size = htobe32(sizeof(ufh));
-  if (uep_.Send(&ufh, sizeof(ufh)) != sizeof(ufh)) {
+  if (uep_->Send(&ufh, sizeof(ufh)) != sizeof(ufh)) {
     LOG(ERROR) << "Send first update frame header failed.";
     return false;
   }
 
   // We got something. Check for errors in response.
   FirstResponsePDU rpdu;
-  size_t rxed_size = uep_.Receive(&rpdu, sizeof(rpdu), true);
+  size_t rxed_size = uep_->Receive(&rpdu, sizeof(rpdu), true);
   const size_t kMinimumResponseSize = 8;
   if (rxed_size < kMinimumResponseSize) {
     LOG(ERROR) << "Unexpected response size: " << rxed_size
@@ -260,13 +352,16 @@ bool FirmwareUpdater::SendFirstPDU() {
     return false;
   }
 
-  LOG(INFO) << "maximum PDU size: " << targ_.maximum_pdu_size;
-  LOG(INFO) << base::StringPrintf("Flash protection status: %04x",
-                                  targ_.flash_protection);
-  LOG(INFO) << "version: " << targ_.version;
-  LOG(INFO) << "key_version: " << targ_.key_version;
-  LOG(INFO) << "min_rollback: " << targ_.min_rollback;
-  LOG(INFO) << base::StringPrintf("Writeable at offset: 0x%x", targ_.offset);
+  LOG(INFO) << "Response of the first PDU:";
+  LOG(INFO) << base::StringPrintf(
+      "Maximum PDU size: %d, Flash protection: %04x, Version: %s, "
+      "Key version: %d, Minimum rollback: %d, Writeable at offset: 0x%x",
+      targ_.maximum_pdu_size,
+      targ_.flash_protection,
+      targ_.version,
+      targ_.key_version,
+      targ_.min_rollback,
+      targ_.offset);
   LOG(INFO) << "SendFirstPDU finished successfully.";
   return true;
 }
@@ -275,7 +370,7 @@ void FirmwareUpdater::SendDone() {
   // Send stop request, ignoring reply.
   uint32_t out = htobe32(kUpdateDoneCmd);
   uint8_t unused_received;
-  uep_.Transfer(&out, sizeof(out), &unused_received, 1, false);
+  uep_->Transfer(&out, sizeof(out), &unused_received, 1, false);
 }
 
 bool FirmwareUpdater::TransferSection(const uint8_t* data_ptr,
@@ -283,7 +378,7 @@ bool FirmwareUpdater::TransferSection(const uint8_t* data_ptr,
                                       size_t data_len) {
   // Actually, we can skip trailing chunks of 0xff, as the entire
   // section space must be erased before the update is attempted.
-  // TODO: We can be smarter than this and skip blocks within the image.
+  // TODO(akahuang): skip blocks within the image.
   while (data_len && (data_ptr[data_len - 1] == 0xff))
     data_len--;
 
@@ -315,16 +410,16 @@ bool FirmwareUpdater::TransferBlock(UpdateFrameHeader* ufh,
                                     const uint8_t* transfer_data_ptr,
                                     size_t payload_size) {
   // First send the header.
-  LOG(INFO) << "Send the block header."
+  LOG(INFO) << "Send the block header: "
             << base::HexEncode(reinterpret_cast<uint8_t*>(ufh), sizeof(*ufh));
-  uep_.Send(ufh, sizeof(*ufh));
+  uep_->Send(ufh, sizeof(*ufh));
 
   // Now send the block, chunk by chunk.
   size_t transfer_size = 0;
   while (transfer_size < payload_size) {
     int chunk_size =
-        std::min<size_t>(uep_.GetChunkLength(), payload_size - transfer_size);
-    uep_.Send(transfer_data_ptr, chunk_size);
+        std::min<size_t>(uep_->GetChunkLength(), payload_size - transfer_size);
+    uep_->Send(transfer_data_ptr, chunk_size);
     transfer_data_ptr += chunk_size;
     transfer_size += chunk_size;
     DLOG(INFO) << "Send block data " << transfer_size << "/" << payload_size;
@@ -332,7 +427,7 @@ bool FirmwareUpdater::TransferBlock(UpdateFrameHeader* ufh,
 
   // Now get the reply.
   uint32_t reply;
-  if (uep_.Receive(&reply, sizeof(reply), true) == -1) {
+  if (uep_->Receive(&reply, sizeof(reply), true) == -1) {
     return false;
   }
   reply = *(reinterpret_cast<uint8_t*>(&reply));

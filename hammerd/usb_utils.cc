@@ -5,9 +5,8 @@
 #include "hammerd/usb_utils.h"
 
 #include <stdio.h>
-#include <memory>
 
-#include <libusb.h>
+#include <memory>
 
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
@@ -17,7 +16,7 @@ namespace {
 const int kError = -1;
 const unsigned int kTimeoutMs = 1000;  // Default timeout value.
 bool is_libusb_inited = false;
-}
+}  // namespace
 
 bool InitLibUSB() {
   DLOG(INFO) << "Call InitLibUSB";

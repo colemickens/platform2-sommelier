@@ -10,8 +10,6 @@
 
 #include <base/logging.h>
 
-#include "hammerd/update_fw.h"
-
 namespace hammerd {
 
 HammerUpdater::HammerUpdater(const std::string& image) : image_(image) {}
@@ -23,35 +21,75 @@ bool HammerUpdater::Run() {
     return false;
   }
 
-  // TODO(akahuang): Send reboot command before it?
+  constexpr int kMaximumResetCount = 10;
+  for (int reset_count = 0; reset_count < kMaximumResetCount; ++reset_count) {
+    HammerUpdater::RunStatus status = RunOnce();
+    if (status == HammerUpdater::RunStatus::kNoUpdate) {
+      LOG(INFO) << "Hammer does not need to update.";
+      return true;
+    }
+    if (status == HammerUpdater::RunStatus::kFatalError) {
+      LOG(ERROR) << "Hammer encountered fatal error!";
+      return false;
+    }
+    if (status == HammerUpdater::RunStatus::kNeedReset) {
+      LOG(INFO) << "Reset the hammer and run again: " << reset_count;
+      fw_updater_.SendSubcommand(UpdateExtraCommand::kImmediateReset);
+      fw_updater_.CloseUSB();
+    } else {
+      LOG(ERROR) << "Unkwown RunStatus: " << static_cast<int>(status);
+      return false;
+    }
+  }
+  LOG(ERROR) << "Multiple reset occurred!. Shutdown Hammerd.";
+  return false;
+}
+
+HammerUpdater::RunStatus HammerUpdater::RunOnce() {
+  if (!fw_updater_.TryConnectUSB()) {
+    LOG(ERROR) << "Failed to connect USB.";
+    return HammerUpdater::RunStatus::kNeedReset;
+  }
+  if (!fw_updater_.SendFirstPDU()) {
+    LOG(ERROR) << "Failed to send the first PDU.";
+    return HammerUpdater::RunStatus::kNeedReset;
+  }
+
+  // If EC already entered RW section, then check if the RW need update. If so,
+  // then reset the hammer and exit. Let the next invocation handle the update.
+  if (fw_updater_.CurrentSection() == SectionName::RW) {
+    if (fw_updater_.IsNeedUpdate(SectionName::RW)) {
+      return HammerUpdater::RunStatus::kNeedReset;
+    }
+    return HammerUpdater::RunStatus::kNoUpdate;
+  }
+
+  // EC still runs at RO section. Send "Stay in RO" command first.
   if (!fw_updater_.SendSubcommand(UpdateExtraCommand::kStayInRO)) {
-    LOG(ERROR) << "Failed to stay in RO";
-    return false;
+    LOG(ERROR) << "Failed to stay in RO.";
+    return HammerUpdater::RunStatus::kNeedReset;
   }
 
-  LOG(INFO) << "Try to update RW firmware.";
-  // TODO(akahuang): Notify Chrome UI before updating firmware.
-  int num = fw_updater_.TransferImage("RW");
-  if (num == -1) {
-    LOG(ERROR) << "Failed to update RW firmware";
-    return false;
-  }
-  if (num > 0) {
-    LOG(INFO) << "Successfully update the RW firmware.";
-    return true;
+  if (!fw_updater_.IsNeedUpdate(SectionName::RW)) {
+    LOG(INFO) << "No need to update RW. Jump to RW section.";
+    // TODO(akahuang): If JUMP_TO_RW failed, then update the RW.
+    fw_updater_.SendSubcommand(UpdateExtraCommand::kJumpToRW);
+    // TODO(akahuang): Update RO section in dogfood mode.
+    // TODO(akahuang): Update trackpad FW.
+    // TDOO(akahuang): Pairing.
+    // TODO(akahuang): Rollback increment.
+    return HammerUpdater::RunStatus::kNoUpdate;
   }
 
-  LOG(INFO) << "No need to update RW firmware.";
-  fw_updater_.SendSubcommand(UpdateExtraCommand::kJumpToRW);
-  // TODO(akahuang): Use write protect status of RO section to determine.
-  bool dogfood_mode = false;
-  if (dogfood_mode) {
-    // TODO(akahuang): Update RO firmware.
+  if (fw_updater_.IsSectionLocked(SectionName::RW)) {
+    LOG(INFO) << "Unlock RW section, and reset EC.";
+    fw_updater_.UnLockSection(SectionName::RW);
+    return HammerUpdater::RunStatus::kNeedReset;
   }
-  // TODO(akahuang): Update trackpad FW.
-  // TDOO(akahuang): Pairing.
-  // TODO(akahuang): Rollback increment.
-  return true;
+  // Now RW section needs an update, and it is not locked. Let's update!
+  bool ret = fw_updater_.TransferImage(SectionName::RW);
+  LOG(INFO) << "RW update " << (ret ? "passed." : "failed.");
+  return HammerUpdater::RunStatus::kNeedReset;
 }
 
 }  // namespace hammerd

@@ -15,8 +15,15 @@ namespace hammerd {
 
 class HammerUpdater {
  public:
+  enum class RunStatus {
+    kNoUpdate,
+    kFatalError,
+    kNeedReset,
+  };
+
   explicit HammerUpdater(const std::string& image);
   bool Run();
+  RunStatus RunOnce();
 
  private:
   // The main firmware updater.
