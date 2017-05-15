@@ -59,6 +59,7 @@ class MetricsDaemon : public brillo::DBusDaemon {
   static const char kComprDataSizeName[];
   static const char kOrigDataSizeName[];
   static const char kZeroPagesName[];
+  static const char kMMStatName[];
 
  private:
   friend class MetricsDaemonTest;
@@ -82,6 +83,7 @@ class MetricsDaemon : public brillo::DBusDaemon {
   FRIEND_TEST(MetricsDaemonTest, SendSample);
   FRIEND_TEST(MetricsDaemonTest, SendCpuThrottleMetrics);
   FRIEND_TEST(MetricsDaemonTest, SendZramMetrics);
+  FRIEND_TEST(MetricsDaemonTest, SendZramMetricsOld);
 
   // State for disk stats collector callback.
   enum StatsState {
@@ -275,6 +277,12 @@ class MetricsDaemon : public brillo::DBusDaemon {
 
   // Reads a string from a file and converts it to uint64_t.
   static bool ReadFileToUint64(const base::FilePath& path, uint64_t* value);
+
+  // Reads /sys/devices/virtual/block/zram0/mm_stat.
+  static bool ReadMMStat(const base::FilePath& zram_dir,
+                         uint64_t* compr_data_size_out,
+                         uint64_t* orig_data_size_out,
+                         uint64_t* zero_pages_out);
 
   // VARIABLES
 

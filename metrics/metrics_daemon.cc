@@ -131,6 +131,7 @@ const char MetricsDaemon::kMetricScaledCpuFrequencyName[] =
 const char MetricsDaemon::kComprDataSizeName[] = "compr_data_size";
 const char MetricsDaemon::kOrigDataSizeName[] = "orig_data_size";
 const char MetricsDaemon::kZeroPagesName[] = "zero_pages";
+const char MetricsDaemon::kMMStatName[] = "mm_stat";
 
 // crouton metrics
 
@@ -800,6 +801,32 @@ bool MetricsDaemon::ReadFileToUint64(const base::FilePath& path,
   return true;
 }
 
+// static
+bool MetricsDaemon::ReadMMStat(const base::FilePath& zram_dir,
+                               uint64_t* compr_data_size_out,
+                               uint64_t* orig_data_size_out,
+                               uint64_t* zero_pages_out) {
+  const base::FilePath mm_stat_path = zram_dir.Append(kMMStatName);
+  std::string content;
+
+  // No warning here since older systems won't have this new file
+  if (!base::ReadFileToString(mm_stat_path, &content)) {
+    return false;
+  }
+
+  int num_items = sscanf(content.c_str(),
+                         "%" PRIu64 " %" PRIu64 " %*d %*d %*d %" PRIu64 " %*d",
+                         orig_data_size_out, compr_data_size_out,
+                         zero_pages_out);
+  if (num_items != 3) {
+    LOG(WARNING) << "Found " << num_items << " item(s) in "
+                 << mm_stat_path.value() << ", expected 3";
+    return false;
+  }
+
+  return true;
+}
+
 bool MetricsDaemon::ReportZram(const base::FilePath& zram_dir) {
   if (!base::DirectoryExists(zram_dir)) {
     return false;
@@ -809,10 +836,11 @@ bool MetricsDaemon::ReportZram(const base::FilePath& zram_dir) {
   uint64_t compr_data_size, orig_data_size, zero_pages;
   const size_t page_size = 4096;
 
-  if (!ReadFileToUint64(zram_dir.Append(kComprDataSizeName),
-                        &compr_data_size) ||
-      !ReadFileToUint64(zram_dir.Append(kOrigDataSizeName), &orig_data_size) ||
-      !ReadFileToUint64(zram_dir.Append(kZeroPagesName), &zero_pages)) {
+  if (!ReadMMStat(zram_dir, &compr_data_size, &orig_data_size, &zero_pages) &&
+      (!ReadFileToUint64(zram_dir.Append(kComprDataSizeName),
+                         &compr_data_size) ||
+       !ReadFileToUint64(zram_dir.Append(kOrigDataSizeName), &orig_data_size) ||
+       !ReadFileToUint64(zram_dir.Append(kZeroPagesName), &zero_pages))) {
     return false;
   }
 
