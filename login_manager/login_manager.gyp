@@ -32,22 +32,24 @@
   },
   'targets': [
     {
-      'target_name': 'session_manager_proxies',
+      # For naming, '-adaptors' suffix uses hyphen, but 'session_manager' uses
+      # underscore. So, here intentionally mix them.
+      'target_name': 'session_manager-adaptors',
       'type': 'none',
       'variables': {
-        'xml2cpp_type': 'proxy',
-        'xml2cpp_in_dir': '.',
-        'xml2cpp_out_dir': 'include/session_manager/dbus_proxies',
+        'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
+        'dbus_adaptors_out_dir': 'include/login_manager/dbus_adaptors',
       },
       'sources': [
-        '<(xml2cpp_in_dir)/dbus_bindings/org.chromium.SessionManagerInterface.xml',
+        'dbus_bindings/org.chromium.SessionManagerInterface.xml',
       ],
-      'includes': ['../common-mk/xml2cpp.gypi'],
+      'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
     },
     {
       'target_name': 'libsession_manager',
       'type': 'static_library',
       'dependencies': [
+        'session_manager-adaptors',
         '../common-mk/external_dependencies.gyp:install_attributes-proto',
         '../common-mk/external_dependencies.gyp:policy-protos',
       ],
