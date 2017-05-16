@@ -531,7 +531,7 @@ void ConnectionDiagnostics::FindNeighborTableEntry(const IPAddress& address) {
       Bind(&ConnectionDiagnostics::OnNeighborTableRequestTimeout,
            weak_ptr_factory_.GetWeakPtr(), address));
   dispatcher_->PostDelayedTask(FROM_HERE,
-                               route_query_timeout_callback_.callback(),
+                               neighbor_request_timeout_callback_.callback(),
                                kNeighborTableRequestTimeoutSeconds * 1000);
   AddEventWithMessage(kTypeNeighborTableLookup, kPhaseStart, kResultSuccess,
                       StringPrintf("Finding neighbor table entry for %s",
