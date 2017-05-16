@@ -137,36 +137,3 @@ cmd_live_in_a_coal_mine() (
   *) echo "Fly, my pretties, fly! (not changing channels)";;
   esac
 )
-
-USAGE_c='<program> [args]'
-HELP_c='
-  Run a program inside a container
-'
-
-cmd_c() (
-  cleanup() {
-    trap : INT
-    debugd ContainerStopped
-  }
-  trap cleanup INT
-
-  local container="$1"
-  if [ -z "${container}" ]; then
-    echo "No container specified"
-    return 1
-  fi
-  shift
-
-  local mount_dir=$(/usr/bin/mount_extension_image --name="${container}")
-  if [ -z "${mount_dir}" ]; then
-    echo "Could not find container"
-    return 1
-  fi
-  debugd ContainerStarted
-  HOME=/home/user /usr/bin/run_oci \
-    --cgroup_parent=chronos_containers \
-    --bind_mount=/home/chronos/user/Downloads:/home/user \
-    --bind_mount=/run/djfs:/dev \
-    "${mount_dir}" -- "$@"
-  cleanup
-)
