@@ -219,7 +219,7 @@ while true; do
   ${suspend_cmd} --wakeup_count=${wakeup_count}
 
   # Look for errors in firmware log.
-  if [ -f /sys/firmware/log ] && grep ERROR /sys/firmware/log; then
+  if cbmem -1 | grep ERROR; then
     : $(( firmware_errors += 1 ))
     if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} -a \
          ${FLAGS_fw_errors_fatal} -eq ${FLAGS_TRUE} ]; then
