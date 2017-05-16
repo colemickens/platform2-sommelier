@@ -227,7 +227,8 @@ void ChapsAdaptor::GetSlotInfo(const vector<uint8_t>& isolate_credential,
   result = service_->GetSlotInfo(isolate_credential_blob,
                                  slot_id,
                                  &proto);
-  slot_info.reserve(proto.ByteSize());
+  slot_info.clear();
+  slot_info.resize(proto.ByteSize());
   proto.SerializeToArray(slot_info.data(), slot_info.size());
   VLOG_IF(2, result == CKR_OK) << "OUT: " << "slot_description="
                                << proto.slot_description();
@@ -255,7 +256,8 @@ void ChapsAdaptor::GetTokenInfo(const vector<uint8_t>& isolate_credential,
   result = service_->GetTokenInfo(isolate_credential_blob,
                                   slot_id,
                                   &proto);
-  token_info.reserve(proto.ByteSize());
+  token_info.clear();
+  token_info.resize(proto.ByteSize());
   proto.SerializeToArray(token_info.data(), token_info.size());
   VLOG_IF(2, result == CKR_OK) << "OUT: " << "label=" << proto.label();
 }
@@ -310,7 +312,8 @@ void ChapsAdaptor::GetMechanismInfo(const vector<uint8_t>& isolate_credential,
                                       slot_id,
                                       mechanism_type,
                                       &proto);
-  mechanism_info.reserve(proto.ByteSize());
+  mechanism_info.clear();
+  mechanism_info.resize(proto.ByteSize());
   proto.SerializeToArray(mechanism_info.data(), mechanism_info.size());
   VLOG_IF(2, result == CKR_OK) << "OUT: " << "min_key_size="
                                << proto.min_key_size();
@@ -499,7 +502,8 @@ void ChapsAdaptor::GetSessionInfo(const vector<uint8_t>& isolate_credential,
   result = service_->GetSessionInfo(isolate_credential_blob,
                                     session_id,
                                     &proto);
-  session_info.reserve(proto.ByteSize());
+  session_info.clear();
+  session_info.resize(proto.ByteSize());
   proto.SerializeToArray(session_info.data(), session_info.size());
   VLOG_IF(2, result == CKR_OK) << "OUT: " << "slot_id=" << proto.slot_id();
   VLOG_IF(2, result == CKR_OK) << "OUT: " << "state=" << proto.state();
