@@ -69,7 +69,7 @@ enum Camera3BufferStatus {
 enum Camera3MsgType {
   CAMERA3_MSG_ERROR = 1,
   CAMERA3_MSG_SHUTTER = 2,
-  CAMEAR3_NUM_MESSAGES,
+  CAMERA3_NUM_MESSAGES,
 };
 
 struct Camera3Stream {
