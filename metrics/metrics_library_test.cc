@@ -19,11 +19,13 @@ using ::testing::_;
 using ::testing::Return;
 using ::testing::AnyNumber;
 
-static const FilePath kTestUMAEventsFile("test-uma-events");
-static const char kTestMounts[] = "test-mounts";
-static const FilePath kTestConsentIdFile("test-consent-id");
-static const char kValidGuidOld[] = "56ff27bf7f774919b08488416d597fd8";
-static const char kValidGuid[] = "56ff27bf-7f77-4919-b084-88416d597fd8";
+namespace {
+const FilePath kTestUMAEventsFile("test-uma-events");
+const char kTestMounts[] = "test-mounts";
+const FilePath kTestConsentIdFile("test-consent-id");
+const char kValidGuidOld[] = "56ff27bf7f774919b08488416d597fd8";
+const char kValidGuid[] = "56ff27bf-7f77-4919-b084-88416d597fd8";
+}  // namespace
 
 ACTION_P(SetMetricsPolicy, enabled) {
   *arg0 = enabled;

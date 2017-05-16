@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
+
 #include <gtest/gtest.h>
 
 #include "base/at_exit.h"
@@ -20,8 +22,10 @@
 #include "metrics/uploader/system_profile_cache.h"
 #include "metrics/uploader/upload_service.h"
 
-static const char kMetricsServer[] = "https://clients4.google.com/uma/v2";
-static const char kMetricsFilePath[] = "/run/metrics/uma-events";
+namespace {
+const char kMetricsServer[] = "https://clients4.google.com/uma/v2";
+const char kMetricsFilePath[] = "/run/metrics/uma-events";
+}  // namespace
 
 class UploadServiceTest : public testing::Test {
  protected:

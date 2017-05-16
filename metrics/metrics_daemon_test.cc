@@ -34,19 +34,21 @@ using ::testing::StrictMock;
 
 namespace chromeos_metrics {
 
-static const char kFakeDiskStatsName[] = "fake-disk-stats";
-static const char kFakeDiskStatsFormat[] =
+namespace {
+const char kFakeDiskStatsName[] = "fake-disk-stats";
+const char kFakeDiskStatsFormat[] =
     "    1793     1788    %" PRIu64 "   105580    "
     "    196      175     %" PRIu64 "    30290    "
     "    0    44060   135850\n";
-static const uint64_t kFakeReadSectors[] = {80000, 100000};
-static const uint64_t kFakeWriteSectors[] = {3000, 4000};
+const uint64_t kFakeReadSectors[] = {80000, 100000};
+const uint64_t kFakeWriteSectors[] = {3000, 4000};
 
-static const char kFakeVmStatsName[] = "fake-vm-stats";
-static const char kFakeScalingMaxFreqPath[] = "fake-scaling-max-freq";
-static const char kFakeCpuinfoMaxFreqPath[] = "fake-cpuinfo-max-freq";
-static const char kMetricsServer[] = "https://clients4.google.com/uma/v2";
-static const char kMetricsFilePath[] = "/var/lib/metrics/uma-events";
+const char kFakeVmStatsName[] = "fake-vm-stats";
+const char kFakeScalingMaxFreqPath[] = "fake-scaling-max-freq";
+const char kFakeCpuinfoMaxFreqPath[] = "fake-cpuinfo-max-freq";
+const char kMetricsServer[] = "https://clients4.google.com/uma/v2";
+const char kMetricsFilePath[] = "/var/lib/metrics/uma-events";
+}  // namespace
 
 class MetricsDaemonTest : public testing::Test {
  protected:

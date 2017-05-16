@@ -12,6 +12,8 @@
 
 #include "metrics/metrics_daemon.h"
 
+namespace {
+
 const char kScalingMaxFreqPath[] =
     "/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq";
 const char kCpuinfoMaxFreqPath[] =
@@ -19,7 +21,6 @@ const char kCpuinfoMaxFreqPath[] =
 
 // Returns the path to the disk stats in the sysfs.  Returns the null string if
 // it cannot find the disk stats file.
-static
 const std::string MetricsMainDiskStatsPath() {
   char dev_path_cstr[PATH_MAX];
   std::string dev_prefix = "/dev/";
@@ -41,6 +42,8 @@ const std::string MetricsMainDiskStatsPath() {
   dev_name = dev_path.substr(dev_prefix.length());
   return "/sys/class/block/" + dev_name + "/stat";
 }
+
+}  // namespace
 
 int main(int argc, char** argv) {
   DEFINE_bool(daemon, true, "run as daemon (use -nodaemon for debugging)");

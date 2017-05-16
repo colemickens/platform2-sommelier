@@ -22,10 +22,12 @@
 
 #include "policy/device_policy.h"
 
-static const char kUMAEventsPath[] = "/var/lib/metrics/uma-events";
-static const char kConsentFile[] = "/home/chronos/Consent To Send Stats";
-static const char kCrosEventHistogramName[] = "Platform.CrOSEvent";
-static const int kCrosEventHistogramMax = 100;
+namespace {
+
+const char kUMAEventsPath[] = "/var/lib/metrics/uma-events";
+const char kConsentFile[] = "/home/chronos/Consent To Send Stats";
+const char kCrosEventHistogramName[] = "Platform.CrOSEvent";
+const int kCrosEventHistogramMax = 100;
 
 // Add new cros events here.
 //
@@ -38,7 +40,7 @@ static const int kCrosEventHistogramMax = 100;
 //
 // You can view them live here:
 // https://uma.googleplex.com/histograms/?histograms=Platform.CrOSEvent
-static const char *kCrosEventNames[] = {
+const char *kCrosEventNames[] = {
   "ModemManagerCommandSendFailure",  // 0
   "HwWatchdogReboot",  // 1
   "Cras.NoCodecsFoundAtBoot",  // 2
@@ -61,6 +63,8 @@ static const char *kCrosEventNames[] = {
   "VeyronEmmcUpgrade.SignatureDetected",  // 19
   "Watchdog.StartupFailed",  // 20
 };
+
+}  // namespace
 
 time_t MetricsLibrary::cached_enabled_time_ = 0;
 bool MetricsLibrary::cached_enabled_ = false;

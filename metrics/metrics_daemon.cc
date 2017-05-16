@@ -69,6 +69,18 @@ constexpr base::TimeDelta kVmlogInterval = base::TimeDelta::FromSeconds(2);
 
 constexpr char kVmlogDir[] = "/var/log/vmlog";
 
+// Memory use stats collection intervals.  We collect some memory use interval
+// at these intervals after boot, and we stop collecting after the last one,
+// with the assumption that in most cases the memory use won't change much
+// after that.
+const int kMemuseIntervals[] = {
+  1 * kSecondsPerMinute,    // 1 minute mark
+  4 * kSecondsPerMinute,    // 5 minute mark
+  25 * kSecondsPerMinute,   // 0.5 hour mark
+  120 * kSecondsPerMinute,  // 2.5 hour mark
+  600 * kSecondsPerMinute,  // 12.5 hour mark
+};
+
 }  // namespace
 
 // disk stats metrics
@@ -136,18 +148,6 @@ const char MetricsDaemon::kMMStatName[] = "mm_stat";
 // crouton metrics
 
 const char MetricsDaemon::kMetricCroutonStarted[] = "Platform.Crouton.Started";
-
-// Memory use stats collection intervals.  We collect some memory use interval
-// at these intervals after boot, and we stop collecting after the last one,
-// with the assumption that in most cases the memory use won't change much
-// after that.
-static const int kMemuseIntervals[] = {
-  1 * kSecondsPerMinute,    // 1 minute mark
-  4 * kSecondsPerMinute,    // 5 minute mark
-  25 * kSecondsPerMinute,   // 0.5 hour mark
-  120 * kSecondsPerMinute,  // 2.5 hour mark
-  600 * kSecondsPerMinute,  // 12.5 hour mark
-};
 
 MetricsDaemon::MetricsDaemon()
     : memuse_final_time_(0),

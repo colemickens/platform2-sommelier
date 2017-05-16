@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include <memory>
+#include <utility>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -397,10 +398,12 @@ TEST_F(TimerTest, StartPauseResumePauseResumeStop) {
             elapsed_time.InMilliseconds());
 }
 
-static const char kMetricName[] = "test-timer";
-static const int kMinSample = 0;
-static const int kMaxSample = 120 * 1E6;
-static const int kNumBuckets = 50;
+namespace {
+const char kMetricName[] = "test-timer";
+const int kMinSample = 0;
+const int kMaxSample = 120 * 1E6;
+const int kNumBuckets = 50;
+}  // namespace
 
 class TimerReporterTest : public testing::Test {
  public:

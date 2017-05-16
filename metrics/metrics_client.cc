@@ -7,6 +7,8 @@
 
 #include "metrics/metrics_library.h"
 
+namespace {
+
 enum Mode {
     kModeSendSample,
     kModeSendEnumSample,
@@ -44,7 +46,7 @@ void ShowUsage() {
   exit(1);
 }
 
-static int ParseInt(const char *arg) {
+int ParseInt(const char* arg) {
   char *endptr;
   int value = strtol(arg, &endptr, 0);
   if (*endptr != '\0') {
@@ -54,7 +56,7 @@ static int ParseInt(const char *arg) {
   return value;
 }
 
-static double ParseDouble(const char *arg) {
+double ParseDouble(const char* arg) {
   char *endptr;
   double value = strtod(arg, &endptr);
   if (*endptr != '\0') {
@@ -64,10 +66,10 @@ static double ParseDouble(const char *arg) {
   return value;
 }
 
-static int SendStats(char* argv[],
-                     int name_index,
-                     enum Mode mode,
-                     bool secs_to_msecs) {
+int SendStats(char* argv[],
+              int name_index,
+              enum Mode mode,
+              bool secs_to_msecs) {
   const char* name = argv[name_index];
   int sample;
   if (secs_to_msecs) {
@@ -92,7 +94,7 @@ static int SendStats(char* argv[],
   return 0;
 }
 
-static int SendUserAction(char* argv[], int action_index) {
+int SendUserAction(char* argv[], int action_index) {
   const char* action = argv[action_index];
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
@@ -100,7 +102,7 @@ static int SendUserAction(char* argv[], int action_index) {
   return 0;
 }
 
-static int SendCrosEvent(char* argv[], int action_index) {
+int SendCrosEvent(char* argv[], int action_index) {
   const char* event = argv[action_index];
   bool result;
   MetricsLibrary metrics_lib;
@@ -113,31 +115,31 @@ static int SendCrosEvent(char* argv[], int action_index) {
   return 0;
 }
 
-static int CreateConsent() {
+int CreateConsent() {
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
   return metrics_lib.EnableMetrics() ? 0 : 1;
 }
 
-static int DeleteConsent() {
+int DeleteConsent() {
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
   return metrics_lib.DisableMetrics() ? 0 : 1;
 }
 
-static int HasConsent() {
+int HasConsent() {
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
   return metrics_lib.AreMetricsEnabled() ? 0 : 1;
 }
 
-static int IsGuestMode() {
+int IsGuestMode() {
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
   return metrics_lib.IsGuestMode() ? 0 : 1;
 }
 
-static int ShowConsentId() {
+int ShowConsentId() {
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
   std::string id;
@@ -146,6 +148,8 @@ static int ShowConsentId() {
   printf("%s\n", id.c_str());
   return 0;
 }
+
+}  // namespace
 
 int main(int argc, char** argv) {
   enum Mode mode = kModeSendSample;
