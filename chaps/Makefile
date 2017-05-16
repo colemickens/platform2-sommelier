@@ -98,7 +98,6 @@ COMMON_OBJS = chaps_utility.o $(PROTO_DIR)/attributes.pb.o attributes.o
 chapsd_OBJS = $(COMMON_OBJS) \
               chapsd.o \
               chaps_service.o \
-              chaps_service_redirect.o \
               chaps_adaptor.o \
               isolate_$(PLATFORM).o \
               slot_manager_impl.o \
@@ -387,8 +386,7 @@ more_tests: import_random
 # 4) Run 'sudo tpm_utility_test'.
 # 5) Run 'sudo chapsd_test'.
 # 6) Run 'chapsd_test --use_dbus'.
-chapsd_test_OBJS = $(COMMON_OBJS) chapsd_test.o chaps_proxy.o \
-                   chaps_service_redirect.o
+chapsd_test_OBJS = $(COMMON_OBJS) chapsd_test.o chaps_proxy.o
 chapsd_test_LIBS = -lgtest -ldl
 CXX_BINARY(chapsd_test): $(chapsd_test_OBJS) CXX_LIBRARY(libchaps.so)
 CXX_BINARY(chapsd_test): LDLIBS += $(chapsd_test_LIBS)

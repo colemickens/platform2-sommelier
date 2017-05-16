@@ -121,7 +121,6 @@
         'chaps_adaptor.cc',
         'chaps_factory_impl.cc',
         'chaps_service.cc',
-        'chaps_service_redirect.cc',
         'chapsd.cc',
         'object_impl.cc',
         'object_policy_cert.cc',
@@ -377,7 +376,6 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'chaps_service_redirect.cc',
             'chapsd_test.cc',
             'platform_globals_chromeos.cc',
           ],

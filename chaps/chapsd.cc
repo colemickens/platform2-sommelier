@@ -24,7 +24,6 @@
 #include "chaps/chaps_adaptor.h"
 #include "chaps/chaps_factory_impl.h"
 #include "chaps/chaps_service.h"
-#include "chaps/chaps_service_redirect.h"
 #include "chaps/chaps_utility.h"
 #include "chaps/platform_globals.h"
 #include "chaps/slot_manager_impl.h"
@@ -119,63 +118,53 @@ int main(int argc, char** argv) {
   CHECK(chaps::g_dispatcher.get());
   DBus::default_dispatcher = chaps::g_dispatcher.get();
   Lock lock;
-  if (!cl->HasSwitch("lib")) {
-    // We're using chaps (i.e. not passing through to another PKCS #11 library).
-    LOG(INFO) << "Starting PKCS #11 services.";
-    // Run as 'chaps'.
-    chaps::SetProcessUserAndGroup(chaps::kChapsdProcessUser,
-                                  chaps::kChapsdProcessGroup,
-                                  true);
-    // Determine SRK authorization data from the command line.
-    string srk_auth_data;
-    if (cl->HasSwitch("srk_password")) {
-      srk_auth_data = cl->GetSwitchValueASCII("srk_password");
-    } else if (cl->HasSwitch("srk_zeros")) {
-      int zero_count = 0;
-      if (base::StringToInt(cl->GetSwitchValueASCII("srk_zeros"),
-                            &zero_count)) {
-        srk_auth_data = string(zero_count, 0);
-      } else {
-        LOG(WARNING) << "Invalid value for srk_zeros: using empty string.";
-      }
+
+  LOG(INFO) << "Starting PKCS #11 services.";
+  // Run as 'chaps'.
+  chaps::SetProcessUserAndGroup(chaps::kChapsdProcessUser,
+                                chaps::kChapsdProcessGroup,
+                                true);
+  // Determine SRK authorization data from the command line.
+  string srk_auth_data;
+  if (cl->HasSwitch("srk_password")) {
+    srk_auth_data = cl->GetSwitchValueASCII("srk_password");
+  } else if (cl->HasSwitch("srk_zeros")) {
+    int zero_count = 0;
+    if (base::StringToInt(cl->GetSwitchValueASCII("srk_zeros"),
+                          &zero_count)) {
+      srk_auth_data = string(zero_count, 0);
+    } else {
+      LOG(WARNING) << "Invalid value for srk_zeros: using empty string.";
     }
-#if USE_TPM2
-    base::AtExitManager at_exit_manager;
-    base::Thread tpm_background_thread(kTpmThreadName);
-    CHECK(tpm_background_thread.StartWithOptions(
-        base::Thread::Options(base::MessageLoop::TYPE_IO,
-                              0 /* use default stack size */)));
-    chaps::TPM2UtilityImpl tpm(tpm_background_thread.task_runner());
-#else
-    // Instantiate a TPM1.2 Utility.
-    chaps::TPMUtilityImpl tpm(srk_auth_data);
-#endif
-    chaps::ChapsFactoryImpl factory;
-    chaps::SlotManagerImpl slot_manager(
-        &factory, &tpm, cl->HasSwitch("auto_load_system_token"));
-    chaps::ChapsServiceImpl service(&slot_manager);
-    chaps::AsyncInitThread init_thread(&lock, &tpm, &slot_manager, &service);
-    PlatformThreadHandle init_thread_handle;
-    if (!PlatformThread::Create(0, &init_thread, &init_thread_handle))
-      LOG(FATAL) << "Failed to create initialization thread.";
-    // We don't want to start the dispatcher until the initialization thread has
-    // had a chance to acquire the lock.
-    init_thread.WaitUntilStarted();
-    LOG(INFO) << "Starting D-Bus dispatcher.";
-    RunDispatcher(&lock, &service, &slot_manager);
-    PlatformThread::Join(init_thread_handle);
-#if USE_TPM2
-    tpm_background_thread.Stop();
-#endif
-  } else {
-    // We're passing through to another PKCS #11 library.
-    string lib = cl->GetSwitchValueASCII("lib");
-    LOG(INFO) << "Starting PKCS #11 services with " << lib << ".";
-    chaps::ChapsServiceRedirect service(lib.c_str());
-    if (!service.Init())
-      LOG(FATAL) << "Failed to initialize PKCS #11 library: " << lib;
-    RunDispatcher(&lock, &service, NULL);
   }
+#if USE_TPM2
+  base::AtExitManager at_exit_manager;
+  base::Thread tpm_background_thread(kTpmThreadName);
+  CHECK(tpm_background_thread.StartWithOptions(
+      base::Thread::Options(base::MessageLoop::TYPE_IO,
+                            0 /* use default stack size */)));
+  chaps::TPM2UtilityImpl tpm(tpm_background_thread.task_runner());
+#else
+  // Instantiate a TPM1.2 Utility.
+  chaps::TPMUtilityImpl tpm(srk_auth_data);
+#endif
+  chaps::ChapsFactoryImpl factory;
+  chaps::SlotManagerImpl slot_manager(
+      &factory, &tpm, cl->HasSwitch("auto_load_system_token"));
+  chaps::ChapsServiceImpl service(&slot_manager);
+  chaps::AsyncInitThread init_thread(&lock, &tpm, &slot_manager, &service);
+  PlatformThreadHandle init_thread_handle;
+  if (!PlatformThread::Create(0, &init_thread, &init_thread_handle))
+    LOG(FATAL) << "Failed to create initialization thread.";
+  // We don't want to start the dispatcher until the initialization thread has
+  // had a chance to acquire the lock.
+  init_thread.WaitUntilStarted();
+  LOG(INFO) << "Starting D-Bus dispatcher.";
+  RunDispatcher(&lock, &service, &slot_manager);
+  PlatformThread::Join(init_thread_handle);
+#if USE_TPM2
+  tpm_background_thread.Stop();
+#endif
 
   return 0;
 }

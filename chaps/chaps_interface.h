@@ -25,8 +25,6 @@ namespace chaps {
 // - ChapsProxyImpl: On the Chaps client side; sends calls over IPC.
 // - ChapsServiceImpl: On the Chaps daemon side; receives and implements IPC
 //   calls.
-// - ChapsServiceRedirect: An alternative implementation on the daemon side
-//   which receives IPC calls and forwards to a PKCS #11 library.
 class ChapsInterface {
  public:
   ChapsInterface() {}

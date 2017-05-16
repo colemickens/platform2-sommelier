@@ -15,7 +15,6 @@
 #include "chaps/attributes.h"
 #include "chaps/chaps_interface.h"
 #include "chaps/chaps_proxy.h"
-#include "chaps/chaps_service_redirect.h"
 #include "chaps/chaps_utility.h"
 #include "chaps/isolate.h"
 
@@ -26,21 +25,9 @@ using std::vector;
 namespace chaps {
 
 static chaps::ChapsInterface* CreateChapsInstance() {
-  bool use_dbus = false;
-  if (base::CommandLine::InitializedForCurrentProcess()) {
-    use_dbus = base::CommandLine::ForCurrentProcess()->HasSwitch("use_dbus");
-  }
-
-  if (use_dbus) {
-    std::unique_ptr<chaps::ChapsProxyImpl> proxy(new chaps::ChapsProxyImpl());
-    if (proxy->Init())
-      return proxy.release();
-  } else {
-    std::unique_ptr<chaps::ChapsServiceRedirect> service(
-        new chaps::ChapsServiceRedirect("libchaps.so"));
-    if (service->Init())
-      return service.release();
-  }
+  std::unique_ptr<chaps::ChapsProxyImpl> proxy(new chaps::ChapsProxyImpl());
+  if (proxy->Init())
+    return proxy.release();
   return NULL;
 }
 
