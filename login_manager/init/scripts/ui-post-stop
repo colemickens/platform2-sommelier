@@ -38,12 +38,14 @@ ps -u chronos --no-headers -o pid,stat,args |
 
 bootstat other-processes-terminated
 
-cryptohome --action=unmount
-bootstat cryptohome-unmounted
-
 # If there are any orphaned containers, they should also be cleaned up.
+# This needs to be done prior to cryptohome unmounting so that there are no
+# remaining processes with files open that would prevent a clean unmount.
 for container in /run/containers/* ; do
   kill_with_open_files_on "${container}/root"
   umount -R "${container}/root"
   rm -rf "${container}"
 done
+
+cryptohome --action=unmount
+bootstat cryptohome-unmounted
