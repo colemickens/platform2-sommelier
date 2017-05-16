@@ -91,8 +91,8 @@ class DaemonDelegateImpl : public DaemonDelegate {
   }
 
   std::unique_ptr<system::DBusWrapperInterface> CreateDBusWrapper() override {
-    auto wrapper = base::WrapUnique(new system::DBusWrapper());
-    CHECK(wrapper->Init());
+    auto wrapper = system::DBusWrapper::Create();
+    CHECK(wrapper);
     return std::move(wrapper);
   }
 

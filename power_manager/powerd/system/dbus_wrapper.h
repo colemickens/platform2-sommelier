@@ -102,12 +102,10 @@ class DBusWrapperInterface {
 // bus.
 class DBusWrapper : public DBusWrapperInterface {
  public:
-  DBusWrapper();
   virtual ~DBusWrapper();
 
-  // Connects to the system bus and exports an object that can be used to emit
-  // signals and receive method calls. Returns true on success.
-  bool Init();
+  // Factory method for DBusWrapper. Returns nullptr on failure.
+  static std::unique_ptr<DBusWrapper> Create();
 
   // DBusWrapperInterface overrides:
   dbus::Bus* GetBus() override;
@@ -138,6 +136,10 @@ class DBusWrapper : public DBusWrapperInterface {
                        dbus::ObjectProxy::ResponseCallback callback) override;
 
  private:
+  // Create DBusWrappers using the factory method above.
+  DBusWrapper(scoped_refptr<dbus::Bus> bus,
+              dbus::ExportedObject* exported_object);
+
   // Connection to the D-Bus system bus.
   scoped_refptr<dbus::Bus> bus_;
 

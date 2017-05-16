@@ -8,6 +8,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -28,27 +29,27 @@ void HandleSignalConnected(const std::string& interface,
 
 }  // namespace
 
-DBusWrapper::DBusWrapper() : exported_object_(nullptr) {}
+DBusWrapper::DBusWrapper(scoped_refptr<dbus::Bus> bus,
+                         dbus::ExportedObject* exported_object)
+  : bus_(bus), exported_object_(exported_object) {}
 
-DBusWrapper::~DBusWrapper() {
-  exported_object_ = nullptr;
-}
+DBusWrapper::~DBusWrapper() {}
 
-bool DBusWrapper::Init() {
+std::unique_ptr<DBusWrapper> DBusWrapper::Create() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  bus_ = new dbus::Bus(options);
-  if (!bus_->Connect()) {
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+  if (!bus->Connect()) {
     LOG(ERROR) << "Failed to connect to system bus";
-    return false;
+    return nullptr;
   }
-  exported_object_ =
-      bus_->GetExportedObject(dbus::ObjectPath(kPowerManagerServicePath));
-  if (!exported_object_) {
+  dbus::ExportedObject* exported_object =
+      bus->GetExportedObject(dbus::ObjectPath(kPowerManagerServicePath));
+  if (!exported_object) {
     LOG(ERROR) << "Failed to export " << kPowerManagerServicePath << " object";
-    return false;
+    return nullptr;
   }
-  return true;
+  return base::WrapUnique(new DBusWrapper(bus, exported_object));
 }
 
 dbus::Bus* DBusWrapper::GetBus() {
