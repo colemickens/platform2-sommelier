@@ -51,14 +51,14 @@
 #define SLOG_2ARG(object, verbose_level) \
   LAZY_STREAM(SLOG_STREAM(verbose_level), \
     ::shill::ScopeLogger::GetInstance()->IsLogEnabled( \
-        Logging::kModuleLogScope, verbose_level)) \
-  << (object ? Logging::ObjectID(object) : "(anon)") << " "
+        ::shill::Logging::kModuleLogScope, verbose_level)) \
+  << (object ? ::shill::Logging::ObjectID(object) : "(anon)") << " "
 
 #define SLOG_3ARG(scope, object, verbose_level) \
   LAZY_STREAM(SLOG_STREAM(verbose_level), \
     ::shill::ScopeLogger::GetInstance()->IsLogEnabled( \
         ::shill::ScopeLogger::k##scope, verbose_level)) \
-  << (object ? Logging::ObjectID(object) : "(anon)") << " "
+  << (object ? ::shill::Logging::ObjectID(object) : "(anon)") << " "
 
 #define SLOG(...) \
   GET_MACRO_OVERLOAD2(__VA_ARGS__, SLOG_3ARG, SLOG_2ARG)(__VA_ARGS__)
