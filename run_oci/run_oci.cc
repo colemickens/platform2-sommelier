@@ -239,8 +239,6 @@ int RunOci(const base::FilePath& container_dir,
            const ContainerOptions& container_options) {
   base::ScopedTempDir temp_dir;
   base::FilePath container_config_file = container_dir.Append("config.json");
-  base::FilePath container_manifest_file =
-      container_dir.Append("manifest.json");
 
   OciConfigPtr oci_config(new OciConfig());
   if (!OciConfigFromFile(container_config_file, oci_config)) {
