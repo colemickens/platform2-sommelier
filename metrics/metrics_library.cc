@@ -40,28 +40,28 @@ const int kCrosEventHistogramMax = 100;
 //
 // You can view them live here:
 // https://uma.googleplex.com/histograms/?histograms=Platform.CrOSEvent
-const char *kCrosEventNames[] = {
-  "ModemManagerCommandSendFailure",  // 0
-  "HwWatchdogReboot",  // 1
-  "Cras.NoCodecsFoundAtBoot",  // 2
-  "Chaps.DatabaseCorrupted",  // 3
-  "Chaps.DatabaseRepairFailure",  // 4
-  "Chaps.DatabaseCreateFailure",  // 5
-  "Attestation.OriginSpecificExhausted",  // 6
-  "SpringPowerSupply.Original.High",  // 7
-  "SpringPowerSupply.Other.High",  // 8
-  "SpringPowerSupply.Original.Low",  // 9
-  "SpringPowerSupply.ChargerIdle",  // 10
-  "TPM.NonZeroDictionaryAttackCounter",  // 11
-  "TPM.EarlyResetDuringCommand",  // 12
-  "VeyronEmmcUpgrade.Success",  // 13
-  "VeyronEmmcUpgrade.WaitForKernelRollup",  // 14
-  "VeyronEmmcUpgrade.WaitForFirmwareRollup",  // 15
-  "VeyronEmmcUpgrade.BadEmmcProperties",  // 16
-  "VeyronEmmcUpgrade.FailedDiskAccess",  // 17
-  "VeyronEmmcUpgrade.FailedWPEnable",  // 18
-  "VeyronEmmcUpgrade.SignatureDetected",  // 19
-  "Watchdog.StartupFailed",  // 20
+const char* kCrosEventNames[] = {
+    "ModemManagerCommandSendFailure",           // 0
+    "HwWatchdogReboot",                         // 1
+    "Cras.NoCodecsFoundAtBoot",                 // 2
+    "Chaps.DatabaseCorrupted",                  // 3
+    "Chaps.DatabaseRepairFailure",              // 4
+    "Chaps.DatabaseCreateFailure",              // 5
+    "Attestation.OriginSpecificExhausted",      // 6
+    "SpringPowerSupply.Original.High",          // 7
+    "SpringPowerSupply.Other.High",             // 8
+    "SpringPowerSupply.Original.Low",           // 9
+    "SpringPowerSupply.ChargerIdle",            // 10
+    "TPM.NonZeroDictionaryAttackCounter",       // 11
+    "TPM.EarlyResetDuringCommand",              // 12
+    "VeyronEmmcUpgrade.Success",                // 13
+    "VeyronEmmcUpgrade.WaitForKernelRollup",    // 14
+    "VeyronEmmcUpgrade.WaitForFirmwareRollup",  // 15
+    "VeyronEmmcUpgrade.BadEmmcProperties",      // 16
+    "VeyronEmmcUpgrade.FailedDiskAccess",       // 17
+    "VeyronEmmcUpgrade.FailedWPEnable",         // 18
+    "VeyronEmmcUpgrade.SignatureDetected",      // 19
+    "Watchdog.StartupFailed",                   // 20
 };
 
 }  // namespace
@@ -129,11 +129,8 @@ bool MetricsLibrary::IsDeviceMounted(const char* device_name,
 bool MetricsLibrary::IsGuestMode() {
   char buffer[256];
   bool result = false;
-  if (!IsDeviceMounted("guestfs",
-                       "/proc/mounts",
-                       buffer,
-                       sizeof(buffer),
-                       &result)) {
+  if (!IsDeviceMounted(
+          "guestfs", "/proc/mounts", buffer, sizeof(buffer), &result)) {
     return false;
   }
   return result && (access("/run/state/logged-in", F_OK) == 0);
@@ -141,7 +138,8 @@ bool MetricsLibrary::IsGuestMode() {
 
 bool MetricsLibrary::ConsentId(std::string* id) {
   // Do not allow symlinks.
-  base::ScopedFD fd(open(consent_file_.c_str(), O_RDONLY|O_CLOEXEC|O_NOFOLLOW));
+  base::ScopedFD fd(
+      open(consent_file_.c_str(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW));
   if (fd.get() < 0)
     return false;
 
@@ -229,8 +227,8 @@ bool MetricsLibrary::EnableMetrics() {
 
   // http://crbug.com/383003 says we must be world readable.
   mode_t mask = umask(0022);
-  int write_len = base::WriteFile(base::FilePath(consent_file_),
-                                  guid.c_str(), guid.length());
+  int write_len = base::WriteFile(
+      base::FilePath(consent_file_), guid.c_str(), guid.length());
   umask(mask);
 
   return write_len == static_cast<int>(guid.length());
@@ -244,18 +242,16 @@ void MetricsLibrary::Init() {
   uma_events_file_ = kUMAEventsPath;
 }
 
-bool MetricsLibrary::SendToUMA(const std::string& name,
-                               int sample,
-                               int min,
-                               int max,
-                               int nbuckets) {
+bool MetricsLibrary::SendToUMA(
+    const std::string& name, int sample, int min, int max, int nbuckets) {
   return metrics::SerializationUtils::WriteMetricToFile(
       *metrics::MetricSample::HistogramSample(name, sample, min, max, nbuckets)
            .get(),
       kUMAEventsPath);
 }
 
-bool MetricsLibrary::SendEnumToUMA(const std::string& name, int sample,
+bool MetricsLibrary::SendEnumToUMA(const std::string& name,
+                                   int sample,
                                    int max) {
   return metrics::SerializationUtils::WriteMetricToFile(
       *metrics::MetricSample::LinearHistogramSample(name, sample, max).get(),
@@ -264,8 +260,8 @@ bool MetricsLibrary::SendEnumToUMA(const std::string& name, int sample,
 
 bool MetricsLibrary::SendBoolToUMA(const std::string& name, bool sample) {
   return metrics::SerializationUtils::WriteMetricToFile(
-      *metrics::MetricSample::LinearHistogramSample(name,
-                                                    sample ? 1 : 0, 2).get(),
+      *metrics::MetricSample::LinearHistogramSample(name, sample ? 1 : 0, 2)
+           .get(),
       kUMAEventsPath);
 }
 
@@ -280,7 +276,7 @@ bool MetricsLibrary::SendUserActionToUMA(const std::string& action) {
       *metrics::MetricSample::UserActionSample(action).get(), kUMAEventsPath);
 }
 
-bool MetricsLibrary::SendCrashToUMA(const char *crash_kind) {
+bool MetricsLibrary::SendCrashToUMA(const char* crash_kind) {
   return metrics::SerializationUtils::WriteMetricToFile(
       *metrics::MetricSample::CrashSample(crash_kind).get(), kUMAEventsPath);
 }

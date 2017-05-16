@@ -120,7 +120,9 @@ class TimerReporter : public Timer {
  public:
   // Initializes the timer by providing a |histogram_name| to report to with
   // |min|, |max| and |num_buckets| attributes for the histogram.
-  TimerReporter(const std::string& histogram_name, int min, int max,
+  TimerReporter(const std::string& histogram_name,
+                int min,
+                int max,
                 int num_buckets);
   virtual ~TimerReporter() {}
 

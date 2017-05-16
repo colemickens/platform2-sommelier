@@ -16,18 +16,15 @@ namespace {
 // The directory for the persistent storage.
 const char kBackingFilesDirectory[] = "/var/lib/metrics/";
 
-}
+}  // namespace
 
 namespace chromeos_metrics {
 
 // Static class member instantiation.
 bool PersistentInteger::testing_ = false;
 
-PersistentInteger::PersistentInteger(const std::string& name) :
-      value_(0),
-      version_(kVersion),
-      name_(name),
-      synced_(false) {
+PersistentInteger::PersistentInteger(const std::string& name)
+    : value_(0), version_(kVersion), name_(name), synced_(false) {
   if (testing_) {
     backing_file_name_ = name_;
   } else {
@@ -66,8 +63,7 @@ void PersistentInteger::Write() {
   PCHECK(fd >= 0) << "cannot open " << backing_file_name_ << " for writing";
   PCHECK((HANDLE_EINTR(write(fd, &version_, sizeof(version_))) ==
           sizeof(version_)) &&
-         (HANDLE_EINTR(write(fd, &value_, sizeof(value_))) ==
-          sizeof(value_)))
+         (HANDLE_EINTR(write(fd, &value_, sizeof(value_))) == sizeof(value_)))
       << "cannot write to " << backing_file_name_;
   close(fd);
   synced_ = true;
@@ -96,6 +92,5 @@ bool PersistentInteger::Read() {
 void PersistentInteger::SetTestingMode(bool testing) {
   testing_ = testing;
 }
-
 
 }  // namespace chromeos_metrics

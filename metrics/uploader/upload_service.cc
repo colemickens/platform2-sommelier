@@ -33,8 +33,7 @@ UploadService::UploadService(SystemProfileSetter* setter,
       metrics_lib_(metrics_lib),
       histogram_snapshot_manager_(this),
       sender_(new HttpSender(server)),
-      testing_(false) {
-}
+      testing_(false) {}
 
 UploadService::UploadService(SystemProfileSetter* setter,
                              MetricsLibraryInterface* metrics_lib,
@@ -50,7 +49,8 @@ void UploadService::Init(const base::TimeDelta& upload_interval,
   metrics_file_ = metrics_file;
 
   if (!testing_) {
-    base::MessageLoop::current()->PostDelayedTask(FROM_HERE,
+    base::MessageLoop::current()->PostDelayedTask(
+        FROM_HERE,
         base::Bind(&UploadService::UploadEventCallback,
                    base::Unretained(this),
                    upload_interval),
@@ -69,7 +69,8 @@ void UploadService::StartNewLog() {
 void UploadService::UploadEventCallback(const base::TimeDelta& interval) {
   UploadEvent();
 
-  base::MessageLoop::current()->PostDelayedTask(FROM_HERE,
+  base::MessageLoop::current()->PostDelayedTask(
+      FROM_HERE,
       base::Bind(&UploadService::UploadEventCallback,
                  base::Unretained(this),
                  interval),
@@ -152,7 +153,10 @@ void UploadService::AddSample(const metrics::MetricSample& sample) {
       break;
     case metrics::MetricSample::HISTOGRAM:
       counter = base::Histogram::FactoryGet(
-          sample.name(), sample.min(), sample.max(), sample.bucket_count(),
+          sample.name(),
+          sample.min(),
+          sample.max(),
+          sample.bucket_count(),
           base::Histogram::kUmaTargetedHistogramFlag);
       CHECK(counter) << "FactoryGet failed for " << sample.name();
       counter->Add(sample.sample());
@@ -198,8 +202,10 @@ void UploadService::GatherHistograms() {
   base::StatisticsRecorder::GetHistograms(&histograms);
 
   histogram_snapshot_manager_.PrepareDeltas(
-      histograms.begin(), histograms.end(),
-      base::Histogram::kNoFlags, base::Histogram::kUmaTargetedHistogramFlag);
+      histograms.begin(),
+      histograms.end(),
+      base::Histogram::kNoFlags,
+      base::Histogram::kUmaTargetedHistogramFlag);
 }
 
 void UploadService::RecordDelta(const base::HistogramBase& histogram,
@@ -212,7 +218,8 @@ void UploadService::StageCurrentLog() {
   CHECK(!staged_log_)
       << "staged logs must be discarded before another log can be staged";
 
-  if (!current_log_) return;
+  if (!current_log_)
+    return;
 
   staged_log_.swap(current_log_);
   staged_log_->CloseLog();

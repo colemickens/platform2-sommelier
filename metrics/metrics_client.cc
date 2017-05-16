@@ -10,16 +10,16 @@
 namespace {
 
 enum Mode {
-    kModeSendSample,
-    kModeSendEnumSample,
-    kModeSendSparseSample,
-    kModeSendUserAction,
-    kModeSendCrosEvent,
-    kModeHasConsent,
-    kModeIsGuestMode,
-    kModeShowConsentId,
-    kModeCreateConsent,
-    kModeDeleteConsent,
+  kModeSendSample,
+  kModeSendEnumSample,
+  kModeSendSparseSample,
+  kModeSendUserAction,
+  kModeSendCrosEvent,
+  kModeHasConsent,
+  kModeIsGuestMode,
+  kModeShowConsentId,
+  kModeCreateConsent,
+  kModeDeleteConsent,
 };
 
 void ShowUsage() {
@@ -47,7 +47,7 @@ void ShowUsage() {
 }
 
 int ParseInt(const char* arg) {
-  char *endptr;
+  char* endptr;
   int value = strtol(arg, &endptr, 0);
   if (*endptr != '\0') {
     fprintf(stderr, "metrics client: bad integer \"%s\"\n", arg);
@@ -57,7 +57,7 @@ int ParseInt(const char* arg) {
 }
 
 double ParseDouble(const char* arg) {
-  char *endptr;
+  char* endptr;
   double value = strtod(arg, &endptr);
   if (*endptr != '\0') {
     fprintf(stderr, "metrics client: bad double \"%s\"\n", arg);
@@ -219,10 +219,7 @@ int main(int argc, char** argv) {
       if ((mode != kModeSendSample) && secs_to_msecs) {
         ShowUsage();
       }
-      return SendStats(argv,
-                       arg_index,
-                       mode,
-                       secs_to_msecs);
+      return SendStats(argv, arg_index, mode, secs_to_msecs);
     case kModeSendUserAction:
       return SendUserAction(argv, arg_index);
     case kModeSendCrosEvent:

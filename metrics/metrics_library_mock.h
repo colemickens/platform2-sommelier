@@ -16,15 +16,19 @@ class MetricsLibraryMock : public MetricsLibraryInterface {
   bool metrics_enabled_ = true;
 
   MOCK_METHOD0(Init, void());
-  MOCK_METHOD5(SendToUMA, bool(const std::string& name, int sample,
-                               int min, int max, int nbuckets));
-  MOCK_METHOD3(SendEnumToUMA, bool(const std::string& name, int sample,
-                                   int max));
+  MOCK_METHOD5(SendToUMA,
+               bool(const std::string& name,
+                    int sample,
+                    int min,
+                    int max,
+                    int nbuckets));
+  MOCK_METHOD3(SendEnumToUMA,
+               bool(const std::string& name, int sample, int max));
   MOCK_METHOD2(SendBoolToUMA, bool(const std::string& name, bool sample));
   MOCK_METHOD2(SendSparseToUMA, bool(const std::string& name, int sample));
   MOCK_METHOD1(SendUserActionToUMA, bool(const std::string& action));
 
-  bool AreMetricsEnabled() override {return metrics_enabled_;};
+  bool AreMetricsEnabled() override { return metrics_enabled_; };
 };
 
 #endif  // METRICS_METRICS_LIBRARY_MOCK_H_

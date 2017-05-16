@@ -30,25 +30,24 @@ std::string ChannelToString(
     const metrics::SystemProfileProto_Channel& channel) {
   switch (channel) {
     case metrics::SystemProfileProto::CHANNEL_STABLE:
-    return "STABLE";
-  case metrics::SystemProfileProto::CHANNEL_DEV:
-    return "DEV";
-  case metrics::SystemProfileProto::CHANNEL_BETA:
-    return "BETA";
-  case metrics::SystemProfileProto::CHANNEL_CANARY:
-    return "CANARY";
-  default:
-    return "UNKNOWN";
+      return "STABLE";
+    case metrics::SystemProfileProto::CHANNEL_DEV:
+      return "DEV";
+    case metrics::SystemProfileProto::CHANNEL_BETA:
+      return "BETA";
+    case metrics::SystemProfileProto::CHANNEL_CANARY:
+      return "CANARY";
+    default:
+      return "UNKNOWN";
   }
 }
 
 SystemProfileCache::SystemProfileCache()
     : initialized_(false),
-    testing_(false),
-    config_root_("/"),
-    session_id_(new chromeos_metrics::PersistentInteger(
-        kPersistentSessionIdFilename)) {
-}
+      testing_(false),
+      config_root_("/"),
+      session_id_(new chromeos_metrics::PersistentInteger(
+          kPersistentSessionIdFilename)) {}
 
 SystemProfileCache::SystemProfileCache(bool testing,
                                        const std::string& config_root)
@@ -56,8 +55,7 @@ SystemProfileCache::SystemProfileCache(bool testing,
       testing_(testing),
       config_root_(config_root),
       session_id_(new chromeos_metrics::PersistentInteger(
-          kPersistentSessionIdFilename)) {
-}
+          kPersistentSessionIdFilename)) {}
 
 bool SystemProfileCache::Initialize() {
   CHECK(!initialized_)
@@ -87,7 +85,7 @@ bool SystemProfileCache::Initialize() {
   profile_.channel = ProtoChannelFromString(channel_string);
 
   profile_.app_version = chromeos_version + " (" + build_type + ")" +
-      ChannelToString(profile_.channel) + " " + board;
+                         ChannelToString(profile_.channel) + " " + board;
 
   // If the product id is not defined, use the default one from the protobuf.
   profile_.product_id = metrics::ChromeUserMetricsExtension::CHROME;
@@ -117,8 +115,7 @@ bool SystemProfileCache::InitializeOrCheck() {
 void SystemProfileCache::Populate(
     metrics::ChromeUserMetricsExtension* metrics_proto) {
   CHECK(metrics_proto);
-  CHECK(InitializeOrCheck())
-      << "failed to initialize system information.";
+  CHECK(InitializeOrCheck()) << "failed to initialize system information.";
 
   // The client id is hashed before being sent.
   metrics_proto->set_client_id(
@@ -170,8 +167,7 @@ bool SystemProfileCache::GetChromeOSVersion(std::string* version) {
                                         &patch)) {
     // Convert to uint to ensure those fields are positive numbers.
     if (base::StringToUint(milestone, &tmp) &&
-        base::StringToUint(build, &tmp) &&
-        base::StringToUint(branch, &tmp) &&
+        base::StringToUint(build, &tmp) && base::StringToUint(branch, &tmp) &&
         base::StringToUint(patch, &tmp)) {
       std::vector<std::string> parts = {milestone, build, branch, patch};
       *version = base::JoinString(parts, ".");
@@ -216,8 +212,8 @@ bool SystemProfileCache::GetProductId(int* product_id) const {
 
   std::string id;
   if (reader.GetString(kProductIdFieldName, &id)) {
-    CHECK(base::StringToInt(id, product_id)) << "Failed to convert product_id "
-                                             << id << " to int.";
+    CHECK(base::StringToInt(id, product_id))
+        << "Failed to convert product_id " << id << " to int.";
     return true;
   }
   return false;
@@ -225,7 +221,6 @@ bool SystemProfileCache::GetProductId(int* product_id) const {
 
 metrics::SystemProfileProto_Channel SystemProfileCache::ProtoChannelFromString(
     const std::string& channel) {
-
   if (channel == "stable-channel") {
     return metrics::SystemProfileProto::CHANNEL_STABLE;
   } else if (channel == "dev-channel") {

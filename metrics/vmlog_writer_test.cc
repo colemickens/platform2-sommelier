@@ -35,12 +35,12 @@ using ::testing::StrictMock;
 
 namespace chromeos_metrics {
 
-class VmlogWriterTest : public testing::Test {
-};
+class VmlogWriterTest : public testing::Test {};
 
 TEST_F(VmlogWriterTest, ParseVmStats) {
-  const char kVmStats[] = "pswpin 1345\npswpout 8896\n"
-    "foo 100\nbar 200\npgmajfault 42\netcetc 300\n";
+  const char kVmStats[] =
+      "pswpin 1345\npswpout 8896\n"
+      "foo 100\nbar 200\npgmajfault 42\netcetc 300\n";
   struct VmstatRecord stats;
   EXPECT_TRUE(VmStatsParseStats(kVmStats, &stats));
   EXPECT_EQ(stats.page_faults_, 42);

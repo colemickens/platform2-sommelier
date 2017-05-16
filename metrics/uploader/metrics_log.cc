@@ -12,8 +12,7 @@
 // We use default values for the MetricsLogBase constructor as the setter will
 // override them.
 MetricsLog::MetricsLog()
-    : MetricsLogBase("", 0, metrics::MetricsLogBase::ONGOING_LOG, "") {
-}
+    : MetricsLogBase("", 0, metrics::MetricsLogBase::ONGOING_LOG, "") {}
 
 void MetricsLog::IncrementUserCrashCount() {
   metrics::SystemProfileProto::Stability* stability(

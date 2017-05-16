@@ -53,9 +53,7 @@ int main(int argc, char** argv) {
   DEFINE_bool(uploader, false, "activate the uploader");
 
   // Upload the metrics once and exit. (used for testing)
-  DEFINE_bool(uploader_test,
-              false,
-              "run the uploader once and exit");
+  DEFINE_bool(uploader_test, false, "run the uploader once and exit");
 
   // Upload Service flags.
   DEFINE_int32(upload_interval_secs,
@@ -68,14 +66,14 @@ int main(int argc, char** argv) {
   DEFINE_string(metrics_file,
                 "/var/lib/metrics/uma-events",
                 "File to use as a proxy for uploading the metrics");
-  DEFINE_string(config_root,
-                "/", "Root of the configuration files (testing only)");
+  DEFINE_string(
+      config_root, "/", "Root of the configuration files (testing only)");
 
   brillo::FlagHelper::Init(argc, argv, "Chromium OS Metrics Daemon");
 
   // Also log to stderr when not running as daemon.
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
-                    (FLAGS_daemon ? 0 : brillo::kLogToStderr));
+                  (FLAGS_daemon ? 0 : brillo::kLogToStderr));
 
   if (FLAGS_daemon && daemon(0, 0) != 0) {
     return errno;

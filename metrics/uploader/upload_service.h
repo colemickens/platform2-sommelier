@@ -5,6 +5,7 @@
 #ifndef METRICS_UPLOADER_UPLOAD_SERVICE_H_
 #define METRICS_UPLOADER_UPLOAD_SERVICE_H_
 
+#include <memory>
 #include <string>
 
 #include "base/metrics/histogram_base.h"
@@ -24,7 +25,7 @@ class LinearHistogramSample;
 class MetricSample;
 class SparseHistogramSample;
 class UserActionSample;
-}
+}  // namespace metrics
 
 class SystemProfileSetter;
 

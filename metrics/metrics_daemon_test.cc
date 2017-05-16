@@ -37,9 +37,9 @@ namespace chromeos_metrics {
 namespace {
 const char kFakeDiskStatsName[] = "fake-disk-stats";
 const char kFakeDiskStatsFormat[] =
-    "    1793     1788    %" PRIu64 "   105580    "
-    "    196      175     %" PRIu64 "    30290    "
-    "    0    44060   135850\n";
+    "    1793     1788    %" PRIu64
+    "   105580    "
+    "    196      175     %" PRIu64 "    30290        0    44060   135850\n";
 const uint64_t kFakeReadSectors[] = {80000, 100000};
 const uint64_t kFakeWriteSectors[] = {3000, 4000};
 
@@ -56,12 +56,10 @@ class MetricsDaemonTest : public testing::Test {
   std::string kFakeDiskStats1;
 
   virtual void SetUp() {
-    kFakeDiskStats0 = base::StringPrintf(kFakeDiskStatsFormat,
-                                           kFakeReadSectors[0],
-                                           kFakeWriteSectors[0]);
-    kFakeDiskStats1 = base::StringPrintf(kFakeDiskStatsFormat,
-                                           kFakeReadSectors[1],
-                                           kFakeWriteSectors[1]);
+    kFakeDiskStats0 = base::StringPrintf(
+        kFakeDiskStatsFormat, kFakeReadSectors[0], kFakeWriteSectors[0]);
+    kFakeDiskStats1 = base::StringPrintf(
+        kFakeDiskStatsFormat, kFakeReadSectors[1], kFakeWriteSectors[1]);
     CreateFakeDiskStatsFile(kFakeDiskStats0.c_str());
     CreateUint64ValueFile(base::FilePath(kFakeCpuinfoMaxFreqPath), 10000000);
     CreateUint64ValueFile(base::FilePath(kFakeScalingMaxFreqPath), 10000000);
@@ -80,16 +78,14 @@ class MetricsDaemonTest : public testing::Test {
                  "/");
 
     // Replace original persistent values with mock ones.
-    daily_active_use_mock_ =
-        new StrictMock<PersistentIntegerMock>("1.mock");
+    daily_active_use_mock_ = new StrictMock<PersistentIntegerMock>("1.mock");
     daemon_.daily_active_use_.reset(daily_active_use_mock_);
 
     kernel_crash_interval_mock_ =
         new StrictMock<PersistentIntegerMock>("2.mock");
     daemon_.kernel_crash_interval_.reset(kernel_crash_interval_mock_);
 
-    user_crash_interval_mock_ =
-        new StrictMock<PersistentIntegerMock>("3.mock");
+    user_crash_interval_mock_ = new StrictMock<PersistentIntegerMock>("3.mock");
     daemon_.user_crash_interval_.reset(user_crash_interval_mock_);
 
     unclean_shutdown_interval_mock_ =
@@ -119,9 +115,7 @@ class MetricsDaemonTest : public testing::Test {
 
   // As above, but ignore values of counter updates.
   void IgnoreActiveUseUpdate() {
-    EXPECT_CALL(*daily_active_use_mock_, Add(_))
-        .Times(1)
-        .RetiresOnSaturation();
+    EXPECT_CALL(*daily_active_use_mock_, Add(_)).Times(1).RetiresOnSaturation();
     EXPECT_CALL(*kernel_crash_interval_mock_, Add(_))
         .Times(1)
         .RetiresOnSaturation();
@@ -150,13 +144,13 @@ class MetricsDaemonTest : public testing::Test {
                                    const string& interface,
                                    const string& name,
                                    const vector<string>& arg_values) {
-    DBusMessage* msg = dbus_message_new_signal(path.c_str(),
-                                               interface.c_str(),
-                                               name.c_str());
+    DBusMessage* msg =
+        dbus_message_new_signal(path.c_str(), interface.c_str(), name.c_str());
     DBusMessageIter iter;
     dbus_message_iter_init_append(msg, &iter);
     for (vector<string>::const_iterator it = arg_values.begin();
-         it != arg_values.end(); ++it) {
+         it != arg_values.end();
+         ++it) {
       const char* str_value = it->c_str();
       dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &str_value);
     }
@@ -165,9 +159,7 @@ class MetricsDaemonTest : public testing::Test {
 
   // Deallocates the DBus message |msg| previously allocated through
   // dbus_message_new*.
-  void DeleteDBusMessage(DBusMessage* msg) {
-    dbus_message_unref(msg);
-  }
+  void DeleteDBusMessage(DBusMessage* msg) { dbus_message_unref(msg); }
 
   // Creates or overwrites an input file containing fake disk stats.
   void CreateFakeDiskStatsFile(const char* fake_stats) {
@@ -184,9 +176,9 @@ class MetricsDaemonTest : public testing::Test {
   void CreateUint64ValueFile(const base::FilePath& path, uint64_t value) {
     base::DeleteFile(path, false);
     std::string value_string = base::Uint64ToString(value);
-    ASSERT_EQ(value_string.length(),
-              base::WriteFile(path, value_string.c_str(),
-                              value_string.length()));
+    ASSERT_EQ(
+        value_string.length(),
+        base::WriteFile(path, value_string.c_str(), value_string.length()));
   }
 
   // The MetricsDaemon under test.
@@ -227,10 +219,8 @@ TEST_F(MetricsDaemonTest, MessageFilter) {
 
   IgnoreActiveUseUpdate();
   vector<string> signal_args;
-  msg = NewDBusSignalString("/",
-                            "org.chromium.CrashReporter",
-                            "UserCrash",
-                            signal_args);
+  msg = NewDBusSignalString(
+      "/", "org.chromium.CrashReporter", "UserCrash", signal_args);
   res = MetricsDaemon::MessageFilter(/* connection */ nullptr, msg, &daemon_);
   EXPECT_EQ(DBUS_HANDLER_RESULT_HANDLED, res);
   DeleteDBusMessage(msg);
@@ -238,10 +228,8 @@ TEST_F(MetricsDaemonTest, MessageFilter) {
   signal_args.clear();
   signal_args.push_back("randomstate");
   signal_args.push_back("bob");  // arbitrary username
-  msg = NewDBusSignalString("/",
-                            "org.chromium.UnknownService.Manager",
-                            "StateChanged",
-                            signal_args);
+  msg = NewDBusSignalString(
+      "/", "org.chromium.UnknownService.Manager", "StateChanged", signal_args);
   res = MetricsDaemon::MessageFilter(/* connection */ nullptr, msg, &daemon_);
   EXPECT_EQ(DBUS_HANDLER_RESULT_NOT_YET_HANDLED, res);
   DeleteDBusMessage(msg);
@@ -249,8 +237,11 @@ TEST_F(MetricsDaemonTest, MessageFilter) {
 
 TEST_F(MetricsDaemonTest, SendSample) {
   ExpectSample("Dummy.Metric", 3);
-  daemon_.SendSample("Dummy.Metric", /* sample */ 3,
-                     /* min */ 1, /* max */ 100, /* buckets */ 50);
+  daemon_.SendSample("Dummy.Metric",
+                     /* sample */ 3,
+                     /* min */ 1,
+                     /* max */ 100,
+                     /* buckets */ 50);
 }
 
 TEST_F(MetricsDaemonTest, ReportDiskStats) {
@@ -261,12 +252,13 @@ TEST_F(MetricsDaemonTest, ReportDiskStats) {
   EXPECT_EQ(write_sectors_now, kFakeWriteSectors[1]);
 
   MetricsDaemon::StatsState s_state = daemon_.stats_state_;
-  EXPECT_CALL(metrics_lib_,
-              SendToUMA(_, (kFakeReadSectors[1] - kFakeReadSectors[0]) / 30,
-                        _, _, _));
-  EXPECT_CALL(metrics_lib_,
-              SendToUMA(_, (kFakeWriteSectors[1] - kFakeWriteSectors[0]) / 30,
-                        _, _, _));
+  EXPECT_CALL(
+      metrics_lib_,
+      SendToUMA(_, (kFakeReadSectors[1] - kFakeReadSectors[0]) / 30, _, _, _));
+  EXPECT_CALL(
+      metrics_lib_,
+      SendToUMA(
+          _, (kFakeWriteSectors[1] - kFakeWriteSectors[0]) / 30, _, _, _));
   EXPECT_CALL(metrics_lib_, SendEnumToUMA(_, _, _));  // SendCpuThrottleMetrics
   daemon_.StatsCallback();
   EXPECT_TRUE(s_state != daemon_.stats_state_);
@@ -299,16 +291,15 @@ TEST_F(MetricsDaemonTest, ProcessMeminfo) {
   EXPECT_CALL(metrics_lib_, SendEnumToUMA("Platform.MeminfoMemFree", 25, 100))
       .Times(AtLeast(1));
   // Check that we call SendToUma at least once (log histogram).
-  EXPECT_CALL(metrics_lib_, SendToUMA(_, _, _, _, _))
-      .Times(AtLeast(1));
+  EXPECT_CALL(metrics_lib_, SendToUMA(_, _, _, _, _)).Times(AtLeast(1));
   // Make sure we don't report fields not in the list.
   EXPECT_CALL(metrics_lib_, SendToUMA("Platform.MeminfoMlocked", _, _, _, _))
       .Times(0);
   EXPECT_CALL(metrics_lib_, SendEnumToUMA("Platform.MeminfoMlocked", _, _))
       .Times(0);
   // Check that the total memory is reported.
-  EXPECT_CALL(metrics_lib_, SendToUMA("Platform.MeminfoMemTotal",
-        2000000, 1, _, 100));
+  EXPECT_CALL(metrics_lib_,
+              SendToUMA("Platform.MeminfoMemTotal", 2000000, 1, _, 100));
   EXPECT_TRUE(daemon_.ProcessMeminfo(meminfo));
 }
 
@@ -359,7 +350,8 @@ TEST_F(MetricsDaemonTest, SendZramMetrics) {
 
   ASSERT_EQ(value_string.length(),
             base::WriteFile(base::FilePath(MetricsDaemon::kMMStatName),
-                            value_string.c_str(), value_string.length()));
+                            value_string.c_str(),
+                            value_string.length()));
 
   const uint64_t real_orig_size = orig_data_size + zero_pages * page_size;
   const uint64_t zero_ratio_percent =

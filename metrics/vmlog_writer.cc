@@ -50,15 +50,11 @@ bool VmStatsParseStats(const std::string& stats, struct VmstatRecord* record) {
   // <ID> <VALUE>
   // for instance:
   // nr_free_pages 213427
-  std::vector<std::string> lines = base::SplitString(stats,
-                                                     "\n",
-                                                     base::KEEP_WHITESPACE,
-                                                     base::SPLIT_WANT_NONEMPTY);
+  std::vector<std::string> lines = base::SplitString(
+      stats, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   for (const auto& line : lines) {
-    std::vector<std::string> tokens = base::SplitString(line,
-                                                        " ",
-                                                        base::KEEP_WHITESPACE,
-                                                        base::SPLIT_WANT_ALL);
+    std::vector<std::string> tokens = base::SplitString(
+        line, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
     if (tokens.size() != 2u) {
       LOG(WARNING) << "Unexpected vmstat format in line: " << line;
       continue;
@@ -84,8 +80,8 @@ bool VmStatsParseStats(const std::string& stats, struct VmstatRecord* record) {
 VmlogFile::VmlogFile(const base::FilePath& live_path,
                      const base::FilePath& rotated_path,
                      const uint64_t max_size,
-                     const std::string& header) :
-      live_path_(live_path),
+                     const std::string& header)
+    : live_path_(live_path),
       rotated_path_(rotated_path),
       max_size_(max_size),
       header_(header) {
@@ -159,10 +155,10 @@ void VmlogWriter::Init(const base::FilePath& vmlog_dir,
     return;
   }
 
-  base::FilePath vmlog_current_path = vmlog_dir.Append(
-      "vmlog." + brillo::GetTimeAsLogString(now));
-  base::FilePath vmlog_rotated_path = vmlog_dir.Append(
-      "vmlog.1." + brillo::GetTimeAsLogString(now));
+  base::FilePath vmlog_current_path =
+      vmlog_dir.Append("vmlog." + brillo::GetTimeAsLogString(now));
+  base::FilePath vmlog_rotated_path =
+      vmlog_dir.Append("vmlog.1." + brillo::GetTimeAsLogString(now));
 
   brillo::UpdateLogSymlinks(vmlog_dir.Append("vmlog.LATEST"),
                             vmlog_dir.Append("vmlog.PREVIOUS"),
@@ -201,7 +197,7 @@ void VmlogWriter::WriteCallback() {
   // Assume that vmstat output will be no larger than 8K-1. Poking around some
   // chromebooks, the size seems to generally be around 2K.
   char buf[8192];
-  int len = HANDLE_EINTR(read(vmstat_fd_, buf, arraysize(buf)-1));
+  int len = HANDLE_EINTR(read(vmstat_fd_, buf, arraysize(buf) - 1));
   if (len < 0) {
     PLOG(ERROR) << "Unable to read() /proc/vmstat";
     timer_.Stop();
@@ -220,7 +216,7 @@ void VmlogWriter::WriteCallback() {
 
   int64_t uptime_micros = base::SysInfo::Uptime().InMicroseconds();
   std::string out_line = base::StringPrintf(
-      "[%5" PRIu64 ".%" PRIu64  "] %" PRIu64 " %" PRIu64 " %" PRIu64 "\n",
+      "[%5" PRIu64 ".%" PRIu64 "] %" PRIu64 " %" PRIu64 " %" PRIu64 "\n",
       uptime_micros / 1000000,
       uptime_micros % 1000000,
       r.page_faults_,

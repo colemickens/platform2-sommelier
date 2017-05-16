@@ -94,9 +94,8 @@ std::unique_ptr<MetricSample> SerializationUtils::ParseSample(
   // Can't split at \0 anymore, so replace null chars with \n.
   std::string sample_copy = sample;
   std::replace(sample_copy.begin(), sample_copy.end(), '\0', '\n');
-  std::vector<std::string> parts =
-      base::SplitString(sample_copy, "\n", base::KEEP_WHITESPACE,
-                        base::SPLIT_WANT_ALL);
+  std::vector<std::string> parts = base::SplitString(
+      sample_copy, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   // We should have two null terminated strings so split should produce
   // three chunks.
   if (parts.size() != 3) {

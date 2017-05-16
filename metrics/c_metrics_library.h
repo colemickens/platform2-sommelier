@@ -21,16 +21,22 @@ void CMetricsLibraryInit(CMetricsLibrary handle);
 
 // C wrapper for MetricsLibrary::SendToUMA.
 int CMetricsLibrarySendToUMA(CMetricsLibrary handle,
-                             const char* name, int sample,
-                             int min, int max, int nbuckets);
+                             const char* name,
+                             int sample,
+                             int min,
+                             int max,
+                             int nbuckets);
 
 // C wrapper for MetricsLibrary::SendEnumToUMA.
 int CMetricsLibrarySendEnumToUMA(CMetricsLibrary handle,
-                                 const char* name, int sample, int max);
+                                 const char* name,
+                                 int sample,
+                                 int max);
 
 // C wrapper for MetricsLibrary::SendSparseToUMA.
 int CMetricsLibrarySendSparseToUMA(CMetricsLibrary handle,
-                                   const char* name, int sample);
+                                   const char* name,
+                                   int sample);
 
 // C wrapper for MetricsLibrary::SendUserActionToUMA.
 int CMetricsLibrarySendUserActionToUMA(CMetricsLibrary handle,

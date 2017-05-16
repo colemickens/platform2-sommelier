@@ -29,8 +29,11 @@ extern "C" void CMetricsLibraryInit(CMetricsLibrary handle) {
 }
 
 extern "C" int CMetricsLibrarySendToUMA(CMetricsLibrary handle,
-                                        const char* name, int sample,
-                                        int min, int max, int nbuckets) {
+                                        const char* name,
+                                        int sample,
+                                        int min,
+                                        int max,
+                                        int nbuckets) {
   MetricsLibrary* lib = reinterpret_cast<MetricsLibrary*>(handle);
   if (lib == NULL)
     return 0;
@@ -38,7 +41,8 @@ extern "C" int CMetricsLibrarySendToUMA(CMetricsLibrary handle,
 }
 
 extern "C" int CMetricsLibrarySendEnumToUMA(CMetricsLibrary handle,
-                                            const char* name, int sample,
+                                            const char* name,
+                                            int sample,
                                             int max) {
   MetricsLibrary* lib = reinterpret_cast<MetricsLibrary*>(handle);
   if (lib == NULL)
@@ -47,7 +51,8 @@ extern "C" int CMetricsLibrarySendEnumToUMA(CMetricsLibrary handle,
 }
 
 extern "C" int CMetricsLibrarySendSparseToUMA(CMetricsLibrary handle,
-                                              const char* name, int sample) {
+                                              const char* name,
+                                              int sample) {
   MetricsLibrary* lib = reinterpret_cast<MetricsLibrary*>(handle);
   if (lib == NULL)
     return 0;
@@ -63,7 +68,7 @@ extern "C" int CMetricsLibrarySendUserActionToUMA(CMetricsLibrary handle,
 }
 
 extern "C" int CMetricsLibrarySendCrashToUMA(CMetricsLibrary handle,
-                                            const char* crash_kind) {
+                                             const char* crash_kind) {
   MetricsLibrary* lib = reinterpret_cast<MetricsLibrary*>(handle);
   if (lib == NULL)
     return 0;

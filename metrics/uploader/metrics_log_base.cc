@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
+
 #include "metrics/uploader/metrics_log_base.h"
 
 #include "base/metrics/histogram_base.h"
@@ -35,9 +37,7 @@ MetricsLogBase::MetricsLogBase(const std::string& client_id,
                                int session_id,
                                LogType log_type,
                                const std::string& version_string)
-    : num_events_(0),
-      locked_(false),
-      log_type_(log_type) {
+    : num_events_(0), locked_(false), log_type_(log_type) {
   DCHECK_NE(NO_LOG, log_type);
   if (IsTestingID(client_id))
     uma_proto_.set_client_id(0);
@@ -116,7 +116,8 @@ void MetricsLogBase::RecordHistogramDelta(const std::string& histogram_name,
   histogram_proto->set_sum(snapshot.sum());
 
   for (std::unique_ptr<SampleCountIterator> it = snapshot.Iterator();
-       !it->Done(); it->Next()) {
+       !it->Done();
+       it->Next()) {
     HistogramBase::Sample min;
     HistogramBase::Sample max;
     HistogramBase::Count count;

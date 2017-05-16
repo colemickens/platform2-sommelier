@@ -75,17 +75,14 @@ class MetricSample {
 
   // Builds a sparse histogram sample.
   static std::unique_ptr<MetricSample> SparseHistogramSample(
-      const std::string& histogram_name,
-      int sample);
+      const std::string& histogram_name, int sample);
   // Deserializes a sparse histogram sample.
   static std::unique_ptr<MetricSample> ParseSparseHistogram(
       const std::string& serialized);
 
   // Builds a linear histogram sample.
   static std::unique_ptr<MetricSample> LinearHistogramSample(
-      const std::string& histogram_name,
-      int sample,
-      int max);
+      const std::string& histogram_name, int sample, int max);
   // Deserializes a linear histogram sample.
   static std::unique_ptr<MetricSample> ParseLinearHistogram(
       const std::string& serialized);

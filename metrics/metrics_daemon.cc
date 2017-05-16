@@ -62,8 +62,7 @@ const uint32_t kUpdateStatsIntervalMs = 300000;
 const int kMaximumMemorySizeInKB = 32 * 1000 * 1000;
 
 const char kKernelCrashDetectedFile[] = "/run/kernel-crash-detected";
-const char kUncleanShutdownDetectedFile[] =
-    "/run/unclean-shutdown-detected";
+const char kUncleanShutdownDetectedFile[] = "/run/unclean-shutdown-detected";
 
 constexpr base::TimeDelta kVmlogInterval = base::TimeDelta::FromSeconds(2);
 
@@ -74,11 +73,11 @@ constexpr char kVmlogDir[] = "/var/log/vmlog";
 // with the assumption that in most cases the memory use won't change much
 // after that.
 const int kMemuseIntervals[] = {
-  1 * kSecondsPerMinute,    // 1 minute mark
-  4 * kSecondsPerMinute,    // 5 minute mark
-  25 * kSecondsPerMinute,   // 0.5 hour mark
-  120 * kSecondsPerMinute,  // 2.5 hour mark
-  600 * kSecondsPerMinute,  // 12.5 hour mark
+    1 * kSecondsPerMinute,    // 1 minute mark
+    4 * kSecondsPerMinute,    // 5 minute mark
+    25 * kSecondsPerMinute,   // 0.5 hour mark
+    120 * kSecondsPerMinute,  // 2.5 hour mark
+    600 * kSecondsPerMinute,  // 12.5 hour mark
 };
 
 }  // namespace
@@ -100,7 +99,7 @@ const char MetricsDaemon::kMetricWriteSectorsShortName[] =
 const int MetricsDaemon::kMetricStatsShortInterval = 1;  // seconds
 const int MetricsDaemon::kMetricStatsLongInterval = 30;  // seconds
 
-const int MetricsDaemon::kMetricMeminfoInterval = 30;        // seconds
+const int MetricsDaemon::kMetricMeminfoInterval = 30;  // seconds
 
 // Assume a max rate of 250Mb/s for reads (worse for writes) and 512 byte
 // sectors.
@@ -120,15 +119,11 @@ const char MetricsDaemon::kMetricPageFaultsShortName[] =
 
 // Swap in and Swap out
 
-const char MetricsDaemon::kMetricSwapInLongName[] =
-    "Platform.SwapInLong";
-const char MetricsDaemon::kMetricSwapInShortName[] =
-    "Platform.SwapInShort";
+const char MetricsDaemon::kMetricSwapInLongName[] = "Platform.SwapInLong";
+const char MetricsDaemon::kMetricSwapInShortName[] = "Platform.SwapInShort";
 
-const char MetricsDaemon::kMetricSwapOutLongName[] =
-    "Platform.SwapOutLong";
-const char MetricsDaemon::kMetricSwapOutShortName[] =
-    "Platform.SwapOutShort";
+const char MetricsDaemon::kMetricSwapOutLongName[] = "Platform.SwapOutLong";
+const char MetricsDaemon::kMetricSwapOutShortName[] = "Platform.SwapOutShort";
 
 const char MetricsDaemon::kMetricsProcStatFileName[] = "/proc/stat";
 const int MetricsDaemon::kMetricsProcStatFirstLineItemsCount = 11;
@@ -160,8 +155,7 @@ MetricsDaemon::MetricsDaemon()
       ticks_per_second_(0),
       latest_cpu_use_ticks_(0) {}
 
-MetricsDaemon::~MetricsDaemon() {
-}
+MetricsDaemon::~MetricsDaemon() {}
 
 double MetricsDaemon::GetActiveTime() {
   struct timespec ts;
@@ -196,10 +190,8 @@ int MetricsDaemon::Run() {
 }
 
 void MetricsDaemon::RunUploaderTest() {
-  upload_service_.reset(new UploadService(new SystemProfileCache(true,
-                                                                 config_root_),
-                                          metrics_lib_,
-                                          server_));
+  upload_service_.reset(new UploadService(
+      new SystemProfileCache(true, config_root_), metrics_lib_, server_));
   upload_service_->Init(upload_interval_, metrics_file_);
   upload_service_->UploadEvent();
 }
@@ -253,8 +245,7 @@ void MetricsDaemon::Init(bool testing,
   // Sysconf cannot fail, so no sanity checks are needed.
   ticks_per_second_ = sysconf(_SC_CLK_TCK);
 
-  daily_active_use_.reset(
-      new PersistentInteger("Platform.DailyUseTime"));
+  daily_active_use_.reset(new PersistentInteger("Platform.DailyUseTime"));
   version_cumulative_active_use_.reset(
       new PersistentInteger("Platform.CumulativeUseTime"));
   version_cumulative_cpu_use_.reset(
@@ -316,8 +307,7 @@ int MetricsDaemon::OnInit() {
     return EX_OK;
 
   vmlog_writer_.reset(new chromeos_metrics::VmlogWriter(
-      base::FilePath(kVmlogDir),
-      kVmlogInterval));
+      base::FilePath(kVmlogDir), kVmlogInterval));
   bus_->AssertOnDBusThread();
   CHECK(bus_->SetUpAsyncOperations());
 
@@ -335,7 +325,7 @@ int MetricsDaemon::OnInit() {
 
     if (dbus_error_is_set(&error)) {
       LOG(ERROR) << "Failed to add match rule \"" << match_rule << "\". Got "
-          << error.name << ": " << error.message;
+                 << error.name << ": " << error.message;
       return EX_SOFTWARE;
     }
   } else {
@@ -343,7 +333,8 @@ int MetricsDaemon::OnInit() {
     return EX_UNAVAILABLE;
   }
 
-  base::MessageLoop::current()->PostDelayedTask(FROM_HERE,
+  base::MessageLoop::current()->PostDelayedTask(
+      FROM_HERE,
       base::Bind(&MetricsDaemon::HandleUpdateStatsTimeout,
                  base::Unretained(this)),
       base::TimeDelta::FromMilliseconds(kUpdateStatsIntervalMs));
@@ -381,7 +372,7 @@ void MetricsDaemon::OnShutdown(int* return_code) {
 
     if (dbus_error_is_set(&error)) {
       LOG(ERROR) << "Failed to remove match rule \"" << match_rule << "\". Got "
-          << error.name << ": " << error.message;
+                 << error.name << ": " << error.message;
     }
   }
   brillo::DBusDaemon::OnShutdown(return_code);
@@ -428,17 +419,18 @@ TimeDelta MetricsDaemon::GetIncrementalCpuUse() {
     return TimeDelta();
   }
 
-  std::vector<std::string> proc_stat_lines =
-      base::SplitString(proc_stat_string, "\n", base::KEEP_WHITESPACE,
-                        base::SPLIT_WANT_ALL);
+  std::vector<std::string> proc_stat_lines = base::SplitString(
+      proc_stat_string, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   if (proc_stat_lines.empty()) {
-    LOG(WARNING) << "cannot parse " << kMetricsProcStatFileName
-                 << ": " << proc_stat_string;
+    LOG(WARNING) << "cannot parse " << kMetricsProcStatFileName << ": "
+                 << proc_stat_string;
     return TimeDelta();
   }
   std::vector<std::string> proc_stat_totals =
-      base::SplitString(proc_stat_lines[0], base::kWhitespaceASCII,
-                        base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+      base::SplitString(proc_stat_lines[0],
+                        base::kWhitespaceASCII,
+                        base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_NONEMPTY);
 
   uint64_t user_ticks, user_nice_ticks, system_ticks;
   if (proc_stat_totals.size() != kMetricsProcStatFirstLineItemsCount ||
@@ -462,8 +454,8 @@ TimeDelta MetricsDaemon::GetIncrementalCpuUse() {
   uint64_t diff = total_cpu_use_ticks - latest_cpu_use_ticks_;
   latest_cpu_use_ticks_ = total_cpu_use_ticks;
   // Use microseconds to avoid significant truncations.
-  return base::TimeDelta::FromMicroseconds(
-      diff * 1000 * 1000 / ticks_per_second_);
+  return base::TimeDelta::FromMicroseconds(diff * 1000 * 1000 /
+                                           ticks_per_second_);
 }
 
 void MetricsDaemon::ProcessUserCrash() {
@@ -535,7 +527,8 @@ void MetricsDaemon::ScheduleStatsCallback(int wait) {
   if (testing_) {
     return;
   }
-  base::MessageLoop::current()->PostDelayedTask(FROM_HERE,
+  base::MessageLoop::current()->PostDelayedTask(
+      FROM_HERE,
       base::Bind(&MetricsDaemon::StatsCallback, base::Unretained(this)),
       base::TimeDelta::FromSeconds(wait));
 }
@@ -562,13 +555,15 @@ bool MetricsDaemon::DiskStatsReadStats(uint64_t* read_sectors,
     LOG_IF(WARNING, nchars == sizeof(line))
         << "line too long in " << diskstats_path_;
     line[nchars] = '\0';
-    nitems = sscanf(line, "%*d %*d %" PRIu64 " %*d %*d %*d %" PRIu64,
-                    read_sectors, write_sectors);
+    nitems = sscanf(line,
+                    "%*d %*d %" PRIu64 " %*d %*d %*d %" PRIu64,
+                    read_sectors,
+                    write_sectors);
     if (nitems == 2) {
       success = true;
     } else {
-      LOG(WARNING) << "found " << nitems << " items in "
-                   << diskstats_path_ << ", expected 2";
+      LOG(WARNING) << "found " << nitems << " items in " << diskstats_path_
+                   << ", expected 2";
     }
   }
   IGNORE_EINTR(close(file));
@@ -652,11 +647,11 @@ void MetricsDaemon::StatsCallback() {
   double delta_time = time_now - stats_initial_time_;
   if (testing_) {
     // Fake the time when testing.
-    delta_time = stats_state_ == kStatsShort ?
-        kMetricStatsShortInterval : kMetricStatsLongInterval;
+    delta_time = stats_state_ == kStatsShort ? kMetricStatsShortInterval
+                                             : kMetricStatsLongInterval;
   }
-  bool diskstats_success = DiskStatsReadStats(&read_sectors_now,
-                                              &write_sectors_now);
+  bool diskstats_success =
+      DiskStatsReadStats(&read_sectors_now, &write_sectors_now);
   int delta_read = read_sectors_now - read_sectors_;
   int delta_write = write_sectors_now - write_sectors_;
   int read_sectors_per_second = delta_read / delta_time;
@@ -757,9 +752,10 @@ void MetricsDaemon::ScheduleMeminfoCallback(int wait) {
     return;
   }
   base::TimeDelta waitDelta = base::TimeDelta::FromSeconds(wait);
-  base::MessageLoop::current()->PostDelayedTask(FROM_HERE,
-      base::Bind(&MetricsDaemon::MeminfoCallback, base::Unretained(this),
-                 waitDelta),
+  base::MessageLoop::current()->PostDelayedTask(
+      FROM_HERE,
+      base::Bind(
+          &MetricsDaemon::MeminfoCallback, base::Unretained(this), waitDelta),
       waitDelta);
 }
 
@@ -777,9 +773,10 @@ void MetricsDaemon::MeminfoCallback(base::TimeDelta wait) {
       ReportZram(base::FilePath(FILE_PATH_LITERAL("/sys/block/zram0"))) ||
       success;
   if (reschedule) {
-    base::MessageLoop::current()->PostDelayedTask(FROM_HERE,
-        base::Bind(&MetricsDaemon::MeminfoCallback, base::Unretained(this),
-                   wait),
+    base::MessageLoop::current()->PostDelayedTask(
+        FROM_HERE,
+        base::Bind(
+            &MetricsDaemon::MeminfoCallback, base::Unretained(this), wait),
         wait);
   }
 }
@@ -816,7 +813,8 @@ bool MetricsDaemon::ReadMMStat(const base::FilePath& zram_dir,
 
   int num_items = sscanf(content.c_str(),
                          "%" PRIu64 " %" PRIu64 " %*d %*d %*d %" PRIu64 " %*d",
-                         orig_data_size_out, compr_data_size_out,
+                         orig_data_size_out,
+                         compr_data_size_out,
                          zero_pages_out);
   if (num_items != 3) {
     LOG(WARNING) << "Found " << num_items << " item(s) in "
@@ -863,7 +861,10 @@ bool MetricsDaemon::ReportZram(const base::FilePath& zram_dir) {
   if (compr_data_size_mb >= 1 &&
       orig_data_size < (1ull << (sizeof(orig_data_size) * 8 - 1)) / 100) {
     SendSample("Platform.ZramCompressionRatioPercent",
-               orig_data_size * 100 / compr_data_size, 100, 600, 50);
+               orig_data_size * 100 / compr_data_size,
+               100,
+               600,
+               50);
   }
   // The values of interest for zero_pages are between 1MB and 1GB.  The units
   // are number of pages.
@@ -879,29 +880,29 @@ bool MetricsDaemon::ReportZram(const base::FilePath& zram_dir) {
 
 bool MetricsDaemon::ProcessMeminfo(const string& meminfo_raw) {
   static const MeminfoRecord fields_array[] = {
-    { "MemTotal", "MemTotal" },  // SPECIAL CASE: total system memory
-    { "MemFree", "MemFree" },
-    { "Buffers", "Buffers" },
-    { "Cached", "Cached" },
-    // { "SwapCached", "SwapCached" },
-    { "Active", "Active" },
-    { "Inactive", "Inactive" },
-    { "ActiveAnon", "Active(anon)" },
-    { "InactiveAnon", "Inactive(anon)" },
-    { "ActiveFile" , "Active(file)" },
-    { "InactiveFile", "Inactive(file)" },
-    { "Unevictable", "Unevictable", kMeminfoOp_HistLog },
-    // { "Mlocked", "Mlocked" },
-    { "SwapTotal", "SwapTotal", kMeminfoOp_SwapTotal },
-    { "SwapFree", "SwapFree", kMeminfoOp_SwapFree },
-    // { "Dirty", "Dirty" },
-    // { "Writeback", "Writeback" },
-    { "AnonPages", "AnonPages" },
-    { "Mapped", "Mapped" },
-    { "Shmem", "Shmem", kMeminfoOp_HistLog },
-    { "Slab", "Slab", kMeminfoOp_HistLog },
-    // { "SReclaimable", "SReclaimable" },
-    // { "SUnreclaim", "SUnreclaim" },
+      {"MemTotal", "MemTotal"},  // SPECIAL CASE: total system memory
+      {"MemFree", "MemFree"},
+      {"Buffers", "Buffers"},
+      {"Cached", "Cached"},
+      // { "SwapCached", "SwapCached" },
+      {"Active", "Active"},
+      {"Inactive", "Inactive"},
+      {"ActiveAnon", "Active(anon)"},
+      {"InactiveAnon", "Inactive(anon)"},
+      {"ActiveFile", "Active(file)"},
+      {"InactiveFile", "Inactive(file)"},
+      {"Unevictable", "Unevictable", kMeminfoOp_HistLog},
+      // { "Mlocked", "Mlocked" },
+      {"SwapTotal", "SwapTotal", kMeminfoOp_SwapTotal},
+      {"SwapFree", "SwapFree", kMeminfoOp_SwapFree},
+      // { "Dirty", "Dirty" },
+      // { "Writeback", "Writeback" },
+      {"AnonPages", "AnonPages"},
+      {"Mapped", "Mapped"},
+      {"Shmem", "Shmem", kMeminfoOp_HistLog},
+      {"Slab", "Slab", kMeminfoOp_HistLog},
+      // { "SReclaimable", "SReclaimable" },
+      // { "SUnreclaim", "SUnreclaim" },
   };
   vector<MeminfoRecord> fields(fields_array,
                                fields_array + arraysize(fields_array));
@@ -920,8 +921,8 @@ bool MetricsDaemon::ProcessMeminfo(const string& meminfo_raw) {
   int mem_used_derived = 0;  // total - free_derived
   // Send all fields retrieved, except total memory.
   for (unsigned int i = 1; i < fields.size(); i++) {
-    string metrics_name = base::StringPrintf("Platform.Meminfo%s",
-                                             fields[i].name);
+    string metrics_name =
+        base::StringPrintf("Platform.Meminfo%s", fields[i].name);
     int percent;
     switch (fields[i].op) {
       case kMeminfoOp_HistPercent:
@@ -943,42 +944,45 @@ bool MetricsDaemon::ProcessMeminfo(const string& meminfo_raw) {
     if (strcmp(fields[i].match, "MemFree") == 0 ||
         strcmp(fields[i].match, "Buffers") == 0 ||
         strcmp(fields[i].match, "Cached") == 0) {
-        mem_free_derived += fields[i].value;
+      mem_free_derived += fields[i].value;
     }
   }
   if (swap_total > 0) {
     int swap_used = swap_total - swap_free;
     int swap_used_percent = swap_used * 100 / swap_total;
     SendSample("Platform.MeminfoSwapUsed", swap_used, 1, 8 * 1000 * 1000, 100);
-    SendLinearSample("Platform.MeminfoSwapUsedPercent", swap_used_percent,
-                     100, 101);
+    SendLinearSample(
+        "Platform.MeminfoSwapUsedPercent", swap_used_percent, 100, 101);
   }
   mem_used_derived = total_memory - mem_free_derived;
-  SendSample("Platform.MeminfoMemFreeDerived", mem_free_derived, 1,
-             kMaximumMemorySizeInKB, 100);
-  SendSample("Platform.MeminfoMemUsedDerived", mem_used_derived, 1,
-             kMaximumMemorySizeInKB, 100);
-  SendSample("Platform.MeminfoMemTotal", total_memory, 1,
-             kMaximumMemorySizeInKB, 100);
+  SendSample("Platform.MeminfoMemFreeDerived",
+             mem_free_derived,
+             1,
+             kMaximumMemorySizeInKB,
+             100);
+  SendSample("Platform.MeminfoMemUsedDerived",
+             mem_used_derived,
+             1,
+             kMaximumMemorySizeInKB,
+             100);
+  SendSample(
+      "Platform.MeminfoMemTotal", total_memory, 1, kMaximumMemorySizeInKB, 100);
   return true;
 }
 
 bool MetricsDaemon::FillMeminfo(const string& meminfo_raw,
                                 vector<MeminfoRecord>* fields) {
-  vector<string> lines =
-      base::SplitString(meminfo_raw, "\n", base::KEEP_WHITESPACE,
-                        base::SPLIT_WANT_NONEMPTY);
+  vector<string> lines = base::SplitString(
+      meminfo_raw, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   // Scan meminfo output and collect field values.  Each field name has to
   // match a meminfo entry (case insensitive) after removing non-alpha
   // characters from the entry.
   size_t ifield = 0;
-  for (size_t iline = 0;
-       iline < lines.size() && ifield < fields->size();
+  for (size_t iline = 0; iline < lines.size() && ifield < fields->size();
        iline++) {
-    vector<string> tokens =
-        base::SplitString(lines[iline], ": ", base::KEEP_WHITESPACE,
-                          base::SPLIT_WANT_NONEMPTY);
+    vector<string> tokens = base::SplitString(
+        lines[iline], ": ", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
     if (strcmp((*fields)[ifield].match, tokens[0].c_str()) == 0) {
       // Name matches. Parse value and save.
       char* rest;
@@ -1004,7 +1008,8 @@ void MetricsDaemon::ScheduleMemuseCallback(double interval) {
   if (testing_) {
     return;
   }
-  base::MessageLoop::current()->PostDelayedTask(FROM_HERE,
+  base::MessageLoop::current()->PostDelayedTask(
+      FROM_HERE,
       base::Bind(&MetricsDaemon::MemuseCallback, base::Unretained(this)),
       base::TimeDelta::FromSeconds(interval));
 }
@@ -1042,9 +1047,9 @@ bool MetricsDaemon::MemuseCallbackWork() {
 
 bool MetricsDaemon::ProcessMemuse(const string& meminfo_raw) {
   static const MeminfoRecord fields_array[] = {
-    { "MemTotal", "MemTotal" },  // SPECIAL CASE: total system memory
-    { "ActiveAnon", "Active(anon)" },
-    { "InactiveAnon", "Inactive(anon)" },
+      {"MemTotal", "MemTotal"},  // SPECIAL CASE: total system memory
+      {"ActiveAnon", "Active(anon)"},
+      {"InactiveAnon", "Inactive(anon)"},
   };
   vector<MeminfoRecord> fields(fields_array,
                                fields_array + arraysize(fields_array));
@@ -1059,15 +1064,15 @@ bool MetricsDaemon::ProcessMemuse(const string& meminfo_raw) {
     LOG(WARNING) << "borked meminfo parser";
     return false;
   }
-  string metrics_name = base::StringPrintf("Platform.MemuseAnon%d",
-                                           memuse_interval_index_);
-  SendLinearSample(metrics_name, (active_anon + inactive_anon) * 100 / total,
-                   100, 101);
+  string metrics_name =
+      base::StringPrintf("Platform.MemuseAnon%d", memuse_interval_index_);
+  SendLinearSample(
+      metrics_name, (active_anon + inactive_anon) * 100 / total, 100, 101);
   return true;
 }
 
-void MetricsDaemon::SendSample(const string& name, int sample,
-                               int min, int max, int nbuckets) {
+void MetricsDaemon::SendSample(
+    const string& name, int sample, int min, int max, int nbuckets) {
   metrics_lib_->SendToUMA(name, sample, min, max, nbuckets);
 }
 
@@ -1077,16 +1082,15 @@ void MetricsDaemon::SendKernelCrashesCumulativeCountStats() {
   int64_t crashes_count = kernel_crashes_version_count_->Get();
   SendSample(kernel_crashes_version_count_->Name(),
              crashes_count,
-             1,                         // value of first bucket
-             500,                       // value of last bucket
-             100);                      // number of buckets
-
+             1,     // value of first bucket
+             500,   // value of last bucket
+             100);  // number of buckets
 
   int64_t cpu_use_ms = version_cumulative_cpu_use_->Get();
   SendSample(version_cumulative_cpu_use_->Name(),
-             cpu_use_ms / 1000,         // stat is in seconds
-             1,                         // device may be used very little...
-             8 * 1000 * 1000,           // ... or a lot (a little over 90 days)
+             cpu_use_ms / 1000,  // stat is in seconds
+             1,                  // device may be used very little...
+             8 * 1000 * 1000,    // ... or a lot (a little over 90 days)
              100);
 
   // On the first run after an autoupdate, cpu_use_ms and active_use_seconds
@@ -1096,7 +1100,7 @@ void MetricsDaemon::SendKernelCrashesCumulativeCountStats() {
     SendSample("Platform.KernelCrashesPerCpuYear",
                crashes_count * kSecondsPerDay * 365 * 1000 / cpu_use_ms,
                1,
-               1000 * 1000,     // about one crash every 30s of CPU time
+               1000 * 1000,  // about one crash every 30s of CPU time
                100);
   }
 
@@ -1104,14 +1108,14 @@ void MetricsDaemon::SendKernelCrashesCumulativeCountStats() {
   if (active_use_seconds > 0) {
     SendSample(version_cumulative_active_use_->Name(),
                active_use_seconds,
-               1,                          // device may be used very little...
-               8 * 1000 * 1000,            // ... or a lot (about 90 days)
+               1,                // device may be used very little...
+               8 * 1000 * 1000,  // ... or a lot (about 90 days)
                100);
     // Same as above, but per year of active time.
     SendSample("Platform.KernelCrashesPerActiveYear",
                crashes_count * kSecondsPerDay * 365 / active_use_seconds,
                1,
-               1000 * 1000,     // about one crash every 30s of active time
+               1000 * 1000,  // about one crash every 30s of active time
                100);
   }
 }
@@ -1120,31 +1124,33 @@ void MetricsDaemon::SendAndResetDailyUseSample(
     const std::unique_ptr<PersistentInteger>& use) {
   SendSample(use->Name(),
              use->GetAndClear(),
-             1,                        // value of first bucket
-             kSecondsPerDay,           // value of last bucket
-             50);                      // number of buckets
+             1,               // value of first bucket
+             kSecondsPerDay,  // value of last bucket
+             50);             // number of buckets
 }
 
 void MetricsDaemon::SendAndResetCrashIntervalSample(
     const std::unique_ptr<PersistentInteger>& interval) {
   SendSample(interval->Name(),
              interval->GetAndClear(),
-             1,                        // value of first bucket
-             4 * kSecondsPerWeek,      // value of last bucket
-             50);                      // number of buckets
+             1,                    // value of first bucket
+             4 * kSecondsPerWeek,  // value of last bucket
+             50);                  // number of buckets
 }
 
 void MetricsDaemon::SendAndResetCrashFrequencySample(
     const std::unique_ptr<PersistentInteger>& frequency) {
   SendSample(frequency->Name(),
              frequency->GetAndClear(),
-             1,                        // value of first bucket
-             100,                      // value of last bucket
-             50);                      // number of buckets
+             1,    // value of first bucket
+             100,  // value of last bucket
+             50);  // number of buckets
 }
 
-void MetricsDaemon::SendLinearSample(const string& name, int sample,
-                                     int max, int nbuckets) {
+void MetricsDaemon::SendLinearSample(const string& name,
+                                     int sample,
+                                     int max,
+                                     int nbuckets) {
   // TODO(semenzato): add a proper linear histogram to the Chrome external
   // metrics API.
   LOG_IF(FATAL, nbuckets != max + 1) << "unsupported histogram scale";
@@ -1157,15 +1163,14 @@ void MetricsDaemon::SendCroutonStats() {
   if (PathExists(FilePath("/run/crouton"))) {
     SendLinearSample(kMetricCroutonStarted, 1, 2, 3);
   } else {
-    base::MessageLoop::current()->PostDelayedTask(FROM_HERE,
-      base::Bind(&MetricsDaemon::SendCroutonStats,
-                 base::Unretained(this)),
-                 base::TimeDelta::FromMilliseconds(kUpdateStatsIntervalMs));
+    base::MessageLoop::current()->PostDelayedTask(
+        FROM_HERE,
+        base::Bind(&MetricsDaemon::SendCroutonStats, base::Unretained(this)),
+        base::TimeDelta::FromMilliseconds(kUpdateStatsIntervalMs));
   }
 }
 
-void MetricsDaemon::UpdateStats(TimeTicks now_ticks,
-                                Time now_wall_time) {
+void MetricsDaemon::UpdateStats(TimeTicks now_ticks, Time now_wall_time) {
   const int elapsed_seconds = (now_ticks - last_update_stats_time_).InSeconds();
   daily_active_use_->Add(elapsed_seconds);
   version_cumulative_active_use_->Add(elapsed_seconds);
@@ -1199,7 +1204,8 @@ void MetricsDaemon::UpdateStats(TimeTicks now_ticks,
 
 void MetricsDaemon::HandleUpdateStatsTimeout() {
   UpdateStats(TimeTicks::Now(), Time::Now());
-  base::MessageLoop::current()->PostDelayedTask(FROM_HERE,
+  base::MessageLoop::current()->PostDelayedTask(
+      FROM_HERE,
       base::Bind(&MetricsDaemon::HandleUpdateStatsTimeout,
                  base::Unretained(this)),
       base::TimeDelta::FromMilliseconds(kUpdateStatsIntervalMs));

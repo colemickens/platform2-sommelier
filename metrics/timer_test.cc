@@ -86,8 +86,7 @@ TEST_F(TimerTest, ReStart) {
 }
 
 TEST_F(TimerTest, Reset) {
-  EXPECT_CALL(*clock_wrapper_mock_, GetCurrentTime())
-      .WillOnce(Return(stime));
+  EXPECT_CALL(*clock_wrapper_mock_, GetCurrentTime()).WillOnce(Return(stime));
   timer_.clock_wrapper_ = std::move(clock_wrapper_mock_);
   timer_.Start();
   ASSERT_TRUE(timer_.Reset());
@@ -272,8 +271,7 @@ TEST_F(TimerTest, StartPauseResumeStop) {
 }
 
 TEST_F(TimerTest, PauseStop) {
-  EXPECT_CALL(*clock_wrapper_mock_, GetCurrentTime())
-      .WillOnce(Return(stime));
+  EXPECT_CALL(*clock_wrapper_mock_, GetCurrentTime()).WillOnce(Return(stime));
   timer_.clock_wrapper_ = std::move(clock_wrapper_mock_);
   ASSERT_TRUE(timer_.Pause());
   ASSERT_TRUE(timer_.start_time_ == stime);
@@ -407,9 +405,9 @@ const int kNumBuckets = 50;
 
 class TimerReporterTest : public testing::Test {
  public:
-  TimerReporterTest() : timer_reporter_(kMetricName, kMinSample, kMaxSample,
-                                        kNumBuckets),
-                        clock_wrapper_mock_(new ClockWrapperMock()) {}
+  TimerReporterTest()
+      : timer_reporter_(kMetricName, kMinSample, kMaxSample, kNumBuckets),
+        clock_wrapper_mock_(new ClockWrapperMock()) {}
 
  protected:
   virtual void SetUp() {
@@ -422,9 +420,7 @@ class TimerReporterTest : public testing::Test {
     etime += base::TimeDelta::FromMilliseconds(kEtime1MSec);
   }
 
-  virtual void TearDown() {
-    timer_reporter_.set_metrics_lib(nullptr);
-  }
+  virtual void TearDown() { timer_reporter_.set_metrics_lib(nullptr); }
 
   TimerReporter timer_reporter_;
   MetricsLibraryMock lib_;
@@ -437,8 +433,10 @@ TEST_F(TimerReporterTest, StartStopReport) {
       .WillOnce(Return(stime))
       .WillOnce(Return(etime));
   timer_reporter_.clock_wrapper_ = std::move(clock_wrapper_mock_);
-  EXPECT_CALL(lib_, SendToUMA(kMetricName, kDelta1MSec, kMinSample, kMaxSample,
-                              kNumBuckets)).WillOnce(Return(true));
+  EXPECT_CALL(
+      lib_,
+      SendToUMA(kMetricName, kDelta1MSec, kMinSample, kMaxSample, kNumBuckets))
+      .WillOnce(Return(true));
   ASSERT_TRUE(timer_reporter_.Start());
   ASSERT_TRUE(timer_reporter_.Stop());
   ASSERT_TRUE(timer_reporter_.ReportMilliseconds());
@@ -450,7 +448,7 @@ TEST_F(TimerReporterTest, InvalidReport) {
 
 }  // namespace chromeos_metrics
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

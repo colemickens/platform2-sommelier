@@ -18,15 +18,14 @@ namespace chromeos_metrics {
 
 // Record for retrieving and reporting values from /proc/vmstat
 struct VmstatRecord {
-  uint64_t page_faults_;    // major faults
-  uint64_t swap_in_;        // pages swapped in
-  uint64_t swap_out_;       // pages swapped out
+  uint64_t page_faults_;  // major faults
+  uint64_t swap_in_;      // pages swapped in
+  uint64_t swap_out_;     // pages swapped out
 };
 
 // Parse cumulative vm statistics from data read from /proc/vmstat.  Returns
 // true for success.
-bool VmStatsParseStats(const std::string& stats,
-                       struct VmstatRecord* record);
+bool VmStatsParseStats(const std::string& stats, struct VmstatRecord* record);
 
 // Encapsulates the logic for writing to vmlog and rotating log files when
 // necessary.

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
+
 #include <gtest/gtest.h>
 
 #include <base/compiler_specific.h>
@@ -27,8 +29,7 @@ class PersistentIntegerTest : public testing::Test {
                                 false,
                                 base::FileEnumerator::FILES,
                                 FILE_PATH_LITERAL(kBackingFilePattern));
-    for (base::FilePath name = f_enum.Next();
-         !name.empty();
+    for (base::FilePath name = f_enum.Next(); !name.empty();
          name = f_enum.Next()) {
       base::DeleteFile(name, false);
     }

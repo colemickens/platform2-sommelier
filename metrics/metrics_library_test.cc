@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <cstring>
 #include <unistd.h>
+#include <cstring>
 
 #include <base/files/file_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <policy/mock_device_policy.h>
 #include <policy/libpolicy.h>
+#include <policy/mock_device_policy.h>
 
 #include "metrics/c_metrics_library.h"
 #include "metrics/metrics_library.h"
@@ -72,57 +72,32 @@ TEST_F(MetricsLibraryTest, IsDeviceMounted) {
   static const char kTestContents[] =
       "0123456789abcde 0123456789abcde\nguestfs foo bar\n";
   char buffer[1024];
-  int block_sizes[] = { 1, 2, 3, 4, 5, 6, 8, 12, 14, 16, 32, 1024 };
+  int block_sizes[] = {1, 2, 3, 4, 5, 6, 8, 12, 14, 16, 32, 1024};
   bool result;
-  EXPECT_FALSE(lib_.IsDeviceMounted("guestfs",
-                                    "nonexistent",
-                                    buffer,
-                                    1,
-                                    &result));
-  ASSERT_TRUE(base::WriteFile(base::FilePath(kTestMounts),
-                              kTestContents,
-                              strlen(kTestContents)));
-  EXPECT_FALSE(lib_.IsDeviceMounted("guestfs",
-                                    kTestMounts,
-                                    buffer,
-                                    0,
-                                    &result));
+  EXPECT_FALSE(
+      lib_.IsDeviceMounted("guestfs", "nonexistent", buffer, 1, &result));
+  ASSERT_TRUE(base::WriteFile(
+      base::FilePath(kTestMounts), kTestContents, strlen(kTestContents)));
+  EXPECT_FALSE(
+      lib_.IsDeviceMounted("guestfs", kTestMounts, buffer, 0, &result));
   for (size_t i = 0; i < arraysize(block_sizes); ++i) {
-    EXPECT_TRUE(lib_.IsDeviceMounted("0123456789abcde",
-                                     kTestMounts,
-                                     buffer,
-                                     block_sizes[i],
-                                     &result));
+    EXPECT_TRUE(lib_.IsDeviceMounted(
+        "0123456789abcde", kTestMounts, buffer, block_sizes[i], &result));
     EXPECT_TRUE(result);
-    EXPECT_TRUE(lib_.IsDeviceMounted("guestfs",
-                                     kTestMounts,
-                                     buffer,
-                                     block_sizes[i],
-                                     &result));
+    EXPECT_TRUE(lib_.IsDeviceMounted(
+        "guestfs", kTestMounts, buffer, block_sizes[i], &result));
     EXPECT_TRUE(result);
-    EXPECT_TRUE(lib_.IsDeviceMounted("0123456",
-                                     kTestMounts,
-                                     buffer,
-                                     block_sizes[i],
-                                     &result));
+    EXPECT_TRUE(lib_.IsDeviceMounted(
+        "0123456", kTestMounts, buffer, block_sizes[i], &result));
     EXPECT_FALSE(result);
-    EXPECT_TRUE(lib_.IsDeviceMounted("9abcde",
-                                     kTestMounts,
-                                     buffer,
-                                     block_sizes[i],
-                                     &result));
+    EXPECT_TRUE(lib_.IsDeviceMounted(
+        "9abcde", kTestMounts, buffer, block_sizes[i], &result));
     EXPECT_FALSE(result);
-    EXPECT_TRUE(lib_.IsDeviceMounted("foo",
-                                     kTestMounts,
-                                     buffer,
-                                     block_sizes[i],
-                                     &result));
+    EXPECT_TRUE(lib_.IsDeviceMounted(
+        "foo", kTestMounts, buffer, block_sizes[i], &result));
     EXPECT_FALSE(result);
-    EXPECT_TRUE(lib_.IsDeviceMounted("bar",
-                                     kTestMounts,
-                                     buffer,
-                                     block_sizes[i],
-                                     &result));
+    EXPECT_TRUE(lib_.IsDeviceMounted(
+        "bar", kTestMounts, buffer, block_sizes[i], &result));
     EXPECT_FALSE(result);
   }
 }
@@ -170,8 +145,9 @@ TEST_F(MetricsLibraryTest, ConsentIdInvalidContent) {
 TEST_F(MetricsLibraryTest, ConsentIdValidContentOld) {
   std::string id;
   base::DeleteFile(kTestConsentIdFile, false);
-  ASSERT_GT(base::WriteFile(kTestConsentIdFile, kValidGuidOld,
-                            strlen(kValidGuidOld)), 0);
+  ASSERT_GT(
+      base::WriteFile(kTestConsentIdFile, kValidGuidOld, strlen(kValidGuidOld)),
+      0);
   ASSERT_TRUE(lib_.ConsentId(&id));
   ASSERT_EQ(id, kValidGuidOld);
 }
@@ -180,8 +156,8 @@ TEST_F(MetricsLibraryTest, ConsentIdValidContentOld) {
 TEST_F(MetricsLibraryTest, ConsentIdValidContent) {
   std::string id;
   base::DeleteFile(kTestConsentIdFile, false);
-  ASSERT_GT(base::WriteFile(kTestConsentIdFile, kValidGuid,
-                            strlen(kValidGuid)), 0);
+  ASSERT_GT(base::WriteFile(kTestConsentIdFile, kValidGuid, strlen(kValidGuid)),
+            0);
   ASSERT_TRUE(lib_.ConsentId(&id));
   ASSERT_EQ(id, kValidGuid);
 }
@@ -191,8 +167,8 @@ TEST_F(MetricsLibraryTest, ConsentIdValidContentNewline) {
   std::string id;
   std::string outid = std::string(kValidGuid) + "\n";
   base::DeleteFile(kTestConsentIdFile, false);
-  ASSERT_GT(base::WriteFile(kTestConsentIdFile, outid.c_str(),
-                            outid.size()), 0);
+  ASSERT_GT(base::WriteFile(kTestConsentIdFile, outid.c_str(), outid.size()),
+            0);
   ASSERT_TRUE(lib_.ConsentId(&id));
   ASSERT_EQ(id, kValidGuid);
 }

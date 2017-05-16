@@ -87,8 +87,8 @@ class MetricsDaemon : public brillo::DBusDaemon {
 
   // State for disk stats collector callback.
   enum StatsState {
-    kStatsShort,    // short wait before short interval collection
-    kStatsLong,     // final wait before new collection
+    kStatsShort,  // short wait before short interval collection
+    kStatsLong,   // final wait before new collection
   };
 
   // Data record for aggregating daily usage.
@@ -112,10 +112,10 @@ class MetricsDaemon : public brillo::DBusDaemon {
 
   // Record for retrieving and reporting values from /proc/meminfo.
   struct MeminfoRecord {
-    const char* name;        // print name
-    const char* match;       // string to match in output of /proc/meminfo
-    MeminfoOp op;            // histogram scale selector, or other operator
-    int value;               // value from /proc/meminfo
+    const char* name;   // print name
+    const char* match;  // string to match in output of /proc/meminfo
+    MeminfoOp op;       // histogram scale selector, or other operator
+    int value;          // value from /proc/meminfo
   };
 
   // Metric parameters.
@@ -170,14 +170,16 @@ class MetricsDaemon : public brillo::DBusDaemon {
   // Sends a regular (exponential) histogram sample to Chrome for
   // transport to UMA. See MetricsLibrary::SendToUMA in
   // metrics_library.h for a description of the arguments.
-  void SendSample(const std::string& name, int sample,
-                  int min, int max, int nbuckets);
+  void SendSample(
+      const std::string& name, int sample, int min, int max, int nbuckets);
 
   // Sends a linear histogram sample to Chrome for transport to UMA. See
   // MetricsLibrary::SendToUMA in metrics_library.h for a description of the
   // arguments.
-  void SendLinearSample(const std::string& name, int sample,
-                        int max, int nbuckets);
+  void SendLinearSample(const std::string& name,
+                        int sample,
+                        int max,
+                        int nbuckets);
 
   // Sends various cumulative kernel crash-related stats, for instance the
   // total number of kernel crashes since the last version update.

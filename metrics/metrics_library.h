@@ -5,10 +5,10 @@
 #ifndef METRICS_METRICS_LIBRARY_H_
 #define METRICS_METRICS_LIBRARY_H_
 
-#include <memory>
-#include <string>
 #include <sys/types.h>
 #include <unistd.h>
+#include <memory>
+#include <string>
 
 #include <base/compiler_specific.h>
 #include <base/macros.h>
@@ -20,8 +20,8 @@ class MetricsLibraryInterface {
  public:
   virtual void Init() = 0;
   virtual bool AreMetricsEnabled() = 0;
-  virtual bool SendToUMA(const std::string& name, int sample,
-                         int min, int max, int nbuckets) = 0;
+  virtual bool SendToUMA(
+      const std::string& name, int sample, int min, int max, int nbuckets) = 0;
   virtual bool SendEnumToUMA(const std::string& name, int sample, int max) = 0;
   virtual bool SendBoolToUMA(const std::string& name, bool sample) = 0;
   virtual bool SendSparseToUMA(const std::string& name, int sample) = 0;
@@ -76,8 +76,11 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // proportional to the number of buckets. Therefore, it is strongly
   // recommended to keep this number low (e.g., 50 is normal, while
   // 100 is high).
-  bool SendToUMA(const std::string& name, int sample,
-                 int min, int max, int nbuckets) override;
+  bool SendToUMA(const std::string& name,
+                 int sample,
+                 int min,
+                 int max,
+                 int nbuckets) override;
 
   // Sends linear histogram data to Chrome for transport to UMA and
   // returns true on success. This method results in the equivalent of
@@ -119,7 +122,7 @@ class MetricsLibrary : public MetricsLibraryInterface {
 
   // Sends a signal to UMA that a crash of the given |crash_kind|
   // has occurred.  Used by UMA to generate stability statistics.
-  bool SendCrashToUMA(const char *crash_kind);
+  bool SendCrashToUMA(const char* crash_kind);
 
   // Sends a "generic Chrome OS event" to UMA.  This is an event name
   // that is translated into an enumerated histogram entry.  Event names
@@ -142,7 +145,8 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // |buffer_size| to read the file.  Returns false if any error.
   bool IsDeviceMounted(const char* device_name,
                        const char* mounts_file,
-                       char* buffer, int buffer_size,
+                       char* buffer,
+                       int buffer_size,
                        bool* result);
 
   // This function is used by tests only to mock the device policies.

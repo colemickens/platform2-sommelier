@@ -17,9 +17,9 @@ TEST(MetricsUtilTest, HashMetricName) {
     std::string input;
     std::string output;
   } cases[] = {
-    {"Back", "0x0557fa923dcee4d0"},
-    {"Forward", "0x67d2f6740a8eaebf"},
-    {"NewTab", "0x290eb683f96572f1"},
+      {"Back", "0x0557fa923dcee4d0"},
+      {"Forward", "0x67d2f6740a8eaebf"},
+      {"NewTab", "0x290eb683f96572f1"},
   };
 
   for (size_t i = 0; i < arraysize(cases); ++i) {
