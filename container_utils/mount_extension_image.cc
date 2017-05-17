@@ -14,6 +14,7 @@
 #include <base/json/json_string_value_serializer.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
+#include <brillo/cryptohome.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
@@ -21,101 +22,112 @@
 #include <dbus/message.h>
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
+#include <session_manager/dbus-proxies.h>
 
 namespace {
 
-// The user's extensions will be installed in:
-// /home/chronos/u-*/Extensions
-// We need to find extension manifests and parse the name and version out.
-const char kChronosDirectory[] = "/home/chronos";
-const char kUserDirectoryPattern[] = "u-*";
+// Walk the user's extensions dir.  We need to find extension manifests and
+// parse the name and version out.
 const char kExtensionsDirectory[] = "Extensions";
-const char kExtensionManifestName[] = "manifest.json";
+const char kExtensionManifestName[] = "container.json";
 
 // Chrome extension manifest keys.
 const char kManifestNameField[] = "name";
 const char kManifestVersionField[] = "version";
 
-// Returns a non-empty file path to the extension directory for
-// an extension named |name| if one exists in |user_dir|.
-// Additionally, if it finds an extension, |version| is populated
+// Returns true if |container_dir| contains a container whose name matches
+// |name|.  Additionally, if it finds an extension, |version| is populated
 // with the extension version.
-base::FilePath FindExtensionInUserDir(const base::FilePath& user_dir,
-                                      const std::string& name,
-                                      std::string* version) {
-  base::FileEnumerator fe(user_dir.Append(kExtensionsDirectory),
-                          /* recursive = */ true,
-                          base::FileEnumerator::FileType::FILES);
-  for (base::FilePath manifest_path = fe.Next();
-       !manifest_path.empty();
-       manifest_path = fe.Next()) {
-    if (manifest_path.BaseName().value() != kExtensionManifestName)
-      continue;
+bool MatchContainer(const base::FilePath& container_dir,
+                    const std::string& name,
+                    std::string* version) {
+  base::FilePath manifest_path = container_dir.Append(kExtensionManifestName);
 
-    // Read manifest and check name.
-    std::string manifest;
-    base::ReadFileToString(manifest_path, &manifest);
-    JSONStringValueDeserializer deserializer(manifest);
+  // Read manifest and check name.
+  std::string manifest;
+  if (base::ReadFileToString(manifest_path, &manifest))
+    return false;
 
-    int error_code;
-    std::string error_message;
-    std::unique_ptr<base::Value> value =
-        deserializer.Deserialize(&error_code, &error_message);
-    if (!value) {
-      DLOG(WARNING) << "Failed to deserialize manifest \""
-                    << manifest_path.value() << "\". Error "
-                    << error_code << ": " << error_message;
-      continue;
-    }
+  JSONStringValueDeserializer deserializer(manifest);
 
-    base::DictionaryValue* manifest_dict;
-    if (!value->GetAsDictionary(&manifest_dict)) {
-      DLOG(WARNING) << "Manifest \"" << manifest_path.value()
-                    << "\" is not a JSON dictionary";
-      continue;
-    }
-
-    std::string extension_name;
-    if (!manifest_dict->GetString(kManifestNameField, &extension_name)) {
-      DLOG(WARNING) << "Manifest \"" << manifest_path.value()
-                    << "\" is malformed; no extension name specified";
-      continue;
-    }
-
-    if (extension_name != name)
-      continue;
-
-    std::string extension_version;
-    if (!manifest_dict->GetString(kManifestVersionField, &extension_version)) {
-      DLOG(WARNING) << "Manifest \"" << manifest_path.value()
-                    << "\" is malformed; no extension version specified";
-      continue;
-    }
-
-    *version = extension_version;
-    return manifest_path.DirName();
+  int error_code;
+  std::string error_message;
+  std::unique_ptr<base::Value> value =
+      deserializer.Deserialize(&error_code, &error_message);
+  if (!value) {
+    DLOG(WARNING) << "Failed to deserialize manifest \""
+                  << manifest_path.value() << "\". Error "
+                  << error_code << ": " << error_message;
+    return false;
   }
-  return base::FilePath();
+
+  base::DictionaryValue* manifest_dict;
+  if (!value->GetAsDictionary(&manifest_dict)) {
+    DLOG(WARNING) << "Manifest \"" << manifest_path.value()
+                  << "\" is not a JSON dictionary";
+    return false;
+  }
+
+  std::string extension_name;
+  if (!manifest_dict->GetString(kManifestNameField, &extension_name)) {
+    DLOG(WARNING) << "Manifest \"" << manifest_path.value()
+                  << "\" is malformed; no extension name specified";
+    return false;
+  }
+
+  if (extension_name != name)
+    return false;
+
+  std::string extension_version;
+  if (!manifest_dict->GetString(kManifestVersionField, &extension_version)) {
+    DLOG(WARNING) << "Manifest \"" << manifest_path.value()
+                  << "\" is malformed; no extension version specified";
+    return false;
+  }
+
+  *version = extension_version;
+  return true;
 }
 
 // Searches all mounted user directories for an extension named |name| and
 // returns the path to its extension directory. Additionally populates
 // |version| with the extension version if found.
-base::FilePath FindExtensionDirectory(const std::string& name,
+base::FilePath FindExtensionDirectory(scoped_refptr<dbus::Bus> bus,
+                                      const std::string& name,
                                       std::string* version) {
-  base::FileEnumerator fe(base::FilePath(kChronosDirectory),
-                          /* recursive = */ false,
-                          base::FileEnumerator::FileType::DIRECTORIES,
-                          kUserDirectoryPattern);
-  for (base::FilePath user_dir = fe.Next();
-       !user_dir.empty();
-       user_dir = fe.Next()) {
-    DVLOG(1) << "Searching user directory " << user_dir.value();
-    base::FilePath extension_dir =
-      FindExtensionInUserDir(user_dir, name, version);
-    if (!extension_dir.empty())
-      return extension_dir;
+  std::map<std::string, std::string> sessions;
+  brillo::ErrorPtr error;
+  std::unique_ptr<org::chromium::SessionManagerInterfaceProxy> proxy(
+      new org::chromium::SessionManagerInterfaceProxy(bus));
+
+  // Ask cryptohome for all the active user sessions.
+  proxy->RetrieveActiveSessions(&sessions, &error);
+  if (error) {
+    LOG(ERROR) << "Error calling D-Bus proxy call to interface "
+               << "'" << proxy->GetObjectPath().value() << "': "
+               << error->GetMessage();
+    return base::FilePath();
   }
+
+  // Walk all active sessions and poke their Extensions dir for containers.
+  base::FilePath extensions_dir;
+  for (auto session : sessions) {
+    DVLOG(1) << "Searching user directory " << session.second;
+    extensions_dir = brillo::cryptohome::home::GetHashedUserPath(
+        session.second).Append(kExtensionsDirectory);
+
+    // Scan all the directories to see any of them are containers.
+    base::FileEnumerator fe(extensions_dir,
+                            /* recursive = */ true,
+                            base::FileEnumerator::FileType::DIRECTORIES);
+    for (base::FilePath container_dir = fe.Next();
+         !container_dir.empty();
+         container_dir = fe.Next()) {
+      if (MatchContainer(container_dir, name, version))
+        return container_dir;
+    }
+  }
+
   return base::FilePath();
 }
 
@@ -207,14 +219,10 @@ bool CopyImageDirectory(const base::FilePath& from_dir,
   return true;
 }
 
-
-base::FilePath MountImage(const std::string& name,
+base::FilePath MountImage(scoped_refptr<dbus::Bus> bus,
+                          const std::string& name,
                           const std::string& version,
                           const base::FilePath& component_dir) {
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
-
   dbus::ObjectProxy* proxy = bus->GetObjectProxy(
       imageloader::kImageLoaderServiceName,
       dbus::ObjectPath(imageloader::kImageLoaderServicePath));
@@ -264,9 +272,13 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+
   std::string extension_version;
   base::FilePath extension_dir =
-      FindExtensionDirectory(FLAGS_name, &extension_version);
+      FindExtensionDirectory(bus, FLAGS_name, &extension_version);
   if (extension_dir.empty()) {
     LOG(ERROR) << "Could not find extension named \""
                << FLAGS_name << "\"";
@@ -274,7 +286,8 @@ int main(int argc, char **argv) {
   }
 
   DLOG(INFO) << "Found " << FLAGS_name << " " << extension_version;
-  base::FilePath mount_dir = MountImage(FLAGS_name,
+  base::FilePath mount_dir = MountImage(bus,
+                                        FLAGS_name,
                                         extension_version,
                                         extension_dir);
   if (mount_dir.empty()) {

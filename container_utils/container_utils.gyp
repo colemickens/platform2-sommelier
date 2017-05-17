@@ -7,6 +7,7 @@
     'variables': {
       'deps': [
         'libchrome-<(libbase_ver)',
+        'libsession_manager-client',
       ],
       'enable_exceptions': 1,
     },
