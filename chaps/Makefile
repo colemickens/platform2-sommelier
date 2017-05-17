@@ -54,7 +54,6 @@ ifneq ($(METRICS_LIB), -lmetrics)
   CPPFLAGS += -DNO_METRICS
 endif
 
-DBUS_ADAPTORS_DIR = $(OUT)/chaps/dbus_adaptors
 DBUS_PROXIES_DIR = $(OUT)/chaps/dbus_proxies
 
 # Rules for Generated Code
@@ -69,14 +68,6 @@ chapsd_test.o.depends \
 chaps.o.depends \
 chaps_event_generator.o.depends \
 token_manager_client.o.depends: $(DBUS_PROXIES_DIR)/chaps_interface.h
-
-$(DBUS_ADAPTORS_DIR)/chaps_interface.h: $(SRC)/chaps_interface.xml
-	mkdir -p $(DBUS_ADAPTORS_DIR)
-	$(DBUSXX_XML2CPP) $< --adaptor=$@
-clean: CLEAN($(DBUS_ADAPTORS_DIR)/chaps_interface.h)
-
-chaps_adaptor.o.depends \
-chapsd.o.depends : $(DBUS_ADAPTORS_DIR)/chaps_interface.h
 
 PROTO_DIR = $(OUT)/chaps/proto_bindings
 

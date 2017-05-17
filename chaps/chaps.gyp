@@ -50,25 +50,11 @@
       'includes': ['../common-mk/xml2cpp.gypi'],
     },
     {
-      'target_name': 'chaps-adaptors',
-      'type': 'none',
-      'variables': {
-        'xml2cpp_type': 'adaptor',
-        'xml2cpp_in_dir': '.',
-        'xml2cpp_out_dir': 'include/chaps/dbus_adaptors',
-      },
-      'sources': [
-        '<(xml2cpp_in_dir)/dbus_bindings/org.chromium.Chaps.xml',
-      ],
-      'includes': ['../common-mk/xml2cpp.gypi'],
-    },
-    {
       # This is meant only for internal binaries like unittests.  All
       # client programs should be using the shared libchaps library.
       'target_name': 'libchaps_static',
       'type': 'static_library',
       'dependencies': [
-        'chaps-adaptors',
         'chaps-protos',
         'chaps-proxies',
       ],
@@ -86,7 +72,6 @@
       'target_name': 'libchaps',
       'type': 'shared_library',
       'dependencies': [
-        'chaps-adaptors',
         'chaps-protos',
         'chaps-proxies',
       ],

@@ -18,13 +18,14 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/platform_thread.h>
 #include <base/threading/thread.h>
+#include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
-#include <dbus-c++/dbus.h>
 
 #include "chaps/chaps_adaptor.h"
 #include "chaps/chaps_factory_impl.h"
 #include "chaps/chaps_service.h"
 #include "chaps/chaps_utility.h"
+#include "chaps/dbus_bindings/constants.h"
 #include "chaps/platform_globals.h"
 #include "chaps/slot_manager_impl.h"
 
@@ -46,6 +47,15 @@ namespace {
 #if USE_TPM2
 const char kTpmThreadName[] = "tpm_background_thread";
 #endif
+
+void MaskSignals() {
+  sigset_t signal_mask;
+  CHECK_EQ(0, sigemptyset(&signal_mask));
+  for (int signal : {SIGTERM, SIGINT, SIGHUP}) {
+    CHECK_EQ(0, sigaddset(&signal_mask, signal));
+  }
+  CHECK_EQ(0, sigprocmask(SIG_BLOCK, &signal_mask, nullptr));
+}
 
 }  // namespace
 
@@ -93,19 +103,36 @@ class AsyncInitThread : public PlatformThread::Delegate {
   ChapsServiceImpl* service_;
 };
 
-std::unique_ptr<DBus::BusDispatcher> g_dispatcher;
+class Daemon : public brillo::DBusServiceDaemon {
+ public:
+  Daemon(Lock* lock,
+         ChapsInterface* service,
+         TokenManagerInterface* token_manager)
+      : DBusServiceDaemon(kChapsServiceName,
+                          dbus::ObjectPath(kObjectManagerPath)),
+        lock_(lock),
+        service_(service),
+        token_manager_(token_manager) {}
 
-void RunDispatcher(Lock* lock,
-                   chaps::ChapsInterface* service,
-                   chaps::TokenManagerInterface* token_manager) {
-  CHECK(service) << "Failed to initialize service.";
-  try {
-    ChapsAdaptor adaptor(lock, service, token_manager);
-    g_dispatcher->enter();
-  } catch (DBus::Error err) {
-    LOG(FATAL) << "DBus::Error - " << err.what();
+ protected:
+  void RegisterDBusObjectsAsync(
+      brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
+    adaptor_.reset(new ChapsAdaptor(object_manager_.get(),
+                                    lock_,
+                                    service_,
+                                    token_manager_));
+    adaptor_->RegisterAsync(
+        sequencer->GetHandler("RegisterAsync() failed", true));
   }
-}
+
+ private:
+  std::unique_ptr<ChapsAdaptor> adaptor_;
+  Lock* lock_;  // weak, owned by main function
+  ChapsInterface* service_;  // weak, owned by main function
+  TokenManagerInterface* token_manager_;  // weak, owned by main function
+
+  DISALLOW_COPY_AND_ASSIGN(Daemon);
+};
 
 }  // namespace chaps
 
@@ -114,9 +141,6 @@ int main(int argc, char** argv) {
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   chaps::ScopedOpenSSL openssl;
-  chaps::g_dispatcher.reset(new DBus::BusDispatcher());
-  CHECK(chaps::g_dispatcher.get());
-  DBus::default_dispatcher = chaps::g_dispatcher.get();
   Lock lock;
 
   LOG(INFO) << "Starting PKCS #11 services.";
@@ -137,8 +161,11 @@ int main(int argc, char** argv) {
       LOG(WARNING) << "Invalid value for srk_zeros: using empty string.";
     }
   }
+  // Mask signals handled by the daemon thread. This makes sure we
+  // won't handle shutdown signals on one of the other threads spawned
+  // below.
+  MaskSignals();
 #if USE_TPM2
-  base::AtExitManager at_exit_manager;
   base::Thread tpm_background_thread(kTpmThreadName);
   CHECK(tpm_background_thread.StartWithOptions(
       base::Thread::Options(base::MessageLoop::TYPE_IO,
@@ -160,11 +187,10 @@ int main(int argc, char** argv) {
   // had a chance to acquire the lock.
   init_thread.WaitUntilStarted();
   LOG(INFO) << "Starting D-Bus dispatcher.";
-  RunDispatcher(&lock, &service, &slot_manager);
+  chaps::Daemon(&lock, &service, &slot_manager).Run();
   PlatformThread::Join(init_thread_handle);
 #if USE_TPM2
   tpm_background_thread.Stop();
 #endif
-
   return 0;
 }
