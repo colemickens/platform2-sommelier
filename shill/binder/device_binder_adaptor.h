@@ -58,7 +58,7 @@ class DeviceBinderAdaptor : public BinderAdaptor,
   ~DeviceBinderAdaptor() override {};
 
   // Implementation of DeviceAdaptorInterface.
-  const std::string& GetRpcIdentifier() override { return rpc_id(); }
+  const std::string& GetRpcIdentifier() const override { return rpc_id(); }
   void EmitBoolChanged(const std::string& name, bool value) override;
   void EmitUintChanged(const std::string& name, uint32_t value) override;
   void EmitUint16Changed(const std::string& name, uint16_t value) override;

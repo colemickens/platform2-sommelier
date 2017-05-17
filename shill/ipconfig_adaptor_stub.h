@@ -32,7 +32,7 @@ class IPConfigAdaptorStub : public AdaptorStub,
  public:
   explicit IPConfigAdaptorStub(const std::string& id);
 
-  const std::string& GetRpcIdentifier() override { return rpc_id(); }
+  const std::string& GetRpcIdentifier() const override { return rpc_id(); }
   void EmitBoolChanged(const std::string& name, bool value) override {};
   void EmitUintChanged(const std::string& name, uint32_t value) override {};
   void EmitIntChanged(const std::string& name, int value) override {};

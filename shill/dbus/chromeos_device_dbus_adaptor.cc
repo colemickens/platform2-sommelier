@@ -57,7 +57,7 @@ ChromeosDeviceDBusAdaptor::~ChromeosDeviceDBusAdaptor() {
   device_ = nullptr;
 }
 
-const string& ChromeosDeviceDBusAdaptor::GetRpcIdentifier() {
+const string& ChromeosDeviceDBusAdaptor::GetRpcIdentifier() const {
   return dbus_path().value();
 }
 

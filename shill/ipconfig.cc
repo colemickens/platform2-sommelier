@@ -114,7 +114,7 @@ IPConfig::~IPConfig() {
   SLOG(this, 2) << __func__ << " device: " << device_name();
 }
 
-string IPConfig::GetRpcIdentifier() {
+string IPConfig::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 

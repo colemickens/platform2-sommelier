@@ -28,7 +28,7 @@ class AdaptorStub {
   explicit AdaptorStub(const std::string& id);
 
  protected:
-  const std::string& rpc_id() { return rpc_id_; }
+  const std::string& rpc_id() const { return rpc_id_; }
 
  private:
   std::string rpc_id_;

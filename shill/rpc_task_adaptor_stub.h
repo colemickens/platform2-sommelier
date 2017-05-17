@@ -30,8 +30,11 @@ class RPCTaskAdaptorStub : public AdaptorStub, public RPCTaskAdaptorInterface {
  public:
   explicit RPCTaskAdaptorStub(const std::string& id);
 
-  const std::string& GetRpcIdentifier() override { return rpc_id(); }
-  const std::string& GetRpcConnectionIdentifier() override { return rpc_id(); }
+  const std::string& GetRpcIdentifier() const override { return rpc_id(); }
+
+  const std::string& GetRpcConnectionIdentifier() const override {
+    return rpc_id();
+  }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(RPCTaskAdaptorStub);

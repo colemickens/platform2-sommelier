@@ -34,7 +34,9 @@ DeviceMockAdaptor::DeviceMockAdaptor()
 
 DeviceMockAdaptor::~DeviceMockAdaptor() {}
 
-const string& DeviceMockAdaptor::GetRpcIdentifier() { return rpc_id_; }
+const string& DeviceMockAdaptor::GetRpcIdentifier() const {
+  return rpc_id_;
+}
 
 // static
 const char IPConfigMockAdaptor::kRpcId[] = "/ipconfig_rpc";
@@ -43,7 +45,9 @@ IPConfigMockAdaptor::IPConfigMockAdaptor() : rpc_id_(kRpcId) {}
 
 IPConfigMockAdaptor::~IPConfigMockAdaptor() {}
 
-const string& IPConfigMockAdaptor::GetRpcIdentifier() { return rpc_id_; }
+const string& IPConfigMockAdaptor::GetRpcIdentifier() const {
+  return rpc_id_;
+}
 
 // static
 const char ManagerMockAdaptor::kRpcId[] = "/manager_rpc";
@@ -52,7 +56,9 @@ ManagerMockAdaptor::ManagerMockAdaptor() : rpc_id_(kRpcId) {}
 
 ManagerMockAdaptor::~ManagerMockAdaptor() {}
 
-const string& ManagerMockAdaptor::GetRpcIdentifier() { return rpc_id_; }
+const string& ManagerMockAdaptor::GetRpcIdentifier() const {
+  return rpc_id_;
+}
 
 // static
 const char ProfileMockAdaptor::kRpcId[] = "/profile_rpc";
@@ -61,7 +67,9 @@ ProfileMockAdaptor::ProfileMockAdaptor() : rpc_id_(kRpcId) {}
 
 ProfileMockAdaptor::~ProfileMockAdaptor() {}
 
-const string& ProfileMockAdaptor::GetRpcIdentifier() { return rpc_id_; }
+const string& ProfileMockAdaptor::GetRpcIdentifier() const {
+  return rpc_id_;
+}
 
 // static
 const char RPCTaskMockAdaptor::kRpcId[] = "/rpc_task_rpc";
@@ -73,8 +81,10 @@ RPCTaskMockAdaptor::RPCTaskMockAdaptor()
 
 RPCTaskMockAdaptor::~RPCTaskMockAdaptor() {}
 
-const string& RPCTaskMockAdaptor::GetRpcIdentifier() { return rpc_id_; }
-const string& RPCTaskMockAdaptor::GetRpcConnectionIdentifier() {
+const string& RPCTaskMockAdaptor::GetRpcIdentifier() const {
+  return rpc_id_;
+}
+const string& RPCTaskMockAdaptor::GetRpcConnectionIdentifier() const {
   return rpc_conn_id_;
 }
 
@@ -85,7 +95,9 @@ ServiceMockAdaptor::ServiceMockAdaptor() : rpc_id_(kRpcId) {}
 
 ServiceMockAdaptor::~ServiceMockAdaptor() {}
 
-const string& ServiceMockAdaptor::GetRpcIdentifier() { return rpc_id_; }
+const string& ServiceMockAdaptor::GetRpcIdentifier() const {
+  return rpc_id_;
+}
 
 #ifndef DISABLE_VPN
 ThirdPartyVpnMockAdaptor::ThirdPartyVpnMockAdaptor() {}

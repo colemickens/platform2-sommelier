@@ -47,7 +47,7 @@ class ChromeosDeviceDBusAdaptor
   ~ChromeosDeviceDBusAdaptor() override;
 
   // Implementation of DeviceAdaptorInterface.
-  const std::string& GetRpcIdentifier() override;
+  const std::string& GetRpcIdentifier() const override;
   void EmitBoolChanged(const std::string& name, bool value) override;
   void EmitUintChanged(const std::string& name, uint32_t value) override;
   void EmitUint16Changed(const std::string& name, uint16_t value) override;

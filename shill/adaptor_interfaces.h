@@ -35,7 +35,7 @@ class DeviceAdaptorInterface {
 
   // Getter for the opaque identifier that represents this object on the
   // RPC interface to which the implementation is adapting.
-  virtual const std::string& GetRpcIdentifier() = 0;
+  virtual const std::string& GetRpcIdentifier() const = 0;
 
   virtual void EmitBoolChanged(const std::string& name, bool value) = 0;
   virtual void EmitUintChanged(const std::string& name, uint32_t value) = 0;
@@ -64,7 +64,7 @@ class IPConfigAdaptorInterface {
 
   // Getter for the opaque identifier that represents this object on the
   // RPC interface to which the implementation is adapting.
-  virtual const std::string& GetRpcIdentifier() = 0;
+  virtual const std::string& GetRpcIdentifier() const = 0;
 
   virtual void EmitBoolChanged(const std::string& name, bool value) = 0;
   virtual void EmitUintChanged(const std::string& name, uint32_t value) = 0;
@@ -85,7 +85,7 @@ class ManagerAdaptorInterface {
 
   // Getter for the opaque identifier that represents this object on the
   // RPC interface to which the implementation is adapting.
-  virtual const std::string& GetRpcIdentifier() = 0;
+  virtual const std::string& GetRpcIdentifier() const = 0;
 
   virtual void EmitBoolChanged(const std::string& name, bool value) = 0;
   virtual void EmitUintChanged(const std::string& name, uint32_t value) = 0;
@@ -109,7 +109,7 @@ class ProfileAdaptorInterface {
 
   // Getter for the opaque identifier that represents this object on the
   // RPC interface to which the implementation is adapting.
-  virtual const std::string& GetRpcIdentifier() = 0;
+  virtual const std::string& GetRpcIdentifier() const = 0;
 
   virtual void EmitBoolChanged(const std::string& name, bool value) = 0;
   virtual void EmitUintChanged(const std::string& name, uint32_t value) = 0;
@@ -125,11 +125,11 @@ class RPCTaskAdaptorInterface {
 
   // Getter for the opaque identifier that represents this object on the
   // RPC interface to which the implementation is adapting.
-  virtual const std::string& GetRpcIdentifier() = 0;
+  virtual const std::string& GetRpcIdentifier() const = 0;
 
   // Getter for the opaque identifier that represents this object's
   // connection to the RPC interface to which the implementation is adapting.
-  virtual const std::string& GetRpcConnectionIdentifier() = 0;
+  virtual const std::string& GetRpcConnectionIdentifier() const = 0;
 };
 
 // These are the functions that a Service adaptor must support
@@ -139,7 +139,7 @@ class ServiceAdaptorInterface {
 
   // Getter for the opaque identifier that represents this object on the
   // RPC interface to which the implementation is adapting.
-  virtual const std::string& GetRpcIdentifier() = 0;
+  virtual const std::string& GetRpcIdentifier() const = 0;
 
   virtual void EmitBoolChanged(const std::string& name, bool value) = 0;
   virtual void EmitUint8Changed(const std::string& name, uint8_t value) = 0;

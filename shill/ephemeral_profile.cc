@@ -48,7 +48,7 @@ EphemeralProfile::EphemeralProfile(ControlInterface* control_interface,
 
 EphemeralProfile::~EphemeralProfile() {}
 
-string EphemeralProfile::GetFriendlyName() {
+string EphemeralProfile::GetFriendlyName() const {
   return kFriendlyName;
 }
 

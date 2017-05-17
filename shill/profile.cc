@@ -170,11 +170,11 @@ bool Profile::RemoveStorage(Error* error) {
   return true;
 }
 
-string Profile::GetFriendlyName() {
+string Profile::GetFriendlyName() const {
   return (name_.user.empty() ? "" : name_.user + "/") + name_.identifier;
 }
 
-string Profile::GetRpcIdentifier() {
+string Profile::GetRpcIdentifier() const {
   if (!adaptor_.get()) {
     return string();
   }

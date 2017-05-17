@@ -54,11 +54,11 @@ ChromeosRPCTaskDBusAdaptor::~ChromeosRPCTaskDBusAdaptor() {
   task_ = nullptr;
 }
 
-const string& ChromeosRPCTaskDBusAdaptor::GetRpcIdentifier() {
+const string& ChromeosRPCTaskDBusAdaptor::GetRpcIdentifier() const {
   return dbus_path().value();
 }
 
-const string& ChromeosRPCTaskDBusAdaptor::GetRpcConnectionIdentifier() {
+const string& ChromeosRPCTaskDBusAdaptor::GetRpcConnectionIdentifier() const {
   return connection_name_;
 }
 

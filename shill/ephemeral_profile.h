@@ -39,7 +39,7 @@ class EphemeralProfile : public Profile {
                    Manager* manager);
   ~EphemeralProfile() override;
 
-  std::string GetFriendlyName() override;
+  std::string GetFriendlyName() const override;
   bool AdoptService(const ServiceRefPtr& service) override;
   bool AbandonService(const ServiceRefPtr& service) override;
 

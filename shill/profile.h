@@ -92,9 +92,9 @@ class Profile : public base::RefCounted<Profile> {
   // set_storage().
   bool RemoveStorage(Error* error);
 
-  virtual std::string GetFriendlyName();
+  virtual std::string GetFriendlyName() const;
 
-  virtual std::string GetRpcIdentifier();
+  virtual std::string GetRpcIdentifier() const;
 
   PropertyStore* mutable_store() { return &store_; }
   const PropertyStore& store() const { return store_; }
