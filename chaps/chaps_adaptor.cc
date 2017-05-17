@@ -11,6 +11,7 @@
 #include "chaps/chaps.h"
 #include "chaps/chaps_interface.h"
 #include "chaps/chaps_utility.h"
+#include "chaps/dbus_bindings/constants.h"
 #include "chaps/token_manager_interface.h"
 
 using base::AutoLock;

@@ -34,8 +34,6 @@ using std::vector;
 
 namespace chaps {
 
-const char* kChapsServicePath = "/org/chromium/Chaps";
-const char* kChapsServiceName = "org.chromium.Chaps";
 const size_t kTokenLabelSize = 32;
 const CK_ATTRIBUTE_TYPE kKeyBlobAttribute = CKA_VENDOR_DEFINED + 1;
 const CK_ATTRIBUTE_TYPE kAuthDataAttribute = CKA_VENDOR_DEFINED + 2;

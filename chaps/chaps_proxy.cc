@@ -8,6 +8,7 @@
 
 #include "chaps/chaps.h"
 #include "chaps/chaps_utility.h"
+#include "chaps/dbus_bindings/constants.h"
 #include "chaps/isolate.h"
 #include "pkcs11/cryptoki.h"
 
