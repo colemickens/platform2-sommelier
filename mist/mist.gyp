@@ -73,8 +73,10 @@
         {
           'target_name': 'mist_testrunner',
           'type': 'executable',
-          'dependencies': ['libmist'],
-          'includes': ['../common-mk/common_test.gypi'],
+          'dependencies': [
+            'libmist',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
           'variables': {
             'deps': [
               'libchrome-test-<(libbase_ver)',
@@ -85,7 +87,6 @@
             'event_dispatcher_unittest.cc',
             'mist.cc',
             'mock_context.cc',
-            'testrunner.cc',
             'usb_config_descriptor_unittest.cc',
             'usb_constants_unittest.cc',
             'usb_device_descriptor_unittest.cc',
