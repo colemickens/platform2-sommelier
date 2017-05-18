@@ -11,7 +11,6 @@
 #include <base/values.h>
 #include <components/policy/core/common/registry_dict.h>
 
-#include "authpolicy/log_level.h"
 #include "authpolicy/policy/policy_encoder_helper.h"
 #include "bindings/cloud_policy.pb.h"
 #include "bindings/policy_constants.h"
@@ -58,9 +57,8 @@ void UserPolicyEncoder::EncodeBoolean(em::CloudPolicySettings* policy,
     return;
   }
 
-  LOG_IF(INFO, authpolicy::kLogEncoder)
-      << GetLevelStr() << " bool " << policy_name << " = "
-      << (bool_value ? "true" : "false");
+  LOG_IF(INFO, log_policy_values_) << GetLevelStr() << " bool " << policy_name
+                                   << " = " << (bool_value ? "true" : "false");
 
   // Create proto and set value.
   em::BooleanPolicyProto* proto = (policy->*access->mutable_proto_ptr)();
@@ -84,7 +82,7 @@ void UserPolicyEncoder::EncodeInteger(em::CloudPolicySettings* policy,
     return;
   }
 
-  LOG_IF(INFO, authpolicy::kLogEncoder)
+  LOG_IF(INFO, log_policy_values_)
       << GetLevelStr() << " int " << policy_name << " = " << int_value;
 
   // Create proto and set value.
@@ -109,7 +107,7 @@ void UserPolicyEncoder::EncodeString(em::CloudPolicySettings* policy,
     return;
   }
 
-  LOG_IF(INFO, authpolicy::kLogEncoder)
+  LOG_IF(INFO, log_policy_values_)
       << GetLevelStr() << " str " << policy_name << " = " << string_value;
 
   // Create proto and set value.
@@ -145,7 +143,7 @@ void UserPolicyEncoder::EncodeStringList(
     string_values.push_back(string_value);
   }
 
-  if (authpolicy::kLogEncoder && LOG_IS_ON(INFO)) {
+  if (log_policy_values_ && LOG_IS_ON(INFO)) {
     LOG(INFO) << GetLevelStr() << " strlist " << policy_name;
     for (const std::string& value : string_values)
       LOG(INFO) << "  " << value;

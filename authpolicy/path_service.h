@@ -59,7 +59,7 @@ enum class Path {
   SMBCLIENT_SECCOMP,
 
   // Misc.
-  DEBUG_FLAGS,  // File with debug flags.
+  DEBUG_FLAGS,  // File with debug flags, see AuthPolicyFlags.
   KRB5_TRACE,   // kinit trace log.
 };
 

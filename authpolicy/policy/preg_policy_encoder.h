@@ -27,17 +27,21 @@ namespace policy {
 // - Mandatory policies always overwrite recommended policies.
 // Thus, a mandatory policy in f1 will overwrite a recommended policy in f3,
 // even though f3 has the higher index.
+// |log_policy_values| toggles debug logging of policy values.
 bool ParsePRegFilesIntoUserPolicy(
     const std::vector<base::FilePath>& preg_files,
-    enterprise_management::CloudPolicySettings* policy);
+    enterprise_management::CloudPolicySettings* policy,
+    bool log_policy_values);
 
 // Loads the given set of |preg_files| and encodes all device policies into the
 // given |policy| blob. If multiple files f1,...,fN are passed in, policies
 // are merged with following rule:
 // - Policies in fn overwrite policies in fm if n > m.
+// |log_policy_values| toggles debug logging of policy values.
 bool ParsePRegFilesIntoDevicePolicy(
     const std::vector<base::FilePath>& preg_files,
-    enterprise_management::ChromeDeviceSettingsProto* policy);
+    enterprise_management::ChromeDeviceSettingsProto* policy,
+    bool log_policy_values);
 
 }  // namespace policy
 

@@ -24,25 +24,21 @@ const char kPrivateDir[] = "/private";
 const char kGpoCacheDir[] = "/gpo_cache";
 
 // Configuration files.
-const char kConfigPath[] = "/config.dat";
-const char kSmbConfPath[] = "/smb.conf";
+const char kConfig[] = "/config.dat";
+const char kSmbConf[] = "/smb.conf";
 
-// Kerberos configuration paths.
-const char kUserKrb5ConfPath[] = "/krb5_user.conf";
-const char kDeviceKrb5ConfPath[] = "/krb5_device.conf";
+// Kerberos configuration.
+const char kUserKrb5Conf[] = "/krb5_user.conf";
+const char kDeviceKrb5Conf[] = "/krb5_device.conf";
 
-// Credential cache paths.
+// Credential caches.
 const char kUserCredentialCache[] = "/krb5cc_user";
 const char kDeviceCredentialCache[] = "/krb5cc_device";
 
 // Machine keytab.
-const char kMachineKeyTabPath[] = "/krb5_machine.keytab";
-// Debug flags.
-const char kDebugFlagsPath[] = "/etc/authpolicyd_flags";
-// kinit trace logs.
-const char kKrb5TracePath[] = "/krb5_trace";
+const char kMachineKeyTab[] = "/krb5_machine.keytab";
 
-// Executable paths.
+// Executables.
 const char kKInitPath[] = "/usr/bin/kinit";
 const char kKListPath[] = "/usr/bin/klist";
 const char kNetPath[] = "/usr/bin/net";
@@ -50,28 +46,30 @@ const char kParserPath[] = "/usr/sbin/authpolicy_parser";
 const char kSmbClientPath[] = "/usr/bin/smbclient";
 
 // Seccomp filters.
-const char kKInitSeccompFilter[] =
-    "/usr/share/policy/kinit-seccomp.policy";
-const char kKListSeccompFilter[] = "/usr/share/policy/klist-seccomp.policy";
-const char kNetAdsSeccompFilter[] =
+const char kKInitSeccompFilterPath[] = "/usr/share/policy/kinit-seccomp.policy";
+const char kKListSeccompFilterPath[] = "/usr/share/policy/klist-seccomp.policy";
+const char kNetAdsSeccompFilterPath[] =
     "/usr/share/policy/net_ads-seccomp.policy";
-const char kParserSeccompFilter[] =
+const char kParserSeccompFilterPath[] =
     "/usr/share/policy/authpolicy_parser-seccomp.policy";
-const char kSmbClientSeccompFilter[] =
+const char kSmbClientSeccompFilterPath[] =
     "/usr/share/policy/smbclient-seccomp.policy";
+
+// Debug flags.
+const char kDebugFlagsPath[] = "/etc/authpolicyd_flags";
+// kinit trace logs.
+const char kKrb5Trace[] = "/krb5_trace";
 
 }  // namespace
 
-PathService::PathService() : PathService(true) {
-}
+PathService::PathService() : PathService(true) {}
 
 PathService::PathService(bool initialize) {
   if (initialize)
     Initialize();
 }
 
-PathService::~PathService() {
-}
+PathService::~PathService() {}
 
 void PathService::Initialize() {
   // Set paths. Note: Won't override paths that are already set by a more
@@ -88,18 +86,19 @@ void PathService::Initialize() {
   Insert(Path::SAMBA_PRIVATE_DIR, temp_dir + kSambaDir + kPrivateDir);
   Insert(Path::GPO_LOCAL_DIR, temp_dir + kSambaDir + kCacheDir + kGpoCacheDir);
 
-  Insert(Path::CONFIG_DAT, state_dir + kConfigPath);
-  Insert(Path::SMB_CONF, temp_dir + kSmbConfPath);
+  Insert(Path::CONFIG_DAT, state_dir + kConfig);
+  Insert(Path::SMB_CONF, temp_dir + kSmbConf);
 
-  Insert(Path::USER_KRB5_CONF, temp_dir + kUserKrb5ConfPath);
-  Insert(Path::DEVICE_KRB5_CONF, temp_dir + kDeviceKrb5ConfPath);
+  Insert(Path::USER_KRB5_CONF, temp_dir + kUserKrb5Conf);
+  Insert(Path::DEVICE_KRB5_CONF, temp_dir + kDeviceKrb5Conf);
 
+  // Credential caches have to be in a place writable for authpolicyd-exec!
   const std::string& samba_dir = Get(Path::SAMBA_DIR);
   Insert(Path::USER_CREDENTIAL_CACHE, samba_dir + kUserCredentialCache);
   Insert(Path::DEVICE_CREDENTIAL_CACHE, samba_dir + kDeviceCredentialCache);
 
-  Insert(Path::MACHINE_KT_STATE, state_dir + kMachineKeyTabPath);
-  Insert(Path::MACHINE_KT_TEMP, samba_dir + kMachineKeyTabPath);
+  Insert(Path::MACHINE_KT_STATE, state_dir + kMachineKeyTab);
+  Insert(Path::MACHINE_KT_TEMP, samba_dir + kMachineKeyTab);
 
   Insert(Path::KINIT, kKInitPath);
   Insert(Path::KLIST, kKListPath);
@@ -107,14 +106,15 @@ void PathService::Initialize() {
   Insert(Path::PARSER, kParserPath);
   Insert(Path::SMBCLIENT, kSmbClientPath);
 
-  Insert(Path::KINIT_SECCOMP, kKInitSeccompFilter);
-  Insert(Path::KLIST_SECCOMP, kKListSeccompFilter);
-  Insert(Path::NET_ADS_SECCOMP, kNetAdsSeccompFilter);
-  Insert(Path::PARSER_SECCOMP, kParserSeccompFilter);
-  Insert(Path::SMBCLIENT_SECCOMP, kSmbClientSeccompFilter);
+  Insert(Path::KINIT_SECCOMP, kKInitSeccompFilterPath);
+  Insert(Path::KLIST_SECCOMP, kKListSeccompFilterPath);
+  Insert(Path::NET_ADS_SECCOMP, kNetAdsSeccompFilterPath);
+  Insert(Path::PARSER_SECCOMP, kParserSeccompFilterPath);
+  Insert(Path::SMBCLIENT_SECCOMP, kSmbClientSeccompFilterPath);
 
   Insert(Path::DEBUG_FLAGS, kDebugFlagsPath);
-  Insert(Path::KRB5_TRACE, temp_dir + kKrb5TracePath);
+  // Trace has to be in a place writable for authpolicyd-exec!
+  Insert(Path::KRB5_TRACE, samba_dir + kKrb5Trace);
 }
 
 const std::string& PathService::Get(Path path_key) const {

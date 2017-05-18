@@ -8,7 +8,7 @@
 // since parsing the output is considered insecure.
 //
 // Usage:
-//   authpolicy_parser <command>
+//   authpolicy_parser <command> <serialized_debug_flags>
 //   For a list of commands see constants.h.
 //   Each command reads additional arguments from stdin. See code for details.
 //
@@ -26,8 +26,8 @@
 #include <base/strings/string_util.h>
 #include <brillo/syslog_logging.h>
 
+#include "authpolicy/authpolicy_flags.h"
 #include "authpolicy/constants.h"
-#include "authpolicy/log_level.h"
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/policy/preg_policy_encoder.h"
 #include "authpolicy/proto_bindings/active_directory_info.pb.h"
@@ -88,11 +88,11 @@ struct GpoEntry {
   }
 
   void Log() const {
-    LOG_IF(INFO, kLogGpo) << "  Name:        " << name;
-    LOG_IF(INFO, kLogGpo) << "  Filesyspath: " << filesyspath;
-    LOG_IF(INFO, kLogGpo) << "  Version:     " << version_user << " (user) "
-                          << version_machine << " (machine)";
-    LOG_IF(INFO, kLogGpo) << "  GPFLags:     " << gp_flags;
+    LOG(INFO) << "  Name:        " << name;
+    LOG(INFO) << "  Filesyspath: " << filesyspath;
+    LOG(INFO) << "  Version:     " << version_user << " (user) "
+              << version_machine << " (machine)";
+    LOG(INFO) << "  GPFLags:     " << gp_flags;
   }
 
   std::string name;
@@ -104,12 +104,13 @@ struct GpoEntry {
 
 void PushGpo(const GpoEntry& gpo,
              PolicyScope scope,
-             std::vector<GpoEntry>* gpo_list) {
+             std::vector<GpoEntry>* gpo_list,
+             const protos::DebugFlags& flags) {
   if (gpo.IsEmpty())
     return;
 
-  if (!gpo.IsValid()) {
-    LOG_IF(INFO, kLogGpo) << "Ignoring invalid GPO";
+  if (!gpo.IsValid() && flags.log_gpo()) {
+    LOG(INFO) << "Ignoring invalid GPO";
     gpo.Log();
     return;
   }
@@ -132,11 +133,11 @@ void PushGpo(const GpoEntry& gpo,
         filter_reason = "machine disabled flag is set";
       break;
   }
-  if (filter_reason) {
-    LOG_IF(INFO, kLogGpo) << "Filtered out GPO (" << filter_reason << ")";
-    gpo.Log();
-  } else {
+  if (!filter_reason) {
     gpo_list->push_back(gpo);
+  } else if (flags.log_gpo()) {
+    LOG(INFO) << "Filtered out GPO (" << filter_reason << ")";
+    gpo.Log();
   }
 }
 
@@ -245,18 +246,21 @@ int ParseWorkgroup(const std::string& net_out) {
 
 // Parses the output of net ads gpo list to get the list of GPOs. Prints out a
 // serialized GpoList blob to stdout.
-int ParseGpoList(const std::string& net_out, PolicyScope scope) {
+int ParseGpoList(const std::string& net_out,
+                 PolicyScope scope,
+                 const protos::DebugFlags& flags) {
   // Parse net output.
   GpoEntry current_gpo;
   std::vector<GpoEntry> gpo_list;
   std::vector<std::string> lines = base::SplitString(
       net_out, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  LOG_IF(INFO, kLogGpo) << "Parsing GPO list (" << lines.size() << " lines)";
+  LOG_IF(INFO, flags.log_gpo())
+      << "Parsing GPO list (" << lines.size() << " lines)";
   bool found_separator = false;
   for (const std::string& line : lines) {
     if (line.find(kGpoToken_Separator) == 0) {
       // Separator between entries. Process last gpo if any.
-      PushGpo(current_gpo, scope, &gpo_list);
+      PushGpo(current_gpo, scope, &gpo_list, flags);
       current_gpo.Clear();
       found_separator = true;
       continue;
@@ -308,7 +312,7 @@ int ParseGpoList(const std::string& net_out, PolicyScope scope) {
   }
 
   // Just in case there's no separator in the end.
-  PushGpo(current_gpo, scope, &gpo_list);
+  PushGpo(current_gpo, scope, &gpo_list, flags);
 
   if (!found_separator) {
     // This usually happens when something went wrong, e.g. connection error.
@@ -317,7 +321,7 @@ int ParseGpoList(const std::string& net_out, PolicyScope scope) {
     return EXIT_CODE_PARSE_INPUT_FAILED;
   }
 
-  if (authpolicy::kLogGpo && LOG_IS_ON(INFO)) {
+  if (flags.log_gpo() && LOG_IS_ON(INFO)) {
     LOG(INFO) << "Found " << gpo_list.size() << " GPOs.";
     for (size_t n = 0; n < gpo_list.size(); ++n) {
       LOG(INFO) << n + 1 << ")";
@@ -365,7 +369,9 @@ int ParseGpoList(const std::string& net_out, PolicyScope scope) {
 // Parses a set of GPO files and assembles a user or device policy proto. Writes
 // the serialized policy blob to stdout. |gpo_file_paths_blob| is expected to be
 // a serialized |protos::FilePathList| proto blob.
-int ParsePreg(const std::string& gpo_file_paths_blob, PolicyScope scope) {
+int ParsePreg(const std::string& gpo_file_paths_blob,
+              PolicyScope scope,
+              const protos::DebugFlags& flags) {
   // Parse FilePathList proto blob.
   protos::FilePathList gpo_file_paths_proto;
   if (!gpo_file_paths_proto.ParseFromString(gpo_file_paths_blob)) {
@@ -383,7 +389,8 @@ int ParsePreg(const std::string& gpo_file_paths_blob, PolicyScope scope) {
     case PolicyScope::USER: {
       // Parse files into a user policy proto.
       em::CloudPolicySettings policy;
-      if (!policy::ParsePRegFilesIntoUserPolicy(gpo_file_paths, &policy))
+      if (!policy::ParsePRegFilesIntoUserPolicy(
+              gpo_file_paths, &policy, flags.log_policy_values()))
         return EXIT_CODE_PARSE_INPUT_FAILED;
 
       // Serialize user policy proto to string.
@@ -394,7 +401,8 @@ int ParsePreg(const std::string& gpo_file_paths_blob, PolicyScope scope) {
     case PolicyScope::MACHINE: {
       // Parse files into a device policy proto.
       em::ChromeDeviceSettingsProto policy;
-      if (!policy::ParsePRegFilesIntoDevicePolicy(gpo_file_paths, &policy))
+      if (!policy::ParsePRegFilesIntoDevicePolicy(
+              gpo_file_paths, &policy, flags.log_policy_values()))
         return EXIT_CODE_PARSE_INPUT_FAILED;
 
       // Serialize policy proto to string.
@@ -458,7 +466,9 @@ int ParseTgtLifetime(const std::string& klist_out) {
   return EXIT_CODE_PARSE_INPUT_FAILED;
 }
 
-int HandleCommand(const std::string& cmd, const std::string& arg) {
+int HandleCommand(const std::string& cmd,
+                  const std::string& arg,
+                  const protos::DebugFlags& flags) {
   if (cmd == kCmdParseRealmInfo)
     return ParseRealmInfo(arg);
   if (cmd == kCmdParseWorkgroup)
@@ -466,13 +476,13 @@ int HandleCommand(const std::string& cmd, const std::string& arg) {
   if (cmd == kCmdParseAccountInfo)
     return ParseAccountInfo(arg);
   if (cmd == kCmdParseUserGpoList)
-    return ParseGpoList(arg, PolicyScope::USER);
+    return ParseGpoList(arg, PolicyScope::USER, flags);
   if (cmd == kCmdParseDeviceGpoList)
-    return ParseGpoList(arg, PolicyScope::MACHINE);
+    return ParseGpoList(arg, PolicyScope::MACHINE, flags);
   if (cmd == kCmdParseUserPreg)
-    return ParsePreg(arg, PolicyScope::USER);
+    return ParsePreg(arg, PolicyScope::USER, flags);
   if (cmd == kCmdParseDevicePreg)
-    return ParsePreg(arg, PolicyScope::MACHINE);
+    return ParsePreg(arg, PolicyScope::MACHINE, flags);
   if (cmd == kCmdParseTgtLifetime)
     return ParseTgtLifetime(arg);
 
@@ -498,6 +508,13 @@ int main(int argc, char* argv[]) {
   }
   const char* cmd = argv[1];
 
+  // Load debug flags from argv[2] if present.
+  authpolicy::protos::DebugFlags flags;
+  if (argc > 2 && !authpolicy::DeserializeFlags(argv[2], &flags)) {
+    LOG(ERROR) << "Failed to deserialize flags";
+    return authpolicy::EXIT_CODE_BAD_COMMAND;
+  }
+
   // All commands take additional arguments via stdin.
   std::string stdin;
   if (!authpolicy::ReadPipeToString(STDIN_FILENO, &stdin)) {
@@ -505,5 +522,5 @@ int main(int argc, char* argv[]) {
     return authpolicy::EXIT_CODE_READ_INPUT_FAILED;
   }
 
-  return authpolicy::HandleCommand(cmd, stdin);
+  return authpolicy::HandleCommand(cmd, stdin, flags);
 }

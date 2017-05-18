@@ -12,7 +12,6 @@
 #include <components/policy/core/common/registry_dict.h>
 #include <dbus/shill/dbus-constants.h>
 
-#include "authpolicy/log_level.h"
 #include "authpolicy/policy/policy_encoder_helper.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/policy_constants.h"
@@ -78,7 +77,7 @@ std::unique_ptr<base::DictionaryValue> JsonToDictionary(const std::string& json,
   std::unique_ptr<base::DictionaryValue> dict_value =
       base::DictionaryValue::From(std::move(root));
   if (!dict_value)
-    *error = "Json is not a dictionary: '" + json + "'";
+    *error = "JSON is not a dictionary: '" + json + "'";
   return dict_value;
 }
 
@@ -484,7 +483,7 @@ void DevicePolicyEncoder::EncodeBoolean(
     return;
   }
 
-  LOG_IF(INFO, authpolicy::kLogEncoder)
+  LOG_IF(INFO, log_policy_values_)
       << " bool " << policy_name << " = " << (bool_value ? "true" : "false");
 
   // Create proto and set value.
@@ -505,7 +504,7 @@ void DevicePolicyEncoder::EncodeInteger(
     return;
   }
 
-  LOG_IF(INFO, authpolicy::kLogEncoder)
+  LOG_IF(INFO, log_policy_values_)
       << " int " << policy_name << " = " << int_value;
 
   // Create proto and set value.
@@ -526,7 +525,7 @@ void DevicePolicyEncoder::EncodeString(
     return;
   }
 
-  LOG_IF(INFO, authpolicy::kLogEncoder)
+  LOG_IF(INFO, log_policy_values_)
       << " str " << policy_name << " = " << string_value;
 
   // Create proto and set value.
@@ -557,7 +556,7 @@ void DevicePolicyEncoder::EncodeStringList(
     string_values.push_back(string_value);
   }
 
-  if (authpolicy::kLogEncoder && LOG_IS_ON(INFO)) {
+  if (log_policy_values_ && LOG_IS_ON(INFO)) {
     LOG(INFO) << " strlist " << policy_name;
     for (const std::string& value : string_values)
       LOG(INFO) << "  " << value;
@@ -573,7 +572,7 @@ void DevicePolicyEncoder::HandleUnsupported(const char* policy_name) const {
   if (!value)
     return;
 
-  LOG_IF(INFO, authpolicy::kLogEncoder)
+  LOG_IF(INFO, log_policy_values_)
       << "Ignoring unsupported policy '" << policy_name << "'.";
 }
 
