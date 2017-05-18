@@ -72,6 +72,11 @@ class VmlogWriter {
   friend class VmlogWriterTest;
   FRIEND_TEST(VmlogWriterTest, WriteCallbackSuccess);
 
+  // Called by the constructor to initialize internals. May schedule itself on
+  // valid_time_delay_timer_ if system clock doesn't look correct.
+  void Init(const base::FilePath& vmlog_dir,
+            const base::TimeDelta& log_interval);
+
   // Invoked every log_interval by timer_, this callback parses the contents of
   // /proc/vmstat and writes results to vmlog_.
   void WriteCallback();
@@ -79,6 +84,7 @@ class VmlogWriter {
   std::unique_ptr<VmlogFile> vmlog_;
   int vmstat_fd_;
   base::RepeatingTimer timer_;
+  base::OneShotTimer valid_time_delay_timer_;
 
   DISALLOW_COPY_AND_ASSIGN(VmlogWriter);
 };

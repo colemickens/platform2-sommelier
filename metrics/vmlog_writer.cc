@@ -31,7 +31,6 @@ constexpr char kVmlogHeader[] = "time pgmajfault pswpin pswpout\n";
 // We limit the size of vmlog log files to keep frequent logging from wasting
 // disk space.
 constexpr int kMaxVmlogFileSize = 1024 * 1024;
-// constexpr base::TimeDelta kVmlogInterval = base::TimeDelta::FromSeconds(2);
 
 }  // namespace
 
@@ -138,8 +137,28 @@ VmlogWriter::VmlogWriter(const base::FilePath& vmlog_dir,
       return;
     }
   }
+  Init(vmlog_dir, log_interval);
+}
 
+void VmlogWriter::Init(const base::FilePath& vmlog_dir,
+                       const base::TimeDelta& log_interval) {
   base::Time now = base::Time::Now();
+
+  // If the current time is within a day of the epoch, we probably don't have a
+  // good time set for naming files. Wait 5 minutes.
+  //
+  // See crbug.com/724175 for details.
+  if (now - base::Time::UnixEpoch() < base::TimeDelta::FromDays(1)) {
+    LOG(WARNING) << "Time seems incorrect, too close to epoch: " << now;
+    valid_time_delay_timer_.Start(FROM_HERE,
+                                  base::TimeDelta::FromMinutes(5),
+                                  base::Bind(&VmlogWriter::Init,
+                                             base::Unretained(this),
+                                             vmlog_dir,
+                                             log_interval));
+    return;
+  }
+
   base::FilePath vmlog_current_path = vmlog_dir.Append(
       "vmlog." + brillo::GetTimeAsLogString(now));
   base::FilePath vmlog_rotated_path = vmlog_dir.Append(
