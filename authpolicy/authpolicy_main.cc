@@ -4,9 +4,7 @@
 
 #include <memory>
 
-#include <base/at_exit.h>
 #include <base/memory/ptr_util.h>
-#include <base/sys_info.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
 #include <install_attributes/libinstallattributes.h>
@@ -19,9 +17,6 @@
 namespace {
 
 const char kObjectServicePath[] = "/org/chromium/AuthPolicy/ObjectManager";
-const char kChromeOSReleaseTrack[] = "CHROMEOS_RELEASE_TRACK";
-const char kBetaChannel[] = "beta-channel";
-const char kStableChannel[] = "stable-channel";
 const char kAuthPolicydUser[] = "authpolicyd";
 const char kAuthPolicydExecUser[] = "authpolicyd-exec";
 
@@ -90,26 +85,6 @@ int main(int /* argc */, char* /* argv */ []) {
   if (!authpolicy::SetSavedUserAndDropCaps(authpolicyd_exec_uid)) {
     LOG(ERROR) << "Failed to establish user ids and drop caps.";
     exit(kExitCodeStartupFailure);
-  }
-
-  // Disable on beta and stable (for now).
-  // TODO(ljusten): Reenable after launch reviews, see crbug.com/668119.
-  {
-    // base::SysInfo internally creates a singleton that adds itself to the
-    // current AtExitManager, so that it is destroyed when the manager goes out
-    // of scope. Daemon creates its own, so it has to be destroyed before the
-    // daemon is run.
-    base::AtExitManager at_exit_manager;
-    std::string channel;
-    if (!base::SysInfo::GetLsbReleaseValue(kChromeOSReleaseTrack, &channel)) {
-      LOG(ERROR) << "Failed to retrieve release track from sys info.";
-      exit(kExitCodeStartupFailure);
-    }
-    if (channel == kBetaChannel || channel == kStableChannel) {
-      LOG(ERROR) << "Not allowed to run on '" << kBetaChannel << "' and '"
-                 << kStableChannel << "'.";
-      exit(kExitCodeStartupFailure);
-    }
   }
 
   // Safety check to ensure that authpolicyd cannot run after the device has
