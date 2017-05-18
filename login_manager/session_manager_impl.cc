@@ -17,6 +17,7 @@
 #include <base/base64.h>
 #include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
 #include <base/rand_util.h>
@@ -138,6 +139,13 @@ bool IsIncognitoAccountId(const std::string& account_id) {
   const std::string lower_case_id(base::ToLowerASCII(account_id));
   return (lower_case_id == kGuestUserName) ||
          (lower_case_id == SessionManagerImpl::kDemoUser);
+}
+
+// Creates an DBus error instance.
+brillo::ErrorPtr CreateError(const std::string& code,
+                             const std::string& message) {
+  return brillo::Error::Create(
+      FROM_HERE, brillo::errors::dbus::kDomain, code, message);
 }
 
 }  // namespace
@@ -362,9 +370,7 @@ bool SessionManagerImpl::EnableChromeTesting(
   if (!already_enabled) {
     base::FilePath temp_file_path;  // So we don't clobber chrome_testing_path_;
     if (!system_->GetUniqueFilenameInWriteOnlyTempDir(&temp_file_path)) {
-      *error = brillo::Error::Create(
-          FROM_HERE,
-          brillo::errors::dbus::kDomain,
+      *error = CreateError(
           dbus_error::kTestingChannelError,
           "Could not create testing channel filename.");
       return false;
@@ -387,31 +393,32 @@ bool SessionManagerImpl::EnableChromeTesting(
   return true;
 }
 
-bool SessionManagerImpl::StartSession(const std::string& account_id,
-                                      const std::string& unique_id,
-                                      Error* error) {
+bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
+                                      const std::string& in_account_id,
+                                      const std::string& in_unique_identifier) {
   std::string actual_account_id;
-  if (!NormalizeAccountId(account_id, &actual_account_id, error)) {
+  if (!NormalizeAccountId(in_account_id, &actual_account_id, error)) {
+    DCHECK(*error);
     return false;
   }
 
   // Check if this user already started a session.
   if (user_sessions_.count(actual_account_id) > 0) {
-    static const char msg[] = "Provided user id already started a session.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kSessionExists, msg);
+    constexpr char kMessage[] = "Provided user id already started a session.";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kSessionExists, kMessage);
     return false;
   }
 
   // Create a UserSession object for this user.
   const bool is_incognito = IsIncognitoAccountId(actual_account_id);
-  std::string error_name;
-  std::unique_ptr<UserSession> user_session(
-      CreateUserSession(actual_account_id, is_incognito, &error_name));
-  if (!user_session.get()) {
-    error->Set(error_name, "Can't create session.");
+  auto user_session =
+      CreateUserSession(actual_account_id, is_incognito, error);
+  if (!user_session) {
+    DCHECK(*error);
     return false;
   }
+
   // Check whether the current user is the owner, and if so make sure she is
   // whitelisted and has an owner key.
   bool user_is_owner = false;
@@ -419,7 +426,7 @@ bool SessionManagerImpl::StartSession(const std::string& account_id,
   if (!device_policy_->CheckAndHandleOwnerLogin(
           user_session->username, user_session->slot.get(), &user_is_owner,
           &policy_error)) {
-    error->Set(policy_error.code(), policy_error.message());
+    *error = CreateError(policy_error.code(), policy_error.message());
     return false;
   }
 
@@ -462,7 +469,7 @@ bool SessionManagerImpl::StartSession(const std::string& account_id,
   return true;
 }
 
-bool SessionManagerImpl::StopSession() {
+void SessionManagerImpl::StopSession(const std::string& in_unique_identifier) {
   LOG(INFO) << "Stopping all sessions";
   // Most calls to StopSession() will log the reason for the call.
   // If you don't see a log message saying the reason for the call, it is
@@ -473,7 +480,6 @@ bool SessionManagerImpl::StopSession() {
   // browser_.job->StopSession();
   // user_policy_.reset();
   // session_started_ = false;
-  return true;
 }
 
 void SessionManagerImpl::StorePolicy(
@@ -645,28 +651,33 @@ void SessionManagerImpl::HandleLockScreenDismissed() {
   dbus_emitter_->EmitSignal(kScreenIsUnlockedSignal);
 }
 
-bool SessionManagerImpl::RestartJob(int fd,
-                                    const std::vector<std::string>& argv,
-                                    Error* error) {
+bool SessionManagerImpl::RestartJob(brillo::ErrorPtr* error,
+                                    const dbus::FileDescriptor& in_cred_fd,
+                                    const std::vector<std::string>& in_argv) {
   struct ucred ucred = {0};
   socklen_t len = sizeof(struct ucred);
-  if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
+  if (!in_cred_fd.is_valid() ||
+      getsockopt(
+          in_cred_fd.value(), SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
     PLOG(ERROR) << "Can't get peer creds";
-    error->Set("GetPeerCredsFailed", strerror(errno));
+    *error = CreateError("GetPeerCredsFailed", strerror(errno));
     return false;
   }
 
   if (!manager_->IsBrowser(ucred.pid)) {
-    static const char msg[] = "Provided pid is unknown.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kUnknownPid, msg);
+    constexpr char kMessage[] = "Provided pid is unknown.";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kUnknownPid, kMessage);
     return false;
   }
 
   // To set "logged-in" state for BWSI mode.
-  if (!StartSession(kGuestUserName, "", error))
+  if (!StartSession(error, kGuestUserName, "")) {
+    DCHECK(*error);
     return false;
-  manager_->RestartBrowserWithArgs(argv, false);
+  }
+
+  manager_->RestartBrowserWithArgs(in_argv, false);
   return true;
 }
 
@@ -782,8 +793,11 @@ void SessionManagerImpl::StartArcInstance(
     return;
   }
 
+  brillo::ErrorPtr error_ptr;
   std::string actual_account_id;
-  if (!NormalizeAccountId(account_id, &actual_account_id, error)) {
+  if (!NormalizeAccountId(account_id, &actual_account_id, &error_ptr)) {
+    DCHECK(error_ptr.get());
+    error->Set(error_ptr->GetCode(), error_ptr->GetMessage());
     return;
   }
   if (user_sessions_.count(actual_account_id) == 0) {
@@ -904,8 +918,11 @@ void SessionManagerImpl::EmitArcBooted(const std::string& account_id,
 #if USE_CHEETS
   std::vector<std::string> keyvals;
   if (!account_id.empty()) {
+    brillo::ErrorPtr error_ptr;
     std::string actual_account_id;
-    if (!NormalizeAccountId(account_id, &actual_account_id, error)) {
+    if (!NormalizeAccountId(account_id, &actual_account_id, &error_ptr)) {
+      DCHECK(error_ptr.get());
+      error->Set(error_ptr->GetCode(), error_ptr->GetMessage());
       return;
     }
     const base::FilePath android_data_old_dir =
@@ -958,8 +975,11 @@ void SessionManagerImpl::RemoveArcData(const std::string& account_id,
     return;
   }
 
+  brillo::ErrorPtr error_ptr;
   std::string actual_account_id;
-  if (!NormalizeAccountId(account_id, &actual_account_id, error)) {
+  if (!NormalizeAccountId(account_id, &actual_account_id, &error_ptr)) {
+    DCHECK(error_ptr.get());
+    error->Set(error_ptr->GetCode(), error_ptr->GetMessage());
     return;
   }
   const base::FilePath android_data_dir =
@@ -1095,7 +1115,7 @@ void SessionManagerImpl::InitiateDeviceWipe(const std::string& reason) {
 // static
 bool SessionManagerImpl::NormalizeAccountId(const std::string& account_id,
                                             std::string* actual_account_id_out,
-                                            Error* error_out) {
+                                            brillo::ErrorPtr* error_out) {
   // Validate the |account_id|.
   if (IsIncognitoAccountId(account_id) || ValidateAccountIdKey(account_id)) {
     *actual_account_id_out = account_id;
@@ -1107,12 +1127,13 @@ bool SessionManagerImpl::NormalizeAccountId(const std::string& account_id,
   // cryptohome identifier.
   const std::string& lower_email = base::ToLowerASCII(account_id);
   if (!ValidateEmail(lower_email)) {
-    static const char msg[] =
+    constexpr char kMessage[] =
         "Provided email address is not valid.  ASCII only.";
-    LOG(ERROR) << msg;
-    error_out->Set(dbus_error::kInvalidAccount, msg);
+    LOG(ERROR) << kMessage;
+    *error_out = CreateError(dbus_error::kInvalidAccount, kMessage);
     return false;
   }
+
   *actual_account_id_out = lower_email;
   return true;
 }
@@ -1127,26 +1148,26 @@ bool SessionManagerImpl::AllSessionsAreIncognito() {
   return incognito_count == user_sessions_.size();
 }
 
-SessionManagerImpl::UserSession* SessionManagerImpl::CreateUserSession(
-    const std::string& username,
-    bool is_incognito,
-    std::string* error_message) {
+std::unique_ptr<SessionManagerImpl::UserSession>
+SessionManagerImpl::CreateUserSession(const std::string& username,
+                                      bool is_incognito,
+                                      brillo::ErrorPtr* error) {
   std::unique_ptr<PolicyService> user_policy(
       user_policy_factory_->Create(username));
   if (!user_policy) {
     LOG(ERROR) << "User policy failed to initialize.";
-    if (error_message)
-      *error_message = dbus_error::kPolicyInitFail;
-    return NULL;
+    *error = CreateError(dbus_error::kPolicyInitFail, "Can't create session.");
+    return nullptr;
   }
+
   crypto::ScopedPK11Slot slot(nss_->OpenUserDB(GetUserPath(username)));
   if (!slot) {
     LOG(ERROR) << "Could not open the current user's NSS database.";
-    if (error_message)
-      *error_message = dbus_error::kNoUserNssDb;
-    return NULL;
+    *error = CreateError(dbus_error::kNoUserNssDb, "Can't create session.");
+    return nullptr;
   }
-  return new SessionManagerImpl::UserSession(
+
+  return base::MakeUnique<UserSession>(
       username, SanitizeUserName(username), is_incognito, std::move(slot),
       std::move(user_policy));
 }

@@ -20,6 +20,7 @@
       brokering certain privileged operations on the browser's behalf.
   -->
   <interface name="org.chromium.SessionManagerInterface">
+
     <!--
         EmitLoginPromptVisible:
 
@@ -27,14 +28,16 @@
         DBus signal on the browser's behalf.
     -->
     <method name="EmitLoginPromptVisible">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
     </method>
+
     <!--
         LoginPromptVisible:
 
         Emitted when the browser indicates that the sign in screen is visible.
     -->
-    <signal name="LoginPromptVisible">
-    </signal>
+    <signal name="LoginPromptVisible" />
+
     <!--
         EnableChromeTesting:
         @force_relaunch: Restart the browser no matter what.
@@ -62,7 +65,6 @@
         StartSession:
         @account_id: Account ID of the user to start a session for.
         @unique_identifier: Unused.
-        @done: True on success. Error returned on failure, so likely redundant.
 
         Updates bookkeeping to know about a session for @account_id. Also emits
         "start-user-session" upstart signal (asynchronously) and
@@ -71,20 +73,18 @@
     <method name="StartSession">
       <arg type="s" name="account_id" direction="in" />
       <arg type="s" name="unique_identifier" direction="in" />
-      <arg type="b" name="done" direction="out" />
     </method>
 
     <!--
         StopSession:
         @unique_identifier: Unused.
-        @done: True on success. Error returned on failure, so likely redundant.
 
         Terminates all active user sessions, announces this over upstart
         ("stop-user-session") and DBus (SessionStateChanges:stopped).
     -->
     <method name="StopSession">
       <arg type="s" name="unique_identifier" direction="in" />
-      <arg type="b" name="done" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
     </method>
 
     <!--

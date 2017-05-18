@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <brillo/errors/error.h>
+#include <dbus/file_descriptor.h>
 
 #include "login_manager/container_manager_interface.h"
 #include "login_manager/device_policy_service.h"
@@ -44,10 +45,6 @@ class ProcessManagerServiceInterface;
 class SystemUtils;
 class UserPolicyServiceFactory;
 class VpdProcess;
-
-// Friend test classes.
-class SessionManagerImplStaticTest;
-class SessionManagerImplTest;
 
 // Implements the DBus SessionManagerInterface.
 //
@@ -173,10 +170,10 @@ class SessionManagerImpl : public SessionManagerInterface,
                            bool in_force_relaunch,
                            const std::vector<std::string>& in_extra_arguments,
                            std::string* out_filepath);
-  bool StartSession(const std::string& account_id,
-                    const std::string& unique_id,
-                    Error* error);
-  bool StopSession();
+  bool StartSession(brillo::ErrorPtr* error,
+                    const std::string& in_account_id,
+                    const std::string& in_unique_identifier);
+  void StopSession(const std::string& in_unique_identifier);
 
   void StorePolicy(const uint8_t* policy_blob,
                    size_t policy_blob_len,
@@ -212,7 +209,10 @@ class SessionManagerImpl : public SessionManagerInterface,
   void HandleLockScreenShown();
   void HandleLockScreenDismissed();
 
-  bool RestartJob(int fd, const std::vector<std::string>& argv, Error* error);
+  bool RestartJob(brillo::ErrorPtr* error,
+                  const dbus::FileDescriptor& in_cred_fd,
+                  const std::vector<std::string>& in_argv);
+
   void StartDeviceWipe(const std::string& reason, Error* error);
   void SetFlagsForUser(const std::string& account_id,
                        const std::vector<std::string>& session_user_flags);
@@ -273,17 +273,17 @@ class SessionManagerImpl : public SessionManagerInterface,
                                           const base::FilePath& temp_key_file);
 
   // Normalizes an account ID in the case of a legacy email address.
-  // Returns true on success, false otherwise. In case of an error, some
-  // appropriate message is set to |error|.
+  // Returns true on success, false otherwise. In case of an error,
+  // brillo::Error instance is set to |error_out|.
   static bool NormalizeAccountId(const std::string& account_id,
                                  std::string* actual_account_id_out,
-                                 Error* error_out);
+                                 brillo::ErrorPtr* error_out);
 
   bool AllSessionsAreIncognito();
 
-  UserSession* CreateUserSession(const std::string& username,
-                                 bool is_incognito,
-                                 std::string* error);
+  std::unique_ptr<UserSession> CreateUserSession(const std::string& username,
+                                                 bool is_incognito,
+                                                 brillo::ErrorPtr* error);
 
   PolicyService* GetPolicyService(const std::string& account_id);
 

@@ -354,20 +354,21 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StartSession(
   if (!reader.PopString(&account_id) || !reader.PopString(&unique_id))
     return CreateInvalidArgsError(call, call->GetSignature());
 
-  SessionManagerImpl::Error error;
-  bool success = impl_->StartSession(account_id, unique_id, &error);
-  return CraftAppropriateResponseWithBool(call, error, success);
+  brillo::ErrorPtr error;
+  if (!impl_->StartSession(&error, account_id, unique_id))
+    return brillo::dbus_utils::GetDBusError(call, error.get());
+  return dbus::Response::FromMethodCall(call);
 }
 
 std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StopSession(
     dbus::MethodCall* call) {
-  // Though this takes a string (unique_id), it is ignored.
-  bool success = impl_->StopSession();
-  std::unique_ptr<dbus::Response> response(
-      dbus::Response::FromMethodCall(call));
-  dbus::MessageWriter writer(response.get());
-  writer.AppendBool(success);
-  return response;
+  dbus::MessageReader reader(call);
+  std::string unique_id;
+  if (!reader.PopString(&unique_id))
+    return CreateInvalidArgsError(call, call->GetSignature());
+
+  impl_->StopSession(unique_id);
+  return dbus::Response::FromMethodCall(call);
 }
 
 void SessionManagerDBusAdaptor::StorePolicy(
@@ -568,10 +569,10 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::RestartJob(
   fd.CheckValidity();
   CHECK(fd.is_valid());
 
-  SessionManagerImpl::Error error;
-  if (impl_->RestartJob(fd.value(), argv, &error))
-    return dbus::Response::FromMethodCall(call);
-  return CreateError(call, error.name(), error.message());
+  brillo::ErrorPtr error;
+  if (!impl_->RestartJob(&error, fd, argv))
+    return brillo::dbus_utils::GetDBusError(call, error.get());
+  return dbus::Response::FromMethodCall(call);
 }
 
 std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StartDeviceWipe(

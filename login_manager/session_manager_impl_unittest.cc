@@ -20,6 +20,7 @@
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
@@ -262,13 +263,17 @@ class SessionManagerImplTest : public ::testing::Test {
 
   void ExpectAndRunStartSession(const string& email) {
     ExpectStartSession(email);
-    EXPECT_TRUE(impl_.StartSession(email, kNothing, NULL));
+    brillo::ErrorPtr error;
+    EXPECT_TRUE(impl_.StartSession(&error, email, kNothing));
+    EXPECT_FALSE(error.get());
     VerifyAndClearExpectations();
   }
 
   void ExpectAndRunGuestSession() {
     ExpectGuestSession();
-    EXPECT_TRUE(impl_.StartSession(kGuestUserName, kNothing, NULL));
+    brillo::ErrorPtr error;
+    EXPECT_TRUE(impl_.StartSession(&error, kGuestUserName, kNothing));
+    EXPECT_FALSE(error.get());
     VerifyAndClearExpectations();
   }
 
@@ -520,64 +525,80 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
 
 TEST_F(SessionManagerImplTest, StartSession) {
   ExpectStartSession(kSaneEmail);
-  EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, &error_));
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
 }
 
 TEST_F(SessionManagerImplTest, StartSession_New) {
   ExpectStartSessionUnowned(kSaneEmail);
-  EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, &error_));
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
 }
 
 TEST_F(SessionManagerImplTest, StartSession_InvalidUser) {
-  const char bad_email[] = "user";
-  EXPECT_FALSE(impl_.StartSession(bad_email, kNothing, &error_));
-  EXPECT_EQ(dbus_error::kInvalidAccount, error_.name());
+  constexpr char kBadEmail[] = "user";
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_.StartSession(&error, kBadEmail, kNothing));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kInvalidAccount, error->GetCode());
 }
 
 TEST_F(SessionManagerImplTest, StartSession_Twice) {
   ExpectStartSession(kSaneEmail);
-  EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, NULL));
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_FALSE(error.get());
 
-  EXPECT_FALSE(impl_.StartSession(kSaneEmail, kNothing, &error_));
-  EXPECT_EQ(dbus_error::kSessionExists, error_.name());
+  EXPECT_FALSE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kSessionExists, error->GetCode());
 }
 
 TEST_F(SessionManagerImplTest, StartSession_TwoUsers) {
   ExpectStartSession(kSaneEmail);
-  EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, NULL));
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_FALSE(error.get());
   VerifyAndClearExpectations();
 
-  const char email2[] = "user2@somewhere";
-  ExpectStartSession(email2);
-  EXPECT_TRUE(impl_.StartSession(email2, kNothing, NULL));
+  constexpr char kEmail2[] = "user2@somewhere";
+  ExpectStartSession(kEmail2);
+  EXPECT_TRUE(impl_.StartSession(&error, kEmail2, kNothing));
+  EXPECT_FALSE(error.get());
 }
 
 TEST_F(SessionManagerImplTest, StartSession_OwnerAndOther) {
   ExpectStartSessionUnowned(kSaneEmail);
-
-  EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, NULL));
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_FALSE(error.get());
   VerifyAndClearExpectations();
 
-  const char email2[] = "user2@somewhere";
-  ExpectStartSession(email2);
-  EXPECT_TRUE(impl_.StartSession(email2, kNothing, NULL));
+  constexpr char kEmail2[] = "user2@somewhere";
+  ExpectStartSession(kEmail2);
+  EXPECT_TRUE(impl_.StartSession(&error, kEmail2, kNothing));
+  EXPECT_FALSE(error.get());
 }
 
 TEST_F(SessionManagerImplTest, StartSession_OwnerRace) {
   ExpectStartSessionUnowned(kSaneEmail);
-
-  EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, NULL));
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_FALSE(error.get());
   VerifyAndClearExpectations();
 
-  const char email2[] = "user2@somewhere";
-  ExpectStartSessionOwningInProcess(email2);
-  EXPECT_TRUE(impl_.StartSession(email2, kNothing, NULL));
+  constexpr char kEmail2[] = "user2@somewhere";
+  ExpectStartSessionOwningInProcess(kEmail2);
+  EXPECT_TRUE(impl_.StartSession(&error, kEmail2, kNothing));
+  EXPECT_FALSE(error.get());
 }
 
 TEST_F(SessionManagerImplTest, StartSession_BadNssDB) {
   nss_.MakeBadDB();
-  EXPECT_FALSE(impl_.StartSession(kSaneEmail, kNothing, &error_));
-  EXPECT_EQ(dbus_error::kNoUserNssDb, error_.name());
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kNoUserNssDb, error->GetCode());
 }
 
 TEST_F(SessionManagerImplTest, StartSession_DevicePolicyFailure) {
@@ -586,29 +607,37 @@ TEST_F(SessionManagerImplTest, StartSession_DevicePolicyFailure) {
               CheckAndHandleOwnerLogin(StrEq(kSaneEmail), _, _, _))
       .WillOnce(Return(false));
 
-  EXPECT_FALSE(impl_.StartSession(kSaneEmail, kNothing, &error_));
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  ASSERT_TRUE(error.get());
 }
 
 TEST_F(SessionManagerImplTest, StartSession_Owner) {
   ExpectStartOwnerSession(kSaneEmail);
-  EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, NULL));
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_FALSE(error.get());
 }
 
 TEST_F(SessionManagerImplTest, StartSession_KeyMitigation) {
   ExpectStartSessionOwnerLost(kSaneEmail);
-  EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, NULL));
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_FALSE(error.get());
 }
 
 // Ensure that starting Active Directory session does not create owner key.
 TEST_F(SessionManagerImplTest, StartSession_ActiveDirectorManaged) {
   SetDeviceMode("enterprise_ad");
   ExpectStartSessionActiveDirectory(kSaneEmail);
-  EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, NULL));
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_FALSE(error.get());
 }
 
 TEST_F(SessionManagerImplTest, StopSession) {
   EXPECT_CALL(manager_, ScheduleShutdown()).Times(1);
-  EXPECT_TRUE(impl_.StopSession());
+  impl_.StopSession("");
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_NoSession) {
@@ -880,40 +909,56 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
 
 TEST_F(SessionManagerImplTest, RetrieveActiveSessions) {
   ExpectStartSession(kSaneEmail);
-  EXPECT_TRUE(impl_.StartSession(kSaneEmail, kNothing, NULL));
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_FALSE(error.get());
   std::map<std::string, std::string> active_users;
   impl_.RetrieveActiveSessions(&active_users);
   EXPECT_EQ(active_users.size(), 1);
   EXPECT_EQ(active_users[kSaneEmail], SanitizeUserName(kSaneEmail));
   VerifyAndClearExpectations();
 
-  const char email2[] = "user2@somewhere";
-  ExpectStartSession(email2);
-  EXPECT_TRUE(impl_.StartSession(email2, kNothing, NULL));
+  constexpr char kEmail2[] = "user2@somewhere";
+  ExpectStartSession(kEmail2);
+  EXPECT_TRUE(impl_.StartSession(&error, kEmail2, kNothing));
+  EXPECT_FALSE(error.get());
   active_users.clear();
   impl_.RetrieveActiveSessions(&active_users);
   EXPECT_EQ(active_users.size(), 2);
   EXPECT_EQ(active_users[kSaneEmail], SanitizeUserName(kSaneEmail));
-  EXPECT_EQ(active_users[email2], SanitizeUserName(email2));
+  EXPECT_EQ(active_users[kEmail2], SanitizeUserName(kEmail2));
 }
 
 TEST_F(SessionManagerImplTest, RestartJobBadSocket) {
-  EXPECT_FALSE(impl_.RestartJob(-1, {}, &error_));
-  EXPECT_EQ("GetPeerCredsFailed", error_.name());
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_.RestartJob(&error, dbus::FileDescriptor(), {}));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ("GetPeerCredsFailed", error->GetCode());
 }
 
 TEST_F(SessionManagerImplTest, RestartJobBadPid) {
   int sockets[2] = {-1, -1};
   ASSERT_GE(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
+  base::ScopedFD fd0_closer(sockets[0]);
+  dbus::FileDescriptor fd1;
+  fd1.PutValue(sockets[1]);
+  fd1.CheckValidity();
 
   EXPECT_CALL(manager_, IsBrowser(getpid())).WillRepeatedly(Return(false));
-  EXPECT_FALSE(impl_.RestartJob(sockets[1], {}, &error_));
-  EXPECT_EQ(dbus_error::kUnknownPid, error_.name());
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_.RestartJob(&error, fd1, {}));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kUnknownPid, error->GetCode());
 }
 
 TEST_F(SessionManagerImplTest, RestartJobSuccess) {
   int sockets[2] = {-1, -1};
   ASSERT_GE(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
+  base::ScopedFD fd0_closer(sockets[0]);
+  dbus::FileDescriptor fd1;
+  fd1.PutValue(sockets[1]);
+  fd1.CheckValidity();
+
   const std::vector<std::string> argv = {
       "program",
       "--switch1",
@@ -929,7 +974,9 @@ TEST_F(SessionManagerImplTest, RestartJobSuccess) {
       .Times(1);
   ExpectGuestSession();
 
-  EXPECT_EQ(TRUE, impl_.RestartJob(sockets[1], argv, &error_));
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.RestartJob(&error, fd1, argv));
+  EXPECT_FALSE(error.get());
 }
 
 TEST_F(SessionManagerImplTest, SupervisedUserCreation) {
@@ -1060,7 +1107,9 @@ TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {
 
   // Start a session, to set up NSSDB for the user.
   ExpectStartOwnerSession(kSaneEmail);
-  ASSERT_TRUE(impl_.StartSession(kSaneEmail, kNothing, NULL));
+  brillo::ErrorPtr error;
+  ASSERT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_FALSE(error.get());
 
   EXPECT_CALL(
       *device_policy_service_,
