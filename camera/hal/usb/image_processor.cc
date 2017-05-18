@@ -48,14 +48,6 @@ namespace arc {
  *                                 -> YU12 (video encoder)
  */
 
-// YV12 horizontal stride should be a multiple of 16 pixels for each plane.
-// |dst_stride_uv| is the pixel stride of u or v plane.
-static int YU12ToYV12(const void* yv12,
-                      void* yu12,
-                      int width,
-                      int height,
-                      int dst_stride_y,
-                      int dst_stride_uv);
 static int YU12ToNV21(const void* yv12, void* nv21, int width, int height);
 static bool ConvertToJpeg(const CameraMetadata& metadata,
                           const FrameBuffer& in_frame,
@@ -80,6 +72,7 @@ size_t ImageProcessor::GetConvertedSize(int fourcc,
 
   switch (fourcc) {
     case V4L2_PIX_FMT_YVU420:  // YV12
+    case V4L2_PIX_FMT_YVU420M:
       return Align16(width) * height + Align16(width / 2) * height;
     case V4L2_PIX_FMT_YUV420:  // YU12
     // Fall-through.
@@ -141,24 +134,49 @@ int ImageProcessor::ConvertFormat(const CameraMetadata& metadata,
     // (V4L2_PIX_FMT_YUV420), and YV12 is similar to YU12 except that U/V
     // planes are swapped.
     switch (out_frame->GetFourcc()) {
-      case V4L2_PIX_FMT_YVU420:  // YV12
-      {
-        int ystride = Align16(in_frame.GetWidth());
-        int uvstride = Align16(in_frame.GetWidth() / 2);
-        int res = YU12ToYV12(in_frame.GetData(), out_frame->GetData(),
-                             in_frame.GetWidth(), in_frame.GetHeight(), ystride,
-                             uvstride);
+      case V4L2_PIX_FMT_YVU420: {  // YV12
+        // YV12 horizontal stride should be a multiple of 16 pixels for each
+        // plane.
+        int ystride = Align16(out_frame->GetWidth());
+        int uvstride = Align16(out_frame->GetWidth() / 2);
+        int res = libyuv::I420Copy(
+            in_frame.GetData(), in_frame.GetWidth(),
+            in_frame.GetData() + in_frame.GetWidth() * in_frame.GetHeight(),
+            in_frame.GetWidth() / 2,
+            in_frame.GetData() +
+                in_frame.GetWidth() * in_frame.GetHeight() * 5 / 4,
+            in_frame.GetWidth() / 2, out_frame->GetData(), ystride,
+            out_frame->GetData() + ystride * out_frame->GetHeight() +
+                uvstride * out_frame->GetHeight() / 2,
+            uvstride, out_frame->GetData() + ystride * out_frame->GetHeight(),
+            uvstride, out_frame->GetWidth(), out_frame->GetHeight());
         LOGF_IF(ERROR, res) << "YU12ToYV12() returns " << res;
         return res ? -EINVAL : 0;
       }
-      case V4L2_PIX_FMT_YUV420:  // YU12
-      {
+      case V4L2_PIX_FMT_YVU420M: {  // YM21, multiple planes YV12
+        // YV12 horizontal stride should be a multiple of 16 pixels for each
+        // plane.
+        int ystride = Align16(out_frame->GetWidth());
+        int uvstride = Align16(out_frame->GetWidth() / 2);
+        int res = libyuv::I420Copy(
+            in_frame.GetData(), in_frame.GetWidth(),
+            in_frame.GetData() + in_frame.GetWidth() * in_frame.GetHeight(),
+            in_frame.GetWidth() / 2,
+            in_frame.GetData() +
+                in_frame.GetWidth() * in_frame.GetHeight() * 5 / 4,
+            in_frame.GetWidth() / 2, out_frame->GetData(FrameBuffer::YPLANE),
+            ystride, out_frame->GetData(FrameBuffer::UPLANE), uvstride,
+            out_frame->GetData(FrameBuffer::VPLANE), uvstride,
+            out_frame->GetWidth(), out_frame->GetHeight());
+        LOGF_IF(ERROR, res) << "YU12ToYM21() returns " << res;
+        return res ? -EINVAL : 0;
+      }
+      case V4L2_PIX_FMT_YUV420: {  // YU12
         memcpy(out_frame->GetData(), in_frame.GetData(),
                in_frame.GetDataSize());
         return 0;
       }
-      case V4L2_PIX_FMT_NV21:  // NV21
-      {
+      case V4L2_PIX_FMT_NV21: {  // NV21
         // TODO(henryhsu): Use libyuv::I420ToNV21.
         int res = YU12ToNV21(in_frame.GetData(), out_frame->GetData(),
                              in_frame.GetWidth(), in_frame.GetHeight());
@@ -191,8 +209,7 @@ int ImageProcessor::ConvertFormat(const CameraMetadata& metadata,
     }
   } else if (in_frame.GetFourcc() == V4L2_PIX_FMT_MJPEG) {
     switch (out_frame->GetFourcc()) {
-      case V4L2_PIX_FMT_YUV420:  // YU12
-      {
+      case V4L2_PIX_FMT_YUV420: {  // YU12
         int res = libyuv::MJPGToI420(
             in_frame.GetData(), in_frame.GetDataSize(), out_frame->GetData(),
             out_frame->GetWidth(),
@@ -255,36 +272,6 @@ int ImageProcessor::Scale(const FrameBuffer& in_frame, FrameBuffer* out_frame) {
       libyuv::FilterMode::kFilterNone);
   LOGF_IF(ERROR, ret) << "I420Scale failed: " << ret;
   return ret;
-}
-
-static int YU12ToYV12(const void* yu12,
-                      void* yv12,
-                      int width,
-                      int height,
-                      int dst_stride_y,
-                      int dst_stride_uv) {
-  if ((width % 2) || (height % 2)) {
-    LOGF(ERROR) << "Width or height is not even (" << width << " x " << height
-                << ")";
-    return -EINVAL;
-  }
-  if (dst_stride_y < width || dst_stride_uv < width / 2) {
-    LOGF(ERROR) << "Y plane stride (" << dst_stride_y
-                << ") or U/V plane stride (" << dst_stride_uv
-                << ") is invalid for width " << width;
-    return -EINVAL;
-  }
-
-  const uint8_t* src = reinterpret_cast<const uint8_t*>(yu12);
-  uint8_t* dst = reinterpret_cast<uint8_t*>(yv12);
-  const uint8_t* u_src = src + width * height;
-  uint8_t* u_dst = dst + dst_stride_y * height + dst_stride_uv * height / 2;
-  const uint8_t* v_src = src + width * height * 5 / 4;
-  uint8_t* v_dst = dst + dst_stride_y * height;
-
-  return libyuv::I420Copy(src, width, u_src, width / 2, v_src, width / 2, dst,
-                          dst_stride_y, u_dst, dst_stride_uv, v_dst,
-                          dst_stride_uv, width, height);
 }
 
 static int YU12ToNV21(const void* yu12, void* nv21, int width, int height) {

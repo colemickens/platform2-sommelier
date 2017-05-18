@@ -10,6 +10,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <arc/camera_buffer_mapper.h>
 #include <base/files/scoped_file.h>
@@ -21,6 +22,12 @@ namespace arc {
 
 class FrameBuffer {
  public:
+  enum {
+    YPLANE = 0,
+    UPLANE = 1,
+    VPLANE = 2,
+  };
+
   FrameBuffer();
   virtual ~FrameBuffer();
 
@@ -31,7 +38,8 @@ class FrameBuffer {
   // Unmaps the mapped address. Returns 0 for success.
   virtual int Unmap() = 0;
 
-  uint8_t* GetData() const { return data_; }
+  uint8_t* GetData(size_t plane) const;
+  uint8_t* GetData() const { return data_[YPLANE]; }
   size_t GetDataSize() const { return data_size_; }
   size_t GetBufferSize() const { return buffer_size_; }
   uint32_t GetWidth() const { return width_; }
@@ -42,7 +50,7 @@ class FrameBuffer {
   virtual int SetDataSize(size_t data_size);
 
  protected:
-  uint8_t* data_;
+  std::vector<uint8_t*> data_;
 
   // The number of bytes used in the buffer.
   size_t data_size_;
@@ -56,6 +64,9 @@ class FrameBuffer {
 
   // This is V4L2_PIX_FMT_* in linux/videodev2.h.
   uint32_t fourcc_;
+
+  // The number of planes.
+  uint32_t num_planes_;
 };
 
 // AllocatedFrameBuffer is used for the buffer from hal malloc-ed. User should

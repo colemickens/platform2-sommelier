@@ -29,6 +29,7 @@ CameraClient::CameraClient(int id,
     : id_(id),
       device_info_(device_info),
       device_(new V4L2CameraDevice()),
+      callback_ops_(nullptr),
       metadata_handler_(new MetadataHandler(static_info)),
       request_thread_("Capture request thread") {
   memset(&camera3_device_, 0, sizeof(camera3_device_));
@@ -86,8 +87,11 @@ int CameraClient::ConfigureStreams(
   /* TODO(henryhsu):
    * 1. Remove all pending requests. Post a task to request thread and wait for
    *    the task to be run.
-   * 2. Check configure_streams is called after initialize.
    */
+  if (callback_ops_ == nullptr) {
+    LOGFID(ERROR, id_) << "Device is not initialized";
+    return -EINVAL;
+  }
 
   if (stream_config == nullptr) {
     LOGFID(ERROR, id_) << "NULL stream configuration array";
@@ -102,6 +106,11 @@ int CameraClient::ConfigureStreams(
     LOGFID(ERROR, id_) << "Unsupported operation mode: "
                        << stream_config->operation_mode;
     return -EINVAL;
+  }
+
+  // Call StreamOff if there is a current running stream.
+  if (request_handler_.get()) {
+    StreamOff();
   }
 
   VLOGFID(1, id_) << "Number of Streams: " << stream_config->num_streams;
@@ -286,7 +295,7 @@ int CameraClient::StreamOn(SupportedFormat stream_on_resolution,
   DCHECK(ops_thread_checker_.CalledOnValidThread());
 
   if (!request_thread_.Start()) {
-    LOG(ERROR) << "Request thread failed to start";
+    LOGFID(ERROR, id_) << "Request thread failed to start";
     return -EINVAL;
   }
   request_task_runner_ = request_thread_.task_runner();

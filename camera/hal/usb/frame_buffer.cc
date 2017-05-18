@@ -15,14 +15,22 @@
 namespace arc {
 
 FrameBuffer::FrameBuffer()
-    : data_(nullptr),
-      data_size_(0),
+    : data_size_(0),
       buffer_size_(0),
       width_(0),
       height_(0),
-      fourcc_(0) {}
+      fourcc_(0),
+      num_planes_(0) {}
 
 FrameBuffer::~FrameBuffer() {}
+
+uint8_t* FrameBuffer::GetData(size_t plane) const {
+  if (plane >= num_planes_ || plane >= data_.size()) {
+    LOGF(ERROR) << "Invalid plane " << plane;
+    return nullptr;
+  }
+  return data_[plane];
+}
 
 int FrameBuffer::SetDataSize(size_t data_size) {
   if (data_size > buffer_size_) {
@@ -37,7 +45,9 @@ int FrameBuffer::SetDataSize(size_t data_size) {
 AllocatedFrameBuffer::AllocatedFrameBuffer(int buffer_size) {
   buffer_.reset(new uint8_t[buffer_size]);
   buffer_size_ = buffer_size;
-  data_ = buffer_.get();
+  num_planes_ = 1;
+  data_.resize(num_planes_, nullptr);
+  data_[0] = buffer_.get();
 }
 
 AllocatedFrameBuffer::~AllocatedFrameBuffer() {}
@@ -46,7 +56,7 @@ int AllocatedFrameBuffer::SetDataSize(size_t size) {
   if (size > buffer_size_) {
     buffer_.reset(new uint8_t[size]);
     buffer_size_ = size;
-    data_ = buffer_.get();
+    data_[0] = buffer_.get();
   }
   data_size_ = size;
   return 0;
@@ -62,6 +72,8 @@ V4L2FrameBuffer::V4L2FrameBuffer(base::ScopedFD fd,
   width_ = width;
   height_ = height;
   fourcc_ = fourcc;
+  num_planes_ = 1;
+  data_.resize(num_planes_, nullptr);
 }
 
 V4L2FrameBuffer::~V4L2FrameBuffer() {
@@ -81,14 +93,14 @@ int V4L2FrameBuffer::Map() {
     LOGF(ERROR) << "mmap() failed: " << strerror(errno);
     return -EINVAL;
   }
-  data_ = static_cast<uint8_t*>(addr);
+  data_[0] = static_cast<uint8_t*>(addr);
   is_mapped_ = true;
   return 0;
 }
 
 int V4L2FrameBuffer::Unmap() {
   base::AutoLock l(lock_);
-  if (is_mapped_ && munmap(data_, buffer_size_)) {
+  if (is_mapped_ && munmap(data_[0], buffer_size_)) {
     LOGF(ERROR) << "mummap() failed: " << strerror(errno);
     return -EINVAL;
   }
@@ -110,6 +122,8 @@ GrallocFrameBuffer::GrallocFrameBuffer(buffer_handle_t buffer,
   width_ = width;
   height_ = height;
   fourcc_ = buffer_mapper_->GetV4L2PixelFormat(buffer);
+  num_planes_ = buffer_mapper_->GetNumPlanes(buffer);
+  data_.resize(num_planes_, nullptr);
 }
 
 GrallocFrameBuffer::~GrallocFrameBuffer() {
@@ -129,13 +143,20 @@ int GrallocFrameBuffer::Map() {
     LOGF(ERROR) << "The buffer is already mapped";
     return -EINVAL;
   }
-  buffer_size_ = buffer_mapper_->GetPlaneSize(buffer_, 0);
+
+  buffer_size_ = 0;
+  for (size_t i = 0; i < num_planes_; i++) {
+    buffer_size_ += buffer_mapper_->GetPlaneSize(buffer_, i);
+  }
 
   void* addr;
   int ret;
   switch (fourcc_) {
     case V4L2_PIX_FMT_JPEG:
       ret = buffer_mapper_->Lock(buffer_, 0, 0, 0, buffer_size_, 1, &addr);
+      if (!ret) {
+        data_[0] = static_cast<uint8_t*>(addr);
+      }
       break;
     case V4L2_PIX_FMT_RGBX32: {
       int calculated_size =
@@ -146,18 +167,31 @@ int GrallocFrameBuffer::Map() {
         return -EINVAL;
       }
       ret = buffer_mapper_->Lock(buffer_, 0, 0, 0, width_, height_, &addr);
+      if (!ret) {
+        data_[0] = static_cast<uint8_t*>(addr);
+      }
+      break;
+    }
+    case V4L2_PIX_FMT_YVU420M: {
+      struct android_ycbcr ycbcr;
+      ret =
+          buffer_mapper_->LockYCbCr(buffer_, 0, 0, 0, width_, height_, &ycbcr);
+      if (!ret) {
+        data_[YPLANE] = static_cast<uint8_t*>(ycbcr.y);
+        data_[UPLANE] = static_cast<uint8_t*>(ycbcr.cb);
+        data_[VPLANE] = static_cast<uint8_t*>(ycbcr.cr);
+      }
       break;
     }
     default:
       LOGF(ERROR) << "Format " << FormatToString(fourcc_) << " is unsupported";
       return -EINVAL;
   }
+
   if (ret) {
     LOGF(ERROR) << "Failed to map buffer";
     return -EINVAL;
   }
-
-  data_ = static_cast<uint8_t*>(addr);
   is_mapped_ = true;
   return 0;
 }
