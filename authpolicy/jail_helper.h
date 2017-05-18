@@ -12,12 +12,16 @@
 
 namespace authpolicy {
 
+namespace protos {
+class DebugFlags;
+}
+
 class ProcessExecutor;
 
 // Helper class for setting up a minijail and running a process.
 class JailHelper {
  public:
-  explicit JailHelper(const PathService* path_service);
+  JailHelper(const PathService* path_service, const protos::DebugFlags* flags);
 
   // Sets up minijail and executes |cmd|. |seccomp_path_key| specifies the path
   // of the seccomp filter to use. |timer_type| is the UMA timer metric to
@@ -27,16 +31,12 @@ class JailHelper {
                        Path seccomp_path_key,
                        TimerType timer_type) const;
 
-  // Sets debug flags. By default, all debug flags are turned off.
-  void SetDebugFlags(bool disable_seccomp_filters, bool log_seccomp_filters);
-
  private:
   // File paths, not owned.
-  const PathService* paths_;
+  const PathService* paths_ = nullptr;
 
-  // Debug flags.
-  bool disable_seccomp_filters_ = false;
-  bool log_seccomp_filters_ = false;
+  // Debug flags, not owned.
+  const protos::DebugFlags* flags_ = nullptr;
 
   DISALLOW_COPY_AND_ASSIGN(JailHelper);
 };

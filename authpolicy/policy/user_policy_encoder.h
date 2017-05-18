@@ -34,6 +34,9 @@ class UserPolicyEncoder {
  public:
   UserPolicyEncoder(const RegistryDict* dict, PolicyLevel level);
 
+  // Toggles logging of policy values.
+  void LogPolicyValues(bool enabled) { log_policy_values_ = enabled; }
+
   // Extracts all user policies from |dict_| and puts them into |policy|.
   void EncodePolicy(enterprise_management::CloudPolicySettings* policy) const;
 
@@ -78,8 +81,9 @@ class UserPolicyEncoder {
                   const T_Access* access,
                   Encoder<T_Access> encode) const;
 
-  const RegistryDict* dict_;
-  PolicyLevel level_;
+  const RegistryDict* dict_ = nullptr;
+  PolicyLevel level_ = POLICY_LEVEL_MANDATORY;
+  bool log_policy_values_ = false;
 };
 
 }  // namespace policy

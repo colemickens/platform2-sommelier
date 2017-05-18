@@ -38,14 +38,23 @@ class ProcessExecutor {
   // Sets a seccomp filter by parsing the given file.
   void SetSeccompFilter(const std::string& policy_file);
 
-  // Logs syscalls blocked by seccomp filters.
-  void LogSeccompFilterFailures();
+  // Toggles logging of syscalls blocked by seccomp filters.
+  void LogSeccompFilterFailures(bool enabled);
 
-  // Set a flag that prevents execve from gaining new privileges.
-  void SetNoNewPrivs();
+  // Toggles a flag that prevents execve from gaining new privileges.
+  void SetNoNewPrivs(bool enabled);
 
-  // Set a flag that prevents that supplementary groups are wiped.
-  void KeepSupplementaryGroups();
+  // Toggles a flag that prevents that supplementary groups are wiped.
+  void KeepSupplementaryGroups(bool enabled);
+
+  // Toggles logging of command line and the exit code.
+  void LogCommand(bool enabled);
+
+  // Toggles logging of the command output.
+  void LogOutput(bool enabled);
+
+  // Toggles logging of the command output if the command failed.
+  void LogOutputOnError(bool enabled);
 
   // Execute the command. Returns true if the command executed and returned with
   // exit code 0. Also returns true if no args were passed to the constructor.
@@ -72,12 +81,16 @@ class ProcessExecutor {
   std::map<std::string, std::string> env_map_;
   int input_fd_ = -1;
   std::string input_str_;
-  std::string out_data_, err_data_;
+  std::string out_data_;
+  std::string err_data_;
   int exit_code_ = 0;
   std::string seccomp_policy_file_;
   bool log_seccomp_failures_ = false;
   bool no_new_privs_ = false;
   bool keep_supplementary_flags_ = false;
+  bool log_command_ = false;
+  bool log_output_ = false;
+  bool log_output_on_error_ = false;
 
   // We better not copy/assign because of |input_fd_|.
   DISALLOW_COPY_AND_ASSIGN(ProcessExecutor);

@@ -18,6 +18,7 @@ namespace authpolicy {
 
 namespace protos {
 class TgtLifetime;
+class DebugFlags;
 }  // namespace protos
 
 class AuthPolicyMetrics;
@@ -34,6 +35,7 @@ class TgtManager {
   TgtManager(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
              const PathService* path_service,
              AuthPolicyMetrics* metrics,
+             const protos::DebugFlags* flags,
              const JailHelper* jail_helper,
              Path config_path,
              Path credential_cache_path);
@@ -76,9 +78,6 @@ class TgtManager {
   // Returns the lifetime of a TGT.
   ErrorType GetTgtLifetime(protos::TgtLifetime* lifetime);
 
-  // Toggles debug logging.
-  void SetKinitTraceEnabled(bool enabled) { trace_kinit_ = enabled; }
-
   // Returns the file path of the Kerberos configuration file.
   Path GetConfigPath() const { return config_path_; }
 
@@ -98,10 +97,10 @@ class TgtManager {
   // Writes the krb5 configuration file.
   ErrorType WriteKrb5Conf() const;
 
-  // Turns on kinit trace logging if |trace_kinit_| is enabled.
+  // Turns on kinit trace logging if |flags_->TraceKinit()| is enabled.
   void SetupKinitTrace(ProcessExecutor* kinit_cmd) const;
 
-  // Logs the kinit trace if |trace_kinit_| is enabled.
+  // Logs the kinit trace if |flags_->TraceKinit()| is enabled.
   void OutputKinitTrace() const;
 
   // Cancels |tgt_renewal_callback_|. If |tgt_autorenewal_enabled_| is true and
@@ -114,12 +113,12 @@ class TgtManager {
   void AutoRenewTgt();
 
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
-  const PathService* paths_ = nullptr;       // File paths, not owned.
-  AuthPolicyMetrics* metrics_ = nullptr;     // UMA statistics, not owned.
-  const JailHelper* jail_helper_ = nullptr;  // Minijail related, not owned.
+  const PathService* paths_ = nullptr;         // File paths, not owned.
+  AuthPolicyMetrics* metrics_ = nullptr;       // UMA statistics, not owned.
+  const protos::DebugFlags* flags_ = nullptr;  // Debug flags, not owned.
+  const JailHelper* jail_helper_ = nullptr;    // Minijail related, not owned.
   Path config_path_ = Path::INVALID;
   Path credential_cache_path_ = Path::INVALID;
-  bool trace_kinit_ = false;
 
   // Realm and key distribution center (KDC) IP address written to the Kerberos
   // configuration file. |kdc_ip_| is optional, if empty, it is not written.

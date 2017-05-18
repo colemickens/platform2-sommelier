@@ -87,6 +87,7 @@
       'sources': [
         '<(gen_src_in_dir)/policy_constants.cc',
         'authpolicy.cc',
+        'authpolicy_flags.cc',
         'authpolicy_metrics.cc',
         'constants.cc',
         'jail_helper.cc',
@@ -183,6 +184,7 @@
             ],
           },
           'sources': [
+            'authpolicy_flags_unittest.cc',
             'authpolicy_testrunner.cc',
             'authpolicy_unittest.cc',
             'policy/device_policy_encoder_unittest.cc',
