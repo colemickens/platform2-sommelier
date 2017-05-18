@@ -21,28 +21,13 @@ using brillo::SecureBlob;
 namespace chaps {
 
 ChapsServiceImpl::ChapsServiceImpl(SlotManager* slot_manager)
-    : slot_manager_(slot_manager),
-      init_(false) {
-}
-
-ChapsServiceImpl::~ChapsServiceImpl() {
-  TearDown();
-}
-
-bool ChapsServiceImpl::Init() {
-  CHECK(slot_manager_);
-  init_ = true;
-  return true;
-}
-
-void ChapsServiceImpl::TearDown() {
-  init_ = false;
+    : slot_manager_(slot_manager) {
+  CHECK(slot_manager);
 }
 
 uint32_t ChapsServiceImpl::GetSlotList(const SecureBlob& isolate_credential,
                                        bool token_present,
                                        vector<uint64_t>* slot_list) {
-  CHECK(init_);
   if (!slot_list || slot_list->size() > 0)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   int num_slots = slot_manager_->GetSlotCount();

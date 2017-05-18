@@ -273,6 +273,20 @@ SlotManagerImpl::SlotManagerImpl(ChapsFactory* factory,
       is_initialized_(false) {
   CHECK(factory_);
   CHECK(tpm_utility_);
+
+  // Populate mechanism info.  This will be the same for all TPM-backed tokens.
+  for (size_t i = 0; i < arraysize(kDefaultMechanismInfo); ++i) {
+    mechanism_info_[kDefaultMechanismInfo[i].type] =
+        kDefaultMechanismInfo[i].info;
+  }
+
+  // Add default isolate.
+  AddIsolate(IsolateCredentialManager::GetDefaultIsolateCredential());
+
+  // By default we'll start with two slots.  This allows for one 'system' slot
+  // which always has a token available, and one 'user' slot which will have no
+  // token until a login event is received.
+  AddSlots(2);
 }
 
 SlotManagerImpl::~SlotManagerImpl() {
@@ -288,20 +302,6 @@ SlotManagerImpl::~SlotManagerImpl() {
 }
 
 bool SlotManagerImpl::Init() {
-  // Populate mechanism info.  This will be the same for all TPM-backed tokens.
-  for (size_t i = 0; i < arraysize(kDefaultMechanismInfo); ++i) {
-    mechanism_info_[kDefaultMechanismInfo[i].type] =
-        kDefaultMechanismInfo[i].info;
-  }
-
-  // Add default isolate.
-  AddIsolate(IsolateCredentialManager::GetDefaultIsolateCredential());
-
-  // By default we'll start with two slots.  This allows for one 'system' slot
-  // which always has a token available, and one 'user' slot which will have no
-  // token until a login event is received.
-  AddSlots(2);
-
   // If the SRK is ready we expect the rest of the init work to succeed.
   bool expect_success = tpm_utility_->IsTPMAvailable() &&
                         tpm_utility_->IsSRKReady();

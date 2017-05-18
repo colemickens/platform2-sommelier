@@ -28,8 +28,7 @@ namespace chaps {
 
 // Invalid initialization test.
 TEST(InitDeathTest, InvalidInit) {
-  ChapsServiceImpl service(NULL);
-  EXPECT_DEATH_IF_SUPPORTED(service.Init(), "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(ChapsServiceImpl(nullptr), "Check failed");
 }
 
 // Test fixture for an initialized service instance.
@@ -37,7 +36,6 @@ class TestService : public ::testing::Test {
  protected:
   virtual void SetUp() {
     service_.reset(new ChapsServiceImpl(&slot_manager_));
-    ASSERT_TRUE(service_->Init());
     // Setup parsable and un-parsable serialized attributes.
     CK_ATTRIBUTE attributes[] = {{CKA_VALUE, nullptr, 0}};
     CK_ATTRIBUTE attributes2[] = {{CKA_VALUE, const_cast<char*>("test"), 4}};
@@ -49,9 +47,6 @@ class TestService : public ::testing::Test {
     tmp2.Serialize(&good_attributes2_);
     bad_attributes_ = vector<uint8_t>(100, 0xAA);
     ic_ = IsolateCredentialManager::GetDefaultIsolateCredential();
-  }
-  virtual void TearDown() {
-    service_->TearDown();
   }
   SlotManagerMock slot_manager_;
   SessionMock session_;

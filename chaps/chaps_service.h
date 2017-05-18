@@ -24,9 +24,8 @@ class ChapsServiceImpl : public ChapsInterface {
   // ChapsServiceImpl does not take ownership of slot_manager and will not
   // delete it.
   explicit ChapsServiceImpl(SlotManager* slot_manager);
-  virtual ~ChapsServiceImpl();
-  bool Init();
-  void TearDown();
+  ~ChapsServiceImpl() override = default;
+
   // ChapsInterface methods
   uint32_t GetSlotList(const brillo::SecureBlob& isolate_credential,
                        bool token_present,
@@ -269,7 +268,6 @@ class ChapsServiceImpl : public ChapsInterface {
 
  private:
   SlotManager* slot_manager_;
-  bool init_;
 
   DISALLOW_COPY_AND_ASSIGN(ChapsServiceImpl);
 };

@@ -65,13 +65,11 @@ class AsyncInitThread : public PlatformThread::Delegate {
  public:
   AsyncInitThread(Lock* lock,
                   TPMUtility* tpm,
-                  SlotManagerImpl* slot_manager,
-                  ChapsServiceImpl* service)
+                  SlotManagerImpl* slot_manager)
       : started_event_(true, false),
         lock_(lock),
         tpm_(tpm),
-        slot_manager_(slot_manager),
-        service_(service) {}
+        slot_manager_(slot_manager) {}
   void ThreadMain() {
     // It's important that we acquire 'lock' before signaling 'started_event'.
     // This will prevent any D-Bus requests from being processed until we've
@@ -88,8 +86,6 @@ class AsyncInitThread : public PlatformThread::Delegate {
                    << " available).  PKCS #11 tokens will not be available.";
     if (!slot_manager_->Init())
       LOG(FATAL) << "Slot initialization failed.";
-    if (!service_->Init())
-      LOG(FATAL) << "Service initialization failed.";
   }
   void WaitUntilStarted() {
     started_event_.Wait();
@@ -100,7 +96,6 @@ class AsyncInitThread : public PlatformThread::Delegate {
   Lock* lock_;
   TPMUtility* tpm_;
   SlotManagerImpl* slot_manager_;
-  ChapsServiceImpl* service_;
 };
 
 class Daemon : public brillo::DBusServiceDaemon {
@@ -179,7 +174,7 @@ int main(int argc, char** argv) {
   chaps::SlotManagerImpl slot_manager(
       &factory, &tpm, cl->HasSwitch("auto_load_system_token"));
   chaps::ChapsServiceImpl service(&slot_manager);
-  chaps::AsyncInitThread init_thread(&lock, &tpm, &slot_manager, &service);
+  chaps::AsyncInitThread init_thread(&lock, &tpm, &slot_manager);
   PlatformThreadHandle init_thread_handle;
   if (!PlatformThread::Create(0, &init_thread, &init_thread_handle))
     LOG(FATAL) << "Failed to create initialization thread.";
