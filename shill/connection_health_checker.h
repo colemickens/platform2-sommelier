@@ -211,8 +211,6 @@ class ConnectionHealthChecker {
 
   DNSClientFactory* dns_client_factory_;
   std::vector<std::unique_ptr<DNSClient>> dns_clients_;
-  const base::Callback<void(const Error&, const IPAddress&)>
-      dns_client_callback_;
 
   // Store the old value of the transmit queue to verify that data sent on the
   // connection is actually transmitted.

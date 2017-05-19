@@ -161,8 +161,6 @@ Device::Device(ControlInterface* control_interface,
       manager_(manager),
       weak_ptr_factory_(this),
       adaptor_(control_interface->CreateDeviceAdaptor(this)),
-      portal_detector_callback_(Bind(&Device::PortalDetectorCallback,
-                                     weak_ptr_factory_.GetWeakPtr())),
       technology_(technology),
       portal_attempts_to_online_(0),
       receive_byte_offset_(0),
@@ -172,8 +170,6 @@ Device::Device(ControlInterface* control_interface,
       rtnl_handler_(RTNLHandler::GetInstance()),
       time_(Time::GetInstance()),
       last_link_monitor_failed_time_(0),
-      connection_tester_callback_(Bind(&Device::ConnectionTesterCallback,
-                                       weak_ptr_factory_.GetWeakPtr())),
       is_loose_routing_(false),
       is_multi_homed_(false) {
   store_.RegisterConstString(kAddressProperty, &hardware_address_);
@@ -1354,9 +1350,10 @@ bool Device::StartPortalDetection() {
     return false;
   }
 
-  portal_detector_.reset(new PortalDetector(connection_,
-                                            dispatcher_,
-                                            portal_detector_callback_));
+  portal_detector_.reset(new PortalDetector(
+      connection_,
+      dispatcher_,
+      Bind(&Device::PortalDetectorCallback, weak_ptr_factory_.GetWeakPtr())));
   if (!portal_detector_->Start(manager_->GetPortalCheckURL())) {
     LOG(ERROR) << "Device " << FriendlyName()
                << ": Portal detection failed to start: likely bad URL: "
@@ -1408,9 +1405,10 @@ void Device::StopConnectionDiagnostics() {
 bool Device::StartConnectivityTest() {
   LOG(INFO) << "Device " << FriendlyName() << " starting connectivity test.";
 
-  connection_tester_.reset(new ConnectionTester(connection_,
-                                                dispatcher_,
-                                                connection_tester_callback_));
+  connection_tester_.reset(new ConnectionTester(
+      connection_,
+      dispatcher_,
+      Bind(&Device::ConnectionTesterCallback, weak_ptr_factory_.GetWeakPtr())));
   connection_tester_->Start();
   return true;
 }

@@ -435,7 +435,6 @@ class SHILL_EXPORT NetlinkManager {
   base::WeakPtrFactory<NetlinkManager> weak_ptr_factory_;
   base::CancelableClosure pending_dump_timeout_callback_;
   base::CancelableClosure resend_dump_message_callback_;
-  base::Callback<void(InputData*)> dispatcher_callback_;
   std::unique_ptr<IOHandler> dispatcher_handler_;
 
   std::unique_ptr<NetlinkSocket> sock_;

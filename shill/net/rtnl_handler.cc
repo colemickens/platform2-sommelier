@@ -63,7 +63,6 @@ RTNLHandler::RTNLHandler()
       request_flags_(0),
       request_sequence_(0),
       last_dump_sequence_(0),
-      rtnl_callback_(Bind(&RTNLHandler::ParseRTNL, Unretained(this))),
       io_handler_factory_(
           IOHandlerFactoryContainer::GetInstance()->GetIOHandlerFactory()) {
   error_mask_window_.resize(kErrorWindowSize);
@@ -111,7 +110,7 @@ void RTNLHandler::Start(uint32_t netlink_groups_mask) {
 
   rtnl_handler_.reset(io_handler_factory_->CreateIOInputHandler(
       rtnl_socket_,
-      rtnl_callback_,
+      Bind(&RTNLHandler::ParseRTNL, Unretained(this)),
       Bind(&RTNLHandler::OnReadError, Unretained(this))));
 
   NextRequest(last_dump_sequence_);

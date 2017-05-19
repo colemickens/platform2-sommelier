@@ -159,7 +159,6 @@ class PortalDetector {
   EventDispatcher* dispatcher_;
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_;
   base::Callback<void(const Result&)> portal_result_callback_;
-  base::Callback<void(ConnectivityTrial::Result)> connectivity_trial_callback_;
   Time* time_;
   int failures_in_content_phase_;
   std::unique_ptr<ConnectivityTrial> connectivity_trial_;

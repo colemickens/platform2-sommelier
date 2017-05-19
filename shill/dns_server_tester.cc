@@ -52,15 +52,14 @@ DNSServerTester::DNSServerTester(ConnectionRefPtr connection,
       retry_until_success_(retry_until_success),
       weak_ptr_factory_(this),
       dns_result_callback_(callback),
-      dns_client_callback_(Bind(&DNSServerTester::DNSClientCallback,
-                                weak_ptr_factory_.GetWeakPtr())),
       dns_test_client_(DNSClientFactory::GetInstance()->CreateDNSClient(
           IPAddress::kFamilyIPv4,
           connection_->interface_name(),
           dns_servers,
           kDNSTimeoutMilliseconds,
           dispatcher_,
-          dns_client_callback_)) {}
+          Bind(&DNSServerTester::DNSClientCallback,
+               weak_ptr_factory_.GetWeakPtr()))) {}
 
 DNSServerTester::~DNSServerTester() {
   Stop();

@@ -183,8 +183,6 @@ NetlinkManager::MessageType::MessageType() :
 
 NetlinkManager::NetlinkManager()
     : weak_ptr_factory_(this),
-      dispatcher_callback_(Bind(&NetlinkManager::OnRawNlMessageReceived,
-                                weak_ptr_factory_.GetWeakPtr())),
       time_(Time::GetInstance()),
       io_handler_factory_(
           IOHandlerFactoryContainer::GetInstance()->GetIOHandlerFactory()),
@@ -321,7 +319,8 @@ void NetlinkManager::Start() {
   // IO handler will be installed to the current message loop.
   dispatcher_handler_.reset(io_handler_factory_->CreateIOInputHandler(
       file_descriptor(),
-      dispatcher_callback_,
+      Bind(&NetlinkManager::OnRawNlMessageReceived,
+           weak_ptr_factory_.GetWeakPtr()),
       Bind(&NetlinkManager::OnReadError, weak_ptr_factory_.GetWeakPtr())));
 }
 

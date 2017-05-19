@@ -845,8 +845,6 @@ class Device : public base::RefCounted<Device> {
   std::unique_ptr<LinkMonitor> link_monitor_;
   // Used for verifying whether DNS server is functional.
   std::unique_ptr<DNSServerTester> dns_server_tester_;
-  base::Callback<void(const PortalDetector::Result&)>
-      portal_detector_callback_;
   // Callback to invoke when IPv6 DNS servers lifetime expired.
   base::CancelableClosure ipv6_dns_server_expired_callback_;
   std::unique_ptr<TrafficMonitor> traffic_monitor_;

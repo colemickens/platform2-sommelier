@@ -62,15 +62,14 @@ PortalDetector::PortalDetector(
       dispatcher_(dispatcher),
       weak_ptr_factory_(this),
       portal_result_callback_(callback),
-      connectivity_trial_callback_(Bind(&PortalDetector::CompleteAttempt,
-                                        weak_ptr_factory_.GetWeakPtr())),
       time_(Time::GetInstance()),
       failures_in_content_phase_(0),
       connectivity_trial_(
           new ConnectivityTrial(connection_,
                                 dispatcher_,
                                 kRequestTimeoutSeconds,
-                                connectivity_trial_callback_)) { }
+                                Bind(&PortalDetector::CompleteAttempt,
+                                     weak_ptr_factory_.GetWeakPtr()))) {}
 
 PortalDetector::~PortalDetector() {
   Stop();

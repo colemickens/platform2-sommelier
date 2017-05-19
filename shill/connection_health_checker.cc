@@ -106,8 +106,6 @@ ConnectionHealthChecker::ConnectionHealthChecker(
       sock_fd_(kInvalidSocket),
       socket_info_reader_(new SocketInfoReader()),
       dns_client_factory_(DNSClientFactory::GetInstance()),
-      dns_client_callback_(Bind(&ConnectionHealthChecker::GetDNSResult,
-                                weak_ptr_factory_.GetWeakPtr())),
       health_check_in_progress_(false),
       num_connection_failures_(0),
       num_congested_queue_detected_(0),
@@ -148,12 +146,16 @@ void ConnectionHealthChecker::AddRemoteURL(const string& url_string) {
                                << ".";
     return;
   }
+
+  base::Callback<void(const Error&, const IPAddress&)> dns_client_callback =
+      Bind(&ConnectionHealthChecker::GetDNSResult,
+           weak_ptr_factory_.GetWeakPtr());
   for (int i = 0; i < kNumDNSQueries; ++i) {
     Error error;
     std::unique_ptr<DNSClient> dns_client(dns_client_factory_->CreateDNSClient(
         IPAddress::kFamilyIPv4, connection_->interface_name(),
         connection_->dns_servers(), kDNSTimeoutMilliseconds, dispatcher_,
-        dns_client_callback_));
+        dns_client_callback));
     dns_clients_.push_back(std::move(dns_client));
     if (!dns_clients_[i]->Start(url.host(), &error)) {
       SLOG(connection_.get(), 2) << __func__ << ": Failed to start DNS client "

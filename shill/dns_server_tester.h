@@ -93,8 +93,6 @@ class DNSServerTester {
   base::WeakPtrFactory<DNSServerTester> weak_ptr_factory_;
   base::CancelableClosure start_attempt_;
   base::Callback<void(const Status)> dns_result_callback_;
-  base::Callback<void(const Error&, const IPAddress&)>
-      dns_client_callback_;
   std::unique_ptr<DNSClient> dns_test_client_;
 
   DISALLOW_COPY_AND_ASSIGN(DNSServerTester);

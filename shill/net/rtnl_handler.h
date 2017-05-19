@@ -186,7 +186,6 @@ class SHILL_EXPORT RTNLHandler {
   uint32_t last_dump_sequence_;
 
   std::vector<RTNLListener*> listeners_;
-  base::Callback<void(InputData*)> rtnl_callback_;
   std::unique_ptr<IOHandler> rtnl_handler_;
   IOHandlerFactory* io_handler_factory_;
   std::vector<ErrorMask> error_mask_window_;
