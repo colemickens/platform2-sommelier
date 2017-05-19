@@ -458,16 +458,17 @@ TEST_F(CameraBufferMapperTest, LockYCbCrTest) {
     EXPECT_CALL(gbm_, GbmBoMap(&dummy_bo, 0, 0, kBufferWidth, kBufferHeight, 0,
                                A<uint32_t*>(), A<void**>(), i))
         .Times(1)
-        .WillOnce(Return(reinterpret_cast<uint8_t*>(dummy_addr) + i));
+        .WillOnce(Return(reinterpret_cast<uint8_t*>(dummy_addr) +
+                         buffer->offsets[i]));
   }
   struct android_ycbcr ycbcr;
   EXPECT_EQ(
       cbm_->LockYCbCr(handle, 0, 0, 0, kBufferWidth, kBufferHeight, &ycbcr), 0);
   EXPECT_EQ(ycbcr.y, dummy_addr);
   EXPECT_EQ(ycbcr.cb,
-            reinterpret_cast<uint8_t*>(dummy_addr) + 1 + buffer->offsets[1]);
+            reinterpret_cast<uint8_t*>(dummy_addr) + buffer->offsets[1]);
   EXPECT_EQ(ycbcr.cr,
-            reinterpret_cast<uint8_t*>(dummy_addr) + 2 + buffer->offsets[2]);
+            reinterpret_cast<uint8_t*>(dummy_addr) + buffer->offsets[2]);
   EXPECT_EQ(ycbcr.ystride, buffer->strides[0]);
   EXPECT_EQ(ycbcr.cstride, buffer->strides[1]);
   EXPECT_EQ(ycbcr.chroma_step, 1);
@@ -481,15 +482,16 @@ TEST_F(CameraBufferMapperTest, LockYCbCrTest) {
     EXPECT_CALL(gbm_, GbmBoMap(&dummy_bo, 0, 0, kBufferWidth, kBufferHeight, 0,
                                A<uint32_t*>(), A<void**>(), i))
         .Times(1)
-        .WillOnce(Return(reinterpret_cast<uint8_t*>(dummy_addr) + i));
+        .WillOnce(Return(reinterpret_cast<uint8_t*>(dummy_addr) +
+                         buffer->offsets[i]));
   }
   EXPECT_EQ(
       cbm_->LockYCbCr(handle, 0, 0, 0, kBufferWidth, kBufferHeight, &ycbcr), 0);
   EXPECT_EQ(ycbcr.y, dummy_addr);
   EXPECT_EQ(ycbcr.cb,
-            reinterpret_cast<uint8_t*>(dummy_addr) + 1 + buffer->offsets[1]);
+            reinterpret_cast<uint8_t*>(dummy_addr) + buffer->offsets[1]);
   EXPECT_EQ(ycbcr.cr,
-            reinterpret_cast<uint8_t*>(dummy_addr) + 2 + buffer->offsets[2]);
+            reinterpret_cast<uint8_t*>(dummy_addr) + buffer->offsets[2]);
   EXPECT_EQ(ycbcr.ystride, buffer->strides[0]);
   EXPECT_EQ(ycbcr.cstride, buffer->strides[1]);
   EXPECT_EQ(ycbcr.chroma_step, 1);
@@ -498,15 +500,16 @@ TEST_F(CameraBufferMapperTest, LockYCbCrTest) {
     EXPECT_CALL(gbm_, GbmBoMap(&dummy_bo, 0, 0, kBufferWidth, kBufferHeight, 0,
                                A<uint32_t*>(), A<void**>(), i))
         .Times(1)
-        .WillOnce(Return(reinterpret_cast<uint8_t*>(dummy_addr) + i));
+        .WillOnce(Return(reinterpret_cast<uint8_t*>(dummy_addr) +
+                         buffer->offsets[i]));
   }
   EXPECT_EQ(
       cbm_->LockYCbCr(handle, 0, 0, 0, kBufferWidth, kBufferHeight, &ycbcr), 0);
   EXPECT_EQ(ycbcr.y, dummy_addr);
   EXPECT_EQ(ycbcr.cb,
-            reinterpret_cast<uint8_t*>(dummy_addr) + 1 + buffer->offsets[1]);
+            reinterpret_cast<uint8_t*>(dummy_addr) + buffer->offsets[1]);
   EXPECT_EQ(ycbcr.cr,
-            reinterpret_cast<uint8_t*>(dummy_addr) + 2 + buffer->offsets[2]);
+            reinterpret_cast<uint8_t*>(dummy_addr) + buffer->offsets[2]);
   EXPECT_EQ(ycbcr.ystride, buffer->strides[0]);
   EXPECT_EQ(ycbcr.cstride, buffer->strides[1]);
   EXPECT_EQ(ycbcr.chroma_step, 1);
@@ -540,15 +543,16 @@ TEST_F(CameraBufferMapperTest, LockYCbCrTest) {
     EXPECT_CALL(gbm_, GbmBoMap(&dummy_bo, 0, 0, kBufferWidth, kBufferHeight, 0,
                                A<uint32_t*>(), A<void**>(), i))
         .Times(1)
-        .WillOnce(Return(reinterpret_cast<uint8_t*>(dummy_addr) + i));
+        .WillOnce(Return(reinterpret_cast<uint8_t*>(dummy_addr) +
+                         buffer->offsets[i]));
   }
   EXPECT_EQ(
       cbm_->LockYCbCr(handle, 0, 0, 0, kBufferWidth, kBufferHeight, &ycbcr), 0);
   EXPECT_EQ(ycbcr.y, dummy_addr);
   EXPECT_EQ(ycbcr.cb,
-            reinterpret_cast<uint8_t*>(dummy_addr) + 1 + buffer->offsets[1]);
-  EXPECT_EQ(ycbcr.cr, reinterpret_cast<uint8_t*>(dummy_addr) + 1 +
-                          buffer->offsets[1] + 1);
+            reinterpret_cast<uint8_t*>(dummy_addr) + buffer->offsets[1]);
+  EXPECT_EQ(ycbcr.cr,
+            reinterpret_cast<uint8_t*>(dummy_addr) + buffer->offsets[1] + 1);
   EXPECT_EQ(ycbcr.ystride, buffer->strides[0]);
   EXPECT_EQ(ycbcr.cstride, buffer->strides[1]);
   EXPECT_EQ(ycbcr.chroma_step, 2);

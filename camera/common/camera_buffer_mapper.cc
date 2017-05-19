@@ -222,13 +222,13 @@ int CameraBufferMapper::LockYCbCr(buffer_handle_t buffer,
     out_ycbcr->chroma_step = 2;
     switch (handle->drm_format) {
       case DRM_FORMAT_NV12:
-        out_ycbcr->cb = addr[1] + handle->offsets[1];
-        out_ycbcr->cr = addr[1] + handle->offsets[1] + 1;
+        out_ycbcr->cb = addr[1];
+        out_ycbcr->cr = addr[1] + 1;
         break;
 
       case DRM_FORMAT_NV21:
-        out_ycbcr->cb = addr[1] + handle->offsets[1] + 1;
-        out_ycbcr->cr = addr[1] + handle->offsets[1];
+        out_ycbcr->cb = addr[1] + 1;
+        out_ycbcr->cr = addr[1];
         break;
 
       default:
@@ -240,13 +240,13 @@ int CameraBufferMapper::LockYCbCr(buffer_handle_t buffer,
     out_ycbcr->chroma_step = 1;
     switch (handle->drm_format) {
       case DRM_FORMAT_YUV420:
-        out_ycbcr->cb = addr[1] + handle->offsets[1];
-        out_ycbcr->cr = addr[2] + handle->offsets[2];
+        out_ycbcr->cb = addr[1];
+        out_ycbcr->cr = addr[2];
         break;
 
       case DRM_FORMAT_YVU420:
-        out_ycbcr->cb = addr[2] + handle->offsets[2];
-        out_ycbcr->cr = addr[1] + handle->offsets[1];
+        out_ycbcr->cb = addr[2];
+        out_ycbcr->cr = addr[1];
         break;
 
       default:
@@ -482,7 +482,8 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
       buffer_info_[key].reset(info);
     }
     VLOGF(2) << "Plane " << plane << " of gralloc buffer 0x" << std::hex
-             << handle->buffer_id << " mapped";
+             << handle->buffer_id << " mapped to "
+             << reinterpret_cast<uintptr_t>(out_addr);
     return out_addr;
   } else if (handle->type == SHM) {
     // We can't call mmap() here because each mmap call may return different
@@ -498,7 +499,8 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
         reinterpret_cast<uintptr_t>(buffer_context->mapped_addr) +
         handle->offsets[plane]);
     VLOGF(2) << "Plane " << plane << " of shm buffer 0x" << std::hex
-             << handle->buffer_id << " mapped";
+             << handle->buffer_id << " mapped to "
+             << reinterpret_cast<uintptr_t>(out_addr);
     return out_addr;
   } else {
     NOTREACHED() << "Invalid buffer type: " << handle->type;
