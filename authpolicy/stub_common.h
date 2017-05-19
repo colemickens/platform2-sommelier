@@ -34,7 +34,7 @@ extern const char kAccessDeniedUserPrincipal[];
 extern const char kKdcRetryUserPrincipal[];
 // Triggers quota error in net ads join (user cannot add additional machines).
 extern const char kInsufficientQuotaUserPrincipal[];
-// Triggers stub_kinit to produce a TGT that stub_klist interprets as expired.
+// Triggers kinit to produce a TGT that klist interprets as expired.
 extern const char kExpiredTgtUserPrincipal[];
 // Triggers net ads search to return |kPasswordChangedAccountId| as objectGUID.
 extern const char kPasswordChangedUserPrincipal[];
@@ -55,9 +55,9 @@ extern const char kAccountId[];
 extern const char kAltAccountId[];
 // Triggers a net ads search error when searching for this objectGUID.
 extern const char kBadAccountId[];
-// Triggers pwdLastSet=0 in net ads search.
+// Triggers "pwdLastSet=0" in net ads search.
 extern const char kExpiredPasswordAccountId[];
-// Triggers pwdLastSet=0 and a userAccountControl flag to never expire the
+// Triggers "pwdLastSet=0" and a userAccountControl flag to never expire the
 // password in net ads search.
 extern const char kNeverExpirePasswordAccountId[];
 // Triggers a different pwdLastSet timestamp in net ads search.
@@ -67,27 +67,30 @@ extern const char kPasswordChangedUserName[];
 
 // Default, valid Kerberos crendentials cache contents (in particular, TGT).
 extern const char kValidKrb5CCData[];
-// Triggers stub_klist to think that the TGT expired.
+// Triggers a "TGT expired" message in klist.
 extern const char kExpiredKrb5CCData[];
 
 // Default, valid password.
 extern const char kPassword[];
 // Triggers a wrong/bad password error in kinit.
 extern const char kWrongPassword[];
-// Triggers expired password error in kinit.
+// Triggers "expired password" error in kinit.
 extern const char kExpiredPassword[];
+// Triggers "password will expire" warning in kinit.
+extern const char kWillExpirePassword[];
 
 // Default, valid machine name.
 extern const char kMachineName[];
-// Triggers an error indicating that the machine name is too long.
+// Triggers a "machine name is too long" error in net ads join.
 extern const char kTooLongMachineName[];
-// Triggers an invalid machine name error (machine name contains invalid chars).
+// Triggers an "invalid machine name" error in net ads join (machine name
+// contains invalid chars).
 extern const char kInvalidMachineName[];
-// Triggers bad machine error in kinit (machine doesn't exist), but not in join.
+// Triggers a "bad machine error" in kinit (machine doesn't exist).
 extern const char kNonExistingMachineName[];
-// Triggers a completely empty GPO list.
+// Triggers a completely empty GPO list in net ads gpo list.
 extern const char kEmptyGpoMachineName[];
-// Triggers a GPO download error.
+// Triggers a GPO download error in net ads gpo list.
 extern const char kGpoDownloadErrorMachineName[];
 // Triggers downloading one GPO with user/machine versions > 0 and no flags.
 extern const char kOneGpoMachineName[];
@@ -105,16 +108,15 @@ extern const char kPropagationRetryMachineName[];
 // |kPropagationRetryMachineName| is used.
 const int kNumPropagationRetries = 15;
 
-// Stub GPO GUID, triggers a "download" of testing GPO 1 in stub_smbclient.
+// Stub GPO GUID, triggers a "download" of testing GPO 1 in smbclient.
 extern const char kGpo1Guid[];
-// Stub GPO GUID, triggers a "download" of testing GPO 2 in stub_smbclient.
+// Stub GPO GUID, triggers a "download" of testing GPO 2 in smbclient.
 extern const char kGpo2Guid[];
-// Stub GPO GUID, triggers a GPO download error in stub_smbclient.
+// Stub GPO GUID, triggers a GPO download error in smbclient.
 extern const char kErrorGpoGuid[];
 
-// Filename of stub GPO 1 file. This PREG file is written by tests and
-// stub_smbclient can be triggered to "download" it, e.g. by using
-// kOneGpoMachineName.
+// Filename of stub GPO 1 file. This PREG file is written by tests and smbclient
+// can be triggered to "download" it, e.g. by using kOneGpoMachineName.
 extern const char kGpo1Filename[];
 // Filename of stub GPO 2 file. "Download" can be triggered by using
 // kTwoGposMachineName.

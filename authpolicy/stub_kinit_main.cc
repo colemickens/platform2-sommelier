@@ -35,6 +35,8 @@ const char kPasswordExpiredStderr[] =
 const char kNetworkError[] = "Cannot resolve network address for KDC in realm";
 const char kCannotContactKdc[] = "Cannot contact any KDC";
 const char kKdcIpKey[] = "kdc = [";
+const char kPasswordWillExpireWarning[] =
+    "Warning: Your password will expire in 7 days on Fri May 19 14:28:41 2017";
 
 // Helper file for simulating account propagation issues.
 const char kPropagationTestFile[] = "propagation_test";
@@ -153,6 +155,13 @@ int HandleCommandLine(const std::string& command_line) {
     if (password == kExpiredPassword) {
       WriteOutput(kPasswordExpiredStdout, kPasswordExpiredStderr);
       return kExitCodeError;
+    }
+
+    // Stub warning that the password will expire soon.
+    if (password == kWillExpirePassword) {
+      WriteKrb5CC(kValidKrb5CCData);
+      WriteOutput(kPasswordWillExpireWarning, "");
+      return kExitCodeOk;
     }
 
     // Stub valid password.

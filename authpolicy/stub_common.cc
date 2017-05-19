@@ -50,6 +50,7 @@ const char kExpiredKrb5CCData[] = "expired";
 const char kPassword[] = "p4zzw!5d";
 const char kWrongPassword[] = "pAzzwI5d";
 const char kExpiredPassword[] = "rootpw";
+const char kWillExpirePassword[] = "s00Nb4D";
 
 const char kMachineName[] = "testcomp";
 const char kTooLongMachineName[] = "too_long_machine_name";
