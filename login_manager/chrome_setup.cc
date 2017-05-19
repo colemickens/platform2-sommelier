@@ -105,6 +105,9 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
     disallowed_params_out->insert("--arc-availability");
     disallowed_params_out->insert("--enable-arc");
     disallowed_params_out->insert("--arc-available");
+    disallowed_params_out->insert("-arc-availability");
+    disallowed_params_out->insert("-enable-arc");
+    disallowed_params_out->insert("-arc-available");
   }
 }
 
