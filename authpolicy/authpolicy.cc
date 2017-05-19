@@ -92,41 +92,6 @@ void AuthPolicy::RegisterAsync(
   DCHECK(session_manager_proxy_);
 }
 
-void AuthPolicy::AuthenticateUser(dbus::MethodCall* method_call,
-                                  brillo::dbus_utils::ResponseSender sender) {
-  // Read input arguments.
-  std::string user_principal_name;
-  std::string account_id;
-  dbus::FileDescriptor password_fd;
-  dbus::MessageReader reader(method_call);
-  bool success = reader.PopString(&user_principal_name);
-  if (success)
-    reader.PopString(&account_id);  // Optional, ignore return value!
-  success = success && reader.PopFileDescriptor(&password_fd);
-
-  // Call actual AuthenticateUser method.
-  int32_t int_error;
-  std::vector<uint8_t> account_info_blob;
-  if (success) {
-    password_fd.CheckValidity();
-    AuthenticateUser(user_principal_name,
-                     account_id,
-                     password_fd,
-                     &int_error,
-                     &account_info_blob);
-  } else {
-    int_error = ERROR_DBUS_FAILURE;
-  }
-
-  // Send response.
-  std::unique_ptr<dbus::Response> response =
-      dbus::Response::FromMethodCall(method_call);
-  dbus::MessageWriter writer(response.get());
-  writer.AppendInt32(int_error);
-  writer.AppendArrayOfBytes(account_info_blob.data(), account_info_blob.size());
-  sender.Run(std::move(response));
-}
-
 void AuthPolicy::AuthenticateUser(const std::string& user_principal_name,
                                   const std::string& account_id,
                                   const dbus::FileDescriptor& password_fd,

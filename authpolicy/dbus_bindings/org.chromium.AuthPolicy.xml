@@ -19,10 +19,7 @@
       <arg name="password_fd" type="h" direction="in"/>
       <arg name="error_code" type="i" direction="out"/>
       <arg name="account_info_blob" type="ay" direction="out" />
-      <!-- TODO(ljusten): Using value="raw" to handle missing |account_id| (was
-           added after the fact). Change back to "simple" once Chrome always
-           sends an account_id. crbug.com/709371 -->
-      <annotation name="org.chromium.DBus.Method.Kind" value="raw"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
 
     <!--
