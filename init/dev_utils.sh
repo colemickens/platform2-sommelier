@@ -15,14 +15,15 @@ STATEFUL_PARTITION="/mnt/stateful_partition"
 #    could be ignored here -- otherwise factory shim will be blocked expecially
 #    that RMA center can't reset this device.
 #
-# Usage: dev_check_block_dev_mode BLOCKED_DEV_MODE_FILE
+# Usage: dev_check_block_dev_mode DEV_MODE_FILE
 dev_check_block_dev_mode() {
   if ! crossystem "devsw_boot?1" "debug_build?0" "recovery_reason?0"; then
     return
   fi
 
-  # The file indicates a blocked developer mode transition attempt has occurred.
-  local blocked_dev_mode_file="$1"
+  # The file indicates the system has booted in developer mode and must initiate
+  # a wiping process in next (normal mode) boot.
+  local dev_mode_file="$1"
   local vpd_block_devmode_file=/sys/firmware/vpd/rw/block_devmode
   local block_devmode=
 
@@ -45,7 +46,7 @@ dev_check_block_dev_mode() {
   if [ -n "${block_devmode}" ]; then
     # Put a flag file into place that will trigger a stateful partition wipe
     # after reboot in verified mode.
-    touch "${blocked_dev_mode_file}"
+    touch "${dev_mode_file}"
     chromeos-boot-alert block_devmode
   fi
 }

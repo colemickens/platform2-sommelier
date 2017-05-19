@@ -169,11 +169,12 @@ if [ $(date +%Y) -lt 1970 ]; then
   date 010200001970.00
 fi
 
-# The file indicates a blocked developer mode transition attempt has occurred.
-BLOCKED_DEV_MODE_FILE="/mnt/stateful_partition/.blocked_dev_mode"
+# This file is created by clobber-state after the transition
+# to dev mode.
+DEV_MODE_FILE="/mnt/stateful_partition/.developer_mode"
 
 # Checks if developer mode is blocked.
-dev_check_block_dev_mode "${BLOCKED_DEV_MODE_FILE}"
+dev_check_block_dev_mode "${DEV_MODE_FILE}"
 
 # 'firmware-boot-update' is provided by chromeos-firmware for legacy systems.
 # On most new boards, it should be simply an empty file.
@@ -191,10 +192,6 @@ fi
 # some use cases operate by creating this file with the necessary
 # arguments and then rebooting.
 RESET_FILE="/mnt/stateful_partition/factory_install_reset"
-
-# This file is created by clobber-state after the transition
-# to dev mode.
-DEV_MODE_FILE="/mnt/stateful_partition/.developer_mode"
 
 FIRMWARE_TYPE=$(crossystem mainfw_type)
 
@@ -228,8 +225,7 @@ elif [ -z "$FACTORY_MODE" -a "$FIRMWARE_TYPE" != "recovery" ]; then
       clobber-log -- "Enter developer mode"
     fi
 
-  elif [ -O ${DEV_MODE_FILE} -o -O ${BLOCKED_DEV_MODE_FILE} ] &&
-      crossystem "debug_build?0"; then
+  elif [ -O ${DEV_MODE_FILE} ] && crossystem "debug_build?0"; then
     # We're transitioning from dev mode to verified boot.
     # When coming back from developer mode, we don't need to
     # clobber as aggressively.  Fast will do the trick.
