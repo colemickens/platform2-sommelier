@@ -59,8 +59,6 @@ const char DNSClient::kErrorNetRefused[] = "The network connection was refused";
 const char DNSClient::kErrorTimedOut[] = "The network connection was timed out";
 const char DNSClient::kErrorUnknown[] = "DNS Resolver unknown internal error";
 
-const int DNSClient::kDefaultDNSPort = 53;
-
 // Private to the implementation of resolver so callers don't include ares.h
 struct DNSClientState {
   DNSClientState() : channel(nullptr), start_time{} {}
@@ -124,11 +122,6 @@ bool DNSClient::Start(const string& hostname, Error* error) {
 
     // Format DNS server addresses string as "host:port[,host:port...]" to be
     // used in call to ares_set_servers_csv for setting DNS server addresses.
-    // There is a bug in ares library when parsing IPv6 addresses, where it
-    // always assumes the port number are specified when address contains ":".
-    // So when IPv6 address are given without port number as "xx:xx:xx::yy",the
-    // parser would parse the address as "xx:xx:xx:" and port number as "yy".
-    // To work around this bug, port number are added to each address.
     //
     // Alternatively, we can use ares_set_servers instead, where we would
     // explicitly construct a link list of ares_addr_node.
@@ -140,7 +133,7 @@ bool DNSClient::Start(const string& hostname, Error* error) {
       } else {
         first = false;
       }
-      server_addresses += (ip + ":" + base::IntToString(kDefaultDNSPort));
+      server_addresses += ip;
     }
     status = ares_->SetServersCsv(resolver_state_->channel,
                                   server_addresses.c_str());

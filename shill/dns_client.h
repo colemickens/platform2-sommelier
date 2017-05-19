@@ -90,8 +90,6 @@ class DNSClient {
                                 struct hostent* hostent);
   bool RefreshHandles();
 
-  static const int kDefaultDNSPort;
-
   Error error_;
   IPAddress address_;
   std::string interface_name_;
