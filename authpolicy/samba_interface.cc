@@ -674,6 +674,12 @@ ErrorType SambaInterface::WriteConfiguration() const {
     return ERROR_LOCAL_IO;
   }
 
+  // This file is only authpolicyd's business.
+  ErrorType error =
+      SetFilePermissions(config_path, base::FILE_PERMISSION_READ_BY_USER);
+  if (error != ERROR_NONE)
+    return error;
+
   LOG(INFO) << "Wrote configuration file '" << config_path.value() << "'";
   return ERROR_NONE;
 }

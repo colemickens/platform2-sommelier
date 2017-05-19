@@ -529,6 +529,16 @@ class AuthPolicyTest : public testing::Test {
     EXPECT_EQ(policy.ByteSize(), empty_policy.ByteSize());
   }
 
+  // Authpolicyd revokes write permissions on config.dat. Some tests perform two
+  // domain joins, though, and need to overwrite the previously generated config
+  // file.
+  bool MakeConfigWriteable() {
+    const base::FilePath config_path(paths_->Get(Path::CONFIG_DAT));
+    const int mode = base::FILE_PERMISSION_READ_BY_USER |
+                     base::FILE_PERMISSION_WRITE_BY_USER;
+    return base::SetPosixFilePermissions(config_path, mode);
+  }
+
   std::unique_ptr<base::MessageLoop> message_loop_;
 
   scoped_refptr<MockBus> mock_bus_ = new MockBus(dbus::Bus::Options());
@@ -916,6 +926,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreZeroVersion) {
   validate_user_policy_ = [](const em::CloudPolicySettings& policy) {
     EXPECT_TRUE(policy.has_searchsuggestenabled());
   };
+  EXPECT_TRUE(MakeConfigWriteable());
   EXPECT_EQ(ERROR_NONE,
             Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
@@ -944,6 +955,7 @@ TEST_F(AuthPolicyTest, UserPolicyFetchIgnoreFlagSet) {
   validate_user_policy_ = [](const em::CloudPolicySettings& policy) {
     EXPECT_TRUE(policy.has_searchsuggestenabled());
   };
+  EXPECT_TRUE(MakeConfigWriteable());
   EXPECT_EQ(ERROR_NONE,
             Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
