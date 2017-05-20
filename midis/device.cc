@@ -13,7 +13,9 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 
+#include "midis/constants.h"
 #include "midis/file_handler.h"
+#include "midis/subdevice_client_fd_holder.h"
 
 namespace midis {
 
@@ -49,7 +51,11 @@ std::unique_ptr<Device> Device::Create(const std::string& name, uint32_t card,
 // a. Something has gone wrong with the Device monitor and we need to bail
 // b. Something has gone wrong while adding the device.
 // c. During a graceful shutdown.
-void Device::StopMonitoring() { handlers_.clear(); }
+void Device::StopMonitoring() {
+  // Cancel all the clients FDs who were listening / writing to this device.
+  client_fds_.clear();
+  handlers_.clear();
+}
 
 bool Device::StartMonitoring() {
   // For each sub-device, we instantiate a fd, and an fd watcher
@@ -74,18 +80,17 @@ bool Device::StartMonitoring() {
 }
 
 void Device::HandleReceiveData(const char* buffer, uint32_t subdevice,
-                               int buffer_size) const {
-  LOG(INFO) << "Subdevice: " << subdevice
+                               size_t buf_len) const {
+  LOG(INFO) << "Device: " << device_ << " Subdevice: " << subdevice
             << ", The read MIDI info is:" << buffer;
-  // TODO(pmalani): We have the buffer, we have the subdevice_id. So,
-  // once the client code is in place, we should sent this buffer to all
-  // the clients that are subscribed to this subdevice.
   auto list_it = client_fds_.find(subdevice);
   if (list_it != client_fds_.end()) {
-    for (const auto& id_fd_pair : list_it->second) {
+    for (const auto& id_fd_entry : list_it->second) {
+      // TODO(pmalani): Have a function inside subdevice client fd holder to
+      // perform the write.
       ssize_t ret =
-          HANDLE_EINTR(write(id_fd_pair.second.get(), buffer, buffer_size));
-      if (ret != buffer_size) {
+          HANDLE_EINTR(write(id_fd_entry->GetRawFd(), buffer, buf_len));
+      if (ret != static_cast<ssize_t>(buf_len)) {
         PLOG(ERROR) << "Error writing to client fd.";
         // TODO(pmalani): Gracefully delete the client from all places.
       }
@@ -98,13 +103,21 @@ void Device::RemoveClientFromDevice(uint32_t client_id) {
             << " from all device watchers.";
   for (auto& list_it : client_fds_) {
     for (auto it = list_it.second.begin(); it != list_it.second.end();) {
-      if (it->first == client_id) {
+      if (it->get()->GetClientId() == client_id) {
         LOG(INFO) << "Found client: " << client_id << " in list. deleting";
         it = list_it.second.erase(it);
       } else {
         ++it;
       }
     }
+  }
+}
+
+void Device::WriteClientDataToDevice(uint32_t subdevice_id,
+                                     const uint8_t* buffer, size_t buf_len) {
+  auto handler = handlers_.find(subdevice_id);
+  if (handler != handlers_.end()) {
+    handler->second->WriteData(buffer, buf_len);
   }
 }
 
@@ -119,16 +132,22 @@ base::ScopedFD Device::AddClientToReadSubdevice(uint32_t client_id,
     return base::ScopedFD();
   }
 
-  base::ScopedFD sockfd(sock_fd[0]);
+  base::ScopedFD server_fd(sock_fd[0]);
+  base::ScopedFD client_fd(sock_fd[1]);
 
-  auto id_fd_pair = client_fds_.find(subdevice_id);
-  if (id_fd_pair == client_fds_.end()) {
-    std::vector<std::pair<uint32_t, base::ScopedFD>> list_pairs;
-    list_pairs.emplace_back(client_id, std::move(sockfd));
-    client_fds_.emplace(subdevice_id, std::move(list_pairs));
+  auto id_fd_list = client_fds_.find(subdevice_id);
+  if (id_fd_list == client_fds_.end()) {
+    std::vector<std::unique_ptr<SubDeviceClientFdHolder>> list_entries;
+
+    list_entries.emplace_back(SubDeviceClientFdHolder::Create(
+        client_id, subdevice_id, std::move(server_fd),
+        base::Bind(&Device::WriteClientDataToDevice,
+                   weak_factory_.GetWeakPtr())));
+
+    client_fds_.emplace(subdevice_id, std::move(list_entries));
   } else {
-    for (auto const& pair : id_fd_pair->second) {
-      if (pair.first == client_id) {
+    for (auto const& pair : id_fd_list->second) {
+      if (pair->GetClientId() == client_id) {
         LOG(INFO) << "Client id: " << client_id
                   << " already registered to"
                      " subdevice: "
@@ -136,10 +155,13 @@ base::ScopedFD Device::AddClientToReadSubdevice(uint32_t client_id,
         return base::ScopedFD();
       }
     }
-    id_fd_pair->second.emplace_back(client_id, std::move(sockfd));
+    id_fd_list->second.emplace_back(SubDeviceClientFdHolder::Create(
+        client_id, subdevice_id, std::move(server_fd),
+        base::Bind(&Device::WriteClientDataToDevice,
+                   weak_factory_.GetWeakPtr())));
   }
 
-  return base::ScopedFD(sock_fd[1]);
+  return client_fd;
 }
 
 }  // namespace midis

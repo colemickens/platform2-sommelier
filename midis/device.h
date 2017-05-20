@@ -22,6 +22,8 @@ namespace midis {
 
 class FileHandler;
 
+class SubDeviceClientFdHolder;
+
 // Class which holds information related to a MIDI device.
 // We use the name variable (derived from the ioctl) as a basis
 // to arrive at an identifier.
@@ -40,9 +42,17 @@ class Device {
   uint32_t GetDeviceNum() const { return device_; }
   uint32_t GetNumSubdevices() const { return num_subdevices_; }
   uint32_t GetFlags() const { return flags_; }
+
   // Adds a client which wishes to read data on a particular subdevice
   // This function should return one end of a pipe file descriptor
   // This will be sent back to the client, and it can listen on that for events.
+  //
+  // A device can be bidirectional, and so we should also have a watch on the
+  // pipe FD so that we can read MIDI events and send them to the MIDI
+  // H/W.
+  //
+  // TODO(pmalani): How do you arbitrate MIDI data from multiple clients. The
+  // best approach would be to just allow access to one client for the output.
   // Returns:
   //   A valid base::ScopedFD on success.
   //   An empty base::ScopedFD otherwise.
@@ -73,19 +83,27 @@ class Device {
   }
   // Callback function which is invoked by the FileHandler object when data is
   // received for a particular subdevice.
-  void HandleReceiveData(const char* buffer, uint32_t subdevice, int len) const;
+  void HandleReceiveData(const char* buffer, uint32_t subdevice,
+                         size_t buf_len) const;
+
+  // Callback function which is invoked by SubDeviceClientFdHolder object when
+  // data is received from client to be sent to a particular subdevice.
+  void WriteClientDataToDevice(uint32_t subdevice_id, const uint8_t* buffer,
+                               size_t buf_len);
 
   std::string name_;
   uint32_t card_;
   uint32_t device_;
   uint32_t num_subdevices_;
   uint32_t flags_;
+  // This data structure maps subdevice id's to corresponding file handler
+  // objects.
   std::map<uint32_t, std::unique_ptr<FileHandler>> handlers_;
   // This data-structure performs the following map:
   //
   // subdevice ---> (client_1, pipefd_1), (client_2, pipefd_2), ...., (client_n,
   // pipefd_n).
-  std::map<uint32_t, std::vector<std::pair<uint32_t, base::ScopedFD>>>
+  std::map<uint32_t, std::vector<std::unique_ptr<SubDeviceClientFdHolder>>>
       client_fds_;
   static base::FilePath basedir_;
   base::WeakPtrFactory<Device> weak_factory_;

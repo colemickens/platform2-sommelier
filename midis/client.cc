@@ -12,13 +12,9 @@
 #include <base/memory/ptr_util.h>
 #include <base/posix/eintr_wrapper.h>
 
+#include "midis/constants.h"
+
 namespace midis {
-
-namespace {
-
-const int kMaxBufSize = 1024;
-
-}  // namespace
 
 Client::Client(base::ScopedFD fd, DeviceTracker* device_tracker,
                uint32_t client_id, ClientDeletionCallback del_cb)

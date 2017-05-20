@@ -70,4 +70,15 @@ void FileHandler::SetDeviceDataCbForTesting(const DeviceDataCallback& cb) {
   device_data_cb_ = cb;
 }
 
+void FileHandler::WriteData(const uint8_t* buffer, size_t buf_len) {
+  ssize_t ret = HANDLE_EINTR(write(fd_.get(), buffer, buf_len));
+  if (ret != static_cast<ssize_t>(buf_len)) {
+    PLOG(ERROR) << "Couldn't write device fd: " << fd_.get();
+    // TODO(pmalani): Perform some handling to remove the device.
+    // Either that, or let the device fail silently, and when the device is
+    // unplugged, it's associated state will automatically be removed.
+    StopMonitoring();
+  }
+}
+
 }  // namespace midis

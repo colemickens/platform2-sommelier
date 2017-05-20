@@ -25,8 +25,8 @@ class Device;
 // particular subdevice.
 class FileHandler {
  public:
-  using DeviceDataCallback =
-      base::Callback<void(const char* buffer, uint32_t subdevice_id, int len)>;
+  using DeviceDataCallback = base::Callback<void(
+      const char* buffer, uint32_t subdevice_id, size_t buf_len)>;
   FileHandler(const std::string& path,
               const DeviceDataCallback& device_data_cb);
   ~FileHandler();
@@ -34,6 +34,10 @@ class FileHandler {
   static std::unique_ptr<FileHandler> Create(
       const std::string& path, uint32_t subdevice_id,
       const DeviceDataCallback& device_data_cb);
+
+  // Each FileHandler class has a fd associated with it. This function writes
+  // data to that fd.
+  void WriteData(const uint8_t* buffer, size_t buf_len);
 
  private:
   friend class DeviceTest;
