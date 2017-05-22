@@ -11,15 +11,15 @@ SONAME=libsmogcheck.so
 all: binary
 
 libs:
-	$(CC) $(CFLAGS) -o lib/lib_smogcheck.o -c lib/lib_smogcheck.c
+	$(CC) $(CFLAGS) -o lib_smogcheck.o -c lib_smogcheck.c
 
 shared_libs: libs
-	$(CC) -shared -fPIC -o ${SONAME} lib/lib_smogcheck.o -Wl,-h${SONAME} \
+	$(CC) -shared -fPIC -o ${SONAME} lib_smogcheck.o -Wl,-h${SONAME} \
 	 -lpthread -lrt
 
 binary: shared_libs
 	$(CC) $(CFLAGS) -o smogcheck.o -c smogcheck.c
-	$(CC) $(CFLAGS) -o smogcheck smogcheck.o lib/lib_smogcheck.o
+	$(CC) $(CFLAGS) -o smogcheck smogcheck.o lib_smogcheck.o
 
 install:
 	install -D ${EXEC_NAME} $(DESTDIR)/usr/local/sbin/${EXEC_NAME}
@@ -29,4 +29,4 @@ install:
 .PHONY: clean cov all
 
 clean:
-	rm -f *.o lib/*.o ${EXEC_NAME} ${SONAME}
+	rm -f *.o ${EXEC_NAME} ${SONAME}
