@@ -11,12 +11,14 @@
 extern "C" {
 #endif
 
-int GetDeviceFile(int adapter_nr);
-int SetSlaveAddress(int fd, int addr);
-int WriteByte(int fd, uint8_t reg, uint8_t byte_val);
-int ReadByte(int fd, uint8_t reg);
-int WriteWord(int fd, uint8_t reg, uint16_t word_val);
-int ReadWord(int fd, uint8_t reg);
+#define SMOGCHECK_EXPORT __attribute__((__visibility__("default")))
+
+SMOGCHECK_EXPORT int GetDeviceFile(int adapter_nr);
+SMOGCHECK_EXPORT int SetSlaveAddress(int fd, int addr);
+SMOGCHECK_EXPORT int WriteByte(int fd, uint8_t reg, uint8_t byte_val);
+SMOGCHECK_EXPORT int ReadByte(int fd, uint8_t reg);
+SMOGCHECK_EXPORT int WriteWord(int fd, uint8_t reg, uint16_t word_val);
+SMOGCHECK_EXPORT int ReadWord(int fd, uint8_t reg);
 
 #ifdef __cplusplus
 }
