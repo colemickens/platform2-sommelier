@@ -4,7 +4,6 @@
 
 CC?=cc
 CFLAGS+=-g -Iinclude/ -Wimplicit -fPIC -Wall
-LDFLAGS+=-luuid
 EXEC_NAME=smogcheck
 SONAME=libsmogcheck.so
 
@@ -14,8 +13,7 @@ libs:
 	$(CC) $(CFLAGS) -o lib_smogcheck.o -c lib_smogcheck.c
 
 shared_libs: libs
-	$(CC) -shared -fPIC -o ${SONAME} lib_smogcheck.o -Wl,-h${SONAME} \
-	 -lpthread -lrt
+	$(CC) -shared -fPIC -o ${SONAME} lib_smogcheck.o -Wl,-h${SONAME}
 
 binary: shared_libs
 	$(CC) $(CFLAGS) -o smogcheck.o -c smogcheck.c
