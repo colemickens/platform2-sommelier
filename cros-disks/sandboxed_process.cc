@@ -25,6 +25,14 @@ void SandboxedProcess::LoadSeccompFilterPolicy(const string& policy_file) {
   minijail_use_seccomp_filter(jail_);
 }
 
+void SandboxedProcess::NewMountNamespace() {
+  minijail_namespace_vfs(jail_);
+}
+
+void SandboxedProcess::SkipRemountPrivate() {
+  minijail_skip_remount_private(jail_);
+}
+
 void SandboxedProcess::SetCapabilities(uint64_t capabilities) {
   minijail_use_caps(jail_, capabilities);
 }

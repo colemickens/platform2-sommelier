@@ -71,6 +71,22 @@ MountErrorType FUSEMounter::MountImpl() {
   mount_process.SetUserId(mount_user_id);
   mount_process.SetGroupId(mount_group_id);
 
+  // The FUSE mount program is put under a new mount namespace, so mounts
+  // inside that namespace don't normally propagate out except when a mount is
+  // created under /media, which is marked as a shared mount (by
+  // chromeos_startup). This prevents the FUSE mount program from remounting an
+  // existing mount point outside /media.
+  //
+  // TODO(benchan): It's fragile to assume chromeos_startup makes /media a
+  // shared mount. cros-disks should verify that and make /media a shared mount
+  // when necessary.
+  mount_process.NewMountNamespace();
+  // Prevent minjail from turning /media private again.
+  //
+  // TODO(benchan): Revisit this once minijail provides a finer control over
+  // what should be remounted private and what can remain shared (b:62056108).
+  mount_process.SkipRemountPrivate();
+
   mount_process.AddArgument(mount_program_path_);
   string options_string = mount_options().ToString();
   if (!options_string.empty()) {
