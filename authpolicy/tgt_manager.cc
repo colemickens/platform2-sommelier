@@ -58,6 +58,7 @@ const char kKrb5RealmData[] =
     "[realms]\n"
     "\t%s = {\n"
     "\t\tkdc = [%s]\n"
+    "\t\tkpasswd_server = [%s]\n"
     "\t}\n";
 
 // Env variable to trace debug info of kinit.
@@ -374,7 +375,8 @@ ErrorType TgtManager::RunKinit(ProcessExecutor* kinit_cmd,
 ErrorType TgtManager::WriteKrb5Conf() const {
   std::string data = base::StringPrintf(kKrb5ConfData, realm_.c_str());
   if (!kdc_ip_.empty())
-    data += base::StringPrintf(kKrb5RealmData, realm_.c_str(), kdc_ip_.c_str());
+    data += base::StringPrintf(
+        kKrb5RealmData, realm_.c_str(), kdc_ip_.c_str(), kdc_ip_.c_str());
   const base::FilePath krbconf_path(paths_->Get(config_path_));
   const int data_size = static_cast<int>(data.size());
   if (base::WriteFile(krbconf_path, data.c_str(), data_size) != data_size) {
