@@ -93,7 +93,7 @@ bool PreconditionCheck(int fd) {
 //
 // Returns:
 //   0 if success, -1 if error.
-int WriteByte(int fd, __u8 reg, __u8 byte_val) {
+int WriteByte(int fd, uint8_t reg, uint8_t byte_val) {
   union i2c_smbus_data data;
   data.byte = byte_val;
   struct i2c_smbus_ioctl_data args;
@@ -122,7 +122,7 @@ int WriteByte(int fd, __u8 reg, __u8 byte_val) {
 //
 // Returns:
 //   byte value read if success, -1 if error.
-int ReadByte(int fd, __u8 reg) {
+int ReadByte(int fd, uint8_t reg) {
   union i2c_smbus_data data;
   struct i2c_smbus_ioctl_data args;
   args.read_write = I2C_SMBUS_READ;
@@ -151,7 +151,7 @@ int ReadByte(int fd, __u8 reg) {
 //
 // Returns:
 //   0 if success, -1 if error.
-int WriteWord(int fd, __u8 reg, __u16 word_val) {
+int WriteWord(int fd, uint8_t reg, uint16_t word_val) {
   union i2c_smbus_data data;
   data.word = word_val;
   struct i2c_smbus_ioctl_data args;
@@ -180,7 +180,7 @@ int WriteWord(int fd, __u8 reg, __u16 word_val) {
 //
 // Returns:
 //   word value read if success, -1 if error.
-int ReadWord(int fd, __u8 reg) {
+int ReadWord(int fd, uint8_t reg) {
   union i2c_smbus_data data;
   struct i2c_smbus_ioctl_data args;
   args.read_write = I2C_SMBUS_READ;

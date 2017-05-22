@@ -5,7 +5,7 @@
 #ifndef SMOGCHECK_INCLUDE_LIB_LIB_SMOGCHECK_H_
 #define SMOGCHECK_INCLUDE_LIB_LIB_SMOGCHECK_H_
 
-#include <linux/types.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,10 +13,10 @@ extern "C" {
 
 int GetDeviceFile(int adapter_nr);
 int SetSlaveAddress(int fd, int addr);
-int WriteByte(int fd, __u8 reg, __u8 byte_val);
-int ReadByte(int fd, __u8 reg);
-int WriteWord(int fd, __u8 reg, __u16 word_val);
-int ReadWord(int fd, __u8 reg);
+int WriteByte(int fd, uint8_t reg, uint8_t byte_val);
+int ReadByte(int fd, uint8_t reg);
+int WriteWord(int fd, uint8_t reg, uint16_t word_val);
+int ReadWord(int fd, uint8_t reg);
 
 #ifdef __cplusplus
 }

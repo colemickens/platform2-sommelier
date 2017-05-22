@@ -4,6 +4,7 @@
 //
 // smogcheck.c: demonstrate use of lib_smogcheck.c
 
+#include <stdint.h>
 #include <stdlib.h>
 #include "lib/lib_smogcheck.h"
 
@@ -19,9 +20,9 @@ int main() {
   const int kPcaSlaveAddress = 0x27;
   const int kI2cBusAddress = 0x2;
   const int kInaSlaveAddress = 0x40;
-  const __u8 kLedRegister = 0x3;
-  const __u8 kVoltageRegister = 0x2;
-  const __u8 kTurnOnLedOne = 0xfe;
+  const uint8_t kLedRegister = 0x3;
+  const uint8_t kVoltageRegister = 0x2;
+  const uint8_t kTurnOnLedOne = 0xfe;
 
   fd = GetDeviceFile(kI2cBusAddress);
   ExitOnError(fd);
