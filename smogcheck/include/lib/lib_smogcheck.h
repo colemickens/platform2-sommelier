@@ -7,11 +7,19 @@
 
 #include <linux/types.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int GetDeviceFile(int adapter_nr);
 int SetSlaveAddress(int fd, int addr);
 int WriteByte(int fd, __u8 reg, __u8 byte_val);
 int ReadByte(int fd, __u8 reg);
 int WriteWord(int fd, __u8 reg, __u16 word_val);
 int ReadWord(int fd, __u8 reg);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // SMOGCHECK_INCLUDE_LIB_LIB_SMOGCHECK_H_
