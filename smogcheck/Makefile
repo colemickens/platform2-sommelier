@@ -8,6 +8,7 @@ CPPFLAGS += -I$(SRC)/include
 
 EXEC_NAME = smogcheck
 SONAME = libsmogcheck.so
+LIBDIR = lib
 
 CC_BINARY($(EXEC_NAME)): smogcheck.o CC_LIBRARY($(SONAME))
 all: CC_BINARY($(EXEC_NAME))
@@ -20,5 +21,5 @@ clean: CLEAN(CC_LIBRARY($(SONAME)))
 
 install:
 	install -D $(OUT)/$(EXEC_NAME) $(DESTDIR)/usr/local/sbin/$(EXEC_NAME)
-	install -D -m 0644 $(OUT)/$(SONAME) $(DESTDIR)/usr/lib/$(SONAME)
-	ln -s $(SONAME) $(DESTDIR)/usr/lib/$(SONAME).0
+	install -D -m 0644 $(OUT)/$(SONAME) $(DESTDIR)/usr/$(LIBDIR)/$(SONAME)
+	ln -s $(SONAME) $(DESTDIR)/usr/$(LIBDIR)/$(SONAME).0
