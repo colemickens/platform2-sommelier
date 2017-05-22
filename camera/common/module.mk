@@ -42,6 +42,45 @@ CXX_LIBRARY(common/libcbm.so): LDLIBS += $(libcbm_LDLIBS)
 clean: CLEAN(common/libcbm.so)
 common/libcbm: CXX_LIBRARY(common/libcbm.so)
 
+arc_camera_algo_PC_DEPS := libmojo-$(BASE_VER)
+arc_camera_algo_CPPFLAGS := $(call get_pc_cflags,$(arc_camera_algo_PC_DEPS))
+arc_camera_algo_LDLIBS := $(call get_pc_libs,$(arc_camera_algo_PC_DEPS)) -ldl
+arc_camera_algo_OBJS = \
+	common/camera_algorithm_adapter.o \
+	common/camera_algorithm_main.o \
+	common/camera_algorithm_ops_impl.o \
+	common/future.o \
+	common/mojo/camera_algorithm.mojom.o \
+	hal_adapter/ipc_util.o
+CXX_BINARY(common/arc_camera_algo): $(arc_camera_algo_OBJS)
+CXX_BINARY(common/arc_camera_algo): CPPFLAGS += $(arc_camera_algo_CPPFLAGS)
+CXX_BINARY(common/arc_camera_algo): LDLIBS += $(arc_camera_algo_LDLIBS)
+libcab_PC_DEPS := libmojo-$(BASE_VER)
+libcab_CPPFLAGS := $(call get_pc_cflags,$(libcab_PC_DEPS))
+libcab_LDLIBS := $(call get_pc_libs,$(libcab_PC_DEPS))
+libcab_OBJS = \
+	common/camera_algorithm_bridge_impl.o \
+	common/camera_algorithm_callback_ops_impl.o \
+	common/future.o \
+	common/mojo/camera_algorithm.mojom.o
+CXX_STATIC_LIBRARY(common/libcab.pic.a): $(libcab_OBJS)
+CXX_STATIC_LIBRARY(common/libcab.pic.a): CPPFLAGS += $(libcab_CPPFLAGS)
+CXX_STATIC_LIBRARY(common/libcab.pic.a): LDLIBS += $(libcab_LDLIBS)
+clean: CLEAN(common/arc_camera_algo) CLEAN(common/libcab.pic.a)
+common/libcab: CXX_BINARY(common/arc_camera_algo) CXX_STATIC_LIBRARY(common/libcab.pic.a)
+
+fake_libcam_algo_OBJS = common/fake_libcam_algo.o
+CXX_LIBRARY(common/libcam_algo.so): $(fake_libcam_algo_OBJS)
+libcab_test_PC_DEPS := libcab libmojo-$(BASE_VER)
+libcab_test_CPPFLAGS := $(call get_pc_cflags,$(libcab_test_PC_DEPS))
+libcab_test_LDLIBS := $(call get_pc_libs,$(libcab_test_PC_DEPS)) -lgtest -lrt -pthread
+libcab_test_OBJS = common/libcab_test.o
+CXX_BINARY(common/libcab_test): CPPFLAGS += $(libcab_test_CPPFLAGS)
+CXX_BINARY(common/libcab_test): LDLIBS += $(libcab_test_LDLIBS)
+CXX_BINARY(common/libcab_test): $(libcab_test_OBJS)
+clean: CLEAN(common/libcab_test) CLEAN(common/libcam_algo.so)
+common/libcab_test: CXX_BINARY(common/libcab_test) CXX_LIBRARY(common/libcam_algo.so)
+
 # To link against object files under common/, add $(COMMON_OBJECTS) to the
 # dependency list of your target.
 COMMON_OBJECTS := \

@@ -32,6 +32,16 @@ libcbm: common/libcbm
 
 .PHONY: libcbm
 
+libcab:
+	$(MAKE) common/mojo/mojo_templates
+	$(MAKE) common/libcab
+
+.PHONY: libcab
+
+libcab_test: common/libcab_test
+
+.PHONY: libcab_test
+
 camera_hal_usb: hal/usb/camera_hal
 
 .PHONY: camera_hal_usb

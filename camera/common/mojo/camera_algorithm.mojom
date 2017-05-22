@@ -1,0 +1,67 @@
+// Copyright 2017 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+module arc.mojom;
+
+// This is mojo interface that wraps camera_algorithm_ops_t functions
+
+interface CameraAlgorithmOps {
+  // This method is one-time initialization that registers a callback function
+  // for the camera algorithm library to return a buffer handle. It must be
+  // called before any other functions.
+  //
+  // Args:
+  //    |callbacks|: Callback interface.
+  //
+  // Returns:
+  //    0 on success; corresponding error code on failure.
+  Initialize(CameraAlgorithmCallbackOps callbacks) => (int32 result);
+
+  // This method registers a buffer to the camera algorithm library and gets
+  // the handle associated with it.
+  //
+  // Args:
+  //    |buffer_fd|: The buffer file descriptor to register.
+  //
+  // Returns:
+  //    A handle on success; corresponding error code on failure.
+  RegisterBuffer(handle buffer_fd) => (int32 result);
+
+  // This method posts a request for the camera algorithm library to process the
+  // given buffer.
+  //
+  // Args:
+  //    |req_header|: The request header indicating request details. The
+  //      interpretation depends on the HAL implementation.
+  //    |buffer_handle|: Handle of the buffer to process.
+  //
+  // Returns:
+  //    0 on success; corresponding error code on failure.
+  Request(array<uint8> req_header, int32 buffer_handle) => (int32 result);
+
+  // This method deregisters buffers to the camera algorithm library. The camera
+  // algorithm shall release all the registered buffers on return of this
+  // function.
+  //
+  // Args:
+  //    |buffer_handles|: The buffer handles to deregister.
+  //
+  // Returns:
+  //    A handle on success; -1 on failure.
+  DeregisterBuffers(array<int32> buffer_handles);
+};
+
+// This is mojo interface that wraps camera_algorithm_callback_ops_t functions
+
+interface CameraAlgorithmCallbackOps {
+  // This method returns a buffer that the camera algorithm library has
+  // completed the corresponding request.
+  //
+  // Args:
+  //    |buffer_handle|: Handle of the buffer to return.
+  //
+  // Returns:
+  //    0 on success; corresponding error code on failure.
+  Return(int32 buffer_handle) => (int32 result);
+};
