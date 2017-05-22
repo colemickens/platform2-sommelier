@@ -20,6 +20,6 @@ all: CC_LIBRARY($(SONAME))
 clean: CLEAN(CC_LIBRARY($(SONAME)))
 
 install:
-	install -D $(OUT)/$(EXEC_NAME) $(DESTDIR)/usr/local/sbin/$(EXEC_NAME)
-	install -D -m 0644 $(OUT)/$(SONAME) $(DESTDIR)/usr/$(LIBDIR)/$(SONAME)
+	install -D -m 0755 $(OUT)/$(EXEC_NAME) $(DESTDIR)/usr/local/sbin/$(EXEC_NAME)
+	install -D -m 0755 $(OUT)/$(SONAME) $(DESTDIR)/usr/$(LIBDIR)/$(SONAME)
 	ln -s $(SONAME) $(DESTDIR)/usr/$(LIBDIR)/$(SONAME).0
