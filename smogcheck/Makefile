@@ -2,29 +2,23 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-CC?=cc
-CFLAGS+=-g -Iinclude/ -Wimplicit -fPIC -Wall
-EXEC_NAME=smogcheck
-SONAME=libsmogcheck.so
+include common.mk
 
-all: binary
+CPPFLAGS += -I$(SRC)/include
 
-libs:
-	$(CC) $(CFLAGS) -o lib_smogcheck.o -c lib_smogcheck.c
+EXEC_NAME = smogcheck
+SONAME = libsmogcheck.so
 
-shared_libs: libs
-	$(CC) -shared -fPIC -o ${SONAME} lib_smogcheck.o -Wl,-h${SONAME}
+CC_BINARY($(EXEC_NAME)): smogcheck.o CC_LIBRARY($(SONAME))
+all: CC_BINARY($(EXEC_NAME))
+clean: CLEAN(CC_BINARY($(EXEC_NAME)))
 
-binary: shared_libs
-	$(CC) $(CFLAGS) -o smogcheck.o -c smogcheck.c
-	$(CC) $(CFLAGS) -o smogcheck smogcheck.o lib_smogcheck.o
+CC_LIBRARY($(SONAME)): lib_smogcheck.o
+CC_LIBRARY($(SONAME)): LDFLAGS += -Wl,-soname=$(SONAME)
+all: CC_LIBRARY($(SONAME))
+clean: CLEAN(CC_LIBRARY($(SONAME)))
 
 install:
-	install -D ${EXEC_NAME} $(DESTDIR)/usr/local/sbin/${EXEC_NAME}
-	install -D -m 0644 $(SONAME) $(DESTDIR)/usr/lib/$(SONAME)
+	install -D $(OUT)/$(EXEC_NAME) $(DESTDIR)/usr/local/sbin/$(EXEC_NAME)
+	install -D -m 0644 $(OUT)/$(SONAME) $(DESTDIR)/usr/lib/$(SONAME)
 	ln -s $(SONAME) $(DESTDIR)/usr/lib/$(SONAME).0
-
-.PHONY: clean cov all
-
-clean:
-	rm -f *.o ${EXEC_NAME} ${SONAME}
