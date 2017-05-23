@@ -34,11 +34,11 @@
           'type': 'executable',
           'dependencies': [
             'libchromeos-ui-<(libbase_ver)',
+            '../common-mk/testrunner.gyp:testrunner',
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'chromeos/ui/chromium_command_builder_unittest.cc',
-            'testrunner.cc',
           ],
         },
       ]},

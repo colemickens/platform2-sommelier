@@ -217,11 +217,11 @@
           'dependencies': [
             'libp2p-util',
             'libp2p-testutil',
+            '../common-mk/testrunner.gyp:testrunner',
           ],
           'sources': [
             'common/server_message_unittest.cc',
             'common/struct_serializer_unittest.cc',
-            'common/testrunner.cc',
             'common/testutil_unittest.cc',
           ],
         },
@@ -233,11 +233,11 @@
             'libp2p-util',
             'libp2p-testutil',
             'libp2p-client',
+            '../common-mk/testrunner.gyp:testrunner',
           ],
           'sources': [
             'client/fake_service_finder.cc',
             'client/peer_selector_unittest.cc',
-            'client/testrunner.cc',
           ],
         },
         # p2p-server tests
@@ -248,12 +248,12 @@
             'libp2p-util',
             'libp2p-testutil',
             'libp2p-server',
+            '../common-mk/testrunner.gyp:testrunner',
           ],
           'sources': [
             'server/file_watcher_unittest.cc',
             'server/http_server_unittest.cc',
             'server/peer_update_manager_unittest.cc',
-            'server/testrunner.cc',
           ],
         },
         # p2p-http-server tests
@@ -264,11 +264,11 @@
             'libp2p-util',
             'libp2p-testutil',
             'libp2p-http-server',
+            '../common-mk/testrunner.gyp:testrunner',
           ],
           'sources': [
             'http_server/connection_delegate_unittest.cc',
             'http_server/server_unittest.cc',
-            'http_server/testrunner.cc',
           ],
         },
       ],

@@ -87,7 +87,10 @@
         {
           'target_name': 'disks_testrunner',
           'type': 'executable',
-          'dependencies': ['libdisks'],
+          'dependencies': [
+            'libdisks',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'archive_manager_unittest.cc',
@@ -95,7 +98,6 @@
             'device_event_queue_unittest.cc',
             'disk_manager_unittest.cc',
             'disk_unittest.cc',
-            'disks_testrunner.cc',
             'external_mounter_unittest.cc',
             'file_reader_unittest.cc',
             'format_manager_unittest.cc',

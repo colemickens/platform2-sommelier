@@ -71,11 +71,13 @@
         {
           'target_name': 'lorgnette_unittest',
           'type': 'executable',
-          'dependencies': ['liblorgnette'],
+          'dependencies': [
+            'liblorgnette',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'manager_unittest.cc',
-            'testrunner.cc',
           ],
         },
       ],

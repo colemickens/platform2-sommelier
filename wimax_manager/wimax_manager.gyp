@@ -143,14 +143,16 @@
             {
               'target_name': 'wimax_manager_testrunner',
               'type': 'executable',
-              'dependencies': ['libwimax_manager'],
+              'dependencies': [
+                'libwimax_manager',
+                '../common-mk/testrunner.gyp:testrunner',
+              ],
               'includes': ['../common-mk/common_test.gypi'],
               'sources': [
                 'byte_identifier_unittest.cc',
                 'gdm_device_unittest.cc',
                 'manager_unittest.cc',
                 'network_unittest.cc',
-                'testrunner.cc',
                 'utility_unittest.cc',
               ],
             },

@@ -89,6 +89,7 @@
           'type': 'executable',
           'dependencies': [
             'peerd_common',
+            '../common-mk/testrunner.gyp:testrunner',
           ],
           'variables': {
             'deps': [
@@ -103,7 +104,6 @@
             'manager_unittest.cc',
             'peer_manager_impl_unittest.cc',
             'peer_unittest.cc',
-            'peerd_testrunner.cc',
             'published_peer_unittest.cc',
             'service_unittest.cc',
             'test_util.cc',
