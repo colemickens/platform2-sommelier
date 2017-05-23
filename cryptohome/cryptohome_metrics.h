@@ -194,6 +194,14 @@ void ReportDircryptoMigrationFailedOperationType(
 void ReportDircryptoMigrationFailedPathType(
     DircryptoMigrationFailedPathType type);
 
+// Reports the total byte count in MB to migrate to the
+// "Cryptohome.DircryptoMigrationTotalByteCountInMb" histogram.
+void ReportDircryptoMigrationTotalByteCountInMb(int total_byte_count_mb);
+
+// Reports the total file count to migrate to the
+// "Cryptohome.DircryptoMigrationTotalFileCount" histogram.
+void ReportDircryptoMigrationTotalFileCount(int total_file_count);
+
 // The |type| value is reported to the "Cryptohome.HomedirEncryptionType" enum
 // histogram.
 void ReportHomedirEncryptionType(HomedirEncryptionType type);

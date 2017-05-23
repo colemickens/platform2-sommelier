@@ -173,6 +173,9 @@ class MigrationHelper {
   uint64_t effective_chunk_size_;
   uint64_t total_byte_count_;
   uint64_t total_directory_byte_count_;
+  int n_files_;
+  int n_dirs_;
+  int n_symlinks_;
 
   uint64_t migrated_byte_count_;
   base::TimeTicks next_report_;

@@ -255,6 +255,9 @@ MigrationHelper::MigrationHelper(Platform* platform,
       effective_chunk_size_(0),
       total_byte_count_(0),
       total_directory_byte_count_(0),
+      n_files_(0),
+      n_dirs_(0),
+      n_symlinks_(0),
       migrated_byte_count_(0),
       namespaced_mtime_xattr_name_(kMtimeXattrName),
       namespaced_atime_xattr_name_(kAtimeXattrName),
@@ -317,6 +320,10 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
         effective_chunk_size_ - (effective_chunk_size_ % kErasureBlockSize);
 
   CalculateDataToMigrate(from_base_path_);
+  if (!resumed) {
+    ReportDircryptoMigrationTotalByteCountInMb(total_byte_count_ / 1024 / 1024);
+    ReportDircryptoMigrationTotalFileCount(n_files_ + n_dirs_ + n_symlinks_);
+  }
   ReportStatus(DIRCRYPTO_MIGRATION_IN_PROGRESS);
   struct stat from_stat;
   if (!platform_->Stat(from_base_path_, &from_stat)) {
@@ -364,7 +371,6 @@ void MigrationHelper::CalculateDataToMigrate(const base::FilePath& from) {
   total_byte_count_ = 0;
   total_directory_byte_count_ = 0;
   migrated_byte_count_ = 0;
-  int n_files = 0, n_dirs = 0, n_symlinks = 0;
   std::unique_ptr<FileEnumerator> enumerator(platform_->GetFileEnumerator(
       from,
       true /* recursive */,
@@ -376,17 +382,17 @@ void MigrationHelper::CalculateDataToMigrate(const base::FilePath& from) {
     total_byte_count_ += info.GetSize();
 
     if (S_ISREG(info.stat().st_mode))
-      ++n_files;
+      ++n_files_;
     if (S_ISDIR(info.stat().st_mode)) {
       total_directory_byte_count_ += info.GetSize();
-      ++n_dirs;
+      ++n_dirs_;
     }
     if (S_ISLNK(info.stat().st_mode))
-      ++n_symlinks;
+      ++n_symlinks_;
   }
-  LOG(INFO) << "Number of files: " << n_files;
-  LOG(INFO) << "Number of directories: " << n_dirs;
-  LOG(INFO) << "Number of symlinks: " << n_symlinks;
+  LOG(INFO) << "Number of files: " << n_files_;
+  LOG(INFO) << "Number of directories: " << n_dirs_;
+  LOG(INFO) << "Number of symlinks: " << n_symlinks_;
 }
 
 void MigrationHelper::IncrementMigratedBytes(uint64_t bytes) {

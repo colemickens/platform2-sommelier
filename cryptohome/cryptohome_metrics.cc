@@ -39,6 +39,10 @@ constexpr char kCryptohomeDircryptoMigrationFailedOperationTypeHistogram[] =
     "Cryptohome.DircryptoMigrationFailedOperationType";
 constexpr char kCryptohomeDircryptoMigrationFailedPathTypeHistogram[] =
     "Cryptohome.DircryptoMigrationFailedPathType";
+constexpr char kCryptohomeDircryptoMigrationTotalByteCountInMbHistogram[] =
+    "Cryptohome.DircryptoMigrationTotalByteCountInMb";
+constexpr char kCryptohomeDircryptoMigrationTotalFileCountHistogram[] =
+    "Cryptohome.DircryptoMigrationTotalFileCount";
 constexpr char kHomedirEncryptionTypeHistogram[] =
     "Cryptohome.HomedirEncryptionType";
 
@@ -234,6 +238,26 @@ void ReportDircryptoMigrationFailedPathType(
       kCryptohomeDircryptoMigrationFailedPathTypeHistogram,
       type,
       kMigrationFailedPathTypeNumBuckets);
+}
+
+void ReportDircryptoMigrationTotalByteCountInMb(int total_byte_count_mb) {
+  if (!g_metrics) {
+    return;
+  }
+  constexpr int kMin = 0, kMax = 1024 * 1024, kNumBuckets = 50;
+  g_metrics->SendToUMA(
+      kCryptohomeDircryptoMigrationTotalByteCountInMbHistogram,
+      total_byte_count_mb, kMin, kMax, kNumBuckets);
+}
+
+void ReportDircryptoMigrationTotalFileCount(int total_file_count) {
+  if (!g_metrics) {
+    return;
+  }
+  constexpr int kMin = 0, kMax = 100000000, kNumBuckets = 50;
+  g_metrics->SendToUMA(
+      kCryptohomeDircryptoMigrationTotalFileCountHistogram, total_file_count,
+      kMin, kMax, kNumBuckets);
 }
 
 void ReportHomedirEncryptionType(HomedirEncryptionType type) {
