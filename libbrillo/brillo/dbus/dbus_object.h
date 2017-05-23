@@ -555,6 +555,9 @@ class BRILLO_EXPORT DBusObject {
   scoped_refptr<dbus::Bus> GetBus() { return bus_; }
 
  private:
+  // Add the org.freedesktop.DBus.Properties interface to the object.
+  void RegisterPropertiesInterface();
+
   // A map of all the interfaces added to this object.
   std::map<std::string, std::unique_ptr<DBusInterface>> interfaces_;
   // Exported property set for properties registered with the interfaces
