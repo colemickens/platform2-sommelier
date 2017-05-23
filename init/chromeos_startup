@@ -179,11 +179,6 @@ dev_check_block_dev_mode "${BLOCKED_DEV_MODE_FILE}"
 # On most new boards, it should be simply an empty file.
 firmware-boot-update
 
-# If we're in verified mode, lock down the system a bit more than normal.
-if [ "${CROS_DEBUG}" != "1" ]; then
-  mount -n --bind /bin/false /usr/bin/sudo
-fi
-
 # Now that stateful partition is mounted, we can check if we are in factory
 # mode.
 FACTORY_MODE=
