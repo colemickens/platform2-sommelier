@@ -15,8 +15,10 @@ CPPFLAGS += -D_GNU_SOURCE -I$(abspath $(SRC)) -I$(abspath $(SRC)/include) \
 CXXFLAGS += -std=c++11 -Wpointer-arith
 CFLAGS += -std=c99
 
+libcamera_client: libcamera_client/all
+
 libcamera_metadata: libcamera_metadata/all
 
 libsync: libsync/all
 
-.PHONY: libcamera_metadata libsync
+.PHONY: libcamera_client libcamera_metadata libsync
