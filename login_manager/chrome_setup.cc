@@ -314,6 +314,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
       // The new mode of rialto operation. See crbug.com/574923
       builder->AddArg("--login-manager");
       builder->AddArg("--enterprise-enable-zero-touch-enrollment=hands-off");
+      builder->AddArg("--disable-machine-cert-request");
       builder->AddArg("--cellular-first");
       builder->AddArg(
           "--app-mode-oem-manifest=/etc/rialto_overlay_oem_manifest.json");
