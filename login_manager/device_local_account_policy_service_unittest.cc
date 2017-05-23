@@ -28,6 +28,17 @@ using testing::StrictMock;
 using testing::_;
 
 namespace login_manager {
+namespace {
+
+// Thin wrapper of base::WriteFile to adapt blob interface.
+// Returns true on success.
+bool WriteBlobToFile(const base::FilePath& filename,
+                     const std::string& blob) {
+  int result = base::WriteFile(filename, blob.data(), blob.size());
+  return result >= 0 && static_cast<size_t>(result) == blob.size();
+}
+
+}  // namespace
 
 class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
  public:
@@ -189,10 +200,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, RetrieveSuccess) {
   SetupKey();
 
   ASSERT_TRUE(base::CreateDirectory(fake_account_policy_path_.DirName()));
-  ASSERT_EQ(policy_blob_.size(),
-            base::WriteFile(fake_account_policy_path_,
-                            policy_blob_.c_str(),
-                            policy_blob_.size()));
+  ASSERT_TRUE(WriteBlobToFile(fake_account_policy_path_, policy_blob_));
 
   std::vector<uint8_t> policy_data;
   EXPECT_TRUE(service_->Retrieve(fake_account_, &policy_data));
@@ -202,8 +210,8 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, RetrieveSuccess) {
 TEST_F(DeviceLocalAccountPolicyServiceTest, PurgeStaleAccounts) {
   SetupKey();
 
-  ASSERT_TRUE(base::WriteFile(
-      fake_account_policy_path_, policy_blob_.c_str(), policy_blob_.size()));
+  ASSERT_TRUE(base::CreateDirectory(fake_account_policy_path_.DirName()));
+  ASSERT_TRUE(WriteBlobToFile(fake_account_policy_path_, policy_blob_));
 
   em::ChromeDeviceSettingsProto device_settings;
   service_->UpdateDeviceSettings(device_settings);
