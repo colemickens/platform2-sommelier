@@ -178,7 +178,7 @@ class CameraClient {
     void NotifyShutter(uint32_t frame_number, int64_t* timestamp);
 
     // Dequeue V4L2 frame buffer.
-    int DequeueV4L2Buffer();
+    int DequeueV4L2Buffer(int rotate_degree);
 
     // Enqueue V4L2 frame buffer.
     int EnqueueV4L2Buffer();

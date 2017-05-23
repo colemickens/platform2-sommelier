@@ -54,7 +54,8 @@ static int YU12ToNV21(const void* yv12, void* nv21, int width, int height);
 static bool ConvertToJpeg(const android::CameraMetadata& metadata,
                           const FrameBuffer& in_frame,
                           FrameBuffer* out_frame);
-static bool SetExifTags(const android::CameraMetadata& metadata, ExifUtils* utils);
+static bool SetExifTags(const android::CameraMetadata& metadata,
+                        ExifUtils* utils);
 
 // How precise the float-to-rational conversion for EXIF tags would be.
 static const int kRationalPrecision = 10000;
@@ -351,7 +352,8 @@ static bool ConvertToJpeg(const android::CameraMetadata& metadata,
   return true;
 }
 
-static bool SetExifTags(const android::CameraMetadata& metadata, ExifUtils* utils) {
+static bool SetExifTags(const android::CameraMetadata& metadata,
+                        ExifUtils* utils) {
   time_t raw_time = 0;
   struct tm time_info;
   bool time_available = time(&raw_time) != -1;

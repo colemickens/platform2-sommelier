@@ -93,8 +93,8 @@ int CachedFrame::ConvertToYU12() {
   yu12_frame_->SetWidth(source_frame_->GetWidth());
   yu12_frame_->SetHeight(source_frame_->GetHeight());
 
-  int res = ImageProcessor::ConvertFormat(android::CameraMetadata(), *source_frame_,
-                                          yu12_frame_.get());
+  int res = ImageProcessor::ConvertFormat(android::CameraMetadata(),
+                                          *source_frame_, yu12_frame_.get());
   if (res) {
     LOGF(ERROR) << "Convert from " << FormatToString(source_frame_->GetFourcc())
                 << " to YU12 fails.";

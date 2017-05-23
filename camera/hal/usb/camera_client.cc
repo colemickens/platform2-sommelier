@@ -555,7 +555,14 @@ int CameraClient::RequestHandler::WriteStreamBuffer(
 
   // Get frame data from device only for the first buffer or new stream.
   if (stream_index == 0 || stream_restart == true) {
-    ret = DequeueV4L2Buffer();
+    int rotate_degree = 0;
+    if (metadata.exists(ANDROID_SENSOR_CROP_ROTATE_SCALE)) {
+      camera_metadata_ro_entry entry =
+          metadata.find(ANDROID_SENSOR_CROP_ROTATE_SCALE);
+      rotate_degree = entry.data.i32[0];
+    }
+
+    ret = DequeueV4L2Buffer(rotate_degree);
     if (ret) {
       return ret;
     }
@@ -647,7 +654,7 @@ void CameraClient::RequestHandler::NotifyShutter(uint32_t frame_number,
   callback_ops_->notify(callback_ops_, &m);
 }
 
-int CameraClient::RequestHandler::DequeueV4L2Buffer() {
+int CameraClient::RequestHandler::DequeueV4L2Buffer(int rotate_degree) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   uint32_t buffer_id, data_size;
   int ret = device_->GetNextFrameBuffer(&buffer_id, &data_size);
@@ -664,7 +671,8 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer() {
         << "Set data size failed for input buffer id: " << buffer_id;
     return ret;
   }
-  ret = input_frame_.SetSource(input_buffers_[buffer_id].get(), 0);
+
+  ret = input_frame_.SetSource(input_buffers_[buffer_id].get(), rotate_degree);
   if (ret) {
     LOGFID(ERROR, device_id_)
         << "Set image source failed for input buffer id: " << buffer_id;

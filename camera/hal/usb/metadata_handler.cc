@@ -325,8 +325,9 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
   return 0;
 }
 
-int MetadataHandler::FillMetadataFromDeviceInfo(const DeviceInfo& device_info,
-                                                android::CameraMetadata* metadata) {
+int MetadataHandler::FillMetadataFromDeviceInfo(
+    const DeviceInfo& device_info,
+    android::CameraMetadata* metadata) {
   UPDATE(ANDROID_SENSOR_ORIENTATION, &device_info.sensor_orientation, 1);
 
   uint8_t lens_facing = device_info.lens_facing;
@@ -366,8 +367,9 @@ const camera_metadata_t* MetadataHandler::GetDefaultRequestSettings(
   return template_settings_[template_type].get();
 }
 
-void MetadataHandler::PreHandleRequest(int frame_number,
-                                       const android::CameraMetadata& metadata) {
+void MetadataHandler::PreHandleRequest(
+    int frame_number,
+    const android::CameraMetadata& metadata) {
   DCHECK(thread_checker_.CalledOnValidThread());
   if (metadata.exists(ANDROID_CONTROL_AF_TRIGGER)) {
     camera_metadata_ro_entry entry = metadata.find(ANDROID_CONTROL_AF_TRIGGER);
