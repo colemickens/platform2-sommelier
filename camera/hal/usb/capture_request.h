@@ -9,19 +9,18 @@
 #include <vector>
 
 #include <hardware/camera3.h>
-
-#include "arc/camera_metadata.h"
+#include "camera/camera_metadata.h"
 
 namespace arc {
 
 class CaptureRequest {
  public:
   explicit CaptureRequest(const camera3_capture_request& request,
-                          const CameraMetadata& metadata);
+                          const android::CameraMetadata& metadata);
   ~CaptureRequest();
 
   const int GetFrameNumber() const { return frame_number_; }
-  CameraMetadata* GetMetadata() { return &metadata_; }
+  android::CameraMetadata* GetMetadata() { return &metadata_; }
   std::vector<camera3_stream_buffer_t>* GetStreamBuffers() {
     return &output_stream_buffers_;
   }
@@ -37,7 +36,7 @@ class CaptureRequest {
   //   (e.g. jpeg encoding is slow), set release_fence to a fence we create.
   //   We cannot use the buffers after signaling the fence.
   const int frame_number_;
-  CameraMetadata metadata_;
+  android::CameraMetadata metadata_;
   std::vector<camera3_stream_buffer_t> output_stream_buffers_;
   std::vector<buffer_handle_t> buffer_handles_;
 };

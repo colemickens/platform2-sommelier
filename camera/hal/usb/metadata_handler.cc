@@ -15,7 +15,7 @@
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 #define UPDATE(tag, data, size)                      \
   {                                                  \
-    if (metadata->Update((tag), (data), (size))) {   \
+    if (metadata->update((tag), (data), (size))) {   \
       LOGF(ERROR) << "Update " << #tag << " failed"; \
       return -EINVAL;                                \
     }                                                \
@@ -41,7 +41,7 @@ MetadataHandler::MetadataHandler(const camera_metadata_t& metadata)
 
 MetadataHandler::~MetadataHandler() {}
 
-int MetadataHandler::FillDefaultMetadata(CameraMetadata* metadata) {
+int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
   const uint8_t hardware_level = ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED;
   UPDATE(ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL, &hardware_level, 1);
 
@@ -223,7 +223,7 @@ int MetadataHandler::FillDefaultMetadata(CameraMetadata* metadata) {
 
 int MetadataHandler::FillMetadataFromSupportedFormats(
     const SupportedFormats& supported_formats,
-    CameraMetadata* metadata) {
+    android::CameraMetadata* metadata) {
   if (supported_formats.empty()) {
     return -EINVAL;
   }
@@ -326,7 +326,7 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
 }
 
 int MetadataHandler::FillMetadataFromDeviceInfo(const DeviceInfo& device_info,
-                                                CameraMetadata* metadata) {
+                                                android::CameraMetadata* metadata) {
   UPDATE(ANDROID_SENSOR_ORIENTATION, &device_info.sensor_orientation, 1);
 
   uint8_t lens_facing = device_info.lens_facing;
@@ -367,10 +367,10 @@ const camera_metadata_t* MetadataHandler::GetDefaultRequestSettings(
 }
 
 void MetadataHandler::PreHandleRequest(int frame_number,
-                                       const CameraMetadata& metadata) {
+                                       const android::CameraMetadata& metadata) {
   DCHECK(thread_checker_.CalledOnValidThread());
-  if (metadata.Exists(ANDROID_CONTROL_AF_TRIGGER)) {
-    camera_metadata_ro_entry entry = metadata.Find(ANDROID_CONTROL_AF_TRIGGER);
+  if (metadata.exists(ANDROID_CONTROL_AF_TRIGGER)) {
+    camera_metadata_ro_entry entry = metadata.find(ANDROID_CONTROL_AF_TRIGGER);
     if (entry.data.u8[0] == ANDROID_CONTROL_AF_TRIGGER_START) {
       af_trigger_ = true;
     } else if (entry.data.u8[0] == ANDROID_CONTROL_AF_TRIGGER_CANCEL) {
@@ -382,7 +382,7 @@ void MetadataHandler::PreHandleRequest(int frame_number,
 
 void MetadataHandler::PostHandleRequest(int frame_number,
                                         int64_t timestamp,
-                                        CameraMetadata* metadata) {
+                                        android::CameraMetadata* metadata) {
   DCHECK(thread_checker_.CalledOnValidThread());
   if (current_frame_number_ != frame_number) {
     LOGF(ERROR)
@@ -390,13 +390,13 @@ void MetadataHandler::PostHandleRequest(int frame_number,
     return;
   }
 
-  metadata->Update(ANDROID_SENSOR_TIMESTAMP, &timestamp, 1);
+  metadata->update(ANDROID_SENSOR_TIMESTAMP, &timestamp, 1);
 
   // For USB camera, we don't know the AE state. Set the state to converged to
   // indicate the frame should be good to use. Then apps don't have to wait the
   // AE state.
   uint8_t ae_state = ANDROID_CONTROL_AE_STATE_CONVERGED;
-  metadata->Update(ANDROID_CONTROL_AE_STATE, &ae_state, 1);
+  metadata->update(ANDROID_CONTROL_AE_STATE, &ae_state, 1);
 
   // For USB camera, the USB camera handles everything and we don't have control
   // over AF. We only simply fake the AF metadata based on the request
@@ -407,11 +407,11 @@ void MetadataHandler::PostHandleRequest(int frame_number,
   } else {
     af_state = ANDROID_CONTROL_AF_STATE_INACTIVE;
   }
-  metadata->Update(ANDROID_CONTROL_AF_STATE, &af_state, 1);
+  metadata->update(ANDROID_CONTROL_AF_STATE, &af_state, 1);
 
   // Set AWB state to converged to indicate the frame should be good to use.
   uint8_t awb_state = ANDROID_CONTROL_AWB_STATE_CONVERGED;
-  metadata->Update(ANDROID_CONTROL_AWB_STATE, &awb_state, 1);
+  metadata->update(ANDROID_CONTROL_AWB_STATE, &awb_state, 1);
 }
 
 bool MetadataHandler::IsValidTemplateType(int template_type) {
@@ -445,14 +445,14 @@ CameraMetadataUniquePtr MetadataHandler::CreateDefaultRequestSettings(
       return NULL;
   }
 
-  CameraMetadata data(metadata_);
+  android::CameraMetadata data(metadata_);
   uint8_t control_mode = ANDROID_CONTROL_MODE_AUTO;
 
-  if (data.Update(ANDROID_CONTROL_MODE, &control_mode, 1) ||
-      data.Update(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1)) {
+  if (data.update(ANDROID_CONTROL_MODE, &control_mode, 1) ||
+      data.update(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1)) {
     return CameraMetadataUniquePtr();
   }
-  return CameraMetadataUniquePtr(data.Release());
+  return CameraMetadataUniquePtr(data.release());
 }
 
 }  // namespace arc

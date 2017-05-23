@@ -13,7 +13,8 @@
 // Declarations of HAL_PIXEL_FORMAT_XXX.
 #include <system/graphics.h>
 
-#include "arc/camera_metadata.h"
+#include <camera/camera_metadata.h>
+
 #include "hal/usb/frame_buffer.h"
 
 namespace arc {
@@ -30,7 +31,7 @@ struct ImageProcessor {
   // fill |data|, |buffer_size|, |width|, and |height| of |out_frame|. The
   // function will fill |out_frame->data_size|. Return non-zero error code on
   // failure; return 0 on success.
-  static int ConvertFormat(const CameraMetadata& metadata,
+  static int ConvertFormat(const android::CameraMetadata& metadata,
                            const FrameBuffer& in_frame,
                            FrameBuffer* out_frame);
 

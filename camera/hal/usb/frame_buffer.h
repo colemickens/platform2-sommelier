@@ -15,8 +15,7 @@
 #include <arc/camera_buffer_mapper.h>
 #include <base/files/scoped_file.h>
 #include <base/synchronization/lock.h>
-
-#include "arc/camera_metadata.h"
+#include <camera/camera_metadata.h>
 
 namespace arc {
 

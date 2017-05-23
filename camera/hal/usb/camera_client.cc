@@ -410,7 +410,7 @@ void CameraClient::RequestHandler::HandleRequest(
     return;
   }
 
-  CameraMetadata* metadata = request->GetMetadata();
+  android::CameraMetadata* metadata = request->GetMetadata();
   metadata_handler_->PreHandleRequest(capture_result.frame_number, *metadata);
 
   VLOGFID(1, device_id_) << "Request Frame:" << capture_result.frame_number
@@ -433,7 +433,7 @@ void CameraClient::RequestHandler::HandleRequest(
   NotifyShutter(capture_result.frame_number, &timestamp);
   metadata_handler_->PostHandleRequest(capture_result.frame_number, timestamp,
                                        metadata);
-  capture_result.result = metadata->Release();
+  capture_result.result = metadata->release();
 
   // After process_capture_result, HAL cannot access the output buffer in
   // camera3_stream_buffer anymore unless the release fence is not -1.
@@ -518,7 +518,7 @@ int CameraClient::RequestHandler::StreamOffImpl() {
 int CameraClient::RequestHandler::WriteStreamBuffer(
     int stream_index,
     int num_streams,
-    const CameraMetadata& metadata,
+    const android::CameraMetadata& metadata,
     camera3_stream_buffer_t* buffer) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   VLOGFID(1, device_id_) << "output buffer stream format: "

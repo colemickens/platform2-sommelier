@@ -9,8 +9,9 @@
 #include <memory>
 
 #include <base/threading/thread_checker.h>
+#include <camera/camera_metadata.h>
+#include <hardware/camera3.h>
 
-#include "arc/camera_metadata.h"
 #include "hal/usb/common_types.h"
 
 namespace arc {
@@ -31,14 +32,14 @@ class MetadataHandler {
   explicit MetadataHandler(const camera_metadata_t& metadata);
   ~MetadataHandler();
 
-  static int FillDefaultMetadata(CameraMetadata* metadata);
+  static int FillDefaultMetadata(android::CameraMetadata* metadata);
 
   static int FillMetadataFromSupportedFormats(
       const SupportedFormats& supported_formats,
-      CameraMetadata* metadata);
+      android::CameraMetadata* metadata);
 
   static int FillMetadataFromDeviceInfo(const DeviceInfo& device_info,
-                                        CameraMetadata* metadata);
+                                        android::CameraMetadata* metadata);
 
   // Get default settings according to the |template_type|. Can be called on
   // any thread.
@@ -48,13 +49,13 @@ class MetadataHandler {
 
   // Called before the request is processed. This function is used for checking
   // metadata values to setup related states and image settings.
-  void PreHandleRequest(int frame_number, const CameraMetadata& metadata);
+  void PreHandleRequest(int frame_number, const android::CameraMetadata& metadata);
 
   // Called after the request is processed. This function is used to update
   // required metadata which can be gotton from 3A or image processor.
   void PostHandleRequest(int frame_number,
                          int64_t timestamp,
-                         CameraMetadata* metadata);
+                         android::CameraMetadata* metadata);
 
  private:
   // Check |template_type| is valid or not.
@@ -64,7 +65,7 @@ class MetadataHandler {
   CameraMetadataUniquePtr CreateDefaultRequestSettings(int template_type);
 
   // Metadata containing persistent camera characteristics.
-  CameraMetadata metadata_;
+  android::CameraMetadata metadata_;
 
   // Static array of standard camera settings templates. These are owned by
   // CameraClient.

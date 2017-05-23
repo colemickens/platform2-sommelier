@@ -16,10 +16,10 @@
 #include <base/macros.h>
 #include <base/threading/thread.h>
 #include <base/threading/thread_checker.h>
+#include <camera/camera_metadata.h>
 #include <hardware/camera3.h>
 #include <hardware/hardware.h>
 
-#include "arc/camera_metadata.h"
 #include "arc/future.h"
 #include "hal/usb/cached_frame.h"
 #include "hal/usb/capture_request.h"
@@ -125,7 +125,7 @@ class CameraClient {
   std::unique_ptr<MetadataHandler> metadata_handler_;
 
   // Metadata for latest request.
-  CameraMetadata latest_request_metadata_;
+  android::CameraMetadata latest_request_metadata_;
 
   // The formats used to report to apps.
   SupportedFormats qualified_formats_;
@@ -164,7 +164,7 @@ class CameraClient {
     // Convert |cache_frame_| to the |buffer| with corresponding format.
     int WriteStreamBuffer(int stream_index,
                           int num_streams,
-                          const CameraMetadata& metadata,
+                          const android::CameraMetadata& metadata,
                           camera3_stream_buffer_t* buffer);
 
     // Some devices may output invalid image after stream on. Skip frames

@@ -10,7 +10,7 @@ namespace arc {
 const int kBufferFenceReady = -1;
 
 CaptureRequest::CaptureRequest(const camera3_capture_request& request,
-                               const CameraMetadata& metadata)
+                               const android::CameraMetadata& metadata)
     : frame_number_(request.frame_number), metadata_(metadata) {
   // We cannot merge the two loops because the address of elements in
   // buffer_handles_ may be changed when new element is push into the vector.

@@ -72,7 +72,7 @@ size_t CachedFrame::GetConvertedSize(int fourcc) const {
                                           yu12_frame_->GetHeight());
 }
 
-int CachedFrame::Convert(const CameraMetadata& metadata,
+int CachedFrame::Convert(const android::CameraMetadata& metadata,
                          FrameBuffer* out_frame,
                          bool video_hack) {
   if (video_hack && out_frame->GetFourcc() == V4L2_PIX_FMT_YVU420) {
@@ -93,7 +93,7 @@ int CachedFrame::ConvertToYU12() {
   yu12_frame_->SetWidth(source_frame_->GetWidth());
   yu12_frame_->SetHeight(source_frame_->GetHeight());
 
-  int res = ImageProcessor::ConvertFormat(CameraMetadata(), *source_frame_,
+  int res = ImageProcessor::ConvertFormat(android::CameraMetadata(), *source_frame_,
                                           yu12_frame_.get());
   if (res) {
     LOGF(ERROR) << "Convert from " << FormatToString(source_frame_->GetFourcc())

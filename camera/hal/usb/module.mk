@@ -5,7 +5,8 @@
 include common.mk
 include pc_utils.mk
 
-hal_usb_PC_DEPS = libcamera_metadata libcbm libexif libyuv libsync
+hal_usb_PC_DEPS = libcamera_client libcamera_metadata libcbm libexif libsync \
+	libyuv
 hal_usb_CPPFLAGS := $(call get_pc_cflags,$(hal_usb_PC_DEPS))
 hal_usb_LDLIBS := $(call get_pc_libs,$(hal_usb_PC_DEPS)) -ljpeg
 

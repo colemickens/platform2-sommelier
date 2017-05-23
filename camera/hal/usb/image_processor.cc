@@ -9,6 +9,8 @@
 #include <libyuv.h>
 #include <time.h>
 
+#include <hardware/camera3.h>
+
 #include "arc/common.h"
 #include "arc/exif_utils.h"
 #include "arc/jpeg_compressor.h"
@@ -49,10 +51,10 @@ namespace arc {
  */
 
 static int YU12ToNV21(const void* yv12, void* nv21, int width, int height);
-static bool ConvertToJpeg(const CameraMetadata& metadata,
+static bool ConvertToJpeg(const android::CameraMetadata& metadata,
                           const FrameBuffer& in_frame,
                           FrameBuffer* out_frame);
-static bool SetExifTags(const CameraMetadata& metadata, ExifUtils* utils);
+static bool SetExifTags(const android::CameraMetadata& metadata, ExifUtils* utils);
 
 // How precise the float-to-rational conversion for EXIF tags would be.
 static const int kRationalPrecision = 10000;
@@ -87,7 +89,7 @@ size_t ImageProcessor::GetConvertedSize(int fourcc,
   }
 }
 
-int ImageProcessor::ConvertFormat(const CameraMetadata& metadata,
+int ImageProcessor::ConvertFormat(const android::CameraMetadata& metadata,
                                   const FrameBuffer& in_frame,
                                   FrameBuffer* out_frame) {
   if ((in_frame.GetWidth() % 2) || (in_frame.GetHeight() % 2)) {
@@ -298,20 +300,20 @@ static int YU12ToNV21(const void* yu12, void* nv21, int width, int height) {
   return 0;
 }
 
-static bool ConvertToJpeg(const CameraMetadata& metadata,
+static bool ConvertToJpeg(const android::CameraMetadata& metadata,
                           const FrameBuffer& in_frame,
                           FrameBuffer* out_frame) {
   ExifUtils utils;
   int jpeg_quality, thumbnail_jpeg_quality;
-  camera_metadata_ro_entry entry = metadata.Find(ANDROID_JPEG_QUALITY);
+  camera_metadata_ro_entry entry = metadata.find(ANDROID_JPEG_QUALITY);
   if (entry.count) {
     jpeg_quality = entry.data.u8[0];
   } else {
     LOGF(ERROR) << "Cannot find jpeg quality in metadata.";
     return false;
   }
-  if (metadata.Exists(ANDROID_JPEG_THUMBNAIL_QUALITY)) {
-    entry = metadata.Find(ANDROID_JPEG_THUMBNAIL_QUALITY);
+  if (metadata.exists(ANDROID_JPEG_THUMBNAIL_QUALITY)) {
+    entry = metadata.find(ANDROID_JPEG_THUMBNAIL_QUALITY);
     thumbnail_jpeg_quality = entry.data.u8[0];
   } else {
     thumbnail_jpeg_quality = jpeg_quality;
@@ -349,7 +351,7 @@ static bool ConvertToJpeg(const CameraMetadata& metadata,
   return true;
 }
 
-static bool SetExifTags(const CameraMetadata& metadata, ExifUtils* utils) {
+static bool SetExifTags(const android::CameraMetadata& metadata, ExifUtils* utils) {
   time_t raw_time = 0;
   struct tm time_info;
   bool time_available = time(&raw_time) != -1;
@@ -360,7 +362,7 @@ static bool SetExifTags(const CameraMetadata& metadata, ExifUtils* utils) {
   }
 
   float focal_length;
-  camera_metadata_ro_entry entry = metadata.Find(ANDROID_LENS_FOCAL_LENGTH);
+  camera_metadata_ro_entry entry = metadata.find(ANDROID_LENS_FOCAL_LENGTH);
   if (entry.count) {
     focal_length = entry.data.f[0];
   } else {
@@ -374,8 +376,8 @@ static bool SetExifTags(const CameraMetadata& metadata, ExifUtils* utils) {
     return false;
   }
 
-  if (metadata.Exists(ANDROID_JPEG_GPS_COORDINATES)) {
-    entry = metadata.Find(ANDROID_JPEG_GPS_COORDINATES);
+  if (metadata.exists(ANDROID_JPEG_GPS_COORDINATES)) {
+    entry = metadata.find(ANDROID_JPEG_GPS_COORDINATES);
     if (entry.count < 3) {
       LOGF(ERROR) << "Gps coordinates in metadata is not complete.";
       return false;
@@ -394,8 +396,8 @@ static bool SetExifTags(const CameraMetadata& metadata, ExifUtils* utils) {
     }
   }
 
-  if (metadata.Exists(ANDROID_JPEG_GPS_PROCESSING_METHOD)) {
-    entry = metadata.Find(ANDROID_JPEG_GPS_PROCESSING_METHOD);
+  if (metadata.exists(ANDROID_JPEG_GPS_PROCESSING_METHOD)) {
+    entry = metadata.find(ANDROID_JPEG_GPS_PROCESSING_METHOD);
     std::string method_str(reinterpret_cast<const char*>(entry.data.u8));
     if (!utils->SetGpsProcessingMethod(method_str)) {
       LOGF(ERROR) << "Setting gps processing method failed.";
@@ -403,8 +405,8 @@ static bool SetExifTags(const CameraMetadata& metadata, ExifUtils* utils) {
     }
   }
 
-  if (time_available && metadata.Exists(ANDROID_JPEG_GPS_TIMESTAMP)) {
-    entry = metadata.Find(ANDROID_JPEG_GPS_TIMESTAMP);
+  if (time_available && metadata.exists(ANDROID_JPEG_GPS_TIMESTAMP)) {
+    entry = metadata.find(ANDROID_JPEG_GPS_TIMESTAMP);
     time_t timestamp = static_cast<time_t>(entry.data.i64[0]);
     if (gmtime_r(&timestamp, &time_info)) {
       if (!utils->SetGpsTimestamp(time_info)) {
@@ -417,16 +419,16 @@ static bool SetExifTags(const CameraMetadata& metadata, ExifUtils* utils) {
     }
   }
 
-  if (metadata.Exists(ANDROID_JPEG_ORIENTATION)) {
-    entry = metadata.Find(ANDROID_JPEG_ORIENTATION);
+  if (metadata.exists(ANDROID_JPEG_ORIENTATION)) {
+    entry = metadata.find(ANDROID_JPEG_ORIENTATION);
     if (!utils->SetOrientation(entry.data.i32[0])) {
       LOGF(ERROR) << "Setting orientation failed.";
       return false;
     }
   }
 
-  if (metadata.Exists(ANDROID_JPEG_THUMBNAIL_SIZE)) {
-    entry = metadata.Find(ANDROID_JPEG_THUMBNAIL_SIZE);
+  if (metadata.exists(ANDROID_JPEG_THUMBNAIL_SIZE)) {
+    entry = metadata.find(ANDROID_JPEG_THUMBNAIL_SIZE);
     if (entry.count < 2) {
       LOGF(ERROR) << "Thumbnail size in metadata is not complete.";
       return false;

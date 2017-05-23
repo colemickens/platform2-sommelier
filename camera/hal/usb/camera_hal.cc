@@ -21,7 +21,7 @@ CameraHal::CameraHal() {
   VLOGF(1) << "Number of cameras is " << GetNumberOfCameras();
 
   for (auto& device_info : device_infos_) {
-    CameraMetadata metadata;
+    android::CameraMetadata metadata;
     MetadataHandler::FillDefaultMetadata(&metadata);
     MetadataHandler::FillMetadataFromDeviceInfo(device_info, &metadata);
 
@@ -31,7 +31,7 @@ CameraHal::CameraHal() {
     MetadataHandler::FillMetadataFromSupportedFormats(qualified_formats,
                                                       &metadata);
 
-    static_infos_.push_back(CameraMetadataUniquePtr(metadata.Release()));
+    static_infos_.push_back(CameraMetadataUniquePtr(metadata.release()));
   }
 
   task_runner_ = base::MessageLoop::current()->task_runner();
