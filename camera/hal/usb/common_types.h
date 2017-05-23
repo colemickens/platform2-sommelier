@@ -50,6 +50,12 @@ struct SupportedFormat {
 
 typedef std::vector<SupportedFormat> SupportedFormats;
 
+struct Size {
+  Size(uint32_t w, uint32_t h) : width(w), height(h) {}
+  uint32_t width;
+  uint32_t height;
+};
+
 }  // namespace arc
 
 #endif  // HAL_USB_COMMON_TYPES_H_

@@ -84,7 +84,7 @@ class CameraClient {
   void SetUpStreams(int num_buffers, std::vector<camera3_stream_t*>* streams);
 
   // Start |request_thread_| and streaming.
-  int StreamOn(SupportedFormat stream_on_resolution, int* num_buffers);
+  int StreamOn(Size stream_on_resolution, int* num_buffers);
 
   // Stop streaming and |request_thread_|.
   void StreamOff();
@@ -145,7 +145,7 @@ class CameraClient {
     ~RequestHandler();
 
     // Synchronous call to start streaming.
-    void StreamOn(SupportedFormat stream_on_resolution,
+    void StreamOn(Size stream_on_resolution,
                   const base::Callback<void(int, int)>& callback);
 
     // Synchronous call to stop streaming.
@@ -156,7 +156,7 @@ class CameraClient {
 
    private:
     // Start streaming implementation.
-    int StreamOnImpl(SupportedFormat stream_on_resolution);
+    int StreamOnImpl(Size stream_on_resolution);
 
     // Stop streaming implementation.
     int StreamOffImpl();
@@ -214,7 +214,7 @@ class CameraClient {
     MetadataHandler* metadata_handler_;
 
     // The resolution for stream on.
-    SupportedFormat stream_on_resolution_;
+    Size stream_on_resolution_;
 
     // Current using buffer id for |input_buffers_|.
     int current_v4l2_buffer_id_;
