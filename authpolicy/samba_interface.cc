@@ -65,7 +65,7 @@ const int kFileMode_rwxrwx =
 // access to read smb.conf and krb5.conf and to access SAMBA_DIR, but no write
 // access. The Samba directories need full group rwx access since Samba reads
 // and writes files there.
-constexpr std::pair<Path, int> kDirsAndMode[] = {
+const std::pair<Path, int> kDirsAndMode[] = {
     {Path::TEMP_DIR, kFileMode_rwxrx},
     {Path::SAMBA_DIR, kFileMode_rwxrwx},
     {Path::SAMBA_LOCK_DIR, kFileMode_rwxrwx},

@@ -20,7 +20,7 @@ namespace em = enterprise_management;
 
 namespace policy {
 
-constexpr std::pair<const char*, int> kConnectionTypes[] = {
+const std::pair<const char*, int> kConnectionTypes[] = {
     std::make_pair(
         shill::kTypeEthernet,
         em::AutoUpdateSettingsProto_ConnectionType_CONNECTION_TYPE_ETHERNET),
