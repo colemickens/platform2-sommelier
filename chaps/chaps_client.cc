@@ -46,11 +46,11 @@ void PrintHelp() {
 }
 
 void Ping() {
-  chaps::ChapsProxyImpl proxy;
-  if (!proxy.Init())
+  auto proxy = chaps::ChapsProxyImpl::Create();
+  if (!proxy)
     exit(-1);
   vector<uint64_t> slot_list;
-  uint32_t result = proxy.GetSlotList(
+  uint32_t result = proxy->GetSlotList(
       IsolateCredentialManager::GetDefaultIsolateCredential(),
       true,
       &slot_list);
@@ -95,18 +95,18 @@ void ChangeAuthData(const string& path,
 
 // Sets the logging level.
 void SetLogLevel(int level) {
-  chaps::ChapsProxyImpl proxy;
-  if (!proxy.Init())
+  auto proxy = chaps::ChapsProxyImpl::Create();
+  if (!proxy)
     exit(-1);
-  proxy.SetLogLevel(level);
+  proxy->SetLogLevel(level);
 }
 
 void ListTokens() {
-  chaps::ChapsProxyImpl proxy;
-  if (!proxy.Init())
+  auto proxy = chaps::ChapsProxyImpl::Create();
+  if (!proxy)
     exit(-1);
   vector<uint64_t> slot_list;
-  uint32_t result = proxy.GetSlotList(
+  uint32_t result = proxy->GetSlotList(
       IsolateCredentialManager::GetDefaultIsolateCredential(),
       true,
       &slot_list);

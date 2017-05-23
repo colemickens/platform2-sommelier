@@ -60,7 +60,6 @@ class EXPORT_SPEC TokenManagerClient : public TokenManagerInterface {
 
  private:
   std::unique_ptr<ChapsProxyImpl> proxy_;
-  bool is_connected_;
 
   // Attempts to connect to the Chaps daemon. Returns true on success.
   bool Connect();

@@ -26,9 +26,8 @@ namespace chaps {
 // methods.
 class ChapsProxyImpl : public ChapsInterface {
  public:
-  ChapsProxyImpl();
-  virtual ~ChapsProxyImpl();
-  virtual bool Init();
+  static std::unique_ptr<ChapsProxyImpl> Create();
+  ~ChapsProxyImpl() override = default;
 
   bool OpenIsolate(brillo::SecureBlob* isolate_credential,
                    bool* new_isolate_created);
@@ -287,22 +286,25 @@ class ChapsProxyImpl : public ChapsInterface {
                           std::vector<uint8_t>* random_data) override;
 
  private:
-  // Waits for the service to be available. Returns false if the service is not
-  // available within 5 seconds.
-  bool WaitForService();
-
   // This class provides the link to the dbus-c++ generated proxy.
   class Proxy : public org::chromium::Chaps_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection &connection,  // NOLINT(runtime/references)
+    Proxy(DBus::Connection& connection,  // NOLINT(runtime/references)
           const char* path,
           const char* service) : ObjectProxy(connection, path, service) {}
     virtual ~Proxy() {}
 
+    // Waits for the service to be available. Returns false if the service is
+    // not available within 5 seconds.
+    bool WaitForService();
+
    private:
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
+
+  // Use the static factory method to create a ChapsProxyImpl.
+  explicit ChapsProxyImpl(std::unique_ptr<Proxy> proxy);
 
   std::unique_ptr<Proxy> proxy_;
   // TODO(dkrahn): Once crosbug.com/35421 has been fixed this lock must be

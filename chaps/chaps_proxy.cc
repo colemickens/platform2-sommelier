@@ -4,7 +4,10 @@
 
 #include "chaps/chaps_proxy.h"
 
+#include <utility>
+
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 
 #include "chaps/chaps.h"
 #include "chaps/chaps_utility.h"
@@ -17,45 +20,47 @@ using std::string;
 using std::vector;
 using brillo::SecureBlob;
 
+namespace {
+
+// Set the timeout to 5 minutes; some TPM operations can take long.  In
+// practice, calls have been noted to take more than 1 minute.
+constexpr int kDBusTimeoutMs = 5 * 60 * 1000;
+
+}  // namespace
+
 namespace chaps {
 
-ChapsProxyImpl::ChapsProxyImpl() {}
+ChapsProxyImpl::ChapsProxyImpl(std::unique_ptr<Proxy> proxy)
+    : proxy_(std::move(proxy)) {}
 
-ChapsProxyImpl::~ChapsProxyImpl() {}
-
-bool ChapsProxyImpl::Init() {
+// static
+std::unique_ptr<ChapsProxyImpl> ChapsProxyImpl::Create() {
   try {
     if (!DBus::default_dispatcher)
       DBus::default_dispatcher = new DBus::BusDispatcher();
-    if (!proxy_.get()) {
-      // Establish a D-Bus connection.
-      DBus::Connection connection = DBus::Connection::SystemBus();
-      // Set the timeout to 5 minutes; some TPM operations can take long.  In
-      // practice, calls have been noted to take more than 1 minute.
-      connection.set_timeout(300000);
-      proxy_.reset(new Proxy(connection, kChapsServicePath,
-                             kChapsServiceName));
-    }
-    if (proxy_.get()) {
-      if (!WaitForService())
-        return false;
-      VLOG(1) << "Chaps proxy initialized (" << kChapsServicePath << ").";
-      return true;
-    }
+    // Establish a D-Bus connection.
+    DBus::Connection connection = DBus::Connection::SystemBus();
+    connection.set_timeout(kDBusTimeoutMs);
+
+    auto proxy = base::MakeUnique<Proxy>(
+        connection, kChapsServicePath, kChapsServiceName);
+    if (!proxy)
+      return nullptr;
+    if (!proxy->WaitForService())
+      return nullptr;
+
+    VLOG(1) << "Chaps proxy initialized (" << kChapsServicePath << ").";
+    return base::WrapUnique(new ChapsProxyImpl(std::move(proxy)));
   } catch (DBus::Error err) {
     LOG(ERROR) << "DBus::Error - " << err.what();
+    return nullptr;
   }
-  return false;
 }
 
 bool ChapsProxyImpl::OpenIsolate(SecureBlob* isolate_credential,
                                  bool* new_isolate_created) {
   AutoLock lock(lock_);
   bool result = false;
-  if (!proxy_.get()) {
-    LOG(ERROR) << __func__ << ": Proxy not initialized.";
-    return false;
-  }
   try {
     SecureBlob isolate_credential_in;
     SecureBlob isolate_credential_out;
@@ -72,10 +77,6 @@ bool ChapsProxyImpl::OpenIsolate(SecureBlob* isolate_credential,
 
 void ChapsProxyImpl::CloseIsolate(const SecureBlob& isolate_credential) {
   AutoLock lock(lock_);
-  if (!proxy_.get()) {
-    LOG(ERROR) << __func__ << ": Proxy not initialized.";
-    return;
-  }
   try {
     proxy_->CloseIsolate(isolate_credential);
   } catch (DBus::Error err) {
@@ -89,10 +90,6 @@ bool ChapsProxyImpl::LoadToken(const SecureBlob& isolate_credential,
                                const string& label,
                                uint64_t* slot_id) {
   AutoLock lock(lock_);
-  if (!proxy_.get()) {
-    LOG(ERROR) << __func__ << ": Proxy not initialized.";
-    return false;
-  }
   bool result = false;;
   try {
     proxy_->LoadToken(isolate_credential,
@@ -111,10 +108,6 @@ bool ChapsProxyImpl::LoadToken(const SecureBlob& isolate_credential,
 void ChapsProxyImpl::UnloadToken(const SecureBlob& isolate_credential,
                                  const string& path) {
   AutoLock lock(lock_);
-  if (!proxy_.get()) {
-    LOG(ERROR) << __func__ << ": Proxy not initialized.";
-    return;
-  }
   try {
     proxy_->UnloadToken(isolate_credential, path);
   } catch (DBus::Error err) {
@@ -126,10 +119,6 @@ void ChapsProxyImpl::ChangeTokenAuthData(const string& path,
                                          const vector<uint8_t>& old_auth_data,
                                          const vector<uint8_t>& new_auth_data) {
   AutoLock lock(lock_);
-  if (!proxy_.get()) {
-    LOG(ERROR) << __func__ << ": Proxy not initialized.";
-    return;
-  }
   try {
     proxy_->ChangeTokenAuthData(path, old_auth_data, new_auth_data);
   } catch (DBus::Error err) {
@@ -141,10 +130,6 @@ bool ChapsProxyImpl::GetTokenPath(const SecureBlob& isolate_credential,
                                   uint64_t slot_id,
                                   string* path) {
   AutoLock lock(lock_);
-  if (!proxy_.get()) {
-    LOG(ERROR) << __func__ << ": Proxy not initialized.";
-    return false;
-  }
   bool result = false;;
   try {
     proxy_->GetTokenPath(isolate_credential, slot_id, *path, result);
@@ -157,10 +142,6 @@ bool ChapsProxyImpl::GetTokenPath(const SecureBlob& isolate_credential,
 
 void ChapsProxyImpl::SetLogLevel(const int32_t& level) {
   AutoLock lock(lock_);
-  if (!proxy_.get()) {
-    LOG(ERROR) << "Failed to set logging level: proxy not initialized.";
-    return;
-  }
   try {
     proxy_->SetLogLevel(level);
   } catch (DBus::Error err) {
@@ -172,7 +153,6 @@ uint32_t ChapsProxyImpl::GetSlotList(const SecureBlob& isolate_credential,
                                      bool token_present,
                                      vector<uint64_t>* slot_list) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!slot_list, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -188,7 +168,6 @@ uint32_t ChapsProxyImpl::GetSlotInfo(const SecureBlob& isolate_credential,
                                      uint64_t slot_id,
                                      SlotInfo* slot_info) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!slot_info, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -208,7 +187,6 @@ uint32_t ChapsProxyImpl::GetTokenInfo(const SecureBlob& isolate_credential,
                                       uint64_t slot_id,
                                       TokenInfo* token_info) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!token_info, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -229,7 +207,6 @@ uint32_t ChapsProxyImpl::GetMechanismList(
     uint64_t slot_id,
     vector<uint64_t>* mechanism_list) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!mechanism_list, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -247,7 +224,6 @@ uint32_t ChapsProxyImpl::GetMechanismInfo(const SecureBlob& isolate_credential,
                                           uint64_t mechanism_type,
                                           MechanismInfo* mechanism_info) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!mechanism_info, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -269,7 +245,6 @@ uint32_t ChapsProxyImpl::InitToken(const SecureBlob& isolate_credential,
                                    const string* so_pin,
                                    const vector<uint8_t>& label) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     string tmp_pin;
@@ -287,7 +262,6 @@ uint32_t ChapsProxyImpl::InitToken(const SecureBlob& isolate_credential,
 uint32_t ChapsProxyImpl::InitPIN(const SecureBlob& isolate_credential,
                                  uint64_t session_id, const string* pin) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     string tmp_pin;
@@ -307,7 +281,6 @@ uint32_t ChapsProxyImpl::SetPIN(const SecureBlob& isolate_credential,
                                 const string* old_pin,
                                 const string* new_pin) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     string tmp_old_pin;
@@ -329,7 +302,6 @@ uint32_t ChapsProxyImpl::OpenSession(const SecureBlob& isolate_credential,
                                      uint64_t slot_id, uint64_t flags,
                                      uint64_t* session_id) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!session_id, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -345,7 +317,6 @@ uint32_t ChapsProxyImpl::OpenSession(const SecureBlob& isolate_credential,
 uint32_t ChapsProxyImpl::CloseSession(const SecureBlob& isolate_credential,
                                       uint64_t session_id) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->CloseSession(isolate_credential, session_id);
@@ -359,7 +330,6 @@ uint32_t ChapsProxyImpl::CloseSession(const SecureBlob& isolate_credential,
 uint32_t ChapsProxyImpl::CloseAllSessions(const SecureBlob& isolate_credential,
                                           uint64_t slot_id) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->CloseAllSessions(isolate_credential, slot_id);
@@ -374,7 +344,6 @@ uint32_t ChapsProxyImpl::GetSessionInfo(const SecureBlob& isolate_credential,
                                         uint64_t session_id,
                                         SessionInfo* session_info) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!session_info, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -394,7 +363,6 @@ uint32_t ChapsProxyImpl::GetOperationState(const SecureBlob& isolate_credential,
                                            uint64_t session_id,
                                            vector<uint8_t>* operation_state) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!operation_state, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -414,7 +382,6 @@ uint32_t ChapsProxyImpl::SetOperationState(
     uint64_t encryption_key_handle,
     uint64_t authentication_key_handle) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->SetOperationState(isolate_credential,
@@ -434,7 +401,6 @@ uint32_t ChapsProxyImpl::Login(const SecureBlob& isolate_credential,
                                uint64_t user_type,
                                const string* pin) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     string tmp_pin;
@@ -452,7 +418,6 @@ uint32_t ChapsProxyImpl::Login(const SecureBlob& isolate_credential,
 uint32_t ChapsProxyImpl::Logout(const SecureBlob& isolate_credential,
                                 uint64_t session_id) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->Logout(isolate_credential, session_id);
@@ -468,7 +433,6 @@ uint32_t ChapsProxyImpl::CreateObject(const SecureBlob& isolate_credential,
                                       const vector<uint8_t>& attributes,
                                       uint64_t* new_object_handle) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!new_object_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -490,7 +454,6 @@ uint32_t ChapsProxyImpl::CopyObject(const SecureBlob& isolate_credential,
                                     const vector<uint8_t>& attributes,
                                     uint64_t* new_object_handle) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!new_object_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -511,7 +474,6 @@ uint32_t ChapsProxyImpl::DestroyObject(const SecureBlob& isolate_credential,
                                        uint64_t session_id,
                                        uint64_t object_handle) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->DestroyObject(isolate_credential, session_id,
@@ -528,7 +490,6 @@ uint32_t ChapsProxyImpl::GetObjectSize(const SecureBlob& isolate_credential,
                                        uint64_t object_handle,
                                        uint64_t* object_size) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!object_size, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -547,7 +508,6 @@ uint32_t ChapsProxyImpl::GetAttributeValue(const SecureBlob& isolate_credential,
                                            const vector<uint8_t>& attributes_in,
                                            vector<uint8_t>* attributes_out) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!attributes_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -569,7 +529,6 @@ uint32_t ChapsProxyImpl::SetAttributeValue(const SecureBlob& isolate_credential,
                                            uint64_t object_handle,
                                            const vector<uint8_t>& attributes) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->SetAttributeValue(isolate_credential,
@@ -588,7 +547,6 @@ uint32_t ChapsProxyImpl::FindObjectsInit(
     uint64_t session_id,
     const vector<uint8_t>& attributes) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->FindObjectsInit(isolate_credential, session_id,
@@ -605,7 +563,6 @@ uint32_t ChapsProxyImpl::FindObjects(const SecureBlob& isolate_credential,
                                      uint64_t max_object_count,
                                      vector<uint64_t>* object_list) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!object_list || object_list->size() > 0)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -622,7 +579,6 @@ uint32_t ChapsProxyImpl::FindObjects(const SecureBlob& isolate_credential,
 uint32_t ChapsProxyImpl::FindObjectsFinal(const SecureBlob& isolate_credential,
                                           uint64_t session_id) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->FindObjectsFinal(isolate_credential, session_id);
@@ -640,7 +596,6 @@ uint32_t ChapsProxyImpl::EncryptInit(
     const vector<uint8_t>& mechanism_parameter,
     uint64_t key_handle) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->EncryptInit(isolate_credential,
@@ -662,7 +617,6 @@ uint32_t ChapsProxyImpl::Encrypt(const SecureBlob& isolate_credential,
                                  uint64_t* actual_out_length,
                                  vector<uint8_t>* data_out) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -687,7 +641,6 @@ uint32_t ChapsProxyImpl::EncryptUpdate(const SecureBlob& isolate_credential,
                                        uint64_t* actual_out_length,
                                        vector<uint8_t>* data_out) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -711,7 +664,6 @@ uint32_t ChapsProxyImpl::EncryptFinal(const SecureBlob& isolate_credential,
                                       uint64_t* actual_out_length,
                                       vector<uint8_t>* data_out) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -731,8 +683,6 @@ uint32_t ChapsProxyImpl::EncryptFinal(const SecureBlob& isolate_credential,
 void ChapsProxyImpl::EncryptCancel(const SecureBlob& isolate_credential,
                                    uint64_t session_id) {
   AutoLock lock(lock_);
-  if (!proxy_.get())
-    return;
   try {
     proxy_->EncryptCancel(isolate_credential, session_id);
   } catch (DBus::Error err) {
@@ -747,7 +697,6 @@ uint32_t ChapsProxyImpl::DecryptInit(
     const vector<uint8_t>& mechanism_parameter,
     uint64_t key_handle) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->DecryptInit(isolate_credential,
@@ -769,7 +718,6 @@ uint32_t ChapsProxyImpl::Decrypt(const SecureBlob& isolate_credential,
                                  uint64_t* actual_out_length,
                                  vector<uint8_t>* data_out) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -794,7 +742,6 @@ uint32_t ChapsProxyImpl::DecryptUpdate(const SecureBlob& isolate_credential,
                                        uint64_t* actual_out_length,
                                        vector<uint8_t>* data_out) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -818,7 +765,6 @@ uint32_t ChapsProxyImpl::DecryptFinal(const SecureBlob& isolate_credential,
                                       uint64_t* actual_out_length,
                                       vector<uint8_t>* data_out) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -838,8 +784,6 @@ uint32_t ChapsProxyImpl::DecryptFinal(const SecureBlob& isolate_credential,
 void ChapsProxyImpl::DecryptCancel(const SecureBlob& isolate_credential,
                                    uint64_t session_id) {
   AutoLock lock(lock_);
-  if (!proxy_.get())
-    return;
   try {
     proxy_->DecryptCancel(isolate_credential, session_id);
   } catch (DBus::Error err) {
@@ -853,7 +797,6 @@ uint32_t ChapsProxyImpl::DigestInit(
     uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->DigestInit(isolate_credential,
@@ -874,7 +817,6 @@ uint32_t ChapsProxyImpl::Digest(const SecureBlob& isolate_credential,
                                 uint64_t* actual_out_length,
                                 vector<uint8_t>* digest) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     proxy_->Digest(isolate_credential,
@@ -895,7 +837,6 @@ uint32_t ChapsProxyImpl::DigestUpdate(const SecureBlob& isolate_credential,
                                       uint64_t session_id,
                                       const vector<uint8_t>& data_in) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->DigestUpdate(isolate_credential, session_id, data_in);
@@ -910,7 +851,6 @@ uint32_t ChapsProxyImpl::DigestKey(const SecureBlob& isolate_credential,
                                    uint64_t session_id,
                                    uint64_t key_handle) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->DigestKey(isolate_credential, session_id, key_handle);
@@ -927,7 +867,6 @@ uint32_t ChapsProxyImpl::DigestFinal(const SecureBlob& isolate_credential,
                                      uint64_t* actual_out_length,
                                      vector<uint8_t>* digest) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     proxy_->DigestFinal(isolate_credential,
@@ -946,8 +885,6 @@ uint32_t ChapsProxyImpl::DigestFinal(const SecureBlob& isolate_credential,
 void ChapsProxyImpl::DigestCancel(const SecureBlob& isolate_credential,
                                   uint64_t session_id) {
   AutoLock lock(lock_);
-  if (!proxy_.get())
-    return;
   try {
     proxy_->DigestCancel(isolate_credential, session_id);
   } catch (DBus::Error err) {
@@ -961,7 +898,6 @@ uint32_t ChapsProxyImpl::SignInit(const SecureBlob& isolate_credential,
                                   const vector<uint8_t>& mechanism_parameter,
                                   uint64_t key_handle) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->SignInit(isolate_credential,
@@ -983,7 +919,6 @@ uint32_t ChapsProxyImpl::Sign(const SecureBlob& isolate_credential,
                               uint64_t* actual_out_length,
                               vector<uint8_t>* signature) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     proxy_->Sign(isolate_credential,
@@ -1004,7 +939,6 @@ uint32_t ChapsProxyImpl::SignUpdate(const SecureBlob& isolate_credential,
                                     uint64_t session_id,
                                     const vector<uint8_t>& data_part) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->SignUpdate(isolate_credential, session_id, data_part);
@@ -1021,7 +955,6 @@ uint32_t ChapsProxyImpl::SignFinal(const SecureBlob& isolate_credential,
                                    uint64_t* actual_out_length,
                                    vector<uint8_t>* signature) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     proxy_->SignFinal(isolate_credential,
@@ -1040,8 +973,6 @@ uint32_t ChapsProxyImpl::SignFinal(const SecureBlob& isolate_credential,
 void ChapsProxyImpl::SignCancel(const SecureBlob& isolate_credential,
                                 uint64_t session_id) {
   AutoLock lock(lock_);
-  if (!proxy_.get())
-    return;
   try {
     proxy_->SignCancel(isolate_credential, session_id);
   } catch (DBus::Error err) {
@@ -1056,7 +987,6 @@ uint32_t ChapsProxyImpl::SignRecoverInit(
       const vector<uint8_t>& mechanism_parameter,
       uint64_t key_handle) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->SignRecoverInit(isolate_credential,
@@ -1078,7 +1008,6 @@ uint32_t ChapsProxyImpl::SignRecover(const SecureBlob& isolate_credential,
                                      uint64_t* actual_out_length,
                                      vector<uint8_t>* signature) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     proxy_->SignRecover(isolate_credential,
@@ -1101,7 +1030,6 @@ uint32_t ChapsProxyImpl::VerifyInit(const SecureBlob& isolate_credential,
                                     const vector<uint8_t>& mechanism_parameter,
                                     uint64_t key_handle) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->VerifyInit(isolate_credential,
@@ -1121,7 +1049,6 @@ uint32_t ChapsProxyImpl::Verify(const SecureBlob& isolate_credential,
                                 const vector<uint8_t>& data,
                                 const vector<uint8_t>& signature) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->Verify(isolate_credential, session_id, data, signature);
@@ -1136,7 +1063,6 @@ uint32_t ChapsProxyImpl::VerifyUpdate(const SecureBlob& isolate_credential,
                                       uint64_t session_id,
                                       const vector<uint8_t>& data_part) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->VerifyUpdate(isolate_credential, session_id, data_part);
@@ -1151,7 +1077,6 @@ uint32_t ChapsProxyImpl::VerifyFinal(const SecureBlob& isolate_credential,
                                      uint64_t session_id,
                                      const vector<uint8_t>& signature) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->VerifyFinal(isolate_credential, session_id, signature);
@@ -1165,8 +1090,6 @@ uint32_t ChapsProxyImpl::VerifyFinal(const SecureBlob& isolate_credential,
 void ChapsProxyImpl::VerifyCancel(const SecureBlob& isolate_credential,
                                   uint64_t session_id) {
   AutoLock lock(lock_);
-  if (!proxy_.get())
-    return;
   try {
     proxy_->VerifyCancel(isolate_credential, session_id);
   } catch (DBus::Error err) {
@@ -1181,7 +1104,6 @@ uint32_t ChapsProxyImpl::VerifyRecoverInit(
       const vector<uint8_t>& mechanism_parameter,
       uint64_t key_handle) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     result = proxy_->VerifyRecoverInit(isolate_credential,
@@ -1203,7 +1125,6 @@ uint32_t ChapsProxyImpl::VerifyRecover(const SecureBlob& isolate_credential,
                                        uint64_t* actual_out_length,
                                        vector<uint8_t>* data) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
     proxy_->VerifyRecover(isolate_credential,
@@ -1228,7 +1149,6 @@ uint32_t ChapsProxyImpl::DigestEncryptUpdate(
     uint64_t* actual_out_length,
     vector<uint8_t>* data_out) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -1254,7 +1174,6 @@ uint32_t ChapsProxyImpl::DecryptDigestUpdate(
     uint64_t* actual_out_length,
     vector<uint8_t>* data_out) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -1279,7 +1198,6 @@ uint32_t ChapsProxyImpl::SignEncryptUpdate(const SecureBlob& isolate_credential,
                                            uint64_t* actual_out_length,
                                            vector<uint8_t>* data_out) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -1305,7 +1223,6 @@ uint32_t ChapsProxyImpl::DecryptVerifyUpdate(
     uint64_t* actual_out_length,
     vector<uint8_t>* data_out) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -1331,7 +1248,6 @@ uint32_t ChapsProxyImpl::GenerateKey(
     const vector<uint8_t>& attributes,
     uint64_t* key_handle) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -1359,7 +1275,6 @@ uint32_t ChapsProxyImpl::GenerateKeyPair(
     uint64_t* public_key_handle,
     uint64_t* private_key_handle) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!public_key_handle || !private_key_handle,
                           CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -1391,7 +1306,6 @@ uint32_t ChapsProxyImpl::WrapKey(
     uint64_t* actual_out_length,
     vector<uint8_t>* wrapped_key) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !wrapped_key,
                           CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -1423,7 +1337,6 @@ uint32_t ChapsProxyImpl::UnwrapKey(
     const vector<uint8_t>& attributes,
     uint64_t* key_handle) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -1452,7 +1365,6 @@ uint32_t ChapsProxyImpl::DeriveKey(
     const vector<uint8_t>& attributes,
     uint64_t* key_handle) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -1475,7 +1387,6 @@ uint32_t ChapsProxyImpl::SeedRandom(const SecureBlob& isolate_credential,
                                     uint64_t session_id,
                                     const vector<uint8_t>& seed) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(seed.size() == 0, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -1492,7 +1403,6 @@ uint32_t ChapsProxyImpl::GenerateRandom(const SecureBlob& isolate_credential,
                                         uint64_t num_bytes,
                                         vector<uint8_t>* random_data) {
   AutoLock lock(lock_);
-  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!random_data || num_bytes == 0, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -1505,7 +1415,7 @@ uint32_t ChapsProxyImpl::GenerateRandom(const SecureBlob& isolate_credential,
   return result;
 }
 
-bool ChapsProxyImpl::WaitForService() {
+bool ChapsProxyImpl::Proxy::WaitForService() {
   const useconds_t kDelayOnFailureUs = 10000;  // 10ms.
   const int kMaxAttempts = 500;  // 5 seconds.
   vector<uint64_t> slot_list;
@@ -1513,9 +1423,8 @@ bool ChapsProxyImpl::WaitForService() {
   string last_error_message;
   for (int i = 0; i < kMaxAttempts; ++i) {
     try {
-      proxy_->GetSlotList(
-          IsolateCredentialManager::GetDefaultIsolateCredential(),
-          false, slot_list, result);
+      GetSlotList(IsolateCredentialManager::GetDefaultIsolateCredential(),
+                  false, slot_list, result);
       return true;
     } catch (DBus::Error err) {
       last_error_message = err.what();

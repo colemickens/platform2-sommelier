@@ -25,10 +25,10 @@ using std::vector;
 namespace chaps {
 
 static chaps::ChapsInterface* CreateChapsInstance() {
-  std::unique_ptr<chaps::ChapsProxyImpl> proxy(new chaps::ChapsProxyImpl());
-  if (proxy->Init())
-    return proxy.release();
-  return NULL;
+  auto proxy = ChapsProxyImpl::Create();
+  if (!proxy)
+    return nullptr;
+  return proxy.release();
 }
 
 static bool SerializeAttributes(CK_ATTRIBUTE_PTR attributes,
