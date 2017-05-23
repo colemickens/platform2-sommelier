@@ -40,6 +40,15 @@ struct ImageProcessor {
   // and |buffer_size| of |out_frame|. The function will fill |data_size| and
   // |fourcc| of |out_frame|.
   static int Scale(const FrameBuffer& in_frame, FrameBuffer* out_frame);
+
+  // Crop and rotate image size according to |in_frame| and |out_frame|. Only
+  // support V4L2_PIX_FMT_YUV420 format. Caller should fill |data|, |width|,
+  // |height|, and |buffer_size| of |out_frame|. The function will fill
+  // |data_size| and |fourcc| of |out_frame|. |rotate_degree| should be 90 or
+  // 270.
+  static int CropAndRotate(const FrameBuffer& in_frame,
+                           FrameBuffer* out_frame,
+                           int rotate_degree);
 };
 
 }  // namespace arc

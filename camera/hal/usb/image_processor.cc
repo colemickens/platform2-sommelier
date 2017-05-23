@@ -277,6 +277,55 @@ int ImageProcessor::Scale(const FrameBuffer& in_frame, FrameBuffer* out_frame) {
   return ret;
 }
 
+int ImageProcessor::CropAndRotate(const FrameBuffer& in_frame,
+                                  FrameBuffer* out_frame,
+                                  int rotate_degree) {
+  if (in_frame.GetFourcc() != V4L2_PIX_FMT_YUV420) {
+    LOGF(ERROR) << "Pixel format " << FormatToString(in_frame.GetFourcc())
+                << " is unsupported.";
+    return -EINVAL;
+  }
+
+  libyuv::RotationMode rotation_mode = libyuv::RotationMode::kRotate90;
+  switch (rotate_degree) {
+    case 90:
+      rotation_mode = libyuv::RotationMode::kRotate90;
+      break;
+    case 270:
+      rotation_mode = libyuv::RotationMode::kRotate270;
+      break;
+    default:
+      LOGF(ERROR) << "Invalid rotation degree: " << rotate_degree;
+      return -EINVAL;
+  }
+
+  size_t data_size = GetConvertedSize(
+      in_frame.GetFourcc(), out_frame->GetWidth(), out_frame->GetHeight());
+
+  if (out_frame->SetDataSize(data_size)) {
+    LOGF(ERROR) << "Set data size failed";
+    return -EINVAL;
+  }
+  out_frame->SetFourcc(in_frame.GetFourcc());
+
+  // This libyuv method first crops the frame and then rotates it 90 degrees
+  // clockwise or counterclockwise.
+  int margin = (in_frame.GetWidth() - out_frame->GetHeight()) / 2;
+  int ret = libyuv::ConvertToI420(
+      in_frame.GetData(), in_frame.GetDataSize(), out_frame->GetData(),
+      out_frame->GetWidth(),
+      out_frame->GetData() + out_frame->GetWidth() * out_frame->GetHeight(),
+      out_frame->GetWidth() / 2,
+      out_frame->GetData() +
+          out_frame->GetWidth() * out_frame->GetHeight() * 5 / 4,
+      out_frame->GetWidth() / 2, margin, 0, in_frame.GetWidth(),
+      in_frame.GetHeight(), out_frame->GetHeight(), out_frame->GetWidth(),
+      rotation_mode, libyuv::FourCC::FOURCC_I420);
+
+  LOGF_IF(ERROR, ret) << "ConvertToI420 failed: " << ret;
+  return ret;
+}
+
 static int YU12ToNV21(const void* yu12, void* nv21, int width, int height) {
   if ((width % 2) || (height % 2)) {
     LOGF(ERROR) << "Width or height is not even (" << width << " x " << height

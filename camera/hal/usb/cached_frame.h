@@ -8,7 +8,7 @@
 
 #include <memory>
 
-#include "camera/camera_metadata.h"
+#include <camera/camera_metadata.h>
 
 #include "hal/usb/image_processor.h"
 
@@ -71,8 +71,7 @@ class CachedFrame {
   const V4L2FrameBuffer* source_frame_;
 
   // Temporary buffer for cropped and rotated results.
-  std::unique_ptr<uint8_t[]> cropped_buffer_;
-  size_t cropped_buffer_capacity_;
+  std::unique_ptr<AllocatedFrameBuffer> rotated_frame_;
 
   // Cache YU12 decoded results.
   std::unique_ptr<AllocatedFrameBuffer> yu12_frame_;

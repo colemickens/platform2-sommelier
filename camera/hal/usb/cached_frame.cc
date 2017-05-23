@@ -15,8 +15,9 @@ namespace arc {
 
 CachedFrame::CachedFrame()
     : source_frame_(nullptr),
-      cropped_buffer_capacity_(0),
-      yu12_frame_(new AllocatedFrameBuffer(0)) {}
+      rotated_frame_(new AllocatedFrameBuffer(0)),
+      yu12_frame_(new AllocatedFrameBuffer(0)),
+      scaled_frame_(new AllocatedFrameBuffer(0)) {}
 
 CachedFrame::~CachedFrame() {
   UnsetSource();
@@ -82,23 +83,16 @@ int CachedFrame::Convert(const android::CameraMetadata& metadata,
 }
 
 int CachedFrame::ConvertToYU12() {
-  size_t cache_size = ImageProcessor::GetConvertedSize(
-      V4L2_PIX_FMT_YUV420, source_frame_->GetWidth(),
-      source_frame_->GetHeight());
-  if (cache_size == 0) {
-    return -EINVAL;
-  }
-  yu12_frame_->SetDataSize(cache_size);
   yu12_frame_->SetFourcc(V4L2_PIX_FMT_YUV420);
   yu12_frame_->SetWidth(source_frame_->GetWidth());
   yu12_frame_->SetHeight(source_frame_->GetHeight());
 
-  int res = ImageProcessor::ConvertFormat(android::CameraMetadata(),
+  int ret = ImageProcessor::ConvertFormat(android::CameraMetadata(),
                                           *source_frame_, yu12_frame_.get());
-  if (res) {
+  if (ret) {
     LOGF(ERROR) << "Convert from " << FormatToString(source_frame_->GetFourcc())
-                << " to YU12 fails.";
-    return res;
+                << " to YU12 failed.";
+    return ret;
   }
   return 0;
 }
@@ -135,48 +129,15 @@ int CachedFrame::CropRotateScale(int rotate_degree) {
     cropped_width++;
   }
   int cropped_height = yu12_frame_->GetHeight();
-  int margin = (yu12_frame_->GetWidth() - cropped_width) / 2;
+  // SetWidth and SetHeight are for final image after crop and rotation.
+  rotated_frame_->SetWidth(cropped_height);
+  rotated_frame_->SetHeight(cropped_width);
 
-  int rotated_height = cropped_width;
-  int rotated_width = cropped_height;
-
-  int rotated_y_stride = rotated_width;
-  int rotated_uv_stride = rotated_width / 2;
-  size_t rotated_size =
-      rotated_y_stride * rotated_height + rotated_uv_stride * rotated_height;
-  if (rotated_size > cropped_buffer_capacity_) {
-    cropped_buffer_.reset(new uint8_t[rotated_size]);
-    cropped_buffer_capacity_ = rotated_size;
-  }
-  uint8_t* rotated_y_plane = cropped_buffer_.get();
-  uint8_t* rotated_u_plane =
-      rotated_y_plane + rotated_y_stride * rotated_height;
-  uint8_t* rotated_v_plane =
-      rotated_u_plane + rotated_uv_stride * rotated_height / 2;
-  libyuv::RotationMode rotation_mode = libyuv::RotationMode::kRotate90;
-  switch (rotate_degree) {
-    case 90:
-      rotation_mode = libyuv::RotationMode::kRotate90;
-      break;
-    case 270:
-      rotation_mode = libyuv::RotationMode::kRotate270;
-      break;
-    default:
-      LOGF(ERROR) << "Invalid rotation degree: " << rotate_degree;
-      return -EINVAL;
-  }
-  // This libyuv method first crops the frame and then rotates it 90 degrees
-  // clockwise.
-  int res = libyuv::ConvertToI420(
-      yu12_frame_->GetData(), yu12_frame_->GetDataSize(), rotated_y_plane,
-      rotated_y_stride, rotated_u_plane, rotated_uv_stride, rotated_v_plane,
-      rotated_uv_stride, margin, 0, yu12_frame_->GetWidth(),
-      yu12_frame_->GetHeight(), cropped_width, cropped_height, rotation_mode,
-      libyuv::FourCC::FOURCC_I420);
-
-  if (res) {
-    LOGF(ERROR) << "ConvertToI420 failed: " << res;
-    return res;
+  int ret = ImageProcessor::CropAndRotate(*yu12_frame_.get(),
+                                          rotated_frame_.get(), rotate_degree);
+  if (ret) {
+    LOGF(ERROR) << "Crop and Rotate " << rotate_degree << " degree fails.";
+    return ret;
   }
 
   // Step 2: Scale
@@ -190,20 +151,10 @@ int CachedFrame::CropRotateScale(int rotate_degree) {
   //                           |                   |
   //                           ---------------------
   //
-  //
-  res = libyuv::I420Scale(
-      rotated_y_plane, rotated_y_stride, rotated_u_plane, rotated_uv_stride,
-      rotated_v_plane, rotated_uv_stride, rotated_width, rotated_height,
-      yu12_frame_->GetData(), yu12_frame_->GetWidth(),
-      yu12_frame_->GetData() +
-          yu12_frame_->GetWidth() * yu12_frame_->GetHeight(),
-      yu12_frame_->GetWidth() / 2,
-      yu12_frame_->GetData() +
-          yu12_frame_->GetWidth() * yu12_frame_->GetHeight() * 5 / 4,
-      yu12_frame_->GetWidth() / 2, yu12_frame_->GetWidth(),
-      yu12_frame_->GetHeight(), libyuv::FilterMode::kFilterNone);
-  LOGF_IF(ERROR, res) << "I420Scale failed: " << res;
-  return res;
+
+  ret = ImageProcessor::Scale(*rotated_frame_.get(), yu12_frame_.get());
+  LOGF_IF(ERROR, ret) << "Scale failed: " << ret;
+  return ret;
 }
 
 }  // namespace arc
