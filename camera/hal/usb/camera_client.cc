@@ -468,7 +468,7 @@ int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution) {
   }
 
   float max_fps = 0;
-  for (const auto& frame_rate : format->frameRates) {
+  for (const auto& frame_rate : format->frame_rates) {
     if (frame_rate > max_fps) {
       max_fps = frame_rate;
     }

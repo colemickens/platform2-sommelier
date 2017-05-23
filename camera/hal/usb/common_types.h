@@ -54,9 +54,9 @@ struct SupportedFormat {
   uint32_t fourcc;
   // All the supported frame rates in fps with given width, height, and
   // pixelformat. This is not sorted. For example, suppose width, height, and
-  // fourcc are 640x480 YUYV. If frameRates are 15.0 and 30.0, the camera
+  // fourcc are 640x480 YUYV. If frame rates are 15.0 and 30.0, the camera
   // supports outputting 640X480 YUYV in 15fps or 30fps.
-  std::vector<float> frameRates;
+  std::vector<float> frame_rates;
 };
 
 typedef std::vector<SupportedFormat> SupportedFormats;

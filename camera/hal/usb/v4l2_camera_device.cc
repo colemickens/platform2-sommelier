@@ -384,7 +384,7 @@ const SupportedFormats V4L2CameraDevice::GetDeviceSupportedFormats(
         return formats;
       }
 
-      supported_format.frameRates = GetFrameRateList(
+      supported_format.frame_rates = GetFrameRateList(
           fd.get(), v4l2_format.pixelformat, frame_size.discrete.width,
           frame_size.discrete.height);
       formats.push_back(supported_format);

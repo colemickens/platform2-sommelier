@@ -248,7 +248,7 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
     }
 
     int64_t min_frame_duration = std::numeric_limits<int64_t>::max();
-    for (const auto& frame_rate : supported_format.frameRates) {
+    for (const auto& frame_rate : supported_format.frame_rates) {
       int64_t frame_duration = 1000000000LL / frame_rate;
       if (frame_duration < min_frame_duration) {
         min_frame_duration = frame_duration;
