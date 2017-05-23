@@ -45,7 +45,7 @@ bool MatchContainer(const base::FilePath& container_dir,
 
   // Read manifest and check name.
   std::string manifest;
-  if (base::ReadFileToString(manifest_path, &manifest))
+  if (!base::ReadFileToString(manifest_path, &manifest))
     return false;
 
   JSONStringValueDeserializer deserializer(manifest);
