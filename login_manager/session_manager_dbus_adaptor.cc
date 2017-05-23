@@ -70,21 +70,6 @@ std::unique_ptr<dbus::Response> CreateStringResponse(
 // Craft a Response to call that is appropriate, given the contents of error.
 // If error is set, this will be an ErrorResponse. Otherwise, it will be a
 // Response containing payload.
-std::unique_ptr<dbus::Response> CraftAppropriateResponseWithBool(
-    dbus::MethodCall* call,
-    const SessionManagerImpl::Error& error,
-    bool payload) {
-  std::unique_ptr<dbus::Response> response;
-  if (error.is_set()) {
-    response = CreateError(call, error.name(), error.message());
-  } else {
-    response = dbus::Response::FromMethodCall(call);
-    dbus::MessageWriter writer(response.get());
-    writer.AppendBool(payload);
-  }
-  return response;
-}
-
 std::unique_ptr<dbus::Response> CraftAppropriateResponseWithBytes(
     dbus::MethodCall* call,
     const SessionManagerImpl::Error& error,
@@ -180,19 +165,11 @@ DBusMethodCompletion::DBusMethodCompletion(
 }
 
 void DBusMethodCompletion::HandleResult(const PolicyService::Error& error) {
-  if (error.code() == dbus_error::kNone) {
-    std::unique_ptr<dbus::Response> response(
-        dbus::Response::FromMethodCall(call_));
-    dbus::MessageWriter writer(response.get());
-    writer.AppendBool(true);
-    sender_.Run(std::move(response));
-    call_ = nullptr;
-  } else {
-    sender_.Run(
-        dbus::ErrorResponse::FromMethodCall(call_,
-                                            error.code(), error.message()));
-    call_ = nullptr;
-  }
+  sender_.Run(error.code() == dbus_error::kNone ?
+              dbus::Response::FromMethodCall(call_) :
+              dbus::ErrorResponse::FromMethodCall(
+                  call_, error.code(), error.message()));
+  call_ = nullptr;
 }
 
 SessionManagerDBusAdaptor::SessionManagerDBusAdaptor(SessionManagerImpl* impl)
@@ -577,9 +554,10 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::RestartJob(
 
 std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StartDeviceWipe(
     dbus::MethodCall* call) {
-  SessionManagerImpl::Error error;
-  impl_->StartDeviceWipe("session_manager_dbus_request", &error);
-  return CraftAppropriateResponseWithBool(call, error, true);
+  brillo::ErrorPtr error;
+  if (!impl_->StartDeviceWipe(&error))
+    return brillo::dbus_utils::GetDBusError(call, error.get());
+  return dbus::Response::FromMethodCall(call);
 }
 
 std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::SetFlagsForUser(

@@ -103,7 +103,6 @@
         StorePolicy:
         @policy_blob: Serialized protobuf containing a device policy and a
                       signature over that policy.
-        @done: True on success. Error returned on failure, so likely redundant.
 
         Stores a device policy. This method will verify the sig in @policy_blob
         and persist the blob to disk.
@@ -112,7 +111,6 @@
     -->
     <method name="StorePolicy">
       <arg type="ay" name="policy_blob" direction="in" />
-      <arg type="b" name="done" direction="out"></arg>
     </method>
 
     <!--
@@ -143,7 +141,6 @@
         StorePolicyForUser:
         @account_id: Account ID of the user whose policy is to be stored.
         @policy_blob: A serialized PolicyFetchResponse protobuf.
-        @done: True on success. Error returned on failure, so likely redundant.
 
         Similar to StorePolicy() above, but for user policy.
         @policy_blob should contain a serialized PolicyFetchResponse protobuf
@@ -161,7 +158,6 @@
     <method name="StorePolicyForUser">
       <arg type="s" name="account_id" direction="in" />
       <arg type="ay" name="policy_blob" direction="in" />
-      <arg type="b" name="done" direction="out" />
     </method>
 
     <!--
@@ -205,7 +201,6 @@
         StoreDeviceLocalAccountPolicy:
         @account_id: Account whose policy is to be stored.
         @policy_blob: A serialized PolicyFetchResponse protobuf.
-        @done: True on success. Error returned on failure, so likely redundant.
 
         Similar to StorePolicyForUser() above, but for device-local
         accounts. @policy_blob should contain a serialized
@@ -223,7 +218,6 @@
     <method name="StoreDeviceLocalAccountPolicy">
       <arg type="s" name="account_id" direction="in" />
       <arg type="ay" name="policy_blob" direction="in" />
-      <arg type="b" name="done" direction="out" />
     </method>
 
     <!--
@@ -360,13 +354,10 @@
 
     <!--
         StartDeviceWipe:
-        @done: True on success. Error returned on failure, so likely redundant.
 
         Sets the device up to "Powerwash" on reboot, and triggers a reboot.
     -->
-    <method name="StartDeviceWipe">
-      <arg type="b" name="done" direction="out" />
-    </method>
+    <method name="StartDeviceWipe" />
 
     <!--
         SetFlagsForUser:

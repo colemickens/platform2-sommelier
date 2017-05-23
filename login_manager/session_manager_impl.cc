@@ -681,16 +681,15 @@ bool SessionManagerImpl::RestartJob(brillo::ErrorPtr* error,
   return true;
 }
 
-void SessionManagerImpl::StartDeviceWipe(const std::string& reason,
-                                         Error* error) {
-  const base::FilePath session_path(kLoggedInFlag);
-  if (system_->Exists(session_path)) {
-    static const char msg[] = "A user has already logged in this boot.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kSessionExists, msg);
-    return;
+bool SessionManagerImpl::StartDeviceWipe(brillo::ErrorPtr* error) {
+  if (system_->Exists(base::FilePath(kLoggedInFlag))) {
+    constexpr char kMessage[] = "A user has already logged in this boot.";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kSessionExists, kMessage);
+    return false;
   }
-  InitiateDeviceWipe(reason);
+  InitiateDeviceWipe("session_manager_dbus_request");
+  return true;
 }
 
 void SessionManagerImpl::SetFlagsForUser(

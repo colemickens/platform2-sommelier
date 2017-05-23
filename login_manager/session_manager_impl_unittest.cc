@@ -1073,24 +1073,35 @@ TEST_F(SessionManagerImplTest, LockUnlockScreen) {
   EXPECT_EQ(FALSE, impl_.ShouldEndSession());
 }
 
+TEST_F(SessionManagerImplTest, StartDeviceWipe) {
+  // Just make sure the device is being restart as sanity check of
+  // InitiateDeviceWipe() invocation.
+  ExpectDeviceRestart();
+
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.StartDeviceWipe(&error));
+  EXPECT_FALSE(error.get());
+}
+
 TEST_F(SessionManagerImplTest, StartDeviceWipe_AlreadyLoggedIn) {
   base::FilePath logged_in_path(SessionManagerImpl::kLoggedInFlag);
   ASSERT_FALSE(utils_.Exists(logged_in_path));
   ASSERT_TRUE(utils_.AtomicFileWrite(logged_in_path, "1"));
-  impl_.StartDeviceWipe("test", &error_);
-  EXPECT_EQ(error_.name(), dbus_error::kSessionExists);
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_.StartDeviceWipe(&error));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kSessionExists, error->GetCode());
 }
 
-TEST_F(SessionManagerImplTest, StartDeviceWipe) {
-  base::FilePath logged_in_path(SessionManagerImpl::kLoggedInFlag);
-  base::FilePath reset_path(utils_.PutInsideBaseDirForTesting(
-      base::FilePath(SessionManagerImpl::kResetFile)));
-  ASSERT_TRUE(utils_.RemoveFile(logged_in_path));
+TEST_F(SessionManagerImplTest, InitiateDeviceWipe_TooLongReason) {
+  ASSERT_TRUE(utils_.RemoveFile(
+      base::FilePath(SessionManagerImpl::kLoggedInFlag)));
   ExpectDeviceRestart();
-  impl_.StartDeviceWipe(
-      "overly long test message with\nspecial/chars$\t\xa4\xd6 1234567890",
-      NULL);
+  impl_.InitiateDeviceWipe(
+      "overly long test message with\nspecial/chars$\t\xa4\xd6 1234567890");
   std::string contents;
+  base::FilePath reset_path = utils_.PutInsideBaseDirForTesting(
+      base::FilePath(SessionManagerImpl::kResetFile));
   ASSERT_TRUE(base::ReadFileToString(reset_path, &contents));
   ASSERT_EQ(
       "fast safe keepimg reason="

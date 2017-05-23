@@ -213,7 +213,7 @@ class SessionManagerImpl : public SessionManagerInterface,
                   const dbus::FileDescriptor& in_cred_fd,
                   const std::vector<std::string>& in_argv);
 
-  void StartDeviceWipe(const std::string& reason, Error* error);
+  bool StartDeviceWipe(brillo::ErrorPtr* error);
   void SetFlagsForUser(const std::string& account_id,
                        const std::vector<std::string>& session_user_flags);
 
