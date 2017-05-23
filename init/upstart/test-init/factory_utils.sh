@@ -42,9 +42,31 @@ inhibit_if_factory_mode() {
 
 # Overrides do_mount_var_and_home_chronos in chromeos_startup.
 do_mount_var_and_home_chronos() {
+  local option_file=/usr/local/factory/init/encstateful_mount_option
+  local option=""
+
   if is_factory_mode; then
-    mount_var_and_home_chronos "factory"
-  else
-    mount_var_and_home_chronos
+    if [ -f "${option_file}" ]; then
+      option="$(cat "${option_file}")"
+    else
+      option="unencrypted"
+    fi
   fi
+
+  case "${option}" in
+    unencrypted)
+      # This should be same as platform2/init/unencrypted/startup_utils.sh
+      mkdir -p /mnt/stateful_partition/var || return 1
+      mount -n --bind /mnt/stateful_partition/var /var || return 1
+      mount -n --bind /mnt/stateful_partition/home/chronos /home/chronos
+      ;;
+    factory)
+      # TODO(hungte) Remove this mode and let mount-encrypted drop related code
+      # when we are confident of using unencrypted mode.
+      mount_var_and_home_chronos "factory"
+      ;;
+    *)
+      mount_var_and_home_chronos
+      ;;
+  esac
 }
