@@ -17,6 +17,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/strings/stringprintf.h>
+#include <base/timer/elapsed_timer.h>
 
 #include "arc/common.h"
 #include "hal/usb/camera_characteristics.h"
@@ -58,8 +59,8 @@ V4L2CameraDevice::~V4L2CameraDevice() {
 int V4L2CameraDevice::Connect(const std::string& device_path) {
   VLOGF(1) << "Connecting device path: " << device_path;
   base::AutoLock l(lock_);
-  if (device_path.compare(0, strlen(kAllowedVideoPrefix),
-                          kAllowedVideoPrefix)) {
+  if (device_path.compare(0, strlen(kAllowedCameraPrefix),
+                          kAllowedCameraPrefix)) {
     LOGF(ERROR) << "Invalid device path " << device_path;
     return -EINVAL;
   }
@@ -69,8 +70,9 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
     return -EIO;
   }
 
-  device_fd_.reset(
-      TEMP_FAILURE_RETRY(open(device_path.c_str(), O_RDWR | O_NOFOLLOW)));
+  // Since device node may be changed after suspend/resume, we allow to use
+  // symbolic link to access device.
+  device_fd_.reset(RetryDeviceOpen(device_path, O_RDWR));
   if (!device_fd_.is_valid()) {
     LOGF(ERROR) << "Failed to open " << device_path << " : " << strerror(errno);
     return -errno;
@@ -348,13 +350,12 @@ const SupportedFormats V4L2CameraDevice::GetDeviceSupportedFormats(
     const std::string& device_path) {
   VLOG(1) << "Query supported formats for " << device_path;
   SupportedFormats formats;
-  if (device_path.compare(0, strlen(kAllowedVideoPrefix),
-                          kAllowedVideoPrefix)) {
+  if (device_path.compare(0, strlen(kAllowedCameraPrefix),
+                          kAllowedCameraPrefix)) {
     LOGF(ERROR) << "Invalid device path " << device_path;
     return formats;
   }
-  base::ScopedFD fd(
-      TEMP_FAILURE_RETRY(open(device_path.c_str(), O_RDONLY | O_NOFOLLOW)));
+  base::ScopedFD fd(RetryDeviceOpen(device_path, O_RDONLY));
   if (!fd.is_valid()) {
     LOGF(ERROR) << "Failed to open " << device_path << " : " << strerror(errno);
     return formats;
@@ -508,13 +509,41 @@ V4L2CameraDevice::GetCameraDevicesByPattern(std::string pattern) {
       }
       VLOGF(1) << "Device path: " << device_path << " vid: " << usb_vid
                << " pid: " << usb_pid;
-      devices.insert(std::make_pair(usb_vid + ":" + usb_pid, device_path));
+      devices.insert(
+          std::make_pair(usb_vid + ":" + usb_pid, target_path.value()));
     }
   }
   if (devices.empty()) {
     LOGF(ERROR) << "Cannot find any camera devices with pattern " << pattern;
   }
   return devices;
+}
+
+int V4L2CameraDevice::RetryDeviceOpen(const std::string& device_path,
+                                      int flags) {
+  const int64_t kDeviceOpenTimeOutInMilliseconds = 2000;
+  const int64_t kSleepTimeInMilliseconds = 100;
+  int fd;
+  base::ElapsedTimer timer;
+  int64_t elapsed_time = timer.Elapsed().InMillisecondsRoundedUp();
+  while (elapsed_time < kDeviceOpenTimeOutInMilliseconds) {
+    fd = TEMP_FAILURE_RETRY(open(device_path.c_str(), flags));
+    if (fd != -1) {
+      if (elapsed_time >= kSleepTimeInMilliseconds) {
+        LOGF(INFO) << "Opened the camera device after waiting for "
+                   << elapsed_time << " ms";
+      }
+      return fd;
+    }
+    if (errno != ENOENT) {
+      break;
+    }
+    base::PlatformThread::Sleep(
+        base::TimeDelta::FromMilliseconds(kSleepTimeInMilliseconds));
+    elapsed_time = timer.Elapsed().InMillisecondsRoundedUp();
+  }
+  LOGF(ERROR) << "Failed to open " << device_path << " : " << strerror(errno);
+  return -1;
 }
 
 }  // namespace arc

@@ -33,6 +33,17 @@ struct DeviceInfo {
   float lens_info_optimal_focus_distance;
   float vertical_view_angle_16_9;
   float vertical_view_angle_4_3;
+  // The camera doesn't support 1280x960 resolution when the maximum resolution
+  // of the camear is larger than 1080p.
+  bool resolution_1280x960_unsupported;
+  // The camera doesn't support 1600x1200 resolution.
+  bool resolution_1600x1200_unsupported;
+  // The camera doesn't support constant frame rate. That means HAL cannot set
+  // V4L2_CID_EXPOSURE_AUTO_PRIORITY to 0 to have constant frame rate in low
+  // light environment.
+  bool constant_framerate_unsupported;
+  uint32_t sensor_info_pixel_array_size_width;
+  uint32_t sensor_info_pixel_array_size_height;
 };
 
 typedef std::vector<DeviceInfo> DeviceInfos;

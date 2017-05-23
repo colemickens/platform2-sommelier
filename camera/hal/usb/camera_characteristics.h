@@ -16,8 +16,8 @@
 
 namespace arc {
 
-// CameraCharacteristics reads the file /etc/camera/camera_characteristics.conf
-// and stores the content. There are several assumptions of the config file:
+// CameraCharacteristics reads the file /etc/camera/camera_characteristics.conf.
+// There are several assumptions of the config file:
 //  1. Each line should be at most 256 characters long.
 //  2. camera id should be in ascending order (i.e., 0, 1, 2, ...).
 //  3. usb_vid_pid should be the first subkey.
@@ -48,14 +48,14 @@ class CameraCharacteristics {
       const std::unordered_map<std::string, std::string>& devices);
 
  private:
-  DeviceInfos device_infos_;
-
   void AddPerCameraCharacteristic(uint32_t camera_id,
                                   const char* characteristic,
-                                  const char* value);
+                                  const char* value,
+                                  DeviceInfos* device_infos);
   void AddPerModuleCharacteristic(uint32_t camera_id,
                                   const char* characteristic,
-                                  const char* value);
+                                  const char* value,
+                                  DeviceInfos* device_infos);
   void AddFloatValue(const char* value,
                      const char* characteristic_name,
                      float* characteristic);

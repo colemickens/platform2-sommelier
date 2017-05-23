@@ -85,6 +85,10 @@ class V4L2CameraDevice {
   const std::unordered_map<std::string, std::string> GetCameraDevicesByPattern(
       std::string pattern);
 
+  // This is for suspend/resume feature. USB camera will be enumerated after
+  // device resumed. But camera device may not be ready immediately.
+  int RetryDeviceOpen(const std::string& device_path, int flags);
+
   // The number of video buffers we want to request in kernel.
   const int kNumVideoBuffers = 4;
 
