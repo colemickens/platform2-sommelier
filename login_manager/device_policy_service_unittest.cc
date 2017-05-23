@@ -486,7 +486,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessNewKey) {
   EXPECT_CALL(key_, PopulateFromBuffer(fake_key_vector_))
       .InSequence(s)
       .WillOnce(Return(true));
-  EXPECT_CALL(*store_, Set(PolicyEq(em::PolicyFetchResponse())));
+  EXPECT_CALL(*store_, Set(ProtoEq(em::PolicyFetchResponse())));
   ExpectInstallNewOwnerPolicy(s, &nss);
 
   SetDefaultSettings();
@@ -550,7 +550,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessAddOwner) {
   EXPECT_CALL(key_, PopulateFromBuffer(fake_key_vector_))
       .InSequence(s)
       .WillOnce(Return(true));
-  EXPECT_CALL(*store_, Set(PolicyEq(em::PolicyFetchResponse())));
+  EXPECT_CALL(*store_, Set(ProtoEq(em::PolicyFetchResponse())));
   ExpectInstallNewOwnerPolicy(s, &nss);
   SetDefaultSettings();
 

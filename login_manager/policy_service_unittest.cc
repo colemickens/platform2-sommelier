@@ -83,12 +83,13 @@ class PolicyServiceTest : public testing::Test {
                        fake_sig_.size()))
         .InSequence(*sequence)
         .WillOnce(Return(true));
-    EXPECT_CALL(*store_, Set(PolicyStrEq(policy_str_))).Times(1).InSequence(
-        *sequence);
+    EXPECT_CALL(*store_, Set(ProtoEq(policy_proto_)))
+        .Times(1)
+        .InSequence(*sequence);
   }
 
   void ExpectSetPolicy(Sequence* sequence) {
-    EXPECT_CALL(*store_, Set(PolicyStrEq(policy_str_)))
+    EXPECT_CALL(*store_, Set(ProtoEq(policy_proto_)))
         .Times(1)
         .InSequence(*sequence);
   }

@@ -72,7 +72,7 @@ class UserPolicyServiceTest : public ::testing::Test {
   }
 
   void ExpectStorePolicy(const Sequence& sequence) {
-    EXPECT_CALL(*store_, Set(PolicyStrEq(policy_str_))).InSequence(sequence);
+    EXPECT_CALL(*store_, Set(ProtoEq(policy_proto_))).InSequence(sequence);
     EXPECT_CALL(*store_, Persist()).InSequence(sequence).WillOnce(Return(true));
     EXPECT_CALL(*this, HandleCompletion(PolicyErrorEq(dbus_error::kNone)))
         .InSequence(sequence);

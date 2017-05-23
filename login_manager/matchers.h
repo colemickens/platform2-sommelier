@@ -6,6 +6,7 @@
 #define LOGIN_MANAGER_MATCHERS_H_
 
 #include <algorithm>
+#include <type_traits>
 
 #include <base/files/file_path.h>
 #include <gmock/gmock.h>
@@ -22,19 +23,25 @@ MATCHER_P(VectorEq, str, "") {
       std::equal(str.begin(), str.end(), arg.begin());
 }
 
-// Serializes the protobuf in arg to a string, compares to str for equality.
-MATCHER_P(PolicyStrEq, str, "") {
-  return arg.SerializeAsString() == str;
+// Compares protobuf message by serialization.
+MATCHER_P(ProtoEq, proto, "") {
+  // Make sure given proto types are same.
+  using ArgType =
+      typename std::remove_cv<
+        typename std::remove_reference<decltype(arg)>::type>::type;
+  using ProtoType =
+      typename std::remove_cv<
+        typename std::remove_reference<decltype(proto)>::type>::type;
+  static_assert(
+      std::is_same<ArgType, ProtoType>::value, "Proto type mismatch");
+
+  return arg.SerializeAsString() == proto.SerializeAsString();
 }
 
 MATCHER_P(StatusEq, status, "") {
   return (arg.owner_key_file_state == status.owner_key_file_state &&
           arg.policy_file_state == status.policy_file_state &&
           arg.defunct_prefs_file_state == status.defunct_prefs_file_state);
-}
-
-MATCHER_P(PolicyEq, policy, "") {
-  return arg.SerializeAsString() == policy.SerializeAsString();
 }
 
 MATCHER_P(PathStartsWith, path_prefix, "") {
