@@ -489,6 +489,12 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("native_gpu_memory_buffers"))
     AddArg("--enable-native-gpu-memory-buffers");
 
+  if (UseFlagIsSet("drm_atomic")) {
+    AddArg("--enable-drm-atomic");
+    AddArg("--enable-hardware-overlays=single-fullscreen,single-on-top");
+    AddArg("--enable-webgl-image-chromium");
+  }
+
   AddArg(std::string("--gpu-sandbox-failures-fatal=") +
       (is_chrome_os_hardware() ? "yes" : "no"));
 
