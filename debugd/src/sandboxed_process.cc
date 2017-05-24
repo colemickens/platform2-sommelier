@@ -5,9 +5,9 @@
 #include "debugd/src/sandboxed_process.h"
 
 #include <signal.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <unistd.h>
 
 #include <base/strings/stringprintf.h>
 
@@ -30,11 +30,6 @@ SandboxedProcess::SandboxedProcess()
       access_root_mount_ns_(false),
       user_(kDefaultUser),
       group_(kDefaultGroup) {
-}
-
-SandboxedProcess::~SandboxedProcess() {
-  for (const auto& fd : bound_fds_)
-    close(fd);
 }
 
 // static
@@ -91,11 +86,6 @@ bool SandboxedProcess::Init() {
   AddArg("--");
 
   return true;
-}
-
-void SandboxedProcess::BindFd(int parent_fd, int child_fd) {
-  ProcessImpl::BindFd(parent_fd, child_fd);
-  bound_fds_.push_back(parent_fd);
 }
 
 void SandboxedProcess::DisableSandbox() {

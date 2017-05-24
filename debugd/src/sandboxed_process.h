@@ -15,7 +15,7 @@ namespace debugd {
 class SandboxedProcess : public brillo::ProcessImpl {
  public:
   SandboxedProcess();
-  ~SandboxedProcess() override;
+  ~SandboxedProcess() override = default;
 
   // Get the full path of a helper executable located at the |relative_path|
   // relative to the debugd helpers directory. Return false if the full path
@@ -24,8 +24,6 @@ class SandboxedProcess : public brillo::ProcessImpl {
                             std::string* full_path);
 
   virtual bool Init();
-
-  void BindFd(int parent_fd, int child_fd) override;
 
   // Disable the default sandboxing for this process.
   virtual void DisableSandbox();
@@ -51,7 +49,6 @@ class SandboxedProcess : public brillo::ProcessImpl {
   bool access_root_mount_ns_;
   std::string user_;
   std::string group_;
-  std::vector<int> bound_fds_;
   std::string seccomp_filter_policy_file_;
 };
 
