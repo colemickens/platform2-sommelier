@@ -308,8 +308,7 @@
         screen. The browser should call the HandleScreenLocked
         method when the screen is actually locked.
     -->
-    <method name="LockScreen">
-    </method>
+    <method name="LockScreen" />
 
     <!--
         HandleLockScreenShown:
@@ -318,6 +317,7 @@
         Emits ScreenIsLocked.
     -->
     <method name="HandleLockScreenShown">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
     </method>
 
     <!--
@@ -327,20 +327,20 @@
         Emits ScreenIsUnlocked.
     -->
     <method name="HandleLockScreenDismissed">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
     </method>
 
     <!--
         ScreenIsLocked:
         Broadcast that the browser locked the screen.
     -->
-    <signal name="ScreenIsLocked">
-    </signal>
+    <signal name="ScreenIsLocked" />
+
     <!--
         ScreenIsUnlocked:
         Broadcast that the browser unlocked the screen.
     -->
-    <signal name="ScreenIsUnlocked">
-    </signal>
+    <signal name="ScreenIsUnlocked" />
 
     <!--
         RestartJob:
@@ -373,6 +373,7 @@
     <method name="SetFlagsForUser">
       <arg type="s" name="account_id" direction="in" />
       <arg type="as" name="flags" direction="in" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
     </method>
 
     <!--

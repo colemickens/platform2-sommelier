@@ -981,7 +981,9 @@ TEST_F(SessionManagerImplTest, SupervisedUserCreation) {
 TEST_F(SessionManagerImplTest, LockScreen) {
   ExpectAndRunStartSession(kSaneEmail);
   ExpectLockScreen();
-  impl_.LockScreen(NULL);
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.LockScreen(&error));
+  EXPECT_FALSE(error.get());
   EXPECT_TRUE(impl_.ShouldEndSession());
 }
 
@@ -992,7 +994,9 @@ TEST_F(SessionManagerImplTest, LockScreen_DuringSupervisedUserCreation) {
 
   impl_.HandleSupervisedUserCreationStarting();
   EXPECT_TRUE(impl_.ShouldEndSession());
-  impl_.LockScreen(NULL);
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.LockScreen(&error));
+  EXPECT_FALSE(error.get());
   EXPECT_TRUE(impl_.ShouldEndSession());
   impl_.HandleLockScreenShown();
   EXPECT_TRUE(impl_.ShouldEndSession());
@@ -1009,7 +1013,9 @@ TEST_F(SessionManagerImplTest, LockScreen_InterleavedSupervisedUserCreation) {
 
   impl_.HandleSupervisedUserCreationStarting();
   EXPECT_TRUE(impl_.ShouldEndSession());
-  impl_.LockScreen(NULL);
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.LockScreen(&error));
+  EXPECT_FALSE(error.get());
   EXPECT_TRUE(impl_.ShouldEndSession());
   impl_.HandleLockScreenShown();
   EXPECT_TRUE(impl_.ShouldEndSession());
@@ -1023,33 +1029,43 @@ TEST_F(SessionManagerImplTest, LockScreen_MultiSession) {
   ExpectAndRunStartSession("user@somewhere");
   ExpectAndRunStartSession("user2@somewhere");
   ExpectLockScreen();
-  impl_.LockScreen(NULL);
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.LockScreen(&error));
+  EXPECT_FALSE(error.get());
   EXPECT_EQ(TRUE, impl_.ShouldEndSession());
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_NoSession) {
-  impl_.LockScreen(&error_);
-  EXPECT_EQ(dbus_error::kSessionDoesNotExist, error_.name());
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_.LockScreen(&error));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kSessionDoesNotExist, error->GetCode());
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_Guest) {
   ExpectAndRunGuestSession();
-  impl_.LockScreen(&error_);
-  EXPECT_EQ(dbus_error::kSessionExists, error_.name());
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_.LockScreen(&error));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kSessionExists, error->GetCode());
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_UserAndGuest) {
   ExpectAndRunStartSession(kSaneEmail);
   ExpectAndRunGuestSession();
   ExpectLockScreen();
-  impl_.LockScreen(&error_);
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.LockScreen(&error));
+  ASSERT_FALSE(error.get());
   EXPECT_EQ(TRUE, impl_.ShouldEndSession());
 }
 
 TEST_F(SessionManagerImplTest, LockUnlockScreen) {
   ExpectAndRunStartSession(kSaneEmail);
   ExpectLockScreen();
-  impl_.LockScreen(&error_);
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.LockScreen(&error));
+  EXPECT_FALSE(error.get());
   EXPECT_EQ(TRUE, impl_.ShouldEndSession());
 
   EXPECT_CALL(dbus_emitter_,
@@ -1128,7 +1144,10 @@ TEST_F(SessionManagerImplTest, ContainerStart) {
 
   ExpectAndRunStartSession(kSaneEmail);
 
-  impl_.StartContainer(kContainerName, &error_);
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_.StartContainer(&error, kContainerName));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kContainerStartupFail, error->GetCode());
   EXPECT_FALSE(android_container_.running());
 }
 

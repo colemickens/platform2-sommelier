@@ -620,25 +620,27 @@ void SessionManagerImpl::HandleSupervisedUserCreationFinished() {
   supervised_user_creation_ongoing_ = false;
 }
 
-void SessionManagerImpl::LockScreen(Error* error) {
+bool SessionManagerImpl::LockScreen(brillo::ErrorPtr* error) {
   if (!session_started_) {
-    static const char msg[] = "Attempt to lock screen outside of user session.";
-    LOG(WARNING) << msg;
-    error->Set(dbus_error::kSessionDoesNotExist, msg);
-    return;
+    constexpr char kMessage[] =
+        "Attempt to lock screen outside of user session.";
+    LOG(WARNING) << kMessage;
+    *error = CreateError(dbus_error::kSessionDoesNotExist, kMessage);
+    return false;
   }
   // If all sessions are incognito, then locking is not allowed.
   if (AllSessionsAreIncognito()) {
-    static const char msg[] = "Attempt to lock screen during Guest session.";
-    LOG(WARNING) << msg;
-    error->Set(dbus_error::kSessionExists, msg);
-    return;
+    constexpr char kMessage[] = "Attempt to lock screen during Guest session.";
+    LOG(WARNING) << kMessage;
+    *error = CreateError(dbus_error::kSessionExists, kMessage);
+    return false;
   }
   if (!screen_locked_) {
     screen_locked_ = true;
     lock_screen_closure_.Run();
   }
   LOG(INFO) << "LockScreen() method called.";
+  return true;
 }
 
 void SessionManagerImpl::HandleLockScreenShown() {
@@ -694,9 +696,9 @@ bool SessionManagerImpl::StartDeviceWipe(brillo::ErrorPtr* error) {
 }
 
 void SessionManagerImpl::SetFlagsForUser(
-    const std::string& account_id,
-    const std::vector<std::string>& session_user_flags) {
-  manager_->SetFlagsForUser(account_id, session_user_flags);
+    const std::string& in_account_id,
+    const std::vector<std::string>& in_flags) {
+  manager_->SetFlagsForUser(in_account_id, in_flags);
 }
 
 void SessionManagerImpl::RequestServerBackedStateKeys(
@@ -764,14 +766,21 @@ void SessionManagerImpl::OnGotSystemClockLastSyncInfo(
   }
 }
 
-void SessionManagerImpl::InitMachineInfo(const std::string& data,
-                                         Error* error) {
+bool SessionManagerImpl::InitMachineInfo(brillo::ErrorPtr* error,
+                                         const std::string& in_data) {
   std::map<std::string, std::string> params;
-  if (!ServerBackedStateKeyGenerator::ParseMachineInfo(data, &params))
-    error->Set(dbus_error::kInitMachineInfoFail, "Parse failure.");
+  if (!ServerBackedStateKeyGenerator::ParseMachineInfo(in_data, &params)) {
+    *error = CreateError(
+        dbus_error::kInitMachineInfoFail, "Parse failure.");
+    return false;
+  }
 
-  if (!state_key_generator_->InitMachineInfo(params))
-    error->Set(dbus_error::kInitMachineInfoFail, "Missing parameters.");
+  if (!state_key_generator_->InitMachineInfo(params)) {
+    *error = CreateError(
+        dbus_error::kInitMachineInfoFail, "Missing parameters.");
+    return false;
+  }
+  return true;
 }
 
 void SessionManagerImpl::StartArcInstanceForLoginScreen(
@@ -983,18 +992,22 @@ base::TimeTicks SessionManagerImpl::GetArcStartTime(Error* error) {
   return arc_start_time_;
 }
 
-void SessionManagerImpl::StartContainer(const std::string& name, Error* error) {
+bool SessionManagerImpl::StartContainer(brillo::ErrorPtr* error,
+                                        const std::string& in_name) {
   // TODO(dgreid): Add support for other containers.
-  const char msg[] = "Container not found.";
-  LOG(ERROR) << msg;
-  error->Set(dbus_error::kContainerStartupFail, msg);
+  constexpr char kMessage[] = "Container not found.";
+  LOG(ERROR) << kMessage;
+  *error = CreateError(dbus_error::kContainerStartupFail, kMessage);
+  return false;
 }
 
-void SessionManagerImpl::StopContainer(const std::string& name, Error* error) {
+bool SessionManagerImpl::StopContainer(brillo::ErrorPtr* error,
+                                       const std::string& in_name) {
   // TODO(dgreid): Add support for other containers.
-  const char msg[] = "Container not found.";
-  LOG(ERROR) << msg;
-  error->Set(dbus_error::kContainerShutdownFail, msg);
+  constexpr char kMessage[] = "Container not found.";
+  LOG(ERROR) << kMessage;
+  *error = CreateError(dbus_error::kContainerShutdownFail, kMessage);
+  return false;
 }
 
 void SessionManagerImpl::RemoveArcData(const std::string& account_id,

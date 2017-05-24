@@ -203,7 +203,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   void HandleSupervisedUserCreationStarting();
   void HandleSupervisedUserCreationFinished();
 
-  void LockScreen(Error* error);
+  bool LockScreen(brillo::ErrorPtr* error);
   void HandleLockScreenShown();
   void HandleLockScreenDismissed();
 
@@ -212,15 +212,14 @@ class SessionManagerImpl : public SessionManagerInterface,
                   const std::vector<std::string>& in_argv);
 
   bool StartDeviceWipe(brillo::ErrorPtr* error);
-  void SetFlagsForUser(const std::string& account_id,
-                       const std::vector<std::string>& session_user_flags);
+  void SetFlagsForUser(const std::string& in_account_id,
+                       const std::vector<std::string>& in_flags);
 
   void RequestServerBackedStateKeys(
       const ServerBackedStateKeyGenerator::StateKeyCallback& callback);
-  void InitMachineInfo(const std::string& data, Error* error);
-
-  void StartContainer(const std::string& name, Error* error);
-  void StopContainer(const std::string& name, Error* error);
+  bool InitMachineInfo(brillo::ErrorPtr* error, const std::string& in_data);
+  bool StartContainer(brillo::ErrorPtr* error, const std::string& in_name);
+  bool StopContainer(brillo::ErrorPtr* error, const std::string& in_name);
 
   void StartArcInstanceForLoginScreen(const std::string& container_instance_id,
                                       Error* error);

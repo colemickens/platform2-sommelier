@@ -503,11 +503,9 @@ SessionManagerDBusAdaptor::HandleSupervisedUserCreationFinished(
 
 std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::LockScreen(
     dbus::MethodCall* call) {
-  SessionManagerImpl::Error error;
-  impl_->LockScreen(&error);
-
-  if (error.is_set())
-    return CreateError(call, error.name(), error.message());
+  brillo::ErrorPtr error;
+  if (!impl_->LockScreen(&error))
+    return brillo::dbus_utils::GetDBusError(call, error.get());
   return dbus::Response::FromMethodCall(call);
 }
 
@@ -552,12 +550,10 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::SetFlagsForUser(
     dbus::MethodCall* call) {
   dbus::MessageReader reader(call);
   std::string account_id;
-  std::vector<std::string> session_user_flags;
-  if (!reader.PopString(&account_id) ||
-      !reader.PopArrayOfStrings(&session_user_flags)) {
+  std::vector<std::string> flags;
+  if (!reader.PopString(&account_id) || !reader.PopArrayOfStrings(&flags))
     return CreateInvalidArgsError(call, call->GetSignature());
-  }
-  impl_->SetFlagsForUser(account_id, session_user_flags);
+  impl_->SetFlagsForUser(account_id, flags);
   return dbus::Response::FromMethodCall(call);
 }
 
@@ -576,10 +572,9 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::InitMachineInfo(
   if (!reader.PopString(&data))
     return CreateInvalidArgsError(call, call->GetSignature());
 
-  SessionManagerImpl::Error error;
-  impl_->InitMachineInfo(data, &error);
-  if (error.is_set())
-    return CreateError(call, error.name(), error.message());
+  brillo::ErrorPtr error;
+  if (!impl_->InitMachineInfo(&error, data))
+    return brillo::dbus_utils::GetDBusError(call, error.get());
   return dbus::Response::FromMethodCall(call);
 }
 
@@ -590,10 +585,9 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StartContainer(
   if (!reader.PopString(&name))
     return CreateInvalidArgsError(call, call->GetSignature());
 
-  SessionManagerImpl::Error error;
-  impl_->StartContainer(name, &error);
-  if (error.is_set())
-    return CreateError(call, error.name(), error.message());
+  brillo::ErrorPtr error;
+  if (!impl_->StartContainer(&error, name))
+    return brillo::dbus_utils::GetDBusError(call, error.get());
   return dbus::Response::FromMethodCall(call);
 }
 
@@ -604,10 +598,9 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StopContainer(
   if (!reader.PopString(&name))
     return CreateInvalidArgsError(call, call->GetSignature());
 
-  SessionManagerImpl::Error error;
-  impl_->StopContainer(name, &error);
-  if (error.is_set())
-    return CreateError(call, error.name(), error.message());
+  brillo::ErrorPtr error;
+  if (!impl_->StopContainer(&error, name))
+    return brillo::dbus_utils::GetDBusError(call, error.get());
   return dbus::Response::FromMethodCall(call);
 }
 
