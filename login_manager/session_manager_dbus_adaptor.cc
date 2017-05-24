@@ -15,6 +15,7 @@
 #include <base/callback.h>
 #include <base/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <brillo/dbus/data_serialization.h>
 #include <brillo/dbus/utils.h>
 #include <brillo/errors/error_codes.h>
 #include <dbus/exported_object.h>
@@ -477,24 +478,13 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrieveSessionState(
 
 std::unique_ptr<dbus::Response>
 SessionManagerDBusAdaptor::RetrieveActiveSessions(dbus::MethodCall* call) {
-  std::map<std::string, std::string> sessions;
-  impl_->RetrieveActiveSessions(&sessions);
+  std::map<std::string, std::string> sessions =
+      impl_->RetrieveActiveSessions();
 
-  std::unique_ptr<dbus::Response> response(
-      dbus::Response::FromMethodCall(call));
+  std::unique_ptr<dbus::Response> response =
+      dbus::Response::FromMethodCall(call);
   dbus::MessageWriter writer(response.get());
-  dbus::MessageWriter array_writer(NULL);
-  writer.OpenArray("{ss}", &array_writer);
-  for (std::map<std::string, std::string>::const_iterator it = sessions.begin();
-       it != sessions.end();
-       ++it) {
-    dbus::MessageWriter entry_writer(NULL);
-    array_writer.OpenDictEntry(&entry_writer);
-    entry_writer.AppendString(it->first);
-    entry_writer.AppendString(it->second);
-    array_writer.CloseContainer(&entry_writer);
-  }
-  writer.CloseContainer(&array_writer);
+  brillo::dbus_utils::AppendValueToWriter(&writer, sessions);
   return response;
 }
 

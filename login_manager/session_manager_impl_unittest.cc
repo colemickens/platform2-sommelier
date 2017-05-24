@@ -917,24 +917,33 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
 
 TEST_F(SessionManagerImplTest, RetrieveActiveSessions) {
   ExpectStartSession(kSaneEmail);
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
-  EXPECT_FALSE(error.get());
-  std::map<std::string, std::string> active_users;
-  impl_.RetrieveActiveSessions(&active_users);
-  EXPECT_EQ(active_users.size(), 1);
-  EXPECT_EQ(active_users[kSaneEmail], SanitizeUserName(kSaneEmail));
+  {
+    brillo::ErrorPtr error;
+    EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+    EXPECT_FALSE(error.get());
+  }
+  {
+    std::map<std::string, std::string> active_users =
+        impl_.RetrieveActiveSessions();
+    EXPECT_EQ(active_users.size(), 1);
+    EXPECT_EQ(active_users[kSaneEmail], SanitizeUserName(kSaneEmail));
+  }
   VerifyAndClearExpectations();
 
   constexpr char kEmail2[] = "user2@somewhere";
   ExpectStartSession(kEmail2);
-  EXPECT_TRUE(impl_.StartSession(&error, kEmail2, kNothing));
-  EXPECT_FALSE(error.get());
-  active_users.clear();
-  impl_.RetrieveActiveSessions(&active_users);
-  EXPECT_EQ(active_users.size(), 2);
-  EXPECT_EQ(active_users[kSaneEmail], SanitizeUserName(kSaneEmail));
-  EXPECT_EQ(active_users[kEmail2], SanitizeUserName(kEmail2));
+  {
+    brillo::ErrorPtr error;
+    EXPECT_TRUE(impl_.StartSession(&error, kEmail2, kNothing));
+    EXPECT_FALSE(error.get());
+  }
+  {
+    std::map<std::string, std::string> active_users =
+        impl_.RetrieveActiveSessions();
+    EXPECT_EQ(active_users.size(), 2);
+    EXPECT_EQ(active_users[kSaneEmail], SanitizeUserName(kSaneEmail));
+    EXPECT_EQ(active_users[kEmail2], SanitizeUserName(kEmail2));
+  }
 }
 
 TEST_F(SessionManagerImplTest, RestartJobBadSocket) {

@@ -199,8 +199,8 @@ class SessionManagerImpl : public SessionManagerInterface,
                                         std::vector<uint8_t>* policy_data,
                                         Error* error);
 
-  const char* RetrieveSessionState();
-  void RetrieveActiveSessions(std::map<std::string, std::string>* sessions);
+  std::string RetrieveSessionState();
+  std::map<std::string, std::string> RetrieveActiveSessions();
 
   void HandleSupervisedUserCreationStarting();
   void HandleSupervisedUserCreationFinished();

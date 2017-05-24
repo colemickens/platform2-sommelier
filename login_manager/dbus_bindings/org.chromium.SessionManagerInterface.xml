@@ -264,6 +264,7 @@
     -->
     <method name="RetrieveSessionState">
       <arg type="s" name="state" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
     </method>
 
     <!--
@@ -275,6 +276,7 @@
     -->
     <method name="RetrieveActiveSessions">
       <arg type="a{ss}" name="sessions" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
     </method>
 
     <!--
@@ -285,6 +287,7 @@
         someone calls HandleSupervisedUserCreationFinished.
     -->
     <method name="HandleSupervisedUserCreationStarting">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
     </method>
 
     <!--
@@ -294,6 +297,7 @@
         completed. Browser crashes will once again trigger a browser restart.
     -->
     <method name="HandleSupervisedUserCreationFinished">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
     </method>
 
     <!--

@@ -587,21 +587,23 @@ void SessionManagerImpl::RetrieveDeviceLocalAccountPolicy(
   }
 }
 
-const char* SessionManagerImpl::RetrieveSessionState() {
+std::string SessionManagerImpl::RetrieveSessionState() {
   if (!session_started_)
     return kStopped;
-  else
-    return (session_stopping_ ? kStopping : kStarted);
+  if (session_stopping_)
+    return kStopping;
+  return kStarted;
 }
 
-void SessionManagerImpl::RetrieveActiveSessions(
-    std::map<std::string, std::string>* active_sessions) {
-  for (UserSessionMap::const_iterator it = user_sessions_.begin();
-       it != user_sessions_.end(); ++it) {
-    if (it->second) {
-      (*active_sessions)[it->second->username] = it->second->userhash;
-    }
+std::map<std::string, std::string>
+SessionManagerImpl::RetrieveActiveSessions() {
+  std::map<std::string, std::string> result;
+  for (const auto& entry : user_sessions_) {
+    if (!entry.second)
+      continue;
+    result[entry.second->username] = entry.second->userhash;
   }
+  return result;
 }
 
 void SessionManagerImpl::HandleSupervisedUserCreationStarting() {
