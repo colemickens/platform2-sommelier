@@ -373,6 +373,10 @@ class CameraBufferMapperTest : public ::testing::Test {
     return buffer;
   }
 
+  const MappedGrallocBufferInfoCache& GetMappedBufferInfo() const {
+    return cbm_->buffer_info_;
+  }
+
  protected:
   CameraBufferMapper* cbm_;
 
@@ -647,6 +651,65 @@ TEST_F(CameraBufferMapperTest, GetPlaneSizeTest) {
   EXPECT_EQ(CameraBufferMapper::GetPlaneSize(yuv420_handle, 2),
             kYuv420Plane12Size);
   EXPECT_EQ(CameraBufferMapper::GetPlaneSize(yuv420_handle, 3), 0);
+}
+
+TEST_F(CameraBufferMapperTest, DeregisterTest) {
+  // Create two dummy buffers.
+  const int kBufferWidth = 1280, kBufferHeight = 720;
+  auto buffer1 =
+      CreateBuffer(1, GRALLOC, DRM_FORMAT_YUV420,
+                   HAL_PIXEL_FORMAT_YCbCr_420_888, kBufferWidth, kBufferHeight);
+  buffer_handle_t handle1 = reinterpret_cast<buffer_handle_t>(buffer1.get());
+  auto buffer2 =
+      CreateBuffer(1, GRALLOC, DRM_FORMAT_YUV420,
+                   HAL_PIXEL_FORMAT_YCbCr_420_888, kBufferWidth, kBufferHeight);
+  buffer_handle_t handle2 = reinterpret_cast<buffer_handle_t>(buffer2.get());
+
+  // Register the buffers.
+  struct gbm_bo dummy_bo1, dummy_bo2;
+  EXPECT_CALL(gbm_, GbmBoImport(&dummy_device, A<uint32_t>(), A<void*>(),
+                                A<uint32_t>()))
+      .Times(1)
+      .WillOnce(Return(&dummy_bo1));
+  EXPECT_EQ(cbm_->Register(handle1), 0);
+  EXPECT_CALL(gbm_, GbmBoImport(&dummy_device, A<uint32_t>(), A<void*>(),
+                                A<uint32_t>()))
+      .Times(1)
+      .WillOnce(Return(&dummy_bo2));
+  EXPECT_EQ(cbm_->Register(handle2), 0);
+
+  // Lock both buffers
+  struct android_ycbcr ycbcr;
+  for (size_t i = 0; i < 3; ++i) {
+    EXPECT_CALL(gbm_, GbmBoMap(&dummy_bo1, 0, 0, kBufferWidth, kBufferHeight, 0,
+                               A<uint32_t*>(), A<void**>(), i))
+        .Times(1);
+  }
+  EXPECT_EQ(
+      cbm_->LockYCbCr(handle1, 0, 0, 0, kBufferWidth, kBufferHeight, &ycbcr),
+      0);
+  for (size_t i = 0; i < 3; ++i) {
+    EXPECT_CALL(gbm_, GbmBoMap(&dummy_bo2, 0, 0, kBufferWidth, kBufferHeight, 0,
+                               A<uint32_t*>(), A<void**>(), i))
+        .Times(1);
+  }
+  EXPECT_EQ(
+      cbm_->LockYCbCr(handle2, 0, 0, 0, kBufferWidth, kBufferHeight, &ycbcr),
+      0);
+
+  // There should be six mapped planes.
+  EXPECT_EQ(GetMappedBufferInfo().size(), 6);
+
+  // Deregister one buffer should only delete three mapped planes.
+  EXPECT_CALL(gbm_, GbmBoUnmap(&dummy_bo1, A<void*>())).Times(3);
+  EXPECT_CALL(gbm_, GbmBoDestroy(&dummy_bo1)).Times(1);
+  EXPECT_EQ(cbm_->Deregister(handle1), 0);
+  EXPECT_EQ(GetMappedBufferInfo().size(), 3);
+
+  EXPECT_CALL(gbm_, GbmBoUnmap(&dummy_bo2, A<void*>())).Times(3);
+  EXPECT_CALL(gbm_, GbmBoDestroy(&dummy_bo2)).Times(1);
+  EXPECT_EQ(cbm_->Deregister(handle2), 0);
+  EXPECT_EQ(GetMappedBufferInfo().size(), 0);
 }
 
 }  // namespace tests

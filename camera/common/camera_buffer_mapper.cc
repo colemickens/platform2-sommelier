@@ -43,8 +43,8 @@ int CameraBufferMapper::Register(buffer_handle_t buffer) {
   base::AutoLock l(lock_);
 
   if (handle->type == GRALLOC) {
-    auto it = buffer_context_.find(buffer);
-    if (it == buffer_context_.end()) {
+    auto context_it = buffer_context_.find(buffer);
+    if (context_it == buffer_context_.end()) {
       BufferContextUniquePtr buffer_context(new struct BufferContext);
       // Import the buffer if we haven't done so.
       struct gbm_import_fd_planar_data import_data;
@@ -76,15 +76,15 @@ int CameraBufferMapper::Register(buffer_handle_t buffer) {
       buffer_context->usage = 1;
       buffer_context_[buffer] = std::move(buffer_context);
     } else {
-      it->second->usage++;
+      context_it->second->usage++;
     }
     return 0;
   } else if (handle->type == SHM) {
     // The shared memory buffer is a contiguous area of memory which is large
     // enough to hold all the physical planes.  We mmap the buffer on Register
     // and munmap on Deregister.
-    auto it = buffer_context_.find(buffer);
-    if (it == buffer_context_.end()) {
+    auto context_it = buffer_context_.find(buffer);
+    if (context_it == buffer_context_.end()) {
       BufferContextUniquePtr buffer_context(new struct BufferContext);
       off_t size = lseek(handle->fds[0].get(), 0, SEEK_END);
       if (size == -1) {
@@ -104,7 +104,7 @@ int CameraBufferMapper::Register(buffer_handle_t buffer) {
       buffer_context->usage = 1;
       buffer_context_[buffer] = std::move(buffer_context);
     } else {
-      it->second->usage++;
+      context_it->second->usage++;
     }
     return 0;
   } else {
@@ -121,23 +121,23 @@ int CameraBufferMapper::Deregister(buffer_handle_t buffer) {
 
   base::AutoLock l(lock_);
 
-  auto it = buffer_context_.find(buffer);
-  if (it == buffer_context_.end()) {
+  auto context_it = buffer_context_.find(buffer);
+  if (context_it == buffer_context_.end()) {
     LOGF(ERROR) << "Unknown buffer 0x" << std::hex << handle->buffer_id;
     return -EINVAL;
   }
-  auto buffer_context = it->second.get();
+  auto buffer_context = context_it->second.get();
   if (handle->type == GRALLOC) {
     if (!--buffer_context->usage) {
       // Unmap all the existing mapping of bo.
       for (auto it = buffer_info_.begin(); it != buffer_info_.end();) {
-        if (it->second->bo == it->second->bo) {
+        if (it->second->bo == buffer_context->bo) {
           it = buffer_info_.erase(it);
         } else {
           ++it;
         }
       }
-      buffer_context_.erase(it);
+      buffer_context_.erase(context_it);
     }
     return 0;
   } else if (handle->type == SHM) {
@@ -147,7 +147,7 @@ int CameraBufferMapper::Deregister(buffer_handle_t buffer) {
       if (ret == -1) {
         LOGF(ERROR) << "Failed to munmap shm buffer: " << strerror(errno);
       }
-      buffer_context_.erase(it);
+      buffer_context_.erase(context_it);
     }
     return 0;
   } else {
@@ -455,13 +455,13 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
     if (info_cache == buffer_info_.end()) {
       // We haven't mapped |plane| of |buffer| yet.
       info = new struct MappedGrallocBufferInfo;
-      auto it = buffer_context_.find(buffer);
-      if (it == buffer_context_.end()) {
+      auto context_it = buffer_context_.find(buffer);
+      if (context_it == buffer_context_.end()) {
         LOGF(ERROR) << "Buffer 0x" << std::hex << handle->buffer_id
                     << " is not registered";
         return MAP_FAILED;
       }
-      info->bo = it->second->bo;
+      info->bo = context_it->second->bo;
     } else {
       // We have mapped |plane| on |buffer| before: we can simply call
       // gbm_bo_map() on the existing bo.
@@ -489,12 +489,12 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
     // We can't call mmap() here because each mmap call may return different
     // mapped virtual addresses and may lead to virtual memory address leak.
     // Instead we call mmap() only once in Register.
-    auto it = buffer_context_.find(buffer);
-    if (it == buffer_context_.end()) {
+    auto context_it = buffer_context_.find(buffer);
+    if (context_it == buffer_context_.end()) {
       LOGF(ERROR) << "Unknown buffer 0x" << std::hex << handle->buffer_id;
       return MAP_FAILED;
     }
-    auto buffer_context = it->second.get();
+    auto buffer_context = context_it->second.get();
     void* out_addr = reinterpret_cast<void*>(
         reinterpret_cast<uintptr_t>(buffer_context->mapped_addr) +
         handle->offsets[plane]);
