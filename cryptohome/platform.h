@@ -677,15 +677,12 @@ class Platform {
   // equal |count|) false is returned.
   //
   // Parameters
-  //   to - The file to copy data to.
-  //   from - The file to copy data from.
+  //   fd_to - The file to copy data to.
+  //   fd_from - The file to copy data from.
   //   offset - The location in |from| to begin copying data from.  This has no
   //   impact on the location in |to| that data is written to.
   //   count - The number of bytes to copy.
-  virtual bool SendFile(const base::File& to,
-                        const base::File& from,
-                        off_t offset,
-                        size_t count);
+  virtual bool SendFile(int fd_to, int fd_from, off_t offset, size_t count);
 
  private:
   // Returns the process and open file information for the specified process id

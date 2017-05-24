@@ -204,8 +204,7 @@ class MockPlatform : public Platform {
                     const struct timespec&,
                     const struct timespec&,
                     bool));
-  MOCK_METHOD4(SendFile,
-               bool(const base::File&, const base::File&, off_t, size_t));
+  MOCK_METHOD4(SendFile, bool(int, int, off_t, size_t));
 
   MockFileEnumerator* mock_enumerator() { return mock_enumerator_.get(); }
 

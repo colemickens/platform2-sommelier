@@ -14,8 +14,6 @@
 #include <fcntl.h>
 #include <string.h>
 #include <sys/capability.h>
-#include <sys/ioctl.h>
-#include <sys/sendfile.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -587,7 +585,8 @@ bool MigrationHelper::MigrateFile(const base::FilePath& child,
     // more efficient for transferring data from one file to another.  In
     // particular the data is passed directly from the read call to the write
     // in the kernel, never making a trip back out to user space.
-    if (!platform_->SendFile(to_file, from_file, offset, to_read)) {
+    if (!platform_->SendFile(to_file.GetPlatformFile(),
+                             from_file.GetPlatformFile(), offset, to_read)) {
       RecordFileErrorWithCurrentErrno(kMigrationFailedAtSendfile, child);
       return false;
     }

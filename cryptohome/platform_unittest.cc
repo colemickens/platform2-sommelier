@@ -616,7 +616,6 @@ TEST_F(PlatformTest, SetFileTimes) {
 TEST_F(PlatformTest, SendFile) {
   const base::FilePath from(GetTempName());
   const base::FilePath to(GetTempName());
-  const base::FilePath invalid(GetTempName());
   const std::string contents = "0123456789";
   ASSERT_TRUE(platform_.WriteStringToFile(from, contents));
 
@@ -624,15 +623,18 @@ TEST_F(PlatformTest, SendFile) {
   const int read_size = contents.length() - offset;
   base::File from_file(from, base::File::FLAG_OPEN | base::File::FLAG_READ);
   base::File to_file(to, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
-  base::File invalid_file(invalid,
-                          base::File::FLAG_CREATE | base::File::FLAG_READ);
-  EXPECT_TRUE(platform_.SendFile(to_file, from_file, offset, read_size));
+  EXPECT_TRUE(platform_.SendFile(to_file.GetPlatformFile(),
+                                 from_file.GetPlatformFile(),
+                                 offset, read_size));
   std::string to_contents;
   ASSERT_TRUE(platform_.ReadFileToString(to, &to_contents));
   EXPECT_EQ(contents.substr(offset, read_size), to_contents);
 
-  EXPECT_FALSE(platform_.SendFile(invalid_file, from_file, offset, read_size));
-  EXPECT_FALSE(platform_.SendFile(to_file, from_file, offset, read_size + 1));
+  EXPECT_FALSE(platform_.SendFile(-1, from_file.GetPlatformFile(), offset,
+                                  read_size));
+  EXPECT_FALSE(platform_.SendFile(to_file.GetPlatformFile(),
+                                  from_file.GetPlatformFile(),
+                                  offset, read_size + 1));
 }
 
 }  // namespace cryptohome

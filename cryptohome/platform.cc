@@ -1155,13 +1155,9 @@ bool Platform::SetFileTimes(const base::FilePath& path,
   return true;
 }
 
-bool Platform::SendFile(const base::File& to,
-                        const base::File& from,
-                        off_t offset,
-                        size_t count) {
+bool Platform::SendFile(int fd_to, int fd_from, off_t offset, size_t count) {
   while (count > 0) {
-    ssize_t written =
-        sendfile(to.GetPlatformFile(), from.GetPlatformFile(), &offset, count);
+    ssize_t written = sendfile(fd_to, fd_from, &offset, count);
     if (written < 0) {
       PLOG(ERROR) << "sendfile failed to copy data";
       return false;
