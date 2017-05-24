@@ -14,6 +14,7 @@
 #include <arc/camera_buffer_mapper.h>
 #include <base/bind.h>
 #include <base/macros.h>
+#include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 #include <base/threading/thread_checker.h>
 #include <camera/camera_metadata.h>
@@ -154,12 +155,18 @@ class CameraClient {
     // Handle one request.
     void HandleRequest(std::unique_ptr<CaptureRequest> request);
 
+    // Handle flush request. This function can be called on any thread.
+    void HandleFlush(const base::Callback<void(int)>& callback);
+
    private:
     // Start streaming implementation.
     int StreamOnImpl(Size stream_on_resolution);
 
     // Stop streaming implementation.
     int StreamOffImpl();
+
+    // Handle aborted request when flush is called.
+    void HandleAbortedRequest(camera3_capture_result_t* capture_result);
 
     // Convert |cache_frame_| to the |buffer| with corresponding format.
     int WriteStreamBuffer(int stream_index,
@@ -172,16 +179,22 @@ class CameraClient {
     void SkipFramesAfterStreamOn(int num_frames);
 
     // Wait output buffer synced.
-    int WaitGrallocBufferSync(camera3_capture_result_t* result);
+    int WaitGrallocBufferSync(camera3_capture_result_t* capture_result);
 
     // Notify shutter event.
     void NotifyShutter(uint32_t frame_number, int64_t* timestamp);
+
+    // Notify request error event.
+    void NotifyRequestError(uint32_t frame_number);
 
     // Dequeue V4L2 frame buffer.
     int DequeueV4L2Buffer(int rotate_degree);
 
     // Enqueue V4L2 frame buffer.
     int EnqueueV4L2Buffer();
+
+    // Used to notify caller that all requests are handled.
+    void FlushDone(const base::Callback<void(int)>& callback);
 
     // Variables from CameraClient:
 
@@ -218,6 +231,12 @@ class CameraClient {
 
     // Current using buffer id for |input_buffers_|.
     int current_v4l2_buffer_id_;
+
+    // Used to notify that flush is called from framework.
+    bool flush_started_;
+
+    // Used to guard |flush_started_|.
+    base::Lock flush_lock_;
   };
 
   std::unique_ptr<RequestHandler> request_handler_;

@@ -234,6 +234,15 @@ void CameraClient::Dump(int fd) {
 int CameraClient::Flush(const camera3_device_t* dev) {
   VLOGFID(1, id_);
   DCHECK(ops_thread_checker_.CalledOnValidThread());
+
+  // Do nothing if stream is off.
+  if (!request_handler_.get()) {
+    return 0;
+  }
+
+  auto future = internal::Future<int>::Create(nullptr);
+  request_handler_->HandleFlush(internal::GetFutureCallback(future));
+  future->Get();
   return 0;
 }
 
@@ -361,7 +370,8 @@ CameraClient::RequestHandler::RequestHandler(
       task_runner_(task_runner),
       metadata_handler_(metadata_handler),
       stream_on_resolution_(0, 0),
-      current_v4l2_buffer_id_(-1) {
+      current_v4l2_buffer_id_(-1),
+      flush_started_(false) {
   SupportedFormats supported_formats =
       device_->GetDeviceSupportedFormats(device_info_.device_path);
   qualified_formats_ = GetQualifiedFormats(supported_formats);
@@ -373,6 +383,7 @@ void CameraClient::RequestHandler::StreamOn(
     Size stream_on_resolution,
     const base::Callback<void(int, int)>& callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+
   int ret = StreamOnImpl(stream_on_resolution);
   if (ret) {
     callback.Run(0, ret);
@@ -404,6 +415,11 @@ void CameraClient::RequestHandler::HandleRequest(
       request->GetStreamBuffers();
   capture_result.num_output_buffers = output_stream_buffers->size();
   capture_result.output_buffers = &(*output_stream_buffers)[0];
+
+  if (flush_started_) {
+    HandleAbortedRequest(&capture_result);
+    return;
+  }
 
   int ret = WaitGrallocBufferSync(&capture_result);
   if (ret) {
@@ -439,6 +455,18 @@ void CameraClient::RequestHandler::HandleRequest(
   // After process_capture_result, HAL cannot access the output buffer in
   // camera3_stream_buffer anymore unless the release fence is not -1.
   callback_ops_->process_capture_result(callback_ops_, &capture_result);
+}
+
+void CameraClient::RequestHandler::HandleFlush(
+    const base::Callback<void(int)>& callback) {
+  VLOGFID(1, device_id_);
+  {
+    base::AutoLock l(flush_lock_);
+    flush_started_ = true;
+  }
+  task_runner_->PostTask(FROM_HERE,
+                         base::Bind(&CameraClient::RequestHandler::FlushDone,
+                                    base::Unretained(this), callback));
 }
 
 int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution) {
@@ -516,6 +544,22 @@ int CameraClient::RequestHandler::StreamOffImpl() {
   }
   stream_on_resolution_.width = stream_on_resolution_.height = 0;
   return ret;
+}
+
+void CameraClient::RequestHandler::HandleAbortedRequest(
+    camera3_capture_result_t* capture_result) {
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  VLOGFID(1, device_id_) << "Request Frame:" << capture_result->frame_number
+                         << " is aborted due to flush";
+  for (size_t i = 0; i < capture_result->num_output_buffers; i++) {
+    camera3_stream_buffer_t* b = const_cast<camera3_stream_buffer_t*>(
+        capture_result->output_buffers + i);
+    b->release_fence = b->acquire_fence;
+    b->acquire_fence = kBufferFenceReady;
+    b->status = CAMERA3_BUFFER_STATUS_ERROR;
+  }
+  NotifyRequestError(capture_result->frame_number);
+  callback_ops_->process_capture_result(callback_ops_, capture_result);
 }
 
 int CameraClient::RequestHandler::WriteStreamBuffer(
@@ -657,6 +701,17 @@ void CameraClient::RequestHandler::NotifyShutter(uint32_t frame_number,
   callback_ops_->notify(callback_ops_, &m);
 }
 
+void CameraClient::RequestHandler::NotifyRequestError(uint32_t frame_number) {
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  camera3_notify_msg_t m;
+  memset(&m, 0, sizeof(m));
+  m.type = CAMERA3_MSG_ERROR;
+  m.message.error.frame_number = frame_number;
+  m.message.error.error_stream = nullptr;
+  m.message.error.error_code = CAMERA3_MSG_ERROR_REQUEST;
+  callback_ops_->notify(callback_ops_, &m);
+}
+
 int CameraClient::RequestHandler::DequeueV4L2Buffer(int rotate_degree) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   uint32_t buffer_id, data_size;
@@ -695,6 +750,17 @@ int CameraClient::RequestHandler::EnqueueV4L2Buffer() {
   }
   current_v4l2_buffer_id_ = -1;
   return ret;
+}
+
+void CameraClient::RequestHandler::FlushDone(
+    const base::Callback<void(int)>& callback) {
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  VLOGFID(1, device_id_);
+  callback.Run(0);
+  {
+    base::AutoLock l(flush_lock_);
+    flush_started_ = false;
+  }
 }
 
 }  // namespace arc
