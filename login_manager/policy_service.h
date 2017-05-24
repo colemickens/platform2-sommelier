@@ -13,15 +13,12 @@
 
 #include <base/callback.h>
 #include <base/memory/weak_ptr.h>
+#include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
 
 namespace enterprise_management {
 class PolicyFetchResponse;
 }
-
-namespace base {
-class WaitableEvent;
-}  // namespace base
 
 namespace login_manager {
 
@@ -44,32 +41,15 @@ class PolicyService {
     KEY_CLOBBER = 4,      // OK to replace the existing key without any checks.
   };
 
-  // Wraps a policy service error with code and message.
-  class Error {
-   public:
-    Error();
-    Error(const std::string& code, const std::string& message);
-
-    // Sets new error code and message.
-    void Set(const std::string& code, const std::string& message);
-
-    const std::string& code() const { return code_; }
-    const std::string& message() const { return message_; }
-
-   private:
-    std::string code_;
-    std::string message_;
-
-    DISALLOW_COPY_AND_ASSIGN(Error);
-  };
-
   // Callback for asynchronous completion of a Store operation.
-  using Completion = base::Callback<void(const PolicyService::Error&)>;
+  // On success, |error| is nullptr. Otherwise, it contains an instance
+  // with detailed info.
+  using Completion = base::Callback<void(brillo::ErrorPtr error)>;
 
   // Delegate for notifications about key and policy getting persisted.
   class Delegate {
    public:
-    virtual ~Delegate();
+    virtual ~Delegate() = default;
     virtual void OnPolicyPersisted(bool success) = 0;
     virtual void OnKeyPersisted(bool success) = 0;
   };
@@ -88,9 +68,9 @@ class PolicyService {
   // status of the operation through |completion|.
   virtual bool Store(const uint8_t* policy_blob,
                      uint32_t len,
-                     const Completion& completion,
                      int key_flags,
-                     SignatureCheck signature_check);
+                     SignatureCheck signature_check,
+                     const Completion& completion);
 
   // Retrieves the current policy blob (does not verify the signature). Returns
   // true if successful, false otherwise.
@@ -122,20 +102,20 @@ class PolicyService {
   // signature checks, taking care of key changes and persisting policy and key
   // data to disk.
   bool StorePolicy(const enterprise_management::PolicyFetchResponse& policy,
-                   const Completion& completion,
                    int key_flags,
-                   SignatureCheck signature_check);
+                   SignatureCheck signature_check,
+                   const Completion& completion);
 
   // Handles completion of a key storage operation, reporting the result to
   // |delegate_|.
   virtual void OnKeyPersisted(bool status);
 
   // Finishes persisting policy, notifying |delegate_| and reporting the
-  // |dbus_error_type| through |completion|. |completion| may be null, and in
-  // that case the reporting part is not done. |dbus_error_type| is a dbus_error
+  // |dbus_error_code| through |completion|. |completion| may be null, and in
+  // that case the reporting part is not done. |dbus_error_code| is a dbus_error
   // constant and can be a non-error, like kNone.
   void OnPolicyPersisted(const Completion& completion,
-                         const std::string& dbus_error_type);
+                         const std::string& dbus_error_code);
 
  private:
   // Persists key() to disk synchronously and passes the result to
@@ -147,6 +127,8 @@ class PolicyService {
   PolicyKey* policy_key_;
   Delegate* delegate_;
 
+  // Put at the last member, so that inflight weakptrs will be invalidated
+  // before other members' destruction.
   base::WeakPtrFactory<PolicyService> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(PolicyService);

@@ -18,6 +18,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "bindings/chrome_device_policy.pb.h"
+#include "login_manager/dbus_util.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/policy_store.h"
@@ -39,7 +40,7 @@ DeviceLocalAccountPolicyService::DeviceLocalAccountPolicyService(
     : device_local_account_dir_(device_local_account_dir),
       owner_key_(owner_key) {}
 
-DeviceLocalAccountPolicyService::~DeviceLocalAccountPolicyService() {}
+DeviceLocalAccountPolicyService::~DeviceLocalAccountPolicyService() = default;
 
 bool DeviceLocalAccountPolicyService::Store(
     const std::string& account_id,
@@ -48,14 +49,13 @@ bool DeviceLocalAccountPolicyService::Store(
     const PolicyService::Completion& completion) {
   PolicyService* service = GetPolicyService(account_id);
   if (!service) {
-    PolicyService::Error error(dbus_error::kInvalidAccount,
-                               "Invalid device-local account");
-    completion.Run(error);
+    completion.Run(CreateError(
+        dbus_error::kInvalidAccount, "Invalid device-local account"));
     return false;
   }
 
-  return service->Store(policy_data, policy_data_size, completion,
-                        PolicyService::KEY_NONE, SignatureCheck::kEnabled);
+  return service->Store(policy_data, policy_data_size, PolicyService::KEY_NONE,
+                        SignatureCheck::kEnabled, completion);
 }
 
 bool DeviceLocalAccountPolicyService::Retrieve(

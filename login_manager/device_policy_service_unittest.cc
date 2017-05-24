@@ -67,7 +67,6 @@ class DevicePolicyServiceTest : public ::testing::Test {
         new_fake_sig_("new_fake_signature"),
         store_(NULL) {
     fake_key_vector_.assign(fake_key_.begin(), fake_key_.end());
-    completion_ = MockPolicyService::CreateDoNothing();
   }
 
   virtual void SetUp() {
@@ -158,11 +157,11 @@ class DevicePolicyServiceTest : public ::testing::Test {
   }
 
   bool UpdateSystemSettings(DevicePolicyService* service) {
-    return service->UpdateSystemSettings(completion_);
+    return service->UpdateSystemSettings(MockPolicyService::CreateDoNothing());
   }
 
   void PersistPolicy(DevicePolicyService* service) {
-    service->PersistPolicy(completion_);
+    service->PersistPolicy(MockPolicyService::CreateDoNothing());
   }
 
   void RecordNewPolicy(const em::PolicyFetchResponse& policy) {
@@ -302,7 +301,6 @@ class DevicePolicyServiceTest : public ::testing::Test {
   StrictMock<MockPolicyStore>* store_;
   std::unique_ptr<MockMetrics> metrics_;
   std::unique_ptr<StrictMock<MockMitigator>> mitigator_;
-  PolicyService::Completion completion_;
   FakeCrossystem crossystem_;
   SystemUtilsImpl utils_;
   MockVpdProcess vpd_process_;
@@ -322,10 +320,11 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
   ExpectKeyPopulated(true);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
-  PolicyService::Error error;
+  brillo::ErrorPtr error;
   bool is_owner = false;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
       owner_, nss.GetSlot(), &is_owner, &error));
+  EXPECT_FALSE(error.get());
   EXPECT_TRUE(is_owner);
 }
 
@@ -340,10 +339,11 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_NotOwner) {
   ExpectKeyPopulated(true);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
-  PolicyService::Error error;
+  brillo::ErrorPtr error;
   bool is_owner = true;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
       "regular_user@somewhere", nss.GetSlot(), &is_owner, &error));
+  EXPECT_FALSE(error.get());
   EXPECT_FALSE(is_owner);
 }
 
@@ -358,10 +358,11 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_EnterpriseDevice) {
   ExpectKeyPopulated(true);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(0);
 
-  PolicyService::Error error;
+  brillo::ErrorPtr error;
   bool is_owner = true;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
       owner_, nss.GetSlot(), &is_owner, &error));
+  EXPECT_FALSE(error.get());
   EXPECT_FALSE(is_owner);
 }
 
@@ -377,10 +378,11 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MissingKey) {
   ExpectKeyPopulated(true);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
-  PolicyService::Error error;
+  brillo::ErrorPtr error;
   bool is_owner = false;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
       owner_, nss.GetSlot(), &is_owner, &error));
+  EXPECT_FALSE(error.get());
   EXPECT_TRUE(is_owner);
 }
 
@@ -397,10 +399,11 @@ TEST_F(DevicePolicyServiceTest,
   ExpectKeyPopulated(true);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
-  PolicyService::Error error;
+  brillo::ErrorPtr error;
   bool is_owner = false;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
       owner_, nss.GetSlot(), &is_owner, &error));
+  EXPECT_FALSE(error.get());
   EXPECT_TRUE(is_owner);
 }
 
@@ -416,10 +419,11 @@ TEST_F(DevicePolicyServiceTest,
   ExpectKeyPopulated(false);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
-  PolicyService::Error error;
+  brillo::ErrorPtr error;
   bool is_owner = true;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
       "other@somwhere", nss.GetSlot(), &is_owner, &error));
+  EXPECT_FALSE(error.get());
   EXPECT_FALSE(is_owner);
 }
 
@@ -435,10 +439,12 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
   ExpectKeyPopulated(true);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
-  PolicyService::Error error;
+  brillo::ErrorPtr error;
   bool is_owner = false;
   EXPECT_FALSE(service_->CheckAndHandleOwnerLogin(
       owner_, nss.GetSlot(), &is_owner, &error));
+  EXPECT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kPubkeySetIllegal, error->GetCode());
 }
 
 TEST_F(DevicePolicyServiceTest, PolicyAllowsNewUsers) {
@@ -927,9 +933,9 @@ TEST_F(DevicePolicyServiceTest, GetSettings) {
   EXPECT_TRUE(
       service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
                       policy_str_.size(),
-                      completion_,
                       PolicyService::KEY_CLOBBER,
-                      SignatureCheck::kEnabled));
+                      SignatureCheck::kEnabled,
+                      MockPolicyService::CreateDoNothing()));
   fake_loop_.Run();
   EXPECT_EQ(service_->GetSettings().SerializeAsString(),
             settings.SerializeAsString());
@@ -958,9 +964,9 @@ TEST_F(DevicePolicyServiceTest, StartUpFlagsSanitizer) {
   EXPECT_TRUE(
       service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
                       policy_str_.size(),
-                      completion_,
                       PolicyService::KEY_CLOBBER,
-                      SignatureCheck::kEnabled));
+                      SignatureCheck::kEnabled,
+                      MockPolicyService::CreateDoNothing()));
   fake_loop_.Run();
 
   std::vector<std::string> flags = service_->GetStartUpFlags();

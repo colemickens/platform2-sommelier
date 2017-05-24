@@ -24,9 +24,9 @@ MATCHER_P(PolicyErrorEq, error_code, "") {
 class MockPolicyService : public PolicyService {
  public:
   MockPolicyService();
-  virtual ~MockPolicyService();
-  MOCK_METHOD5(Store, bool(const uint8_t*, uint32_t, const Completion&, int,
-                           SignatureCheck));
+  ~MockPolicyService() override;
+  MOCK_METHOD5(Store, bool(const uint8_t*, uint32_t, int, SignatureCheck,
+                           const Completion&));
   MOCK_METHOD1(Retrieve, bool(std::vector<uint8_t>*));
 
   static Completion CreateDoNothing() {
@@ -55,26 +55,31 @@ class MockPolicyService : public PolicyService {
   class ExpectingErrorHandler {
    public:
     explicit ExpectingErrorHandler(bool expect_match) {
-      using testing::Not;
       if (expect_match)
-        EXPECT_CALL(*this, HandleError(PolicyErrorEq(dbus_error::kNone)));
+        EXPECT_CALL(*this, HandleErrorInternal(testing::IsNull()));
       else
-        EXPECT_CALL(*this, HandleError(Not(PolicyErrorEq(dbus_error::kNone))));
+        EXPECT_CALL(*this, HandleErrorInternal(testing::NotNull()));
     }
-    virtual ~ExpectingErrorHandler() {}
+    virtual ~ExpectingErrorHandler() = default;
 
-    MOCK_METHOD1(HandleError, void(const Error&));
+    // Proxy to HandleInternal() to support a passed-by-value move-only-type
+    // param.
+    // cf) https://github.com/google/googlemock/blob/master/googlemock/docs/CookBook.md#mocking-methods-that-use-move-only-types
+    void HandleError(brillo::ErrorPtr error) {
+      HandleErrorInternal(error.get());
+    }
+    MOCK_METHOD1(HandleErrorInternal, void(brillo::Error* error));
    private:
     DISALLOW_COPY_AND_ASSIGN(ExpectingErrorHandler);
   };
 
-  static void DoNothingWithError(const Error&) {}
+  static void DoNothingWithError(brillo::ErrorPtr error) {}
 };
 
 class MockPolicyServiceDelegate : public PolicyService::Delegate {
  public:
   MockPolicyServiceDelegate();
-  virtual ~MockPolicyServiceDelegate();
+  ~MockPolicyServiceDelegate() override;
   MOCK_METHOD1(OnPolicyPersisted, void(bool));
   MOCK_METHOD1(OnKeyPersisted, void(bool));
 };

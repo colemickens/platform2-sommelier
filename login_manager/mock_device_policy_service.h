@@ -27,13 +27,14 @@ class MockDevicePolicyService : public DevicePolicyService {
   MockDevicePolicyService();
   MockDevicePolicyService(std::unique_ptr<MockPolicyStore> policy_store,
                           PolicyKey* policy_key);
-  virtual ~MockDevicePolicyService();
-  MOCK_METHOD5(Store, bool(const uint8_t*, uint32_t, const Completion&, int,
-                           SignatureCheck));
+  ~MockDevicePolicyService() override;
+
+  MOCK_METHOD5(Store, bool(const uint8_t*, uint32_t, int, SignatureCheck,
+                           const Completion&));
   MOCK_METHOD1(Retrieve, bool(std::vector<uint8_t>*));
   MOCK_METHOD4(
       CheckAndHandleOwnerLogin,
-      bool(const std::string&, PK11SlotInfo*, bool*, PolicyService::Error*));
+      bool(const std::string&, PK11SlotInfo*, bool*, brillo::ErrorPtr*));
   MOCK_METHOD3(ValidateAndStoreOwnerKey,
                bool(const std::string&, const std::string&, PK11SlotInfo*));
   MOCK_METHOD0(KeyMissing, bool(void));
@@ -43,7 +44,8 @@ class MockDevicePolicyService : public DevicePolicyService {
   MOCK_METHOD0(InstallAttributesEnterpriseMode, bool(void));
 
   // Work around lack of support for reference return values in GMock.
-  const enterprise_management::ChromeDeviceSettingsProto& GetSettings() {
+  const enterprise_management::ChromeDeviceSettingsProto& GetSettings()
+      override {
     if (use_mock_proto_) {
       proto_ = GetSettingsProxy();
     }

@@ -64,7 +64,7 @@ class DevicePolicyService : public PolicyService {
   virtual bool CheckAndHandleOwnerLogin(const std::string& current_user,
                                         PK11SlotInfo* module,
                                         bool* is_owner,
-                                        Error* error);
+                                        brillo::ErrorPtr* error);
 
   // Ensures that the public key in |buf| is legitimately paired with a private
   // key held by the current user, signs and stores some ownership-related
@@ -115,9 +115,9 @@ class DevicePolicyService : public PolicyService {
   // PolicyService:
   bool Store(const uint8_t* policy_blob,
              uint32_t len,
-             const Completion& completion,
              int key_flags,
-             SignatureCheck signature_check) override;
+             SignatureCheck signature_check,
+             const Completion& completion) override;
   void PersistPolicy(const Completion& completion) override;
 
   static const char kPolicyPath[];
@@ -155,18 +155,18 @@ class DevicePolicyService : public PolicyService {
   // |current_user| and sets a property indicating
   // |current_user| is the owner in the current policy and schedules a
   // PersistPolicy().
-  // Returns false on failure, with |error| set appropriately. |error| can be
-  // NULL, should you wish to ignore the particulars.
+  // Returns false on failure.
   bool StoreOwnerProperties(const std::string& current_user,
-                            crypto::RSAPrivateKey* signing_key,
-                            Error* error);
+                            crypto::RSAPrivateKey* signing_key);
 
   // Checks the user's NSS database to see if she has the private key.
   // Returns a pointer to it if so.
-  crypto::RSAPrivateKey* GetOwnerKeyForGivenUser(
+  // On failure, returns nullptr, with |error| set appropriately.
+  // |error| can be nullptr, if caller doesn't need it.
+  std::unique_ptr<crypto::RSAPrivateKey> GetOwnerKeyForGivenUser(
       const std::vector<uint8_t>& key,
       PK11SlotInfo* module,
-      Error* error);
+      brillo::ErrorPtr* error);
 
   // Returns true if the |current_user| is listed in |policy_| as the
   // device owner.  Returns false if not, or if that cannot be determined.

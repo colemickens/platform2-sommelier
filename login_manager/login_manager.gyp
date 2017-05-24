@@ -72,6 +72,7 @@
         'crossystem_impl.cc',
         'cumulative_use_time_metric.cc',
         'dbus_signal_emitter.cc',
+        'dbus_util.cc',
         'device_local_account_policy_service.cc',
         'device_policy_service.cc',
         'file_checker.cc',

@@ -16,6 +16,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "bindings/device_management_backend.pb.h"
+#include "login_manager/dbus_util.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_store.h"
 #include "login_manager/system_utils.h"
@@ -35,8 +36,7 @@ UserPolicyService::UserPolicyService(
       system_utils_(system_utils) {
 }
 
-UserPolicyService::~UserPolicyService() {
-}
+UserPolicyService::~UserPolicyService() = default;
 
 void UserPolicyService::PersistKeyCopy() {
   // Create a copy at |key_copy_path_| that is readable by chronos.
@@ -61,17 +61,16 @@ void UserPolicyService::PersistKeyCopy() {
 
 bool UserPolicyService::Store(const uint8_t* policy_blob,
                               uint32_t len,
-                              const Completion& completion,
                               int key_flags,
-                              SignatureCheck signature_check) {
+                              SignatureCheck signature_check,
+                              const Completion& completion) {
   em::PolicyFetchResponse policy;
   em::PolicyData policy_data;
   if (!policy.ParseFromArray(policy_blob, len) || !policy.has_policy_data() ||
       !policy_data.ParseFromString(policy.policy_data())) {
-    static const char msg[] = "Unable to parse policy protobuf.";
-    LOG(ERROR) << msg;
-    Error error(dbus_error::kSigDecodeFail, msg);
-    completion.Run(error);
+    constexpr char kMessage[] = "Unable to parse policy protobuf.";
+    LOG(ERROR) << kMessage;
+    completion.Run(CreateError(dbus_error::kSigDecodeFail, kMessage));
     return false;
   }
 
@@ -89,8 +88,8 @@ bool UserPolicyService::Store(const uint8_t* policy_blob,
     return true;
   }
 
-  return PolicyService::StorePolicy(policy, completion, key_flags,
-                                    signature_check);
+  return PolicyService::StorePolicy(
+      policy, key_flags, signature_check, completion);
 }
 
 void UserPolicyService::OnKeyPersisted(bool status) {

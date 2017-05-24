@@ -38,9 +38,9 @@ class UserPolicyService : public PolicyService {
   // we also clear the signing key.
   bool Store(const uint8_t* policy_blob,
              uint32_t len,
-             const Completion& completion,
              int key_flags,
-             SignatureCheck signature_check) override;
+             SignatureCheck signature_check,
+             const Completion& completion) override;
 
   // Invoked after a new key has been persisted. This creates a copy of the key
   // at |key_copy_path_| that is readable by chronos, and notifies the delegate.

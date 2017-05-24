@@ -18,6 +18,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "bindings/device_management_backend.pb.h"
+#include "login_manager/dbus_util.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_store.h"
@@ -26,22 +27,6 @@
 namespace em = enterprise_management;
 
 namespace login_manager {
-
-PolicyService::Error::Error() : code_(dbus_error::kNone) {
-}
-
-PolicyService::Error::Error(const std::string& code, const std::string& message)
-    : code_(code), message_(message) {
-}
-
-void PolicyService::Error::Set(const std::string& code,
-                               const std::string& message) {
-  code_ = code;
-  message_ = message;
-}
-
-PolicyService::Delegate::~Delegate() {
-}
 
 PolicyService::PolicyService(
     std::unique_ptr<PolicyStore> policy_store,
@@ -52,25 +37,22 @@ PolicyService::PolicyService(
       weak_ptr_factory_(this) {
 }
 
-PolicyService::~PolicyService() {
-  weak_ptr_factory_.InvalidateWeakPtrs();  // Must remain at top of destructor.
-}
+PolicyService::~PolicyService() = default;
 
 bool PolicyService::Store(const uint8_t* policy_blob,
                           uint32_t len,
-                          const Completion& completion,
                           int key_flags,
-                          SignatureCheck signature_check) {
+                          SignatureCheck signature_check,
+                          const Completion& completion) {
   em::PolicyFetchResponse policy;
   if (!policy.ParseFromArray(policy_blob, len) || !policy.has_policy_data()) {
-    static const char msg[] = "Unable to parse policy protobuf.";
-    LOG(ERROR) << msg;
-    Error error(dbus_error::kSigDecodeFail, msg);
-    completion.Run(error);
+    constexpr char kMessage[] = "Unable to parse policy protobuf.";
+    LOG(ERROR) << kMessage;
+    completion.Run(CreateError(dbus_error::kSigDecodeFail, kMessage));
     return false;
   }
 
-  return StorePolicy(policy, completion, key_flags, signature_check);
+  return StorePolicy(policy, key_flags, signature_check, completion);
 }
 
 bool PolicyService::Retrieve(std::vector<uint8_t>* policy_blob) {
@@ -102,9 +84,9 @@ void PolicyService::PostPersistPolicyTask(const Completion& completion) {
 }
 
 bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
-                                const Completion& completion,
                                 int key_flags,
-                                SignatureCheck signature_check) {
+                                SignatureCheck signature_check,
+                                const Completion& completion) {
   if (signature_check == SignatureCheck::kDisabled) {
     store()->Set(policy);
     PostPersistPolicyTask(completion);
@@ -136,10 +118,9 @@ bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
     }
 
     if (!installed) {
-      static const char msg[] = "Failed to install policy key!";
-      LOG(ERROR) << msg;
-      Error error(dbus_error::kPubkeySetIllegal, msg);
-      completion.Run(error);
+      constexpr char kMessage[] = "Failed to install policy key!";
+      LOG(ERROR) << kMessage;
+      completion.Run(CreateError(dbus_error::kPubkeySetIllegal, kMessage));
       return false;
     }
 
@@ -154,10 +135,9 @@ bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
                      data.size(),
                      reinterpret_cast<const uint8_t*>(sig.c_str()),
                      sig.size())) {
-    static const char msg[] = "Signature could not be verified.";
-    LOG(ERROR) << msg;
-    Error error(dbus_error::kVerifyFail, msg);
-    completion.Run(error);
+    constexpr char kMessage[] = "Signature could not be verified.";
+    LOG(ERROR) << kMessage;
+    completion.Run(CreateError(dbus_error::kVerifyFail, kMessage));
     return false;
   }
 
@@ -176,20 +156,23 @@ void PolicyService::OnKeyPersisted(bool status) {
 }
 
 void PolicyService::OnPolicyPersisted(const Completion& completion,
-                                      const std::string& dbus_error_type) {
-  std::string msg;
-  if (dbus_error_type == dbus_error::kNone) {
+                                      const std::string& dbus_error_code) {
+  brillo::ErrorPtr error;
+  if (dbus_error_code == dbus_error::kNone) {
     LOG(INFO) << "Persisted policy to disk.";
   } else {
-    msg = "Failed to persist policy to disk.";
-    LOG(ERROR) << msg << dbus_error_type;
+    constexpr char kMessage[] = "Failed to persist policy to disk.";
+    LOG(ERROR) << kMessage << ": " << dbus_error_code;
+    error = CreateError(dbus_error_code, kMessage);
   }
 
   if (!completion.is_null())
-    completion.Run(Error(dbus_error_type, msg));
+    completion.Run(std::move(error));
+  else
+    error.reset();
 
   if (delegate_)
-    delegate_->OnPolicyPersisted(dbus_error_type == dbus_error::kNone);
+    delegate_->OnPolicyPersisted(dbus_error_code == dbus_error::kNone);
 }
 
 void PolicyService::PersistKey() {

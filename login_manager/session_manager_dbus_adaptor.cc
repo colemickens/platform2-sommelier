@@ -122,10 +122,10 @@ class DBusMethodCompletion {
   virtual ~DBusMethodCompletion();
 
  private:
-  DBusMethodCompletion() : call_(nullptr) {}
+  DBusMethodCompletion() = default;
   DBusMethodCompletion(dbus::MethodCall* call,
                        const dbus::ExportedObject::ResponseSender& sender);
-  void HandleResult(const PolicyService::Error& error);
+  void HandleResult(brillo::ErrorPtr error);
 
   // Should we allow destroying objects before their calls have been completed?
   static bool s_allow_abandonment_;
@@ -164,11 +164,10 @@ DBusMethodCompletion::DBusMethodCompletion(
     : call_(call), sender_(sender) {
 }
 
-void DBusMethodCompletion::HandleResult(const PolicyService::Error& error) {
-  sender_.Run(error.code() == dbus_error::kNone ?
-              dbus::Response::FromMethodCall(call_) :
-              dbus::ErrorResponse::FromMethodCall(
-                  call_, error.code(), error.message()));
+void DBusMethodCompletion::HandleResult(brillo::ErrorPtr error) {
+  sender_.Run(error ?
+              brillo::dbus_utils::GetDBusError(call_, error.get()) :
+              dbus::Response::FromMethodCall(call_));
   call_ = nullptr;
 }
 

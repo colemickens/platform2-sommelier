@@ -36,6 +36,7 @@
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
+#include "login_manager/dbus_util.h"
 #include "login_manager/device_local_account_policy_service.h"
 #include "login_manager/fake_container_manager.h"
 #include "login_manager/fake_crossystem.h"
@@ -73,6 +74,7 @@ using ::testing::Return;
 using ::testing::SetArgumentPointee;
 using ::testing::StartsWith;
 using ::testing::StrEq;
+using ::testing::WithArg;
 using ::testing::_;
 
 using brillo::cryptohome::home::GetRootPath;
@@ -253,7 +255,7 @@ class SessionManagerImplTest : public ::testing::Test {
                          int flags,
                          SignatureCheck signature_check) {
     EXPECT_CALL(*service,
-                Store(CastEq(policy), policy.size(), _, flags, signature_check))
+                Store(CastEq(policy), policy.size(), flags, signature_check, _))
         .WillOnce(Return(true));
   }
 
@@ -603,9 +605,13 @@ TEST_F(SessionManagerImplTest, StartSession_BadNssDB) {
 
 TEST_F(SessionManagerImplTest, StartSession_DevicePolicyFailure) {
   // Upon the owner login check, return an error.
+
   EXPECT_CALL(*device_policy_service_,
               CheckAndHandleOwnerLogin(StrEq(kSaneEmail), _, _, _))
-      .WillOnce(Return(false));
+      .WillOnce(WithArg<3>(Invoke([](brillo::ErrorPtr* error) {
+              *error = CreateError(dbus_error::kPubkeySetIllegal, "test");
+              return false;
+            })));
 
   brillo::ErrorPtr error;
   EXPECT_FALSE(impl_.StartSession(&error, kSaneEmail, kNothing));
@@ -705,10 +711,10 @@ TEST_F(SessionManagerImplTest, RetrievePolicy) {
 }
 
 namespace {
-void CaptureErrorCode(std::string* storage,
-                      const PolicyService::Error& to_capture) {
+
+void CaptureError(brillo::ErrorPtr* storage, brillo::ErrorPtr error) {
   DCHECK(storage);
-  *storage = to_capture.code();
+  *storage = std::move(error);
 }
 
 void HandleStateKeys(const std::vector<std::vector<uint8_t>>& state_keys) {}
@@ -749,11 +755,12 @@ TEST_F(SessionManagerImplTest, RequestStateKeys_TimeSyncAfterFail) {
 TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSession) {
   const string fake_policy("fake policy");
   const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
-  string error_code;
+  brillo::ErrorPtr error;
   impl_.StorePolicyForUser(kSaneEmail, policy_blob.data(), policy_blob.size(),
                            SignatureCheck::kEnabled,
-                           base::Bind(&CaptureErrorCode, &error_code));
-  EXPECT_EQ(dbus_error::kSessionDoesNotExist, error_code);
+                           base::Bind(&CaptureError, &error));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kSessionDoesNotExist, error->GetCode());
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_SessionStarted) {
@@ -761,9 +768,9 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SessionStarted) {
   const string fake_policy("fake policy");
   const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
   EXPECT_CALL(*user_policy_services_[kSaneEmail],
-              Store(CastEq(fake_policy), fake_policy.size(), _,
+              Store(CastEq(fake_policy), fake_policy.size(),
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
-                    SignatureCheck::kEnabled))
+                    SignatureCheck::kEnabled, _))
       .WillOnce(Return(true));
   impl_.StorePolicyForUser(kSaneEmail, policy_blob.data(), policy_blob.size(),
                            SignatureCheck::kEnabled,
@@ -778,9 +785,9 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
   const std::string fake_policy("fake policy");
   const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
   EXPECT_CALL(*user_policy_services_[kSaneEmail],
-              Store(CastEq(fake_policy), fake_policy.size(), _,
+              Store(CastEq(fake_policy), fake_policy.size(),
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
-                    SignatureCheck::kEnabled))
+                    SignatureCheck::kEnabled, _))
       .WillOnce(Return(true));
   impl_.StorePolicyForUser(kSaneEmail, policy_blob.data(), policy_blob.size(),
                            SignatureCheck::kEnabled,
@@ -789,11 +796,12 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
 
   // Storing policy for another username fails before his session starts.
   const char user2[] = "user2@somewhere.com";
-  string error_code;
+  brillo::ErrorPtr error;
   impl_.StorePolicyForUser(user2, policy_blob.data(), policy_blob.size(),
                            SignatureCheck::kEnabled,
-                           base::Bind(&CaptureErrorCode, &error_code));
-  EXPECT_EQ(dbus_error::kSessionDoesNotExist, error_code);
+                           base::Bind(&CaptureError, &error));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kSessionDoesNotExist, error->GetCode());
 
   // Now start another session for the 2nd user.
   ExpectAndRunStartSession(user2);
@@ -801,9 +809,9 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
 
   // Storing policy for that user now succeeds.
   EXPECT_CALL(*user_policy_services_[user2],
-              Store(CastEq(fake_policy), fake_policy.size(), _,
+              Store(CastEq(fake_policy), fake_policy.size(),
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
-                    SignatureCheck::kEnabled))
+                    SignatureCheck::kEnabled, _))
       .WillOnce(Return(true));
   impl_.StorePolicyForUser(user2, policy_blob.data(), policy_blob.size(),
                            SignatureCheck::kEnabled,
@@ -840,9 +848,9 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureEnterpriseAD) {
   const vector<uint8_t> policy_blob(fake_policy.begin(), fake_policy.end());
   SetDeviceMode("enterprise_ad");
   EXPECT_CALL(*user_policy_services_[kSaneEmail],
-              Store(CastEq(fake_policy), fake_policy.size(), _,
+              Store(CastEq(fake_policy), fake_policy.size(),
                     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
-                    SignatureCheck::kDisabled))
+                    SignatureCheck::kDisabled, _))
       .WillOnce(Return(true));
   impl_.StorePolicyForUser(kSaneEmail, policy_blob.data(), policy_blob.size(),
                            SignatureCheck::kDisabled,

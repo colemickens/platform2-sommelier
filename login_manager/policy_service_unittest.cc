@@ -103,7 +103,6 @@ class PolicyServiceTest : public testing::Test {
     EXPECT_CALL(*store_, Persist()).InSequence(*sequence).WillOnce(
         Return(true));
     EXPECT_CALL(delegate_, OnPolicyPersisted(true));
-    completion_ = MockPolicyService::CreateExpectSuccessCallback();
   }
 
   void ExpectKeyEqualsFalse(Sequence* sequence) {
@@ -124,9 +123,8 @@ class PolicyServiceTest : public testing::Test {
     EXPECT_CALL(*store_, Persist()).Times(0);
 
     EXPECT_FALSE(
-        service_->Store(policy_data_, policy_len_,
-                        MockPolicyService::CreateExpectFailureCallback(), flags,
-                        signature_check));
+        service_->Store(policy_data_, policy_len_, flags, signature_check,
+                        MockPolicyService::CreateExpectFailureCallback()));
     fake_loop_.Run();
   }
 
@@ -155,7 +153,6 @@ class PolicyServiceTest : public testing::Test {
   StrictMock<MockPolicyKey> key_;
   StrictMock<MockPolicyStore>* store_;
   MockPolicyServiceDelegate delegate_;
-  PolicyService::Completion completion_;
 
   std::unique_ptr<PolicyService> service_;
 };
@@ -183,8 +180,9 @@ TEST_F(PolicyServiceTest, Store) {
   ExpectVerifyAndSetPolicy(&s2);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
-                              kAllKeyFlags, SignatureCheck::kEnabled));
+  EXPECT_TRUE(service_->Store(
+      policy_data_, policy_len_, kAllKeyFlags, SignatureCheck::kEnabled,
+      MockPolicyService::CreateExpectSuccessCallback()));
 
   fake_loop_.Run();
 }
@@ -196,8 +194,9 @@ TEST_F(PolicyServiceTest, StoreUnsigned) {
   ExpectSetPolicy(&s1);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
-                              kAllKeyFlags, SignatureCheck::kDisabled));
+  EXPECT_TRUE(service_->Store(
+      policy_data_, policy_len_, kAllKeyFlags, SignatureCheck::kDisabled,
+      MockPolicyService::CreateExpectSuccessCallback()));
 
   fake_loop_.Run();
 }
@@ -273,8 +272,9 @@ TEST_F(PolicyServiceTest, StoreNewKey) {
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
-                              kAllKeyFlags, SignatureCheck::kEnabled));
+  EXPECT_TRUE(service_->Store(
+      policy_data_, policy_len_, kAllKeyFlags, SignatureCheck::kEnabled,
+      MockPolicyService::CreateExpectSuccessCallback()));
 
   fake_loop_.Run();
 }
@@ -293,9 +293,10 @@ TEST_F(PolicyServiceTest, StoreNewKeyClobber) {
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
-                              PolicyService::KEY_CLOBBER,
-                              SignatureCheck::kEnabled));
+  EXPECT_TRUE(service_->Store(
+      policy_data_, policy_len_, PolicyService::KEY_CLOBBER,
+      SignatureCheck::kEnabled,
+      MockPolicyService::CreateExpectSuccessCallback()));
 
   fake_loop_.Run();
 }
@@ -310,8 +311,9 @@ TEST_F(PolicyServiceTest, StoreNewKeySame) {
   ExpectVerifyAndSetPolicy(&s3);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
-                              kAllKeyFlags, SignatureCheck::kEnabled));
+  EXPECT_TRUE(service_->Store(
+      policy_data_, policy_len_, kAllKeyFlags, SignatureCheck::kEnabled,
+      MockPolicyService::CreateExpectSuccessCallback()));
 
   fake_loop_.Run();
 }
@@ -341,8 +343,9 @@ TEST_F(PolicyServiceTest, StoreRotation) {
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
-                              kAllKeyFlags, SignatureCheck::kEnabled));
+  EXPECT_TRUE(service_->Store(
+      policy_data_, policy_len_, kAllKeyFlags, SignatureCheck::kEnabled,
+      MockPolicyService::CreateExpectSuccessCallback()));
 
   fake_loop_.Run();
 }
@@ -361,9 +364,10 @@ TEST_F(PolicyServiceTest, StoreRotationClobber) {
   ExpectPersistKey(&s1);
   ExpectPersistPolicy(&s2);
 
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
-                              PolicyService::KEY_CLOBBER,
-                              SignatureCheck::kEnabled));
+  EXPECT_TRUE(service_->Store(
+      policy_data_, policy_len_, PolicyService::KEY_CLOBBER,
+      SignatureCheck::kEnabled,
+      MockPolicyService::CreateExpectSuccessCallback()));
 
   fake_loop_.Run();
 }

@@ -7,10 +7,12 @@
 #include <string>
 #include <vector>
 
+#include <base/callback_helpers.h>
 #include <base/strings/string_util.h>
 #include <base/sys_info.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "login_manager/dbus_util.h"
 #include "metrics/metrics_library.h"
 
 namespace {
@@ -40,11 +42,11 @@ VpdProcessImpl::VpdProcessImpl(SystemUtils* system_utils)
   DCHECK(system_utils_);
 }
 
-bool VpdProcessImpl::RunInBackground(const std::vector<std::string>& flags,
-                                     const std::vector<int>& values,
-                                     bool is_enrolled,
-                                     const PolicyService::Completion&
-                                       completion) {
+bool VpdProcessImpl::RunInBackground(
+    const std::vector<std::string>& flags,
+    const std::vector<int>& values,
+    bool is_enrolled,
+    const PolicyService::Completion& completion) {
   DCHECK(flags.size() == values.size());
   subprocess_.reset(new ChildJobInterface::Subprocess(0, system_utils_));
 
@@ -92,38 +94,36 @@ void VpdProcessImpl::HandleExit(const siginfo_t& info) {
   metrics.SendSparseToUMA(kVpdUpdateMetric, info.si_status);
 
   const bool success = (info.si_status == 0);
-  if (!success) {
-    LOG(ERROR) << "Failed to update VPD, code = " << info.si_status;
-  }
+  LOG_IF(ERROR, !success) << "Failed to update VPD, code = " << info.si_status;
 
-  if (completion_.is_null()) {
+  if (completion_.is_null())
     return;
-  }
+
+  // Reset the completion to ensure we won't call it again.
+  auto completion = base::ResetAndReturn(&completion_);
 
   // We have to notify Chrome that the process has finished. Ignore the VPD
   // update error if the device is not enrolled.
   if (success || !is_enrolled_) {
-    completion_.Run(PolicyService::Error());
-  } else {
-    const std::string board_name = GetStrippedReleaseBoard();
-
-    // TODO(igorcov): Remove the exception when crbug/653814 is fixed.
-    if (board_name == "parrot" || board_name == "glimmer") {
-      LOG(ERROR) << "Failed to update VPD, but error ignored for device: "
-                 << board_name;
-      completion_.Run(PolicyService::Error());
-    } else {
-      LOG(ERROR) << "The device failed to update VPD: "
-                 << board_name
-                 << ", full board name: "
-                 << base::SysInfo::GetLsbReleaseBoard();
-      completion_.Run(PolicyService::Error(dbus_error::kVpdUpdateFailed,
-                     "Failed to update VPD"));
-    }
+    completion.Run(brillo::ErrorPtr());
+    return;
   }
 
-  // Reset the completion to ensure we won't call it again.
-  completion_.Reset();
+  // TODO(igorcov): Remove the exception when crbug.com/653814 is fixed.
+  const std::string board_name = GetStrippedReleaseBoard();
+  if (board_name == "parrot" || board_name == "glimmer") {
+    LOG(ERROR) << "Failed to update VPD, but error ignored for device: "
+               << board_name;
+    completion.Run(brillo::ErrorPtr());
+    return;
+  }
+
+  LOG(ERROR) << "The device failed to update VPD: "
+             << board_name
+             << ", full board name: "
+             << base::SysInfo::GetLsbReleaseBoard();
+  completion.Run(CreateError(
+      dbus_error::kVpdUpdateFailed, "Failed to update VPD"));
 }
 
 }  // namespace login_manager

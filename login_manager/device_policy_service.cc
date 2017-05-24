@@ -21,6 +21,7 @@
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "bindings/install_attributes.pb.h"
+#include "login_manager/dbus_util.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
@@ -59,8 +60,7 @@ const char DevicePolicyService::kAttrEnterpriseMode[] = "enterprise.mode";
 // static
 const char DevicePolicyService::kEnterpriseDeviceMode[] = "enterprise";
 
-DevicePolicyService::~DevicePolicyService() {
-}
+DevicePolicyService::~DevicePolicyService() = default;
 
 // static
 DevicePolicyService* DevicePolicyService::Create(
@@ -86,23 +86,27 @@ bool DevicePolicyService::CheckAndHandleOwnerLogin(
     const std::string& current_user,
     PK11SlotInfo* slot,
     bool* is_owner,
-    Error* error) {
+    brillo::ErrorPtr* error) {
   // Record metrics around consumer usage of user whitelisting.
   if (IsConsumerPolicy(store()->Get()))
     metrics_->SendConsumerAllowsNewUsers(PolicyAllowsNewUsers(store()->Get()));
 
   // If the current user is the owner, and isn't whitelisted or set as the owner
   // in the settings blob, then do so.
-  std::unique_ptr<RSAPrivateKey> signing_key(
-      GetOwnerKeyForGivenUser(key()->public_key_der(), slot, error));
+  brillo::ErrorPtr key_error;
+  std::unique_ptr<RSAPrivateKey> signing_key =
+      GetOwnerKeyForGivenUser(key()->public_key_der(), slot, &key_error);
 
   // Now, the flip side...if we believe the current user to be the owner based
   // on the user field in policy, and she DOESN'T have the private half of the
   // public key, we must mitigate.
   *is_owner = GivenUserIsOwner(current_user);
   if (*is_owner && !signing_key.get()) {
-    if (!mitigator_->Mitigate(current_user))
+    if (!mitigator_->Mitigate(current_user)) {
+      *error = std::move(key_error);
+      DCHECK(*error);
       return false;
+    }
   }
   return true;
 }
@@ -114,9 +118,8 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
   std::vector<uint8_t> pub_key;
   NssUtil::BlobFromBuffer(buf, &pub_key);
 
-  Error error;
-  std::unique_ptr<RSAPrivateKey> signing_key(
-      GetOwnerKeyForGivenUser(pub_key, slot, &error));
+  std::unique_ptr<RSAPrivateKey> signing_key =
+      GetOwnerKeyForGivenUser(pub_key, slot, nullptr);
   if (!signing_key.get())
     return false;
 
@@ -137,7 +140,7 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
 
   // TODO(cmasone): Remove this as well once the browser can tolerate it:
   // http://crbug.com/472132
-  if (StoreOwnerProperties(current_user, signing_key.get(), &error)) {
+  if (StoreOwnerProperties(current_user, signing_key.get())) {
     PostPersistKeyTask();
     PostPersistPolicyTask(Completion());
   } else {
@@ -196,11 +199,11 @@ bool DevicePolicyService::Initialize() {
 
 bool DevicePolicyService::Store(const uint8_t* policy_blob,
                                 uint32_t len,
-                                const Completion& completion,
                                 int key_flags,
-                                SignatureCheck signature_check) {
-  bool result = PolicyService::Store(policy_blob, len, completion, key_flags,
-                                     signature_check);
+                                SignatureCheck signature_check,
+                                const Completion& completion) {
+  bool result = PolicyService::Store(
+      policy_blob, len, key_flags, signature_check, completion);
 
   if (result) {
     // Flush the settings cache, the next read will decode the new settings.
@@ -318,8 +321,7 @@ bool DevicePolicyService::PolicyAllowsNewUsers(
 }
 
 bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
-                                               RSAPrivateKey* signing_key,
-                                               Error* error) {
+                                               RSAPrivateKey* signing_key) {
   CHECK(signing_key);
   const em::PolicyFetchResponse& policy(store()->Get());
   em::PolicyData poldata;
@@ -368,14 +370,7 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
   std::vector<uint8_t> sig;
   const uint8_t* data = reinterpret_cast<const uint8_t*>(new_data.c_str());
   if (!nss_->Sign(data, new_data.length(), &sig, signing_key)) {
-    static const char err_msg[] =
-        "Could not sign policy containing new owner data.";
-    if (error) {
-      LOG(WARNING) << err_msg;
-      error->Set(dbus_error::kPubkeySetIllegal, err_msg);
-    } else {
-      LOG(ERROR) << err_msg;
-    }
+    LOG(WARNING) << "Could not sign policy containing new owner data.";
     return false;
   }
 
@@ -391,18 +386,18 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
   return true;
 }
 
-RSAPrivateKey* DevicePolicyService::GetOwnerKeyForGivenUser(
+std::unique_ptr<RSAPrivateKey> DevicePolicyService::GetOwnerKeyForGivenUser(
     const std::vector<uint8_t>& key,
     PK11SlotInfo* slot,
-    Error* error) {
-  RSAPrivateKey* result = nss_->GetPrivateKeyForUser(key, slot);
+    brillo::ErrorPtr* error) {
+  std::unique_ptr<RSAPrivateKey> result(nss_->GetPrivateKeyForUser(key, slot));
   if (!result) {
-    static const char msg[] =
+    constexpr char kMessage[] =
         "Could not verify that owner key belongs to this user.";
-    LOG(WARNING) << msg;
+    LOG(WARNING) << kMessage;
     if (error)
-      error->Set(dbus_error::kPubkeySetIllegal, msg);
-    return NULL;
+      *error = CreateError(dbus_error::kPubkeySetIllegal, kMessage);
+    return nullptr;
   }
   return result;
 }

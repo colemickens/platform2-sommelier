@@ -74,10 +74,6 @@ class UserPolicyServiceTest : public ::testing::Test {
   void ExpectStorePolicy(const Sequence& sequence) {
     EXPECT_CALL(*store_, Set(ProtoEq(policy_proto_))).InSequence(sequence);
     EXPECT_CALL(*store_, Persist()).InSequence(sequence).WillOnce(Return(true));
-    EXPECT_CALL(*this, HandleCompletion(PolicyErrorEq(dbus_error::kNone)))
-        .InSequence(sequence);
-    completion_ =  base::Bind(&UserPolicyServiceTest::HandleCompletion,
-                              base::Unretained(this));
   }
 
  protected:
@@ -99,13 +95,10 @@ class UserPolicyServiceTest : public ::testing::Test {
   // occur without the test failing.
   StrictMock<MockPolicyKey>* key_;
   StrictMock<MockPolicyStore>* store_;
-  PolicyService::Completion completion_;
 
   std::unique_ptr<UserPolicyService> service_;
 
  private:
-  MOCK_METHOD1(HandleCompletion, void(const PolicyService::Error&));
-
   DISALLOW_COPY_AND_ASSIGN(UserPolicyServiceTest);
 };
 
@@ -116,9 +109,10 @@ TEST_F(UserPolicyServiceTest, StoreSignedPolicy) {
   EXPECT_CALL(*key_, Verify(_, _, _, _)).InSequence(s1).WillOnce(Return(true));
   ExpectStorePolicy(s1);
 
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
-                              PolicyService::KEY_NONE,
-                              SignatureCheck::kEnabled));
+  EXPECT_TRUE(service_->Store(
+      policy_data_, policy_len_, PolicyService::KEY_NONE,
+      SignatureCheck::kEnabled,
+      MockPolicyService::CreateExpectSuccessCallback()));
   fake_loop_.Run();
 }
 
@@ -129,9 +123,10 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedSigned) {
   EXPECT_CALL(*key_, Verify(_, _, _, _)).InSequence(s1).WillOnce(Return(true));
   ExpectStorePolicy(s1);
 
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
-                              PolicyService::KEY_NONE,
-                              SignatureCheck::kEnabled));
+  EXPECT_TRUE(service_->Store(
+      policy_data_, policy_len_, PolicyService::KEY_NONE,
+      SignatureCheck::kEnabled,
+      MockPolicyService::CreateExpectSuccessCallback()));
   fake_loop_.Run();
 }
 
@@ -151,9 +146,10 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedKeyPresent) {
   EXPECT_CALL(*key_, Persist()).InSequence(s2).WillOnce(Return(true));
 
   EXPECT_FALSE(base::PathExists(key_copy_file_));
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
-                              PolicyService::KEY_NONE,
-                              SignatureCheck::kEnabled));
+  EXPECT_TRUE(service_->Store(
+      policy_data_, policy_len_, PolicyService::KEY_NONE,
+      SignatureCheck::kEnabled,
+      MockPolicyService::CreateExpectSuccessCallback()));
   fake_loop_.Run();
 
   EXPECT_TRUE(base::PathExists(key_copy_file_));
@@ -171,9 +167,10 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedNoKey) {
 
   EXPECT_CALL(*key_, IsPopulated()).WillRepeatedly(Return(false));
 
-  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_,
-                              PolicyService::KEY_NONE,
-                              SignatureCheck::kEnabled));
+  EXPECT_TRUE(service_->Store(
+      policy_data_, policy_len_, PolicyService::KEY_NONE,
+      SignatureCheck::kEnabled,
+      MockPolicyService::CreateExpectSuccessCallback()));
   fake_loop_.Run();
   EXPECT_FALSE(base::PathExists(key_copy_file_));
 }
@@ -184,10 +181,10 @@ TEST_F(UserPolicyServiceTest, StoreInvalidSignature) {
   InSequence s;
   EXPECT_CALL(*key_, Verify(_, _, _, _)).WillOnce(Return(false));
 
-  EXPECT_FALSE(service_->Store(policy_data_, policy_len_,
-                               MockPolicyService::CreateExpectFailureCallback(),
-                               PolicyService::KEY_NONE,
-                               SignatureCheck::kEnabled));
+  EXPECT_FALSE(service_->Store(
+      policy_data_, policy_len_, PolicyService::KEY_NONE,
+      SignatureCheck::kEnabled,
+      MockPolicyService::CreateExpectFailureCallback()));
 
   fake_loop_.Run();
 }

@@ -27,7 +27,6 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
-#include <brillo/errors/error_codes.h>
 #include <chromeos/dbus/service_constants.h>
 #include <crypto/scoped_nss_types.h>
 #include <dbus/message.h>
@@ -38,6 +37,7 @@
 #include "bindings/device_management_backend.pb.h"
 #include "login_manager/crossystem.h"
 #include "login_manager/dbus_signal_emitter.h"
+#include "login_manager/dbus_util.h"
 #include "login_manager/device_local_account_policy_service.h"
 #include "login_manager/device_policy_service.h"
 #include "login_manager/key_generator.h"
@@ -139,13 +139,6 @@ bool IsIncognitoAccountId(const std::string& account_id) {
   const std::string lower_case_id(base::ToLowerASCII(account_id));
   return (lower_case_id == kGuestUserName) ||
          (lower_case_id == SessionManagerImpl::kDemoUser);
-}
-
-// Creates an DBus error instance.
-brillo::ErrorPtr CreateError(const std::string& code,
-                             const std::string& message) {
-  return brillo::Error::Create(
-      FROM_HERE, brillo::errors::dbus::kDomain, code, message);
 }
 
 }  // namespace
@@ -422,11 +415,10 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
   // Check whether the current user is the owner, and if so make sure she is
   // whitelisted and has an owner key.
   bool user_is_owner = false;
-  PolicyService::Error policy_error;
   if (!device_policy_->CheckAndHandleOwnerLogin(
           user_session->username, user_session->slot.get(), &user_is_owner,
-          &policy_error)) {
-    *error = CreateError(policy_error.code(), policy_error.message());
+          error)) {
+    DCHECK(*error);
     return false;
   }
 
@@ -493,10 +485,11 @@ void SessionManagerImpl::StorePolicy(
     const std::string& mode = install_attributes_reader_->GetAttribute(
         InstallAttributesReader::kAttrMode);
     if (mode != InstallAttributesReader::kDeviceModeEnterpriseAD) {
-      PolicyService::Error error(dbus_error::kPolicySignatureRequired,
-                                 "Device mode doesn't permit unsigned policy!");
-      LOG(ERROR) << error.message();
-      completion.Run(error);
+      constexpr char kMessage[] =
+          "Device mode doesn't permit unsigned policy!";
+      LOG(ERROR) << kMessage;
+      completion.Run(CreateError(
+          dbus_error::kPolicySignatureRequired, kMessage));
       return;
     }
   }
@@ -504,8 +497,8 @@ void SessionManagerImpl::StorePolicy(
   int flags = PolicyService::KEY_ROTATE;
   if (!session_started_)
     flags |= PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_CLOBBER;
-  device_policy_->Store(policy_blob, policy_blob_len, completion, flags,
-                        signature_check);
+  device_policy_->Store(policy_blob, policy_blob_len, flags, signature_check,
+                        completion);
 }
 
 void SessionManagerImpl::RetrievePolicy(std::vector<uint8_t>* policy_data,
@@ -530,28 +523,28 @@ void SessionManagerImpl::StorePolicyForUser(
     const std::string& mode = install_attributes_reader_->GetAttribute(
         InstallAttributesReader::kAttrMode);
     if (mode != InstallAttributesReader::kDeviceModeEnterpriseAD) {
-      PolicyService::Error error(dbus_error::kPolicySignatureRequired,
-                                 "Device mode doesn't permit unsigned policy!");
-      LOG(ERROR) << error.message();
-      completion.Run(error);
+      constexpr char kMessage[] =
+          "Device mode doesn't permit unsigned policy!";
+      LOG(ERROR) << kMessage;
+      completion.Run(CreateError(
+          dbus_error::kPolicySignatureRequired, kMessage));
       return;
     }
   }
 
   PolicyService* policy_service = GetPolicyService(account_id);
   if (!policy_service) {
-    PolicyService::Error error(
-        dbus_error::kSessionDoesNotExist,
-        "Cannot store user policy before session is started.");
-    LOG(ERROR) << error.message();
-    completion.Run(error);
+    constexpr char kMessage[] =
+        "Cannot store user policy before session is started.";
+    LOG(ERROR) << kMessage;
+    completion.Run(CreateError(dbus_error::kSessionDoesNotExist, kMessage));
     return;
   }
 
   policy_service->Store(
-      policy_blob, policy_blob_len, completion,
+      policy_blob, policy_blob_len,
       PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_ROTATE,
-      signature_check);
+      signature_check, completion);
 }
 
 void SessionManagerImpl::RetrievePolicyForUser(
