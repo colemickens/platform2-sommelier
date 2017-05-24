@@ -70,6 +70,7 @@ MountErrorType FUSEMounter::MountImpl() {
   }
   mount_process.SetUserId(mount_user_id);
   mount_process.SetGroupId(mount_group_id);
+  mount_process.SetNoNewPrivileges();
 
   // The FUSE mount program is put under a new mount namespace, so mounts
   // inside that namespace don't normally propagate out except when a mount is
@@ -86,6 +87,10 @@ MountErrorType FUSEMounter::MountImpl() {
   // TODO(benchan): Revisit this once minijail provides a finer control over
   // what should be remounted private and what can remain shared (b:62056108).
   mount_process.SkipRemountPrivate();
+
+  mount_process.NewCgroupNamespace();
+  mount_process.NewIpcNamespace();
+  mount_process.NewNetworkNamespace();
 
   mount_process.AddArgument(mount_program_path_);
   string options_string = mount_options().ToString();

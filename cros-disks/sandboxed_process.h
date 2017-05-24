@@ -24,11 +24,23 @@ class SandboxedProcess : public Process {
   // aborted if |policy_file| does not exist, cannot be read or is malformed.
   void LoadSeccompFilterPolicy(const std::string& policy_file);
 
+  // Puts the process to be sandboxed in a new cgroup namespace.
+  void NewCgroupNamespace();
+
+  // Puts the process to be sandboxed in a new IPC namespace.
+  void NewIpcNamespace();
+
   // Puts the process to be sandboxed in a new mount namespace.
   void NewMountNamespace();
 
+  // Puts the process to be sandboxed in a new network namespace.
+  void NewNetworkNamespace();
+
   // Skips re-marking existing mounts as private.
   void SkipRemountPrivate();
+
+  // Sets the no_new_privs bit.
+  void SetNoNewPrivileges();
 
   // Sets the process capabilities of the process to be sandboxed.
   void SetCapabilities(uint64_t capabilities);
