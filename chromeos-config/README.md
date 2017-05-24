@@ -106,6 +106,9 @@ properties.
                 that we should re-sign and generate a read-write firmware image.
                 This replaces the `CROS_FIRMWARE_BUILD_MAIN_RW_IMAGE` ebuild
                 variable.
+        *   `powerd_prefs` (optional): Name of a subdirectory under the powerd
+            model_specific prefs directory where model-specific prefs files are
+            stored.
 
 ### Example for reef
 
@@ -125,6 +128,7 @@ chromeos {
                     "${SYSROOT}/usr/sbin/ectool",
                     "bcs://Reef.something.tbz";
             };
+            powerd_prefs = "reef";
         };
 
         pyro {
@@ -135,6 +139,7 @@ chromeos {
                 ec-image = "bcs://Pyro_EC.9042.41.0.tbz2";
                 script = "updater4.sh";
             };
+            powerd_prefs = "pyro_snappy";
         };
 
         snappy {
@@ -145,6 +150,7 @@ chromeos {
                 ec-image = "bcs://Snappy_EC.9042.43.0.tbz2";
                 script = "updater4.sh";
             };
+            powerd_prefs = "pyro_snappy";
         };
     };
 };

@@ -15,6 +15,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <chromeos-config/libcros_config/cros_config.h>
 
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/common/util.h"
@@ -32,9 +33,36 @@ constexpr char kReadOnlyPrefsDir[] = "/usr/share/power_manager";
 // stored.
 constexpr char kBoardSpecificPrefsSubdir[] = "board_specific";
 
+// Subdirectory within the read-only prefs dir where model-specific prefs are
+// stored.
+constexpr char kModelSpecificPrefsSubdir[] = "model_specific";
+
+// Path and key name in CrosConfig database to look up model-specific pref
+// subdirectory.
+constexpr char kModelSubdirConfigPath[] = "/";
+constexpr char kModelSubdirConfigKey[] = "powerd_prefs";
+
 // Minimum time between batches of prefs being written to disk, in
 // milliseconds.
 const int kDefaultWriteIntervalMs = 1000;
+
+// Returns a model-specific subdirectory of the read-only prefs dir if this
+// model has one, or empty if not.
+std::string GetModelSubdir() {
+  brillo::CrosConfig config;
+  if (!config.Init()) {
+    LOG(ERROR) << "Failed to init CrosConfig database.";
+    return "";
+  }
+  std::string subdir;
+  if (!config.GetString(
+          kModelSubdirConfigPath, kModelSubdirConfigKey, &subdir)) {
+    // Not necessarily an error; not every model will need a subdir.
+    return "";
+  }
+
+  return subdir;
+}
 
 }  // namespace
 
@@ -62,10 +90,19 @@ Prefs::~Prefs() {
 
 // static
 std::vector<base::FilePath> Prefs::GetDefaultPaths() {
-  return std::vector<base::FilePath>{
-      base::FilePath(kReadWritePrefsDir),
-      base::FilePath(kReadOnlyPrefsDir).Append(kBoardSpecificPrefsSubdir),
-      base::FilePath(kReadOnlyPrefsDir)};
+  std::vector<base::FilePath> paths;
+  paths.push_back(base::FilePath(kReadWritePrefsDir));
+
+  const base::FilePath read_only_path(kReadOnlyPrefsDir);
+  const std::string model_subdir = GetModelSubdir();
+  if (!model_subdir.empty()) {
+    paths.push_back(
+        read_only_path.Append(kModelSpecificPrefsSubdir).Append(model_subdir));
+  }
+
+  paths.push_back(read_only_path.Append(kBoardSpecificPrefsSubdir));
+  paths.push_back(read_only_path);
+  return paths;
 }
 
 bool Prefs::Init(const std::vector<base::FilePath>& pref_paths) {
