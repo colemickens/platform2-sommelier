@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <cstdint>
 #include <poll.h>
+#include <time.h>
+#include <cstdint>
 
 #include <base/logging.h>
 #include <brillo/brillo_export.h>
@@ -29,7 +30,9 @@ BRILLO_EXPORT void fp_pal_get_timestamp(uint64_t* time) {
   __asm__ __volatile__("rdtsc" : "=a"(low), "=d"(high));
   *time = (high << 32) | low;
 #else
-#error "fp_pal_get_timestamp() is not implemented."
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+  *time = now.tv_sec * 1000000L + now.tv_nsec / 1000;
 #endif
 }
 
@@ -37,7 +40,7 @@ static int get_fp_sensor_fd() {
   return biod::FpcBiometricsManager::g_sensor_fd;
 }
 
-BRILLO_EXPORT int fp_pal_spi_writeread(uint8_t *access_buffer,
+BRILLO_EXPORT int fp_pal_spi_writeread(uint8_t* access_buffer,
                                        size_t access_buffer_size) {
   int fd = get_fp_sensor_fd();
   ssize_t ret = write(fd, access_buffer, access_buffer_size);
@@ -49,7 +52,7 @@ BRILLO_EXPORT int fp_pal_spi_writeread(uint8_t *access_buffer,
   return 0;
 }
 
-BRILLO_EXPORT int fp_pal_spi_write(uint8_t *access_buffer,
+BRILLO_EXPORT int fp_pal_spi_write(uint8_t* access_buffer,
                                    size_t access_buffer_size) {
   return fp_pal_spi_writeread(access_buffer, access_buffer_size);
 }
