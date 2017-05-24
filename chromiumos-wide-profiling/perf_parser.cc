@@ -746,9 +746,7 @@ std::pair<AddressMapper*, bool> PerfParser::GetOrCreateProcessMapper(
   // be no explicit memory mappings created for the swapper process. In such
   // cases, we must use the mappings from the kernel process, which are used by
   // default for a new PID in the absence of an explicit FORK event.
-  // For now, we limit the workaround just for cases where the parent process
-  // is the swapper process.
-  if (parent_mapper == process_mappers_.end() && ppid == kSwapperPid) {
+  if (parent_mapper == process_mappers_.end()) {
     parent_mapper = process_mappers_.find(kKernelPid);
   }
   std::unique_ptr<AddressMapper> mapper;
