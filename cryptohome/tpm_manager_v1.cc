@@ -166,6 +166,11 @@ int GetRandom(unsigned int random_bytes_count) {
   return 0;
 }
 
+int GetVersionInfo(cryptohome::Tpm::TpmVersionInfo* version_info) {
+  cryptohome::Tpm* tpm = cryptohome::Tpm::GetSingleton();
+  return tpm->GetVersionInfo(version_info);
+}
+
 }  // namespace tpm_manager
 
 }  // namespace cryptohome

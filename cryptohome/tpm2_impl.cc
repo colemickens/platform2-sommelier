@@ -22,9 +22,9 @@
 #include <trunks/policy_session.h>
 #include <trunks/tpm_constants.h>
 #include <trunks/tpm_generated.h>
+#include <trunks/trunks_dbus_proxy.h>
 #include <trunks/trunks_factory.h>
 #include <trunks/trunks_factory_impl.h>
-#include <trunks/trunks_dbus_proxy.h>
 
 #include "cryptohome/cryptolib.h"
 
@@ -1135,6 +1135,25 @@ bool Tpm2Impl::ClearStoredPassword() {
     return false;
   }
   return UpdateTpmStatus(RefreshType::FORCE_REFRESH);
+}
+
+bool Tpm2Impl::GetVersionInfo(TpmVersionInfo* version_info) {
+  if (!UpdateTpmStatus(RefreshType::REFRESH_IF_NEEDED)) {
+    return false;
+  }
+
+  if (!tpm_status_.has_version_info()) {
+    return false;
+  }
+
+  version_info->family = tpm_status_.version_info().family();
+  version_info->spec_level = tpm_status_.version_info().spec_level();
+  version_info->manufacturer = tpm_status_.version_info().manufacturer();
+  version_info->tpm_model = tpm_status_.version_info().tpm_model();
+  version_info->firmware_version =
+      tpm_status_.version_info().firmware_version();
+  version_info->vendor_specific = tpm_status_.version_info().vendor_specific();
+  return true;
 }
 
 }  // namespace cryptohome

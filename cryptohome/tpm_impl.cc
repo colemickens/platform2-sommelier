@@ -2858,4 +2858,57 @@ bool TpmImpl::ClearStoredPassword() {
   return true;
 }
 
+bool TpmImpl::GetVersionInfo(TpmVersionInfo* version_info) {
+  ScopedTssContext context_handle;
+  if ((*(context_handle.ptr()) = ConnectContext()) == 0) {
+    LOG(ERROR) << "Could not open the TPM";
+    return false;
+  }
+
+  TSS_HTPM tpm_handle;
+  if (!GetTpm(context_handle, &tpm_handle)) {
+    LOG(ERROR) << "Could not get a handle to the TPM.";
+    return false;
+  }
+
+  brillo::Blob capability_data;
+  if (!GetCapability(context_handle,
+                     tpm_handle,
+                     TSS_TPMCAP_VERSION_VAL,
+                     0,
+                     &capability_data,
+                     NULL)) {
+    LOG(ERROR) << "Failed to query VERSION_INFO capability.";
+    return false;
+  }
+
+  if (static_cast<UINT16>(capability_data[1]) != TPM_TAG_CAP_VERSION_INFO) {
+    LOG(ERROR) << "Bad VERSION_INFO capability value.";
+    return false;
+  }
+
+  UINT64 trspi_offset = 0;
+  TPM_CAP_VERSION_INFO tpm_version;
+  Trspi_UnloadBlob_CAP_VERSION_INFO(
+      &trspi_offset, capability_data.data(), &tpm_version);
+  version_info->family = 0x312e3200;
+  version_info->spec_level =
+      (static_cast<uint64_t>(tpm_version.specLevel) << 32) |
+      tpm_version.errataRev;
+  version_info->manufacturer =
+      (tpm_version.tpmVendorID[0] << 24) | (tpm_version.tpmVendorID[1] << 16) |
+      (tpm_version.tpmVendorID[2] << 8) | (tpm_version.tpmVendorID[3] << 0);
+  // The TPM 1.2 spec doesn't expose the TPM model in a generic field, so put
+  // an easily discernible invalid value for now.
+  version_info->tpm_model = ~0;
+  version_info->firmware_version =
+      (tpm_version.version.revMajor << 8) | tpm_version.version.revMinor;
+  version_info->vendor_specific.assign(
+      reinterpret_cast<char*>(tpm_version.vendorSpecific),
+      tpm_version.vendorSpecificSize);
+  free(tpm_version.vendorSpecific);
+
+  return true;
+}
+
 }  // namespace cryptohome

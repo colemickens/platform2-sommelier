@@ -45,6 +45,7 @@ constexpr char kCryptohomeDircryptoMigrationTotalFileCountHistogram[] =
     "Cryptohome.DircryptoMigrationTotalFileCount";
 constexpr char kHomedirEncryptionTypeHistogram[] =
     "Cryptohome.HomedirEncryptionType";
+constexpr char kTPMVersionFingerprint[] = "Platform.TPM.VersionFingerprint";
 
 // Histogram parameters. This should match the order of 'TimerType'.
 // Min and max samples are in milliseconds.
@@ -270,4 +271,13 @@ void ReportHomedirEncryptionType(HomedirEncryptionType type) {
       static_cast<int>(
           HomedirEncryptionType::kHomedirEncryptionTypeNumBuckets));
 }
+
+void ReportVersionFingerprint(int fingerprint) {
+  if (!g_metrics) {
+    return;
+  }
+
+  g_metrics->SendSparseToUMA(kTPMVersionFingerprint, fingerprint);
+}
+
 }  // namespace cryptohome

@@ -19,8 +19,8 @@
 
 namespace cryptohome {
 
-class TpmInitTask;
 class Platform;
+class TpmInitTask;
 
 class TpmInit {
   // Friend class TpmInitTask as it is a glue class to allow ThreadMain to be
@@ -177,12 +177,13 @@ class TpmInit {
   std::unique_ptr<TpmInitTask> tpm_init_task_;
   base::PlatformThreadHandle init_thread_;
 
-  TpmInitCallback* notify_callback_;
+  TpmInitCallback* notify_callback_ = nullptr;
 
-  bool initialize_called_;
-  bool initialize_took_ownership_;
-  int64_t initialization_time_;
-  Platform* platform_;
+  bool initialize_called_ = false;
+  bool initialize_took_ownership_ = false;
+  bool statistics_reported_ = false;
+  int64_t initialization_time_ = 0;
+  Platform* platform_ = nullptr;
   ScopedKeyHandle cryptohome_key_;
 
   DISALLOW_COPY_AND_ASSIGN(TpmInit);

@@ -149,6 +149,7 @@ class Tpm2Impl : public Tpm {
   void DeclareTpmFirmwareStable() override;
   bool RemoveOwnerDependency(TpmOwnerDependency dependency) override;
   bool ClearStoredPassword() override;
+  bool GetVersionInfo(TpmVersionInfo* version_info) override;
 
  private:
   // This object may be used across multiple threads but the Trunks D-Bus proxy

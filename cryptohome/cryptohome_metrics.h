@@ -206,6 +206,10 @@ void ReportDircryptoMigrationTotalFileCount(int total_file_count);
 // histogram.
 void ReportHomedirEncryptionType(HomedirEncryptionType type);
 
+// Reports the TPM version fingerprint to the "Platform.TPM.VersionFingerprint"
+// histogram.
+void ReportVersionFingerprint(int fingerprint);
+
 // Initialization helper.
 class ScopedMetricsInitializer {
  public:

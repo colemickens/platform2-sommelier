@@ -79,12 +79,7 @@ class TpmInitTask : public PlatformThread::Delegate {
 };
 
 TpmInit::TpmInit(Tpm* tpm, Platform* platform)
-    : tpm_init_task_(new TpmInitTask()),
-      notify_callback_(NULL),
-      initialize_called_(false),
-      initialize_took_ownership_(false),
-      initialization_time_(0),
-      platform_(platform) {
+    : tpm_init_task_(new TpmInitTask()), platform_(platform) {
   set_tpm(tpm);
 }
 
@@ -205,6 +200,15 @@ bool TpmInit::SetupTpm(bool load_key) {
   if (!was_initialized) {
     get_tpm()->SetIsInitialized(true);
     RestoreTpmStateFromStorage();
+  }
+
+  // Collect version statistics.
+  if (!statistics_reported_) {
+    Tpm::TpmVersionInfo version_info;
+    if (get_tpm()->GetVersionInfo(&version_info)) {
+      ReportVersionFingerprint(version_info.GetFingerprint());
+      statistics_reported_ = true;
+    }
   }
 
   // In case of interrupted initialization, continue it.

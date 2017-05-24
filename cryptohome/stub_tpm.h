@@ -155,6 +155,7 @@ class StubTpm : public Tpm {
   bool RemoveOwnerDependency(TpmOwnerDependency dependency) override
     { return true; }
   bool ClearStoredPassword() override { return true; }
+  bool GetVersionInfo(TpmVersionInfo* version_info) override { return false; }
 };
 
 }  // namespace cryptohome

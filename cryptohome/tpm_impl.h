@@ -132,6 +132,7 @@ class TpmImpl : public Tpm {
   void DeclareTpmFirmwareStable() override {}
   bool RemoveOwnerDependency(TpmOwnerDependency dependency) override;
   bool ClearStoredPassword() override;
+  bool GetVersionInfo(TpmVersionInfo* version_info) override;
 
  private:
   // Connects to the TPM and return its context at |context_handle|.

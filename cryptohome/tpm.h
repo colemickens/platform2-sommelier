@@ -9,6 +9,8 @@
 // keys.
 // TODO(wad) make more functions virtual for use in mock_tpm.h.
 
+#include <string>
+
 #include <base/synchronization/lock.h>
 #include <brillo/secure_blob.h>
 #include <openssl/rsa.h>
@@ -106,6 +108,22 @@ class Tpm {
     bool can_decrypt;
     bool this_instance_has_context;
     bool this_instance_has_key_handle;
+  };
+
+  // Holds TPM version info.
+  struct TpmVersionInfo {
+    uint32_t family;
+    uint64_t spec_level;
+    uint32_t manufacturer;
+    uint32_t tpm_model;
+    uint64_t firmware_version;
+    std::string vendor_specific;
+
+    // Computes a fingerprint of the version parameters in the struct fields by
+    // running them through a hash function and truncating the output. The idea
+    // is to produce a fingerprint that's unique in practice for each set of
+    // real-life version parameters.
+    int GetFingerprint() const;
   };
 
   static Tpm* GetSingleton();
@@ -562,6 +580,9 @@ class Tpm {
   // Returns true if the password is cleared by this method, or was already
   // clear when we called it.
   virtual bool ClearStoredPassword() = 0;
+
+  // Obtains version information from the TPM.
+  virtual bool GetVersionInfo(TpmVersionInfo* version_info) = 0;
 
  private:
   static Tpm* singleton_;

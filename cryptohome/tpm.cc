@@ -4,6 +4,14 @@
 
 #include "cryptohome/tpm.h"
 
+#include <string>
+
+#include <inttypes.h>
+
+#include <base/strings/stringprintf.h>
+
+#include "cryptohome/cryptolib.h"
+
 #if USE_TPM2
 #include "cryptohome/tpm2_impl.h"
 #else
@@ -45,6 +53,27 @@ void ScopedKeyHandle::reset(Tpm* tpm, TpmKeyHandle handle) {
     tpm_ = tpm;
     handle_ = handle;
   }
+}
+
+int Tpm::TpmVersionInfo::GetFingerprint() const {
+  // The exact encoding doesn't matter as long as its unambiguous, stable and
+  // contains all information present in the version fields.
+  std::string encoded_parameters =
+      base::StringPrintf("%08" PRIx32 "%016" PRIx64 "%08" PRIx32 "%08" PRIx32
+                         "%016" PRIx64 "%016zx",
+                         family,
+                         spec_level,
+                         manufacturer,
+                         tpm_model,
+                         firmware_version,
+                         vendor_specific.size());
+  encoded_parameters.append(vendor_specific);
+  brillo::SecureBlob hash = CryptoLib::Sha256(
+      brillo::Blob(encoded_parameters.begin(), encoded_parameters.end()));
+
+  // Return the first 31 bits from |hash|.
+  int result = hash[0] | hash[1] << 8 | hash[2] << 16 | hash[3] << 24;
+  return result & 0x7fffffff;
 }
 
 Tpm* Tpm::GetSingleton() {

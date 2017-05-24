@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <inttypes.h>
 #include <stdio.h>
-
 #include <string>
 
 #include <base/command_line.h>
@@ -43,22 +43,26 @@ void PrintUsage() {
   printf("    dump_status: Prints TPM status information.\n");
   printf("    get_random <N>: Gets N random bytes from the TPM and prints them "
          "as a hex-encoded string.\n");
+  printf("    get_version_info: Prints TPM software and hardware version "
+         "information.\n");
 }
 
 int TakeOwnership(bool finalize);
 int VerifyEK(bool is_cros_core);
 int DumpStatus();
 int GetRandom(unsigned int random_bytes_count);
+int GetVersionInfo(Tpm::TpmVersionInfo* version_info);
 
 }  // namespace tpm_manager
 
 }  // namespace cryptohome
 
+using cryptohome::tpm_manager::DumpStatus;
+using cryptohome::tpm_manager::GetRandom;
+using cryptohome::tpm_manager::GetVersionInfo;
 using cryptohome::tpm_manager::PrintUsage;
 using cryptohome::tpm_manager::TakeOwnership;
 using cryptohome::tpm_manager::VerifyEK;
-using cryptohome::tpm_manager::DumpStatus;
-using cryptohome::tpm_manager::GetRandom;
 
 int main(int argc, char **argv) {
   base::CommandLine::Init(argc, argv);
@@ -89,6 +93,33 @@ int main(int argc, char **argv) {
       base::StringToUint(arguments[1], &random_bytes_count) &&
       random_bytes_count > 0) {
     return GetRandom(random_bytes_count);
+  }
+  if (command == "get_version_info") {
+    cryptohome::Tpm::TpmVersionInfo version_info;
+    if (!GetVersionInfo(&version_info)) {
+      return -1;
+    }
+
+    uint32_t fingerprint = version_info.GetFingerprint();
+    std::string vendor_specific =
+        base::HexEncode(version_info.vendor_specific.data(),
+                        version_info.vendor_specific.size());
+    printf("TPM family: %08" PRIx32 "\n"
+           "spec level: %016" PRIx64 "\n"
+           "manufacturer: %08" PRIx32 "\n"
+           "tpm_model: %08" PRIx32 "\n"
+           "firmware version: %016" PRIx64 "\n"
+           "vendor specific: %s\n"
+           "version fingerprint: %" PRId32 " %08" PRIx32 "\n",
+           version_info.family,
+           version_info.spec_level,
+           version_info.manufacturer,
+           version_info.tpm_model,
+           version_info.firmware_version,
+           vendor_specific.c_str(),
+           fingerprint,
+           fingerprint);
+    return 0;
   }
   PrintUsage();
   return -1;
