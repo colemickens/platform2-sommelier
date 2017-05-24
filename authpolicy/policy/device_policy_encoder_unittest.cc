@@ -159,7 +159,7 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeBoolean(&policy, key::kDeviceDataRoamingEnabled, kBool);
   EXPECT_EQ(kBool, policy.data_roaming_enabled().data_roaming_enabled());
 
-  // The encoder of this policy converts a JSON string to separate values.
+  // The encoder of this policy converts a json string to separate values.
   EncodeString(&policy,
                key::kNetworkThrottlingEnabled,
                "{\"enabled\":true,"
@@ -341,7 +341,7 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(em::DisplayRotationDefaultProto::ROTATE_180,
             policy.display_rotation_default().display_rotation_default());
 
-  // The encoder of this policy converts a JSON string to separate values.
+  // The encoder of this policy converts a json string to separate values.
   EncodeStringList(&policy,
                    key::kUsbDetachableWhitelist,
                    {"{\"vendor_id\":123, \"product_id\":234}",

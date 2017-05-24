@@ -16,10 +16,31 @@
 #include <libminijail.h>
 #include <scoped_minijail.h>
 
+#include "authpolicy/log_level.h"
 #include "authpolicy/platform_helper.h"
-#include "authpolicy/samba_helper.h"
 
 namespace authpolicy {
+namespace {
+
+// Splits string into lines and logs the lines. This works around a restriction
+// of syslog of 8kb per log and fixes unreadable logs where \n is replaced by
+// #012.
+void LogLongString(const char* header, const std::string& str) {
+  if (!(kLogExecutorOutput && LOG_IS_ON(INFO)))
+    return;
+
+  std::vector<std::string> lines = base::SplitString(
+      str, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  if (lines.size() <= 1) {
+    LOG(INFO) << header << str;
+  } else {
+    LOG(INFO) << header;
+    for (const std::string& line : lines)
+      LOG(INFO) << line;
+  }
+}
+
+}  // namespace
 
 ProcessExecutor::ProcessExecutor(std::vector<std::string> args)
     : args_(std::move(args)) {}
@@ -40,28 +61,16 @@ void ProcessExecutor::SetSeccompFilter(const std::string& policy_file) {
   seccomp_policy_file_ = policy_file;
 }
 
-void ProcessExecutor::LogSeccompFilterFailures(bool enabled) {
-  log_seccomp_failures_ = enabled;
+void ProcessExecutor::LogSeccompFilterFailures() {
+  log_seccomp_failures_ = true;
 }
 
-void ProcessExecutor::SetNoNewPrivs(bool enabled) {
-  no_new_privs_ = enabled;
+void ProcessExecutor::SetNoNewPrivs() {
+  no_new_privs_ = true;
 }
 
-void ProcessExecutor::KeepSupplementaryGroups(bool enabled) {
-  keep_supplementary_flags_ = enabled;
-}
-
-void ProcessExecutor::LogCommand(bool enabled) {
-  log_command_ = enabled;
-}
-
-void ProcessExecutor::LogOutput(bool enabled) {
-  log_output_ = enabled;
-}
-
-void ProcessExecutor::LogOutputOnError(bool enabled) {
-  log_output_on_error_ = enabled;
+void ProcessExecutor::KeepSupplementaryGroups() {
+  keep_supplementary_flags_ = true;
 }
 
 bool ProcessExecutor::Execute() {
@@ -75,7 +84,7 @@ bool ProcessExecutor::Execute() {
     return false;
   }
 
-  if (log_command_ && LOG_IS_ON(INFO)) {
+  if (kLogExecutorCommand && LOG_IS_ON(INFO)) {
     std::string cmd = args_[0];
     for (size_t n = 1; n < args_.size(); ++n)
       cmd += base::StringPrintf(" '%s'", args_[n].c_str());
@@ -163,11 +172,9 @@ bool ProcessExecutor::Execute() {
     return false;
   }
 
-  if (log_output_ || (log_output_on_error_ && exit_code_ != 0)) {
-    LogLongString("Stdout: ", out_data_);
-    LogLongString("Stderr: ", err_data_);
-  }
-  LOG_IF(INFO, log_command_) << "Exit code: " << exit_code_;
+  LogLongString("Stdout: ", out_data_);
+  LogLongString("Stderr: ", err_data_);
+  LOG_IF(INFO, kLogExecutorCommand) << "Exit code: " << exit_code_;
 
   return exit_code_ == 0;
 }

@@ -18,11 +18,10 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/sys_info.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 
-#include "authpolicy/authpolicy_flags.h"
+#include "authpolicy/log_level.h"
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/process_executor.h"
 #include "bindings/authpolicy_containers.pb.h"
@@ -79,6 +78,11 @@ const char kPRegUserDir[] = "User";
 const char kPRegDeviceDir[] = "Machine";
 const char kPRegFileName[] = "registry.pol";
 
+// Flags. Write kFlag* strings to the Path::DEBUG_FLAGS file to toggle flags.
+const char kFlagDisableSeccomp[] = "disable_seccomp";
+const char kFlagLogSeccomp[] = "log_seccomp";
+const char kFlagTraceKinit[] = "trace_kinit";
+
 // Size limit when loading the config file (256 kb).
 const size_t kConfigSizeLimit = 256 * 1024;
 
@@ -102,10 +106,6 @@ const char kKeyConnectionReset[] = "NT_STATUS_CONNECTION_RESET";
 const char kKeyNetworkTimeout[] = "NT_STATUS_IO_TIMEOUT";
 const char kKeyObjectNameNotFound[] =
     "NT_STATUS_OBJECT_NAME_NOT_FOUND opening remote file ";
-
-const char kChromeOSReleaseTrack[] = "CHROMEOS_RELEASE_TRACK";
-const char kBetaChannel[] = "beta-channel";
-const char kStableChannel[] = "stable-channel";
 
 ErrorType GetNetError(const ProcessExecutor& executor,
                       const std::string& net_command) {
@@ -201,36 +201,23 @@ SambaInterface::SambaInterface(
     const PathService* path_service)
     : metrics_(metrics),
       paths_(path_service),
-      jail_helper_(paths_, &flags_),
+      jail_helper_(paths_),
       user_tgt_manager_(task_runner,
                         paths_,
                         metrics_,
-                        &flags_,
                         &jail_helper_,
                         Path::USER_KRB5_CONF,
                         Path::USER_CREDENTIAL_CACHE),
       device_tgt_manager_(task_runner,
                           paths_,
                           metrics_,
-                          &flags_,
                           &jail_helper_,
                           Path::DEVICE_KRB5_CONF,
                           Path::DEVICE_CREDENTIAL_CACHE) {
   DCHECK(paths_);
-
-  // Set a good debug flag level depending on the channel.
-  std::string channel;
-  flags_default_level_ = AuthPolicyFlags::kQuiet;
-  if (!base::SysInfo::GetLsbReleaseValue(kChromeOSReleaseTrack, &channel)) {
-    LOG(WARNING) << "Failed to retrieve release track from sys info.";
-  } else if (channel != kBetaChannel && channel != kStableChannel) {
-    flags_default_level_ = AuthPolicyFlags::kVerbose;
-  }
 }
 
 ErrorType SambaInterface::Initialize(bool expect_config) {
-  ReloadDebugFlags();
-
   ErrorType error = ERROR_NONE;
   for (const auto& dir_and_mode : kDirsAndMode) {
     const base::FilePath dir(paths_->Get(dir_and_mode.first));
@@ -248,6 +235,32 @@ ErrorType SambaInterface::Initialize(bool expect_config) {
     if (error != ERROR_NONE)
       return error;
   }
+
+  // Load debug flags from file.
+  bool disable_seccomp_filters = false;
+  bool log_seccomp_filters = false;
+  bool trace_kinit = false;
+  std::string flags;
+  const std::string& flags_path = paths_->Get(Path::DEBUG_FLAGS);
+  if (base::ReadFileToString(base::FilePath(flags_path), &flags)) {
+    if (Contains(flags, kFlagDisableSeccomp)) {
+      LOG(WARNING) << "Seccomp filters disabled";
+      disable_seccomp_filters = true;
+    }
+    if (Contains(flags, kFlagLogSeccomp)) {
+      LOG(WARNING) << "Logging seccomp filter failures";
+      log_seccomp_filters = true;
+    }
+    if (Contains(flags, kFlagTraceKinit)) {
+      LOG(WARNING) << "Trace kinit";
+      trace_kinit = true;
+    }
+  }
+
+  // Set debug flags.
+  jail_helper_.SetDebugFlags(disable_seccomp_filters, log_seccomp_filters);
+  user_tgt_manager_.SetKinitTraceEnabled(trace_kinit);
+  device_tgt_manager_.SetKinitTraceEnabled(trace_kinit);
 
   return ERROR_NONE;
 }
@@ -271,15 +284,12 @@ ErrorType SambaInterface::AuthenticateUser(
     const std::string& account_id,
     int password_fd,
     ActiveDirectoryAccountInfo* account_info) {
-  ReloadDebugFlags();
-
   // Split user_principal_name into parts and normalize.
   std::string user_name, realm, workgroup, normalized_upn;
   if (!ParseUserPrincipalName(
           user_principal_name, &user_name, &realm, &normalized_upn)) {
     return ERROR_PARSE_UPN_FAILED;
   }
-  LOG_IF(INFO, flags_.log_config()) << "UPN = '" << normalized_upn << "'";
 
   // Write Samba configuration file.
   ErrorType error = EnsureWorkgroupAndWriteSmbConf();
@@ -323,8 +333,6 @@ ErrorType SambaInterface::AuthenticateUser(
 
 ErrorType SambaInterface::GetUserStatus(
     const std::string& account_id, ActiveDirectoryUserStatus* user_status) {
-  ReloadDebugFlags();
-
   // Write Samba configuration file.
   ErrorType error = EnsureWorkgroupAndWriteSmbConf();
   if (error != ERROR_NONE)
@@ -361,15 +369,12 @@ ErrorType SambaInterface::GetUserStatus(
 ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
                                       const std::string& user_principal_name,
                                       int password_fd) {
-  ReloadDebugFlags();
-
   // Split user principal name into parts.
   std::string user_name, realm, normalized_upn;
   if (!ParseUserPrincipalName(
           user_principal_name, &user_name, &realm, &normalized_upn)) {
     return ERROR_PARSE_UPN_FAILED;
   }
-  LOG_IF(INFO, flags_.log_config()) << "UPN = '" << normalized_upn << "'";
 
   // Wipe and (re-)create config. Note that all session data is wiped to make
   // testing easier.
@@ -394,7 +399,7 @@ ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
                            "-s",
                            paths_->Get(Path::SMB_CONF),
                            "-d",
-                           flags_.net_log_level()});
+                           kNetLogLevel});
   net_cmd.SetInputFile(password_fd);
   net_cmd.SetEnv(kKrb5KTEnvKey,  // Machine keytab file path.
                  kFilePrefix + paths_->Get(Path::MACHINE_KT_TEMP));
@@ -425,8 +430,6 @@ ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
 
 ErrorType SambaInterface::FetchUserGpos(const std::string& account_id_key,
                                         std::string* policy_blob) {
-  ReloadDebugFlags();
-
   // Get sAMAccountName from account id key (must be logged in to fetch user
   // policy).
   auto iter = user_id_name_map_.find(account_id_key);
@@ -472,8 +475,6 @@ ErrorType SambaInterface::FetchUserGpos(const std::string& account_id_key,
 }
 
 ErrorType SambaInterface::FetchDeviceGpos(std::string* policy_blob) {
-  ReloadDebugFlags();
-
   // Write Samba configuration file.
   ErrorType error = EnsureWorkgroupAndWriteSmbConf();
   if (error != ERROR_NONE)
@@ -530,7 +531,7 @@ ErrorType SambaInterface::GetRealmInfo(protos::RealmInfo* realm_info) const {
                                        "-s",
                                        paths_->Get(Path::SMB_CONF),
                                        "-d",
-                                       flags_.net_log_level()});
+                                       kNetLogLevel});
   if (!jail_helper_.SetupJailAndRun(
           &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_INFO)) {
     return GetNetError(net_cmd, "info");
@@ -539,8 +540,7 @@ ErrorType SambaInterface::GetRealmInfo(protos::RealmInfo* realm_info) const {
 
   // Parse the output to find the domain controller name. Enclose in a sandbox
   // for security considerations.
-  ProcessExecutor parse_cmd(
-      {paths_->Get(Path::PARSER), kCmdParseRealmInfo, SerializeFlags(flags_)});
+  ProcessExecutor parse_cmd({paths_->Get(Path::PARSER), kCmdParseRealmInfo});
   parse_cmd.SetInputString(net_out);
   if (!jail_helper_.SetupJailAndRun(
           &parse_cmd, Path::PARSER_SECCOMP, TIMER_NONE)) {
@@ -552,11 +552,9 @@ ErrorType SambaInterface::GetRealmInfo(protos::RealmInfo* realm_info) const {
     LOG(ERROR) << "Failed to parse realm info from string";
     return ERROR_PARSE_FAILED;
   }
-  if (flags_.log_config()) {
-    LOG(INFO) << "DC name = '" << realm_info->dc_name() << "'";
-    LOG(INFO) << "KDC IP = '" << realm_info->kdc_ip() << "'";
-  }
 
+  LOG(INFO) << "Found DC name = '" << realm_info->dc_name() << "'";
+  LOG(INFO) << "Found KDC IP = '" << realm_info->kdc_ip() << "'";
   return ERROR_NONE;
 }
 
@@ -594,7 +592,7 @@ ErrorType SambaInterface::EnsureWorkgroup() {
                            "-s",
                            paths_->Get(Path::SMB_CONF),
                            "-d",
-                           flags_.net_log_level()});
+                           kNetLogLevel});
   if (!jail_helper_.SetupJailAndRun(
           &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_WORKGROUP)) {
     return GetNetError(net_cmd, "workgroup");
@@ -603,8 +601,7 @@ ErrorType SambaInterface::EnsureWorkgroup() {
 
   // Parse the output to find the workgroup. Enclose in a sandbox for security
   // considerations.
-  ProcessExecutor parse_cmd(
-      {paths_->Get(Path::PARSER), kCmdParseWorkgroup, SerializeFlags(flags_)});
+  ProcessExecutor parse_cmd({paths_->Get(Path::PARSER), kCmdParseWorkgroup});
   parse_cmd.SetInputString(net_out);
   if (!jail_helper_.SetupJailAndRun(
           &parse_cmd, Path::PARSER_SECCOMP, TIMER_NONE)) {
@@ -613,7 +610,6 @@ ErrorType SambaInterface::EnsureWorkgroup() {
     return ERROR_PARSE_FAILED;
   }
   workgroup_ = parse_cmd.GetStdout();
-  LOG_IF(INFO, flags_.log_config()) << "Workgroup = '" << workgroup_ << "'";
   return ERROR_NONE;
 }
 
@@ -718,10 +714,6 @@ ErrorType SambaInterface::ReadConfiguration() {
 
   config_ = std::move(config);
   LOG(INFO) << "Read configuration file '" << config_path.value() << "'";
-  if (flags_.log_config()) {
-    LOG(INFO) << "Machine name = '" << config_->machine_name() << "'";
-    LOG(INFO) << "Realm = '" << config_->realm() << "'";
-  }
   return ERROR_NONE;
 }
 
@@ -835,7 +827,7 @@ ErrorType SambaInterface::SearchAccountInfo(
                            "-s",
                            paths_->Get(Path::SMB_CONF),
                            "-d",
-                           flags_.net_log_level()});
+                           kNetLogLevel});
   // Use the machine TGT to query the account info.
   net_cmd.SetEnv(kKrb5CCEnvKey,
                  paths_->Get(device_tgt_manager_.GetCredentialCachePath()));
@@ -847,9 +839,7 @@ ErrorType SambaInterface::SearchAccountInfo(
 
   // Parse the output to find the account info proto blob. Enclose in a sandbox
   // for security considerations.
-  ProcessExecutor parse_cmd({paths_->Get(Path::PARSER),
-                             kCmdParseAccountInfo,
-                             SerializeFlags(flags_)});
+  ProcessExecutor parse_cmd({paths_->Get(Path::PARSER), kCmdParseAccountInfo});
   parse_cmd.SetInputString(net_out);
   if (!jail_helper_.SetupJailAndRun(
           &parse_cmd, Path::PARSER_SECCOMP, TIMER_NONE)) {
@@ -876,8 +866,7 @@ ErrorType SambaInterface::GetGpoList(const std::string& user_or_machine_name,
                                      PolicyScope scope,
                                      protos::GpoList* gpo_list) const {
   DCHECK(gpo_list);
-  LOG(INFO) << "Getting " << (scope == PolicyScope::USER ? "user" : "device")
-            << " GPO list";
+  LOG(INFO) << "Getting GPO list for " << user_or_machine_name;
 
   // Machine names are names ending with $, anything else is a user name.
   authpolicy::ProcessExecutor net_cmd({paths_->Get(Path::NET),
@@ -888,7 +877,7 @@ ErrorType SambaInterface::GetGpoList(const std::string& user_or_machine_name,
                                        "-s",
                                        paths_->Get(Path::SMB_CONF),
                                        "-d",
-                                       flags_.net_log_level()});
+                                       kNetLogLevel});
   const TgtManager& tgt_manager =
       scope == PolicyScope::USER ? user_tgt_manager_ : device_tgt_manager_;
   net_cmd.SetEnv(kKrb5CCEnvKey,
@@ -904,8 +893,7 @@ ErrorType SambaInterface::GetGpoList(const std::string& user_or_machine_name,
   // Parse the GPO list. Enclose in a sandbox for security considerations.
   const char* cmd = scope == PolicyScope::USER ? kCmdParseUserGpoList
                                                : kCmdParseDeviceGpoList;
-  ProcessExecutor parse_cmd(
-      {paths_->Get(Path::PARSER), cmd, SerializeFlags(flags_)});
+  ProcessExecutor parse_cmd({paths_->Get(Path::PARSER), cmd});
   parse_cmd.SetInputString(net_out);
   if (!jail_helper_.SetupJailAndRun(
           &parse_cmd, Path::PARSER_SECCOMP, TIMER_NONE)) {
@@ -1101,8 +1089,7 @@ ErrorType SambaInterface::ParseGposIntoProtobuf(
   }
 
   // Load GPOs into protobuf. Enclose in a sandbox for security considerations.
-  ProcessExecutor parse_cmd(
-      {paths_->Get(Path::PARSER), parser_cmd_string, SerializeFlags(flags_)});
+  ProcessExecutor parse_cmd({paths_->Get(Path::PARSER), parser_cmd_string});
   parse_cmd.SetInputString(gpo_file_paths_blob);
   if (!jail_helper_.SetupJailAndRun(
           &parse_cmd, Path::PARSER_SECCOMP, TIMER_NONE)) {
@@ -1118,16 +1105,6 @@ void SambaInterface::Reset() {
   config_.reset();
   workgroup_.clear();
   retry_machine_kinit_ = false;
-}
-
-void SambaInterface::ReloadDebugFlags() {
-  // First set defaults, then load file on top.
-  AuthPolicyFlags flags_container;
-  flags_container.SetDefaults(flags_default_level_);
-  const base::FilePath path(paths_->Get(Path::DEBUG_FLAGS));
-  if (flags_container.LoadFromJsonFile(path))
-    flags_container.Dump();
-  flags_ = flags_container.Get();
 }
 
 }  // namespace authpolicy

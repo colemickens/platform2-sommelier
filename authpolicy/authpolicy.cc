@@ -222,6 +222,7 @@ void AuthPolicy::StorePolicy(const std::string& policy_blob,
   }
 
   const char* const method = GetSessionManagerStoreMethod(is_user_policy);
+  LOG(INFO) << "Calling Session Manager D-Bus method " << method;
   dbus::MethodCall method_call(login_manager::kSessionManagerInterface, method);
   dbus::MessageWriter writer(&method_call);
   if (account_id_key)

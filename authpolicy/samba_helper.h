@@ -53,11 +53,6 @@ bool Contains(const std::string& str, const std::string& substr);
 // Returns an empty string on error.
 std::string GuidToOctetString(const std::string& guid);
 
-// Splits string into lines and logs the lines. This works around a restriction
-// of syslog of 8kb per log and fixes unreadable logs where \n is replaced by
-// #012.
-void LogLongString(const char* header, const std::string& str);
-
 }  // namespace authpolicy
 
 #endif  // AUTHPOLICY_SAMBA_HELPER_H_

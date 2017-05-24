@@ -25,8 +25,7 @@ const char kRecommendedKey[] = "Recommended";
 namespace policy {
 
 bool ParsePRegFilesIntoUserPolicy(const std::vector<base::FilePath>& preg_files,
-                                  em::CloudPolicySettings* policy,
-                                  bool log_policy_values) {
+                                  em::CloudPolicySettings* policy) {
   DCHECK(policy);
 
   RegistryDict mandatory_dict;
@@ -44,13 +43,11 @@ bool ParsePRegFilesIntoUserPolicy(const std::vector<base::FilePath>& preg_files,
   // mandatory, it will be overwritten to be mandatory below.
   if (recommended_dict) {
     UserPolicyEncoder enc(recommended_dict.get(), POLICY_LEVEL_RECOMMENDED);
-    enc.LogPolicyValues(log_policy_values);
     enc.EncodePolicy(policy);
   }
 
   {
     UserPolicyEncoder enc(&mandatory_dict, POLICY_LEVEL_MANDATORY);
-    enc.LogPolicyValues(log_policy_values);
     enc.EncodePolicy(policy);
   }
 
@@ -59,8 +56,7 @@ bool ParsePRegFilesIntoUserPolicy(const std::vector<base::FilePath>& preg_files,
 
 bool ParsePRegFilesIntoDevicePolicy(
     const std::vector<base::FilePath>& preg_files,
-    em::ChromeDeviceSettingsProto* policy,
-    bool log_policy_values) {
+    em::ChromeDeviceSettingsProto* policy) {
   DCHECK(policy);
 
   RegistryDict policy_dict;
@@ -70,7 +66,6 @@ bool ParsePRegFilesIntoDevicePolicy(
   }
 
   DevicePolicyEncoder encoder(&policy_dict);
-  encoder.LogPolicyValues(log_policy_values);
   encoder.EncodePolicy(policy);
 
   return true;

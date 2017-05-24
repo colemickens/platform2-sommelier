@@ -15,7 +15,6 @@
 #include <base/memory/ref_counted.h>
 #include <dbus/authpolicy/dbus-constants.h>
 
-#include "authpolicy/authpolicy_flags.h"
 #include "authpolicy/authpolicy_metrics.h"
 #include "authpolicy/constants.h"
 #include "authpolicy/jail_helper.h"
@@ -179,12 +178,6 @@ class SambaInterface {
   // user data.
   void Reset();
 
-  // Reloads debug flags. Should be done on every public method called from
-  // D-Bus, so that authpolicyd doesn't have to be restarted if the flags
-  // change. Note that this is cheap in a production environment where the flags
-  // file does not exist, so this is no performance concern.
-  void ReloadDebugFlags();
-
   // Maps the account id key ("a-" + user object GUID) to sAMAccountName.
   std::unordered_map<std::string, std::string> user_id_name_map_;
   std::unique_ptr<protos::ActiveDirectoryConfig> config_;
@@ -198,10 +191,6 @@ class SambaInterface {
 
   // Lookup for file paths, not owned.
   const PathService* paths_;
-
-  // Debug flags, loaded from Path::DEBUG_FLAGS.
-  protos::DebugFlags flags_;
-  AuthPolicyFlags::DefaultLevel flags_default_level_ = AuthPolicyFlags::kQuiet;
 
   // Helper to setup and run minijailed processes.
   JailHelper jail_helper_;

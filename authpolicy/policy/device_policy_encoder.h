@@ -31,9 +31,6 @@ class DevicePolicyEncoder {
  public:
   explicit DevicePolicyEncoder(const RegistryDict* dict) : dict_(dict) {}
 
-  // Toggles logging of policy values.
-  void LogPolicyValues(bool enabled) { log_policy_values_ = enabled; }
-
   // Extracts all supported device policies from |dict| and puts them into
   // |policy|.
   void EncodePolicy(
@@ -83,8 +80,7 @@ class DevicePolicyEncoder {
   void HandleUnsupported(const char* policy_name) const;
 
  private:
-  const RegistryDict* dict_ = nullptr;
-  bool log_policy_values_ = false;
+  const RegistryDict* dict_;
 };
 
 }  // namespace policy

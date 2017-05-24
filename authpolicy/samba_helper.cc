@@ -128,19 +128,4 @@ std::string GuidToOctetString(const std::string& guid) {
   return octet_str;
 }
 
-void LogLongString(const char* header, const std::string& str) {
-  if (!LOG_IS_ON(INFO))
-    return;
-
-  std::vector<std::string> lines = base::SplitString(
-      str, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  if (lines.size() <= 1) {
-    LOG(INFO) << header << str;
-  } else {
-    LOG(INFO) << header;
-    for (const std::string& line : lines)
-      LOG(INFO) << line;
-  }
-}
-
 }  // namespace authpolicy

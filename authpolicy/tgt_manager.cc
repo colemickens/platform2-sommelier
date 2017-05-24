@@ -12,7 +12,6 @@
 #include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
 
-#include "authpolicy/authpolicy_flags.h"
 #include "authpolicy/authpolicy_metrics.h"
 #include "authpolicy/constants.h"
 #include "authpolicy/jail_helper.h"
@@ -188,14 +187,12 @@ ErrorType GetKListError(const ProcessExecutor& klist_cmd) {
 TgtManager::TgtManager(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
                        const PathService* path_service,
                        AuthPolicyMetrics* metrics,
-                       const protos::DebugFlags* flags,
                        const JailHelper* jail_helper,
                        Path config_path,
                        Path credential_cache_path)
     : task_runner_(task_runner),
       paths_(path_service),
       metrics_(metrics),
-      flags_(flags),
       jail_helper_(jail_helper),
       config_path_(config_path),
       credential_cache_path_(credential_cache_path) {}
@@ -319,9 +316,8 @@ ErrorType TgtManager::GetTgtLifetime(protos::TgtLifetime* lifetime) {
 
     // Parse the output to find the lifetime. Enclose in a sandbox for security
     // considerations.
-    ProcessExecutor parse_cmd({paths_->Get(Path::PARSER),
-                               kCmdParseTgtLifetime,
-                               SerializeFlags(*flags_)});
+    ProcessExecutor parse_cmd(
+        {paths_->Get(Path::PARSER), kCmdParseTgtLifetime});
     parse_cmd.SetInputString(klist_cmd.GetStdout());
     if (!jail_helper_->SetupJailAndRun(
             &parse_cmd, Path::PARSER_SECCOMP, TIMER_NONE)) {
@@ -393,7 +389,7 @@ ErrorType TgtManager::WriteKrb5Conf() const {
 }
 
 void TgtManager::SetupKinitTrace(ProcessExecutor* kinit_cmd) const {
-  if (!flags_->trace_kinit())
+  if (!trace_kinit_)
     return;
   const std::string& trace_path = paths_->Get(Path::KRB5_TRACE);
   {
@@ -407,17 +403,16 @@ void TgtManager::SetupKinitTrace(ProcessExecutor* kinit_cmd) const {
 }
 
 void TgtManager::OutputKinitTrace() const {
-  if (!flags_->trace_kinit())
+  if (!trace_kinit_)
     return;
   const std::string& trace_path = paths_->Get(Path::KRB5_TRACE);
   std::string trace;
   {
     // Read kinit trace file (must be done as authpolicyd-exec).
     ScopedSwitchToSavedUid switch_scope;
-    if (!base::ReadFileToString(base::FilePath(trace_path), &trace))
-      trace = "<failed to read>";
+    base::ReadFileToString(base::FilePath(trace_path), &trace);
   }
-  LogLongString("Kinit trace: ", trace);
+  LOG(INFO) << "Kinit trace:\n" << trace;
 }
 
 void TgtManager::UpdateTgtAutoRenewal() {

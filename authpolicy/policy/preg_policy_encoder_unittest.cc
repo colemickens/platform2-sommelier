@@ -89,8 +89,8 @@ class PregPolicyEncoderTest : public ::testing::Test {
 
     // Encode to policy.
     em::CloudPolicySettings policy;
-    EXPECT_TRUE(ParsePRegFilesIntoUserPolicy(
-        {preg_1_path_, preg_2_path_}, &policy, false /* log_policy_values */));
+    EXPECT_TRUE(
+        ParsePRegFilesIntoUserPolicy({preg_1_path_, preg_2_path_}, &policy));
 
     bool win_bool = (who_wins == FIRST_WINS ? kOtherPolicyBool : kPolicyBool);
     int win_int = (who_wins == FIRST_WINS ? kPolicyInt : kOtherPolicyInt);
@@ -149,8 +149,7 @@ TEST_F(PregPolicyEncoderTest, UserPolicyEncodingWorks) {
 
   // Encode preg file into policy.
   em::CloudPolicySettings policy;
-  EXPECT_TRUE(ParsePRegFilesIntoUserPolicy(
-      {preg_1_path_}, &policy, false /* log_policy_values */));
+  EXPECT_TRUE(ParsePRegFilesIntoUserPolicy({preg_1_path_}, &policy));
 
   // Check that policy has the same values as we wrote to the file.
   EXPECT_EQ(kPolicyBool, policy.searchsuggestenabled().value());
@@ -201,8 +200,7 @@ TEST_F(PregPolicyEncoderTest, DevicePolicyEncodingWorks) {
 
   // Encode preg file into policy.
   em::ChromeDeviceSettingsProto policy;
-  EXPECT_TRUE(ParsePRegFilesIntoDevicePolicy(
-      {preg_1_path_}, &policy, false /* log_policy_values */));
+  EXPECT_TRUE(ParsePRegFilesIntoDevicePolicy({preg_1_path_}, &policy));
 
   // Check that policy has the same values as we wrote to the file.
   EXPECT_EQ(kPolicyBool, policy.guest_mode_enabled().guest_mode_enabled());
@@ -238,8 +236,8 @@ TEST_F(PregPolicyEncoderTest, DevicePolicyFileOverride) {
 
   // Encode to policy.
   em::ChromeDeviceSettingsProto policy;
-  EXPECT_TRUE(ParsePRegFilesIntoDevicePolicy(
-      {preg_1_path_, preg_2_path_}, &policy, false /* log_policy_values */));
+  EXPECT_TRUE(
+      ParsePRegFilesIntoDevicePolicy({preg_1_path_, preg_2_path_}, &policy));
 
   // Check that the values from file 2 prevailed.
   EXPECT_EQ(kPolicyBool, policy.guest_mode_enabled().guest_mode_enabled());
