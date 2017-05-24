@@ -131,7 +131,8 @@ int CameraClient::ConfigureStreams(
     streams.push_back(stream_config->streams[i]);
 
     // Skip BLOB format to avoid to use too large resolution as preview size.
-    if (stream_config->streams[i]->format == HAL_PIXEL_FORMAT_BLOB)
+    if (stream_config->streams[i]->format == HAL_PIXEL_FORMAT_BLOB &&
+        stream_config->num_streams > 1)
       continue;
 
     // Find maximum resolution of stream_config to stream on.
@@ -197,7 +198,7 @@ int CameraClient::ProcessCaptureRequest(camera3_capture_request_t* request) {
 
   if (request->settings) {
     latest_request_metadata_ = request->settings;
-    if (VLOG_IS_ON(1)) {
+    if (VLOG_IS_ON(2)) {
       dump_camera_metadata(request->settings, 1, 1);
     }
   }
@@ -447,6 +448,7 @@ int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution) {
   // If new stream resolution is the same as current stream, do nothing.
   if (stream_on_resolution.width == stream_on_resolution_.width &&
       stream_on_resolution.height == stream_on_resolution_.height) {
+    VLOGFID(1, device_id_) << "Skip stream on for the same resolution";
     return 0;
   } else if (!input_buffers_.empty()) {
     // StreamOff first if stream is started.
@@ -512,6 +514,7 @@ int CameraClient::RequestHandler::StreamOffImpl() {
   if (ret) {
     LOGFID(ERROR, device_id_) << "StreamOff failed: " << strerror(-ret);
   }
+  stream_on_resolution_.width = stream_on_resolution_.height = 0;
   return ret;
 }
 
