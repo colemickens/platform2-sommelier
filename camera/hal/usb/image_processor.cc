@@ -200,9 +200,9 @@ int ImageProcessor::ConvertFormat(const android::CameraMetadata& metadata,
         return res ? -EINVAL : 0;
       }
       case V4L2_PIX_FMT_JPEG: {
-        int res = ConvertToJpeg(metadata, in_frame, out_frame);
-        LOGF_IF(ERROR, res) << "ConvertToJpeg() returns " << res;
-        return res ? -EINVAL : 0;
+        bool res = ConvertToJpeg(metadata, in_frame, out_frame);
+        LOGF_IF(ERROR, !res) << "ConvertToJpeg() failed";
+        return res ? 0 : -EINVAL;
       }
       default:
         LOGF(ERROR) << "Destination pixel format "
