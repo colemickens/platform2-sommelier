@@ -133,15 +133,8 @@ bool KernelCollector::ReadRecordToString(std::string *contents,
   return true;
 }
 
-void KernelCollector::GetRamoopsRecordPath(FilePath *path,
-                                           size_t record) {
-  // Disable error "format not a string literal, argument types not checked"
-  // because this is valid, but GNU apparently doesn't bother checking a const
-  // format string.
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wformat-nonliteral"
+void KernelCollector::GetRamoopsRecordPath(FilePath *path, size_t record) {
   *path = ramoops_dump_path_.Append(StringPrintf(kDumpFormat, record));
-  #pragma GCC diagnostic pop
 }
 
 bool KernelCollector::LoadParameters() {
