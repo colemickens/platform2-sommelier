@@ -23,47 +23,6 @@ report_additional_statistics() {
   # Number of users on device.
   local user_count="$(find $SHADOW -maxdepth 1 -mindepth  1 -type d | wc -l)"
   metrics_client -s Platform.DiskUsage.UsersOnDevice "${user_count}"
-
-  # Handle case when there are no users on device.
-  if [ "${user_count}" -le 0 ]; then
-    return 0
-  fi
-
-  local users_category=${user_count}Users
-  if [ "${user_count}" -eq 1 ]; then
-    users_category=1User
-  fi
-  if [ "${user_count}" -ge 7 ]; then
-    users_category=7OrMoreUsers
-  fi
-
-  local stats
-  local sum_and_max_prog='{ sum += $1;
-                            if (max < $1) max = $1;
-                          }
-                          END { print sum, max }'
-  # All pass-through directories.
-  for dir in Cache Downloads GCache; do
-    # Calculate sum and maximum over all user_count for each directory.
-    stats=$(du -sk $SHADOW/*/vault/user/$dir 2> /dev/null |
-            awk "${sum_and_max_prog}")
-    metrics_client Platform.DiskUsage.${dir}_Max.${users_category} \
-                   ${stats##* } $METRICS_ARGS
-    # Since disk usage is several orders higher that number of users, it is safe
-    # to use integer division here.
-    metrics_client Platform.DiskUsage.${dir}_Avg.${users_category} \
-                   $(( ${stats%% *} / ${user_count} )) $METRICS_ARGS
-  done
-
-  # Report days since the least frequently used account signed in.
-  # It is split over user_count, and is reported upon low disk space to provide
-  # input information for cleanup tuning.
-
-  local least_used_days=$(cryptohome --action=dump_last_activity |
-      awk 'BEGIN {max = 0} $2 > max {max = $2} END {print max}')
-
-  metrics_client Platform.DiskUsage.LeastUsedAccountDays.${users_category} \
-                 ${least_used_days} $METRICS_ARGS
 }
 
 # Remove older files, keep deleting until the directory is less than 100MB
