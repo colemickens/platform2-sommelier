@@ -109,6 +109,9 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
     disallowed_params_out->insert("-enable-arc");
     disallowed_params_out->insert("-arc-available");
   }
+
+  if (builder->UseFlagIsSet("arc_oobe_optin"))
+    builder->AddArg("--enable-arc-oobe-optin");
 }
 
 // Blatantly copied from //components/crx_file/id_util.cc.
@@ -462,11 +465,11 @@ void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
   // putting it here. Things that to all Chromium-derived binaries (e.g.
   // app_shell, content_shell, etc.) rather than just to Chrome belong in the
   // ChromiumCommandBuilder class instead.
-  AddArcFlags(&builder, &disallowed_prefixes);
   CreateDirectories(&builder);
   InitCrashHandling(&builder);
   AddSystemFlags(&builder);
   AddUiFlags(&builder, cros_config);
+  AddArcFlags(&builder, &disallowed_prefixes);
   AddEnterpriseFlags(&builder);
   AddVmodulePatterns(&builder);
 
