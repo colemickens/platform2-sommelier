@@ -212,6 +212,12 @@ bool SessionManagerService::Initialize() {
 
 void SessionManagerService::Finalize() {
   LOG(INFO) << "SessionManagerService exiting";
+
+  // Reset the SessionManagerDBusAdaptor first to ensure that it'll permit
+  // any outstanding DBusMethodCompletion objects to be abandoned without
+  // having been run (http://crbug.com/638774, http://crbug.com/725734).
+  adaptor_.reset();
+
   impl_->Finalize();
   ShutDownDBus();
 }
