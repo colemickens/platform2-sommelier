@@ -14,12 +14,12 @@
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 #define UPDATE(tag, data, size)                      \
-  {                                                  \
+  do {                                               \
     if (metadata->update((tag), (data), (size))) {   \
       LOGF(ERROR) << "Update " << #tag << " failed"; \
       return -EINVAL;                                \
     }                                                \
-  }
+  } while (0)
 
 namespace arc {
 
@@ -51,6 +51,8 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
       ANDROID_COLOR_CORRECTION_ABERRATION_MODE_HIGH_QUALITY};
   UPDATE(ANDROID_COLOR_CORRECTION_AVAILABLE_ABERRATION_MODES,
          available_aberration_modes, ARRAY_SIZE(available_aberration_modes));
+  UPDATE(ANDROID_COLOR_CORRECTION_ABERRATION_MODE,
+         &available_aberration_modes[0], 1);
 
   // android.control
   // We don't support AE compensation.
@@ -89,9 +91,20 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
   // ON means auto-exposure is active with no flash control.
   UPDATE(ANDROID_CONTROL_AE_MODE, &ae_available_modes[0], 1);
 
+  const int32_t ae_exposure_compensation = 0;
+  UPDATE(ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION, &ae_exposure_compensation,
+         1);
+
+  const uint8_t ae_precapture_trigger =
+      ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_IDLE;
+  UPDATE(ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER, &ae_precapture_trigger, 1);
+
   const uint8_t af_available_mode = ANDROID_CONTROL_AF_MODE_AUTO;
   UPDATE(ANDROID_CONTROL_AF_AVAILABLE_MODES, &af_available_mode, 1);
   UPDATE(ANDROID_CONTROL_AF_MODE, &af_available_mode, 1);
+
+  const uint8_t af_trigger = ANDROID_CONTROL_AF_TRIGGER_IDLE;
+  UPDATE(ANDROID_CONTROL_AF_TRIGGER, &af_trigger, 1);
 
   const uint8_t available_scene_mode = ANDROID_CONTROL_SCENE_MODE_DISABLED;
   UPDATE(ANDROID_CONTROL_AVAILABLE_SCENE_MODES, &available_scene_mode, 1);
@@ -114,8 +127,11 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
 
   // android.edge
   const uint8_t available_edge_modes[] = {ANDROID_EDGE_MODE_OFF,
-                                          ANDROID_EDGE_MODE_FAST};
-  UPDATE(ANDROID_EDGE_AVAILABLE_EDGE_MODES, &available_edge_modes[0], 1);
+                                          ANDROID_EDGE_MODE_FAST,
+                                          ANDROID_EDGE_MODE_HIGH_QUALITY};
+  UPDATE(ANDROID_EDGE_AVAILABLE_EDGE_MODES, available_edge_modes,
+         ARRAY_SIZE(available_edge_modes));
+  UPDATE(ANDROID_EDGE_MODE, &available_edge_modes[1], 1);
 
   // android.flash
   const uint8_t flash_info = ANDROID_FLASH_INFO_AVAILABLE_FALSE;
@@ -124,17 +140,8 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
   const uint8_t flash_state = ANDROID_FLASH_STATE_UNAVAILABLE;
   UPDATE(ANDROID_FLASH_STATE, &flash_state, 1);
 
-  // This should not be needed.
-  const float hyper_focal_distance = 0.0f;
-  UPDATE(ANDROID_LENS_INFO_HYPERFOCAL_DISTANCE, &hyper_focal_distance, 1);
-
-  // android.lens
-  const uint8_t optical_stabilization_mode =
-      ANDROID_LENS_OPTICAL_STABILIZATION_MODE_OFF;
-  UPDATE(ANDROID_LENS_INFO_AVAILABLE_OPTICAL_STABILIZATION,
-         &optical_stabilization_mode, 1);
-  UPDATE(ANDROID_LENS_OPTICAL_STABILIZATION_MODE, &optical_stabilization_mode,
-         1);
+  const uint8_t flash_mode = ANDROID_FLASH_MODE_OFF;
+  UPDATE(ANDROID_FLASH_MODE, &flash_mode, 1);
 
   // android.jpeg
   const int32_t jpeg_available_thumbnail_sizes[] = {0, 0, 320, 240};
@@ -148,10 +155,25 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
   UPDATE(ANDROID_JPEG_QUALITY, &jpeg_quality, 1);
   UPDATE(ANDROID_JPEG_THUMBNAIL_QUALITY, &jpeg_quality, 1);
 
+  // android.lens
+  // This should not be needed.
+  const float hyper_focal_distance = 0.0f;
+  UPDATE(ANDROID_LENS_INFO_HYPERFOCAL_DISTANCE, &hyper_focal_distance, 1);
+
+  const uint8_t optical_stabilization_mode =
+      ANDROID_LENS_OPTICAL_STABILIZATION_MODE_OFF;
+  UPDATE(ANDROID_LENS_INFO_AVAILABLE_OPTICAL_STABILIZATION,
+         &optical_stabilization_mode, 1);
+  UPDATE(ANDROID_LENS_OPTICAL_STABILIZATION_MODE, &optical_stabilization_mode,
+         1);
+
   // android.noiseReduction
-  const uint8_t noise_reduction_mode = ANDROID_NOISE_REDUCTION_MODE_OFF;
+  const uint8_t noise_reduction_modes[] = {
+      ANDROID_NOISE_REDUCTION_MODE_OFF, ANDROID_NOISE_REDUCTION_MODE_FAST,
+      ANDROID_NOISE_REDUCTION_MODE_HIGH_QUALITY};
   UPDATE(ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES,
-         &noise_reduction_mode, 1);
+         noise_reduction_modes, ARRAY_SIZE(noise_reduction_modes));
+  UPDATE(ANDROID_NOISE_REDUCTION_MODE, &noise_reduction_modes[1], 1);
 
   // android.request
   const uint8_t available_capabilities[] = {
@@ -211,6 +233,7 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
   const uint8_t face_detect_mode = ANDROID_STATISTICS_FACE_DETECT_MODE_OFF;
   UPDATE(ANDROID_STATISTICS_INFO_AVAILABLE_FACE_DETECT_MODES, &face_detect_mode,
          1);
+  UPDATE(ANDROID_STATISTICS_FACE_DETECT_MODE, &face_detect_mode, 1);
 
   const int32_t max_face_count = 0;
   UPDATE(ANDROID_STATISTICS_INFO_MAX_FACE_COUNT, &max_face_count, 1);
@@ -422,39 +445,95 @@ bool MetadataHandler::IsValidTemplateType(int template_type) {
 
 CameraMetadataUniquePtr MetadataHandler::CreateDefaultRequestSettings(
     int template_type) {
-  uint8_t capture_intent;
+  android::CameraMetadata data(metadata_);
+
+  int ret;
   switch (template_type) {
     case CAMERA3_TEMPLATE_PREVIEW:
-      capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_PREVIEW;
+      ret = FillDefaultPreviewSettings(&data);
       break;
     case CAMERA3_TEMPLATE_STILL_CAPTURE:
-      capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE;
+      ret = FillDefaultStillCaptureSettings(&data);
       break;
     case CAMERA3_TEMPLATE_VIDEO_RECORD:
-      capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_RECORD;
+      ret = FillDefaultVideoRecordSettings(&data);
       break;
     case CAMERA3_TEMPLATE_VIDEO_SNAPSHOT:
-      capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_SNAPSHOT;
+      ret = FillDefaultVideoSnapshotSettings(&data);
       break;
     case CAMERA3_TEMPLATE_ZERO_SHUTTER_LAG:
-      capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_ZERO_SHUTTER_LAG;
+      ret = FillDefaultZeroShutterLagSettings(&data);
       break;
     case CAMERA3_TEMPLATE_MANUAL:
-      capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_MANUAL;
+      ret = FillDefaultManualSettings(&data);
       break;
     default:
       LOGF(ERROR) << "Invalid template request type: " << template_type;
       return NULL;
   }
 
-  android::CameraMetadata data(metadata_);
-  uint8_t control_mode = ANDROID_CONTROL_MODE_AUTO;
-
-  if (data.update(ANDROID_CONTROL_MODE, &control_mode, 1) ||
-      data.update(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1)) {
+  const uint8_t control_mode = ANDROID_CONTROL_MODE_AUTO;
+  if (ret || data.update(ANDROID_CONTROL_MODE, &control_mode, 1)) {
     return CameraMetadataUniquePtr();
   }
   return CameraMetadataUniquePtr(data.release());
+}
+
+int MetadataHandler::FillDefaultPreviewSettings(
+    android::CameraMetadata* metadata) {
+  const uint8_t capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_PREVIEW;
+  UPDATE(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1);
+  return 0;
+}
+
+int MetadataHandler::FillDefaultStillCaptureSettings(
+    android::CameraMetadata* metadata) {
+  const uint8_t capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE;
+  UPDATE(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1);
+
+  // android.colorCorrection
+  const uint8_t color_aberration_mode =
+      ANDROID_COLOR_CORRECTION_ABERRATION_MODE_HIGH_QUALITY;
+  UPDATE(ANDROID_COLOR_CORRECTION_ABERRATION_MODE, &color_aberration_mode, 1);
+
+  // android.edge
+  const uint8_t edge_mode = ANDROID_EDGE_MODE_HIGH_QUALITY;
+  UPDATE(ANDROID_EDGE_MODE, &edge_mode, 1);
+
+  // android.noiseReduction
+  const uint8_t noise_reduction_mode =
+      ANDROID_NOISE_REDUCTION_MODE_HIGH_QUALITY;
+  UPDATE(ANDROID_NOISE_REDUCTION_MODE, &noise_reduction_mode, 1);
+  return 0;
+}
+
+int MetadataHandler::FillDefaultVideoRecordSettings(
+    android::CameraMetadata* metadata) {
+  const uint8_t capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_RECORD;
+  UPDATE(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1);
+  return 0;
+}
+
+int MetadataHandler::FillDefaultVideoSnapshotSettings(
+    android::CameraMetadata* metadata) {
+  const uint8_t capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_SNAPSHOT;
+  UPDATE(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1);
+  return 0;
+}
+
+int MetadataHandler::FillDefaultZeroShutterLagSettings(
+    android::CameraMetadata* metadata) {
+  const uint8_t capture_intent =
+      ANDROID_CONTROL_CAPTURE_INTENT_ZERO_SHUTTER_LAG;
+  UPDATE(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1);
+  return 0;
+}
+
+int MetadataHandler::FillDefaultManualSettings(
+    android::CameraMetadata* metadata) {
+  const uint8_t capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_MANUAL;
+  UPDATE(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1);
+  return 0;
 }
 
 }  // namespace arc

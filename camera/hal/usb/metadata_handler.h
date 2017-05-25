@@ -64,6 +64,12 @@ class MetadataHandler {
 
   // Return a copy of metadata according to |template_type|.
   CameraMetadataUniquePtr CreateDefaultRequestSettings(int template_type);
+  int FillDefaultPreviewSettings(android::CameraMetadata* metadata);
+  int FillDefaultStillCaptureSettings(android::CameraMetadata* metadata);
+  int FillDefaultVideoRecordSettings(android::CameraMetadata* metadata);
+  int FillDefaultVideoSnapshotSettings(android::CameraMetadata* metadata);
+  int FillDefaultZeroShutterLagSettings(android::CameraMetadata* metadata);
+  int FillDefaultManualSettings(android::CameraMetadata* metadata);
 
   // Metadata containing persistent camera characteristics.
   android::CameraMetadata metadata_;
