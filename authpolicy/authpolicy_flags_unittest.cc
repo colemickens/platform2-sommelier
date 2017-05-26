@@ -10,6 +10,9 @@
 
 namespace authpolicy {
 
+#if 0
+// https://bugs.chromium.org/p/chromium/issues/detail?id=726757
+
 class AuthPolicyFlagsTest : public ::testing::Test {
  public:
   AuthPolicyFlagsTest() {}
@@ -84,5 +87,6 @@ TEST_F(AuthPolicyFlagsTest, FlagsDeserializationFailsBadString) {
   protos::DebugFlags flags;
   EXPECT_FALSE(DeserializeFlags("!@#$%bogus", &flags));
 }
+#endif
 
 }  // namespace authpolicy
