@@ -35,14 +35,14 @@ namespace shill {
 
 namespace {
 
-// Note: this header is given in network byte order, since
+// Note: this IPv4 header is given in network byte order, since
 // IcmpSession::OnEchoReplyReceived expects to receive a raw IP packet.
 const uint8_t kIpHeader[] = {0x45, 0x80, 0x00, 0x1c, 0x63, 0xd3, 0x00,
                              0x00, 0x39, 0x01, 0xcc, 0x9f, 0x4a, 0x7d,
                              0xe0, 0x18, 0x64, 0x6e, 0xc1, 0xea};
-// ICMP echo replies with 0 bytes of data and and echo ID 0. Sequence numbers
+// ICMPv4 echo replies with 0 bytes of data and and echo ID 0. Sequence numbers
 // are 0x8, 0x9, and 0xa respectively to simulate replies to a sequence of sent
-// echo requests.
+// echo requests.  Note that these only match on little-endian hosts.
 const uint8_t kIcmpEchoReply1[] = {0x00, 0x00, 0xf7, 0xff,
                                    0x00, 0x00, 0x08, 0x00};
 const uint16_t kIcmpEchoReply1_SeqNum = 0x08;
@@ -53,7 +53,11 @@ const uint8_t kIcmpEchoReply3[] = {0x00, 0x00, 0xf5, 0xff,
                                    0x00, 0x00, 0x0a, 0x00};
 const uint16_t kIcmpEchoReply3_SeqNum = 0x0a;
 
-// This ICMP echo reply has an echo ID of 0xe, which is different from the
+// ICMPv6 echo reply with 0 bytes of data, echo ID 0, and sequence number 0x8.
+const uint8_t kIcmpV6EchoReply1[] = {
+    0x81, 0x00, 0x76, 0xff, 0x00, 0x00, 0x08, 0x00};
+
+// This ICMPv4 echo reply has an echo ID of 0xe, which is different from the
 // echo ID used in the unit tests (0).
 const uint8_t kIcmpEchoReplyDifferentEchoID[] = {0x00, 0x00, 0xea, 0xff,
                                                  0x0e, 0x00, 0x0b, 0x00};
@@ -88,12 +92,14 @@ class IcmpSessionTest : public Test {
 
  protected:
   static const char kIPAddress[];
+  static const char kIP6Address[];
   static const int kInterfaceIndex;
 
   void StartAndVerify(const IPAddress& destination, int interface_index) {
     EXPECT_CALL(*icmp_, IsStarted());
     EXPECT_CALL(*icmp_, Start(IsIPAddress(destination), interface_index))
         .WillOnce(Return(true));
+    icmp_->destination_ = destination;
     EXPECT_CALL(dispatcher_, CreateInputHandler(icmp_->socket(), _, _));
     EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetTimeoutSeconds() * 1000));
     EXPECT_CALL(dispatcher_, PostTask(_, _));
@@ -179,6 +185,7 @@ class IcmpSessionTest : public Test {
 };
 
 const char IcmpSessionTest::kIPAddress[] = "10.0.1.1";
+const char IcmpSessionTest::kIP6Address[] = "2001:db8::1234:5678";
 const int IcmpSessionTest::kInterfaceIndex = 3;
 
 TEST_F(IcmpSessionTest, Constructor) {
@@ -341,6 +348,37 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
   EXPECT_EQ(3, GetReceivedEchoReplySeqNumbers()->size());
   EXPECT_TRUE(ReceivedEchoReplySeqNumbersContains(kIcmpEchoReply3_SeqNum));
 
+  VerifyIcmpSessionStopped();
+}
+
+TEST_F(IcmpSessionTest, ICMPv6) {
+  // Initiate session.
+  IPAddress ipv6_destination(IPAddress::kFamilyIPv6);
+  EXPECT_TRUE(ipv6_destination.SetAddressFromString(kIP6Address));
+  StartAndVerify(ipv6_destination, kInterfaceIndex);
+
+  // Send an echo request.
+  SetCurrentSequenceNumber(kIcmpEchoReply1_SeqNum);
+  EXPECT_CALL(dispatcher_,
+              PostDelayedTask(_, _, GetEchoRequestIntervalSeconds() * 1000));
+  TransmitEchoRequestTask(true);
+  EXPECT_TRUE(GetReceivedEchoReplySeqNumbers()->empty());
+  EXPECT_EQ(1, GetSeqNumToSentRecvTime()->size());
+  EXPECT_TRUE(SeqNumToSentRecvTimeContains(kIcmpEchoReply1_SeqNum));
+  EXPECT_EQ(kIcmpEchoReply2_SeqNum, GetCurrentSequenceNumber());
+
+  // Receive a reply.
+  uint8_t buffer_1[sizeof(kIcmpV6EchoReply1)];
+  memcpy(buffer_1, kIcmpV6EchoReply1, sizeof(kIcmpV6EchoReply1));
+  InputData data_1(reinterpret_cast<unsigned char*>(buffer_1),
+                   sizeof(buffer_1));
+  EXPECT_CALL(*this, ResultCallback(_)).Times(0);
+  OnEchoReplyReceived(&data_1);
+  EXPECT_EQ(1, GetReceivedEchoReplySeqNumbers()->size());
+  EXPECT_TRUE(ReceivedEchoReplySeqNumbersContains(kIcmpEchoReply1_SeqNum));
+
+  EXPECT_CALL(*icmp_, Stop());
+  Stop();
   VerifyIcmpSessionStopped();
 }
 

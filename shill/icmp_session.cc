@@ -17,6 +17,7 @@
 #include "shill/icmp_session.h"
 
 #include <arpa/inet.h>
+#include <netinet/icmp6.h>
 #include <netinet/ip.h>
 
 #include <base/time/default_tick_clock.h>
@@ -160,13 +161,13 @@ void IcmpSession::TransmitEchoRequestTask() {
   }
 }
 
-void IcmpSession::OnEchoReplyReceived(InputData* data) {
+int IcmpSession::OnV4EchoReplyReceived(InputData* data) {
   DCHECK_GE(data->len, 0);
 
   ByteString message(data->buf, data->len);
   if (message.GetLength() < sizeof(struct iphdr) + sizeof(struct icmphdr)) {
     LOG(WARNING) << "Received ICMP packet is too short to contain ICMP header";
-    return;
+    return -1;
   }
 
   const struct iphdr* received_ip_header =
@@ -178,13 +179,13 @@ void IcmpSession::OnEchoReplyReceived(InputData* data) {
   // We might have received other types of ICMP traffic, so ensure that the
   // message is an echo reply before handling it.
   if (received_icmp_header->type != ICMP_ECHOREPLY) {
-    return;
+    return -1;
   }
 
   // Make sure the message is valid and matches a pending echo request.
   if (received_icmp_header->code != Icmp::kIcmpEchoCode) {
     LOG(WARNING) << "ICMP header code is invalid";
-    return;
+    return -1;
   }
 
   if (received_icmp_header->un.echo.id != echo_id_) {
@@ -192,10 +193,64 @@ void IcmpSession::OnEchoReplyReceived(InputData* data) {
                   << received_icmp_header->un.echo.id
                   << ") does not match this ICMP session's echo id ("
                   << echo_id_ << ")";
+    return -1;
+  }
+
+  return received_icmp_header->un.echo.sequence;
+}
+
+int IcmpSession::OnV6EchoReplyReceived(InputData* data) {
+  ByteString message(data->buf, data->len);
+  if (message.GetLength() < sizeof(struct icmp6_hdr)) {
+    LOG(WARNING)
+        << "Received ICMP packet is too short to contain ICMPv6 header";
+    return -1;
+  }
+
+  // Per RFC3542 section 3, ICMPv6 raw sockets do not contain the IP header
+  // (unlike ICMPv4 raw sockets).
+  const struct icmp6_hdr* received_icmp_header =
+      reinterpret_cast<const struct icmp6_hdr*>(message.GetConstData());
+  // We might have received other types of ICMP traffic, so ensure that the
+  // message is an echo reply before handling it.
+  if (received_icmp_header->icmp6_type != ICMP6_ECHO_REPLY) {
+    return -1;
+  }
+
+  // Make sure the message is valid and matches a pending echo request.
+  if (received_icmp_header->icmp6_code != Icmp::kIcmpEchoCode) {
+    LOG(WARNING) << "ICMPv6 header code is invalid";
+    return -1;
+  }
+
+  if (received_icmp_header->icmp6_id != echo_id_) {
+    SLOG(this, 3) << "received message echo id ("
+                  << received_icmp_header->icmp6_id
+                  << ") does not match this ICMPv6 session's echo id ("
+                  << echo_id_ << ")";
+    return -1;
+  }
+
+  return received_icmp_header->icmp6_seq;
+}
+
+void IcmpSession::OnEchoReplyReceived(InputData* data) {
+  DCHECK_GE(data->len, 0);
+
+  int received_seq_num = -1;
+  if (icmp_->destination().family() == IPAddress::kFamilyIPv4) {
+    received_seq_num = OnV4EchoReplyReceived(data);
+  } else if (icmp_->destination().family() == IPAddress::kFamilyIPv6) {
+    received_seq_num = OnV6EchoReplyReceived(data);
+  } else {
+    NOTREACHED();
+  }
+
+  if (received_seq_num < 0) {
+    // Could not parse reply.
     return;
   }
 
-  uint16_t received_seq_num = received_icmp_header->un.echo.sequence;
   if (received_echo_reply_seq_numbers_.find(received_seq_num) !=
       received_echo_reply_seq_numbers_.end()) {
     // Echo reply for this message already handled previously.

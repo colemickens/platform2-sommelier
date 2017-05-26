@@ -57,11 +57,16 @@ class Icmp {
   // |seq_num| respectively.
   virtual bool TransmitEchoRequest(uint16_t id, uint16_t seq_num);
 
+  // IPv4 and IPv6 implementations of TransmitEchoRequest().
+  bool TransmitV4EchoRequest(uint16_t id, uint16_t seq_num);
+  bool TransmitV6EchoRequest(uint16_t id, uint16_t seq_num);
+
   int socket() { return socket_; }
   const IPAddress& destination() { return destination_; }
   int interface_index() { return interface_index_; }
 
  private:
+  friend class IcmpSessionTest;
   friend class IcmpTest;
 
   // Compute the checksum for Echo Request |hdr| of length |len| according to

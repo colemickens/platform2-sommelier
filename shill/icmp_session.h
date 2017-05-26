@@ -120,6 +120,10 @@ class IcmpSession {
   // Called when an ICMP packet is received.
   void OnEchoReplyReceived(InputData* data);
 
+  // IPv4 and IPv6 packet parsers.
+  int OnV4EchoReplyReceived(InputData* data);
+  int OnV6EchoReplyReceived(InputData* data);
+
   // Helper function that generates the result of the current ICMP session.
   IcmpSessionResult GenerateIcmpResult();
 

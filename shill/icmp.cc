@@ -16,6 +16,7 @@
 
 #include "shill/icmp.h"
 
+#include <netinet/icmp6.h>
 #include <netinet/ip_icmp.h>
 
 #include "shill/logging.h"
@@ -39,12 +40,15 @@ bool Icmp::Start(const IPAddress& destination, int interface_index) {
     return false;
   }
 
-  if (destination.family() != IPAddress::kFamilyIPv4) {
-    NOTIMPLEMENTED() << "Only IPv4 destination addresses are implemented.";
-    return false;
+  int socket = -1;
+  if (destination.family() == IPAddress::kFamilyIPv4) {
+    socket = sockets_->Socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+  } else if (destination.family() == IPAddress::kFamilyIPv6) {
+    socket = sockets_->Socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
+  } else {
+    NOTREACHED();
   }
 
-  int socket = sockets_->Socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
   if (socket == -1) {
     PLOG(ERROR) << "Could not create ICMP socket";
     Stop();
@@ -73,11 +77,7 @@ bool Icmp::IsStarted() const {
   return socket_closer_.get();
 }
 
-bool Icmp::TransmitEchoRequest(uint16_t id, uint16_t seq_num) {
-  if (!IsStarted()) {
-    return false;
-  }
-
+bool Icmp::TransmitV4EchoRequest(uint16_t id, uint16_t seq_num) {
   struct icmphdr icmp_header;
   memset(&icmp_header, 0, sizeof(icmp_header));
   icmp_header.type = ICMP_ECHO;
@@ -115,6 +115,60 @@ bool Icmp::TransmitEchoRequest(uint16_t id, uint16_t seq_num) {
   }
 
   return true;
+}
+
+bool Icmp::TransmitV6EchoRequest(uint16_t id, uint16_t seq_num) {
+  struct icmp6_hdr icmp_header;
+  memset(&icmp_header, 0, sizeof(icmp_header));
+  icmp_header.icmp6_type = ICMP6_ECHO_REQUEST;
+  icmp_header.icmp6_code = kIcmpEchoCode;
+  icmp_header.icmp6_id = id;
+  icmp_header.icmp6_seq = seq_num;
+  // icmp6_cksum is filled in by the kernel for IPPROTO_ICMPV6 sockets
+  // (RFC3542 section 3.1)
+
+  struct sockaddr_in6 destination_address;
+  memset(&destination_address, 0, sizeof(destination_address));
+  destination_address.sin6_family = AF_INET6;
+  destination_address.sin6_scope_id = interface_index_;
+  CHECK_EQ(sizeof(destination_address.sin6_addr.s6_addr),
+           destination_.GetLength());
+  memcpy(&destination_address.sin6_addr.s6_addr,
+         destination_.address().GetConstData(),
+         sizeof(destination_address.sin6_addr.s6_addr));
+
+  int result =
+      sockets_->SendTo(socket_,
+                       &icmp_header,
+                       sizeof(icmp_header),
+                       0,
+                       reinterpret_cast<struct sockaddr*>(&destination_address),
+                       sizeof(destination_address));
+  int expected_result = sizeof(icmp_header);
+  if (result != expected_result) {
+    if (result < 0) {
+      PLOG(ERROR) << "Socket sendto failed";
+    } else if (result < expected_result) {
+      LOG(ERROR) << "Socket sendto returned " << result
+                 << " which is less than the expected result "
+                 << expected_result;
+    }
+    return false;
+  }
+
+  return true;
+}
+
+bool Icmp::TransmitEchoRequest(uint16_t id, uint16_t seq_num) {
+  if (!IsStarted()) {
+    return false;
+  }
+
+  if (destination_.family() == IPAddress::kFamilyIPv4) {
+    return TransmitV4EchoRequest(id, seq_num);
+  } else {
+    return TransmitV6EchoRequest(id, seq_num);
+  }
 }
 
 // static
