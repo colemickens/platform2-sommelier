@@ -1265,20 +1265,26 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
   // If the vault keyset's TPM state is not the same as that configured for
   // the device, re-save the keyset (this will save in the device's default
   // method).
-  //                      1   2   3   4   5   6   7   8   9  10  11  12  13
-  // use_tpm              -   -   -   X   X   X   X   X   X   -   -   -   *
+  // In the table below: X = true, - = false, * = any value
   //
-  // fallback_to_scrypt   -   -   -   -   -   -   X   X   X   X   X   X   *
+  //                 1   2   3   4   5   6   7   8   9  10  11  12  13  14  15
+  // should_tpm      -   -   -   X   X   X   X   X   X   X   X   -   -   -   *
   //
-  // tpm_wrapped          -   X   -   -   X   -   -   X   -   -   X   -   X
+  // should_scrypt   -   -   -   -   -   -   -   X   X   X   X   X   X   X   *
   //
-  // scrypt_wrapped       -   -   X   -   -   X   -   -   X   -   -   X   X
+  // tpm_wrapped     -   X   -   -   X   X   -   -   X   X   -   -   X   -   X
   //
-  // migrate              N   Y   Y   Y   N   Y   Y   N   Y   Y   Y   N   Y
+  // scrypt_wrapped  -   -   X   -   -   -   X   -   -   -   X   -   -   X   X
+  //
+  // scrypt_derived  *   *   *   *   X   -   *   *   X   -   *   *   *   *   *
+  //
+  // migrate         N   Y   Y   Y   N   Y   Y   Y   N   Y   Y   Y   Y   N   Y
   bool tpm_wrapped =
       (crypt_flags & SerializedVaultKeyset::TPM_WRAPPED) != 0;
   bool scrypt_wrapped =
       (crypt_flags & SerializedVaultKeyset::SCRYPT_WRAPPED) != 0;
+  bool scrypt_derived =
+      (crypt_flags & SerializedVaultKeyset::SCRYPT_DERIVED) != 0;
   bool should_tpm = (crypto_->has_tpm() && use_tpm_ &&
                      crypto_->is_cryptohome_key_loaded());
   bool should_scrypt = true;
@@ -1286,10 +1292,13 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
     // If the keyset was TPM-wrapped, but there was no public key hash,
     // always re-save.  Otherwise, check the table.
     if (crypto_error != Crypto::CE_NO_PUBLIC_KEY_HASH) {
-      if (tpm_wrapped && should_tpm && !scrypt_wrapped)
-        break;  // 5, 8
+      if (tpm_wrapped && should_tpm && !scrypt_wrapped) {
+        if (scrypt_derived)
+          break;  // 5, 9
+        LOG(INFO) << "Migrating to deriving AES keys using scrypt.";
+      }
       if (scrypt_wrapped && should_scrypt && !should_tpm && !tpm_wrapped)
-        break;  // 12
+        break;  // 14
       if (!tpm_wrapped && !scrypt_wrapped && !should_tpm && !should_scrypt)
         break;  // 1
     }

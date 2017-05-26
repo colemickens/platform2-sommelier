@@ -855,9 +855,12 @@ TEST_P(MountTest, GoodReDecryptTest) {
   EXPECT_TRUE(serialized_tpm.ParseFromArray(migrated_keyset.data(),
                                             migrated_keyset.size()));
   // Did it migrate?
-  EXPECT_EQ((serialized_tpm.flags() & SerializedVaultKeyset::TPM_WRAPPED),
-            SerializedVaultKeyset::TPM_WRAPPED);
-  EXPECT_EQ((serialized.flags() & SerializedVaultKeyset::SCRYPT_WRAPPED), 0);
+  EXPECT_EQ(SerializedVaultKeyset::TPM_WRAPPED,
+            (serialized_tpm.flags() & SerializedVaultKeyset::TPM_WRAPPED));
+  EXPECT_EQ(0, (serialized.flags() & SerializedVaultKeyset::SCRYPT_WRAPPED));
+  // Does it use scrypt for key derivation?
+  EXPECT_EQ(SerializedVaultKeyset::SCRYPT_DERIVED,
+            (serialized_tpm.flags() & SerializedVaultKeyset::SCRYPT_DERIVED));
 
   // Inject the migrated keyset
   Mock::VerifyAndClearExpectations(&platform_);
@@ -1529,9 +1532,11 @@ TEST_P(MountTest, BothFlagsMigrationTest) {
   ASSERT_NE(migrated_keyset.size(), 0);
 
   flags = serialized.flags();
-  ASSERT_EQ((flags & SerializedVaultKeyset::TPM_WRAPPED),
-            SerializedVaultKeyset::TPM_WRAPPED);
-  ASSERT_EQ((flags & SerializedVaultKeyset::SCRYPT_WRAPPED), 0);
+  ASSERT_EQ(SerializedVaultKeyset::TPM_WRAPPED,
+            (flags & SerializedVaultKeyset::TPM_WRAPPED));
+  ASSERT_EQ(0, (flags & SerializedVaultKeyset::SCRYPT_WRAPPED));
+  ASSERT_EQ(SerializedVaultKeyset::SCRYPT_DERIVED,
+            (flags & SerializedVaultKeyset::SCRYPT_DERIVED));
 }
 
 TEST_P(MountTest, CreateTrackedSubdirectories) {

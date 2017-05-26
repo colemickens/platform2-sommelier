@@ -117,6 +117,55 @@ Crypto::CryptoError Crypto::EnsureTpm(bool reload_key) const {
   return result;
 }
 
+bool Crypto::PasskeyToSKeys(const brillo::Blob& passkey,
+                            const brillo::Blob& salt,
+                            brillo::SecureBlob* aes_skey,
+                            brillo::SecureBlob* kdf_skey,
+                            brillo::SecureBlob* vkk_iv) const {
+    // Scrypt parameters for deriving key material from UserPasskey.
+    // N = kUPScryptWorkFactor
+    // r = kUPScryptBlockSize
+    // p = kUPScryptParallelFactor
+    const uint64_t kUPScryptWorkFactor = (1 << 14);
+    const uint32_t kUPScryptBlockSize = 8;
+    const uint32_t kUPScryptParallelFactor = 1;
+
+    struct {
+      brillo::SecureBlob* out;
+      size_t size;
+    } generated_values[] = {
+      {aes_skey, kDefaultAesKeySize},
+      {kdf_skey, kDefaultAesKeySize},
+      {vkk_iv, kAesBlockSize},
+    };
+
+    size_t generated_len = 0;
+    for (const auto& value : generated_values) {
+      generated_len += value.size;
+    }
+    SecureBlob generated(generated_len);
+    if (crypto_scrypt(passkey.data(),
+                      passkey.size(),
+                      salt.data(),
+                      salt.size(),
+                      kUPScryptWorkFactor,
+                      kUPScryptBlockSize,
+                      kUPScryptParallelFactor,
+                      generated.data(),
+                      generated.size())) {
+      LOG(ERROR) << "Failed to derive scrypt keys from passkey.";
+      return false;
+    }
+
+    uint8_t* data = generated.data();
+    for (const auto& value : generated_values) {
+      *value.out = brillo::SecureBlob(data, data + value.size);
+      data += value.size;
+    }
+
+    return true;
+}
+
 bool Crypto::PasskeyToTokenAuthData(const brillo::Blob& passkey,
                                     const FilePath& salt_file,
                                     SecureBlob* auth_data) const {
@@ -336,12 +385,24 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
   SecureBlob tpm_key(serialized.tpm_key().length());
   serialized.tpm_key().copy(tpm_key.char_data(),
                             serialized.tpm_key().length(), 0);
-  SecureBlob key;
-  CryptoLib::PasskeyToAesKey(vault_key, salt, rounds, &key, NULL);
+  SecureBlob aes_skey;
+  SecureBlob kdf_skey;
+  SecureBlob vkk_iv;
+  bool scrypt_derived =
+      serialized.flags() & SerializedVaultKeyset::SCRYPT_DERIVED;
+  if (scrypt_derived) {
+    if (!PasskeyToSKeys(vault_key, salt, &aes_skey, &kdf_skey, &vkk_iv)) {
+      if (error)
+        *error = CE_OTHER_FATAL;
+      return false;
+    }
+  } else {
+    CryptoLib::PasskeyToAesKey(vault_key, salt, rounds, &aes_skey, NULL);
+  }
   Tpm::TpmRetryAction retry_action = tpm_->DecryptBlob(
       tpm_init_->GetCryptohomeKey(),
       tpm_key,
-      key,
+      aes_skey,
       &local_vault_key);
   if (retry_action == Tpm::kTpmRetryLoadFail ||
       retry_action == Tpm::kTpmRetryInvalidHandle ||
@@ -352,7 +413,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
     } else {
       retry_action = tpm_->DecryptBlob(tpm_init_->GetCryptohomeKey(),
                                        tpm_key,
-                                       key,
+                                       aes_skey,
                                        &local_vault_key);
     }
   }
@@ -366,20 +427,23 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
     return false;
   }
 
-  SecureBlob aes_key;
-  SecureBlob iv;
-  if (!CryptoLib::PasskeyToAesKey(local_vault_key,
-                                  salt,
-                                  rounds,
-                                  &aes_key,
-                                  &iv)) {
-    LOG(ERROR) << "Failure converting passkey to key";
-    if (error)
-      *error = CE_OTHER_FATAL;
-    return false;
+  SecureBlob vkk_key;
+  if (scrypt_derived) {
+    vkk_key = CryptoLib::HmacSha256(kdf_skey, local_vault_key);
+  } else {
+    if (!CryptoLib::PasskeyToAesKey(local_vault_key,
+                                    salt,
+                                    rounds,
+                                    &vkk_key,
+                                    &vkk_iv)) {
+      LOG(ERROR) << "Failure converting IVKK to VKK";
+      if (error)
+        *error = CE_OTHER_FATAL;
+      return false;
+    }
   }
   SecureBlob plain_text;
-  if (!CryptoLib::AesDecrypt(local_encrypted_keyset, aes_key, iv,
+  if (!CryptoLib::AesDecrypt(local_encrypted_keyset, vkk_key, vkk_iv,
                              &plain_text)) {
     LOG(ERROR) << "AES decryption failed for vault keyset.";
     if (error)
@@ -388,8 +452,8 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
   }
   SecureBlob unwrapped_chaps_key;
   if (chaps_key_present && !CryptoLib::AesDecrypt(local_wrapped_chaps_key,
-                                                  aes_key,
-                                                  iv,
+                                                  vkk_key,
+                                                  vkk_iv,
                                                   &unwrapped_chaps_key)) {
     LOG(ERROR) << "AES decryption failed for chaps key.";
     if (error)
@@ -412,7 +476,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
         SecureBlob encrypted_auth_key(secret->symmetric_key());
         SecureBlob clear_key;
         // Is it reasonable to use this key here as well?
-        if (!CryptoLib::AesDecrypt(encrypted_auth_key, aes_key, iv,
+        if (!CryptoLib::AesDecrypt(encrypted_auth_key, vkk_key, vkk_iv,
                                    &clear_key)) {
           LOG(ERROR) << "Failed to unwrap a symmetric authorization key:"
                      << " (" << auth_data_i << "," << secret_i << ")";
@@ -580,27 +644,24 @@ bool Crypto::EncryptTPM(const VaultKeyset& vault_keyset,
   SecureBlob local_blob(kDefaultAesKeySize);
   CryptoLib::GetSecureRandom(local_blob.data(), local_blob.size());
   SecureBlob tpm_key;
-  SecureBlob derived_key;
-  unsigned int rounds = kDefaultPasswordRounds;
-  CryptoLib::PasskeyToAesKey(key, salt, rounds, &derived_key, NULL);
+  SecureBlob aes_skey;
+  SecureBlob kdf_skey;
+  SecureBlob vkk_iv;
+  if (!PasskeyToSKeys(key, salt, &aes_skey, &kdf_skey, &vkk_iv)) {
+    return false;
+  }
   // Encrypt the VKK using the TPM and the user's passkey.  The output is an
   // encrypted blob in tpm_key, which is stored in the serialized vault
   // keyset.
   if (tpm_->EncryptBlob(tpm_init_->GetCryptohomeKey(),
                         local_blob,
-                        derived_key,
+                        aes_skey,
                         &tpm_key) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Failed to wrap vkk with creds.";
     return false;
   }
 
-  SecureBlob aes_key;
-  SecureBlob iv;
-  if (!CryptoLib::PasskeyToAesKey(local_blob, salt, rounds, &aes_key, &iv)) {
-    LOG(ERROR) << "Failure converting passkey to key";
-    return false;
-  }
-
+  SecureBlob vkk_key = CryptoLib::HmacSha256(kdf_skey, local_blob);
   SecureBlob blob;
   if (!vault_keyset.ToKeysBlob(&blob)) {
     LOG(ERROR) << "Failure serializing keyset to buffer";
@@ -609,8 +670,8 @@ bool Crypto::EncryptTPM(const VaultKeyset& vault_keyset,
   SecureBlob chaps_key = vault_keyset.chaps_key();
   SecureBlob cipher_text;
   SecureBlob wrapped_chaps_key;
-  if (!CryptoLib::AesEncrypt(blob, aes_key, iv, &cipher_text) ||
-      !CryptoLib::AesEncrypt(chaps_key, aes_key, iv, &wrapped_chaps_key)) {
+  if (!CryptoLib::AesEncrypt(blob, vkk_key, vkk_iv, &cipher_text) ||
+      !CryptoLib::AesEncrypt(chaps_key, vkk_key, vkk_iv, &wrapped_chaps_key)) {
     LOG(ERROR) << "AES encryption failed.";
     return false;
   }
@@ -625,9 +686,9 @@ bool Crypto::EncryptTPM(const VaultKeyset& vault_keyset,
                                         pub_key_hash.size());
 
   unsigned int flags = serialized->flags();
-  serialized->set_password_rounds(rounds);
   serialized->set_flags((flags & ~SerializedVaultKeyset::SCRYPT_WRAPPED)
-                        | SerializedVaultKeyset::TPM_WRAPPED);
+                        | SerializedVaultKeyset::TPM_WRAPPED
+                        | SerializedVaultKeyset::SCRYPT_DERIVED);
   serialized->set_tpm_key(tpm_key.data(), tpm_key.size());
   serialized->set_wrapped_keyset(cipher_text.data(), cipher_text.size());
   if (vault_keyset.chaps_key().size() == CRYPTOHOME_CHAPS_KEY_LENGTH) {
@@ -655,7 +716,7 @@ bool Crypto::EncryptTPM(const VaultKeyset& vault_keyset,
         SecureBlob clear_auth_key(secret->symmetric_key());
         SecureBlob encrypted_auth_key;
 
-        if (!CryptoLib::AesEncrypt(clear_auth_key, aes_key, iv,
+        if (!CryptoLib::AesEncrypt(clear_auth_key, vkk_key, vkk_iv,
                                    &encrypted_auth_key)) {
           LOG(ERROR) << "Failed to wrap a symmetric authorization key:"
                      << " (" << auth_data_i << "," << secret_i << ")";

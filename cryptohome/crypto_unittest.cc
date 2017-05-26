@@ -351,6 +351,14 @@ TEST_F(CryptoTest, TpmStepTest) {
 
   EXPECT_EQ(new_data.size(), original_data.size());
   ASSERT_TRUE(CryptoTest::FindBlobInBlob(new_data, original_data));
+
+  // Check that the keyset was indeed wrapped by the TPM, and the
+  // keys were derived using scrypt.
+  EXPECT_EQ(0, (crypt_flags & SerializedVaultKeyset::SCRYPT_WRAPPED));
+  EXPECT_EQ(SerializedVaultKeyset::TPM_WRAPPED,
+            (crypt_flags & SerializedVaultKeyset::TPM_WRAPPED));
+  EXPECT_EQ(SerializedVaultKeyset::SCRYPT_DERIVED,
+            (crypt_flags & SerializedVaultKeyset::SCRYPT_DERIVED));
 }
 
 TEST_F(CryptoTest, TpmDecryptFailureTest) {
@@ -512,6 +520,13 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
 
   EXPECT_EQ(new_data.size(), original_data.size());
   ASSERT_TRUE(CryptoTest::FindBlobInBlob(new_data, original_data));
+
+  // Check that the keyset was indeed wrapped by scrypt.
+  EXPECT_EQ(0, (crypt_flags & SerializedVaultKeyset::SCRYPT_WRAPPED));
+  EXPECT_EQ(SerializedVaultKeyset::TPM_WRAPPED,
+            (crypt_flags & SerializedVaultKeyset::TPM_WRAPPED));
+  EXPECT_EQ(SerializedVaultKeyset::SCRYPT_DERIVED,
+            (crypt_flags & SerializedVaultKeyset::SCRYPT_DERIVED));
 }
 
 TEST_F(CryptoTest, GetSha1FipsTest) {

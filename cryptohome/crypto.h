@@ -76,6 +76,20 @@ class Crypto {
                                   const brillo::SecureBlob& vault_key_salt,
                                   SerializedVaultKeyset* serialized) const;
 
+  // Derives keys and other values from User Passkey.
+  //
+  // Parameters
+  //   passkey - The User Passkey, from which to derive the keys.
+  //   salt - The salt used when deriving the keys.
+  //   aes_skey (OUT) - The resulting key used at AES step (SKeyAES).
+  //   kdf_skey (OUT) - The resulting key used at KDF step (SKeyKDF).
+  //   vkk_iv (OUT) - The IV used for encrypting/decrypting VK.
+  virtual bool PasskeyToSKeys(const brillo::Blob& passkey,
+                              const brillo::Blob& salt,
+                              brillo::SecureBlob* aes_skey,
+                              brillo::SecureBlob* kdf_skey,
+                              brillo::SecureBlob* vkk_iv) const;
+
   // Converts the passkey to authorization data for a TPM-backed crypto token.
   //
   // Parameters
