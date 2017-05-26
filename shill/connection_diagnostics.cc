@@ -407,10 +407,12 @@ void ConnectionDiagnostics::PingDNSServers() {
                     icmp_session_factory_->CreateIcmpSession(dispatcher_))))
             .second;
     if (emplace_success &&
-        id_to_pending_dns_server_icmp_session_.at(i)
-            ->Start(dns_server_ip_addr,
-                    Bind(&ConnectionDiagnostics::OnPingDNSServerComplete,
-                         weak_ptr_factory_.GetWeakPtr(), i))) {
+        id_to_pending_dns_server_icmp_session_.at(i)->Start(
+            dns_server_ip_addr,
+            connection_->interface_index(),
+            Bind(&ConnectionDiagnostics::OnPingDNSServerComplete,
+                 weak_ptr_factory_.GetWeakPtr(),
+                 i))) {
       SLOG(this, 3) << __func__ << ": pinging DNS server at "
                     << dns_server_ip_addr.ToString();
     } else {
@@ -593,9 +595,12 @@ void ConnectionDiagnostics::PingHost(const IPAddress& address) {
   Type event_type = address.Equals(connection_->gateway())
                         ? kTypePingGateway
                         : kTypePingTargetServer;
-  if (!icmp_session_->Start(
-          address, Bind(&ConnectionDiagnostics::OnPingHostComplete,
-                        weak_ptr_factory_.GetWeakPtr(), event_type, address))) {
+  if (!icmp_session_->Start(address,
+                            connection_->interface_index(),
+                            Bind(&ConnectionDiagnostics::OnPingHostComplete,
+                                 weak_ptr_factory_.GetWeakPtr(),
+                                 event_type,
+                                 address))) {
     LOG(ERROR) << __func__ << ": failed to start ICMP session with "
                << address.ToString();
     AddEventWithMessage(event_type, kPhaseStart, kResultFailure,

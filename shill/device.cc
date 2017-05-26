@@ -1977,7 +1977,9 @@ bool Device::ResolvePeerMacAddress(const string& input,
     return true;
   }
 
-  if (!Icmp().TransmitEchoRequest(ip_address, 1, 1)) {
+  Icmp pinger;
+  if (!pinger.Start(ip_address, interface_index_) ||
+      !pinger.TransmitEchoRequest(1, 1)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to send ICMP request to peer to setup ARP");
   } else {

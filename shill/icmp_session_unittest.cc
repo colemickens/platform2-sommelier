@@ -88,22 +88,26 @@ class IcmpSessionTest : public Test {
 
  protected:
   static const char kIPAddress[];
+  static const int kInterfaceIndex;
 
-  void StartAndVerify(const IPAddress& destination) {
+  void StartAndVerify(const IPAddress& destination, int interface_index) {
     EXPECT_CALL(*icmp_, IsStarted());
-    EXPECT_CALL(*icmp_, Start()).WillOnce(Return(true));
+    EXPECT_CALL(*icmp_, Start(IsIPAddress(destination), interface_index))
+        .WillOnce(Return(true));
     EXPECT_CALL(dispatcher_, CreateInputHandler(icmp_->socket(), _, _));
     EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetTimeoutSeconds() * 1000));
     EXPECT_CALL(dispatcher_, PostTask(_, _));
-    EXPECT_TRUE(Start(destination));
+    EXPECT_TRUE(Start(destination, interface_index));
     EXPECT_TRUE(GetSeqNumToSentRecvTime()->empty());
     EXPECT_TRUE(GetReceivedEchoReplySeqNumbers()->empty());
     EXPECT_CALL(*icmp_, IsStarted()).WillRepeatedly(Return(true));
   }
 
-  bool Start(const IPAddress& destination) {
+  bool Start(const IPAddress& destination, int interface_index) {
     return icmp_session_.Start(
-        destination, Bind(&IcmpSessionTest::ResultCallback, Unretained(this)));
+        destination,
+        interface_index,
+        Bind(&IcmpSessionTest::ResultCallback, Unretained(this)));
   }
 
   void Stop() {
@@ -120,13 +124,12 @@ class IcmpSessionTest : public Test {
            icmp_session_.received_echo_reply_seq_numbers_.end();
   }
 
-  void TransmitEchoRequestTask(const IPAddress& destination,
-                               bool transmit_request_success) {
-    EXPECT_CALL(*icmp_, TransmitEchoRequest(IsIPAddress(destination),
-                                            icmp_session_.echo_id_,
-                                            GetCurrentSequenceNumber()))
+  void TransmitEchoRequestTask(bool transmit_request_success) {
+    EXPECT_CALL(
+        *icmp_,
+        TransmitEchoRequest(icmp_session_.echo_id_, GetCurrentSequenceNumber()))
         .WillOnce(Return(transmit_request_success));
-    icmp_session_.TransmitEchoRequestTask(destination);
+    icmp_session_.TransmitEchoRequestTask();
   }
 
   void ReportResultAndStopSession() {
@@ -176,6 +179,7 @@ class IcmpSessionTest : public Test {
 };
 
 const char IcmpSessionTest::kIPAddress[] = "10.0.1.1";
+const int IcmpSessionTest::kInterfaceIndex = 3;
 
 TEST_F(IcmpSessionTest, Constructor) {
   // |icmp_session_| should have been assigned the value of |kNextUniqueEchoId|
@@ -194,14 +198,15 @@ TEST_F(IcmpSessionTest, Constructor) {
 TEST_F(IcmpSessionTest, StartWhileAlreadyStarted) {
   IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(ipv4_destination.SetAddressFromString(kIPAddress));
-  StartAndVerify(ipv4_destination);
+  StartAndVerify(ipv4_destination, kInterfaceIndex);
 
   // Since an ICMP session is already started, we should fail to start it again.
-  EXPECT_CALL(*icmp_, Start()).Times(0);
+  EXPECT_CALL(*icmp_, Start(IsIPAddress(ipv4_destination), kInterfaceIndex))
+      .Times(0);
   EXPECT_CALL(dispatcher_, CreateInputHandler(_, _, _)).Times(0);
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _)).Times(0);
   EXPECT_CALL(dispatcher_, PostTask(_, _)).Times(0);
-  EXPECT_FALSE(Start(ipv4_destination));
+  EXPECT_FALSE(Start(ipv4_destination, kInterfaceIndex));
 }
 
 TEST_F(IcmpSessionTest, StopWhileNotStarted) {
@@ -235,7 +240,7 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
   // Initiate session.
   IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(ipv4_destination.SetAddressFromString(kIPAddress));
-  StartAndVerify(ipv4_destination);
+  StartAndVerify(ipv4_destination, kInterfaceIndex);
 
   // Send the first echo request.
   testing_clock_.Advance(kSentTime1 - now);
@@ -243,7 +248,7 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
   SetCurrentSequenceNumber(kIcmpEchoReply1_SeqNum);
   EXPECT_CALL(dispatcher_,
               PostDelayedTask(_, _, GetEchoRequestIntervalSeconds() * 1000));
-  TransmitEchoRequestTask(ipv4_destination, true);
+  TransmitEchoRequestTask(true);
   EXPECT_TRUE(GetReceivedEchoReplySeqNumbers()->empty());
   EXPECT_EQ(1, GetSeqNumToSentRecvTime()->size());
   EXPECT_TRUE(SeqNumToSentRecvTimeContains(kIcmpEchoReply1_SeqNum));
@@ -269,7 +274,7 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
   now = testing_clock_.NowTicks();
   EXPECT_CALL(dispatcher_,
               PostDelayedTask(_, _, GetEchoRequestIntervalSeconds() * 1000));
-  TransmitEchoRequestTask(ipv4_destination, true);
+  TransmitEchoRequestTask(true);
   EXPECT_EQ(1, GetReceivedEchoReplySeqNumbers()->size());
   EXPECT_EQ(2, GetSeqNumToSentRecvTime()->size());
   EXPECT_TRUE(SeqNumToSentRecvTimeContains(kIcmpEchoReply2_SeqNum));
@@ -281,7 +286,7 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
   now = testing_clock_.NowTicks();
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _)).Times(0);
   EXPECT_CALL(*icmp_, Stop()).Times(0);
-  TransmitEchoRequestTask(ipv4_destination, true);
+  TransmitEchoRequestTask(true);
   EXPECT_EQ(1, GetReceivedEchoReplySeqNumbers()->size());
   EXPECT_EQ(3, GetSeqNumToSentRecvTime()->size());
   EXPECT_TRUE(SeqNumToSentRecvTimeContains(kIcmpEchoReply3_SeqNum));
@@ -358,7 +363,7 @@ TEST_F(IcmpSessionTest, SessionTimeoutOrInterrupted) {
   // Initiate session.
   IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(ipv4_destination.SetAddressFromString(kIPAddress));
-  StartAndVerify(ipv4_destination);
+  StartAndVerify(ipv4_destination, kInterfaceIndex);
 
   // Send the first echo request successfully.
   testing_clock_.Advance(kSentTime1 - now);
@@ -366,7 +371,7 @@ TEST_F(IcmpSessionTest, SessionTimeoutOrInterrupted) {
   SetCurrentSequenceNumber(kIcmpEchoReply1_SeqNum);
   EXPECT_CALL(dispatcher_,
               PostDelayedTask(_, _, GetEchoRequestIntervalSeconds() * 1000));
-  TransmitEchoRequestTask(ipv4_destination, true);
+  TransmitEchoRequestTask(true);
   EXPECT_TRUE(GetReceivedEchoReplySeqNumbers()->empty());
   EXPECT_EQ(1, GetSeqNumToSentRecvTime()->size());
   EXPECT_TRUE(SeqNumToSentRecvTimeContains(kIcmpEchoReply1_SeqNum));
@@ -378,7 +383,7 @@ TEST_F(IcmpSessionTest, SessionTimeoutOrInterrupted) {
   now = testing_clock_.NowTicks();
   EXPECT_CALL(dispatcher_,
               PostDelayedTask(_, _, GetEchoRequestIntervalSeconds() * 1000));
-  TransmitEchoRequestTask(ipv4_destination, false);
+  TransmitEchoRequestTask(false);
   EXPECT_TRUE(GetReceivedEchoReplySeqNumbers()->empty());
   EXPECT_EQ(1, GetSeqNumToSentRecvTime()->size());
   EXPECT_FALSE(SeqNumToSentRecvTimeContains(kIcmpEchoReply2_SeqNum));
@@ -405,7 +410,7 @@ TEST_F(IcmpSessionTest, SessionTimeoutOrInterrupted) {
   now = testing_clock_.NowTicks();
   EXPECT_CALL(dispatcher_,
               PostDelayedTask(_, _, GetEchoRequestIntervalSeconds() * 1000));
-  TransmitEchoRequestTask(ipv4_destination, true);
+  TransmitEchoRequestTask(true);
   EXPECT_EQ(1, GetReceivedEchoReplySeqNumbers()->size());
   EXPECT_EQ(2, GetSeqNumToSentRecvTime()->size());
   EXPECT_TRUE(SeqNumToSentRecvTimeContains(kIcmpEchoReply3_SeqNum));
@@ -425,7 +430,7 @@ TEST_F(IcmpSessionTest, DoNotReportResultsOnStop) {
   // Initiate session.
   IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(ipv4_destination.SetAddressFromString(kIPAddress));
-  StartAndVerify(ipv4_destination);
+  StartAndVerify(ipv4_destination, kInterfaceIndex);
 
   // Session interrupted manually by calling Stop(), so do not report results.
   EXPECT_CALL(*this, ResultCallback(_)).Times(0);

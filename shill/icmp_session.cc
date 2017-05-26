@@ -63,6 +63,7 @@ IcmpSession::~IcmpSession() {
 }
 
 bool IcmpSession::Start(const IPAddress& destination,
+                        int interface_index,
                         const IcmpSessionResultCallback& result_callback) {
   if (!dispatcher_) {
     LOG(ERROR) << "Invalid dispatcher";
@@ -72,7 +73,7 @@ bool IcmpSession::Start(const IPAddress& destination,
     LOG(WARNING) << "ICMP session already started";
     return false;
   }
-  if (!icmp_->Start()) {
+  if (!icmp_->Start(destination, interface_index)) {
     return false;
   }
   echo_reply_handler_.reset(dispatcher_->CreateInputHandler(
@@ -86,8 +87,9 @@ bool IcmpSession::Start(const IPAddress& destination,
                                kTimeoutSeconds * 1000);
   seq_num_to_sent_recv_time_.clear();
   received_echo_reply_seq_numbers_.clear();
-  dispatcher_->PostTask(FROM_HERE, Bind(&IcmpSession::TransmitEchoRequestTask,
-                             weak_ptr_factory_.GetWeakPtr(), destination));
+  dispatcher_->PostTask(FROM_HERE,
+                        Bind(&IcmpSession::TransmitEchoRequestTask,
+                             weak_ptr_factory_.GetWeakPtr()));
 
   return true;
 }
@@ -134,14 +136,13 @@ bool IcmpSession::IsPacketLossPercentageGreaterThan(
   return packet_loss_percentage > percentage_threshold;
 }
 
-void IcmpSession::TransmitEchoRequestTask(const IPAddress& destination) {
+void IcmpSession::TransmitEchoRequestTask() {
   if (!IsStarted()) {
     // This might happen when ping times out or is stopped between two calls
     // to IcmpSession::TransmitEchoRequestTask.
     return;
   }
-  if (icmp_->TransmitEchoRequest(destination, echo_id_,
-                                 current_sequence_number_)) {
+  if (icmp_->TransmitEchoRequest(echo_id_, current_sequence_number_)) {
     seq_num_to_sent_recv_time_.emplace(
         current_sequence_number_,
         std::make_pair(tick_clock_->NowTicks(), base::TimeTicks()));
@@ -153,9 +154,9 @@ void IcmpSession::TransmitEchoRequestTask(const IPAddress& destination) {
 
   if (seq_num_to_sent_recv_time_.size() != kTotalNumEchoRequests) {
     dispatcher_->PostDelayedTask(FROM_HERE,
-        Bind(&IcmpSession::TransmitEchoRequestTask,
-             weak_ptr_factory_.GetWeakPtr(), destination),
-        kEchoRequestIntervalSeconds * 1000);
+                                 Bind(&IcmpSession::TransmitEchoRequestTask,
+                                      weak_ptr_factory_.GetWeakPtr()),
+                                 kEchoRequestIntervalSeconds * 1000);
   }
 }
 

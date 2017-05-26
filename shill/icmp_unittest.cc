@@ -72,6 +72,7 @@ class IcmpTest : public Test {
  protected:
   static const int kSocketFD;
   static const char kIPAddress[];
+  static const int kInterfaceIndex;
 
   int GetSocket() { return icmp_.socket_; }
   bool StartIcmp() { return StartIcmpWithFD(kSocketFD); }
@@ -79,7 +80,11 @@ class IcmpTest : public Test {
     EXPECT_CALL(*sockets_, Socket(AF_INET, SOCK_RAW, IPPROTO_ICMP))
         .WillOnce(Return(fd));
     EXPECT_CALL(*sockets_, SetNonBlocking(fd)).WillOnce(Return(0));
-    bool start_status = icmp_.Start();
+
+    IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
+    EXPECT_TRUE(ipv4_destination.SetAddressFromString(kIPAddress));
+
+    bool start_status = icmp_.Start(ipv4_destination, kInterfaceIndex);
     EXPECT_TRUE(start_status);
     EXPECT_EQ(fd, icmp_.socket_);
     EXPECT_TRUE(icmp_.IsStarted());
@@ -98,7 +103,7 @@ class IcmpTest : public Test {
 
 const int IcmpTest::kSocketFD = 456;
 const char IcmpTest::kIPAddress[] = "10.0.1.1";
-
+const int IcmpTest::kInterfaceIndex = 3;
 
 TEST_F(IcmpTest, Constructor) {
   EXPECT_EQ(-1, GetSocket());
@@ -113,7 +118,11 @@ TEST_F(IcmpTest, SocketOpenFail) {
 
   EXPECT_CALL(*sockets_, Socket(AF_INET, SOCK_RAW, IPPROTO_ICMP))
       .WillOnce(Return(-1));
-  EXPECT_FALSE(icmp_.Start());
+
+  IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(ipv4_destination.SetAddressFromString(kIPAddress));
+
+  EXPECT_FALSE(icmp_.Start(ipv4_destination, kInterfaceIndex));
   EXPECT_FALSE(icmp_.IsStarted());
 }
 
@@ -126,7 +135,10 @@ TEST_F(IcmpTest, SocketNonBlockingFail) {
   EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(kSocketFD));
   EXPECT_CALL(*sockets_, SetNonBlocking(kSocketFD)).WillOnce(Return(-1));
   EXPECT_CALL(*sockets_, Close(kSocketFD));
-  EXPECT_FALSE(icmp_.Start());
+
+  IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(ipv4_destination.SetAddressFromString(kIPAddress));
+  EXPECT_FALSE(icmp_.Start(ipv4_destination, kInterfaceIndex));
   EXPECT_FALSE(icmp_.IsStarted());
 }
 
@@ -151,16 +163,9 @@ MATCHER_P(IsSocketAddress, address, "") {
 }
 
 TEST_F(IcmpTest, TransmitEchoRequest) {
-  StartIcmp();
   // Address isn't valid.
-  EXPECT_FALSE(
-      icmp_.TransmitEchoRequest(IPAddress(IPAddress::kFamilyIPv4), 1, 1));
-
-  // IPv6 adresses aren't implemented.
-  IPAddress ipv6_destination(IPAddress::kFamilyIPv6);
-  EXPECT_TRUE(ipv6_destination.SetAddressFromString(
-      "fe80::1aa9:5ff:abcd:1234"));
-  EXPECT_FALSE(icmp_.TransmitEchoRequest(ipv6_destination, 1, 1));
+  EXPECT_FALSE(icmp_.TransmitEchoRequest(1, 1));
+  StartIcmp();
 
   IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(ipv4_destination.SetAddressFromString(kIPAddress));
@@ -193,10 +198,10 @@ TEST_F(IcmpTest, TransmitEchoRequest) {
         Log(logging::LOG_ERROR, _,
             HasSubstr("less than the expected result"))).Times(2);
 
-    EXPECT_FALSE(icmp_.TransmitEchoRequest(ipv4_destination, 1, 1));
-    EXPECT_FALSE(icmp_.TransmitEchoRequest(ipv4_destination, 1, 1));
-    EXPECT_FALSE(icmp_.TransmitEchoRequest(ipv4_destination, 1, 1));
-    EXPECT_TRUE(icmp_.TransmitEchoRequest(ipv4_destination, 1, 1));
+    EXPECT_FALSE(icmp_.TransmitEchoRequest(1, 1));
+    EXPECT_FALSE(icmp_.TransmitEchoRequest(1, 1));
+    EXPECT_FALSE(icmp_.TransmitEchoRequest(1, 1));
+    EXPECT_TRUE(icmp_.TransmitEchoRequest(1, 1));
   }
 }
 

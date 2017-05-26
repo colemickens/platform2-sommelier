@@ -73,7 +73,11 @@ class IcmpSession {
   // be called a) after all echo requests are sent and all echo replies are
   // received, or b) after |kTimeoutSeconds| have passed. |result_callback| will
   // only be invoked once on the first occurrence of either of these events.
+  // |interface_index| is the IPv6 scope ID, which can be 0 for a global
+  // |destination| but must be a positive integer if |destination| is a
+  // link-local address. It is unused on IPv4.
   virtual bool Start(const IPAddress& destination,
+                     int interface_index,
                      const IcmpSessionResultCallback& result_callback);
 
   // Stops the current ICMP session by closing the ICMP socket and resetting
@@ -107,11 +111,11 @@ class IcmpSession {
   static const int kEchoRequestIntervalSeconds;
   static const size_t kTimeoutSeconds;
 
-  // Sends a single echo request to |destination|. This function will call
+  // Sends a single echo request to the destination. This function will call
   // itself repeatedly via the event loop every |kEchoRequestIntervalSeconds|
   // until |kNumEchoRequestToSend| echo requests are sent or the timeout is
   // reached.
-  void TransmitEchoRequestTask(const IPAddress& destination);
+  void TransmitEchoRequestTask();
 
   // Called when an ICMP packet is received.
   void OnEchoReplyReceived(InputData* data);

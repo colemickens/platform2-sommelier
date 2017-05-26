@@ -27,6 +27,8 @@
 
 #include <base/macros.h>
 
+#include "shill/net/ip_address.h"
+
 namespace shill {
 
 class IPAddress;
@@ -42,7 +44,7 @@ class Icmp {
   virtual ~Icmp();
 
   // Create a socket for transmission of ICMP frames.
-  virtual bool Start();
+  virtual bool Start(const IPAddress& destination, int interface_index);
 
   // Destroy the transmit socket.
   virtual void Stop();
@@ -50,13 +52,14 @@ class Icmp {
   // Returns whether an ICMP socket is open.
   virtual bool IsStarted() const;
 
-  // Send an ICMP Echo Request (Ping) packet to |destination|. The ID and
+  // Send an ICMP Echo Request (Ping) packet to |destination_|. The ID and
   // sequence number fields of the echo request will be set to |id| and
   // |seq_num| respectively.
-  virtual bool TransmitEchoRequest(const IPAddress& destination, uint16_t id,
-                                   uint16_t seq_num);
+  virtual bool TransmitEchoRequest(uint16_t id, uint16_t seq_num);
 
   int socket() { return socket_; }
+  const IPAddress& destination() { return destination_; }
+  int interface_index() { return interface_index_; }
 
  private:
   friend class IcmpTest;
@@ -68,6 +71,8 @@ class Icmp {
   std::unique_ptr<Sockets> sockets_;
   std::unique_ptr<ScopedSocketCloser> socket_closer_;
   int socket_;
+  IPAddress destination_;
+  int interface_index_;
 
   DISALLOW_COPY_AND_ASSIGN(Icmp);
 };

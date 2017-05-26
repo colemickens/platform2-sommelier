@@ -19,7 +19,6 @@
 #include <netinet/ip_icmp.h>
 
 #include "shill/logging.h"
-#include "shill/net/ip_address.h"
 #include "shill/net/sockets.h"
 
 namespace shill {
@@ -28,11 +27,23 @@ const int Icmp::kIcmpEchoCode = 0;  // value specified in RFC 792.
 
 Icmp::Icmp()
     : sockets_(new Sockets()),
-      socket_(-1) {}
+      socket_(-1),
+      destination_(IPAddress::kFamilyUnknown),
+      interface_index_(-1) {}
 
 Icmp::~Icmp() {}
 
-bool Icmp::Start() {
+bool Icmp::Start(const IPAddress& destination, int interface_index) {
+  if (!destination.IsValid()) {
+    LOG(ERROR) << "Destination address is not valid.";
+    return false;
+  }
+
+  if (destination.family() != IPAddress::kFamilyIPv4) {
+    NOTIMPLEMENTED() << "Only IPv4 destination addresses are implemented.";
+    return false;
+  }
+
   int socket = sockets_->Socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
   if (socket == -1) {
     PLOG(ERROR) << "Could not create ICMP socket";
@@ -48,6 +59,8 @@ bool Icmp::Start() {
     return false;
   }
 
+  destination_ = destination;
+  interface_index_ = interface_index;
   return true;
 }
 
@@ -60,19 +73,8 @@ bool Icmp::IsStarted() const {
   return socket_closer_.get();
 }
 
-bool Icmp::TransmitEchoRequest(const IPAddress& destination, uint16_t id,
-                               uint16_t seq_num) {
-  if (!IsStarted() && !Start()) {
-    return false;
-  }
-
-  if (!destination.IsValid()) {
-    LOG(ERROR) << "Destination address is not valid.";
-    return false;
-  }
-
-  if (destination.family() != IPAddress::kFamilyIPv4) {
-    NOTIMPLEMENTED() << "Only IPv4 destination addresses are implemented.";
+bool Icmp::TransmitEchoRequest(uint16_t id, uint16_t seq_num) {
+  if (!IsStarted()) {
     return false;
   }
 
@@ -87,9 +89,9 @@ bool Icmp::TransmitEchoRequest(const IPAddress& destination, uint16_t id,
   struct sockaddr_in destination_address;
   destination_address.sin_family = AF_INET;
   CHECK_EQ(sizeof(destination_address.sin_addr.s_addr),
-           destination.GetLength());
+           destination_.GetLength());
   memcpy(&destination_address.sin_addr.s_addr,
-         destination.address().GetConstData(),
+         destination_.address().GetConstData(),
          sizeof(destination_address.sin_addr.s_addr));
 
   int result = sockets_->SendTo(

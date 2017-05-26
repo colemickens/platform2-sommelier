@@ -30,9 +30,10 @@ class MockIcmpSession : public IcmpSession {
   explicit MockIcmpSession(EventDispatcher* dispatcher);
   ~MockIcmpSession() override;
 
-  MOCK_METHOD2(
+  MOCK_METHOD3(
       Start,
       bool(const IPAddress& destination,
+           int interface_index,
            const IcmpSession::IcmpSessionResultCallback& result_callback));
   MOCK_METHOD0(Stop, void());
 

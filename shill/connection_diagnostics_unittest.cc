@@ -402,7 +402,7 @@ class ConnectionDiagnosticsTest : public Test {
                                   const IPAddress& address) {
     AddExpectedEvent(ping_event_type, ConnectionDiagnostics::kPhaseStart,
                      ConnectionDiagnostics::kResultSuccess);
-    EXPECT_CALL(*icmp_session_, Start(IsSameIPAddress(address), _))
+    EXPECT_CALL(*icmp_session_, Start(IsSameIPAddress(address), _, _))
         .WillOnce(Return(true));
     connection_diagnostics_.PingHost(address);
   }
@@ -411,7 +411,7 @@ class ConnectionDiagnosticsTest : public Test {
                                   const IPAddress& address) {
     AddExpectedEvent(ping_event_type, ConnectionDiagnostics::kPhaseStart,
                      ConnectionDiagnostics::kResultFailure);
-    EXPECT_CALL(*icmp_session_, Start(IsSameIPAddress(address), _))
+    EXPECT_CALL(*icmp_session_, Start(IsSameIPAddress(address), _, _))
         .WillOnce(Return(false));
     EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(
                               ConnectionDiagnostics::kIssueInternalError));
@@ -667,10 +667,10 @@ class ConnectionDiagnosticsTest : public Test {
           .WillOnce(Return(dns_server_icmp_session_0_))
           .WillOnce(Return(dns_server_icmp_session_1_));
       EXPECT_CALL(*dns_server_icmp_session_0_,
-                  Start(IsSameIPAddress(IPAddress(kDNSServer0)), _))
+                  Start(IsSameIPAddress(IPAddress(kDNSServer0)), _, _))
           .WillOnce(Return(is_success));
       EXPECT_CALL(*dns_server_icmp_session_1_,
-                  Start(IsSameIPAddress(IPAddress(kDNSServer1)), _))
+                  Start(IsSameIPAddress(IPAddress(kDNSServer1)), _, _))
           .WillOnce(Return(is_success));
     }
 
