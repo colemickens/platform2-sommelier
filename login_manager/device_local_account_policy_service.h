@@ -49,15 +49,14 @@ class DeviceLocalAccountPolicyService {
   // Store policy for |account_id|, return false if the device-local account is
   // not defined in device policy.
   bool Store(const std::string& account_id,
-             const uint8_t* policy_data,
-             uint32_t policy_data_size,
+             const std::vector<uint8_t>& policy_blob,
              const PolicyService::Completion& completion);
 
   // Load policy for a given |account_id| and places the result in
-  // |policy_data|. Returns true if the account exists and policy could be read
+  // |policy_blob|. Returns true if the account exists and policy could be read
   // successfully, false otherwise.
   bool Retrieve(const std::string& account_id,
-                std::vector<uint8_t>* policy_data);
+                std::vector<uint8_t>* policy_blob);
 
   // Updates device settings, i.e. what device-local accounts are available.
   // This will purge any on-disk state for accounts that are no longer defined

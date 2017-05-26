@@ -66,8 +66,7 @@ class PolicyService {
   //
   // Returns false on immediate errors. Otherwise, returns true and reports the
   // status of the operation through |completion|.
-  virtual bool Store(const uint8_t* policy_blob,
-                     uint32_t len,
+  virtual bool Store(const std::vector<uint8_t>& policy_blob,
                      int key_flags,
                      SignatureCheck signature_check,
                      const Completion& completion);

@@ -44,8 +44,7 @@ DeviceLocalAccountPolicyService::~DeviceLocalAccountPolicyService() = default;
 
 bool DeviceLocalAccountPolicyService::Store(
     const std::string& account_id,
-    const uint8_t* policy_data,
-    uint32_t policy_data_size,
+    const std::vector<uint8_t>& policy_blob,
     const PolicyService::Completion& completion) {
   PolicyService* service = GetPolicyService(account_id);
   if (!service) {
@@ -54,18 +53,18 @@ bool DeviceLocalAccountPolicyService::Store(
     return false;
   }
 
-  return service->Store(policy_data, policy_data_size, PolicyService::KEY_NONE,
+  return service->Store(policy_blob, PolicyService::KEY_NONE,
                         SignatureCheck::kEnabled, completion);
 }
 
 bool DeviceLocalAccountPolicyService::Retrieve(
     const std::string& account_id,
-    std::vector<uint8_t>* policy_data) {
+    std::vector<uint8_t>* policy_blob) {
   PolicyService* service = GetPolicyService(account_id);
   if (!service)
     return false;
 
-  return service->Retrieve(policy_data);
+  return service->Retrieve(policy_blob);
 }
 
 void DeviceLocalAccountPolicyService::UpdateDeviceSettings(

@@ -18,6 +18,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "bindings/device_management_backend.pb.h"
+#include "login_manager/blob_util.h"
 #include "login_manager/dbus_util.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_key.h"
@@ -39,13 +40,13 @@ PolicyService::PolicyService(
 
 PolicyService::~PolicyService() = default;
 
-bool PolicyService::Store(const uint8_t* policy_blob,
-                          uint32_t len,
+bool PolicyService::Store(const std::vector<uint8_t>& policy_blob,
                           int key_flags,
                           SignatureCheck signature_check,
                           const Completion& completion) {
   em::PolicyFetchResponse policy;
-  if (!policy.ParseFromArray(policy_blob, len) || !policy.has_policy_data()) {
+  if (!policy.ParseFromArray(policy_blob.data(), policy_blob.size()) ||
+      !policy.has_policy_data()) {
     constexpr char kMessage[] = "Unable to parse policy protobuf.";
     LOG(ERROR) << kMessage;
     completion.Run(CreateError(dbus_error::kSigDecodeFail, kMessage));
@@ -56,11 +57,8 @@ bool PolicyService::Store(const uint8_t* policy_blob,
 }
 
 bool PolicyService::Retrieve(std::vector<uint8_t>* policy_blob) {
-  const em::PolicyFetchResponse& policy = store()->Get();
-  policy_blob->resize(policy.ByteSize());
-  uint8_t* start = policy_blob->data();
-  uint8_t* end = policy.SerializeWithCachedSizesToArray(start);
-  return (static_cast<size_t>(end - start) == policy_blob->size());
+  *policy_blob = SerializeAsBlob(store()->Get());
+  return true;
 }
 
 void PolicyService::PersistPolicy(const Completion& completion) {
@@ -96,17 +94,15 @@ bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
   // Determine if the policy has pushed a new owner key and, if so, set it.
   if (policy.has_new_public_key() && !key()->Equals(policy.new_public_key())) {
     // The policy contains a new key, and it is different from |key_|.
-    std::vector<uint8_t> der;
-    NssUtil::BlobFromBuffer(policy.new_public_key(), &der);
+    std::vector<uint8_t> der = StringToBlob(policy.new_public_key());
 
     bool installed = false;
     if (key()->IsPopulated()) {
       if (policy.has_new_public_key_signature() && (key_flags & KEY_ROTATE)) {
         // Graceful key rotation.
         LOG(INFO) << "Attempting policy key rotation.";
-        std::vector<uint8_t> sig;
-        NssUtil::BlobFromBuffer(policy.new_public_key_signature(), &sig);
-        installed = key()->Rotate(der, sig);
+        installed = key()->Rotate(
+            der, StringToBlob(policy.new_public_key_signature()));
       }
     } else if (key_flags & KEY_INSTALL_NEW) {
       LOG(INFO) << "Attempting to install new policy key.";
@@ -129,12 +125,8 @@ bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
   }
 
   // Validate signature on policy and persist to disk.
-  const std::string& data(policy.policy_data());
-  const std::string& sig(policy.policy_data_signature());
-  if (!key()->Verify(reinterpret_cast<const uint8_t*>(data.c_str()),
-                     data.size(),
-                     reinterpret_cast<const uint8_t*>(sig.c_str()),
-                     sig.size())) {
+  if (!key()->Verify(StringToBlob(policy.policy_data()),
+                     StringToBlob(policy.policy_data_signature()))) {
     constexpr char kMessage[] = "Signature could not be verified.";
     LOG(ERROR) << kMessage;
     completion.Run(CreateError(dbus_error::kVerifyFail, kMessage));

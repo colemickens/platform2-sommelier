@@ -20,6 +20,7 @@
 #include <gtest/gtest.h>
 
 #include "bindings/device_management_backend.pb.h"
+#include "login_manager/blob_util.h"
 #include "login_manager/matchers.h"
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
@@ -41,12 +42,7 @@ namespace login_manager {
 
 class PolicyServiceTest : public testing::Test {
  public:
-  PolicyServiceTest()
-      : fake_data_("fake_data"),
-        fake_sig_("fake_signature"),
-        fake_key_("fake_key"),
-        fake_key_sig_("fake_key_signature") {
-  }
+  PolicyServiceTest() = default;
 
   virtual void SetUp() {
     fake_loop_.SetAsCurrent();
@@ -56,31 +52,23 @@ class PolicyServiceTest : public testing::Test {
     service_->set_delegate(&delegate_);
   }
 
-  void InitPolicy(const std::string& data,
-                  const std::string& signature,
-                  const std::string& key,
-                  const std::string& key_signature) {
+  void InitPolicy(const std::vector<uint8_t>& data,
+                  const std::vector<uint8_t>& signature,
+                  const std::vector<uint8_t>& key,
+                  const std::vector<uint8_t>& key_signature) {
     policy_proto_.Clear();
     if (!data.empty())
-      policy_proto_.set_policy_data(data);
+      policy_proto_.set_policy_data(BlobToString(data));
     if (!signature.empty())
-      policy_proto_.set_policy_data_signature(signature);
+      policy_proto_.set_policy_data_signature(BlobToString(signature));
     if (!key.empty())
-      policy_proto_.set_new_public_key(key);
+      policy_proto_.set_new_public_key(BlobToString(key));
     if (!key_signature.empty())
-      policy_proto_.set_new_public_key_signature(key_signature);
-
-    ASSERT_TRUE(policy_proto_.SerializeToString(&policy_str_));
-    policy_data_ = reinterpret_cast<const uint8_t*>(policy_str_.c_str());
-    policy_len_ = policy_str_.size();
+      policy_proto_.set_new_public_key_signature(BlobToString(key_signature));
   }
 
   void ExpectVerifyAndSetPolicy(Sequence* sequence) {
-    EXPECT_CALL(key_,
-                Verify(CastEq(fake_data_),
-                       fake_data_.size(),
-                       CastEq(fake_sig_),
-                       fake_sig_.size()))
+    EXPECT_CALL(key_, Verify(fake_data_, fake_sig_))
         .InSequence(*sequence)
         .WillOnce(Return(true));
     EXPECT_CALL(*store_, Set(ProtoEq(policy_proto_)))
@@ -123,7 +111,7 @@ class PolicyServiceTest : public testing::Test {
     EXPECT_CALL(*store_, Persist()).Times(0);
 
     EXPECT_FALSE(
-        service_->Store(policy_data_, policy_len_, flags, signature_check,
+        service_->Store(SerializeAsBlob(policy_proto_), flags, signature_check,
                         MockPolicyService::CreateExpectFailureCallback()));
     fake_loop_.Run();
   }
@@ -135,16 +123,16 @@ class PolicyServiceTest : public testing::Test {
   static const char kSignalSuccess[];
   static const char kSignalFailure[];
 
-  std::string fake_data_;
-  std::string fake_sig_;
-  std::string fake_key_;
-  std::string fake_key_sig_;
+  const std::vector<uint8_t> fake_data_ = StringToBlob("fake_data");
+  const std::vector<uint8_t> fake_sig_ = StringToBlob("fake_signature");
+  const std::vector<uint8_t> fake_key_ = StringToBlob("fake_key");
+  const std::vector<uint8_t> fake_key_sig_ =
+      StringToBlob("fake_key_signature");
+
+  const std::vector<uint8_t> empty_blob_;
 
   // Various representations of the policy protobuf.
   em::PolicyFetchResponse policy_proto_;
-  std::string policy_str_;
-  const uint8_t* policy_data_;
-  uint32_t policy_len_;
 
   brillo::FakeMessageLoop fake_loop_{nullptr};
 
@@ -164,16 +152,12 @@ const char PolicyServiceTest::kSignalSuccess[] = "success";
 const char PolicyServiceTest::kSignalFailure[] = "failure";
 
 TEST_F(PolicyServiceTest, Store) {
-  InitPolicy(fake_data_, fake_sig_, "", "");
+  InitPolicy(fake_data_, fake_sig_, empty_blob_, empty_blob_);
 
   Sequence s1, s2;
   ExpectKeyEqualsFalse(&s1);
   ExpectKeyPopulated(&s2, true);
-  EXPECT_CALL(key_,
-              Verify(CastEq(fake_data_),
-                     fake_data_.size(),
-                     CastEq(fake_sig_),
-                     fake_sig_.size()))
+  EXPECT_CALL(key_, Verify(fake_data_, fake_sig_))
       .InSequence(s1, s2)
       .WillRepeatedly(Return(true));
   ExpectKeyPopulated(&s1, true);
@@ -181,37 +165,33 @@ TEST_F(PolicyServiceTest, Store) {
   ExpectPersistPolicy(&s2);
 
   EXPECT_TRUE(service_->Store(
-      policy_data_, policy_len_, kAllKeyFlags, SignatureCheck::kEnabled,
+      SerializeAsBlob(policy_proto_), kAllKeyFlags, SignatureCheck::kEnabled,
       MockPolicyService::CreateExpectSuccessCallback()));
 
   fake_loop_.Run();
 }
 
 TEST_F(PolicyServiceTest, StoreUnsigned) {
-  InitPolicy(fake_data_, "", "", "");
+  InitPolicy(fake_data_, empty_blob_, empty_blob_, empty_blob_);
 
   Sequence s1, s2;
   ExpectSetPolicy(&s1);
   ExpectPersistPolicy(&s2);
 
   EXPECT_TRUE(service_->Store(
-      policy_data_, policy_len_, kAllKeyFlags, SignatureCheck::kDisabled,
+      SerializeAsBlob(policy_proto_), kAllKeyFlags, SignatureCheck::kDisabled,
       MockPolicyService::CreateExpectSuccessCallback()));
 
   fake_loop_.Run();
 }
 
 TEST_F(PolicyServiceTest, StoreWrongSignature) {
-  InitPolicy(fake_data_, fake_sig_, "", "");
+  InitPolicy(fake_data_, fake_sig_, empty_blob_, empty_blob_);
 
   Sequence s1, s2;
   ExpectKeyEqualsFalse(&s1);
   ExpectKeyPopulated(&s2, true);
-  EXPECT_CALL(key_,
-              Verify(CastEq(fake_data_),
-                     fake_data_.size(),
-                     CastEq(fake_sig_),
-                     fake_sig_.size()))
+  EXPECT_CALL(key_, Verify(fake_data_, fake_sig_))
       .InSequence(s1, s2)
       .WillRepeatedly(Return(false));
 
@@ -220,20 +200,16 @@ TEST_F(PolicyServiceTest, StoreWrongSignature) {
 }
 
 TEST_F(PolicyServiceTest, StoreNoData) {
-  InitPolicy("", "", "", "");
+  InitPolicy(empty_blob_, empty_blob_, empty_blob_, empty_blob_);
 
   ExpectStoreFail(kAllKeyFlags, SignatureCheck::kEnabled,
                   dbus_error::kSigDecodeFail);
 }
 
 TEST_F(PolicyServiceTest, StoreNoSignature) {
-  InitPolicy(fake_data_, "", "", "");
+  InitPolicy(fake_data_, empty_blob_, empty_blob_, empty_blob_);
 
-  EXPECT_CALL(key_,
-              Verify(CastEq(fake_data_),
-                     fake_data_.size(),
-                     CastEq(std::string()),
-                     0))
+  EXPECT_CALL(key_, Verify(fake_data_, std::vector<uint8_t>()))
       .WillOnce(Return(false));
 
   ExpectStoreFail(kAllKeyFlags, SignatureCheck::kEnabled,
@@ -241,16 +217,12 @@ TEST_F(PolicyServiceTest, StoreNoSignature) {
 }
 
 TEST_F(PolicyServiceTest, StoreNoKey) {
-  InitPolicy(fake_data_, fake_sig_, "", "");
+  InitPolicy(fake_data_, fake_sig_, empty_blob_, empty_blob_);
 
   Sequence s1, s2;
   ExpectKeyEqualsFalse(&s1);
   ExpectKeyPopulated(&s2, false);
-  EXPECT_CALL(key_,
-              Verify(CastEq(fake_data_),
-                     fake_data_.size(),
-                     CastEq(fake_sig_),
-                     fake_sig_.size()))
+  EXPECT_CALL(key_, Verify(fake_data_, fake_sig_))
       .InSequence(s1, s2)
       .WillRepeatedly(Return(false));
 
@@ -259,7 +231,7 @@ TEST_F(PolicyServiceTest, StoreNoKey) {
 }
 
 TEST_F(PolicyServiceTest, StoreNewKey) {
-  InitPolicy(fake_data_, fake_sig_, fake_key_, "");
+  InitPolicy(fake_data_, fake_sig_, fake_key_, empty_blob_);
 
   Sequence s1, s2;
   ExpectKeyEqualsFalse(&s1);
@@ -273,14 +245,14 @@ TEST_F(PolicyServiceTest, StoreNewKey) {
   ExpectPersistPolicy(&s2);
 
   EXPECT_TRUE(service_->Store(
-      policy_data_, policy_len_, kAllKeyFlags, SignatureCheck::kEnabled,
+      SerializeAsBlob(policy_proto_), kAllKeyFlags, SignatureCheck::kEnabled,
       MockPolicyService::CreateExpectSuccessCallback()));
 
   fake_loop_.Run();
 }
 
 TEST_F(PolicyServiceTest, StoreNewKeyClobber) {
-  InitPolicy(fake_data_, fake_sig_, fake_key_, "");
+  InitPolicy(fake_data_, fake_sig_, fake_key_, empty_blob_);
 
   Sequence s1, s2;
   ExpectKeyEqualsFalse(&s1);
@@ -294,7 +266,7 @@ TEST_F(PolicyServiceTest, StoreNewKeyClobber) {
   ExpectPersistPolicy(&s2);
 
   EXPECT_TRUE(service_->Store(
-      policy_data_, policy_len_, PolicyService::KEY_CLOBBER,
+      SerializeAsBlob(policy_proto_), PolicyService::KEY_CLOBBER,
       SignatureCheck::kEnabled,
       MockPolicyService::CreateExpectSuccessCallback()));
 
@@ -302,24 +274,25 @@ TEST_F(PolicyServiceTest, StoreNewKeyClobber) {
 }
 
 TEST_F(PolicyServiceTest, StoreNewKeySame) {
-  InitPolicy(fake_data_, fake_sig_, fake_key_, "");
+  InitPolicy(fake_data_, fake_sig_, fake_key_, empty_blob_);
 
   Sequence s1, s2, s3;
-  EXPECT_CALL(key_, Equals(fake_key_)).InSequence(s1).WillRepeatedly(
-      Return(true));
+  EXPECT_CALL(key_, Equals(BlobToString(fake_key_)))
+      .InSequence(s1)
+      .WillRepeatedly(Return(true));
   ExpectKeyPopulated(&s2, true);
   ExpectVerifyAndSetPolicy(&s3);
   ExpectPersistPolicy(&s2);
 
   EXPECT_TRUE(service_->Store(
-      policy_data_, policy_len_, kAllKeyFlags, SignatureCheck::kEnabled,
+      SerializeAsBlob(policy_proto_), kAllKeyFlags, SignatureCheck::kEnabled,
       MockPolicyService::CreateExpectSuccessCallback()));
 
   fake_loop_.Run();
 }
 
 TEST_F(PolicyServiceTest, StoreNewKeyNotAllowed) {
-  InitPolicy(fake_data_, fake_sig_, fake_key_, "");
+  InitPolicy(fake_data_, fake_sig_, fake_key_, empty_blob_);
 
   Sequence s1, s2;
   ExpectKeyEqualsFalse(&s1);
@@ -344,7 +317,7 @@ TEST_F(PolicyServiceTest, StoreRotation) {
   ExpectPersistPolicy(&s2);
 
   EXPECT_TRUE(service_->Store(
-      policy_data_, policy_len_, kAllKeyFlags, SignatureCheck::kEnabled,
+      SerializeAsBlob(policy_proto_), kAllKeyFlags, SignatureCheck::kEnabled,
       MockPolicyService::CreateExpectSuccessCallback()));
 
   fake_loop_.Run();
@@ -365,7 +338,7 @@ TEST_F(PolicyServiceTest, StoreRotationClobber) {
   ExpectPersistPolicy(&s2);
 
   EXPECT_TRUE(service_->Store(
-      policy_data_, policy_len_, PolicyService::KEY_CLOBBER,
+      SerializeAsBlob(policy_proto_), PolicyService::KEY_CLOBBER,
       SignatureCheck::kEnabled,
       MockPolicyService::CreateExpectSuccessCallback()));
 
@@ -373,7 +346,7 @@ TEST_F(PolicyServiceTest, StoreRotationClobber) {
 }
 
 TEST_F(PolicyServiceTest, StoreRotationNoSignature) {
-  InitPolicy(fake_data_, fake_sig_, fake_key_, "");
+  InitPolicy(fake_data_, fake_sig_, fake_key_, empty_blob_);
 
   Sequence s1, s2;
   ExpectKeyEqualsFalse(&s1);
@@ -413,11 +386,9 @@ TEST_F(PolicyServiceTest, Retrieve) {
 
   EXPECT_CALL(*store_, Get()).WillOnce(ReturnRef(policy_proto_));
 
-  std::vector<uint8_t> policy_data;
-  EXPECT_TRUE(service_->Retrieve(&policy_data));
-  ASSERT_EQ(policy_str_.size(), policy_data.size());
-  EXPECT_TRUE(
-      std::equal(policy_str_.begin(), policy_str_.end(), policy_data.begin()));
+  std::vector<uint8_t> out_policy_blob;
+  EXPECT_TRUE(service_->Retrieve(&out_policy_blob));
+  EXPECT_EQ(SerializeAsBlob(policy_proto_), out_policy_blob);
 }
 
 TEST_F(PolicyServiceTest, PersistPolicySuccess) {

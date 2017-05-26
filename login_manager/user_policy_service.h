@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <memory>
+#include <vector>
 
 #include <base/files/file_path.h>
 
@@ -36,8 +37,7 @@ class UserPolicyService : public PolicyService {
   // this override allows storage of policy blobs that indiciate the user is
   // unmanaged even if they are unsigned. If a non-signed blob gets installed,
   // we also clear the signing key.
-  bool Store(const uint8_t* policy_blob,
-             uint32_t len,
+  bool Store(const std::vector<uint8_t>& policy_blob,
              int key_flags,
              SignatureCheck signature_check,
              const Completion& completion) override;

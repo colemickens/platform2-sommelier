@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include "bindings/chrome_device_policy.pb.h"
+#include "login_manager/blob_util.h"
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
@@ -33,17 +34,25 @@ namespace {
 // Thin wrapper of base::WriteFile to adapt blob interface.
 // Returns true on success.
 bool WriteBlobToFile(const base::FilePath& filename,
-                     const std::string& blob) {
-  int result = base::WriteFile(filename, blob.data(), blob.size());
+                     const std::vector<uint8_t>& blob) {
+  int result = base::WriteFile(
+      filename, reinterpret_cast<const char*>(blob.data()), blob.size());
   return result >= 0 && static_cast<size_t>(result) == blob.size();
+}
+
+// Returns blob containing serialized policy proto for testing.
+std::vector<uint8_t> GetTestPolicyBlob() {
+  em::PolicyFetchResponse policy_proto;
+  policy_proto.set_policy_data("policy-data");
+  policy_proto.set_policy_data_signature("policy-data-signature");
+  return SerializeAsBlob(policy_proto);
 }
 
 }  // namespace
 
 class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
  public:
-  DeviceLocalAccountPolicyServiceTest()
-      : fake_account_("account@example.com"), salt_("salt") {}
+  DeviceLocalAccountPolicyServiceTest() = default;
 
   void SetUp() override {
     fake_loop_.SetAsCurrent();
@@ -55,11 +64,6 @@ class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
             .Append(brillo::cryptohome::home::SanitizeUserName(fake_account_))
             .Append(DeviceLocalAccountPolicyService::kPolicyDir)
             .Append(DeviceLocalAccountPolicyService::kPolicyFileName);
-
-    em::PolicyFetchResponse policy_proto;
-    policy_proto.set_policy_data("policy-data");
-    policy_proto.set_policy_data_signature("policy-data-signature");
-    ASSERT_TRUE(policy_proto.SerializeToString(&policy_blob_));
 
     service_.reset(
         new DeviceLocalAccountPolicyService(temp_dir_.path(), &key_));
@@ -78,15 +82,14 @@ class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
   void SetupKey() {
     EXPECT_CALL(key_, PopulateFromDiskIfPossible()).Times(0);
     EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(true));
-    EXPECT_CALL(key_, Verify(_, _, _, _)).WillRepeatedly(Return(true));
+    EXPECT_CALL(key_, Verify(_, _)).WillRepeatedly(Return(true));
   }
 
  protected:
-  const std::string fake_account_;
-  base::FilePath fake_account_policy_path_;
+  std::string salt_ = "salt";
 
-  std::string salt_;
-  std::string policy_blob_;
+  const std::string fake_account_ = "account@example.com";
+  base::FilePath fake_account_policy_path_;
 
   brillo::FakeMessageLoop fake_loop_{nullptr};
   base::ScopedTempDir temp_dir_;
@@ -101,9 +104,7 @@ class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
 
 TEST_F(DeviceLocalAccountPolicyServiceTest, StoreInvalidAccount) {
   EXPECT_FALSE(
-      service_->Store(fake_account_,
-                      reinterpret_cast<const uint8_t*>(policy_blob_.c_str()),
-                      policy_blob_.size(),
+      service_->Store(fake_account_, GetTestPolicyBlob(),
                       MockPolicyService::CreateExpectFailureCallback()));
   fake_loop_.Run();
   EXPECT_FALSE(base::PathExists(fake_account_policy_path_));
@@ -114,9 +115,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreSuccess) {
   SetupKey();
 
   EXPECT_TRUE(
-      service_->Store(fake_account_,
-                      reinterpret_cast<const uint8_t*>(policy_blob_.c_str()),
-                      policy_blob_.size(),
+      service_->Store(fake_account_, GetTestPolicyBlob(),
                       MockPolicyService::CreateExpectSuccessCallback()));
   fake_loop_.Run();
   EXPECT_TRUE(base::PathExists(fake_account_policy_path_));
@@ -126,12 +125,8 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreBadPolicy) {
   SetupAccount();
   SetupKey();
 
-  policy_blob_ = "bad!";
-
   EXPECT_FALSE(
-      service_->Store(fake_account_,
-                      reinterpret_cast<const uint8_t*>(policy_blob_.c_str()),
-                      policy_blob_.size(),
+      service_->Store(fake_account_, StringToBlob("bad!"),
                       MockPolicyService::CreateExpectFailureCallback()));
   fake_loop_.Run();
   EXPECT_FALSE(base::PathExists(fake_account_policy_path_));
@@ -140,12 +135,10 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreBadPolicy) {
 TEST_F(DeviceLocalAccountPolicyServiceTest, StoreBadSignature) {
   SetupAccount();
   SetupKey();
-  EXPECT_CALL(key_, Verify(_, _, _, _)).WillRepeatedly(Return(false));
+  EXPECT_CALL(key_, Verify(_, _)).WillRepeatedly(Return(false));
 
   EXPECT_FALSE(
-      service_->Store(fake_account_,
-                      reinterpret_cast<const uint8_t*>(policy_blob_.c_str()),
-                      policy_blob_.size(),
+      service_->Store(fake_account_, GetTestPolicyBlob(),
                       MockPolicyService::CreateExpectFailureCallback()));
   fake_loop_.Run();
   EXPECT_FALSE(base::PathExists(fake_account_policy_path_));
@@ -157,7 +150,6 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreNoRotation) {
   policy_proto.set_policy_data_signature("policy-data-signature");
   policy_proto.set_new_public_key("new-public-key");
   policy_proto.set_new_public_key_signature("new-public-key-signature");
-  ASSERT_TRUE(policy_proto.SerializeToString(&policy_blob_));
 
   SetupAccount();
   SetupKey();
@@ -170,9 +162,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreNoRotation) {
   EXPECT_CALL(key_, ClobberCompromisedKey(_)).Times(0);
 
   EXPECT_FALSE(
-      service_->Store(fake_account_,
-                      reinterpret_cast<const uint8_t*>(policy_blob_.c_str()),
-                      policy_blob_.size(),
+      service_->Store(fake_account_, SerializeAsBlob(policy_proto),
                       MockPolicyService::CreateExpectFailureCallback()));
   fake_loop_.Run();
   EXPECT_FALSE(base::PathExists(fake_account_policy_path_));
@@ -200,7 +190,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, RetrieveSuccess) {
   SetupKey();
 
   ASSERT_TRUE(base::CreateDirectory(fake_account_policy_path_.DirName()));
-  ASSERT_TRUE(WriteBlobToFile(fake_account_policy_path_, policy_blob_));
+  ASSERT_TRUE(WriteBlobToFile(fake_account_policy_path_, GetTestPolicyBlob()));
 
   std::vector<uint8_t> policy_data;
   EXPECT_TRUE(service_->Retrieve(fake_account_, &policy_data));
@@ -211,7 +201,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, PurgeStaleAccounts) {
   SetupKey();
 
   ASSERT_TRUE(base::CreateDirectory(fake_account_policy_path_.DirName()));
-  ASSERT_TRUE(WriteBlobToFile(fake_account_policy_path_, policy_blob_));
+  ASSERT_TRUE(WriteBlobToFile(fake_account_policy_path_, GetTestPolicyBlob()));
 
   em::ChromeDeviceSettingsProto device_settings;
   service_->UpdateDeviceSettings(device_settings);
@@ -251,20 +241,17 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, LegacyPublicSessionIdFallback) {
   service_->UpdateDeviceSettings(device_settings);
   SetupKey();
 
+  const std::vector<uint8_t> policy_blob = GetTestPolicyBlob();
   EXPECT_TRUE(
-      service_->Store(fake_account_,
-                      reinterpret_cast<const uint8_t*>(policy_blob_.c_str()),
-                      policy_blob_.size(),
+      service_->Store(fake_account_, policy_blob,
                       MockPolicyService::CreateExpectSuccessCallback()));
   fake_loop_.Run();
   EXPECT_TRUE(base::PathExists(fake_account_policy_path_));
 
-  std::vector<uint8_t> policy_data;
-  EXPECT_TRUE(service_->Retrieve(fake_account_, &policy_data));
+  std::vector<uint8_t> out_policy_blob;
+  EXPECT_TRUE(service_->Retrieve(fake_account_, &out_policy_blob));
 
-  ASSERT_EQ(policy_blob_.size(), policy_data.size());
-  EXPECT_TRUE(std::equal(
-      policy_blob_.begin(), policy_blob_.end(), policy_data.begin()));
+  EXPECT_EQ(policy_blob, out_policy_blob);
 }
 
 TEST_F(DeviceLocalAccountPolicyServiceTest, LegacyPublicSessionIdIgnored) {
@@ -282,9 +269,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, LegacyPublicSessionIdIgnored) {
   SetupKey();
 
   EXPECT_FALSE(
-      service_->Store(kDeprecatedId,
-                      reinterpret_cast<const uint8_t*>(policy_blob_.c_str()),
-                      policy_blob_.size(),
+      service_->Store(kDeprecatedId, GetTestPolicyBlob(),
                       MockPolicyService::CreateExpectFailureCallback()));
   fake_loop_.Run();
   EXPECT_FALSE(base::PathExists(fake_account_policy_path_));

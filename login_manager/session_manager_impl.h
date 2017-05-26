@@ -175,28 +175,25 @@ class SessionManagerImpl : public SessionManagerInterface,
                     const std::string& in_unique_identifier);
   void StopSession(const std::string& in_unique_identifier);
 
-  void StorePolicy(const uint8_t* policy_blob,
-                   size_t policy_blob_len,
+  void StorePolicy(const std::vector<uint8_t>& policy_blob,
                    SignatureCheck signature_check,
                    const PolicyService::Completion& completion);
-  void RetrievePolicy(std::vector<uint8_t>* policy_data, Error* error);
+  void RetrievePolicy(std::vector<uint8_t>* policy_blob, Error* error);
 
   void StorePolicyForUser(const std::string& account_id,
-                          const uint8_t* policy_blob,
-                          size_t policy_blob_len,
+                          const std::vector<uint8_t>& policy_blob,
                           SignatureCheck signature_check,
                           const PolicyService::Completion& completion);
   void RetrievePolicyForUser(const std::string& account_id,
-                             std::vector<uint8_t>* policy_data,
+                             std::vector<uint8_t>* policy_blob,
                              Error* error);
 
   void StoreDeviceLocalAccountPolicy(
       const std::string& account_id,
-      const uint8_t* policy_blob,
-      size_t policy_blob_len,
+      const std::vector<uint8_t>& policy_blob,
       const PolicyService::Completion& completion);
   void RetrieveDeviceLocalAccountPolicy(const std::string& account_id,
-                                        std::vector<uint8_t>* policy_data,
+                                        std::vector<uint8_t>* policy_blob,
                                         Error* error);
 
   std::string RetrieveSessionState();

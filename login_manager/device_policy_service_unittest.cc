@@ -22,6 +22,7 @@
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "bindings/install_attributes.pb.h"
+#include "login_manager/blob_util.h"
 #include "login_manager/fake_crossystem.h"
 #include "login_manager/matchers.h"
 #include "login_manager/mock_device_policy_service.h"
@@ -64,14 +65,7 @@ namespace login_manager {
 
 class DevicePolicyServiceTest : public ::testing::Test {
  public:
-  DevicePolicyServiceTest()
-      : owner_("user@somewhere"),
-        fake_sig_("fake_signature"),
-        fake_key_("fake_key"),
-        new_fake_sig_("new_fake_signature"),
-        store_(NULL) {
-    fake_key_vector_.assign(fake_key_.begin(), fake_key_.end());
-  }
+  DevicePolicyServiceTest() = default;
 
   virtual void SetUp() {
     fake_loop_.SetAsCurrent();
@@ -82,7 +76,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
 
   void InitPolicy(const em::ChromeDeviceSettingsProto& settings,
                   const std::string& owner,
-                  const std::string& signature,
+                  const std::vector<uint8_t>& signature,
                   const std::string& request_token,
                   bool valid_serial_number_missing) {
     std::string settings_str;
@@ -102,12 +96,11 @@ class DevicePolicyServiceTest : public ::testing::Test {
 
     policy_proto_.Clear();
     policy_proto_.set_policy_data(policy_data_str);
-    policy_proto_.set_policy_data_signature(signature);
-    ASSERT_TRUE(policy_proto_.SerializeToString(&policy_str_));
+    policy_proto_.set_policy_data_signature(BlobToString(signature));
   }
 
   void InitEmptyPolicy(const std::string& owner,
-                       const std::string& signature,
+                       const std::vector<uint8_t>& signature,
                        const std::string& request_token) {
     em::ChromeDeviceSettingsProto settings;
     InitPolicy(settings, owner, signature, request_token, false);
@@ -127,8 +120,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
                                            &vpd_process_));
 
     // Allow the key to be read any time.
-    EXPECT_CALL(key_, public_key_der())
-        .WillRepeatedly(ReturnRef(fake_key_vector_));
+    EXPECT_CALL(key_, public_key_der()).WillRepeatedly(ReturnRef(fake_key_));
   }
 
   void SetDefaultSettings() {
@@ -190,7 +182,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
     Expectation compare_keys =
         EXPECT_CALL(key_, Equals(_)).WillRepeatedly(Return(false));
     Expectation sign =
-        EXPECT_CALL(*nss, Sign(_, _, _, _))
+        EXPECT_CALL(*nss, Sign(_, _, _))
             .After(get_policy)
             .WillOnce(DoAll(WithArg<2>(AssignVector(new_fake_sig_)),
                             Return(true)));
@@ -207,7 +199,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
     Expectation compare_keys =
         EXPECT_CALL(key_, Equals(_)).WillRepeatedly(Return(false));
     Expectation sign =
-        EXPECT_CALL(*nss, Sign(_, _, _, _))
+        EXPECT_CALL(*nss, Sign(_, _, _))
             .After(get_policy)
             .WillOnce(DoAll(WithArg<2>(AssignVector(new_fake_sig_)),
                             Return(false)));
@@ -266,14 +258,14 @@ class DevicePolicyServiceTest : public ::testing::Test {
 
   LoginMetrics::PolicyFileState SimulateBadOwnerKey(MockNssUtil* nss) {
     EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(true));
-    EXPECT_CALL(*nss, CheckPublicKeyBlob(fake_key_vector_))
+    EXPECT_CALL(*nss, CheckPublicKeyBlob(fake_key_))
         .WillRepeatedly(Return(false));
     return LoginMetrics::MALFORMED;
   }
 
   LoginMetrics::PolicyFileState SimulateGoodOwnerKey(MockNssUtil* nss) {
     EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(true));
-    EXPECT_CALL(*nss, CheckPublicKeyBlob(fake_key_vector_))
+    EXPECT_CALL(*nss, CheckPublicKeyBlob(fake_key_))
         .WillRepeatedly(Return(true));
     return LoginMetrics::GOOD;
   }
@@ -284,15 +276,14 @@ class DevicePolicyServiceTest : public ::testing::Test {
   }
 
   em::PolicyFetchResponse policy_proto_;
-  std::string policy_str_;
 
   em::PolicyFetchResponse new_policy_proto_;
 
-  std::string owner_;
-  std::string fake_sig_;
-  std::string fake_key_;
-  std::vector<uint8_t> fake_key_vector_;
-  std::string new_fake_sig_;
+  const std::string owner_ = "user@somewhere";
+  const std::vector<uint8_t> fake_sig_ = StringToBlob("fake_signature");
+  const std::vector<uint8_t> fake_key_ = StringToBlob("fake_key");
+  const std::vector<uint8_t> new_fake_sig_ =
+      StringToBlob("new_fake_signature");
 
   brillo::FakeMessageLoop fake_loop_{nullptr};
 
@@ -302,7 +293,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   // Use StrictMock to make sure that no unexpected policy or key mutations can
   // occur without the test failing.
   StrictMock<MockPolicyKey> key_;
-  StrictMock<MockPolicyStore>* store_;
+  StrictMock<MockPolicyStore>* store_ = nullptr;
   std::unique_ptr<MockMetrics> metrics_;
   std::unique_ptr<StrictMock<MockMitigator>> mitigator_;
   FakeCrossystem crossystem_;
@@ -526,7 +517,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessNewKey) {
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
   EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, PopulateFromBuffer(fake_key_vector_))
+  EXPECT_CALL(key_, PopulateFromBuffer(fake_key_))
       .InSequence(s)
       .WillOnce(Return(true));
   EXPECT_CALL(*store_, Set(ProtoEq(em::PolicyFetchResponse())));
@@ -547,7 +538,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessMitigating) {
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
   EXPECT_CALL(key_, IsPopulated()).InSequence(s).WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, ClobberCompromisedKey(fake_key_vector_))
+  EXPECT_CALL(key_, ClobberCompromisedKey(fake_key_))
       .InSequence(s)
       .WillOnce(Return(true));
   EXPECT_CALL(*store_, Set(_)).Times(0);
@@ -568,7 +559,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_FailedMitigating) {
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
   EXPECT_CALL(key_, IsPopulated()).InSequence(s).WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, ClobberCompromisedKey(fake_key_vector_))
+  EXPECT_CALL(key_, ClobberCompromisedKey(fake_key_))
       .InSequence(s)
       .WillOnce(Return(true));
   ExpectFailedInstallNewOwnerPolicy(s, &nss);
@@ -590,7 +581,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessAddOwner) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(key_, PopulateFromBuffer(fake_key_vector_))
+  EXPECT_CALL(key_, PopulateFromBuffer(fake_key_))
       .InSequence(s)
       .WillOnce(Return(true));
   EXPECT_CALL(*store_, Set(ProtoEq(em::PolicyFetchResponse())));
@@ -777,7 +768,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NewKeyInstallFails) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(key_, PopulateFromBuffer(fake_key_vector_))
+  EXPECT_CALL(key_, PopulateFromBuffer(fake_key_))
       .InSequence(s)
       .WillOnce(Return(false));
 
@@ -793,7 +784,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_KeyClobberFails) {
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
   EXPECT_CALL(key_, IsPopulated()).InSequence(s).WillRepeatedly(Return(true));
-  EXPECT_CALL(key_, ClobberCompromisedKey(fake_key_vector_))
+  EXPECT_CALL(key_, ClobberCompromisedKey(fake_key_))
       .InSequence(s)
       .WillOnce(Return(false));
 
@@ -931,7 +922,7 @@ TEST_F(DevicePolicyServiceTest, RecoverOwnerKeyFromPolicy) {
   MockNssUtil nss;
   InitService(&nss);
 
-  EXPECT_CALL(nss, CheckPublicKeyBlob(fake_key_vector_))
+  EXPECT_CALL(nss, CheckPublicKeyBlob(fake_key_))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(key_, PopulateFromDiskIfPossible()).WillRepeatedly(Return(false));
   EXPECT_CALL(key_, PopulateFromBuffer(_)).WillRepeatedly(Return(true));
@@ -947,7 +938,7 @@ TEST_F(DevicePolicyServiceTest, RecoverOwnerKeyFromPolicy) {
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
   EXPECT_FALSE(service_->Initialize());
 
-  policy_proto_.set_new_public_key(fake_key_);
+  policy_proto_.set_new_public_key(BlobToString(fake_key_));
   EXPECT_TRUE(service_->Initialize());
 }
 
@@ -965,14 +956,13 @@ TEST_F(DevicePolicyServiceTest, GetSettings) {
   // Storing new policy should cause the settings to update as well.
   settings.mutable_metrics_enabled()->set_metrics_enabled(true);
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t", true));
-  EXPECT_CALL(key_, Verify(_, _, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, Verify(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(false));
   EXPECT_CALL(*store_, Persist()).WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
   EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
   EXPECT_TRUE(
-      service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
-                      policy_str_.size(),
+      service_->Store(SerializeAsBlob(policy_proto_),
                       PolicyService::KEY_CLOBBER,
                       SignatureCheck::kEnabled,
                       MockPolicyService::CreateDoNothing()));
@@ -996,14 +986,13 @@ TEST_F(DevicePolicyServiceTest, StartUpFlagsSanitizer) {
   settings.mutable_start_up_flags()->add_flags("-");
   settings.mutable_start_up_flags()->add_flags("--");
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
-  EXPECT_CALL(key_, Verify(_, _, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(key_, Verify(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(false));
   EXPECT_CALL(*store_, Persist()).WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
   EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
   EXPECT_TRUE(
-      service_->Store(reinterpret_cast<const uint8_t*>(policy_str_.c_str()),
-                      policy_str_.size(),
+      service_->Store(SerializeAsBlob(policy_proto_),
                       PolicyService::KEY_CLOBBER,
                       SignatureCheck::kEnabled,
                       MockPolicyService::CreateDoNothing()));

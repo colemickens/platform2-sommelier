@@ -67,12 +67,12 @@ class DevicePolicyService : public PolicyService {
                                         bool* is_owner,
                                         brillo::ErrorPtr* error);
 
-  // Ensures that the public key in |buf| is legitimately paired with a private
-  // key held by the current user, signs and stores some ownership-related
-  // metadata, and then stores this key off as the new device owner key. Returns
-  // true if successful, false otherwise
+  // Ensures that the public key in |pub_key| is legitimately paired with a
+  // private key held by the current user, signs and stores some
+  // ownership-related metadata, and then stores this key off as the new
+  // device owner key. Returns true if successful, false otherwise
   virtual bool ValidateAndStoreOwnerKey(const std::string& current_user,
-                                        const std::string& buf,
+                                        const std::vector<uint8_t>& pub_key,
                                         PK11SlotInfo* module);
 
   // Checks whether the key is missing.
@@ -114,8 +114,7 @@ class DevicePolicyService : public PolicyService {
   bool UpdateSystemSettings(const Completion& completion);
 
   // PolicyService:
-  bool Store(const uint8_t* policy_blob,
-             uint32_t len,
+  bool Store(const std::vector<uint8_t>& policy_blob,
              int key_flags,
              SignatureCheck signature_check,
              const Completion& completion) override;

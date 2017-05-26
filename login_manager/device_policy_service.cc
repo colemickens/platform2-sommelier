@@ -21,6 +21,7 @@
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "bindings/install_attributes.pb.h"
+#include "login_manager/blob_util.h"
 #include "login_manager/dbus_util.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/login_metrics.h"
@@ -118,10 +119,8 @@ bool DevicePolicyService::CheckAndHandleOwnerLogin(
 
 bool DevicePolicyService::ValidateAndStoreOwnerKey(
     const std::string& current_user,
-    const std::string& buf,
+    const std::vector<uint8_t>& pub_key,
     PK11SlotInfo* slot) {
-  std::vector<uint8_t> pub_key;
-  NssUtil::BlobFromBuffer(buf, &pub_key);
 
   std::unique_ptr<RSAPrivateKey> signing_key =
       GetOwnerKeyForGivenUser(pub_key, slot, nullptr);
@@ -191,9 +190,8 @@ bool DevicePolicyService::Initialize() {
 
   if (!key_success && policy_success && store()->Get().has_new_public_key()) {
     LOG(WARNING) << "Recovering missing owner key from policy blob!";
-    std::vector<uint8_t> pub_key;
-    NssUtil::BlobFromBuffer(store()->Get().new_public_key(), &pub_key);
-    key_success = key()->PopulateFromBuffer(pub_key);
+    key_success = key()->PopulateFromBuffer(
+        StringToBlob(store()->Get().new_public_key()));
     if (key_success)
       PostPersistKeyTask();
   }
@@ -202,13 +200,12 @@ bool DevicePolicyService::Initialize() {
   return key_success;
 }
 
-bool DevicePolicyService::Store(const uint8_t* policy_blob,
-                                uint32_t len,
+bool DevicePolicyService::Store(const std::vector<uint8_t>& policy_blob,
                                 int key_flags,
                                 SignatureCheck signature_check,
                                 const Completion& completion) {
   bool result = PolicyService::Store(
-      policy_blob, len, key_flags, signature_check, completion);
+      policy_blob, key_flags, signature_check, completion);
 
   if (result) {
     // Flush the settings cache, the next read will decode the new settings.
@@ -373,8 +370,7 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
   poldata.set_policy_value(polval.SerializeAsString());
   std::string new_data = poldata.SerializeAsString();
   std::vector<uint8_t> sig;
-  const uint8_t* data = reinterpret_cast<const uint8_t*>(new_data.c_str());
-  if (!nss_->Sign(data, new_data.length(), &sig, signing_key)) {
+  if (!nss_->Sign(StringToBlob(new_data), signing_key, &sig)) {
     LOG(WARNING) << "Could not sign policy containing new owner data.";
     return false;
   }
@@ -382,11 +378,8 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
   em::PolicyFetchResponse new_policy;
   new_policy.CheckTypeAndMergeFrom(policy);
   new_policy.set_policy_data(new_data);
-  new_policy.set_policy_data_signature(
-      std::string(reinterpret_cast<const char*>(&sig[0]), sig.size()));
-  const std::vector<uint8_t>& key_der = key()->public_key_der();
-  new_policy.set_new_public_key(
-      std::string(reinterpret_cast<const char*>(&key_der[0]), key_der.size()));
+  new_policy.set_policy_data_signature(BlobToString(sig));
+  new_policy.set_new_public_key(BlobToString(key()->public_key_der()));
   store()->Set(new_policy);
   return true;
 }

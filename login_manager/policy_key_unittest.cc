@@ -20,6 +20,7 @@
 #include <crypto/rsa_private_key.h>
 #include <gtest/gtest.h>
 
+#include "login_manager/blob_util.h"
 #include "login_manager/mock_nss_util.h"
 #include "login_manager/nss_util.h"
 
@@ -73,7 +74,7 @@ TEST_F(PolicyKeyTest, Equals) {
   EXPECT_TRUE(key.VEquals(std::vector<uint8_t>()));
 
   // Ensure that 0-length keys don't cause us to return true for everything.
-  std::vector<uint8_t> fake(1, 1);
+  const std::vector<uint8_t> fake = {1};
   EXPECT_FALSE(key.VEquals(fake));
 
   // Populate the key.
@@ -129,14 +130,14 @@ TEST_F(PolicyKeyTest, NoKeyOnDiskAllowSetting) {
   ASSERT_TRUE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
 
-  std::vector<uint8_t> fake(1, 1);
+  const std::vector<uint8_t> fake = {1};
   ASSERT_TRUE(key.PopulateFromBuffer(fake));
   ASSERT_TRUE(key.HaveCheckedDisk());
   ASSERT_TRUE(key.IsPopulated());
 }
 
 TEST_F(PolicyKeyTest, EnforceDiskCheckFirst) {
-  std::vector<uint8_t> fake(1, 1);
+  const std::vector<uint8_t> fake = {1};
 
   MockNssUtil noop_util;
   PolicyKey key(tmpfile_, &noop_util);
@@ -148,7 +149,7 @@ TEST_F(PolicyKeyTest, EnforceDiskCheckFirst) {
 }
 
 TEST_F(PolicyKeyTest, RefuseToClobberInMemory) {
-  std::vector<uint8_t> fake(1, 1);
+  const std::vector<uint8_t> fake = {1};
 
   CheckPublicKeyUtil good_key_util(true);
   PolicyKey key(tmpfile_, &good_key_util);
@@ -193,18 +194,18 @@ TEST_F(PolicyKeyTest, SignVerify) {
   ASSERT_TRUE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
 
-  std::vector<uint8_t> to_export;
-  ASSERT_TRUE(pair->ExportPublicKey(&to_export));
-  ASSERT_TRUE(key.PopulateFromBuffer(to_export));
+  {
+    std::vector<uint8_t> to_export;
+    ASSERT_TRUE(pair->ExportPublicKey(&to_export));
+    ASSERT_TRUE(key.PopulateFromBuffer(to_export));
+  }
   ASSERT_TRUE(key.HaveCheckedDisk());
   ASSERT_TRUE(key.IsPopulated());
 
-  std::string data("whatever");
-  const uint8_t* data_p = reinterpret_cast<const uint8_t*>(data.c_str());
+  const std::vector<uint8_t> data = StringToBlob("whatever");
   std::vector<uint8_t> signature;
-  EXPECT_TRUE(nss->Sign(data_p, data.length(), &signature, pair.get()));
-  EXPECT_TRUE(
-      key.Verify(data_p, data.length(), &signature[0], signature.size()));
+  EXPECT_TRUE(nss->Sign(data, pair.get(), &signature));
+  EXPECT_TRUE(key.Verify(data, signature));
 }
 
 TEST_F(PolicyKeyTest, RotateKey) {
@@ -221,9 +222,11 @@ TEST_F(PolicyKeyTest, RotateKey) {
   ASSERT_TRUE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
 
-  std::vector<uint8_t> to_export;
-  ASSERT_TRUE(pair->ExportPublicKey(&to_export));
-  ASSERT_TRUE(key.PopulateFromBuffer(to_export));
+  {
+    std::vector<uint8_t> to_export;
+    ASSERT_TRUE(pair->ExportPublicKey(&to_export));
+    ASSERT_TRUE(key.PopulateFromBuffer(to_export));
+  }
   ASSERT_TRUE(key.HaveCheckedDisk());
   ASSERT_TRUE(key.IsPopulated());
   ASSERT_TRUE(key.Persist());
@@ -240,8 +243,7 @@ TEST_F(PolicyKeyTest, RotateKey) {
   ASSERT_TRUE(new_pair->ExportPublicKey(&new_export));
 
   std::vector<uint8_t> signature;
-  ASSERT_TRUE(
-      nss->Sign(&new_export[0], new_export.size(), &signature, pair.get()));
+  ASSERT_TRUE(nss->Sign(new_export, pair.get(), &signature));
   ASSERT_TRUE(key2.Rotate(new_export, signature));
   ASSERT_TRUE(key2.Persist());
 }
@@ -254,7 +256,7 @@ TEST_F(PolicyKeyTest, ClobberKey) {
   ASSERT_TRUE(key.HaveCheckedDisk());
   ASSERT_TRUE(key.IsPopulated());
 
-  std::vector<uint8_t> fake(1, 1);
+  const std::vector<uint8_t> fake = {1};
   key.ClobberCompromisedKey(fake);
   ASSERT_TRUE(key.VEquals(fake));
   ASSERT_TRUE(key.Persist());

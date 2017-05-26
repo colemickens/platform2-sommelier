@@ -35,6 +35,7 @@
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
+#include "login_manager/blob_util.h"
 #include "login_manager/crossystem.h"
 #include "login_manager/dbus_signal_emitter.h"
 #include "login_manager/dbus_util.h"
@@ -475,8 +476,7 @@ void SessionManagerImpl::StopSession(const std::string& in_unique_identifier) {
 }
 
 void SessionManagerImpl::StorePolicy(
-    const uint8_t* policy_blob,
-    size_t policy_blob_len,
+    const std::vector<uint8_t>& policy_blob,
     SignatureCheck signature_check,
     const PolicyService::Completion& completion) {
   // Skipping of signature checks is gated on enterprise_ad device mode being
@@ -497,13 +497,12 @@ void SessionManagerImpl::StorePolicy(
   int flags = PolicyService::KEY_ROTATE;
   if (!session_started_)
     flags |= PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_CLOBBER;
-  device_policy_->Store(policy_blob, policy_blob_len, flags, signature_check,
-                        completion);
+  device_policy_->Store(policy_blob, flags, signature_check, completion);
 }
 
-void SessionManagerImpl::RetrievePolicy(std::vector<uint8_t>* policy_data,
+void SessionManagerImpl::RetrievePolicy(std::vector<uint8_t>* policy_blob,
                                         Error* error) {
-  if (!device_policy_->Retrieve(policy_data)) {
+  if (!device_policy_->Retrieve(policy_blob)) {
     static const char msg[] = "Failed to retrieve policy data.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kSigEncodeFail, msg);
@@ -513,8 +512,7 @@ void SessionManagerImpl::RetrievePolicy(std::vector<uint8_t>* policy_data,
 
 void SessionManagerImpl::StorePolicyForUser(
     const std::string& account_id,
-    const uint8_t* policy_blob,
-    size_t policy_blob_len,
+    const std::vector<uint8_t>& policy_blob,
     SignatureCheck signature_check,
     const PolicyService::Completion& completion) {
   // Skipping of signature checks is gated on enterprise_ad device mode being
@@ -542,14 +540,13 @@ void SessionManagerImpl::StorePolicyForUser(
   }
 
   policy_service->Store(
-      policy_blob, policy_blob_len,
-      PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_ROTATE,
+      policy_blob, PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_ROTATE,
       signature_check, completion);
 }
 
 void SessionManagerImpl::RetrievePolicyForUser(
     const std::string& account_id,
-    std::vector<uint8_t>* policy_data,
+    std::vector<uint8_t>* policy_blob,
     Error* error) {
   PolicyService* policy_service = GetPolicyService(account_id);
   if (!policy_service) {
@@ -559,7 +556,7 @@ void SessionManagerImpl::RetrievePolicyForUser(
     error->Set(dbus_error::kSessionDoesNotExist, msg);
     return;
   }
-  if (!policy_service->Retrieve(policy_data)) {
+  if (!policy_service->Retrieve(policy_blob)) {
     static const char msg[] = "Failed to retrieve policy data.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kSigEncodeFail, msg);
@@ -568,18 +565,16 @@ void SessionManagerImpl::RetrievePolicyForUser(
 
 void SessionManagerImpl::StoreDeviceLocalAccountPolicy(
     const std::string& account_id,
-    const uint8_t* policy_blob,
-    size_t policy_blob_len,
+    const std::vector<uint8_t>& policy_blob,
     const PolicyService::Completion& completion) {
-  device_local_account_policy_->Store(account_id, policy_blob, policy_blob_len,
-                                      completion);
+  device_local_account_policy_->Store(account_id, policy_blob, completion);
 }
 
 void SessionManagerImpl::RetrieveDeviceLocalAccountPolicy(
     const std::string& account_id,
-    std::vector<uint8_t>* policy_data,
+    std::vector<uint8_t>* policy_blob,
     Error* error) {
-  if (!device_local_account_policy_->Retrieve(account_id, policy_data)) {
+  if (!device_local_account_policy_->Retrieve(account_id, policy_blob)) {
     static const char msg[] = "Failed to retrieve policy data.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kSigEncodeFail, msg);
@@ -1086,7 +1081,7 @@ void SessionManagerImpl::ImportValidateAndStoreGeneratedKey(
   PLOG_IF(WARNING, !base::DeleteFile(temp_key_file, false))
       << "Can't delete " << temp_key_file.value();
   device_policy_->ValidateAndStoreOwnerKey(
-      username, key, user_sessions_[username]->slot.get());
+      username, StringToBlob(key), user_sessions_[username]->slot.get());
 }
 
 void SessionManagerImpl::InitiateDeviceWipe(const std::string& reason) {

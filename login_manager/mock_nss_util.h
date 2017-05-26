@@ -43,18 +43,12 @@ class MockNssUtil : public NssUtil {
                crypto::RSAPrivateKey*(PK11SlotInfo*));  // NOLINT - 'unnamed'.
   MOCK_METHOD0(GetNssdbSubpath, base::FilePath());
   MOCK_METHOD1(CheckPublicKeyBlob, bool(const std::vector<uint8_t>&));
-  MOCK_METHOD6(Verify,
-               bool(const uint8_t* signature,
-                    int signature_len,
-                    const uint8_t* data,
-                    int data_len,
-                    const uint8_t* public_key,
-                    int public_key_len));
-  MOCK_METHOD4(Sign,
-               bool(const uint8_t* data,
-                    int data_len,
-                    std::vector<uint8_t>* OUT_signature,
-                    crypto::RSAPrivateKey* key));
+  MOCK_METHOD3(Verify, bool(const std::vector<uint8_t>& signature,
+                            const std::vector<uint8_t>& data,
+                            const std::vector<uint8_t>& public_key));
+  MOCK_METHOD3(Sign, bool(const std::vector<uint8_t>& data,
+                          crypto::RSAPrivateKey* key,
+                          std::vector<uint8_t>* out_signature));
   base::FilePath GetOwnerKeyFilePath() override;
 
   PK11SlotInfo* GetSlot();

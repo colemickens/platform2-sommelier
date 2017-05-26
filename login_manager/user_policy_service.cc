@@ -59,14 +59,14 @@ void UserPolicyService::PersistKeyCopy() {
   }
 }
 
-bool UserPolicyService::Store(const uint8_t* policy_blob,
-                              uint32_t len,
+bool UserPolicyService::Store(const std::vector<uint8_t>& policy_blob,
                               int key_flags,
                               SignatureCheck signature_check,
                               const Completion& completion) {
   em::PolicyFetchResponse policy;
   em::PolicyData policy_data;
-  if (!policy.ParseFromArray(policy_blob, len) || !policy.has_policy_data() ||
+  if (!policy.ParseFromArray(policy_blob.data(), policy_blob.size()) ||
+      !policy.has_policy_data() ||
       !policy_data.ParseFromString(policy.policy_data())) {
     constexpr char kMessage[] = "Unable to parse policy protobuf.";
     LOG(ERROR) << kMessage;

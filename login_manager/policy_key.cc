@@ -129,10 +129,7 @@ bool PolicyKey::Rotate(const std::vector<uint8_t>& public_key_der,
     LOG(ERROR) << "Don't yet have an owner key!";
     return false;
   }
-  if (Verify(&public_key_der[0],
-             public_key_der.size(),
-             &signature[0],
-             signature.size())) {
+  if (Verify(public_key_der, signature)) {
     key_ = public_key_der;
     have_replaced_ = true;
     return true;
@@ -152,17 +149,10 @@ bool PolicyKey::ClobberCompromisedKey(
   return have_replaced_ = true;
 }
 
-bool PolicyKey::Verify(const uint8_t* data,
-                       uint32_t data_len,
-                       const uint8_t* signature,
-                       uint32_t sig_len) {
-  if (!nss_->Verify(signature,
-                    sig_len,
-                    data,
-                    data_len,
-                    &key_[0],
-                    key_.size())) {
-    LOG(ERROR) << "Signature verification of " << data << " failed";
+bool PolicyKey::Verify(const std::vector<uint8_t>& data,
+                       const std::vector<uint8_t>& signature) {
+  if (!nss_->Verify(signature, data, key_)) {
+    LOG(ERROR) << "Signature verification failed";
     return false;
   }
   return true;

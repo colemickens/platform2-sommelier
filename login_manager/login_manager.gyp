@@ -62,6 +62,7 @@
       },
       'sources': [
         'android_container_manager_impl.cc',
+        'blob_util.cc',
         'browser_job.cc',
         'child_exit_handler.cc',
         'child_job.cc',

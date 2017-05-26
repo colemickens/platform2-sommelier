@@ -71,17 +71,13 @@ class NssUtilImpl : public NssUtil {
 
   bool CheckPublicKeyBlob(const std::vector<uint8_t>& blob) override;
 
-  bool Verify(const uint8_t* signature,
-              int signature_len,
-              const uint8_t* data,
-              int data_len,
-              const uint8_t* public_key,
-              int public_key_len) override;
+  bool Verify(const std::vector<uint8_t>& signature,
+              const std::vector<uint8_t>& data,
+              const std::vector<uint8_t>& public_key) override;
 
-  bool Sign(const uint8_t* data,
-            int data_len,
-            std::vector<uint8_t>* OUT_signature,
-            RSAPrivateKey* key) override;
+  bool Sign(const std::vector<uint8_t>& data,
+            RSAPrivateKey* key,
+            std::vector<uint8_t>* out_signature) override;
 
  private:
   static const uint16_t kKeySizeInBits;
@@ -94,15 +90,6 @@ class NssUtilImpl : public NssUtil {
 // static
 NssUtil* NssUtil::Create() {
   return new NssUtilImpl;
-}
-
-// static
-void NssUtil::BlobFromBuffer(const std::string& buf,
-                             std::vector<uint8_t>* out) {
-  out->resize(buf.length());
-  if (out->size() == 0)
-    return;
-  memcpy(&((*out)[0]), buf.c_str(), out->size());
 }
 
 // We're generating and using 2048-bit RSA keys.
@@ -239,38 +226,32 @@ bool NssUtilImpl::CheckPublicKeyBlob(const std::vector<uint8_t>& blob) {
 
 // This is pretty much just a blind passthrough, so I won't test it
 // in the NssUtil unit tests.  I'll test it from a class that uses this API.
-bool NssUtilImpl::Verify(const uint8_t* signature,
-                         int signature_len,
-                         const uint8_t* data,
-                         int data_len,
-                         const uint8_t* public_key,
-                         int public_key_len) {
-  crypto::SignatureVerifier verifier_;
+bool NssUtilImpl::Verify(const std::vector<uint8_t>& signature,
+                         const std::vector<uint8_t>& data,
+                         const std::vector<uint8_t>& public_key) {
+  crypto::SignatureVerifier verifier;
 
-  if (!verifier_.VerifyInit(crypto::SignatureVerifier::RSA_PKCS1_SHA1,
-                            signature,
-                            signature_len,
-                            public_key,
-                            public_key_len)) {
+  if (!verifier.VerifyInit(crypto::SignatureVerifier::RSA_PKCS1_SHA1,
+                           signature.data(), signature.size(),
+                           public_key.data(), public_key.size())) {
     LOG(ERROR) << "Could not initialize verifier";
     return false;
   }
 
-  verifier_.VerifyUpdate(data, data_len);
-  return (verifier_.VerifyFinal());
+  verifier.VerifyUpdate(data.data(), data.size());
+  return verifier.VerifyFinal();
 }
 
 // This is pretty much just a blind passthrough, so I won't test it
 // in the NssUtil unit tests.  I'll test it from a class that uses this API.
-bool NssUtilImpl::Sign(const uint8_t* data,
-                       int data_len,
-                       std::vector<uint8_t>* OUT_signature,
-                       RSAPrivateKey* key) {
+bool NssUtilImpl::Sign(const std::vector<uint8_t>& data,
+                       RSAPrivateKey* key,
+                       std::vector<uint8_t>* out_signature) {
   std::unique_ptr<crypto::SignatureCreator> signer(
       crypto::SignatureCreator::Create(key, crypto::SignatureCreator::SHA1));
-  if (!signer->Update(data, data_len))
+  if (!signer->Update(data.data(), data.size()))
     return false;
-  return signer->Final(OUT_signature);
+  return signer->Final(out_signature);
 }
 
 }  // namespace login_manager

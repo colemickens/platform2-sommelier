@@ -364,25 +364,24 @@ void SessionManagerDBusAdaptor::DoStorePolicy(
     dbus::MethodCall* call,
     dbus::ExportedObject::ResponseSender sender,
     SignatureCheck signature_check) {
-  const uint8_t* policy_blob = NULL;
-  size_t policy_blob_len = 0;
+  std::vector<uint8_t> policy_blob;
   dbus::MessageReader reader(call);
-  // policy_blob points into reader after pop.
-  if (!reader.PopArrayOfBytes(&policy_blob, &policy_blob_len)) {
+  if (!brillo::dbus_utils::PopValueFromReader(&reader, &policy_blob)) {
     sender.Run(CreateInvalidArgsError(call, call->GetSignature()));
-  } else {
-    impl_->StorePolicy(policy_blob, policy_blob_len, signature_check,
-                       DBusMethodCompletion::CreateCallback(call, sender));
-    // Response will be sent asynchronously.
+    return;
   }
+
+  impl_->StorePolicy(policy_blob, signature_check,
+                     DBusMethodCompletion::CreateCallback(call, sender));
+  // Response will be sent asynchronously.
 }
 
 std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrievePolicy(
     dbus::MethodCall* call) {
-  std::vector<uint8_t> policy_data;
+  std::vector<uint8_t> policy_blob;
   SessionManagerImpl::Error error;
-  impl_->RetrievePolicy(&policy_data, &error);
-  return CraftAppropriateResponseWithBytes(call, error, policy_data);
+  impl_->RetrievePolicy(&policy_blob, &error);
+  return CraftAppropriateResponseWithBytes(call, error, policy_blob);
 }
 
 void SessionManagerDBusAdaptor::StorePolicyForUser(
@@ -402,19 +401,18 @@ void SessionManagerDBusAdaptor::DoStorePolicyForUser(
     dbus::ExportedObject::ResponseSender sender,
     SignatureCheck signature_check) {
   std::string account_id;
-  const uint8_t* policy_blob = NULL;
-  size_t policy_blob_len = 0;
+  std::vector<uint8_t> policy_blob;
   dbus::MessageReader reader(call);
-  // policy_blob points into reader after pop.
   if (!reader.PopString(&account_id) ||
-      !reader.PopArrayOfBytes(&policy_blob, &policy_blob_len)) {
+      !brillo::dbus_utils::PopValueFromReader(&reader, &policy_blob)) {
     sender.Run(CreateInvalidArgsError(call, call->GetSignature()));
-  } else {
-    impl_->StorePolicyForUser(
-        account_id, policy_blob, policy_blob_len, signature_check,
-        DBusMethodCompletion::CreateCallback(call, sender));
-    // Response will normally be sent asynchronously.
+    return;
   }
+
+  impl_->StorePolicyForUser(
+      account_id, policy_blob, signature_check,
+      DBusMethodCompletion::CreateCallback(call, sender));
+  // Response will normally be sent asynchronously.
 }
 
 std::unique_ptr<dbus::Response>
@@ -425,31 +423,28 @@ SessionManagerDBusAdaptor::RetrievePolicyForUser(dbus::MethodCall* call) {
   if (!reader.PopString(&account_id))
     return CreateInvalidArgsError(call, call->GetSignature());
 
-  std::vector<uint8_t> policy_data;
+  std::vector<uint8_t> policy_blob;
   SessionManagerImpl::Error error;
-  impl_->RetrievePolicyForUser(account_id, &policy_data, &error);
-  return CraftAppropriateResponseWithBytes(call, error, policy_data);
+  impl_->RetrievePolicyForUser(account_id, &policy_blob, &error);
+  return CraftAppropriateResponseWithBytes(call, error, policy_blob);
 }
 
 void SessionManagerDBusAdaptor::StoreDeviceLocalAccountPolicy(
     dbus::MethodCall* call,
     dbus::ExportedObject::ResponseSender sender) {
   std::string account_id;
-  const uint8_t* policy_blob = NULL;
-  size_t policy_blob_len = 0;
+  std::vector<uint8_t> policy_blob;
   dbus::MessageReader reader(call);
-  // policy_blob points into reader after pop.
   if (!reader.PopString(&account_id) ||
-      !reader.PopArrayOfBytes(&policy_blob, &policy_blob_len)) {
+      !brillo::dbus_utils::PopValueFromReader(&reader, &policy_blob)) {
     sender.Run(CreateInvalidArgsError(call, call->GetSignature()));
-  } else {
-    impl_->StoreDeviceLocalAccountPolicy(
-        account_id,
-        policy_blob,
-        policy_blob_len,
-        DBusMethodCompletion::CreateCallback(call, sender));
-    // Response will be sent asynchronously.
+    return;
   }
+
+  impl_->StoreDeviceLocalAccountPolicy(
+      account_id, policy_blob,
+      DBusMethodCompletion::CreateCallback(call, sender));
+  // Response will be sent asynchronously.
 }
 
 std::unique_ptr<dbus::Response>
@@ -461,10 +456,10 @@ SessionManagerDBusAdaptor::RetrieveDeviceLocalAccountPolicy(
   if (!reader.PopString(&account_id))
     return CreateInvalidArgsError(call, call->GetSignature());
 
-  std::vector<uint8_t> policy_data;
+  std::vector<uint8_t> policy_blob;
   SessionManagerImpl::Error error;
-  impl_->RetrieveDeviceLocalAccountPolicy(account_id, &policy_data, &error);
-  return CraftAppropriateResponseWithBytes(call, error, policy_data);
+  impl_->RetrieveDeviceLocalAccountPolicy(account_id, &policy_blob, &error);
+  return CraftAppropriateResponseWithBytes(call, error, policy_blob);
 }
 
 std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrieveSessionState(

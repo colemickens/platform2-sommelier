@@ -29,14 +29,15 @@ class MockDevicePolicyService : public DevicePolicyService {
                           PolicyKey* policy_key);
   ~MockDevicePolicyService() override;
 
-  MOCK_METHOD5(Store, bool(const uint8_t*, uint32_t, int, SignatureCheck,
+  MOCK_METHOD4(Store, bool(const std::vector<uint8_t>&, int, SignatureCheck,
                            const Completion&));
   MOCK_METHOD1(Retrieve, bool(std::vector<uint8_t>*));
   MOCK_METHOD4(
       CheckAndHandleOwnerLogin,
       bool(const std::string&, PK11SlotInfo*, bool*, brillo::ErrorPtr*));
   MOCK_METHOD3(ValidateAndStoreOwnerKey,
-               bool(const std::string&, const std::string&, PK11SlotInfo*));
+               bool(const std::string&, const std::vector<uint8_t>&,
+                    PK11SlotInfo*));
   MOCK_METHOD0(KeyMissing, bool(void));
   MOCK_METHOD0(Mitigating, bool(void));
   MOCK_METHOD0(Initialize, bool(void));
