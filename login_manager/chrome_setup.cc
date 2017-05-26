@@ -367,9 +367,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("moblab"))
     builder->AddArg("--disable-demo-mode");
 
-  // Re-enable prefixed EME by default in Chrome OS.
-  builder->AddArg("--enable-prefixed-encrypted-media");
-
   if (builder->UseFlagIsSet("allow_consumer_kiosk"))
     builder->AddArg("--enable-consumer-kiosk");
 }
