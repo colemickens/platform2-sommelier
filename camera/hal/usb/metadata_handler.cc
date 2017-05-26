@@ -143,6 +143,13 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
   const uint8_t flash_mode = ANDROID_FLASH_MODE_OFF;
   UPDATE(ANDROID_FLASH_MODE, &flash_mode, 1);
 
+  // android.hotpixel
+  const uint8_t available_hotpixel_mode =
+      ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE_OFF;
+  UPDATE(ANDROID_STATISTICS_INFO_AVAILABLE_HOT_PIXEL_MAP_MODES,
+         &available_hotpixel_mode, 1);
+  UPDATE(ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE, &available_hotpixel_mode, 1);
+
   // android.jpeg
   const int32_t jpeg_available_thumbnail_sizes[] = {0, 0, 320, 240};
   UPDATE(ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES, jpeg_available_thumbnail_sizes,
@@ -166,6 +173,22 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
          &optical_stabilization_mode, 1);
   UPDATE(ANDROID_LENS_OPTICAL_STABILIZATION_MODE, &optical_stabilization_mode,
          1);
+
+  const float pose_rotation[] = {0.0, 0.0, 0.0, 0.0};
+  UPDATE(ANDROID_LENS_POSE_ROTATION, pose_rotation, ARRAY_SIZE(pose_rotation));
+
+  const float pose_translation[] = {0.0, 0.0, 0.0};
+  UPDATE(ANDROID_LENS_POSE_TRANSLATION, pose_translation,
+         ARRAY_SIZE(pose_translation));
+
+  // TODO(henryhsu): understand this parameter
+  const float intrinsic_calibration[] = {0.0, 0.0, 0.0, 0.0, 0.0};
+  UPDATE(ANDROID_LENS_INTRINSIC_CALIBRATION, intrinsic_calibration,
+         ARRAY_SIZE(intrinsic_calibration));
+
+  const float radial_distortion[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+  UPDATE(ANDROID_LENS_RADIAL_DISTORTION, radial_distortion,
+         ARRAY_SIZE(radial_distortion));
 
   // android.noiseReduction
   const uint8_t noise_reduction_modes[] = {
@@ -221,6 +244,7 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
 
   const int32_t test_pattern_mode = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
   UPDATE(ANDROID_SENSOR_AVAILABLE_TEST_PATTERN_MODES, &test_pattern_mode, 1);
+  UPDATE(ANDROID_SENSOR_TEST_PATTERN_MODE, &test_pattern_mode, 1);
 
   const uint8_t timestamp_source = ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE_UNKNOWN;
   UPDATE(ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE, &timestamp_source, 1);
@@ -237,6 +261,11 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
 
   const int32_t max_face_count = 0;
   UPDATE(ANDROID_STATISTICS_INFO_MAX_FACE_COUNT, &max_face_count, 1);
+
+  const uint8_t lens_shading_map_mode =
+      ANDROID_STATISTICS_LENS_SHADING_MAP_MODE_OFF;
+  UPDATE(ANDROID_STATISTICS_INFO_AVAILABLE_LENS_SHADING_MAP_MODES,
+         &lens_shading_map_mode, 1);
 
   // android.sync
   const int32_t max_latency = ANDROID_SYNC_MAX_LATENCY_UNKNOWN;
@@ -405,23 +434,25 @@ void MetadataHandler::PreHandleRequest(
   current_frame_number_ = frame_number;
 }
 
-void MetadataHandler::PostHandleRequest(int frame_number,
-                                        int64_t timestamp,
-                                        android::CameraMetadata* metadata) {
+int MetadataHandler::PostHandleRequest(int frame_number,
+                                       int64_t timestamp,
+                                       android::CameraMetadata* metadata) {
   DCHECK(thread_checker_.CalledOnValidThread());
   if (current_frame_number_ != frame_number) {
     LOGF(ERROR)
         << "Frame number mismatch in PreHandleRequest and PostHandleRequest";
-    return;
+    return -EINVAL;
   }
 
-  metadata->update(ANDROID_SENSOR_TIMESTAMP, &timestamp, 1);
-
+  // android.control
   // For USB camera, we don't know the AE state. Set the state to converged to
   // indicate the frame should be good to use. Then apps don't have to wait the
   // AE state.
-  uint8_t ae_state = ANDROID_CONTROL_AE_STATE_CONVERGED;
-  metadata->update(ANDROID_CONTROL_AE_STATE, &ae_state, 1);
+  const uint8_t ae_state = ANDROID_CONTROL_AE_STATE_CONVERGED;
+  UPDATE(ANDROID_CONTROL_AE_STATE, &ae_state, 1);
+
+  const uint8_t ae_lock = ANDROID_CONTROL_AE_LOCK_ON;
+  UPDATE(ANDROID_CONTROL_AE_LOCK, &ae_lock, 1);
 
   // For USB camera, the USB camera handles everything and we don't have control
   // over AF. We only simply fake the AF metadata based on the request
@@ -432,11 +463,47 @@ void MetadataHandler::PostHandleRequest(int frame_number,
   } else {
     af_state = ANDROID_CONTROL_AF_STATE_INACTIVE;
   }
-  metadata->update(ANDROID_CONTROL_AF_STATE, &af_state, 1);
+  UPDATE(ANDROID_CONTROL_AF_STATE, &af_state, 1);
 
   // Set AWB state to converged to indicate the frame should be good to use.
-  uint8_t awb_state = ANDROID_CONTROL_AWB_STATE_CONVERGED;
-  metadata->update(ANDROID_CONTROL_AWB_STATE, &awb_state, 1);
+  const uint8_t awb_state = ANDROID_CONTROL_AWB_STATE_CONVERGED;
+  UPDATE(ANDROID_CONTROL_AWB_STATE, &awb_state, 1);
+
+  const uint8_t awb_lock = ANDROID_CONTROL_AWB_LOCK_ON;
+  UPDATE(ANDROID_CONTROL_AWB_LOCK, &awb_lock, 1);
+
+  camera_metadata_entry active_array_size =
+      metadata->find(ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+  const int32_t region_3a[] = {
+      active_array_size.data.i32[0], active_array_size.data.i32[1],
+      active_array_size.data.i32[2], active_array_size.data.i32[3],
+      0  // A region with 0 weight is ignored.
+  };
+  UPDATE(ANDROID_CONTROL_AE_REGIONS, region_3a, ARRAY_SIZE(region_3a));
+  UPDATE(ANDROID_CONTROL_AF_REGIONS, region_3a, ARRAY_SIZE(region_3a));
+  UPDATE(ANDROID_CONTROL_AWB_REGIONS, region_3a, ARRAY_SIZE(region_3a));
+
+  // android.scaler
+  const int32_t crop_region[] = {
+      active_array_size.data.i32[0], active_array_size.data.i32[1],
+      active_array_size.data.i32[2], active_array_size.data.i32[3],
+  };
+  UPDATE(ANDROID_SCALER_CROP_REGION, crop_region, ARRAY_SIZE(crop_region));
+
+  // android.sensor
+  UPDATE(ANDROID_SENSOR_TIMESTAMP, &timestamp, 1);
+
+  const int64_t rolling_shutter_skew = 0;
+  UPDATE(ANDROID_SENSOR_ROLLING_SHUTTER_SKEW, &rolling_shutter_skew, 1);
+
+  // android.statistics
+  const uint8_t lens_shading_map_mode =
+      ANDROID_STATISTICS_LENS_SHADING_MAP_MODE_OFF;
+  UPDATE(ANDROID_STATISTICS_LENS_SHADING_MAP_MODE, &lens_shading_map_mode, 1);
+
+  const uint8_t scene_flicker = ANDROID_STATISTICS_SCENE_FLICKER_NONE;
+  UPDATE(ANDROID_STATISTICS_SCENE_FLICKER, &scene_flicker, 1);
+  return 0;
 }
 
 bool MetadataHandler::IsValidTemplateType(int template_type) {

@@ -54,9 +54,9 @@ class MetadataHandler {
 
   // Called after the request is processed. This function is used to update
   // required metadata which can be gotton from 3A or image processor.
-  void PostHandleRequest(int frame_number,
-                         int64_t timestamp,
-                         android::CameraMetadata* metadata);
+  int PostHandleRequest(int frame_number,
+                        int64_t timestamp,
+                        android::CameraMetadata* metadata);
 
  private:
   // Check |template_type| is valid or not.

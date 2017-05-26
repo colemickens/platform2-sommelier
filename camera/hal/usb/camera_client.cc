@@ -448,8 +448,12 @@ void CameraClient::RequestHandler::HandleRequest(
 
   int64_t timestamp;
   NotifyShutter(capture_result.frame_number, &timestamp);
-  metadata_handler_->PostHandleRequest(capture_result.frame_number, timestamp,
-                                       metadata);
+  ret = metadata_handler_->PostHandleRequest(capture_result.frame_number,
+                                             timestamp, metadata);
+  if (ret) {
+    LOGFID(ERROR, device_id_) << "Update metadata in PostHandleRequest failed";
+    return;
+  }
   capture_result.result = metadata->release();
 
   // After process_capture_result, HAL cannot access the output buffer in
