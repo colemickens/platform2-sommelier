@@ -57,9 +57,9 @@ class DevicePolicyService : public PolicyService {
   // Checks whether the given |current_user| is the device owner. The result of
   // the check is returned in |is_owner|. If so, it is validated that the device
   // policy settings are set up appropriately:
-  // - If |current_user| has the owner key, put her on the login white list.
-  // - If policy claims |current_user| is the device owner but she doesn't
-  //   appear to have the owner key, run key mitigation.
+  // - If |current_user| has the owner key, put them on the login white list.
+  // - If policy claims |current_user| is the device owner but they don't appear
+  //   to have the owner key, run key mitigation.
   // Returns true on success. Fills in |error| upon encountering an error.
   virtual bool CheckAndHandleOwnerLogin(const std::string& current_user,
                                         PK11SlotInfo* module,
@@ -159,7 +159,7 @@ class DevicePolicyService : public PolicyService {
   bool StoreOwnerProperties(const std::string& current_user,
                             crypto::RSAPrivateKey* signing_key);
 
-  // Checks the user's NSS database to see if she has the private key.
+  // Checks the user's NSS database to see if they have the private key.
   // Returns a pointer to it if so.
   // On failure, returns nullptr, with |error| set appropriately.
   // |error| can be nullptr, if caller doesn't need it.

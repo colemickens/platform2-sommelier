@@ -161,8 +161,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
                                 bool* created);
 
   // Updates current user activity timestamp. This is called daily.
-  // So we may not consider current user as old (and delete it soon after she
-  // logs off). Returns true if current user is logged in and timestamp was
+  // So we may not consider current user as old (and delete it soon after they
+  // log off). Returns true if current user is logged in and timestamp was
   // updated.
   // If no user is logged or the mount is ephemeral, nothing is done and false
   // is returned.

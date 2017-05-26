@@ -412,8 +412,8 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
     return false;
   }
 
-  // Check whether the current user is the owner, and if so make sure she is
-  // whitelisted and has an owner key.
+  // Check whether the current user is the owner, and if so make sure they are
+  // whitelisted and have an owner key.
   bool user_is_owner = false;
   if (!device_policy_->CheckAndHandleOwnerLogin(
           user_session->username, user_session->slot.get(), &user_is_owner,

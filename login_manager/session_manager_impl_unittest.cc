@@ -794,7 +794,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
                            MockPolicyService::CreateDoNothing());
   Mock::VerifyAndClearExpectations(user_policy_services_[kSaneEmail]);
 
-  // Storing policy for another username fails before his session starts.
+  // Storing policy for another username fails before their session starts.
   const char user2[] = "user2@somewhere.com";
   brillo::ErrorPtr error;
   impl_.StorePolicyForUser(user2, policy_blob.data(), policy_blob.size(),
@@ -894,7 +894,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
   EXPECT_TRUE(
       std::equal(fake_policy.begin(), fake_policy.end(), out_blob.begin()));
 
-  // Retrieving policy for another username fails before his session starts.
+  // Retrieving policy for another username fails before their session starts.
   const char user2[] = "user2@somewhere.com";
   out_blob.clear();
   impl_.RetrievePolicyForUser(user2, &out_blob, &error_);

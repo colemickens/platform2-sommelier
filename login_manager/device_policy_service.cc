@@ -98,7 +98,7 @@ bool DevicePolicyService::CheckAndHandleOwnerLogin(
       GetOwnerKeyForGivenUser(key()->public_key_der(), slot, &key_error);
 
   // Now, the flip side...if we believe the current user to be the owner based
-  // on the user field in policy, and she DOESN'T have the private half of the
+  // on the user field in policy, and they DON'T have the private half of the
   // public key, we must mitigate.
   *is_owner = GivenUserIsOwner(current_user);
   if (*is_owner && !signing_key.get()) {

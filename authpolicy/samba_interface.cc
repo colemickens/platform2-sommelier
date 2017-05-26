@@ -325,7 +325,7 @@ ErrorType SambaInterface::AuthenticateUserInternal(
     return error;
 
   // Update normalized_upn. This handles the situation when the user name
-  // changes on the server and the user logs in with his old user name (e.g.
+  // changes on the server and the user logs in with their old user name (e.g.
   // from the pods screen in Chrome).
   normalized_upn = account_info->sam_account_name() + "@" + realm;
 
@@ -931,7 +931,7 @@ ErrorType SambaInterface::SearchAccountInfo(
   // Parse account info protobuf.
   if (account_info_blob.empty()) {
     // No search results. Return ERROR_BAD_USER_NAME since it usually means that
-    // the user mistyped his user name.
+    // the user mistyped their user name.
     LOG(WARNING) << "Search yielded no results";
     return ERROR_BAD_USER_NAME;
   } else if (!account_info->ParseFromString(account_info_blob)) {

@@ -41,7 +41,7 @@ class NssUtilTest : public ::testing::Test {
   DISALLOW_COPY_AND_ASSIGN(NssUtilTest);
 };
 
-const char NssUtilTest::kUsername[] = "some.guy@nowhere.com";
+const char NssUtilTest::kUsername[] = "someone@nowhere.com";
 
 TEST_F(NssUtilTest, FindFromPublicKey) {
   // Create a keypair, which will put the keys in the user's NSSDB.
