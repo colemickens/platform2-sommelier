@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/gtest_prod_util.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <crypto/scoped_nss_types.h>
@@ -135,6 +136,7 @@ class DevicePolicyService : public PolicyService {
  private:
   friend class DevicePolicyServiceTest;
   friend class MockDevicePolicyService;
+  FRIEND_TEST_ALL_PREFIXES(DevicePolicyServiceTest, GivenUserIsOwner);
 
   // Takes ownership of |policy_store|.
   DevicePolicyService(const base::FilePath& install_attributes_file,
@@ -168,9 +170,11 @@ class DevicePolicyService : public PolicyService {
       PK11SlotInfo* module,
       brillo::ErrorPtr* error);
 
-  // Returns true if the |current_user| is listed in |policy_| as the
-  // device owner.  Returns false if not, or if that cannot be determined.
-  bool GivenUserIsOwner(const std::string& current_user);
+  // Returns true if |current_user| is listed in |policy| as the device owner.
+  // Returns false if not, or if that cannot be determined.
+  static bool GivenUserIsOwner(
+      const enterprise_management::PolicyFetchResponse& policy,
+      const std::string& current_user);
 
   const base::FilePath install_attributes_file_;
   LoginMetrics* metrics_;

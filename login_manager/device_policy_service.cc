@@ -44,6 +44,11 @@ bool IsConsumerPolicy(const em::PolicyFetchResponse& policy) {
       !poldata.ParseFromString(policy.policy_data())) {
     return false;
   }
+
+  // Look at management_mode first.  Refer to PolicyData::management_mode docs
+  // for details.
+  if (poldata.has_management_mode())
+    return poldata.management_mode() == em::PolicyData::LOCAL_OWNER;
   return !poldata.has_request_token() && poldata.has_username();
 }
 
@@ -100,7 +105,7 @@ bool DevicePolicyService::CheckAndHandleOwnerLogin(
   // Now, the flip side...if we believe the current user to be the owner based
   // on the user field in policy, and they DON'T have the private half of the
   // public key, we must mitigate.
-  *is_owner = GivenUserIsOwner(current_user);
+  *is_owner = GivenUserIsOwner(store()->Get(), current_user);
   if (*is_owner && !signing_key.get()) {
     if (!mitigator_->Mitigate(current_user)) {
       *error = std::move(key_error);
@@ -402,16 +407,20 @@ std::unique_ptr<RSAPrivateKey> DevicePolicyService::GetOwnerKeyForGivenUser(
   return result;
 }
 
-bool DevicePolicyService::GivenUserIsOwner(const std::string& current_user) {
-  const em::PolicyFetchResponse& policy(store()->Get());
+// static
+bool DevicePolicyService::GivenUserIsOwner(
+    const enterprise_management::PolicyFetchResponse& policy,
+    const std::string& current_user) {
   em::PolicyData poldata;
-  if (!policy.has_policy_data())
+  if (!policy.has_policy_data() ||
+      !poldata.ParseFromString(policy.policy_data())) {
     return false;
-  if (poldata.ParseFromString(policy.policy_data())) {
-    return (!poldata.has_request_token() &&
-            poldata.has_username() && poldata.username() == current_user);
   }
-  return false;
+
+  if (!IsConsumerPolicy(policy))
+    return false;
+
+  return (poldata.has_username() && poldata.username() == current_user);
 }
 
 void DevicePolicyService::PersistPolicy(const Completion& completion) {

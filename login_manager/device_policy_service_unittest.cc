@@ -51,9 +51,13 @@ using testing::WithArg;
 using testing::_;
 
 namespace {
+
+constexpr char kTestUser[] = "user@example.com";
+
 ACTION_P(AssignVector, str) {
   arg0->assign(str.begin(), str.end());
 }
+
 }  // namespace
 
 namespace login_manager {
@@ -475,6 +479,42 @@ TEST_F(DevicePolicyServiceTest, PolicyAllowsNewUsers) {
   em::ChromeDeviceSettingsProto implicitly_disallowed = not_disallowed;
   implicitly_disallowed.mutable_user_whitelist()->add_user_whitelist("a@b");
   EXPECT_FALSE(PolicyAllowsNewUsers(implicitly_disallowed));
+}
+
+TEST_F(DevicePolicyServiceTest, GivenUserIsOwner) {
+  {  // Correct owner.
+    em::PolicyData policy_data;
+    policy_data.set_username(kTestUser);
+    em::PolicyFetchResponse response;
+    response.set_policy_data(policy_data.SerializeAsString());
+
+    EXPECT_TRUE(DevicePolicyService::GivenUserIsOwner(response, kTestUser));
+  }
+  {  // Empty string is not an owner.
+    em::PolicyData policy_data;
+    em::PolicyFetchResponse response;
+    response.set_policy_data(policy_data.SerializeAsString());
+
+    EXPECT_FALSE(DevicePolicyService::GivenUserIsOwner(response, ""));
+  }
+  {  // Managed device has no owner.
+    em::PolicyData policy_data;
+    policy_data.set_username(kTestUser);
+    policy_data.set_management_mode(em::PolicyData::ENTERPRISE_MANAGED);
+    em::PolicyFetchResponse response;
+    response.set_policy_data(policy_data.SerializeAsString());
+
+    EXPECT_FALSE(DevicePolicyService::GivenUserIsOwner(response, kTestUser));
+  }
+  {  // Managed device has no owner (fallback to DM token).
+    em::PolicyData policy_data;
+    policy_data.set_username(kTestUser);
+    policy_data.set_request_token("asdf");
+    em::PolicyFetchResponse response;
+    response.set_policy_data(policy_data.SerializeAsString());
+
+    EXPECT_FALSE(DevicePolicyService::GivenUserIsOwner(response, kTestUser));
+  }
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessNewKey) {
