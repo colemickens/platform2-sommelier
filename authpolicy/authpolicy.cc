@@ -246,17 +246,18 @@ void AuthPolicy::OnPolicyStored(
     dbus::Response* response) {
   const char* const method = GetSessionManagerStoreMethod(is_user_policy);
   brillo::ErrorPtr brillo_error;
-  bool done = false;
   std::string msg;
   if (!response) {
-    msg = base::StringPrintf("Call to %s failed. No response.", method);
-  } else if (!ExtractMethodCallResults(response, &brillo_error, &done)) {
+    // In case of error, session_manager_proxy_ prints out the error string and
+    // response is empty.
+    msg =
+        base::StringPrintf("Call to %s failed. No response or error.", method);
+  } else if (!ExtractMethodCallResults(response, &brillo_error)) {
+    // Response is expected have no call results.
     msg = base::StringPrintf(
         "Call to %s failed. %s",
         method,
         brillo_error ? brillo_error->GetMessage().c_str() : "Unknown error.");
-  } else if (!done) {
-    msg = base::StringPrintf("Call to %s failed. Call returned false.", method);
   }
 
   ErrorType error;

@@ -379,12 +379,10 @@ class AuthPolicyTest : public testing::Test {
       }
     }
 
-    // Answer authpolicy with "true" to signal that policy has been stored.
+    // Answer authpolicy with an empty response to signal that policy has been
+    // stored.
     EXPECT_FALSE(callback.is_null());
-    auto response = Response::CreateEmpty();
-    MessageWriter writer(response.get());
-    writer.AppendBool(true);
-    callback.Run(response.get());
+    callback.Run(Response::CreateEmpty().get());
   }
 
   void TearDown() override {
