@@ -173,12 +173,30 @@ TEST_F(MetricsLibraryTest, ConsentIdValidContentNewline) {
   ASSERT_EQ(id, kValidGuid);
 }
 
+// MetricsEnabled policy not present, enterprise managed
+// -> AreMetricsEnabled returns true.
+TEST_F(MetricsLibraryTest, AreMetricsEnabledTrueNoPolicyManaged) {
+  EXPECT_CALL(*device_policy_, GetMetricsEnabled(_)).WillOnce(Return(false));
+  EXPECT_CALL(*device_policy_, IsEnterpriseManaged()).WillOnce(Return(true));
+  EXPECT_TRUE(lib_.AreMetricsEnabled());
+}
+
+// MetricsEnabled policy not present, not enterprise managed
+// -> AreMetricsEnabled returns false.
+TEST_F(MetricsLibraryTest, AreMetricsEnabledFalseNoPolicyUnmanaged) {
+  EXPECT_CALL(*device_policy_, GetMetricsEnabled(_)).WillOnce(Return(false));
+  EXPECT_CALL(*device_policy_, IsEnterpriseManaged()).WillOnce(Return(false));
+  EXPECT_FALSE(lib_.AreMetricsEnabled());
+}
+
+// MetricsEnabled policy set to false -> AreMetricsEnabled returns false.
 TEST_F(MetricsLibraryTest, AreMetricsEnabledFalse) {
   EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
       .WillOnce(SetMetricsPolicy(false));
   EXPECT_FALSE(lib_.AreMetricsEnabled());
 }
 
+// MetricsEnabled policy set to true -> AreMetricsEnabled returns true.
 TEST_F(MetricsLibraryTest, AreMetricsEnabledTrue) {
   EXPECT_TRUE(lib_.AreMetricsEnabled());
 }
@@ -191,10 +209,13 @@ void MetricsLibraryTest::VerifyEnabledCacheHit(bool to_value) {
     EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
         .WillOnce(SetMetricsPolicy(!to_value));
     ASSERT_EQ(!to_value, lib_.AreMetricsEnabled());
+    testing::Mock::VerifyAndClearExpectations(device_policy_);
+
     ON_CALL(*device_policy_, GetMetricsEnabled(_))
         .WillByDefault(SetMetricsPolicy(to_value));
     if (lib_.AreMetricsEnabled() == !to_value)
       return;
+    testing::Mock::VerifyAndClearExpectations(device_policy_);
   }
   ADD_FAILURE() << "Did not see evidence of caching";
 }
@@ -204,6 +225,8 @@ void MetricsLibraryTest::VerifyEnabledCacheEviction(bool to_value) {
   EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
       .WillOnce(SetMetricsPolicy(!to_value));
   ASSERT_EQ(!to_value, lib_.AreMetricsEnabled());
+  testing::Mock::VerifyAndClearExpectations(device_policy_);
+
   EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
       .WillOnce(SetMetricsPolicy(to_value));
   ASSERT_LT(abs(static_cast<int>(time(nullptr) - lib_.cached_enabled_time_)),

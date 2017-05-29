@@ -133,12 +133,7 @@ class MetricsLibrary : public MetricsLibraryInterface {
  private:
   friend class CMetricsLibraryTest;
   friend class MetricsLibraryTest;
-  FRIEND_TEST(MetricsLibraryTest, AreMetricsEnabled);
-  FRIEND_TEST(MetricsLibraryTest, FormatChromeMessage);
-  FRIEND_TEST(MetricsLibraryTest, FormatChromeMessageTooLong);
   FRIEND_TEST(MetricsLibraryTest, IsDeviceMounted);
-  FRIEND_TEST(MetricsLibraryTest, SendMessageToChrome);
-  FRIEND_TEST(MetricsLibraryTest, SendMessageToChromeUMAEventsBadFileLocation);
 
   // Sets |*result| to whether or not the |mounts_file| indicates that
   // the |device_name| is currently mounted.  Uses |buffer| of

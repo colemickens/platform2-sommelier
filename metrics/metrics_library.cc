@@ -191,26 +191,28 @@ bool MetricsLibrary::AreMetricsEnabled() {
     if (!policy_provider_.get())
       policy_provider_.reset(new policy::PolicyProvider());
     policy_provider_->Reload();
-    // We initialize with the default value which is false and will be preserved
-    // if the policy is not set.
-    bool enabled = false;
-    bool has_policy = false;
-    if (policy_provider_->device_policy_is_loaded()) {
-      has_policy =
-          policy_provider_->GetDevicePolicy().GetMetricsEnabled(&enabled);
-    }
-    // If policy couldn't be loaded or the metrics policy is not set we should
-    // still respect the consent file if it is present for migration purposes.
+
+    const policy::DevicePolicy* device_policy = nullptr;
+    if (policy_provider_->device_policy_is_loaded())
+      device_policy = &policy_provider_->GetDevicePolicy();
+
+    // If policy couldn't be loaded or the metrics policy is not set, default to
+    // enabled for enterprise-enrolled devices, cf. https://crbug/456186, or
+    // respect the consent file if it is present for migration purposes. In all
+    // other cases, default to disabled.
     // TODO(pastarmovj)
-    if (!has_policy) {
-      std::string id;
-      enabled = ConsentId(&id);
+    std::string id_unused;
+    bool metrics_enabled = false;
+    bool metrics_policy = false;
+    if (device_policy && device_policy->GetMetricsEnabled(&metrics_policy)) {
+      metrics_enabled = metrics_policy;
+    } else if (device_policy && device_policy->IsEnterpriseManaged()) {
+      metrics_enabled = true;
+    } else {
+      metrics_enabled = ConsentId(&id_unused);
     }
 
-    if (enabled && !IsGuestMode())
-      cached_enabled_ = true;
-    else
-      cached_enabled_ = false;
+    cached_enabled_ = (metrics_enabled && !IsGuestMode());
   }
   return cached_enabled_;
 }
