@@ -208,6 +208,7 @@ void AuthPolicy::StorePolicy(const std::string& policy_blob,
   em::PolicyData policy_data;
   policy_data.set_policy_value(policy_blob);
   policy_data.set_policy_type(policy_type);
+  policy_data.set_management_mode(em::PolicyData::ENTERPRISE_MANAGED);
   // Note: No signature required here, Active Directory policy is unsigned!
 
   em::PolicyFetchResponse policy_response;
