@@ -58,7 +58,7 @@ class BoolFlag {
         GetValueOfType(dict, name_, base::Value::TYPE_BOOLEAN, "boolean");
     if (value) {
       bool bool_value = false;
-      DCHECK(value->GetAsBoolean(&bool_value));
+      CHECK(value->GetAsBoolean(&bool_value));
       (flags->*setter_)(bool_value);
     }
   }
@@ -89,7 +89,7 @@ class StringFlag {
         GetValueOfType(dict, name_, base::Value::TYPE_STRING, "string");
     if (value) {
       std::string string_value;
-      DCHECK(value->GetAsString(&string_value));
+      CHECK(value->GetAsString(&string_value));
       (flags->*setter_)(string_value);
     }
   }
@@ -133,7 +133,7 @@ constexpr StringFlag kStringFlags[] = {
 // static
 std::string SerializeFlags(const protos::DebugFlags& flags) {
   std::string proto_blob, proto_encoded;
-  DCHECK(flags.SerializeToString(&proto_blob));
+  CHECK(flags.SerializeToString(&proto_blob));
   base::Base64Encode(proto_blob, &proto_encoded);
   return proto_encoded;
 }
