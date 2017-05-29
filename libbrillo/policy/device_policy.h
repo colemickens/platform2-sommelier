@@ -155,6 +155,12 @@ class DevicePolicy {
   virtual bool GetAutoLaunchedKioskAppId(
       std::string* app_id_out) const = 0;
 
+  // Returns true if the policy data indicates that the device is enterprise
+  // managed. Note that this potentially could be faked by an exploit, therefore
+  // InstallAttributesReader must be used when tamper-proof evidence of the
+  // management state is required.
+  virtual bool IsEnterpriseManaged() const = 0;
+
  private:
   // Verifies that the policy files are owned by root and exist.
   virtual bool VerifyPolicyFiles() = 0;

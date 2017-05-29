@@ -17,6 +17,8 @@
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 
+namespace em = enterprise_management;
+
 namespace policy {
 
 namespace {
@@ -157,8 +159,7 @@ bool DevicePolicyImpl::GetUserWhitelist(
     std::vector<std::string>* user_whitelist) const {
   if (!device_policy_.has_user_whitelist())
     return false;
-  const enterprise_management::UserWhitelistProto& proto =
-      device_policy_.user_whitelist();
+  const em::UserWhitelistProto& proto = device_policy_.user_whitelist();
   user_whitelist->clear();
   for (int i = 0; i < proto.user_whitelist_size(); i++)
     user_whitelist->push_back(proto.user_whitelist(i));
@@ -213,8 +214,7 @@ bool DevicePolicyImpl::GetReportVersionInfo(bool* report_version_info) const {
   if (!device_policy_.has_device_reporting())
     return false;
 
-  const enterprise_management::DeviceReportingProto& proto =
-      device_policy_.device_reporting();
+  const em::DeviceReportingProto& proto = device_policy_.device_reporting();
   if (!proto.has_report_version_info())
     return false;
 
@@ -227,8 +227,7 @@ bool DevicePolicyImpl::GetReportActivityTimes(
   if (!device_policy_.has_device_reporting())
     return false;
 
-  const enterprise_management::DeviceReportingProto& proto =
-      device_policy_.device_reporting();
+  const em::DeviceReportingProto& proto = device_policy_.device_reporting();
   if (!proto.has_report_activity_times())
     return false;
 
@@ -240,8 +239,7 @@ bool DevicePolicyImpl::GetReportBootMode(bool* report_boot_mode) const {
   if (!device_policy_.has_device_reporting())
     return false;
 
-  const enterprise_management::DeviceReportingProto& proto =
-      device_policy_.device_reporting();
+  const em::DeviceReportingProto& proto = device_policy_.device_reporting();
   if (!proto.has_report_boot_mode())
     return false;
 
@@ -263,8 +261,7 @@ bool DevicePolicyImpl::GetReleaseChannel(
   if (!device_policy_.has_release_channel())
     return false;
 
-  const enterprise_management::ReleaseChannelProto& proto =
-      device_policy_.release_channel();
+  const em::ReleaseChannelProto& proto = device_policy_.release_channel();
   if (!proto.has_release_channel())
     return false;
 
@@ -277,8 +274,7 @@ bool DevicePolicyImpl::GetReleaseChannelDelegated(
   if (!device_policy_.has_release_channel())
     return false;
 
-  const enterprise_management::ReleaseChannelProto& proto =
-      device_policy_.release_channel();
+  const em::ReleaseChannelProto& proto = device_policy_.release_channel();
   if (!proto.has_release_channel_delegated())
     return false;
 
@@ -291,7 +287,7 @@ bool DevicePolicyImpl::GetUpdateDisabled(
   if (!device_policy_.has_auto_update_settings())
     return false;
 
-  const enterprise_management::AutoUpdateSettingsProto& proto =
+  const em::AutoUpdateSettingsProto& proto =
       device_policy_.auto_update_settings();
   if (!proto.has_update_disabled())
     return false;
@@ -305,7 +301,7 @@ bool DevicePolicyImpl::GetTargetVersionPrefix(
   if (!device_policy_.has_auto_update_settings())
     return false;
 
-  const enterprise_management::AutoUpdateSettingsProto& proto =
+  const em::AutoUpdateSettingsProto& proto =
       device_policy_.auto_update_settings();
   if (!proto.has_target_version_prefix())
     return false;
@@ -319,7 +315,7 @@ bool DevicePolicyImpl::GetScatterFactorInSeconds(
   if (!device_policy_.has_auto_update_settings())
     return false;
 
-  const enterprise_management::AutoUpdateSettingsProto& proto =
+  const em::AutoUpdateSettingsProto& proto =
       device_policy_.auto_update_settings();
   if (!proto.has_scatter_factor_in_seconds())
     return false;
@@ -333,7 +329,7 @@ bool DevicePolicyImpl::GetAllowedConnectionTypesForUpdate(
   if (!device_policy_.has_auto_update_settings())
     return false;
 
-  const enterprise_management::AutoUpdateSettingsProto& proto =
+  const em::AutoUpdateSettingsProto& proto =
       device_policy_.auto_update_settings();
   if (proto.allowed_connection_types_size() <= 0)
     return false;
@@ -351,7 +347,7 @@ bool DevicePolicyImpl::GetOpenNetworkConfiguration(
   if (!device_policy_.has_open_network_configuration())
     return false;
 
-  const enterprise_management::DeviceOpenNetworkConfigurationProto& proto =
+  const em::DeviceOpenNetworkConfigurationProto& proto =
       device_policy_.open_network_configuration();
   if (!proto.has_open_network_configuration())
     return false;
@@ -361,11 +357,11 @@ bool DevicePolicyImpl::GetOpenNetworkConfiguration(
 }
 
 bool DevicePolicyImpl::GetOwner(std::string* owner) const {
-  // The device is enterprise enrolled iff a request token exists.
-  if (policy_data_.has_request_token()) {
+  if (IsEnterpriseManaged()) {
     *owner = "";
     return true;
   }
+
   if (!policy_data_.has_username())
     return false;
   *owner = policy_data_.username();
@@ -377,7 +373,7 @@ bool DevicePolicyImpl::GetHttpDownloadsEnabled(
   if (!device_policy_.has_auto_update_settings())
     return false;
 
-  const enterprise_management::AutoUpdateSettingsProto& proto =
+  const em::AutoUpdateSettingsProto& proto =
       device_policy_.auto_update_settings();
 
   if (!proto.has_http_downloads_enabled())
@@ -391,7 +387,7 @@ bool DevicePolicyImpl::GetAuP2PEnabled(bool* au_p2p_enabled) const {
   if (!device_policy_.has_auto_update_settings())
     return false;
 
-  const enterprise_management::AutoUpdateSettingsProto& proto =
+  const em::AutoUpdateSettingsProto& proto =
       device_policy_.auto_update_settings();
 
   if (!proto.has_p2p_enabled())
@@ -406,7 +402,7 @@ bool DevicePolicyImpl::GetAllowKioskAppControlChromeVersion(
   if (!device_policy_.has_allow_kiosk_app_control_chrome_version())
     return false;
 
-  const enterprise_management::AllowKioskAppControlChromeVersionProto& proto =
+  const em::AllowKioskAppControlChromeVersionProto& proto =
       device_policy_.allow_kiosk_app_control_chrome_version();
 
   if (!proto.has_allow_kiosk_app_control_chrome_version())
@@ -421,11 +417,11 @@ bool DevicePolicyImpl::GetUsbDetachableWhitelist(
     std::vector<UsbDeviceId>* usb_whitelist) const {
   if (!device_policy_.has_usb_detachable_whitelist())
     return false;
-  const enterprise_management::UsbDetachableWhitelistProto& proto =
+  const em::UsbDetachableWhitelistProto& proto =
       device_policy_.usb_detachable_whitelist();
   usb_whitelist->clear();
   for (int i = 0; i < proto.id_size(); i++) {
-    const ::enterprise_management::UsbDeviceIdProto& id = proto.id(i);
+    const em::UsbDeviceIdProto& id = proto.id(i);
     UsbDeviceId dev_id;
     dev_id.vendor_id = id.has_vendor_id() ? id.vendor_id() : 0;
     dev_id.product_id = id.has_product_id() ? id.product_id() : 0;
@@ -439,7 +435,7 @@ bool DevicePolicyImpl::GetAutoLaunchedKioskAppId(
   if (!device_policy_.has_device_local_accounts())
     return false;
 
-  const enterprise_management::DeviceLocalAccountsProto& local_accounts =
+  const em::DeviceLocalAccountsProto& local_accounts =
       device_policy_.device_local_accounts();
 
   // For auto-launched kiosk apps, the delay needs to be 0.
@@ -447,7 +443,7 @@ bool DevicePolicyImpl::GetAutoLaunchedKioskAppId(
       local_accounts.auto_login_delay() != 0)
     return false;
 
-  for (const enterprise_management::DeviceLocalAccountInfoProto& account :
+  for (const em::DeviceLocalAccountInfoProto& account :
        local_accounts.account()) {
     // If this isn't an auto-login account, move to the next one.
     if (account.account_id() != local_accounts.auto_login_id())
@@ -456,8 +452,7 @@ bool DevicePolicyImpl::GetAutoLaunchedKioskAppId(
     // If the auto-launched account is not a kiosk app, bail out, we aren't
     // running in auto-launched kiosk mode.
     if (account.type() !=
-            enterprise_management::DeviceLocalAccountInfoProto::
-                ACCOUNT_TYPE_KIOSK_APP) {
+        em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_KIOSK_APP) {
       return false;
     }
 
@@ -467,6 +462,14 @@ bool DevicePolicyImpl::GetAutoLaunchedKioskAppId(
 
   // No auto-launched account found.
   return false;
+}
+
+bool DevicePolicyImpl::IsEnterpriseManaged() const {
+  if (policy_data_.has_management_mode())
+    return policy_data_.management_mode() == em::PolicyData::ENTERPRISE_MANAGED;
+  // Fall back to checking the request token, see management_mode documentation
+  // in device_management_backend.proto.
+  return policy_data_.has_request_token();
 }
 
 bool DevicePolicyImpl::VerifyPolicyFiles() {

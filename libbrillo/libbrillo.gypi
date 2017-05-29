@@ -435,12 +435,14 @@
           'type': 'executable',
           'dependencies': [
             '../common-mk/external_dependencies.gyp:install_attributes-proto',
+            '../common-mk/external_dependencies.gyp:policy-protos',
             'libinstallattributes-<(libbase_ver)',
             'libpolicy-<(libbase_ver)',
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'install_attributes/mock_install_attributes_reader.cc',
+            'policy/tests/device_policy_impl_unittest.cc',
             'policy/tests/libpolicy_unittest.cc',
           ]
         },

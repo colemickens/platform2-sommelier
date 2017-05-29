@@ -67,6 +67,12 @@ class DevicePolicyImpl : public DevicePolicy {
       std::vector<UsbDeviceId>* usb_whitelist) const override;
   bool GetAutoLaunchedKioskAppId(
       std::string* app_id_out) const override;
+  bool IsEnterpriseManaged() const override;
+
+  void set_policy_data_for_testing(
+      const enterprise_management::PolicyData& policy_data) {
+    policy_data_ = policy_data;
+  }
 
  protected:
   // Verifies that the policy files are owned by root and exist.
