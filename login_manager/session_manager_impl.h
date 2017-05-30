@@ -75,6 +75,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   static const char kArcContainerName[];
 
   // Android container messages.
+  static const char kArcStartForLoginScreenSignal[];
   static const char kArcStartSignal[];
   static const char kArcStopSignal[];
   static const char kArcNetworkStartSignal[];
@@ -221,10 +222,12 @@ class SessionManagerImpl : public SessionManagerInterface,
   void StartContainer(const std::string& name, Error* error);
   void StopContainer(const std::string& name, Error* error);
 
-  void StartArcInstance(const std::string& account_id,
+  void StartArcInstanceForLoginScreen(const std::string& container_instance_id,
+                                      Error* error);
+  void StartArcInstance(const std::string& container_instance_id,
+                        const std::string& account_id,
                         bool skip_boot_completed_broadcast,
                         bool scan_vendor_priv_app,
-                        std::string* container_instance_id_out,
                         Error* error);
   void StopArcInstance(Error* error);
   void SetArcCpuRestriction(ContainerCpuRestrictionState state, Error* error);
@@ -295,6 +298,13 @@ class SessionManagerImpl : public SessionManagerInterface,
                                 bool* started_container_out,
                                 const char** dbus_error_out,
                                 std::string* error_message_out);
+
+  // Starts the network interface for the Android container for ARC.  When a
+  // failure is encountered false will be returned, |dbus_error_out| will be set
+  // to a value from login_manager::dbus_error, and |error_message_out| will be
+  // filled with a message suitable for logging.
+  bool StartArcNetwork(const char** dbus_error_out,
+                       std::string* error_message_out);
 
   // Renames android-data/ in the user's home directory to android-data-old/,
   // then recursively removes the renamed directory. Returns false when it

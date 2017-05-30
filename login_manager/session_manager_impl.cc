@@ -14,13 +14,11 @@
 #include <string>
 #include <utility>
 
-#include <base/base64.h>
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
-#include <base/rand_util.h>
 #include <base/run_loop.h>
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
@@ -75,6 +73,8 @@ const char SessionManagerImpl::kResetFile[] =
 const char SessionManagerImpl::kStartUserSessionSignal[] = "start-user-session";
 
 const char SessionManagerImpl::kArcContainerName[] = "android";
+const char SessionManagerImpl::kArcStartForLoginScreenSignal[] =
+    "start-arc-instance-for-login-screen";
 const char SessionManagerImpl::kArcStartSignal[] = "start-arc-instance";
 const char SessionManagerImpl::kArcStopSignal[] = "stop-arc-instance";
 const char SessionManagerImpl::kArcNetworkStartSignal[] = "start-arc-network";
@@ -112,7 +112,6 @@ const base::FilePath::CharType kDeviceLocalAccountStateDir[] =
 // Path and the amount for the check.
 constexpr base::FilePath::CharType kArcDiskCheckPath[] = "/home";
 constexpr int64_t kArcCriticalDiskFreeBytes = 64 << 20;  // 64MB
-constexpr size_t kArcContainerInstanceIdLength = 16;
 
 // Name of android-data directory.
 const base::FilePath::CharType kAndroidDataDirName[] =
@@ -141,6 +140,18 @@ bool IsIncognitoAccountId(const std::string& account_id) {
   return (lower_case_id == kGuestUserName) ||
          (lower_case_id == SessionManagerImpl::kDemoUser);
 }
+
+#if USE_CHEETS
+bool IsDevMode(SystemUtils* system) {
+  // When GetDevModeState() returns UNKNOWN, return true.
+  return system->GetDevModeState() != DevModeState::DEV_MODE_OFF;
+}
+
+bool IsInsideVm(SystemUtils* system) {
+  // When GetVmState() returns UNKNOWN, return false.
+  return system->GetVmState() == VmState::INSIDE_VM;
+}
+#endif
 
 }  // namespace
 
@@ -763,11 +774,51 @@ void SessionManagerImpl::InitMachineInfo(const std::string& data,
     error->Set(dbus_error::kInitMachineInfoFail, "Missing parameters.");
 }
 
+void SessionManagerImpl::StartArcInstanceForLoginScreen(
+    const std::string& container_instance_id,
+    Error* error) {
+#if USE_CHEETS
+  const std::vector<std::string> keyvals = {
+      base::StringPrintf("CHROMEOS_DEV_MODE=%d", IsDevMode(system_)),
+      base::StringPrintf("CHROMEOS_INSIDE_VM=%d", IsInsideVm(system_)),
+  };
+  if (!init_controller_->TriggerImpulse(
+          kArcStartForLoginScreenSignal,
+          keyvals,
+          InitDaemonController::TriggerMode::SYNC)) {
+    static const char msg[] =
+        "Emitting start-arc-instance-for-login-screen signal failed.";
+    LOG(ERROR) << msg;
+    error->Set(dbus_error::kEmitFailed, msg);
+    return;
+  }
+  bool started_container = false;
+  const char* dbus_error = nullptr;
+  std::string error_message;
+  if (!StartArcInstanceInternal(container_instance_id, &started_container,
+                                &dbus_error, &error_message)) {
+    LOG(ERROR) << error_message;
+    error->Set(dbus_error, error_message);
+    init_controller_->TriggerImpulse(kArcStopSignal, {},
+                                     InitDaemonController::TriggerMode::SYNC);
+    if (started_container) {
+      android_container_->RequestJobExit();
+      android_container_->EnsureJobExit(
+          base::TimeDelta::FromSeconds(kContainerTimeoutSec));
+    }
+    return;
+  }
+  start_arc_instance_closure_.Run();
+#else
+  error->Set(dbus_error::kNotAvailable, "ARC not supported.");
+#endif  // !USE_CHEETS
+}
+
 void SessionManagerImpl::StartArcInstance(
+    const std::string& container_instance_id,
     const std::string& account_id,
     bool skip_boot_completed_broadcast,
     bool scan_vendor_priv_app,
-    std::string* container_instance_id_out,
     Error* error) {
 #if USE_CHEETS
   arc_start_time_ = base::TimeTicks::Now();
@@ -801,20 +852,14 @@ void SessionManagerImpl::StartArcInstance(
   const base::FilePath android_data_old_dir =
       GetAndroidDataOldDirForUser(actual_account_id);
 
-  // When GetDevModeState() returns UNKNOWN, assign true to |is_dev_mode|.
-  const bool is_dev_mode =
-      system_->GetDevModeState() != DevModeState::DEV_MODE_OFF;
-  // When GetVmState() returns UNKNOWN, assign false to |is_inside_vm|.
-  const bool is_inside_vm = system_->GetVmState() == VmState::INSIDE_VM;
-
   const std::vector<std::string> keyvals = {
       base::StringPrintf("ANDROID_DATA_DIR=%s",
                          android_data_dir.value().c_str()),
       base::StringPrintf("ANDROID_DATA_OLD_DIR=%s",
                          android_data_old_dir.value().c_str()),
       base::StringPrintf("CHROMEOS_USER=%s", actual_account_id.c_str()),
-      base::StringPrintf("CHROMEOS_DEV_MODE=%d", is_dev_mode),
-      base::StringPrintf("CHROMEOS_INSIDE_VM=%d", is_inside_vm),
+      base::StringPrintf("CHROMEOS_DEV_MODE=%d", IsDevMode(system_)),
+      base::StringPrintf("CHROMEOS_INSIDE_VM=%d", IsInsideVm(system_)),
       base::StringPrintf("DISABLE_BOOT_COMPLETED_BROADCAST=%d",
                          skip_boot_completed_broadcast),
       base::StringPrintf("ENABLE_VENDOR_PRIVILEGED=%d",
@@ -832,12 +877,9 @@ void SessionManagerImpl::StartArcInstance(
   bool started_container = false;
   const char* dbus_error = nullptr;
   std::string error_message;
-  // Container instance id needs to be valid ASCII/UTF-8, so encode as base64.
-  std::string container_instance_id =
-      base::RandBytesAsString(kArcContainerInstanceIdLength);
-  base::Base64Encode(container_instance_id, &container_instance_id);
   if (!StartArcInstanceInternal(container_instance_id, &started_container,
-                                &dbus_error, &error_message)) {
+                                &dbus_error, &error_message) ||
+      !StartArcNetwork(&dbus_error, &error_message)) {
     LOG(ERROR) << error_message;
     error->Set(dbus_error, error_message);
     init_controller_->TriggerImpulse(kArcStopSignal, {},
@@ -849,7 +891,7 @@ void SessionManagerImpl::StartArcInstance(
     }
     return;
   }
-  *container_instance_id_out = std::move(container_instance_id);
+  login_metrics_->StartTrackingArcUseTime();
   start_arc_instance_closure_.Run();
 #else
   error->Set(dbus_error::kNotAvailable, "ARC not supported.");
@@ -1171,6 +1213,7 @@ bool SessionManagerImpl::StartArcInstanceInternal(
     bool* started_container_out,
     const char** dbus_error_out,
     std::string* error_message_out) {
+  pid_t pid = 0;
   *started_container_out = false;
   *dbus_error_out = nullptr;
   error_message_out->clear();
@@ -1182,9 +1225,13 @@ bool SessionManagerImpl::StartArcInstanceInternal(
     return false;
   }
   *started_container_out = true;
+  android_container_->GetContainerPID(&pid);
+  LOG(INFO) << "Started Android container with PID " << pid;
+  return true;
+}
 
-  login_metrics_->StartTrackingArcUseTime();
-
+bool SessionManagerImpl::StartArcNetwork(const char** dbus_error_out,
+                                         std::string* error_message_out) {
   base::FilePath root_path;
   pid_t pid = 0;
   if (!android_container_->GetRootFsPath(&root_path) ||
@@ -1205,8 +1252,6 @@ bool SessionManagerImpl::StartArcInstanceInternal(
     *error_message_out = "Emitting start-arc-network signal failed.";
     return false;
   }
-  LOG(INFO) << "Started Android container pid " << pid;
-
   return true;
 }
 

@@ -351,6 +351,7 @@ class SessionManagerImplTest : public ::testing::Test {
   static const pid_t kDummyPid;
   static const char kNothing[];
   static const char kSaneEmail[];
+  static const char kContainerInstanceId[];
   static const int kAllKeyFlags;
 
  private:
@@ -454,6 +455,8 @@ class SessionManagerImplTest : public ::testing::Test {
 const pid_t SessionManagerImplTest::kDummyPid = 4;
 const char SessionManagerImplTest::kNothing[] = "";
 const char SessionManagerImplTest::kSaneEmail[] = "user@somewhere.com";
+const char SessionManagerImplTest::kContainerInstanceId[] =
+    "eZ1EH78avI7mYDet2OTh/A==";  // a base64-encoded random string.
 const int SessionManagerImplTest::kAllKeyFlags =
     PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW |
     PolicyService::KEY_CLOBBER;
@@ -1129,6 +1132,49 @@ TEST_F(SessionManagerImplTest, ContainerStart) {
   EXPECT_FALSE(android_container_.running());
 }
 
+TEST_F(SessionManagerImplTest, ArcInstanceStartForLoginScreen) {
+  SessionManagerImpl::Error start_time_error;
+#if USE_CHEETS
+  impl_.GetArcStartTime(&start_time_error);
+  EXPECT_EQ(dbus_error::kNotStarted, start_time_error.name());
+
+  EXPECT_CALL(
+      upstart_signal_emitter_delegate_,
+      OnSignalEmitted(StrEq(SessionManagerImpl::kArcStartForLoginScreenSignal),
+                      ElementsAre("CHROMEOS_DEV_MODE=0",
+                                  "CHROMEOS_INSIDE_VM=0")))
+      .Times(1);
+  EXPECT_CALL(upstart_signal_emitter_delegate_,
+              OnSignalEmitted(StrEq(SessionManagerImpl::kArcStopSignal),
+                              ElementsAre()))
+      .Times(1);
+  // StartArcInstanceForLoginScreen does not emit kArcNetworkStartSignal. Its
+  // OnStop closure does emit kArcNetworkStopSignal but Upstart will ignore it.
+  EXPECT_CALL(upstart_signal_emitter_delegate_,
+              OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStopSignal),
+                              ElementsAre()))
+      .Times(1);
+
+  impl_.StartArcInstanceForLoginScreen(kContainerInstanceId, &error_);
+  EXPECT_TRUE(android_container_.running());
+  EXPECT_TRUE(arc_setup_completed_);
+
+  // StartArcInstanceForLoginScreen() does not update start time.
+  impl_.GetArcStartTime(&start_time_error);
+  EXPECT_EQ(dbus_error::kNotStarted, start_time_error.name());
+
+  impl_.StopArcInstance(&error_);
+  EXPECT_FALSE(error_.is_set());
+  EXPECT_FALSE(android_container_.running());
+  EXPECT_FALSE(arc_setup_completed_);
+#else
+  impl_.StartArcInstanceForLoginScreen(kContainerInstanceId, &error_);
+  EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
+  impl_.GetArcStartTime(&start_time_error);
+  EXPECT_EQ(dbus_error::kNotAvailable, start_time_error.name());
+#endif
+}
+
 TEST_F(SessionManagerImplTest, ArcInstanceStart) {
   ExpectAndRunStartSession(kSaneEmail);
   SessionManagerImpl::Error start_time_error;
@@ -1163,29 +1209,25 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
               OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStopSignal),
                               ElementsAre()))
       .Times(1);
-  std::string container_instance_id;
   impl_.StartArcInstance(
-      kSaneEmail, false, true, &container_instance_id, &error_);
+      kContainerInstanceId, kSaneEmail, false, true, &error_);
   EXPECT_TRUE(android_container_.running());
   EXPECT_TRUE(arc_setup_completed_);
   EXPECT_NE(base::TimeTicks(), impl_.GetArcStartTime(&start_time_error));
-  EXPECT_FALSE(container_instance_id.empty());
   EXPECT_CALL(
       dbus_emitter_,
       EmitSignalWithBoolAndString(StrEq(login_manager::kArcInstanceStopped),
                                   true,
-                                  StrEq(container_instance_id)))
+                                  StrEq(kContainerInstanceId)))
       .Times(1);
   impl_.StopArcInstance(&error_);
   EXPECT_FALSE(error_.is_set());
   EXPECT_FALSE(android_container_.running());
   EXPECT_FALSE(arc_setup_completed_);
 #else
-  std::string container_instance_id;
   impl_.StartArcInstance(
-      kSaneEmail, false, false, &container_instance_id, &error_);
+      kContainerInstanceId, kSaneEmail, false, false, &error_);
   EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
-  EXPECT_TRUE(container_instance_id.empty());
   impl_.GetArcStartTime(&start_time_error);
   EXPECT_EQ(dbus_error::kNotAvailable, start_time_error.name());
 #endif
@@ -1193,11 +1235,9 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
 
 #if USE_CHEETS
 TEST_F(SessionManagerImplTest, ArcInstanceStart_NoSession) {
-  std::string container_instance_id;
   impl_.StartArcInstance(
-      kSaneEmail, false, false, &container_instance_id, &error_);
+      kContainerInstanceId, kSaneEmail, false, false, &error_);
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error_.name());
-  EXPECT_TRUE(container_instance_id.empty());
 }
 
 TEST_F(SessionManagerImplTest, ArcInstanceStart_LowDisk) {
@@ -1205,11 +1245,9 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_LowDisk) {
 
   // No free disk space.
   EXPECT_CALL(utils_, AmountOfFreeDiskSpace(_)).WillRepeatedly(Return(0));
-  std::string container_instance_id;
   impl_.StartArcInstance(
-      kSaneEmail, false, false, &container_instance_id, &error_);
+      kContainerInstanceId, kSaneEmail, false, false, &error_);
   EXPECT_EQ(dbus_error::kLowFreeDisk, error_.name());
-  EXPECT_TRUE(container_instance_id.empty());
 }
 
 TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
@@ -1246,17 +1284,15 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
   EXPECT_CALL(utils_, GetDevModeState())
       .WillOnce(Return(DevModeState::DEV_MODE_ON))
       .RetiresOnSaturation();
-  std::string container_instance_id;
   impl_.StartArcInstance(
-      kSaneEmail, false, false, &container_instance_id, &error_);
+      kContainerInstanceId, kSaneEmail, false, false, &error_);
   EXPECT_TRUE(android_container_.running());
   EXPECT_TRUE(arc_setup_completed_);
-  EXPECT_FALSE(container_instance_id.empty());
   EXPECT_CALL(
       dbus_emitter_,
       EmitSignalWithBoolAndString(StrEq(login_manager::kArcInstanceStopped),
                                   false,
-                                  StrEq(container_instance_id)))
+                                  StrEq(kContainerInstanceId)))
       .Times(1);
 
   android_container_.SimulateCrash();
@@ -1369,9 +1405,8 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
   ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
   ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
-  std::string container_instance_id;
   impl_.StartArcInstance(
-      kSaneEmail, false, false, &container_instance_id, &error_);
+      kContainerInstanceId, kSaneEmail, false, false, &error_);
   impl_.RemoveArcData(kSaneEmail, &error_);
   EXPECT_EQ(dbus_error::kArcInstanceRunning, error_.name());
   EXPECT_TRUE(utils_.Exists(android_data_dir_));
@@ -1384,9 +1419,8 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
   ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
   ASSERT_TRUE(
       utils_.AtomicFileWrite(android_data_old_dir_.Append("bar"), "test2"));
-  std::string container_instance_id;
   impl_.StartArcInstance(
-      kSaneEmail, false, false, &container_instance_id, &error_);
+      kContainerInstanceId, kSaneEmail, false, false, &error_);
   impl_.StopArcInstance(&error_);
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_DIR_NOT_EMPTY);

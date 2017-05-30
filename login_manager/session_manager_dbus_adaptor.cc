@@ -11,13 +11,15 @@
 #include <utility>
 #include <vector>
 
+#include <base/base64.h>
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/files/file_util.h>
-#include <chromeos/dbus/service_constants.h>
+#include <base/rand_util.h>
 #include <brillo/dbus/data_serialization.h>
 #include <brillo/dbus/utils.h>
 #include <brillo/errors/error_codes.h>
+#include <chromeos/dbus/service_constants.h>
 #include <dbus/exported_object.h>
 #include <dbus/file_descriptor.h>
 #include <dbus/message.h>
@@ -33,6 +35,8 @@ const char kBindingsPath[] =
 const char kDBusIntrospectableInterface[] =
     "org.freedesktop.DBus.Introspectable";
 const char kDBusIntrospectMethod[] = "Introspect";
+
+constexpr size_t kArcContainerInstanceIdLength = 16;
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
@@ -614,17 +618,21 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StartArcInstance(
   std::string account_id;
   bool skip_boot_completed_broadcast = false;
   bool scan_vendor_priv_app = false;
+  bool for_login_screen = false;
 
   if (reader.PopArrayOfBytesAsProto(&request)) {
     // New message format with proto parameter.
-    if (!request.has_account_id() ||
-        !request.has_skip_boot_completed_broadcast() ||
-        !request.has_scan_vendor_priv_app())
-      return CreateInvalidArgsError(call, call->GetSignature());
+    for_login_screen = request.for_login_screen();
+    if (!for_login_screen) {
+      if (!request.has_account_id() ||
+          !request.has_skip_boot_completed_broadcast() ||
+          !request.has_scan_vendor_priv_app())
+        return CreateInvalidArgsError(call, call->GetSignature());
 
-    account_id = request.account_id();
-    skip_boot_completed_broadcast = request.skip_boot_completed_broadcast();
-    scan_vendor_priv_app = request.scan_vendor_priv_app();
+      account_id = request.account_id();
+      skip_boot_completed_broadcast = request.skip_boot_completed_broadcast();
+      scan_vendor_priv_app = request.scan_vendor_priv_app();
+    }
   } else {
     // TODO(xiaohuic): remove after Chromium side moved to proto.
     // http://b/37989086
@@ -634,10 +642,19 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StartArcInstance(
       return CreateInvalidArgsError(call, call->GetSignature());
   }
 
-  std::string container_instance_id;
+  // Container instance id needs to be valid ASCII/UTF-8, so encode as base64.
+  std::string container_instance_id =
+      base::RandBytesAsString(kArcContainerInstanceIdLength);
+  base::Base64Encode(container_instance_id, &container_instance_id);
+
   SessionManagerImpl::Error error;
-  impl_->StartArcInstance(account_id, skip_boot_completed_broadcast,
-                          scan_vendor_priv_app, &container_instance_id, &error);
+  if (for_login_screen) {
+    impl_->StartArcInstanceForLoginScreen(container_instance_id, &error);
+  } else {
+    impl_->StartArcInstance(container_instance_id, account_id,
+                            skip_boot_completed_broadcast, scan_vendor_priv_app,
+                            &error);
+  }
   if (error.is_set())
     return CreateError(call, error.name(), error.message());
 
