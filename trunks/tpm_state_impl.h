@@ -20,6 +20,7 @@
 #include "trunks/tpm_state.h"
 
 #include <map>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/macros.h>
@@ -56,6 +57,13 @@ class TRUNKS_EXPORT TpmStateImpl : public TpmState {
   uint32_t GetLockoutInterval() override;
   uint32_t GetLockoutRecovery() override;
   uint32_t GetMaxNVSize() override;
+  uint32_t GetTpmFamily() override;
+  uint32_t GetSpecificationLevel() override;
+  uint32_t GetSpecificationRevision() override;
+  uint32_t GetManufacturer() override;
+  uint32_t GetTpmModel() override;
+  uint64_t GetFirmwareVersion() override;
+  std::string GetVendorIDString() override;
   bool GetTpmProperty(TPM_PT property, uint32_t* value) override;
   bool GetAlgorithmProperties(TPM_ALG_ID algorithm,
                               TPMA_ALGORITHM* properties) override;

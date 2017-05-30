@@ -97,6 +97,34 @@ class TpmStateForwarder : public TpmState {
     return target_->GetLockoutRecovery();
   }
 
+  uint32_t GetTpmFamily() override {
+    return target_->GetTpmFamily();
+  }
+
+  uint32_t GetSpecificationLevel() override {
+    return target_->GetSpecificationLevel();
+  }
+
+  uint32_t GetSpecificationRevision() override {
+    return target_->GetSpecificationRevision();
+  }
+
+  uint32_t GetManufacturer() override {
+    return target_->GetManufacturer();
+  }
+
+  uint32_t GetTpmModel() override {
+    return target_->GetTpmModel();
+  }
+
+  uint64_t GetFirmwareVersion() override {
+    return target_->GetFirmwareVersion();
+  }
+
+  std::string GetVendorIDString() override {
+    return target_->GetVendorIDString();
+  }
+
   uint32_t GetMaxNVSize() override { return target_->GetMaxNVSize(); }
 
   bool GetTpmProperty(TPM_PT property, uint32_t* value) override {

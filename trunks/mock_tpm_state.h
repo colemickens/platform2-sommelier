@@ -46,6 +46,13 @@ class MockTpmState : public TpmState {
   MOCK_METHOD0(GetLockoutInterval, uint32_t());
   MOCK_METHOD0(GetLockoutRecovery, uint32_t());
   MOCK_METHOD0(GetMaxNVSize, uint32_t());
+  MOCK_METHOD0(GetTpmFamily, uint32_t());
+  MOCK_METHOD0(GetSpecificationLevel, uint32_t());
+  MOCK_METHOD0(GetSpecificationRevision, uint32_t());
+  MOCK_METHOD0(GetManufacturer, uint32_t());
+  MOCK_METHOD0(GetTpmModel, uint32_t());
+  MOCK_METHOD0(GetFirmwareVersion, uint64_t());
+  MOCK_METHOD0(GetVendorIDString, std::string());
   MOCK_METHOD2(GetTpmProperty, bool(TPM_PT, uint32_t*));
   MOCK_METHOD2(GetAlgorithmProperties, bool(TPM_ALG_ID, TPMA_ALGORITHM*));
 };

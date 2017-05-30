@@ -88,6 +88,28 @@ class TRUNKS_EXPORT TpmState {
   // Returns the maximum size, in bytes, of an NV index data area.
   virtual uint32_t GetMaxNVSize() = 0;
 
+  // Returns the TPM family value. This is a 4-character string encoded in an
+  // uint32_t, e.g. 0x322E3000 for "2.0".
+  virtual uint32_t GetTpmFamily() = 0;
+
+  // Returns the specification level implemented by the TPM.
+  virtual uint32_t GetSpecificationLevel() = 0;
+
+  // Returns the specification revision implemented by the TPM.
+  virtual uint32_t GetSpecificationRevision() = 0;
+
+  // Returns the manufacturer vendor ID for the TPM.
+  virtual uint32_t GetManufacturer() = 0;
+
+  // Returns the manufacturer-determined TPM model number.
+  virtual uint32_t GetTpmModel() = 0;
+
+  // Returns the version number of the firmware running on the TPM.
+  virtual uint64_t GetFirmwareVersion() = 0;
+
+  // Returns the vendor ID string.
+  virtual std::string GetVendorIDString() = 0;
+
   // Gets the |value| of any |property|. |value| may be NULL. Returns false if
   // a value is not available for the property.
   virtual bool GetTpmProperty(TPM_PT property, uint32_t* value) = 0;

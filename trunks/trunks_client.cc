@@ -17,7 +17,9 @@
 // trunks_client is a command line tool that supports various TPM operations. It
 // does not provide direct access to the trunksd D-Bus interface.
 
+#include <inttypes.h>
 #include <stdio.h>
+
 #include <memory>
 #include <string>
 
@@ -187,44 +189,20 @@ int TpmVersion(const TrunksFactory& factory) {
   // Print Chip Version for compatibility with tpm_version, hardcoded as
   // there's no 2.0 equivalent (TPM_PT_FAMILY_INDICATOR is const).
   printf("  Chip Version:        2.0.0.0\n");
-  uint32_t value;
-  if (state->GetTpmProperty(trunks::TPM_PT_FAMILY_INDICATOR, &value)) {
-    printf("  Spec Family:         %08x\n", value);
-    printf("  Spec Family String:  %s\n", TpmPropertyToStr(value));
-  }
-  if (state->GetTpmProperty(trunks::TPM_PT_LEVEL, &value)) {
-    printf("  Spec Level:          %u\n", value);
-  }
-  if (state->GetTpmProperty(trunks::TPM_PT_REVISION, &value)) {
-    printf("  Spec Revision:       %u\n", value);
-  }
-  if (state->GetTpmProperty(trunks::TPM_PT_MANUFACTURER, &value)) {
-    printf("  Manufacturer Info:   %08x\n", value);
-    printf("  Manufacturer String: %s\n", TpmPropertyToStr(value));
-  }
-  if (state->GetTpmProperty(trunks::TPM_PT_VENDOR_STRING_1, &value)) {
-    printf("  Vendor ID:           %s", TpmPropertyToStr(value));
-    if (state->GetTpmProperty(trunks::TPM_PT_VENDOR_STRING_2, &value)) {
-      printf("%s", TpmPropertyToStr(value));
-    }
-    if (state->GetTpmProperty(trunks::TPM_PT_VENDOR_STRING_3, &value)) {
-      printf("%s", TpmPropertyToStr(value));
-    }
-    if (state->GetTpmProperty(trunks::TPM_PT_VENDOR_STRING_4, &value)) {
-      printf("%s", TpmPropertyToStr(value));
-    }
-    printf("\n");
-  }
-  if (state->GetTpmProperty(trunks::TPM_PT_VENDOR_TPM_TYPE, &value)) {
-    printf("  TPM Model:           %08x\n", value);
-  }
-  if (state->GetTpmProperty(trunks::TPM_PT_FIRMWARE_VERSION_1, &value)) {
-    printf("  Firmware Version:    %08x", value);
-    if (!state->GetTpmProperty(trunks::TPM_PT_FIRMWARE_VERSION_2, &value)) {
-      value = 0;
-    }
-    printf("%08x\n", value);
-  }
+  uint32_t family = state->GetTpmFamily();
+  printf("  Spec Family:         %08" PRIx32 "\n", family);
+  printf("  Spec Family String:  %s\n", TpmPropertyToStr(family));
+  printf("  Spec Level:          %" PRIu32 "\n",
+         state->GetSpecificationLevel());
+  printf("  Spec Revision:       %" PRIu32 "\n",
+         state->GetSpecificationRevision());
+  uint32_t manufacturer = state->GetManufacturer();
+  printf("  Manufacturer Info:   %08" PRIx32 "\n", manufacturer);
+  printf("  Manufacturer String: %s\n", TpmPropertyToStr(manufacturer));
+  printf("  Vendor ID:           %s\n", state->GetVendorIDString().c_str());
+  printf("  TPM Model:           %08" PRIx32 "\n", state->GetTpmModel());
+  printf("  Firmware Version:    %016" PRIx64 "\n",
+         state->GetFirmwareVersion());
 
   return 0;
 }

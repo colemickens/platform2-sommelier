@@ -179,6 +179,61 @@ bool TpmStateImpl::GetTpmProperty(TPM_PT property, uint32_t* value) {
   return true;
 }
 
+uint32_t TpmStateImpl::GetTpmFamily() {
+  CHECK(initialized_);
+  return tpm_properties_[TPM_PT_FAMILY_INDICATOR];
+}
+
+uint32_t TpmStateImpl::GetSpecificationLevel() {
+  CHECK(initialized_);
+  return tpm_properties_[TPM_PT_LEVEL];
+}
+
+uint32_t TpmStateImpl::GetSpecificationRevision() {
+  CHECK(initialized_);
+  return tpm_properties_[TPM_PT_REVISION];
+}
+
+uint32_t TpmStateImpl::GetManufacturer() {
+  CHECK(initialized_);
+  return tpm_properties_[TPM_PT_MANUFACTURER];
+}
+
+uint32_t TpmStateImpl::GetTpmModel() {
+  CHECK(initialized_);
+  return tpm_properties_[TPM_PT_VENDOR_TPM_TYPE];
+}
+
+uint64_t TpmStateImpl::GetFirmwareVersion() {
+  CHECK(initialized_);
+  uint64_t version_high = tpm_properties_[TPM_PT_FIRMWARE_VERSION_1];
+  uint64_t version_low = tpm_properties_[TPM_PT_FIRMWARE_VERSION_2];
+  return (version_high << 32) | version_low;
+}
+
+std::string TpmStateImpl::GetVendorIDString() {
+  CHECK(initialized_);
+  std::string result;
+
+  for (TPM_PT property : {TPM_PT_VENDOR_STRING_1, TPM_PT_VENDOR_STRING_2,
+                          TPM_PT_VENDOR_STRING_3, TPM_PT_VENDOR_STRING_4}) {
+    if (tpm_properties_.count(property) == 0) {
+      break;
+    }
+
+    uint32_t value = tpm_properties_[property];
+    for (int i = 3; i >= 0; --i) {
+      char byte = static_cast<char>((value >> (i * 8)) & 0xff);
+      if (!byte) {
+        break;
+      }
+      result.push_back(byte);
+    }
+  }
+
+  return result;
+}
+
 bool TpmStateImpl::GetAlgorithmProperties(TPM_ALG_ID algorithm,
                                           TPMA_ALGORITHM* properties) {
   CHECK(initialized_);

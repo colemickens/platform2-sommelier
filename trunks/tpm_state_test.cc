@@ -22,13 +22,13 @@
 #include "trunks/tpm_state_impl.h"
 #include "trunks/trunks_factory_for_test.h"
 
-using testing::_;
 using testing::DoAll;
 using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
 using testing::SetArgPointee;
 using testing::WithArgs;
+using testing::_;
 
 namespace trunks {
 
@@ -141,6 +141,13 @@ TEST(TpmState_DeathTest, NotInitialized) {
   EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetLockoutInterval(), "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetLockoutRecovery(), "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetMaxNVSize(), "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetTpmFamily(), "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetSpecificationLevel(), "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetSpecificationRevision(),
+                            "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetManufacturer(), "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetTpmModel(), "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetFirmwareVersion(), "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetTpmProperty(0, nullptr),
                             "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(tpm_state.GetAlgorithmProperties(0, nullptr),
@@ -311,6 +318,50 @@ TEST_F(TpmStateTest, MaxNVSize) {
   fake_tpm_properties_.erase(TPM_PT_NV_INDEX_MAX);
   fake_tpm_properties_.erase(TPM_PT_NV_BUFFER_MAX);
   CheckMaxNVSize();
+}
+
+TEST_F(TpmStateTest, VersionNumbers) {
+  fake_tpm_properties_[TPM_PT_FAMILY_INDICATOR] = 0xfa;
+  fake_tpm_properties_[TPM_PT_LEVEL] = 1;
+  fake_tpm_properties_[TPM_PT_REVISION] = 101;
+  fake_tpm_properties_[TPM_PT_MANUFACTURER] = 0x90091;
+  fake_tpm_properties_[TPM_PT_VENDOR_TPM_TYPE] = 0x1234;
+  fake_tpm_properties_[TPM_PT_FIRMWARE_VERSION_1] = 0xf1;
+  fake_tpm_properties_[TPM_PT_FIRMWARE_VERSION_2] = 0xf2;
+
+  TpmStateImpl tpm_state(factory_);
+  ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Initialize());
+
+  EXPECT_EQ(0xfa, tpm_state.GetTpmFamily());
+  EXPECT_EQ(1, tpm_state.GetSpecificationLevel());
+  EXPECT_EQ(101, tpm_state.GetSpecificationRevision());
+  EXPECT_EQ(0x90091, tpm_state.GetManufacturer());
+  EXPECT_EQ(0x1234, tpm_state.GetTpmModel());
+  EXPECT_EQ(0xf1000000f2, tpm_state.GetFirmwareVersion());
+  EXPECT_EQ("", tpm_state.GetVendorIDString());
+}
+
+TEST_F(TpmStateTest, VendorIDString) {
+  fake_tpm_properties_[TPM_PT_VENDOR_STRING_1] = 0x66000000;
+  {
+    TpmStateImpl tpm_state(factory_);
+    ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Initialize());
+    EXPECT_EQ("f", tpm_state.GetVendorIDString());
+  }
+
+  fake_tpm_properties_[TPM_PT_VENDOR_STRING_1] = 0x66616b65;
+  {
+    TpmStateImpl tpm_state(factory_);
+    ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Initialize());
+    EXPECT_EQ("fake", tpm_state.GetVendorIDString());
+  }
+
+  fake_tpm_properties_[TPM_PT_VENDOR_STRING_2] = 0x666f6f00;
+  {
+    TpmStateImpl tpm_state(factory_);
+    ASSERT_EQ(TPM_RC_SUCCESS, tpm_state.Initialize());
+    EXPECT_EQ("fakefoo", tpm_state.GetVendorIDString());
+  }
 }
 
 TEST_F(TpmStateTest, RawTpmProperty) {
