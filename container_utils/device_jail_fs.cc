@@ -15,6 +15,7 @@
 #include <sys/syscall.h>
 #include <sys/sysmacros.h>
 #include <sys/types.h>
+#include <sysexits.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -268,19 +269,27 @@ int main(int argc, char** argv) {
   brillo::InitLog(brillo::kLogToSyslog);
 
   base::CommandLine command_line(argc, argv);
+  if (argc != 2) {
+    LOG(ERROR) << "Usage: device_jail_fs <mount point>";
+    return EX_USAGE;
+  }
   std::string mount_point = command_line.GetArgs()[0];
 
   base::AtExitManager at_exit_manager;
 
-  if (getuid() != 0)
-    LOG(FATAL) << "need root to mount with devices";
+  if (getuid() != 0) {
+    LOG(ERROR) << "need root to mount with devices";
+    return EX_USAGE;
+  }
 
   DLOG(INFO) << "device_jail_fs mounting " << kDevfsPath << " onto "
              << mount_point;
   std::unique_ptr<device_jail::FsData> fs_data =
       device_jail::FsData::Create(kDevfsPath, mount_point);
-  if (!fs_data)
-    LOG(FATAL) << "could not initialize filesystem";
+  if (!fs_data) {
+    LOG(ERROR) << "could not initialize filesystem";
+    return EX_SOFTWARE;
+  }
 
   struct fuse_args args = FUSE_ARGS_INIT(0, nullptr);
   fuse_opt_add_arg(&args, argv[0]);
