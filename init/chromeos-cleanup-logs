@@ -31,6 +31,9 @@ remove_old_files() {
   local subdir="$1"
   local file_pattern="$2"
   local mtime=${NUM_DAYS_TO_PRESERVE}
+  if [ ! -d "${subdir}" ]; then
+    return
+  fi
   while [ ${mtime} -ge 1 ]; do
     find "${subdir}" -name "${file_pattern}" -mtime "+${mtime}" -delete
     if [ $(du -s --block-size=1M "${subdir}" | cut -f 1) -gt \
