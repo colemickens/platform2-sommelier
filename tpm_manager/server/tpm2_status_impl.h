@@ -33,13 +33,19 @@ class Tpm2StatusImpl : public TpmStatus {
   explicit Tpm2StatusImpl(const trunks::TrunksFactory& factory);
   ~Tpm2StatusImpl() override = default;
 
-  // TpmState methods.
+  // TpmStatus methods.
   bool IsTpmEnabled() override;
   bool IsTpmOwned() override;
   bool GetDictionaryAttackInfo(int* counter,
                                int* threshold,
                                bool* lockout,
                                int* seconds_remaining) override;
+  bool GetVersionInfo(uint32_t* family,
+                      uint64_t* spec_level,
+                      uint32_t* manufacturer,
+                      uint32_t* tpm_model,
+                      uint64_t* firmware_version,
+                      std::vector<uint8_t>* vendor_specific) override;
 
  private:
   // Refreshes the Tpm state information. Can be called as many times as needed

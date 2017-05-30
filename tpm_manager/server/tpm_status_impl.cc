@@ -26,6 +26,8 @@ namespace tpm_manager {
 
 // Minimum size of TPM_DA_INFO struct.
 const size_t kMinimumDaInfoSize = 21;
+// Minimum size of TPM_CAP_VERSION_INFO struct.
+const size_t kMinimumVersionInfoSize = 17;
 
 bool TpmStatusImpl::IsTpmEnabled() {
   if (!is_enable_initialized_) {
@@ -70,6 +72,57 @@ bool TpmStatusImpl::GetDictionaryAttackInfo(int* counter,
       *seconds_remaining = da_info.actionDependValue;
     }
   }
+  return true;
+}
+
+bool TpmStatusImpl::GetVersionInfo(uint32_t* family,
+                                   uint64_t* spec_level,
+                                   uint32_t* manufacturer,
+                                   uint32_t* tpm_model,
+                                   uint64_t* firmware_version,
+                                   std::vector<uint8_t>* vendor_specific) {
+  std::string capability_data;
+  if (!GetCapability(TSS_TPMCAP_VERSION_VAL, 0, &capability_data, nullptr) ||
+      capability_data.size() < kMinimumVersionInfoSize ||
+      static_cast<uint16_t>(capability_data[1]) != TPM_TAG_CAP_VERSION_INFO) {
+    LOG(ERROR) << "Error getting TPM version capability data.";
+    return false;
+  }
+
+  TPM_CAP_VERSION_INFO tpm_version;
+  uint64_t offset = 0;
+  std::vector<BYTE> bytes(capability_data.begin(), capability_data.end());
+  Trspi_UnloadBlob_CAP_VERSION_INFO(&offset, bytes.data(), &tpm_version);
+  if (family) {
+    *family = 0x312e3200;
+  }
+  if (spec_level) {
+    *spec_level = (static_cast<uint64_t>(tpm_version.specLevel) << 32) |
+                  tpm_version.errataRev;
+  }
+  if (manufacturer) {
+    *manufacturer = (tpm_version.tpmVendorID[0] << 24) |
+                    (tpm_version.tpmVendorID[1] << 16) |
+                    (tpm_version.tpmVendorID[2] << 8) |
+                    (tpm_version.tpmVendorID[3] << 0);
+  }
+  if (tpm_model) {
+    // There's no generic model field in the spec. Model information might be
+    // present in the vendor-specific data returned by CAP_VERSION_INFO, so if
+    // we ever require to know the model, we'll need to check with hardware
+    // vendors for the best way to determine it.
+    *tpm_model = ~0;
+  }
+  if (firmware_version) {
+    *firmware_version =
+        (tpm_version.version.revMajor << 8) | tpm_version.version.revMinor;
+  }
+  if (vendor_specific) {
+    const uint8_t* data =
+        reinterpret_cast<const uint8_t*>(tpm_version.vendorSpecific);
+    vendor_specific->assign(data, data + tpm_version.vendorSpecificSize);
+  }
+  free(tpm_version.vendorSpecific);
   return true;
 }
 

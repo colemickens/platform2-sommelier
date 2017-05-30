@@ -146,6 +146,26 @@ void TpmManagerService::GetTpmStatusTask(
     reply->set_dictionary_attack_lockout_seconds_remaining(
         lockout_time_remaining);
   }
+  uint32_t family;
+  uint64_t spec_level;
+  uint32_t manufacturer;
+  uint32_t tpm_model;
+  uint64_t firmware_version;
+  std::vector<uint8_t> vendor_specific;
+  if (tpm_status_->GetVersionInfo(&family, &spec_level, &manufacturer,
+                                  &tpm_model, &firmware_version,
+                                  &vendor_specific)) {
+    GetTpmStatusReply::TpmVersionInfo* version_info =
+        reply->mutable_version_info();
+    version_info->set_family(family);
+    version_info->set_spec_level(spec_level);
+    version_info->set_manufacturer(manufacturer);
+    version_info->set_tpm_model(tpm_model);
+    version_info->set_firmware_version(firmware_version);
+    version_info->set_vendor_specific(
+        reinterpret_cast<char*>(vendor_specific.data()),
+        vendor_specific.size());
+  }
   reply->set_status(STATUS_SUCCESS);
 }
 

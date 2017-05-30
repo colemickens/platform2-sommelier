@@ -68,6 +68,42 @@ bool Tpm2StatusImpl::GetDictionaryAttackInfo(int* counter,
   return true;
 }
 
+bool Tpm2StatusImpl::GetVersionInfo(uint32_t* family,
+                                    uint64_t* spec_level,
+                                    uint32_t* manufacturer,
+                                    uint32_t* tpm_model,
+                                    uint64_t* firmware_version,
+                                    std::vector<uint8_t>* vendor_specific) {
+  if (!Refresh()) {
+    return false;
+  }
+
+  if (family) {
+    *family = trunks_tpm_state_->GetTpmFamily();
+  }
+  if (spec_level) {
+    uint64_t level = trunks_tpm_state_->GetSpecificationLevel();
+    uint64_t revision = trunks_tpm_state_->GetSpecificationRevision();
+    *spec_level = (level << 32) | revision;
+  }
+  if (manufacturer) {
+    *manufacturer = trunks_tpm_state_->GetManufacturer();
+  }
+  if (tpm_model) {
+    *tpm_model = trunks_tpm_state_->GetTpmModel();
+  }
+  if (firmware_version) {
+    *firmware_version = trunks_tpm_state_->GetFirmwareVersion();
+  }
+  if (vendor_specific) {
+    std::string vendor_id_string = trunks_tpm_state_->GetVendorIDString();
+    const uint8_t* data =
+        reinterpret_cast<const uint8_t*>(vendor_id_string.data());
+    vendor_specific->assign(data, data + vendor_id_string.size());
+  }
+  return true;
+}
+
 bool Tpm2StatusImpl::Refresh() {
   TPM_RC result = trunks_tpm_state_->Initialize();
   if (result != TPM_RC_SUCCESS) {

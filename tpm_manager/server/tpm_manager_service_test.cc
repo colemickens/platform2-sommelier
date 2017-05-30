@@ -25,13 +25,13 @@
 #include "tpm_manager/server/mock_tpm_status.h"
 #include "tpm_manager/server/tpm_manager_service.h"
 
-using testing::_;
 using testing::AtLeast;
 using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
 using testing::SaveArg;
 using testing::SetArgPointee;
+using testing::_;
 
 namespace {
 
@@ -142,6 +142,19 @@ TEST_F(TpmManagerServiceTest, GetTpmStatusSuccess) {
         *seconds_remaining = 7;
         return true;
       }));
+  EXPECT_CALL(mock_tpm_status_, GetVersionInfo(_, _, _, _, _, _))
+      .WillRepeatedly(Invoke([](uint32_t* family, uint64_t* spec_level,
+                                uint32_t* manufacturer, uint32_t* tpm_model,
+                                uint64_t* firmware_version,
+                                std::vector<uint8_t>* vendor_specific) {
+        *family = 8;
+        *spec_level = 9;
+        *manufacturer = 10;
+        *tpm_model = 11;
+        *firmware_version = 12;
+        *vendor_specific = { 0xda, 0x7a };
+        return true;
+      }));
   LocalData local_data;
   local_data.set_owner_password(kOwnerPassword);
   EXPECT_CALL(mock_local_data_store_, Read(_))
@@ -156,6 +169,12 @@ TEST_F(TpmManagerServiceTest, GetTpmStatusSuccess) {
     EXPECT_EQ(6, reply.dictionary_attack_threshold());
     EXPECT_TRUE(reply.dictionary_attack_lockout_in_effect());
     EXPECT_EQ(7, reply.dictionary_attack_lockout_seconds_remaining());
+    EXPECT_EQ(8, reply.version_info().family());
+    EXPECT_EQ(9, reply.version_info().spec_level());
+    EXPECT_EQ(10, reply.version_info().manufacturer());
+    EXPECT_EQ(11, reply.version_info().tpm_model());
+    EXPECT_EQ(12, reply.version_info().firmware_version());
+    EXPECT_EQ("\xda\x7a", reply.version_info().vendor_specific());
     Quit();
   };
   GetTpmStatusRequest request;

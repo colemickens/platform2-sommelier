@@ -17,6 +17,10 @@
 #ifndef TPM_MANAGER_SERVER_TPM_STATUS_H_
 #define TPM_MANAGER_SERVER_TPM_STATUS_H_
 
+#include <stdint.h>
+
+#include <vector>
+
 namespace tpm_manager {
 
 // TpmStatus is an interface class that reports status information for some kind
@@ -35,6 +39,13 @@ class TpmStatus {
                                        int* threshold,
                                        bool* lockout,
                                        int* seconds_remaining) = 0;
+  // Get TPM hardware and software version information.
+  virtual bool GetVersionInfo(uint32_t* family,
+                              uint64_t* spec_level,
+                              uint32_t* manufacturer,
+                              uint32_t* tpm_model,
+                              uint64_t* firmware_version,
+                              std::vector<uint8_t>* vendor_specific) = 0;
 };
 
 }  // namespace tpm_manager

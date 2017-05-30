@@ -42,6 +42,12 @@ class TpmStatusImpl : public TpmStatus {
                                int* threshold,
                                bool* lockout,
                                int* seconds_remaining) override;
+  bool GetVersionInfo(uint32_t* family,
+                      uint64_t* spec_level,
+                      uint32_t* manufacturer,
+                      uint32_t* tpm_model,
+                      uint64_t* firmware_version,
+                      std::vector<uint8_t>* vendor_specific) override;
 
  private:
   // This method refreshes the |is_owned_| and |is_enabled_| status of the
