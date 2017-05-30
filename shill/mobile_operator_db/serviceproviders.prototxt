@@ -8516,8 +8516,18 @@ mno {
     }
     mccmnc : "45005"
     mobile_apn {
-      apn : "nate.sktelecom.com"
+      apn : "lte.sktelecom.com"
       plan : POSTPAID
+      localized_name {
+        name : "SKT LTE"
+      }
+    }
+    mobile_apn {
+      apn : "web.sktelecom.com"
+      plan : POSTPAID
+      localized_name {
+        name : "SKT 3G"
+      }
     }
   }
 }
