@@ -322,6 +322,22 @@ bool DevicePolicyService::PolicyAllowsNewUsers(
   return explicitly_allowed || not_disallowed || failed_open;
 }
 
+// static
+bool DevicePolicyService::GivenUserIsOwner(
+    const enterprise_management::PolicyFetchResponse& policy,
+    const std::string& current_user) {
+  em::PolicyData poldata;
+  if (!policy.has_policy_data() ||
+      !poldata.ParseFromString(policy.policy_data())) {
+    return false;
+  }
+
+  if (!IsConsumerPolicy(policy))
+    return false;
+
+  return (poldata.has_username() && poldata.username() == current_user);
+}
+
 bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
                                                RSAPrivateKey* signing_key) {
   CHECK(signing_key);
@@ -398,22 +414,6 @@ std::unique_ptr<RSAPrivateKey> DevicePolicyService::GetOwnerKeyForGivenUser(
     return nullptr;
   }
   return result;
-}
-
-// static
-bool DevicePolicyService::GivenUserIsOwner(
-    const enterprise_management::PolicyFetchResponse& policy,
-    const std::string& current_user) {
-  em::PolicyData poldata;
-  if (!policy.has_policy_data() ||
-      !poldata.ParseFromString(policy.policy_data())) {
-    return false;
-  }
-
-  if (!IsConsumerPolicy(policy))
-    return false;
-
-  return (poldata.has_username() && poldata.username() == current_user);
 }
 
 void DevicePolicyService::PersistPolicy(const Completion& completion) {

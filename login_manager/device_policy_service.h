@@ -152,6 +152,12 @@ class DevicePolicyService : public PolicyService {
   static bool PolicyAllowsNewUsers(
       const enterprise_management::PolicyFetchResponse& policy);
 
+  // Returns true if |current_user| is listed in |policy| as the device owner.
+  // Returns false if not, or if that cannot be determined.
+  static bool GivenUserIsOwner(
+      const enterprise_management::PolicyFetchResponse& policy,
+      const std::string& current_user);
+
   // Given the private half of the owner keypair, this call whitelists
   // |current_user| and sets a property indicating
   // |current_user| is the owner in the current policy and schedules a
@@ -168,12 +174,6 @@ class DevicePolicyService : public PolicyService {
       const std::vector<uint8_t>& key,
       PK11SlotInfo* module,
       brillo::ErrorPtr* error);
-
-  // Returns true if |current_user| is listed in |policy| as the device owner.
-  // Returns false if not, or if that cannot be determined.
-  static bool GivenUserIsOwner(
-      const enterprise_management::PolicyFetchResponse& policy,
-      const std::string& current_user);
 
   const base::FilePath install_attributes_file_;
   LoginMetrics* metrics_;
