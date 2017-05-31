@@ -44,7 +44,8 @@ class CameraHalAdapter : public mojo::edk::ProcessDelegate,
   // Callback interface for CameraModuleDelegate.
   // These methods are callbacks for |module_delegate_| and are executed on
   // the mojo IPC handler thread in |module_delegate_|.
-  int32_t OpenDevice(int32_t device_id, mojom::Camera3DeviceOpsPtr* device_ops);
+  int32_t OpenDevice(int32_t device_id,
+                     mojom::Camera3DeviceOpsRequest device_ops_request);
 
   int32_t GetNumberOfCameras();
 

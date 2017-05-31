@@ -22,13 +22,15 @@ CameraModuleDelegate::CameraModuleDelegate(
 
 CameraModuleDelegate::~CameraModuleDelegate() {}
 
-void CameraModuleDelegate::OpenDevice(int32_t device_id,
-                                      const OpenDeviceCallback& callback) {
+void CameraModuleDelegate::OpenDevice(
+    int32_t device_id,
+    mojom::Camera3DeviceOpsRequest device_ops_request,
+    const OpenDeviceCallback& callback) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   mojom::Camera3DeviceOpsPtr device_ops;
-  int32_t result = camera_hal_adapter_->OpenDevice(device_id, &device_ops);
-  callback.Run(result, std::move(device_ops));
+  callback.Run(camera_hal_adapter_->OpenDevice(device_id,
+                                               std::move(device_ops_request)));
 }
 
 void CameraModuleDelegate::GetNumberOfCameras(

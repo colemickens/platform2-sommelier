@@ -65,8 +65,9 @@ bool CameraDeviceAdapter::Start() {
   return true;
 }
 
-mojom::Camera3DeviceOpsPtr CameraDeviceAdapter::GetDeviceOpsPtr() {
-  return device_ops_delegate_->CreateInterfacePtr();
+void CameraDeviceAdapter::Bind(
+    mojom::Camera3DeviceOpsRequest device_ops_request) {
+  device_ops_delegate_->Bind(device_ops_request.PassMessagePipe());
 }
 
 int32_t CameraDeviceAdapter::Initialize(

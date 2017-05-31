@@ -129,17 +129,16 @@ void CameraHalAdapter::OnShutdownComplete() {
 
 // Callback interface for camera_module_t APIs.
 
-int32_t CameraHalAdapter::OpenDevice(int32_t device_id,
-                                     mojom::Camera3DeviceOpsPtr* device_ops) {
+int32_t CameraHalAdapter::OpenDevice(
+    int32_t device_id,
+    mojom::Camera3DeviceOpsRequest device_ops_request) {
   VLOGF_ENTER();
   if (device_id < 0) {
     LOGF(ERROR) << "Invalid camera device id: " << device_id;
-    device_ops->reset();
     return -EINVAL;
   }
   if (device_adapters_.find(device_id) != device_adapters_.end()) {
     LOGF(WARNING) << "Multiple calls to OpenDevice on device " << device_id;
-    device_ops->reset();
     return -EBUSY;
   }
   camera3_device_t* camera_device;
@@ -150,25 +149,24 @@ int32_t CameraHalAdapter::OpenDevice(int32_t device_id,
       reinterpret_cast<hw_device_t**>(&camera_device));
   if (ret) {
     LOGF(ERROR) << "Failed to open camera device " << device_id;
-    device_ops->reset();
     return ret;
-  } else {
-    // This method is called by |camera_module_delegate_| on its mojo IPC
-    // handler thread.
-    // The CameraHalAdapter (and hence |camera_module_delegate_|) must out-live
-    // the CameraDeviceAdapters, so it's safe to keep a reference to the task
-    // runner of the current thread in the callback functor.
-    base::Callback<void()> close_callback = base::Bind(
-        &CameraHalAdapter::CloseDeviceCallback, base::Unretained(this),
-        base::ThreadTaskRunnerHandle::Get(), device_id);
-    device_adapters_[device_id].reset(
-        new CameraDeviceAdapter(camera_device, close_callback));
-    if (!device_adapters_[device_id]->Start()) {
-      device_adapters_.erase(device_id);
-      return -ENODEV;
-    }
-    *device_ops = device_adapters_.at(device_id)->GetDeviceOpsPtr();
   }
+
+  // This method is called by |camera_module_delegate_| on its mojo IPC
+  // handler thread.
+  // The CameraHalAdapter (and hence |camera_module_delegate_|) must out-live
+  // the CameraDeviceAdapters, so it's safe to keep a reference to the task
+  // runner of the current thread in the callback functor.
+  base::Callback<void()> close_callback =
+      base::Bind(&CameraHalAdapter::CloseDeviceCallback, base::Unretained(this),
+                 base::ThreadTaskRunnerHandle::Get(), device_id);
+  device_adapters_[device_id].reset(
+      new CameraDeviceAdapter(camera_device, close_callback));
+  if (!device_adapters_[device_id]->Start()) {
+    device_adapters_.erase(device_id);
+    return -ENODEV;
+  }
+  device_adapters_.at(device_id)->Bind(std::move(device_ops_request));
   return 0;
 }
 

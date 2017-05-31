@@ -47,10 +47,9 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // the other methods are called.
   bool Start();
 
-  // GetDeviceOpsPtr() is called by CameraHalAdapter in OpenDevice() on the mojo
-  // IPC handler thread in |module_delegate_|.
-
-  mojom::Camera3DeviceOpsPtr GetDeviceOpsPtr();
+  // Bind() is called by CameraHalAdapter in OpenDevice() on the mojo IPC
+  // handler thread in |module_delegate_|.
+  void Bind(mojom::Camera3DeviceOpsRequest device_ops_request);
 
   // Callback interface for Camera3DeviceOpsDelegate.
   // These methods are callbacks for |device_ops_delegate_| and are executed on
