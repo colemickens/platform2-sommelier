@@ -51,7 +51,7 @@ const int kDefaultWriteIntervalMs = 1000;
 std::string GetModelSubdir() {
   brillo::CrosConfig config;
   if (!config.Init()) {
-    LOG(ERROR) << "Failed to init CrosConfig database.";
+    // Not necessarily an error; not every model has a database yet.
     return "";
   }
   std::string subdir;

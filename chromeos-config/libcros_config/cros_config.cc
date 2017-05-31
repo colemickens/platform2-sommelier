@@ -84,6 +84,12 @@ bool CrosConfig::GetString(const std::string &path, const std::string &prop,
 
 bool CrosConfig::InitCommon(const base::FilePath& filepath,
                             const base::CommandLine& cmdline) {
+  // Many systems will not have a config database (yet), so just skip all the
+  // setup without any errors if the config file doesn't exist.
+  if (!base::PathExists(filepath)) {
+    return false;
+  }
+
   std::string output;
   if (!base::GetAppOutput(cmdline, &output)) {
     LOG(ERROR) << "Could not run command " << cmdline.GetCommandLineString();
