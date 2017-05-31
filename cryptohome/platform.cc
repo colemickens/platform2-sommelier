@@ -825,6 +825,15 @@ bool Platform::SetExtendedFileAttribute(const base::FilePath& path,
   return true;
 }
 
+bool Platform::RemoveExtendedFileAttribute(const base::FilePath& path,
+                                           const std::string& name) {
+  if (removexattr(path.value().c_str(), name.c_str()) != 0) {
+    PLOG(ERROR) << "removexattr: " << path.value();
+    return false;
+  }
+  return true;
+}
+
 bool Platform::GetExtFileAttributes(const FilePath& path, int* flags) {
   int fd = HANDLE_EINTR(open(path.value().c_str(), O_RDONLY));
   if (fd < 0) {

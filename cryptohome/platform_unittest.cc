@@ -402,6 +402,28 @@ TEST_F(PlatformTest, SetExtendedAttribute) {
       FilePath("file_not_exist"), name, value.c_str(), sizeof(value)));
 }
 
+TEST_F(PlatformTest, RemoveExtendedAttribute) {
+  const FilePath filename(GetTempName());
+  const std::string content("blablabla");
+  ASSERT_TRUE(platform_.WriteStringToFile(filename, content));
+  const std::string name("user.foo");
+  std::string value("bar");
+  ASSERT_EQ(0,
+            setxattr(filename.value().c_str(),
+                     name.c_str(),
+                     value.c_str(),
+                     value.length(),
+                     0));
+  EXPECT_TRUE(platform_.RemoveExtendedFileAttribute(filename, name));
+  EXPECT_EQ(-1, getxattr(filename.value().c_str(), name.c_str(), nullptr, 0));
+  EXPECT_EQ(ENODATA, errno);
+
+  EXPECT_FALSE(
+      platform_.RemoveExtendedFileAttribute(FilePath("file_not_exist"), name));
+  EXPECT_FALSE(
+      platform_.RemoveExtendedFileAttribute(filename, "attribute_not_exist"));
+}
+
 TEST_F(PlatformTest, GetExtFileAttributes) {
   const FilePath filename(GetTempName());
   const std::string content("blablabla");

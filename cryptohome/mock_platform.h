@@ -136,6 +136,8 @@ class MockPlatform : public Platform {
   MOCK_METHOD4(
       SetExtendedFileAttribute,
       bool(const base::FilePath&, const std::string&, const char*, size_t));
+  MOCK_METHOD2(RemoveExtendedFileAttribute,
+               bool(const base::FilePath&, const std::string&));
   MOCK_METHOD2(GetExtFileAttributes, bool(const base::FilePath&, int*));
   MOCK_METHOD2(SetExtFileAttributes, bool(const base::FilePath&, int));
   MOCK_METHOD1(HasNoDumpFileAttribute, bool(const base::FilePath&));

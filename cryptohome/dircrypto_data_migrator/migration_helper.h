@@ -129,6 +129,8 @@ class MigrationHelper {
   bool CopyAttributes(const base::FilePath& child,
                       const FileEnumerator::FileInfo& info);
   bool FixTimes(const base::FilePath& child);
+  // Remove the temporary xattrs used to store atime and mtime.
+  bool RemoveTimeXattrs(const base::FilePath& child);
   bool CopyExtendedAttributes(const base::FilePath& child);
   bool SetExtendedAttributeIfNotPresent(const base::FilePath& file,
                                         const std::string& xattr,

@@ -117,6 +117,9 @@ void PassThroughPlatformMethods(MockPlatform* mock_platform,
       .WillByDefault(testing::Invoke(real_platform, &Platform::InitializeFile));
   ON_CALL(*mock_platform, LockFile(testing::_))
       .WillByDefault(testing::Invoke(real_platform, &Platform::LockFile));
+  ON_CALL(*mock_platform, RemoveExtendedFileAttribute(testing::_, testing::_))
+      .WillByDefault(testing::Invoke(real_platform,
+                                     &Platform::RemoveExtendedFileAttribute));
 }
 
 }  // namespace
@@ -489,6 +492,7 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   mode_t permission;
   ASSERT_TRUE(platform.GetPermissions(kToFilePath, &permission));
   EXPECT_EQ(mode, permission);
+
   char value[sizeof(kValue) + 1];
   EXPECT_EQ(
       sizeof(kValue),
@@ -496,6 +500,14 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
           kToFilePath.value().c_str(), kAttrName, &value, sizeof(kValue)));
   value[sizeof(kValue)] = '\0';
   EXPECT_STREQ(kValue, value);
+
+  // The temporary xatttrs for storing mtime/atime should be removed.
+  EXPECT_EQ(
+      -1, lgetxattr(kToFilePath.value().c_str(), kMtimeXattrName, nullptr, 0));
+  EXPECT_EQ(ENODATA, errno);
+  EXPECT_EQ(
+      -1, lgetxattr(kToFilePath.value().c_str(), kAtimeXattrName, nullptr, 0));
+  EXPECT_EQ(ENODATA, errno);
 
   base::ScopedFD to_fd(
       HANDLE_EINTR(::open(kToFilePath.value().c_str(), O_RDONLY)));

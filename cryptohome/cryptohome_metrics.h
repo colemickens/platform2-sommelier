@@ -105,6 +105,7 @@ enum DircryptoMigrationFailedOperationType {
   kMigrationFailedAtSync = 13,
   kMigrationFailedAtTruncate = 14,
   kMigrationFailedAtOpenSourceFileNonFatal = 15,
+  kMigrationFailedAtRemoveAttribute = 16,
   kMigrationFailedOperationTypeNumBuckets
 };
 

@@ -499,6 +499,14 @@ class Platform {
                                         const char* value,
                                         size_t size);
 
+  // Return true if the extended attribute |name| could be removed on |path|.
+  //
+  // parameters
+  //  path - absolute file or directory path to remove attributes from.
+  //  name - name including a namespace prefix. See removexattr
+  virtual bool RemoveExtendedFileAttribute(const base::FilePath& path,
+                                           const std::string& name);
+
   // Return true if the ext file attributes for |name| could be succesfully set
   // in |flags|, possibly following symlink.
   //

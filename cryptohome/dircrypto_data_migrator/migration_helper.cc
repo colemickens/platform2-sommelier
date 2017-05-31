@@ -640,6 +640,8 @@ bool MigrationHelper::MigrateFile(const base::FilePath& child,
     RecordFileErrorWithCurrentErrno(kMigrationFailedAtSync, child);
     return false;
   }
+  if (!RemoveTimeXattrs(child))
+    return false;
 
   return true;
 }
@@ -716,9 +718,31 @@ bool MigrationHelper::FixTimes(const base::FilePath& child) {
     RecordFileErrorWithCurrentErrno(kMigrationFailedAtGetAttribute, child);
     return false;
   }
+
   if (!platform_->SetFileTimes(file, atime, mtime, true /* follow_links */)) {
     PLOG(ERROR) << "Failed to set mtime on " << file.value();
     RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child);
+    return false;
+  }
+  return true;
+}
+
+bool MigrationHelper::RemoveTimeXattrs(const base::FilePath& child) {
+  const base::FilePath file = to_base_path_.Append(child);
+
+  if (!platform_->RemoveExtendedFileAttribute(file,
+                                              namespaced_mtime_xattr_name_)) {
+    PLOG(ERROR) << "Failed to remove mtime extended attribute from "
+                << file.value();
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtRemoveAttribute, child);
+    return false;
+  }
+
+  if (!platform_->RemoveExtendedFileAttribute(file,
+                                              namespaced_atime_xattr_name_)) {
+    PLOG(ERROR) << "Failed to remove atime extended attribute from "
+                << file.value();
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtRemoveAttribute, child);
     return false;
   }
   return true;
@@ -912,6 +936,8 @@ bool MigrationHelper::DecrementChildCountAndDeleteIfNecessary(
     RecordFileErrorWithCurrentErrno(kMigrationFailedAtSync, child);
     return false;
   }
+  if (!RemoveTimeXattrs(child))
+    return false;
 
   // Don't delete the top directory.
   if (child.value() == base::FilePath::kCurrentDirectory)
