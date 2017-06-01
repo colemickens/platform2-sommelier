@@ -70,8 +70,11 @@ void Client::SendDevicesList() {
 }
 
 void Client::TriggerClientDeletion() {
-  brillo::MessageLoop::current()->PostTask(FROM_HERE,
-                                           base::Bind(del_cb_, client_id_));
+  brillo::MessageLoop::TaskId ret_id = brillo::MessageLoop::current()->PostTask(
+      FROM_HERE, base::Bind(del_cb_, client_id_));
+  if (ret_id == brillo::MessageLoop::kTaskIdNull) {
+    LOG(ERROR) << "Couldn't schedule the client deletion callback!";
+  }
 }
 
 uint32_t Client::PrepareDeviceListPayload(uint8_t* payload_buf,

@@ -106,7 +106,9 @@ class DeviceTracker {
   void RemoveClientFromDevices(uint32_t client_id);
 
  private:
+  friend class ClientTest;
   friend class DeviceTrackerTest;
+  FRIEND_TEST(ClientTest, AddClientAndReceiveMessages);
   FRIEND_TEST(DeviceTrackerTest, Add2DevicesPositive);
   FRIEND_TEST(DeviceTrackerTest, AddRemoveDevicePositive);
   FRIEND_TEST(DeviceTrackerTest, AddDeviceRemoveNegative);

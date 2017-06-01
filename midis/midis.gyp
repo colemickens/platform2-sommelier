@@ -33,6 +33,28 @@
     ['USE_test == 1', {
       'targets': [
         {
+          'target_name': 'client_test',
+          'type': 'executable',
+          'dependencies' : [
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'variables': {
+            'deps': [
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
+          'sources': [
+            'client.cc',
+            'client_test.cc',
+            'client_tracker.cc',
+            'device.cc',
+            'device_tracker.cc',
+            'file_handler.cc',
+            'subdevice_client_fd_holder.cc',
+          ],
+        },
+        {
           'target_name': 'device_tracker_test',
           'type': 'executable',
           'includes': ['../common-mk/common_test.gypi'],

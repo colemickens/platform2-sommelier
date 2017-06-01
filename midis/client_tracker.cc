@@ -27,6 +27,13 @@ namespace midis {
 
 ClientTracker::ClientTracker() : client_id_counter_(0), weak_factory_(this) {}
 
+ClientTracker::~ClientTracker() {
+  for (auto& client : clients_) {
+    device_tracker_->RemoveClientFromDevices(client.first);
+  }
+  clients_.clear();
+}
+
 bool ClientTracker::InitClientTracker(DeviceTracker* device_tracker) {
   device_tracker_ = device_tracker;
   server_fd_ =

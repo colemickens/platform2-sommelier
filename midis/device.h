@@ -65,8 +65,10 @@ class Device {
   void RemoveClientFromDevice(uint32_t client_id);
 
  private:
+  friend class ClientTest;
   friend class DeviceTest;
   friend class UdevHandlerTest;
+  FRIEND_TEST(ClientTest, AddClientAndReceiveMessages);
   FRIEND_TEST(DeviceTest, TestHandleDeviceRead);
   FRIEND_TEST(UdevHandlerTest, CreateDevicePositive);
   // This function instantiates a FileHandler for each subdevice. If all the
