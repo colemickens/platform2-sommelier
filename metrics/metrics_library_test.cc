@@ -34,7 +34,7 @@ ACTION_P(SetMetricsPolicy, enabled) {
 
 class MetricsLibraryTest : public testing::Test {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     lib_.consent_file_ = kTestConsentIdFile.value();
     EXPECT_TRUE(lib_.uma_events_file_.empty());
     lib_.Init();
@@ -48,13 +48,12 @@ class MetricsLibraryTest : public testing::Test {
     EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
         .Times(AnyNumber())
         .WillRepeatedly(SetMetricsPolicy(true));
-    provider_ = new policy::PolicyProvider(device_policy_);
-    lib_.SetPolicyProvider(provider_);
+    lib_.SetPolicyProvider(new policy::PolicyProvider(device_policy_));
     // Defeat metrics enabled caching between tests.
     lib_.cached_enabled_time_ = 0;
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     base::DeleteFile(FilePath(kTestMounts), false);
     base::DeleteFile(kTestUMAEventsFile, false);
     base::DeleteFile(kTestConsentIdFile, false);
@@ -64,8 +63,7 @@ class MetricsLibraryTest : public testing::Test {
   void VerifyEnabledCacheEviction(bool to_value);
 
   MetricsLibrary lib_;
-  policy::MockDevicePolicy* device_policy_;
-  policy::PolicyProvider* provider_;
+  policy::MockDevicePolicy* device_policy_;  // Not owned.
 };
 
 TEST_F(MetricsLibraryTest, IsDeviceMounted) {
@@ -245,7 +243,7 @@ TEST_F(MetricsLibraryTest, AreMetricsEnabledCaching) {
 
 class CMetricsLibraryTest : public testing::Test {
  protected:
-  virtual void SetUp() {
+  void SetUp() override {
     lib_ = CMetricsLibraryNew();
     MetricsLibrary& ml = *reinterpret_cast<MetricsLibrary*>(lib_);
     EXPECT_TRUE(ml.uma_events_file_.empty());
@@ -260,19 +258,17 @@ class CMetricsLibraryTest : public testing::Test {
     EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
         .Times(AnyNumber())
         .WillRepeatedly(SetMetricsPolicy(true));
-    provider_ = new policy::PolicyProvider(device_policy_);
-    ml.SetPolicyProvider(provider_);
-    reinterpret_cast<MetricsLibrary*>(lib_)->cached_enabled_time_ = 0;
+    ml.SetPolicyProvider(new policy::PolicyProvider(device_policy_));
+    ml.cached_enabled_time_ = 0;
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     CMetricsLibraryDelete(lib_);
     base::DeleteFile(kTestUMAEventsFile, false);
   }
 
   CMetricsLibrary lib_;
-  policy::MockDevicePolicy* device_policy_;
-  policy::PolicyProvider* provider_;
+  policy::MockDevicePolicy* device_policy_;  // Not owned.
 };
 
 TEST_F(CMetricsLibraryTest, AreMetricsEnabledFalse) {
