@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 
+#include <brillo/dbus/dbus_method_response.h>
 #include <brillo/errors/error.h>
 #include <dbus/file_descriptor.h>
 
@@ -176,26 +177,35 @@ class SessionManagerImpl : public SessionManagerInterface,
                     const std::string& in_unique_identifier);
   void StopSession(const std::string& in_unique_identifier);
 
-  void StorePolicy(const std::vector<uint8_t>& policy_blob,
-                   SignatureCheck signature_check,
-                   const PolicyService::Completion& completion);
-  void RetrievePolicy(std::vector<uint8_t>* policy_blob, Error* error);
-
-  void StorePolicyForUser(const std::string& account_id,
-                          const std::vector<uint8_t>& policy_blob,
-                          SignatureCheck signature_check,
-                          const PolicyService::Completion& completion);
-  void RetrievePolicyForUser(const std::string& account_id,
-                             std::vector<uint8_t>* policy_blob,
-                             Error* error);
-
+  void StorePolicy(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+      const std::vector<uint8_t>& in_policy_blob);
+  void StoreUnsignedPolicy(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+      const std::vector<uint8_t>& in_policy_blob);
+  bool RetrievePolicy(
+      brillo::ErrorPtr* error,
+      std::vector<uint8_t>* out_policy_blob);
+  void StorePolicyForUser(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+      const std::string& in_account_id,
+      const std::vector<uint8_t>& in_policy_blob);
+  void StoreUnsignedPolicyForUser(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+      const std::string& in_account_id,
+      const std::vector<uint8_t>& in_policy_blob);
+  bool RetrievePolicyForUser(
+      brillo::ErrorPtr* error,
+      const std::string& in_account_id,
+      std::vector<uint8_t>* out_policy_blob);
   void StoreDeviceLocalAccountPolicy(
-      const std::string& account_id,
-      const std::vector<uint8_t>& policy_blob,
-      const PolicyService::Completion& completion);
-  void RetrieveDeviceLocalAccountPolicy(const std::string& account_id,
-                                        std::vector<uint8_t>* policy_blob,
-                                        Error* error);
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+      const std::string& in_account_id,
+      const std::vector<uint8_t>& in_policy_blob);
+  bool RetrieveDeviceLocalAccountPolicy(
+      brillo::ErrorPtr* error,
+      const std::string& in_account_id,
+      std::vector<uint8_t>* out_policy_blob);
 
   std::string RetrieveSessionState();
   std::map<std::string, std::string> RetrieveActiveSessions();
@@ -282,7 +292,26 @@ class SessionManagerImpl : public SessionManagerInterface,
                                                  bool is_incognito,
                                                  brillo::ErrorPtr* error);
 
+  // Verifies whether unsigned policies are permitted to be stored.
+  // Returns nullptr on success. Otherwise, an error that should be used in a
+  // reply to the D-Bus method call is returned.
+  brillo::ErrorPtr VerifyUnsignedPolicyStore();
+
   PolicyService* GetPolicyService(const std::string& account_id);
+
+  // Shared implementation of StorePolicy() and StoreUnsignedPolicy().
+  void StorePolicyInternal(
+      const std::vector<uint8_t>& policy_blob,
+      SignatureCheck signature_check,
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response);
+
+  // Shared implementation of StorePolicyForUser() and
+  // StoreUnsignedPolicyForUser().
+  void StorePolicyForUserInternal(
+      const std::string& account_id,
+      const std::vector<uint8_t>& policy_blob,
+      SignatureCheck signature_check,
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response);
 
 #if USE_CHEETS
   // Starts the Android container for ARC. If the container has started,

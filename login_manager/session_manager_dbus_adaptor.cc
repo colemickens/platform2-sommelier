@@ -14,6 +14,7 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/files/file_util.h>
+#include <base/memory/ptr_util.h>
 #include <brillo/dbus/data_serialization.h>
 #include <brillo/dbus/utils.h>
 #include <brillo/errors/error_codes.h>
@@ -62,27 +63,20 @@ std::unique_ptr<dbus::Response> CreateInvalidArgsError(dbus::MethodCall* call,
 std::unique_ptr<dbus::Response> CreateStringResponse(
     dbus::MethodCall* call,
     const std::string& payload) {
-  auto response = dbus::Response::FromMethodCall(call);
+  std::unique_ptr<dbus::Response> response =
+      dbus::Response::FromMethodCall(call);
   dbus::MessageWriter writer(response.get());
   writer.AppendString(payload);
   return response;
 }
 
-// Craft a Response to call that is appropriate, given the contents of error.
-// If error is set, this will be an ErrorResponse. Otherwise, it will be a
-// Response containing payload.
-std::unique_ptr<dbus::Response> CraftAppropriateResponseWithBytes(
+std::unique_ptr<dbus::Response> CreateBytesResponse(
     dbus::MethodCall* call,
-    const SessionManagerImpl::Error& error,
     const std::vector<uint8_t>& payload) {
-  std::unique_ptr<dbus::Response> response;
-  if (error.is_set()) {
-    response = CreateError(call, error.name(), error.message());
-  } else {
-    response = dbus::Response::FromMethodCall(call);
-    dbus::MessageWriter writer(response.get());
-    writer.AppendArrayOfBytes(payload.data(), payload.size());
-  }
+  std::unique_ptr<dbus::Response> response =
+      dbus::Response::FromMethodCall(call);
+  dbus::MessageWriter writer(response.get());
+  writer.AppendArrayOfBytes(payload.data(), payload.size());
   return response;
 }
 
@@ -351,19 +345,6 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StopSession(
 void SessionManagerDBusAdaptor::StorePolicy(
     dbus::MethodCall* call,
     dbus::ExportedObject::ResponseSender sender) {
-  DoStorePolicy(call, sender, SignatureCheck::kEnabled);
-}
-
-void SessionManagerDBusAdaptor::StoreUnsignedPolicy(
-    dbus::MethodCall* call,
-    dbus::ExportedObject::ResponseSender sender) {
-  DoStorePolicy(call, sender, SignatureCheck::kDisabled);
-}
-
-void SessionManagerDBusAdaptor::DoStorePolicy(
-    dbus::MethodCall* call,
-    dbus::ExportedObject::ResponseSender sender,
-    SignatureCheck signature_check) {
   std::vector<uint8_t> policy_blob;
   dbus::MessageReader reader(call);
   if (!brillo::dbus_utils::PopValueFromReader(&reader, &policy_blob)) {
@@ -371,35 +352,38 @@ void SessionManagerDBusAdaptor::DoStorePolicy(
     return;
   }
 
-  impl_->StorePolicy(policy_blob, signature_check,
-                     DBusMethodCompletion::CreateCallback(call, sender));
-  // Response will be sent asynchronously.
+  impl_->StorePolicy(
+      base::MakeUnique<brillo::dbus_utils::DBusMethodResponse<>>(call, sender),
+      policy_blob);
+}
+
+void SessionManagerDBusAdaptor::StoreUnsignedPolicy(
+    dbus::MethodCall* call,
+    dbus::ExportedObject::ResponseSender sender) {
+  std::vector<uint8_t> policy_blob;
+  dbus::MessageReader reader(call);
+  if (!brillo::dbus_utils::PopValueFromReader(&reader, &policy_blob)) {
+    sender.Run(CreateInvalidArgsError(call, call->GetSignature()));
+    return;
+  }
+
+  impl_->StoreUnsignedPolicy(
+      base::MakeUnique<brillo::dbus_utils::DBusMethodResponse<>>(call, sender),
+      policy_blob);
 }
 
 std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrievePolicy(
     dbus::MethodCall* call) {
+  brillo::ErrorPtr error;
   std::vector<uint8_t> policy_blob;
-  SessionManagerImpl::Error error;
-  impl_->RetrievePolicy(&policy_blob, &error);
-  return CraftAppropriateResponseWithBytes(call, error, policy_blob);
+  if (!impl_->RetrievePolicy(&error, &policy_blob))
+    return brillo::dbus_utils::GetDBusError(call, error.get());
+  return CreateBytesResponse(call, policy_blob);
 }
 
 void SessionManagerDBusAdaptor::StorePolicyForUser(
     dbus::MethodCall* call,
     dbus::ExportedObject::ResponseSender sender) {
-  DoStorePolicyForUser(call, sender, SignatureCheck::kEnabled);
-}
-
-void SessionManagerDBusAdaptor::StoreUnsignedPolicyForUser(
-    dbus::MethodCall* call,
-    dbus::ExportedObject::ResponseSender sender) {
-  DoStorePolicyForUser(call, sender, SignatureCheck::kDisabled);
-}
-
-void SessionManagerDBusAdaptor::DoStorePolicyForUser(
-    dbus::MethodCall* call,
-    dbus::ExportedObject::ResponseSender sender,
-    SignatureCheck signature_check) {
   std::string account_id;
   std::vector<uint8_t> policy_blob;
   dbus::MessageReader reader(call);
@@ -410,9 +394,25 @@ void SessionManagerDBusAdaptor::DoStorePolicyForUser(
   }
 
   impl_->StorePolicyForUser(
-      account_id, policy_blob, signature_check,
-      DBusMethodCompletion::CreateCallback(call, sender));
-  // Response will normally be sent asynchronously.
+      base::MakeUnique<brillo::dbus_utils::DBusMethodResponse<>>(call, sender),
+      account_id, policy_blob);
+}
+
+void SessionManagerDBusAdaptor::StoreUnsignedPolicyForUser(
+    dbus::MethodCall* call,
+    dbus::ExportedObject::ResponseSender sender) {
+  std::string account_id;
+  std::vector<uint8_t> policy_blob;
+  dbus::MessageReader reader(call);
+  if (!reader.PopString(&account_id) ||
+      !brillo::dbus_utils::PopValueFromReader(&reader, &policy_blob)) {
+    sender.Run(CreateInvalidArgsError(call, call->GetSignature()));
+    return;
+  }
+
+  impl_->StoreUnsignedPolicyForUser(
+      base::MakeUnique<brillo::dbus_utils::DBusMethodResponse<>>(call, sender),
+      account_id, policy_blob);
 }
 
 std::unique_ptr<dbus::Response>
@@ -423,10 +423,11 @@ SessionManagerDBusAdaptor::RetrievePolicyForUser(dbus::MethodCall* call) {
   if (!reader.PopString(&account_id))
     return CreateInvalidArgsError(call, call->GetSignature());
 
+  brillo::ErrorPtr error;
   std::vector<uint8_t> policy_blob;
-  SessionManagerImpl::Error error;
-  impl_->RetrievePolicyForUser(account_id, &policy_blob, &error);
-  return CraftAppropriateResponseWithBytes(call, error, policy_blob);
+  if (!impl_->RetrievePolicyForUser(&error, account_id, &policy_blob))
+    return brillo::dbus_utils::GetDBusError(call, error.get());
+  return CreateBytesResponse(call, policy_blob);
 }
 
 void SessionManagerDBusAdaptor::StoreDeviceLocalAccountPolicy(
@@ -442,9 +443,8 @@ void SessionManagerDBusAdaptor::StoreDeviceLocalAccountPolicy(
   }
 
   impl_->StoreDeviceLocalAccountPolicy(
-      account_id, policy_blob,
-      DBusMethodCompletion::CreateCallback(call, sender));
-  // Response will be sent asynchronously.
+      base::MakeUnique<brillo::dbus_utils::DBusMethodResponse<>>(call, sender),
+      account_id, policy_blob);
 }
 
 std::unique_ptr<dbus::Response>
@@ -456,10 +456,13 @@ SessionManagerDBusAdaptor::RetrieveDeviceLocalAccountPolicy(
   if (!reader.PopString(&account_id))
     return CreateInvalidArgsError(call, call->GetSignature());
 
+  brillo::ErrorPtr error;
   std::vector<uint8_t> policy_blob;
-  SessionManagerImpl::Error error;
-  impl_->RetrieveDeviceLocalAccountPolicy(account_id, &policy_blob, &error);
-  return CraftAppropriateResponseWithBytes(call, error, policy_blob);
+  if (!impl_->RetrieveDeviceLocalAccountPolicy(
+          &error, account_id, &policy_blob)) {
+    return brillo::dbus_utils::GetDBusError(call, error.get());
+  }
+  return CreateBytesResponse(call, policy_blob);
 }
 
 std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::RetrieveSessionState(

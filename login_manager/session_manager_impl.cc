@@ -144,6 +144,18 @@ bool IsIncognitoAccountId(const std::string& account_id) {
          (lower_case_id == SessionManagerImpl::kDemoUser);
 }
 
+// Adapter from DBusMethodResponse to PolicyService::Completion callback.
+void HandlePolicyServiceCompletion(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+    brillo::ErrorPtr error) {
+  if (error) {
+    response->ReplyWithError(error.get());
+    return;
+  }
+
+  response->Return();
+}
+
 #if USE_CHEETS
 bool IsDevMode(SystemUtils* system) {
   // When GetDevModeState() returns UNKNOWN, return true.
@@ -489,110 +501,106 @@ void SessionManagerImpl::StopSession(const std::string& in_unique_identifier) {
 }
 
 void SessionManagerImpl::StorePolicy(
-    const std::vector<uint8_t>& policy_blob,
-    SignatureCheck signature_check,
-    const PolicyService::Completion& completion) {
-  // Skipping of signature checks is gated on enterprise_ad device mode being
-  // locked into install attributes.
-  if (signature_check == SignatureCheck::kDisabled) {
-    const std::string& mode = install_attributes_reader_->GetAttribute(
-        InstallAttributesReader::kAttrMode);
-    if (mode != InstallAttributesReader::kDeviceModeEnterpriseAD) {
-      constexpr char kMessage[] =
-          "Device mode doesn't permit unsigned policy!";
-      LOG(ERROR) << kMessage;
-      completion.Run(CreateError(
-          dbus_error::kPolicySignatureRequired, kMessage));
-      return;
-    }
-  }
-
-  int flags = PolicyService::KEY_ROTATE;
-  if (!session_started_)
-    flags |= PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_CLOBBER;
-  device_policy_->Store(policy_blob, flags, signature_check, completion);
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+    const std::vector<uint8_t>& in_policy_blob) {
+  StorePolicyInternal(
+      in_policy_blob, SignatureCheck::kEnabled, std::move(response));
 }
 
-void SessionManagerImpl::RetrievePolicy(std::vector<uint8_t>* policy_blob,
-                                        Error* error) {
-  if (!device_policy_->Retrieve(policy_blob)) {
-    static const char msg[] = "Failed to retrieve policy data.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kSigEncodeFail, msg);
+void SessionManagerImpl::StoreUnsignedPolicy(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+    const std::vector<uint8_t>& in_policy_blob) {
+  brillo::ErrorPtr error = VerifyUnsignedPolicyStore();
+  if (error) {
+    response->ReplyWithError(error.get());
     return;
   }
+
+  StorePolicyInternal(
+      in_policy_blob, SignatureCheck::kDisabled, std::move(response));
+}
+
+bool SessionManagerImpl::RetrievePolicy(
+    brillo::ErrorPtr* error,
+    std::vector<uint8_t>* out_policy_blob) {
+  if (!device_policy_->Retrieve(out_policy_blob)) {
+    constexpr char kMessage[] = "Failed to retrieve policy data.";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kSigEncodeFail, kMessage);
+    return false;
+  }
+
+  return true;
 }
 
 void SessionManagerImpl::StorePolicyForUser(
-    const std::string& account_id,
-    const std::vector<uint8_t>& policy_blob,
-    SignatureCheck signature_check,
-    const PolicyService::Completion& completion) {
-  // Skipping of signature checks is gated on enterprise_ad device mode being
-  // locked into install attributes.
-  if (signature_check == SignatureCheck::kDisabled) {
-    const std::string& mode = install_attributes_reader_->GetAttribute(
-        InstallAttributesReader::kAttrMode);
-    if (mode != InstallAttributesReader::kDeviceModeEnterpriseAD) {
-      constexpr char kMessage[] =
-          "Device mode doesn't permit unsigned policy!";
-      LOG(ERROR) << kMessage;
-      completion.Run(CreateError(
-          dbus_error::kPolicySignatureRequired, kMessage));
-      return;
-    }
-  }
-
-  PolicyService* policy_service = GetPolicyService(account_id);
-  if (!policy_service) {
-    constexpr char kMessage[] =
-        "Cannot store user policy before session is started.";
-    LOG(ERROR) << kMessage;
-    completion.Run(CreateError(dbus_error::kSessionDoesNotExist, kMessage));
-    return;
-  }
-
-  policy_service->Store(
-      policy_blob, PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_ROTATE,
-      signature_check, completion);
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+    const std::string& in_account_id,
+    const std::vector<uint8_t>& in_policy_blob) {
+  StorePolicyForUserInternal(
+      in_account_id, in_policy_blob, SignatureCheck::kEnabled,
+      std::move(response));
 }
 
-void SessionManagerImpl::RetrievePolicyForUser(
-    const std::string& account_id,
-    std::vector<uint8_t>* policy_blob,
-    Error* error) {
-  PolicyService* policy_service = GetPolicyService(account_id);
-  if (!policy_service) {
-    static const char msg[] =
-        "Cannot retrieve user policy before session is started.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kSessionDoesNotExist, msg);
+void SessionManagerImpl::StoreUnsignedPolicyForUser(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+    const std::string& in_account_id,
+    const std::vector<uint8_t>& in_policy_blob) {
+  brillo::ErrorPtr error = VerifyUnsignedPolicyStore();
+  if (error) {
+    response->ReplyWithError(error.get());
     return;
   }
-  if (!policy_service->Retrieve(policy_blob)) {
-    static const char msg[] = "Failed to retrieve policy data.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kSigEncodeFail, msg);
+
+  StorePolicyForUserInternal(
+      in_account_id, in_policy_blob, SignatureCheck::kDisabled,
+      std::move(response));
+}
+
+bool SessionManagerImpl::RetrievePolicyForUser(
+    brillo::ErrorPtr* error,
+    const std::string& in_account_id,
+    std::vector<uint8_t>* out_policy_blob) {
+  PolicyService* policy_service = GetPolicyService(in_account_id);
+  if (!policy_service) {
+    constexpr char kMessage[] =
+        "Cannot retrieve user policy before session is started.";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kSessionDoesNotExist, kMessage);
+    return false;
   }
+  if (!policy_service->Retrieve(out_policy_blob)) {
+    constexpr char kMessage[] = "Failed to retrieve policy data.";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kSigEncodeFail, kMessage);
+    return false;
+  }
+
+  return true;
 }
 
 void SessionManagerImpl::StoreDeviceLocalAccountPolicy(
-    const std::string& account_id,
-    const std::vector<uint8_t>& policy_blob,
-    const PolicyService::Completion& completion) {
-  device_local_account_policy_->Store(account_id, policy_blob, completion);
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+    const std::string& in_account_id,
+    const std::vector<uint8_t>& in_policy_blob) {
+  device_local_account_policy_->Store(
+      in_account_id, in_policy_blob,
+      base::Bind(HandlePolicyServiceCompletion, base::Passed(&response)));
 }
 
-void SessionManagerImpl::RetrieveDeviceLocalAccountPolicy(
-    const std::string& account_id,
-    std::vector<uint8_t>* policy_blob,
-    Error* error) {
-  if (!device_local_account_policy_->Retrieve(account_id, policy_blob)) {
-    static const char msg[] = "Failed to retrieve policy data.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kSigEncodeFail, msg);
-    return;
+bool SessionManagerImpl::RetrieveDeviceLocalAccountPolicy(
+      brillo::ErrorPtr* error,
+      const std::string& in_account_id,
+      std::vector<uint8_t>* out_policy_blob) {
+  if (!device_local_account_policy_->Retrieve(
+          in_account_id, out_policy_blob)) {
+    constexpr char kMessage[] = "Failed to retrieve policy data.";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kSigEncodeFail, kMessage);
+    return false;
   }
+
+  return true;
 }
 
 std::string SessionManagerImpl::RetrieveSessionState() {
@@ -1207,9 +1215,56 @@ SessionManagerImpl::CreateUserSession(const std::string& username,
       std::move(user_policy));
 }
 
+brillo::ErrorPtr SessionManagerImpl::VerifyUnsignedPolicyStore() {
+  // Unsigned policy store D-Bus call is allowed only in enterprise_ad mode.
+  const std::string& mode = install_attributes_reader_->GetAttribute(
+      InstallAttributesReader::kAttrMode);
+  if (mode != InstallAttributesReader::kDeviceModeEnterpriseAD) {
+    constexpr char kMessage[] =
+        "Device mode doesn't permit unsigned policy.";
+    LOG(ERROR) << kMessage;
+    return CreateError(dbus_error::kPolicySignatureRequired, kMessage);
+  }
+
+  return nullptr;
+}
+
 PolicyService* SessionManagerImpl::GetPolicyService(const std::string& user) {
   UserSessionMap::const_iterator it = user_sessions_.find(user);
   return it == user_sessions_.end() ? NULL : it->second->policy_service.get();
+}
+
+void SessionManagerImpl::StorePolicyInternal(
+    const std::vector<uint8_t>& policy_blob,
+    SignatureCheck signature_check,
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
+  int flags = PolicyService::KEY_ROTATE;
+  if (!session_started_)
+    flags |= PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_CLOBBER;
+  device_policy_->Store(
+      policy_blob, flags, signature_check,
+      base::Bind(HandlePolicyServiceCompletion, base::Passed(&response)));
+}
+
+void SessionManagerImpl::StorePolicyForUserInternal(
+    const std::string& account_id,
+    const std::vector<uint8_t>& policy_blob,
+    SignatureCheck signature_check,
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
+  PolicyService* policy_service = GetPolicyService(account_id);
+  if (!policy_service) {
+    constexpr char kMessage[] =
+        "Cannot store user policy before session is started.";
+    LOG(ERROR) << kMessage;
+    auto error = CreateError(dbus_error::kSessionDoesNotExist, kMessage);
+    response->ReplyWithError(error.get());
+    return;
+  }
+
+  policy_service->Store(
+      policy_blob, PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_ROTATE,
+      signature_check,
+      base::Bind(HandlePolicyServiceCompletion, base::Passed(&response)));
 }
 
 #if USE_CHEETS

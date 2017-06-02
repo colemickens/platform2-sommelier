@@ -111,6 +111,7 @@
     -->
     <method name="StorePolicy">
       <arg type="ay" name="policy_blob" direction="in" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
     </method>
 
     <!--
@@ -124,6 +125,7 @@
     -->
     <method name="StoreUnsignedPolicy">
       <arg type="ay" name="policy_blob" direction="in" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
     </method>
 
     <!--
@@ -158,6 +160,7 @@
     <method name="StorePolicyForUser">
       <arg type="s" name="account_id" direction="in" />
       <arg type="ay" name="policy_blob" direction="in" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
     </method>
 
     <!--
@@ -182,6 +185,7 @@
     <method name="StoreUnsignedPolicyForUser">
       <arg type="s" name="account_id" direction="in" />
       <arg type="ay" name="policy_blob" direction="in" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
     </method>
 
     <!--
@@ -218,6 +222,7 @@
     <method name="StoreDeviceLocalAccountPolicy">
       <arg type="s" name="account_id" direction="in" />
       <arg type="ay" name="policy_blob" direction="in" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
     </method>
 
     <!--
