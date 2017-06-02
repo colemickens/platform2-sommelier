@@ -61,9 +61,8 @@ if (($programname == 'shill') or \
     ($programname == 'arc-networkd') or \
     ($programname == 'charon')) and $syslogseverity >= '4' then ~
 
-$outchannel tlsdate,/var/log/tlsdate.log,65536,/usr/sbin/simple-rotate /var/log/tlsdate.log
 # Keep tlsdate stuff in /var/log/tlsdate.log
-if ($programname startswith 'tlsdate') then :omfile:$tlsdate
+if ($programname startswith 'tlsdate') then -/var/log/tlsdate.log
 & ~  # Don't log tlsdate messages anywhere else.
 
 # Log all kernel messages to the console.
