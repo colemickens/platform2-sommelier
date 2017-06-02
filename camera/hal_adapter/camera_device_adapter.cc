@@ -125,6 +125,11 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
       mojom::Camera3StreamPtr ptr = mojom::Camera3Stream::New();
       ptr->id = s.first;
       ptr->format = static_cast<mojom::HalPixelFormat>(s.second->format);
+      ptr->width = s.second->width;
+      ptr->height = s.second->height;
+      ptr->stream_type =
+          static_cast<mojom::Camera3StreamType>(s.second->stream_type);
+      ptr->data_space = s.second->data_space;
       // HAL should only change usage and max_buffers.
       ptr->usage = s.second->usage;
       ptr->max_buffers = s.second->max_buffers;
