@@ -55,6 +55,9 @@ DeviceJailControl::~DeviceJailControl() {
 
 DeviceJailControl::AddResult DeviceJailControl::AddDevice(
     const std::string& path, std::string* jail_path) {
+  if (!jail_path)
+    return AddResult::ERROR;
+
   struct jail_control_add_dev arg;
   arg.path = path.c_str();
 
@@ -78,7 +81,19 @@ DeviceJailControl::AddResult DeviceJailControl::AddDevice(
     return AddResult::ERROR;
   }
 
+  // Wait a few ms for udev to run rules on the device. Shouldn't take
+  // longer than 3ms, but poll for a little longer to be sure.
+  // TODO(ejcaruso): replace this with an async call that uses udev_monitor
+  // to determine when the device is initialized.
+  for (int i = 0; i < 10; i++) {
+    if (udev_device_get_is_initialized(device.get()))
+      break;
+    usleep(1000);
+  }
+
   *jail_path = udev_device_get_devnode(device.get());
+  if (!udev_device_get_is_initialized(device.get()))
+    LOG(WARNING) << "udev is taking a while to initialize " << *jail_path;
   return exists ? AddResult::ALREADY_EXISTS : AddResult::CREATED;
 }
 
