@@ -8451,12 +8451,20 @@ mno {
     country : "kr"
     provider_type : GSM
     localized_name {
-      name : "KTF"
+      name : "KT"
     }
     mccmnc : "45008"
     mobile_apn {
-      apn : "hsdpa-internet.ktfwing.com"
-      plan : POSTPAID
+      apn : "lte.ktfwing.com"
+      localized_name {
+        name : "KT LTE"
+      }
+    }
+    mobile_apn {
+      apn : "alwayson.ktfwing.com"
+      localized_name {
+        name : "KT 3G"
+      }
     }
   }
 }
