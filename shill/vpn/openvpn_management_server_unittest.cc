@@ -18,11 +18,7 @@
 
 #include <netinet/in.h>
 
-#if defined(__ANDROID__)
-#include <dbus/service_constants.h>
-#else
 #include <chromeos/dbus/service_constants.h>
-#endif  // __ANDROID__
 #include <gtest/gtest.h>
 
 #include "shill/key_value_store.h"

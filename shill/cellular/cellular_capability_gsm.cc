@@ -22,11 +22,7 @@
 #include <base/bind.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
-#if defined(__ANDROID__)
-#include <dbus/service_constants.h>
-#else
 #include <chromeos/dbus/service_constants.h>
-#endif  // __ANDROID__
 #include <mm/mm-modem.h>
 
 #include "shill/adaptor_interfaces.h"

@@ -20,11 +20,7 @@
 #include <set>
 
 #include <base/memory/ptr_util.h>
-#if defined(__ANDROID__)
-#include <dbus/service_constants.h>
-#else
 #include <chromeos/dbus/service_constants.h>
-#endif  // __ANDROID__
 #include <gtest/gtest.h>
 
 #include "shill/error.h"

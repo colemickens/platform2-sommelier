@@ -17,12 +17,7 @@
 #include "shill/dbus/chromeos_dbus_control.h"
 
 #include <brillo/dbus/async_event_sequencer.h>
-
-#if defined(__ANDROID__)
-#include <dbus/service_constants.h>
-#else
 #include <chromeos/dbus/service_constants.h>
-#endif  // __ANDROID__
 
 #include "shill/dbus/chromeos_device_dbus_adaptor.h"
 #include "shill/dbus/chromeos_ipconfig_dbus_adaptor.h"

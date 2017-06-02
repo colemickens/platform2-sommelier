@@ -20,11 +20,7 @@
 
 #include <base/files/file_path.h>
 #include <base/strings/string_number_conversions.h>
-#if defined(__ANDROID__)
-#include <dbus/service_constants.h>
-#else
 #include <chromeos/dbus/service_constants.h>
-#endif  // __ANDROID__
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/connectivity_trial.h"

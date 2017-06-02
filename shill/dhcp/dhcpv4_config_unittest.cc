@@ -24,11 +24,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
-#if defined(__ANDROID__)
-#include <dbus/service_constants.h>
-#else
 #include <chromeos/dbus/service_constants.h>
-#endif  // __ANDROID__
 
 #include "shill/dhcp/mock_dhcp_properties.h"
 #include "shill/dhcp/mock_dhcp_provider.h"

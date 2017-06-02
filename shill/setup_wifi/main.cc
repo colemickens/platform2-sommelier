@@ -26,11 +26,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <brillo/any.h>
 #include <brillo/daemons/dbus_daemon.h>
-#if defined(__ANDROID__)
-#include <dbus/service_constants.h>
-#else
 #include <chromeos/dbus/service_constants.h>
-#endif  // __ANDROID__
 #include <shill/dbus-proxies.h>
 
 namespace {

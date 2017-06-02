@@ -16,11 +16,7 @@
 
 #include "shill/dbus/chromeos_modem_cdma_proxy.h"
 
-#if defined(__ANDROID__)
-#include <dbus/service_constants.h>
-#else
 #include <chromeos/dbus/service_constants.h>
-#endif  // __ANDROID__
 
 #include "shill/cellular/cellular_error.h"
 #include "shill/logging.h"

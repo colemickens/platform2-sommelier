@@ -16,11 +16,7 @@
 
 #include "shill/cellular/mock_cellular_service.h"
 
-#if defined(__ANDROID__)
-#include <dbus/service_constants.h>
-#else
 #include <chromeos/dbus/service_constants.h>
-#endif  // __ANDROID__
 
 using testing::ReturnRef;
 
