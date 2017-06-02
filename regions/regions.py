@@ -130,10 +130,6 @@ class Region(object):
   notes = None
   """Implementation notes about the region.  This may be None."""
 
-  numeric_id = None
-  """An integer for mapping into Chrome OS HWID.
-  Please never change this once it is assigned."""
-
   regulatory_domain = None
   """An ISO 3166-1 alpha 2 upper-cased two-letter region code for setting
   Wireless regulatory. See crosbug.com/p/38745 for more details.
@@ -143,14 +139,14 @@ class Region(object):
   confirmed = None
   """An optional boolean flag to indicate if the region data is confirmed."""
 
-  FIELDS = ['numeric_id', 'region_code', 'description', 'keyboards',
+  FIELDS = ['region_code', 'description', 'keyboards',
             'time_zones', 'locales', 'keyboard_mechanical_layout',
             'regulatory_domain']
   """Names of fields that define the region."""
 
   def __init__(self, region_code, keyboards, time_zones, locales,
                keyboard_mechanical_layout, description=None, notes=None,
-               numeric_id=None, regdomain=None):
+               regdomain=None):
     """Constructor.
 
     Args:
@@ -163,8 +159,6 @@ class Region(object):
       keyboard_mechanical_layout: See :py:attr:`keyboard_mechanical_layout`.
       description: See :py:attr:`description`.
       notes: See :py:attr:`notes`.
-      numeric_id: See :py:attr:`numeric_id`.  This must be None or a
-        non-negative integer.
       regdomain: See :py:attr:`regulatory_domain`.
     """
 
@@ -186,17 +180,8 @@ class Region(object):
     self.keyboard_mechanical_layout = keyboard_mechanical_layout
     self.description = description or region_code
     self.notes = notes
-    self.numeric_id = numeric_id
     self.regulatory_domain = (regdomain or regdomain_from_region(region_code))
     self.confirmed = None
-
-    if self.numeric_id is not None:
-      if not isinstance(self.numeric_id, int):
-        raise TypeError('Numeric ID is %r but should be an integer' %
-                        (self.numeric_id,))
-      if self.numeric_id < 0:
-        raise ValueError('Numeric ID is %r but should be non-negative' %
-                         self.numeric_id)
 
     for f in (self.keyboards, self.locales):
       assert all(isinstance(x, str) for x in f), (
@@ -224,102 +209,95 @@ class Region(object):
     """
     return dict((k, getattr(self, k)) for k in self.FIELDS)
 
-_KML = Region.KeyboardMechanicalLayout
+KML = Region.KeyboardMechanicalLayout
 REGIONS_LIST = [
     Region(
-        'au', 'xkb:us::eng', 'Australia/Sydney', 'en-AU', _KML.ANSI,
-        'Australia', None, 1),
+        'au', 'xkb:us::eng', 'Australia/Sydney', 'en-AU', KML.ANSI,
+        'Australia'),
     Region(
-        'be', 'xkb:be::nld', 'Europe/Brussels', 'en-GB', _KML.ISO,
-        'Belgium',
-        'Flemish (Belgian Dutch) keyboard; British English language for '
-        'neutrality', 2),
+        'be', 'xkb:be::nld', 'Europe/Brussels', 'en-GB', KML.ISO,
+        'Belgium', (
+            'Flemish (Belgian Dutch) keyboard; British English language for '
+            'neutrality')),
     Region(
-        'br', 'xkb:br::por', 'America/Sao_Paulo', 'pt-BR', _KML.ABNT2,
-        'Brazil (ABNT2)',
-        (
+        'br', 'xkb:br::por', 'America/Sao_Paulo', 'pt-BR', KML.ABNT2,
+        'Brazil (ABNT2)', (
             'ABNT2 = ABNT NBR 10346 variant 2. This is the preferred layout '
             'for Brazil. ABNT2 is mostly an ISO layout, but it 12 keys between '
-            'the shift keys; see http://goo.gl/twA5tq'), 3),
+            'the shift keys; see http://goo.gl/twA5tq')),
     Region(
-        'br.abnt', 'xkb:br::por', 'America/Sao_Paulo', 'pt-BR',
-        _KML.ISO, 'Brazil (ABNT)',
-        (
+        'br.abnt', 'xkb:br::por', 'America/Sao_Paulo', 'pt-BR', KML.ISO,
+        'Brazil (ABNT)', (
             'Like ABNT2, but lacking the extra key to the left of the right '
             'shift key found in that layout. ABNT2 (the "br" region) is '
-            'preferred to this layout'), 4),
+            'preferred to this layout')),
     Region(
-        'br.usintl', 'xkb:us:intl:eng', 'America/Sao_Paulo', 'pt-BR',
-        _KML.ANSI, 'Brazil (US Intl)',
-        'Brazil with US International keyboard layout. ABNT2 ("br") and '
-        'ABNT1 ("br.abnt1 ") are both preferred to this.', 5),
+        'br.usintl', 'xkb:us:intl:eng', 'America/Sao_Paulo', 'pt-BR', KML.ANSI,
+        'Brazil (US Intl)', (
+            'Brazil with US International keyboard layout. ABNT2 ("br") and '
+            'ABNT1 ("br.abnt1 ") are both preferred to this.')),
     Region(
-        'ca.ansi', 'xkb:us::eng', 'America/Toronto', 'en-CA', _KML.ANSI,
-        'Canada (US keyboard)',
-        'Canada with US (ANSI) keyboard. Only allowed if there are separate US '
-        'English, Canadian English, and French SKUs. Not for en/fr hybrid ANSI '
-        'keyboards; for that you would want ca.hybridansi. See '
-        'http://goto/cros-canada', 6),
+        'ca.ansi', 'xkb:us::eng', 'America/Toronto', 'en-CA', KML.ANSI,
+        'Canada (US keyboard)', (
+            'Canada with US (ANSI) keyboard. Only allowed if there are '
+            'separate US English, Canadian English, and French SKUs. '
+            'Not for en/fr hybrid ANSI keyboards; for that you would want '
+            'ca.hybridansi. See http://goto/cros-canada')),
     Region(
-        'ca.fr', 'xkb:ca::fra', 'America/Toronto', 'fr-CA', _KML.ISO,
-        'Canada (French keyboard)',
-        (
+        'ca.fr', 'xkb:ca::fra', 'America/Toronto', 'fr-CA', KML.ISO,
+        'Canada (French keyboard)', (
             'Canadian French (ISO) keyboard. The most common configuration for '
-            'Canadian French SKUs.  See http://goto/cros-canada'), 7),
+            'Canadian French SKUs.  See http://goto/cros-canada')),
     Region(
-        'ca.hybrid', 'xkb:ca:eng:eng', 'America/Toronto', 'en-CA',
-        _KML.ISO, 'Canada (hybrid ISO)',
-        (
+        'ca.hybrid', 'xkb:ca:eng:eng', 'America/Toronto', 'en-CA', KML.ISO,
+        'Canada (hybrid ISO)', (
             'Canada with hybrid (ISO) xkb:ca:eng:eng + xkb:ca::fra keyboard, '
             'defaulting to English language and keyboard.  Used only if there '
             'needs to be a single SKU for all of Canada.  See '
-            'http://goto/cros-canada'), 8),
+            'http://goto/cros-canada')),
     Region(
-        'ca.hybridansi', 'xkb:ca:eng:eng', 'America/Toronto', 'en-CA',
-        _KML.ANSI, 'Canada (hybrid ANSI)',
-        (
+        'ca.hybridansi', 'xkb:ca:eng:eng', 'America/Toronto', 'en-CA', KML.ANSI,
+        'Canada (hybrid ANSI)', (
             'Canada with hybrid (ANSI) xkb:ca:eng:eng + xkb:ca::fra keyboard, '
             'defaulting to English language and keyboard.  Used only if there '
             'needs to be a single SKU for all of Canada.  See '
-            'http://goto/cros-canada'), 9),
+            'http://goto/cros-canada')),
     Region(
-        'ca.multix', 'xkb:ca:multix:fra', 'America/Toronto', 'fr-CA',
-        _KML.ISO, 'Canada (multilingual)',
-        (
+        'ca.multix', 'xkb:ca:multix:fra', 'America/Toronto', 'fr-CA', KML.ISO,
+        'Canada (multilingual)', (
             "Canadian Multilingual keyboard; you probably don't want this. See "
-            'http://goto/cros-canada'), 10),
+            'http://goto/cros-canada')),
     Region(
-        'ch', 'xkb:ch::ger', 'Europe/Zurich', 'de-CH', _KML.ISO,
-        'Switzerland',
-        'German keyboard', 11),
+        'ch', 'xkb:ch::ger', 'Europe/Zurich', 'de-CH', KML.ISO,
+        'Switzerland', (
+            'German keyboard')),
     Region(
-        'de', 'xkb:de::ger', 'Europe/Berlin', 'de', _KML.ISO, 'Germany',
-        None, 12),
+        'de', 'xkb:de::ger', 'Europe/Berlin', 'de', KML.ISO,
+        'Germany'),
     Region(
-        'es', 'xkb:es::spa', 'Europe/Madrid', 'es', _KML.ISO, 'Spain',
-        None, 13),
+        'es', 'xkb:es::spa', 'Europe/Madrid', 'es', KML.ISO,
+        'Spain'),
     Region(
-        'fi', 'xkb:fi::fin', 'Europe/Helsinki', 'fi', _KML.ISO, 'Finland',
-        None, 14),
+        'fi', 'xkb:fi::fin', 'Europe/Helsinki', 'fi', KML.ISO,
+        'Finland'),
     Region(
-        'fr', 'xkb:fr::fra', 'Europe/Paris', 'fr', _KML.ISO, 'France',
-        None, 15),
+        'fr', 'xkb:fr::fra', 'Europe/Paris', 'fr', KML.ISO,
+        'France'),
     Region(
-        'gb', 'xkb:gb:extd:eng', 'Europe/London', 'en-GB', _KML.ISO, 'UK',
-        None, 16),
+        'gb', 'xkb:gb:extd:eng', 'Europe/London', 'en-GB', KML.ISO,
+        'UK'),
     Region(
-        'ie', 'xkb:gb:extd:eng', 'Europe/Dublin', 'en-GB', _KML.ISO,
-        'Ireland', None, 17),
+        'ie', 'xkb:gb:extd:eng', 'Europe/Dublin', 'en-GB', KML.ISO,
+        'Ireland'),
     Region(
-        'in', 'xkb:us::eng', 'Asia/Calcutta', 'en-US', _KML.ANSI, 'India',
-        None, 18),
+        'in', 'xkb:us::eng', 'Asia/Calcutta', 'en-US', KML.ANSI,
+        'India'),
     Region(
-        'it', 'xkb:it::ita', 'Europe/Rome', 'it', _KML.ISO, 'Italy', None,
-        19),
+        'it', 'xkb:it::ita', 'Europe/Rome', 'it', KML.ISO,
+        'Italy'),
     Region(
-        'latam-es-419', 'xkb:es::spa', 'America/Mexico_City', 'es-419',
-        _KML.ISO, 'Hispanophone Latin America',
-        (
+        'latam-es-419', 'xkb:es::spa', 'America/Mexico_City', 'es-419', KML.ISO,
+        'Hispanophone Latin America', (
             'Spanish-speaking countries in Latin America, using the Iberian '
             '(Spain) Spanish keyboard, which is increasingly dominant in '
             'Latin America. Known to be correct for '
@@ -328,150 +306,160 @@ REGIONS_LIST = [
             'American layout (xkb:latam::spa) has not been approved; before '
             'using that you must seek review through http://goto/vpdsettings. '
             'See also http://goo.gl/Iffuqh. Note that 419 is the UN M.49 '
-            'region code for Latin America'), 20, 'MX'),
+            'region code for Latin America'), 'MX'),
     Region(
-        'my', 'xkb:us::eng', 'Asia/Kuala_Lumpur', 'ms', _KML.ANSI,
-        'Malaysia', None, 21),
+        'my', 'xkb:us::eng', 'Asia/Kuala_Lumpur', 'ms', KML.ANSI,
+        'Malaysia'),
     Region(
-        'nl', 'xkb:us:intl:eng', 'Europe/Amsterdam', 'nl', _KML.ANSI,
-        'Netherlands', None, 22),
+        'nl', 'xkb:us:intl:eng', 'Europe/Amsterdam', 'nl', KML.ANSI,
+        'Netherlands'),
     Region(
-        'nordic', 'xkb:se::swe', 'Europe/Stockholm', 'en-US', _KML.ISO,
-        'Nordics',
-        (
+        'nordic', 'xkb:se::swe', 'Europe/Stockholm', 'en-US', KML.ISO,
+        'Nordics', (
             'Unified SKU for Sweden, Norway, and Denmark.  This defaults '
             'to Swedish keyboard layout, but starts with US English language '
             'for neutrality.  Use if there is a single combined SKU for Nordic '
-            'countries.'), 23, 'SE'),
+            'countries.'), 'SE'),
     Region(
-        'nz', 'xkb:us::eng', 'Pacific/Auckland', 'en-NZ', _KML.ANSI,
-        'New Zealand', None, 24),
+        'nz', 'xkb:us::eng', 'Pacific/Auckland', 'en-NZ', KML.ANSI,
+        'New Zealand'),
     Region(
-        'ph', 'xkb:us::eng', 'Asia/Manila', 'en-US', _KML.ANSI,
-        'Philippines', None, 25),
+        'ph', 'xkb:us::eng', 'Asia/Manila', 'en-US', KML.ANSI,
+        'Philippines'),
     Region(
-        'ru', ['xkb:us::eng', 'xkb:ru::rus'], 'Europe/Moscow', 'ru', _KML.ANSI,
-        'Russia', 'For R31+ only; R30 and earlier must use US keyboard '
-        'for login', 26),
+        'ru', ['xkb:us::eng', 'xkb:ru::rus'], 'Europe/Moscow', 'ru', KML.ANSI,
+        'Russia', (
+            'For R31+ only; R30 and earlier must use US keyboard for login')),
     Region(
-        'se', 'xkb:se::swe', 'Europe/Stockholm', 'sv', _KML.ISO, 'Sweden',
-        (
+        'se', 'xkb:se::swe', 'Europe/Stockholm', 'sv', KML.ISO,
+        'Sweden', (
             'Use this if there separate SKUs for Nordic countries (Sweden, '
             'Norway, and Denmark), or the device is only shipping to Sweden. '
-            "If there is a single unified SKU, use 'nordic' instead."), 27),
+            "If there is a single unified SKU, use 'nordic' instead.")),
     Region(
-        'sg', 'xkb:us::eng', 'Asia/Singapore', 'en-GB', _KML.ANSI,
-        'Singapore', None, 28),
+        'sg', 'xkb:us::eng', 'Asia/Singapore', 'en-GB', KML.ANSI,
+        'Singapore'),
     Region(
-        'us', 'xkb:us::eng', 'America/Los_Angeles', 'en-US', _KML.ANSI,
-        'United States', None, 29),
+        'us', 'xkb:us::eng', 'America/Los_Angeles', 'en-US', KML.ANSI,
+        'United States'),
     Region(
-        'jp', 'xkb:jp::jpn', 'Asia/Tokyo', 'ja', _KML.JIS, 'Japan', None,
-        30),
+        'jp', 'xkb:jp::jpn', 'Asia/Tokyo', 'ja', KML.JIS,
+        'Japan'),
     Region(
-        'za', 'xkb:gb:extd:eng', 'Africa/Johannesburg', 'en-ZA',
-        _KML.ISO, 'South Africa', None, 31),
+        'za', 'xkb:gb:extd:eng', 'Africa/Johannesburg', 'en-ZA', KML.ISO,
+        'South Africa'),
     Region(
-        'ng', 'xkb:us:intl:eng', 'Africa/Lagos', 'en-GB', _KML.ANSI,
-        'Nigeria', None, 32),
+        'ng', 'xkb:us:intl:eng', 'Africa/Lagos', 'en-GB', KML.ANSI,
+        'Nigeria'),
     Region(
-        'hk',
-        ['xkb:us::eng', 'ime:zh-t:cangjie', 'ime:zh-t:quick',
-         'ime:zh-t:array', 'ime:zh-t:dayi', 'ime:zh-t:zhuyin',
-         'ime:zh-t:pinyin'], 'Asia/Hong_Kong',
-        ['zh-TW', 'en-GB', 'zh-CN'], _KML.ANSI, 'Hong Kong', None, 33),
+        'hk', ['xkb:us::eng', 'ime:zh-t:cangjie', 'ime:zh-t:quick',
+               'ime:zh-t:array', 'ime:zh-t:dayi', 'ime:zh-t:zhuyin',
+               'ime:zh-t:pinyin'], 'Asia/Hong_Kong', ['zh-TW', 'en-GB',
+                                                      'zh-CN'], KML.ANSI,
+        'Hong Kong'),
     Region(
-        'gcc', ['xkb:us::eng', 'm17n:ar', 't13n:ar'], 'Asia/Riyadh',
-        ['ar', 'en-GB'], _KML.ANSI, 'Gulf Cooperation Council (GCC)',
-        (
+        'gcc', ['xkb:us::eng', 'm17n:ar', 't13n:ar'], 'Asia/Riyadh', [
+            'ar', 'en-GB'],
+        KML.ANSI,
+        'Gulf Cooperation Council (GCC)', (
             'GCC is a regional intergovernmental political and economic '
             'union consisting of all Arab states of the Persian Gulf except '
             'for Iraq. Its member states are the Islamic monarchies of '
             'Bahrain, Kuwait, Oman, Qatar, Saudi Arabia, and the United Arab '
-            'Emirates.'), 34, 'SA'),
+            'Emirates.'), 'SA'),
     Region(
-        'cz', ['xkb:cz::cze', 'xkb:cz:qwerty:cze'], 'Europe/Prague',
-        ['cs', 'en-GB'], _KML.ISO, 'Czech Republic', None, 35),
+        'cz', ['xkb:cz::cze', 'xkb:cz:qwerty:cze'], 'Europe/Prague', [
+            'cs', 'en-GB'], KML.ISO,
+        'Czech Republic'),
     Region(
-        'th',
-        ['xkb:us::eng', 'm17n:th', 'm17n:th_pattajoti', 'm17n:th_tis'],
-        'Asia/Bangkok', ['th', 'en-GB'], _KML.ANSI, 'Thailand', None, 36),
+        'th', ['xkb:us::eng', 'm17n:th', 'm17n:th_pattajoti',
+               'm17n:th_tis'], 'Asia/Bangkok', ['th', 'en-GB'], KML.ANSI,
+        'Thailand'),
     Region(
-        'id', 'xkb:us::ind', 'Asia/Jakarta', ['id', 'en-GB'], _KML.ANSI,
-        'Indonesia', None, 37),
+        'id', 'xkb:us::ind', 'Asia/Jakarta', ['id', 'en-GB'], KML.ANSI,
+        'Indonesia'),
     Region(
-        'tw',
-        ['xkb:us::eng', 'ime:zh-t:zhuyin', 'ime:zh-t:array',
-         'ime:zh-t:dayi', 'ime:zh-t:cangjie', 'ime:zh-t:quick',
-         'ime:zh-t:pinyin'], 'Asia/Taipei', ['zh-TW', 'en-US'],
-        _KML.ANSI, 'Taiwan', None, 38),
+        'tw', ['xkb:us::eng', 'ime:zh-t:zhuyin', 'ime:zh-t:array',
+               'ime:zh-t:dayi', 'ime:zh-t:cangjie', 'ime:zh-t:quick',
+               'ime:zh-t:pinyin'], 'Asia/Taipei', ['zh-TW', 'en-US'], KML.ANSI,
+        'Taiwan'),
     Region(
-        'pl', 'xkb:pl::pol', 'Europe/Warsaw', ['pl', 'en-GB'],
-        _KML.ANSI, 'Poland', None, 39),
+        'pl', 'xkb:pl::pol', 'Europe/Warsaw', ['pl', 'en-GB'], KML.ANSI,
+        'Poland'),
     Region(
-        'gr', ['xkb:us::eng', 'xkb:gr::gre', 't13n:el'], 'Europe/Athens',
-        ['el', 'en-GB'], _KML.ANSI, 'Greece', None, 40),
+        'gr', ['xkb:us::eng', 'xkb:gr::gre', 't13n:el'], 'Europe/Athens', [
+            'el', 'en-GB'], KML.ANSI,
+        'Greece'),
     Region(
-        'il', ['xkb:us::eng', 'xkb:il::heb', 't13n:he'], 'Asia/Jerusalem',
-        ['he', 'en-US', 'ar'], _KML.ANSI, 'Israel', None, 41),
+        'il', ['xkb:us::eng', 'xkb:il::heb', 't13n:he'], 'Asia/Jerusalem', [
+            'he', 'en-US', 'ar'], KML.ANSI,
+        'Israel'),
     Region(
-        'pt', 'xkb:pt::por', 'Europe/Lisbon', ['pt-PT', 'en-GB'],
-        _KML.ISO, 'Portugal', None, 42),
+        'pt', 'xkb:pt::por', 'Europe/Lisbon', ['pt-PT', 'en-GB'], KML.ISO,
+        'Portugal'),
     Region(
-        'ro', ['xkb:us::eng', 'xkb:ro::rum'], 'Europe/Bucharest',
-        ['ro', 'hu', 'de', 'en-GB'], _KML.ISO, 'Romania', None, 43),
+        'ro', ['xkb:us::eng', 'xkb:ro::rum'], 'Europe/Bucharest', [
+            'ro', 'hu', 'de', 'en-GB'], KML.ISO,
+        'Romania'),
     Region(
-        'kr', ['xkb:us::eng', 'ime:ko:hangul'], 'Asia/Seoul',
-        ['ko', 'en-US'], _KML.ANSI, 'South Korea', None, 44),
+        'kr', ['xkb:us::eng', 'ime:ko:hangul'], 'Asia/Seoul', [
+            'ko', 'en-US'], KML.ANSI,
+        'South Korea'),
     Region(
-        'ae', 'xkb:us::eng', 'Asia/Dubai', 'ar', _KML.ANSI, 'UAE', None,
-        45),
+        'ae', 'xkb:us::eng', 'Asia/Dubai', 'ar', KML.ANSI,
+        'UAE'),
     Region(
-        'za.us', 'xkb:us::eng', 'Africa/Johannesburg', 'en-ZA',
-        _KML.ANSI, 'South Africa', None, 46),
+        'za.us', 'xkb:us::eng', 'Africa/Johannesburg', 'en-ZA', KML.ANSI,
+        'South Africa'),
     Region(
-        'vn',
-        ['xkb:us::eng', 'm17n:vi_telex', 'm17n:vi_vni', 'm17n:vi_viqr',
-         'm17n:vi_tcvn'], 'Asia/Ho_Chi_Minh',
-        ['vi', 'en-GB', 'en-US', 'fr', 'zh-TW'], _KML.ANSI, 'Vietnam',
-        None, 47),
+        'vn', ['xkb:us::eng', 'm17n:vi_telex', 'm17n:vi_vni', 'm17n:vi_viqr',
+               'm17n:vi_tcvn'], 'Asia/Ho_Chi_Minh', ['vi', 'en-GB', 'en-US',
+                                                     'fr', 'zh-TW'], KML.ANSI,
+        'Vietnam'),
     Region(
-        'at', ['xkb:de::ger', 'xkb:de:neo:ger'], 'Europe/Vienna',
-        ['de', 'en-GB'], _KML.ISO, 'Austria', None, 48),
+        'at', ['xkb:de::ger', 'xkb:de:neo:ger'], 'Europe/Vienna', [
+            'de', 'en-GB'], KML.ISO,
+        'Austria'),
     Region(
-        'sk', ['xkb:us::eng', 'xkb:sk::slo'], 'Europe/Bratislava',
-        ['sk', 'hu', 'cs', 'en-GB'], _KML.ISO, 'Slovakia', None, 49),
+        'sk', ['xkb:us::eng', 'xkb:sk::slo'], 'Europe/Bratislava', [
+            'sk', 'hu', 'cs', 'en-GB'], KML.ISO,
+        'Slovakia'),
     Region(
-        'ch.usintl', 'xkb:us:intl:eng', 'Europe/Zurich', 'en-US',
-        _KML.ANSI, 'Switzerland (US Intl)',
-        'Switzerland with US International keyboard layout.', 50),
+        'ch.usintl', 'xkb:us:intl:eng', 'Europe/Zurich', 'en-US', KML.ANSI,
+        'Switzerland (US Intl)', (
+            'Switzerland with US International keyboard layout.')),
     Region(
-        'pe', 'xkb:latam::spa', 'America/Lima', 'es-419',
-        _KML.ANSI, 'Peru', None, 115),
+        'pe', 'xkb:latam::spa', 'America/Lima', 'es-419', KML.ANSI,
+        'Peru'),
     Region(
-        'sa', 'xkb:us::eng', 'Asia/Riyadh', ['ar', 'en'], _KML.ANSI,
-        'Saudi Arabia', None, 128),
+        'sa', 'xkb:us::eng', 'Asia/Riyadh', ['ar', 'en'], KML.ANSI,
+        'Saudi Arabia'),
     Region(
-        'mx', 'xkb:latam::spa', 'America/Mexico_City', 'es-MX', _KML.ANSI,
-        'Mexico', None, 154),
+        'mx', 'xkb:latam::spa', 'America/Mexico_City', 'es-MX', KML.ANSI,
+        'Mexico'),
     Region(
-        'cl', 'xkb:latam::spa', 'America/Santiago', 'es-419', _KML.ANSI,
-        'Chile', None, 176),
+        'cl', 'xkb:latam::spa', 'America/Santiago', 'es-419', KML.ANSI,
+        'Chile'),
     Region(
-        'kw', ['xkb:us::eng', 'm17n:ar', 't13n:ar'], 'Asia/Kuwait',
-        ['ar', 'en'], _KML.ANSI, 'Kuwait', None, 201),
+        'kw', ['xkb:us::eng', 'm17n:ar', 't13n:ar'], 'Asia/Kuwait', [
+            'ar', 'en'], KML.ANSI,
+        'Kuwait'),
     Region(
-        'uy', 'xkb:latam::spa', 'America/Montevideo', 'es-419', _KML.ANSI,
-        'Uruguay', None, 216),
+        'uy', 'xkb:latam::spa', 'America/Montevideo', 'es-419', KML.ANSI,
+        'Uruguay'),
     Region(
-        'tr', ['xkb:tr::tur', 'xkb:tr:f:tur'], 'Europe/Istanbul',
-        ['tr', 'en-GB'], _KML.ISO, 'Turkey', None, 224),
+        'tr', ['xkb:tr::tur', 'xkb:tr:f:tur'], 'Europe/Istanbul', [
+            'tr', 'en-GB'], KML.ISO,
+        'Turkey'),
     Region(
-        'ar', 'xkb:latam::spa', 'America/Argentina/Buenos_Aires',
-        ['es-AR'], _KML.ANSI, 'Argentina', None, 251),
+        'ar', 'xkb:latam::spa', 'America/Argentina/Buenos_Aires', [
+            'es-AR', ], KML.ANSI,
+        'Argentina'),
     Region(
-        'gb.usext', 'xkb:us:altgr-intl:eng', 'Europe/London', 'en-GB',
-        _KML.ISO, 'UK', 'GB with US extended keyboard', 258)]
+        'gb.usext', 'xkb:us:altgr-intl:eng', 'Europe/London', 'en-GB', KML.ISO,
+        'UK (US extended keyboard)', (
+            'GB with US extended keyboard')),
+    ]
 
 """A list of :py:class:`regions.Region` objects for
 all **confirmed** regions.  A confirmed region is a region whose
@@ -481,628 +469,633 @@ keyboards) are supported by Chrome."""
 
 UNCONFIRMED_REGIONS_LIST = [
     Region(
-        'bd', 'xkb:bd::ben', 'Asia/Dhaka', ['bn-BD', 'en'], _KML.ANSI,
-        'Bangladesh', None, 51),
+        'bd', 'xkb:bd::ben', 'Asia/Dhaka', ['bn-BD', 'en'], KML.ANSI,
+        'Bangladesh'),
     Region(
-        'bf', 'xkb:bf::fra', 'Africa/Ouagadougou', 'fr-BF', _KML.ANSI,
-        'Burkina Faso', None, 52),
+        'bf', 'xkb:bf::fra', 'Africa/Ouagadougou', 'fr-BF', KML.ANSI,
+        'Burkina Faso'),
     Region(
-        'bg', ['xkb:bg::bul', 'xkb:bg:phonetic:bul'], 'Europe/Sofia',
-        ['bg', 'tr', 'en-GB'], _KML.ANSI, 'Bulgaria', None, 53),
+        'bg', ['xkb:bg::bul', 'xkb:bg:phonetic:bul'], 'Europe/Sofia', [
+            'bg', 'tr', 'en-GB'], KML.ANSI,
+        'Bulgaria'),
     Region(
-        'ba', 'xkb:ba::bos', 'Europe/Sarajevo', ['bs', 'hr-BA', 'sr-BA'],
-        _KML.ANSI, 'Bosnia and Herzegovina', None, 54),
+        'ba', 'xkb:ba::bos', 'Europe/Sarajevo', 'bs', KML.ANSI,
+        'Bosnia and Herzegovina'),
     Region(
-        'bb', 'xkb:bb::eng', 'America/Barbados', 'en-BB', _KML.ANSI,
-        'Barbados', None, 55),
+        'bb', 'xkb:bb::eng', 'America/Barbados', 'en-BB', KML.ANSI,
+        'Barbados'),
     Region(
-        'wf', 'xkb:us::eng', 'Pacific/Wallis', ['wls', 'fud', 'fr-WF'],
-        _KML.ANSI, 'Wallis and Futuna', None, 56),
+        'wf', 'xkb:us::eng', 'Pacific/Wallis', ['wls', 'fud'], KML.ANSI,
+        'Wallis and Futuna'),
     Region(
-        'bl', 'xkb:bl::fra', 'America/St_Barthelemy', 'fr', _KML.ANSI,
-        'Saint Barthelemy', None, 57),
+        'bl', 'xkb:bl::fra', 'America/St_Barthelemy', 'fr', KML.ANSI,
+        'Saint Barthelemy'),
     Region(
-        'bm', 'xkb:bm::eng', 'Atlantic/Bermuda', ['en-BM', 'pt'],
-        _KML.ANSI, 'Bermuda', None, 58),
+        'bm', 'xkb:bm::eng', 'Atlantic/Bermuda', ['en-BM', 'pt'], KML.ANSI,
+        'Bermuda'),
     Region(
-        'bn', 'xkb:bn::msa', 'Asia/Brunei', ['ms-BN', 'en-BN'],
-        _KML.ANSI, 'Brunei', None, 59),
+        'bn', 'xkb:bn::msa', 'Asia/Brunei', ['ms-BN', 'en-BN'], KML.ANSI,
+        'Brunei'),
     Region(
-        'bo', 'xkb:latam::spa', 'America/La_Paz', ['es-419', 'qu', 'ay'],
-        _KML.ANSI, 'Bolivia', None, 60),
+        'bo', 'xkb:latam::spa', 'America/La_Paz', ['es-419', 'qu'], KML.ANSI,
+        'Bolivia'),
     Region(
-        'bh', 'xkb:bh::ara', 'Asia/Bahrain', ['ar', 'en', 'fa', 'ur'],
-        _KML.ANSI, 'Bahrain', None, 61),
+        'bh', 'xkb:bh::ara', 'Asia/Bahrain', ['ar', 'en', 'fa', 'ru'], KML.ANSI,
+        'Bahrain'),
     Region(
-        'bi', 'xkb:bi::fra', 'Africa/Bujumbura', ['fr-BI', 'rn'],
-        _KML.ANSI, 'Burundi', None, 62),
+        'bi', 'xkb:bi::fra', 'Africa/Bujumbura', ['fr-BI', 'rn'], KML.ANSI,
+        'Burundi'),
     Region(
-        'bj', 'xkb:bj::fra', 'Africa/Porto-Novo', 'fr-BJ', _KML.ANSI,
-        'Benin', None, 63),
+        'bj', 'xkb:bj::fra', 'Africa/Porto-Novo', 'fr-BJ', KML.ANSI,
+        'Benin'),
     Region(
-        'bt', 'xkb:bt::dzo', 'Asia/Thimphu', 'dz', _KML.ANSI, 'Bhutan',
-        None, 64),
+        'bt', 'xkb:bt::dzo', 'Asia/Thimphu', 'dz', KML.ANSI,
+        'Bhutan'),
     Region(
-        'jm', 'xkb:jm::eng', 'America/Jamaica', 'en-JM', _KML.ANSI,
-        'Jamaica', None, 65),
+        'jm', 'xkb:jm::eng', 'America/Jamaica', 'en-JM', KML.ANSI,
+        'Jamaica'),
     Region(
-        'bw', 'xkb:bw::eng', 'Africa/Gaborone', ['en-BW', 'tn-BW'],
-        _KML.ANSI, 'Botswana', None, 66),
+        'bw', 'xkb:bw::eng', 'Africa/Gaborone', ['en-BW', 'tn-BW'], KML.ANSI,
+        'Botswana'),
     Region(
-        'ws', 'xkb:ws::smo', 'Pacific/Apia', ['sm', 'en-WS'], _KML.ANSI,
-        'Samoa', None, 67),
+        'ws', 'xkb:ws::smo', 'Pacific/Apia', ['sm', 'en-WS'], KML.ANSI,
+        'Samoa'),
     Region(
-        'bq', 'xkb:bq::nld', 'America/Kralendijk', ['nl', 'pap', 'en'],
-        _KML.ANSI, 'Bonaire, Saint Eustatius and Saba ', None, 68),
+        'bq', 'xkb:bq::nld', 'America/Kralendijk', ['nl', 'en'], KML.ANSI,
+        'Bonaire, Saint Eustatius and Saba '),
     Region(
-        'bs', 'xkb:bs::eng', 'America/Nassau', 'en-BS', _KML.ANSI,
-        'Bahamas', None, 69),
+        'bs', 'xkb:bs::eng', 'America/Nassau', 'en-BS', KML.ANSI,
+        'Bahamas'),
     Region(
-        'je', 'xkb:je::eng', 'Europe/Jersey', ['en', 'pt'], _KML.ANSI,
-        'Jersey', None, 70),
+        'je', 'xkb:je::eng', 'Europe/Jersey', ['en', 'pt'], KML.ANSI,
+        'Jersey'),
     Region(
-        'by', 'xkb:by::bel', 'Europe/Minsk', ['be', 'ru'], _KML.ANSI,
-        'Belarus', None, 71),
+        'by', 'xkb:by::bel', 'Europe/Minsk', ['be', 'ru'], KML.ANSI,
+        'Belarus'),
     Region(
-        'bz', 'xkb:bz::eng', 'America/Belize', ['en-BZ', 'es'],
-        _KML.ANSI, 'Belize', None, 72),
+        'bz', 'xkb:bz::eng', 'America/Belize', ['en-BZ', 'es'], KML.ANSI,
+        'Belize'),
     Region(
-        'rw', 'xkb:rw::kin', 'Africa/Kigali',
-        ['rw', 'en-RW', 'fr-RW', 'sw'], _KML.ANSI, 'Rwanda', None, 73),
+        'rw', 'xkb:rw::kin', 'Africa/Kigali', ['rw', 'en-RW'], KML.ANSI,
+        'Rwanda'),
     Region(
-        'rs', 'xkb:rs::srp', 'Europe/Belgrade', ['sr', 'hu', 'bs', 'rom'],
-        _KML.ANSI, 'Serbia', None, 74),
+        'rs', 'xkb:rs::srp', 'Europe/Belgrade', ['sr', 'hu', 'bs'], KML.ANSI,
+        'Serbia'),
     Region(
-        'tl', 'xkb:us::eng', 'Asia/Dili', ['tet', 'pt-TL', 'id', 'en'],
-        _KML.ANSI, 'East Timor', None, 75),
+        'tl', 'xkb:us::eng', 'Asia/Dili', ['tet', 'pt-TL', 'en'], KML.ANSI,
+        'East Timor'),
     Region(
-        're', 'xkb:re::fra', 'Indian/Reunion', 'fr-RE', _KML.ANSI,
-        'Reunion', None, 76),
+        're', 'xkb:re::fra', 'Indian/Reunion', 'fr-RE', KML.ANSI,
+        'Reunion'),
     Region(
-        'tm', 'xkb:tm::tuk', 'Asia/Ashgabat', ['tk', 'ru', 'uz'],
-        _KML.ANSI, 'Turkmenistan', None, 77),
+        'tm', 'xkb:tm::tuk', 'Asia/Ashgabat', ['tk', 'ru', 'uz'], KML.ANSI,
+        'Turkmenistan'),
     Region(
-        'tj', 'xkb:tj::tgk', 'Asia/Dushanbe', ['tg', 'ru'], _KML.ANSI,
-        'Tajikistan', None, 78),
+        'tj', 'xkb:tj::tgk', 'Asia/Dushanbe', ['tg', 'ru'], KML.ANSI,
+        'Tajikistan'),
     Region(
-        'tk', 'xkb:us::eng', 'Pacific/Fakaofo', ['tkl', 'en-TK'],
-        _KML.ANSI, 'Tokelau', None, 79),
+        'tk', 'xkb:us::eng', 'Pacific/Fakaofo', ['tkl', 'en-TK'], KML.ANSI,
+        'Tokelau'),
     Region(
-        'gw', 'xkb:gw::por', 'Africa/Bissau', ['pt-GW', 'pov'],
-        _KML.ANSI, 'Guinea-Bissau', None, 80),
+        'gw', 'xkb:gw::por', 'Africa/Bissau', ['pt-GW', 'pov'], KML.ANSI,
+        'Guinea-Bissau'),
     Region(
-        'gu', 'xkb:gu::eng', 'Pacific/Guam', ['en-GU', 'ch-GU'],
-        _KML.ANSI, 'Guam', None, 81),
+        'gu', 'xkb:gu::eng', 'Pacific/Guam', ['en-GU', 'ch-GU'], KML.ANSI,
+        'Guam'),
     Region(
-        'gt', 'xkb:latam::spa', 'America/Guatemala', 'es-419', _KML.ANSI,
-        'Guatemala', None, 82),
+        'gt', 'xkb:latam::spa', 'America/Guatemala', 'es-419', KML.ANSI,
+        'Guatemala'),
     Region(
-        'gs', 'xkb:gs::eng', 'Atlantic/South_Georgia', 'en', _KML.ANSI,
-        'South Georgia and the South Sandwich Islands', None, 83),
+        'gs', 'xkb:gs::eng', 'Atlantic/South_Georgia', 'en', KML.ANSI,
+        'South Georgia and the South Sandwich Islands'),
     Region(
-        'gq', 'xkb:gq::spa', 'Africa/Malabo', ['es-419', 'fr'],
-        _KML.ANSI, 'Equatorial Guinea', None, 84),
+        'gq', 'xkb:gq::spa', 'Africa/Malabo', ['es-419', 'fr'], KML.ANSI,
+        'Equatorial Guinea'),
     Region(
-        'gp', 'xkb:gp::fra', 'America/Guadeloupe', 'fr-GP', _KML.ANSI,
-        'Guadeloupe', None, 85),
+        'gp', 'xkb:gp::fra', 'America/Guadeloupe', 'fr-GP', KML.ANSI,
+        'Guadeloupe'),
     Region(
-        'gy', 'xkb:gy::eng', 'America/Guyana', 'en-GY', _KML.ANSI,
-        'Guyana', None, 86),
+        'gy', 'xkb:gy::eng', 'America/Guyana', 'en-GY', KML.ANSI,
+        'Guyana'),
     Region(
-        'gg', 'xkb:gg::eng', 'Europe/Guernsey', ['en', 'fr'], _KML.ANSI,
-        'Guernsey', None, 87),
+        'gg', 'xkb:gg::eng', 'Europe/Guernsey', ['en', 'fr'], KML.ANSI,
+        'Guernsey'),
     Region(
-        'gf', 'xkb:gf::fra', 'America/Cayenne', 'fr-GF', _KML.ANSI,
-        'French Guiana', None, 88),
+        'gf', 'xkb:gf::fra', 'America/Cayenne', 'fr-GF', KML.ANSI,
+        'French Guiana'),
     Region(
-        'ge', 'xkb:ge::geo', 'Asia/Tbilisi', 'ka', _KML.ANSI, 'Georgia', None,
-        89),
+        'ge', 'xkb:ge::geo', 'Asia/Tbilisi', 'ka', KML.ANSI,
+        'Georgia'),
     Region(
-        'gd', 'xkb:gd::eng', 'America/Grenada', 'en-GD', _KML.ANSI,
-        'Grenada', None, 90),
+        'gd', 'xkb:gd::eng', 'America/Grenada', 'en-GD', KML.ANSI,
+        'Grenada'),
     Region(
-        'ga', 'xkb:ga::fra', 'Africa/Libreville', 'fr-GA', _KML.ANSI,
-        'Gabon', None, 91),
+        'ga', 'xkb:ga::fra', 'Africa/Libreville', 'fr-GA', KML.ANSI,
+        'Gabon'),
     Region(
-        'sv', 'xkb:latam::spa', 'America/El_Salvador', 'es-419', _KML.ANSI,
-        'El Salvador', None, 92),
+        'sv', 'xkb:latam::spa', 'America/El_Salvador', 'es-419', KML.ANSI,
+        'El Salvador'),
     Region(
-        'gn', 'xkb:gn::fra', 'Africa/Conakry', 'fr-GN', _KML.ANSI,
-        'Guinea', None, 93),
+        'gn', 'xkb:gn::fra', 'Africa/Conakry', 'fr-GN', KML.ANSI,
+        'Guinea'),
     Region(
-        'gm', 'xkb:gm::eng', 'Africa/Banjul',
-        ['en-GM', 'mnk', 'wof', 'wo', 'ff'], _KML.ANSI, 'Gambia', None, 94),
+        'gm', 'xkb:gm::eng', 'Africa/Banjul', ['en-GM', 'mnk', 'wof'], KML.ANSI,
+        'Gambia'),
     Region(
-        'gl', 'xkb:gl::kal',
-        ['America/Godthab', 'America/Danmarkshavn',
-         'America/Scoresbysund', 'America/Thule'], ['kl', 'da-GL', 'en'],
-        _KML.ANSI, 'Greenland', None, 95),
+        'gl', 'xkb:gl::kal', ['America/Godthab', 'America/Danmarkshavn',
+                              'America/Scoresbysund', 'America/Thule'], [
+                                  'kl', 'da-GL', 'en'], KML.ANSI,
+        'Greenland'),
     Region(
-        'gi', 'xkb:gi::eng', 'Europe/Gibraltar',
-        ['en-GI', 'es', 'it', 'pt'], _KML.ANSI, 'Gibraltar', None, 96),
+        'gi', 'xkb:gi::eng', 'Europe/Gibraltar', ['en-GI', 'es'], KML.ANSI,
+        'Gibraltar'),
     Region(
-        'gh', 'xkb:gh::eng', 'Africa/Accra', ['en-GH', 'ak', 'ee', 'tw'],
-        _KML.ANSI, 'Ghana', None, 97),
+        'gh', 'xkb:gh::eng', 'Africa/Accra', ['en-GH', 'ak', 'ee'], KML.ANSI,
+        'Ghana'),
     Region(
-        'om', 'xkb:om::ara', 'Asia/Muscat', ['ar', 'en', 'bal', 'ur'],
-        _KML.ANSI, 'Oman', None, 98),
+        'om', 'xkb:om::ara', 'Asia/Muscat', ['ar', 'en', 'bal'], KML.ANSI,
+        'Oman'),
     Region(
-        'tn', 'xkb:tn::ara', 'Africa/Tunis', ['ar', 'fr'], _KML.ANSI,
-        'Tunisia', None, 99),
+        'tn', 'xkb:tn::ara', 'Africa/Tunis', ['ar', 'fr'], KML.ANSI,
+        'Tunisia'),
     Region(
-        'jo', 'xkb:jo::ara', 'Asia/Amman', ['ar', 'en'], _KML.ANSI,
-        'Jordan', None, 100),
+        'jo', 'xkb:jo::ara', 'Asia/Amman', ['ar', 'en'], KML.ANSI,
+        'Jordan'),
     Region(
-        'hr', 'xkb:hr::scr', 'Europe/Zagreb', ['hr', 'en-GB'],
-        _KML.ISO, 'Croatia', None, 101),
+        'hn', 'xkb:latam::spa', 'America/Tegucigalpa', 'es-HN', KML.ANSI,
+        'Honduras'),
     Region(
-        'ht', 'xkb:ht::hat', 'America/Port-au-Prince', ['ht', 'fr-HT'],
-        _KML.ANSI, 'Haiti', None, 102),
+        'hr', 'xkb:hr::scr', 'Europe/Zagreb', ['hr', 'en-GB'], KML.ISO,
+        'Croatia'),
     Region(
-        'hu', ['xkb:us::eng', 'xkb:hu::hun'], 'Europe/Budapest',
-        ['hu', 'en-GB'], _KML.ISO, 'Hungary', None, 103),
+        'ht', 'xkb:ht::hat', 'America/Port-au-Prince', ['ht'], KML.ANSI,
+        'Haiti'),
     Region(
-        'hn', 'xkb:latam::spa', 'America/Tegucigalpa', 'es-419', _KML.ANSI,
-        'Honduras', None, 104),
+        'hu', ['xkb:us::eng', 'xkb:hu::hun'], 'Europe/Budapest', [
+            'hu', 'en-GB'], KML.ISO,
+        'Hungary'),
     Region(
-        've', 'xkb:latam::spa', 'America/Caracas', 'es-419', _KML.ANSI,
-        'Venezuela', None, 105),
+        've', 'xkb:latam::spa', 'America/Caracas', 'es-419', KML.ANSI,
+        'Venezuela'),
     Region(
-        'pr', 'xkb:pr::eng', 'America/Puerto_Rico', ['en-PR', 'es-419'],
-        _KML.ANSI, 'Puerto Rico', None, 106),
+        'pr', 'xkb:pr::eng', 'America/Puerto_Rico', ['en-PR'], KML.ANSI,
+        'Puerto Rico'),
     Region(
-        'ps', 'xkb:ps::ara', ['Asia/Gaza', 'Asia/Hebron'], 'ar',
-        _KML.ANSI, 'Palestinian Territory', None, 107),
+        'ps', 'xkb:ps::ara', ['Asia/Gaza', 'Asia/Hebron'], 'ar', KML.ANSI,
+        'Palestinian Territory'),
     Region(
-        'pw', 'xkb:us::eng', 'Pacific/Palau',
-        ['pau', 'sov', 'en-PW', 'tox', 'ja', 'fil', 'zh'], _KML.ANSI,
-        'Palau', None, 108),
+        'pw', 'xkb:us::eng', 'Pacific/Palau', ['pau', 'sov', 'en-PW', 'tox',
+                                               'ja', 'fil', 'zh'], KML.ANSI,
+        'Palau'),
     Region(
-        'sj', 'xkb:sj::nor', 'Arctic/Longyearbyen', ['no', 'ru'],
-        _KML.ANSI, 'Svalbard and Jan Mayen', None, 109),
+        'sj', 'xkb:sj::nor', 'Arctic/Longyearbyen', ['no', 'ru'], KML.ANSI,
+        'Svalbard and Jan Mayen'),
     Region(
-        'py', 'xkb:latam::spa', 'America/Asuncion', ['es-419', 'gn'],
-        _KML.ANSI, 'Paraguay', None, 110),
+        'py', 'xkb:latam::spa', 'America/Asuncion', ['es-419', 'gn'], KML.ANSI,
+        'Paraguay'),
     Region(
-        'iq', 'xkb:iq::ara', 'Asia/Baghdad', ['ar', 'ku', 'hy'],
-        _KML.ANSI, 'Iraq', None, 111),
+        'iq', 'xkb:iq::ara', 'Asia/Baghdad', ['ar', 'ku', 'hy'], KML.ANSI,
+        'Iraq'),
     Region(
-        'pa', 'xkb:latam::spa', 'America/Panama', ['es-419', 'en'],
-        _KML.ANSI, 'Panama', None, 112),
+        'pa', 'xkb:latam::spa', 'America/Panama', ['es-419', 'en'], KML.ANSI,
+        'Panama'),
     Region(
-        'pf', 'xkb:pf::fra',
-        ['Pacific/Tahiti', 'Pacific/Marquesas', 'Pacific/Gambier'],
-        ['fr-PF', 'ty'], _KML.ANSI, 'French Polynesia', None, 113),
+        'pf', 'xkb:pf::fra', ['Pacific/Tahiti', 'Pacific/Marquesas',
+                              'Pacific/Gambier'], ['fr-PF', 'ty'], KML.ANSI,
+        'French Polynesia'),
     Region(
-        'pg', 'xkb:pg::eng',
-        ['Pacific/Port_Moresby', 'Pacific/Bougainville'],
-        ['en-PG', 'ho', 'meu', 'tpi'], _KML.ANSI, 'Papua New Guinea', None,
-        114),
+        'pg', 'xkb:pg::eng', ['Pacific/Port_Moresby',
+                              'Pacific/Bougainville'], ['en-PG', 'ho', 'meu',
+                                                        'tpi'], KML.ANSI,
+        'Papua New Guinea'),
     Region(
-        'pk', 'xkb:pk::urd', 'Asia/Karachi',
-        ['ur-PK', 'en-PK', 'pa', 'sd', 'ps', 'brh'], _KML.ANSI,
-        'Pakistan', None, 116),
+        'pk', 'xkb:pk::urd', 'Asia/Karachi', ['ur-PK', 'en-PK', 'pa', 'sd',
+                                              'ps', 'brh'], KML.ANSI,
+        'Pakistan'),
     Region(
-        'pn', 'xkb:pn::eng', 'Pacific/Pitcairn', 'en-PN', _KML.ANSI,
-        'Pitcairn', None, 117),
+        'pn', 'xkb:pn::eng', 'Pacific/Pitcairn', 'en-PN', KML.ANSI,
+        'Pitcairn'),
     Region(
-        'pm', 'xkb:pm::fra', 'America/Miquelon', 'fr-PM', _KML.ANSI,
-        'Saint Pierre and Miquelon', None, 118),
+        'pm', 'xkb:pm::fra', 'America/Miquelon', 'fr-PM', KML.ANSI,
+        'Saint Pierre and Miquelon'),
     Region(
-        'zm', 'xkb:zm::eng', 'Africa/Lusaka',
-        ['en-ZM', 'bem', 'loz', 'lun', 'lue', 'ny', 'toi'], _KML.ANSI,
-        'Zambia', None, 119),
+        'zm', 'xkb:zm::eng', 'Africa/Lusaka', ['en-ZM', 'bem', 'loz', 'lun',
+                                               'lue', 'ny', 'toi'], KML.ANSI,
+        'Zambia'),
     Region(
-        'eh', 'xkb:eh::ara', 'Africa/El_Aaiun', ['ar', 'mey'],
-        _KML.ANSI, 'Western Sahara', None, 120),
+        'eh', 'xkb:eh::ara', 'Africa/El_Aaiun', ['ar', 'mey'], KML.ANSI,
+        'Western Sahara'),
     Region(
-        'ee', 'xkb:ee::est', 'Europe/Tallinn', ['et', 'ru', 'en-GB'], _KML.ISO,
-        'Estonia', None, 121),
+        'ee', 'xkb:ee::est', 'Europe/Tallinn', ['et', 'ru', 'en-GB'], KML.ISO,
+        'Estonia'),
     Region(
         'eg', 'xkb:eg::ara', 'Africa/Cairo', ['ar', 'en', 'fr'],
-        _KML.ANSI, 'Egypt', None, 122),
+        KML.ANSI, 'Egypt'),
     Region(
-        'ec', 'xkb:latam::spa', ['America/Guayaquil', 'Pacific/Galapagos'],
-        'es-419', _KML.ANSI, 'Ecuador', None, 123),
+        'ec', 'xkb:latam::spa', ['America/Guayaquil'], 'es-419', KML.ANSI,
+        'Ecuador'),
     Region(
-        'sb', 'xkb:sb::eng', 'Pacific/Guadalcanal', ['en-SB', 'tpi'],
-        _KML.ANSI, 'Solomon Islands', None, 124),
+        'sb', 'xkb:sb::eng', 'Pacific/Guadalcanal', ['en-SB', 'tpi'], KML.ANSI,
+        'Solomon Islands'),
     Region(
-        'et', 'xkb:et::amh', 'Africa/Addis_Ababa',
-        ['am', 'en-ET', 'om-ET', 'ti-ET', 'so-ET', 'sid'], _KML.ANSI,
-        'Ethiopia', None, 125),
+        'et', 'xkb:et::amh', 'Africa/Addis_Ababa', ['am', 'en-ET', 'om-ET',
+                                                    'ti-ET'], KML.ANSI,
+        'Ethiopia'),
     Region(
-        'so', 'xkb:so::som', 'Africa/Mogadishu',
-        ['so-SO', 'ar', 'it', 'en-SO'], _KML.ANSI, 'Somalia', None, 126),
+        'so', 'xkb:so::som', 'Africa/Mogadishu', ['so-SO', 'ar'], KML.ANSI,
+        'Somalia'),
     Region(
-        'zw', 'xkb:zw::eng', 'Africa/Harare', ['en-ZW', 'sn', 'nr', 'nd'],
-        _KML.ANSI, 'Zimbabwe', None, 127),
+        'zw', 'xkb:zw::eng', 'Africa/Harare', ['en-ZW', 'sn', 'nr'], KML.ANSI,
+        'Zimbabwe'),
     Region(
-        'er', 'xkb:er::aar', 'Africa/Asmara',
-        ['aa-ER', 'ar', 'tig', 'kun', 'ti-ER'], _KML.ANSI, 'Eritrea', None,
-        129),
+        'er', 'xkb:er::aar', 'Africa/Asmara', ['aa-ER', 'ar', 'tig', 'kun',
+                                               'ti-ER'], KML.ANSI,
+        'Eritrea'),
     Region(
-        'me', 'xkb:me::srp', 'Europe/Podgorica',
-        ['sr', 'hu', 'bs', 'sq', 'hr', 'rom'], _KML.ANSI, 'Montenegro',
-        None, 130),
+        'me', 'xkb:me::srp', 'Europe/Podgorica', ['sr', 'hu', 'bs', 'sq', 'hr',
+                                                  'rom'], KML.ANSI,
+        'Montenegro'),
     Region(
-        'md', 'xkb:md::ron', 'Europe/Chisinau', ['ro', 'ru', 'gag', 'tr'],
-        _KML.ANSI, 'Moldova', None, 131),
+        'md', 'xkb:md::ron', 'Europe/Chisinau', ['ro', 'ru', 'gag'], KML.ANSI,
+        'Moldova'),
     Region(
-        'mg', 'xkb:mg::fra', 'Indian/Antananarivo', ['fr-MG', 'mg'],
-        _KML.ANSI, 'Madagascar', None, 132),
+        'mg', 'xkb:mg::fra', 'Indian/Antananarivo', ['fr-MG', 'mg'], KML.ANSI,
+        'Madagascar'),
     Region(
-        'mf', 'xkb:mf::fra', 'America/Marigot', 'fr', _KML.ANSI,
-        'Saint Martin', None, 133),
+        'mf', 'xkb:mf::fra', 'America/Marigot', 'fr', KML.ANSI, 'Saint Martin'),
     Region(
-        'ma', 'xkb:ma::ara', 'Africa/Casablanca', ['ar', 'fr'],
-        _KML.ANSI, 'Morocco', None, 134),
+        'ma', 'xkb:ma::ara', 'Africa/Casablanca', ['ar', 'fr'], KML.ANSI,
+        'Morocco'),
     Region(
-        'mc', 'xkb:mc::fra', 'Europe/Monaco', ['fr-MC', 'en', 'it'],
-        _KML.ANSI, 'Monaco', None, 135),
+        'mc', 'xkb:mc::fra', 'Europe/Monaco', ['fr-MC', 'en', 'it'], KML.ANSI,
+        'Monaco'),
     Region(
         'uz', 'xkb:uz::uzb', ['Asia/Samarkand', 'Asia/Tashkent'],
-        ['uz', 'ru', 'tg'], _KML.ANSI, 'Uzbekistan', None, 136),
+        ['uz', 'ru', 'tg'], KML.ANSI, 'Uzbekistan'),
     Region(
-        'mm', 'xkb:mm::mya', 'Asia/Rangoon', 'my', _KML.ANSI, 'Myanmar',
-        None, 137),
+        'mm', 'xkb:mm::mya', 'Asia/Rangoon', 'my', KML.ANSI, 'Myanmar',
+        None),
     Region(
-        'ml', 'xkb:ml::fra', 'Africa/Bamako', ['fr-ML', 'bm'],
-        _KML.ANSI, 'Mali', None, 138),
+        'ml', 'xkb:ml::fra', 'Africa/Bamako', ['fr-ML', 'bm'], KML.ANSI,
+        'Mali'),
     Region(
-        'mo', 'xkb:mo::zho', 'Asia/Macau', ['zh', 'zh-MO', 'pt'],
-        _KML.ANSI, 'Macao', None, 139),
+        'mo', 'xkb:mo::zho', 'Asia/Macau', ['zh', 'zh-MO', 'pt'], KML.ANSI,
+        'Macao'),
     Region(
-        'mn', 'xkb:mn::mon',
-        ['Asia/Ulaanbaatar', 'Asia/Hovd', 'Asia/Choibalsan'],
-        ['mn', 'ru'], _KML.ANSI, 'Mongolia', None, 140),
+        'mn', 'xkb:mn::mon', ['Asia/Ulaanbaatar', 'Asia/Hovd',
+                              'Asia/Choibalsan'], ['mn', 'ru'], KML.ANSI,
+        'Mongolia'),
     Region(
-        'mh', 'xkb:mh::mah', ['Pacific/Majuro', 'Pacific/Kwajalein'],
-        ['mh', 'en-MH'], _KML.ANSI, 'Marshall Islands', None, 141),
+        'mh', 'xkb:mh::mah', ['Pacific/Majuro'], ['mh' 'en-MH'], KML.ANSI,
+        'Marshall Islands'),
     Region(
-        'mk', 'xkb:mk::mkd', 'Europe/Skopje',
-        ['mk', 'sq', 'tr', 'rmm', 'sr'], _KML.ANSI, 'Macedonia', None, 142),
+        'mk', 'xkb:mk::mkd', 'Europe/Skopje', ['mk', 'sq', 'tr'], KML.ANSI,
+        'Macedonia'),
     Region(
-        'mu', 'xkb:mu::eng', 'Indian/Mauritius', ['en-MU', 'bho', 'fr'],
-        _KML.ANSI, 'Mauritius', None, 143),
+        'mu', 'xkb:mu::eng', 'Indian/Mauritius', ['en-MU', 'bho'], KML.ANSI,
+        'Mauritius'),
     Region(
-        'mt', ['xkb:us::eng', 'xkb:mt::mlt'], 'Europe/Malta', ['mt', 'en-GB'],
-        _KML.ISO, 'Malta', None, 144),
+        'mt', ['xkb:us::eng'], 'Europe/Malta', ['mt', 'en-GB'], KML.ISO,
+        'Malta'),
     Region(
-        'mw', 'xkb:mw::nya', 'Africa/Blantyre',
-        ['ny', 'yao', 'tum', 'swk'], _KML.ANSI, 'Malawi', None, 145),
+        'mw', 'xkb:mw::nya', 'Africa/Blantyre', ['ny', 'yao', 'tum'], KML.ANSI,
+        'Malawi'),
     Region(
-        'mv', 'xkb:mv::div', 'Indian/Maldives', ['dv', 'en'], _KML.ANSI,
-        'Maldives', None, 146),
+        'mv', 'xkb:mv::div', 'Indian/Maldives', ['dv', 'en'], KML.ANSI,
+        'Maldives'),
     Region(
-        'mq', 'xkb:mq::fra', 'America/Martinique', 'fr-MQ', _KML.ANSI,
-        'Martinique', None, 147),
+        'mq', 'xkb:mq::fra', 'America/Martinique', 'fr-MQ', KML.ANSI,
+        'Martinique'),
     Region(
-        'mp', 'xkb:us::eng', 'Pacific/Saipan',
-        ['fil', 'tl', 'zh', 'ch-MP', 'en-MP'], _KML.ANSI,
-        'Northern Mariana Islands', None, 148),
+        'mp', 'xkb:us::eng', 'Pacific/Saipan', ['fil', 'tl', 'zh', 'ch-MP',
+                                                'en-MP'], KML.ANSI,
+        'Northern Mariana Islands'),
     Region(
-        'ms', 'xkb:ms::eng', 'America/Montserrat', 'en-MS', _KML.ANSI,
-        'Montserrat', None, 149),
+        'ms', 'xkb:ms::eng', 'America/Montserrat', 'en-MS', KML.ANSI,
+        'Montserrat'),
     Region(
-        'mr', 'xkb:mr::ara', 'Africa/Nouakchott',
-        ['ar', 'fuc', 'snk', 'fr', 'mey', 'wo'], _KML.ANSI,
-        'Mauritania', None, 150),
+        'mr', 'xkb:mr::ara', 'Africa/Nouakchott', ['ar', 'fuc', 'snk', 'fr',
+                                                   'mey', 'wo'], KML.ANSI,
+        'Mauritania'),
     Region(
-        'im', 'xkb:im::eng', 'Europe/Isle_of_Man', ['en', 'gv'],
-        _KML.ANSI, 'Isle of Man', None, 151),
+        'im', 'xkb:im::eng', 'Europe/Isle_of_Man', ['en', 'gv'], KML.ANSI,
+        'Isle of Man'),
     Region(
-        'ug', 'xkb:ug::eng', 'Africa/Kampala',
-        ['en-UG', 'lg', 'sw', 'ar'], _KML.ANSI, 'Uganda', None, 152),
+        'ug', 'xkb:ug::eng', 'Africa/Kampala', ['en-UG', 'lg', 'ar'], KML.ANSI,
+        'Uganda'),
     Region(
-        'tz', 'xkb:tz::swa', 'Africa/Dar_es_Salaam',
-        ['sw-TZ', 'en', 'ar'], _KML.ANSI, 'Tanzania', None, 153),
+        'tz', 'xkb:tz::swa', 'Africa/Dar_es_Salaam', ['sw-TZ', 'en'], KML.ANSI,
+        'Tanzania'),
     Region(
-        'io', 'xkb:io::eng', 'Indian/Chagos', 'en-IO', _KML.ANSI,
-        'British Indian Ocean Territory', None, 155),
+        'io', 'xkb:io::eng', 'Indian/Chagos', 'en-IO', KML.ANSI,
+        'British Indian Ocean Territory'),
     Region(
-        'sh', 'xkb:sh::eng', 'Atlantic/St_Helena', 'en-SH', _KML.ANSI,
-        'Saint Helena', None, 156),
+        'sh', 'xkb:sh::eng', 'Atlantic/St_Helena', 'en-SH', KML.ANSI,
+        'Saint Helena'),
     Region(
-        'fj', 'xkb:fj::eng', 'Pacific/Fiji', ['en-FJ', 'fj'], _KML.ANSI,
-        'Fiji', None, 157),
+        'fj', 'xkb:fj::eng', 'Pacific/Fiji', ['en-FJ', 'fj'], KML.ANSI,
+        'Fiji'),
     Region(
-        'fk', 'xkb:fk::eng', 'Atlantic/Stanley', 'en-FK', _KML.ANSI,
-        'Falkland Islands', None, 158),
+        'fk', 'xkb:fk::eng', 'Atlantic/Stanley', 'en-FK', KML.ANSI,
+        'Falkland Islands'),
     Region(
-        'fm', 'xkb:fm::eng',
-        ['Pacific/Chuuk', 'Pacific/Pohnpei', 'Pacific/Kosrae'],
-        ['en-FM', 'chk', 'pon', 'yap', 'kos', 'uli', 'woe', 'nkr', 'kpg'],
-        _KML.ANSI, 'Micronesia', None, 159),
+        'fm', 'xkb:fm::eng', [
+            'Pacific/Chuuk', 'Pacific/Pohnpei', 'Pacific/Kosrae'], [
+                'en-FM', 'chk', 'pon', 'yap', 'kos', 'uli', 'woe', 'nkr',
+                'kpg'], KML.ANSI,
+        'Micronesia'),
     Region(
-        'fo', 'xkb:fo::fao', 'Atlantic/Faroe', ['fo', 'da-FO'],
-        _KML.ANSI, 'Faroe Islands', None, 160),
+        'fo', 'xkb:fo::fao', 'Atlantic/Faroe', ['fo', 'da-FO'], KML.ANSI,
+        'Faroe Islands'),
     Region(
-        'ni', 'xkb:latam::spa', 'America/Managua', ['es-419', 'en'],
-        _KML.ANSI, 'Nicaragua', None, 161),
+        'ni', 'xkb:latam::spa', 'America/Managua', ['es-419', 'en'], KML.ANSI,
+        'Nicaragua'),
     Region(
-        'no', 'xkb:no::nor', 'Europe/Oslo',
-        ['no', 'nb', 'nn', 'se', 'fi'], _KML.ISO, 'Norway', None, 162),
+        'no', 'xkb:no::nor', 'Europe/Oslo', ['no', 'nb', 'nn', 'se'], KML.ISO,
+        'Norway'),
     Region(
-        'na', 'xkb:na::eng', 'Africa/Windhoek',
-        ['en-NA', 'af', 'de', 'hz', 'naq'], _KML.ANSI, 'Namibia', None, 163),
+        'na', 'xkb:na::eng', 'Africa/Windhoek', ['en-NA', 'af', 'de', 'hz',
+                                                 'naq'], KML.ANSI,
+        'Namibia'),
     Region(
-        'vu', 'xkb:vu::bis', 'Pacific/Efate', ['bi', 'en-VU', 'fr-VU'],
-        _KML.ANSI, 'Vanuatu', None, 164),
+        'vu', 'xkb:vu::bis', 'Pacific/Efate', ['bi', 'en-VU'], KML.ANSI,
+        'Vanuatu'),
     Region(
-        'nc', 'xkb:nc::fra', 'Pacific/Noumea', 'fr-NC', _KML.ANSI,
-        'New Caledonia', None, 165),
+        'nc', 'xkb:nc::fra', 'Pacific/Noumea', 'fr-NC', KML.ANSI,
+        'New Caledonia'),
     Region(
-        'ne', 'xkb:ne::fra', 'Africa/Niamey',
-        ['fr-NE', 'ha', 'kr', 'dje'], _KML.ANSI, 'Niger', None, 166),
+        'ne', 'xkb:ne::fra', 'Africa/Niamey', ['fr-NE', 'ha', 'kr'], KML.ANSI,
+        'Niger'),
     Region(
-        'nf', 'xkb:nf::eng', 'Pacific/Norfolk', 'en-NF', _KML.ANSI,
-        'Norfolk Island', None, 167),
+        'nf', 'xkb:nf::eng', 'Pacific/Norfolk', 'en-NF', KML.ANSI,
+        'Norfolk Island'),
     Region(
-        'np', 'xkb:np::nep', 'Asia/Kathmandu', ['ne', 'en'], _KML.ANSI,
-        'Nepal', None, 168),
+        'np', 'xkb:np::nep', 'Asia/Kathmandu', ['ne', 'en'], KML.ANSI,
+        'Nepal'),
     Region(
-        'nr', 'xkb:nr::nau', 'Pacific/Nauru', ['na', 'en-NR'],
-        _KML.ANSI, 'Nauru', None, 169),
+        'nr', 'xkb:nr::nau', 'Pacific/Nauru', ['na', 'en-NR'], KML.ANSI,
+        'Nauru'),
     Region(
-        'nu', 'xkb:us::eng', 'Pacific/Niue', ['niu', 'en-NU'],
-        _KML.ANSI, 'Niue', None, 170),
+        'nu', 'xkb:us::eng', 'Pacific/Niue', ['niu', 'en-NU'], KML.ANSI,
+        'Niue'),
     Region(
-        'ck', 'xkb:ck::eng', 'Pacific/Rarotonga', ['en-CK', 'mi'],
-        _KML.ANSI, 'Cook Islands', None, 171),
+        'ck', 'xkb:ck::eng', 'Pacific/Rarotonga', ['en-CK', 'mi'], KML.ANSI,
+        'Cook Islands'),
     Region(
-        'ci', 'xkb:ci::fra', 'Africa/Abidjan', 'fr-CI', _KML.ANSI,
-        'Ivory Coast', None, 172),
+        'ci', 'xkb:ci::fra', 'Africa/Abidjan', 'fr-CI', KML.ANSI,
+        'Ivory Coast'),
     Region(
-        'co', 'xkb:latam::spa', 'America/Bogota', 'es-419', _KML.ANSI,
-        'Colombia', None, 173),
+        'co', 'xkb:latam::spa', 'America/Bogota', 'es-419', KML.ANSI,
+        'Colombia'),
     Region(
-        'cn', 'xkb:us::eng', 'Asia/Shanghai', 'zh-CN', _KML.ANSI, 'China',
-        None, 174),
+        'cn', 'xkb:us::eng', 'Asia/Shanghai', 'zh-CN', KML.ANSI,
+        'China'),
     Region(
-        'cm', 'xkb:cm::eng', 'Africa/Douala', ['en-CM', 'fr-CM'],
-        _KML.ANSI, 'Cameroon', None, 175),
+        'cm', 'xkb:cm::eng', 'Africa/Douala', ['en-CM', 'fr-CM'], KML.ANSI,
+        'Cameroon'),
     Region(
-        'cc', 'xkb:cc::msa', 'Indian/Cocos', ['ms-CC', 'en'], _KML.ANSI,
-        'Cocos Islands', None, 177),
+        'cc', 'xkb:cc::msa', 'Indian/Cocos', ['ms-CC', 'en'], KML.ANSI,
+        'Cocos Islands'),
     Region(
-        'cg', 'xkb:cg::fra', 'Africa/Brazzaville',
-        ['fr-CG', 'kg', 'ln-CG'], _KML.ANSI, 'Republic of the Congo', None,
-        178),
+        'cg', 'xkb:cg::fra', 'Africa/Brazzaville', ['fr-CG', 'kg'], KML.ANSI,
+        'Republic of the Congo'),
     Region(
-        'cf', 'xkb:cf::fra', 'Africa/Bangui', ['fr-CF', 'sg', 'ln', 'kg'],
-        _KML.ANSI, 'Central African Republic', None, 179),
+        'cf', 'xkb:cf::fra', 'Africa/Bangui', ['fr-CF', 'sg', 'ln'], KML.ANSI,
+        'Central African Republic'),
     Region(
-        'cd', 'xkb:cd::fra', ['Africa/Kinshasa', 'Africa/Lubumbashi'],
-        ['fr-CD', 'ln', 'kg'], _KML.ANSI,
-        'Democratic Republic of the Congo', None, 180),
+        'cd', 'xkb:cd::fra', ['Africa/Kinshasa', 'Africa/Lubumbashi'], [
+            'fr-CD', 'ln', 'kg'], KML.ANSI,
+        'Democratic Republic of the Congo'),
     Region(
-        'cy', 'xkb:cy::ell', 'Asia/Nicosia', ['el-CY', 'tr-CY', 'en'],
-        _KML.ANSI, 'Cyprus', None, 181),
+        'cy', 'xkb:cy::ell', 'Asia/Nicosia', ['el-CY', 'tr-CY'], KML.ANSI,
+        'Cyprus'),
     Region(
-        'cx', 'xkb:cx::eng', 'Indian/Christmas', ['en', 'zh', 'ms-CC'],
-        _KML.ANSI, 'Christmas Island', None, 182),
+        'cx', 'xkb:cx::eng', 'Indian/Christmas', ['en', 'zh'], KML.ANSI,
+        'Christmas Island'),
     Region(
-        'cr', 'xkb:latam::spa', 'America/Costa_Rica', ['es-419', 'en'],
-        _KML.ANSI, 'Costa Rica', None, 183),
+        'cr', 'xkb:latam::spa', 'America/Costa_Rica', ['es-419'], KML.ANSI,
+        'Costa Rica'),
     Region(
-        'cw', 'xkb:cw::nld', 'America/Curacao', ['nl', 'pap'],
-        _KML.ANSI, 'Curacao', None, 184),
+        'cw', 'xkb:cw::nld', 'America/Curacao', ['nl'], KML.ANSI, 'Curacao'),
     Region(
-        'cv', 'xkb:cv::por', 'Atlantic/Cape_Verde', 'pt-CV', _KML.ANSI,
-        'Cape Verde', None, 185),
+        'cv', 'xkb:cv::por', 'Atlantic/Cape_Verde', 'pt-CV', KML.ANSI,
+        'Cape Verde'),
     Region(
-        'cu', 'xkb:latam::spa', 'America/Havana', 'es-419', _KML.ANSI, 'Cuba',
-        None, 186),
+        'cu', 'xkb:latam::spa', 'America/Havana', 'es-419', KML.ANSI,
+        'Cuba'),
     Region(
-        'sz', 'xkb:sz::eng', 'Africa/Mbabane', ['en-SZ', 'ss-SZ'],
-        _KML.ANSI, 'Swaziland', None, 187),
+        'sz', 'xkb:sz::eng', 'Africa/Mbabane', ['en-SZ', 'ss-SZ'], KML.ANSI,
+        'Swaziland'),
     Region(
-        'sy', 'xkb:sy::ara', 'Asia/Damascus',
-        ['ar', 'ku', 'hy', 'arc', 'fr', 'en'], _KML.ANSI, 'Syria', None,
-        188),
+        'sy', 'xkb:sy::ara', 'Asia/Damascus', ['ar', 'ku', 'hy', 'arc', 'fr',
+                                               'en'], KML.ANSI,
+        'Syria'),
     Region(
-        'sx', 'xkb:sx::nld', 'America/Lower_Princes', ['nl', 'en'],
-        _KML.ANSI, 'Sint Maarten', None, 189),
+        'sx', 'xkb:sx::nld', 'America/Lower_Princes', ['nl', 'en'], KML.ANSI,
+        'Sint Maarten'),
     Region(
-        'kg', 'xkb:kg::kir', 'Asia/Bishkek', ['ky', 'uz', 'ru'],
-        _KML.ANSI, 'Kyrgyzstan', None, 190),
+        'kg', 'xkb:kg::kir', 'Asia/Bishkek', ['ky', 'uz', 'ru'], KML.ANSI,
+        'Kyrgyzstan'),
     Region(
-        'ke', 'xkb:ke::eng', 'Africa/Nairobi', ['en-KE', 'sw-KE'],
-        _KML.ANSI, 'Kenya', None, 191),
+        'ke', 'xkb:ke::eng', 'Africa/Nairobi', ['en-KE', 'sw-KE'], KML.ANSI,
+        'Kenya'),
     Region(
-        'ss', 'xkb:ss::eng', 'Africa/Juba', 'en', _KML.ANSI,
-        'South Sudan', None, 192),
+        'ss', 'xkb:ss::eng', 'Africa/Juba', 'en', KML.ANSI,
+        'South Sudan'),
     Region(
-        'sr', 'xkb:sr::nld', 'America/Paramaribo',
-        ['nl-SR', 'en', 'srn', 'hns', 'jv'], _KML.ANSI, 'Suriname', None, 193),
+        'sr', 'xkb:sr::nld', 'America/Paramaribo', ['nl-SR', 'en', 'srn', 'hns',
+                                                    'jv'], KML.ANSI,
+        'Suriname'),
     Region(
-        'ki', 'xkb:ki::eng',
-        ['Pacific/Tarawa', 'Pacific/Enderbury', 'Pacific/Kiritimati'],
-        ['en-KI', 'gil'], _KML.ANSI, 'Kiribati', None, 194),
+        'ki', 'xkb:ki::eng', ['Pacific/Tarawa', 'Pacific/Enderbury',
+                              'Pacific/Kiritimati'], ['en-KI', 'gil'], KML.ANSI,
+        'Kiribati'),
     Region(
-        'kh', 'xkb:kh::khm', 'Asia/Phnom_Penh', ['km', 'fr', 'en'],
-        _KML.ANSI, 'Cambodia', None, 195),
+        'kh', 'xkb:kh::khm', 'Asia/Phnom_Penh', ['km', 'fr', 'en'], KML.ANSI,
+        'Cambodia'),
     Region(
-        'kn', 'xkb:kn::eng', 'America/St_Kitts', 'en-KN', _KML.ANSI,
-        'Saint Kitts and Nevis', None, 196),
+        'kn', 'xkb:kn::eng', 'America/St_Kitts', 'en-KN', KML.ANSI,
+        'Saint Kitts and Nevis'),
     Region(
-        'km', 'xkb:km::ara', 'Indian/Comoro', ['ar', 'fr-KM'],
-        _KML.ANSI, 'Comoros', None, 197),
+        'km', 'xkb:km::ara', 'Indian/Comoro', ['ar', 'fr-KM'], KML.ANSI,
+        'Comoros'),
     Region(
-        'st', 'xkb:st::por', 'Africa/Sao_Tome', 'pt-ST', _KML.ANSI,
-        'Sao Tome and Principe', None, 198),
+        'st', 'xkb:st::por', 'Africa/Sao_Tome', 'pt-ST', KML.ANSI,
+        'Sao Tome and Principe'),
     Region(
-        'si', 'xkb:si::slv', 'Europe/Ljubljana',
-        ['sl', 'hu', 'it', 'sr', 'de', 'hr', 'en-GB'], _KML.ISO,
-        'Slovenia', None, 199),
+        'si', 'xkb:si::slv', 'Europe/Ljubljana', ['sl', 'hu', 'it', 'sr', 'de',
+                                                  'hr', 'en-GB'], KML.ISO,
+        'Slovenia'),
     Region(
-        'kp', 'xkb:kp::kor', 'Asia/Pyongyang', 'ko-KP', _KML.ANSI,
-        'North Korea', None, 200),
+        'kp', 'xkb:kp::kor', 'Asia/Pyongyang', 'ko-KP', KML.ANSI,
+        'North Korea'),
     Region(
-        'sn', 'xkb:sn::fra', 'Africa/Dakar',
-        ['fr-SN', 'wo', 'fuc', 'mnk'], _KML.ANSI, 'Senegal', None, 202),
+        'sn', 'xkb:sn::fra', 'Africa/Dakar', ['fr-SN', 'wo', 'fuc'], KML.ANSI,
+        'Senegal'),
     Region(
-        'sm', 'xkb:sm::ita', 'Europe/San_Marino', 'it-SM', _KML.ANSI,
-        'San Marino', None, 203),
+        'sm', 'xkb:sm::ita', 'Europe/San_Marino', 'it-SM', KML.ANSI,
+        'San Marino'),
     Region(
-        'sl', 'xkb:sl::eng', 'Africa/Freetown', ['en-SL', 'men', 'tem'],
-        _KML.ANSI, 'Sierra Leone', None, 204),
+        'sl', 'xkb:sl::eng', 'Africa/Freetown', ['en-SL', 'men'], KML.ANSI,
+        'Sierra Leone'),
     Region(
-        'sc', 'xkb:sc::eng', 'Indian/Mahe', ['en-SC', 'fr-SC'],
-        _KML.ANSI, 'Seychelles', None, 205),
+        'sc', 'xkb:sc::eng', 'Indian/Mahe', ['en-SC', 'fr-SC'], KML.ANSI,
+        'Seychelles'),
     Region(
-        'kz', 'xkb:kz::kaz',
-        ['Asia/Almaty', 'Asia/Qyzylorda', 'Asia/Aqtobe', 'Asia/Aqtau',
-         'Asia/Oral'], ['kk', 'ru'], _KML.ANSI, 'Kazakhstan', None, 206),
+        'kz', 'xkb:kz::kaz', ['Asia/Almaty', 'Asia/Qyzylorda', 'Asia/Aqtobe',
+                              'Asia/Aqtau'], ['kk', 'ru'], KML.ANSI,
+        'Kazakhstan'),
     Region(
-        'ky', 'xkb:ky::eng', 'America/Cayman', 'en-KY', _KML.ANSI,
-        'Cayman Islands', None, 207),
+        'ky', 'xkb:ky::eng', 'America/Cayman', 'en-KY', KML.ANSI,
+        'Cayman Islands'),
     Region(
-        'sd', 'xkb:sd::ara', 'Africa/Khartoum', ['ar', 'en', 'fia'],
-        _KML.ANSI, 'Sudan', None, 208),
+        'sd', 'xkb:sd::ara', 'Africa/Khartoum', ['ar', 'en', 'fia'], KML.ANSI,
+        'Sudan'),
     Region(
-        'do', 'xkb:latam::spa', 'America/Santo_Domingo', 'es-419',
-        _KML.ANSI, 'Dominican Republic', None, 209),
+        'do', 'xkb:latam::spa', 'America/Santo_Domingo', 'es-419', KML.ANSI,
+        'Dominican Republic'),
     Region(
-        'dm', 'xkb:dm::eng', 'America/Dominica', 'en-DM', _KML.ANSI,
-        'Dominica', None, 210),
+        'dm', 'xkb:dm::eng', 'America/Dominica', 'en-DM', KML.ANSI,
+        'Dominica'),
     Region(
-        'dj', 'xkb:dj::fra', 'Africa/Djibouti',
-        ['fr-DJ', 'ar', 'so-DJ', 'aa'], _KML.ANSI, 'Djibouti', None, 211),
+        'dj', 'xkb:dj::fra', 'Africa/Djibouti', ['fr-DJ', 'ar'], KML.ANSI,
+        'Djibouti'),
     Region(
-        'dk', 'xkb:dk::dan', 'Europe/Copenhagen',
-        ['da-DK', 'en', 'fo', 'de-DK'], _KML.ISO, 'Denmark', None, 212),
+        'dk', 'xkb:dk::dan', 'Europe/Copenhagen', ['da-DK', 'en', 'fo',
+                                                   'de-DK'], KML.ISO,
+        'Denmark'),
     Region(
-        'vg', 'xkb:vg::eng', 'America/Tortola', 'en-VG', _KML.ANSI,
-        'British Virgin Islands', None, 213),
+        'vg', 'xkb:vg::eng', 'America/Tortola', 'en-VG', KML.ANSI,
+        'British Virgin Islands'),
     Region(
-        'ye', 'xkb:ye::ara', 'Asia/Aden', 'ar', _KML.ANSI, 'Yemen',
-        None, 214),
+        'ye', 'xkb:ye::ara', 'Asia/Aden', 'ar', KML.ANSI,
+        'Yemen'),
     Region(
-        'dz', 'xkb:dz::ara', 'Africa/Algiers', 'ar', _KML.ANSI,
-        'Algeria', None, 215),
+        'dz', 'xkb:dz::ara', 'Africa/Algiers', 'ar', KML.ANSI,
+        'Algeria'),
     Region(
-        'yt', 'xkb:yt::fra', 'Indian/Mayotte', 'fr-YT', _KML.ANSI,
-        'Mayotte', None, 217),
+        'yt', 'xkb:yt::fra', 'Indian/Mayotte', 'fr-YT', KML.ANSI,
+        'Mayotte'),
     Region(
-        'um', 'xkb:um::eng',
-        ['Pacific/Johnston', 'Pacific/Midway', 'Pacific/Wake'], 'en-UM',
-        _KML.ANSI, 'United States Minor Outlying Islands', None, 218),
+        'um', 'xkb:um::eng', ['Pacific/Johnston', 'Pacific/Midway',
+                              'Pacific/Wake'], 'en-UM', KML.ANSI,
+        'United States Minor Outlying Islands'),
     Region(
-        'lb', 'xkb:lb::ara', 'Asia/Beirut',
-        ['ar', 'fr-LB', 'en', 'hy'], _KML.ANSI, 'Lebanon', None, 219),
+        'lb', 'xkb:lb::ara', 'Asia/Beirut', ['ar', 'fr-LB', 'en'], KML.ANSI,
+        'Lebanon'),
     Region(
-        'lc', 'xkb:lc::eng', 'America/St_Lucia', 'en-LC', _KML.ANSI,
-        'Saint Lucia', None, 220),
+        'lc', 'xkb:lc::eng', 'America/St_Lucia', 'en-LC', KML.ANSI,
+        'Saint Lucia'),
     Region(
-        'la', 'xkb:la::lao', 'Asia/Vientiane', ['lo', 'fr', 'en'],
-        _KML.ANSI, 'Laos', None, 221),
+        'la', 'xkb:la::lao', 'Asia/Vientiane', ['lo', 'fr', 'en'], KML.ANSI,
+        'Laos'),
     Region(
-        'tv', 'xkb:us::eng', 'Pacific/Funafuti',
-        ['tvl', 'en', 'sm', 'gil'], _KML.ANSI, 'Tuvalu', None, 222),
+        'tv', 'xkb:us::eng', 'Pacific/Funafuti', ['tvl', 'en', 'sm'], KML.ANSI,
+        'Tuvalu'),
     Region(
-        'tt', 'xkb:tt::eng', 'America/Port_of_Spain',
-        ['en-TT', 'hns', 'fr', 'es', 'zh'], _KML.ANSI,
-        'Trinidad and Tobago', None, 223),
+        'tt', 'xkb:tt::eng', 'America/Port_of_Spain', ['en-TT', 'hns', 'fr',
+                                                       'es', 'zh'], KML.ANSI,
+        'Trinidad and Tobago'),
     Region(
-        'lk', 'xkb:lk::sin', 'Asia/Colombo', ['si', 'ta', 'en'],
-        _KML.ANSI, 'Sri Lanka', None, 225),
+        'lk', 'xkb:lk::sin', 'Asia/Colombo', ['si', 'ta', 'en'], KML.ANSI,
+        'Sri Lanka'),
     Region(
-        'li', 'xkb:ch::ger', 'Europe/Vaduz', ['de', 'en-GB'], _KML.ISO,
-        'Liechtenstein', None, 226),
+        'li', 'xkb:ch::ger', 'Europe/Vaduz', ['de', 'en-GB'], KML.ISO,
+        'Liechtenstein'),
     Region(
-        'lv', 'xkb:lv:apostrophe:lav', 'Europe/Riga',
-        ['lv', 'lt', 'ru', 'en-GB'], _KML.ISO, 'Latvia', None, 227),
+        'lv', 'xkb:lv:apostrophe:lav', 'Europe/Riga', ['lv', 'lt', 'ru',
+                                                       'en-GB'], KML.ISO,
+        'Latvia'),
     Region(
-        'to', 'xkb:to::ton', 'Pacific/Tongatapu', ['to', 'en-TO'],
-        _KML.ANSI, 'Tonga', None, 228),
+        'to', 'xkb:to::ton', 'Pacific/Tongatapu', ['to', 'en-TO'], KML.ANSI,
+        'Tonga'),
     Region(
-        'lt', 'xkb:lt::lit', 'Europe/Vilnius', ['lt', 'ru', 'pl', 'en-GB'],
-        _KML.ISO, 'Lithuania', None, 229),
+        'lt', 'xkb:lt::lit', 'Europe/Vilnius', ['lt', 'ru', 'pl'], KML.ISO,
+        'Lithuania'),
     Region(
-        'lu', 'xkb:lu::ltz', 'Europe/Luxembourg',
-        ['lb', 'de-LU', 'fr-LU'], _KML.ANSI, 'Luxembourg', None, 230),
+        'lu', 'xkb:lu::ltz', 'Europe/Luxembourg', ['lb', 'de-LU'], KML.ANSI,
+        'Luxembourg'),
     Region(
-        'lr', 'xkb:lr::eng', 'Africa/Monrovia', 'en-LR', _KML.ANSI,
-        'Liberia', None, 231),
+        'lr', 'xkb:lr::eng', 'Africa/Monrovia', 'en-LR', KML.ANSI,
+        'Liberia'),
     Region(
-        'ls', 'xkb:ls::eng', 'Africa/Maseru', ['en-LS', 'st', 'zu', 'xh'],
-        _KML.ANSI, 'Lesotho', None, 232),
+        'ls', 'xkb:ls::eng', 'Africa/Maseru', ['en-LS', 'st', 'zu'], KML.ANSI,
+        'Lesotho'),
     Region(
-        'tf', 'xkb:tf::fra', 'Indian/Kerguelen', 'fr', _KML.ANSI,
-        'French Southern Territories', None, 233),
+        'tf', 'xkb:tf::fra', 'Indian/Kerguelen', 'fr', KML.ANSI,
+        'French Southern Territories'),
     Region(
-        'tg', 'xkb:tg::fra', 'Africa/Lome',
-        ['fr-TG', 'ee', 'hna', 'kbp', 'dag', 'ha'], _KML.ANSI, 'Togo',
-        None, 234),
+        'tg', 'xkb:tg::fra', 'Africa/Lome', ['fr-TG', 'ee', 'hna'], KML.ANSI,
+        'Togo'),
     Region(
-        'td', 'xkb:td::fra', 'Africa/Ndjamena', ['fr-TD', 'ar', 'sre'],
-        _KML.ANSI, 'Chad', None, 235),
+        'td', 'xkb:td::fra', 'Africa/Ndjamena', ['fr-TD', 'ar'], KML.ANSI,
+        'Chad'),
     Region(
-        'tc', 'xkb:tc::eng', 'America/Grand_Turk', 'en-TC', _KML.ANSI,
-        'Turks and Caicos Islands', None, 236),
+        'tc', 'xkb:tc::eng', 'America/Grand_Turk', 'en-TC', KML.ANSI,
+        'Turks and Caicos Islands'),
     Region(
-        'ly', 'xkb:ly::ara', 'Africa/Tripoli', ['ar', 'it', 'en'],
-        _KML.ANSI, 'Libya', None, 237),
+        'ly', 'xkb:ly::ara', 'Africa/Tripoli', ['ar', 'it', 'en'], KML.ANSI,
+        'Libya'),
     Region(
-        'va', 'xkb:va::lat', 'Europe/Vatican', ['la', 'it', 'fr'],
-        _KML.ANSI, 'Vatican', None, 238),
+        'va', 'xkb:va::lat', 'Europe/Vatican', ['la', 'it', 'fr'], KML.ANSI,
+        'Vatican'),
     Region(
-        'vc', 'xkb:vc::eng', 'America/St_Vincent', ['en-VC', 'fr'],
-        _KML.ANSI, 'Saint Vincent and the Grenadines', None, 239),
+        'vc', 'xkb:vc::eng', 'America/St_Vincent', ['en-VC', 'fr'], KML.ANSI,
+        'Saint Vincent and the Grenadines'),
     Region(
-        'ad', 'xkb:ad::cat', 'Europe/Andorra', 'ca', _KML.ANSI, 'Andorra',
-        None, 240),
+        'ad', 'xkb:ad::cat', 'Europe/Andorra', 'ca', KML.ANSI,
+        'Andorra'),
     Region(
-        'ag', 'xkb:ag::eng', 'America/Antigua', 'en-AG', _KML.ANSI,
-        'Antigua and Barbuda', None, 241),
+        'ag', 'xkb:ag::eng', 'America/Antigua', 'en-AG', KML.ANSI,
+        'Antigua and Barbuda'),
     Region(
-        'af', 'xkb:af::fas', 'Asia/Kabul', ['fa-AF', 'ps', 'uz-AF', 'tk'],
-        _KML.ANSI, 'Afghanistan', None, 242),
+        'af', 'xkb:af::fas', 'Asia/Kabul', ['fa-AF', 'ps'], KML.ANSI,
+        'Afghanistan'),
     Region(
-        'ai', 'xkb:ai::eng', 'America/Anguilla', 'en-AI', _KML.ANSI,
-        'Anguilla', None, 243),
+        'ai', 'xkb:ai::eng', 'America/Anguilla', 'en-AI', KML.ANSI,
+        'Anguilla'),
     Region(
-        'vi', 'xkb:vi::eng', 'America/St_Thomas', 'en-VI', _KML.ANSI,
-        'U.S. Virgin Islands', None, 244),
+        'vi', 'xkb:vi::eng', 'America/St_Thomas', 'en-VI', KML.ANSI,
+        'U.S. Virgin Islands'),
     Region(
-        'is', 'xkb:is::ice', 'Atlantic/Reykjavik',
-        ['is', 'en-GB', 'da', 'de'], _KML.ISO, 'Iceland', None, 245),
+        'is', 'xkb:is::ice', 'Atlantic/Reykjavik', ['is', 'en-GB'], KML.ISO,
+        'Iceland'),
     Region(
-        'ir', 'xkb:ir::fas', 'Asia/Tehran', ['fa-IR', 'ku'], _KML.ANSI,
-        'Iran', None, 246),
+        'ir', 'xkb:ir::fas', 'Asia/Tehran', ['fa-IR', 'ku'], KML.ANSI,
+        'Iran'),
     Region(
-        'am', 'xkb:am::hye', 'Asia/Yerevan', 'hy', _KML.ANSI, 'Armenia',
-        None, 247),
+        'am', 'xkb:am::hye', 'Asia/Yerevan', 'hy', KML.ANSI,
+        'Armenia'),
     Region(
-        'al', 'xkb:al::sqi', 'Europe/Tirane', ['sq', 'el'], _KML.ANSI,
-        'Albania', None, 248),
+        'al', 'xkb:al::sqi', 'Europe/Tirane', ['sq', 'el'], KML.ANSI,
+        'Albania'),
     Region(
-        'ao', 'xkb:ao::por', 'Africa/Luanda', 'pt-AO', _KML.ANSI,
-        'Angola', None, 249),
+        'ao', 'xkb:ao::por', 'Africa/Luanda', 'pt-AO', KML.ANSI,
+        'Angola'),
     Region(
-        'as', 'xkb:as::eng', 'Pacific/Pago_Pago', ['en-AS', 'sm', 'to'],
-        _KML.ANSI, 'American Samoa', None, 250),
+        'as', 'xkb:as::eng', 'Pacific/Pago_Pago', ['en-AS', 'sm'], KML.ANSI,
+        'American Samoa'),
     Region(
-        'aw', 'xkb:aw::nld', 'America/Aruba', ['nl-AW', 'es', 'en'],
-        _KML.ANSI, 'Aruba', None, 252),
+        'aw', 'xkb:aw::nld', 'America/Aruba', ['nl-AW', 'es', 'en'], KML.ANSI,
+        'Aruba'),
     Region(
-        'ax', 'xkb:ax::swe', 'Europe/Mariehamn', 'sv-AX', _KML.ANSI,
-        'Aland Islands', None, 253),
+        'ax', 'xkb:ax::swe', 'Europe/Mariehamn', 'sv-AX', KML.ANSI,
+        'Aland Islands'),
     Region(
-        'az', 'xkb:az::aze', 'Asia/Baku', ['az', 'ru', 'hy'], _KML.ANSI,
-        'Azerbaijan', None, 254),
+        'az', 'xkb:az::aze', 'Asia/Baku', ['az', 'ru', 'hy'], KML.ANSI,
+        'Azerbaijan'),
     Region(
-        'ua', 'xkb:ua::ukr',
-        ['Europe/Kiev', 'Europe/Uzhgorod', 'Europe/Zaporozhye'],
-        ['uk', 'ru-UA', 'rom', 'pl', 'hu'], _KML.ANSI, 'Ukraine', None, 255),
+        'ua', 'xkb:ua::ukr', [
+            'Europe/Kiev', 'Europe/Uzhgorod', 'Europe/Zaporozhye'], [
+                'uk', 'ru-UA', 'rom', 'pl', 'hu'], KML.ANSI,
+        'Ukraine'),
     Region(
-        'qa', 'xkb:qa::ara', 'Asia/Bahrain', ['ar', 'en'], _KML.ANSI,
-        'Qatar', None, 256),
+        'qa', 'xkb:qa::ara', 'Asia/Bahrain', ['ar', 'en'], KML.ANSI,
+        'Qatar'),
     Region(
-        'mz', 'xkb:mz::por', 'Africa/Maputo', ['pt-MZ', 'vmw'],
-        _KML.ANSI, 'Mozambique', None, 257)]
+        'mz', 'xkb:mz::por', 'Africa/Maputo', ['pt-MZ', 'vmw'], KML.ANSI,
+        'Mozambique'),
+    ]
 """A list of :py:class:`regions.Region` objects for
 **unconfirmed** regions. These may contain incorrect information (or not
 supported by Chrome browser yet), and all fields must be reviewed before launch.

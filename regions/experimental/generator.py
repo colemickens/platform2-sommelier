@@ -1,5 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 """Region database generator from public documents."""
+
+from __future__ import print_function
 
 import pycountry
 
@@ -24,7 +26,7 @@ def LoadZoneTable():
 
 def LoadCountryTable(tzinfo):
   # http://download.geonames.org/export/dump/countryInfo.txt
-  regions = {}
+  new_regions = {}
   skip_regions = (['BV', 'HM', 'CS', 'XK', 'AN'] +  # reserved regions
                   ['HM', 'AQ'] +  # broken data
                   ['CA'])  # We only have ca.variants in region database.
@@ -49,7 +51,7 @@ def LoadCountryTable(tzinfo):
         lang = 'en'
         kbd_region = 'us'
 
-      regions[code] = dict(
+      new_regions[code] = dict(
           region_code=code.lower(),
           description=data[4],
           keyboards=str('xkb:%s::%s' % (
@@ -57,7 +59,7 @@ def LoadCountryTable(tzinfo):
           time_zones=tzinfo[code],
           locales=data[15].strip(',').split(','),
       )
-  return regions
+  return new_regions
 
 
 def main():
@@ -67,16 +69,15 @@ def main():
     return v
 
   tzinfo = LoadZoneTable()
-  base = max(r.numeric_id for r in regions.REGIONS.values()) + 1
   for region in LoadCountryTable(tzinfo).values():
     code = region['region_code']
     if code in regions.REGIONS:
       continue
-    # Region takes: code, kbd, tz, locale, layout, description, comment, numid.
-    print ("Region('%s', %r, %r, %r, _KML.ANSI, '%s')," %
-           (code, region['keyboards'], flat(region['time_zones']),
-            flat(region['locales']), region['description']))
-    base += 1
+    # Region takes: code, kbd, tz, locale, layout, description, comment,
+    # regdomain.
+    print("Region('%s', %r, %r, %r, _KML.ANSI, '%s')," %
+          (code, region['keyboards'], flat(region['time_zones']),
+           flat(region['locales']), region['description']))
 
 
 if __name__ == '__main__':

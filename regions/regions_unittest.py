@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/env python2
 #
 # Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -15,8 +15,8 @@ from __future__ import print_function
 import os
 import StringIO
 import unittest
+import logging
 
-from chromite.lib import cros_logging as logging
 import regions
 import yaml
 
@@ -138,8 +138,11 @@ class RegionTest(unittest.TestCase):
                          k, r.region_code)
 
   def testFirmwareLocales(self):
-    bmpblk_dir = os.path.join(
-        os.environ.get('CROS_WORKON_SRCROOT'), 'src', 'platform', 'bmpblk')
+    # This file is probably in src/platform2/regions
+    src_root = os.environ.get('CROS_WORKON_SRCROOT',
+                              os.path.join(os.path.dirname(__file__), '..',
+                                           '..', '..'))
+    bmpblk_dir = os.path.join(src_root, 'src', 'platform', 'bmpblk')
     if not os.path.exists(bmpblk_dir):
       logging.warn('Skipping testFirmwareLocales, since %r is missing',
                    bmpblk_dir)
@@ -169,7 +172,6 @@ class RegionTest(unittest.TestCase):
          'keyboard_mechanical_layout': 'ANSI',
          'locales': ['en-US'],
          'region_code': 'us',
-         'numeric_id': 29,
          'description': 'United States',
          'regulatory_domain': 'US',
          'time_zones': ['America/Los_Angeles']},
@@ -182,12 +184,11 @@ class RegionTest(unittest.TestCase):
          'keyboard_mechanical_layout': 'e',
          'description': 'description',
          'locales': ['d'],
-         'numeric_id': 11,
          'region_code': 'aa',
          'regulatory_domain': 'AA',
          'time_zones': ['c']},
-        (regions.Region('aa', 'xkb:b::b', 'c', 'd', 'e', 'description', 'notes',
-                        11).GetFieldsDict()))
+        (regions.Region('aa', 'xkb:b::b', 'c', 'd', 'e', 'description',
+                        'notes').GetFieldsDict()))
 
   def testConsolidateRegionsDups(self):
     """Test duplicate handling.  Two identical Regions are OK."""
@@ -205,21 +206,6 @@ class RegionTest(unittest.TestCase):
         regions.RegionException, "Conflicting definitions for region 'aa':",
         regions.ConsolidateRegions, region_list)
 
-  def testNumericIds(self):
-    """Make sure numeric IDs are unique and all regions have a numeric ID."""
-    numeric_ids = set()
-    for region in regions.BuildRegionsDict(include_all=True).values():
-      if region.numeric_id is not None:
-        self.assertNotIn(region.numeric_id, numeric_ids,
-                         'Duplicate numeric ID %d in %s' % (
-                             region.numeric_id, region.region_code))
-        numeric_ids.add(region.numeric_id)
-
-      # Confirmed regions only
-      if region.region_code in regions.REGIONS:
-        self.assertIsNotNone(region.numeric_id,
-                             'Region %s has no numeric ID assigned' % (
-                                 region.region_code))
-
 if __name__ == '__main__':
+  logging.basicConfig(format='%(message)s', level=logging.WARNING)
   unittest.main()
