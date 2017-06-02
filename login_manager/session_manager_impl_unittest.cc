@@ -1152,10 +1152,14 @@ TEST_F(SessionManagerImplTest, ContainerStart) {
 }
 
 TEST_F(SessionManagerImplTest, ArcInstanceStartForLoginScreen) {
-  SessionManagerImpl::Error start_time_error;
 #if USE_CHEETS
-  impl_.GetArcStartTime(&start_time_error);
-  EXPECT_EQ(dbus_error::kNotStarted, start_time_error.name());
+  {
+    int64_t start_time = 0;
+    brillo::ErrorPtr error;
+    EXPECT_FALSE(impl_.GetArcStartTimeTicks(&error, &start_time));
+    ASSERT_TRUE(error.get());
+    EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
+  }
 
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
@@ -1179,27 +1183,44 @@ TEST_F(SessionManagerImplTest, ArcInstanceStartForLoginScreen) {
   EXPECT_TRUE(arc_setup_completed_);
 
   // StartArcInstanceForLoginScreen() does not update start time.
-  impl_.GetArcStartTime(&start_time_error);
-  EXPECT_EQ(dbus_error::kNotStarted, start_time_error.name());
+  {
+    brillo::ErrorPtr error;
+    int64_t start_time = 0;
+    EXPECT_FALSE(impl_.GetArcStartTimeTicks(&error, &start_time));
+    ASSERT_TRUE(error.get());
+    EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
+  }
 
-  impl_.StopArcInstance(&error_);
-  EXPECT_FALSE(error_.is_set());
+  {
+    brillo::ErrorPtr error;
+    EXPECT_TRUE(impl_.StopArcInstance(&error));
+    EXPECT_FALSE(error.get());
+  }
   EXPECT_FALSE(android_container_.running());
   EXPECT_FALSE(arc_setup_completed_);
 #else
   impl_.StartArcInstanceForLoginScreen(kContainerInstanceId, &error_);
   EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
-  impl_.GetArcStartTime(&start_time_error);
-  EXPECT_EQ(dbus_error::kNotAvailable, start_time_error.name());
+  {
+    brillo::ErrorPtr error;
+    int64_t start_time = 0;
+    EXPECT_FALSE(impl_.GetArcStartTimeTicks(&error, &start_time));
+    ASSERT_TRUE(error.get());
+    EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
+  }
 #endif
 }
 
 TEST_F(SessionManagerImplTest, ArcInstanceStart) {
   ExpectAndRunStartSession(kSaneEmail);
-  SessionManagerImpl::Error start_time_error;
 #if USE_CHEETS
-  impl_.GetArcStartTime(&start_time_error);
-  EXPECT_EQ(dbus_error::kNotStarted, start_time_error.name());
+  {
+    brillo::ErrorPtr error;
+    int64_t start_time = 0;
+    EXPECT_FALSE(impl_.GetArcStartTimeTicks(&error, &start_time));
+    ASSERT_TRUE(error.get());
+    EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
+  }
 
   EXPECT_CALL(
       upstart_signal_emitter_delegate_,
@@ -1232,23 +1253,38 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart) {
       kContainerInstanceId, kSaneEmail, false, true, &error_);
   EXPECT_TRUE(android_container_.running());
   EXPECT_TRUE(arc_setup_completed_);
-  EXPECT_NE(base::TimeTicks(), impl_.GetArcStartTime(&start_time_error));
+  {
+    brillo::ErrorPtr error;
+    int64_t start_time = 0;
+    EXPECT_TRUE(impl_.GetArcStartTimeTicks(&error, &start_time));
+    EXPECT_NE(0, start_time);
+    ASSERT_FALSE(error.get());
+  }
   EXPECT_CALL(
       dbus_emitter_,
       EmitSignalWithBoolAndString(StrEq(login_manager::kArcInstanceStopped),
                                   true,
                                   StrEq(kContainerInstanceId)))
       .Times(1);
-  impl_.StopArcInstance(&error_);
-  EXPECT_FALSE(error_.is_set());
+
+  {
+    brillo::ErrorPtr error;
+    EXPECT_TRUE(impl_.StopArcInstance(&error));
+    EXPECT_FALSE(error.get());
+  }
   EXPECT_FALSE(android_container_.running());
   EXPECT_FALSE(arc_setup_completed_);
 #else
   impl_.StartArcInstance(
       kContainerInstanceId, kSaneEmail, false, false, &error_);
   EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
-  impl_.GetArcStartTime(&start_time_error);
-  EXPECT_EQ(dbus_error::kNotAvailable, start_time_error.name());
+  {
+    brillo::ErrorPtr error;
+    int64_t start_time = 0;
+    EXPECT_FALSE(impl_.GetArcStartTimeTicks(&error, &start_time));
+    ASSERT_TRUE(error.get());
+    EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
+  }
 #endif
 }
 
@@ -1318,8 +1354,10 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
   EXPECT_FALSE(android_container_.running());
   EXPECT_FALSE(arc_setup_completed_);
   // This should now fail since the container was cleaned up already.
-  impl_.StopArcInstance(&error_);
-  EXPECT_EQ(dbus_error::kContainerShutdownFail, error_.name());
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_.StopArcInstance(&error));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kContainerShutdownFail, error->GetCode());
 }
 
 TEST_F(SessionManagerImplTest, ArcRemoveData) {
@@ -1330,8 +1368,9 @@ TEST_F(SessionManagerImplTest, ArcRemoveData) {
   ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_DIR_EMPTY);
-  impl_.RemoveArcData(kSaneEmail, &error_);
-  EXPECT_FALSE(error_.is_set());
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.RemoveArcData(&error, kSaneEmail));
+  EXPECT_FALSE(error.get());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
@@ -1342,8 +1381,9 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_NoSourceDirectory) {
   ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
   ExpectRemoveArcData(DataDirType::DATA_DIR_MISSING,
                       OldDataDirType::OLD_DATA_DIR_EMPTY);
-  impl_.RemoveArcData(kSaneEmail, &error_);
-  EXPECT_FALSE(error_.is_set());
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.RemoveArcData(&error, kSaneEmail));
+  EXPECT_FALSE(error.get());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
@@ -1355,8 +1395,9 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_OldDirectoryExists) {
   ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_DIR_EMPTY);
-  impl_.RemoveArcData(kSaneEmail, &error_);
-  EXPECT_FALSE(error_.is_set());
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.RemoveArcData(&error, kSaneEmail));
+  EXPECT_FALSE(error.get());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
@@ -1371,8 +1412,9 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_NonEmptyOldDirectoryExists) {
       utils_.AtomicFileWrite(android_data_old_dir_.Append("bar"), "test2"));
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_DIR_NOT_EMPTY);
-  impl_.RemoveArcData(kSaneEmail, &error_);
-  EXPECT_FALSE(error_.is_set());
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.RemoveArcData(&error, kSaneEmail));
+  EXPECT_FALSE(error.get());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
@@ -1384,8 +1426,9 @@ TEST_F(SessionManagerImplTest,
   ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
   ExpectRemoveArcData(DataDirType::DATA_DIR_MISSING,
                       OldDataDirType::OLD_DATA_DIR_EMPTY);
-  impl_.RemoveArcData(kSaneEmail, &error_);
-  EXPECT_FALSE(error_.is_set());
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.RemoveArcData(&error, kSaneEmail));
+  EXPECT_FALSE(error.get());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
@@ -1399,8 +1442,9 @@ TEST_F(SessionManagerImplTest,
       utils_.AtomicFileWrite(android_data_old_dir_.Append("foo"), "test"));
   ExpectRemoveArcData(DataDirType::DATA_DIR_MISSING,
                       OldDataDirType::OLD_DATA_DIR_NOT_EMPTY);
-  impl_.RemoveArcData(kSaneEmail, &error_);
-  EXPECT_FALSE(error_.is_set());
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.RemoveArcData(&error, kSaneEmail));
+  EXPECT_FALSE(error.get());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
@@ -1413,8 +1457,9 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_OldFileExists) {
   ASSERT_TRUE(utils_.AtomicFileWrite(android_data_old_dir_, "test2"));
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_FILE_EXISTS);
-  impl_.RemoveArcData(kSaneEmail, &error_);
-  EXPECT_FALSE(error_.is_set());
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_.RemoveArcData(&error, kSaneEmail));
+  EXPECT_FALSE(error.get());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 
@@ -1426,8 +1471,10 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
   ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
   impl_.StartArcInstance(
       kContainerInstanceId, kSaneEmail, false, false, &error_);
-  impl_.RemoveArcData(kSaneEmail, &error_);
-  EXPECT_EQ(dbus_error::kArcInstanceRunning, error_.name());
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_.RemoveArcData(&error, kSaneEmail));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kArcInstanceRunning, error->GetCode());
   EXPECT_TRUE(utils_.Exists(android_data_dir_));
 }
 
@@ -1440,29 +1487,44 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
       utils_.AtomicFileWrite(android_data_old_dir_.Append("bar"), "test2"));
   impl_.StartArcInstance(
       kContainerInstanceId, kSaneEmail, false, false, &error_);
-  impl_.StopArcInstance(&error_);
+  {
+    brillo::ErrorPtr error;
+    EXPECT_TRUE(impl_.StopArcInstance(&error));
+    EXPECT_FALSE(error.get());
+  }
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_DIR_NOT_EMPTY);
-  impl_.RemoveArcData(kSaneEmail, &error_);
-  EXPECT_FALSE(error_.is_set());
+  {
+    brillo::ErrorPtr error;
+    EXPECT_TRUE(impl_.RemoveArcData(&error, kSaneEmail));
+    EXPECT_FALSE(error.get());
+  }
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
 #else
 // When USE_CHEETS is not defined, ArcRemoveData should immediately return
 // dbus_error::kNotAvailable.
 TEST_F(SessionManagerImplTest, ArcRemoveData) {
-  impl_.RemoveArcData(kSaneEmail, &error_);
-  EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_.RemoveArcData(&error, kSaneEmail));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
 }
 #endif
 
 TEST_F(SessionManagerImplTest, SetArcCpuRestrictionFails) {
 #if USE_CHEETS
-  impl_.SetArcCpuRestriction(NUM_CONTAINER_CPU_RESTRICTION_STATES, &error_);
-  EXPECT_EQ(dbus_error::kArcCpuCgroupFail, error_.name());
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_.SetArcCpuRestriction(
+      &error, static_cast<uint32_t>(NUM_CONTAINER_CPU_RESTRICTION_STATES)));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kArcCpuCgroupFail, error->GetCode());
 #else
-  impl_.SetArcCpuRestriction(CONTAINER_CPU_RESTRICTION_BACKGROUND, &error_);
-  EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_.SetArcCpuRestriction(
+      &error, static_cast<uint32_t>(CONTAINER_CPU_RESTRICTION_BACKGROUND)));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
 #endif
 }
 
@@ -1472,15 +1534,26 @@ TEST_F(SessionManagerImplTest, EmitArcBooted) {
               OnSignalEmitted(StrEq(SessionManagerImpl::kArcBootedSignal),
                               ElementsAre(StartsWith("ANDROID_DATA_OLD_DIR="))))
       .Times(1);
-  impl_.EmitArcBooted(kSaneEmail, &error_);
+  {
+    brillo::ErrorPtr error;
+    EXPECT_TRUE(impl_.EmitArcBooted(&error, kSaneEmail));
+    EXPECT_FALSE(error.get());
+  }
+
   EXPECT_CALL(upstart_signal_emitter_delegate_,
               OnSignalEmitted(StrEq(SessionManagerImpl::kArcBootedSignal),
                               ElementsAre()))
       .Times(1);
-  impl_.EmitArcBooted(std::string(), &error_);
+  {
+    brillo::ErrorPtr error;
+    EXPECT_TRUE(impl_.EmitArcBooted(&error, std::string()));
+    EXPECT_FALSE(error.get());
+  }
 #else
-  impl_.EmitArcBooted(kSaneEmail, &error_);
-  EXPECT_EQ(dbus_error::kNotAvailable, error_.name());
+  brillo::ErrorPtr error;
+  EXPECT_FALSE(impl_.EmitArcBooted(&error, kSaneEmail));
+  ASSERT_TRUE(error.get());
+  EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
 #endif
 }
 

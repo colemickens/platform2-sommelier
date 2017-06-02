@@ -228,12 +228,15 @@ class SessionManagerImpl : public SessionManagerInterface,
                         bool skip_boot_completed_broadcast,
                         bool scan_vendor_priv_app,
                         Error* error);
-  void StopArcInstance(Error* error);
-  void SetArcCpuRestriction(ContainerCpuRestrictionState state, Error* error);
-  void EmitArcBooted(const std::string& account_id, Error* error);
-
-  base::TimeTicks GetArcStartTime(Error* error);
-  void RemoveArcData(const std::string& account_id, Error* error);
+  bool StopArcInstance(brillo::ErrorPtr* error);
+  bool SetArcCpuRestriction(brillo::ErrorPtr* error,
+                            uint32_t in_restriction_state);
+  bool EmitArcBooted(brillo::ErrorPtr* error,
+                     const std::string& in_account_id);
+  bool GetArcStartTimeTicks(brillo::ErrorPtr* error,
+                            int64_t* out_start_time);
+  bool RemoveArcData(brillo::ErrorPtr* error,
+                     const std::string& in_account_id);
 
   // PolicyService::Delegate implementation:
   void OnPolicyPersisted(bool success) override;
@@ -305,12 +308,13 @@ class SessionManagerImpl : public SessionManagerInterface,
   bool StartArcNetwork(const char** dbus_error_out,
                        std::string* error_message_out);
 
+#ifdef USE_CHEETS
   // Renames android-data/ in the user's home directory to android-data-old/,
   // then recursively removes the renamed directory. Returns false when it
   // fails to rename android-data/.
   bool RemoveArcDataInternal(const base::FilePath& android_data_dir,
-                             const base::FilePath& android_data_old_dir,
-                             Error* error);
+                             const base::FilePath& android_data_old_dir);
+#endif
 
   bool session_started_;
   bool session_stopping_;

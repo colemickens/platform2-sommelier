@@ -660,26 +660,22 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StartArcInstance(
 
 std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StopArcInstance(
     dbus::MethodCall* call) {
-  SessionManagerImpl::Error error;
-  impl_->StopArcInstance(&error);
-  if (error.is_set())
-    return CreateError(call, error.name(), error.message());
+  brillo::ErrorPtr error;
+  if (!impl_->StopArcInstance(&error))
+    return brillo::dbus_utils::GetDBusError(call, error.get());
   return dbus::Response::FromMethodCall(call);
 }
 
 std::unique_ptr<dbus::Response>
 SessionManagerDBusAdaptor::SetArcCpuRestriction(dbus::MethodCall* call) {
   dbus::MessageReader reader(call);
-  uint32_t state_int;
-  if (!reader.PopUint32(&state_int))
+  uint32_t state;
+  if (!reader.PopUint32(&state))
     return CreateInvalidArgsError(call, call->GetSignature());
-  ContainerCpuRestrictionState state =
-      static_cast<ContainerCpuRestrictionState>(state_int);
 
-  SessionManagerImpl::Error error;
-  impl_->SetArcCpuRestriction(state, &error);
-  if (error.is_set())
-    return CreateError(call, error.name(), error.message());
+  brillo::ErrorPtr error;
+  if (!impl_->SetArcCpuRestriction(&error, state))
+    return brillo::dbus_utils::GetDBusError(call, error.get());
   return dbus::Response::FromMethodCall(call);
 }
 
@@ -691,24 +687,24 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::EmitArcBooted(
     // TODO(xzhou): Return error here once Chrome is updated.
     LOG(WARNING) << "Failed to pop account_id in EmitArcBooted";
   }
-  SessionManagerImpl::Error error;
-  impl_->EmitArcBooted(account_id, &error);
-  if (error.is_set())
-    return CreateError(call, error.name(), error.message());
+
+  brillo::ErrorPtr error;
+  if (!impl_->EmitArcBooted(&error, account_id))
+    return brillo::dbus_utils::GetDBusError(call, error.get());
   return dbus::Response::FromMethodCall(call);
 }
 
 std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::GetArcStartTimeTicks(
     dbus::MethodCall* call) {
-  SessionManagerImpl::Error error;
-  base::TimeTicks start_time = impl_->GetArcStartTime(&error);
-  if (error.is_set())
-    return CreateError(call, error.name(), error.message());
+  brillo::ErrorPtr error;
+  int64_t start_time = 0;
+  if (!impl_->GetArcStartTimeTicks(&error, &start_time))
+    return brillo::dbus_utils::GetDBusError(call, error.get());
 
   std::unique_ptr<dbus::Response> response(
       dbus::Response::FromMethodCall(call));
   dbus::MessageWriter writer(response.get());
-  writer.AppendInt64(start_time.ToInternalValue());
+  writer.AppendInt64(start_time);
   return response;
 }
 
@@ -719,11 +715,9 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::RemoveArcData(
   if (!reader.PopString(&account_id))
     return CreateInvalidArgsError(call, call->GetSignature());
 
-  SessionManagerImpl::Error error;
-  impl_->RemoveArcData(account_id, &error);
-  if (error.is_set())
-    return CreateError(call, error.name(), error.message());
-
+  brillo::ErrorPtr error;
+  if (!impl_->RemoveArcData(&error, account_id))
+    return brillo::dbus_utils::GetDBusError(call, error.get());
   return dbus::Response::FromMethodCall(call);
 }
 

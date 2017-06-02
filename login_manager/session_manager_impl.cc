@@ -907,29 +907,31 @@ void SessionManagerImpl::StartArcInstance(
 #endif  // !USE_CHEETS
 }
 
-void SessionManagerImpl::StopArcInstance(Error* error) {
+bool SessionManagerImpl::StopArcInstance(brillo::ErrorPtr* error) {
 #if USE_CHEETS
   pid_t pid;
   if (!android_container_->GetContainerPID(&pid)) {
-    static const char msg[] = "Error getting Android container pid.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kContainerShutdownFail, msg);
-    return;
+    constexpr char kMessage[] = "Error getting Android container pid.";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kContainerShutdownFail, kMessage);
+    return false;
   }
 
   android_container_->RequestJobExit();
   android_container_->EnsureJobExit(
       base::TimeDelta::FromSeconds(kContainerTimeoutSec));
+  return true;
 #else
-  error->Set(dbus_error::kNotAvailable, "ARC not supported.");
+  *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
+  return false;
 #endif  // USE_CHEETS
 }
 
-void SessionManagerImpl::SetArcCpuRestriction(
-    ContainerCpuRestrictionState state, Error* error) {
+bool SessionManagerImpl::SetArcCpuRestriction(brillo::ErrorPtr* error,
+                                              uint32_t in_restriction_state) {
 #if USE_CHEETS
   std::string shares_out;
-  switch (state) {
+  switch (static_cast<ContainerCpuRestrictionState>(in_restriction_state)) {
     case CONTAINER_CPU_RESTRICTION_FOREGROUND:
       shares_out = std::to_string(kCpuSharesForeground);
       break;
@@ -937,33 +939,34 @@ void SessionManagerImpl::SetArcCpuRestriction(
       shares_out = std::to_string(kCpuSharesBackground);
       break;
     default:
-      constexpr char msg[] = "Invalid CPU restriction state specified.";
-      LOG(ERROR) << msg;
-      error->Set(dbus_error::kArcCpuCgroupFail, msg);
-      return;
+      constexpr char kMessage[] = "Invalid CPU restriction state specified.";
+      LOG(ERROR) << kMessage;
+      *error = CreateError(dbus_error::kArcCpuCgroupFail, kMessage);
+      return false;
   }
   if (base::WriteFile(base::FilePath(kCpuSharesFile), shares_out.c_str(),
                       shares_out.length()) != shares_out.length()) {
-    constexpr char msg[] = "Error updating Android container's cgroups.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kArcCpuCgroupFail, msg);
+    constexpr char kMessage[] = "Error updating Android container's cgroups.";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kArcCpuCgroupFail, kMessage);
+    return false;
   }
+  return true;
 #else
-  error->Set(dbus_error::kNotAvailable, "ARC not supported.");
+  *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
+  return false;
 #endif
 }
 
-void SessionManagerImpl::EmitArcBooted(const std::string& account_id,
-                                       Error* error) {
+bool SessionManagerImpl::EmitArcBooted(brillo::ErrorPtr* error,
+                                       const std::string& in_account_id) {
 #if USE_CHEETS
   std::vector<std::string> keyvals;
-  if (!account_id.empty()) {
-    brillo::ErrorPtr error_ptr;
+  if (!in_account_id.empty()) {
     std::string actual_account_id;
-    if (!NormalizeAccountId(account_id, &actual_account_id, &error_ptr)) {
-      DCHECK(error_ptr.get());
-      error->Set(error_ptr->GetCode(), error_ptr->GetMessage());
-      return;
+    if (!NormalizeAccountId(in_account_id, &actual_account_id, error)) {
+      DCHECK(error);
+      return false;
     }
     const base::FilePath android_data_old_dir =
         GetAndroidDataOldDirForUser(actual_account_id);
@@ -973,23 +976,32 @@ void SessionManagerImpl::EmitArcBooted(const std::string& account_id,
 
   if (!init_controller_->TriggerImpulse(
           kArcBootedSignal, keyvals, InitDaemonController::TriggerMode::SYNC)) {
-    static const char msg[] = "Emitting arc-booted upstart signal failed.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kEmitFailed, msg);
+    constexpr char kMessage[] = "Emitting arc-booted upstart signal failed.";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kEmitFailed, kMessage);
+    return false;
   }
+
+  return true;
 #else
-  error->Set(dbus_error::kNotAvailable, "ARC not supported.");
+  *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
+  return false;
 #endif
 }
 
-base::TimeTicks SessionManagerImpl::GetArcStartTime(Error* error) {
+bool SessionManagerImpl::GetArcStartTimeTicks(brillo::ErrorPtr* error,
+                                              int64_t* out_start_time) {
 #if USE_CHEETS
-  if (arc_start_time_.is_null())
-    error->Set(dbus_error::kNotStarted, "ARC is not started yet.");
+  if (arc_start_time_.is_null()) {
+    *error = CreateError(dbus_error::kNotStarted, "ARC is not started yet.");
+    return false;
+  }
+  *out_start_time = arc_start_time_.ToInternalValue();
+  return true;
 #else
-  error->Set(dbus_error::kNotAvailable, "ARC not supported.");
+  *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
+  return false;
 #endif  // !USE_CHEETS
-  return arc_start_time_;
 }
 
 bool SessionManagerImpl::StartContainer(brillo::ErrorPtr* error,
@@ -1010,29 +1022,28 @@ bool SessionManagerImpl::StopContainer(brillo::ErrorPtr* error,
   return false;
 }
 
-void SessionManagerImpl::RemoveArcData(const std::string& account_id,
-                                       Error* error) {
+bool SessionManagerImpl::RemoveArcData(brillo::ErrorPtr* error,
+                                       const std::string& in_account_id) {
 #if USE_CHEETS
   pid_t pid = 0;
   if (android_container_->GetContainerPID(&pid)) {
-    error->Set(dbus_error::kArcInstanceRunning, "ARC is currently running.");
-    return;
+    *error = CreateError(
+        dbus_error::kArcInstanceRunning, "ARC is currently running.");
+    return false;
   }
 
-  brillo::ErrorPtr error_ptr;
   std::string actual_account_id;
-  if (!NormalizeAccountId(account_id, &actual_account_id, &error_ptr)) {
-    DCHECK(error_ptr.get());
-    error->Set(error_ptr->GetCode(), error_ptr->GetMessage());
-    return;
+  if (!NormalizeAccountId(in_account_id, &actual_account_id, error)) {
+    DCHECK(error);
+    return false;
   }
   const base::FilePath android_data_dir =
       GetAndroidDataDirForUser(actual_account_id);
   const base::FilePath android_data_old_dir =
       GetAndroidDataOldDirForUser(actual_account_id);
 
-  if (RemoveArcDataInternal(android_data_dir, android_data_old_dir, error))
-    return;  // all done.
+  if (RemoveArcDataInternal(android_data_dir, android_data_old_dir))
+    return true;  // all done.
 
   PLOG(WARNING) << "Failed to rename " << android_data_dir.value()
                 << "; directly deleting it instead";
@@ -1042,16 +1053,17 @@ void SessionManagerImpl::RemoveArcData(const std::string& account_id,
   // may confuse ARC and prevent it from booting.
   system_->RemoveDirTree(android_data_dir);
   LOG(INFO) << "Finished removing " << android_data_dir.value();
+  return true;
 #else
-  error->Set(dbus_error::kNotAvailable, "ARC not supported.");
+  *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
+  return false;
 #endif  // USE_CHEETS
 }
 
+#if USE_CHEETS
 bool SessionManagerImpl::RemoveArcDataInternal(
     const base::FilePath& android_data_dir,
-    const base::FilePath& android_data_old_dir,
-    Error* error) {
-#if USE_CHEETS
+    const base::FilePath& android_data_old_dir) {
   // It should never happen, but in case |android_data_old_dir| is a file,
   // remove it. RemoveFile() immediately returns false (i.e. no-op) when
   // |android_data_old_dir| is a directory.
@@ -1105,11 +1117,9 @@ bool SessionManagerImpl::RemoveArcDataInternal(
     LOG(ERROR) << "Failed to emit " << kArcRemoveOldDataSignal
                << " upstart signal";
   }
-#else
-  error->Set(dbus_error::kNotAvailable, "ARC not supported.");
-#endif  // USE_CHEETS
   return true;
 }
+#endif  // USE_CHEETS
 
 void SessionManagerImpl::OnPolicyPersisted(bool success) {
   device_local_account_policy_->UpdateDeviceSettings(
