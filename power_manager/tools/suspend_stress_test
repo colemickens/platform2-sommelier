@@ -119,7 +119,26 @@ dump_stats_and_exit() {
   echo "Suspend_failures: $(( cur -
                               ($(get_success_count) - initial_successes) ))"
   echo "Firmware log errors: ${firmware_errors}"
+
+  if [ "${check_s0ix_errors}" = 1 ]; then
+    echo "s0ix errors: ${s0ix_errors}"
+  fi
   exit 0
+}
+
+# Returns the S0ix residency counter as returned by the kernel.
+# The driver that provides these counters depends on the platform.
+get_s0ix_count() {
+  if [ -e /sys/kernel/debug/pmc_core/slp_s0_residency_usec ]; then
+    # Kabylake / Skylake systems.
+    cat /sys/kernel/debug/pmc_core/slp_s0_residency_usec
+  elif [ -e /sys/kernel/debug/telemetry/ioss_info ]; then
+    # Apollolake Systems.
+    awk '$1 == "SOC_S0IX_TOTAL_RES" {print $2}' \
+      /sys/kernel/debug/telemetry/ioss_info
+  else
+    echo 0
+  fi
 }
 
 FLAGS "$@" || exit 1
@@ -162,6 +181,16 @@ if [ ! -z "${FLAGS_record_dmesg_dir}" ]; then
   rm -rf ${FLAGS_record_dmesg_dir}/dmesg_*
 fi
 
+check_s0ix_errors=0
+if check_powerd_config --suspend_to_idle; then
+  if [ -e /sys/kernel/debug/pmc_core/slp_s0_residency_usec ] || \
+     [ -e /sys/kernel/debug/telemetry/ioss_info ]; then
+    check_s0ix_errors=1
+  else
+    echo "Warning! platform uses s0ix, but we have no way to verify s0ix"
+  fi
+fi
+
 echo "Running ${FLAGS_count} iterations with:"
 echo "  suspend: ${FLAGS_suspend_min}-${FLAGS_suspend_max} seconds"
 echo "  wake: ${FLAGS_wake_min}-${FLAGS_wake_max} seconds"
@@ -190,6 +219,7 @@ stop tlsdated
 
 cur=0
 firmware_errors=0
+s0ix_errors=0
 last_successes=${initial_successes}
 exit_loop=0
 cur_ignore_count=0
@@ -206,6 +236,7 @@ while true; do
 
   sus_time=$(( ( $(random) % suspend_interval ) + FLAGS_suspend_min ))
   printf "sleep for %2d seconds..." "${sus_time}"
+  last_s0ix_count=$(get_s0ix_count)
   last_ignore_count=$(get_wakeup_source_event_count \
                       ${FLAGS_ignore_wakeup_source})
   wakeup_count=$(cat /sys/power/wakeup_count)
@@ -233,8 +264,11 @@ while true; do
   cur_successes=$(get_success_count)
   cur_ignore_count=$(get_wakeup_source_event_count \
                      ${FLAGS_ignore_wakeup_source})
+  cur_s0ix_count=$(get_s0ix_count)
   if [ ${cur_successes} -eq ${last_successes} -a \
-       ${cur_ignore_count} -eq ${last_ignore_count} ]; then
+       ${cur_ignore_count} -eq ${last_ignore_count} ] || \
+     [ "${check_s0ix_errors}" = 1 -a \
+       "${cur_s0ix_count}" = "${last_s0ix_count}" ]; then
     if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
       echo "Suspend failed."
       exit_loop=1
@@ -243,6 +277,11 @@ while true; do
         record_dmesg_for_iteration ${cur}
       fi
       printf "(suspend failed, ignoring)"
+    fi
+    if [ "${check_s0ix_errors}" = 1 ] && \
+       [ "${cur_s0ix_count}" = "${last_s0ix_count}" ]; then
+      echo "(s0ix counters did not increment from ${last_s0ix_count})"
+      : $(( s0ix_errors += 1 ))
     fi
   fi
   last_successes=${cur_successes}
