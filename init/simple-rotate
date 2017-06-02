@@ -4,5 +4,4 @@
 # found in the LICENSE file.
 # rsyslogd is somewhat stupid and can only supply a single argument to the
 # log-rotation program, so we have this handy little wrapper around mv(1).
-logger -t simple-rotate "rotating $1"
 mv "$1" "$1.1"
