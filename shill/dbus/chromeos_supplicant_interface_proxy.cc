@@ -328,7 +328,7 @@ bool ChromeosSupplicantInterfaceProxy::SetHT40Enable(const string& network,
                                                      bool enable) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__
       << " network: " << network << " enable: " << enable;
-#if defined(__ANDROID__)
+#if !defined(__ANDROID__)
   brillo::ErrorPtr error;
   if (!interface_proxy_->SetHT40Enable(dbus::ObjectPath(network),
                                        enable,
