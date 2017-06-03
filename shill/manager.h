@@ -65,10 +65,6 @@ class Throttler;
 
 #if !defined(DISABLE_WIFI)
 class WiFiProvider;
-#if defined(__BRILLO__)
-class RPCServiceWatcherInterface;
-class WiFiDriverHal;
-#endif  // __BRILLO__
 #endif  // DISABLE_WIFI
 
 #if !defined(DISABLE_WIRED_8021X)
@@ -251,23 +247,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
                              const std::string& interface_name,
                              bool* claimer_removed,
                              Error* error);
-#if !defined(DISABLE_WIFI) && defined(__BRILLO__)
-  // Setup an AP mode interface using WiFi driver HAL.  The driver
-  // may or may not teardown the station mode interface as a result
-  // of this call.  This behavior will be driver specific.
-  // Returns true and sets |interface_name| on success, false otherwise.
-  virtual bool SetupApModeInterface(std::string* out_interface_name,
-                                    Error* error);
-
-  // Setup a station mode interface using WiFi driver HAL.  The driver
-  // may or may not teardown the AP mode interface as a result of this
-  // call.  This behavior will be driver specific.
-  // Returns true and sets |interface_name| on success, false otherwise.
-  virtual bool SetupStationModeInterface(std::string* out_interface_name,
-                                         Error* error);
-
-  virtual void OnApModeSetterVanished();
-#endif  // !DISABLE_WIFI && __BRILLO__
 
   // Called by a service to remove its associated configuration.  If |service|
   // is associated with a non-ephemeral profile, this configuration entry
@@ -828,9 +807,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   std::unique_ptr<VPNProvider> vpn_provider_;
 #if !defined(DISABLE_WIFI)
   std::unique_ptr<WiFiProvider> wifi_provider_;
-#if defined(__BRILLO__)
-  WiFiDriverHal* wifi_driver_hal_;
-#endif  // __BRILLO__
 #endif  // DISABLE_WIFI
 #if !defined(DISABLE_WIMAX)
   std::unique_ptr<WiMaxProvider> wimax_provider_;

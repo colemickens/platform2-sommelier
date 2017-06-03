@@ -592,20 +592,7 @@ bool ChromeosManagerDBusAdaptor::SetupApModeInterface(
     string* out_interface_name) {
   SLOG(this, 2) << __func__;
   Error e;
-#if !defined(DISABLE_WIFI) && defined(__BRILLO__)
-  manager_->SetupApModeInterface(out_interface_name, &e);
-  if (e.IsSuccess()) {
-    // Setup a service watcher for the caller. This will restore interface mode
-    // back to station mode if the caller vanished.
-    watcher_for_ap_mode_setter_.reset(
-        dbus_service_watcher_factory_->CreateDBusServiceWatcher(
-            proxy_bus_, message->GetSender(),
-            Bind(&ChromeosManagerDBusAdaptor::OnApModeSetterVanished,
-                 Unretained(this))));
-  }
-#else
   e.Populate(Error::kNotSupported);
-#endif  // !DISABLE_WIFI && __BRILLO__
   return !e.ToChromeosError(error);
 }
 
@@ -614,21 +601,12 @@ bool ChromeosManagerDBusAdaptor::SetupStationModeInterface(
     string* out_interface_name) {
   SLOG(this, 2) << __func__;
   Error e;
-#if !defined(DISABLE_WIFI) && defined(__BRILLO__)
-  manager_->SetupStationModeInterface(out_interface_name, &e);
-  // Remove the service watcher for the AP mode setter.
-  watcher_for_ap_mode_setter_.reset();
-#else
   e.Populate(Error::kNotSupported);
-#endif  // !DISABLE_WIFI && __BRILLO__
   return !e.ToChromeosError(error);
 }
 
 void ChromeosManagerDBusAdaptor::OnApModeSetterVanished() {
   SLOG(this, 3) << __func__;
-#if !defined(DISABLE_WIFI) && defined(__BRILLO__)
-  manager_->OnApModeSetterVanished();
-#endif  // !DISABLE_WIFI && __BRILLO__
   watcher_for_ap_mode_setter_.reset();
 }
 

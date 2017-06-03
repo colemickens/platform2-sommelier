@@ -152,55 +152,18 @@ TEST_F(ChromeosManagerDBusAdaptorTest, SetupApModeInterface) {
   string out_interface_name;
   std::unique_ptr<Response> message(Response::CreateEmpty());
 
-#if !defined(DISABLE_WIFI) && defined(__BRILLO__)
-  // Watcher for AP mode setter is not created when we fail to setup AP mode
-  // interface.
-  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_ap_mode_setter_.get());
-  EXPECT_CALL(manager_, SetupApModeInterface(&out_interface_name, _))
-      .WillOnce(DoAll(WithArg<1>(Invoke(SetErrorTypeFailure)), Return(false)));
   EXPECT_CALL(dbus_service_watcher_factory_, CreateDBusServiceWatcher(_, _, _))
       .Times(0);
   EXPECT_FALSE(manager_adaptor_.SetupApModeInterface(&error, message.get(),
                                                      &out_interface_name));
-  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_ap_mode_setter_.get());
-
-  // Watcher for AP mode setter is created when we succeed in AP mode
-  // interface setup.
-  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_ap_mode_setter_.get());
-  EXPECT_CALL(manager_, SetupApModeInterface(&out_interface_name, _))
-      .WillOnce(DoAll(WithArg<1>(Invoke(SetErrorTypeSuccess)), Return(true)));
-  EXPECT_CALL(dbus_service_watcher_factory_, CreateDBusServiceWatcher(_, _, _))
-      .WillOnce(Return(new MockDBusServiceWatcher()));
-  EXPECT_TRUE(manager_adaptor_.SetupApModeInterface(&error, message.get(),
-                                                    &out_interface_name));
-  EXPECT_NE(nullptr, manager_adaptor_.watcher_for_ap_mode_setter_.get());
-#else
-  EXPECT_CALL(dbus_service_watcher_factory_, CreateDBusServiceWatcher(_, _, _))
-      .Times(0);
-  EXPECT_FALSE(manager_adaptor_.SetupApModeInterface(&error, message.get(),
-                                                     &out_interface_name));
-#endif  // !DISABLE_WIFI && __BRILLO__
 }
 
 TEST_F(ChromeosManagerDBusAdaptorTest, SetupStationModeInterface) {
   brillo::ErrorPtr error;
   string out_interface_name;
 
-#if !defined(DISABLE_WIFI) && defined(__BRILLO__)
-  // Setup watcher for AP mode setter.
-  manager_adaptor_.watcher_for_ap_mode_setter_.reset(
-      new MockDBusServiceWatcher());
-
-  // Reset watcher for AP mode setter after setting up station mode interface.
-  EXPECT_CALL(manager_, SetupStationModeInterface(&out_interface_name, _))
-      .WillOnce(Return(true));
-  EXPECT_TRUE(
-      manager_adaptor_.SetupStationModeInterface(&error, &out_interface_name));
-  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_ap_mode_setter_.get());
-#else
   EXPECT_FALSE(
       manager_adaptor_.SetupStationModeInterface(&error, &out_interface_name));
-#endif  // !DISABLE_WIFI && __BRILLO__
 }
 
 TEST_F(ChromeosManagerDBusAdaptorTest, OnApModeSetterVanished) {
@@ -209,9 +172,6 @@ TEST_F(ChromeosManagerDBusAdaptorTest, OnApModeSetterVanished) {
       new MockDBusServiceWatcher());
 
   // Reset watcher for AP mode setter after AP mode setter vanishes.
-#if !defined(DISABLE_WIFI) && defined(__BRILLO__)
-  EXPECT_CALL(manager_, OnApModeSetterVanished());
-#endif  // !DISABLE_WIFI && __BRILLO__
   manager_adaptor_.OnApModeSetterVanished();
   EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_ap_mode_setter_.get());
 }

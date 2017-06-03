@@ -127,13 +127,6 @@ class MockManager : public Manager {
                                    const std::string& interface_name,
                                    bool* claimer_removed, Error* error));
   MOCK_METHOD0(OnDeviceClaimerVanished, void());
-#if !defined(DISABLE_WIFI) && defined(__BRILLO__)
-  MOCK_METHOD2(SetupApModeInterface,
-               bool(std::string* out_interface_name, Error* error));
-  MOCK_METHOD2(SetupStationModeInterface,
-               bool(std::string* out_interface_name, Error* error));
-  MOCK_METHOD0(OnApModeSetterVanished, void());
-#endif  // !DISABLE_WIFI && __BRILLO__
   MOCK_METHOD0(GetDeviceInterfaceNames, std::vector<std::string>());
 
   // Getter and setter for a mocked device info instance.

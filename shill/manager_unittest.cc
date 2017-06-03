@@ -64,9 +64,6 @@
 #include "shill/wifi/mock_wifi_provider.h"
 #include "shill/wifi/mock_wifi_service.h"
 #include "shill/wifi/wifi_service.h"
-#if defined(__BRILLO__)
-#include "shill/wifi/mock_wifi_driver_hal.h"
-#endif  // __BRILLO__
 #endif  // DISABLE_WIFI
 
 #if !defined(DISABLE_WIRED_8021X)
@@ -142,9 +139,6 @@ class ManagerTest : public PropertyStoreTest {
     // Replace the manager's WiFi provider with our mock.  Passes
     // ownership.
     manager()->wifi_provider_.reset(wifi_provider_);
-#if defined(__BRILLO__)
-    manager()->wifi_driver_hal_ = &wifi_driver_hal_;
-#endif  // __BRILLO__
 #endif  // DISABLE_WIFI
 
     // Replace the manager's throttler with our mock.
@@ -512,9 +506,6 @@ class ManagerTest : public PropertyStoreTest {
 #endif  // DISABLE_WIRED_8021X
 #if !defined(DISABLE_WIFI)
   MockWiFiProvider* wifi_provider_;
-#if defined(__BRILLO__)
-  MockWiFiDriverHal wifi_driver_hal_;
-#endif  // __BRILLO__
 #endif  // DISABLE_WIFI
   MockThrottler* throttler_;
   MockCryptoUtilProxy* crypto_util_proxy_;
@@ -2380,67 +2371,6 @@ TEST_F(ManagerTest,
   EXPECT_EQ(nullptr, service.get());
   EXPECT_EQ(profile1.get(), matching_service->profile().get());
 }
-
-#if defined(__BRILLO__)
-TEST_F(ManagerTest, SetupApModeInterface) {
-  const string kApInterfaceName = "Test-Interface";
-  string ap_interface;
-  Error error;
-
-  // Failed to setup AP mode interface.
-  EXPECT_CALL(wifi_driver_hal_, SetupApModeInterface()).WillOnce(Return(""));
-  EXPECT_FALSE(
-      manager()->SetupApModeInterface(&ap_interface, &error));
-  Mock::VerifyAndClearExpectations(&wifi_driver_hal_);
-  EXPECT_TRUE(error.IsFailure());
-  EXPECT_EQ("Failed to setup AP mode interface", error.message());
-
-  // AP mode interface setup succeed.
-  error.Reset();
-  EXPECT_CALL(wifi_driver_hal_, SetupApModeInterface())
-      .WillOnce(Return(kApInterfaceName));
-  EXPECT_TRUE(
-      manager()->SetupApModeInterface(&ap_interface, &error));
-  Mock::VerifyAndClearExpectations(&wifi_driver_hal_);
-  Mock::VerifyAndClearExpectations(control_interface());
-  EXPECT_TRUE(error.IsSuccess());
-  EXPECT_EQ(kApInterfaceName, ap_interface);
-}
-
-TEST_F(ManagerTest, SetupStationModeInterface) {
-  const string kStationInterfaceName = "Test-Interface";
-  string station_interface;
-  Error error;
-
-  // Failed to setup station mode interface.
-  EXPECT_CALL(wifi_driver_hal_, SetupStationModeInterface())
-      .WillOnce(Return(""));
-  EXPECT_FALSE(
-      manager()->SetupStationModeInterface(&station_interface, &error));
-  Mock::VerifyAndClearExpectations(&wifi_driver_hal_);
-  EXPECT_TRUE(error.IsFailure());
-  EXPECT_EQ("Failed to setup station mode interface", error.message());
-
-  // Station mode interface setup succeed.
-  error.Reset();
-  EXPECT_CALL(wifi_driver_hal_, SetupStationModeInterface())
-      .WillOnce(Return(kStationInterfaceName));
-  EXPECT_TRUE(
-      manager()->SetupStationModeInterface(&station_interface, &error));
-  Mock::VerifyAndClearExpectations(&wifi_driver_hal_);
-  EXPECT_TRUE(error.IsSuccess());
-  EXPECT_EQ(kStationInterfaceName, station_interface);
-}
-
-TEST_F(ManagerTest, OnApModeSetterVanished) {
-  const string kStationInterfaceName = "Test-Interface";
-
-  EXPECT_CALL(wifi_driver_hal_, SetupStationModeInterface())
-      .WillOnce(Return(kStationInterfaceName));
-  manager()->OnApModeSetterVanished();
-  Mock::VerifyAndClearExpectations(&wifi_driver_hal_);
-}
-#endif  // __BRILLO__
 #endif  // DISABLE_WIFI
 
 TEST_F(ManagerTest, FindMatchingService) {

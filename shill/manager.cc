@@ -63,10 +63,6 @@
 #include "shill/vpn/vpn_service.h"
 #include "shill/wimax/wimax_service.h"
 
-#if defined(__BRILLO__)
-#include "shill/wifi/wifi_driver_hal.h"
-#endif  // __BRILLO__
-
 #if !defined(DISABLE_WIFI)
 #include "shill/wifi/wifi.h"
 #include "shill/wifi/wifi_provider.h"
@@ -145,9 +141,6 @@ Manager::Manager(ControlInterface* control_interface,
 #if !defined(DISABLE_WIFI)
       wifi_provider_(
           new WiFiProvider(control_interface, dispatcher, metrics, this)),
-#if defined(__BRILLO__)
-      wifi_driver_hal_(WiFiDriverHal::GetInstance()),
-#endif  // __BRILLO__
 #endif  // DISABLE_WIFI
 #if !defined(DISABLE_WIMAX)
       wimax_provider_(
@@ -798,39 +791,6 @@ void Manager::ReleaseDevice(const string& claimer_name,
     *claimer_removed = true;
   }
 }
-
-#if !defined(DISABLE_WIFI) && defined(__BRILLO__)
-bool Manager::SetupApModeInterface(string* out_interface_name, Error* error) {
-  string interface_name = wifi_driver_hal_->SetupApModeInterface();
-  if (interface_name.empty()) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
-                          "Failed to setup AP mode interface");
-    return false;
-  }
-  *out_interface_name = interface_name;
-  return true;
-}
-
-bool Manager::SetupStationModeInterface(string* out_interface_name,
-                                        Error* error) {
-  string interface_name = wifi_driver_hal_->SetupStationModeInterface();
-  if (interface_name.empty()) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
-                          "Failed to setup station mode interface");
-    return false;
-  }
-  *out_interface_name = interface_name;
-  return true;
-}
-
-void Manager::OnApModeSetterVanished() {
-  // Restore station mode interface.
-  string interface_name = wifi_driver_hal_->SetupStationModeInterface();
-  if (interface_name.empty()) {
-    LOG(ERROR) << "Failed to restore station mode interface";
-  }
-}
-#endif  // !DISABLE_WIFI && __BRILLO__
 
 void Manager::RemoveService(const ServiceRefPtr& service) {
   LOG(INFO) << __func__ << " for service " << service->unique_name();
