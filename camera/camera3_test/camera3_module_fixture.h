@@ -94,7 +94,7 @@ class Camera3Module {
 
   void OpenDeviceOnHalThread(int cam_id, camera3_device_t** cam_device);
 
-  void CloseDeviceOnHalThread(camera3_device_t* cam_device, int* result);
+  void CloseDeviceOnDevThread(camera3_device_t* cam_device, int* result);
 
   void GetStreamConfigEntry(int cam_id,
                             int32_t key,
@@ -114,6 +114,10 @@ class Camera3Module {
   // because test case instantiation needs it running to get the camera ID
   // list.
   Camera3TestThread* hal_thread_;
+
+  // Use a separate thread from |hal_thread_| to close camera device to
+  // simulate hal_adapter behavior.
+  Camera3TestThread dev_thread_;
 
   DISALLOW_COPY_AND_ASSIGN(Camera3Module);
 };

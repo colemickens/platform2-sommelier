@@ -62,7 +62,11 @@ static camera_module_t* GetCameraModule() {
 // Camera module
 
 Camera3Module::Camera3Module()
-    : cam_module_(GetCameraModule()), hal_thread_(&g_module_thread) {}
+    : cam_module_(GetCameraModule()),
+      hal_thread_(&g_module_thread),
+      dev_thread_("Camera3 Test Device Thread") {
+  dev_thread_.Start();
+}
 
 int Camera3Module::Initialize() {
   return cam_module_ ? 0 : -ENODEV;
@@ -145,13 +149,14 @@ camera3_device* Camera3Module::OpenDevice(int cam_id) {
 }
 
 int Camera3Module::CloseDevice(camera3_device& cam_device) {
+  VLOGF_ENTER();
   if (!cam_module_) {
     return -ENODEV;
   }
   int result = -ENODEV;
-  hal_thread_->PostTaskSync(base::Bind(&Camera3Module::CloseDeviceOnHalThread,
-                                       base::Unretained(this), &cam_device,
-                                       &result));
+  dev_thread_.PostTaskSync(base::Bind(&Camera3Module::CloseDeviceOnDevThread,
+                                      base::Unretained(this), &cam_device,
+                                      &result));
   return result;
 }
 
@@ -284,8 +289,9 @@ void Camera3Module::OpenDeviceOnHalThread(int cam_id,
   }
 }
 
-void Camera3Module::CloseDeviceOnHalThread(camera3_device_t* cam_device,
+void Camera3Module::CloseDeviceOnDevThread(camera3_device_t* cam_device,
                                            int* result) {
+  VLOGF_ENTER();
   ASSERT_NE(nullptr, cam_device->common.close)
       << "Camera close() is not implemented";
   *result = cam_device->common.close(&cam_device->common);
