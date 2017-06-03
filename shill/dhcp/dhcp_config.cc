@@ -53,15 +53,9 @@ static string ObjectID(DHCPConfig* d) {
 const int DHCPConfig::kAcquisitionTimeoutSeconds = 30;
 const int DHCPConfig::kDHCPCDExitPollMilliseconds = 50;
 const int DHCPConfig::kDHCPCDExitWaitMilliseconds = 3000;
-#if defined(__ANDROID__)
-const char DHCPConfig::kDHCPCDPath[] = "/system/bin/dhcpcd-6.8.2";
-const char DHCPConfig::kDHCPCDUser[] = "dhcp";
-const char DHCPConfig::kDHCPCDGroup[] = "dbus";
-#else
 const char DHCPConfig::kDHCPCDPath[] = "/sbin/dhcpcd";
 const char DHCPConfig::kDHCPCDUser[] = "dhcp";
 const char DHCPConfig::kDHCPCDGroup[] = "dhcp";
-#endif  // __ANDROID__
 
 DHCPConfig::DHCPConfig(ControlInterface* control_interface,
                        EventDispatcher* dispatcher,

@@ -48,11 +48,7 @@ namespace {
 base::LazyInstance<DHCPProvider> g_dhcp_provider = LAZY_INSTANCE_INITIALIZER;
 static const int kUnbindDelayMilliseconds = 2000;
 
-#if defined(__ANDROID__)
-const char kDHCPCDExecutableName[] = "dhcpcd-6.8.2";
-#else
 const char kDHCPCDExecutableName[] = "dhcpcd";
-#endif  // __ANDROID__
 
 }  // namespace
 

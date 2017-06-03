@@ -17,11 +17,7 @@
 #include "shill/ethernet/ethernet_service.h"
 
 #include <netinet/ether.h>
-#if defined(__ANDROID__)
-#include <net/if.h>
-#else
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/ether.h
-#endif  // __ANDROID__
 #include <stdio.h>
 #include <time.h>
 

@@ -29,14 +29,8 @@
 #include "shill/firewall_proxy_interface.h"
 #include "shill/logging.h"
 #include "shill/net/rtnl_handler.h"
-#include "shill/routing_table.h"
-
-#if !defined(__ANDROID__)
 #include "shill/resolver.h"
-#else
-#include "shill/dns_server_proxy.h"
-#include "shill/dns_server_proxy_factory.h"
-#endif  // __ANDROID__
+#include "shill/routing_table.h"
 
 using base::Bind;
 using base::Closure;
@@ -124,11 +118,7 @@ Connection::Connection(int interface_index,
           // to use an Unretained callback.
           Bind(&Connection::OnLowerDisconnect, Unretained(this))),
       device_info_(device_info),
-#if !defined(__ANDROID__)
       resolver_(Resolver::GetInstance()),
-#else
-      dns_server_proxy_factory_(DNSServerProxyFactory::GetInstance()),
-#endif  // __ANDROID__
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
       control_interface_(control_interface) {
@@ -368,13 +358,7 @@ void Connection::PushDNSConfig() {
                   << dns_domain_name_;
     domain_search.push_back(dns_domain_name_ + ".");
   }
-#if !defined(__ANDROID__)
   resolver_->SetDNSFromLists(dns_servers_, domain_search);
-#else
-  dns_server_proxy_.reset(
-      dns_server_proxy_factory_->CreateDNSServerProxy(dns_servers_));
-  dns_server_proxy_->Start();
-#endif  // __ANDROID__
 }
 
 void Connection::RequestRouting() {
