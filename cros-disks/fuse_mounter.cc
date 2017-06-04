@@ -88,7 +88,11 @@ MountErrorType FUSEMounter::MountImpl() {
   // what should be remounted private and what can remain shared (b:62056108).
   mount_process.SkipRemountPrivate();
 
-  mount_process.NewCgroupNamespace();
+  // TODO(benchan): Re-enable cgroup namespace when either Chrome OS
+  // kernel 3.8 supports it or no more supported devices use kernel
+  // 3.8.
+  // mount_process.NewCgroupNamespace();
+
   mount_process.NewIpcNamespace();
   mount_process.NewNetworkNamespace();
 
