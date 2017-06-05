@@ -299,6 +299,10 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
 
     // TODO(dcastagna): All rk3399 boards should get the following flags too.
     builder->AddArg("--num-raster-threads=1");
+    builder->AddArg("--enable-drm-atomic");
+    builder->AddArg(
+        "--enable-hardware-overlays=single-fullscreen,single-on-top");
+    builder->AddArg("--enable-webgl-image-chromium");
   }
   if (builder->UseFlagIsSet("veyron_minnie"))
     builder->AddArg("--enable-hardware-overlays=single-fullscreen");
