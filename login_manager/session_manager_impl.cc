@@ -14,11 +14,13 @@
 #include <string>
 #include <utility>
 
+#include <base/base64.h>
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
+#include <base/rand_util.h>
 #include <base/run_loop.h>
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
@@ -39,6 +41,7 @@
 #include "login_manager/dbus_util.h"
 #include "login_manager/device_local_account_policy_service.h"
 #include "login_manager/device_policy_service.h"
+#include "login_manager/init_daemon_controller.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
@@ -47,7 +50,6 @@
 #include "login_manager/process_manager_service_interface.h"
 #include "login_manager/regen_mitigator.h"
 #include "login_manager/system_utils.h"
-#include "login_manager/upstart_signal_emitter.h"
 #include "login_manager/user_policy_service_factory.h"
 #include "login_manager/vpd_process.h"
 
@@ -112,6 +114,7 @@ const base::FilePath::CharType kDeviceLocalAccountStateDir[] =
 // Path and the amount for the check.
 constexpr base::FilePath::CharType kArcDiskCheckPath[] = "/home";
 constexpr int64_t kArcCriticalDiskFreeBytes = 64 << 20;  // 64MB
+constexpr size_t kArcContainerInstanceIdLength = 16;
 
 // Name of android-data directory.
 const base::FilePath::CharType kAndroidDataDirName[] =
@@ -130,7 +133,7 @@ const unsigned int kCpuSharesBackground = 64;
 
 // SystemUtils::EnsureJobExit() DCHECKs if the timeout is zero, so this is the
 // minimum amount of time we must wait before killing the containers.
-constexpr int kContainerTimeoutSec = 1;
+constexpr base::TimeDelta kContainerTimeout = base::TimeDelta::FromSeconds(1);
 
 // The interval used to periodically check if time sync was done by tlsdated.
 constexpr int kSystemClockLastSyncInfoRetryMs = 1000;
@@ -353,8 +356,7 @@ void SessionManagerImpl::Finalize() {
   // We want to stop any running containers.  Containers are per-session and
   // cannot persist across sessions.
   android_container_->RequestJobExit();
-  android_container_->EnsureJobExit(
-      base::TimeDelta::FromSeconds(kContainerTimeoutSec));
+  android_container_->EnsureJobExit(kContainerTimeout);
 }
 
 void SessionManagerImpl::EmitLoginPromptVisible() {
@@ -784,39 +786,24 @@ bool SessionManagerImpl::InitMachineInfo(brillo::ErrorPtr* error,
 }
 
 void SessionManagerImpl::StartArcInstanceForLoginScreen(
-    const std::string& container_instance_id,
+    std::string* container_instance_id_out,
     Error* error) {
 #if USE_CHEETS
   const std::vector<std::string> keyvals = {
       base::StringPrintf("CHROMEOS_DEV_MODE=%d", IsDevMode(system_)),
       base::StringPrintf("CHROMEOS_INSIDE_VM=%d", IsInsideVm(system_)),
   };
-  if (!init_controller_->TriggerImpulse(
-          kArcStartForLoginScreenSignal,
-          keyvals,
-          InitDaemonController::TriggerMode::SYNC)) {
-    static const char msg[] =
-        "Emitting start-arc-instance-for-login-screen signal failed.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kEmitFailed, msg);
+
+  brillo::ErrorPtr error_ptr;
+  std::string container_instance_id =
+      StartArcContainer(kArcStartForLoginScreenSignal, keyvals, &error_ptr);
+  if (container_instance_id.empty()) {
+    DCHECK(error_ptr);
+    error->Set(error_ptr->GetCode(), error_ptr->GetMessage());
     return;
   }
-  bool started_container = false;
-  const char* dbus_error = nullptr;
-  std::string error_message;
-  if (!StartArcInstanceInternal(container_instance_id, &started_container,
-                                &dbus_error, &error_message)) {
-    LOG(ERROR) << error_message;
-    error->Set(dbus_error, error_message);
-    init_controller_->TriggerImpulse(kArcStopSignal, {},
-                                     InitDaemonController::TriggerMode::SYNC);
-    if (started_container) {
-      android_container_->RequestJobExit();
-      android_container_->EnsureJobExit(
-          base::TimeDelta::FromSeconds(kContainerTimeoutSec));
-    }
-    return;
-  }
+
+  *container_instance_id_out = container_instance_id;
   start_arc_instance_closure_.Run();
 #else
   error->Set(dbus_error::kNotAvailable, "ARC not supported.");
@@ -824,10 +811,10 @@ void SessionManagerImpl::StartArcInstanceForLoginScreen(
 }
 
 void SessionManagerImpl::StartArcInstance(
-    const std::string& container_instance_id,
     const std::string& account_id,
     bool skip_boot_completed_broadcast,
     bool scan_vendor_priv_app,
+    std::string* container_instance_id_out,
     Error* error) {
 #if USE_CHEETS
   arc_start_time_ = base::TimeTicks::Now();
@@ -875,32 +862,27 @@ void SessionManagerImpl::StartArcInstance(
                          scan_vendor_priv_app),
   };
 
-  if (!init_controller_->TriggerImpulse(
-          kArcStartSignal, keyvals, InitDaemonController::TriggerMode::SYNC)) {
-    static const char msg[] = "Emitting start-arc-instance signal failed.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kEmitFailed, msg);
+  std::string container_instance_id =
+      StartArcContainer(kArcStartSignal, keyvals, &error_ptr);
+  if (container_instance_id.empty()) {
+    DCHECK(error_ptr);
+    error->Set(error_ptr->GetCode(), error_ptr->GetMessage());
     return;
   }
 
-  bool started_container = false;
-  const char* dbus_error = nullptr;
-  std::string error_message;
-  if (!StartArcInstanceInternal(container_instance_id, &started_container,
-                                &dbus_error, &error_message) ||
-      !StartArcNetwork(&dbus_error, &error_message)) {
-    LOG(ERROR) << error_message;
-    error->Set(dbus_error, error_message);
-    init_controller_->TriggerImpulse(kArcStopSignal, {},
-                                     InitDaemonController::TriggerMode::SYNC);
-    if (started_container) {
-      android_container_->RequestJobExit();
-      android_container_->EnsureJobExit(
-          base::TimeDelta::FromSeconds(kContainerTimeoutSec));
-    }
+  if (!StartArcNetwork(&error_ptr)) {
+    // Asking the container to exit will result in OnAndroidContainerStopped()
+    // being called, which will handle any necessary cleanup.
+    android_container_->RequestJobExit();
+    android_container_->EnsureJobExit(kContainerTimeout);
+
+    DCHECK(error_ptr);
+    error->Set(error_ptr->GetCode(), error_ptr->GetMessage());
     return;
   }
+
   login_metrics_->StartTrackingArcUseTime();
+  *container_instance_id_out = container_instance_id;
   start_arc_instance_closure_.Run();
 #else
   error->Set(dbus_error::kNotAvailable, "ARC not supported.");
@@ -918,8 +900,7 @@ bool SessionManagerImpl::StopArcInstance(brillo::ErrorPtr* error) {
   }
 
   android_container_->RequestJobExit();
-  android_container_->EnsureJobExit(
-      base::TimeDelta::FromSeconds(kContainerTimeoutSec));
+  android_container_->EnsureJobExit(kContainerTimeout);
   return true;
 #else
   *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
@@ -976,7 +957,7 @@ bool SessionManagerImpl::EmitArcBooted(brillo::ErrorPtr* error,
 
   if (!init_controller_->TriggerImpulse(
           kArcBootedSignal, keyvals, InitDaemonController::TriggerMode::SYNC)) {
-    constexpr char kMessage[] = "Emitting arc-booted upstart signal failed.";
+    constexpr char kMessage[] = "Emitting arc-booted init signal failed.";
     LOG(ERROR) << kMessage;
     *error = CreateError(dbus_error::kEmitFailed, kMessage);
     return false;
@@ -1115,7 +1096,7 @@ bool SessionManagerImpl::RemoveArcDataInternal(
           {"ANDROID_DATA_OLD_DIR=" + android_data_old_dir.value()},
           InitDaemonController::TriggerMode::SYNC)) {
     LOG(ERROR) << "Failed to emit " << kArcRemoveOldDataSignal
-               << " upstart signal";
+               << " init signal";
   }
   return true;
 }
@@ -1231,50 +1212,70 @@ PolicyService* SessionManagerImpl::GetPolicyService(const std::string& user) {
   return it == user_sessions_.end() ? NULL : it->second->policy_service.get();
 }
 
-bool SessionManagerImpl::StartArcInstanceInternal(
-    const std::string& container_instance_id,
-    bool* started_container_out,
-    const char** dbus_error_out,
-    std::string* error_message_out) {
-  pid_t pid = 0;
-  *started_container_out = false;
-  *dbus_error_out = nullptr;
-  error_message_out->clear();
+#if USE_CHEETS
+std::string SessionManagerImpl::StartArcContainer(
+    const std::string& init_signal,
+    const std::vector<std::string>& init_keyvals,
+    brillo::ErrorPtr* error_out) {
+  if (!init_controller_->TriggerImpulse(
+          init_signal, init_keyvals,
+          InitDaemonController::TriggerMode::SYNC)) {
+    const std::string message =
+        "Emitting " + init_signal + " init signal failed.";
+    LOG(ERROR) << message;
+    *error_out = CreateError(dbus_error::kEmitFailed, message);
+    return std::string();
+  }
+
+  // Container instance id needs to be valid ASCII/UTF-8, so encode as base64.
+  std::string container_instance_id =
+      base::RandBytesAsString(kArcContainerInstanceIdLength);
+  base::Base64Encode(container_instance_id, &container_instance_id);
+
   if (!android_container_->StartContainer(
           base::Bind(&SessionManagerImpl::OnAndroidContainerStopped,
                      weak_ptr_factory_.GetWeakPtr(), container_instance_id))) {
-    *dbus_error_out = dbus_error::kContainerStartupFail;
-    *error_message_out = "Starting Android container failed.";
-    return false;
+    // Failed to start container. Thus, trigger stop-arc-instance init signal
+    // manually for cleanup.
+    init_controller_->TriggerImpulse(kArcStopSignal, {},
+                                     InitDaemonController::TriggerMode::SYNC);
+    constexpr char kMessage[] = "Starting Android container failed.";
+    LOG(ERROR) << kMessage;
+    *error_out = CreateError(dbus_error::kContainerStartupFail, kMessage);
+    return std::string();
   }
-  *started_container_out = true;
+
+  pid_t pid = 0;
   android_container_->GetContainerPID(&pid);
   LOG(INFO) << "Started Android container with PID " << pid;
-  return true;
+  return container_instance_id;
 }
 
-bool SessionManagerImpl::StartArcNetwork(const char** dbus_error_out,
-                                         std::string* error_message_out) {
+bool SessionManagerImpl::StartArcNetwork(brillo::ErrorPtr* error_out) {
   base::FilePath root_path;
   pid_t pid = 0;
   if (!android_container_->GetRootFsPath(&root_path) ||
       !android_container_->GetContainerPID(&pid)) {
-    *dbus_error_out = dbus_error::kContainerStartupFail;
-    *error_message_out = "Getting Android container info failed.";
+    constexpr char kMessage[] = "Getting Android container info failed.";
+    LOG(ERROR) << kMessage;
+    *error_out = CreateError(dbus_error::kContainerStartupFail, kMessage);
     return false;
   }
 
-  // Also tell init to configure the network.
+  // Tell init to configure the network.
   if (!init_controller_->TriggerImpulse(
           kArcNetworkStartSignal,
           {"CONTAINER_NAME=" + std::string(kArcContainerName),
            "CONTAINER_PATH=" + root_path.value(),
            "CONTAINER_PID=" + std::to_string(pid)},
           InitDaemonController::TriggerMode::SYNC)) {
-    *dbus_error_out = dbus_error::kEmitFailed;
-    *error_message_out = "Emitting start-arc-network signal failed.";
+    constexpr char kMessage[] =
+        "Emitting start-arc-network init signal failed.";
+    LOG(ERROR) << kMessage;
+    *error_out = CreateError(dbus_error::kEmitFailed, kMessage);
     return false;
   }
+
   return true;
 }
 
@@ -1291,18 +1292,17 @@ void SessionManagerImpl::OnAndroidContainerStopped(
   login_metrics_->StopTrackingArcUseTime();
   if (!init_controller_->TriggerImpulse(
           kArcStopSignal, {}, InitDaemonController::TriggerMode::SYNC)) {
-    static const char msg[] = "Emitting stop-arc-instance init signal failed.";
-    LOG(ERROR) << msg;
+    LOG(ERROR) << "Emitting stop-arc-instance init signal failed.";
   }
 
   if (!init_controller_->TriggerImpulse(
           kArcNetworkStopSignal, {}, InitDaemonController::TriggerMode::SYNC)) {
-    static const char msg[] = "Emitting stop-arc-network init signal failed.";
-    LOG(ERROR) << msg;
+    LOG(ERROR) << "Emitting stop-arc-network init signal failed.";
   }
 
   dbus_emitter_->EmitSignalWithBoolAndString(
       kArcInstanceStopped, clean, container_instance_id);
 }
+#endif  // USE_CHEETS
 
 }  // namespace login_manager

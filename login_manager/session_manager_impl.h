@@ -68,7 +68,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   // Path to magic file that will trigger device wiping on next boot.
   static const char kResetFile[];
 
-  // Name of upstart signal emitted when user session starts.
+  // Name of init signal emitted when user session starts.
   static const char kStartUserSessionSignal[];
 
   // Name of the Android container.
@@ -221,12 +221,12 @@ class SessionManagerImpl : public SessionManagerInterface,
   bool StartContainer(brillo::ErrorPtr* error, const std::string& in_name);
   bool StopContainer(brillo::ErrorPtr* error, const std::string& in_name);
 
-  void StartArcInstanceForLoginScreen(const std::string& container_instance_id,
+  void StartArcInstanceForLoginScreen(std::string* container_instance_id_out,
                                       Error* error);
-  void StartArcInstance(const std::string& container_instance_id,
-                        const std::string& account_id,
+  void StartArcInstance(const std::string& account_id,
                         bool skip_boot_completed_broadcast,
                         bool scan_vendor_priv_app,
+                        std::string* container_instance_id_out,
                         Error* error);
   bool StopArcInstance(brillo::ErrorPtr* error);
   bool SetArcCpuRestriction(brillo::ErrorPtr* error,
@@ -251,11 +251,6 @@ class SessionManagerImpl : public SessionManagerInterface,
   struct UserSession;
 
   using UserSessionMap = std::map<std::string, std::unique_ptr<UserSession>>;
-
-  // Called when the Android container is stopped.
-  void OnAndroidContainerStopped(const std::string& container_instance_id,
-                                 pid_t pid,
-                                 bool clean);
 
   // Called when the tlsdated service becomes initially available.
   void OnSystemClockServiceAvailable(bool service_available);
@@ -289,26 +284,26 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   PolicyService* GetPolicyService(const std::string& account_id);
 
-  // Starts the Android container for ARC.  If the container has started
-  // |started_container_out| is set to true and it should be stopped.  When a
-  // failure is encountered false will be returned, |dbus_error_out| will be set
-  // to a value from login_manager::dbus_error, and |error_message_out| will be
-  // filled with a message suitable for logging.
-  // In case of ARC stop, OnAndroidContainerStopped() is called with the given
-  // |container_instance_id|.
-  bool StartArcInstanceInternal(const std::string& container_instance_id,
-                                bool* started_container_out,
-                                const char** dbus_error_out,
-                                std::string* error_message_out);
+#if USE_CHEETS
+  // Starts the Android container for ARC. If the container has started,
+  // container_instance_id will be returned. Otherwise, an empty string
+  // is returned and brillo::Error instance is set to |error_out|.
+  // After this succeeds, in case of ARC stop, OnAndroidContainerStopped()
+  // is called with the returned container_instance_id.
+  std::string StartArcContainer(const std::string& init_signal,
+                                const std::vector<std::string>& init_keyvals,
+                                brillo::ErrorPtr* error_out);
 
-  // Starts the network interface for the Android container for ARC.  When a
-  // failure is encountered false will be returned, |dbus_error_out| will be set
-  // to a value from login_manager::dbus_error, and |error_message_out| will be
-  // filled with a message suitable for logging.
-  bool StartArcNetwork(const char** dbus_error_out,
-                       std::string* error_message_out);
+  // Starts the network interface for the Android container for ARC.
+  // On success, returns true. Otherwise returns false and brillo::Error
+  // instance is set to |error_out|.
+  bool StartArcNetwork(brillo::ErrorPtr* error_out);
 
-#ifdef USE_CHEETS
+  // Called when the Android container is stopped.
+  void OnAndroidContainerStopped(const std::string& container_instance_id,
+                                 pid_t pid,
+                                 bool clean);
+
   // Renames android-data/ in the user's home directory to android-data-old/,
   // then recursively removes the renamed directory. Returns false when it
   // fails to rename android-data/.

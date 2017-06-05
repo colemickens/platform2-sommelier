@@ -11,11 +11,9 @@
 #include <utility>
 #include <vector>
 
-#include <base/base64.h>
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/files/file_util.h>
-#include <base/rand_util.h>
 #include <brillo/dbus/data_serialization.h>
 #include <brillo/dbus/utils.h>
 #include <brillo/errors/error_codes.h>
@@ -35,8 +33,6 @@ const char kBindingsPath[] =
 const char kDBusIntrospectableInterface[] =
     "org.freedesktop.DBus.Introspectable";
 const char kDBusIntrospectMethod[] = "Introspect";
-
-constexpr size_t kArcContainerInstanceIdLength = 16;
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
@@ -635,17 +631,13 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StartArcInstance(
       return CreateInvalidArgsError(call, call->GetSignature());
   }
 
-  // Container instance id needs to be valid ASCII/UTF-8, so encode as base64.
-  std::string container_instance_id =
-      base::RandBytesAsString(kArcContainerInstanceIdLength);
-  base::Base64Encode(container_instance_id, &container_instance_id);
-
+  std::string container_instance_id;
   SessionManagerImpl::Error error;
   if (for_login_screen) {
-    impl_->StartArcInstanceForLoginScreen(container_instance_id, &error);
+    impl_->StartArcInstanceForLoginScreen(&container_instance_id, &error);
   } else {
-    impl_->StartArcInstance(container_instance_id, account_id,
-                            skip_boot_completed_broadcast, scan_vendor_priv_app,
+    impl_->StartArcInstance(account_id, skip_boot_completed_broadcast,
+                            scan_vendor_priv_app, &container_instance_id,
                             &error);
   }
   if (error.is_set())
