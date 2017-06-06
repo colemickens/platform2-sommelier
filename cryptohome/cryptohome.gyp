@@ -1,4 +1,7 @@
 {
+  'variables': {
+    'USE_cert_provision%': 0,
+  },
   'target_defaults': {
     'defines': [
       'USE_TPM2=<(USE_tpm2)',
@@ -36,6 +39,10 @@
     {
       'target_name': 'cryptohome-proto',
       'type': 'static_library',
+      # libcryptohome-proto.a is used by a shared_libary
+      # object, so we need to build it with '-fPIC' instead of '-fPIE'.
+      'cflags!': ['-fPIE'],
+      'cflags': ['-fPIC'],
       'variables': {
         'proto_in_dir': '.',
         'proto_out_dir': 'include',
@@ -402,6 +409,93 @@
     },
   ],
   'conditions': [
+    ['USE_cert_provision == 1', {
+      'targets': [
+        {
+          'target_name': 'cert_provision-proto',
+          'type': 'static_library',
+          # libcert_provision-proto.a is used by a shared_libary
+          # object, so we need to build it with '-fPIC' instead of '-fPIE'.
+          'cflags!': ['-fPIE'],
+          'cflags': ['-fPIC'],
+          'variables': {
+            'proto_in_dir': '.',
+            'proto_out_dir': 'include',
+          },
+          'sources': [
+            'cert_provision.proto',
+          ],
+          'includes': [
+            '../common-mk/protoc.gypi',
+          ],
+        },
+        {
+          'target_name': 'cert_provision',
+          'type': 'shared_library',
+          'dependencies': [
+            'cert_provision-static',
+          ],
+        },
+        {
+          'target_name': 'cert_provision-static',
+          'type': 'static_library',
+          # libcert_provision-static.a is used by a shared_libary
+          # object, so we need to build it with '-fPIC' instead of '-fPIE'.
+          'cflags!': ['-fPIE'],
+          'cflags': ['-fPIC'],
+          'dependencies': [
+            'cryptohome-dbus-client',
+            'cryptohome-proto',
+            'cert_provision-proto',
+          ],
+          'link_settings': {
+            'libraries': [
+              '-lchaps',
+              '-lpthread',
+            ],
+          },
+          'variables': {
+            'exported_deps': [
+              'dbus-glib-1',
+              'libbrillo-<(libbase_ver)',
+              'libbrillo-glib-<(libbase_ver)',
+              'libchrome-<(libbase_ver)',
+              'openssl',
+              'protobuf',
+            ],
+            'deps': ['<@(exported_deps)'],
+          },
+          'direct_dependent_settings': {
+            'variables': {
+              'deps': ['<@(exported_deps)'],
+            },
+          },
+          'sources': [
+            'cert_provision.cc',
+            'cert_provision_cryptohome.cc',
+            'cert_provision_keystore.cc',
+            'cert_provision_pca.cc',
+            'cert_provision_util.cc',
+          ],
+        },
+        {
+          'target_name': 'cert_provision_client',
+          'type': 'executable',
+          'dependencies': [
+            'cert_provision',
+          ],
+          'sources': [
+            'cert_provision_client.cc',
+          ],
+          'variables': {
+            'deps': [
+              'libbrillo-<(libbase_ver)',
+              'libchrome-<(libbase_ver)',
+            ],
+          },
+        },
+      ],
+    }],
     ['USE_test == 1', {
       'targets': [
         {
@@ -487,6 +581,15 @@
               ],
               'sources': [
                 'tpm2_test.cc',
+              ],
+            }],
+            ['USE_cert_provision == 1', {
+              'dependencies': [
+                'cert_provision-static',
+              ],
+              'sources': [
+                'cert_provision_keystore_unittest.cc',
+                'cert_provision_unittest.cc',
               ],
             }],
           ],

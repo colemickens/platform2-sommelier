@@ -1,0 +1,18 @@
+// Copyright 2017 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+//
+// Defines the objects stored by cert_provision in the keystore.
+
+syntax = "proto2";
+
+package cert_provision;
+
+message ProvisionStatus {
+  // Is the certificate already provisioned?
+  optional bool provisioned = 1;
+  // If provisioned, the id of the corresponding keys in the keystore.
+  optional bytes key_id = 2;
+  // If provisioned, contains the certificate chain in PEM format.
+  optional bytes certificate_chain = 3;
+}
