@@ -6,6 +6,7 @@
 
 #include <stddef.h>
 #include <sys/mount.h>
+#include <sys/resource.h>
 
 #include <base/at_exit.h>
 #include <base/values.h>
@@ -69,9 +70,9 @@ const char kBasicJsonData[] = R"json(
             },
             "rlimits": [
                 {
-                    "type": "RLIMIT_NOFILE",
-                    "hard": 1024,
-                    "soft": 1024
+                    "type": "RLIMIT_NICE",
+                    "hard": 12,
+                    "soft": 11
                 }
             ],
             "noNewPrivileges": true
@@ -415,6 +416,10 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(basic_config->process.env.size(), 2);
   EXPECT_EQ(basic_config->process.env[1], "TERM=xterm");
   EXPECT_EQ(basic_config->process.cwd, "/");
+  EXPECT_EQ(basic_config->process.rlimits.size(), 1);
+  EXPECT_EQ(basic_config->process.rlimits[0].type, RLIMIT_NICE);
+  EXPECT_EQ(basic_config->process.rlimits[0].soft, 11);
+  EXPECT_EQ(basic_config->process.rlimits[0].hard, 12);
   EXPECT_EQ(basic_config->hostname, "tester");
   ASSERT_EQ(basic_config->mounts.size(), 7);
   EXPECT_EQ(basic_config->mounts[0].options.size(), 0);

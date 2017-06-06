@@ -205,6 +205,13 @@ bool ContainerConfigFromOci(const OciConfig& oci,
   ConfigureDevices(oci.linux_config.devices, config_out);
   ConfigureCgroupDevices(oci.linux_config.resources.devices, config_out);
 
+  for (const auto& limit : oci.process.rlimits) {
+    if (container_config_add_rlimit(
+            config_out, limit.type, limit.soft, limit.hard)) {
+      return false;
+    }
+  }
+
   return true;
 }
 

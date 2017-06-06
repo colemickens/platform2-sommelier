@@ -35,6 +35,7 @@ do { \
 } while(0)
 
 #define MAX_NUM_SETFILES_ARGS 128
+#define MAX_RLIMITS 32 // Linux defines 15 at the time of writing.
 
 static const char loopdev_ctl[] = "/dev/loop-control";
 #if USE_device_mapper
@@ -99,6 +100,12 @@ struct container_cpu_cgroup {
 	int rt_period;
 };
 
+struct container_rlimit {
+	int type;
+	uint32_t cur;
+	uint32_t max;
+};
+
 /*
  * Structure that configures how the container is run.
  *
@@ -127,6 +134,8 @@ struct container_cpu_cgroup {
  * cgroup_group - gid to own the created cgroups
  * share_host_netns - Enable sharing of the host network namespace.
  * keep_fds_open - Allow the child process to keep open FDs (for stdin/out/err).
+ * rlimits - Array of rlimits for the contained process.
+ * num_rlimits - The number of elements in `rlimits`.
  */
 struct container_config {
 	char *config_root;
@@ -154,6 +163,8 @@ struct container_config {
 	gid_t cgroup_group;
 	int share_host_netns;
 	int keep_fds_open;
+	struct container_rlimit rlimits[MAX_RLIMITS];
+	int num_rlimits;
 	int use_capmask;
 	int use_capmask_ambient;
 	uint64_t capmask;
@@ -344,6 +355,19 @@ int container_config_alt_syscall_table(struct container_config *c,
 				       const char *alt_syscall_table)
 {
 	return strdup_and_free(&c->alt_syscall_table, alt_syscall_table);
+}
+
+int container_config_add_rlimit(struct container_config *c, int type,
+				uint32_t cur, uint32_t max)
+{
+	if (c->num_rlimits >= MAX_RLIMITS) {
+		return -ENOMEM;
+	}
+	c->rlimits[c->num_rlimits].type = type;
+	c->rlimits[c->num_rlimits].cur = cur;
+	c->rlimits[c->num_rlimits].max = max;
+	c->num_rlimits++;
+	return 0;
 }
 
 int container_config_add_mount(struct container_config *c,
@@ -1553,6 +1577,15 @@ int container_start(struct container *c, const struct container_config *config)
 
 	if (config->alt_syscall_table)
 		minijail_use_alt_syscall(c->jail, config->alt_syscall_table);
+
+	for (i = 0; i < config->num_rlimits; i++) {
+		const struct container_rlimit *lim = &config->rlimits[i];
+		rc = minijail_rlimit(c->jail, lim->type, lim->cur,
+				     lim->max);
+		if (rc)
+			goto error_rmdir;
+	}
+
 
 	minijail_run_as_init(c->jail);
 

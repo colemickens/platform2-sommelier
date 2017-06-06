@@ -87,6 +87,10 @@ int container_config_gid_map(struct container_config *c, const char *gid_map);
 int container_config_alt_syscall_table(struct container_config *c,
 				       const char *alt_syscall_table);
 
+/* Add a runtime limit for the contained process. */
+int container_config_add_rlimit(struct container_config *c, int type,
+				uint32_t cur, uint32_t max);
+
 /*
  * Add a filesystem to mount in the new VFS namespace.
  *

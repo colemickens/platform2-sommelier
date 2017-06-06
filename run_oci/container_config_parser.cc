@@ -5,6 +5,7 @@
 #include "run_oci/container_config_parser.h"
 
 #include <linux/capability.h>
+#include <sys/resource.h>
 #include <unistd.h>
 
 #include <map>
@@ -178,6 +179,67 @@ bool ParseCapabilitiesConfig(const base::DictionaryValue& capabilities_dict,
   return true;
 }
 
+const std::map<std::string, int> kRlimitMap = {
+#define RLIMIT_MAP_ENTRY(limit) \
+  { "RLIMIT_" #limit, RLIMIT_##limit }
+    RLIMIT_MAP_ENTRY(CPU),
+    RLIMIT_MAP_ENTRY(FSIZE),
+    RLIMIT_MAP_ENTRY(DATA),
+    RLIMIT_MAP_ENTRY(STACK),
+    RLIMIT_MAP_ENTRY(CORE),
+    RLIMIT_MAP_ENTRY(RSS),
+    RLIMIT_MAP_ENTRY(NPROC),
+    RLIMIT_MAP_ENTRY(NOFILE),
+    RLIMIT_MAP_ENTRY(MEMLOCK),
+    RLIMIT_MAP_ENTRY(AS),
+    RLIMIT_MAP_ENTRY(LOCKS),
+    RLIMIT_MAP_ENTRY(SIGPENDING),
+    RLIMIT_MAP_ENTRY(MSGQUEUE),
+    RLIMIT_MAP_ENTRY(NICE),
+    RLIMIT_MAP_ENTRY(RTPRIO),
+    RLIMIT_MAP_ENTRY(RTTIME),
+#undef RLIMIT_MAP_ENTRY
+};
+
+// Fills |config_out| with information about the capability sets in the
+// container.
+bool ParseRlimitsConfig(const base::ListValue& rlimits_list,
+                        std::vector<OciProcessRlimit>* rlimits_out) {
+  size_t num_limits = rlimits_list.GetSize();
+  for (size_t i = 0; i < num_limits; ++i) {
+    const base::DictionaryValue* rlimits_dict;
+    if (!rlimits_list.GetDictionary(i, &rlimits_dict)) {
+      LOG(ERROR) << "Fail to get rlimit item " << i;
+      return false;
+    }
+
+    std::string rlimit_name;
+    if (!rlimits_dict->GetString("type", &rlimit_name)) {
+      LOG(ERROR) << "Fail to get type of rlimit " << i;
+      return false;
+    }
+    const auto it = kRlimitMap.find(rlimit_name);
+    if (it == kRlimitMap.end()) {
+      LOG(ERROR) << "Unrecognized rlimit name: " << rlimit_name;
+      return false;
+    }
+
+    OciProcessRlimit limit;
+    limit.type = it->second;
+    if (!ParseUint32FromDict(*rlimits_dict, "hard", &limit.hard)) {
+      LOG(ERROR) << "Fail to get hard limit of rlimit " << i;
+      return false;
+    }
+    if (!ParseUint32FromDict(*rlimits_dict, "soft", &limit.soft)) {
+      LOG(ERROR) << "Fail to get soft limit of rlimit " << i;
+      return false;
+    }
+    rlimits_out->push_back(limit);
+  }
+
+  return true;
+}
+
 // Fills |config_out| with information about the main process to run in the
 // container and the user it should be run as.
 bool ParseProcessConfig(const base::DictionaryValue& config_root_dict,
@@ -236,6 +298,14 @@ bool ParseProcessConfig(const base::DictionaryValue& config_root_dict,
   if (process_dict->GetDictionary("capabilities", &capabilities_dict)) {
     if (!ParseCapabilitiesConfig(*capabilities_dict,
                                  &config_out->process.capabilities)) {
+      return false;
+    }
+  }
+
+  // |rlimit_list| stays owned by |process_dict|
+  const base::ListValue* rlimits_list = nullptr;
+  if (process_dict->GetList("rlimits", &rlimits_list)) {
+    if (!ParseRlimitsConfig(*rlimits_list, &config_out->process.rlimits)) {
       return false;
     }
   }

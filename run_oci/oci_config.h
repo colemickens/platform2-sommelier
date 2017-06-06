@@ -29,6 +29,12 @@ struct OciProcessUser {
 
 using CapSet = std::bitset<CAP_LAST_CAP + 1>;
 
+struct OciProcessRlimit {
+  int type;
+  uint32_t hard;
+  uint32_t soft;
+};
+
 struct OciProcess {
   bool terminal;  // Optional
   OciProcessUser user;
@@ -36,7 +42,8 @@ struct OciProcess {
   std::vector<std::string> env;  // Optional
   std::string cwd;
   std::map<std::string, CapSet> capabilities;  // Optional
-  // Unused: rlimits, apparmorProfile, selinuxLabel, noNewPrivileges
+  std::vector<OciProcessRlimit> rlimits;       // Optional
+  // Unused: apparmorProfile, selinuxLabel, noNewPrivileges
 };
 
 struct OciRoot {
