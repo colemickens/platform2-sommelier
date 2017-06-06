@@ -453,7 +453,7 @@ REGIONS_LIST = [
         'Turkey'),
     Region(
         'ar', 'xkb:latam::spa', 'America/Argentina/Buenos_Aires', [
-            'es-AR', ], KML.ANSI,
+            'es-AR', ], KML.ISO,
         'Argentina'),
     Region(
         'gb.usext', 'xkb:us:altgr-intl:eng', 'Europe/London', 'en-GB', KML.ISO,
