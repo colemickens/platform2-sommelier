@@ -18,6 +18,9 @@ show_diff() {
 ret=0
 
 for s in crosh {dev,extra,removable}.d/[0-9][0-9]-*.sh; do
+  # One or more directories might not exist or be empty.
+  [[ -e "${s}" ]] || continue
+
   echo "Checking ${s}"
 
   #
