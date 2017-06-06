@@ -2,6 +2,9 @@
 # by update_testdata.py. Do not edit manually.
 
 - !!python/tuple
+  - ANSI
+  - xkb:us::eng
+- !!python/tuple
   - ime:jp:mozc_jp
   - nacl_mozc_jp
 - !!python/tuple

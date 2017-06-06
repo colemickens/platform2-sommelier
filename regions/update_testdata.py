@@ -10,34 +10,32 @@
 from __future__ import print_function
 
 import argparse
+import base64
 import json
+# pylint: disable=cros-logging-import
 import logging
 import os
 import re
-import shutil
 import subprocess
 import sys
-import tempfile
 
 import yaml
 
 
 # URLs to GIT paths.
-SRC_GIT_URL = 'https://chromium.googlesource.com/chromium/src'
-SRC_REMOTE_BRANCH = 'remotes/origin/master'
+SRC_GIT_URL = 'https://chromium.googlesource.com/chromium/src/+/master/'
 
 TESTDATA_PATH = os.path.join(os.path.dirname(__file__), 'testdata')
 
 
-def GetChromiumSource(temp_dir):
-  """Gets Chromium source code under a temp directory.
+def GetChromiumSource(file_path):
+  """Gets Chromium source code by given path.
 
   Args:
-    temp_dir: a temp directory to store the Chromium source code.
+    file_path: The relative path to retrieve.
   """
-  subprocess.check_call(
-      ['git', 'clone', SRC_GIT_URL, '--no-checkout', '--depth', '1'],
-      cwd=temp_dir)
+  return base64.b64decode(subprocess.check_output(
+      ['curl', '-s', SRC_GIT_URL + file_path + '?format=TEXT']))
 
 
 def WriteTestData(name, value):
@@ -53,18 +51,13 @@ def WriteTestData(name, value):
     yaml.dump(value, f, default_flow_style=False)
 
 
-def UpdateLocales(source_dir):
+def UpdateLocales():
   """Updates locales.
 
   Valid locales are entries of the kAcceptLanguageList array in
   l10n_util.cc <http://goo.gl/z8XsZJ>.
-
-  Args:
-    source_dir: the directory storing Chromium source.
   """
-  cpp_code = subprocess.check_output(
-      ['git', 'show', SRC_REMOTE_BRANCH + ':ui/base/l10n/l10n_util.cc'],
-      cwd=source_dir)
+  cpp_code = GetChromiumSource('ui/base/l10n/l10n_util.cc')
   match = re.search(r'static[^\n]+kAcceptLanguageList\[\] = \{(.+?)^\}',
                     cpp_code, re.DOTALL | re.MULTILINE)
   if not match:
@@ -77,19 +70,13 @@ def UpdateLocales(source_dir):
   WriteTestData('locales', sorted(locales))
 
 
-def UpdateTimeZones(source_dir):
+def UpdateTimeZones():
   """Updates time zones.
 
   Valid time zones are values of the kTimeZones array in timezone_settings.cc
   <http://goo.gl/WSVUeE>.
-
-  Args:
-    source_dir: the directory storing Chromium source.
   """
-  cpp_code = subprocess.check_output(
-      ['git', 'show',
-       SRC_REMOTE_BRANCH + ':chromeos/settings/timezone_settings.cc'],
-      cwd=source_dir)
+  cpp_code = GetChromiumSource('chromeos/settings/timezone_settings.cc')
   match = re.search(r'static[^\n]+kTimeZones\[\] = \{(.+?)^\}',
                     cpp_code, re.DOTALL | re.MULTILINE)
   if not match:
@@ -102,20 +89,13 @@ def UpdateTimeZones(source_dir):
   WriteTestData('time_zones', time_zones)
 
 
-def UpdateMigrationMap(source_dir):
+def UpdateMigrationMap():
   """Updates the input method migration map.
 
   The source is the kEngineIdMigrationMap array in input_method_util.cc
-  <http://goo.gl/cDO53r>.
-
-  Args:
-    source_dir: the directory storing Chromium source.
+  <https://chromium.googlesource.com/chromium/src/+/master/ui/base/ime/chromeos/input_method_util.cc>.
   """
-  cpp_code = subprocess.check_output(
-      ['git', 'show',
-       (SRC_REMOTE_BRANCH +
-        ':chrome/browser/chromeos/input_method/input_method_util.cc')],
-      cwd=source_dir)
+  cpp_code = GetChromiumSource('ui/base/ime/chromeos/input_method_util.cc')
   match = re.search(r'kEngineIdMigrationMap\[\]\[2\] = \{(.+?)^\}',
                     cpp_code, re.DOTALL | re.MULTILINE)
   if not match:
@@ -129,29 +109,22 @@ def UpdateMigrationMap(source_dir):
   WriteTestData('migration_map', migration_map)
 
 
-def UpdateInputMethods(source_dir):
+def UpdateInputMethods():
   """Updates input method IDs.
 
   This is the union of all 'id' fields in input_method/*.json
   <http://goo.gl/z4JGvK>.
-
-  Args:
-    source_dir: the directory storing Chromium source.
   """
-  files = [line.strip() for line in subprocess.check_output(
-      ['git', 'show', SRC_REMOTE_BRANCH +
-       ':chrome/browser/resources/chromeos/input_method'],
-      cwd=source_dir).split()]
+  # entry format: 100644 blob 48de6e64885e472c6743543cc988ac0fd8edd55e    FILE
+  json_dir = 'chrome/browser/resources/chromeos/input_method'
+  files = [line.strip().split()[-1]
+           for line in GetChromiumSource(json_dir).splitlines()]
   pattern = re.compile(r'\.json$')
   json_files = [f for f in files if pattern.search(f)]
 
   input_methods = set()
   for f in json_files:
-    contents = json.loads(subprocess.check_output(
-        ['git', 'show', (SRC_REMOTE_BRANCH +
-                         ':chrome/browser/resources/chromeos/input_method/' +
-                         f)],
-        cwd=source_dir))
+    contents = json.loads(GetChromiumSource(os.path.join(json_dir, f)))
     for c in contents['input_components']:
       input_methods.add(str(c['id']))
 
@@ -166,15 +139,10 @@ def main():
   unused_args = parser.parse_args()
   logging.basicConfig(level=logging.INFO)
 
-  temp_dir = tempfile.mkdtemp()
-  try:
-    GetChromiumSource(temp_dir)
-    source_dir = os.path.join(temp_dir, 'src')
-    UpdateLocales(source_dir)
-    UpdateTimeZones(source_dir)
-    UpdateInputMethods(source_dir)
-  finally:
-    shutil.rmtree(temp_dir)
+  UpdateLocales()
+  UpdateTimeZones()
+  UpdateInputMethods()
+  UpdateMigrationMap()
 
   logging.info('Run "git diff %s" to see changes (if any).', TESTDATA_PATH)
   logging.info('Make sure to submit any changes to %s!', TESTDATA_PATH)
