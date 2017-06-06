@@ -120,8 +120,6 @@ StartArcInstanceRequest CreateStartArcInstanceRequestForUser() {
   return request;
 }
 
-void HandleStateKeys(const std::vector<std::vector<uint8_t>>& state_keys) {}
-
 // Captures the D-Bus Response object passed via DBusMethodResponse via
 // ResponseSender.
 //
@@ -143,9 +141,10 @@ class ResponseCapturer {
   // non-const.
   dbus::Response* response() { return response_.get(); }
 
-  std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>>
+  template<typename... Types>
+  std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<Types...>>
   CreateMethodResponse() {
-    return base::MakeUnique<brillo::dbus_utils::DBusMethodResponse<>>(
+    return base::MakeUnique<brillo::dbus_utils::DBusMethodResponse<Types...>>(
         &call_,
         base::Bind(&ResponseCapturer::Capture,
                    weak_ptr_factory_.GetWeakPtr()));
@@ -708,7 +707,7 @@ TEST_F(SessionManagerImplTest, StorePolicy_NoSession) {
   ExpectStorePolicy(device_policy_service_, policy_blob, kAllKeyFlags,
                     SignatureCheck::kEnabled);
   ResponseCapturer capturer;
-  impl_.StorePolicy(capturer.CreateMethodResponse(), policy_blob);
+  impl_.StorePolicy(capturer.CreateMethodResponse<>(), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_SessionStarted) {
@@ -718,7 +717,7 @@ TEST_F(SessionManagerImplTest, StorePolicy_SessionStarted) {
                     PolicyService::KEY_ROTATE, SignatureCheck::kEnabled);
 
   ResponseCapturer capturer;
-  impl_.StorePolicy(capturer.CreateMethodResponse(), policy_blob);
+  impl_.StorePolicy(capturer.CreateMethodResponse<>(), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureConsumer) {
@@ -726,7 +725,7 @@ TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureConsumer) {
   ExpectNoStorePolicy(device_policy_service_);
 
   ResponseCapturer capturer;
-  impl_.StoreUnsignedPolicy(capturer.CreateMethodResponse(), policy_blob);
+  impl_.StoreUnsignedPolicy(capturer.CreateMethodResponse<>(), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureEnterprise) {
@@ -735,7 +734,7 @@ TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureEnterprise) {
   ExpectNoStorePolicy(device_policy_service_);
 
   ResponseCapturer capturer;
-  impl_.StoreUnsignedPolicy(capturer.CreateMethodResponse(), policy_blob);
+  impl_.StoreUnsignedPolicy(capturer.CreateMethodResponse<>(), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureEnterpriseAD) {
@@ -745,7 +744,7 @@ TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureEnterpriseAD) {
                     SignatureCheck::kDisabled);
 
   ResponseCapturer capturer;
-  impl_.StoreUnsignedPolicy(capturer.CreateMethodResponse(), policy_blob);
+  impl_.StoreUnsignedPolicy(capturer.CreateMethodResponse<>(), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, RetrievePolicy) {
@@ -759,33 +758,44 @@ TEST_F(SessionManagerImplTest, RetrievePolicy) {
   EXPECT_EQ(policy_blob, out_blob);
 }
 
-TEST_F(SessionManagerImplTest, RequestStateKeys_TimeSync) {
+TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSync) {
   EXPECT_CALL(state_key_generator_, RequestStateKeys(_));
-  impl_.RequestServerBackedStateKeys(base::Bind(&HandleStateKeys));
+
+  ResponseCapturer capturer;
+  impl_.GetServerBackedStateKeys(
+      capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>>());
   GotLastSyncInfo(true);
 }
 
-TEST_F(SessionManagerImplTest, RequestStateKeys_NoTimeSync) {
+TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_NoTimeSync) {
   EXPECT_CALL(state_key_generator_, RequestStateKeys(_)).Times(0);
-  impl_.RequestServerBackedStateKeys(base::Bind(&HandleStateKeys));
+  ResponseCapturer capturer;
+  impl_.GetServerBackedStateKeys(
+      capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>>());
 }
 
-TEST_F(SessionManagerImplTest, RequestStateKeys_TimeSyncDoneBefore) {
+TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSyncDoneBefore) {
   GotLastSyncInfo(true);
   EXPECT_CALL(state_key_generator_, RequestStateKeys(_));
-  impl_.RequestServerBackedStateKeys(base::Bind(&HandleStateKeys));
+  ResponseCapturer capturer;
+  impl_.GetServerBackedStateKeys(
+      capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>>());
 }
 
-TEST_F(SessionManagerImplTest, RequestStateKeys_FailedTimeSync) {
+TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_FailedTimeSync) {
   EXPECT_CALL(state_key_generator_, RequestStateKeys(_)).Times(0);
   GotLastSyncInfo(false);
-  impl_.RequestServerBackedStateKeys(base::Bind(&HandleStateKeys));
+  ResponseCapturer capturer;
+  impl_.GetServerBackedStateKeys(
+      capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>>());
   base::RunLoop().RunUntilIdle();
 }
 
-TEST_F(SessionManagerImplTest, RequestStateKeys_TimeSyncAfterFail) {
+TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSyncAfterFail) {
   GotLastSyncInfo(false);
-  impl_.RequestServerBackedStateKeys(base::Bind(&HandleStateKeys));
+  ResponseCapturer capturer;
+  impl_.GetServerBackedStateKeys(
+      capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>>());
   base::RunLoop().RunUntilIdle();
   EXPECT_CALL(state_key_generator_, RequestStateKeys(_));
   GotLastSyncInfo(true);
@@ -795,7 +805,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSession) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
 
   ResponseCapturer capturer;
-  impl_.StorePolicyForUser(capturer.CreateMethodResponse(),
+  impl_.StorePolicyForUser(capturer.CreateMethodResponse<>(),
                            kSaneEmail, policy_blob);
 
   ASSERT_TRUE(capturer.response());
@@ -813,7 +823,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SessionStarted) {
       .WillOnce(Return(true));
 
   ResponseCapturer capturer;
-  impl_.StorePolicyForUser(capturer.CreateMethodResponse(),
+  impl_.StorePolicyForUser(capturer.CreateMethodResponse<>(),
                            kSaneEmail, policy_blob);
 }
 
@@ -831,7 +841,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
 
   {
     ResponseCapturer capturer;
-    impl_.StorePolicyForUser(capturer.CreateMethodResponse(),
+    impl_.StorePolicyForUser(capturer.CreateMethodResponse<>(),
                              kSaneEmail, policy_blob);
   }
   Mock::VerifyAndClearExpectations(user_policy_services_[kSaneEmail]);
@@ -840,7 +850,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
   constexpr char kEmail2[] = "user2@somewhere.com";
   {
     ResponseCapturer capturer;
-    impl_.StorePolicyForUser(capturer.CreateMethodResponse(),
+    impl_.StorePolicyForUser(capturer.CreateMethodResponse<>(),
                              kEmail2, policy_blob);
     ASSERT_TRUE(capturer.response());
     EXPECT_EQ(dbus_error::kSessionDoesNotExist,
@@ -859,7 +869,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
       .WillOnce(Return(true));
   {
     ResponseCapturer capturer;
-    impl_.StorePolicyForUser(capturer.CreateMethodResponse(),
+    impl_.StorePolicyForUser(capturer.CreateMethodResponse<>(),
                              kEmail2, policy_blob);
   }
   Mock::VerifyAndClearExpectations(user_policy_services_[kEmail2]);
@@ -873,7 +883,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureConsumer) {
 
   ResponseCapturer capturer;
   impl_.StoreUnsignedPolicyForUser(
-      capturer.CreateMethodResponse(), kSaneEmail, policy_blob);
+      capturer.CreateMethodResponse<>(), kSaneEmail, policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureEnterprise) {
@@ -885,7 +895,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureEnterprise) {
 
   ResponseCapturer capturer;
   impl_.StoreUnsignedPolicyForUser(
-      capturer.CreateMethodResponse(), kSaneEmail, policy_blob);
+      capturer.CreateMethodResponse<>(), kSaneEmail, policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureEnterpriseAD) {
@@ -900,7 +910,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureEnterpriseAD) {
 
   ResponseCapturer capturer;
   impl_.StoreUnsignedPolicyForUser(
-      capturer.CreateMethodResponse(), kSaneEmail, policy_blob);
+      capturer.CreateMethodResponse<>(), kSaneEmail, policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, RetrieveUserPolicy_NoSession) {

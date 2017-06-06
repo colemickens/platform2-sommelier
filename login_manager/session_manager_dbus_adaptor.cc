@@ -81,101 +81,14 @@ std::unique_ptr<dbus::Response> CreateBytesResponse(
   return response;
 }
 
-// Handles completion of a server-backed state key retrieval operation and
-// passes the response back to the waiting DBus invocation context.
-void HandleGetServerBackedStateKeysCompletion(
-    dbus::MethodCall* call,
-    const dbus::ExportedObject::ResponseSender& sender,
-    const std::vector<std::vector<uint8_t>>& state_keys) {
-  std::unique_ptr<dbus::Response> response(
-      dbus::Response::FromMethodCall(call));
-  dbus::MessageWriter writer(response.get());
-  dbus::MessageWriter array_writer(NULL);
-  writer.OpenArray("ay", &array_writer);
-  for (std::vector<std::vector<uint8_t>>::const_iterator state_key(
-           state_keys.begin());
-       state_key != state_keys.end();
-       ++state_key) {
-    array_writer.AppendArrayOfBytes(state_key->data(), state_key->size());
-  }
-  writer.CloseContainer(&array_writer);
-  sender.Run(std::move(response));
-}
-
 }  // namespace
-
-// Callback that forwards a result to a DBus invocation context.
-class DBusMethodCompletion {
- public:
-  static PolicyService::Completion CreateCallback(
-      dbus::MethodCall* call,
-      const dbus::ExportedObject::ResponseSender& sender);
-
-  // Permits objects to be destroyed before their calls have been completed. Can
-  // be called during shutdown to abandon in-progress calls.
-  static void AllowAbandonment();
-
-  virtual ~DBusMethodCompletion();
-
- private:
-  DBusMethodCompletion() = default;
-  DBusMethodCompletion(dbus::MethodCall* call,
-                       const dbus::ExportedObject::ResponseSender& sender);
-  void HandleResult(brillo::ErrorPtr error);
-
-  // Should we allow destroying objects before their calls have been completed?
-  static bool s_allow_abandonment_;
-
-  dbus::MethodCall* call_ = nullptr;  // Weak, owned by caller.
-  dbus::ExportedObject::ResponseSender sender_;
-
-  DISALLOW_COPY_AND_ASSIGN(DBusMethodCompletion);
-};
-
-bool DBusMethodCompletion::s_allow_abandonment_ = false;
-
-// static
-PolicyService::Completion DBusMethodCompletion::CreateCallback(
-      dbus::MethodCall* call,
-      const dbus::ExportedObject::ResponseSender& sender) {
-  return base::Bind(&DBusMethodCompletion::HandleResult,
-                    base::Owned(new DBusMethodCompletion(call, sender)));
-}
-
-// static
-void DBusMethodCompletion::AllowAbandonment() {
-  s_allow_abandonment_ = true;
-}
-
-DBusMethodCompletion::~DBusMethodCompletion() {
-  if (call_ && !s_allow_abandonment_) {
-    NOTREACHED() << "Unfinished D-Bus call!";
-    sender_.Run(dbus::Response::FromMethodCall(call_));
-  }
-}
-
-DBusMethodCompletion::DBusMethodCompletion(
-    dbus::MethodCall* call,
-    const dbus::ExportedObject::ResponseSender& sender)
-    : call_(call), sender_(sender) {
-}
-
-void DBusMethodCompletion::HandleResult(brillo::ErrorPtr error) {
-  sender_.Run(error ?
-              brillo::dbus_utils::GetDBusError(call_, error.get()) :
-              dbus::Response::FromMethodCall(call_));
-  call_ = nullptr;
-}
 
 SessionManagerDBusAdaptor::SessionManagerDBusAdaptor(SessionManagerImpl* impl)
     : impl_(impl) {
   CHECK(impl_);
 }
 
-SessionManagerDBusAdaptor::~SessionManagerDBusAdaptor() {
-  // Abandon in-progress incoming D-Bus method calls.
-  DBusMethodCompletion::AllowAbandonment();
-}
+SessionManagerDBusAdaptor::~SessionManagerDBusAdaptor() = default;
 
 void SessionManagerDBusAdaptor::ExportDBusMethods(
     dbus::ExportedObject* object) {
@@ -560,9 +473,9 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::SetFlagsForUser(
 void SessionManagerDBusAdaptor::GetServerBackedStateKeys(
     dbus::MethodCall* call,
     dbus::ExportedObject::ResponseSender sender) {
-  std::vector<std::vector<uint8_t>> state_keys;
-  impl_->RequestServerBackedStateKeys(
-      base::Bind(&HandleGetServerBackedStateKeysCompletion, call, sender));
+  impl_->GetServerBackedStateKeys(
+      base::MakeUnique<brillo::dbus_utils::DBusMethodResponse<
+          std::vector<std::vector<uint8_t>>>>(call, sender));
 }
 
 std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::InitMachineInfo(

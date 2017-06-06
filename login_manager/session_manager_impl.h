@@ -233,8 +233,10 @@ class SessionManagerImpl : public SessionManagerInterface,
   void SetFlagsForUser(const std::string& in_account_id,
                        const std::vector<std::string>& in_flags);
 
-  void RequestServerBackedStateKeys(
-      const ServerBackedStateKeyGenerator::StateKeyCallback& callback);
+  void GetServerBackedStateKeys(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          std::vector<std::vector<uint8_t>>>> response);
+
   bool InitMachineInfo(brillo::ErrorPtr* error, const std::string& in_data);
   bool StartContainer(brillo::ErrorPtr* error, const std::string& in_name);
   bool StopContainer(brillo::ErrorPtr* error, const std::string& in_name);

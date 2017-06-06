@@ -399,6 +399,7 @@
     -->
     <method name="GetServerBackedStateKeys">
       <arg type="aay" name="state_keys" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
     </method>
 
     <!--
@@ -461,8 +462,7 @@
         instance when the user's session ends. This method is only available if
         the board supports ARC. This method gets invoked by Chrome.
     -->
-    <method name="StopArcInstance">
-    </method>
+    <method name="StopArcInstance" />
 
     <!--
         SetArcCpuRestriction:
@@ -506,6 +506,7 @@
     <method name="GetArcStartTimeTicks">
       <arg type="x" name="start_time" direction="out" />
     </method>
+
     <!--
          RemoveArcData:
          @account_id: Account ID of the user whose ARC data is removed.

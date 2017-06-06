@@ -139,7 +139,9 @@ const unsigned int kCpuSharesBackground = 64;
 constexpr base::TimeDelta kContainerTimeout = base::TimeDelta::FromSeconds(1);
 
 // The interval used to periodically check if time sync was done by tlsdated.
-constexpr int kSystemClockLastSyncInfoRetryMs = 1000;
+constexpr base::TimeDelta kSystemClockLastSyncInfoRetryDelay =
+    base::TimeDelta::FromMilliseconds(1000);
+
 
 bool IsIncognitoAccountId(const std::string& account_id) {
   const std::string lower_case_id(base::ToLowerASCII(account_id));
@@ -744,8 +746,16 @@ void SessionManagerImpl::SetFlagsForUser(
   manager_->SetFlagsForUser(in_account_id, in_flags);
 }
 
-void SessionManagerImpl::RequestServerBackedStateKeys(
-    const ServerBackedStateKeyGenerator::StateKeyCallback& callback) {
+void SessionManagerImpl::GetServerBackedStateKeys(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        std::vector<std::vector<uint8_t>>>> response) {
+  using StateKey = std::vector<uint8_t>;
+  base::Callback<void(const std::vector<StateKey>&)> callback =
+      base::Bind(
+          &brillo::dbus_utils::DBusMethodResponse<
+              std::vector<StateKey>>::Return,
+          base::Passed(&response));
+
   if (system_clock_synchronized_) {
     state_key_generator_->RequestStateKeys(callback);
   } else {
@@ -781,7 +791,7 @@ void SessionManagerImpl::OnGotSystemClockLastSyncInfo(
     base::MessageLoop::current()->PostDelayedTask(
         FROM_HERE, base::Bind(&SessionManagerImpl::GetSystemClockLastSyncInfo,
                               weak_ptr_factory_.GetWeakPtr()),
-        base::TimeDelta::FromMilliseconds(kSystemClockLastSyncInfoRetryMs));
+        kSystemClockLastSyncInfoRetryDelay);
     return;
   }
 
@@ -796,16 +806,14 @@ void SessionManagerImpl::OnGotSystemClockLastSyncInfo(
 
   if (network_synchronized) {
     system_clock_synchronized_ = true;
-    for (auto it = pending_state_key_callbacks_.begin();
-         it != pending_state_key_callbacks_.end(); ++it) {
-      state_key_generator_->RequestStateKeys(*it);
-    }
+    for (const auto& callback : pending_state_key_callbacks_)
+      state_key_generator_->RequestStateKeys(callback);
     pending_state_key_callbacks_.clear();
   } else {
     base::MessageLoop::current()->PostDelayedTask(
         FROM_HERE, base::Bind(&SessionManagerImpl::GetSystemClockLastSyncInfo,
                               weak_ptr_factory_.GetWeakPtr()),
-        base::TimeDelta::FromMilliseconds(kSystemClockLastSyncInfoRetryMs));
+        kSystemClockLastSyncInfoRetryDelay);
   }
 }
 
