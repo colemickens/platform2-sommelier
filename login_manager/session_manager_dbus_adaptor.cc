@@ -23,6 +23,7 @@
 #include <dbus/file_descriptor.h>
 #include <dbus/message.h>
 
+#include "login_manager/blob_util.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/proto_bindings/arc.pb.h"
 
@@ -606,51 +607,29 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StopContainer(
 std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StartArcInstance(
     dbus::MethodCall* call) {
   dbus::MessageReader reader(call);
-  login_manager::StartArcInstanceRequest request;
-  std::string account_id;
-  bool skip_boot_completed_broadcast = false;
-  bool scan_vendor_priv_app = false;
-  bool for_login_screen = false;
 
-  if (reader.PopArrayOfBytesAsProto(&request)) {
-    // New message format with proto parameter.
-    for_login_screen = request.for_login_screen();
-    if (!for_login_screen) {
-      if (!request.has_account_id() ||
-          !request.has_skip_boot_completed_broadcast() ||
-          !request.has_scan_vendor_priv_app())
-        return CreateInvalidArgsError(call, call->GetSignature());
-
-      account_id = request.account_id();
-      skip_boot_completed_broadcast = request.skip_boot_completed_broadcast();
-      scan_vendor_priv_app = request.scan_vendor_priv_app();
-    }
-  } else {
+  std::vector<uint8_t> request;
+  if (!brillo::dbus_utils::PopValueFromReader(&reader, &request)) {
     // TODO(xiaohuic): remove after Chromium side moved to proto.
     // http://b/37989086
-    if (!reader.PopString(&account_id) ||
+    login_manager::StartArcInstanceRequest proto;
+    bool skip_boot_completed_broadcast = false;
+    bool scan_vendor_priv_app = false;
+    if (!reader.PopString(proto.mutable_account_id()) ||
         !reader.PopBool(&skip_boot_completed_broadcast) ||
-        !reader.PopBool(&scan_vendor_priv_app))
+        !reader.PopBool(&scan_vendor_priv_app)) {
       return CreateInvalidArgsError(call, call->GetSignature());
+    }
+    proto.set_skip_boot_completed_broadcast(skip_boot_completed_broadcast);
+    proto.set_scan_vendor_priv_app(scan_vendor_priv_app);
+    request = SerializeAsBlob(proto);
   }
 
+  brillo::ErrorPtr error;
   std::string container_instance_id;
-  SessionManagerImpl::Error error;
-  if (for_login_screen) {
-    impl_->StartArcInstanceForLoginScreen(&container_instance_id, &error);
-  } else {
-    impl_->StartArcInstance(account_id, skip_boot_completed_broadcast,
-                            scan_vendor_priv_app, &container_instance_id,
-                            &error);
-  }
-  if (error.is_set())
-    return CreateError(call, error.name(), error.message());
-
-  std::unique_ptr<dbus::Response> response(
-      dbus::Response::FromMethodCall(call));
-  dbus::MessageWriter writer(response.get());
-  writer.AppendString(container_instance_id);
-  return response;
+  if (!impl_->StartArcInstance(&error, request, &container_instance_id))
+    return brillo::dbus_utils::GetDBusError(call, error.get());
+  return CreateStringResponse(call, container_instance_id);
 }
 
 std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::StopArcInstance(

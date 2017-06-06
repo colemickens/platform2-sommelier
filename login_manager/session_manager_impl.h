@@ -43,6 +43,7 @@ class LoginMetrics;
 class NssUtil;
 class PolicyKey;
 class ProcessManagerServiceInterface;
+class StartArcInstanceRequest;
 class SystemUtils;
 class UserPolicyServiceFactory;
 class VpdProcess;
@@ -129,6 +130,13 @@ class SessionManagerImpl : public SessionManagerInterface,
   static bool ValidateEmail(const std::string& email_address);
 
 #if USE_CHEETS
+  // Validates if the given |request| satisfies the requirement of the
+  // StartArcInstance input. Returns true on success. Otherwise false,
+  // and brillo::Error instance is set to |error|.
+  static bool ValidateStartArcInstanceRequest(
+      const StartArcInstanceRequest& request,
+      brillo::ErrorPtr* error);
+
   // Returns the Android data directory for |normalized_account_id|.
   static base::FilePath GetAndroidDataDirForUser(
       const std::string& normalized_account_id);
@@ -231,13 +239,9 @@ class SessionManagerImpl : public SessionManagerInterface,
   bool StartContainer(brillo::ErrorPtr* error, const std::string& in_name);
   bool StopContainer(brillo::ErrorPtr* error, const std::string& in_name);
 
-  void StartArcInstanceForLoginScreen(std::string* container_instance_id_out,
-                                      Error* error);
-  void StartArcInstance(const std::string& account_id,
-                        bool skip_boot_completed_broadcast,
-                        bool scan_vendor_priv_app,
-                        std::string* container_instance_id_out,
-                        Error* error);
+  bool StartArcInstance(brillo::ErrorPtr* error,
+                        const std::vector<uint8_t>& in_request,
+                        std::string* out_container_instance_id);
   bool StopArcInstance(brillo::ErrorPtr* error);
   bool SetArcCpuRestriction(brillo::ErrorPtr* error,
                             uint32_t in_restriction_state);
@@ -314,6 +318,11 @@ class SessionManagerImpl : public SessionManagerInterface,
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response);
 
 #if USE_CHEETS
+  // Implementation of StartArcInstance, except parsing blob to protobuf.
+  bool StartArcInstanceInternal(brillo::ErrorPtr* error,
+                                const StartArcInstanceRequest& in_request,
+                                std::string* out_container_instance_id);
+
   // Starts the Android container for ARC. If the container has started,
   // container_instance_id will be returned. Otherwise, an empty string
   // is returned and brillo::Error instance is set to |error_out|.

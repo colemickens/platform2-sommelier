@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 
 #include <algorithm>
+#include <iterator>
 #include <locale>
 #include <memory>
 #include <string>
@@ -22,6 +23,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/rand_util.h>
 #include <base/run_loop.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -48,6 +50,7 @@
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/process_manager_service_interface.h"
+#include "login_manager/proto_bindings/arc.pb.h"
 #include "login_manager/regen_mitigator.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/user_policy_service_factory.h"
@@ -287,6 +290,36 @@ bool SessionManagerImpl::ValidateEmail(const std::string& email_address) {
 }
 
 #if USE_CHEETS
+// static
+bool SessionManagerImpl::ValidateStartArcInstanceRequest(
+    const StartArcInstanceRequest& request,
+    brillo::ErrorPtr* error) {
+  if (request.for_login_screen()) {
+    // If this request is for login screen, following params are just
+    // irrelevant so no value should be passed.
+    if (request.has_account_id() ||
+        request.has_skip_boot_completed_broadcast() ||
+        request.has_scan_vendor_priv_app()) {
+      *error = CreateError(DBUS_ERROR_INVALID_ARGS,
+                           "StartArcInstanceRquest has invalid argument(s).");
+      return false;
+    }
+  } else {
+    // If this request is after user sign in, following params are required.
+    if (!request.has_account_id() ||
+        !request.has_skip_boot_completed_broadcast() ||
+        !request.has_scan_vendor_priv_app()) {
+      *error = CreateError(
+          DBUS_ERROR_INVALID_ARGS,
+          "StartArcInstanceRequest has required argument(s) missing.");
+      return false;
+    }
+  }
+
+  // All checks passed.
+  return true;
+}
+
 // static
 base::FilePath SessionManagerImpl::GetAndroidDataDirForUser(
     const std::string& normalized_account_id) {
@@ -793,107 +826,30 @@ bool SessionManagerImpl::InitMachineInfo(brillo::ErrorPtr* error,
   return true;
 }
 
-void SessionManagerImpl::StartArcInstanceForLoginScreen(
-    std::string* container_instance_id_out,
-    Error* error) {
+bool SessionManagerImpl::StartArcInstance(
+    brillo::ErrorPtr* error,
+    const std::vector<uint8_t>& in_request,
+    std::string* out_container_instance_id) {
 #if USE_CHEETS
-  const std::vector<std::string> keyvals = {
-      base::StringPrintf("CHROMEOS_DEV_MODE=%d", IsDevMode(system_)),
-      base::StringPrintf("CHROMEOS_INSIDE_VM=%d", IsInsideVm(system_)),
-  };
-
-  brillo::ErrorPtr error_ptr;
-  std::string container_instance_id =
-      StartArcContainer(kArcStartForLoginScreenSignal, keyvals, &error_ptr);
-  if (container_instance_id.empty()) {
-    DCHECK(error_ptr);
-    error->Set(error_ptr->GetCode(), error_ptr->GetMessage());
-    return;
+  StartArcInstanceRequest request;
+  if (!request.ParseFromArray(in_request.data(), in_request.size())) {
+    *error = CreateError(
+        DBUS_ERROR_INVALID_ARGS, "StartArcInstanceRequest parsing failed.");
+    return false;
+  }
+  if (!ValidateStartArcInstanceRequest(request, error)) {
+    DCHECK(*error);
+    return false;
   }
 
-  *container_instance_id_out = container_instance_id;
-  start_arc_instance_closure_.Run();
+  if (!StartArcInstanceInternal(error, request, out_container_instance_id)) {
+    DCHECK(*error);
+    return false;
+  }
+  return true;
 #else
-  error->Set(dbus_error::kNotAvailable, "ARC not supported.");
-#endif  // !USE_CHEETS
-}
-
-void SessionManagerImpl::StartArcInstance(
-    const std::string& account_id,
-    bool skip_boot_completed_broadcast,
-    bool scan_vendor_priv_app,
-    std::string* container_instance_id_out,
-    Error* error) {
-#if USE_CHEETS
-  arc_start_time_ = base::TimeTicks::Now();
-
-  // To boot ARC instance, certain amount of disk space is needed under the
-  // home. We first check it.
-  if (system_->AmountOfFreeDiskSpace(base::FilePath(kArcDiskCheckPath)) <
-      kArcCriticalDiskFreeBytes) {
-    static const char msg[] = "Low free disk under /home";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kLowFreeDisk, msg);
-    return;
-  }
-
-  brillo::ErrorPtr error_ptr;
-  std::string actual_account_id;
-  if (!NormalizeAccountId(account_id, &actual_account_id, &error_ptr)) {
-    DCHECK(error_ptr.get());
-    error->Set(error_ptr->GetCode(), error_ptr->GetMessage());
-    return;
-  }
-  if (user_sessions_.count(actual_account_id) == 0) {
-    static const char msg[] = "Provided user ID does not have a session.";
-    LOG(ERROR) << msg;
-    error->Set(dbus_error::kSessionDoesNotExist, msg);
-    return;
-  }
-
-  const base::FilePath android_data_dir =
-      GetAndroidDataDirForUser(actual_account_id);
-  const base::FilePath android_data_old_dir =
-      GetAndroidDataOldDirForUser(actual_account_id);
-
-  const std::vector<std::string> keyvals = {
-      base::StringPrintf("ANDROID_DATA_DIR=%s",
-                         android_data_dir.value().c_str()),
-      base::StringPrintf("ANDROID_DATA_OLD_DIR=%s",
-                         android_data_old_dir.value().c_str()),
-      base::StringPrintf("CHROMEOS_USER=%s", actual_account_id.c_str()),
-      base::StringPrintf("CHROMEOS_DEV_MODE=%d", IsDevMode(system_)),
-      base::StringPrintf("CHROMEOS_INSIDE_VM=%d", IsInsideVm(system_)),
-      base::StringPrintf("DISABLE_BOOT_COMPLETED_BROADCAST=%d",
-                         skip_boot_completed_broadcast),
-      base::StringPrintf("ENABLE_VENDOR_PRIVILEGED=%d",
-                         scan_vendor_priv_app),
-  };
-
-  std::string container_instance_id =
-      StartArcContainer(kArcStartSignal, keyvals, &error_ptr);
-  if (container_instance_id.empty()) {
-    DCHECK(error_ptr);
-    error->Set(error_ptr->GetCode(), error_ptr->GetMessage());
-    return;
-  }
-
-  if (!StartArcNetwork(&error_ptr)) {
-    // Asking the container to exit will result in OnAndroidContainerStopped()
-    // being called, which will handle any necessary cleanup.
-    android_container_->RequestJobExit();
-    android_container_->EnsureJobExit(kContainerTimeout);
-
-    DCHECK(error_ptr);
-    error->Set(error_ptr->GetCode(), error_ptr->GetMessage());
-    return;
-  }
-
-  login_metrics_->StartTrackingArcUseTime();
-  *container_instance_id_out = container_instance_id;
-  start_arc_instance_closure_.Run();
-#else
-  error->Set(dbus_error::kNotAvailable, "ARC not supported.");
+  *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
+  return false;
 #endif  // !USE_CHEETS
 }
 
@@ -954,7 +910,7 @@ bool SessionManagerImpl::EmitArcBooted(brillo::ErrorPtr* error,
   if (!in_account_id.empty()) {
     std::string actual_account_id;
     if (!NormalizeAccountId(in_account_id, &actual_account_id, error)) {
-      DCHECK(error);
+      DCHECK(*error);
       return false;
     }
     const base::FilePath android_data_old_dir =
@@ -1023,7 +979,7 @@ bool SessionManagerImpl::RemoveArcData(brillo::ErrorPtr* error,
 
   std::string actual_account_id;
   if (!NormalizeAccountId(in_account_id, &actual_account_id, error)) {
-    DCHECK(error);
+    DCHECK(*error);
     return false;
   }
   const base::FilePath android_data_dir =
@@ -1268,6 +1224,88 @@ void SessionManagerImpl::StorePolicyForUserInternal(
 }
 
 #if USE_CHEETS
+bool SessionManagerImpl::StartArcInstanceInternal(
+    brillo::ErrorPtr* error,
+    const StartArcInstanceRequest& in_request,
+    std::string* out_container_instance_id) {
+  // Setup init signal params.
+  std::vector<std::string> keyvals = {
+      "CHROMEOS_DEV_MODE=" + std::to_string(IsDevMode(system_)),
+      "CHROMEOS_INSIDE_VM=" + std::to_string(IsInsideVm(system_)),
+  };
+  std::string init_signal;
+  if (in_request.for_login_screen()) {
+    init_signal = kArcStartForLoginScreenSignal;
+  } else {
+    init_signal = kArcStartSignal;
+    arc_start_time_ = base::TimeTicks::Now();
+
+    // To boot ARC instance, certain amount of disk space is needed under the
+    // home. We first check it.
+    // Note that this check is unnecessary for login screen case, because
+    // it runs on tmpfs.
+    if (system_->AmountOfFreeDiskSpace(base::FilePath(kArcDiskCheckPath)) <
+        kArcCriticalDiskFreeBytes) {
+      constexpr char kMessage[] = "Low free disk under /home";
+      LOG(ERROR) << kMessage;
+      *error = CreateError(dbus_error::kLowFreeDisk, kMessage);
+      return false;
+    }
+
+    std::string account_id;
+    if (!NormalizeAccountId(in_request.account_id(), &account_id, error)) {
+      DCHECK(*error);
+      return false;
+    }
+    if (user_sessions_.count(account_id) == 0) {
+      constexpr char kMessage[] = "Provided user ID does not have a session.";
+      LOG(ERROR) << kMessage;
+      *error = CreateError(dbus_error::kSessionDoesNotExist, kMessage);
+      return false;
+    }
+
+    std::vector<std::string> extra_keyvals = {
+        "ANDROID_DATA_DIR=" + GetAndroidDataDirForUser(account_id).value(),
+        "ANDROID_DATA_OLD_DIR=" +
+            GetAndroidDataOldDirForUser(account_id).value(),
+        "CHROMEOS_USER=" + account_id,
+        "DISABLE_BOOT_COMPLETED_BROADCAST=" +
+            std::to_string(in_request.skip_boot_completed_broadcast()),
+        "ENABLE_VENDOR_PRIVILEGED=" +
+            std::to_string(in_request.scan_vendor_priv_app()),
+    };
+    keyvals.insert(keyvals.end(),
+                   std::make_move_iterator(extra_keyvals.begin()),
+                   std::make_move_iterator(extra_keyvals.end()));
+  }
+
+  // Start the container.
+  std::string container_instance_id =
+      StartArcContainer(init_signal, keyvals, error);
+  if (container_instance_id.empty()) {
+    DCHECK(*error);
+    return false;
+  }
+
+  if (!in_request.for_login_screen()) {
+    // In addition, start ARC network service, if this is not for login screen.
+    if (!StartArcNetwork(error)) {
+      DCHECK(*error);
+      // Asking the container to exit will result in
+      // OnAndroidContainerStopped() being called, which will handle any
+      // necessary cleanup.
+      android_container_->RequestJobExit();
+      android_container_->EnsureJobExit(kContainerTimeout);
+      return false;
+    }
+    login_metrics_->StartTrackingArcUseTime();
+  }
+
+  *out_container_instance_id = std::move(container_instance_id);
+  start_arc_instance_closure_.Run();
+  return true;
+}
+
 std::string SessionManagerImpl::StartArcContainer(
     const std::string& init_signal,
     const std::vector<std::string>& init_keyvals,
