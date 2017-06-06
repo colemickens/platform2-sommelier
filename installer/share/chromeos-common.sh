@@ -193,7 +193,7 @@ list_fixed_ata_disks() {
 }
 
 # We assume we only have eMMC devices, not removable MMC devices.
-# also, do not consider special hardware partitions non the eMMC, like boot.
+# also, do not consider special hardware partitions on the eMMC, like boot.
 # These devices are built on top of the eMMC sysfs path:
 # /sys/block/mmcblk0 -> .../mmc_host/.../mmc0:0001/.../mmcblk0
 # /sys/block/mmcblk0boot0 -> .../mmc_host/.../mmc0:0001/.../mmcblk0/mmcblk0boot0
@@ -241,16 +241,18 @@ list_fixed_nvme_disks() {
 # Find the drive to install based on the build write_cgpt.sh
 # script. If not found, return ""
 get_fixed_dst_drive() {
-  local dev
-  if [ -z "${DEFAULT_ROOTDEV}" ]; then
-    dev=""
-  else
+  local dev rootdev
+
+  if [ -n "${DEFAULT_ROOTDEV}" ]; then
     # No " here, the variable may contain wildcards.
-    dev="/dev/$(basename ${DEFAULT_ROOTDEV})"
-    if [ ! -b "${dev}" ]; then
-      # The device is not found
-      dev=""
-    fi
+    for rootdev in ${DEFAULT_ROOTDEV}; do
+      dev="/dev/$(basename "${rootdev}")"
+      if [ -b "${dev}" ]; then
+        break
+      else
+        dev=""
+      fi
+    done
   fi
   echo "${dev}"
 }

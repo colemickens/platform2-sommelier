@@ -812,10 +812,8 @@ main() {
   if [ "${FLAGS_skip_src_removable}" -eq "${FLAGS_FALSE}" ]; then
     if [ "$(cat /sys/block/${SRC#/dev/}/removable)" != "1" ]; then
       # Removable flag is implemented inconsistantly for ARM sdcard reader.
-      # Allow all devices except the default rootdev.
-      # DEFAULT_ROOTDEV can be a path expansion on some systems,
-      # so it will not be quoted.
-      if [ "${SRC}" = "/dev/$(basename ${DEFAULT_ROOTDEV})" ]; then
+      # Allow all devices except the default fixed drive.
+      if [ "${SRC}" = "$(get_fixed_dst_drive)" ]; then
         trap - EXIT
         cleanup
         die "Error: Source can not be the destination device: ${SRC}"
