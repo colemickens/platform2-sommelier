@@ -7,6 +7,8 @@
 // kept in sync with aosp/system/tpm/attestation/common/*.proto but should not
 // contain any changes not already present there.
 
+syntax = "proto2";
+
 package cryptohome;
 
 // Holds TPM credentials that the attestation server will need to see. These
