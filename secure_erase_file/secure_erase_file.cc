@@ -159,7 +159,7 @@ ScopedFiemap GetExtentsForFile(const base::FilePath& path) {
 
   // We don't want to erase data for any files that have shared extents. Doing
   // so may destroy data for other files.
-  for (int i = 0; i < fm->fm_mapped_extents; i++) {
+  for (uint32_t i = 0; i < fm->fm_mapped_extents; i++) {
     if (fm->fm_extents[i].fe_flags & FIEMAP_EXTENT_SHARED) {
       LOG(ERROR) << "Shared extent found for path: " << path.value();
       return nullptr;
@@ -181,7 +181,7 @@ ScopedFiemap GetExtentsForFile(const base::FilePath& path) {
 
 // Trims extents specified in |fm| on the partition specified in |partition_fd|.
 bool TrimExtents(int partition_fd, const struct fiemap* fm) {
-  for (int i = 0; i < fm->fm_mapped_extents; i++) {
+  for (uint32_t i = 0; i < fm->fm_mapped_extents; i++) {
     uint64_t range[2];
     range[0] = fm->fm_extents[i].fe_physical;
     range[1] = fm->fm_extents[i].fe_length;
@@ -210,11 +210,7 @@ bool TrimExtents(int partition_fd, const struct fiemap* fm) {
 
 // Verifies that the data in given extents cannot be recovered.
 bool VerifyExtentsErased(int partition_fd, const struct fiemap* fm) {
-  for (int i = 0; i < fm->fm_mapped_extents; i++) {
-    uint64_t range[2];
-    range[0] = fm->fm_extents[i].fe_physical;
-    range[1] = fm->fm_extents[i].fe_length;
-
+  for (uint32_t i = 0; i < fm->fm_mapped_extents; i++) {
     if (!VerifyExtentErased(partition_fd,
                             fm->fm_extents[i].fe_physical,
                             fm->fm_extents[i].fe_length)) {
