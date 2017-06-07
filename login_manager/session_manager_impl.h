@@ -79,6 +79,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   // Android container messages.
   static const char kArcStartForLoginScreenSignal[];
   static const char kArcStartSignal[];
+  static const char kArcContinueBootSignal[];
   static const char kArcStopSignal[];
   static const char kArcNetworkStartSignal[];
   static const char kArcNetworkStopSignal[];
@@ -321,8 +322,11 @@ class SessionManagerImpl : public SessionManagerInterface,
 
 #if USE_CHEETS
   // Implementation of StartArcInstance, except parsing blob to protobuf.
+  // When |container_pid| is greater than 0, the function tries to continue to
+  // boot the existing container rather than starting a new one from scratch.
   bool StartArcInstanceInternal(brillo::ErrorPtr* error,
                                 const StartArcInstanceRequest& in_request,
+                                pid_t container_pid,
                                 std::string* out_container_instance_id);
 
   // Starts the Android container for ARC. If the container has started,
@@ -343,6 +347,16 @@ class SessionManagerImpl : public SessionManagerInterface,
   void OnAndroidContainerStopped(const std::string& container_instance_id,
                                  pid_t pid,
                                  bool clean);
+
+  // Sends an init signal to turn the container from the one for login screen
+  // into a fully featured one. If that succeeds, this function also sends an
+  // init signal for starting  the network interface for the container.
+  // Returns true if both succeed.
+  bool ContinueArcBoot(const std::vector<std::string>& init_keyvals,
+                       brillo::ErrorPtr* error_out);
+
+  // Called when the container fails to continue booting.
+  void OnContinueArcBootFailed();
 
   // Renames android-data/ in the user's home directory to android-data-old/,
   // then recursively removes the renamed directory. Returns false when it

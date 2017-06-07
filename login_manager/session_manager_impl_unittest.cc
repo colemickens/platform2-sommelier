@@ -1326,8 +1326,8 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForUser) {
       OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStartSignal),
                       ElementsAre(std::string("CONTAINER_NAME=") +
                                       SessionManagerImpl::kArcContainerName,
-                                  std::string("CONTAINER_PATH="),
-                                  std::string("CONTAINER_PID=") +
+                                  "CONTAINER_PATH=",
+                                  "CONTAINER_PID=" +
                                       std::to_string(kAndroidPid))))
       .Times(1);
   EXPECT_CALL(upstart_signal_emitter_delegate_,
@@ -1352,6 +1352,99 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForUser) {
     EXPECT_NE(0, start_time);
     ASSERT_FALSE(error.get());
   }
+  EXPECT_CALL(
+      dbus_emitter_,
+      EmitSignalWithBoolAndString(StrEq(login_manager::kArcInstanceStopped),
+                                  true,
+                                  StrEq(container_instance_id)))
+      .Times(1);
+
+  {
+    brillo::ErrorPtr error;
+    EXPECT_TRUE(impl_.StopArcInstance(&error));
+    EXPECT_FALSE(error.get());
+  }
+  EXPECT_FALSE(android_container_.running());
+  EXPECT_FALSE(arc_setup_completed_);
+}
+
+TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
+  ExpectAndRunStartSession(kSaneEmail);
+
+  // First, start ARC for login screen.
+  EXPECT_CALL(
+      upstart_signal_emitter_delegate_,
+      OnSignalEmitted(StrEq(SessionManagerImpl::kArcStartForLoginScreenSignal),
+                      ElementsAre("CHROMEOS_DEV_MODE=0",
+                                  "CHROMEOS_INSIDE_VM=0")))
+      .Times(1);
+
+  brillo::ErrorPtr error;
+  StartArcInstanceRequest request;
+  request.set_for_login_screen(true);
+  std::string container_instance_id;
+  EXPECT_TRUE(impl_.StartArcInstance(
+      &error, SerializeAsBlob(request), &container_instance_id));
+
+  // Then, upgrade it to a fully functional one.
+  {
+    brillo::ErrorPtr error;
+    int64_t start_time = 0;
+    EXPECT_FALSE(impl_.GetArcStartTimeTicks(&error, &start_time));
+    ASSERT_TRUE(error.get());
+    EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
+  }
+
+  EXPECT_CALL(
+      upstart_signal_emitter_delegate_,
+      OnSignalEmitted(StrEq(SessionManagerImpl::kArcContinueBootSignal),
+                      ElementsAre("CHROMEOS_DEV_MODE=0",
+                                  "CHROMEOS_INSIDE_VM=0",
+                                  StartsWith("ANDROID_DATA_DIR="),
+                                  StartsWith("ANDROID_DATA_OLD_DIR="),
+                                  std::string("CHROMEOS_USER=") + kSaneEmail,
+                                  "DISABLE_BOOT_COMPLETED_BROADCAST=0",
+                                  "ENABLE_VENDOR_PRIVILEGED=1",
+                                  // The upgrade signal has a PID.
+                                  "CONTAINER_PID=" +
+                                      std::to_string(kAndroidPid))))
+      .Times(1);
+  EXPECT_CALL(upstart_signal_emitter_delegate_,
+              OnSignalEmitted(StrEq(SessionManagerImpl::kArcStopSignal),
+                              ElementsAre()))
+      .Times(1);
+  EXPECT_CALL(
+      upstart_signal_emitter_delegate_,
+      OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStartSignal),
+                      ElementsAre(std::string("CONTAINER_NAME=") +
+                                      SessionManagerImpl::kArcContainerName,
+                                  "CONTAINER_PATH=",
+                                  "CONTAINER_PID=" +
+                                      std::to_string(kAndroidPid))))
+      .Times(1);
+  EXPECT_CALL(upstart_signal_emitter_delegate_,
+              OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStopSignal),
+                              ElementsAre()))
+      .Times(1);
+
+  request = CreateStartArcInstanceRequestForUser();
+  request.set_scan_vendor_priv_app(true);
+  std::string container_instance_id_for_upgrade = "not-empty";
+  EXPECT_TRUE(impl_.StartArcInstance(
+      &error, SerializeAsBlob(request), &container_instance_id_for_upgrade));
+  EXPECT_FALSE(error.get());
+  // Unlike the regular start, an empty ID is returned.
+  EXPECT_TRUE(container_instance_id_for_upgrade.empty());
+  EXPECT_TRUE(android_container_.running());
+  EXPECT_TRUE(arc_setup_completed_);
+  {
+    brillo::ErrorPtr error;
+    int64_t start_time = 0;
+    EXPECT_TRUE(impl_.GetArcStartTimeTicks(&error, &start_time));
+    EXPECT_NE(0, start_time);
+    ASSERT_FALSE(error.get());
+  }
+  // The ID for the container for login screen is passed to the dbus call.
   EXPECT_CALL(
       dbus_emitter_,
       EmitSignalWithBoolAndString(StrEq(login_manager::kArcInstanceStopped),
@@ -1418,8 +1511,8 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
       OnSignalEmitted(StrEq(SessionManagerImpl::kArcNetworkStartSignal),
                       ElementsAre(std::string("CONTAINER_NAME=") +
                                       SessionManagerImpl::kArcContainerName,
-                                  std::string("CONTAINER_PATH="),
-                                  std::string("CONTAINER_PID=") +
+                                  "CONTAINER_PATH=",
+                                  "CONTAINER_PID=" +
                                       std::to_string(kAndroidPid))))
       .Times(1);
   EXPECT_CALL(upstart_signal_emitter_delegate_,

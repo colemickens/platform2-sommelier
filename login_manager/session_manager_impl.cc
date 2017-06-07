@@ -17,6 +17,7 @@
 
 #include <base/base64.h>
 #include <base/bind.h>
+#include <base/callback_helpers.h>
 #include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
@@ -82,6 +83,7 @@ const char SessionManagerImpl::kArcStartForLoginScreenSignal[] =
     "start-arc-instance-for-login-screen";
 const char SessionManagerImpl::kArcStartSignal[] = "start-arc-instance";
 const char SessionManagerImpl::kArcStopSignal[] = "stop-arc-instance";
+const char SessionManagerImpl::kArcContinueBootSignal[] = "continue-arc-boot";
 const char SessionManagerImpl::kArcNetworkStartSignal[] = "start-arc-network";
 const char SessionManagerImpl::kArcNetworkStopSignal[] = "stop-arc-network";
 const char SessionManagerImpl::kArcBootedSignal[] = "arc-booted";
@@ -839,6 +841,20 @@ bool SessionManagerImpl::StartArcInstance(
     const std::vector<uint8_t>& in_request,
     std::string* out_container_instance_id) {
 #if USE_CHEETS
+  pid_t pid = 0;
+  android_container_->GetContainerPID(&pid);
+
+  base::ScopedClosureRunner scoped_runner;
+  if (pid > 0) {
+    LOG(INFO) << "Container is running with PID " << pid;
+    // Stop the existing instance if it fails to continue to boot an exsiting
+    // container. Using Unretained() is okay because the closure will be called
+    // when exiting this function.
+    scoped_runner.Reset(
+        base::Bind(&SessionManagerImpl::OnContinueArcBootFailed,
+                   base::Unretained(this)));
+  }
+
   StartArcInstanceRequest request;
   if (!request.ParseFromArray(in_request.data(), in_request.size())) {
     *error = CreateError(
@@ -850,10 +866,12 @@ bool SessionManagerImpl::StartArcInstance(
     return false;
   }
 
-  if (!StartArcInstanceInternal(error, request, out_container_instance_id)) {
+  if (!StartArcInstanceInternal(
+          error, request, pid, out_container_instance_id)) {
     DCHECK(*error);
     return false;
   }
+  auto closure_unused = scoped_runner.Release();
   return true;
 #else
   *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
@@ -1235,21 +1253,20 @@ void SessionManagerImpl::StorePolicyForUserInternal(
 bool SessionManagerImpl::StartArcInstanceInternal(
     brillo::ErrorPtr* error,
     const StartArcInstanceRequest& in_request,
+    pid_t container_pid,
     std::string* out_container_instance_id) {
   // Setup init signal params.
   std::vector<std::string> keyvals = {
       "CHROMEOS_DEV_MODE=" + std::to_string(IsDevMode(system_)),
       "CHROMEOS_INSIDE_VM=" + std::to_string(IsInsideVm(system_)),
   };
-  std::string init_signal;
-  if (in_request.for_login_screen()) {
-    init_signal = kArcStartForLoginScreenSignal;
-  } else {
-    init_signal = kArcStartSignal;
+
+  const bool continue_boot = container_pid > 0;
+  if (!in_request.for_login_screen()) {
     arc_start_time_ = base::TimeTicks::Now();
 
-    // To boot ARC instance, certain amount of disk space is needed under the
-    // home. We first check it.
+    // To boot or continue booting ARC instance, certain amount of disk space is
+    // needed under the home. We first check it.
     // Note that this check is unnecessary for login screen case, because
     // it runs on tmpfs.
     if (system_->AmountOfFreeDiskSpace(base::FilePath(kArcDiskCheckPath)) <
@@ -1285,20 +1302,34 @@ bool SessionManagerImpl::StartArcInstanceInternal(
     keyvals.insert(keyvals.end(),
                    std::make_move_iterator(extra_keyvals.begin()),
                    std::make_move_iterator(extra_keyvals.end()));
+    if (continue_boot)
+      keyvals.emplace_back("CONTAINER_PID=" + std::to_string(container_pid));
   }
 
-  // Start the container.
-  std::string container_instance_id =
-      StartArcContainer(init_signal, keyvals, error);
-  if (container_instance_id.empty()) {
-    DCHECK(*error);
-    return false;
+  std::string container_instance_id;
+  if (!continue_boot) {
+    // Start the container.
+    const char* init_signal = in_request.for_login_screen() ?
+        kArcStartForLoginScreenSignal : kArcStartSignal;
+    container_instance_id = StartArcContainer(init_signal, keyvals, error);
+    if (container_instance_id.empty()) {
+      DCHECK(*error);
+      return false;
+    }
+  } else {
+    // Continue booting the existing container.
+    if (!ContinueArcBoot(keyvals, error)) {
+      DCHECK(*error);
+      return false;
+    }
   }
 
   if (!in_request.for_login_screen()) {
     // In addition, start ARC network service, if this is not for login screen.
     if (!StartArcNetwork(error)) {
       DCHECK(*error);
+      if (continue_boot)
+        return false;  // the caller shuts down the container.
       // Asking the container to exit will result in
       // OnAndroidContainerStopped() being called, which will handle any
       // necessary cleanup.
@@ -1378,6 +1409,27 @@ bool SessionManagerImpl::StartArcNetwork(brillo::ErrorPtr* error_out) {
   }
 
   return true;
+}
+
+bool SessionManagerImpl::ContinueArcBoot(
+    const std::vector<std::string>& init_keyvals,
+    brillo::ErrorPtr* error_out) {
+  if (!init_controller_->TriggerImpulse(
+          kArcContinueBootSignal, init_keyvals,
+          InitDaemonController::TriggerMode::SYNC)) {
+    constexpr char kMessage[] =
+        "Emitting continue-arc-boot init signal failed.";
+    LOG(ERROR) << kMessage;
+    *error_out = CreateError(dbus_error::kEmitFailed, kMessage);
+    return false;
+  }
+  return true;
+}
+
+void SessionManagerImpl::OnContinueArcBootFailed() {
+  LOG(ERROR) << "Failed to continue ARC boot. Stopping the container.";
+  brillo::ErrorPtr error_ptr;
+  StopArcInstance(&error_ptr);
 }
 
 void SessionManagerImpl::OnAndroidContainerStopped(
