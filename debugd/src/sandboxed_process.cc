@@ -20,6 +20,23 @@ const unsigned int kDelayUSec = 1000;
 
 const char kMiniJail[] = "/sbin/minijail0";
 
+// waitpid(2) with a timeout of kMaxWaitAttempts * kDelayUSec.
+bool waitpid_awhile(pid_t pid) {
+  DCHECK_GT(pid, 0);
+  for (size_t attempt = 0; attempt < kMaxWaitAttempts; ++attempt) {
+    pid_t res = waitpid(pid, nullptr, WNOHANG);
+    if (res > 0) {
+      return true;
+    }
+    if (res < 0) {
+      PLOG(ERROR) << "waitpid(" << pid << ") failed";
+      return false;
+    }
+    usleep(kDelayUSec);
+  }
+  return false;
+}
+
 }  // namespace
 
 const char SandboxedProcess::kDefaultUser[] = "debugd";
@@ -127,10 +144,32 @@ bool SandboxedProcess::KillProcessGroup() {
     return false;
   }
 
+  // Attempt to kill minijail gracefully with SIGINT and then SIGTERM.
+  // Note: we fall through to SIGKILLing the process group below even if this
+  // succeeds to ensure all descendents have been killed.
+  bool minijail_reaped = false;
+  for (auto sig : {SIGINT, SIGTERM}) {
+    if (kill(minijail_pid, sig) != 0) {
+      // ESRCH means the process already exited.
+      if (errno != ESRCH) {
+        PLOG(WARNING) << "failed to kill " << minijail_pid
+                      << " with signal " << sig;
+      }
+      break;
+    }
+    if (waitpid_awhile(minijail_pid)) {
+      minijail_reaped = true;
+      break;
+    }
+  }
+
   // kill(-pgid) kills every process with process group ID |pgid|.
-  if (kill(-pgid, SIGKILL) < 0) {
-    PLOG(ERROR) << "kill(-pgid, SIGKILL) failed";
-    return false;
+  if (kill(-pgid, SIGKILL) != 0) {
+    // ESRCH means the graceful exit above caught everything.
+    if (errno != ESRCH) {
+      PLOG(ERROR) << "kill(-pgid, SIGKILL) failed";
+      return false;
+    }
   }
 
   // If kill(2) succeeded, we release the PID.
@@ -140,34 +179,12 @@ bool SandboxedProcess::KillProcessGroup() {
   // If the jailed process dies first, Minijail or init will reap it.
   // If the Minijail process dies first, we will reap it. The jailed process
   // will then be reaped by init.
-  for (size_t attempt = 0; attempt < kMaxWaitAttempts; ++attempt) {
-    int status = 0;
-    // waitpid(-pgid) waits for any child process with process group ID |pgid|.
-    pid_t waited = waitpid(-pgid, &status, WNOHANG);
-    int saved_errno = errno;
-
-    if (waited < 0) {
-      if (saved_errno == ECHILD) {
-        // Processes with PGID |pgid| don't exist, so we're done.
-        return true;
-      }
-      PLOG(ERROR) << "waitpid(-pgid) failed";
-      return false;
-    }
-
-    if (waited > 0) {
-      if (waited != minijail_pid) {
-        LOG(WARNING) << "Expecting PID " << minijail_pid << ", got PID "
-                     << waited;
-      }
-      return true;
-    }
-
-    usleep(kDelayUSec);
+  if (!minijail_reaped && !waitpid_awhile(minijail_pid)) {
+    LOG(ERROR) << "Process " << minijail_pid << " did not terminate";
+    return false;
   }
 
-  LOG(WARNING) << "Process " << minijail_pid << " did not terminate";
-  return false;
+  return true;
 }
 
 }  // namespace debugd

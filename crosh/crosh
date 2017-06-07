@@ -20,9 +20,9 @@ set -f
 # cleanup code in command handlers a chance to run.
 trap '' HUP
 
-# Do not let CTRL+C kill crosh itself.  This does let the user kill commands
-# that are run by crosh (like `ping`).
-trap : INT
+# Do not let CTRL+C or CTRL+\ kill crosh itself.  This does let the user kill
+# commands that are run by crosh (like `ping`).
+trap : INT QUIT
 
 # If it exists, use $DATA_DIR to define the $HOME location, as a first step
 # to entirely removing the use of $HOME. (Though HOME should be used as
@@ -614,10 +614,10 @@ debugd_poll() (
   local pid fifo
 
   # Make sure we clean up the background process and temp files when the
-  # user kills us with CTRL+C.
+  # user kills us with CTRL+C or CTRL+\.
   cleanup() {
     # Don't let the user kill us while cleaning up.
-    trap : INT
+    trap : INT QUIT
 
     if [ -n "${pid}" ]; then
       if ! debugd "${methodbase}Stop" "string:${pid}"; then
@@ -632,7 +632,7 @@ debugd_poll() (
       fifo=''
     fi
   }
-  trap cleanup INT
+  trap cleanup INT QUIT
 
   if ! fifo="$(mk_fifo)"; then
     # The mk_fifo command already showed a warning.
@@ -641,7 +641,12 @@ debugd_poll() (
   debugd "${methodbase}Start" "$@" 2>&1 >"${fifo}" &
 
   read pid < "${fifo}"
-  cat "${fifo}"
+
+  # Background cat and block with `wait` to give debugd a chance to flush
+  # output on trapped signal.
+  cat "${fifo}" &
+  wait $!
+
   cleanup
 )
 
@@ -1456,10 +1461,10 @@ HELP_c='
 EXEC_c='/usr/bin/run_oci'
 cmd_c() (
   cleanup() {
-    trap : INT
+    trap : INT QUIT
     debugd ContainerStopped
   }
-  trap cleanup INT
+  trap cleanup INT QUIT
 
   local container="$1"
   if [ -z "${container}" ]; then
