@@ -401,10 +401,6 @@ void CameraClient::RequestHandler::StreamOff(
 void CameraClient::RequestHandler::HandleRequest(
     std::unique_ptr<CaptureRequest> request) {
   DCHECK(task_runner_->BelongsToCurrentThread());
-  // TODO(henryhsu): We still have to call notify when error happened. We also
-  // have to call process_capture_result and set CAMERA3_BUFFER_STATUS_ERROR
-  // when there is a buffer error.
-
   camera3_capture_result_t capture_result;
   memset(&capture_result, 0, sizeof(camera3_capture_result_t));
 
@@ -417,13 +413,13 @@ void CameraClient::RequestHandler::HandleRequest(
   capture_result.output_buffers = &(*output_stream_buffers)[0];
 
   if (flush_started_) {
+    AbortGrallocBufferSync(&capture_result);
     HandleAbortedRequest(&capture_result);
     return;
   }
 
-  int ret = WaitGrallocBufferSync(&capture_result);
-  if (ret) {
-    LOGFID(ERROR, device_id_) << "Fence sync failed: " << strerror(-ret);
+  if (!WaitGrallocBufferSync(&capture_result)) {
+    HandleAbortedRequest(&capture_result);
     return;
   }
 
@@ -436,23 +432,25 @@ void CameraClient::RequestHandler::HandleRequest(
 
   // Handle each stream output buffer and convert it to corresponding format.
   for (size_t i = 0; i < capture_result.num_output_buffers; i++) {
-    ret = WriteStreamBuffer(i, capture_result.num_output_buffers, *metadata,
-                            const_cast<camera3_stream_buffer_t*>(
-                                &capture_result.output_buffers[i]));
+    int ret = WriteStreamBuffer(i, capture_result.num_output_buffers, *metadata,
+                                const_cast<camera3_stream_buffer_t*>(
+                                    &capture_result.output_buffers[i]));
     if (ret) {
       LOGFID(ERROR, device_id_)
           << "Handle stream buffer failed for output buffer id: " << i;
-      return;
+      camera3_stream_buffer_t* b = const_cast<camera3_stream_buffer_t*>(
+          capture_result.output_buffers + i);
+      b->status = CAMERA3_BUFFER_STATUS_ERROR;
     }
   }
 
   int64_t timestamp;
   NotifyShutter(capture_result.frame_number, &timestamp);
-  ret = metadata_handler_->PostHandleRequest(capture_result.frame_number,
-                                             timestamp, metadata);
+  int ret = metadata_handler_->PostHandleRequest(capture_result.frame_number,
+                                                 timestamp, metadata);
   if (ret) {
-    LOGFID(ERROR, device_id_) << "Update metadata in PostHandleRequest failed";
-    return;
+    LOGFID(WARNING, device_id_)
+        << "Update metadata in PostHandleRequest failed";
   }
   capture_result.result = metadata->release();
 
@@ -558,8 +556,6 @@ void CameraClient::RequestHandler::HandleAbortedRequest(
   for (size_t i = 0; i < capture_result->num_output_buffers; i++) {
     camera3_stream_buffer_t* b = const_cast<camera3_stream_buffer_t*>(
         capture_result->output_buffers + i);
-    b->release_fence = b->acquire_fence;
-    b->acquire_fence = kBufferFenceReady;
     b->status = CAMERA3_BUFFER_STATUS_ERROR;
   }
   NotifyRequestError(capture_result->frame_number);
@@ -645,12 +641,13 @@ void CameraClient::RequestHandler::SkipFramesAfterStreamOn(int num_frames) {
   }
 }
 
-int CameraClient::RequestHandler::WaitGrallocBufferSync(
+bool CameraClient::RequestHandler::WaitGrallocBufferSync(
     camera3_capture_result_t* capture_result) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   // Framework allow 4 intervals delay. If fps is 30, 4 intervals delay is
   // 132ms. Use 300ms should be enough.
   const int kSyncWaitTimeoutMs = 300;
+  bool fence_timeout = false;
   for (size_t i = 0; i < capture_result->num_output_buffers; i++) {
     camera3_stream_buffer_t* b = const_cast<camera3_stream_buffer_t*>(
         capture_result->output_buffers + i);
@@ -665,20 +662,26 @@ int CameraClient::RequestHandler::WaitGrallocBufferSync(
       b->release_fence = b->acquire_fence;
       LOGFID(ERROR, device_id_) << "Fence sync_wait failed: "
                                 << b->acquire_fence;
+      fence_timeout = true;
     } else {
       close(b->acquire_fence);
     }
 
     // HAL has to set |acquire_fence| to -1 for output buffers.
     b->acquire_fence = kBufferFenceReady;
-
-    if (ret) {
-      // TODO(henryhsu): Check if we need to continue to wait for the next
-      // buffer.
-      break;
-    }
   }
-  return 0;
+  return !fence_timeout;
+}
+
+void CameraClient::RequestHandler::AbortGrallocBufferSync(
+    camera3_capture_result_t* capture_result) {
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  for (size_t i = 0; i < capture_result->num_output_buffers; i++) {
+    camera3_stream_buffer_t* b = const_cast<camera3_stream_buffer_t*>(
+        capture_result->output_buffers + i);
+    b->release_fence = b->acquire_fence;
+    b->acquire_fence = kBufferFenceReady;
+  }
 }
 
 void CameraClient::RequestHandler::NotifyShutter(uint32_t frame_number,

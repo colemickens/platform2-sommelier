@@ -178,8 +178,11 @@ class CameraClient {
     // after stream on.
     void SkipFramesAfterStreamOn(int num_frames);
 
-    // Wait output buffer synced.
-    int WaitGrallocBufferSync(camera3_capture_result_t* capture_result);
+    // Wait output buffer synced. Return false if fence timeout.
+    bool WaitGrallocBufferSync(camera3_capture_result_t* capture_result);
+
+    // Do not wait buffer sync for aborted requests.
+    void AbortGrallocBufferSync(camera3_capture_result_t* capture_result);
 
     // Notify shutter event.
     void NotifyShutter(uint32_t frame_number, int64_t* timestamp);
