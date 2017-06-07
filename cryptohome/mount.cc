@@ -980,7 +980,7 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
      return false;
   }
 
-  const FilePath user_home(GetMountedUserHomePath(obfuscated_username));
+  const FilePath mount_dir(GetUserMountDirectory(obfuscated_username));
 
   // The call is allowed to partially fail if directory creation fails, but we
   // want to have as many of the specified tracked directories created as
@@ -989,7 +989,7 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
   for (const auto& tracked_dir : GetTrackedSubdirectories()) {
     const FilePath tracked_dir_path = dest_dir.Append(tracked_dir);
     if (mount_type_ == MountType::ECRYPTFS) {
-      const FilePath userside_dir = user_home.Append(tracked_dir);
+      const FilePath userside_dir = mount_dir.Append(tracked_dir);
       // If non-pass-through dir with the same name existed - delete it
       // to prevent duplication.
       if (!is_new && platform_->DirectoryExists(userside_dir) &&

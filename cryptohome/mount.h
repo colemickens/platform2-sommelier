@@ -846,6 +846,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   FRIEND_TEST(MountTest, TwoWayKeysetMigrationTest);
   FRIEND_TEST(MountTest, BothFlagsMigrationTest);
   FRIEND_TEST(MountTest, CreateTrackedSubdirectories);
+  FRIEND_TEST(MountTest, CreateTrackedSubdirectoriesReplaceExistingDir);
 
   DISALLOW_COPY_AND_ASSIGN(Mount);
 };
