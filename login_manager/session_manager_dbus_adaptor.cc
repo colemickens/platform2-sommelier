@@ -13,7 +13,6 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
-#include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
 #include <brillo/dbus/data_serialization.h>
 #include <brillo/dbus/utils.h>
@@ -29,12 +28,6 @@
 
 namespace login_manager {
 namespace {
-
-const char kBindingsPath[] =
-    "/usr/share/dbus-1/interfaces/org.chromium.SessionManagerInterface.xml";
-const char kDBusIntrospectableInterface[] =
-    "org.freedesktop.DBus.Introspectable";
-const char kDBusIntrospectMethod[] = "Introspect";
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
@@ -200,13 +193,6 @@ void SessionManagerDBusAdaptor::ExportDBusMethods(
   ExportSyncDBusMethod(object,
                        kSessionManagerRemoveArcData,
                        &SessionManagerDBusAdaptor::RemoveArcData);
-
-  CHECK(object->ExportMethodAndBlock(
-      kDBusIntrospectableInterface,
-      kDBusIntrospectMethod,
-      base::Bind(&HandleSynchronousDBusMethodCall,
-                 base::Bind(&SessionManagerDBusAdaptor::Introspect,
-                            base::Unretained(this)))));
 }
 
 std::unique_ptr<dbus::Response>
@@ -606,20 +592,6 @@ std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::RemoveArcData(
   if (!impl_->RemoveArcData(&error, account_id))
     return brillo::dbus_utils::GetDBusError(call, error.get());
   return dbus::Response::FromMethodCall(call);
-}
-
-std::unique_ptr<dbus::Response> SessionManagerDBusAdaptor::Introspect(
-    dbus::MethodCall* call) {
-  std::string output;
-  if (!base::ReadFileToString(base::FilePath(kBindingsPath), &output)) {
-    PLOG(ERROR) << "Can't read XML bindings from disk:";
-    return CreateError(call, "Can't read XML bindings from disk.", "");
-  }
-  std::unique_ptr<dbus::Response> response(
-      dbus::Response::FromMethodCall(call));
-  dbus::MessageWriter writer(response.get());
-  writer.AppendString(output);
-  return response;
 }
 
 void SessionManagerDBusAdaptor::ExportSyncDBusMethod(

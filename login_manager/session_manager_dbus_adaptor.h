@@ -97,8 +97,6 @@ class SessionManagerDBusAdaptor {
   std::unique_ptr<dbus::Response> GetArcStartTimeTicks(dbus::MethodCall* call);
   std::unique_ptr<dbus::Response> RemoveArcData(dbus::MethodCall* call);
 
-  std::unique_ptr<dbus::Response> Introspect(dbus::MethodCall* call);
-
  private:
   // Pointer to a member function for handling a DBus method call.
   typedef std::unique_ptr<dbus::Response> (
