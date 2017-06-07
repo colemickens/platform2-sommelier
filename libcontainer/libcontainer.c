@@ -1084,7 +1084,9 @@ static int do_container_mount(struct container *c,
 			goto error_free_return;
 	}
 
-	if (mnt->create) {
+	// Only create the destinations for external mounts, minijail will take
+	// care of those mounted in the new namespace.
+	if (mnt->create && !mnt->mount_in_ns) {
 		rc = setup_mount_destination(config, mnt, source, dest);
 		if (rc)
 			goto error_free_return;
