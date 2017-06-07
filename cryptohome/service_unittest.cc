@@ -889,6 +889,47 @@ TEST_F(ServiceExTest, MountInvalidArgsCreateWithEmptyKey) {
                g_error_->message);
 }
 
+TEST_F(ServiceExTest, MountPublicWithExistingMounts) {
+  constexpr char kUser[] = "chromeos-user";
+  SetupReply();
+  PrepareArguments();
+  SetupMount("foo@gmail.com");
+
+  id_->set_account_id(kUser);
+  mount_req_->set_public_mount(true);
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
+  service_.DoMountEx(id_.get(), auth_.get(), mount_req_.get(), NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_TRUE(reply.has_error());
+  EXPECT_EQ(CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY, reply.error());
+}
+
+TEST_F(ServiceExTest, MountPublicUsesPublicMountPasskey) {
+  constexpr char kUser[] = "chromeos-user";
+  SetupReply();
+  PrepareArguments();
+
+  id_->set_account_id(kUser);
+  mount_req_->set_public_mount(true);
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(testing::InvokeWithoutArgs([&]() {
+    SetupMount(kUser);
+    EXPECT_CALL(*mount_, MountCryptohome(_, _, _))
+        .WillOnce(testing::Invoke([](const Credentials& credentials,
+                                     const Mount::MountArgs& mount_args,
+                                     MountError* error) {
+            brillo::SecureBlob passkey;
+            credentials.GetPasskey(&passkey);
+            // Tests that the passkey is filled when public_mount is set.
+            EXPECT_FALSE(passkey.empty());
+            return true;
+        }));
+    return true;
+  }));
+  service_.DoMountEx(id_.get(), auth_.get(), mount_req_.get(), NULL);
+  BaseReply reply = GetLastReply();
+  EXPECT_FALSE(reply.has_error());
+}
+
 TEST_F(ServiceExTest, AddKeyInvalidArgsNoEmail) {
   SetupErrorReply();
   PrepareArguments();

@@ -1779,8 +1779,9 @@ void Service::DoMountEx(AccountIdentifier* identifier,
   mount_reply->set_recreated(false);
 
   // See ::Mount for detailed commentary.
+  bool other_mounts_active = true;
   if (mounts_.size() == 0)
-    CleanUpStaleMounts(false);
+    other_mounts_active = CleanUpStaleMounts(false);
 
   // At present, we only enforce non-empty email addresses.
   // In the future, we may wish to canonicalize if we don't move
@@ -1788,6 +1789,24 @@ void Service::DoMountEx(AccountIdentifier* identifier,
   if (GetAccountId(*identifier).empty()) {
     SendInvalidArgsReply(context, "No email supplied");
     return;
+  }
+
+  if (request->public_mount()) {
+    std::string public_mount_passkey;
+    if (!GetPublicMountPassKey(GetAccountId(*identifier),
+                               &public_mount_passkey)) {
+      LOG(ERROR) << "Could not get public mount passkey.";
+      reply.set_error(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+      SendReply(context, reply);
+      return;
+    }
+
+    // Set the secret as the key for cryptohome authorization/creation.
+    authorization->mutable_key()->set_secret(public_mount_passkey);
+    if (request->has_create()) {
+      request->mutable_create()->mutable_keys(0)->set_secret(
+          public_mount_passkey);
+    }
   }
 
   // An AuthorizationRequest key without a label will test against
@@ -1878,9 +1897,23 @@ void Service::DoMountEx(AccountIdentifier* identifier,
     return;
   }
 
-  // Don't overlay an ephemeral mount over a file-backed one.
   scoped_refptr<cryptohome::Mount> user_mount =
       GetOrCreateMountForUser(GetAccountId(*identifier));
+
+  // For public mount, don't proceed if there is any existing mount or stale
+  // mount. Exceptionally, it is normal and ok to have a failed previous mount
+  // attempt for the same user.
+  const bool only_self_unmounted_attempt =
+      mounts_.size() == 1 && !user_mount->IsMounted();
+  if (request->public_mount() && other_mounts_active &&
+      !only_self_unmounted_attempt) {
+    LOG(ERROR) << "Public mount requested with other mounts active.";
+    reply.set_error(CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+    SendReply(context, reply);
+    return;
+  }
+
+  // Don't overlay an ephemeral mount over a file-backed one.
   if (request->require_ephemeral() && user_mount->IsNonEphemeralMounted()) {
     // TODO(wad,ellyjones) Change this behavior to return failure even
     // on a succesful unmount to tell chrome MOUNT_ERROR_NEEDS_RESTART.
