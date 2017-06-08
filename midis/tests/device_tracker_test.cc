@@ -13,10 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "midis/test_helper.h"
-
-using ::testing::_;
-using ::testing::Return;
+#include "midis/tests/test_helper.h"
 
 namespace midis {
 
@@ -84,8 +81,3 @@ TEST_F(DeviceTrackerTest, AddDeviceRemoveNegative) {
 }
 
 }  // namespace midis
-
-int main(int argc, char** argv) {
-  SetUpTests(&argc, argv, true);
-  return RUN_ALL_TESTS();
-}

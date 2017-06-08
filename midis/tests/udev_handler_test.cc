@@ -12,7 +12,7 @@
 #include <brillo/test_helpers.h>
 #include <gtest/gtest.h>
 
-#include "midis/test_helper.h"
+#include "midis/tests/test_helper.h"
 #include "midis/udev_handler_mock.h"
 
 using ::testing::_;
@@ -40,12 +40,13 @@ const char kBlankDname[] = "";
 
 }  // namespace
 
-class UdevHandlerTest : public ::testing::Test, public brillo::Daemon {
+class UdevHandlerTest : public ::testing::Test {
  public:
   UdevHandlerTest() : udev_handler_mock_(new UdevHandlerMock()) {}
 
  protected:
   void SetUp() override {
+    message_loop_.SetAsCurrent();
     info1_ = base::MakeUnique<snd_rawmidi_info>();
     memset(info1_.get(), 0, sizeof(snd_rawmidi_info));
     strncpy(reinterpret_cast<char*>(info1_->name), kFakeName1,
@@ -99,6 +100,9 @@ class UdevHandlerTest : public ::testing::Test, public brillo::Daemon {
   std::unique_ptr<snd_rawmidi_info> info1_;
   std::unique_ptr<snd_rawmidi_info> info2_;
   base::FilePath temp_fp_;
+
+ private:
+  brillo::BaseMessageLoop message_loop_;
 };
 
 // Check whether Device gets created successfully.
@@ -143,8 +147,3 @@ TEST_F(UdevHandlerTest, CreateDeviceNegative1) {
 }
 
 }  // namespace midis
-
-int main(int argc, char** argv) {
-  SetUpTests(&argc, argv, true);
-  return RUN_ALL_TESTS();
-}

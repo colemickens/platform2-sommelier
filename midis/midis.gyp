@@ -10,22 +10,31 @@
   },
   'targets': [
     {
+      'target_name': 'midis_common',
+      'type': 'static_library',
+      'sources': [
+        'client.cc',
+        'client_tracker.cc',
+        'device.cc',
+        'device_tracker.cc',
+        'file_handler.cc',
+        'subdevice_client_fd_holder.cc',
+      ],
+    },
+    {
       'target_name': 'midis',
       'type': 'executable',
+      'dependencies' : [
+        'midis_common',
+      ],
       'link_settings': {
         'libraries': [
           '-ldl',
         ],
       },
       'sources': [
-        'client.cc',
-        'client_tracker.cc',
         'daemon.cc',
-        'device.cc',
-        'device_tracker.cc',
-        'file_handler.cc',
         'main.cc',
-        'subdevice_client_fd_holder.cc',
       ],
     },
   ],
@@ -33,98 +42,20 @@
     ['USE_test == 1', {
       'targets': [
         {
-          'target_name': 'client_test',
+          'target_name': 'midis_testrunner',
           'type': 'executable',
           'dependencies' : [
             '../common-mk/testrunner.gyp:testrunner',
+            'midis_common',
           ],
           'includes': ['../common-mk/common_test.gypi'],
-          'variables': {
-            'deps': [
-              'libchrome-test-<(libbase_ver)',
-            ],
-          },
           'sources': [
-            'client.cc',
-            'client_test.cc',
-            'client_tracker.cc',
-            'device.cc',
-            'device_tracker.cc',
-            'file_handler.cc',
-            'subdevice_client_fd_holder.cc',
-          ],
-        },
-        {
-          'target_name': 'device_tracker_test',
-          'type': 'executable',
-          'includes': ['../common-mk/common_test.gypi'],
-          'variables': {
-            'deps': [
-              'libchrome-test-<(libbase_ver)',
-            ],
-          },
-          'sources': [
-            'client.cc',
-            'client_tracker.cc',
-            'device.cc',
-            'device_tracker.cc',
-            'device_tracker_test.cc',
-            'file_handler.cc',
-            'subdevice_client_fd_holder.cc',
-          ],
-        },
-        {
-          'target_name': 'udev_handler_test',
-          'type': 'executable',
-          'includes': ['../common-mk/common_test.gypi'],
-          'variables': {
-            'deps': [
-              'libchrome-test-<(libbase_ver)',
-            ],
-          },
-          'sources': [
-            'client.cc',
-            'client_tracker.cc',
-            'device.cc',
-            'device_tracker.cc',
-            'file_handler.cc',
-            'subdevice_client_fd_holder.cc',
-            'udev_handler_test.cc',
-          ],
-        },
-        {
-          'target_name': 'device_test',
-          'type': 'executable',
-          'includes': ['../common-mk/common_test.gypi'],
-          'variables': {
-            'deps': [
-              'libchrome-test-<(libbase_ver)',
-            ],
-          },
-          'sources': [
-            'device.cc',
-            'device_test.cc',
-            'file_handler.cc',
-            'subdevice_client_fd_holder.cc',
-          ],
-        },
-        {
-          'target_name': 'client_tracker_test',
-          'type': 'executable',
-          'includes': ['../common-mk/common_test.gypi'],
-          'variables': {
-            'deps': [
-              'libchrome-test-<(libbase_ver)',
-            ],
-          },
-          'sources': [
-            'client.cc',
-            'client_tracker.cc',
-            'client_tracker_test.cc',
-            'device.cc',
-            'device_tracker.cc',
-            'file_handler.cc',
-            'subdevice_client_fd_holder.cc',
+            'tests/client_test.cc',
+            'tests/client_tracker_test.cc',
+            'tests/device_test.cc',
+            'tests/device_tracker_test.cc',
+            'tests/test_helper.cc',
+            'tests/udev_handler_test.cc',
           ],
         },
       ],

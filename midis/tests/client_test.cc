@@ -22,7 +22,7 @@
 #include <gtest/gtest.h>
 
 #include "midis/client_tracker.h"
-#include "midis/test_helper.h"
+#include "midis/tests/test_helper.h"
 
 namespace {
 
@@ -138,8 +138,7 @@ void ConnectToClient(base::FilePath socketDir, base::FilePath devNodePath) {
   EXPECT_EQ(0, memcmp(buf, kFakeMidiData1, sizeof(kFakeMidiData1)));
 }
 
-void ServerCheckClientsCallback(ClientTracker* cli_tracker,
-                                base::Closure quit) {
+void CheckClientCallback(ClientTracker* cli_tracker, base::Closure quit) {
   EXPECT_EQ(cli_tracker->GetNumClientsForTesting(), 1);
   quit.Run();
 }
@@ -204,8 +203,7 @@ TEST_F(ClientTest, AddClientAndReceiveMessages) {
   base::RunLoop run_loop;
   client_thread.task_runner()->PostTaskAndReply(
       FROM_HERE, base::Bind(&ConnectToClient, socket_dir, dev_node_path),
-      base::Bind(&ServerCheckClientsCallback, &cli_tracker,
-                 run_loop.QuitClosure()));
+      base::Bind(&CheckClientCallback, &cli_tracker, run_loop.QuitClosure()));
   run_loop.Run();
 }
 

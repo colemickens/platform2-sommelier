@@ -17,7 +17,7 @@
 
 #include "midis/device.h"
 #include "midis/file_handler.h"
-#include "midis/test_helper.h"
+#include "midis/tests/test_helper.h"
 
 namespace midis {
 
@@ -39,15 +39,19 @@ void PrintReadData(std::string* data, const char* buffer, uint32_t subdevice_id,
 
 }  // namespace
 
-class DeviceTest : public ::testing::Test, public brillo::Daemon {
+class DeviceTest : public ::testing::Test {
  protected:
   void SetUp() override {
     CreateNewTempDirectory(base::FilePath::StringType(), &temp_fp_);
+    message_loop_.SetAsCurrent();
   }
 
   void TearDown() override { base::DeleteFile(temp_fp_, true); }
 
   base::FilePath temp_fp_;
+
+ private:
+  brillo::BaseMessageLoop message_loop_;
 };
 
 TEST_F(DeviceTest, TestHandleDeviceRead) {
@@ -83,8 +87,3 @@ TEST_F(DeviceTest, TestHandleDeviceRead) {
 }
 
 }  // namespace midis
-
-int main(int argc, char** argv) {
-  SetUpTests(&argc, argv, true);
-  return RUN_ALL_TESTS();
-}

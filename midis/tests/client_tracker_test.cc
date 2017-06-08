@@ -22,9 +22,7 @@
 #include <gtest/gtest.h>
 
 #include "midis/client_tracker.h"
-#include "midis/test_helper.h"
-
-using ::testing::_;
+#include "midis/tests/test_helper.h"
 
 namespace midis {
 
@@ -45,7 +43,6 @@ class ClientTrackerTest : public ::testing::Test {
   base::FilePath temp_fp_;
 
  private:
-  base::AtExitManager at_exit_;
   brillo::BaseMessageLoop message_loop_;
 };
 
@@ -112,8 +109,3 @@ TEST_F(ClientTrackerTest, AddClientPositive) {
 }
 
 }  // namespace midis
-
-int main(int argc, char** argv) {
-  SetUpTests(&argc, argv, true);
-  return RUN_ALL_TESTS();
-}
