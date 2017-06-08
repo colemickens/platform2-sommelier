@@ -162,9 +162,7 @@ TEST_F(ProcessManagerTest,
 
   EXPECT_CALL(minijail_, DropRoot(_, StrEq(kUser), StrEq(kGroup)))
       .WillOnce(Return(true));
-#if !defined(__ANDROID__)
   EXPECT_CALL(minijail_, UseCapabilities(_, kCapMask)).Times(1);
-#endif  // __ANDROID__
   EXPECT_CALL(minijail_,
               RunPipesAndDestroy(_,  // minijail*
                                  IsProcessArgs(kProgram, kArgs),
@@ -228,9 +226,7 @@ TEST_F(ProcessManagerTest,
 
   EXPECT_CALL(minijail_, DropRoot(_, StrEq(kUser), StrEq(kGroup)))
       .WillOnce(Return(true));
-#if !defined(__ANDROID__)
   EXPECT_CALL(minijail_, UseCapabilities(_, kCapMask)).Times(1);
-#endif  // __ANDROID__
   EXPECT_CALL(minijail_,
               RunPipesAndDestroy(_, IsProcessArgs(kProgram, kArgs), _, _, _, _))
       .WillOnce(Return(false));

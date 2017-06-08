@@ -155,11 +155,8 @@ pid_t ProcessManager::StartProcessInMinijailWithPipes(
     LOG(ERROR) << "Minijail failed to drop root privileges?";
     return -1;
   }
-#if !defined(__ANDROID__)
-  // Don't call UseCapabilities on Android since capabilities are not supported
-  // without LD_PRELOAD, which is not used on Android.
+
   minijail_->UseCapabilities(jail, capmask);
-#endif  // __ANDROID__
   minijail_->ResetSignalMask(jail);
 
   pid_t pid;

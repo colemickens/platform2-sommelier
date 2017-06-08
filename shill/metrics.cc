@@ -23,9 +23,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
-#if !defined(__ANDROID__)
 #include <metrics/bootstat.h>
-#endif  // __ANDROID__
 
 #include "shill/connection_diagnostics.h"
 #include "shill/link_monitor.h"
@@ -750,14 +748,12 @@ void Metrics::NotifyServiceStateChanged(const Service& service,
   if (new_state == Service::kStateFailure)
     SendServiceFailure(service);
 
-#if !defined(__ANDROID__)
   if (collect_bootstats_) {
     bootstat_log(base::StringPrintf("network-%s-%s",
                                     Technology::NameFromIdentifier(
                                         service.technology()).c_str(),
                                     service.GetStateString().c_str()).c_str());
   }
-#endif  // __ANDROID__
 
   if (new_state != Service::kStateConnected)
     return;
