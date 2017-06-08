@@ -56,6 +56,9 @@ enum class UpdateExtraCommand : uint16_t {
   kJumpToRW = 1,
   kStayInRO = 2,
   kUnlockRW = 3,
+  kUnlockRollback = 4,
+  kInjectEntropy = 5,
+  kPairChallenge = 6,
 };
 
 // This is the frame format the host uses when sending update PDUs over USB.
@@ -163,6 +166,9 @@ class FirmwareUpdater {
   // after this.
   void SendDone();
 
+  // Injects entropy into the hammer device.
+  bool InjectEntropy();
+
   // Sends the external command through USB. The format of the payload is:
   //   4 bytes      4 bytes         4 bytes       2 bytes      variable size
   // +-----------+--------------+---------------+-----------+------~~~-------+
@@ -173,7 +179,8 @@ class FirmwareUpdater {
   // dependent. The target tells between update PDUs and encapsulated vendor
   // subcommands by looking at the EXT_CMD value - it is kUpdateExtraCmd and
   // as such is guaranteed not to be a valid update PDU destination address.
-  bool SendSubcommand(UpdateExtraCommand subcommand);
+  bool SendSubcommand(UpdateExtraCommand subcommand,
+                      const std::string& cmd_body = "");
 
   // Transfers the image to the target section.
   bool TransferImage(SectionName section_name);
@@ -222,7 +229,7 @@ class FirmwareUpdater {
   FRIEND_TEST(FirmwareUpdaterTest, TryConnectUSB_FAIL);
   FRIEND_TEST(FirmwareUpdaterTest, SendFirstPDU);
   FRIEND_TEST(FirmwareUpdaterTest, SendDone);
-  FRIEND_TEST(FirmwareUpdaterTest, SendSubcommand);
+  FRIEND_TEST(FirmwareUpdaterTest, SendSubcommand_InjectEntropy);
   FRIEND_TEST(FirmwareUpdaterTest, SendSubcommand_Reset);
   FRIEND_TEST(FirmwareUpdaterTest, TransferImage);
   FRIEND_TEST(FirmwareUpdaterTest, CurrentSection);

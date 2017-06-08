@@ -6,6 +6,7 @@
 
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
+#include <base/rand_util.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -201,17 +202,21 @@ TEST_F(FirmwareUpdaterTest, SendFirstPDU) {
   ASSERT_EQ(fw_updater_->SendFirstPDU(), true);
 }
 
-// Send the kJumpToRW subcommand.
-TEST_F(FirmwareUpdaterTest, SendSubcommand) {
+// Send the kInjectEntropy subcommand.
+TEST_F(FirmwareUpdaterTest, SendSubcommand_InjectEntropy) {
   // Build the header data.
   uint16_t subcommand =
-      htobe16(static_cast<uint16_t>(UpdateExtraCommand::kJumpToRW));
+      htobe16(static_cast<uint16_t>(UpdateExtraCommand::kInjectEntropy));
+  std::string fake_entropy = base::RandBytesAsString(32);
   std::vector<uint8_t> sub_cmd_data =
       ConvertData(reinterpret_cast<uint8_t*>(&subcommand), sizeof(subcommand));
   std::vector<uint8_t> ufh_data;
   ufh_data = BuildHeaderData(
-      sizeof(UpdateFrameHeader) + sizeof(subcommand), 0, kUpdateExtraCmd);
+      sizeof(UpdateFrameHeader) + sizeof(subcommand) + fake_entropy.size(),
+      0,
+      kUpdateExtraCmd);
   ufh_data.insert(ufh_data.end(), sub_cmd_data.begin(), sub_cmd_data.end());
+  ufh_data.insert(ufh_data.end(), fake_entropy.begin(), fake_entropy.end());
 
   ON_CALL(*uep_, SendHelper(_, _, _)).WillByDefault(ReturnArg<2>());
   ON_CALL(*uep_, Receive(_, 1, false, _)).WillByDefault(Return(1));
@@ -225,7 +230,9 @@ TEST_F(FirmwareUpdaterTest, SendSubcommand) {
     EXPECT_CALL(*uep_, Receive(_, 1, false, _));
   }
 
-  ASSERT_EQ(fw_updater_->SendSubcommand(UpdateExtraCommand::kJumpToRW), true);
+  ASSERT_EQ(fw_updater_->SendSubcommand(UpdateExtraCommand::kInjectEntropy,
+                                        fake_entropy),
+            true);
 }
 
 // Send the kImmediateReset subcommand.

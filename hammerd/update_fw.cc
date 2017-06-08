@@ -12,6 +12,7 @@
 
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
+#include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
@@ -267,13 +268,21 @@ bool FirmwareUpdater::TransferImage(SectionName section_name) {
   return ret;
 }
 
-bool FirmwareUpdater::SendSubcommand(UpdateExtraCommand subcommand) {
+bool FirmwareUpdater::InjectEntropy() {
+  const int kDataSize = 32;
+  std::string entropy_data = base::RandBytesAsString(kDataSize);
+  return SendSubcommand(UpdateExtraCommand::kInjectEntropy, entropy_data);
+}
+
+bool FirmwareUpdater::SendSubcommand(UpdateExtraCommand subcommand,
+                                     const std::string& cmd_body) {
   LOG(INFO) << "Send Sub-command: " << subcommand;
   SendDone();
 
   uint8_t response = -1;
   uint16_t subcommand_value = static_cast<uint16_t>(subcommand);
-  size_t usb_msg_size = (sizeof(UpdateFrameHeader) + sizeof(subcommand_value));
+  size_t usb_msg_size =
+      sizeof(UpdateFrameHeader) + sizeof(subcommand_value) + cmd_body.size();
   std::unique_ptr<UpdateFrameHeader, base::FreeDeleter> ufh(
       static_cast<UpdateFrameHeader*>(malloc(usb_msg_size)));
   if (ufh == nullptr) {
@@ -285,6 +294,9 @@ bool FirmwareUpdater::SendSubcommand(UpdateExtraCommand subcommand) {
   ufh->block_digest = 0;
   uint16_t* frame_ptr = reinterpret_cast<uint16_t*>(ufh.get() + 1);
   *frame_ptr = htobe16(subcommand_value);
+  if (cmd_body.size()) {
+    memcpy(frame_ptr + 1, cmd_body.data(), cmd_body.size());
+  }
 
   bool ret;
   if (subcommand == UpdateExtraCommand::kImmediateReset) {
