@@ -51,6 +51,11 @@ TEST_F(SerializationUtilsTest, HistogramSerializeTest) {
       MetricSample::HistogramSample("myhist", 13, 1, 100, 10).get());
 }
 
+TEST_F(SerializationUtilsTest, RepeatedSerializeTest) {
+  TestSerialization(MetricSample::HistogramSample(
+                        "myrepeatedhist", 26, 1, 100, 10, 1000).get());
+}
+
 TEST_F(SerializationUtilsTest, LinearSerializeTest) {
   TestSerialization(
       MetricSample::LinearHistogramSample("linearhist", 12, 30).get());
@@ -143,15 +148,18 @@ TEST_F(SerializationUtilsTest, WriteReadTest) {
       MetricSample::SparseHistogramSample("mysparse", 30);
   std::unique_ptr<MetricSample> action =
       MetricSample::UserActionSample("myaction");
+  std::unique_ptr<MetricSample> repeatedhist =
+      MetricSample::HistogramSample("myrepeatedhist", 1, 2, 3, 4, 10);
 
   SerializationUtils::WriteMetricToFile(*hist.get(), filename);
   SerializationUtils::WriteMetricToFile(*crash.get(), filename);
   SerializationUtils::WriteMetricToFile(*lhist.get(), filename);
   SerializationUtils::WriteMetricToFile(*shist.get(), filename);
   SerializationUtils::WriteMetricToFile(*action.get(), filename);
+  SerializationUtils::WriteMetricToFile(*repeatedhist.get(), filename);
   std::vector<std::unique_ptr<MetricSample>> samples;
   SerializationUtils::ReadAndTruncateMetricsFromFile(filename, &samples);
-  ASSERT_EQ(5u, samples.size());
+  ASSERT_EQ(6, samples.size());
   for (const auto& sample : samples) {
     ASSERT_NE(nullptr, sample);
   }
@@ -160,6 +168,7 @@ TEST_F(SerializationUtilsTest, WriteReadTest) {
   EXPECT_TRUE(lhist->IsEqual(*samples[2]));
   EXPECT_TRUE(shist->IsEqual(*samples[3]));
   EXPECT_TRUE(action->IsEqual(*samples[4]));
+  EXPECT_TRUE(repeatedhist->IsEqual(*samples[5]));
 
   int64_t size = 0;
   ASSERT_TRUE(base::GetFileSize(filepath, &size));

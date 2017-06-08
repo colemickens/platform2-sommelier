@@ -24,7 +24,7 @@ class MetricSample {
     HISTOGRAM,
     LINEAR_HISTOGRAM,
     SPARSE_HISTOGRAM,
-    USER_ACTION
+    USER_ACTION,
   };
 
   ~MetricSample();
@@ -39,7 +39,7 @@ class MetricSample {
   SampleType type() const { return type_; }
   const std::string& name() const { return name_; }
 
-  // Getters for sample, min, max, bucket_count.
+  // Getters for sample, min, max, bucket_count, num_samples.
   // Check the metric type to make sure the request make sense. (ex: a crash
   // sample does not have a bucket_count so we crash if we call bucket_count()
   // on it.)
@@ -47,6 +47,7 @@ class MetricSample {
   int min() const;
   int max() const;
   int bucket_count() const;
+  int num_samples() const;
 
   // Returns a serialized version of the sample.
   //
@@ -63,12 +64,16 @@ class MetricSample {
       const std::string& crash_name);
 
   // Builds a histogram sample.
+  // Chrome doesn't support repeated samples yet, non-one counts
+  // can only be used (outside of unit tests) when
+  // conditional compile flag USE_METRICS_UPLOADER is 1.
   static std::unique_ptr<MetricSample> HistogramSample(
       const std::string& histogram_name,
       int sample,
       int min,
       int max,
-      int bucket_count);
+      int bucket_count,
+      int num_samples = 1);
   // Deserializes a histogram sample.
   static std::unique_ptr<MetricSample> ParseHistogram(
       const std::string& serialized);
@@ -101,7 +106,8 @@ class MetricSample {
                const int sample,
                const int min,
                const int max,
-               const int bucket_count);
+               const int bucket_count,
+               const int num_samples = 1);
 
   const SampleType type_;
   const std::string name_;
@@ -109,6 +115,7 @@ class MetricSample {
   const int min_;
   const int max_;
   const int bucket_count_;
+  const int num_samples_;
 
   DISALLOW_COPY_AND_ASSIGN(MetricSample);
 };

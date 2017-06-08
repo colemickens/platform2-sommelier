@@ -252,6 +252,20 @@ bool MetricsLibrary::SendToUMA(
       kUMAEventsPath);
 }
 
+#if USE_METRICS_UPLOADER
+bool MetricsLibrary::SendRepeatedToUMA(const std::string& name,
+                                    int sample,
+                                    int min,
+                                    int max,
+                                    int nbuckets,
+                                    int num_samples) {
+  return metrics::SerializationUtils::WriteMetricToFile(
+      *metrics::MetricSample::HistogramSample(
+           name, sample, min, max, nbuckets, num_samples).get(),
+      kUMAEventsPath);
+}
+#endif
+
 bool MetricsLibrary::SendEnumToUMA(const std::string& name,
                                    int sample,
                                    int max) {

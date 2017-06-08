@@ -26,6 +26,14 @@ class MetricsLibraryInterface {
   virtual bool SendBoolToUMA(const std::string& name, bool sample) = 0;
   virtual bool SendSparseToUMA(const std::string& name, int sample) = 0;
   virtual bool SendUserActionToUMA(const std::string& action) = 0;
+#if USE_METRICS_UPLOADER
+  virtual bool SendRepeatedToUMA(const std::string& name,
+                                 int sample,
+                                 int min,
+                                 int max,
+                                 int nbuckets,
+                                 int num_samples) = 0;
+#endif
   virtual ~MetricsLibraryInterface() {}
 };
 
@@ -129,6 +137,17 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // must first be registered in metrics_library.cc.  See that file for
   // more details.
   bool SendCrosEventToUMA(const std::string& event);
+
+#if USE_METRICS_UPLOADER
+  // Sends |num_samples| samples with the same value to chrome.
+  // Otherwise equivalent to SendToUMA().
+  bool SendRepeatedToUMA(const std::string& name,
+                         int sample,
+                         int min,
+                         int max,
+                         int nbuckets,
+                         int num_samples) override;
+#endif
 
  private:
   friend class CMetricsLibraryTest;

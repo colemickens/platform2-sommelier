@@ -28,6 +28,7 @@
         'timer.cc',
       ],
       'include_dirs': ['.'],
+      'defines': [ 'USE_METRICS_UPLOADER=<(USE_metrics_uploader)' ],
     },
   ],
 }

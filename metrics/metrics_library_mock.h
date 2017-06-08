@@ -27,7 +27,15 @@ class MetricsLibraryMock : public MetricsLibraryInterface {
   MOCK_METHOD2(SendBoolToUMA, bool(const std::string& name, bool sample));
   MOCK_METHOD2(SendSparseToUMA, bool(const std::string& name, int sample));
   MOCK_METHOD1(SendUserActionToUMA, bool(const std::string& action));
-
+#if USE_METRICS_UPLOADER
+  MOCK_METHOD6(SendRepeatedToUMA,
+               bool(const std::string& name,
+                    int sample,
+                    int min,
+                    int max,
+                    int nbuckets,
+                    int num_samples));
+#endif
   bool AreMetricsEnabled() override { return metrics_enabled_; };
 };
 

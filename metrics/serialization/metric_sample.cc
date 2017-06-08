@@ -19,13 +19,15 @@ MetricSample::MetricSample(MetricSample::SampleType sample_type,
                            int sample,
                            int min,
                            int max,
-                           int bucket_count)
+                           int bucket_count,
+                           int num_samples)
     : type_(sample_type),
       name_(metric_name),
       sample_(sample),
       min_(min),
       max_(max),
-      bucket_count_(bucket_count) {}
+      bucket_count_(bucket_count),
+      num_samples_(num_samples) {}
 
 MetricSample::~MetricSample() {}
 
@@ -48,14 +50,26 @@ std::string MetricSample::ToString() const {
                               max_,
                               '\0');
   } else if (type_ == HISTOGRAM) {
-    return base::StringPrintf("histogram%c%s %d %d %d %d%c",
-                              '\0',
-                              name().c_str(),
-                              sample_,
-                              min_,
-                              max_,
-                              bucket_count_,
-                              '\0');
+    if (num_samples_ > 1) {
+      return base::StringPrintf("histogram%c%s %d %d %d %d %d%c",
+                                '\0',
+                                name().c_str(),
+                                sample_,
+                                min_,
+                                max_,
+                                bucket_count_,
+                                num_samples_,
+                                '\0');
+    } else {
+      return base::StringPrintf("histogram%c%s %d %d %d %d%c",
+                                '\0',
+                                name().c_str(),
+                                sample_,
+                                min_,
+                                max_,
+                                bucket_count_,
+                                '\0');
+    }
   } else {
     // The type can only be USER_ACTION.
     CHECK_EQ(type_, USER_ACTION);
@@ -86,6 +100,11 @@ int MetricSample::bucket_count() const {
   return bucket_count_;
 }
 
+int MetricSample::num_samples() const {
+  CHECK_EQ(type_, HISTOGRAM);
+  return num_samples_;
+}
+
 // static
 std::unique_ptr<MetricSample> MetricSample::CrashSample(
     const std::string& crash_name) {
@@ -99,9 +118,15 @@ std::unique_ptr<MetricSample> MetricSample::HistogramSample(
     int sample,
     int min,
     int max,
-    int bucket_count) {
-  return std::unique_ptr<MetricSample>(new MetricSample(
-      HISTOGRAM, histogram_name, sample, min, max, bucket_count));
+    int bucket_count,
+    int num_samples) {
+  return std::unique_ptr<MetricSample>(new MetricSample(HISTOGRAM,
+                                                        histogram_name,
+                                                        sample,
+                                                        min,
+                                                        max,
+                                                        bucket_count,
+                                                        num_samples));
 }
 
 // static
@@ -110,7 +135,7 @@ std::unique_ptr<MetricSample> MetricSample::ParseHistogram(
   std::vector<std::string> parts = base::SplitString(
       serialized_histogram, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
 
-  if (parts.size() != 5)
+  if (parts.size() != 5 && parts.size() != 6)
     return std::unique_ptr<MetricSample>();
   int sample, min, max, bucket_count;
   if (parts[0].empty() || !base::StringToInt(parts[1], &sample) ||
@@ -120,7 +145,15 @@ std::unique_ptr<MetricSample> MetricSample::ParseHistogram(
     return std::unique_ptr<MetricSample>();
   }
 
-  return HistogramSample(parts[0], sample, min, max, bucket_count);
+  int num_samples = 1;
+  if (parts.size() == 6) {
+    if (!base::StringToInt(parts[5], &num_samples)) {
+      return std::unique_ptr<MetricSample>();
+    }
+  }
+
+  return HistogramSample(
+      parts[0], sample, min, max, bucket_count, num_samples);
 }
 
 // static
@@ -177,7 +210,8 @@ std::unique_ptr<MetricSample> MetricSample::UserActionSample(
 bool MetricSample::IsEqual(const MetricSample& metric) {
   return type_ == metric.type_ && name_ == metric.name_ &&
          sample_ == metric.sample_ && min_ == metric.min_ &&
-         max_ == metric.max_ && bucket_count_ == metric.bucket_count_;
+         max_ == metric.max_ && bucket_count_ == metric.bucket_count_ &&
+         num_samples_ == metric.num_samples_;
 }
 
 }  // namespace metrics

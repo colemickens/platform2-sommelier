@@ -159,7 +159,7 @@ void UploadService::AddSample(const metrics::MetricSample& sample) {
           sample.bucket_count(),
           base::Histogram::kUmaTargetedHistogramFlag);
       CHECK(counter) << "FactoryGet failed for " << sample.name();
-      counter->Add(sample.sample());
+      counter->AddCount(sample.sample(), sample.num_samples());
       break;
     case metrics::MetricSample::SPARSE_HISTOGRAM:
       counter = base::SparseHistogram::FactoryGet(
