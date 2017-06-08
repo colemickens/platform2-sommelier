@@ -17,4 +17,7 @@ if crossystem "mainfw_type?nonchrome"; then
 else
   # Dump full information in the VPD, including the serial number.
   dump_vpd_log --full --stdout
+  # Dynamic information.
+  echo "customization_id=\"$(mosys platform customization)\""
+  echo "rlz_brand_code=\"$(mosys platform brand)\""
 fi >> $MACHINE_INFO
