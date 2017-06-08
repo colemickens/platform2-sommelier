@@ -35,7 +35,6 @@
       '-Wno-missing-field-initializers',  # for LAZY_INSTANCE_INITIALIZER
     ],
     'defines': [
-      'ENABLE_CHROMEOS_DBUS',
       'RUNDIR="/run/shill"',
       'SHIMDIR="<(libdir)/shill/shims"',
     ],

@@ -50,8 +50,7 @@ TEST_F(ScopeLoggerTest, DefaultConstruction) {
 }
 
 TEST_F(ScopeLoggerTest, GetAllScopeNames) {
-  EXPECT_EQ("binder+"
-            "cellular+"
+  EXPECT_EQ("cellular+"
             "connection+"
             "crypto+"
             "daemon+"

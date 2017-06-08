@@ -33,7 +33,6 @@ const int kDefaultVerboseLevel = 0;
 
 // Scope names corresponding to the scope defined by ScopeLogger::Scope.
 const char* const kScopeNames[] = {
-  "binder",
   "cellular",
   "connection",
   "crypto",

@@ -23,14 +23,6 @@
 
 #include <brillo/variant_dictionary.h>
 
-#if defined(ENABLE_BINDER)
-namespace android {
-namespace os {
-class PersistableBundle;
-}  // namespace os
-}  // namespace android
-#endif  // ENABLE_BINDER
-
 namespace shill {
 
 class KeyValueStore {
@@ -172,15 +164,6 @@ class KeyValueStore {
                                          brillo::VariantDictionary* out_dict);
   static void ConvertFromVariantDictionary(
       const brillo::VariantDictionary& in_dict, KeyValueStore* out_store);
-
-#if defined(ENABLE_BINDER)
-  static void ConvertToPersistableBundle(
-      const KeyValueStore& in_store,
-      android::os::PersistableBundle* out_bundle);
-  static void ConvertFromPersistableBundle(
-      const android::os::PersistableBundle& in_bundle,
-      KeyValueStore* out_store);
-#endif  // ENABLE_BINDER
 
   static void ConvertPathsToRpcIdentifiers(
       const std::vector<dbus::ObjectPath>& paths,

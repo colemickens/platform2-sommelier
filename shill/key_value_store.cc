@@ -16,18 +16,10 @@
 
 #include "shill/key_value_store.h"
 
-#if defined(ENABLE_BINDER)
-#include <binder/PersistableBundle.h>
-#include <utils/String16.h>
-#endif  // ENABLE_BINDER
 #include <base/stl_util.h>
 
 #include "shill/logging.h"
 
-#if defined(ENABLE_BINDER)
-using android::os::PersistableBundle;
-using android::String16;
-#endif  // ENABLE_BINDER
 using std::map;
 using std::string;
 using std::vector;
@@ -547,146 +539,6 @@ void KeyValueStore::ConvertFromVariantDictionary(
     }
   }
 }
-
-#if defined(ENABLE_BINDER)
-// static.
-void KeyValueStore::ConvertToPersistableBundle(const KeyValueStore& in_store,
-                                               PersistableBundle* out_bundle) {
-  for (const auto& key_value_pair : in_store.properties()) {
-    if (key_value_pair.second.IsTypeCompatible<bool>()) {
-      out_bundle->putBoolean(String16(key_value_pair.first.c_str()),
-                             key_value_pair.second.Get<bool>());
-    } else if (key_value_pair.second.IsTypeCompatible<int32_t>()) {
-      out_bundle->putInt(String16(key_value_pair.first.c_str()),
-                         key_value_pair.second.Get<int32_t>());
-    } else if (key_value_pair.second.IsTypeCompatible<int64_t>()) {
-      out_bundle->putLong(String16(key_value_pair.first.c_str()),
-                          key_value_pair.second.Get<int64_t>());
-    } else if (key_value_pair.second.IsTypeCompatible<double>()) {
-      out_bundle->putDouble(String16(key_value_pair.first.c_str()),
-                            key_value_pair.second.Get<double>());
-    } else if (key_value_pair.second.IsTypeCompatible<string>()) {
-      out_bundle->putString(
-          String16(key_value_pair.first.c_str()),
-          String16(key_value_pair.second.Get<string>().c_str()));
-    } else if (key_value_pair.second.IsTypeCompatible<vector<bool>>()) {
-      out_bundle->putBooleanVector(String16(key_value_pair.first.c_str()),
-                                   key_value_pair.second.Get<vector<bool>>());
-    } else if (key_value_pair.second.IsTypeCompatible<vector<int32_t>>()) {
-      out_bundle->putIntVector(String16(key_value_pair.first.c_str()),
-                               key_value_pair.second.Get<vector<int32_t>>());
-    } else if (key_value_pair.second.IsTypeCompatible<vector<int64_t>>()) {
-      out_bundle->putLongVector(String16(key_value_pair.first.c_str()),
-                                key_value_pair.second.Get<vector<int64_t>>());
-    } else if (key_value_pair.second.IsTypeCompatible<vector<double>>()) {
-      out_bundle->putDoubleVector(String16(key_value_pair.first.c_str()),
-                                  key_value_pair.second.Get<vector<double>>());
-    } else if (key_value_pair.second.IsTypeCompatible<vector<string>>()) {
-      vector<String16> string16_vector;
-      for (const string& std_string :
-           key_value_pair.second.Get<vector<string>>()) {
-        string16_vector.emplace_back(String16(std_string.c_str()));
-      }
-      out_bundle->putStringVector(String16(key_value_pair.first.c_str()),
-                                  string16_vector);
-    } else if (key_value_pair.second.IsTypeCompatible<KeyValueStore>()) {
-      PersistableBundle bundle;
-      ConvertToPersistableBundle(key_value_pair.second.Get<KeyValueStore>(),
-                                 &bundle);
-      out_bundle->putPersistableBundle(String16(key_value_pair.first.c_str()),
-                                       bundle);
-    } else {
-      LOG(ERROR) << __func__ << ": KeyValueStore entry with key "
-                 << key_value_pair.first
-                 << " contains a value type that is not supported by "
-                    "PersistableBundle";
-    }
-  }
-}
-
-// static.
-void KeyValueStore::ConvertFromPersistableBundle(
-    const PersistableBundle& in_bundle, KeyValueStore* out_store) {
-  if (in_bundle.empty()) {
-    return;
-  }
-
-  bool bool_value;
-  for (const auto& key : in_bundle.getBooleanKeys()) {
-    in_bundle.getBoolean(key, &bool_value);
-    out_store->SetBool(String16::std_string(key), bool_value);
-  }
-
-  int32_t int_value;
-  for (const auto& key : in_bundle.getIntKeys()) {
-    in_bundle.getInt(key, &int_value);
-    out_store->SetInt(String16::std_string(key), int_value);
-  }
-
-  int64_t long_value;
-  for (const auto& key : in_bundle.getLongKeys()) {
-    in_bundle.getLong(key, &long_value);
-    out_store->SetInt64(String16::std_string(key), long_value);
-  }
-
-  double double_value;
-  for (const auto& key : in_bundle.getDoubleKeys()) {
-    in_bundle.getDouble(key, &double_value);
-    out_store->SetDouble(String16::std_string(key), double_value);
-  }
-
-  String16 string_value;
-  for (const auto& key : in_bundle.getStringKeys()) {
-    in_bundle.getString(key, &string_value);
-    out_store->SetString(String16::std_string(key),
-                         String16::std_string(string_value));
-  }
-
-  vector<bool> bool_vector_value;
-  for (const auto& key : in_bundle.getBooleanVectorKeys()) {
-    in_bundle.getBooleanVector(key, &bool_vector_value);
-    out_store->SetBools(String16::std_string(key), bool_vector_value);
-  }
-
-  vector<int32_t> int_vector_value;
-  for (const auto& key : in_bundle.getIntVectorKeys()) {
-    in_bundle.getIntVector(key, &int_vector_value);
-    out_store->SetInts(String16::std_string(key), int_vector_value);
-  }
-
-  vector<int64_t> long_vector_value;
-  for (const auto& key : in_bundle.getLongVectorKeys()) {
-    in_bundle.getLongVector(key, &long_vector_value);
-    out_store->SetInt64s(String16::std_string(key), long_vector_value);
-  }
-
-  vector<double> double_vector_value;
-  for (const auto& key : in_bundle.getDoubleVectorKeys()) {
-    in_bundle.getDoubleVector(key, &double_vector_value);
-    out_store->SetDoubles(String16::std_string(key), double_vector_value);
-  }
-
-  vector<String16> string16_vector_value;
-  for (const auto& key : in_bundle.getStringVectorKeys()) {
-    in_bundle.getStringVector(key, &string16_vector_value);
-    vector<string> string_vector_value;
-    for (const String16& string16 : string16_vector_value) {
-      string_vector_value.emplace_back(String16::std_string(string16));
-    }
-    out_store->SetStrings(String16::std_string(key), string_vector_value);
-  }
-
-  PersistableBundle persistable_bundle_value;
-  for (const auto& key : in_bundle.getPersistableBundleKeys()) {
-    in_bundle.getPersistableBundle(key, &persistable_bundle_value);
-    KeyValueStore key_value_store_value;
-    ConvertFromPersistableBundle(persistable_bundle_value,
-                                 &key_value_store_value);
-    out_store->SetKeyValueStore(String16::std_string(key),
-                                key_value_store_value);
-  }
-}
-#endif  // ENABLE_BINDER
 
 // static.
 void KeyValueStore::ConvertPathsToRpcIdentifiers(

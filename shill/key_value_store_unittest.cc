@@ -16,16 +16,8 @@
 
 #include "shill/key_value_store.h"
 
-#if defined(ENABLE_BINDER)
-#include <binder/PersistableBundle.h>
-#include <utils/String16.h>
-#endif  // ENABLE_BINDER
 #include <gtest/gtest.h>
 
-#if defined(ENABLE_BINDER)
-using android::os::PersistableBundle;
-using android::String16;
-#endif  // ENABLE_BINDER
 using std::map;
 using std::string;
 using std::vector;
@@ -819,116 +811,6 @@ TEST_F(KeyValueStoreTest, ConvertFromVariantDictionary) {
   nested_store.SetInt(kNestedInt32Key, kNestedInt32Value);
   EXPECT_EQ(nested_store, store.GetKeyValueStore(kKeyValueStoreKey));
 }
-
-#if defined(ENABLE_BINDER)
-TEST_F(KeyValueStoreTest, ConvertToPersistableBundle) {
-  KeyValueStore store;
-  KeyValueStore nested_store;
-  nested_store.SetInt(kNestedInt32Key, kNestedInt32Value);
-  SetOneOfEachType(&store, nested_store);
-
-  PersistableBundle bundle;
-  KeyValueStore::ConvertToPersistableBundle(store, &bundle);
-  // Only a subset of the values added to |store| in SetOneOfEachType() are
-  // supported.
-  EXPECT_EQ(11, bundle.size());
-  bool bool_value;
-  EXPECT_TRUE(bundle.getBoolean(String16(kBoolKey), &bool_value));
-  EXPECT_EQ(kBoolValue, bool_value);
-  int int_value;
-  EXPECT_TRUE(bundle.getInt(String16(kIntKey), &int_value));
-  EXPECT_EQ(kIntValue, int_value);
-  int64_t int64_value;
-  EXPECT_TRUE(bundle.getLong(String16(kInt64Key), &int64_value));
-  EXPECT_EQ(kInt64Value, int64_value);
-  double double_value;
-  EXPECT_TRUE(bundle.getDouble(String16(kDoubleKey), &double_value));
-  EXPECT_EQ(kDoubleValue, double_value);
-  String16 string16_value;
-  EXPECT_TRUE(bundle.getString(String16(kStringKey), &string16_value));
-  EXPECT_EQ(kStringValue, String16::std_string(string16_value));
-  vector<bool> bools_value;
-  EXPECT_TRUE(bundle.getBooleanVector(String16(kBoolsKey), &bools_value));
-  EXPECT_EQ(kBoolsValue, bools_value);
-  vector<int> ints_value;
-  EXPECT_TRUE(bundle.getIntVector(String16(kIntsKey), &ints_value));
-  EXPECT_EQ(kIntsValue, ints_value);
-  vector<int64_t> int64s_value;
-  EXPECT_TRUE(bundle.getLongVector(String16(kInt64sKey), &int64s_value));
-  EXPECT_EQ(kInt64sValue, int64s_value);
-  vector<double> doubles_value;
-  EXPECT_TRUE(bundle.getDoubleVector(String16(kDoublesKey), &doubles_value));
-  EXPECT_EQ(kDoublesValue, doubles_value);
-  vector<String16> string16_vector_value;
-  vector<string> strings_value;
-  EXPECT_TRUE(
-      bundle.getStringVector(String16(kStringsKey), &string16_vector_value));
-  for (const auto& str : string16_vector_value) {
-    strings_value.push_back(String16::std_string(str));
-  }
-  EXPECT_EQ(kStringsValue, strings_value);
-  PersistableBundle nested_bundle;
-  EXPECT_TRUE(
-      bundle.getPersistableBundle(String16(kKeyValueStoreKey), &nested_bundle));
-  EXPECT_EQ(1, nested_bundle.size());
-  int nested_int_value;
-  EXPECT_TRUE(
-      nested_bundle.getInt(String16(kNestedInt32Key), &nested_int_value));
-  EXPECT_EQ(kNestedInt32Value, nested_int_value);
-}
-
-TEST_F(KeyValueStoreTest, ConvertFromPersistableBundle) {
-  PersistableBundle bundle;
-  bundle.putBoolean(String16(kBoolKey), kBoolValue);
-  bundle.putInt(String16(kIntKey), kIntValue);
-  bundle.putLong(String16(kInt64Key), kInt64Value);
-  bundle.putDouble(String16(kDoubleKey), kDoubleValue);
-  bundle.putString(String16(kStringKey), String16(kStringValue.c_str()));
-  bundle.putBooleanVector(String16(kBoolsKey), kBoolsValue);
-  bundle.putIntVector(String16(kIntsKey), kIntsValue);
-  bundle.putLongVector(String16(kInt64sKey), kInt64sValue);
-  bundle.putDoubleVector(String16(kDoublesKey), kDoublesValue);
-  vector<String16> string16_vector_value;
-  for (const auto& str : kStringsValue) {
-    string16_vector_value.push_back(String16(str.c_str()));
-  }
-  bundle.putStringVector(String16(kStringsKey), string16_vector_value);
-  PersistableBundle nested_bundle;
-  nested_bundle.putInt(String16(kNestedInt32Key), kNestedInt32Value);
-  bundle.putPersistableBundle(String16(kKeyValueStoreKey), nested_bundle);
-
-  KeyValueStore store;
-  KeyValueStore::ConvertFromPersistableBundle(bundle, &store);
-  EXPECT_TRUE(store.ContainsBool(kBoolKey));
-  EXPECT_EQ(kBoolValue, store.GetBool(kBoolKey));
-  EXPECT_TRUE(store.ContainsInt(kIntKey));
-  EXPECT_EQ(kIntValue, store.GetInt(kIntKey));
-  EXPECT_TRUE(store.ContainsInt64(kInt64Key));
-  EXPECT_EQ(kInt64Value, store.GetInt64(kInt64Key));
-  EXPECT_TRUE(store.ContainsDouble(kDoubleKey));
-  EXPECT_DOUBLE_EQ(kDoubleValue, store.GetDouble(kDoubleKey));
-  EXPECT_TRUE(store.ContainsString(kStringKey));
-  EXPECT_EQ(kStringValue, store.GetString(kStringKey));
-  EXPECT_TRUE(store.ContainsBools(kBoolsKey));
-  EXPECT_EQ(kBoolsValue, store.GetBools(kBoolsKey));
-  EXPECT_TRUE(store.ContainsInts(kIntsKey));
-  EXPECT_EQ(kIntsValue, store.GetInts(kIntsKey));
-  EXPECT_TRUE(store.ContainsInt64s(kInt64sKey));
-  EXPECT_EQ(kInt64sValue, store.GetInt64s(kInt64sKey));
-  EXPECT_TRUE(store.ContainsDoubles(kDoublesKey));
-  vector<double> doubles_value = store.GetDoubles(kDoublesKey);
-  EXPECT_EQ(kDoublesValueSize, doubles_value.size());
-  for (size_t i = 0; i < kDoublesValueSize; ++i) {
-    EXPECT_DOUBLE_EQ(kDoublesValue[i], doubles_value[i]);
-  }
-  EXPECT_TRUE(store.ContainsStrings(kStringsKey));
-  EXPECT_EQ(kStringsValue, store.GetStrings(kStringsKey));
-  EXPECT_TRUE(store.ContainsKeyValueStore(kKeyValueStoreKey));
-  KeyValueStore nested_store;
-  nested_store.SetInt(kNestedInt32Key, kNestedInt32Value);
-  EXPECT_EQ(nested_store, store.GetKeyValueStore(kKeyValueStoreKey));
-}
-#endif  // ENABLE_BINDER
 
 TEST_F(KeyValueStoreTest, ConvertPathsToRpcIdentifiers) {
   const string kRpcIdentifier1("/test1");
