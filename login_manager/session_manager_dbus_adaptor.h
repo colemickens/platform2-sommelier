@@ -14,13 +14,17 @@
 #include <base/macros.h>
 #include <dbus/exported_object.h>  // For ResponseSender.
 
-#include "login_manager/session_manager_impl.h"
-
 namespace dbus {
 class MethodCall;
 class ObjectProxy;
 class Response;
 }  // namespace dbus
+
+namespace org {
+namespace chromium {
+class SessionManagerInterfaceInterface;
+}  // namespace chromium
+}  // namespace org
 
 namespace login_manager {
 
@@ -30,7 +34,9 @@ namespace login_manager {
 // encryption.
 class SessionManagerDBusAdaptor {
  public:
-  explicit SessionManagerDBusAdaptor(SessionManagerImpl* impl);
+  // Does not take |impl|'s ownership.
+  explicit SessionManagerDBusAdaptor(
+      org::chromium::SessionManagerInterfaceInterface* impl);
   virtual ~SessionManagerDBusAdaptor();
 
   void ExportDBusMethods(dbus::ExportedObject* object);
@@ -113,14 +119,8 @@ class SessionManagerDBusAdaptor {
   void ExportAsyncDBusMethod(dbus::ExportedObject* object,
                              const std::string& method_name,
                              AsyncDBusMethodCallMemberFunction member);
-  void DoStorePolicy(dbus::MethodCall* call,
-                     dbus::ExportedObject::ResponseSender sender,
-                     SignatureCheck signature_check);
-  void DoStorePolicyForUser(dbus::MethodCall* call,
-                            dbus::ExportedObject::ResponseSender sender,
-                            SignatureCheck signature_check);
 
-  SessionManagerImpl* const impl_;
+  org::chromium::SessionManagerInterfaceInterface* const impl_;  // Not owned.
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerDBusAdaptor);
 };

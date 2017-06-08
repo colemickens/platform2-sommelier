@@ -20,6 +20,7 @@
 #include <dbus/file_descriptor.h>
 
 #include "login_manager/container_manager_interface.h"
+#include "login_manager/dbus_adaptors/org.chromium.SessionManagerInterface.h"
 #include "login_manager/device_policy_service.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/policy_service.h"
@@ -52,9 +53,11 @@ class VpdProcess;
 //
 // All signatures used in the methods of the ownership API are
 // SHA1 with RSA encryption.
-class SessionManagerImpl : public SessionManagerInterface,
-                           public KeyGenerator::Delegate,
-                           public PolicyService::Delegate {
+class SessionManagerImpl
+    : public SessionManagerInterface,
+      public KeyGenerator::Delegate,
+      public PolicyService::Delegate,
+      public org::chromium::SessionManagerInterfaceInterface {
  public:
   // Magic user name strings.
   static const char kDemoUser[];
@@ -86,23 +89,6 @@ class SessionManagerImpl : public SessionManagerInterface,
   static const char kArcBootedSignal[];
   static const char kArcRemoveOldDataSignal[];
 
-  class Error {
-   public:
-    Error();
-    Error(const std::string& name, const std::string& message);
-    virtual ~Error();
-
-    void Set(const std::string& name, const std::string& message);
-    bool is_set() const { return set_; }
-    const std::string& name() const { return name_; }
-    const std::string& message() const { return message_; }
-
-   private:
-    std::string name_;
-    std::string message_;
-    bool set_;
-  };
-
   SessionManagerImpl(std::unique_ptr<InitDaemonController> init_controller,
                      DBusSignalEmitterInterface* dbus_emitter,
                      base::Closure lock_screen_closure,
@@ -121,7 +107,7 @@ class SessionManagerImpl : public SessionManagerInterface,
                      ContainerManagerInterface* android_container,
                      InstallAttributesReader* install_attributes_reader,
                      dbus::ObjectProxy* system_clock_proxy);
-  virtual ~SessionManagerImpl();
+  ~SessionManagerImpl() override;
 
   // Checks if string looks like a valid account ID key (as returned by
   // AccountId::GetAccountIdKey()).
@@ -176,84 +162,86 @@ class SessionManagerImpl : public SessionManagerInterface,
   //////////////////////////////////////////////////////////////////////////////
   // Methods exposed via RPC are defined below.
 
-  void EmitLoginPromptVisible();
+  // org::chromium::SessionManagerInterfaceInterface implementation.
+  void EmitLoginPromptVisible() override;
   bool EnableChromeTesting(brillo::ErrorPtr* error,
                            bool in_force_relaunch,
                            const std::vector<std::string>& in_extra_arguments,
-                           std::string* out_filepath);
+                           std::string* out_filepath) override;
   bool StartSession(brillo::ErrorPtr* error,
                     const std::string& in_account_id,
-                    const std::string& in_unique_identifier);
-  void StopSession(const std::string& in_unique_identifier);
+                    const std::string& in_unique_identifier) override;
+  void StopSession(const std::string& in_unique_identifier) override;
 
   void StorePolicy(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-      const std::vector<uint8_t>& in_policy_blob);
+      const std::vector<uint8_t>& in_policy_blob) override;
   void StoreUnsignedPolicy(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-      const std::vector<uint8_t>& in_policy_blob);
-  bool RetrievePolicy(
-      brillo::ErrorPtr* error,
-      std::vector<uint8_t>* out_policy_blob);
+      const std::vector<uint8_t>& in_policy_blob) override;
+  bool RetrievePolicy(brillo::ErrorPtr* error,
+                      std::vector<uint8_t>* out_policy_blob) override;
   void StorePolicyForUser(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
       const std::string& in_account_id,
-      const std::vector<uint8_t>& in_policy_blob);
+      const std::vector<uint8_t>& in_policy_blob) override;
   void StoreUnsignedPolicyForUser(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
       const std::string& in_account_id,
-      const std::vector<uint8_t>& in_policy_blob);
-  bool RetrievePolicyForUser(
-      brillo::ErrorPtr* error,
-      const std::string& in_account_id,
-      std::vector<uint8_t>* out_policy_blob);
+      const std::vector<uint8_t>& in_policy_blob) override;
+  bool RetrievePolicyForUser(brillo::ErrorPtr* error,
+                             const std::string& in_account_id,
+                             std::vector<uint8_t>* out_policy_blob) override;
   void StoreDeviceLocalAccountPolicy(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
       const std::string& in_account_id,
-      const std::vector<uint8_t>& in_policy_blob);
+      const std::vector<uint8_t>& in_policy_blob) override;
   bool RetrieveDeviceLocalAccountPolicy(
       brillo::ErrorPtr* error,
       const std::string& in_account_id,
-      std::vector<uint8_t>* out_policy_blob);
+      std::vector<uint8_t>* out_policy_blob) override;
 
-  std::string RetrieveSessionState();
-  std::map<std::string, std::string> RetrieveActiveSessions();
+  std::string RetrieveSessionState() override;
+  std::map<std::string, std::string> RetrieveActiveSessions() override;
 
-  void HandleSupervisedUserCreationStarting();
-  void HandleSupervisedUserCreationFinished();
+  void HandleSupervisedUserCreationStarting() override;
+  void HandleSupervisedUserCreationFinished() override;
 
-  bool LockScreen(brillo::ErrorPtr* error);
-  void HandleLockScreenShown();
-  void HandleLockScreenDismissed();
+  bool LockScreen(brillo::ErrorPtr* error) override;
+  void HandleLockScreenShown() override;
+  void HandleLockScreenDismissed() override;
 
   bool RestartJob(brillo::ErrorPtr* error,
                   const dbus::FileDescriptor& in_cred_fd,
-                  const std::vector<std::string>& in_argv);
+                  const std::vector<std::string>& in_argv) override;
 
-  bool StartDeviceWipe(brillo::ErrorPtr* error);
+  bool StartDeviceWipe(brillo::ErrorPtr* error) override;
   void SetFlagsForUser(const std::string& in_account_id,
-                       const std::vector<std::string>& in_flags);
+                       const std::vector<std::string>& in_flags) override;
 
   void GetServerBackedStateKeys(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          std::vector<std::vector<uint8_t>>>> response);
+          std::vector<std::vector<uint8_t>>>> response) override;
 
-  bool InitMachineInfo(brillo::ErrorPtr* error, const std::string& in_data);
-  bool StartContainer(brillo::ErrorPtr* error, const std::string& in_name);
-  bool StopContainer(brillo::ErrorPtr* error, const std::string& in_name);
+  bool InitMachineInfo(brillo::ErrorPtr* error,
+                       const std::string& in_data) override;
+  bool StartContainer(brillo::ErrorPtr* error,
+                      const std::string& in_name) override;
+  bool StopContainer(brillo::ErrorPtr* error,
+                     const std::string& in_name) override;
 
   bool StartArcInstance(brillo::ErrorPtr* error,
                         const std::vector<uint8_t>& in_request,
-                        std::string* out_container_instance_id);
-  bool StopArcInstance(brillo::ErrorPtr* error);
+                        std::string* out_container_instance_id) override;
+  bool StopArcInstance(brillo::ErrorPtr* error) override;
   bool SetArcCpuRestriction(brillo::ErrorPtr* error,
-                            uint32_t in_restriction_state);
+                            uint32_t in_restriction_state) override;
   bool EmitArcBooted(brillo::ErrorPtr* error,
-                     const std::string& in_account_id);
+                     const std::string& in_account_id) override;
   bool GetArcStartTimeTicks(brillo::ErrorPtr* error,
-                            int64_t* out_start_time);
+                            int64_t* out_start_time) override;
   bool RemoveArcData(brillo::ErrorPtr* error,
-                     const std::string& in_account_id);
+                     const std::string& in_account_id) override;
 
   // PolicyService::Delegate implementation:
   void OnPolicyPersisted(bool success) override;

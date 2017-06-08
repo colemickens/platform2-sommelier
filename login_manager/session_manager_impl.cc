@@ -177,21 +177,6 @@ bool IsInsideVm(SystemUtils* system) {
 
 }  // namespace
 
-SessionManagerImpl::Error::Error() : set_(false) {}
-
-SessionManagerImpl::Error::Error(const std::string& name,
-                                 const std::string& message)
-    : name_(name), message_(message), set_(true) {}
-
-SessionManagerImpl::Error::~Error() {}
-
-void SessionManagerImpl::Error::Set(const std::string& name,
-                                    const std::string& message) {
-  name_ = name;
-  message_ = message;
-  set_ = true;
-}
-
 struct SessionManagerImpl::UserSession {
  public:
   UserSession(const std::string& username,

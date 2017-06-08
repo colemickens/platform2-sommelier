@@ -23,6 +23,7 @@
 #include <dbus/message.h>
 
 #include "login_manager/blob_util.h"
+#include "login_manager/dbus_adaptors/org.chromium.SessionManagerInterface.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/proto_bindings/arc.pb.h"
 
@@ -76,8 +77,8 @@ std::unique_ptr<dbus::Response> CreateBytesResponse(
 
 }  // namespace
 
-SessionManagerDBusAdaptor::SessionManagerDBusAdaptor(SessionManagerImpl* impl)
-    : impl_(impl) {
+SessionManagerDBusAdaptor::SessionManagerDBusAdaptor(
+    org::chromium::SessionManagerInterfaceInterface* impl) : impl_(impl) {
   CHECK(impl_);
 }
 

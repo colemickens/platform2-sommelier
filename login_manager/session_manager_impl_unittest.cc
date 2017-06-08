@@ -396,7 +396,6 @@ class SessionManagerImplTest : public ::testing::Test {
   bool arc_setup_completed_;
 
   SessionManagerImpl impl_;
-  SessionManagerImpl::Error error_;
   base::ScopedTempDir tmpdir_;
 
 #if USE_CHEETS
