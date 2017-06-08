@@ -22,6 +22,7 @@
 #include <gtest/gtest.h>
 
 #include "midis/client_tracker.h"
+#include "midis/clientlib.h"
 #include "midis/tests/test_helper.h"
 
 namespace midis {
@@ -47,37 +48,23 @@ class ClientTrackerTest : public ::testing::Test {
 };
 
 void ConnectToClient(base::FilePath socketDir) {
-  uint8_t buf[1024];
   // Try connecting to the client
-  struct sockaddr_un addr;
-  base::ScopedFD server_fd = base::ScopedFD(socket(AF_UNIX, SOCK_SEQPACKET, 0));
-
+  std::string socket_path = socketDir.Append("midis_socket").value();
+  base::ScopedFD server_fd =
+      base::ScopedFD(MidisConnectToServer(socket_path.c_str()));
   ASSERT_TRUE(server_fd.is_valid());
 
-  memset(&addr, 0, sizeof(addr));
-  addr.sun_family = AF_UNIX;
-  std::string socket_path = socketDir.Append("midis_socket").value();
-  snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", socket_path.c_str());
+  ASSERT_EQ(0, MidisListDevices(server_fd.get()));
+  uint32_t payload_size;
+  uint32_t type;
+  ASSERT_EQ(0, MidisProcessMsgHeader(server_fd.get(), &payload_size, &type));
+  EXPECT_EQ(LIST_DEVICES_RESPONSE, type);
 
-  int ret = connect(server_fd.get(), reinterpret_cast<sockaddr*>(&addr),
-                    sizeof(addr));
-  ASSERT_EQ(ret, 0);
-
-  struct MidisMessageHeader header;
-  header.type = REQUEST_LIST_DEVICES;
-  header.payload_size = 0;
-  int bytes =
-      write(server_fd.get(), &header, sizeof(struct MidisMessageHeader));
-  ASSERT_EQ(bytes, sizeof(struct MidisMessageHeader));
-
-  bytes = read(server_fd.get(), &header, sizeof(struct MidisMessageHeader));
-  ASSERT_EQ(bytes, sizeof(struct MidisMessageHeader));
-
-  EXPECT_EQ(header.type, LIST_DEVICES_RESPONSE);
-
-  bytes = read(server_fd.get(), buf, header.payload_size);
-  EXPECT_EQ(bytes, 1);
-  EXPECT_EQ(buf[0], 0);
+  std::vector<uint8_t> buffer(payload_size);
+  ASSERT_EQ(payload_size,
+            MidisProcessListDevices(server_fd.get(), buffer.data(),
+                                    buffer.size(), payload_size));
+  EXPECT_EQ(buffer[0], 0);
 }
 
 void ServerCheckClientsCallback(ClientTracker* cli_tracker,

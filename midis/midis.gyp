@@ -1,17 +1,23 @@
 {
-  'target_defaults': {
-    'variables': {
-      'deps': [
-        'libbrillo-<(libbase_ver)',
-        'libchrome-<(libbase_ver)',
-        'libudev',
-      ],
-    },
-  },
   'targets': [
     {
       'target_name': 'midis_common',
       'type': 'static_library',
+      'variables': {
+        'exported_deps': [
+          'libbrillo-<(libbase_ver)',
+          'libchrome-<(libbase_ver)',
+          'libudev',
+        ],
+        'deps': ['>@(exported_deps)'],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            '<@(exported_deps)',
+          ],
+        },
+      },
       'sources': [
         'client.cc',
         'client_tracker.cc',
@@ -37,6 +43,14 @@
         'main.cc',
       ],
     },
+    {
+      'target_name': 'libmidis',
+      'type': 'static_library',
+      'standalone_static_library': 1,
+      'sources': [
+        'libmidis/clientlib.cc',
+      ],
+    },
   ],
   'conditions': [
     ['USE_test == 1', {
@@ -47,6 +61,7 @@
           'dependencies' : [
             '../common-mk/testrunner.gyp:testrunner',
             'midis_common',
+            'libmidis',
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [

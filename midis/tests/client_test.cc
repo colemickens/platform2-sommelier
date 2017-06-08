@@ -22,6 +22,7 @@
 #include <gtest/gtest.h>
 
 #include "midis/client_tracker.h"
+#include "midis/clientlib.h"
 #include "midis/tests/test_helper.h"
 
 namespace {
@@ -45,96 +46,50 @@ namespace midis {
 void ConnectToClient(base::FilePath socketDir, base::FilePath devNodePath) {
   uint8_t buf[kMaxBufSize];
   // Try connecting to the client
-  struct sockaddr_un addr;
-  base::ScopedFD server_fd = base::ScopedFD(socket(AF_UNIX, SOCK_SEQPACKET, 0));
-
+  std::string socket_path = socketDir.Append("midis_socket").value();
+  base::ScopedFD server_fd =
+      base::ScopedFD(MidisConnectToServer(socket_path.c_str()));
   ASSERT_TRUE(server_fd.is_valid());
 
-  memset(&addr, 0, sizeof(addr));
-  addr.sun_family = AF_UNIX;
-  std::string socket_path = socketDir.Append("midis_socket").value();
-  snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", socket_path.c_str());
+  ASSERT_EQ(0, MidisListDevices(server_fd.get()));
+  uint32_t payload_size;
+  uint32_t type;
+  ASSERT_EQ(0, MidisProcessMsgHeader(server_fd.get(), &payload_size, &type));
+  EXPECT_EQ(LIST_DEVICES_RESPONSE, type);
 
-  int ret = connect(server_fd.get(), reinterpret_cast<sockaddr*>(&addr),
-                    sizeof(addr));
-  ASSERT_EQ(ret, 0);
+  std::vector<uint8_t> buffer(payload_size);
+  ASSERT_EQ(payload_size,
+            MidisProcessListDevices(server_fd.get(), buffer.data(),
+                                    buffer.size(), payload_size));
+  EXPECT_EQ(buffer[0], 1);
 
-  // Get list of devices
-  struct MidisMessageHeader header;
-  header.type = REQUEST_LIST_DEVICES;
-  header.payload_size = 0;
-  int bytes = write(server_fd.get(), &header, sizeof(header));
-  ASSERT_EQ(bytes, sizeof(header));
-
-  bytes = read(server_fd.get(), &header, sizeof(header));
-  ASSERT_EQ(bytes, sizeof(header));
-  EXPECT_EQ(header.type, LIST_DEVICES_RESPONSE);
-
-  bytes = read(server_fd.get(), buf, header.payload_size);
-  EXPECT_EQ(buf[0], 1);
-  EXPECT_EQ(bytes, (sizeof(MidisDeviceInfo) * buf[0]) + 1);
-
-  // Request a port
-  memset(&header, 0, sizeof(header));
-  header.type = REQUEST_PORT;
-  header.payload_size = 0;
-  bytes = write(server_fd.get(), &header, sizeof(header));
-  ASSERT_EQ(bytes, sizeof(struct MidisMessageHeader));
-
-  struct MidisRequestPort port_msg = {0};
+  struct MidisRequestPort port_msg;
+  memset(&port_msg, 0, sizeof(port_msg));
   port_msg.card = kFakeSysNum1;
   port_msg.device_num = kFakeDevNum1;
   port_msg.subdevice_num = kFakeSubdevs1 - 1;
 
-  bytes = write(server_fd.get(), &port_msg, sizeof(port_msg));
-  ASSERT_EQ(bytes, sizeof(struct MidisRequestPort));
+  ASSERT_EQ(0, MidisRequestPort(server_fd.get(), &port_msg));
 
   // Receive the port back.
-  memset(&header, 0, sizeof(header));
-  bytes = read(server_fd.get(), &header, sizeof(header));
-  EXPECT_EQ(bytes, sizeof(header));
-  EXPECT_EQ(header.type, REQUEST_PORT_RESPONSE);
-
-  struct msghdr msg;
-  memset(&msg, 0, sizeof(msg));
-  struct iovec iov;
-
-  memset(&port_msg, 0, sizeof(struct MidisRequestPort));
-  msg.msg_iov = &iov;
-  msg.msg_iovlen = 1;
-  iov.iov_base = &port_msg;
-  iov.iov_len = sizeof(struct MidisRequestPort);
-
-  int portfd = -1;
-  const unsigned int control_size = CMSG_SPACE(sizeof(portfd));
-  std::vector<char> control(control_size);
-  msg.msg_control = control.data();
-  msg.msg_controllen = control.size();
-
-  int rc = recvmsg(server_fd.get(), &msg, 0);
-  EXPECT_NE(rc, 0);
-
-  size_t num_fds = 1;
-  struct cmsghdr* cmsg;
-  for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr;
-       cmsg = CMSG_NXTHDR(&msg, cmsg)) {
-    if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
-      memcpy(&portfd, CMSG_DATA(cmsg), num_fds * sizeof(portfd));
-      break;
-    }
-  }
+  ASSERT_EQ(0, MidisProcessMsgHeader(server_fd.get(), &payload_size, &type));
+  EXPECT_EQ(REQUEST_PORT_RESPONSE, type);
+  base::ScopedFD portfd(
+      MidisProcessRequestPortResponse(server_fd.get(), &port_msg));
+  ASSERT_TRUE(portfd.is_valid());
 
   // Make sure the returned FD is for the port we requested.
   EXPECT_EQ(port_msg.card, kFakeSysNum1);
   EXPECT_EQ(port_msg.device_num, kFakeDevNum1);
   EXPECT_EQ(port_msg.subdevice_num, kFakeSubdevs1 - 1);
 
-  // Write data to the dev-node
+  // Write data to the dev-node.
   ASSERT_EQ(sizeof(kFakeMidiData1), base::WriteFile(devNodePath, kFakeMidiData1,
                                                     sizeof(kFakeMidiData1)));
 
+  // Read it back and verify.
   memset(buf, 0, kMaxBufSize);
-  EXPECT_EQ(sizeof(kFakeMidiData1), read(portfd, buf, kMaxBufSize));
+  EXPECT_EQ(sizeof(kFakeMidiData1), read(portfd.get(), buf, kMaxBufSize));
   EXPECT_EQ(0, memcmp(buf, kFakeMidiData1, sizeof(kFakeMidiData1)));
 }
 

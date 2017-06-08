@@ -5,6 +5,10 @@
 #ifndef MIDIS_MESSAGES_H_
 #define MIDIS_MESSAGES_H_
 
+#include <limits.h>
+#include <stddef.h>
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -22,6 +26,7 @@ enum ServerMsgType {
   DEVICE_ADDED = 1,
   DEVICE_REMOVED = 2,
   REQUEST_PORT_RESPONSE = 3,
+  INVALID_RESPONSE = UINT_MAX,
 };
 
 struct MidisMessageHeader {
