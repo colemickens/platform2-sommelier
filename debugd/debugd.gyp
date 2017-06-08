@@ -202,6 +202,14 @@
       ],
     },
     {
+      'target_name': 'drm_display_info',
+      'type': 'executable',
+      'sources': [
+        'src/helpers/drm_display_info.cc',
+        'src/helpers/drm_display_info_reader.cc',
+      ],
+    },
+    {
       'target_name': 'icmp',
       'type': 'executable',
       'sources': [
@@ -272,6 +280,8 @@
             'src/dev_mode_no_owner_restriction_test.cc',
             'src/helpers/dev_features_password_utils.cc',
             'src/helpers/dev_features_password_utils_test.cc',
+            'src/helpers/drm_display_info_reader.cc',
+            'src/helpers/drm_display_info_reader_test.cc',
             'src/log_tool_test.cc',
             'src/modem_status_tool_test.cc',
             'src/process_with_id_test.cc',
