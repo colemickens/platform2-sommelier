@@ -170,23 +170,6 @@ class ConnectionTest : public Test {
     connection_->local_ = local;
   }
 
-#if defined(__ANDROID__)
-  // Setting expectations for creating/starting DNS server proxy.
-  void ExpectDNSServerProxyCreation(const vector<string>& dns_servers,
-                                    bool verify_servers) {
-    MockDNSServerProxy* dns_server_proxy = new MockDNSServerProxy();
-    if (verify_servers) {
-      EXPECT_CALL(dns_server_proxy_factory_,
-                  CreateDNSServerProxy(dns_servers))
-          .WillOnce(Return(dns_server_proxy));
-    } else {
-      EXPECT_CALL(dns_server_proxy_factory_, CreateDNSServerProxy(_))
-          .WillOnce(Return(dns_server_proxy));
-    }
-    EXPECT_CALL(*dns_server_proxy, Start());
-  }
-#endif  // __ANDROID__
-
  protected:
   class DisconnectCallbackTarget {
    public:

@@ -56,15 +56,6 @@ static string ObjectID(Connection* c) {
 }
 }
 
-#if defined(__ANDROID__)
-namespace {
-const char* const kGoogleDNSServers[] = {
-    "8.8.4.4",
-    "8.8.8.8"
-};
-}  // namespace
-#endif  // __ANDROID__
-
 // static
 const uint32_t Connection::kDefaultMetric = 1;
 // static
@@ -275,16 +266,6 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
     dns_servers_ = config->properties().dns_servers;
   }
 
-#if defined(__ANDROID__)
-  // Default to Google's DNS server if it is not provided through DHCP.
-  if (config->properties().dns_servers.empty()) {
-    LOG(INFO) << "Default to use Google DNS servers";
-    dns_servers_ =
-        vector<string>(std::begin(kGoogleDNSServers),
-                       std::end(kGoogleDNSServers));
-  }
-#endif  // __ANDROID__
-
   if (!config->properties().domain_search.empty()) {
     dns_domain_search_ = config->properties().domain_search;
   }
@@ -378,11 +359,6 @@ void Connection::UpdateDNSServers(const vector<string>& dns_servers) {
 
 void Connection::PushDNSConfig() {
   if (!use_dns_) {
-#if defined(__ANDROID__)
-    // Stop DNS server proxy to avoid having multiple instances of it running.
-    // Only run DNS server proxy for the current default connection.
-    dns_server_proxy_.reset();
-#endif  // __ANDROID__
     return;
   }
 
