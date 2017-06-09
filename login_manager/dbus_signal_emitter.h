@@ -17,50 +17,22 @@ class ExportedObject;
 
 namespace login_manager {
 
-// Simple mockable interface for emitting DBus signals.
-class DBusSignalEmitterInterface {
- public:
-  // Strings for encoding boolean status in signals.
-  static const char kSignalSuccess[];
-  static const char kSignalFailure[];
-
-  virtual ~DBusSignalEmitterInterface();
-
-  // Broadcasts |signal_name| from the session manager DBus interface.
-  virtual void EmitSignal(const std::string& signal_name) = 0;
-
-  // Broadcasts |signal_name| from the session manager DBus interface,
-  // with kSignalSuccess if |success| is true, kSignalFailure otherwise.
-  virtual void EmitSignalWithSuccessFailure(const std::string& signal_name,
-                                            const bool success) = 0;
-
-  // Broadcasts |signal_name| from the session manager DBus interface,
-  // with associated payload arguments.
-  virtual void EmitSignalWithString(const std::string& signal_name,
-                                    const std::string& payload) = 0;
-  virtual void EmitSignalWithBool(const std::string& signal_name,
-                                  bool payload) = 0;
-  virtual void EmitSignalWithBoolAndString(const std::string& signal_name,
-                                           bool payload1,
-                                           const std::string& payload2) = 0;
-};
-
-// Simple mockable interface for emitting DBus signals.
-class DBusSignalEmitter : public DBusSignalEmitterInterface {
+// Used to emit D-Bus signals.
+class DBusSignalEmitter {
  public:
   DBusSignalEmitter(dbus::ExportedObject* object, const std::string& interface);
-  virtual ~DBusSignalEmitter();
+  ~DBusSignalEmitter();
 
-  void EmitSignal(const std::string& signal_name) override;
+  void EmitSignal(const std::string& signal_name);
   void EmitSignalWithSuccessFailure(const std::string& signal_name,
-                                    const bool success) override;
+                                    const bool success);
   void EmitSignalWithString(const std::string& signal_name,
-                            const std::string& payload) override;
+                            const std::string& payload);
   void EmitSignalWithBool(const std::string& signal_name,
-                          bool payload) override;
+                          bool payload);
   void EmitSignalWithBoolAndString(const std::string& signal_name,
                                    bool payload1,
-                                   const std::string& payload2) override;
+                                   const std::string& payload2);
 
  private:
   dbus::ExportedObject* object_;  // Weak, owned by caller.

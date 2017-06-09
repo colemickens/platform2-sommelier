@@ -44,7 +44,6 @@ class ObjectProxy;
 namespace login_manager {
 
 class BrowserJobInterface;
-class DBusSignalEmitterInterface;
 class LoginMetrics;
 class NssUtil;
 class SessionManagerDBusAdaptor;
@@ -263,7 +262,6 @@ class SessionManagerService
   VpdProcessImpl vpd_process_;
   AndroidContainerManagerImpl android_container_;
   InstallAttributesReader install_attributes_reader_;
-  std::unique_ptr<DBusSignalEmitterInterface> dbus_emitter_;
   std::unique_ptr<LivenessChecker> liveness_checker_;
   const bool enable_browser_abort_on_hang_;
   const base::TimeDelta liveness_checking_interval_;

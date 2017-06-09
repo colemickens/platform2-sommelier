@@ -13,10 +13,12 @@
 
 namespace login_manager {
 
-const char DBusSignalEmitterInterface::kSignalSuccess[] = "success";
-const char DBusSignalEmitterInterface::kSignalFailure[] = "failure";
+namespace {
 
-DBusSignalEmitterInterface::~DBusSignalEmitterInterface() {}
+constexpr char kSignalSuccess[] = "success";
+constexpr char kSignalFailure[] = "failure";
+
+}  // namespace
 
 DBusSignalEmitter::DBusSignalEmitter(dbus::ExportedObject* object,
                                      const std::string& interface)

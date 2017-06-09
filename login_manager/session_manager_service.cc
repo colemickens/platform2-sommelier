@@ -33,7 +33,6 @@
 #include "login_manager/browser_job.h"
 #include "login_manager/child_exit_handler.h"
 #include "login_manager/container_manager_impl.h"
-#include "login_manager/dbus_signal_emitter.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker_impl.h"
 #include "login_manager/login_metrics.h"
@@ -172,7 +171,7 @@ bool SessionManagerService::Initialize() {
   // appropriately below.
   SessionManagerImpl* impl = new SessionManagerImpl(
       base::MakeUnique<InitDaemonControllerImpl>(init_dbus_proxy),
-      dbus_emitter_.get(),
+      bus_.get(),
       base::Bind(&FireAndForgetDBusMethodCall,
                  base::Unretained(chrome_dbus_proxy),
                  chromeos::kLibCrosServiceInterface,
@@ -438,9 +437,6 @@ void SessionManagerService::InitializeDBus() {
 
   session_manager_dbus_object_ =
       bus_->GetExportedObject(dbus::ObjectPath(kSessionManagerServicePath));
-
-  dbus_emitter_.reset(new DBusSignalEmitter(session_manager_dbus_object_,
-                                            kSessionManagerInterface));
 }
 
 void SessionManagerService::TakeDBusServiceOwnership() {

@@ -32,6 +32,7 @@
 #include <brillo/cryptohome.h>
 #include <chromeos/dbus/service_constants.h>
 #include <crypto/scoped_nss_types.h>
+#include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 #include <install_attributes/libinstallattributes.h>
@@ -200,7 +201,7 @@ struct SessionManagerImpl::UserSession {
 
 SessionManagerImpl::SessionManagerImpl(
     std::unique_ptr<InitDaemonController> init_controller,
-    DBusSignalEmitterInterface* dbus_emitter,
+    dbus::Bus* bus,
     base::Closure lock_screen_closure,
     base::Closure restart_device_closure,
     base::Closure start_arc_instance_closure,
@@ -227,7 +228,10 @@ SessionManagerImpl::SessionManagerImpl(
       restart_device_closure_(restart_device_closure),
       start_arc_instance_closure_(start_arc_instance_closure),
       stop_arc_instance_closure_(stop_arc_instance_closure),
-      dbus_emitter_(dbus_emitter),
+      dbus_emitter_(
+          bus->GetExportedObject(
+              org::chromium::SessionManagerInterfaceAdaptor::GetObjectPath()),
+          kSessionManagerInterface),
       key_gen_(key_gen),
       state_key_generator_(state_key_generator),
       manager_(manager),
@@ -336,14 +340,14 @@ void SessionManagerImpl::AnnounceSessionStoppingIfNeeded() {
   if (session_started_) {
     session_stopping_ = true;
     DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStopping;
-    dbus_emitter_->EmitSignalWithString(kSessionStateChangedSignal, kStopping);
+    dbus_emitter_.EmitSignalWithString(kSessionStateChangedSignal, kStopping);
   }
 }
 
 void SessionManagerImpl::AnnounceSessionStopped() {
   session_stopping_ = session_started_ = false;
   DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStopped;
-  dbus_emitter_->EmitSignalWithString(kSessionStateChangedSignal, kStopped);
+  dbus_emitter_.EmitSignalWithString(kSessionStateChangedSignal, kStopped);
 }
 
 bool SessionManagerImpl::ShouldEndSession() {
@@ -395,7 +399,7 @@ void SessionManagerImpl::Finalize() {
 
 void SessionManagerImpl::EmitLoginPromptVisible() {
   login_metrics_->RecordStats("login-prompt-visible");
-  dbus_emitter_->EmitSignal(kLoginPromptVisibleSignal);
+  dbus_emitter_.EmitSignal(kLoginPromptVisibleSignal);
   init_controller_->TriggerImpulse("login-prompt-visible", {},
                                    InitDaemonController::TriggerMode::ASYNC);
 }
@@ -490,7 +494,7 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
   session_started_ = true;
   user_sessions_[actual_account_id] = std::move(user_session);
   DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStarted;
-  dbus_emitter_->EmitSignalWithString(kSessionStateChangedSignal, kStarted);
+  dbus_emitter_.EmitSignalWithString(kSessionStateChangedSignal, kStarted);
 
   // Active Directory managed devices are not expected to have a policy key.
   // Don't create one for them.
@@ -677,13 +681,13 @@ bool SessionManagerImpl::LockScreen(brillo::ErrorPtr* error) {
 
 void SessionManagerImpl::HandleLockScreenShown() {
   LOG(INFO) << "HandleLockScreenShown() method called.";
-  dbus_emitter_->EmitSignal(kScreenIsLockedSignal);
+  dbus_emitter_.EmitSignal(kScreenIsLockedSignal);
 }
 
 void SessionManagerImpl::HandleLockScreenDismissed() {
   screen_locked_ = false;
   LOG(INFO) << "HandleLockScreenDismissed() method called.";
-  dbus_emitter_->EmitSignal(kScreenIsUnlockedSignal);
+  dbus_emitter_.EmitSignal(kScreenIsUnlockedSignal);
 }
 
 bool SessionManagerImpl::RestartJob(brillo::ErrorPtr* error,
@@ -1080,12 +1084,12 @@ bool SessionManagerImpl::RemoveArcDataInternal(
 void SessionManagerImpl::OnPolicyPersisted(bool success) {
   device_local_account_policy_->UpdateDeviceSettings(
       device_policy_->GetSettings());
-  dbus_emitter_->EmitSignalWithSuccessFailure(kPropertyChangeCompleteSignal,
+  dbus_emitter_.EmitSignalWithSuccessFailure(kPropertyChangeCompleteSignal,
                                               success);
 }
 
 void SessionManagerImpl::OnKeyPersisted(bool success) {
-  dbus_emitter_->EmitSignalWithSuccessFailure(kOwnerKeySetSignal, success);
+  dbus_emitter_.EmitSignalWithSuccessFailure(kOwnerKeySetSignal, success);
 }
 
 void SessionManagerImpl::OnKeyGenerated(const std::string& username,
@@ -1438,7 +1442,7 @@ void SessionManagerImpl::OnAndroidContainerStopped(
     LOG(ERROR) << "Emitting stop-arc-network init signal failed.";
   }
 
-  dbus_emitter_->EmitSignalWithBoolAndString(
+  dbus_emitter_.EmitSignalWithBoolAndString(
       kArcInstanceStopped, clean, container_instance_id);
 }
 #endif  // USE_CHEETS

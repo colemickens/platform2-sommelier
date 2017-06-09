@@ -21,6 +21,7 @@
 
 #include "login_manager/container_manager_interface.h"
 #include "login_manager/dbus_adaptors/org.chromium.SessionManagerInterface.h"
+#include "login_manager/dbus_signal_emitter.h"
 #include "login_manager/device_policy_service.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/policy_service.h"
@@ -31,12 +32,12 @@ class Crossystem;
 class InstallAttributesReader;
 
 namespace dbus {
+class Bus;
 class ObjectProxy;
 class Response;
 }  // namespace dbus
 
 namespace login_manager {
-class DBusSignalEmitterInterface;
 class DeviceLocalAccountPolicyService;
 class InitDaemonController;
 class KeyGenerator;
@@ -90,7 +91,7 @@ class SessionManagerImpl
   static const char kArcRemoveOldDataSignal[];
 
   SessionManagerImpl(std::unique_ptr<InitDaemonController> init_controller,
-                     DBusSignalEmitterInterface* dbus_emitter,
+                     dbus::Bus* bus,
                      base::Closure lock_screen_closure,
                      base::Closure restart_device_closure,
                      base::Closure start_arc_instance_closure,
@@ -371,7 +372,8 @@ class SessionManagerImpl
 
   base::TimeTicks arc_start_time_;
 
-  DBusSignalEmitterInterface* dbus_emitter_;            // Owned by the caller.
+  DBusSignalEmitter dbus_emitter_;
+
   KeyGenerator* key_gen_;                               // Owned by the caller.
   ServerBackedStateKeyGenerator* state_key_generator_;  // Owned by the caller.
   ProcessManagerServiceInterface* manager_;             // Owned by the caller.

@@ -29,10 +29,12 @@
 #include <base/run_loop.h>
 #include <base/strings/string_util.h>
 #include <brillo/cryptohome.h>
+#include <brillo/dbus/dbus_param_writer.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
 #include <crypto/scoped_nss_types.h>
-#include <dbus/exported_object.h>
+#include <dbus/bus.h>
+#include <dbus/mock_exported_object.h>
 #include <dbus/message.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -40,13 +42,13 @@
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "login_manager/blob_util.h"
+#include "login_manager/dbus_signal_emitter.h"
 #include "login_manager/dbus_util.h"
 #include "login_manager/device_local_account_policy_service.h"
 #include "login_manager/fake_container_manager.h"
 #include "login_manager/fake_crossystem.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/matchers.h"
-#include "login_manager/mock_dbus_signal_emitter.h"
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_install_attributes_reader.h"
@@ -96,6 +98,72 @@ using std::vector;
 namespace login_manager {
 
 namespace {
+
+// Test Bus instance to inject MockExportedObject.
+class FakeBus : public dbus::Bus {
+ public:
+  FakeBus()
+      : dbus::Bus(GetBusOptions()),
+        exported_object_(new dbus::MockExportedObject(nullptr,
+                                                      dbus::ObjectPath())) {}
+
+  dbus::ExportedObject* GetExportedObject(
+      const dbus::ObjectPath& object_path) override {
+    return exported_object_.get();
+  }
+
+  dbus::MockExportedObject* exported_object() {
+    return exported_object_.get();
+  }
+
+ protected:
+  // dbus::Bus is refcounted object.
+  ~FakeBus() override = default;
+
+ private:
+  scoped_refptr<dbus::MockExportedObject> exported_object_;
+
+  static dbus::Bus::Options GetBusOptions() {
+    dbus::Bus::Options options;
+    options.bus_type = dbus::Bus::SYSTEM;
+    return options;
+  }
+};
+
+// Storing T value. Iff T is const char*, instead std::string value.
+template<typename T>
+struct PayloadStorage {
+  T value;
+};
+
+template<>
+struct PayloadStorage<const char*> {
+  std::string value;
+};
+
+// Matcher for SessionManagerInterface's signal.
+MATCHER_P(SignalEq, method_name, "") {
+  return arg->GetMember() == method_name;
+}
+
+MATCHER_P2(SignalEq, method_name, payload1, "") {
+  PayloadStorage<decltype(payload1)> actual1;
+  dbus::MessageReader reader(arg);
+  return (arg->GetMember() == method_name &&
+          brillo::dbus_utils::PopValueFromReader(&reader, &actual1.value) &&
+          payload1 == actual1.value);
+}
+
+MATCHER_P3(SignalEq, method_name, payload1, payload2, "") {
+  PayloadStorage<decltype(payload1)> actual1;
+  PayloadStorage<decltype(payload2)> actual2;
+  dbus::MessageReader reader(arg);
+  return (arg->GetMember() == method_name &&
+          brillo::dbus_utils::PopValueFromReader(&reader, &actual1.value) &&
+          payload1 == actual1.value &&
+          brillo::dbus_utils::PopValueFromReader(&reader, &actual2.value) &&
+          payload2 == actual2.value);
+}
 
 constexpr pid_t kAndroidPid = 10;
 
@@ -167,13 +235,14 @@ class ResponseCapturer {
 class SessionManagerImplTest : public ::testing::Test {
  public:
   SessionManagerImplTest()
-      : device_policy_service_(new MockDevicePolicyService),
+      : device_policy_service_(new MockDevicePolicyService()),
+        bus_(new FakeBus()),
         state_key_generator_(&utils_, &metrics_),
         android_container_(kAndroidPid),
-        system_clock_proxy_(new MockObjectProxy),
+        system_clock_proxy_(new MockObjectProxy()),
         impl_(base::MakeUnique<StubUpstartSignalEmitter>(
                   &upstart_signal_emitter_delegate_),
-              &dbus_emitter_,
+              bus_.get(),
               base::Bind(&SessionManagerImplTest::FakeLockScreen,
                          base::Unretained(this)),
               base::Bind(&SessionManagerImplTest::FakeRestartDevice,
@@ -200,7 +269,7 @@ class SessionManagerImplTest : public ::testing::Test {
         actual_restarts_(0),
         expected_restarts_(0) {}
 
-  virtual ~SessionManagerImplTest() {}
+  ~SessionManagerImplTest() override = default;
 
   void SetUp() override {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
@@ -249,6 +318,10 @@ class SessionManagerImplTest : public ::testing::Test {
   }
 
  protected:
+  dbus::MockExportedObject* exported_object() {
+    return bus_->exported_object();
+  }
+
   void SetDeviceMode(const std::string& mode) {
     install_attributes_reader_.SetAttributes({{"enterprise.mode", mode}});
   }
@@ -353,6 +426,7 @@ class SessionManagerImplTest : public ::testing::Test {
     Mock::VerifyAndClearExpectations(&nss_);
     Mock::VerifyAndClearExpectations(&utils_);
     Mock::VerifyAndClearExpectations(&upstart_signal_emitter_delegate_);
+    Mock::VerifyAndClearExpectations(exported_object());
 
     // Reset the default mock behavior.
     SetDefaultMockBehavior();
@@ -374,7 +448,7 @@ class SessionManagerImplTest : public ::testing::Test {
   MockDevicePolicyService* device_policy_service_;
   map<string, MockPolicyService*> user_policy_services_;
 
-  MockDBusSignalEmitter dbus_emitter_;
+  scoped_refptr<FakeBus> bus_;
   StubUpstartSignalEmitter::MockDelegate upstart_signal_emitter_delegate_;
   MockKeyGenerator key_gen_;
   MockServerBackedStateKeyGenerator state_key_generator_;
@@ -440,9 +514,9 @@ class SessionManagerImplTest : public ::testing::Test {
                         ElementsAre(StartsWith("CHROMEOS_USER="))))
         .Times(1);
     EXPECT_CALL(
-        dbus_emitter_,
-        EmitSignalWithString(StrEq(login_manager::kSessionStateChangedSignal),
-                             StrEq(SessionManagerImpl::kStarted)))
+        *exported_object(),
+        SendSignal(SignalEq(login_manager::kSessionStateChangedSignal,
+                            SessionManagerImpl::kStarted)))
         .Times(1);
   }
 
@@ -478,9 +552,9 @@ class SessionManagerImplTest : public ::testing::Test {
                         ElementsAre(StartsWith("CHROMEOS_USER="))))
         .Times(1);
     EXPECT_CALL(
-        dbus_emitter_,
-        EmitSignalWithString(StrEq(login_manager::kSessionStateChangedSignal),
-                             StrEq(SessionManagerImpl::kStarted)))
+        *exported_object(),
+        SendSignal(SignalEq(login_manager::kSessionStateChangedSignal,
+                            SessionManagerImpl::kStarted)))
         .Times(1);
   }
 
@@ -515,8 +589,8 @@ const int SessionManagerImplTest::kAllKeyFlags =
 TEST_F(SessionManagerImplTest, EmitLoginPromptVisible) {
   const char event_name[] = "login-prompt-visible";
   EXPECT_CALL(metrics_, RecordStats(StrEq(event_name))).Times(1);
-  EXPECT_CALL(dbus_emitter_,
-              EmitSignal(StrEq(login_manager::kLoginPromptVisibleSignal)))
+  EXPECT_CALL(*exported_object(),
+              SendSignal(SignalEq(login_manager::kLoginPromptVisibleSignal)))
       .Times(1);
   impl_.EmitLoginPromptVisible();
 }
@@ -1077,7 +1151,7 @@ TEST_F(SessionManagerImplTest, LockScreen) {
 TEST_F(SessionManagerImplTest, LockScreen_DuringSupervisedUserCreation) {
   ExpectAndRunStartSession(kSaneEmail);
   ExpectLockScreen();
-  EXPECT_CALL(dbus_emitter_, EmitSignal(_)).Times(AnyNumber());
+  EXPECT_CALL(*exported_object(), SendSignal(_)).Times(AnyNumber());
 
   impl_.HandleSupervisedUserCreationStarting();
   EXPECT_TRUE(impl_.ShouldEndSession());
@@ -1096,7 +1170,7 @@ TEST_F(SessionManagerImplTest, LockScreen_DuringSupervisedUserCreation) {
 TEST_F(SessionManagerImplTest, LockScreen_InterleavedSupervisedUserCreation) {
   ExpectAndRunStartSession(kSaneEmail);
   ExpectLockScreen();
-  EXPECT_CALL(dbus_emitter_, EmitSignal(_)).Times(AnyNumber());
+  EXPECT_CALL(*exported_object(), SendSignal(_)).Times(AnyNumber());
 
   impl_.HandleSupervisedUserCreationStarting();
   EXPECT_TRUE(impl_.ShouldEndSession());
@@ -1155,14 +1229,14 @@ TEST_F(SessionManagerImplTest, LockUnlockScreen) {
   EXPECT_FALSE(error.get());
   EXPECT_EQ(TRUE, impl_.ShouldEndSession());
 
-  EXPECT_CALL(dbus_emitter_,
-              EmitSignal(StrEq(login_manager::kScreenIsLockedSignal)))
+  EXPECT_CALL(*exported_object(),
+              SendSignal(SignalEq(login_manager::kScreenIsLockedSignal)))
       .Times(1);
   impl_.HandleLockScreenShown();
   EXPECT_EQ(TRUE, impl_.ShouldEndSession());
 
-  EXPECT_CALL(dbus_emitter_,
-              EmitSignal(StrEq(login_manager::kScreenIsUnlockedSignal)))
+  EXPECT_CALL(*exported_object(),
+              SendSignal(SignalEq(login_manager::kScreenIsUnlockedSignal)))
       .Times(1);
   impl_.HandleLockScreenDismissed();
   EXPECT_EQ(FALSE, impl_.ShouldEndSession());
@@ -1352,10 +1426,9 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForUser) {
     ASSERT_FALSE(error.get());
   }
   EXPECT_CALL(
-      dbus_emitter_,
-      EmitSignalWithBoolAndString(StrEq(login_manager::kArcInstanceStopped),
-                                  true,
-                                  StrEq(container_instance_id)))
+      *exported_object(),
+      SendSignal(SignalEq(login_manager::kArcInstanceStopped,
+                          true, container_instance_id)))
       .Times(1);
 
   {
@@ -1445,10 +1518,9 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
   }
   // The ID for the container for login screen is passed to the dbus call.
   EXPECT_CALL(
-      dbus_emitter_,
-      EmitSignalWithBoolAndString(StrEq(login_manager::kArcInstanceStopped),
-                                  true,
-                                  StrEq(container_instance_id)))
+      *exported_object(),
+      SendSignal(SignalEq(login_manager::kArcInstanceStopped,
+                          true, container_instance_id)))
       .Times(1);
 
   {
@@ -1536,10 +1608,9 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
   EXPECT_TRUE(android_container_.running());
   EXPECT_TRUE(arc_setup_completed_);
   EXPECT_CALL(
-      dbus_emitter_,
-      EmitSignalWithBoolAndString(StrEq(login_manager::kArcInstanceStopped),
-                                  false,
-                                  StrEq(container_instance_id)))
+      *exported_object(),
+      SendSignal(SignalEq(login_manager::kArcInstanceStopped,
+                          false, container_instance_id)))
       .Times(1);
 
   android_container_.SimulateCrash();
