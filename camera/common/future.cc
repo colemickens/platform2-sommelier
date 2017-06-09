@@ -75,8 +75,7 @@ void FutureLock::Cancel() {
 
 base::Callback<void()> GetFutureCallback(
     const scoped_refptr<Future<void>>& future) {
-  return base::Bind(&Future<void>::Set,
-                    base::RetainedRef(scoped_refptr<Future<void>>(future)));
+  return base::Bind(&Future<void>::Set, future);
 }
 
 CancellationRelay::CancellationRelay() : cancelled_(false) {}

@@ -134,8 +134,7 @@ void FutureCallback(scoped_refptr<Future<T>> future, T ret) {
 template <typename T>
 base::Callback<void(T)> GetFutureCallback(
     const scoped_refptr<Future<T>>& future) {
-  return base::Bind(&FutureCallback<T>,
-                    base::RetainedRef(scoped_refptr<Future<T>>(future)));
+  return base::Bind(&FutureCallback<T>, future);
 }
 
 base::Callback<void()> GetFutureCallback(
