@@ -15,6 +15,7 @@
 #include <base/bind_helpers.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/edk/embedder/platform_channel_pair.h>
 #include <mojo/edk/embedder/platform_channel_utils_posix.h>
@@ -159,8 +160,7 @@ int32_t CameraHalAdapter::OpenDevice(int32_t device_id,
     // runner of the current thread in the callback functor.
     base::Callback<void()> close_callback = base::Bind(
         &CameraHalAdapter::CloseDeviceCallback, base::Unretained(this),
-        base::RetainedRef(base::MessageLoop::current()->task_runner()),
-        device_id);
+        base::ThreadTaskRunnerHandle::Get(), device_id);
     device_adapters_[device_id].reset(
         new CameraDeviceAdapter(camera_device, close_callback));
     if (!device_adapters_[device_id]->Start()) {
@@ -219,10 +219,12 @@ int32_t CameraHalAdapter::SetCallbacks(
   return camera_module_->set_callbacks(this);
 }
 
-void CameraHalAdapter::CloseDeviceCallback(base::TaskRunner* runner,
-                                           int32_t device_id) {
-  runner->PostTask(FROM_HERE, base::Bind(&CameraHalAdapter::CloseDevice,
-                                         base::Unretained(this), device_id));
+void CameraHalAdapter::CloseDeviceCallback(
+    scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+    int32_t device_id) {
+  task_runner->PostTask(FROM_HERE,
+                        base::Bind(&CameraHalAdapter::CloseDevice,
+                                   base::Unretained(this), device_id));
 }
 
 // static

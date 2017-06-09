@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 
+#include <base/single_thread_task_runner.h>
 #include <base/threading/thread.h>
 #include <mojo/edk/embedder/process_delegate.h>
 
@@ -53,7 +54,9 @@ class CameraHalAdapter : public mojo::edk::ProcessDelegate,
 
   // A callback for the camera devices opened in OpenDevice().  Used to run
   // CloseDevice() on the same thread that OpenDevice() runs on.
-  void CloseDeviceCallback(base::TaskRunner* runner, int32_t device_id);
+  void CloseDeviceCallback(
+      scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+      int32_t device_id);
 
  private:
   // Implementation of camera_module_callbacks_t.
