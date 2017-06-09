@@ -32,10 +32,10 @@ int TakeOwnership(bool finalize) {
   cryptohome::Tpm* tpm = cryptohome::Tpm::GetSingleton();
   cryptohome::TpmInit tpm_init(tpm, &platform);
   tpm_init.SetupTpm(false);
-  LOG(INFO) << "Initializing TPM.";
+  LOG(INFO) << "Ensuring TPM ownership.";
   bool took_ownership = false;
-  if (!tpm_init.InitializeTpm(&took_ownership)) {
-    LOG(ERROR) << "Failed to initialize TPM.";
+  if (!tpm_init.TakeOwnership(&took_ownership)) {
+    LOG(ERROR) << "Failed to take TPM ownership.";
     return -1;
   }
   cryptohome::InstallAttributes install_attributes(tpm);

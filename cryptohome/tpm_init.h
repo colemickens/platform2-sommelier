@@ -8,6 +8,7 @@
 
 #include <memory>
 
+#include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <brillo/secure_blob.h>
@@ -25,23 +26,19 @@ class TpmInitTask;
 class TpmInit {
   // Friend class TpmInitTask as it is a glue class to allow ThreadMain to be
   // called on a separate thread without inheriting from
-  // PlatformThread::Delegate
+  // PlatformThread::Delegate.
   friend class TpmInitTask;
  public:
-  class TpmInitCallback {
-   public:
-    virtual void InitializeTpmComplete(bool status, bool took_ownership) = 0;
-  };
+  using OwnershipCallback =
+      base::Callback<void(bool status, bool took_ownership)>;
 
-  // Default constructor
   TpmInit(Tpm* tpm, Platform* platform);
-
   virtual ~TpmInit();
 
-  virtual void Init(TpmInitCallback* notify_callback);
+  virtual void Init(OwnershipCallback ownership_callback);
 
   // Sets the TPM to the state where we last left it in. This must be called
-  // before the *InitializeTpm functions below, if we need to.
+  // before the *TakeOwnership functions below, if we need to.
   //
   // Parameters:
   //   load_key - TRUE to load load Cryptohome key.
@@ -49,8 +46,8 @@ class TpmInit {
   // Returns false if the instance has already been setup.
   virtual bool SetupTpm(bool load_key);
 
-  // Asynchronously initializes the TPM. The TPM is initialized following these
-  // steps:
+  // Asynchronously takes ownership of the TPM. The TPM is initialized following
+  // these steps:
   //
   //   1. The TPM is owned with default owner password.
   //   2. The SRK password is cleared. The SRK is then unrestricted.
@@ -66,42 +63,43 @@ class TpmInit {
   // the owner password can be cleared.
   //
   // Returns true if a thread was spawn to do the actual initialization.
-  virtual bool AsyncInitializeTpm();
+  virtual bool AsyncTakeOwnership();
 
-  // Synchronously initializes the TPM.
+  // Synchronously takes ownership of the TPM.
   //
   // Returns true if the TPM initialization process (as outlined above) is
   // completed at step 3.
-  virtual bool InitializeTpm(bool* OUT_took_ownership);
+  virtual bool TakeOwnership(bool* OUT_took_ownership);
 
-  // Returns true if the TPM is initialized and ready for use
+  // Returns true if the TPM is initialized and ready for use.
   virtual bool IsTpmReady();
 
-  // Returns true if the TPM is enabled
+  // Returns true if the TPM is enabled.
   virtual bool IsTpmEnabled();
 
-  // Returns true if the TPM is owned
+  // Returns true if the TPM is owned.
   virtual bool IsTpmOwned();
 
-  // Marks the TPM as being owned
+  // Marks the TPM as being owned.
   virtual void SetTpmOwned(bool owned);
 
-  // Returns true if the TPM is being owned
+  // Returns true if the TPM is being owned.
   virtual bool IsTpmBeingOwned();
 
-  // Marks the TPM as being or not being been owned
+  // Marks the TPM as being or not being been owned.
   virtual void SetTpmBeingOwned(bool being_owned);
 
-  // Returns true if initialization has been called
-  virtual bool HasInitializeBeenCalled();
+  // Returns true if AsyncTakeOwnership() has been called to request TPM
+  // ownership to be established.
+  virtual bool OwnershipRequested();
 
-  // Gets the TPM password if the TPM initialization took ownership
+  // Gets the TPM password if the TPM initialization took ownership.
   //
   // Parameters
   //   password (OUT) - The owner password used for the TPM
   virtual bool GetTpmPassword(brillo::Blob* password);
 
-  // Clears the TPM password from memory and disk
+  // Clears the TPM password from memory and disk.
   virtual void ClearStoredTpmPassword();
 
   // Removes the given owner dependency. When all dependencies have been removed
@@ -129,23 +127,23 @@ class TpmInit {
   // Invoked by SetupTpm to restore TPM state from saved state in storage.
   void RestoreTpmStateFromStorage();
 
-  // Loads the TpmStatus object
+  // Loads the TpmStatus object.
   bool LoadTpmStatus(TpmStatus* serialized);
 
-  // Saves the TpmStatus object
+  // Saves the TpmStatus object.
   bool StoreTpmStatus(const TpmStatus& serialized);
 
-  // Creates a random owner password
+  // Creates a random owner password.
   //
   // Parameters
   //   password (OUT) - the generated password
   void CreateOwnerPassword(brillo::SecureBlob* password);
 
-  // Stores the TPM owner password to the TpmStatus object
+  // Stores the TPM owner password to the TpmStatus object.
   bool StoreOwnerPassword(const brillo::Blob& owner_password,
                           TpmStatus* tpm_status);
 
-  // Retrieves the TPM owner password
+  // Retrieves the TPM owner password.
   bool LoadOwnerPassword(const TpmStatus& tpm_status,
                          brillo::Blob* owner_password);
 
@@ -153,11 +151,11 @@ class TpmInit {
   void MigrateStatusFiles();
 
   // Returns whether or not the TPM is enabled by checking a flag in the TPM's
-  // entry in either /sys/class/misc or /sys/class/tpm
+  // entry in either /sys/class/misc or /sys/class/tpm.
   bool IsEnabledCheckViaSysfs(const base::FilePath& enabled_file);
 
   // Returns whether or not the TPM is owned by checking a flag in the TPM's
-  // entry in either /sys/class/misc or /sys/class/tpm
+  // entry in either /sys/class/misc or /sys/class/tpm.
   bool IsOwnedCheckViaSysfs(const base::FilePath& owned_file);
 
 
@@ -169,18 +167,18 @@ class TpmInit {
 
   bool LoadOrCreateCryptohomeKey(ScopedKeyHandle* key_handle);
 
-  // Returns true if the first byte of the file |file_name| is "1"
+  // Returns true if the first byte of the file |file_name| is "1".
   bool CheckSysfsForOne(const base::FilePath& file_name) const;
 
   // The background task for initializing the TPM, implemented as a
-  // PlatformThread::Delegate
+  // PlatformThread::Delegate.
   std::unique_ptr<TpmInitTask> tpm_init_task_;
   base::PlatformThreadHandle init_thread_;
 
-  TpmInitCallback* notify_callback_ = nullptr;
+  OwnershipCallback ownership_callback_;
 
-  bool initialize_called_ = false;
-  bool initialize_took_ownership_ = false;
+  bool take_ownership_called_ = false;
+  bool took_ownership_ = false;
   bool statistics_reported_ = false;
   int64_t initialization_time_ = 0;
   Platform* platform_ = nullptr;

@@ -16,7 +16,7 @@ class MockTpmInit : public TpmInit {
   MockTpmInit();
   ~MockTpmInit();
 
-  MOCK_METHOD1(Init, void(TpmInitCallback*));
+  MOCK_METHOD1(Init, void(OwnershipCallback));
   MOCK_METHOD1(SetupTpm, bool(bool));
   MOCK_METHOD1(RemoveTpmOwnerDependency, void(Tpm::TpmOwnerDependency));
   MOCK_METHOD0(HasCryptohomeKey, bool());

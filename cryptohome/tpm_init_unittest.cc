@@ -15,10 +15,10 @@
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 
-using ::testing::_;
 using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::_;
 
 namespace cryptohome {
 
@@ -241,7 +241,7 @@ TEST_F(TpmInitTest, AlreadyOwnedSuccess) {
   bool took_ownership = false;
   SetIsTpmOwned(true);
   FileTouch(kTpmOwnedFile);
-  ASSERT_TRUE(tpm_init_.InitializeTpm(&took_ownership));
+  ASSERT_TRUE(tpm_init_.TakeOwnership(&took_ownership));
   ASSERT_FALSE(took_ownership);
 }
 
@@ -274,7 +274,7 @@ TEST_F(TpmInitTest, TakeOwnershipSuccess) {
   EXPECT_CALL(tpm_, SetOwnerPassword(_))
     .Times(1);
   bool took_ownership = false;
-  EXPECT_TRUE(tpm_init_.InitializeTpm(&took_ownership));
+  EXPECT_TRUE(tpm_init_.TakeOwnership(&took_ownership));
   EXPECT_TRUE(took_ownership);
   EXPECT_TRUE(IsTpmOwned());
   EXPECT_FALSE(IsTpmBeingOwned());
@@ -306,7 +306,7 @@ TEST_F(TpmInitTest, ContinueInterruptedInitializeSrk) {
   EXPECT_CALL(tpm_, InitializeSrk(_))
     .WillOnce(Return(false));
   bool took_ownership = false;
-  EXPECT_FALSE(tpm_init_.InitializeTpm(&took_ownership));
+  EXPECT_FALSE(tpm_init_.TakeOwnership(&took_ownership));
   EXPECT_TRUE(took_ownership);
   EXPECT_TRUE(IsTpmOwned());
   EXPECT_FALSE(IsTpmBeingOwned());
@@ -314,7 +314,7 @@ TEST_F(TpmInitTest, ContinueInterruptedInitializeSrk) {
   ::testing::Mock::VerifyAndClearExpectations(&tpm_);
 
   // Attempt 2: Repeat initialization. This time, SetupTpm() should launch
-  // InitializeTpm(), which should complete the remaining steps.
+  // TakeOwnership(), which should complete the remaining steps.
   EXPECT_CALL(tpm_, IsEndorsementKeyAvailable())
     .Times(0);
   EXPECT_CALL(tpm_, TestTpmAuth(_))
@@ -326,7 +326,7 @@ TEST_F(TpmInitTest, ContinueInterruptedInitializeSrk) {
   EXPECT_CALL(tpm_, SetOwnerPassword(_))
     .Times(1);
   EXPECT_TRUE(tpm_init_.init_thread_.is_null());
-  tpm_init_.Init(nullptr);
+  tpm_init_.Init(TpmInit::OwnershipCallback());
   ASSERT_FALSE(tpm_init_.init_thread_.is_null());
   base::PlatformThread::Join(tpm_init_.init_thread_);
   tpm_init_.init_thread_ = base::PlatformThreadHandle();

@@ -11,8 +11,8 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/logging.h>
 #include <base/gtest_prod_util.h>
+#include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/threading/thread.h>
 #include <brillo/glib/abstract_dbus_service.h>
@@ -75,8 +75,7 @@ class MountTaskObserverBridge : public MountTaskObserver {
 // Provides a wrapper for exporting CryptohomeInterface to
 // D-Bus and entering the glib run loop.
 class Service : public brillo::dbus::AbstractDbusService,
-                public CryptohomeEventSourceSink,
-                public TpmInit::TpmInitCallback {
+                public CryptohomeEventSourceSink {
  public:
   Service();
   virtual ~Service();
@@ -171,15 +170,15 @@ class Service : public brillo::dbus::AbstractDbusService,
   // CryptohomeEventSourceSink
   virtual void NotifyEvent(CryptohomeEventBase* event);
 
-  // TpmInitCallback
-  virtual void InitializeTpmComplete(bool status, bool took_ownership);
+  // TpmInit::OwnershipCallback
+  virtual void OwnershipCallback(bool status, bool took_ownership);
 
-  // Finalize TPM initialization:
+  // Finalize TPM initialization after taking ownership:
   // - initialize & finalize install attributes
   // - send TpmInitStatus event
   // - prepare for enrollment
-  // Posted on mount_thread_ by InitializeTpmComplete callback.
-  virtual void InitializeTpmFinalize(bool status, bool took_ownership);
+  // Posted on mount_thread_ by OwnershipCallback.
+  virtual void ConfigureOwnedTpm(bool status, bool took_ownership);
 
   // Called during initialization (and on mount events) to ensure old mounts
   // are marked for unmount when possible by the kernel.  Returns true if any
@@ -396,7 +395,7 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual void AttestationInitialize() = 0;
   // Called from Service::Initialize() if initialize_tpm_ is true.
   virtual void AttestationInitializeTpm() = 0;
-  // Called from Service::InitializeTpmComplete().
+  // Called from Service::OwnershipCallback().
   virtual void AttestationInitializeTpmComplete() = 0;
   // Called from Service::DoGetTpmStatus to fill attestation-related fields.
   virtual void AttestationGetTpmStatus(GetTpmStatusReply* reply) = 0;

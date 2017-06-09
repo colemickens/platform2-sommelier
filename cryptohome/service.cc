@@ -545,14 +545,15 @@ bool Service::Initialize() {
   // TODO(wad) Determine if this should only be called if
   //           tpm->IsEnabled() is true.
   if (tpm_ && initialize_tpm_) {
-    tpm_init_->Init(this);
+    tpm_init_->Init(
+        base::Bind(&Service::OwnershipCallback, base::Unretained(this)));
     if (!SeedUrandom()) {
       LOG(ERROR) << "FAILED TO SEED /dev/urandom AT START";
     }
     AttestationInitializeTpm();
     if (base::CommandLine::ForCurrentProcess()->HasSwitch(
           kAutoInitializeTpmSwitch)) {
-      tpm_init_->AsyncInitializeTpm();
+      tpm_init_->AsyncTakeOwnership();
     }
   }
 
@@ -763,7 +764,7 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
   }
 }
 
-void Service::InitializeTpmComplete(bool status, bool took_ownership) {
+void Service::OwnershipCallback(bool status, bool took_ownership) {
   if (took_ownership) {
     ReportTimerStop(kTpmTakeOwnershipTimer);
     // When TPM initialization finishes, we need to tell every Mount to
@@ -779,13 +780,12 @@ void Service::InitializeTpmComplete(bool status, bool took_ownership) {
     mounts_lock_.Release();
   }
   mount_thread_.message_loop()->PostTask(FROM_HERE,
-      base::Bind(&Service::InitializeTpmFinalize, base::Unretained(this),
+      base::Bind(&Service::ConfigureOwnedTpm, base::Unretained(this),
                  status, took_ownership));
 }
 
-void Service::InitializeTpmFinalize(bool status, bool took_ownership) {
-  LOG(INFO) << "Finalizing TPM initialization, ownership taken: "
-            << took_ownership << ".";
+void Service::ConfigureOwnedTpm(bool status, bool took_ownership) {
+  LOG(INFO) << "Configuring TPM, ownership taken: " << took_ownership << ".";
   if (took_ownership) {
     // Check if we have pending pkcs11 init tasks due to tpm ownership
     // not being done earlier. Trigger initialization if so.
@@ -2404,9 +2404,9 @@ gboolean Service::TpmIsBeingOwned(gboolean* OUT_owning, GError** error) {
 }
 
 gboolean Service::TpmCanAttemptOwnership(GError** error) {
-  if (!tpm_init_->HasInitializeBeenCalled()) {
+  if (!tpm_init_->OwnershipRequested()) {
     ReportTimerStart(kTpmTakeOwnershipTimer);
-    tpm_init_->AsyncInitializeTpm();
+    tpm_init_->AsyncTakeOwnership();
   }
   return TRUE;
 }

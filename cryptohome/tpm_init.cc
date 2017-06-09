@@ -46,11 +46,8 @@ const unsigned int kDefaultTpmRsaKeyBits = 2048;
 // the TPM.
 class TpmInitTask : public PlatformThread::Delegate {
  public:
-  TpmInitTask() : tpm_(NULL), init_(NULL) {
-  }
-
-  virtual ~TpmInitTask() {
-  }
+  TpmInitTask() : tpm_(NULL), init_(NULL) {}
+  virtual ~TpmInitTask() {}
 
   void Init(TpmInit* init) {
     init_ = init;
@@ -65,13 +62,8 @@ class TpmInitTask : public PlatformThread::Delegate {
     }
   }
 
-  void set_tpm(Tpm* tpm) {
-    tpm_ = tpm;
-  }
-
-  Tpm* get_tpm() {
-    return tpm_;
-  }
+  void set_tpm(Tpm* tpm) { tpm_ = tpm; }
+  Tpm* get_tpm() { return tpm_; }
 
  private:
   Tpm* tpm_;
@@ -103,15 +95,15 @@ Tpm* TpmInit::get_tpm() {
   return NULL;
 }
 
-void TpmInit::Init(TpmInitCallback* notify_callback) {
-  notify_callback_ = notify_callback;
+void TpmInit::Init(OwnershipCallback ownership_callback) {
+  ownership_callback_ = ownership_callback;
   tpm_init_task_->Init(this);
 }
 
-bool TpmInit::AsyncInitializeTpm() {
-  initialize_called_ = true;
+bool TpmInit::AsyncTakeOwnership() {
+  take_ownership_called_ = true;
   if (!PlatformThread::Create(0, tpm_init_task_.get(), &init_thread_)) {
-    LOG(ERROR) << "Unable to create TPM initialization background thread.";
+    LOG(ERROR) << "Unable to create background thread to take TPM ownership.";
     return false;
   }
   return true;
@@ -144,8 +136,8 @@ void TpmInit::SetTpmBeingOwned(bool being_owned) {
   tpm_init_task_->get_tpm()->SetIsBeingOwned(being_owned);
 }
 
-bool TpmInit::HasInitializeBeenCalled() {
-  return initialize_called_;
+bool TpmInit::OwnershipRequested() {
+  return take_ownership_called_;
 }
 
 bool TpmInit::GetTpmPassword(brillo::Blob* password) {
@@ -171,16 +163,14 @@ void TpmInit::ClearStoredTpmPassword() {
 
 void TpmInit::ThreadMain() {
   base::TimeTicks start = base::TimeTicks::Now();
-  bool initialize_result = InitializeTpm(
-      &initialize_took_ownership_);
+  bool ownership_result = TakeOwnership(&took_ownership_);
   base::TimeDelta delta = (base::TimeTicks::Now() - start);
   initialization_time_ = delta.InMilliseconds();
-  if (initialize_took_ownership_) {
-    LOG(ERROR) << "TPM initialization took " << initialization_time_ << "ms";
+  if (took_ownership_) {
+    LOG(ERROR) << "Taking TPM ownership took " << initialization_time_ << "ms";
   }
-  if (notify_callback_) {
-    notify_callback_->InitializeTpmComplete(initialize_result,
-                                            initialize_took_ownership_);
+  if (!ownership_callback_.is_null()) {
+    ownership_callback_.Run(ownership_result, took_ownership_);
   }
 }
 
@@ -213,8 +203,8 @@ bool TpmInit::SetupTpm(bool load_key) {
 
   // In case of interrupted initialization, continue it.
   if (IsTpmOwned() && !platform_->FileExists(kTpmOwnedFile)) {
-    LOG(WARNING) << "Initialization was interrupted, continuing.";
-    AsyncInitializeTpm();
+    LOG(WARNING) << "Taking ownership was interrupted, continuing.";
+    AsyncTakeOwnership();
   }
 
   if (load_key) {
@@ -229,9 +219,9 @@ void TpmInit::RestoreTpmStateFromStorage() {
 
   // Checking disabled and owned either via sysfs or via TSS calls will block if
   // ownership is being taken by another thread or process.  So for this to work
-  // well, SetupTpm() needs to be called before InitializeTpm() is called.  At
+  // well, SetupTpm() needs to be called before TakeOwnership() is called.  At
   // that point, the public API for Tpm only checks these booleans, so other
-  // threads can check without being blocked.  InitializeTpm() will reset the
+  // threads can check without being blocked.  TakeOwnership() will reset the
   // TPM's is_owned_ bit on success.
   bool is_enabled = false;
   bool is_owned = false;
@@ -270,7 +260,7 @@ void TpmInit::RestoreTpmStateFromStorage() {
   }
 }
 
-bool TpmInit::InitializeTpm(bool* OUT_took_ownership) {
+bool TpmInit::TakeOwnership(bool* OUT_took_ownership) {
   TpmStatus tpm_status;
 
   if (!LoadTpmStatus(&tpm_status)) {

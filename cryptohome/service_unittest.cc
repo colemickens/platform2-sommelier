@@ -21,11 +21,11 @@
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <chaps/token_manager_client_mock.h>
+#include <chromeos/constants/cryptohome.h>
 #include <glib-object.h>
 #include <gtest/gtest.h>
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
-#include <chromeos/constants/cryptohome.h>
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/interface.h"
@@ -47,10 +47,6 @@
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
 #include "cryptohome/username_passkey.h"
 
-using base::PlatformThread;
-using base::FilePath;
-using brillo::SecureBlob;
-using ::testing::_;
 using ::testing::DoAll;
 using ::testing::EndsWith;
 using ::testing::Invoke;
@@ -60,8 +56,11 @@ using ::testing::SaveArg;
 using ::testing::SaveArgPointee;
 using ::testing::SetArgPointee;
 using ::testing::StrEq;
-using ::testing::SetArgPointee;
 using ::testing::WithArgs;
+using ::testing::_;
+using base::FilePath;
+using base::PlatformThread;
+using brillo::SecureBlob;
 
 namespace {
 
@@ -514,7 +513,7 @@ TEST_F(ServiceTest, NoDeadlocksInInitializeTpmComplete) {
      }, &finished, &event, &event_stop));
 
   event.Wait();  // Wait for "Ready to start"
-  service_.InitializeTpmComplete(true, true);
+  service_.OwnershipCallback(true, true);
   event_stop.Signal();
   event.Wait();  // Wait for "Result ready"
   ASSERT_TRUE(finished);
@@ -1493,21 +1492,21 @@ TEST_F(ServiceExTest, RemoveFirmwareManagementParametersError) {
             reply.error());
 }
 
-void ImmediatelyCallTpmComplete(TpmInit::TpmInitCallback* callback) {
-  callback->InitializeTpmComplete(true, false);
+void ImmediatelySignalOwnership(TpmInit::OwnershipCallback callback) {
+  callback.Run(true, false);
 }
 
 TEST_F(ServiceTestNotInitialized, CheckTpmInitRace) {
   NiceMock<MockTpm> tpm;
   NiceMock<MockTpmInit> tpm_init;
 
-  // Emulate quick tpm initialization by calling the InitializeTpmComplete()
-  // callback from TpmInit::Init(). In reality, it is called from the thread
-  // created by TpmInit::AsyncInitializeTpm(), but since it's guarded by a
-  // command line switch, call it from Init() instead. It should be safe to
-  // call InitializeTpmComplete() from the main thread.
+  // Emulate quick tpm initialization by calling the ownership callback from
+  // TpmInit::Init(). In reality, it is called from the thread created by
+  // TpmInit::AsyncTakeOwnership(), but since it's guarded by a command line
+  // switch, call it from Init() instead. It should be safe to call the
+  // ownership callback from the main thread.
   EXPECT_CALL(tpm_init, Init(_))
-    .WillOnce(Invoke(ImmediatelyCallTpmComplete));
+    .WillOnce(Invoke(ImmediatelySignalOwnership));
   service_.set_tpm(&tpm);
   service_.set_tpm_init(&tpm_init);
   service_.set_initialize_tpm(true);
