@@ -252,6 +252,11 @@ class SessionManagerImpl
   void OnKeyGenerated(const std::string& username,
                       const base::FilePath& temp_key_file) override;
 
+  void SetSystemClockLastSyncInfoRetryDelayForTesting(
+      const base::TimeDelta& delay) {
+    system_clock_last_sync_info_retry_delay_ = delay;
+  }
+
  private:
   // Holds the state related to one of the signed in users.
   struct UserSession;
@@ -370,6 +375,7 @@ class SessionManagerImpl
   base::Closure start_arc_instance_closure_;
   base::Closure stop_arc_instance_closure_;
 
+  base::TimeDelta system_clock_last_sync_info_retry_delay_;
   base::TimeTicks arc_start_time_;
 
   DBusSignalEmitter dbus_emitter_;

@@ -228,6 +228,8 @@ SessionManagerImpl::SessionManagerImpl(
       restart_device_closure_(restart_device_closure),
       start_arc_instance_closure_(start_arc_instance_closure),
       stop_arc_instance_closure_(stop_arc_instance_closure),
+      system_clock_last_sync_info_retry_delay_(
+          kSystemClockLastSyncInfoRetryDelay),
       dbus_emitter_(
           bus->GetExportedObject(
               org::chromium::SessionManagerInterfaceAdaptor::GetObjectPath()),
@@ -766,8 +768,6 @@ void SessionManagerImpl::OnSystemClockServiceAvailable(bool service_available) {
 void SessionManagerImpl::GetSystemClockLastSyncInfo() {
   dbus::MethodCall method_call(system_clock::kSystemClockInterface,
                                system_clock::kSystemLastSyncInfo);
-  dbus::MessageWriter writer(&method_call);
-
   system_clock_proxy_->CallMethod(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
       base::Bind(&SessionManagerImpl::OnGotSystemClockLastSyncInfo,
@@ -782,7 +782,7 @@ void SessionManagerImpl::OnGotSystemClockLastSyncInfo(
     base::MessageLoop::current()->PostDelayedTask(
         FROM_HERE, base::Bind(&SessionManagerImpl::GetSystemClockLastSyncInfo,
                               weak_ptr_factory_.GetWeakPtr()),
-        kSystemClockLastSyncInfoRetryDelay);
+        system_clock_last_sync_info_retry_delay_);
     return;
   }
 
@@ -804,7 +804,7 @@ void SessionManagerImpl::OnGotSystemClockLastSyncInfo(
     base::MessageLoop::current()->PostDelayedTask(
         FROM_HERE, base::Bind(&SessionManagerImpl::GetSystemClockLastSyncInfo,
                               weak_ptr_factory_.GetWeakPtr()),
-        kSystemClockLastSyncInfoRetryDelay);
+        system_clock_last_sync_info_retry_delay_);
   }
 }
 

@@ -78,6 +78,7 @@ using ::testing::InvokeWithoutArgs;
 using ::testing::Mock;
 using ::testing::NotNull;
 using ::testing::Return;
+using ::testing::SaveArg;
 using ::testing::SetArgumentPointee;
 using ::testing::StartsWith;
 using ::testing::StrEq;
@@ -272,6 +273,8 @@ class SessionManagerImplTest : public ::testing::Test {
   ~SessionManagerImplTest() override = default;
 
   void SetUp() override {
+    impl_.SetSystemClockLastSyncInfoRetryDelayForTesting(base::TimeDelta());
+
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     utils_.set_base_dir_for_testing(tmpdir_.path());
     SetSystemSalt(&fake_salt_);
@@ -289,12 +292,6 @@ class SessionManagerImplTest : public ::testing::Test {
     ASSERT_TRUE(utils_.CreateDir(
         base::FilePath(FILE_PATH_LITERAL("/mnt/stateful_partition"))));
 
-    EXPECT_CALL(*(system_clock_proxy_.get()), WaitForServiceToBeAvailable(_))
-        .WillRepeatedly(testing::SaveArg<0>(&available_callback_));
-    EXPECT_CALL(*(system_clock_proxy_.get()),
-                CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
-        .WillRepeatedly(testing::SaveArg<2>(&time_sync_callback_));
-
     auto factory = base::MakeUnique<MockUserPolicyServiceFactory>();
     EXPECT_CALL(*factory, Create(_))
         .WillRepeatedly(
@@ -307,8 +304,13 @@ class SessionManagerImplTest : public ::testing::Test {
         std::move(factory),
         std::move(device_local_account_policy));
 
-    SetDefaultMockBehavior();
+    EXPECT_CALL(*system_clock_proxy_, WaitForServiceToBeAvailable(_))
+        .WillOnce(SaveArg<0>(&available_callback_));
     impl_.Initialize();
+    ASSERT_TRUE(Mock::VerifyAndClearExpectations(system_clock_proxy_.get()));
+    ASSERT_FALSE(available_callback_.is_null());
+
+    SetDefaultMockBehavior();
   }
 
   void TearDown() override {
@@ -433,13 +435,19 @@ class SessionManagerImplTest : public ::testing::Test {
   }
 
   void GotLastSyncInfo(bool network_synchronized) {
-    ASSERT_TRUE(!available_callback_.is_null());
+    ASSERT_FALSE(available_callback_.is_null());
+
+    dbus::ObjectProxy::ResponseCallback time_sync_callback;
+    EXPECT_CALL(*system_clock_proxy_,
+                CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
+        .WillOnce(SaveArg<2>(&time_sync_callback));
     available_callback_.Run(true);
-    ASSERT_TRUE(!time_sync_callback_.is_null());
+    ASSERT_TRUE(Mock::VerifyAndClearExpectations(system_clock_proxy_.get()));
+
     std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
     dbus::MessageWriter writer(response.get());
     writer.AppendBool(network_synchronized);
-    time_sync_callback_.Run(response.get());
+    time_sync_callback.Run(response.get());
   }
 
   // These are bare pointers, not unique_ptrs, because we need to give them
@@ -463,7 +471,6 @@ class SessionManagerImplTest : public ::testing::Test {
   MockInstallAttributesReader install_attributes_reader_;
   scoped_refptr<MockObjectProxy> system_clock_proxy_;
   dbus::ObjectProxy::WaitForServiceToBeAvailableCallback available_callback_;
-  dbus::ObjectProxy::ResponseCallback time_sync_callback_;
 
   // Used by fake closures to simulate doing whatever start/stop work needs
   // doing for ARC.
@@ -837,7 +844,7 @@ TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSync) {
   ResponseCapturer capturer;
   impl_.GetServerBackedStateKeys(
       capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>>());
-  GotLastSyncInfo(true);
+  ASSERT_NO_FATAL_FAILURE(GotLastSyncInfo(true));
 }
 
 TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_NoTimeSync) {
@@ -848,7 +855,8 @@ TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_NoTimeSync) {
 }
 
 TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSyncDoneBefore) {
-  GotLastSyncInfo(true);
+  ASSERT_NO_FATAL_FAILURE(GotLastSyncInfo(true));
+
   EXPECT_CALL(state_key_generator_, RequestStateKeys(_));
   ResponseCapturer capturer;
   impl_.GetServerBackedStateKeys(
@@ -856,22 +864,39 @@ TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSyncDoneBefore) {
 }
 
 TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_FailedTimeSync) {
+  ASSERT_NO_FATAL_FAILURE(GotLastSyncInfo(false));
+
   EXPECT_CALL(state_key_generator_, RequestStateKeys(_)).Times(0);
-  GotLastSyncInfo(false);
   ResponseCapturer capturer;
   impl_.GetServerBackedStateKeys(
       capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>>());
+
+  EXPECT_CALL(*system_clock_proxy_,
+              CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
+      .Times(1);
   base::RunLoop().RunUntilIdle();
 }
 
 TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSyncAfterFail) {
-  GotLastSyncInfo(false);
+  ASSERT_NO_FATAL_FAILURE(GotLastSyncInfo(false));
+
   ResponseCapturer capturer;
   impl_.GetServerBackedStateKeys(
       capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>>());
+
+  dbus::ObjectProxy::ResponseCallback time_sync_callback;
+  EXPECT_CALL(*system_clock_proxy_,
+              CallMethod(_, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, _))
+      .WillOnce(SaveArg<2>(&time_sync_callback));
   base::RunLoop().RunUntilIdle();
-  EXPECT_CALL(state_key_generator_, RequestStateKeys(_));
-  GotLastSyncInfo(true);
+  ASSERT_TRUE(Mock::VerifyAndClearExpectations(system_clock_proxy_.get()));
+  ASSERT_FALSE(time_sync_callback.is_null());
+
+  EXPECT_CALL(state_key_generator_, RequestStateKeys(_)).Times(1);
+  std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
+  dbus::MessageWriter writer(response.get());
+  writer.AppendBool(true);
+  time_sync_callback.Run(response.get());
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSession) {
