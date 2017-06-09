@@ -112,6 +112,8 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
 
   if (builder->UseFlagIsSet("arc_oobe_optin"))
     builder->AddArg("--enable-arc-oobe-optin");
+  if (builder->UseFlagIsSet("arc_always_start_with_no_play_store"))
+    builder->AddArg("--arc-start-mode=always-start-with-no-play-store");
 }
 
 // Blatantly copied from //components/crx_file/id_util.cc.
