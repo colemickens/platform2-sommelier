@@ -132,7 +132,7 @@ class MigrationHelper {
   // Remove the temporary xattrs used to store atime and mtime.
   bool RemoveTimeXattrs(const base::FilePath& child);
   bool CopyExtendedAttributes(const base::FilePath& child);
-  bool SetExtendedAttributeIfNotPresent(const base::FilePath& file,
+  bool SetExtendedAttributeIfNotPresent(const base::FilePath& child,
                                         const std::string& xattr,
                                         const char* value,
                                         ssize_t size);
@@ -166,6 +166,10 @@ class MigrationHelper {
   // Can be called on any thread.
   bool DecrementChildCountAndDeleteIfNecessary(const base::FilePath& child);
 
+  // Calculates the total size of existing xattrs on |path| and reports the sum
+  // of that total and failed_xattr_size to UMA.
+  void ReportTotalXattrSize(const base::FilePath& path, int failed_xattr_size);
+
   Platform* platform_;
   base::FilePath from_base_path_;
   base::FilePath to_base_path_;
@@ -175,6 +179,7 @@ class MigrationHelper {
   uint64_t effective_chunk_size_;
   uint64_t total_byte_count_;
   uint64_t total_directory_byte_count_;
+  int64_t initial_free_space_bytes_;
   int n_files_;
   int n_dirs_;
   int n_symlinks_;

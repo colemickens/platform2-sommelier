@@ -318,8 +318,8 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
     return false;
   }
 
-  int64_t free_space = platform_->AmountOfFreeDiskSpace(to_base_path_);
-  if (free_space < 0) {
+  initial_free_space_bytes_ = platform_->AmountOfFreeDiskSpace(to_base_path_);
+  if (initial_free_space_bytes_ < 0) {
     LOG(ERROR) << "Failed to determine free disk space";
     return false;
   }
@@ -327,14 +327,15 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
       kFreeSpaceBuffer + total_directory_byte_count_;
   const uint64_t kRequiredFreeSpace =
       kRequiredFreeSpaceForMainThread + num_job_threads_ * kErasureBlockSize;
-  if (static_cast<uint64_t>(free_space) < kRequiredFreeSpace) {
+  if (static_cast<uint64_t>(initial_free_space_bytes_) < kRequiredFreeSpace) {
     LOG(ERROR) << "Not enough space to begin the migration";
     status_reporter.SetLowDiskSpaceFailure();
     return false;
   }
-  effective_chunk_size_ = std::min(
-      max_chunk_size_,
-      (free_space - kRequiredFreeSpaceForMainThread) / num_job_threads_);
+  effective_chunk_size_ =
+      std::min(max_chunk_size_,
+               (initial_free_space_bytes_ - kRequiredFreeSpaceForMainThread) /
+                   num_job_threads_);
   // TODO(hashimoto): Reduce the number of threads when disk space is limited.
   if (effective_chunk_size_ > kErasureBlockSize)
     effective_chunk_size_ =
@@ -670,18 +671,16 @@ bool MigrationHelper::CopyAttributes(const base::FilePath& child,
 
   const auto& mtime = info.stat().st_mtim;
   const auto& atime = info.stat().st_atim;
-  if (!SetExtendedAttributeIfNotPresent(to,
+  if (!SetExtendedAttributeIfNotPresent(child,
                                         namespaced_mtime_xattr_name_,
                                         reinterpret_cast<const char*>(&mtime),
                                         sizeof(mtime))) {
-    RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child);
     return false;
   }
-  if (!SetExtendedAttributeIfNotPresent(to,
+  if (!SetExtendedAttributeIfNotPresent(child,
                                         namespaced_atime_xattr_name_,
                                         reinterpret_cast<const char*>(&atime),
                                         sizeof(atime))) {
-    RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child);
     return false;
   }
   if (!CopyExtendedAttributes(child))
@@ -769,7 +768,11 @@ bool MigrationHelper::CopyExtendedAttributes(const base::FilePath& child) {
     }
     if (!platform_->SetExtendedFileAttribute(
             to, name, value.data(), value.length())) {
+      bool nospace_error = errno == ENOSPC;
       RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child);
+      if (nospace_error) {
+        ReportTotalXattrSize(to, name.length() + 1 + value.length());
+      }
       return false;
     }
   }
@@ -778,10 +781,11 @@ bool MigrationHelper::CopyExtendedAttributes(const base::FilePath& child) {
 }
 
 bool MigrationHelper::SetExtendedAttributeIfNotPresent(
-    const base::FilePath& file,
+    const base::FilePath& child,
     const std::string& xattr,
     const char* value,
     ssize_t size) {
+  base::FilePath file = to_base_path_.Append(child);
   // If the attribute already exists we assume it was set during a previous
   // migration attempt and use the existing one instead of writing a new one.
   if (platform_->HasExtendedFileAttribute(file, xattr)) {
@@ -790,9 +794,18 @@ bool MigrationHelper::SetExtendedAttributeIfNotPresent(
   if (errno != ENOATTR) {
     PLOG(ERROR) << "Failed to get extended attribute " << xattr << " for "
                 << file.value();
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtGetAttribute, child);
     return false;
   }
-  return platform_->SetExtendedFileAttribute(file, xattr, value, size);
+  if (!platform_->SetExtendedFileAttribute(file, xattr, value, size)) {
+    bool nospace_error = errno == ENOSPC;
+    RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child);
+    if (nospace_error) {
+      ReportTotalXattrSize(file, xattr.length() + 1 + size);
+    }
+    return false;
+  }
+  return true;
 }
 
 void MigrationHelper::RecordFileError(
@@ -831,6 +844,12 @@ void MigrationHelper::RecordFileError(
   ReportDircryptoMigrationFailedOperationType(operation);
   ReportDircryptoMigrationFailedPathType(path);
   ReportDircryptoMigrationFailedErrorCode(error);
+
+  if (error == base::File::FILE_ERROR_NO_SPACE) {
+    ReportDircryptoMigrationFailedNoSpace(
+        initial_free_space_bytes_ / (1024 * 1024),
+        platform_->AmountOfFreeDiskSpace(to_base_path_) / (1024 * 1024));
+  }
 
   {  // Record the data for the final end-status report.
     base::AutoLock lock(failure_info_lock_);
@@ -950,6 +969,27 @@ bool MigrationHelper::DecrementChildCountAndDeleteIfNecessary(
   }
   // Decrement the parent directory's child count.
   return DecrementChildCountAndDeleteIfNecessary(child.DirName());
+}
+
+void MigrationHelper::ReportTotalXattrSize(const base::FilePath& path,
+                                           int failed_xattr_size) {
+  std::vector<std::string> xattr_names;
+  if (!platform_->ListExtendedFileAttributes(path, &xattr_names)) {
+    LOG(ERROR) << "Error listing extended attributes for " << path.value();
+    return;
+  }
+  int xattr_size = failed_xattr_size;
+  for (const std::string& name : xattr_names) {
+    xattr_size += name.length() + 1;  // Add one byte for null termination.
+    std::string value;
+    if (!platform_->GetExtendedFileAttributeAsString(path, name, &value)) {
+      LOG(ERROR) << "Error getting value for extended attribute " << name
+                 << " on " << path.value();
+      return;
+    }
+    xattr_size += value.length();
+  }
+  ReportDircryptoMigrationFailedNoSpaceXattrSizeInBytes(xattr_size);
 }
 
 }  // namespace dircrypto_data_migrator

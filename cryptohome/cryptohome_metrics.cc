@@ -46,6 +46,12 @@ constexpr char kCryptohomeDircryptoMigrationTotalFileCountHistogram[] =
 constexpr char kHomedirEncryptionTypeHistogram[] =
     "Cryptohome.HomedirEncryptionType";
 constexpr char kTPMVersionFingerprint[] = "Platform.TPM.VersionFingerprint";
+constexpr char kDircryptoMigrationNoSpaceFailureFreeSpaceInMbHistogram[] =
+    "Cryptohome.DircryptoMigrationNoSpaceFailureFreeSpaceInMb";
+constexpr char kDircryptoMigrationInitialFreeSpaceInMbHistogram[] =
+    "Cryptohome.DircryptoMigrationInitialFreeSpaceInMb";
+constexpr char kDircryptoMigrationNoSpaceXattrSizeInBytesHistogram[] =
+    "Cryptohome.DircryptoMigrationNoSpaceXattrSizeInBytes";
 
 // Histogram parameters. This should match the order of 'TimerType'.
 // Min and max samples are in milliseconds.
@@ -280,4 +286,34 @@ void ReportVersionFingerprint(int fingerprint) {
   g_metrics->SendSparseToUMA(kTPMVersionFingerprint, fingerprint);
 }
 
+void ReportDircryptoMigrationFailedNoSpace(int initial_migration_free_space_mb,
+                                           int failure_free_space_mb) {
+  if (!g_metrics) {
+    return;
+  }
+  constexpr int kMin = 0, kMax = 1024 * 1024, kNumBuckets = 50;
+  g_metrics->SendToUMA(kDircryptoMigrationInitialFreeSpaceInMbHistogram,
+                       initial_migration_free_space_mb,
+                       kMin,
+                       kMax,
+                       kNumBuckets);
+  g_metrics->SendToUMA(kDircryptoMigrationNoSpaceFailureFreeSpaceInMbHistogram,
+                       failure_free_space_mb,
+                       kMin,
+                       kMax,
+                       kNumBuckets);
+}
+
+void ReportDircryptoMigrationFailedNoSpaceXattrSizeInBytes(
+    int total_xattr_size_bytes) {
+  if (!g_metrics) {
+    return;
+  }
+  constexpr int kMin = 0, kMax = 1024 * 1024, kNumBuckets = 50;
+  g_metrics->SendToUMA(kDircryptoMigrationNoSpaceXattrSizeInBytesHistogram,
+                       total_xattr_size_bytes,
+                       kMin,
+                       kMax,
+                       kNumBuckets);
+}
 }  // namespace cryptohome

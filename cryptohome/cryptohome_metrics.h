@@ -211,6 +211,16 @@ void ReportHomedirEncryptionType(HomedirEncryptionType type);
 // histogram.
 void ReportVersionFingerprint(int fingerprint);
 
+// Reports the free space in MB when the migration fails and what the free space
+// was initially when the migration was started.
+void ReportDircryptoMigrationFailedNoSpace(int initial_migration_free_space_mb,
+                                           int failure_free_space_mb);
+
+// Reports the total size in bytes of the current xattrs already set on a file
+// and the xattr that caused the setxattr call to fail.
+void ReportDircryptoMigrationFailedNoSpaceXattrSizeInBytes(
+    int total_xattr_size_bytes);
+
 // Initialization helper.
 class ScopedMetricsInitializer {
  public:
