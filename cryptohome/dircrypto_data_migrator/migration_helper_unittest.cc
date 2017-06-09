@@ -928,6 +928,45 @@ TEST_F(MigrationHelperTest, AllJobThreadsFailing) {
                                          base::Unretained(this))));
 }
 
+TEST_F(MigrationHelperTest, SkipDuppedGCacheTmpDir) {
+  testing::NiceMock<MockPlatform> mock_platform;
+  Platform real_platform;
+  PassThroughPlatformMethods(&mock_platform, &real_platform);
+  MigrationHelper helper(
+      &mock_platform, from_dir_.path(), to_dir_.path(),
+      status_files_dir_.path(), kDefaultChunkSize);
+  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
+  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+
+  // Prepare the problematic path.
+  const base::FilePath v1_path(from_dir_.path().AppendASCII("user/GCache/v1"));
+  ASSERT_TRUE(real_platform.CreateDirectory(v1_path.AppendASCII("tmp/foobar")));
+  ASSERT_TRUE(real_platform.TouchFileDurable(
+      v1_path.AppendASCII("tmp/foobar/tmp.gdoc")));
+
+  // Mock the situation that user/GCache/v1/tmp is enumerated twice.
+  struct stat stat_data = {};
+  stat_data.st_mode = S_IFDIR;
+  const FileEnumerator::FileInfo info(v1_path.AppendASCII("tmp"), stat_data);
+  NiceMock<MockFileEnumerator>* mock_v1 = new NiceMock<MockFileEnumerator>();
+  mock_v1->entries_.push_back(info);
+  mock_v1->entries_.push_back(info);
+  EXPECT_CALL(mock_platform, GetFileEnumerator(testing::_, testing::_,
+      testing::_)).WillRepeatedly(testing::DoDefault());
+  EXPECT_CALL(mock_platform, GetFileEnumerator(v1_path, false, testing::_))
+      .WillOnce(Return(mock_v1));
+
+  // Ensure that the inner path is never visited.
+  EXPECT_CALL(mock_platform, DeleteFile(testing::_, testing::_))
+      .WillRepeatedly(testing::DoDefault());
+  EXPECT_CALL(mock_platform, DeleteFile(
+      v1_path.AppendASCII("tmp/foobar/tmp.gdoc"), testing::_)).Times(0);
+
+  // Test the migration.
+  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                        base::Unretained(this))));
+}
+
 class DataMigrationTest : public MigrationHelperTest,
                           public ::testing::WithParamInterface<size_t> {};
 

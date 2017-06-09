@@ -28,6 +28,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/mount.h"
 
 extern "C" {
 #include <attr/xattr.h>
@@ -434,6 +435,22 @@ bool MigrationHelper::MigrateDir(const base::FilePath& child,
                                  WorkerPool* worker_pool) {
   const base::FilePath from_dir = from_base_path_.Append(child);
   const base::FilePath to_dir = to_base_path_.Append(child);
+
+  // crbug.com/728892: This directory can be falling into a weird state that
+  // confuses the migrator. Never try migration. Just delete it. This is fine
+  // because Cryptohomed anyway creates a pass-through directory at this path
+  // and Chrome never uses contents of the directory left by old sessions.
+  if (child == base::FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(
+          kGCacheVersionDir).Append(kGCacheTmpDir)) {
+    if (!platform_->DeleteFile(from_dir, true /* recursive */)) {
+      PLOG(ERROR) << "Failed to delete " << child.value();
+      RecordFileErrorWithCurrentErrno(kMigrationFailedAtDelete, child);
+      return false;
+    }
+    // Now the |child| directory is completely deleted. Next, decrease the child
+    // count of the parent directory so that it can be deleted.
+    return DecrementChildCountAndDeleteIfNecessary(child.DirName());
+  }
 
   if (!platform_->CreateDirectory(to_dir)) {
     LOG(ERROR) << "Failed to create directory " << to_dir.value();
