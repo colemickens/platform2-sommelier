@@ -22,9 +22,38 @@ struct default_delete<ExifEntry> {
 
 namespace arc {
 
-// This comes from the Exif Version 2.3 standard table 9.
-const uint8_t gExifAsciiPrefix[] = {0x41, 0x53, 0x43, 0x49,
-                                    0x49, 0x0,  0x0,  0x0};
+#define SET_SHORT(ifd, tag, value)                \
+  do {                                            \
+    if (SetShort(ifd, tag, value, #tag) == false) \
+      return false;                               \
+  } while (0);
+
+#define SET_LONG(ifd, tag, value)                \
+  do {                                           \
+    if (SetLong(ifd, tag, value, #tag) == false) \
+      return false;                              \
+  } while (0);
+
+#define SET_RATIONAL(ifd, tag, numerator, denominator)                \
+  do {                                                                \
+    if (SetRational(ifd, tag, numerator, denominator, #tag) == false) \
+      return false;                                                   \
+  } while (0);
+
+#define SET_SRATIONAL(ifd, tag, numerator, denominator)                \
+  do {                                                                 \
+    if (SetSRational(ifd, tag, numerator, denominator, #tag) == false) \
+      return false;                                                    \
+  } while (0);
+
+#define SET_STRING(ifd, tag, format, buffer)                \
+  do {                                                      \
+    if (SetString(ifd, tag, format, buffer, #tag) == false) \
+      return false;                                         \
+  } while (0);
+
+// This comes from the Exif Version 2.2 standard table 6.
+const char gExifAsciiPrefix[] = {0x41, 0x53, 0x43, 0x49, 0x49, 0x0, 0x0, 0x0};
 
 static void SetLatitudeOrLongitudeData(unsigned char* data, double num) {
   // Take the integer part of |num|.
@@ -57,51 +86,44 @@ bool ExifUtils::Initialize() {
   exif_data_set_option(exif_data_, EXIF_DATA_OPTION_FOLLOW_SPECIFICATION);
   exif_data_set_data_type(exif_data_, EXIF_DATA_TYPE_COMPRESSED);
   exif_data_set_byte_order(exif_data_, EXIF_BYTE_ORDER_INTEL);
+
+  // Set exif version to 2.2.
+  if (!SetExifVersion("0220")) {
+    return false;
+  }
   return true;
 }
 
-bool ExifUtils::SetImageWidth(uint16_t width) {
-  std::unique_ptr<ExifEntry> entry = AddEntry(EXIF_IFD_0, EXIF_TAG_IMAGE_WIDTH);
-  if (!entry) {
-    LOGF(ERROR) << "Adding ImageWidth exif entry failed";
-    return false;
-  }
-  exif_set_long(entry->data, EXIF_BYTE_ORDER_INTEL, width);
+bool ExifUtils::SetAperture(uint32_t numerator, uint32_t denominator) {
+  SET_RATIONAL(EXIF_IFD_EXIF, EXIF_TAG_APERTURE_VALUE, numerator, denominator);
   return true;
 }
 
-bool ExifUtils::SetImageLength(uint16_t length) {
-  std::unique_ptr<ExifEntry> entry =
-      AddEntry(EXIF_IFD_0, EXIF_TAG_IMAGE_LENGTH);
-  if (!entry) {
-    LOGF(ERROR) << "Adding ImageLength exif entry failed";
-    return false;
-  }
-  exif_set_long(entry->data, EXIF_BYTE_ORDER_INTEL, length);
+bool ExifUtils::SetBrightness(int32_t numerator, int32_t denominator) {
+  SET_SRATIONAL(EXIF_IFD_EXIF, EXIF_TAG_BRIGHTNESS_VALUE, numerator,
+                denominator);
   return true;
 }
 
-bool ExifUtils::SetMaker(const std::string& maker) {
-  size_t entrySize = maker.length() + 1;
-  std::unique_ptr<ExifEntry> entry = AddVariableLengthEntry(
-      EXIF_IFD_0, EXIF_TAG_MAKE, EXIF_FORMAT_ASCII, entrySize, entrySize);
-  if (!entry) {
-    LOGF(ERROR) << "Adding Make exif entry failed";
-    return false;
-  }
-  memcpy(entry->data, maker.c_str(), entrySize);
+bool ExifUtils::SetColorSpace(uint16_t color_space) {
+  SET_SHORT(EXIF_IFD_EXIF, EXIF_TAG_COLOR_SPACE, color_space);
   return true;
 }
 
-bool ExifUtils::SetModel(const std::string& model) {
-  size_t entrySize = model.length() + 1;
-  std::unique_ptr<ExifEntry> entry = AddVariableLengthEntry(
-      EXIF_IFD_0, EXIF_TAG_MODEL, EXIF_FORMAT_ASCII, entrySize, entrySize);
-  if (!entry) {
-    LOGF(ERROR) << "Adding Model exif entry failed";
-    return false;
-  }
-  memcpy(entry->data, model.c_str(), entrySize);
+bool ExifUtils::SetComponentsConfiguration(
+    const std::string& components_configuration) {
+  SET_STRING(EXIF_IFD_EXIF, EXIF_TAG_COMPONENTS_CONFIGURATION,
+             EXIF_FORMAT_UNDEFINED, components_configuration);
+  return true;
+}
+
+bool ExifUtils::SetCompression(uint16_t compression) {
+  SET_SHORT(EXIF_IFD_0, EXIF_TAG_COMPRESSION, compression);
+  return true;
+}
+
+bool ExifUtils::SetContrast(uint16_t contrast) {
+  SET_SHORT(EXIF_IFD_EXIF, EXIF_TAG_CONTRAST, contrast);
   return true;
 }
 
@@ -115,26 +137,94 @@ bool ExifUtils::SetDateTime(const struct tm& t) {
     LOGF(WARNING) << "Input time is invalid";
     return false;
   }
-  std::unique_ptr<ExifEntry> entry =
-      AddVariableLengthEntry(EXIF_IFD_0, EXIF_TAG_DATE_TIME, EXIF_FORMAT_ASCII,
-                             sizeof(str), sizeof(str));
-  if (!entry) {
-    LOGF(ERROR) << "Adding DateTime exif entry failed";
-    return false;
-  }
-  memcpy(entry->data, str, sizeof(str));
+  std::string buffer(str);
+  SET_STRING(EXIF_IFD_0, EXIF_TAG_DATE_TIME, EXIF_FORMAT_ASCII, buffer);
+  SET_STRING(EXIF_IFD_EXIF, EXIF_TAG_DATE_TIME_ORIGINAL, EXIF_FORMAT_ASCII,
+             buffer);
+  SET_STRING(EXIF_IFD_EXIF, EXIF_TAG_DATE_TIME_DIGITIZED, EXIF_FORMAT_ASCII,
+             buffer);
+  return true;
+}
+
+bool ExifUtils::SetDescription(const std::string& description) {
+  SET_STRING(EXIF_IFD_0, EXIF_TAG_IMAGE_DESCRIPTION, EXIF_FORMAT_ASCII,
+             description);
+  return true;
+}
+
+bool ExifUtils::SetDigitalZoomRatio(uint32_t numerator, uint32_t denominator) {
+  SET_RATIONAL(EXIF_IFD_EXIF, EXIF_TAG_DIGITAL_ZOOM_RATIO, numerator,
+               denominator);
+  return true;
+}
+
+bool ExifUtils::SetExposureBias(int32_t numerator, int32_t denominator) {
+  SET_SRATIONAL(EXIF_IFD_EXIF, EXIF_TAG_EXPOSURE_BIAS_VALUE, numerator,
+                denominator);
+  return true;
+}
+
+bool ExifUtils::SetExposureMode(uint16_t exposure_mode) {
+  SET_SHORT(EXIF_IFD_EXIF, EXIF_TAG_EXPOSURE_MODE, exposure_mode);
+  return true;
+}
+
+bool ExifUtils::SetExposureProgram(uint16_t exposure_program) {
+  SET_SHORT(EXIF_IFD_EXIF, EXIF_TAG_EXPOSURE_PROGRAM, exposure_program);
+  return true;
+}
+
+bool ExifUtils::SetExposureTime(uint32_t numerator, uint32_t denominator) {
+  SET_RATIONAL(EXIF_IFD_EXIF, EXIF_TAG_EXPOSURE_TIME, numerator, denominator);
+  return true;
+}
+
+bool ExifUtils::SetFlash(uint16_t flash) {
+  SET_SHORT(EXIF_IFD_EXIF, EXIF_TAG_FLASH, flash);
+  return true;
+}
+
+bool ExifUtils::SetFNumber(uint32_t numerator, uint32_t denominator) {
+  SET_RATIONAL(EXIF_IFD_EXIF, EXIF_TAG_FNUMBER, numerator, denominator);
   return true;
 }
 
 bool ExifUtils::SetFocalLength(uint32_t numerator, uint32_t denominator) {
-  std::unique_ptr<ExifEntry> entry =
-      AddEntry(EXIF_IFD_EXIF, EXIF_TAG_FOCAL_LENGTH);
+  SET_RATIONAL(EXIF_IFD_EXIF, EXIF_TAG_FOCAL_LENGTH, numerator, denominator);
+  return true;
+}
+
+bool ExifUtils::SetGainControl(uint16_t gain_control) {
+  SET_SHORT(EXIF_IFD_EXIF, EXIF_TAG_GAIN_CONTROL, gain_control);
+  return true;
+}
+
+bool ExifUtils::SetGpsAltitude(double altitude) {
+  ExifTag refTag = static_cast<ExifTag>(EXIF_TAG_GPS_ALTITUDE_REF);
+  std::unique_ptr<ExifEntry> refEntry =
+      AddVariableLengthEntry(EXIF_IFD_GPS, refTag, EXIF_FORMAT_BYTE, 1, 1);
+  if (!refEntry) {
+    LOGF(ERROR) << "Adding GPSAltitudeRef exif entry failed";
+    return false;
+  }
+  if (altitude >= 0) {
+    *refEntry->data = 0;
+  } else {
+    *refEntry->data = 1;
+    altitude *= -1;
+  }
+
+  ExifTag tag = static_cast<ExifTag>(EXIF_TAG_GPS_ALTITUDE);
+  std::unique_ptr<ExifEntry> entry = AddVariableLengthEntry(
+      EXIF_IFD_GPS, tag, EXIF_FORMAT_RATIONAL, 1, sizeof(ExifRational));
   if (!entry) {
-    LOGF(ERROR) << "Adding FocalLength exif entry failed";
+    exif_content_remove_entry(exif_data_->ifd[EXIF_IFD_GPS], refEntry.get());
+    LOGF(ERROR) << "Adding GPSAltitude exif entry failed";
     return false;
   }
   exif_set_rational(entry->data, EXIF_BYTE_ORDER_INTEL,
-                    {numerator, denominator});
+                    {static_cast<ExifLong>(altitude * 1000), 1000});
+
   return true;
 }
 
@@ -194,32 +284,11 @@ bool ExifUtils::SetGpsLongitude(double longitude) {
   return true;
 }
 
-bool ExifUtils::SetGpsAltitude(double altitude) {
-  ExifTag refTag = static_cast<ExifTag>(EXIF_TAG_GPS_ALTITUDE_REF);
-  std::unique_ptr<ExifEntry> refEntry =
-      AddVariableLengthEntry(EXIF_IFD_GPS, refTag, EXIF_FORMAT_BYTE, 1, 1);
-  if (!refEntry) {
-    LOGF(ERROR) << "Adding GPSAltitudeRef exif entry failed";
-    return false;
-  }
-  if (altitude >= 0) {
-    *refEntry->data = 0;
-  } else {
-    *refEntry->data = 1;
-    altitude *= -1;
-  }
-
-  ExifTag tag = static_cast<ExifTag>(EXIF_TAG_GPS_ALTITUDE);
-  std::unique_ptr<ExifEntry> entry = AddVariableLengthEntry(
-      EXIF_IFD_GPS, tag, EXIF_FORMAT_RATIONAL, 1, sizeof(ExifRational));
-  if (!entry) {
-    exif_content_remove_entry(exif_data_->ifd[EXIF_IFD_GPS], refEntry.get());
-    LOGF(ERROR) << "Adding GPSAltitude exif entry failed";
-    return false;
-  }
-  exif_set_rational(entry->data, EXIF_BYTE_ORDER_INTEL,
-                    {static_cast<ExifLong>(altitude * 1000), 1000});
-
+bool ExifUtils::SetGpsProcessingMethod(const std::string& method) {
+  std::string buffer =
+      std::string(gExifAsciiPrefix, sizeof(gExifAsciiPrefix)) + method;
+  SET_STRING(EXIF_IFD_GPS, static_cast<ExifTag>(EXIF_TAG_GPS_PROCESSING_METHOD),
+             EXIF_FORMAT_UNDEFINED, buffer);
   return true;
 }
 
@@ -259,29 +328,50 @@ bool ExifUtils::SetGpsTimestamp(const struct tm& t) {
   return true;
 }
 
-bool ExifUtils::SetGpsProcessingMethod(const std::string& method) {
-  ExifTag tag = static_cast<ExifTag>(EXIF_TAG_GPS_PROCESSING_METHOD);
-  size_t size = sizeof(gExifAsciiPrefix) + method.length();
-  std::unique_ptr<ExifEntry> entry = AddVariableLengthEntry(
-      EXIF_IFD_GPS, tag, EXIF_FORMAT_UNDEFINED, size, size);
-  if (!entry) {
-    LOGF(ERROR) << "Adding GPSProcessingMethod exif entry failed";
-    return false;
-  }
-  memcpy(entry->data, gExifAsciiPrefix, sizeof(gExifAsciiPrefix));
-  // Since the exif format is undefined, NULL termination is not necessary.
-  memcpy(entry->data + sizeof(gExifAsciiPrefix), method.c_str(),
-         method.length());
+bool ExifUtils::SetImageLength(uint32_t length) {
+  SET_LONG(EXIF_IFD_0, EXIF_TAG_IMAGE_LENGTH, length);
+  SET_LONG(EXIF_IFD_EXIF, EXIF_TAG_PIXEL_Y_DIMENSION, length);
+  return true;
+}
 
+bool ExifUtils::SetImageWidth(uint32_t width) {
+  SET_LONG(EXIF_IFD_0, EXIF_TAG_IMAGE_WIDTH, width);
+  SET_LONG(EXIF_IFD_EXIF, EXIF_TAG_PIXEL_X_DIMENSION, width);
+  return true;
+}
+
+bool ExifUtils::SetIsoSpeedRating(uint16_t iso_speed_ratings) {
+  SET_SHORT(EXIF_IFD_EXIF, EXIF_TAG_ISO_SPEED_RATINGS, iso_speed_ratings);
+  return true;
+}
+
+bool ExifUtils::SetLightSource(uint16_t light_source) {
+  SET_SHORT(EXIF_IFD_EXIF, EXIF_TAG_LIGHT_SOURCE, light_source);
+  return true;
+}
+
+bool ExifUtils::SetMake(const std::string& make) {
+  SET_STRING(EXIF_IFD_0, EXIF_TAG_MAKE, EXIF_FORMAT_ASCII, make);
+  return true;
+}
+
+bool ExifUtils::SetMaxAperture(uint32_t numerator, uint32_t denominator) {
+  SET_RATIONAL(EXIF_IFD_EXIF, EXIF_TAG_MAX_APERTURE_VALUE, numerator,
+               denominator);
+  return true;
+}
+
+bool ExifUtils::SetMeteringMode(uint16_t metering_mode) {
+  SET_SHORT(EXIF_IFD_EXIF, EXIF_TAG_METERING_MODE, metering_mode);
+  return true;
+}
+
+bool ExifUtils::SetModel(const std::string& model) {
+  SET_STRING(EXIF_IFD_0, EXIF_TAG_MODEL, EXIF_FORMAT_ASCII, model);
   return true;
 }
 
 bool ExifUtils::SetOrientation(uint16_t orientation) {
-  std::unique_ptr<ExifEntry> entry = AddEntry(EXIF_IFD_0, EXIF_TAG_ORIENTATION);
-  if (!entry) {
-    LOGF(ERROR) << "Adding Orientation exif entry failed";
-    return false;
-  }
   /*
    * Orientation value:
    *  1      2      3      4      5          6          7          8
@@ -306,7 +396,69 @@ bool ExifUtils::SetOrientation(uint16_t orientation) {
     default:
       break;
   }
-  exif_set_short(entry->data, EXIF_BYTE_ORDER_INTEL, value);
+  SET_SHORT(EXIF_IFD_0, EXIF_TAG_ORIENTATION, value);
+  return true;
+}
+
+bool ExifUtils::SetResolutionUnit(uint16_t resolution_unit) {
+  SET_SHORT(EXIF_IFD_EXIF, EXIF_TAG_RESOLUTION_UNIT, resolution_unit);
+  return true;
+}
+
+bool ExifUtils::SetSaturation(uint16_t saturation) {
+  SET_SHORT(EXIF_IFD_EXIF, EXIF_TAG_SATURATION, saturation);
+  return true;
+}
+
+bool ExifUtils::SetSceneCaptureType(uint16_t type) {
+  SET_SHORT(EXIF_IFD_EXIF, EXIF_TAG_SCENE_CAPTURE_TYPE, type);
+  return true;
+}
+
+bool ExifUtils::SetSharpness(uint16_t sharpness) {
+  SET_SHORT(EXIF_IFD_EXIF, EXIF_TAG_SHARPNESS, sharpness);
+  return true;
+}
+
+bool ExifUtils::SetShutterSpeed(int32_t numerator, int32_t denominator) {
+  SET_SRATIONAL(EXIF_IFD_EXIF, EXIF_TAG_SHUTTER_SPEED_VALUE, numerator,
+                denominator);
+  return true;
+}
+
+bool ExifUtils::SetSubjectDistance(uint32_t numerator, uint32_t denominator) {
+  SET_RATIONAL(EXIF_IFD_EXIF, EXIF_TAG_SUBJECT_DISTANCE, numerator,
+               denominator);
+  return true;
+}
+
+bool ExifUtils::SetSubsecTime(const std::string& subsec_time) {
+  SET_STRING(EXIF_IFD_EXIF, EXIF_TAG_SUB_SEC_TIME, EXIF_FORMAT_ASCII,
+             subsec_time);
+  SET_STRING(EXIF_IFD_EXIF, EXIF_TAG_SUB_SEC_TIME_ORIGINAL, EXIF_FORMAT_ASCII,
+             subsec_time);
+  SET_STRING(EXIF_IFD_EXIF, EXIF_TAG_SUB_SEC_TIME_DIGITIZED, EXIF_FORMAT_ASCII,
+             subsec_time);
+  return true;
+}
+
+bool ExifUtils::SetWhiteBalance(uint16_t white_balance) {
+  SET_SHORT(EXIF_IFD_EXIF, EXIF_TAG_WHITE_BALANCE, white_balance);
+  return true;
+}
+
+bool ExifUtils::SetXResolution(uint32_t numerator, uint32_t denominator) {
+  SET_RATIONAL(EXIF_IFD_EXIF, EXIF_TAG_X_RESOLUTION, numerator, denominator);
+  return true;
+}
+
+bool ExifUtils::SetYCbCrPositioning(uint16_t ycbcr_positioning) {
+  SET_SHORT(EXIF_IFD_0, EXIF_TAG_YCBCR_POSITIONING, ycbcr_positioning);
+  return true;
+}
+
+bool ExifUtils::SetYResolution(uint32_t numerator, uint32_t denominator) {
+  SET_RATIONAL(EXIF_IFD_EXIF, EXIF_TAG_Y_RESOLUTION, numerator, denominator);
   return true;
 }
 
@@ -339,6 +491,12 @@ const uint8_t* ExifUtils::GetApp1Buffer() {
 
 unsigned int ExifUtils::GetApp1Length() {
   return app1_length_;
+}
+
+bool ExifUtils::SetExifVersion(const std::string& exif_version) {
+  SET_STRING(EXIF_IFD_EXIF, EXIF_TAG_EXIF_VERSION, EXIF_FORMAT_UNDEFINED,
+             exif_version);
+  return true;
 }
 
 void ExifUtils::Reset() {
@@ -413,6 +571,82 @@ std::unique_ptr<ExifEntry> ExifUtils::AddEntry(ExifIfd ifd, ExifTag tag) {
   exif_content_add_entry(exif_data_->ifd[ifd], entry.get());
   exif_entry_initialize(entry.get(), tag);
   return entry;
+}
+
+bool ExifUtils::SetShort(ExifIfd ifd,
+                         ExifTag tag,
+                         uint16_t value,
+                         const std::string& msg) {
+  std::unique_ptr<ExifEntry> entry = AddEntry(ifd, tag);
+  if (!entry) {
+    LOGF(ERROR) << "Adding " << msg << " entry failed";
+    return false;
+  }
+  exif_set_short(entry->data, EXIF_BYTE_ORDER_INTEL, value);
+  return true;
+}
+
+bool ExifUtils::SetLong(ExifIfd ifd,
+                        ExifTag tag,
+                        uint32_t value,
+                        const std::string& msg) {
+  std::unique_ptr<ExifEntry> entry = AddEntry(ifd, tag);
+  if (!entry) {
+    LOGF(ERROR) << "Adding " << msg << " entry failed";
+    return false;
+  }
+  exif_set_long(entry->data, EXIF_BYTE_ORDER_INTEL, value);
+  return true;
+}
+
+bool ExifUtils::SetRational(ExifIfd ifd,
+                            ExifTag tag,
+                            uint32_t numerator,
+                            uint32_t denominator,
+                            const std::string& msg) {
+  std::unique_ptr<ExifEntry> entry = AddEntry(ifd, tag);
+  if (!entry) {
+    LOGF(ERROR) << "Adding " << msg << " entry failed";
+    return false;
+  }
+  exif_set_rational(entry->data, EXIF_BYTE_ORDER_INTEL,
+                    {numerator, denominator});
+  return true;
+}
+
+bool ExifUtils::SetSRational(ExifIfd ifd,
+                             ExifTag tag,
+                             int32_t numerator,
+                             int32_t denominator,
+                             const std::string& msg) {
+  std::unique_ptr<ExifEntry> entry = AddEntry(ifd, tag);
+  if (!entry) {
+    LOGF(ERROR) << "Adding " << msg << " entry failed";
+    return false;
+  }
+  exif_set_srational(entry->data, EXIF_BYTE_ORDER_INTEL,
+                     {numerator, denominator});
+  return true;
+}
+
+bool ExifUtils::SetString(ExifIfd ifd,
+                          ExifTag tag,
+                          ExifFormat format,
+                          const std::string& buffer,
+                          const std::string& msg) {
+  size_t entry_size = buffer.length();
+  // Since the exif format is undefined, NULL termination is not necessary.
+  if (format == EXIF_FORMAT_ASCII) {
+    entry_size++;
+  }
+  std::unique_ptr<ExifEntry> entry =
+      AddVariableLengthEntry(ifd, tag, format, entry_size, entry_size);
+  if (!entry) {
+    LOGF(ERROR) << "Adding " << msg << " entry failed";
+    return false;
+  }
+  memcpy(entry->data, buffer.c_str(), entry_size);
+  return true;
 }
 
 void ExifUtils::DestroyApp1() {
