@@ -130,7 +130,8 @@ struct MigrationHelper::Job {
 };
 
 // WorkerPool manages jobs and job threads.
-// All public methods must be called on the main thread.
+// All public methods must be called on the main thread unless otherwise
+// specified.
 class MigrationHelper::WorkerPool {
  public:
   WorkerPool(MigrationHelper* migration_helper,
@@ -167,14 +168,18 @@ class MigrationHelper::WorkerPool {
   }
 
   // Adds a job to the job list.
-  void PushJob(const Job& job) {
+  bool PushJob(const Job& job) {
     base::AutoLock lock(jobs_lock_);
-    while (jobs_.size() >= max_job_list_size_) {
+    while (jobs_.size() >= max_job_list_size_ && !should_abort_) {
       main_thread_wakeup_condition_.Wait();
+    }
+    if (should_abort_) {
+      return false;
     }
     jobs_.push_back(job);
     // Let a job thread process the new job.
     job_thread_wakeup_condition_.Signal();
+    return true;
   }
 
   // Waits for job threads to process all pushed jobs and returns true if there
@@ -188,7 +193,17 @@ class MigrationHelper::WorkerPool {
     }
     job_threads_.clear();  // Join threads.
     return std::count(job_thread_results_.begin(), job_thread_results_.end(),
-                      false) == 0;
+                      false) == 0 && !should_abort_;
+  }
+
+  // Aborts job processing.
+  // Can be called on any thread.
+  void Abort() {
+    base::AutoLock lock(jobs_lock_);
+    no_more_new_jobs_ = true;
+    should_abort_ = true;
+    main_thread_wakeup_condition_.Signal();
+    job_thread_wakeup_condition_.Broadcast();
   }
 
  private:
@@ -204,6 +219,7 @@ class MigrationHelper::WorkerPool {
       }
       if (!migration_helper_->ProcessJob(job)) {
         LOG(ERROR) << "Failed to migrate \"" << job.child.value() << "\"";
+        Abort();
         *result = false;
         return;
       }
@@ -219,6 +235,9 @@ class MigrationHelper::WorkerPool {
         return false;
       job_thread_wakeup_condition_.Wait();
     }
+    if (should_abort_) {
+      return false;
+    }
     *job = jobs_.front();
     jobs_.pop_front();
     // Let the main thread feed new jobs.
@@ -231,9 +250,13 @@ class MigrationHelper::WorkerPool {
   // deque instead of vector to avoid vector<bool> specialization.
   std::deque<bool> job_thread_results_;
   const size_t max_job_list_size_;
+
   std::deque<Job> jobs_;  // The FIFO job list.
   bool no_more_new_jobs_ = false;
-  base::Lock jobs_lock_;  // Lock for jobs_ and no_more_new_jobs_.
+  bool should_abort_ = false;
+  // Lock for jobs_, no_more_new_jobs_, and should_abort_.
+  base::Lock jobs_lock_;
+  // Condition variables associated with jobs_lock_.
   base::ConditionVariable job_thread_wakeup_condition_;
   base::ConditionVariable main_thread_wakeup_condition_;
 
@@ -446,7 +469,8 @@ bool MigrationHelper::MigrateDir(const base::FilePath& child,
       Job job;
       job.child = new_child;
       job.info = entry_info;
-      worker_pool->PushJob(job);
+      if (!worker_pool->PushJob(job))
+        return false;
     }
   }
   enumerator.reset();

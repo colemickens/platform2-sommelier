@@ -888,6 +888,32 @@ TEST_F(MigrationHelperTest, SkipInvalidSQLiteFiles) {
   EXPECT_EQ(std::string(kCorruptedFilePath) + "\n", contents);
 }
 
+TEST_F(MigrationHelperTest, AllJobThreadsFailing) {
+  testing::NiceMock<MockPlatform> mock_platform;
+  Platform real_platform;
+  PassThroughPlatformMethods(&mock_platform, &real_platform);
+  MigrationHelper helper(
+      &mock_platform, from_dir_.path(), to_dir_.path(),
+      status_files_dir_.path(), kDefaultChunkSize);
+  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
+  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+
+  constexpr int kNumJobThreads = 2;
+  helper.set_num_job_threads_for_testing(kNumJobThreads);
+  helper.set_max_job_list_size_for_testing(1);
+
+  // Create more files than the job threads.
+  for (int i = 0; i < kNumJobThreads * 2; ++i) {
+    ASSERT_TRUE(real_platform.TouchFileDurable(from_dir_.path().AppendASCII(
+        base::IntToString(i))));
+  }
+  // All job threads will stop processing jobs because of errors.
+  EXPECT_CALL(mock_platform, DeleteFile(_, _)).WillRepeatedly(Return(false));
+  // Migrate() still returns the result without deadlocking. crbug.com/731575
+  EXPECT_FALSE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                         base::Unretained(this))));
+}
+
 class DataMigrationTest : public MigrationHelperTest,
                           public ::testing::WithParamInterface<size_t> {};
 
