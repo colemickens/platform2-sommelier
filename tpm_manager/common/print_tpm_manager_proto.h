@@ -87,6 +87,10 @@ std::string GetProtoDebugString(const GetSpaceInfoReply& value);
 std::string GetProtoDebugStringWithIndent(const GetTpmStatusRequest& value,
                                           int indent_size);
 std::string GetProtoDebugString(const GetTpmStatusRequest& value);
+std::string GetProtoDebugStringWithIndent(
+    const GetTpmStatusReply::TpmVersionInfo& value,
+    int indent_size);
+std::string GetProtoDebugString(const GetTpmStatusReply::TpmVersionInfo& value);
 std::string GetProtoDebugStringWithIndent(const GetTpmStatusReply& value,
                                           int indent_size);
 std::string GetProtoDebugString(const GetTpmStatusReply& value);

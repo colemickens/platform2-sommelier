@@ -18,6 +18,8 @@
 
 #include "tpm_manager/common/print_tpm_manager_proto.h"
 
+#include <inttypes.h>
+
 #include <string>
 
 #include <base/strings/string_number_conversions.h>
@@ -147,7 +149,8 @@ std::string GetProtoDebugStringWithIndent(const NvramPolicyRecord& value,
 
   if (value.has_index()) {
     output += indent + "  index: ";
-    base::StringAppendF(&output, "%u (0x%08X)", value.index(), value.index());
+    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")", value.index(),
+                        value.index());
     output += "\n";
   }
   if (value.has_policy()) {
@@ -253,12 +256,14 @@ std::string GetProtoDebugStringWithIndent(const DefineSpaceRequest& value,
 
   if (value.has_index()) {
     output += indent + "  index: ";
-    base::StringAppendF(&output, "%u (0x%08X)", value.index(), value.index());
+    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")", value.index(),
+                        value.index());
     output += "\n";
   }
   if (value.has_size()) {
     output += indent + "  size: ";
-    base::StringAppendF(&output, "%u (0x%08X)", value.size(), value.size());
+    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")", value.size(),
+                        value.size());
     output += "\n";
   }
   output += indent + "  attributes: {";
@@ -266,9 +271,10 @@ std::string GetProtoDebugStringWithIndent(const DefineSpaceRequest& value,
     if (i > 0) {
       base::StringAppendF(&output, ", ");
     }
-    base::StringAppendF(&output, "%s", GetProtoDebugStringWithIndent(
-                                           value.attributes(i), indent_size + 2)
-                                           .c_str());
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.attributes(i), indent_size + 2)
+            .c_str());
   }
   output += "}\n";
   if (value.has_authorization_value()) {
@@ -323,7 +329,8 @@ std::string GetProtoDebugStringWithIndent(const DestroySpaceRequest& value,
 
   if (value.has_index()) {
     output += indent + "  index: ";
-    base::StringAppendF(&output, "%u (0x%08X)", value.index(), value.index());
+    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")", value.index(),
+                        value.index());
     output += "\n";
   }
   output += indent + "}\n";
@@ -363,7 +370,8 @@ std::string GetProtoDebugStringWithIndent(const WriteSpaceRequest& value,
 
   if (value.has_index()) {
     output += indent + "  index: ";
-    base::StringAppendF(&output, "%u (0x%08X)", value.index(), value.index());
+    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")", value.index(),
+                        value.index());
     output += "\n";
   }
   if (value.has_data()) {
@@ -424,7 +432,8 @@ std::string GetProtoDebugStringWithIndent(const ReadSpaceRequest& value,
 
   if (value.has_index()) {
     output += indent + "  index: ";
-    base::StringAppendF(&output, "%u (0x%08X)", value.index(), value.index());
+    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")", value.index(),
+                        value.index());
     output += "\n";
   }
   if (value.has_authorization_value()) {
@@ -485,7 +494,8 @@ std::string GetProtoDebugStringWithIndent(const LockSpaceRequest& value,
 
   if (value.has_index()) {
     output += indent + "  index: ";
-    base::StringAppendF(&output, "%u (0x%08X)", value.index(), value.index());
+    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")", value.index(),
+                        value.index());
     output += "\n";
   }
   if (value.has_lock_read()) {
@@ -573,8 +583,8 @@ std::string GetProtoDebugStringWithIndent(const ListSpacesReply& value,
     if (i > 0) {
       base::StringAppendF(&output, ", ");
     }
-    base::StringAppendF(&output, "%u (0x%08X)", value.index_list(i),
-                        value.index_list(i));
+    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")",
+                        value.index_list(i), value.index_list(i));
   }
   output += "}\n";
   output += indent + "}\n";
@@ -593,7 +603,8 @@ std::string GetProtoDebugStringWithIndent(const GetSpaceInfoRequest& value,
 
   if (value.has_index()) {
     output += indent + "  index: ";
-    base::StringAppendF(&output, "%u (0x%08X)", value.index(), value.index());
+    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")", value.index(),
+                        value.index());
     output += "\n";
   }
   output += indent + "}\n";
@@ -619,7 +630,8 @@ std::string GetProtoDebugStringWithIndent(const GetSpaceInfoReply& value,
   }
   if (value.has_size()) {
     output += indent + "  size: ";
-    base::StringAppendF(&output, "%u (0x%08X)", value.size(), value.size());
+    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")", value.size(),
+                        value.size());
     output += "\n";
   }
   if (value.has_is_read_locked()) {
@@ -639,9 +651,10 @@ std::string GetProtoDebugStringWithIndent(const GetSpaceInfoReply& value,
     if (i > 0) {
       base::StringAppendF(&output, ", ");
     }
-    base::StringAppendF(&output, "%s", GetProtoDebugStringWithIndent(
-                                           value.attributes(i), indent_size + 2)
-                                           .c_str());
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.attributes(i), indent_size + 2)
+            .c_str());
   }
   output += "}\n";
   if (value.has_policy()) {
@@ -665,6 +678,60 @@ std::string GetProtoDebugStringWithIndent(const GetTpmStatusRequest& value,
   std::string output =
       base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
 
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(
+    const GetTpmStatusReply::TpmVersionInfo& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const GetTpmStatusReply::TpmVersionInfo& value,
+    int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_family()) {
+    output += indent + "  family: ";
+    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")",
+                        value.family(), value.family());
+    output += "\n";
+  }
+  if (value.has_spec_level()) {
+    output += indent + "  spec_level: ";
+    base::StringAppendF(&output, "%" PRIu64 " (0x%016" PRIX64 ")",
+                        value.spec_level(), value.spec_level());
+    output += "\n";
+  }
+  if (value.has_manufacturer()) {
+    output += indent + "  manufacturer: ";
+    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")",
+                        value.manufacturer(), value.manufacturer());
+    output += "\n";
+  }
+  if (value.has_tpm_model()) {
+    output += indent + "  tpm_model: ";
+    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")",
+                        value.tpm_model(), value.tpm_model());
+    output += "\n";
+  }
+  if (value.has_firmware_version()) {
+    output += indent + "  firmware_version: ";
+    base::StringAppendF(&output, "%" PRIu64 " (0x%016" PRIX64 ")",
+                        value.firmware_version(), value.firmware_version());
+    output += "\n";
+  }
+  if (value.has_vendor_specific()) {
+    output += indent + "  vendor_specific: ";
+    base::StringAppendF(&output, "%s",
+                        base::HexEncode(value.vendor_specific().data(),
+                                        value.vendor_specific().size())
+                            .c_str());
+    output += "\n";
+  }
   output += indent + "}\n";
   return output;
 }
@@ -698,21 +765,22 @@ std::string GetProtoDebugStringWithIndent(const GetTpmStatusReply& value,
   }
   if (value.has_local_data()) {
     output += indent + "  local_data: ";
-    base::StringAppendF(&output, "%s", GetProtoDebugStringWithIndent(
-                                           value.local_data(), indent_size + 2)
-                                           .c_str());
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.local_data(), indent_size + 2)
+            .c_str());
     output += "\n";
   }
   if (value.has_dictionary_attack_counter()) {
     output += indent + "  dictionary_attack_counter: ";
-    base::StringAppendF(&output, "%u (0x%08X)",
+    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")",
                         value.dictionary_attack_counter(),
                         value.dictionary_attack_counter());
     output += "\n";
   }
   if (value.has_dictionary_attack_threshold()) {
     output += indent + "  dictionary_attack_threshold: ";
-    base::StringAppendF(&output, "%u (0x%08X)",
+    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")",
                         value.dictionary_attack_threshold(),
                         value.dictionary_attack_threshold());
     output += "\n";
@@ -726,9 +794,17 @@ std::string GetProtoDebugStringWithIndent(const GetTpmStatusReply& value,
   }
   if (value.has_dictionary_attack_lockout_seconds_remaining()) {
     output += indent + "  dictionary_attack_lockout_seconds_remaining: ";
-    base::StringAppendF(&output, "%u (0x%08X)",
+    base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")",
                         value.dictionary_attack_lockout_seconds_remaining(),
                         value.dictionary_attack_lockout_seconds_remaining());
+    output += "\n";
+  }
+  if (value.has_version_info()) {
+    output += indent + "  version_info: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.version_info(), indent_size + 2)
+            .c_str());
     output += "\n";
   }
   output += indent + "}\n";

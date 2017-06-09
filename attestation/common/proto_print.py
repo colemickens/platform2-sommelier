@@ -256,6 +256,8 @@ namespace %(package)s {
 
 #include "%(package_with_subdir)s/%(header_file_name)s"
 
+#include <inttypes.h>
+
 #include <string>
 
 #include <base/strings/string_number_conversions.h>
@@ -384,14 +386,15 @@ std::string GetProtoDebugStringWithIndent(const %(name)s& value,
   output += "}\\n";"""
   singular_field_get = 'value.%(name)s()'
   repeated_field_get = 'value.%(name)s(i)'
-  formats = {'bool': '"%%s", %(value)s ? "true" : "false"',
-             'int32': '"%%d", %(value)s',
-             'int64': '"%%ld", %(value)s',
-             'uint32': '"%%u (0x%%08X)", %(value)s, %(value)s',
-             'uint64': '"%%lu (0x%%016X)", %(value)s, %(value)s',
-             'string': '"%%s", %(value)s.c_str()',
-             'bytes': """"%%s", base::HexEncode(%(value)s.data(),
-                                                %(value)s.size()).c_str()"""}
+  formats = {
+      'bool': '"%%s", %(value)s ? "true" : "false"',
+      'int32': '"%%" PRId32, %(value)s',
+      'int64': '"%%" PRId64, %(value)s',
+      'uint32': '"%%" PRIu32 " (0x%%08" PRIX32 ")", %(value)s, %(value)s',
+      'uint64': '"%%" PRIu64 " (0x%%016" PRIX64 ")", %(value)s, %(value)s',
+      'string': '"%%s", %(value)s.c_str()',
+      'bytes': """"%%s", base::HexEncode(%(value)s.data(),
+                                         %(value)s.size()).c_str()"""}
   subtype_format = ('"%%s", GetProtoDebugStringWithIndent(%(value)s, '
                     'indent_size + 2).c_str()')
 
