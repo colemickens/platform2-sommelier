@@ -26,25 +26,38 @@ class JpegCompressor {
   JpegCompressor();
   ~JpegCompressor();
 
-  // Compresses YU12 image to JPEG format. After calling this method, call
-  // GetCompressedImagePtr() to get the image. |quality| is the resulted jpeg
+  // Compresses YU12 image to JPEG format. |quality| is the resulted jpeg
   // image quality. It ranges from 1 (poorest quality) to 100 (highest quality).
-  // |app1Buffer| is the buffer of APP1 segment (exif) which will be added to
-  // the compressed image. Returns false if errors occur during compression.
+  // |app1_buffer| is the buffer of APP1 segment (exif) which will be added to
+  // the compressed image. Caller should pass the size of output buffer to
+  // |out_buffer_size|. Encoded result will be written into |output_buffer|.
+  // The actually encoded size will be written into |out_data_size| if image
+  // encoded successfully. Returns false if errors occur during compression.
   bool CompressImage(const void* image,
                      int width,
                      int height,
                      int quality,
-                     const void* app1Buffer,
-                     unsigned int app1Size);
+                     const void* app1_buffer,
+                     uint32_t app1_size,
+                     uint32_t out_buffer_size,
+                     void* out_buffer,
+                     uint32_t* out_data_size);
 
-  // Returns the compressed JPEG buffer pointer. This method must be called only
-  // after calling CompressImage().
-  const void* GetCompressedImagePtr();
-
-  // Returns the compressed JPEG buffer size. This method must be called only
-  // after calling CompressImage().
-  size_t GetCompressedImageSize();
+  // Compresses YU12 image to JPEG format. |quality| is the resulted jpeg
+  // image quality. It ranges from 1 (poorest quality) to 100 (highest quality).
+  // Caller should pass the size of output buffer to |out_buffer_size|. Encoded
+  // result will be written into |output_buffer|. The actually encoded size will
+  // be written into |out_data_size| if image encoded successfully. Returns
+  // false if errors occur during compression.
+  bool GenerateThumbnail(const void* image,
+                         int image_width,
+                         int image_height,
+                         int thumbnail_width,
+                         int thumbnail_height,
+                         int quality,
+                         uint32_t out_buffer_size,
+                         void* out_buffer,
+                         uint32_t* out_data_size);
 
  private:
   // InitDestination(), EmptyOutputBuffer() and TerminateDestination() are
@@ -59,8 +72,11 @@ class JpegCompressor {
               int width,
               int height,
               int jpegQuality,
-              const void* app1Buffer,
-              unsigned int app1Size);
+              const void* app1_buffer,
+              unsigned int app1_size,
+              uint32_t out_buffer_size,
+              void* out_buffer,
+              uint32_t* out_data_size);
   void SetJpegDestination(jpeg_compress_struct* cinfo);
   void SetJpegCompressStruct(int width,
                              int height,
@@ -69,14 +85,22 @@ class JpegCompressor {
   // Returns false if errors occur.
   bool Compress(jpeg_compress_struct* cinfo, const uint8_t* yuv);
 
-  // The block size for encoded jpeg image buffer.
-  static const int kBlockSize = 16384;
   // Process 16 lines of Y and 16 lines of U/V each time.
   // We must pass at least 16 scanlines according to libjpeg documentation.
   static const int kCompressBatchSize = 16;
 
-  // The buffer that holds the compressed result.
-  std::vector<JOCTET> result_buffer_;
+  // Point to output buffer. JpegCompressor doesn't own this buffer.
+  JOCTET* out_buffer_ptr_;
+
+  // Output buffer size.
+  uint32_t out_buffer_size_;
+
+  // Final JPEG encoded size.
+  uint32_t out_data_size_;
+
+  // Since output buffer is passed from caller, use a variable to indicate
+  // buffer is enough to encode or not.
+  bool is_encode_success_;
 };
 
 }  // namespace arc

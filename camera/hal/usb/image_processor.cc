@@ -66,6 +66,7 @@ static bool ConvertToJpeg(const android::CameraMetadata& metadata,
                           const FrameBuffer& in_frame,
                           FrameBuffer* out_frame);
 static bool SetExifTags(const android::CameraMetadata& metadata,
+                        const FrameBuffer& in_frame,
                         ExifUtils* utils);
 
 // How precise the float-to-rational conversion for EXIF tags would be.
@@ -360,6 +361,16 @@ static bool ConvertToJpeg(const android::CameraMetadata& metadata,
                           const FrameBuffer& in_frame,
                           FrameBuffer* out_frame) {
   ExifUtils utils;
+  if (!utils.Initialize()) {
+    LOGF(ERROR) << "ExifUtils initialization failed.";
+    return false;
+  }
+
+  if (!SetExifTags(metadata, in_frame, &utils)) {
+    LOGF(ERROR) << "Setting Exif tags failed.";
+    return false;
+  }
+
   int jpeg_quality, thumbnail_jpeg_quality;
   camera_metadata_ro_entry entry = metadata.find(ANDROID_JPEG_QUALITY);
   if (entry.count) {
@@ -375,40 +386,60 @@ static bool ConvertToJpeg(const android::CameraMetadata& metadata,
     thumbnail_jpeg_quality = jpeg_quality;
   }
 
-  if (!utils.Initialize(in_frame.GetData(), in_frame.GetWidth(),
-                        in_frame.GetHeight(), thumbnail_jpeg_quality)) {
-    LOGF(ERROR) << "ExifUtils initialization failed.";
+  // Generate thumbnail
+  int thumbnail_width = 0, thumbnail_height = 0;
+  if (metadata.exists(ANDROID_JPEG_THUMBNAIL_SIZE)) {
+    entry = metadata.find(ANDROID_JPEG_THUMBNAIL_SIZE);
+    if (entry.count < 2) {
+      LOGF(ERROR) << "Thumbnail size in metadata is not complete.";
+      return false;
+    }
+    thumbnail_width = entry.data.i32[0];
+    thumbnail_height = entry.data.i32[1];
+  }
+
+  JpegCompressor compressor;
+  AllocatedFrameBuffer thumbnail(thumbnail_width * thumbnail_height);
+  uint32_t thumbnail_data_size = 0;
+  if (!compressor.GenerateThumbnail(
+          in_frame.GetData(), in_frame.GetWidth(), in_frame.GetHeight(),
+          thumbnail_width, thumbnail_height, thumbnail_jpeg_quality,
+          thumbnail.GetBufferSize(), thumbnail.GetData(),
+          &thumbnail_data_size)) {
+    LOGF(ERROR) << "Generate JPEG thumbnail failed";
     return false;
   }
-  if (!SetExifTags(metadata, &utils)) {
-    LOGF(ERROR) << "Setting Exif tags failed.";
-    return false;
-  }
-  if (!utils.GenerateApp1()) {
+  thumbnail.SetDataSize(thumbnail_data_size);
+  if (!utils.GenerateApp1(thumbnail.GetData(), thumbnail.GetDataSize())) {
     LOGF(ERROR) << "Generating APP1 segment failed.";
     return false;
   }
-  JpegCompressor compressor;
-  if (!compressor.CompressImage(in_frame.GetData(), in_frame.GetWidth(),
-                                in_frame.GetHeight(), jpeg_quality,
-                                utils.GetApp1Buffer(), utils.GetApp1Length())) {
+
+  uint32_t jpeg_data_size = 0;
+  if (!compressor.CompressImage(
+          in_frame.GetData(), in_frame.GetWidth(), in_frame.GetHeight(),
+          jpeg_quality, utils.GetApp1Buffer(), utils.GetApp1Length(),
+          out_frame->GetBufferSize(), out_frame->GetData(), &jpeg_data_size)) {
     LOGF(ERROR) << "JPEG image compression failed";
     return false;
   }
-  size_t buffer_length = compressor.GetCompressedImageSize();
-  memcpy(out_frame->GetData(), compressor.GetCompressedImagePtr(),
-         buffer_length);
-
   camera3_jpeg_blob_t blob;
   blob.jpeg_blob_id = CAMERA3_JPEG_BLOB_ID;
-  blob.jpeg_size = buffer_length;
+  blob.jpeg_size = jpeg_data_size;
   memcpy(out_frame->GetData() + out_frame->GetBufferSize() - sizeof(blob),
          &blob, sizeof(blob));
   return true;
 }
 
 static bool SetExifTags(const android::CameraMetadata& metadata,
+                        const FrameBuffer& in_frame,
                         ExifUtils* utils) {
+  if (!utils->SetImageWidth(in_frame.GetWidth()) ||
+      !utils->SetImageLength(in_frame.GetHeight())) {
+    LOGF(ERROR) << "Setting image resolution failed.";
+    return false;
+  }
+
   time_t raw_time = 0;
   struct tm time_info;
   bool time_available = time(&raw_time) != -1;
@@ -484,22 +515,6 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
     }
   }
 
-  if (metadata.exists(ANDROID_JPEG_THUMBNAIL_SIZE)) {
-    entry = metadata.find(ANDROID_JPEG_THUMBNAIL_SIZE);
-    if (entry.count < 2) {
-      LOGF(ERROR) << "Thumbnail size in metadata is not complete.";
-      return false;
-    }
-    int thumbnail_width = entry.data.i32[0];
-    int thumbnail_height = entry.data.i32[1];
-    if (thumbnail_width > 0 && thumbnail_height > 0) {
-      if (!utils->SetThumbnailSize(static_cast<uint16_t>(thumbnail_width),
-                                   static_cast<uint16_t>(thumbnail_height))) {
-        LOGF(ERROR) << "Setting thumbnail size failed.";
-        return false;
-      }
-    }
-  }
   return true;
 }
 

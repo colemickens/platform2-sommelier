@@ -9,19 +9,24 @@
 #include <memory>
 
 #include <errno.h>
+#include <libyuv.h>
 
 #include "arc/common.h"
 
 namespace arc {
 
-// The destination manager that can access |result_buffer_| in JpegCompressor.
+// The destination manager that can access members in JpegCompressor.
 struct destination_mgr {
  public:
   struct jpeg_destination_mgr mgr;
   JpegCompressor* compressor;
 };
 
-JpegCompressor::JpegCompressor() {}
+JpegCompressor::JpegCompressor()
+    : out_buffer_ptr_(nullptr),
+      out_buffer_size_(0),
+      out_data_size_(0),
+      is_encode_success_(false) {}
 
 JpegCompressor::~JpegCompressor() {}
 
@@ -29,52 +34,103 @@ bool JpegCompressor::CompressImage(const void* image,
                                    int width,
                                    int height,
                                    int quality,
-                                   const void* app1Buffer,
-                                   unsigned int app1Size) {
+                                   const void* app1_buffer,
+                                   uint32_t app1_size,
+                                   uint32_t out_buffer_size,
+                                   void* out_buffer,
+                                   uint32_t* out_data_size) {
   if (width % 8 != 0 || height % 2 != 0) {
     LOGF(ERROR) << "Image size can not be handled: " << width << "x" << height;
     return false;
   }
 
-  result_buffer_.clear();
-  if (!Encode(image, width, height, quality, app1Buffer, app1Size)) {
+  if (out_data_size == nullptr || out_buffer == nullptr) {
+    LOGF(ERROR) << "Output should not be nullptr. ";
+    return false;
+  }
+
+  if (!Encode(image, width, height, quality, app1_buffer, app1_size,
+              out_buffer_size, out_buffer, out_data_size)) {
     return false;
   }
   LOGF(INFO) << "Compressed JPEG: " << (width * height * 12) / 8 << "[" << width
-             << "x" << height << "] -> " << result_buffer_.size() << " bytes";
+             << "x" << height << "] -> " << *out_data_size << " bytes";
   return true;
 }
 
-const void* JpegCompressor::GetCompressedImagePtr() {
-  return result_buffer_.data();
-}
+bool JpegCompressor::GenerateThumbnail(const void* image,
+                                       int image_width,
+                                       int image_height,
+                                       int thumbnail_width,
+                                       int thumbnail_height,
+                                       int quality,
+                                       uint32_t out_buffer_size,
+                                       void* out_buffer,
+                                       uint32_t* out_data_size) {
+  if (thumbnail_width % 8 != 0 || thumbnail_height % 2 != 0) {
+    LOGF(ERROR) << "Image size can not be handled: " << image_width << "x"
+                << image_height;
+    return false;
+  }
 
-size_t JpegCompressor::GetCompressedImageSize() {
-  return result_buffer_.size();
+  if (out_data_size == nullptr || out_buffer == nullptr) {
+    LOGF(ERROR) << "Output should not be nullptr. ";
+    return false;
+  }
+
+  // Resize |image| to |thumbnail_width| x |thumbnail_height|.
+  std::vector<uint8_t> scaled_buffer;
+  size_t y_plane_size = image_width * image_height;
+  const uint8_t* y_plane = reinterpret_cast<const uint8_t*>(image);
+  const uint8_t* u_plane = y_plane + y_plane_size;
+  const uint8_t* v_plane = u_plane + y_plane_size / 4;
+
+  size_t scaled_y_plane_size = thumbnail_width * thumbnail_height;
+  scaled_buffer.resize(scaled_y_plane_size * 3 / 2);
+  uint8_t* scaled_y_plane = scaled_buffer.data();
+  uint8_t* scaled_u_plane = scaled_y_plane + scaled_y_plane_size;
+  uint8_t* scaled_v_plane = scaled_u_plane + scaled_y_plane_size / 4;
+
+  int result = libyuv::I420Scale(
+      y_plane, image_width, u_plane, image_width / 2, v_plane, image_width / 2,
+      image_width, image_height, scaled_y_plane, thumbnail_width,
+      scaled_u_plane, thumbnail_width / 2, scaled_v_plane, thumbnail_width / 2,
+      thumbnail_width, thumbnail_height, libyuv::kFilterNone);
+  if (result != 0) {
+    LOGF(ERROR) << "Generate YUV thumbnail failed";
+    return false;
+  }
+
+  // Compress thumbnail to JPEG.
+  return CompressImage(scaled_buffer.data(), thumbnail_width, thumbnail_height,
+                       quality, nullptr, 0, out_buffer_size, out_buffer,
+                       out_data_size);
 }
 
 void JpegCompressor::InitDestination(j_compress_ptr cinfo) {
   destination_mgr* dest = reinterpret_cast<destination_mgr*>(cinfo->dest);
-  std::vector<JOCTET>& buffer = dest->compressor->result_buffer_;
-  buffer.resize(kBlockSize);
-  dest->mgr.next_output_byte = &buffer[0];
-  dest->mgr.free_in_buffer = buffer.size();
+  dest->mgr.next_output_byte = dest->compressor->out_buffer_ptr_;
+  dest->mgr.free_in_buffer = dest->compressor->out_buffer_size_;
+  dest->compressor->is_encode_success_ = true;
 }
 
 boolean JpegCompressor::EmptyOutputBuffer(j_compress_ptr cinfo) {
   destination_mgr* dest = reinterpret_cast<destination_mgr*>(cinfo->dest);
-  std::vector<JOCTET>& buffer = dest->compressor->result_buffer_;
-  size_t oldsize = buffer.size();
-  buffer.resize(oldsize + kBlockSize);
-  dest->mgr.next_output_byte = &buffer[oldsize];
-  dest->mgr.free_in_buffer = kBlockSize;
+  dest->mgr.next_output_byte = dest->compressor->out_buffer_ptr_;
+  dest->mgr.free_in_buffer = dest->compressor->out_buffer_size_;
+  dest->compressor->is_encode_success_ = false;
+  // jcmarker.c in libjpeg-turbo will trigger exit(EXIT_FAILURE) if buffer is
+  // not enough to fill marker. If we want to solve this failure, we have to
+  // override cinfo.err->error_exit. It's too complicated. Therefore, we use a
+  // variable |is_encode_success_| to indicate error and always return true
+  // here.
   return true;
 }
 
 void JpegCompressor::TerminateDestination(j_compress_ptr cinfo) {
   destination_mgr* dest = reinterpret_cast<destination_mgr*>(cinfo->dest);
-  std::vector<JOCTET>& buffer = dest->compressor->result_buffer_;
-  buffer.resize(buffer.size() - dest->mgr.free_in_buffer);
+  dest->compressor->out_data_size_ =
+      dest->compressor->out_buffer_size_ - dest->mgr.free_in_buffer;
 }
 
 void JpegCompressor::OutputErrorMessage(j_common_ptr cinfo) {
@@ -88,9 +144,15 @@ void JpegCompressor::OutputErrorMessage(j_common_ptr cinfo) {
 bool JpegCompressor::Encode(const void* inYuv,
                             int width,
                             int height,
-                            int jpegQuality,
-                            const void* app1Buffer,
-                            unsigned int app1Size) {
+                            int jpeg_quality,
+                            const void* app1_buffer,
+                            unsigned int app1_size,
+                            uint32_t out_buffer_size,
+                            void* out_buffer,
+                            uint32_t* out_data_size) {
+  out_buffer_ptr_ = static_cast<JOCTET*>(out_buffer);
+  out_buffer_size_ = out_buffer_size;
+
   jpeg_compress_struct cinfo;
   jpeg_error_mgr jerr;
 
@@ -100,19 +162,21 @@ bool JpegCompressor::Encode(const void* inYuv,
   jpeg_create_compress(&cinfo);
   SetJpegDestination(&cinfo);
 
-  SetJpegCompressStruct(width, height, jpegQuality, &cinfo);
+  SetJpegCompressStruct(width, height, jpeg_quality, &cinfo);
   jpeg_start_compress(&cinfo, TRUE);
 
-  if (app1Buffer != nullptr && app1Size > 0) {
+  if (app1_buffer != nullptr && app1_size > 0) {
     jpeg_write_marker(&cinfo, JPEG_APP0 + 1,
-                      static_cast<const JOCTET*>(app1Buffer), app1Size);
+                      static_cast<const JOCTET*>(app1_buffer), app1_size);
   }
 
   if (!Compress(&cinfo, static_cast<const uint8_t*>(inYuv))) {
     return false;
   }
   jpeg_finish_compress(&cinfo);
-  return true;
+
+  *out_data_size = is_encode_success_ ? out_data_size_ : 0;
+  return is_encode_success_;
 }
 
 void JpegCompressor::SetJpegDestination(jpeg_compress_struct* cinfo) {

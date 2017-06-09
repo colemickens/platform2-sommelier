@@ -9,8 +9,6 @@
 #include <cstdlib>
 #include <ctime>
 
-#include <libyuv.h>
-
 #include "arc/common.h"
 
 namespace std {
@@ -42,38 +40,14 @@ static void SetLatitudeOrLongitudeData(unsigned char* data, double num) {
 }
 
 ExifUtils::ExifUtils()
-    : yu12_buffer_(nullptr),
-      yu12_width_(0),
-      yu12_height_(0),
-      thumbnail_width_(0),
-      thumbnail_height_(0),
-      exif_data_(nullptr),
-      app1_buffer_(nullptr),
-      app1_length_(0) {}
+    : exif_data_(nullptr), app1_buffer_(nullptr), app1_length_(0) {}
 
 ExifUtils::~ExifUtils() {
   Reset();
 }
 
-bool ExifUtils::Initialize(const uint8_t* buffer,
-                           uint16_t width,
-                           uint16_t height,
-                           int quality) {
+bool ExifUtils::Initialize() {
   Reset();
-
-  if (width % 2 != 0 || height % 2 != 0) {
-    LOGF(ERROR) << "invalid image size " << width << "x" << height;
-    return false;
-  }
-  if (quality < 1 || quality > 100) {
-    LOGF(ERROR) << "invalid jpeg quality " << quality;
-    return false;
-  }
-  thumbnail_jpeg_quality_ = quality;
-  yu12_buffer_ = buffer;
-  yu12_width_ = width;
-  yu12_height_ = height;
-
   exif_data_ = exif_data_new();
   if (exif_data_ == nullptr) {
     LOGF(ERROR) << "allocate memory for exif_data_ failed";
@@ -83,11 +57,27 @@ bool ExifUtils::Initialize(const uint8_t* buffer,
   exif_data_set_option(exif_data_, EXIF_DATA_OPTION_FOLLOW_SPECIFICATION);
   exif_data_set_data_type(exif_data_, EXIF_DATA_TYPE_COMPRESSED);
   exif_data_set_byte_order(exif_data_, EXIF_BYTE_ORDER_INTEL);
+  return true;
+}
 
-  // Set image width and length.
-  SetImageWidth(width);
-  SetImageLength(height);
+bool ExifUtils::SetImageWidth(uint16_t width) {
+  std::unique_ptr<ExifEntry> entry = AddEntry(EXIF_IFD_0, EXIF_TAG_IMAGE_WIDTH);
+  if (!entry) {
+    LOGF(ERROR) << "Adding ImageWidth exif entry failed";
+    return false;
+  }
+  exif_set_long(entry->data, EXIF_BYTE_ORDER_INTEL, width);
+  return true;
+}
 
+bool ExifUtils::SetImageLength(uint16_t length) {
+  std::unique_ptr<ExifEntry> entry =
+      AddEntry(EXIF_IFD_0, EXIF_TAG_IMAGE_LENGTH);
+  if (!entry) {
+    LOGF(ERROR) << "Adding ImageLength exif entry failed";
+    return false;
+  }
+  exif_set_long(entry->data, EXIF_BYTE_ORDER_INTEL, length);
   return true;
 }
 
@@ -286,16 +276,6 @@ bool ExifUtils::SetGpsProcessingMethod(const std::string& method) {
   return true;
 }
 
-bool ExifUtils::SetThumbnailSize(uint16_t width, uint16_t height) {
-  if (width % 2 != 0 || height % 2 != 0) {
-    LOGF(ERROR) << "Invalid thumbnail size " << width << "x" << height;
-    return false;
-  }
-  thumbnail_width_ = width;
-  thumbnail_height_ = height;
-  return true;
-}
-
 bool ExifUtils::SetOrientation(uint16_t orientation) {
   std::unique_ptr<ExifEntry> entry = AddEntry(EXIF_IFD_0, EXIF_TAG_ORIENTATION);
   if (!entry) {
@@ -330,17 +310,11 @@ bool ExifUtils::SetOrientation(uint16_t orientation) {
   return true;
 }
 
-bool ExifUtils::GenerateApp1() {
+bool ExifUtils::GenerateApp1(const void* thumbnail_buffer, uint32_t size) {
   DestroyApp1();
-  if (thumbnail_width_ > 0 && thumbnail_height_ > 0) {
-    if (!GenerateThumbnail()) {
-      LOGF(ERROR) << "Generate thumbnail image failed";
-      return false;
-    }
-    exif_data_->data = const_cast<uint8_t*>(
-        static_cast<const uint8_t*>(compressor_.GetCompressedImagePtr()));
-    exif_data_->size = compressor_.GetCompressedImageSize();
-  }
+  exif_data_->data =
+      const_cast<uint8_t*>(static_cast<const uint8_t*>(thumbnail_buffer));
+  exif_data_->size = size;
   // Save the result into |app1_buffer_|.
   exif_data_save_data(exif_data_, &app1_buffer_, &app1_length_);
   if (!app1_length_) {
@@ -368,11 +342,6 @@ unsigned int ExifUtils::GetApp1Length() {
 }
 
 void ExifUtils::Reset() {
-  yu12_buffer_ = nullptr;
-  yu12_width_ = 0;
-  yu12_height_ = 0;
-  thumbnail_width_ = 0;
-  thumbnail_height_ = 0;
   DestroyApp1();
   if (exif_data_) {
     /*
@@ -444,70 +413,6 @@ std::unique_ptr<ExifEntry> ExifUtils::AddEntry(ExifIfd ifd, ExifTag tag) {
   exif_content_add_entry(exif_data_->ifd[ifd], entry.get());
   exif_entry_initialize(entry.get(), tag);
   return entry;
-}
-
-bool ExifUtils::SetImageWidth(uint16_t width) {
-  std::unique_ptr<ExifEntry> entry = AddEntry(EXIF_IFD_0, EXIF_TAG_IMAGE_WIDTH);
-  if (!entry) {
-    LOGF(ERROR) << "Adding ImageWidth exif entry failed";
-    return false;
-  }
-  exif_set_short(entry->data, EXIF_BYTE_ORDER_INTEL, width);
-  return true;
-}
-
-bool ExifUtils::SetImageLength(uint16_t length) {
-  std::unique_ptr<ExifEntry> entry =
-      AddEntry(EXIF_IFD_0, EXIF_TAG_IMAGE_LENGTH);
-  if (!entry) {
-    LOGF(ERROR) << "Adding ImageLength exif entry failed";
-    return false;
-  }
-  exif_set_short(entry->data, EXIF_BYTE_ORDER_INTEL, length);
-  return true;
-}
-
-bool ExifUtils::GenerateThumbnail() {
-  // Resize yuv image to |thumbnail_width_| x |thumbnail_height_|.
-  std::vector<uint8_t> scaled_buffer;
-  if (!GenerateYuvThumbnail(&scaled_buffer)) {
-    LOGF(ERROR) << "Generate YUV thumbnail failed";
-    return false;
-  }
-
-  // Compress thumbnail to JPEG.
-  if (!compressor_.CompressImage(scaled_buffer.data(), thumbnail_width_,
-                                 thumbnail_height_, thumbnail_jpeg_quality_,
-                                 NULL, 0)) {
-    LOGF(ERROR) << "Compress thumbnail failed";
-    return false;
-  }
-  return true;
-}
-
-bool ExifUtils::GenerateYuvThumbnail(std::vector<uint8_t>* scaled_buffer) {
-  size_t y_plane_size = yu12_width_ * yu12_height_;
-  const uint8* y_plane = yu12_buffer_;
-  const uint8* u_plane = y_plane + y_plane_size;
-  const uint8* v_plane = u_plane + y_plane_size / 4;
-
-  size_t scaled_y_plane_size = thumbnail_width_ * thumbnail_height_;
-  scaled_buffer->resize(scaled_y_plane_size * 3 / 2);
-  uint8* scaled_y_plane = scaled_buffer->data();
-  uint8* scaled_u_plane = scaled_y_plane + scaled_y_plane_size;
-  uint8* scaled_v_plane = scaled_u_plane + scaled_y_plane_size / 4;
-
-  int result = libyuv::I420Scale(
-      y_plane, yu12_width_, u_plane, yu12_width_ / 2, v_plane, yu12_width_ / 2,
-      yu12_width_, yu12_height_, scaled_y_plane, thumbnail_width_,
-      scaled_u_plane, thumbnail_width_ / 2, scaled_v_plane,
-      thumbnail_width_ / 2, thumbnail_width_, thumbnail_height_,
-      libyuv::kFilterNone);
-  if (result != 0) {
-    LOGF(ERROR) << "Scale I420 image failed";
-    return false;
-  }
-  return true;
 }
 
 void ExifUtils::DestroyApp1() {
