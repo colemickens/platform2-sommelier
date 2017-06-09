@@ -1,3 +1,5 @@
+prefix=/usr
+exec_prefix=${prefix}
 include_dir=@INCLUDE_DIR@
 lib_dir=@LIB_DIR@
 
