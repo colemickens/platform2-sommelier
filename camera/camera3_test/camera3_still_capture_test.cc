@@ -474,9 +474,9 @@ void Camera3SingleStillCaptureTest::ValidateExifKeys(
   if (exif_exposure_time > 0 &&
       cam_service_.GetStaticInfo(cam_id_)->IsKeyAvailable(
           ANDROID_SENSOR_EXPOSURE_TIME)) {
-    float result_exposure_time =
-        ((float)GetMetadataInteger(metadata, ANDROID_SENSOR_EXPOSURE_TIME)) *
-        kOneNanoSecond;
+    float result_exposure_time = static_cast<float>(GetMetadataInteger(
+                                     metadata, ANDROID_SENSOR_EXPOSURE_TIME)) *
+                                 kOneNanoSecond;
     float tolerance =
         std::max(result_exposure_time * kExifExposureTimeErrorMarginRation,
                  kExifExposureTimeMinErrorMarginSeconds);

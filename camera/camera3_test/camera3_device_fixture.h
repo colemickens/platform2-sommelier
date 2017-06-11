@@ -231,6 +231,11 @@ class Camera3Device::StaticInfo {
   // Returns: 0 on success; corresponding error code on failure.
   int32_t GetAvailableAFModes(std::vector<int32_t>* af_modes) const;
 
+  // Get available sensor test pattern modes
+  // Returns: 0 on success; corresponding error code on failure.
+  int32_t GetAvailableTestPatternModes(
+      std::vector<int32_t>* test_pattern_modes) const;
+
  private:
   // Return the supported hardware level of the device, or fail if no value is
   // reported

@@ -8,6 +8,9 @@
 #include <semaphore.h>
 #include <stdio.h>
 
+#include <unordered_map>
+#include <vector>
+
 #include <exif-data.h>
 #include <jpeglib.h>
 
@@ -20,7 +23,7 @@ class Camera3StillCaptureFixture : public Camera3PreviewFixture {
   explicit Camera3StillCaptureFixture(std::vector<int> cam_ids)
       : Camera3PreviewFixture(cam_ids), cam_ids_(cam_ids) {}
 
-  virtual void SetUp() override;
+  void SetUp() override;
 
   // Process still capture result metadata and output buffer. Tests can
   // override this function to handle the results to suit their purpose. Note

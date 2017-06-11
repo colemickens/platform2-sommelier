@@ -34,6 +34,8 @@ class ResolutionInfo {
   ResolutionInfo(int32_t width, int32_t height)
       : width_(width), height_(height) {}
 
+  ResolutionInfo() : width_(0), height_(0) {}
+
   int32_t Width() const;
 
   int32_t Height() const;

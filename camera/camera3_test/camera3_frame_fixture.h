@@ -11,6 +11,8 @@ namespace camera3_test {
 
 class Camera3FrameFixture : public Camera3StreamFixture {
  public:
+  const uint32_t kDefaultTimeoutMs = 1000;
+
   explicit Camera3FrameFixture(int cam_id) : Camera3StreamFixture(cam_id) {}
 
  protected:

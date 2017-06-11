@@ -514,6 +514,19 @@ int32_t Camera3Device::StaticInfo::GetAvailableAFModes(
   return 0;
 }
 
+int32_t Camera3Device::StaticInfo::GetAvailableTestPatternModes(
+    std::vector<int32_t>* test_pattern_modes) const {
+  camera_metadata_ro_entry_t entry;
+  int32_t result = find_camera_metadata_ro_entry(
+      characteristics_, ANDROID_SENSOR_AVAILABLE_TEST_PATTERN_MODES, &entry);
+  if (result == 0) {
+    for (size_t i = 0; i < entry.count; i++) {
+      test_pattern_modes->push_back(entry.data.i32[i]);
+    }
+  }
+  return result;
+}
+
 // Test fixture
 
 void Camera3DeviceFixture::SetUp() {

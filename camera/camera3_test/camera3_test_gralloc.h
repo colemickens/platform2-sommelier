@@ -102,13 +102,16 @@ class Camera3TestGralloc {
   //    HAL_PIXEL_FORMAT_* on success; -EINVAL on invalid buffer handle.
   static int GetFormat(buffer_handle_t buffer);
 
+  // Get V4L2 pixel format
+  // Returns:
+  //    V4L2 pixel format on success; 0 on failure.
+  static uint32_t GetV4L2PixelFormat(buffer_handle_t buffer);
+
  private:
   // Free buffer
   int Free(buffer_handle_t handle);
 
-  Camera3TestGralloc()
-      : gbm_dev_(nullptr),
-        buffer_mapper_(arc::CameraBufferMapper::GetInstance()) {}
+  Camera3TestGralloc();
 
   ~Camera3TestGralloc();
 

@@ -5,10 +5,13 @@
 #include "camera3_test/camera3_test_gralloc.h"
 
 #include <drm_fourcc.h>
+#include <linux/videodev2.h>
 
 #include <algorithm>
 
-#include "arc/camera_buffer_mapper.h"
+#include <arc/camera_buffer_mapper.h>
+#include <base/files/file_util.h>
+
 #include "common/camera_buffer_mapper_internal.h"
 
 namespace camera3_test {
@@ -29,35 +32,36 @@ void BufferHandleDeleter::operator()(buffer_handle_t* handle) {
   }
 }
 
+// static
 Camera3TestGralloc* Camera3TestGralloc::GetInstance() {
   static Camera3TestGralloc gralloc;
+  return &gralloc;
+}
 
-  if (!gralloc.gbm_dev_) {
-    gralloc.gbm_dev_ = ::arc::internal::CreateGbmDevice();
-    if (!gralloc.gbm_dev_) {
-      LOG(ERROR) << "Can't create gbm device";
-      return nullptr;
-    }
+Camera3TestGralloc::Camera3TestGralloc()
+    : buffer_mapper_(arc::CameraBufferMapper::GetInstance()) {
+  gbm_dev_ = ::arc::internal::CreateGbmDevice();
+  if (!gbm_dev_) {
+    LOG(ERROR) << "Can't create gbm device";
+    return;
+  }
 
-    uint32_t formats[] = {DRM_FORMAT_YVU420, DRM_FORMAT_NV12, DRM_FORMAT_YUV420,
-                          DRM_FORMAT_NV21};
-    size_t i = 0;
-    for (; i < arraysize(formats); i++) {
-      if (gbm_device_is_format_supported(gralloc.gbm_dev_, formats[i],
-                                         GBM_BO_USE_RENDERING)) {
-        gralloc.flexible_yuv_420_format_ = formats[i];
-        break;
-      }
-    }
-    if (i == arraysize(formats)) {
-      LOG(ERROR) << "Can't detect flexible YUV 420 format";
-      close(gbm_device_get_fd(gralloc.gbm_dev_));
-      gbm_device_destroy(gralloc.gbm_dev_);
-      gralloc.gbm_dev_ = nullptr;
-      return nullptr;
+  uint32_t formats[] = {DRM_FORMAT_YVU420, DRM_FORMAT_NV12, DRM_FORMAT_YUV420,
+                        DRM_FORMAT_NV21};
+  size_t i = 0;
+  for (; i < arraysize(formats); i++) {
+    if (gbm_device_is_format_supported(gbm_dev_, formats[i],
+                                       GBM_BO_USE_RENDERING)) {
+      flexible_yuv_420_format_ = formats[i];
+      break;
     }
   }
-  return &gralloc;
+  if (i == arraysize(formats)) {
+    LOG(ERROR) << "Can't detect flexible YUV 420 format";
+    close(gbm_device_get_fd(gbm_dev_));
+    gbm_device_destroy(gbm_dev_);
+    gbm_dev_ = nullptr;
+  }
 }
 
 Camera3TestGralloc::~Camera3TestGralloc() {
@@ -71,6 +75,7 @@ BufferHandleUniquePtr Camera3TestGralloc::Allocate(int32_t width,
                                                    int32_t height,
                                                    int32_t format,
                                                    int32_t usage) {
+  DCHECK(gbm_dev_);
   uint64_t gbm_usage;
   uint32_t gbm_format;
   struct gbm_bo* bo;
@@ -140,9 +145,15 @@ int Camera3TestGralloc::Unlock(buffer_handle_t buffer) {
   return buffer_mapper_->Unlock(buffer);
 }
 
+// static
 int Camera3TestGralloc::GetFormat(buffer_handle_t buffer) {
   auto hnd = camera_buffer_handle_t::FromBufferHandle(buffer);
   return (hnd && hnd->buffer_id) ? hnd->hal_pixel_format : -EINVAL;
+}
+
+// static
+uint32_t Camera3TestGralloc::GetV4L2PixelFormat(buffer_handle_t buffer) {
+  return arc::CameraBufferMapper::GetInstance()->GetV4L2PixelFormat(buffer);
 }
 
 uint64_t Camera3TestGralloc::GrallocConvertFlags(int32_t format,
