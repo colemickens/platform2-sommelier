@@ -166,6 +166,7 @@
         'crypto.cc',
         'cryptohome_event_source.cc',
         'dbus_transition.cc',
+        'dircrypto_data_migrator/atomic_flag.cc',
         'dircrypto_data_migrator/migration_helper.cc',
         'homedirs.cc',
         'interface.cc',

@@ -140,13 +140,8 @@ struct MigrationHelper::Job {
 // specified.
 class MigrationHelper::WorkerPool {
  public:
-  WorkerPool(MigrationHelper* migration_helper,
-             size_t num_job_threads,
-             size_t max_job_list_size)
+  explicit WorkerPool(MigrationHelper* migration_helper)
       : migration_helper_(migration_helper),
-        job_threads_(num_job_threads),
-        job_thread_results_(num_job_threads, false),
-        max_job_list_size_(max_job_list_size),
         job_thread_wakeup_condition_(&jobs_lock_),
         main_thread_wakeup_condition_(&jobs_lock_) {}
 
@@ -155,7 +150,11 @@ class MigrationHelper::WorkerPool {
   }
 
   // Starts job threads.
-  bool Start() {
+  bool Start(size_t num_job_threads, size_t max_job_list_size) {
+    job_threads_.resize(num_job_threads);
+    job_thread_results_.resize(num_job_threads, false);
+    max_job_list_size_ = max_job_list_size;
+
     for (size_t i = 0; i < job_threads_.size(); ++i) {
       job_threads_[i] = base::MakeUnique<base::Thread>(
           "MigrationHelper worker #" + base::IntToString(i));
@@ -198,6 +197,8 @@ class MigrationHelper::WorkerPool {
       job_thread_wakeup_condition_.Broadcast();
     }
     job_threads_.clear();  // Join threads.
+
+    base::AutoLock lock(jobs_lock_);  // For should_abort_.
     return std::count(job_thread_results_.begin(), job_thread_results_.end(),
                       false) == 0 && !should_abort_;
   }
@@ -255,7 +256,7 @@ class MigrationHelper::WorkerPool {
   std::vector<std::unique_ptr<base::Thread>> job_threads_;  // The job threads.
   // deque instead of vector to avoid vector<bool> specialization.
   std::deque<bool> job_thread_results_;
-  const size_t max_job_list_size_;
+  size_t max_job_list_size_ = 0;
 
   std::deque<Job> jobs_;  // The FIFO job list.
   bool no_more_new_jobs_ = false;
@@ -292,7 +293,8 @@ MigrationHelper::MigrationHelper(Platform* platform,
       failed_path_type_(kMigrationFailedUnderOther),
       failed_error_type_(base::File::FILE_OK),
       num_job_threads_(base::SysInfo::NumberOfProcessors() * 2),
-      max_job_list_size_(kDefaultMaxJobListSize) {}
+      max_job_list_size_(kDefaultMaxJobListSize),
+      worker_pool_(new WorkerPool(this)) {}
 
 MigrationHelper::~MigrationHelper() {}
 
@@ -347,7 +349,10 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
     effective_chunk_size_ =
         effective_chunk_size_ - (effective_chunk_size_ % kErasureBlockSize);
 
-  CalculateDataToMigrate(from_base_path_);
+  if (!CalculateDataToMigrate(from_base_path_)) {
+    LOG(ERROR) << "Failed to calculate number of bytes to migrate";
+    return false;
+  }
   if (!resumed) {
     ReportDircryptoMigrationTotalByteCountInMb(total_byte_count_ / 1024 / 1024);
     ReportDircryptoMigrationTotalFileCount(n_files_ + n_dirs_ + n_symlinks_);
@@ -366,12 +371,13 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
             << " ms.";
   // MigrateDir() recursively traverses the directory tree on the main thread,
   // while the job threads migrate files and symlinks.
-  WorkerPool worker_pool(this, num_job_threads_, max_job_list_size_);
-  if (!worker_pool.Start() ||
-      !MigrateDir(base::FilePath(base::FilePath::kCurrentDirectory),
-                  FileEnumerator::FileInfo(from_base_path_, from_stat),
-                  &worker_pool) ||
-      !worker_pool.Join()) {
+  bool success = worker_pool_->Start(num_job_threads_, max_job_list_size_) &&
+      MigrateDir(base::FilePath(base::FilePath::kCurrentDirectory),
+                 FileEnumerator::FileInfo(from_base_path_, from_stat));
+  // No matter if successful or not, always join the job threads.
+  if (!worker_pool_->Join())
+    success = false;
+  if (!success) {
     LOG(ERROR) << "Migration Failed, aborting.";
     status_reporter.SetFileErrorFailure(
         failed_operation_type_, failed_error_type_);
@@ -395,7 +401,12 @@ bool MigrationHelper::IsMigrationStarted() const {
       status_files_dir_.Append(kMigrationStartedFileName));
 }
 
-void MigrationHelper::CalculateDataToMigrate(const base::FilePath& from) {
+void MigrationHelper::Cancel() {
+  worker_pool_->Abort();
+  is_cancelled_.Set();
+}
+
+bool MigrationHelper::CalculateDataToMigrate(const base::FilePath& from) {
   total_byte_count_ = 0;
   total_directory_byte_count_ = 0;
   migrated_byte_count_ = 0;
@@ -406,6 +417,9 @@ void MigrationHelper::CalculateDataToMigrate(const base::FilePath& from) {
       base::FileEnumerator::SHOW_SYM_LINKS));
   for (base::FilePath entry = enumerator->Next(); !entry.empty();
        entry = enumerator->Next()) {
+    if (is_cancelled_.IsSet()) {
+      return false;
+    }
     const FileEnumerator::FileInfo& info = enumerator->GetInfo();
     total_byte_count_ += info.GetSize();
 
@@ -421,6 +435,7 @@ void MigrationHelper::CalculateDataToMigrate(const base::FilePath& from) {
   LOG(INFO) << "Number of files: " << n_files_;
   LOG(INFO) << "Number of directories: " << n_dirs_;
   LOG(INFO) << "Number of symlinks: " << n_symlinks_;
+  return true;
 }
 
 void MigrationHelper::IncrementMigratedBytes(uint64_t bytes) {
@@ -436,8 +451,10 @@ void MigrationHelper::ReportStatus(DircryptoMigrationStatus status) {
 }
 
 bool MigrationHelper::MigrateDir(const base::FilePath& child,
-                                 const FileEnumerator::FileInfo& info,
-                                 WorkerPool* worker_pool) {
+                                 const FileEnumerator::FileInfo& info) {
+  if (is_cancelled_.IsSet()) {
+    return false;
+  }
   const base::FilePath from_dir = from_base_path_.Append(child);
   const base::FilePath to_dir = to_base_path_.Append(child);
 
@@ -485,14 +502,14 @@ bool MigrationHelper::MigrateDir(const base::FilePath& child,
     IncrementChildCount(child);
     if (S_ISDIR(mode)) {
       // Directory.
-      if (!MigrateDir(new_child, entry_info, worker_pool))
+      if (!MigrateDir(new_child, entry_info))
         return false;
       IncrementMigratedBytes(entry_info.GetSize());
     } else {
       Job job;
       job.child = new_child;
       job.info = entry_info;
-      if (!worker_pool->PushJob(job))
+      if (!worker_pool_->PushJob(job))
         return false;
     }
   }
@@ -617,6 +634,9 @@ bool MigrationHelper::MigrateFile(const base::FilePath& child,
     return false;
 
   while (from_length > 0) {
+    if (is_cancelled_.IsSet()) {
+      return false;
+    }
     size_t to_read = from_length % effective_chunk_size_;
     if (to_read == 0) {
       to_read = effective_chunk_size_;

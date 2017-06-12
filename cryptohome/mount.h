@@ -20,6 +20,8 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
+#include <base/synchronization/condition_variable.h>
+#include <base/synchronization/lock.h>
 #include <base/time/time.h>
 #include <base/values.h>
 #include <brillo/secure_blob.h>
@@ -293,6 +295,10 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   bool MigrateToDircrypto(
       const dircrypto_data_migrator::MigrationHelper::ProgressCallback&
       callback);
+
+  // Cancels the active dircrypto migration if there is, and wait for it to
+  // stop.
+  void MaybeCancelActiveDircryptoMigrationAndWait();
 
   // Used to override the policy provider for testing (takes ownership)
   // TODO(wad) move this in line with other testing accessors
@@ -835,6 +841,12 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   BootLockbox* boot_lockbox_;
   std::unique_ptr<BootLockbox> default_boot_lockbox_;
+
+  dircrypto_data_migrator::MigrationHelper* active_dircrypto_migrator_ =
+      nullptr;
+  bool is_dircrypto_migration_cancelled_ = false;
+  base::Lock active_dircrypto_migrator_lock_;
+  base::ConditionVariable dircrypto_migration_stopped_condition_;
 
   FRIEND_TEST(MountTest, RememberMountOrderingTest);
   FRIEND_TEST(MountTest, MountCryptohomeChapsKey);

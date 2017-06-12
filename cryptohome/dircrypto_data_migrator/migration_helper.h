@@ -5,6 +5,7 @@
 #define CRYPTOHOME_DIRCRYPTO_DATA_MIGRATOR_MIGRATION_HELPER_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/callback.h>
@@ -15,6 +16,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/dircrypto_data_migrator/atomic_flag.h"
 #include "cryptohome/platform.h"
 
 namespace base {
@@ -95,6 +97,10 @@ class MigrationHelper {
   // Returns true if the migration has been started, but not finished.
   bool IsMigrationStarted() const;
 
+  // Triggers cancellation of the ongoing migration, and returns without waiting
+  // for it to happen. Can be called on any thread.
+  void Cancel();
+
  private:
   FRIEND_TEST(MigrationHelperTest, CopyOwnership);
 
@@ -103,7 +109,8 @@ class MigrationHelper {
 
   // Calculate the total number of bytes to be migrated, populating
   // |total_byte_count_| with the result.
-  void CalculateDataToMigrate(const base::FilePath& from);
+  // Returns true when |total_byte_count_| was calculated successfully.
+  bool CalculateDataToMigrate(const base::FilePath& from);
   // Increment the number of bytes migrated, potentially reporting the status if
   // its time for a new report.
   void IncrementMigratedBytes(uint64_t bytes);
@@ -115,10 +122,8 @@ class MigrationHelper {
   //
   // Parameters
   //   child - relative path under the base path to migrate.
-  //   worker_pool - Worker pool to dispatch jobs to job threads.
   bool MigrateDir(const base::FilePath& child,
-                  const FileEnumerator::FileInfo& info,
-                  WorkerPool* worker_pool);
+                  const FileEnumerator::FileInfo& info);
   // Creates a new link |to_base_path_|/|child| which has the same attributes
   // and target as |from_base_path_|/|child|.  If the target points to an
   // absolute path under |from_base_path_|, it is rewritten to point to the
@@ -203,9 +208,12 @@ class MigrationHelper {
 
   size_t num_job_threads_;
   size_t max_job_list_size_;
+  std::unique_ptr<WorkerPool> worker_pool_;
 
   std::map<base::FilePath, int> child_counts_;  // Child count for directories.
   base::Lock child_counts_lock_;  // Lock for child_counts_.
+
+  AtomicFlag is_cancelled_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(MigrationHelper);
 };

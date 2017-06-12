@@ -22,6 +22,8 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/synchronization/waitable_event.h>
+#include <base/threading/thread.h>
 
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/platform.h"
@@ -989,6 +991,66 @@ TEST_F(MigrationHelperTest, SkipDuppedGCacheTmpDir) {
   // Test the migration.
   EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                         base::Unretained(this))));
+}
+
+TEST_F(MigrationHelperTest, CancelMigrationBeforeStart) {
+  testing::NiceMock<MockPlatform> mock_platform;
+  Platform real_platform;
+  PassThroughPlatformMethods(&mock_platform, &real_platform);
+  MigrationHelper helper(&mock_platform, from_dir_.path(), to_dir_.path(),
+                         status_files_dir_.path(), kDefaultChunkSize);
+  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
+  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+
+  // Cancel migration before starting, and migration just fails.
+  helper.Cancel();
+  EXPECT_FALSE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                         base::Unretained(this))));
+}
+
+TEST_F(MigrationHelperTest, CancelMigrationOnAnotherThread) {
+  testing::NiceMock<MockPlatform> mock_platform;
+  Platform real_platform;
+  PassThroughPlatformMethods(&mock_platform, &real_platform);
+  MigrationHelper helper(&mock_platform, from_dir_.path(), to_dir_.path(),
+                         status_files_dir_.path(), kDefaultChunkSize);
+  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
+  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+
+  // One empty file to migrate.
+  constexpr char kFileName[] = "empty_file";
+  ASSERT_TRUE(real_platform.TouchFileDurable(
+      from_dir_.path().Append(kFileName)));
+  // Wait in SyncFile so that cancellation happens before migration finishes.
+  base::WaitableEvent syncfile_is_called_event(false /* manual_reset */,
+                                               false /* initially_signaled */);
+  base::WaitableEvent cancel_is_called_event(false /* manual_reset */,
+                                             false /* initially_signaled */);
+  EXPECT_CALL(mock_platform, SyncFile(to_dir_.path().Append(kFileName)))
+      .WillOnce(testing::InvokeWithoutArgs(
+          [&syncfile_is_called_event, &cancel_is_called_event]() {
+            syncfile_is_called_event.Signal();
+            cancel_is_called_event.Wait();
+            return true;
+          }));
+
+  // Cancel on another thread after waiting for SyncFile to get called.
+  base::Thread thread("Canceller thread");
+  ASSERT_TRUE(thread.Start());
+  thread.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&base::WaitableEvent::Wait,
+                 base::Unretained(&syncfile_is_called_event)));
+  thread.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&MigrationHelper::Cancel, base::Unretained(&helper)));
+  thread.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&base::WaitableEvent::Signal,
+                 base::Unretained(&cancel_is_called_event)));
+  // Migration gets cancelled.
+  EXPECT_FALSE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                         base::Unretained(this))));
 }
 
 class DataMigrationTest : public MigrationHelperTest,

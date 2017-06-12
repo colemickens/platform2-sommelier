@@ -15,6 +15,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/callback_helpers.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
@@ -143,7 +144,8 @@ Mount::Mount()
       mount_type_(MountType::NONE),
       default_chaps_client_factory_(new ChapsClientFactory()),
       chaps_client_factory_(default_chaps_client_factory_.get()),
-      boot_lockbox_(NULL) {
+      boot_lockbox_(NULL),
+      dircrypto_migration_stopped_condition_(&active_dircrypto_migrator_lock_) {
 }
 
 Mount::~Mount() {
@@ -868,6 +870,10 @@ void Mount::ForceUnmount(const FilePath& src, const FilePath& dest) {
 }
 
 bool Mount::UnmountCryptohome() {
+  // There should be no file access when unmounting.
+  // Stop dircrypto migration if in progress.
+  MaybeCancelActiveDircryptoMigrationAndWait();
+
   UnmountAll();
   ReloadDevicePolicy();
   if (AreEphemeralUsersEnabled())
@@ -1965,8 +1971,20 @@ bool Mount::MigrateToDircrypto(
   dircrypto_data_migrator::MigrationHelper migrator(
       platform_, temporary_mount, mount_point_,
       GetUserDirectoryForUser(obfuscated_username), kMaxChunkSize);
+  {  // Abort if already cancelled.
+    base::AutoLock lock(active_dircrypto_migrator_lock_);
+    if (is_dircrypto_migration_cancelled_)
+      return false;
+    CHECK(!active_dircrypto_migrator_);
+    active_dircrypto_migrator_ = &migrator;
+  }
   bool success = migrator.Migrate(callback);
   UnmountAll();
+  {  // Signal the waiting thread.
+    base::AutoLock lock(active_dircrypto_migrator_lock_);
+    active_dircrypto_migrator_ = nullptr;
+    dircrypto_migration_stopped_condition_.Signal();
+  }
   if (!success) {
     LOG(ERROR) << "Failed to migrate.";
     return false;
@@ -1979,6 +1997,17 @@ bool Mount::MigrateToDircrypto(
     return false;
   }
   return true;
+}
+
+void Mount::MaybeCancelActiveDircryptoMigrationAndWait() {
+  base::AutoLock lock(active_dircrypto_migrator_lock_);
+  is_dircrypto_migration_cancelled_ = true;
+  while (active_dircrypto_migrator_) {
+    active_dircrypto_migrator_->Cancel();
+    LOG(INFO) << "Waiting for dircrypto migration to stop.";
+    dircrypto_migration_stopped_condition_.Wait();
+    LOG(INFO) << "Dircrypto migration stopped.";
+  }
 }
 
 }  // namespace cryptohome
