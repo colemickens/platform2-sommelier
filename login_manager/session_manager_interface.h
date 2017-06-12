@@ -16,8 +16,13 @@ class SessionManagerInterface {
   virtual ~SessionManagerInterface() {}
 
   // Intializes policy subsystems.  Failure to initialize must be fatal.
+  // Note: Initialize() does not start D-Bus service, yet.
   virtual bool Initialize() = 0;
   virtual void Finalize() = 0;
+
+  // Starts SessionManagerInterface D-Bus service.
+  // Returns true on success. Failure to start must be fatal.
+  virtual bool StartDBusService() = 0;
 
   // Get Chrome startup flags from policy.
   virtual std::vector<std::string> GetStartUpFlags() = 0;

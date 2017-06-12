@@ -37,7 +37,6 @@
 #include "login_manager/liveness_checker_impl.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
-#include "login_manager/session_manager_dbus_adaptor.h"
 #include "login_manager/session_manager_impl.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/systemd_unit_starter.h"
@@ -169,9 +168,9 @@ bool SessionManagerService::Initialize() {
 
   // Initially store in derived-type pointer, so that we can initialize
   // appropriately below.
-  SessionManagerImpl* impl = new SessionManagerImpl(
+  impl_ = base::MakeUnique<SessionManagerImpl>(
       base::MakeUnique<InitDaemonControllerImpl>(init_dbus_proxy),
-      bus_.get(),
+      bus_,
       base::Bind(&FireAndForgetDBusMethodCall,
                  base::Unretained(chrome_dbus_proxy),
                  chromeos::kLibCrosServiceInterface,
@@ -194,29 +193,19 @@ bool SessionManagerService::Initialize() {
       &android_container_,
       &install_attributes_reader_,
       system_clock_proxy);
-
-  adaptor_.reset(new SessionManagerDBusAdaptor(impl));
-  impl_.reset(impl);
   if (!InitializeImpl())
     return false;
 
   // Set any flags that were specified system-wide.
   browser_->SetExtraArguments(impl_->GetStartUpFlags());
 
-  adaptor_->ExportDBusMethods(session_manager_dbus_object_);
-  TakeDBusServiceOwnership();
-
+  CHECK(impl_->StartDBusService())
+      << "Unable to start " << kSessionManagerServiceName << " D-Bus service.";
   return true;
 }
 
 void SessionManagerService::Finalize() {
   LOG(INFO) << "SessionManagerService exiting";
-
-  // Reset the SessionManagerDBusAdaptor first to ensure that it'll permit
-  // any outstanding DBusMethodCompletion objects to be abandoned without
-  // having been run (http://crbug.com/638774, http://crbug.com/725734).
-  adaptor_.reset();
-
   impl_->Finalize();
   ShutDownDBus();
 }
@@ -434,18 +423,6 @@ void SessionManagerService::InitializeDBus() {
   CHECK(!error.is_set()) << "Failed to add match to bus: " << error.name()
                          << ", message="
                          << (error.message() ? error.message() : "unknown.");
-
-  session_manager_dbus_object_ =
-      bus_->GetExportedObject(dbus::ObjectPath(kSessionManagerServicePath));
-}
-
-void SessionManagerService::TakeDBusServiceOwnership() {
-  // Note that this needs to happen *after* all methods are exported
-  // (http://crbug.com/331431).
-  // This should pass dbus::Bus::REQUIRE_PRIMARY once on the new libchrome.
-  CHECK(bus_->RequestOwnershipAndBlock(kSessionManagerServiceName,
-                                       dbus::Bus::REQUIRE_PRIMARY))
-      << "Unable to take ownership of " << kSessionManagerServiceName;
 }
 
 void SessionManagerService::ShutDownDBus() {

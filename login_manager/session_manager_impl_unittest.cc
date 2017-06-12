@@ -108,13 +108,19 @@ class FakeBus : public dbus::Bus {
         exported_object_(new dbus::MockExportedObject(nullptr,
                                                       dbus::ObjectPath())) {}
 
+  dbus::MockExportedObject* exported_object() {
+    return exported_object_.get();
+  }
+
+  // dbus::Bus overrides.
   dbus::ExportedObject* GetExportedObject(
       const dbus::ObjectPath& object_path) override {
     return exported_object_.get();
   }
 
-  dbus::MockExportedObject* exported_object() {
-    return exported_object_.get();
+  bool RequestOwnershipAndBlock(const std::string& service_name,
+                                ServiceOwnershipOptions options) override {
+    return true;  // Fake to success.
   }
 
  protected:
@@ -309,6 +315,11 @@ class SessionManagerImplTest : public ::testing::Test {
     impl_.Initialize();
     ASSERT_TRUE(Mock::VerifyAndClearExpectations(system_clock_proxy_.get()));
     ASSERT_FALSE(available_callback_.is_null());
+
+    EXPECT_CALL(*exported_object(), ExportMethodAndBlock(_, _, _))
+        .WillRepeatedly(Return(true));
+    impl_.StartDBusService();
+    ASSERT_TRUE(Mock::VerifyAndClearExpectations(exported_object()));
 
     SetDefaultMockBehavior();
   }

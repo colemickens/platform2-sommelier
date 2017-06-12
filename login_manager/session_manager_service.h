@@ -37,7 +37,6 @@ struct signalfd_siginfo;
 class MessageLoop;
 
 namespace dbus {
-class ExportedObject;
 class ObjectProxy;
 }  // namespace dbus
 
@@ -46,7 +45,6 @@ namespace login_manager {
 class BrowserJobInterface;
 class LoginMetrics;
 class NssUtil;
-class SessionManagerDBusAdaptor;
 class SystemUtils;
 
 // Provides methods for running the browser, watching its progress, and
@@ -203,10 +201,6 @@ class SessionManagerService
   // suspend and resume.
   void InitializeSuspendDelays();
 
-  // Takes ownership of the Session Manager's well-known service name.
-  // Failure is fatal.
-  void TakeDBusServiceOwnership();
-
   // Tears down DBus connection. Failure is fatal.
   void ShutDownDBus();
 
@@ -248,7 +242,6 @@ class SessionManagerService
 
   scoped_refptr<dbus::Bus> bus_;
   const std::string match_rule_;
-  dbus::ExportedObject* session_manager_dbus_object_;  // Owned by bus_;
   dbus::ObjectProxy* powerd_dbus_proxy_;  // Owned by bus_.
 
   LoginMetrics* login_metrics_;  // Owned by the caller.
@@ -268,7 +261,6 @@ class SessionManagerService
 
   // Holds pointers to nss_, key_gen_, this. Shares system_, login_metrics_.
   std::unique_ptr<SessionManagerInterface> impl_;
-  std::unique_ptr<SessionManagerDBusAdaptor> adaptor_;
 
   brillo::AsynchronousSignalHandler signal_handler_;
   ChildExitHandler child_exit_handler_;

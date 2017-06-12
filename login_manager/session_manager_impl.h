@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 
+#include <base/memory/ref_counted.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/errors/error.h>
 #include <dbus/file_descriptor.h>
@@ -91,7 +92,7 @@ class SessionManagerImpl
   static const char kArcRemoveOldDataSignal[];
 
   SessionManagerImpl(std::unique_ptr<InitDaemonController> init_controller,
-                     dbus::Bus* bus,
+                     const scoped_refptr<dbus::Bus>& bus,
                      base::Closure lock_screen_closure,
                      base::Closure restart_device_closure,
                      base::Closure start_arc_instance_closure,
@@ -146,6 +147,7 @@ class SessionManagerImpl
   // Should set up policy stuff; if false DIE.
   bool Initialize() override;
   void Finalize() override;
+  bool StartDBusService() override;
 
   void AnnounceSessionStoppingIfNeeded() override;
   void AnnounceSessionStopped() override;
@@ -258,6 +260,8 @@ class SessionManagerImpl
   }
 
  private:
+  class DBusService;
+
   // Holds the state related to one of the signed in users.
   struct UserSession;
 
@@ -378,6 +382,8 @@ class SessionManagerImpl
   base::TimeDelta system_clock_last_sync_info_retry_delay_;
   base::TimeTicks arc_start_time_;
 
+  scoped_refptr<dbus::Bus> bus_;
+  std::unique_ptr<DBusService> dbus_service_;
   DBusSignalEmitter dbus_emitter_;
 
   KeyGenerator* key_gen_;                               // Owned by the caller.

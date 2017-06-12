@@ -17,10 +17,11 @@ namespace login_manager {
 class MockSessionManager : public SessionManagerInterface {
  public:
   MockSessionManager();
-  virtual ~MockSessionManager();
+  ~MockSessionManager() override;
 
   MOCK_METHOD0(Initialize, bool());
   MOCK_METHOD0(Finalize, void());
+  MOCK_METHOD0(StartDBusService, bool());
   MOCK_METHOD0(GetStartUpFlags, std::vector<std::string>());
   MOCK_METHOD0(AnnounceSessionStoppingIfNeeded, void());
   MOCK_METHOD0(AnnounceSessionStopped, void());

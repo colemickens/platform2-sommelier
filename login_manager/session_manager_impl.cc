@@ -54,6 +54,7 @@
 #include "login_manager/process_manager_service_interface.h"
 #include "login_manager/proto_bindings/arc.pb.h"
 #include "login_manager/regen_mitigator.h"
+#include "login_manager/session_manager_dbus_adaptor.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/user_policy_service_factory.h"
 #include "login_manager/vpd_process.h"
@@ -152,17 +153,6 @@ bool IsIncognitoAccountId(const std::string& account_id) {
          (lower_case_id == SessionManagerImpl::kDemoUser);
 }
 
-// Adapter from DBusMethodResponse to PolicyService::Completion callback.
-void HandlePolicyServiceCompletion(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-    brillo::ErrorPtr error) {
-  if (error) {
-    response->ReplyWithError(error.get());
-    return;
-  }
-
-  response->Return();
-}
 
 #if USE_CHEETS
 bool IsDevMode(SystemUtils* system) {
@@ -177,6 +167,73 @@ bool IsInsideVm(SystemUtils* system) {
 #endif
 
 }  // namespace
+
+// Tracks D-Bus service running.
+// Create*Callback functions return a callback adaptor from given
+// DBusMethodResponse. These cancel in-progress operations when the instance is
+// deleted.
+class SessionManagerImpl::DBusService {
+ public:
+  explicit DBusService(
+      org::chromium::SessionManagerInterfaceInterface* interface)
+      : dbus_adaptor_(interface),
+        weak_ptr_factory_(this) {}
+  ~DBusService() = default;
+
+  bool Start(const scoped_refptr<dbus::Bus>& bus) {
+    dbus_adaptor_.ExportDBusMethods(bus->GetExportedObject(
+        org::chromium::SessionManagerInterfaceAdaptor::GetObjectPath()));
+    // Note that this needs to happen *after* all methods are exported
+    // (http://crbug.com/331431).
+    // This should pass dbus::Bus::REQUIRE_PRIMARY once on the new libchrome.
+    return bus->RequestOwnershipAndBlock(kSessionManagerServiceName,
+                                         dbus::Bus::REQUIRE_PRIMARY);
+  }
+
+  // Adaptor from DBusMethodResponse to PolicyService::Completion callback.
+  PolicyService::Completion
+  CreatePolicyServiceCompletionCallback(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
+    return base::Bind(
+        &DBusService::HandlePolicyServiceCompletion,
+        weak_ptr_factory_.GetWeakPtr(), base::Passed(&response));
+  }
+
+  // Adaptor from DBusMethodResponse to
+  // ServerBackedStateKeyGenerator::StateKeyCallback callback.
+  ServerBackedStateKeyGenerator::StateKeyCallback
+  CreateStateKeyCallback(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+      std::vector<std::vector<uint8_t>>>> response) {
+    return base::Bind(
+        &DBusService::HandleStateKeyCallback,
+        weak_ptr_factory_.GetWeakPtr(), base::Passed(&response));
+  }
+
+ private:
+  void HandlePolicyServiceCompletion(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+      brillo::ErrorPtr error) {
+    if (error) {
+      response->ReplyWithError(error.get());
+      return;
+    }
+
+    response->Return();
+  }
+
+  void HandleStateKeyCallback(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          std::vector<std::vector<uint8_t>>>> response,
+      const std::vector<std::vector<uint8_t>>& state_key) {
+    response->Return(std::move(state_key));
+  }
+
+  SessionManagerDBusAdaptor dbus_adaptor_;
+
+  base::WeakPtrFactory<DBusService> weak_ptr_factory_;
+  DISALLOW_COPY_AND_ASSIGN(DBusService);
+};
 
 struct SessionManagerImpl::UserSession {
  public:
@@ -201,7 +258,7 @@ struct SessionManagerImpl::UserSession {
 
 SessionManagerImpl::SessionManagerImpl(
     std::unique_ptr<InitDaemonController> init_controller,
-    dbus::Bus* bus,
+    const scoped_refptr<dbus::Bus>& bus,
     base::Closure lock_screen_closure,
     base::Closure restart_device_closure,
     base::Closure start_arc_instance_closure,
@@ -230,6 +287,7 @@ SessionManagerImpl::SessionManagerImpl(
       stop_arc_instance_closure_(stop_arc_instance_closure),
       system_clock_last_sync_info_retry_delay_(
           kSystemClockLastSyncInfoRetryDelay),
+      bus_(bus),
       dbus_emitter_(
           bus->GetExportedObject(
               org::chromium::SessionManagerInterfaceAdaptor::GetObjectPath()),
@@ -387,6 +445,11 @@ bool SessionManagerImpl::Initialize() {
 }
 
 void SessionManagerImpl::Finalize() {
+  // Reset the SessionManagerDBusAdaptor first to ensure that it'll permit
+  // any outstanding DBusMethodCompletion objects to be abandoned without
+  // having been run (http://crbug.com/638774, http://crbug.com/725734).
+  dbus_service_.reset();
+
   device_policy_->PersistPolicy(PolicyService::Completion());
   for (UserSessionMap::const_iterator it = user_sessions_.begin();
        it != user_sessions_.end(); ++it) {
@@ -397,6 +460,16 @@ void SessionManagerImpl::Finalize() {
   // cannot persist across sessions.
   android_container_->RequestJobExit();
   android_container_->EnsureJobExit(kContainerTimeout);
+}
+
+bool SessionManagerImpl::StartDBusService() {
+  DCHECK(!dbus_service_);
+  auto dbus_service = base::MakeUnique<DBusService>(this);
+  if (!dbus_service->Start(bus_))
+    return false;
+
+  dbus_service_ = std::move(dbus_service);
+  return true;
 }
 
 void SessionManagerImpl::EmitLoginPromptVisible() {
@@ -611,9 +684,11 @@ void SessionManagerImpl::StoreDeviceLocalAccountPolicy(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
     const std::string& in_account_id,
     const std::vector<uint8_t>& in_policy_blob) {
+  DCHECK(dbus_service_);
   device_local_account_policy_->Store(
       in_account_id, in_policy_blob,
-      base::Bind(HandlePolicyServiceCompletion, base::Passed(&response)));
+      dbus_service_->CreatePolicyServiceCompletionCallback(
+          std::move(response)));
 }
 
 bool SessionManagerImpl::RetrieveDeviceLocalAccountPolicy(
@@ -742,13 +817,9 @@ void SessionManagerImpl::SetFlagsForUser(
 void SessionManagerImpl::GetServerBackedStateKeys(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         std::vector<std::vector<uint8_t>>>> response) {
-  using StateKey = std::vector<uint8_t>;
-  base::Callback<void(const std::vector<StateKey>&)> callback =
-      base::Bind(
-          &brillo::dbus_utils::DBusMethodResponse<
-              std::vector<StateKey>>::Return,
-          base::Passed(&response));
-
+  DCHECK(dbus_service_);
+  ServerBackedStateKeyGenerator::StateKeyCallback callback =
+      dbus_service_->CreateStateKeyCallback(std::move(response));
   if (system_clock_synchronized_) {
     state_key_generator_->RequestStateKeys(callback);
   } else {
@@ -1209,12 +1280,15 @@ void SessionManagerImpl::StorePolicyInternal(
     const std::vector<uint8_t>& policy_blob,
     SignatureCheck signature_check,
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
+  DCHECK(dbus_service_);
+
   int flags = PolicyService::KEY_ROTATE;
   if (!session_started_)
     flags |= PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_CLOBBER;
   device_policy_->Store(
       policy_blob, flags, signature_check,
-      base::Bind(HandlePolicyServiceCompletion, base::Passed(&response)));
+      dbus_service_->CreatePolicyServiceCompletionCallback(
+          std::move(response)));
 }
 
 void SessionManagerImpl::StorePolicyForUserInternal(
@@ -1222,6 +1296,8 @@ void SessionManagerImpl::StorePolicyForUserInternal(
     const std::vector<uint8_t>& policy_blob,
     SignatureCheck signature_check,
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
+  DCHECK(dbus_service_);
+
   PolicyService* policy_service = GetPolicyService(account_id);
   if (!policy_service) {
     constexpr char kMessage[] =
@@ -1235,7 +1311,8 @@ void SessionManagerImpl::StorePolicyForUserInternal(
   policy_service->Store(
       policy_blob, PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_ROTATE,
       signature_check,
-      base::Bind(HandlePolicyServiceCompletion, base::Passed(&response)));
+      dbus_service_->CreatePolicyServiceCompletionCallback(
+          std::move(response)));
 }
 
 #if USE_CHEETS
