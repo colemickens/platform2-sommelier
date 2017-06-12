@@ -21,6 +21,7 @@ class TgtLifetime;
 class DebugFlags;
 }  // namespace protos
 
+class Anonymizer;
 class AuthPolicyMetrics;
 class JailHelper;
 class PathService;
@@ -37,6 +38,7 @@ class TgtManager {
              AuthPolicyMetrics* metrics,
              const protos::DebugFlags* flags,
              const JailHelper* jail_helper,
+             Anonymizer* anonymizer,
              Path config_path,
              Path credential_cache_path);
   ~TgtManager();
@@ -117,6 +119,7 @@ class TgtManager {
   AuthPolicyMetrics* metrics_ = nullptr;       // UMA statistics, not owned.
   const protos::DebugFlags* flags_ = nullptr;  // Debug flags, not owned.
   const JailHelper* jail_helper_ = nullptr;    // Minijail related, not owned.
+  Anonymizer* anonymizer_ = nullptr;           // Log anonymizer, not owned.
   Path config_path_ = Path::INVALID;
   Path credential_cache_path_ = Path::INVALID;
 

@@ -16,6 +16,7 @@
 #include <libminijail.h>
 #include <scoped_minijail.h>
 
+#include "authpolicy/anonymizer.h"
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/samba_helper.h"
 
@@ -84,10 +85,17 @@ void ProcessExecutor::LogOutputOnError(bool enabled) {
   log_output_on_error_ = enabled;
 }
 
+void ProcessExecutor::SetAnonymizer(Anonymizer* anonymizer) {
+  anonymizer_ = anonymizer;
+}
+
 bool ProcessExecutor::Execute() {
   ResetOutput();
   if (args_.empty() || args_[0].empty())
     return true;
+
+  bool need_anonymizer = log_command_ || log_output_ || log_output_on_error_;
+  CHECK(anonymizer_ || !need_anonymizer) << "Logs must be anonymized";
 
   if (!base::FilePath(args_[0]).IsAbsolute()) {
     LOG(ERROR) << "Command must be specified by absolute path.";
@@ -99,7 +107,7 @@ bool ProcessExecutor::Execute() {
     std::string cmd = args_[0];
     for (size_t n = 1; n < args_.size(); ++n)
       cmd += base::StringPrintf(" '%s'", args_[n].c_str());
-    LOG(INFO) << "Executing " << cmd;
+    LOG(INFO) << "Executing " << anonymizer_->Process(cmd);
   }
 
   // Convert args to array of pointers. Must be nullptr terminated.
@@ -196,8 +204,8 @@ bool ProcessExecutor::Execute() {
   }
 
   if (log_output_ || (log_output_on_error_ && exit_code_ != 0)) {
-    LogLongString("Stdout: ", out_data_);
-    LogLongString("Stderr: ", err_data_);
+    LogLongString("Stdout: ", out_data_, anonymizer_);
+    LogLongString("Stderr: ", err_data_, anonymizer_);
   }
   LOG_IF(INFO, log_command_) << "Exit code: " << exit_code_;
 

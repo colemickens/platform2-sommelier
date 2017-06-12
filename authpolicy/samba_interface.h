@@ -15,6 +15,7 @@
 #include <base/memory/ref_counted.h>
 #include <dbus/authpolicy/dbus-constants.h>
 
+#include "authpolicy/anonymizer.h"
 #include "authpolicy/authpolicy_flags.h"
 #include "authpolicy/authpolicy_metrics.h"
 #include "authpolicy/constants.h"
@@ -233,6 +234,9 @@ class SambaInterface {
   // User and device ticket-granting-ticket managers.
   TgtManager user_tgt_manager_;
   TgtManager device_tgt_manager_;
+
+  // Removes sensitive data from logs.
+  Anonymizer anonymizer_;
 
   // Whether kinit calls may return false negatives and must be retried.
   bool retry_machine_kinit_ = false;

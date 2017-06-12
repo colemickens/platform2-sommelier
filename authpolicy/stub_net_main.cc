@@ -95,11 +95,11 @@ objectClass: top
 objectClass: person
 objectClass: organizationalPerson
 objectClass: user
-cn: John Doe
+cn: %s
 sn: Doe
 givenName: %s
 initials: JD
-distinguishedName: CN=John Doe,OU=some-ou,DC=realm,DC=com
+distinguishedName: CN=%s,OU=some-ou,DC=realm,DC=com
 instanceType: 4
 whenCreated: 20161018155136.0Z
 whenChanged: 20170217134227.0Z
@@ -142,7 +142,9 @@ class SearchBuilder {
   // Prints out a stub net ads search result with the set parameters.
   std::string GetResult() {
     return base::StringPrintf(kStubSearchFormat,
+                              common_name_.c_str(),
                               given_name_.c_str(),
+                              common_name_.c_str(),
                               display_name_.c_str(),
                               object_guid_.c_str(),
                               user_account_control_,
@@ -174,6 +176,12 @@ class SearchBuilder {
     return *this;
   }
 
+  // Sets the value of the common name key.
+  SearchBuilder& SetCommonName(const std::string& value) {
+    common_name_ = value;
+    return *this;
+  }
+
   // Sets the value of the userAccountControl key.
   SearchBuilder& SetUserAccountControl(const uint32_t value) {
     user_account_control_ = value;
@@ -191,6 +199,7 @@ class SearchBuilder {
   std::string display_name_ = kDisplayName;
   std::string object_guid_ = kAccountId;
   std::string sam_account_name_ = kUserName;
+  std::string common_name_ = kCommonName;
   uint32_t user_account_control_ = kUserAccountControl;
   uint64_t pwd_last_set_ = kPwdLastSet;
 };
@@ -436,8 +445,9 @@ int HandleCommandLine(const std::string& command_line,
   // Stub net ads search, return stub search result.
   if (StartsWithCaseSensitive(command_line, "ads search")) {
     std::string sam_account_name =
-        FindSearchValue(command_line, "sAMAccountName");
-    std::string object_guid_octet = FindSearchValue(command_line, "objectGUID");
+        FindSearchValue(command_line, kSearchSAMAccountName);
+    std::string object_guid_octet =
+        FindSearchValue(command_line, kSearchObjectGUID);
     std::string search_result;
     if (!object_guid_octet.empty()) {
       // Search by objectGUID aka account id.

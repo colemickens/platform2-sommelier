@@ -11,6 +11,8 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
+#include "authpolicy/anonymizer.h"
+
 namespace {
 
 // Map GUID position to octet position for each byte xx.
@@ -52,8 +54,9 @@ bool ParseUserPrincipalName(const std::string& user_principal_name,
   std::vector<std::string> parts = base::SplitString(
       user_principal_name, "@", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if (parts.size() != 2 || parts.at(0).empty() || parts.at(1).empty()) {
-    LOG(ERROR) << "Failed to parse user principal name '" << user_principal_name
-               << "'. Expected form 'user@some.realm'.";
+    // Don't log user_principal_name, it might contain sensitive data.
+    LOG(ERROR) << "Failed to parse user principal name. Expected form "
+                  "'user@some.realm'.";
     return false;
   }
   *user_name = parts.at(0);
@@ -82,7 +85,8 @@ bool FindToken(const std::string& in_str,
       }
     }
   }
-  LOG(ERROR) << "Failed to find '" << token << "' in '" << in_str << "'";
+  // Don't log in_str, it might contain sensitive data.
+  LOG(ERROR) << "Failed to find '" << token << "' in string";
   return false;
 }
 
@@ -143,18 +147,21 @@ std::string OctetStringToGuidForTesting(const std::string& octet_str) {
   return guid;
 }
 
-void LogLongString(const char* header, const std::string& str) {
+void LogLongString(const char* header,
+                   const std::string& str,
+                   Anonymizer* anonymizer) {
   if (!LOG_IS_ON(INFO))
     return;
 
+  std::string anonymized_str = anonymizer->Process(str);
   std::vector<std::string> lines = base::SplitString(
-      str, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+      anonymized_str, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   if (lines.size() <= 1) {
-    LOG(INFO) << header << str;
+    LOG(INFO) << header << anonymized_str;
   } else {
     LOG(INFO) << header;
     for (const std::string& line : lines)
-      LOG(INFO) << line;
+      LOG(INFO) << "  " << line;
   }
 }
 

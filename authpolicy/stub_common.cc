@@ -31,6 +31,7 @@ const char kPasswordChangedUserName[] = "password_changed";
 
 const char kDisplayName[] = "John Doe";
 const char kGivenName[] = "John";
+const char kCommonName[] = "John Doe [user]";
 const uint64_t kPwdLastSet = 131292078840924254ul;
 const uint32_t kUserAccountControl = 512;
 

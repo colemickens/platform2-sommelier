@@ -12,6 +12,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
 
+#include "authpolicy/anonymizer.h"
 #include "authpolicy/authpolicy_flags.h"
 #include "authpolicy/authpolicy_metrics.h"
 #include "authpolicy/constants.h"
@@ -190,6 +191,7 @@ TgtManager::TgtManager(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
                        AuthPolicyMetrics* metrics,
                        const protos::DebugFlags* flags,
                        const JailHelper* jail_helper,
+                       Anonymizer* anonymizer,
                        Path config_path,
                        Path credential_cache_path)
     : task_runner_(task_runner),
@@ -197,6 +199,7 @@ TgtManager::TgtManager(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
       metrics_(metrics),
       flags_(flags),
       jail_helper_(jail_helper),
+      anonymizer_(anonymizer),
       config_path_(config_path),
       credential_cache_path_(credential_cache_path) {}
 
@@ -424,7 +427,7 @@ void TgtManager::OutputKinitTrace() const {
     if (!base::ReadFileToString(base::FilePath(trace_path), &trace))
       trace = "<failed to read>";
   }
-  LogLongString("Kinit trace: ", trace);
+  LogLongString("Kinit trace: ", trace, anonymizer_);
 }
 
 void TgtManager::UpdateTgtAutoRenewal() {

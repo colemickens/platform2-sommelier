@@ -45,6 +45,7 @@ extern const char kPasswordChangedUserName[];
 // encoded.
 extern const char kDisplayName[];
 extern const char kGivenName[];
+extern const char kCommonName[];
 extern const uint64_t kPwdLastSet;
 extern const uint32_t kUserAccountControl;
 

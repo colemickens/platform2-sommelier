@@ -9,11 +9,13 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <authpolicy/anonymizer.h>
 #include <authpolicy/process_executor.h>
 
 namespace {
@@ -44,14 +46,52 @@ int GetPipeSize() {
   return pipe_size;
 }
 
+std::string* s_info_log = nullptr;
+std::string* s_error_log = nullptr;
+logging::LogMessageHandlerFunction prev_log_message_handler = nullptr;
+
+// Custom log message handler that appends INFO and ERROR logs to a string and
+// forwards logs to the previous handler.
+bool HandleLogMessage(int severity,
+                      const char* /* file */,
+                      int /* line */,
+                      size_t /* message_start */,
+                      const std::string& message) {
+  switch (severity) {
+    case logging::LOG_INFO:
+      *s_info_log += message;
+      break;
+    case logging::LOG_ERROR:
+      *s_error_log += message;
+      break;
+    default:
+      break;
+  }
+
+  return false;
+}
+
 }  // namespace
 
 namespace authpolicy {
 
 class ProcessExecutorTest : public ::testing::Test {
  public:
-  ProcessExecutorTest() {}
-  ~ProcessExecutorTest() override {}
+  ProcessExecutorTest() {
+    // Prevent that old data sneaks into this test.
+    s_info_log = new std::string();
+    s_error_log = new std::string();
+    prev_log_message_handler = logging::GetLogMessageHandler();
+    logging::SetLogMessageHandler(&HandleLogMessage);
+  }
+
+  ~ProcessExecutorTest() override {
+    logging::SetLogMessageHandler(prev_log_message_handler);
+    delete s_info_log;
+    delete s_error_log;
+    s_info_log = nullptr;
+    s_error_log = nullptr;
+  }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ProcessExecutorTest);
@@ -256,6 +296,41 @@ TEST_F(ProcessExecutorTest, NoSideEffects) {
 TEST_F(ProcessExecutorTest, CommandsMustUseAbsolutePaths) {
   ProcessExecutor cmd({"echo", "test"});
   EXPECT_FALSE(cmd.Execute());
+}
+
+// If enabled, logs are written to stdout.
+TEST_F(ProcessExecutorTest, WritesLogsToStdout) {
+  ProcessExecutor cmd({kCmdEcho, "TestLog"});
+  EXPECT_TRUE(cmd.Execute());
+  EXPECT_EQ(cmd.GetExitCode(), 0);
+  EXPECT_TRUE(s_info_log->empty());
+
+  cmd.LogOutput(true);
+  Anonymizer anonymizer;
+  cmd.SetAnonymizer(&anonymizer);
+  EXPECT_TRUE(cmd.Execute());
+  EXPECT_EQ(cmd.GetExitCode(), 0);
+  EXPECT_NE(std::string::npos, s_info_log->find("Stdout: TestLog"));
+}
+
+// Logs are sanitized.
+TEST_F(ProcessExecutorTest, LogsAreSanitized) {
+  ProcessExecutor cmd({kCmdEcho, "log with SENSITIVE data"});
+  cmd.LogOutput(true);
+  Anonymizer anonymizer;
+  anonymizer.SetReplacement("SENSITIVE", "ANONYMIZED");
+  cmd.SetAnonymizer(&anonymizer);
+  EXPECT_TRUE(cmd.Execute());
+  EXPECT_EQ(cmd.GetExitCode(), 0);
+  EXPECT_EQ(std::string::npos, s_info_log->find("SENSITIVE"));
+  EXPECT_NE(std::string::npos, s_info_log->find("ANONYMIZED"));
+}
+
+// Logging output without anonymizer fails.
+TEST_F(ProcessExecutorTest, CrashesWithMissingAnonymizer) {
+  ProcessExecutor cmd({kCmdEcho, "log with SENSITIVE data"});
+  cmd.LogOutput(true);
+  EXPECT_DEATH(cmd.Execute(), "Logs must be anonymized");
 }
 
 }  // namespace authpolicy

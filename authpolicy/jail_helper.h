@@ -17,11 +17,14 @@ class DebugFlags;
 }
 
 class ProcessExecutor;
+class Anonymizer;
 
 // Helper class for setting up a minijail and running a process.
 class JailHelper {
  public:
-  JailHelper(const PathService* path_service, const protos::DebugFlags* flags);
+  JailHelper(const PathService* path_service,
+             const protos::DebugFlags* flags,
+             Anonymizer* anonymizer);
 
   // Sets up minijail and executes |cmd|. |seccomp_path_key| specifies the path
   // of the seccomp filter to use. |timer_type| is the UMA timer metric to
@@ -32,11 +35,9 @@ class JailHelper {
                        TimerType timer_type) const;
 
  private:
-  // File paths, not owned.
-  const PathService* paths_ = nullptr;
-
-  // Debug flags, not owned.
-  const protos::DebugFlags* flags_ = nullptr;
+  const PathService* paths_ = nullptr;         // File paths, not owned.
+  const protos::DebugFlags* flags_ = nullptr;  // Debug flags, not owned.
+  Anonymizer* anonymizer_ = nullptr;           // Log anonymizer, not owned.
 
   DISALLOW_COPY_AND_ASSIGN(JailHelper);
 };

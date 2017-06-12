@@ -34,6 +34,7 @@ extern const char kActiveDirectoryPrefix[];
 // Net ads search keys.
 extern const char kSearchObjectGUID[];
 extern const char kSearchSAMAccountName[];
+extern const char kSearchCommonName[];
 extern const char kSearchDisplayName[];
 extern const char kSearchGivenName[];
 extern const char kSearchPwdLastSet[];

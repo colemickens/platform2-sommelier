@@ -22,7 +22,6 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 
-#include "authpolicy/authpolicy_flags.h"
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/process_executor.h"
 #include "bindings/authpolicy_containers.pb.h"
@@ -106,6 +105,15 @@ const char kKeyObjectNameNotFound[] =
 const char kChromeOSReleaseTrack[] = "CHROMEOS_RELEASE_TRACK";
 const char kBetaChannel[] = "beta-channel";
 const char kStableChannel[] = "stable-channel";
+
+// Replacement strings for anonymization.
+const char kMachineNamePlaceholder[] = "<MACHINE_NAME>";
+const char kLogonNamePlaceholder[] = "<USER_LOGON_NAME>";
+const char kGivenNamePlaceholder[] = "<USER_GIVEN_NAME>";
+const char kDisplayNamePlaceholder[] = "<USER_DISPLAY_NAME>";
+const char kSAMAccountNamePlaceholder[] = "<USER_SAM_ACCOUNT_NAME>";
+const char kCommonNamePlaceholder[] = "<USER_COMMON_NAME>";
+const char kAccountIdPlaceholder[] = "<USER_ACCOUNT_ID>";
 
 ErrorType GetNetError(const ProcessExecutor& executor,
                       const std::string& net_command) {
@@ -201,12 +209,13 @@ SambaInterface::SambaInterface(
     const PathService* path_service)
     : metrics_(metrics),
       paths_(path_service),
-      jail_helper_(paths_, &flags_),
+      jail_helper_(paths_, &flags_, &anonymizer_),
       user_tgt_manager_(task_runner,
                         paths_,
                         metrics_,
                         &flags_,
                         &jail_helper_,
+                        &anonymizer_,
                         Path::USER_KRB5_CONF,
                         Path::USER_CREDENTIAL_CACHE),
       device_tgt_manager_(task_runner,
@@ -214,6 +223,7 @@ SambaInterface::SambaInterface(
                           metrics_,
                           &flags_,
                           &jail_helper_,
+                          &anonymizer_,
                           Path::DEVICE_KRB5_CONF,
                           Path::DEVICE_CREDENTIAL_CACHE) {
   DCHECK(paths_);
@@ -305,7 +315,7 @@ ErrorType SambaInterface::AuthenticateUserInternal(
           user_principal_name, &user_name, &realm, &normalized_upn)) {
     return ERROR_PARSE_UPN_FAILED;
   }
-  LOG_IF(INFO, flags_.log_config()) << "UPN = '" << normalized_upn << "'";
+  LOG_IF(INFO, flags_.log_config()) << "Realm = '" << realm << "'";
 
   // Write Samba configuration file.
   ErrorType error = EnsureWorkgroupAndWriteSmbConf();
@@ -409,13 +419,21 @@ ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
           user_principal_name, &user_name, &realm, &normalized_upn)) {
     return ERROR_PARSE_UPN_FAILED;
   }
-  LOG_IF(INFO, flags_.log_config()) << "UPN = '" << normalized_upn << "'";
+  LOG_IF(INFO, flags_.log_config()) << "Realm = '" << realm << "'";
+  anonymizer_.SetReplacement(user_name, kSAMAccountNamePlaceholder);
+
+  // The netbios name in smb.conf needs to be upper-case, but there is also
+  // Samba code that logs the machine name lower-case, so add both here.
+  std::string machine_name_lower = base::ToLowerASCII(machine_name);
+  std::string machine_name_upper = base::ToUpperASCII(machine_name);
+  anonymizer_.SetReplacement(machine_name_lower, kMachineNamePlaceholder);
+  anonymizer_.SetReplacement(machine_name_upper, kMachineNamePlaceholder);
 
   // Wipe and (re-)create config. Note that all session data is wiped to make
   // testing easier.
   Reset();
   config_ = base::MakeUnique<protos::ActiveDirectoryConfig>();
-  config_->set_machine_name(base::ToUpperASCII(machine_name));
+  config_->set_machine_name(machine_name_upper);
   config_->set_realm(realm);
 
   // Write Samba configuration. Will query the workgroup.
@@ -786,10 +804,9 @@ ErrorType SambaInterface::ReadConfiguration() {
 
   config_ = std::move(config);
   LOG(INFO) << "Read configuration file '" << config_path.value() << "'";
-  if (flags_.log_config()) {
-    LOG(INFO) << "Machine name = '" << config_->machine_name() << "'";
+  if (flags_.log_config())
     LOG(INFO) << "Realm = '" << config_->realm() << "'";
-  }
+  anonymizer_.SetReplacement(config_->machine_name(), kMachineNamePlaceholder);
   return ERROR_NONE;
 }
 
@@ -869,12 +886,14 @@ ErrorType SambaInterface::GetAccountInfo(
     // Searching by objectGUID has to use the octet string representation!
     // Note: If |account_id| is malformed, the search yields no results.
     const std::string account_id_octet = GuidToOctetString(account_id);
+    anonymizer_.SetReplacement(account_id_octet, kAccountIdPlaceholder);
     std::string search_string =
         base::StringPrintf("(objectGUID=%s)", account_id_octet.c_str());
     return SearchAccountInfo(search_string, account_info);
   }
 
   // Otherwise, search by sAMAccountName, then by userPrincipalName.
+  anonymizer_.SetReplacement(user_name, kSAMAccountNamePlaceholder);
   std::string search_string =
       base::StringPrintf("(sAMAccountName=%s)", user_name.c_str());
   error = SearchAccountInfo(search_string, account_info);
@@ -883,6 +902,7 @@ ErrorType SambaInterface::GetAccountInfo(
 
   LOG(WARNING) << "Account info not found by sAMAccountName. "
                << "Trying userPrincipalName.";
+  anonymizer_.SetReplacement(user_name, kLogonNamePlaceholder);
   search_string =
       base::StringPrintf("(userPrincipalName=%s)", normalized_upn.c_str());
   return SearchAccountInfo(search_string, account_info);
@@ -898,6 +918,7 @@ ErrorType SambaInterface::SearchAccountInfo(
                            search_string,
                            kSearchObjectGUID,
                            kSearchSAMAccountName,
+                           kSearchCommonName,
                            kSearchDisplayName,
                            kSearchGivenName,
                            kSearchPwdLastSet,
@@ -906,11 +927,24 @@ ErrorType SambaInterface::SearchAccountInfo(
                            paths_->Get(Path::SMB_CONF),
                            "-d",
                            flags_.net_log_level()});
+  // Parse the search args from the net_cmd output immediately. This resolves
+  // the chicken-egg-problem that replacement strings cannot be set before the
+  // strings-to-replace are known, so the output of net_cmd would still contain
+  // sensitive strings.
+  anonymizer_.ReplaceSearchArg(kSearchObjectGUID, kAccountIdPlaceholder);
+  anonymizer_.ReplaceSearchArg(kSearchDisplayName, kDisplayNamePlaceholder);
+  anonymizer_.ReplaceSearchArg(kSearchGivenName, kGivenNamePlaceholder);
+  anonymizer_.ReplaceSearchArg(kSearchSAMAccountName,
+                               kSAMAccountNamePlaceholder);
+  anonymizer_.ReplaceSearchArg(kSearchCommonName, kCommonNamePlaceholder);
+
   // Use the machine TGT to query the account info.
   net_cmd.SetEnv(kKrb5CCEnvKey,
                  paths_->Get(device_tgt_manager_.GetCredentialCachePath()));
-  if (!jail_helper_.SetupJailAndRun(
-          &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_SEARCH)) {
+  bool net_result = jail_helper_.SetupJailAndRun(
+      &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_SEARCH);
+  anonymizer_.ResetSearchArgReplacements();
+  if (!net_result) {
     return GetNetError(net_cmd, "search");
   }
   const std::string& net_out = net_cmd.GetStdout();
@@ -938,6 +972,19 @@ ErrorType SambaInterface::SearchAccountInfo(
     LOG(ERROR) << "Failed to parse account info protobuf";
     return ERROR_PARSE_FAILED;
   }
+
+  // Explicitly set replacements again in case logging is currently disabled
+  // and the anonymizer has not parsed the search values above. If we didn't do
+  // it here and logging would be enabled later, logs would contain sensitive
+  // data.
+  anonymizer_.SetReplacement(account_info->account_id(), kAccountIdPlaceholder);
+  anonymizer_.SetReplacement(account_info->display_name(),
+                             kDisplayNamePlaceholder);
+  anonymizer_.SetReplacement(account_info->given_name(), kGivenNamePlaceholder);
+  anonymizer_.SetReplacement(account_info->sam_account_name(),
+                             kSAMAccountNamePlaceholder);
+  anonymizer_.SetReplacement(account_info->common_name(),
+                             kCommonNamePlaceholder);
 
   return ERROR_NONE;
 }

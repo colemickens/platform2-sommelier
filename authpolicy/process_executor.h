@@ -15,6 +15,8 @@ struct minijail;
 
 namespace authpolicy {
 
+class Anonymizer;
+
 // Helper class to execute commands and piping data. Uses minijail.
 class ProcessExecutor {
  public:
@@ -56,6 +58,9 @@ class ProcessExecutor {
   // Toggles logging of the command output if the command failed.
   void LogOutputOnError(bool enabled);
 
+  // Sets the anonymizer to be applied to command logs.
+  void SetAnonymizer(Anonymizer* anonymizer);
+
   // Execute the command. Returns true if the command executed and returned with
   // exit code 0. Also returns true if no args were passed to the constructor.
   // Returns false otherwise.
@@ -77,6 +82,9 @@ class ProcessExecutor {
   // Resets the output variables that are populated by |Execute|.
   void ResetOutput();
 
+  // Logs stderr and stdout from the last command, if output logs are enabled.
+  void MaybeLogOutput();
+
   std::vector<std::string> args_;
   std::map<std::string, std::string> env_map_;
   int input_fd_ = -1;
@@ -91,6 +99,7 @@ class ProcessExecutor {
   bool log_command_ = false;
   bool log_output_ = false;
   bool log_output_on_error_ = false;
+  Anonymizer* anonymizer_ = nullptr;
 
   // We better not copy/assign because of |input_fd_|.
   DISALLOW_COPY_AND_ASSIGN(ProcessExecutor);

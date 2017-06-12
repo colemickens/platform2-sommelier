@@ -16,8 +16,9 @@ class AuthPolicyFlags;
 class PathService;
 
 JailHelper::JailHelper(const PathService* path_service,
-                       const protos::DebugFlags* flags)
-    : paths_(path_service), flags_(flags) {}
+                       const protos::DebugFlags* flags,
+                       Anonymizer* anonymizer)
+    : paths_(path_service), flags_(flags), anonymizer_(anonymizer) {}
 
 bool JailHelper::SetupJailAndRun(ProcessExecutor* cmd,
                                  Path seccomp_path_key,
@@ -29,15 +30,17 @@ bool JailHelper::SetupJailAndRun(ProcessExecutor* cmd,
     cmd->SetSeccompFilter(paths_->Get(seccomp_path_key));
   }
 
-  // Toggle logging.
-  cmd->LogCommand(flags_->log_commands());
-  cmd->LogOutput(flags_->log_command_output());
-
   // Required since we don't have the caps to wipe supplementary groups.
   cmd->KeepSupplementaryGroups(true);
 
   // Allows us to drop setgroups, setresgid and setresuid from seccomp filters.
   cmd->SetNoNewPrivs(true);
+
+  // Set up logging.
+  cmd->LogCommand(flags_->log_commands());
+  cmd->LogOutput(flags_->log_command_output());
+  cmd->LogOutputOnError(flags_->log_command_output_on_error());
+  cmd->SetAnonymizer(anonymizer_);
 
   // Execute as authpolicyd exec user. Don't use minijail to switch user. This
   // would force us to run without preload library since saved UIDs are wiped by

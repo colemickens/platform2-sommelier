@@ -182,10 +182,14 @@ int ParseAccountInfo(const std::string& net_out) {
   if (base::StartsWith(net_out, kNoResults, base::CompareCase::SENSITIVE))
     return OutputForCaller("");
 
-  std::string object_guid, sam_account_name;
-  std::string pwd_last_set_str, user_account_control_str;
+  std::string object_guid;
+  std::string sam_account_name;
+  std::string common_name;
+  std::string pwd_last_set_str;
+  std::string user_account_control_str;
   if (!FindToken(net_out, ':', kSearchObjectGUID, &object_guid) ||
       !FindToken(net_out, ':', kSearchSAMAccountName, &sam_account_name) ||
+      !FindToken(net_out, ':', kSearchCommonName, &common_name) ||
       !FindToken(net_out, ':', kSearchPwdLastSet, &pwd_last_set_str) ||
       !FindToken(
           net_out, ':', kSearchUserAccountControl, &user_account_control_str)) {
@@ -205,6 +209,7 @@ int ParseAccountInfo(const std::string& net_out) {
   ActiveDirectoryAccountInfo account_info;
   account_info.set_account_id(object_guid);
   account_info.set_sam_account_name(sam_account_name);
+  account_info.set_common_name(common_name);
   account_info.set_pwd_last_set(pwd_last_set);
   account_info.set_user_account_control(user_account_control);
 
@@ -502,7 +507,7 @@ int HandleCommand(const std::string& cmd,
   if (cmd == kCmdParseTgtLifetime)
     return ParseTgtLifetime(arg);
 
-  LOG(ERROR) << "Bad command '" << cmd << "'";
+  LOG(ERROR) << "Bad command";
   return EXIT_CODE_BAD_COMMAND;
 }
 

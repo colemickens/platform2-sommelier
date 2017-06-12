@@ -86,6 +86,7 @@
       },
       'sources': [
         '<(gen_src_in_dir)/policy_constants.cc',
+        'anonymizer.cc',
         'authpolicy.cc',
         'authpolicy_flags.cc',
         'authpolicy_metrics.cc',
@@ -184,6 +185,7 @@
             ],
           },
           'sources': [
+            'anonymizer_unittest.cc',
             'authpolicy_flags_unittest.cc',
             'authpolicy_testrunner.cc',
             'authpolicy_unittest.cc',

@@ -641,6 +641,7 @@ TEST_F(AuthPolicyTest, AuthSetsAccountInfo) {
   EXPECT_EQ(kDisplayName, account_info.display_name());
   EXPECT_EQ(kGivenName, account_info.given_name());
   EXPECT_EQ(kUserName, account_info.sam_account_name());
+  EXPECT_EQ(kCommonName, account_info.common_name());
   EXPECT_EQ(kPwdLastSet, account_info.pwd_last_set());
   EXPECT_EQ(kUserAccountControl, account_info.user_account_control());
   EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
@@ -737,6 +738,7 @@ TEST_F(AuthPolicyTest, GetUserStatusSucceeds) {
   expected_account_info.set_display_name(kDisplayName);
   expected_account_info.set_given_name(kGivenName);
   expected_account_info.set_sam_account_name(kUserName);
+  expected_account_info.set_common_name(kCommonName);
   expected_account_info.set_pwd_last_set(kPwdLastSet);
   expected_account_info.set_user_account_control(kUserAccountControl);
   expected_status.set_tgt_status(ActiveDirectoryUserStatus::TGT_VALID);

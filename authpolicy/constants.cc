@@ -24,6 +24,7 @@ const char kActiveDirectoryPrefix[] = "a-";
 
 const char kSearchObjectGUID[] = "objectGUID";
 const char kSearchSAMAccountName[] = "sAMAccountName";
+const char kSearchCommonName[] = "cn";
 const char kSearchDisplayName[] = "displayName";
 const char kSearchGivenName[] = "givenName";
 const char kSearchPwdLastSet[] = "pwdLastSet";
