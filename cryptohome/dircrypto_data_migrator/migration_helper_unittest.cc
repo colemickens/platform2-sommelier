@@ -919,8 +919,10 @@ TEST_F(MigrationHelperTest, AllJobThreadsFailing) {
     ASSERT_TRUE(real_platform.TouchFileDurable(from_dir_.path().AppendASCII(
         base::IntToString(i))));
   }
-  // All job threads will stop processing jobs because of errors.
-  EXPECT_CALL(mock_platform, DeleteFile(_, _)).WillRepeatedly(Return(false));
+  // All job threads will stop processing jobs because of errors. Also, set
+  // errno to avoid confusing base::File::OSErrorToFileError(). crbug.com/731809
+  EXPECT_CALL(mock_platform, DeleteFile(_, _)).WillRepeatedly(
+      testing::SetErrnoAndReturn(EIO, false));
   // Migrate() still returns the result without deadlocking. crbug.com/731575
   EXPECT_FALSE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
                                          base::Unretained(this))));
