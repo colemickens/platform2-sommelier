@@ -36,10 +36,6 @@ struct signalfd_siginfo;
 
 class MessageLoop;
 
-namespace dbus {
-class ObjectProxy;
-}  // namespace dbus
-
 namespace login_manager {
 
 class BrowserJobInterface;
@@ -92,9 +88,6 @@ class SessionManagerService
     void set_exit_on_child_done(bool do_exit) {
       session_manager_service_->exit_on_child_done_ = do_exit;
     }
-    void set_powerd_object_proxy(dbus::ObjectProxy* proxy) {
-      session_manager_service_->powerd_dbus_proxy_ = proxy;
-    }
 
     // Executes the CleanupChildren() method on the manager.
     void CleanupChildren(int timeout_sec) {
@@ -107,14 +100,6 @@ class SessionManagerService
 
     // Trigger and handle SessionManagerImpl initialization.
     bool InitializeImpl() { return session_manager_service_->InitializeImpl(); }
-
-    // Fake messages from powerd.
-    void Suspend(dbus::Signal* signal) {
-      return session_manager_service_->HandleSuspendImminent(signal);
-    }
-    void Resume() {
-      return session_manager_service_->HandleSuspendDone(nullptr);
-    }
 
    private:
     friend class SessionManagerService;
@@ -217,32 +202,12 @@ class SessionManagerService
   // Callback when receiving a termination signal.
   bool OnTerminationSignal(const struct signalfd_siginfo& info);
 
-  // Helper for making powerd calls.
-  bool CallPowerdMethod(const std::string& method_name,
-                        const google::protobuf::MessageLite& request,
-                        google::protobuf::MessageLite* reply_out);
-
-  // Sets up suspend delay with powerd.
-  void SetUpSuspendHandler();
-
-  // Tear down suspend delay handler set up with powerd.
-  void TearDownSuspendHandler();
-
-  // Callbacks for suspend/resume.
-  void HandleSuspendImminent(dbus::Signal* signal);
-  void HandleSuspendDone(dbus::Signal* signal);
-
-  // Sets the ARC instance cgroup state. Can be used to freeze or thaw
-  // the instance.
-  void SetArcCgroupState(const std::string& state);
-
   std::unique_ptr<BrowserJobInterface> browser_;
   bool exit_on_child_done_;
   const base::TimeDelta kill_timeout_;
 
   scoped_refptr<dbus::Bus> bus_;
   const std::string match_rule_;
-  dbus::ObjectProxy* powerd_dbus_proxy_;  // Owned by bus_.
 
   LoginMetrics* login_metrics_;  // Owned by the caller.
   SystemUtils* system_;          // Owned by the caller.

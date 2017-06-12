@@ -41,7 +41,6 @@
 #include "login_manager/system_utils.h"
 #include "login_manager/systemd_unit_starter.h"
 #include "login_manager/upstart_signal_emitter.h"
-#include "power_manager/proto_bindings/suspend.pb.h"
 
 namespace em = enterprise_management;
 namespace login_manager {
@@ -144,7 +143,7 @@ bool SessionManagerService::Initialize() {
       bus_->GetObjectProxy(chromeos::kLibCrosServiceName,
                            dbus::ObjectPath(chromeos::kLibCrosServicePath));
 
-  powerd_dbus_proxy_ = bus_->GetObjectProxy(
+  dbus::ObjectProxy* powerd_dbus_proxy = bus_->GetObjectProxy(
       power_manager::kPowerManagerServiceName,
       dbus::ObjectPath(power_manager::kPowerManagerServicePath));
 
@@ -176,7 +175,7 @@ bool SessionManagerService::Initialize() {
                  chromeos::kLibCrosServiceInterface,
                  chromeos::kLockScreen),
       base::Bind(&FireAndBlockOnDBusMethodCall,
-                 base::Unretained(powerd_dbus_proxy_),
+                 base::Unretained(powerd_dbus_proxy),
                  power_manager::kPowerManagerInterface,
                  power_manager::kRequestRestartMethod),
       base::Bind(&base::DoNothing),
