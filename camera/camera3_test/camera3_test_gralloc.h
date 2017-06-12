@@ -113,7 +113,7 @@ class Camera3TestGralloc {
 
   Camera3TestGralloc();
 
-  ~Camera3TestGralloc();
+  bool Initialize();
 
   // Conversion from HAL to GBM usage flags
   uint64_t GrallocConvertFlags(int format, int flags);
@@ -121,7 +121,10 @@ class Camera3TestGralloc {
   // Conversion from HAL to fourcc-based GBM formats
   uint32_t GrallocConvertFormat(int format);
 
-  gbm_device* gbm_dev_;
+  // Lock to protect the singleton creation
+  static base::Lock lock_;
+
+  arc::GbmDevice* gbm_dev_;
 
   // Real GBM format of flexible YUV 420. The flexible format here does not
   // necessarily match the yuv420 format allocated by Android gralloc, but for

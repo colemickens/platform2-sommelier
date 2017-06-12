@@ -7,13 +7,12 @@ include pc_utils.mk
 
 ### Rules to generate the arc_camera3_test binary.
 
-camera3_test_PC_DEPS := gbm libcamera_client libcamera_metadata \
+camera3_test_PC_DEPS := gbm libcamera_client libcamera_metadata libcbm \
 	libchrome-$(BASE_VER) libdrm libexif libsync libyuv
 camera3_test_CPPFLAGS := $(call get_pc_cflags,$(camera3_test_PC_DEPS))
 camera3_test_LDLIBS := $(call get_pc_libs,$(camera3_test_PC_DEPS)) -ldl \
 	$(shell gtest-config --libs) -ljpeg
 camera3_test_CXX_OBJECTS += \
-	$(libcbm_OBJS) \
 	common/future.o
 
 CXX_BINARY(camera3_test/arc_camera3_test): CPPFLAGS += $(camera3_test_CPPFLAGS)

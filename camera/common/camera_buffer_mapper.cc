@@ -21,18 +21,41 @@
 
 namespace arc {
 
+GbmDevice::GbmDevice() : device_(internal::CreateGbmDevice()) {}
+
+GbmDevice::~GbmDevice() {
+  if (device_) {
+    close(gbm_device_get_fd(device_));
+    gbm_device_destroy(device_);
+  }
+}
+
+int GbmDevice::IsFormatSupported(uint32_t format, uint32_t usage) {
+  return gbm_device_is_format_supported(device_, format, usage);
+}
+
+struct gbm_bo* GbmDevice::CreateBo(uint32_t width,
+                                   uint32_t height,
+                                   uint32_t format,
+                                   uint32_t flags) {
+  return gbm_bo_create(device_, width, height, format, flags);
+}
+
+void GbmDevice::Deleter::operator()(GbmDevice* device) {
+  delete device;
+}
+
 // static
 CameraBufferMapper* CameraBufferMapper::GetInstance() {
   static CameraBufferMapper instance;
-  if (!instance.gbm_device_) {
+  if (!instance.gbm_device_->device_) {
     LOGF(ERROR) << "Failed to create GBM device for CameraBufferMapper";
     return nullptr;
   }
   return &instance;
 }
 
-CameraBufferMapper::CameraBufferMapper()
-    : gbm_device_(internal::CreateGbmDevice()) {}
+CameraBufferMapper::CameraBufferMapper() : gbm_device_(new GbmDevice()) {}
 
 int CameraBufferMapper::Register(buffer_handle_t buffer) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
@@ -70,7 +93,7 @@ int CameraBufferMapper::Register(buffer_handle_t buffer) {
     uint32_t usage =
         GBM_BO_USE_LINEAR | GBM_BO_USE_CAMERA_READ | GBM_BO_USE_CAMERA_WRITE;
     buffer_context->bo = gbm_bo_import(
-        gbm_device_.get(), GBM_BO_IMPORT_FD_PLANAR, &import_data, usage);
+        gbm_device_->device_, GBM_BO_IMPORT_FD_PLANAR, &import_data, usage);
     if (!buffer_context->bo) {
       LOGF(ERROR) << "Failed to import buffer 0x" << std::hex
                   << handle->buffer_id;
@@ -409,6 +432,10 @@ size_t CameraBufferMapper::GetPlaneSize(buffer_handle_t buffer, size_t plane) {
   }
   return (handle->strides[plane] *
           DIV_ROUND_UP(handle->height, vertical_subsampling));
+}
+
+GbmDevice* CameraBufferMapper::GetGbmDevice() {
+  return gbm_device_.get();
 }
 
 void* CameraBufferMapper::Map(buffer_handle_t buffer,

@@ -32,43 +32,50 @@ void BufferHandleDeleter::operator()(buffer_handle_t* handle) {
   }
 }
 
+base::Lock Camera3TestGralloc::lock_;
+
 // static
 Camera3TestGralloc* Camera3TestGralloc::GetInstance() {
-  static Camera3TestGralloc gralloc;
-  return &gralloc;
+  static std::unique_ptr<Camera3TestGralloc> gralloc;
+  base::AutoLock l(lock_);
+  if (!gralloc) {
+    gralloc.reset(new Camera3TestGralloc());
+    if (!gralloc->Initialize()) {
+      gralloc.reset();
+    }
+  }
+  return gralloc.get();
 }
 
 Camera3TestGralloc::Camera3TestGralloc()
-    : buffer_mapper_(arc::CameraBufferMapper::GetInstance()) {
-  gbm_dev_ = ::arc::internal::CreateGbmDevice();
+    : buffer_mapper_(arc::CameraBufferMapper::GetInstance()) {}
+
+bool Camera3TestGralloc::Initialize() {
+  if (!buffer_mapper_) {
+    LOG(ERROR) << "Failed to get buffer mapper";
+    return false;
+  }
+  gbm_dev_ = buffer_mapper_->GetGbmDevice();
   if (!gbm_dev_) {
-    LOG(ERROR) << "Can't create gbm device";
-    return;
+    LOG(ERROR) << "Failed to get gbm device";
+    return false;
   }
 
-  uint32_t formats[] = {DRM_FORMAT_YVU420, DRM_FORMAT_NV12, DRM_FORMAT_YUV420,
-                        DRM_FORMAT_NV21};
+  uint32_t formats[] = {DRM_FORMAT_YVU420, DRM_FORMAT_NV12};
   size_t i = 0;
   for (; i < arraysize(formats); i++) {
-    if (gbm_device_is_format_supported(gbm_dev_, formats[i],
-                                       GBM_BO_USE_RENDERING)) {
+    if (gbm_dev_->IsFormatSupported(formats[i], GBM_BO_USE_LINEAR |
+                                                    GBM_BO_USE_CAMERA_READ |
+                                                    GBM_BO_USE_CAMERA_WRITE)) {
       flexible_yuv_420_format_ = formats[i];
       break;
     }
   }
   if (i == arraysize(formats)) {
     LOG(ERROR) << "Can't detect flexible YUV 420 format";
-    close(gbm_device_get_fd(gbm_dev_));
-    gbm_device_destroy(gbm_dev_);
-    gbm_dev_ = nullptr;
+    return false;
   }
-}
-
-Camera3TestGralloc::~Camera3TestGralloc() {
-  if (gbm_dev_) {
-    close(gbm_device_get_fd(gbm_dev_));
-    gbm_device_destroy(gbm_dev_);
-  }
+  return true;
 }
 
 BufferHandleUniquePtr Camera3TestGralloc::Allocate(int32_t width,
@@ -83,13 +90,15 @@ BufferHandleUniquePtr Camera3TestGralloc::Allocate(int32_t width,
   gbm_format = GrallocConvertFormat(format);
   gbm_usage = GrallocConvertFlags(format, usage);
 
-  if (gbm_format == 0 ||
-      !gbm_device_is_format_supported(gbm_dev_, gbm_format, gbm_usage)) {
-    LOG(ERROR) << "Unsupported format " << gbm_format;
+  if (!gbm_dev_) {
+    return BufferHandleUniquePtr(nullptr);
+  }
+  if (gbm_format == 0 || !gbm_dev_->IsFormatSupported(gbm_format, gbm_usage)) {
+    LOG(ERROR) << "Unsupported format " << std::hex << gbm_format;
     return BufferHandleUniquePtr(nullptr);
   }
 
-  bo = gbm_bo_create(gbm_dev_, width, height, gbm_format, gbm_usage);
+  bo = gbm_dev_->CreateBo(width, height, gbm_format, gbm_usage);
   if (!bo) {
     LOG(ERROR) << "Failed to create bo (" << width << "x" << height << ")";
     return BufferHandleUniquePtr(nullptr);
@@ -158,8 +167,10 @@ uint32_t Camera3TestGralloc::GetV4L2PixelFormat(buffer_handle_t buffer) {
 
 uint64_t Camera3TestGralloc::GrallocConvertFlags(int32_t format,
                                                  int32_t flags) {
-  return (format == HAL_PIXEL_FORMAT_BLOB) ? GBM_BO_USE_LINEAR
-                                           : GBM_BO_USE_RENDERING;
+  return (format == HAL_PIXEL_FORMAT_BLOB)
+             ? GBM_BO_USE_LINEAR
+             : GBM_BO_USE_LINEAR | GBM_BO_USE_CAMERA_READ |
+                   GBM_BO_USE_CAMERA_WRITE;
 }
 
 uint32_t Camera3TestGralloc::GrallocConvertFormat(int32_t format) {

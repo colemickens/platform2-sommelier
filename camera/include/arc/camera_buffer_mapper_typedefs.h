@@ -15,6 +15,8 @@
 
 #include <gbm.h>
 
+#define EXPORTED __attribute__((__visibility__("default")))
+
 struct native_handle;
 typedef const native_handle* buffer_handle_t;
 struct android_ycbcr;
@@ -28,17 +30,31 @@ enum BufferType {
   SHM = 1,
 };
 
-struct GbmDeviceDeleter {
-  inline void operator()(struct gbm_device* device) {
-    if (device) {
-      close(gbm_device_get_fd(device));
-      gbm_device_destroy(device);
-    }
-  }
-};
+// This class wraps gbm_device for sharing it with tests
+class EXPORTED GbmDevice {
+ public:
+  int IsFormatSupported(uint32_t format, uint32_t usage);
 
-typedef std::unique_ptr<struct gbm_device, struct GbmDeviceDeleter>
-    GbmDeviceUniquePtr;
+  struct gbm_bo* CreateBo(uint32_t width,
+                          uint32_t height,
+                          uint32_t format,
+                          uint32_t flags);
+
+ private:
+  friend class CameraBufferMapper;
+
+  GbmDevice();
+
+  ~GbmDevice();
+
+  struct Deleter {
+    void operator()(GbmDevice* device);
+  };
+
+  struct gbm_device* device_;
+
+  DISALLOW_COPY_AND_ASSIGN(GbmDevice);
+};
 
 struct BufferContext {
   // ** The following fields are used for gralloc buffers only. **

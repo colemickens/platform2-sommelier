@@ -11,8 +11,6 @@
 
 #include "arc/camera_buffer_mapper_typedefs.h"
 
-#define EXPORTED __attribute__((__visibility__("default")))
-
 // A V4L2 extension format which represents 32bit RGBX-8-8-8-8 format. This
 // corresponds to DRM_FORMAT_XBGR8888 which is used as the underlying format for
 // the HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINEND format on all CrOS boards.
@@ -185,6 +183,10 @@ class EXPORTED CameraBufferMapper {
   //    The size of the specified plane; 0 on error.
   static size_t GetPlaneSize(buffer_handle_t buffer, size_t plane);
 
+  // Gets the gbm device. This method is only for testing; normal client should
+  // never use it.
+  GbmDevice* GetGbmDevice();
+
  private:
   // Allow unit tests to call constructor directly.
   friend class tests::CameraBufferMapperTest;
@@ -218,7 +220,7 @@ class EXPORTED CameraBufferMapper {
   // ** Start of lock_ scope **
 
   // The handle to the opened GBM device.
-  GbmDeviceUniquePtr gbm_device_;
+  std::unique_ptr<GbmDevice, GbmDevice::Deleter> gbm_device_;
 
   // A cache which stores all the context of the registered buffers.
   // For gralloc buffers the context stores the imported GBM buffer objects.
