@@ -4,7 +4,9 @@
     'python_dir': '<(SHARED_INTERMEDIATE_DIR)/<(proto_out_dir)/py',
     'proto_in_dir%': '.',
     'protoc': '<!(which protoc)',
+    'grpc_cpp_plugin': '<!(which grpc_cpp_plugin)',
     'gen_bidl%': 0,
+    'gen_grpc%': 0,
     'gen_python%': 0,
   },
   'rules': [
@@ -35,7 +37,22 @@
             '<(python_dir)/<(RULE_INPUT_ROOT)_pb.py',
           ],
         }],
-        ['gen_bidl==0 and gen_python==0', {
+        ['gen_grpc==1', {
+          'variables': {
+            'out_args': [
+              '--grpc_out=<(cc_dir)',
+              '--plugin=protoc-gen-grpc=<(grpc_cpp_plugin)',
+              '--cpp_out=<(cc_dir)',
+            ],
+          },
+          'outputs': [
+            '<(cc_dir)/<(RULE_INPUT_ROOT).grpc.pb.cc',
+            '<(cc_dir)/<(RULE_INPUT_ROOT).grpc.pb.h',
+            '<(cc_dir)/<(RULE_INPUT_ROOT).pb.cc',
+            '<(cc_dir)/<(RULE_INPUT_ROOT).pb.h',
+          ],
+        }],
+        ['gen_bidl==0 and gen_grpc==0 and gen_python==0', {
           'outputs': [
             '<(cc_dir)/<(RULE_INPUT_ROOT).pb.cc',
             '<(cc_dir)/<(RULE_INPUT_ROOT).pb.h',
