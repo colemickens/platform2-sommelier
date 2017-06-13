@@ -50,8 +50,9 @@ L2tpManager::L2tpManager(bool default_route,
                          const std::string& pppd_plugin,
                          bool use_peer_dns,
                          const std::string& user,
-                         bool system_config)
-    : ServiceManager("l2tp"),
+                         bool system_config,
+                         const base::FilePath& temp_path)
+    : ServiceManager("l2tp", temp_path),
       default_route_(default_route),
       length_bit_(length_bit),
       require_chap_(require_chap),
@@ -137,7 +138,7 @@ static void AddBool(std::string* config, const char* key, bool value) {
 }
 
 bool L2tpManager::CreatePppLogFifo() {
-  ppp_output_path_ = temp_path()->Append("pppd.log");
+  ppp_output_path_ = temp_path().Append("pppd.log");
   const char* fifo_path = ppp_output_path_.value().c_str();
   if (HANDLE_EINTR(mkfifo(fifo_path, S_IRUSR | S_IWUSR)) == 0) {
     ppp_output_fd_ = HANDLE_EINTR(open(fifo_path, O_RDONLY | O_NONBLOCK));
@@ -240,9 +241,9 @@ bool L2tpManager::Terminate() {
 }
 
 bool L2tpManager::Start() {
-  FilePath pppd_config_path = temp_path()->Append("pppd.conf");
+  FilePath pppd_config_path = temp_path().Append("pppd.conf");
   std::string l2tpd_config = FormatL2tpdConfiguration(pppd_config_path.value());
-  FilePath l2tpd_config_path = temp_path()->Append("l2tpd.conf");
+  FilePath l2tpd_config_path = temp_path().Append("l2tpd.conf");
   if (!base::WriteFile(l2tpd_config_path, l2tpd_config.c_str(),
                        l2tpd_config.size())) {
     LOG(ERROR) << "Unable to write l2tpd config to "
@@ -263,7 +264,7 @@ bool L2tpManager::Start() {
     RegisterError(kServiceErrorInternal);
     return false;
   }
-  l2tpd_control_path_ = temp_path()->Append("l2tpd.control");
+  l2tpd_control_path_ = temp_path().Append("l2tpd.control");
   base::DeleteFile(l2tpd_control_path_, false);
 
   if (!pppd_plugin_.empty()) {

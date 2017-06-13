@@ -48,8 +48,6 @@ class IpsecManagerTest : public ::testing::Test {
     remote_address_text_ = "1.2.3.4";
     ASSERT_TRUE(ServiceManager::ConvertIPStringToSockAddr(remote_address_text_,
                                                           &remote_address_));
-    ServiceManager::temp_path_ = &test_path_;
-    ServiceManager::temp_base_path_ = test_path_.value().c_str();
     psk_file_ = test_path_.Append("psk").value();
     xauth_credentials_file_ = test_path_.Append("xauth_credentials").value();
     server_ca_file_ = test_path_.Append("server.ca").value();
@@ -79,10 +77,11 @@ class IpsecManagerTest : public ::testing::Test {
                      true,  // rekey
                      "17/1701",  // right_protoport
                      "",  // tunnel_group
-                     "transport"));  // type
+                     "transport",  // type
+                     test_path_,  // temp_path
+                     persistent_path_));  // persistent_path
     ipsec_->starter_daemon_.reset(starter_daemon_);  // Passes ownership.
     ipsec_->charon_daemon_.reset(charon_daemon_);  // Passes ownership.
-    ipsec_->persistent_path_ = persistent_path_;
     ipsec_->ipsec_group_ = getgid();
     ipsec_->ipsec_run_path_ = ipsec_run_path_;
     ipsec_->ipsec_up_file_ = ipsec_up_file_;

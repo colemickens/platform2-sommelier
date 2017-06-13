@@ -25,7 +25,6 @@ class L2tpManagerTest : public ::testing::Test {
   void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());
     test_path_ = temp_dir_.path().Append("l2tp_manager_testdir");
-    ServiceManager::temp_path_ = &test_path_;
     base::DeleteFile(test_path_, true);
     base::CreateDirectory(test_path_);
     remote_address_text_ = "1.2.3.4";
@@ -47,7 +46,8 @@ class L2tpManagerTest : public ::testing::Test {
                                 "",  // pppd_plugin
                                 true,  // usepeerdns
                                 "",  // user
-                                true));  // systemconfig
+                                true,  // systemconfig
+                                test_path_));  // temp_path
     l2tp_->l2tpd_.reset(l2tpd_);
     l2tp_->l2tpd_control_path_ = control_path_;
     l2tp_->ppp_interface_path_ = ppp_interface_path_;

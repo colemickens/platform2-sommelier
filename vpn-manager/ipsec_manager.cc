@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
@@ -47,8 +48,6 @@ const char kStarterPidFile[] = "/run/starter.pid";
 const char kStrongswanConfName[] = "strongswan.conf";
 const char kCharonPidFile[] = "/run/charon.pid";
 const mode_t kIpsecRunPathMode = S_IRWXU | S_IRWXG;
-const mode_t kPersistentPathMode =
-    S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
 const char kIpsecAuthenticationFailurePattern[] =
     "*discarding duplicate packet*STATE_MAIN_I3*";
 const char kSmartcardModuleName[] = "crypto_module";
@@ -62,8 +61,10 @@ IpsecManager::IpsecManager(const std::string& esp,
                            bool rekey,
                            const std::string& right_protoport,
                            const std::string& tunnel_group,
-                           const std::string& type)
-    : ServiceManager(kIpsecServiceName),
+                           const std::string& type,
+                           const base::FilePath& temp_path,
+                           const base::FilePath& persistent_path)
+    : ServiceManager(kIpsecServiceName, temp_path),
       esp_(esp),
       ike_(ike),
       ipsec_timeout_(ipsec_timeout),
@@ -76,7 +77,7 @@ IpsecManager::IpsecManager(const std::string& esp,
       output_fd_(-1),
       ike_version_(0),
       ipsec_group_(0),
-      persistent_path_(GetRootPersistentPath()),
+      persistent_path_(persistent_path),
       ipsec_run_path_(kIpsecRunPath),
       ipsec_up_file_(kIpsecUpFile),
       starter_daemon_(new Daemon(kStarterPidFile)),
@@ -419,7 +420,7 @@ bool IpsecManager::SetIpsecGroup(const FilePath& file_path) {
 
 bool IpsecManager::WriteConfigFile(const std::string& output_name,
                                    const std::string& contents) {
-  FilePath temp_file = temp_path()->Append(output_name);
+  FilePath temp_file = temp_path().Append(output_name);
   base::DeleteFile(temp_file, false);
   if (base::PathExists(temp_file)) {
     LOG(ERROR) << "Unable to remove existing file "
@@ -461,26 +462,6 @@ bool IpsecManager::WriteConfigFiles() {
   // ChromeOS image are symlinks to a fixed place |persistent_path_|.
   // We create the configuration files in /run and link from the
   // |persistent_path_| to these newly created files.
-  if (!base::CreateDirectory(persistent_path_)) {
-    LOG(ERROR) << "Unable to create container directory "
-               << persistent_path_.value();
-    return false;
-  }
-
-  // Make sure the base path is accessible for read by non-root users.
-  // This will allow items like CA certificates to be visible by the
-  // l2tpipsec process even after it has dropped privileges.
-  if (chmod(temp_base_path(), kPersistentPathMode) != 0) {
-    PLOG(ERROR) << "Unable to change permissions of base path directory "
-                << temp_base_path();
-    return false;
-  }
-
-  if (chmod(persistent_path_.value().c_str(), kPersistentPathMode) != 0) {
-    PLOG(ERROR) << "Unable to change permissions of container directory "
-                << persistent_path_.value();
-    return false;
-  }
 
   std::string formatted_secrets;
   if (!FormatSecrets(&formatted_secrets)) {

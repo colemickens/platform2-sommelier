@@ -14,10 +14,6 @@
 
 #include "vpn-manager/service_error.h"
 
-namespace base {
-class ScopedTempDir;
-}
-
 namespace vpn_manager {
 
 // Generic code to manage setting up and stopping a set of layered
@@ -29,14 +25,9 @@ namespace vpn_manager {
 // was_stopped.
 class ServiceManager {
  public:
-  explicit ServiceManager(const std::string& service_name);
+  ServiceManager(const std::string& service_name,
+                 const base::FilePath& temp_path);
   virtual ~ServiceManager() = default;
-
-  // Initialize directories used by services.  |scoped_temp_dir| will
-  // be set to manage an appropriate temp directory.  This function
-  // uses a reference to |scoped_temp_dir| and so its lifetime must be
-  // equal to that of all objects derived from ServiceManager.
-  static void InitializeDirectories(base::ScopedTempDir* scoped_temp_path);
 
   // Call to initiate this service.  If starting fails immediately this
   // returns false.  If something fails after this returns, OnStopped
@@ -151,27 +142,16 @@ class ServiceManager {
   friend class ServiceManagerTest;
   FRIEND_TEST(L2tpManagerTest, PollNothingIfRunning);
   FRIEND_TEST(IpsecManagerTest, PollNothingIfRunning);
-  FRIEND_TEST(ServiceManagerTest, GetRootPersistentPath);
-  FRIEND_TEST(ServiceManagerTest, InitializeDirectories);
   FRIEND_TEST(ServiceManagerTest, OnStoppedFromFailure);
   FRIEND_TEST(ServiceManagerTest, OnStoppedFromSuccess);
-
-  static base::FilePath GetRootPersistentPath();
 
   ServiceManager* inner_service() { return inner_service_; }
 
   ServiceManager* outer_service() { return outer_service_; }
 
-  static const base::FilePath* temp_path() { return temp_path_; }
-  static const char* temp_base_path() { return temp_base_path_; }
+  const base::FilePath& temp_path() { return temp_path_; }
 
  private:
-  // The default value for temp_base_path_.
-  static const char kDefaultTempBasePath[];
-
-  // Path name under |temp_base_path_| that the root filesystem links to.
-  static const char kPersistentSubdir[];
-
   // Indicates if this service is currently running.
   bool is_running_;
 
@@ -193,11 +173,8 @@ class ServiceManager {
   // Most specific error that has been registerred by this service manager.
   ServiceError error_;
 
-  // Path to temporary directory on cryptohome.
-  static const base::FilePath* temp_path_;
-
-  // Path to base directory of temporary directory on cryptohome.
-  static const char* temp_base_path_;
+  // Path to temporary directory.
+  base::FilePath temp_path_;
 };
 
 }  // namespace vpn_manager

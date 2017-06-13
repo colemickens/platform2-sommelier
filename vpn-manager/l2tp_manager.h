@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -43,7 +44,8 @@ class L2tpManager : public ServiceManager {
               const std::string& pppd_plugin,
               bool use_peer_dns,
               const std::string& user,
-              bool system_config);
+              bool system_config,
+              const base::FilePath& temp_path);
   ~L2tpManager() override = default;
 
   // Getters for private values, needed for unit tests.

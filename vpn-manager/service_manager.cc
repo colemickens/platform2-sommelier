@@ -20,20 +20,16 @@ using base::FilePath;
 
 namespace vpn_manager {
 
-const FilePath* ServiceManager::temp_path_ = nullptr;
-const char ServiceManager::kDefaultTempBasePath[] = "/run/l2tpipsec_vpn";
-const char ServiceManager::kPersistentSubdir[] = "current";
-const char* ServiceManager::temp_base_path_ =
-    ServiceManager::kDefaultTempBasePath;
-
-ServiceManager::ServiceManager(const std::string& service_name)
+ServiceManager::ServiceManager(const std::string& service_name,
+                               const base::FilePath& temp_path)
     : is_running_(false),
       was_stopped_(false),
       debug_(false),
       inner_service_(nullptr),
       outer_service_(nullptr),
       service_name_(service_name),
-      error_(kServiceErrorNoError) {
+      error_(kServiceErrorNoError),
+      temp_path_(temp_path) {
 }
 
 void ServiceManager::OnStarted() {
@@ -80,15 +76,6 @@ ServiceError ServiceManager::GetError() const {
       return inner_service_error;
   }
   return error_;
-}
-
-void ServiceManager::InitializeDirectories(
-    base::ScopedTempDir* scoped_temp_path) {
-  bool success =
-      scoped_temp_path->CreateUniqueTempDirUnderPath(FilePath(temp_base_path_));
-  temp_path_ = &scoped_temp_path->path();
-  PLOG_IF(INFO, !success) << "Could not create temporary directory. ";
-  LOG_IF(INFO, success) << "Using temporary directory " << temp_path_->value();
 }
 
 void ServiceManager::WriteFdToSyslog(int fd,
@@ -198,11 +185,6 @@ bool ServiceManager::GetLocalAddressFromRemote(
  error_label:
   IGNORE_EINTR(close(sock));
   return result;
-}
-
-// static
-FilePath ServiceManager::GetRootPersistentPath() {
-  return FilePath(temp_base_path_).Append(kPersistentSubdir);
 }
 
 }  // namespace vpn_manager

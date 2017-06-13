@@ -25,7 +25,7 @@ namespace vpn_manager {
 
 class MockService : public ServiceManager {
  public:
-  MockService() : ServiceManager("mock") {}
+  MockService() : ServiceManager("mock", {}) {}
   MOCK_METHOD0(Start, bool());
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD0(Poll, int());
@@ -41,15 +41,11 @@ class ServiceManagerTest : public ::testing::Test {
     base::DeleteFile(test_path_, true);
     base::CreateDirectory(test_path_);
     temp_path_ = test_path_.Append("service");
-    ServiceManager::temp_base_path_ = temp_path_.value().c_str();
-    ServiceManager::temp_path_ = &temp_path_;
+    outer_service_.temp_path_ = temp_path_;
+    inner_service_.temp_path_ = temp_path_;
+    single_service_.temp_path_ = temp_path_;
     ServiceManager::SetLayerOrder(&outer_service_, &inner_service_);
     brillo::ClearLog();
-  }
-
-  void TearDown() override {
-    ServiceManager::temp_base_path_ = nullptr;
-    ServiceManager::temp_path_ = nullptr;
   }
 
  protected:
@@ -60,19 +56,6 @@ class ServiceManagerTest : public ::testing::Test {
   MockService single_service_;
   base::ScopedTempDir temp_dir_;
 };
-
-TEST_F(ServiceManagerTest, InitializeDirectories) {
-  FilePath picked_temp;
-  {
-    base::ScopedTempDir my_temp;
-    EXPECT_FALSE(my_temp.IsValid());
-    ServiceManager::InitializeDirectories(&my_temp);
-    EXPECT_TRUE(my_temp.IsValid());
-    picked_temp = my_temp.path();
-    EXPECT_TRUE(base::DirectoryExists(picked_temp));
-  }
-  EXPECT_FALSE(base::DirectoryExists(picked_temp));
-}
 
 TEST_F(ServiceManagerTest, OnStartedInnerSucceeds) {
   EXPECT_CALL(inner_service_, Start()).WillOnce(Return(true));
@@ -189,13 +172,6 @@ TEST_F(ServiceManagerTest, GetLocalAddressFromRemote) {
   EXPECT_EQ("127.0.0.1", local_address_text);
 }
 
-
-TEST_F(ServiceManagerTest, GetRootPersistentPath) {
-  // Restore the non-testing default base path.
-  ServiceManager::temp_base_path_ = ServiceManager::kDefaultTempBasePath;
-  EXPECT_EQ("/run/l2tpipsec_vpn/current",
-            ServiceManager::GetRootPersistentPath().value());
-}
 
 }  // namespace vpn_manager
 

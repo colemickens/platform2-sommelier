@@ -32,7 +32,9 @@ class IpsecManager : public ServiceManager {
                bool rekey,
                const std::string& right_protoport,
                const std::string& tunnel_group,
-               const std::string& type);
+               const std::string& type,
+               const base::FilePath& temp_path,
+               const base::FilePath& persistent_path);
   ~IpsecManager() override = default;
 
   // Initialize the object to control IKE version |ike_version| daemon,

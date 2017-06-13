@@ -157,7 +157,33 @@ int main(int argc, char* argv[]) {
   DEFINE_string(user, "", "user name");
   DEFINE_bool(systemconfig, true, "enable ppp to configure IPs/routes/DNS");
 
-  base::ScopedTempDir temp_dir;
+  base::FilePath run_path("/run/l2tpipsec_vpn");
+  base::FilePath persistent_path = run_path.Append("current");
+
+  // Make sure the run and persistent paths exist and are accessible for read
+  // by non-root users. This will allow items like CA certificates to be
+  // visible by the l2tpipsec process even after it has dropped privileges.
+  for (auto path : {run_path, persistent_path}) {
+    if (!base::CreateDirectory(path)) {
+      PLOG(ERROR) << "Unable to create directory " << path.value();
+      return vpn_manager::kServiceErrorInternal;
+    }
+    if (chmod(path.value().c_str(),
+              S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) != 0) {
+      PLOG(ERROR) << "Unable to change permissions of directory "
+                  << path.value();
+      return vpn_manager::kServiceErrorInternal;
+    }
+  }
+
+  // Create temp_path directory under run_path, to be deleted at exit.
+  base::ScopedTempDir scoped_temp_dir;
+  if (!scoped_temp_dir.CreateUniqueTempDirUnderPath(run_path)) {
+    PLOG(ERROR) << "Unable create temp directory under " << run_path.value();
+    return vpn_manager::kServiceErrorInternal;
+  }
+  const base::FilePath& temp_path = scoped_temp_dir.path();
+
   brillo::FlagHelper::Init(argc, argv, "Chromium OS l2tpipsec VPN");
   int log_flags = brillo::kLogToSyslog;
   if (isatty(STDOUT_FILENO)) log_flags |= brillo::kLogToStderr;
@@ -165,19 +191,19 @@ int main(int argc, char* argv[]) {
   brillo::OpenLog("l2tpipsec_vpn", true);
   IpsecManager ipsec(FLAGS_esp, FLAGS_ike, FLAGS_ipsec_timeout,
                      FLAGS_leftprotoport, FLAGS_rekey, FLAGS_rightprotoport,
-                     FLAGS_tunnel_group, FLAGS_type);
+                     FLAGS_tunnel_group, FLAGS_type, temp_path,
+                     persistent_path);
   L2tpManager l2tp(FLAGS_defaultroute, FLAGS_length_bit, FLAGS_require_chap,
                    FLAGS_refuse_pap, FLAGS_require_authentication,
                    FLAGS_password, FLAGS_ppp_debug, FLAGS_ppp_lcp_echo,
                    FLAGS_ppp_setup_timeout, FLAGS_pppd_plugin,
-                   FLAGS_usepeerdns, FLAGS_user, FLAGS_systemconfig);
+                   FLAGS_usepeerdns, FLAGS_user, FLAGS_systemconfig,
+                   temp_path);
 
   LockDownUmask();
 
   ipsec.set_debug(FLAGS_debug);
   l2tp.set_debug(FLAGS_debug);
-
-  ServiceManager::InitializeDirectories(&temp_dir);
 
   struct sockaddr remote_address;
   if (!ServiceManager::ResolveNameToSockAddr(FLAGS_remote_host,
