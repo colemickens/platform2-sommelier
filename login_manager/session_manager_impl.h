@@ -22,7 +22,6 @@
 
 #include "login_manager/container_manager_interface.h"
 #include "login_manager/dbus_adaptors/org.chromium.SessionManagerInterface.h"
-#include "login_manager/dbus_signal_emitter.h"
 #include "login_manager/device_policy_service.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/policy_service.h"
@@ -383,8 +382,8 @@ class SessionManagerImpl
   base::TimeTicks arc_start_time_;
 
   scoped_refptr<dbus::Bus> bus_;
+  org::chromium::SessionManagerInterfaceAdaptor adaptor_;
   std::unique_ptr<DBusService> dbus_service_;
-  DBusSignalEmitter dbus_emitter_;
 
   KeyGenerator* key_gen_;                               // Owned by the caller.
   ServerBackedStateKeyGenerator* state_key_generator_;  // Owned by the caller.

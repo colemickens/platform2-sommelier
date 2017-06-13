@@ -48,8 +48,8 @@ using std::vector;
 // Watches a Chrome binary and restarts it when it crashes. Also watches
 // window manager binary as well. Actually supports watching several
 // processes specified as command line arguments separated with --.
-// Also listens over DBus for the commands specified in
-// session_manager_dbus_adaptor.h.
+// Also listens over D-Bus for the commands specified in
+// dbus_bindings/org.chromium.SessionManagerInterface.xml.
 
 namespace switches {
 

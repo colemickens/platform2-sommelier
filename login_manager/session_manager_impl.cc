@@ -30,6 +30,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
+#include <brillo/dbus/dbus_object.h>
 #include <chromeos/dbus/service_constants.h>
 #include <crypto/scoped_nss_types.h>
 #include <dbus/bus.h>
@@ -41,7 +42,6 @@
 #include "bindings/device_management_backend.pb.h"
 #include "login_manager/blob_util.h"
 #include "login_manager/crossystem.h"
-#include "login_manager/dbus_signal_emitter.h"
 #include "login_manager/dbus_util.h"
 #include "login_manager/device_local_account_policy_service.h"
 #include "login_manager/device_policy_service.h"
@@ -54,7 +54,6 @@
 #include "login_manager/process_manager_service_interface.h"
 #include "login_manager/proto_bindings/arc.pb.h"
 #include "login_manager/regen_mitigator.h"
-#include "login_manager/session_manager_dbus_adaptor.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/user_policy_service_factory.h"
 #include "login_manager/vpd_process.h"
@@ -93,6 +92,7 @@ const char SessionManagerImpl::kArcRemoveOldDataSignal[] =
     "remove-old-arc-data";
 
 namespace {
+
 // Constants used in email validation.
 const char kEmailSeparator = '@';
 const char kEmailLegalCharacters[] =
@@ -153,6 +153,9 @@ bool IsIncognitoAccountId(const std::string& account_id) {
          (lower_case_id == SessionManagerImpl::kDemoUser);
 }
 
+const char* ToSuccessSignal(bool success) {
+  return success ? "success" : "failure";
+}
 
 #if USE_CHEETS
 bool IsDevMode(SystemUtils* system) {
@@ -175,14 +178,21 @@ bool IsInsideVm(SystemUtils* system) {
 class SessionManagerImpl::DBusService {
  public:
   explicit DBusService(
-      org::chromium::SessionManagerInterfaceInterface* interface)
-      : dbus_adaptor_(interface),
+      org::chromium::SessionManagerInterfaceAdaptor* adaptor)
+      : adaptor_(adaptor),
         weak_ptr_factory_(this) {}
   ~DBusService() = default;
 
   bool Start(const scoped_refptr<dbus::Bus>& bus) {
-    dbus_adaptor_.ExportDBusMethods(bus->GetExportedObject(
-        org::chromium::SessionManagerInterfaceAdaptor::GetObjectPath()));
+    DCHECK(!dbus_object_);
+
+    // Registers the SessionManagerInterface D-Bus methods and signals.
+    dbus_object_ = base::MakeUnique<brillo::dbus_utils::DBusObject>(
+        nullptr, bus,
+        org::chromium::SessionManagerInterfaceAdaptor::GetObjectPath());
+    adaptor_->RegisterWithDBusObject(dbus_object_.get());
+    dbus_object_->RegisterAndBlock();
+
     // Note that this needs to happen *after* all methods are exported
     // (http://crbug.com/331431).
     // This should pass dbus::Bus::REQUIRE_PRIMARY once on the new libchrome.
@@ -229,7 +239,8 @@ class SessionManagerImpl::DBusService {
     response->Return(std::move(state_key));
   }
 
-  SessionManagerDBusAdaptor dbus_adaptor_;
+  org::chromium::SessionManagerInterfaceAdaptor* const adaptor_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 
   base::WeakPtrFactory<DBusService> weak_ptr_factory_;
   DISALLOW_COPY_AND_ASSIGN(DBusService);
@@ -288,10 +299,7 @@ SessionManagerImpl::SessionManagerImpl(
       system_clock_last_sync_info_retry_delay_(
           kSystemClockLastSyncInfoRetryDelay),
       bus_(bus),
-      dbus_emitter_(
-          bus->GetExportedObject(
-              org::chromium::SessionManagerInterfaceAdaptor::GetObjectPath()),
-          kSessionManagerInterface),
+      adaptor_(this),
       key_gen_(key_gen),
       state_key_generator_(state_key_generator),
       manager_(manager),
@@ -400,14 +408,14 @@ void SessionManagerImpl::AnnounceSessionStoppingIfNeeded() {
   if (session_started_) {
     session_stopping_ = true;
     DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStopping;
-    dbus_emitter_.EmitSignalWithString(kSessionStateChangedSignal, kStopping);
+    adaptor_.SendSessionStateChangedSignal(kStopping);
   }
 }
 
 void SessionManagerImpl::AnnounceSessionStopped() {
   session_stopping_ = session_started_ = false;
   DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStopped;
-  dbus_emitter_.EmitSignalWithString(kSessionStateChangedSignal, kStopped);
+  adaptor_.SendSessionStateChangedSignal(kStopped);
 }
 
 bool SessionManagerImpl::ShouldEndSession() {
@@ -464,7 +472,7 @@ void SessionManagerImpl::Finalize() {
 
 bool SessionManagerImpl::StartDBusService() {
   DCHECK(!dbus_service_);
-  auto dbus_service = base::MakeUnique<DBusService>(this);
+  auto dbus_service = base::MakeUnique<DBusService>(&adaptor_);
   if (!dbus_service->Start(bus_))
     return false;
 
@@ -474,7 +482,7 @@ bool SessionManagerImpl::StartDBusService() {
 
 void SessionManagerImpl::EmitLoginPromptVisible() {
   login_metrics_->RecordStats("login-prompt-visible");
-  dbus_emitter_.EmitSignal(kLoginPromptVisibleSignal);
+  adaptor_.SendLoginPromptVisibleSignal();
   init_controller_->TriggerImpulse("login-prompt-visible", {},
                                    InitDaemonController::TriggerMode::ASYNC);
 }
@@ -569,7 +577,7 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
   session_started_ = true;
   user_sessions_[actual_account_id] = std::move(user_session);
   DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStarted;
-  dbus_emitter_.EmitSignalWithString(kSessionStateChangedSignal, kStarted);
+  adaptor_.SendSessionStateChangedSignal(kStarted);
 
   // Active Directory managed devices are not expected to have a policy key.
   // Don't create one for them.
@@ -592,7 +600,7 @@ void SessionManagerImpl::StopSession(const std::string& in_unique_identifier) {
   LOG(INFO) << "Stopping all sessions";
   // Most calls to StopSession() will log the reason for the call.
   // If you don't see a log message saying the reason for the call, it is
-  // likely a DBUS message. See session_manager_dbus_adaptor.cc for that call.
+  // likely a D-Bus message.
   manager_->ScheduleShutdown();
   // TODO(cmasone): re-enable these when we try to enable logout without exiting
   //                the session manager
@@ -758,13 +766,13 @@ bool SessionManagerImpl::LockScreen(brillo::ErrorPtr* error) {
 
 void SessionManagerImpl::HandleLockScreenShown() {
   LOG(INFO) << "HandleLockScreenShown() method called.";
-  dbus_emitter_.EmitSignal(kScreenIsLockedSignal);
+  adaptor_.SendScreenIsLockedSignal();
 }
 
 void SessionManagerImpl::HandleLockScreenDismissed() {
   screen_locked_ = false;
   LOG(INFO) << "HandleLockScreenDismissed() method called.";
-  dbus_emitter_.EmitSignal(kScreenIsUnlockedSignal);
+  adaptor_.SendScreenIsUnlockedSignal();
 }
 
 bool SessionManagerImpl::RestartJob(brillo::ErrorPtr* error,
@@ -1155,12 +1163,11 @@ bool SessionManagerImpl::RemoveArcDataInternal(
 void SessionManagerImpl::OnPolicyPersisted(bool success) {
   device_local_account_policy_->UpdateDeviceSettings(
       device_policy_->GetSettings());
-  dbus_emitter_.EmitSignalWithSuccessFailure(kPropertyChangeCompleteSignal,
-                                              success);
+  adaptor_.SendPropertyChangeCompleteSignal(ToSuccessSignal(success));
 }
 
 void SessionManagerImpl::OnKeyPersisted(bool success) {
-  dbus_emitter_.EmitSignalWithSuccessFailure(kOwnerKeySetSignal, success);
+  adaptor_.SendSetOwnerKeyCompleteSignal(ToSuccessSignal(success));
 }
 
 void SessionManagerImpl::OnKeyGenerated(const std::string& username,
@@ -1519,8 +1526,7 @@ void SessionManagerImpl::OnAndroidContainerStopped(
     LOG(ERROR) << "Emitting stop-arc-network init signal failed.";
   }
 
-  dbus_emitter_.EmitSignalWithBoolAndString(
-      kArcInstanceStopped, clean, container_instance_id);
+  adaptor_.SendArcInstanceStoppedSignal(clean, container_instance_id);
 }
 #endif  // USE_CHEETS
 

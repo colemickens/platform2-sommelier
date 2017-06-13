@@ -42,7 +42,6 @@
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "login_manager/blob_util.h"
-#include "login_manager/dbus_signal_emitter.h"
 #include "login_manager/dbus_util.h"
 #include "login_manager/device_local_account_policy_service.h"
 #include "login_manager/fake_container_manager.h"
