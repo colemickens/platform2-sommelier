@@ -4,7 +4,7 @@
 
 include common.mk
 
-ANDROID_INCLUDE := $(abspath $(SRC)/include)
+ANDROID_INCLUDE := $(abspath $(SRC)/header_files/include)
 ANDROID_INCLUDE_PATHS := \
 	-I$(ANDROID_INCLUDE) \
 	-I$(ANDROID_INCLUDE)/hardware/libhardware/include \

@@ -9,7 +9,7 @@ PC_DEPS := libchrome-$(BASE_VER)
 PC_CFLAGS := $(call get_pc_cflags,$(PC_DEPS))
 PC_LIBS := $(call get_pc_libs,$(PC_DEPS))
 
-ANDROID_INCLUDE := $(abspath $(SRC)/android/include)
+ANDROID_INCLUDE := $(abspath $(SRC)/android/header_files/include)
 ANDROID_INCLUDE_PATHS := \
 	-I$(ANDROID_INCLUDE) \
 	-I$(ANDROID_INCLUDE)/hardware/libhardware/include \
