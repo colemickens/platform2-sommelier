@@ -17,6 +17,7 @@
 
 #include "vm_launcher/constants.h"
 #include "vm_launcher/mac_address.h"
+#include "vm_launcher/nfs_launcher.h"
 #include "vm_launcher/subnet.h"
 
 namespace {
@@ -42,6 +43,7 @@ int main(int argc, char** argv) {
               false,
               "Use the kvmtool hypervisor instead of the default crosvm");
   DEFINE_bool(runc, false, "Use the runc container runtime instead of run_oci");
+  DEFINE_bool(nfs, false, "Launch NFS server before launching the VM");
   DEFINE_string(container, "", "Path of the container to start");
   brillo::FlagHelper::Init(argc, argv, "Launches a container in a VM");
   brillo::InitLog(brillo::kLogToSyslog);
@@ -128,9 +130,15 @@ int main(int argc, char** argv) {
     PLOG(ERROR) << "Could not set HOME before launching kvmtool";
     return 1;
   }
+  vm_launcher::NfsLauncher nfs;
+
+  if (FLAGS_nfs && !nfs.Launch()) {
+    LOG(ERROR) << "Unable to launch NFS server";
+    return 1;
+  }
 
   rc = vm_process.Run();
-
   LOG(INFO) << "VM exit with status code " << rc;
+
   return 0;
 }

@@ -21,6 +21,7 @@
       },
       'sources': [
         'mac_address.cc',
+        'nfs_launcher.cc',
         'pooled_resource.cc',
         'subnet.cc',
         'vm_launcher.cc',
