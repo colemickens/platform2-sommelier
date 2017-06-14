@@ -10,9 +10,9 @@
 #include <string>
 #include <vector>
 
+#include <base/at_exit.h>
 #include <base/macros.h>
 #include <base/logging.h>
-#include <base/synchronization/waitable_event.h>
 
 #include "chaps/attributes.h"
 #include "chaps/chaps_proxy.h"
@@ -21,7 +21,6 @@
 #include "chaps/proto_conversion.h"
 #include "pkcs11/cryptoki.h"
 
-using base::WaitableEvent;
 using std::string;
 using std::vector;
 

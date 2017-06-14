@@ -9,25 +9,26 @@
 #include <string>
 #include <vector>
 
+#include <base/at_exit.h>
+#include <base/memory/ref_counted.h>
 #include <base/synchronization/lock.h>
+#include <base/threading/thread.h>
 #include <brillo/secure_blob.h>
+#include <dbus/message.h>
 
 #include "chaps/chaps_interface.h"
-#include "chaps/dbus_proxies/org.chromium.Chaps.h"
+#include "chaps/dbus_bindings/constants.h"
 
 namespace chaps {
 
+class DBusProxyWrapper;
+
 // ChapsProxyImpl is the default implementation of the chaps proxy interface.
-//
-// All calls are forwarded to a dbus-c++ generated proxy object. All exceptions
-// thrown by the dbus-c++ library are caught and handled in this class.
-//
-// The Connect() method must be called successfully before calling any other
-// methods.
+// All calls are forwarded to a libchrome proxy object.
 class ChapsProxyImpl : public ChapsInterface {
  public:
   static std::unique_ptr<ChapsProxyImpl> Create();
-  ~ChapsProxyImpl() override = default;
+  ~ChapsProxyImpl() override;
 
   bool OpenIsolate(brillo::SecureBlob* isolate_credential,
                    bool* new_isolate_created);
@@ -286,27 +287,14 @@ class ChapsProxyImpl : public ChapsInterface {
                           std::vector<uint8_t>* random_data) override;
 
  private:
-  // This class provides the link to the dbus-c++ generated proxy.
-  class Proxy : public org::chromium::Chaps_proxy,
-                public DBus::ObjectProxy {
-   public:
-    Proxy(DBus::Connection& connection,  // NOLINT(runtime/references)
-          const char* path,
-          const char* service) : ObjectProxy(connection, path, service) {}
-    virtual ~Proxy() {}
-
-    // Waits for the service to be available. Returns false if the service is
-    // not available within 5 seconds.
-    bool WaitForService();
-
-   private:
-    DISALLOW_COPY_AND_ASSIGN(Proxy);
-  };
-
   // Use the static factory method to create a ChapsProxyImpl.
-  explicit ChapsProxyImpl(std::unique_ptr<Proxy> proxy);
+  ChapsProxyImpl(std::unique_ptr<base::AtExitManager> at_exit,
+                 std::unique_ptr<base::Thread> dbus_thread,
+                 scoped_refptr<DBusProxyWrapper> proxy);
 
-  std::unique_ptr<Proxy> proxy_;
+  std::unique_ptr<base::AtExitManager> at_exit_;
+  std::unique_ptr<base::Thread> dbus_thread_;  // Runs D-Bus tasks for |proxy_|.
+  scoped_refptr<DBusProxyWrapper> proxy_;
   // TODO(dkrahn): Once crosbug.com/35421 has been fixed this lock must be
   // removed.  Currently this is needed to avoid flooding the chapsd dbus
   // dispatcher which seems to drop requests under pressure.
