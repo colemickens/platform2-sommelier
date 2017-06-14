@@ -696,6 +696,10 @@ bool HomeDirs::ForceRemoveKeyset(const std::string& obfuscated, int index) {
     // Since it doesn't exist, then we're done.
     return true;
   }
+
+  if (platform_->DeleteFileSecurely(path))
+    return true;
+
   // TODO(wad) Add file zeroing here or centralize with other code.
   return platform_->DeleteFile(path, false);
 }

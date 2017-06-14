@@ -52,6 +52,7 @@
 #include <brillo/process.h>
 #include <brillo/secure_blob.h>
 #include <openssl/rand.h>
+#include <secure_erase_file/secure_erase_file.h>
 
 extern "C" {
 #include "cryptohome/crc32.h"
@@ -728,6 +729,11 @@ bool Platform::DeleteFileDurable(const FilePath& path,
   if (!base::DeleteFile(path, is_recursive))
     return false;
   return SyncDirectory(path.DirName());
+}
+
+bool Platform::DeleteFileSecurely(const FilePath& path) {
+  return secure_erase_file::SecureErase(path) &&
+         secure_erase_file::DropCaches();
 }
 
 bool Platform::Move(const FilePath& from, const FilePath& to) {

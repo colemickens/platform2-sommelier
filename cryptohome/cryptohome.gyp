@@ -93,6 +93,11 @@
       'dependencies': [
         'cryptohome-proto',
       ],
+      'link_settings': {
+        'libraries': [
+          '-lsecure_erase_file',
+        ],
+      },
       'variables': {
         'deps': [
           'libchrome-<(libbase_ver)',
@@ -305,6 +310,7 @@
       'link_settings': {
         'libraries': [
           '-lkeyutils',
+          '-lsecure_erase_file',
           '-lvboot_host',
         ],
       },

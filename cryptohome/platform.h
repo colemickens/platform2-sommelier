@@ -412,6 +412,13 @@ class Platform {
   //   path - Path to the file to delete
   virtual bool DeleteFileDurable(const base::FilePath& path, bool recursive);
 
+  // Deletes file securely, ensuring that the data is removed from the
+  // underlying media. Only works for supported mounts/devices.
+  //
+  // Parameters
+  //   path - Path to the file to delete
+  virtual bool DeleteFileSecurely(const base::FilePath& path);
+
   // Create a directory with the given path (including parent directories, if
   // missing).  All created directories will have 0700 permissions (modulo
   // umask).
