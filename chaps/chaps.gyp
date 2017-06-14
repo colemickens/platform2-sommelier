@@ -2,7 +2,6 @@
   'target_defaults': {
     'variables': {
       'deps': [
-        'dbus-c++-1',
         # system_api depends on protobuf (or protobuf-lite). It must appear
         # before protobuf here or the linker flags won't be in the right
         # order.
@@ -12,8 +11,6 @@
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
       ],
-      # Chaps uses try/catch to interact with dbus-c++.
-      'enable_exceptions': 1,
     },
     'defines': [
       'USE_TPM2=<(USE_tpm2)',
@@ -37,26 +34,12 @@
       'includes': ['../common-mk/protoc.gypi'],
     },
     {
-      'target_name': 'chaps-proxies',
-      'type': 'none',
-      'variables': {
-        'xml2cpp_type': 'proxy',
-        'xml2cpp_in_dir': '.',
-        'xml2cpp_out_dir': 'include/chaps/dbus_proxies',
-      },
-      'sources': [
-        '<(xml2cpp_in_dir)/dbus_bindings/org.chromium.Chaps.xml',
-      ],
-      'includes': ['../common-mk/xml2cpp.gypi'],
-    },
-    {
       # This is meant only for internal binaries like unittests.  All
       # client programs should be using the shared libchaps library.
       'target_name': 'libchaps_static',
       'type': 'static_library',
       'dependencies': [
         'chaps-protos',
-        'chaps-proxies',
       ],
       'sources': [
         'attributes.cc',
@@ -73,7 +56,6 @@
       'type': 'shared_library',
       'dependencies': [
         'chaps-protos',
-        'chaps-proxies',
       ],
       'sources': [
         'attributes.cc',
