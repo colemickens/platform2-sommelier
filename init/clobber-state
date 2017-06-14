@@ -364,6 +364,22 @@ detect_system_config() {
   fi
 }
 
+# Forces a 5 minute delay, writing progress to the specified TTY.
+# This is used to prevent developer mode transitions from happening too
+# quickly.
+force_delay() {
+  local delay=300
+  ( stty -F "${TTY}" raw -echo -cread
+    while [ "${delay}" -ge 0 ]; do
+      printf "%2d:%02d\r" $(( delay / 60 )) $(( delay % 60 ))
+      sleep 1
+      : $(( delay -= 1 ))
+    done
+    echo
+  ) >"${TTY}"
+  wait
+}
+
 wipe_rotational_drive() {
   # If the stateful filesystem is available, do some best-effort content
   # shredding. Since the filesystem is not mounted with "data=journal", the
@@ -386,18 +402,28 @@ wipe_rotational_drive() {
       sync
     ) &
   fi
-  # Since the above rm/shred combo can be very fast, force a minimum of a 5
-  # minute delay for this mode.
-  delay=300
-  ( stty -F "${TTY}" raw -echo -cread
-    while [ "${delay}" -ge 0 ]; do
-      printf "%2d:%02d\r" $(( delay / 60 )) $(( delay % 60 ))
-      sleep 1
-      : $(( delay -= 1 ))
-    done
-    echo
-  ) >"${TTY}"
-  wait
+}
+
+# Wipe encryption key information from the stateful partition for supported
+# devices.
+# Sets KEYSET_WIPE_FAILED on failure.
+wipe_keysets() {
+  local file
+  unset KEYSET_WIPE_FAILED
+
+  for file in \
+      "${STATE_PATH}/encrypted.key" \
+      "${STATE_PATH}/home/.shadow/cryptohome.key" \
+      "${STATE_PATH}/home/.shadow/salt" \
+      "${STATE_PATH}/home/.shadow/salt.sum" \
+      "${STATE_PATH}"/home/.shadow/*/master.*; do
+    if [ -f "${file}" ]; then
+      if ! secure_erase_file "${file}"; then
+        KEYSET_WIPE_FAILED="1"
+        break
+      fi
+    fi
+  done
 }
 
 wipe_stateful_partition() {
@@ -493,7 +519,20 @@ main() {
   # be encrypted.
   if [ "${FAST_WIPE}" != "fast" ] && [ "${ROTATIONAL}" = "1" ]; then
     wipe_rotational_drive
+    force_delay
     FAST_WIPE="fast"
+  fi
+
+  # For drives that support secure erasure, wipe the keysets,
+  # and then run the drives through "fast" mode, with a forced delay.
+  #
+  # Note: currently only eMMC-based SSDs are supported.
+  if [ "${FAST_WIPE}" != "fast" ]; then
+    wipe_keysets
+    if [ -z "${KEYSET_WIPE_FAILED}" ]; then
+      force_delay
+      FAST_WIPE="fast"
+    fi
   fi
 
   # Make sure the stateful partition has been unmounted.
