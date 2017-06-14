@@ -13,10 +13,8 @@
 
 #include "login_manager/init_daemon_controller.h"
 
-
 namespace dbus {
 class ObjectProxy;
-class Response;
 }
 
 namespace login_manager {
@@ -25,24 +23,18 @@ class SystemdUnitStarter : public InitDaemonController {
  public:
   static const char kServiceName[];
   static const char kPath[];
-  static const char kInterface[];
-  static const char kStartUnitMode[];
-  static const char kStartUnitMethodName[];
-  static const char kSetEnvironmentMethodName[];
-  static const char kUnsetEnvironmentMethodName[];
 
   explicit SystemdUnitStarter(dbus::ObjectProxy* proxy);
-  virtual ~SystemdUnitStarter();
+  ~SystemdUnitStarter() override;
 
   // InitDaemonController:
   std::unique_ptr<dbus::Response> TriggerImpulse(
-      const std::string &unit_name,
-      const std::vector<std::string> &args_keyvals,
-      TriggerMode mode) final;
+      const std::string& unit_name,
+      const std::vector<std::string>& args_keyvals,
+      TriggerMode mode) override;
 
  private:
   dbus::ObjectProxy* systemd_dbus_proxy_;  // Weak, owned by caller.
-
   DISALLOW_COPY_AND_ASSIGN(SystemdUnitStarter);
 };
 

@@ -9,6 +9,7 @@
 #include "login_manager/fake_generator_job.h"
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
+#include "login_manager/mock_init_daemon_controller.h"
 #include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_liveness_checker.h"
 #include "login_manager/mock_metrics.h"
@@ -34,54 +35,57 @@
 // mock I define, I will simply collect the constructors all here.
 
 namespace login_manager {
+
 MockDevicePolicyService::MockDevicePolicyService()
-    : DevicePolicyService(base::FilePath(), std::unique_ptr<PolicyStore>(),
-                          NULL, NULL, NULL, NULL, NULL, NULL) {}
+    : MockDevicePolicyService(nullptr, nullptr) {}
 MockDevicePolicyService::MockDevicePolicyService(
     std::unique_ptr<MockPolicyStore> policy_store, PolicyKey* policy_key)
     : DevicePolicyService(base::FilePath(), std::move(policy_store), policy_key,
-                          NULL, NULL, NULL, NULL, NULL) {}
-MockDevicePolicyService::~MockDevicePolicyService() {}
+                          nullptr, nullptr, nullptr, nullptr, nullptr) {}
+MockDevicePolicyService::~MockDevicePolicyService() = default;
 
 MockFileChecker::MockFileChecker() : FileChecker(base::FilePath()) {}
-MockFileChecker::~MockFileChecker() {}
+MockFileChecker::~MockFileChecker() = default;
 
-MockKeyGenerator::MockKeyGenerator() : KeyGenerator(-1, NULL) {}
-MockKeyGenerator::~MockKeyGenerator() {}
+MockInitDaemonController::MockInitDaemonController() = default;
+MockInitDaemonController::~MockInitDaemonController() = default;
 
-MockLivenessChecker::MockLivenessChecker() {}
-MockLivenessChecker::~MockLivenessChecker() {}
+MockKeyGenerator::MockKeyGenerator() : KeyGenerator(-1, nullptr) {}
+MockKeyGenerator::~MockKeyGenerator() = default;
+
+MockLivenessChecker::MockLivenessChecker() = default;
+MockLivenessChecker::~MockLivenessChecker() = default;
 
 MockMetrics::MockMetrics() : LoginMetrics(base::FilePath()) {}
-MockMetrics::~MockMetrics() {}
+MockMetrics::~MockMetrics() = default;
 
-MockMitigator::MockMitigator() {}
-MockMitigator::~MockMitigator() {}
+MockMitigator::MockMitigator() = default;
+MockMitigator::~MockMitigator() = default;
 
-MockPolicyKey::MockPolicyKey() : PolicyKey(base::FilePath(), NULL) {}
-MockPolicyKey::~MockPolicyKey() {}
+MockPolicyKey::MockPolicyKey() : PolicyKey(base::FilePath(), nullptr) {}
+MockPolicyKey::~MockPolicyKey() = default;
 
 MockPolicyService::MockPolicyService()
-    : PolicyService(std::unique_ptr<PolicyStore>(), NULL) {}
-MockPolicyService::~MockPolicyService() {}
+    : PolicyService(std::unique_ptr<PolicyStore>(), nullptr) {}
+MockPolicyService::~MockPolicyService() = default;
 
-MockPolicyServiceDelegate::MockPolicyServiceDelegate() {}
-MockPolicyServiceDelegate::~MockPolicyServiceDelegate() {}
+MockPolicyServiceDelegate::MockPolicyServiceDelegate() = default;
+MockPolicyServiceDelegate::~MockPolicyServiceDelegate() = default;
 
 MockPolicyStore::MockPolicyStore() : PolicyStore(base::FilePath()) {}
-MockPolicyStore::~MockPolicyStore() {}
+MockPolicyStore::~MockPolicyStore() = default;
 
-MockProcessManagerService::MockProcessManagerService() {}
-MockProcessManagerService::~MockProcessManagerService() {}
+MockProcessManagerService::MockProcessManagerService() = default;
+MockProcessManagerService::~MockProcessManagerService() = default;
 
-MockSessionManager::MockSessionManager() {}
-MockSessionManager::~MockSessionManager() {}
+MockSessionManager::MockSessionManager() = default;
+MockSessionManager::~MockSessionManager() = default;
 
-MockSystemUtils::MockSystemUtils() {}
-MockSystemUtils::~MockSystemUtils() {}
+MockSystemUtils::MockSystemUtils() = default;
+MockSystemUtils::~MockSystemUtils() = default;
 
 MockUserPolicyServiceFactory::MockUserPolicyServiceFactory()
-    : UserPolicyServiceFactory(0, NULL, NULL) {}
-MockUserPolicyServiceFactory::~MockUserPolicyServiceFactory() {}
+    : UserPolicyServiceFactory(0, nullptr, nullptr) {}
+MockUserPolicyServiceFactory::~MockUserPolicyServiceFactory() = default;
 
 }  // namespace login_manager

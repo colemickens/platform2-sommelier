@@ -15,13 +15,18 @@
 
 namespace {
 
+constexpr char kInterface[] = "org.freedesktop.systemd1.Manager";
+constexpr char kStartUnitMode[] = "replace";
+constexpr char kStartUnitMethodName[] = "StartUnit";
+constexpr char kSetEnvironmentMethodName[] = "SetEnvironment";
+constexpr char kUnsetEnvironmentMethodName[] = "UnsetEnvironment";
+
 std::unique_ptr<dbus::Response> CallEnvironmentMethod(
-    dbus::ObjectProxy *proxy,
-    const std::string &method_name,
-    const std::vector<std::string> &args_keyvals) {
+    dbus::ObjectProxy* proxy,
+    const std::string& method_name,
+    const std::vector<std::string>& args_keyvals) {
   DCHECK(proxy);
-  dbus::MethodCall method_call(login_manager::SystemdUnitStarter::kInterface,
-                               method_name);
+  dbus::MethodCall method_call(kInterface, method_name);
   dbus::MessageWriter writer(&method_call);
   writer.AppendArrayOfStrings(args_keyvals);
 
@@ -30,59 +35,43 @@ std::unique_ptr<dbus::Response> CallEnvironmentMethod(
 }
 
 std::unique_ptr<dbus::Response> SetEnvironment(
-    dbus::ObjectProxy *proxy,
-    const std::vector<std::string> &args_keyvals) {
-  return CallEnvironmentMethod(
-             proxy,
-             login_manager::SystemdUnitStarter::kSetEnvironmentMethodName,
-             args_keyvals);
+    dbus::ObjectProxy* proxy,
+    const std::vector<std::string>& args_keyvals) {
+  return CallEnvironmentMethod(proxy, kSetEnvironmentMethodName, args_keyvals);
 }
 
 std::unique_ptr<dbus::Response> UnsetEnvironment(
-     dbus::ObjectProxy *proxy,
-     const std::vector<std::string> &args_keyvals) {
-  std::vector<std::string> env_vars = args_keyvals;
-  std::string::size_type i = std::string::npos;
+     dbus::ObjectProxy* proxy,
+     const std::vector<std::string>& args_keyvals) {
+  std::vector<std::string> env_vars;
+  env_vars.reserve(args_keyvals.size());
 
   // Keep only the keys from environment array
-  for (std::vector<std::string>::iterator it=env_vars.begin();
-       it != env_vars.end();
-       ++it ) {
-    i = it->find("=");
-    if (i != std::string::npos)
-      it->erase(i, it->length());
+  for (const auto& keyval : args_keyvals) {
+    size_t i = keyval.find('=');
+    env_vars.emplace_back(
+        i == std::string::npos ? keyval : keyval.substr(0, i));
   }
-  return CallEnvironmentMethod(
-             proxy,
-             login_manager::SystemdUnitStarter::kUnsetEnvironmentMethodName,
-              env_vars);
+
+  return CallEnvironmentMethod(proxy, kUnsetEnvironmentMethodName, env_vars);
 }
 
 }  // namespace
 
 namespace login_manager {
 
-const char SystemdUnitStarter::kServiceName[] = "org.freedesktop.systemd1";
-const char SystemdUnitStarter::kPath[] = "/org/freedesktop/systemd1";
-const char SystemdUnitStarter::kInterface[] =
-    "org.freedesktop.systemd1.Manager";
-const char SystemdUnitStarter::kStartUnitMode[] = "replace";
-const char SystemdUnitStarter::kStartUnitMethodName[] = "StartUnit";
-const char SystemdUnitStarter::kSetEnvironmentMethodName[] = "SetEnvironment";
-const char SystemdUnitStarter::kUnsetEnvironmentMethodName[] =
-    "UnsetEnvironment";
+constexpr char SystemdUnitStarter::kServiceName[] = "org.freedesktop.systemd1";
+constexpr char SystemdUnitStarter::kPath[] = "/org/freedesktop/systemd1";
 
-
-SystemdUnitStarter::SystemdUnitStarter(dbus::ObjectProxy *proxy)
+SystemdUnitStarter::SystemdUnitStarter(dbus::ObjectProxy* proxy)
     : systemd_dbus_proxy_(proxy) {
 }
 
-SystemdUnitStarter::~SystemdUnitStarter() {
-}
+SystemdUnitStarter::~SystemdUnitStarter() = default;
 
 std::unique_ptr<dbus::Response> SystemdUnitStarter::TriggerImpulse(
-    const std::string &unit_name,
-    const std::vector<std::string> &args_keyvals,
+    const std::string& unit_name,
+    const std::vector<std::string>& args_keyvals,
     TriggerMode mode) {
   DLOG(INFO) << "Starting " << unit_name << " unit";
 
@@ -92,11 +81,10 @@ std::unique_ptr<dbus::Response> SystemdUnitStarter::TriggerImpulse(
     DLOG(WARNING) << "Could not set environment for " << unit_name;
     return nullptr;
   }
-  dbus::MethodCall method_call(SystemdUnitStarter::kInterface,
-                               SystemdUnitStarter::kStartUnitMethodName);
+  dbus::MethodCall method_call(kInterface, kStartUnitMethodName);
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(unit_name + ".target");
-  writer.AppendString(SystemdUnitStarter::kStartUnitMode);
+  writer.AppendString(kStartUnitMode);
 
   std::unique_ptr<dbus::Response> response;
   switch (mode) {

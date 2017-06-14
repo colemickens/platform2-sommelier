@@ -66,29 +66,37 @@ using brillo::cryptohome::home::kGuestUserName;
 
 namespace login_manager {  // NOLINT
 
-const char SessionManagerImpl::kDemoUser[] = "demouser@";
+constexpr char SessionManagerImpl::kDemoUser[] = "demouser@";
 
-const char SessionManagerImpl::kStarted[] = "started";
-const char SessionManagerImpl::kStopping[] = "stopping";
-const char SessionManagerImpl::kStopped[] = "stopped";
+constexpr char SessionManagerImpl::kStarted[] = "started";
+constexpr char SessionManagerImpl::kStopping[] = "stopping";
+constexpr char SessionManagerImpl::kStopped[] = "stopped";
 
-const char SessionManagerImpl::kLoggedInFlag[] =
+constexpr char SessionManagerImpl::kLoggedInFlag[] =
     "/run/session_manager/logged_in";
-const char SessionManagerImpl::kResetFile[] =
+constexpr char SessionManagerImpl::kResetFile[] =
     "/mnt/stateful_partition/factory_install_reset";
 
-const char SessionManagerImpl::kStartUserSessionSignal[] = "start-user-session";
+constexpr char SessionManagerImpl::kStartUserSessionImpulse[] =
+    "start-user-session";
 
-const char SessionManagerImpl::kArcContainerName[] = "android";
-const char SessionManagerImpl::kArcStartForLoginScreenSignal[] =
+constexpr char SessionManagerImpl::kArcContainerName[] = "android";
+
+// ARC related impulse (systemd unit start or Upstart signal).
+constexpr char SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse[] =
     "start-arc-instance-for-login-screen";
-const char SessionManagerImpl::kArcStartSignal[] = "start-arc-instance";
-const char SessionManagerImpl::kArcStopSignal[] = "stop-arc-instance";
-const char SessionManagerImpl::kArcContinueBootSignal[] = "continue-arc-boot";
-const char SessionManagerImpl::kArcNetworkStartSignal[] = "start-arc-network";
-const char SessionManagerImpl::kArcNetworkStopSignal[] = "stop-arc-network";
-const char SessionManagerImpl::kArcBootedSignal[] = "arc-booted";
-const char SessionManagerImpl::kArcRemoveOldDataSignal[] =
+constexpr char SessionManagerImpl::kStartArcInstanceImpulse[] =
+    "start-arc-instance";
+constexpr char SessionManagerImpl::kStopArcInstanceImpulse[] =
+    "stop-arc-instance";
+constexpr char SessionManagerImpl::kContinueArcBootImpulse[] =
+    "continue-arc-boot";
+constexpr char SessionManagerImpl::kStartArcNetworkImpulse[] =
+    "start-arc-network";
+constexpr char SessionManagerImpl::kStopArcNetworkImpulse[] =
+    "stop-arc-network";
+constexpr char SessionManagerImpl::kArcBootedImpulse[] = "arc-booted";
+constexpr char SessionManagerImpl::kRemoveOldArcDataImpulse[] =
     "remove-old-arc-data";
 
 namespace {
@@ -565,7 +573,7 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
         user_is_owner);
   }
 
-  init_controller_->TriggerImpulse(kStartUserSessionSignal,
+  init_controller_->TriggerImpulse(kStartUserSessionImpulse,
                                    {"CHROMEOS_USER=" + actual_account_id},
                                    InitDaemonController::TriggerMode::ASYNC);
   LOG(INFO) << "Starting user session";
@@ -1010,8 +1018,9 @@ bool SessionManagerImpl::EmitArcBooted(brillo::ErrorPtr* error,
   }
 
   if (!init_controller_->TriggerImpulse(
-          kArcBootedSignal, keyvals, InitDaemonController::TriggerMode::SYNC)) {
-    constexpr char kMessage[] = "Emitting arc-booted init signal failed.";
+          kArcBootedImpulse, keyvals,
+          InitDaemonController::TriggerMode::SYNC)) {
+    constexpr char kMessage[] = "Emitting arc-booted impulse failed.";
     LOG(ERROR) << kMessage;
     *error = CreateError(dbus_error::kEmitFailed, kMessage);
     return false;
@@ -1146,11 +1155,10 @@ bool SessionManagerImpl::RemoveArcDataInternal(
   // rename() operation above never fails.
   LOG(INFO) << "Removing contents in " << android_data_old_dir.value();
   if (!init_controller_->TriggerImpulse(
-          kArcRemoveOldDataSignal,
+          kRemoveOldArcDataImpulse,
           {"ANDROID_DATA_OLD_DIR=" + android_data_old_dir.value()},
           InitDaemonController::TriggerMode::SYNC)) {
-    LOG(ERROR) << "Failed to emit " << kArcRemoveOldDataSignal
-               << " init signal";
+    LOG(ERROR) << "Failed to emit " << kRemoveOldArcDataImpulse << " impulse";
   }
   return true;
 }
@@ -1324,7 +1332,7 @@ bool SessionManagerImpl::StartArcInstanceInternal(
     const StartArcInstanceRequest& in_request,
     pid_t container_pid,
     std::string* out_container_instance_id) {
-  // Setup init signal params.
+  // Set up impulse params.
   std::vector<std::string> keyvals = {
       "CHROMEOS_DEV_MODE=" + std::to_string(IsDevMode(system_)),
       "CHROMEOS_INSIDE_VM=" + std::to_string(IsInsideVm(system_)),
@@ -1379,7 +1387,7 @@ bool SessionManagerImpl::StartArcInstanceInternal(
   if (!continue_boot) {
     // Start the container.
     const char* init_signal = in_request.for_login_screen() ?
-        kArcStartForLoginScreenSignal : kArcStartSignal;
+        kStartArcInstanceForLoginScreenImpulse : kStartArcInstanceImpulse;
     container_instance_id = StartArcContainer(init_signal, keyvals, error);
     if (container_instance_id.empty()) {
       DCHECK(*error);
@@ -1421,7 +1429,7 @@ std::string SessionManagerImpl::StartArcContainer(
           init_signal, init_keyvals,
           InitDaemonController::TriggerMode::SYNC)) {
     const std::string message =
-        "Emitting " + init_signal + " init signal failed.";
+        "Emitting " + init_signal + " impulse failed.";
     LOG(ERROR) << message;
     *error_out = CreateError(dbus_error::kEmitFailed, message);
     return std::string();
@@ -1435,9 +1443,9 @@ std::string SessionManagerImpl::StartArcContainer(
   if (!android_container_->StartContainer(
           base::Bind(&SessionManagerImpl::OnAndroidContainerStopped,
                      weak_ptr_factory_.GetWeakPtr(), container_instance_id))) {
-    // Failed to start container. Thus, trigger stop-arc-instance init signal
+    // Failed to start container. Thus, trigger stop-arc-instance impulse
     // manually for cleanup.
-    init_controller_->TriggerImpulse(kArcStopSignal, {},
+    init_controller_->TriggerImpulse(kStopArcInstanceImpulse, {},
                                      InitDaemonController::TriggerMode::SYNC);
     constexpr char kMessage[] = "Starting Android container failed.";
     LOG(ERROR) << kMessage;
@@ -1464,13 +1472,12 @@ bool SessionManagerImpl::StartArcNetwork(brillo::ErrorPtr* error_out) {
 
   // Tell init to configure the network.
   if (!init_controller_->TriggerImpulse(
-          kArcNetworkStartSignal,
+          kStartArcNetworkImpulse,
           {"CONTAINER_NAME=" + std::string(kArcContainerName),
            "CONTAINER_PATH=" + root_path.value(),
            "CONTAINER_PID=" + std::to_string(pid)},
           InitDaemonController::TriggerMode::SYNC)) {
-    constexpr char kMessage[] =
-        "Emitting start-arc-network init signal failed.";
+    constexpr char kMessage[] = "Emitting start-arc-network impulse failed.";
     LOG(ERROR) << kMessage;
     *error_out = CreateError(dbus_error::kEmitFailed, kMessage);
     return false;
@@ -1483,10 +1490,9 @@ bool SessionManagerImpl::ContinueArcBoot(
     const std::vector<std::string>& init_keyvals,
     brillo::ErrorPtr* error_out) {
   if (!init_controller_->TriggerImpulse(
-          kArcContinueBootSignal, init_keyvals,
+          kContinueArcBootImpulse, init_keyvals,
           InitDaemonController::TriggerMode::SYNC)) {
-    constexpr char kMessage[] =
-        "Emitting continue-arc-boot init signal failed.";
+    constexpr char kMessage[] = "Emitting continue-arc-boot impulse failed.";
     LOG(ERROR) << kMessage;
     *error_out = CreateError(dbus_error::kEmitFailed, kMessage);
     return false;
@@ -1510,13 +1516,15 @@ void SessionManagerImpl::OnAndroidContainerStopped(
 
   login_metrics_->StopTrackingArcUseTime();
   if (!init_controller_->TriggerImpulse(
-          kArcStopSignal, {}, InitDaemonController::TriggerMode::SYNC)) {
-    LOG(ERROR) << "Emitting stop-arc-instance init signal failed.";
+          kStopArcInstanceImpulse, {},
+          InitDaemonController::TriggerMode::SYNC)) {
+    LOG(ERROR) << "Emitting stop-arc-instance impulse failed.";
   }
 
   if (!init_controller_->TriggerImpulse(
-          kArcNetworkStopSignal, {}, InitDaemonController::TriggerMode::SYNC)) {
-    LOG(ERROR) << "Emitting stop-arc-network init signal failed.";
+          kStopArcNetworkImpulse, {},
+          InitDaemonController::TriggerMode::SYNC)) {
+    LOG(ERROR) << "Emitting stop-arc-network impulse failed.";
   }
 
   adaptor_.SendArcInstanceStoppedSignal(clean, container_instance_id);

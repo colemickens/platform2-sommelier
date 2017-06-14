@@ -10,7 +10,6 @@
 #include <vector>
 
 namespace dbus {
-class ObjectProxy;
 class Response;
 }
 
@@ -26,7 +25,7 @@ class InitDaemonController {
     ASYNC,
   };
 
-  virtual ~InitDaemonController() {}
+  virtual ~InitDaemonController() = default;
 
   // Asks the init daemon to emit a signal (Upstart) or start a unit (systemd).
   // The response is null if the request failed or |mode| is ASYNC.

@@ -74,21 +74,21 @@ class SessionManagerImpl
   // Path to magic file that will trigger device wiping on next boot.
   static const char kResetFile[];
 
-  // Name of init signal emitted when user session starts.
-  static const char kStartUserSessionSignal[];
+  // Name of impulse emitted when user session starts.
+  static const char kStartUserSessionImpulse[];
 
   // Name of the Android container.
   static const char kArcContainerName[];
 
   // Android container messages.
-  static const char kArcStartForLoginScreenSignal[];
-  static const char kArcStartSignal[];
-  static const char kArcContinueBootSignal[];
-  static const char kArcStopSignal[];
-  static const char kArcNetworkStartSignal[];
-  static const char kArcNetworkStopSignal[];
-  static const char kArcBootedSignal[];
-  static const char kArcRemoveOldDataSignal[];
+  static const char kStartArcInstanceForLoginScreenImpulse[];
+  static const char kStartArcInstanceImpulse[];
+  static const char kStopArcInstanceImpulse[];
+  static const char kContinueArcBootImpulse[];
+  static const char kStartArcNetworkImpulse[];
+  static const char kStopArcNetworkImpulse[];
+  static const char kArcBootedImpulse[];
+  static const char kRemoveOldArcDataImpulse[];
 
   SessionManagerImpl(std::unique_ptr<InitDaemonController> init_controller,
                      const scoped_refptr<dbus::Bus>& bus,
