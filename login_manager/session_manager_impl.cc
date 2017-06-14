@@ -272,8 +272,6 @@ SessionManagerImpl::SessionManagerImpl(
     const scoped_refptr<dbus::Bus>& bus,
     base::Closure lock_screen_closure,
     base::Closure restart_device_closure,
-    base::Closure start_arc_instance_closure,
-    base::Closure stop_arc_instance_closure,
     KeyGenerator* key_gen,
     ServerBackedStateKeyGenerator* state_key_generator,
     ProcessManagerServiceInterface* manager,
@@ -294,8 +292,6 @@ SessionManagerImpl::SessionManagerImpl(
       init_controller_(std::move(init_controller)),
       lock_screen_closure_(lock_screen_closure),
       restart_device_closure_(restart_device_closure),
-      start_arc_instance_closure_(start_arc_instance_closure),
-      stop_arc_instance_closure_(stop_arc_instance_closure),
       system_clock_last_sync_info_retry_delay_(
           kSystemClockLastSyncInfoRetryDelay),
       bus_(bus),
@@ -1414,7 +1410,6 @@ bool SessionManagerImpl::StartArcInstanceInternal(
   }
 
   *out_container_instance_id = std::move(container_instance_id);
-  start_arc_instance_closure_.Run();
   return true;
 }
 
@@ -1512,8 +1507,6 @@ void SessionManagerImpl::OnAndroidContainerStopped(
   } else {
     LOG(ERROR) << "Android Container with pid " << pid << " crashed";
   }
-
-  stop_arc_instance_closure_.Run();
 
   login_metrics_->StopTrackingArcUseTime();
   if (!init_controller_->TriggerImpulse(

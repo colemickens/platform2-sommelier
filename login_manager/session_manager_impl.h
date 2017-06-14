@@ -94,8 +94,6 @@ class SessionManagerImpl
                      const scoped_refptr<dbus::Bus>& bus,
                      base::Closure lock_screen_closure,
                      base::Closure restart_device_closure,
-                     base::Closure start_arc_instance_closure,
-                     base::Closure stop_arc_instance_closure,
                      KeyGenerator* key_gen,
                      ServerBackedStateKeyGenerator* state_key_generator,
                      ProcessManagerServiceInterface* manager,
@@ -375,8 +373,6 @@ class SessionManagerImpl
 
   base::Closure lock_screen_closure_;
   base::Closure restart_device_closure_;
-  base::Closure start_arc_instance_closure_;
-  base::Closure stop_arc_instance_closure_;
 
   base::TimeDelta system_clock_last_sync_info_retry_delay_;
   base::TimeTicks arc_start_time_;

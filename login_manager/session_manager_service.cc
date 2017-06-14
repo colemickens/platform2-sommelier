@@ -178,8 +178,6 @@ bool SessionManagerService::Initialize() {
                  base::Unretained(powerd_dbus_proxy),
                  power_manager::kPowerManagerInterface,
                  power_manager::kRequestRestartMethod),
-      base::Bind(&base::DoNothing),
-      base::Bind(&base::DoNothing),
       &key_gen_,
       &state_key_generator_,
       this,

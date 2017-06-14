@@ -253,10 +253,6 @@ class SessionManagerImplTest : public ::testing::Test {
                          base::Unretained(this)),
               base::Bind(&SessionManagerImplTest::FakeRestartDevice,
                          base::Unretained(this)),
-              base::Bind(&SessionManagerImplTest::FakeStartArcInstance,
-                         base::Unretained(this)),
-              base::Bind(&SessionManagerImplTest::FakeStopArcInstance,
-                         base::Unretained(this)),
               &key_gen_,
               &state_key_generator_,
               &manager_,
@@ -482,10 +478,6 @@ class SessionManagerImplTest : public ::testing::Test {
   scoped_refptr<MockObjectProxy> system_clock_proxy_;
   dbus::ObjectProxy::WaitForServiceToBeAvailableCallback available_callback_;
 
-  // Used by fake closures to simulate doing whatever start/stop work needs
-  // doing for ARC.
-  bool arc_setup_completed_;
-
   SessionManagerImpl impl_;
   base::ScopedTempDir tmpdir_;
 
@@ -578,10 +570,6 @@ class SessionManagerImplTest : public ::testing::Test {
   void FakeLockScreen() { actual_locks_++; }
 
   void FakeRestartDevice() { actual_restarts_++; }
-
-  void FakeStartArcInstance() { arc_setup_completed_ = true; }
-
-  void FakeStopArcInstance() { arc_setup_completed_ = false; }
 
   string fake_salt_;
 
@@ -1373,7 +1361,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForLoginScreen) {
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(container_instance_id.empty());
   EXPECT_TRUE(android_container_.running());
-  EXPECT_TRUE(arc_setup_completed_);
 
   // StartArcInstance() does not update start time for login screen.
   {
@@ -1401,7 +1388,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForLoginScreen) {
     EXPECT_FALSE(error.get());
   }
   EXPECT_FALSE(android_container_.running());
-  EXPECT_FALSE(arc_setup_completed_);
 }
 
 TEST_F(SessionManagerImplTest, ArcInstanceStart_ForUser) {
@@ -1452,7 +1438,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForUser) {
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(container_instance_id.empty());
   EXPECT_TRUE(android_container_.running());
-  EXPECT_TRUE(arc_setup_completed_);
   {
     brillo::ErrorPtr error;
     int64_t start_time = 0;
@@ -1472,7 +1457,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForUser) {
     EXPECT_FALSE(error.get());
   }
   EXPECT_FALSE(android_container_.running());
-  EXPECT_FALSE(arc_setup_completed_);
 }
 
 TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
@@ -1543,7 +1527,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
   // Unlike the regular start, an empty ID is returned.
   EXPECT_TRUE(container_instance_id_for_upgrade.empty());
   EXPECT_TRUE(android_container_.running());
-  EXPECT_TRUE(arc_setup_completed_);
   {
     brillo::ErrorPtr error;
     int64_t start_time = 0;
@@ -1564,7 +1547,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
     EXPECT_FALSE(error.get());
   }
   EXPECT_FALSE(android_container_.running());
-  EXPECT_FALSE(arc_setup_completed_);
 }
 
 TEST_F(SessionManagerImplTest, ArcInstanceStart_NoSession) {
@@ -1639,9 +1621,8 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
     EXPECT_FALSE(error.get());
     EXPECT_FALSE(container_instance_id.empty());
   }
-
   EXPECT_TRUE(android_container_.running());
-  EXPECT_TRUE(arc_setup_completed_);
+
   EXPECT_CALL(
       *exported_object(),
       SendSignal(SignalEq(login_manager::kArcInstanceStopped,
@@ -1650,7 +1631,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
 
   android_container_.SimulateCrash();
   EXPECT_FALSE(android_container_.running());
-  EXPECT_FALSE(arc_setup_completed_);
 
   // This should now fail since the container was cleaned up already.
   {
