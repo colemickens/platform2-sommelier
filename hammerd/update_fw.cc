@@ -83,8 +83,6 @@ FirmwareUpdater::FirmwareUpdater(std::shared_ptr<UsbEndpoint> uep,
                                  std::shared_ptr<FmapInterface> fmap)
     : uep_(uep), fmap_(fmap), targ_(), image_(""), sections_() {}
 
-FirmwareUpdater::~FirmwareUpdater() {}
-
 bool FirmwareUpdater::TryConnectUSB() {
   constexpr unsigned int kFlushTimeoutMs = 10;
   constexpr unsigned int kTimeoutMs = 1000;

@@ -19,19 +19,40 @@ class HammerUpdater {
     kNoUpdate,
     kFatalError,
     kNeedReset,
+    kNeedJump,
   };
 
   explicit HammerUpdater(const std::string& image);
-  bool Run();
-  RunStatus RunOnce();
+  virtual ~HammerUpdater() = default;
+  virtual bool Run();
+  virtual RunStatus RunOnce(const bool post_rw_jump);
+  virtual void PostRWProcess();
+
+ protected:
+  // Used in unittests to inject mock instance.
+  HammerUpdater(const std::string& image,
+                std::shared_ptr<FirmwareUpdaterInterface> fw_updater);
+
+  friend class HammerUpdaterTest;
+  FRIEND_TEST(HammerUpdaterTest, Run_LoadImageFailed);
+  FRIEND_TEST(HammerUpdaterTest, Run_AlwaysReset);
+  FRIEND_TEST(HammerUpdaterTest, Run_FatalError);
+  FRIEND_TEST(HammerUpdaterTest, Run_Reset3Times);
+  FRIEND_TEST(HammerUpdaterTest, Run_UpdateRWAfterJumpToRWFailed);
+  FRIEND_TEST(HammerUpdaterTest, RunOnce_UpdateRW);
+  FRIEND_TEST(HammerUpdaterTest, RunOnce_UnlockRW);
+  FRIEND_TEST(HammerUpdaterTest, RunOnce_JumpToRW);
+  FRIEND_TEST(HammerUpdaterTest, RunOnce_CompleteRWJump);
+  FRIEND_TEST(HammerUpdaterTest, RunOnce_KeepInRW);
+  FRIEND_TEST(HammerUpdaterTest, RunOnce_ResetToRO);
 
  private:
-  // The main firmware updater.
-  FirmwareUpdater fw_updater_;
+  DISALLOW_COPY_AND_ASSIGN(HammerUpdater);
+
   // The image data to be updated.
   std::string image_;
-
-  DISALLOW_COPY_AND_ASSIGN(HammerUpdater);
+  // The main firmware updater.
+  std::shared_ptr<FirmwareUpdaterInterface> fw_updater_;
 };
 
 }  // namespace hammerd

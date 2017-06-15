@@ -140,34 +140,50 @@ struct SectionInfo {
   friend bool operator!=(const SectionInfo& lhs, const SectionInfo& rhs);
 };
 
+class FirmwareUpdaterInterface {
+ public:
+  virtual bool LoadImage(const std::string& image) = 0;
+  virtual bool TryConnectUSB() = 0;
+  virtual void CloseUSB() = 0;
+  virtual bool SendFirstPDU() = 0;
+  virtual void SendDone() = 0;
+  virtual bool InjectEntropy() = 0;
+  virtual bool SendSubcommand(UpdateExtraCommand subcommand,
+                              const std::string& cmd_body = "") = 0;
+  virtual bool TransferImage(SectionName section_name) = 0;
+  virtual SectionName CurrentSection() const = 0;
+  virtual bool NeedsUpdate(SectionName section_name) const = 0;
+  virtual bool IsSectionLocked(SectionName section_name) const = 0;
+  virtual bool UnLockSection(SectionName section_name) = 0;
+};
+
 // Implement the core logic of updating firmware.
 // It contains the data of the original transfer_descriptor.
-class FirmwareUpdater {
+class FirmwareUpdater : public FirmwareUpdaterInterface {
  public:
   FirmwareUpdater();
-  ~FirmwareUpdater();
 
   // Scans the new image and retrieve versions of RO and RW sections.
-  bool LoadImage(const std::string& image);
+  bool LoadImage(const std::string& image) override;
 
   // Tries to connect to the USB endpoint during a period of time.
-  bool TryConnectUSB();
+  bool TryConnectUSB() override;
 
   // Closes the connection to the USB endpoint.
-  void CloseUSB();
+  void CloseUSB() override;
 
   // Setups the connection with the EC firmware by sending the first PDU.
   // Returns true if successfully setup the connection.
-  bool SendFirstPDU();
+  bool SendFirstPDU() override;
 
   // Indicates to the target that update image transfer has been completed. Upon
   // receipt of this message the target state machine transitions into the
   // 'rx_idle' state. The host may send an extension command to reset the target
   // after this.
-  void SendDone();
+  void SendDone() override;
 
   // Injects entropy into the hammer device.
-  bool InjectEntropy();
+  bool InjectEntropy() override;
 
   // Sends the external command through USB. The format of the payload is:
   //   4 bytes      4 bytes         4 bytes       2 bytes      variable size
@@ -180,28 +196,28 @@ class FirmwareUpdater {
   // subcommands by looking at the EXT_CMD value - it is kUpdateExtraCmd and
   // as such is guaranteed not to be a valid update PDU destination address.
   bool SendSubcommand(UpdateExtraCommand subcommand,
-                      const std::string& cmd_body = "");
+                      const std::string& cmd_body = "") override;
 
   // Transfers the image to the target section.
-  bool TransferImage(SectionName section_name);
+  bool TransferImage(SectionName section_name) override;
 
   // Returns the current section that EC is running. One of "RO" or "RW".
-  SectionName CurrentSection() const;
+  SectionName CurrentSection() const override;
 
   // Determines whether the given section needs updating.  Returns an accurate
   // answer regardless of which section is currently running.
-  bool NeedsUpdate(SectionName section_name) const;
+  bool NeedsUpdate(SectionName section_name) const override;
 
   // Determines the section is locked or not.
-  bool IsSectionLocked(SectionName section_name) const;
+  bool IsSectionLocked(SectionName section_name) const override;
 
   // Unlocks the section. Need to send "Reset" command afterward.
-  bool UnLockSection(SectionName section_name);
+  bool UnLockSection(SectionName section_name) override;
 
  protected:
   // Used in unit tests to inject mocks.
-  explicit FirmwareUpdater(std::shared_ptr<UsbEndpoint> uep,
-                           std::shared_ptr<FmapInterface> fmap);
+  FirmwareUpdater(std::shared_ptr<UsbEndpoint> uep,
+                  std::shared_ptr<FmapInterface> fmap);
 
   // Fetches the version of the currently-running section.
   bool FetchVersion();

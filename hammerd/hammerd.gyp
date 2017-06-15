@@ -42,6 +42,7 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
+            'hammer_updater_unittest.cc',
             'update_fw_unittest.cc',
           ],
         },
