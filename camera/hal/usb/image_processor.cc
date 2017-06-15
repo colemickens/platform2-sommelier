@@ -22,21 +22,33 @@ namespace arc {
  * Formats have different names in different header files. Here is the mapping
  * table:
  *
- * android_pixel_format_t          videodev2.h           FOURCC in libyuv
+ * android_pixel_format_t           videodev2.h            FOURCC in libyuv
  * -----------------------------------------------------------------------------
- * HAL_PIXEL_FORMAT_YV12         = V4L2_PIX_FMT_YVU420 = FOURCC_YV12
- * HAL_PIXEL_FORMAT_YCrCb_420_SP = V4L2_PIX_FMT_NV21   = FOURCC_NV21
- * HAL_PIXEL_FORMAT_RGBA_8888    = V4L2_PIX_FMT_RGBX32 = FOURCC_ABGR
- * HAL_PIXEL_FORMAT_YCbCr_422_I  = V4L2_PIX_FMT_YUYV   = FOURCC_YUYV
- *                                                     = FOURCC_YUY2
- *                                 V4L2_PIX_FMT_YUV420 = FOURCC_I420
- *                                                     = FOURCC_YU12
- *                                 V4L2_PIX_FMT_MJPEG  = FOURCC_MJPG
+ * HAL_PIXEL_FORMAT_YV12          = V4L2_PIX_FMT_YVU420  = FOURCC_YV12
+ * HAL_PIXEL_FORMAT_YCrCb_420_SP  = V4L2_PIX_FMT_NV21    = FOURCC_NV21
+ * HAL_PIXEL_FORMAT_RGBA_8888     = V4L2_PIX_FMT_RGBX32  = FOURCC_ABGR
+ * HAL_PIXEL_FORMAT_YCbCr_422_I   = V4L2_PIX_FMT_YUYV    = FOURCC_YUYV
+ *                                                       = FOURCC_YUY2
+ *                                  V4L2_PIX_FMT_YUV420  = FOURCC_I420
+ *                                                       = FOURCC_YU12
+ *                                  V4L2_PIX_FMT_MJPEG   = FOURCC_MJPG
+ *
+ * HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED and HAL_PIXEL_FORMAT_YCbCr_420_888
+ * may be backed by different types of buffers depending on the platform.
+ *
+ * HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED
+ *                                = V4L2_PIX_FMT_NV12M   = FOURCC_NV12
+ *                                = V4L2_PIX_FMT_RGBX32  = FOURCC_ABGR
+ *
+ * HAL_PIXEL_FORMAT_YCbCr_420_888 = V4L2_PIX_FMT_NV12M   = FOURCC_NV12
+ *                                = V4L2_PIX_FMT_YVU420M = FOURCC_YV12
  *
  * Camera device generates FOURCC_YUYV and FOURCC_MJPG.
- * Preview needs FOURCC_ARGB format.
- * Software video encoder needs FOURCC_YU12.
- * CTS requires FOURCC_YV12 and FOURCC_NV21 for applications.
+ * At the Android side:
+ * - Camera preview uses HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED buffers.
+ * - Video recording uses HAL_PIXEL_FORMAT_YCbCr_420_888 buffers.
+ * - Still capture uses HAL_PIXEL_FORMAT_BLOB buffers.
+ * - CTS requires FOURCC_YV12 and FOURCC_NV21 for applications.
  *
  * Android stride requirement:
  * YV12 horizontal stride should be a multiple of 16 pixels. See
@@ -44,13 +56,12 @@ namespace arc {
  * The stride of ARGB, YU12, and NV21 are always equal to the width.
  *
  * Conversion Path:
- * MJPG/YUYV (from camera) -> YU12 -> ARGB (preview)
+ * MJPG/YUYV (from camera) -> YU12 -> ARGB / NM12 (preview)
  *                                 -> NV21 (apps)
  *                                 -> YV12 (apps)
- *                                 -> YU12 (video encoder)
+ *                                 -> NM12 / YV12 (video encoder)
  */
 
-static int YU12ToNV21(const void* yv12, void* nv21, int width, int height);
 static bool ConvertToJpeg(const android::CameraMetadata& metadata,
                           const FrameBuffer& in_frame,
                           FrameBuffer* out_frame);
@@ -79,7 +90,7 @@ size_t ImageProcessor::GetConvertedSize(int fourcc,
       return Align16(width) * height + Align16(width / 2) * height;
     case V4L2_PIX_FMT_YUV420:  // YU12
     // Fall-through.
-    case V4L2_PIX_FMT_NV21:  // NV21
+    case V4L2_PIX_FMT_NV12M:  // NV12
       return width * height * 3 / 2;
     case V4L2_PIX_FMT_RGBX32:
       return width * height * 4;
@@ -180,10 +191,29 @@ int ImageProcessor::ConvertFormat(const android::CameraMetadata& metadata,
         return 0;
       }
       case V4L2_PIX_FMT_NV21: {  // NV21
-        // TODO(henryhsu): Use libyuv::I420ToNV21.
-        int res = YU12ToNV21(in_frame.GetData(), out_frame->GetData(),
-                             in_frame.GetWidth(), in_frame.GetHeight());
-        LOGF_IF(ERROR, res) << "YU12ToNV21() returns " << res;
+        int res = libyuv::I420ToNV21(
+            in_frame.GetData(), in_frame.GetWidth(),
+            in_frame.GetData() + in_frame.GetWidth() * in_frame.GetHeight(),
+            in_frame.GetWidth() / 2,
+            in_frame.GetData() +
+                in_frame.GetWidth() * in_frame.GetHeight() * 5 / 4,
+            in_frame.GetWidth() / 2, out_frame->GetData(FrameBuffer::YPLANE),
+            out_frame->GetWidth(), out_frame->GetData(FrameBuffer::VPLANE),
+            out_frame->GetWidth(), in_frame.GetWidth(), in_frame.GetHeight());
+        LOGF_IF(ERROR, res) << "I420ToNV21() returns " << res;
+        return res ? -EINVAL : 0;
+      }
+      case V4L2_PIX_FMT_NV12M: {  // NM12
+        int res = libyuv::I420ToNV12(
+            in_frame.GetData(), in_frame.GetWidth(),
+            in_frame.GetData() + in_frame.GetWidth() * in_frame.GetHeight(),
+            in_frame.GetWidth() / 2,
+            in_frame.GetData() +
+                in_frame.GetWidth() * in_frame.GetHeight() * 5 / 4,
+            in_frame.GetWidth() / 2, out_frame->GetData(FrameBuffer::YPLANE),
+            out_frame->GetWidth(), out_frame->GetData(FrameBuffer::UPLANE),
+            out_frame->GetWidth(), in_frame.GetWidth(), in_frame.GetHeight());
+        LOGF_IF(ERROR, res) << "I420ToNV12() returns " << res;
         return res ? -EINVAL : 0;
       }
       case V4L2_PIX_FMT_RGBX32: {
@@ -324,30 +354,6 @@ int ImageProcessor::CropAndRotate(const FrameBuffer& in_frame,
 
   LOGF_IF(ERROR, ret) << "ConvertToI420 failed: " << ret;
   return ret;
-}
-
-static int YU12ToNV21(const void* yu12, void* nv21, int width, int height) {
-  if ((width % 2) || (height % 2)) {
-    LOGF(ERROR) << "Width or height is not even (" << width << " x " << height
-                << ")";
-    return -EINVAL;
-  }
-
-  const uint8_t* src = reinterpret_cast<const uint8_t*>(yu12);
-  uint8_t* dst = reinterpret_cast<uint8_t*>(nv21);
-  const uint8_t* u_src = src + width * height;
-  const uint8_t* v_src = src + width * height * 5 / 4;
-  uint8_t* vu_dst = dst + width * height;
-
-  memcpy(dst, src, width * height);
-
-  for (int i = 0; i < height / 2; i++) {
-    for (int j = 0; j < width / 2; j++) {
-      *vu_dst++ = *v_src++;
-      *vu_dst++ = *u_src++;
-    }
-  }
-  return 0;
 }
 
 static bool ConvertToJpeg(const android::CameraMetadata& metadata,

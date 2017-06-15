@@ -172,6 +172,7 @@ int GrallocFrameBuffer::Map() {
       }
       break;
     }
+    case V4L2_PIX_FMT_NV12M:
     case V4L2_PIX_FMT_YVU420M: {
       struct android_ycbcr ycbcr;
       ret =
