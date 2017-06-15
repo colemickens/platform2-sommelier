@@ -62,7 +62,9 @@ int CameraBufferMapper::Register(buffer_handle_t buffer) {
         import_data.offsets[i] = handle->offsets[i];
       }
 
-      uint32_t usage = GBM_BO_USE_RENDERING;
+      // TODO(jcliang): Add camera-specific usage flag once we have it in
+      //                minigbm.
+      uint32_t usage = GBM_BO_USE_LINEAR;
       if (import_data.format == DRM_FORMAT_R8) {
         usage = GBM_BO_USE_LINEAR;
       }
