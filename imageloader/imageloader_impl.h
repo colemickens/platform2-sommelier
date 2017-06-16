@@ -50,6 +50,11 @@ class ImageLoaderImpl {
   bool LoadComponent(const std::string& name, const std::string& mount_point,
                      HelperProcess* process);
 
+  // Load the specified component from the given path.
+  std::string LoadComponentAtPath(const std::string& name,
+                                  const base::FilePath& absolute_path,
+                                  HelperProcess* process);
+
   // The directory hierarchy for a component consists of the storage_root (i.e.
   // `/var/lib/imageloader`), the component_root
   // (`/var/lib/imageloader/ComponentName`), and the version folder (i.e.

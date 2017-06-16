@@ -146,6 +146,30 @@ TEST_F(ImageLoaderTest, MountValidImage) {
                                    helper_mock.get()));
 }
 
+TEST_F(ImageLoaderTest, LoadComponentAtPath) {
+  Keys keys;
+  keys.push_back(
+      std::vector<uint8_t>(std::begin(kDevPublicKey), std::end(kDevPublicKey)));
+
+  auto helper_mock = base::MakeUnique<MockHelperProcess>();
+  EXPECT_CALL(*helper_mock, SendMountCommand(_, _, _)).Times(1);
+  ON_CALL(*helper_mock, SendMountCommand(_, _, _))
+      .WillByDefault(testing::Return(true));
+
+  base::ScopedTempDir scoped_mount_dir;
+  ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
+
+  ImageLoaderConfig config(keys, temp_dir_.value().c_str(),
+                           scoped_mount_dir.path().value().c_str());
+  ImageLoaderImpl loader(std::move(config));
+
+  const std::string expected_path =
+      scoped_mount_dir.path().value() + "/PepperFlashPlayer/22.0.0.158";
+  const std::string mnt_path = loader.LoadComponentAtPath(
+      kTestComponentName, GetTestComponentPath(), helper_mock.get());
+  EXPECT_EQ(expected_path, mnt_path);
+}
+
 TEST_F(ImageLoaderTest, MountInvalidImage) {
   Keys keys;
   keys.push_back(std::vector<uint8_t>(std::begin(kDevPublicKey),

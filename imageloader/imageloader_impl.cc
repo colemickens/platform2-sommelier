@@ -74,6 +74,12 @@ std::string ImageLoaderImpl::LoadComponent(const std::string& name,
     return kBadResult;
   }
 
+  return LoadComponentAtPath(name, component_path, process);
+}
+
+std::string ImageLoaderImpl::LoadComponentAtPath(
+    const std::string& name, const base::FilePath& component_path,
+    HelperProcess* process) {
   std::unique_ptr<Component> component =
       Component::Create(component_path, config_.keys);
   if (!component) {

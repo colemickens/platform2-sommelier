@@ -66,5 +66,26 @@
       </tp:docstring>
     </arg>
   </method>
+  <method name="LoadComponentAtPath">
+    <tp:docstring>
+      Loads the component at the given path, if and only if the component
+      verifies the signature check, and returns the mount point.
+    </tp:docstring>
+    <arg name="name" type="s" direction="in">
+      <tp:docstring>
+        The name of the component.
+      </tp:docstring>
+    </arg>
+    <arg name="absolute_path" type="s" direction="in">
+      <tp:docstring>
+        The absolute path where the component is located.
+      </tp:docstring>
+    </arg>
+    <arg name="mount_point" type="s" direction="out">
+      <tp:docstring>
+        The mount point of the verified and mounted component.
+      </tp:docstring>
+    </arg>
+  </method>
 </interface>
 </node>

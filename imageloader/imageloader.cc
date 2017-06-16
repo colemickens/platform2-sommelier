@@ -9,6 +9,7 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
 #include <chromeos/dbus/service_constants.h>
 
 namespace imageloader {
@@ -112,6 +113,16 @@ bool ImageLoader::GetComponentVersion(brillo::ErrorPtr* err,
 bool ImageLoader::LoadComponent(brillo::ErrorPtr* err, const std::string& name,
                                 std::string* out_mount_point) {
   *out_mount_point = impl_.LoadComponent(name, helper_process_.get());
+  PostponeShutdown();
+  return true;
+}
+
+bool ImageLoader::LoadComponentAtPath(brillo::ErrorPtr* err,
+                                      const std::string& name,
+                                      const std::string& absolute_path,
+                                      std::string* out_mount_point) {
+  *out_mount_point = impl_.LoadComponentAtPath(
+      name, base::FilePath(absolute_path), helper_process_.get());
   PostponeShutdown();
   return true;
 }

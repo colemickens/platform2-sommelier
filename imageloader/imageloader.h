@@ -50,6 +50,13 @@ class ImageLoader : public brillo::DBusServiceDaemon,
   bool LoadComponent(brillo::ErrorPtr* err, const std::string& name,
                      std::string* out_mount_point) override;
 
+  // Load and mount a component from the specified path, which can exist
+  // outside of imageloader's reserved storage.
+  bool LoadComponentAtPath(brillo::ErrorPtr* err,
+                           const std::string& name,
+                           const std::string& component_folder_abs_path,
+                           std::string* out_mount_point) override;
+
   // Sandboxes the runtime environment, using minijail. This is publicly exposed
   // so that imageloader_main.cc can sandbox when not running as a daemon.
   static void EnterSandbox();
