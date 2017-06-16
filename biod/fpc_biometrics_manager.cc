@@ -6,6 +6,7 @@
 
 #include <algorithm>
 
+#include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -94,8 +95,10 @@ std::tuple<int, BioImage> FpcBiometricsManager::SensorLibrary::AcquireImage() {
     return std::tuple<int, BioImage>(acquire_result, BioImage());
 
   BioImage image = bio_sensor_.CreateImage();
-  if (!image || !image.SetData(&image_data))
-    return std::tuple<int, BioImage>(acquire_result, BioImage());
+  if (!image || !image.SetData(&image_data)) {
+    LOG(ERROR) << "Failed to construct BioImage for image acquired.";
+    return std::tuple<int, BioImage>(-ENOMEM, BioImage());
+  }
 
   return std::tuple<int, BioImage>(0 /* success */, std::move(image));
 }
