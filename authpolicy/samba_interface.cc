@@ -18,7 +18,6 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/sys_info.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 
@@ -101,10 +100,6 @@ const char kKeyConnectionReset[] = "NT_STATUS_CONNECTION_RESET";
 const char kKeyNetworkTimeout[] = "NT_STATUS_IO_TIMEOUT";
 const char kKeyObjectNameNotFound[] =
     "NT_STATUS_OBJECT_NAME_NOT_FOUND opening remote file ";
-
-const char kChromeOSReleaseTrack[] = "CHROMEOS_RELEASE_TRACK";
-const char kBetaChannel[] = "beta-channel";
-const char kStableChannel[] = "stable-channel";
 
 // Replacement strings for anonymization.
 const char kMachineNamePlaceholder[] = "<MACHINE_NAME>";
@@ -227,15 +222,7 @@ SambaInterface::SambaInterface(
                           Path::DEVICE_KRB5_CONF,
                           Path::DEVICE_CREDENTIAL_CACHE) {
   DCHECK(paths_);
-
-  // Set a good debug flag level depending on the channel.
-  std::string channel;
-  flags_default_level_ = AuthPolicyFlags::kQuiet;
-  if (!base::SysInfo::GetLsbReleaseValue(kChromeOSReleaseTrack, &channel)) {
-    LOG(WARNING) << "Failed to retrieve release track from sys info.";
-  } else if (channel != kBetaChannel && channel != kStableChannel) {
-    flags_default_level_ = AuthPolicyFlags::kVerbose;
-  }
+  LoadFlagsDefaultLevel();
 }
 
 ErrorType SambaInterface::Initialize(bool expect_config) {
@@ -267,7 +254,7 @@ bool SambaInterface::CleanState(const PathService* path_service) {
   // Note: We're not permitted to delete the folder and DeleteFile apparently
   // doesn't support wildcards, so DeleteFile returns false.
   DCHECK(path_service);
-  base::FilePath state_dir(path_service->Get(Path::STATE_DIR));
+  const base::FilePath state_dir(path_service->Get(Path::STATE_DIR));
   base::DeleteFile(state_dir, true /* recursive */);
   if (!base::IsDirectoryEmpty(state_dir)) {
     LOG(ERROR) << "Failed to clean state dir '" << state_dir.value() << "'";
@@ -579,6 +566,12 @@ ErrorType SambaInterface::FetchDeviceGpos(std::string* policy_blob) {
     return error;
 
   return ERROR_NONE;
+}
+
+void SambaInterface::SetDefaultLogLevel(AuthPolicyFlags::DefaultLevel level) {
+  flags_default_level_ = level;
+  LOG(INFO) << "Flags default level = " << flags_default_level_;
+  SaveFlagsDefaultLevel();
 }
 
 ErrorType SambaInterface::GetRealmInfo(protos::RealmInfo* realm_info) const {
@@ -1190,8 +1183,8 @@ ErrorType SambaInterface::DownloadGpos(
       const std::string no_file_error_key(
           base::ToLowerASCII(kKeyObjectNameNotFound + gpo_path.server_));
       if (Contains(smbclient_out_lower, no_file_error_key)) {
-        LOG(WARNING) << "Ignoring missing preg file '"
-                     << gpo_path.local_.value() << "'";
+        LOG_IF(WARNING, flags_.log_gpo())
+            << "Ignoring missing preg file '" << gpo_path.local_.value() << "'";
       } else {
         LOG(ERROR) << "Failed to download preg file '"
                    << gpo_path.local_.value() << "'";
@@ -1235,6 +1228,40 @@ void SambaInterface::Reset() {
   config_.reset();
   workgroup_.clear();
   retry_machine_kinit_ = false;
+}
+
+void SambaInterface::LoadFlagsDefaultLevel() {
+  const base::FilePath default_level_path(
+      paths_->Get(Path::FLAGS_DEFAULT_LEVEL));
+  std::string level_str;
+  // Having no file is the out-of-box state with no level set, so exit quietly.
+  if (!base::PathExists(default_level_path))
+    return;
+  if (!base::ReadFileToStringWithMaxSize(default_level_path, &level_str, 16)) {
+    PLOG(ERROR) << "Failed to read flags default level from "
+                << default_level_path.value();
+    return;
+  }
+  int level_int;
+  if (!base::StringToInt(level_str, &level_int) ||
+      level_int < AuthPolicyFlags::kMinLevel ||
+      level_int > AuthPolicyFlags::kMaxLevel) {
+    LOG(ERROR) << "Bad flags default level '" << level_str << "'";
+    return;
+  }
+  flags_default_level_ = static_cast<AuthPolicyFlags::DefaultLevel>(level_int);
+  LOG(INFO) << "Flags default level = " << flags_default_level_;
+}
+
+void SambaInterface::SaveFlagsDefaultLevel() {
+  const base::FilePath default_level_path(
+      paths_->Get(Path::FLAGS_DEFAULT_LEVEL));
+  const std::string level_str = std::to_string(flags_default_level_);
+  const int size = static_cast<int>(level_str.size());
+  if (base::WriteFile(default_level_path, level_str.data(), size) != size) {
+    LOG(ERROR) << "Failed to write flags default level to "
+               << default_level_path.value();
+  }
 }
 
 void SambaInterface::ReloadDebugFlags() {

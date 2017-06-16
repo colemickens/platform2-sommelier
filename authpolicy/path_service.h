@@ -59,8 +59,10 @@ enum class Path {
   SMBCLIENT_SECCOMP,
 
   // Misc.
-  DEBUG_FLAGS,  // File with debug flags, see AuthPolicyFlags.
-  KRB5_TRACE,   // kinit trace log.
+  DEBUG_FLAGS,          // File with debug flags, see AuthPolicyFlags.
+  FLAGS_DEFAULT_LEVEL,  // File with flags default level (as integer), see
+                        // AuthPolicyFlags::DefaultLevel.
+  KRB5_TRACE,           // kinit trace log.
 };
 
 // Simple path service.

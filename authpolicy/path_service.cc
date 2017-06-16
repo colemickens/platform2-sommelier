@@ -57,6 +57,8 @@ const char kSmbClientSeccompFilterPath[] =
 
 // Debug flags.
 const char kDebugFlagsPath[] = "/etc/authpolicyd_flags";
+// Flags default level.
+const char kFlagsDefaultLevelPath[] = "/run/authpolicyd/flags_default_level";
 // kinit trace logs.
 const char kKrb5Trace[] = "/krb5_trace";
 
@@ -113,6 +115,7 @@ void PathService::Initialize() {
   Insert(Path::SMBCLIENT_SECCOMP, kSmbClientSeccompFilterPath);
 
   Insert(Path::DEBUG_FLAGS, kDebugFlagsPath);
+  Insert(Path::FLAGS_DEFAULT_LEVEL, kFlagsDefaultLevelPath);
   // Trace has to be in a place writable for authpolicyd-exec!
   Insert(Path::KRB5_TRACE, samba_dir + kKrb5Trace);
 }

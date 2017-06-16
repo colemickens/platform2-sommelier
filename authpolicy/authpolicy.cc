@@ -195,6 +195,20 @@ void AuthPolicy::RefreshDevicePolicy(PolicyResponseCallback callback) {
   StorePolicy(policy_blob, nullptr, std::move(timer), std::move(callback));
 }
 
+std::string AuthPolicy::SetDefaultLogLevel(int32_t level) {
+  LOG(INFO) << "Received 'SetDefaultLogLevel' request";
+  if (level < AuthPolicyFlags::kMinLevel ||
+      level > AuthPolicyFlags::kMaxLevel) {
+    std::string message = base::StringPrintf("Level must be between %i and %i.",
+                                             AuthPolicyFlags::kMinLevel,
+                                             AuthPolicyFlags::kMaxLevel);
+    LOG(ERROR) << message;
+    return message;
+  }
+  samba_.SetDefaultLogLevel(static_cast<AuthPolicyFlags::DefaultLevel>(level));
+  return std::string();
+}
+
 void AuthPolicy::StorePolicy(const std::string& policy_blob,
                              const std::string* account_id_key,
                              std::unique_ptr<ScopedTimerReporter> timer,

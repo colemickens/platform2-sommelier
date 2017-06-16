@@ -75,6 +75,8 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
 
   void RefreshDevicePolicy(PolicyResponseCallback callback) override;
 
+  std::string SetDefaultLogLevel(int32_t level) override;
+
   // Disable retry sleep for unit tests.
   void DisableRetrySleepForTesting() { samba_.DisableRetrySleepForTesting(); }
 

@@ -50,7 +50,6 @@ using dbus::Response;
 using testing::_;
 using testing::AnyNumber;
 using testing::Return;
-using testing::SaveArg;
 
 namespace em = enterprise_management;
 
@@ -291,7 +290,7 @@ class AuthPolicyTest : public testing::Test {
         .Times(1)
         .WillOnce(Return(message_loop_->task_runner().get()));
     EXPECT_CALL(*mock_exported_object_.get(), ExportMethod(_, _, _, _))
-        .Times(8);
+        .Times(AnyNumber());
 
     // Create AuthPolicy instance.
     authpolicy_ = base::MakeUnique<AuthPolicy>(metrics_.get(), paths_.get());

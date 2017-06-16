@@ -36,12 +36,15 @@ class AuthPolicyFlags {
  public:
   // Defines 4 sets of flag levels for SetDefaults().
   enum DefaultLevel {
-    kQuiet,     // All flags off (default).
-    kTaciturn,  // A few logs only with important stats.
-    kChatty,    // More verbose logs, low debug level.
-    kVerbose,   // Log everything except seccomp, high debug level. Seccomp
-                // failure logging whitelists a few syscalls and hence has a
-                // negative impact on security.
+    // Note: Numbers referenced in authpolicy_debug command help in crosh!
+    kQuiet = 0,     // All flags off (default).
+    kTaciturn = 1,  // A few logs only with important stats.
+    kChatty = 2,    // More verbose logs, low debug level.
+    kVerbose = 3,   // Log everything except seccomp, high debug level. Seccomp
+                    // failure logging whitelists a few syscalls and hence has a
+                    // negative impact on security.
+    kMinLevel = kQuiet,
+    kMaxLevel = kVerbose
   };
 
   // Applies defaults according to |default_level|.

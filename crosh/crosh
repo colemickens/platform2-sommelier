@@ -332,7 +332,7 @@ cmd_set_time() (
   fi
   # Reply format: <dbus response header>\n    uint32 <code>\n
   local code
-  code=$(echo "${reply}" | sed -n -e '$s/.*uint32 \([0-9]\).*/\1/p')
+  code=$(echo "${reply}" | sed -n -E '$s/.*uint32 ([0-9]).*/\1/p')
   case "${code}" in
   0)
     echo "Time has been set."
@@ -502,6 +502,47 @@ cmd_wpa_debug() (
     set -- --help
   fi
   /usr/bin/wpa_debug "$@"
+)
+
+USAGE_authpolicy_debug='<level>'
+HELP_authpolicy_debug='
+  Set authpolicy daemon debugging level.
+  <level> can be 0 (quiet), 1 (taciturn), 2 (chatty), or 3 (verbose).
+'
+cmd_authpolicy_debug() (
+  if [ $# -ne 1 ]; then
+    help "exactly one argument (level) accepted"
+    return 1
+  fi
+  local level="$1"
+  if ! check_digits "${level}"; then
+    help "level must be a number"
+    return 1
+  fi
+
+  local reply status
+  reply=$(dbus-send --system --type=method_call --print-reply \
+      --dest=org.chromium.AuthPolicy /org/chromium/AuthPolicy \
+      "org.chromium.AuthPolicy.SetDefaultLogLevel" "int32:$1" 2>&1)
+  status=$?
+  if [ ${status} -ne 0 ]; then
+    echo "ERROR: ${reply}"
+    return 1
+  fi
+  # Reply format: <dbus response header>\n    string "<error_message>"\n
+  local error_message
+  error_message=$(echo "${reply}" | sed -n -E '$s/.*string "(.*)"/\1/p')
+  if [ "${error_message}" = "" ]; then
+    echo "Successfully set debugging level to ${level}."
+    if [ ${level} -gt 0 ]; then
+      echo "Debug logs turned on. Be sure to turn them off again when you are"
+      echo "done, e.g. by rebooting the device or setting the level to 0."
+    else
+      echo "Debug logs turned off."
+    fi
+  else
+    help "${error_message}"
+  fi
 )
 
 USAGE_set_arpgw='<true | false>'

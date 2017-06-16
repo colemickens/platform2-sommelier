@@ -80,5 +80,21 @@
       <arg name="error_code" type="i" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
+
+    <!--
+         SetDefaultLogLevel:
+         @level: Default log level, 0=quiet, 1=taciturn, 2=chatty, 3=verbose.
+         @error_message: Error message, empty if no error occurred.
+
+         Sets the default log level for the daemon. The log level persists
+         between authpolicyd restarts, but gets wiped on reboot. The defaults
+         can be overridden in a fine-grained manner with a json flags file
+         (requires a writeable rootfs), see authpolicy_flags.h.
+    -->
+    <method name="SetDefaultLogLevel">
+      <arg name="level" type="i" direction="in"/>
+      <arg name="error_message" type="s" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>

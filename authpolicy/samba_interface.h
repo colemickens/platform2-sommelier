@@ -95,6 +95,11 @@ class SambaInterface {
   // which is used for authentication for policy fetch.
   ErrorType FetchDeviceGpos(std::string* policy_blob);
 
+  // Sets the default log level, see AuthPolicyFlags::DefaultLevel for details.
+  // The level persists between restarts of authpolicyd, but gets reset on
+  // reboot.
+  void SetDefaultLogLevel(AuthPolicyFlags::DefaultLevel level);
+
   // Disable retry sleep for unit tests.
   void DisableRetrySleepForTesting() {
     smbclient_retry_sleep_enabled_ = false;
@@ -193,6 +198,14 @@ class SambaInterface {
   // Resets internal state to an 'unenrolled' state by wiping configuration and
   // user data.
   void Reset();
+
+  // Loads |flags_default_level_| from Path::FLAGS_DEFAULT_LEVEL. Logs an
+  // error if the file exists, but the level cannot be loaded. Fails silently if
+  // the file does not exist.
+  void LoadFlagsDefaultLevel();
+
+  // Saves |flags_default_level_| to Path::FLAGS_DEFAULT_LEVEL. Logs on error.
+  void SaveFlagsDefaultLevel();
 
   // Reloads debug flags. Should be done on every public method called from
   // D-Bus, so that authpolicyd doesn't have to be restarted if the flags
