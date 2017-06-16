@@ -3,15 +3,13 @@
 # found in the LICENSE file.
 
 include common.mk
+include pc_utils.mk
 
-ANDROID_INCLUDE := $(abspath $(SRC)/header_files/include)
-ANDROID_INCLUDE_PATHS := \
-	-I$(ANDROID_INCLUDE) \
-	-I$(ANDROID_INCLUDE)/hardware/libhardware/include \
-	-I$(ANDROID_INCLUDE)/system/core/include
+PC_DEPS := arc-camera3-android-headers
+PC_CFLAGS := $(call get_pc_cflags,$(PC_DEPS))
 
 CPPFLAGS += -D_GNU_SOURCE -I$(abspath $(SRC)) -I$(abspath $(SRC)/include) \
-	    $(ANDROID_INCLUDE_PATHS)
+	    $(PC_CFLAGS)
 CXXFLAGS += -std=c++11 -Wpointer-arith
 CFLAGS += -std=c99
 

@@ -5,20 +5,11 @@
 include common.mk
 include pc_utils.mk
 
-PC_DEPS := libchrome-$(BASE_VER)
+PC_DEPS := arc-camera3-android-headers
 PC_CFLAGS := $(call get_pc_cflags,$(PC_DEPS))
-PC_LIBS := $(call get_pc_libs,$(PC_DEPS))
-
-ANDROID_INCLUDE := $(abspath $(SRC)/android/header_files/include)
-ANDROID_INCLUDE_PATHS := \
-	-I$(ANDROID_INCLUDE) \
-	-I$(ANDROID_INCLUDE)/hardware/libhardware/include \
-	-I$(ANDROID_INCLUDE)/system/core/include
-
-LDLIBS += $(PC_LIBS)
 
 CPPFLAGS += $(PC_CFLAGS) -D_GNU_SOURCE -I$(abspath $(SRC)) \
-	    -I$(abspath $(SRC)/include) $(ANDROID_INCLUDE_PATHS)
+	    -I$(abspath $(SRC)/include)
 CXXFLAGS += -std=c++11 -Wpointer-arith
 CFLAGS += -std=c99
 

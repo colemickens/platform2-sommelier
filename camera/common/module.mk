@@ -6,8 +6,11 @@ include common.mk
 include pc_utils.mk
 
 future_unittest_OBJS = common/future.o common/future_unittest.o
-future_unittest_LIBS = -lgtest
+future_unittest_PC_DEPS := libchrome-$(BASE_VER)
+future_unittest_CPPFLAGS := $(call get_pc_cflags,$(future_unittest_PC_DEPS))
+future_unittest_LIBS = $(call get_pc_libs,$(future_unittest_PC_DEPS)) -lgtest
 CXX_BINARY(common/future_unittest): $(future_unittest_OBJS)
+CXX_BINARY(common/future_unittest): CPPFLAGS += $(future_unittest_CPPFLAGS)
 CXX_BINARY(common/future_unittest): LDLIBS += $(future_unittest_LIBS)
 clean: CLEAN(common/future_unittest)
 tests: CXX_BINARY(common/future_unittest)
@@ -15,7 +18,7 @@ tests: CXX_BINARY(common/future_unittest)
 camera_buffer_mapper_unittest_OBJS = \
 	common/camera_buffer_mapper.o \
 	common/camera_buffer_mapper_unittest.o
-camera_buffer_mapper_unittest_PC_DEPS := gbm libdrm
+camera_buffer_mapper_unittest_PC_DEPS := gbm libchrome-$(BASE_VER) libdrm
 camera_buffer_mapper_unittest_CPPFLAGS = \
 	$(call get_pc_cflags,$(camera_buffer_mapper_unittest_PC_DEPS))
 camera_buffer_mapper_unittest_LIBS = \
