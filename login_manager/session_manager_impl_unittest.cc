@@ -288,6 +288,14 @@ class SessionManagerImplTest : public ::testing::Test {
   void SetUp() override {
     impl_.SetSystemClockLastSyncInfoRetryDelayForTesting(base::TimeDelta());
 
+    // 10 GB Free Disk Space for ARC launch.
+    ON_CALL(utils_, AmountOfFreeDiskSpace(_))
+        .WillByDefault(Return(10LL << 30));
+    ON_CALL(utils_, GetDevModeState())
+        .WillByDefault(Return(DevModeState::DEV_MODE_OFF));
+    ON_CALL(utils_, GetVmState())
+        .WillByDefault(Return(VmState::OUTSIDE_VM));
+
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     utils_.set_base_dir_for_testing(tmpdir_.path());
     SetSystemSalt(&fake_salt_);
@@ -305,9 +313,10 @@ class SessionManagerImplTest : public ::testing::Test {
     ASSERT_TRUE(utils_.CreateDir(
         base::FilePath(FILE_PATH_LITERAL("/mnt/stateful_partition"))));
 
-    auto factory = base::MakeUnique<MockUserPolicyServiceFactory>();
-    EXPECT_CALL(*factory, Create(_))
-        .WillRepeatedly(
+    auto factory =
+        base::MakeUnique<testing::NiceMock<MockUserPolicyServiceFactory>>();
+    ON_CALL(*factory, Create(_))
+        .WillByDefault(
             Invoke(this, &SessionManagerImplTest::CreateUserPolicyService));
     auto device_local_account_policy =
         base::MakeUnique<DeviceLocalAccountPolicyService>(tmpdir_.path(),
@@ -327,8 +336,6 @@ class SessionManagerImplTest : public ::testing::Test {
         .WillRepeatedly(Return(true));
     impl_.StartDBusService();
     ASSERT_TRUE(Mock::VerifyAndClearExpectations(exported_object()));
-
-    SetDefaultMockBehavior();
   }
 
   void TearDown() override {
@@ -446,9 +453,6 @@ class SessionManagerImplTest : public ::testing::Test {
     Mock::VerifyAndClearExpectations(&nss_);
     Mock::VerifyAndClearExpectations(&utils_);
     Mock::VerifyAndClearExpectations(exported_object());
-
-    // Reset the default mock behavior.
-    SetDefaultMockBehavior();
   }
 
   void GotLastSyncInfo(bool network_synchronized) {
@@ -480,7 +484,7 @@ class SessionManagerImplTest : public ::testing::Test {
   MockProcessManagerService manager_;
   MockMetrics metrics_;
   MockNssUtil nss_;
-  MockSystemUtils utils_;
+  testing::NiceMock<MockSystemUtils> utils_;
   FakeCrossystem crossystem_;
   MockVpdProcess vpd_process_;
   MockPolicyKey owner_key_;
@@ -503,16 +507,6 @@ class SessionManagerImplTest : public ::testing::Test {
   static const int kAllKeyFlags;
 
  private:
-  void SetDefaultMockBehavior() {
-    // 10 GB Free Disk Space for ARC launch.
-    EXPECT_CALL(utils_, AmountOfFreeDiskSpace(_))
-        .WillRepeatedly(Return(10LL << 30));
-    EXPECT_CALL(utils_, GetDevModeState())
-        .WillRepeatedly(Return(DevModeState::DEV_MODE_OFF));
-    EXPECT_CALL(utils_, GetVmState())
-        .WillRepeatedly(Return(VmState::OUTSIDE_VM));
-  }
-
   void ExpectSessionBoilerplate(const string& account_id_string,
                                 bool guest,
                                 bool for_owner) {
@@ -1597,8 +1591,8 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_NoSession) {
 TEST_F(SessionManagerImplTest, ArcInstanceStart_LowDisk) {
   ExpectAndRunStartSession(kSaneEmail);
 
-  // No free disk space.
-  EXPECT_CALL(utils_, AmountOfFreeDiskSpace(_)).WillRepeatedly(Return(0));
+  // Emulate no free disk space.
+  ON_CALL(utils_, AmountOfFreeDiskSpace(_)).WillByDefault(Return(0));
 
   brillo::ErrorPtr error;
   StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
@@ -1612,6 +1606,10 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_LowDisk) {
 
 TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
   ExpectAndRunStartSession(kSaneEmail);
+
+  // Overrides dev mode state.
+  ON_CALL(utils_, GetDevModeState())
+      .WillByDefault(Return(DevModeState::DEV_MODE_ON));
 
   EXPECT_CALL(
       *init_controller_,
@@ -1648,10 +1646,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
                              ElementsAre(),
                              InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  // Overrides dev mode state.
-  EXPECT_CALL(utils_, GetDevModeState())
-      .WillOnce(Return(DevModeState::DEV_MODE_ON))
-      .RetiresOnSaturation();
 
   std::string container_instance_id;
   {
