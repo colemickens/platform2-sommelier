@@ -376,7 +376,7 @@ void ChapsAdaptor::GetSlotList(const vector<uint8_t>& isolate_credential,
 
 void ChapsAdaptor::GetSlotInfo(const vector<uint8_t>& isolate_credential,
                                uint64_t slot_id,
-                               vector<uint8_t>* slot_info,
+                               SlotInfo* slot_info,
                                uint32_t* result) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
@@ -384,20 +384,16 @@ void ChapsAdaptor::GetSlotInfo(const vector<uint8_t>& isolate_credential,
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
   ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
-  SlotInfo proto;
   *result = service_->GetSlotInfo(isolate_credential_blob,
                                   slot_id,
-                                  &proto);
-  slot_info->clear();
-  slot_info->resize(proto.ByteSize());
-  proto.SerializeToArray(slot_info->data(), slot_info->size());
+                                  slot_info);
   VLOG_IF(2, *result == CKR_OK) << "OUT: " << "slot_description="
-                                << proto.slot_description();
+                                << slot_info->slot_description();
 }
 
 void ChapsAdaptor::GetTokenInfo(const vector<uint8_t>& isolate_credential,
                                 uint64_t slot_id,
-                                vector<uint8_t>* token_info,
+                                TokenInfo* token_info,
                                 uint32_t* result) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
@@ -405,14 +401,10 @@ void ChapsAdaptor::GetTokenInfo(const vector<uint8_t>& isolate_credential,
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
   ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
-  TokenInfo proto;
   *result = service_->GetTokenInfo(isolate_credential_blob,
                                    slot_id,
-                                   &proto);
-  token_info->clear();
-  token_info->resize(proto.ByteSize());
-  proto.SerializeToArray(token_info->data(), token_info->size());
-  VLOG_IF(2, *result == CKR_OK) << "OUT: " << "label=" << proto.label();
+                                   token_info);
+  VLOG_IF(2, *result == CKR_OK) << "OUT: " << "label=" << token_info->label();
 }
 
 void ChapsAdaptor::GetMechanismList(const vector<uint8_t>& isolate_credential,
@@ -435,7 +427,7 @@ void ChapsAdaptor::GetMechanismList(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::GetMechanismInfo(const vector<uint8_t>& isolate_credential,
                                     uint64_t slot_id,
                                     uint64_t mechanism_type,
-                                    std::vector<uint8_t>* mechanism_info,
+                                    MechanismInfo* mechanism_info,
                                     uint32_t* result) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
@@ -444,19 +436,16 @@ void ChapsAdaptor::GetMechanismInfo(const vector<uint8_t>& isolate_credential,
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
   ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
-  MechanismInfo proto;
   *result = service_->GetMechanismInfo(isolate_credential_blob,
                                        slot_id,
                                        mechanism_type,
-                                       &proto);
-  mechanism_info->clear();
-  mechanism_info->resize(proto.ByteSize());
-  proto.SerializeToArray(mechanism_info->data(), mechanism_info->size());
+                                       mechanism_info);
   VLOG_IF(2, *result == CKR_OK) << "OUT: " << "min_key_size="
-                                << proto.min_key_size();
+                                << mechanism_info->min_key_size();
   VLOG_IF(2, *result == CKR_OK) << "OUT: " << "max_key_size="
-                                << proto.max_key_size();
-  VLOG_IF(2, *result == CKR_OK) << "OUT: " << "flags=" << proto.flags();
+                                << mechanism_info->max_key_size();
+  VLOG_IF(2, *result == CKR_OK) << "OUT: " << "flags="
+                                << mechanism_info->flags();
 }
 
 uint32_t ChapsAdaptor::InitToken(const vector<uint8_t>& isolate_credential,
@@ -562,7 +551,7 @@ uint32_t ChapsAdaptor::CloseAllSessions(
 
 void ChapsAdaptor::GetSessionInfo(const vector<uint8_t>& isolate_credential,
                                   uint64_t session_id,
-                                  std::vector<uint8_t>* session_info,
+                                  SessionInfo* session_info,
                                   uint32_t* result) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
@@ -570,18 +559,15 @@ void ChapsAdaptor::GetSessionInfo(const vector<uint8_t>& isolate_credential,
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
   ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
-  SessionInfo proto;
   *result = service_->GetSessionInfo(isolate_credential_blob,
                                      session_id,
-                                     &proto);
-  session_info->clear();
-  session_info->resize(proto.ByteSize());
-  proto.SerializeToArray(session_info->data(), session_info->size());
-  VLOG_IF(2, *result == CKR_OK) << "OUT: " << "slot_id=" << proto.slot_id();
-  VLOG_IF(2, *result == CKR_OK) << "OUT: " << "state=" << proto.state();
-  VLOG_IF(2, *result == CKR_OK) << "OUT: " << "flags=" << proto.flags();
+                                     session_info);
+  VLOG_IF(2, *result == CKR_OK) << "OUT: " << "slot_id="
+                                << session_info->slot_id();
+  VLOG_IF(2, *result == CKR_OK) << "OUT: " << "state=" << session_info->state();
+  VLOG_IF(2, *result == CKR_OK) << "OUT: " << "flags=" << session_info->flags();
   VLOG_IF(2, *result == CKR_OK) << "OUT: " << "device_error="
-                                << proto.device_error();
+                                << session_info->device_error();
 }
 
 void ChapsAdaptor::GetOperationState(const vector<uint8_t>& isolate_credential,

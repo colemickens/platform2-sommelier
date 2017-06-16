@@ -12,6 +12,7 @@
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/exported_object_manager.h>
+#include <chaps/proto_bindings/ck_structs.pb.h>
 
 namespace base {
 class Lock;
@@ -63,11 +64,11 @@ class ChapsAdaptor {
                    uint32_t* result);
   void GetSlotInfo(const std::vector<uint8_t>& isolate_credential,
                    uint64_t slot_id,
-                   std::vector<uint8_t>* slot_info,
+                   SlotInfo* slot_info,
                    uint32_t* result);
   void GetTokenInfo(const std::vector<uint8_t>& isolate_credential,
                     uint64_t slot_id,
-                    std::vector<uint8_t>* token_info,
+                    TokenInfo* token_info,
                     uint32_t* result);
   void GetMechanismList(const std::vector<uint8_t>& isolate_credential,
                         uint64_t slot_id,
@@ -76,7 +77,7 @@ class ChapsAdaptor {
   void GetMechanismInfo(const std::vector<uint8_t>& isolate_credential,
                         uint64_t slot_id,
                         uint64_t mechanism_type,
-                        std::vector<uint8_t>* mechanism_info,
+                        MechanismInfo* mechanism_info,
                         uint32_t* result);
   uint32_t InitToken(const std::vector<uint8_t>& isolate_credential,
                      uint64_t slot_id,
@@ -104,7 +105,7 @@ class ChapsAdaptor {
                             uint64_t slot_id);
   void GetSessionInfo(const std::vector<uint8_t>& isolate_credential,
                       uint64_t session_id,
-                      std::vector<uint8_t>* session_info,
+                      SessionInfo* session_info,
                       uint32_t* result);
   void GetOperationState(const std::vector<uint8_t>& isolate_credential,
                          uint64_t session_id,
