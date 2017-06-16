@@ -121,6 +121,11 @@ constexpr base::FilePath::CharType kSkippedFileListFileName[] =
 // frequency.
 constexpr base::TimeDelta kStatusSignalInterval =
     base::TimeDelta::FromSeconds(1);
+// {Source,Referrer}URL xattrs are from chrome downloads and are not used on
+// ChromeOS.  They may be very large though, potentially preventing the
+// migration of other attributes.
+constexpr char kSourceURLXattrName[] = "user.xdg.origin.url";
+constexpr char kReferrerURLXattrName[] = "user.xdg.referrer.url";
 
 // Job represents a job to migrate a file or a symlink.
 struct MigrationHelper::Job {
@@ -775,10 +780,12 @@ bool MigrationHelper::CopyExtendedAttributes(const base::FilePath& child) {
   }
 
   for (const std::string& name : xattr_names) {
-    std::string value;
     if (name == namespaced_mtime_xattr_name_ ||
-        name == namespaced_atime_xattr_name_)
+        name == namespaced_atime_xattr_name_ || name == kSourceURLXattrName ||
+        name == kReferrerURLXattrName) {
       continue;
+    }
+    std::string value;
     if (!platform_->GetExtendedFileAttributeAsString(from, name, &value)) {
       RecordFileErrorWithCurrentErrno(kMigrationFailedAtGetAttribute, child);
       return false;

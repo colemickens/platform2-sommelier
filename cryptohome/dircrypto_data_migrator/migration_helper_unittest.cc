@@ -467,6 +467,18 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
                       kValue,
                       sizeof(kValue),
                       XATTR_CREATE));
+  ASSERT_EQ(0,
+            lsetxattr(kFromFilePath.value().c_str(),
+                      kSourceURLXattrName,
+                      kValue,
+                      sizeof(kValue),
+                      XATTR_CREATE));
+  ASSERT_EQ(0,
+            lsetxattr(kFromFilePath.value().c_str(),
+                      kReferrerURLXattrName,
+                      kValue,
+                      sizeof(kValue),
+                      XATTR_CREATE));
 
   // Set ext2 attributes
   base::ScopedFD from_fd(
@@ -507,6 +519,18 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   EXPECT_EQ(ENODATA, errno);
   EXPECT_EQ(
       -1, lgetxattr(kToFilePath.value().c_str(), kAtimeXattrName, nullptr, 0));
+  EXPECT_EQ(ENODATA, errno);
+
+  // Quarantine xattrs storing the origin and referrer of downloaded files
+  // should also be removed.
+  EXPECT_EQ(
+      -1,
+      lgetxattr(kToFilePath.value().c_str(), kSourceURLXattrName, nullptr, 0));
+  EXPECT_EQ(ENODATA, errno);
+  EXPECT_EQ(
+      -1,
+      lgetxattr(
+          kToFilePath.value().c_str(), kReferrerURLXattrName, nullptr, 0));
   EXPECT_EQ(ENODATA, errno);
 
   base::ScopedFD to_fd(

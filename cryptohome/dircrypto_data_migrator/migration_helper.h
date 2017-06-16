@@ -26,6 +26,8 @@ namespace dircrypto_data_migrator {
 
 extern const base::FilePath::CharType kMigrationStartedFileName[];
 extern const base::FilePath::CharType kSkippedFileListFileName[];
+extern const char kSourceURLXattrName[];
+extern const char kReferrerURLXattrName[];
 
 // A helper class for migrating files to new file system with small overhead of
 // diskspace.
