@@ -13,6 +13,17 @@
 
 namespace biod {
 
+const char* BioAlgorithmTypeToString(BioAlgorithmType type) {
+  switch (type) {
+    case BioAlgorithmType::kFingerprint:
+      return "Fingerprint";
+    case BioAlgorithmType::kIris:
+      return "Iris";
+    default:
+      return "Unknown";
+  }
+}
+
 BioImage::BioImage(BioImage&& rhs) {
   // Use swap to avoid atomic ref counting
   lib_.swap(rhs.lib_);
@@ -400,6 +411,14 @@ bool BioLibrary::Init(const base::FilePath& path) {
     LOG(ERROR) << "Failed to init bio algorithm library: " << ret;
     return false;
   }
+
+  LOG(INFO) << "FPC Algorithm Info ";
+  LOG(INFO) << "  Algorithm Type    : "
+            << BioAlgorithmTypeToString(GetAlgorithmType());
+  LOG(INFO) << "  Algorithm Name    : " << GetAlgorithmName();
+  LOG(INFO) << "  Algorithm Version : " << GetAlgorithmVersion();
+  LOG(INFO) << "  Algorithm Banner  : " << GetAlgorithmBanner();
+
   needs_exit_ = true;
 
   return true;
