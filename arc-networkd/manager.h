@@ -70,6 +70,7 @@ class Manager final : public brillo::DBusDaemon {
   std::unique_ptr<HelperProcess> ip_helper_;
 
   std::string int_ifname_;
+  std::string mdns_ipaddr_;
   std::string lan_ifname_;
   std::string con_ifname_;
 

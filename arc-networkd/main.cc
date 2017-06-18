@@ -21,6 +21,9 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(log_to_stderr, false, "Log to both syslog and stderr");
   DEFINE_string(internal_interface, "br0",
                 "Name of the host interface that connects to the guest");
+  DEFINE_string(mdns_ip,
+                "100.115.92.2",
+                "Guest IP to replace with the LAN IP in mDNS responses");
   DEFINE_string(container_interface, "arc0",
                 "Name of the guest interface that connects to the host");
   DEFINE_int32(con_netns, 0, "Container's network namespace (PID)");
@@ -38,6 +41,7 @@ int main(int argc, char* argv[]) {
 
   arc_networkd::Options opt;
   opt.int_ifname = FLAGS_internal_interface;
+  opt.mdns_ipaddr = FLAGS_mdns_ip;
   opt.con_ifname = FLAGS_container_interface;
   opt.con_netns = FLAGS_con_netns;
 

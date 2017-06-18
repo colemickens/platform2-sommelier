@@ -41,8 +41,12 @@ class MulticastForwarder : public MessageLoopForIO::Watcher {
   // sessions must be initiated from |int_ifname| and will always
   // create a state table entry; "unsolicited" traffic from
   // |lan_ifname| will be silently discarded.
+  //
+  // |mdns_ipaddr|, if non-empty, will be used to rewrite mDNS A records to use
+  // the IP address from |lan_ifname|.
   bool Start(const std::string& int_ifname,
              const std::string& lan_ifname,
+             const std::string& mdns_ipaddr,
              const std::string& mcast_addr,
              unsigned short port,
              bool allow_stateless);
@@ -52,10 +56,19 @@ class MulticastForwarder : public MessageLoopForIO::Watcher {
   void OnFileCanWriteWithoutBlocking(int fd) override {}
 
  protected:
+  // Rewrite mDNS A records pointing to |arc_ip_| so that they point to
+  // |lan_ip_| instead, so that Android can advertise services to devices
+  // on the LAN.  This modifies |data|, an incoming packet that is |bytes|
+  // long.
+  void TranslateMdnsIp(char* data, ssize_t bytes);
+
   void CleanupTask();
 
   std::string int_ifname_;
+  struct in_addr mdns_ip_;
   std::string lan_ifname_;
+  struct in_addr lan_ip_;
+
   struct in_addr mcast_addr_;
   unsigned int port_;
   bool allow_stateless_;

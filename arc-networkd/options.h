@@ -15,6 +15,7 @@ namespace arc_networkd {
 // the main process and any subprocesses.
 struct Options {
   std::string int_ifname;
+  std::string mdns_ipaddr;
   std::string con_ifname;
   pid_t con_netns;
 };

@@ -33,7 +33,9 @@ const uint64_t kManagerCapMask = CAP_TO_MASK(CAP_NET_RAW);
 namespace arc_networkd {
 
 Manager::Manager(const Options& opt, std::unique_ptr<HelperProcess> ip_helper)
-    : int_ifname_(opt.int_ifname), con_ifname_(opt.con_ifname) {
+    : int_ifname_(opt.int_ifname),
+      mdns_ipaddr_(opt.mdns_ipaddr),
+      con_ifname_(opt.con_ifname) {
   ip_helper_ = std::move(ip_helper);
 }
 
@@ -90,11 +92,13 @@ void Manager::OnDefaultInterfaceChanged(const std::string& ifname) {
 
     mdns_forwarder_->Start(int_ifname_,
                            ifname,
+                           mdns_ipaddr_,
                            kMdnsMcastAddress,
                            kMdnsPort,
                            /* allow_stateless */ true);
     ssdp_forwarder_->Start(int_ifname_,
                            ifname,
+                           /* mdns_ipaddr */ "",
                            kSsdpMcastAddress,
                            kSsdpPort,
                            /* allow_stateless */ false);

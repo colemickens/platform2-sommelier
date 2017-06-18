@@ -17,6 +17,9 @@
 #include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
 
+#include "arc-networkd/dns/dns_protocol.h"
+#include "arc-networkd/dns/dns_response.h"
+
 namespace {
 
 const int kNumTempSockets = 4;
@@ -30,6 +33,7 @@ namespace arc_networkd {
 
 bool MulticastForwarder::Start(const std::string& int_ifname,
                                const std::string& lan_ifname,
+                               const std::string& mdns_ipaddr,
                                const std::string& mcast_addr,
                                unsigned short port,
                                bool allow_stateless) {
@@ -43,12 +47,18 @@ bool MulticastForwarder::Start(const std::string& int_ifname,
     return false;
   }
 
+  mdns_ip_.s_addr = INADDR_ANY;
+  if (!mdns_ipaddr.empty() && !inet_aton(mdns_ipaddr.c_str(), &mdns_ip_)) {
+    LOG(WARNING) << "invalid internal IP address " << mdns_ipaddr;
+  }
+
   int_socket_.reset(new MulticastSocket());
   int_socket_->Bind(int_ifname, mcast_addr_, port, this);
 
   if (allow_stateless_) {
     lan_socket_.reset(new MulticastSocket());
     lan_socket_->Bind(lan_ifname, mcast_addr_, port, this);
+    lan_ip_ = lan_socket_->interface_ip();
   }
 
   CleanupTask();
@@ -79,6 +89,7 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd) {
       return;
     } else if (fd == int_socket_->fd() &&
                fromaddr.sin_port == temp->int_addr.sin_port) {
+      TranslateMdnsIp(data, bytes);
       temp->SendTo(data, bytes, dst);
       return;
     }
@@ -87,6 +98,7 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd) {
   // Forward stateless traffic.
   if (allow_stateless_ && port == port_) {
     if (fd == int_socket_->fd()) {
+      TranslateMdnsIp(data, bytes);
       lan_socket_->SendTo(data, bytes, dst);
       return;
     } else if (fd == lan_socket_->fd()) {
@@ -113,6 +125,48 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd) {
   while (temp_sockets_.size() > kNumTempSockets)
     temp_sockets_.pop_back();
   temp_sockets_.push_front(std::move(new_sock));
+}
+
+void MulticastForwarder::TranslateMdnsIp(char* data, ssize_t bytes) {
+  if (mdns_ip_.s_addr == INADDR_ANY) {
+    return;
+  }
+
+  // Make sure this is a valid, successful DNS response from the Android host.
+  if (bytes > net::dns_protocol::kMaxUDPSize || bytes <= 0) {
+    return;
+  }
+  net::DnsResponse resp;
+  memcpy(resp.io_buffer()->data(), data, bytes);
+  if (!resp.InitParseWithoutQuery(bytes) ||
+      !(resp.flags() & net::dns_protocol::kFlagResponse) ||
+      resp.rcode() != net::dns_protocol::kRcodeNOERROR) {
+    return;
+  }
+
+  // Check all A records for the internal IP, and replace it with |lan_ip_|
+  // if it is found.
+  net::DnsRecordParser parser = resp.Parser();
+  while (!parser.AtEnd()) {
+    const size_t ipv4_addr_len = sizeof(lan_ip_.s_addr);
+
+    net::DnsResourceRecord record;
+    DCHECK(parser.ReadRecord(&record));
+    if (record.type == net::dns_protocol::kTypeA &&
+        record.rdata.size() == ipv4_addr_len) {
+      const char* rr_ip = record.rdata.data();
+      if (mdns_ip_.s_addr ==
+          reinterpret_cast<const struct in_addr*>(rr_ip)->s_addr) {
+        // HACK: This is able to calculate the (variable) offset of the IPv4
+        // address inside the resource record by assuming that the StringPiece
+        // returns a pointer inside the io_buffer.  It works today, but
+        // future libchrome changes might break it.
+        size_t ip_offset = rr_ip - resp.io_buffer()->data();
+        CHECK(ip_offset <= bytes - ipv4_addr_len);
+        memcpy(&data[ip_offset], &lan_ip_.s_addr, ipv4_addr_len);
+      }
+    }
+  }
 }
 
 void MulticastForwarder::CleanupTask() {

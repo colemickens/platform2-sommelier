@@ -40,12 +40,14 @@ class MulticastSocket {
 
   int fd() const { return fd_.get(); }
   time_t last_used() const { return last_used_; }
+  const struct in_addr interface_ip() const { return interface_ip_; }
 
   struct sockaddr_in int_addr;
 
  protected:
   base::ScopedFD fd_;
   time_t last_used_;
+  struct in_addr interface_ip_;
   MessageLoopForIO::FileDescriptorWatcher watcher_;
 };
 

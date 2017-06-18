@@ -47,6 +47,7 @@ bool MulticastSocket::Bind(const std::string& ifname,
 
   struct sockaddr_in* if_addr =
       reinterpret_cast<struct sockaddr_in*>(&ifr.ifr_addr);
+  interface_ip_ = if_addr->sin_addr;
 
   if (setsockopt(fd.get(), SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr))) {
     LOG(ERROR) << "setsockopt(SOL_SOCKET) failed";
