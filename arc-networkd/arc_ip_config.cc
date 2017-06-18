@@ -131,7 +131,7 @@ bool ArcIpConfig::ContainerInit() {
   strncpy(ifr.ifr_name, con_ifname_.c_str(), IFNAMSIZ);
 
   if (ioctl(fd.get(), SIOCGIFFLAGS, &ifr) < 0) {
-    LOG(ERROR) << "SIOCGIFADDR failed";
+    LOG(ERROR) << "SIOCGIFFLAGS failed";
     return false;
   }
 
