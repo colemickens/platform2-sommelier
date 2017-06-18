@@ -27,6 +27,9 @@
       'dependencies': ['protos'],
       'sources': [
         'arc_ip_config.cc',
+        'dns/big_endian.cc',
+        'dns/dns_response.cc',
+        'dns/io_buffer.cc',
         'helper_process.cc',
         'ip_helper.cc',
         'main.cc',
