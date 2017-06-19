@@ -530,9 +530,8 @@ bool MigrationHelper::MigrateLink(const base::FilePath& child,
 
   if (!CopyAttributes(child, info))
     return false;
-  // mtime is copied here instead of in the general CopyAttributes call because
-  // symlinks can't (and don't need to) use xattrs to preserve the time during
-  // migration.
+  // We don't need to modify the source file, so we can safely set times here
+  // directly instead of storing them in xattrs first.
   if (!platform_->SetFileTimes(new_path,
                                info.stat().st_atim,
                                info.stat().st_mtim,
@@ -682,8 +681,13 @@ bool MigrationHelper::CopyAttributes(const base::FilePath& child,
     return false;
   }
 
+  if (!CopyExtendedAttributes(child))
+    return false;
+
   mode_t mode = info.stat().st_mode;
-  // Symlinks don't support user extended attributes or permissions in linux
+
+  // We don't need to modify the source file, so no special timestamp handling
+  // needed.  Permissions and flags are also not supported on symlinks in linux.
   if (S_ISLNK(mode))
     return true;
   if (!platform_->SetPermissions(to, mode)) {
@@ -705,8 +709,6 @@ bool MigrationHelper::CopyAttributes(const base::FilePath& child,
                                         sizeof(atime))) {
     return false;
   }
-  if (!CopyExtendedAttributes(child))
-    return false;
 
   int flags;
   if (!platform_->GetExtFileAttributes(from, &flags)) {

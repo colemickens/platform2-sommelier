@@ -757,10 +757,10 @@ bool Platform::Stat(const FilePath& path, struct stat *buf) {
 
 bool Platform::HasExtendedFileAttribute(const FilePath& path,
                                         const std::string& name) {
-  ssize_t sz = getxattr(path.value().c_str(), name.c_str(), nullptr, 0);
+  ssize_t sz = lgetxattr(path.value().c_str(), name.c_str(), nullptr, 0);
   if (sz < 0) {
     if (errno != ENOATTR) {
-      PLOG(ERROR) << "getxattr: " << path.value();
+      PLOG(ERROR) << "lgetxattr: " << path.value();
     }
     return false;
   }
@@ -769,14 +769,14 @@ bool Platform::HasExtendedFileAttribute(const FilePath& path,
 
 bool Platform::ListExtendedFileAttributes(const FilePath& path,
                                           std::vector<std::string>* attr_list) {
-  ssize_t sz = listxattr(path.value().c_str(), nullptr, 0);
+  ssize_t sz = llistxattr(path.value().c_str(), nullptr, 0);
   if (sz < 0) {
-    PLOG(ERROR) << "listxattr: " << path.value();
+    PLOG(ERROR) << "llistxattr: " << path.value();
     return false;
   }
   std::vector<char> names(sz);
-  if (listxattr(path.value().c_str(), names.data(), sz) < 0) {
-    PLOG(ERROR) << "listxattr: " << path.value();
+  if (llistxattr(path.value().c_str(), names.data(), sz) < 0) {
+    PLOG(ERROR) << "llistxattr: " << path.value();
     return false;
   }
   int pos = 0;
@@ -790,9 +790,9 @@ bool Platform::ListExtendedFileAttributes(const FilePath& path,
 bool Platform::GetExtendedFileAttributeAsString(const base::FilePath& path,
                                                 const std::string& name,
                                                 std::string* value) {
-  ssize_t sz = getxattr(path.value().c_str(), name.c_str(), nullptr, 0);
+  ssize_t sz = lgetxattr(path.value().c_str(), name.c_str(), nullptr, 0);
   if (sz < 0) {
-    PLOG(ERROR) << "getxattr: " << path.value();
+    PLOG(ERROR) << "lgetxattr: " << path.value();
     return false;
   }
   std::vector<char> value_vector(sz);
@@ -807,8 +807,8 @@ bool Platform::GetExtendedFileAttribute(const base::FilePath& path,
                                         const std::string& name,
                                         char* value,
                                         ssize_t size) {
-  if (getxattr(path.value().c_str(), name.c_str(), value, size) != size) {
-    PLOG(ERROR) << "getxattr: " << path.value();
+  if (lgetxattr(path.value().c_str(), name.c_str(), value, size) != size) {
+    PLOG(ERROR) << "lgetxattr: " << path.value();
     return false;
   }
   return true;
@@ -818,8 +818,8 @@ bool Platform::SetExtendedFileAttribute(const base::FilePath& path,
                                         const std::string& name,
                                         const char* value,
                                         size_t size) {
-  if (setxattr(path.value().c_str(), name.c_str(), value, size, 0) != 0) {
-    PLOG(ERROR) << "setxattr: " << path.value();
+  if (lsetxattr(path.value().c_str(), name.c_str(), value, size, 0) != 0) {
+    PLOG(ERROR) << "lsetxattr: " << path.value();
     return false;
   }
   return true;
@@ -827,8 +827,8 @@ bool Platform::SetExtendedFileAttribute(const base::FilePath& path,
 
 bool Platform::RemoveExtendedFileAttribute(const base::FilePath& path,
                                            const std::string& name) {
-  if (removexattr(path.value().c_str(), name.c_str()) != 0) {
-    PLOG(ERROR) << "removexattr: " << path.value();
+  if (lremovexattr(path.value().c_str(), name.c_str()) != 0) {
+    PLOG(ERROR) << "lremovexattr: " << path.value();
     return false;
   }
   return true;

@@ -444,8 +444,7 @@ class Platform {
   //  buf - buffer to store results into
   virtual bool Stat(const base::FilePath& path, struct stat *buf);
 
-  // Return true if |path| has extended attribute |name|, possibly following
-  // symlink.
+  // Return true if |path| has extended attribute |name|.
   //
   // Parameters
   //  path - absolute file or directory path to look up
@@ -453,8 +452,7 @@ class Platform {
   virtual bool HasExtendedFileAttribute(const base::FilePath& path,
                                         const std::string& name);
 
-  // Add all extended attribute names on |path| to |attr_list|, possibly
-  // following symlink.  Returns false on failure.
+  // Add all extended attribute names on |path| to |attr_list|.
   //
   // Parameters
   //  path - absolute file or directory path to list attributes for.
@@ -463,7 +461,7 @@ class Platform {
                                           std::vector<std::string>* attr_list);
 
   // Return true if extended attribute |name| could be read from |path|,
-  // storing the value in |value|, possibly following symlink;
+  // storing the value in |value|.
   //
   // Parameters
   //  path - absolute file or directory path to get attributes for
@@ -474,7 +472,7 @@ class Platform {
                                                 std::string* value);
 
   // Return true if extended attribute |name| could be read from |path|,
-  // storing the value in |value|, possibly following symlink;
+  // storing the value in |value|.
   //
   // Parameters
   //  path - absolute file or directory path to get attributes for
@@ -488,7 +486,8 @@ class Platform {
                                         ssize_t size);
 
   // Return true if the extended attribute |name| could be set with value
-  // |value| on |path|.
+  // |value| on |path|.  Note that user namespace xattrs are not supported on
+  // symlinks in linux and will return ENOTSUP if attempted.
   //
   // Parameters
   //  path - absolute file or directory path to set attributes for
