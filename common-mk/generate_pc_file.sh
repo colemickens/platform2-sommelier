@@ -15,4 +15,5 @@ shift
 
 sed \
   -e "s|@INCLUDE_DIR@|${INCLUDE_DIR}|g" \
+  -e "s|@PV@|${PV}|g" \
   "${PC_IN}.pc.in" > "${OUT}/${PC_IN}.pc"
