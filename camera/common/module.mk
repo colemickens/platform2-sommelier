@@ -84,6 +84,18 @@ CXX_BINARY(common/libcab_test): $(libcab_test_OBJS)
 clean: CLEAN(common/libcab_test) CLEAN(common/libcam_algo.so)
 common/libcab_test: CXX_BINARY(common/libcab_test) CXX_LIBRARY(common/libcam_algo.so)
 
+libcamera_jpeg_OBJS = common/jpeg_compressor.o
+libcamera_jpeg_PC_DEPS := libchrome-$(BASE_VER)
+libcamera_jpeg_CPPFLAGS := $(call get_pc_cflags,$(libcamera_jpeg_PC_DEPS))
+libcamera_jpeg_LDLIBS := $(call get_pc_libs,$(libcamera_jpeg_PC_DEPS))
+CXX_STATIC_LIBRARY(common/libcamera_jpeg.pic.a): \
+	CPPFLAGS += $(libcamera_jpeg_CPPFLAGS)
+CXX_STATIC_LIBRARY(common/libcamera_jpeg.pic.a): \
+	LDLIBS += $(libcamera_jpeg_LDLIBS) -ljpeg
+CXX_STATIC_LIBRARY(common/libcamera_jpeg.pic.a): $(libcamera_jpeg_OBJS)
+clean: CLEAN(common/libcamera_jpeg.pic.a)
+common/libcamera_jpeg: CXX_STATIC_LIBRARY(common/libcamera_jpeg.pic.a)
+
 # To link against object files under common/, add $(COMMON_OBJECTS) to the
 # dependency list of your target.
 COMMON_OBJECTS := \

@@ -13,15 +13,19 @@ CPPFLAGS += $(PC_CFLAGS) -D_GNU_SOURCE -I$(abspath $(SRC)) \
 CXXFLAGS += -std=c++11 -Wpointer-arith
 CFLAGS += -std=c99
 
+camera_hal_usb: hal/usb/camera_hal
+
+.PHONY: camera_hal_usb
+
+camera3_test: camera3_test/arc_camera3_test
+
+.PHONY: camera3_test
+
 hal_adapter:
 	$(MAKE) hal_adapter/mojo/mojo_templates
 	$(MAKE) hal_adapter/arc_camera3_service
 
 .PHONY: hal_adapter
-
-libcbm: common/libcbm
-
-.PHONY: libcbm
 
 libcab:
 	$(MAKE) common/mojo/mojo_templates
@@ -33,10 +37,10 @@ libcab_test: common/libcab_test
 
 .PHONY: libcab_test
 
-camera_hal_usb: hal/usb/camera_hal
+libcamera_jpeg: common/libcamera_jpeg
 
-.PHONY: camera_hal_usb
+.PHONY: libcamera_jpeg
 
-camera3_test: camera3_test/arc_camera3_test
+libcbm: common/libcbm
 
-.PHONY: camera3_test
+.PHONY: libcbm
