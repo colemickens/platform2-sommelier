@@ -28,6 +28,42 @@ Line 2
 Line 3
 )";
 
+const char k32BitAuxv[] = R"(
+20 00 00 00 20 ba 7a ef 21 00 00 00 00 b0 7a ef
+10 00 00 00 ff fb eb bf 06 00 00 00 00 10 00 00
+11 00 00 00 64 00 00 00 03 00 00 00 34 d0 bb 5e
+04 00 00 00 20 00 00 00 05 00 00 00 09 00 00 00
+07 00 00 00 00 d0 7a ef 08 00 00 00 00 00 00 00
+09 00 00 00 4d e6 bb 5e 0b 00 00 00 00 00 00 00
+0c 00 00 00 00 00 00 00 0d 00 00 00 00 00 00 00
+0e 00 00 00 00 00 00 00 17 00 00 00 01 00 00 00
+19 00 00 00 3b 52 c6 ff 1f 00 00 00 de 6f c6 ff
+0f 00 00 00 4b 52 c6 ff 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+)";
+
+const char k64BitAuxv[] = R"(
+21 00 00 00 00 00 00 00 00 30 db e6 fe 7f 00 00
+10 00 00 00 00 00 00 00 ff fb eb bf 00 00 00 00
+06 00 00 00 00 00 00 00 00 10 00 00 00 00 00 00
+11 00 00 00 00 00 00 00 64 00 00 00 00 00 00 00
+03 00 00 00 00 00 00 00 40 c0 a6 54 a5 5d 00 00
+04 00 00 00 00 00 00 00 38 00 00 00 00 00 00 00
+05 00 00 00 00 00 00 00 09 00 00 00 00 00 00 00
+07 00 00 00 00 00 00 00 00 10 3c 97 9c 7a 00 00
+08 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+09 00 00 00 00 00 00 00 c8 de a6 54 a5 5d 00 00
+0b 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+0c 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+0d 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+0e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+17 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00
+19 00 00 00 00 00 00 00 39 bc da e6 fe 7f 00 00
+1f 00 00 00 00 00 00 00 de cf da e6 fe 7f 00 00
+0f 00 00 00 00 00 00 00 49 bc da e6 fe 7f 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+)";
+
 }  // namespace
 
 class MockArcCollector : public ArcCollector {
@@ -60,7 +96,8 @@ class ArcCollectorTest : public Test {
     void AddProcess(pid_t pid,
                     const char *ns,
                     const char *exe,
-                    const char *cmd) {
+                    const char *cmd,
+                    const char *auxv) {
       DCHECK_EQ(processes_.count(pid), 0u);
       DCHECK(ns);
       DCHECK(exe);
@@ -68,6 +105,7 @@ class ArcCollectorTest : public Test {
       process.ns = ns;
       process.exe = exe;
       process.cmd = cmd;
+      process.auxv = auxv;
     }
 
    private:
@@ -75,6 +113,7 @@ class ArcCollectorTest : public Test {
       const char *ns;
       const char *exe;
       const char *cmd;
+      const char *auxv;
     };
 
     bool GetArcPid(pid_t *pid) const override {
@@ -105,6 +144,22 @@ class ArcCollectorTest : public Test {
       if (!cmd)
         return false;
       command->assign(cmd);
+      return true;
+    }
+    bool ReadAuxvForProcess(pid_t pid, std::string *contents) const override {
+      const auto it = processes_.find(pid);
+      if (it == processes_.end())
+        return false;
+      const auto *auxv = it->second.auxv;
+      if (!auxv)
+        return false;
+      std::istringstream ss(auxv);
+      contents->clear();
+      uint32_t byte;
+      ss >> std::hex >> std::setfill('0');
+      while (ss >> byte) {
+        contents->push_back(byte);
+      }
       return true;
     }
 
@@ -145,14 +200,16 @@ TEST_F(ArcCollectorTest, IsArcProcess) {
   EXPECT_TRUE(FindLog("Failed to get PID namespace of ARC container"));
   ClearLog();
 
-  context_->AddProcess(100, "arc", "init", "/sbin/init");
+  context_->AddProcess(100, "arc", "init", "/sbin/init", k32BitAuxv);
 
   EXPECT_FALSE(collector_->IsArcProcess(123));
   EXPECT_TRUE(FindLog("Failed to get PID namespace of process"));
   ClearLog();
 
-  context_->AddProcess(50, "cros", "chrome", "/opt/google/chrome/chrome");
-  context_->AddProcess(123, "arc", "arc_service", "/sbin/arc_service");
+  context_->AddProcess(
+      50, "cros", "chrome", "/opt/google/chrome/chrome", k32BitAuxv);
+  context_->AddProcess(
+      123, "arc", "arc_service", "/sbin/arc_service", k32BitAuxv);
 
   EXPECT_TRUE(collector_->IsArcProcess(123));
   EXPECT_TRUE(GetLog().empty());
@@ -163,8 +220,9 @@ TEST_F(ArcCollectorTest, IsArcProcess) {
 
 TEST_F(ArcCollectorTest, GetExeBaseNameForUserCrash) {
   context_->SetArcPid(100);
-  context_->AddProcess(100, "arc", "init", "/sbin/init");
-  context_->AddProcess(50, "cros", "chrome", "/opt/google/chrome/chrome");
+  context_->AddProcess(100, "arc", "init", "/sbin/init", k32BitAuxv);
+  context_->AddProcess(
+      50, "cros", "chrome", "/opt/google/chrome/chrome", k32BitAuxv);
 
   std::string exe;
   EXPECT_TRUE(collector_->GetExecutableBaseNameFromPid(50, &exe));
@@ -173,10 +231,11 @@ TEST_F(ArcCollectorTest, GetExeBaseNameForUserCrash) {
 
 TEST_F(ArcCollectorTest, GetExeBaseNameForArcCrash) {
   context_->SetArcPid(100);
-  context_->AddProcess(100, "arc", "init", "/sbin/init");
-  context_->AddProcess(123, "arc", "arc_service", "/sbin/arc_service");
-  context_->AddProcess(456, "arc", "app_process32", nullptr);
-  context_->AddProcess(789, "arc", "app_process32", "com.arc.app");
+  context_->AddProcess(100, "arc", "init", "/sbin/init", k32BitAuxv);
+  context_->AddProcess(
+      123, "arc", "arc_service", "/sbin/arc_service", k32BitAuxv);
+  context_->AddProcess(456, "arc", "app_process32", nullptr, k32BitAuxv);
+  context_->AddProcess(789, "arc", "app_process32", "com.arc.app", k32BitAuxv);
 
   std::string exe;
 
@@ -193,10 +252,12 @@ TEST_F(ArcCollectorTest, GetExeBaseNameForArcCrash) {
 
 TEST_F(ArcCollectorTest, ShouldDump) {
   context_->SetArcPid(100);
-  context_->AddProcess(50, "cros", "chrome", "/opt/google/chrome/chrome");
-  context_->AddProcess(100, "arc", "init", "/sbin/init");
-  context_->AddProcess(123, "arc", "arc_service", "/sbin/arc_service");
-  context_->AddProcess(789, "arc", "app_process32", "com.arc.app");
+  context_->AddProcess(
+      50, "cros", "chrome", "/opt/google/chrome/chrome", k32BitAuxv);
+  context_->AddProcess(100, "arc", "init", "/sbin/init", k32BitAuxv);
+  context_->AddProcess(
+      123, "arc", "arc_service", "/sbin/arc_service", k32BitAuxv);
+  context_->AddProcess(789, "arc", "app_process32", "com.arc.app", k32BitAuxv);
 
   std::string reason;
   EXPECT_FALSE(collector_->ShouldDump(50, 1234, "chrome", &reason));
@@ -264,6 +325,20 @@ TEST_F(ArcCollectorTest, ParseCrashLog) {
   EXPECT_EQ("com.arc.app v1 (1.0)",
       ArcCollector::GetCrashLogHeader(map, "Package"));
   EXPECT_TRUE(exception_info.empty());
+}
+
+TEST_F(ArcCollectorTest, CorrectlyDetectBitness) {
+  bool is_64_bit;
+
+  context_->AddProcess(100, "arc", "app_process64", "zygote64", k64BitAuxv);
+  EXPECT_EQ(ArcCollector::kErrorNone,
+            collector_->Is64BitProcess(100, &is_64_bit));
+  EXPECT_TRUE(is_64_bit);
+
+  context_->AddProcess(101, "arc", "app_process32", "zygote32", k32BitAuxv);
+  EXPECT_EQ(ArcCollector::kErrorNone,
+            collector_->Is64BitProcess(101, &is_64_bit));
+  EXPECT_FALSE(is_64_bit);
 }
 
 TEST_F(ArcContextTest, GetArcPid) {

@@ -40,13 +40,10 @@ const FilePath kContainerPid("container.pid");
 
 const FilePath kArcBuildProp("system/build.prop");  // Relative to ARC root.
 
-// TODO(domlaskowski): Dispatch to core_collector{,32} at run time. Note that
-// ARC processes are always 32-bit on 64-bit platforms.
-const char kCoreCollectorPath[] = "/usr/bin/core_collector"
+const char kCoreCollectorPath[] = "/usr/bin/core_collector";
 #if __WORDSIZE == 64
-    "32"
+const char kCoreCollector32Path[] = "/usr/bin/core_collector32";
 #endif
-    "";
 
 const char kChromePath[] = "/opt/google/chrome/chrome";
 
@@ -265,6 +262,15 @@ bool ArcCollector::ArcContext::GetCommand(pid_t pid,
   return true;
 }
 
+bool ArcCollector::ArcContext::ReadAuxvForProcess(pid_t pid,
+                                                  std::string *contents) const {
+  // The architecture with the largest auxv size is powerpc with 400 bytes.
+  // Round it up to the next power of two.
+  constexpr size_t kMaxAuxvSize = 512;
+  const FilePath auxv_path = GetProcessPath(pid).Append("auxv");
+  return base::ReadFileToStringWithMaxSize(auxv_path, contents, kMaxAuxvSize);
+}
+
 std::string ArcCollector::GetVersion() const {
   std::string version;
   return GetChromeVersion(&version) ? version : kUnknownVersion;
@@ -313,8 +319,19 @@ UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
     return kErrorSystemIssue;
   }
 
+  const char * collector_path = kCoreCollectorPath;
+  // TODO(crbug.com/735075): Remove this __WORDSIZE hack by building+installing
+  // ARM versions of core_collector{,32}, too.
+#if __WORDSIZE == 64
+  bool is_64_bit;
+  ErrorType elf_class_error = Is64BitProcess(pid, &is_64_bit);
+  // Still try to run core_collector32 if 64-bit detection failed.
+  if (elf_class_error != kErrorNone || !is_64_bit)
+    collector_path = kCoreCollector32Path;
+#endif
+
   ProcessImpl core_collector;
-  core_collector.AddArg(kCoreCollectorPath);
+  core_collector.AddArg(collector_path);
   core_collector.AddArg("--minidump");
   core_collector.AddArg(minidump_path.value());
   core_collector.AddArg("--coredump");
@@ -328,7 +345,7 @@ UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
   int exit_code = RunAndCaptureOutput(&core_collector, STDERR_FILENO, &error);
 
   if (exit_code < 0) {
-    LOG(ERROR) << "Failed to start " << kCoreCollectorPath;
+    LOG(ERROR) << "Failed to start " << collector_path;
     return kErrorSystemIssue;
   }
 
@@ -345,7 +362,7 @@ UserCollectorBase::ErrorType ArcCollector::ConvertCoreToMinidump(
   while (std::getline(in, line))
     LOG(ERROR) << line;
 
-  LOG(ERROR) << kCoreCollectorPath << " failed with exit code " << exit_code;
+  LOG(ERROR) << collector_path << " failed with exit code " << exit_code;
   switch (exit_code) {
     case EX_OSFILE:
       return kErrorInvalidCoreFile;
@@ -510,6 +527,58 @@ bool ArcCollector::CreateReportForJavaCrash(const std::string &crash_type,
   const FilePath meta_path = GetCrashPath(crash_dir, basename, "meta");
   WriteCrashMetaData(meta_path, process, log_path.value());
   return true;
+}
+
+UserCollectorBase::ErrorType ArcCollector::Is64BitProcess(
+    int pid, bool *is_64_bit) const {
+  std::string auxv_contents;
+  if (!context_->ReadAuxvForProcess(pid, &auxv_contents)) {
+    PLOG(ERROR) << "Could not read /proc/" << pid << "/auxv";
+    return kErrorSystemIssue;
+  }
+  // auxv is an array of unsigned long[2], and the first element in each entry
+  // is an AT_* key. We assume we are running a 32-bit process (hence the
+  // |*is_64_bit| below), and then try to see if any of the keys seem off.
+  // All AT_* keys are less than ~48, so if we find any key that exceeds 256, we
+  // definitely know it is not a 32-bit process. This will almost always trigger
+  // correctly because some of the values in the auxv are pointers and their
+  // high bits are almost always non-zero. For illustration purposes, consider
+  // the following auxv taken from a x86_64 machine:
+  //
+  // |-------64-bit key------|-----64-bit value------|
+  // |32-bit key-|32-bit val-|32-bit key-|32-bit val-|
+  //  21 00 00 00 00 00 00 00 00 30 db e6 fe 7f 00 00
+  //  10 00 00 00 00 00 00 00 ff fb eb bf 00 00 00 00
+  //  06 00 00 00 00 00 00 00 00 10 00 00 00 00 00 00
+  //  ...
+  //
+  //  When interpreted as 64-bit unsigned longs, all the keys are less than 256,
+  //  but when interpreted as 32-bit unsigned longs, some of the "keys" will
+  //  contain the upper parts of addresses.
+  struct Auxv32BitEntry {
+    uint32_t key;
+    uint32_t value;
+  };
+  if (auxv_contents.size() % sizeof(Auxv32BitEntry) != 0) {
+    LOG(ERROR) << "Could not parse the contents of the auxv file. "
+               << "Size not a multiple of 8: " << auxv_contents.size();
+    return kErrorSystemIssue;
+  }
+  *is_64_bit = false;
+
+  const Auxv32BitEntry *auxv_32_bit_entries =
+      reinterpret_cast<const Auxv32BitEntry *>(auxv_contents.data());
+  const size_t auxv_32_bit_entries_length =
+      auxv_contents.size() / sizeof(Auxv32BitEntry);
+
+  for (size_t i = 0; i < auxv_32_bit_entries_length; ++i) {
+    if (auxv_32_bit_entries[i].key > 256) {
+      *is_64_bit = true;
+      break;
+    }
+  }
+
+  return kErrorNone;
 }
 
 namespace {

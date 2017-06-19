@@ -25,6 +25,8 @@ class ArcCollector : public UserCollectorBase {
     virtual bool GetPidNamespace(pid_t pid, std::string *ns) const = 0;
     virtual bool GetExeBaseName(pid_t pid, std::string *exe) const = 0;
     virtual bool GetCommand(pid_t pid, std::string *command) const = 0;
+    virtual bool ReadAuxvForProcess(
+        pid_t pid, std::string *contents) const = 0;
   };
 
   using ContextPtr = std::unique_ptr<Context>;
@@ -52,6 +54,7 @@ class ArcCollector : public UserCollectorBase {
   static bool GetArcPid(pid_t *arc_pid);
 
  private:
+  FRIEND_TEST(ArcCollectorTest, CorrectlyDetectBitness);
   FRIEND_TEST(ArcCollectorTest, GetExeBaseNameForUserCrash);
   FRIEND_TEST(ArcCollectorTest, GetExeBaseNameForArcCrash);
   FRIEND_TEST(ArcCollectorTest, ShouldDump);
@@ -72,6 +75,7 @@ class ArcCollector : public UserCollectorBase {
     bool GetPidNamespace(pid_t pid, std::string *ns) const override;
     bool GetExeBaseName(pid_t pid, std::string *exe) const override;
     bool GetCommand(pid_t pid, std::string *command) const override;
+    bool ReadAuxvForProcess(pid_t pid, std::string *contents) const override;
 
    private:
     ArcCollector * const collector_;
@@ -115,6 +119,9 @@ class ArcCollector : public UserCollectorBase {
                                 const std::string &exception_info,
                                 const std::string &log,
                                 bool *out_of_capacity);
+
+  // Returns whether the process identified by |pid| is 32- or 64-bit.
+  ErrorType Is64BitProcess(int pid, bool *is_64_bit) const;
 
   const ContextPtr context_;
 
