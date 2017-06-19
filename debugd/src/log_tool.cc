@@ -106,7 +106,7 @@ const Log common_logs[] = {
     "/bin/cat /var/spool/crash/kernel.*.kcrash 2> /dev/null" },
   { "lsmod", "lsmod" },
   { "lspci", "/usr/sbin/lspci" },
-  { "lsusb", "lsusb -t" },
+  { "lsusb", "lsusb && lsusb -t" },
   {
     "mali_memory",
     "/bin/cat /sys/class/misc/mali0/device/memory 2> /dev/null"
