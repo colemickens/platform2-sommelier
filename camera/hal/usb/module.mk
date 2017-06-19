@@ -5,10 +5,10 @@
 include common.mk
 include pc_utils.mk
 
-hal_usb_PC_DEPS = libcamera_client libcamera_metadata libcbm \
+hal_usb_PC_DEPS = libcamera_client libcamera_jpeg libcamera_metadata libcbm \
 	libchrome-$(BASE_VER) libexif libsync libyuv
 hal_usb_CPPFLAGS := $(call get_pc_cflags,$(hal_usb_PC_DEPS))
-hal_usb_LDLIBS := $(call get_pc_libs,$(hal_usb_PC_DEPS)) -ljpeg
+hal_usb_LDLIBS := $(call get_pc_libs,$(hal_usb_PC_DEPS))
 
 CXX_LIBRARY(hal/usb/camera_hal.so): CPPFLAGS += $(hal_usb_CPPFLAGS)
 CXX_LIBRARY(hal/usb/camera_hal.so): LDLIBS += $(hal_usb_LDLIBS)

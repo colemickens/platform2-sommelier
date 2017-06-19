@@ -103,5 +103,4 @@ COMMON_OBJECTS := \
 
 COMMON_OBJECTS_FOR_USB_HAL := \
 	common/exif_utils.o \
-	common/future.o \
-	common/jpeg_compressor.o
+	common/future.o
