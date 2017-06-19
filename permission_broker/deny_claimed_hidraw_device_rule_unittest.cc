@@ -36,7 +36,7 @@ TEST_F(DenyClaimedHidrawDeviceRuleTest, DenyClaimedHidrawDevices) {
   struct udev_list_entry* entry = nullptr;
   udev_list_entry_foreach(entry,
                           udev_enumerate_get_list_entry(enumerate.get())) {
-    const char *syspath = udev_list_entry_get_name(entry);
+    const char* syspath = udev_list_entry_get_name(entry);
     ScopedUdevDevicePtr device(
         udev_device_new_from_syspath(udev_.get(), syspath));
     Rule::Result result = rule_.ProcessHidrawDevice(device.get());
@@ -47,12 +47,19 @@ TEST_F(DenyClaimedHidrawDeviceRuleTest, DenyClaimedHidrawDevices) {
       struct udev_device* usb_interface =
           udev_device_get_parent_with_subsystem_devtype(
               device.get(), "usb", "usb_interface");
+      struct udev_device* hid_parent =
+          udev_device_get_parent_with_subsystem_devtype(
+              device.get(), "hid", nullptr);
 
-      ASSERT_NE(nullptr, usb_interface)
-          << "This rule should DENY all non-USB HID devices.";
+      ASSERT_NE(nullptr, hid_parent)
+          << "We don't support hidraw devices with an HID parent.";
 
-      std::string usb_interface_path(udev_device_get_syspath(usb_interface));
+      std::string hid_parent_path(udev_device_get_syspath(hid_parent));
+      std::string usb_interface_path;
+      if (usb_interface)
+        usb_interface_path.assign(udev_device_get_syspath(usb_interface));
 
+      int hid_siblings = 0;
       // Verify that this hidraw device does not share a USB interface with any
       // other drivers' devices. This means we have to enumerate every device
       // to find any with the same ancestral usb_interface, then test for a non-
@@ -66,6 +73,16 @@ TEST_F(DenyClaimedHidrawDeviceRuleTest, DenyClaimedHidrawDevices) {
         const char* other_path = udev_list_entry_get_name(other_entry);
         ScopedUdevDevicePtr other_device(
             udev_device_new_from_syspath(udev_.get(), other_path));
+        struct udev_device* other_hid_parent =
+            udev_device_get_parent_with_subsystem_devtype(
+                other_device.get(), "hid", nullptr);
+        if (other_hid_parent) {
+          std::string other_hid_parent_path(
+              udev_device_get_syspath(other_hid_parent));
+          if (hid_parent_path == other_hid_parent_path) {
+            hid_siblings++;
+          }
+        }
         struct udev_device* other_usb_interface =
             udev_device_get_parent_with_subsystem_devtype(
                 other_device.get(), "usb", "usb_interface");
@@ -78,9 +95,12 @@ TEST_F(DenyClaimedHidrawDeviceRuleTest, DenyClaimedHidrawDevices) {
           ASSERT_FALSE(
               DenyClaimedHidrawDeviceRule::
                   ShouldSiblingSubsystemExcludeHidAccess(other_device.get()))
-                      << "This rule should IGNORE claimed devices.";
+              << "This rule should IGNORE claimed devices.";
         }
       }
+      ASSERT_FALSE(!usb_interface && hid_siblings > 1)
+          << "This rule should DENY all non-USB HID devices.";
+
     } else if (result != Rule::DENY) {
       FAIL() << "This rule should only either IGNORE or DENY devices.";
     }

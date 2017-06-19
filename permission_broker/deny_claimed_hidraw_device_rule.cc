@@ -67,34 +67,40 @@ DenyClaimedHidrawDeviceRule::DenyClaimedHidrawDeviceRule()
     : HidrawSubsystemUdevRule("DenyClaimedHidrawDeviceRule") {}
 
 Rule::Result DenyClaimedHidrawDeviceRule::ProcessHidrawDevice(
-    struct udev_device *device) {
-  // For now, treat non-USB HID devices as claimed.
-  struct udev_device* usb_interface =
-      udev_device_get_parent_with_subsystem_devtype(
-          device, "usb", "usb_interface");
-  if (!usb_interface) {
-    return DENY;
-  }
-
+    struct udev_device* device) {
   // Add an exception to the rule for Logitech Unifying receiver.
   // This hidraw device is a parent of devices that have input
   // subsystem. Yet the traffic to those children is not available on
   // the hidraw node of the receiver, so it is safe to white-list it.
   struct udev_device* hid_parent =
       udev_device_get_parent_with_subsystem_devtype(device, "hid", nullptr);
-  if (hid_parent) {
-    const char* hid_parent_driver = udev_device_get_driver(hid_parent);
-    if (strcmp(hid_parent_driver, kLogitechUnifyingReceiverDriver) == 0) {
-      LOG(INFO) << "Found Logitech Unifying receiver. Skipping rule.";
-      return IGNORE;
-    }
+  if (!hid_parent) {
+    // A hidraw device without a HID parent, we don't know what this can be.
+    return DENY;
   }
 
-  std::string usb_interface_path(udev_device_get_syspath(usb_interface));
+  const char* hid_parent_driver = udev_device_get_driver(hid_parent);
+  if (hid_parent_driver &&
+      strcmp(hid_parent_driver, kLogitechUnifyingReceiverDriver) == 0) {
+    LOG(INFO) << "Found Logitech Unifying receiver. Skipping rule.";
+    return IGNORE;
+  }
 
+  std::string hid_parent_path(udev_device_get_syspath(hid_parent));
+  std::string usb_interface_path;
+  struct udev_device* usb_interface =
+      udev_device_get_parent_with_subsystem_devtype(
+          device, "usb", "usb_interface");
+
+  if (usb_interface)
+    usb_interface_path = udev_device_get_syspath(usb_interface);
+
+  // Count the number of children of the same HID parent as us.
+  int hid_siblings = 0;
   // Scan all children of the USB interface for subsystems other than generic
-  // USB or HID. The presence of such subsystems is an indication that the
-  // device is in use by another driver.
+  // USB or HID, and all the children of the same HID parent device.
+  // The presence of such subsystems is an indication that the device is in
+  // use by another driver.
   //
   // Because udev lacks the ability to filter an enumeration by arbitrary
   // ancestor properties (e.g. "enumerate all nodes with a usb_interface
@@ -111,19 +117,31 @@ Rule::Result DenyClaimedHidrawDeviceRule::ProcessHidrawDevice(
     struct udev_device* child_usb_interface =
         udev_device_get_parent_with_subsystem_devtype(
             child.get(), "usb", "usb_interface");
-    if (!child_usb_interface) {
+    struct udev_device* child_hid_parent =
+        udev_device_get_parent_with_subsystem_devtype(
+            child.get(), "hid", nullptr);
+    if (!child_usb_interface && !child_hid_parent) {
       continue;
     }
-    std::string child_usb_interface_path(
-        udev_device_get_syspath(child_usb_interface));
     // This device shares a USB interface with the hidraw device in question.
     // Check its subsystem to see if it should block hidraw access.
-    if (child_usb_interface_path == usb_interface_path) {
-      if (ShouldSiblingSubsystemExcludeHidAccess(child.get())) {
-        return DENY;
-      }
+    if (usb_interface && child_usb_interface &&
+        usb_interface_path == udev_device_get_syspath(child_usb_interface) &&
+        ShouldSiblingSubsystemExcludeHidAccess(child.get())) {
+      return DENY;
+    }
+    // This device shares the same HID device as parent, count it.
+    if (child_hid_parent &&
+        hid_parent_path == udev_device_get_syspath(child_hid_parent)) {
+      hid_siblings++;
     }
   }
+
+  // If the underlying HID device presents no other interface than hidraw,
+  // we can use it.
+  // USB devices have already been filtered directly in the loop above.
+  if (!usb_interface && hid_siblings != 1)
+    return DENY;
 
   return IGNORE;
 }
