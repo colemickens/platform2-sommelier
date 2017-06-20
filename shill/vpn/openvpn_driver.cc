@@ -638,7 +638,12 @@ void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
       AppendOption("tls-auth", tls_auth_file_.value(), options);
     }
   }
-  AppendValueOption(kOpenVPNTLSRemoteProperty, "tls-remote", options);
+
+  string tls_remote = args()->LookupString(kOpenVPNTLSRemoteProperty, "");
+  if (!tls_remote.empty()) {
+    AppendOption("verify-x509-name", tls_remote, "name-prefix", options);
+  }
+
   AppendValueOption(kOpenVPNCipherProperty, "cipher", options);
   AppendValueOption(kOpenVPNAuthProperty, "auth", options);
   AppendFlag(kOpenVPNAuthNoCacheProperty, "auth-nocache", options);

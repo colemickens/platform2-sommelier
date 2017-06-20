@@ -978,11 +978,16 @@ Properties	boolean AutoConnect [readwrite]
 
 		string OpenVPN.TLSRemote [writeonly]
 
-			(VPN services of type OpenVPN only) Specifies
-			the only X509 name that is allowed for the peer.  See
-			the" --tls-remote" option in the OpenVPN
-			documentation.  The current value of this property
-			is readable in the "Provider" property of this service.
+			(VPN services of type OpenVPN only) If specified,
+			the common name on the X509 certificate presented
+			by the peer will be matched against the contents of
+			this property.  This property can specify a full
+			hostname or a prefix.  Its contents will be passed
+			into OpenVPN using the "--verify-x509-name" option,
+			with a type of "name-prefix".  This mimics the
+			behavior of the now-removed "--tls-remote" option.
+			The current value of this property is readable in
+			the "Provider" property of this service.
 
 		string OpenVPN.Token [writeonly]
 
