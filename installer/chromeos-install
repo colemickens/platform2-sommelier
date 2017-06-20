@@ -548,6 +548,16 @@ install_stateful() {
     touch ${TMPMNT}/.developer_mode
   fi
 
+  if [ -n "${IS_RECOVERY_INSTALL}" ] ; then
+    # This is a recovery install; write some recovery metrics to the stateful
+    # partition to be reported after next boot. See:
+    # init/upstart/send-recovery-metrics.conf
+    local recovery_histograms="${TMPMNT}/.recovery_histograms"
+
+    echo "Installer.Recovery.Reason $(crossystem recovery_reason) 255" \
+      > "${recovery_histograms}"
+  fi
+
   local dir
   for dir in ${dirlist}; do
     if [ ! -d "${ROOT}/mnt/stateful_partition/${dir}" ]; then
