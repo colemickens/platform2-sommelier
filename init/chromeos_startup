@@ -135,8 +135,10 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
       # The stateful partition is not set for encryption.
       # Check if we should migrate.
       if ext4_dir_encryption_supported; then
+        # Ensure to replay the journal first so it doesn't overwrite the flag.
+        e2fsck -p -E journal_only "${STATE_DEV}" || :
         # The kernel support encryption, do it!
-        tune2fs -O encrypt "${STATE_DEV}"
+        tune2fs -O encrypt "${STATE_DEV}" || :
       fi
     fi
   fi
