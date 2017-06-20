@@ -211,7 +211,7 @@ dbus::Response* CreateEmptyResponse() {
 //
 // Example Usage:
 //   ResponseCapturer capture;
-//   impl_.SomeAsyncDBusMethod(capturer.CreateMethodResponse(), ...);
+//   impl_->SomeAsyncDBusMethod(capturer.CreateMethodResponse(), ...);
 //   EXPECT_EQ(SomeErrorName, capture.response()->GetErrorName());
 class ResponseCapturer {
  public:
@@ -253,41 +253,14 @@ class ResponseCapturer {
 class SessionManagerImplTest : public ::testing::Test {
  public:
   SessionManagerImplTest()
-      : init_controller_(new MockInitDaemonController()),
-        device_policy_service_(new MockDevicePolicyService()),
-        bus_(new FakeBus()),
+      : bus_(new FakeBus()),
         state_key_generator_(&utils_, &metrics_),
         android_container_(kAndroidPid),
-        system_clock_proxy_(new MockObjectProxy()),
-        impl_(std::unique_ptr<InitDaemonController>(init_controller_),
-              bus_.get(),
-              base::Bind(&SessionManagerImplTest::FakeLockScreen,
-                         base::Unretained(this)),
-              base::Bind(&SessionManagerImplTest::FakeRestartDevice,
-                         base::Unretained(this)),
-              &key_gen_,
-              &state_key_generator_,
-              &manager_,
-              &metrics_,
-              &nss_,
-              &utils_,
-              &crossystem_,
-              &vpd_process_,
-              &owner_key_,
-              &android_container_,
-              &install_attributes_reader_,
-              system_clock_proxy_.get()),
-        fake_salt_("fake salt"),
-        actual_locks_(0),
-        expected_locks_(0),
-        actual_restarts_(0),
-        expected_restarts_(0) {}
+        system_clock_proxy_(new MockObjectProxy()) {}
 
   ~SessionManagerImplTest() override = default;
 
   void SetUp() override {
-    impl_.SetSystemClockLastSyncInfoRetryDelayForTesting(base::TimeDelta());
-
     // 10 GB Free Disk Space for ARC launch.
     ON_CALL(utils_, AmountOfFreeDiskSpace(_))
         .WillByDefault(Return(10LL << 30));
@@ -313,6 +286,29 @@ class SessionManagerImplTest : public ::testing::Test {
     ASSERT_TRUE(utils_.CreateDir(
         base::FilePath(FILE_PATH_LITERAL("/mnt/stateful_partition"))));
 
+    init_controller_ = new MockInitDaemonController();
+    impl_ = base::MakeUnique<SessionManagerImpl>(
+        base::WrapUnique(init_controller_),
+        bus_.get(),
+        base::Bind(&SessionManagerImplTest::FakeLockScreen,
+                   base::Unretained(this)),
+        base::Bind(&SessionManagerImplTest::FakeRestartDevice,
+                   base::Unretained(this)),
+        &key_gen_,
+        &state_key_generator_,
+        &manager_,
+        &metrics_,
+        &nss_,
+        &utils_,
+        &crossystem_,
+        &vpd_process_,
+        &owner_key_,
+        &android_container_,
+        &install_attributes_reader_,
+        system_clock_proxy_.get());
+    impl_->SetSystemClockLastSyncInfoRetryDelayForTesting(base::TimeDelta());
+
+    device_policy_service_ = new MockDevicePolicyService();
     auto factory =
         base::MakeUnique<testing::NiceMock<MockUserPolicyServiceFactory>>();
     ON_CALL(*factory, Create(_))
@@ -321,25 +317,31 @@ class SessionManagerImplTest : public ::testing::Test {
     auto device_local_account_policy =
         base::MakeUnique<DeviceLocalAccountPolicyService>(tmpdir_.path(),
                                                           nullptr);
-    impl_.SetPolicyServicesForTest(
-        std::unique_ptr<DevicePolicyService>(device_policy_service_),
+    impl_->SetPolicyServicesForTest(
+        base::WrapUnique(device_policy_service_),
         std::move(factory),
         std::move(device_local_account_policy));
 
     EXPECT_CALL(*system_clock_proxy_, WaitForServiceToBeAvailable(_))
         .WillOnce(SaveArg<0>(&available_callback_));
-    impl_.Initialize();
+    impl_->Initialize();
     ASSERT_TRUE(Mock::VerifyAndClearExpectations(system_clock_proxy_.get()));
     ASSERT_FALSE(available_callback_.is_null());
 
     EXPECT_CALL(*exported_object(), ExportMethodAndBlock(_, _, _))
         .WillRepeatedly(Return(true));
-    impl_.StartDBusService();
+    impl_->StartDBusService();
     ASSERT_TRUE(Mock::VerifyAndClearExpectations(exported_object()));
   }
 
   void TearDown() override {
-    SetSystemSalt(NULL);
+    device_policy_service_ = nullptr;
+    init_controller_ = nullptr;
+    EXPECT_CALL(*exported_object(), Unregister()).Times(1);
+    impl_.reset();
+    Mock::VerifyAndClearExpectations(exported_object());
+
+    SetSystemSalt(nullptr);
     EXPECT_EQ(actual_locks_, expected_locks_);
     EXPECT_EQ(actual_restarts_, expected_restarts_);
   }
@@ -425,7 +427,7 @@ class SessionManagerImplTest : public ::testing::Test {
   void ExpectAndRunStartSession(const string& email) {
     ExpectStartSession(email);
     brillo::ErrorPtr error;
-    EXPECT_TRUE(impl_.StartSession(&error, email, kNothing));
+    EXPECT_TRUE(impl_->StartSession(&error, email, kNothing));
     EXPECT_FALSE(error.get());
     VerifyAndClearExpectations();
   }
@@ -433,7 +435,7 @@ class SessionManagerImplTest : public ::testing::Test {
   void ExpectAndRunGuestSession() {
     ExpectGuestSession();
     brillo::ErrorPtr error;
-    EXPECT_TRUE(impl_.StartSession(&error, kGuestUserName, kNothing));
+    EXPECT_TRUE(impl_->StartSession(&error, kGuestUserName, kNothing));
     EXPECT_FALSE(error.get());
     VerifyAndClearExpectations();
   }
@@ -474,8 +476,9 @@ class SessionManagerImplTest : public ::testing::Test {
   // These are bare pointers, not unique_ptrs, because we need to give them
   // to a SessionManagerImpl instance, but also be able to set expectations
   // on them after we hand them off.
-  MockInitDaemonController* init_controller_;  // Owned by SessionManagerImpl.
-  MockDevicePolicyService* device_policy_service_;
+  // Owned by SessionManagerImpl.
+  MockInitDaemonController* init_controller_ = nullptr;
+  MockDevicePolicyService* device_policy_service_ = nullptr;
   map<string, MockPolicyService*> user_policy_services_;
 
   scoped_refptr<FakeBus> bus_;
@@ -493,7 +496,7 @@ class SessionManagerImplTest : public ::testing::Test {
   scoped_refptr<MockObjectProxy> system_clock_proxy_;
   dbus::ObjectProxy::WaitForServiceToBeAvailableCallback available_callback_;
 
-  SessionManagerImpl impl_;
+  std::unique_ptr<SessionManagerImpl> impl_;
   base::ScopedTempDir tmpdir_;
 
 #if USE_CHEETS
@@ -578,16 +581,16 @@ class SessionManagerImplTest : public ::testing::Test {
 
   void FakeRestartDevice() { actual_restarts_++; }
 
-  string fake_salt_;
+  string fake_salt_ = "fake salt";
 
   base::MessageLoop loop;
 
   // Used by fake closures that simulate calling chrome and powerd to lock
   // the screen and restart the device.
-  uint32_t actual_locks_;
-  uint32_t expected_locks_;
-  uint32_t actual_restarts_;
-  uint32_t expected_restarts_;
+  uint32_t actual_locks_ = 0;
+  uint32_t expected_locks_ = 0;
+  uint32_t actual_restarts_ = 0;
+  uint32_t expected_restarts_ = 0;
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerImplTest);
 };
@@ -604,7 +607,13 @@ TEST_F(SessionManagerImplTest, EmitLoginPromptVisible) {
   EXPECT_CALL(*exported_object(),
               SendSignal(SignalEq(login_manager::kLoginPromptVisibleSignal)))
       .Times(1);
-  impl_.EmitLoginPromptVisible();
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulseInternal("login-prompt-visible",
+                             ElementsAre(),
+                             InitDaemonController::TriggerMode::ASYNC))
+      .Times(1);
+  impl_->EmitLoginPromptVisible();
 }
 
 TEST_F(SessionManagerImplTest, EnableChromeTesting) {
@@ -630,7 +639,8 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
   {
     brillo::ErrorPtr error;
     std::string testing_path;
-    ASSERT_TRUE(impl_.EnableChromeTesting(&error, false, args, &testing_path));
+    ASSERT_TRUE(
+        impl_->EnableChromeTesting(&error, false, args, &testing_path));
     EXPECT_FALSE(error.get());
     EXPECT_NE(std::string::npos,
               testing_path.find(expected_testing_path_prefix)) << testing_path;
@@ -640,7 +650,8 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
   {
     brillo::ErrorPtr error;
     std::string testing_path;
-    ASSERT_TRUE(impl_.EnableChromeTesting(&error, false, args, &testing_path));
+    ASSERT_TRUE(
+        impl_->EnableChromeTesting(&error, false, args, &testing_path));
     EXPECT_FALSE(error.get());
     EXPECT_NE(std::string::npos,
               testing_path.find(expected_testing_path_prefix)) << testing_path;
@@ -659,7 +670,7 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
   {
     brillo::ErrorPtr error;
     std::string testing_path;
-    ASSERT_TRUE(impl_.EnableChromeTesting(&error, true, args, &testing_path));
+    ASSERT_TRUE(impl_->EnableChromeTesting(&error, true, args, &testing_path));
     EXPECT_FALSE(error.get());
     EXPECT_NE(std::string::npos,
               testing_path.find(expected_testing_path_prefix)) << testing_path;
@@ -669,19 +680,19 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
 TEST_F(SessionManagerImplTest, StartSession) {
   ExpectStartSession(kSaneEmail);
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
 }
 
 TEST_F(SessionManagerImplTest, StartSession_New) {
   ExpectStartSessionUnowned(kSaneEmail);
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
 }
 
 TEST_F(SessionManagerImplTest, StartSession_InvalidUser) {
   constexpr char kBadEmail[] = "user";
   brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_.StartSession(&error, kBadEmail, kNothing));
+  EXPECT_FALSE(impl_->StartSession(&error, kBadEmail, kNothing));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kInvalidAccount, error->GetCode());
 }
@@ -689,10 +700,10 @@ TEST_F(SessionManagerImplTest, StartSession_InvalidUser) {
 TEST_F(SessionManagerImplTest, StartSession_Twice) {
   ExpectStartSession(kSaneEmail);
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
   EXPECT_FALSE(error.get());
 
-  EXPECT_FALSE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_FALSE(impl_->StartSession(&error, kSaneEmail, kNothing));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kSessionExists, error->GetCode());
 }
@@ -700,46 +711,46 @@ TEST_F(SessionManagerImplTest, StartSession_Twice) {
 TEST_F(SessionManagerImplTest, StartSession_TwoUsers) {
   ExpectStartSession(kSaneEmail);
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
   EXPECT_FALSE(error.get());
   VerifyAndClearExpectations();
 
   constexpr char kEmail2[] = "user2@somewhere";
   ExpectStartSession(kEmail2);
-  EXPECT_TRUE(impl_.StartSession(&error, kEmail2, kNothing));
+  EXPECT_TRUE(impl_->StartSession(&error, kEmail2, kNothing));
   EXPECT_FALSE(error.get());
 }
 
 TEST_F(SessionManagerImplTest, StartSession_OwnerAndOther) {
   ExpectStartSessionUnowned(kSaneEmail);
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
   EXPECT_FALSE(error.get());
   VerifyAndClearExpectations();
 
   constexpr char kEmail2[] = "user2@somewhere";
   ExpectStartSession(kEmail2);
-  EXPECT_TRUE(impl_.StartSession(&error, kEmail2, kNothing));
+  EXPECT_TRUE(impl_->StartSession(&error, kEmail2, kNothing));
   EXPECT_FALSE(error.get());
 }
 
 TEST_F(SessionManagerImplTest, StartSession_OwnerRace) {
   ExpectStartSessionUnowned(kSaneEmail);
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
   EXPECT_FALSE(error.get());
   VerifyAndClearExpectations();
 
   constexpr char kEmail2[] = "user2@somewhere";
   ExpectStartSessionOwningInProcess(kEmail2);
-  EXPECT_TRUE(impl_.StartSession(&error, kEmail2, kNothing));
+  EXPECT_TRUE(impl_->StartSession(&error, kEmail2, kNothing));
   EXPECT_FALSE(error.get());
 }
 
 TEST_F(SessionManagerImplTest, StartSession_BadNssDB) {
   nss_.MakeBadDB();
   brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_FALSE(impl_->StartSession(&error, kSaneEmail, kNothing));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kNoUserNssDb, error->GetCode());
 }
@@ -755,21 +766,21 @@ TEST_F(SessionManagerImplTest, StartSession_DevicePolicyFailure) {
             })));
 
   brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_FALSE(impl_->StartSession(&error, kSaneEmail, kNothing));
   ASSERT_TRUE(error.get());
 }
 
 TEST_F(SessionManagerImplTest, StartSession_Owner) {
   ExpectStartOwnerSession(kSaneEmail);
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
   EXPECT_FALSE(error.get());
 }
 
 TEST_F(SessionManagerImplTest, StartSession_KeyMitigation) {
   ExpectStartSessionOwnerLost(kSaneEmail);
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
   EXPECT_FALSE(error.get());
 }
 
@@ -778,13 +789,13 @@ TEST_F(SessionManagerImplTest, StartSession_ActiveDirectorManaged) {
   SetDeviceMode("enterprise_ad");
   ExpectStartSessionActiveDirectory(kSaneEmail);
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
   EXPECT_FALSE(error.get());
 }
 
 TEST_F(SessionManagerImplTest, StopSession) {
   EXPECT_CALL(manager_, ScheduleShutdown()).Times(1);
-  impl_.StopSession("");
+  impl_->StopSession("");
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_NoSession) {
@@ -792,7 +803,7 @@ TEST_F(SessionManagerImplTest, StorePolicy_NoSession) {
   ExpectStorePolicy(device_policy_service_, policy_blob, kAllKeyFlags,
                     SignatureCheck::kEnabled);
   ResponseCapturer capturer;
-  impl_.StorePolicy(capturer.CreateMethodResponse<>(), policy_blob);
+  impl_->StorePolicy(capturer.CreateMethodResponse<>(), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_SessionStarted) {
@@ -802,7 +813,7 @@ TEST_F(SessionManagerImplTest, StorePolicy_SessionStarted) {
                     PolicyService::KEY_ROTATE, SignatureCheck::kEnabled);
 
   ResponseCapturer capturer;
-  impl_.StorePolicy(capturer.CreateMethodResponse<>(), policy_blob);
+  impl_->StorePolicy(capturer.CreateMethodResponse<>(), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureConsumer) {
@@ -810,7 +821,7 @@ TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureConsumer) {
   ExpectNoStorePolicy(device_policy_service_);
 
   ResponseCapturer capturer;
-  impl_.StoreUnsignedPolicy(capturer.CreateMethodResponse<>(), policy_blob);
+  impl_->StoreUnsignedPolicy(capturer.CreateMethodResponse<>(), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureEnterprise) {
@@ -819,7 +830,7 @@ TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureEnterprise) {
   ExpectNoStorePolicy(device_policy_service_);
 
   ResponseCapturer capturer;
-  impl_.StoreUnsignedPolicy(capturer.CreateMethodResponse<>(), policy_blob);
+  impl_->StoreUnsignedPolicy(capturer.CreateMethodResponse<>(), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureEnterpriseAD) {
@@ -829,7 +840,7 @@ TEST_F(SessionManagerImplTest, StorePolicy_NoSignatureEnterpriseAD) {
                     SignatureCheck::kDisabled);
 
   ResponseCapturer capturer;
-  impl_.StoreUnsignedPolicy(capturer.CreateMethodResponse<>(), policy_blob);
+  impl_->StoreUnsignedPolicy(capturer.CreateMethodResponse<>(), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, RetrievePolicy) {
@@ -838,7 +849,7 @@ TEST_F(SessionManagerImplTest, RetrievePolicy) {
       .WillOnce(DoAll(SetArgumentPointee<0>(policy_blob), Return(true)));
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.RetrievePolicy(&error, &out_blob));
+  EXPECT_TRUE(impl_->RetrievePolicy(&error, &out_blob));
   EXPECT_FALSE(error.get());
   EXPECT_EQ(policy_blob, out_blob);
 }
@@ -847,7 +858,7 @@ TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSync) {
   EXPECT_CALL(state_key_generator_, RequestStateKeys(_));
 
   ResponseCapturer capturer;
-  impl_.GetServerBackedStateKeys(
+  impl_->GetServerBackedStateKeys(
       capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>>());
   ASSERT_NO_FATAL_FAILURE(GotLastSyncInfo(true));
 }
@@ -855,7 +866,7 @@ TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSync) {
 TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_NoTimeSync) {
   EXPECT_CALL(state_key_generator_, RequestStateKeys(_)).Times(0);
   ResponseCapturer capturer;
-  impl_.GetServerBackedStateKeys(
+  impl_->GetServerBackedStateKeys(
       capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>>());
 }
 
@@ -864,7 +875,7 @@ TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSyncDoneBefore) {
 
   EXPECT_CALL(state_key_generator_, RequestStateKeys(_));
   ResponseCapturer capturer;
-  impl_.GetServerBackedStateKeys(
+  impl_->GetServerBackedStateKeys(
       capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>>());
 }
 
@@ -873,7 +884,7 @@ TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_FailedTimeSync) {
 
   EXPECT_CALL(state_key_generator_, RequestStateKeys(_)).Times(0);
   ResponseCapturer capturer;
-  impl_.GetServerBackedStateKeys(
+  impl_->GetServerBackedStateKeys(
       capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>>());
 
   EXPECT_CALL(*system_clock_proxy_,
@@ -886,7 +897,7 @@ TEST_F(SessionManagerImplTest, GetServerBackedStateKeys_TimeSyncAfterFail) {
   ASSERT_NO_FATAL_FAILURE(GotLastSyncInfo(false));
 
   ResponseCapturer capturer;
-  impl_.GetServerBackedStateKeys(
+  impl_->GetServerBackedStateKeys(
       capturer.CreateMethodResponse<std::vector<std::vector<uint8_t>>>());
 
   dbus::ObjectProxy::ResponseCallback time_sync_callback;
@@ -908,8 +919,8 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSession) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
 
   ResponseCapturer capturer;
-  impl_.StorePolicyForUser(capturer.CreateMethodResponse<>(),
-                           kSaneEmail, policy_blob);
+  impl_->StorePolicyForUser(capturer.CreateMethodResponse<>(),
+                            kSaneEmail, policy_blob);
 
   ASSERT_TRUE(capturer.response());
   EXPECT_EQ(dbus_error::kSessionDoesNotExist,
@@ -926,8 +937,8 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SessionStarted) {
       .WillOnce(Return(true));
 
   ResponseCapturer capturer;
-  impl_.StorePolicyForUser(capturer.CreateMethodResponse<>(),
-                           kSaneEmail, policy_blob);
+  impl_->StorePolicyForUser(capturer.CreateMethodResponse<>(),
+                            kSaneEmail, policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
@@ -944,8 +955,8 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
 
   {
     ResponseCapturer capturer;
-    impl_.StorePolicyForUser(capturer.CreateMethodResponse<>(),
-                             kSaneEmail, policy_blob);
+    impl_->StorePolicyForUser(capturer.CreateMethodResponse<>(),
+                              kSaneEmail, policy_blob);
   }
   Mock::VerifyAndClearExpectations(user_policy_services_[kSaneEmail]);
 
@@ -953,8 +964,8 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
   constexpr char kEmail2[] = "user2@somewhere.com";
   {
     ResponseCapturer capturer;
-    impl_.StorePolicyForUser(capturer.CreateMethodResponse<>(),
-                             kEmail2, policy_blob);
+    impl_->StorePolicyForUser(capturer.CreateMethodResponse<>(),
+                              kEmail2, policy_blob);
     ASSERT_TRUE(capturer.response());
     EXPECT_EQ(dbus_error::kSessionDoesNotExist,
               capturer.response()->GetErrorName());
@@ -972,8 +983,8 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
       .WillOnce(Return(true));
   {
     ResponseCapturer capturer;
-    impl_.StorePolicyForUser(capturer.CreateMethodResponse<>(),
-                             kEmail2, policy_blob);
+    impl_->StorePolicyForUser(capturer.CreateMethodResponse<>(),
+                              kEmail2, policy_blob);
   }
   Mock::VerifyAndClearExpectations(user_policy_services_[kEmail2]);
 }
@@ -985,7 +996,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureConsumer) {
       .Times(0);
 
   ResponseCapturer capturer;
-  impl_.StoreUnsignedPolicyForUser(
+  impl_->StoreUnsignedPolicyForUser(
       capturer.CreateMethodResponse<>(), kSaneEmail, policy_blob);
 }
 
@@ -997,7 +1008,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureEnterprise) {
       .Times(0);
 
   ResponseCapturer capturer;
-  impl_.StoreUnsignedPolicyForUser(
+  impl_->StoreUnsignedPolicyForUser(
       capturer.CreateMethodResponse<>(), kSaneEmail, policy_blob);
 }
 
@@ -1012,14 +1023,14 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSignatureEnterpriseAD) {
       .WillOnce(Return(true));
 
   ResponseCapturer capturer;
-  impl_.StoreUnsignedPolicyForUser(
+  impl_->StoreUnsignedPolicyForUser(
       capturer.CreateMethodResponse<>(), kSaneEmail, policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, RetrieveUserPolicy_NoSession) {
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_.RetrievePolicyForUser(&error, kSaneEmail, &out_blob));
+  EXPECT_FALSE(impl_->RetrievePolicyForUser(&error, kSaneEmail, &out_blob));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error->GetCode());
 }
@@ -1032,7 +1043,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SessionStarted) {
 
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.RetrievePolicyForUser(&error, kSaneEmail, &out_blob));
+  EXPECT_TRUE(impl_->RetrievePolicyForUser(&error, kSaneEmail, &out_blob));
   EXPECT_FALSE(error.get());
   EXPECT_EQ(policy_blob, out_blob);
 }
@@ -1048,7 +1059,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
   {
     std::vector<uint8_t> out_blob;
     brillo::ErrorPtr error;
-    EXPECT_TRUE(impl_.RetrievePolicyForUser(&error, kSaneEmail, &out_blob));
+    EXPECT_TRUE(impl_->RetrievePolicyForUser(&error, kSaneEmail, &out_blob));
     EXPECT_FALSE(error.get());
     Mock::VerifyAndClearExpectations(user_policy_services_[kSaneEmail]);
     EXPECT_EQ(policy_blob, out_blob);
@@ -1059,7 +1070,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
   {
     std::vector<uint8_t> out_blob;
     brillo::ErrorPtr error;
-    EXPECT_FALSE(impl_.RetrievePolicyForUser(&error, kEmail2, &out_blob));
+    EXPECT_FALSE(impl_->RetrievePolicyForUser(&error, kEmail2, &out_blob));
     ASSERT_TRUE(error.get());
     EXPECT_EQ(dbus_error::kSessionDoesNotExist, error->GetCode());
   }
@@ -1074,7 +1085,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
   {
     std::vector<uint8_t> out_blob;
     brillo::ErrorPtr error;
-    EXPECT_TRUE(impl_.RetrievePolicyForUser(&error, kEmail2, &out_blob));
+    EXPECT_TRUE(impl_->RetrievePolicyForUser(&error, kEmail2, &out_blob));
     EXPECT_FALSE(error.get());
     Mock::VerifyAndClearExpectations(user_policy_services_[kEmail2]);
     EXPECT_EQ(policy_blob, out_blob);
@@ -1085,12 +1096,12 @@ TEST_F(SessionManagerImplTest, RetrieveActiveSessions) {
   ExpectStartSession(kSaneEmail);
   {
     brillo::ErrorPtr error;
-    EXPECT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+    EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
     EXPECT_FALSE(error.get());
   }
   {
     std::map<std::string, std::string> active_users =
-        impl_.RetrieveActiveSessions();
+        impl_->RetrieveActiveSessions();
     EXPECT_EQ(active_users.size(), 1);
     EXPECT_EQ(active_users[kSaneEmail], SanitizeUserName(kSaneEmail));
   }
@@ -1100,12 +1111,12 @@ TEST_F(SessionManagerImplTest, RetrieveActiveSessions) {
   ExpectStartSession(kEmail2);
   {
     brillo::ErrorPtr error;
-    EXPECT_TRUE(impl_.StartSession(&error, kEmail2, kNothing));
+    EXPECT_TRUE(impl_->StartSession(&error, kEmail2, kNothing));
     EXPECT_FALSE(error.get());
   }
   {
     std::map<std::string, std::string> active_users =
-        impl_.RetrieveActiveSessions();
+        impl_->RetrieveActiveSessions();
     EXPECT_EQ(active_users.size(), 2);
     EXPECT_EQ(active_users[kSaneEmail], SanitizeUserName(kSaneEmail));
     EXPECT_EQ(active_users[kEmail2], SanitizeUserName(kEmail2));
@@ -1114,7 +1125,7 @@ TEST_F(SessionManagerImplTest, RetrieveActiveSessions) {
 
 TEST_F(SessionManagerImplTest, RestartJobBadSocket) {
   brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_.RestartJob(&error, dbus::FileDescriptor(), {}));
+  EXPECT_FALSE(impl_->RestartJob(&error, dbus::FileDescriptor(), {}));
   ASSERT_TRUE(error.get());
   EXPECT_EQ("GetPeerCredsFailed", error->GetCode());
 }
@@ -1129,7 +1140,7 @@ TEST_F(SessionManagerImplTest, RestartJobBadPid) {
 
   EXPECT_CALL(manager_, IsBrowser(getpid())).WillRepeatedly(Return(false));
   brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_.RestartJob(&error, fd1, {}));
+  EXPECT_FALSE(impl_->RestartJob(&error, fd1, {}));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kUnknownPid, error->GetCode());
 }
@@ -1158,24 +1169,24 @@ TEST_F(SessionManagerImplTest, RestartJobSuccess) {
   ExpectGuestSession();
 
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.RestartJob(&error, fd1, argv));
+  EXPECT_TRUE(impl_->RestartJob(&error, fd1, argv));
   EXPECT_FALSE(error.get());
 }
 
 TEST_F(SessionManagerImplTest, SupervisedUserCreation) {
-  impl_.HandleSupervisedUserCreationStarting();
-  EXPECT_TRUE(impl_.ShouldEndSession());
-  impl_.HandleSupervisedUserCreationFinished();
-  EXPECT_FALSE(impl_.ShouldEndSession());
+  impl_->HandleSupervisedUserCreationStarting();
+  EXPECT_TRUE(impl_->ShouldEndSession());
+  impl_->HandleSupervisedUserCreationFinished();
+  EXPECT_FALSE(impl_->ShouldEndSession());
 }
 
 TEST_F(SessionManagerImplTest, LockScreen) {
   ExpectAndRunStartSession(kSaneEmail);
   ExpectLockScreen();
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.LockScreen(&error));
+  EXPECT_TRUE(impl_->LockScreen(&error));
   EXPECT_FALSE(error.get());
-  EXPECT_TRUE(impl_.ShouldEndSession());
+  EXPECT_TRUE(impl_->ShouldEndSession());
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_DuringSupervisedUserCreation) {
@@ -1183,18 +1194,18 @@ TEST_F(SessionManagerImplTest, LockScreen_DuringSupervisedUserCreation) {
   ExpectLockScreen();
   EXPECT_CALL(*exported_object(), SendSignal(_)).Times(AnyNumber());
 
-  impl_.HandleSupervisedUserCreationStarting();
-  EXPECT_TRUE(impl_.ShouldEndSession());
+  impl_->HandleSupervisedUserCreationStarting();
+  EXPECT_TRUE(impl_->ShouldEndSession());
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.LockScreen(&error));
+  EXPECT_TRUE(impl_->LockScreen(&error));
   EXPECT_FALSE(error.get());
-  EXPECT_TRUE(impl_.ShouldEndSession());
-  impl_.HandleLockScreenShown();
-  EXPECT_TRUE(impl_.ShouldEndSession());
-  impl_.HandleLockScreenDismissed();
-  EXPECT_TRUE(impl_.ShouldEndSession());
-  impl_.HandleSupervisedUserCreationFinished();
-  EXPECT_FALSE(impl_.ShouldEndSession());
+  EXPECT_TRUE(impl_->ShouldEndSession());
+  impl_->HandleLockScreenShown();
+  EXPECT_TRUE(impl_->ShouldEndSession());
+  impl_->HandleLockScreenDismissed();
+  EXPECT_TRUE(impl_->ShouldEndSession());
+  impl_->HandleSupervisedUserCreationFinished();
+  EXPECT_FALSE(impl_->ShouldEndSession());
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_InterleavedSupervisedUserCreation) {
@@ -1202,18 +1213,18 @@ TEST_F(SessionManagerImplTest, LockScreen_InterleavedSupervisedUserCreation) {
   ExpectLockScreen();
   EXPECT_CALL(*exported_object(), SendSignal(_)).Times(AnyNumber());
 
-  impl_.HandleSupervisedUserCreationStarting();
-  EXPECT_TRUE(impl_.ShouldEndSession());
+  impl_->HandleSupervisedUserCreationStarting();
+  EXPECT_TRUE(impl_->ShouldEndSession());
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.LockScreen(&error));
+  EXPECT_TRUE(impl_->LockScreen(&error));
   EXPECT_FALSE(error.get());
-  EXPECT_TRUE(impl_.ShouldEndSession());
-  impl_.HandleLockScreenShown();
-  EXPECT_TRUE(impl_.ShouldEndSession());
-  impl_.HandleSupervisedUserCreationFinished();
-  EXPECT_TRUE(impl_.ShouldEndSession());
-  impl_.HandleLockScreenDismissed();
-  EXPECT_FALSE(impl_.ShouldEndSession());
+  EXPECT_TRUE(impl_->ShouldEndSession());
+  impl_->HandleLockScreenShown();
+  EXPECT_TRUE(impl_->ShouldEndSession());
+  impl_->HandleSupervisedUserCreationFinished();
+  EXPECT_TRUE(impl_->ShouldEndSession());
+  impl_->HandleLockScreenDismissed();
+  EXPECT_FALSE(impl_->ShouldEndSession());
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_MultiSession) {
@@ -1221,14 +1232,14 @@ TEST_F(SessionManagerImplTest, LockScreen_MultiSession) {
   ExpectAndRunStartSession("user2@somewhere");
   ExpectLockScreen();
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.LockScreen(&error));
+  EXPECT_TRUE(impl_->LockScreen(&error));
   EXPECT_FALSE(error.get());
-  EXPECT_EQ(TRUE, impl_.ShouldEndSession());
+  EXPECT_EQ(TRUE, impl_->ShouldEndSession());
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_NoSession) {
   brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_.LockScreen(&error));
+  EXPECT_FALSE(impl_->LockScreen(&error));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error->GetCode());
 }
@@ -1236,7 +1247,7 @@ TEST_F(SessionManagerImplTest, LockScreen_NoSession) {
 TEST_F(SessionManagerImplTest, LockScreen_Guest) {
   ExpectAndRunGuestSession();
   brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_.LockScreen(&error));
+  EXPECT_FALSE(impl_->LockScreen(&error));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kSessionExists, error->GetCode());
 }
@@ -1246,30 +1257,30 @@ TEST_F(SessionManagerImplTest, LockScreen_UserAndGuest) {
   ExpectAndRunGuestSession();
   ExpectLockScreen();
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.LockScreen(&error));
+  EXPECT_TRUE(impl_->LockScreen(&error));
   ASSERT_FALSE(error.get());
-  EXPECT_EQ(TRUE, impl_.ShouldEndSession());
+  EXPECT_EQ(TRUE, impl_->ShouldEndSession());
 }
 
 TEST_F(SessionManagerImplTest, LockUnlockScreen) {
   ExpectAndRunStartSession(kSaneEmail);
   ExpectLockScreen();
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.LockScreen(&error));
+  EXPECT_TRUE(impl_->LockScreen(&error));
   EXPECT_FALSE(error.get());
-  EXPECT_EQ(TRUE, impl_.ShouldEndSession());
+  EXPECT_EQ(TRUE, impl_->ShouldEndSession());
 
   EXPECT_CALL(*exported_object(),
               SendSignal(SignalEq(login_manager::kScreenIsLockedSignal)))
       .Times(1);
-  impl_.HandleLockScreenShown();
-  EXPECT_EQ(TRUE, impl_.ShouldEndSession());
+  impl_->HandleLockScreenShown();
+  EXPECT_EQ(TRUE, impl_->ShouldEndSession());
 
   EXPECT_CALL(*exported_object(),
               SendSignal(SignalEq(login_manager::kScreenIsUnlockedSignal)))
       .Times(1);
-  impl_.HandleLockScreenDismissed();
-  EXPECT_EQ(FALSE, impl_.ShouldEndSession());
+  impl_->HandleLockScreenDismissed();
+  EXPECT_EQ(FALSE, impl_->ShouldEndSession());
 }
 
 TEST_F(SessionManagerImplTest, StartDeviceWipe) {
@@ -1278,7 +1289,7 @@ TEST_F(SessionManagerImplTest, StartDeviceWipe) {
   ExpectDeviceRestart();
 
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.StartDeviceWipe(&error));
+  EXPECT_TRUE(impl_->StartDeviceWipe(&error));
   EXPECT_FALSE(error.get());
 }
 
@@ -1287,7 +1298,7 @@ TEST_F(SessionManagerImplTest, StartDeviceWipe_AlreadyLoggedIn) {
   ASSERT_FALSE(utils_.Exists(logged_in_path));
   ASSERT_TRUE(utils_.AtomicFileWrite(logged_in_path, "1"));
   brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_.StartDeviceWipe(&error));
+  EXPECT_FALSE(impl_->StartDeviceWipe(&error));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kSessionExists, error->GetCode());
 }
@@ -1296,7 +1307,7 @@ TEST_F(SessionManagerImplTest, InitiateDeviceWipe_TooLongReason) {
   ASSERT_TRUE(utils_.RemoveFile(
       base::FilePath(SessionManagerImpl::kLoggedInFlag)));
   ExpectDeviceRestart();
-  impl_.InitiateDeviceWipe(
+  impl_->InitiateDeviceWipe(
       "overly long test message with\nspecial/chars$\t\xa4\xd6 1234567890");
   std::string contents;
   base::FilePath reset_path = utils_.PutInsideBaseDirForTesting(
@@ -1318,7 +1329,7 @@ TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {
   // Start a session, to set up NSSDB for the user.
   ExpectStartOwnerSession(kSaneEmail);
   brillo::ErrorPtr error;
-  ASSERT_TRUE(impl_.StartSession(&error, kSaneEmail, kNothing));
+  ASSERT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
   EXPECT_FALSE(error.get());
 
   EXPECT_CALL(*device_policy_service_,
@@ -1326,7 +1337,7 @@ TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {
                   StrEq(kSaneEmail), StringToBlob(key), nss_.GetSlot()))
       .WillOnce(Return(true));
 
-  impl_.OnKeyGenerated(kSaneEmail, key_file_path);
+  impl_->OnKeyGenerated(kSaneEmail, key_file_path);
   EXPECT_FALSE(base::PathExists(key_file_path));
 }
 
@@ -1336,7 +1347,7 @@ TEST_F(SessionManagerImplTest, ContainerStart) {
   ExpectAndRunStartSession(kSaneEmail);
 
   brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_.StartContainer(&error, kContainerName));
+  EXPECT_FALSE(impl_->StartContainer(&error, kContainerName));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kContainerStartupFail, error->GetCode());
   EXPECT_FALSE(android_container_.running());
@@ -1347,7 +1358,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForLoginScreen) {
   {
     int64_t start_time = 0;
     brillo::ErrorPtr error;
-    EXPECT_FALSE(impl_.GetArcStartTimeTicks(&error, &start_time));
+    EXPECT_FALSE(impl_->GetArcStartTimeTicks(&error, &start_time));
     ASSERT_TRUE(error.get());
     EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
   }
@@ -1365,7 +1376,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForLoginScreen) {
   StartArcInstanceRequest request;
   request.set_for_login_screen(true);
   std::string container_instance_id;
-  EXPECT_TRUE(impl_.StartArcInstance(
+  EXPECT_TRUE(impl_->StartArcInstance(
       &error, SerializeAsBlob(request), &container_instance_id));
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(container_instance_id.empty());
@@ -1375,7 +1386,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForLoginScreen) {
   {
     brillo::ErrorPtr error;
     int64_t start_time = 0;
-    EXPECT_FALSE(impl_.GetArcStartTimeTicks(&error, &start_time));
+    EXPECT_FALSE(impl_->GetArcStartTimeTicks(&error, &start_time));
     ASSERT_TRUE(error.get());
     EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
   }
@@ -1395,11 +1406,17 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForLoginScreen) {
                              ElementsAre(),
                              InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(
+      *exported_object(),
+      SendSignal(SignalEq(login_manager::kArcInstanceStopped,
+                          true, container_instance_id)))
+      .Times(1);
   {
     brillo::ErrorPtr error;
-    EXPECT_TRUE(impl_.StopArcInstance(&error));
+    EXPECT_TRUE(impl_->StopArcInstance(&error));
     EXPECT_FALSE(error.get());
   }
+
   EXPECT_FALSE(android_container_.running());
 }
 
@@ -1408,7 +1425,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForUser) {
   {
     brillo::ErrorPtr error;
     int64_t start_time = 0;
-    EXPECT_FALSE(impl_.GetArcStartTimeTicks(&error, &start_time));
+    EXPECT_FALSE(impl_->GetArcStartTimeTicks(&error, &start_time));
     ASSERT_TRUE(error.get());
     EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
   }
@@ -1453,7 +1470,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForUser) {
   StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
   request.set_scan_vendor_priv_app(true);
   std::string container_instance_id;
-  EXPECT_TRUE(impl_.StartArcInstance(
+  EXPECT_TRUE(impl_->StartArcInstance(
       &error, SerializeAsBlob(request), &container_instance_id));
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(container_instance_id.empty());
@@ -1461,7 +1478,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForUser) {
   {
     brillo::ErrorPtr error;
     int64_t start_time = 0;
-    EXPECT_TRUE(impl_.GetArcStartTimeTicks(&error, &start_time));
+    EXPECT_TRUE(impl_->GetArcStartTimeTicks(&error, &start_time));
     EXPECT_NE(0, start_time);
     ASSERT_FALSE(error.get());
   }
@@ -1473,7 +1490,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForUser) {
 
   {
     brillo::ErrorPtr error;
-    EXPECT_TRUE(impl_.StopArcInstance(&error));
+    EXPECT_TRUE(impl_->StopArcInstance(&error));
     EXPECT_FALSE(error.get());
   }
   EXPECT_FALSE(android_container_.running());
@@ -1496,14 +1513,14 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
   StartArcInstanceRequest request;
   request.set_for_login_screen(true);
   std::string container_instance_id;
-  EXPECT_TRUE(impl_.StartArcInstance(
+  EXPECT_TRUE(impl_->StartArcInstance(
       &error, SerializeAsBlob(request), &container_instance_id));
 
   // Then, upgrade it to a fully functional one.
   {
     brillo::ErrorPtr error;
     int64_t start_time = 0;
-    EXPECT_FALSE(impl_.GetArcStartTimeTicks(&error, &start_time));
+    EXPECT_FALSE(impl_->GetArcStartTimeTicks(&error, &start_time));
     ASSERT_TRUE(error.get());
     EXPECT_EQ(dbus_error::kNotStarted, error->GetCode());
   }
@@ -1549,7 +1566,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
   request = CreateStartArcInstanceRequestForUser();
   request.set_scan_vendor_priv_app(true);
   std::string container_instance_id_for_upgrade = "not-empty";
-  EXPECT_TRUE(impl_.StartArcInstance(
+  EXPECT_TRUE(impl_->StartArcInstance(
       &error, SerializeAsBlob(request), &container_instance_id_for_upgrade));
   EXPECT_FALSE(error.get());
   // Unlike the regular start, an empty ID is returned.
@@ -1558,7 +1575,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
   {
     brillo::ErrorPtr error;
     int64_t start_time = 0;
-    EXPECT_TRUE(impl_.GetArcStartTimeTicks(&error, &start_time));
+    EXPECT_TRUE(impl_->GetArcStartTimeTicks(&error, &start_time));
     EXPECT_NE(0, start_time);
     ASSERT_FALSE(error.get());
   }
@@ -1571,7 +1588,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
 
   {
     brillo::ErrorPtr error;
-    EXPECT_TRUE(impl_.StopArcInstance(&error));
+    EXPECT_TRUE(impl_->StopArcInstance(&error));
     EXPECT_FALSE(error.get());
   }
   EXPECT_FALSE(android_container_.running());
@@ -1581,7 +1598,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_NoSession) {
   brillo::ErrorPtr error;
   StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
   std::string container_instance_id;
-  EXPECT_FALSE(impl_.StartArcInstance(
+  EXPECT_FALSE(impl_->StartArcInstance(
       &error, SerializeAsBlob(request), &container_instance_id));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error->GetCode());
@@ -1597,7 +1614,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_LowDisk) {
   brillo::ErrorPtr error;
   StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
   std::string container_instance_id;
-  EXPECT_FALSE(impl_.StartArcInstance(
+  EXPECT_FALSE(impl_->StartArcInstance(
       &error, SerializeAsBlob(request), &container_instance_id));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kLowFreeDisk, error->GetCode());
@@ -1651,7 +1668,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
   {
     brillo::ErrorPtr error;
     StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
-    EXPECT_TRUE(impl_.StartArcInstance(
+    EXPECT_TRUE(impl_->StartArcInstance(
         &error, SerializeAsBlob(request), &container_instance_id));
     EXPECT_FALSE(error.get());
     EXPECT_FALSE(container_instance_id.empty());
@@ -1670,7 +1687,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
   // This should now fail since the container was cleaned up already.
   {
     brillo::ErrorPtr error;
-    EXPECT_FALSE(impl_.StopArcInstance(&error));
+    EXPECT_FALSE(impl_->StopArcInstance(&error));
     ASSERT_TRUE(error.get());
     EXPECT_EQ(dbus_error::kContainerShutdownFail, error->GetCode());
   }
@@ -1684,7 +1701,7 @@ TEST_F(SessionManagerImplTest, ArcStartInstance_Fail) {
   brillo::ErrorPtr error;
   StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
   std::string container_instance_id;
-  EXPECT_FALSE(impl_.StartArcInstance(
+  EXPECT_FALSE(impl_->StartArcInstance(
       &error, SerializeAsBlob(request), &container_instance_id));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
@@ -1702,7 +1719,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveData) {
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_DIR_EMPTY);
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.RemoveArcData(&error, kSaneEmail));
+  EXPECT_TRUE(impl_->RemoveArcData(&error, kSaneEmail));
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
@@ -1715,7 +1732,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_NoSourceDirectory) {
   ExpectRemoveArcData(DataDirType::DATA_DIR_MISSING,
                       OldDataDirType::OLD_DATA_DIR_EMPTY);
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.RemoveArcData(&error, kSaneEmail));
+  EXPECT_TRUE(impl_->RemoveArcData(&error, kSaneEmail));
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
@@ -1729,7 +1746,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_OldDirectoryExists) {
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_DIR_EMPTY);
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.RemoveArcData(&error, kSaneEmail));
+  EXPECT_TRUE(impl_->RemoveArcData(&error, kSaneEmail));
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
@@ -1746,7 +1763,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_NonEmptyOldDirectoryExists) {
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_DIR_NOT_EMPTY);
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.RemoveArcData(&error, kSaneEmail));
+  EXPECT_TRUE(impl_->RemoveArcData(&error, kSaneEmail));
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
@@ -1760,7 +1777,7 @@ TEST_F(SessionManagerImplTest,
   ExpectRemoveArcData(DataDirType::DATA_DIR_MISSING,
                       OldDataDirType::OLD_DATA_DIR_EMPTY);
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.RemoveArcData(&error, kSaneEmail));
+  EXPECT_TRUE(impl_->RemoveArcData(&error, kSaneEmail));
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
@@ -1776,7 +1793,7 @@ TEST_F(SessionManagerImplTest,
   ExpectRemoveArcData(DataDirType::DATA_DIR_MISSING,
                       OldDataDirType::OLD_DATA_DIR_NOT_EMPTY);
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.RemoveArcData(&error, kSaneEmail));
+  EXPECT_TRUE(impl_->RemoveArcData(&error, kSaneEmail));
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
@@ -1791,7 +1808,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_OldFileExists) {
   ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
                       OldDataDirType::OLD_DATA_FILE_EXISTS);
   brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_.RemoveArcData(&error, kSaneEmail));
+  EXPECT_TRUE(impl_->RemoveArcData(&error, kSaneEmail));
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
 }
@@ -1831,14 +1848,14 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
     brillo::ErrorPtr error;
     StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
     std::string container_instance_id;
-    EXPECT_TRUE(impl_.StartArcInstance(
+    EXPECT_TRUE(impl_->StartArcInstance(
         &error, SerializeAsBlob(request), &container_instance_id));
     EXPECT_FALSE(error.get());
     EXPECT_FALSE(container_instance_id.empty());
   }
   {
     brillo::ErrorPtr error;
-    EXPECT_FALSE(impl_.RemoveArcData(&error, kSaneEmail));
+    EXPECT_FALSE(impl_->RemoveArcData(&error, kSaneEmail));
     ASSERT_TRUE(error.get());
     EXPECT_EQ(dbus_error::kArcInstanceRunning, error->GetCode());
     EXPECT_TRUE(utils_.Exists(android_data_dir_));
@@ -1877,11 +1894,11 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
           InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
+  std::string container_instance_id;
   {
     brillo::ErrorPtr error;
     StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
-    std::string container_instance_id;
-    EXPECT_TRUE(impl_.StartArcInstance(
+    EXPECT_TRUE(impl_->StartArcInstance(
         &error, SerializeAsBlob(request), &container_instance_id));
     EXPECT_FALSE(error.get());
     EXPECT_FALSE(container_instance_id.empty());
@@ -1899,9 +1916,14 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
                              ElementsAre(),
                              InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+  EXPECT_CALL(
+      *exported_object(),
+      SendSignal(SignalEq(login_manager::kArcInstanceStopped,
+                          true, container_instance_id)))
+      .Times(1);
   {
     brillo::ErrorPtr error;
-    EXPECT_TRUE(impl_.StopArcInstance(&error));
+    EXPECT_TRUE(impl_->StopArcInstance(&error));
     EXPECT_FALSE(error.get());
   }
 
@@ -1909,7 +1931,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
                       OldDataDirType::OLD_DATA_DIR_NOT_EMPTY);
   {
     brillo::ErrorPtr error;
-    EXPECT_TRUE(impl_.RemoveArcData(&error, kSaneEmail));
+    EXPECT_TRUE(impl_->RemoveArcData(&error, kSaneEmail));
     EXPECT_FALSE(error.get());
   }
   EXPECT_FALSE(utils_.Exists(android_data_dir_));
@@ -1919,7 +1941,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
 // dbus_error::kNotAvailable.
 TEST_F(SessionManagerImplTest, ArcRemoveData) {
   brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_.RemoveArcData(&error, kSaneEmail));
+  EXPECT_FALSE(impl_->RemoveArcData(&error, kSaneEmail));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
 }
@@ -1928,13 +1950,13 @@ TEST_F(SessionManagerImplTest, ArcRemoveData) {
 TEST_F(SessionManagerImplTest, SetArcCpuRestrictionFails) {
 #if USE_CHEETS
   brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_.SetArcCpuRestriction(
+  EXPECT_FALSE(impl_->SetArcCpuRestriction(
       &error, static_cast<uint32_t>(NUM_CONTAINER_CPU_RESTRICTION_STATES)));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kArcCpuCgroupFail, error->GetCode());
 #else
   brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_.SetArcCpuRestriction(
+  EXPECT_FALSE(impl_->SetArcCpuRestriction(
       &error, static_cast<uint32_t>(CONTAINER_CPU_RESTRICTION_BACKGROUND)));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
@@ -1951,7 +1973,7 @@ TEST_F(SessionManagerImplTest, EmitArcBooted) {
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   {
     brillo::ErrorPtr error;
-    EXPECT_TRUE(impl_.EmitArcBooted(&error, kSaneEmail));
+    EXPECT_TRUE(impl_->EmitArcBooted(&error, kSaneEmail));
     EXPECT_FALSE(error.get());
   }
 
@@ -1963,12 +1985,12 @@ TEST_F(SessionManagerImplTest, EmitArcBooted) {
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   {
     brillo::ErrorPtr error;
-    EXPECT_TRUE(impl_.EmitArcBooted(&error, std::string()));
+    EXPECT_TRUE(impl_->EmitArcBooted(&error, std::string()));
     EXPECT_FALSE(error.get());
   }
 #else
   brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_.EmitArcBooted(&error, kSaneEmail));
+  EXPECT_FALSE(impl_->EmitArcBooted(&error, kSaneEmail));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
 #endif
