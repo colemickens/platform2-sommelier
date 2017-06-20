@@ -6,8 +6,14 @@
 		<method name="AddWakeOnPacketConnection">
 			<arg name="ip_endpoint" type="s" direction="in"/>
 		</method>
+		<method name="AddWakeOnPacketOfTypes">
+			<arg name="packet_types" type="as" direction="in"/>
+		</method>
 		<method name="RemoveWakeOnPacketConnection">
 			<arg name="ip_endpoint" type="s" direction="in"/>
+		</method>
+		<method name="RemoveWakeOnPacketOfTypes">
+			<arg name="packet_types" type="as" direction="in"/>
 		</method>
 		<method name="RemoveAllWakeOnPacketConnections">
 		</method>

@@ -29,7 +29,7 @@ namespace shill {
 class MockWakeOnWiFi : public WakeOnWiFi {
  public:
   MockWakeOnWiFi(NetlinkManager* netlink_manager, EventDispatcher* dispatcher,
-                 Metrics* metrics);
+                 Metrics* metrics, const std::string& hardware_address);
   ~MockWakeOnWiFi() override;
 
   MOCK_METHOD0(OnAfterResume, void());

@@ -106,8 +106,16 @@ class ChromeosDeviceDBusAdaptor
                   const std::string& carrierr) override;
   bool AddWakeOnPacketConnection(brillo::ErrorPtr* error,
                                  const std::string& ip_endpoint) override;
+  bool AddWakeOnPacketOfTypes(
+      brillo::ErrorPtr* error,
+      const std::vector<std::string>& packet_types) override;
+
   bool RemoveWakeOnPacketConnection(brillo::ErrorPtr* error,
                                     const std::string& ip_endpoint) override;
+  bool RemoveWakeOnPacketOfTypes(
+      brillo::ErrorPtr* error,
+      const std::vector<std::string>& packet_types) override;
+
   bool RemoveAllWakeOnPacketConnections(brillo::ErrorPtr* error) override;
 
   Device* device() const { return device_; }

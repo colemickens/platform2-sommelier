@@ -699,11 +699,31 @@ void Device::AddWakeOnPacketConnection(const string& ip_endpoint,
   return;
 }
 
+void Device::AddWakeOnPacketOfTypes(
+    const std::vector<std::string>& packet_types, Error* error) {
+  Error::PopulateAndLog(
+      FROM_HERE,
+      error,
+      Error::kNotSupported,
+      "AddWakeOnPacketOfType not implemented for " + link_name_ + ".");
+  return;
+}
+
 void Device::RemoveWakeOnPacketConnection(const string& ip_endpoint,
                                           Error* error) {
   Error::PopulateAndLog(
       FROM_HERE, error, Error::kNotSupported,
       "RemoveWakeOnPacketConnection not implemented for " + link_name_ + ".");
+  return;
+}
+
+void Device::RemoveWakeOnPacketOfTypes(
+    const std::vector<std::string>& packet_types, Error* error) {
+  Error::PopulateAndLog(
+      FROM_HERE,
+      error,
+      Error::kNotSupported,
+      "RemoveWakeOnPacketOfType not implemented for " + link_name_ + ".");
   return;
 }
 

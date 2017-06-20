@@ -177,6 +177,7 @@ WiFi::WiFi(ControlInterface* control_interface,
       wake_on_wifi_(new WakeOnWiFi(netlink_manager_,
                                    dispatcher,
                                    metrics,
+                                   address,
                                    Bind(&Manager::RecordDarkResumeWakeReason,
                                         manager->AsWeakPtr()))) {
   PropertyStore* store = this->mutable_store();
@@ -2023,9 +2024,19 @@ void WiFi::AddWakeOnPacketConnection(const string& ip_endpoint, Error* error) {
   wake_on_wifi_->AddWakeOnPacketConnection(ip_endpoint, error);
 }
 
+void WiFi::AddWakeOnPacketOfTypes(const std::vector<std::string>& packet_types,
+                                  Error* error) {
+  wake_on_wifi_->AddWakeOnPacketOfTypes(packet_types, error);
+}
+
 void WiFi::RemoveWakeOnPacketConnection(const string& ip_endpoint,
                                         Error* error) {
   wake_on_wifi_->RemoveWakeOnPacketConnection(ip_endpoint, error);
+}
+
+void WiFi::RemoveWakeOnPacketOfTypes(
+    const std::vector<std::string>& packet_types, Error* error) {
+  wake_on_wifi_->RemoveWakeOnPacketOfTypes(packet_types, error);
 }
 
 void WiFi::RemoveAllWakeOnPacketConnections(Error* error) {

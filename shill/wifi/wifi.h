@@ -162,8 +162,12 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // for documentation.
   void AddWakeOnPacketConnection(const std::string& ip_endpoint,
                                  Error* error) override;
+  void AddWakeOnPacketOfTypes(const std::vector<std::string>& packet_types,
+                              Error* error) override;
   void RemoveWakeOnPacketConnection(const std::string& ip_endpoint,
                                     Error* error) override;
+  void RemoveWakeOnPacketOfTypes(const std::vector<std::string>& packet_types,
+                                   Error* error) override;
   void RemoveAllWakeOnPacketConnections(Error* error) override;
 
   // Implementation of SupplicantEventDelegateInterface.  These methods

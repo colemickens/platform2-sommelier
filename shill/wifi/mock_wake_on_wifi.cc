@@ -21,8 +21,10 @@
 namespace shill {
 
 MockWakeOnWiFi::MockWakeOnWiFi(NetlinkManager* netlink_manager,
-                               EventDispatcher* dispatcher, Metrics* metrics)
-    : WakeOnWiFi(netlink_manager, dispatcher, metrics,
+                               EventDispatcher* dispatcher,
+                               Metrics* metrics,
+                               const std::string& hardware_address)
+    : WakeOnWiFi(netlink_manager, dispatcher, metrics, hardware_address,
                  RecordWakeReasonCallback()) {}
 
 MockWakeOnWiFi::~MockWakeOnWiFi() {}

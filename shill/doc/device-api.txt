@@ -762,6 +762,22 @@ Properties	string Address [readonly]
 					 [service].Error.NotFound (there is no such connection)
 					 [service].Error.NotSupported (wake-on-packet not supported)
 
+		void AddWakeOnPacketOfTypes(array(string) packet_types)
+
+			(WiFi only) Program a wake-on-packet rule into the NIC to wake
+			the system from suspend upon receiving IPV4/IPV6 packets
+			with the next higher level service in the protocol stack belonging
+			to |packet_types|.
+
+  			possible packet_types:
+				Look for "Wake on WiFi Packet Type Constants" in
+				system_api/dbus/shill/dbus-constants.h for the set of possible
+				packet types.
+
+			Possible errors:
+			 	[service].Error.InvalidArgument (argument parsing error)
+				[service].Error.NotSupported (wake-on-packet not supported)
+
 		void RemoveWakeOnPacketConnection(string endpoint)
 
 			(WiFi only) Removes a wake-on-packet rule previously programmed into the
@@ -772,6 +788,25 @@ Properties	string Address [readonly]
 			Possible errors: [service].Error.InvalidArgument (argument parsing error)
 					 [service].Error.NotFound (no such request is active)
 					 [service].Error.NotSupported (wake-on-packet not supported)
+
+		void RemoveWakeOnPacketOfTypes(array(string) packet_types)
+
+			(WiFi only) Remove a wake-on-packet rule previously programmed into the
+			NIC to wake the system from suspend upon receiving IPV4/IPV6 packets
+			with the next higher level service in the protocol stack belonging
+			to |packet_types|. If any of the passed arguments does not match the
+			below mentioned protocols, it will return an error of type
+			kInvalidArguments. If wake on packets of given argument type is not
+			enabled before, the argument will be ignored silently.
+
+  			possible packet_types:
+  		  		Look for "Wake on WiFi Packet Type Constants" in
+  		  		system_api/dbus/shill/dbus-constants.h for the set of possible
+  		  		packet types.
+
+			Possible errors:
+			 	[service].Error.InvalidArgument (argument parsing error)
+				[service].Error.NotSupported (wake-on-packet not supported)
 
 		void RemoveAllWakeOnPacketConnections()
 

@@ -18,6 +18,7 @@
 #define SHILL_WIFI_WAKE_ON_WIFI_H_
 
 #include <linux/if_ether.h>
+#include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
 
@@ -184,7 +185,7 @@ class WakeOnWiFi {
   };
 
   WakeOnWiFi(NetlinkManager* netlink_manager, EventDispatcher* dispatcher,
-             Metrics* metrics,
+             Metrics* metrics, const std::string& hardware_address,
              RecordWakeReasonCallback record_wake_reason_callback);
   virtual ~WakeOnWiFi();
 
@@ -195,15 +196,27 @@ class WakeOnWiFi {
   // periodically collected.
   void StartMetricsTimer();
 
-  // Enable the NIC to wake on packets received from |ip_endpoint|.
+  // Enables the NIC to wake on packets received from |ip_endpoint|.
   // Note: The actual programming of the NIC only happens before the system
   // suspends, in |OnBeforeSuspend|.
   void AddWakeOnPacketConnection(const std::string& ip_endpoint, Error* error);
+  // Enables the NIC to wake on packets(IPv4/IPv6) with IP protocol
+  // belonging to |packet_types|.
+  // Note: The actual programming of the NIC only happens before the system
+  // suspends, in |OnBeforeSuspend|.
+  void AddWakeOnPacketOfTypes(const std::vector<std::string>& packet_types,
+                              Error* error);
   // Remove rule to wake on packets received from |ip_endpoint| from the NIC.
   // Note: The actual programming of the NIC only happens before the system
   // suspends, in |OnBeforeSuspend|.
   void RemoveWakeOnPacketConnection(const std::string& ip_endpoint,
                                     Error* error);
+  // Remove rule to wake on packets(IPv4/IPv6) with IP protocol
+  // belonging to |packet_types|.
+  // Note: The actual programming of the NIC only happens before the system
+  // suspends, in |OnBeforeSuspend|.
+  void RemoveWakeOnPacketOfTypes(const std::vector<std::string>& packet_types,
+                                 Error* error);
   // Remove all rules to wake on incoming packets from the NIC.
   // Note: The actual programming of the NIC only happens before the system
   // suspends, in |OnBeforeSuspend|.
@@ -337,6 +350,8 @@ class WakeOnWiFi {
   FRIEND_TEST(WakeOnWiFiTestWithDispatcher, InitiateScanInDarkResume);
 
   static const char kWakeOnIPAddressPatternsNotSupported[];
+  static const char kWakeOnPatternsNotSupported[];
+  static const char kMaxWakeOnPatternsReached[];
   static const char kWakeOnWiFiNotSupported[];
   static const int kVerifyWakeOnWiFiSettingsDelayMilliseconds;
   static const int kMaxSetWakeOnPacketRetries;
@@ -358,6 +373,15 @@ class WakeOnWiFi {
   static const char kWakeReasonStringDisconnect[];
   static const char kWakeReasonStringSSID[];
 
+  // Internal struct to hold the length and offset of sub-patterns that are
+  // part of a bigger pattern that start at |offset| and are of |length| size in
+  // bytes.
+  struct LengthOffset {
+    LengthOffset(uint32_t length, uint32_t offset)
+        : length(length), offset(offset) {}
+    uint32_t length;
+    uint32_t offset;
+  };
   std::string GetWakeOnWiFiFeaturesEnabled(Error* error);
   bool SetWakeOnWiFiFeaturesEnabled(const std::string& enabled, Error* error);
   // Helper function to run and reset |suspend_actions_done_callback_|.
@@ -367,22 +391,59 @@ class WakeOnWiFi {
       const std::pair<ByteString, ByteString>& lhs,
       const std::pair<ByteString, ByteString>& rhs);
   // Creates a mask which specifies which bytes in pattern of length
-  // |pattern_len| to match against. Bits |offset| to |pattern_len| - 1 are set,
-  // which bits 0 to bits 0 to |offset| - 1 are unset. This mask is saved in
-  // |mask|.
-  static void SetMask(ByteString* mask, uint32_t pattern_len, uint32_t offset);
+  // |pattern_len| to match against. Bits |offset| to |pattern_len| - 1 for
+  // each pair in |patternlen_offset_pair| are set. This mask is
+  // saved in |mask|.
+  static void SetMask(
+      ByteString* mask,
+      const std::vector<LengthOffset>& patternlen_offset_pair,
+      uint32_t expected_pattern_len);
   // Creates a pattern and mask for a NL80211 message that programs the NIC to
   // wake on packets originating from IP address |ip_addr|. The pattern and mask
   // are saved in |pattern| and |mask| respectively. Returns true iff the
   // pattern and mask are successfully created and written to |pattern| and
-  // |mask| respectively.
+  // |mask| respectively. If the length of the generated pattern is less than
+  // |min_pattern_len|, zeros are appended to meet the requirement. These zeros
+  // are ignored as the mask bits are unset accordingly.
   static bool CreateIPAddressPatternAndMask(const IPAddress& ip_addr,
+                                            uint32_t min_pattern_len,
                                             ByteString* pattern,
                                             ByteString* mask);
   static void CreateIPV4PatternAndMask(const IPAddress& ip_addr,
-                                       ByteString* pattern, ByteString* mask);
+                                       uint32_t min_pattern_len,
+                                       ByteString* pattern,
+                                       ByteString* mask);
   static void CreateIPV6PatternAndMask(const IPAddress& ip_addr,
-                                       ByteString* pattern, ByteString* mask);
+                                       ByteString* pattern,
+                                       ByteString* mask,
+                                       uint32_t min_pattern_len);
+  // Creates a pattern and mask for a NL80211 message that programs the NIC to
+  // wake on IPv4 packets with higher layer protocol belonging to |packet_type|
+  // and is destined to hardware address |hardware_address|. The pattern and
+  // mask are saved in |pattern| and |mask| respectively. If the length of the
+  // generated pattern is less than |min_pattern_len|, zeros are appended to
+  // meet the requirement. These zeros are ignored as the mask bits are
+  // unset accordingly.
+  static void CreatePacketTypePatternAndMaskforIPV4(
+      const std::string& hardware_address,
+      uint32_t min_pattern_len,
+      uint8_t packet_type,
+      ByteString* pattern,
+      ByteString* mask);
+
+  // Creates a pattern and mask for a NL80211 message that programs the NIC to
+  // wake on IPv6 packets with higher layer protocol belonging to |packet_type|
+  // and is destined to hardware address |hardware_address|. The pattern and
+  // mask are saved in |pattern| and |mask| respectively. If the length of the
+  // generated pattern is less than |min_pattern_len|, zeros are appended to
+  // meet the requirement. These zeros are ignored as the mask bits are
+  // unset accordingly.
+  static void CreatePacketTypePatternAndMaskforIPV6(
+      const std::string& hardware_address,
+      uint32_t min_pattern_len,
+      uint8_t packet_type,
+      ByteString* pattern,
+      ByteString* mask);
   // Creates and sets an attribute in a NL80211 message |msg| which indicates
   // the index of the wiphy interface to program. Returns true iff |msg| is
   // successfully configured.
@@ -398,14 +459,20 @@ class WakeOnWiFi {
   // so that the message will program the NIC with wiphy index |wiphy_index|
   // with wake on wireless triggers in |trigs|. If |trigs| contains the
   // kWakeTriggerPattern trigger, the message is configured to program the NIC
-  // to wake on packets from the IP addresses in |addrs|. If |trigs| contains
+  // to wake on packets from the IP addresses in |addrs| and on all IP packets
+  // of type belonging tp |wake_on_packet_types_|. If |trigs| contains
   // the kSSID trigger, the message is configured to program the NIC to wake on
   // the SSIDs in |ssid_whitelist|.
   // Returns true iff |msg| is successfully configured.
   // NOTE: Assumes that |msg| has not been altered since construction.
   static bool ConfigureSetWakeOnWiFiSettingsMessage(
-      SetWakeOnPacketConnMessage* msg, const std::set<WakeOnWiFiTrigger>& trigs,
-      const IPAddressStore& addrs, uint32_t wiphy_index,
+      SetWakeOnPacketConnMessage* msg,
+      const std::set<WakeOnWiFiTrigger>& trigs,
+      const IPAddressStore& addrs,
+      uint32_t wiphy_index,
+      const std::set<uint8_t>& wake_on_packet_types_,
+      const std::string& hardware_address,
+      uint32_t min_pattern_len,
       uint32_t net_detect_scan_period_seconds,
       const std::vector<ByteString>& ssid_whitelist,
       Error* error);
@@ -418,9 +485,9 @@ class WakeOnWiFi {
   // NOTE: |patnum| should be unique across multiple calls to this function to
   // prevent the formation of a erroneous nl80211 message or the overwriting of
   // pattern matching rules.
-  static bool CreateSinglePattern(const IPAddress& ip_addr,
-                                  AttributeListRefPtr patterns, uint8_t patnum,
-                                  Error* error);
+  static bool CreateSingleAttribute(ByteString& pattern, ByteString& mask,
+                                    AttributeListRefPtr patterns,
+                                    uint8_t patnum, Error* error);
   // Creates and sets attributes in an GetWakeOnPacketConnMessage msg| so that
   // the message will request for wake-on-packet settings information from the
   // NIC with wiphy index |wiphy_index|. Returns true iff |msg| is successfully
@@ -440,8 +507,13 @@ class WakeOnWiFi {
   // Note: finding a trigger is in |msg| that is not expected based on the flags
   // in |trig| also counts as a mismatch.
   static bool WakeOnWiFiSettingsMatch(
-      const Nl80211Message& msg, const std::set<WakeOnWiFiTrigger>& trigs,
-      const IPAddressStore& addrs, uint32_t net_detect_scan_period_seconds,
+      const Nl80211Message& msg,
+      const std::set<WakeOnWiFiTrigger>& trigs,
+      const IPAddressStore& addrs,
+      uint32_t net_detect_scan_period_seconds,
+      const std::set<uint8_t>& wake_on_packet_types,
+      const std::string& hardware_address,
+      uint32_t min_pattern_len,
       const std::vector<ByteString>& ssid_whitelist);
   // Handler for NL80211 message error responses from NIC wake on WiFi setting
   // programming attempts.
@@ -517,6 +589,13 @@ class WakeOnWiFi {
       const InitiateScanCallback& initiate_scan_callback,
       const WiFi::FreqSet& freqs);
 
+  static bool ConvertIPProtoStrtoEnum(
+      const std::vector<std::string>& ip_proto_strs,
+      std::set<uint8_t>* ip_proto_enums,
+      Error* error);
+
+  static std::string ConvertIPProtoEnumtoStr(uint8_t ip_proto_enum);
+
   // Pointers to objects owned by the WiFi object that created this object.
   EventDispatcher* dispatcher_;
   NetlinkManager* netlink_manager_;
@@ -551,6 +630,9 @@ class WakeOnWiFi {
   // the device is suspended. Only used if the NIC is programmed to wake on
   // SSIDs.
   std::vector<ByteString> wake_on_ssid_whitelist_;
+  // List of layer 4 packets(IPv4/IPv6) types that can wake the device. Only
+  // used if the NIC is programmed to wake on IP address patterns.
+  std::set<uint8_t> wake_on_packet_types_;
   uint32_t wiphy_index_;
   bool wiphy_index_received_;
   // Describes the wake on WiFi features that are currently enabled.
@@ -588,6 +670,15 @@ class WakeOnWiFi {
   // and never reset. It can be read by anyone until it is overwritten
   // by the next invocation of OnBeforeSuspend
   bool connected_before_suspend_;
+
+  // Hardware address of the WiFi device that owns the specific
+  // wake_on_wifi object.
+  const std::string hardware_address_;
+
+  // Minimum length of the pattern to be written to NIC. Every pattern is
+  // widened (if smaller) to meet this requirement. Zero by default. Set when
+  // |ParseWakeOnWiFiCapabilities| is called.
+  unsigned int min_pattern_len_;
 
   // Callback invoked to report the wake reason for the current dark resume to
   // powerd.

@@ -27,6 +27,8 @@
 #include <vector>
 
 #include <base/cancelable_callback.h>
+#include <base/strings/string_number_conversions.h>
+
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/error.h"
@@ -42,10 +44,12 @@
 
 using base::Bind;
 using base::Closure;
+using std::list;
 using std::pair;
 using std::set;
 using std::string;
 using std::vector;
+
 
 namespace shill {
 
@@ -56,6 +60,10 @@ static std::string ObjectID(WakeOnWiFi* w) { return "(wake_on_wifi)"; }
 
 const char WakeOnWiFi::kWakeOnIPAddressPatternsNotSupported[] =
     "Wake on IP address patterns not supported by this WiFi device";
+const char WakeOnWiFi::kWakeOnPatternsNotSupported[] =
+    "Wake on patterns not supported by this WiFi device";
+const char WakeOnWiFi::kMaxWakeOnPatternsReached[] =
+    "Max number of patterns already registered";
 const char WakeOnWiFi::kWakeOnWiFiNotSupported[] = "Wake on WiFi not supported";
 const int WakeOnWiFi::kVerifyWakeOnWiFiSettingsDelayMilliseconds = 300;
 const int WakeOnWiFi::kMaxSetWakeOnPacketRetries = 2;
@@ -85,7 +93,7 @@ const char WakeOnWiFi::kWakeReasonStringSSID[] = "WiFi.SSID";
 
 WakeOnWiFi::WakeOnWiFi(
     NetlinkManager* netlink_manager, EventDispatcher* dispatcher,
-    Metrics* metrics,
+    Metrics* metrics, const std::string& hardware_address,
     RecordWakeReasonCallback record_wake_reason_callback)
     : dispatcher_(dispatcher),
       netlink_manager_(netlink_manager),
@@ -112,6 +120,8 @@ WakeOnWiFi::WakeOnWiFi(
       force_wake_to_scan_timer_(false),
       dark_resume_scan_retries_left_(0),
       connected_before_suspend_(false),
+      hardware_address_(hardware_address),
+      min_pattern_len_(0),
       record_wake_reason_callback_(record_wake_reason_callback),
       weak_ptr_factory_(this) {
   netlink_manager_->AddBroadcastHandler(Bind(
@@ -184,17 +194,23 @@ bool WakeOnWiFi::ByteStringPairIsLessThan(
 }
 
 // static
-void WakeOnWiFi::SetMask(ByteString* mask, uint32_t pattern_len,
-                         uint32_t offset) {
+void WakeOnWiFi::SetMask(
+    ByteString* mask,
+    const vector<LengthOffset>& patternlen_offset_pair,
+    uint32_t expected_pat_len_bits) {
   // Round up number of bytes required for the mask.
-  int result_mask_len = (pattern_len + 8 - 1) / 8;
+  int result_mask_len = (expected_pat_len_bits + 8 - 1) / 8;
   vector<unsigned char> result_mask(result_mask_len, 0);
   // Set mask bits from offset to (pattern_len - 1)
   int mask_index;
-  for (uint32_t curr_mask_bit = offset; curr_mask_bit < pattern_len;
-       ++curr_mask_bit) {
-    mask_index = curr_mask_bit / 8;
-    result_mask[mask_index] |= 1 << (curr_mask_bit % 8);
+  for (const auto& current_pair : patternlen_offset_pair) {
+    for (uint32_t curr_mask_bit = current_pair.offset;
+         curr_mask_bit < current_pair.length;
+         ++curr_mask_bit) {
+      mask_index = curr_mask_bit / 8;
+      CHECK_LT(mask_index, result_mask_len);
+      result_mask[mask_index] |= 1 << (curr_mask_bit % 8);
+    }
   }
   mask->Clear();
   mask->Append(ByteString(result_mask));
@@ -202,13 +218,16 @@ void WakeOnWiFi::SetMask(ByteString* mask, uint32_t pattern_len,
 
 // static
 bool WakeOnWiFi::CreateIPAddressPatternAndMask(const IPAddress& ip_addr,
+                                               uint32_t min_pattern_len,
                                                ByteString* pattern,
                                                ByteString* mask) {
   if (ip_addr.family() == IPAddress::kFamilyIPv4) {
-    WakeOnWiFi::CreateIPV4PatternAndMask(ip_addr, pattern, mask);
+    WakeOnWiFi::CreateIPV4PatternAndMask(
+        ip_addr, min_pattern_len, pattern, mask);
     return true;
   } else if (ip_addr.family() == IPAddress::kFamilyIPv6) {
-    WakeOnWiFi::CreateIPV6PatternAndMask(ip_addr, pattern, mask);
+    WakeOnWiFi::CreateIPV6PatternAndMask(
+        ip_addr, pattern, mask, min_pattern_len);
     return true;
   } else {
     LOG(ERROR) << "Unrecognized IP Address type.";
@@ -217,7 +236,62 @@ bool WakeOnWiFi::CreateIPAddressPatternAndMask(const IPAddress& ip_addr,
 }
 
 // static
+bool WakeOnWiFi::ConvertIPProtoStrtoEnum(
+    const std::vector<std::string>& ip_proto_strs,
+    set<uint8_t>* ip_proto_enums,
+    Error* error) {
+  for (const auto& ip_proto : ip_proto_strs) {
+    if (ip_proto == kWakeOnIP)
+      ip_proto_enums->insert(IPPROTO_IP);
+    else if (ip_proto == kWakeOnICMP)
+      ip_proto_enums->insert(IPPROTO_ICMP);
+    else if (ip_proto == kWakeOnIGMP)
+      ip_proto_enums->insert(IPPROTO_IGMP);
+    else if (ip_proto == kWakeOnIPIP)
+      ip_proto_enums->insert(IPPROTO_IPIP);
+    else if (ip_proto == kWakeOnTCP)
+      ip_proto_enums->insert(IPPROTO_TCP);
+    else if (ip_proto == kWakeOnUDP)
+      ip_proto_enums->insert(IPPROTO_UDP);
+    else if (ip_proto == kWakeOnIDP)
+      ip_proto_enums->insert(IPPROTO_IDP);
+    else {
+      Error::PopulateAndLog(
+          FROM_HERE,
+          error,
+          Error::kInvalidArguments,
+          "Wake on Packet of type " + ip_proto + " not supported");
+      return false;
+    }
+  }
+  return true;
+}
+
+// static
+string WakeOnWiFi::ConvertIPProtoEnumtoStr(uint8_t ip_proto_enum) {
+  switch (ip_proto_enum) {
+    case IPPROTO_IP:
+      return kWakeOnIP;
+    case IPPROTO_ICMP:
+      return kWakeOnICMP;
+    case IPPROTO_IGMP:
+      return kWakeOnIGMP;
+    case IPPROTO_IPIP:
+      return kWakeOnIPIP;
+    case IPPROTO_TCP:
+      return kWakeOnTCP;
+    case IPPROTO_UDP:
+      return kWakeOnUDP;
+    case IPPROTO_IDP:
+      return kWakeOnIDP;
+    default:
+      return "";
+  }
+}
+
+// static
 void WakeOnWiFi::CreateIPV4PatternAndMask(const IPAddress& ip_addr,
+                                          uint32_t min_pattern_len,
                                           ByteString* pattern,
                                           ByteString* mask) {
   struct {
@@ -226,38 +300,141 @@ void WakeOnWiFi::CreateIPV4PatternAndMask(const IPAddress& ip_addr,
   } __attribute__((__packed__)) pattern_bytes;
   memset(&pattern_bytes, 0, sizeof(pattern_bytes));
   CHECK_EQ(sizeof(pattern_bytes.ipv4_hdr.saddr), ip_addr.GetLength());
-  memcpy(&pattern_bytes.ipv4_hdr.saddr, ip_addr.GetConstData(),
+  memcpy(&pattern_bytes.ipv4_hdr.saddr,
+         ip_addr.GetConstData(),
          ip_addr.GetLength());
   int src_ip_offset =
       reinterpret_cast<unsigned char*>(&pattern_bytes.ipv4_hdr.saddr) -
       reinterpret_cast<unsigned char*>(&pattern_bytes);
-  int pattern_len = src_ip_offset + ip_addr.GetLength();
+  uint32_t pattern_len = src_ip_offset + ip_addr.GetLength();
+  // If the length of the final pattern is less than min pattern length,
+  // fill the rest with zeros.
+  uint32_t expected_pattern_len = std::max(min_pattern_len, pattern_len);
   pattern->Clear();
-  pattern->Append(ByteString(
-      reinterpret_cast<const unsigned char*>(&pattern_bytes), pattern_len));
-  WakeOnWiFi::SetMask(mask, pattern_len, src_ip_offset);
+  pattern->Append(
+      ByteString(reinterpret_cast<const unsigned char*>(&pattern_bytes),
+                 expected_pattern_len));
+  vector<LengthOffset> patternlen_offset_pair;
+  patternlen_offset_pair.emplace_back(pattern_len, src_ip_offset);
+  WakeOnWiFi::SetMask(mask, patternlen_offset_pair, expected_pattern_len);
 }
 
 // static
 void WakeOnWiFi::CreateIPV6PatternAndMask(const IPAddress& ip_addr,
                                           ByteString* pattern,
-                                          ByteString* mask) {
+                                          ByteString* mask,
+                                          uint32_t min_pattern_len) {
   struct {
     struct ethhdr eth_hdr;
     struct ip6_hdr ipv6_hdr;
   } __attribute__((__packed__)) pattern_bytes;
   memset(&pattern_bytes, 0, sizeof(pattern_bytes));
   CHECK_EQ(sizeof(pattern_bytes.ipv6_hdr.ip6_src), ip_addr.GetLength());
-  memcpy(&pattern_bytes.ipv6_hdr.ip6_src, ip_addr.GetConstData(),
+  memcpy(&pattern_bytes.ipv6_hdr.ip6_src,
+         ip_addr.GetConstData(),
          ip_addr.GetLength());
   int src_ip_offset =
       reinterpret_cast<unsigned char*>(&pattern_bytes.ipv6_hdr.ip6_src) -
       reinterpret_cast<unsigned char*>(&pattern_bytes);
-  int pattern_len = src_ip_offset + ip_addr.GetLength();
+  uint32_t pattern_len = src_ip_offset + ip_addr.GetLength();
+  uint32_t expected_pattern_len = std::max(min_pattern_len, pattern_len);
   pattern->Clear();
-  pattern->Append(ByteString(
-      reinterpret_cast<const unsigned char*>(&pattern_bytes), pattern_len));
-  WakeOnWiFi::SetMask(mask, pattern_len, src_ip_offset);
+  pattern->Append(
+      ByteString(reinterpret_cast<const unsigned char*>(&pattern_bytes),
+                 expected_pattern_len));
+  vector<LengthOffset> patternlen_offset_pair;
+  patternlen_offset_pair.emplace_back(pattern_len, src_ip_offset);
+  WakeOnWiFi::SetMask(mask, patternlen_offset_pair, expected_pattern_len);
+}
+
+// static
+void WakeOnWiFi::CreatePacketTypePatternAndMaskforIPV4(
+    const std::string& hardware_address,
+    uint32_t min_pattern_len,
+    uint8_t ip_protocol,
+    ByteString* pattern,
+    ByteString* mask) {
+  struct Pattern{
+    struct ethhdr eth_hdr;
+    struct iphdr ipv4_hdr;
+  } __attribute__((__packed__)) pattern_bytes;
+  vector<LengthOffset> patternlen_offset_pair;
+  memset(&pattern_bytes, 0, sizeof(pattern_bytes));
+  vector<uint8_t> address_bytes;
+  static_assert(std::is_standard_layout<Pattern>::value,
+                  "Pattern must be a standard layout type");
+  CHECK(base::HexStringToBytes(hardware_address, &address_bytes));
+  CHECK_EQ(sizeof(pattern_bytes.eth_hdr.h_dest), address_bytes.size());
+  std::copy(
+      address_bytes.begin(), address_bytes.end(), pattern_bytes.eth_hdr.h_dest);
+  uint32_t dst_hardware_offset = offsetof(Pattern, eth_hdr.h_dest);
+  uint32_t pattern_len = dst_hardware_offset + address_bytes.size();
+  patternlen_offset_pair.emplace_back(pattern_len, dst_hardware_offset);
+  uint32_t eth_protocol_offset = offsetof(Pattern, eth_hdr.h_proto);
+  pattern_bytes.eth_hdr.h_proto = htons(ETH_P_IP);
+  uint32_t eth_protocol_len =
+      eth_protocol_offset + sizeof(pattern_bytes.eth_hdr.h_proto);
+  patternlen_offset_pair.emplace_back(eth_protocol_len, eth_protocol_offset);
+  pattern_len = std::max(pattern_len, eth_protocol_len);
+  pattern_bytes.ipv4_hdr.protocol = ip_protocol;
+  uint32_t ip_protocol_offset = offsetof(Pattern, ipv4_hdr.protocol);
+  uint32_t ip_protocol_pattern_len =
+      ip_protocol_offset + sizeof(pattern_bytes.ipv4_hdr.protocol);
+  patternlen_offset_pair.emplace_back(ip_protocol_pattern_len,
+                                      ip_protocol_offset);
+  pattern_len = std::max(pattern_len, ip_protocol_pattern_len);
+  uint32_t expected_pattern_len = std::max(min_pattern_len, pattern_len);
+  pattern->Clear();
+  pattern->Append(
+      ByteString(reinterpret_cast<const unsigned char*>(&pattern_bytes),
+                 expected_pattern_len));
+  WakeOnWiFi::SetMask(mask, patternlen_offset_pair, expected_pattern_len);
+}
+
+// static
+void WakeOnWiFi::CreatePacketTypePatternAndMaskforIPV6(
+    const std::string& hardware_address,
+    uint32_t min_pattern_len,
+    uint8_t ip_protocol,
+    ByteString* pattern,
+    ByteString* mask) {
+  struct Pattern {
+    struct ethhdr eth_hdr;
+    struct ip6_hdr ipv6_hdr;
+  } __attribute__((__packed__)) pattern_bytes;
+  vector<LengthOffset> patternlen_offset_pair;
+  static_assert(std::is_standard_layout<Pattern>::value,
+                "Pattern must be a standard layout type");
+  memset(&pattern_bytes, 0, sizeof(pattern_bytes));
+  vector<uint8_t> address_bytes;
+  CHECK(base::HexStringToBytes(hardware_address, &address_bytes));
+  CHECK_EQ(sizeof(pattern_bytes.eth_hdr.h_dest), address_bytes.size());
+  std::copy(
+      address_bytes.begin(), address_bytes.end(), pattern_bytes.eth_hdr.h_dest);
+  uint32_t dst_hardware_offset = offsetof(Pattern, eth_hdr.h_dest);
+  uint32_t pattern_len = dst_hardware_offset + address_bytes.size();
+  patternlen_offset_pair.emplace_back(pattern_len, dst_hardware_offset);
+  uint32_t eth_protocol_offset = offsetof(Pattern, eth_hdr.h_proto);
+  pattern_bytes.eth_hdr.h_proto = htons(ETH_P_IPV6);
+  uint32_t eth_protocol_len =
+      eth_protocol_offset + sizeof(pattern_bytes.eth_hdr.h_proto);
+  patternlen_offset_pair.emplace_back(eth_protocol_len, eth_protocol_offset);
+  pattern_len = std::max(pattern_len, eth_protocol_len);
+  pattern_bytes.ipv6_hdr.ip6_ctlun.ip6_un1.ip6_un1_nxt = ip_protocol;
+  uint32_t ip_protocol_offset =
+      offsetof(Pattern, ipv6_hdr.ip6_ctlun.ip6_un1.ip6_un1_nxt);
+  uint32_t ip_protocol_pattern_len =
+      ip_protocol_offset +
+      sizeof(pattern_bytes.ipv6_hdr.ip6_ctlun.ip6_un1.ip6_un1_nxt);
+  patternlen_offset_pair.emplace_back(
+      ip_protocol_pattern_len, ip_protocol_offset);
+  pattern_len = std::max(pattern_len, ip_protocol_pattern_len);
+  uint32_t expected_pattern_len = std::max(min_pattern_len, pattern_len);
+  pattern->Clear();
+  pattern->Append(
+      ByteString(reinterpret_cast<const unsigned char*>(&pattern_bytes),
+                 expected_pattern_len));
+  WakeOnWiFi::SetMask(mask, patternlen_offset_pair, expected_pattern_len);
 }
 
 // static
@@ -287,9 +464,9 @@ bool WakeOnWiFi::ConfigureDisableWakeOnWiFiMessage(
 bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
     SetWakeOnPacketConnMessage* msg, const set<WakeOnWiFiTrigger>& trigs,
     const IPAddressStore& addrs, uint32_t wiphy_index,
-    uint32_t net_detect_scan_period_seconds,
-    const vector<ByteString>& ssid_whitelist,
-    Error* error) {
+    const set<uint8_t>& wake_on_packet_types, const std::string& hardware_address,
+    uint32_t pattern_min_len, uint32_t net_detect_scan_period_seconds,
+    const vector<ByteString>& ssid_whitelist, Error* error) {
 #if defined(DISABLE_WAKE_ON_WIFI)
   return false;
 #else
@@ -298,7 +475,8 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
                           "No triggers to configure.");
     return false;
   }
-  if (trigs.find(kWakeTriggerPattern) != trigs.end() && addrs.Empty()) {
+  if (trigs.find(kWakeTriggerPattern) != trigs.end() && addrs.Empty() &&
+      wake_on_packet_types.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "No IP addresses to configure.");
     return false;
@@ -373,9 +551,35 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
           return false;
         }
         uint8_t patnum = 1;
+        ByteString pattern;
+        ByteString mask;
         for (const IPAddress& addr : addrs.GetIPAddresses()) {
-          if (!CreateSinglePattern(addr, patterns, patnum++, error)) {
+          CreateIPAddressPatternAndMask(addr, pattern_min_len, &pattern, &mask);
+          if (!CreateSingleAttribute(
+                  pattern, mask, patterns, patnum++, error)) {
             return false;
+          }
+        }
+        if (!wake_on_packet_types.empty()) {
+          for (auto packet_type : wake_on_packet_types) {
+            CreatePacketTypePatternAndMaskforIPV4(hardware_address,
+                                                    pattern_min_len,
+                                                    packet_type,
+                                                    &pattern,
+                                                    &mask);
+            if (!CreateSingleAttribute(
+                    pattern, mask, patterns, patnum++, error)) {
+              return false;
+            }
+            CreatePacketTypePatternAndMaskforIPV6(hardware_address,
+                                                    pattern_min_len,
+                                                    packet_type,
+                                                    &pattern,
+                                                    &mask);
+            if (!CreateSingleAttribute(
+                    pattern, mask, patterns, patnum++, error)) {
+              return false;
+            }
           }
         }
         break;
@@ -496,12 +700,9 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
 }
 
 // static
-bool WakeOnWiFi::CreateSinglePattern(const IPAddress& ip_addr,
-                                     AttributeListRefPtr patterns,
-                                     uint8_t patnum, Error* error) {
-  ByteString pattern;
-  ByteString mask;
-  WakeOnWiFi::CreateIPAddressPatternAndMask(ip_addr, &pattern, &mask);
+bool WakeOnWiFi::CreateSingleAttribute(ByteString& pattern, ByteString& mask,
+                                       AttributeListRefPtr patterns,
+                                       uint8_t patnum, Error* error) {
   if (!patterns->CreateNestedAttribute(patnum, "Pattern info")) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Could not create nested attribute "
@@ -514,7 +715,6 @@ bool WakeOnWiFi::CreateSinglePattern(const IPAddress& ip_addr,
                           "patnum for SetWakeOnPacketConnMessage.");
     return false;
   }
-
   AttributeListRefPtr pattern_info;
   if (!patterns->GetNestedAttributeList(patnum, &pattern_info)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
@@ -535,7 +735,6 @@ bool WakeOnWiFi::CreateSinglePattern(const IPAddress& ip_addr,
                           "pattern_info.");
     return false;
   }
-
   // Add pattern.
   if (!pattern_info->CreateRawAttribute(NL80211_PKTPAT_PATTERN, "Pattern")) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
@@ -549,7 +748,6 @@ bool WakeOnWiFi::CreateSinglePattern(const IPAddress& ip_addr,
                           "pattern_info.");
     return false;
   }
-
   // Add offset.
   if (!pattern_info->CreateU32Attribute(NL80211_PKTPAT_OFFSET, "Offset")) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
@@ -581,6 +779,8 @@ bool WakeOnWiFi::ConfigureGetWakeOnWiFiSettingsMessage(
 bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
     const Nl80211Message& msg, const set<WakeOnWiFiTrigger>& trigs,
     const IPAddressStore& addrs, uint32_t net_detect_scan_period_seconds,
+    const set<uint8_t>& wake_on_packet_types,
+    const std::string& hardware_address, uint32_t min_pattern_len,
     const vector<ByteString>& ssid_whitelist) {
 #if defined(DISABLE_WAKE_ON_WIFI)
   return false;
@@ -649,10 +849,25 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
         ByteString temp_pattern;
         ByteString temp_mask;
         for (const IPAddress& addr : addrs.GetIPAddresses()) {
-          temp_pattern.Clear();
-          temp_mask.Clear();
-          CreateIPAddressPatternAndMask(addr, &temp_pattern, &temp_mask);
+          CreateIPAddressPatternAndMask(addr, min_pattern_len, &temp_pattern,
+                                        &temp_mask);
           expected_patt_mask_pairs.emplace(temp_pattern, temp_mask);
+        }
+        if (!wake_on_packet_types.empty()) {
+          for (auto packet_type : wake_on_packet_types) {
+            CreatePacketTypePatternAndMaskforIPV4(hardware_address,
+                                                    min_pattern_len,
+                                                    packet_type,
+                                                    &temp_pattern,
+                                                    &temp_mask);
+            expected_patt_mask_pairs.emplace(temp_pattern, temp_mask);
+            CreatePacketTypePatternAndMaskforIPV6(hardware_address,
+                                                    min_pattern_len,
+                                                    packet_type,
+                                                    &temp_pattern,
+                                                    &temp_mask);
+            expected_patt_mask_pairs.emplace(temp_pattern, temp_mask);
+          }
         }
         // Check these expected pattern and masks against those actually
         // contained in |msg|.
@@ -805,13 +1020,41 @@ void WakeOnWiFi::AddWakeOnPacketConnection(const string& ip_endpoint,
                           "Invalid ip_address " + ip_endpoint);
     return;
   }
-  if (wake_on_packet_connections_.Count() >= wake_on_wifi_max_patterns_) {
+
+  if (wake_on_packet_connections_.Count() +
+      wake_on_packet_types_.size() >= wake_on_wifi_max_patterns_) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kOperationFailed,
         "Max number of IP address patterns already registered");
     return;
   }
   wake_on_packet_connections_.AddUnique(ip_addr);
+#else
+  error->Populate(Error::kNotSupported, kWakeOnWiFiNotSupported);
+  SLOG(this, 7) << __func__ << ": " << kWakeOnWiFiNotSupported;
+#endif  // DISABLE_WAKE_ON_WIFI
+}
+
+void WakeOnWiFi::AddWakeOnPacketOfTypes(
+    const std::vector<std::string>& packet_types, Error* error) {
+#if !defined(DISABLE_WAKE_ON_WIFI)
+  set<uint8_t> ip_proto_enums;
+  if (!ContainsValue(wake_on_wifi_triggers_supported_, kWakeTriggerPattern)) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kNotSupported, kWakeOnPatternsNotSupported);
+    return;
+  }
+  // We should add 1 pattern for IPv4 and one for IPv6 for each packet type.
+  int num_patterns_for_packet_types = packet_types.size() * 2;
+  if (wake_on_packet_connections_.Count() + num_patterns_for_packet_types >=
+      wake_on_wifi_max_patterns_) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kOperationFailed, kMaxWakeOnPatternsReached);
+    return;
+  }
+  if (!ConvertIPProtoStrtoEnum(packet_types, &ip_proto_enums, error))
+    return;
+  wake_on_packet_types_.insert(ip_proto_enums.begin(), ip_proto_enums.end());
 #else
   error->Populate(Error::kNotSupported, kWakeOnWiFiNotSupported);
   SLOG(this, 7) << __func__ << ": " << kWakeOnWiFiNotSupported;
@@ -845,6 +1088,31 @@ void WakeOnWiFi::RemoveWakeOnPacketConnection(const string& ip_endpoint,
 #endif  // DISABLE_WAKE_ON_WIFI
 }
 
+void WakeOnWiFi::RemoveWakeOnPacketOfTypes(
+    const std::vector<std::string>& packet_types, Error* error) {
+#if !defined(DISABLE_WAKE_ON_WIFI)
+  if (!ContainsValue(wake_on_wifi_triggers_supported_, kWakeTriggerPattern)) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kNotSupported, kWakeOnPatternsNotSupported);
+    return;
+  }
+
+  set<uint8_t> ip_proto_enums;
+  if (!ConvertIPProtoStrtoEnum(packet_types, &ip_proto_enums, error))
+    return;
+
+  for (auto ip_proto_enum : ip_proto_enums) {
+    if (ContainsValue(wake_on_packet_types_, ip_proto_enum))
+        wake_on_packet_types_.erase(ip_proto_enum);
+  }
+
+
+#else
+  error->Populate(Error::kNotSupported, kWakeOnWiFiNotSupported);
+  SLOG(this, 7) << __func__ << ": " << kWakeOnWiFiNotSupported;
+#endif  // DISABLE_WAKE_ON_WIFI
+}
+
 void WakeOnWiFi::RemoveAllWakeOnPacketConnections(Error* error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
   if (wake_on_wifi_triggers_supported_.find(kWakeTriggerPattern) ==
@@ -854,6 +1122,8 @@ void WakeOnWiFi::RemoveAllWakeOnPacketConnections(Error* error) {
     return;
   }
   wake_on_packet_connections_.Clear();
+  wake_on_packet_types_.clear();
+
 #else
   error->Populate(Error::kNotSupported, kWakeOnWiFiNotSupported);
   SLOG(this, 7) << __func__ << ": " << kWakeOnWiFiNotSupported;
@@ -931,7 +1201,8 @@ void WakeOnWiFi::VerifyWakeOnWiFiSettings(
   if (WakeOnWiFiSettingsMatch(nl80211_message, wake_on_wifi_triggers_,
                               wake_on_packet_connections_,
                               net_detect_scan_period_seconds_,
-                              wake_on_ssid_whitelist_)) {
+                              wake_on_packet_types_, hardware_address_,
+                              min_pattern_len_, wake_on_ssid_whitelist_)) {
     SLOG(this, 2) << __func__ << ": "
                   << "Wake on WiFi settings successfully verified";
     metrics_->NotifyVerifyWakeOnWiFiSettingsResult(
@@ -958,12 +1229,12 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
     DisableWakeOnWiFi();
     return;
   }
-
   Error error;
   SetWakeOnPacketConnMessage set_wowlan_msg;
   if (!ConfigureSetWakeOnWiFiSettingsMessage(
           &set_wowlan_msg, wake_on_wifi_triggers_, wake_on_packet_connections_,
-          wiphy_index_, net_detect_scan_period_seconds_,
+          wiphy_index_, wake_on_packet_types_, hardware_address_,
+          min_pattern_len_, net_detect_scan_period_seconds_,
           wake_on_ssid_whitelist_, &error)) {
     LOG(ERROR) << error.message();
     RunAndResetSuspendActionsDoneCallback(
@@ -1095,10 +1366,10 @@ void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
   }
   AttributeListConstRefPtr triggers_supported;
   if (nl80211_message.const_attributes()->ConstGetNestedAttributeList(
-          NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED, &triggers_supported)) {
+      NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED, &triggers_supported)) {
     bool disconnect_supported = false;
     if (triggers_supported->GetFlagAttributeValue(
-            NL80211_WOWLAN_TRIG_DISCONNECT, &disconnect_supported)) {
+        NL80211_WOWLAN_TRIG_DISCONNECT, &disconnect_supported)) {
       if (disconnect_supported) {
         wake_on_wifi_triggers_supported_.insert(
             WakeOnWiFi::kWakeTriggerDisconnect);
@@ -1107,27 +1378,53 @@ void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
     }
     ByteString pattern_data;
     if (triggers_supported->GetRawAttributeValue(
-            NL80211_WOWLAN_TRIG_PKT_PATTERN, &pattern_data)) {
+        NL80211_WOWLAN_TRIG_PKT_PATTERN, &pattern_data)) {
       struct nl80211_pattern_support* patt_support =
           reinterpret_cast<struct nl80211_pattern_support*>(
               pattern_data.GetData());
-      // Determine the IPV4 and IPV6 pattern lengths we will use by
+      // Determine the IPv4 and IPv6 pattern lengths we will use by
       // constructing dummy patterns and getting their lengths.
       ByteString dummy_pattern;
       ByteString dummy_mask;
+      // Currently intel WiFi chip doesn't wake on min len patterns(b/62726471).
+      // Adding 1 as a hack to fix this issue.
+      // TODO(ravisadineni): Remove this check after b/62726471 is fixed.
+      min_pattern_len_ = patt_support->min_pattern_len + 1;
       WakeOnWiFi::CreateIPV4PatternAndMask(IPAddress("192.168.0.20"),
-                                           &dummy_pattern, &dummy_mask);
+                                           min_pattern_len_,
+                                           &dummy_pattern,
+                                           &dummy_mask);
       size_t ipv4_pattern_len = dummy_pattern.GetLength();
       WakeOnWiFi::CreateIPV6PatternAndMask(
-          IPAddress("FEDC:BA98:7654:3210:FEDC:BA98:7654:3210"), &dummy_pattern,
-          &dummy_mask);
+          IPAddress("FEDC:BA98:7654:3210:FEDC:BA98:7654:3210"),
+          &dummy_pattern,
+          &dummy_mask,
+          min_pattern_len_);
       size_t ipv6_pattern_len = dummy_pattern.GetLength();
+      WakeOnWiFi::CreatePacketTypePatternAndMaskforIPV4(hardware_address_,
+                                                          min_pattern_len_,
+                                                          IPPROTO_TCP,
+                                                          &dummy_pattern,
+                                                          &dummy_mask);
+      size_t ipv4_packet_type_pattern_len = dummy_pattern.GetLength();
+      WakeOnWiFi::CreatePacketTypePatternAndMaskforIPV6(hardware_address_,
+                                                          min_pattern_len_,
+                                                          IPPROTO_TCP,
+                                                          &dummy_pattern,
+                                                          &dummy_mask);
+      size_t ipv6_packet_type_pattern_len = dummy_pattern.GetLength();
+      size_t min_pattern_len = std::min({ipv4_pattern_len,
+                                         ipv6_pattern_len,
+                                         ipv4_packet_type_pattern_len,
+                                         ipv6_packet_type_pattern_len});
+      size_t max_pattern_len = std::max({ipv4_pattern_len,
+                                         ipv6_pattern_len,
+                                         ipv4_packet_type_pattern_len,
+                                         ipv6_packet_type_pattern_len});
       // Check if the pattern matching capabilities of this WiFi device will
-      // allow IPV4 and IPV6 patterns to be used.
-      if (patt_support->min_pattern_len <=
-              std::min(ipv4_pattern_len, ipv6_pattern_len) &&
-          patt_support->max_pattern_len >=
-              std::max(ipv4_pattern_len, ipv6_pattern_len)) {
+      // allow all possible patterns to be used.
+      if (patt_support->min_pattern_len <= min_pattern_len &&
+          patt_support->max_pattern_len >= max_pattern_len){
         wake_on_wifi_triggers_supported_.insert(
             WakeOnWiFi::kWakeTriggerPattern);
         wake_on_wifi_max_patterns_ = patt_support->max_patterns;
@@ -1402,7 +1699,8 @@ void WakeOnWiFi::BeforeSuspendActions(
   last_wake_reason_ = kWakeTriggerUnsupported;
   // Add relevant triggers to be programmed into the NIC.
   wake_on_wifi_triggers_.clear();
-  if (!wake_on_packet_connections_.Empty() &&
+  if ((!wake_on_packet_connections_.Empty() ||
+       !wake_on_packet_types_.empty()) &&
       WakeOnWiFiPacketEnabledAndSupported() && is_connected) {
     SLOG(this, 3) << __func__ << ": "
                   << "Enabling wake on pattern";

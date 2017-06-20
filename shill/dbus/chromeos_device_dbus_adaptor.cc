@@ -298,12 +298,30 @@ bool ChromeosDeviceDBusAdaptor::AddWakeOnPacketConnection(
   return !e.ToChromeosError(error);
 }
 
+bool ChromeosDeviceDBusAdaptor::AddWakeOnPacketOfTypes(
+    brillo::ErrorPtr* error, const std::vector<std::string>& packet_types) {
+  SLOG(this, 2) << __func__;
+
+  Error e;
+  device_->AddWakeOnPacketOfTypes(packet_types, &e);
+  return !e.ToChromeosError(error);
+}
+
 bool ChromeosDeviceDBusAdaptor::RemoveWakeOnPacketConnection(
     brillo::ErrorPtr* error, const string& ip_endpoint) {
   SLOG(this, 2) << __func__;
 
   Error e;
   device_->RemoveWakeOnPacketConnection(ip_endpoint, &e);
+  return !e.ToChromeosError(error);
+}
+
+bool ChromeosDeviceDBusAdaptor::RemoveWakeOnPacketOfTypes(
+    brillo::ErrorPtr* error, const std::vector<std::string>& packet_types) {
+  SLOG(this, 2) << __func__;
+
+  Error e;
+  device_->RemoveWakeOnPacketOfTypes(packet_types, &e);
   return !e.ToChromeosError(error);
 }
 
