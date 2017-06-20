@@ -128,16 +128,18 @@ bool Camera3StillCaptureFixture::JpegExifInfo::Initialize() {
 
 // Test parameters:
 // - Camera ID
-class Camera3SingleStillCaptureTest
+class Camera3SimpleStillCaptureTest
     : public Camera3StillCaptureFixture,
       public ::testing::WithParamInterface<int32_t> {
  public:
-  Camera3SingleStillCaptureTest()
+  Camera3SimpleStillCaptureTest()
       : Camera3StillCaptureFixture(std::vector<int>(1, GetParam())),
         cam_id_(GetParam()) {}
 
  protected:
   int cam_id_;
+
+  void TakePictureTest(uint32_t num_still_pictures);
 
   struct ExifTestData {
     ResolutionInfo thumbnail_resolution;
@@ -303,7 +305,7 @@ static int32_t GetExifOrientationInDegree(int32_t exif_orientation) {
   }
 }
 
-void Camera3SingleStillCaptureTest::ValidateExifKeys(
+void Camera3SimpleStillCaptureTest::ValidateExifKeys(
     const ResolutionInfo& jpeg_resolution,
     const ExifTestData& exif_test_data,
     const BufferHandleUniquePtr& buffer,
@@ -536,7 +538,7 @@ void Camera3SingleStillCaptureTest::ValidateExifKeys(
   EXPECT_TRUE(is_number(EXIF_IFD_EXIF, EXIF_TAG_SUB_SEC_TIME_DIGITIZED));
 }
 
-TEST_P(Camera3SingleStillCaptureTest, JpegExifTest) {
+TEST_P(Camera3SimpleStillCaptureTest, JpegExifTest) {
   // Reference:
   // camera2/cts/StillCaptureTest.java.java#testJpegExif
   ResolutionInfo jpeg_resolution =
@@ -617,7 +619,8 @@ TEST_P(Camera3SingleStillCaptureTest, JpegExifTest) {
   cam_service_.StopPreview(cam_id_);
 }
 
-TEST_P(Camera3SingleStillCaptureTest, TakePictureTest) {
+void Camera3SimpleStillCaptureTest::TakePictureTest(
+    uint32_t num_still_pictures) {
   auto IsAFSupported = [this]() {
     std::vector<int32_t> available_af_modes;
     cam_service_.GetStaticInfo(cam_id_)->GetAvailableAFModes(
@@ -663,9 +666,19 @@ TEST_P(Camera3SingleStillCaptureTest, TakePictureTest) {
   const camera_metadata_t* metadata =
       cam_service_.ConstructDefaultRequestSettings(
           cam_id_, CAMERA3_TEMPLATE_STILL_CAPTURE);
-  cam_service_.TakeStillCapture(cam_id_, metadata);
+  for (uint32_t i = 0; i < num_still_pictures; i++) {
+    cam_service_.TakeStillCapture(cam_id_, metadata);
+  }
 
   cam_service_.StopPreview(cam_id_);
+}
+
+TEST_P(Camera3SimpleStillCaptureTest, TakePictureTest) {
+  TakePictureTest(1);
+}
+
+TEST_P(Camera3SimpleStillCaptureTest, PerformanceTest) {
+  TakePictureTest(2);
 }
 
 // Test parameters:
@@ -714,7 +727,7 @@ TEST_P(Camera3JpegResolutionTest, JpegResolutionTest) {
 }
 
 INSTANTIATE_TEST_CASE_P(Camera3StillCaptureTest,
-                        Camera3SingleStillCaptureTest,
+                        Camera3SimpleStillCaptureTest,
                         ::testing::ValuesIn(Camera3Module().GetCameraIds()));
 
 static std::vector<std::tuple<int, ResolutionInfo, ResolutionInfo>>

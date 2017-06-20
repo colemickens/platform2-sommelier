@@ -22,7 +22,7 @@ const int32_t kStillCaptureOutputStreamIdx = 1;
 const int32_t kWaitForStopPreviewTimeoutMs = 3000;
 const int32_t kWaitForFocusDoneTimeoutMs = 6000;
 const int32_t kWaitForAWBConvergedTimeoutMs = 3000;
-enum { PREVIEW_STOPPED, PREVIEW_STARTED, PREVIEW_STOPPING };
+enum { PREVIEW_STOPPED, PREVIEW_STARTING, PREVIEW_STARTED, PREVIEW_STOPPING };
 #define INCREASE_INDEX(idx) \
   (idx) = (idx == number_of_capture_requests_ - 1) ? 0 : (idx) + 1
 

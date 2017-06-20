@@ -11,6 +11,8 @@
 
 #include <base/bind.h>
 
+#include "camera3_test/camera3_perf_log.h"
+
 namespace camera3_test {
 
 Camera3Service::~Camera3Service() {}
@@ -407,7 +409,7 @@ void Camera3Service::Camera3DeviceService::
         .output_buffers = output_stream_buffers_[i].data()};
     ProcessPreviewRequestOnServiceThread();
   }
-  preview_state_ = PREVIEW_STARTED;
+  preview_state_ = PREVIEW_STARTING;
   *result = 0;
 }
 
@@ -415,7 +417,7 @@ void Camera3Service::Camera3DeviceService::StopPreviewOnServiceThread(
     base::Callback<void()> cb) {
   DCHECK(service_thread_.IsCurrentThread());
   VLOGF_ENTER();
-  if (preview_state_ != PREVIEW_STARTED) {
+  if (preview_state_ != PREVIEW_STARTED && preview_state_ != PREVIEW_STARTING) {
     return;
   }
   preview_state_ = PREVIEW_STOPPING;
@@ -559,6 +561,9 @@ void Camera3Service::Camera3DeviceService::
     VLOGF(1) << "  Buffer " << *it
              << " (format:" << Camera3TestGralloc::GetFormat(*it) << ")";
     if (Camera3TestGralloc::GetFormat(*it) == HAL_PIXEL_FORMAT_BLOB) {
+      Camera3PerfLog::GetInstance()->Update(
+          cam_id_, Camera3PerfLog::Key::STILL_IMAGE_CAPTURED,
+          base::TimeTicks::Now());
       if (!process_still_capture_result_cb_.is_null()) {
         process_still_capture_result_cb_.Run(
             cam_id_, frame_number, std::move(metadata), std::move(it));
@@ -570,6 +575,11 @@ void Camera3Service::Camera3DeviceService::
                .stream,
           std::move(it));
     }
+  }
+  if (preview_state_ == PREVIEW_STARTING) {
+    preview_state_ = PREVIEW_STARTED;
+    Camera3PerfLog::GetInstance()->Update(
+        cam_id_, Camera3PerfLog::Key::PREVIEW_STARTED, base::TimeTicks::Now());
   }
   sem_post(&preview_frame_sem_);
 

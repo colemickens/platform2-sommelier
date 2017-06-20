@@ -8,6 +8,8 @@
 
 #include <sync/sync.h>
 
+#include "camera3_test/camera3_perf_log.h"
+
 namespace camera3_test {
 
 static void ExpectKeyValueGreaterThanI64(const camera_metadata_t* settings,
@@ -214,6 +216,8 @@ void Camera3DeviceImpl::InitializeOnThread(Camera3Module* cam_module,
     return;
   }
   // Open camera device
+  Camera3PerfLog::GetInstance()->Update(
+      cam_id_, Camera3PerfLog::Key::DEVICE_OPENING, base::TimeTicks::Now());
   *result = -ENODEV;
   cam_device_ = cam_module->OpenDevice(cam_id_);
   ASSERT_NE(nullptr, cam_device_) << "Failed to open device " << cam_id_;
@@ -237,6 +241,8 @@ void Camera3DeviceImpl::InitializeOnThread(Camera3Module* cam_module,
       Camera3DeviceImpl::ProcessCaptureResultForwarder;
   *result = cam_device_->ops->initialize(cam_device_, this);
   ASSERT_EQ(0, *result) << "Camera device initialization fails";
+  Camera3PerfLog::GetInstance()->Update(
+      cam_id_, Camera3PerfLog::Key::DEVICE_OPENED, base::TimeTicks::Now());
 
   sem_init(&shutter_sem_, 0, 0);
   sem_init(&capture_result_sem_, 0, 0);
