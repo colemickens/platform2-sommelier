@@ -913,6 +913,8 @@ void Daemon::InitDBus() {
        &Daemon::HandleGetBacklightsForcedOffMethod},
       {kHandlePowerButtonAcknowledgmentMethod,
        &Daemon::HandlePowerButtonAcknowledgment},
+      {kIgnoreNextPowerButtonPressMethod,
+       &Daemon::HandleIgnoreNextPowerButtonPressMethod},
   };
   for (const auto& it : kDaemonMethods) {
     dbus_wrapper_->ExportMethod(
@@ -1472,6 +1474,20 @@ std::unique_ptr<dbus::Response> Daemon::HandlePowerButtonAcknowledgment(
   }
   input_event_handler_->HandlePowerButtonAcknowledgment(
       base::TimeTicks::FromInternalValue(timestamp_internal));
+  return std::unique_ptr<dbus::Response>();
+}
+
+std::unique_ptr<dbus::Response> Daemon::HandleIgnoreNextPowerButtonPressMethod(
+    dbus::MethodCall* method_call) {
+  int64_t timeout_internal = 0;
+  dbus::MessageReader reader(method_call);
+  if (!reader.PopInt64(&timeout_internal)) {
+    LOG(ERROR) << "Unable to parse " << kIgnoreNextPowerButtonPressMethod
+               << " request";
+    return CreateInvalidArgsError(method_call, "Expected int64_t timestamp");
+  }
+  input_event_handler_->IgnoreNextPowerButtonPress(
+      base::TimeDelta::FromInternalValue(timeout_internal));
   return std::unique_ptr<dbus::Response>();
 }
 

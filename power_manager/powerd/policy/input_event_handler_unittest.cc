@@ -241,6 +241,60 @@ TEST_F(InputEventHandlerTest, PowerButtonEvents) {
   EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
 }
 
+TEST_F(InputEventHandlerTest, IgnorePowerButtonPresses) {
+  Init();
+  dbus_wrapper_.ClearSentSignals();
+
+  const base::TimeDelta kShortDelay = base::TimeDelta::FromMilliseconds(100);
+  const base::TimeDelta kIgnoreTimeout = base::TimeDelta::FromSeconds(3);
+
+  // Ignore the power button events.
+  handler_.IgnoreNextPowerButtonPress(kIgnoreTimeout);
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
+  EXPECT_TRUE(delegate_.GetActions().empty());
+  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
+
+  // Release the power button.
+  AdvanceTime(kShortDelay);
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
+  EXPECT_TRUE(delegate_.GetActions().empty());
+  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
+
+  // Next press is going through.
+  AdvanceTime(kShortDelay);
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
+  EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
+  EXPECT_EQ(InputEvent_Type_POWER_BUTTON_DOWN, GetInputEventSignalType());
+  dbus_wrapper_.ClearSentSignals();
+  AdvanceTime(kShortDelay);
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
+  EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
+  EXPECT_EQ(InputEvent_Type_POWER_BUTTON_UP, GetInputEventSignalType());
+  dbus_wrapper_.ClearSentSignals();
+
+  // Ignore again the power button events.
+  handler_.IgnoreNextPowerButtonPress(kIgnoreTimeout);
+  // Expire the timeout.
+  AdvanceTime(kIgnoreTimeout + base::TimeDelta::FromMilliseconds(500));
+  // The next press is going through.
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
+  EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
+  AdvanceTime(kShortDelay);
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
+  EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
+
+  // Ignore again the power button events.
+  handler_.IgnoreNextPowerButtonPress(kIgnoreTimeout);
+  // Cancel the timeout.
+  handler_.IgnoreNextPowerButtonPress(base::TimeDelta());
+  // The next press is going through.
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
+  EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
+  AdvanceTime(kShortDelay);
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
+  EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
+}
+
 TEST_F(InputEventHandlerTest, AcknowledgePowerButtonPresses) {
   Init();
 

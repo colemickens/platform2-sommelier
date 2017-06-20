@@ -93,6 +93,11 @@ class InputEventHandler : public system::InputObserver {
   // |timestamp| is the timestamp from the original event.
   void HandlePowerButtonAcknowledgment(const base::TimeTicks& timestamp);
 
+  // Discards all power button actions until |timeout| has elapsed
+  // or a power button release was detected.
+  // Set |timeout| to 0 to cancel it.
+  void IgnoreNextPowerButtonPress(const base::TimeDelta& timeout);
+
   // system::InputObserver implementation:
   void OnLidEvent(LidState state) override;
   void OnTabletModeEvent(TabletMode mode) override;
@@ -124,6 +129,9 @@ class InputEventHandler : public system::InputObserver {
 
   // Calls HandlePowerButtonAcknowledgmentTimeout().
   base::OneShotTimer power_button_acknowledgment_timer_;
+
+  // Timestamp until when we are ignoring actions on the power button.
+  base::TimeTicks ignore_power_button_deadline_;
 
   DISALLOW_COPY_AND_ASSIGN(InputEventHandler);
 };

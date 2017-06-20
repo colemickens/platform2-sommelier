@@ -77,6 +77,18 @@ void InputEventHandler::HandlePowerButtonAcknowledgment(
   }
 }
 
+void InputEventHandler::IgnoreNextPowerButtonPress(
+    const base::TimeDelta& timeout) {
+  if (timeout.is_zero()) {
+    VLOG(1) << "Cancel power button press discarding";
+    ignore_power_button_deadline_ = base::TimeTicks();
+  } else {
+    VLOG(1) << "Ignoring power button for " << timeout.InMilliseconds()
+            << " ms";
+    ignore_power_button_deadline_ = clock_->GetCurrentTime() + timeout;
+  }
+}
+
 void InputEventHandler::OnLidEvent(LidState state) {
   lid_state_ = state;
   InputEvent proto;
@@ -111,6 +123,14 @@ void InputEventHandler::OnTabletModeEvent(TabletMode mode) {
 }
 
 void InputEventHandler::OnPowerButtonEvent(ButtonState state) {
+  if (clock_->GetCurrentTime() < ignore_power_button_deadline_) {
+    if (state == ButtonState::UP)  // Consumed, we no longer need the deadline.
+      ignore_power_button_deadline_ = base::TimeTicks();
+    LOG(INFO) << "Ignored power button " << ButtonStateToString(state);
+    // Do not forward this event.
+    return;
+  }
+
   if (state == ButtonState::DOWN && only_has_external_display_ &&
       display_watcher_->GetDisplays().empty()) {
     delegate_->ShutDownForPowerButtonWithNoDisplay();
