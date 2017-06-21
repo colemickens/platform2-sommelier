@@ -339,6 +339,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
       builder->AddArg("--load-and-launch-app=/usr/share/app_shell/apps/rialto");
       builder->AddArg("--enable-logging=stderr");
       builder->AddArg("--log-level=0");
+      builder->AddArg("--enable-ble-advertising-in-apps");
       builder->AddArg("about:blank");
     }
   } else {
