@@ -266,9 +266,7 @@ while true; do
                      ${FLAGS_ignore_wakeup_source})
   cur_s0ix_count=$(get_s0ix_count)
   if [ ${cur_successes} -eq ${last_successes} -a \
-       ${cur_ignore_count} -eq ${last_ignore_count} ] || \
-     [ "${check_s0ix_errors}" = 1 -a \
-       "${cur_s0ix_count}" = "${last_s0ix_count}" ]; then
+       ${cur_ignore_count} -eq ${last_ignore_count} ]; then
     if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
       echo "Suspend failed."
       exit_loop=1
@@ -278,10 +276,14 @@ while true; do
       fi
       printf "(suspend failed, ignoring)"
     fi
-    if [ "${check_s0ix_errors}" = 1 ] && \
+  elif [ "${check_s0ix_errors}" = 1 ] && \
        [ "${cur_s0ix_count}" = "${last_s0ix_count}" ]; then
-      echo "(s0ix counters did not increment from ${last_s0ix_count})"
-      : $(( s0ix_errors += 1 ))
+    echo "Suspend failed, s0ix count did not increment from ${last_s0ix_count})"
+    : $(( s0ix_errors += 1 ))
+    if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
+      exit_loop=1
+    elif [ ! -z "${FLAGS_record_dmesg_dir}" ]; then
+        record_dmesg_for_iteration ${cur}
     fi
   fi
   last_successes=${cur_successes}
