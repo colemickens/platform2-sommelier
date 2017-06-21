@@ -54,11 +54,9 @@ const char kArcVersionField[] = "arc_version";
 const char kBoardField[] = "board";
 const char kChromeOsVersionField[] = "chrome_os_version";
 const char kCpuAbiField[] = "cpu_abi";
-const char kCrashTagField[] = "crash_tag";
 const char kCrashTypeField[] = "crash_type";
 const char kDeviceField[] = "device";
 const char kExceptionInfoField[] = "exception_info";
-const char kPackageField[] = "package";
 const char kProcessField[] = "process";
 const char kProductField[] = "prod";
 const char kSignatureField[] = "sig";
@@ -70,10 +68,14 @@ const char kSilentKey[] = "silent";
 
 // Keys for crash log headers.
 const char kBuildKey[] = "Build";
-const char kCrashTagKey[] = "Crash-Tag";
-const char kPackageKey[] = "Package";
 const char kProcessKey[] = "Process";
 const char kSubjectKey[] = "Subject";
+
+const std::pair<const char *, const char *> kHeaderToFieldMapping[] = {
+  { "Crash-Tag", "crash_tag" },
+  { "NDK-Execution", "ndk_execution" },
+  { "Package", "package" }
+};
 
 // Keys for build properties.
 const char kBoardProperty[] = "ro.product.board";
@@ -492,12 +494,12 @@ bool ArcCollector::CreateReportForJavaCrash(const std::string &crash_type,
   AddCrashMetaUploadData(kBoardField, board);
   AddCrashMetaUploadData(kCpuAbiField, cpu_abi);
 
-  if (map.count(kPackageKey))
-    AddCrashMetaUploadData(kPackageField, GetCrashLogHeader(map, kPackageKey));
-
-  if (map.count(kCrashTagKey))
-    AddCrashMetaUploadData(kCrashTagField,
-                           GetCrashLogHeader(map, kCrashTagKey));
+  for (const auto& mapping : kHeaderToFieldMapping) {
+    if (map.count(mapping.first)) {
+      AddCrashMetaUploadData(mapping.second,
+                             GetCrashLogHeader(map, mapping.first));
+    }
+  }
 
   if (exception_info.empty()) {
     if (const char * const tag = GetSubjectTag(crash_type)) {
