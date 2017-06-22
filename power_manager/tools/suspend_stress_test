@@ -132,10 +132,9 @@ get_s0ix_count() {
   if [ -e /sys/kernel/debug/pmc_core/slp_s0_residency_usec ]; then
     # Kabylake / Skylake systems.
     cat /sys/kernel/debug/pmc_core/slp_s0_residency_usec
-  elif [ -e /sys/kernel/debug/telemetry/ioss_info ]; then
+  elif [ -e /sys/kernel/debug/telemetry/s0ix_residency_usec ]; then
     # Apollolake Systems.
-    awk '$1 == "SOC_S0IX_TOTAL_RES" {print $2}' \
-      /sys/kernel/debug/telemetry/ioss_info
+    cat /sys/kernel/debug/telemetry/s0ix_residency_usec
   else
     echo 0
   fi
@@ -184,7 +183,7 @@ fi
 check_s0ix_errors=0
 if check_powerd_config --suspend_to_idle; then
   if [ -e /sys/kernel/debug/pmc_core/slp_s0_residency_usec ] || \
-     [ -e /sys/kernel/debug/telemetry/ioss_info ]; then
+     [ -e /sys/kernel/debug/telemetry/s0ix_residency_usec ]; then
     check_s0ix_errors=1
   else
     echo "Warning! platform uses s0ix, but we have no way to verify s0ix"
