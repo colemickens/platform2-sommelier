@@ -17,6 +17,7 @@
 #include <base/sha1.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/userdb_utils.h>
 #include <chromeos/ui/chromium_command_builder.h>
 #include <chromeos/ui/util.h>
 #include <chromeos-config/libcros_config/cros_config_interface.h>
@@ -240,6 +241,22 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   // CHROMEOS_SESSION_LOG_DIR here.
   builder->AddEnvVar("CHROMEOS_SESSION_LOG_DIR",
       user_dir.Append("log").value());
+
+  // On devices with ARC++ camera HAL v3 Chrome needs to host the unix domain
+  // named socket /run/camera/camera3.sock to provide the camera HAL Mojo
+  // service to the system.
+  if (base::PathExists(base::FilePath("/usr/bin/arc_camera3_service"))) {
+    // The socket is created and listened on by Chrome, and receives connections
+    // from the camera HAL v3 process and cameraserver process in Android
+    // container which run as group arc-camera.  In addition, the camera HAL v3
+    // process also hosts a unix domain named socket in /run/camera for the
+    // sandboxed camera library process.  Thus the directory is created with
+    // user chronos and group arc-camera with 0770 permission.
+    gid_t arc_camera_gid;
+    CHECK(brillo::userdb::GetGroupInfo("arc-camera", &arc_camera_gid));
+    CHECK(EnsureDirectoryExists(
+        base::FilePath("/run/camera"), uid, arc_camera_gid, 0770));
+  }
 }
 
 // Creates crash-handling-related directories and adds related arguments.
