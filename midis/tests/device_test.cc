@@ -24,6 +24,7 @@ namespace midis {
 namespace {
 
 const char kFakeName1[] = "Sample MIDI Device - 1";
+const char kFakeManufacturer1[] = "Foo";
 const int kFakeSysNum1 = 2;
 const int kFakeDevNum1 = 0;
 const int kFakeSubdevs1 = 1;
@@ -68,8 +69,9 @@ TEST_F(DeviceTest, TestHandleDeviceRead) {
   ASSERT_TRUE(base::SetPosixFilePermissions(
       dev_node_path, S_IRGRP | S_IWGRP | S_IRUSR | S_IWUSR));
 
-  auto dev = base::MakeUnique<Device>(kFakeName1, kFakeSysNum1, kFakeDevNum1,
-                                      kFakeSubdevs1, kFakeFlags1);
+  auto dev =
+      base::MakeUnique<Device>(kFakeName1, kFakeManufacturer1, kFakeSysNum1,
+                               kFakeDevNum1, kFakeSubdevs1, kFakeFlags1);
   Device::SetBaseDirForTesting(temp_fp_);
   dev->StartMonitoring();
 

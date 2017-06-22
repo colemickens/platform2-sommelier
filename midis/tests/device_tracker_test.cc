@@ -20,12 +20,14 @@ namespace midis {
 namespace {
 
 const char kFakeName1[] = "Sample MIDI Device - 1";
+const char kFakeManufacturer1[] = "Foo";
 const uint32_t kFakeSysNum1 = 2;
 const uint32_t kFakeDevNum1 = 0;
 const uint32_t kFakeSubdevs1 = 1;
 const uint32_t kFakeFlags1 = 7;
 
 const char kFakeName2[] = "Sample MIDI Device - 2";
+const char kFakeManufacturer2[] = "Bar";
 const uint32_t kFakeSysNum2 = 3;
 const uint32_t kFakeDevNum2 = 1;
 const uint32_t kFakeSubdevs2 = 2;
@@ -40,30 +42,33 @@ class DeviceTrackerTest : public ::testing::Test {
 
 // Check whether a 2 devices get successfully added to the devices map.
 TEST_F(DeviceTrackerTest, Add2DevicesPositive) {
-  tracker_.AddDevice(base::MakeUnique<Device>(
-      kFakeName1, kFakeSysNum1, kFakeDevNum1, kFakeSubdevs1, kFakeFlags1));
+  tracker_.AddDevice(base::MakeUnique<Device>(kFakeName1, kFakeManufacturer1,
+                                              kFakeSysNum1, kFakeDevNum1,
+                                              kFakeSubdevs1, kFakeFlags1));
 
-  tracker_.AddDevice(base::MakeUnique<Device>(
-      kFakeName2, kFakeSysNum2, kFakeDevNum2, kFakeSubdevs2, kFakeFlags2));
+  tracker_.AddDevice(base::MakeUnique<Device>(kFakeName2, kFakeManufacturer2,
+                                              kFakeSysNum2, kFakeDevNum2,
+                                              kFakeSubdevs2, kFakeFlags2));
 
   EXPECT_EQ(2, tracker_.devices_.size());
 
   auto it = tracker_.devices_.begin();
   uint32_t device_id = it->first;
   Device const* device = it->second.get();
-  EXPECT_THAT(device, DeviceMatcher(device_id, kFakeName1));
+  EXPECT_THAT(device, DeviceMatcher(device_id, kFakeName1, kFakeManufacturer1));
 
   it++;
   device_id = it->first;
   device = it->second.get();
-  EXPECT_THAT(device, DeviceMatcher(device_id, kFakeName2));
+  EXPECT_THAT(device, DeviceMatcher(device_id, kFakeName2, kFakeManufacturer2));
 }
 
 // Check whether a device gets successfully added, then removed from the devices
 // map.
 TEST_F(DeviceTrackerTest, AddRemoveDevicePositive) {
-  tracker_.AddDevice(base::MakeUnique<Device>(
-      kFakeName1, kFakeSysNum1, kFakeDevNum1, kFakeSubdevs1, kFakeFlags1));
+  tracker_.AddDevice(base::MakeUnique<Device>(kFakeName1, kFakeManufacturer1,
+                                              kFakeSysNum1, kFakeDevNum1,
+                                              kFakeSubdevs1, kFakeFlags1));
   EXPECT_EQ(1, tracker_.devices_.size());
 
   tracker_.RemoveDevice(kFakeSysNum1, kFakeDevNum1);
@@ -72,8 +77,9 @@ TEST_F(DeviceTrackerTest, AddRemoveDevicePositive) {
 
 // Check whether a device gets successfully added, but not removed.
 TEST_F(DeviceTrackerTest, AddDeviceRemoveNegative) {
-  tracker_.AddDevice(base::MakeUnique<Device>(
-      kFakeName1, kFakeSysNum1, kFakeDevNum1, kFakeSubdevs1, kFakeFlags1));
+  tracker_.AddDevice(base::MakeUnique<Device>(kFakeName1, kFakeManufacturer1,
+                                              kFakeSysNum1, kFakeDevNum1,
+                                              kFakeSubdevs1, kFakeFlags1));
   EXPECT_EQ(1, tracker_.devices_.size());
 
   tracker_.RemoveDevice(kFakeSysNum2, kFakeDevNum1);

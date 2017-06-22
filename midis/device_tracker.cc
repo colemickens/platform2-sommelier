@@ -28,10 +28,19 @@ const char kUdevSubsystemSound[] = "sound";
 const char kUdevPropertySoundInitialized[] = "SOUND_INITIALIZED";
 const char kUdevActionChange[] = "change";
 const char kUdevActionRemove[] = "remove";
+const char kUdevIdVendor[] = "ID_VENDOR";
+const char kUdevIdVendorId[] = "ID_VENDOR_ID";
+const char kUdevIdVendorFromDatabase[] = "ID_VENDOR_FROM_DATABASE";
+const char kSysattrVendor[] = "vendor";
+const char kSysattrVendorName[] = "vendor_name";
 
 const char kMidiPrefix[] = "midi";
 
 const int kIoctlMaxRetries = 10;
+
+std::string StringOrEmptyIfNull(const char* value) {
+  return value ? value : std::string();
+}
 
 }  // namespace
 
@@ -164,6 +173,48 @@ const char* UdevHandler::GetDeviceSysNum(struct udev_device* udev_device) {
   return udev_device_get_sysnum(udev_device);
 }
 
+// Adapted from midi_manager_alsa.cc in the Chromium source code.
+// We use the following preference order to determine the manufacturer:
+//  1. Vendor name from h/w device string, from udev props or sysattrs.
+//  2. Vendor name from udev database, if it exists.
+//  3. The raw device name itself, if all else fails.
+std::string UdevHandler::ExtractManufacturerString(
+    struct udev_device* udev_device, const std::string& name) {
+  std::string vendor = UdevDeviceGetPropertyOrSysAttr(
+      udev_device, kUdevIdVendor, kSysattrVendorName);
+  std::string vendor_id = UdevDeviceGetPropertyOrSysAttr(
+      udev_device, kUdevIdVendorId, kSysattrVendor);
+
+  if (!vendor.empty() && (vendor != vendor_id)) {
+    return vendor;
+  }
+
+  std::string vendor_id_from_database = StringOrEmptyIfNull(
+      udev_device_get_property_value(udev_device, kUdevIdVendorFromDatabase));
+  if (!vendor_id_from_database.empty()) {
+    return vendor_id_from_database;
+  }
+
+  return name;
+}
+
+// Directly adopted from Chrome's midi_manager_alsa.cc
+const std::string UdevHandler::UdevDeviceGetPropertyOrSysAttr(
+    struct udev_device* udev_device, const char* property_key,
+    const char* sysattr_key) {
+  // First try the property.
+  std::string value = StringOrEmptyIfNull(
+      udev_device_get_property_value(udev_device, property_key));
+
+  // If no property, look for sysattrs and walk up the parent devices too.
+  while (value.empty() && udev_device) {
+    value = StringOrEmptyIfNull(
+        udev_device_get_sysattr_value(udev_device, sysattr_key));
+    udev_device = udev_device_get_parent(udev_device);
+  }
+  return value;
+}
+
 std::unique_ptr<Device> UdevHandler::CreateDevice(
     struct udev_device* udev_device) {
   std::string dname = GetMidiDeviceDname(udev_device);
@@ -180,8 +231,9 @@ std::unique_ptr<Device> UdevHandler::CreateDevice(
   }
 
   std::string dev_name(reinterpret_cast<char*>(info->name));
+  std::string manufacturer(ExtractManufacturerString(udev_device, dev_name));
 
-  return Device::Create(dev_name, info->card, info->device,
+  return Device::Create(dev_name, manufacturer, info->card, info->device,
                         info->subdevices_count, info->flags);
 }
 
@@ -199,8 +251,6 @@ void DeviceTracker::AddDevice(std::unique_ptr<Device> dev) {
 void DeviceTracker::RemoveDevice(uint32_t sys_num, uint32_t dev_num) {
   auto it = devices_.find(udev_handler_->GenerateDeviceId(sys_num, dev_num));
   if (it != devices_.end()) {
-    // TODO(pmalani): Whole bunch of book-keeping has to be done here.
-    // and notifications need to be sent to all clients.
     struct MidisDeviceInfo removed_dev;
     FillMidisDeviceInfo(it->second.get(), &removed_dev);
     devices_.erase(it);
@@ -257,7 +307,9 @@ void DeviceTracker::FillMidisDeviceInfo(const Device* dev,
                                         struct MidisDeviceInfo* dev_info) {
   memset(dev_info, 0, sizeof(struct MidisDeviceInfo));
   strncpy(reinterpret_cast<char*>(dev_info->name), dev->GetName().c_str(),
-          kMidisDeviceInfoNameSize);
+          kMidisStringSize);
+  strncpy(reinterpret_cast<char*>(dev_info->manufacturer),
+          dev->GetManufacturer().c_str(), kMidisStringSize);
   dev_info->card = dev->GetCard();
   dev_info->device_num = dev->GetDeviceNum();
   dev_info->num_subdevices = dev->GetNumSubdevices();

@@ -23,6 +23,7 @@ namespace midis {
 namespace {
 
 const char kFakeName1[] = "Sample MIDI Device - 1";
+const char kFakeManufacturer1[] = "Foo";
 const uint32_t kFakeSysNum1 = 2;
 const char kFakeDname1[] = "midiC2D0";
 const uint32_t kFakeDevNum1 = 0;
@@ -30,6 +31,7 @@ const uint32_t kFakeSubdevs1 = 1;
 const uint32_t kFakeFlags1 = 7;
 
 const char kFakeName2[] = "Sample MIDI Device - 2";
+const char kFakeManufacturer2[] = "Bar";
 const uint32_t kFakeSysNum2 = 3;
 const char kFakeDname2[] = "midiC3D1";
 const uint32_t kFakeDevNum2 = 1;
@@ -113,6 +115,9 @@ TEST_F(UdevHandlerTest, CreateDevicePositive) {
   EXPECT_CALL(*udev_handler_mock_, GetDeviceInfoMock(_))
       .WillOnce(Return(info1_.release()))
       .WillOnce(Return(info2_.release()));
+  EXPECT_CALL(*udev_handler_mock_, ExtractManufacturerStringMock(_, _))
+      .WillOnce(Return(kFakeManufacturer1))
+      .WillOnce(Return(kFakeManufacturer2));
 
   ASSERT_FALSE(temp_fp_.empty());
 
@@ -124,11 +129,11 @@ TEST_F(UdevHandlerTest, CreateDevicePositive) {
   auto device = udev_handler_mock_->CreateDevice(nullptr);
   uint32_t device_id =
       udev_handler_mock_->GenerateDeviceId(kFakeSysNum1, kFakeDevNum1);
-  EXPECT_THAT(device, DeviceMatcher(device_id, kFakeName1));
+  EXPECT_THAT(device, DeviceMatcher(device_id, kFakeName1, kFakeManufacturer1));
 
   device = udev_handler_mock_->CreateDevice(nullptr);
   device_id = udev_handler_mock_->GenerateDeviceId(kFakeSysNum2, kFakeDevNum2);
-  EXPECT_THAT(device, DeviceMatcher(device_id, kFakeName2));
+  EXPECT_THAT(device, DeviceMatcher(device_id, kFakeName2, kFakeManufacturer2));
 }
 
 // Check behaviour when GetMidiDeviceName and GetDeviceInfo returns nullptr

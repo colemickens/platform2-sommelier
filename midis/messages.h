@@ -13,8 +13,8 @@
 extern "C" {
 #endif
 
-static const size_t kMidisDeviceInfoNameSize = 80;
-static const uint8_t kMidisMaxDevices = 10;
+static const size_t kMidisStringSize = 256;
+static const uint8_t kMidisMaxDevices = 7;
 
 enum ClientMsgType {
   REQUEST_LIST_DEVICES = 0,
@@ -39,7 +39,8 @@ struct MidisDeviceInfo {
   uint32_t device_num;
   uint32_t num_subdevices;
   uint32_t flags;
-  uint8_t name[kMidisDeviceInfoNameSize];
+  uint8_t name[kMidisStringSize];
+  uint8_t manufacturer[kMidisStringSize];
 } __attribute__((packed));
 
 struct MidisRequestPort {

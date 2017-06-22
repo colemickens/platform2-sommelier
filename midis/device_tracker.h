@@ -49,7 +49,14 @@ class UdevHandler {
     return (sys_num << 8) | device_num;
   }
 
+  virtual std::string ExtractManufacturerString(struct udev_device* udev_device,
+                                                const std::string& name);
+
  private:
+  const std::string UdevDeviceGetPropertyOrSysAttr(
+      struct udev_device* udev_device, const char* property_key,
+      const char* sysattr_key);
+
   struct UdevDeleter {
     void operator()(udev* dev) const { udev_unref(dev); }
   };

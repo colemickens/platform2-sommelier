@@ -21,6 +21,9 @@ class UdevHandlerMock : public UdevHandler {
   MOCK_METHOD1(GetMidiDeviceDnameMock,
                std::string(struct udev_device* udev_device));
   MOCK_METHOD1(GetDeviceInfoMock, snd_rawmidi_info*(const std::string& name));
+  MOCK_METHOD2(ExtractManufacturerStringMock,
+               std::string(struct udev_device* udev_device,
+                           const std::string& name));
 
   std::string GetMidiDeviceDname(struct udev_device* udev_device) override {
     return GetMidiDeviceDnameMock(udev_device);
@@ -29,6 +32,11 @@ class UdevHandlerMock : public UdevHandler {
   std::unique_ptr<snd_rawmidi_info> GetDeviceInfo(
       const std::string& name) override {
     return std::unique_ptr<snd_rawmidi_info>(GetDeviceInfoMock(name));
+  }
+
+  std::string ExtractManufacturerString(struct udev_device* udev_device,
+                                        const std::string& name) override {
+    return ExtractManufacturerStringMock(udev_device, name);
   }
 };
 

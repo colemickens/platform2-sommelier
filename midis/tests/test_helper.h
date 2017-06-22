@@ -15,10 +15,12 @@
 
 namespace midis {
 
-MATCHER_P2(DeviceMatcher, id, name, "") {
-  return (id == UdevHandler::GenerateDeviceId(arg->GetCard(),
-                                              arg->GetDeviceNum()) &&
-          base::EqualsCaseInsensitiveASCII(arg->GetName(), name));
+MATCHER_P3(DeviceMatcher, id, name, manufacturer, "") {
+  return (
+      id ==
+          UdevHandler::GenerateDeviceId(arg->GetCard(), arg->GetDeviceNum()) &&
+      base::EqualsCaseInsensitiveASCII(arg->GetName(), name) &&
+      base::EqualsCaseInsensitiveASCII(arg->GetManufacturer(), manufacturer));
 }
 
 base::FilePath CreateFakeTempSubDir(base::FilePath temp_path,

@@ -29,15 +29,18 @@ class SubDeviceClientFdHolder;
 // to arrive at an identifier.
 class Device {
  public:
-  Device(const std::string& name, uint32_t card, uint32_t device,
-         uint32_t num_subdevices, uint32_t flags);
+  Device(const std::string& name, const std::string& manufacturer,
+         uint32_t card, uint32_t device, uint32_t num_subdevices,
+         uint32_t flags);
   ~Device();
 
-  static std::unique_ptr<Device> Create(const std::string& name, uint32_t card,
-                                        uint32_t device,
+  static std::unique_ptr<Device> Create(const std::string& name,
+                                        const std::string& manufacturer,
+                                        uint32_t card, uint32_t device,
                                         uint32_t num_subdevices,
                                         uint32_t flags);
   const std::string& GetName() const { return name_; }
+  const std::string& GetManufacturer() const { return manufacturer_; }
   uint32_t GetCard() const { return card_; }
   uint32_t GetDeviceNum() const { return device_; }
   uint32_t GetNumSubdevices() const { return num_subdevices_; }
@@ -94,6 +97,7 @@ class Device {
                                size_t buf_len);
 
   std::string name_;
+  std::string manufacturer_;
   uint32_t card_;
   uint32_t device_;
   uint32_t num_subdevices_;

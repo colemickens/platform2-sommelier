@@ -21,9 +21,11 @@ namespace midis {
 
 base::FilePath Device::basedir_ = base::FilePath();
 
-Device::Device(const std::string& name, uint32_t card, uint32_t device,
-               uint32_t num_subdevices, uint32_t flags)
+Device::Device(const std::string& name, const std::string& manufacturer,
+               uint32_t card, uint32_t device, uint32_t num_subdevices,
+               uint32_t flags)
     : name_(name),
+      manufacturer_(manufacturer),
       card_(card),
       device_(device),
       num_subdevices_(num_subdevices),
@@ -34,11 +36,13 @@ Device::Device(const std::string& name, uint32_t card, uint32_t device,
 
 Device::~Device() { StopMonitoring(); }
 
-std::unique_ptr<Device> Device::Create(const std::string& name, uint32_t card,
-                                       uint32_t device, uint32_t num_subdevices,
+std::unique_ptr<Device> Device::Create(const std::string& name,
+                                       const std::string& manufacturer,
+                                       uint32_t card, uint32_t device,
+                                       uint32_t num_subdevices,
                                        uint32_t flags) {
-  auto dev =
-      base::MakeUnique<Device>(name, card, device, num_subdevices, flags);
+  auto dev = base::MakeUnique<Device>(name, manufacturer, card, device,
+                                      num_subdevices, flags);
   if (!dev->StartMonitoring()) {
     dev->StopMonitoring();
     return nullptr;

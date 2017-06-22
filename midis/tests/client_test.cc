@@ -23,6 +23,7 @@
 
 #include "midis/client_tracker.h"
 #include "midis/clientlib.h"
+#include "midis/constants.h"
 #include "midis/tests/test_helper.h"
 
 namespace {
@@ -30,14 +31,13 @@ namespace {
 const char kClientThreadName[] = "client_thread";
 
 const char kFakeName1[] = "Sample MIDI Device - 1";
+const char kFakeManufacturer1[] = "Foo";
 const uint32_t kFakeSysNum1 = 2;
 const uint32_t kFakeDevNum1 = 0;
 const uint32_t kFakeSubdevs1 = 1;
 const uint32_t kFakeFlags1 = 7;
 
 const char kFakeMidiData1[] = "0xDEADBEEF";
-
-const int kMaxBufSize = 1024;
 
 }  // namespace
 
@@ -140,8 +140,9 @@ TEST_F(ClientTest, AddClientAndReceiveMessages) {
   cli_tracker.SetBaseDirForTesting(temp_fp_);
   ASSERT_TRUE(cli_tracker.InitClientTracker(&device_tracker));
 
-  device_tracker.AddDevice(base::MakeUnique<Device>(
-      kFakeName1, kFakeSysNum1, kFakeDevNum1, kFakeSubdevs1, kFakeFlags1));
+  device_tracker.AddDevice(
+      base::MakeUnique<Device>(kFakeName1, kFakeManufacturer1, kFakeSysNum1,
+                               kFakeDevNum1, kFakeSubdevs1, kFakeFlags1));
   ASSERT_EQ(device_tracker.devices_.size(), 1);
 
   // Start the monitoring for the device, so that the file handlers
