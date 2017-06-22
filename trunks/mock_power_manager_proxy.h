@@ -171,6 +171,15 @@ class MockPowerManagerProxy : public org::chromium::PowerManagerProxyInterface {
                     const base::Callback<void()>&,
                     const base::Callback<void(brillo::Error*)>&,
                     int));
+  MOCK_METHOD3(IgnoreNextPowerButtonPress,
+               bool(int64_t,
+                    brillo::ErrorPtr*,
+                    int));
+  MOCK_METHOD4(IgnoreNextPowerButtonPressAsync,
+               void(int64_t,
+                    const base::Callback<void()>&,
+                    const base::Callback<void(brillo::Error*)>&,
+                    int));
   MOCK_METHOD4(RegisterSuspendDelay,
                bool(const std::vector<uint8_t>&,
                     std::vector<uint8_t>*,
