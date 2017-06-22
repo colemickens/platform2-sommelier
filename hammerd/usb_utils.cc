@@ -7,14 +7,15 @@
 #include <stdio.h>
 
 #include <memory>
+#include <string>
 
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
 namespace hammerd {
 namespace {
-const int kError = -1;
-const unsigned int kTimeoutMs = 1000;  // Default timeout value.
+constexpr int kError = -1;
+constexpr unsigned int kTimeoutMs = 1000;  // Default timeout value.
 bool is_libusb_inited = false;
 }  // namespace
 
@@ -103,7 +104,7 @@ bool UsbEndpoint::Connect() {
   while (Receive(buf.get(), 0, true, 10) != kError) {
     LOG(INFO) << "Flush data...";
   }
-  LOG(INFO) << "USB Endpoint is initialized successfully.";
+  LOG(INFO) << "USB endpoint is initialized successfully.";
   return true;
 }
 
@@ -161,6 +162,26 @@ int UsbEndpoint::Receive(void* inbuf,
   return actual;
 }
 
+// Adapted from platform/mist/usb_device.h.
+std::string UsbEndpoint::GetStringDescriptorAscii(uint8_t index) {
+  if (!devh_) {
+    LOG(ERROR) << "devh_ is nullptr.";
+    return std::string();
+  }
+
+  // libusb_get_string_descriptor_ascii uses an internal buffer that can only
+  // hold up to 128 ASCII characters.
+  uint8_t data[128];
+  int r = libusb_get_string_descriptor_ascii(
+      devh_, index, data, sizeof(data));
+  if (r < 0) {
+    LogUSBError("libusb_get_string_descriptor", r);
+    return std::string();
+  }
+
+  return std::string(reinterpret_cast<const char*>(data), r);
+}
+
 int UsbEndpoint::FindInterface() {
   if (!devh_) {
     LOG(ERROR) << "devh_ is nullptr.";
@@ -183,6 +204,10 @@ int UsbEndpoint::FindInterface() {
       break;
     }
   }
+
+  // Store the configuration string value for this device.
+  configuration_string_ = GetStringDescriptorAscii(conf->iConfiguration);
+  LOG(INFO) << "Configuration string descriptor: " << configuration_string_;
 
   libusb_free_config_descriptor(conf);
   return iface_num;

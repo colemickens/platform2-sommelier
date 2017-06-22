@@ -10,15 +10,17 @@
 #include <libusb.h>
 #include <stdint.h>
 
+#include <string>
+
 #include <base/macros.h>
 
 namespace hammerd {
 
 // TODO(akahuang): Make them as argument or include usb_descriptor.h
-const uint16_t kUsbVidGoogle = 0x18d1;
-const uint16_t kUsbPidGoogle = 0x5022;
-const uint8_t kUsbSubclassGoogleUpdate = 0x53;
-const uint8_t kUsbProtocolGoogleUpdate = 0xff;
+constexpr uint16_t kUsbVidGoogle = 0x18d1;
+constexpr uint16_t kUsbPidGoogle = 0x5022;
+constexpr uint8_t kUsbSubclassGoogleUpdate = 0x53;
+constexpr uint8_t kUsbProtocolGoogleUpdate = 0xff;
 
 bool InitLibUSB();
 void ExitLibUSB();
@@ -58,7 +60,14 @@ class UsbEndpoint {
   // Gets the chunk length of the USB endpoint.
   virtual size_t GetChunkLength() const { return chunk_len_; }
 
+  // Gets the configuration string of the USB endpoint.
+  virtual std::string GetConfigurationString() const {
+    return configuration_string_;
+  }
+
  private:
+  // Returns the descriptor at the given index as an ASCII string.
+  std::string GetStringDescriptorAscii(uint8_t index);
   // Finds the interface number. Returns -1 on error.
   int FindInterface();
   // Find the USB endpoint of the hammer EC.
@@ -73,6 +82,7 @@ class UsbEndpoint {
                    unsigned int timeout_ms = 0);
 
   libusb_device_handle* devh_;
+  std::string configuration_string_;
   uint8_t ep_num_;
   size_t chunk_len_;
   DISALLOW_COPY_AND_ASSIGN(UsbEndpoint);

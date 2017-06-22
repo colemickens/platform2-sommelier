@@ -27,6 +27,7 @@ class MockUsbEndpoint : public UsbEndpoint {
   MOCK_METHOD0(Close, void());
   MOCK_CONST_METHOD0(IsConnected, bool());
   MOCK_CONST_METHOD0(GetChunkLength, size_t());
+  MOCK_CONST_METHOD0(GetConfigurationString, std::string());
 
   int Send(const void* outbuf, int outlen, unsigned int timeout) override {
     // We only care about the value of the output buffer.

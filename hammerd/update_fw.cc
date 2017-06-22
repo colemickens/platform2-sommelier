@@ -39,7 +39,7 @@ SectionName OtherSection(SectionName name) {
     case SectionName::RW:
       return SectionName::RO;
     default:
-      return SectionName::END;
+      return SectionName::Invalid;
   }
 }
 
@@ -86,16 +86,17 @@ FirmwareUpdater::FirmwareUpdater(std::shared_ptr<UsbEndpoint> uep,
 FirmwareUpdater::~FirmwareUpdater() {}
 
 bool FirmwareUpdater::TryConnectUSB() {
-  const unsigned int kTimeoutMs = 1000;
-  const unsigned int kIntervalMs = 100;
+  constexpr unsigned int kTimeoutMs = 1000;
+  constexpr unsigned int kIntervalMs = 100;
 
-  LOG(INFO) << "Try to connect to USB endpoint.";
+  LOG(INFO) << "Trying to connect to USB endpoint.";
   auto start_time = base::Time::Now();
   int64_t duration = 0;
   while (true) {
     bool ret = uep_->Connect();
     if (ret) {
-      return true;
+      // If we can't properly parse the section version string, return false.
+      return FetchVersion();
     }
 
     duration = (base::Time::Now() - start_time).InMilliseconds();
@@ -109,6 +110,23 @@ bool FirmwareUpdater::TryConnectUSB() {
   return false;
 }
 
+bool FirmwareUpdater::FetchVersion() {
+  // Grab and parse the configuration string from USB endpoint.
+  version_ = uep_->GetConfigurationString();
+  if (version_.empty()) {
+    LOG(ERROR) << "Empty version from configuration string descriptor.";
+    return false;
+  }
+  // In newer EC builds, the version is prefixed by either "RO:" or "RW:".
+  // Remove the first three characters if this is the case.  Require at least
+  // one character after removing the prefix.
+  if (version_.length() > 3 && version_[2] == ':') {
+    version_ = version_.erase(0, 3);
+  }
+  LOG(INFO) << "Current section version: " << version_;
+  return true;
+}
+
 void FirmwareUpdater::CloseUSB() {
   uep_->Close();
 }
@@ -116,9 +134,8 @@ void FirmwareUpdater::CloseUSB() {
 bool FirmwareUpdater::LoadImage(const std::string& image) {
   image_.clear();
   sections_.clear();
-  for (int idx = 0; idx < static_cast<int>(SectionName::END); idx++) {
-    sections_.push_back(SectionInfo(static_cast<SectionName>(idx)));
-  }
+  sections_.push_back(SectionInfo(SectionName::RO));
+  sections_.push_back(SectionInfo(SectionName::RW));
   uint8_t* image_ptr =
       const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(image.data()));
   size_t len = image.size();
@@ -218,13 +235,30 @@ SectionName FirmwareUpdater::CurrentSection() const {
   return OtherSection(writable_section);
 }
 
-bool FirmwareUpdater::IsNeedUpdate(SectionName section_name) const {
+bool FirmwareUpdater::NeedsUpdate(SectionName section_name) const {
+  // section_name refers to the section about which we are inquiring.
+  // section refers to the particular section of the local firmware file.
+  // CurrentSection() refers to the currently-running section.
+  //
+  // targ_ header only provides information about the non-running section,
+  // so the way we detect the version string depends on CurrentSection().
   if (section_name == SectionName::RW) {
-    auto section = sections_[static_cast<int>(section_name)];
+    SectionInfo section = sections_[static_cast<int>(section_name)];
+    const char *rw_version =
+      CurrentSection() == SectionName::RW ? version_.c_str() : targ_.version;
+
+    LOG(INFO) << "NeedsUpdate(" << ToString(section_name) << ")?";
+    LOG(INFO) << "NeedsUpdate: version [EC] " << rw_version
+              << " vs. " << section.version << " [update]";
+    LOG(INFO) << "NeedsUpdate: rollback [EC] " << targ_.min_rollback
+              << " vs. " << section.rollback << " [update]";
+    LOG(INFO) << "NeedsUpdate: key_version [EC] " << targ_.key_version
+              << " vs. " << section.key_version << " [update]";
+
     // TODO(akahuang): We might still want to update even the version is
     // identical. Add a flag if we have the request in the future.
-    return (strncmp(targ_.version, section.version,
-                    sizeof(targ_.version)) != 0 &&
+    return (strncmp(rw_version, section.version,
+                    sizeof(section.version)) != 0 &&
             targ_.min_rollback <= section.rollback &&
             targ_.key_version == section.key_version);
   } else {
@@ -243,12 +277,15 @@ bool FirmwareUpdater::UnLockSection(SectionName section_name) {
   return false;
 }
 
+// Note: It is assumed that when TransferImage is called, hammer EC is in the
+// IDLE state.  This function takes care of the entire update process, including
+// bringing hammer EC back to the IDLE state afterwards.
 bool FirmwareUpdater::TransferImage(SectionName section_name) {
   if (!SendFirstPDU()) {
     LOG(ERROR) << "Failed to send the first PDU.";
     return false;
   }
-  // Determine if the section need to update.
+
   bool ret = false;
   const uint8_t* image_ptr = reinterpret_cast<const uint8_t*>(image_.data());
   auto section = sections_[static_cast<int>(section_name)];
@@ -262,22 +299,21 @@ bool FirmwareUpdater::TransferImage(SectionName section_name) {
   ret =
       TransferSection(image_ptr + section.offset, section.offset, section.size);
 
-  // Move USB receiver state machine to idle state so that vendor commands can
-  // be processed later, if any.
+  // SendDone signals to hammer EC that we have finished transferring the image,
+  // and that it should complete the update.
   SendDone();
   return ret;
 }
 
 bool FirmwareUpdater::InjectEntropy() {
-  const int kDataSize = 32;
+  constexpr int kDataSize = 32;
   std::string entropy_data = base::RandBytesAsString(kDataSize);
   return SendSubcommand(UpdateExtraCommand::kInjectEntropy, entropy_data);
 }
 
 bool FirmwareUpdater::SendSubcommand(UpdateExtraCommand subcommand,
                                      const std::string& cmd_body) {
-  LOG(INFO) << "Send Sub-command: " << subcommand;
-  SendDone();
+  LOG(INFO) << ">>> SendSubcommand";
 
   uint8_t response = -1;
   uint16_t subcommand_value = static_cast<uint16_t>(subcommand);
@@ -317,7 +353,7 @@ bool FirmwareUpdater::SendSubcommand(UpdateExtraCommand subcommand,
 }
 
 bool FirmwareUpdater::SendFirstPDU() {
-  LOG(INFO) << "Send the first PDU: zero data header.";
+  LOG(INFO) << ">>> SendFirstPDU";
   UpdateFrameHeader ufh;
   memset(&ufh, 0, sizeof(ufh));
   ufh.block_size = htobe32(sizeof(ufh));
@@ -380,6 +416,7 @@ bool FirmwareUpdater::SendFirstPDU() {
 
 void FirmwareUpdater::SendDone() {
   // Send stop request, ignoring reply.
+  LOG(INFO) << ">>> SendDone";
   uint32_t out = htobe32(kUpdateDoneCmd);
   uint8_t unused_received;
   uep_->Transfer(&out, sizeof(out), &unused_received, 1, false);

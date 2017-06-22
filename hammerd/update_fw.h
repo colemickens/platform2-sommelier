@@ -41,9 +41,9 @@
 
 namespace hammerd {
 
-const int kUpdateProtocolVersion = 6;
-const uint32_t kUpdateDoneCmd = 0xB007AB1E;
-const uint32_t kUpdateExtraCmd = 0xB007AB1F;
+constexpr int kUpdateProtocolVersion = 6;
+constexpr uint32_t kUpdateDoneCmd = 0xB007AB1E;
+constexpr uint32_t kUpdateExtraCmd = 0xB007AB1F;
 
 enum class FirstResponsePDUHeaderType {
   kCR50 = 0,
@@ -116,7 +116,7 @@ struct FirstResponsePDU {
 enum class SectionName {
   RO,
   RW,
-  END,
+  Invalid,
 };
 const char* ToString(SectionName name);
 SectionName OtherSection(SectionName name);
@@ -188,8 +188,9 @@ class FirmwareUpdater {
   // Returns the current section that EC is running. One of "RO" or "RW".
   SectionName CurrentSection() const;
 
-  // Determines whether the section need to update.
-  bool IsNeedUpdate(SectionName section_name) const;
+  // Determines whether the given section needs updating.  Returns an accurate
+  // answer regardless of which section is currently running.
+  bool NeedsUpdate(SectionName section_name) const;
 
   // Determines the section is locked or not.
   bool IsSectionLocked(SectionName section_name) const;
@@ -201,6 +202,9 @@ class FirmwareUpdater {
   // Used in unit tests to inject mocks.
   explicit FirmwareUpdater(std::shared_ptr<UsbEndpoint> uep,
                            std::shared_ptr<FmapInterface> fmap);
+
+  // Fetches the version of the currently-running section.
+  bool FetchVersion();
 
   // Transfers the data of the target section.
   bool TransferSection(const uint8_t* data_ptr,
@@ -218,6 +222,9 @@ class FirmwareUpdater {
   std::shared_ptr<FmapInterface> fmap_;
   // The information of the first response PDU.
   FirstResponsePDU targ_;
+  // The version of the currently-running section.  Retrieved through USB
+  // endpoint's configuration string descriptor as part of TryConnectUSB.
+  std::string version_;
   // The image data to be updated.
   std::string image_;
   // The information of the RO and RW sections in the image data.
@@ -227,13 +234,15 @@ class FirmwareUpdater {
   FRIEND_TEST(FirmwareUpdaterTest, LoadImage);
   FRIEND_TEST(FirmwareUpdaterTest, TryConnectUSB_OK);
   FRIEND_TEST(FirmwareUpdaterTest, TryConnectUSB_FAIL);
+  FRIEND_TEST(FirmwareUpdaterTest, TryConnectUSB_FetchVersion_Legacy);
+  FRIEND_TEST(FirmwareUpdaterTest, TryConnectUSB_FetchVersion_FAIL);
   FRIEND_TEST(FirmwareUpdaterTest, SendFirstPDU);
   FRIEND_TEST(FirmwareUpdaterTest, SendDone);
   FRIEND_TEST(FirmwareUpdaterTest, SendSubcommand_InjectEntropy);
   FRIEND_TEST(FirmwareUpdaterTest, SendSubcommand_Reset);
   FRIEND_TEST(FirmwareUpdaterTest, TransferImage);
   FRIEND_TEST(FirmwareUpdaterTest, CurrentSection);
-  FRIEND_TEST(FirmwareUpdaterTest, IsNeedUpdate);
+  FRIEND_TEST(FirmwareUpdaterTest, NeedsUpdate);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FirmwareUpdater);

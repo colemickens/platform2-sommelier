@@ -171,30 +171,54 @@ std::function<bool()> TrueAfterPeriod(base::Time start, int64_t period_ms) {
 
 // USB endpoint is ready to connect after 500 ms.
 TEST_F(FirmwareUpdaterTest, TryConnectUSB_OK) {
+  InSequence dummy;
   auto now = base::Time::Now();
   ON_CALL(*uep_, Connect()).WillByDefault(Invoke(TrueAfterPeriod(now, 500)));
   EXPECT_CALL(*uep_, Connect()).Times(AtLeast(1));
+  EXPECT_CALL(*uep_, GetConfigurationString())
+      .WillOnce(Return("RO:version_string"));
   ASSERT_EQ(fw_updater_->TryConnectUSB(), true);
+  ASSERT_EQ(fw_updater_->version_, "version_string");
 }
 
 // USB endpoint is ready to connect after 5000 ms, which is longer than timeout.
 TEST_F(FirmwareUpdaterTest, TryConnectUSB_FAIL) {
+  InSequence dummy;
   auto now = base::Time::Now();
   ON_CALL(*uep_, Connect()).WillByDefault(Invoke(TrueAfterPeriod(now, 5000)));
   EXPECT_CALL(*uep_, Connect()).Times(AtLeast(1));
+  EXPECT_CALL(*uep_, GetConfigurationString()).Times(0);
+  ASSERT_EQ(fw_updater_->TryConnectUSB(), false);
+}
+
+// Test legacy-style version string.
+TEST_F(FirmwareUpdaterTest, TryConnectUSB_FetchVersion_Legacy) {
+  InSequence dummy;
+  EXPECT_CALL(*uep_, Connect()).WillOnce(Return(true));
+  EXPECT_CALL(*uep_, GetConfigurationString()).WillOnce(Return("version_string"));
+  ASSERT_EQ(fw_updater_->TryConnectUSB(), true);
+  ASSERT_EQ(fw_updater_->version_, "version_string");
+}
+
+// Parse the given invalid configuration string descriptor.
+TEST_F(FirmwareUpdaterTest, TryConnectUSB_FetchVersion_FAIL) {
+  InSequence dummy;
+  EXPECT_CALL(*uep_, Connect()).WillOnce(Return(true));
+  EXPECT_CALL(*uep_, GetConfigurationString()).WillOnce(Return(""));
   ASSERT_EQ(fw_updater_->TryConnectUSB(), false);
 }
 
 // Send done command.
 TEST_F(FirmwareUpdaterTest, SendDone) {
+  InSequence dummy;
   EXPECT_CALL(*uep_, SendHelper(done_cmd_, _, _)).WillOnce(ReturnArg<2>());
   EXPECT_CALL(*uep_, Receive(_, 1, false, _)).WillOnce(Return(1));
-
   fw_updater_->SendDone();
 }
 
 // Send first PDU and get the good response.
 TEST_F(FirmwareUpdaterTest, SendFirstPDU) {
+  InSequence dummy;
   EXPECT_CALL(*uep_, SendHelper(first_header_, _, _)).WillOnce(ReturnArg<2>());
   EXPECT_CALL(*uep_, Receive(_, sizeof(good_rpdu_), true, _))
       .WillOnce(WriteBuf(&good_rpdu_));
@@ -222,9 +246,6 @@ TEST_F(FirmwareUpdaterTest, SendSubcommand_InjectEntropy) {
   ON_CALL(*uep_, Receive(_, 1, false, _)).WillByDefault(Return(1));
   {
     InSequence dummy;
-    // Send done command.
-    EXPECT_CALL(*uep_, SendHelper(done_cmd_, _, _));
-    EXPECT_CALL(*uep_, Receive(_, 1, false, _));
     // Send the subcommand.
     EXPECT_CALL(*uep_, SendHelper(ufh_data, _, _));
     EXPECT_CALL(*uep_, Receive(_, 1, false, _));
@@ -251,9 +272,6 @@ TEST_F(FirmwareUpdaterTest, SendSubcommand_Reset) {
   ON_CALL(*uep_, Receive(_, 1, false, _)).WillByDefault(Return(1));
   {
     InSequence dummy;
-    // Send done command.
-    EXPECT_CALL(*uep_, SendHelper(done_cmd_, _, _));
-    EXPECT_CALL(*uep_, Receive(_, 1, false, _));
     // Send subcommand. Because the hammer is reset after sending the command,
     // it won't reply the response.
     EXPECT_CALL(*uep_, SendHelper(ufh_data, _, _));
@@ -276,15 +294,17 @@ TEST_F(FirmwareUpdaterTest, CurrentSection) {
   fw_updater_->targ_.offset = 0x0;
   ASSERT_EQ(fw_updater_->CurrentSection(), SectionName::RW);
 
-  // Writable offset is not at RO nor RW, return END.
+  // Writable offset is not at RO nor RW, return Invalid.
   fw_updater_->targ_.offset = 0xffff;
-  ASSERT_EQ(fw_updater_->CurrentSection(), SectionName::END);
+  ASSERT_EQ(fw_updater_->CurrentSection(), SectionName::Invalid);
 }
 
-TEST_F(FirmwareUpdaterTest, IsNeedUpdate) {
+TEST_F(FirmwareUpdaterTest, NeedsUpdate) {
   fw_updater_->sections_ = {
       SectionInfo(SectionName::RO, 0x0, 0x10000, "RO MOCK VERSION", -1, -1),
       SectionInfo(SectionName::RW, 0x11000, 0xA0, "RW MOCK VERSION", 35, 1)};
+  // Writable offset is at RW, so current section is RO.
+  fw_updater_->targ_.offset = 0x11000;
 
   // A case that needs to update RW.
   snprintf(fw_updater_->targ_.version,
@@ -292,7 +312,7 @@ TEST_F(FirmwareUpdaterTest, IsNeedUpdate) {
            "ANOTHER VERSION");
   fw_updater_->targ_.min_rollback = 35;
   fw_updater_->targ_.key_version = 1;
-  ASSERT_EQ(fw_updater_->IsNeedUpdate(SectionName::RW), true);
+  ASSERT_EQ(fw_updater_->NeedsUpdate(SectionName::RW), true);
 
   // The key version is not the same.
   snprintf(fw_updater_->targ_.version,
@@ -300,15 +320,15 @@ TEST_F(FirmwareUpdaterTest, IsNeedUpdate) {
            "ANOTHER VERSION");
   fw_updater_->targ_.min_rollback = 35;
   fw_updater_->targ_.key_version = 2;
-  ASSERT_EQ(fw_updater_->IsNeedUpdate(SectionName::RW), false);
+  ASSERT_EQ(fw_updater_->NeedsUpdate(SectionName::RW), false);
 
-  // minimum rollback is larger than the updated image.
+  // Minimum rollback is larger than the updated image.
   snprintf(fw_updater_->targ_.version,
            sizeof(fw_updater_->targ_.version),
            "ANOTHER VERSION");
   fw_updater_->targ_.min_rollback = 40;
   fw_updater_->targ_.key_version = 1;
-  ASSERT_EQ(fw_updater_->IsNeedUpdate(SectionName::RW), false);
+  ASSERT_EQ(fw_updater_->NeedsUpdate(SectionName::RW), false);
 
   // The version is the same.
   snprintf(fw_updater_->targ_.version,
@@ -317,7 +337,7 @@ TEST_F(FirmwareUpdaterTest, IsNeedUpdate) {
            fw_updater_->sections_[1].version);
   fw_updater_->targ_.min_rollback = 35;
   fw_updater_->targ_.key_version = 1;
-  ASSERT_EQ(fw_updater_->IsNeedUpdate(SectionName::RW), false);
+  ASSERT_EQ(fw_updater_->NeedsUpdate(SectionName::RW), false);
 }
 
 // Test to transfer RW section.
@@ -337,6 +357,8 @@ TEST_F(FirmwareUpdaterTest, TransferImage) {
   fw_updater_->sections_ = {
       SectionInfo(SectionName::RO, 0x0, 0x10000, "RO MOCK VERSION", -1, -1),
       SectionInfo(SectionName::RW, 0x11000, 0xA0, "RW MOCK VERSION", 35, 1)};
+  // Writable offset is at RW, so current section is RO.
+  fw_updater_->targ_.offset = 0x11000;
   const uint8_t* image_ptr =
       reinterpret_cast<const uint8_t*>(fw_updater_->image_.data());
 
@@ -347,7 +369,7 @@ TEST_F(FirmwareUpdaterTest, TransferImage) {
   {
     InSequence dummy;
 
-    // Send first PDU and get the good response.
+    // Send first PDU and get a valid response.
     EXPECT_CALL(*uep_, SendHelper(first_header_, _, _));
     EXPECT_CALL(*uep_, Receive(_, sizeof(good_rpdu_), true, _))
         .WillOnce(WriteBuf(&good_rpdu_));
@@ -372,6 +394,8 @@ TEST_F(FirmwareUpdaterTest, TransferImage) {
     EXPECT_CALL(*uep_, Receive(_, 1, false, _)).WillOnce(Return(1));
   }
 
+  // TransferImage takes care of running SendFirstPDU, which sets maximum
+  // PDU size to 0x80.
   ASSERT_EQ(fw_updater_->TransferImage(SectionName::RW), true);
 }
 
