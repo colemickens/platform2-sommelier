@@ -86,6 +86,8 @@ enum DircryptoMigrationEndStatus {
   kResumedMigrationFailedFileError = 8,
   kNewMigrationFailedFileErrorOpenEIO = 9,
   kResumedMigrationFailedFileErrorOpenEIO = 10,
+  kNewMigrationCancelled = 11,
+  kResumedMigrationCancelled = 12,
   kMigrationEndStatusNumBuckets
 };
 
