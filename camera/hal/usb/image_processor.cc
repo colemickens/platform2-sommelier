@@ -406,10 +406,11 @@ static bool ConvertToJpeg(const android::CameraMetadata& metadata,
           thumbnail_width, thumbnail_height, thumbnail_jpeg_quality,
           thumbnail.GetBufferSize(), thumbnail.GetData(),
           &thumbnail_data_size)) {
-    LOGF(ERROR) << "Generate JPEG thumbnail failed";
-    return false;
+    LOGF(WARNING) << "Generate JPEG thumbnail failed";
+    thumbnail.SetDataSize(0);
+  } else {
+    thumbnail.SetDataSize(thumbnail_data_size);
   }
-  thumbnail.SetDataSize(thumbnail_data_size);
   if (!utils.GenerateApp1(thumbnail.GetData(), thumbnail.GetDataSize())) {
     LOGF(ERROR) << "Generating APP1 segment failed.";
     return false;
