@@ -107,7 +107,7 @@ clean: CLEAN(common/libcamera_jpeg.pic.a)
 common/libcamera_jpeg: CXX_STATIC_LIBRARY(common/libcamera_jpeg.pic.a)
 
 libcamera_exif_OBJS = common/exif_utils.o
-libcamera_exif_PC_DEPS := libchrome-$(BASE_VER)
+libcamera_exif_PC_DEPS := libchrome-$(BASE_VER) libexif
 libcamera_exif_CPPFLAGS := $(call get_pc_cflags,$(libcamera_exif_PC_DEPS))
 libcamera_exif_LDLIBS := $(call get_pc_libs,$(libcamera_exif_PC_DEPS))
 CXX_STATIC_LIBRARY(common/libcamera_exif.pic.a): \
@@ -121,8 +121,4 @@ common/libcamera_exif: CXX_STATIC_LIBRARY(common/libcamera_exif.pic.a)
 # To link against object files under common/, add $(COMMON_OBJECTS) to the
 # dependency list of your target.
 COMMON_OBJECTS := \
-	common/future.o
-
-COMMON_OBJECTS_FOR_USB_HAL := \
-	common/exif_utils.o \
 	common/future.o
