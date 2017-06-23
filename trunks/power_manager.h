@@ -21,7 +21,7 @@
 #include <string>
 
 #include <base/memory/weak_ptr.h>
-#include <power_manager-client/power_manager/dbus-proxies.h>
+#include <power_manager/dbus-proxies.h>
 
 #include "trunks/resource_manager.h"
 

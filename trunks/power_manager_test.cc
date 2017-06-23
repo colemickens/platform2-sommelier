@@ -21,11 +21,11 @@
 #include <gmock/gmock.h>
 #include <google/protobuf/message_lite.h>
 #include <gtest/gtest.h>
+#include <power_manager/dbus-proxy-mocks.h>
 #include <power_manager/proto_bindings/suspend.pb.h>
 
 #include "trunks/mock_command_transceiver.h"
 #include "trunks/mock_dbus_object_proxy.h"
-#include "trunks/mock_power_manager_proxy.h"
 #include "trunks/mock_resource_manager.h"
 #include "trunks/trunks_factory_for_test.h"
 
@@ -127,6 +127,8 @@ class PowerManagerTest : public testing::Test {
             }));
     ON_CALL(proxy_, UnregisterSuspendDelay(_, _, _))
         .WillByDefault(Return(true));
+    ON_CALL(proxy_, GetObjectProxy())
+        .WillByDefault(Return(object_proxy_.get()));
   }
 
   void SendSuspendDone(int32_t suspend_id = kSomeSuspendId) {
@@ -277,7 +279,7 @@ class PowerManagerTest : public testing::Test {
   using MockDBusObjectProxyType = StrictMock<MockDBusObjectProxy>;
   scoped_refptr<MockDBusObjectProxyType> object_proxy_ =
       new MockDBusObjectProxyType();
-  StrictMock<MockPowerManagerProxy> proxy_{object_proxy_.get()};
+  org::chromium::PowerManagerProxyMock proxy_;
   TrunksFactoryForTest factory_;
   StrictMock<MockCommandTransceiver> transceiver_;
   StrictMock<MockResourceManager> resource_manager_{factory_, &transceiver_};
