@@ -67,9 +67,14 @@ bool JpegCompressor::GenerateThumbnail(const void* image,
                                        uint32_t out_buffer_size,
                                        void* out_buffer,
                                        uint32_t* out_data_size) {
+  if (thumbnail_width == 0 || thumbnail_height == 0) {
+    LOGF(ERROR) << "Invalid thumbnail resolution " << thumbnail_width << "x"
+                << thumbnail_height;
+    return false;
+  }
   if (thumbnail_width % 8 != 0 || thumbnail_height % 2 != 0) {
-    LOGF(ERROR) << "Image size can not be handled: " << image_width << "x"
-                << image_height;
+    LOGF(ERROR) << "Image size can not be handled: " << thumbnail_width << "x"
+                << thumbnail_height;
     return false;
   }
 
