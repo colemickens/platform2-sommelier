@@ -76,10 +76,13 @@ TEST_F(VmlogWriterTest, ParseVmStatsOptionalMissing) {
 
 TEST_F(VmlogWriterTest, VmlogRotation) {
   base::FilePath temp_directory;
-  EXPECT_TRUE(base::GetTempDir(&temp_directory));
+  EXPECT_TRUE(base::CreateNewTempDirectory("", &temp_directory));
 
   base::FilePath log_path = temp_directory.Append("log");
   base::FilePath rotated_path = temp_directory.Append("rotated");
+  base::FilePath latest_symlink_path = temp_directory.Append("vmlog.1.LATEST");
+  base::FilePath previous_symlink_path = temp_directory.Append(
+      "vmlog.1.PREVIOUS");
 
   // VmlogFile expects to create its output files.
   base::DeleteFile(log_path, false);
@@ -87,6 +90,8 @@ TEST_F(VmlogWriterTest, VmlogRotation) {
 
   std::string header_string("header\n");
   VmlogFile l(log_path, rotated_path, 500, header_string);
+
+  EXPECT_FALSE(base::PathExists(latest_symlink_path));
 
   std::string x_400(400, 'x');
   EXPECT_TRUE(l.Write(x_400));
@@ -103,11 +108,30 @@ TEST_F(VmlogWriterTest, VmlogRotation) {
   EXPECT_EQ(header_string.size() + y_200.size(), buf.size());
   EXPECT_TRUE(base::ReadFileToString(rotated_path, &buf));
   EXPECT_EQ(header_string.size() + x_400.size(), buf.size());
+
+  EXPECT_TRUE(base::PathExists(latest_symlink_path));
+  base::FilePath symlink_target;
+  EXPECT_TRUE(base::ReadSymbolicLink(latest_symlink_path,
+                                     &symlink_target));
+  EXPECT_EQ(rotated_path.value(), symlink_target.value());
+
+  // Test log rotation for vmlog.1 files when a writer is created.
+  // We use a zero log_interval to prevent writes from happening.
+  EXPECT_TRUE(base::PathExists(latest_symlink_path));
+  EXPECT_FALSE(base::PathExists(previous_symlink_path));
+
+  VmlogWriter writer(temp_directory, base::TimeDelta());
+  EXPECT_FALSE(base::PathExists(latest_symlink_path));
+  EXPECT_TRUE(base::PathExists(previous_symlink_path));
+
+  EXPECT_TRUE(base::ReadSymbolicLink(previous_symlink_path,
+                                     &symlink_target));
+  EXPECT_EQ(rotated_path.value(), symlink_target.value());
 }
 
 TEST_F(VmlogWriterTest, WriteCallbackSuccess) {
   base::FilePath tempdir;
-  EXPECT_TRUE(base::GetTempDir(&tempdir));
+  EXPECT_TRUE(base::CreateNewTempDirectory("", &tempdir));
 
   // Create a VmlogWriter with a zero log_interval to avoid scheduling write
   // callbacks.

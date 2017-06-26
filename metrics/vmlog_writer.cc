@@ -128,6 +128,15 @@ bool VmlogFile::Write(const std::string& data) {
     if (!base::CopyFile(live_path_, rotated_path_)) {
       PLOG(ERROR) << "Could not copy vmlog to: " << rotated_path_.value();
     }
+    base::FilePath rotated_path_dir = rotated_path_.DirName();
+    base::FilePath rotated_symlink = rotated_path_dir.Append("vmlog.1.LATEST");
+    if (!base::PathExists(rotated_symlink)) {
+      if (!base::CreateSymbolicLink(rotated_path_, rotated_symlink)) {
+        PLOG(ERROR) << "Unable to create symbolic link from "
+                    << rotated_symlink.value() << " to "
+                    << rotated_path_.value();
+      }
+    }
 
     if (HANDLE_EINTR(ftruncate(fd_, 0)) != 0) {
       PLOG(ERROR) << "Could not ftruncate() file";
@@ -189,12 +198,11 @@ void VmlogWriter::Init(const base::FilePath& vmlog_dir,
                             vmlog_dir.Append("vmlog.PREVIOUS"),
                             vmlog_current_path);
 
-  // This will create a vmlog.1.LATEST symlink that doesn't point at a file
-  // until the log is rotated, but it seems more important to keep vmlog and
-  // vmlog.1 symlinks synchronized.
-  brillo::UpdateLogSymlinks(vmlog_dir.Append("vmlog.1.LATEST"),
-                            vmlog_dir.Append("vmlog.1.PREVIOUS"),
-                            vmlog_rotated_path);
+  base::DeleteFile(vmlog_dir.Append("vmlog.1.PREVIOUS"), false);
+  if (base::PathExists(vmlog_dir.Append("vmlog.1.LATEST"))) {
+    base::Move(vmlog_dir.Append("vmlog.1.LATEST"),
+               vmlog_dir.Append("vmlog.1.PREVIOUS"));
+  }
 
   vmlog_.reset(new VmlogFile(
       vmlog_current_path, vmlog_rotated_path, kMaxVmlogFileSize, kVmlogHeader));
