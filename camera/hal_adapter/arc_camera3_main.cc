@@ -7,6 +7,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <hardware/hardware.h>
+
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/logging.h>
@@ -16,7 +18,6 @@
 #include "arc/common.h"
 #include "hal_adapter/camera_hal_adapter.h"
 #include "hal_adapter/camera_hal_server_impl.h"
-#include "hardware/hardware.h"
 
 static void SetLogItems() {
   const bool kOptionPID = true;

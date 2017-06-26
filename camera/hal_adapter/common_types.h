@@ -10,8 +10,9 @@
 #include <map>
 #include <memory>
 
+#include <hardware/camera3.h>
+
 #include "common/camera_buffer_handle.h"
-#include "hardware/camera3.h"
 
 namespace internal {
 

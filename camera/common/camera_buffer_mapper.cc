@@ -13,11 +13,11 @@
 
 #include <drm_fourcc.h>
 #include <gbm.h>
+#include <system/graphics.h>
 
 #include "arc/common.h"
 #include "common/camera_buffer_handle.h"
 #include "common/camera_buffer_mapper_internal.h"
-#include "system/graphics.h"
 
 namespace arc {
 

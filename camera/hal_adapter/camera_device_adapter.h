@@ -10,6 +10,8 @@
 #include <memory>
 #include <unordered_map>
 
+#include <hardware/camera3.h>
+
 #include <base/files/scoped_file.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
@@ -19,18 +21,8 @@
 #include "hal_adapter/arc_camera3_mojo_utils.h"
 #include "hal_adapter/common_types.h"
 #include "hal_adapter/mojo/arc_camera3.mojom.h"
-#include "hardware/camera3.h"
 
 namespace arc {
-
-// Make sure the definition in mojom and c++ header file match.
-static_assert(
-    static_cast<int>(GRALLOC) ==
-            static_cast<int>(mojom::Camera3DeviceOps::BufferType::GRALLOC) &&
-        static_cast<int>(SHM) ==
-            static_cast<int>(mojom::Camera3DeviceOps::BufferType::SHM),
-    "Definition mismatch between enum BufferType and "
-    "mojom::Camera3DeviceOps::BufferType");
 
 class Camera3DeviceOpsDelegate;
 

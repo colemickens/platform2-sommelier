@@ -17,7 +17,6 @@
 #include <drm_fourcc.h>
 #include <sync/sync.h>
 
-#include "arc/camera_buffer_mapper.h"
 #include "arc/common.h"
 #include "common/camera_buffer_handle.h"
 #include "hal_adapter/camera3_callback_ops_delegate.h"

@@ -4,8 +4,10 @@
  * found in the LICENSE file.
  */
 
+#include <hardware/camera3.h>
+
+#include "arc/camera_buffer_mapper_typedefs.h"
 #include "hal_adapter/mojo/arc_camera3.mojom.h"
-#include "hardware/camera3.h"
 
 namespace arc {
 
@@ -15,6 +17,12 @@ namespace {
   static_assert(name == static_cast<int>(arc::mojom::enum_class::name), \
                 "Definition of " #name                                  \
                 " is inconsistent between mojom and Android framework");
+
+#define CHECK_BUFFER_TYPE_DEFINITION(type) \
+  CHECK_MOJOM_DEFINITION(type, Camera3DeviceOps::BufferType)
+
+CHECK_BUFFER_TYPE_DEFINITION(GRALLOC);
+CHECK_BUFFER_TYPE_DEFINITION(SHM);
 
 // We must make sure the HAL pixel format definitions in mojom and from Android
 // framework are consistent.

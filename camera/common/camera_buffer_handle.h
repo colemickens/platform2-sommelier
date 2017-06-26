@@ -7,11 +7,12 @@
 #ifndef COMMON_CAMERA_BUFFER_HANDLE_H_
 #define COMMON_CAMERA_BUFFER_HANDLE_H_
 
+#include <system/window.h>
+
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 
 #include "arc/common.h"
-#include "system/window.h"
 
 const uint32_t kCameraBufferMagic = 0xD1DAD1DA;
 const uint64_t kInvalidBufferId = 0xFFFFFFFFFFFFFFFF;

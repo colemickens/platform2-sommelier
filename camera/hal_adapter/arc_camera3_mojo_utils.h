@@ -12,6 +12,8 @@
 #include <unordered_map>
 #include <utility>
 
+#include <hardware/camera3.h>
+
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/single_thread_task_runner.h>
@@ -21,7 +23,6 @@
 #include "arc/future.h"
 #include "hal_adapter/common_types.h"
 #include "hal_adapter/mojo/arc_camera3.mojom.h"
-#include "hardware/camera3.h"
 
 namespace internal {
 
