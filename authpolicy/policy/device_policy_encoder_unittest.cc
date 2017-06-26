@@ -104,6 +104,12 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeBoolean(&policy, key::kDeviceEphemeralUsersEnabled, kBool);
   EXPECT_EQ(kBool, policy.ephemeral_users_enabled().ephemeral_users_enabled());
 
+  EncodeInteger(&policy,
+                key::kDeviceEcryptfsMigrationStrategy,
+                em::DeviceEcryptfsMigrationStrategyProto::DISALLOW_ARC);
+  EXPECT_EQ(em::DeviceEcryptfsMigrationStrategyProto::DISALLOW_ARC,
+            policy.device_ecryptfs_migration_strategy().migration_strategy());
+
   // Unsupported, see device_policy_encoder.cc for explanation, simply mark
   // handled.
   MarkHandled(key::kDeviceLocalAccounts);
@@ -357,6 +363,12 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
 
   EncodeString(&policy, key::kDeviceWallpaperImage, kString);
   EXPECT_EQ(kString, policy.device_wallpaper_image().device_wallpaper_image());
+
+  EncodeInteger(&policy,
+                key::kDeviceSecondFactorAuthentication,
+                em::DeviceSecondFactorAuthenticationProto::U2F);
+  EXPECT_EQ(em::DeviceSecondFactorAuthenticationProto::U2F,
+            policy.device_second_factor_authentication().mode());
 
   //
   // Check whether all device policies have been handled.

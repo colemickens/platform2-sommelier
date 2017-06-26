@@ -187,6 +187,13 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
                      for (const std::string& value : values)
                        list->add_login_screen_input_methods(value);
                    });
+  EncodeInteger(key::kDeviceEcryptfsMigrationStrategy, [policy](int value) {
+    policy->mutable_device_ecryptfs_migration_strategy()
+        ->set_migration_strategy(
+            static_cast<
+                em::DeviceEcryptfsMigrationStrategyProto_MigrationStrategy>(
+                value));
+  });
 }
 
 void DevicePolicyEncoder::EncodeNetworkPolicies(
@@ -466,6 +473,11 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
 
   EncodeString(key::kDeviceWallpaperImage, [policy](const std::string& value) {
     policy->mutable_device_wallpaper_image()->set_device_wallpaper_image(value);
+  });
+
+  EncodeInteger(key::kDeviceSecondFactorAuthentication, [policy](int value) {
+    policy->mutable_device_second_factor_authentication()->set_mode(
+        static_cast<em::DeviceSecondFactorAuthenticationProto_U2fMode>(value));
   });
 }
 
