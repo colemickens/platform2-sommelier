@@ -72,22 +72,32 @@ bool FindToken(const std::string& in_str,
   std::vector<std::string> lines = base::SplitString(
       in_str, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   for (const std::string& line : lines) {
-    size_t sep_pos = line.find(token_separator);
-    if (sep_pos != std::string::npos) {
-      std::string line_token;
-      base::TrimWhitespaceASCII(
-          line.substr(0, sep_pos), base::TRIM_ALL, &line_token);
-      if (line_token == token) {
-        base::TrimWhitespaceASCII(
-            line.substr(sep_pos + 1), base::TRIM_ALL, result);
-        if (!result->empty())
-          return true;
-      }
-    }
+    if (FindTokenInLine(line, token_separator, token, result))
+      return true;
   }
+
   // Don't log in_str, it might contain sensitive data.
   LOG(ERROR) << "Failed to find '" << token << "' in string";
   return false;
+}
+
+bool FindTokenInLine(const std::string& in_line,
+                     char token_separator,
+                     const std::string& token,
+                     std::string* result) {
+  size_t sep_pos = in_line.find(token_separator);
+  if (sep_pos == std::string::npos)
+    return false;
+
+  std::string line_token;
+  base::TrimWhitespaceASCII(
+      in_line.substr(0, sep_pos), base::TRIM_ALL, &line_token);
+  if (line_token != token)
+    return false;
+
+  base::TrimWhitespaceASCII(
+      in_line.substr(sep_pos + 1), base::TRIM_ALL, result);
+  return !result->empty();
 }
 
 bool ParseGpoVersion(const std::string& str, unsigned int* version) {

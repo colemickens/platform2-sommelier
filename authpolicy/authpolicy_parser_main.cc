@@ -89,7 +89,6 @@ struct GpoEntry {
 
   void Log() const {
     LOG(INFO) << "  Name:        " << name;
-    LOG(INFO) << "  Filesyspath: " << filesyspath;
     LOG(INFO) << "  Version:     " << version_user << " (user) "
               << version_machine << " (machine)";
     LOG(INFO) << "  GPFLags:     " << gp_flags;

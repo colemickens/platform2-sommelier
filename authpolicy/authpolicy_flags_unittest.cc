@@ -32,7 +32,6 @@ TEST_F(AuthPolicyFlagsTest, TestAllFlagsOff) {
   EXPECT_FALSE(flags.log_command_output());
   EXPECT_FALSE(flags.log_command_output_on_error());
   EXPECT_FALSE(flags.log_gpo());
-  EXPECT_FALSE(flags.log_config());
   EXPECT_EQ("0", flags.net_log_level());
 }
 
@@ -48,7 +47,6 @@ TEST_F(AuthPolicyFlagsTest, TestAllFlagsOn) {
       "log_command_output":true,
       "log_command_output_on_error":true,
       "log_gpo":true,
-      "log_config":true,
       "net_log_level":"10" })!!!");
   const protos::DebugFlags& flags = flags_container.Get();
 
@@ -60,13 +58,11 @@ TEST_F(AuthPolicyFlagsTest, TestAllFlagsOn) {
   EXPECT_TRUE(flags.log_command_output());
   EXPECT_TRUE(flags.log_command_output_on_error());
   EXPECT_TRUE(flags.log_gpo());
-  EXPECT_TRUE(flags.log_config());
   EXPECT_EQ("10", flags.net_log_level());
 }
 
 TEST_F(AuthPolicyFlagsTest, FlagsSerialization) {
   protos::DebugFlags flags;
-  flags.set_log_config(true);
   flags.set_net_log_level("5");
   std::string flags_encoded = SerializeFlags(flags);
   EXPECT_FALSE(flags_encoded.empty());

@@ -15,7 +15,6 @@
 #include <base/memory/ref_counted.h>
 #include <dbus/authpolicy/dbus-constants.h>
 
-#include "authpolicy/anonymizer.h"
 #include "authpolicy/authpolicy_flags.h"
 #include "authpolicy/authpolicy_metrics.h"
 #include "authpolicy/constants.h"
@@ -32,6 +31,7 @@
 
 namespace authpolicy {
 
+class Anonymizer;
 class AuthPolicyMetrics;
 class PathService;
 class ProcessExecutor;
@@ -41,6 +41,8 @@ class SambaInterface {
   SambaInterface(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
                  AuthPolicyMetrics* metrics,
                  const PathService* path_service);
+
+  ~SambaInterface();
 
   // Creates directories required by Samba code and loads configuration, if it
   // exists. Also loads the debug flags file. Returns error
@@ -104,6 +106,11 @@ class SambaInterface {
   void DisableRetrySleepForTesting() {
     smbclient_retry_sleep_enabled_ = false;
     device_tgt_manager_.DisableRetrySleepForTesting();
+  }
+
+  // Returns the anonymizer.
+  const Anonymizer* GetAnonymizerForTesting() const {
+    return anonymizer_.get();
   }
 
  private:
@@ -195,6 +202,10 @@ class SambaInterface {
       const char* parser_cmd_string,
       std::string* policy_blob) const;
 
+  // Anonymizes |realm| in different capitalizations as well as all parts (e.g.
+  // if realm is SOME.EXAMPLE.COM, anonymizes SOME, EXAMPLE and COM.
+  void AnonymizeRealm(const std::string& realm);
+
   // Resets internal state to an 'unenrolled' state by wiping configuration and
   // user data.
   void Reset();
@@ -237,6 +248,9 @@ class SambaInterface {
   // Lookup for file paths, not owned.
   const PathService* paths_;
 
+  // Removes sensitive data from logs.
+  std::unique_ptr<Anonymizer> anonymizer_;
+
   // Debug flags, loaded from Path::DEBUG_FLAGS.
   protos::DebugFlags flags_;
   AuthPolicyFlags::DefaultLevel flags_default_level_ = AuthPolicyFlags::kQuiet;
@@ -247,9 +261,6 @@ class SambaInterface {
   // User and device ticket-granting-ticket managers.
   TgtManager user_tgt_manager_;
   TgtManager device_tgt_manager_;
-
-  // Removes sensitive data from logs.
-  Anonymizer anonymizer_;
 
   // Whether kinit calls may return false negatives and must be retried.
   bool retry_machine_kinit_ = false;

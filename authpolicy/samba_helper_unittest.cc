@@ -172,6 +172,14 @@ TEST_F(SambaInterfaceTest, FindTokenFail_Whitespace) {
   EXPECT_FALSE(FindToken("    \n\n \n   ", '=', "tok"));
 }
 
+// a=b works.
+TEST_F(SambaInterfaceTest, FindTokenInLineSuccess) {
+  std::string result;
+  EXPECT_TRUE(
+      authpolicy::FindTokenInLine("  tok =  res ", '=', "tok", &result));
+  EXPECT_EQ(result, "res");
+}
+
 // Parsing valid GPO version strings.
 TEST_F(SambaInterfaceTest, ParseGpoVersionSuccess) {
   EXPECT_TRUE(ParseGpoVersion("0 (0x0000)", &gpo_version_));

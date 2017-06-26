@@ -118,7 +118,6 @@ constexpr BoolFlag kBoolFlags[] = {
     DEFINE_FLAG(log_command_output),
     DEFINE_FLAG(log_command_output_on_error),
     DEFINE_FLAG(log_gpo),
-    DEFINE_FLAG(log_config),
 };
 
 // String flags.
@@ -158,14 +157,12 @@ void AuthPolicyFlags::SetDefaults(DefaultLevel default_level) {
       flags_.set_log_policy_values(true);
       flags_.set_log_commands(true);
       flags_.set_log_gpo(true);
-      flags_.set_log_config(true);
       break;
     case kChatty:
       flags_.set_log_policy_values(true);
       flags_.set_log_commands(true);
       flags_.set_log_command_output_on_error(true);
       flags_.set_log_gpo(true);
-      flags_.set_log_config(true);
       flags_.set_net_log_level("3");
       break;
     case kVerbose:
@@ -174,7 +171,6 @@ void AuthPolicyFlags::SetDefaults(DefaultLevel default_level) {
       flags_.set_log_commands(true);
       flags_.set_log_command_output(true);
       flags_.set_log_gpo(true);
-      flags_.set_log_config(true);
       flags_.set_net_log_level("10");
       break;
   }

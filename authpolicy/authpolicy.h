@@ -21,6 +21,7 @@ using brillo::dbus_utils::AsyncEventSequencer;
 namespace authpolicy {
 
 class ActiveDirectoryAccountInfo;
+class Anonymizer;
 class AuthPolicyMetrics;
 class PathService;
 
@@ -79,6 +80,11 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
 
   // Disable retry sleep for unit tests.
   void DisableRetrySleepForTesting() { samba_.DisableRetrySleepForTesting(); }
+
+  // Returns the anonymizer.
+  const Anonymizer* GetAnonymizerForTesting() const {
+    return samba_.GetAnonymizerForTesting();
+  }
 
  private:
   // Sends policy to SessionManager. Assumes |policy_blob| contains user policy

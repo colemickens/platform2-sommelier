@@ -27,15 +27,24 @@ class Anonymizer {
   void SetReplacement(const std::string& string_to_replace,
                       const std::string& replacement);
 
-  // Causes Process() to search for "|search_keyword|: <value><newline>" and to
+  // Same as SetReplacement(), but additionally replaces lower- and upper-case
+  // versions of |string_to_replace| by |replacement|.
+  void SetReplacementAllCases(const std::string& string_to_replace,
+                              const std::string& replacement);
+
+  // Causes Process() to search for "|search_keyword| : <value>" and to
   // set the replacement <value> -> |replacement| before all replacements are
   // applied to the input string. This is useful for logging results from
   // searching sensitive data (e.g. net ads search for user names). It solves
   // the chicken-egg-problem where one would usually like to log results before
   // parsing them (or in case parsing fails), but replacements cannot be set
   // before the results are parsed.
+  // If |regex| is given, it is applied to <value>. The pattern must have
+  // exactly one capturing group. <value> is changed to the value of that group.
+  // Useful regular expression syntax: +? is a non-greedy (lazy) +.
   void ReplaceSearchArg(const std::string& search_keyword,
-                        const std::string& replacement);
+                        const std::string& replacement,
+                        const std::string& regex = std::string());
 
   // Resets all calls to ReplaceSearchArg(), but keeps the replacements set by
   // a call to Process() in between. Should be done after a search log has been
@@ -46,12 +55,37 @@ class Anonymizer {
   // given replacement. Returns the anonymized string.
   std::string Process(const std::string& input);
 
+  // Returns true iff Process() was called.
+  bool process_called_for_testing() const {
+    return process_called_for_testing_;
+  }
+
  private:
+  // Sorts by string length first (descending), then alphabetically. This order
+  // is used while iterating |replacements_|. It prevents that keys being
+  // substrings of longer keys are replaced first, e.g. we don't want to replace
+  // "KEY" before "KEY_123", "ABC_KEY" or "XYZ_KEY".
+  struct StringLengthDescendingComparer {
+    inline bool operator()(const std::string& a, const std::string& b) const {
+      if (a.size() != b.size())
+        return a.size() > b.size();
+      return a < b;
+    }
+  };
+
   // Maps string-to-replace to their replacement.
-  std::map<std::string, std::string> replacements_;
+  std::map<std::string, std::string, StringLengthDescendingComparer>
+      replacements_;
+
+  struct ReplacementData {
+    std::string replacement;
+    std::string regex;
+  };
 
   // Maps search keywords to the replacement of the search value.
-  std::map<std::string, std::string> search_replacements_;
+  std::map<std::string, ReplacementData> search_replacements_;
+
+  bool process_called_for_testing_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(Anonymizer);
 };

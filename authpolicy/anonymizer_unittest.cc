@@ -11,13 +11,19 @@ namespace {
 constexpr char kLog[] =
     "Starting fake search for user name USER_NAME\n"
     "Found 1 entry:\n"
-    "userNameKey: USER_NAME\n";
+    "  userNameKey  :   USER_NAME  ";
 
 constexpr char kMultiLog[] =
     "Starting fake search for key KEY_WITH_MULTIPLE_MATCHES\n"
     "Found 2 entries:\n"
     "userNameKey: USER_NAME\n"
     "userNameKey: DIFFERENT_NAME\n";
+
+constexpr char kDifferentCasesLog[] =
+    "Starting fake search for key KEY_WITH_MULTIPLE_MATCHES\n"
+    "Found 2 entries:\n"
+    "userNameKey: USER_NAME\n"
+    "userNameKey: user_name\n";
 
 constexpr char kDifferentLogWithSameUserName[] =
     "Different string containing USER_NAME\n";
@@ -26,6 +32,7 @@ constexpr char kLogWithDifferentUserName[] = "userNameKey: DIFFERENT_NAME\n";
 
 constexpr char kUserNameKey[] = "userNameKey";
 constexpr char kUserName[] = "USER_NAME";
+constexpr char kUserNameLowerCase[] = "user_name";
 constexpr char kReplacement[] = "REPLACEMENT";
 constexpr char kDifferentUserName[] = "DIFFERENT_NAME";
 
@@ -74,6 +81,20 @@ TEST_F(AnonymizerTest, ReplaceStrings) {
   EXPECT_NE(std::string::npos, anonymized_log.find(kReplacement));
 }
 
+// SetReplacementAllCases replaces upper- and lower-case strings.
+TEST_F(AnonymizerTest, ReplaceStringsAllCases) {
+  EXPECT_NE(nullptr, strstr(kDifferentCasesLog, kUserName));
+  EXPECT_NE(nullptr, strstr(kDifferentCasesLog, kUserNameLowerCase));
+  EXPECT_EQ(nullptr, strstr(kDifferentCasesLog, kReplacement));
+
+  anonymizer_.SetReplacementAllCases(kUserName, kReplacement);
+  std::string anonymized_log = anonymizer_.Process(kDifferentCasesLog);
+
+  EXPECT_EQ(std::string::npos, anonymized_log.find(kUserName));
+  EXPECT_EQ(std::string::npos, anonymized_log.find(kUserNameLowerCase));
+  EXPECT_NE(std::string::npos, anonymized_log.find(kReplacement));
+}
+
 // Anonymizer finds and replaces strings from search results.
 TEST_F(AnonymizerTest, FindAndReplaceSearchValues) {
   anonymizer_.ReplaceSearchArg(kUserNameKey, kReplacement);
@@ -96,6 +117,13 @@ TEST_F(AnonymizerTest, FindAndReplaceSearchValues) {
   EXPECT_EQ(std::string::npos, anonymized_log.find(kReplacement));
 }
 
+// Search regex works.
+TEST_F(AnonymizerTest, SearchRegEx) {
+  anonymizer_.ReplaceSearchArg("key", "anonymized", "Name='(\\w+)'");
+  std::string anonymized_log = anonymizer_.Process("key:Name='sensitive'");
+  EXPECT_EQ("key:Name='anonymized'", anonymized_log);
+}
+
 // Anonymizer finds multiple search results.
 TEST_F(AnonymizerTest, FindMultipleSearchValues) {
   EXPECT_NE(nullptr, strstr(kMultiLog, kUserName));
@@ -110,14 +138,16 @@ TEST_F(AnonymizerTest, FindMultipleSearchValues) {
   EXPECT_EQ(2, CountOccurrances(anonymized_log, kReplacement));
 }
 
-// Anonymizer replaces KEY_123 before KEY_12 and KEY_12 before KEY_1.
+// Anonymizer replaces ABC_KEY, XYZ_KEY and KEY_123 before KEY. Note that
+// ABC_KEY < KEY < KEY_123 < XYZ_KEY.
 TEST_F(AnonymizerTest, DoesNotReplaceShorterStringsFirst) {
-  anonymizer_.SetReplacement("KEY_12", "second");
-  anonymizer_.SetReplacement("KEY_123", "first");
-  anonymizer_.SetReplacement("KEY_1", "third");
-  constexpr char str[] = "KEY_1 KEY_123 KEY_12";
+  anonymizer_.SetReplacement("ABC_KEY", "ABC_REP");
+  anonymizer_.SetReplacement("XYZ_KEY", "XYZ_REP");
+  anonymizer_.SetReplacement("KEY", "KEY_REP");
+  anonymizer_.SetReplacement("KEY_123", "123_REP");
+  constexpr char str[] = "ABC_KEY XYZ_KEY KEY KEY_123";
   std::string anonymized_str = anonymizer_.Process(str);
-  EXPECT_EQ("third first second", anonymized_str);
+  EXPECT_EQ("ABC_REP XYZ_REP KEY_REP 123_REP", anonymized_str);
 }
 
 }  // namespace authpolicy

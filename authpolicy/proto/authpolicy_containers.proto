@@ -74,8 +74,6 @@ message DebugFlags {
   optional bool log_command_output_on_error = 7;
   // Log list of filtered, broken and valid GPOs.
   optional bool log_gpo = 8;
-  // Log configuration data (netbios name, kdc ip etc.).
-  optional bool log_config = 9;
   // Log level for Samba net commands. Only shown if log_command_output is set
   // as well.
   optional string net_log_level = 10 [default = "0"];

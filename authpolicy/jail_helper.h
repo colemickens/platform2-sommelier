@@ -16,8 +16,8 @@ namespace protos {
 class DebugFlags;
 }
 
-class ProcessExecutor;
 class Anonymizer;
+class ProcessExecutor;
 
 // Helper class for setting up a minijail and running a process.
 class JailHelper {

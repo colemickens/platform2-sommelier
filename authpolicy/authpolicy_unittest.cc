@@ -27,6 +27,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "authpolicy/anonymizer.h"
 #include "authpolicy/path_service.h"
 #include "authpolicy/policy/policy_encoder_helper.h"
 #include "authpolicy/policy/preg_policy_writer.h"
@@ -1205,6 +1206,23 @@ TEST_F(AuthPolicyTest, CleanStateDir) {
   EXPECT_TRUE(AuthPolicy::CleanState(paths_.get()));
   EXPECT_TRUE(base::IsDirectoryEmpty(state_path));
   EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+}
+
+// By default, nothing should call the (expensive) anonymizer since no sensitive
+// data is logged. Only if logging is enabled it should be called.
+TEST_F(AuthPolicyTest, AnonymizerNotCalled) {
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+
+  validate_user_policy_ = &CheckUserPolicyEmpty;
+  FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
+
+  validate_device_policy_ = &CheckDevicePolicyEmpty;
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+
+  EXPECT_FALSE(
+      authpolicy_->GetAnonymizerForTesting()->process_called_for_testing());
+  EXPECT_EQ(3, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+  EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_DOWNLOAD_GPO_COUNT));
 }
 
 }  // namespace authpolicy

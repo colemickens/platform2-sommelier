@@ -5,33 +5,24 @@
 #include "authpolicy/anonymizer.h"
 
 #include <algorithm>
+#include <vector>
 
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <pcrecpp.h>
+
+#include "authpolicy/samba_helper.h"
 
 namespace {
 
 constexpr char kNewLineChars[] = "\r\n";
+constexpr char kSeparator = ':';
 
-// Searches the next occurrance of |search_keyword| in |str|, starting from
-// |pos|, and sets |search_value| to the rest of the line, advances |pos| to
-// after the search value and returns true. Returns false if |search_keyword|
-// is not found.
-bool FindNextSearchValue(const std::string& str,
-                         const std::string& search_keyword,
-                         size_t* pos,
-                         std::string* search_value) {
-  DCHECK(*pos <= str.size());
-  *pos = str.find(search_keyword, *pos);
-  if (*pos == std::string::npos)
-    return false;
-  *pos += search_keyword.size();
-  DCHECK(*pos <= str.size());
-  size_t end_pos = str.find_first_of(kNewLineChars, *pos);
-  DCHECK(end_pos >= *pos);
-  *search_value = str.substr(*pos, end_pos - *pos);
-  base::TrimWhitespaceASCII(*search_value, base::TRIM_ALL, search_value);
-  *pos = end_pos;
-  return true;
+void ApplyRegex(const std::string& regex, std::string* str) {
+  pcrecpp::RE re(regex, pcrecpp::RE_Options());
+  DCHECK_EQ(1, re.NumberOfCapturingGroups());
+  pcrecpp::StringPiece text(*str);
+  re.PartialMatch(text, str);
 }
 
 }  // namespace
@@ -47,11 +38,21 @@ void Anonymizer::SetReplacement(const std::string& string_to_replace,
   replacements_[string_to_replace] = replacement;
 }
 
+void Anonymizer::SetReplacementAllCases(const std::string& string_to_replace,
+                                        const std::string& replacement) {
+  if (string_to_replace.empty())
+    return;
+  replacements_[base::ToLowerASCII(string_to_replace)] = replacement;
+  replacements_[base::ToUpperASCII(string_to_replace)] = replacement;
+  replacements_[string_to_replace] = replacement;
+}
+
 void Anonymizer::ReplaceSearchArg(const std::string& search_keyword,
-                                  const std::string& replacement) {
+                                  const std::string& replacement,
+                                  const std::string& regex) {
   if (search_keyword.empty())
     return;
-  search_replacements_[search_keyword + ":"] = replacement;
+  search_replacements_[search_keyword] = {replacement, regex};
 }
 
 void Anonymizer::ResetSearchArgReplacements() {
@@ -59,25 +60,34 @@ void Anonymizer::ResetSearchArgReplacements() {
 }
 
 std::string Anonymizer::Process(const std::string& input) {
+  process_called_for_testing_ = true;
+
   // Gather all search args and add them to replacements_.
-  for (const auto& replacement : search_replacements_) {
-    size_t pos = 0;
-    const std::string& search_keyword = replacement.first;
+  if (search_replacements_.size() > 0) {
+    std::vector<std::string> lines = base::SplitString(
+        input, kNewLineChars, base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
     std::string string_to_replace;
-    while (FindNextSearchValue(input, search_keyword, &pos, &string_to_replace))
-      SetReplacement(string_to_replace, replacement.second);
+    for (const std::string& line : lines) {
+      for (const auto& data : search_replacements_) {
+        const std::string& search_keyword = data.first;
+        const std::string& replacement = data.second.replacement;
+        const std::string& regex = data.second.regex;
+        if (FindTokenInLine(
+                line, kSeparator, search_keyword, &string_to_replace)) {
+          if (regex.size() > 0)
+            ApplyRegex(regex, &string_to_replace);
+          SetReplacement(string_to_replace, replacement);
+          break;
+        }
+      }
+    }
   }
 
-  // Now handle string replacements. Note: Iterate in reverse order. This
-  // guarantees that keys are processed in reverse sorting order and prevents
-  // that keys being substrings of longer keys are replaced first, e.g. we don't
-  // want to replace 'KEY_1" before 'KEY_123'.
+  // Now handle string replacements.
   std::string output = input;
-  for (auto replacement = replacements_.rbegin(), rend = replacements_.rend();
-       replacement != rend;
-       ++replacement) {
+  for (const auto& replacement : replacements_) {
     base::ReplaceSubstringsAfterOffset(
-        &output, 0, replacement->first, replacement->second);
+        &output, 0, replacement.first, replacement.second);
   }
   return output;
 }

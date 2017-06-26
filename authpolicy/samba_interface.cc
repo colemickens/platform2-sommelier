@@ -21,6 +21,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 
+#include "authpolicy/anonymizer.h"
 #include "authpolicy/platform_helper.h"
 #include "authpolicy/process_executor.h"
 #include "bindings/authpolicy_containers.pb.h"
@@ -110,6 +111,20 @@ const char kDisplayNamePlaceholder[] = "<USER_DISPLAY_NAME>";
 const char kSAMAccountNamePlaceholder[] = "<USER_SAM_ACCOUNT_NAME>";
 const char kCommonNamePlaceholder[] = "<USER_COMMON_NAME>";
 const char kAccountIdPlaceholder[] = "<USER_ACCOUNT_ID>";
+const char kWorkgroupPlaceholder[] = "<WORKGROUP>";
+const char kRealmPlaceholder[] = "<REALM>";
+const char kServerNamePlaceholder[] = "<SERVER_NAME>";
+const char kSiteNamePlaceholder[] = "<SITE_NAME>";
+
+// Keys for net ads searches.
+const char kKeyWorkgroup[] = "Workgroup";
+const char kKeyAdsDnsParseRrSrv[] = "ads_dns_parse_rr_srv";
+const char kKeyPdcDnsName[] = "pdc_dns_name";
+const char kKeyAdsDcName[] = "ads_dc_name";
+const char kKeyPdcName[] = "pdc_name";
+const char kKeyServerSite[] = "server_site";
+const char kKeyClientSite[] = "client_site";
+const char kKeyLdapServerName[] = "LDAP server name";
 
 ErrorType GetNetError(const ProcessExecutor& executor,
                       const std::string& net_command) {
@@ -209,13 +224,14 @@ SambaInterface::SambaInterface(
     const PathService* path_service)
     : metrics_(metrics),
       paths_(path_service),
-      jail_helper_(paths_, &flags_, &anonymizer_),
+      anonymizer_(base::MakeUnique<Anonymizer>()),
+      jail_helper_(paths_, &flags_, anonymizer_.get()),
       user_tgt_manager_(task_runner,
                         paths_,
                         metrics_,
                         &flags_,
                         &jail_helper_,
-                        &anonymizer_,
+                        anonymizer_.get(),
                         Path::USER_KRB5_CONF,
                         Path::USER_CREDENTIAL_CACHE),
       device_tgt_manager_(task_runner,
@@ -223,12 +239,14 @@ SambaInterface::SambaInterface(
                           metrics_,
                           &flags_,
                           &jail_helper_,
-                          &anonymizer_,
+                          anonymizer_.get(),
                           Path::DEVICE_KRB5_CONF,
                           Path::DEVICE_CREDENTIAL_CACHE) {
   DCHECK(paths_);
   LoadFlagsDefaultLevel();
 }
+
+SambaInterface::~SambaInterface() = default;
 
 ErrorType SambaInterface::Initialize(bool expect_config) {
   ReloadDebugFlags();
@@ -307,7 +325,7 @@ ErrorType SambaInterface::AuthenticateUserInternal(
           user_principal_name, &user_name, &realm, &normalized_upn)) {
     return ERROR_PARSE_UPN_FAILED;
   }
-  LOG_IF(INFO, flags_.log_config()) << "Realm = '" << realm << "'";
+  anonymizer_->SetReplacementAllCases(realm, kRealmPlaceholder);
 
   // Write Samba configuration file.
   ErrorType error = EnsureWorkgroupAndWriteSmbConf();
@@ -411,21 +429,18 @@ ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
           user_principal_name, &user_name, &realm, &normalized_upn)) {
     return ERROR_PARSE_UPN_FAILED;
   }
-  LOG_IF(INFO, flags_.log_config()) << "Realm = '" << realm << "'";
-  anonymizer_.SetReplacement(user_name, kSAMAccountNamePlaceholder);
+  AnonymizeRealm(realm);
+  anonymizer_->SetReplacement(user_name, kSAMAccountNamePlaceholder);
 
   // The netbios name in smb.conf needs to be upper-case, but there is also
   // Samba code that logs the machine name lower-case, so add both here.
-  std::string machine_name_lower = base::ToLowerASCII(machine_name);
-  std::string machine_name_upper = base::ToUpperASCII(machine_name);
-  anonymizer_.SetReplacement(machine_name_lower, kMachineNamePlaceholder);
-  anonymizer_.SetReplacement(machine_name_upper, kMachineNamePlaceholder);
+  anonymizer_->SetReplacementAllCases(machine_name, kMachineNamePlaceholder);
 
   // Wipe and (re-)create config. Note that all session data is wiped to make
   // testing easier.
   Reset();
   config_ = base::MakeUnique<protos::ActiveDirectoryConfig>();
-  config_->set_machine_name(machine_name_upper);
+  config_->set_machine_name(base::ToUpperASCII(machine_name));
   config_->set_realm(realm);
 
   // Write Samba configuration. Will query the workgroup.
@@ -587,14 +602,24 @@ ErrorType SambaInterface::GetRealmInfo(protos::RealmInfo* realm_info) const {
                                        paths_->Get(Path::SMB_CONF),
                                        "-d",
                                        flags_.net_log_level()});
-  if (!jail_helper_.SetupJailAndRun(
-          &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_INFO)) {
+  // Parse LDAP server name resp. domain controller name from the net_cmd output
+  // immediately, see SearchAccountInfo for an explanation. The regex grabs
+  // everything up to the first dot.
+  anonymizer_->ReplaceSearchArg(
+      kKeyLdapServerName, kServerNamePlaceholder, "(.+?)\\.");
+  anonymizer_->ReplaceSearchArg(
+      kKeyAdsDcName, kServerNamePlaceholder, "using server='(.+?)\\.");
+  const bool net_result = jail_helper_.SetupJailAndRun(
+      &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_INFO);
+  anonymizer_->ResetSearchArgReplacements();
+  if (!net_result)
     return GetNetError(net_cmd, "info");
-  }
   const std::string& net_out = net_cmd.GetStdout();
 
   // Parse the output to find the domain controller name. Enclose in a sandbox
-  // for security considerations.
+  // for security considerations. Prevent that stdout gets logged since it
+  // contains the DC name (the LDAP server name is dc_name.realm, so it's not
+  // removed yet).
   ProcessExecutor parse_cmd(
       {paths_->Get(Path::PARSER), kCmdParseRealmInfo, SerializeFlags(flags_)});
   parse_cmd.SetInputString(net_out);
@@ -608,11 +633,11 @@ ErrorType SambaInterface::GetRealmInfo(protos::RealmInfo* realm_info) const {
     LOG(ERROR) << "Failed to parse realm info from string";
     return ERROR_PARSE_FAILED;
   }
-  if (flags_.log_config()) {
-    LOG(INFO) << "DC name = '" << realm_info->dc_name() << "'";
-    LOG(INFO) << "KDC IP = '" << realm_info->kdc_ip() << "'";
-  }
 
+  // Explicitly set replacements again, see SearchAccountInfo for an
+  // explanation.
+  anonymizer_->SetReplacementAllCases(realm_info->dc_name(),
+                                      kServerNamePlaceholder);
   return ERROR_NONE;
 }
 
@@ -679,10 +704,23 @@ ErrorType SambaInterface::EnsureWorkgroup() {
                            paths_->Get(Path::SMB_CONF),
                            "-d",
                            flags_.net_log_level()});
-  if (!jail_helper_.SetupJailAndRun(
-          &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_WORKGROUP)) {
+  // Parse workgroup from the net_cmd output immediately, see SearchAccountInfo
+  // for an explanation. Also replace a bunch of other server names.
+  anonymizer_->ReplaceSearchArg(kKeyWorkgroup, kWorkgroupPlaceholder);
+  anonymizer_->ReplaceSearchArg(
+      kKeyAdsDnsParseRrSrv, kServerNamePlaceholder, "Parsed (.+?)\\.");
+  anonymizer_->ReplaceSearchArg(
+      kKeyPdcDnsName, kServerNamePlaceholder, "'(.+)'");
+  anonymizer_->ReplaceSearchArg(
+      kKeyAdsDcName, kServerNamePlaceholder, "using server='(.+?)\\.");
+  anonymizer_->ReplaceSearchArg(kKeyPdcName, kServerNamePlaceholder, "'(.+)'");
+  anonymizer_->ReplaceSearchArg(kKeyServerSite, kSiteNamePlaceholder, "'(.+)'");
+  anonymizer_->ReplaceSearchArg(kKeyClientSite, kSiteNamePlaceholder, "'(.+)'");
+  const bool net_result = jail_helper_.SetupJailAndRun(
+      &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_WORKGROUP);
+  anonymizer_->ResetSearchArgReplacements();
+  if (!net_result)
     return GetNetError(net_cmd, "workgroup");
-  }
   const std::string& net_out = net_cmd.GetStdout();
 
   // Parse the output to find the workgroup. Enclose in a sandbox for security
@@ -697,7 +735,10 @@ ErrorType SambaInterface::EnsureWorkgroup() {
     return ERROR_PARSE_FAILED;
   }
   workgroup_ = parse_cmd.GetStdout();
-  LOG_IF(INFO, flags_.log_config()) << "Workgroup = '" << workgroup_ << "'";
+
+  // Explicitly set replacements again, see SearchAccountInfo for an
+  // explanation.
+  anonymizer_->SetReplacement(workgroup_, kWorkgroupPlaceholder);
   return ERROR_NONE;
 }
 
@@ -802,9 +843,9 @@ ErrorType SambaInterface::ReadConfiguration() {
 
   config_ = std::move(config);
   LOG(INFO) << "Read configuration file '" << config_path.value() << "'";
-  if (flags_.log_config())
-    LOG(INFO) << "Realm = '" << config_->realm() << "'";
-  anonymizer_.SetReplacement(config_->machine_name(), kMachineNamePlaceholder);
+  AnonymizeRealm(config_->realm());
+  anonymizer_->SetReplacementAllCases(config_->machine_name(),
+                                      kMachineNamePlaceholder);
   return ERROR_NONE;
 }
 
@@ -884,14 +925,14 @@ ErrorType SambaInterface::GetAccountInfo(
     // Searching by objectGUID has to use the octet string representation!
     // Note: If |account_id| is malformed, the search yields no results.
     const std::string account_id_octet = GuidToOctetString(account_id);
-    anonymizer_.SetReplacement(account_id_octet, kAccountIdPlaceholder);
+    anonymizer_->SetReplacement(account_id_octet, kAccountIdPlaceholder);
     std::string search_string =
         base::StringPrintf("(objectGUID=%s)", account_id_octet.c_str());
     return SearchAccountInfo(search_string, account_info);
   }
 
   // Otherwise, search by sAMAccountName, then by userPrincipalName.
-  anonymizer_.SetReplacement(user_name, kSAMAccountNamePlaceholder);
+  anonymizer_->SetReplacement(user_name, kSAMAccountNamePlaceholder);
   std::string search_string =
       base::StringPrintf("(sAMAccountName=%s)", user_name.c_str());
   error = SearchAccountInfo(search_string, account_info);
@@ -900,7 +941,7 @@ ErrorType SambaInterface::GetAccountInfo(
 
   LOG(WARNING) << "Account info not found by sAMAccountName. "
                << "Trying userPrincipalName.";
-  anonymizer_.SetReplacement(user_name, kLogonNamePlaceholder);
+  anonymizer_->SetReplacement(user_name, kLogonNamePlaceholder);
   search_string =
       base::StringPrintf("(userPrincipalName=%s)", normalized_upn.c_str());
   return SearchAccountInfo(search_string, account_info);
@@ -929,19 +970,19 @@ ErrorType SambaInterface::SearchAccountInfo(
   // the chicken-egg-problem that replacement strings cannot be set before the
   // strings-to-replace are known, so the output of net_cmd would still contain
   // sensitive strings.
-  anonymizer_.ReplaceSearchArg(kSearchObjectGUID, kAccountIdPlaceholder);
-  anonymizer_.ReplaceSearchArg(kSearchDisplayName, kDisplayNamePlaceholder);
-  anonymizer_.ReplaceSearchArg(kSearchGivenName, kGivenNamePlaceholder);
-  anonymizer_.ReplaceSearchArg(kSearchSAMAccountName,
-                               kSAMAccountNamePlaceholder);
-  anonymizer_.ReplaceSearchArg(kSearchCommonName, kCommonNamePlaceholder);
+  anonymizer_->ReplaceSearchArg(kSearchObjectGUID, kAccountIdPlaceholder);
+  anonymizer_->ReplaceSearchArg(kSearchDisplayName, kDisplayNamePlaceholder);
+  anonymizer_->ReplaceSearchArg(kSearchGivenName, kGivenNamePlaceholder);
+  anonymizer_->ReplaceSearchArg(kSearchSAMAccountName,
+                                kSAMAccountNamePlaceholder);
+  anonymizer_->ReplaceSearchArg(kSearchCommonName, kCommonNamePlaceholder);
 
   // Use the machine TGT to query the account info.
   net_cmd.SetEnv(kKrb5CCEnvKey,
                  paths_->Get(device_tgt_manager_.GetCredentialCachePath()));
-  bool net_result = jail_helper_.SetupJailAndRun(
+  const bool net_result = jail_helper_.SetupJailAndRun(
       &net_cmd, Path::NET_ADS_SECCOMP, TIMER_NET_ADS_SEARCH);
-  anonymizer_.ResetSearchArgReplacements();
+  anonymizer_->ResetSearchArgReplacements();
   if (!net_result) {
     return GetNetError(net_cmd, "search");
   }
@@ -975,14 +1016,16 @@ ErrorType SambaInterface::SearchAccountInfo(
   // and the anonymizer has not parsed the search values above. If we didn't do
   // it here and logging would be enabled later, logs would contain sensitive
   // data.
-  anonymizer_.SetReplacement(account_info->account_id(), kAccountIdPlaceholder);
-  anonymizer_.SetReplacement(account_info->display_name(),
-                             kDisplayNamePlaceholder);
-  anonymizer_.SetReplacement(account_info->given_name(), kGivenNamePlaceholder);
-  anonymizer_.SetReplacement(account_info->sam_account_name(),
-                             kSAMAccountNamePlaceholder);
-  anonymizer_.SetReplacement(account_info->common_name(),
-                             kCommonNamePlaceholder);
+  anonymizer_->SetReplacement(account_info->account_id(),
+                              kAccountIdPlaceholder);
+  anonymizer_->SetReplacement(account_info->display_name(),
+                              kDisplayNamePlaceholder);
+  anonymizer_->SetReplacement(account_info->given_name(),
+                              kGivenNamePlaceholder);
+  anonymizer_->SetReplacement(account_info->sam_account_name(),
+                              kSAMAccountNamePlaceholder);
+  anonymizer_->SetReplacement(account_info->common_name(),
+                              kCommonNamePlaceholder);
 
   return ERROR_NONE;
 }
@@ -1119,7 +1162,8 @@ ErrorType SambaInterface::DownloadGpos(
     if (base::PathExists(gpo_paths.back().local_) &&
         !base::DeleteFile(gpo_paths.back().local_, false)) {
       LOG(ERROR) << "Failed to delete old GPO file '"
-                 << gpo_paths.back().local_.value().c_str() << "'";
+                 << anonymizer_->Process(gpo_paths.back().local_.value())
+                 << "'";
       return ERROR_LOCAL_IO;
     }
   }
@@ -1185,10 +1229,11 @@ ErrorType SambaInterface::DownloadGpos(
           base::ToLowerASCII(kKeyObjectNameNotFound + gpo_path.server_));
       if (Contains(smbclient_out_lower, no_file_error_key)) {
         LOG_IF(WARNING, flags_.log_gpo())
-            << "Ignoring missing preg file '" << gpo_path.local_.value() << "'";
+            << "Ignoring missing preg file '"
+            << anonymizer_->Process(gpo_path.local_.value()) << "'";
       } else {
         LOG(ERROR) << "Failed to download preg file '"
-                   << gpo_path.local_.value() << "'";
+                   << anonymizer_->Process(gpo_path.local_.value()) << "'";
         return ERROR_SMBCLIENT_FAILED;
       }
     }
@@ -1222,6 +1267,15 @@ ErrorType SambaInterface::ParseGposIntoProtobuf(
   }
   *policy_blob = parse_cmd.GetStdout();
   return ERROR_NONE;
+}
+
+void SambaInterface::AnonymizeRealm(const std::string& realm) {
+  anonymizer_->SetReplacementAllCases(realm, kRealmPlaceholder);
+
+  std::vector<std::string> parts = base::SplitString(
+      realm, ".", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  for (const std::string& part : parts)
+    anonymizer_->SetReplacementAllCases(part, kRealmPlaceholder);
 }
 
 void SambaInterface::Reset() {

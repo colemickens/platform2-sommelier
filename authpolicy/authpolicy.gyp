@@ -81,6 +81,7 @@
           'dbus-1',
           'libbrillo-<(libbase_ver)',
           'libchrome-<(libbase_ver)',
+          'libpcrecpp',
         ],
       },
       'sources': [
@@ -115,6 +116,7 @@
           'libchrome-<(libbase_ver)',
           'libmetrics-<(libbase_ver)',
           'libminijail',
+          'libpcrecpp',
           # system_api depends on protobuf (or protobuf-lite). It must
           # appear before protobuf or the linker flags won't be in the right
           # order.
@@ -141,6 +143,7 @@
           'libchrome-<(libbase_ver)',
           'libmetrics-<(libbase_ver)',
           'libminijail',
+          'libpcrecpp',
           # system_api depends on protobuf (or protobuf-lite). It must appear
           # before protobuf or the linker flags won't be in the right order.
           'system_api',
@@ -176,6 +179,7 @@
               'libchrome-test-<(libbase_ver)',
               'libmetrics-<(libbase_ver)',
               'libminijail',
+              'libpcrecpp',
               # system_api depends on protobuf (or protobuf-lite). It must
               # appear before protobuf or the linker flags won't be in the right
               # order.
@@ -217,6 +221,7 @@
             'deps': [
               'libcap',
               'libchrome-<(libbase_ver)',
+              'libpcrecpp',
             ],
           },
           'sources': ['stub_net_main.cc'],
@@ -232,6 +237,7 @@
             'deps': [
               'libcap',
               'libchrome-<(libbase_ver)',
+              'libpcrecpp',
             ],
           },
           'sources': ['stub_kinit_main.cc'],
@@ -244,7 +250,10 @@
             'stub_common',
           ],
           'variables': {
-            'deps': ['libchrome-<(libbase_ver)'],
+            'deps': [
+              'libchrome-<(libbase_ver)',
+              'libpcrecpp',
+            ],
           },
           'sources': ['stub_klist_main.cc'],
         },
@@ -256,7 +265,10 @@
             'stub_common',
           ],
           'variables': {
-            'deps': ['libchrome-<(libbase_ver)'],
+            'deps': [
+              'libchrome-<(libbase_ver)',
+              'libpcrecpp',
+            ],
           },
           'sources': ['stub_smbclient_main.cc'],
         },
