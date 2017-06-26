@@ -8,9 +8,12 @@
 
 #include <dlfcn.h>
 
-#include "base/bind.h"
-#include "mojo/edk/embedder/embedder.h"
-#include "mojo/public/cpp/bindings/interface_request.h"
+#include <string>
+#include <utility>
+
+#include <base/bind.h>
+#include <mojo/edk/embedder/embedder.h>
+#include <mojo/public/cpp/bindings/interface_request.h>
 
 #include "arc/camera_algorithm.h"
 #include "arc/common.h"

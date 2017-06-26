@@ -4,6 +4,8 @@
  * found in the LICENSE file.
  */
 
+#include <utility>
+
 #include "common/camera_algorithm_callback_ops_impl.h"
 
 #include "arc/common.h"

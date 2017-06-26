@@ -8,13 +8,13 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 
-#include "base/at_exit.h"
-#include "base/command_line.h"
-#include "base/files/file_path.h"
-#include "base/files/file_util.h"
-#include "base/files/scoped_file.h"
-#include "base/logging.h"
-#include "mojo/edk/embedder/platform_channel_utils_posix.h"
+#include <base/at_exit.h>
+#include <base/command_line.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
+#include <base/logging.h>
+#include <mojo/edk/embedder/platform_channel_utils_posix.h>
 
 #include "arc/common.h"
 #include "common/camera_algorithm_adapter.h"

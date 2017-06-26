@@ -45,7 +45,7 @@ CXX_LIBRARY(common/libcbm.so): LDLIBS += $(libcbm_LDLIBS)
 clean: CLEAN(common/libcbm.so)
 common/libcbm: CXX_LIBRARY(common/libcbm.so)
 
-arc_camera_algo_PC_DEPS := libmojo-$(BASE_VER)
+arc_camera_algo_PC_DEPS := libchrome-$(BASE_VER) libmojo-$(BASE_VER)
 arc_camera_algo_CPPFLAGS := $(call get_pc_cflags,$(arc_camera_algo_PC_DEPS))
 arc_camera_algo_LDLIBS := $(call get_pc_libs,$(arc_camera_algo_PC_DEPS)) -ldl
 arc_camera_algo_OBJS = \
@@ -58,7 +58,7 @@ arc_camera_algo_OBJS = \
 CXX_BINARY(common/arc_camera_algo): $(arc_camera_algo_OBJS)
 CXX_BINARY(common/arc_camera_algo): CPPFLAGS += $(arc_camera_algo_CPPFLAGS)
 CXX_BINARY(common/arc_camera_algo): LDLIBS += $(arc_camera_algo_LDLIBS)
-libcab_PC_DEPS := libmojo-$(BASE_VER)
+libcab_PC_DEPS := libchrome-$(BASE_VER) libmojo-$(BASE_VER)
 libcab_CPPFLAGS := $(call get_pc_cflags,$(libcab_PC_DEPS))
 libcab_LDLIBS := $(call get_pc_libs,$(libcab_PC_DEPS))
 libcab_OBJS = \
@@ -70,19 +70,29 @@ CXX_STATIC_LIBRARY(common/libcab.pic.a): $(libcab_OBJS)
 CXX_STATIC_LIBRARY(common/libcab.pic.a): CPPFLAGS += $(libcab_CPPFLAGS)
 CXX_STATIC_LIBRARY(common/libcab.pic.a): LDLIBS += $(libcab_LDLIBS)
 clean: CLEAN(common/arc_camera_algo) CLEAN(common/libcab.pic.a)
-common/libcab: CXX_BINARY(common/arc_camera_algo) CXX_STATIC_LIBRARY(common/libcab.pic.a)
+common/libcab: \
+	CXX_BINARY(common/arc_camera_algo) \
+	CXX_STATIC_LIBRARY(common/libcab.pic.a)
 
+fake_libcam_algo_PC_DEPS := libchrome-$(BASE_VER) libmojo-$(BASE_VER)
+fake_libcam_algo_CPPFLAGS := $(call get_pc_cflags,$(fake_libcam_algo_PC_DEPS))
+fake_libcam_algo_LDLIBS := $(call get_pc_libs,$(fake_libcam_algo_PC_DEPS))
 fake_libcam_algo_OBJS = common/fake_libcam_algo.o
 CXX_LIBRARY(common/libcam_algo.so): $(fake_libcam_algo_OBJS)
-libcab_test_PC_DEPS := libcab libmojo-$(BASE_VER)
+CXX_LIBRARY(common/libcam_algo.so): CPPFLAGS += $(fake_libcam_algo_CPPFLAGS)
+CXX_LIBRARY(common/libcam_algo.so): LDLIBS += $(fake_libcam_algo_LDLIBS)
+libcab_test_PC_DEPS := libcab libchrome-$(BASE_VER) libmojo-$(BASE_VER)
 libcab_test_CPPFLAGS := $(call get_pc_cflags,$(libcab_test_PC_DEPS))
-libcab_test_LDLIBS := $(call get_pc_libs,$(libcab_test_PC_DEPS)) -lgtest -lrt -pthread
-libcab_test_OBJS = common/libcab_test.o
+libcab_test_LDLIBS := $(call get_pc_libs,$(libcab_test_PC_DEPS)) -lgtest -lrt \
+	-pthread
+libcab_test_OBJS = common/libcab_test_main.o
 CXX_BINARY(common/libcab_test): CPPFLAGS += $(libcab_test_CPPFLAGS)
 CXX_BINARY(common/libcab_test): LDLIBS += $(libcab_test_LDLIBS)
 CXX_BINARY(common/libcab_test): $(libcab_test_OBJS)
 clean: CLEAN(common/libcab_test) CLEAN(common/libcam_algo.so)
-common/libcab_test: CXX_BINARY(common/libcab_test) CXX_LIBRARY(common/libcam_algo.so)
+common/libcab_test: \
+	CXX_BINARY(common/libcab_test) \
+	CXX_LIBRARY(common/libcam_algo.so)
 
 libcamera_jpeg_OBJS = common/jpeg_compressor.o
 libcamera_jpeg_PC_DEPS := libchrome-$(BASE_VER)

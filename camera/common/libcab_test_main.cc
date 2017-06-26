@@ -7,11 +7,11 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 
-#include "base/at_exit.h"
-#include "base/bind.h"
-#include "base/command_line.h"
-#include "base/logging.h"
-#include "gtest/gtest.h"
+#include <base/at_exit.h>
+#include <base/bind.h>
+#include <base/command_line.h>
+#include <base/logging.h>
+#include <gtest/gtest.h>
 
 #include "arc/camera_algorithm_bridge.h"
 

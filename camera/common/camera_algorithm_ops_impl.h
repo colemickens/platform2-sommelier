@@ -4,14 +4,14 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_ARC_CAMERA_ALGORITHM_OPS_IMPL_H_
-#define INCLUDE_ARC_CAMERA_ALGORITHM_OPS_IMPL_H_
+#ifndef COMMON_CAMERA_ALGORITHM_OPS_IMPL_H_
+#define COMMON_CAMERA_ALGORITHM_OPS_IMPL_H_
 
-#include "base/threading/thread.h"
-#include "mojo/camera_algorithm.mojom.h"
-#include "mojo/public/cpp/bindings/binding.h"
+#include <base/threading/thread.h>
+#include <mojo/public/cpp/bindings/binding.h>
 
 #include "arc/camera_algorithm.h"
+#include "mojo/camera_algorithm.mojom.h"
 
 namespace arc {
 
@@ -29,7 +29,7 @@ class CameraAlgorithmOpsImpl : public mojom::CameraAlgorithmOps,
   bool Bind(mojom::CameraAlgorithmOpsRequest request,
             camera_algorithm_ops_t* cam_algo,
             scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner,
-            base::Closure& ipc_lost_handler);
+            const base::Closure& ipc_lost_handler);
 
   // Unbinds the underlying pipe.
   void Unbind();
@@ -85,4 +85,4 @@ class CameraAlgorithmOpsImpl : public mojom::CameraAlgorithmOps,
 
 }  // namespace arc
 
-#endif  // INCLUDE_ARC_CAMERA_ALGORITHM_OPS_IMPL_H_
+#endif  // COMMON_CAMERA_ALGORITHM_OPS_IMPL_H_

@@ -10,13 +10,17 @@
 #include <sys/types.h>
 #include <sys/un.h>
 
-#include "base/bind.h"
-#include "base/logging.h"
-#include "base/posix/eintr_wrapper.h"
-#include "mojo/edk/embedder/embedder.h"
-#include "mojo/edk/embedder/platform_channel_utils_posix.h"
-#include "mojo/edk/embedder/platform_handle_vector.h"
-#include "mojo/edk/embedder/scoped_platform_handle.h"
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <base/bind.h>
+#include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
+#include <mojo/edk/embedder/embedder.h>
+#include <mojo/edk/embedder/platform_channel_utils_posix.h>
+#include <mojo/edk/embedder/platform_handle_vector.h>
+#include <mojo/edk/embedder/scoped_platform_handle.h>
 
 #include "arc/common.h"
 #include "common/camera_algorithm_internal.h"
@@ -124,7 +128,8 @@ void CameraAlgorithmBridgeImpl::InitializeOnIpcThread(
   base::ScopedFD socket_fd(fd);
   struct sockaddr_un srv_addr = {};
   srv_addr.sun_family = AF_UNIX;
-  strcpy(srv_addr.sun_path, kArcCameraAlgoSocketPath);
+  strncpy(srv_addr.sun_path, kArcCameraAlgoSocketPath,
+          sizeof(srv_addr.sun_path));
   if (HANDLE_EINTR(connect(socket_fd.get(), (struct sockaddr*)&srv_addr,
                            strlen(kArcCameraAlgoSocketPath) +
                                offsetof(struct sockaddr_un, sun_path))) == -1) {

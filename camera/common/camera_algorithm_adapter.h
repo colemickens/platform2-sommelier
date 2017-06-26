@@ -4,13 +4,15 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_ARC_CAMERA_ALGORITHM_ADAPTER_H_
-#define INCLUDE_ARC_CAMERA_ALGORITHM_ADAPTER_H_
+#ifndef COMMON_CAMERA_ALGORITHM_ADAPTER_H_
+#define COMMON_CAMERA_ALGORITHM_ADAPTER_H_
 
-#include "base/threading/thread.h"
-#include "mojo/edk/embedder/platform_handle.h"
-#include "mojo/edk/embedder/process_delegate.h"
-#include "mojo/edk/embedder/scoped_platform_handle.h"
+#include <string>
+
+#include <base/threading/thread.h>
+#include <mojo/edk/embedder/platform_handle.h>
+#include <mojo/edk/embedder/process_delegate.h>
+#include <mojo/edk/embedder/scoped_platform_handle.h>
 
 #include "arc/future.h"
 #include "common/camera_algorithm_ops_impl.h"
@@ -57,4 +59,4 @@ class CameraAlgorithmAdapter : public mojo::edk::ProcessDelegate {
 
 }  // namespace arc
 
-#endif  // INCLUDE_ARC_CAMERA_ALGORITHM_ADAPTER_H_
+#endif  // COMMON_CAMERA_ALGORITHM_ADAPTER_H_

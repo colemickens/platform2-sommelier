@@ -6,10 +6,12 @@
 
 #include "common/camera_algorithm_ops_impl.h"
 
-#include "base/bind.h"
-#include "base/logging.h"
-#include "mojo/edk/embedder/embedder.h"
-#include "mojo/edk/embedder/scoped_platform_handle.h"
+#include <utility>
+
+#include <base/bind.h>
+#include <base/logging.h>
+#include <mojo/edk/embedder/embedder.h>
+#include <mojo/edk/embedder/scoped_platform_handle.h>
 
 #include "arc/common.h"
 #include "arc/future.h"
@@ -33,7 +35,7 @@ bool CameraAlgorithmOpsImpl::Bind(
     mojom::CameraAlgorithmOpsRequest request,
     camera_algorithm_ops_t* cam_algo,
     scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner,
-    base::Closure& ipc_lost_handler) {
+    const base::Closure& ipc_lost_handler) {
   DCHECK(ipc_task_runner->BelongsToCurrentThread());
   if (binding_.is_bound()) {
     LOGF(ERROR) << "Algorithm Ops is already bound";

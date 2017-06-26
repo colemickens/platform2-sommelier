@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_ARC_CAMERA_ALGORITHM_INTERNAL_H_
-#define INCLUDE_ARC_CAMERA_ALGORITHM_INTERNAL_H_
+#ifndef COMMON_CAMERA_ALGORITHM_INTERNAL_H_
+#define COMMON_CAMERA_ALGORITHM_INTERNAL_H_
 
 namespace arc {
 
@@ -13,4 +13,4 @@ const char kArcCameraAlgoSocketPath[] = "/var/run/camera/camera-algo.sock";
 
 }  // namespace arc
 
-#endif  // INCLUDE_ARC_CAMERA_ALGORITHM_INTERNAL_H_
+#endif  // COMMON_CAMERA_ALGORITHM_INTERNAL_H_

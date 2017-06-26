@@ -4,12 +4,12 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_ARC_CAMERA_ALGORITHM_CALLBACK_OPS_IMPL_H_
-#define INCLUDE_ARC_CAMERA_ALGORITHM_CALLBACK_OPS_IMPL_H_
+#ifndef COMMON_CAMERA_ALGORITHM_CALLBACK_OPS_IMPL_H_
+#define COMMON_CAMERA_ALGORITHM_CALLBACK_OPS_IMPL_H_
 
-#include "base/single_thread_task_runner.h"
-#include "mojo/camera_algorithm.mojom.h"
-#include "mojo/public/cpp/bindings/binding.h"
+#include <base/single_thread_task_runner.h>
+#include <common/mojo/camera_algorithm.mojom.h>
+#include <mojo/public/cpp/bindings/binding.h>
 
 #include "arc/camera_algorithm.h"
 
@@ -51,4 +51,4 @@ class CameraAlgorithmCallbackOpsImpl
 
 }  // namespace arc
 
-#endif  // INCLUDE_ARC_CAMERA_ALGORITHM_CALLBACK_OPS_IMPL_H_
+#endif  // COMMON_CAMERA_ALGORITHM_CALLBACK_OPS_IMPL_H_

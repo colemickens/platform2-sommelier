@@ -4,13 +4,16 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_ARC_CAMERA_ALGORITHM_BRIDGE_IMPL_H_
-#define INCLUDE_ARC_CAMERA_ALGORITHM_BRIDGE_IMPL_H_
+#ifndef COMMON_CAMERA_ALGORITHM_BRIDGE_IMPL_H_
+#define COMMON_CAMERA_ALGORITHM_BRIDGE_IMPL_H_
 
-#include "base/synchronization/lock.h"
-#include "base/threading/thread.h"
-#include "mojo/edk/embedder/platform_channel_pair.h"
-#include "mojo/edk/embedder/process_delegate.h"
+#include <memory>
+#include <vector>
+
+#include <base/synchronization/lock.h>
+#include <base/threading/thread.h>
+#include <mojo/edk/embedder/platform_channel_pair.h>
+#include <mojo/edk/embedder/process_delegate.h>
 
 #include "arc/camera_algorithm.h"
 #include "arc/camera_algorithm_bridge.h"
@@ -85,4 +88,4 @@ class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge,
 
 }  // namespace arc
 
-#endif  // INCLUDE_ARC_CAMERA_ALGORITHM_BRIDGE_IMPL_H_
+#endif  // COMMON_CAMERA_ALGORITHM_BRIDGE_IMPL_H_

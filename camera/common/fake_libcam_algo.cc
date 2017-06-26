@@ -8,9 +8,9 @@
 
 #include <unordered_map>
 
-#include "base/bind.h"
-#include "base/logging.h"
-#include "base/threading/thread.h"
+#include <base/bind.h>
+#include <base/logging.h>
+#include <base/threading/thread.h>
 
 #include "arc/camera_algorithm.h"
 #include "arc/future.h"
@@ -46,9 +46,9 @@ class CameraAlgorithmImpl {
       return -EBADFD;
     }
     int32_t handle = -1;
-    srand(buffer_fd);
+    static unsigned int seed = time(NULL) + getpid();
     do {
-      handle = rand();
+      handle = rand_r(&seed);
     } while (shm_info_map_.find(handle) != shm_info_map_.end());
     handles_[buffer_fd] = handle;
     shm_info_map_[handle].fd = buffer_fd;
