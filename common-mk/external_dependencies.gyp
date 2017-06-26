@@ -90,7 +90,6 @@
         '<(proto_in_dir)/chrome_device_policy.proto',
         '<(proto_in_dir)/chrome_extension_policy.proto',
         '<(proto_in_dir)/device_management_backend.proto',
-        '<(proto_in_dir)/device_management_local.proto',
       ],
       'includes': ['protoc.gypi'],
     },
