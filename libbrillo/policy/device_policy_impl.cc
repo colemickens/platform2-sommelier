@@ -472,6 +472,21 @@ bool DevicePolicyImpl::IsEnterpriseManaged() const {
   return policy_data_.has_request_token();
 }
 
+bool DevicePolicyImpl::GetSecondFactorAuthenticationMode(int* mode_out) const {
+  if (!device_policy_.has_device_second_factor_authentication())
+    return false;
+
+  const em::DeviceSecondFactorAuthenticationProto& proto =
+      device_policy_.device_second_factor_authentication();
+
+  if (!proto.has_mode())
+    return false;
+
+  *mode_out = proto.mode();
+  return true;
+}
+
+
 bool DevicePolicyImpl::VerifyPolicyFiles() {
   // Both the policy and its signature have to exist.
   if (!base::PathExists(policy_path_) || !base::PathExists(keyfile_path_)) {

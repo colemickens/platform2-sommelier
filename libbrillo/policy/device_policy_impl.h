@@ -68,6 +68,8 @@ class DevicePolicyImpl : public DevicePolicy {
   bool GetAutoLaunchedKioskAppId(
       std::string* app_id_out) const override;
   bool IsEnterpriseManaged() const override;
+  bool GetSecondFactorAuthenticationMode(
+      int* mode_out) const override;
 
   void set_policy_data_for_testing(
       const enterprise_management::PolicyData& policy_data) {

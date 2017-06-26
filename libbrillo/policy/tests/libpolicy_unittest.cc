@@ -175,6 +175,10 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   ASSERT_TRUE(policy.GetAutoLaunchedKioskAppId(&string_value));
   ASSERT_EQ("my_kiosk_app", string_value);
 
+  int_value = -1;
+  ASSERT_TRUE(policy.GetSecondFactorAuthenticationMode(&int_value));
+  ASSERT_EQ(2, int_value);
+
   // Reloading the protobuf should succeed.
   ASSERT_TRUE(provider.Reload());
 }
@@ -225,6 +229,7 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   ASSERT_FALSE(policy.GetAuP2PEnabled(&bool_value));
   ASSERT_FALSE(policy.GetAllowKioskAppControlChromeVersion(&bool_value));
   ASSERT_FALSE(policy.GetUsbDetachableWhitelist(&list_device));
+  ASSERT_FALSE(policy.GetSecondFactorAuthenticationMode(&int_value));
 }
 
 // Verify that the library will correctly recognize and signal missing files.

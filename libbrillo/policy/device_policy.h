@@ -161,6 +161,12 @@ class DevicePolicy {
   // management state is required.
   virtual bool IsEnterpriseManaged() const = 0;
 
+  // Writes the value of the DeviceSecondFactorAuthentication policy in
+  // |mode_out|. |mode_out| is one of the values from
+  // DeviceSecondFactorAuthenticationProto's U2fMode enum (e.g. DISABLED,
+  // U2F or U2F_EXTENDED). Returns true on success.
+  virtual bool GetSecondFactorAuthenticationMode(int* mode_out) const = 0;
+
  private:
   // Verifies that the policy files are owned by root and exist.
   virtual bool VerifyPolicyFiles() = 0;
