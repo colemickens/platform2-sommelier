@@ -8,8 +8,11 @@
 #ifndef RUN_OCI_OCI_CONFIG_H_
 #define RUN_OCI_OCI_CONFIG_H_
 
+#include <linux/capability.h>
 #include <stdint.h>
 
+#include <bitset>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -24,14 +27,16 @@ struct OciProcessUser {
   std::vector<uint32_t> additionalGids;  // Optional
 };
 
+using CapSet = std::bitset<CAP_LAST_CAP + 1>;
+
 struct OciProcess {
   bool terminal;  // Optional
   OciProcessUser user;
   std::vector<std::string> args;
   std::vector<std::string> env;  // Optional
   std::string cwd;
-  // Unused: capabilities, rlimits, apparmorProfile,
-  //    selinuxLabel, noNewPrivileges
+  std::map<std::string, CapSet> capabilities;  // Optional
+  // Unused: rlimits, apparmorProfile, selinuxLabel, noNewPrivileges
 };
 
 struct OciRoot {

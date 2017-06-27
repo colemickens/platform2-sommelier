@@ -282,6 +282,13 @@ int RunOci(const base::FilePath& container_dir,
                 &container_destroy);
 
   container_config_keep_fds_open(config.get());
+  if (!oci_config->process.capabilities.empty()) {
+    container_config_set_capmask(
+        config.get(),
+        oci_config->process.capabilities["effective"].to_ullong(),
+        oci_config->process.capabilities.find("ambient") !=
+            oci_config->process.capabilities.end());
+  }
 
   if (container_options.cgroup_parent.length() > 0) {
     container_config_set_cgroup_parent(config.get(),

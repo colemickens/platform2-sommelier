@@ -4,8 +4,10 @@
 
 #include "run_oci/container_config_parser.h"
 
+#include <linux/capability.h>
 #include <unistd.h>
 
+#include <map>
 #include <regex>  // NOLINT(build/c++11)
 #include <string>
 #include <vector>
@@ -77,6 +79,105 @@ bool ParseRootFileSystemConfig(const base::DictionaryValue& config_root_dict,
   return true;
 }
 
+#define CAP_MAP_ENTRY(cap) { "CAP_" #cap, CAP_##cap }
+
+static const std::map<std::string, int> kCapMap = {
+    CAP_MAP_ENTRY(CHOWN),
+    CAP_MAP_ENTRY(DAC_OVERRIDE),
+    CAP_MAP_ENTRY(DAC_READ_SEARCH),
+    CAP_MAP_ENTRY(FOWNER),
+    CAP_MAP_ENTRY(FSETID),
+    CAP_MAP_ENTRY(KILL),
+    CAP_MAP_ENTRY(SETGID),
+    CAP_MAP_ENTRY(SETUID),
+    CAP_MAP_ENTRY(SETPCAP),
+    CAP_MAP_ENTRY(LINUX_IMMUTABLE),
+    CAP_MAP_ENTRY(NET_BIND_SERVICE),
+    CAP_MAP_ENTRY(NET_BROADCAST),
+    CAP_MAP_ENTRY(NET_ADMIN),
+    CAP_MAP_ENTRY(NET_RAW),
+    CAP_MAP_ENTRY(IPC_LOCK),
+    CAP_MAP_ENTRY(IPC_OWNER),
+    CAP_MAP_ENTRY(SYS_MODULE),
+    CAP_MAP_ENTRY(SYS_RAWIO),
+    CAP_MAP_ENTRY(SYS_CHROOT),
+    CAP_MAP_ENTRY(SYS_PTRACE),
+    CAP_MAP_ENTRY(SYS_PACCT),
+    CAP_MAP_ENTRY(SYS_ADMIN),
+    CAP_MAP_ENTRY(SYS_BOOT),
+    CAP_MAP_ENTRY(SYS_NICE),
+    CAP_MAP_ENTRY(SYS_RESOURCE),
+    CAP_MAP_ENTRY(SYS_TIME),
+    CAP_MAP_ENTRY(SYS_TTY_CONFIG),
+    CAP_MAP_ENTRY(MKNOD),
+    CAP_MAP_ENTRY(LEASE),
+    CAP_MAP_ENTRY(AUDIT_WRITE),
+    CAP_MAP_ENTRY(AUDIT_CONTROL),
+    CAP_MAP_ENTRY(SETFCAP),
+    CAP_MAP_ENTRY(MAC_OVERRIDE),
+    CAP_MAP_ENTRY(MAC_ADMIN),
+    CAP_MAP_ENTRY(SYSLOG),
+    CAP_MAP_ENTRY(WAKE_ALARM),
+    CAP_MAP_ENTRY(BLOCK_SUSPEND),
+    CAP_MAP_ENTRY(AUDIT_READ),
+};
+
+// Fills |config_out| with information about the capability sets in the
+// container.
+bool ParseCapabilitiesConfig(const base::DictionaryValue& capabilities_dict,
+                             std::map<std::string, CapSet>* config_out) {
+  constexpr const char* kCapabilitySetNames[] = {
+      "effective", "bounding", "inheritable", "permitted", "ambient"};
+  const std::string kAmbientCapabilitySetName = "ambient";
+
+  CapSet caps_superset;
+  for (const char* set_name : kCapabilitySetNames) {
+    // |capset_list| stays owned by |capabilities_dict|.
+    const base::ListValue* capset_list = nullptr;
+    if (!capabilities_dict.GetList(set_name, &capset_list))
+      continue;
+    CapSet caps;
+    for (const auto* cap_name_value : *capset_list) {
+      std::string cap_name;
+      if (!cap_name_value->GetAsString(&cap_name)) {
+        LOG(ERROR) << "Capability list " << set_name
+                   << " contains a non-string";
+        return false;
+      }
+      const auto it = kCapMap.find(cap_name);
+      if (it == kCapMap.end()) {
+        LOG(ERROR) << "Unrecognized capability name: " << cap_name;
+        return false;
+      }
+      caps[it->second] = true;
+    }
+    (*config_out)[set_name] = caps;
+    caps_superset = caps;
+  }
+
+  // We currently only support sets that are identical, except that ambient is
+  // optional.
+  for (const char* set_name : kCapabilitySetNames) {
+    auto it = config_out->find(set_name);
+    if (it == config_out->end() && set_name == kAmbientCapabilitySetName) {
+      // Ambient capabilities are optional.
+      continue;
+    }
+    if (it == config_out->end()) {
+      LOG(ERROR)
+          << "If capabilities are set, all capability sets should be present";
+      return false;
+    }
+    if (it->second != caps_superset) {
+      LOG(ERROR)
+          << "If capabilities are set, all capability sets should be identical";
+      return false;
+    }
+  }
+
+  return true;
+}
+
 // Fills |config_out| with information about the main process to run in the
 // container and the user it should be run as.
 bool ParseProcessConfig(const base::DictionaryValue& config_root_dict,
@@ -129,6 +230,14 @@ bool ParseProcessConfig(const base::DictionaryValue& config_root_dict,
   if (!process_dict->GetString("cwd", &config_out->process.cwd)) {
     LOG(ERROR) << "failed to get cwd of process";
     return false;
+  }
+  // |capabilities_dict| stays owned by |process_dict|
+  const base::DictionaryValue* capabilities_dict = nullptr;
+  if (process_dict->GetDictionary("capabilities", &capabilities_dict)) {
+    if (!ParseCapabilitiesConfig(*capabilities_dict,
+                                 &config_out->process.capabilities)) {
+      return false;
+    }
   }
 
   return true;

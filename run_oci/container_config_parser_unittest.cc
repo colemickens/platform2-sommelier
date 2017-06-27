@@ -40,11 +40,33 @@ const char kBasicJsonData[] = R"json(
                 "TERM=xterm"
             ],
             "cwd": "/",
-            "capabilities": [
-                "CAP_AUDIT_WRITE",
-                "CAP_KILL",
-                "CAP_NET_BIND_SERVICE"
-            ],
+            "capabilities": {
+                "effective": [
+                    "CAP_AUDIT_WRITE",
+                    "CAP_KILL",
+                    "CAP_NET_BIND_SERVICE"
+                ],
+                "bounding": [
+                    "CAP_AUDIT_WRITE",
+                    "CAP_KILL",
+                    "CAP_NET_BIND_SERVICE"
+                ],
+                "inheritable": [
+                    "CAP_AUDIT_WRITE",
+                    "CAP_KILL",
+                    "CAP_NET_BIND_SERVICE"
+                ],
+                "permitted": [
+                    "CAP_AUDIT_WRITE",
+                    "CAP_KILL",
+                    "CAP_NET_BIND_SERVICE"
+                ],
+                "ambient": [
+                    "CAP_AUDIT_WRITE",
+                    "CAP_KILL",
+                    "CAP_NET_BIND_SERVICE"
+                ]
+            },
             "rlimits": [
                 {
                     "type": "RLIMIT_NOFILE",
@@ -425,6 +447,13 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(seccomp->syscalls[1].args[0].value, 255);
   EXPECT_EQ(seccomp->syscalls[1].args[0].value2, 4);
   EXPECT_EQ(seccomp->syscalls[1].args[0].op, "SCMP_CMP_EQ");
+  // capabilities
+  const auto effective_capset =
+      basic_config->process.capabilities.find("effective");
+  EXPECT_NE(effective_capset, basic_config->process.capabilities.end());
+  EXPECT_EQ(effective_capset->second.to_ullong(),
+            (1ull << CAP_AUDIT_WRITE) | (1ull << CAP_KILL) |
+                (1ull << CAP_NET_BIND_SERVICE));
 }
 
 TEST(OciConfigParserTest, TestStrippedConfig) {
