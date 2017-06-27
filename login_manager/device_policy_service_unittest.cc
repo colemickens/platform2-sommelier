@@ -77,8 +77,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   void InitPolicy(const em::ChromeDeviceSettingsProto& settings,
                   const std::string& owner,
                   const std::vector<uint8_t>& signature,
-                  const std::string& request_token,
-                  bool valid_serial_number_missing) {
+                  const std::string& request_token) {
     std::string settings_str;
     ASSERT_TRUE(settings.SerializeToString(&settings_str));
 
@@ -89,8 +88,6 @@ class DevicePolicyServiceTest : public ::testing::Test {
       policy_data.set_username(owner);
     if (!request_token.empty())
       policy_data.set_request_token(request_token);
-    if (valid_serial_number_missing)
-      policy_data.set_valid_serial_number_missing(true);
     std::string policy_data_str;
     ASSERT_TRUE(policy_data.SerializeToString(&policy_data_str));
 
@@ -103,7 +100,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
                        const std::vector<uint8_t>& signature,
                        const std::string& request_token) {
     em::ChromeDeviceSettingsProto settings;
-    InitPolicy(settings, owner, signature, request_token, false);
+    InitPolicy(settings, owner, signature, request_token);
   }
 
   void InitService(NssUtil* nss) {
@@ -271,7 +268,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   }
 
   bool PolicyAllowsNewUsers(const em::ChromeDeviceSettingsProto settings) {
-    InitPolicy(settings, owner_, fake_sig_, "", false);
+    InitPolicy(settings, owner_, fake_sig_, "");
     return DevicePolicyService::PolicyAllowsNewUsers(policy_proto_);
   }
 
@@ -307,7 +304,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
   KeyCheckUtil nss;
   InitService(&nss);
   em::ChromeDeviceSettingsProto settings;
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
@@ -575,7 +572,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessAddOwner) {
   em::ChromeDeviceSettingsProto settings;
   settings.mutable_user_whitelist()->add_user_whitelist("a@b");
   settings.mutable_user_whitelist()->add_user_whitelist("c@d");
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
 
   ExpectMitigating(false);
 
@@ -935,7 +932,7 @@ TEST_F(DevicePolicyServiceTest, RecoverOwnerKeyFromPolicy) {
   EXPECT_CALL(*metrics_.get(), SendPolicyFilesStatus(_)).Times(AnyNumber());
 
   em::ChromeDeviceSettingsProto settings;
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
   EXPECT_FALSE(service_->Initialize());
 
   policy_proto_.set_new_public_key(BlobToString(fake_key_));
@@ -955,7 +952,7 @@ TEST_F(DevicePolicyServiceTest, GetSettings) {
 
   // Storing new policy should cause the settings to update as well.
   settings.mutable_metrics_enabled()->set_metrics_enabled(true);
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t", true));
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t"));
   EXPECT_CALL(key_, Verify(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(false));
   EXPECT_CALL(*store_, Persist()).WillRepeatedly(Return(true));
@@ -985,7 +982,7 @@ TEST_F(DevicePolicyServiceTest, StartUpFlagsSanitizer) {
   settings.mutable_start_up_flags()->add_flags("");
   settings.mutable_start_up_flags()->add_flags("-");
   settings.mutable_start_up_flags()->add_flags("--");
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
   EXPECT_CALL(key_, Verify(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(false));
   EXPECT_CALL(*store_, Persist()).WillRepeatedly(Return(true));
