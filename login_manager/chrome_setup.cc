@@ -426,6 +426,12 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // TODO(xiyuan): Remove after http://crbug.com/547857 is resolved.
   builder->AddVmodulePattern("*chromeos/login/*=1");
 
+  // Used to evaluate different experimental flag settings for
+  // http://crbug.com/736936. Nothing is logged unless the flags are set via
+  // chrome://flags.
+  // TODO(derat): Remove after http://crbug.com/736936 is closed.
+  builder->AddVmodulePattern("tablet_power_button_controller=1");
+
   if (builder->UseFlagIsSet("cheets"))
     builder->AddVmodulePattern("*arc/*=1");
 }
