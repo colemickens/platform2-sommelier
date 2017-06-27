@@ -65,6 +65,12 @@ if (($programname == 'shill') or \
 if ($programname startswith 'tlsdate') then -/var/log/tlsdate.log
 & ~  # Don't log tlsdate messages anywhere else.
 
+# For authpolicyd and authpolicy_parser:
+# - Log all messages to /var/log/authpolicy.log.
+# - Log important stuff (EMERG..ERR) to /var/log/messages.
+if ($programname startswith 'authpolicy') then -/var/log/authpolicy.log
+if ($programname startswith 'authpolicy') and $syslogseverity >= '4' then ~
+
 # Log all kernel messages to the console.
 # Logging much else clutters up the screen.
 #kern.*                                                 /dev/console

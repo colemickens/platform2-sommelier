@@ -47,6 +47,7 @@ const Log common_logs[] = {
   { "CLIENT_ID", "/usr/bin/metrics_client -i"},
   { "LOGDATE", "/bin/date" },
   { "atrus_logs", "/bin/cat /var/log/atrus.log 2> /dev/null" },
+  { "authpolicy", "/bin/cat /var/log/authpolicy.log" },
   { "bios_info", "/bin/cat /var/log/bios_info.txt" },
   { "bios_log",
     "/bin/cat /sys/firmware/log "
@@ -102,6 +103,7 @@ const Log common_logs[] = {
     kDebugfsGroup,
   },
   { "ifconfig", "/bin/ifconfig -a" },
+  { "input_devices", "/bin/cat /proc/bus/input/devices" },
   { "kernel-crashes",
     "/bin/cat /var/spool/crash/kernel.*.kcrash 2> /dev/null" },
   { "lsmod", "lsmod" },
@@ -164,7 +166,6 @@ const Log common_logs[] = {
   { "syslog", "/usr/share/userfeedback/scripts/getmsgs --last '2 hours'"
               " /var/log/messages" },
   { "tlsdate", "/bin/cat /var/log/tlsdate.log" },
-  { "input_devices", "/bin/cat /proc/bus/input/devices" },
   { "top thread", "/usr/bin/top -Hb -n 1 | head -n 40"},
   { "top memory", "/usr/bin/top -o \"+%MEM\" -bn 1 | head -n 57"},
   { "touchpad", "/opt/google/touchpad/tpcontrol status" },
