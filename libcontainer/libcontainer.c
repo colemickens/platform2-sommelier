@@ -12,6 +12,7 @@
 #endif
 #include <malloc.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -153,6 +154,9 @@ struct container_config {
 	gid_t cgroup_group;
 	int share_host_netns;
 	int keep_fds_open;
+	int use_capmask;
+	int use_capmask_ambient;
+	uint64_t capmask;
 };
 
 struct container_config *container_config_create()
@@ -598,6 +602,15 @@ int get_container_config_share_host_netns(struct container_config *c)
 void container_config_keep_fds_open(struct container_config *c)
 {
 	c->keep_fds_open = 1;
+}
+
+void container_config_set_capmask(struct container_config *c,
+				  uint64_t capmask,
+				  int ambient)
+{
+	c->use_capmask = 1;
+	c->capmask = capmask;
+	c->use_capmask_ambient = ambient;
 }
 
 /*
@@ -1548,6 +1561,13 @@ int container_start(struct container *c, const struct container_config *config)
 
 	if (!config->keep_fds_open)
 		minijail_close_open_fds(c->jail);
+
+	if (config->use_capmask) {
+		minijail_use_caps(c->jail, config->capmask);
+		if (config->use_capmask_ambient) {
+			minijail_set_ambient_caps(c->jail);
+		}
+	}
 
 	rc = minijail_run_pid_pipes_no_preload(c->jail,
 					       config->program_argv[0],

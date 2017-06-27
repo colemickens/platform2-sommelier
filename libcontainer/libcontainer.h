@@ -7,6 +7,7 @@
 #define LIBCONTAINER_LIBCONTAINER_H_
 
 #include <stddef.h>
+#include <stdint.h>
 #include <sys/types.h>
 
 #ifdef __cplusplus
@@ -227,6 +228,14 @@ int get_container_config_share_host_netns(struct container_config *c);
  * with caution to avoid leaking other FDs into the namespaced app.
  */
 void container_config_keep_fds_open(struct container_config *c);
+
+/*
+ * Sets the capability mask of the container to |capmask|. If |ambient| is 1 it
+ * will additionally set the ambient capability set.
+ */
+void container_config_set_capmask(struct container_config *c,
+				  uint64_t capmask,
+				  int ambient);
 
 /* Container manipulation. */
 struct container;
