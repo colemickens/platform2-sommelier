@@ -77,10 +77,10 @@ struct OciSeccompSyscall {
 
 struct OciLinuxCgroupDevice {
     bool allow;
-    std::string access; // Optional
-    std::string type; // Optional
-    uint32_t major; // Optional
-    uint32_t minor; // Optional
+    std::string access;  // Optional
+    std::string type;  // Optional
+    uint32_t major;  // Optional
+    uint32_t minor;  // Optional
 };
 
 struct OciLinuxResources {
