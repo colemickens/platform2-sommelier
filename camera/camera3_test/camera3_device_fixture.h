@@ -5,13 +5,17 @@
 #ifndef CAMERA3_TEST_CAMERA3_DEVICE_FIXTURE_H_
 #define CAMERA3_TEST_CAMERA3_DEVICE_FIXTURE_H_
 
+#include <memory>
+#include <set>
+#include <vector>
+
 #include <camera/camera_metadata.h>
 #include <gtest/gtest.h>
 #include <hardware/camera3.h>
 #include <hardware/hardware.h>
 
-#include "camera3_module_fixture.h"
-#include "camera3_test_gralloc.h"
+#include "camera3_test/camera3_module_fixture.h"
+#include "camera3_test/camera3_test_gralloc.h"
 #include "common/camera_buffer_handle.h"
 
 namespace camera3_test {
@@ -249,12 +253,11 @@ class Camera3DeviceFixture : public testing::Test {
  public:
   explicit Camera3DeviceFixture(int cam_id) : cam_device_(cam_id) {}
 
-  virtual void SetUp() override;
+  void SetUp() override;
 
-  virtual void TearDown() override;
+  void TearDown() override;
 
  protected:
-
   Camera3Module cam_module_;
 
   Camera3Device cam_device_;

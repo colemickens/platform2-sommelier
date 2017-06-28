@@ -7,7 +7,12 @@
 
 #include <semaphore.h>
 
-#include "camera3_device_fixture.h"
+#include <list>
+#include <memory>
+#include <unordered_map>
+#include <vector>
+
+#include "camera3_test/camera3_device_fixture.h"
 
 namespace camera3_test {
 

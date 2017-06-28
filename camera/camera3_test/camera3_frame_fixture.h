@@ -5,7 +5,7 @@
 #ifndef CAMERA3_TEST_CAMERA3_FRAME_FIXTURE_H_
 #define CAMERA3_TEST_CAMERA3_FRAME_FIXTURE_H_
 
-#include "camera3_stream_fixture.h"
+#include "camera3_test/camera3_stream_fixture.h"
 
 namespace camera3_test {
 

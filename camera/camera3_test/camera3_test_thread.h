@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CAMERA3_TEST_CAMERA3_TEST_THREAD_H
-#define CAMERA3_TEST_CAMERA3_TEST_THREAD_H
+#ifndef CAMERA3_TEST_CAMERA3_TEST_THREAD_H_
+#define CAMERA3_TEST_CAMERA3_TEST_THREAD_H_
 
 #include <arc/future.h>
 #include <base/threading/thread.h>
@@ -46,4 +46,4 @@ class Camera3TestThread final {
 
 }  // namespace camera3_test
 
-#endif  // CAMERA3_TEST_CAMERA3_TEST_THREAD_H
+#endif  // CAMERA3_TEST_CAMERA3_TEST_THREAD_H_

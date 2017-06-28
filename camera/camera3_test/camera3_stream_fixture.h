@@ -11,7 +11,7 @@
 #include <hardware/camera3.h>
 #include <hardware/hardware.h>
 
-#include "camera3_device_fixture.h"
+#include "camera3_test/camera3_device_fixture.h"
 
 namespace camera3_test {
 
@@ -24,9 +24,9 @@ class Camera3StreamFixture : public Camera3DeviceFixture {
         default_width_(640),
         default_height_(480) {}
 
-  virtual void SetUp() override;
+  void SetUp() override;
 
-  virtual void TearDown() override;
+  void TearDown() override;
 
   // Select minimal size by number of pixels.
   int32_t GetMinResolution(int32_t format, ResolutionInfo* resolution);

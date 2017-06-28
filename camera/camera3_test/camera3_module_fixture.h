@@ -6,12 +6,15 @@
 #define CAMERA3_TEST_CAMERA3_MODULE_FIXTURE_H_
 
 #include <dlfcn.h>
+
+#include <vector>
+
 #include <base/logging.h>
 #include <base/synchronization/lock.h>
 #include <gtest/gtest.h>
 #include <hardware/camera3.h>
 
-#include "camera3_test_thread.h"
+#include "camera3_test/camera3_test_thread.h"
 
 namespace camera3_test {
 
@@ -62,7 +65,7 @@ class Camera3Module {
   camera3_device* OpenDevice(int cam_id);
 
   // Close camera device
-  int CloseDevice(camera3_device& cam_device);
+  int CloseDevice(camera3_device* cam_device);
 
   // Check if a stream format is supported
   bool IsFormatAvailable(int cam_id, int format);
@@ -126,7 +129,7 @@ class Camera3ModuleFixture : public testing::Test {
  public:
   Camera3ModuleFixture() {}
 
-  virtual void SetUp() override;
+  void SetUp() override;
 
  protected:
   Camera3Module cam_module_;

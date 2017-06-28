@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "camera3_test_gralloc.h"
+#include "camera3_test/camera3_test_gralloc.h"
+
+#include <drm_fourcc.h>
 
 #include <algorithm>
 
 #include "arc/camera_buffer_mapper.h"
 #include "common/camera_buffer_mapper_internal.h"
-#include <drm_fourcc.h>
 
 namespace camera3_test {
 

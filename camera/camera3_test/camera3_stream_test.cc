@@ -4,7 +4,7 @@
 
 #include <algorithm>
 
-#include "camera3_stream_fixture.h"
+#include "camera3_test/camera3_stream_fixture.h"
 
 namespace camera3_test {
 

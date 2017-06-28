@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "camera3_preview_fixture.h"
+#include "camera3_test/camera3_preview_fixture.h"
+
+#include <unistd.h>
 
 #include <base/bind.h>
-#include <unistd.h>
 
 namespace camera3_test {
 

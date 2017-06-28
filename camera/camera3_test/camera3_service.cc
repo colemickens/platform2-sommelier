@@ -2,10 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "camera3_service.h"
+#include "camera3_test/camera3_service.h"
+
+#include <unistd.h>
+
+#include <utility>
+#include <vector>
 
 #include <base/bind.h>
-#include <unistd.h>
 
 namespace camera3_test {
 
@@ -299,8 +303,8 @@ int Camera3Service::Camera3DeviceService::WaitForPreviewFrames(
     uint32_t num_frames,
     uint32_t timeout_ms) {
   VLOGF_ENTER();
-  while (sem_trywait(&preview_frame_sem_) == 0)
-    ;
+  while (sem_trywait(&preview_frame_sem_) == 0) {
+  }
   for (uint32_t i = 0; i < num_frames; ++i) {
     struct timespec timeout = {};
     if (clock_gettime(CLOCK_REALTIME, &timeout)) {

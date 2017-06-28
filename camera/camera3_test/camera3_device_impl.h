@@ -7,11 +7,15 @@
 
 #include <semaphore.h>
 
+#include <memory>
+#include <set>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 #include <base/threading/thread_checker.h>
 
-#include "camera3_device_fixture.h"
+#include "camera3_test/camera3_device_fixture.h"
 
 namespace camera3_test {
 

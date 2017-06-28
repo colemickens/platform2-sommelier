@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "camera3_device_fixture.h"
+#include "camera3_test/camera3_device_fixture.h"
 
-#include "camera3_device_impl.h"
+#include "camera3_test/camera3_device_impl.h"
 
 namespace camera3_test {
 
@@ -653,10 +653,10 @@ TEST_P(Camera3DeviceDefaultSettings, ConstructDefaultSettings) {
   }
 
   // Check 3A regions
-  // TODO: CONTROL_AE_REGIONS, CONTROL_AWB_REGIONS, CONTROL_AF_REGIONS?
+  // TODO(hywu): CONTROL_AE_REGIONS, CONTROL_AWB_REGIONS, CONTROL_AF_REGIONS?
 
   // Sensor settings
-  // TODO: LENS_APERTURE, LENS_FILTER_DENSITY, LENS_FOCAL_LENGTH,
+  // TODO(hywu): LENS_APERTURE, LENS_FILTER_DENSITY, LENS_FOCAL_LENGTH,
   //       LENS_OPTICAL_STABILIZATION_MODE?
   //       BLACK_LEVEL_LOCK?
 

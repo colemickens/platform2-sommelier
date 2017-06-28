@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "camera3_module_fixture.h"
+#include "camera3_test/camera3_module_fixture.h"
 
 #include <algorithm>
 
@@ -38,13 +38,13 @@ bool ResolutionInfo::operator<(const ResolutionInfo& resolution) const {
          (Area() == resolution.Area() && width_ < resolution.Width());
 }
 
-static void InitCameraModule(void*& cam_hal_handle) {
+static void InitCameraModule(void** cam_hal_handle) {
   const char kCameraHalDllName[] = "camera_hal.so";
-  cam_hal_handle = dlopen(kCameraHalDllName, RTLD_NOW);
-  ASSERT_NE(nullptr, cam_hal_handle) << "Failed to dlopen: " << dlerror();
+  *cam_hal_handle = dlopen(kCameraHalDllName, RTLD_NOW);
+  ASSERT_NE(nullptr, *cam_hal_handle) << "Failed to dlopen: " << dlerror();
 
   camera_module_t* cam_module = static_cast<camera_module_t*>(
-      dlsym(cam_hal_handle, HAL_MODULE_INFO_SYM_AS_STR));
+      dlsym(*cam_hal_handle, HAL_MODULE_INFO_SYM_AS_STR));
   ASSERT_NE(nullptr, cam_module) << "Camera module is invalid";
   ASSERT_NE(nullptr, cam_module->get_number_of_cameras)
       << "get_number_of_cameras is not implemented";
@@ -148,7 +148,7 @@ camera3_device* Camera3Module::OpenDevice(int cam_id) {
   return cam_device;
 }
 
-int Camera3Module::CloseDevice(camera3_device& cam_device) {
+int Camera3Module::CloseDevice(camera3_device* cam_device) {
   VLOGF_ENTER();
   if (!cam_module_) {
     return -ENODEV;
@@ -156,7 +156,7 @@ int Camera3Module::CloseDevice(camera3_device& cam_device) {
   int result = -ENODEV;
   dev_thread_.PostTaskSync(
       FROM_HERE, base::Bind(&Camera3Module::CloseDeviceOnDevThread,
-                            base::Unretained(this), &cam_device, &result));
+                            base::Unretained(this), cam_device, &result));
   return result;
 }
 
@@ -282,7 +282,7 @@ void Camera3Module::OpenDeviceOnHalThread(int cam_id,
   *cam_device = nullptr;
   hw_device_t* device = nullptr;
   char cam_id_name[3];
-  snprintf(cam_id_name, 3, "%d", cam_id);
+  snprintf(cam_id_name, sizeof(cam_id_name), "%d", cam_id);
   if (cam_module_->common.methods->open((const hw_module_t*)cam_module_,
                                         cam_id_name, &device) == 0) {
     *cam_device = reinterpret_cast<camera3_device_t*>(device);
@@ -355,7 +355,7 @@ TEST_F(Camera3ModuleFixture, OpenDevice) {
   for (int cam_id = 0; cam_id < cam_module_.GetNumberOfCameras(); cam_id++) {
     camera3_device* cam_dev = cam_module_.OpenDevice(cam_id);
     ASSERT_NE(nullptr, cam_dev) << "Camera open() returned a NULL device";
-    cam_module_.CloseDevice(*cam_dev);
+    cam_module_.CloseDevice(cam_dev);
   }
 }
 
@@ -367,7 +367,7 @@ TEST_F(Camera3ModuleFixture, OpenDeviceTwice) {
     camera3_device* cam_bad_dev = cam_module_.OpenDevice(cam_id);
     ASSERT_EQ(nullptr, cam_bad_dev) << "Opening camera device " << cam_id
                                     << " should have failed";
-    cam_module_.CloseDevice(*cam_dev);
+    cam_module_.CloseDevice(cam_dev);
   }
 }
 
@@ -507,8 +507,8 @@ TEST_F(Camera3ModuleFixture, RequiredFormats) {
   }
 }
 
-// TODO: test keys used by RAW, burst and reprocessing capabilities when full
-// mode is supported
+// TODO(hywu): test keys used by RAW, burst and reprocessing capabilities when
+// full mode is supported
 
 static bool AreAllCapabilitiesSupported(
     camera_metadata_t* characteristics,
@@ -670,8 +670,9 @@ TEST_F(Camera3ModuleFixture, StaticKeysTest) {
     ExpectKeyAvailable(
         c, ANDROID_CONTROL_AWB_LOCK_AVAILABLE, IGNORE_HARDWARE_LEVEL,
         ANDROID_REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE);
-    // TODO: ANDROID_CONTROL_MAX_REGIONS_AE, ANDROID_CONTROL_MAX_REGIONS_AF,
-    // ANDROID_CONTROL_MAX_REGIONS_AWB
+    // TODO(hywu): ANDROID_CONTROL_MAX_REGIONS_AE,
+    //             ANDROID_CONTROL_MAX_REGIONS_AF,
+    //             ANDROID_CONTROL_MAX_REGIONS_AWB
     ExpectKeyAvailable(c, ANDROID_EDGE_AVAILABLE_EDGE_MODES,
                        ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_FULL,
                        IGNORE_CAPABILITY);
@@ -918,7 +919,7 @@ int main(int argc, char** argv) {
 
   // Open camera HAL and get module
   void* cam_hal_handle = NULL;
-  camera3_test::InitCameraModule(cam_hal_handle);
+  camera3_test::InitCameraModule(&cam_hal_handle);
   camera3_test::g_module_thread.Start();
 
   int result = EXIT_FAILURE;

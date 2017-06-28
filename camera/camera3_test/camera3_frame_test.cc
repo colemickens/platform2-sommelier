@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "camera3_frame_fixture.h"
+#include "camera3_test/camera3_frame_fixture.h"
 
 #include <semaphore.h>
 
 #include <list>
 
-#include "base/macros.h"
+#include <base/macros.h>
 
 namespace camera3_test {
 
@@ -197,7 +197,7 @@ class Camera3FlushRequestsTest : public Camera3FrameFixture,
   Camera3FlushRequestsTest()
       : Camera3FrameFixture(std::get<0>(GetParam())), num_capture_results_(0) {}
 
-  virtual void SetUp() override;
+  void SetUp() override;
 
  protected:
   // Callback functions from HAL device
@@ -246,8 +246,8 @@ void Camera3FlushRequestsTest::ProcessCaptureResult(
 }
 
 TEST_P(Camera3FlushRequestsTest, GetFrame) {
-  // TODO: spawn a thread to test simultaneous process_capture_request and
-  // flush
+  // TODO(hywu): spawn a thread to test simultaneous process_capture_request
+  // and flush
 
   // The number of configured streams must match the value of
   // |kNumberOfConfiguredStreams|.
@@ -379,7 +379,7 @@ class Camera3SimpleCaptureFrames
 
  protected:
   // Process result metadata and/or output buffers
-  virtual void ProcessResultMetadataOutputBuffers(
+  void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
       CameraMetadataUniquePtr metadata,
       std::vector<BufferHandleUniquePtr> buffers) override;
@@ -392,7 +392,7 @@ class Camera3SimpleCaptureFrames
   void GetWaiverKeys(std::set<int32_t>* waiver_keys) const;
 
   // Process partial metadata
-  virtual void ProcessPartialMetadata(
+  void ProcessPartialMetadata(
       std::vector<CameraMetadataUniquePtr>* partial_metadata) override;
 
   // Validate partial results
@@ -575,7 +575,7 @@ void Camera3SimpleCaptureFrames::GetWaiverKeys(
     waiver_keys->insert(ANDROID_SENSOR_NOISE_PROFILE);
   }
 
-  // TODO: CONTROL_AE_REGIONS, CONTROL_AWB_REGIONS, CONTROL_AF_REGIONS?
+  // TODO(hywu): CONTROL_AE_REGIONS, CONTROL_AWB_REGIONS, CONTROL_AF_REGIONS?
 
   if (cam_device_.GetStaticInfo()->IsHardwareLevelAtLeastFull()) {
     return;
@@ -723,13 +723,13 @@ class Camera3ResultTimestampsTest
  public:
   Camera3ResultTimestampsTest() : Camera3FrameFixture(GetParam()) {}
 
-  virtual void SetUp() override;
+  void SetUp() override;
 
  protected:
   virtual void Notify(const camera3_notify_msg* msg);
 
   // Process result metadata and/or output buffers
-  virtual void ProcessResultMetadataOutputBuffers(
+  void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
       CameraMetadataUniquePtr metadata,
       std::vector<BufferHandleUniquePtr> buffers) override;
@@ -819,7 +819,7 @@ class Camera3InvalidBufferTest : public Camera3FrameFixture,
  public:
   Camera3InvalidBufferTest() : Camera3FrameFixture(GetParam()) {}
 
-  virtual void SetUp() override;
+  void SetUp() override;
 
  protected:
   // Callback functions from HAL device

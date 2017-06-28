@@ -2,7 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "camera3_device_impl.h"
+#include "camera3_test/camera3_device_impl.h"
+
+#include <utility>
 
 #include <sync/sync.h>
 
@@ -499,7 +501,7 @@ void Camera3DeviceImpl::ProcessCaptureResultOnThread(
     ASSERT_EQ(-1, stream_buffer.acquire_fence)
         << "Capture result buffer fence error";
 
-    // TODO: check buffers for a given streams are returned in order
+    // TODO(hywu): check buffers for a given streams are returned in order
     if (stream_buffer.release_fence != -1) {
       ASSERT_EQ(0, sync_wait(stream_buffer.release_fence, 1000))
           << "Error waiting on buffer acquire fence";
