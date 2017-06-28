@@ -299,7 +299,7 @@ MigrationHelper::MigrationHelper(Platform* platform,
       failed_operation_type_(kMigrationFailedAtOtherOperation),
       failed_path_type_(kMigrationFailedUnderOther),
       failed_error_type_(base::File::FILE_OK),
-      num_job_threads_(base::SysInfo::NumberOfProcessors() * 2),
+      num_job_threads_(0),
       max_job_list_size_(kDefaultMaxJobListSize),
       worker_pool_(new WorkerPool(this)) {}
 
@@ -340,18 +340,26 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
   }
   const uint64_t kRequiredFreeSpaceForMainThread =
       kFreeSpaceBuffer + total_directory_byte_count_;
+  // Calculate required space used by the number of job threads (or a minimum of
+  // 1 thread of the number is dynamic)
   const uint64_t kRequiredFreeSpace =
-      kRequiredFreeSpaceForMainThread + num_job_threads_ * kErasureBlockSize;
+      kRequiredFreeSpaceForMainThread +
+      (num_job_threads_ == 0 ? 1 : num_job_threads_) * kErasureBlockSize;
   if (static_cast<uint64_t>(initial_free_space_bytes_) < kRequiredFreeSpace) {
     LOG(ERROR) << "Not enough space to begin the migration";
     status_reporter.SetLowDiskSpaceFailure();
     return false;
   }
+  const uint64_t kFreeSpaceForJobThreads =
+      initial_free_space_bytes_ - kRequiredFreeSpaceForMainThread;
+  if (num_job_threads_ == 0) {
+    // Limit the number of job threads based on the available free space.
+    num_job_threads_ =
+        std::min(static_cast<uint64_t>(base::SysInfo::NumberOfProcessors() * 2),
+                 kFreeSpaceForJobThreads / kErasureBlockSize);
+  }
   effective_chunk_size_ =
-      std::min(max_chunk_size_,
-               (initial_free_space_bytes_ - kRequiredFreeSpaceForMainThread) /
-                   num_job_threads_);
-  // TODO(hashimoto): Reduce the number of threads when disk space is limited.
+      std::min(max_chunk_size_, kFreeSpaceForJobThreads / num_job_threads_);
   if (effective_chunk_size_ > kErasureBlockSize)
     effective_chunk_size_ =
         effective_chunk_size_ - (effective_chunk_size_ % kErasureBlockSize);
