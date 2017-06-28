@@ -162,6 +162,7 @@ void CameraHalServerImpl::RegisterCameraHal() {
     main_task_runner_->PostTask(
         FROM_HERE, base::Bind(&CameraHalServerImpl::ExitOnMainThread,
                               base::Unretained(this), ENOENT));
+    return;
   }
 
   camera_module_t* camera_module = static_cast<camera_module_t*>(
@@ -172,6 +173,7 @@ void CameraHalServerImpl::RegisterCameraHal() {
     main_task_runner_->PostTask(
         FROM_HERE, base::Bind(&CameraHalServerImpl::ExitOnMainThread,
                               base::Unretained(this), ELIBBAD));
+    return;
   }
 
   camera_hal_adapter_.reset(new CameraHalAdapter(camera_module));
@@ -182,6 +184,7 @@ void CameraHalServerImpl::RegisterCameraHal() {
     main_task_runner_->PostTask(
         FROM_HERE, base::Bind(&CameraHalServerImpl::ExitOnMainThread,
                               base::Unretained(this), ENODEV));
+    return;
   }
 
   dispatcher_.set_connection_error_handler(base::Bind(
