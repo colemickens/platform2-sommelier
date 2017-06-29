@@ -42,6 +42,9 @@ constexpr float kTgtRenewValidityLifetimeFraction = 0.8f;
 static_assert(kTgtRenewValidityLifetimeFraction > 0.0f, "");
 static_assert(kTgtRenewValidityLifetimeFraction < 1.0f, "");
 
+// Size limit for GetKerberosFiles (1 MB).
+const size_t kKrb5FileSizeLimit = 1024 * 1024;
+
 // Kerberos configuration file data.
 const char kKrb5ConfData[] =
     "[libdefaults]\n"
@@ -92,6 +95,18 @@ const char kTgtRenewalHeader[] = "TGT RENEWAL - ";
 // Returns true if the given principal is a machine principal.
 bool IsMachine(const std::string& principal) {
   return Contains(principal, "$@");
+}
+
+// Reads the file at |path| into |data|. Returns |ERROR_LOCAL_IO| if the file
+// could not be read.
+ErrorType ReadFile(const base::FilePath& path, std::string* data) {
+  data->clear();
+  if (!base::ReadFileToStringWithMaxSize(path, data, kKrb5FileSizeLimit)) {
+    PLOG(ERROR) << "Failed to read '" << path.value() << "'";
+    data->clear();
+    return ERROR_LOCAL_IO;
+  }
+  return ERROR_NONE;
 }
 
 // Formats a time delta in 1h 2m 3s format.
@@ -245,6 +260,16 @@ ErrorType TgtManager::AcquireTgtWithPassword(const std::string& principal,
   // If it worked, re-trigger the TGT renewal task.
   if (error == ERROR_NONE && tgt_autorenewal_enabled_)
     UpdateTgtAutoRenewal();
+
+  // If there was no error, assume that the Kerberos credential cache changed.
+  if (error == ERROR_NONE)
+    kerberos_files_dirty_ = true;
+
+  // Trigger the files-changed signal.
+  if (kerberos_files_dirty_ && !kerberos_files_changed_.is_null())
+    kerberos_files_changed_.Run();
+  kerberos_files_dirty_ = false;
+
   return error;
 }
 
@@ -277,6 +302,39 @@ ErrorType TgtManager::AcquireTgtWithKeytab(const std::string& principal,
   if (error == ERROR_NONE && tgt_autorenewal_enabled_)
     UpdateTgtAutoRenewal();
   return error;
+}
+
+ErrorType TgtManager::GetKerberosFiles(KerberosFiles* files) {
+  files->clear_krb5cc();
+  files->clear_krb5conf();
+
+  ErrorType error;
+  std::string krb5cc;
+  {
+    // Note: The krb5cc is readable only by authpolicyd-exec.
+    ScopedSwitchToSavedUid switch_scope;
+    base::FilePath krb5cc_path(paths_->Get(credential_cache_path_));
+    if (!base::PathExists(krb5cc_path))
+      return ERROR_NONE;
+    error = ReadFile(krb5cc_path, &krb5cc);
+    if (error != ERROR_NONE)
+      return error;
+  }
+
+  std::string krb5conf;
+  base::FilePath krb5conf_path(paths_->Get(config_path_));
+  error = ReadFile(krb5conf_path, &krb5conf);
+  if (error != ERROR_NONE)
+    return error;
+
+  files->mutable_krb5cc()->assign(krb5cc.begin(), krb5cc.end());
+  files->mutable_krb5conf()->assign(krb5conf.begin(), krb5conf.end());
+  return ERROR_NONE;
+}
+
+void TgtManager::SetKerberosFilesChangedCallback(
+    const base::Closure& callback) {
+  kerberos_files_changed_ = callback;
 }
 
 void TgtManager::EnableTgtAutoRenewal(bool enabled) {
@@ -392,11 +450,21 @@ ErrorType TgtManager::WriteKrb5Conf() const {
     data += base::StringPrintf(
         kKrb5RealmData, realm_.c_str(), kdc_ip_.c_str(), kdc_ip_.c_str());
   const base::FilePath krbconf_path(paths_->Get(config_path_));
-  const int data_size = static_cast<int>(data.size());
-  if (base::WriteFile(krbconf_path, data.c_str(), data_size) != data_size) {
-    LOG(ERROR) << "Failed to write krb5 conf file '" << krbconf_path.value()
-               << "'";
-    return ERROR_LOCAL_IO;
+
+  // Only set kerberos_files_dirty_ if the config data has actually changed.
+  // Otherwise, the KerberosFilesChanged signal gets triggered way too often,
+  // causing the krb5cc in Chrome to reset all the time.
+  std::string prev_data;
+  if (!base::ReadFileToStringWithMaxSize(
+          krbconf_path, &prev_data, kKrb5FileSizeLimit) ||
+      data != prev_data) {
+    const int data_size = static_cast<int>(data.size());
+    if (base::WriteFile(krbconf_path, data.c_str(), data_size) != data_size) {
+      LOG(ERROR) << "Failed to write krb5 conf file '" << krbconf_path.value()
+                 << "'";
+      return ERROR_LOCAL_IO;
+    }
+    kerberos_files_dirty_ = true;
   }
 
   return ERROR_NONE;

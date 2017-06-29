@@ -38,6 +38,35 @@
     </method>
 
     <!--
+         GetUserKerberosFiles:
+         @account_id: Object GUID of the user account.
+         @error_code: Returned error code, see ErrorType enum.
+         @kerberos_files_blob: Serialized KerberosFiles protobuf.
+
+         Gets the currently logged-in user's Kerberos credential cache (krb5cc)
+         and configuration (krb5.conf) files from authpolicyd.
+         Returns ERROR_NONE and a blob with empty files if the krb5cc file does
+         not exist, e.g. since AuthenticateUser has not been called yet or
+         failed since the user was offline during authentication.
+         Returns ERROR_LOCAL_IO if the krb5cc file exists, but any file could
+         not be read.
+    -->
+    <method name="GetUserKerberosFiles">
+      <arg name="account_id" type="s" direction="in"/>
+      <arg name="error_code" type="i" direction="out"/>
+      <arg name="kerberos_files_blob" type="ay" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
+    <!--
+         UserKerberosFilesChanged:
+
+         Signal emitted if either the currently logged-in user's Kerberos
+         credential cache (krb5cc) or configuration (krb5.conf) files change.
+    -->
+    <signal name="UserKerberosFilesChanged"/>
+
+    <!--
          JoinADDomain:
          @machine_name: Netbios name of the machine (aka device) to join.
          @user_principal_name: user@workgroup.domain, used for authentication.

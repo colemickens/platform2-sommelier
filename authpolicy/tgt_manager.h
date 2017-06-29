@@ -68,6 +68,16 @@ class TgtManager {
                                  const std::string& realm,
                                  const std::string& kdc_ip);
 
+  // Returns the Kerberos credentials cache and the configuration file. Returns
+  // ERROR_NONE if the credentials cache is missing and ERROR_LOCAL_IO if any of
+  // the files failed to read.
+  ErrorType GetKerberosFiles(KerberosFiles* files);
+
+  // Sets a callback that gets called when either the Kerberos credential cache
+  // or the configuration file changes on disk. Use in combination with
+  // GetKerberosFiles() to get the latest files.
+  void SetKerberosFilesChangedCallback(const base::Closure& callback);
+
   // If enabled, the TGT renews automatically by scheduling RenewTgt()
   // periodically on the |task_runner_| (usually the D-Bus thread). Renewal must
   // happen within the the TGT's validity lifetime. The scheduling delay is a
@@ -114,14 +124,15 @@ class TgtManager {
   // appropriate error messages.
   void AutoRenewTgt();
 
-  scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
-  const PathService* paths_ = nullptr;         // File paths, not owned.
-  AuthPolicyMetrics* metrics_ = nullptr;       // UMA statistics, not owned.
-  const protos::DebugFlags* flags_ = nullptr;  // Debug flags, not owned.
-  const JailHelper* jail_helper_ = nullptr;    // Minijail related, not owned.
-  Anonymizer* anonymizer_ = nullptr;           // Log anonymizer, not owned.
-  Path config_path_ = Path::INVALID;
-  Path credential_cache_path_ = Path::INVALID;
+  const scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
+  const PathService* const paths_ = nullptr;    // File paths, not owned.
+  AuthPolicyMetrics* const metrics_ = nullptr;  // UMA statistics, not owned.
+  const protos::DebugFlags* const flags_ = nullptr;  // Debug flags, not owned.
+  const JailHelper* const jail_helper_ = nullptr;    // Minijail, not owned.
+  Anonymizer* const anonymizer_ = nullptr;  // Log anonymizer, not owned.
+  const Path config_path_ = Path::INVALID;
+  const Path credential_cache_path_ = Path::INVALID;
+  base::Closure kerberos_files_changed_;
 
   // Realm and key distribution center (KDC) IP address written to the Kerberos
   // configuration file. |kdc_ip_| is optional, if empty, it is not written.
@@ -141,6 +152,11 @@ class TgtManager {
 
   // Whether to sleep when retrying kinit (disable for testing).
   bool kinit_retry_sleep_enabled_ = true;
+
+  // If true, the Kerberos files changed and |kerberos_files_changed_| needs to
+  // be called if it exists. Prevents that signals are fired too often, e.g. if
+  // both krb5cc and config change in the same call.
+  mutable bool kerberos_files_dirty_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(TgtManager);
 };

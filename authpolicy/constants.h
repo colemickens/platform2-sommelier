@@ -26,11 +26,6 @@ extern const char kKrb5ConfEnvKey[];
 // Prefix for some environment variable values that specify a file path.
 extern const char kFilePrefix[];
 
-// Prefix for Active Directory account ids. A prefixed |account_id| is usually
-// called |account_id_key|. Must match Chromium AccountId::kKeyAdIdPrefix.
-// Exposed for unit tests.
-extern const char kActiveDirectoryPrefix[];
-
 // Net ads search keys.
 extern const char kSearchObjectGUID[];
 extern const char kSearchSAMAccountName[];

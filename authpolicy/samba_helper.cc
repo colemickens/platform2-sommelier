@@ -35,6 +35,10 @@ const int octet_pos_map[16][2] = {  // Maps GUID position to octet position.
 const size_t kGuidSize = 36;   // 16 bytes, xx each byte, plus 4 '-'.
 const size_t kOctetSize = 48;  // 16 bytes, \XX each byte.
 
+// Prefix for Active Directory account ids. A prefixed |account_id| is usually
+// called |account_id_key|. Must match Chromium AccountId::kKeyAdIdPrefix.
+const char kActiveDirectoryPrefix[] = "a-";
+
 }  // namespace
 
 namespace authpolicy {
@@ -155,6 +159,10 @@ std::string OctetStringToGuidForTesting(const std::string& octet_str) {
     }
   }
   return guid;
+}
+
+std::string GetAccountIdKey(const std::string& account_id) {
+  return kActiveDirectoryPrefix + account_id;
 }
 
 void LogLongString(const std::string& header,

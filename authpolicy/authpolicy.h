@@ -67,6 +67,11 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
                      int32_t* error,
                      std::vector<uint8_t>* user_status_blob) override;
 
+  // |kerberos_files_blob| is a serialized KerberosFiles profobuf.
+  void GetUserKerberosFiles(const std::string& account_id,
+                            int32_t* error,
+                            std::vector<uint8_t>* kerberos_files_blob) override;
+
   int32_t JoinADDomain(const std::string& machine_name,
                        const std::string& user_principal_name,
                        const dbus::FileDescriptor& password_fd) override;
@@ -86,7 +91,15 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
     return samba_.GetAnonymizerForTesting();
   }
 
+  // Renew the user ticket-granting-ticket.
+  ErrorType RenewUserTgtForTesting() { return samba_.RenewUserTgtForTesting(); }
+
  private:
+  // Gets triggered by when the Kerberos credential cache or the configuration
+  // file of the currently logged in user change. Triggers the
+  // UserKerberosFilesChanged signal.
+  void OnUserKerberosFilesChanged();
+
   // Sends policy to SessionManager. Assumes |policy_blob| contains user policy
   // if |account_id_key| is not nullptr, otherwise assumes it's device policy.
   void StorePolicy(const std::string& policy_blob,

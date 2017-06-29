@@ -32,6 +32,8 @@ extern const char kAccessDeniedUserPrincipal[];
 // Triggers an error in kinit if krb5.conf contains the KDC IP, which causes
 // SambaInterface to retry kinit without KDC IP in krb5.conf.
 extern const char kKdcRetryUserPrincipal[];
+// Same as above, but the second try fails as well.
+extern const char kKdcRetryFailsUserPrincipal[];
 // Triggers quota error in net ads join (user cannot add additional machines).
 extern const char kInsufficientQuotaUserPrincipal[];
 // Triggers kinit to produce a TGT that klist interprets as expired.

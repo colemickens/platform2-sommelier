@@ -20,21 +20,22 @@ namespace authpolicy {
 // Timer metrics. Measure execution time of certain commands or functions. Keep
 // in sync with kTimerHistogramParams!
 enum TimerType {
-  TIMER_NET_ADS_GPO_LIST,       // net ads gpo list.
-  TIMER_NET_ADS_INFO,           // net ads info.
-  TIMER_NET_ADS_JOIN,           // net ads join.
-  TIMER_NET_ADS_SEARCH,         // net ads search.
-  TIMER_NET_ADS_WORKGROUP,      // net ads workgroup.
-  TIMER_KINIT,                  // kinit.
-  TIMER_KLIST,                  // klist.
-  TIMER_SMBCLIENT,              // smbclient.
-  TIMER_AUTHENTICATE_USER,      // User authentication D-Bus call.
-  TIMER_GET_USER_STATUS,        // User status query D-Bus call.
-  TIMER_JOIN_AD_DOMAIN,         // Domain join D-Bus call.
-  TIMER_REFRESH_USER_POLICY,    // User/device policy fetch D-Bus calls,
-  TIMER_REFRESH_DEVICE_POLICY,  //   including the Session Manager calls.
-  TIMER_COUNT,                  // Total number of timers.
-  TIMER_NONE,                   // Invalid/no timer.
+  TIMER_NET_ADS_GPO_LIST,         // net ads gpo list.
+  TIMER_NET_ADS_INFO,             // net ads info.
+  TIMER_NET_ADS_JOIN,             // net ads join.
+  TIMER_NET_ADS_SEARCH,           // net ads search.
+  TIMER_NET_ADS_WORKGROUP,        // net ads workgroup.
+  TIMER_KINIT,                    // kinit.
+  TIMER_KLIST,                    // klist.
+  TIMER_SMBCLIENT,                // smbclient.
+  TIMER_AUTHENTICATE_USER,        // User authentication D-Bus call.
+  TIMER_GET_USER_STATUS,          // User status query D-Bus call.
+  TIMER_GET_USER_KERBEROS_FILES,  // User kerberos files query D-Bus call.
+  TIMER_JOIN_AD_DOMAIN,           // Domain join D-Bus call.
+  TIMER_REFRESH_USER_POLICY,      // User/device policy fetch D-Bus calls,
+  TIMER_REFRESH_DEVICE_POLICY,    //   including the Session Manager calls.
+  TIMER_COUNT,                    // Total number of timers.
+  TIMER_NONE,                     // Invalid/no timer.
 };
 
 // Normal exponential metrics. Keep in sync with kMetricHistogramParams!
@@ -51,6 +52,7 @@ enum MetricType {
 enum DBusCallType {
   DBUS_CALL_AUTHENTICATE_USER,
   DBUS_CALL_GET_USER_STATUS,
+  DBUS_CALL_GET_USER_KERBEROS_FILES,
   DBUS_CALL_JOIN_AD_DOMAIN,
   DBUS_CALL_REFRESH_USER_POLICY,
   DBUS_CALL_REFRESH_DEVICE_POLICY,

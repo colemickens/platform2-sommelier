@@ -23,6 +23,7 @@ const char kNonExistingUserPrincipal[] = "non_existing_user@REALM.COM";
 const char kNetworkErrorUserPrincipal[] = "network_error_user@REALM.COM";
 const char kAccessDeniedUserPrincipal[] = "access_denied_user@REALM.COM";
 const char kKdcRetryUserPrincipal[] = "kdc_retry_user@REALM.COM";
+const char kKdcRetryFailsUserPrincipal[] = "kdc_retry_fails_user@REALM.COM";
 const char kInsufficientQuotaUserPrincipal[] =
     "insufficient_quota_user@REALM.COM";
 const char kExpiredTgtUserPrincipal[] = "tgt_expired@REALM.COM";

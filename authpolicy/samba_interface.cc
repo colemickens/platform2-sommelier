@@ -256,7 +256,8 @@ bool CheckFlagsDefaultLevelValid(const base::FilePath& default_level_path) {
 SambaInterface::SambaInterface(
     scoped_refptr<base::SingleThreadTaskRunner> task_runner,
     AuthPolicyMetrics* metrics,
-    const PathService* path_service)
+    const PathService* path_service,
+    const base::Closure& user_kerberos_files_changed)
     : metrics_(metrics),
       paths_(path_service),
       anonymizer_(base::MakeUnique<Anonymizer>()),
@@ -279,6 +280,8 @@ SambaInterface::SambaInterface(
                           Path::DEVICE_CREDENTIAL_CACHE) {
   DCHECK(paths_);
   LoadFlagsDefaultLevel();
+  user_tgt_manager_.SetKerberosFilesChangedCallback(
+      user_kerberos_files_changed);
 }
 
 SambaInterface::~SambaInterface() = default;
@@ -341,7 +344,7 @@ ErrorType SambaInterface::AuthenticateUserInternal(
     int password_fd,
     ActiveDirectoryAccountInfo* account_info) {
   if (!account_id.empty())
-    SetUser(kActiveDirectoryPrefix + account_id);
+    SetUser(GetAccountIdKey(account_id));
 
   // Split user_principal_name into parts and normalize.
   std::string user_name, realm, workgroup, normalized_upn;
@@ -369,7 +372,7 @@ ErrorType SambaInterface::AuthenticateUserInternal(
     return error;
 
   if (account_id.empty())
-    SetUser(kActiveDirectoryPrefix + account_info->account_id());
+    SetUser(GetAccountIdKey(account_info->account_id()));
 
   // Update normalized_upn. This handles the situation when the user name
   // changes on the server and the user logs in with their old user name (e.g.
@@ -399,7 +402,7 @@ ErrorType SambaInterface::AuthenticateUserInternal(
 ErrorType SambaInterface::GetUserStatus(
     const std::string& account_id, ActiveDirectoryUserStatus* user_status) {
   ReloadDebugFlags();
-  SetUser(kActiveDirectoryPrefix + account_id);
+  SetUser(GetAccountIdKey(account_id));
 
   // Write Samba configuration file.
   ErrorType error = EnsureWorkgroupAndWriteSmbConf();
@@ -438,6 +441,13 @@ ErrorType SambaInterface::GetUserStatus(
   user_status->set_password_status(password_status);
   user_status->set_last_auth_error(last_auth_error_);
   return ERROR_NONE;
+}
+
+ErrorType SambaInterface::GetUserKerberosFiles(const std::string& account_id,
+                                               KerberosFiles* files) {
+  ReloadDebugFlags();
+  SetUser(GetAccountIdKey(account_id));
+  return user_tgt_manager_.GetKerberosFiles(files);
 }
 
 ErrorType SambaInterface::JoinMachine(const std::string& machine_name,
@@ -845,8 +855,8 @@ ErrorType SambaInterface::ReadConfiguration() {
   std::string config_blob;
   if (!base::ReadFileToStringWithMaxSize(
           config_path, &config_blob, kConfigSizeLimit)) {
-    LOG(ERROR) << "Failed to read configuration file '" << config_path.value()
-               << "'";
+    PLOG(ERROR) << "Failed to read configuration file '" << config_path.value()
+                << "'";
     return ERROR_LOCAL_IO;
   }
 

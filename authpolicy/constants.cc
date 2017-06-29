@@ -20,8 +20,6 @@ const char kKrb5CCEnvKey[] = "KRB5CCNAME";
 const char kKrb5ConfEnvKey[] = "KRB5_CONFIG";
 const char kFilePrefix[] = "FILE:";
 
-const char kActiveDirectoryPrefix[] = "a-";
-
 const char kSearchObjectGUID[] = "objectGUID";
 const char kSearchSAMAccountName[] = "sAMAccountName";
 const char kSearchCommonName[] = "cn";

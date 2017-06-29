@@ -50,6 +50,19 @@ DBusCallType GetPolicyDBusCallType(bool is_user_policy) {
                         : DBUS_CALL_REFRESH_DEVICE_POLICY;
 }
 
+// Serializes |proto| to the byte array |proto_blob|. Returns ERROR_NONE on
+// success and ERROR_PARSE_FAILED otherwise.
+template <typename ProtoType>
+ErrorType SerializeProto(ProtoType proto, std::vector<uint8_t>* proto_blob) {
+  std::string buffer;
+  if (!proto.SerializeToString(&buffer)) {
+    LOG(ERROR) << "Failed to serialize proto";
+    return ERROR_PARSE_FAILED;
+  }
+  proto_blob->assign(buffer.begin(), buffer.end());
+  return ERROR_NONE;
+}
+
 }  // namespace
 
 // static
@@ -65,7 +78,11 @@ AuthPolicy::AuthPolicy(AuthPolicyMetrics* metrics,
                        const PathService* path_service)
     : org::chromium::AuthPolicyAdaptor(this),
       metrics_(metrics),
-      samba_(base::ThreadTaskRunnerHandle::Get(), metrics, path_service),
+      samba_(base::ThreadTaskRunnerHandle::Get(),
+             metrics,
+             path_service,
+             base::Bind(&AuthPolicy::OnUserKerberosFilesChanged,
+                        base::Unretained(this))),
       weak_ptr_factory_(this) {}
 
 ErrorType AuthPolicy::Initialize(bool expect_config) {
@@ -103,15 +120,8 @@ void AuthPolicy::AuthenticateUser(const std::string& user_principal_name,
   authpolicy::ActiveDirectoryAccountInfo account_info;
   ErrorType error = samba_.AuthenticateUser(
       user_principal_name, account_id, password_fd.value(), &account_info);
-  if (error == ERROR_NONE) {
-    std::string buffer;
-    if (!account_info.SerializeToString(&buffer)) {
-      LOG(ERROR) << "Failed to serialize account data";
-      error = ERROR_PARSE_FAILED;
-    } else {
-      account_info_blob->assign(buffer.begin(), buffer.end());
-    }
-  }
+  if (error == ERROR_NONE)
+    error = SerializeProto(account_info, account_info_blob);
   PrintError("AuthenticateUser", error);
   metrics_->ReportDBusResult(DBUS_CALL_AUTHENTICATE_USER, error);
   *int_error = static_cast<int>(error);
@@ -125,17 +135,26 @@ void AuthPolicy::GetUserStatus(const std::string& account_id,
 
   authpolicy::ActiveDirectoryUserStatus user_status;
   ErrorType error = samba_.GetUserStatus(account_id, &user_status);
-  if (error == ERROR_NONE) {
-    std::string buffer;
-    if (!user_status.SerializeToString(&buffer)) {
-      LOG(ERROR) << "Failed to serialize user status";
-      error = ERROR_PARSE_FAILED;
-    } else {
-      user_status_blob->assign(buffer.begin(), buffer.end());
-    }
-  }
+  if (error == ERROR_NONE)
+    error = SerializeProto(user_status, user_status_blob);
   PrintError("GetUserStatus", error);
   metrics_->ReportDBusResult(DBUS_CALL_GET_USER_STATUS, error);
+  *int_error = static_cast<int>(error);
+}
+
+void AuthPolicy::GetUserKerberosFiles(
+    const std::string& account_id,
+    int32_t* int_error,
+    std::vector<uint8_t>* kerberos_files_blob) {
+  LOG(INFO) << "Received 'GetUserKerberosFiles' request";
+  ScopedTimerReporter timer(TIMER_GET_USER_KERBEROS_FILES);
+
+  authpolicy::KerberosFiles kerberos_files;
+  ErrorType error = samba_.GetUserKerberosFiles(account_id, &kerberos_files);
+  if (error == ERROR_NONE)
+    error = SerializeProto(kerberos_files, kerberos_files_blob);
+  PrintError("GetUserKerberosFiles", error);
+  metrics_->ReportDBusResult(DBUS_CALL_GET_USER_KERBEROS_FILES, error);
   *int_error = static_cast<int>(error);
 }
 
@@ -207,6 +226,11 @@ std::string AuthPolicy::SetDefaultLogLevel(int32_t level) {
   }
   samba_.SetDefaultLogLevel(static_cast<AuthPolicyFlags::DefaultLevel>(level));
   return std::string();
+}
+
+void AuthPolicy::OnUserKerberosFilesChanged() {
+  LOG(INFO) << "Firing signal UserKerberosFilesChanged";
+  SendUserKerberosFilesChangedSignal();
 }
 
 void AuthPolicy::StorePolicy(const std::string& policy_blob,

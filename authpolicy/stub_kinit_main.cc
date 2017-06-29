@@ -37,6 +37,7 @@ const char kCannotContactKdc[] = "Cannot contact any KDC";
 const char kKdcIpKey[] = "kdc = [";
 const char kPasswordWillExpireWarning[] =
     "Warning: Your password will expire in 7 days on Fri May 19 14:28:41 2017";
+const char kRefresh[] = "-R";
 
 // Helper file for simulating account propagation issues.
 const char kPropagationTestFile[] = "propagation_test";
@@ -112,6 +113,12 @@ int HandleCommandLine(const std::string& command_line) {
     return kExitCodeError;
   }
 
+  // Request for TGT refresh. The only test that uses it expects a failure.
+  if (StartsWithCaseSensitive(command_line, kRefresh)) {
+    WriteOutput("", kCannotContactKdc);
+    return kExitCodeError;
+  }
+
   // Stub non-existing account error.
   if (StartsWithCaseSensitive(command_line, kNonExistingUserPrincipal)) {
     WriteOutput("",
@@ -136,7 +143,13 @@ int HandleCommandLine(const std::string& command_line) {
     return kExitCodeOk;
   }
 
-  // Stub expired credentials cache.
+  // Stub kinit retry, but fail the second time as well.
+  if (StartsWithCaseSensitive(command_line, kKdcRetryFailsUserPrincipal)) {
+    WriteOutput("", kCannotContactKdc);
+    return kExitCodeError;
+  }
+
+  // Stub expired credential cache.
   if (StartsWithCaseSensitive(command_line, kExpiredTgtUserPrincipal)) {
     WriteKrb5CC(kExpiredKrb5CCData);
     return kExitCodeOk;

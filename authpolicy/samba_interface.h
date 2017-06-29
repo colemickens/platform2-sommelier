@@ -40,7 +40,8 @@ class SambaInterface {
  public:
   SambaInterface(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
                  AuthPolicyMetrics* metrics,
-                 const PathService* path_service);
+                 const PathService* path_service,
+                 const base::Closure& user_kerberos_files_changed);
 
   ~SambaInterface();
 
@@ -75,6 +76,11 @@ class SambaInterface {
   ErrorType GetUserStatus(const std::string& account_id,
                           ActiveDirectoryUserStatus* user_status);
 
+  // Gets the user Kerberos credential cache (krb5cc) and configuration
+  // (krb5.conf) files if they exist. Does not set |files| on error.
+  ErrorType GetUserKerberosFiles(const std::string& account_id,
+                                 KerberosFiles* files);
+
   // Joins the local device with name |machine_name| to an Active Directory
   // domain. A user principal name and password are required for authentication
   // (see |AuthenticateUser| for details).
@@ -84,10 +90,11 @@ class SambaInterface {
 
   // Downloads user policy from the Active Directory server and stores it in a
   // serialized user policy protobuf string (see |CloudPolicySettings|).
-  // |account_id| is the unique user GUID returned from |AuthenticateUser|. The
-  // user's Kerberos authentication ticket must still be valid. If this
-  // operation fails, call |AuthenticateUser| and try again.
-  ErrorType FetchUserGpos(const std::string& account_id,
+  // |account_id_key| is the unique user GUID returned from |AuthenticateUser|
+  // in |account_info|, prefixed by "a-". The user's Kerberos authentication
+  // ticket must still be valid. If this operation fails, call
+  // |AuthenticateUser| and try again.
+  ErrorType FetchUserGpos(const std::string& account_id_key,
                           std::string* policy_blob);
 
   // Downloads device policy from the Active Directory server and stores it in a
@@ -112,6 +119,9 @@ class SambaInterface {
   const Anonymizer* GetAnonymizerForTesting() const {
     return anonymizer_.get();
   }
+
+  // Renew the user ticket-granting-ticket.
+  ErrorType RenewUserTgtForTesting() { return user_tgt_manager_.RenewTgt(); }
 
  private:
   // Actual implementation of AuthenticateUser() (see above). The method is
