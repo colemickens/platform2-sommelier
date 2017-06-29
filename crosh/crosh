@@ -586,6 +586,29 @@ cmd_set_wake_on_lan() (
   esac
 )
 
+USAGE_wifi_power_save='< status | enable | disable >'
+HELP_wifi_power_save='
+  Enable or disable WiFi power save mode.  This command is not persistent across
+  system restarts.
+'
+cmd_wifi_power_save() (
+  case "$1" in
+    "status"|"")
+      debugd GetWifiPowerSave
+      ;;
+    "enable")
+      debugd SetWifiPowerSave "boolean:true"
+      ;;
+    "disable")
+      debugd SetWifiPowerSave "boolean:false"
+      ;;
+    *)
+      help "unknown option: $1"
+      return 1
+      ;;
+  esac
+)
+
 USAGE_network_logging='<wifi | cellular | ethernet | reset>'
 HELP_network_logging='
   A function that enables a predefined set of tags useful for

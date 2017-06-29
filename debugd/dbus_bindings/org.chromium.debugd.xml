@@ -841,5 +841,28 @@
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="SetWifiPowerSave">
+      <tp:docstring>
+        Enable/disable WiFi power save mode.
+      </tp:docstring>
+      <arg name="enable" type="b" direction="in">
+        <tp:docstring>
+          Whether to enable or disable.
+        </tp:docstring>
+      </arg>
+      <arg name="status" type="s" direction="out">
+        New power save mode, or error.
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="GetWifiPowerSave">
+      <tp:docstring>
+        Show current WiFi power save mode.
+      </tp:docstring>
+      <arg name="status" type="s" direction="out">
+        Current power save mode.
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>

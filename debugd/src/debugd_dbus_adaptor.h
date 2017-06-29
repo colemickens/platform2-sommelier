@@ -46,6 +46,7 @@
 #include "debugd/src/systrace_tool.h"
 #include "debugd/src/tracepath_tool.h"
 #include "debugd/src/wifi_debug_tool.h"
+#include "debugd/src/wifi_power_tool.h"
 #include "debugd/src/wimax_status_tool.h"
 
 namespace debugd {
@@ -155,11 +156,14 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   bool SetWifiDriverDebug(int32_t flags) override;
   void ContainerStarted() override;
   void ContainerStopped() override;
+  std::string SetWifiPowerSave(bool enable) override;
+  std::string GetWifiPowerSave() override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
 
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
+  std::unique_ptr<BatteryTool> battery_tool_;
   std::unique_ptr<ContainerTool> container_tool_;
   std::unique_ptr<CrashSenderTool> crash_sender_tool_;
   std::unique_ptr<CupsTool> cups_tool_;
@@ -181,11 +185,11 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<RouteTool> route_tool_;
   std::unique_ptr<StorageTool> storage_tool_;
   std::unique_ptr<SwapTool> swap_tool_;
-  std::unique_ptr<BatteryTool> battery_tool_;
   std::unique_ptr<SysrqTool> sysrq_tool_;
   std::unique_ptr<SystraceTool> systrace_tool_;
   std::unique_ptr<TracePathTool> tracepath_tool_;
   std::unique_ptr<WifiDebugTool> wifi_debug_tool_;
+  std::unique_ptr<WifiPowerTool> wifi_power_tool_;
   std::unique_ptr<WiMaxStatusTool> wimax_status_tool_;
 };
 

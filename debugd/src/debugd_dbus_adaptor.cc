@@ -42,22 +42,23 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(
       base::MakeUnique<RestrictedToolWrapper<DevFeaturesTool>>(bus);
   example_tool_ = base::MakeUnique<ExampleTool>();
   icmp_tool_ = base::MakeUnique<ICMPTool>();
+  log_tool_ = base::MakeUnique<LogTool>(bus);
+  memory_tool_ = base::MakeUnique<MemtesterTool>();
   modem_status_tool_ = base::MakeUnique<ModemStatusTool>();
   netif_tool_ = base::MakeUnique<NetifTool>();
   network_status_tool_ = base::MakeUnique<NetworkStatusTool>();
   oom_adj_tool_ = base::MakeUnique<OomAdjTool>();
   packet_capture_tool_ = base::MakeUnique<PacketCaptureTool>();
+  perf_tool_ = base::MakeUnique<PerfTool>();
   ping_tool_ = base::MakeUnique<PingTool>();
   route_tool_ = base::MakeUnique<RouteTool>();
+  storage_tool_ = base::MakeUnique<StorageTool>();
+  swap_tool_ = base::MakeUnique<SwapTool>();
   sysrq_tool_ = base::MakeUnique<SysrqTool>();
   systrace_tool_ = base::MakeUnique<SystraceTool>();
   tracepath_tool_ = base::MakeUnique<TracePathTool>();
-  log_tool_ = base::MakeUnique<LogTool>(bus);
-  perf_tool_ = base::MakeUnique<PerfTool>();
-  storage_tool_ = base::MakeUnique<StorageTool>();
-  swap_tool_ = base::MakeUnique<SwapTool>();
-  memory_tool_ = base::MakeUnique<MemtesterTool>();
   wifi_debug_tool_ = base::MakeUnique<WifiDebugTool>();
+  wifi_power_tool_ = base::MakeUnique<WifiPowerTool>();
   wimax_status_tool_ = base::MakeUnique<WiMaxStatusTool>();
   session_manager_proxy_ = base::MakeUnique<SessionManagerProxy>(bus);
   if (dev_features_tool_wrapper_->restriction().InDevMode() &&
@@ -390,6 +391,14 @@ void DebugdDBusAdaptor::ContainerStarted() {
 
 void DebugdDBusAdaptor::ContainerStopped() {
   container_tool_->ContainerStopped();
+}
+
+std::string DebugdDBusAdaptor::SetWifiPowerSave(bool enable) {
+  return wifi_power_tool_->SetWifiPowerSave(enable);
+}
+
+std::string DebugdDBusAdaptor::GetWifiPowerSave() {
+  return wifi_power_tool_->GetWifiPowerSave();
 }
 
 }  // namespace debugd
