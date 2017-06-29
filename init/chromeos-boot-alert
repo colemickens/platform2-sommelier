@@ -213,6 +213,15 @@ mode_block_devmode() {
   sleep infinity
 }
 
+# Updates the progress bar to reflect the provided percentage.
+mode_update_progress() {
+  local progress="$1"
+  if ! display_boot_message update_progress "${progress}"; then
+    # Display the progress on the terminal as a fallback.
+    printf "${progress}%%\r" >>"${TTY}"
+  fi
+}
+
 # Main initialization and dispatcher
 main() {
   # process args
@@ -251,7 +260,7 @@ main() {
 
   case "$mode" in
     "enter_dev" | "leave_dev" | "update_firmware" | "power_wash" | \
-      "self_repair" | "block_devmode" )
+      "self_repair" | "block_devmode" | "update_progress" )
       mode_"$mode" "$@"
       ;;
     * )
