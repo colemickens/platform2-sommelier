@@ -262,17 +262,6 @@ std::string GetOpenSSLError();
 std::string HmacSha512(const std::string& input,
                        const brillo::SecureBlob& key);
 
-// Sets the user and group for the current process. If 'real' is set to true,
-// the supplementary group list is initialized before changing the uid. The real
-// gid will be set to the gid of 'user' and the effective gid will be set to the
-// gid of 'group'. Also, the umask will be set to restrict all access outside of
-// 'group' if 'real' is true.
-//   user - The name of the user to run as.
-//   group - The name of the group to run as.
-//   real - If true, both real and effective user/group are set, otherwise only
-//          effective user/group are set.
-bool SetProcessUserAndGroup(const char* user, const char* group, bool real);
-
 // Performs AES-256 encryption / decryption in CBC mode with PKCS padding. If
 // 'iv' is left empty, a random IV will be generated and appended to the cipher-
 // text on encryption.
