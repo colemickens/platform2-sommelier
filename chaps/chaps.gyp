@@ -95,6 +95,7 @@
       'variables': {
         'deps': [
           'libmetrics-<(libbase_ver)',
+          'libminijail',
         ],
       },
       'libraries': [

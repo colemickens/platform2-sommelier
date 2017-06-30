@@ -26,6 +26,8 @@
 #include <base/threading/thread.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
+#include <libminijail.h>
+#include <scoped_minijail.h>
 
 #include "chaps/chaps_adaptor.h"
 #include "chaps/chaps_factory_impl.h"
@@ -83,60 +85,17 @@ void InitAsync(WaitableEvent* started_event,
     LOG(FATAL) << "Slot initialization failed.";
 }
 
-bool SetProcessUserAndGroup(const char* user_name,
+void SetProcessUserAndGroup(const char* user_name,
                             const char* group_name) {
-  // Get a uid_t and gid_t for the user.
-  errno = 0;
-  long buf_length = sysconf(_SC_GETPW_R_SIZE_MAX);  // NOLINT(runtime/int)
-  if (buf_length < 0)
-    buf_length = 4096;
-  passwd passwd_buf;
-  passwd* user_info = nullptr;
-  std::vector<char> buf(buf_length);
-  if (getpwnam_r(user_name, &passwd_buf, buf.data(), buf_length, &user_info) ||
-      user_info == nullptr) {
-    PLOG(ERROR) << "Failed to get user info for user '" << user_name << "'.";
-    return false;
-  }
-  uid_t uid = user_info->pw_uid;
-  gid_t uid_gid = user_info->pw_gid;
-  // Get a gid_t for the group.
-  errno = 0;
-  buf_length = sysconf(_SC_GETGR_R_SIZE_MAX);
-  if (buf_length < 0)
-    buf_length = 4096;
-  buf.resize(buf_length);
-  group group_buf;
-  group* group_info = nullptr;
-  if (getgrnam_r(group_name, &group_buf, buf.data(), buf_length, &group_info) ||
-      group_info == nullptr) {
-    LOG(ERROR) << "Failed to get group info for group '" << group_name << "'.";
-    return false;
-  }
-  gid_t gid = group_info->gr_gid;
   // Make the umask more restrictive: u + rwx, g + rx.
   umask(0027);
-  // The order of the following steps matter. In particular, we want to set
-  // the uid last. Initializing supplementary groups will allow us to access
-  // any files normally accessible by the uid we will be setting.
-  if (initgroups(user_name, uid_gid) < 0) {
-    LOG(ERROR) << "Unable to init groups for " << user_name;
-    return false;
-  }
-  if (setgid(uid_gid) < 0) {
-    LOG(ERROR) << "Unable to set real group privileges to " << user_name;
-    return false;
-  }
-  if (setegid(gid) < 0) {
-    LOG(ERROR) << "Unable to set effective group privileges to "
-                << group_name;
-    return false;
-  }
-  if (setuid(uid) < 0) {
-    LOG(ERROR) << "Unable to set real privileges to " << user_name << ".";
-    return false;
-  }
-  return true;
+
+  ScopedMinijail j(minijail_new());
+  minijail_change_user(j.get(), user_name);
+  minijail_change_group(j.get(), group_name);
+  minijail_inherit_usergroups(j.get());
+  minijail_no_new_privs(j.get());
+  minijail_enter(j.get());
 }
 
 }  // namespace
@@ -224,10 +183,7 @@ int main(int argc, char** argv) {
 
   LOG(INFO) << "Starting PKCS #11 services.";
   // Run as 'chaps'.
-  if (!SetProcessUserAndGroup(chaps::kChapsdProcessUser,
-                              chaps::kChapsdProcessGroup)) {
-    LOG(FATAL) << "Could not change user and group.";
-  }
+  SetProcessUserAndGroup(chaps::kChapsdProcessUser, chaps::kChapsdProcessGroup);
   // Determine SRK authorization data from the command line.
   string srk_auth_data;
   if (cl->HasSwitch("srk_password")) {
