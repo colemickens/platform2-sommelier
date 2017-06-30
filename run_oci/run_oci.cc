@@ -9,6 +9,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 
 #include <libcontainer/libcontainer.h>
@@ -320,6 +321,11 @@ int RunOci(const base::FilePath& container_dir,
         config.get(), container_options.alt_syscall_table.c_str());
   }
 
+  if (container_options.securebits_skip_mask) {
+    container_config_set_securebits_skip_mask(
+        config.get(), container_options.securebits_skip_mask);
+  }
+
   int rc;
   rc = container_start(container.get(), config.get());
   if (rc) {
@@ -335,6 +341,7 @@ const struct option longopts[] = {
   { "help", no_argument, NULL, 'h' },
   { "cgroup_parent", required_argument, NULL, 'p' },
   { "alt_syscall", required_argument, NULL, 's' },
+  { "securebits_skip_mask", required_argument, NULL, 'B' },
   { "use_current_user", no_argument, NULL, 'u' },
   { 0, 0, 0, 0 },
 };
@@ -345,6 +352,8 @@ void print_help(const char *argv0) {
   printf("  -h, --help                     Print this message and exit.\n");
   printf("  -p, --cgroup_parent=<NAME>     Set parent cgroup for container.\n");
   printf("  -s, --alt_syscall=<NAME>       Set the alt-syscall table.\n");
+  printf("  -B, --securebits_skip_mask=<MASK> Skips setting securebits in\n");
+  printf("                                 <mask> when restricting caps.\n");
   printf("  -u, --use_current_user         Map the current user/group only.\n");
   printf("\n");
 }
@@ -355,7 +364,7 @@ int main(int argc, char **argv) {
   ContainerOptions container_options;
   int c;
 
-  while ((c = getopt_long(argc, argv, "b:hp:s:uU", longopts, NULL)) != -1) {
+  while ((c = getopt_long(argc, argv, "b:B:hp:s:uU", longopts, NULL)) != -1) {
     switch (c) {
     case 'b': {
       std::istringstream ss(optarg);
@@ -371,6 +380,13 @@ int main(int argc, char **argv) {
           BindMount(base::FilePath(outside_path), base::FilePath(inside_path)));
       break;
     }
+    case 'B':
+      if (!base::HexStringToUInt64(optarg,
+                                   &container_options.securebits_skip_mask)) {
+        print_help(argv[0]);
+        return -1;
+      }
+      break;
     case 'u':
       container_options.use_current_user = true;
       break;

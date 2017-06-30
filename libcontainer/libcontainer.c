@@ -136,6 +136,7 @@ struct container_rlimit {
  * keep_fds_open - Allow the child process to keep open FDs (for stdin/out/err).
  * rlimits - Array of rlimits for the contained process.
  * num_rlimits - The number of elements in `rlimits`.
+ * securebits_skip_mask - The mask of securebits to skip when restricting caps.
  */
 struct container_config {
 	char *config_root;
@@ -168,6 +169,7 @@ struct container_config {
 	int use_capmask;
 	int use_capmask_ambient;
 	uint64_t capmask;
+	uint64_t securebits_skip_mask;
 };
 
 struct container_config *container_config_create()
@@ -635,6 +637,12 @@ void container_config_set_capmask(struct container_config *c,
 	c->use_capmask = 1;
 	c->capmask = capmask;
 	c->use_capmask_ambient = ambient;
+}
+
+void container_config_set_securebits_skip_mask(struct container_config *c,
+					       uint64_t securebits_skip_mask)
+{
+	c->securebits_skip_mask = securebits_skip_mask;
 }
 
 /*
@@ -1599,6 +1607,10 @@ int container_start(struct container *c, const struct container_config *config)
 		minijail_use_caps(c->jail, config->capmask);
 		if (config->use_capmask_ambient) {
 			minijail_set_ambient_caps(c->jail);
+		}
+		if (config->securebits_skip_mask) {
+			minijail_skip_setting_securebits(c->jail,
+						 config->securebits_skip_mask);
 		}
 	}
 

@@ -241,6 +241,13 @@ void container_config_set_capmask(struct container_config *c,
 				  uint64_t capmask,
 				  int ambient);
 
+/*
+ * Skips settings the securebits in |securebits_skip_mask| when restricting
+ * capabilities. This is only used when container_config_set_capmask() is used.
+ */
+void container_config_set_securebits_skip_mask(struct container_config *c,
+					       uint64_t securebits_skip_mask);
+
 /* Container manipulation. */
 struct container;
 

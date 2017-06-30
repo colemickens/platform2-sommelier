@@ -21,6 +21,7 @@ struct ContainerOptions {
   BindMounts bind_mounts;
   std::string cgroup_parent;
   std::vector<std::string> extra_program_args;
+  uint64_t securebits_skip_mask;
   bool use_current_user;
 
   ContainerOptions() :
@@ -28,6 +29,7 @@ struct ContainerOptions {
     bind_mounts(),
     cgroup_parent(),
     extra_program_args(),
+    securebits_skip_mask(0u),
     use_current_user(false) {}
 };
 
