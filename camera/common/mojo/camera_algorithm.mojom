@@ -59,9 +59,11 @@ interface CameraAlgorithmCallbackOps {
   // completed the corresponding request.
   //
   // Args:
+  //    |status|: Status of the corresponding request. The interpretation
+  //      depends on the HAL implementation.
   //    |buffer_handle|: Handle of the buffer to return.
   //
   // Returns:
   //    0 on success; corresponding error code on failure.
-  Return(int32 buffer_handle) => (int32 result);
+  Return(uint32 status, int32 buffer_handle) => (int32 result);
 };

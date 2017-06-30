@@ -14,6 +14,9 @@
 
 #include "arc/camera_algorithm.h"
 #include "arc/future.h"
+#include "common/libcab_test_internal.h"
+
+namespace libcab_test {
 
 class CameraAlgorithmImpl {
  public:
@@ -57,18 +60,32 @@ class CameraAlgorithmImpl {
     return handle;
   }
 
-  int32_t Request(uint8_t req_header[], uint32_t size, int32_t buffer_handle) {
-    if (shm_info_map_.find(buffer_handle) == shm_info_map_.end()) {
-      LOGF(ERROR) << "Invalid buffer handle";
-      return -EBADF;
+  int32_t Request(const uint8_t req_header[],
+                  uint32_t size,
+                  int32_t buffer_handle) {
+    uint32_t status = 0;
+    switch (req_header[0]) {
+      case REQUEST_TEST_COMMAND_NORMAL:
+        if (shm_info_map_.find(buffer_handle) == shm_info_map_.end()) {
+          LOGF(ERROR) << "Invalid buffer handle";
+          return -EBADF;
+        }
+        break;
+      case REQUEST_TEST_COMMAND_VERIFY_REQ_HEADER:
+        return SimpleHash(req_header, size);
+      case REQUEST_TEST_COMMAND_VERIFY_STATUS:
+        status = SimpleHash(req_header, size);
+        break;
+      default:
+        return -EINVAL;
     }
     thread_.task_runner()->PostTask(
         FROM_HERE, base::Bind(&CameraAlgorithmImpl::ReturnCallback,
-                              base::Unretained(this), buffer_handle));
+                              base::Unretained(this), status, buffer_handle));
     return 0;
   }
 
-  void DeregisterBuffers(int32_t buffer_handles[], uint32_t size) {
+  void DeregisterBuffers(const int32_t buffer_handles[], uint32_t size) {
     for (uint32_t i = 0; i < size; i++) {
       if (shm_info_map_.find(buffer_handles[i]) == shm_info_map_.end()) {
         LOGF(ERROR) << "Invalid buffer handle (" << buffer_handles[i] << ")";
@@ -88,8 +105,8 @@ class CameraAlgorithmImpl {
     thread_.Start();
   }
 
-  void ReturnCallback(int32_t buffer_handle) {
-    (*callback_ops_->return_callback)(callback_ops_, buffer_handle);
+  void ReturnCallback(uint32_t status, int32_t buffer_handle) {
+    (*callback_ops_->return_callback)(callback_ops_, status, buffer_handle);
   }
 
   base::Thread thread_;
@@ -117,23 +134,25 @@ static int32_t RegisterBuffer(int32_t buffer_fd) {
   return CameraAlgorithmImpl::GetInstance()->RegisterBuffer(buffer_fd);
 }
 
-static int32_t Request(uint8_t req_header[],
+static int32_t Request(const uint8_t req_header[],
                        uint32_t size,
                        int32_t buffer_handle) {
   return CameraAlgorithmImpl::GetInstance()->Request(req_header, size,
                                                      buffer_handle);
 }
 
-static void DeregisterBuffers(int32_t buffer_handles[], uint32_t size) {
+static void DeregisterBuffers(const int32_t buffer_handles[], uint32_t size) {
   return CameraAlgorithmImpl::GetInstance()->DeregisterBuffers(buffer_handles,
                                                                size);
 }
 
+}  // namespace libcab_test
+
 extern "C" {
 camera_algorithm_ops_t CAMERA_ALGORITHM_MODULE_INFO_SYM
     __attribute__((__visibility__("default"))) = {
-        .initialize = Initialize,
-        .register_buffer = RegisterBuffer,
-        .request = Request,
-        .deregister_buffers = DeregisterBuffers};
+        .initialize = libcab_test::Initialize,
+        .register_buffer = libcab_test::RegisterBuffer,
+        .request = libcab_test::Request,
+        .deregister_buffers = libcab_test::DeregisterBuffers};
 }

@@ -57,11 +57,13 @@ class CameraAlgorithmOpsImpl : public mojom::CameraAlgorithmOps,
 
   static int32_t ReturnCallbackForwarder(
       const camera_algorithm_callback_ops_t* callback_ops,
+      uint32_t status,
       int32_t buffer_handle);
 
-  int32_t ReturnCallback(int32_t buffer_handle);
+  int32_t ReturnCallback(uint32_t status, int32_t buffer_handle);
 
-  void ReturnCallbackOnIPCThread(int32_t buffer_handle,
+  void ReturnCallbackOnIPCThread(uint32_t status,
+                                 int32_t buffer_handle,
                                  base::Callback<void(int32_t)> cb);
 
   // Binding of CameraAlgorithmOps interface to message pipe

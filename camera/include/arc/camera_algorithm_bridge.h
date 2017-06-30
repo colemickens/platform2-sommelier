@@ -8,6 +8,7 @@
 #define INCLUDE_ARC_CAMERA_ALGORITHM_BRIDGE_H_
 
 #include <cinttypes>
+#include <vector>
 
 #include "arc/camera_algorithm.h"
 

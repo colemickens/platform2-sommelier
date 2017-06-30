@@ -18,6 +18,7 @@ extern "C" {
 typedef struct camera_algorithm_callback_ops {
   int32_t (*return_callback)(
       const struct camera_algorithm_callback_ops* callback,
+      uint32_t status,
       int32_t buffer_handle);
 } camera_algorithm_callback_ops_t;
 
@@ -56,7 +57,7 @@ typedef struct {
   //
   // Returns:
   //    0 on success; corresponding error code on failure.
-  int32_t (*request)(uint8_t req_header[],
+  int32_t (*request)(const uint8_t req_header[],
                      uint32_t size,
                      int32_t buffer_handle);
 
@@ -72,7 +73,7 @@ typedef struct {
   //
   // Returns:
   //    A handle on success; -1 on failure.
-  void (*deregister_buffers)(int32_t buffer_handles[], uint32_t size);
+  void (*deregister_buffers)(const int32_t buffer_handles[], uint32_t size);
 } camera_algorithm_ops_t;
 }
 

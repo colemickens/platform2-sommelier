@@ -7,6 +7,7 @@
 #include "common/camera_algorithm_ops_impl.h"
 
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/logging.h>
@@ -114,8 +115,9 @@ void CameraAlgorithmOpsImpl::Request(mojo::Array<uint8_t> req_header,
     callback.Run(-EINVAL);
     return;
   }
-  int32_t result = cam_algo_->request(req_header.PassStorage().data(),
-                                      req_header.size(), buffer_handle);
+  std::vector<uint8_t> header = req_header.PassStorage();
+  int32_t result =
+      cam_algo_->request(header.data(), header.size(), buffer_handle);
   callback.Run(result);
   VLOGF_EXIT();
 }
@@ -125,14 +127,15 @@ void CameraAlgorithmOpsImpl::DeregisterBuffers(
   DCHECK(cam_algo_);
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
-  cam_algo_->deregister_buffers(buffer_handles.PassStorage().data(),
-                                buffer_handles.size());
+  std::vector<int32_t> handles = buffer_handles.PassStorage();
+  cam_algo_->deregister_buffers(handles.data(), handles.size());
   VLOGF_EXIT();
 }
 
 // static
 int32_t CameraAlgorithmOpsImpl::ReturnCallbackForwarder(
     const camera_algorithm_callback_ops_t* callback_ops,
+    uint32_t status,
     int32_t buffer_handle) {
   VLOGF_ENTER();
   if (const_cast<CameraAlgorithmOpsImpl*>(
@@ -143,13 +146,14 @@ int32_t CameraAlgorithmOpsImpl::ReturnCallbackForwarder(
   auto future = internal::Future<int32_t>::Create(nullptr);
   singleton_->ipc_task_runner_->PostTask(
       FROM_HERE, base::Bind(&CameraAlgorithmOpsImpl::ReturnCallbackOnIPCThread,
-                            base::Unretained(singleton_), buffer_handle,
+                            base::Unretained(singleton_), status, buffer_handle,
                             internal::GetFutureCallback(future)));
   future->Wait();
   return future->Get();
 }
 
 void CameraAlgorithmOpsImpl::ReturnCallbackOnIPCThread(
+    uint32_t status,
     int32_t buffer_handle,
     base::Callback<void(int32_t)> cb) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
@@ -157,7 +161,7 @@ void CameraAlgorithmOpsImpl::ReturnCallbackOnIPCThread(
   if (!cb_ptr_.is_bound()) {
     cb.Run(-ENOENT);
   }
-  cb_ptr_->Return(buffer_handle, cb);
+  cb_ptr_->Return(status, buffer_handle, cb);
   VLOGF_EXIT();
 }
 
