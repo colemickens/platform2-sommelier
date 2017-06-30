@@ -337,8 +337,7 @@ const char Metrics::kMetricExpiredLeaseLengthSecondsSuffix[] =
 const int Metrics::kMetricExpiredLeaseLengthSecondsMax =
     7 * 24 * 60 * 60;  // 7 days
 const int Metrics::kMetricExpiredLeaseLengthSecondsMin = 1;
-const int Metrics::kMetricExpiredLeaseLengthSecondsNumBuckets =
-    Metrics::kMetricExpiredLeaseLengthSecondsMax;
+const int Metrics::kMetricExpiredLeaseLengthSecondsNumBuckets = 100;
 
 // static
 const char Metrics::kMetricWifiAutoConnectableServices[] =
