@@ -56,7 +56,7 @@ const int Metrics::kMetricDisconnectMin = 1;
 const int Metrics::kMetricDisconnectNumBuckets = 3;
 
 const char Metrics::kMetricSignalAtDisconnectSuffix[] = "SignalAtDisconnect";
-const int Metrics::kMetricSignalAtDisconnectMin = 0;
+const int Metrics::kMetricSignalAtDisconnectMin = 1;
 const int Metrics::kMetricSignalAtDisconnectMax = 200;
 const int Metrics::kMetricSignalAtDisconnectNumBuckets = 40;
 
@@ -77,7 +77,7 @@ const char Metrics::kMetricNetworkServiceErrors[] =
     "Network.Shill.ServiceErrors";
 const char Metrics::kMetricNetworkSignalStrengthSuffix[] = "SignalStrength";
 const int Metrics::kMetricNetworkSignalStrengthMax = 200;
-const int Metrics::kMetricNetworkSignalStrengthMin = 0;
+const int Metrics::kMetricNetworkSignalStrengthMin = 1;
 const int Metrics::kMetricNetworkSignalStrengthNumBuckets = 40;
 
 constexpr char
@@ -88,7 +88,7 @@ constexpr char
 const char Metrics::kMetricRememberedWiFiNetworkCount[] =
     "Network.Shill.WiFi.RememberedNetworkCount";
 const int Metrics::kMetricRememberedWiFiNetworkCountMax = 1024;
-const int Metrics::kMetricRememberedWiFiNetworkCountMin = 0;
+const int Metrics::kMetricRememberedWiFiNetworkCountMin = 1;
 const int Metrics::kMetricRememberedWiFiNetworkCountNumBuckets = 32;
 
 const char Metrics::kMetricTimeOnlineSecondsSuffix[] = "TimeOnline";
@@ -221,7 +221,7 @@ const char Metrics::kMetricSuspendDurationWoWOffConnected[] =
     "Network.Shill.WiFi.SuspendDurationWoWOffConnected";
 const char Metrics::kMetricSuspendDurationWoWOffDisconnected[] =
     "Network.Shill.WiFi.SuspendDurationWoWOffDisconnected";
-const int Metrics::kSuspendDurationMin = 0;
+const int Metrics::kSuspendDurationMin = 1;
 // Max suspend duration that we care about, for the purpose
 // of tracking wifi disconnect on resume. Set to 1 day.
 const int Metrics::kSuspendDurationMax = 86400;
@@ -253,20 +253,20 @@ const char Metrics::kMetricPowerManagerKey[] = "metrics";
 const char Metrics::kMetricLinkMonitorFailureSuffix[] = "LinkMonitorFailure";
 const char Metrics::kMetricLinkMonitorResponseTimeSampleSuffix[] =
     "LinkMonitorResponseTimeSample";
-const int Metrics::kMetricLinkMonitorResponseTimeSampleMin = 0;
+const int Metrics::kMetricLinkMonitorResponseTimeSampleMin = 1;
 const int Metrics::kMetricLinkMonitorResponseTimeSampleMax =
     LinkMonitor::kDefaultTestPeriodMilliseconds;
 const int Metrics::kMetricLinkMonitorResponseTimeSampleNumBuckets = 50;
 const char Metrics::kMetricLinkMonitorSecondsToFailureSuffix[] =
     "LinkMonitorSecondsToFailure";
-const int Metrics::kMetricLinkMonitorSecondsToFailureMin = 0;
+const int Metrics::kMetricLinkMonitorSecondsToFailureMin = 1;
 const int Metrics::kMetricLinkMonitorSecondsToFailureMax = 7200;
 const int Metrics::kMetricLinkMonitorSecondsToFailureNumBuckets = 50;
 const char Metrics::kMetricLinkMonitorBroadcastErrorsAtFailureSuffix[] =
     "LinkMonitorBroadcastErrorsAtFailure";
 const char Metrics::kMetricLinkMonitorUnicastErrorsAtFailureSuffix[] =
     "LinkMonitorUnicastErrorsAtFailure";
-const int Metrics::kMetricLinkMonitorErrorCountMin = 0;
+const int Metrics::kMetricLinkMonitorErrorCountMin = 1;
 const int Metrics::kMetricLinkMonitorErrorCountMax =
     LinkMonitor::kFailureThreshold;
 const int Metrics::kMetricLinkMonitorErrorCountNumBuckets =
@@ -294,7 +294,7 @@ const char Metrics::kMetricCellularAutoConnectTotalTime[] =
     "Network.Shill.Cellular.AutoConnectTotalTime";
 const int Metrics::kMetricCellularAutoConnectTotalTimeMax =
     60 * 1000;  // 60 seconds
-const int Metrics::kMetricCellularAutoConnectTotalTimeMin = 0;
+const int Metrics::kMetricCellularAutoConnectTotalTimeMin = 1;
 const int Metrics::kMetricCellularAutoConnectTotalTimeNumBuckets = 60;
 const char Metrics::kMetricCellularDrop[] =
     "Network.Shill.Cellular.Drop";
@@ -312,7 +312,7 @@ const char Metrics::kMetricCellularOutOfCreditsReason[] =
 const char Metrics::kMetricCellularSignalStrengthBeforeDrop[] =
     "Network.Shill.Cellular.SignalStrengthBeforeDrop";
 const int Metrics::kMetricCellularSignalStrengthBeforeDropMax = 100;
-const int Metrics::kMetricCellularSignalStrengthBeforeDropMin = 0;
+const int Metrics::kMetricCellularSignalStrengthBeforeDropMin = 1;
 const int Metrics::kMetricCellularSignalStrengthBeforeDropNumBuckets = 10;
 
 // static
@@ -436,7 +436,7 @@ const char Metrics::kMetricConnectionDiagnosticsIssue[] =
     // static
     const char Metrics::kMetricUnreliableLinkSignalStrengthSuffix[] =
         "UnreliableLinkSignalStrength";
-const int Metrics::kMetricSerivceSignalStrengthMin = 0;
+const int Metrics::kMetricSerivceSignalStrengthMin = 1;
 const int Metrics::kMetricServiceSignalStrengthMax = 100;
 const int Metrics::kMetricServiceSignalStrengthNumBuckets = 40;
 
