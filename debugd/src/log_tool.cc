@@ -163,7 +163,8 @@ const Log common_logs[] = {
   { "powerd.PREVIOUS", "/bin/cat /var/log/power_manager/powerd.PREVIOUS" },
   { "powerd.out", "/bin/cat /var/log/powerd.out" },
   { "powerwash_count", "/bin/cat /var/log/powerwash_count 2> /dev/null" },
-  // Changed from 'ps ux' to 'ps aux' since we're running as debugd, not chronos
+  // Changed from 'ps ux' to 'ps aux' since we're running as debugd,
+  // not chronos.
   { "ps", "/bin/ps aux" },
   // /proc/slabinfo is owned by root and has 0400 permission.
   { "slabinfo", "/bin/cat /proc/slabinfo", kRoot, kRoot, },
@@ -179,6 +180,12 @@ const Log common_logs[] = {
               " -e 'synaptics: Touchpad model'"
               " -e 'chromeos-[a-z]*-touch-[a-z]*-update'"
               " /var/log/messages | tail -n 20" },
+  // TODO(jorgelo,mnissler): Don't run this as root.
+  // On TPM 1.2 devices this will likely require adding a new user to the 'tss'
+  // group.
+  // On TPM 2.0 devices 'get_version_info' uses D-Bus and therefore can run as
+  // any user.
+  { "tpm_version", "/usr/sbin/tpm-manager get_version_info", kRoot, kRoot },
   { "atmel_ts_refs", "/opt/google/touch/scripts/atmel_tools.sh ts r",
     kRoot, kRoot},
   { "atmel_tp_refs", "/opt/google/touch/scripts/atmel_tools.sh tp r",
