@@ -29,6 +29,8 @@ namespace webservd {
 
 namespace {
 
+constexpr int kDbusTimeoutInMsec = 50 * 1000;
+
 void OnError(Request* request,
              bool debug,
              brillo::Error* error) {
@@ -83,7 +85,7 @@ void DBusRequestHandler::HandleRequest(Request* request) {
   body_data_pipe.CheckValidity();
   handler_proxy_->ProcessRequestAsync(
       request_id, headers, params, files, body_data_pipe,
-      base::Bind(&base::DoNothing), error_callback);
+      base::Bind(&base::DoNothing), error_callback, kDbusTimeoutInMsec);
 }
 
 }  // namespace webservd
