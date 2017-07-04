@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -31,22 +32,20 @@ class NssUtil {
   NssUtil();
   virtual ~NssUtil();
 
-  // Creates an NssUtil, ownership returns to the caller. If there is no
-  // Factory (the default) this creates and returns a new NssUtil.
-  static NssUtil* Create();
+  // Creates an NssUtil. If there is no Factory (the default) this creates and
+  // returns a new NssUtil.
+  static std::unique_ptr<NssUtil> Create();
 
   // Returns empty ScopedPK11Slot in the event that the database
   // cannot be opened.
   virtual crypto::ScopedPK11Slot OpenUserDB(
       const base::FilePath& user_homedir) = 0;
 
-  // Caller takes ownership of returned key.
-  virtual crypto::RSAPrivateKey* GetPrivateKeyForUser(
+  virtual std::unique_ptr<crypto::RSAPrivateKey> GetPrivateKeyForUser(
       const std::vector<uint8_t>& public_key_der,
       PK11SlotInfo* user_slot) = 0;
 
-  // Caller takes ownership of returned key.
-  virtual crypto::RSAPrivateKey* GenerateKeyPairForUser(
+  virtual std::unique_ptr<crypto::RSAPrivateKey> GenerateKeyPairForUser(
       PK11SlotInfo* user_slot) = 0;
 
   virtual base::FilePath GetOwnerKeyFilePath() = 0;

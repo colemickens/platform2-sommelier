@@ -10,11 +10,13 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#include <memory>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <crypto/nss_util.h>
+#include <crypto/rsa_private_key.h>
 #include <crypto/scoped_nss_types.h>
 #include <crypto/scoped_test_nss_db.h>
 #include <gmock/gmock.h>
@@ -30,17 +32,18 @@ typedef struct PK11SlotInfoStr PK11SlotInfo;
 class MockNssUtil : public NssUtil {
  public:
   MockNssUtil();
-  virtual ~MockNssUtil();
+  ~MockNssUtil() override;
 
-  crypto::RSAPrivateKey* CreateShortKey();
+  std::unique_ptr<crypto::RSAPrivateKey> CreateShortKey();
 
   crypto::ScopedPK11Slot OpenUserDB(
       const base::FilePath& user_homedir) override;
   MOCK_METHOD2(GetPrivateKeyForUser,
-               crypto::RSAPrivateKey*(const std::vector<uint8_t>&,
-                                      PK11SlotInfo*));
+               std::unique_ptr<crypto::RSAPrivateKey>(
+                   const std::vector<uint8_t>&,
+                   PK11SlotInfo*));
   MOCK_METHOD1(GenerateKeyPairForUser,
-               crypto::RSAPrivateKey*(PK11SlotInfo*));  // NOLINT - 'unnamed'.
+               std::unique_ptr<crypto::RSAPrivateKey>(PK11SlotInfo*));
   MOCK_METHOD0(GetNssdbSubpath, base::FilePath());
   MOCK_METHOD1(CheckPublicKeyBlob, bool(const std::vector<uint8_t>&));
   MOCK_METHOD3(Verify, bool(const std::vector<uint8_t>& signature,
@@ -71,7 +74,7 @@ class MockNssUtil : public NssUtil {
 class CheckPublicKeyUtil : public MockNssUtil {
  public:
   explicit CheckPublicKeyUtil(bool expected);
-  virtual ~CheckPublicKeyUtil();
+  ~CheckPublicKeyUtil() override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CheckPublicKeyUtil);
@@ -80,7 +83,7 @@ class CheckPublicKeyUtil : public MockNssUtil {
 class KeyCheckUtil : public MockNssUtil {
  public:
   KeyCheckUtil();
-  virtual ~KeyCheckUtil();
+  ~KeyCheckUtil() override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(KeyCheckUtil);
@@ -89,7 +92,7 @@ class KeyCheckUtil : public MockNssUtil {
 class KeyFailUtil : public MockNssUtil {
  public:
   KeyFailUtil();
-  virtual ~KeyFailUtil();
+  ~KeyFailUtil() override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(KeyFailUtil);

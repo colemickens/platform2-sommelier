@@ -16,6 +16,7 @@
 #include <crypto/scoped_nss_types.h>
 
 namespace login_manager {
+using ::testing::ByMove;
 using ::testing::Invoke;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
@@ -27,18 +28,19 @@ MockNssUtil::MockNssUtil()
     : return_bad_db_(false) {
   ON_CALL(*this, GetNssdbSubpath()).WillByDefault(Return(base::FilePath()));
 }
-MockNssUtil::~MockNssUtil() {}
 
-crypto::RSAPrivateKey* MockNssUtil::CreateShortKey() {
-  crypto::RSAPrivateKey* ret = nullptr;
+MockNssUtil::~MockNssUtil() = default;
+
+std::unique_ptr<crypto::RSAPrivateKey> MockNssUtil::CreateShortKey() {
+  std::unique_ptr<crypto::RSAPrivateKey> ret;
   crypto::ScopedSECKEYPublicKey public_key_obj;
   crypto::ScopedSECKEYPrivateKey private_key_obj;
   if (crypto::GenerateRSAKeyPairNSS(test_nssdb_.slot(), 256,
                                     true /* permanent */, &public_key_obj,
                                     &private_key_obj)) {
-    ret = crypto::RSAPrivateKey::CreateFromKey(private_key_obj.get());
+    ret.reset(crypto::RSAPrivateKey::CreateFromKey(private_key_obj.get()));
   }
-  LOG_IF(ERROR, ret == NULL) << "returning NULL!!!";
+  LOG_IF(ERROR, ret == nullptr) << "returning NULL!!!";
   return ret;
 }
 
@@ -71,7 +73,7 @@ CheckPublicKeyUtil::CheckPublicKeyUtil(bool expected) {
   EXPECT_CALL(*this, CheckPublicKeyBlob(_)).WillOnce(Return(expected));
 }
 
-CheckPublicKeyUtil::~CheckPublicKeyUtil() {}
+CheckPublicKeyUtil::~CheckPublicKeyUtil() = default;
 
 KeyCheckUtil::KeyCheckUtil() {
   ON_CALL(*this, GetPrivateKeyForUser(_, _))
@@ -79,13 +81,13 @@ KeyCheckUtil::KeyCheckUtil() {
   EXPECT_CALL(*this, GetPrivateKeyForUser(_, _)).Times(1);
 }
 
-KeyCheckUtil::~KeyCheckUtil() {}
+KeyCheckUtil::~KeyCheckUtil() = default;
 
 KeyFailUtil::KeyFailUtil() {
   EXPECT_CALL(*this, GetPrivateKeyForUser(_, _))
-      .WillOnce(Return(reinterpret_cast<crypto::RSAPrivateKey*>(NULL)));
+      .WillOnce(Return(ByMove(std::unique_ptr<crypto::RSAPrivateKey>())));
 }
 
-KeyFailUtil::~KeyFailUtil() {}
+KeyFailUtil::~KeyFailUtil() = default;
 
 }  // namespace login_manager
