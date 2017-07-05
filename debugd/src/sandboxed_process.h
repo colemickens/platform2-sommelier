@@ -31,6 +31,10 @@ class SandboxedProcess : public brillo::ProcessImpl {
   // Change the default sandboxing for this process.
   virtual void SandboxAs(const std::string& user, const std::string& group);
 
+  // Set the capabilities mask for this process. Requires that the process is
+  // not running as root.
+  void SetCapabilities(uint64_t capabilities_mask) override;
+
   // Set a file to be used as the seccomp bpf file for this process.  See
   // minijail0 -S for details of what can be in this file.
   virtual void SetSeccompFilterPolicyFile(const std::string& path);
@@ -47,9 +51,11 @@ class SandboxedProcess : public brillo::ProcessImpl {
  private:
   bool sandboxing_;
   bool access_root_mount_ns_;
+  bool set_capabilities_;
   std::string user_;
   std::string group_;
   std::string seccomp_filter_policy_file_;
+  uint64_t capabilities_mask_;
 };
 
 }  // namespace debugd

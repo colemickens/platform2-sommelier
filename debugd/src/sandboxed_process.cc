@@ -4,6 +4,7 @@
 
 #include "debugd/src/sandboxed_process.h"
 
+#include <inttypes.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -45,6 +46,7 @@ const char SandboxedProcess::kDefaultGroup[] = "debugd";
 SandboxedProcess::SandboxedProcess()
     : sandboxing_(true),
       access_root_mount_ns_(false),
+      set_capabilities_(false),
       user_(kDefaultUser),
       group_(kDefaultGroup) {
 }
@@ -87,6 +89,16 @@ bool SandboxedProcess::Init() {
     }
   }
 
+  if (set_capabilities_) {
+    if (sandboxing_ && user_ != "root") {
+      AddStringOption("-c",
+          base::StringPrintf("0x%" PRIx64, capabilities_mask_));
+    } else {
+      // Restricting capabilities requires dropping root.
+      return false;
+    }
+  }
+
   if (access_root_mount_ns_) {
     // Enter root mount namespace.
     AddStringOption("-V", "/proc/1/ns/mnt");
@@ -114,6 +126,11 @@ void SandboxedProcess::SandboxAs(const std::string& user,
   sandboxing_ = true;
   user_ = user;
   group_ = group;
+}
+
+void SandboxedProcess::SetCapabilities(uint64_t capabilities_mask) {
+  set_capabilities_ = true;
+  capabilities_mask_ = capabilities_mask;
 }
 
 void SandboxedProcess::SetSeccompFilterPolicyFile(const std::string& path) {
