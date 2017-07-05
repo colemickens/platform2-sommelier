@@ -167,6 +167,9 @@ VmlogWriter::VmlogWriter(const base::FilePath& vmlog_dir,
       return;
     }
   }
+  if (!base::SetPosixFilePermissions(vmlog_dir, 0755)) {
+    PLOG(ERROR) << "Couldn't set permissions for " << vmlog_dir.value();
+  }
   Init(vmlog_dir, log_interval);
 }
 
