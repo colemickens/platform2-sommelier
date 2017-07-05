@@ -6,6 +6,7 @@
 #include "hal/usb/camera_hal.h"
 
 #include <base/bind.h>
+#include <base/threading/thread_task_runner_handle.h>
 
 #include "arc/common.h"
 #include "hal/usb/common_types.h"
@@ -15,7 +16,7 @@
 
 namespace arc {
 
-CameraHal::CameraHal() {
+CameraHal::CameraHal() : task_runner_(nullptr) {
   std::unique_ptr<V4L2CameraDevice> device(new V4L2CameraDevice());
   device_infos_ = device->GetCameraDeviceInfos();
   VLOGF(1) << "Number of cameras is " << GetNumberOfCameras();
@@ -34,7 +35,7 @@ CameraHal::CameraHal() {
     static_infos_.push_back(CameraMetadataUniquePtr(metadata.release()));
   }
 
-  task_runner_ = base::MessageLoop::current()->task_runner();
+  thread_checker_.DetachFromThread();
 }
 
 CameraHal::~CameraHal() {}
@@ -64,6 +65,9 @@ int CameraHal::OpenDevice(int id,
   if (cameras_[id]->OpenDevice()) {
     cameras_.erase(id);
     return -ENODEV;
+  }
+  if (!task_runner_) {
+    task_runner_ = base::ThreadTaskRunnerHandle::Get();
   }
   return 0;
 }
@@ -104,6 +108,7 @@ int CameraHal::SetCallbacks(const camera_module_callbacks_t* callbacks) {
 }
 
 void CameraHal::CloseDeviceOnOpsThread(int id) {
+  DCHECK(task_runner_);
   auto future = internal::Future<void>::Create(nullptr);
   task_runner_->PostTask(
       FROM_HERE, base::Bind(&CameraHal::CloseDevice, base::Unretained(this), id,
