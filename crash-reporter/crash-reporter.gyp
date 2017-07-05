@@ -83,7 +83,7 @@
       ],
     },
     {
-      'target_name': 'warn_collector',
+      'target_name': 'anomaly_collector',
       'type': 'executable',
       'variables': {
         'lexer_out_dir': 'crash-reporter',
@@ -97,7 +97,7 @@
         ],
       },
       'sources': [
-        'warn_collector.l',
+        'anomaly_collector.l',
       ],
       'includes': ['../common-mk/lex.gypi'],
     },
@@ -164,7 +164,7 @@
           ],
         },
         {
-          'target_name': 'warn_collector_test',
+          'target_name': 'anomaly_collector_test',
           'type': 'none',
           'copies': [
             {
@@ -172,8 +172,8 @@
               'files': [
                 'TEST_WARNING',
                 'TEST_WARNING_OLD',
-                'warn_collector_test.sh',
-                'warn_collector_test_reporter.sh',
+                'anomaly_collector_test.sh',
+                'anomaly_collector_test_reporter.sh',
               ],
             },
           ],

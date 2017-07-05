@@ -3,9 +3,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Test for warn_collector.  Run the warn collector in the background, emulate
-# the kernel by appending lines to the log file "messages", and observe the log
-# of the (fake) crash reporter each time is run by the warn collector daemon.
+# Test for anomaly_collector.  Run the anomaly collector in the background,
+# emulate the kernel by appending lines to the log file "messages", and observe
+# the log of the (fake) crash reporter each time is run by the anomaly collector
+# daemon.
 
 set -e
 
@@ -17,6 +18,8 @@ fail() {
 cleanup() {
   # Kill daemon (if started) on exit
   kill %1 || true
+  # Give the daemon a chance to exit cleanly.
+  sleep 1
   rm -rf "${OUT}"
 }
 
@@ -39,43 +42,45 @@ trap cleanup EXIT
 
 SRC="$(readlink -f "$(dirname "$0")")"
 PATH="${SRC}:${PATH}"
-echo "Testing: $(which warn_collector)"
+echo "Testing: $(which anomaly_collector)"
 
-OUT="$(mktemp -dt warn_collector_test_XXXXXXXXXX)"
+OUT="$(mktemp -dt anomaly_collector_test_XXXXXXXXXX)"
 cd "${OUT}"
-TESTLOG="${OUT}/warn-test-log"
+TESTLOG="${OUT}/anomaly-test-log"
 
-cp "${SRC}/warn_collector_test_reporter.sh" .
+cp "${SRC}/anomaly_collector_test_reporter.sh" .
 touch messages
 
 # Start the collector daemon.  With the --test option, the daemon reads input
-# from ./messages, writes the warning into ./warning, and invokes
-# ./warn_collector_test_reporter.sh to report the warning.
-warn_collector --test &
+# from ./messages, writes the anomaly reports into files in the current working
+# directory, and invokes ./anomaly_collector_test_reporter.sh to report the
+# anomalies.
+anomaly_collector --test &
 sleep 1
 
-# Emit a warning to messages and check that it is collected.
+# Emit a kernel warning to messages and check that it is collected.
 cat "${SRC}/TEST_WARNING" >> messages
 sleep 1
 check_log 1
 
-# Add the same warning to messages, verify that it is NOT collected
+# Add the same kernel warning to messages, verify that it is NOT collected
 cat "${SRC}/TEST_WARNING" >> messages
 sleep 1
 check_log 1
 
-# Add a slightly different warning to messages, check that it is collected.
+# Add a slightly different kernel warning to messages, check that it is
+# collected.
 sed s/ttm_bo_vm.c/file_one.c/ < "${SRC}/TEST_WARNING" >> messages
 sleep 1
 check_log 2
 
-# Emulate log rotation, add a warning, and check.
+# Emulate log rotation, add a kernel warning, and check.
 mv messages messages.1
 sed s/ttm_bo_vm.c/file_two.c/ < "${SRC}/TEST_WARNING" >> messages
 sleep 2
 check_log 3
 
-# Emit a warning in old format and check that it is collected.
+# Emit a kernel warning in old format and check that it is collected.
 cat "${SRC}/TEST_WARNING_OLD" >> messages
 sleep 1
 check_log 4

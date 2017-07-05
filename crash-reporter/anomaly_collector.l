@@ -3,12 +3,17 @@
  * found in the LICENSE file.
  *
  * This flex program reads /var/log/messages as it grows and saves kernel
- * warnings to files.  It keeps track of warnings it has seen (based on
- * file/line only, ignoring differences in the stack trace), and reports only
- * the first warning of each kind, but maintains a count of all warnings by
- * using their hashes as buckets in a UMA sparse histogram.  It also invokes
- * the crash collector, which collects the warnings and prepares them for later
- * shipment to the crash server.
+ * "anomalies" to files. Anomalies can be: kernel warnings, upstart service
+ * failures, or any other sufficiently interesting event. It keeps track of
+ * anomalies it has seen and reports only the first anomaly of each kind, but
+ * maintains a count of all anomalies by using their hashes as buckets in UMA
+ * sparse histograms.
+ *
+ * For example, for kernel warnings each warning is kept track of based on
+ * file/line only, ignoring differences in the stack trace.
+ *
+ * This program also invokes the crash collector, which collects the reported
+ * anomalies and prepares them for later shipment to the crash server.
  */
 
 %{
@@ -24,11 +29,11 @@
 
 #include "metrics/c_metrics_library.h"
 
-int WarnStart(void);
-void WarnEnd(void);
-void WarnInput(char *buf, yy_size_t *result, size_t max_size);
+int KernelWarnStart(void);
+void KernelWarnEnd(void);
+void CollectorInput(char *buf, yy_size_t *result, size_t max_size);
 
-#define YY_INPUT(buf, result, max_size) WarnInput(buf, &result, max_size)
+#define YY_INPUT(buf, result, max_size) CollectorInput(buf, &result, max_size)
 
 %}
 
@@ -55,7 +60,7 @@ END_TRACE       {PREFIX}" ---[ end trace".*
 
 ^{CUT_HERE}\n{WARNING}          BEGIN(PRE_WARN);
 .|\n                            /* ignore all other input in state 0 */
-<PRE_WARN>[^ ].*\n              if (WarnStart()) {
+<PRE_WARN>[^ ].*\n              if (KernelWarnStart()) {
                                   /* yytext is
                                    *
                                    * "file:line func+offset/offset() [mod]\n"
@@ -69,7 +74,7 @@ END_TRACE       {PREFIX}" ---[ end trace".*
                                 }
 
  /* Assume the warning ends at the "end trace" line */
-<WARN>^{END_TRACE}\n            ECHO; BEGIN(0); WarnEnd();
+<WARN>^{END_TRACE}\n            ECHO; BEGIN(0); KernelWarnEnd();
 <WARN>^.*\n                     ECHO;
 
 %%
@@ -78,7 +83,7 @@ END_TRACE       {PREFIX}" ---[ end trace".*
 #define HASH_BITMAP_MASK        (HASH_BITMAP_SIZE - 1)
 
 const char warn_hist_name[] = "Platform.KernelWarningHashes";
-uint32_t hash_bitmap[HASH_BITMAP_SIZE / 32];
+uint32_t warn_hash_bitmap[HASH_BITMAP_SIZE / 32];
 CMetricsLibrary metrics_library;
 
 const char *prog_name;          /* the name of this program */
@@ -90,9 +95,9 @@ int fifo;                       /* 1 when reading from fifo (for devel) */
 int draining;                   /* 1 when draining renamed log file */
 
 const char *msg_path = "/var/log/messages";
-const char warn_dump_dir[]  = "/run/kwarn";
-const char *warn_dump_path = "/run/kwarn/warning";
-const char *crash_reporter_command;
+const char anomaly_dump_dir[]  = "/run/anomaly-collector";
+const char *warn_dump_path = "/run/anomaly-collector/warning";
+const char *warn_crash_reporter_command;
 
 __attribute__((__format__(__printf__, 1, 2)))
 static void Die(const char *format, ...) {
@@ -103,55 +108,74 @@ static void Die(const char *format, ...) {
   exit(1);
 }
 
-static void RunCrashReporter(void) {
+static void RunCrashReporter(const char *crash_reporter_command) {
   int status = system(crash_reporter_command);
   if (status != 0)
     Die("%s exited with status %d\n", crash_reporter_command, status);
 }
 
-static uint32_t StringHash(const char *string) {
+static uint32_t StringHash(const char *string, int max_len) {
   uint32_t hash = 0;
-  while (*string != '\0') {
+  int i = 0;
+  while (*string != '\0' && i < max_len) {
     hash = (hash << 5) + hash + *string++;
+    ++i;
   }
   return hash;
 }
 
-/* We expect only a handful of different warnings per boot session, so the
+/* We expect only a handful of different anomalies per boot session, so the
  * probability of a collision is very low, and statistically it won't matter
- * (unless warnings with the same hash also happens in tandem, which is even
+ * (unless anomalies with the same hash also happens in tandem, which is even
  * rarer).
  */
-static int HashSeen(uint32_t hash) {
+static int HashSeen(const uint32_t *hash_bitmap, uint32_t hash) {
   int word_index = (hash & HASH_BITMAP_MASK) / 32;
   int bit_index = (hash & HASH_BITMAP_MASK) % 32;
   return hash_bitmap[word_index] & 1 << bit_index;
 }
 
-static void SetHashSeen(uint32_t hash) {
+static void SetHashSeen(uint32_t *hash_bitmap, uint32_t hash) {
   int word_index = (hash & HASH_BITMAP_MASK) / 32;
   int bit_index = (hash & HASH_BITMAP_MASK) % 32;
   hash_bitmap[word_index] |= 1 << bit_index;
 }
 
-int WarnStart(void) {
+static int AnomalyStart(const char *dump_path, const char *histogram_name,
+                        uint32_t *hash_bitmap, uint32_t hash) {
+  if (!(testing || fifo || filter)) {
+    CMetricsLibrarySendSparseToUMA(metrics_library, histogram_name, (int) hash);
+  }
+  if (HashSeen(hash_bitmap, hash))
+    return 0;
+  SetHashSeen(hash_bitmap, hash);
+
+  yyout = fopen(dump_path, "w");
+  if (yyout == NULL)
+    Die("fopen %s failed: %s\n", dump_path, strerror(errno));
+  return 1;
+}
+
+static void AnomalyEnd(const char *crash_reporter_command) {
+  if (filter)
+    return;
+  fclose(yyout);
+  yyout = stdout;               /* for debugging */
+  RunCrashReporter(crash_reporter_command);
+}
+
+int KernelWarnStart(void) {
   uint32_t hash;
   char *spacep;
 
   if (filter)
     return 1;
 
-  hash = StringHash(yytext);
-  if (!(testing || fifo || filter)) {
-    CMetricsLibrarySendSparseToUMA(metrics_library, warn_hist_name, (int) hash);
-  }
-  if (HashSeen(hash))
+  hash = StringHash(yytext, INT32_MAX);
+  if (!AnomalyStart(warn_dump_path, warn_hist_name,
+                    warn_hash_bitmap, hash))
     return 0;
-  SetHashSeen(hash);
 
-  yyout = fopen(warn_dump_path, "w");
-  if (yyout == NULL)
-    Die("fopen %s failed: %s\n", warn_dump_path, strerror(errno));
   spacep = index(yytext, ' ');
   if (spacep == NULL || spacep[1] == '\0')
     spacep = "unknown-function";
@@ -159,15 +183,11 @@ int WarnStart(void) {
   return 1;
 }
 
-void WarnEnd(void) {
-  if (filter)
-    return;
-  fclose(yyout);
-  yyout = stdout;               /* for debugging */
-  RunCrashReporter();
+void KernelWarnEnd(void) {
+  AnomalyEnd(warn_crash_reporter_command);
 }
 
-static void WarnOpenInput(const char *path) {
+static void CollectorOpenInput(const char *path) {
   yyin_fd = open(path, O_RDONLY);
   if (yyin_fd < 0)
     Die("could not open %s: %s\n", path, strerror(errno));
@@ -189,7 +209,7 @@ static void WarnOpenInput(const char *path) {
  *
  * 3.  We want to detect log rotation, and reopen the input file as needed.
  */
-void WarnInput(char *buf, yy_size_t *result, size_t max_size) {
+void CollectorInput(char *buf, yy_size_t *result, size_t max_size) {
   while (1) {
     ssize_t ret = read(yyin_fd, buf, max_size);
     if (ret < 0)
@@ -209,11 +229,11 @@ void WarnInput(char *buf, yy_size_t *result, size_t max_size) {
          * terminator during the switch---or we may
          * collect personally identifiable information.
          */
-        WarnEnd();
+        KernelWarnEnd();
       }
       BEGIN(0);        /* see above comment */
       sleep(1);        /* avoid race with log rotator */
-      WarnOpenInput(msg_path);
+      CollectorOpenInput(msg_path);
       draining = 0;
       continue;
     }
@@ -264,8 +284,8 @@ int main(int argc, char **argv) {
   metrics_library = CMetricsLibraryNew();
   CMetricsLibraryInit(metrics_library);
 
-  crash_reporter_command = testing ?
-    "./warn_collector_test_reporter.sh" :
+  warn_crash_reporter_command = testing ?
+    "./anomaly_collector_test_reporter.sh warning" :
     "/sbin/crash_reporter --kernel_warning";
 
   /* When filtering with --filter (for development) use stdin for input.
@@ -280,12 +300,12 @@ int main(int argc, char **argv) {
     msg_path = "fifo";
   }
   if (!filter) {
-    WarnOpenInput(msg_path);
+    CollectorOpenInput(msg_path);
 
     if (!fifo) {
       /* Go directly to the end of the file.  We don't want to parse the same
-       * warnings multiple times on reboot/restart.  We might miss some
-       * warnings, but so be it---it's too hard to keep track reliably of the
+       * anomalies multiple times on reboot/restart.  We might miss some
+       * anomalies, but so be it---it's too hard to keep track reliably of the
        * last parsed position in the syslog.
        */
       if (lseek(yyin_fd, 0, SEEK_END) < 0)
@@ -296,11 +316,11 @@ int main(int argc, char **argv) {
   /* Create directory for dump file.  Still need to be root here. */
   unlink(warn_dump_path);
   if (!testing && !fifo && !filter) {
-    rmdir(warn_dump_dir);
-    result = mkdir(warn_dump_dir, 0755);
+    rmdir(anomaly_dump_dir);
+    result = mkdir(anomaly_dump_dir, 0755);
     if (result < 0)
       Die("could not create %s: %s\n",
-          warn_dump_dir, strerror(errno));
+          anomaly_dump_dir, strerror(errno));
   }
 
   if (0) {
@@ -315,7 +335,7 @@ int main(int argc, char **argv) {
       Die("getpwnam failed\n");
 
     /* Change dump directory ownership. */
-    if (chown(warn_dump_dir, user->pw_uid, user->pw_gid) < 0)
+    if (chown(anomaly_dump_dir, user->pw_uid, user->pw_gid) < 0)
       Die("chown: %s\n", strerror(errno));
 
     /* Drop privileges. */

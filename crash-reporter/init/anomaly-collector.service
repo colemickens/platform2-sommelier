@@ -3,11 +3,11 @@
 # found in the LICENSE file.
 
 [Unit]
-Description=Kernel warning collector
+Description=Kernel log anomaly collector
 
 [Service]
 Restart=always
-ExecStart=/usr/bin/warn_collector
+ExecStart=/usr/bin/anomaly_collector
 
 [Install]
 WantedBy=multi-user.target

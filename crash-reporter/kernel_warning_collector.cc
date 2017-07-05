@@ -13,7 +13,7 @@
 namespace {
 const char kExecName[] = "kernel-warning";
 const char kKernelWarningSignatureKey[] = "sig";
-const char kKernelWarningPath[] = "/run/kwarn/warning";
+const char kKernelWarningPath[] = "/run/anomaly-collector/warning";
 const pid_t kKernelPid = 0;
 }  // namespace
 
