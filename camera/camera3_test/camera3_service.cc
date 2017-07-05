@@ -6,6 +6,7 @@
 
 #include <unistd.h>
 
+#include <algorithm>
 #include <utility>
 #include <vector>
 
@@ -17,19 +18,17 @@ namespace camera3_test {
 
 Camera3Service::~Camera3Service() {}
 
-int Camera3Service::Initialize() {
-  return Initialize(ProcessStillCaptureResultCallback());
-}
-
-int Camera3Service::Initialize(ProcessStillCaptureResultCallback cb) {
+int Camera3Service::Initialize(
+    ProcessStillCaptureResultCallback still_capture_cb,
+    ProcessRecordingResultCallback recording_cb) {
   base::AutoLock l(lock_);
   if (initialized_) {
     LOG(ERROR) << "Camera service is already initialized";
     return -EINVAL;
   }
   for (const auto& it : cam_ids_) {
-    cam_dev_service_map_[it].reset(
-        new Camera3Service::Camera3DeviceService(it, cb));
+    cam_dev_service_map_[it].reset(new Camera3Service::Camera3DeviceService(
+        it, still_capture_cb, recording_cb));
     int result = cam_dev_service_map_[it]->Initialize();
     if (result != 0) {
       LOG(ERROR) << "Camera device " << it << " service initialization fails";
@@ -54,23 +53,16 @@ void Camera3Service::Destroy() {
 }
 
 int Camera3Service::StartPreview(int cam_id,
-                                 const ResolutionInfo& preview_resolution) {
-  ResolutionInfo still_capture_resolution(0, 0);
-  return PrepareStillCaptureAndStartPreview(cam_id, still_capture_resolution,
-                                            preview_resolution);
-}
-
-int Camera3Service::PrepareStillCaptureAndStartPreview(
-    int cam_id,
-    const ResolutionInfo& still_capture_resolution,
-    const ResolutionInfo& preview_resolution) {
+                                 const ResolutionInfo& preview_resolution,
+                                 const ResolutionInfo& still_capture_resolution,
+                                 const ResolutionInfo& recording_resolution) {
   base::AutoLock l(lock_);
   if (!initialized_ ||
       cam_dev_service_map_.find(cam_id) == cam_dev_service_map_.end()) {
     return -ENODEV;
   }
-  return cam_dev_service_map_[cam_id]->PrepareStillCaptureAndStartPreview(
-      still_capture_resolution, preview_resolution);
+  return cam_dev_service_map_[cam_id]->StartPreview(
+      preview_resolution, still_capture_resolution, recording_resolution);
 }
 
 void Camera3Service::StopPreview(int cam_id) {
@@ -130,6 +122,24 @@ void Camera3Service::TakeStillCapture(int cam_id,
   if (initialized_ &&
       cam_dev_service_map_.find(cam_id) != cam_dev_service_map_.end()) {
     cam_dev_service_map_[cam_id]->TakeStillCapture(metadata);
+  }
+}
+
+int Camera3Service::StartRecording(int cam_id,
+                                   const camera_metadata_t* metadata) {
+  base::AutoLock l(lock_);
+  if (!initialized_ ||
+      cam_dev_service_map_.find(cam_id) == cam_dev_service_map_.end()) {
+    return -ENODEV;
+  }
+  return cam_dev_service_map_[cam_id]->StartRecording(metadata);
+}
+
+void Camera3Service::StopRecording(int cam_id) {
+  base::AutoLock l(lock_);
+  if (initialized_ &&
+      cam_dev_service_map_.find(cam_id) != cam_dev_service_map_.end()) {
+    cam_dev_service_map_[cam_id]->StopRecording();
   }
 }
 
@@ -198,17 +208,18 @@ void Camera3Service::Camera3DeviceService::Destroy() {
   cam_device_.Destroy();
 }
 
-int Camera3Service::Camera3DeviceService::PrepareStillCaptureAndStartPreview(
+int Camera3Service::Camera3DeviceService::StartPreview(
+    const ResolutionInfo& preview_resolution,
     const ResolutionInfo& still_capture_resolution,
-    const ResolutionInfo& preview_resolution) {
+    const ResolutionInfo& recording_resolution) {
   VLOGF_ENTER();
   int result = -EIO;
   service_thread_.PostTaskSync(
       FROM_HERE,
-      base::Bind(&Camera3Service::Camera3DeviceService::
-                     PrepareStillCaptureAndStartPreviewOnServiceThread,
-                 base::Unretained(this), still_capture_resolution,
-                 preview_resolution, &result));
+      base::Bind(
+          &Camera3Service::Camera3DeviceService::StartPreviewOnServiceThread,
+          base::Unretained(this), preview_resolution, still_capture_resolution,
+          recording_resolution, &result));
   return result;
 }
 
@@ -342,6 +353,32 @@ void Camera3Service::Camera3DeviceService::TakeStillCapture(
   future->Wait();
 }
 
+int Camera3Service::Camera3DeviceService::StartRecording(
+    const camera_metadata_t* metadata) {
+  VLOGF_ENTER();
+  auto future = internal::Future<int>::Create(nullptr);
+  service_thread_.PostTaskSync(
+      FROM_HERE,
+      base::Bind(
+          &Camera3Service::Camera3DeviceService::StartRecordingOnServiceThread,
+          base::Unretained(this), metadata,
+          internal::GetFutureCallback(future)));
+  return future->Wait();
+}
+
+void Camera3Service::Camera3DeviceService::StopRecording() {
+  VLOGF_ENTER();
+  auto future = internal::Future<void>::Create(nullptr);
+  service_thread_.PostTaskAsync(
+      FROM_HERE,
+      base::Bind(
+          &Camera3Service::Camera3DeviceService::StopRecordingOnServiceThread,
+          base::Unretained(this), internal::GetFutureCallback(future)));
+  if (!future->Wait(kWaitForStopRecordingTimeoutMs)) {
+    LOG(ERROR) << "Timeout stopping preview";
+  }
+}
+
 int Camera3Service::Camera3DeviceService::WaitForPreviewFrames(
     uint32_t num_frames,
     uint32_t timeout_ms) {
@@ -387,11 +424,11 @@ void Camera3Service::Camera3DeviceService::ProcessResultMetadataOutputBuffers(
                  base::Passed(&buffers)));
 }
 
-void Camera3Service::Camera3DeviceService::
-    PrepareStillCaptureAndStartPreviewOnServiceThread(
-        const ResolutionInfo still_capture_resolution,
-        const ResolutionInfo preview_resolution,
-        int* result) {
+void Camera3Service::Camera3DeviceService::StartPreviewOnServiceThread(
+    const ResolutionInfo preview_resolution,
+    const ResolutionInfo still_capture_resolution,
+    const ResolutionInfo recording_resolution,
+    int* result) {
   DCHECK(service_thread_.IsCurrentThread());
   VLOGF_ENTER();
   if (preview_state_ != PREVIEW_STOPPED) {
@@ -405,6 +442,11 @@ void Camera3Service::Camera3DeviceService::
         HAL_PIXEL_FORMAT_BLOB, still_capture_resolution.Width(),
         still_capture_resolution.Height(), CAMERA3_STREAM_ROTATION_0);
   }
+  if (recording_resolution.Area()) {
+    cam_device_.AddOutputStream(
+        HAL_PIXEL_FORMAT_YCbCr_420_888, recording_resolution.Width(),
+        recording_resolution.Height(), CAMERA3_STREAM_ROTATION_0);
+  }
   cam_device_.AddOutputStream(
       HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, preview_resolution.Width(),
       preview_resolution.Height(), CAMERA3_STREAM_ROTATION_0);
@@ -413,18 +455,28 @@ void Camera3Service::Camera3DeviceService::
     *result = -EINVAL;
     return;
   }
-  auto it = std::find_if(
-      streams_.begin(), streams_.end(), [](const camera3_stream_t* stream) {
-        return (stream->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED);
-      });
-  if (it == streams_.end()) {
-    ADD_FAILURE() << "Failed to find configured preview stream";
+  auto GetStream = [this](int format) {
+    auto it = std::find_if(streams_.begin(), streams_.end(),
+                           [&](const camera3_stream_t* stream) {
+                             return (stream->format == format);
+                           });
+    return (it == streams_.end()) ? nullptr : *it;
+  };
+  const camera3_stream_t* preview_stream =
+      GetStream(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED);
+  const camera3_stream_t* record_stream =
+      GetStream(HAL_PIXEL_FORMAT_YCbCr_420_888);
+  if (!preview_stream || (recording_resolution.Area() && !record_stream)) {
+    ADD_FAILURE() << "Failed to find configured stream";
     *result = -EINVAL;
     return;
   }
-  const camera3_stream_t* preview_stream = *it;
 
   number_of_capture_requests_ = preview_stream->max_buffers;
+  if (recording_resolution.Area()) {
+    number_of_capture_requests_ =
+        std::min(number_of_capture_requests_, record_stream->max_buffers);
+  }
   capture_requests_.resize(number_of_capture_requests_);
   output_stream_buffers_ = std::vector<std::vector<camera3_stream_buffer_t>>(
       number_of_capture_requests_,
@@ -432,7 +484,7 @@ void Camera3Service::Camera3DeviceService::
   // Submit initial preview capture requests to fill the HAL pipeline first.
   // Then when a result callback is processed, the corresponding capture
   // request (and output buffer) is recycled and submitted again.
-  for (size_t i = 0; i < number_of_capture_requests_; i++) {
+  for (uint32_t i = 0; i < number_of_capture_requests_; i++) {
     std::vector<const camera3_stream_t*> streams(1, preview_stream);
     std::vector<camera3_stream_buffer_t> output_buffers;
     if (cam_device_.AllocateOutputBuffersByStreams(streams, &output_buffers) !=
@@ -527,10 +579,69 @@ void Camera3Service::Camera3DeviceService::TakeStillCaptureOnServiceThread(
   still_capture_cb_ = cb;
 }
 
+void Camera3Service::Camera3DeviceService::StartRecordingOnServiceThread(
+    const camera_metadata_t* metadata,
+    base::Callback<void(int)> cb) {
+  DCHECK(service_thread_.IsCurrentThread());
+  VLOGF_ENTER();
+  if (!metadata) {
+    LOG(ERROR) << "Invalid metadata settings";
+    cb.Run(-EINVAL);
+    return;
+  }
+  if (preview_state_ != PREVIEW_STARTED) {
+    VLOGF(2) << "Preview is not started yet. Retrying...";
+    usleep(500);
+    service_thread_.PostTaskAsync(
+        FROM_HERE, base::Bind(&Camera3Service::Camera3DeviceService::
+                                  StartRecordingOnServiceThread,
+                              base::Unretained(this), metadata, cb));
+    return;
+  }
+  auto it = std::find_if(
+      streams_.begin(), streams_.end(), [](const camera3_stream_t* stream) {
+        return (stream->format == HAL_PIXEL_FORMAT_YCbCr_420_888);
+      });
+  if (it == streams_.end()) {
+    ADD_FAILURE() << "Failed to find configured recording stream";
+    cb.Run(-EINVAL);
+    return;
+  }
+  const camera3_stream_t* record_stream = *it;
+
+  for (uint32_t i = 0; i < number_of_capture_requests_; i++) {
+    std::vector<const camera3_stream_t*> streams(1, record_stream);
+    std::vector<camera3_stream_buffer_t> output_buffers;
+    if (cam_device_.AllocateOutputBuffersByStreams(streams, &output_buffers) !=
+        0) {
+      ADD_FAILURE() << "Failed to allocate output buffer";
+      cb.Run(-EINVAL);
+      return;
+    }
+    output_stream_buffers_[i][kRecordingOutputStreamIdx] =
+        output_buffers.front();
+  }
+  recording_metadata_ = metadata;
+  cb.Run(0);
+}
+
+void Camera3Service::Camera3DeviceService::StopRecordingOnServiceThread(
+    base::Callback<void()> cb) {
+  VLOGF_ENTER();
+  recording_metadata_ = nullptr;
+  stop_recording_cb_ = cb;
+}
+
 void Camera3Service::Camera3DeviceService::
     ProcessPreviewRequestOnServiceThread() {
   DCHECK(service_thread_.IsCurrentThread());
   camera3_capture_request_t* request = &capture_requests_[capture_request_idx_];
+  // Initially there is preview stream only
+  request->num_output_buffers = 1;
+  if (recording_metadata_) {
+    request->settings = recording_metadata_;
+    ++request->num_output_buffers;
+  }
   if (still_capture_metadata_) {
     auto it = std::find_if(streams_.begin(), streams_.end(),
                            [](const camera3_stream_t* stream) {
@@ -545,15 +656,15 @@ void Camera3Service::Camera3DeviceService::
         0, cam_device_.AllocateOutputBuffersByStreams(streams, &output_buffers))
         << "Failed to allocate output buffer";
     request->settings = still_capture_metadata_;
-    request->num_output_buffers = 2;  // preview + still capture
-    output_stream_buffers_[capture_request_idx_][kStillCaptureOutputStreamIdx] =
+    output_stream_buffers_[capture_request_idx_][request->num_output_buffers] =
         output_buffers.front();
-  } else {
+    ++request->num_output_buffers;
+  }
+  if (!recording_metadata_ && !still_capture_metadata_) {
     // Request with one-shot metadata if there is one
     request->settings = oneshot_preview_metadata_.get()
                             ? oneshot_preview_metadata_.get()
                             : repeating_preview_metadata_.get();
-    request->num_output_buffers = 1;  // preview only
   }
   ASSERT_EQ(0, cam_device_.ProcessCaptureRequest(request))
       << "Failed to process capture request";
@@ -571,7 +682,8 @@ void Camera3Service::Camera3DeviceService::
   if (still_capture_metadata_) {
     still_capture_metadata_ = nullptr;
     still_capture_cb_.Run();
-  } else if (oneshot_preview_metadata_.get()) {
+  } else if (!recording_metadata_ && !still_capture_metadata_ &&
+             oneshot_preview_metadata_.get()) {
     oneshot_preview_metadata_.reset(nullptr);
   }
   INCREASE_INDEX(capture_request_idx_);
@@ -615,23 +727,44 @@ void Camera3Service::Camera3DeviceService::
   // Process output buffers
   bool stopping_preview =
       (preview_state_ == PREVIEW_STOPPING) && !still_capture_metadata_;
+  bool have_yuv_buffer = false;
   for (auto& it : buffers) {
     VLOGF(1) << "  Buffer " << *it
              << " (format:" << Camera3TestGralloc::GetFormat(*it) << ")";
-    if (Camera3TestGralloc::GetFormat(*it) == HAL_PIXEL_FORMAT_BLOB) {
-      Camera3PerfLog::GetInstance()->Update(
-          cam_id_, Camera3PerfLog::Key::STILL_IMAGE_CAPTURED,
-          base::TimeTicks::Now());
-      if (!process_still_capture_result_cb_.is_null()) {
-        process_still_capture_result_cb_.Run(
-            cam_id_, frame_number, std::move(metadata), std::move(it));
-      }
-    } else if (!stopping_preview) {
-      // Register buffer back to be used by future requests
-      cam_device_.RegisterOutputBuffer(
-          *output_stream_buffers_[capture_request_idx][kPreviewOutputStreamIdx]
-               .stream,
-          std::move(it));
+    switch (Camera3TestGralloc::GetFormat(*it)) {
+      case HAL_PIXEL_FORMAT_BLOB:
+        Camera3PerfLog::GetInstance()->Update(
+            cam_id_, Camera3PerfLog::Key::STILL_IMAGE_CAPTURED,
+            base::TimeTicks::Now());
+        if (!process_still_capture_result_cb_.is_null()) {
+          process_still_capture_result_cb_.Run(
+              cam_id_, frame_number, std::move(metadata), std::move(it));
+        }
+        break;
+      case HAL_PIXEL_FORMAT_YCbCr_420_888:
+        have_yuv_buffer = true;
+        if (!process_recording_result_cb_.is_null()) {
+          process_recording_result_cb_.Run(cam_id_, frame_number,
+                                           std::move(metadata));
+        }
+        if (recording_metadata_ && !stopping_preview) {
+          // Register buffer back to be used by future requests
+          cam_device_.RegisterOutputBuffer(
+              *output_stream_buffers_[capture_request_idx]
+                                     [kRecordingOutputStreamIdx]
+                                         .stream,
+              std::move(it));
+        }
+        break;
+      default:
+        if (!stopping_preview) {
+          // Register buffer back to be used by future requests
+          cam_device_.RegisterOutputBuffer(
+              *output_stream_buffers_[capture_request_idx]
+                                     [kPreviewOutputStreamIdx]
+                                         .stream,
+              std::move(it));
+        }
     }
   }
   if (preview_state_ == PREVIEW_STARTING) {
@@ -641,6 +774,10 @@ void Camera3Service::Camera3DeviceService::
   }
   sem_post(&preview_frame_sem_);
 
+  if (!stop_recording_cb_.is_null() && !have_yuv_buffer) {
+    stop_recording_cb_.Run();
+    stop_recording_cb_.Reset();
+  }
   if (stopping_preview) {
     VLOGF(1) << "Stopping preview ... (" << number_of_in_flight_requests_
              << " requests in flight";
@@ -648,6 +785,7 @@ void Camera3Service::Camera3DeviceService::
       preview_state_ = PREVIEW_STOPPED;
       capture_request_idx_ = 0;
       stop_preview_cb_.Run();
+      stop_preview_cb_.Reset();
     }
     return;
   }

@@ -11,7 +11,9 @@
 namespace camera3_test {
 
 void Camera3PreviewFixture::SetUp() {
-  ASSERT_EQ(0, cam_service_.Initialize())
+  ASSERT_EQ(0, cam_service_.Initialize(
+                   Camera3Service::ProcessStillCaptureResultCallback(),
+                   Camera3Service::ProcessRecordingResultCallback()))
       << "Failed to initialize camera service";
 }
 
@@ -40,7 +42,9 @@ TEST_P(Camera3SinglePreviewTest, Camera3BasicPreviewTest) {
       cam_service_.GetStaticInfo(cam_id_)->GetSortedOutputResolutions(
           HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED);
   for (const auto& resolution : resolutions) {
-    ASSERT_EQ(0, cam_service_.StartPreview(cam_id_, resolution))
+    ResolutionInfo jpeg_resolution(0, 0), recording_resolution(0, 0);
+    ASSERT_EQ(0, cam_service_.StartPreview(cam_id_, resolution, jpeg_resolution,
+                                           recording_resolution))
         << "Starting preview fails";
     ASSERT_EQ(0, cam_service_.WaitForPreviewFrames(cam_id_, kNumPreviewFrames,
                                                    kTimeoutMsPerFrame));

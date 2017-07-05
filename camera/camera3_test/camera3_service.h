@@ -17,12 +17,15 @@
 
 namespace camera3_test {
 
-const int32_t kNumberOfOutputStreamBuffers = 2;
+const int32_t kNumberOfOutputStreamBuffers = 3;
 const int32_t kPreviewOutputStreamIdx = 0;
-const int32_t kStillCaptureOutputStreamIdx = 1;
+const int32_t kRecordingOutputStreamIdx = 1;
+// The still capture output stream can be at index 1 or 2, depending on whether
+// there is video recording.
 const int32_t kWaitForStopPreviewTimeoutMs = 3000;
 const int32_t kWaitForFocusDoneTimeoutMs = 6000;
 const int32_t kWaitForAWBConvergedTimeoutMs = 3000;
+const int32_t kWaitForStopRecordingTimeoutMs = 3000;
 enum { PREVIEW_STOPPED, PREVIEW_STARTING, PREVIEW_STARTED, PREVIEW_STOPPING };
 #define INCREASE_INDEX(idx) \
   (idx) = (idx == number_of_capture_requests_ - 1) ? 0 : (idx) + 1
@@ -48,25 +51,25 @@ class Camera3Service {
                               BufferHandleUniquePtr buffer)>
       ProcessStillCaptureResultCallback;
 
-  // Initialize service and corresponding devices
-  int Initialize();
+  typedef base::Callback<
+      void(int cam_id, uint32_t frame_number, CameraMetadataUniquePtr metadata)>
+      ProcessRecordingResultCallback;
 
   // Initialize service and corresponding devices and register processing
-  // still capture result callback
-  int Initialize(ProcessStillCaptureResultCallback cb);
+  // still capture and recording result callback
+  int Initialize(ProcessStillCaptureResultCallback still_capture_cb,
+                 ProcessRecordingResultCallback recording_cb);
 
   // Destroy service and corresponding devices
   void Destroy();
 
   // Start camera preview with given preview resolution |preview_resolution|
-  int StartPreview(int cam_id, const ResolutionInfo& preview_resolution);
-
-  // Configure still capture with given resolution |still_capture_resolution|
-  // and start camera preview with |preview_resolution|.
-  int PrepareStillCaptureAndStartPreview(
-      int cam_id,
-      const ResolutionInfo& still_capture_resolution,
-      const ResolutionInfo& preview_resolution);
+  // Set the width of |still_capture_resolution| or |recording_resolution| to 0
+  // if taking still pictures or recording is not needed.
+  int StartPreview(int cam_id,
+                   const ResolutionInfo& preview_resolution,
+                   const ResolutionInfo& still_capture_resolution,
+                   const ResolutionInfo& recording_resolution);
 
   // Stop camera preview
   void StopPreview(int cam_id);
@@ -88,6 +91,12 @@ class Camera3Service {
 
   // Take still capture with settings |metadata|
   void TakeStillCapture(int cam_id, const camera_metadata_t* metadata);
+
+  // Start recording
+  int StartRecording(int cam_id, const camera_metadata_t* metadata);
+
+  // Stop recording
+  void StopRecording(int cam_id);
 
   // Wait for |num_frames| number of preview frames with |timeout_ms|
   // milliseconds of timeout for each frame.
@@ -118,26 +127,31 @@ class Camera3Service {
 
 class Camera3Service::Camera3DeviceService {
  public:
-  Camera3DeviceService(int cam_id, ProcessStillCaptureResultCallback cb)
+  Camera3DeviceService(int cam_id,
+                       ProcessStillCaptureResultCallback still_capture_cb,
+                       ProcessRecordingResultCallback recording_cb)
       : cam_id_(cam_id),
         cam_device_(cam_id),
         service_thread_("Camera3 Test Service Thread"),
-        process_still_capture_result_cb_(cb),
+        process_still_capture_result_cb_(still_capture_cb),
+        process_recording_result_cb_(recording_cb),
         preview_state_(PREVIEW_STOPPED),
         number_of_capture_requests_(0),
         capture_request_idx_(0),
         number_of_in_flight_requests_(0),
-        still_capture_metadata_(nullptr) {}
+        still_capture_metadata_(nullptr),
+        recording_metadata_(nullptr) {}
 
   int Initialize();
 
   void Destroy();
 
-  // Configure still capture with given resolution |still_capture_resolution|
-  // and start camera preview with |preview_resolution|.
-  int PrepareStillCaptureAndStartPreview(
-      const ResolutionInfo& still_capture_resolution,
-      const ResolutionInfo& preview_resolution);
+  // Start camera preview with given preview resolution |preview_resolution|
+  // Set the width of |still_capture_resolution| or |recording_resolution| to 0
+  // if taking still pictures or recording is not needed.
+  int StartPreview(const ResolutionInfo& preview_resolution,
+                   const ResolutionInfo& still_capture_resolution,
+                   const ResolutionInfo& recording_resolution);
 
   // Stop camera preview
   void StopPreview();
@@ -160,6 +174,12 @@ class Camera3Service::Camera3DeviceService {
   // Take still capture with settings |metadata|
   void TakeStillCapture(const camera_metadata_t* metadata);
 
+  // Start recording
+  int StartRecording(const camera_metadata_t* metadata);
+
+  // Stop recording
+  void StopRecording();
+
   // Wait for |num_frames| number of preview frames with |timeout_ms|
   // milliseconds of timeout for each frame.
   int WaitForPreviewFrames(uint32_t num_frames, uint32_t timeout_ms);
@@ -177,10 +197,10 @@ class Camera3Service::Camera3DeviceService {
       CameraMetadataUniquePtr metadata,
       std::vector<BufferHandleUniquePtr> buffers);
 
-  void PrepareStillCaptureAndStartPreviewOnServiceThread(
-      const ResolutionInfo still_capture_resolution,
-      const ResolutionInfo preview_resolution,
-      int* result);
+  void StartPreviewOnServiceThread(ResolutionInfo preview_resolution,
+                                   ResolutionInfo still_capture_resolution,
+                                   ResolutionInfo recording_resolution,
+                                   int* result);
 
   void StartAutoFocusOnServiceThread();
 
@@ -202,6 +222,11 @@ class Camera3Service::Camera3DeviceService {
   void TakeStillCaptureOnServiceThread(const camera_metadata_t* metadata,
                                        base::Callback<void()> cb);
 
+  void StartRecordingOnServiceThread(const camera_metadata_t* metadata,
+                                     base::Callback<void(int)> cb);
+
+  void StopRecordingOnServiceThread(base::Callback<void()> cb);
+
   // This function can be called by PrepareStillCaptureAndStartPreview() or
   // ProcessResultMetadataOutputBuffers() to process one preview request.
   // It will check whether there was a still capture request or preview
@@ -222,13 +247,15 @@ class Camera3Service::Camera3DeviceService {
 
   ProcessStillCaptureResultCallback process_still_capture_result_cb_;
 
+  ProcessRecordingResultCallback process_recording_result_cb_;
+
   int32_t preview_state_;
 
   base::Callback<void()> stop_preview_cb_;
 
   std::vector<const camera3_stream_t*> streams_;
 
-  size_t number_of_capture_requests_;
+  uint32_t number_of_capture_requests_;
 
   // Keep |number_of_capture_requests_| number of capture request
   std::vector<camera3_capture_request_t> capture_requests_;
@@ -255,6 +282,11 @@ class Camera3Service::Camera3DeviceService {
   const camera_metadata_t* still_capture_metadata_;
 
   base::Callback<void()> still_capture_cb_;
+
+  // Metadata for recording requests
+  const camera_metadata_t* recording_metadata_;
+
+  base::Callback<void()> stop_recording_cb_;
 
   struct MetadataListener {
     int32_t key;

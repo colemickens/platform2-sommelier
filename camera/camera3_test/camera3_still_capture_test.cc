@@ -5,14 +5,15 @@
 #include "camera3_test/camera3_still_capture_fixture.h"
 
 #include <algorithm>
-#include <cmath>
 
 namespace camera3_test {
 
 void Camera3StillCaptureFixture::SetUp() {
-  ASSERT_EQ(0, cam_service_.Initialize(base::Bind(
-                   &Camera3StillCaptureFixture::ProcessStillCaptureResult,
-                   base::Unretained(this))))
+  ASSERT_EQ(
+      0, cam_service_.Initialize(
+             base::Bind(&Camera3StillCaptureFixture::ProcessStillCaptureResult,
+                        base::Unretained(this)),
+             Camera3Service::ProcessRecordingResultCallback()))
       << "Failed to initialize camera service";
   for (const auto& it : cam_ids_) {
     jpeg_max_sizes_[it] = cam_service_.GetStaticInfo(it)->GetJpegMaxSize();
@@ -570,8 +571,9 @@ TEST_P(Camera3SimpleStillCaptureTest, JpegExifTest) {
       cam_service_.GetStaticInfo(cam_id_)
           ->GetSortedOutputResolutions(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED)
           .back();
-  cam_service_.PrepareStillCaptureAndStartPreview(cam_id_, jpeg_resolution,
-                                                  preview_resolution);
+  ResolutionInfo recording_resolution(0, 0);
+  cam_service_.StartPreview(cam_id_, preview_resolution, jpeg_resolution,
+                            recording_resolution);
 
   ExifTestData exif_test_data[] = {
       {thumbnail_resolutions.front(), 90, 80, 75},
@@ -646,8 +648,9 @@ void Camera3SimpleStillCaptureTest::TakePictureTest(
       cam_service_.GetStaticInfo(cam_id_)
           ->GetSortedOutputResolutions(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED)
           .back();
-  cam_service_.PrepareStillCaptureAndStartPreview(cam_id_, jpeg_resolution,
-                                                  preview_resolution);
+  ResolutionInfo recording_resolution(0, 0);
+  cam_service_.StartPreview(cam_id_, preview_resolution, jpeg_resolution,
+                            recording_resolution);
 
   // Trigger an auto focus run, and wait for AF locked.
   if (IsAFSupported()) {
@@ -706,8 +709,9 @@ TEST_P(Camera3JpegResolutionTest, JpegResolutionTest) {
   VLOGF(1) << "JPEG resolution " << jpeg_resolution.Width() << "x"
            << jpeg_resolution.Height();
 
-  cam_service_.PrepareStillCaptureAndStartPreview(cam_id_, jpeg_resolution,
-                                                  preview_resolution);
+  ResolutionInfo recording_resolution(0, 0);
+  cam_service_.StartPreview(cam_id_, preview_resolution, jpeg_resolution,
+                            recording_resolution);
   CameraMetadataUniquePtr metadata(
       clone_camera_metadata(cam_service_.ConstructDefaultRequestSettings(
           cam_id_, CAMERA3_TEMPLATE_STILL_CAPTURE)));
