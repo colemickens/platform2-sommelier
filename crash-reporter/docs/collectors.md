@@ -81,6 +81,16 @@ The program name is `kernel` and might be referred to as `kcrash`.
     `console-ramoops-*` and hope the events just before the reset are enough to
     triage the problem.
 *   As records are processed, they get removed from the pstore area.
+*   On systems with coreboot BIOS, we also collect the BIOS log. This may be
+    helpful to debug crashes when the kernel interacted with runtime firmware.
+*   coreboot maintains a ring buffer (the "CBMEM console") of log messages in a
+    memory area that is considered reserved by the kernel. The buffer is never
+    erased unless the memory loses power (i.e. if the system fully shuts down),
+    and is usually large enough to hold messages from several prior boots.
+*   The collector will search the BIOS log for "banner" strings printed by
+    coreboot on boot to determine where a reboot occured. It will only collect
+    log lines from the boot prior to the current one (i.e. the one that the
+    crash occured it).
 
 ## unclean_shutdown_collector
 

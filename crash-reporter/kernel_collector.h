@@ -35,6 +35,7 @@ class KernelCollector : public CrashCollector {
   ~KernelCollector() override;
 
   void OverrideEventLogPath(const base::FilePath& file_path);
+  void OverrideBiosLogPath(const base::FilePath& file_path);
   void OverridePreservedDumpPath(const base::FilePath& file_path);
 
   // Enable collection.
@@ -131,6 +132,7 @@ class KernelCollector : public CrashCollector {
 
   friend class KernelCollectorTest;
   FRIEND_TEST(KernelCollectorTest, LoadPreservedDump);
+  FRIEND_TEST(KernelCollectorTest, LoadBiosLog);
   FRIEND_TEST(KernelCollectorTest, CollectOK);
   FRIEND_TEST(KernelCollectorTest, ParseEfiCrashId);
   FRIEND_TEST(KernelCollectorTest, GetEfiCrashType);
@@ -139,6 +141,7 @@ class KernelCollector : public CrashCollector {
   virtual bool DumpDirMounted();
 
   bool LoadPreservedDump(std::string* contents);
+  bool LoadLastBootBiosLog(std::string* contents);
 
   bool LastRebootWasWatchdog();
   bool LoadConsoleRamoops(std::string* contents);
@@ -185,6 +188,7 @@ class KernelCollector : public CrashCollector {
   std::string GenerateSignature(const std::string& kernel_dump,
                                 bool is_watchdog);
   bool HandleCrash(const std::string& kernel_dump,
+                   const std::string& bios_dump,
                    const std::string& signature);
 
   // Collects ramoops crash.
@@ -198,6 +202,7 @@ class KernelCollector : public CrashCollector {
   bool is_enabled_;
   base::FilePath eventlog_path_;
   base::FilePath dump_path_;
+  base::FilePath bios_log_path_;
   size_t records_;
 
   // The architecture of kernel dump strings we are working with.

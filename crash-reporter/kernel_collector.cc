@@ -23,6 +23,11 @@ using base::StringPrintf;
 
 namespace {
 
+// Name for extra BIOS dump attached to report. Also used as metadata key.
+constexpr char kBiosDumpName[] = "bios_log";
+const FilePath kBiosLogPath("/sys/firmware/log");
+// Names of the three BIOS stages in which the BIOS log can start.
+const char* const kBiosStageNames[] = {"bootblock", "romstage", "ramstage"};
 constexpr char kDefaultKernelStackSignature[] =
     "kernel-UnspecifiedStackSignature";
 constexpr char kDumpParentPath[] = "/sys/fs";
@@ -85,6 +90,7 @@ KernelCollector::KernelCollector()
     : is_enabled_(false),
       eventlog_path_(kEventLogPath),
       dump_path_(kDumpPath),
+      bios_log_path_(kBiosLogPath),
       records_(0),
       // We expect crash dumps in the format of architecture we are built for.
       arch_(GetCompilerArch()) {}
@@ -93,6 +99,10 @@ KernelCollector::~KernelCollector() {}
 
 void KernelCollector::OverrideEventLogPath(const FilePath& file_path) {
   eventlog_path_ = file_path;
+}
+
+void KernelCollector::OverrideBiosLogPath(const FilePath& file_path) {
+  bios_log_path_ = file_path;
 }
 
 void KernelCollector::OverridePreservedDumpPath(const FilePath& file_path) {
@@ -198,9 +208,61 @@ bool KernelCollector::LoadPreservedDump(std::string* contents) {
   return true;
 }
 
+bool KernelCollector::LoadLastBootBiosLog(std::string* contents) {
+  contents->clear();
+
+  if (!base::PathExists(bios_log_path_)) {
+    LOG(INFO) << bios_log_path_.value() << " does not exist, skipping "
+              << "BIOS crash check. (This is normal for older boards.)";
+    return false;
+  }
+
+  std::string full_log;
+  if (!base::ReadFileToString(bios_log_path_, &full_log)) {
+    PLOG(ERROR) << "Unable to read " << bios_log_path_.value();
+    return false;
+  }
+
+  // Different platforms start their BIOS log at different stages. Look for
+  // banner strings of all stages in order until we find one that works.
+  for (auto stage : kBiosStageNames) {
+    pcrecpp::RE banner_re(
+        StringPrintf("(.*?)(?="
+                     "\n\\*\\*\\* Pre-CBMEM %s console overflow"
+                     "|"
+                     "\n\ncoreboot-[^\n]* %s starting\\.\\.\\.\n"
+                     ")",
+                     stage, stage),
+        pcrecpp::RE_Options().set_multiline(true).set_dotall(true));
+    pcrecpp::StringPiece remaining_log(full_log);
+    pcrecpp::StringPiece previous_boot;
+    bool found = false;
+
+    // Keep iterating until last previous_boot before current one.
+    while (banner_re.Consume(&remaining_log, &previous_boot)) {
+      remaining_log.remove_prefix(1);
+      found = true;
+    }
+
+    if (!previous_boot.empty()) {
+      previous_boot.CopyToString(contents);
+      return true;
+    }
+
+    // If banner found but no log before it, don't look for other stage banners.
+    // This just means we booted up from S5 and there was nothing left in DRAM.
+    if (found)
+      return false;
+  }
+
+  // This shouldn't happen since we should always see at least the current boot.
+  LOG(ERROR) << "BIOS log contains no known banner strings!";
+  return false;
+}
+
 // We can't always trust kernel watchdog drivers to correctly report the boot
-// reason, since on some platforms our firmware has to reinitialize the hardware
-// registers in a way that clears this information. Instead read the firmware
+// reason, since on some platforms our BIOS has to reinitialize the hardware
+// registers in a way that clears this information. Instead read the BIOS
 // eventlog to figure out if a watchdog reset was detected during the last boot.
 bool KernelCollector::LastRebootWasWatchdog() {
   if (!base::PathExists(eventlog_path_)) {
@@ -627,6 +689,7 @@ std::vector<KernelCollector::EfiCrash> KernelCollector::FindEfiCrashes() const {
 // Stores crash pointed by kernel_dump to crash directory. This will be later
 // sent to backend from crash directory by crash_sender.
 bool KernelCollector::HandleCrash(const std::string& kernel_dump,
+                                  const std::string& bios_dump,
                                   const std::string& signature) {
   FilePath root_crash_directory;
   std::string reason = "handling";
@@ -654,6 +717,8 @@ bool KernelCollector::HandleCrash(const std::string& kernel_dump,
         FormatDumpBasename(kKernelExecName, time(nullptr), kKernelPid);
     FilePath kernel_crash_path = root_crash_directory.Append(
         StringPrintf("%s.kcrash", dump_basename.c_str()));
+    FilePath bios_dump_path = root_crash_directory.Append(
+        StringPrintf("%s.%s", dump_basename.c_str(), kBiosDumpName));
 
     // We must use WriteNewFile instead of base::WriteFile as we
     // do not want to write with root access to a symlink that an attacker
@@ -664,6 +729,16 @@ bool KernelCollector::HandleCrash(const std::string& kernel_dump,
       LOG(INFO) << "Failed to write kernel dump to "
                 << kernel_crash_path.value().c_str();
       return true;
+    }
+    if (!bios_dump.empty()) {
+      if (WriteNewFile(bios_dump_path, bios_dump.data(), bios_dump.length()) !=
+          static_cast<int>(bios_dump.length())) {
+        PLOG(WARNING) << "Failed to write BIOS log to "
+                      << bios_dump_path.value() << " (ignoring)";
+      } else {
+        AddCrashMetaUploadFile(kBiosDumpName, bios_dump_path.value());
+        LOG(INFO) << "Stored BIOS log to " << bios_dump_path.value();
+      }
     }
 
     AddCrashMetaData(kKernelSignatureKey, signature);
@@ -698,7 +773,8 @@ bool KernelCollector::CollectEfiCrash() {
                   << " type:" << crash_type;
         StripSensitiveData(&crash);
         if (!crash.empty()) {
-          if (!HandleCrash(crash, GenerateSignature(crash, false))) {
+          if (!HandleCrash(crash, std::string(),
+                           GenerateSignature(crash, false))) {
             LOG(ERROR) << "Failed to handle kernel efi crash id:"
                        << efi_crash->GetId();
           }
@@ -715,18 +791,22 @@ bool KernelCollector::CollectEfiCrash() {
 }
 
 bool KernelCollector::CollectRamoopsCrash() {
+  std::string bios_dump;
   std::string kernel_dump;
   bool is_watchdog = false;
 
+  LoadLastBootBiosLog(&bios_dump);
   if (!LoadParameters() || !LoadPreservedDump(&kernel_dump)) {
     if (!LastRebootWasWatchdog() || !LoadConsoleRamoops(&kernel_dump)) {
       return false;
     }
     is_watchdog = true;
   }
+  StripSensitiveData(&bios_dump);
   StripSensitiveData(&kernel_dump);
   if (kernel_dump.empty()) {
     return false;
   }
-  return HandleCrash(kernel_dump, GenerateSignature(kernel_dump, is_watchdog));
+  return HandleCrash(kernel_dump, bios_dump,
+                     GenerateSignature(kernel_dump, is_watchdog));
 }

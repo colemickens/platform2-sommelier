@@ -50,6 +50,7 @@ class KernelCollectorTest : public ::testing::Test {
     return test_console_ramoops_old_;
   }
   const FilePath& eventlog_file() const { return test_eventlog_; }
+  const FilePath& bios_log_file() const { return test_bios_log_; }
   const FilePath& kcrash_file() const { return test_kcrash_; }
   const FilePath& efikcrash_file(int part) const {
     return test_efikcrash_[part];
@@ -90,12 +91,17 @@ class KernelCollectorTest : public ::testing::Test {
     test_eventlog_ = scoped_temp_dir_.GetPath().Append("eventlog.txt");
     ASSERT_FALSE(base::PathExists(test_eventlog_));
     collector_.OverrideEventLogPath(test_eventlog_);
+
+    test_bios_log_ = scoped_temp_dir_.path().Append("bios_log");
+    ASSERT_FALSE(base::PathExists(test_bios_log_));
+    collector_.OverrideBiosLogPath(test_bios_log_);
     brillo::ClearLog();
   }
 
   FilePath test_console_ramoops_;
   FilePath test_console_ramoops_old_;
   FilePath test_eventlog_;
+  FilePath test_bios_log_;
   FilePath test_kcrash_;
   FilePath test_efikcrash_[kMaxEfiParts];
   FilePath test_crash_directory_;
@@ -183,6 +189,69 @@ TEST_F(KernelCollectorTest, LoadPreservedDump) {
   ASSERT_EQ("", dump);
 }
 
+TEST_F(KernelCollectorTest, LoadBiosLog) {
+  std::string dump;
+  dump.clear();
+
+  std::string bootblock_boot_1 =
+      "\n\ncoreboot-dc417eb Tue Nov 2 20:47:41 UTC 2016 bootblock starting...\n"
+      "This is boot 1 bootblock!\n"
+      "\n\ncoreboot-dc417eb Tue Nov 2 20:47:41 UTC 2016 verstage starting...\n"
+      "This is boot 1 verstage!\n";
+  std::string romstage_boot_1 =
+      "\n\ncoreboot-e8dd2d8 Tue Mar 14 23:29:43 UTC 2017 romstage starting...\n"
+      "This is boot 1 romstage!\n"
+      "\n\ncoreboot-e8dd2d8 Tue Mar 14 23:29:43 UTC 2017 ramstage starting...\n"
+      "This is boot 1 ramstage!\n"
+      "\n\nStarting depthcharge on kevin...\n"
+      "This is boot 1 depthcharge!\n"
+      "jumping to kernel\n"
+      "Some more messages logged at runtime, maybe without terminating newline";
+  std::string bootblock_boot_2 =
+      "\n\ncoreboot-dc417eb Tue Nov 2 20:47:41 UTC 2016 bootblock starting...\n"
+      "This is boot 2 bootblock!\n"
+      "\n\ncoreboot-dc417eb Tue Nov 2 20:47:41 UTC 2016 verstage starting...\n"
+      "This is boot 2 verstage!\n";
+  std::string romstage_boot_2 =
+      "\n\ncoreboot-e8dd2d8 Tue Mar 14 23:29:43 UTC 2017 romstage starting...\n"
+      "This is boot 2 romstage!\n"
+      "\n\ncoreboot-e8dd2d8 Tue Mar 14 23:29:43 UTC 2017 ramstage starting...\n"
+      "This is boot 2 ramstage!\n"
+      "\n\nStarting depthcharge on kevin...\n"
+      "This is boot 2 depthcharge!\n"
+      "jumping to kernel\n"
+      "Some more messages logged at runtime, maybe without terminating newline";
+
+  // Normal situation of multiple boots in log.
+  ASSERT_TRUE(test_util::CreateFile(
+      bios_log_file(),
+      ("Some old lines from boot N-3\n" +    // N-3
+       bootblock_boot_2 + romstage_boot_2 +  // N-2
+       bootblock_boot_1 + romstage_boot_1 +  // N-1 (the "last" boot)
+       bootblock_boot_2 + romstage_boot_2)   // N ("current" boot, after crash)
+          .c_str()));
+  ASSERT_TRUE(collector_.LoadLastBootBiosLog(&dump));
+  ASSERT_EQ(bootblock_boot_1 + romstage_boot_1, "\n" + dump);
+
+  // Same on a board that cannot log pre-romstage.
+  ASSERT_TRUE(test_util::CreateFile(
+      bios_log_file(),
+      (romstage_boot_2 + romstage_boot_1 + romstage_boot_2).c_str()));
+  ASSERT_TRUE(collector_.LoadLastBootBiosLog(&dump));
+  ASSERT_EQ(romstage_boot_1, "\n" + dump);
+
+  // Logs from previous boot were lost.
+  ASSERT_TRUE(test_util::CreateFile(
+      bios_log_file(), (bootblock_boot_1 + romstage_boot_1).c_str()));
+  ASSERT_FALSE(collector_.LoadLastBootBiosLog(&dump));
+  ASSERT_EQ("", dump);
+
+  // No recognizable BIOS log.
+  ASSERT_TRUE(test_util::CreateFile(bios_log_file(), "random crud\n"));
+  ASSERT_FALSE(collector_.LoadLastBootBiosLog(&dump));
+  ASSERT_EQ("", dump);
+}
+
 TEST_F(KernelCollectorTest, EnableMissingKernel) {
   ASSERT_FALSE(collector_.Enable());
   ASSERT_FALSE(collector_.is_enabled());
@@ -256,6 +325,10 @@ TEST_F(KernelCollectorTest, WatchdogOptedOutOld) {
 
 TEST_F(KernelCollectorTest, CollectOK) {
   SetUpSuccessfulCollect();
+  ASSERT_TRUE(test_util::CreateFile(
+      bios_log_file(),
+      "BIOS Messages"
+      "\n\ncoreboot-dc417eb Tue Nov 2 bootblock starting...\n"));
   ASSERT_TRUE(collector_.Collect());
   ASSERT_EQ(1, s_crashes);
   ASSERT_TRUE(FindLog("(handling)"));
@@ -272,10 +345,26 @@ TEST_F(KernelCollectorTest, CollectOK) {
   ASSERT_NE(std::string::npos, end_pos);
   filename = filename.substr(0, end_pos);
   ASSERT_EQ(0, filename.find(test_crash_directory().value()));
-  ASSERT_TRUE(base::PathExists(FilePath(filename)));
+  FilePath path(filename);
+  ASSERT_TRUE(base::PathExists(path));
   std::string contents;
-  ASSERT_TRUE(base::ReadFileToString(FilePath(filename), &contents));
+  ASSERT_TRUE(base::ReadFileToString(path, &contents));
   ASSERT_EQ("something", contents);
+  // Check that BIOS log was collected as well.
+  path = path.ReplaceExtension("bios_log");
+  ASSERT_TRUE(base::PathExists(path));
+  ASSERT_TRUE(base::ReadFileToString(path, &contents));
+  ASSERT_EQ("BIOS Messages", contents);
+  // Confirm that files are correctly described in .meta file.
+  path = path.ReplaceExtension("meta");
+  ASSERT_TRUE(base::PathExists(path));
+  ASSERT_TRUE(base::ReadFileToString(path, &contents));
+  ASSERT_TRUE(
+      contents.find("payload=" + path.ReplaceExtension("kcrash").value()) !=
+      std::string::npos);
+  ASSERT_TRUE(contents.find("upload_file_bios_log=" +
+                            path.ReplaceExtension("bios_log").value()) !=
+              std::string::npos);
 }
 
 void KernelCollectorTest::WatchdogOKHelper(const FilePath& path) {
