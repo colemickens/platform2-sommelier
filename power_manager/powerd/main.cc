@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 
+#include <sys/sysinfo.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -19,6 +20,8 @@
 #include <base/run_loop.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
+#include <brillo/daemons/daemon.h>
 #include <brillo/flag_helper.h>
 #include <metrics/metrics_library.h>
 
@@ -48,33 +51,6 @@
 #ifndef VCSID
 #define VCSID "<not set>"
 #endif
-
-namespace {
-
-// Moves |latest_log_symlink| to |previous_log_symlink| and creates a relative
-// symlink at |latest_log_symlink| pointing to |log_file|. All files must be in
-// the same directory.
-void UpdateLogSymlinks(const base::FilePath& latest_log_symlink,
-                       const base::FilePath& previous_log_symlink,
-                       const base::FilePath& log_file) {
-  CHECK_EQ(latest_log_symlink.DirName().value(), log_file.DirName().value());
-  base::DeleteFile(previous_log_symlink, false);
-  base::Move(latest_log_symlink, previous_log_symlink);
-  if (!base::CreateSymbolicLink(log_file.BaseName(), latest_log_symlink)) {
-    LOG(ERROR) << "Unable to create symbolic link from "
-               << latest_log_symlink.value() << " to " << log_file.value();
-  }
-}
-
-std::string GetTimeAsString(time_t utime) {
-  struct tm tm;
-  CHECK_EQ(localtime_r(&utime, &tm), &tm);
-  char str[16];
-  CHECK_EQ(strftime(str, sizeof(str), "%Y%m%d-%H%M%S", &tm), 15UL);
-  return std::string(str);
-}
-
-}  // namespace
 
 namespace power_manager {
 
@@ -291,11 +267,13 @@ int main(int argc, char* argv[]) {
 
   const base::FilePath log_file =
       base::FilePath(FLAGS_log_dir)
-          .Append(base::StringPrintf("powerd.%s",
-                                     GetTimeAsString(::time(NULL)).c_str()));
-  UpdateLogSymlinks(base::FilePath(FLAGS_log_dir).Append("powerd.LATEST"),
-                    base::FilePath(FLAGS_log_dir).Append("powerd.PREVIOUS"),
-                    log_file);
+          .Append(base::StringPrintf(
+              "powerd.%s",
+              brillo::GetTimeAsLogString(base::Time::Now()).c_str()));
+  brillo::UpdateLogSymlinks(
+      base::FilePath(FLAGS_log_dir).Append("powerd.LATEST"),
+      base::FilePath(FLAGS_log_dir).Append("powerd.PREVIOUS"),
+      log_file);
 
   logging::LoggingSettings logging_settings;
   logging_settings.logging_dest = logging::LOG_TO_FILE;
@@ -303,6 +281,17 @@ int main(int argc, char* argv[]) {
   logging_settings.lock_log = logging::DONT_LOCK_LOG_FILE;
   logging::InitLogging(logging_settings);
   LOG(INFO) << "vcsid " << VCSID;
+
+  // Make it easier to tell if the system just booted, which is useful to know
+  // when reading logs from bug reports.
+  struct sysinfo info;
+  if (sysinfo(&info) == 0) {
+    LOG(INFO) << "System uptime: "
+              << power_manager::util::TimeDeltaToString(
+                     base::TimeDelta::FromSeconds(info.uptime));
+  } else {
+    PLOG(ERROR) << "sysinfo() failed";
+  }
 
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
