@@ -27,10 +27,9 @@ class CachedFrame {
   // incoming frame into YU12. Return non-zero values if it encounters errors.
   // If |rotate_degree| is 90 or 270, |frame| will be cropped, rotated by the
   // specified amount and scaled.
-  // If |rotate_degree| is -1, |frame| will not be cropped, rotated, and scaled.
-  // This function will return an error if |rotate_degree| is not -1, 90, or
+  // This function will return an error if |rotate_degree| is not 0, 90, or
   // 270.
-  int SetSource(const V4L2FrameBuffer* frame, int rotate_degree);
+  int SetSource(const FrameBuffer* frame, int rotate_degree, bool test_pattern);
   void UnsetSource();
 
   uint8_t* GetSourceBuffer() const;
@@ -58,7 +57,8 @@ class CachedFrame {
               bool video_hack = false);
 
  private:
-  int ConvertToYU12();
+  int ConvertToYU12(bool test_pattern);
+
   // When we have a landscape mounted camera and the current camera activity is
   // portrait, the frames shown in the activity would be stretched. Therefore,
   // we want to simulate a native portrait camera. That's why we want to crop,
@@ -68,16 +68,14 @@ class CachedFrame {
   // needs to rotate clockwise by |rotate_degree|.
   int CropRotateScale(int rotate_degree);
 
-  const V4L2FrameBuffer* source_frame_;
+  // CachedFrame does not take the ownership of |source_frame_|.
+  const FrameBuffer* source_frame_;
 
   // Temporary buffer for cropped and rotated results.
   std::unique_ptr<AllocatedFrameBuffer> rotated_frame_;
 
   // Cache YU12 decoded results.
   std::unique_ptr<AllocatedFrameBuffer> yu12_frame_;
-
-  // Temporary buffer for scaled results.
-  std::unique_ptr<AllocatedFrameBuffer> scaled_frame_;
 };
 
 }  // namespace arc

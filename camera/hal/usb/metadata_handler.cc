@@ -242,9 +242,12 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
   UPDATE(ANDROID_SENSOR_INFO_SENSITIVITY_RANGE, sensor_info_sensitivity_range,
          ARRAY_SIZE(sensor_info_sensitivity_range));
 
-  const int32_t test_pattern_mode = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
-  UPDATE(ANDROID_SENSOR_AVAILABLE_TEST_PATTERN_MODES, &test_pattern_mode, 1);
-  UPDATE(ANDROID_SENSOR_TEST_PATTERN_MODE, &test_pattern_mode, 1);
+  const int32_t test_pattern_modes[] = {
+      ANDROID_SENSOR_TEST_PATTERN_MODE_OFF,
+      ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY};
+  UPDATE(ANDROID_SENSOR_AVAILABLE_TEST_PATTERN_MODES, test_pattern_modes,
+         ARRAY_SIZE(test_pattern_modes));
+  UPDATE(ANDROID_SENSOR_TEST_PATTERN_MODE, &test_pattern_modes[0], 1);
 
   const uint8_t timestamp_source = ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE_UNKNOWN;
   UPDATE(ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE, &timestamp_source, 1);

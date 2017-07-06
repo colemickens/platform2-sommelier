@@ -534,6 +534,9 @@ int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution) {
 
   stream_on_resolution_ = stream_on_resolution;
   SkipFramesAfterStreamOn(device_info_.frames_to_skip_after_streamon);
+
+  // Reset test pattern.
+  test_pattern_.reset(new TestPattern(stream_on_resolution_));
   return 0;
 }
 
@@ -609,7 +612,14 @@ int CameraClient::RequestHandler::WriteStreamBuffer(
       rotate_degree = entry.data.i32[0];
     }
 
-    ret = DequeueV4L2Buffer(rotate_degree);
+    int32_t pattern_mode = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
+    if (metadata.exists(ANDROID_SENSOR_TEST_PATTERN_MODE)) {
+      camera_metadata_ro_entry entry =
+          metadata.find(ANDROID_SENSOR_TEST_PATTERN_MODE);
+      pattern_mode = entry.data.i32[0];
+    }
+
+    ret = DequeueV4L2Buffer(rotate_degree, pattern_mode);
     if (ret) {
       return ret;
     }
@@ -719,7 +729,8 @@ void CameraClient::RequestHandler::NotifyRequestError(uint32_t frame_number) {
   callback_ops_->notify(callback_ops_, &m);
 }
 
-int CameraClient::RequestHandler::DequeueV4L2Buffer(int rotate_degree) {
+int CameraClient::RequestHandler::DequeueV4L2Buffer(int rotate_degree,
+                                                    int32_t pattern_mode) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   uint32_t buffer_id, data_size;
   int ret = device_->GetNextFrameBuffer(&buffer_id, &data_size);
@@ -737,11 +748,25 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int rotate_degree) {
     return ret;
   }
 
-  ret = input_frame_.SetSource(input_buffers_[buffer_id].get(), rotate_degree);
-  if (ret) {
-    LOGFID(ERROR, device_id_)
-        << "Set image source failed for input buffer id: " << buffer_id;
-    return ret;
+  if (!test_pattern_->SetTestPatternMode(pattern_mode)) {
+    return -EINVAL;
+  }
+
+  if (!test_pattern_->IsTestPatternEnabled()) {
+    ret = input_frame_.SetSource(input_buffers_[buffer_id].get(), rotate_degree,
+                                 false);
+    if (ret) {
+      LOGFID(ERROR, device_id_)
+          << "Set image source failed for input buffer id: " << buffer_id;
+      return ret;
+    }
+  } else {
+    ret = input_frame_.SetSource(test_pattern_->GetTestPattern(), rotate_degree,
+                                 true);
+    if (ret) {
+      LOGFID(ERROR, device_id_) << "Set image source failed for test pattern";
+      return ret;
+    }
   }
   return 0;
 }

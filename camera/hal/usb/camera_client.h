@@ -27,6 +27,7 @@
 #include "hal/usb/common_types.h"
 #include "hal/usb/frame_buffer.h"
 #include "hal/usb/metadata_handler.h"
+#include "hal/usb/test_pattern.h"
 #include "hal/usb/v4l2_camera_device.h"
 
 namespace arc {
@@ -191,7 +192,7 @@ class CameraClient {
     void NotifyRequestError(uint32_t frame_number);
 
     // Dequeue V4L2 frame buffer.
-    int DequeueV4L2Buffer(int rotate_degree);
+    int DequeueV4L2Buffer(int rotate_degree, int32_t pattern_mode);
 
     // Enqueue V4L2 frame buffer.
     int EnqueueV4L2Buffer();
@@ -237,6 +238,9 @@ class CameraClient {
 
     // Used to notify that flush is called from framework.
     bool flush_started_;
+
+    // Used to generate test pattern.
+    std::unique_ptr<TestPattern> test_pattern_;
 
     // Used to guard |flush_started_|.
     base::Lock flush_lock_;

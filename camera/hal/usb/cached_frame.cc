@@ -16,16 +16,17 @@ namespace arc {
 CachedFrame::CachedFrame()
     : source_frame_(nullptr),
       rotated_frame_(new AllocatedFrameBuffer(0)),
-      yu12_frame_(new AllocatedFrameBuffer(0)),
-      scaled_frame_(new AllocatedFrameBuffer(0)) {}
+      yu12_frame_(new AllocatedFrameBuffer(0)) {}
 
 CachedFrame::~CachedFrame() {
   UnsetSource();
 }
 
-int CachedFrame::SetSource(const V4L2FrameBuffer* frame, int rotate_degree) {
+int CachedFrame::SetSource(const FrameBuffer* frame,
+                           int rotate_degree,
+                           bool test_pattern) {
   source_frame_ = frame;
-  int res = ConvertToYU12();
+  int res = ConvertToYU12(test_pattern);
   if (res != 0) {
     return res;
   }
@@ -82,17 +83,24 @@ int CachedFrame::Convert(const android::CameraMetadata& metadata,
   return ImageProcessor::ConvertFormat(metadata, *yu12_frame_.get(), out_frame);
 }
 
-int CachedFrame::ConvertToYU12() {
+int CachedFrame::ConvertToYU12(bool test_pattern) {
   yu12_frame_->SetFourcc(V4L2_PIX_FMT_YUV420);
   yu12_frame_->SetWidth(source_frame_->GetWidth());
   yu12_frame_->SetHeight(source_frame_->GetHeight());
 
-  int ret = ImageProcessor::ConvertFormat(android::CameraMetadata(),
-                                          *source_frame_, yu12_frame_.get());
-  if (ret) {
-    LOGF(ERROR) << "Convert from " << FormatToString(source_frame_->GetFourcc())
-                << " to YU12 failed.";
-    return ret;
+  if (test_pattern == false) {
+    int ret = ImageProcessor::ConvertFormat(android::CameraMetadata(),
+                                            *source_frame_, yu12_frame_.get());
+    if (ret) {
+      LOGF(ERROR) << "Convert from "
+                  << FormatToString(source_frame_->GetFourcc())
+                  << " to YU12 failed.";
+      return ret;
+    }
+  } else {
+    yu12_frame_->SetDataSize(source_frame_->GetDataSize());
+    memcpy(yu12_frame_->GetData(), source_frame_->GetData(),
+           source_frame_->GetDataSize());
   }
   return 0;
 }
