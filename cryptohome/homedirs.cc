@@ -6,6 +6,8 @@
 
 #include <algorithm>
 #include <memory>
+#include <set>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -38,6 +40,8 @@ const FilePath::CharType *kShadowRoot = "/home/.shadow";
 const char *kEmptyOwner = "";
 const char kGCacheFilesAttribute[] = "user.GCacheFiles";
 const char kAndroidCacheFilesAttribute[] = "user.AndroidCache";
+const char kAndroidCacheInodeAttribute[] = "user.inode_cache";
+const char kAndroidCodeCacheInodeAttribute[] = "user.inode_code_cache";
 const char kTrackedDirectoryNameAttribute[] = "user.TrackedDirectoryName";
 
 HomeDirs::HomeDirs()
@@ -950,24 +954,53 @@ void HomeDirs::DeleteAndroidCacheCallback(const FilePath& user_dir) {
     return;
   }
   // Find the cache directory by walking under the root directory
-  // and looking for AndroidCache xattr set. Data is stored under
-  // root/android-data/data/data/[package name]/cache. It is not
+  // and looking for AndroidCache xattr set. Alternatively for Android N the
+  // pacakge directory stores the inode of the cache directory in the
+  // kAndroidCacheInodeAttribute xattr. Data is stored under
+  // root/android-data/data/data/<package name>/[code_]cache. It is not
   // desirable to make all package name directories unencrypted, they
   // are not marked as tracked directory.
   // TODO(crbug/625872): Mark root/android/data/data/ as pass through.
   // TODO(uekawa): Not all boards have android running, we probably
   // don't need to check for board that do not have an android
   // configuration.
+
+  // A set of parent directory/inode combinations.  We need the parent directory
+  // as the inodes may have been re-used elsewhere if the cache directory was
+  // deleted.
+  std::set<std::pair<const FilePath, ino_t>> cache_inodes;
   std::unique_ptr<cryptohome::FileEnumerator> file_enumerator(
       platform_->GetFileEnumerator(root, true,
                                    base::FileEnumerator::DIRECTORIES));
   FilePath next_path;
   while (!(next_path = file_enumerator->Next()).empty()) {
-    std::string value;
-    if (platform_->HasExtendedFileAttribute(
-            next_path, kAndroidCacheFilesAttribute)) {
+    ino_t inode = file_enumerator->GetInfo().stat().st_ino;
+    std::pair<const FilePath, ino_t> parent_inode_pair =
+        std::make_pair(next_path.DirName(), inode);
+    if (cache_inodes.find(parent_inode_pair) != cache_inodes.end() ||
+        platform_->HasExtendedFileAttribute(next_path,
+                                            kAndroidCacheFilesAttribute)) {
       LOG(WARNING) << "Deleting Android Cache " << next_path.value();
-      platform_->DeleteFile(next_path, true);
+      std::vector<FilePath> entry_list;
+      platform_->EnumerateDirectoryEntries(next_path, false, &entry_list);
+      for (const FilePath& entry : entry_list)
+        platform_->DeleteFile(entry, true);
+      cache_inodes.erase(parent_inode_pair);
+    }
+    for (const char* attribute :
+         {kAndroidCacheInodeAttribute, kAndroidCodeCacheInodeAttribute}) {
+      if (platform_->HasExtendedFileAttribute(next_path, attribute)) {
+        uint64_t inode;
+        if (platform_->GetExtendedFileAttribute(next_path,
+                                                attribute,
+                                                reinterpret_cast<char*>(&inode),
+                                                sizeof(inode))) {
+          // Because FileEnumerator processes all entries in a directory before
+          // continuing to sub-directories we can assume that the inode is added
+          // here before the directory that has the inode is processed.
+          cache_inodes.insert(std::make_pair(next_path, inode));
+        }
+      }
     }
   }
 }

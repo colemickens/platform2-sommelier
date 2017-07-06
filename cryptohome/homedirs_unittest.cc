@@ -46,6 +46,7 @@ using ::testing::Return;
 using ::testing::ReturnRef;
 using ::testing::SaveArg;
 using ::testing::SetArgPointee;
+using ::testing::SetArrayArgument;
 using ::testing::StartsWith;
 using ::testing::StrEq;
 using ::testing::_;
@@ -102,6 +103,12 @@ const base::Time time_apr5 = base::Time::FromUTCExploded(apr5th2011_exploded);
 
 NiceMock<MockFileEnumerator>* CreateMockFileEnumerator() {
   return new NiceMock<MockFileEnumerator>;
+}
+
+FileEnumerator::FileInfo CreateFileInfo(const FilePath& path, ino_t inode) {
+  struct stat file_stat;
+  file_stat.st_ino = inode;
+  return FileEnumerator::FileInfo(path, file_stat);
 }
 }  // namespace
 
@@ -854,6 +861,16 @@ TEST_P(FreeDiskSpaceTest, CacheAndGCacheAndAndroidCleanup) {
 
   // Now test for the Android user, just test for the first user.
   NiceMock<MockFileEnumerator>* fe = new NiceMock<MockFileEnumerator>;
+  FilePath app_dir =
+      homedir_paths_[0].Append("android-data/data/data/com.google.hogehoge");
+  FilePath cache_dir = app_dir.Append("cache");
+  FilePath data_dir = app_dir.Append("data");
+  FilePath code_cache_dir = app_dir.Append("code_cache");
+  uint64_t code_cache_inode = 4;
+  fe->entries_.push_back(CreateFileInfo(app_dir, 1));
+  fe->entries_.push_back(CreateFileInfo(cache_dir, 2));
+  fe->entries_.push_back(CreateFileInfo(data_dir, 3));
+  fe->entries_.push_back(CreateFileInfo(code_cache_dir, code_cache_inode));
   EXPECT_CALL(platform_, GetFileEnumerator(
         Property(
           &FilePath::value,
@@ -865,40 +882,42 @@ TEST_P(FreeDiskSpaceTest, CacheAndGCacheAndAndroidCleanup) {
     .WillOnce(InvokeWithoutArgs(CreateMockFileEnumerator))
     .WillOnce(InvokeWithoutArgs(CreateMockFileEnumerator));
 
-  // Return a cache and non-cache directory.
-  EXPECT_CALL(*fe, Next())
-    .WillOnce(Return(homedir_paths_[0].Append(
-            "android-data/data/data/com.google.hogehoge/cache")))
-    .WillOnce(Return(homedir_paths_[0].Append(
-            "android-data/data/data/com.google.hogehoge/data")))
-    .WillRepeatedly(Return(FilePath()));
-
-  EXPECT_CALL(platform_, HasExtendedFileAttribute(
-        Property(
-          &FilePath::value,
-          EndsWith("android-data/data/data/com.google.hogehoge/cache")),
-        kAndroidCacheFilesAttribute))
-    .WillOnce(Return(true));
-  EXPECT_CALL(platform_, HasExtendedFileAttribute(
-        Property(
-          &FilePath::value,
-          EndsWith("android-data/data/data/com.google.hogehoge/data")),
-        kAndroidCacheFilesAttribute))
-    .WillOnce(Return(false));
+  EXPECT_CALL(platform_,
+              HasExtendedFileAttribute(_, kAndroidCacheFilesAttribute))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_,
+              HasExtendedFileAttribute(_, kAndroidCodeCacheInodeAttribute))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_,
+              HasExtendedFileAttribute(_, kAndroidCacheInodeAttribute))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_,
+              HasExtendedFileAttribute(cache_dir, kAndroidCacheFilesAttribute))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      platform_,
+      HasExtendedFileAttribute(app_dir, kAndroidCodeCacheInodeAttribute))
+      .WillOnce(Return(true));
+  char* code_cache_array = reinterpret_cast<char*>(&code_cache_inode);
+  EXPECT_CALL(
+      platform_,
+      GetExtendedFileAttribute(app_dir, kAndroidCodeCacheInodeAttribute, _, _))
+      .WillOnce(DoAll(
+          SetArrayArgument<2>(code_cache_array,
+                              code_cache_array + sizeof(code_cache_inode)),
+          Return(true)));
+  std::vector<FilePath> cache_entries = {cache_dir.Append("foo")};
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(cache_dir, false, _))
+      .WillOnce(DoAll(SetArgPointee<2>(cache_entries), Return(true)));
+  std::vector<FilePath> code_cache_entries = {code_cache_dir.Append("bar")};
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(code_cache_dir, false, _))
+      .WillOnce(DoAll(SetArgPointee<2>(code_cache_entries), Return(true)));
 
   // Confirm android cache dir is removed and data directory is not.
-  EXPECT_CALL(platform_, DeleteFile(
-        Property(
-          &FilePath::value,
-          EndsWith("android-data/data/data/com.google.hogehoge/cache")),
-        _))
-    .WillOnce(Return(true));
-  EXPECT_CALL(platform_, DeleteFile(
-        Property(
-          &FilePath::value,
-          EndsWith("android-data/data/data/com.google.hogehoge/data")),
-        _))
-    .Times(0);
+  EXPECT_CALL(platform_, DeleteFile(cache_dir.Append("foo"), true))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(code_cache_dir.Append("bar"), true))
+      .WillOnce(Return(true));
 
   // Should finish cleaning up because the free space size exceeds
   // |kMinFreeSpaceInBytes| after deleting Android cache, although it's still
