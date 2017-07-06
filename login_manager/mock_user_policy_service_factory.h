@@ -7,7 +7,10 @@
 
 #include "login_manager/user_policy_service_factory.h"
 
+#include <memory>
 #include <string>
+
+#include <base/files/file_path.h>
 
 namespace login_manager {
 
@@ -15,7 +18,9 @@ class MockUserPolicyServiceFactory : public UserPolicyServiceFactory {
  public:
   MockUserPolicyServiceFactory();
   virtual ~MockUserPolicyServiceFactory();
-  MOCK_METHOD1(Create, PolicyService*(const std::string&));
+  MOCK_METHOD1(Create, std::unique_ptr<PolicyService>(const std::string&));
+  MOCK_METHOD1(CreateForHiddenUserHome,
+               std::unique_ptr<PolicyService>(const std::string&));
 };
 
 }  // namespace login_manager

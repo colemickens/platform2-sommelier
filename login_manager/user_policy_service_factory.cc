@@ -64,7 +64,8 @@ UserPolicyServiceFactory::UserPolicyServiceFactory(
 UserPolicyServiceFactory::~UserPolicyServiceFactory() {
 }
 
-PolicyService* UserPolicyServiceFactory::Create(const std::string& username) {
+std::unique_ptr<PolicyService> UserPolicyServiceFactory::Create(
+    const std::string& username) {
   using brillo::cryptohome::home::GetDaemonPath;
   base::FilePath policy_dir(
       GetDaemonPath(username, kDaemonName).Append(kPolicyDir));
@@ -73,6 +74,20 @@ PolicyService* UserPolicyServiceFactory::Create(const std::string& username) {
     return NULL;
   }
 
+  return CreateInternal(username, policy_dir);
+}
+
+std::unique_ptr<PolicyService>
+UserPolicyServiceFactory::CreateForHiddenUserHome(const std::string& username) {
+  using brillo::cryptohome::home::GetDaemonPathForHiddenUserHome;
+  base::FilePath policy_dir(
+      GetDaemonPathForHiddenUserHome(username, kDaemonName).Append(kPolicyDir));
+  return CreateInternal(username, policy_dir);
+}
+
+std::unique_ptr<PolicyService> UserPolicyServiceFactory::CreateInternal(
+    const std::string& username,
+    const base::FilePath& policy_dir) {
   auto key =
       base::MakeUnique<PolicyKey>(policy_dir.Append(kPolicyKeyFile), nss_);
   bool key_load_success = key->PopulateFromDiskIfPossible();
@@ -94,8 +109,11 @@ PolicyService* UserPolicyServiceFactory::Create(const std::string& username) {
                                                   sanitized.c_str(),
                                                   kPolicyKeyCopyFile));
 
-  UserPolicyService* service = new UserPolicyService(
-      std::move(store), std::move(key), key_copy_file, system_utils_);
+  std::unique_ptr<UserPolicyService> service =
+      base::MakeUnique<UserPolicyService>(std::move(store),
+                                          std::move(key),
+                                          key_copy_file,
+                                          system_utils_);
   service->PersistKeyCopy();
   return service;
 }

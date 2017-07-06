@@ -7,8 +7,10 @@
 
 #include <sys/types.h>
 
+#include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 
@@ -28,9 +30,20 @@ class UserPolicyServiceFactory {
   virtual ~UserPolicyServiceFactory();
 
   // Creates a new user policy service instance.
-  virtual PolicyService* Create(const std::string& username);
+  virtual std::unique_ptr<PolicyService> Create(const std::string& username);
+
+  // Creates a new user policy service instance operating in a hidden user
+  // home directory.
+  virtual std::unique_ptr<PolicyService> CreateForHiddenUserHome(
+      const std::string& username);
 
  private:
+  // Creates a new user policy service instance operating in |policy_dir| and
+  // persisting key copies in a directory keyed by sanitized |username|.
+  std::unique_ptr<PolicyService> CreateInternal(
+      const std::string& username,
+      const base::FilePath& policy_dir);
+
   // UID to check for.
   uid_t uid_;
 

@@ -198,6 +198,10 @@ class SessionManagerImpl
   bool RetrievePolicyForUser(brillo::ErrorPtr* error,
                              const std::string& in_account_id,
                              std::vector<uint8_t>* out_policy_blob) override;
+  bool RetrievePolicyForUserWithoutSession(
+      brillo::ErrorPtr* error,
+      const std::string& in_account_id,
+      std::vector<uint8_t>* out_policy_blob) override;
   void StoreDeviceLocalAccountPolicy(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
       const std::string& in_account_id,

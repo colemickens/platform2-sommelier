@@ -202,6 +202,21 @@
     </method>
 
     <!--
+        RetrievePolicyForUserWithoutSession:
+        @account_id: Account ID of the user whose policy the caller wants.
+        @policy_blob: Serialized protobuf containing a PolicyFetchResponse and a
+                      signature over that policy.
+
+        Retrieves user policy for user without a user session. This is useful if
+        we need to access user policy before actually starting the session. The
+        user home must have been mounted as hidden user home with cryptohome.
+    -->
+    <method name="RetrievePolicyForUserWithoutSession">
+      <arg type="s" name="account_id" direction="in" />
+      <arg type="ay" name="policy_blob" direction="out" />
+    </method>
+
+    <!--
         StoreDeviceLocalAccountPolicy:
         @account_id: Account whose policy is to be stored.
         @policy_blob: A serialized PolicyFetchResponse protobuf.

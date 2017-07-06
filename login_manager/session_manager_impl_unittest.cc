@@ -348,17 +348,21 @@ class SessionManagerImplTest : public ::testing::Test {
     impl_->SetSystemClockLastSyncInfoRetryDelayForTesting(base::TimeDelta());
 
     device_policy_service_ = new MockDevicePolicyService();
-    auto factory =
-        base::MakeUnique<testing::NiceMock<MockUserPolicyServiceFactory>>();
-    ON_CALL(*factory, Create(_))
+    user_policy_service_factory_ =
+        new testing::NiceMock<MockUserPolicyServiceFactory>();
+    ON_CALL(*user_policy_service_factory_, Create(_))
         .WillByDefault(
             Invoke(this, &SessionManagerImplTest::CreateUserPolicyService));
+    ON_CALL(*user_policy_service_factory_, CreateForHiddenUserHome(_))
+        .WillByDefault(Invoke(
+            this,
+            &SessionManagerImplTest::CreateUserPolicyServiceForHiddenUserHome));
     auto device_local_account_policy =
         base::MakeUnique<DeviceLocalAccountPolicyService>(tmpdir_.path(),
                                                           nullptr);
     impl_->SetPolicyServicesForTest(
         base::WrapUnique(device_policy_service_),
-        std::move(factory),
+        base::WrapUnique(user_policy_service_factory_),
         std::move(device_local_account_policy));
 
     EXPECT_CALL(*system_clock_proxy_, WaitForServiceToBeAvailable(_))
@@ -497,9 +501,18 @@ class SessionManagerImplTest : public ::testing::Test {
         .WillOnce(Return(true));
   }
 
-  PolicyService* CreateUserPolicyService(const string& username) {
-    user_policy_services_[username] = new MockPolicyService();
-    return user_policy_services_[username];
+  std::unique_ptr<PolicyService> CreateUserPolicyService(
+      const string& username) {
+    std::unique_ptr<MockPolicyService> policy_service =
+        base::MakeUnique<MockPolicyService>();
+    user_policy_services_[username] = policy_service.get();
+    return policy_service;
+  }
+
+  std::unique_ptr<PolicyService> CreateUserPolicyServiceForHiddenUserHome(
+      const string& username) {
+    EXPECT_EQ(username, hidden_user_home_expected_username_);
+    return std::move(hidden_user_home_policy_service_);
   }
 
   void VerifyAndClearExpectations() {
@@ -541,7 +554,14 @@ class SessionManagerImplTest : public ::testing::Test {
   // Owned by SessionManagerImpl.
   MockInitDaemonController* init_controller_ = nullptr;
   MockDevicePolicyService* device_policy_service_ = nullptr;
+  MockUserPolicyServiceFactory* user_policy_service_factory_ = nullptr;
   map<string, MockPolicyService*> user_policy_services_;
+  // The username which is expected to be passed to
+  // MockUserPolicyServiceFactory::CreateForHiddenUserHome.
+  std::string hidden_user_home_expected_username_;
+  // The policy service which shall be returned from
+  // MockUserPolicyServiceFactory::CreateForHiddenUserHome.
+  std::unique_ptr<MockPolicyService> hidden_user_home_policy_service_;
 
   scoped_refptr<FakeBus> bus_;
   MockKeyGenerator key_gen_;
@@ -1153,6 +1173,33 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
     Mock::VerifyAndClearExpectations(user_policy_services_[kEmail2]);
     EXPECT_EQ(policy_blob, out_blob);
   }
+}
+
+TEST_F(SessionManagerImplTest, RetrieveUserPolicyWithoutSession) {
+  ASSERT_FALSE(user_policy_services_.count(kSaneEmail));
+
+  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
+
+  // Set up what MockUserPolicyServiceFactory will return.
+  hidden_user_home_expected_username_ = kSaneEmail;
+  hidden_user_home_policy_service_ = base::MakeUnique<MockPolicyService>();
+  MockPolicyService* policy_service = hidden_user_home_policy_service_.get();
+
+  EXPECT_CALL(*policy_service, Retrieve(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(policy_blob), Return(true)));
+
+  // Retrieve policy for a user who does not have a session.
+  std::vector<uint8_t> out_blob;
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_->RetrievePolicyForUserWithoutSession(&error,
+                                                         kSaneEmail,
+                                                         &out_blob));
+  Mock::VerifyAndClearExpectations(policy_service);
+  EXPECT_FALSE(error.get());
+  EXPECT_EQ(policy_blob, out_blob);
+  // Retrieval of policy without user session should not create a persistent
+  // PolicyService.
+  ASSERT_FALSE(user_policy_services_.count(kSaneEmail));
 }
 
 TEST_F(SessionManagerImplTest, RetrieveActiveSessions) {

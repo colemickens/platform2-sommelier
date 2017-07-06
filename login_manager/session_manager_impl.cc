@@ -699,6 +699,28 @@ bool SessionManagerImpl::RetrievePolicyForUser(
   return true;
 }
 
+bool SessionManagerImpl::RetrievePolicyForUserWithoutSession(
+    brillo::ErrorPtr* error,
+    const std::string& in_account_id,
+    std::vector<uint8_t>* out_policy_blob) {
+  std::unique_ptr<PolicyService> user_policy =
+      user_policy_factory_->CreateForHiddenUserHome(in_account_id);
+  if (!user_policy) {
+    constexpr char kMessage[] = "User policy failed to initialize.";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kPolicyInitFail, kMessage);
+    return false;
+  }
+  if (!user_policy->Retrieve(out_policy_blob)) {
+    constexpr char kMessage[] = "Failed to retrieve policy data.";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kSigEncodeFail, kMessage);
+    return false;
+  }
+
+  return true;
+}
+
 void SessionManagerImpl::StoreDeviceLocalAccountPolicy(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
     const std::string& in_account_id,
@@ -1274,8 +1296,8 @@ std::unique_ptr<SessionManagerImpl::UserSession>
 SessionManagerImpl::CreateUserSession(const std::string& username,
                                       bool is_incognito,
                                       brillo::ErrorPtr* error) {
-  std::unique_ptr<PolicyService> user_policy(
-      user_policy_factory_->Create(username));
+  std::unique_ptr<PolicyService> user_policy =
+      user_policy_factory_->Create(username);
   if (!user_policy) {
     LOG(ERROR) << "User policy failed to initialize.";
     *error = CreateError(dbus_error::kPolicyInitFail, "Can't create session.");
