@@ -19,12 +19,6 @@ using std::string;
 
 namespace {
 
-// Process capabilities required by the FUSE mount process:
-//   CAP_SYS_ADMIN for mounting/unmounting filesystem
-//   CAP_SETUID/CAP_SETGID for setting uid/gid in non-privileged mounts
-const uint64_t kMountProgramCapabilities =
-    (1 << CAP_SYS_ADMIN) | (1 << CAP_SETUID) | (1 << CAP_SETGID);
-
 const mode_t kSourcePathPermissions = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
 const mode_t kTargetPathPermissions = S_IRWXU | S_IRWXG;
 
@@ -52,7 +46,6 @@ MountErrorType FUSEMounter::MountImpl() {
   }
 
   SandboxedProcess mount_process;
-  mount_process.SetCapabilities(kMountProgramCapabilities);
 
   uid_t mount_user_id;
   gid_t mount_group_id;
