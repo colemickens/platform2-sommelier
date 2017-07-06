@@ -28,6 +28,7 @@
 #include <base/threading/thread.h>
 #include <brillo/bind_lambda.h>
 #include <brillo/http/http_transport.h>
+#include <brillo/secure_blob.h>
 
 #include "attestation/common/attestation_ca.pb.h"
 #include "attestation/common/crypto_utility.h"
@@ -51,7 +52,7 @@ namespace attestation {
 // Usage:
 //   std::unique_ptr<AttestationInterface> attestation =
 //       new AttestationService();
-//   CHECK(attestation->Initialize());
+//   CHECK(attestation->Initialize(nullptr));
 //   attestation->CreateGoogleAttestedKey(...);
 //
 // THREADING NOTES:
@@ -67,7 +68,9 @@ namespace attestation {
 // back to the main thread.
 class AttestationService : public AttestationInterface {
  public:
-  AttestationService();
+  // If abe_data is not an empty blob, its contents will be
+  // used to enable attestation-based enterprise enrollment.
+  AttestationService(brillo::SecureBlob* abe_data);
   ~AttestationService() override = default;
 
   // AttestationInterface methods.
@@ -148,6 +151,8 @@ class AttestationService : public AttestationInterface {
   void set_tpm_utility(TpmUtility* tpm_utility) { tpm_utility_ = tpm_utility; }
 
   void set_hwid(const std::string& hwid) { hwid_ = hwid; }
+
+  void set_abe_data(brillo::SecureBlob* abe_data) { abe_data_ = abe_data; }
 
  private:
   friend class AttestationServiceTest;
@@ -493,6 +498,9 @@ class AttestationService : public AttestationInterface {
   bool VerifyActivateIdentity(const std::string& ek_public_key_info,
                               const std::string& aik_public_key_tpm_format);
 
+  // Compute the enterprise DEN for attestation-based enrollment.
+  std::string ComputeEnterpriseEnrollmentNonce();
+
   base::WeakPtr<AttestationService> GetWeakPtr();
 
   // Other than initialization and destruction, these are used only by the
@@ -508,6 +516,7 @@ class AttestationService : public AttestationInterface {
   std::string hwid_;
   CertRequestMap pending_cert_requests_;
   std::string system_salt_;
+  brillo::SecureBlob* abe_data_;
 
   // Default implementations for the above interfaces. These will be setup
   // during Initialize() if the corresponding interface has not been set with a

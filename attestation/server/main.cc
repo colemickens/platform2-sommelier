@@ -17,13 +17,18 @@
 #include <sysexits.h>
 #include <unistd.h>
 
+#include <cstdlib>
 #include <memory>
 #include <string>
 
 #include <base/command_line.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/minijail/minijail.h>
+#include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/userdb_utils.h>
 
@@ -40,6 +45,39 @@ const char kAttestationUser[] = "attestation";
 const char kAttestationGroup[] = "attestation";
 const char kAttestationSeccompPath[] =
     "/usr/share/policy/attestationd-seccomp.policy";
+
+namespace env {
+static const char kAttestationBasedEnrollmentDataFile[] = "ABE_DATA_FILE";
+}  // namespace env
+
+// Returns the contents of the attestation-based enrollment data file.
+static std::string ReadAbeDataFileContents() {
+  std::string data;
+
+  const char* abe_data_file =
+      std::getenv(env::kAttestationBasedEnrollmentDataFile);
+  if (!abe_data_file) {
+    return data;
+  }
+
+  base::FilePath file_path(abe_data_file);
+  if (!base::ReadFileToString(file_path, &data)) {
+    LOG(FATAL) << "Could not read attestation-based enterprise enrollment data"
+                  " in: "
+               << file_path.value();
+  }
+
+  return data;
+}
+
+static bool GetAttestationEnrollmentData(const std::string& abe_data_hex,
+                                         brillo::SecureBlob* abe_data) {
+  abe_data->clear();
+  if (abe_data_hex.empty()) return true;  // no data is ok.
+  // The data must be a valid 32-byte hex string.
+  return base::HexStringToBytes(abe_data_hex, abe_data) &&
+         abe_data->size() == 32;
+}
 
 void InitMinijailSandbox() {
   uid_t attestation_uid;
@@ -69,8 +107,10 @@ using brillo::dbus_utils::AsyncEventSequencer;
 
 class AttestationDaemon : public brillo::DBusServiceDaemon {
  public:
-  AttestationDaemon()
-      : brillo::DBusServiceDaemon(attestation::kAttestationServiceName) {}
+  AttestationDaemon(brillo::SecureBlob abe_data)
+      : brillo::DBusServiceDaemon(attestation::kAttestationServiceName),
+        abe_data_(std::move(abe_data)),
+        attestation_service_(&abe_data_) {}
 
  protected:
   int OnInit() override {
@@ -90,6 +130,7 @@ class AttestationDaemon : public brillo::DBusServiceDaemon {
   }
 
  private:
+  brillo::SecureBlob abe_data_;
   attestation::AttestationService attestation_service_;
   std::unique_ptr<attestation::DBusService> dbus_service_;
 
@@ -104,8 +145,14 @@ int main(int argc, char* argv[]) {
     flags |= brillo::kLogToStderr;
   }
   brillo::InitLog(flags);
+  // read whole abe_data_file before we init minijail.
+  std::string abe_data_hex = ReadAbeDataFileContents();
+  brillo::SecureBlob abe_data;
+  if (!GetAttestationEnrollmentData(abe_data_hex, &abe_data)) {
+    LOG(ERROR) << "Invalid attestation-based enterprise enrollment data.";
+  }
   PLOG_IF(FATAL, daemon(0, 0) == -1) << "Failed to daemonize";
-  AttestationDaemon daemon;
+  AttestationDaemon daemon(abe_data);
   LOG(INFO) << "Attestation Daemon Started.";
   InitMinijailSandbox();
   return daemon.Run();

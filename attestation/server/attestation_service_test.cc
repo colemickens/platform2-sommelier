@@ -140,7 +140,7 @@ class AttestationServiceTest : public testing::Test {
   ~AttestationServiceTest() override = default;
 
   void SetUp() override {
-    service_.reset(new AttestationService);
+    service_.reset(new AttestationService(nullptr));
     service_->set_database(&mock_database_);
     service_->set_crypto_utility(&mock_crypto_utility_);
     fake_http_transport_ = std::make_shared<brillo::http::fake::Transport>();
@@ -1565,7 +1565,7 @@ TEST_F(AttestationServiceTest, PrepareForEnrollmentFailQuote) {
   EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr1_quote());
 }
 
-TEST_F(AttestationServiceTest, CreateEnrollRequestSuccess) {
+TEST_F(AttestationServiceTest, CreateEnrollRequestSuccessWithoutAbeData) {
   AttestationDatabase* database = mock_database_.GetMutableProtobuf();
   database->mutable_credentials()
       ->mutable_default_encrypted_endorsement_credential()
@@ -1584,9 +1584,72 @@ TEST_F(AttestationServiceTest, CreateEnrollRequestSuccess) {
     EXPECT_EQ("public_key", pca_request.identity_public_key());
     EXPECT_EQ("pcr0", pca_request.pcr0_quote().quote());
     EXPECT_EQ("pcr1", pca_request.pcr1_quote().quote());
+    EXPECT_FALSE(pca_request.has_enterprise_enrollment_nonce());
     Quit();
   };
   CreateEnrollRequestRequest request;
+  service_->CreateEnrollRequest(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, CreateEnrollRequestSuccessWithEmptyAbeData) {
+  AttestationDatabase* database = mock_database_.GetMutableProtobuf();
+  database->mutable_credentials()
+      ->mutable_default_encrypted_endorsement_credential()
+      ->set_wrapped_key("wrapped_key");
+  database->mutable_identity_binding()->set_identity_public_key("public_key");
+  database->mutable_pcr0_quote()->set_quote("pcr0");
+  database->mutable_pcr1_quote()->set_quote("pcr1");
+  auto callback = [this](const CreateEnrollRequestReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.has_pca_request());
+    AttestationEnrollmentRequest pca_request;
+    EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
+    EXPECT_EQ(kTpmVersionUnderTest, pca_request.tpm_version());
+    EXPECT_EQ("wrapped_key",
+              pca_request.encrypted_endorsement_credential().wrapped_key());
+    EXPECT_EQ("public_key", pca_request.identity_public_key());
+    EXPECT_EQ("pcr0", pca_request.pcr0_quote().quote());
+    EXPECT_EQ("pcr1", pca_request.pcr1_quote().quote());
+    EXPECT_FALSE(pca_request.has_enterprise_enrollment_nonce());
+    Quit();
+  };
+  brillo::SecureBlob abe_data;
+  service_->set_abe_data(&abe_data);
+  CreateEnrollRequestRequest request;
+  service_->CreateEnrollRequest(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, CreateEnrollRequestSuccessWithAbeData) {
+  AttestationDatabase* database = mock_database_.GetMutableProtobuf();
+  database->mutable_credentials()
+      ->mutable_default_encrypted_endorsement_credential()
+      ->set_wrapped_key("wrapped_key");
+  database->mutable_identity_binding()->set_identity_public_key("public_key");
+  database->mutable_pcr0_quote()->set_quote("pcr0");
+  database->mutable_pcr1_quote()->set_quote("pcr1");
+  auto callback = [this](const CreateEnrollRequestReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.has_pca_request());
+    AttestationEnrollmentRequest pca_request;
+    EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
+    EXPECT_EQ(kTpmVersionUnderTest, pca_request.tpm_version());
+    EXPECT_EQ("wrapped_key",
+              pca_request.encrypted_endorsement_credential().wrapped_key());
+    EXPECT_EQ("public_key", pca_request.identity_public_key());
+    EXPECT_EQ("pcr0", pca_request.pcr0_quote().quote());
+    EXPECT_EQ("pcr1", pca_request.pcr1_quote().quote());
+    EXPECT_TRUE(pca_request.has_enterprise_enrollment_nonce());
+
+    // Mocked CryptoUtility->HmacSha256 returns always a zeroed buffer.
+    EXPECT_EQ(std::string(32, '\0'), pca_request.enterprise_enrollment_nonce());
+    Quit();
+  };
+
+  CreateEnrollRequestRequest request;
+  brillo::SecureBlob abe_data(0xCA, 32);
+  service_->set_abe_data(&abe_data);
   service_->CreateEnrollRequest(request, base::Bind(callback));
   Run();
 }

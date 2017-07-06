@@ -20,8 +20,8 @@
 
 #include <base/callback.h>
 #include <base/sha1.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/bind_lambda.h>
 #include <brillo/cryptohome.h>
 #include <brillo/data_encoding.h>
@@ -106,6 +106,11 @@ const char kKnownBootModes[8][3] = {
   {1, 1, 0}, {1, 1, 1}
 };
 const char kVerifiedBootMode[3] = {0, 0, 1};
+
+// Context name to derive stable secret for attestation-based enterprise
+// enrollment.
+const char kAttestationBasedEnterpriseEnrollmentContextName[] =
+    "attestation_based_enrollment";
 
 struct CertificateAuthority {
   const char* issuer;
@@ -284,7 +289,8 @@ namespace attestation {
 
 const size_t kChallengeSignatureNonceSize = 20; // For all TPMs.
 
-AttestationService::AttestationService() : weak_factory_(this) {}
+AttestationService::AttestationService(brillo::SecureBlob* abe_data)
+    : abe_data_(abe_data), weak_factory_(this) {}
 
 bool AttestationService::Initialize() {
   if (!worker_thread_) {
@@ -780,6 +786,14 @@ bool AttestationService::CreateEnrollRequestInternal(ACAType aca_type,
       database_pb.identity_binding().identity_public_key());
   *request_pb.mutable_pcr0_quote() = database_pb.pcr0_quote();
   *request_pb.mutable_pcr1_quote() = database_pb.pcr1_quote();
+
+  std::string enterprise_enrollment_nonce = ComputeEnterpriseEnrollmentNonce();
+
+  if (!enterprise_enrollment_nonce.empty()) {
+    request_pb.set_enterprise_enrollment_nonce(
+        enterprise_enrollment_nonce.data(), enterprise_enrollment_nonce.size());
+  }
+
   if (!request_pb.SerializeToString(enroll_request)) {
     LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
     return false;
@@ -2148,6 +2162,18 @@ void AttestationService::SetSystemSalt(
   brillo::cryptohome::home::SetSystemSalt(&system_salt_);
   SetSystemSaltReply result;
   callback.Run(result);
+}
+
+std::string AttestationService::ComputeEnterpriseEnrollmentNonce() {
+  if (!abe_data_ || abe_data_->empty()) {
+    // If there was no device secret we cannot compute the DEN.
+    // We do not want to fail attestation for those devices.
+    return "";
+  }
+
+  std::string data(abe_data_->char_data(), abe_data_->size());
+  std::string key(kAttestationBasedEnterpriseEnrollmentContextName);
+  return crypto_utility_->HmacSha256(key, data);
 }
 
 base::WeakPtr<AttestationService> AttestationService::GetWeakPtr() {
