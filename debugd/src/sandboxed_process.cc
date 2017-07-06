@@ -70,15 +70,22 @@ bool SandboxedProcess::GetHelperPath(const std::string& relative_path,
 }
 
 bool SandboxedProcess::Init() {
+  if (sandboxing_ && (user_.empty() || group_.empty())) {
+      // Cannot sandbox without user/group.
+      return false;
+  }
+
+  if (set_capabilities_ && (!sandboxing_ || user_ == "root")) {
+      // Restricting capabilities requires dropping root.
+      return false;
+  }
+
   AddArg(kMiniJail);
   // Enter a new mount namespace. This is done for every process to avoid
   // affecting the original mount namespace.
   AddArg("-v");
 
   if (sandboxing_) {
-    if (user_.empty() || group_.empty())
-      return false;
-
     if (user_ != "root") {
       AddArg("-u");
       AddArg(user_);
@@ -87,15 +94,9 @@ bool SandboxedProcess::Init() {
       AddArg("-g");
       AddArg(group_);
     }
-  }
-
-  if (set_capabilities_) {
-    if (sandboxing_ && user_ != "root") {
+    if (set_capabilities_) {
       AddStringOption("-c",
-          base::StringPrintf("0x%" PRIx64, capabilities_mask_));
-    } else {
-      // Restricting capabilities requires dropping root.
-      return false;
+                      base::StringPrintf("0x%" PRIx64, capabilities_mask_));
     }
   }
 
