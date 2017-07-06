@@ -224,6 +224,7 @@ namespace switches {
   static const char kDevKeyHashSwitch[] = "developer_key_hash";
   static const char kEcryptfsSwitch[] = "ecryptfs";
   static const char kToMigrateFromEcryptfsSwitch[] = "to_migrate_from_ecryptfs";
+  static const char kHiddenMount[] = "hidden_mount";
 }  // namespace switches
 
 #define DBUS_METHOD(method_name) \
@@ -727,6 +728,7 @@ int main(int argc, char **argv) {
         cl->HasSwitch(switches::kEnsureEphemeralSwitch));
     mount_req.set_to_migrate_from_ecryptfs(
         cl->HasSwitch(switches::kToMigrateFromEcryptfsSwitch));
+    mount_req.set_hidden_mount(cl->HasSwitch(switches::kHiddenMount));
     if (cl->HasSwitch(switches::kCreateSwitch)) {
       cryptohome::CreateRequest* create = mount_req.mutable_create();
       create->set_copy_authorization_key(true);

@@ -234,6 +234,19 @@ class MountTest
         .WillRepeatedly(Return(true));
   }
 
+  void ExpectCryptohomeMountShadowOnly(const TestUser& user) {
+    ExpectCryptohomeKeySetup(user);
+    if (ShouldTestEcryptfs()) {
+      EXPECT_CALL(platform_,
+                  Mount(user.vault_path, user.vault_mount_path, "ecryptfs", _))
+          .WillOnce(Return(true));
+    }
+    EXPECT_CALL(platform_, CreateDirectory(user.vault_mount_path))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(platform_, IsDirectoryMounted(user.vault_mount_path))
+        .WillOnce(Return(false));
+  }
+
   // Sets expectations for cryptohome mount.
   void ExpectCryptohomeMount(const TestUser& user) {
     ExpectCryptohomeKeySetup(user);
@@ -1732,6 +1745,35 @@ TEST_P(MountTest, MountCryptohomeToMigrateFromEcryptfs) {
     // Fail if the existing vault is not ecryptfs.
     EXPECT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
   }
+}
+
+TEST_P(MountTest, MountCryptohomeShadowOnly) {
+  // Checks that the shadow_only option is handled correctly.
+  InsertTestUsers(&kDefaultUsers[10], 1);
+  EXPECT_CALL(platform_, DirectoryExists(kImageDir))
+      .WillRepeatedly(Return(true));
+  EXPECT_TRUE(DoMountInit());
+
+  TestUser* user = &helper_.users[0];
+  UsernamePasskey up(user->username, user->passkey);
+
+  user->InjectKeyset(&platform_, false);
+
+  std::vector<int> key_indices;
+  key_indices.push_back(0);
+  EXPECT_CALL(homedirs_, GetVaultKeysets(user->obfuscated_username, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(key_indices), Return(true)));
+
+  // Inject dircrypto user paths.
+  user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_, shared_gid_,
+                        kDaemonGid, ShouldTestEcryptfs());
+
+  ExpectCryptohomeMountShadowOnly(*user);
+
+  MountError error = MOUNT_ERROR_NONE;
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
+  mount_args.shadow_only = true;
+  EXPECT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
 TEST_P(MountTest, MountCryptohomeForceDircrypto) {

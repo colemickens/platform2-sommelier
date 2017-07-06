@@ -408,6 +408,22 @@ bool Service::CleanUpStaleMounts(bool force) {
   return skipped;
 }
 
+bool Service::CleanUpHiddenMounts() {
+  bool ok = true;
+  mounts_lock_.Acquire();
+  for (auto it = mounts_.begin(); it != mounts_.end();) {
+    scoped_refptr<cryptohome::Mount> mount = it->second;
+    if (mount->IsMounted() && mount->IsShadowOnly()) {
+      ok = ok && mount->UnmountCryptohome();
+      it = mounts_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+  mounts_lock_.Release();
+  return ok;
+}
+
 bool Service::Initialize() {
   bool result = true;
   if (!tpm_ && use_tpm_) {
@@ -1640,6 +1656,8 @@ gboolean Service::Mount(const gchar *userid,
                         gint *OUT_error_code,
                         gboolean *OUT_result,
                         GError **error) {
+  CleanUpHiddenMounts();
+
   // This is safe even if cryptohomed restarts during a multi-mount
   // session and a new mount is added because cleanup is not forced.
   // An existing process will keep the mount alive.  On the next
@@ -1771,6 +1789,8 @@ void Service::DoMountEx(AccountIdentifier* identifier,
     return;
   }
 
+  CleanUpHiddenMounts();
+
   // Setup a reply for use during error handling.
   BaseReply reply;
 
@@ -1900,6 +1920,13 @@ void Service::DoMountEx(AccountIdentifier* identifier,
   scoped_refptr<cryptohome::Mount> user_mount =
       GetOrCreateMountForUser(GetAccountId(*identifier));
 
+  if (request->hidden_mount() && user_mount->IsMounted()) {
+    LOG(ERROR) << "Hidden mount requested, but mount already exists.";
+    reply.set_error(CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+    SendReply(context, reply);
+    return;
+  }
+
   // For public mount, don't proceed if there is any existing mount or stale
   // mount. Exceptionally, it is normal and ok to have a failed previous mount
   // attempt for the same user.
@@ -1962,6 +1989,7 @@ void Service::DoMountEx(AccountIdentifier* identifier,
   // Force_ecryptfs_ wins.
   mount_args.force_dircrypto =
       !force_ecryptfs_ && request->force_dircrypto_if_available();
+  mount_args.shadow_only = request->hidden_mount();
   bool status = user_mount->MountCryptohome(credentials,
                                             mount_args,
                                             &code);
@@ -1978,14 +2006,16 @@ void Service::DoMountEx(AccountIdentifier* identifier,
 
   SendReply(context, reply);
 
-  // Update user activity timestamp to be able to detect old users.
-  // This action is not mandatory, so we perform it after
-  // CryptohomeMount() returns, in background.
-  user_mount->UpdateCurrentUserActivityTimestamp(0);
-  // Time to push the task for PKCS#11 initialization.
-  // TODO(wad) This call will PostTask back to the same thread. It is safe, but
-  //           it seems pointless.
-  InitializePkcs11(user_mount.get());
+  if (!request->hidden_mount()) {
+    // Update user activity timestamp to be able to detect old users.
+    // This action is not mandatory, so we perform it after
+    // CryptohomeMount() returns, in background.
+    user_mount->UpdateCurrentUserActivityTimestamp(0);
+    // Time to push the task for PKCS#11 initialization.
+    // TODO(wad) This call will PostTask back to the same thread. It is safe,
+    //           but it seems pointless.
+    InitializePkcs11(user_mount.get());
+  }
 }
 
 gboolean Service::MountEx(const GArray *account_id,
@@ -2041,6 +2071,8 @@ void Service::DoAsyncMount(const std::string& userid,
                            SecureBlob *key,
                            bool public_mount,
                            MountTaskMount* mount_task) {
+  CleanUpHiddenMounts();
+
   // Clean up stale mounts if this is the only mount.
   if (mounts_.size() != 0 || CleanUpStaleMounts(false))  {
     // Don't proceed if there is any existing mount or stale mount.
@@ -2247,6 +2279,8 @@ gboolean Service::MountPublic(const gchar* public_mount_id,
                               gint* OUT_error_code,
                               gboolean* OUT_result,
                               GError** error) {
+  CleanUpHiddenMounts();
+
   // Don't proceed if there is any existing mount or stale mount.
   if (mounts_.size() != 0 || CleanUpStaleMounts(false))  {
     LOG(ERROR) << "Public mount requested with other mounts active.";

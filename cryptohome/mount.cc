@@ -142,6 +142,7 @@ Mount::Mount()
       dircrypto_key_id_(dircrypto::kInvalidKeySerial),
       legacy_mount_(true),
       mount_type_(MountType::NONE),
+      shadow_only_(false),
       default_chaps_client_factory_(new ChapsClientFactory()),
       chaps_client_factory_(default_chaps_client_factory_.get()),
       boot_lockbox_(NULL),
@@ -225,8 +226,10 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
   if (platform_->FileExists(old_image_path)) {
     platform_->DeleteFile(GetUserDirectory(credentials), true);
   }
-  if (!EnsureUserMountPoints(credentials)) {
-    return false;
+  if (!mount_args.shadow_only) {
+    if (!EnsureUserMountPoints(credentials)) {
+      return false;
+    }
   }
   // Now check for the presence of a cryptohome.
   if (DoesCryptohomeExist(credentials)) {
@@ -643,8 +646,10 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
+  shadow_only_ = mount_args.shadow_only;
   // When migrating, it's better to avoid exposing the new ext4 crypto dir.
-  if (!mount_args.to_migrate_from_ecryptfs) {
+  // Also don't expose home directory if a shadow-only mount was requested.
+  if (!mount_args.to_migrate_from_ecryptfs && !mount_args.shadow_only) {
     if (legacy_mount_)
       MountLegacyHome(user_home, mount_error);
 
@@ -2009,5 +2014,7 @@ void Mount::MaybeCancelActiveDircryptoMigrationAndWait() {
     LOG(INFO) << "Dircrypto migration stopped.";
   }
 }
+
+bool Mount::IsShadowOnly() const { return shadow_only_; }
 
 }  // namespace cryptohome

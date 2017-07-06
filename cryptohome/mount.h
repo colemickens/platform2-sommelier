@@ -97,13 +97,17 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
     // Mount the existing ecryptfs vault to a temporary location while setting
     // up a new dircrypto directory.
     bool to_migrate_from_ecryptfs;
+    // Only mount in shadow tree, don't expose the usual /home/(user)
+    // directories.
+    bool shadow_only;
 
-    MountArgs() : create_if_missing(false),
-                  ensure_ephemeral(false),
-                  create_as_ecryptfs(false),
-                  force_dircrypto(false),
-                  to_migrate_from_ecryptfs(false) {
-    }
+    MountArgs()
+        : create_if_missing(false),
+          ensure_ephemeral(false),
+          create_as_ecryptfs(false),
+          force_dircrypto(false),
+          to_migrate_from_ecryptfs(false),
+          shadow_only(false) {}
 
     void CopyFrom(const MountArgs& rhs) {
       this->create_if_missing = rhs.create_if_missing;
@@ -111,6 +115,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
       this->create_as_ecryptfs = rhs.create_as_ecryptfs;
       this->force_dircrypto = rhs.force_dircrypto;
       this->to_migrate_from_ecryptfs = rhs.to_migrate_from_ecryptfs;
+      this->shadow_only = rhs.shadow_only;
     }
   };
 
@@ -299,6 +304,10 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Cancels the active dircrypto migration if there is, and wait for it to
   // stop.
   void MaybeCancelActiveDircryptoMigrationAndWait();
+
+  // Returns true if this Mount was mounted with |shadow_only|=true. This is
+  // only valid when IsMounted() is true.
+  bool IsShadowOnly() const;
 
   // Used to override the policy provider for testing (takes ownership)
   // TODO(wad) move this in line with other testing accessors
@@ -835,6 +844,10 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Indicates the type of the current mount.
   // This is only valid when IsMounted() is true.
   MountType mount_type_;
+
+  // true if mounted with |shadow_only|=true. This is only valid when
+  // IsMounted() is true.
+  bool shadow_only_;
 
   std::unique_ptr<ChapsClientFactory> default_chaps_client_factory_;
   ChapsClientFactory* chaps_client_factory_;
