@@ -29,6 +29,7 @@
         'ec_collector.cc',
         'kernel_collector.cc',
         'kernel_warning_collector.cc',
+        'service_failure_collector.cc',
         'udev_collector.cc',
         'unclean_shutdown_collector.cc',
         'user_collector.cc',
@@ -150,6 +151,7 @@
             'ec_collector_test.cc',
             'kernel_collector_test.cc',
             'kernel_collector_test.h',
+            'service_failure_collector_test.cc',
             'testrunner.cc',
             'udev_collector_test.cc',
             'unclean_shutdown_collector_test.cc',
@@ -170,6 +172,7 @@
             {
               'destination': '<(PRODUCT_DIR)',
               'files': [
+                'TEST_SERVICE_FAILURE',
                 'TEST_WARNING',
                 'TEST_WARNING_OLD',
                 'anomaly_collector_test.sh',

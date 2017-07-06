@@ -29,6 +29,7 @@
 
 #include "metrics/c_metrics_library.h"
 
+int ReportServiceFailure(const char *service_name);
 int KernelWarnStart(void);
 void KernelWarnEnd(void);
 void CollectorInput(char *buf, yy_size_t *result, size_t max_size);
@@ -52,12 +53,21 @@ CUT_HERE        {PREFIX}" ------------[ cut here".*
 WARNING         {PREFIX}" WARNING:"(" CPU: "{D}+" PID: "{D}+)?" at "
 END_TRACE       {PREFIX}" ---[ end trace".*
 
+/* The only meaningful information is the name of the process that failed. */
+UPSTART_WARN {PREFIX}" init: "
+SERVICE_FAIL [^ ]+" main process ("{D}+") terminated"
+
 /* Use exclusive start conditions. */
-%x PRE_WARN WARN
+%x PRE_WARN WARN SERVICE_FAIL
 
 %%
  /* The scanner itself. */
 
+ /* Detect service failures. */
+{UPSTART_WARN}/{SERVICE_FAIL}   BEGIN(SERVICE_FAIL);
+<SERVICE_FAIL>[^ ]+             ReportServiceFailure(yytext); BEGIN(0);
+
+ /* Detect kernel warnings. */
 ^{CUT_HERE}\n{WARNING}          BEGIN(PRE_WARN);
 .|\n                            /* ignore all other input in state 0 */
 <PRE_WARN>[^ ].*\n              if (KernelWarnStart()) {
@@ -84,6 +94,8 @@ END_TRACE       {PREFIX}" ---[ end trace".*
 
 const char warn_hist_name[] = "Platform.KernelWarningHashes";
 uint32_t warn_hash_bitmap[HASH_BITMAP_SIZE / 32];
+const char service_failure_hist_name[] = "Platform.ServiceFailureHashes";
+uint32_t service_failure_hash_bitmap[HASH_BITMAP_SIZE / 32];
 CMetricsLibrary metrics_library;
 
 const char *prog_name;          /* the name of this program */
@@ -98,6 +110,8 @@ const char *msg_path = "/var/log/messages";
 const char anomaly_dump_dir[]  = "/run/anomaly-collector";
 const char *warn_dump_path = "/run/anomaly-collector/warning";
 const char *warn_crash_reporter_command;
+const char *service_fail_dump_path = "/run/anomaly-collector/service-fail";
+const char *service_fail_crash_reporter_command;
 
 __attribute__((__format__(__printf__, 1, 2)))
 static void Die(const char *format, ...) {
@@ -114,12 +128,10 @@ static void RunCrashReporter(const char *crash_reporter_command) {
     Die("%s exited with status %d\n", crash_reporter_command, status);
 }
 
-static uint32_t StringHash(const char *string, int max_len) {
+static uint32_t StringHash(const char *string) {
   uint32_t hash = 0;
-  int i = 0;
-  while (*string != '\0' && i < max_len) {
+  while (*string != '\0') {
     hash = (hash << 5) + hash + *string++;
-    ++i;
   }
   return hash;
 }
@@ -164,6 +176,23 @@ static void AnomalyEnd(const char *crash_reporter_command) {
   RunCrashReporter(crash_reporter_command);
 }
 
+int ReportServiceFailure(const char *service_name) {
+  uint32_t hash;
+
+  if (filter)
+    return 1;
+
+  hash = StringHash(service_name);
+  if (!AnomalyStart(service_fail_dump_path, service_failure_hist_name,
+                    service_failure_hash_bitmap, hash))
+    return 0;
+
+  fprintf(yyout, "%08x-%s\n", hash, service_name);
+
+  AnomalyEnd(service_fail_crash_reporter_command);
+  return 1;
+}
+
 int KernelWarnStart(void) {
   uint32_t hash;
   char *spacep;
@@ -171,7 +200,7 @@ int KernelWarnStart(void) {
   if (filter)
     return 1;
 
-  hash = StringHash(yytext, INT32_MAX);
+  hash = StringHash(yytext);
   if (!AnomalyStart(warn_dump_path, warn_hist_name,
                     warn_hash_bitmap, hash))
     return 0;
@@ -288,6 +317,10 @@ int main(int argc, char **argv) {
     "./anomaly_collector_test_reporter.sh warning" :
     "/sbin/crash_reporter --kernel_warning";
 
+  service_fail_crash_reporter_command = testing ?
+    "./anomaly_collector_test_reporter.sh service-fail" :
+    "/sbin/crash_reporter --service_failure";
+
   /* When filtering with --filter (for development) use stdin for input.
    * Otherwise read input from a file or a fifo.
    */
@@ -295,6 +328,7 @@ int main(int argc, char **argv) {
   if (testing) {
     msg_path = "messages";
     warn_dump_path = "warning";
+    service_fail_dump_path = "service-fail";
   }
   if (fifo) {
     msg_path = "fifo";
@@ -315,6 +349,7 @@ int main(int argc, char **argv) {
 
   /* Create directory for dump file.  Still need to be root here. */
   unlink(warn_dump_path);
+  unlink(service_fail_dump_path);
   if (!testing && !fifo && !filter) {
     rmdir(anomaly_dump_dir);
     result = mkdir(anomaly_dump_dir, 0755);

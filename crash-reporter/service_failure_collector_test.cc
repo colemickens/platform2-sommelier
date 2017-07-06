@@ -1,0 +1,94 @@
+// Copyright 2017 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "crash-reporter/service_failure_collector.h"
+
+#include <unistd.h>
+
+#include <string>
+
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
+using base::FilePath;
+
+namespace {
+
+bool s_metrics = false;
+
+const char kTestFilename[] = "test-service-failure";
+const char kTestCrashDirectory[] = "test-crash-directory";
+
+bool IsMetrics() {
+  return s_metrics;
+}
+
+void CountCrash() { }
+
+}  // namespace
+
+class ServiceFailureCollectorMock : public ServiceFailureCollector {
+ public:
+  MOCK_METHOD0(SetUpDBus, void());
+};
+
+class ServiceFailureCollectorTest : public ::testing::Test {
+  void SetUp() {
+    s_metrics = true;
+
+    EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
+
+    collector_.Initialize(CountCrash, IsMetrics);
+    ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
+    test_path_ = scoped_temp_dir_.path().Append(kTestFilename);
+    collector_.failure_report_path_ = test_path_.value();
+
+    test_crash_directory_ = scoped_temp_dir_.path().Append(kTestCrashDirectory);
+    CreateDirectory(test_crash_directory_);
+    collector_.set_crash_directory_for_test(test_crash_directory_);
+  }
+
+ protected:
+  void WriteStringToFile(const FilePath &file_path,
+                         const char *data) {
+    ASSERT_EQ(strlen(data), base::WriteFile(file_path, data, strlen(data)));
+  }
+
+  ServiceFailureCollectorMock collector_;
+  base::ScopedTempDir scoped_temp_dir_;
+  FilePath test_path_;
+  FilePath test_crash_directory_;
+};
+
+TEST_F(ServiceFailureCollectorTest, CollectOK) {
+  // Collector produces a crash report.
+  WriteStringToFile(test_path_,
+      "crash-crash main process (2563) terminated with status 2\n");
+  EXPECT_TRUE(collector_.Collect());
+  EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
+}
+
+TEST_F(ServiceFailureCollectorTest, FailureReportDoesNotExist) {
+  // Service failure report file doesn't exist.
+  EXPECT_TRUE(collector_.Collect());
+  EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));
+}
+
+TEST_F(ServiceFailureCollectorTest, EmptyFailureReport) {
+  // Service failure report file exists, but doesn't have the expected contents.
+  WriteStringToFile(test_path_, "");
+  EXPECT_TRUE(collector_.Collect());
+  EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));
+}
+
+TEST_F(ServiceFailureCollectorTest, FeedbackNotAllowed) {
+  // Feedback not allowed.
+  s_metrics = false;
+  WriteStringToFile(test_path_,
+      "crash-crash main process (2563) terminated with status 2\n");
+  EXPECT_TRUE(collector_.Collect());
+  EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));
+}

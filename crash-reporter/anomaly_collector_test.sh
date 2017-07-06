@@ -85,5 +85,16 @@ cat "${SRC}/TEST_WARNING_OLD" >> messages
 sleep 1
 check_log 4
 
+# Emit a service failure with restarts to messages. Check that it is collected
+# only once.
+cat "${SRC}/TEST_SERVICE_FAILURE" >> messages
+sleep 1
+check_log 5
+
+# Emit a different service to messages. Check that it is collected once.
+sed s/crash-crash/fresh-fresh/ < "${SRC}/TEST_SERVICE_FAILURE" >> messages
+sleep 1
+check_log 6
+
 # Success!
 exit 0

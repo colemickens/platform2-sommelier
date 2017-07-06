@@ -21,6 +21,7 @@
 #include "crash-reporter/ec_collector.h"
 #include "crash-reporter/kernel_collector.h"
 #include "crash-reporter/kernel_warning_collector.h"
+#include "crash-reporter/service_failure_collector.h"
 #include "crash-reporter/udev_collector.h"
 #include "crash-reporter/unclean_shutdown_collector.h"
 #include "crash-reporter/user_collector.h"
@@ -40,6 +41,7 @@ enum CrashKinds {
   kCrashKindUdev = 4,
   kCrashKindKernelWarning = 5,
   kCrashKindEC = 6,
+  kCrashKindServiceFailure = 7,
   kCrashKindMax
 };
 
@@ -73,6 +75,14 @@ static void CountKernelCrash() {
 
 static void CountUdevCrash() {
   SendCrashMetrics(kCrashKindUdev, "udevcrash");
+}
+
+static void CountKernelWarning() {
+  SendCrashMetrics(kCrashKindKernelWarning, "kernel-warning");
+}
+
+static void CountServiceFailure() {
+  SendCrashMetrics(kCrashKindServiceFailure, "service-failure");
 }
 
 static void CountUncleanShutdown() {
@@ -249,6 +259,17 @@ static int HandleKernelWarning(KernelWarningCollector
   return 0;
 }
 
+static int HandleServiceFailure(ServiceFailureCollector
+                               *service_failure_collector) {
+  // Accumulate logs to help in diagnosing failures during collection.
+  brillo::LogToString(true);
+  bool handled = service_failure_collector->Collect();
+  brillo::LogToString(false);
+  if (!handled)
+    return 1;
+  return 0;
+}
+
 // Interactive/diagnostics mode for generating kernel crash signatures.
 static int GenerateKernelSignature(KernelCollector *kernel_collector,
                                    const std::string& kernel_signature_file) {
@@ -299,6 +320,7 @@ int main(int argc, char *argv[]) {
   DEFINE_string(user, "", "User crash info (pid:signal:exec_name)");
   DEFINE_string(udev, "", "Udev event description (type:device:subsystem)");
   DEFINE_bool(kernel_warning, false, "Report collected kernel warning");
+  DEFINE_bool(service_failure, false, "Report collected service failure");
   DEFINE_string(chrome, "", "Chrome crash dump file");
   DEFINE_string(pid, "", "PID of crashing process");
   DEFINE_string(uid, "", "UID of crashing process");
@@ -357,7 +379,10 @@ int main(int argc, char *argv[]) {
   chrome_collector.Initialize(CountChromeCrash, IsFeedbackAllowed);
 
   KernelWarningCollector kernel_warning_collector;
-  kernel_warning_collector.Initialize(CountUdevCrash, IsFeedbackAllowed);
+  kernel_warning_collector.Initialize(CountKernelWarning, IsFeedbackAllowed);
+
+  ServiceFailureCollector service_failure_collector;
+  service_failure_collector.Initialize(CountServiceFailure, IsFeedbackAllowed);
 
   if (FLAGS_init) {
     return Initialize(&user_collector, &udev_collector);
@@ -385,6 +410,10 @@ int main(int argc, char *argv[]) {
 
   if (FLAGS_kernel_warning) {
     return HandleKernelWarning(&kernel_warning_collector);
+  }
+
+  if (FLAGS_service_failure) {
+    return HandleServiceFailure(&service_failure_collector);
   }
 
   if (!FLAGS_chrome.empty()) {
