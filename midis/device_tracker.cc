@@ -233,8 +233,9 @@ std::unique_ptr<Device> UdevHandler::CreateDevice(
   std::string dev_name(reinterpret_cast<char*>(info->name));
   std::string manufacturer(ExtractManufacturerString(udev_device, dev_name));
 
-  return Device::Create(dev_name, manufacturer, info->card, info->device,
-                        info->subdevices_count, info->flags);
+  return base::MakeUnique<Device>(dev_name, manufacturer, info->card,
+                                  info->device, info->subdevices_count,
+                                  info->flags);
 }
 
 void DeviceTracker::AddDevice(std::unique_ptr<Device> dev) {

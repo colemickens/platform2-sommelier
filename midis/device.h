@@ -34,11 +34,6 @@ class Device {
          uint32_t flags);
   ~Device();
 
-  static std::unique_ptr<Device> Create(const std::string& name,
-                                        const std::string& manufacturer,
-                                        uint32_t card, uint32_t device,
-                                        uint32_t num_subdevices,
-                                        uint32_t flags);
   const std::string& GetName() const { return name_; }
   const std::string& GetManufacturer() const { return manufacturer_; }
   uint32_t GetCard() const { return card_; }

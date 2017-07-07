@@ -36,20 +36,6 @@ Device::Device(const std::string& name, const std::string& manufacturer,
 
 Device::~Device() { StopMonitoring(); }
 
-std::unique_ptr<Device> Device::Create(const std::string& name,
-                                       const std::string& manufacturer,
-                                       uint32_t card, uint32_t device,
-                                       uint32_t num_subdevices,
-                                       uint32_t flags) {
-  auto dev = base::MakeUnique<Device>(name, manufacturer, card, device,
-                                      num_subdevices, flags);
-  if (!dev->StartMonitoring()) {
-    dev->StopMonitoring();
-    return nullptr;
-  }
-  return dev;
-}
-
 // Cancel all the file watchers and remove the file handlers.
 // This function is called if :
 // a. Something has gone wrong with the Device monitor and we need to bail
@@ -105,15 +91,26 @@ void Device::HandleReceiveData(const char* buffer, uint32_t subdevice,
 void Device::RemoveClientFromDevice(uint32_t client_id) {
   LOG(INFO) << "Removing the client: " << client_id
             << " from all device watchers.";
-  for (auto& list_it : client_fds_) {
-    for (auto it = list_it.second.begin(); it != list_it.second.end();) {
+  for (auto list_it = client_fds_.begin(); list_it != client_fds_.end();) {
+    // First remove all clients in a subdevice.
+    for (auto it = list_it->second.begin(); it != list_it->second.end();) {
       if (it->get()->GetClientId() == client_id) {
         LOG(INFO) << "Found client: " << client_id << " in list. deleting";
-        it = list_it.second.erase(it);
+        it = list_it->second.erase(it);
       } else {
         ++it;
       }
     }
+    // If no clients remain, remove the subdevice entry from the map.
+    if (list_it->second.empty()) {
+      client_fds_.erase(list_it++);
+    } else {
+      ++list_it;
+    }
+  }
+
+  if (client_fds_.empty()) {
+    StopMonitoring();
   }
 }
 
@@ -127,6 +124,14 @@ void Device::WriteClientDataToDevice(uint32_t subdevice_id,
 
 base::ScopedFD Device::AddClientToReadSubdevice(uint32_t client_id,
                                                 uint32_t subdevice_id) {
+  if (client_fds_.empty()) {
+    if (!StartMonitoring()) {
+      LOG(ERROR) << "Couldn't start monitoring device: " << name_;
+      StopMonitoring();
+      return base::ScopedFD();
+    }
+  }
+
   int sock_fd[2];
   int ret = socketpair(AF_UNIX, SOCK_STREAM, 0, sock_fd);
   if (ret < 0) {
