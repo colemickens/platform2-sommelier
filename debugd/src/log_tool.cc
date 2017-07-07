@@ -206,9 +206,9 @@ const Log common_logs[] = {
     "/bin/cat /sys/block/zram0/num_reads 2> /dev/null" },
   { "zram total writes",
     "/bin/cat /sys/block/zram0/num_writes 2> /dev/null" },
-  { "zram new stats", "/bin/echo orig_size compr_size used_total limit "
+  { "zram new stats names", "/bin/echo orig_size compr_size used_total limit "
     "used_max zero_pages migrated" },
-  { "zram new stats", "/bin/cat /sys/block/zram0/mm_stat 2> /dev/null" },
+  { "zram new stats values", "/bin/cat /sys/block/zram0/mm_stat 2> /dev/null" },
 
   // Stuff pulled out of the original list. These need access to the running X
   // session, which we'd rather not give to debugd, or return info specific to
