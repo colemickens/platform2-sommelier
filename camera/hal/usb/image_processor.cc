@@ -169,10 +169,6 @@ int ImageProcessor::ConvertFormat(const android::CameraMetadata& metadata,
         return res ? -EINVAL : 0;
       }
       case V4L2_PIX_FMT_YVU420M: {  // YM21, multiple planes YV12
-        // YV12 horizontal stride should be a multiple of 16 pixels for each
-        // plane.
-        int ystride = Align16(out_frame->GetWidth());
-        int uvstride = Align16(out_frame->GetWidth() / 2);
         int res = libyuv::I420Copy(
             in_frame.GetData(), in_frame.GetWidth(),
             in_frame.GetData() + in_frame.GetWidth() * in_frame.GetHeight(),
@@ -180,9 +176,12 @@ int ImageProcessor::ConvertFormat(const android::CameraMetadata& metadata,
             in_frame.GetData() +
                 in_frame.GetWidth() * in_frame.GetHeight() * 5 / 4,
             in_frame.GetWidth() / 2, out_frame->GetData(FrameBuffer::YPLANE),
-            ystride, out_frame->GetData(FrameBuffer::UPLANE), uvstride,
-            out_frame->GetData(FrameBuffer::VPLANE), uvstride,
-            out_frame->GetWidth(), out_frame->GetHeight());
+            out_frame->GetStride(FrameBuffer::YPLANE),
+            out_frame->GetData(FrameBuffer::UPLANE),
+            out_frame->GetStride(FrameBuffer::UPLANE),
+            out_frame->GetData(FrameBuffer::VPLANE),
+            out_frame->GetStride(FrameBuffer::VPLANE), out_frame->GetWidth(),
+            out_frame->GetHeight());
         LOGF_IF(ERROR, res) << "YU12ToYM21() returns " << res;
         return res ? -EINVAL : 0;
       }

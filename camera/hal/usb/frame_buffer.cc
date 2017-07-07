@@ -32,6 +32,14 @@ uint8_t* FrameBuffer::GetData(size_t plane) const {
   return data_[plane];
 }
 
+size_t FrameBuffer::GetStride(size_t plane) const {
+  if (plane >= num_planes_ || plane >= data_.size()) {
+    LOGF(ERROR) << "Invalid plane " << plane;
+    return 0;
+  }
+  return stride_[plane];
+}
+
 int FrameBuffer::SetDataSize(size_t data_size) {
   if (data_size > buffer_size_) {
     LOGF(ERROR) << "Buffer overflow: Buffer only has " << buffer_size_
@@ -48,6 +56,7 @@ AllocatedFrameBuffer::AllocatedFrameBuffer(int buffer_size) {
   num_planes_ = 1;
   data_.resize(num_planes_, nullptr);
   data_[0] = buffer_.get();
+  stride_.resize(num_planes_, 0);
 }
 
 AllocatedFrameBuffer::~AllocatedFrameBuffer() {}
@@ -74,6 +83,7 @@ V4L2FrameBuffer::V4L2FrameBuffer(base::ScopedFD fd,
   fourcc_ = fourcc;
   num_planes_ = 1;
   data_.resize(num_planes_, nullptr);
+  stride_.resize(num_planes_, 0);
 }
 
 V4L2FrameBuffer::~V4L2FrameBuffer() {
@@ -124,6 +134,7 @@ GrallocFrameBuffer::GrallocFrameBuffer(buffer_handle_t buffer,
   fourcc_ = buffer_mapper_->GetV4L2PixelFormat(buffer);
   num_planes_ = buffer_mapper_->GetNumPlanes(buffer);
   data_.resize(num_planes_, nullptr);
+  stride_.resize(num_planes_, 0);
 }
 
 GrallocFrameBuffer::~GrallocFrameBuffer() {
@@ -169,6 +180,7 @@ int GrallocFrameBuffer::Map() {
       ret = buffer_mapper_->Lock(buffer_, 0, 0, 0, width_, height_, &addr);
       if (!ret) {
         data_[0] = static_cast<uint8_t*>(addr);
+        stride_[0] = width_ * 4;
       }
       break;
     }
@@ -181,6 +193,9 @@ int GrallocFrameBuffer::Map() {
         data_[YPLANE] = static_cast<uint8_t*>(ycbcr.y);
         data_[UPLANE] = static_cast<uint8_t*>(ycbcr.cb);
         data_[VPLANE] = static_cast<uint8_t*>(ycbcr.cr);
+        stride_[YPLANE] = ycbcr.ystride;
+        stride_[UPLANE] = ycbcr.cstride;
+        stride_[VPLANE] = ycbcr.cstride;
       }
       break;
     }

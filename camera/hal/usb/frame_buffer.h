@@ -38,18 +38,21 @@ class FrameBuffer {
   virtual int Unmap() = 0;
 
   uint8_t* GetData(size_t plane) const;
-  uint8_t* GetData() const { return data_[YPLANE]; }
+  uint8_t* GetData() const { return data_[0]; }
   size_t GetDataSize() const { return data_size_; }
   size_t GetBufferSize() const { return buffer_size_; }
   uint32_t GetWidth() const { return width_; }
   uint32_t GetHeight() const { return height_; }
   uint32_t GetFourcc() const { return fourcc_; }
+  size_t GetStride(size_t plane) const;
+  size_t GetStride() const { return stride_[0]; }
 
   void SetFourcc(uint32_t fourcc) { fourcc_ = fourcc; }
   virtual int SetDataSize(size_t data_size);
 
  protected:
   std::vector<uint8_t*> data_;
+  std::vector<size_t> stride_;
 
   // The number of bytes used in the buffer.
   size_t data_size_;
