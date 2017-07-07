@@ -45,7 +45,7 @@ The program name is `embedded-controller` and might be referred to as `eccrash`.
 
 ## kernel_collector
 
-This collects kernel crashes that caused the system to reboot.
+This collects kernel (and BIOS) crashes that caused the system to reboot.
 
 It is built on top of [pstore] and doesn't support any other data source.
 We currently support the `ramoops` and `efi` backend drivers.
@@ -91,6 +91,20 @@ The program name is `kernel` and might be referred to as `kcrash`.
     coreboot on boot to determine where a reboot occured. It will only collect
     log lines from the boot prior to the current one (i.e. the one that the
     crash occured it).
+*   On arm64 systems, we also attempt to collect runtime firmware (BIOS)
+    crashes. This is done by the kernel collector since runtime firmware mostly
+    does things when requested by the kernel, and errors in runtime firmware are
+    usually triggered by how the kernel calls it. The BIOS generally doesn't log
+    very much after boot, we need both the kernel and BIOS logs to understand
+    the situation of a runtime firmware crash. Since the kernel collector
+    already has the logic to collect both of these, it makes sense for it to
+    handle BIOS crash collection as well.
+*   On arm64, the runtime firmware is a piece of code called BL31 from the Arm
+    Trusted Firmware project. BL31 logs crashes by dumping all CPU registers and
+    knows how to append to the coreboot CBMEM console. Since we do not have the
+    infrastructure to generate a full stack trace in firmware, we file these
+    crash reports with a poor man's crash signature that just encodes the
+    address of the program counter where the crash occured.
 
 ## unclean_shutdown_collector
 

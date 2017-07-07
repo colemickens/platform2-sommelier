@@ -298,11 +298,8 @@ int GenerateKernelSignature(KernelCollector* kernel_collector,
     fprintf(stderr, "Could not read file.\n");
     return 1;
   }
-  if (!kernel_collector->ComputeKernelStackSignature(kcrash_contents,
-                                                     &signature, true)) {
-    fprintf(stderr, "Signature could not be generated.\n");
-    return 1;
-  }
+  signature =
+      kernel_collector->ComputeKernelStackSignature(kcrash_contents, true);
   printf("Kernel crash signature is \"%s\".\n", signature.c_str());
   return 0;
 }

@@ -375,6 +375,19 @@ void KernelCollectorTest::WatchdogOKHelper(const FilePath& path) {
   ASSERT_TRUE(FindLog("kernel-(WATCHDOG)-I can haz"));
 }
 
+TEST_F(KernelCollectorTest, BiosCrashArmOK) {
+  collector_.set_crash_directory_for_test(test_crash_directory());
+  collector_.set_arch(KernelCollector::kArchArm);
+  ASSERT_TRUE(test_util::CreateFile(
+      bios_log_file(),
+      "PANIC in EL3 at x30 = 0x00003698"
+      "\n\ncoreboot-dc417eb Tue Nov 2 bootblock starting...\n"));
+  ASSERT_TRUE(collector_.Collect());
+  ASSERT_EQ(1, s_crashes);
+  ASSERT_TRUE(FindLog("(handling)"));
+  ASSERT_TRUE(FindLog("bios-(PANIC)-0x00003698"));
+}
+
 TEST_F(KernelCollectorTest, WatchdogOK) {
   WatchdogOKHelper(console_ramoops_file());
 }
@@ -401,27 +414,22 @@ TEST_F(KernelCollectorTest, WatchdogOnlyLastBootOld) {
 
 // Perform tests which are common across architectures
 void KernelCollectorTest::ComputeKernelStackSignatureCommon() {
-  std::string signature;
-
   const char kStackButNoPC[] =
       "<4>[ 6066.829029]  [<790340af>] __do_softirq+0xa6/0x143\n";
-  EXPECT_TRUE(
-      collector_.ComputeKernelStackSignature(kStackButNoPC, &signature, false));
-  EXPECT_EQ("kernel--83615F0A", signature);
+  EXPECT_EQ("kernel--83615F0A",
+            collector_.ComputeKernelStackSignature(kStackButNoPC, false));
 
   const char kMissingEverything[] =
       "<4>[ 6066.829029]  [<790340af>] ? __do_softirq+0xa6/0x143\n";
-  EXPECT_FALSE(collector_.ComputeKernelStackSignature(kMissingEverything,
-                                                      &signature, false));
+  EXPECT_EQ("kernel-UnspecifiedStackSignature",
+            collector_.ComputeKernelStackSignature(kMissingEverything, false));
 
   // Long message.
   const char kTruncatedMessage[] =
       "<0>[   87.485611] Kernel panic - not syncing: 01234567890123456789"
       "01234567890123456789X\n";
-  EXPECT_TRUE(collector_.ComputeKernelStackSignature(kTruncatedMessage,
-                                                     &signature, false));
   EXPECT_EQ("kernel-0123456789012345678901234567890123456789-00000000",
-            signature);
+            collector_.ComputeKernelStackSignature(kTruncatedMessage, false));
 }
 
 TEST_F(KernelCollectorTest, ComputeKernelStackSignatureARM) {
@@ -469,12 +477,10 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureARM) {
       "(write_breakme+0xdc/0x1bc)\n"
       "<5>[  123.412798] [<c0183678>] (write_breakme+0xdc/0x1bc) from "
       "[<c017bfe0>] (proc_reg_write+0x88/0x9c)\n";
-  std::string signature;
 
   collector_.set_arch(KernelCollector::kArchArm);
-  EXPECT_TRUE(
-      collector_.ComputeKernelStackSignature(kBugToPanic, &signature, false));
-  EXPECT_EQ("kernel-write_breakme-97D3E92F", signature);
+  EXPECT_EQ("kernel-write_breakme-97D3E92F",
+            collector_.ComputeKernelStackSignature(kBugToPanic, false));
 
   ComputeKernelStackSignatureCommon();
 }
@@ -528,12 +534,10 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureMIPS) {
       "<5>Code: 3c04806b  0c1793aa  248494f0 <000c000d> 3c04806b  248494fc  "
       "0c04cc7f  2405017a  08100514 \n"
       "<5>[ 3378.696000] ---[ end trace 75067432f24bbc93 ]---\n";
-  std::string signature;
 
   collector_.set_arch(KernelCollector::kArchMips);
-  EXPECT_TRUE(
-      collector_.ComputeKernelStackSignature(kBugToPanic, &signature, false));
-  EXPECT_EQ("kernel-lkdtm_do_action-5E600A6B", signature);
+  EXPECT_EQ("kernel-lkdtm_do_action-5E600A6B",
+            collector_.ComputeKernelStackSignature(kBugToPanic, false));
 
   ComputeKernelStackSignatureCommon();
 }
@@ -553,18 +557,15 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureX86) {
       "<4>[ 6066.949779]  [<79379fc1>] panic+0x3e/0xe4\n"
       "<4>[ 6066.949971]  [<7937c5c5>] oops_end+0x73/0x81\n"
       "<4>[ 6066.950208]  [<7901b260>] no_context+0x10d/0x117\n";
-  std::string signature;
 
   collector_.set_arch(KernelCollector::kArchX86);
-  EXPECT_TRUE(
-      collector_.ComputeKernelStackSignature(kBugToPanic, &signature, false));
-  EXPECT_EQ("kernel-ieee80211_stop_tx_ba_session-DE253569", signature);
+  EXPECT_EQ("kernel-ieee80211_stop_tx_ba_session-DE253569",
+            collector_.ComputeKernelStackSignature(kBugToPanic, false));
 
   const char kPCButNoStack[] =
       "<0>[ 6066.829029] EIP: [<b82d7c15>] ieee80211_stop_tx_ba_session+";
-  EXPECT_TRUE(
-      collector_.ComputeKernelStackSignature(kPCButNoStack, &signature, false));
-  EXPECT_EQ("kernel-ieee80211_stop_tx_ba_session-00000000", signature);
+  EXPECT_EQ("kernel-ieee80211_stop_tx_ba_session-00000000",
+            collector_.ComputeKernelStackSignature(kPCButNoStack, false));
 
   const char kBreakmeBug[] =
       "<4>[  180.492137]  [<790970c6>] ? handle_mm_fault+0x67f/0x96d\n"
@@ -587,10 +588,8 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureX86) {
       "<4>[  180.503520]  [<790055dd>] die+0x58/0x5e\n"
       "<4>[  180.503538]  [<7937b96c>] do_trap+0x8e/0xa7\n"
       "<4>[  180.503555]  [<79003d70>] ? do_invalid_op+0x0/0x80\n";
-
-  EXPECT_TRUE(
-      collector_.ComputeKernelStackSignature(kBreakmeBug, &signature, false));
-  EXPECT_EQ("kernel-write_breakme-122AB3CD", signature);
+  EXPECT_EQ("kernel-write_breakme-122AB3CD",
+            collector_.ComputeKernelStackSignature(kBreakmeBug, false));
 
   const char kPCLineTooOld[] =
       "<4>[  174.492137]  [<790970c6>] ignored_function+0x67f/0x96d\n"
@@ -601,10 +600,8 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureX86) {
       "<4>[  180.502026] Call Trace:\n"
       "<0>[  180.502026] Kernel panic - not syncing: Fatal exception\n"
       "<4>[  180.502806]  [<79379aba>] printk+0x14/0x1a\n";
-
-  EXPECT_TRUE(
-      collector_.ComputeKernelStackSignature(kPCLineTooOld, &signature, false));
-  EXPECT_EQ("kernel-Fatal exception-ED4C84FE", signature);
+  EXPECT_EQ("kernel-Fatal exception-ED4C84FE",
+            collector_.ComputeKernelStackSignature(kPCLineTooOld, false));
 
   // Panic without EIP line.
   const char kExamplePanicOnly[] =
@@ -615,9 +612,8 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureX86) {
       "<4>[   87.485660]  [<8133f71d>] ? printk+0x14/0x17\n"
       "<4>[   87.485674]  [<8133f663>] panic+0x3e/0xe4\n"
       "<4>[   87.485689]  [<810d062e>] write_breakme+0xaa/0x124\n";
-  EXPECT_TRUE(collector_.ComputeKernelStackSignature(kExamplePanicOnly,
-                                                     &signature, false));
-  EXPECT_EQ("kernel-Testing panic-E0FC3552", signature);
+  EXPECT_EQ("kernel-Testing panic-E0FC3552",
+            collector_.ComputeKernelStackSignature(kExamplePanicOnly, false));
 
   // Panic from hung task.
   const char kHungTaskBreakMe[] =
@@ -650,11 +646,8 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureX86) {
       "<5>[  720.460693]  [<81043af3>] kthread+0x67/0x6c\n"
       "<5>[  720.460862]  [<81043a8c>] ? __init_kthread_worker+0x2d/0x2d\n"
       "<5>[  720.461106]  [<8137eb9e>] kernel_thread_helper+0x6/0x10\n";
-
-  EXPECT_TRUE(collector_.ComputeKernelStackSignature(kHungTaskBreakMe,
-                                                     &signature, false));
-
-  EXPECT_EQ("kernel-(HANG)-hung_task: blocked tasks-600B37EA", signature);
+  EXPECT_EQ("kernel-(HANG)-hung_task: blocked tasks-600B37EA",
+            collector_.ComputeKernelStackSignature(kHungTaskBreakMe, false));
 
   // Panic with all question marks in the last stack trace.
   const char kUncertainStackTrace[] =
@@ -763,13 +756,11 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureX86) {
       "<5>[56279.703703]  [<810ee99d>] ? sysfs_write_file+0x0/0xec\n"
       "<5>[56279.703709]  [<810af556>] ? sys_write+0x40/0x65\n"
       "<5>[56279.703716]  [<81002d57>] ? sysenter_do_call+0x12/0x26\n";
-
-  EXPECT_TRUE(collector_.ComputeKernelStackSignature(kUncertainStackTrace,
-                                                     &signature, false));
   // The first trace contains only uncertain entries and its hash is 00000000,
   // so, if we used that, the signature would be kernel-add_timer-00000000.
   // Instead we use the second-to-last trace for the hash.
-  EXPECT_EQ("kernel-add_timer-B5178878", signature);
+  EXPECT_EQ("kernel-add_timer-B5178878", collector_.ComputeKernelStackSignature(
+                                             kUncertainStackTrace, false));
 
   ComputeKernelStackSignatureCommon();
 }

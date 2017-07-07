@@ -49,9 +49,8 @@ class KernelCollector : public CrashCollector {
   bool Collect();
 
   // Compute a stack signature string from a kernel dump.
-  bool ComputeKernelStackSignature(const std::string& kernel_dump,
-                                   std::string* kernel_signature,
-                                   bool print_diagnostics);
+  std::string ComputeKernelStackSignature(const std::string& kernel_dump,
+                                          bool print_diagnostics);
 
   // Set the architecture of the crash dumps we are looking at.
   void set_arch(ArchKind arch) { arch_ = arch; }
@@ -143,6 +142,7 @@ class KernelCollector : public CrashCollector {
   bool LoadPreservedDump(std::string* contents);
   bool LoadLastBootBiosLog(std::string* contents);
 
+  bool LastRebootWasBiosCrash(const std::string& dump);
   bool LastRebootWasWatchdog();
   bool LoadConsoleRamoops(std::string* contents);
 
@@ -181,12 +181,13 @@ class KernelCollector : public CrashCollector {
   // Returns the architecture kind for which we are built.
   static ArchKind GetCompilerArch();
 
+  // BIOS crashes use a simple signature containing the crash PC.
+  static std::string BiosCrashSignature(const std::string& dump);
+
   // Watchdog reboots leave no stack trace. Generate a poor man's signature out
   // of the last log line instead (minus the timestamp ended by ']').
   static std::string WatchdogSignature(const std::string& console_ramoops);
 
-  std::string GenerateSignature(const std::string& kernel_dump,
-                                bool is_watchdog);
   bool HandleCrash(const std::string& kernel_dump,
                    const std::string& bios_dump,
                    const std::string& signature);

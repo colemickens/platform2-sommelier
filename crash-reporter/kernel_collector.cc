@@ -260,6 +260,19 @@ bool KernelCollector::LoadLastBootBiosLog(std::string* contents) {
   return false;
 }
 
+bool KernelCollector::LastRebootWasBiosCrash(const std::string& dump) {
+  // BIOS crash detection only supported on ARM64 for now. We're in userspace,
+  // so we can't easily check for 64-bit (but that's not a big deal).
+  if (arch_ != kArchArm)
+    return false;
+
+  if (dump.empty())
+    return false;
+
+  return pcrecpp::RE("(PANIC|Unhandled( Interrupt)? Exception) in EL3")
+      .PartialMatch(dump);
+}
+
 // We can't always trust kernel watchdog drivers to correctly report the boot
 // reason, since on some platforms our BIOS has to reinitialize the hardware
 // registers in a way that clears this information. Instead read the BIOS
@@ -520,10 +533,8 @@ bool KernelCollector::FindPanicMessage(pcrecpp::StringPiece kernel_dump,
   return true;
 }
 
-bool KernelCollector::ComputeKernelStackSignature(
-    const std::string& kernel_dump,
-    std::string* kernel_signature,
-    bool print_diagnostics) {
+std::string KernelCollector::ComputeKernelStackSignature(
+    const std::string& kernel_dump, bool print_diagnostics) {
   unsigned stack_hash = 0;
   float last_stack_timestamp = 0;
   std::string human_string;
@@ -546,14 +557,29 @@ bool KernelCollector::ComputeKernelStackSignature(
     if (print_diagnostics) {
       printf("Found neither a stack nor a human readable string, failing.\n");
     }
-    return false;
+    return kDefaultKernelStackSignature;
   }
 
   human_string = human_string.substr(0, kMaxHumanStringLength);
-  *kernel_signature = StringPrintf("%s-%s%s-%08X", kKernelExecName,
-                                   (is_watchdog_crash ? "(HANG)-" : ""),
-                                   human_string.c_str(), stack_hash);
-  return true;
+  return StringPrintf("%s-%s%s-%08X", kKernelExecName,
+                      (is_watchdog_crash ? "(HANG)-" : ""),
+                      human_string.c_str(), stack_hash);
+}
+
+std::string KernelCollector::BiosCrashSignature(const std::string& dump) {
+  const char* type = "";
+
+  if (pcrecpp::RE("PANIC in EL3").PartialMatch(dump))
+    type = "PANIC";
+  else if (pcrecpp::RE("Unhandled Exception in EL3").PartialMatch(dump))
+    type = "EXCPT";
+  else if (pcrecpp::RE("Unhandled Interrupt Exception in").PartialMatch(dump))
+    type = "INTR";
+
+  std::string elr;
+  pcrecpp::RE("x30 =\\s+(0x[0-9a-fA-F]+)").PartialMatch(dump, &elr);
+
+  return StringPrintf("bios-(%s)-%s", type, elr.c_str());
 }
 
 // Watchdog reboots leave no stack trace. Generate a poor man's signature out
@@ -566,18 +592,6 @@ std::string KernelCollector::WatchdogSignature(
   return StringPrintf("%s-(WATCHDOG)-%s-%08X", kKernelExecName,
                       line.substr(0, end).as_string().c_str(),
                       HashString(line));
-}
-
-std::string KernelCollector::GenerateSignature(const std::string& kernel_dump,
-                                               bool is_watchdog) {
-  if (is_watchdog)
-    return WatchdogSignature(kernel_dump);
-
-  std::string signature;
-  if (ComputeKernelStackSignature(kernel_dump, &signature, false))
-    return signature;
-
-  return kDefaultKernelStackSignature;
 }
 
 bool KernelCollector::Collect() {
@@ -774,7 +788,7 @@ bool KernelCollector::CollectEfiCrash() {
         StripSensitiveData(&crash);
         if (!crash.empty()) {
           if (!HandleCrash(crash, std::string(),
-                           GenerateSignature(crash, false))) {
+                           ComputeKernelStackSignature(crash, false))) {
             LOG(ERROR) << "Failed to handle kernel efi crash id:"
                        << efi_crash->GetId();
           }
@@ -793,20 +807,24 @@ bool KernelCollector::CollectEfiCrash() {
 bool KernelCollector::CollectRamoopsCrash() {
   std::string bios_dump;
   std::string kernel_dump;
-  bool is_watchdog = false;
+  std::string signature;
 
   LoadLastBootBiosLog(&bios_dump);
-  if (!LoadParameters() || !LoadPreservedDump(&kernel_dump)) {
-    if (!LastRebootWasWatchdog() || !LoadConsoleRamoops(&kernel_dump)) {
+  if (LoadParameters() && LoadPreservedDump(&kernel_dump)) {
+    signature = ComputeKernelStackSignature(kernel_dump, false);
+  } else {
+    LoadConsoleRamoops(&kernel_dump);
+    if (LastRebootWasBiosCrash(bios_dump))
+      signature = BiosCrashSignature(bios_dump);
+    else if (LastRebootWasWatchdog())
+      signature = WatchdogSignature(kernel_dump);
+    else
       return false;
-    }
-    is_watchdog = true;
   }
   StripSensitiveData(&bios_dump);
   StripSensitiveData(&kernel_dump);
-  if (kernel_dump.empty()) {
+  if (kernel_dump.empty() && bios_dump.empty()) {
     return false;
   }
-  return HandleCrash(kernel_dump, bios_dump,
-                     GenerateSignature(kernel_dump, is_watchdog));
+  return HandleCrash(kernel_dump, bios_dump, signature);
 }
