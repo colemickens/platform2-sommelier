@@ -5,3 +5,8 @@ ACTION=="add|change", SUBSYSTEM=="net", TEST=="phy80211", RUN+="/usr/sbin/iw dev
 ACTION=="add", SUBSYSTEM=="module", DEVPATH=="/module/snd_hda_intel", \
   RUN="/bin/sh -c 'cd /sys/module/snd_hda_intel/parameters; \
   echo 10 > power_save; echo Y > power_save_controller'"
+
+# Minimize link power for SATA drives
+ACTION=="add|change", SUBSYSTEM=="scsi_host", \
+  TEST=="link_power_management_policy", \
+  ATTR{link_power_management_policy}="min_power"
