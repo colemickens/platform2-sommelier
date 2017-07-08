@@ -436,7 +436,7 @@ const char Metrics::kMetricConnectionDiagnosticsIssue[] =
     // static
     const char Metrics::kMetricUnreliableLinkSignalStrengthSuffix[] =
         "UnreliableLinkSignalStrength";
-const int Metrics::kMetricSerivceSignalStrengthMin = 1;
+const int Metrics::kMetricServiceSignalStrengthMin = 1;
 const int Metrics::kMetricServiceSignalStrengthMax = 100;
 const int Metrics::kMetricServiceSignalStrengthNumBuckets = 40;
 
@@ -1510,7 +1510,7 @@ void Metrics::NotifyUnreliableLinkSignalStrength(
       kMetricUnreliableLinkSignalStrengthSuffix, technology_id);
   SendToUMA(histogram,
             signal_strength,
-            kMetricSerivceSignalStrengthMin,
+            kMetricServiceSignalStrengthMin,
             kMetricServiceSignalStrengthMax,
             kMetricServiceSignalStrengthNumBuckets);
 }

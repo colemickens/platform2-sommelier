@@ -632,7 +632,7 @@ class Metrics {
   // Signal strength when link becomes unreliable (multiple link monitor
   // failures in short period of time).
   static const char kMetricUnreliableLinkSignalStrengthSuffix[];
-  static const int kMetricSerivceSignalStrengthMin;
+  static const int kMetricServiceSignalStrengthMin;
   static const int kMetricServiceSignalStrengthMax;
   static const int kMetricServiceSignalStrengthNumBuckets;
 
