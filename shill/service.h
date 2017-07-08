@@ -660,7 +660,7 @@ class Service : public base::RefCounted<Service> {
   Manager* manager() const { return manager_; }
   Metrics* metrics() const { return metrics_; }
 
-  // Save the serivce's auto_connect value, without affecting its auto_connect
+  // Save the service's auto_connect value, without affecting its auto_connect
   // property itself. (cf. EnableAndRetainAutoConnect)
   void RetainAutoConnect();
 

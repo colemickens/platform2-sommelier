@@ -98,14 +98,14 @@ class NiceMockControl : public ControlInterface {
                    const std::string& path,
                    const std::string& service,
                    const base::Closure& service_appeared_callback,
-                   const base::Closure& serivce_vanished_callback));
+                   const base::Closure& service_vanished_callback));
   MOCK_METHOD5(CreateModemManagerProxy,
                ModemManagerProxyInterface*(
                    ModemManagerClassic* manager,
                    const std::string& path,
                    const std::string& service,
                    const base::Closure& service_appeared_callback,
-                   const base::Closure& serivce_vanished_callback));
+                   const base::Closure& service_vanished_callback));
   MOCK_METHOD2(CreateModemProxy,
                ModemProxyInterface*(const std::string& path,
                                     const std::string& service));
