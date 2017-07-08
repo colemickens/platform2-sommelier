@@ -62,12 +62,8 @@ int CameraBufferMapper::Register(buffer_handle_t buffer) {
         import_data.offsets[i] = handle->offsets[i];
       }
 
-      // TODO(jcliang): Add camera-specific usage flag once we have it in
-      //                minigbm.
-      uint32_t usage = GBM_BO_USE_LINEAR;
-      if (import_data.format == DRM_FORMAT_R8) {
-        usage = GBM_BO_USE_LINEAR;
-      }
+      uint32_t usage =
+          GBM_BO_USE_LINEAR | GBM_BO_USE_CAMERA_READ | GBM_BO_USE_CAMERA_WRITE;
       buffer_context->bo = gbm_bo_import(
           gbm_device_.get(), GBM_BO_IMPORT_FD_PLANAR, &import_data, usage);
       if (!buffer_context->bo) {
@@ -470,6 +466,9 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
       DCHECK(buffer_context_.find(buffer) != buffer_context_.end());
       info = info_cache->second.get();
     }
+    // Since |flags| is reserved we don't expect user to pass any non-zero
+    // value, we simply override |flags| here.
+    flags = GBM_BO_TRANSFER_READ_WRITE;
     uint32_t stride;
     void* out_addr = gbm_bo_map(info->bo, 0, 0, handle->width, handle->height,
                                 flags, &stride, &info->map_data, plane);
