@@ -6,6 +6,7 @@
   'target_defaults': {
     'variables': {
       'deps': [
+        'libcap',
         'libchrome-<(libbase_ver)',
       ],
       'enable_exceptions': 1,
