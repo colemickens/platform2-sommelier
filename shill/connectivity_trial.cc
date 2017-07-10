@@ -19,6 +19,7 @@
 #include <string>
 
 #include <base/bind.h>
+#include <base/rand_util.h>
 #include <base/strings/pattern.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
@@ -40,6 +41,29 @@ using base::Callback;
 using base::StringPrintf;
 using std::string;
 
+namespace {
+
+// This keyword gets replaced with a number from the below range.
+const char kRandomKeyword[] = "${RAND}";
+
+// This range is determined by the server-side configuration.  See b/63033351
+const int kMinRandomHost = 1;
+const int kMaxRandomHost = 25;
+
+// If |in| contains the substring |kRandomKeyword|, replace it with a
+// random number between |kMinRandomHost| and |kMaxRandomHost| and return
+// the newly-mangled string.  Otherwise return an exact copy of |in|.  This
+// is used to rotate through alternate hostnames (e.g. alt1..alt25) on
+// each portal check, to defeat IP-based blocking.
+string RandomizeURL(string url) {
+  int alt_host = base::RandInt(kMinRandomHost, kMaxRandomHost);
+  base::ReplaceFirstSubstringAfterOffset(
+      &url, 0, kRandomKeyword, base::IntToString(alt_host));
+  return url;
+}
+
+}  // namespace
+
 namespace shill {
 
 namespace Logging {
@@ -48,7 +72,7 @@ static string ObjectID(Connection* c) { return c->interface_name(); }
 }
 
 const char ConnectivityTrial::kDefaultURL[] =
-    "http://www.gstatic.com/generate_204";
+    "http://alt${RAND}.gstatic.com/generate_204";
 const char ConnectivityTrial::kResponseExpected[] = "HTTP/?.? 204";
 
 ConnectivityTrial::ConnectivityTrial(
@@ -87,10 +111,15 @@ bool ConnectivityTrial::Start(const string& url_string,
                               int start_delay_milliseconds) {
   SLOG(connection_.get(), 3) << "In " << __func__;
 
-  if (!url_.ParseFromString(url_string)) {
+  // This step is rerun on each attempt, but trying it here will allow
+  // Start() to abort on any obviously malformed URL strings.
+  HTTPURL url;
+  if (!url.ParseFromString(RandomizeURL(url_string))) {
     LOG(ERROR) << "Failed to parse URL string: " << url_string;
     return false;
   }
+  url_string_ = url_string;
+
   if (request_.get()) {
     CleanupTrial(false);
   } else {
@@ -121,8 +150,15 @@ void ConnectivityTrial::StartTrialAfterDelay(int start_delay_milliseconds) {
 }
 
 void ConnectivityTrial::StartTrialTask() {
+  HTTPURL url;
+  if (!url.ParseFromString(RandomizeURL(url_string_))) {
+    LOG(ERROR) << "Failed to parse URL string: " << url_string_;
+    CompleteTrial(Result(kPhaseUnknown, kStatusFailure));
+    return;
+  }
+
   HTTPRequest::Result result =
-      request_->Start(url_, request_read_callback_, request_result_callback_);
+      request_->Start(url, request_read_callback_, request_result_callback_);
   if (result != HTTPRequest::kResultInProgress) {
     CompleteTrial(ConnectivityTrial::GetPortalResultForRequestResult(result));
     return;

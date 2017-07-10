@@ -181,7 +181,7 @@ class ConnectivityTrial {
   std::unique_ptr<HTTPRequest> request_;
 
   Sockets sockets_;
-  HTTPURL url_;
+  std::string url_string_;
   base::CancelableClosure trial_;
   base::CancelableClosure trial_timeout_;
   bool is_active_;
