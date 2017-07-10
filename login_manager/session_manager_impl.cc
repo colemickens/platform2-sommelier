@@ -5,8 +5,12 @@
 #include "login_manager/session_manager_impl.h"
 
 #include <errno.h>
+#include <fcntl.h>
 #include <stdint.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <iterator>
@@ -81,6 +85,9 @@ constexpr char SessionManagerImpl::kStartUserSessionImpulse[] =
     "start-user-session";
 
 constexpr char SessionManagerImpl::kArcContainerName[] = "android";
+constexpr char SessionManagerImpl::kArcBridgeSocketPath[] =
+    "/run/chrome/arc_bridge.sock";
+constexpr char SessionManagerImpl::kArcBridgeSocketGroup[] = "arc-bridge";
 
 // ARC related impulse (systemd unit start or Upstart signal).
 constexpr char SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse[] =
@@ -911,7 +918,8 @@ bool SessionManagerImpl::InitMachineInfo(brillo::ErrorPtr* error,
 bool SessionManagerImpl::StartArcInstance(
     brillo::ErrorPtr* error,
     const std::vector<uint8_t>& in_request,
-    std::string* out_container_instance_id) {
+    std::string* out_container_instance_id,
+    dbus::FileDescriptor* out_fd) {
 #if USE_CHEETS
   pid_t pid = 0;
   android_container_->GetContainerPID(&pid);
@@ -938,12 +946,30 @@ bool SessionManagerImpl::StartArcInstance(
     return false;
   }
 
+  dbus::FileDescriptor server_socket;
+  if (!request.for_login_screen() && request.has_create_server_socket()) {
+    // Create a server socket unless the request is for starting an instance
+    // for login screen.
+    if (!CreateArcServerSocket(&server_socket, error)) {
+      DCHECK(*error);
+      return false;
+    }
+  } else {
+    // There is nothing to do here, but since passing an invalid handle is not
+    // allowed by the dbus binding, open /dev/null and return a handle to the
+    // file.
+    server_socket.PutValue(HANDLE_EINTR(open("/dev/null", O_RDONLY)));
+  }
+  server_socket.CheckValidity();
+
   if (!StartArcInstanceInternal(
           error, request, pid, out_container_instance_id)) {
     DCHECK(*error);
     return false;
   }
   auto closure_unused = scoped_runner.Release();
+
+  *out_fd = std::move(server_socket);
   return true;
 #else
   *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
@@ -1327,6 +1353,46 @@ void SessionManagerImpl::StorePolicyForUserInternal(
 }
 
 #if USE_CHEETS
+bool SessionManagerImpl::CreateArcServerSocket(dbus::FileDescriptor* out_fd,
+                                               brillo::ErrorPtr* error) {
+  ScopedPlatformHandle socket_fd(
+      system_->CreateServerHandle(NamedPlatformHandle(kArcBridgeSocketPath)));
+  if (!socket_fd.is_valid()) {
+    constexpr char kMessage[] = "Failed to create a server socket";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kContainerStartupFail, kMessage);
+    return false;
+  }
+
+  // Change permissions on the socket.
+  gid_t arc_bridge_gid = -1;
+  if (!system_->GetGroupInfo(kArcBridgeSocketGroup, &arc_bridge_gid)) {
+    constexpr char kMessage[] = "Failed to get arc-bridge gid";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kContainerStartupFail, kMessage);
+    return false;
+  }
+
+  if (!system_->ChangeOwner(
+          base::FilePath(kArcBridgeSocketPath), -1, arc_bridge_gid)) {
+    constexpr char kMessage[] = "Failed to change group of the socket";
+    PLOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kContainerStartupFail, kMessage);
+    return false;
+  }
+
+  if (!system_->SetPosixFilePermissions(
+          base::FilePath(kArcBridgeSocketPath), 0660)) {
+    constexpr char kMessage[] = "Failed to change permissions of the socket";
+    PLOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kContainerStartupFail, kMessage);
+    return false;
+  }
+
+  out_fd->PutValue(socket_fd.release());
+  return true;
+}
+
 bool SessionManagerImpl::StartArcInstanceInternal(
     brillo::ErrorPtr* error,
     const StartArcInstanceRequest& in_request,

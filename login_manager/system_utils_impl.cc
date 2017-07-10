@@ -5,6 +5,7 @@
 #include "login_manager/system_utils_impl.h"
 
 #include <errno.h>
+#include <grp.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -28,6 +29,7 @@
 #include <base/sys_info.h>
 #include <base/time/time.h>
 #include <brillo/process.h>
+#include <brillo/userdb_utils.h>
 #include <chromeos/dbus/service_constants.h>
 
 using std::string;
@@ -292,6 +294,37 @@ base::FilePath SystemUtilsImpl::PutInsideBaseDir(const base::FilePath& path) {
     to_append = base::FilePath(ascii.substr(1, std::string::npos));
   }
   return base_dir_for_testing_.Append(to_append);
+}
+
+bool SystemUtilsImpl::GetGroupInfo(const std::string& group_name,
+                                   gid_t* out_gid) {
+  return brillo::userdb::GetGroupInfo(group_name, out_gid);
+}
+
+bool SystemUtilsImpl::ChangeOwner(const base::FilePath& filename,
+                                  pid_t pid,
+                                  gid_t gid) {
+  if (HANDLE_EINTR(chown(
+          PutInsideBaseDir(filename).value().c_str(), pid, gid)) < 0) {
+    PLOG(ERROR) << "Failed to change owner: " << filename.value();
+    return false;
+  }
+  return true;
+}
+
+bool SystemUtilsImpl::SetPosixFilePermissions(const base::FilePath& filename,
+                                              mode_t mode) {
+  return base::SetPosixFilePermissions(PutInsideBaseDir(filename), mode);
+}
+
+ScopedPlatformHandle SystemUtilsImpl::CreateServerHandle(
+    const NamedPlatformHandle& named_handle) {
+  const base::FilePath filename_in_base_dir = PutInsideBaseDir(
+      base::FilePath(named_handle.name));
+  NamedPlatformHandle named_handle_in_base_dir(filename_in_base_dir.value());
+  // TODO(yusukes): Once libmojo is updated to >=r415560, call
+  // mojo::edk::CreateServerHandle() instead.
+  return login_manager::CreateServerHandle(named_handle_in_base_dir);
 }
 
 }  // namespace login_manager

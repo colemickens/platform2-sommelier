@@ -17,6 +17,7 @@
 
 namespace login_manager {
 
+// TODO(yusukes): Derive from the interface class (SystemUtils) instead.
 class MockSystemUtils : public SystemUtilsImpl {
  public:
   MockSystemUtils();
@@ -30,6 +31,15 @@ class MockSystemUtils : public SystemUtilsImpl {
   MOCK_METHOD2(ProcessGroupIsGone, bool(pid_t child_spec,
                                         base::TimeDelta timeout));
   MOCK_METHOD1(AmountOfFreeDiskSpace, int64_t(const base::FilePath& path));
+  MOCK_METHOD2(GetGroupInfo, bool(const std::string& group_name,
+                                  gid_t* out_gid));
+  MOCK_METHOD3(ChangeOwner, bool(const base::FilePath& filename,
+                                 pid_t pid,
+                                 gid_t gid));
+  MOCK_METHOD2(SetPosixFilePermissions, bool(const base::FilePath& filename,
+                                             mode_t mode));
+  MOCK_METHOD1(CreateServerHandle,
+               ScopedPlatformHandle(const NamedPlatformHandle& named_handle));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockSystemUtils);

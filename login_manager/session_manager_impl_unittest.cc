@@ -4,8 +4,11 @@
 
 #include "login_manager/session_manager_impl.h"
 
+#include <fcntl.h>
 #include <stdint.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -71,6 +74,7 @@ using ::testing::AtMost;
 using ::testing::DoAll;
 using ::testing::ElementsAre;
 using ::testing::ElementsAreArray;
+using ::testing::Field;
 using ::testing::HasSubstr;
 using ::testing::Invoke;
 using ::testing::InvokeWithoutArgs;
@@ -440,6 +444,24 @@ class SessionManagerImplTest : public ::testing::Test {
     VerifyAndClearExpectations();
   }
 
+  void ExpectStartArcInstance() {
+    EXPECT_CALL(utils_, CreateServerHandle(
+        // Use Field() since NamedPlatformHandle does not have operator==().
+        Field(&NamedPlatformHandle::name,
+              SessionManagerImpl::kArcBridgeSocketPath)))
+        .WillOnce(Invoke(this, &SessionManagerImplTest::CreateDummyHandle));
+    EXPECT_CALL(utils_, GetGroupInfo(
+        SessionManagerImpl::kArcBridgeSocketGroup, _))
+        .WillOnce(DoAll(SetArgumentPointee<1>(getgid()),
+                        Return(true)));
+    EXPECT_CALL(utils_, ChangeOwner(
+        base::FilePath(SessionManagerImpl::kArcBridgeSocketPath), -1, _))
+        .WillOnce(Return(true));
+    EXPECT_CALL(utils_, SetPosixFilePermissions(
+        base::FilePath(SessionManagerImpl::kArcBridgeSocketPath), 0660))
+        .WillOnce(Return(true));
+  }
+
   PolicyService* CreateUserPolicyService(const string& username) {
     user_policy_services_[username] = new MockPolicyService();
     return user_policy_services_[username];
@@ -471,6 +493,11 @@ class SessionManagerImplTest : public ::testing::Test {
     dbus::MessageWriter writer(response.get());
     writer.AppendBool(network_synchronized);
     time_sync_callback.Run(response.get());
+  }
+
+  ScopedPlatformHandle CreateDummyHandle(
+      const NamedPlatformHandle& named_handle) {
+    return ScopedPlatformHandle(open("/dev/null", O_RDONLY));
   }
 
   // These are bare pointers, not unique_ptrs, because we need to give them
@@ -1375,11 +1402,18 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForLoginScreen) {
   brillo::ErrorPtr error;
   StartArcInstanceRequest request;
   request.set_for_login_screen(true);
+  // When starting an instance for the login screen, CreateServerHandle() should
+  // never be called even if |create_server_socket| is set.
+  request.set_create_server_socket(true);
+  EXPECT_CALL(utils_, CreateServerHandle(_)).Times(0);
   std::string container_instance_id;
+  dbus::FileDescriptor server_socket_fd;
   EXPECT_TRUE(impl_->StartArcInstance(
-      &error, SerializeAsBlob(request), &container_instance_id));
+      &error, SerializeAsBlob(request), &container_instance_id,
+      &server_socket_fd));
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(container_instance_id.empty());
+  EXPECT_TRUE(server_socket_fd.is_valid());  // a dummy fd is set.
   EXPECT_TRUE(android_container_.running());
 
   // StartArcInstance() does not update start time for login screen.
@@ -1469,11 +1503,16 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForUser) {
   brillo::ErrorPtr error;
   StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
   request.set_scan_vendor_priv_app(true);
+  request.set_create_server_socket(true);
+  ExpectStartArcInstance();
   std::string container_instance_id;
+  dbus::FileDescriptor server_socket_fd;
   EXPECT_TRUE(impl_->StartArcInstance(
-      &error, SerializeAsBlob(request), &container_instance_id));
+      &error, SerializeAsBlob(request), &container_instance_id,
+      &server_socket_fd));
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(container_instance_id.empty());
+  EXPECT_TRUE(server_socket_fd.is_valid());
   EXPECT_TRUE(android_container_.running());
   {
     brillo::ErrorPtr error;
@@ -1512,9 +1551,15 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
   brillo::ErrorPtr error;
   StartArcInstanceRequest request;
   request.set_for_login_screen(true);
+  request.set_create_server_socket(true);
+  EXPECT_CALL(utils_, CreateServerHandle(_)).Times(0);
   std::string container_instance_id;
+  dbus::FileDescriptor server_socket_fd;
   EXPECT_TRUE(impl_->StartArcInstance(
-      &error, SerializeAsBlob(request), &container_instance_id));
+      &error, SerializeAsBlob(request), &container_instance_id,
+      &server_socket_fd));
+  EXPECT_FALSE(container_instance_id.empty());
+  EXPECT_TRUE(server_socket_fd.is_valid());
 
   // Then, upgrade it to a fully functional one.
   {
@@ -1565,12 +1610,17 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
 
   request = CreateStartArcInstanceRequestForUser();
   request.set_scan_vendor_priv_app(true);
+  request.set_create_server_socket(true);
+  ExpectStartArcInstance();
   std::string container_instance_id_for_upgrade = "not-empty";
+  dbus::FileDescriptor server_socket_fd_for_upgrade;
   EXPECT_TRUE(impl_->StartArcInstance(
-      &error, SerializeAsBlob(request), &container_instance_id_for_upgrade));
+      &error, SerializeAsBlob(request), &container_instance_id_for_upgrade,
+      &server_socket_fd_for_upgrade));
   EXPECT_FALSE(error.get());
   // Unlike the regular start, an empty ID is returned.
   EXPECT_TRUE(container_instance_id_for_upgrade.empty());
+  EXPECT_TRUE(server_socket_fd_for_upgrade.is_valid());
   EXPECT_TRUE(android_container_.running());
   {
     brillo::ErrorPtr error;
@@ -1597,12 +1647,17 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
 TEST_F(SessionManagerImplTest, ArcInstanceStart_NoSession) {
   brillo::ErrorPtr error;
   StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
+  request.set_create_server_socket(true);
+  ExpectStartArcInstance();
   std::string container_instance_id;
+  dbus::FileDescriptor server_socket_fd;
   EXPECT_FALSE(impl_->StartArcInstance(
-      &error, SerializeAsBlob(request), &container_instance_id));
+      &error, SerializeAsBlob(request), &container_instance_id,
+      &server_socket_fd));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error->GetCode());
   EXPECT_TRUE(container_instance_id.empty());
+  EXPECT_FALSE(server_socket_fd.is_valid());
 }
 
 TEST_F(SessionManagerImplTest, ArcInstanceStart_LowDisk) {
@@ -1613,12 +1668,17 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_LowDisk) {
 
   brillo::ErrorPtr error;
   StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
+  request.set_create_server_socket(true);
+  ExpectStartArcInstance();
   std::string container_instance_id;
+  dbus::FileDescriptor server_socket_fd;
   EXPECT_FALSE(impl_->StartArcInstance(
-      &error, SerializeAsBlob(request), &container_instance_id));
+      &error, SerializeAsBlob(request), &container_instance_id,
+      &server_socket_fd));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kLowFreeDisk, error->GetCode());
   EXPECT_TRUE(container_instance_id.empty());
+  EXPECT_FALSE(server_socket_fd.is_valid());
 }
 
 TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
@@ -1668,10 +1728,15 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
   {
     brillo::ErrorPtr error;
     StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
+    request.set_create_server_socket(true);
+    ExpectStartArcInstance();
+    dbus::FileDescriptor server_socket_fd;
     EXPECT_TRUE(impl_->StartArcInstance(
-        &error, SerializeAsBlob(request), &container_instance_id));
+        &error, SerializeAsBlob(request), &container_instance_id,
+        &server_socket_fd));
     EXPECT_FALSE(error.get());
     EXPECT_FALSE(container_instance_id.empty());
+    EXPECT_TRUE(server_socket_fd.is_valid());
   }
   EXPECT_TRUE(android_container_.running());
 
@@ -1701,11 +1766,16 @@ TEST_F(SessionManagerImplTest, ArcStartInstance_Fail) {
   brillo::ErrorPtr error;
   StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
   std::string container_instance_id;
+  dbus::FileDescriptor server_socket_fd;
+  request.set_create_server_socket(true);
+  EXPECT_CALL(utils_, CreateServerHandle(_)).Times(0);
   EXPECT_FALSE(impl_->StartArcInstance(
-      &error, SerializeAsBlob(request), &container_instance_id));
+      &error, SerializeAsBlob(request), &container_instance_id,
+      &server_socket_fd));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
   EXPECT_TRUE(container_instance_id.empty());
+  EXPECT_FALSE(server_socket_fd.is_valid());
 }
 #endif
 
@@ -1847,11 +1917,16 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
   {
     brillo::ErrorPtr error;
     StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
+    request.set_create_server_socket(true);
+    ExpectStartArcInstance();
     std::string container_instance_id;
+    dbus::FileDescriptor server_socket_fd;
     EXPECT_TRUE(impl_->StartArcInstance(
-        &error, SerializeAsBlob(request), &container_instance_id));
+        &error, SerializeAsBlob(request), &container_instance_id,
+        &server_socket_fd));
     EXPECT_FALSE(error.get());
     EXPECT_FALSE(container_instance_id.empty());
+    EXPECT_TRUE(server_socket_fd.is_valid());
   }
   {
     brillo::ErrorPtr error;
@@ -1898,10 +1973,15 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
   {
     brillo::ErrorPtr error;
     StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
+    request.set_create_server_socket(true);
+    ExpectStartArcInstance();
+    dbus::FileDescriptor server_socket_fd;
     EXPECT_TRUE(impl_->StartArcInstance(
-        &error, SerializeAsBlob(request), &container_instance_id));
+        &error, SerializeAsBlob(request), &container_instance_id,
+        &server_socket_fd));
     EXPECT_FALSE(error.get());
     EXPECT_FALSE(container_instance_id.empty());
+    EXPECT_TRUE(server_socket_fd.is_valid());
   }
 
   EXPECT_CALL(

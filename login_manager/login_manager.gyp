@@ -80,6 +80,7 @@
         'key_generator.cc',
         'liveness_checker_impl.cc',
         'login_metrics.cc',
+        'named_platform_handle_utils_posix.cc',
         'nss_util.cc',
         'owner_key_loss_mitigator.cc',
         'policy_key.cc',
@@ -103,6 +104,7 @@
       'sources': [
         'keygen.cc',
         'keygen_worker.cc',
+        'named_platform_handle_utils_posix.cc',
         'nss_util.cc',
         'policy_key.cc',
         'system_utils_impl.cc',

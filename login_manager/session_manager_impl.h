@@ -80,6 +80,12 @@ class SessionManagerImpl
   // Name of the Android container.
   static const char kArcContainerName[];
 
+  // A UNIX domain server socket path for communicating with the container.
+  static const char kArcBridgeSocketPath[];
+
+  // The group of the socket file.
+  static const char kArcBridgeSocketGroup[];
+
   // Android container messages.
   static const char kStartArcInstanceForLoginScreenImpulse[];
   static const char kStartArcInstanceImpulse[];
@@ -229,10 +235,10 @@ class SessionManagerImpl
                       const std::string& in_name) override;
   bool StopContainer(brillo::ErrorPtr* error,
                      const std::string& in_name) override;
-
   bool StartArcInstance(brillo::ErrorPtr* error,
                         const std::vector<uint8_t>& in_request,
-                        std::string* out_container_instance_id) override;
+                        std::string* out_container_instance_id,
+                        dbus::FileDescriptor* out_fd) override;
   bool StopArcInstance(brillo::ErrorPtr* error) override;
   bool SetArcCpuRestriction(brillo::ErrorPtr* error,
                             uint32_t in_restriction_state) override;
@@ -316,6 +322,10 @@ class SessionManagerImpl
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response);
 
 #if USE_CHEETS
+  // Creates a server socket for ARC and stores the descriptor in |out_fd|.
+  bool CreateArcServerSocket(dbus::FileDescriptor* out_fd,
+                             brillo::ErrorPtr* error);
+
   // Implementation of StartArcInstance, except parsing blob to protobuf.
   // When |container_pid| is greater than 0, the function tries to continue to
   // boot the existing container rather than starting a new one from scratch.

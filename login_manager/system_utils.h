@@ -6,6 +6,7 @@
 #define LOGIN_MANAGER_SYSTEM_UTILS_H_
 
 #include <stdint.h>
+#include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -16,6 +17,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <login_manager/named_platform_handle_utils.h>
 
 namespace base {
 class FilePath;
@@ -116,6 +118,23 @@ class SystemUtils {
   // Returns the amount of free disk space in bytes for the filesystem
   // containing |path|.
   virtual int64_t AmountOfFreeDiskSpace(const base::FilePath& path) = 0;
+
+  // Calls brillo::userdb::GetGroupInfo().
+  virtual bool GetGroupInfo(const std::string& group_name, gid_t* out_gid) = 0;
+
+  // Changes ownership of |filename|. When |pid| or |gid| is -1, that ID is
+  // not changed. Returns true upon success.
+  virtual bool ChangeOwner(const base::FilePath& filename,
+                           pid_t pid,
+                           gid_t gid) = 0;
+
+  // Calls base::SetPosixFilePermissions().
+  virtual bool SetPosixFilePermissions(const base::FilePath& filename,
+                                       mode_t mode) = 0;
+
+  // Calls mojo::edk::CreateServerHandle().
+  virtual ScopedPlatformHandle CreateServerHandle(
+      const NamedPlatformHandle& named_handle) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SystemUtils);

@@ -55,6 +55,14 @@ class SystemUtilsImpl : public SystemUtils {
   bool AtomicFileWrite(const base::FilePath& filename,
                        const std::string& data) override;
   int64_t AmountOfFreeDiskSpace(const base::FilePath& path) override;
+  bool GetGroupInfo(const std::string& group_name, gid_t* out_gid) override;
+  bool ChangeOwner(const base::FilePath& filename,
+                   pid_t pid,
+                   gid_t gid) override;
+  bool SetPosixFilePermissions(const base::FilePath& filename,
+                               mode_t mode) override;
+  ScopedPlatformHandle CreateServerHandle(
+      const NamedPlatformHandle& named_handle) override;
 
   void set_base_dir_for_testing(const base::FilePath& base_dir) {
     CHECK(!base_dir.empty());
