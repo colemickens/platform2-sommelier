@@ -86,23 +86,6 @@
       ],
     },
     {
-      'target_name': 'trunks_test',
-      'type': 'static_library',
-      'standalone_static_library': 1,
-      'sources': [
-        'mock_authorization_delegate.cc',
-        'mock_blob_parser.cc',
-        'mock_command_transceiver.cc',
-        'mock_hmac_session.cc',
-        'mock_policy_session.cc',
-        'mock_session_manager.cc',
-        'mock_tpm.cc',
-        'mock_tpm_state.cc',
-        'mock_tpm_utility.cc',
-        'trunks_factory_for_test.cc',
-      ],
-    },
-    {
       'target_name': 'trunks_client',
       'type': 'executable',
       'sources': [
@@ -187,6 +170,23 @@
   'conditions': [
     ['USE_test == 1', {
       'targets': [
+        {
+          'target_name': 'trunks_test',
+          'type': 'static_library',
+          'standalone_static_library': 1,
+          'sources': [
+            'mock_authorization_delegate.cc',
+            'mock_blob_parser.cc',
+            'mock_command_transceiver.cc',
+            'mock_hmac_session.cc',
+            'mock_policy_session.cc',
+            'mock_session_manager.cc',
+            'mock_tpm.cc',
+            'mock_tpm_state.cc',
+            'mock_tpm_utility.cc',
+            'trunks_factory_for_test.cc',
+          ],
+        },
         {
           'target_name': 'trunks_testrunner',
           'type': 'executable',
