@@ -54,6 +54,9 @@ UdevHandler::UdevHandler(DeviceTracker* ptr)
 bool UdevHandler::InitUdevHandler() {
   // Initialize UDEV monitoring.
   udev_.reset(udev_new());
+
+  // Before starting up the monitor, we should check for existing devices.
+  EnumerateExistingDevices();
   udev_monitor_.reset(udev_monitor_new_from_netlink(udev_.get(), kUdev));
   if (!udev_monitor_) {
     LOG(ERROR) << "udev_monitor_new_from_netlink fails.";
@@ -294,6 +297,37 @@ void UdevHandler::ProcessUdevEvent(struct udev_device* udev_device) {
     dev_tracker_->RemoveDevice(sys_num, dev_num);
   } else {
     LOG(ERROR) << "Unknown action: " << action;
+  }
+}
+
+void UdevHandler::EnumerateExistingDevices() {
+  std::unique_ptr<udev_enumerate, UdevEnumDeleter> enumerate(
+      udev_enumerate_new(udev_.get()));
+  udev_enumerate_add_match_subsystem(enumerate.get(), kUdevSubsystemSound);
+  udev_enumerate_scan_devices(enumerate.get());
+
+  struct udev_list_entry* devices =
+      udev_enumerate_get_list_entry(enumerate.get());
+  struct udev_list_entry* entry;
+  udev_list_entry_foreach(entry, devices) {
+    const char* path = udev_list_entry_get_name(entry);
+    std::unique_ptr<udev_device, UdevDeviceDeleter> dev(
+        udev_device_new_from_syspath(udev_.get(), path));
+    if (!dev) {
+      PLOG(ERROR) << "Error obtaining udev_device from path: " << path;
+      continue;
+    }
+
+    uint32_t sys_num;
+    if (!base::StringToUint(GetDeviceSysNum(dev.get()), &sys_num)) {
+      LOG(ERROR) << "Error retrieving sysnum of device: " << path;
+      continue;
+    }
+
+    std::unique_ptr<Device> new_dev = CreateDevice(dev.get());
+    if (new_dev) {
+      dev_tracker_->AddDevice(std::move(new_dev));
+    }
   }
 }
 

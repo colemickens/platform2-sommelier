@@ -44,6 +44,7 @@ class UdevHandler {
   const char* GetDeviceSysNum(struct udev_device* udev_device);
   void ProcessUdevEvent(struct udev_device* udev_device);
   void ProcessUdevFd(int fd);
+  void EnumerateExistingDevices();
 
   static uint32_t GenerateDeviceId(uint32_t sys_num, uint32_t device_num) {
     return (sys_num << 8) | device_num;
@@ -59,6 +60,12 @@ class UdevHandler {
 
   struct UdevDeleter {
     void operator()(udev* dev) const { udev_unref(dev); }
+  };
+
+  struct UdevEnumDeleter {
+    void operator()(udev_enumerate* enumerate) const {
+      udev_enumerate_unref(enumerate);
+    }
   };
 
   std::unique_ptr<udev, UdevDeleter> udev_;
