@@ -60,7 +60,7 @@ message LogRecord {
   Timestamp timestamp = 2;
 
   // Actual content of the message.
-  string content = 5;
+  bytes content = 5;
 }
 
 // A request to log information.  Multiple records may be coalesced into a
