@@ -450,6 +450,9 @@ gboolean ServiceDistributed::TpmAttestationCreateCertRequest(
     return FALSE;
   }
   attestation::CreateCertificateRequestRequest request;
+  request.set_certificate_profile(GetProfile(certificate_profile));
+  request.set_username(username);
+  request.set_request_origin(request_origin);
   attestation::CreateCertificateRequestReply reply;
   auto method = base::Bind(&AttestationInterface::CreateCertificateRequest,
                            base::Unretained(attestation_interface_), request);
