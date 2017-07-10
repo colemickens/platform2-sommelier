@@ -43,6 +43,31 @@ const char kFakeMidiData1[] = "0xDEADBEEF";
 
 namespace midis {
 
+base::ScopedFD RequestFakePort(int server_fd,
+                               const struct MidisRequestPort& port_msg) {
+  EXPECT_EQ(0, MidisRequestPort(server_fd, &port_msg));
+
+  // Receive the port back.
+  uint32_t payload_size;
+  uint32_t type;
+  EXPECT_EQ(0, MidisProcessMsgHeader(server_fd, &payload_size, &type));
+  EXPECT_EQ(REQUEST_PORT_RESPONSE, type);
+
+  struct MidisRequestPort port_msg_ret;
+  memset(&port_msg_ret, 0, sizeof(port_msg_ret));
+
+  base::ScopedFD portfd(
+      MidisProcessRequestPortResponse(server_fd, &port_msg_ret));
+  EXPECT_TRUE(portfd.is_valid());
+
+  // Make sure the returned FD is for the port we requested.
+  EXPECT_EQ(port_msg_ret.card, port_msg.card);
+  EXPECT_EQ(port_msg_ret.device_num, port_msg.device_num);
+  EXPECT_EQ(port_msg_ret.subdevice_num, port_msg.subdevice_num);
+
+  return portfd;
+}
+
 void ConnectToClient(base::FilePath socketDir, base::FilePath devNodePath) {
   uint8_t buf[kMaxBufSize];
   // Try connecting to the client
@@ -69,21 +94,16 @@ void ConnectToClient(base::FilePath socketDir, base::FilePath devNodePath) {
   port_msg.device_num = kFakeDevNum1;
   port_msg.subdevice_num = kFakeSubdevs1 - 1;
 
-  ASSERT_EQ(0, MidisRequestPort(server_fd.get(), &port_msg));
+  base::ScopedFD portfd = RequestFakePort(server_fd.get(), port_msg);
 
-  // Receive the port back.
-  ASSERT_EQ(0, MidisProcessMsgHeader(server_fd.get(), &payload_size, &type));
-  EXPECT_EQ(REQUEST_PORT_RESPONSE, type);
-  base::ScopedFD portfd(
-      MidisProcessRequestPortResponse(server_fd.get(), &port_msg));
-  ASSERT_TRUE(portfd.is_valid());
+  // Create another client
+  base::ScopedFD server_fd2 =
+      base::ScopedFD(MidisConnectToServer(socket_path.c_str()));
+  ASSERT_TRUE(server_fd2.is_valid());
 
-  // Make sure the returned FD is for the port we requested.
-  EXPECT_EQ(port_msg.card, kFakeSysNum1);
-  EXPECT_EQ(port_msg.device_num, kFakeDevNum1);
-  EXPECT_EQ(port_msg.subdevice_num, kFakeSubdevs1 - 1);
+  base::ScopedFD portfd2 = RequestFakePort(server_fd2.get(), port_msg);
 
-  // Write data to the dev-node.
+  // Write data to the dev-node to fake the MIDI h/w generating messages.
   ASSERT_EQ(sizeof(kFakeMidiData1), base::WriteFile(devNodePath, kFakeMidiData1,
                                                     sizeof(kFakeMidiData1)));
 
@@ -91,10 +111,13 @@ void ConnectToClient(base::FilePath socketDir, base::FilePath devNodePath) {
   memset(buf, 0, kMaxBufSize);
   EXPECT_EQ(sizeof(kFakeMidiData1), read(portfd.get(), buf, kMaxBufSize));
   EXPECT_EQ(0, memcmp(buf, kFakeMidiData1, sizeof(kFakeMidiData1)));
+  memset(buf, 0, kMaxBufSize);
+  EXPECT_EQ(sizeof(kFakeMidiData1), read(portfd2.get(), buf, kMaxBufSize));
+  EXPECT_EQ(0, memcmp(buf, kFakeMidiData1, sizeof(kFakeMidiData1)));
 }
 
 void CheckClientCallback(ClientTracker* cli_tracker, base::Closure quit) {
-  EXPECT_EQ(cli_tracker->GetNumClientsForTesting(), 1);
+  EXPECT_EQ(cli_tracker->GetNumClientsForTesting(), 2);
   quit.Run();
 }
 
