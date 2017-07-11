@@ -57,7 +57,6 @@ class IpHelper : public brillo::Daemon, public base::MessageLoopForIO::Watcher {
   MessageLoopForIO::FileDescriptorWatcher control_watcher_;
 
   int con_init_tries_{0};
-  bool init_done_{false};
 
   IpHelperMessage pending_command_;
   std::unique_ptr<ArcIpConfig> arc_ip_config_;

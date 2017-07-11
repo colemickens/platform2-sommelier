@@ -39,6 +39,7 @@ const int kInvalidTableId = -1;
 
 // These match what is used in iptables.cc in firewalld.
 const char kIpPath[] = "/bin/ip";
+const char kIpTablesPath[] = "/sbin/iptables";
 const char kIp6TablesPath[] = "/sbin/ip6tables";
 const char kUnprivilegedUser[] = "nobody";
 const uint64_t kIpTablesCapMask =
@@ -321,12 +322,12 @@ bool ArcIpConfig::Set(const struct in6_addr& address,
       "-w"
   }, true), 0);
 
-  is_configured_ = true;
+  ipv6_configured_ = true;
   return true;
 }
 
 bool ArcIpConfig::Clear() {
-  if (!is_configured_)
+  if (!ipv6_configured_)
     return true;
 
   // These should never fail.
@@ -393,8 +394,34 @@ bool ArcIpConfig::Clear() {
 
   PCHECK(setns(self_netns_fd_.get(), CLONE_NEWNET) == 0);
 
-  is_configured_ = false;
+  ipv6_configured_ = false;
   return true;
+}
+
+void ArcIpConfig::EnableInbound(const std::string& lan_ifname) {
+  DisableInbound();
+
+  CHECK_EQ(StartProcessInMinijail({
+      kIpTablesPath,
+      "-t", "nat",
+      "-A", "try_arc",
+      "-i", lan_ifname,
+      "-j", "dnat_arc",
+      "-w"
+  }, true), 0);
+  inbound_configured_ = true;
+}
+
+void ArcIpConfig::DisableInbound() {
+  if (!inbound_configured_)
+    return;
+  CHECK_EQ(StartProcessInMinijail({
+      kIpTablesPath,
+      "-t", "nat",
+      "-F", "try_arc",
+      "-w"
+  }, true), 0);
+  inbound_configured_ = false;
 }
 
 }  // namespace arc_networkd

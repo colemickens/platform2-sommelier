@@ -42,6 +42,11 @@ class Manager final : public brillo::DBusDaemon {
   // Delete ARC IPv6 address (if any).
   void ClearArcIp();
 
+  // Enable or Disable inbound connections on |lan_ifname| by manipulating
+  // a DNAT rule matching unclaimed traffic on the interface.
+  void EnableInbound(const std::string& lan_ifname);
+  void DisableInbound();
+
   // Callback from ShillClient, invoked whenever the default network
   // interface changes or goes away.
   void OnDefaultInterfaceChanged(const std::string& ifname);

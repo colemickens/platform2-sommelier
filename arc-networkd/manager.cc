@@ -84,6 +84,7 @@ void Manager::OnDefaultInterfaceChanged(const std::string& ifname) {
     mdns_forwarder_.reset();
     ssdp_forwarder_.reset();
     router_finder_.reset();
+    DisableInbound();
   } else {
     LOG(INFO) << "Binding to interface " << ifname;
     mdns_forwarder_.reset(new MulticastForwarder());
@@ -105,6 +106,7 @@ void Manager::OnDefaultInterfaceChanged(const std::string& ifname) {
 
     router_finder_->Start(ifname,
         base::Bind(&Manager::OnRouteFound, weak_factory_.GetWeakPtr()));
+    EnableInbound(ifname);
   }
 }
 
@@ -180,8 +182,21 @@ void Manager::ClearArcIp() {
   ip_helper_->SendMessage(msg);
 }
 
+void Manager::EnableInbound(const std::string& lan_ifname) {
+  IpHelperMessage msg;
+  msg.set_enable_inbound(lan_ifname);
+  ip_helper_->SendMessage(msg);
+}
+
+void Manager::DisableInbound() {
+  IpHelperMessage msg;
+  msg.set_disable_inbound(true);
+  ip_helper_->SendMessage(msg);
+}
+
 void Manager::OnShutdown(int* exit_code) {
   ClearArcIp();
+  DisableInbound();
 }
 
 void Manager::OnSubprocessExited(pid_t pid, const siginfo_t& info) {

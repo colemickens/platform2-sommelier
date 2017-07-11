@@ -20,7 +20,9 @@ message SetArcIp {
 
 message IpHelperMessage {
   oneof message_type {
-    SetArcIp set_arc_ip = 1;
-    bool clear_arc_ip = 2;
+    SetArcIp set_arc_ip = 1;    // argument: IPv6 parameters
+    bool clear_arc_ip = 2;      // argument is ignored
+    string enable_inbound = 3;  // argument: lan_ifname
+    bool disable_inbound = 4;   // argument is ignored
   }
 }

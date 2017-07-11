@@ -35,12 +35,6 @@ int IpHelper::OnInit() {
 
   CHECK(arc_ip_config_->Init());
 
-  MessageLoopForIO::current()->WatchFileDescriptor(control_fd_.get(),
-                                                   true,
-                                                   MessageLoopForIO::WATCH_READ,
-                                                   &control_watcher_,
-                                                   this);
-
   // This needs to execute after Daemon::OnInit().
   base::MessageLoopForIO::current()->PostTask(
       FROM_HERE,
@@ -62,8 +56,11 @@ void IpHelper::InitialSetup() {
     return;
   }
 
-  init_done_ = true;
-  HandleCommand();
+  MessageLoopForIO::current()->WatchFileDescriptor(control_fd_.get(),
+                                                   true,
+                                                   MessageLoopForIO::WATCH_READ,
+                                                   &control_watcher_,
+                                                   this);
 }
 
 void IpHelper::OnFileCanReadWithoutBlocking(int fd) {
@@ -83,13 +80,7 @@ void IpHelper::OnFileCanReadWithoutBlocking(int fd) {
   if (!pending_command_.ParseFromArray(buffer, len)) {
     LOG(FATAL) << "error parsing protobuf";
   }
-
-  // Store the most recent command in |pending_command_| and run it whenever
-  // initialization completes.  This works because the subprocess only handles
-  // Set and Clear operations.
-  if (init_done_) {
-    HandleCommand();
-  }
+  HandleCommand();
 }
 
 const struct in6_addr& IpHelper::ExtractAddr6(const std::string& in) {
@@ -122,6 +113,11 @@ void IpHelper::HandleCommand() {
                         static_cast<int>(ip.prefix_len()),
                         ExtractAddr6(ip.router()),
                         ip.lan_ifname());
+  } else if (pending_command_.has_enable_inbound()) {
+    CHECK(ValidateIfname(pending_command_.enable_inbound()));
+    arc_ip_config_->EnableInbound(pending_command_.enable_inbound());
+  } else if (pending_command_.has_disable_inbound()) {
+    arc_ip_config_->DisableInbound();
   }
   pending_command_.Clear();
 }

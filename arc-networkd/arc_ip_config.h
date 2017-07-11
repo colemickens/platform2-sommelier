@@ -44,6 +44,11 @@ class ArcIpConfig {
            const std::string& lan_ifname);
   bool Clear();
 
+  // Enable or Disable inbound connections on |lan_ifname| by manipulating
+  // a DNAT rule matching unclaimed traffic on the interface.
+  void EnableInbound(const std::string& lan_ifname);
+  void DisableInbound();
+
   // Utility functions.
   static bool GetV6Address(const std::string& ifname,
                            struct in6_addr* address);
@@ -63,7 +68,8 @@ class ArcIpConfig {
   base::ScopedFD self_netns_fd_;
   int routing_table_id_;
 
-  bool is_configured_{false};
+  bool ipv6_configured_{false};
+  bool inbound_configured_{false};
   std::string current_address_;
   std::string current_address_full_;
   std::string current_router_;
