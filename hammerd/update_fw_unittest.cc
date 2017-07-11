@@ -175,6 +175,8 @@ TEST_F(FirmwareUpdaterTest, TryConnectUSB_OK) {
   auto now = base::Time::Now();
   ON_CALL(*uep_, Connect()).WillByDefault(Invoke(TrueAfterPeriod(now, 500)));
   EXPECT_CALL(*uep_, Connect()).Times(AtLeast(1));
+  EXPECT_CALL(*uep_, GetChunkLength()).WillOnce(Return(0x40));
+  EXPECT_CALL(*uep_, Receive(_, 0x40, true, _)).WillOnce(Return(-1));
   EXPECT_CALL(*uep_, GetConfigurationString())
       .WillOnce(Return("RO:version_string"));
   ASSERT_EQ(fw_updater_->TryConnectUSB(), true);
@@ -204,8 +206,23 @@ TEST_F(FirmwareUpdaterTest, TryConnectUSB_FetchVersion_Legacy) {
 TEST_F(FirmwareUpdaterTest, TryConnectUSB_FetchVersion_FAIL) {
   InSequence dummy;
   EXPECT_CALL(*uep_, Connect()).WillOnce(Return(true));
+  EXPECT_CALL(*uep_, GetChunkLength()).WillOnce(Return(0x40));
+  EXPECT_CALL(*uep_, Receive(_, 0x40, true, _)).WillOnce(Return(-1));
   EXPECT_CALL(*uep_, GetConfigurationString()).WillOnce(Return(""));
   ASSERT_EQ(fw_updater_->TryConnectUSB(), false);
+}
+
+// Simulate leftover data on the EC's "out" buffer.
+TEST_F(FirmwareUpdaterTest, TryConnectUSB_LeftoverData) {
+  EXPECT_CALL(*uep_, Connect()).WillOnce(Return(true));
+  EXPECT_CALL(*uep_, GetChunkLength()).WillOnce(Return(10));
+  EXPECT_CALL(*uep_, Receive(_, 10, true, _)).Times(3)
+                                             .WillOnce(Return(10))
+                                             .WillOnce(Return(10))
+                                             .WillOnce(Return(0));
+  EXPECT_CALL(*uep_, GetConfigurationString())
+      .WillOnce(Return("RO:version_string"));
+  ASSERT_EQ(fw_updater_->TryConnectUSB(), true);
 }
 
 // Send done command.

@@ -99,11 +99,6 @@ bool UsbEndpoint::Connect() {
     Close();
     return false;
   }
-  // Flush data on the endpoint. This helps recover in case of error.
-  std::unique_ptr<uint8_t[]> buf(new uint8_t[GetChunkLength()]);
-  while (Receive(buf.get(), 0, true, 10) != kError) {
-    LOG(INFO) << "Flush data...";
-  }
   LOG(INFO) << "USB endpoint is initialized successfully.";
   return true;
 }

@@ -86,6 +86,7 @@ FirmwareUpdater::FirmwareUpdater(std::shared_ptr<UsbEndpoint> uep,
 FirmwareUpdater::~FirmwareUpdater() {}
 
 bool FirmwareUpdater::TryConnectUSB() {
+  constexpr unsigned int kFlushTimeoutMs = 10;
   constexpr unsigned int kTimeoutMs = 1000;
   constexpr unsigned int kIntervalMs = 100;
 
@@ -95,6 +96,13 @@ bool FirmwareUpdater::TryConnectUSB() {
   while (true) {
     bool ret = uep_->Connect();
     if (ret) {
+      // Flush data from the EC's "out" buffer.  There may be leftover data
+      // in this buffer from a previous failure.
+      uint8_t buf[uep_->GetChunkLength()];
+      while (uep_->Receive(buf, sizeof(buf), true, kFlushTimeoutMs) > 0) {
+        LOG(INFO) << "Flushing data...";
+      }
+
       // If we can't properly parse the section version string, return false.
       return FetchVersion();
     }
