@@ -1,2 +1,3 @@
 android/*
 presubmit/upstream-git-clang-format
+hal/intel/*
