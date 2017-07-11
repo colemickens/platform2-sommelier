@@ -219,7 +219,8 @@ list_fixed_mmc_disks() {
 # NVMe device
 # Exclude disks with size 0, it means they did not spin up properly.
 list_fixed_nvme_disks() {
-  local nvme remo size nvme_base all_nvme
+  local nvme remo size nvme_base
+  local all_nvme=''
 
   for nvme in /sys/block/nvme*; do
     if [ ! -r "${nvme}/size" ]; then
