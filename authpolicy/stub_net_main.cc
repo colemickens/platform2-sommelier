@@ -31,6 +31,10 @@ const char kNetworkError[] = "No logon servers";
 const char kWrongPasswordError[] =
     "Failed to join domain: failed to lookup DC info for domain 'REALM.COM' "
     "over rpc: Logon failure";
+const char kExpiredPasswordError[] =
+    "Enter user@REALM.COM's password:\n"
+    "Failed to join domain: failed to lookup DC info for domain 'REALM.COM' "
+    "over rpc: Must change password";
 const char kJoinAccessDeniedError[] =
     "Failed to join domain: Failed to set account flags for machine account "
     "(NT_STATUS_ACCESS_DENIED)";
@@ -306,6 +310,12 @@ std::string GetSearchResultFromSAMAccountName(
   return search_builder.GetResult();
 }
 
+// Handles a stub 'net ads workgroup' call. Just returns a fake workgroup.
+int HandleWorkgroup() {
+  WriteOutput("Workgroup: WOKGROUP", "");
+  return kExitCodeOk;
+}
+
 // Handles a stub 'net ads join' call. Different behavior is triggered by
 // passing different user principals, passwords and machine names (in smb.conf).
 int HandleJoin(const std::string& command_line,
@@ -369,6 +379,11 @@ int HandleJoin(const std::string& command_line,
       WriteOutput(kWrongPasswordError, "");
       return kExitCodeError;
     }
+    // Stub expired password.
+    if (password == kExpiredPassword) {
+      WriteOutput(kExpiredPasswordError, "");
+      return kExitCodeError;
+    }
     // Stub valid password.
     if (password == kPassword) {
       WriteKeytabFile();
@@ -380,6 +395,12 @@ int HandleJoin(const std::string& command_line,
 
   NOTREACHED() << "UNHANDLED COMMAND LINE " << command_line;
   return kExitCodeError;
+}
+
+// Handles a stub 'net ads info' call. Just returns stub information.
+int HandleInfo() {
+  WriteOutput(kStubInfo, "");
+  return kExitCodeOk;
 }
 
 // Handles a stub 'net ads gpo list' call. Different behavior is triggered by
@@ -420,50 +441,50 @@ int HandleGpoList(const std::string& smb_conf_path) {
   return kExitCodeOk;
 }
 
+// Handles a stub 'net ads search' call. Different behavior is triggered by
+// passing different sAMAccountNames or objectGUIDs as search term.
+int HandleSearch(const std::string& command_line) {
+  std::string sam_account_name =
+      FindSearchValue(command_line, kSearchSAMAccountName);
+  std::string object_guid_octet =
+      FindSearchValue(command_line, kSearchObjectGUID);
+  std::string search_result;
+  if (!object_guid_octet.empty()) {
+    // Search by objectGUID aka account id.
+    std::string object_guid = OctetStringToGuidForTesting(object_guid_octet);
+    search_result = GetSearchResultFromObjectGUID(object_guid);
+  } else if (!sam_account_name.empty()) {
+    // Search by sAMAccountName.
+    search_result = GetSearchResultFromSAMAccountName(sam_account_name);
+  } else {
+    LOG(ERROR) << "SEARCH TERM NOT RECOGNIZED IN COMMAND LINE " << command_line;
+  }
+
+  WriteOutput(search_result, "");
+  return kExitCodeOk;
+}
+
 int HandleCommandLine(const std::string& command_line,
                       const std::string& smb_conf_path) {
-  // Stub net ads workgroup, return a fake workgroup.
-  if (StartsWithCaseSensitive(command_line, "ads workgroup")) {
-    WriteOutput("Workgroup: WOKGROUP", "");
-    return kExitCodeOk;
-  }
+  // Stub net ads workgroup.
+  if (StartsWithCaseSensitive(command_line, "ads workgroup"))
+    return HandleWorkgroup();
 
   // Stub net ads join.
   if (StartsWithCaseSensitive(command_line, "ads join"))
     return HandleJoin(command_line, smb_conf_path);
 
-  // Stub net ads info, return stub information.
-  if (StartsWithCaseSensitive(command_line, "ads info")) {
-    WriteOutput(kStubInfo, "");
-    return kExitCodeOk;
-  }
+  // Stub net ads info.
+  if (StartsWithCaseSensitive(command_line, "ads info"))
+    return HandleInfo();
 
   // Stub net ads gpo list.
   if (StartsWithCaseSensitive(command_line, "ads gpo list"))
     return HandleGpoList(smb_conf_path);
 
-  // Stub net ads search, return stub search result.
-  if (StartsWithCaseSensitive(command_line, "ads search")) {
-    std::string sam_account_name =
-        FindSearchValue(command_line, kSearchSAMAccountName);
-    std::string object_guid_octet =
-        FindSearchValue(command_line, kSearchObjectGUID);
-    std::string search_result;
-    if (!object_guid_octet.empty()) {
-      // Search by objectGUID aka account id.
-      std::string object_guid = OctetStringToGuidForTesting(object_guid_octet);
-      search_result = GetSearchResultFromObjectGUID(object_guid);
-    } else if (!sam_account_name.empty()) {
-      // Search by sAMAccountName.
-      search_result = GetSearchResultFromSAMAccountName(sam_account_name);
-    } else {
-      LOG(ERROR) << "SEARCH TERM NOT RECOGNIZED IN COMMAND LINE "
-                 << command_line;
-    }
-
-    WriteOutput(search_result, "");
-    return kExitCodeOk;
-  }
+  // Stub net ads search.
+  if (StartsWithCaseSensitive(command_line, "ads search"))
+    return HandleSearch(command_line);
 
   NOTREACHED() << "UNHANDLED COMMAND LINE " << command_line;
   return kExitCodeError;

@@ -47,9 +47,9 @@ using dbus::MockObjectProxy;
 using dbus::ObjectPath;
 using dbus::ObjectProxy;
 using dbus::Response;
-using testing::_;
 using testing::AnyNumber;
 using testing::Return;
+using testing::_;
 
 namespace em = enterprise_management;
 
@@ -827,6 +827,13 @@ TEST_F(AuthPolicyTest, JoinFailsBadPassword) {
   EXPECT_EQ(
       ERROR_BAD_PASSWORD,
       Join(kMachineName, kUserPrincipal, MakeFileDescriptor(kWrongPassword)));
+}
+
+// Join fails with expired password.
+TEST_F(AuthPolicyTest, JoinFailsPasswordExpired) {
+  EXPECT_EQ(
+      ERROR_PASSWORD_EXPIRED,
+      Join(kMachineName, kUserPrincipal, MakeFileDescriptor(kExpiredPassword)));
 }
 
 // Join fails if user can't join a machine to the domain.

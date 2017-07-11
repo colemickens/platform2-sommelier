@@ -94,6 +94,7 @@ const char kKeyUserHitJoinQuota[] =
 const char kKeyJoinFailedToFindDC[] = "failed to find DC";
 const char kKeyNoLogonServers[] = "No logon servers";
 const char kKeyJoinLogonFailure[] = "Logon failure";
+const char kKeyJoinMustChangePassword[] = "Must change password";
 
 // Keys for interpreting smbclient output.
 const char kKeyConnectionReset[] = "NT_STATUS_CONNECTION_RESET";
@@ -124,6 +125,10 @@ ErrorType GetNetError(const ProcessExecutor& executor,
   if (Contains(net_out, kKeyJoinLogonFailure)) {
     LOG(ERROR) << error_msg << "logon failure";
     return ERROR_BAD_PASSWORD;
+  }
+  if (Contains(net_out, kKeyJoinMustChangePassword)) {
+    LOG(ERROR) << error_msg << "must change password";
+    return ERROR_PASSWORD_EXPIRED;
   }
   if (Contains(net_out, kKeyJoinAccessDenied)) {
     LOG(ERROR) << error_msg << "user is not permitted to join the domain";
