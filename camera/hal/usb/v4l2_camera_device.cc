@@ -11,7 +11,6 @@
 #include <sys/ioctl.h>
 
 #include <limits>
-#include <utility>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
@@ -60,7 +59,9 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
   VLOGF(1) << "Connecting device path: " << device_path;
   base::AutoLock l(lock_);
   if (device_path.compare(0, strlen(kAllowedCameraPrefix),
-                          kAllowedCameraPrefix)) {
+                          kAllowedCameraPrefix) &&
+      device_path.compare(0, strlen(kAllowedVideoPrefix),
+                          kAllowedVideoPrefix)) {
     LOGF(ERROR) << "Invalid device path " << device_path;
     return -EINVAL;
   }
@@ -70,9 +71,21 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
     return -EIO;
   }
 
+  // If device path is /dev/video*, it means the device is an external camera.
+  // We have to glob all video devices again since the device number may be
+  // changed after suspend/resume.
+  std::string correct_device_path = device_path;
+  if (!device_path.compare(0, strlen(kAllowedVideoPrefix),
+                           kAllowedVideoPrefix)) {
+    std::pair<std::string, std::string> external_camera = FindExternalCamera();
+    if (external_camera.first != "") {
+      correct_device_path = external_camera.second;
+    }
+  }
+
   // Since device node may be changed after suspend/resume, we allow to use
   // symbolic link to access device.
-  device_fd_.reset(RetryDeviceOpen(device_path, O_RDWR));
+  device_fd_.reset(RetryDeviceOpen(correct_device_path, O_RDWR));
   if (!device_fd_.is_valid()) {
     LOGF(ERROR) << "Failed to open " << device_path << " : " << strerror(errno);
     return -errno;
@@ -351,11 +364,25 @@ const SupportedFormats V4L2CameraDevice::GetDeviceSupportedFormats(
   VLOG(1) << "Query supported formats for " << device_path;
   SupportedFormats formats;
   if (device_path.compare(0, strlen(kAllowedCameraPrefix),
-                          kAllowedCameraPrefix)) {
+                          kAllowedCameraPrefix) &&
+      device_path.compare(0, strlen(kAllowedVideoPrefix),
+                          kAllowedVideoPrefix)) {
     LOGF(ERROR) << "Invalid device path " << device_path;
     return formats;
   }
-  base::ScopedFD fd(RetryDeviceOpen(device_path, O_RDONLY));
+  // If device path is /dev/video*, it means the device is an external camera.
+  // We have to glob all video devices again since the device number may be
+  // changed after suspend/resume.
+  std::string correct_device_path = device_path;
+  if (!device_path.compare(0, strlen(kAllowedVideoPrefix),
+                           kAllowedVideoPrefix)) {
+    std::pair<std::string, std::string> external_camera = FindExternalCamera();
+    if (external_camera.first != "") {
+      correct_device_path = external_camera.second;
+    }
+  }
+
+  base::ScopedFD fd(RetryDeviceOpen(correct_device_path, O_RDONLY));
   if (!fd.is_valid()) {
     LOGF(ERROR) << "Failed to open " << device_path << " : " << strerror(errno);
     return formats;
@@ -394,21 +421,36 @@ const SupportedFormats V4L2CameraDevice::GetDeviceSupportedFormats(
 }
 
 const DeviceInfos V4L2CameraDevice::GetCameraDeviceInfos() {
-  // Only internal camera is allowed to be used in container.
   // /dev/camera-internal* symbolic links should have been created and pointed
   // to the internal cameras according to Vid and Pid.
-  std::unordered_map<std::string, std::string> devices =
+  std::unordered_map<std::string, std::string> camera_devices =
       GetCameraDevicesByPattern(std::string(kAllowedCameraPrefix) + "*");
+  internal_devices_ = camera_devices;
 
-  if (devices.empty()) {
+  CameraCharacteristics characteristics;
+  bool external_camera_support = characteristics.IsExternalCameraSupported();
+  if (external_camera_support) {
+    std::pair<std::string, std::string> external_camera = FindExternalCamera();
+    if (external_camera.first != "") {
+      VLOG(1) << __func__ << ": Add external camera " << external_camera.first
+              << ", path: " << external_camera.second;
+      camera_devices.insert(external_camera);
+    }
+  }
+
+  DeviceInfos device_infos =
+      characteristics.GetCharacteristicsFromFile(camera_devices);
+
+  if (device_infos.empty()) {
     // Symbolic link /dev/camera-internal* is generated from the udev rules
     // 50-camera.rules in chromeos-bsp-{BOARD}-private. The rules file may not
     // exist, and it will cause this error. (b/29425883)
     LOGF(ERROR) << "Cannot find any camera devices with "
                 << kAllowedCameraPrefix << "*";
-    devices = GetCameraDevicesByPattern(std::string(kAllowedVideoPrefix) + "*");
     LOGF(ERROR) << "List available cameras as follows: ";
-    for (const auto& device : devices) {
+    std::unordered_map<std::string, std::string> video_devices =
+        GetCameraDevicesByPattern(std::string(kAllowedVideoPrefix) + "*");
+    for (const auto& device : video_devices) {
       size_t pos = device.first.find(":");
       if (pos != std::string::npos) {
         LOGF(ERROR) << "Device path: " << device.second
@@ -419,10 +461,10 @@ const DeviceInfos V4L2CameraDevice::GetCameraDeviceInfos() {
       }
     }
     return DeviceInfos();
+  } else {
+    VLOGF(1) << "Number of cameras: " << device_infos.size();
   }
-
-  CameraCharacteristics characteristics;
-  return characteristics.GetCharacteristicsFromFile(devices);
+  return device_infos;
 }
 
 std::vector<float> V4L2CameraDevice::GetFrameRateList(int fd,
@@ -507,7 +549,7 @@ V4L2CameraDevice::GetCameraDevicesByPattern(std::string pattern) {
         VLOGF(1) << "Couldn't read PID of " << device_name;
         continue;
       }
-      VLOGF(1) << "Device path: " << device_path << " vid: " << usb_vid
+      VLOGF(1) << "Device path: " << target_path.value() << " vid: " << usb_vid
                << " pid: " << usb_pid;
       devices.insert(
           std::make_pair(usb_vid + ":" + usb_pid, target_path.value()));
@@ -529,13 +571,27 @@ int V4L2CameraDevice::RetryDeviceOpen(const std::string& device_path,
   while (elapsed_time < kDeviceOpenTimeOutInMilliseconds) {
     fd = TEMP_FAILURE_RETRY(open(device_path.c_str(), flags));
     if (fd != -1) {
-      if (elapsed_time >= kSleepTimeInMilliseconds) {
-        LOGF(INFO) << "Opened the camera device after waiting for "
-                   << elapsed_time << " ms";
+      // Make sure ioctl is ok. Once ioctl failed, we have to re-open the
+      // device.
+      struct v4l2_fmtdesc v4l2_format = {};
+      v4l2_format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+      int ret = TEMP_FAILURE_RETRY(ioctl(fd, VIDIOC_ENUM_FMT, &v4l2_format));
+      if (ret == -1) {
+        close(fd);
+        if (errno != EPERM) {
+          break;
+        } else {
+          VLOGF(1) << "Camera ioctl is not ready";
+        }
+      } else {
+        // Only return fd when ioctl is ready.
+        if (elapsed_time >= kSleepTimeInMilliseconds) {
+          LOGF(INFO) << "Opened the camera device after waiting for "
+                     << elapsed_time << " ms";
+        }
+        return fd;
       }
-      return fd;
-    }
-    if (errno != ENOENT) {
+    } else if (errno != ENOENT) {
       break;
     }
     base::PlatformThread::Sleep(
@@ -544,6 +600,39 @@ int V4L2CameraDevice::RetryDeviceOpen(const std::string& device_path,
   }
   LOGF(ERROR) << "Failed to open " << device_path << " : " << strerror(errno);
   return -1;
+}
+
+std::pair<std::string, std::string> V4L2CameraDevice::FindExternalCamera() {
+  std::unordered_map<std::string, std::string> video_devices =
+      GetCameraDevicesByPattern(std::string(kAllowedVideoPrefix) + "*");
+
+  if (internal_devices_.size() == 0) {
+    internal_devices_ =
+        GetCameraDevicesByPattern(std::string(kAllowedCameraPrefix) + "*");
+  }
+
+  for (const auto& device : internal_devices_) {
+    base::FilePath target;
+    std::string device_path;
+    if (base::ReadSymbolicLink(base::FilePath(device.second), &target)) {
+      device_path = "/dev/" + target.value();
+    } else {
+      LOGF(ERROR) << device.second << " should be a symbolic link";
+    }
+    video_devices.erase(device.first);
+  }
+
+  if (video_devices.size() > 1) {
+    LOGF(ERROR) << "Only allow one external camera";
+    return std::make_pair("", "");
+  }
+
+  for (const auto& device : video_devices) {
+    VLOGF(1) << "Find external camera " << device.first
+             << ", path: " << device.second;
+    return device;
+  }
+  return std::make_pair("", "");
 }
 
 }  // namespace arc

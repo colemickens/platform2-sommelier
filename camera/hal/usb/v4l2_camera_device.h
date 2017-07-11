@@ -9,6 +9,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <base/files/scoped_file.h>
@@ -89,6 +90,11 @@ class V4L2CameraDevice {
   // device resumed. But camera device may not be ready immediately.
   int RetryDeviceOpen(const std::string& device_path, int flags);
 
+  // External camera is the only one camera device of /dev/video* which is not
+  // in |internal_devices_|. Ruturns <VID:PID, device_path> if external camera
+  // is found. Otherwise, returns empty strings.
+  std::pair<std::string, std::string> FindExternalCamera();
+
   // The number of video buffers we want to request in kernel.
   const int kNumVideoBuffers = 4;
 
@@ -100,6 +106,10 @@ class V4L2CameraDevice {
 
   // True if the buffer is used by client after GetNextFrameBuffer().
   std::vector<bool> buffers_at_client_;
+
+  // Keep internal camera devices to distinguish external camera.
+  // First index is VID:PID and second index is the device path.
+  std::unordered_map<std::string, std::string> internal_devices_;
 
   // Since V4L2CameraDevice may be called on different threads, this is used to
   // guard all variables.

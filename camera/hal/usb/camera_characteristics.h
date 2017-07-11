@@ -47,6 +47,9 @@ class CameraCharacteristics {
   const DeviceInfos GetCharacteristicsFromFile(
       const std::unordered_map<std::string, std::string>& devices);
 
+  // Returns that external camera is supported or not.
+  bool IsExternalCameraSupported();
+
  private:
   void AddPerCameraCharacteristic(uint32_t camera_id,
                                   const char* characteristic,
@@ -59,6 +62,9 @@ class CameraCharacteristics {
   void AddFloatValue(const char* value,
                      const char* characteristic_name,
                      float* characteristic);
+  void AddExternalCameras(
+      const std::unordered_map<std::string, std::string>& devices,
+      DeviceInfos* device_infos);
 
   DISALLOW_COPY_AND_ASSIGN(CameraCharacteristics);
 };
