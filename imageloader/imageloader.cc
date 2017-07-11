@@ -26,8 +26,7 @@ const int ImageLoader::kShutdownTimeoutMilliseconds = 20000;
 
 ImageLoader::ImageLoader(ImageLoaderConfig config,
                          std::unique_ptr<HelperProcess> process)
-    : DBusServiceDaemon(kImageLoaderServiceName,
-                        "/org/chromium/ImageLoader/Manager"),
+    : DBusServiceDaemon(kImageLoaderServiceName),
       impl_(std::move(config)),
       helper_process_(std::move(process)) {}
 
@@ -70,7 +69,7 @@ int ImageLoader::OnInit() {
 void ImageLoader::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   dbus_object_.reset(new brillo::dbus_utils::DBusObject(
-      object_manager_.get(), object_manager_->GetBus(),
+      nullptr, bus_,
       org::chromium::ImageLoaderInterfaceAdaptor::GetObjectPath()));
   dbus_adaptor_.RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(
