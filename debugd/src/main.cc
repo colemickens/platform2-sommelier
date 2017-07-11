@@ -17,8 +17,6 @@
 
 namespace {
 
-const char kObjectServicePath[] = "/org/chromium/debugd/ObjectManager";
-
 // @brief Enter a VFS namespace.
 //
 // We don't want anyone other than our descendants to see our tmpfs.
@@ -49,13 +47,12 @@ void setup_dirs() {
 
 class Daemon : public brillo::DBusServiceDaemon {
  public:
-  Daemon() : DBusServiceDaemon(debugd::kDebugdServiceName,
-                               dbus::ObjectPath(kObjectServicePath)) {}
+  Daemon() : DBusServiceDaemon(debugd::kDebugdServiceName) {}
 
  protected:
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
-    adaptor_.reset(new debugd::DebugdDBusAdaptor(object_manager_.get()));
+    adaptor_.reset(new debugd::DebugdDBusAdaptor(bus_));
     adaptor_->RegisterAsync(sequencer->GetHandler(
         "RegisterAsync() failed.", true));
   }

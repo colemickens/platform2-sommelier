@@ -25,13 +25,9 @@ const char kDevCoredumpDBusErrorString[] =
 
 }  // namespace
 
-DebugdDBusAdaptor::DebugdDBusAdaptor(
-    brillo::dbus_utils::ExportedObjectManager* object_manager)
+DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
     : org::chromium::debugdAdaptor(this),
-      dbus_object_(object_manager,
-                   object_manager->GetBus(),
-                   dbus::ObjectPath(kDebugdServicePath)) {
-  scoped_refptr<dbus::Bus> bus = object_manager->GetBus();
+      dbus_object_(nullptr, bus, dbus::ObjectPath(kDebugdServicePath)) {
   battery_tool_ = base::MakeUnique<BatteryTool>();
   container_tool_ = base::MakeUnique<ContainerTool>();
   crash_sender_tool_ = base::MakeUnique<CrashSenderTool>();

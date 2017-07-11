@@ -54,8 +54,7 @@ namespace debugd {
 class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
                           public org::chromium::debugdInterface {
  public:
-  explicit DebugdDBusAdaptor(
-      brillo::dbus_utils::ExportedObjectManager* object_manager);
+  explicit DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus);
   ~DebugdDBusAdaptor() override = default;
 
   // Register the D-Bus object and interfaces.
