@@ -127,7 +127,7 @@ print_nvme_info() {
   local mvme_dev="/dev/$1"
   local i
 
-  for i in $(seq 0 ${NMVE_CMD_MAX}); do
+  for i in $(seq 0 ${NVME_CMD_MAX}); do
     # Use eval for variable indirection.
     eval nvme_cmd=\${NVME_CMD_${i}}
     echo "$ ${nvme_cmd} ${mvme_dev}"
