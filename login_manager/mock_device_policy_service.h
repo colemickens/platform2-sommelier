@@ -44,24 +44,11 @@ class MockDevicePolicyService : public DevicePolicyService {
   MOCK_METHOD2(ReportPolicyFileMetrics, void(bool, bool));
   MOCK_METHOD0(InstallAttributesEnterpriseMode, bool(void));
 
-  // Work around lack of support for reference return values in GMock.
-  const enterprise_management::ChromeDeviceSettingsProto& GetSettings()
-      override {
-    if (use_mock_proto_) {
-      proto_ = GetSettingsProxy();
-    }
-    return proto_;
-  }
-  MOCK_METHOD0(GetSettingsProxy,
-               const enterprise_management::ChromeDeviceSettingsProto(void));
-
   void set_crossystem(Crossystem* crossystem) { crossystem_ = crossystem; }
   void set_vpd_process(VpdProcess* vpd_process) { vpd_process_ = vpd_process; }
-  void set_mock_proto(bool use_mock_proto) { use_mock_proto_ = use_mock_proto; }
 
  private:
   enterprise_management::ChromeDeviceSettingsProto proto_;
-  bool use_mock_proto_ = true;
 };
 }  // namespace login_manager
 

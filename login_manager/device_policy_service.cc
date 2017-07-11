@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/switches/chrome_switches.h>
 #include <crypto/rsa_private_key.h>
@@ -69,23 +70,22 @@ const char DevicePolicyService::kEnterpriseDeviceMode[] = "enterprise";
 DevicePolicyService::~DevicePolicyService() = default;
 
 // static
-DevicePolicyService* DevicePolicyService::Create(
-    LoginMetrics* metrics,
+std::unique_ptr<DevicePolicyService> DevicePolicyService::Create(
     PolicyKey* owner_key,
+    LoginMetrics* metrics,
     OwnerKeyLossMitigator* mitigator,
     NssUtil* nss,
     Crossystem* crossystem,
     VpdProcess* vpd_process) {
-  return new DevicePolicyService(
-      base::FilePath(kInstallAttributesPath),
-      std::unique_ptr<PolicyStore>(
-          new PolicyStore(base::FilePath(kPolicyPath))),
+  return base::WrapUnique(new DevicePolicyService(
+      base::MakeUnique<PolicyStore>(base::FilePath(kPolicyPath)),
       owner_key,
+      base::FilePath(kInstallAttributesPath),
       metrics,
       mitigator,
       nss,
       crossystem,
-      vpd_process);
+      vpd_process));
 }
 
 bool DevicePolicyService::CheckAndHandleOwnerLogin(
@@ -154,9 +154,9 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
 }
 
 DevicePolicyService::DevicePolicyService(
-    const base::FilePath& install_attributes_file,
     std::unique_ptr<PolicyStore> policy_store,
     PolicyKey* policy_key,
+    const base::FilePath& install_attributes_file,
     LoginMetrics* metrics,
     OwnerKeyLossMitigator* mitigator,
     NssUtil* nss,

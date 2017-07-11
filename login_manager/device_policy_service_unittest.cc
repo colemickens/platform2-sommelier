@@ -7,12 +7,14 @@
 #include <algorithm>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ptr_util.h>
 #include <base/run_loop.h>
 #include <brillo/message_loops/fake_message_loop.h>
 #include <crypto/scoped_nss_types.h>
@@ -104,12 +106,12 @@ class DevicePolicyServiceTest : public ::testing::Test {
   }
 
   void InitService(NssUtil* nss) {
-    store_ = new StrictMock<MockPolicyStore>;
-    metrics_.reset(new MockMetrics);
-    mitigator_.reset(new StrictMock<MockMitigator>);
-    service_.reset(new DevicePolicyService(install_attributes_file_,
-                                           std::unique_ptr<PolicyStore>(store_),
+    store_ = new StrictMock<MockPolicyStore>();
+    metrics_ = base::MakeUnique<MockMetrics>();
+    mitigator_ = base::MakeUnique<StrictMock<MockMitigator>>();
+    service_.reset(new DevicePolicyService(base::WrapUnique(store_),
                                            &key_,
+                                           install_attributes_file_,
                                            metrics_.get(),
                                            mitigator_.get(),
                                            nss,
@@ -128,21 +130,17 @@ class DevicePolicyServiceTest : public ::testing::Test {
     EXPECT_CALL(key_, IsPopulated())
         .WillRepeatedly(Return(true));
 
-    em::ChromeDeviceSettingsProto* proto = new em::ChromeDeviceSettingsProto();
+    auto proto = base::MakeUnique<em::ChromeDeviceSettingsProto>();
     proto->mutable_system_settings()->set_block_devmode(false);
-    SetSettings(proto);
+    SetSettings(service_.get(), std::move(proto));
 
     EXPECT_CALL(vpd_process_, RunInBackground(_, _, _, _))
         .WillRepeatedly(Return(true));
   }
 
-  void SetSettings(em::ChromeDeviceSettingsProto* proto) {
-    service_->settings_.reset(proto);
-  }
-
   void SetSettings(DevicePolicyService* service,
-                   em::ChromeDeviceSettingsProto* proto) {
-    service->settings_.reset(proto);
+                   std::unique_ptr<em::ChromeDeviceSettingsProto> proto) {
+    service->settings_ = std::move(proto);
   }
 
   void SetPolicyKey(DevicePolicyService* service, PolicyKey* key) {
@@ -599,9 +597,9 @@ TEST_F(DevicePolicyServiceTest, SetBlockDevModeInNvram) {
   crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 0);
   crossystem_.VbSetSystemPropertyInt(Crossystem::kNvramCleared, 1);
 
-  em::ChromeDeviceSettingsProto* proto = new em::ChromeDeviceSettingsProto();
+  auto proto = base::MakeUnique<em::ChromeDeviceSettingsProto>();
   proto->mutable_system_settings()->set_block_devmode(true);
-  SetSettings(proto);
+  SetSettings(service_.get(), std::move(proto));
 
   EXPECT_CALL(vpd_process_, RunInBackground(_, _, _, _))
       .WillOnce(Return(true));
@@ -621,9 +619,9 @@ TEST_F(DevicePolicyServiceTest, UnsetBlockDevModeInNvram) {
   crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 1);
   crossystem_.VbSetSystemPropertyInt(Crossystem::kNvramCleared, 1);
 
-  em::ChromeDeviceSettingsProto* proto = new em::ChromeDeviceSettingsProto();
+  auto proto = base::MakeUnique<em::ChromeDeviceSettingsProto>();
   proto->mutable_system_settings()->set_block_devmode(false);
-  SetSettings(proto);
+  SetSettings(service_.get(), std::move(proto));
 
   EXPECT_CALL(vpd_process_, RunInBackground(_, _, _, _))
       .WillOnce(Return(true));
@@ -650,11 +648,10 @@ TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
   service.set_vpd_process(&vpd_process_);
   crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
 
-  em::ChromeDeviceSettingsProto* proto = new em::ChromeDeviceSettingsProto();
+  auto proto = base::MakeUnique<em::ChromeDeviceSettingsProto>();
   proto->mutable_system_settings()->set_block_devmode(false);
-  SetSettings(&service, proto);
+  SetSettings(&service, std::move(proto));
   SetPolicyKey(&service, &key);
-  service.set_mock_proto(false);
 
   EXPECT_CALL(key, IsPopulated()).WillRepeatedly(Return(true));
   EXPECT_CALL(*store, Persist()).WillRepeatedly(Return(true));
@@ -691,17 +688,15 @@ TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
   service.set_vpd_process(&vpd_process_);
   crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
 
-  em::ChromeDeviceSettingsProto* proto = new em::ChromeDeviceSettingsProto();
+  auto proto = base::MakeUnique<em::ChromeDeviceSettingsProto>();
   proto->mutable_system_settings()->set_block_devmode(false);
-  SetSettings(&service, proto);
+  SetSettings(&service, std::move(proto));
   SetPolicyKey(&service, &key);
-  service.set_mock_proto(false);
 
   EXPECT_CALL(key, IsPopulated()).WillRepeatedly(Return(true));
   EXPECT_CALL(*store, Persist()).WillRepeatedly(Return(true));
   EXPECT_CALL(service, InstallAttributesEnterpriseMode())
       .WillRepeatedly(Return(true));
-
 
   std::vector<std::string> flag_names;
   std::vector<int> flag_values;
@@ -728,11 +723,10 @@ TEST_F(DevicePolicyServiceTest, CheckFailUpdateVPD) {
   service.set_vpd_process(&vpd_process_);
   crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
 
-  em::ChromeDeviceSettingsProto* proto = new em::ChromeDeviceSettingsProto();
+  auto proto = base::MakeUnique<em::ChromeDeviceSettingsProto>();
   proto->mutable_system_settings()->set_block_devmode(false);
-  SetSettings(&service, proto);
+  SetSettings(&service, std::move(proto));
   SetPolicyKey(&service, &key);
-  service.set_mock_proto(false);
 
   EXPECT_CALL(key, IsPopulated()).WillRepeatedly(Return(true));
   EXPECT_CALL(service, InstallAttributesEnterpriseMode())

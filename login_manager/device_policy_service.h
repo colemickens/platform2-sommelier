@@ -44,12 +44,12 @@ typedef struct PK11SlotInfoStr PK11SlotInfo;
 // storing owner properties etc.
 class DevicePolicyService : public PolicyService {
  public:
-  virtual ~DevicePolicyService();
+  ~DevicePolicyService() override;
 
   // Instantiates a regular (non-testing) device policy service instance.
-  static DevicePolicyService* Create(
-      LoginMetrics* metrics,
+  static std::unique_ptr<DevicePolicyService> Create(
       PolicyKey* owner_key,
+      LoginMetrics* metrics,
       OwnerKeyLossMitigator* mitigator,
       NssUtil* nss,
       Crossystem* crossystem,
@@ -94,7 +94,7 @@ class DevicePolicyService : public PolicyService {
   virtual std::vector<std::string> GetStartUpFlags();
 
   // Returns the currently active device settings.
-  virtual const enterprise_management::ChromeDeviceSettingsProto& GetSettings();
+  const enterprise_management::ChromeDeviceSettingsProto& GetSettings();
 
   // Returns whether the device is enrolled by checking enterprise mode in
   // install attributes from disk.
@@ -138,9 +138,9 @@ class DevicePolicyService : public PolicyService {
   FRIEND_TEST_ALL_PREFIXES(DevicePolicyServiceTest, GivenUserIsOwner);
 
   // Takes ownership of |policy_store|.
-  DevicePolicyService(const base::FilePath& install_attributes_file,
-                      std::unique_ptr<PolicyStore> policy_store,
+  DevicePolicyService(std::unique_ptr<PolicyStore> policy_store,
                       PolicyKey* owner_key,
+                      const base::FilePath& install_attributes_file,
                       LoginMetrics* metrics,
                       OwnerKeyLossMitigator* mitigator,
                       NssUtil* nss,

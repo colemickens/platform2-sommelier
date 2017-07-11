@@ -434,9 +434,9 @@ bool SessionManagerImpl::Initialize() {
                  weak_ptr_factory_.GetWeakPtr()));
 
   if (!device_policy_) {
-    device_policy_.reset(
-        DevicePolicyService::Create(login_metrics_, owner_key_, &mitigator_,
-                                    nss_, crossystem_, vpd_process_));
+    device_policy_ = DevicePolicyService::Create(
+        owner_key_, login_metrics_, &mitigator_, nss_, crossystem_,
+        vpd_process_);
     device_policy_->set_delegate(this);
 
     user_policy_factory_.reset(
