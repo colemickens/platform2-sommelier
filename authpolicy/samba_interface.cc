@@ -1127,6 +1127,12 @@ ErrorType SambaInterface::DownloadGpos(
   const std::string service = base::StringPrintf(
       "//%s.%s", domain_controller_name.c_str(), gpo_basepath.c_str());
 
+  // The exit code of smbclient corresponds to the LAST command issued. Some
+  // files might be missing and fail to download, which is fine and handled
+  // below. Appending 'exit' makes sure the exit code is not 1 if the last file
+  // happens to be missing.
+  smb_command += "exit;";
+
   // Download GPO into local directory. Retry a couple of times in case of
   // network errors, Kerberos authentication may be flaky in some deployments,
   // see crbug.com/684733.
@@ -1143,16 +1149,14 @@ ErrorType SambaInterface::DownloadGpos(
                         paths_->Get(tgt_manager.GetCredentialCachePath()));
   smb_client_cmd.SetEnv(kKrb5ConfEnvKey,  // Kerberos configuration file path.
                         kFilePrefix + paths_->Get(tgt_manager.GetConfigPath()));
-  bool success = false;
   int tries, failed_tries = 0;
   for (tries = 1; tries <= kSmbClientMaxTries; ++tries) {
     if (tries > 1 && smbclient_retry_sleep_enabled_) {
       base::PlatformThread::Sleep(
           base::TimeDelta::FromSeconds(kSmbClientRetryWaitSeconds));
     }
-    success = jail_helper_.SetupJailAndRun(
-        &smb_client_cmd, Path::SMBCLIENT_SECCOMP, TIMER_SMBCLIENT);
-    if (success) {
+    if (jail_helper_.SetupJailAndRun(
+            &smb_client_cmd, Path::SMBCLIENT_SECCOMP, TIMER_SMBCLIENT)) {
       error = ERROR_NONE;
       break;
     }
@@ -1162,16 +1166,8 @@ ErrorType SambaInterface::DownloadGpos(
       break;
   }
   metrics_->Report(METRIC_SMBCLIENT_FAILED_TRY_COUNT, failed_tries);
-
-  if (!success) {
-    // The exit code of smbclient corresponds to the LAST command issued. Thus,
-    // Execute() might fail if the last GPO file is missing, which creates an
-    // ERROR_SMBCLIENT_FAILED error code. However, we handle this below (not an
-    // error), so only error out here on other error codes.
-    if (error != ERROR_SMBCLIENT_FAILED)
-      return error;
-    error = ERROR_NONE;
-  }
+  if (error != ERROR_NONE)
+    return error;
 
   // Note that the errors are in stdout and the output is in stderr :-/
   const std::string& smbclient_out_lower =

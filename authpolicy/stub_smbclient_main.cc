@@ -68,7 +68,6 @@ int HandleCommandLine(const std::string& command_line) {
   const base::FilePath gpo_dir =
       base::FilePath(GetKrb5ConfFilePath()).DirName();
 
-  int last_error = kExitCodeOk;
   std::vector<DownloadItem> items = GetDownloadItems(command_line);
   for (const DownloadItem& item : items) {
     base::FilePath source_path;
@@ -85,21 +84,20 @@ int HandleCommandLine(const std::string& command_line) {
     if (download_error) {
       // Print "download error" warning.
       WriteOutput(kGpoDownloadError + item.remote_path_, "");
-      last_error = kExitCodeError;
     } else if (!base::PathExists(source_path)) {
       // Print "file does not exist" warning.
       WriteOutput(kGpoDoesNotExistError + item.remote_path_, "");
-      last_error = kExitCodeError;
     } else {
       // "Download" the file.
       base::FilePath target_path(item.local_path_);
       CHECK(base::CopyFile(source_path, target_path));
-      last_error = kExitCodeOk;
     }
   }
 
-  // Smbclient always returns the last error of each sub-command.
-  return last_error;
+  // The command should always end with 'exit;'. This makes sure smbclient
+  // always exits with code 0.
+  CHECK(base::EndsWith(command_line, "exit;", base::CompareCase::SENSITIVE));
+  return kExitCodeOk;
 }
 
 }  // namespace
