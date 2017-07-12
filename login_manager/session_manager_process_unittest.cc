@@ -106,15 +106,14 @@ class SessionManagerProcessTest : public ::testing::Test {
         kDummyPid, exit_status, manager_->test_api()));
   }
 
-  void InitManager(FakeBrowserJob* job) {
-    manager_ =
-        new SessionManagerService(std::unique_ptr<BrowserJobInterface>(job),
-                                  getuid(),
-                                  3,
-                                  false,
-                                  base::TimeDelta(),
-                                  &metrics_,
-                                  &utils_);
+  void InitManager(std::unique_ptr<BrowserJobInterface> job) {
+    manager_ = new SessionManagerService(std::move(job),
+                                         getuid(),
+                                         3,
+                                         false,
+                                         base::TimeDelta(),
+                                         &metrics_,
+                                         &utils_);
     manager_->test_api().set_liveness_checker(liveness_checker_);
     manager_->test_api().set_session_manager(session_manager_impl_);
   }
@@ -131,7 +130,7 @@ class SessionManagerProcessTest : public ::testing::Test {
 
   FakeBrowserJob* CreateMockJobAndInitManager(bool schedule_exit) {
     FakeBrowserJob* job = new FakeBrowserJob("FakeBrowserJob", schedule_exit);
-    InitManager(job);
+    InitManager(base::WrapUnique(job));
 
     job->set_fake_child_process(
         base::MakeUnique<FakeChildProcess>(kDummyPid, 0, manager_->test_api()));

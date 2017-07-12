@@ -192,7 +192,14 @@ bool ChildJobInterface::Subprocess::ForkAndExec(
 
 void ChildJobInterface::Subprocess::KillEverything(int signal) {
   DCHECK_GT(pid_, 0);
-  system_->kill(-pid_, desired_uid_, signal);
+  if (system_->kill(-pid_, desired_uid_, signal) == 0)
+    return;
+
+  // If we failed to kill the process group (maybe it doesn't exist yet because
+  // the forked process hasn't had a chance to call setsid()), just kill the
+  // child directly. If it hasn't called setsid() yet, then it hasn't called
+  // setuid() either, so kill it as root instead of as |desired_uid_|.
+  system_->kill(pid_, 0, signal);
 }
 
 void ChildJobInterface::Subprocess::Kill(int signal) {

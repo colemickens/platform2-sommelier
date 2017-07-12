@@ -128,6 +128,7 @@ SessionManagerService::SessionManagerService(
       shutting_down_(false),
       shutdown_already_(false),
       exit_code_(SUCCESS) {
+  DCHECK(browser_);
   SetUpHandlers();
 }
 
@@ -232,7 +233,8 @@ void SessionManagerService::RestartBrowserWithArgs(
   // We're killing it immediately hoping that data Chrome uses before
   // logging in is not corrupted.
   // TODO(avayvod): Remove RestartJob when crosbug.com/6924 is fixed.
-  browser_->KillEverything(SIGKILL, "Restarting browser on-demand.");
+  if (browser_->CurrentPid() > 0)
+    browser_->KillEverything(SIGKILL, "Restarting browser on-demand.");
   if (args_are_extra)
     browser_->SetExtraArguments(args);
   else
@@ -253,7 +255,7 @@ void SessionManagerService::SetFlagsForUser(
 }
 
 bool SessionManagerService::IsBrowser(pid_t pid) {
-  return (browser_ && browser_->CurrentPid() > 0 &&
+  return (browser_->CurrentPid() > 0 &&
           pid == browser_->CurrentPid());
 }
 
@@ -285,7 +287,6 @@ void SessionManagerService::HandleExit(const siginfo_t& ignored) {
     return;
   }
 
-  DCHECK(browser_.get());
   if (browser_->ShouldStop()) {
     LOG(WARNING) << "Child stopped, shutting down";
     SetExitAndScheduleShutdown(CHILD_EXITING_TOO_FAST);
@@ -299,12 +300,12 @@ void SessionManagerService::HandleExit(const siginfo_t& ignored) {
 }
 
 void SessionManagerService::RequestJobExit() {
-  if (browser_ && browser_->CurrentPid() > 0)
+  if (browser_->CurrentPid() > 0)
     browser_->Kill(SIGTERM, "");
 }
 
 void SessionManagerService::EnsureJobExit(base::TimeDelta timeout) {
-  if (browser_ && browser_->CurrentPid() > 0)
+  if (browser_->CurrentPid() > 0)
     browser_->WaitAndAbort(timeout);
 }
 
