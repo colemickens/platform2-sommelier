@@ -17,6 +17,8 @@ extern "C" {
 #include <libexif/exif-data.h>
 }
 
+#define EXPORTED __attribute__((__visibility__("default")))
+
 namespace arc {
 
 // ExifUtils can generate APP1 segment with tags which caller set. ExifUtils can
@@ -33,7 +35,7 @@ namespace arc {
 //  unsigned int app1Length = utils.GetApp1Length();
 //  uint8_t* app1Buffer = new uint8_t[app1Length];
 //  memcpy(app1Buffer, utils.GetApp1Buffer(), app1Length);
-class ExifUtils {
+class EXPORTED ExifUtils {
  public:
   ExifUtils();
   ~ExifUtils();
