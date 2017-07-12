@@ -26,19 +26,25 @@ bool PolicyStore::DefunctPrefsFilePresent() {
 }
 
 bool PolicyStore::LoadOrCreate() {
-  if (!base::PathExists(policy_path_))
+  if (!base::PathExists(policy_path_)) {
+    cached_policy_data_.clear();
     return true;
+  }
 
   std::string polstr;
   if (!base::ReadFileToString(policy_path_, &polstr) || polstr.empty()) {
     PLOG(ERROR) << "Could not read policy off disk at " << policy_path_.value();
+    cached_policy_data_.clear();
     return false;
   }
   if (!policy_.ParseFromString(polstr)) {
     LOG(ERROR) << "Policy on disk could not be parsed and will be deleted!";
     base::DeleteFile(policy_path_, false);
+    cached_policy_data_.clear();
     return false;
   }
+  cached_policy_data_ = polstr;
+
   return true;
 }
 
@@ -53,7 +59,18 @@ bool PolicyStore::Persist() {
     LOG(ERROR) << "Could not serialize policy!";
     return false;
   }
-  return utils.AtomicFileWrite(policy_path_, polstr);
+
+  // Skip writing to the file if the contents of policy data haven't been
+  // changed.
+  if (cached_policy_data_ == polstr)
+    return true;
+
+  if (!utils.AtomicFileWrite(policy_path_, polstr))
+    return false;
+
+  LOG(INFO) << "Persisted policy to disk.";
+  cached_policy_data_ = polstr;
+  return true;
 }
 
 void PolicyStore::Set(

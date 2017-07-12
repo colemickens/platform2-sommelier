@@ -47,6 +47,10 @@ class PolicyStore {
  private:
   static const char kPrefsFileName[];
 
+  // The cached policy data from |policy_path_|. It is kept up to date whenever
+  // the contents in the file are updated by this object.
+  std::string cached_policy_data_;
+
   enterprise_management::PolicyFetchResponse policy_;
   const base::FilePath policy_path_;
 

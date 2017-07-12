@@ -150,9 +150,7 @@ void PolicyService::OnKeyPersisted(bool status) {
 void PolicyService::OnPolicyPersisted(const Completion& completion,
                                       const std::string& dbus_error_code) {
   brillo::ErrorPtr error;
-  if (dbus_error_code == dbus_error::kNone) {
-    LOG(INFO) << "Persisted policy to disk.";
-  } else {
+  if (dbus_error_code != dbus_error::kNone) {
     constexpr char kMessage[] = "Failed to persist policy to disk.";
     LOG(ERROR) << kMessage << ": " << dbus_error_code;
     error = CreateError(dbus_error_code, kMessage);
