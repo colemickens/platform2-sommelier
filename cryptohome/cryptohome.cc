@@ -87,6 +87,16 @@ void EnterSandbox() {
 
   minijail_use_caps(jail.get(), capset);
 
+  minijail_namespace_ipc(jail.get());
+  minijail_namespace_uts(jail.get());
+  // NOTE: We should enable cgroups namespace. Currently it does not work on
+  //       Linux <4.6 and will crash cryptohome.
+  // minijail_namespace_cgroups(jail.get());
+  minijail_namespace_vfs(jail.get());
+  minijail_namespace_net(jail.get());
+
+  minijail_no_new_privs(jail.get());
+
   minijail_enter(jail.get());
 }
 }  // namespace

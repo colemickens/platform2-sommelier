@@ -55,12 +55,34 @@ void EnterSandbox() {
   ScopedMinijail jail(minijail_new());
   CHECK_EQ(0, minijail_change_user(jail.get(), kUserId));
   CHECK_EQ(0, minijail_change_group(jail.get(), kGroupId));
+  // NOTE: We can possibly remove the CAP_DAC_OVERRIDE capability by giving
+  //       the "cryptohome" user access to /var/run/tcsd.socket (by adding
+  //       "cryptohome" to the "tss" group), but that might cause a problem
+  //       on upgrade, as "root" currently owns files like
+  //       * /mnt/stateful_partition/.tpm_owned
+  //       * /mnt/stateful_partition/.tpm_status
+  //       * /mnt/stateful_partition/.tpm_status.sum
+  //       which may need to be written by cryptohomed.
+
   // Capabilities bitset: 0x20000f
   minijail_use_caps(jail.get(),
                     CAP_TO_MASK(CAP_SYS_ADMIN) | CAP_TO_MASK(CAP_CHOWN) |
                         CAP_TO_MASK(CAP_DAC_OVERRIDE) |
                         CAP_TO_MASK(CAP_DAC_READ_SEARCH) |
                         CAP_TO_MASK(CAP_FOWNER));
+
+  minijail_namespace_ipc(jail.get());
+  minijail_namespace_uts(jail.get());
+  // NOTE: We should enable cgroups namespace. Currently it does not work on
+  //       Linux <4.6 and will crash cryptohome.
+  // minijail_namespace_cgroups(jail.get());
+
+  // NOTE: We should add the net namespace. The only time cryptohome contacts
+  //       the network is when the service is running as "Monolithic" and the
+  //       "InitializeCastKey" method is called
+
+  minijail_no_new_privs(jail.get());
+
   minijail_enter(jail.get());
 }
 
