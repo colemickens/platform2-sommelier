@@ -302,6 +302,13 @@ void AddSystemFlags(ChromiumCommandBuilder* builder) {
 
   builder->AddArg("--max-unused-resource-memory-usage-percentage=5");
 
+  // For Caroline we are going to experiment with a higher number of renderer
+  // processes to allow the tab discarder to be more effective.
+  // The 4GB RAM default is 34 see  https://crbug.com/741231
+  if (builder->UseFlagIsSet("caroline")) {
+    builder->AddArg("--renderer-process-limit=100");
+  }
+
   // On developer systems, set a flag to let the browser know.
   if (builder->is_developer_end_user())
     builder->AddArg("--system-developer-mode");
