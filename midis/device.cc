@@ -76,14 +76,7 @@ void Device::HandleReceiveData(const char* buffer, uint32_t subdevice,
   auto list_it = client_fds_.find(subdevice);
   if (list_it != client_fds_.end()) {
     for (const auto& id_fd_entry : list_it->second) {
-      // TODO(pmalani): Have a function inside subdevice client fd holder to
-      // perform the write.
-      ssize_t ret =
-          HANDLE_EINTR(write(id_fd_entry->GetRawFd(), buffer, buf_len));
-      if (ret != static_cast<ssize_t>(buf_len)) {
-        PLOG(ERROR) << "Error writing to client fd.";
-        // TODO(pmalani): Gracefully delete the client from all places.
-      }
+      id_fd_entry->WriteDeviceDataToClient(buffer, buf_len);
     }
   }
 }
@@ -133,7 +126,7 @@ base::ScopedFD Device::AddClientToReadSubdevice(uint32_t client_id,
   }
 
   int sock_fd[2];
-  int ret = socketpair(AF_UNIX, SOCK_STREAM, 0, sock_fd);
+  int ret = socketpair(AF_UNIX, SOCK_SEQPACKET, 0, sock_fd);
   if (ret < 0) {
     PLOG(ERROR) << "socketpair for client_id: " << client_id
                 << " device_id: " << device_ << " subdevice: " << subdevice_id

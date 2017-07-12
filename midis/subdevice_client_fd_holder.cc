@@ -36,6 +36,14 @@ std::unique_ptr<SubDeviceClientFdHolder> SubDeviceClientFdHolder::Create(
   return holder;
 }
 
+void SubDeviceClientFdHolder::WriteDeviceDataToClient(const void* buffer,
+                                                      size_t buf_len) {
+  ssize_t ret = HANDLE_EINTR(write(GetRawFd(), buffer, buf_len));
+  if (ret != static_cast<ssize_t>(buf_len)) {
+    PLOG(ERROR) << "Error writing to client fd.";
+  }
+}
+
 bool SubDeviceClientFdHolder::StartClientMonitoring() {
   // TODO(pmalani): Should make this conditional on whether the device
   // can accept input.

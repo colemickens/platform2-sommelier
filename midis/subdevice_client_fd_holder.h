@@ -28,11 +28,16 @@ class SubDeviceClientFdHolder {
   ~SubDeviceClientFdHolder();
   int GetRawFd() { return fd_.get(); }
   uint32_t GetClientId() const { return client_id_; }
+  // This function is used to write data *to* the client when it is received
+  // from a MIDI h/w device. NOTE: A failure in this write shouldn't result in
+  // the deletion of a client. A faulty / crashed / deleted client will be
+  // handled from the Client handling code via TriggerClientDeletion().
+  void WriteDeviceDataToClient(const void* buffer, size_t buf_len);
 
  private:
   // This function is used as the callback which is run when a
   // WatchFileDescriptor is set up on the client's fd for this particular
-  // subdevice. It reads the data from the client, and in turn invokes
+  // subdevice. It reads the data *from* the client, and in turn invokes
   // client_data_cb_ which writes the data to the device h/w.
   void HandleClientMidiData();
   // Starts the WatchFileDescriptor for the client pipe FD.
