@@ -83,7 +83,8 @@ class UsbEndpoint {
 
   libusb_device_handle* devh_;
   std::string configuration_string_;
-  uint8_t ep_num_;
+  int iface_num_;
+  int ep_num_;
   size_t chunk_len_;
   DISALLOW_COPY_AND_ASSIGN(UsbEndpoint);
 };

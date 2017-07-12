@@ -49,7 +49,8 @@ void LogUSBError(const char* func_name, int return_code) {
              << libusb_strerror(static_cast<libusb_error>(return_code)) << ")";
 }
 
-UsbEndpoint::UsbEndpoint() : devh_(nullptr), ep_num_(0), chunk_len_(0) {}
+UsbEndpoint::UsbEndpoint() : devh_(nullptr), iface_num_(-1), ep_num_(-1),
+                             chunk_len_(0) {}
 
 UsbEndpoint::~UsbEndpoint() {
   Close();
@@ -77,8 +78,8 @@ bool UsbEndpoint::Connect() {
   }
   LOG(INFO) << "Get dev handle: " << devh_;
 
-  int iface_num = FindInterface();
-  if (iface_num < 0) {
+  iface_num_ = FindInterface();
+  if (iface_num_ < 0) {
     LOG(ERROR) << "USB FW update not supported by that device";
     Close();
     return false;
@@ -89,11 +90,11 @@ bool UsbEndpoint::Connect() {
     return false;
   }
 
-  LOG(INFO) << "found interface " << iface_num << ", endpoint "
+  LOG(INFO) << "found interface " << iface_num_ << ", endpoint "
             << static_cast<int>(ep_num_) << ", chunk_len " << chunk_len_;
 
   libusb_set_auto_detach_kernel_driver(devh_, 1);
-  int r = libusb_claim_interface(devh_, iface_num);
+  int r = libusb_claim_interface(devh_, iface_num_);
   if (r < 0) {
     LogUSBError("libusb_claim_interface", r);
     Close();
@@ -105,11 +106,15 @@ bool UsbEndpoint::Connect() {
 
 // Release USB device.
 void UsbEndpoint::Close() {
+  if (iface_num_ >= 0) {
+    libusb_release_interface(devh_, iface_num_);
+  }
   if (devh_ != nullptr) {
     libusb_close(devh_);
     devh_ = nullptr;
   }
-  ep_num_ = 0;
+  iface_num_ = -1;
+  ep_num_ = -1;
   chunk_len_ = 0;
 }
 
@@ -194,8 +199,8 @@ int UsbEndpoint::FindInterface() {
 
   int iface_num = kError;
   for (int i = 0; i < conf->bNumInterfaces; i++) {
-    iface_num = FindEndpoint(&conf->interface[i]);
-    if (iface_num != kError) {
+    if (FindEndpoint(&conf->interface[i]) != kError) {
+      iface_num = i;
       break;
     }
   }
