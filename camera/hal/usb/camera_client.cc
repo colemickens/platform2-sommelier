@@ -619,7 +619,9 @@ int CameraClient::RequestHandler::WriteStreamBuffer(
       pattern_mode = entry.data.i32[0];
     }
 
-    ret = DequeueV4L2Buffer(rotate_degree, pattern_mode);
+    do {
+      ret = DequeueV4L2Buffer(rotate_degree, pattern_mode);
+    } while (ret == -EAGAIN);
     if (ret) {
       return ret;
     }
@@ -758,7 +760,8 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int rotate_degree,
     if (ret) {
       LOGFID(ERROR, device_id_)
           << "Set image source failed for input buffer id: " << buffer_id;
-      return ret;
+      // Try again when captured frame is not a valid MJPEG.
+      return -EAGAIN;
     }
   } else {
     ret = input_frame_.SetSource(test_pattern_->GetTestPattern(), rotate_degree,
