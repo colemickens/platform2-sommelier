@@ -7,6 +7,10 @@
 #include <cstdlib>
 #include <string>
 
+#include <libminijail.h>
+#include <scoped_minijail.h>
+#include <linux/capability.h>
+
 #include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
@@ -42,7 +46,25 @@ static const char *kNoLegacyMount = "nolegacymount";
 static const char *kDirEncryption = "direncryption";
 }  // namespace switches
 
-static std::string ReadAbeDataFileContents(cryptohome::Platform* platform) {
+namespace {
+
+void EnterSandbox() {
+  constexpr char kUserId[] = "cryptohome";
+  constexpr char kGroupId[] = "cryptohome";
+
+  ScopedMinijail jail(minijail_new());
+  CHECK_EQ(0, minijail_change_user(jail.get(), kUserId));
+  CHECK_EQ(0, minijail_change_group(jail.get(), kGroupId));
+  // Capabilities bitset: 0x20000f
+  minijail_use_caps(jail.get(),
+                    CAP_TO_MASK(CAP_SYS_ADMIN) | CAP_TO_MASK(CAP_CHOWN) |
+                        CAP_TO_MASK(CAP_DAC_OVERRIDE) |
+                        CAP_TO_MASK(CAP_DAC_READ_SEARCH) |
+                        CAP_TO_MASK(CAP_FOWNER));
+  minijail_enter(jail.get());
+}
+
+std::string ReadAbeDataFileContents(cryptohome::Platform* platform) {
   std::string data;
 
   const char* abe_data_file =
@@ -56,8 +78,11 @@ static std::string ReadAbeDataFileContents(cryptohome::Platform* platform) {
                   " in: " << file_path.value();
   return data;
 }
+}  // namespace
 
 int main(int argc, char **argv) {
+  EnterSandbox();
+
   base::AtExitManager exit_manager;
   base::CommandLine::Init(argc, argv);
 

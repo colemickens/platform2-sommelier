@@ -1251,7 +1251,7 @@ bool Platform::AddDirCryptoKeyToKeyring(const brillo::SecureBlob& key,
    * Possessor: (everyone given the key is in a session keyring belonging to
    * init):
    * -- View, Search
-   * User: (root)
+   * User: (cryptohome)
    * -- View, Search, Write, Setattr
    * Group, Other:
    * -- None

@@ -17,6 +17,10 @@
 #include <string>
 #include <vector>
 
+#include <libminijail.h>
+#include <scoped_minijail.h>
+#include <linux/capability.h>
+
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
@@ -60,6 +64,31 @@ const int kSetCurrentUserOldOffsetInDays = 92;
 
 // Five minutes is enough to wait for any TPM operations, sync() calls, etc.
 const int kDefaultTimeoutMs = 300000;
+
+void EnterSandbox() {
+  constexpr char kUserId[] = "cryptohome";
+  constexpr char kGroupId[] = "cryptohome";
+  ScopedMinijail jail(minijail_new());
+  CHECK_EQ(0, minijail_change_user(jail.get(), kUserId));
+  CHECK_EQ(0, minijail_change_group(jail.get(), kGroupId));
+
+  // NOTE: Cryptohome needs this capability primarily to read files for
+  //       autotesting. It probably shouldn't need any capabilities as it
+  //       mostly calls the D-bus API of cryptohomed.
+  //       The test code should be split out of the production utility to avoid
+  //       this capability.
+  uint64_t capset = CAP_TO_MASK(CAP_DAC_READ_SEARCH);
+
+  // NOTE: Cryptohome only needs this capability in the case of an
+  //       ACTION_TPM_LIVE_TEST.
+  //       The test code should be split out of the production utility to avoid
+  //       this capability.
+  capset |= CAP_TO_MASK(CAP_DAC_OVERRIDE);
+
+  minijail_use_caps(jail.get(), capset);
+
+  minijail_enter(jail.get());
+}
 }  // namespace
 
 namespace switches {
@@ -631,6 +660,8 @@ bool MakeProtoDBusCall(const std::string& name,
 }
 
 int main(int argc, char **argv) {
+  EnterSandbox();
+
   base::CommandLine::Init(argc, argv);
   base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
   if (cl->HasSwitch(switches::kSyslogSwitch))
