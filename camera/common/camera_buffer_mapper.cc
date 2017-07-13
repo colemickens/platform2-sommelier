@@ -42,73 +42,67 @@ int CameraBufferMapper::Register(buffer_handle_t buffer) {
 
   base::AutoLock l(lock_);
 
-  if (handle->type == GRALLOC) {
-    auto context_it = buffer_context_.find(buffer);
-    if (context_it == buffer_context_.end()) {
-      BufferContextUniquePtr buffer_context(new struct BufferContext);
-      // Import the buffer if we haven't done so.
-      struct gbm_import_fd_planar_data import_data;
-      memset(&import_data, 0, sizeof(import_data));
-      import_data.width = handle->width;
-      import_data.height = handle->height;
-      import_data.format = handle->drm_format;
-      uint32_t num_planes = GetNumPlanes(buffer);
-      if (num_planes <= 0) {
-        return -EINVAL;
-      }
-      for (size_t i = 0; i < num_planes; ++i) {
-        import_data.fds[i] = handle->fds[i].get();
-        import_data.strides[i] = handle->strides[i];
-        import_data.offsets[i] = handle->offsets[i];
-      }
-
-      uint32_t usage =
-          GBM_BO_USE_LINEAR | GBM_BO_USE_CAMERA_READ | GBM_BO_USE_CAMERA_WRITE;
-      buffer_context->bo = gbm_bo_import(
-          gbm_device_.get(), GBM_BO_IMPORT_FD_PLANAR, &import_data, usage);
-      if (!buffer_context->bo) {
-        LOGF(ERROR) << "Failed to import buffer 0x" << std::hex
-                    << handle->buffer_id;
-        return -EIO;
-      }
-      buffer_context->usage = 1;
-      buffer_context_[buffer] = std::move(buffer_context);
-    } else {
-      context_it->second->usage++;
-    }
+  auto context_it = buffer_context_.find(buffer);
+  if (context_it != buffer_context_.end()) {
+    context_it->second->usage++;
     return 0;
+  }
+
+  BufferContextUniquePtr buffer_context(new struct BufferContext);
+
+  if (handle->type == GRALLOC) {
+    // Import the buffer if we haven't done so.
+    struct gbm_import_fd_planar_data import_data;
+    memset(&import_data, 0, sizeof(import_data));
+    import_data.width = handle->width;
+    import_data.height = handle->height;
+    import_data.format = handle->drm_format;
+    uint32_t num_planes = GetNumPlanes(buffer);
+    if (num_planes <= 0) {
+      return -EINVAL;
+    }
+    for (size_t i = 0; i < num_planes; ++i) {
+      import_data.fds[i] = handle->fds[i].get();
+      import_data.strides[i] = handle->strides[i];
+      import_data.offsets[i] = handle->offsets[i];
+    }
+
+    uint32_t usage =
+        GBM_BO_USE_LINEAR | GBM_BO_USE_CAMERA_READ | GBM_BO_USE_CAMERA_WRITE;
+    buffer_context->bo = gbm_bo_import(
+        gbm_device_.get(), GBM_BO_IMPORT_FD_PLANAR, &import_data, usage);
+    if (!buffer_context->bo) {
+      LOGF(ERROR) << "Failed to import buffer 0x" << std::hex
+                  << handle->buffer_id;
+      return -EIO;
+    }
   } else if (handle->type == SHM) {
     // The shared memory buffer is a contiguous area of memory which is large
     // enough to hold all the physical planes.  We mmap the buffer on Register
     // and munmap on Deregister.
-    auto context_it = buffer_context_.find(buffer);
-    if (context_it == buffer_context_.end()) {
-      BufferContextUniquePtr buffer_context(new struct BufferContext);
-      off_t size = lseek(handle->fds[0].get(), 0, SEEK_END);
-      if (size == -1) {
-        LOGF(ERROR) << "Failed to get shm buffer size through lseek: "
-                    << strerror(errno);
-        return -errno;
-      }
-      buffer_context->shm_buffer_size = static_cast<uint32_t>(size);
-      lseek(handle->fds[0].get(), 0, SEEK_SET);
-      buffer_context->mapped_addr =
-          mmap(nullptr, buffer_context->shm_buffer_size, PROT_READ | PROT_WRITE,
-               MAP_SHARED, handle->fds[0].get(), 0);
-      if (buffer_context->mapped_addr == MAP_FAILED) {
-        LOGF(ERROR) << "Failed to mmap shm buffer: " << strerror(errno);
-        return -errno;
-      }
-      buffer_context->usage = 1;
-      buffer_context_[buffer] = std::move(buffer_context);
-    } else {
-      context_it->second->usage++;
+    off_t size = lseek(handle->fds[0].get(), 0, SEEK_END);
+    if (size == -1) {
+      LOGF(ERROR) << "Failed to get shm buffer size through lseek: "
+                  << strerror(errno);
+      return -errno;
     }
-    return 0;
+    buffer_context->shm_buffer_size = static_cast<uint32_t>(size);
+    lseek(handle->fds[0].get(), 0, SEEK_SET);
+    buffer_context->mapped_addr =
+        mmap(nullptr, buffer_context->shm_buffer_size, PROT_READ | PROT_WRITE,
+             MAP_SHARED, handle->fds[0].get(), 0);
+    if (buffer_context->mapped_addr == MAP_FAILED) {
+      LOGF(ERROR) << "Failed to mmap shm buffer: " << strerror(errno);
+      return -errno;
+    }
   } else {
     NOTREACHED() << "Invalid buffer type: " << handle->type;
     return -EINVAL;
   }
+
+  buffer_context->usage = 1;
+  buffer_context_[buffer] = std::move(buffer_context);
+  return 0;
 }
 
 int CameraBufferMapper::Deregister(buffer_handle_t buffer) {
@@ -248,7 +242,7 @@ int CameraBufferMapper::LockYCbCr(buffer_handle_t buffer,
         break;
 
       default:
-        LOGF(ERROR) << "Unsupported semi-planar format: "
+        LOGF(ERROR) << "Unsupported planar format: "
                     << FormatToString(handle->drm_format);
         return -EINVAL;
     }
