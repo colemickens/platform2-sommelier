@@ -70,6 +70,11 @@ const Log common_logs[] = {
     SandboxedProcess::kDefaultUser,
     kDebugfsGroup
   },
+  { "cros_ec_pdinfo",
+    "/bin/cat /sys/kernel/debug/cros_ec/pdinfo 2> /dev/null",
+    SandboxedProcess::kDefaultUser,
+    kDebugfsGroup
+  },
   { "dmesg", "/bin/dmesg" },
   { "ec_info", "/bin/cat /var/log/ec_info.txt" },
   { "eventlog", "/bin/cat /var/log/eventlog.txt" },
