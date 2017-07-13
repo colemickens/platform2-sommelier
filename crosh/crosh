@@ -535,8 +535,9 @@ cmd_authpolicy_debug() (
   if [ "${error_message}" = "" ]; then
     echo "Successfully set debugging level to ${level}."
     if [ ${level} -gt 0 ]; then
-      echo "Debug logs turned on. Be sure to turn them off again when you are"
-      echo "done, e.g. by rebooting the device or setting the level to 0."
+      echo "Debug logs turned on for 30 minutes. Be sure to turn them off again"
+      echo "when you are done, e.g. by rebooting the device or setting the"
+      echo "level to 0."
     else
       echo "Debug logs turned off."
     fi

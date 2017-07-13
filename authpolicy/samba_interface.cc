@@ -126,6 +126,12 @@ const char kKeyServerSite[] = "server_site";
 const char kKeyClientSite[] = "client_site";
 const char kKeyLdapServerName[] = "LDAP server name";
 
+// Maximum time that logging through SetDefaultLogLevel() should stay enabled.
+// The method is called through the authpolicy_debug crosh command. The time is
+// limited so users don't have to remember to turn logging off.
+// Keep in sync with description in crosh!
+int kMaxDefaultLogLevelUptimeMinutes = 30;
+
 ErrorType GetNetError(const ProcessExecutor& executor,
                       const std::string& net_command) {
   const std::string& net_out = executor.GetStdout();
@@ -214,6 +220,35 @@ ErrorType SetFilePermissionsRecursive(const base::FilePath& fp,
     error = SetFilePermissions(curr_fp, mode);
   }
   return error;
+}
+
+// Checks whether the file at |default_level_path| exists and was last modified
+// in a certain time range. If not, it is deleted to prevent that a user forgets
+// to disable logging.
+bool CheckFlagsDefaultLevelValid(const base::FilePath& default_level_path) {
+  // Having no file is the out-of-box state with no level set, so exit quietly.
+  if (!base::PathExists(default_level_path))
+    return false;
+
+  base::File::Info info;
+  if (!GetFileInfo(default_level_path, &info)) {
+    PLOG(ERROR) << "Failed to get file info from "
+                << default_level_path.value();
+    return false;
+  }
+
+  // Check < -1 to prevent issues with clocks running backwards for a bit.
+  int uptime_min = (base::Time::Now() - info.last_modified).InMinutes();
+  if (uptime_min < -1 || uptime_min > kMaxDefaultLogLevelUptimeMinutes) {
+    LOG(INFO) << "Removing flags default level file and resetting (uptime: "
+              << uptime_min << " minutes).";
+    PCHECK(base::DeleteFile(default_level_path, false /* recursive */))
+        << "Failed to delete flags default level file "
+        << default_level_path.value();
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace
@@ -1288,10 +1323,9 @@ void SambaInterface::Reset() {
 void SambaInterface::LoadFlagsDefaultLevel() {
   const base::FilePath default_level_path(
       paths_->Get(Path::FLAGS_DEFAULT_LEVEL));
-  std::string level_str;
-  // Having no file is the out-of-box state with no level set, so exit quietly.
-  if (!base::PathExists(default_level_path))
+  if (!CheckFlagsDefaultLevelValid(default_level_path))
     return;
+  std::string level_str;
   if (!base::ReadFileToStringWithMaxSize(default_level_path, &level_str, 16)) {
     PLOG(ERROR) << "Failed to read flags default level from "
                 << default_level_path.value();
@@ -1313,13 +1347,30 @@ void SambaInterface::SaveFlagsDefaultLevel() {
       paths_->Get(Path::FLAGS_DEFAULT_LEVEL));
   const std::string level_str = std::to_string(flags_default_level_);
   const int size = static_cast<int>(level_str.size());
-  if (base::WriteFile(default_level_path, level_str.data(), size) != size) {
-    LOG(ERROR) << "Failed to write flags default level to "
-               << default_level_path.value();
+  if (flags_default_level_ == AuthPolicyFlags::kQuiet) {
+    // Remove the file, kQuiet is the default, anyway.
+    if (!base::DeleteFile(default_level_path, false /* recursive */)) {
+      PLOG(ERROR) << "Failed to delete flags default level file "
+                  << default_level_path.value();
+    }
+  } else {
+    // Write the file.
+    if (base::WriteFile(default_level_path, level_str.data(), size) != size) {
+      PLOG(ERROR) << "Failed to write flags default level to "
+                  << default_level_path.value();
+    }
   }
 }
 
 void SambaInterface::ReloadDebugFlags() {
+  const base::FilePath default_level_path(
+      paths_->Get(Path::FLAGS_DEFAULT_LEVEL));
+  if (flags_default_level_ != AuthPolicyFlags::kQuiet &&
+      !CheckFlagsDefaultLevelValid(default_level_path)) {
+    // Default flags file expired, reset default level.
+    flags_default_level_ = AuthPolicyFlags::kQuiet;
+  }
+
   // First set defaults, then load file on top.
   AuthPolicyFlags flags_container;
   flags_container.SetDefaults(flags_default_level_);
