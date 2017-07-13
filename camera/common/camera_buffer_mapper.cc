@@ -48,7 +48,7 @@ int CameraBufferMapper::Register(buffer_handle_t buffer) {
     return 0;
   }
 
-  BufferContextUniquePtr buffer_context(new struct BufferContext);
+  std::unique_ptr<BufferContext> buffer_context(new struct BufferContext);
 
   if (handle->type == GRALLOC) {
     // Import the buffer if we haven't done so.
@@ -441,12 +441,12 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
   base::AutoLock l(lock_);
 
   if (handle->type == GRALLOC) {
-    struct MappedGrallocBufferInfo* info;
     auto key = MappedGrallocBufferInfoCache::key_type(buffer, plane);
     auto info_cache = buffer_info_.find(key);
     if (info_cache == buffer_info_.end()) {
       // We haven't mapped |plane| of |buffer| yet.
-      info = new struct MappedGrallocBufferInfo;
+      std::unique_ptr<MappedGrallocBufferInfo> info(
+          new MappedGrallocBufferInfo);
       auto context_it = buffer_context_.find(buffer);
       if (context_it == buffer_context_.end()) {
         LOGF(ERROR) << "Buffer 0x" << std::hex << handle->buffer_id
@@ -454,32 +454,29 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
         return MAP_FAILED;
       }
       info->bo = context_it->second->bo;
+      // Since |flags| is reserved we don't expect user to pass any non-zero
+      // value, we simply override |flags| here.
+      flags = GBM_BO_TRANSFER_READ_WRITE;
+      uint32_t stride;
+      info->addr = gbm_bo_map(info->bo, 0, 0, handle->width, handle->height,
+                              flags, &stride, &info->map_data, plane);
+      if (info->addr == MAP_FAILED) {
+        LOGF(ERROR) << "Failed to map buffer: " << strerror(errno);
+        return MAP_FAILED;
+      }
+      info->usage = 1;
+      buffer_info_[key] = std::move(info);
     } else {
       // We have mapped |plane| on |buffer| before: we can simply call
       // gbm_bo_map() on the existing bo.
       DCHECK(buffer_context_.find(buffer) != buffer_context_.end());
-      info = info_cache->second.get();
+      info_cache->second->usage++;
     }
-    // Since |flags| is reserved we don't expect user to pass any non-zero
-    // value, we simply override |flags| here.
-    flags = GBM_BO_TRANSFER_READ_WRITE;
-    uint32_t stride;
-    void* out_addr = gbm_bo_map(info->bo, 0, 0, handle->width, handle->height,
-                                flags, &stride, &info->map_data, plane);
-    if (out_addr == MAP_FAILED) {
-      LOGF(ERROR) << "Failed to map buffer: " << strerror(errno);
-      return MAP_FAILED;
-    }
-    // Only increase the usage count and insert |info| into the cache after the
-    // buffer is successfully mapped.
-    info->usage++;
-    if (info_cache == buffer_info_.end()) {
-      buffer_info_[key].reset(info);
-    }
+    struct MappedGrallocBufferInfo* info = buffer_info_[key].get();
     VLOGF(2) << "Plane " << plane << " of gralloc buffer 0x" << std::hex
              << handle->buffer_id << " mapped to "
-             << reinterpret_cast<uintptr_t>(out_addr);
-    return out_addr;
+             << reinterpret_cast<uintptr_t>(info->addr);
+    return info->addr;
   } else if (handle->type == SHM) {
     // We can't call mmap() here because each mmap call may return different
     // mapped virtual addresses and may lead to virtual memory address leak.
@@ -519,13 +516,8 @@ int CameraBufferMapper::Unmap(buffer_handle_t buffer, uint32_t plane) {
       return -EINVAL;
     }
     auto& info = info_cache->second;
-    if (info->usage) {
-      // We rely on GBM's internal refcounting mechanism to unmap the bo when
-      // appropriate.
-      gbm_bo_unmap(info->bo, info->map_data);
-      if (!--info->usage) {
-        buffer_info_.erase(info_cache);
-      }
+    if (!--info->usage) {
+      buffer_info_.erase(info_cache);
     }
   } else if (handle->type == SHM) {
     // No-op for SHM buffers.

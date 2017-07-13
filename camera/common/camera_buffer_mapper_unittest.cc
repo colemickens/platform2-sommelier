@@ -89,6 +89,8 @@ struct MockGbm {
     _gbm_bo_map = [this](struct gbm_bo* bo, uint32_t x, uint32_t y,
                          uint32_t width, uint32_t height, uint32_t flags,
                          uint32_t* stride, void** map_data, size_t plane) {
+      // Point |map_data| to a dummy address.
+      *map_data = reinterpret_cast<void*>(0xdeadbeef);
       return GbmBoMap(bo, x, y, width, height, flags, stride, map_data, plane);
     };
 
@@ -424,16 +426,12 @@ TEST_F(CameraBufferMapperTest, LockTest) {
       .WillOnce(Return(dummy_addr));
   EXPECT_EQ(cbm_->Lock(handle, 0, 0, 0, kBufferWidth, kBufferHeight, &addr), 0);
   EXPECT_EQ(addr, dummy_addr);
-  EXPECT_CALL(gbm_, GbmBoMap(&dummy_bo, 0, 0, kBufferWidth, kBufferHeight,
-                             GBM_BO_TRANSFER_READ_WRITE, A<uint32_t*>(),
-                             A<void**>(), 0))
-      .Times(1)
-      .WillOnce(Return(dummy_addr));
+  // The second Lock call should return the previously mapped virtual address
+  // without calling gbm_bo_map() again.
   EXPECT_EQ(cbm_->Lock(handle, 0, 0, 0, kBufferWidth, kBufferHeight, &addr), 0);
   EXPECT_EQ(addr, dummy_addr);
 
-  // And just Unlock |handle| once.
-  EXPECT_CALL(gbm_, GbmBoUnmap(&dummy_bo, A<void*>())).Times(1);
+  // And just Unlock |handle| once, which should not unmap the buffer.
   EXPECT_EQ(cbm_->Unlock(handle), 0);
 
   // Finally the bo for |handle| should be unmapped and destroyed when we
@@ -506,14 +504,8 @@ TEST_F(CameraBufferMapperTest, LockYCbCrTest) {
   EXPECT_EQ(ycbcr.cstride, buffer->strides[1]);
   EXPECT_EQ(ycbcr.chroma_step, 1);
 
-  for (size_t i = 0; i < 3; ++i) {
-    EXPECT_CALL(gbm_, GbmBoMap(&dummy_bo, 0, 0, kBufferWidth, kBufferHeight,
-                               GBM_BO_TRANSFER_READ_WRITE, A<uint32_t*>(),
-                               A<void**>(), i))
-        .Times(1)
-        .WillOnce(Return(reinterpret_cast<uint8_t*>(dummy_addr) +
-                         buffer->offsets[i]));
-  }
+  // The second LockYCbCr call should return the previously mapped virtual
+  // address without calling gbm_bo_map() again.
   EXPECT_EQ(
       cbm_->LockYCbCr(handle, 0, 0, 0, kBufferWidth, kBufferHeight, &ycbcr), 0);
   EXPECT_EQ(ycbcr.y, dummy_addr);
@@ -525,8 +517,7 @@ TEST_F(CameraBufferMapperTest, LockYCbCrTest) {
   EXPECT_EQ(ycbcr.cstride, buffer->strides[1]);
   EXPECT_EQ(ycbcr.chroma_step, 1);
 
-  // And just Unlock |handle| once.
-  EXPECT_CALL(gbm_, GbmBoUnmap(&dummy_bo, A<void*>())).Times(3);
+  // And just Unlock |handle| once, which should not unmap the buffer.
   EXPECT_EQ(cbm_->Unlock(handle), 0);
 
   // Finally the bo for |handle| should be unmapped and destroyed when we

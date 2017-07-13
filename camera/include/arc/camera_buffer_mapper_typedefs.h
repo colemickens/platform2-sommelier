@@ -58,19 +58,16 @@ struct BufferContext {
 
   BufferContext()
       : bo(nullptr), mapped_addr(nullptr), shm_buffer_size(0), usage(0) {}
-};
 
-struct BufferContextDeleter {
-  inline void operator()(struct BufferContext* info) {
-    if (info->bo) {
-      gbm_bo_destroy(info->bo);
+  ~BufferContext() {
+    if (bo) {
+      gbm_bo_destroy(bo);
     }
   }
 };
 
-typedef std::unique_ptr<struct BufferContext, struct BufferContextDeleter>
-    BufferContextUniquePtr;
-typedef std::unordered_map<buffer_handle_t, BufferContextUniquePtr>
+typedef std::unordered_map<buffer_handle_t,
+                           std::unique_ptr<struct BufferContext>>
     BufferContextCache;
 
 struct MappedGrallocBufferInfo {
@@ -78,25 +75,20 @@ struct MappedGrallocBufferInfo {
   struct gbm_bo* bo;
   // The per-bo data returned by gbm_bo_map() (for gralloc buffer only).
   void* map_data;
+  // The mapped virtual address.
+  void* addr;
   // For refcounting.
   uint32_t usage;
 
   MappedGrallocBufferInfo() : bo(nullptr), map_data(nullptr), usage(0) {}
-};
 
-struct MappedGrallocBufferInfoDeleter {
-  inline void operator()(struct MappedGrallocBufferInfo* info) {
-    // Unmap the bo once for each active usage.
-    while (info->usage) {
-      gbm_bo_unmap(info->bo, info->map_data);
-      --info->usage;
+  ~MappedGrallocBufferInfo() {
+    if (bo && map_data) {
+      gbm_bo_unmap(bo, map_data);
     }
   }
 };
 
-typedef std::unique_ptr<struct MappedGrallocBufferInfo,
-                        struct MappedGrallocBufferInfoDeleter>
-    MappedGrallocBufferInfoUniquePtr;
 typedef std::pair<buffer_handle_t, uint32_t> MappedBufferInfoKeyType;
 
 struct MappedBufferInfoKeyHash {
@@ -109,7 +101,7 @@ struct MappedBufferInfoKeyHash {
 };
 
 typedef std::unordered_map<MappedBufferInfoKeyType,
-                           MappedGrallocBufferInfoUniquePtr,
+                           std::unique_ptr<MappedGrallocBufferInfo>,
                            struct MappedBufferInfoKeyHash>
     MappedGrallocBufferInfoCache;
 
