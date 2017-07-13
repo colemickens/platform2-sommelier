@@ -105,7 +105,8 @@ class ChromiumCommandBuilder {
                        const std::set<std::string>& disallowed_prefixes);
 
   // Returns true if a USE flag named |flag| was set when the system image was
-  // built.
+  // built (and additionally listed in the libchromeos-use-flags ebuild so it
+  // will be included in the file at kUseFlagsPath).
   bool UseFlagIsSet(const std::string& flag) const;
 
   // Adds an environment variable to |environment_variables_|. Note that this

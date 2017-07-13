@@ -24,7 +24,7 @@ class CrosConfigInterface;
 namespace chromeos {
 namespace ui {
 class ChromiumCommandBuilder;
-}  // namesspace ui
+}  // namespace ui
 }  // namespace chromeos
 
 namespace login_manager {

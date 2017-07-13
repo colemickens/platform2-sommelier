@@ -24,6 +24,10 @@
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
+// IMPORTANT: If you want to check for the presence of a new USE flag within
+// this file via UseFlagIsSet(), you need to add it to the IUSE list in the
+// libchromeos-use-flags package's ebuild file.
+
 using chromeos::ui::ChromiumCommandBuilder;
 using chromeos::ui::util::EnsureDirectoryExists;
 
