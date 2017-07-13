@@ -157,7 +157,7 @@ std::string OctetStringToGuidForTesting(const std::string& octet_str) {
   return guid;
 }
 
-void LogLongString(const char* header,
+void LogLongString(const std::string& header,
                    const std::string& str,
                    Anonymizer* anonymizer) {
   if (!LOG_IS_ON(INFO))

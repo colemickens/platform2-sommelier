@@ -205,8 +205,8 @@ class SambaInterface {
   // crashes the daemon.
   void SetUser(const std::string& account_id_key);
 
-  // Anonymizes |realm| in different capitalizations as well as all parts (e.g.
-  // if realm is SOME.EXAMPLE.COM, anonymizes SOME, EXAMPLE and COM.
+  // Anonymizes |realm| in different capitalizations as well as all parts. For
+  // instance, if realm is SOME.EXAMPLE.COM, anonymizes SOME, EXAMPLE and COM.
   void AnonymizeRealm(const std::string& realm);
 
   // Resets internal state to an 'unenrolled' state by wiping configuration and

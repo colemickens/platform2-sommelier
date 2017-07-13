@@ -650,6 +650,8 @@ ErrorType SambaInterface::GetRealmInfo(protos::RealmInfo* realm_info) const {
     return ERROR_PARSE_FAILED;
   }
   if (!realm_info->ParseFromString(parse_cmd.GetStdout())) {
+    // Log net output if it hasn't been done yet.
+    net_cmd.LogOutputOnce();
     LOG(ERROR) << "Failed to parse realm info from string";
     return ERROR_PARSE_FAILED;
   }
@@ -1027,6 +1029,8 @@ ErrorType SambaInterface::SearchAccountInfo(
     LOG(WARNING) << "Search yielded no results";
     return ERROR_BAD_USER_NAME;
   } else if (!account_info->ParseFromString(account_info_blob)) {
+    // Log net output if it hasn't been done yet.
+    net_cmd.LogOutputOnce();
     LOG(ERROR) << "Failed to parse account info protobuf";
     return ERROR_PARSE_FAILED;
   }
@@ -1086,6 +1090,8 @@ ErrorType SambaInterface::GetGpoList(const std::string& user_or_machine_name,
   parse_cmd.SetInputString(net_out);
   if (!jail_helper_.SetupJailAndRun(
           &parse_cmd, Path::PARSER_SECCOMP, TIMER_NONE)) {
+    // Log net output if it hasn't been done yet.
+    net_cmd.LogOutputOnce();
     LOG(ERROR) << "Failed to parse GPO list";
     return ERROR_PARSE_FAILED;
   }
@@ -1251,6 +1257,8 @@ ErrorType SambaInterface::DownloadGpos(
             << "Ignoring missing preg file '"
             << anonymizer_->Process(gpo_path.local_.value()) << "'";
       } else {
+        // Log smbclient output if it hasn't been done yet.
+        smb_client_cmd.LogOutputOnce();
         LOG(ERROR) << "Failed to download preg file '"
                    << anonymizer_->Process(gpo_path.local_.value()) << "'";
         return ERROR_SMBCLIENT_FAILED;
@@ -1301,8 +1309,8 @@ void SambaInterface::AnonymizeRealm(const std::string& realm) {
 
   std::vector<std::string> parts = base::SplitString(
       realm, ".", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  for (const std::string& part : parts)
-    anonymizer_->SetReplacementAllCases(part, kRealmPlaceholder);
+  for (size_t n = 0; n < parts.size(); ++n)
+    anonymizer_->SetReplacementAllCases(parts[n], kRealmPlaceholder);
 }
 
 void SambaInterface::Reset() {
@@ -1370,8 +1378,10 @@ void SambaInterface::ReloadDebugFlags() {
   AuthPolicyFlags flags_container;
   flags_container.SetDefaults(flags_default_level_);
   const base::FilePath path(paths_->Get(Path::DEBUG_FLAGS));
-  if (flags_container.LoadFromJsonFile(path))
+  if (flags_container.LoadFromJsonFile(path) ||
+      flags_default_level_ != AuthPolicyFlags::kQuiet) {
     flags_container.Dump();
+  }
   flags_ = flags_container.Get();
 }
 

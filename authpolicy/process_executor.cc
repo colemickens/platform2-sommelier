@@ -35,7 +35,8 @@ struct EnvVarDef {
   { name "=", sizeof(name "=") - 1 }
 
 constexpr EnvVarDef kWhitelistedEnvVars[]{
-    DEFINE_ENV_VAR("ASAN_OPTIONS"), DEFINE_ENV_VAR("LSAN_OPTIONS"),
+    DEFINE_ENV_VAR("ASAN_OPTIONS"),
+    DEFINE_ENV_VAR("LSAN_OPTIONS"),
 };
 
 #undef DEFINE_ENV_VAR
@@ -203,13 +204,20 @@ bool ProcessExecutor::Execute() {
     return false;
   }
 
-  if (log_output_ || (log_output_on_error_ && exit_code_ != 0)) {
-    LogLongString("Stdout: ", out_data_, anonymizer_);
-    LogLongString("Stderr: ", err_data_, anonymizer_);
-  }
+  output_logged_ = false;
+  if (log_output_ || (log_output_on_error_ && exit_code_ != 0))
+    LogOutputOnce();
   LOG_IF(INFO, log_command_) << "Exit code: " << exit_code_;
 
   return exit_code_ == 0;
+}
+
+void ProcessExecutor::LogOutputOnce() {
+  if (output_logged_ || args_.empty() || !(log_output_on_error_ || log_output_))
+    return;
+  LogLongString(args_[0] + " stdout: ", out_data_, anonymizer_);
+  LogLongString(args_[0] + " stderr: ", err_data_, anonymizer_);
+  output_logged_ = true;
 }
 
 void ProcessExecutor::ResetOutput() {

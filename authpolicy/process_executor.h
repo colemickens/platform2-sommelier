@@ -69,6 +69,13 @@ class ProcessExecutor {
   // Getters should only be called after execution.
   bool Execute();
 
+  // On first call, if any type of logging is enabled, logs stdout and stderr
+  // from the last call to Execute(). Subsequent calls do nothing. Called
+  // automatically by Execute() if certain logging conditions are met. Call this
+  // function if logging-on-error is enabled, the return code was 0, but you
+  // want to log anyway, e.g. since the data was bad or unexpected.
+  void LogOutputOnce();
+
   // Populated after execute call.
   const std::string& GetStdout() const { return out_data_; }
   const std::string& GetStderr() const { return err_data_; }
@@ -100,6 +107,7 @@ class ProcessExecutor {
   bool log_output_ = false;
   bool log_output_on_error_ = false;
   Anonymizer* anonymizer_ = nullptr;
+  bool output_logged_ = false;
 
   // We better not copy/assign because of |input_fd_|.
   DISALLOW_COPY_AND_ASSIGN(ProcessExecutor);

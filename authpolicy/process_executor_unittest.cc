@@ -310,7 +310,7 @@ TEST_F(ProcessExecutorTest, WritesLogsToStdout) {
   cmd.SetAnonymizer(&anonymizer);
   EXPECT_TRUE(cmd.Execute());
   EXPECT_EQ(cmd.GetExitCode(), 0);
-  EXPECT_NE(std::string::npos, s_info_log->find("Stdout: TestLog"));
+  EXPECT_NE(std::string::npos, s_info_log->find("/bin/echo stdout: TestLog"));
 }
 
 // Logs are sanitized.

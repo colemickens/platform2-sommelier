@@ -169,7 +169,7 @@ void AuthPolicyFlags::SetDefaults(DefaultLevel default_level) {
       flags_.set_trace_kinit(true);
       flags_.set_log_policy_values(true);
       flags_.set_log_commands(true);
-      flags_.set_log_command_output(true);
+      flags_.set_log_command_output_on_error(true);
       flags_.set_log_gpo(true);
       flags_.set_net_log_level("10");
       break;
