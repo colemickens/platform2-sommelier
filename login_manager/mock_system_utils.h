@@ -13,12 +13,11 @@
 #include <base/macros.h>
 #include <gmock/gmock.h>
 
-#include "login_manager/system_utils_impl.h"
+#include "login_manager/system_utils.h"
 
 namespace login_manager {
 
-// TODO(yusukes): Derive from the interface class (SystemUtils) instead.
-class MockSystemUtils : public SystemUtilsImpl {
+class MockSystemUtils : public SystemUtils {
  public:
   MockSystemUtils();
   ~MockSystemUtils() override;
@@ -30,6 +29,23 @@ class MockSystemUtils : public SystemUtilsImpl {
   MOCK_METHOD0(GetVmState, VmState(void));
   MOCK_METHOD2(ProcessGroupIsGone, bool(pid_t child_spec,
                                         base::TimeDelta timeout));
+  MOCK_METHOD2(EnsureAndReturnSafeFileSize, bool(const base::FilePath& file,
+                                                 int32_t* file_size_32));
+  MOCK_METHOD1(Exists, bool(const base::FilePath& file));
+  MOCK_METHOD1(DirectoryExists, bool(const base::FilePath& dir));
+  MOCK_METHOD1(IsDirectoryEmpty, bool(const base::FilePath& dir));
+  MOCK_METHOD1(CreateReadOnlyFileInTempDir, bool(base::FilePath* temp_file));
+  MOCK_METHOD2(CreateTemporaryDirIn, bool(const base::FilePath& parent_dir,
+                                          base::FilePath* out_dir));
+  MOCK_METHOD1(CreateDir, bool(const base::FilePath& dir));
+  MOCK_METHOD1(GetUniqueFilenameInWriteOnlyTempDir,
+               bool(base::FilePath* temp_file_path));
+  MOCK_METHOD1(RemoveDirTree, bool(const base::FilePath& dir));
+  MOCK_METHOD1(RemoveFile, bool(const base::FilePath& filename));
+  MOCK_METHOD2(RenameDir, bool(const base::FilePath& source,
+                               const base::FilePath& target));
+  MOCK_METHOD2(AtomicFileWrite, bool(const base::FilePath& filename,
+                                     const std::string& data));
   MOCK_METHOD1(AmountOfFreeDiskSpace, int64_t(const base::FilePath& path));
   MOCK_METHOD2(GetGroupInfo, bool(const std::string& group_name,
                                   gid_t* out_gid));

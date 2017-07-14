@@ -67,6 +67,7 @@
 #include "login_manager/mock_user_policy_service_factory.h"
 #include "login_manager/mock_vpd_process.h"
 #include "login_manager/proto_bindings/arc.pb.h"
+#include "login_manager/system_utils_impl.h"
 
 using ::testing::AnyNumber;
 using ::testing::AtLeast;
@@ -265,16 +266,50 @@ class SessionManagerImplTest : public ::testing::Test {
   ~SessionManagerImplTest() override = default;
 
   void SetUp() override {
-    // 10 GB Free Disk Space for ARC launch.
-    ON_CALL(utils_, AmountOfFreeDiskSpace(_))
-        .WillByDefault(Return(10LL << 30));
     ON_CALL(utils_, GetDevModeState())
         .WillByDefault(Return(DevModeState::DEV_MODE_OFF));
     ON_CALL(utils_, GetVmState())
         .WillByDefault(Return(VmState::OUTSIDE_VM));
 
+    // Forward file operation calls to |real_utils_| so that the tests can
+    // actually create/modify/delete files in |tmpdir_|.
+    ON_CALL(utils_, EnsureAndReturnSafeFileSize(_, _))
+        .WillByDefault(Invoke(&real_utils_,
+                              &SystemUtilsImpl::EnsureAndReturnSafeFileSize));
+    ON_CALL(utils_, Exists(_))
+        .WillByDefault(Invoke(&real_utils_, &SystemUtilsImpl::Exists));
+    ON_CALL(utils_, DirectoryExists(_))
+        .WillByDefault(Invoke(&real_utils_, &SystemUtilsImpl::DirectoryExists));
+    ON_CALL(utils_, IsDirectoryEmpty(_))
+        .WillByDefault(Invoke(&real_utils_,
+                              &SystemUtilsImpl::IsDirectoryEmpty));
+    ON_CALL(utils_, CreateReadOnlyFileInTempDir(_))
+        .WillByDefault(Invoke(&real_utils_,
+                              &SystemUtilsImpl::CreateReadOnlyFileInTempDir));
+    ON_CALL(utils_, CreateTemporaryDirIn(_, _))
+        .WillByDefault(Invoke(&real_utils_,
+                              &SystemUtilsImpl::CreateTemporaryDirIn));
+    ON_CALL(utils_, CreateDir(_))
+        .WillByDefault(Invoke(&real_utils_, &SystemUtilsImpl::CreateDir));
+    ON_CALL(utils_, GetUniqueFilenameInWriteOnlyTempDir(_))
+        .WillByDefault(Invoke(
+            &real_utils_,
+            &SystemUtilsImpl::GetUniqueFilenameInWriteOnlyTempDir));
+    ON_CALL(utils_, RemoveDirTree(_))
+        .WillByDefault(Invoke(&real_utils_, &SystemUtilsImpl::RemoveDirTree));
+    ON_CALL(utils_, RemoveFile(_))
+        .WillByDefault(Invoke(&real_utils_, &SystemUtilsImpl::RemoveFile));
+    ON_CALL(utils_, RenameDir(_, _))
+        .WillByDefault(Invoke(&real_utils_, &SystemUtilsImpl::RenameDir));
+    ON_CALL(utils_, AtomicFileWrite(_, _))
+        .WillByDefault(Invoke(&real_utils_, &SystemUtilsImpl::AtomicFileWrite));
+
+    // 10 GB Free Disk Space for ARC launch.
+    ON_CALL(utils_, AmountOfFreeDiskSpace(_))
+        .WillByDefault(Return(10LL << 30));
+
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    utils_.set_base_dir_for_testing(tmpdir_.path());
+    real_utils_.set_base_dir_for_testing(tmpdir_.path());
     SetSystemSalt(&fake_salt_);
 
 #if USE_CHEETS
@@ -514,6 +549,7 @@ class SessionManagerImplTest : public ::testing::Test {
   MockProcessManagerService manager_;
   MockMetrics metrics_;
   MockNssUtil nss_;
+  SystemUtilsImpl real_utils_;
   testing::NiceMock<MockSystemUtils> utils_;
   FakeCrossystem crossystem_;
   MockVpdProcess vpd_process_;
@@ -1337,7 +1373,7 @@ TEST_F(SessionManagerImplTest, InitiateDeviceWipe_TooLongReason) {
   impl_->InitiateDeviceWipe(
       "overly long test message with\nspecial/chars$\t\xa4\xd6 1234567890");
   std::string contents;
-  base::FilePath reset_path = utils_.PutInsideBaseDirForTesting(
+  base::FilePath reset_path = real_utils_.PutInsideBaseDirForTesting(
       base::FilePath(SessionManagerImpl::kResetFile));
   ASSERT_TRUE(base::ReadFileToString(reset_path, &contents));
   ASSERT_EQ(

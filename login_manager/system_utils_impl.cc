@@ -5,7 +5,6 @@
 #include "login_manager/system_utils_impl.h"
 
 #include <errno.h>
-#include <grp.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
