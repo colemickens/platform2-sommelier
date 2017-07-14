@@ -35,7 +35,7 @@ int main(int argc, const char* argv[]) {
   }
   std::string image;
   if (!base::ReadFileToString(base::FilePath(FLAGS_image), &image)) {
-    LOG(FATAL) << "Image file is not found: " << FLAGS_image;
+    LOG(ERROR) << "Image file is not found: " << FLAGS_image;
     lock.Release();
     return EXIT_FAILURE;
   }

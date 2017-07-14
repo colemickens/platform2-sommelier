@@ -54,7 +54,7 @@ bool HammerUpdater::Run() {
 HammerUpdater::RunStatus HammerUpdater::RunOnce() {
   if (!fw_updater_.TryConnectUSB()) {
     LOG(ERROR) << "Failed to connect USB.";
-    return HammerUpdater::RunStatus::kNeedReset;
+    return HammerUpdater::RunStatus::kFatalError;
   }
 
   // The first time we use SendFirstPDU it is to gather information about
