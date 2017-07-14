@@ -134,12 +134,10 @@ class SambaInterface {
   // Does not perform any server-side checks.
   ErrorType GetUserTgtStatus(ActiveDirectoryUserStatus::TgtStatus* tgt_status);
 
-  // Determines the password status by comparing the store last change timestamp
-  // to the timestamp we just got from the server. |prev_pw_last_set| is the
-  // timestamp of the last password change stored in UserData.
+  // Determines the password status by comparing the old |user_pwd_last_set_|
+  // timestamp to the new timestamp in |account_info|.
   ActiveDirectoryUserStatus::PasswordStatus GetUserPasswordStatus(
-      const ActiveDirectoryAccountInfo& account_info,
-      uint64_t* prev_pw_last_set);
+      const ActiveDirectoryAccountInfo& account_info);
 
   // Retrieves the name of the workgroup. Since the workgroup is expected to
   // change very rarely, this function earlies out and returns ERROR_NONE if the
@@ -202,6 +200,11 @@ class SambaInterface {
       const char* parser_cmd_string,
       std::string* policy_blob) const;
 
+  // Sets and fixes the current user by account id key. Only one account id is
+  // allowed per user. Calling this multiple times with different account ids
+  // crashes the daemon.
+  void SetUser(const std::string& account_id_key);
+
   // Anonymizes |realm| in different capitalizations as well as all parts (e.g.
   // if realm is SOME.EXAMPLE.COM, anonymizes SOME, EXAMPLE and COM.
   void AnonymizeRealm(const std::string& realm);
@@ -224,18 +227,17 @@ class SambaInterface {
   // file does not exist, so this is no performance concern.
   void ReloadDebugFlags();
 
-  // Data we memorize for each user.
-  struct UserData {
-    std::string sam_account_name_;  // Logon name.
-    uint64_t pwd_last_set_ = 0;  // Timestamp of last password change on server.
-    ErrorType last_auth_error_ = ERROR_NONE;  // Last AuthenticateUser() error.
-    UserData() = default;
-    UserData(const std::string& sam_account_name, uint64_t pwd_last_set)
-        : sam_account_name_(sam_account_name), pwd_last_set_(pwd_last_set) {}
-  };
+  // User account_id (aka objectGUID) prefixed by "a-".
+  std::string user_account_id_key_;
+  // User logon name.
+  std::string user_sam_account_name_;
+  // Timestamp of last password change on server.
+  uint64_t user_pwd_last_set_ = 0;
+  // Is the user logged in?
+  bool user_logged_in_ = false;
+  // Last AuthenticateUser() error.
+  ErrorType last_auth_error_ = ERROR_NONE;
 
-  // Maps the account id key ("a-" + user object GUID) to user data.
-  std::unordered_map<std::string, UserData> user_data_;
   std::unique_ptr<protos::ActiveDirectoryConfig> config_;
   std::string workgroup_;
 

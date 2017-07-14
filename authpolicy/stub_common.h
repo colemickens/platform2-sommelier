@@ -51,6 +51,8 @@ extern const uint32_t kUserAccountControl;
 
 // Default, valid account id (aka objectGUID).
 extern const char kAccountId[];
+// Alternative, valid account id.
+extern const char kAltAccountId[];
 // Triggers a net ads search error when searching for this objectGUID.
 extern const char kBadAccountId[];
 // Triggers pwdLastSet=0 in net ads search.

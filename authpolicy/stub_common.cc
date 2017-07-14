@@ -37,6 +37,7 @@ const uint32_t kUserAccountControl = 512;
 
 // Should still be valid GUIDs, so GuidToOctetString() works.
 const char kAccountId[] = "f892eb9d-9e11-4a74-b894-0647e218c4df";
+const char kAltAccountId[] = "21094d26-9e11-4a74-b894-c8cd12a6f83b";
 const char kBadAccountId[] = "88adef4f-74ec-420d-b0a5-3726dbe711eb";
 const char kExpiredPasswordAccountId[] = "21094d26-2720-4ba4-942c-c8cd12a6f83b";
 const char kNeverExpirePasswordAccountId[] =

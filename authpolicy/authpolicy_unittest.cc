@@ -623,6 +623,15 @@ TEST_F(AuthPolicyTest, AuthSucceedsWithKnownAccountId) {
   EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
+// Program should die if trying to auth with different account ids.
+TEST_F(AuthPolicyTest, AuthFailsDifferentAccountIds) {
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, kAccountId, MakePasswordFd()));
+  EXPECT_DEATH(Auth(kUserPrincipal, kAltAccountId, MakePasswordFd()),
+               "Multi-user not supported");
+  EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+}
+
 // User authentication fails with bad (non-existent) account id.
 TEST_F(AuthPolicyTest, AuthFailsWithBadAccountId) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
@@ -703,6 +712,15 @@ TEST_F(AuthPolicyTest, GetUserStatusFailsBadAccountId) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_BAD_USER_NAME, GetUserStatus(kBadAccountId));
   EXPECT_EQ(1, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
+}
+
+// Program should die if trying to get user status with different account ids
+// than what was used for auth.
+TEST_F(AuthPolicyTest, GetUserStatusFailsDifferentAccountId) {
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, kAccountId, MakePasswordFd()));
+  EXPECT_DEATH(GetUserStatus(kAltAccountId), "Multi-user not supported");
+  EXPECT_EQ(2, metrics_->GetMetricReportCount(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // GetUserStatus succeeds without auth, but tgt is invalid.
