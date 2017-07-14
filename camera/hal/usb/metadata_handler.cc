@@ -94,9 +94,11 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
       ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_IDLE;
   UPDATE(ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER, &ae_precapture_trigger, 1);
 
-  const uint8_t af_available_mode = ANDROID_CONTROL_AF_MODE_AUTO;
-  UPDATE(ANDROID_CONTROL_AF_AVAILABLE_MODES, &af_available_mode, 1);
-  UPDATE(ANDROID_CONTROL_AF_MODE, &af_available_mode, 1);
+  const uint8_t af_available_modes[] = {ANDROID_CONTROL_AF_MODE_AUTO,
+                                        ANDROID_CONTROL_AF_MODE_OFF};
+  UPDATE(ANDROID_CONTROL_AF_AVAILABLE_MODES, af_available_modes,
+         ARRAY_SIZE(af_available_modes));
+  UPDATE(ANDROID_CONTROL_AF_MODE, &af_available_modes[0], 1);
 
   const uint8_t af_trigger = ANDROID_CONTROL_AF_TRIGGER_IDLE;
   UPDATE(ANDROID_CONTROL_AF_TRIGGER, &af_trigger, 1);
@@ -263,6 +265,7 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
       ANDROID_LENS_POSE_TRANSLATION,
       ANDROID_LENS_RADIAL_DISTORTION,
       ANDROID_NOISE_REDUCTION_MODE,
+      ANDROID_REQUEST_PIPELINE_DEPTH,
       ANDROID_SCALER_CROP_REGION,
       ANDROID_SENSOR_ROLLING_SHUTTER_SKEW,
       ANDROID_SENSOR_TEST_PATTERN_MODE,
@@ -338,6 +341,7 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
   // This means pipeline latency of X frame intervals. The maximum number is 4.
   const uint8_t request_pipeline_max_depth = 4;
   UPDATE(ANDROID_REQUEST_PIPELINE_MAX_DEPTH, &request_pipeline_max_depth, 1);
+  UPDATE(ANDROID_REQUEST_PIPELINE_DEPTH, &request_pipeline_max_depth, 1);
 
   // Three numbers represent the maximum numbers of different types of output
   // streams simultaneously. The types are raw sensor, processed (but not
