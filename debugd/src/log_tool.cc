@@ -209,6 +209,9 @@ const Log common_logs[] = {
   { "zram new stats names", "/bin/echo orig_size compr_size used_total limit "
     "used_max zero_pages migrated" },
   { "zram new stats values", "/bin/cat /sys/block/zram0/mm_stat 2> /dev/null" },
+  { "cros_tp version", "/bin/cat /sys/class/chromeos/cros_tp/version" },
+  { "cros_tp console", "/usr/sbin/ectool --name=cros_tp console",
+    kRoot, kRoot },
 
   // Stuff pulled out of the original list. These need access to the running X
   // session, which we'd rather not give to debugd, or return info specific to
