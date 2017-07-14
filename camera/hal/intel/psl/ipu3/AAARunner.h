@@ -67,10 +67,10 @@ private:
     Intel3aPlus *m3aWrapper;
 
     // LSC data
-    unsigned short mResizeLscGridR[MAX_LSC_GRID_SIZE];
-    unsigned short mResizeLscGridGr[MAX_LSC_GRID_SIZE];
-    unsigned short mResizeLscGridGb[MAX_LSC_GRID_SIZE];
-    unsigned short mResizeLscGridB[MAX_LSC_GRID_SIZE];
+    float mResizeLscGridR[MAX_LSC_GRID_SIZE];
+    float mResizeLscGridGr[MAX_LSC_GRID_SIZE];
+    float mResizeLscGridGb[MAX_LSC_GRID_SIZE];
+    float mResizeLscGridB[MAX_LSC_GRID_SIZE];
     float mLscGridRGGB[MAX_LSC_GRID_SIZE * 4];
 
 

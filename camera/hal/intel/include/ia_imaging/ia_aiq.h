@@ -237,8 +237,8 @@ typedef struct
     int manual_exposure_time_max;             /*!< Optional. Maximum exposure time in microseconds. -1 if NA. */
     int manual_frame_time_us_min;             /*!< Optional. Manual minimum frame length in microseconds. Defines maximum frame rate -1 if NA. */
     int manual_frame_time_us_max;             /*!< Optional. Manual maximum frame length in microseconds. Defines minimum frame rate. -1 if NA. */
-    int manual_iso_min;                       /*!< Optional. Manual minimum ISO. -1 if NA. */
-    int manual_iso_max;                       /*!< Optional. Manual maximum ISO. -1 if NA. */
+    short manual_iso_min;                     /*!< Optional. Manual minimum ISO. -1 if NA. */
+    short manual_iso_max;                     /*!< Optional. Manual maximum ISO. -1 if NA. */
 } ia_aiq_ae_manual_limits;
 
 /*!

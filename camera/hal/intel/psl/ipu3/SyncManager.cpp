@@ -22,7 +22,6 @@
 #include "LogHelper.h"
 #include "PerformanceTraces.h"
 #include "Camera3GFXFormat.h"
-#include "DebugFrameRate.h"
 #include "CaptureUnit.h"
 
 namespace android {
@@ -44,7 +43,6 @@ SyncManager::SyncManager(int32_t cameraId,
     mExposureDelay(0),
     mGainDelay(0),
     mDigiGainOnSensor(false),
-    mFrameRateDebugger(nullptr),
     mCurrentSettingIdentifier(0),
     mMessageThread(new MessageThread(this, "SyncManager", PRIORITY_CAMERA))
 {
@@ -85,9 +83,6 @@ SyncManager::~SyncManager()
         mSensorOp = nullptr;
 
     mQueuedSettings.clear();
-
-    if (mFrameRateDebugger != nullptr)
-        mFrameRateDebugger->requestExitAndWait();
 }
 
 /**
@@ -262,12 +257,6 @@ status_t SyncManager::handleMessageInit(Message &msg)
     mQueuedSettings.clear();
     mDelayedAGains.clear();
     mDelayedDGains.clear();
-
-    mFrameRateDebugger = std::unique_ptr<DebugFrameRate>(new DebugFrameRate("CSI-SOF"));
-    if (mFrameRateDebugger.get() == nullptr) {
-        status = NO_MEMORY;
-        LOGE("Failed to create the FrameRate debugger");
-    }
 
 exit:
     mMessageQueue.reply(MESSAGE_ID_INIT, status);
@@ -653,8 +642,6 @@ status_t SyncManager::handleMessageStart()
     mPollerThread->pollRequest(0, 1000,
                               (std::vector<std::shared_ptr<V4L2DeviceBase>>*) &mDevicesToPoll);
     mStarted = true;
-    if (mFrameRateDebugger.get() != nullptr)
-        mFrameRateDebugger->start();
     mMessageQueue.reply(MESSAGE_ID_START, OK);
     return OK;
 }
@@ -888,8 +875,6 @@ status_t SyncManager::notifyPollEvent(PollEventMessage *pollEventMsg)
             LOG2("%s: EVENT, MessageId: %d, activedev: %d, reqId = %d, event seq: %d",
                  __FUNCTION__, pollEventMsg->id, pollEventMsg->data.activeDevices->size(),
                  pollEventMsg->data.reqId, event.sequence);
-            if (mFrameRateDebugger.get() != nullptr)
-                mFrameRateDebugger->update();
         } while (event.pending > 0);
     }
     return OK;

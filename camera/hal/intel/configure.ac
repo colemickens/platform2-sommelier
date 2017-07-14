@@ -21,7 +21,7 @@ AC_ARG_ENABLE([remote3a],
 AS_IF([test "x$with_kernel_sources" != xno], [KERNELSOURCES=$with_kernel_sources], [])
 AS_IF([test "x$with_ipu" != xno], [IPUVERSION=$with_ipu], [IPUVERSION="ipu3"])
 AS_IF([test "x$with_base_version" != xno], [BASEVER=$with_base_version],
-      [AC_MSG_ERROR([libbase version is not set])])
+    [AC_MSG_ERROR([libbase version is not set])])
 
 AS_IF([test "$KERNELSOURCES" != ""], \
       [PSYSH2600="$KERNELSOURCES"/include/uapi/])

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Intel Corporation.
+ * Copyright (C) 2017 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@
 #include "IPU3ISPPipe.h"
 #include "LogHelper.h"
 #include <ia_aiq_types.h>
+
+#define AIC_GRID_SIZE (128*128)
 
 namespace android {
 namespace camera2 {
@@ -73,22 +75,23 @@ RuntimeParamsHelper::copySaResults(IPU3AICRuntimeParams &to, ia_aiq_sa_results &
 {
     ia_aiq_sa_results *sa_results;
     sa_results = (ia_aiq_sa_results*) to.sa_results;
-    int size = from.width * from.height * sizeof(unsigned short);
-    int to_size = sa_results->width * sa_results->height * sizeof(unsigned short);
-    for (int i = 0; i < MAX_BAYER_ORDER_NUM; i++) {
-        for (int j = 0; j < MAX_BAYER_ORDER_NUM; j++) {
-            if (sa_results->lsc_grid[i][j] && from.lsc_grid[i][j]) {
-                MEMCPY_S(sa_results->lsc_grid[i][j], to_size, from.lsc_grid[i][j], size);
-            }
-        }
-    }
-    sa_results->fraction_bits = from.fraction_bits;
-    sa_results->color_order = from.color_order;
+    int size = from.width * from.height;
+    memcpy(sa_results->channel_b, from.channel_b,
+            sizeof(*sa_results->channel_b) * size);
+    memcpy(sa_results->channel_gb, from.channel_gb,
+            sizeof(*sa_results->channel_gb) * size);
+    memcpy(sa_results->channel_gr, from.channel_gr,
+            sizeof(*sa_results->channel_gr) * size);
+    memcpy(sa_results->channel_r, from.channel_r,
+            sizeof(*sa_results->channel_r) * size);
+    sa_results->covered_area = from.covered_area;
     sa_results->frame_params = from.frame_params;
     sa_results->height = from.height;
     memcpy(sa_results->light_source, from.light_source,
            sizeof(sa_results->light_source));
     sa_results->lsc_update = from.lsc_update;
+    sa_results->num_patches = from.num_patches;
+    sa_results->scene_difficulty = from.scene_difficulty;
     sa_results->width = from.width;
 }
 
@@ -220,6 +223,26 @@ RuntimeParamsHelper::allocateAiStructs(IPU3AICRuntimeParams &runtimeParams)
     memset(focus_rect, 0, sizeof(ia_rectangle));
     runtimeParams.focus_rect = focus_rect;
 
+    ia_aiq_sa_results *sa_results = new ia_aiq_sa_results;
+    memset(sa_results, 0, sizeof(ia_aiq_sa_results));
+    runtimeParams.sa_results = sa_results;
+
+    float *channel_b = new float[AIC_GRID_SIZE];
+    memset(channel_b, 0, AIC_GRID_SIZE);
+    sa_results->channel_b = channel_b;
+
+    float *channel_gb = new float[AIC_GRID_SIZE];
+    memset(channel_gb, 0, AIC_GRID_SIZE);
+    sa_results->channel_gb = channel_gb;
+
+    float *channel_gr = new float[AIC_GRID_SIZE];
+    memset(channel_gr, 0, AIC_GRID_SIZE);
+    sa_results->channel_gr = channel_gr;
+
+    float *channel_r = new float[AIC_GRID_SIZE];
+    memset(channel_r, 0, AIC_GRID_SIZE);
+    sa_results->channel_r = channel_r;
+
     ia_aiq_pa_results *pa_results = new ia_aiq_pa_results;
     memset(pa_results, 0, sizeof(ia_aiq_pa_results));
     runtimeParams.pa_results = pa_results;
@@ -232,8 +255,8 @@ RuntimeParamsHelper::allocateAiStructs(IPU3AICRuntimeParams &runtimeParams)
     memset(weight_grid, 0, sizeof(ia_aiq_hist_weight_grid));
     runtimeParams.weight_grid = weight_grid;
 
-    unsigned char *weights = new unsigned char[128 * 128];
-    memset(weights, 0, 128 * 128);
+    unsigned char *weights = new unsigned char[AIC_GRID_SIZE];
+    memset(weights, 0, AIC_GRID_SIZE);
     weight_grid->weights = weights;
 
 
@@ -271,16 +294,10 @@ RuntimeParamsHelper::deleteAiStructs(IPU3AICRuntimeParams &runtimeParams)
     delete runtimeParams.pa_results;
     runtimeParams.pa_results = nullptr;
 
-    if (runtimeParams.sa_results !=nullptr){
-        if (runtimeParams.sa_results->lsc_grid[0][0] != nullptr)
-            delete runtimeParams.sa_results->lsc_grid[0][0];
-        if (runtimeParams.sa_results->lsc_grid[0][1] != nullptr)
-            delete runtimeParams.sa_results->lsc_grid[0][1];
-        if (runtimeParams.sa_results->lsc_grid[1][0] != nullptr)
-            delete runtimeParams.sa_results->lsc_grid[1][0];
-        if (runtimeParams.sa_results->lsc_grid[1][1] != nullptr)
-            delete runtimeParams.sa_results->lsc_grid[1][1];
-    }
+    delete [] runtimeParams.sa_results->channel_b;
+    delete [] runtimeParams.sa_results->channel_gb;
+    delete [] runtimeParams.sa_results->channel_gr;
+    delete [] runtimeParams.sa_results->channel_r;
 
     delete runtimeParams.sa_results;
     runtimeParams.pa_results = nullptr;

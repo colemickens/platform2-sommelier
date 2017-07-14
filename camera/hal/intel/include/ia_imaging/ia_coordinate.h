@@ -79,13 +79,6 @@ extern "C" {
 #define IA_COORDINATE_WIDTH (IA_COORDINATE_RIGHT-IA_COORDINATE_LEFT)
 #define IA_COORDINATE_HEIGHT (IA_COORDINATE_BOTTOM-IA_COORDINATE_TOP)
 
-typedef enum
-{
-    ia_coordinate_rounding_mode_floor = 0, /* Coordinates are always floored down. This is the old behavior. */
-    ia_coordinate_rounding_mode_ceil,      /* Coordinates are always ceiled up. */
-    ia_coordinate_rounding_mode_round      /* Coordinates are rounded to the closest integer. */
-} ia_coordinate_rounding_mode;
-
 /*!
  * \brief Coordinate system.
  * Defines the coordinate space boundaries.
@@ -103,15 +96,13 @@ typedef struct
  * \param[in] src_system     Source coordinate system boundaries.
  * \param[in] trg_system     Target coordinate system boundaries.
  * \param[in] src_coordinate Coordinate values in source coordinate system.
- * \param[in] rounding_mode  Coordinate rounding mode.
  * \return                   Target coordinate converted from source coordinate.
  */
 LIBEXPORT ia_coordinate
 ia_coordinate_convert(
     const ia_coordinate_system *src_system,
     const ia_coordinate_system *trg_system,
-    const ia_coordinate src_coordinate,
-    const ia_coordinate_rounding_mode rounding_mode);
+    const ia_coordinate src_coordinate);
 
 /*!
 *  Converts a rectangle from one coordinate system to another.

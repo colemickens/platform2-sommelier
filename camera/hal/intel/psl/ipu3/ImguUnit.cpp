@@ -27,7 +27,6 @@
 #include "workers/OutputFrameWorker.h"
 #include "workers/StatisticsWorker.h"
 #include "IMGUTypes.h"
-#include "DebugFrameRate.h"
 
 namespace android {
 namespace camera2 {
@@ -54,9 +53,12 @@ ImguUnit::ImguUnit(int cameraId,
     }
     mMessageThread->run();
 
-    mFrameRateDebugger = std::make_shared<DebugFrameRate>("ISP-VF_PROCESSING");
-    if (mFrameRateDebugger.get() == nullptr) {
-        LOGE("Failed to create the FrameRate debugger");
+    mRgbsGridBuffPool = std::make_shared<SharedItemPool<ia_aiq_rgbs_grid>>("RgbsGridBuffPool");
+    mAfFilterBuffPool = std::make_shared<SharedItemPool<ia_aiq_af_grid>>("AfFilterBuffPool");
+
+    status_t status = allocatePublicStatBuffers(PUBLIC_STATS_POOL_SIZE);
+    if (status != NO_ERROR) {
+        LOGE("Failed to allocate statistics, status: %d.", status);
         return;
     }
 }
@@ -80,6 +82,8 @@ ImguUnit::~ImguUnit()
 
     if (mMessagesUnderwork.size())
         LOGW("There are messages that are not processed %d:", mMessagesUnderwork.size());
+    if (mMessagesPending.size())
+        LOGW("There are pending messages %d:", mMessagesPending.size());
 
     mActiveStreams.blobStreams.clear();
     mActiveStreams.rawStreams.clear();
@@ -92,9 +96,107 @@ ImguUnit::~ImguUnit()
     mDeviceWorkers.clear();
     mFirstWorkers.clear();
 
-    if (mFrameRateDebugger.get() != nullptr) {
-        mFrameRateDebugger->requestExitAndWait();
-        mFrameRateDebugger.reset();
+    freePublicStatBuffers();
+    mRgbsGridBuffPool.reset();
+    mAfFilterBuffPool.reset();
+}
+
+/**
+ * allocatePublicStatBuffers
+ *
+ * This method allocates the memory for the pool of 3A statistics.
+ * The pools are also initialized here.
+ *
+ * These statistics are the public stats that will be sent to the 3A algorithms.
+ *
+ * Please do not confuse with the buffers allocated by the driver to get
+ * the HW generated statistics. Those are allocated at createStatsBufferPool()
+ *
+ * The symmetric method to this is freePublicStatBuffers
+ * The buffers allocated here are the output of the conversion process
+ * from HW generated statistics. This processing is done using the
+ * parameter adaptor class.
+ *
+ * \param[in] numBufs: number of buffers to initialize
+ *
+ * \return OK everything went fine
+ * \return NO_MEMORY failed to allocate
+ */
+status_t ImguUnit::allocatePublicStatBuffers(int numBufs)
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    status_t status = OK;
+    int maxGridSize;
+    int allocated = 0;
+    std::shared_ptr<ia_aiq_rgbs_grid> rgbsGrid = nullptr;
+    std::shared_ptr<ia_aiq_af_grid> afGrid = nullptr;
+
+    maxGridSize = IPU3_MAX_STATISTICS_WIDTH * IPU3_MAX_STATISTICS_HEIGHT;
+    status = mAfFilterBuffPool->init(numBufs);
+    status |= mRgbsGridBuffPool->init(numBufs);
+    if (status != OK) {
+        LOGE("Failed to initialize 3A statistics pools");
+        freePublicStatBuffers();
+        return NO_MEMORY;
+    }
+
+    for (allocated = 0; allocated < numBufs; allocated++) {
+        status = mAfFilterBuffPool->acquireItem(afGrid);
+        status |= mRgbsGridBuffPool->acquireItem(rgbsGrid);
+
+        if (status != OK ||
+            afGrid.get() == nullptr ||
+            rgbsGrid.get() == nullptr) {
+            LOGE("Failed to acquire 3A statistics memory from pools");
+            freePublicStatBuffers();
+            return NO_MEMORY;
+        }
+
+        rgbsGrid->blocks_ptr = new rgbs_grid_block[maxGridSize];
+        rgbsGrid->grid_height = 0;
+        rgbsGrid->grid_width = 0;
+
+        afGrid->filter_response_1 = new int[maxGridSize];
+        afGrid->filter_response_2 = new int[maxGridSize];
+        afGrid->block_height = 0;
+        afGrid->block_width = 0;
+        afGrid->grid_height = 0;
+        afGrid->grid_width = 0;
+
+    }
+    return NO_ERROR;
+}
+
+void ImguUnit::freePublicStatBuffers()
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    std::shared_ptr<ia_aiq_rgbs_grid> rgbsGrid = nullptr;
+    std::shared_ptr<ia_aiq_af_grid> afGrid = nullptr;
+    status_t status = OK;
+    if (!mAfFilterBuffPool->isFull() ||
+        !mRgbsGridBuffPool->isFull()) {
+        LOGE("We are leaking stats- AF:%s RGBS:%s",
+                mAfFilterBuffPool->isFull()? "NO" : "YES",
+                mRgbsGridBuffPool->isFull()? "NO" : "YES");
+    }
+    size_t availableItems = mAfFilterBuffPool->availableItems();
+    for (size_t i = 0; i < availableItems; i++) {
+        status = mAfFilterBuffPool->acquireItem(afGrid);
+        if (status == OK && afGrid.get() != nullptr) {
+            DELETE_ARRAY_AND_NULLIFY(afGrid->filter_response_1);
+            DELETE_ARRAY_AND_NULLIFY(afGrid->filter_response_2);
+        } else {
+            LOGE("Could not acquire filter response [%d] for deletion - leak?", i);
+        }
+    }
+    availableItems = mRgbsGridBuffPool->availableItems();
+    for (size_t i = 0; i < availableItems; i++) {
+        status = mRgbsGridBuffPool->acquireItem(rgbsGrid);
+        if (status == OK && rgbsGrid.get() != nullptr) {
+            DELETE_ARRAY_AND_NULLIFY(rgbsGrid->blocks_ptr);
+        } else {
+            LOGE("Could not acquire RGBS grid [%d] for deletion - leak?", i);
+        }
     }
 }
 
@@ -259,7 +361,8 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
             mNodes.push_back(tmp->getNode()); // Nodes are added for pollthread init
             mFirstWorkers.push_back(tmp);
         } else if (it.first == IMGU_NODE_STAT) {
-            std::shared_ptr<StatisticsWorker> worker = std::make_shared<StatisticsWorker>(it.second, mCameraId);
+            std::shared_ptr<StatisticsWorker> worker =
+                std::make_shared<StatisticsWorker>(it.second, mCameraId, mAfFilterBuffPool, mRgbsGridBuffPool);
             mListenerDeviceWorkers.push_back(worker.get());
             mDeviceWorkers.push_back(worker);
             mPollableWorkers.push_back(worker);
@@ -277,8 +380,6 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
             mDeviceWorkers.push_back(tmp);
             mPollableWorkers.push_back(tmp);
             mNodes.push_back(tmp->getNode());
-            if (it.first == IMGU_NODE_PREVIEW)
-                tmp->setFrameRateDebugger(mFrameRateDebugger);
         } else if (it.first == IMGU_NODE_RAW) {
             LOGW("Not implemented"); // raw
             continue;
@@ -309,9 +410,6 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
             (*it)->attachListener(listener);
         }
     }
-
-    if (mFrameRateDebugger.get() != nullptr)
-        mFrameRateDebugger->start();
 
     return OK;
 }
@@ -389,15 +487,37 @@ ImguUnit::handleMessageCompleteReq(DeviceMessage &msg)
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = NO_ERROR;
 
+    Camera3Request *request = msg.cbMetadataMsg.request;
+    if (request == nullptr) {
+        LOGE("Request is nullptr");
+        return BAD_VALUE;
+    }
+    LOG2("order %s:enqueue for Req id %d, ", __FUNCTION__, request->getId());
+    std::shared_ptr<DeviceMessage> tmp = std::make_shared<DeviceMessage>(msg);
+    mMessagesPending.push_back(tmp);
+
+    return processNextRequest();
+}
+
+status_t ImguUnit::processNextRequest()
+{
+    status_t status = NO_ERROR;
+    std::shared_ptr<DeviceMessage> msg = nullptr;
+
+    LOG2("%s: pending size %zu, state %d", __FUNCTION__, mMessagesPending.size(), mState);
+    if (mMessagesPending.empty())
+        return NO_ERROR;
+
     if (mState == IMGU_RUNNING) {
         LOGD("IMGU busy - message put into a waiting queue");
-        completeWaitingRequestNext(msg);
-
-        return OK;
+        return NO_ERROR;
     }
 
+    msg = mMessagesPending[0];
+    mMessagesPending.erase(mMessagesPending.begin());
+
     // update and return metadata firstly
-    Camera3Request *request = msg.pMsg.processingSettings->request;
+    Camera3Request *request = msg->cbMetadataMsg.request;
     if (request == nullptr) {
         LOGE("Request is nullptr");
         return BAD_VALUE;
@@ -413,17 +533,16 @@ ImguUnit::handleMessageCompleteReq(DeviceMessage &msg)
             LOGE("Listening task null - BUG.");
             return UNKNOWN_ERROR;
         }
-        status |= lTask->settings(msg.pMsg);
+        status |= lTask->settings(msg->pMsg);
     }
 
-    if (msg.cbMetadataMsg.updateMeta) {
-        updateProcUnitResults(*request, msg.pMsg.processingSettings);
+    if (msg->cbMetadataMsg.updateMeta) {
+        updateProcUnitResults(*request, msg->pMsg.processingSettings);
         //return the metadata
         request->mCallback->metadataDone(request, CONTROL_UNIT_PARTIAL_RESULT);
     }
 
-    std::shared_ptr<DeviceMessage> tmp = std::make_shared<DeviceMessage>(msg);
-    mMessagesUnderwork.push_back(tmp);
+    mMessagesUnderwork.push_back(msg);
 
     if (mFirstRequest) {
         status = kickstart();
@@ -434,7 +553,7 @@ ImguUnit::handleMessageCompleteReq(DeviceMessage &msg)
 
     std::vector<std::shared_ptr<IDeviceWorker>>::iterator it = mDeviceWorkers.begin();
     for (;it != mDeviceWorkers.end(); ++it) {
-        status = (*it)->prepareRun(mMessagesUnderwork[0]);
+        status = (*it)->prepareRun(msg);
         if (status != OK) {
             return status;
         }
@@ -494,16 +613,6 @@ ImguUnit::kickstart()
     mFirstRequest = false;
     return status;
 }
-
-status_t
-ImguUnit::completeWaitingRequestNext(DeviceMessage &msg)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    mMessageQueue.send(&msg);
-
-    return NO_ERROR;
-}
-
 
 status_t
 ImguUnit::updateProcUnitResults(Camera3Request &request,
@@ -683,7 +792,11 @@ status_t ImguUnit::handleMessagePoll(DeviceMessage msg)
     delete [] msg.pollEvent.activeDevices;
     msg.pollEvent.activeDevices = nullptr;
 
-    return startProcessing();
+    status_t status = startProcessing();
+    if (status == NO_ERROR)
+        status = processNextRequest();
+
+    return status;
 }
 
 void

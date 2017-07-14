@@ -75,7 +75,6 @@ ia_mkn_change_endianness(ia_binary_data *mknt_data);
  *                                  Packing key (16 bytes).
  * \return                          Error code.
  */
-#ifdef TESTMODE
 LIBEXPORT ia_err
 ia_mkn_print_record(const ia_binary_data *mknt_data,
                     const char *makernote_header_file,
@@ -84,7 +83,6 @@ ia_mkn_print_record(const ia_binary_data *mknt_data,
                     bool binary,
                     const char *key);
 
-#endif
 /*!
  * \brief Copies record data from the makernote to given buffer.
  * Checks if a given record exists in the makernote and copies the data from the makernote buffer into the record data buffer.

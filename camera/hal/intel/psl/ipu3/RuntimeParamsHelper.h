@@ -42,7 +42,6 @@ public:
 private:
     RuntimeParamsHelper();
     virtual ~RuntimeParamsHelper();
-    static const int MAX_BAYER_ORDER_NUM = 4;
 };
 
 } /* namespace camera2 */

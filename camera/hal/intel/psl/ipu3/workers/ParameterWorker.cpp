@@ -67,10 +67,10 @@ int ParameterWorker::allocLscTable(IPU3AICRuntimeParams & runtime)
          LscSize = mCmcData->cmc_parsed_lens_shading.cmc_lens_shading->grid_height *
                       mCmcData->cmc_parsed_lens_shading.cmc_lens_shading->grid_width ;
         LOG2("%s alloc lsc for runtime size %d",__FUNCTION__, LscSize);
-        sa_results->lsc_grid[0][0] =  new unsigned short[LscSize];
-        sa_results->lsc_grid[0][1] =  new unsigned short[LscSize];
-        sa_results->lsc_grid[1][0] =  new unsigned short[LscSize];
-        sa_results->lsc_grid[1][1] =  new unsigned short[LscSize];
+        sa_results->channel_r  =  new float[LscSize];
+        sa_results->channel_gr =  new float[LscSize];
+        sa_results->channel_gb =  new float[LscSize];
+        sa_results->channel_b  =  new float[LscSize];
         sa_results->width = mCmcData->cmc_parsed_lens_shading.cmc_lens_shading->grid_width;
         sa_results->height = mCmcData->cmc_parsed_lens_shading.cmc_lens_shading->grid_height;
     }
@@ -115,14 +115,6 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
         return ret;
     }
 
-    ret = allocLscTable(mStillRuntimeParams);
-    if (ret < 0) {
-        LOGE("%s : Cannot allocate Sa struct",__FUNCTION__);
-        RuntimeParamsHelper::deleteAiStructs(mStillRuntimeParams);
-        return ret;
-    }
-
-
     ret = RuntimeParamsHelper::allocateAiStructs(mPreviewRuntimeParams);
     if (ret != OK) {
         LOGE("Cannot allocate AIC struct");
@@ -131,6 +123,10 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
         return ret;
     }
 
+    if (PlatformData::getCpfAndCmc(mCpfData, mCmcData, mCameraId) != OK) {
+        LOGE("Could not get cpf and cmc data");
+        return NO_INIT;
+    }
 
     GraphConfig::NodesPtrVector sinks;
     std::string name = "csi_be:output";

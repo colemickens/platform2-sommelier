@@ -31,69 +31,6 @@
 #include "SysCall.h"
 
 NAMESPACE_DECLARATION {
-#ifdef LIBCAMERA_RD_FEATURES
-#define pioctl(fd, ctrlId, attr, name) \
-({ \
-    int reti; \
-    if (gPerfLevel & CAMERA_DEBUG_LOG_PERF_IOCTL_BREAKDOWN) { \
-        std::ostringstream stringStream; \
-        stringStream << #ctrlId << " " << name << ":"; \
-        std::string str = stringStream.str(); \
-        PERFORMANCE_TRACES_IO_BREAKDOWN(str.c_str()); \
-        reti = SysCall::ioctl(fd, ctrlId, attr); \
-    } else { \
-        reti = SysCall::ioctl(fd, ctrlId, attr); \
-    } \
-    reti; \
-})
-
-#define perfopen(name, attr, fd) \
-({ \
-    if (gPerfLevel & CAMERA_DEBUG_LOG_PERF_IOCTL_BREAKDOWN) { \
-        PERFORMANCE_TRACES_IO_BREAKDOWN(name); \
-        (fd) = SysCall::open(name, attr); \
-    } else { \
-        (fd) = SysCall::open(name, attr); \
-    } \
-})
-
-#define perfclose(name, fd) \
-({ \
-    int ret; \
-    if (gPerfLevel & CAMERA_DEBUG_LOG_PERF_IOCTL_BREAKDOWN) { \
-        PERFORMANCE_TRACES_IO_BREAKDOWN(name); \
-        ret = SysCall::close(fd); \
-    } else { \
-        ret = SysCall::close(fd); \
-    } \
-    ret; \
-})
-
-#define pbxioctl(ctrlId, attr) \
-({ \
-    int reti; \
-    if (gPerfLevel & CAMERA_DEBUG_LOG_PERF_IOCTL_BREAKDOWN) { \
-        PERFORMANCE_TRACES_IO_BREAKDOWN(#ctrlId); \
-        reti = V4L2DeviceBase::xioctl(ctrlId, attr); \
-    } else { \
-        reti = V4L2DeviceBase::xioctl(ctrlId, attr); \
-    } \
-    reti; \
- })
-
-#define perfpoll(fd, value, timeout) \
-({ \
-    int reti; \
-    if (gPerfLevel & CAMERA_DEBUG_LOG_PERF_IOCTL_BREAKDOWN) { \
-        PERFORMANCE_TRACES_IO_BREAKDOWN("poll"); \
-        reti = SysCall::poll(fd, value, timeout); \
-    } else { \
-        reti = SysCall::poll(fd, value, timeout); \
-    } \
-    reti; \
-})
-
-#else // LIBCAMERA_RD_FEATURES
 #define pioctl(fd, ctrlId, attr, name) \
     SysCall::ioctl(fd, ctrlId, attr)
 
@@ -108,7 +45,6 @@ NAMESPACE_DECLARATION {
 
 #define perfpoll(fd, value, timeout) \
     SysCall::poll(fd, value, timeout)
-#endif // LIBCAMERA_RD_FEATURES
 /**
  * v4l2 buffer descriptor.
  *

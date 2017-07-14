@@ -196,7 +196,6 @@ RequestThread::handleConfigureStreams(Message & msg)
         activeStreams.push_back((CameraStreamNode *)(mStreams.at(i)->priv));
 
     status = mCameraHw->bindStreams(activeStreams);
-    PERFORMANCE_TRACES_BREAKDOWN_STEP("Done");
 
     return status;
 
@@ -222,7 +221,6 @@ RequestThread::handleConstructDefaultRequest(Message & msg)
     defaultRequest = mCameraHw->getDefaultRequestSettings(requestType);
     *(msg.data.defaultRequest.request) = (camera_metadata_t*)defaultRequest;
 
-    PERFORMANCE_TRACES_BREAKDOWN_STEP("Done");
     return (*(msg.data.defaultRequest.request)) ? NO_ERROR : NO_MEMORY;
 }
 

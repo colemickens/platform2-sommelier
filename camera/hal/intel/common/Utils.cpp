@@ -123,9 +123,6 @@ template <typename T> int resize2dArray(
 template int resize2dArray<float>(
     const float* a_src, int a_src_w, int a_src_h,
     float* a_dst, int a_dst_w, int a_dst_h);
-template int resize2dArray<unsigned short>(
-    const unsigned short* a_src, int a_src_w, int a_src_h,
-    unsigned short* a_dst, int a_dst_w, int a_dst_h);
 template int resize2dArray<int>(
     const int* a_src, int a_src_w, int a_src_h,
     int* a_dst, int a_dst_w, int a_dst_h);

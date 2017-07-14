@@ -20,8 +20,6 @@
 #include "IDeviceWorker.h"
 #include "v4l2device.h"
 
-#include "DebugFrameRate.h"
-
 namespace android {
 namespace camera2 {
 
@@ -47,8 +45,6 @@ public:
     }
     virtual const char *name() { return mNode->name(); }
 
-    void setFrameRateDebugger(std::shared_ptr<DebugFrameRate> frameRate) { mFrameRateDebugger = frameRate; }
-
 protected:
     status_t allocateWorkerBuffers();
     status_t setWorkerDeviceFormat(v4l2_buf_type type, FrameInfo &frame);
@@ -61,8 +57,6 @@ protected:
     v4l2_format mFormat;
     std::shared_ptr<V4L2VideoNode> mNode;
     bool mPollMe;
-
-    std::shared_ptr<DebugFrameRate> mFrameRateDebugger;
 };
 
 } /* namespace camera2 */

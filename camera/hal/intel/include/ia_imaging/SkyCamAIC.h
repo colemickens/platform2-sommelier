@@ -29,8 +29,8 @@ class  SkyCamAIC
 
 public:
     LIBEXPORT SkyCamAIC(ISPPipe *pipe, const ia_cmc_t* cmc_parsed,
-						/*std::string cpf_file*/ const ia_binary_data* aiqb_, SkyCamAICRuntimeParams runtime_params,
-						unsigned int dump_aic_parameters=0, int test_framework_dump=0);
+/*std::string cpf_file*/ const ia_binary_data* aiqb_, SkyCamAICRuntimeParams runtime_params,
+			unsigned int dump_aic_parameters=0, int test_framework_dump=0);
     LIBEXPORT void Run(SkyCamAICRuntimeParams runtime_params);
     LIBEXPORT void Reset(SkyCamAICRuntimeParams runtime_params);
 	static LIBEXPORT std::string GetAICVersion(){return SKYCAMAICVERSION;};

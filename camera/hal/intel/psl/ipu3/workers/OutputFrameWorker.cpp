@@ -29,7 +29,8 @@ OutputFrameWorker::OutputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int ca
                 FrameWorker(node, cameraId, "OutputFrameWorker"),
                 mOutputBuffer(nullptr),
                 mStream(stream),
-                mAllDone(false)
+                mAllDone(false),
+                mUseInternalBuffer(true)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     if (mNode)
@@ -58,10 +59,11 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
     if (ret != OK)
         return ret;
 
-    /* TODO: Need only for JPEG conversion. */
-    ret = allocateWorkerBuffers();
-    if (ret != OK)
-        return ret;
+    // Use internal buffers
+    mUseInternalBuffer = (mStream && mStream->format == HAL_PIXEL_FORMAT_BLOB);
+    if (mUseInternalBuffer) {
+        return allocateWorkerBuffers();
+    }
 
     return OK;
 }
@@ -137,6 +139,14 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
             mOutputBuffer = buffer;
             mAllDone = false;
             mPollMe = true;
+
+            if (!mUseInternalBuffer) {
+                // Use stream buffer for zero-copy
+                mBuffers[0].bytesused = mFormat.fmt.pix.sizeimage;
+                mBuffers[0].m.userptr = (unsigned long int)buffer->data();
+                mCameraBuffers.push_back(buffer);
+                LOG2("mBuffers[0].m.userptr: %p", mBuffers[0].m.userptr);
+            }
             status |= mNode->putFrame(&mBuffers[0]);
 
 
@@ -219,6 +229,7 @@ status_t OutputFrameWorker::postRun()
 
     // Dump the buffers if enabled in flags
     if (mOutputBuffer->format() == HAL_PIXEL_FORMAT_BLOB) {
+        // Use internal buffer
         mCameraBuffers[0]->dumpImage(CAMERA_DUMP_JPEG, "before_jpeg_converion_nv12");
         status_t status = convertJpeg(mCameraBuffers[0], mOutputBuffer, request);
         mOutputBuffer->dumpImage(CAMERA_DUMP_JPEG, ".jpg");
@@ -228,7 +239,6 @@ status_t OutputFrameWorker::postRun()
         }
     } else if (mOutputBuffer->format() == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED
             || mOutputBuffer->format() == HAL_PIXEL_FORMAT_YCbCr_420_888) {
-        memcpy((void*)mOutputBuffer->data(), (void*)mBuffers[0].m.userptr, MIN(mOutputBuffer->size(), mCameraBuffers[0]->size()));
         if (stream->usage() & GRALLOC_USAGE_HW_VIDEO_ENCODER) {
             mOutputBuffer->dumpImage(CAMERA_DUMP_VIDEO, "VIDEO");
         } else {
@@ -239,8 +249,9 @@ status_t OutputFrameWorker::postRun()
     // call capturedone for the stream of the buffer
     stream->captureDone(mOutputBuffer, request);
 
-    if (mFrameRateDebugger != nullptr)
-        mFrameRateDebugger->update();
+    if (!mUseInternalBuffer) {
+        mCameraBuffers.erase(mCameraBuffers.begin());
+    }
 
     /* Prevent from using old data */
     mMsg = nullptr;
@@ -267,7 +278,6 @@ OutputFrameWorker::convertJpeg(std::shared_ptr<CameraBuffer> input,
     msg.request = request;
 
     status_t status = mJpegTask->handleMessageNewJpegInput(msg);
-    PERFORMANCE_TRACES_SHOT2SHOT_TAKE_PICTURE_HANDLE();
     return status;
 }
 

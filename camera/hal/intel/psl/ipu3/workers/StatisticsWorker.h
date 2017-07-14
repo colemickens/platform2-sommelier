@@ -28,22 +28,19 @@ namespace camera2 {
 class StatisticsWorker: public FrameWorker, public ICaptureEventSource
 {
 public:
-    StatisticsWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId);
+    StatisticsWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId,
+                     std::shared_ptr<SharedItemPool<ia_aiq_af_grid>> &afFilterBuffPool,
+                     std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> &rgbsGridBuffPool);
     virtual ~StatisticsWorker();
 
     virtual status_t configure(std::shared_ptr<GraphConfig> &config);
     status_t prepareRun(std::shared_ptr<DeviceMessage> msg);
     status_t run();
     status_t postRun();
-    status_t allocatePublicStatBuffers(int numBufs);
-    void freePublicStatBuffers();
-private:
-    SharedItemPool<ia_aiq_af_grid> mAfFilterBuffPool;
-    SharedItemPool<ia_aiq_rgbs_grid> mRgbsGridBuffPool;
 
-    static const int PUBLIC_STATS_POOL_SIZE;
-    static const int IPU3_MAX_STATISTICS_WIDTH;
-    static const int IPU3_MAX_STATISTICS_HEIGHT;
+private:
+    std::shared_ptr<SharedItemPool<ia_aiq_af_grid>>   mAfFilterBuffPool;
+    std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> mRgbsGridBuffPool;
 };
 
 } /* namespace camera2 */

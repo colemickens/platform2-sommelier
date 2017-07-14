@@ -92,7 +92,7 @@ ia_dvs_deinit(ia_dvs_state *dvs_state);
  * \param[in]   af_results      Optional. Pointer to AIQ AF results.
  * \param[in]   sensor_events   Optional. Pointer to sensor events data which contains accelerometer,
  *                              gravity and gyroscope events.
- * \param[in]   frame_readout_start     Frame readout start time. Optional for image based DVS. Mandatory for gyro based DVS
+ * \param[in]   frame_exposure_start    Frame exposure start time. Optional for image based DVS. Mandatory for gyro based DVS
  * \param[in]   frame_readout_end       Frame readout end time. Optional for image based DVS. Mandatory for gyro based DVS
  * \return                      0 for no error, others for error.
  *
@@ -104,7 +104,7 @@ ia_dvs_set_statistics(ia_dvs_state *dvs_state,
                       const ia_aiq_ae_results *ae_results,
                       const ia_aiq_af_results *af_results,
                       const ia_aiq_sensor_events *sensor_events,
-                      const unsigned long long frame_readout_start,
+                      const unsigned long long frame_exposure_start,
                       const unsigned long long frame_readout_end);
 
 /*! \brief Execute DVS main process.

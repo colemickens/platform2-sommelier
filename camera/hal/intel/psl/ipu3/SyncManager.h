@@ -39,7 +39,6 @@ namespace camera2 {
 
 class MediaController;
 class MediaEntity;
-class DebugFrameRate;
 
 typedef enum {
     SUBDEV_PIXEL_ARRAY,
@@ -188,7 +187,6 @@ private:
     /**
      * Sensor frame rate debugging
      */
-    std::unique_ptr<DebugFrameRate> mFrameRateDebugger;
     int64_t mCurrentSettingIdentifier;
 
 private:

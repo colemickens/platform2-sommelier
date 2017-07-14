@@ -25,8 +25,7 @@ namespace camera2 {
 FrameWorker::FrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId, std::string name) :
         IDeviceWorker(cameraId),
         mNode(node),
-        mPollMe(false),
-        mFrameRateDebugger(nullptr)
+        mPollMe(false)
 {
     LOG1("%s handling node %s", name.c_str(), mNode->name());
     CLEAR(mFormat);

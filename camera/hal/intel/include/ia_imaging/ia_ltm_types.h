@@ -109,18 +109,6 @@ typedef struct ia_ltm_drc_params
     ia_ltm_drc_gtm  drc_gtm;                                        /*! GTM parameters. */
 } ia_ltm_drc_params;
 
-/*!
- * \brief GTM parameters for GTM part of LTM.
- * If GTM is applied inside LTM this structure is used for passing arguments to GTM. In case that GTM is applied
- * inside LTM, GBCE and GammaTM ISP block should be disabled.
- */
-typedef struct
-{
-    float manual_gain;                  /*!< Mandatory. Manual gain. -1.0 if NA */
-    float manual_convergence_time;      /*!< Mandatory. Manual brightness convergence speed in seconds. -1.0 if NA. */
-    unsigned long long frame_timestamp; /*!< Mandatory. Current time stamp in micro seconds. */
-} ia_ltm_gtm_input_params;
-
 #ifdef __cplusplus
 }
 #endif

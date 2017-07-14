@@ -152,10 +152,10 @@ AiqInputParams &AiqInputParams::operator=(const AiqInputParams &other)
 
 status_t AiqResults::allocateLsc(size_t lscSize)
 {
-    mChannelR  = new unsigned short[lscSize];
-    mChannelGR = new unsigned short[lscSize];
-    mChannelGB = new unsigned short[lscSize];
-    mChannelB  = new unsigned short[lscSize];
+    mChannelR  = new float[lscSize];
+    mChannelGR = new float[lscSize];
+    mChannelGB = new float[lscSize];
+    mChannelB  = new float[lscSize];
 
     return OK;
 }
@@ -208,10 +208,10 @@ void AiqResults::init()
 
     /* Shading Adaptor results init */
     CLEAR(saResults);
-    saResults.lsc_grid[0][0] = mChannelR;
-    saResults.lsc_grid[0][1] = mChannelGR;
-    saResults.lsc_grid[1][0] = mChannelGB;
-    saResults.lsc_grid[1][1] = mChannelB;
+    saResults.channel_r = mChannelR;
+    saResults.channel_gr = mChannelGR;
+    saResults.channel_gb = mChannelGB;
+    saResults.channel_b = mChannelB;
 }
 
 AiqResults &AiqResults::operator=(const AiqResults& other)
@@ -398,11 +398,9 @@ void Intel3aCore::convertFromAndroidToIaCoordinates(const CameraWindow &srcWindo
     bottomright.y = srcWindow.bottom();
 
     topleft = ia_coordinate_convert(&androidCoord,
-                                    &iaCoord, topleft,
-                                    ia_coordinate_rounding_mode_floor);
+                                    &iaCoord, topleft);
     bottomright = ia_coordinate_convert(&androidCoord,
-                                        &iaCoord, bottomright,
-                                        ia_coordinate_rounding_mode_floor);
+                                        &iaCoord, bottomright);
 
     toWindow.init(topleft, bottomright, srcWindow.weight());
 }
@@ -425,11 +423,9 @@ void Intel3aCore::convertFromIaToAndroidCoordinates(const CameraWindow &srcWindo
     bottomright.y = srcWindow.bottom();
 
     topleft = ia_coordinate_convert(&iaCoord,
-                                    &androidCoord, topleft,
-                                    ia_coordinate_rounding_mode_floor);
+                                    &androidCoord, topleft);
     bottomright = ia_coordinate_convert(&iaCoord,
-                                        &androidCoord, bottomright,
-                                        ia_coordinate_rounding_mode_floor);
+                                        &androidCoord, bottomright);
 
     toWindow.init(topleft, bottomright, srcWindow.weight());
 }
@@ -513,65 +509,6 @@ status_t Intel3aCore::getMakerNote(ia_mkn_trg aTarget, ia_binary_data &aBlob)
     aBlob.size = mkn.size;
     return OK;
 }
-
-status_t Intel3aCore:: checkColorOrder(cmc_bayer_order a_color_order,
-                                       color_order_t *a_order_ptr)
-{
-    LOG2("@%s, color_order = %d", __FUNCTION__, a_color_order);
-    switch (a_color_order) {
-    case cmc_bayer_order_grbg:
-    /* use gr r b gb constitute 2X2 array
-     * gr    r
-     * b     gb
-     * The four channel use x y coordinate to indicate
-     * gr(0, 0) r(1, 0) b(0, 1) gb(1, 1)
-    */
-        a_order_ptr->r[0] = 1;
-        a_order_ptr->r[1] = 0;
-        a_order_ptr->b[0] = 0;
-        a_order_ptr->b[1] = 1;
-        a_order_ptr->gr[0] = 0;
-        a_order_ptr->gr[1] = 0;
-        a_order_ptr->gb[0] = 1;
-        a_order_ptr->gb[1] = 1;
-        break;
-    case cmc_bayer_order_rggb:
-        a_order_ptr->r[0] = 0;
-        a_order_ptr->r[1] = 0;
-        a_order_ptr->b[0] = 1;
-        a_order_ptr->b[1] = 1;
-        a_order_ptr->gr[0] = 1;
-        a_order_ptr->gr[1] = 0;
-        a_order_ptr->gb[0] = 0;
-        a_order_ptr->gb[1] = 1;
-        break;
-    case cmc_bayer_order_bggr:
-        a_order_ptr->r[0] = 1;
-        a_order_ptr->r[1] = 1;
-        a_order_ptr->b[0] = 0;
-        a_order_ptr->b[1] = 0;
-        a_order_ptr->gr[0] = 0;
-        a_order_ptr->gr[1] = 1;
-        a_order_ptr->gb[0] = 1;
-        a_order_ptr->gb[1] = 0;
-        break;
-    case cmc_bayer_order_gbrg:
-        a_order_ptr->r[0] = 0;
-        a_order_ptr->r[1] = 1;
-        a_order_ptr->b[0] = 1;
-        a_order_ptr->b[1] = 0;
-        a_order_ptr->gr[0] = 1;
-        a_order_ptr->gr[1] = 1;
-        a_order_ptr->gb[0] = 0;
-        a_order_ptr->gb[1] = 0;
-        break;
-    default:
-        return BAD_VALUE;
-        break;
-    }
-    return NO_ERROR;
-}
-
 
 status_t Intel3aCore::runAe(ia_aiq_statistics_input_params *ispStatistics,
                             ia_aiq_ae_input_params *aeInputParams,
@@ -1203,18 +1140,18 @@ status_t Intel3aCore::deepCopySAResults(ia_aiq_sa_results *dst,
      * in the source and in the destination
      */
     if (CC_UNLIKELY(dst == nullptr ||
-                   dst->lsc_grid[0][0] == nullptr ||
-                   dst->lsc_grid[0][1] == nullptr ||
-                   dst->lsc_grid[1][0] == nullptr ||
-                   dst->lsc_grid[1][1] == nullptr)) {
+                   dst->channel_r == nullptr ||
+                   dst->channel_gr == nullptr ||
+                   dst->channel_gb == nullptr ||
+                   dst->channel_b == nullptr)) {
         LOGE("Failed to deep copy SA result- invalid destination");
         return BAD_VALUE;
     }
     if (CC_UNLIKELY(src == nullptr ||
-                   src->lsc_grid[0][0] == nullptr ||
-                   src->lsc_grid[0][1] == nullptr ||
-                   src->lsc_grid[1][0] == nullptr ||
-                   src->lsc_grid[1][1] == nullptr)) {
+                   src->channel_r == nullptr ||
+                   src->channel_gr == nullptr ||
+                   src->channel_gb == nullptr ||
+                   src->channel_b == nullptr)) {
         LOGE("Failed to deep copy SA result- invalid source");
         return BAD_VALUE;
     }
@@ -1222,15 +1159,13 @@ status_t Intel3aCore::deepCopySAResults(ia_aiq_sa_results *dst,
     dst->width = src->width;
     dst->height = src->height;
     dst->lsc_update = src->lsc_update;
-    dst->color_order = src->color_order;
-    dst->fraction_bits = src->fraction_bits;
 
     if (src->lsc_update) {
-        uint32_t memCopySize = src->width * src->height * sizeof(unsigned short);
-        STDCOPY((int8_t *) dst->lsc_grid[0][0], (int8_t *) src->lsc_grid[0][0], memCopySize);
-        STDCOPY((int8_t *) dst->lsc_grid[0][1], (int8_t *) src->lsc_grid[0][1], memCopySize);
-        STDCOPY((int8_t *) dst->lsc_grid[1][0], (int8_t *) src->lsc_grid[1][0], memCopySize);
-        STDCOPY((int8_t *) dst->lsc_grid[1][1], (int8_t *) src->lsc_grid[1][1], memCopySize);
+        uint32_t memCopySize = src->width * src->height * sizeof(float);
+        STDCOPY((int8_t *) dst->channel_r, (int8_t *) src->channel_r, memCopySize);
+        STDCOPY((int8_t *) dst->channel_gr, (int8_t *) src->channel_gr, memCopySize);
+        STDCOPY((int8_t *) dst->channel_gb, (int8_t *) src->channel_gb, memCopySize);
+        STDCOPY((int8_t *) dst->channel_b, (int8_t *) src->channel_b, memCopySize);
     }
 
     return NO_ERROR;

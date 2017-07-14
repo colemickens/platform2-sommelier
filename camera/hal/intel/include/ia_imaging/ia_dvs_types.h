@@ -160,8 +160,6 @@ typedef struct
                                                      the GDC input image.*/
     bool validate_morph_table;                  /**< False disables morph table validation, true enables. Morph table needs to be validated to
                                                      protect FW. Starting from IPU4 validation is performed in PAL. */
-    bool gdc_uses_floats;                       /**< False keeps dvs providing fixed point Y and UV morphing tables (legacy). True changes dvs to
-                                                     provide only UV table in floating point format. */
 } ia_dvs_configuration;
 
 /** Distortion grid configuration.
@@ -169,20 +167,20 @@ typedef struct
  */
 typedef struct
 {
-    int16_t ldc_col_start;      /*!< Table X offset in pixels from left corner of the sensor maximum visible area.
-                                     e.g. If ldc_col_start=ldc_block_width*(-1)
-                                     then ldc table offset is is one block left compared to the maximum visible sensor area. */
-    int16_t ldc_row_start;      /*!< Table Y offset in pixels from upper corner of the sensor maximum visible area.
-                                     e.g. If ldc_row_start=ldc_block_height*(-1)
-                                     then ldc table offset is is one block up compared to the maximum visible sensor area.  */
-    int16_t ldc_grid_width;     /*!< Indicates number of grid vertices on the horizontal axis. */
-    int16_t ldc_grid_height;    /*!< Indicates number of grid vertices on the vertical axis. */
-    int16_t ldc_block_width;    /*!< Width of the original grid cell (without correction). */
-    int16_t ldc_block_height;   /*!< Height of the original grid cell (without correction). */
+    int16_t GDC_col_start;      /*!< Table X offset in pixels from left corner of the sensor maximum visible area.
+                                     e.g. If GDC_col_start=GDC_block_width*(-1)
+                                     then GDC table offset is is one block left compared to the maximum visible sensor area. */
+    int16_t GDC_row_start;      /*!< Table Y offset in pixels from upper corner of the sensor maximum visible area.
+                                     e.g. If GDC_row_start=GDC_block_height*(-1)
+                                     then GDC table offset is is one block up compared to the maximum visible sensor area.  */
+    int16_t GDC_grid_width;     /*!< Indicates number of grid vertices on the horizontal axis. */
+    int16_t GDC_grid_height;    /*!< Indicates number of grid vertices on the vertical axis. */
+    int16_t GDC_block_width;    /*!< Width of the original grid cell (without correction). */
+    int16_t GDC_block_height;   /*!< Height of the original grid cell (without correction). */
     float *x_deltas;            /*!< Table of x-axis deltas of the grid points. The delta at each point represents the distortion
-                                     that was done. Contains [ldc_grid_height  x ldc_grid_width] values. */
+                                     that was done. Contains [GDC_grid_height  x GDC_grid_width] values. */
     float *y_deltas;            /*!< Table of y-axis deltas of the grid points. The delta at each point represents the distortion
-                                     that was done. Contains [ldc_grid_height  x ldc_grid_width] values. */
+                                     that was done. Contains [GDC_grid_height  x GDC_grid_width] values. */
 } ia_dvs_distortion_config;
 
 /** DVS Motion vector structure.
@@ -221,8 +219,6 @@ typedef struct
     uint32_t *xcoords_uv;
     uint32_t *ycoords_uv;
     bool morph_table_changed;
-    float *xcoords_uv_float; /* uv x-coordinates in float format */
-    float *ycoords_uv_float; /* uv y-coordinates in float format */
 } ia_dvs_morph_table;
 
 /** Digital zoom mode

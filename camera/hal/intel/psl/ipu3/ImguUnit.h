@@ -56,10 +56,9 @@ public:
     virtual status_t notifyPollEvent(PollEventMessage *msg);
 
 private:
-    status_t completeWaitingRequestNext(DeviceMessage &msg);
-
     status_t configureVideoNodes(std::shared_ptr<GraphConfig> graphConfig);
     status_t handleMessageCompleteReq(DeviceMessage &msg);
+    status_t processNextRequest();
     status_t handleMessagePoll(DeviceMessage msg);
     status_t handleMessageFlush(void);
     status_t handleMessageStillParam(DeviceMessage& msg);
@@ -77,6 +76,8 @@ private:
     status_t createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig);
     status_t kickstart();
 
+    status_t allocatePublicStatBuffers(int numBufs);
+    void freePublicStatBuffers();
 private:
     enum ImguState {
         IMGU_RUNNING,
@@ -106,13 +107,18 @@ private:
     std::unique_ptr<PollerThread> mPollerThread;
     std::vector<std::shared_ptr<V4L2DeviceBase>> mNodes; /* PollerThread owns this */
 
-    std::shared_ptr<DebugFrameRate> mFrameRateDebugger;
-
+    std::vector<std::shared_ptr<DeviceMessage>> mMessagesPending; // Keep copy of message until workers start to handle it
     std::vector<std::shared_ptr<DeviceMessage>> mMessagesUnderwork; // Keep copy of message until workers have processed it
     std::map<IPU3NodeNames, std::shared_ptr<V4L2VideoNode>> mConfiguredNodesPerName;
     bool mFirstRequest;
 
     std::map<IPU3NodeNames, camera3_stream_t *> mStreamNodeMapping; /* mStreamNodeMapping doesn't own camera3_stream_t objects */
+
+    std::shared_ptr<SharedItemPool<ia_aiq_af_grid>> mAfFilterBuffPool; /* 3A statistics buffers */
+    std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> mRgbsGridBuffPool;
+    static const int PUBLIC_STATS_POOL_SIZE = 9;
+    static const int IPU3_MAX_STATISTICS_WIDTH = 80;
+    static const int IPU3_MAX_STATISTICS_HEIGHT = 60;
 };
 
 } /* namespace camera2 */

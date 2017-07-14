@@ -40,91 +40,6 @@
 NAMESPACE_DECLARATION {
 namespace PerformanceTraces {
 
-  // this is a bit ugly but this is a compact way to define a no-op
-  // implementation in case LIBCAMERA_RD_FEATURES is not set
-#undef STUB_BODY
-#ifdef LIBCAMERA_RD_FEATURES
-#define STUB_BODY ;
-#else
-#define STUB_BODY {}
-#endif
-
-  class Launch2Preview {
-  public:
-    static void enable(bool set) STUB_BODY
-    static void start(void) STUB_BODY
-    static void stop(int mFrameNum) STUB_BODY
-  };
-
-  class Launch2FocusLock {
-  public:
-    static void enable(bool set) STUB_BODY
-    static void start(void) STUB_BODY
-    static void stop(void) STUB_BODY
-  };
-
-  class Shot2Shot {
-  public:
-    static void enable(bool set) STUB_BODY
-    static void start(void) STUB_BODY
-    static void takePictureCalled(void) STUB_BODY
-    static void stop(void) STUB_BODY
-  };
-
-  class ShutterLag {
-  public:
-    static void enable(bool set) STUB_BODY
-    static void takePictureCalled(void) STUB_BODY
-    static void snapshotTaken(struct timeval *ts) STUB_BODY
-  };
-
-  class AAAProfiler {
-  public:
-    static void enable(bool set) STUB_BODY
-    static void start(void) STUB_BODY
-    static void stop(void) STUB_BODY
-  };
-
-  class SwitchCameras {
-  public:
-    static void enable(bool set) STUB_BODY
-    static void start(int cameraid) STUB_BODY
-    static void getOriginalMode(bool videomode) STUB_BODY
-    static void called(bool videomode) STUB_BODY
-    static void stop(void) STUB_BODY
-  };
-
-/**
- * PnP use following to breakdown all current PI/KPIs(L2P, S2S, HDRS2P,
- * FocusLock, Back/FrontCameraSwitch, StillVideoModeSwitch)
- */
-  class PnPBreakdown {
-  public:
-    static void start(void) STUB_BODY
-    static void enable(bool set) STUB_BODY
-    static void step(const char *func, const char* note = 0, const int mFrameNum = -1) STUB_BODY
-    static void stop(void) STUB_BODY
-  };
-
-  class IOBreakdown {
-  public:
-    IOBreakdown(const char* /*func*/, const char* /*note*/) STUB_BODY
-    ~IOBreakdown() STUB_BODY
-  public:
-    static void start(void) STUB_BODY
-    static void enableBD(bool) STUB_BODY
-    static void enableMemInfo(bool) STUB_BODY
-    static void stop(void) STUB_BODY
-  private:
-    const char *mFuncName;
-    const char *mNote;
-    static bool mMemInfoEnabled;
-    static int mPipeFD;
-    static int mDbgFD;
-    static int mPipeflushFD;
-    static std::mutex mMemMutex; /* serialize write/read op to mDbgFD/mPipeFD */
-  };
-
 /**
  * \class HalAtrace
  *
@@ -141,7 +56,7 @@ namespace PerformanceTraces {
  */
   class HalAtrace {
       public:
-          HalAtrace(const char* func, const char* tag, const char* note = NULL, int value = -1);
+          HalAtrace(const char* func, const char* tag, const char* note = nullptr, int value = -1);
           ~HalAtrace();
           static void reset(void);
       private:
@@ -152,81 +67,6 @@ namespace PerformanceTraces {
    * Helper function to disable all the performance traces
    */
   void reset(void);
-
- /**
-   * Helper macro to call PerformanceTraces::Breakdown::step() with
-   * the proper function name, and pass additional arguments.
-   *
-   * @param note textual description of the trace point
-   */
-  #define PERFORMANCE_TRACES_BREAKDOWN_STEP(note) \
-    PerformanceTraces::PnPBreakdown::step(__FUNCTION__, note)
-
-
- /**
-   * Helper macro to call PerformanceTraces::Breakdown::step() with
-   * the proper function name, and pass additional arguments.
-   *
-   * @param note textual description of the trace point
-   * @param frameCounter frame id this trace relates to
-   *
-   * See also PERFORMANCE_TRACES_BREAKDOWN_STEP_NOPARAM()
-   */
-  #define PERFORMANCE_TRACES_BREAKDOWN_STEP_PARAM(note, mFrameNum) \
-    PerformanceTraces::PnPBreakdown::step(__FUNCTION__, note, mFrameNum)
-
-  #define PERFORMANCE_TRACES_BREAKDOWN_STEP_NOPARAM() \
-    PerformanceTraces::PnPBreakdown::step(__FUNCTION__)
-
-  /**
-   * Helper macro to call when a take picture message
-   * is actually handled.
-   */
-  #define PERFORMANCE_TRACES_SHOT2SHOT_TAKE_PICTURE_HANDLE() \
-      do { \
-          PerformanceTraces::Shot2Shot::takePictureCalled(); \
-          PerformanceTraces::PnPBreakdown::step(__FUNCTION__); \
-      } while(0)
-
- /**
-   * Helper macro to call when takePicture HAL method is called.
-   * This step is used in multiple metrics.
-   */
-  #define PERFORMANCE_TRACES_TAKE_PICTURE_QUEUE() \
-      do { \
-          PerformanceTraces::PnPBreakdown::step(__FUNCTION__);  \
-          PerformanceTraces::ShutterLag::takePictureCalled(); \
-      } while(0)
-
-  /**
-   * Helper macro to call when preview frame has been sent
-   * to display subsystem. This step is used in multiple metrics.
-   *
-   * @param x preview frame counter
-   */
-  #define PERFORMANCE_TRACES_PREVIEW_SHOWN(x) \
-      do { \
-          PerformanceTraces::Launch2Preview::stop(x); \
-          PerformanceTraces::SwitchCameras::stop(); \
-      } while(0)
-
-  /**
-   * Helper macro to call PerformanceTraces::Shot2Shot::takePictureCalled() with
-   * the proper function name.
-   */
-  #define PERFORMANCE_TRACES_LAUNCH_START() \
-      do { \
-          PerformanceTraces::PnPBreakdown::start(); \
-          PerformanceTraces::Launch2FocusLock::start(); \
-          PerformanceTraces::Launch2Preview::start(); \
-          PerformanceTraces::IOBreakdown::start(); \
-      } while(0)
-
-  #define PERFORMANCE_TRACES_IO_STOP() \
-      PerformanceTraces::IOBreakdown::stop();
-
-  #define PERFORMANCE_TRACES_IO_BREAKDOWN(note) \
-      PerformanceTraces::IOBreakdown p(__FUNCTION__, note); \
 
   /**
    * Helper macro to use HalAtrace.

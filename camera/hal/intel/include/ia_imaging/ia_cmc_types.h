@@ -110,24 +110,10 @@ typedef struct
  */
 typedef enum
 {
-    cmc_bayer_order_2x2,                            /*!< Start of enumerations for 2x2 bayer types. */
-    cmc_bayer_order_grbg = cmc_bayer_order_2x2,     /*!< First row contains pixels Gr, R. Second row contains pixels B, Gb. */
-    cmc_bayer_order_rggb,                           /*!< First row contains pixels R, Gr. Second row contains pixels Gb, B. */
-    cmc_bayer_order_bggr,                           /*!< First row contains pixels B, Gb. Second row contains pixels Gr, R. */
-    cmc_bayer_order_gbrg,                           /*!< First row contains pixels Gb, B. Second row contains pixels R, Gr. */
-    cmc_bayer_order_grbi,                           /*!< First row contains pixels Gr, R. Second row contains pixels B, IR. */
-    cmc_bayer_order_irbg,                           /*!< First row contains pixels IR, R. Second row contains pixels B, Gb. */
-    cmc_bayer_order_rgib,                           /*!< First row contains pixels R, Gr. Second row contains pixels IR, B. */
-    cmc_bayer_order_rigb,                           /*!< First row contains pixels R, IR. Second row contains pixels Gb, B. */
-    cmc_bayer_order_bgir,                           /*!< First row contains pixels B, Gb. Second row contains pixels IR, R. */
-    cmc_bayer_order_bigr,                           /*!< First row contains pixels B, IR. Second row contains pixels Gr, R. */
-    cmc_bayer_order_gbri,                           /*!< First row contains pixels Gb, B. Second row contains pixels R, IR. */
-    cmc_bayer_order_ibrg,                           /*!< First row contains pixels IR, B. Second row contains pixels R, Gr. */
-    cmc_bayer_order_4x2 = 128,                      /*!< Start of enumerations for 4x2 bayer types. */
-    cmc_bayer_order_2pd_grbg = cmc_bayer_order_4x2, /*!< Two photodiodes per pixel in Gr, R, B, Gb order (4x2). */
-    cmc_bayer_order_2pd_rggb,                       /*!< Two photodiodes per pixel in R, Gr, Gb, B order (4x2). */
-    cmc_bayer_order_2pd_bggr,                       /*!< Two photodiodes per pixel in B, Gb, Gr, R order (4x2). */
-    cmc_bayer_order_2pd_gbrg,                       /*!< Two photodiodes per pixel in Gb, B, R, Gr order (4x2). */
+    cmc_bayer_order_grbg = 0,  /*!< First row contains pixels Gr, R. Second row contains pixels B, Gb. */
+    cmc_bayer_order_rggb = 1,  /*!< First row contains pixels R, Gr. Second row contains pixels Gb, B. */
+    cmc_bayer_order_bggr = 2,  /*!< First row contains pixels B, Gb. Second row contains pixels Gr, R. */
+    cmc_bayer_order_gbrg = 3,  /*!< First row contains pixels Gb, B. Second row contains pixels R, Gr. */
 } cmc_bayer_order;
 
 /*!
@@ -164,8 +150,7 @@ typedef enum
     cmc_name_id_hdr,                                     /*!< 26 */
     cmc_name_id_infrared_correction,                     /*!< 27 */
     cmc_name_id_lens_shading_correction_4x4,             /*!< 28 */
-    cmc_name_id_lateral_chromatic_aberration_correction, /*!< 29 */
-    cmc_name_id_phase_difference                         /*!< 30 */
+    cmc_name_id_lateral_chromatic_aberration_correction  /*!< 29 */
 } cmc_name_id;
 
 /*!
@@ -239,25 +224,6 @@ typedef enum {
     cmc_light_source_f12                 /*!< Philips TL83, Ultralume 30 */
 } cmc_light_source;
 #define CMC_NUM_LIGHTSOURCES 20
-
-/*!
- * \brief PD sensor type enumeration.
- */
-typedef enum {
-    cmc_pd_sensor_type_non_pd = 0,        /*!< Non-PD sensor */
-    cmc_pd_sensor_type_1,                 /*!< Type 1 (All processing done on sensor) */
-    cmc_pd_sensor_type_2,                 /*!< Type 2 (PD extraction on sensor, statistics processing in IPU) */
-    cmc_pd_sensor_type_3                  /*!< Type 3 (All processing done in IPU) */
-} cmc_pd_sensor_type;
-
-/*!
- * \brief PD technology type enumeration.
- */
-typedef enum {
-    cmc_pd_technology_type_metal_shield = 0,        /*!< Metal shield-based PD */
-    cmc_pd_technology_type_dual_photodiode,         /*!< Dual photodiode-based PD */
-    cmc_pd_technology_type_wide_microlens           /*!< Wide microlens-based PD */
-} cmc_pd_technology_type;
 
 /*!
  * \brief CMC Comment
@@ -670,6 +636,38 @@ typedef struct
 #define SIZEOF_CMC_DIGITAL_GAIN_V102_T 6
 
 /*!
+ * \brief CMC geometric distortion correction (grid based)
+ */
+typedef struct
+{
+    ia_mkn_record_header header;         /*!< Record header with Format ID: UInt16 (See AIQB_DataID), Name ID: CMC_GeometricDistortion2 (See cmc_name_id). */
+    int16_t GDC_col_start;               /*!< Table X offset in pixels from left corner of the sensor maximum visible area e.g. If GDC_col_start=GDC_block_width*(-1)
+                                            then GDC table offset is is one block left compared to the maximum visible sensor area. */
+    int16_t GDC_row_start;               /*!< Table Y offset in pixels from upper corner of the sensor maximum visible area e.g. If GDC_row_start=GDC_block_height*(-1)
+                                            then GDC table offset is is one block up compared to the maximum visible sensor area.  */
+    int16_t GDC_grid_width;              /*!< Indicates number of grid vertices on the horizontal axis. */
+    int16_t GDC_grid_height;             /*!< Indicates number of grid vertices on the vertical axis. */
+    int16_t GDC_block_width;             /*!< Average width of the grid cell in pixel count. */
+    int16_t GDC_block_height;            /*!< Average height of the grid cell in pixel count. */
+    uint16_t nGrids;                     /*!< Number of LDC grids (focus positions). */
+} cmc_geometric_distortion2_t;
+#define SIZEOF_CMC_GEOMETRIC_DISTORTION2_T 22
+
+/*!
+ * \brief CMC geometric distortion correction grids
+ */
+typedef struct
+{
+    uint16_t focus_position;             /*!< Focus motor position in terms of those used by the sensor module.
+                                            Range should be depicted from the cmc_name_id_optics_and_mechanics section in the CPFF.). */
+    int32_t *x_deltas;                  /*!< Table of x-axis deltas of the grid points. The delta at each point represents the distortion
+                                            that was done. Contains [GDC_grid_height  x GDC_grid_width] values. */
+    int32_t *y_deltas;                  /*!< Table of y-axis deltas of the grid points. The delta at each point represents the distortion
+                                            that was done. Contains [GDC_grid_height  x GDC_grid_width] values. */
+} cmc_geometric_distortion2_grid_t;
+#define SIZEOF_CMC_ANALOG_GAIN_PAIR_T 8
+
+/*!
  * \brief CMC Sensor exposure registers ranges.
  */
 typedef struct
@@ -849,53 +847,11 @@ typedef struct
     cmc_analog_gain_pair_t *cmc_digital_gain_pairs;
 } cmc_parsed_digital_gain_t;
 
-/*!
-* \brief CMC geometric distortion correction grids
-*/
 typedef struct
 {
-    uint16_t focus_position;             /*!< Focus motor position in terms of those used by the sensor module.
-                                         Range should be depicted from the cmc_name_id_optics_and_mechanics section in the CPFF.). */
-    int32_t *x_deltas;                  /*!< Table of x-axis deltas of the grid points. The delta at each point represents the distortion
-                                        that was done. Contains [GDC_grid_height  x GDC_grid_width] values. */
-    int32_t *y_deltas;                  /*!< Table of y-axis deltas of the grid points. The delta at each point represents the distortion
-                                        that was done. Contains [GDC_grid_height  x GDC_grid_width] values. */
-} cmc_geometric_distortion2_grid_t;
-
-typedef struct
-{
-    int32_t focalLength;            /*!< Focal length in terms of those used by the camera module.Range should be depicted from the CMC_OpticsAndMechanics section in the CPFF.*/
-    int32_t ldc_r_lut[256];         /*!< LDC(R) LUT table*/
-    int32_t ldc_r_x_center;         /*!< X coordinate of LDC(R) correction center of symmetry */
-    int32_t ldc_r_y_center;         /*!< Y coordinate of LDC(R) correction center of symmetry */
-    int32_t ldc_r_y_scale_factor;   /*!< Y coordinate scaling factor for elliptical distortion of LDC(R) correction */
-} cmc_ldc_lut_t;
-
-typedef struct
-{
-    int16_t ldc_col_start;                             /*!< Table X offset in pixels from left corner of the sensor maximum visible area e.g.
-                                                       If GDC_col_start=GDC_block_width*(-1) then GDC table offset is is one block left compared
-                                                       to the maximum visible sensor area. */
-    int16_t ldc_row_start;                             /*!< Table Y offset in pixels from upper corner of the sensor maximum visible area e.g.
-                                                       If GDC_row_start=GDC_block_height*(-1) then GDC table offset is is one block up compared
-                                                       to the maximum visible sensor area.  */
-    int16_t ldc_grid_width;                            /*!< Indicates number of grid vertices on the horizontal axis. */
-    int16_t ldc_grid_height;                           /*!< Indicates number of grid vertices on the vertical axis. */
-    int16_t ldc_block_width;                           /*!< Average width of the grid cell in pixel count. */
-    int16_t ldc_block_height;                          /*!< Average height of the grid cell in pixel count. */
-    uint16_t ldc_grid_count;                           /*!< Number of LDC grids (focus positions). */
-    int32_t gdc_mode;                                  /*!< GDC mode enum, 0=Grid based (old),  1=LUT based (new, IPU6->) */
-    int32_t ldc_lut_count;                             /*!< Number of LDC Luts (focal lengths) */
-    int32_t spherical_r_lut[256];                      /*!< R-spherical LUT table for spherical to Cartesian coordinate system transformation (dewarping) */
-    int32_t spherical_r_lut_radius_start;              /*!< R-spherical LUT table starting radius, 0-65535 */
-    int32_t spherical_r_lut_radius_end;                /*!< R-spherical LUT table ending radius, 0-65535 */
-    int32_t spherical_to_cartesian_x_center;           /*!< X coordinate of spherical to Cartesian coordinate system transformation (dewarping), 0-65535 */
-    int32_t spherical_to_cartesian_y_center;           /*!< Y coordinate of spherical to Cartesian coordinate system transformation (dewarping), 0-65535 */
-    cmc_geometric_distortion2_grid_t* ldc_grid;        /*!< LDC grids (legacy) */
-    cmc_ldc_lut_t* ldc_lut;                            /*!< LDC LUTs */
+    cmc_geometric_distortion2_t *geometric_distortion2;
+    cmc_geometric_distortion2_grid_t *gdc_grids;
 } cmc_parsed_geometric_distortion2_t;
-#define SIZEOF_CMC_GEOMETRIC_DISTORTION_V100_T 22
-#define SIZEOF_CMC_GEOMETRIC_DISTORTION_V101_SPHERICAL_T 1040 /*(256 + 4) x 4 */
 
 /*!
  * \brief CMC advanced color matrix info
@@ -1042,23 +998,21 @@ typedef struct
 typedef struct
 {
     cmc_light_source source_type;         /*!< Light source type. */
+    float correction_level;               /*!< Luminance correction level. */
     cmc_chromaticity chromaticity;        /*!< Sensor R/G B/G ratios. */
     cmc_cie_coords cie_coords;            /*!< CIE x and y coordinates. */
-    unsigned short fraction_bits;         /*!< Number of fraction bits in the shading table fix point representation. */
-    unsigned short *grids[4][4];          /*!< LSC gain grid stored in fixed point format with variable number of fraction bits, (16-fraction_bits)Qfraction_bits. */
+    uint16_t *grids[4][4];                /*!< LSC Grids for all color channels (as defined by grid_indices). */
 } cmc_lsc_grid;
-#define SIZEOF_CMC_LSC_GAIN_GRID_T 22
 
 typedef struct
 {
     ia_mkn_record_header header;          /*!< Record header with Format ID: UInt16 (See AIQB_DataID), Name ID: cmc_name_id_lens_shading_correction_4x4 (See cmc_name_id). */
     char grid_indices[4][4];              /*!< LSC grid indices showing which tables in the structure holds information. -1 means no correction. */
     unsigned short num_light_srcs;        /*!< Number of light sources. */
-    unsigned short grid_width;            /*!< LSC grid width. */
-    unsigned short grid_height;           /*!< LSC grid height. */
+    unsigned short grid_width;            /*!< LSC Grid width. */
+    unsigned short grid_height;           /*!< LSC Grid height. */
     cmc_lsc_grid *lsc_grids;              /*!< LSC grids for all light sources (as defined by num_light_srcs). */
 } cmc_lens_shading_correction;
-#define SIZEOF_CMC_LENS_SHADING4x4_T 32
 
 typedef struct
 {
@@ -1073,44 +1027,6 @@ typedef struct
     float *lca_grid_blue_x;               /*!< Same as above but for horizontal and blue pixel. */
     float *lca_grid_blue_y;               /*!< Same as above but in vertical direction. */
 } cmc_lateral_chromatic_aberration_correction;
-
-typedef struct
-{
-    uint16_t pattern_horizontal_offsets;    /*!< Buffer of horizontal offsets for repetitive PD pixels within the pattern */
-    uint16_t pattern_vertical_offsets;      /*!< Buffer of vertical offsets for repetitive PD pixels within the pattern */
-    uint16_t pattern_labels;                /*!< Buffer of labels for repetitive PD pixels within the pattern (0 - left pixel, 1 - right pixel) */
-} cmc_pd_pattern_t;
-
-typedef struct
-{
-    uint16_t dlom;                          /*!< Default DLOM table for the reference golden sample */
-} cmc_pd_dlom_t;
-
-typedef struct
-{
-    uint16_t ps_gains_left;                /*!< Default PS gains table for left pixels for the reference golden module */
-    uint16_t ps_gains_right;               /*!< Default PS gains table for right pixels for the reference golden module */
-} cmc_pd_ps_gains_t;
-
-typedef struct
-{
-    ia_mkn_record_header header;            /*!< Record header with Format ID: Uint16 (See AIQB_DataID) Name ID: cmc_name_id_phase_difference */
-    uint16_t sensor_type;                   /*!< PD sensor type (See cmc_pd_sensor_type)*/
-    uint16_t technology_type;               /*!< PD technology type (See cmc_pd_technology_type) */
-    uint16_t pd_horizontal_offset;          /*!< Number of pixel pairs skipped at the beginning of the frame before the start of the first PD pattern */
-    uint16_t pd_vertical_offset;            /*!< Number of line pairs skipped at the beginning of the frame before the start of the first PD pattern */
-    uint16_t num_pd_pixels;                 /*!< Number of repetitive PD pixels within the pattern */
-    uint16_t pattern_width;                 /*!< Pattern width (horizontal period for repetitive PD pixels) */
-    uint16_t pattern_height;                /*!< Pattern height (vertical period for repetitive PD pixels) */
-    uint16_t dlom_width;                    /*!< Number of Disparity of Lens Offset Mapping (DLOM) knots in horizontal orientation */
-    uint16_t dlom_height;                   /*!< Number of Disparity of Lens Offset Mapping (DLOM) knots in vertical orientation */
-    uint16_t ps_gains_width;                /*!< Number of pixel sensitivity (PS) knots in horizontal orientation */
-    uint16_t ps_gains_height;               /*!< Number of pixel sensitivity (PS) knots in vertical orientation */
-    cmc_pd_pattern_t *cmc_pd_pattern;       /*!< PD pattern characterization (num_pd_pixels) */
-    cmc_pd_dlom_t *cmc_pd_dlom;             /*!< Disparity of Lens Offset Mapping characterization (dlom_width*dlom_height) */
-    cmc_pd_ps_gains_t *cmc_pd_ps_gains;     /*!< Pixel sensitivity characterization (ps_gains_width*ps_gains_height) */
-} cmc_phase_difference_t;
-#define SIZEOF_CMC_PHASE_DIFFERENCE_T 30
 
 /*!
  * \brief Parsed CMC structure.
@@ -1137,16 +1053,13 @@ typedef struct
     cmc_parsed_color_matrices_t cmc_parsed_color_matrices;                 /* */
     cmc_parsed_analog_gain_conversion_t cmc_parsed_analog_gain_conversion;
     cmc_parsed_digital_gain_t cmc_parsed_digital_gain;
-    cmc_parsed_geometric_distortion2_t *cmc_parsed_geometric_distortion2;
+    cmc_parsed_geometric_distortion2_t cmc_parsed_geometric_distortion2;
     cmc_exposure_range_t *cmc_exposure_range;
     cmc_multi_led_flash_t *cmc_multi_led_flashes;
     cmc_emd_decoder_config_t *cmc_emd_decoder_config;
     cmc_parsed_advanced_color_matrix_t cmc_parsed_advanced_color_matrix;
     cmc_parsed_hdr_parameters_t *cmc_parsed_hdr_parameters;
     cmc_parsed_ir_weight_t cmc_parsed_ir_weight;
-    cmc_phase_difference_t *cmc_phase_difference;
-    cmc_lateral_chromatic_aberration_correction *cmc_parsed_lca;
-    cmc_lens_shading_correction *cmc_lens_shading;
 } ia_cmc_t;
 
 #ifdef __cplusplus

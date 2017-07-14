@@ -83,7 +83,7 @@ typedef struct ae_public_raw_buffer {
 	ae_public_color_hist_t hist_G;
 	ae_public_color_hist_t hist_B;
 	ae_public_color_hist_t hist_Y;
-} ae_public_raw_buffer_t;
+} ae_public_raw_buffer_t; 
 
 /** @brief Print AE public configuration
  *

@@ -22,14 +22,12 @@
 namespace android {
 namespace camera2 {
 
-const int StatisticsWorker::PUBLIC_STATS_POOL_SIZE = 9;
-const int StatisticsWorker::IPU3_MAX_STATISTICS_WIDTH = 80;
-const int StatisticsWorker::IPU3_MAX_STATISTICS_HEIGHT = 60;
-
-StatisticsWorker::StatisticsWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId) :
+StatisticsWorker::StatisticsWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId,
+                     std::shared_ptr<SharedItemPool<ia_aiq_af_grid>> &afFilterBuffPool,
+                     std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> &rgbsGridBuffPool):
         FrameWorker(node, cameraId, "StatisticsWorker"),
-        mAfFilterBuffPool("AfFilterBuffPool"),
-        mRgbsGridBuffPool("RgbsGridBuffPool")
+        mAfFilterBuffPool(afFilterBuffPool),
+        mRgbsGridBuffPool(rgbsGridBuffPool)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     mPollMe = true;
@@ -38,7 +36,6 @@ StatisticsWorker::StatisticsWorker(std::shared_ptr<V4L2VideoNode> node, int came
 StatisticsWorker::~StatisticsWorker()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    freePublicStatBuffers();
 }
 
 status_t StatisticsWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
@@ -61,12 +58,6 @@ status_t StatisticsWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
     ret = allocateWorkerBuffers();
     if (ret != OK)
         return ret;
-
-    ret = allocatePublicStatBuffers(PUBLIC_STATS_POOL_SIZE);
-    if (ret != OK) {
-        LOGE("Failed to allocate statistics");
-        return ret;
-    }
 
     if (mCameraBuffers[0]->size() < frame.width) {
         LOGE("Stats buffer is not big enough");
@@ -125,8 +116,13 @@ status_t StatisticsWorker::run()
     std::shared_ptr<ia_aiq_rgbs_grid> rgbsGrid = nullptr;
     std::shared_ptr<ia_aiq_af_grid> afGrid = nullptr;
 
-    status = mAfFilterBuffPool.acquireItem(afGrid);
-    status |= mRgbsGridBuffPool.acquireItem(rgbsGrid);
+    if (mAfFilterBuffPool == nullptr || mRgbsGridBuffPool == nullptr) {
+        LOGE("mAfFilterBuffPool and mAfFilterBuffPool not configured");
+        return BAD_VALUE;
+    }
+
+    status = mAfFilterBuffPool->acquireItem(afGrid);
+    status |= mRgbsGridBuffPool->acquireItem(rgbsGrid);
 
     if (status != OK || afGrid.get() == nullptr || rgbsGrid.get() == nullptr) {
         LOGE("Failed to acquire 3A statistics memory from pools");
@@ -169,105 +165,6 @@ status_t StatisticsWorker::postRun()
 {
     mMsg = nullptr;
     return OK;
-}
-
-/**
- * allocatePublicStatBuffers
- *
- * This method allocates the memory for the pool of 3A statistics.
- * The pools are also initialized here.
- *
- * These statistics are the public stats that will be sent to the 3A algorithms.
- *
- * Please do not confuse with the buffers allocated by the driver to get
- * the HW generated statistics. Those are allocated at createStatsBufferPool()
- *
- * The symmetric method to this is freePublicStatBuffers
- * The buffers allocated here are the output of the conversion process
- * from HW generated statistics. This processing is done using the
- * parameter adaptor class.
- *
- * \param[in] numBus: number of buffers to initialize
- *
- * \return OK everything went fine
- * \return NO_MEMORY failed to allocate
- */
-status_t StatisticsWorker::allocatePublicStatBuffers(int numBufs)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    status_t status = OK;
-    int maxGridSize;
-    int allocated = 0;
-    std::shared_ptr<ia_aiq_rgbs_grid> rgbsGrid = nullptr;
-    std::shared_ptr<ia_aiq_af_grid> afGrid = nullptr;
-
-    maxGridSize = IPU3_MAX_STATISTICS_WIDTH * IPU3_MAX_STATISTICS_HEIGHT;
-    status = mAfFilterBuffPool.init(numBufs);
-    status |= mRgbsGridBuffPool.init(numBufs);
-    if (status != OK) {
-        LOGE("Failed to initialize 3A statistics pools");
-        freePublicStatBuffers();
-        return NO_MEMORY;
-    }
-
-    for (allocated = 0; allocated < numBufs; allocated++) {
-        status = mAfFilterBuffPool.acquireItem(afGrid);
-        status |= mRgbsGridBuffPool.acquireItem(rgbsGrid);
-
-        if (status != OK ||
-            afGrid.get() == nullptr ||
-            rgbsGrid.get() == nullptr) {
-            LOGE("Failed to acquire 3A statistics memory from pools");
-            freePublicStatBuffers();
-            return NO_MEMORY;
-        }
-
-        rgbsGrid->blocks_ptr = new rgbs_grid_block[maxGridSize];
-        rgbsGrid->grid_height = 0;
-        rgbsGrid->grid_width = 0;
-
-        afGrid->filter_response_1 = new int[maxGridSize];
-        afGrid->filter_response_2 = new int[maxGridSize];
-        afGrid->block_height = 0;
-        afGrid->block_width = 0;
-        afGrid->grid_height = 0;
-        afGrid->grid_width = 0;
-
-    }
-    return NO_ERROR;
-}
-
-void StatisticsWorker::freePublicStatBuffers()
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    std::shared_ptr<ia_aiq_rgbs_grid> rgbsGrid = nullptr;
-    std::shared_ptr<ia_aiq_af_grid> afGrid = nullptr;
-    status_t status = OK;
-    if (!mAfFilterBuffPool.isFull() ||
-        !mRgbsGridBuffPool.isFull()) {
-        LOGE("We are leaking stats- AF:%s RGBS:%s",
-                mAfFilterBuffPool.isFull()? "NO" : "YES",
-                mRgbsGridBuffPool.isFull()? "NO" : "YES");
-    }
-    size_t availableItems = mAfFilterBuffPool.availableItems();
-    for (size_t i = 0; i < availableItems; i++) {
-        status = mAfFilterBuffPool.acquireItem(afGrid);
-        if (status == OK && afGrid.get() != nullptr) {
-            DELETE_ARRAY_AND_NULLIFY(afGrid->filter_response_1);
-            DELETE_ARRAY_AND_NULLIFY(afGrid->filter_response_2);
-        } else {
-            LOGE("Could not acquire filter response [%d] for deletion - leak?", i);
-        }
-    }
-    availableItems = mRgbsGridBuffPool.availableItems();
-    for (size_t i = 0; i < availableItems; i++) {
-        status = mRgbsGridBuffPool.acquireItem(rgbsGrid);
-        if (status == OK && rgbsGrid.get() != nullptr) {
-            DELETE_ARRAY_AND_NULLIFY(rgbsGrid->blocks_ptr);
-        } else {
-            LOGE("Could not acquire RGBS grid [%d] for deletion - leak?", i);
-        }
-    }
 }
 
 } /* namespace camera2 */

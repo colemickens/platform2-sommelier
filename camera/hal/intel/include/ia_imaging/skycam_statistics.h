@@ -25,12 +25,10 @@
 extern "C" {
 #endif
 
-
     ia_err skycam_statistics_convert(
         const ia_css_4a_statistics* statistics,
         ia_aiq_rgbs_grid *out_rgbs_grid,
         ia_aiq_af_grid *out_af_grid);
-
 
 #ifdef __cplusplus
 }

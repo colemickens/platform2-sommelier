@@ -720,7 +720,7 @@ public:
 	Blocks			     NameId; // from recordHeader
 	int32_t				 nOfRecordParmas;
 	URecordParam		 paramList;
-   	ISPRecord();
+	ISPRecord();
 	const RecordParam * Param(int paramID) const
 	{
 		for (int32_t i = 0; i < nOfRecordParmas; ++i)

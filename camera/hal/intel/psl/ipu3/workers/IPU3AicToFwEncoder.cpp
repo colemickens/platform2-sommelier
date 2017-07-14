@@ -728,6 +728,8 @@ ispYTmLutEncode(aic_config *config, ipu3_uapi_params *params)
 #else
     params->acc_param.ytm.enable = config->ytm_en;
 #endif
+
+    params->use.acc_ytm = 1;
 }
 
 void
@@ -750,6 +752,8 @@ ispTccEncode(aic_config *config, ipu3_uapi_params *params)
 
     memcpy(params->acc_param.tcc.r_sqr_lut.entries, config->yuvp2_2500_config.tcc.r_sqr_lut.entries,
             sizeof(params->acc_param.tcc.r_sqr_lut.entries));
+
+    params->use.acc_tcc = 1;
 }
 
 status_t
@@ -864,6 +868,7 @@ ispBdsEncode(aic_config *config, ipu3_uapi_params *params)
         return status;
     }
 
+    params->use.acc_bds = 1;
     return status;
 }
 
@@ -1183,6 +1188,7 @@ ispOBGEncode(aic_config *config, ipu3_uapi_params *params)
     params->obgrid_param.b = config->obgrid_2500_config.table_B[0];
     params->obgrid_param.gb = config->obgrid_2500_config.table_GB[0];
 
+    params->use.obgrid = 1;
     params->use.obgrid_param = 1;
 }
 

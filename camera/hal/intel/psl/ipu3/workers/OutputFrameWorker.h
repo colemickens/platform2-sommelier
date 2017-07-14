@@ -47,6 +47,7 @@ private:
     std::shared_ptr<CameraBuffer> mOutputBuffer;
     camera3_stream_t* mStream; /* OutputFrameWorker doesn't own mStream */
     bool mAllDone;
+    bool mUseInternalBuffer;
 };
 
 } /* namespace camera2 */

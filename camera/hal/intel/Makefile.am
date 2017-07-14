@@ -60,7 +60,6 @@ IMAGEPROCESSSRC = common/imageProcess/ColorConverter.cpp \
 COMMONSRC = common/SysCall.cpp \
             common/Camera3V4l2Format.cpp \
             common/CameraWindow.cpp \
-            common/DebugFrameRate.cpp \
             common/LogHelper.cpp \
             common/LogHelperChrome.cpp \
             common/MessageThread.cpp \
@@ -100,11 +99,8 @@ libcamerahal_la_SOURCES = $(3ASRC) \
 
 #cpphacks
 CPPHACKS = -std=c++11 \
-   -D__user= \
    -DPAGESIZE=4096 \
-   -DHAVE_IA_TYPES \
-   -DCAMERA_HAL_DEBUG \
-   -DHAVE_PTHREADS
+   -DCAMERA_HAL_DEBUG
 
 libcamerahal_la_CPPFLAGS = $(CPPHACKS)
 
@@ -112,6 +108,7 @@ libcamerahal_la_CPPFLAGS = $(CPPHACKS)
 libcamerahal_la_CPPFLAGS += -DNAMESPACE_DECLARATION=namespace\ android\ {\namespace\ camera2
 libcamerahal_la_CPPFLAGS += -DNAMESPACE_DECLARATION_END=}
 libcamerahal_la_CPPFLAGS += -DUSING_DECLARED_NAMESPACE=using\ namespace\ android::camera2
+
 libcamerahal_la_CPPFLAGS += $(ARC_CAMERA3_ANDROID_HEADERS_CFLAGS) \
                             $(LIBCAMERA_CLIENT_CFLAGS) \
                             $(LIBCAMERA_METADATA_CFLAGS) \

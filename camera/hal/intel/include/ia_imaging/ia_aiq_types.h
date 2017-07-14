@@ -311,12 +311,11 @@ typedef struct
  */
 typedef struct {
 
-    ia_aiq_ae_feature_setting motion_blur_control;          /*!< AEC modifies exposure time/analog gain ratio based on movement in the image. */
-    ia_aiq_ae_feature_setting backlight_compensation;       /*!< AEC analyzes and modifies exposure parameters based on backlight detection algorithm. */
-    ia_aiq_ae_feature_setting face_utilization;             /*!< AEC uses face coordinates in exposure calculations for next frame. */
-    ia_aiq_ae_feature_setting red_eye_reduction_flash;      /*!< AEC will propose flashes before pre-flashes to reduce red eye effect. */
-    ia_aiq_ae_feature_setting fill_in_flash;                /*!< AEC will propose flash in back light situations, where target is close enough. */
-    ia_aiq_ae_feature_setting continuous_flicker_detection; /*!< AEC runs the flicker detection algorithm continuously in the VF */
+    ia_aiq_ae_feature_setting motion_blur_control;      /*!< AEC modifies exposure time/analog gain ratio based on movement in the image. */
+    ia_aiq_ae_feature_setting backlight_compensation;   /*!< AEC analyzes and modifies exposure parameters based on backlight detection algorithm. */
+    ia_aiq_ae_feature_setting face_utilization;         /*!< AEC uses face coordinates in exposure calculations for next frame. */
+    ia_aiq_ae_feature_setting red_eye_reduction_flash;  /*!< AEC will propose flashes before pre-flashes to reduce red eye effect. */
+    ia_aiq_ae_feature_setting fill_in_flash;            /*!< AEC will propose flash in back light situations, where target is close enough. */
 } ia_aiq_ae_features;
 
 
@@ -708,14 +707,17 @@ ia_aiq_ir_weight_t;
  * \brief Shading Adaptor results.
  */
 typedef struct {
-    unsigned short* lsc_grid[4][4];                   /*!< Pointers to the LSC grid for all color channels. Invalid channels are set to NULL. */
-    unsigned short width;                             /*!< Width of LSC grid. */
-    unsigned short height;                            /*!< Height of LSC grid. */
-    unsigned int fraction_bits;                       /*!< Number of fraction bits for the shading table fix point representation. */
-    cmc_bayer_order color_order;                      /*!< Color channels order. */
-    bool lsc_update;                                  /*!< Indicates if LSC grid has been modified and shall be updated in ISP. false - no change, true - new LSC. */
+    float *channel_gr;                                /*!< Pointer to the LSC table for Gr color channel. */
+    float *channel_r;                                 /*!< Pointer to the LSC table for R color channel. */
+    float *channel_b;                                 /*!< Pointer to the LSC table for B color channel. */
+    float *channel_gb;                                /*!< Pointer to the LSC table for Gb color channel. */
+    unsigned short width;                             /*!< Width of LSC table. */
+    unsigned short height;                            /*!< Height of LSC table. */
+    bool lsc_update;                                  /*!< Indicates if LSC table has been modified and shall be updated in ISP. false - no change, true - new LSC. */
     light_source_t light_source[CMC_NUM_LIGHTSOURCES];/*!< Weights per light source type used in calculation of the LSC tables. */
-    float confidence;                                 /*!< Confidence in results. */
+    float scene_difficulty;                           /*!< Weighted cumulative confidence within selected patches (normalized against num_patches). */
+    unsigned short num_patches;                       /*!< Number of patches that were used to make decision. */
+    float covered_area;                               /*!< Statistics area covered by selected patches (%). */
     ia_aiq_frame_params frame_params;                 /*!< Frame parameters that describe cropped area size and its position under LSC grid. */
 } ia_aiq_sa_results;
 

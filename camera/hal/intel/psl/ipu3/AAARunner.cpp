@@ -616,21 +616,16 @@ status_t AAARunner::processAfTriggers(RequestCtrlState &reqAiqCfg)
 
 status_t AAARunner::processSAResults(RequestCtrlState &reqState)
 {
-    status_t status = NO_ERROR;
+    status_t status = OK;
     if (reqState.captureSettings->aiqResults.saResults.lsc_update &&
          reqState.captureSettings->shadingMapMode ==
          ANDROID_STATISTICS_LENS_SHADING_MAP_MODE_ON) {
         Intel3aPlus::LSCGrid inputGrid;
         ia_aiq_sa_results &sar = reqState.captureSettings->aiqResults.saResults;
-        color_order_t co_ind;
-        status = m3aWrapper->checkColorOrder(sar.color_order, &co_ind);
-        if (status != NO_ERROR)
-            return BAD_VALUE;
-
-        inputGrid.gridB = sar.lsc_grid[co_ind.b[0]][co_ind.b[1]];
-        inputGrid.gridR = sar.lsc_grid[co_ind.r[0]][co_ind.r[1]];
-        inputGrid.gridGr = sar.lsc_grid[co_ind.gr[0]][co_ind.gr[1]];
-        inputGrid.gridGb = sar.lsc_grid[co_ind.gb[0]][co_ind.gb[1]];
+        inputGrid.gridB = sar.channel_b;
+        inputGrid.gridR = sar.channel_r;
+        inputGrid.gridGr = sar.channel_gr;
+        inputGrid.gridGb = sar.channel_gb;
         inputGrid.width = sar.width;
         inputGrid.height = sar.height;
 
@@ -903,16 +898,10 @@ void AAARunner::applyDigitalGain(RequestCtrlState &reqState, float digitalGain) 
     ia_aiq_sa_results &saResults = reqState.captureSettings->aiqResults.saResults;
     uint32_t lscSize = saResults.width * saResults.height;
     for (uint32_t i = 0; i < lscSize; i++) {
-        saResults.lsc_grid[0][0][i] *= digitalGain;
-    }
-    for (uint32_t i = 0; i < lscSize; i++) {
-        saResults.lsc_grid[0][1][i] *= digitalGain;
-    }
-    for (uint32_t i = 0; i < lscSize; i++) {
-        saResults.lsc_grid[1][0][i] *= digitalGain;
-    }
-    for (uint32_t i = 0; i < lscSize; i++) {
-        saResults.lsc_grid[1][1][i] *= digitalGain;
+        saResults.channel_b[i]  *= digitalGain;
+        saResults.channel_r[i]  *= digitalGain;
+        saResults.channel_gb[i] *= digitalGain;
+        saResults.channel_gr[i] *= digitalGain;
     }
 }
 
@@ -937,20 +926,14 @@ void AAARunner::initLsc(AiqResults &results, uint32_t lscSize) const
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     ia_aiq_sa_results &saResults = results.saResults;
-    saResults.fraction_bits = 0; /*can be any value between 0 and 15 */
-    unsigned short initialValue = 1 << saResults.fraction_bits;
-    // only use 2X2 array, other is expand interface
-    unsigned short *data = saResults.lsc_grid[0][0];
     for (uint32_t i = 0; i < lscSize; i++) {
-        *data++ = initialValue;
+        saResults.channel_b[i]  = 1.0f;
+        saResults.channel_r[i]  = 1.0f;
+        saResults.channel_gb[i] = 1.0f;
+        saResults.channel_gr[i] = 1.0f;
     }
-    MEMCPY_S(saResults.lsc_grid[0][1], lscSize * sizeof(unsigned short),
-             saResults.lsc_grid[0][0], lscSize * sizeof(unsigned short));
-    MEMCPY_S(saResults.lsc_grid[1][0], lscSize * sizeof(unsigned short),
-             saResults.lsc_grid[0][0], lscSize * sizeof(unsigned short));
-    MEMCPY_S(saResults.lsc_grid[1][1], lscSize * sizeof(unsigned short),
-             saResults.lsc_grid[0][0], lscSize * sizeof(unsigned short));
 }
+
 
 } /* namespace camera2 */
 } /* namespace android */

@@ -60,13 +60,6 @@ static const unsigned int COLOR_MATRIX_ELEMENT_COUNT = 9;  // 3 x 3 matrix
 static const unsigned int MAKERNOTE_SECTION1_SIZE = 32000;  // 32KB
 static const unsigned int MAKERNOTE_SECTION2_SIZE = 100000;  //100KB
 
-typedef struct {
-    uint8_t r[2];
-    uint8_t gr[2];
-    uint8_t gb[2];
-    uint8_t b[2];
-} color_order_t;
-
 /**
  * \struct RequestStatistics
  *
@@ -209,10 +202,10 @@ private:
     float mBGammaLut[MAX_GAMMA_LUT_SIZE];
 
     /*!< ia_aiq_sa_results pointer content */
-    unsigned short *mChannelR;
-    unsigned short *mChannelGR;
-    unsigned short *mChannelGB;
-    unsigned short *mChannelB;
+    float *mChannelR;
+    float *mChannelGR;
+    float *mChannelGB;
+    float *mChannelB;
 };
 
 struct SceneOverride {
@@ -338,10 +331,10 @@ public:
     public: /* this was a struct: class just to satisfy a static code scanner */
         uint16_t width;
         uint16_t height;
-        unsigned short *gridR;
-        unsigned short *gridGr;
-        unsigned short *gridGb;
-        unsigned short *gridB;
+        float *gridR;
+        float *gridGr;
+        float *gridGb;
+        float *gridB;
 
         bool isBad() const {
             return (gridB == nullptr || gridGb == nullptr || gridR == nullptr ||
@@ -369,7 +362,6 @@ public:
                                  const ia_aiq_gbce_results *src);
     static status_t deepCopyPAResults(ia_aiq_pa_results *dst, const ia_aiq_pa_results *src);
     static status_t deepCopySAResults(ia_aiq_sa_results *dst, const ia_aiq_sa_results *src);
-    static status_t checkColorOrder(cmc_bayer_order a_color_order, color_order_t *a_order_ptr);
 
     const ia_cmc_t* getCmc() const { return mCmc; }
     char mapUiImageEnhancement2Aiq(int uiValue);

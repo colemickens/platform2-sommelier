@@ -117,7 +117,6 @@ static int hal_dev_open(const hw_module_t* module, const char* name,
     PerformanceTraces::HalAtrace::reset();
 
     PERFORMANCE_HAL_ATRACE();
-    PERFORMANCE_TRACES_LAUNCH_START();
 
     if (!name || !module || !device) {
         LOGE("Camera name is nullptr");
@@ -162,8 +161,6 @@ static int hal_dev_close(hw_device_t* device)
         sInstanceCount--;
         sInstances[id] = false;
     }
-    PERFORMANCE_TRACES_BREAKDOWN_STEP("Close_HAL_Done");
-    PERFORMANCE_TRACES_IO_STOP();
 
     return 0;
 }

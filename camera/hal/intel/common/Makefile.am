@@ -61,13 +61,7 @@ libhalcommon_la_SOURCES = $(HAL_COMMON_SRC)
 
 #cpphacks
 CPPHACKS = -std=c++11 \
-    -D__user= \
     -DPAGESIZE=4096 \
-    -Dstrlcpy=strncpy \
-    -DHAVE_LINUX_OS \
-    -DBYPASS_MODE \
-    -DHAVE_PTHREADS \
-    -DHAVE_IA_TYPES \
     -DCAMERA_HAL_DEBUG \
     -DDUMP_IMAGE
 
@@ -113,7 +107,6 @@ libhalcommon_include_HEADERS = \
     TracedSP.h \
     UtilityMacros.h \
     CameraWindow.h \
-    DebugFrameRate.h \
     platformdata/Metadata.h \
     platformdata/CameraConf.h \
     platformdata/CameraMetadataHelper.h \
