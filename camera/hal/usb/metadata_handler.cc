@@ -31,9 +31,6 @@ MetadataHandler::MetadataHandler(const camera_metadata_t& metadata)
   // camera3_request_template_t starts at 1.
   for (int i = 1; i < CAMERA3_TEMPLATE_COUNT; i++) {
     template_settings_[i] = CreateDefaultRequestSettings(i);
-    if (template_settings_[i].get() == nullptr) {
-      LOGF(ERROR) << "metadata for template type (" << i << ") is NULL";
-    }
   }
 
   thread_checker_.DetachFromThread();
@@ -84,12 +81,10 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
          1);
   UPDATE(ANDROID_CONTROL_AE_ANTIBANDING_MODE, &ae_antibanding_mode, 1);
 
-  const uint8_t ae_available_modes[] = {ANDROID_CONTROL_AE_MODE_ON,
-                                        ANDROID_CONTROL_AE_MODE_OFF};
-  UPDATE(ANDROID_CONTROL_AE_AVAILABLE_MODES, ae_available_modes,
-         ARRAY_SIZE(ae_available_modes));
+  const uint8_t ae_available_mode = ANDROID_CONTROL_AE_MODE_ON;
+  UPDATE(ANDROID_CONTROL_AE_AVAILABLE_MODES, &ae_available_mode, 1);
   // ON means auto-exposure is active with no flash control.
-  UPDATE(ANDROID_CONTROL_AE_MODE, &ae_available_modes[0], 1);
+  UPDATE(ANDROID_CONTROL_AE_MODE, &ae_available_mode, 1);
 
   const int32_t ae_exposure_compensation = 0;
   UPDATE(ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION, &ae_exposure_compensation,
@@ -123,7 +118,7 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
   const uint8_t control_available_modes[] = {ANDROID_CONTROL_MODE_OFF,
                                              ANDROID_CONTROL_MODE_AUTO};
   UPDATE(ANDROID_CONTROL_AVAILABLE_MODES, control_available_modes,
-         sizeof(control_available_modes));
+         ARRAY_SIZE(control_available_modes));
 
   // android.edge
   const uint8_t available_edge_modes[] = {ANDROID_EDGE_MODE_OFF,
@@ -682,8 +677,7 @@ CameraMetadataUniquePtr MetadataHandler::CreateDefaultRequestSettings(
       return NULL;
   }
 
-  const uint8_t control_mode = ANDROID_CONTROL_MODE_AUTO;
-  if (ret || data.update(ANDROID_CONTROL_MODE, &control_mode, 1)) {
+  if (ret) {
     return CameraMetadataUniquePtr();
   }
   return CameraMetadataUniquePtr(data.release());
@@ -691,20 +685,28 @@ CameraMetadataUniquePtr MetadataHandler::CreateDefaultRequestSettings(
 
 int MetadataHandler::FillDefaultPreviewSettings(
     android::CameraMetadata* metadata) {
+  // android.control
   const uint8_t capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_PREVIEW;
   UPDATE(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1);
+
+  const uint8_t control_mode = ANDROID_CONTROL_MODE_AUTO;
+  UPDATE(ANDROID_CONTROL_MODE, &control_mode, 1);
   return 0;
 }
 
 int MetadataHandler::FillDefaultStillCaptureSettings(
     android::CameraMetadata* metadata) {
-  const uint8_t capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE;
-  UPDATE(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1);
-
   // android.colorCorrection
   const uint8_t color_aberration_mode =
       ANDROID_COLOR_CORRECTION_ABERRATION_MODE_HIGH_QUALITY;
   UPDATE(ANDROID_COLOR_CORRECTION_ABERRATION_MODE, &color_aberration_mode, 1);
+
+  // android.control
+  const uint8_t capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE;
+  UPDATE(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1);
+
+  const uint8_t control_mode = ANDROID_CONTROL_MODE_AUTO;
+  UPDATE(ANDROID_CONTROL_MODE, &control_mode, 1);
 
   // android.edge
   const uint8_t edge_mode = ANDROID_EDGE_MODE_HIGH_QUALITY;
@@ -719,31 +721,36 @@ int MetadataHandler::FillDefaultStillCaptureSettings(
 
 int MetadataHandler::FillDefaultVideoRecordSettings(
     android::CameraMetadata* metadata) {
+  // android.control
   const uint8_t capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_RECORD;
   UPDATE(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1);
+
+  const uint8_t control_mode = ANDROID_CONTROL_MODE_AUTO;
+  UPDATE(ANDROID_CONTROL_MODE, &control_mode, 1);
   return 0;
 }
 
 int MetadataHandler::FillDefaultVideoSnapshotSettings(
     android::CameraMetadata* metadata) {
+  // android.control
   const uint8_t capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_SNAPSHOT;
   UPDATE(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1);
+
+  const uint8_t control_mode = ANDROID_CONTROL_MODE_AUTO;
+  UPDATE(ANDROID_CONTROL_MODE, &control_mode, 1);
   return 0;
 }
 
 int MetadataHandler::FillDefaultZeroShutterLagSettings(
     android::CameraMetadata* metadata) {
-  const uint8_t capture_intent =
-      ANDROID_CONTROL_CAPTURE_INTENT_ZERO_SHUTTER_LAG;
-  UPDATE(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1);
-  return 0;
+  // Do not support ZSL template.
+  return -EINVAL;
 }
 
 int MetadataHandler::FillDefaultManualSettings(
     android::CameraMetadata* metadata) {
-  const uint8_t capture_intent = ANDROID_CONTROL_CAPTURE_INTENT_MANUAL;
-  UPDATE(ANDROID_CONTROL_CAPTURE_INTENT, &capture_intent, 1);
-  return 0;
+  // Do not support manual template.
+  return -EINVAL;
 }
 
 }  // namespace arc
