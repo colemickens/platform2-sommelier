@@ -328,9 +328,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("kevin")) {
     // TODO(jdufault): Remove this once quick unlock launches on all boards.
     builder->AddFeatureEnableOverride("QuickUnlockPin");
-
-    // TODO(dcastagna): All rk3399 boards should get the following flags too.
-    builder->AddArg("--num-raster-threads=1");
   }
   if (builder->UseFlagIsSet("veyron_minnie"))
     builder->AddArg("--enable-hardware-overlays=single-fullscreen");
