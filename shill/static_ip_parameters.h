@@ -36,6 +36,9 @@ class StoreInterface;
 // parameters to an IPConfig object.
 class StaticIPParameters {
  public:
+  static const char kConfigKeyPrefix[];
+  static const char kSavedConfigKeyPrefix[];
+
   StaticIPParameters();
   virtual ~StaticIPParameters();
 
@@ -86,8 +89,6 @@ class StaticIPParameters {
     Type type;
   };
 
-  static const char kConfigKeyPrefix[];
-  static const char kSavedConfigKeyPrefix[];
   static const Property kProperties[];
 
   // These functions try to retrieve the argument |property| out of the

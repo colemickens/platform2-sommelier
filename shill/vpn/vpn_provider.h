@@ -26,6 +26,7 @@
 #include "shill/provider_interface.h"
 #include "shill/refptr_types.h"
 #include "shill/technology.h"
+#include "shill/virtual_device.h"
 
 namespace shill {
 
@@ -83,7 +84,10 @@ class VPNProvider : public ProviderInterface {
   const std::vector<uint32_t>& allowed_uids() const { return allowed_uids_; }
   const std::vector<std::string>& allowed_iifs() const { return allowed_iifs_; }
 
+  VirtualDeviceRefPtr arc_device() const { return arc_device_; }
+
  private:
+  friend class ArcVpnDriverTest;
   friend class VPNProviderTest;
   FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
   FRIEND_TEST(VPNProviderTest, ArcDeviceFound);
@@ -141,6 +145,8 @@ class VPNProvider : public ProviderInterface {
   std::vector<VPNServiceRefPtr> services_;
   std::vector<uint32_t> allowed_uids_;
   std::vector<std::string> allowed_iifs_;
+
+  VirtualDeviceRefPtr arc_device_;
 
   DISALLOW_COPY_AND_ASSIGN(VPNProvider);
 };

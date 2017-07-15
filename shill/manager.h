@@ -555,6 +555,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual std::vector<std::string> GetDeviceInterfaceNames();
 
  private:
+  friend class ArcVpnDriverTest;
   friend class CellularTest;
   friend class DeviceInfoTest;
   friend class ManagerAdaptorInterface;

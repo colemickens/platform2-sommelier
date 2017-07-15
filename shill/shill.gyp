@@ -347,6 +347,7 @@
         }],
         ['USE_vpn == 1', {
           'sources': [
+            'vpn/arc_vpn_driver.cc',
             'vpn/l2tp_ipsec_driver.cc',
             'vpn/openvpn_driver.cc',
             'vpn/openvpn_management_server.cc',
@@ -874,6 +875,7 @@
               'sources': [
                 'shims/environment.cc',
                 'shims/environment_unittest.cc',
+                'vpn/arc_vpn_driver_unittest.cc',
                 'vpn/l2tp_ipsec_driver_unittest.cc',
                 'vpn/mock_openvpn_driver.cc',
                 'vpn/mock_openvpn_management_server.cc',

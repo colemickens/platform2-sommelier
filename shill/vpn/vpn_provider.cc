@@ -31,6 +31,7 @@
 #include "shill/process_manager.h"
 #include "shill/profile.h"
 #include "shill/store_interface.h"
+#include "shill/vpn/arc_vpn_driver.h"
 #include "shill/vpn/l2tp_ipsec_driver.h"
 #include "shill/vpn/openvpn_driver.h"
 #include "shill/vpn/third_party_vpn_driver.h"
@@ -187,6 +188,14 @@ bool VPNProvider::OnDeviceInfoAvailable(const string& link_name,
                                         int interface_index,
                                         Technology::Identifier technology) {
   if (technology == Technology::kArc) {
+    arc_device_ = new VirtualDevice(control_interface_,
+                                    dispatcher_,
+                                    metrics_,
+                                    manager_,
+                                    link_name,
+                                    interface_index,
+                                    Technology::kArc);
+    arc_device_->SetFixedIpParams(true);
     // Forward ARC->internet traffic over third-party VPN services.
     allowed_iifs_.push_back(link_name);
     return true;
@@ -277,6 +286,12 @@ VPNServiceRefPtr VPNProvider::CreateServiceInner(const string& type,
     driver.reset(new ThirdPartyVpnDriver(
         control_interface_, dispatcher_, metrics_, manager_,
         manager_->device_info()));
+  } else if (type == kProviderArcVpn) {
+    driver.reset(new ArcVpnDriver(control_interface_,
+                                  dispatcher_,
+                                  metrics_,
+                                  manager_,
+                                  manager_->device_info()));
   } else {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kNotSupported,
