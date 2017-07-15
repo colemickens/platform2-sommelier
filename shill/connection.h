@@ -88,6 +88,7 @@ class Connection : public base::RefCounted<Connection> {
 
   Connection(int interface_index,
              const std::string& interface_name,
+             bool fixed_ip_params,
              Technology::Identifier technology_,
              const DeviceInfo* device_info,
              ControlInterface* control_interface);
@@ -247,6 +248,8 @@ class Connection : public base::RefCounted<Connection> {
   std::vector<uint32_t> allowed_uids_;
   std::vector<std::string> allowed_iifs_;
 
+  // Do not reconfigure the IP addresses, subnet mask, broadcast, etc.
+  bool fixed_ip_params_;
   uint8_t table_id_;
   IPAddress local_;
   IPAddress gateway_;

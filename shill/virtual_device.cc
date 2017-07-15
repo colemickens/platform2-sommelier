@@ -59,7 +59,9 @@ bool VirtualDevice::Save(StoreInterface* /*storage*/) {
 
 void VirtualDevice::Start(Error* error,
                           const EnabledStateChangedCallback& /*callback*/) {
-  rtnl_handler()->SetInterfaceFlags(interface_index(), IFF_UP, IFF_UP);
+  if (!fixed_ip_params()) {
+    rtnl_handler()->SetInterfaceFlags(interface_index(), IFF_UP, IFF_UP);
+  }
   // TODO(quiche): Should we call OnEnabledStateChanged, like other Devices?
   if (error)
     error->Reset();  // indicate immediate completion

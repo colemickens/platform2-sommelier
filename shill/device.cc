@@ -167,7 +167,8 @@ Device::Device(ControlInterface* control_interface,
       time_(Time::GetInstance()),
       last_link_monitor_failed_time_(0),
       is_loose_routing_(false),
-      is_multi_homed_(false) {
+      is_multi_homed_(false),
+      fixed_ip_params_(false) {
   store_.RegisterConstString(kAddressProperty, &hardware_address_);
 
   // kBgscanMethodProperty: Registered in WiFi
@@ -379,6 +380,10 @@ void Device::SetIsMultiHomed(bool is_multi_homed) {
       EnableReversePathFilter();
     }
   }
+}
+
+void Device::SetFixedIpParams(bool fixed_ip_params) {
+  fixed_ip_params_ = fixed_ip_params;
 }
 
 void Device::DisableArpFiltering() {
@@ -1184,6 +1189,7 @@ void Device::CreateConnection() {
   if (!connection_.get()) {
     connection_ = new Connection(interface_index_,
                                  link_name_,
+                                 fixed_ip_params_,
                                  technology_,
                                  manager_->device_info(),
                                  control_interface_);
@@ -1939,7 +1945,9 @@ void Device::SetEnabledUnchecked(bool enable, Error* error,
     running_ = false;
     DestroyIPConfig();         // breaks a reference cycle
     SelectService(nullptr);    // breaks a reference cycle
-    rtnl_handler_->SetInterfaceFlags(interface_index(), 0, IFF_UP);
+    if (!fixed_ip_params_) {
+      rtnl_handler_->SetInterfaceFlags(interface_index(), 0, IFF_UP);
+    }
     SLOG(this, 3) << "Device " << link_name_ << " ipconfig_ "
                   << (ipconfig_ ? "is set." : "is not set.");
     SLOG(this, 3) << "Device " << link_name_ << " ip6config_ "

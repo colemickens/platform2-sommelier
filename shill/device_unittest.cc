@@ -1049,6 +1049,27 @@ TEST_F(DeviceTest, Stop) {
   EXPECT_FALSE(device_->selected_service_.get());
 }
 
+TEST_F(DeviceTest, StopWithFixedIpParams) {
+  device_->SetFixedIpParams(true);
+  device_->enabled_ = true;
+  device_->enabled_pending_ = true;
+  device_->ipconfig_ = new IPConfig(&control_interface_, kDeviceName);
+  scoped_refptr<MockService> service(new NiceMock<MockService>(
+      &control_interface_, dispatcher(), metrics(), manager()));
+  SelectService(service);
+
+  EXPECT_CALL(*service, state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitBoolChanged(kPoweredProperty, false));
+  EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, _, _)).Times(0);
+  device_->SetEnabled(false);
+  device_->OnEnabledStateChanged(ResultCallback(), Error());
+
+  EXPECT_FALSE(device_->ipconfig_.get());
+  EXPECT_FALSE(device_->selected_service_.get());
+}
+
 TEST_F(DeviceTest, StartProhibited) {
   DeviceRefPtr device(new TestDevice(control_interface(),
                                      dispatcher(),

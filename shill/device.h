@@ -222,6 +222,12 @@ class Device : public base::RefCounted<Device> {
   // http://linux-ip.net/html/ether-arp.html for more details on this effect.
   virtual void SetIsMultiHomed(bool is_multi_homed);
 
+  // Used for devices that are managed by an entity other than shill.
+  // If true, shill will not attempt to change the device's IP
+  // address, subnet mask, broadcast address, or manipulate the interface
+  // state.  This setting is disabled by default.
+  virtual void SetFixedIpParams(bool fixed_ip_params);
+
   const std::string& address() const { return hardware_address_; }
   const std::string& link_name() const { return link_name_; }
   int interface_index() const { return interface_index_; }
@@ -408,6 +414,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, StartTrafficMonitor);
   FRIEND_TEST(DeviceTest, Stop);
   FRIEND_TEST(DeviceTest, StopTrafficMonitor);
+  FRIEND_TEST(DeviceTest, StopWithFixedIpParams);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
@@ -662,6 +669,8 @@ class Device : public base::RefCounted<Device> {
   Manager* manager() const { return manager_; }
   const LinkMonitor* link_monitor() const { return link_monitor_.get(); }
   void set_link_monitor(LinkMonitor* link_monitor);
+  bool fixed_ip_params() const { return fixed_ip_params_; }
+
   // Use for unit test.
   void set_traffic_monitor(TrafficMonitor* traffic_monitor);
 
@@ -895,6 +904,9 @@ class Device : public base::RefCounted<Device> {
 
   // Track the current same-net multi-home state.
   bool is_multi_homed_;
+
+  // If true, IP parameters should not be modified.
+  bool fixed_ip_params_;
 
   // Remember which flag files were previously successfully written.
   std::set<std::string> written_flags_;

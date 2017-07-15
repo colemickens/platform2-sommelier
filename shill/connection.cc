@@ -92,6 +92,7 @@ void Connection::Binder::OnDisconnect() {
 
 Connection::Connection(int interface_index,
                        const std::string& interface_name,
+                       bool fixed_ip_params,
                        Technology::Identifier technology,
                        const DeviceInfo* device_info,
                        ControlInterface* control_interface)
@@ -104,6 +105,7 @@ Connection::Connection(int interface_index,
       interface_name_(interface_name),
       technology_(technology),
       per_device_routing_(false),
+      fixed_ip_params_(fixed_ip_params),
       table_id_(RT_TABLE_MAIN),
       local_(IPAddress::kFamilyUnknown),
       gateway_(IPAddress::kFamilyUnknown),
@@ -130,7 +132,9 @@ Connection::~Connection() {
   DCHECK(!routing_request_count_);
   routing_table_->FlushRoutes(interface_index_);
   routing_table_->FlushRoutesWithTag(interface_index_);
-  device_info_->FlushAddresses(interface_index_);
+  if (!fixed_ip_params_) {
+    device_info_->FlushAddresses(interface_index_);
+  }
   routing_table_->FlushRules(interface_index_);
   routing_table_->FreeTableId(table_id_);
 }
@@ -260,20 +264,25 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
     LOG(WARNING) << "Expect limited network connectivity.";
   }
 
-  if (device_info_->HasOtherAddress(interface_index_, local)) {
-    // The address has changed for this interface.  We need to flush
-    // everything and start over.
-    LOG(INFO) << __func__ << ": Flushing old addresses and routes.";
-    routing_table_->FlushRoutes(interface_index_);
-    device_info_->FlushAddresses(interface_index_);
-  }
+  if (!fixed_ip_params_) {
+    if (device_info_->HasOtherAddress(interface_index_, local)) {
+      // The address has changed for this interface.  We need to flush
+      // everything and start over.
+      LOG(INFO) << __func__ << ": Flushing old addresses and routes.";
+      routing_table_->FlushRoutes(interface_index_);
+      device_info_->FlushAddresses(interface_index_);
+    }
 
-  LOG(INFO) << __func__ << ": Installing with parameters:"
-            << " local=" << local.ToString()
-            << " broadcast=" << broadcast.ToString()
-            << " peer=" << peer.ToString()
-            << " gateway=" << gateway.ToString();
-  rtnl_handler_->AddInterfaceAddress(interface_index_, local, broadcast, peer);
+    LOG(INFO) << __func__ << ": Installing with parameters:"
+              << " local=" << local.ToString()
+              << " broadcast=" << broadcast.ToString()
+              << " peer=" << peer.ToString()
+              << " gateway=" << gateway.ToString();
+
+    rtnl_handler_->AddInterfaceAddress(
+        interface_index_, local, broadcast, peer);
+    SetMTU(properties.mtu);
+  }
 
   if (gateway.IsValid() && properties.default_route) {
     routing_table_->SetDefaultRoute(interface_index_, gateway,
@@ -286,8 +295,6 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
   // Install any explicitly configured routes at the default metric.
   routing_table_->ConfigureRoutes(interface_index_, config, kDefaultMetric,
                                   table_id_);
-
-  SetMTU(properties.mtu);
 
   if (properties.blackhole_ipv6) {
     routing_table_->CreateBlackholeRoute(interface_index_,

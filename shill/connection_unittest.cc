@@ -116,16 +116,13 @@ class ConnectionTest : public Test {
  public:
   ConnectionTest()
       : device_info_(new StrictMock<MockDeviceInfo>(
-            &control_,
-            nullptr,
-            nullptr,
-            nullptr)),
-        connection_(new Connection(
-            kTestDeviceInterfaceIndex0,
-            kTestDeviceName0,
-            Technology::kUnknown,
-            device_info_.get(),
-            &control_)),
+            &control_, nullptr, nullptr, nullptr)),
+        connection_(new Connection(kTestDeviceInterfaceIndex0,
+                                   kTestDeviceName0,
+                                   false,
+                                   Technology::kUnknown,
+                                   device_info_.get(),
+                                   &control_)),
         ipconfig_(new IPConfig(&control_, kTestDeviceName0)),
         ip6config_(new IPConfig(&control_, kTestDeviceName0)),
         local_address_(IPAddress::kFamilyIPv4),
@@ -247,6 +244,7 @@ class ConnectionTest : public Test {
   ConnectionRefPtr GetNewConnection() {
     ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex0,
                                                kTestDeviceName0,
+                                               false,
                                                Technology::kUnknown,
                                                device_info_.get(),
                                                &control_));
@@ -653,6 +651,46 @@ TEST_F(ConnectionTest, AddConfigWithDNSDomain) {
   connection_->SetMetric(GetDefaultMetric());
 }
 
+TEST_F(ConnectionTest, AddConfigWithFixedIpParams) {
+  ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex0,
+                                             kTestDeviceName0,
+                                             true,
+                                             Technology::kUnknown,
+                                             device_info_.get(),
+                                             &control_));
+  ReplaceSingletons(connection);
+
+  // Initial setup: routes but no IP configuration.
+  EXPECT_CALL(*device_info_, HasOtherAddress(_, _)).Times(0);
+  EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _, _)).Times(0);
+  EXPECT_CALL(routing_table_, SetDefaultRoute(_, _, _, _));
+  AddRoutingPolicyExpectations(kTestDeviceInterfaceIndex0,
+                               GetNonDefaultMetricBase());
+  EXPECT_CALL(routing_table_, ConfigureRoutes(_, _, _, _));
+  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(_, _)).Times(0);
+  connection->UpdateFromIPConfig(ipconfig_);
+  Mock::VerifyAndClearExpectations(&routing_table_);
+  Mock::VerifyAndClearExpectations(&rtnl_handler_);
+  Mock::VerifyAndClearExpectations(device_info_.get());
+
+  // Change metric to make this the default service.
+  AddRoutingPolicyExpectations(kTestDeviceInterfaceIndex0, GetDefaultMetric());
+  EXPECT_CALL(routing_table_, SetDefaultMetric(_, _));
+  EXPECT_CALL(resolver_, SetDNSFromLists(_, _));
+  DeviceRefPtr device;
+  EXPECT_CALL(*device_info_, GetDevice(_)).WillOnce(Return(device));
+  EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
+  connection->SetUseDNS(true);
+  connection->SetMetric(GetDefaultMetric());
+
+  // Destructor should flush routes + rules, but not addresses.
+  EXPECT_CALL(*device_info_, FlushAddresses(_)).Times(0);
+  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(routing_table_, FlushRoutesWithTag(kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(routing_table_, FlushRules(kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(routing_table_, FreeTableId(_));
+}
+
 TEST_F(ConnectionTest, HasOtherAddress) {
   EXPECT_CALL(*device_info_,
               HasOtherAddress(kTestDeviceInterfaceIndex0,
@@ -730,6 +768,7 @@ TEST_F(ConnectionTest, RouteRequest) {
 TEST_F(ConnectionTest, Destructor) {
   ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex1,
                                              kTestDeviceName1,
+                                             false,
                                              Technology::kUnknown,
                                              device_info_.get(),
                                              &control_));
