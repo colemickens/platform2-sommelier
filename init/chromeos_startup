@@ -47,6 +47,14 @@ check_directory()
   fi
 }
 
+# Checks if /var is close to being full.
+# Returns exit code of 0 (boolean true) if there is less than 10MB of
+# free space left in /var.
+is_var_full() {
+  local var_avail="$(df -k --output=avail /var | grep -E -o '[0-9]+')"
+  [ ${var_avail} -lt 10000 ]
+}
+
 # Mount debugfs as bootstat depends on /sys/kernel/debug
 mount -n -t debugfs -o nodev,noexec,nosuid,mode=0750,uid=0,gid=debugfs-access \
   debugfs /sys/kernel/debug
@@ -257,6 +265,15 @@ mount_or_fail --bind /mnt/stateful_partition/home /home
 remember_mount /var
 remember_mount /home/chronos
 do_mount_var_and_home_chronos || cleanup_mounts "var and home"
+
+# If /var is too full, delete the logs so the device can boot successfully.
+# It is possible that the fullness of /var was not due to logs, but that
+# is very unlikely. If such a thing happens, we have a serious problem
+# which should not be covered up here.
+if is_var_full; then
+  rm -r -f /var/log
+  echo "Startup.ReclaimFullVar" > /mnt/stateful_partition/.reclaim_full_var
+fi
 
 # Gather log if needed.
 dev_gather_logs
