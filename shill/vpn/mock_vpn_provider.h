@@ -33,8 +33,10 @@ class MockVPNProvider : public VPNProvider {
 
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
-  MOCK_METHOD2(OnDeviceInfoAvailable, bool(const std::string& link_name,
-                                           int interface_index));
+  MOCK_METHOD3(OnDeviceInfoAvailable,
+               bool(const std::string& link_name,
+                    int interface_index,
+                    Technology::Identifier technology));
   MOCK_CONST_METHOD0(HasActiveService, bool());
 
  private:

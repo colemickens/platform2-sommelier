@@ -25,6 +25,7 @@
 
 #include "shill/provider_interface.h"
 #include "shill/refptr_types.h"
+#include "shill/technology.h"
 
 namespace shill {
 
@@ -63,7 +64,8 @@ class VPNProvider : public ProviderInterface {
   // Offers an unclaimed interface to VPN services.  Returns true if this
   // device has been accepted by a service.
   virtual bool OnDeviceInfoAvailable(const std::string& link_name,
-                                     int interface_index);
+                                     int interface_index,
+                                     Technology::Identifier technology);
 
   // Clean up a VPN services that has been unloaded and will be deregistered.
   // This removes the VPN provider's reference to this service in its
@@ -84,6 +86,7 @@ class VPNProvider : public ProviderInterface {
  private:
   friend class VPNProviderTest;
   FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
+  FRIEND_TEST(VPNProviderTest, ArcDeviceFound);
   FRIEND_TEST(VPNProviderTest, CreateService);
   FRIEND_TEST(VPNProviderTest, OnDeviceInfoAvailable);
   FRIEND_TEST(VPNProviderTest, RemoveService);

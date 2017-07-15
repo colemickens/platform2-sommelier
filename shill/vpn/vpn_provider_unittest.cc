@@ -195,8 +195,8 @@ TEST_F(VPNProviderTest, OnDeviceInfoAvailable) {
   provider_.services_.push_back(new VPNService(&control_, nullptr, &metrics_,
                                                nullptr, bad_driver.release()));
 
-  EXPECT_FALSE(provider_.OnDeviceInfoAvailable(kInterfaceName,
-                                               kInterfaceIndex));
+  EXPECT_FALSE(provider_.OnDeviceInfoAvailable(
+      kInterfaceName, kInterfaceIndex, Technology::kTunnel));
 
   auto good_driver = base::MakeUnique<MockVPNDriver>();
   EXPECT_CALL(*good_driver.get(), ClaimInterface(_, _))
@@ -210,8 +210,20 @@ TEST_F(VPNProviderTest, OnDeviceInfoAvailable) {
   provider_.services_.push_back(new VPNService(&control_, nullptr, &metrics_,
                                                nullptr, dup_driver.release()));
 
-  EXPECT_TRUE(provider_.OnDeviceInfoAvailable(kInterfaceName, kInterfaceIndex));
+  EXPECT_TRUE(provider_.OnDeviceInfoAvailable(
+      kInterfaceName, kInterfaceIndex, Technology::kTunnel));
   provider_.services_.clear();
+}
+
+TEST_F(VPNProviderTest, ArcDeviceFound) {
+  const string kInterfaceName("arcbr0");
+  const int kInterfaceIndex = 1;
+
+  EXPECT_EQ(provider_.allowed_iifs_.size(), 0);
+  EXPECT_TRUE(provider_.OnDeviceInfoAvailable(
+      kInterfaceName, kInterfaceIndex, Technology::kArc));
+  EXPECT_EQ(provider_.allowed_iifs_.size(), 1);
+  EXPECT_EQ(provider_.allowed_iifs_[0], kInterfaceName);
 }
 
 TEST_F(VPNProviderTest, RemoveService) {

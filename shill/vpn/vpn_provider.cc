@@ -72,10 +72,6 @@ void VPNProvider::Start() {
       allowed_uids_.push_back(static_cast<uint32_t>(entry->pw_uid));
     }
   }
-  // Temporary hack to forward Android traffic over the VPN.  This will
-  // go away when --arc-device is implemented (later in the patch series).
-  allowed_iifs_.push_back("arcbr0");
-  allowed_iifs_.push_back("br0");
 }
 
 void VPNProvider::Stop() {}
@@ -188,7 +184,14 @@ ServiceRefPtr VPNProvider::FindSimilarService(const KeyValueStore& args,
 }
 
 bool VPNProvider::OnDeviceInfoAvailable(const string& link_name,
-                                        int interface_index) {
+                                        int interface_index,
+                                        Technology::Identifier technology) {
+  if (technology == Technology::kArc) {
+    // Forward ARC->internet traffic over third-party VPN services.
+    allowed_iifs_.push_back(link_name);
+    return true;
+  }
+
   for (const auto& service : services_) {
     if (service->driver()->ClaimInterface(link_name, interface_index)) {
       return true;

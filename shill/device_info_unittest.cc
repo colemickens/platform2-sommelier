@@ -595,7 +595,8 @@ TEST_F(DeviceInfoTest, CreateDeviceTunnelAccepted) {
   MockVPNProvider* vpn_provider = new StrictMock<MockVPNProvider>;
   SetVPNProvider(vpn_provider);
   EXPECT_CALL(*vpn_provider,
-              OnDeviceInfoAvailable(kTestDeviceName, kTestDeviceIndex))
+              OnDeviceInfoAvailable(
+                  kTestDeviceName, kTestDeviceIndex, Technology::kTunnel))
       .WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
@@ -612,7 +613,8 @@ TEST_F(DeviceInfoTest, CreateDeviceTunnelRejected) {
   MockVPNProvider* vpn_provider = new StrictMock<MockVPNProvider>;
   SetVPNProvider(vpn_provider);
   EXPECT_CALL(*vpn_provider,
-              OnDeviceInfoAvailable(kTestDeviceName, kTestDeviceIndex))
+              OnDeviceInfoAvailable(
+                  kTestDeviceName, kTestDeviceIndex, Technology::kTunnel))
       .WillOnce(Return(false));
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
@@ -631,7 +633,8 @@ TEST_F(DeviceInfoTest, CreateDevicePPP) {
   MockVPNProvider* vpn_provider = new StrictMock<MockVPNProvider>;
   SetVPNProvider(vpn_provider);
   EXPECT_CALL(*vpn_provider,
-              OnDeviceInfoAvailable(kTestDeviceName, kTestDeviceIndex))
+              OnDeviceInfoAvailable(
+                  kTestDeviceName, kTestDeviceIndex, Technology::kPPP))
       .WillOnce(Return(false));
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,

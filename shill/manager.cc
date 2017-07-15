@@ -251,6 +251,10 @@ void Manager::SetWhitelistedDevices(const vector<string>& whitelisted_devices) {
   whitelisted_devices_ = whitelisted_devices;
 }
 
+void Manager::SetArcDevice(const string& arc_device) {
+  arc_device_ = arc_device;
+}
+
 void Manager::ApplyPolicies() {
   if (!policy_provider_.get())
     policy_provider_.reset(new policy::PolicyProvider());

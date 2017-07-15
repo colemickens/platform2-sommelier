@@ -468,6 +468,7 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string& link_name,
   DeviceRefPtr device;
   delayed_devices_.erase(interface_index);
   infos_[interface_index].technology = technology;
+  bool flush = true;
 
   switch (technology) {
     case Technology::kCellular:
@@ -530,6 +531,9 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string& link_name,
       manager_->wimax_provider()->OnDeviceInfoAvailable(link_name);
       break;
 #endif  // DISABLE_WIMAX
+    case Technology::kArc:
+      // shill doesn't touch the IP configuration for kArc devices.
+      flush = false;
     case Technology::kPPP:
     case Technology::kTunnel:
       // Tunnel and PPP devices are managed by the VPN code (PPP for
@@ -540,8 +544,8 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string& link_name,
       SLOG(this, 2) << "Tunnel / PPP link " << link_name
                     << " at index " << interface_index
                     << " -- notifying VPNProvider.";
-      if (!manager_->vpn_provider()->OnDeviceInfoAvailable(link_name,
-                                                           interface_index) &&
+      if (!manager_->vpn_provider()->OnDeviceInfoAvailable(
+              link_name, interface_index, technology) &&
           technology == Technology::kTunnel) {
         // If VPN does not know anything about this tunnel, it is probably
         // left over from a previous instance and should not exist.
@@ -582,9 +586,11 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string& link_name,
                             technology);
   }
 
-  // Reset the routing table and addresses.
-  routing_table_->FlushRoutes(interface_index);
-  FlushAddresses(interface_index);
+  if (flush) {
+    // Reset the routing table and addresses.
+    routing_table_->FlushRoutes(interface_index);
+    FlushAddresses(interface_index);
+  }
 
   manager_->UpdateUninitializedTechnologies();
 
@@ -664,7 +670,9 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
     indices_[link_name] = dev_index;
 
     if (!link_name.empty()) {
-      if (IsDeviceBlackListed(link_name)) {
+      if (link_name == manager_->arc_device()) {
+        technology = Technology::kArc;
+      } else if (IsDeviceBlackListed(link_name)) {
         technology = Technology::kBlacklisted;
       } else if (!manager_->DeviceManagementAllowed(link_name)) {
         technology = Technology::kBlacklisted;
