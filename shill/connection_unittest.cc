@@ -237,6 +237,10 @@ MATCHER_P(IsValidRoutingTableEntry, dst, "") {
   return dst.Equals(arg.dst);
 }
 
+MATCHER_P(IsValidThrowRoute, dst, "") {
+  return dst.Equals(arg.dst) && arg.type == RTN_THROW;
+}
+
 MATCHER_P(IsLinkRouteTo, dst, "") {
   return dst.HasSameAddressAs(arg.dst) &&
       arg.dst.prefix() ==
@@ -348,13 +352,16 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
   EXPECT_CALL(routing_table_,
               ConfigureRoutes(kTestDeviceInterfaceIndex0, ipconfig_,
                               GetDefaultMetric(), 1));
-  EXPECT_CALL(
-      routing_table_,
-      RequestRouteToHost(IsIPAddress(address1, address1.prefix()), -1,
-                         kTestDeviceInterfaceIndex0, IsNonNullCallback(), 1))
-      .WillOnce(Return(true));
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(kTestDeviceInterfaceIndex0,
                                              IPConfig::kDefaultMTU));
+
+  // SetupExcludedRoutes should create RTN_THROW entries for both networks.
+  EXPECT_CALL(routing_table_, AddRoute(kTestDeviceInterfaceIndex0,
+                                       IsValidThrowRoute(address1)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_, AddRoute(kTestDeviceInterfaceIndex0,
+                                       IsValidThrowRoute(address2)))
+      .WillOnce(Return(true));
 
   MockFirewallProxy* firewall_proxy = new MockFirewallProxy();
   connection->firewall_proxy_.reset(firewall_proxy);
@@ -380,17 +387,6 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
       .WillRepeatedly(ReturnRef(kInterfaceName));
   EXPECT_CALL(*device1, connection())
       .WillRepeatedly(testing::ReturnRef(device_connection));
-  EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex1))
-      .WillOnce(Return(device1));
-
-  EXPECT_CALL(routing_table_, AddRoute(kTestDeviceInterfaceIndex1,
-                                       IsValidRoutingTableEntry(address2)))
-      .WillOnce(Return(true));
-
-  connection->OnRouteQueryResponse(
-      kTestDeviceInterfaceIndex1,
-      RoutingTableEntry(default_address_, default_address_, default_address_, 1,
-                        1, false));
 
   IPAddress test_local_address(local_address_);
   test_local_address.set_prefix(kPrefix0);
@@ -398,17 +394,6 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
   EXPECT_TRUE(gateway_address_.Equals(GetGatewayAddress(connection)));
   EXPECT_TRUE(GetHasBroadcastDomain(connection));
   EXPECT_FALSE(connection->IsIPv6());
-
-  EXPECT_CALL(routing_table_,
-              CreateLinkRoute(kTestDeviceInterfaceIndex0,
-                              IsIPAddress(local_address_, kPrefix0),
-                              IsIPAddress(gateway_address_, 0), 1))
-      .WillOnce(Return(true))
-      .WillOnce(Return(false));
-  EXPECT_TRUE(connection->CreateGatewayRoute());
-  EXPECT_FALSE(connection->CreateGatewayRoute());
-  connection->has_broadcast_domain_ = false;
-  EXPECT_FALSE(connection->CreateGatewayRoute());
 
   EXPECT_CALL(routing_table_,
               SetDefaultMetric(kTestDeviceInterfaceIndex0, GetDefaultMetric()));

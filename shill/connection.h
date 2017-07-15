@@ -204,6 +204,9 @@ class Connection : public base::RefCounted<Connection> {
                               IPAddress* gateway,
                               const IPAddress& trusted_ip);
   bool PinHostRoute(const IPAddress& trusted_ip, const IPAddress& gateway);
+  bool SetupExcludedRoutes(const IPConfig::Properties& properties,
+                           const IPAddress& gateway,
+                           IPAddress* trusted_ip);
   void SetMTU(int32_t mtu);
 
   void OnRouteQueryResponse(int interface_index,

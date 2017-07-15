@@ -139,23 +139,39 @@ Connection::~Connection() {
   TearDownIptableEntries();
 }
 
-void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
-  SLOG(this, 2) << __func__ << " " << interface_name_;
-
-  const IPConfig::Properties& properties = config->properties();
-  user_traffic_only_ = properties.user_traffic_only;
-  table_id_ = user_traffic_only_ ? kSecondaryTableId : (uint8_t)RT_TABLE_MAIN;
-
-  IPAddress gateway(properties.address_family);
-  if (!properties.gateway.empty() &&
-      !gateway.SetAddressFromString(properties.gateway)) {
-    LOG(ERROR) << "Gateway address " << properties.gateway << " is invalid";
-    return;
-  }
-
+bool Connection::SetupExcludedRoutes(const IPConfig::Properties& properties,
+                                     const IPAddress& gateway,
+                                     IPAddress* trusted_ip) {
   excluded_ips_cidr_ = properties.exclusion_list;
 
-  IPAddress trusted_ip(properties.address_family);
+  if (user_traffic_only_) {
+    // If this connection has its own dedicated routing table, exclusion
+    // is as simple as adding an RTN_THROW entry for each item on the list.
+    // Traffic that matches the RTN_THROW entry will cause the kernel to
+    // stop traversing our routing table and try the next rule in the list.
+    IPAddress empty_ip(properties.address_family);
+    RoutingTableEntry entry(empty_ip,
+                            empty_ip,
+                            empty_ip,
+                            0,
+                            RT_SCOPE_LINK,
+                            false,
+                            table_id_,
+                            RTN_THROW,
+                            RoutingTableEntry::kDefaultTag);
+    for (const auto& excluded_ip : excluded_ips_cidr_) {
+      if (!entry.dst.SetAddressAndPrefixFromString(excluded_ip) ||
+          !entry.dst.IsValid() ||
+          !routing_table_->AddRoute(interface_index_, entry)) {
+        LOG(ERROR) << "Unable to setup route for " << excluded_ip << ".";
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Otherwise, query the main routing table to find our default gateway
+  // and then pin the excluded routes to that IP/device.
   if (!excluded_ips_cidr_.empty()) {
     const std::string first_excluded_ip = excluded_ips_cidr_[0];
     excluded_ips_cidr_.erase(excluded_ips_cidr_.begin());
@@ -171,15 +187,32 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
     // The optimal connection to reach the first excluded IP is found below.
     // When this is found the route for the remaining excluded IPs are pinned in
     // the method PinPendingRoutes below.
-    if (!trusted_ip.SetAddressAndPrefixFromString(first_excluded_ip)) {
+    trusted_ip->set_family(gateway.family());
+    if (!trusted_ip->SetAddressAndPrefixFromString(first_excluded_ip)) {
       LOG(ERROR) << "Trusted IP address "
                  << first_excluded_ip << " is invalid";
-      return;
+      return false;
     }
-    if (!PinHostRoute(trusted_ip, gateway)) {
+    if (!PinHostRoute(*trusted_ip, gateway)) {
       LOG(ERROR) << "Unable to pin host route to " << first_excluded_ip;
-      return;
+      return false;
     }
+  }
+  return true;
+}
+
+void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
+  SLOG(this, 2) << __func__ << " " << interface_name_;
+
+  const IPConfig::Properties& properties = config->properties();
+  user_traffic_only_ = properties.user_traffic_only;
+  table_id_ = user_traffic_only_ ? kSecondaryTableId : (uint8_t)RT_TABLE_MAIN;
+
+  IPAddress gateway(properties.address_family);
+  if (!properties.gateway.empty() &&
+      !gateway.SetAddressFromString(properties.gateway)) {
+    LOG(ERROR) << "Gateway address " << properties.gateway << " is invalid";
+    return;
   }
 
   IPAddress local(properties.address_family);
@@ -207,6 +240,11 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
       !peer.SetAddressFromString(properties.peer_address)) {
     LOG(ERROR) << "Peer address " << properties.peer_address
                << " is invalid";
+    return;
+  }
+
+  IPAddress trusted_ip(IPAddress::kFamilyUnknown);
+  if (!SetupExcludedRoutes(properties, gateway, &trusted_ip)) {
     return;
   }
 
