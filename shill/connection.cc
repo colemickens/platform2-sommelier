@@ -535,6 +535,7 @@ bool Connection::FixGatewayReachability(const IPAddress& local,
                           RT_SCOPE_LINK,
                           false,
                           table_id_,
+                          RTN_UNICAST,
                           RoutingTableEntry::kDefaultTag);
 
   if (!routing_table_->AddRoute(interface_index_, entry)) {

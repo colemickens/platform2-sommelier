@@ -489,7 +489,7 @@ class ConnectionDiagnosticsTest : public Test {
     EXPECT_CALL(dispatcher_, PostTask(_, _));
     RoutingTableEntry entry(
         address_queried, IPAddress(address_queried.family()), gateway, 0,
-        RT_SCOPE_UNIVERSE, true, connection_->table_id(), -1);
+        RT_SCOPE_UNIVERSE, true, connection_->table_id(), RTN_UNICAST, -1);
     connection_diagnostics_.OnRouteQueryResponse(connection_->interface_index(),
                                                  entry);
   }

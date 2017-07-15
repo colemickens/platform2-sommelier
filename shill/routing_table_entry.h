@@ -38,6 +38,7 @@ struct RoutingTableEntry {
         scope(0),
         from_rtnl(false),
         table(RT_TABLE_MAIN),
+        type(RTN_UNICAST),
         tag(kDefaultTag) {}
 
   RoutingTableEntry(const IPAddress& dst_in,
@@ -53,6 +54,7 @@ struct RoutingTableEntry {
         scope(scope_in),
         from_rtnl(from_rtnl_in),
         table(RT_TABLE_MAIN),
+        type(RTN_UNICAST),
         tag(kDefaultTag) {}
 
   RoutingTableEntry(const IPAddress& dst_in,
@@ -69,6 +71,7 @@ struct RoutingTableEntry {
         scope(scope_in),
         from_rtnl(from_rtnl_in),
         table(RT_TABLE_MAIN),
+        type(RTN_UNICAST),
         tag(tag_in) {}
 
   RoutingTableEntry(const IPAddress& dst_in,
@@ -78,6 +81,7 @@ struct RoutingTableEntry {
                     unsigned char scope_in,
                     bool from_rtnl_in,
                     unsigned char table_in,
+                    unsigned char type_in,
                     int tag_in)
       : dst(dst_in),
         src(src_in),
@@ -86,6 +90,7 @@ struct RoutingTableEntry {
         scope(scope_in),
         from_rtnl(from_rtnl_in),
         table(table_in),
+        type(type_in),
         tag(tag_in) {}
 
   RoutingTableEntry(const RoutingTableEntry& b)
@@ -96,6 +101,7 @@ struct RoutingTableEntry {
         scope(b.scope),
         from_rtnl(b.from_rtnl),
         table(b.table),
+        type(b.type),
         tag(b.tag) {}
 
   RoutingTableEntry& operator=(const RoutingTableEntry& b) {
@@ -106,6 +112,7 @@ struct RoutingTableEntry {
     scope = b.scope;
     from_rtnl = b.from_rtnl;
     table = b.table;
+    type = b.type;
     tag = b.tag;
 
     return *this;
@@ -121,6 +128,7 @@ struct RoutingTableEntry {
             scope == b.scope &&
             from_rtnl == b.from_rtnl &&
             table == b.table &&
+            type == b.type &&
             tag == b.tag);
   }
 
@@ -131,6 +139,7 @@ struct RoutingTableEntry {
   unsigned char scope;
   bool from_rtnl;
   unsigned char table;
+  unsigned char type;
   int tag;
 };
 

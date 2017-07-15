@@ -200,6 +200,7 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
                                     RT_SCOPE_UNIVERSE,
                                     false,
                                     table_id,
+                                    RTN_UNICAST,
                                     RoutingTableEntry::kDefaultTag));
 }
 
@@ -242,6 +243,7 @@ bool RoutingTable::ConfigureRoutes(int interface_index,
                                     RT_SCOPE_UNIVERSE,
                                     false,
                                     table_id,
+                                    RTN_UNICAST,
                                     RoutingTableEntry::kDefaultTag))) {
       ret = false;
     }
@@ -350,6 +352,7 @@ bool RoutingTable::ParseRoutingTableMessage(const RTNLMessage& message,
   entry->scope = route_status.scope;
   entry->from_rtnl = true;
   entry->table = route_status.table;
+  entry->type = route_status.type;
 
   return true;
 }
@@ -422,7 +425,8 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
         nent->src.Equals(entry.src) &&
         nent->gateway.Equals(entry.gateway) &&
         nent->scope == entry.scope &&
-        nent->metric == entry.metric) {
+        nent->metric == entry.metric &&
+        nent->type == entry.type) {
       if (message.mode() == RTNLMessage::kModeDelete) {
         table.erase(nent);
       } else if (message.mode() == RTNLMessage::kModeAdd) {
@@ -467,7 +471,7 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
       entry.table,
       RTPROT_BOOT,
       entry.scope,
-      RTN_UNICAST,
+      entry.type,
       0));
 
   message.SetAttribute(RTA_DST, entry.dst.address());
@@ -479,8 +483,14 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
   }
   message.SetAttribute(RTA_PRIORITY,
                        ByteString::CreateFromCPUUInt32(entry.metric));
-  message.SetAttribute(RTA_OIF,
-                       ByteString::CreateFromCPUUInt32(interface_index));
+
+  if (entry.type == RTN_UNICAST) {
+    // Note that RouteMsgHandler will ignore anything without RTA_OIF,
+    // because that is how it looks up the |tables_| vector.  But
+    // FlushRoutes() and FlushRoutesWithTag() do not care.
+    message.SetAttribute(RTA_OIF,
+                         ByteString::CreateFromCPUUInt32(interface_index));
+  }
 
   return rtnl_handler_->SendMessage(&message);
 }
@@ -624,6 +634,7 @@ bool RoutingTable::CreateLinkRoute(int interface_index,
                                     RT_SCOPE_LINK,
                                     false,
                                     table_id,
+                                    RTN_UNICAST,
                                     RoutingTableEntry::kDefaultTag));
 }
 

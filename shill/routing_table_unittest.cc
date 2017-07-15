@@ -310,6 +310,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
                            RT_SCOPE_UNIVERSE,
                            true,
                            kTestTableId,
+                           RTN_UNICAST,
                            RoutingTableEntry::kDefaultTag);
   // Add a single entry.
   SendRouteEntry(RTNLMessage::kModeAdd,
@@ -526,6 +527,7 @@ TEST_F(RoutingTableTest, LowestMetricDefault) {
                           RT_SCOPE_UNIVERSE,
                           true /* from_rtnl_in */,
                           kTestTableId,
+                          RTN_UNICAST,
                           RoutingTableEntry::kDefaultTag);
 
   // Add the same entry three times, with different metrics.
@@ -569,6 +571,7 @@ TEST_F(RoutingTableTest, IPv6StatelessAutoconfiguration) {
                            RT_SCOPE_UNIVERSE,
                            true /* from_rtnl_in */,
                            kTestTableId,
+                           RTN_UNICAST,
                            RoutingTableEntry::kDefaultTag);
 
   // Simulate an RTPROT_RA kernel message indicating that it processed a
@@ -604,6 +607,7 @@ TEST_F(RoutingTableTest, IPv6StatelessAutoconfiguration) {
                            RT_SCOPE_UNIVERSE,
                            true /* from_rtnl_in */,
                            kTestTableId,
+                           RTN_UNICAST,
                            RoutingTableEntry::kDefaultTag);
 
   // Simulate an RTPROT_RA kernel message.
@@ -652,6 +656,7 @@ TEST_F(RoutingTableTest, ConfigureRoutes) {
                           RT_SCOPE_UNIVERSE,
                           false,
                           kTestTableId,
+                          RTN_UNICAST,
                           RoutingTableEntry::kDefaultTag);
 
   EXPECT_CALL(rtnl_handler_,
@@ -742,6 +747,7 @@ TEST_F(RoutingTableTest, RequestHostRoute) {
                           RT_SCOPE_UNIVERSE,
                           true,
                           kTestTableId,
+                          RTN_UNICAST,
                           RoutingTableEntry::kDefaultTag);
 
   EXPECT_CALL(rtnl_handler_,
@@ -987,6 +993,7 @@ TEST_F(RoutingTableTest, CreateLinkRoute) {
                           RT_SCOPE_LINK,
                           false,
                           kTestTableId,
+                          RTN_UNICAST,
                           RoutingTableEntry::kDefaultTag);
   EXPECT_CALL(rtnl_handler_,
               SendMessage(IsRoutingPacket(RTNLMessage::kModeAdd,
