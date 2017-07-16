@@ -216,6 +216,9 @@ void RTNLHandler::NextRequest(uint32_t seq) {
   } else if ((request_flags_ & kRequestRoute) != 0) {
     type = RTNLMessage::kTypeRoute;
     flag = kRequestRoute;
+  } else if ((request_flags_ & kRequestRule) != 0) {
+    type = RTNLMessage::kTypeRule;
+    flag = kRequestRule;
   } else if ((request_flags_ & kRequestLink) != 0) {
     type = RTNLMessage::kTypeLink;
     flag = kRequestLink;
@@ -306,6 +309,9 @@ void RTNLHandler::ParseRTNL(InputData* data) {
           break;
         case RTNLMessage::kTypeRoute:
           DispatchEvent(kRequestRoute, msg);
+          break;
+        case RTNLMessage::kTypeRule:
+          DispatchEvent(kRequestRule, msg);
           break;
         case RTNLMessage::kTypeRdnss:
           DispatchEvent(kRequestRdnss, msg);

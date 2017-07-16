@@ -16,10 +16,11 @@
 
 #include "shill/net/rtnl_message.h"
 
-#include <sys/socket.h>
+#include <linux/fib_rules.h>
 #include <linux/if.h>  // NOLINT(build/include_alpha) - needs sockaddr.
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+#include <sys/socket.h>
 
 #include <string>
 
@@ -514,6 +515,93 @@ class RTNLMessageTest : public Test {
     }
   }
 
+  void TestParseRule(const ByteString& packet,
+                     RTNLMessage::Mode /*mode*/,
+                     IPAddress::Family family,
+                     unsigned char table,
+                     int protocol,
+                     unsigned char scope,
+                     unsigned char type,
+                     const IPAddress& dst,
+                     const IPAddress& src,
+                     uint32_t priority,
+                     uint32_t fwmark,
+                     uint32_t fwmask,
+                     uint32_t uidrange_start,
+                     uint32_t uidrange_end,
+                     const std::string& ifname) {
+    RTNLMessage msg;
+
+    EXPECT_TRUE(msg.Decode(packet));
+    EXPECT_EQ(RTNLMessage::kTypeRule, msg.type());
+    EXPECT_EQ(0, msg.interface_index());
+    EXPECT_EQ(family, msg.family());
+
+    RTNLMessage::RouteStatus status = msg.route_status();
+    EXPECT_EQ(table, status.table);
+    EXPECT_EQ(protocol, status.protocol);
+    EXPECT_EQ(scope, status.scope);
+    EXPECT_EQ(type, status.type);
+
+    if (!dst.IsDefault()) {
+      EXPECT_TRUE(msg.HasAttribute(FRA_DST));
+      EXPECT_TRUE(
+          IPAddress(family, msg.GetAttribute(FRA_DST), status.dst_prefix)
+              .Equals(dst));
+    }
+
+    if (!src.IsDefault()) {
+      EXPECT_TRUE(msg.HasAttribute(FRA_SRC));
+      EXPECT_TRUE(
+          IPAddress(family, msg.GetAttribute(FRA_SRC), status.src_prefix)
+              .Equals(src));
+    }
+
+    EXPECT_TRUE(msg.HasAttribute(FRA_PRIORITY));
+    uint32_t decoded_priority;
+    EXPECT_TRUE(
+        msg.GetAttribute(FRA_PRIORITY).ConvertToCPUUInt32(&decoded_priority));
+    EXPECT_EQ(priority, decoded_priority);
+
+    if (fwmark || fwmask) {
+      EXPECT_TRUE(msg.HasAttribute(FRA_FWMARK));
+      EXPECT_TRUE(msg.HasAttribute(FRA_FWMASK));
+
+      uint32_t decoded_fwmark, decoded_fwmask;
+      EXPECT_TRUE(
+          msg.GetAttribute(FRA_FWMARK).ConvertToCPUUInt32(&decoded_fwmark));
+      EXPECT_TRUE(
+          msg.GetAttribute(FRA_FWMASK).ConvertToCPUUInt32(&decoded_fwmask));
+      EXPECT_EQ(fwmark, decoded_fwmark);
+      EXPECT_EQ(fwmask, decoded_fwmask);
+    } else {
+      EXPECT_FALSE(msg.HasAttribute(FRA_FWMARK));
+      EXPECT_FALSE(msg.HasAttribute(FRA_FWMASK));
+    }
+
+    if (uidrange_start || uidrange_end) {
+      EXPECT_TRUE(msg.HasAttribute(FRA_UID_RANGE));
+
+      struct fib_rule_uid_range decoded_range;
+      EXPECT_TRUE(msg.GetAttribute(FRA_UID_RANGE)
+                      .CopyData(sizeof(decoded_range), &decoded_range));
+      EXPECT_EQ(uidrange_start, decoded_range.start);
+      EXPECT_EQ(uidrange_end, decoded_range.end);
+    } else {
+      EXPECT_FALSE(msg.HasAttribute(FRA_UID_RANGE));
+    }
+
+    if (!ifname.empty()) {
+      EXPECT_TRUE(msg.HasAttribute(FRA_IFNAME));
+      std::string decoded_ifname;
+      decoded_ifname = reinterpret_cast<const char*>(
+          msg.GetAttribute(FRA_IFNAME).GetConstData());
+      EXPECT_STREQ(ifname.c_str(), decoded_ifname.c_str());
+    } else {
+      EXPECT_FALSE(msg.HasAttribute(FRA_IFNAME));
+    }
+  }
+
   void TestParseRdnss(const ByteString& packet,
                       RTNLMessage::Mode mode,
                       int interface_index,
@@ -746,6 +834,58 @@ TEST_F(RTNLMessageTest, EncodeRouteAdd) {
                  RT_SCOPE_UNIVERSE,
                  RTN_UNICAST,
                  13);
+}
+
+TEST_F(RTNLMessageTest, EncodeRuleAdd) {
+  RTNLMessage msg(RTNLMessage::kTypeRule,
+                  RTNLMessage::kModeAdd,
+                  0,
+                  1,
+                  2,
+                  0,
+                  IPAddress::kFamilyIPv4);
+  IPAddress dst(IPAddress::kFamilyIPv4);
+  IPAddress src(IPAddress::kFamilyIPv4);
+
+  EXPECT_TRUE(dst.SetAddressFromString("192.168.1.0"));
+  EXPECT_TRUE(src.SetAddressFromString("192.168.2.0"));
+
+  msg.set_route_status(RTNLMessage::RouteStatus(dst.prefix(),
+                                                src.prefix(),
+                                                RT_TABLE_MAIN,
+                                                RTPROT_BOOT,
+                                                RT_SCOPE_UNIVERSE,
+                                                RTN_UNICAST,
+                                                0));
+  msg.SetAttribute(FRA_DST, dst.address());
+  msg.SetAttribute(FRA_SRC, src.address());
+
+  msg.SetAttribute(FRA_PRIORITY, ByteString::CreateFromCPUUInt32(13));
+  msg.SetAttribute(FRA_FWMARK, ByteString::CreateFromCPUUInt32(0x1234));
+  msg.SetAttribute(FRA_FWMASK, ByteString::CreateFromCPUUInt32(0xffff));
+
+  struct fib_rule_uid_range r = {.start = 1000, .end = 2000};
+  msg.SetAttribute(
+      FRA_UID_RANGE,
+      ByteString(reinterpret_cast<const unsigned char*>(&r), sizeof(r)));
+
+  msg.SetAttribute(FRA_IFNAME, ByteString(std::string("dummy0"), true));
+
+  TestParseRule(msg.Encode(),
+                RTNLMessage::kModeAdd,
+                IPAddress::kFamilyIPv4,
+                RT_TABLE_MAIN,
+                RTPROT_BOOT,
+                RT_SCOPE_UNIVERSE,
+                RTN_UNICAST,
+                dst,
+                src,
+                13,
+                0x1234,
+                0xffff,
+                1000,
+                2000,
+                "dummy0");
 }
 
 TEST_F(RTNLMessageTest, EncodeLinkDel) {

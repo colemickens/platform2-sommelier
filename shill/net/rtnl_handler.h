@@ -51,9 +51,10 @@ class SHILL_EXPORT RTNLHandler {
   static const int kRequestLink = 1;
   static const int kRequestAddr = 2;
   static const int kRequestRoute = 4;
-  static const int kRequestRdnss = 8;
-  static const int kRequestNeighbor = 16;
-  static const int kRequestBridgeNeighbor = 32;
+  static const int kRequestRule = 8;
+  static const int kRequestRdnss = 16;
+  static const int kRequestNeighbor = 32;
+  static const int kRequestBridgeNeighbor = 64;
 
   using ErrorMask = std::set<int>;
 

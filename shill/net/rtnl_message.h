@@ -40,6 +40,7 @@ class SHILL_EXPORT RTNLMessage {
     kTypeLink,
     kTypeAddress,
     kTypeRoute,
+    kTypeRule,
     kTypeRdnss,
     kTypeDnssl,
     kTypeNeighbor,
@@ -217,6 +218,10 @@ class SHILL_EXPORT RTNLMessage {
                                    rtattr** attr_data,
                                    int* attr_length);
   SHILL_PRIVATE bool DecodeRoute(const RTNLHeader* hdr,
+                                 Mode mode,
+                                 rtattr** attr_data,
+                                 int* attr_length);
+  SHILL_PRIVATE bool DecodeRule(const RTNLHeader* hdr,
                                  Mode mode,
                                  rtattr** attr_data,
                                  int* attr_length);
