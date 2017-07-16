@@ -19,11 +19,12 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <linux/fib_rules.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
-#include <netinet/ether.h>
 #include <net/if.h>  // NOLINT - must be included after netinet/ether.h
 #include <net/if_arp.h>
+#include <netinet/ether.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <time.h>
@@ -60,6 +61,10 @@ static string ObjectID(RoutingTable* r) { return "(routing_table)"; }
 
 namespace {
 base::LazyInstance<RoutingTable> g_routing_table = LAZY_INSTANCE_INITIALIZER;
+// These don't have named constants in the system header files, but they
+// are documented in ip-rule(8) and hardcoded in net/ipv4/fib_rules.c.
+const uint32_t kRulePriorityLocal = 0;
+const uint32_t kRulePriorityMain = 32766;
 }  // namespace
 
 // static
@@ -81,14 +86,20 @@ void RoutingTable::Start() {
   SLOG(this, 2) << __func__;
 
   route_listener_.reset(
-      new RTNLListener(RTNLHandler::kRequestRoute,
+      new RTNLListener(RTNLHandler::kRequestRoute | RTNLHandler::kRequestRule,
                        Bind(&RoutingTable::RouteMsgHandler, Unretained(this))));
   rtnl_handler_->RequestDump(RTNLHandler::kRequestRoute);
+  rtnl_handler_->RequestDump(RTNLHandler::kRequestRule);
+
+  for (unsigned char i = RT_TABLE_DEFAULT - 1; i > RT_TABLE_UNSPEC; i--) {
+    available_table_ids_.push_back(i);
+  }
 }
 
 void RoutingTable::Stop() {
   SLOG(this, 2) << __func__;
 
+  available_table_ids_.clear();
   route_listener_.reset();
 }
 
@@ -128,7 +139,7 @@ bool RoutingTable::GetDefaultRouteInternal(int interface_index,
   SLOG(this, 2) << __func__ << " index " << interface_index
                 << " family " << IPAddress::GetAddressFamilyName(family);
 
-  Tables::iterator table = tables_.find(interface_index);
+  RouteTables::iterator table = tables_.find(interface_index);
   if (table == tables_.end()) {
     SLOG(this, 2) << __func__ << " no table";
     return false;
@@ -361,6 +372,10 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
   int interface_index;
   RoutingTableEntry entry;
 
+  if (HandleRoutingPolicyMessage(message)) {
+    return;
+  }
+
   if (!ParseRoutingTableMessage(message, &interface_index, &entry)) {
     return;
   }
@@ -419,7 +434,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
     return;
   }
 
-  TableEntryVector& table = tables_[interface_index];
+  RouteTableEntryVector& table = tables_[interface_index];
   for (auto nent = table.begin(); nent != table.end(); ++nent)  {
     if (nent->dst.Equals(entry.dst) &&
         nent->src.Equals(entry.src) &&
@@ -636,6 +651,219 @@ bool RoutingTable::CreateLinkRoute(int interface_index,
                                     table_id,
                                     RTN_UNICAST,
                                     RoutingTableEntry::kDefaultTag));
+}
+
+bool RoutingTable::ApplyRule(uint32_t interface_index,
+                             const RoutingPolicyEntry& entry,
+                             RTNLMessage::Mode mode,
+                             unsigned int flags) {
+  SLOG(this, 2) << base::StringPrintf(
+      "%s: index %d family %s prio %d",
+      __func__,
+      interface_index,
+      IPAddress::GetAddressFamilyName(entry.family).c_str(),
+      entry.priority);
+
+  RTNLMessage message(RTNLMessage::kTypeRule,
+                      mode,
+                      NLM_F_REQUEST | flags,
+                      0,
+                      0,
+                      0,
+                      entry.family);
+
+  message.set_route_status(
+      RTNLMessage::RouteStatus(entry.dst.prefix(),
+                               entry.src.prefix(),
+                               entry.table,
+                               RTPROT_BOOT,
+                               RT_SCOPE_UNIVERSE,
+                               RTN_UNICAST,
+                               entry.invert_rule ? FIB_RULE_INVERT : 0));
+
+  message.SetAttribute(FRA_PRIORITY,
+                       ByteString::CreateFromCPUUInt32(entry.priority));
+  if (entry.has_fwmark) {
+    message.SetAttribute(FRA_FWMARK,
+                         ByteString::CreateFromCPUUInt32(entry.fwmark_value));
+    message.SetAttribute(FRA_FWMASK,
+                         ByteString::CreateFromCPUUInt32(entry.fwmark_mask));
+  }
+  if (entry.has_uidrange) {
+    struct fib_rule_uid_range r = {
+        .start = entry.uidrange_start, .end = entry.uidrange_end,
+    };
+    message.SetAttribute(
+        FRA_UID_RANGE,
+        ByteString(reinterpret_cast<const unsigned char*>(&r), sizeof(r)));
+  }
+  if (!entry.interface_name.empty()) {
+    message.SetAttribute(FRA_IFNAME,
+                         ByteString(entry.interface_name, true));
+  }
+  if (!entry.dst.IsDefault()) {
+    message.SetAttribute(FRA_DST, entry.dst.address());
+  }
+  if (!entry.src.IsDefault()) {
+    message.SetAttribute(FRA_SRC, entry.src.address());
+  }
+
+  return rtnl_handler_->SendMessage(&message);
+}
+
+bool RoutingTable::ParseRoutingPolicyMessage(const RTNLMessage& message,
+                                             RoutingPolicyEntry* entry) {
+  if (message.type() != RTNLMessage::kTypeRule ||
+      message.family() == IPAddress::kFamilyUnknown) {
+    return false;
+  }
+
+  const RTNLMessage::RouteStatus& route_status = message.route_status();
+  if (route_status.type != RTN_UNICAST) {
+    return false;
+  }
+
+  entry->family = message.family();
+  entry->table = route_status.table;
+  entry->invert_rule = !!(route_status.flags & FIB_RULE_INVERT);
+
+  if (message.HasAttribute(FRA_PRIORITY)) {
+    // Rule 0 (local table) doesn't have a priority attribute.
+    if (!message.GetAttribute(FRA_PRIORITY)
+             .ConvertToCPUUInt32(&entry->priority)) {
+      return false;
+    }
+  }
+
+  if (message.HasAttribute(FRA_FWMARK)) {
+    entry->has_fwmark = true;
+    if (!message.GetAttribute(FRA_FWMARK)
+             .ConvertToCPUUInt32(&entry->fwmark_value)) {
+      return false;
+    }
+    if (message.HasAttribute(FRA_FWMASK)) {
+      if (!message.GetAttribute(FRA_FWMASK)
+               .ConvertToCPUUInt32(&entry->fwmark_mask)) {
+        return false;
+      }
+    }
+  }
+
+  if (message.HasAttribute(FRA_UID_RANGE)) {
+    struct fib_rule_uid_range r;
+    if (!message.GetAttribute(FRA_UID_RANGE).CopyData(sizeof(r), &r)) {
+      return false;
+    }
+    entry->has_uidrange = true;
+    entry->uidrange_start = r.start;
+    entry->uidrange_end = r.end;
+  }
+
+  if (message.HasAttribute(FRA_IFNAME)) {
+    entry->interface_name = reinterpret_cast<const char*>(
+        message.GetAttribute(FRA_IFNAME).GetConstData());
+  }
+
+  IPAddress default_addr(message.family());
+  default_addr.SetAddressToDefault();
+
+  ByteString dst_bytes(default_addr.address());
+  if (message.HasAttribute(FRA_DST)) {
+    dst_bytes = message.GetAttribute(FRA_DST);
+  }
+  ByteString src_bytes(default_addr.address());
+  if (message.HasAttribute(FRA_SRC)) {
+    src_bytes = message.GetAttribute(FRA_SRC);
+  }
+
+  entry->dst = IPAddress(message.family(), dst_bytes, route_status.dst_prefix);
+  entry->src = IPAddress(message.family(), src_bytes, route_status.src_prefix);
+
+  return true;
+}
+
+bool RoutingTable::HandleRoutingPolicyMessage(const RTNLMessage& message) {
+  RoutingPolicyEntry entry;
+
+  if (!ParseRoutingPolicyMessage(message, &entry)) {
+    return false;
+  }
+
+  if (!(entry.priority > kRulePriorityLocal &&
+        entry.priority < kRulePriorityMain)) {
+    // Don't touch the system-managed rules.
+    return true;
+  }
+
+  // If this rule matches one of our known rules, ignore it.  Otherwise,
+  // assume it is left over from an old run and delete it.
+  for (auto& table : policy_tables_) {
+    for (auto nent = table.second.begin(); nent != table.second.end(); ++nent) {
+      if (nent->Equals(entry)) {
+        return true;
+      }
+    }
+  }
+
+  ApplyRule(-1, entry, RTNLMessage::kModeDelete, 0);
+  return true;
+}
+
+bool RoutingTable::AddRule(int interface_index,
+                           const RoutingPolicyEntry& entry) {
+  if (!ApplyRule(interface_index,
+                 entry,
+                 RTNLMessage::kModeAdd,
+                 NLM_F_CREATE | NLM_F_EXCL)) {
+    return false;
+  }
+  policy_tables_[interface_index].push_back(entry);
+  return true;
+}
+
+void RoutingTable::FlushRules(int interface_index) {
+  SLOG(this, 2) << __func__;
+
+  auto table = policy_tables_.find(interface_index);
+  if (table == policy_tables_.end()) {
+    return;
+  }
+
+  for (const auto& nent : table->second) {
+    ApplyRule(interface_index, nent, RTNLMessage::kModeDelete, 0);
+  }
+  table->second.clear();
+}
+
+unsigned char RoutingTable::AllocTableId() {
+  if (available_table_ids_.empty()) {
+    return 0;
+  } else {
+    unsigned char table_id = available_table_ids_.back();
+    available_table_ids_.pop_back();
+
+    // Flush any entries currently in this table before letting the caller
+    // use it.
+    for (auto& table : tables_) {
+      for (auto nent = table.second.begin(); nent != table.second.end();) {
+        if (nent->table == table_id) {
+          ApplyRoute(table.first, *nent, RTNLMessage::kModeDelete, 0);
+          nent = table.second.erase(nent);
+        } else {
+          ++nent;
+        }
+      }
+    }
+    return table_id;
+  }
+}
+
+void RoutingTable::FreeTableId(unsigned char id) {
+  if (id == RT_TABLE_MAIN) {
+    return;
+  }
+  CHECK(id > RT_TABLE_UNSPEC && id < RT_TABLE_DEFAULT);
+  available_table_ids_.push_back(id);
 }
 
 }  // namespace shill

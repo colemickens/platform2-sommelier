@@ -34,6 +34,7 @@ namespace shill {
 
 class RTNLHandler;
 class RTNLListener;
+struct RoutingPolicyEntry;
 struct RoutingTableEntry;
 
 // This singleton maintains an in-process copy of the routing table on
@@ -42,8 +43,10 @@ struct RoutingTableEntry;
 // default route for an interface or modifying its metric (priority).
 class RoutingTable {
  public:
-  using TableEntryVector = std::vector<RoutingTableEntry>;
-  using Tables = std::unordered_map<int, TableEntryVector>;
+  using RouteTableEntryVector = std::vector<RoutingTableEntry>;
+  using RouteTables = std::unordered_map<int, RouteTableEntryVector>;
+  using PolicyTableEntryVector = std::vector<RoutingPolicyEntry>;
+  using PolicyTables = std::unordered_map<int, PolicyTableEntryVector>;
 
   struct Query {
     // Callback::Run(interface_index, entry)
@@ -74,6 +77,9 @@ class RoutingTable {
 
   // Add an entry to the routing table.
   virtual bool AddRoute(int interface_index, const RoutingTableEntry& entry);
+
+  // Add an entry to the routing rule table.
+  virtual bool AddRule(int interface_index, const RoutingPolicyEntry& entry);
 
   // Get the default route associated with an interface of a given addr family.
   // The route is copied into |*entry|.
@@ -122,6 +128,9 @@ class RoutingTable {
   // Flush the routing cache for all interfaces.
   virtual bool FlushCache();
 
+  // Flush all routing rules for |interface_index|.
+  virtual void FlushRules(int interface_index);
+
   // Reset local state for this interface.
   virtual void ResetTable(int interface_index);
 
@@ -140,6 +149,13 @@ class RoutingTable {
                                   int tag,
                                   const Query::Callback& callback,
                                   uint8_t table_id);
+
+  // Allocates a per-device routing table, and returns the ID.  If no
+  // IDs are available, returns 0.
+  virtual unsigned char AllocTableId();
+
+  // Frees routing table |id| that was obtained from AllocTableId().
+  virtual void FreeTableId(unsigned char id);
 
  protected:
   RoutingTable();
@@ -169,10 +185,22 @@ class RoutingTable {
   static const char kRouteFlushPath4[];
   static const char kRouteFlushPath6[];
 
-  Tables tables_;
+  bool ApplyRule(uint32_t interface_index,
+                 const RoutingPolicyEntry& entry,
+                 RTNLMessage::Mode mode,
+                 unsigned int flags);
+  bool ParseRoutingPolicyMessage(const RTNLMessage& message,
+                                 RoutingPolicyEntry* entry);
+  bool HandleRoutingPolicyMessage(const RTNLMessage& message);
+
+  RouteTables tables_;
+  PolicyTables policy_tables_;
 
   std::unique_ptr<RTNLListener> route_listener_;
   std::deque<Query> route_queries_;
+
+  // A list of unused routing table IDs.
+  std::vector<unsigned char> available_table_ids_;
 
   // Cache singleton pointer for performance and test purposes.
   RTNLHandler* rtnl_handler_;
