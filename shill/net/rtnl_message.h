@@ -100,7 +100,7 @@ class SHILL_EXPORT RTNLMessage {
                 unsigned char protocol_in,
                 unsigned char scope_in,
                 unsigned char type_in,
-                unsigned char flags_in)
+                unsigned flags_in)
         : dst_prefix(dst_prefix_in),
           src_prefix(src_prefix_in),
           table(table_in),
@@ -114,7 +114,7 @@ class SHILL_EXPORT RTNLMessage {
     unsigned char protocol;
     unsigned char scope;
     unsigned char type;
-    unsigned char flags;
+    unsigned flags;
   };
 
   struct NeighborStatus {
