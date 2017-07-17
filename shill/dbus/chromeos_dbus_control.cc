@@ -30,7 +30,6 @@
 
 #include "shill/dbus/chromeos_dhcpcd_listener.h"
 #include "shill/dbus/chromeos_dhcpcd_proxy.h"
-#include "shill/dbus/chromeos_permission_broker_proxy.h"
 #include "shill/dbus/chromeos_power_manager_proxy.h"
 #include "shill/dbus/chromeos_upstart_proxy.h"
 #include "shill/dbus/chromeos_dbus_service_watcher.h"
@@ -256,11 +255,6 @@ std::unique_ptr<DHCPProxyInterface> ChromeosDBusControl::CreateDHCPProxy(
 std::unique_ptr<UpstartProxyInterface>
 ChromeosDBusControl::CreateUpstartProxy() {
   return base::MakeUnique<ChromeosUpstartProxy>(proxy_bus_);
-}
-
-std::unique_ptr<FirewallProxyInterface>
-ChromeosDBusControl::CreateFirewallProxy() {
-  return base::MakeUnique<ChromeosPermissionBrokerProxy>(proxy_bus_);
 }
 
 #if !defined(DISABLE_CELLULAR)

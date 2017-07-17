@@ -215,7 +215,6 @@
         'exported_deps': [
           'libcares',
           'libmetrics-<(libbase_ver)',
-          'libpermission_broker-client',
           'libpower_manager-client',
           'protobuf-lite',
         ],
@@ -452,7 +451,6 @@
         'dbus/chromeos_dhcpcd_proxy.cc',
         'dbus/chromeos_ipconfig_dbus_adaptor.cc',
         'dbus/chromeos_manager_dbus_adaptor.cc',
-        'dbus/chromeos_permission_broker_proxy.cc',
         'dbus/chromeos_power_manager_proxy.cc',
         'dbus/chromeos_profile_dbus_adaptor.cc',
         'dbus/chromeos_rpc_task_dbus_adaptor.cc',

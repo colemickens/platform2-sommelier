@@ -76,8 +76,14 @@ class VPNProvider : public ProviderInterface {
   // Disconnect any other active VPN services.
   virtual void DisconnectAll();
 
+  // Default lists of whitelisted UIDs and input interfaces, for VPNs that
+  // do not want to handle all system traffic.
+  const std::vector<uint32_t>& allowed_uids() const { return allowed_uids_; }
+  const std::vector<std::string>& allowed_iifs() const { return allowed_iifs_; }
+
  private:
   friend class VPNProviderTest;
+  FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
   FRIEND_TEST(VPNProviderTest, CreateService);
   FRIEND_TEST(VPNProviderTest, OnDeviceInfoAvailable);
   FRIEND_TEST(VPNProviderTest, RemoveService);
@@ -130,6 +136,8 @@ class VPNProvider : public ProviderInterface {
   Metrics* metrics_;
   Manager* manager_;
   std::vector<VPNServiceRefPtr> services_;
+  std::vector<uint32_t> allowed_uids_;
+  std::vector<std::string> allowed_iifs_;
 
   DISALLOW_COPY_AND_ASSIGN(VPNProvider);
 };

@@ -16,6 +16,9 @@
 
 #include "shill/vpn/vpn_provider.h"
 
+#include <pwd.h>
+#include <sys/types.h>
+
 #include <algorithm>
 #include <memory>
 
@@ -42,6 +45,13 @@ static auto kModuleLogScope = ScopeLogger::kVPN;
 static string ObjectID(const VPNProvider* v) { return "(vpn_provider)"; }
 }
 
+namespace {
+// For VPN drivers that only want to pass traffic for specific users,
+// these are the usernames that will be used to create the routing policy
+// rules.
+const char* const kAllowedUsernames[] = {"chronos", "debugd"};
+}  // namespace
+
 VPNProvider::VPNProvider(ControlInterface* control_interface,
                          EventDispatcher* dispatcher,
                          Metrics* metrics,
@@ -53,7 +63,20 @@ VPNProvider::VPNProvider(ControlInterface* control_interface,
 
 VPNProvider::~VPNProvider() {}
 
-void VPNProvider::Start() {}
+void VPNProvider::Start() {
+  for (const auto& username : kAllowedUsernames) {
+    struct passwd* entry = getpwnam(username);
+    if (!entry) {
+      LOG(WARNING) << "Unable to look up UID for " << username << ", skipping";
+    } else {
+      allowed_uids_.push_back(static_cast<uint32_t>(entry->pw_uid));
+    }
+  }
+  // Temporary hack to forward Android traffic over the VPN.  This will
+  // go away when --arc-device is implemented (later in the patch series).
+  allowed_iifs_.push_back("arcbr0");
+  allowed_iifs_.push_back("br0");
+}
 
 void VPNProvider::Stop() {}
 

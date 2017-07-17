@@ -31,7 +31,6 @@
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
-#include "shill/mock_firewall_proxy.h"
 #include "shill/mock_resolver.h"
 #include "shill/mock_routing_table.h"
 #include "shill/net/mock_rtnl_handler.h"
@@ -92,6 +91,15 @@ MATCHER_P(IsValidRoutingTableEntry, dst, "") {
 
 MATCHER_P(IsValidThrowRoute, dst, "") {
   return dst.Equals(arg.dst) && arg.type == RTN_THROW;
+}
+
+MATCHER_P2(IsValidRoutingRule, family, priority, "") {
+  return arg.family == family && arg.priority == priority;
+}
+
+MATCHER_P3(IsValidUidRule, family, priority, uid, "") {
+  return arg.family == family && arg.priority == priority && arg.has_uidrange &&
+         arg.uidrange_start == uid && arg.uidrange_end == uid;
 }
 
 MATCHER_P(IsLinkRouteTo, dst, "") {
@@ -217,6 +225,21 @@ class ConnectionTest : public Test {
     EXPECT_CALL(routing_table_, FlushRoutesWithTag(kTestDeviceInterfaceIndex0));
     EXPECT_CALL(*device_info_.get(),
                 FlushAddresses(kTestDeviceInterfaceIndex0));
+    EXPECT_CALL(routing_table_, FlushRules(kTestDeviceInterfaceIndex0));
+    EXPECT_CALL(routing_table_, FreeTableId(_));
+  }
+
+  void AddRoutingPolicyExpectations(int interface_index,
+                                    unsigned char priority) {
+    EXPECT_CALL(routing_table_, FlushRules(interface_index));
+    EXPECT_CALL(routing_table_,
+                AddRule(interface_index,
+                        IsValidRoutingRule(IPAddress::kFamilyIPv4, priority)))
+        .WillOnce(Return(true));
+    EXPECT_CALL(routing_table_,
+                AddRule(interface_index,
+                        IsValidRoutingRule(IPAddress::kFamilyIPv6, priority)))
+        .WillOnce(Return(true));
   }
 
   // Returns a new test connection object. The caller usually needs to call
@@ -269,6 +292,8 @@ TEST_F(ConnectionTest, AddConfig) {
               SetDefaultRoute(kTestDeviceInterfaceIndex0,
                               IsIPAddress(gateway_address_, 0),
                               _, RT_TABLE_MAIN));
+  AddRoutingPolicyExpectations(kTestDeviceInterfaceIndex0,
+                               GetNonDefaultMetricBase());
   EXPECT_CALL(routing_table_,
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ipconfig_,
@@ -296,6 +321,7 @@ TEST_F(ConnectionTest, AddConfig) {
   connection_->has_broadcast_domain_ = false;
   EXPECT_FALSE(connection_->CreateGatewayRoute());
 
+  AddRoutingPolicyExpectations(kTestDeviceInterfaceIndex0, GetDefaultMetric());
   EXPECT_CALL(routing_table_, SetDefaultMetric(kTestDeviceInterfaceIndex0,
                                                GetDefaultMetric()));
   EXPECT_CALL(resolver_, SetDNSFromLists(
@@ -320,6 +346,8 @@ TEST_F(ConnectionTest, AddConfig) {
   Mock::VerifyAndClearExpectations(&routing_table_);
   EXPECT_TRUE(connection_->IsDefault());
 
+  AddRoutingPolicyExpectations(kTestDeviceInterfaceIndex0,
+                               GetNonDefaultMetricBase());
   EXPECT_CALL(routing_table_,
               SetDefaultMetric(kTestDeviceInterfaceIndex0, _));
   EXPECT_CALL(routing_table_, FlushCache())
@@ -333,6 +361,8 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
   ConnectionRefPtr connection = GetNewConnection();
   const std::string kExcludeAddress1 = "192.0.1.0/24";
   const std::string kExcludeAddress2 = "192.0.2.0/24";
+  const unsigned char table_id = 8;
+  const uint32_t uid = 1000;
   IPAddress address1(IPAddress::kFamilyIPv4);
   IPAddress address2(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(address1.SetAddressAndPrefixFromString(kExcludeAddress1));
@@ -346,9 +376,10 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
                                   IsIPAddress(local_address_, kPrefix0),
                                   IsIPAddress(broadcast_address_, 0),
                                   IsIPAddress(default_address_, 0)));
-  EXPECT_CALL(routing_table_,
-              ConfigureRoutes(kTestDeviceInterfaceIndex0, ipconfig_,
-                              GetDefaultMetric(), 1));
+  EXPECT_CALL(
+      routing_table_,
+      ConfigureRoutes(
+          kTestDeviceInterfaceIndex0, ipconfig_, GetDefaultMetric(), table_id));
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(kTestDeviceInterfaceIndex0,
                                              IPConfig::kDefaultMTU));
 
@@ -360,10 +391,24 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
                                        IsValidThrowRoute(address2)))
       .WillOnce(Return(true));
 
-  MockFirewallProxy* firewall_proxy = new MockFirewallProxy();
-  connection->firewall_proxy_.reset(firewall_proxy);
-  EXPECT_CALL(*firewall_proxy, RequestVpnSetup(_, _));
-  properties_.user_traffic_only = true;
+  // UpdateRoutingPolicy should create rules for IPv4 and IPv6
+  EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN));
+  EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
+  EXPECT_CALL(routing_table_, FlushRules(kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(
+      routing_table_,
+      AddRule(kTestDeviceInterfaceIndex0,
+              IsValidUidRule(
+                  IPAddress::kFamilyIPv4, GetNonDefaultMetricBase(), uid)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      routing_table_,
+      AddRule(kTestDeviceInterfaceIndex0,
+              IsValidUidRule(
+                  IPAddress::kFamilyIPv6, GetNonDefaultMetricBase(), uid)))
+      .WillOnce(Return(true));
+
+  properties_.allowed_uids.push_back(uid);
   properties_.default_route = false;
   properties_.exclusion_list.push_back(kExcludeAddress1);
   properties_.exclusion_list.push_back(kExcludeAddress2);
@@ -392,8 +437,17 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
   EXPECT_TRUE(GetHasBroadcastDomain(connection));
   EXPECT_FALSE(connection->IsIPv6());
 
-  EXPECT_CALL(routing_table_,
-              SetDefaultMetric(kTestDeviceInterfaceIndex0, GetDefaultMetric()));
+  EXPECT_CALL(routing_table_, FlushRules(kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(
+      routing_table_,
+      AddRule(kTestDeviceInterfaceIndex0,
+              IsValidUidRule(IPAddress::kFamilyIPv4, GetDefaultMetric(), uid)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      routing_table_,
+      AddRule(kTestDeviceInterfaceIndex0,
+              IsValidUidRule(IPAddress::kFamilyIPv6, GetDefaultMetric(), uid)))
+      .WillOnce(Return(true));
   EXPECT_CALL(resolver_,
               SetDNSFromLists(ipconfig_->properties().dns_servers,
                               ipconfig_->properties().domain_search));
@@ -409,13 +463,24 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
   Mock::VerifyAndClearExpectations(&routing_table_);
   EXPECT_TRUE(connection->IsDefault());
 
-  EXPECT_CALL(routing_table_, SetDefaultMetric(kTestDeviceInterfaceIndex0, _));
+  EXPECT_CALL(routing_table_, FlushRules(kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(
+      routing_table_,
+      AddRule(kTestDeviceInterfaceIndex0,
+              IsValidUidRule(
+                  IPAddress::kFamilyIPv4, GetNonDefaultMetricBase(), uid)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      routing_table_,
+      AddRule(kTestDeviceInterfaceIndex0,
+              IsValidUidRule(
+                  IPAddress::kFamilyIPv6, GetNonDefaultMetricBase(), uid)))
+      .WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection->SetUseDNS(false);
   connection->SetMetric(GetNonDefaultMetricBase());
   EXPECT_FALSE(connection->IsDefault());
   AddDestructorExpectations();
-  EXPECT_CALL(*firewall_proxy, RemoveVpnSetup());
 }
 
 TEST_F(ConnectionTest, AddConfigIPv6) {
@@ -428,6 +493,8 @@ TEST_F(ConnectionTest, AddConfigIPv6) {
                                   IsIPv6Address(local_ipv6_address_),
                                   IsDefaultAddress(),
                                   _));
+  AddRoutingPolicyExpectations(kTestDeviceInterfaceIndex0,
+                               GetNonDefaultMetricBase());
   EXPECT_CALL(routing_table_,
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ip6config_,
@@ -458,6 +525,8 @@ TEST_F(ConnectionTest, AddConfigWithPeer) {
                                   IsIPAddress(broadcast_address_, 0),
                                   IsIPAddress(peer_address, 0)));
   EXPECT_CALL(routing_table_, SetDefaultRoute(_, _, _, _)).Times(0);
+  AddRoutingPolicyExpectations(kTestDeviceInterfaceIndex0,
+                               GetNonDefaultMetricBase());
   EXPECT_CALL(routing_table_,
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ipconfig_,
@@ -494,6 +563,8 @@ TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
               SetDefaultRoute(kTestDeviceInterfaceIndex0,
                               IsIPAddress(gateway_address_, 0),
                               _, RT_TABLE_MAIN));
+  AddRoutingPolicyExpectations(kTestDeviceInterfaceIndex0,
+                               GetNonDefaultMetricBase());
   EXPECT_CALL(routing_table_,
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ipconfig_,
@@ -505,6 +576,7 @@ TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
 }
 
 TEST_F(ConnectionTest, AddConfigReverse) {
+  AddRoutingPolicyExpectations(kTestDeviceInterfaceIndex0, GetDefaultMetric());
   EXPECT_CALL(routing_table_, SetDefaultMetric(kTestDeviceInterfaceIndex0,
                                                GetDefaultMetric()));
   vector<string> empty_list;
@@ -540,6 +612,7 @@ TEST_F(ConnectionTest, AddConfigReverse) {
                                               IsIPAddress(gateway_address_, 0),
                                               GetDefaultMetric(),
                                               RT_TABLE_MAIN));
+  AddRoutingPolicyExpectations(kTestDeviceInterfaceIndex0, GetDefaultMetric());
   EXPECT_CALL(routing_table_,
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ipconfig_,
@@ -562,10 +635,13 @@ TEST_F(ConnectionTest, AddConfigWithDNSDomain) {
       .WillOnce(Return(false));
   EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _, _));
   EXPECT_CALL(routing_table_, SetDefaultRoute(_, _, _, _));
+  AddRoutingPolicyExpectations(kTestDeviceInterfaceIndex0,
+                               GetNonDefaultMetricBase());
   EXPECT_CALL(routing_table_, ConfigureRoutes(_, _, _, _));
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(_, _));
   connection_->UpdateFromIPConfig(ipconfig_);
 
+  AddRoutingPolicyExpectations(kTestDeviceInterfaceIndex0, GetDefaultMetric());
   EXPECT_CALL(routing_table_, SetDefaultMetric(_, _));
   vector<string> domain_search_list;
   domain_search_list.push_back(kDomainName + ".");
@@ -593,6 +669,8 @@ TEST_F(ConnectionTest, HasOtherAddress) {
               SetDefaultRoute(kTestDeviceInterfaceIndex0,
                               IsIPAddress(gateway_address_, 0),
                               _, RT_TABLE_MAIN));
+  AddRoutingPolicyExpectations(kTestDeviceInterfaceIndex0,
+                               GetNonDefaultMetricBase());
   EXPECT_CALL(routing_table_,
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ipconfig_,
@@ -661,6 +739,8 @@ TEST_F(ConnectionTest, Destructor) {
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex1));
   EXPECT_CALL(routing_table_, FlushRoutesWithTag(kTestDeviceInterfaceIndex1));
   EXPECT_CALL(*device_info_, FlushAddresses(kTestDeviceInterfaceIndex1));
+  EXPECT_CALL(routing_table_, FlushRules(kTestDeviceInterfaceIndex1));
+  EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN));
   connection = nullptr;
 }
 
@@ -690,6 +770,8 @@ TEST_F(ConnectionTest, BlackholeIPv6) {
       .WillOnce(Return(false));
   EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _, _));
   EXPECT_CALL(routing_table_, SetDefaultRoute(_, _, _, _));
+  EXPECT_CALL(routing_table_, FlushRules(_));
+  EXPECT_CALL(routing_table_, AddRule(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(routing_table_, ConfigureRoutes(_, _, _, _));
   EXPECT_CALL(routing_table_,
               CreateBlackholeRoute(kTestDeviceInterfaceIndex0,

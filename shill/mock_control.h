@@ -25,7 +25,6 @@
 #include "shill/control_interface.h"
 #include "shill/dhcp/dhcp_proxy_interface.h"
 #include "shill/dhcp/dhcpcd_listener_interface.h"
-#include "shill/firewall_proxy_interface.h"
 #include "shill/power_manager_proxy_interface.h"
 #include "shill/upstart/upstart_proxy_interface.h"
 
@@ -113,8 +112,6 @@ class MockControl : public ControlInterface {
                std::unique_ptr<DHCPProxyInterface>(const std::string& service));
 
   MOCK_METHOD0(CreateUpstartProxy, std::unique_ptr<UpstartProxyInterface>());
-
-  MOCK_METHOD0(CreateFirewallProxy, std::unique_ptr<FirewallProxyInterface>());
 
 #if !defined(DISABLE_CELLULAR)
   MOCK_METHOD2(CreateDBusPropertiesProxy,

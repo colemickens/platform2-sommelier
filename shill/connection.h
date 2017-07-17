@@ -35,7 +35,6 @@ namespace shill {
 
 class ControlInterface;
 class DeviceInfo;
-class FirewallProxyInterface;
 class RTNLHandler;
 class Resolver;
 class RoutingTable;
@@ -139,8 +138,13 @@ class Connection : public base::RefCounted<Connection> {
     return ipconfig_rpc_identifier_;
   }
 
-  virtual bool SetupIptableEntries();
-  virtual bool TearDownIptableEntries();
+  // Flush and (re)create routing policy rules for the connection.  If
+  // |allowed_uids_| or |allowed_iifs_| is set, rules will be created
+  // to restrict traffic to the whitelisted UIDs or input interfaces.
+  // Otherwise, all system traffic will be allowed to use the connection.
+  // The rule priority will be set to |metric_| so that Manager's service
+  // sort ranking is respected.
+  virtual void UpdateRoutingPolicy();
 
   // Request to accept traffic routed to this connection even if it is not
   // the default.  This request is ref-counted so the caller must call
@@ -194,9 +198,6 @@ class Connection : public base::RefCounted<Connection> {
   FRIEND_TEST(ConnectionTest, UpdateDNSServers);
   FRIEND_TEST(VPNServiceTest, OnConnectionDisconnected);
 
-  static const uint32_t kMarkForUserTraffic;
-  static const uint8_t kSecondaryTableId;
-
   // Work around misconfigured servers which provide a gateway address that
   // is unreachable with the provided netmask.
   bool FixGatewayReachability(const IPAddress& local,
@@ -235,7 +236,17 @@ class Connection : public base::RefCounted<Connection> {
   std::vector<std::string> excluded_ips_cidr_;
   std::string dns_domain_name_;
   std::string ipconfig_rpc_identifier_;
-  bool user_traffic_only_;
+
+  // True if this device has its own dedicated routing table.  False if
+  // this device uses the global routing table.
+  bool per_device_routing_;
+  // If |allowed_uids_| and/or |allowed_iifs_| is set, IP policy rules will
+  // be created so that only traffic from the whitelisted UIDs and/or
+  // input interfaces can use this connection.  If neither is set,
+  // all system traffic can use this connection.
+  std::vector<uint32_t> allowed_uids_;
+  std::vector<std::string> allowed_iifs_;
+
   uint8_t table_id_;
   IPAddress local_;
   IPAddress gateway_;
@@ -259,7 +270,6 @@ class Connection : public base::RefCounted<Connection> {
   RTNLHandler* rtnl_handler_;
 
   ControlInterface* control_interface_;
-  std::unique_ptr<FirewallProxyInterface> firewall_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(Connection);
 };

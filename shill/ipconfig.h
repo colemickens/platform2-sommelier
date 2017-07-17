@@ -51,7 +51,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   struct Properties {
     Properties() : address_family(IPAddress::kFamilyUnknown),
                    subnet_prefix(0),
-                   user_traffic_only(false),
                    default_route(true),
                    blackhole_ipv6(false),
                    mtu(kUndefinedMTU),
@@ -76,11 +75,12 @@ class IPConfig : public base::RefCounted<IPConfig> {
     Stringmaps dhcpv6_addresses;
     // IPv6 prefix delegated from a DHCPv6 server.
     Stringmaps dhcpv6_delegated_prefixes;
-    // Set the flag when a secondary routing table should be used for less
-    // privileged user traffic which alone would be sent to the VPN client. A
-    // primary routing table will be used for traffic from privileged processes
-    // which will bypass VPN.
-    bool user_traffic_only;
+    // If |allowed_uids| and/or |allowed_iifs| is set, IP policy rules will
+    // be created so that only traffic from the whitelisted UIDs and/or
+    // input interfaces can use this connection.  If neither is set,
+    // all system traffic can use this connection.
+    std::vector<uint32_t> allowed_uids;
+    std::vector<std::string> allowed_iifs;
     // Set the flag to true when the interface should be set as the default
     // route.
     bool default_route;

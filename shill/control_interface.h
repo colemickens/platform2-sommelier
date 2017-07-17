@@ -149,8 +149,6 @@ class ControlInterface {
   virtual std::unique_ptr<DHCPProxyInterface> CreateDHCPProxy(
       const std::string& service) = 0;
 
-  virtual std::unique_ptr<FirewallProxyInterface> CreateFirewallProxy() = 0;
-
 #if !defined(DISABLE_CELLULAR)
   virtual DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
       const std::string& path,

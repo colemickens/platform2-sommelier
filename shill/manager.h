@@ -619,6 +619,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, StartupPortalList);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
+  FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
 
   struct DeviceClaim {
     DeviceClaim() {}

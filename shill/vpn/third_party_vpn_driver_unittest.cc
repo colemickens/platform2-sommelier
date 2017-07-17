@@ -30,6 +30,7 @@
 #include "shill/mock_store.h"
 #include "shill/mock_virtual_device.h"
 #include "shill/nice_mock_control.h"
+#include "shill/vpn/mock_vpn_provider.h"
 #include "shill/vpn/mock_vpn_service.h"
 
 using testing::_;
@@ -288,6 +289,11 @@ TEST_F(ThirdPartyVpnDriverTest, UpdateConnectionState) {
 }
 
 TEST_F(ThirdPartyVpnDriverTest, SetParameters) {
+  MockVPNProvider* provider = new MockVPNProvider;
+  provider->allowed_uids_.push_back(1000);
+  manager_.vpn_provider_.reset(provider);
+  manager_.UpdateProviderMapping();
+
   std::map<std::string, std::string> parameters;
   std::string error;
   std::string warning;

@@ -37,6 +37,7 @@
 #include "shill/property_accessor.h"
 #include "shill/store_interface.h"
 #include "shill/virtual_device.h"
+#include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
 
 namespace shill {
@@ -401,7 +402,11 @@ void ThirdPartyVpnDriver::SetParameters(
   }
 
   if (error_message->empty()) {
-    ip_properties_.user_traffic_only = true;
+    // Allow Chrome and crosh UIDs, plus any ARC interface(s) on this system.
+    ip_properties_.allowed_uids = manager()->vpn_provider()->allowed_uids();
+    CHECK(!ip_properties_.allowed_uids.empty());
+    ip_properties_.allowed_iifs = manager()->vpn_provider()->allowed_iifs();
+
     ip_properties_.default_route = false;
     ip_properties_.blackhole_ipv6 = true;
     device_->SelectService(service_);

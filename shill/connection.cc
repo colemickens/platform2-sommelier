@@ -26,7 +26,6 @@
 
 #include "shill/control_interface.h"
 #include "shill/device_info.h"
-#include "shill/firewall_proxy_interface.h"
 #include "shill/logging.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/resolver.h"
@@ -56,10 +55,6 @@ const uint32_t Connection::kDefaultMetric = 1;
 const uint32_t Connection::kNewDefaultMetric = 2;
 // static
 const uint32_t Connection::kNonDefaultMetricBase = 10;
-// static
-const uint32_t Connection::kMarkForUserTraffic = 0x1;
-// static
-const uint8_t Connection::kSecondaryTableId = 0x1;
 
 Connection::Binder::Binder(const string& name,
                            const Closure& disconnect_callback)
@@ -108,7 +103,7 @@ Connection::Connection(int interface_index,
       interface_index_(interface_index),
       interface_name_(interface_name),
       technology_(technology),
-      user_traffic_only_(false),
+      per_device_routing_(false),
       table_id_(RT_TABLE_MAIN),
       local_(IPAddress::kFamilyUnknown),
       gateway_(IPAddress::kFamilyUnknown),
@@ -136,7 +131,8 @@ Connection::~Connection() {
   routing_table_->FlushRoutes(interface_index_);
   routing_table_->FlushRoutesWithTag(interface_index_);
   device_info_->FlushAddresses(interface_index_);
-  TearDownIptableEntries();
+  routing_table_->FlushRules(interface_index_);
+  routing_table_->FreeTableId(table_id_);
 }
 
 bool Connection::SetupExcludedRoutes(const IPConfig::Properties& properties,
@@ -144,7 +140,7 @@ bool Connection::SetupExcludedRoutes(const IPConfig::Properties& properties,
                                      IPAddress* trusted_ip) {
   excluded_ips_cidr_ = properties.exclusion_list;
 
-  if (user_traffic_only_) {
+  if (per_device_routing_) {
     // If this connection has its own dedicated routing table, exclusion
     // is as simple as adding an RTN_THROW entry for each item on the list.
     // Traffic that matches the RTN_THROW entry will cause the kernel to
@@ -205,8 +201,20 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
   SLOG(this, 2) << __func__ << " " << interface_name_;
 
   const IPConfig::Properties& properties = config->properties();
-  user_traffic_only_ = properties.user_traffic_only;
-  table_id_ = user_traffic_only_ ? kSecondaryTableId : (uint8_t)RT_TABLE_MAIN;
+  if (!properties.allowed_uids.empty() || !properties.allowed_iifs.empty()) {
+    per_device_routing_ = true;
+    allowed_uids_ = properties.allowed_uids;
+    allowed_iifs_ = properties.allowed_iifs;
+
+    // For per-device routing, |table_id_| uses the interface index
+    // (as a simple way to assign a per-device ID) and the route priority
+    // uses |metric_| which is set by Manager's service sort.
+    routing_table_->FreeTableId(table_id_);
+    table_id_ = routing_table_->AllocTableId();
+    CHECK(table_id_);
+  } else {
+    table_id_ = RT_TABLE_MAIN;
+  }
 
   IPAddress gateway(properties.address_family);
   if (!properties.gateway.empty() &&
@@ -273,9 +281,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
                                     table_id_);
   }
 
-  if (user_traffic_only_) {
-    SetupIptableEntries();
-  }
+  UpdateRoutingPolicy();
 
   // Install any explicitly configured routes at the default metric.
   routing_table_->ConfigureRoutes(interface_index_, config, kDefaultMetric,
@@ -328,25 +334,35 @@ void Connection::UpdateGatewayMetric(const IPConfigRefPtr& config) {
   }
 }
 
-bool Connection::SetupIptableEntries() {
-  if (!firewall_proxy_) {
-    firewall_proxy_ = control_interface_->CreateFirewallProxy();
+void Connection::UpdateRoutingPolicy() {
+  routing_table_->FlushRules(interface_index_);
+
+  bool rule_created = false;
+  for (const auto& uid : allowed_uids_) {
+    RoutingPolicyEntry entry(
+        IPAddress::kFamilyIPv4, metric_, table_id_, uid, uid);
+    routing_table_->AddRule(interface_index_, entry);
+    entry.family = IPAddress::kFamilyIPv6;
+    routing_table_->AddRule(interface_index_, entry);
+    rule_created = true;
   }
 
-  std::vector<std::string> user_names;
-  user_names.push_back("chronos");
-  user_names.push_back("debugd");
-
-  if (!firewall_proxy_->RequestVpnSetup(user_names, interface_name_)) {
-    LOG(ERROR) << "VPN iptables setup request failed.";
-    return false;
+  for (const auto& interface_name : allowed_iifs_) {
+    RoutingPolicyEntry entry(
+        IPAddress::kFamilyIPv4, metric_, table_id_, interface_name);
+    routing_table_->AddRule(interface_index_, entry);
+    entry.family = IPAddress::kFamilyIPv6;
+    routing_table_->AddRule(interface_index_, entry);
+    rule_created = true;
   }
 
-  return true;
-}
-
-bool Connection::TearDownIptableEntries() {
-  return firewall_proxy_ ? firewall_proxy_->RemoveVpnSetup() : true;
+  if (!rule_created) {
+    // No restrictions.
+    RoutingPolicyEntry entry(IPAddress::kFamilyIPv4, metric_, table_id_);
+    routing_table_->AddRule(interface_index_, entry);
+    entry.family = IPAddress::kFamilyIPv6;
+    routing_table_->AddRule(interface_index_, entry);
+  }
 }
 
 bool Connection::IsDefault() {
@@ -361,8 +377,11 @@ void Connection::SetMetric(uint32_t metric) {
     return;
   }
 
-  routing_table_->SetDefaultMetric(interface_index_, metric);
+  if (!per_device_routing_) {
+    routing_table_->SetDefaultMetric(interface_index_, metric);
+  }
   metric_ = metric;
+  UpdateRoutingPolicy();
 
   PushDNSConfig();
   if (metric == kDefaultMetric) {
