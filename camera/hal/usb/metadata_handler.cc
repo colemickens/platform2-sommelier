@@ -493,11 +493,6 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
   UPDATE(ANDROID_SENSOR_INFO_MAX_FRAME_DURATION, &max_frame_duration, 1);
 
   SupportedFormat maximum_format = GetMaximumFormat(supported_formats);
-  int32_t pixel_array_size[] = {static_cast<int32_t>(maximum_format.width),
-                                static_cast<int32_t>(maximum_format.height)};
-  UPDATE(ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE, pixel_array_size,
-         ARRAY_SIZE(pixel_array_size));
-
   int32_t active_array_size[] = {0, 0,
                                  static_cast<int32_t>(maximum_format.width),
                                  static_cast<int32_t>(maximum_format.height)};
@@ -517,10 +512,16 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
   uint8_t lens_facing = device_info.lens_facing;
   UPDATE(ANDROID_LENS_FACING, &lens_facing, 1);
 
-  // TODO(henryhsu): Set physical size from device info.
-  float physical_size[] = {3.2, 2.4};
+  float physical_size[] = {device_info.sensor_info_physical_size_width,
+                           device_info.sensor_info_physical_size_height};
   UPDATE(ANDROID_SENSOR_INFO_PHYSICAL_SIZE, physical_size,
          ARRAY_SIZE(physical_size));
+
+  int32_t pixel_array_size[] = {
+      device_info.sensor_info_pixel_array_size_width,
+      device_info.sensor_info_pixel_array_size_height};
+  UPDATE(ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE, pixel_array_size,
+         ARRAY_SIZE(pixel_array_size));
 
   UPDATE(ANDROID_LENS_INFO_AVAILABLE_FOCAL_LENGTHS,
          device_info.lens_info_available_focal_lengths.data(),
@@ -539,7 +540,12 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
   UPDATE(ANDROID_LENS_INFO_FOCUS_DISTANCE_CALIBRATION,
          &focus_distance_calibration, 1);
 
-  // TODO(henryhsu): Add available apertures.
+  UPDATE(ANDROID_LENS_INFO_AVAILABLE_APERTURES,
+         device_info.lens_info_available_apertures.data(),
+         device_info.lens_info_available_apertures.size());
+
+  UPDATE(ANDROID_LENS_APERTURE,
+         &device_info.lens_info_available_apertures.data()[0], 1);
   return 0;
 }
 

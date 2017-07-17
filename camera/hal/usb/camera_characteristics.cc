@@ -305,9 +305,36 @@ void CameraCharacteristics::AddPerModuleCharacteristic(
     AddFloatValue(value, kVerticalViewAngle_4_3,
                   &(*device_infos)[camera_id].vertical_view_angle_4_3);
   } else if (strcmp(characteristic, kLensInfoAvailableApertures) == 0) {
-    /* Do nothing. This is for hal v3 */
+    (*device_infos)[camera_id].lens_info_available_apertures.clear();
+    char tmp_value[256];
+    snprintf(tmp_value, sizeof(tmp_value), "%s", value);
+    char* save_ptr;
+    char* aperture = strtok_r(tmp_value, ",", &save_ptr);
+    while (aperture) {
+      float tmp_aperture = strtof(aperture, NULL);
+      if (tmp_aperture > 0.0) {
+        VLOGF(1) << characteristic << ": " << tmp_aperture;
+        (*device_infos)[camera_id].lens_info_available_apertures.push_back(
+            tmp_aperture);
+      } else {
+        LOGF(ERROR) << "Invalid " << characteristic << ": " << value;
+        (*device_infos)[camera_id].lens_info_available_apertures.clear();
+        (*device_infos)[camera_id].lens_info_available_apertures.push_back(
+            kDefaultCharacteristics.lens_info_available_apertures[0]);
+        break;
+      }
+      aperture = strtok_r(NULL, ",", &save_ptr);
+    }
   } else if (strcmp(characteristic, kSensorInfoPhysicalSize) == 0) {
-    /* Do nothing. This is for hal v3 */
+    float width, height;
+    if (sscanf(value, "%fx%f", &width, &height) != 2) {
+      LOG(ERROR) << __func__ << ": Illegal physical size format: " << value;
+      return;
+    }
+    VLOG(1) << __func__ << ": " << characteristic << ": " << width << "x"
+            << height;
+    (*device_infos)[camera_id].sensor_info_physical_size_width = width;
+    (*device_infos)[camera_id].sensor_info_physical_size_height = height;
   } else if (strcmp(characteristic, kSensorInfoPixelArraySize) == 0) {
     int width, height;
     if (sscanf(value, "%dx%d", &width, &height) != 2) {

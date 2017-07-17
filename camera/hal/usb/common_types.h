@@ -42,8 +42,11 @@ struct DeviceInfo {
   // V4L2_CID_EXPOSURE_AUTO_PRIORITY to 0 to have constant frame rate in low
   // light environment.
   bool constant_framerate_unsupported;
-  uint32_t sensor_info_pixel_array_size_width;
-  uint32_t sensor_info_pixel_array_size_height;
+  int32_t sensor_info_pixel_array_size_width;
+  int32_t sensor_info_pixel_array_size_height;
+  std::vector<float> lens_info_available_apertures;
+  float sensor_info_physical_size_width;
+  float sensor_info_physical_size_height;
 };
 
 typedef std::vector<DeviceInfo> DeviceInfos;
