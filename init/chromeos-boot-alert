@@ -15,27 +15,11 @@ set +e
 
 # Prints usage help for commands supports
 usage_help() {
-  echo "Usage: $0 mode [arg ...]
-
-  enter_dev: Message for entering developer mode from non-dev.
-             Arg #1: (optional, default=30) Countdown in seconds before continue
-
-  leave_dev: Message when leaving developer mode.
-             Arg: none
-
-  update_firmware: Message before starting firmware update.
-             Arg: none
-
-  power_wash: Message when users wants to wipe the stateful partition.
-              Arg: none
-
-  self_repair: Message when starting to rebuild stateful partition.
-               Arg: none
-
-  block_devmode: Message shown to indicate that dev mode is blocked by request
-                 of the device owner.
-                 Arg: none
-"
+  echo <<EOF
+Usage: $0 <message_id> [arg ...]
+<message_id> is one of the messages ids (file name without the .txt suffix) in
+/usr/share/chromeos-assets/text/boot_messages/\$locale "
+EOF
 }
 
 # Prints out system locale by searching cached settings or VPD.
@@ -222,6 +206,27 @@ mode_update_progress() {
   fi
 }
 
+# Show a message indicating that we're doing a TPM firmware update.
+mode_update_tpm_firmware() {
+  show_assets_message "update_tpm_firmware"
+}
+
+# Show a message explaining to the user that the battery isn't sufficiently
+# charged to a apply a firmware update and ask for the charger to be plugged.
+mode_update_tpm_firmware_low_battery() {
+  show_assets_message "update_tpm_firmware_low_battery"
+}
+
+# Show a message telling the user that the TPM firmware update failed and that
+# they need to go through recovery to retry the update.
+mode_update_tpm_firmware_failure() {
+  show_assets_message "update_tpm_firmware_failure"
+
+  # Read a space bar. Timeout after 10 years (i.e. practically no timeout).
+  local input=$(match_char_timeout "${TTY}" 315360000 20)
+  tput clear >>"${TTY}"
+}
+
 # Main initialization and dispatcher
 main() {
   # process args
@@ -229,7 +234,7 @@ main() {
     usage_help
     exit 1
   fi
-  local mode="$1"
+  local mode="$(echo "$1" | tr -dc "[:alnum:]_")"
   shift
 
   # For headless devices, we want to provide some messages so people can know
@@ -258,16 +263,13 @@ main() {
   # Hides cursor and prevents console from blanking after long inactivity.
   setterm -cursor off -blank 0 -powersave off -powerdown 0 >>"${TTY}" || true
 
-  case "$mode" in
-    "enter_dev" | "leave_dev" | "update_firmware" | "power_wash" | \
-      "self_repair" | "block_devmode" | "update_progress" )
-      mode_"$mode" "$@"
-      ;;
-    * )
-      usage_help
-      exit 1
-      ;;
-  esac
+  local handler="mode_${mode}"
+  if type "${handler}" 2>/dev/null | head -1 | grep -q "function"; then
+    "${handler}" "$@"
+  else
+    usage_help
+    exit 1
+  fi
 }
 
 # Main Entry
