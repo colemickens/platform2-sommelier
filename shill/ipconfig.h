@@ -86,8 +86,11 @@ class IPConfig : public base::RefCounted<IPConfig> {
     bool default_route;
     // A list of IP blocks in CIDR format that should be excluded from VPN.
     std::vector<std::string> exclusion_list;
+    // Block IPv6 traffic.  Used if connected to an IPv4-only VPN.
     bool blackhole_ipv6;
+    // MTU to set on the interface.  If unset, defaults to |kDefaultMTU|.
     int32_t mtu;
+    // A list of (host,netmask,gateway) tuples for this connection.
     std::vector<Route> routes;
     // Vendor encapsulated option string gained from DHCP.
     ByteArray vendor_encapsulated_options;
