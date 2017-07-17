@@ -6,6 +6,7 @@
 #define LOGIN_MANAGER_VPD_PROCESS_H_
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "login_manager/policy_service.h"
@@ -14,13 +15,14 @@ namespace login_manager {
 
 class VpdProcess {
  public:
-  // Run VPD setter script as a separate process. Takes ownership of
-  // |completion| if process starts successfully. Returns whether fork() was
-  // successful.
-  virtual bool RunInBackground(const std::vector<std::string>& flags,
-                               const std::vector<int>& values,
-                               bool is_enrolled,
-                               const PolicyService::Completion& completion) = 0;
+  using KeyValuePairs = std::vector<std::pair<std::string, std::string>>;
+  using CompletionCallback = base::Callback<void(bool)>;
+
+  // Update values in RW_VPD by running the VPD utility in a separate process.
+  // Takes ownership of |completion| if process starts successfully. Returns
+  // whether fork() was successful. Keys with empty string values are deleted.
+  virtual bool RunInBackground(const KeyValuePairs& updates,
+                               const CompletionCallback& completion) = 0;
 };
 
 }  // namespace login_manager

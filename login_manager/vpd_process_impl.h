@@ -7,7 +7,10 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
+
+#include <base/callback.h>
 
 #include "login_manager/child_job.h"
 #include "login_manager/job_manager.h"
@@ -23,10 +26,8 @@ class VpdProcessImpl
   explicit VpdProcessImpl(SystemUtils* system_utils);
 
   // Implementation of VpdProcess.
-  bool RunInBackground(const std::vector<std::string>& flags,
-                       const std::vector<int>& values,
-                       bool is_enrolled,
-                       const PolicyService::Completion& completion) override;
+  bool RunInBackground(const KeyValuePairs& updates,
+                       const CompletionCallback& completion) override;
 
   // Implementation of JobManagerInterface.
   bool IsManagedJob(pid_t pid) override;
@@ -38,8 +39,7 @@ class VpdProcessImpl
   // The subprocess tracked by this job.
   std::unique_ptr<ChildJobInterface::Subprocess> subprocess_;
   SystemUtils* system_utils_;  // Owned by the caller.
-  PolicyService::Completion completion_;
-  bool is_enrolled_ = false;
+  CompletionCallback completion_;
 };
 
 }  // namespace login_manager

@@ -134,7 +134,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
     proto->mutable_system_settings()->set_block_devmode(false);
     SetSettings(service_.get(), std::move(proto));
 
-    EXPECT_CALL(vpd_process_, RunInBackground(_, _, _, _))
+    EXPECT_CALL(vpd_process_, RunInBackground(_, _))
         .WillRepeatedly(Return(true));
   }
 
@@ -601,7 +601,7 @@ TEST_F(DevicePolicyServiceTest, SetBlockDevModeInNvram) {
   proto->mutable_system_settings()->set_block_devmode(true);
   SetSettings(service_.get(), std::move(proto));
 
-  EXPECT_CALL(vpd_process_, RunInBackground(_, _, _, _))
+  EXPECT_CALL(vpd_process_, RunInBackground(_, _))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(UpdateSystemSettings(service_.get()));
@@ -623,7 +623,7 @@ TEST_F(DevicePolicyServiceTest, UnsetBlockDevModeInNvram) {
   proto->mutable_system_settings()->set_block_devmode(false);
   SetSettings(service_.get(), std::move(proto));
 
-  EXPECT_CALL(vpd_process_, RunInBackground(_, _, _, _))
+  EXPECT_CALL(vpd_process_, RunInBackground(_, _))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(UpdateSystemSettings(service_.get()));
@@ -658,14 +658,11 @@ TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
   EXPECT_CALL(service, InstallAttributesEnterpriseMode())
       .WillRepeatedly(Return(false));
 
-
-  std::vector<std::string> flag_names;
-  std::vector<int> flag_values;
-  flag_names.push_back(Crossystem::kBlockDevmode);
-  flag_values.push_back(0);
-  flag_names.push_back(Crossystem::kCheckEnrollment);
-  flag_values.push_back(0);
-  EXPECT_CALL(vpd_process_, RunInBackground(flag_names, flag_values, false, _))
+  VpdProcess::KeyValuePairs updates{
+      {Crossystem::kBlockDevmode, "0"},
+      {Crossystem::kCheckEnrollment, "0"},
+  };
+  EXPECT_CALL(vpd_process_, RunInBackground(updates, _))
       .Times(1)
       .WillOnce(Return(true));
 
@@ -698,13 +695,11 @@ TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
   EXPECT_CALL(service, InstallAttributesEnterpriseMode())
       .WillRepeatedly(Return(true));
 
-  std::vector<std::string> flag_names;
-  std::vector<int> flag_values;
-  flag_names.push_back(Crossystem::kBlockDevmode);
-  flag_values.push_back(0);
-  flag_names.push_back(Crossystem::kCheckEnrollment);
-  flag_values.push_back(1);
-  EXPECT_CALL(vpd_process_, RunInBackground(flag_names, flag_values, true, _))
+  VpdProcess::KeyValuePairs updates{
+      {Crossystem::kBlockDevmode, "0"},
+      {Crossystem::kCheckEnrollment, "1"},
+  };
+  EXPECT_CALL(vpd_process_, RunInBackground(updates, _))
       .Times(1)
       .WillOnce(Return(true));
 
@@ -731,13 +726,11 @@ TEST_F(DevicePolicyServiceTest, CheckFailUpdateVPD) {
   EXPECT_CALL(key, IsPopulated()).WillRepeatedly(Return(true));
   EXPECT_CALL(service, InstallAttributesEnterpriseMode())
       .WillRepeatedly(Return(true));
-  std::vector<std::string> flag_names;
-  std::vector<int> flag_values;
-  flag_names.push_back(Crossystem::kBlockDevmode);
-  flag_values.push_back(0);
-  flag_names.push_back(Crossystem::kCheckEnrollment);
-  flag_values.push_back(1);
-  EXPECT_CALL(vpd_process_, RunInBackground(flag_names, flag_values, true, _))
+  VpdProcess::KeyValuePairs updates{
+      {Crossystem::kBlockDevmode, "0"},
+      {Crossystem::kCheckEnrollment, "1"},
+  };
+  EXPECT_CALL(vpd_process_, RunInBackground(updates, _))
       .Times(1)
       .WillOnce(Return(false));
 

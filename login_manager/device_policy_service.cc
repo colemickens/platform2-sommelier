@@ -10,10 +10,13 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/strings/string_util.h>
+#include <base/sys_info.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/switches/chrome_switches.h>
 #include <crypto/rsa_private_key.h>
@@ -52,6 +55,52 @@ bool IsConsumerPolicy(const em::PolicyFetchResponse& policy) {
   if (poldata.has_management_mode())
     return poldata.management_mode() == em::PolicyData::LOCAL_OWNER;
   return !poldata.has_request_token() && poldata.has_username();
+}
+
+// Convenience function to get the board name and remove "-signed.." if present.
+// The output is converted to lower-case. Returns "unknown" if
+// CHROMEOS_RELEASE_BOARD is not set.
+// TODO(igorcov): Remove this when similar function appears in libchrome.
+std::string GetStrippedReleaseBoard() {
+  std::string board = base::SysInfo::GetLsbReleaseBoard();
+  const size_t index = board.find("-signed-");
+  if (index != std::string::npos) {
+    board.resize(index);
+  }
+
+  return base::ToLowerASCII(board);
+}
+
+static void HandleVpdUpdateCompletion(
+    bool is_enrolled,
+    const PolicyService::Completion& completion,
+    bool success) {
+  if (completion.is_null()) {
+    return;
+  }
+
+  // We have to notify Chrome that the process has finished. Ignore the VPD
+  // update error if the device is not enrolled.
+  if (success || !is_enrolled) {
+    completion.Run(brillo::ErrorPtr());
+    return;
+  }
+
+  // TODO(igorcov): Remove the exception when crbug.com/653814 is fixed.
+  const std::string board_name = GetStrippedReleaseBoard();
+  if (board_name == "parrot" || board_name == "glimmer") {
+    LOG(ERROR) << "Failed to update VPD, but error ignored for device: "
+               << board_name;
+    completion.Run(brillo::ErrorPtr());
+    return;
+  }
+
+  LOG(ERROR) << "The device failed to update VPD: "
+             << board_name
+             << ", full board name: "
+             << base::SysInfo::GetLsbReleaseBoard();
+  completion.Run(CreateError(
+      dbus_error::kVpdUpdateFailed, "Failed to update VPD"));
 }
 
 const char kInstallAttributesPath[] = "/home/.shadow/install_attributes.pb";
@@ -509,20 +558,20 @@ bool DevicePolicyService::UpdateSystemSettings(
     }
   }
 
-  // Used to keep the command line flags for the VPD updater script.
-  std::vector<std::string> flags;
-  std::vector<int> values;
-
-  flags.push_back(Crossystem::kBlockDevmode);
-  values.push_back(block_devmode_setting);
+  // Used to keep the update key-value pairs for the VPD updater script.
+  std::vector<std::pair<std::string, std::string>> updates;
+  updates.push_back(std::make_pair(Crossystem::kBlockDevmode,
+                                   std::to_string(block_devmode_setting)));
 
   // Check if device is enrolled. The flag for enrolled device is written to VPD
   // but will never get deleted. Existence of the flag is one of the triggers
   // for FRE check during OOBE.
-  bool is_enrolled = InstallAttributesEnterpriseMode();
-  flags.push_back(Crossystem::kCheckEnrollment);
-  values.push_back(is_enrolled);
+  int is_enrolled = InstallAttributesEnterpriseMode();
+  updates.push_back(std::make_pair(Crossystem::kCheckEnrollment,
+                                   std::to_string(is_enrolled)));
 
-  return vpd_process_->RunInBackground(flags, values, is_enrolled, completion);
+  return vpd_process_->RunInBackground(
+      updates, base::Bind(&HandleVpdUpdateCompletion, is_enrolled, completion));
 }
+
 }  // namespace login_manager

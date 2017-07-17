@@ -5,33 +5,16 @@
 #include "login_manager/vpd_process_impl.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/callback_helpers.h>
-#include <base/strings/string_util.h>
-#include <base/sys_info.h>
-#include <chromeos/dbus/service_constants.h>
 
-#include "login_manager/dbus_util.h"
 #include "metrics/metrics_library.h"
 
 namespace {
 
 constexpr char kVpdUpdateMetric[] = "Enterprise.VpdUpdateStatus";
-
-// Convenience function to get the board name and remove "-signed.." if present.
-// The output is converted to lower-case. Returns "unknown" if
-// CHROMEOS_RELEASE_BOARD is not set.
-// TODO(igorcov): Remove this when similar function appears in libchrome.
-std::string GetStrippedReleaseBoard() {
-  std::string board = base::SysInfo::GetLsbReleaseBoard();
-  const size_t index = board.find("-signed-");
-  if (index != std::string::npos) {
-    board.resize(index);
-  }
-
-  return base::ToLowerASCII(board);
-}
 
 }  // namespace
 
@@ -42,20 +25,14 @@ VpdProcessImpl::VpdProcessImpl(SystemUtils* system_utils)
   DCHECK(system_utils_);
 }
 
-bool VpdProcessImpl::RunInBackground(
-    const std::vector<std::string>& flags,
-    const std::vector<int>& values,
-    bool is_enrolled,
-    const PolicyService::Completion& completion) {
-  DCHECK(flags.size() == values.size());
+bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
+                                     const CompletionCallback& completion) {
   subprocess_.reset(new ChildJobInterface::Subprocess(0, system_utils_));
 
-  is_enrolled_ = is_enrolled;
-  std::vector<std::string> argv;
-  argv.push_back("/usr/sbin/set_binary_flag_vpd");
-  for (size_t i = 0; i < flags.size(); i++) {
-    argv.push_back(flags[i]);
-    argv.push_back(std::to_string(values[i]));
+  std::vector<std::string> argv = { "/usr/sbin/update_rw_vpd" };
+  for (const auto& entry : updates) {
+    argv.push_back(entry.first);
+    argv.push_back(entry.second);
   }
 
   if (!subprocess_->ForkAndExec(argv, std::vector<std::string>())) {
@@ -101,29 +78,7 @@ void VpdProcessImpl::HandleExit(const siginfo_t& info) {
 
   // Reset the completion to ensure we won't call it again.
   auto completion = base::ResetAndReturn(&completion_);
-
-  // We have to notify Chrome that the process has finished. Ignore the VPD
-  // update error if the device is not enrolled.
-  if (success || !is_enrolled_) {
-    completion.Run(brillo::ErrorPtr());
-    return;
-  }
-
-  // TODO(igorcov): Remove the exception when crbug.com/653814 is fixed.
-  const std::string board_name = GetStrippedReleaseBoard();
-  if (board_name == "parrot" || board_name == "glimmer") {
-    LOG(ERROR) << "Failed to update VPD, but error ignored for device: "
-               << board_name;
-    completion.Run(brillo::ErrorPtr());
-    return;
-  }
-
-  LOG(ERROR) << "The device failed to update VPD: "
-             << board_name
-             << ", full board name: "
-             << base::SysInfo::GetLsbReleaseBoard();
-  completion.Run(CreateError(
-      dbus_error::kVpdUpdateFailed, "Failed to update VPD"));
+  completion.Run(success);
 }
 
 }  // namespace login_manager
