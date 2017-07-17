@@ -582,7 +582,15 @@ void Camera3SimpleCaptureFrames::GetWaiverKeys(
     waiver_keys->insert(ANDROID_SENSOR_NOISE_PROFILE);
   }
 
-  // TODO(hywu): CONTROL_AE_REGIONS, CONTROL_AWB_REGIONS, CONTROL_AF_REGIONS?
+  if (cam_device_.GetStaticInfo()->GetAeMaxRegions() == 0) {
+    waiver_keys->insert(ANDROID_CONTROL_AE_REGIONS);
+  }
+  if (cam_device_.GetStaticInfo()->GetAwbMaxRegions() == 0) {
+    waiver_keys->insert(ANDROID_CONTROL_AWB_REGIONS);
+  }
+  if (cam_device_.GetStaticInfo()->GetAfMaxRegions() == 0) {
+    waiver_keys->insert(ANDROID_CONTROL_AF_REGIONS);
+  }
 
   if (cam_device_.GetStaticInfo()->IsHardwareLevelAtLeastFull()) {
     return;

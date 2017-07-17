@@ -527,6 +527,33 @@ int32_t Camera3Device::StaticInfo::GetAvailableTestPatternModes(
   return result;
 }
 
+int32_t Camera3Device::StaticInfo::GetAeMaxRegions() const {
+  camera_metadata_ro_entry_t entry;
+  int32_t result = find_camera_metadata_ro_entry(
+      characteristics_, ANDROID_CONTROL_MAX_REGIONS, &entry);
+  return (result == 0 && entry.count > kMaxRegionsAeIdx)
+             ? entry.data.i32[kMaxRegionsAeIdx]
+             : 0;
+}
+
+int32_t Camera3Device::StaticInfo::GetAwbMaxRegions() const {
+  camera_metadata_ro_entry_t entry;
+  int32_t result = find_camera_metadata_ro_entry(
+      characteristics_, ANDROID_CONTROL_MAX_REGIONS, &entry);
+  return (result == 0 && entry.count > kMaxRegionsAwbIdx)
+             ? entry.data.i32[kMaxRegionsAwbIdx]
+             : 0;
+}
+
+int32_t Camera3Device::StaticInfo::GetAfMaxRegions() const {
+  camera_metadata_ro_entry_t entry;
+  int32_t result = find_camera_metadata_ro_entry(
+      characteristics_, ANDROID_CONTROL_MAX_REGIONS, &entry);
+  return (result == 0 && entry.count > kMaxRegionsAfIdx)
+             ? entry.data.i32[kMaxRegionsAfIdx]
+             : 0;
+}
+
 // Test fixture
 
 void Camera3DeviceFixture::SetUp() {

@@ -144,6 +144,10 @@ class Camera3Device {
 
 class Camera3Device::StaticInfo {
  public:
+  const size_t kMaxRegionsAeIdx = 0;
+  const size_t kMaxRegionsAwbIdx = 1;
+  const size_t kMaxRegionsAfIdx = 2;
+
   explicit StaticInfo(const camera_info& cam_info);
 
   // Determine whether or not all the keys are available
@@ -235,6 +239,15 @@ class Camera3Device::StaticInfo {
   // Returns: 0 on success; corresponding error code on failure.
   int32_t GetAvailableTestPatternModes(
       std::vector<int32_t>* test_pattern_modes) const;
+
+  // Get max AE regions
+  int32_t GetAeMaxRegions() const;
+
+  // Get max AWB regions
+  int32_t GetAwbMaxRegions() const;
+
+  // Get max AF regions
+  int32_t GetAfMaxRegions() const;
 
  private:
   // Return the supported hardware level of the device, or fail if no value is
