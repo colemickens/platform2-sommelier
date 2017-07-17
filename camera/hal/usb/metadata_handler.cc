@@ -57,7 +57,7 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
   UPDATE(ANDROID_CONTROL_AE_COMPENSATION_RANGE, control_ae_compensation_range,
          ARRAY_SIZE(control_ae_compensation_range));
 
-  const camera_metadata_rational_t control_ae_compensation_step[] = {{0, 0}};
+  const camera_metadata_rational_t control_ae_compensation_step[] = {{0, 1}};
   UPDATE(ANDROID_CONTROL_AE_COMPENSATION_STEP, control_ae_compensation_step,
          ARRAY_SIZE(control_ae_compensation_step));
 
