@@ -193,14 +193,11 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
       ANDROID_CONTROL_AE_LOCK,
       ANDROID_CONTROL_AE_MODE,
       ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER,
-      ANDROID_CONTROL_AE_REGIONS,
       ANDROID_CONTROL_AE_TARGET_FPS_RANGE,
       ANDROID_CONTROL_AF_MODE,
-      ANDROID_CONTROL_AF_REGIONS,
       ANDROID_CONTROL_AF_TRIGGER,
       ANDROID_CONTROL_AWB_LOCK,
       ANDROID_CONTROL_AWB_MODE,
-      ANDROID_CONTROL_AWB_REGIONS,
       ANDROID_CONTROL_CAPTURE_INTENT,
       ANDROID_CONTROL_EFFECT_MODE,
       ANDROID_CONTROL_MODE,
@@ -227,16 +224,13 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
       ANDROID_CONTROL_AE_LOCK,
       ANDROID_CONTROL_AE_MODE,
       ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER,
-      ANDROID_CONTROL_AE_REGIONS,
       ANDROID_CONTROL_AE_STATE,
       ANDROID_CONTROL_AE_TARGET_FPS_RANGE,
       ANDROID_CONTROL_AF_MODE,
-      ANDROID_CONTROL_AF_REGIONS,
       ANDROID_CONTROL_AF_STATE,
       ANDROID_CONTROL_AF_TRIGGER,
       ANDROID_CONTROL_AWB_LOCK,
       ANDROID_CONTROL_AWB_MODE,
-      ANDROID_CONTROL_AWB_REGIONS,
       ANDROID_CONTROL_AWB_STATE,
       ANDROID_CONTROL_CAPTURE_INTENT,
       ANDROID_CONTROL_EFFECT_MODE,
@@ -605,14 +599,6 @@ int MetadataHandler::PostHandleRequest(int frame_number,
 
   camera_metadata_entry active_array_size =
       metadata->find(ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE);
-  const int32_t region_3a[] = {
-      active_array_size.data.i32[0], active_array_size.data.i32[1],
-      active_array_size.data.i32[2], active_array_size.data.i32[3],
-      0  // A region with 0 weight is ignored.
-  };
-  UPDATE(ANDROID_CONTROL_AE_REGIONS, region_3a, ARRAY_SIZE(region_3a));
-  UPDATE(ANDROID_CONTROL_AF_REGIONS, region_3a, ARRAY_SIZE(region_3a));
-  UPDATE(ANDROID_CONTROL_AWB_REGIONS, region_3a, ARRAY_SIZE(region_3a));
 
   // android.scaler
   const int32_t crop_region[] = {
