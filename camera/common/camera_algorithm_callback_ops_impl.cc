@@ -20,14 +20,12 @@ CameraAlgorithmCallbackOpsImpl::CameraAlgorithmCallbackOpsImpl(
       callback_ops_(callback_ops) {}
 
 void CameraAlgorithmCallbackOpsImpl::Return(uint32_t status,
-                                            int32_t buffer_handle,
-                                            const ReturnCallback& callback) {
+                                            int32_t buffer_handle) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK(callback_ops_);
   DCHECK(callback_ops_->return_callback);
   VLOGF_ENTER();
-  callback.Run(
-      callback_ops_->return_callback(callback_ops_, status, buffer_handle));
+  callback_ops_->return_callback(callback_ops_, status, buffer_handle);
   VLOGF_EXIT();
 }
 

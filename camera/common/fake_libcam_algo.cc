@@ -60,29 +60,26 @@ class CameraAlgorithmImpl {
     return handle;
   }
 
-  int32_t Request(const uint8_t req_header[],
-                  uint32_t size,
-                  int32_t buffer_handle) {
+  void Request(const uint8_t req_header[],
+               uint32_t size,
+               int32_t buffer_handle) {
     uint32_t status = 0;
     switch (req_header[0]) {
       case REQUEST_TEST_COMMAND_NORMAL:
         if (shm_info_map_.find(buffer_handle) == shm_info_map_.end()) {
           LOGF(ERROR) << "Invalid buffer handle";
-          return -EBADF;
+          status = -EBADF;
         }
         break;
-      case REQUEST_TEST_COMMAND_VERIFY_REQ_HEADER:
-        return SimpleHash(req_header, size);
       case REQUEST_TEST_COMMAND_VERIFY_STATUS:
         status = SimpleHash(req_header, size);
         break;
       default:
-        return -EINVAL;
+        status = -EINVAL;
     }
     thread_.task_runner()->PostTask(
         FROM_HERE, base::Bind(&CameraAlgorithmImpl::ReturnCallback,
                               base::Unretained(this), status, buffer_handle));
-    return 0;
   }
 
   void DeregisterBuffers(const int32_t buffer_handles[], uint32_t size) {
@@ -134,16 +131,14 @@ static int32_t RegisterBuffer(int32_t buffer_fd) {
   return CameraAlgorithmImpl::GetInstance()->RegisterBuffer(buffer_fd);
 }
 
-static int32_t Request(const uint8_t req_header[],
-                       uint32_t size,
-                       int32_t buffer_handle) {
-  return CameraAlgorithmImpl::GetInstance()->Request(req_header, size,
-                                                     buffer_handle);
+static void Request(const uint8_t req_header[],
+                    uint32_t size,
+                    int32_t buffer_handle) {
+  CameraAlgorithmImpl::GetInstance()->Request(req_header, size, buffer_handle);
 }
 
 static void DeregisterBuffers(const int32_t buffer_handles[], uint32_t size) {
-  return CameraAlgorithmImpl::GetInstance()->DeregisterBuffers(buffer_handles,
-                                                               size);
+  CameraAlgorithmImpl::GetInstance()->DeregisterBuffers(buffer_handles, size);
 }
 
 }  // namespace libcab_test

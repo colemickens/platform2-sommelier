@@ -15,15 +15,11 @@ namespace libcab_test {
 enum RequestTestCommand {
   // This is to test normal behavior.
   REQUEST_TEST_COMMAND_NORMAL,
-  // This is to verify that the request header is passed through IPC correctly.
-  // Upon receiving this command, the fake camera algorithm library should
-  // calculate the hashcode from the entire |req_header| and return an code
-  // that is equal to the value of the hashcode. This verifies the return code.
-  REQUEST_TEST_COMMAND_VERIFY_REQ_HEADER,
-  // This is to verify that the callback status is passed through IPC correctly.
-  // Upon receiving this command, the fake camera algorithm library should
-  // calculate the hashcode from the entire |req_header| and invoke the return
-  // callback using the hashcode as the |status| parameter.
+  // This is to verify that the request header and callback status is passed
+  // through IPC correctly. Upon receiving this command, the fake camera
+  // algorithm library should calculate the hashcode from the entire
+  // |req_header| and invoke the return callback using the hashcode as the
+  // |status| parameter.
   REQUEST_TEST_COMMAND_VERIFY_STATUS
 };
 

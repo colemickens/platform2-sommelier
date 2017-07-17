@@ -16,10 +16,9 @@
 
 extern "C" {
 typedef struct camera_algorithm_callback_ops {
-  int32_t (*return_callback)(
-      const struct camera_algorithm_callback_ops* callback,
-      uint32_t status,
-      int32_t buffer_handle);
+  void (*return_callback)(const struct camera_algorithm_callback_ops* callback,
+                          uint32_t status,
+                          int32_t buffer_handle);
 } camera_algorithm_callback_ops_t;
 
 typedef struct {
@@ -45,7 +44,11 @@ typedef struct {
   int32_t (*register_buffer)(int buffer_fd);
 
   // This method posts a request for the camera algorithm library to process the
-  // given buffer.
+  // given buffer. The camera algorithm library is expected to implement this
+  // method as an asynchronous one. It should return the function call
+  // immediately after delegating the task to another thread or timer, and then
+  // the latter will invoke the callback function with the processing status and
+  // buffer handle.
   //
   // Args:
   //    |req_header|: The request header indicating request details. The
@@ -54,12 +57,9 @@ typedef struct {
   //      returns.
   //    |size|: Size of request header.
   //    |buffer_handle|: Handle of the buffer to process.
-  //
-  // Returns:
-  //    0 on success; corresponding error code on failure.
-  int32_t (*request)(const uint8_t req_header[],
-                     uint32_t size,
-                     int32_t buffer_handle);
+  void (*request)(const uint8_t req_header[],
+                  uint32_t size,
+                  int32_t buffer_handle);
 
   // This method deregisters buffers to the camera algorithm library. The camera
   // algorithm shall release all the registered buffers on return of this

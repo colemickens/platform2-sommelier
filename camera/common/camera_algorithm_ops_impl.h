@@ -44,8 +44,7 @@ class CameraAlgorithmOpsImpl : public mojom::CameraAlgorithmOps,
 
   // Implementation of mojom::CameraAlgorithmOps::Request interface
   void Request(mojo::Array<uint8_t> req_headers,
-               int32_t buffer_handle,
-               const RequestCallback& callback) override;
+               int32_t buffer_handle) override;
 
   // Implementation of mojom::CameraAlgorithmOps::DeregisterBuffers interface
   void DeregisterBuffers(mojo::Array<int32_t> buffer_handles) override;
@@ -55,16 +54,12 @@ class CameraAlgorithmOpsImpl : public mojom::CameraAlgorithmOps,
 
   ~CameraAlgorithmOpsImpl() override {}
 
-  static int32_t ReturnCallbackForwarder(
+  static void ReturnCallbackForwarder(
       const camera_algorithm_callback_ops_t* callback_ops,
       uint32_t status,
       int32_t buffer_handle);
 
-  int32_t ReturnCallback(uint32_t status, int32_t buffer_handle);
-
-  void ReturnCallbackOnIPCThread(uint32_t status,
-                                 int32_t buffer_handle,
-                                 base::Callback<void(int32_t)> cb);
+  void ReturnCallbackOnIPCThread(uint32_t status, int32_t buffer_handle);
 
   // Binding of CameraAlgorithmOps interface to message pipe
   mojo::Binding<mojom::CameraAlgorithmOps> binding_;

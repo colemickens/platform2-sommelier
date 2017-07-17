@@ -76,30 +76,25 @@ int32_t CameraAlgorithmBridgeImpl::RegisterBuffer(int buffer_fd) {
   return future->Get();
 }
 
-int32_t CameraAlgorithmBridgeImpl::Request(
-    const std::vector<uint8_t>& req_header,
-    int32_t buffer_handle) {
+void CameraAlgorithmBridgeImpl::Request(const std::vector<uint8_t>& req_header,
+                                        int32_t buffer_handle) {
   VLOGF_ENTER();
-  auto future = internal::Future<int32_t>::Create(&relay_);
+  auto header = mojo::Array<uint8_t>::From(req_header);
   ipc_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&CameraAlgorithmBridgeImpl::RequestOnIpcThread,
-                            base::Unretained(this), req_header, buffer_handle,
-                            internal::GetFutureCallback(future)));
-  future->Wait();
+      FROM_HERE,
+      base::Bind(&CameraAlgorithmBridgeImpl::RequestOnIpcThread,
+                 base::Unretained(this), base::Passed(&header), buffer_handle));
   VLOGF_EXIT();
-  return future->Get();
 }
 
 void CameraAlgorithmBridgeImpl::DeregisterBuffers(
     const std::vector<int32_t>& buffer_handles) {
   VLOGF_ENTER();
-  auto future = internal::Future<void>::Create(&relay_);
+  auto handles = mojo::Array<int32_t>::From(buffer_handles);
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&CameraAlgorithmBridgeImpl::DeregisterBuffersOnIpcThread,
-                 base::Unretained(this), buffer_handles,
-                 internal::GetFutureCallback(future)));
-  future->Wait();
+                 base::Unretained(this), base::Passed(&handles)));
   VLOGF_EXIT();
 }
 
@@ -184,6 +179,7 @@ void CameraAlgorithmBridgeImpl::RegisterBufferOnIpcThread(
     int buffer_fd,
     base::Callback<void(int32_t)> cb) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(interface_ptr_.is_bound());
   VLOGF_ENTER();
   int dup_fd = dup(buffer_fd);
   if (dup_fd < 0) {
@@ -205,23 +201,21 @@ void CameraAlgorithmBridgeImpl::RegisterBufferOnIpcThread(
 }
 
 void CameraAlgorithmBridgeImpl::RequestOnIpcThread(
-    const std::vector<uint8_t>& req_header,
-    int32_t buffer_handle,
-    base::Callback<void(int32_t)> cb) {
+    mojo::Array<uint8_t> req_header,
+    int32_t buffer_handle) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(interface_ptr_.is_bound());
   VLOGF_ENTER();
-  interface_ptr_->Request(mojo::Array<uint8_t>::From(req_header), buffer_handle,
-                          mojo::Callback<void(int32_t)>(cb));
+  interface_ptr_->Request(std::move(req_header), buffer_handle);
   VLOGF_EXIT();
 }
 
 void CameraAlgorithmBridgeImpl::DeregisterBuffersOnIpcThread(
-    const std::vector<int32_t>& buffer_handles,
-    base::Callback<void(void)> cb) {
+    mojo::Array<int32_t> buffer_handles) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(interface_ptr_.is_bound());
   VLOGF_ENTER();
-  interface_ptr_->DeregisterBuffers(mojo::Array<int32_t>::From(buffer_handles));
-  cb.Run();
+  interface_ptr_->DeregisterBuffers(std::move(buffer_handles));
 }
 
 }  // namespace arc

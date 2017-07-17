@@ -29,16 +29,14 @@ interface CameraAlgorithmOps {
   RegisterBuffer(handle buffer_fd) => (int32 result);
 
   // This method posts a request for the camera algorithm library to process the
-  // given buffer.
+  // given buffer. This method is asynchronous and returns immediately after the
+  // bridge sends the IPC message out.
   //
   // Args:
   //    |req_header|: The request header indicating request details. The
   //      interpretation depends on the HAL implementation.
   //    |buffer_handle|: Handle of the buffer to process.
-  //
-  // Returns:
-  //    0 on success; corresponding error code on failure.
-  Request(array<uint8> req_header, int32 buffer_handle) => (int32 result);
+  Request(array<uint8> req_header, int32 buffer_handle);
 
   // This method deregisters buffers to the camera algorithm library. The camera
   // algorithm shall release all the registered buffers on return of this
@@ -62,8 +60,5 @@ interface CameraAlgorithmCallbackOps {
   //    |status|: Status of the corresponding request. The interpretation
   //      depends on the HAL implementation.
   //    |buffer_handle|: Handle of the buffer to return.
-  //
-  // Returns:
-  //    0 on success; corresponding error code on failure.
-  Return(uint32 status, int32 buffer_handle) => (int32 result);
+  Return(uint32 status, int32 buffer_handle);
 };

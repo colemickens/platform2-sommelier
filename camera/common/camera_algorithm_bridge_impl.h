@@ -42,8 +42,7 @@ class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge,
 
   // Post a request for the camera algorithm library to process the
   // given buffer.
-  int32_t Request(const std::vector<uint8_t>& req_header,
-                  int32_t buffer_handle);
+  void Request(const std::vector<uint8_t>& req_header, int32_t buffer_handle);
 
   // Deregisters buffers to the camera algorithm library.
   void DeregisterBuffers(const std::vector<int32_t>& buffer_handles);
@@ -63,12 +62,10 @@ class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge,
   void RegisterBufferOnIpcThread(int buffer_fd,
                                  base::Callback<void(int32_t)> cb);
 
-  void RequestOnIpcThread(const std::vector<uint8_t>& req_header,
-                          int32_t buffer_handle,
-                          base::Callback<void(int32_t)> cb);
+  void RequestOnIpcThread(mojo::Array<uint8_t> req_header,
+                          int32_t buffer_handle);
 
-  void DeregisterBuffersOnIpcThread(const std::vector<int32_t>& buffer_handles,
-                                    base::Callback<void(void)> cb);
+  void DeregisterBuffersOnIpcThread(mojo::Array<int32_t> buffer_handles);
 
   // Pointer to local proxy of remote CameraAlgorithmOps interface
   // implementation.

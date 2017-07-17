@@ -66,17 +66,17 @@ class CameraAlgorithmBridge {
   virtual int32_t RegisterBuffer(int buffer_fd) = 0;
 
   // This method posts a request for the camera algorithm library to process the
-  // given buffer.
+  // given buffer. This method is asynchronous and returns immediately after the
+  // bridge sends the IPC message out. A callback to the registered
+  // |callback_ops| will be invoked to return the processing status and buffer
+  // handle.
   //
   // Args:
   //    |req_header|: The request header indicating request details. The
   //      interpretation depends on the HAL implementation.
   //    |buffer_handle|: Handle of the buffer to process.
-  //
-  // Returns:
-  //    0 on success; corresponding error code on failure.
-  virtual int32_t Request(const std::vector<uint8_t>& req_header,
-                          int32_t buffer_handle) = 0;
+  virtual void Request(const std::vector<uint8_t>& req_header,
+                       int32_t buffer_handle) = 0;
 
   // This method deregisters buffers to the camera algorithm library. The camera
   // algorithm shall release all the registered buffers on return of this

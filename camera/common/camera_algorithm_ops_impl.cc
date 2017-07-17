@@ -105,20 +105,16 @@ void CameraAlgorithmOpsImpl::RegisterBuffer(
 }
 
 void CameraAlgorithmOpsImpl::Request(mojo::Array<uint8_t> req_header,
-                                     int32_t buffer_handle,
-                                     const RequestCallback& callback) {
+                                     int32_t buffer_handle) {
   DCHECK(cam_algo_);
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
   if (!cb_ptr_.is_bound()) {
     LOGF(ERROR) << "Return callback is not registered yet";
-    callback.Run(-EINVAL);
     return;
   }
   std::vector<uint8_t> header = req_header.PassStorage();
-  int32_t result =
-      cam_algo_->request(header.data(), header.size(), buffer_handle);
-  callback.Run(result);
+  cam_algo_->request(header.data(), header.size(), buffer_handle);
   VLOGF_EXIT();
 }
 
@@ -133,7 +129,7 @@ void CameraAlgorithmOpsImpl::DeregisterBuffers(
 }
 
 // static
-int32_t CameraAlgorithmOpsImpl::ReturnCallbackForwarder(
+void CameraAlgorithmOpsImpl::ReturnCallbackForwarder(
     const camera_algorithm_callback_ops_t* callback_ops,
     uint32_t status,
     int32_t buffer_handle) {
@@ -141,27 +137,24 @@ int32_t CameraAlgorithmOpsImpl::ReturnCallbackForwarder(
   if (const_cast<CameraAlgorithmOpsImpl*>(
           static_cast<const CameraAlgorithmOpsImpl*>(callback_ops)) !=
       singleton_) {
-    return -EINVAL;
+    LOGF(ERROR) << "Invalid callback ops provided";
+    return;
   }
-  auto future = internal::Future<int32_t>::Create(nullptr);
   singleton_->ipc_task_runner_->PostTask(
-      FROM_HERE, base::Bind(&CameraAlgorithmOpsImpl::ReturnCallbackOnIPCThread,
-                            base::Unretained(singleton_), status, buffer_handle,
-                            internal::GetFutureCallback(future)));
-  future->Wait();
-  return future->Get();
+      FROM_HERE,
+      base::Bind(&CameraAlgorithmOpsImpl::ReturnCallbackOnIPCThread,
+                 base::Unretained(singleton_), status, buffer_handle));
 }
 
-void CameraAlgorithmOpsImpl::ReturnCallbackOnIPCThread(
-    uint32_t status,
-    int32_t buffer_handle,
-    base::Callback<void(int32_t)> cb) {
+void CameraAlgorithmOpsImpl::ReturnCallbackOnIPCThread(uint32_t status,
+                                                       int32_t buffer_handle) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
   if (!cb_ptr_.is_bound()) {
-    cb.Run(-ENOENT);
+    LOGF(WARNING) << "Callback is not bound. IPC broken?";
+  } else {
+    cb_ptr_->Return(status, buffer_handle);
   }
-  cb_ptr_->Return(status, buffer_handle, cb);
   VLOGF_EXIT();
 }
 
