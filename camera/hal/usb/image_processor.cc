@@ -398,7 +398,7 @@ static bool ConvertToJpeg(const android::CameraMetadata& metadata,
   }
 
   JpegCompressor compressor;
-  AllocatedFrameBuffer thumbnail(thumbnail_width * thumbnail_height);
+  AllocatedFrameBuffer thumbnail(thumbnail_width * thumbnail_height * 1.5);
   uint32_t thumbnail_data_size = 0;
   if (!compressor.GenerateThumbnail(
           in_frame.GetData(), in_frame.GetWidth(), in_frame.GetHeight(),
@@ -440,10 +440,10 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
     return false;
   }
 
-  time_t raw_time = 0;
+  struct timespec tp;
   struct tm time_info;
-  bool time_available = time(&raw_time) != -1;
-  localtime_r(&raw_time, &time_info);
+  bool time_available = clock_gettime(CLOCK_REALTIME, &tp) != -1;
+  localtime_r(&tp.tv_sec, &time_info);
   if (!utils->SetDateTime(time_info)) {
     LOGF(ERROR) << "Setting data time failed.";
     return false;
@@ -511,6 +511,63 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
     entry = metadata.find(ANDROID_JPEG_ORIENTATION);
     if (!utils->SetOrientation(entry.data.i32[0])) {
       LOGF(ERROR) << "Setting orientation failed.";
+      return false;
+    }
+  }
+
+  // TODO(henryhsu): Query device to know exposure time.
+  // Currently set frame duration as default.
+  if (!utils->SetExposureTime(1, 30)) {
+    LOGF(ERROR) << "Setting exposure time failed.";
+    return false;
+  }
+
+  if (metadata.exists(ANDROID_LENS_APERTURE)) {
+    const int kAperturePrecision = 10000;
+    entry = metadata.find(ANDROID_LENS_APERTURE);
+    if (!utils->SetFNumber(entry.data.f[0] * kAperturePrecision,
+                           kAperturePrecision)) {
+      LOGF(ERROR) << "Setting F number failed.";
+      return false;
+    }
+  }
+
+  if (metadata.exists(ANDROID_FLASH_INFO_AVAILABLE)) {
+    entry = metadata.find(ANDROID_FLASH_INFO_AVAILABLE);
+    if (entry.data.u8[0] == ANDROID_FLASH_INFO_AVAILABLE_FALSE) {
+      const uint32_t kNoFlashFunction = 0x20;
+      if (!utils->SetFlash(kNoFlashFunction)) {
+        LOGF(ERROR) << "Setting flash failed.";
+        return false;
+      }
+    } else {
+      LOGF(ERROR) << "Unsupported flash info: " << entry.data.u8[0];
+      return false;
+    }
+  }
+
+  if (metadata.exists(ANDROID_CONTROL_AWB_MODE)) {
+    entry = metadata.find(ANDROID_CONTROL_AWB_MODE);
+    if (entry.data.u8[0] == ANDROID_CONTROL_AWB_MODE_AUTO) {
+      const uint16_t kAutoWhiteBalance = 0;
+      if (!utils->SetWhiteBalance(kAutoWhiteBalance)) {
+        LOGF(ERROR) << "Setting white balance failed.";
+        return false;
+      }
+    } else {
+      LOGF(ERROR) << "Unsupported awb mode: " << entry.data.u8[0];
+      return false;
+    }
+  }
+
+  if (time_available) {
+    char str[4];
+    if (snprintf(str, sizeof(str), "%03d", tp.tv_nsec / 1000000) < 0) {
+      LOGF(ERROR) << "Subsec is invalid: " << tp.tv_nsec;
+      return false;
+    }
+    if (!utils->SetSubsecTime(std::string(str))) {
+      LOGF(ERROR) << "Setting subsec time failed.";
       return false;
     }
   }

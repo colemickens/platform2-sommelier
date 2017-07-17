@@ -133,7 +133,7 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
   UPDATE(ANDROID_FLASH_MODE, &flash_mode, 1);
 
   // android.jpeg
-  const int32_t jpeg_available_thumbnail_sizes[] = {0, 0, 320, 240};
+  const int32_t jpeg_available_thumbnail_sizes[] = {0, 0, 240, 180};
   UPDATE(ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES, jpeg_available_thumbnail_sizes,
          ARRAY_SIZE(jpeg_available_thumbnail_sizes));
   UPDATE(ANDROID_JPEG_THUMBNAIL_SIZE, &jpeg_available_thumbnail_sizes[2], 2);
