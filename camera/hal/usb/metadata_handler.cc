@@ -136,6 +136,7 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
   const int32_t jpeg_available_thumbnail_sizes[] = {0, 0, 320, 240};
   UPDATE(ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES, jpeg_available_thumbnail_sizes,
          ARRAY_SIZE(jpeg_available_thumbnail_sizes));
+  UPDATE(ANDROID_JPEG_THUMBNAIL_SIZE, &jpeg_available_thumbnail_sizes[2], 2);
 
   const int32_t jpeg_max_size[] = {13 * 1024 * 1024};  // 13MB
   UPDATE(ANDROID_JPEG_MAX_SIZE, jpeg_max_size, ARRAY_SIZE(jpeg_max_size));
@@ -143,6 +144,9 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
   const uint8_t jpeg_quality = 90;
   UPDATE(ANDROID_JPEG_QUALITY, &jpeg_quality, 1);
   UPDATE(ANDROID_JPEG_THUMBNAIL_QUALITY, &jpeg_quality, 1);
+
+  const int32_t jpeg_orientation = 0;
+  UPDATE(ANDROID_JPEG_ORIENTATION, &jpeg_orientation, 1);
 
   // android.lens
   // This should not be needed.
@@ -204,8 +208,10 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
       ANDROID_CONTROL_SCENE_MODE,
       ANDROID_CONTROL_VIDEO_STABILIZATION_MODE,
       ANDROID_FLASH_MODE,
+      ANDROID_JPEG_ORIENTATION,
       ANDROID_JPEG_QUALITY,
       ANDROID_JPEG_THUMBNAIL_QUALITY,
+      ANDROID_JPEG_THUMBNAIL_SIZE,
       ANDROID_LENS_FOCAL_LENGTH,
       ANDROID_LENS_FOCUS_DISTANCE,
       ANDROID_LENS_OPTICAL_STABILIZATION_MODE,
@@ -239,8 +245,10 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
       ANDROID_CONTROL_VIDEO_STABILIZATION_MODE,
       ANDROID_FLASH_MODE,
       ANDROID_FLASH_STATE,
+      ANDROID_JPEG_ORIENTATION,
       ANDROID_JPEG_QUALITY,
       ANDROID_JPEG_THUMBNAIL_QUALITY,
+      ANDROID_JPEG_THUMBNAIL_SIZE,
       ANDROID_LENS_FOCAL_LENGTH,
       ANDROID_LENS_FOCUS_DISTANCE,
       ANDROID_LENS_INTRINSIC_CALIBRATION,
