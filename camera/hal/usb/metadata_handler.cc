@@ -122,14 +122,6 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
   UPDATE(ANDROID_CONTROL_AVAILABLE_MODES, control_available_modes,
          ARRAY_SIZE(control_available_modes));
 
-  // android.edge
-  const uint8_t available_edge_modes[] = {ANDROID_EDGE_MODE_OFF,
-                                          ANDROID_EDGE_MODE_FAST,
-                                          ANDROID_EDGE_MODE_HIGH_QUALITY};
-  UPDATE(ANDROID_EDGE_AVAILABLE_EDGE_MODES, available_edge_modes,
-         ARRAY_SIZE(available_edge_modes));
-  UPDATE(ANDROID_EDGE_MODE, &available_edge_modes[1], 1);
-
   // android.flash
   const uint8_t flash_info = ANDROID_FLASH_INFO_AVAILABLE_FALSE;
   UPDATE(ANDROID_FLASH_INFO_AVAILABLE, &flash_info, 1);
@@ -214,7 +206,6 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
       ANDROID_CONTROL_MODE,
       ANDROID_CONTROL_SCENE_MODE,
       ANDROID_CONTROL_VIDEO_STABILIZATION_MODE,
-      ANDROID_EDGE_MODE,
       ANDROID_FLASH_MODE,
       ANDROID_JPEG_QUALITY,
       ANDROID_JPEG_THUMBNAIL_QUALITY,
@@ -252,7 +243,6 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
       ANDROID_CONTROL_MODE,
       ANDROID_CONTROL_SCENE_MODE,
       ANDROID_CONTROL_VIDEO_STABILIZATION_MODE,
-      ANDROID_EDGE_MODE,
       ANDROID_FLASH_MODE,
       ANDROID_FLASH_STATE,
       ANDROID_JPEG_QUALITY,
@@ -293,7 +283,6 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
       ANDROID_CONTROL_AWB_AVAILABLE_MODES,
       ANDROID_CONTROL_AWB_LOCK_AVAILABLE,
       ANDROID_CONTROL_MAX_REGIONS,
-      ANDROID_EDGE_AVAILABLE_EDGE_MODES,
       ANDROID_FLASH_INFO_AVAILABLE,
       ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL,
       ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES,
@@ -711,10 +700,6 @@ int MetadataHandler::FillDefaultStillCaptureSettings(
 
   const uint8_t control_mode = ANDROID_CONTROL_MODE_AUTO;
   UPDATE(ANDROID_CONTROL_MODE, &control_mode, 1);
-
-  // android.edge
-  const uint8_t edge_mode = ANDROID_EDGE_MODE_HIGH_QUALITY;
-  UPDATE(ANDROID_EDGE_MODE, &edge_mode, 1);
 
   // android.noiseReduction
   const uint8_t noise_reduction_mode =
