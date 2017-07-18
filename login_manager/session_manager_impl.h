@@ -74,6 +74,12 @@ class SessionManagerImpl
   // Path to magic file that will trigger device wiping on next boot.
   static const char kResetFile[];
 
+  // Path to flag file indicating that a TPM firmware update is available.
+  static const char kTPMFirmwareUpdateAvailableFile[];
+
+  // The VPD key that holds the consented TPM firmware update mode.
+  static const char kTPMFirmwareUpdateModeVPDKey[];
+
   // Name of impulse emitted when user session starts.
   static const char kStartUserSessionImpulse[];
 
@@ -226,6 +232,9 @@ class SessionManagerImpl
                   const std::vector<std::string>& in_argv) override;
 
   bool StartDeviceWipe(brillo::ErrorPtr* error) override;
+  void StartTPMFirmwareUpdate(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+      const std::string& update_mode) override;
   void SetFlagsForUser(const std::string& in_account_id,
                        const std::vector<std::string>& in_flags) override;
 
@@ -324,6 +333,14 @@ class SessionManagerImpl
       const std::vector<uint8_t>& policy_blob,
       SignatureCheck signature_check,
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response);
+
+  // Completion handler that gets invoked after writing the TPM firmware
+  // mode to VPD. Checks |success| of the VPD operation, triggers a device reset
+  // appropriate for |update_mode| and replies to the DBus call via |response|.
+  void OnTPMFirmwareUpdateModeUpdated(
+      const std::string& update_mode,
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+      bool success);
 
 #if USE_CHEETS
   // Creates a server socket for ARC and stores the descriptor in |out_fd|.

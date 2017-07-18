@@ -80,6 +80,11 @@ constexpr char SessionManagerImpl::kLoggedInFlag[] =
     "/run/session_manager/logged_in";
 constexpr char SessionManagerImpl::kResetFile[] =
     "/mnt/stateful_partition/factory_install_reset";
+constexpr char SessionManagerImpl::kTPMFirmwareUpdateAvailableFile[] =
+    "/run/tpm_firmware_update_available";
+
+constexpr char SessionManagerImpl::kTPMFirmwareUpdateModeVPDKey[] =
+    "tpm_firmware_update_mode";
 
 constexpr char SessionManagerImpl::kStartUserSessionImpulse[] =
     "start-user-session";
@@ -161,6 +166,9 @@ constexpr base::TimeDelta kContainerTimeout = base::TimeDelta::FromSeconds(1);
 constexpr base::TimeDelta kSystemClockLastSyncInfoRetryDelay =
     base::TimeDelta::FromMilliseconds(1000);
 
+// TPM firmware update modes.
+constexpr char kTPMFirmwareUpdateModeRecovery[] = "recovery";
+constexpr char kTPMFirmwareUpdateModeFirstBoot[] = "first_boot";
 
 bool IsIncognitoAccountId(const std::string& account_id) {
   const std::string lower_case_id(base::ToLowerASCII(account_id));
@@ -849,6 +857,60 @@ bool SessionManagerImpl::StartDeviceWipe(brillo::ErrorPtr* error) {
   return true;
 }
 
+void SessionManagerImpl::StartTPMFirmwareUpdate(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+    const std::string& update_mode) {
+  // Make sure |update_mode| is supported.
+  if (update_mode != kTPMFirmwareUpdateModeRecovery &&
+      update_mode != kTPMFirmwareUpdateModeFirstBoot) {
+    constexpr char kMessage[] = "Bad update mode.";
+    LOG(ERROR) << kMessage;
+    auto error = CreateError(dbus_error::kInvalidParameter, kMessage);
+    response->ReplyWithError(error.get());
+    return;
+  }
+
+  // Verify that we haven't seen a user log in since boot.
+  if (system_->Exists(base::FilePath(kLoggedInFlag))) {
+    constexpr char kMessage[] = "A user has already logged since boot.";
+    LOG(ERROR) << kMessage;
+    auto error = CreateError(dbus_error::kSessionExists, kMessage);
+    response->ReplyWithError(error.get());
+    return;
+  }
+
+  // For remotely managed devices, make sure the requested update mode matches
+  // the admin-configured one in device policy.
+  if (device_policy_->InstallAttributesEnterpriseMode()) {
+    // TODO(mnissler): Verify that device policy matches |update_mode|.
+    auto error = CreateError(dbus_error::kNotAvailable,
+                             "Not yet supported on enterprise devices.");
+    response->ReplyWithError(error.get());
+    return;
+  }
+
+  // Check whether a firmware update is present.
+  if (!system_->Exists(base::FilePath(kTPMFirmwareUpdateAvailableFile))) {
+    constexpr char kMessage[] = "No TPM firmware update available.";
+    LOG(ERROR) << kMessage;
+    auto error = CreateError(dbus_error::kNotAvailable, kMessage);
+    response->ReplyWithError(error.get());
+    return;
+  }
+
+  // Trigger VPD key update.
+  auto completion =
+      base::Bind(&SessionManagerImpl::OnTPMFirmwareUpdateModeUpdated,
+                 weak_ptr_factory_.GetWeakPtr(),
+                 update_mode,
+                 base::Passed(&response));
+  if (!vpd_process_->RunInBackground(
+          {{kTPMFirmwareUpdateModeVPDKey, update_mode}}, completion)) {
+    // Make sure to send a response.
+    completion.Run(false);
+  }
+}
+
 void SessionManagerImpl::SetFlagsForUser(
     const std::string& in_account_id,
     const std::vector<std::string>& in_flags) {
@@ -1372,6 +1434,42 @@ void SessionManagerImpl::StorePolicyForUserInternal(
       signature_check,
       dbus_service_->CreatePolicyServiceCompletionCallback(
           std::move(response)));
+}
+
+void SessionManagerImpl::OnTPMFirmwareUpdateModeUpdated(
+    const std::string& update_mode,
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
+    bool success) {
+  if (!success) {
+    constexpr char kMessage[] = "Failed set update mode in VPD.";
+    LOG(ERROR) << kMessage;
+    auto error = CreateError(dbus_error::kVpdUpdateFailed, kMessage);
+    response->ReplyWithError(error.get());
+    return;
+  }
+
+  // At this point, we have set things up so the firmware updater will actually
+  // run instead of bailing out. How the device is supposed to run the firmware
+  // update depends on the requested update mode.
+  if (update_mode == kTPMFirmwareUpdateModeRecovery) {
+    // We're done. The user needs to trigger recovery manually.
+    response->Return();
+    return;
+  } else if (update_mode == kTPMFirmwareUpdateModeFirstBoot) {
+    // Trigger a wipe. Note that this also implicitly clears TPM ownership,
+    // which is required for the TPM firmware updater to run. Furthermore, we'll
+    // reboot immediately.
+    InitiateDeviceWipe("session_manager_tpm_firmware_update");
+    response->Return();
+    return;
+  }
+
+  // We shouldn't be here because we have checked |update_mode| to match one of
+  // the recognized modes before.
+  constexpr char kMessage[] = "Bad update mode.";
+  NOTREACHED() << kMessage;
+  auto error = CreateError(dbus_error::kInvalidParameter, kMessage);
+  response->ReplyWithError(error.get());
 }
 
 #if USE_CHEETS

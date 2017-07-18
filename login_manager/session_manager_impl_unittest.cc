@@ -37,8 +37,8 @@
 #include <chromeos/dbus/service_constants.h>
 #include <crypto/scoped_nss_types.h>
 #include <dbus/bus.h>
-#include <dbus/mock_exported_object.h>
 #include <dbus/message.h>
+#include <dbus/mock_exported_object.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -2157,6 +2157,115 @@ TEST_F(SessionManagerImplTest, EmitArcBooted) {
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
 #endif
+}
+
+class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
+ public:
+  void SetUp() override {
+    SessionManagerImplTest::SetUp();
+
+    ON_CALL(utils_, Exists(_))
+        .WillByDefault(Invoke(this, &StartTPMFirmwareUpdateTest::FileExists));
+    ON_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
+        .WillByDefault(Return(false));
+    ON_CALL(vpd_process_, RunInBackground(_, _))
+        .WillByDefault(
+            Invoke(this, &StartTPMFirmwareUpdateTest::RunVpdProcess));
+
+    SetFileExists(SessionManagerImpl::kTPMFirmwareUpdateAvailableFile, true);
+  }
+
+  void TearDown() override {
+    ResponseCapturer capturer;
+    impl_->StartTPMFirmwareUpdate(capturer.CreateMethodResponse<>(),
+                                  update_mode_);
+    if (!completion_.is_null()) {
+      completion_.Run(vpd_status_);
+    }
+
+    EXPECT_EQ(expected_error_, capturer.response()->GetErrorName());
+    SessionManagerImplTest::TearDown();
+  }
+
+  void SetFileExists(const std::string& path, bool exists) {
+    file_existence_[path] = exists;
+  }
+
+  bool FileExists(const base::FilePath& path) {
+    const auto entry = file_existence_.find(path.MaybeAsASCII());
+    return entry != file_existence_.end() && entry->second;
+  }
+
+  void ExpectError(const std::string& error) {
+    expected_error_ = error;
+  }
+
+  void SetUpdateMode(const std::string& update_mode) {
+    update_mode_ = update_mode;
+  }
+
+  bool RunVpdProcess(const VpdProcess::KeyValuePairs& updates,
+                     const VpdProcess::CompletionCallback& completion) {
+    EXPECT_EQ(1, updates.size());
+    if (updates.size() == 1) {
+      EXPECT_EQ(SessionManagerImpl::kTPMFirmwareUpdateModeVPDKey,
+                updates[0].first);
+      EXPECT_EQ(update_mode_, updates[0].second);
+    }
+    if (vpd_spawned_) {
+      completion_ = std::move(completion);
+    }
+    return vpd_spawned_;
+  }
+
+  void SetVpdSpawned(bool spawned) {
+    vpd_spawned_ = spawned;
+  }
+
+  void SetVpdStatus(bool status) {
+    vpd_status_ = status;
+  }
+
+  std::string update_mode_ = "first_boot";
+  std::string expected_error_;
+  std::map<std::string, bool> file_existence_;
+  bool vpd_spawned_ = true;
+  bool vpd_status_ = true;
+  VpdProcess::CompletionCallback completion_;
+};
+
+TEST_F(StartTPMFirmwareUpdateTest, Success_FirstBoot) {
+  ExpectDeviceRestart();
+}
+
+TEST_F(StartTPMFirmwareUpdateTest, Success_Recovery) {
+  SetUpdateMode("recovery");
+}
+
+TEST_F(StartTPMFirmwareUpdateTest, AlreadyLoggedIn) {
+  SetFileExists(SessionManagerImpl::kLoggedInFlag, true);
+  ExpectError(dbus_error::kSessionExists);
+}
+
+TEST_F(StartTPMFirmwareUpdateTest, BadUpdateMode) {
+  SetUpdateMode("no_such_thing");
+  ExpectError(dbus_error::kInvalidParameter);
+}
+
+TEST_F(StartTPMFirmwareUpdateTest, Enterprise) {
+  EXPECT_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
+      .WillRepeatedly(Return(true));
+  ExpectError(dbus_error::kNotAvailable);
+}
+
+TEST_F(StartTPMFirmwareUpdateTest, VpdSpawnError) {
+  SetVpdSpawned(false);
+  ExpectError(dbus_error::kVpdUpdateFailed);
+}
+
+TEST_F(StartTPMFirmwareUpdateTest, VpdStatusError) {
+  SetVpdStatus(false);
+  ExpectError(dbus_error::kVpdUpdateFailed);
 }
 
 class SessionManagerImplStaticTest : public ::testing::Test {

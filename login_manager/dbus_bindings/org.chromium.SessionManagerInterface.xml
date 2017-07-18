@@ -384,6 +384,31 @@
     <method name="StartDeviceWipe" />
 
     <!--
+        StartTPMFirmwareUpdate:
+        @update_mode: Indicates the requested firmware update mode.
+
+        Requests a TPM firmware update to be installed. This will only
+        work immediately after boot while there hasn't been a user
+        session yet.
+
+        The idea behind the fresh boot requirement is that we
+        shouldn't expose the ability to trigger a firmware update to a
+        compromised browser processes. Only allowing it after a
+        (verified) reboot reduces chances that we're dealing with a
+        compromised browser process significantly.
+
+        Remotely managed devices rely on a remote device owner to take
+        device management decisions. Since updating TPM firmware is an
+        invasive process, we don't allow local users to trigger the
+        update on their own, but rely on device policy to confirm the
+        requested update_mode.
+    -->
+    <method name="StartTPMFirmwareUpdate">
+      <arg type="s" name="update_mode" direction="in" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+    </method>
+
+    <!--
         SetFlagsForUser:
         @account_id: Account ID of the user to set flags for.
         @flags: array of flags to be set for the user.
