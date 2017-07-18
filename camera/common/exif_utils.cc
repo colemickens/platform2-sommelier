@@ -9,6 +9,10 @@
 #include <cstdlib>
 #include <ctime>
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/strings/string_split.h>
+
 #include "arc/common.h"
 
 namespace std {
@@ -21,6 +25,8 @@ struct default_delete<ExifEntry> {
 }  // namespace std
 
 namespace arc {
+
+const base::FilePath kCameraPropertyPath("/var/cache/camera/camera.prop");
 
 #define SET_SHORT(ifd, tag, value)                \
   do {                                            \
@@ -90,6 +96,10 @@ bool ExifUtils::Initialize() {
   // Set exif version to 2.2.
   if (!SetExifVersion("0220")) {
     return false;
+  }
+
+  if (!ReadProperty()) {
+    LOGF(WARNING) << "Cannot setup manufacturer and model";
   }
   return true;
 }
@@ -350,11 +360,6 @@ bool ExifUtils::SetLightSource(uint16_t light_source) {
   return true;
 }
 
-bool ExifUtils::SetMake(const std::string& make) {
-  SET_STRING(EXIF_IFD_0, EXIF_TAG_MAKE, EXIF_FORMAT_ASCII, make);
-  return true;
-}
-
 bool ExifUtils::SetMaxAperture(uint32_t numerator, uint32_t denominator) {
   SET_RATIONAL(EXIF_IFD_EXIF, EXIF_TAG_MAX_APERTURE_VALUE, numerator,
                denominator);
@@ -363,11 +368,6 @@ bool ExifUtils::SetMaxAperture(uint32_t numerator, uint32_t denominator) {
 
 bool ExifUtils::SetMeteringMode(uint16_t metering_mode) {
   SET_SHORT(EXIF_IFD_EXIF, EXIF_TAG_METERING_MODE, metering_mode);
-  return true;
-}
-
-bool ExifUtils::SetModel(const std::string& model) {
-  SET_STRING(EXIF_IFD_0, EXIF_TAG_MODEL, EXIF_FORMAT_ASCII, model);
   return true;
 }
 
@@ -496,6 +496,54 @@ unsigned int ExifUtils::GetApp1Length() {
 bool ExifUtils::SetExifVersion(const std::string& exif_version) {
   SET_STRING(EXIF_IFD_EXIF, EXIF_TAG_EXIF_VERSION, EXIF_FORMAT_UNDEFINED,
              exif_version);
+  return true;
+}
+
+bool ExifUtils::SetMake(const std::string& make) {
+  SET_STRING(EXIF_IFD_0, EXIF_TAG_MAKE, EXIF_FORMAT_ASCII, make);
+  return true;
+}
+
+bool ExifUtils::SetModel(const std::string& model) {
+  SET_STRING(EXIF_IFD_0, EXIF_TAG_MODEL, EXIF_FORMAT_ASCII, model);
+  return true;
+}
+
+bool ExifUtils::ReadProperty() {
+  std::string content;
+  // If camera.prop doesn't exist, leave Make and Model tags as empty.
+  if (!base::PathExists(kCameraPropertyPath)) {
+    return false;
+  }
+
+  if (!base::ReadFileToString(kCameraPropertyPath, &content)) {
+    LOGF(ERROR) << "Read file failed: " << kCameraPropertyPath.value();
+    return false;
+  }
+
+  std::vector<std::string> properties = base::SplitString(
+      content, "\n", base::WhitespaceHandling::TRIM_WHITESPACE,
+      base::SplitResult::SPLIT_WANT_NONEMPTY);
+  const std::string kManufacturer = "ro.product.manufacturer";
+  const std::string kModel = "ro.product.model";
+
+  std::string camera_properties;
+  for (const auto& property : properties) {
+    VLOGF(1) << "property: " << property;
+    std::vector<std::string> key_value = base::SplitString(
+        property, "=", base::WhitespaceHandling::TRIM_WHITESPACE,
+        base::SplitResult::SPLIT_WANT_ALL);
+
+    if (!key_value[0].compare(0, kManufacturer.length(), kManufacturer)) {
+      if (!SetMake(key_value[1])) {
+        return false;
+      }
+    } else if (!key_value[0].compare(0, kModel.length(), kModel)) {
+      if (!SetModel(key_value[1])) {
+        return false;
+      }
+    }
+  }
   return true;
 }
 

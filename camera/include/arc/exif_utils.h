@@ -151,10 +151,6 @@ class EXPORTED ExifUtils {
   // Returns false if memory allocation fails.
   bool SetLightSource(uint16_t light_source);
 
-  // Sets the manufacturer of camera.
-  // Returns false if memory allocation fails.
-  bool SetMake(const std::string& make);
-
   // Sets the smallest F number of the lens.
   // Returns false if memory allocation fails.
   bool SetMaxAperture(uint32_t numerator, uint32_t denominator);
@@ -162,10 +158,6 @@ class EXPORTED ExifUtils {
   // Sets the metering mode.
   // Returns false if memory allocation fails.
   bool SetMeteringMode(uint16_t metering_mode);
-
-  // Sets the model number of camera.
-  // Returns false if memory allocation fails.
-  bool SetModel(const std::string& model);
 
   // Sets image orientation.
   // Returns false if memory allocation fails.
@@ -221,17 +213,28 @@ class EXPORTED ExifUtils {
   bool GenerateApp1(const void* thumbnail_buffer, uint32_t size);
 
   // Gets buffer of APP1 segment. This method must be called only after calling
-  // generateAPP1().
+  // GenerateAPP1().
   const uint8_t* GetApp1Buffer();
 
   // Gets length of APP1 segment. This method must be called only after calling
-  // generateAPP1().
+  // GenerateAPP1().
   unsigned int GetApp1Length();
 
  private:
   // Sets the version of this standard supported.
   // Returns false if memory allocation fails.
   bool SetExifVersion(const std::string& exif_version);
+
+  // Sets the manufacturer of camera.
+  // Returns false if memory allocation fails.
+  bool SetMake(const std::string& make);
+
+  // Sets the model number of camera.
+  // Returns false if memory allocation fails.
+  bool SetModel(const std::string& model);
+
+  // Reads property to set manufacturer and model tag.
+  bool ReadProperty();
 
   // Resets the pointers and memories.
   void Reset();
