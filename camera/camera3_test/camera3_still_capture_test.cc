@@ -485,8 +485,8 @@ void Camera3SingleStillCaptureTest::ValidateExifKeys(
   }
 
   // Validate aperture between EXIF data and metadata
-  float exif_aperture = GetExifTagFloat(exif_data, EXIF_IFD_EXIF,
-                                        EXIF_TAG_APERTURE_VALUE, byte_order);
+  float exif_aperture =
+      GetExifTagFloat(exif_data, EXIF_IFD_EXIF, EXIF_TAG_FNUMBER, byte_order);
   if (exif_aperture > 0 && cam_service_.GetStaticInfo(cam_id_)->IsKeyAvailable(
                                ANDROID_LENS_INFO_AVAILABLE_APERTURES)) {
     std::vector<float> apertures;
