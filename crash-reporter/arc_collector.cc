@@ -74,7 +74,8 @@ const char kSubjectKey[] = "Subject";
 const std::pair<const char *, const char *> kHeaderToFieldMapping[] = {
   { "Crash-Tag", "crash_tag" },
   { "NDK-Execution", "ndk_execution" },
-  { "Package", "package" }
+  { "Package", "package" },
+  { "Target-SDK", "target_sdk" }
 };
 
 // Keys for build properties.
