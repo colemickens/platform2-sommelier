@@ -15,6 +15,8 @@
 
 #include <gbm.h>
 
+#include <base/macros.h>
+
 #define EXPORTED __attribute__((__visibility__("default")))
 
 struct native_handle;
