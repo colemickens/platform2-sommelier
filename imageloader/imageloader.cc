@@ -6,6 +6,7 @@
 
 #include <sysexits.h>
 #include <libminijail.h>
+#include <scoped_minijail.h>
 
 #include <string>
 
@@ -34,17 +35,17 @@ ImageLoader::~ImageLoader() {}
 
 // static
 void ImageLoader::EnterSandbox() {
-  struct minijail* jail = minijail_new();
-  minijail_no_new_privs(jail);
-  minijail_use_seccomp_filter(jail);
-  minijail_parse_seccomp_filters(jail, kSeccompFilterPath);
-  minijail_reset_signal_mask(jail);
-  minijail_namespace_ipc(jail);
-  minijail_namespace_net(jail);
-  minijail_remount_proc_readonly(jail);
-  CHECK_EQ(0, minijail_change_user(jail, kImageLoaderUserName));
-  CHECK_EQ(0, minijail_change_group(jail, kImageLoaderGroupName));
-  minijail_enter(jail);
+  ScopedMinijail jail(minijail_new());
+  minijail_no_new_privs(jail.get());
+  minijail_use_seccomp_filter(jail.get());
+  minijail_parse_seccomp_filters(jail.get(), kSeccompFilterPath);
+  minijail_reset_signal_mask(jail.get());
+  minijail_namespace_ipc(jail.get());
+  minijail_namespace_net(jail.get());
+  minijail_remount_proc_readonly(jail.get());
+  CHECK_EQ(0, minijail_change_user(jail.get(), kImageLoaderUserName));
+  CHECK_EQ(0, minijail_change_group(jail.get(), kImageLoaderGroupName));
+  minijail_enter(jail.get());
 }
 
 int ImageLoader::OnInit() {

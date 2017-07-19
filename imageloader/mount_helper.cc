@@ -6,6 +6,7 @@
 
 #include <fcntl.h>
 #include <libminijail.h>
+#include <scoped_minijail.h>
 #include <sys/capability.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -38,14 +39,14 @@ int MountHelper::OnInit() {
   if (setsid() < 0 && errno != EPERM) PLOG(FATAL) << "setsid failed";
 
   // Run with minimal privileges.
-  struct minijail* jail = minijail_new();
-  minijail_no_new_privs(jail);
-  minijail_use_seccomp_filter(jail);
-  minijail_parse_seccomp_filters(jail, kSeccompFilterPath);
-  minijail_reset_signal_mask(jail);
-  minijail_namespace_net(jail);
-  minijail_skip_remount_private(jail);
-  minijail_enter(jail);
+  ScopedMinijail jail(minijail_new());
+  minijail_no_new_privs(jail.get());
+  minijail_use_seccomp_filter(jail.get());
+  minijail_parse_seccomp_filters(jail.get(), kSeccompFilterPath);
+  minijail_reset_signal_mask(jail.get());
+  minijail_namespace_net(jail.get());
+  minijail_skip_remount_private(jail.get());
+  minijail_enter(jail.get());
 
   MessageLoopForIO::current()->WatchFileDescriptor(control_fd_.get(), true,
                                                    MessageLoopForIO::WATCH_READ,
