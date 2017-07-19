@@ -38,24 +38,34 @@ bool HammerUpdater::Run() {
   bool post_rw_jump = false;
 
   for (int run_count = 0; run_count < kMaximumRunCount; ++run_count) {
-    HammerUpdater::RunStatus status = RunOnce(post_rw_jump);
+    HammerUpdater::RunStatus status = HammerUpdater::RunStatus::kFatalError;
+
+    if (fw_updater_->TryConnectUSB()) {
+      status = RunOnce(post_rw_jump);
+    } else {
+      LOG(ERROR) << "Failed to connect USB.";
+    }
     post_rw_jump = false;
 
     switch (status) {
       case HammerUpdater::RunStatus::kNoUpdate:
         LOG(INFO) << "Hammer does not need to update.";
+        fw_updater_->CloseUSB();
         return true;
+
       case HammerUpdater::RunStatus::kFatalError:
-        LOG(ERROR) << "Hammer encountered fatal error!";
+        LOG(ERROR) << "Hammer encountered a fatal error!";
+        fw_updater_->CloseUSB();
         return false;
+
       case HammerUpdater::RunStatus::kNeedReset:
-        LOG(INFO) << "Reset the hammer and run again. run_count=" << run_count;
+        LOG(INFO) << "Reset hammer and run again. run_count=" << run_count;
         fw_updater_->SendSubcommand(UpdateExtraCommand::kImmediateReset);
-        // TODO(kitching): CloseUSB should be in more places.
         fw_updater_->CloseUSB();
         base::PlatformThread::Sleep(
             base::TimeDelta::FromMilliseconds(kResetTimeMs));
         continue;
+
       case HammerUpdater::RunStatus::kNeedJump:
         post_rw_jump = true;
         LOG(INFO) << "Jump to RW and run again. run_count=" << run_count;
@@ -66,8 +76,10 @@ bool HammerUpdater::Run() {
         base::PlatformThread::Sleep(
             base::TimeDelta::FromMilliseconds(kResetTimeMs));
         continue;
+
       default:
         LOG(ERROR) << "Unknown RunStatus: " << static_cast<int>(status);
+        fw_updater_->CloseUSB();
         return false;
     }
   }
@@ -78,11 +90,6 @@ bool HammerUpdater::Run() {
 }
 
 HammerUpdater::RunStatus HammerUpdater::RunOnce(const bool post_rw_jump) {
-  if (!fw_updater_->TryConnectUSB()) {
-    LOG(ERROR) << "Failed to connect USB.";
-    return HammerUpdater::RunStatus::kFatalError;
-  }
-
   // The first time we use SendFirstPDU it is to gather information about
   // hammer's running EC. We should use SendDone right away to get the EC
   // back into a state where we can send a subcommand.

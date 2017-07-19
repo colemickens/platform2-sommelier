@@ -12,11 +12,16 @@
 using testing::_;
 using testing::Assign;
 using testing::AtLeast;
+using testing::DoAll;
+using testing::Exactly;
 using testing::InSequence;
 using testing::Return;
 using testing::ReturnPointee;
 
 namespace hammerd {
+
+ACTION_P(Increment, n) { ++(*n); }
+ACTION_P(Decrement, n) { --(*n); }
 
 // The class is used to test the top-level method: Run(), so we mock other
 // methods.
@@ -30,14 +35,37 @@ class MockHammerUpdater : public HammerUpdater {
 
 class HammerUpdaterTest : public testing::Test {
  public:
+
   void SetUp() override {
     mock_fw_updater_.reset(new MockFirmwareUpdater());
-    // hammer_updater_ is used to test Run().
+    // mock_hammer_updater_ is used to test Run().
     mock_hammer_updater_.reset(new MockHammerUpdater{
         image_, std::shared_ptr<FirmwareUpdaterInterface>(mock_fw_updater_)});
     // hammer_updater_ is used to test other methods.
     hammer_updater_.reset(new HammerUpdater{
         image_, std::shared_ptr<FirmwareUpdaterInterface>(mock_fw_updater_)});
+    usb_connection_count_ = 0;
+
+    // By default, expect no USB connections to be made. This can
+    // be overridden by a call to ExpectUSBConnections.
+    EXPECT_CALL(*mock_fw_updater_, TryConnectUSB()).Times(0);
+    EXPECT_CALL(*mock_fw_updater_, CloseUSB()).Times(0);
+  }
+
+  void TearDown() override {
+    ASSERT_EQ(usb_connection_count_, 0);
+  }
+
+  void ExpectUSBConnections(const testing::Cardinality count) {
+    // Checked in TearDown.
+    EXPECT_CALL(*mock_fw_updater_, TryConnectUSB())
+        .Times(count)
+        .WillRepeatedly(DoAll(Increment(&usb_connection_count_),
+                              Return(true)));
+    EXPECT_CALL(*mock_fw_updater_, CloseUSB())
+        .Times(count)
+        .WillRepeatedly(DoAll(Decrement(&usb_connection_count_),
+                              Return()));
   }
 
  protected:
@@ -45,11 +73,14 @@ class HammerUpdaterTest : public testing::Test {
   std::unique_ptr<HammerUpdater> hammer_updater_;
   std::shared_ptr<MockFirmwareUpdater> mock_fw_updater_;
   std::string image_ = "MOCK IMAGE";
+  int usb_connection_count_;
 };
 
 // Failed to load image.
 TEST_F(HammerUpdaterTest, Run_LoadImageFailed) {
   EXPECT_CALL(*mock_fw_updater_, LoadImage(image_)).WillOnce(Return(false));
+  EXPECT_CALL(*mock_fw_updater_, TryConnectUSB()).Times(0);
+  EXPECT_CALL(*mock_hammer_updater_, RunOnce(_)).Times(0);
 
   ASSERT_FALSE(mock_hammer_updater_->Run());
 }
@@ -64,8 +95,8 @@ TEST_F(HammerUpdaterTest, Run_AlwaysReset) {
               SendSubcommand(UpdateExtraCommand::kImmediateReset, _))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mock_fw_updater_, CloseUSB()).WillRepeatedly(Return());
 
+  ExpectUSBConnections(AtLeast(1));
   ASSERT_FALSE(mock_hammer_updater_->Run());
 }
 
@@ -75,10 +106,11 @@ TEST_F(HammerUpdaterTest, Run_FatalError) {
   EXPECT_CALL(*mock_hammer_updater_, RunOnce(false))
       .WillOnce(Return(HammerUpdater::RunStatus::kFatalError));
 
+  ExpectUSBConnections(AtLeast(1));
   ASSERT_FALSE(mock_hammer_updater_->Run());
 }
 
-// After three attempts, Run gives up.
+// After three attempts, Run reports no update needed.
 TEST_F(HammerUpdaterTest, Run_Reset3Times) {
   EXPECT_CALL(*mock_fw_updater_, LoadImage(image_)).WillOnce(Return(true));
   EXPECT_CALL(*mock_hammer_updater_, RunOnce(false))
@@ -90,8 +122,8 @@ TEST_F(HammerUpdaterTest, Run_Reset3Times) {
               SendSubcommand(UpdateExtraCommand::kImmediateReset, _))
       .Times(3)
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mock_fw_updater_, CloseUSB()).Times(3).WillRepeatedly(Return());
 
+  ExpectUSBConnections(Exactly(4));
   ASSERT_EQ(mock_hammer_updater_->Run(), true);
 }
 
@@ -109,7 +141,6 @@ TEST_F(HammerUpdaterTest, Run_UpdateRWAfterJumpToRWFailed) {
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*mock_fw_updater_, IsSectionLocked(SectionName::RW))
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(*mock_fw_updater_, CloseUSB()).WillRepeatedly(Return());
   EXPECT_CALL(*mock_fw_updater_, CurrentSection())
       .WillRepeatedly(ReturnPointee(&current_section));
 
@@ -117,7 +148,6 @@ TEST_F(HammerUpdaterTest, Run_UpdateRWAfterJumpToRWFailed) {
     InSequence dummy;
 
     // First round: RW does not need update.  Attempt to jump to RW.
-    EXPECT_CALL(*mock_fw_updater_, TryConnectUSB()).WillOnce(Return(true));
     EXPECT_CALL(*mock_fw_updater_, SendFirstPDU()).WillOnce(Return(true));
     EXPECT_CALL(*mock_fw_updater_, SendDone()).WillOnce(Return());
     EXPECT_CALL(*mock_fw_updater_,
@@ -125,7 +155,6 @@ TEST_F(HammerUpdaterTest, Run_UpdateRWAfterJumpToRWFailed) {
         .WillOnce(Return(true));
 
     // Second round: Jump to RW fails, so update RW.
-    EXPECT_CALL(*mock_fw_updater_, TryConnectUSB()).WillOnce(Return(true));
     EXPECT_CALL(*mock_fw_updater_, SendFirstPDU()).WillOnce(Return(true));
     EXPECT_CALL(*mock_fw_updater_, SendDone()).WillOnce(Return());
     EXPECT_CALL(*mock_fw_updater_,
@@ -138,7 +167,6 @@ TEST_F(HammerUpdaterTest, Run_UpdateRWAfterJumpToRWFailed) {
         .WillOnce(Return(true));
 
     // Third round: Again attempt to jump to RW.
-    EXPECT_CALL(*mock_fw_updater_, TryConnectUSB()).WillOnce(Return(true));
     EXPECT_CALL(*mock_fw_updater_, SendFirstPDU()).WillOnce(Return(true));
     EXPECT_CALL(*mock_fw_updater_, SendDone()).WillOnce(Return());
     EXPECT_CALL(*mock_fw_updater_,
@@ -147,11 +175,11 @@ TEST_F(HammerUpdaterTest, Run_UpdateRWAfterJumpToRWFailed) {
                         Return(true)));
 
     // Fourth round: Check that jumping to RW was successful.
-    EXPECT_CALL(*mock_fw_updater_, TryConnectUSB()).WillOnce(Return(true));
     EXPECT_CALL(*mock_fw_updater_, SendFirstPDU()).WillOnce(Return(true));
     EXPECT_CALL(*mock_fw_updater_, SendDone()).WillOnce(Return());
   }
 
+  ExpectUSBConnections(AtLeast(1));
   ASSERT_EQ(hammer_updater_->Run(), true);
 }
 
@@ -171,7 +199,6 @@ TEST_F(HammerUpdaterTest, RunOnce_UpdateRW) {
 
   {
     InSequence dummy;
-    EXPECT_CALL(*mock_fw_updater_, TryConnectUSB()).WillOnce(Return(true));
     EXPECT_CALL(*mock_fw_updater_, SendFirstPDU()).WillOnce(Return(true));
     EXPECT_CALL(*mock_fw_updater_,
                 SendSubcommand(UpdateExtraCommand::kStayInRO, _))
@@ -200,7 +227,6 @@ TEST_F(HammerUpdaterTest, RunOnce_UnlockRW) {
 
   {
     InSequence dummy;
-    EXPECT_CALL(*mock_fw_updater_, TryConnectUSB()).WillOnce(Return(true));
     EXPECT_CALL(*mock_fw_updater_, SendFirstPDU()).WillOnce(Return(true));
     EXPECT_CALL(*mock_fw_updater_,
                 SendSubcommand(UpdateExtraCommand::kStayInRO, _))
@@ -226,7 +252,6 @@ TEST_F(HammerUpdaterTest, RunOnce_JumpToRW) {
 
   {
     InSequence dummy;
-    EXPECT_CALL(*mock_fw_updater_, TryConnectUSB()).WillOnce(Return(true));
     EXPECT_CALL(*mock_fw_updater_, SendFirstPDU()).WillOnce(Return(true));
   }
 
@@ -246,7 +271,6 @@ TEST_F(HammerUpdaterTest, RunOnce_CompleteRWJump) {
   {
     InSequence dummy;
 
-    EXPECT_CALL(*mock_fw_updater_, TryConnectUSB()).WillOnce(Return(true));
     EXPECT_CALL(*mock_fw_updater_, SendFirstPDU()).WillOnce(Return(true));
   }
 
@@ -267,7 +291,6 @@ TEST_F(HammerUpdaterTest, RunOnce_KeepInRW) {
 
   {
     InSequence dummy;
-    EXPECT_CALL(*mock_fw_updater_, TryConnectUSB()).WillOnce(Return(true));
     EXPECT_CALL(*mock_fw_updater_, SendFirstPDU()).WillOnce(Return(true));
   }
 
@@ -288,7 +311,6 @@ TEST_F(HammerUpdaterTest, RunOnce_ResetToRO) {
 
   {
     InSequence dummy;
-    EXPECT_CALL(*mock_fw_updater_, TryConnectUSB()).WillOnce(Return(true));
     EXPECT_CALL(*mock_fw_updater_, SendFirstPDU()).WillOnce(Return(true));
   }
 
