@@ -28,6 +28,7 @@ getdents: 1
 getegid: 1
 geteuid: 1
 getpeername: 1
+getrandom: 1
 getrlimit: 1
 getsockname: 1
 getsockopt: 1

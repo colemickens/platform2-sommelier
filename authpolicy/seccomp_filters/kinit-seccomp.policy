@@ -18,6 +18,7 @@ fstat: 1
 futex: 1
 getdents: 1
 getpeername: 1
+getrandom: 1
 getrlimit: 1
 getsockname: 1
 getsockopt: 1
