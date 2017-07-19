@@ -43,8 +43,7 @@ static const int kMaxCipherBlockBytes = 16;
 static const int kMaxRSAOutputBytes = 2048;
 static const int kMaxDigestOutputBytes = EVP_MAX_MD_SIZE;
 static const int kMinRSAKeyBits = 512;
-static const int kMaxRSAKeyBitsHW = 2048;  // Max supported by the TPM.
-static const int kMaxRSAKeyBitsSW = kMaxRSAOutputBytes * 8;
+static const int kMaxRSAKeyBits = kMaxRSAOutputBytes * 8;
 
 SessionImpl::SessionImpl(int slot_id,
                          ObjectPool* token_object_pool,
@@ -233,7 +232,7 @@ CK_RV SessionImpl::OperationInit(OperationType operation,
     }
     if (IsRSA(mechanism)) {
       int key_size = key->GetAttributeString(CKA_MODULUS).length() * 8;
-      if (key_size < kMinRSAKeyBits || key_size > kMaxRSAKeyBitsSW) {
+      if (key_size < kMinRSAKeyBits || key_size > kMaxRSAKeyBits) {
         LOG(ERROR) << "Key size not supported: " << key_size;
         return CKR_KEY_SIZE_RANGE;
       }
@@ -577,7 +576,7 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
   if (!public_object->IsAttributePresent(CKA_MODULUS_BITS))
     return CKR_TEMPLATE_INCOMPLETE;
   int modulus_bits = public_object->GetAttributeInt(CKA_MODULUS_BITS, 0);
-  if (modulus_bits < kMinRSAKeyBits || modulus_bits > kMaxRSAKeyBitsSW)
+  if (modulus_bits < kMinRSAKeyBits || modulus_bits > kMaxRSAKeyBits)
     return CKR_KEY_SIZE_RANGE;
   ObjectPool* public_pool = (public_object->IsTokenObject() ?
                              token_object_pool_ : session_object_pool_.get());
@@ -586,7 +585,8 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
   // Check if we are able to back this key with the TPM.
   if (tpm_utility_->IsTPMAvailable() &&
       private_object->IsTokenObject() &&
-      modulus_bits <= kMaxRSAKeyBitsHW) {
+      modulus_bits >= tpm_utility_->MinRSAKeyBits() &&
+      modulus_bits <= tpm_utility_->MaxRSAKeyBits()) {
     string auth_data = GenerateRandomSoftware(kDefaultAuthDataBytes);
     string key_blob;
     int tpm_key_handle;
@@ -1316,7 +1316,8 @@ CK_RV SessionImpl::WrapPrivateKey(Object* object) {
     prime = object->GetAttributeString(CKA_PRIME_2);
   }
   int key_size_bits = object->GetAttributeString(CKA_MODULUS).length() * 8;
-  if (key_size_bits > kMaxRSAKeyBitsHW || key_size_bits < kMinRSAKeyBits) {
+  if (key_size_bits > tpm_utility_->MaxRSAKeyBits() ||
+      key_size_bits < tpm_utility_->MinRSAKeyBits()) {
     LOG(WARNING) << "WARNING: " << key_size_bits
                  << "-bit private key cannot be wrapped by the TPM.";
     // Fall back to software.

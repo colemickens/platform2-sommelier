@@ -20,8 +20,14 @@ namespace chaps {
 
 class TPMUtilityImpl : public TPMUtility {
  public:
+  // Min and max supported RSA modulus sizes (in bytes).
+  const uint32_t kMinModulusSize = 64;
+  const uint32_t kMaxModulusSize = 256;
+
   explicit TPMUtilityImpl(const std::string& srk_auth_data);
   virtual ~TPMUtilityImpl();
+  virtual size_t MinRSAKeyBits() { return kMinModulusSize * 8; }
+  virtual size_t MaxRSAKeyBits() { return kMaxModulusSize * 8; }
   virtual bool Init();
   virtual bool IsTPMAvailable();
   virtual bool Authenticate(int slot_id,

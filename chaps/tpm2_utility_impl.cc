@@ -486,18 +486,16 @@ bool TPM2UtilityImpl::Bind(int key_handle,
                            const std::string& input,
                            std::string* output) {
   CHECK(output);
-  // Max input size is the size of smallest allowed modulus - 11.
-  uint32_t max_input_size = kMinModulusSize - 11;
-  if (input.size() > max_input_size) {
-    LOG(ERROR) << "Encryption plaintext is longer than RSA modulus.";
-    return false;
-  }
-  crypto::ScopedRSA rsa(RSA_new());
   std::string modulus;
   std::string exponent;
   if (!GetPublicKey(key_handle, &exponent, &modulus)) {
     return false;
   }
+  if (input.size() > modulus.size() - 11) {
+    LOG(ERROR) << "Encryption plaintext is longer than RSA modulus.";
+    return false;
+  }
+  crypto::ScopedRSA rsa(RSA_new());
   rsa.get()->n = BN_bin2bn(
       reinterpret_cast<const unsigned char*>(modulus.data()),
       modulus.size(),
@@ -659,8 +657,14 @@ bool TPM2UtilityImpl::LoadKeyWithParentInternal(int slot,
 bool TPM2UtilityImpl::UnbindInternal(int key_handle,
                                      const std::string& input,
                                      std::string* output) {
-  // Max input size is the size of smallest allowed modulus.
-  if (input.size() > kMinModulusSize) {
+  trunks::TPMT_PUBLIC public_data;
+  TPM_RC result = trunks_tpm_utility_->GetKeyPublicArea(key_handle,
+                                                        &public_data);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting key public data: " << result;
+    return false;
+  }
+  if (input.size() > public_data.unique.rsa.size) {
     LOG(ERROR) << "RSA decrypt ciphertext is larger than modulus.";
     return false;
   }
@@ -670,12 +674,12 @@ bool TPM2UtilityImpl::UnbindInternal(int key_handle,
     return false;
   }
   session_->SetEntityAuthorizationValue(auth_data);
-  TPM_RC result = trunks_tpm_utility_->AsymmetricDecrypt(key_handle,
-                                              trunks::TPM_ALG_RSAES,
-                                              trunks::TPM_ALG_SHA1,
-                                              input,
-                                              session_->GetDelegate(),
-                                              output);
+  result = trunks_tpm_utility_->AsymmetricDecrypt(key_handle,
+                                                  trunks::TPM_ALG_RSAES,
+                                                  trunks::TPM_ALG_SHA1,
+                                                  input,
+                                                  session_->GetDelegate(),
+                                                  output);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error performing unbind operation: "
                << trunks::GetErrorString(result);

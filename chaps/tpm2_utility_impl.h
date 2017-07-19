@@ -30,10 +30,12 @@
 
 namespace chaps {
 
-const uint32_t kMinModulusSize = 256;
-
 class TPM2UtilityImpl : public TPMUtility {
  public:
+  // Min and max supported RSA modulus sizes (in bytes).
+  const uint32_t kMinModulusSize = 128;
+  const uint32_t kMaxModulusSize = 256;
+
   TPM2UtilityImpl();
   // This c'tor allows us to specify a task_runner to use to perform TPM
   // operations. This class will not hold a reference to task_runner, but it is
@@ -43,6 +45,8 @@ class TPM2UtilityImpl : public TPMUtility {
   // Does not take ownership of |factory|.
   explicit TPM2UtilityImpl(trunks::TrunksFactory* factory);
   virtual ~TPM2UtilityImpl();
+  size_t MinRSAKeyBits() override { return kMinModulusSize * 8; }
+  size_t MaxRSAKeyBits() override { return kMaxModulusSize * 8; }
   bool Init() override;
   bool IsTPMAvailable() override;
   bool Authenticate(int slot_id,

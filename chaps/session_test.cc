@@ -785,6 +785,8 @@ TEST_F(TestSession, Flush) {
 }
 
 TEST_F(TestSession, GenerateRSAWithTPM) {
+  EXPECT_CALL(tpm_, MinRSAKeyBits()).WillRepeatedly(Return(1024));
+  EXPECT_CALL(tpm_, MaxRSAKeyBits()).WillRepeatedly(Return(2048));
   EXPECT_CALL(tpm_, GenerateKey(_, _, _, _, _, _)).WillOnce(Return(true));
   EXPECT_CALL(tpm_, GetPublicKey(_, _, _)).WillRepeatedly(Return(true));
 
@@ -820,6 +822,8 @@ TEST_F(TestSession, GenerateRSAWithTPM) {
 }
 
 TEST_F(TestSession, GenerateRSAWithTPMInconsistentToken) {
+  EXPECT_CALL(tpm_, MinRSAKeyBits()).WillRepeatedly(Return(1024));
+  EXPECT_CALL(tpm_, MaxRSAKeyBits()).WillRepeatedly(Return(2048));
   EXPECT_CALL(tpm_, GenerateKey(_, _, _, _, _, _)).WillOnce(Return(true));
   EXPECT_CALL(tpm_, GetPublicKey(_, _, _)).WillRepeatedly(Return(true));
 
@@ -892,6 +896,8 @@ TEST_F(TestSession, GenerateRSAWithNoTPM) {
 }
 
 TEST_F(TestSession, ImportRSAWithTPM) {
+  EXPECT_CALL(tpm_, MinRSAKeyBits()).WillRepeatedly(Return(1024));
+  EXPECT_CALL(tpm_, MaxRSAKeyBits()).WillRepeatedly(Return(2048));
   EXPECT_CALL(tpm_, WrapKey(_, _, _, _, _, _, _)).WillOnce(Return(true));
 
   RSA* rsa = RSA_generate_key(2048, 0x10001, NULL, NULL);

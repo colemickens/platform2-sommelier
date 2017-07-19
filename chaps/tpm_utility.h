@@ -18,6 +18,12 @@ class TPMUtility {
  public:
   virtual ~TPMUtility() {}
 
+  // Returns the minimum supported RSA key size (in bits).
+  virtual size_t MinRSAKeyBits() = 0;
+
+  // Returns the maximum supported RSA key size (in bits).
+  virtual size_t MaxRSAKeyBits() = 0;
+
   // Performs initialization tasks including the loading of the storage root key
   // (SRK). This may be called multiple times.
   // Returns true on success.

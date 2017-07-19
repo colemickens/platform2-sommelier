@@ -19,6 +19,8 @@ class TPMUtilityMock : public TPMUtility {
   TPMUtilityMock();
   virtual ~TPMUtilityMock();
 
+  MOCK_METHOD0(MinRSAKeyBits, size_t());
+  MOCK_METHOD0(MaxRSAKeyBits, size_t());
   MOCK_METHOD0(Init, bool());
   MOCK_METHOD0(IsTPMAvailable, bool());
   MOCK_METHOD5(Authenticate, bool(int,
