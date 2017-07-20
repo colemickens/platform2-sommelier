@@ -177,12 +177,10 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
          ARRAY_SIZE(radial_distortion));
 
   // android.noiseReduction
-  const uint8_t noise_reduction_modes[] = {
-      ANDROID_NOISE_REDUCTION_MODE_OFF, ANDROID_NOISE_REDUCTION_MODE_FAST,
-      ANDROID_NOISE_REDUCTION_MODE_HIGH_QUALITY};
+  const uint8_t noise_reduction_mode = ANDROID_NOISE_REDUCTION_MODE_OFF;
   UPDATE(ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES,
-         noise_reduction_modes, ARRAY_SIZE(noise_reduction_modes));
-  UPDATE(ANDROID_NOISE_REDUCTION_MODE, &noise_reduction_modes[1], 1);
+         &noise_reduction_mode, 1);
+  UPDATE(ANDROID_NOISE_REDUCTION_MODE, &noise_reduction_mode, 1);
 
   // android.request
   const uint8_t available_capabilities[] = {
@@ -700,11 +698,6 @@ int MetadataHandler::FillDefaultStillCaptureSettings(
 
   const uint8_t control_mode = ANDROID_CONTROL_MODE_AUTO;
   UPDATE(ANDROID_CONTROL_MODE, &control_mode, 1);
-
-  // android.noiseReduction
-  const uint8_t noise_reduction_mode =
-      ANDROID_NOISE_REDUCTION_MODE_HIGH_QUALITY;
-  UPDATE(ANDROID_NOISE_REDUCTION_MODE, &noise_reduction_mode, 1);
   return 0;
 }
 
