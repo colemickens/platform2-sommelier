@@ -961,6 +961,7 @@ TEST_F(InternalBacklightControllerTest, SetDisplayPowerBeforeBrightness) {
 }
 
 TEST_F(InternalBacklightControllerTest, ForcedOff) {
+  default_als_steps_ = "50.0 -1 200\n75.0 100 -1";
   Init(PowerSource::AC);
   ASSERT_GT(backlight_.current_level(), 0);
 
@@ -971,6 +972,14 @@ TEST_F(InternalBacklightControllerTest, ForcedOff) {
   EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
   EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_OFF, display_power_setter_.state());
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
+
+  // The screen should stay off even if we would otherwise adjust its brightness
+  // due to a change in ambient light: https://crbug.com/747165
+  light_sensor_.set_lux(300);
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+    light_sensor_.NotifyObservers();
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_OFF, display_power_setter_.state());
 
   // While the display is still forced off, also turn it off for inactivity.
   controller_->SetOffForInactivity(true);

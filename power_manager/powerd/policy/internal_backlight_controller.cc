@@ -644,8 +644,8 @@ bool InternalBacklightController::UpdateUndimmedBrightness(
     ApplyResumeBrightnessPercent(percent);
 
   // Don't apply the change if we're in a state that overrides the new level.
-  if (shutting_down_ || suspended_ || docked_ || off_for_inactivity_ ||
-      dimmed_for_inactivity_)
+  if (shutting_down_ || forced_off_ || suspended_ || docked_ ||
+      off_for_inactivity_ || dimmed_for_inactivity_)
     return false;
 
   if (!ApplyBrightnessPercent(percent, transition, cause))
