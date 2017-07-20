@@ -7,9 +7,11 @@
 #include <time.h>
 
 #include <string>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/strings/string_piece.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
 using std::string;
@@ -18,8 +20,8 @@ namespace vm_tools {
 namespace syslog {
 namespace {
 
-// Converts a syslog priority level into a severity level.
-vm_tools::LogSeverity SyslogPriorityToSeverity(unsigned int priority) {
+// Converts a priority level into a severity level.
+vm_tools::LogSeverity PriorityToSeverity(unsigned int priority) {
   // We can't use the symbolic names here because LOG_INFO, LOG_WARNING, etc.
   // all conflict with the base logging macros that have the same name.
   switch (priority & 0x7) {
@@ -67,7 +69,7 @@ size_t ParseSyslogPriority(const char* buf, vm_tools::LogSeverity* severity) {
   // but pos will still be 0.
   if (sscanf(buf, "<%u>%ln", &priority, &pos) == 1 && pos <= 5 && pos > 0) {
     // We successfully read out the priority and it is valid.
-    *severity = SyslogPriorityToSeverity(priority);
+    *severity = PriorityToSeverity(priority);
     return pos;
   }
 
@@ -128,6 +130,70 @@ bool ParseSyslogRecord(const char* buf,
 
   // Whatever is left is the content.
   record->set_content(&buf[pos], len - pos);
+
+  return true;
+}
+
+bool ParseKernelRecord(const char* buf,
+                       size_t len,
+                       const base::Time& boot_time,
+                       vm_tools::LogRecord* record) {
+  CHECK(buf);
+  CHECK(record);
+
+  if (len == 0) {
+    return false;
+  }
+
+  // Split the string into lines.
+  std::vector<base::StringPiece> lines =
+      base::SplitStringPiece(base::StringPiece(buf, len), "\n",
+                             base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+
+  if (lines.empty()) {
+    return false;
+  }
+
+  // Only the first line matters because it should have all the metadata and the
+  // log message.  Additional lines only contain the context, which we don't
+  // care about.
+  base::StringPiece line = lines[0];
+
+  // Ignore all context lines.
+  if (line[0] == ' ') {
+    return false;
+  }
+
+  // Read the log metadata.
+  unsigned int priority;
+  uint64_t sequence;
+  int64_t micros;
+  int pos;
+
+  if (sscanf(line.data(), "%u,%lu,%ld%n", &priority, &sequence, &micros,
+             &pos) != 3) {
+    return false;
+  }
+
+  // Find the message content separator.
+  size_t content = line.find(';', pos);
+  if (content == base::StringPiece::npos) {
+    return false;
+  }
+
+  // Step over the separator to the start of the message content.
+  content++;
+
+  // Fill in the proto.
+  record->set_severity(PriorityToSeverity(priority));
+
+  struct timeval tv =
+      (boot_time + base::TimeDelta::FromMicroseconds(micros)).ToTimeVal();
+  record->mutable_timestamp()->set_seconds(tv.tv_sec);
+  record->mutable_timestamp()->set_nanos(
+      tv.tv_usec * base::Time::kNanosecondsPerMicrosecond);
+
+  record->set_content(line.substr(content).as_string());
 
   return true;
 }

@@ -11,6 +11,7 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/message_loop/message_loop.h>
+#include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <google/protobuf/arena.h>
 
@@ -34,6 +35,8 @@ class Collector : public base::MessageLoopForIO::Watcher {
 
   static std::unique_ptr<Collector> CreateForTesting(
       base::ScopedFD syslog_fd,
+      base::ScopedFD kmsg_fd,
+      base::Time boot_time,
       std::unique_ptr<vm_tools::LogCollector::Stub> stub);
 
  private:
@@ -48,25 +51,41 @@ class Collector : public base::MessageLoopForIO::Watcher {
   // Called periodically to flush any logs that have been buffered.
   void FlushLogs();
 
-  // Reads one log record from the socket and adds it to |current_request_|.
+  // Reads one log record from the socket and adds it to |syslog_request_|.
   // Returns true if there may still be more data to read from the socket.
-  bool ReadOneRecord();
+  bool ReadOneSyslogRecord();
+
+  // Reads one kernel log record from |kmsg_fd_| and adds it to |kmsg_request_|.
+  // Returns true if there may still be more data to be read from the fd.
+  bool ReadOneKernelRecord();
 
   // Initializes this Collector for tests.  Starts listening on the
   // provided file descriptor instead of creating a socket and binding to a
   // path on the file system.
   bool InitForTesting(base::ScopedFD syslog_fd,
+                      base::ScopedFD kmsg_fd,
+                      base::Time boot_time,
                       std::unique_ptr<vm_tools::LogCollector::Stub> stub);
 
   // File descriptor bound to /dev/log.
   base::ScopedFD syslog_fd_;
   base::MessageLoopForIO::FileDescriptorWatcher syslog_controller_;
 
+  // File descriptor for listening to /dev/kmsg.
+  base::ScopedFD kmsg_fd_;
+  base::MessageLoopForIO::FileDescriptorWatcher kmsg_controller_;
+
+  // Time that the VM booted.  Used to convert kernel timestamps to localtime.
+  base::Time boot_time_;
+
   // Shared arena used for allocating log records.
   google::protobuf::Arena arena_;
 
-  // Non-owning pointer to the current LogRequest.  Owned by arena_.
-  vm_tools::LogRequest* current_request_;
+  // Non-owning pointer to the current syslog LogRequest.  Owned by arena_.
+  vm_tools::LogRequest* syslog_request_;
+
+  // Non-owning pointer to the current kernel log LogRequest.  Owend by arena_.
+  vm_tools::LogRequest* kmsg_request_;
 
   // Size of all the currently buffered log records.
   size_t buffered_size_;

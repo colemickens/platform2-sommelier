@@ -4,9 +4,11 @@
 
 #include "vm_tools/syslog/collector.h"
 
+#include <fcntl.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/sysinfo.h>
 #include <sys/un.h>
 
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
@@ -15,6 +17,8 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/bind_helpers.h>
+#include <base/callback.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
@@ -46,11 +50,17 @@ constexpr size_t kBufferThreshold = 4096;
 // Size of the largest syslog record as defined by RFC3164.
 constexpr size_t kMaxSyslogRecord = 1024;
 
+// Size of the largest kernel log record as defined in include/linux/printk.h.
+constexpr size_t kMaxKernelRecord = 8192;
+
 // Max number of records we should attempt to read out of the socket at a time.
 constexpr int kMaxRecordCount = 11;
 
 // Path to the standard syslog listening path.
 constexpr char kDevLog[] = "/dev/log";
+
+// Path to the dev node for kernel messages.
+constexpr char kDevKmsg[] = "/dev/kmsg";
 
 // Known host port for the LogCollector service.
 constexpr unsigned int kLogCollectorPort = 9999;
@@ -74,10 +84,28 @@ std::unique_ptr<Collector> Collector::Create() {
 }
 
 void Collector::OnFileCanReadWithoutBlocking(int fd) {
-  DCHECK_EQ(fd, syslog_fd_.get());
+  DCHECK(fd == syslog_fd_.get() || fd == kmsg_fd_.get());
+
+  // The use of base::Unretained is safe here because the callback does not
+  // escape this function.
+  base::Callback<bool(void)> read_one;
+  if (fd == syslog_fd_.get()) {
+    read_one =
+        base::Bind(&Collector::ReadOneSyslogRecord, base::Unretained(this));
+  } else {
+    read_one =
+        base::Bind(&Collector::ReadOneKernelRecord, base::Unretained(this));
+  }
+
   bool more = true;
   for (int i = 0; i < kMaxRecordCount && more; ++i) {
-    more = ReadOneRecord();
+    more = read_one.Run();
+
+    // Send all buffered records immediately if we've crossed the threshold.
+    if (buffered_size_ > kBufferThreshold) {
+      FlushLogs();
+      timer_.Reset();
+    }
   }
 }
 
@@ -119,6 +147,30 @@ bool Collector::Init() {
     return false;
   }
 
+  // Start listening for kernel log messages.
+  kmsg_fd_.reset(
+      HANDLE_EINTR(open(kDevKmsg, O_RDONLY | O_CLOEXEC | O_NONBLOCK)));
+  if (!kmsg_fd_.is_valid()) {
+    PLOG(ERROR) << "Failed to open " << kDevKmsg;
+    return false;
+  }
+
+  ret = base::MessageLoopForIO::current()->WatchFileDescriptor(
+      kmsg_fd_.get(), true /*persistent*/, base::MessageLoopForIO::WATCH_READ,
+      &kmsg_controller_, this);
+  if (!ret) {
+    LOG(ERROR) << "Failed to watch kmsg file descriptor";
+    return false;
+  }
+
+  // Figure out the boot time so that we can timestamp kernel logs.
+  struct sysinfo info;
+  if (sysinfo(&info) != 0) {
+    PLOG(ERROR) << "Failed to read sysinfo";
+    return false;
+  }
+  boot_time_ = base::Time::Now() - base::TimeDelta::FromSeconds(info.uptime);
+
   // Create the stub to the LogCollector service on the host.
   stub_ = vm_tools::LogCollector::NewStub(grpc::CreateChannel(
       base::StringPrintf("vsock:%u:%u", VMADDR_CID_HOST, kLogCollectorPort),
@@ -134,7 +186,8 @@ bool Collector::Init() {
                base::Bind(&Collector::FlushLogs, weak_factory_.GetWeakPtr()));
 
   // Start a new log request buffer.
-  current_request_ = pb::Arena::CreateMessage<vm_tools::LogRequest>(&arena_);
+  syslog_request_ = pb::Arena::CreateMessage<vm_tools::LogRequest>(&arena_);
+  kmsg_request_ = pb::Arena::CreateMessage<vm_tools::LogRequest>(&arena_);
   buffered_size_ = 0;
 
   // Drop all unnecessary privileges.
@@ -159,29 +212,46 @@ bool Collector::Init() {
 }
 
 void Collector::FlushLogs() {
-  if (current_request_->records_size() <= 0) {
+  if (syslog_request_->records_size() <= 0 &&
+      kmsg_request_->records_size() <= 0) {
     // Nothing to do.  Just return.
     return;
   }
 
-  grpc::ClientContext ctx;
-  vm_tools::EmptyMessage response;
-  grpc::Status status =
-      stub_->CollectUserLogs(&ctx, *current_request_, &response);
+  if (syslog_request_->records_size() > 0) {
+    grpc::ClientContext ctx;
+    vm_tools::EmptyMessage response;
+    grpc::Status status =
+        stub_->CollectUserLogs(&ctx, *syslog_request_, &response);
 
-  if (!status.ok()) {
-    LOG(ERROR) << "Failed to send user logs to LogCollector service.  Error "
-               << "code " << status.error_code() << ": "
-               << status.error_message();
+    if (!status.ok()) {
+      LOG(ERROR) << "Failed to send user logs to LogCollector service.  Error "
+                 << "code " << status.error_code() << ": "
+                 << status.error_message();
+    }
+  }
+
+  if (kmsg_request_->records_size() > 0) {
+    grpc::ClientContext ctx;
+    vm_tools::EmptyMessage response;
+    grpc::Status status =
+        stub_->CollectKernelLogs(&ctx, *kmsg_request_, &response);
+
+    if (!status.ok()) {
+      LOG(ERROR) << "Failed to send kernel logs to LogCollector service.  "
+                 << "Error code " << status.error_code() << ": "
+                 << status.error_message();
+    }
   }
 
   // Reset everything.
   arena_.Reset();
-  current_request_ = pb::Arena::CreateMessage<vm_tools::LogRequest>(&arena_);
+  syslog_request_ = pb::Arena::CreateMessage<vm_tools::LogRequest>(&arena_);
+  kmsg_request_ = pb::Arena::CreateMessage<vm_tools::LogRequest>(&arena_);
   buffered_size_ = 0;
 }
 
-bool Collector::ReadOneRecord() {
+bool Collector::ReadOneSyslogRecord() {
   char buf[kMaxSyslogRecord + 1];
   ssize_t ret =
       HANDLE_EINTR(recv(syslog_fd_.get(), buf, kMaxSyslogRecord, MSG_DONTWAIT));
@@ -215,26 +285,69 @@ bool Collector::ReadOneRecord() {
   buffered_size_ += record->ByteSizeLong();
 
   // Safe because |record| was created by the same Arena that owns
-  // |current_request_|.
-  current_request_->add_records()->UnsafeArenaSwap(record);
+  // |syslog_request_|.
+  syslog_request_->add_records()->UnsafeArenaSwap(record);
 
-  // Send all buffered records immediately if we've crossed the threshold.
-  if (buffered_size_ > kBufferThreshold) {
-    FlushLogs();
-    timer_.Reset();
+  return true;
+}
+
+bool Collector::ReadOneKernelRecord() {
+  char buf[kMaxKernelRecord];
+  ssize_t ret = HANDLE_EINTR(read(kmsg_fd_.get(), buf, kMaxKernelRecord));
+  if (ret < 0) {
+    if (errno == EPIPE) {
+      // This can happen if the kernel buffer is overwritten before we have had
+      // a chance to read the messages.  Return true here because the next read
+      // should be successful.
+      return true;
+    }
+
+    // Otherwise log the error if it's not just that the read would block and
+    // stop trying to read more data.
+    if (errno != EAGAIN && errno != EWOULDBLOCK) {
+      PLOG(ERROR) << "Failed to read from kernel log buffer";
+    }
+    return false;
   }
+
+  if (ret == 0) {
+    // End of file.  Realistically should never happen.
+    LOG(WARNING) << "Reached end of file for kernel log buffer";
+    kmsg_controller_.StopWatchingFileDescriptor();
+    return false;
+  }
+
+  // Try to parse the record to see if it is something we should try to forward.
+  auto* record = pb::Arena::CreateMessage<vm_tools::LogRecord>(&arena_);
+  if (!ParseKernelRecord(buf, ret, boot_time_, record)) {
+    // Don't log anything here because it may just be a message we don't care
+    // about (like a context line).  Return true because there may still be
+    // more data to read from the buffer.
+    return true;
+  }
+
+  // Update the buffered data counter.
+  buffered_size_ += record->ByteSizeLong();
+
+  // Safe because |record| was created by the same arena that owns
+  // |kmsg_requset_|.
+  kmsg_request_->add_records()->UnsafeArenaSwap(record);
 
   return true;
 }
 
 std::unique_ptr<Collector> Collector::CreateForTesting(
     base::ScopedFD syslog_fd,
+    base::ScopedFD kmsg_fd,
+    base::Time boot_time,
     std::unique_ptr<vm_tools::LogCollector::Stub> stub) {
   CHECK(stub);
   CHECK(syslog_fd.is_valid());
+  CHECK(kmsg_fd.is_valid());
   auto collector = base::WrapUnique<Collector>(new Collector());
 
-  if (!collector->InitForTesting(std::move(syslog_fd), std::move(stub))) {
+  if (!collector->InitForTesting(std::move(syslog_fd), std::move(kmsg_fd),
+                                 boot_time, std::move(stub))) {
     collector.reset();
   }
 
@@ -242,10 +355,15 @@ std::unique_ptr<Collector> Collector::CreateForTesting(
 }
 
 bool Collector::InitForTesting(
-    base::ScopedFD listen_fd,
+    base::ScopedFD syslog_fd,
+    base::ScopedFD kmsg_fd,
+    base::Time boot_time,
     std::unique_ptr<vm_tools::LogCollector::Stub> stub) {
+  // Set the fake boot time.
+  boot_time_ = boot_time;
+
   // Start listening on the syslog socket.
-  syslog_fd_.swap(listen_fd);
+  syslog_fd_.swap(syslog_fd);
 
   bool ret = base::MessageLoopForIO::current()->WatchFileDescriptor(
       syslog_fd_.get(), true /* persistent */,
@@ -255,6 +373,15 @@ bool Collector::InitForTesting(
     return false;
   }
 
+  // Start listening on the kernel socket.
+  kmsg_fd_.swap(kmsg_fd);
+  ret = base::MessageLoopForIO::current()->WatchFileDescriptor(
+      kmsg_fd_.get(), true /* persistent */, base::MessageLoopForIO::WATCH_READ,
+      &kmsg_controller_, this);
+  if (!ret) {
+    LOG(ERROR) << "Failed to watch kernel file descriptor";
+    return false;
+  }
   // Store the stub for the LogCollector.
   stub_ = std::move(stub);
 
@@ -265,7 +392,8 @@ bool Collector::InitForTesting(
       base::Bind(&Collector::FlushLogs, weak_factory_.GetWeakPtr()));
 
   // Start a new log request buffer.
-  current_request_ = pb::Arena::CreateMessage<vm_tools::LogRequest>(&arena_);
+  syslog_request_ = pb::Arena::CreateMessage<vm_tools::LogRequest>(&arena_);
+  kmsg_request_ = pb::Arena::CreateMessage<vm_tools::LogRequest>(&arena_);
   buffered_size_ = 0;
 
   // Everything succeeded.
