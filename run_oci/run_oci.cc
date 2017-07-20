@@ -298,6 +298,11 @@ int RunOci(const base::FilePath& container_dir,
             oci_config->process.capabilities.end());
   }
 
+  if (!oci_config->process.selinuxLabel.empty()) {
+    container_config_set_selinux_context(
+        config.get(), oci_config->process.selinuxLabel.c_str());
+  }
+
   if (container_options.cgroup_parent.length() > 0) {
     container_config_set_cgroup_parent(config.get(),
                                        container_options.cgroup_parent.c_str(),

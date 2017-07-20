@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <syscall.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -138,6 +139,7 @@ struct container_rlimit {
  * num_rlimits - The number of elements in `rlimits`.
  * securebits_skip_mask - The mask of securebits to skip when restricting caps.
  * do_init - Whether the container needs an extra process to be run as init.
+ * selinux_context - The SELinux context name the container will run under.
  */
 struct container_config {
 	char *config_root;
@@ -172,6 +174,7 @@ struct container_config {
 	uint64_t capmask;
 	uint64_t securebits_skip_mask;
 	int do_init;
+	char *selinux_context;
 };
 
 struct container_config *container_config_create()
@@ -229,6 +232,7 @@ void container_config_destroy(struct container_config *c)
 	FREE_AND_NULL(c->cgroup_devices);
 	FREE_AND_NULL(c->run_setfiles);
 	FREE_AND_NULL(c->cgroup_parent);
+	FREE_AND_NULL(c->selinux_context);
 	FREE_AND_NULL(c);
 }
 
@@ -651,6 +655,17 @@ void container_config_set_run_as_init(struct container_config *c,
 				      int run_as_init)
 {
 	c->do_init = !run_as_init;
+}
+
+int container_config_set_selinux_context(struct container_config *c,
+					 const char *context)
+{
+	if (!context)
+		return -EINVAL;
+	c->selinux_context = strdup(context);
+	if (c->selinux_context)
+		return -ENOMEM;
+	return 0;
 }
 
 /*
@@ -1396,6 +1411,36 @@ static int device_setup(struct container *c,
 	return 0;
 }
 
+static int setexeccon(void *payload)
+{
+	char *init_domain = (char *) payload;
+	char exec_path[PATH_MAX];
+	pid_t tid = syscall(SYS_gettid);
+	int fd;
+
+	if (tid == -1) {
+		return -errno;
+	}
+
+	if (snprintf(exec_path, sizeof(exec_path),
+		     "/proc/self/task/%d/attr/exec", tid) < 0) {
+		return -errno;
+	}
+
+	fd = open(exec_path, O_WRONLY|O_CLOEXEC);
+	if (fd == -1) {
+		return -errno;
+	}
+
+	if (write(fd, init_domain, strlen(init_domain)) !=
+	    (ssize_t) strlen(init_domain)) {
+		return -errno;
+	}
+
+	close(fd);
+	return 0;
+}
+
 int container_start(struct container *c, const struct container_config *config)
 {
 	int rc = 0;
@@ -1602,8 +1647,13 @@ int container_start(struct container *c, const struct container_config *config)
 			goto error_rmdir;
 	}
 
-
-	minijail_run_as_init(c->jail);
+	if (config->selinux_context) {
+		rc = minijail_add_hook(c->jail, &setexeccon,
+				       config->selinux_context,
+				       MINIJAIL_HOOK_EVENT_PRE_EXECVE);
+		if (rc)
+			goto error_rmdir;
+	}
 
 	/* TODO(dgreid) - remove this once shared mounts are cleaned up. */
 	minijail_skip_remount_private(c->jail);

@@ -250,6 +250,8 @@ bool ParseProcessConfig(const base::DictionaryValue& config_root_dict,
     LOG(ERROR) << "failed to get cwd of process";
     return false;
   }
+  // selinuxLabel is optional.
+  process_dict->GetString("selinuxLabel", &config_out->process.selinuxLabel);
   // |capabilities_dict| stays owned by |process_dict|
   const base::DictionaryValue* capabilities_dict = nullptr;
   if (process_dict->GetDictionary("capabilities", &capabilities_dict)) {

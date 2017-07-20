@@ -258,6 +258,12 @@ void container_config_set_securebits_skip_mask(struct container_config *c,
 void container_config_set_run_as_init(struct container_config *c,
 				      int run_as_init);
 
+/*
+ * Sets the SELinux context under which the container will run.
+ */
+int container_config_set_selinux_context(struct container_config *c,
+					 const char *context);
+
 /* Container manipulation. */
 struct container;
 

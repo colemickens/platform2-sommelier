@@ -43,7 +43,8 @@ struct OciProcess {
   std::string cwd;
   std::map<std::string, CapSet> capabilities;  // Optional
   std::vector<OciProcessRlimit> rlimits;       // Optional
-  // Unused: apparmorProfile, selinuxLabel, noNewPrivileges
+  std::string selinuxLabel;
+  // Unused: apparmorProfile, noNewPrivileges
 };
 
 struct OciRoot {
