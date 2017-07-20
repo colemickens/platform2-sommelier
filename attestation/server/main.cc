@@ -15,6 +15,7 @@
 //
 
 #include <sysexits.h>
+#include <unistd.h>
 
 #include <memory>
 #include <string>
@@ -103,6 +104,7 @@ int main(int argc, char* argv[]) {
     flags |= brillo::kLogToStderr;
   }
   brillo::InitLog(flags);
+  PLOG_IF(FATAL, daemon(0, 0) == -1) << "Failed to daemonize";
   AttestationDaemon daemon;
   LOG(INFO) << "Attestation Daemon Started.";
   InitMinijailSandbox();
