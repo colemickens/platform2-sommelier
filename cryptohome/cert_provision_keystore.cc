@@ -4,6 +4,8 @@
 //
 // KeyStore interface classes for cert_provision library.
 
+#include <base/logging.h>
+
 #include "cryptohome/cert_provision_keystore.h"
 
 namespace {
