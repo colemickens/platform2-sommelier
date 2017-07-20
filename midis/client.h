@@ -14,7 +14,7 @@
 
 #include "midis/device.h"
 #include "midis/device_tracker.h"
-#include "midis/messages.h"
+#include "midis/libmidis/clientlib.h"
 
 namespace midis {
 

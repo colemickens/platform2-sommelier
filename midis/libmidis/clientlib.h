@@ -5,12 +5,77 @@
 #ifndef MIDIS_LIBMIDIS_CLIENTLIB_H_
 #define MIDIS_LIBMIDIS_CLIENTLIB_H_
 
+#include <limits.h>
+#include <stddef.h>
 #include <stdint.h>
-#include "midis/messages.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// Miscellaneous constants used by the server.
+static const size_t kMidisStringSize = 256;
+static const uint8_t kMidisMaxDevices = 7;
+
+// Enum listing the types of messages a client can send.
+enum ClientMsgType {
+  REQUEST_LIST_DEVICES = 0,
+  REQUEST_PORT = 1,
+};
+
+// Enum listing the types of messages the server can send.
+enum ServerMsgType {
+  LIST_DEVICES_RESPONSE = 0,
+  DEVICE_ADDED = 1,
+  DEVICE_REMOVED = 2,
+  REQUEST_PORT_RESPONSE = 3,
+  INVALID_RESPONSE = UINT_MAX,
+};
+
+// Struct used at the start of every buffer sent between
+// client and server. It is used as a header to denote the message
+// type being sent, as well as the size of the subsequent payload.
+// A typical usage pattern for the client would be as follows:
+// - Poll on server fd.
+// - Read buffer.
+// - Call MidisProcessMsgHeader() to determine |type| and |payload_size|.
+// - Call relevant MidisProcess* function based on |type|.
+struct MidisMessageHeader {
+  uint32_t type;
+  uint32_t payload_size;
+} __attribute__((packed));
+
+// Struct used by server to send device info about MIDI H/W devices
+// that have been connected / disconnected from the system.
+// It is used with the following server messages types:
+// - LIST_DEVICES_RESPONSE
+// - DEVICE_ADDED
+// - DEVICE_REMOVED
+// For information on how to use this struct, please see the documentation
+// for the following relevant library functions:
+// - MidisProcessListDevices
+// - MidisProcessDeviceAddedRemoved
+struct MidisDeviceInfo {
+  uint32_t card;
+  uint32_t device_num;
+  uint32_t num_subdevices;
+  uint32_t flags;
+  uint8_t name[kMidisStringSize];
+  uint8_t manufacturer[kMidisStringSize];
+} __attribute__((packed));
+
+// Struct used by client to request an fd for a particular MidiPort (the term
+// "port" and "subdevice" are used interchangeably here). To be used with
+// client messages of type REQUEST_PORT, and with server messages of type
+// REQUEST_PORT_RESPONSE. For usage, please see the documentation of the
+// following library functions:
+// - MidisRequestPort
+// - MidisProcessRequestPortResponse
+struct MidisRequestPort {
+  uint32_t card;
+  uint32_t device_num;
+  uint32_t subdevice_num;
+} __attribute__((packed));
 
 // Connect client to the MIDI Server.
 //
