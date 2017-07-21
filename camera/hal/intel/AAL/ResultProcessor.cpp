@@ -569,7 +569,7 @@ status_t ResultProcessor::getRequestsInTransit(RequestState_t** reqState, int in
 
     it = mRequestsInTransit.find(index);
     if (it == mRequestsInTransit.cend()) {
-        LOGE("%s, Result State not found for id %d\n", __FUNCTION__, index);
+        LOGD("%s, Result State not found for id %d\n", __FUNCTION__, index);
         state = BAD_VALUE;
     } else {
         state = NO_ERROR;
