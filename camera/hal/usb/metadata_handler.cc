@@ -588,7 +588,7 @@ int MetadataHandler::PostHandleRequest(int frame_number,
   const uint8_t ae_state = ANDROID_CONTROL_AE_STATE_CONVERGED;
   UPDATE(ANDROID_CONTROL_AE_STATE, &ae_state, 1);
 
-  const uint8_t ae_lock = ANDROID_CONTROL_AE_LOCK_ON;
+  const uint8_t ae_lock = ANDROID_CONTROL_AE_LOCK_OFF;
   UPDATE(ANDROID_CONTROL_AE_LOCK, &ae_lock, 1);
 
   // For USB camera, the USB camera handles everything and we don't have control
@@ -606,7 +606,7 @@ int MetadataHandler::PostHandleRequest(int frame_number,
   const uint8_t awb_state = ANDROID_CONTROL_AWB_STATE_CONVERGED;
   UPDATE(ANDROID_CONTROL_AWB_STATE, &awb_state, 1);
 
-  const uint8_t awb_lock = ANDROID_CONTROL_AWB_LOCK_ON;
+  const uint8_t awb_lock = ANDROID_CONTROL_AWB_LOCK_OFF;
   UPDATE(ANDROID_CONTROL_AWB_LOCK, &awb_lock, 1);
 
   camera_metadata_entry active_array_size =
