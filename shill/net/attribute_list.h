@@ -116,7 +116,7 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
   bool CreateStringAttribute(int id, const char* id_string);
   // SSID attributes are derived from string attributes.
   bool CreateSsidAttribute(int id, const char* id_string);
-  bool SetStringAttributeValue(int id, std::string value);
+  bool SetStringAttributeValue(int id, const std::string& value);
   bool GetStringAttributeValue(int id, std::string* value) const;
 
   bool CreateNestedAttribute(int id, const char* id_string);

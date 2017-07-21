@@ -289,7 +289,7 @@ bool AttributeList::CreateSsidAttribute(int id, const char* id_string) {
   return true;
 }
 
-bool AttributeList::SetStringAttributeValue(int id, string value) {
+bool AttributeList::SetStringAttributeValue(int id, const string& value) {
   NetlinkAttribute* attribute = GetAttribute(id);
   if (!attribute)
     return false;

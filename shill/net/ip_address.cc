@@ -68,7 +68,7 @@ IPAddress::IPAddress(Family family)
     : family_(family),
       prefix_(0) {}
 
-IPAddress::IPAddress(std::string ip_string)
+IPAddress::IPAddress(const std::string& ip_string)
     : prefix_(0) {
   family_ = IPAddress::kFamilyIPv4;
   if (!SetAddressFromString(ip_string)) {

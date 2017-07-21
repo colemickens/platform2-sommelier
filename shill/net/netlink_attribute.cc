@@ -276,7 +276,7 @@ bool NetlinkAttribute::GetStringValue(string* value) const {
   return false;
 }
 
-bool NetlinkAttribute::SetStringValue(string value) {
+bool NetlinkAttribute::SetStringValue(const string& value) {
   LOG(ERROR) << "Attribute is not of type 'String'";
   return false;
 }
@@ -665,7 +665,7 @@ bool NetlinkStringAttribute::GetStringValue(string* output) const {
   return true;
 }
 
-bool NetlinkStringAttribute::SetStringValue(const string new_value) {
+bool NetlinkStringAttribute::SetStringValue(const string& new_value) {
   value_ = new_value;
   has_a_value_ = true;
   return true;

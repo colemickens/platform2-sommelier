@@ -1608,8 +1608,8 @@ void Manager::VerifyDestination(const string& certificate,
                                         ssid, bssid, cb, error);
 }
 
-void Manager::VerifyToEncryptLink(string public_key,
-                                  string data,
+void Manager::VerifyToEncryptLink(const string& public_key,
+                                  const string& data,
                                   ResultStringCallback cb,
                                   const Error& error,
                                   bool success) {
@@ -1659,10 +1659,10 @@ void Manager::VerifyAndEncryptCredentials(const string& certificate,
 }
 #endif  // DISABLE_WIFI
 
-int Manager::CalcConnectionId(std::string gateway_ip,
-                              std::string gateway_mac) {
-  return static_cast<int>(std::hash<std::string>()(gateway_ip + gateway_mac +
-      std::to_string(props_.connection_id_salt)));
+int Manager::CalcConnectionId(const string& gateway_ip,
+                              const string& gateway_mac) {
+  return static_cast<int>(std::hash<std::string>()(
+      gateway_ip + gateway_mac + std::to_string(props_.connection_id_salt)));
 }
 
 void Manager::ReportServicesOnSameNetwork(int connection_id) {

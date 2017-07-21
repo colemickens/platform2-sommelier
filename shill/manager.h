@@ -486,7 +486,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Calculate connection identifier, which is hash of salt value, gateway IP
   // address, and gateway MAC address.
-  int CalcConnectionId(std::string gateway_ip, std::string gateway_mac);
+  int CalcConnectionId(const std::string& gateway_ip,
+                       const std::string& gateway_mac);
 
   // Report the number of services associated with given connection
   // |connection_id|.
@@ -762,8 +763,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void OnDarkResumeActionsComplete(const Error& error);
 
 #if !defined(DISABLE_WIFI)
-  void VerifyToEncryptLink(std::string public_key, std::string data,
-                           ResultStringCallback cb, const Error& error,
+  void VerifyToEncryptLink(const std::string& public_key,
+                           const std::string& data,
+                           ResultStringCallback cb,
+                           const Error& error,
                            bool success);
 #endif  // DISABLE_WIFI
 

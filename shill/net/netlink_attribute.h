@@ -89,7 +89,7 @@ class SHILL_EXPORT NetlinkAttribute {
   virtual bool SetFlagValue(bool value);
 
   virtual bool GetStringValue(std::string* value) const;
-  virtual bool SetStringValue(const std::string value);
+  virtual bool SetStringValue(const std::string& value);
 
   virtual bool GetNestedAttributeList(AttributeListRefPtr* value);
   virtual bool ConstGetNestedAttributeList(
@@ -242,7 +242,7 @@ class SHILL_EXPORT NetlinkStringAttribute : public NetlinkAttribute {
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
   virtual bool InitFromValue(const ByteString& data);
   virtual bool GetStringValue(std::string* value) const;
-  virtual bool SetStringValue(const std::string new_value);
+  virtual bool SetStringValue(const std::string& new_value);
   virtual bool ToString(std::string* value) const;
   virtual ByteString Encode() const;
   std::string value() const { return value_; }
