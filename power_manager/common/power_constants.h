@@ -32,6 +32,10 @@ extern const char kUnpluggedSuspendMsPref[];
 // If true, the system will not suspend due to user inactivity.
 extern const char kDisableIdleSuspendPref[];
 
+// If true, force special behavior for factory mode (e.g. don't suspend on lid
+// close or idle, don't turn the screen off for inactivity, etc.).
+extern const char kFactoryModePref[];
+
 // If true, powerd will monitor the lid switch.
 extern const char kUseLidPref[];
 

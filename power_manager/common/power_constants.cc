@@ -19,6 +19,7 @@ const char kUnpluggedDimMsPref[] = "unplugged_dim_ms";
 const char kUnpluggedOffMsPref[] = "unplugged_off_ms";
 const char kUnpluggedSuspendMsPref[] = "unplugged_suspend_ms";
 const char kDisableIdleSuspendPref[] = "disable_idle_suspend";
+const char kFactoryModePref[] = "factory_mode";
 const char kUseLidPref[] = "use_lid";
 const char kDetectHoverPref[] = "detect_hover";
 const char kRetrySuspendMsPref[] = "retry_suspend_ms";

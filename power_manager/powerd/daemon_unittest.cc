@@ -823,6 +823,36 @@ TEST_F(DaemonTest, SetWifiTransmitPower) {
   EXPECT_EQ(GetWifiTransmitPowerCommand(TabletMode::OFF), async_commands_[0]);
 }
 
+TEST_F(DaemonTest, FactoryMode) {
+  prefs_->SetInt64(kFactoryModePref, 1);
+  prefs_->SetInt64(kHasAmbientLightSensorPref, 1);
+  prefs_->SetInt64(kHasKeyboardBacklightPref, 1);
+
+  Init();
+
+  // Check that Daemon didn't initialize anything related to adjusting the
+  // display or keyboard backlights.
+  EXPECT_TRUE(passed_ambient_light_sensor_);
+  EXPECT_TRUE(passed_display_power_setter_);
+  EXPECT_TRUE(passed_internal_backlight_);
+  EXPECT_TRUE(passed_keyboard_backlight_);
+  EXPECT_TRUE(passed_external_backlight_controller_);
+  EXPECT_TRUE(passed_internal_backlight_controller_);
+  EXPECT_TRUE(passed_keyboard_backlight_controller_);
+
+  // Display-backlight-related D-Bus calls should return errors.
+  dbus::MethodCall screen_call(kPowerManagerInterface,
+                               kGetScreenBrightnessPercentMethod);
+  EXPECT_EQ(dbus::Message::MESSAGE_ERROR,
+            CallSyncDBusMethod(&screen_call)->GetMessageType());
+
+  // Keyboard-backlight-related calls silently do nothing.
+  dbus::MethodCall keyboard_call(kPowerManagerInterface,
+                                 kIncreaseKeyboardBrightnessMethod);
+  EXPECT_EQ(dbus::Message::MESSAGE_METHOD_RETURN,
+            CallSyncDBusMethod(&keyboard_call)->GetMessageType());
+}
+
 // TODO(derat): More tests. Namely:
 // - Registering for D-Bus service availability
 // - PrepareToSuspend / UndoPrepareToSuspend

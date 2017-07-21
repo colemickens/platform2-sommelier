@@ -635,6 +635,7 @@ void StateController::LoadPrefs() {
   prefs_->GetBool(kAvoidSuspendWhenHeadphoneJackPluggedPref,
                   &avoid_suspend_when_headphone_jack_plugged_);
   prefs_->GetBool(kDisableIdleSuspendPref, &disable_idle_suspend_);
+  prefs_->GetBool(kFactoryModePref, &factory_mode_);
   prefs_->GetBool(kIgnoreExternalPolicyPref, &ignore_external_policy_);
   prefs_->GetBool(kAllowDockedModePref, &allow_docked_mode_);
 
@@ -756,6 +757,16 @@ void StateController::UpdateSettingsAndState() {
       idle_action_ = Action::SUSPEND;
     if (lid_closed_action_ == Action::SHUT_DOWN)
       lid_closed_action_ = Action::SUSPEND;
+  }
+
+  // Most functionality is disabled in factory mode.
+  if (factory_mode_) {
+    delays_.screen_dim = base::TimeDelta();
+    delays_.screen_off = base::TimeDelta();
+    delays_.screen_lock = base::TimeDelta();
+    lid_closed_action_ = Action::DO_NOTHING;
+    idle_action_ = Action::DO_NOTHING;
+    reason_for_ignoring_idle_action_ = "factory mode is enabled";
   }
 
   // If the idle or lid-closed actions changed, make sure that we perform

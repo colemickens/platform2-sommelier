@@ -176,7 +176,8 @@ class Daemon : public policy::BacklightControllerObserver,
                       bool wait_for_completion);
 
   // Decreases/increases the keyboard brightness; direction should be +1 for
-  // increase and -1 for decrease.
+  // increase and -1 for decrease. |keyboard_backlight_controller_| must be
+  // initialized.
   void AdjustKeyboardBrightness(int direction);
 
   // Emits a D-Bus signal named |signal_name| announcing that backlight

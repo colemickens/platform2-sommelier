@@ -137,6 +137,7 @@ class StateControllerTest : public testing::Test {
         default_battery_screen_off_delay_(base::TimeDelta::FromSeconds(40)),
         default_battery_screen_dim_delay_(base::TimeDelta::FromSeconds(30)),
         default_disable_idle_suspend_(0),
+        default_factory_mode_(0),
         default_require_usb_input_device_to_suspend_(0),
         default_avoid_suspend_when_headphone_jack_plugged_(0),
         default_ignore_external_policy_(0),
@@ -162,6 +163,7 @@ class StateControllerTest : public testing::Test {
     SetMillisecondPref(kUnpluggedOffMsPref, default_battery_screen_off_delay_);
     SetMillisecondPref(kUnpluggedDimMsPref, default_battery_screen_dim_delay_);
     prefs_.SetInt64(kDisableIdleSuspendPref, default_disable_idle_suspend_);
+    prefs_.SetInt64(kFactoryModePref, default_factory_mode_);
     prefs_.SetInt64(kRequireUsbInputDeviceToSuspendPref,
                     default_require_usb_input_device_to_suspend_);
     prefs_.SetInt64(kAvoidSuspendWhenHeadphoneJackPluggedPref,
@@ -256,6 +258,7 @@ class StateControllerTest : public testing::Test {
   base::TimeDelta default_battery_screen_off_delay_;
   base::TimeDelta default_battery_screen_dim_delay_;
   int64_t default_disable_idle_suspend_;
+  int64_t default_factory_mode_;
   int64_t default_require_usb_input_device_to_suspend_;
   int64_t default_avoid_suspend_when_headphone_jack_plugged_;
   int64_t default_ignore_external_policy_;
@@ -804,6 +807,36 @@ TEST_F(StateControllerTest, DisableIdleSuspend) {
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kShutDown, NULL),
             delegate_.GetActions());
+}
+
+// Tests that the factory-mode pref is honored and overrides policies.
+TEST_F(StateControllerTest, FactoryMode) {
+  default_factory_mode_ = 1;
+  Init();
+  controller_.HandleSessionStateChange(SessionState::STARTED);
+
+  // With the factory-mode pref set, the system shouldn't have any actions
+  // scheduled.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_suspend_delay_));
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // Closing the lid shouldn't do anything.
+  delegate_.set_lid_state(LidState::CLOSED);
+  controller_.HandleLidStateChange(LidState::CLOSED);
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // Policy-supplied settings should also be overridden.
+  PowerManagementPolicy policy;
+  policy.mutable_ac_delays()->set_screen_off_ms(
+      default_ac_screen_off_delay_.InMilliseconds());
+  policy.mutable_ac_delays()->set_screen_lock_ms(
+      default_ac_screen_off_delay_.InMilliseconds());
+  policy.mutable_ac_delays()->set_idle_ms(
+      default_ac_suspend_delay_.InMilliseconds());
+  policy.set_ac_idle_action(PowerManagementPolicy_Action_SUSPEND);
+  policy.set_lid_closed_action(PowerManagementPolicy_Action_SUSPEND);
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
 }
 
 // Tests that the controller does something reasonable when given delays

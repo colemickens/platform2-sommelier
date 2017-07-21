@@ -302,6 +302,10 @@ void Daemon::Init() {
   prefs_ = delegate_->CreatePrefs();
   InitDBus();
 
+  const bool factory_mode = BoolPrefIsTrue(kFactoryModePref);
+  if (factory_mode)
+    LOG(INFO) << "Factory mode enabled; most functionality will be disabled";
+
   metrics_sender_ = delegate_->CreateMetricsSender();
   udev_ = delegate_->CreateUdev();
   input_watcher_ = delegate_->CreateInputWatcher(prefs_.get(), udev_.get());
@@ -313,44 +317,48 @@ void Daemon::Init() {
   if (lid_state == LidState::CLOSED)
     LOG(INFO) << "Lid closed at startup";
 
-  if (BoolPrefIsTrue(kHasAmbientLightSensorPref))
-    light_sensor_ = delegate_->CreateAmbientLightSensor();
-
   display_watcher_ = delegate_->CreateDisplayWatcher(udev_.get());
-  display_power_setter_ =
-      delegate_->CreateDisplayPowerSetter(dbus_wrapper_.get());
-  if (BoolPrefIsTrue(kExternalDisplayOnlyPref)) {
-    display_backlight_controller_ =
-        delegate_->CreateExternalBacklightController(
-            display_watcher_.get(), display_power_setter_.get());
-  } else {
-    display_backlight_ = delegate_->CreateInternalBacklight(
-        base::FilePath(kInternalBacklightPath), kInternalBacklightPattern);
-    if (display_backlight_) {
-      display_backlight_controller_ =
-          delegate_->CreateInternalBacklightController(
-              display_backlight_.get(),
-              prefs_.get(),
-              light_sensor_.get(),
-              display_power_setter_.get());
-    }
-  }
-  if (display_backlight_controller_)
-    all_backlight_controllers_.push_back(display_backlight_controller_.get());
 
-  if (BoolPrefIsTrue(kHasKeyboardBacklightPref)) {
-    keyboard_backlight_ = delegate_->CreateInternalBacklight(
-        base::FilePath(kKeyboardBacklightPath), kKeyboardBacklightPattern);
-    if (keyboard_backlight_) {
-      keyboard_backlight_controller_ =
-          delegate_->CreateKeyboardBacklightController(
-              keyboard_backlight_.get(),
-              prefs_.get(),
-              light_sensor_.get(),
-              display_backlight_controller_.get(),
-              tablet_mode);
-      all_backlight_controllers_.push_back(
-          keyboard_backlight_controller_.get());
+  // Ignore the ALS and backlights in factory mode.
+  if (!factory_mode) {
+    if (BoolPrefIsTrue(kHasAmbientLightSensorPref))
+      light_sensor_ = delegate_->CreateAmbientLightSensor();
+
+    display_power_setter_ =
+        delegate_->CreateDisplayPowerSetter(dbus_wrapper_.get());
+    if (BoolPrefIsTrue(kExternalDisplayOnlyPref)) {
+      display_backlight_controller_ =
+          delegate_->CreateExternalBacklightController(
+              display_watcher_.get(), display_power_setter_.get());
+    } else {
+      display_backlight_ = delegate_->CreateInternalBacklight(
+          base::FilePath(kInternalBacklightPath), kInternalBacklightPattern);
+      if (display_backlight_) {
+        display_backlight_controller_ =
+            delegate_->CreateInternalBacklightController(
+                display_backlight_.get(),
+                prefs_.get(),
+                light_sensor_.get(),
+                display_power_setter_.get());
+      }
+    }
+    if (display_backlight_controller_)
+      all_backlight_controllers_.push_back(display_backlight_controller_.get());
+
+    if (BoolPrefIsTrue(kHasKeyboardBacklightPref)) {
+      keyboard_backlight_ = delegate_->CreateInternalBacklight(
+          base::FilePath(kKeyboardBacklightPath), kKeyboardBacklightPattern);
+      if (keyboard_backlight_) {
+        keyboard_backlight_controller_ =
+            delegate_->CreateKeyboardBacklightController(
+                keyboard_backlight_.get(),
+                prefs_.get(),
+                light_sensor_.get(),
+                display_backlight_controller_.get(),
+                tablet_mode);
+        all_backlight_controllers_.push_back(
+            keyboard_backlight_controller_.get());
+      }
     }
   }
 
@@ -468,9 +476,7 @@ int Daemon::RunSetuidHelper(const std::string& action,
 }
 
 void Daemon::AdjustKeyboardBrightness(int direction) {
-  if (!keyboard_backlight_controller_)
-    return;
-
+  DCHECK(keyboard_backlight_controller_);
   if (direction > 0)
     keyboard_backlight_controller_->IncreaseUserBrightness();
   else if (direction < 0)
@@ -1294,13 +1300,15 @@ std::unique_ptr<dbus::Response> Daemon::HandleGetScreenBrightnessMethod(
 
 std::unique_ptr<dbus::Response> Daemon::HandleDecreaseKeyboardBrightnessMethod(
     dbus::MethodCall* method_call) {
-  AdjustKeyboardBrightness(-1);
+  if (keyboard_backlight_controller_)
+    AdjustKeyboardBrightness(-1);
   return std::unique_ptr<dbus::Response>();
 }
 
 std::unique_ptr<dbus::Response> Daemon::HandleIncreaseKeyboardBrightnessMethod(
     dbus::MethodCall* method_call) {
-  AdjustKeyboardBrightness(1);
+  if (keyboard_backlight_controller_)
+    AdjustKeyboardBrightness(1);
   return std::unique_ptr<dbus::Response>();
 }
 

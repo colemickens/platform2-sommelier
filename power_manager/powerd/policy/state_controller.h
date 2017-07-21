@@ -250,8 +250,11 @@ class StateController : public PrefsObserver {
   // calls |delegate_|'s ReportUserActivityMetrics() method.
   void UpdateLastUserActivityTime();
 
-  // Initializes |require_usb_input_device_to_suspend_| and |pref_*| from
-  // |prefs_|.
+  // Initializes |require_usb_input_device_to_suspend_|, |pref_*|, and other
+  // pref-derived members from |prefs_|.
+  // TODO(derat): Add a |reload| argument. Most prefs should only be read once
+  // at startup; ignore runtime changes to anything not checked in
+  // OnPrefChanged().
   void LoadPrefs();
 
   // Updates in-use settings and calls UpdateState().  Copies values from
@@ -364,6 +367,10 @@ class StateController : public PrefsObserver {
   // inactivity?  This is controlled by the |kDisableIdleSuspendPref| pref
   // and overrides |policy_|.
   bool disable_idle_suspend_ = false;
+
+  // Is the device using a factory image? This is controlled by the
+  // |kFactoryModePref| pref and overrides |policy_|.
+  bool factory_mode_ = false;
 
   // True if docked mode is allowed.
   bool allow_docked_mode_ = false;
