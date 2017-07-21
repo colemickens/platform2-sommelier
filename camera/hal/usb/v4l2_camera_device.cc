@@ -232,7 +232,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
       LOGF(ERROR) << "EXPBUF (" << i << ") fails: " << strerror(errno);
       return -errno;
     }
-    VLOG(1) << "Exported frame buffer fd: " << expbuf.fd;
+    VLOGF(1) << "Exported frame buffer fd: " << expbuf.fd;
     temp_fds.push_back(base::ScopedFD(expbuf.fd));
     buffers_at_client_[i] = false;
 
@@ -340,7 +340,7 @@ int V4L2CameraDevice::ReuseFrameBuffer(uint32_t buffer_id) {
     return -EIO;
   }
 
-  VLOG(1) << "Reuse buffer id: " << buffer_id;
+  VLOGF(1) << "Reuse buffer id: " << buffer_id;
   if (buffer_id >= buffers_at_client_.size() ||
       !buffers_at_client_[buffer_id]) {
     LOGF(ERROR) << "Invalid buffer id: " << buffer_id;
@@ -361,7 +361,7 @@ int V4L2CameraDevice::ReuseFrameBuffer(uint32_t buffer_id) {
 
 const SupportedFormats V4L2CameraDevice::GetDeviceSupportedFormats(
     const std::string& device_path) {
-  VLOG(1) << "Query supported formats for " << device_path;
+  VLOGF(1) << "Query supported formats for " << device_path;
   SupportedFormats formats;
   if (device_path.compare(0, strlen(kAllowedCameraPrefix),
                           kAllowedCameraPrefix) &&
@@ -432,8 +432,8 @@ const DeviceInfos V4L2CameraDevice::GetCameraDeviceInfos() {
   if (external_camera_support) {
     std::pair<std::string, std::string> external_camera = FindExternalCamera();
     if (external_camera.first != "") {
-      VLOG(1) << __func__ << ": Add external camera " << external_camera.first
-              << ", path: " << external_camera.second;
+      VLOGF(1) << "Add external camera " << external_camera.first
+               << ", path: " << external_camera.second;
       camera_devices.insert(external_camera);
     }
   }

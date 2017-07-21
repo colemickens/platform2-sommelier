@@ -173,7 +173,7 @@ int CameraClient::ProcessCaptureRequest(camera3_capture_request_t* request) {
   DCHECK(ops_thread_checker_.CalledOnValidThread());
 
   if (!request_handler_.get()) {
-    LOG(INFO) << "Request handler has stopped; ignoring request";
+    LOGFID(INFO, id_) << "Request handler has stopped; ignoring request";
     return -ENODEV;
   }
 

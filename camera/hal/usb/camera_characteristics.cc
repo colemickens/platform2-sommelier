@@ -88,8 +88,7 @@ const DeviceInfos CameraCharacteristics::GetCharacteristicsFromFile(
   const base::FilePath path(kCameraCharacteristicsConfigFile);
   FILE* file = base::OpenFile(path, "r");
   if (!file) {
-    LOG(INFO) << __func__ << ": Can't open file "
-              << kCameraCharacteristicsConfigFile;
+    LOGF(INFO) << "Can't open file " << kCameraCharacteristicsConfigFile;
     return DeviceInfos();
   }
 
@@ -112,7 +111,7 @@ const DeviceInfos CameraCharacteristics::GetCharacteristicsFromFile(
 
     // global config
     if (strcmp(key, kAllowExternalCamera) == 0) {
-      VLOG(1) << __func__ << ": Allow external camera";
+      VLOGF(1) << "Allow external camera";
       std::istringstream is(value);
       is >> std::boolalpha >> allow_external_camera;
       continue;
@@ -194,14 +193,14 @@ const DeviceInfos CameraCharacteristics::GetCharacteristicsFromFile(
   // number of cameras.
   for (size_t id = 0; id < tmp_device_infos.size(); ++id) {
     if (tmp_device_infos[id].device_path.empty()) {
-      LOG(INFO) << __func__ << ": No matching module for camera" << id;
+      LOGF(INFO) << "No matching module for camera" << id;
     } else {
       for (const auto& device_info : device_infos) {
         if (device_info.usb_vid == tmp_device_infos[id].usb_vid &&
             device_info.usb_pid == tmp_device_infos[id].usb_pid) {
-          LOG(ERROR) << __func__ << ": Module " << device_info.usb_vid << ":"
-                     << device_info.usb_pid
-                     << " should not match multiple configs";
+          LOGF(ERROR) << "Module " << device_info.usb_vid << ":"
+                      << device_info.usb_pid
+                      << " should not match multiple configs";
           return DeviceInfos();
         }
       }
@@ -312,25 +311,24 @@ void CameraCharacteristics::AddPerModuleCharacteristic(
   } else if (strcmp(characteristic, kSensorInfoPixelArraySize) == 0) {
     int width, height;
     if (sscanf(value, "%dx%d", &width, &height) != 2) {
-      LOG(ERROR) << __func__ << ": Illegal array size format: " << value;
+      LOGF(ERROR) << "Illegal array size format: " << value;
       return;
     }
-    VLOG(1) << __func__ << ": " << characteristic << ": " << width << "x"
-            << height;
+    VLOGF(1) << characteristic << ": " << width << "x" << height;
     (*device_infos)[camera_id].sensor_info_pixel_array_size_width = width;
     (*device_infos)[camera_id].sensor_info_pixel_array_size_height = height;
   } else if (strcmp(characteristic, kResolution1280x960Unsupported) == 0) {
-    VLOG(1) << __func__ << ": " << characteristic << ": " << value;
+    VLOGF(1) << characteristic << ": " << value;
     std::istringstream is(value);
     is >> std::boolalpha >>
         (*device_infos)[camera_id].resolution_1280x960_unsupported;
   } else if (strcmp(characteristic, kResolution1600x1200Unsupported) == 0) {
-    VLOG(1) << __func__ << ": " << characteristic << ": " << value;
+    VLOGF(1) << characteristic << ": " << value;
     std::istringstream is(value);
     is >> std::boolalpha >>
         (*device_infos)[camera_id].resolution_1600x1200_unsupported;
   } else if (strcmp(characteristic, kConstantFramerateUnsupported) == 0) {
-    VLOG(1) << __func__ << ": " << characteristic << ": " << value;
+    VLOGF(1) << characteristic << ": " << value;
     std::istringstream is(value);
     is >> std::boolalpha >>
         (*device_infos)[camera_id].constant_framerate_unsupported;
@@ -372,8 +370,8 @@ void CameraCharacteristics::AddExternalCameras(
       device_info.usb_pid = usb_vid_pid[1];
       device_info.device_path = device.second;
       device_infos->push_back(device_info);
-      VLOG(1) << __func__ << ": Add external camera: " << device.first << ", "
-              << device.second;
+      VLOGF(1) << "Add external camera: " << device.first << ", "
+               << device.second;
     }
   }
 }
