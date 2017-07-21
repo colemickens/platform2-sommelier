@@ -187,6 +187,7 @@
         'net/io_ready_handler.cc',
         'net/ip_address.cc',
         'net/netlink_attribute.cc',
+        'net/netlink_fd.cc',
         'net/netlink_manager.cc',
         'net/netlink_message.cc',
         'net/netlink_packet.cc',

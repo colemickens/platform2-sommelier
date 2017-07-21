@@ -138,9 +138,6 @@ class SHILL_EXPORT RTNLHandler {
   FRIEND_TEST(RTNLListenerTest, Run);
   FRIEND_TEST(RoutingTableTest, RouteDeleteForeign);
 
-  static const int kReceiveBufferSize;
-  static const int kInvalidSocket;
-
   // Size of the window for receiving error sequences out-of-order.
   static const int kErrorWindowSize;
 

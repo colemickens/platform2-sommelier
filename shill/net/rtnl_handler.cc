@@ -37,6 +37,7 @@
 #include "shill/net/io_handler.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/ndisc.h"
+#include "shill/net/netlink_fd.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
 #include "shill/net/sockets.h"
@@ -47,9 +48,6 @@ using std::string;
 
 namespace shill {
 
-// Keep this large enough to avoid overflows on IPv6 SNM routing update spikes
-const int RTNLHandler::kReceiveBufferSize = 512 * 1024;
-const int RTNLHandler::kInvalidSocket = -1;
 const int RTNLHandler::kErrorWindowSize = 16;
 
 namespace {
@@ -59,7 +57,7 @@ base::LazyInstance<RTNLHandler> g_rtnl_handler = LAZY_INSTANCE_INITIALIZER;
 RTNLHandler::RTNLHandler()
     : sockets_(new Sockets()),
       in_request_(false),
-      rtnl_socket_(kInvalidSocket),
+      rtnl_socket_(Sockets::kInvalidFileDescriptor),
       request_flags_(0),
       request_sequence_(0),
       last_dump_sequence_(0),
@@ -79,32 +77,13 @@ RTNLHandler* RTNLHandler::GetInstance() {
 }
 
 void RTNLHandler::Start(uint32_t netlink_groups_mask) {
-  struct sockaddr_nl addr;
-
-  if (rtnl_socket_ != kInvalidSocket) {
+  if (rtnl_socket_ != Sockets::kInvalidFileDescriptor)
     return;
-  }
 
-  rtnl_socket_ = sockets_->Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
+  rtnl_socket_ = OpenNetlinkSocketFD(
+      sockets_.get(), NETLINK_ROUTE, netlink_groups_mask);
   if (rtnl_socket_ < 0) {
     LOG(ERROR) << "Failed to open rtnl socket";
-    return;
-  }
-
-  if (sockets_->SetReceiveBuffer(rtnl_socket_, kReceiveBufferSize)) {
-    LOG(ERROR) << "Failed to increase receive buffer size";
-  }
-
-  memset(&addr, 0, sizeof(addr));
-  addr.nl_family = AF_NETLINK;
-  addr.nl_groups = netlink_groups_mask;
-
-  if (sockets_->Bind(rtnl_socket_,
-                    reinterpret_cast<struct sockaddr*>(&addr),
-                    sizeof(addr)) < 0) {
-    sockets_->Close(rtnl_socket_);
-    rtnl_socket_ = kInvalidSocket;
-    LOG(ERROR) << "RTNL socket bind failed";
     return;
   }
 
@@ -120,9 +99,9 @@ void RTNLHandler::Start(uint32_t netlink_groups_mask) {
 void RTNLHandler::Stop() {
   rtnl_handler_.reset();
   // Close the socket if it is currently open.
-  if (rtnl_socket_ != kInvalidSocket) {
+  if (rtnl_socket_ != Sockets::kInvalidFileDescriptor) {
     sockets_->Close(rtnl_socket_);
-    rtnl_socket_ = kInvalidSocket;
+    rtnl_socket_ = Sockets::kInvalidFileDescriptor;
   }
   in_request_ = false;
   request_flags_ = 0;
@@ -150,7 +129,7 @@ void RTNLHandler::RemoveListener(RTNLListener* to_remove) {
 
 void RTNLHandler::SetInterfaceFlags(int interface_index, unsigned int flags,
                                     unsigned int change) {
-  if (rtnl_socket_ == kInvalidSocket) {
+  if (rtnl_socket_ == Sockets::kInvalidFileDescriptor) {
     LOG(ERROR) << __func__ << " called while not started.  "
         "Assuming we are in unit tests.";
     return;
@@ -193,7 +172,7 @@ void RTNLHandler::SetInterfaceMTU(int interface_index, unsigned int mtu) {
 }
 
 void RTNLHandler::RequestDump(int request_flags) {
-  if (rtnl_socket_ == kInvalidSocket) {
+  if (rtnl_socket_ == Sockets::kInvalidFileDescriptor) {
     LOG(ERROR) << __func__ << " called while not started.  "
         "Assuming we are in unit tests.";
     return;

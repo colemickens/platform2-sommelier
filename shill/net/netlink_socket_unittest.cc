@@ -26,6 +26,7 @@
 
 #include "shill/net/byte_string.h"
 #include "shill/net/mock_sockets.h"
+#include "shill/net/netlink_fd.h"
 #include "shill/net/netlink_message.h"
 
 using std::min;
@@ -55,7 +56,7 @@ class NetlinkSocketTest : public Test {
     EXPECT_CALL(*mock_sockets_, Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_GENERIC))
         .WillOnce(Return(fd));
     EXPECT_CALL(*mock_sockets_, SetReceiveBuffer(
-        fd, NetlinkSocket::kReceiveBufferSize)).WillOnce(Return(0));
+        fd, kNetlinkReceiveBufferSize)).WillOnce(Return(0));
     EXPECT_CALL(*mock_sockets_, Bind(fd, _, sizeof(struct sockaddr_nl)))
         .WillOnce(Return(0));
     EXPECT_TRUE(netlink_socket_.Init());
@@ -111,7 +112,7 @@ TEST_F(NetlinkSocketTest, InitBrokenBufferTest) {
   EXPECT_CALL(*mock_sockets_, Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_GENERIC))
       .WillOnce(Return(kFakeFd));
   EXPECT_CALL(*mock_sockets_, SetReceiveBuffer(
-      kFakeFd, NetlinkSocket::kReceiveBufferSize)).WillOnce(Return(-1));
+      kFakeFd, kNetlinkReceiveBufferSize)).WillOnce(Return(-1));
   EXPECT_CALL(*mock_sockets_, Bind(kFakeFd, _, sizeof(struct sockaddr_nl)))
       .WillOnce(Return(0));
   EXPECT_TRUE(netlink_socket_.Init());
@@ -126,7 +127,7 @@ TEST_F(NetlinkSocketTest, InitBrokenBindTest) {
   EXPECT_CALL(*mock_sockets_, Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_GENERIC))
       .WillOnce(Return(kFakeFd));
   EXPECT_CALL(*mock_sockets_, SetReceiveBuffer(
-      kFakeFd, NetlinkSocket::kReceiveBufferSize)).WillOnce(Return(0));
+      kFakeFd, kNetlinkReceiveBufferSize)).WillOnce(Return(0));
   EXPECT_CALL(*mock_sockets_, Bind(kFakeFd, _, sizeof(struct sockaddr_nl)))
       .WillOnce(Return(-1));
   EXPECT_CALL(*mock_sockets_, Close(kFakeFd)).WillOnce(Return(0));

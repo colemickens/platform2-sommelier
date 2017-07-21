@@ -57,8 +57,6 @@ class ByteString;
 // this document discusses libnl -- something not used by this code).
 class SHILL_EXPORT NetlinkSocket {
  public:
-  static const int kReceiveBufferSize;
-
   NetlinkSocket();
   virtual ~NetlinkSocket();
 

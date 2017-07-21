@@ -22,6 +22,7 @@
 
 #include <base/logging.h>
 
+#include "shill/net/netlink_fd.h"
 #include "shill/net/netlink_message.h"
 #include "shill/net/sockets.h"
 
@@ -30,10 +31,8 @@
 
 namespace shill {
 
-// Keep this large enough to avoid overflows on IPv6 SNM routing update spikes
-const int NetlinkSocket::kReceiveBufferSize = 512 * 1024;
-
-NetlinkSocket::NetlinkSocket() : sequence_number_(0), file_descriptor_(-1) {}
+NetlinkSocket::NetlinkSocket()
+    : sequence_number_(0), file_descriptor_(Sockets::kInvalidFileDescriptor) {}
 
 NetlinkSocket::~NetlinkSocket() {
   if (sockets_ && (file_descriptor_ >= 0)) {
@@ -49,34 +48,11 @@ bool NetlinkSocket::Init() {
     sockets_.reset(new Sockets);
   }
 
-  // The following is stolen directly from RTNLHandler.
-  // TODO(wdg): refactor this and RTNLHandler together to use common code.
-  // crbug.com/221940
-
-  file_descriptor_ = sockets_->Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_GENERIC);
-  if (file_descriptor_ < 0) {
-    LOG(ERROR) << "Failed to open netlink socket";
+  file_descriptor_ = OpenNetlinkSocketFD(sockets_.get(), NETLINK_GENERIC, 0);
+  if (file_descriptor_ == Sockets::kInvalidFileDescriptor)
     return false;
-  }
 
-  if (sockets_->SetReceiveBuffer(file_descriptor_, kReceiveBufferSize)) {
-    LOG(ERROR) << "Failed to increase receive buffer size";
-  }
-
-  struct sockaddr_nl addr;
-  memset(&addr, 0, sizeof(addr));
-  addr.nl_family = AF_NETLINK;
-
-  if (sockets_->Bind(file_descriptor_,
-                    reinterpret_cast<struct sockaddr*>(&addr),
-                    sizeof(addr)) < 0) {
-    sockets_->Close(file_descriptor_);
-    file_descriptor_ = -1;
-    LOG(ERROR) << "Netlink socket bind failed";
-    return false;
-  }
   VLOG(2) << "Netlink socket started";
-
   return true;
 }
 
