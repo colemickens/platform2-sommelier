@@ -191,7 +191,8 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
 
   IPAddress broadcast(properties.address_family);
   if (properties.broadcast_address.empty()) {
-    if (properties.peer_address.empty()) {
+    if (local.family() == IPAddress::kFamilyIPv4 &&
+        properties.peer_address.empty()) {
       LOG(WARNING) << "Broadcast address is not set.  Using default.";
       broadcast = local.GetDefaultBroadcast();
     }
@@ -511,7 +512,10 @@ bool Connection::FixGatewayReachability(const IPAddress& local,
     return true;
   }
 
-  if (local.CanReachAddress(*gateway)) {
+  // The prefix check will usually fail on IPv6 because IPv6 gateways
+  // typically use link-local addresses.
+  if (local.CanReachAddress(*gateway) ||
+      local.family() == IPAddress::kFamilyIPv6) {
     return true;
   }
 

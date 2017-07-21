@@ -224,6 +224,11 @@ MATCHER_P(IsIPv6Address, address, "") {
   return match_address.Equals(arg);
 }
 
+MATCHER(IsDefaultAddress, "") {
+  IPAddress match_address(arg);
+  return match_address.IsDefault();
+}
+
 MATCHER(IsNonNullCallback, "") {
   return !arg.is_null();
 }
@@ -439,7 +444,7 @@ TEST_F(ConnectionTest, AddConfigIPv6) {
   EXPECT_CALL(rtnl_handler_,
               AddInterfaceAddress(kTestDeviceInterfaceIndex0,
                                   IsIPv6Address(local_ipv6_address_),
-                                  _,
+                                  IsDefaultAddress(),
                                   _));
   EXPECT_CALL(routing_table_,
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
