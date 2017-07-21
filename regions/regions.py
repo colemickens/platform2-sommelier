@@ -1184,6 +1184,8 @@ def main(args=sys.argv[1:], out=None):
                       help='Output format (default=%(default)s)')
   parser.add_argument('--all', action='store_true',
                       help='Include unconfirmed and incomplete regions')
+  parser.add_argument('--notes', action='store_true',
+                      help='Include notes in output')
   parser.add_argument('--output', default=None,
                       help='Specify output file')
   parser.add_argument('--overlay', default=None,
@@ -1210,6 +1212,9 @@ def main(args=sys.argv[1:], out=None):
     else:
       out = open(args.output, 'w')
 
+  if args.notes or args.format == 'csv':
+    Region.FIELDS += ['notes']
+
   # Handle YAML and JSON output.
   if args.format == 'yaml' or args.format == 'json':
     data = {}
@@ -1225,10 +1230,6 @@ def main(args=sys.argv[1:], out=None):
     return
 
   # Handle CSV or plain-text output: build a list of lines to print.
-  # The CSV format is for publishing discussion spreadsheet so 'notes' should be
-  # added.
-  if args.format == 'csv':
-    Region.FIELDS += ['notes']
   lines = [Region.FIELDS]
 
   def CoerceToString(value):
