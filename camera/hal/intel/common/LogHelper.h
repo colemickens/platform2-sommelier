@@ -209,16 +209,17 @@ private:
 
 // Take the namespaced function to be used for unqualified
 // lookup  in the LOG* macros below
-#ifdef CAMERA_HAL_DEBUG
 using LogHelper::__camera_hal_log;
 
+#define LOGE(...) __camera_hal_log(true, CAMERA_DEBUG_TYPE_ERROR, CAMHAL_TAG, __VA_ARGS__)
+#define LOGW(...) __camera_hal_log(true, CAMERA_DEBUG_TYPE_WARN, CAMHAL_TAG, __VA_ARGS__)
+
+#ifdef CAMERA_HAL_DEBUG
 #define LOG1(...) __camera_hal_log(gLogLevel & CAMERA_DEBUG_LOG_LEVEL1, CAMERA_DEBUG_LOG_LEVEL1, CAMHAL_TAG, __VA_ARGS__)
 #define LOG2(...) __camera_hal_log(gLogLevel & CAMERA_DEBUG_LOG_LEVEL2, CAMERA_DEBUG_LOG_LEVEL2, CAMHAL_TAG, __VA_ARGS__)
 #define LOGR(...) __camera_hal_log(gLogLevel & CAMERA_DEBUG_LOG_REQ_STATE, CAMERA_DEBUG_LOG_REQ_STATE, CAMHAL_TAG, __VA_ARGS__)
 
-#define LOGE(...) __camera_hal_log(true, CAMERA_DEBUG_TYPE_ERROR, CAMHAL_TAG, __VA_ARGS__)
 #define LOGD(...) __camera_hal_log(true, CAMERA_DEBUG_TYPE_DEBUG, CAMHAL_TAG, __VA_ARGS__)
-#define LOGW(...) __camera_hal_log(true, CAMERA_DEBUG_TYPE_WARN, CAMHAL_TAG, __VA_ARGS__)
 #define LOGV(...) __camera_hal_log(true, CAMERA_DEBUG_TYPE_VERBOSE, CAMHAL_TAG, __VA_ARGS__)
 #define LOGI(...) __camera_hal_log(true, CAMERA_DEBUG_TYPE_INFO, CAMHAL_TAG, __VA_ARGS__)
 
@@ -229,15 +230,13 @@ using LogHelper::__camera_hal_log;
 #define HAL_TRACE_CALL(level) HAL_TRACE_NAME(level, __FUNCTION__)
 #define HAL_TRACE_CALL_PRETTY(level) HAL_TRACE_NAME(level, __PRETTY_FUNCTION__)
 #else
-#define LOG1(...) ALL_UNUSED_IMPL( VA_NUM_ARGS(__VA_ARGS__))(__VA_ARGS__ )
-#define LOG2(...) ALL_UNUSED_IMPL( VA_NUM_ARGS(__VA_ARGS__))(__VA_ARGS__ )
-#define LOGR(...) ALL_UNUSED_IMPL( VA_NUM_ARGS(__VA_ARGS__))(__VA_ARGS__ )
+#define LOG1(...)
+#define LOG2(...)
+#define LOGR(...)
 
-#define LOGE(...) ALL_UNUSED_IMPL( VA_NUM_ARGS(__VA_ARGS__))(__VA_ARGS__ )
-#define LOGD(...) ALL_UNUSED_IMPL( VA_NUM_ARGS(__VA_ARGS__))(__VA_ARGS__ )
-#define LOGW(...) ALL_UNUSED_IMPL( VA_NUM_ARGS(__VA_ARGS__))(__VA_ARGS__ )
-#define LOGV(...) ALL_UNUSED_IMPL( VA_NUM_ARGS(__VA_ARGS__))(__VA_ARGS__ )
-#define LOGI(...) ALL_UNUSED_IMPL( VA_NUM_ARGS(__VA_ARGS__))(__VA_ARGS__ )
+#define LOGD(...)
+#define LOGV(...)
+#define LOGI(...)
 
 #define HAL_TRACE_NAME(level, name)
 #define HAL_TRACE_CALL(level)
