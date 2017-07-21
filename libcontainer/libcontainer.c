@@ -1340,17 +1340,19 @@ static int mount_runfs(struct container *c, const struct container_config *confi
 	if (chmod(c->runfsroot, root_dir_mode))
 		return -errno;
 
-	if (mount(rootfs, c->runfsroot, "", MS_BIND, NULL))
-		return -errno;
+        if (mount(rootfs, c->runfsroot, "",
+                  MS_BIND | (config->rootfs_mount_flags & MS_REC), NULL)) {
+                return -errno;
+        }
 
-	/* MS_BIND ignores any flags passed to it (except MS_REC). We need a
-	 * second call to mount() to actually set them.
-	 */
-	if (config->rootfs_mount_flags &&
-	    mount(rootfs, c->runfsroot, "",
-		  config->rootfs_mount_flags, NULL)) {
-		return -errno;
-	}
+        /* MS_BIND ignores any flags passed to it (except MS_REC). We need a
+         * second call to mount() to actually set them.
+         */
+        if (config->rootfs_mount_flags &&
+            mount(rootfs, c->runfsroot, "",
+                  (config->rootfs_mount_flags & ~MS_REC), NULL)) {
+                return -errno;
+        }
 
 	return 0;
 }

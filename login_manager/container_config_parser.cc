@@ -90,7 +90,9 @@ bool ParseRootFileSystemConfig(const base::DictionaryValue& config_root_dict,
   // need to preserve the ro/rw state of the original mount, though, since the
   // internal namespace will reflect whatever flag was passed here instead of
   // respecting the original filesystem's ro/rw state.
-  uint32_t flags = 0;
+  //
+  // Mount recursively to honor bind-mounts made before this point.
+  uint32_t flags = MS_REC;
   if (IsOriginalRootfsReadOnly(mountinfo_data,
                                named_path.Append(rootfs_path))) {
     flags |= MS_RDONLY;

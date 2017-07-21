@@ -214,7 +214,7 @@ TEST(ContainerConfigParserTest, TestBasicConfigAndroid) {
             container_config_get_run_setfiles(config.get()));
   EXPECT_EQ(std::string(kCgroupParent),
             container_config_get_cgroup_parent(config.get()));
-  EXPECT_EQ(MS_BIND | MS_REMOUNT | MS_RDONLY,
+  EXPECT_EQ(MS_BIND | MS_REC | MS_REMOUNT | MS_RDONLY,
             container_config_get_rootfs_mount_flags(config.get()));
 }
 
@@ -228,7 +228,7 @@ TEST(ContainerConfigParserTest, TestWritableMountConfigAndroid) {
                                    kAndroidWritableMountinfo, "android",
                                    kCgroupParent,
                                    kNamedContainerPath, &config));
-  EXPECT_EQ(MS_BIND | MS_REMOUNT,
+  EXPECT_EQ(MS_BIND | MS_REC | MS_REMOUNT,
             container_config_get_rootfs_mount_flags(config.get()));
 }
 
