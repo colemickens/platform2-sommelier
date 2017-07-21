@@ -23,6 +23,7 @@ struct ContainerOptions {
   std::vector<std::string> extra_program_args;
   uint64_t securebits_skip_mask;
   bool use_current_user;
+  bool run_as_init;
 
   ContainerOptions() :
     alt_syscall_table(),
@@ -30,7 +31,8 @@ struct ContainerOptions {
     cgroup_parent(),
     extra_program_args(),
     securebits_skip_mask(0u),
-    use_current_user(false) {}
+    use_current_user(false),
+    run_as_init(true) {}
 };
 
 }  // namespace run_oci

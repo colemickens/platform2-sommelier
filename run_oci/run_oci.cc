@@ -326,6 +326,8 @@ int RunOci(const base::FilePath& container_dir,
         config.get(), container_options.securebits_skip_mask);
   }
 
+  container_config_set_run_as_init(config.get(), container_options.run_as_init);
+
   int rc;
   rc = container_start(container.get(), config.get());
   if (rc) {
@@ -355,6 +357,7 @@ void print_help(const char *argv0) {
   printf("  -B, --securebits_skip_mask=<MASK> Skips setting securebits in\n");
   printf("                                 <mask> when restricting caps.\n");
   printf("  -u, --use_current_user         Map the current user/group only.\n");
+  printf("  -i, --dont_run_as_init         Do not run the command as init.\n");
   printf("\n");
 }
 
@@ -395,6 +398,9 @@ int main(int argc, char **argv) {
       break;
     case 's':
       container_options.alt_syscall_table = optarg;
+      break;
+    case 'i':
+      container_options.run_as_init = false;
       break;
     case 'h':
       print_help(argv[0]);

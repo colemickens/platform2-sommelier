@@ -137,6 +137,7 @@ struct container_rlimit {
  * rlimits - Array of rlimits for the contained process.
  * num_rlimits - The number of elements in `rlimits`.
  * securebits_skip_mask - The mask of securebits to skip when restricting caps.
+ * do_init - Whether the container needs an extra process to be run as init.
  */
 struct container_config {
 	char *config_root;
@@ -170,6 +171,7 @@ struct container_config {
 	int use_capmask_ambient;
 	uint64_t capmask;
 	uint64_t securebits_skip_mask;
+	int do_init;
 };
 
 struct container_config *container_config_create()
@@ -643,6 +645,12 @@ void container_config_set_securebits_skip_mask(struct container_config *c,
 					       uint64_t securebits_skip_mask)
 {
 	c->securebits_skip_mask = securebits_skip_mask;
+}
+
+void container_config_set_run_as_init(struct container_config *c,
+				      int run_as_init)
+{
+	c->do_init = !run_as_init;
 }
 
 /*
@@ -1613,6 +1621,9 @@ int container_start(struct container *c, const struct container_config *config)
 						 config->securebits_skip_mask);
 		}
 	}
+
+	if (!config->do_init)
+		minijail_run_as_init(c->jail);
 
 	rc = minijail_run_pid_pipes_no_preload(c->jail,
 					       config->program_argv[0],

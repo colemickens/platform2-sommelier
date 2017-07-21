@@ -248,6 +248,16 @@ void container_config_set_capmask(struct container_config *c,
 void container_config_set_securebits_skip_mask(struct container_config *c,
 					       uint64_t securebits_skip_mask);
 
+/*
+ * Sets whether the container's entry point should run as init. An init process
+ * is responsible for setting up certain paths within the container (such as
+ * /proc) and performing explicit reaping of zombie processes. The container
+ * will also be torn down if the init process is killed.
+ * The default is true.
+ */
+void container_config_set_run_as_init(struct container_config *c,
+				      int run_as_init);
+
 /* Container manipulation. */
 struct container;
 
