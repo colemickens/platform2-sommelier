@@ -168,6 +168,10 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
 
   RoutingTableEntry* old_entry;
 
+  // metric 0 isn't allowed on IPv6; it will create a metric 1024 route
+  // and cause |tables_| to get out of sync with the kernel.
+  DCHECK_NE(metric, 0U);
+
   if (GetDefaultRouteInternal(interface_index,
                               gateway_address.family(),
                               &old_entry)) {

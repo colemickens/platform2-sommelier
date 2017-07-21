@@ -102,7 +102,7 @@ Connection::Connection(int interface_index,
                        ControlInterface* control_interface)
     : weak_ptr_factory_(this),
       use_dns_(false),
-      metric_(0),
+      metric_(kNonDefaultMetricBase),
       has_broadcast_domain_(false),
       routing_request_count_(0),
       interface_index_(interface_index),
