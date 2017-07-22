@@ -32,8 +32,11 @@ class FirmwareUpdaterTest : public testing::Test {
  public:
   void SetUp() override {
     fw_updater_.reset(
-        new FirmwareUpdater{std::shared_ptr<UsbEndpoint>(uep_),
-                            std::shared_ptr<FmapInterface>(fmap_)});
+        new FirmwareUpdater{
+            std::unique_ptr<UsbEndpoint>(new MockUsbEndpoint()),
+            std::unique_ptr<FmapInterface>(new MockFmap())});
+    uep_ = static_cast<MockUsbEndpoint*>(fw_updater_->uep_.get());
+    fmap_ = static_cast<MockFmap*>(fw_updater_->fmap_.get());
 
     good_rpdu_.return_value = htobe32(0);
     good_rpdu_.header_type =
@@ -66,8 +69,8 @@ class FirmwareUpdaterTest : public testing::Test {
 
  protected:
   std::unique_ptr<FirmwareUpdater> fw_updater_;
-  std::shared_ptr<MockUsbEndpoint> uep_{new MockUsbEndpoint()};
-  std::shared_ptr<MockFmap> fmap_{new MockFmap()};
+  MockUsbEndpoint* uep_;
+  MockFmap* fmap_;
 
   // Good response of first header.
   FirstResponsePDU good_rpdu_;

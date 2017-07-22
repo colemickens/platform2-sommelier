@@ -17,12 +17,12 @@ namespace hammerd {
 HammerUpdater::HammerUpdater(const std::string& image)
     : HammerUpdater(
           image,
-          std::shared_ptr<FirmwareUpdaterInterface>(new FirmwareUpdater())) {}
+          std::unique_ptr<FirmwareUpdaterInterface>(new FirmwareUpdater())) {}
 
 HammerUpdater::HammerUpdater(
     const std::string& image,
-    std::shared_ptr<FirmwareUpdaterInterface> fw_updater)
-    : image_(image), fw_updater_(fw_updater) {}
+    std::unique_ptr<FirmwareUpdaterInterface> fw_updater)
+    : image_(image), fw_updater_(std::move(fw_updater)) {}
 
 bool HammerUpdater::Run() {
   LOG(INFO) << "Load and validate the image.";

@@ -76,12 +76,13 @@ bool operator!=(const SectionInfo& lhs, const SectionInfo& rhs) {
 }
 
 FirmwareUpdater::FirmwareUpdater()
-    : FirmwareUpdater(std::shared_ptr<UsbEndpoint>(new UsbEndpoint()),
-                      std::shared_ptr<FmapInterface>(new Fmap())) {}
+    : FirmwareUpdater(std::unique_ptr<UsbEndpoint>(new UsbEndpoint()),
+                      std::unique_ptr<FmapInterface>(new Fmap())) {}
 
-FirmwareUpdater::FirmwareUpdater(std::shared_ptr<UsbEndpoint> uep,
-                                 std::shared_ptr<FmapInterface> fmap)
-    : uep_(uep), fmap_(fmap), targ_(), image_(""), sections_() {}
+FirmwareUpdater::FirmwareUpdater(std::unique_ptr<UsbEndpoint> uep,
+                                 std::unique_ptr<FmapInterface> fmap)
+    : uep_(std::move(uep)), fmap_(std::move(fmap)), targ_(), image_(""),
+      sections_() {}
 
 bool FirmwareUpdater::TryConnectUSB() {
   constexpr unsigned int kFlushTimeoutMs = 10;

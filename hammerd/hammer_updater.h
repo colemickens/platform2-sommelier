@@ -31,20 +31,21 @@ class HammerUpdater {
  protected:
   // Used in unittests to inject mock instance.
   HammerUpdater(const std::string& image,
-                std::shared_ptr<FirmwareUpdaterInterface> fw_updater);
+                std::unique_ptr<FirmwareUpdaterInterface> fw_updater);
 
-  friend class HammerUpdaterTest;
-  FRIEND_TEST(HammerUpdaterTest, Run_LoadImageFailed);
-  FRIEND_TEST(HammerUpdaterTest, Run_AlwaysReset);
-  FRIEND_TEST(HammerUpdaterTest, Run_FatalError);
-  FRIEND_TEST(HammerUpdaterTest, Run_Reset3Times);
-  FRIEND_TEST(HammerUpdaterTest, Run_UpdateRWAfterJumpToRWFailed);
-  FRIEND_TEST(HammerUpdaterTest, RunOnce_UpdateRW);
-  FRIEND_TEST(HammerUpdaterTest, RunOnce_UnlockRW);
-  FRIEND_TEST(HammerUpdaterTest, RunOnce_JumpToRW);
-  FRIEND_TEST(HammerUpdaterTest, RunOnce_CompleteRWJump);
-  FRIEND_TEST(HammerUpdaterTest, RunOnce_KeepInRW);
-  FRIEND_TEST(HammerUpdaterTest, RunOnce_ResetToRO);
+  friend class HammerUpdaterFlowTest;
+  friend class HammerUpdaterFullTest;
+  FRIEND_TEST(HammerUpdaterFlowTest, Run_LoadImageFailed);
+  FRIEND_TEST(HammerUpdaterFlowTest, Run_AlwaysReset);
+  FRIEND_TEST(HammerUpdaterFlowTest, Run_FatalError);
+  FRIEND_TEST(HammerUpdaterFlowTest, Run_Reset3Times);
+  FRIEND_TEST(HammerUpdaterFullTest, Run_UpdateRWAfterJumpToRWFailed);
+  FRIEND_TEST(HammerUpdaterFullTest, RunOnce_UpdateRW);
+  FRIEND_TEST(HammerUpdaterFullTest, RunOnce_UnlockRW);
+  FRIEND_TEST(HammerUpdaterFullTest, RunOnce_JumpToRW);
+  FRIEND_TEST(HammerUpdaterFullTest, RunOnce_CompleteRWJump);
+  FRIEND_TEST(HammerUpdaterFullTest, RunOnce_KeepInRW);
+  FRIEND_TEST(HammerUpdaterFullTest, RunOnce_ResetToRO);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(HammerUpdater);
@@ -52,7 +53,7 @@ class HammerUpdater {
   // The image data to be updated.
   std::string image_;
   // The main firmware updater.
-  std::shared_ptr<FirmwareUpdaterInterface> fw_updater_;
+  std::unique_ptr<FirmwareUpdaterInterface> fw_updater_;
 };
 
 }  // namespace hammerd

@@ -142,6 +142,7 @@ struct SectionInfo {
 
 class FirmwareUpdaterInterface {
  public:
+  virtual ~FirmwareUpdaterInterface() = default;
   virtual bool LoadImage(const std::string& image) = 0;
   virtual bool TryConnectUSB() = 0;
   virtual void CloseUSB() = 0;
@@ -216,8 +217,8 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
 
  protected:
   // Used in unit tests to inject mocks.
-  FirmwareUpdater(std::shared_ptr<UsbEndpoint> uep,
-                  std::shared_ptr<FmapInterface> fmap);
+  FirmwareUpdater(std::unique_ptr<UsbEndpoint> uep,
+                  std::unique_ptr<FmapInterface> fmap);
 
   // Fetches the version of the currently-running section.
   bool FetchVersion();
@@ -233,9 +234,9 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
                      size_t payload_size);
 
   // The USB endpoint to the hammer EC.
-  std::shared_ptr<UsbEndpoint> uep_;
+  std::unique_ptr<UsbEndpoint> uep_;
   // The fmap function interface.
-  std::shared_ptr<FmapInterface> fmap_;
+  std::unique_ptr<FmapInterface> fmap_;
   // The information of the first response PDU.
   FirstResponsePDU targ_;
   // The version of the currently-running section.  Retrieved through USB

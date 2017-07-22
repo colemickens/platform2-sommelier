@@ -18,6 +18,7 @@ namespace hammerd {
 
 class FmapInterface {
  public:
+  virtual ~FmapInterface() = default;
   virtual int64_t Find(const uint8_t* image, unsigned int len) = 0;
   virtual const fmap_area* FindArea(const fmap* fmap,
                                     const std::string& name) = 0;
