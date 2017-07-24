@@ -1031,7 +1031,7 @@ bool SessionManagerImpl::StartArcInstance(
   }
 
   dbus::FileDescriptor server_socket;
-  if (!request.for_login_screen() && request.has_create_server_socket()) {
+  if (!request.for_login_screen()) {
     // Create a server socket unless the request is for starting an instance
     // for login screen.
     if (!CreateArcServerSocket(&server_socket, error)) {

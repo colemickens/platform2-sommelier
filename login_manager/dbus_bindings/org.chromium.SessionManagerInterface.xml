@@ -489,9 +489,8 @@
         @fd: Output parameter containing a file descriptor. Chrome can listen
              to the server socket to establish a connection to the container's
              arcbridgeservice. A dummy FD is returned when
-             |request.for_login_screen| is set or |request.create_server_socket|
-             is not set. It is caller's responsibility to close the returned FD
-             regardless of whether it is dummy or not.
+             |request.for_login_screen| is set. It is caller's responsibility
+             to close the returned FD regardless of whether it is dummy or not.
 
         Starts an ARC instance. Only one instance of ARC can be executing at a
         given point in time. When StartArcInstance is called when a limited

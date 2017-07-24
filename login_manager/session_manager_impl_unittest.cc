@@ -1486,8 +1486,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForLoginScreen) {
   StartArcInstanceRequest request;
   request.set_for_login_screen(true);
   // When starting an instance for the login screen, CreateServerHandle() should
-  // never be called even if |create_server_socket| is set.
-  request.set_create_server_socket(true);
+  // never be called.
   EXPECT_CALL(utils_, CreateServerHandle(_)).Times(0);
   std::string container_instance_id;
   dbus::FileDescriptor server_socket_fd;
@@ -1586,7 +1585,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForUser) {
   brillo::ErrorPtr error;
   StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
   request.set_scan_vendor_priv_app(true);
-  request.set_create_server_socket(true);
   ExpectStartArcInstance();
   std::string container_instance_id;
   dbus::FileDescriptor server_socket_fd;
@@ -1634,7 +1632,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
   brillo::ErrorPtr error;
   StartArcInstanceRequest request;
   request.set_for_login_screen(true);
-  request.set_create_server_socket(true);
   EXPECT_CALL(utils_, CreateServerHandle(_)).Times(0);
   std::string container_instance_id;
   dbus::FileDescriptor server_socket_fd;
@@ -1693,7 +1690,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
 
   request = CreateStartArcInstanceRequestForUser();
   request.set_scan_vendor_priv_app(true);
-  request.set_create_server_socket(true);
   ExpectStartArcInstance();
   std::string container_instance_id_for_upgrade = "not-empty";
   dbus::FileDescriptor server_socket_fd_for_upgrade;
@@ -1730,7 +1726,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
 TEST_F(SessionManagerImplTest, ArcInstanceStart_NoSession) {
   brillo::ErrorPtr error;
   StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
-  request.set_create_server_socket(true);
   ExpectStartArcInstance();
   std::string container_instance_id;
   dbus::FileDescriptor server_socket_fd;
@@ -1751,7 +1746,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_LowDisk) {
 
   brillo::ErrorPtr error;
   StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
-  request.set_create_server_socket(true);
   ExpectStartArcInstance();
   std::string container_instance_id;
   dbus::FileDescriptor server_socket_fd;
@@ -1811,7 +1805,6 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
   {
     brillo::ErrorPtr error;
     StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
-    request.set_create_server_socket(true);
     ExpectStartArcInstance();
     dbus::FileDescriptor server_socket_fd;
     EXPECT_TRUE(impl_->StartArcInstance(
@@ -1850,7 +1843,6 @@ TEST_F(SessionManagerImplTest, ArcStartInstance_Fail) {
   StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
   std::string container_instance_id;
   dbus::FileDescriptor server_socket_fd;
-  request.set_create_server_socket(true);
   EXPECT_CALL(utils_, CreateServerHandle(_)).Times(0);
   EXPECT_FALSE(impl_->StartArcInstance(
       &error, SerializeAsBlob(request), &container_instance_id,
@@ -2000,7 +1992,6 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
   {
     brillo::ErrorPtr error;
     StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
-    request.set_create_server_socket(true);
     ExpectStartArcInstance();
     std::string container_instance_id;
     dbus::FileDescriptor server_socket_fd;
@@ -2056,7 +2047,6 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
   {
     brillo::ErrorPtr error;
     StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
-    request.set_create_server_socket(true);
     ExpectStartArcInstance();
     dbus::FileDescriptor server_socket_fd;
     EXPECT_TRUE(impl_->StartArcInstance(
