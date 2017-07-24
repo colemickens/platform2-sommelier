@@ -583,18 +583,18 @@ TEST_P(Camera3SingleStillCaptureTest, JpegExifTest) {
   ASSERT_NE(nullptr, metadata.get())
       << "Failed to create still capture metadata";
   for (const auto& it : exif_test_data) {
+#define ARRAY_SIZE(A) (sizeof(A) / sizeof(*(A)))
     int32_t thumbnail_resolution[] = {it.thumbnail_resolution.Width(),
                                       it.thumbnail_resolution.Height()};
     EXPECT_EQ(0,
               UpdateMetadata(ANDROID_JPEG_THUMBNAIL_SIZE, thumbnail_resolution,
-                             sizeof(thumbnail_resolution), &metadata));
-    EXPECT_EQ(0, UpdateMetadata(ANDROID_JPEG_ORIENTATION, &it.orientation,
-                                sizeof(it.orientation), &metadata));
-    EXPECT_EQ(0, UpdateMetadata(ANDROID_JPEG_QUALITY, &it.jpeg_quality,
-                                sizeof(it.jpeg_quality), &metadata));
-    EXPECT_EQ(
-        0, UpdateMetadata(ANDROID_JPEG_THUMBNAIL_QUALITY, &it.thumbnail_quality,
-                          sizeof(it.thumbnail_quality), &metadata));
+                             ARRAY_SIZE(thumbnail_resolution), &metadata));
+    EXPECT_EQ(0, UpdateMetadata(ANDROID_JPEG_ORIENTATION, &it.orientation, 1,
+                                &metadata));
+    EXPECT_EQ(0, UpdateMetadata(ANDROID_JPEG_QUALITY, &it.jpeg_quality, 1,
+                                &metadata));
+    EXPECT_EQ(0, UpdateMetadata(ANDROID_JPEG_THUMBNAIL_QUALITY,
+                                &it.thumbnail_quality, 1, &metadata));
     cam_service_.TakeStillCapture(cam_id_, metadata.get());
   }
 

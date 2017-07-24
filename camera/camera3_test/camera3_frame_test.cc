@@ -1229,8 +1229,8 @@ TEST_P(Camera3PortraitRotationTest, GetFrame) {
         cam_device_.ConstructDefaultRequestSettings(CAMERA3_TEMPLATE_PREVIEW)));
     int32_t test_pattern =
         ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY;
-    UpdateMetadata(ANDROID_SENSOR_TEST_PATTERN_MODE, &test_pattern,
-                   sizeof(test_pattern), &metadata);
+    UpdateMetadata(ANDROID_SENSOR_TEST_PATTERN_MODE, &test_pattern, 1,
+                   &metadata);
     ASSERT_EQ(0, CreateCaptureRequestByMetadata(metadata, nullptr))
         << "Creating capture request fails";
 
@@ -1258,8 +1258,8 @@ TEST_P(Camera3PortraitRotationTest, GetFrame) {
     ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
         << "Configuring stream fails";
     // Get crop-rotate-scaled pattern
-    UpdateMetadata(ANDROID_SENSOR_CROP_ROTATE_SCALE, &rotation_degrees_,
-                   sizeof(rotation_degrees_), &metadata);
+    UpdateMetadata(ANDROID_SENSOR_CROP_ROTATE_SCALE, &rotation_degrees_, 1,
+                   &metadata);
     ASSERT_EQ(0, CreateCaptureRequestByMetadata(metadata, nullptr))
         << "Creating capture request fails";
 

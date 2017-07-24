@@ -425,15 +425,15 @@ void Camera3Service::Camera3DeviceService::StopPreviewOnServiceThread(
 void Camera3Service::Camera3DeviceService::StartAutoFocusOnServiceThread() {
   DCHECK(service_thread_.IsCurrentThread());
   uint8_t af_mode = ANDROID_CONTROL_AF_MODE_AUTO;
-  EXPECT_EQ(0, UpdateMetadata(ANDROID_CONTROL_AF_MODE, &af_mode,
-                              sizeof(af_mode), &repeating_preview_metadata_));
+  EXPECT_EQ(0, UpdateMetadata(ANDROID_CONTROL_AF_MODE, &af_mode, 1,
+                              &repeating_preview_metadata_));
   if (!oneshot_preview_metadata_.get()) {
     oneshot_preview_metadata_.reset(
         clone_camera_metadata(repeating_preview_metadata_.get()));
   }
   uint8_t af_trigger = ANDROID_CONTROL_AF_TRIGGER_START;
-  EXPECT_EQ(0, UpdateMetadata(ANDROID_CONTROL_AF_TRIGGER, &af_trigger,
-                              sizeof(af_trigger), &oneshot_preview_metadata_));
+  EXPECT_EQ(0, UpdateMetadata(ANDROID_CONTROL_AF_TRIGGER, &af_trigger, 1,
+                              &oneshot_preview_metadata_));
 }
 
 void Camera3Service::Camera3DeviceService::AddMetadataListenerOnServiceThread(
@@ -447,8 +447,8 @@ void Camera3Service::Camera3DeviceService::AddMetadataListenerOnServiceThread(
 void Camera3Service::Camera3DeviceService::LockAWBOnServiceThread() {
   DCHECK(service_thread_.IsCurrentThread());
   uint8_t awb_lock = ANDROID_CONTROL_AWB_LOCK_ON;
-  EXPECT_EQ(0, UpdateMetadata(ANDROID_CONTROL_AWB_LOCK, &awb_lock,
-                              sizeof(awb_lock), &repeating_preview_metadata_));
+  EXPECT_EQ(0, UpdateMetadata(ANDROID_CONTROL_AWB_LOCK, &awb_lock, 1,
+                              &repeating_preview_metadata_));
 }
 
 void Camera3Service::Camera3DeviceService::StartAEPrecaptureOnServiceThread() {
@@ -458,9 +458,8 @@ void Camera3Service::Camera3DeviceService::StartAEPrecaptureOnServiceThread() {
         clone_camera_metadata(repeating_preview_metadata_.get()));
   }
   uint8_t ae_trigger = ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_START;
-  EXPECT_EQ(0,
-            UpdateMetadata(ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER, &ae_trigger,
-                           sizeof(ae_trigger), &oneshot_preview_metadata_));
+  EXPECT_EQ(0, UpdateMetadata(ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER,
+                              &ae_trigger, 1, &oneshot_preview_metadata_));
 }
 
 void Camera3Service::Camera3DeviceService::TakeStillCaptureOnServiceThread(
