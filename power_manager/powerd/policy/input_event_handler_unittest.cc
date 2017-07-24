@@ -356,6 +356,31 @@ TEST_F(InputEventHandlerTest, AcknowledgePowerButtonPresses) {
   EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
 }
 
+TEST_F(InputEventHandlerTest, FactoryMode) {
+  prefs_.SetInt64(kFactoryModePref, 1);
+  Init();
+
+  // Power button events shouldn't be reported to the delegate or announced to
+  // Chrome over D-Bus when in factory mode.
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
+  input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
+
+  // Tablet mode and lid events should still be reported, though.
+  input_watcher_.set_tablet_mode(TabletMode::ON);
+  input_watcher_.NotifyObserversAboutTabletMode();
+  EXPECT_EQ(kTabletOn, delegate_.GetActions());
+  EXPECT_EQ(InputEvent_Type_TABLET_MODE_ON, GetInputEventSignalType());
+  dbus_wrapper_.ClearSentSignals();
+
+  input_watcher_.set_lid_state(LidState::CLOSED);
+  input_watcher_.NotifyObserversAboutLidState();
+  EXPECT_EQ(kLidClosed, delegate_.GetActions());
+  EXPECT_EQ(InputEvent_Type_LID_CLOSED, GetInputEventSignalType());
+  dbus_wrapper_.ClearSentSignals();
+}
+
 TEST_F(InputEventHandlerTest, OnHoverStateChangeTest) {
   Init();
   input_watcher_.NotifyObserversAboutHoverState(true);

@@ -26,6 +26,7 @@ InputEventHandler::InputEventHandler()
       dbus_wrapper_(NULL),
       clock_(new Clock),
       only_has_external_display_(false),
+      factory_mode_(false),
       lid_state_(LidState::NOT_PRESENT),
       tablet_mode_(TabletMode::UNSUPPORTED) {}
 
@@ -46,6 +47,7 @@ void InputEventHandler::Init(system::InputWatcherInterface* input_watcher,
   dbus_wrapper_ = dbus_wrapper;
 
   prefs->GetBool(kExternalDisplayOnlyPref, &only_has_external_display_);
+  prefs->GetBool(kFactoryModePref, &factory_mode_);
 
   bool use_lid = false;
   if (prefs->GetBool(kUseLidPref, &use_lid) && use_lid)
@@ -123,6 +125,12 @@ void InputEventHandler::OnTabletModeEvent(TabletMode mode) {
 }
 
 void InputEventHandler::OnPowerButtonEvent(ButtonState state) {
+  if (factory_mode_) {
+    LOG(INFO) << "Ignoring power button " << ButtonStateToString(state)
+              << " for factory mode";
+    return;
+  }
+
   if (clock_->GetCurrentTime() < ignore_power_button_deadline_) {
     if (state == ButtonState::UP)  // Consumed, we no longer need the deadline.
       ignore_power_button_deadline_ = base::TimeTicks();

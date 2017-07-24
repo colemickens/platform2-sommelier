@@ -119,6 +119,9 @@ class InputEventHandler : public system::InputObserver {
   // True if the device doesn't have an internal display.
   bool only_has_external_display_;
 
+  // True if kFactoryModePref is set to true.
+  bool factory_mode_;
+
   LidState lid_state_;
   TabletMode tablet_mode_;
 
