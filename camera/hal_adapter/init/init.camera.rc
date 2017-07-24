@@ -5,3 +5,4 @@
 on init
     # Enable camera HAL v3
     setprop ro.hardware.camera cheets_v3
+    setprop camera.disable_zsl_mode 1
