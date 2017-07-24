@@ -100,19 +100,17 @@ def parseIPv4Routes(routelist):
     # The first line is headers that will allow us
     # to correctly interpret the values in the following
     # lines
-    colMap = {}
     headers = routelist[0].split()
-    for (pos, token) in enumerate(headers):
-        colMap[token] = pos
+    col_map = {token: pos for (pos, token) in enumerate(headers)}
 
     routes = []
     for routeline in routelist[1:]:
         route = routeline.split()
-        interface = route[colMap["Iface"]]
-        destination = route[colMap["Destination"]]
-        gateway = route[colMap["Gateway"]]
-        flags = route[colMap["Flags"]]
-        mask = route[colMap["Mask"]]
+        interface = route[col_map["Iface"]]
+        destination = route[col_map["Destination"]]
+        gateway = route[col_map["Gateway"]]
+        flags = route[col_map["Flags"]]
+        mask = route[col_map["Mask"]]
         routes.append(IPv4Route(interface, destination, gateway, flags, mask))
 
     return routes
