@@ -11,9 +11,7 @@ flim = flimflam.FlimFlam(dbus.SystemBus())
 
 timeout = time.time() + 30
 while time.time() < timeout:
-    service = flim.FindElementByPropertySubstring('Service',
-                                                  'Name',
-                                                  sys.argv[1])
+    service = flim.FindElementByProperty('Service', 'Name', sys.argv[1])
     if service:
         break
     time.sleep(.5)

@@ -9,7 +9,7 @@ if (len(sys.argv) < 4):
 (_, name, property_key, value) = sys.argv
 
 flim = flimflam.FlimFlam()
-service = flim.FindElementByPropertySubstring('Service', 'Name', name)
+service = flim.FindElementByProperty('Service', 'Name', name)
 
 if not service:
     print "Could not find service: %s" % (sys.argv[1])

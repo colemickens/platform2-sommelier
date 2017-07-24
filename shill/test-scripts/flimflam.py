@@ -324,6 +324,23 @@ class FlimFlam(object):
                 return self.GetObjectInterface(kind, path)
         return None
 
+    def FindElementByProperty(self, kind, prop, val):
+        properties = self.manager.GetProperties(utf8_strings = True)
+        for path in properties[FlimFlam._GetContainerName(kind)]:
+            obj = self.GetObjectInterface(kind, path)
+            try:
+                obj_properties = obj.GetProperties(utf8_strings = True)
+            except dbus.exceptions.DBusException, error:
+                if (error.get_dbus_name() == self.UNKNOWN_METHOD or
+                    error.get_dbus_name() == self.UNKNOWN_OBJECT):
+                    # object disappeared; ignore and keep looking
+                    continue
+                else:
+                    raise error
+            if prop in obj_properties and obj_properties[prop] == val:
+                return obj
+        return None
+
     def FindElementByPropertySubstring(self, kind, prop, substring):
         properties = self.manager.GetProperties(utf8_strings = True)
         for path in properties[FlimFlam._GetContainerName(kind)]:
