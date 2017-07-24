@@ -97,6 +97,17 @@ class StaticIPParameters {
   void ApplyString(const std::string& property, std::string* value_out);
   void ApplyStrings(const std::string& property,
                     std::vector<std::string>* value_out);
+  void RestoreStrings(const std::string& property,
+                      std::vector<std::string>* value_out);
+  void ParseRoutes(const std::vector<std::string>& route_list,
+                   const std::string& gateway,
+                   std::vector<IPConfig::Route>* value_out);
+  void ApplyRoutes(const std::string& property,
+                   const std::string& gateway,
+                   std::vector<IPConfig::Route>* value_out);
+  void RestoreRoutes(const std::string& property,
+                     const std::string& gateway,
+                     std::vector<IPConfig::Route>* value_out);
 
   void ClearMappedProperty(const size_t& index, Error* error);
   void ClearMappedSavedProperty(const size_t& index, Error* error);

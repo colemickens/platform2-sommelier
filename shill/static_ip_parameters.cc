@@ -18,6 +18,7 @@
 
 #include <string.h>
 
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
@@ -44,8 +45,11 @@ const StaticIPParameters::Property StaticIPParameters::kProperties[] = {
   { kGatewayProperty, Property::kTypeString },
   { kMtuProperty, Property::kTypeInt32 },
   { kNameServersProperty, Property::kTypeStrings },
+  { kSearchDomainsProperty, Property::kTypeStrings },
   { kPeerAddressProperty, Property::kTypeString },
-  { kPrefixlenProperty, Property::kTypeInt32 }
+  { kPrefixlenProperty, Property::kTypeInt32 },
+  { kIncludedRoutesProperty, Property::kTypeStrings },
+  { kExcludedRoutesProperty, Property::kTypeStrings },
 };
 
 StaticIPParameters::StaticIPParameters() {}
@@ -251,6 +255,61 @@ void StaticIPParameters::ApplyStrings(
   }
 }
 
+void StaticIPParameters::RestoreStrings(
+    const string& property, vector<string>* value_out) {
+  if (saved_args_.ContainsStrings(property)) {
+    *value_out = saved_args_.GetStrings(property);
+  } else {
+    value_out->clear();
+  }
+}
+
+void StaticIPParameters::ParseRoutes(const vector<string>& route_list,
+                                     const string& gateway,
+                                     vector<IPConfig::Route>* value_out) {
+  IPAddress gateway_ip(gateway);
+  if (gateway_ip.family() == IPAddress::kFamilyUnknown) {
+    return;
+  }
+
+  for (const auto& ip : route_list) {
+    IPAddress dst_ip(gateway_ip.family());
+    if (!dst_ip.SetAddressAndPrefixFromString(ip)) {
+      return;
+    }
+
+    IPConfig::Route route;
+    dst_ip.IntoString(&route.host);
+    route.prefix = dst_ip.prefix();
+    route.gateway = gateway;
+    value_out->push_back(route);
+  }
+}
+
+void StaticIPParameters::ApplyRoutes(const string& property,
+                                     const string& gateway,
+                                     vector<IPConfig::Route>* value_out) {
+  vector<string> saved_routes;
+  for (const auto& route : *value_out) {
+    saved_routes.push_back(route.host + "/" + base::IntToString(route.prefix));
+  }
+  saved_args_.SetStrings(property, saved_routes);
+
+  if (!args_.ContainsStrings(property)) {
+    return;
+  }
+  value_out->clear();
+  ParseRoutes(args_.GetStrings(property), gateway, value_out);
+}
+
+void StaticIPParameters::RestoreRoutes(const string& property,
+                                       const string& gateway,
+                                       vector<IPConfig::Route>* value_out) {
+  value_out->clear();
+  if (saved_args_.ContainsStrings(property)) {
+    ParseRoutes(saved_args_.GetStrings(property), gateway, value_out);
+  }
+}
 
 void StaticIPParameters::ApplyTo(IPConfig::Properties* props) {
   if (props->address_family == IPAddress::kFamilyUnknown) {
@@ -264,20 +323,23 @@ void StaticIPParameters::ApplyTo(IPConfig::Properties* props) {
   ApplyString(kGatewayProperty, &props->gateway);
   ApplyInt(kMtuProperty, &props->mtu);
   ApplyStrings(kNameServersProperty, &props->dns_servers);
+  ApplyStrings(kSearchDomainsProperty, &props->domain_search);
   ApplyString(kPeerAddressProperty, &props->peer_address);
   ApplyInt(kPrefixlenProperty, &props->subnet_prefix);
+  ApplyStrings(kExcludedRoutesProperty, &props->exclusion_list);
+  ApplyRoutes(kIncludedRoutesProperty, props->gateway, &props->routes);
 }
 
 void StaticIPParameters::RestoreTo(IPConfig::Properties* props) {
   props->address = saved_args_.LookupString(kAddressProperty, "");
   props->gateway = saved_args_.LookupString(kGatewayProperty, "");
   props->mtu = saved_args_.LookupInt(kMtuProperty, 0);
-  props->dns_servers.clear();
-  if (saved_args_.ContainsStrings(kNameServersProperty)) {
-    props->dns_servers = saved_args_.GetStrings(kNameServersProperty);
-  }
+  RestoreStrings(kNameServersProperty, &props->dns_servers);
+  RestoreStrings(kSearchDomainsProperty, &props->domain_search);
   props->peer_address = saved_args_.LookupString(kPeerAddressProperty, "");
   props->subnet_prefix = saved_args_.LookupInt(kPrefixlenProperty, 0);
+  RestoreStrings(kExcludedRoutesProperty, &props->exclusion_list);
+  RestoreRoutes(kIncludedRoutesProperty, props->gateway, &props->routes);
   ClearSavedParameters();
 }
 

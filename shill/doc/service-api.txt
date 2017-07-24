@@ -1444,15 +1444,18 @@ Properties	boolean AutoConnect [readwrite]
 		string StaticIP.Gateway [readwrite]
 		int32 StaticIP.Mtu [readwrite]
 		string StaticIP.NameServers [readwrite]
+		string StaticIP.SearchDomains [readwrite]
 		string StaticIP.PeerAddress [readwrite]
 		int32 StaticIP.Prefixlen [readwrite]
+		string StaticIP.ExcludedRoutes [readwrite]
+		string StaticIP.IncludedRoutes [readwrite]
 
 			[Deprecated] The properties above are deprecated in
 			favor of StaticIPConfig property.
 
 			The properties above can be set on a service to
 			selectively override individual parameters received
-			over DHCP or whatever default IP aquisition technique
+			over DHCP or whatever default IP acquisition technique
 			is used by the service.  The "StaticIP.NameServers"
 			property should be a comma-separated list of IP
 			addresses.
@@ -1475,8 +1478,11 @@ Properties	boolean AutoConnect [readwrite]
 		string SavedIP.Gateway [readonly]
 		int32 SavedIP.Mtu [readonly]
 		string SavedIP.NameServers [readonly]
+		string SavedIP.SearchDomains [readonly]
 		string SavedIP.PeerAddress [readonly]
 		int32 SavedIP.Prefixlen [readonly]
+		string SavedIP.ExcludedRoutes [readonly]
+		string SavedIP.IncludedRoutes [readonly]
 
 			[Deprecated] The properties above are deprecated in
 			favor of SavedIPConfig property.
@@ -1513,13 +1519,19 @@ Properties	boolean AutoConnect [readwrite]
 			will display the result of the merged network
 			parameters.
 
+			ExcludedRoutes and IncludedRoutes should be in
+			CIDR notation, e.g. "192.168.1.0/24"
+
 			Here are the expected keys within the dict:
 				string Address
 				string Gateway
 				int32 Mtu
 				array{string} NameServers
+				array{string} SearchDomains
 				string PeerAddress
 				int32 Prefixlen
+				array{string} ExcludedRoutes
+				array{string} IncludedRoutes
 
 		dict SavedIPConfig [readonly]
 
@@ -1539,8 +1551,11 @@ Properties	boolean AutoConnect [readwrite]
 				string Gateway
 				int32 Mtu
 				array{string} NameServers
+				array{string} SearchDomains
 				string PeerAddress
 				int32 Prefixlen
+				array{string} ExcludedRoutes
+				array{string} IncludedRoutes
 
 		uint8 Strength [readonly]
 

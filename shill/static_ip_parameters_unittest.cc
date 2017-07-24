@@ -40,11 +40,24 @@ namespace {
 const char kAddress[] = "10.0.0.1";
 const char kGateway[] = "10.0.0.254";
 const int32_t kMtu = 512;
+
 const char kNameServer0[] = "10.0.1.253";
 const char kNameServer1[] = "10.0.1.252";
 const char kNameServers[] = "10.0.1.253,10.0.1.252";
+
+const char kSearchDomains[] = "example.com,chromium.org";
+const char kSearchDomain0[] = "example.com";
+const char kSearchDomain1[] = "chromium.org";
+
 const char kPeerAddress[] = "10.0.0.2";
 const int32_t kPrefixLen = 24;
+
+const char kExcludedRoutes[] = "192.168.1.0/24,192.168.2.0/24";
+const char kExcludedRoute0[] = "192.168.1.0/24";
+const char kExcludedRoute1[] = "192.168.2.0/24";
+
+const char kIncludedRoutes[] = "0.0.0.0/0";
+const IPConfig::Route kIncludedRoute0("0.0.0.0", 0, "10.0.0.254");
 
 }  // namespace
 
@@ -57,8 +70,11 @@ class StaticIPParametersTest : public Test {
     EXPECT_TRUE(ipconfig_props_.gateway.empty());
     EXPECT_EQ(IPConfig::kUndefinedMTU, ipconfig_props_.mtu);
     EXPECT_TRUE(ipconfig_props_.dns_servers.empty());
+    EXPECT_TRUE(ipconfig_props_.domain_search.empty());
     EXPECT_TRUE(ipconfig_props_.peer_address.empty());
     EXPECT_FALSE(ipconfig_props_.subnet_prefix);
+    EXPECT_TRUE(ipconfig_props_.exclusion_list.empty());
+    EXPECT_TRUE(ipconfig_props_.routes.empty());
   }
   // Modify an IP address string in some predictable way.  There's no need
   // for the output string to be valid from a networking perspective.
@@ -72,14 +88,40 @@ class StaticIPParametersTest : public Test {
     EXPECT_EQ(VersionedAddress(kAddress, version), ipconfig_props_.address);
     EXPECT_EQ(VersionedAddress(kGateway, version), ipconfig_props_.gateway);
     EXPECT_EQ(kMtu + version, ipconfig_props_.mtu);
+
     EXPECT_EQ(2, ipconfig_props_.dns_servers.size());
     EXPECT_EQ(VersionedAddress(kNameServer0, version),
               ipconfig_props_.dns_servers[0]);
     EXPECT_EQ(VersionedAddress(kNameServer1, version),
               ipconfig_props_.dns_servers[1]);
+
+    // VersionedAddress() increments the final character of each domain
+    // name.
+    EXPECT_EQ(2, ipconfig_props_.domain_search.size());
+    EXPECT_EQ(VersionedAddress(kSearchDomain0, version),
+              ipconfig_props_.domain_search[0]);
+    EXPECT_EQ(VersionedAddress(kSearchDomain1, version),
+              ipconfig_props_.domain_search[1]);
+
     EXPECT_EQ(VersionedAddress(kPeerAddress, version),
               ipconfig_props_.peer_address);
     EXPECT_EQ(kPrefixLen + version, ipconfig_props_.subnet_prefix);
+
+    EXPECT_EQ(2, ipconfig_props_.exclusion_list.size());
+    EXPECT_EQ(VersionedAddress(kExcludedRoute0, version),
+              ipconfig_props_.exclusion_list[0]);
+    EXPECT_EQ(VersionedAddress(kExcludedRoute1, version),
+              ipconfig_props_.exclusion_list[1]);
+
+    // VersionedAddress() increments the final digit of the prefix on
+    // the IncludedRoutes property, and the final digit of the IP address
+    // on the Gateway property.
+    EXPECT_EQ(1, ipconfig_props_.routes.size());
+    EXPECT_EQ(kIncludedRoute0.host, ipconfig_props_.routes[0].host);
+    EXPECT_EQ(kIncludedRoute0.prefix + version,
+              ipconfig_props_.routes[0].prefix);
+    EXPECT_EQ(VersionedAddress(kIncludedRoute0.gateway, version),
+              ipconfig_props_.routes[0].gateway);
   }
   void ExpectPopulatedIPConfig() { ExpectPopulatedIPConfigWithVersion(0); }
   void ExpectPropertiesWithVersion(PropertyStore* store,
@@ -105,6 +147,12 @@ class StaticIPParametersTest : public Test {
     EXPECT_EQ(VersionedAddress(kNameServer0, version) + "," +
               VersionedAddress(kNameServer1, version),
               string_value);
+    EXPECT_TRUE(store->GetStringProperty(property_prefix + ".SearchDomains",
+                                         &string_value,
+                                         &unused_error));
+    EXPECT_EQ(VersionedAddress(kSearchDomain0, version) + "," +
+              VersionedAddress(kSearchDomain1, version),
+              string_value);
     EXPECT_TRUE(store->GetStringProperty(property_prefix + ".PeerAddress",
                                          &string_value,
                                          &unused_error));
@@ -113,6 +161,17 @@ class StaticIPParametersTest : public Test {
                                         &int_value,
                                         &unused_error));
     EXPECT_EQ(kPrefixLen + version, int_value);
+    EXPECT_TRUE(store->GetStringProperty(property_prefix + ".ExcludedRoutes",
+                                         &string_value,
+                                         &unused_error));
+    EXPECT_EQ(VersionedAddress(kExcludedRoute0, version) + "," +
+              VersionedAddress(kExcludedRoute1, version),
+              string_value);
+    EXPECT_TRUE(store->GetStringProperty(property_prefix + ".IncludedRoutes",
+                                         &string_value,
+                                         &unused_error));
+    EXPECT_EQ(VersionedAddress(kIncludedRoutes, version),
+              string_value);
   }
   void ExpectProperties(PropertyStore* store, const string& property_prefix) {
     ExpectPropertiesWithVersion(store, property_prefix, 0);
@@ -123,8 +182,13 @@ class StaticIPParametersTest : public Test {
     ipconfig_props_.mtu = kMtu;
     ipconfig_props_.dns_servers.push_back(kNameServer0);
     ipconfig_props_.dns_servers.push_back(kNameServer1);
+    ipconfig_props_.domain_search.push_back(kSearchDomain0);
+    ipconfig_props_.domain_search.push_back(kSearchDomain1);
     ipconfig_props_.peer_address = kPeerAddress;
     ipconfig_props_.subnet_prefix = kPrefixLen;
+    ipconfig_props_.exclusion_list.push_back(kExcludedRoute0);
+    ipconfig_props_.exclusion_list.push_back(kExcludedRoute1);
+    ipconfig_props_.routes.push_back(kIncludedRoute0);
   }
   void SetStaticPropertiesWithVersion(PropertyStore* store, int version) {
     Error error;
@@ -140,10 +204,24 @@ class StaticIPParametersTest : public Test {
         VersionedAddress(kNameServer1, version),
         &error);
     store->SetStringProperty(
+        "StaticIP.SearchDomains",
+        VersionedAddress(kSearchDomain0, version) + "," +
+        VersionedAddress(kSearchDomain1, version),
+        &error);
+    store->SetStringProperty(
         "StaticIP.PeerAddress",
         VersionedAddress(kPeerAddress, version),
         &error);
     store->SetInt32Property("StaticIP.Prefixlen", kPrefixLen + version, &error);
+    store->SetStringProperty(
+        "StaticIP.ExcludedRoutes",
+        VersionedAddress(kExcludedRoute0, version) + "," +
+        VersionedAddress(kExcludedRoute1, version),
+        &error);
+    store->SetStringProperty(
+        "StaticIP.IncludedRoutes",
+        VersionedAddress(kIncludedRoutes, version),
+        &error);
   }
   void SetStaticProperties(PropertyStore* store) {
     SetStaticPropertiesWithVersion(store, 0);
@@ -153,13 +231,30 @@ class StaticIPParametersTest : public Test {
     args.SetString(kAddressProperty, VersionedAddress(kAddress, version));
     args.SetString(kGatewayProperty, VersionedAddress(kGateway, version));
     args.SetInt(kMtuProperty, kMtu + version);
+
     vector<string> name_servers;
     name_servers.push_back(VersionedAddress(kNameServer0, version));
     name_servers.push_back(VersionedAddress(kNameServer1, version));
     args.SetStrings(kNameServersProperty, name_servers);
+
+    vector<string> search_domains;
+    search_domains.push_back(VersionedAddress(kSearchDomain0, version));
+    search_domains.push_back(VersionedAddress(kSearchDomain1, version));
+    args.SetStrings(kSearchDomainsProperty, search_domains);
+
     args.SetString(kPeerAddressProperty,
                    VersionedAddress(kPeerAddress, version));
     args.SetInt(kPrefixlenProperty, kPrefixLen + version);
+
+    vector<string> excluded_routes;
+    excluded_routes.push_back(VersionedAddress(kExcludedRoute0, version));
+    excluded_routes.push_back(VersionedAddress(kExcludedRoute1, version));
+    args.SetStrings(kExcludedRoutesProperty, excluded_routes);
+
+    vector<string> included_routes;
+    included_routes.push_back(VersionedAddress(kIncludedRoutes, version));
+    args.SetStrings(kIncludedRoutesProperty, included_routes);
+
     Error error;
     store->SetKeyValueStoreProperty(kStaticIPConfigProperty, args, &error);
   }
@@ -222,6 +317,9 @@ TEST_F(StaticIPParametersTest, ControlInterface) {
   EXPECT_TRUE(store.GetStringProperty("StaticIP.NameServers", &string_value,
                                       &unused_error));
   EXPECT_EQ(kNameServers, string_value);
+  EXPECT_TRUE(store.GetStringProperty("StaticIP.SearchDomains", &string_value,
+                                      &unused_error));
+  EXPECT_EQ(kSearchDomains, string_value);
   EXPECT_TRUE(store.GetStringProperty("StaticIP.PeerAddress", &string_value,
                                       &unused_error));
   EXPECT_EQ(kPeerAddress, string_value);
@@ -229,6 +327,12 @@ TEST_F(StaticIPParametersTest, ControlInterface) {
   EXPECT_TRUE(store.GetInt32Property("StaticIP.Prefixlen", &int_value,
                                      &unused_error));
   EXPECT_EQ(kPrefixLen, int_value);
+  EXPECT_TRUE(store.GetStringProperty("StaticIP.ExcludedRoutes", &string_value,
+                                      &unused_error));
+  EXPECT_EQ(kExcludedRoutes, string_value);
+  EXPECT_TRUE(store.GetStringProperty("StaticIP.IncludedRoutes", &string_value,
+                                      &unused_error));
+  EXPECT_EQ(kIncludedRoutes, string_value);
 }
 
 TEST_F(StaticIPParametersTest, Profile) {
@@ -243,11 +347,20 @@ TEST_F(StaticIPParametersTest, Profile) {
   EXPECT_CALL(store, GetString(kID, "StaticIP.NameServers", _))
       .WillOnce(DoAll(SetArgumentPointee<2>(string(kNameServers)),
                       Return(true)));
+  EXPECT_CALL(store, GetString(kID, "StaticIP.SearchDomains", _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(string(kSearchDomains)),
+                      Return(true)));
   EXPECT_CALL(store, GetString(kID, "StaticIP.PeerAddress", _))
       .WillOnce(DoAll(SetArgumentPointee<2>(string(kPeerAddress)),
                       Return(true)));
   EXPECT_CALL(store, GetInt(kID, "StaticIP.Prefixlen", _))
       .WillOnce(DoAll(SetArgumentPointee<2>(kPrefixLen), Return(true)));
+  EXPECT_CALL(store, GetString(kID, "StaticIP.ExcludedRoutes", _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(string(kExcludedRoutes)),
+                      Return(true)));
+  EXPECT_CALL(store, GetString(kID, "StaticIP.IncludedRoutes", _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(string(kIncludedRoutes)),
+                      Return(true)));
   static_params_.Load(&store, kID);
   static_params_.ApplyTo(&ipconfig_props_);
   ExpectPopulatedIPConfig();
@@ -260,9 +373,15 @@ TEST_F(StaticIPParametersTest, Profile) {
       .WillOnce(Return(true));
   EXPECT_CALL(store, SetString(kID, "StaticIP.NameServers", kNameServers))
       .WillOnce(Return(true));
+  EXPECT_CALL(store, SetString(kID, "StaticIP.SearchDomains", kSearchDomains))
+      .WillOnce(Return(true));
   EXPECT_CALL(store, SetString(kID, "StaticIP.PeerAddress", kPeerAddress))
       .WillOnce(Return(true));
   EXPECT_CALL(store, SetInt(kID, "StaticIP.Prefixlen", kPrefixLen))
+      .WillOnce(Return(true));
+  EXPECT_CALL(store, SetString(kID, "StaticIP.ExcludedRoutes", kExcludedRoutes))
+      .WillOnce(Return(true));
+  EXPECT_CALL(store, SetString(kID, "StaticIP.IncludedRoutes", kIncludedRoutes))
       .WillOnce(Return(true));
   static_params_.Save(&store, kID);
 }
