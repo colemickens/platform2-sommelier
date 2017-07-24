@@ -133,17 +133,17 @@ def print_services(services):
 
         identifier = object_path[object_path.rfind("/") + 1:]
 
-        if properties["Favorite"] == dbus.Boolean(1):
-            favorite = "*"
+        if properties["IsActive"] == dbus.Boolean(1):
+            active = "*"
         else:
-            favorite = " "
+            active = " "
 
         if "Name" in properties.keys():
             name = properties["Name"]
         else:
             name = "{" + properties["Type"] + "}"
 
-        print "%s %-26s { %s }" % (favorite, name, identifier)
+        print "%s %-26s { %s }" % (active, name, identifier)
 
 def main():
     if sys.argv[1] == "state":
@@ -262,10 +262,6 @@ def main():
                                  "org.chromium.flimflam.Service")
 
         properties = service.GetProperties(utf8_strings = True)
-
-        if properties["Favorite"] == dbus.Boolean(0):
-            print "Only favorite services can be removed"
-            sys.exit(1)
 
         try:
             service.Remove()
