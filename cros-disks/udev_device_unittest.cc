@@ -16,7 +16,7 @@ using std::vector;
 
 namespace {
 
-const char kLoopDeviceFile[] = "/dev/loop0";
+const char kLoopDevicePrefix[] = "/dev/loop";
 const char kRamDeviceFile[] = "/dev/ram0";
 const char kZRamDeviceFile[] = "/dev/zram0";
 
@@ -62,7 +62,9 @@ class UdevDeviceTest : public ::testing::Test {
         }
       }
 
-      if (!loop_device_ && strcmp(device_file, kLoopDeviceFile) == 0) {
+      if (!loop_device_ && device_file != boot_device_path &&
+          strncmp(device_file, kLoopDevicePrefix,
+                  strlen(kLoopDevicePrefix)) == 0) {
         udev_device_ref(device);
         loop_device_ = device;
       }
@@ -72,6 +74,14 @@ class UdevDeviceTest : public ::testing::Test {
            strcmp(device_file, kZRamDeviceFile) == 0)) {
         udev_device_ref(device);
         ram_device_ = device;
+      }
+
+      if (!partitioned_device_) {
+        const char *device_type = udev_device_get_devtype(device);
+        if (device_type && strcmp(device_type, "partition") == 0) {
+          partitioned_device_ = udev_device_get_parent(device);
+          udev_device_ref(partitioned_device_);
+        }
       }
 
       udev_device_unref(device);
@@ -96,6 +106,10 @@ class UdevDeviceTest : public ::testing::Test {
       udev_device_unref(mounted_device_);
       mounted_device_ = nullptr;
     }
+    if (partitioned_device_) {
+      udev_device_unref(partitioned_device_);
+      partitioned_device_ = nullptr;
+    }
     if (udev_) {
       udev_unref(udev_);
       udev_ = nullptr;
@@ -114,6 +128,7 @@ class UdevDeviceTest : public ::testing::Test {
   static udev_device* loop_device_;
   static udev_device* ram_device_;
   static udev_device* mounted_device_;
+  static udev_device* partitioned_device_;
 };
 
 udev* UdevDeviceTest::udev_ = nullptr;
@@ -121,6 +136,7 @@ udev_device* UdevDeviceTest::boot_device_ = nullptr;
 udev_device* UdevDeviceTest::loop_device_ = nullptr;
 udev_device* UdevDeviceTest::ram_device_ = nullptr;
 udev_device* UdevDeviceTest::mounted_device_ = nullptr;
+udev_device* UdevDeviceTest::partitioned_device_ = nullptr;
 
 TEST_F(UdevDeviceTest, EnsureUTF8String) {
   // Valid UTF8
@@ -218,9 +234,13 @@ TEST_F(UdevDeviceTest, GetPropertyFromBlkIdForNonexistentProperty) {
 }
 
 TEST_F(UdevDeviceTest, GetPartitionCount) {
-  if (boot_device_) {
-    UdevDevice device(boot_device_);
+  if (partitioned_device_) {
+    UdevDevice device(partitioned_device_);
     EXPECT_NE(0, device.GetPartitionCount());
+  }
+  if (loop_device_) {
+    UdevDevice device(loop_device_);
+    EXPECT_EQ(0, device.GetPartitionCount());
   }
 }
 
@@ -339,7 +359,8 @@ TEST_F(UdevDeviceTest, ToDisk) {
     Disk disk = device.ToDisk();
     EXPECT_FALSE(disk.is_auto_mountable());
     EXPECT_TRUE(disk.is_virtual());
-    EXPECT_EQ(kLoopDeviceFile, disk.device_file());
+    EXPECT_EQ(kLoopDevicePrefix,
+              disk.device_file().substr(0, strlen(kLoopDevicePrefix)));
   }
   if (mounted_device_) {
     UdevDevice device(mounted_device_);
