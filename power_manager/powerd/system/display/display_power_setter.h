@@ -32,7 +32,7 @@ class DisplayPowerSetterInterface {
   virtual void SetDisplayPower(chromeos::DisplayPowerState state,
                                base::TimeDelta delay) = 0;
 
-  // Tells Chrome to simulate the display being dimmed or undimmed in
+  // Tells DisplayService to simulate the display being dimmed or undimmed in
   // software.  This is used as a substitute for actually changing the
   // display's brightness in some cases, e.g. for external displays.
   virtual void SetDisplaySoftwareDimming(bool dimmed) = 0;
@@ -42,7 +42,7 @@ class DisplayPowerSetterInterface {
 };
 
 // Real DisplayPowerSetterInterface implementation that makes D-Bus method
-// calls to Chrome.
+// calls to DisplayService.
 // TODO(derat): Write unit tests for this class now that it's using
 // DBusWrapperInterface.
 class DisplayPowerSetter : public DisplayPowerSetterInterface {
@@ -59,14 +59,14 @@ class DisplayPowerSetter : public DisplayPowerSetterInterface {
   void SetDisplaySoftwareDimming(bool dimmed) override;
 
  private:
-  // Makes an asynchronous D-Bus method call to Chrome to apply |state|.
-  void SendStateToChrome(chromeos::DisplayPowerState state);
+  // Makes an asynchronous D-Bus method call to DisplayService to apply |state|.
+  void SendStateToDisplayService(chromeos::DisplayPowerState state);
 
-  // Runs SendStateToChrome().
+  // Runs SendStateToDisplayService().
   base::OneShotTimer timer_;
 
   DBusWrapperInterface* dbus_wrapper_;  // weak
-  dbus::ObjectProxy* chrome_proxy_;     // non-owned
+  dbus::ObjectProxy* display_service_proxy_;  // non-owned
 
   DISALLOW_COPY_AND_ASSIGN(DisplayPowerSetter);
 };

@@ -94,7 +94,7 @@ TEST_F(ExternalBacklightControllerTest, TurnDisplaysOffWhenShuttingDown) {
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
 }
 
-TEST_F(ExternalBacklightControllerTest, SetDisplayPowerOnChromeStart) {
+TEST_F(ExternalBacklightControllerTest, SetPowerOnDisplayServiceStart) {
   // The display power shouldn't be set by Init() (maybe Chrome hasn't started
   // yet).
   EXPECT_EQ(0, display_power_setter_.num_power_calls());
@@ -102,7 +102,7 @@ TEST_F(ExternalBacklightControllerTest, SetDisplayPowerOnChromeStart) {
 
   // After Chrome starts, the state should be initialized to sane defaults.
   display_power_setter_.reset_num_power_calls();
-  controller_.HandleChromeStart();
+  controller_.HandleDisplayServiceStart();
   EXPECT_EQ(1, display_power_setter_.num_power_calls());
   EXPECT_FALSE(display_power_setter_.dimmed());
   ASSERT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
@@ -122,7 +122,7 @@ TEST_F(ExternalBacklightControllerTest, SetDisplayPowerOnChromeStart) {
   display_power_setter_.reset_num_power_calls();
   display_power_setter_.SetDisplaySoftwareDimming(false);
   observer_.Clear();
-  controller_.HandleChromeStart();
+  controller_.HandleDisplayServiceStart();
   EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_OFF, display_power_setter_.state());
   EXPECT_EQ(1, display_power_setter_.num_power_calls());
   EXPECT_TRUE(display_power_setter_.dimmed());

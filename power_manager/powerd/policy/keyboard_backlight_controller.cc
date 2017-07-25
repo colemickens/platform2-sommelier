@@ -237,7 +237,7 @@ void KeyboardBacklightController::HandleTabletModeChange(TabletMode mode) {
 void KeyboardBacklightController::HandlePolicyChange(
     const PowerManagementPolicy& policy) {}
 
-void KeyboardBacklightController::HandleChromeStart() {}
+void KeyboardBacklightController::HandleDisplayServiceStart() {}
 
 void KeyboardBacklightController::SetDimmedForInactivity(bool dimmed) {
   if (dimmed == dimmed_for_inactivity_)

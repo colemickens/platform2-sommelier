@@ -80,7 +80,7 @@ class BacklightController {
 
   // Handles Chrome starting (as detected by the ownership of its D-Bus object
   // changing).
-  virtual void HandleChromeStart() = 0;
+  virtual void HandleDisplayServiceStart() = 0;
 
   // Sets whether the backlight should be immediately dimmed in response to
   // user inactivity.  Note that other states take precedence over this

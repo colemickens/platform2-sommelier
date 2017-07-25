@@ -77,7 +77,7 @@ void ExternalBacklightController::HandleUserActivity(UserActivityType type) {}
 void ExternalBacklightController::HandlePolicyChange(
     const PowerManagementPolicy& policy) {}
 
-void ExternalBacklightController::HandleChromeStart() {
+void ExternalBacklightController::HandleDisplayServiceStart() {
   display_power_setter_->SetDisplaySoftwareDimming(dimmed_for_inactivity_);
   display_power_setter_->SetDisplayPower(currently_off_
                                              ? chromeos::DISPLAY_POWER_ALL_OFF

@@ -852,7 +852,7 @@ TEST_F(InternalBacklightControllerTest, BrightnessPolicy) {
   controller_->RemoveObserver(&observer);
 }
 
-TEST_F(InternalBacklightControllerTest, SetDisplayPowerOnChromeStart) {
+TEST_F(InternalBacklightControllerTest, SetPowerOnDisplayServiceStart) {
   // Init() shouldn't ask Chrome to turn all displays on (maybe Chrome hasn't
   // started yet).
   Init(PowerSource::AC);
@@ -860,7 +860,7 @@ TEST_F(InternalBacklightControllerTest, SetDisplayPowerOnChromeStart) {
 
   // After Chrome starts, the controller should turn the displays on.
   display_power_setter_.reset_num_power_calls();
-  controller_->HandleChromeStart();
+  controller_->HandleDisplayServiceStart();
   EXPECT_EQ(1, display_power_setter_.num_power_calls());
   EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
@@ -873,7 +873,7 @@ TEST_F(InternalBacklightControllerTest, SetDisplayPowerOnChromeStart) {
   // If Chrome restarts, the controller should notify it about the current power
   // state.
   display_power_setter_.reset_num_power_calls();
-  controller_->HandleChromeStart();
+  controller_->HandleDisplayServiceStart();
   EXPECT_EQ(1, display_power_setter_.num_power_calls());
   EXPECT_EQ(chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
             display_power_setter_.state());

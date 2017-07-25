@@ -191,7 +191,7 @@ class Daemon : public policy::BacklightControllerObserver,
   void InitDBus();
 
   // Handles various D-Bus services becoming available or restarting.
-  void HandleChromeAvailableOrRestarted(bool available);
+  void HandleDisplayServiceAvailableOrRestarted(bool available);
   void HandleSessionManagerAvailableOrRestarted(bool available);
   void HandleCrasAvailableOrRestarted(bool available);
 

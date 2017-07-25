@@ -359,7 +359,7 @@ void InternalBacklightController::HandlePolicyChange(
           : true;
 }
 
-void InternalBacklightController::HandleChromeStart() {
+void InternalBacklightController::HandleDisplayServiceStart() {
   display_power_setter_->SetDisplayPower(display_power_state_,
                                          base::TimeDelta());
 }

@@ -512,10 +512,10 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
             keyboard_backlight_controller_->session_state_changes()[0]);
 
   // Chrome restarts.
-  EmitNameOwnerChangedSignal(chromeos::kLibCrosServiceName, "old", "new");
-  EmitNameOwnerChangedSignal(chromeos::kLibCrosServiceName, "new", "newer");
-  EXPECT_EQ(2, internal_backlight_controller_->chrome_starts());
-  EXPECT_EQ(2, keyboard_backlight_controller_->chrome_starts());
+  EmitNameOwnerChangedSignal(chromeos::kDisplayServiceName, "old", "new");
+  EmitNameOwnerChangedSignal(chromeos::kDisplayServiceName, "new", "newer");
+  EXPECT_EQ(2, internal_backlight_controller_->display_service_starts());
+  EXPECT_EQ(2, keyboard_backlight_controller_->display_service_starts());
 
   // CRAS restarts and signals.
   EmitNameOwnerChangedSignal(cras::kCrasServiceName, "old", "new");

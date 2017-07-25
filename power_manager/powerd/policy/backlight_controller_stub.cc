@@ -23,7 +23,7 @@ void BacklightControllerStub::ResetStats() {
   hover_state_changes_.clear();
   tablet_mode_changes_.clear();
   policy_changes_.clear();
-  chrome_starts_ = 0;
+  display_service_starts_ = 0;
   user_brightness_percent_ = 0.0;
   num_user_brightness_increases_ = 0;
   num_user_brightness_decreases_ = 0;
@@ -86,8 +86,8 @@ void BacklightControllerStub::HandlePolicyChange(
   policy_changes_.push_back(policy);
 }
 
-void BacklightControllerStub::HandleChromeStart() {
-  chrome_starts_++;
+void BacklightControllerStub::HandleDisplayServiceStart() {
+  display_service_starts_++;
 }
 
 void BacklightControllerStub::SetDimmedForInactivity(bool dimmed) {

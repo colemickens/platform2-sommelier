@@ -815,11 +815,11 @@ void Daemon::OnPowerStatusUpdate() {
 void Daemon::InitDBus() {
   dbus_wrapper_ = delegate_->CreateDBusWrapper();
 
-  dbus::ObjectProxy* chrome_proxy = dbus_wrapper_->GetObjectProxy(
-      chromeos::kLibCrosServiceName, chromeos::kLibCrosServicePath);
+  dbus::ObjectProxy* display_service_proxy = dbus_wrapper_->GetObjectProxy(
+      chromeos::kDisplayServiceName, chromeos::kDisplayServicePath);
   dbus_wrapper_->RegisterForServiceAvailability(
-      chrome_proxy,
-      base::Bind(&Daemon::HandleChromeAvailableOrRestarted,
+      display_service_proxy,
+      base::Bind(&Daemon::HandleDisplayServiceAvailableOrRestarted,
                  weak_ptr_factory_.GetWeakPtr()));
 
   session_manager_dbus_proxy_ =
@@ -988,13 +988,13 @@ void Daemon::InitDBus() {
 #endif  // USE_BUFFET
 }
 
-void Daemon::HandleChromeAvailableOrRestarted(bool available) {
+void Daemon::HandleDisplayServiceAvailableOrRestarted(bool available) {
   if (!available) {
-    LOG(ERROR) << "Failed waiting for Chrome to become available";
+    LOG(ERROR) << "Failed waiting for DisplayService to become available";
     return;
   }
   for (auto controller : all_backlight_controllers_)
-    controller->HandleChromeStart();
+    controller->HandleDisplayServiceStart();
 }
 
 void Daemon::HandleSessionManagerAvailableOrRestarted(bool available) {
@@ -1089,9 +1089,9 @@ void Daemon::HandleDBusNameOwnerChanged(dbus::Signal* signal) {
   } else if (name == cras::kCrasServiceName && !new_owner.empty()) {
     LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
     HandleCrasAvailableOrRestarted(true);
-  } else if (name == chromeos::kLibCrosServiceName && !new_owner.empty()) {
+  } else if (name == chromeos::kDisplayServiceName && !new_owner.empty()) {
     LOG(INFO) << "D-Bus " << name << " ownership changed to " << new_owner;
-    HandleChromeAvailableOrRestarted(true);
+    HandleDisplayServiceAvailableOrRestarted(true);
   }
   suspender_->HandleDBusNameOwnerChanged(name, old_owner, new_owner);
 }

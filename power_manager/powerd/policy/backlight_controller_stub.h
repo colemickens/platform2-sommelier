@@ -48,7 +48,7 @@ class BacklightControllerStub : public policy::BacklightController {
   const std::vector<PowerManagementPolicy>& policy_changes() const {
     return policy_changes_;
   }
-  int chrome_starts() const { return chrome_starts_; }
+  int display_service_starts() const { return display_service_starts_; }
   bool dimmed() const { return dimmed_; }
   bool off() const { return off_; }
   bool suspended() const { return suspended_; }
@@ -85,7 +85,7 @@ class BacklightControllerStub : public policy::BacklightController {
   void HandleHoverStateChange(bool hovering) override;
   void HandleTabletModeChange(TabletMode mode) override;
   void HandlePolicyChange(const PowerManagementPolicy& policy) override;
-  void HandleChromeStart() override;
+  void HandleDisplayServiceStart() override;
   void SetDimmedForInactivity(bool dimmed) override;
   void SetOffForInactivity(bool off) override;
   void SetSuspended(bool suspended) override;
@@ -117,7 +117,7 @@ class BacklightControllerStub : public policy::BacklightController {
   std::vector<bool> hover_state_changes_;
   std::vector<TabletMode> tablet_mode_changes_;
   std::vector<PowerManagementPolicy> policy_changes_;
-  int chrome_starts_ = 0;
+  int display_service_starts_ = 0;
 
   bool dimmed_ = false;
   bool off_ = false;

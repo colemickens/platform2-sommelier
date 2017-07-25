@@ -52,7 +52,7 @@ class ExternalBacklightController : public BacklightController,
   void HandleHoverStateChange(bool hovering) override;
   void HandleTabletModeChange(TabletMode mode) override;
   void HandlePolicyChange(const PowerManagementPolicy& policy) override;
-  void HandleChromeStart() override;
+  void HandleDisplayServiceStart() override;
   void SetDimmedForInactivity(bool dimmed) override;
   void SetOffForInactivity(bool off) override;
   void SetSuspended(bool suspended) override;
