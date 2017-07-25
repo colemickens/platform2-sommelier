@@ -194,8 +194,15 @@ WiFi::WiFi(ControlInterface* control_interface,
                            kBgscanSignalThresholdProperty,
                            &WiFi::GetBgscanSignalThreshold,
                            &WiFi::SetBgscanSignalThreshold);
+  // TODO(crbug.com/749161): remove deprecated property
   HelpRegisterDerivedBool(store,
                           kMACAddressRandomizationProperty,
+                          &WiFi::GetRandomMACEnabled,
+                          &WiFi::SetRandomMACEnabled);
+  store->RegisterConstBool(kMACAddressRandomizationSupportedProperty,
+                           &random_mac_supported_);
+  HelpRegisterDerivedBool(store,
+                          kMACAddressRandomizationEnabledProperty,
                           &WiFi::GetRandomMACEnabled,
                           &WiFi::SetRandomMACEnabled);
 
