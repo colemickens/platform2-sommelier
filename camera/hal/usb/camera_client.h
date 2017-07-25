@@ -86,7 +86,9 @@ class CameraClient {
   void SetUpStreams(int num_buffers, std::vector<camera3_stream_t*>* streams);
 
   // Start |request_thread_| and streaming.
-  int StreamOn(Size stream_on_resolution, int* num_buffers);
+  int StreamOn(Size stream_on_resolution,
+               int crop_rotate_scale_degrees,
+               int* num_buffers);
 
   // Stop streaming and |request_thread_|.
   void StreamOff();
@@ -143,7 +145,8 @@ class CameraClient {
         V4L2CameraDevice* device,
         const camera3_callback_ops_t* callback_ops,
         const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
-        MetadataHandler* metadata_handler);
+        MetadataHandler* metadata_handler,
+        int crop_rotate_scale_degrees);
     ~RequestHandler();
 
     // Synchronous call to start streaming.
@@ -192,7 +195,7 @@ class CameraClient {
     void NotifyRequestError(uint32_t frame_number);
 
     // Dequeue V4L2 frame buffer.
-    int DequeueV4L2Buffer(int rotate_degree, int32_t pattern_mode);
+    int DequeueV4L2Buffer(int32_t pattern_mode);
 
     // Enqueue V4L2 frame buffer.
     int EnqueueV4L2Buffer();
@@ -241,6 +244,9 @@ class CameraClient {
 
     // Used to generate test pattern.
     std::unique_ptr<TestPattern> test_pattern_;
+
+    // Used to enable crop, rotate, and scale capability for portriat preview.
+    int crop_rotate_scale_degrees_;
 
     // Used to guard |flush_started_|.
     base::Lock flush_lock_;

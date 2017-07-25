@@ -112,12 +112,15 @@ int CameraClient::ConfigureStreams(
 
   Size stream_on_resolution(0, 0);
   std::vector<camera3_stream_t*> streams;
+  int crop_rotate_scale_degrees = 0;
   for (size_t i = 0; i < stream_config->num_streams; i++) {
     VLOGFID(1, id_) << "Stream[" << i
                     << "] type=" << stream_config->streams[i]->stream_type
                     << " width=" << stream_config->streams[i]->width
                     << " height=" << stream_config->streams[i]->height
                     << " rotation=" << stream_config->streams[i]->rotation
+                    << " degrees="
+                    << stream_config->streams[i]->crop_rotate_scale_degrees
                     << " format=0x" << std::hex
                     << stream_config->streams[i]->format;
 
@@ -129,6 +132,9 @@ int CameraClient::ConfigureStreams(
       return -EINVAL;
     }
     streams.push_back(stream_config->streams[i]);
+    // Here assume the attribute of all streams are the same.
+    crop_rotate_scale_degrees =
+        stream_config->streams[i]->crop_rotate_scale_degrees;
 
     // Skip BLOB format to avoid to use too large resolution as preview size.
     if (stream_config->streams[i]->format == HAL_PIXEL_FORMAT_BLOB &&
@@ -149,7 +155,8 @@ int CameraClient::ConfigureStreams(
   }
 
   int num_buffers;
-  int ret = StreamOn(stream_on_resolution, &num_buffers);
+  int ret =
+      StreamOn(stream_on_resolution, crop_rotate_scale_degrees, &num_buffers);
   if (ret) {
     LOGFID(ERROR, id_) << "StreamOn failed";
     StreamOff();
@@ -294,7 +301,9 @@ void CameraClient::SetUpStreams(int num_buffers,
   }
 }
 
-int CameraClient::StreamOn(Size stream_on_resolution, int* num_buffers) {
+int CameraClient::StreamOn(Size stream_on_resolution,
+                           int crop_rotate_scale_degrees,
+                           int* num_buffers) {
   DCHECK(ops_thread_checker_.CalledOnValidThread());
 
   if (!request_handler_.get()) {
@@ -304,9 +313,9 @@ int CameraClient::StreamOn(Size stream_on_resolution, int* num_buffers) {
     }
     request_task_runner_ = request_thread_.task_runner();
 
-    request_handler_.reset(
-        new RequestHandler(id_, device_info_, device_.get(), callback_ops_,
-                           request_task_runner_, metadata_handler_.get()));
+    request_handler_.reset(new RequestHandler(
+        id_, device_info_, device_.get(), callback_ops_, request_task_runner_,
+        metadata_handler_.get(), crop_rotate_scale_degrees));
   }
 
   auto future = internal::Future<int>::Create(nullptr);
@@ -362,7 +371,8 @@ CameraClient::RequestHandler::RequestHandler(
     V4L2CameraDevice* device,
     const camera3_callback_ops_t* callback_ops,
     const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
-    MetadataHandler* metadata_handler)
+    MetadataHandler* metadata_handler,
+    int crop_rotate_scale_degrees)
     : device_id_(device_id),
       device_info_(device_info),
       device_(device),
@@ -371,7 +381,8 @@ CameraClient::RequestHandler::RequestHandler(
       metadata_handler_(metadata_handler),
       stream_on_resolution_(0, 0),
       current_v4l2_buffer_id_(-1),
-      flush_started_(false) {
+      flush_started_(false),
+      crop_rotate_scale_degrees_(crop_rotate_scale_degrees) {
   SupportedFormats supported_formats =
       device_->GetDeviceSupportedFormats(device_info_.device_path);
   qualified_formats_ = GetQualifiedFormats(supported_formats);
@@ -605,13 +616,6 @@ int CameraClient::RequestHandler::WriteStreamBuffer(
 
   // Get frame data from device only for the first buffer or new stream.
   if (stream_index == 0 || stream_restart == true) {
-    int rotate_degree = 0;
-    if (metadata.exists(ANDROID_SENSOR_CROP_ROTATE_SCALE)) {
-      camera_metadata_ro_entry entry =
-          metadata.find(ANDROID_SENSOR_CROP_ROTATE_SCALE);
-      rotate_degree = entry.data.i32[0];
-    }
-
     int32_t pattern_mode = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
     if (metadata.exists(ANDROID_SENSOR_TEST_PATTERN_MODE)) {
       camera_metadata_ro_entry entry =
@@ -620,7 +624,7 @@ int CameraClient::RequestHandler::WriteStreamBuffer(
     }
 
     do {
-      ret = DequeueV4L2Buffer(rotate_degree, pattern_mode);
+      ret = DequeueV4L2Buffer(pattern_mode);
     } while (ret == -EAGAIN);
     if (ret) {
       return ret;
@@ -731,8 +735,7 @@ void CameraClient::RequestHandler::NotifyRequestError(uint32_t frame_number) {
   callback_ops_->notify(callback_ops_, &m);
 }
 
-int CameraClient::RequestHandler::DequeueV4L2Buffer(int rotate_degree,
-                                                    int32_t pattern_mode) {
+int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   uint32_t buffer_id, data_size;
   int ret = device_->GetNextFrameBuffer(&buffer_id, &data_size);
@@ -755,8 +758,8 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int rotate_degree,
   }
 
   if (!test_pattern_->IsTestPatternEnabled()) {
-    ret = input_frame_.SetSource(input_buffers_[buffer_id].get(), rotate_degree,
-                                 false);
+    ret = input_frame_.SetSource(input_buffers_[buffer_id].get(),
+                                 crop_rotate_scale_degrees_, false);
     if (ret) {
       LOGFID(ERROR, device_id_)
           << "Set image source failed for input buffer id: " << buffer_id;
@@ -764,8 +767,8 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int rotate_degree,
       return -EAGAIN;
     }
   } else {
-    ret = input_frame_.SetSource(test_pattern_->GetTestPattern(), rotate_degree,
-                                 true);
+    ret = input_frame_.SetSource(test_pattern_->GetTestPattern(),
+                                 crop_rotate_scale_degrees_, true);
     if (ret) {
       LOGFID(ERROR, device_id_) << "Set image source failed for test pattern";
       return ret;
