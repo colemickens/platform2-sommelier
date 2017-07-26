@@ -112,6 +112,11 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
     stream->format = static_cast<int32_t>(s->format);
     stream->data_space = static_cast<android_dataspace_t>(s->data_space);
     stream->rotation = static_cast<camera3_stream_rotation_t>(s->rotation);
+    stream->crop_rotate_scale_degrees = 0;
+    if (s->crop_rotate_scale_info != nullptr) {
+      stream->crop_rotate_scale_degrees = static_cast<int>(
+          s->crop_rotate_scale_info->crop_rotate_scale_degrees);
+    }
   }
   streams_.swap(new_streams);
 
