@@ -95,7 +95,7 @@ repair_log() {
   if [ -f "${RAMOOPS_LOG}" ]; then
     tail -n ${RAMOOPS_DUMP_LINES} ${RAMOOPS_LOG} >>"${dest_path}" 2>/dev/null
   else
-    echo "(No ramoops found, sorry)"
+    echo "(No ramoops found, sorry)" >>"${dest_path}"
   fi
 
   # try to dump first several blocks
