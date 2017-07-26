@@ -256,6 +256,7 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       input_device_controller_(new policy::InputDeviceController),
       suspender_(new policy::Suspender),
       metrics_collector_(new metrics::MetricsCollector),
+      factory_mode_(false),
       shutting_down_(false),
       retry_shutdown_for_firmware_update_timer_(false /* retain_user_task */,
                                                 true /* is_repeating */),
@@ -302,8 +303,8 @@ void Daemon::Init() {
   prefs_ = delegate_->CreatePrefs();
   InitDBus();
 
-  const bool factory_mode = BoolPrefIsTrue(kFactoryModePref);
-  if (factory_mode)
+  factory_mode_ = BoolPrefIsTrue(kFactoryModePref);
+  if (factory_mode_)
     LOG(INFO) << "Factory mode enabled; most functionality will be disabled";
 
   metrics_sender_ = delegate_->CreateMetricsSender();
@@ -320,7 +321,7 @@ void Daemon::Init() {
   display_watcher_ = delegate_->CreateDisplayWatcher(udev_.get());
 
   // Ignore the ALS and backlights in factory mode.
-  if (!factory_mode) {
+  if (!factory_mode_) {
     if (BoolPrefIsTrue(kHasAmbientLightSensorPref))
       light_sensor_ = delegate_->CreateAmbientLightSensor();
 
@@ -791,14 +792,19 @@ void Daemon::OnPowerStatusUpdate() {
   state_controller_->HandlePowerSourceChange(power_source);
 
   if (status.battery_is_present && status.battery_below_shutdown_threshold) {
-    LOG(INFO) << "Shutting down due to low battery ("
-              << base::StringPrintf("%0.2f", status.battery_percentage) << "%, "
-              << util::TimeDeltaToString(status.battery_time_to_empty)
-              << " until empty, "
-              << base::StringPrintf("%0.3f",
-                                    status.observed_battery_charge_rate)
-              << "A observed charge rate)";
-    ShutDown(ShutdownMode::POWER_OFF, ShutdownReason::LOW_BATTERY);
+    if (factory_mode_) {
+      LOG(INFO) << "Battery is low, but not shutting down in factory mode";
+    } else {
+      LOG(INFO) << "Shutting down due to low battery ("
+                << base::StringPrintf("%0.2f", status.battery_percentage)
+                << "%, "
+                << util::TimeDeltaToString(status.battery_time_to_empty)
+                << " until empty, "
+                << base::StringPrintf("%0.3f",
+                                      status.observed_battery_charge_rate)
+                << "A observed charge rate)";
+      ShutDown(ShutdownMode::POWER_OFF, ShutdownReason::LOW_BATTERY);
+    }
   }
 
   PowerSupplyProperties protobuf;

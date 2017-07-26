@@ -324,6 +324,11 @@ class Daemon : public policy::BacklightControllerObserver,
   // |keyboard_backlight_controller_|, if non-null.
   std::vector<policy::BacklightController*> all_backlight_controllers_;
 
+  // True if the kFactoryModePref pref indicates that the system is running in
+  // the factory, implying that much of powerd's functionality should be
+  // disabled.
+  bool factory_mode_;
+
   // True once the shutdown process has started. Remains true until the
   // system has powered off.
   bool shutting_down_;
