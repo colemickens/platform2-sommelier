@@ -151,7 +151,9 @@ void MulticastForwarder::TranslateMdnsIp(char* data, ssize_t bytes) {
     const size_t ipv4_addr_len = sizeof(lan_ip_.s_addr);
 
     net::DnsResourceRecord record;
-    DCHECK(parser.ReadRecord(&record));
+    if (!parser.ReadRecord(&record)) {
+      break;
+    }
     if (record.type == net::dns_protocol::kTypeA &&
         record.rdata.size() == ipv4_addr_len) {
       const char* rr_ip = record.rdata.data();
