@@ -48,7 +48,7 @@ A single user-configured brightness is tracked for both AC and battery power;
 once the user has adjusted the brightness via the brightness keys, the
 brightness remains at that level until the next time the system boots. (Prior to
 M36, separate user-configured levels were maintained for AC and battery power --
-see [issue 360042](https://crbug.com/360042).) There are 16 user-selectable
+see [issue 360042].) There are 16 user-selectable
 brightness steps, divided evenly between the full non-linear percentage-based
 range (i.e. each button press moves the brightness by 100 / 16 = 6.25%). The
 brightness popup that appears when a button is pressed actually contains a
@@ -77,6 +77,8 @@ can adjust the volume while keeping the screen off and also e.g. not see the
 screen turn back on if brightness-down is pressed while the screen is off.
 
 As of M35, Chromeboxes' brightness keys (or F6 and F7 keys) attempt to use
-[DDC/CI](https://en.wikipedia.org/wiki/Display_Data_Channel#DDC.2FCI) to
-increase or decrease external displays' brightness ([issue
-315371](https://crbug.com/315371)).
+[DDC/CI] to increase or decrease external displays' brightness ([issue 315371]).
+
+[issue 360042]: https://crbug.com/360042
+[DDC/CI]: https://en.wikipedia.org/wiki/Display_Data_Channel#DDC.2FCI
+[issue 315371]: https://crbug.com/315371

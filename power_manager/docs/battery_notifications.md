@@ -4,24 +4,20 @@
 
 Every thirty seconds, powerd reads power-supply-related information from
 `/sys/class/power_supply` and emits a `PowerSupplyPoll` D-Bus signal containing
-a [`PowerSupplyProperties` protocol
-buffer](https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/power_manager/power_supply_properties.proto).
-(The information is also updated when line power is connected or disconnected or
-when the system wakes from suspend.) Chrome observes these signals and uses them
-to update the battery level and remaining-time estimate in the system tray.
+a [PowerSupplyProperties] protocol buffer. (The information is also updated when
+line power is connected or disconnected or when the system wakes from suspend.)
+Chrome observes these signals and uses them to update the battery level and
+remaining-time estimate in the system tray.
 
 The "time-to-empty" estimate that powerd sends to Chrome is actually the
 estimated time until powerd will shut down the system automatically, which
 happens (by default) three minutes before the battery will be completely empty.
-See [powerd's `PowerSupply`
-class](https://chromium.googlesource.com/chromiumos/platform2/+/master/power_manager/powerd/system/power_supply.h)
-for more details.
+See powerd's [PowerSupply] class for more details.
 
 ## Notifying the User
 
 Chrome also displays notifications to the user when the battery reaches certain
-levels; see
-[`ash::TrayPower`](https://chromium.googlesource.com/chromium/src/+/master/ash/common/system/chromeos/power/tray_power.cc):
+levels; see [ash::TrayPower].
 
 ### With no external power source connected:
 
@@ -63,3 +59,7 @@ Several powerd preference files can be used to configure powerd's estimates:
 powerd previously used an exponential moving average, but the resulting code was
 difficult to reason about or write tests for and the estimates were even noisier
 (as a result of decreasing the weighting of older samples).
+
+[PowerSupplyProperties]: https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/power_manager/power_supply_properties.proto
+[PowerSupply]: https://chromium.googlesource.com/chromiumos/platform2/+/master/power_manager/powerd/system/power_supply.h
+[ash::TrayPower]: https://chromium.googlesource.com/chromium/src/+/master/ash/common/system/chromeos/power/tray_power.cc

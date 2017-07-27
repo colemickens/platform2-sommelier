@@ -26,8 +26,8 @@ When the suspend delay is reached while no user is logged in and the system is
 on battery power, the system will shut down instead of suspending.
 
 As of M41, if the lock screen is displayed, the screen will be dimmed after just
-30 seconds of inactivity and turned off after 40 seconds as described in [this
-bug](https://crbug.com/190499).
+30 seconds of inactivity and turned off after 40 seconds as described in [issue
+190499].
 
 Several events can result in the above delays being lengthened (specifically,
 the screen-dimming delay is doubled and the other delays' distances from the
@@ -59,5 +59,6 @@ accessible via `chrome://system` or by browsing to `file://var/log`.
 -   `src/platform2/power_manager/powerd/policy/state_controller.{h,cc}`:
     `StateController` class in power manager; responsible for managing delays
 
+[issue 190499]: https://crbug.com/190499
 [enterprise policies]: https://www.chromium.org/administrators/policy-list-3#PowerManagement
 [chrome.power extension API]: https://developer.chrome.com/extensions/power.html

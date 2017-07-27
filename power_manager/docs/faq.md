@@ -54,9 +54,9 @@ See the [chrome.power API] for more details.
 ## How do I make my code run before the system suspends or after it resumes?
 
 The power manager gives other daemons an opportunity to do any preparation that
-they need to just before the system is suspended. See `[suspend.proto]` for a
+they need to just before the system is suspended. See [suspend.proto] for a
 detailed description of the process, along with the definitions of the protocol
-buffers that are passed over D-Bus, and `[suspend_delay_sample]` for example
+buffers that are passed over D-Bus, and [suspend_delay_sample] for example
 usage.
 
 [PowerPrefChanger]: https://chromium.googlesource.com/chromiumos/third_party/autotest/+/master/client/cros/power_utils.py

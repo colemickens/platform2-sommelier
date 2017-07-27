@@ -4,19 +4,16 @@ powerd uses user input to determine when the system should turn its backlight
 off or suspend in response to inactivity. powerd does not listen for this input
 directly; rather, it receives periodic `HandleUserActivity` D-Bus method calls
 from Chrome while the user is active. These method calls include a
-[`UserActivityType`
-enum](https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/power_manager/dbus-constants.h)
-describing the type of activity that was observed, allowing powerd to e.g. avoid
-turning the screen back on if the user presses the Brightness Down key while the
-screen is already off.
+[UserActivityType] enum describing the type of activity that was observed,
+allowing powerd to e.g. avoid turning the screen back on if the user presses the
+Brightness Down key while the screen is already off.
 
 `powerd/system/input.cc` uses the kernel's input subsystem to observe power
 button and lid switch events. (ACPI power button events may be additionally
 received by Chrome as standard keyboard input, but they are ignored there since
 button releases are not reported correctly.) These events are reported to Chrome
-via `InputEvent` D-Bus signals containing [`InputEvent` protocol
-buffers](https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/power_manager/input_event.proto);
-Chrome uses the power button notifications to display screen-lock and shutdown
+via `InputEvent` D-Bus signals containing [InputEvent] protocol buffers; Chrome
+uses the power button notifications to display screen-lock and shutdown
 animations.
 
 ## Power button behavior
@@ -47,3 +44,6 @@ Devices with power buttons that are separate from their keyboards (e.g.
 Chromeboxes and Chromebases) generally behave similarly but to Chromebooks but
 lack the interactive animations described above: just tapping the power button
 locks or shuts down the system.
+
+[UserActivityType]: https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/power_manager/dbus-constants.h
+[InputEvent]: https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/power_manager/input_event.proto
