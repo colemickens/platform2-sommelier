@@ -7,6 +7,7 @@
 
 #include "gmock/gmock.h"
 #include "helper_process.h"
+#include "imageloader_impl.h"
 
 namespace imageloader {
 
@@ -18,8 +19,8 @@ class MockHelperProcess : public HelperProcess {
 
   // Sends a message telling the helper process to mount the file backed by |fd|
   // at the |path|.
-  MOCK_METHOD3(SendMountCommand,
-               bool(int, const std::string&, const std::string&));
+  MOCK_METHOD4(SendMountCommand, bool(int, const std::string&,
+                                      FileSystem, const std::string&));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockHelperProcess);

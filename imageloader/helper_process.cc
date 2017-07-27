@@ -13,6 +13,8 @@
 
 #include <base/process/launch.h>
 
+#include "component.h"
+#include "imageloader_impl.h"
 #include "ipc.pb.h"
 
 namespace imageloader {
@@ -45,6 +47,7 @@ void HelperProcess::Start(int argc, char* argv[], const std::string& fd_arg) {
 }
 
 bool HelperProcess::SendMountCommand(int fd, const std::string& path,
+                                     FileSystem fs_type,
                                      const std::string& table) {
   struct msghdr msg = {0};
   char fds[CMSG_SPACE(sizeof(fd))];
@@ -53,6 +56,18 @@ bool HelperProcess::SendMountCommand(int fd, const std::string& path,
   MountImage msg_proto;
   msg_proto.set_mount_path(path);
   msg_proto.set_table(table);
+
+  // Convert the internal enum to the protobuf enum.
+  switch (fs_type) {
+    case FileSystem::kExt4:
+      msg_proto.set_fs_type(MountImage_FileSystem_EXT4);
+      break;
+    case FileSystem::kSquashFS:
+      msg_proto.set_fs_type(MountImage_FileSystem_SQUASH);
+      break;
+    default:
+      LOG(FATAL) << "Unknown file system type passed to helper process.";
+  }
 
   std::string msg_str;
   if (!msg_proto.SerializeToString(&msg_str))
