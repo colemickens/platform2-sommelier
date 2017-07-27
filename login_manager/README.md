@@ -9,6 +9,9 @@ service name `org.chromium.SessionManager` at service path
 `/org/chromium/SessionManager` and exports an interface named
 [`org.chromium.SessionManager`](dbus_bindings/org.chromium.SessionManagerInterface.xml).
 
+This document contains an overview of what `session_manager` does. See the
+[docs](docs/) directory for more information.
+
 ## Startup
 
 The [`ui`](init/upstart/ui.conf) Upstart job is responsible for running

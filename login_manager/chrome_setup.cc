@@ -26,7 +26,8 @@
 
 // IMPORTANT: If you want to check for the presence of a new USE flag within
 // this file via UseFlagIsSet(), you need to add it to the IUSE list in the
-// libchromeos-use-flags package's ebuild file.
+// libchromeos-use-flags package's ebuild file. See docs/flags.md for more
+// information about this file.
 
 using chromeos::ui::ChromiumCommandBuilder;
 using chromeos::ui::util::EnsureDirectoryExists;
