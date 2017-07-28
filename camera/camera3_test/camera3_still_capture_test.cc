@@ -516,10 +516,10 @@ void Camera3SingleStillCaptureTest::ValidateExifKeys(
   // metadata
 
   // Validate ISO between EXIF and metadata
-  int32_t iso = GetExifTagInteger(exif_data, EXIF_IFD_EXIF,
-                                  EXIF_TAG_ISO_SPEED_RATINGS, byte_order);
   if (cam_service_.GetStaticInfo(cam_id_)->IsKeyAvailable(
           ANDROID_SENSOR_SENSITIVITY)) {
+    int32_t iso = GetExifTagInteger(exif_data, EXIF_IFD_EXIF,
+                                    EXIF_TAG_ISO_SPEED_RATINGS, byte_order);
     EXPECT_EQ(GetMetadataInteger(metadata, ANDROID_SENSOR_SENSITIVITY), iso)
         << "EXIF TAG_ISO is incorrect";
   }
