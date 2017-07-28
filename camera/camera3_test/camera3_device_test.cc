@@ -642,12 +642,23 @@ static void ExpectKeyValueNotEqualsI64(const camera_metadata_t* settings,
 
 TEST_P(Camera3DeviceDefaultSettings, ConstructDefaultSettings) {
   int type = std::get<1>(GetParam());
+  auto static_info = cam_device_.GetStaticInfo();
 
   const camera_metadata_t* default_settings;
   default_settings = cam_device_.ConstructDefaultRequestSettings(type);
+  if (!default_settings) {
+    if (type == CAMERA3_TEMPLATE_MANUAL &&
+        !static_info->IsCapabilitySupported(
+            ANDROID_REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR)) {
+      return;
+    } else if (
+        type == CAMERA3_TEMPLATE_ZERO_SHUTTER_LAG &&
+        !static_info->IsCapabilitySupported(
+            ANDROID_REQUEST_AVAILABLE_CAPABILITIES_PRIVATE_REPROCESSING)) {
+      return;
+    }
+  }
   ASSERT_NE(nullptr, default_settings) << "Camera default settings are NULL";
-
-  auto static_info = cam_device_.GetStaticInfo();
 
   // Reference: camera2/cts/CameraDeviceTest.java#captureTemplateTestByCamera
   if (!cam_device_.IsTemplateSupported(type)) {
@@ -860,16 +871,17 @@ TEST_P(Camera3DeviceDefaultSettings, ConstructDefaultSettings) {
     }
   } else {
     if (static_info->IsKeyAvailable(ANDROID_EDGE_MODE)) {
-      EXPECT_KEY_VALUE_NE(default_settings, ANDROID_EDGE_MODE, 0);
+      ASSERT_TRUE(IsMetadataKeyAvailable(default_settings, ANDROID_EDGE_MODE));
     }
 
     if (static_info->IsKeyAvailable(ANDROID_NOISE_REDUCTION_MODE)) {
-      EXPECT_KEY_VALUE_NE(default_settings, ANDROID_NOISE_REDUCTION_MODE, 0);
+      ASSERT_TRUE(IsMetadataKeyAvailable(default_settings,
+                                         ANDROID_NOISE_REDUCTION_MODE));
     }
 
     if (static_info->IsKeyAvailable(ANDROID_COLOR_CORRECTION_ABERRATION_MODE)) {
-      EXPECT_KEY_VALUE_NE(default_settings,
-                          ANDROID_COLOR_CORRECTION_ABERRATION_MODE, 0);
+      ASSERT_TRUE(IsMetadataKeyAvailable(
+          default_settings, ANDROID_COLOR_CORRECTION_ABERRATION_MODE));
     }
   }
 
