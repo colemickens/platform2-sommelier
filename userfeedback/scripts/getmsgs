@@ -40,10 +40,38 @@ for i in 1 2 3 4 5 6 7 8 9; do
   LOGFILES="${LOGFILES} $FILE"
 done
 
+# We want to normalize dates to UTC so timezones don't complicate things.
+export TZ="UTC"
+
 WHEN="now - $LAST"
-DATE=$(date -d "$WHEN" +'%FT%T.000000%:z')
+DATE=$(date -d "$WHEN" +'%s')
+
+# The awk script below takes into account timezone in the log's timestamp.
+#
+# A date string in log messages looks like this:
+#  2017-08-07T00:58:08.288730-07:00
+#
+# We first turn this into a string that mktime can recognize:
+#  "2017 08 07 00 58 08"
+# Note: mktime is not is POSIX awk, but gawk/mawk do support it.
+#
+# Also, we drop the nanoseconds, as they do not matter at all for the precision
+# required here.
+#
+# mktime gets the UTC date (as we set TZ="UTC"), we need to compensate for
+# timezone, parsing the timezone string (-05:30) from fixed offsets in the
+# string into tz/tzm.
 
 tac $LOGFILES \
-  | awk -v DATE="$DATE" '{ if ($1 < DATE) exit; print }' \
-  | tac \
+  | awk -v DATE="$DATE" '{
+    split($1, s, /[-T:.]/)
+    d = mktime(s[1] " " s[2] " " s[3] " " s[4] " " s[5] " " s[6])
+    tz = int(substr($1, 27, 3))
+    tzm = int(substr($1, 31, 2))
+    if (tz < 0)
+      tzm = -tzm
+    if ((d - (tz * 3600 + tzm * 60)) < DATE)
+      exit
+    print
+  }' | tac \
   | tail -c $MAXDATA
