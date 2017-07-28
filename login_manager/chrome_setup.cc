@@ -18,9 +18,9 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
+#include <chromeos-config/libcros_config/cros_config_interface.h>
 #include <chromeos/ui/chromium_command_builder.h>
 #include <chromeos/ui/util.h>
-#include <chromeos-config/libcros_config/cros_config_interface.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
@@ -135,7 +135,7 @@ std::string HashedIdInHex(const std::string& id) {
 bool IsChromeboxForMeetingsAppId(const std::string& id) {
   const std::string hash = HashedIdInHex(id);
   const char** end = kChromeboxForMeetingAppIdHashes +
-      arraysize(kChromeboxForMeetingAppIdHashes);
+                     arraysize(kChromeboxForMeetingAppIdHashes);
   return std::find(kChromeboxForMeetingAppIdHashes, end, hash) != end;
 }
 
@@ -147,7 +147,7 @@ bool IsEnrolledChromeboxForMeetings() {
   const policy::DevicePolicy& policy = provider.GetDevicePolicy();
   std::string kiosk_app_id;
   return policy.GetAutoLaunchedKioskAppId(&kiosk_app_id) &&
-      IsChromeboxForMeetingsAppId(kiosk_app_id);
+         IsChromeboxForMeetingsAppId(kiosk_app_id);
 }
 
 // Ensures that necessary directory exist with the correct permissions and sets
@@ -183,8 +183,7 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
 
   // Create a directory where the chrome process can store a reboot request so
   // that it persists across browser crashes but is always removed on reboot.
-  CHECK(EnsureDirectoryExists(
-      base::FilePath("/run/chrome"), uid, gid, 0700));
+  CHECK(EnsureDirectoryExists(base::FilePath("/run/chrome"), uid, gid, 0700));
 
   // Ensure the existence of the directory in which the whitelist and other
   // ownership-related state will live. Yes, it should be owned by root. The
@@ -197,13 +196,17 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   // device-local accounts are cached. This data is read and written by chronos.
   CHECK(EnsureDirectoryExists(
       base::FilePath("/var/cache/device_local_account_component_policy"),
-      uid, gid, 0700));
+      uid,
+      gid,
+      0700));
 
   // Create the directory where external data referenced by policies is cached
   // for device-local accounts. This data is read and written by chronos.
   CHECK(EnsureDirectoryExists(
       base::FilePath("/var/cache/device_local_account_external_policy_data"),
-      uid, gid, 0700));
+      uid,
+      gid,
+      0700));
 
   // Create the directory where the AppPack extensions are cached.
   // These extensions are read and written by chronos.
@@ -214,7 +217,9 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   // These extensions are read and written by chronos.
   CHECK(EnsureDirectoryExists(
       base::FilePath("/var/cache/device_local_account_extensions"),
-      uid, gid, 0700));
+      uid,
+      gid,
+      0700));
 
   // Create the directory where the Quirks Client can store downloaded
   // icc and other display profiles.
@@ -231,19 +236,21 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   // sign-in profile are cached. This data is read and written by chronos.
   CHECK(EnsureDirectoryExists(
       base::FilePath("/var/cache/signin_profile_component_policy"),
-      uid, gid, 0700));
+      uid,
+      gid,
+      0700));
 
   // Tell Chrome where to write logging messages before the user logs in.
   base::FilePath system_log_dir("/var/log/chrome");
   CHECK(EnsureDirectoryExists(system_log_dir, uid, gid, 0755));
   builder->AddEnvVar("CHROME_LOG_FILE",
-      system_log_dir.Append("chrome").value());
+                     system_log_dir.Append("chrome").value());
 
   // Log directory for the user session. Note that the user dir won't be mounted
   // until later (when the cryptohome is mounted), so we don't create
   // CHROMEOS_SESSION_LOG_DIR here.
   builder->AddEnvVar("CHROMEOS_SESSION_LOG_DIR",
-      user_dir.Append("log").value());
+                     user_dir.Append("log").value());
 
   // On devices with ARC++ camera HAL v3 Chrome needs to host the unix domain
   // named socket /run/camera/camera3.sock to provide the camera HAL Mojo
@@ -336,9 +343,13 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   // Chromebox for meetings devices need to start with this flag till
   // crbug.com/653531 gets fixed. TODO(pbos): Remove this once this feature is
   // enabled by default.
-  if (builder->UseFlagIsSet("cfm_enabled_device") &&
-      IsEnrolledChromeboxForMeetings()) {
-    builder->AddArg("--enable-blink-features=MediaStreamTrackContentHint");
+  if (builder->UseFlagIsSet("cfm_enabled_device")) {
+    if (IsEnrolledChromeboxForMeetings()) {
+      builder->AddArg("--enable-blink-features=MediaStreamTrackContentHint");
+    }
+    if (builder->UseFlagIsSet("screenshare_sw_codec")) {
+      builder->AddArg("--enable-features=WebRtcScreenshareSwEncoding");
+    }
   }
 
   if (builder->UseFlagIsSet("rialto")) {
