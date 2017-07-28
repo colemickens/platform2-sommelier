@@ -11,14 +11,13 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <brillo/flag_helper.h>
 #include <rootdev/rootdev.h>
 
 #include "debugd/src/process_with_output.h"
 
 namespace {
-
-enum { kMaxPartitionDigits = 4 };
 
 const char kUsageMessage[] =
     "\n"
@@ -67,12 +66,12 @@ bool RemoveRootfsVerification() {
     LOG(WARNING) << "No modifiable partition";
     return false;
   }
-  std::array<char, kMaxPartitionDigits + 1> partition_string;
-  snprintf(partition_string.data(), partition_string.size(), "%d", partition);
   std::string error;
   int result = debugd::ProcessWithOutput::RunProcessFromHelper(
       "/usr/share/vboot/bin/make_dev_ssd.sh",
-      {"--remove_rootfs_verification", "--partitions", partition_string.data()},
+      {"--remove_rootfs_verification",
+       "--partitions",
+       base::IntToString(partition)},
       nullptr,  // stdin.
       nullptr,  // stdout.
       &error);  // stderr.
