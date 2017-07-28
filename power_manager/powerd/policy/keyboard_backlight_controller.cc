@@ -113,10 +113,10 @@ void KeyboardBacklightController::Init(
   CHECK(prefs->GetInt64(kKeyboardBacklightKeepOnDuringVideoMsPref, &delay_ms));
   keep_on_during_video_delay_ = base::TimeDelta::FromMilliseconds(delay_ms);
 
-  max_level_ = backlight_->GetMaxBrightnessLevel();
-  current_level_ = backlight_->GetCurrentBrightnessLevel();
-  LOG(INFO) << "Backlight has range [0, " << max_level_ << "] with initial "
-            << "level " << current_level_;
+  int64_t current_level = backlight_->GetCurrentBrightnessLevel();
+  current_percent_ = LevelToPercent(current_level);
+  LOG(INFO) << "Backlight has range [0, " << backlight_->GetMaxBrightnessLevel()
+            << "] with initial level " << current_level;
 
   // Read the user-settable brightness steps (one per line).
   std::string input_str;
@@ -140,7 +140,7 @@ void KeyboardBacklightController::Init(
     std::string pref_value;
     CHECK(prefs_->GetString(kKeyboardBacklightAlsStepsPref, &pref_value))
         << "Unable to read pref " << kKeyboardBacklightAlsStepsPref;
-    ambient_light_handler_->Init(pref_value, LevelToPercent(current_level_));
+    ambient_light_handler_->Init(pref_value, current_percent_);
   } else {
     automated_percent_ = user_steps_.back();
     prefs_->GetDouble(kKeyboardBacklightNoAlsBrightnessPref,
@@ -288,8 +288,8 @@ bool KeyboardBacklightController::GetForcedOff() {
 
 bool KeyboardBacklightController::GetBrightnessPercent(double* percent) {
   DCHECK(percent);
-  *percent = LevelToPercent(current_level_);
-  return *percent >= 0.0;
+  *percent = current_percent_;
+  return true;
 }
 
 bool KeyboardBacklightController::SetUserBrightnessPercent(
@@ -365,17 +365,19 @@ void KeyboardBacklightController::HandleVideoTimeout() {
 }
 
 int64_t KeyboardBacklightController::PercentToLevel(double percent) const {
-  if (max_level_ == 0)
+  const int64_t max_level = backlight_->GetMaxBrightnessLevel();
+  if (max_level == 0)
     return -1;
   percent = std::max(std::min(percent, 100.0), 0.0);
-  return lround(static_cast<double>(max_level_) * percent / 100.0);
+  return lround(static_cast<double>(max_level) * percent / 100.0);
 }
 
 double KeyboardBacklightController::LevelToPercent(int64_t level) const {
-  if (max_level_ == 0)
+  const int64_t max_level = backlight_->GetMaxBrightnessLevel();
+  if (max_level == 0)
     return -1.0;
-  level = std::max(std::min(level, max_level_), static_cast<int64_t>(0));
-  return static_cast<double>(level) * 100.0 / max_level_;
+  level = std::max(std::min(level, max_level), static_cast<int64_t>(0));
+  return static_cast<double>(level) * 100.0 / max_level;
 }
 
 bool KeyboardBacklightController::RecentlyHoveringOrUserActive() const {
@@ -394,18 +396,17 @@ void KeyboardBacklightController::InitUserStepIndex() {
   if (user_step_index_ != -1)
     return;
 
-  // Find the step nearest to the current backlight level.
-  double percent = LevelToPercent(current_level_);
+  // Find the step nearest to the current backlight percent.
   double percent_delta = std::numeric_limits<double>::max();
   for (size_t i = 0; i < user_steps_.size(); i++) {
-    double temp_delta = fabs(percent - user_steps_[i]);
+    double temp_delta = fabs(current_percent_ - user_steps_[i]);
     if (temp_delta < percent_delta) {
       percent_delta = temp_delta;
       user_step_index_ = i;
     }
   }
-  CHECK_NE(user_step_index_, -1) << "Failed to find brightness step for level "
-                                 << current_level_;
+  CHECK_NE(user_step_index_, -1)
+      << "Failed to find brightness step for " << current_percent_ << "%";
 }
 
 void KeyboardBacklightController::UpdateTurnOffTimer() {
@@ -483,9 +484,12 @@ bool KeyboardBacklightController::UpdateState(Transition transition,
 }
 
 bool KeyboardBacklightController::ApplyBrightnessPercent(
-    double percent, Transition transition, BrightnessChangeCause cause) {
-  int64_t level = PercentToLevel(percent);
-  if (level == current_level_ && !backlight_->TransitionInProgress())
+    double percent,
+    Transition transition,
+    BrightnessChangeCause cause) {
+  const int64_t level = PercentToLevel(percent);
+  if (level == PercentToLevel(current_percent_) &&
+      !backlight_->TransitionInProgress())
     return false;
 
   base::TimeDelta interval = GetTransitionDuration(transition);
@@ -496,7 +500,7 @@ bool KeyboardBacklightController::ApplyBrightnessPercent(
     return false;
   }
 
-  current_level_ = level;
+  current_percent_ = percent;
   FOR_EACH_OBSERVER(BacklightControllerObserver,
                     observers_,
                     OnBrightnessChange(percent, cause, this));

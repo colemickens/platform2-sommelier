@@ -178,13 +178,9 @@ class KeyboardBacklightController : public BacklightController,
   // Is a fullscreen video currently being played?
   bool fullscreen_video_playing_ = false;
 
-  // Maximum brightness level exposed by the backlight driver.
-  // 0 is always the minimum.
-  int64_t max_level_ = 0;
-
-  // Current level that |backlight_| is set to (or possibly in the process
-  // of transitioning to).
-  int64_t current_level_ = 0;
+  // Current percentage that |backlight_| is set to (or possibly in the process
+  // of transitioning to), in the range [0.0, 100.0].
+  double current_percent_ = 0.0;
 
   // Current brightness step within |user_steps_| set by user, or -1 if
   // |automated_percent_| should be used.
