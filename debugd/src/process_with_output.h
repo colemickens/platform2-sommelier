@@ -23,7 +23,8 @@ namespace debugd {
 class ProcessWithOutput : public SandboxedProcess {
  public:
   using ArgList = std::vector<std::string>;
-  enum { kRunError = -1 };
+
+  static constexpr int kRunError = -1;
 
   ProcessWithOutput();
   ~ProcessWithOutput() override;
