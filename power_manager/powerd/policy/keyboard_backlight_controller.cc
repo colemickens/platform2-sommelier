@@ -82,6 +82,8 @@ KeyboardBacklightController::KeyboardBacklightController()
 KeyboardBacklightController::~KeyboardBacklightController() {
   if (display_backlight_controller_)
     display_backlight_controller_->RemoveObserver(this);
+  if (backlight_)
+    backlight_->RemoveObserver(this);
 }
 
 void KeyboardBacklightController::Init(
@@ -91,6 +93,8 @@ void KeyboardBacklightController::Init(
     BacklightController* display_backlight_controller,
     TabletMode initial_tablet_mode) {
   backlight_ = backlight;
+  backlight_->AddObserver(this);
+
   prefs_ = prefs;
   tablet_mode_ = initial_tablet_mode;
 
@@ -113,10 +117,13 @@ void KeyboardBacklightController::Init(
   CHECK(prefs->GetInt64(kKeyboardBacklightKeepOnDuringVideoMsPref, &delay_ms));
   keep_on_during_video_delay_ = base::TimeDelta::FromMilliseconds(delay_ms);
 
-  int64_t current_level = backlight_->GetCurrentBrightnessLevel();
-  current_percent_ = LevelToPercent(current_level);
-  LOG(INFO) << "Backlight has range [0, " << backlight_->GetMaxBrightnessLevel()
-            << "] with initial level " << current_level;
+  if (backlight_->DeviceExists()) {
+    const int64_t current_level = backlight_->GetCurrentBrightnessLevel();
+    current_percent_ = LevelToPercent(current_level);
+    LOG(INFO) << "Backlight has range [0, "
+              << backlight_->GetMaxBrightnessLevel() << "] with initial level "
+              << current_level;
+  }
 
   // Read the user-settable brightness steps (one per line).
   std::string input_str;
@@ -302,6 +309,9 @@ bool KeyboardBacklightController::SetUserBrightnessPercent(
 
 bool KeyboardBacklightController::IncreaseUserBrightness() {
   LOG(INFO) << "Got user-triggered request to increase brightness";
+  if (!backlight_->DeviceExists())
+    return false;
+
   if (user_step_index_ == -1)
     InitUserStepIndex();
   if (user_step_index_ < static_cast<int>(user_steps_.size()) - 1)
@@ -313,6 +323,9 @@ bool KeyboardBacklightController::IncreaseUserBrightness() {
 
 bool KeyboardBacklightController::DecreaseUserBrightness(bool allow_off) {
   LOG(INFO) << "Got user-triggered request to decrease brightness";
+  if (!backlight_->DeviceExists())
+    return false;
+
   if (user_step_index_ == -1)
     InitUserStepIndex();
   if (user_step_index_ > (allow_off ? 0 : 1))
@@ -353,6 +366,20 @@ void KeyboardBacklightController::OnBrightnessChange(
   if (zero != display_brightness_is_zero_) {
     display_brightness_is_zero_ = zero;
     UpdateState(Transition::SLOW, cause);
+  }
+}
+
+void KeyboardBacklightController::OnBacklightDeviceChanged(
+    system::BacklightInterface* backlight) {
+  DCHECK_EQ(backlight, backlight_);
+  if (backlight_->DeviceExists()) {
+    const int64_t level = PercentToLevel(current_percent_);
+    LOG(INFO) << "Restoring brightness " << level << " (" << current_percent_
+              << "%) to backlight with range [0, "
+              << backlight_->GetMaxBrightnessLevel() << "] and initial level "
+              << backlight_->GetCurrentBrightnessLevel();
+    backlight_->SetBrightnessLevel(level,
+                                   GetTransitionDuration(Transition::FAST));
   }
 }
 
@@ -460,10 +487,8 @@ bool KeyboardBacklightController::UpdateState(Transition transition,
   // If requested, force the backlight on if the user is currently or was
   // recently active and off otherwise.
   if (supports_hover_ || turn_on_for_user_activity_) {
-    if (RecentlyHoveringOrUserActive())
-      return ApplyBrightnessPercent(automated_percent_, transition, cause);
-    else
-      return ApplyBrightnessPercent(0.0, transition, cause);
+    double percent = RecentlyHoveringOrUserActive() ? automated_percent_ : 0.0;
+    return ApplyBrightnessPercent(percent, transition, cause);
   }
 
   // Force the backlight off for several more lower-priority conditions.
@@ -491,6 +516,12 @@ bool KeyboardBacklightController::ApplyBrightnessPercent(
   if (level == PercentToLevel(current_percent_) &&
       !backlight_->TransitionInProgress())
     return false;
+
+  if (!backlight_->DeviceExists()) {
+    // If the underlying device doesn't exist, save the new percent for later.
+    current_percent_ = percent;
+    return false;
+  }
 
   base::TimeDelta interval = GetTransitionDuration(transition);
   LOG(INFO) << "Setting brightness to " << level << " (" << percent

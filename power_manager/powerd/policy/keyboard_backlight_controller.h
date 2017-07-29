@@ -18,6 +18,7 @@
 #include "power_manager/powerd/policy/ambient_light_handler.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
+#include "power_manager/powerd/system/backlight_observer.h"
 
 namespace power_manager {
 
@@ -36,7 +37,8 @@ class KeyboardBacklightControllerTest;
 // Controls the keyboard backlight for devices with such a backlight.
 class KeyboardBacklightController : public BacklightController,
                                     public AmbientLightHandler::Delegate,
-                                    public BacklightControllerObserver {
+                                    public BacklightControllerObserver,
+                                    public system::BacklightObserver {
  public:
   // Helper class for tests that need to access internal state.
   class TestApi {
@@ -107,6 +109,9 @@ class KeyboardBacklightController : public BacklightController,
   void OnBrightnessChange(double brightness_percent,
                           BacklightController::BrightnessChangeCause cause,
                           BacklightController* source) override;
+
+  // system::BacklightObserver implementation:
+  void OnBacklightDeviceChanged(system::BacklightInterface* backlight) override;
 
  private:
   // Handles |video_timer_| firing, indicating that video activity has stopped.

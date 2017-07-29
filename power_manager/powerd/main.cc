@@ -45,6 +45,7 @@
 #include "power_manager/powerd/system/input_watcher.h"
 #include "power_manager/powerd/system/internal_backlight.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
+#include "power_manager/powerd/system/pluggable_internal_backlight.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/udev.h"
 
@@ -116,6 +117,16 @@ class DaemonDelegateImpl : public DaemonDelegate {
     return backlight->Init(base_path, pattern)
                ? std::move(backlight)
                : std::unique_ptr<system::BacklightInterface>();
+  }
+
+  std::unique_ptr<system::BacklightInterface> CreatePluggableInternalBacklight(
+      system::UdevInterface* udev,
+      const std::string& udev_subsystem,
+      const base::FilePath& base_path,
+      const base::FilePath::StringType& pattern) override {
+    auto backlight = base::WrapUnique(new system::PluggableInternalBacklight());
+    backlight->Init(udev, udev_subsystem, base_path, pattern);
+    return std::move(backlight);
   }
 
   std::unique_ptr<policy::BacklightController>

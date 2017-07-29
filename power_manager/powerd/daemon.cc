@@ -351,23 +351,20 @@ void Daemon::Init() {
       all_backlight_controllers_.push_back(display_backlight_controller_.get());
 
     if (BoolPrefIsTrue(kHasKeyboardBacklightPref)) {
-      keyboard_backlight_ = delegate_->CreateInternalBacklight(
-          base::FilePath(kKeyboardBacklightPath), kKeyboardBacklightPattern);
-      if (!keyboard_backlight_) {
-        LOG(ERROR) << "Failed to initialize keyboard backlight under "
-                   << kKeyboardBacklightPath << " using pattern "
-                   << kKeyboardBacklightPattern;
-      } else {
-        keyboard_backlight_controller_ =
-            delegate_->CreateKeyboardBacklightController(
-                keyboard_backlight_.get(),
-                prefs_.get(),
-                light_sensor_.get(),
-                display_backlight_controller_.get(),
-                tablet_mode);
-        all_backlight_controllers_.push_back(
-            keyboard_backlight_controller_.get());
-      }
+      keyboard_backlight_ = delegate_->CreatePluggableInternalBacklight(
+          udev_.get(),
+          kKeyboardBacklightUdevSubsystem,
+          base::FilePath(kKeyboardBacklightPath),
+          kKeyboardBacklightPattern);
+      keyboard_backlight_controller_ =
+          delegate_->CreateKeyboardBacklightController(
+              keyboard_backlight_.get(),
+              prefs_.get(),
+              light_sensor_.get(),
+              display_backlight_controller_.get(),
+              tablet_mode);
+      all_backlight_controllers_.push_back(
+          keyboard_backlight_controller_.get());
     }
   }
 

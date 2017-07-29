@@ -74,7 +74,8 @@ bool PluggableInternalBacklight::TransitionInProgress() const {
 void PluggableInternalBacklight::UpdateDevice() {
   device_ = base::MakeUnique<InternalBacklight>();
   if (!device_->Init(base_path_, pattern_)) {
-    LOG(INFO) << "No backlight found under " << base_path_.value();
+    LOG(INFO) << "No backlight found under " << base_path_.value()
+              << " matching pattern " << pattern_;
     device_.reset();
   } else {
     LOG(INFO) << "Found backlight at " << device_->device_path().value();

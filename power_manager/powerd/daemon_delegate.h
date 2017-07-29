@@ -74,6 +74,13 @@ class DaemonDelegate {
       const base::FilePath& base_path,
       const base::FilePath::StringType& pattern) = 0;
 
+  virtual std::unique_ptr<system::BacklightInterface>
+  CreatePluggableInternalBacklight(
+      system::UdevInterface* udev,
+      const std::string& udev_subsystem,
+      const base::FilePath& base_path,
+      const base::FilePath::StringType& pattern) = 0;
+
   virtual std::unique_ptr<policy::BacklightController>
   CreateInternalBacklightController(
       system::BacklightInterface* backlight,

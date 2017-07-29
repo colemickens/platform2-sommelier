@@ -704,5 +704,36 @@ TEST_F(KeyboardBacklightControllerTest, ForcedOff) {
   EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
 }
 
+TEST_F(KeyboardBacklightControllerTest, ChangeBacklightDevice) {
+  // Start out without a backlight device.
+  user_steps_pref_ = "0.0\n50.0\n100.0";
+  backlight_.set_device_exists(false);
+  Init();
+  EXPECT_FALSE(controller_.IncreaseUserBrightness());
+  controller_.SetOffForInactivity(true);
+
+  // Connect a device and check that the earlier off state is applied to it.
+  backlight_.set_device_exists(true);
+  backlight_.NotifyDeviceChanged();
+  EXPECT_EQ(0, backlight_.current_level());
+  controller_.SetOffForInactivity(false);
+  controller_.IncreaseUserBrightness();
+  controller_.IncreaseUserBrightness();
+  EXPECT_EQ(max_backlight_level_, backlight_.current_level());
+
+  // Disconnect the device and check that decrease requests are ignored.
+  backlight_.set_device_exists(false);
+  backlight_.NotifyDeviceChanged();
+  EXPECT_FALSE(controller_.DecreaseUserBrightness(true /* allow_off */));
+
+  // The previous 100% brightness should be reapplied to a new device with a
+  // different range.
+  backlight_.set_device_exists(true);
+  backlight_.set_max_level(200);
+  backlight_.set_current_level(100);
+  backlight_.NotifyDeviceChanged();
+  EXPECT_EQ(200, backlight_.current_level());
+}
+
 }  // namespace policy
 }  // namespace power_manager

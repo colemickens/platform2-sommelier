@@ -175,17 +175,22 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<system::BacklightInterface> CreateInternalBacklight(
       const base::FilePath& base_path,
       const base::FilePath::StringType& pattern) override {
-    if (base_path == base::FilePath(kInternalBacklightPath) &&
-        pattern == kInternalBacklightPattern) {
-      return std::move(passed_internal_backlight_);
-    } else if (base_path == base::FilePath(kKeyboardBacklightPath) &&
-               pattern == kKeyboardBacklightPattern) {
-      return std::move(passed_keyboard_backlight_);
-    } else {
-      LOG(FATAL) << "Invalid backlight path/pattern combination ("
-                 << base_path.value() << ", " << pattern << ")";
-      return std::unique_ptr<system::BacklightInterface>();
-    }
+    // This should only be called for the display backlight.
+    EXPECT_EQ(kInternalBacklightPath, base_path.value());
+    EXPECT_EQ(kInternalBacklightPattern, pattern);
+    return std::move(passed_internal_backlight_);
+  }
+  std::unique_ptr<system::BacklightInterface> CreatePluggableInternalBacklight(
+      system::UdevInterface* udev,
+      const std::string& udev_subsystem,
+      const base::FilePath& base_path,
+      const base::FilePath::StringType& pattern) override {
+    // This should only be called for the keyboard backlight.
+    EXPECT_EQ(udev_, udev);
+    EXPECT_EQ(kKeyboardBacklightUdevSubsystem, udev_subsystem);
+    EXPECT_EQ(kKeyboardBacklightPath, base_path.value());
+    EXPECT_EQ(kKeyboardBacklightPattern, pattern);
+    return std::move(passed_keyboard_backlight_);
   }
   std::unique_ptr<policy::BacklightController>
   CreateInternalBacklightController(
