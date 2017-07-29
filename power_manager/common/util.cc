@@ -55,5 +55,32 @@ bool WriteFileFully(const base::FilePath& filename,
   return base::WriteFile(filename, data, size) == size;
 }
 
+bool ReadInt64File(const base::FilePath& path, int64_t* value_out) {
+  DCHECK(value_out);
+
+  std::string str;
+  if (!base::ReadFileToString(path, &str)) {
+    PLOG(ERROR) << "Unable to read from " << path.value();
+    return false;
+  }
+
+  base::TrimWhitespaceASCII(str, base::TRIM_TRAILING, &str);
+  if (!base::StringToInt64(str, value_out)) {
+    LOG(ERROR) << "Unable to parse \"" << str << "\" from " << path.value();
+    return false;
+  }
+
+  return true;
+}
+
+bool WriteInt64File(const base::FilePath& path, int64_t value) {
+  std::string buf = base::Int64ToString(value);
+  if (!WriteFileFully(path, buf.data(), buf.size())) {
+    PLOG(ERROR) << "Unable to write \"" << buf << "\" to " << path.value();
+    return false;
+  }
+  return true;
+}
+
 }  // namespace util
 }  // namespace power_manager

@@ -23,37 +23,6 @@ namespace system {
 
 namespace {
 
-// Reads the value from |path| to |level|. Returns false on failure.
-bool ReadBrightnessLevelFromFile(const base::FilePath& path, int64_t* level) {
-  DCHECK(level);
-
-  std::string level_str;
-  if (!base::ReadFileToString(path, &level_str)) {
-    PLOG(ERROR) << "Unable to read brightness from " << path.value();
-    return false;
-  }
-
-  base::TrimWhitespaceASCII(level_str, base::TRIM_TRAILING, &level_str);
-  if (!base::StringToInt64(level_str, level)) {
-    LOG(ERROR) << "Unable to parse brightness \"" << level_str << "\" from "
-               << path.value();
-    return false;
-  }
-
-  return true;
-}
-
-// Writes |value| to |path|. Returns false on failure.
-bool WriteFile(const base::FilePath& path, int64_t value) {
-  std::string buf = base::Int64ToString(value);
-  VLOG(1) << "Writing " << buf << " to " << path.value();
-  if (base::WriteFile(path, buf.data(), buf.size()) == -1) {
-    PLOG(ERROR) << "Unable to write \"" << buf << "\" to " << path.value();
-    return false;
-  }
-  return true;
-}
-
 // When animating a brightness level transition, amount of time in milliseconds
 // to wait between each update.
 const int kTransitionIntervalMs = 20;
@@ -101,7 +70,7 @@ bool InternalBacklight::Init(const base::FilePath& base_path,
     }
 
     int64_t max_level = 0;
-    if (!ReadBrightnessLevelFromFile(max_brightness_path, &max_level))
+    if (!util::ReadInt64File(max_brightness_path, &max_level))
       continue;
 
     if (max_level <= max_brightness_level_)
@@ -130,8 +99,7 @@ bool InternalBacklight::Init(const base::FilePath& base_path,
     return false;
   }
 
-  ReadBrightnessLevelFromFile(actual_brightness_path_,
-                              &current_brightness_level_);
+  util::ReadInt64File(actual_brightness_path_, &current_brightness_level_);
   return true;
 }
 
@@ -187,7 +155,7 @@ bool InternalBacklight::SetResumeBrightnessLevel(int64_t level) {
     return false;
   }
 
-  return WriteFile(resume_brightness_path_, level);
+  return util::WriteInt64File(resume_brightness_path_, level);
 }
 
 bool InternalBacklight::TransitionInProgress() const {
@@ -198,9 +166,9 @@ bool InternalBacklight::WriteBrightness(int64_t new_level) {
   // If the backlight is about to be turned on, write FB_BLANK_UNBLANK
   // to bl_power first.
   if (current_brightness_level_ == 0 && !bl_power_path_.empty())
-    WriteFile(bl_power_path_, FB_BLANK_UNBLANK);
+    util::WriteInt64File(bl_power_path_, FB_BLANK_UNBLANK);
 
-  if (!WriteFile(brightness_path_, new_level))
+  if (!util::WriteInt64File(brightness_path_, new_level))
     return false;
 
   current_brightness_level_ = new_level;
@@ -208,7 +176,7 @@ bool InternalBacklight::WriteBrightness(int64_t new_level) {
   // If the backlight level just went to 0, write FB_BLANK_POWERDOWN
   // to bl_power.
   if (current_brightness_level_ == 0 && !bl_power_path_.empty())
-    WriteFile(bl_power_path_, FB_BLANK_POWERDOWN);
+    util::WriteInt64File(bl_power_path_, FB_BLANK_POWERDOWN);
 
   return true;
 }

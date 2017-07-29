@@ -17,6 +17,7 @@
 #include <linux/fb.h>
 
 #include "power_manager/common/clock.h"
+#include "power_manager/common/util.h"
 
 namespace power_manager {
 namespace system {
@@ -37,46 +38,23 @@ class InternalBacklightTest : public ::testing::Test {
                             int64_t brightness,
                             int64_t max_brightness,
                             int64_t actual_brightness) {
-    CHECK(base::CreateDirectory(path));
-
-    std::string str = base::StringPrintf("%" PRId64 "\n", brightness);
-    ASSERT_EQ(
-        str.size(),
-        base::WriteFile(path.Append(InternalBacklight::kBrightnessFilename),
-                        str.data(),
-                        str.size()));
-
-    str = base::StringPrintf("%" PRId64 "\n", max_brightness);
-    ASSERT_EQ(
-        str.size(),
-        base::WriteFile(path.Append(InternalBacklight::kMaxBrightnessFilename),
-                        str.data(),
-                        str.size()));
-
+    ASSERT_TRUE(base::CreateDirectory(path));
+    ASSERT_TRUE(util::WriteInt64File(
+        path.Append(InternalBacklight::kBrightnessFilename), brightness));
+    ASSERT_TRUE(util::WriteInt64File(
+        path.Append(InternalBacklight::kMaxBrightnessFilename),
+        max_brightness));
     if (actual_brightness >= 0) {
-      str = base::StringPrintf("%" PRId64 "\n", actual_brightness);
-      ASSERT_EQ(str.size(),
-                base::WriteFile(
-                    path.Append(InternalBacklight::kActualBrightnessFilename),
-                    str.data(),
-                    str.size()));
+      ASSERT_TRUE(util::WriteInt64File(
+          path.Append(InternalBacklight::kActualBrightnessFilename),
+          actual_brightness));
     }
   }
 
   // Reads and returns an int64_t value from |path|. -1 is returned on error.
   int64_t ReadFile(const base::FilePath& path) {
-    std::string data;
-    if (!base::ReadFileToString(path, &data)) {
-      LOG(ERROR) << "Unable to read data from " << path.value();
-      return -1;
-    }
-    int64_t value = 0;
-    base::TrimWhitespaceASCII(data, base::TRIM_TRAILING, &data);
-    if (!base::StringToInt64(data, &value)) {
-      LOG(ERROR) << "Unable to parse \"" << value << "\" from " << path.value();
-      return -1;
-    }
-    return value;
+    int64_t value = -1;
+    return util::ReadInt64File(path, &value) ? value : -1;
   }
 
   // Returns the value from the "brightness" file in |directory|.
