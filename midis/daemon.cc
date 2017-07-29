@@ -4,12 +4,19 @@
 
 #include "midis/daemon.h"
 
+#include <fcntl.h>
+
+#include <utility>
+
 #include <base/bind.h>
+#include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 
+#include "midis/client_tracker.h"
+#include "midis/device_tracker.h"
 
 namespace midis {
 
@@ -49,15 +56,40 @@ void Daemon::InitDBus() {
                  weak_factory_.GetWeakPtr())));
   CHECK(bus->RequestOwnershipAndBlock(kMidisServiceName,
                                       dbus::Bus::REQUIRE_PRIMARY));
-  LOG(INFO) << "D-Bus Registration succeeded";
+  VLOG(1) << "D-Bus Registration succeeded";
 }
 
 void Daemon::BootstrapMojoConnection(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
-  LOG(INFO) << "Successfully received call from D-Bus client";
-  // TODO(pmalani): Actually bootstrap mojo interface in ClientTracker
-  // handle.value() contains the good stuff.
+  LOG(INFO) << "Successfully received call from D-Bus client.";
+  if (client_tracker_->IsProxyConnected()) {
+    LOG(WARNING) << "Midis can only instantiate one Mojo Proxy instance.";
+    return;
+  }
+
+  dbus::FileDescriptor file_handle;
+  dbus::MessageReader reader(method_call);
+
+  if (!reader.PopFileDescriptor(&file_handle)) {
+    LOG(ERROR) << "Couldn't extract Mojo IPC handle.";
+    return;
+  }
+  file_handle.CheckValidity();
+  base::ScopedFD fd(file_handle.TakeValue());
+
+  if (!fd.is_valid()) {
+    LOG(ERROR) << "Couldn't copy file handle sent over D-Bus.";
+    return;
+  }
+
+  if (!base::SetCloseOnExec(fd.get())) {
+    PLOG(ERROR) << "Failed setting FD_CLOEXEC on fd.";
+    return;
+  }
+
+  client_tracker_->AcceptProxyConnection(std::move(fd));
+  LOG(INFO) << "MojoBridger connection established.";
 }
 
 }  // namespace midis

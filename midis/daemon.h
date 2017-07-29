@@ -11,9 +11,6 @@
 #include <brillo/daemons/daemon.h>
 #include <dbus/exported_object.h>
 
-#include "midis/client_tracker.h"
-#include "midis/device_tracker.h"
-
 namespace dbus {
 
 class MethodCall;
@@ -21,6 +18,9 @@ class MethodCall;
 }  // namespace dbus
 
 namespace midis {
+
+class ClientTracker;
+class DeviceTracker;
 
 class Daemon : public brillo::Daemon {
  public:

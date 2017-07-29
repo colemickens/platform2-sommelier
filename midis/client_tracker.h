@@ -12,13 +12,15 @@
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>
+#include <mojo/edk/embedder/process_delegate.h>
 
 #include "midis/client.h"
 #include "midis/device_tracker.h"
+#include "mojo/midis.mojom.h"
 
 namespace midis {
 
-class ClientTracker {
+class ClientTracker : public mojo::edk::ProcessDelegate {
  public:
   ClientTracker();
   ~ClientTracker();
@@ -27,6 +29,18 @@ class ClientTracker {
   void SetDeviceTracker(DeviceTracker* ptr) { device_tracker_ = ptr; }
   size_t GetNumClientsForTesting() const { return clients_.size(); }
   void RemoveClient(uint32_t client_id);
+
+  // Sets up the MidisManagerGetter Mojo interface using the FD passed in
+  // via D-Bus. The net result of this function should be the creation
+  // of a MidisManagerGetterImpl object which ClientTracker manages.
+  void AcceptProxyConnection(base::ScopedFD fd);
+
+  // mojo::edk::ProcessDelegate:
+  void OnShutdownComplete() override;
+
+  // Helper function to check whether a |midis_manager_getter_| object is
+  // already associated with ClientTracker.
+  bool IsProxyConnected();
 
  private:
   friend class ClientTest;
@@ -45,6 +59,8 @@ class ClientTracker {
   // derive information regarding devices.
   DeviceTracker* device_tracker_;
   base::FilePath basedir_;
+  base::SequenceChecker sequence_checker_;
+  std::unique_ptr<arc::mojom::MidisManagerGetter> midis_manager_getter_;
 
   base::WeakPtrFactory<ClientTracker> weak_factory_;
   DISALLOW_COPY_AND_ASSIGN(ClientTracker);

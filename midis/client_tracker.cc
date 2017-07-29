@@ -15,11 +15,46 @@
 #include <base/location.h>
 #include <base/memory/ptr_util.h>
 #include <brillo/message_loops/message_loop.h>
+#include <mojo/edk/embedder/embedder.h>
+#include <mojo/public/cpp/bindings/binding.h>
 
 namespace {
 
-const char kSocketPath[] = "/run/midis/midis_socket";
+constexpr char kMidisPipe[] = "arc-midis-pipe";
+constexpr char kSocketPath[] = "/run/midis/midis_socket";
 const int kUnixNamedSocketBacklog = 5;
+
+// Implementation of the MidisManagerGetter interface. This is used to
+// get the actual MidisManager interface which is used by the client to
+// communicate with midis.
+// A request to initialize this should be initiated by the ArcBridgeHost.
+//
+// NOTE: It is expected that this class should only be instantiated once
+// during the lifetime of the service. An error in the Message Pipe associated
+// with this class is most likely an unrecoverable error, and will necessitate
+// the restart of the midis service from Chrome.
+class MidisManagerGetterImpl : public arc::mojom::MidisManagerGetter {
+ public:
+  explicit MidisManagerGetterImpl(
+      arc::mojom::MidisManagerGetterRequest request);
+  ~MidisManagerGetterImpl() override = default;
+
+  // mojom::MidisManagerGetter:
+  void Connect() override;
+
+ private:
+  mojo::Binding<arc::mojom::MidisManagerGetter> binding_;
+
+  DISALLOW_COPY_AND_ASSIGN(MidisManagerGetterImpl);
+};
+
+MidisManagerGetterImpl::MidisManagerGetterImpl(
+    arc::mojom::MidisManagerGetterRequest request)
+    : binding_(this, std::move(request)) {}
+
+void MidisManagerGetterImpl::Connect() {
+  VLOG(1) << "The MidisManagerGetterInterface is working";
+}
 
 }  // namespace
 
@@ -51,22 +86,21 @@ bool ClientTracker::InitClientTracker(DeviceTracker* device_tracker) {
   // Calling fchmod before bind prevents the file from being modified.
   // Once bind() completes, we can change the permissions to allow
   // other users in the group to access the socket.
-  int rc = fchmod(server_fd_.get(), 0700);
-  if (rc < 0) {
+  if (fchmod(server_fd_.get(), 0700) < 0) {
     PLOG(ERROR) << "fchmod() on socket failed.";
     return false;
   }
 
-  if (bind(server_fd_.get(), reinterpret_cast<sockaddr*>(&addr),
+  if (bind(server_fd_.get(),
+           reinterpret_cast<sockaddr*>(&addr),
            sizeof(addr)) == -1) {
     PLOG(ERROR) << "bind() failed.";
     return false;
   }
 
-  // ALlow other group members to access MIDI devices.
-  rc = chmod(addr.sun_path, 0770);
-  if (rc) {
-    PLOG(ERROR) << "chmod on socket failed";
+  // Allow other group members to access MIDI devices.
+  if (chmod(addr.sun_path, 0770) != 0) {
+    PLOG(ERROR) << "chmod() on socket failed.";
     return false;
   }
 
@@ -75,11 +109,18 @@ bool ClientTracker::InitClientTracker(DeviceTracker* device_tracker) {
     return false;
   }
 
-  LOG(INFO) << "Start client server.";
+  VLOG(1) << "Start client server.";
+
+  mojo::edk::Init();
+  mojo::edk::InitIPCSupport(this, base::ThreadTaskRunnerHandle::Get());
 
   auto taskid = brillo::MessageLoop::current()->WatchFileDescriptor(
-      FROM_HERE, server_fd_.get(), brillo::MessageLoop::kWatchRead, true,
-      base::Bind(&ClientTracker::ProcessClient, weak_factory_.GetWeakPtr(),
+      FROM_HERE,
+      server_fd_.get(),
+      brillo::MessageLoop::kWatchRead,
+      true,
+      base::Bind(&ClientTracker::ProcessClient,
+                 weak_factory_.GetWeakPtr(),
                  server_fd_.get()));
 
   return taskid != brillo::MessageLoop::kTaskIdNull;
@@ -88,13 +129,15 @@ bool ClientTracker::InitClientTracker(DeviceTracker* device_tracker) {
 void ClientTracker::ProcessClient(int fd) {
   auto new_fd = base::ScopedFD(accept(fd, NULL, NULL));
   if (!new_fd.is_valid()) {
-    PLOG(ERROR) << "Error in accept()";
+    PLOG(ERROR) << "accept() failed.";
     return;
   }
 
   client_id_counter_++;
   std::unique_ptr<Client> new_cli = Client::Create(
-      std::move(new_fd), device_tracker_, client_id_counter_,
+      std::move(new_fd),
+      device_tracker_,
+      client_id_counter_,
       base::Bind(&ClientTracker::RemoveClient, weak_factory_.GetWeakPtr()));
   if (new_cli) {
     clients_.emplace(client_id_counter_, std::move(new_cli));
@@ -105,6 +148,25 @@ void ClientTracker::RemoveClient(uint32_t client_id) {
   // First delete all references to this device.
   device_tracker_->RemoveClientFromDevices(client_id);
   clients_.erase(client_id);
+}
+
+void ClientTracker::AcceptProxyConnection(base::ScopedFD fd) {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  mojo::edk::SetParentPipeHandle(
+      mojo::edk::ScopedPlatformHandle(mojo::edk::PlatformHandle(fd.release())));
+  mojo::ScopedMessagePipeHandle child_pipe =
+      mojo::edk::CreateChildMessagePipe(kMidisPipe);
+  midis_manager_getter_ = base::MakeUnique<MidisManagerGetterImpl>(
+      mojo::MakeRequest<arc::mojom::MidisManagerGetter>(std::move(child_pipe)));
+}
+
+bool ClientTracker::IsProxyConnected() {
+  return midis_manager_getter_ != nullptr;
+}
+
+void ClientTracker::OnShutdownComplete() {
+  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  mojo::edk::ShutdownIPCSupport();
 }
 
 }  // namespace midis
