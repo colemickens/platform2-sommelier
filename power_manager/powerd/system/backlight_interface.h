@@ -14,11 +14,21 @@
 namespace power_manager {
 namespace system {
 
+class BacklightObserver;
+
 // Interface for getting and setting the backlight level from hardware.
 class BacklightInterface {
  public:
   BacklightInterface() {}
   virtual ~BacklightInterface() {}
+
+  // Adds or removes an observer.
+  virtual void AddObserver(BacklightObserver* observer) = 0;
+  virtual void RemoveObserver(BacklightObserver* observer) = 0;
+
+  // Returns true iff the underlying backlight device is present.
+  // If not, other methods may report failure.
+  virtual bool DeviceExists() = 0;
 
   // Gets the maximum brightness level (in an an arbitrary device-specific
   // range; note that 0 is always the minimum allowable value, though).

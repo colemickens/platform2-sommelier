@@ -86,6 +86,7 @@ const char kInternalBacklightPath[] = "/sys/class/backlight";
 const char kInternalBacklightPattern[] = "*";
 const char kKeyboardBacklightPath[] = "/sys/class/leds";
 const char kKeyboardBacklightPattern[] = "*:kbd_backlight";
+const char kKeyboardBacklightUdevSubsystem[] = "leds";
 const char kPowerStatusPath[] = "/sys/class/power_supply";
 const char kSetuidHelperPath[] = "/usr/bin/powerd_setuid_helper";
 const char kBusServiceName[] = "org.freedesktop.DBus";

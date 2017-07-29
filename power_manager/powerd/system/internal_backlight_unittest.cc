@@ -82,6 +82,7 @@ TEST_F(InternalBacklightTest, BasicTest) {
   ASSERT_TRUE(backlight.Init(this_test_path, "*"));
   EXPECT_EQ(kActualBrightness, backlight.GetCurrentBrightnessLevel());
   EXPECT_EQ(kMaxBrightness, backlight.GetMaxBrightnessLevel());
+  EXPECT_TRUE(backlight.DeviceExists());
 }
 
 // Make sure things work OK when there is no actual_brightness file.

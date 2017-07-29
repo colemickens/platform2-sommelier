@@ -217,6 +217,9 @@ extern const char kInternalBacklightPattern[];
 extern const char kKeyboardBacklightPath[];
 extern const char kKeyboardBacklightPattern[];
 
+// udev subsystem used to announce changes to keyboard backlights.
+extern const char kKeyboardBacklightUdevSubsystem[];
+
 // sysfs directory containing information about connected power sources.
 extern const char kPowerStatusPath[];
 

@@ -76,6 +76,7 @@ bool InternalBacklight::Init(const base::FilePath& base_path,
     if (max_level <= max_brightness_level_)
       continue;
 
+    device_path_ = device_path;
     brightness_path_ = brightness_path;
     max_brightness_path_ = max_brightness_path;
     max_brightness_level_ = max_level;
@@ -94,10 +95,8 @@ bool InternalBacklight::Init(const base::FilePath& base_path,
       bl_power_path_ = power_path;
   }
 
-  if (max_brightness_level_ <= 0) {
-    LOG(ERROR) << "Can't init backlight interface";
+  if (max_brightness_level_ <= 0)
     return false;
-  }
 
   util::ReadInt64File(actual_brightness_path_, &current_brightness_level_);
   return true;
@@ -107,6 +106,14 @@ bool InternalBacklight::TriggerTransitionTimeoutForTesting() {
   CHECK(transition_timer_.IsRunning());
   HandleTransitionTimeout();
   return transition_timer_.IsRunning();
+}
+
+void InternalBacklight::AddObserver(BacklightObserver* observer) {}
+
+void InternalBacklight::RemoveObserver(BacklightObserver* observer) {}
+
+bool InternalBacklight::DeviceExists() {
+  return true;
 }
 
 int64_t InternalBacklight::GetMaxBrightnessLevel() {

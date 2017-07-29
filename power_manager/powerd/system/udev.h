@@ -42,7 +42,8 @@ class UdevInterface {
   virtual ~UdevInterface() {}
 
   // Adds or removes an observer for watching |subsystem|. To receive events,
-  // this subsystem must also be listed in udev/90-powerd-tags.rules.
+  // this subsystem must also be given a "powerd" tag by
+  // udev/93-powerd-late.rules.
   virtual void AddSubsystemObserver(const std::string& subsystem,
                                     UdevSubsystemObserver* observer) = 0;
   virtual void RemoveSubsystemObserver(const std::string& subsystem,

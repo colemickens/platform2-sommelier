@@ -47,6 +47,7 @@ class InternalBacklight : public BacklightInterface {
   bool Init(const base::FilePath& base_path,
             const base::FilePath::StringType& pattern);
 
+  const base::FilePath& device_path() const { return device_path_; }
   bool transition_timer_is_running() const {
     return transition_timer_.IsRunning();
   }
@@ -61,6 +62,9 @@ class InternalBacklight : public BacklightInterface {
   bool TriggerTransitionTimeoutForTesting();
 
   // Overridden from BacklightInterface:
+  void AddObserver(BacklightObserver* observer) override;
+  void RemoveObserver(BacklightObserver* observer) override;
+  bool DeviceExists() override;
   int64_t GetMaxBrightnessLevel() override;
   int64_t GetCurrentBrightnessLevel() override;
   bool SetBrightnessLevel(int64_t level, base::TimeDelta interval) override;
@@ -82,6 +86,9 @@ class InternalBacklight : public BacklightInterface {
   void CancelTransition();
 
   std::unique_ptr<Clock> clock_;
+
+  // Device directory.
+  base::FilePath device_path_;
 
   // Paths to the actual_brightness, brightness, max_brightness and
   // resume_brightness files under /sys/class/backlight.

@@ -8,14 +8,29 @@ namespace power_manager {
 namespace system {
 
 BacklightStub::BacklightStub(int64_t max_level, int64_t current_level)
-    : clock_(nullptr),
-      max_level_(max_level),
-      current_level_(current_level),
-      resume_level_(-1),
-      transition_in_progress_(false),
-      should_fail_(false) {}
+    : max_level_(max_level),
+      current_level_(current_level) {}
 
 BacklightStub::~BacklightStub() {}
+
+void BacklightStub::NotifyDeviceChanged() {
+  FOR_EACH_OBSERVER(
+      BacklightObserver, observers_, OnBacklightDeviceChanged(this));
+}
+
+void BacklightStub::AddObserver(BacklightObserver* observer) {
+  DCHECK(observer);
+  observers_.AddObserver(observer);
+}
+
+void BacklightStub::RemoveObserver(BacklightObserver* observer) {
+  DCHECK(observer);
+  observers_.RemoveObserver(observer);
+}
+
+bool BacklightStub::DeviceExists() {
+  return device_exists_;
+}
 
 int64_t BacklightStub::GetMaxBrightnessLevel() {
   return max_level_;

@@ -7,10 +7,12 @@
 
 #include <base/compiler_specific.h>
 #include <base/macros.h>
+#include <base/observer_list.h>
 #include <base/time/time.h>
 
 #include "power_manager/common/clock.h"
 #include "power_manager/powerd/system/backlight_interface.h"
+#include "power_manager/powerd/system/backlight_observer.h"
 
 namespace power_manager {
 namespace system {
@@ -22,6 +24,7 @@ class BacklightStub : public BacklightInterface {
   virtual ~BacklightStub();
 
   void set_clock(Clock* clock) { clock_ = clock; }
+  void set_device_exists(bool exists) { device_exists_ = exists; }
   void set_max_level(int64_t level) { max_level_ = level; }
   void set_current_level(int64_t level) { current_level_ = level; }
   void set_transition_in_progress(bool in_progress) {
@@ -37,7 +40,13 @@ class BacklightStub : public BacklightInterface {
     return last_set_brightness_level_time_;
   }
 
+  // Tells |observers_| that the underlying device changed.
+  void NotifyDeviceChanged();
+
   // BacklightInterface implementation:
+  void AddObserver(BacklightObserver* observer) override;
+  void RemoveObserver(BacklightObserver* observer) override;
+  bool DeviceExists() override;
   int64_t GetMaxBrightnessLevel() override;
   int64_t GetCurrentBrightnessLevel() override;
   bool SetBrightnessLevel(int64_t level, base::TimeDelta interval) override;
@@ -45,27 +54,32 @@ class BacklightStub : public BacklightInterface {
   bool TransitionInProgress() const override;
 
  private:
+  base::ObserverList<BacklightObserver> observers_;
+
   // Not owned and may be null. Used to update
   // |last_set_brightness_level_time_|.
-  Clock* clock_;
+  Clock* clock_ = nullptr;
+
+  // True if the underlying backlight device exists.
+  bool device_exists_ = true;
 
   // Maximum backlight level.
-  int64_t max_level_;
+  int64_t max_level_ = -1;
 
   // Most-recently-set brightness level.
-  int64_t current_level_;
+  int64_t current_level_ = -1;
 
   // Most-recently-set resume level.
-  int64_t resume_level_;
+  int64_t resume_level_ = -1;
 
   // |interval| parameter passed to most recent SetBrightnessLevel() call.
   base::TimeDelta current_interval_;
 
   // Return value for TransitionInProgress().
-  bool transition_in_progress_;
+  bool transition_in_progress_ = false;
 
   // Should we report failure in response to future requests?
-  bool should_fail_;
+  bool should_fail_ = false;
 
   // Last time at which SetBrightnessLevel() was called with a new level.
   base::TimeTicks last_set_brightness_level_time_;
