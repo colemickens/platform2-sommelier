@@ -16,7 +16,9 @@
 #include <sys/reboot.h>
 #include <sys/socket.h>
 
+#include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/scoped_file.h>
@@ -48,6 +50,8 @@ string AddressToString(uint32_t address) {
 }
 
 }  // namespace
+
+ServiceImpl::ServiceImpl(std::unique_ptr<Init> init) : init_(std::move(init)) {}
 
 grpc::Status ServiceImpl::ConfigureNetwork(grpc::ServerContext* ctx,
                                            const NetworkConfigRequest* request,
@@ -179,6 +183,33 @@ grpc::Status ServiceImpl::Shutdown(grpc::ServerContext* ctx,
                                    EmptyMessage* response) {
   // TODO(chirantan): Give applications a chance to clean up.
   reboot(RB_AUTOBOOT);
+  return grpc::Status::OK;
+}
+
+grpc::Status ServiceImpl::LaunchProcess(
+    grpc::ServerContext* ctx,
+    const vm_tools::LaunchProcessRequest* request,
+    vm_tools::EmptyMessage* response) {
+  LOG(INFO) << "Received request to launch process";
+  if (!init_) {
+    return grpc::Status(grpc::FAILED_PRECONDITION, "not running as init");
+  }
+
+  if (request->argv_size() <= 0) {
+    return grpc::Status(grpc::INVALID_ARGUMENT, "missing argv");
+  }
+
+  std::vector<string> argv(request->argv().begin(), request->argv().end());
+  std::map<string, string> env;
+  for (const auto& pair : request->env()) {
+    env[pair.first] = pair.second;
+  }
+
+  if (!init_->Spawn(std::move(argv), std::move(env), request->respawn(),
+                    request->use_console())) {
+    return grpc::Status(grpc::INTERNAL, "failed to spawn process");
+  }
+
   return grpc::Status::OK;
 }
 

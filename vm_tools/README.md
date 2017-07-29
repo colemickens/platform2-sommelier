@@ -12,21 +12,16 @@ allocates some pooled resources for the VM (like a mac address, IPv4 subnet,
 unique identifier, and virtual socket host id) and then invokes the userspace
 hypervisor (`crosvm` or `lkvm`) to actually start running the VM.
 
-Additionally the vm_launcher provides some services for the running VM instance.
-This includes aggregating logs from the VM kernel and userspace as well as
-storing and reporting any crashes for applications inside the VM.
-
-vm_launcher also communicates with `maitred` inside the VM to carry out various
-maintenance tasks like starting and stopping system services, configuring the
-network, and triggering a clean shutdown of the VM instance.
-
 ## maitred
 
 `maitred` is the agent running inside the VM responsible for managing
 the VM instance.  It acts as the init system, starting up system services,
 mounting file systems, and launching the container with the actual application
 that the user wants to run.  It is responsible for shutting down the VM once the
-user's application exits or if requested by `vm_launcher`.
+user's application exits or if requested by a process on the host.
+
+See [docs/init.md](docs/init.md) for more details on the duties maitred carries
+out as pid 1.
 
 ## vm_syslog
 

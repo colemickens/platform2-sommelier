@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <errno.h>
 #include <fcntl.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -9,16 +10,17 @@
 
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
 
+#include <memory>
 #include <string>
 
 #include <base/at_exit.h>
-#include <base/command_line.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/stringprintf.h>
 #include <grpc++/grpc++.h>
 
+#include "vm_tools/maitred/init.h"
 #include "vm_tools/maitred/service_impl.h"
 
 using std::string;
@@ -101,7 +103,19 @@ bool LogToKmsg(logging::LogSeverity severity,
 
 int main(int argc, char** argv) {
   base::AtExitManager at_exit;
-  base::CommandLine::Init(argc, argv);
+  logging::InitLogging(logging::LoggingSettings());
+
+  // Make sure that stdio is set up correctly.
+  for (int fd = 0; fd < 3; ++fd) {
+    if (fcntl(fd, F_GETFD) >= 0) {
+      continue;
+    }
+
+    CHECK_EQ(errno, EBADF);
+
+    int newfd = open("/dev/null", O_RDWR);
+    CHECK_EQ(fd, newfd);
+  }
 
   // Set up logging to /dev/kmsg.
   base::ScopedFD kmsg_fd(open(kDevKmsg, O_WRONLY | O_CLOEXEC));
@@ -110,13 +124,20 @@ int main(int argc, char** argv) {
   g_kmsg_fd = kmsg_fd.get();
   logging::SetLogMessageHandler(LogToKmsg);
 
+  // Do init setup if we are running as init.
+  std::unique_ptr<vm_tools::maitred::Init> init;
+  if (strcmp(program_invocation_short_name, "init") == 0) {
+    init = vm_tools::maitred::Init::Create();
+    CHECK(init);
+  }
+
   // Build the server.
   grpc::ServerBuilder builder;
   builder.AddListeningPort(
       base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY, kPort),
       grpc::InsecureServerCredentials());
 
-  vm_tools::maitred::ServiceImpl maitred_service;
+  vm_tools::maitred::ServiceImpl maitred_service(std::move(init));
   builder.RegisterService(&maitred_service);
 
   std::unique_ptr<grpc::Server> server = builder.BuildAndStart();

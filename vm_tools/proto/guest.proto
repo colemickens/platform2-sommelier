@@ -27,6 +27,26 @@ message NetworkConfigRequest {
   IPv4Config ipv4_config = 1;
 }
 
+// Description of a single process that should be spawned by maitre'd.
+message LaunchProcessRequest {
+  // Process arguments.  argv[0] must be either an absolute path or the name of
+  // an executable program that can be found in the default PATH inside the VM.
+  repeated string argv = 1;
+
+  // Any additional environment variables that should be set before spawning
+  // the process.  Can be empty.
+  map<string, string> env = 2;
+
+  // If |true| the process will be respawned when it exits or is killed.
+  // Processes that respawn too frequently will be stopped and will need to be
+  // explicitly restarted via a LaunchProcess rpc.
+  bool respawn = 3;
+
+  // If |true| the process will use /dev/console for its standard I/O.
+  // Otherwise all standard I/O is redirected to /dev/null.
+  bool use_console = 4;
+}
+
 // Implemented by maitred inside the VM.
 service Maitred {
   // Set up networking inside the VM so that it can access the internet.
@@ -34,4 +54,7 @@ service Maitred {
 
   // Initiate a shut-down of the VM.
   rpc Shutdown (EmptyMessage) returns (EmptyMessage);
+
+  // Launch one process inside the VM.
+  rpc LaunchProcess (LaunchProcessRequest) returns (EmptyMessage);
 }

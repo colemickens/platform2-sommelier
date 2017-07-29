@@ -26,7 +26,7 @@ gateway: 0
 
 class ServiceTest : public ::testing::Test {
  public:
-  ServiceTest() = default;
+  ServiceTest();
   ~ServiceTest() override = default;
 
  protected:
@@ -35,6 +35,9 @@ class ServiceTest : public ::testing::Test {
  private:
   DISALLOW_COPY_AND_ASSIGN(ServiceTest);
 };
+
+ServiceTest::ServiceTest() : service_impl_(nullptr) {}
+
 }  // namespace
 
 // Tests that ConfigureNetwork will reject invalid input.

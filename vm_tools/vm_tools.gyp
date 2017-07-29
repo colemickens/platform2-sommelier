@@ -43,6 +43,7 @@
         'vm-rpcs',
       ],
       'sources': [
+        'maitred/init.cc',
         'maitred/service_impl.cc',
       ],
     },

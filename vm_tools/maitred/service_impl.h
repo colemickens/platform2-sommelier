@@ -5,10 +5,13 @@
 #ifndef VM_TOOLS_MAITRED_SERVICE_IMPL_H_
 #define VM_TOOLS_MAITRED_SERVICE_IMPL_H_
 
+#include <memory>
+
 #include <base/macros.h>
 #include <grpc++/grpc++.h>
 
 #include "guest.grpc.pb.h"  // NOLINT(build/include)
+#include "vm_tools/maitred/init.h"
 
 namespace vm_tools {
 namespace maitred {
@@ -16,7 +19,7 @@ namespace maitred {
 // Actually implements the maitred service.
 class ServiceImpl final : public vm_tools::Maitred::Service {
  public:
-  ServiceImpl() = default;
+  explicit ServiceImpl(std::unique_ptr<Init> init);
   ~ServiceImpl() override = default;
 
   // Maitred::Service overrides.
@@ -26,8 +29,13 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
   grpc::Status Shutdown(grpc::ServerContext* ctx,
                         const vm_tools::EmptyMessage* request,
                         vm_tools::EmptyMessage* response) override;
+  grpc::Status LaunchProcess(grpc::ServerContext* ctx,
+                             const vm_tools::LaunchProcessRequest* request,
+                             vm_tools::EmptyMessage* response) override;
 
  private:
+  std::unique_ptr<Init> init_;
+
   DISALLOW_COPY_AND_ASSIGN(ServiceImpl);
 };
 
