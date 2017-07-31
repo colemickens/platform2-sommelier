@@ -33,6 +33,8 @@
 namespace android {
 namespace camera2 {
 
+const unsigned int PARA_WORK_BUFFERS = 1;
+
 ParameterWorker::ParameterWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId) :
         FrameWorker(node, cameraId, "ParameterWorker"),
         mSkyCamAIC(nullptr),
@@ -184,13 +186,15 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
     if (ret != OK)
         return ret;
 
-    ret = setWorkerDeviceBuffers(getDefaultMemoryType(IMGU_NODE_PARAM));
+    ret = setWorkerDeviceBuffers(getDefaultMemoryType(IMGU_NODE_PARAM), PARA_WORK_BUFFERS);
     if (ret != OK)
         return ret;
 
-    ret = allocateWorkerBuffers();
+    ret = allocateWorkerBuffers(PARA_WORK_BUFFERS);
     if (ret != OK)
         return ret;
+
+    mIndex = 0;
 
     return OK;
 }
@@ -232,14 +236,17 @@ status_t ParameterWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
         return UNKNOWN_ERROR;
     }
 
-    ipu3_uapi_params *ipu3Params = (ipu3_uapi_params*)mCameraBuffers[0]->data();
+    ipu3_uapi_params *ipu3Params = (ipu3_uapi_params*)mCameraBuffers[mIndex]->data();
     IPU3AicToFwEncoder::encodeParameters(mAicConfig, ipu3Params);
 
-    status_t status = mNode->putFrame(&mBuffers[0]);
+    status_t status = mNode->putFrame(&mBuffers[mIndex]);
     if (status != OK) {
         LOGE("putFrame failed");
         return UNKNOWN_ERROR;
     }
+
+    mIndex++;
+    mIndex = mIndex % PARA_WORK_BUFFERS;
 
     return OK;
 }
@@ -252,7 +259,7 @@ status_t ParameterWorker::run()
     CLEAR(outBuf);
 
     status_t status = mNode->grabFrame(&outBuf);
-    if (status != OK) {
+    if (status < 0) {
         LOGE("grabFrame failed");
         return UNKNOWN_ERROR;
     }

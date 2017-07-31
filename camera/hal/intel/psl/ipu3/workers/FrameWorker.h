@@ -23,9 +23,6 @@
 namespace android {
 namespace camera2 {
 
-const unsigned int MAX_WORK_BUFFERS = 3;
-
-
 class FrameWorker : public IDeviceWorker
 {
 public:
@@ -46,12 +43,13 @@ public:
     virtual const char *name() { return mNode->name(); }
 
 protected:
-    status_t allocateWorkerBuffers();
+    status_t allocateWorkerBuffers(const unsigned int bufferNum);
     status_t setWorkerDeviceFormat(v4l2_buf_type type, FrameInfo &frame);
-    status_t setWorkerDeviceBuffers(int memType);
+    status_t setWorkerDeviceBuffers(int memType, const unsigned int bufferNum);
 
 protected:
     std::vector<v4l2_buffer> mBuffers;
+    unsigned int mIndex;
     std::vector<std::shared_ptr<CameraBuffer>> mCameraBuffers;
 
     v4l2_format mFormat;

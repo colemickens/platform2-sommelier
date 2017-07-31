@@ -24,6 +24,8 @@
 namespace android {
 namespace camera2 {
 
+const unsigned int STAT_WORK_BUFFERS = 1;
+
 StatisticsWorker::StatisticsWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId,
                      std::shared_ptr<SharedItemPool<ia_aiq_af_grid>> &afFilterBuffPool,
                      std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> &rgbsGridBuffPool):
@@ -53,11 +55,11 @@ status_t StatisticsWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
     if (ret != OK)
         return ret;
 
-    ret = setWorkerDeviceBuffers(getDefaultMemoryType(IMGU_NODE_STAT));
+    ret = setWorkerDeviceBuffers(getDefaultMemoryType(IMGU_NODE_STAT), STAT_WORK_BUFFERS);
     if (ret != OK)
         return ret;
 
-    ret = allocateWorkerBuffers();
+    ret = allocateWorkerBuffers(STAT_WORK_BUFFERS);
     if (ret != OK)
         return ret;
 
@@ -65,6 +67,8 @@ status_t StatisticsWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
         LOGE("Stats buffer is not big enough");
         return UNKNOWN_ERROR;
     }
+
+    mIndex = 0;
 
     return ret;
 }
@@ -76,12 +80,15 @@ status_t StatisticsWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 
     status_t status = OK;
 
-    status |= mNode->putFrame(&mBuffers[0]);
+    status |= mNode->putFrame(&mBuffers[mIndex]);
 
     if (status != OK) {
         LOGE("Failed to queue buffer to statistics device");
         return status;
     }
+
+    mIndex++;
+    mIndex = mIndex % STAT_WORK_BUFFERS;
 
     return OK;
 }
@@ -102,7 +109,7 @@ status_t StatisticsWorker::run()
 
     status = mNode->grabFrame(&buf);
 
-    if (status != OK) {
+    if (status < 0) {
         LOGE("Failed to dequeue buffer from statistics device");
         return status;
     }

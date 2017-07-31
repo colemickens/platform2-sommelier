@@ -26,7 +26,8 @@ namespace camera2 {
 FrameWorker::FrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId, std::string name) :
         IDeviceWorker(cameraId),
         mNode(node),
-        mPollMe(false)
+        mPollMe(false),
+        mIndex(0)
 {
     LOG1("%s handling node %s", name.c_str(), mNode->name());
     CLEAR(mFormat);
@@ -88,9 +89,9 @@ status_t FrameWorker::setWorkerDeviceFormat(v4l2_buf_type type, FrameInfo &frame
     return OK;
 }
 
-status_t FrameWorker::setWorkerDeviceBuffers(int memType)
+status_t FrameWorker::setWorkerDeviceBuffers(int memType, const unsigned int bufferNum)
 {
-    for (unsigned int i = 0; i < MAX_WORK_BUFFERS; i++) {
+    for (unsigned int i = 0; i < bufferNum; i++) {
         v4l2_buffer buffer;
         CLEAR(buffer);
         mBuffers.push_back(buffer);
@@ -104,12 +105,12 @@ status_t FrameWorker::setWorkerDeviceBuffers(int memType)
     return OK;
 }
 
-status_t FrameWorker::allocateWorkerBuffers()
+status_t FrameWorker::allocateWorkerBuffers(const unsigned int bufferNum)
 {
     int memType = mNode->getMemoryType();
     int dmaBufFd;
     std::shared_ptr<CameraBuffer> buf = nullptr;
-    for (unsigned int i = 0; i < MAX_WORK_BUFFERS; i++) {
+    for (unsigned int i = 0; i < bufferNum; i++) {
         LOG2("@%s allocate format: %s size: %d %dx%d bytesperline: %d", __func__, v4l2Fmt2Str(mFormat.fmt.pix.pixelformat),
                 mFormat.fmt.pix.sizeimage,
                 mFormat.fmt.pix.width,

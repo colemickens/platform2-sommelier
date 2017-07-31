@@ -27,6 +27,8 @@
 namespace android {
 namespace camera2 {
 
+const unsigned int OUTPUTFRAME_WORK_BUFFERS = 3;
+
 OutputFrameWorker::OutputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId, camera3_stream_t* stream, IPU3NodeNames nodeName) :
                 FrameWorker(node, cameraId, "OutputFrameWorker"),
                 mOutputBuffer(nullptr),
@@ -58,7 +60,7 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
             mFormat.fmt.pix.width,
             mFormat.fmt.pix.height);
 
-    ret = setWorkerDeviceBuffers(getDefaultMemoryType(mNodeName));
+    ret = setWorkerDeviceBuffers(getDefaultMemoryType(mNodeName), OUTPUTFRAME_WORK_BUFFERS);
     if (ret != OK)
         return ret;
 
@@ -66,8 +68,10 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
     mUseInternalBuffer =
         mStream && (mStream->format == HAL_PIXEL_FORMAT_BLOB || needRotation() > 0);
     if (mUseInternalBuffer) {
-        return allocateWorkerBuffers();
+        return allocateWorkerBuffers(OUTPUTFRAME_WORK_BUFFERS);
     }
+
+    mIndex = 0;
 
     return OK;
 }
@@ -163,12 +167,12 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 
             if (!mUseInternalBuffer) {
                 // Use stream buffer for zero-copy
-                mBuffers[0].bytesused = mFormat.fmt.pix.sizeimage;
-                mBuffers[0].m.userptr = (unsigned long int)buffer->data();
+                mBuffers[mIndex].bytesused = mFormat.fmt.pix.sizeimage;
+                mBuffers[mIndex].m.userptr = (unsigned long int)buffer->data();
                 mCameraBuffers.push_back(buffer);
-                LOG2("mBuffers[0].m.userptr: %p", mBuffers[0].m.userptr);
+                LOG2("mBuffers[mIndex].m.userptr: %p", mBuffers[mIndex].m.userptr);
             }
-            status |= mNode->putFrame(&mBuffers[0]);
+            status |= mNode->putFrame(&mBuffers[mIndex]);
 
 
             notFound = false;
@@ -183,7 +187,7 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
         mPollMe = false;
     }
 
-    return status;
+    return (status < 0) ? status : OK;
 }
 
 status_t OutputFrameWorker::run()

@@ -24,6 +24,8 @@
 namespace android {
 namespace camera2 {
 
+const unsigned int INPUTFRAME_WORK_BUFFERS = 7;
+
 InputFrameWorker::InputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId) :
         FrameWorker(node, cameraId, "InputFrameWorker")
 {
@@ -44,9 +46,11 @@ status_t InputFrameWorker::configure(std::shared_ptr<GraphConfig> & /*config*/)
     if (ret != OK)
         return ret;
 
-    ret = setWorkerDeviceBuffers(getDefaultMemoryType(IMGU_NODE_INPUT));
+    ret = setWorkerDeviceBuffers(getDefaultMemoryType(IMGU_NODE_INPUT), INPUTFRAME_WORK_BUFFERS);
     if (ret != OK)
         return ret;
+
+    mIndex = 0;
 
     return OK;
 }
@@ -58,17 +62,20 @@ status_t InputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     int memType = mNode->getMemoryType();
 
     if (memType == V4L2_MEMORY_USERPTR)
-        mBuffers[0].m.userptr = (long unsigned int)msg->pMsg.rawNonScaledBuffer->buf->data();
+        mBuffers[mIndex].m.userptr = (long unsigned int)msg->pMsg.rawNonScaledBuffer->buf->data();
     else if (memType == V4L2_MEMORY_DMABUF) {
-        mBuffers[0].m.fd = msg->pMsg.rawNonScaledBuffer->buf->dmaBufFd();
-        CheckError((mBuffers[0].m.fd < 0), BAD_VALUE, "@%s invalid fd(%d) passed from isys.\n",
-            __func__, mBuffers[0].m.fd);
+        mBuffers[mIndex].m.fd = msg->pMsg.rawNonScaledBuffer->buf->dmaBufFd();
+        CheckError((mBuffers[mIndex].m.fd < 0), BAD_VALUE, "@%s invalid fd(%d) passed from isys.\n",
+            __func__, mBuffers[mIndex].m.fd);
     } else {
         LOGE("@%s unsupported memory type %d.", __func__, memType);
         return BAD_VALUE;
     }
-    status |= mNode->putFrame(&mBuffers[0]);
+    status |= mNode->putFrame(&mBuffers[mIndex]);
+
     msg->pMsg.processingSettings->request->setSeqenceId(msg->pMsg.rawNonScaledBuffer->v4l2Buf.sequence);
+    mIndex++;
+    mIndex = mIndex % INPUTFRAME_WORK_BUFFERS;
     PERFORMANCE_HAL_ATRACE_PARAM1("seqId", msg->pMsg.rawNonScaledBuffer->v4l2Buf.sequence);
 
     return status;
@@ -88,7 +95,7 @@ status_t InputFrameWorker::postRun()
     status_t status = OK;
     status = mNode->grabFrame(&outBuf);
 
-    return status;
+    return (status < 0) ? status : OK;
 }
 
 
