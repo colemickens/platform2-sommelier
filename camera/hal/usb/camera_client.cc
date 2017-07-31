@@ -133,8 +133,21 @@ int CameraClient::ConfigureStreams(
     }
     streams.push_back(stream_config->streams[i]);
     // Here assume the attribute of all streams are the same.
-    crop_rotate_scale_degrees =
-        stream_config->streams[i]->crop_rotate_scale_degrees;
+    switch (stream_config->streams[i]->crop_rotate_scale_degrees) {
+      case CAMERA3_STREAM_ROTATION_0:
+        crop_rotate_scale_degrees = 0;
+        break;
+      case CAMERA3_STREAM_ROTATION_90:
+        crop_rotate_scale_degrees = 90;
+        break;
+      case CAMERA3_STREAM_ROTATION_270:
+        crop_rotate_scale_degrees = 270;
+        break;
+      default:
+        LOGF(ERROR) << "Unrecognized crop_rotate_scale_degrees: "
+                    << stream_config->streams[i]->crop_rotate_scale_degrees;
+        return -EINVAL;
+    }
 
     // Skip BLOB format to avoid to use too large resolution as preview size.
     if (stream_config->streams[i]->format == HAL_PIXEL_FORMAT_BLOB &&
