@@ -1646,15 +1646,16 @@ typedef struct camera3_stream {
     int rotation;
 
     /**
-     * When setting to 90 or 270, HAL would crop, rotate the frame by the specified degrees
-     * clockwise and scale it up to original size.
+     * This should be one of the camera3_stream_rotation_t values except for
+     * CAMERA3_STREAM_ROTATION_180.
+     * When setting to CAMERA3_STREAM_ROTATION_90 or CAMERA3_STREAM_ROTATION_270, HAL would crop,
+     * rotate the frame by the specified degrees clockwise and scale it up to original size.
      * In Chrome OS, it's possible to have a portrait activity run in a landscape screen with
      * landscape-mounted camera. The activity would show stretched or rotated preview because it
      * does not expect to receive landscape preview frames. To solve this problem, we ask HAL to
      * crop, rotate and scale the frames and modify CameraCharacteristics.SENSOR_ORIENTATION
      * accordingly to imitate a portrait camera.
-     * Setting it to 0 means no crop-rotate-scale would be performed. The only valid values are 0,
-     * 90 and 270.
+     * Setting it to CAMERA3_STREAM_ROTATION_0 means no crop-rotate-scale would be performed.
      * |cros_rotate_scale_degrees| in all camera3_stream_t of a configure_streams() call must be
      * identical. The HAL should return -EINVAL if the degrees are not the same for all the streams.
      */
