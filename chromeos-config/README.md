@@ -31,6 +31,24 @@ different OEM).
 Note: In the description below, entries with children are nodes and leaves are
 properties.
 
+*   `family`: Provides family-level configuration settings, which apply to all
+              models in the family.
+
+    *   `firmware` (optional) : Contains information about firmware
+        versions and files
+        *   `script`: Updater script to use. See
+            [the pack_dist directory](https://cs.corp.google.com/chromeos_public/src/platform/firmware/pack_dist)
+            for the scripts. The options are:
+            *   `updater1s.sh`: Only used by mario. Do not use for new
+                boards.
+            *   `updater2.sh`: Only used by x86-alex and x86-zgb. Do not
+                use for new boards.
+            *   `updater3.sh`: Used for various devices shipped around 2012.
+            *   `updater4.sh`: In current use. Supports software sync for
+                the EC.
+            *   `updater5.sh`: In current use. Supports firmware v4
+                (chromeos-ec, vboot2)
+
 *   `models`: Sub-nodes of this define models supported by this board.
 
     * `<model name>`: actual name of the model being defined, e.g. `reef` or
@@ -50,18 +68,6 @@ properties.
             *   `main-image`: Main image location. This must start with
                 `bcs://` . It refers to a file available in BCS. The file will
                 be unpacked to produce a firmware binary image.
-            *   `script`: Updater script to use. See
-                [the pack_dist directory](https://cs.corp.google.com/chromeos_public/src/platform/firmware/pack_dist)
-                for the scripts. The options are:
-                *   `updater1s.sh`: Only used by mario. Do not use for new
-                    boards.
-                *   `updater2.sh`: Only used by x86-alex and x86-zgb. Do not
-                    use for new boards.
-                *   `updater3.sh`: Used for various devices shipped around 2012.
-                *   `updater4.sh`: In current use. Supports software sync for
-                    the EC.
-                *   `updater5.sh`: In current use. Supports firmware v4
-                    (chromeos-ec, vboot2)
             *   `main-rw-image` (optional): Main RW (Read/Write) image
                 location. This must start with `bcs://`. It refers to a file
                 available in BCS. The file will be unpacked to produce a
@@ -114,6 +120,11 @@ properties.
 
 ```
 chromeos {
+    family {
+        firmware {
+            script = "updater4.sh";
+    };
+
     models {
         reef {
             wallpaper = "seaside_life";
@@ -123,7 +134,6 @@ chromeos {
                 ec-image = "bcs://Reef-EC.9042.43.0.tbz2";
                 stable-main-version = "Google-Reef.9042.43.0";
                 stable-ec-version = "reef-v1.1.5840-f0d7761";
-                script = "updater4.sh";
                 extra = "${FILESDIR}/extra",
                     "${SYSROOT}/usr/sbin/ectool",
                     "bcs://Reef.something.tbz";
@@ -137,7 +147,6 @@ chromeos {
                 bcs-overlay = "overlay-pyro-private";
                 main-image = "bcs://Pyro.9042.41.0.tbz2";
                 ec-image = "bcs://Pyro_EC.9042.41.0.tbz2";
-                script = "updater4.sh";
             };
             powerd_prefs = "pyro_snappy";
         };
@@ -148,7 +157,6 @@ chromeos {
                 bcs-overlay = "overlay-snappy-private";
                 main-image = "bcs://Snappy.9042.43.0.tbz2";
                 ec-image = "bcs://Snappy_EC.9042.43.0.tbz2";
-                script = "updater4.sh";
             };
             powerd_prefs = "pyro_snappy";
         };
