@@ -70,9 +70,9 @@ enum Camera3MsgType {
 
 // We wrap |crop_rotate_scale_degrees| into a struct because it's a newly added
 // field in Camera3Stream. Therefore it needs to be nullable to be
-// backward-compatible. Primitive types, like uint32, are not nullable.
+// backward-compatible. Primitive types, like enum, are not nullable.
 struct CropRotateScaleInfo {
-  uint32 crop_rotate_scale_degrees;
+  Camera3StreamRotation crop_rotate_scale_degrees;
 };
 
 struct Camera3Stream {

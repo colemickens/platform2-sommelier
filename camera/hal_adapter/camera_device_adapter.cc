@@ -114,8 +114,9 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
     stream->rotation = static_cast<camera3_stream_rotation_t>(s->rotation);
     stream->crop_rotate_scale_degrees = 0;
     if (s->crop_rotate_scale_info != nullptr) {
-      stream->crop_rotate_scale_degrees = static_cast<int>(
-          s->crop_rotate_scale_info->crop_rotate_scale_degrees);
+      stream->crop_rotate_scale_degrees =
+          static_cast<camera3_stream_rotation_t>(
+	      s->crop_rotate_scale_info->crop_rotate_scale_degrees);
     }
   }
   streams_.swap(new_streams);
