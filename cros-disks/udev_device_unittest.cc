@@ -118,7 +118,7 @@ class UdevDeviceTest : public ::testing::Test {
 
   static string GetBootDevicePath() {
     char boot_device_path[PATH_MAX];
-    if (rootdev(boot_device_path, sizeof(boot_device_path), true, true))
+    if (rootdev(boot_device_path, sizeof(boot_device_path), true, true) == 0)
       return boot_device_path;
     return string();
   }
