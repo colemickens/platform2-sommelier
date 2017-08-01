@@ -79,7 +79,10 @@
         {
           'target_name': 'biod_test_runner',
           'type': 'executable',
-          'dependencies': ['libbiod'],
+          'dependencies': [
+            'libbiod',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
           'includes': ['../common-mk/common_test.gypi'],
           'variables': {
             'deps': [
@@ -88,7 +91,6 @@
           },
           'sources': [
             'biod_storage_unittest.cc',
-            'test_runner.cc',
           ],
         },
       ],
