@@ -163,25 +163,51 @@ USB_IDS += [
   "18d1:5014",
 ]
 
+# List of PCI devices (vendorid:deviceid) for which it is safe to enable
+# autosuspend.
+PCI_IDS = []
+
+# Intel
+PCI_IDS += [
+  # Host bridge
+  "8086:590c",
+  # i915
+  "8086:591e",
+  # proc_thermal
+  "8086:1903",
+  # xhci_hcd
+  "8086:9d2f",
+  # intel_pmc_core
+  "8086:9d21",
+  # i801_smbus
+  "8086:9d23",
+  # iwlwifi
+  "8086:095a",
+]
+
 ################################################################################
 
-UDEV_RULE_HEAD = """\
+UDEV_RULE = """\
 ACTION!="add", GOTO="autosuspend_end"
-SUBSYSTEM!="i2c|usb", GOTO="autosuspend_end"
+SUBSYSTEM!="i2c|pci|usb", GOTO="autosuspend_end"
 
 SUBSYSTEM=="i2c", GOTO="autosuspend_i2c"
+SUBSYSTEM=="pci", GOTO="autosuspend_pci"
 SUBSYSTEM=="usb", GOTO="autosuspend_usb"
 
-# i2c rules
+# I2C rules
 LABEL="autosuspend_i2c"
 ATTR{name}=="cyapa", ATTR{power/control}="on", GOTO="autosuspend_end"
 GOTO="autosuspend_end"
 
-# USB rules
-LABEL="autosuspend_usb"\
-"""
+# PCI rules
+LABEL="autosuspend_pci"
+%(pci_rules)s\
+GOTO="autosuspend_end"
 
-UDEV_RULE_TAIL = """\
+# USB rules
+LABEL="autosuspend_usb"
+%(usb_rules)s\
 GOTO="autosuspend_end"
 
 # Enable autosuspend
@@ -193,16 +219,19 @@ LABEL="autosuspend_end"
 
 
 def main():
-  print(UDEV_RULE_HEAD)
+  pci_rules = ''
+  for dev_ids in PCI_IDS:
+    vendor, device = dev_ids.split(":")
+    pci_rules += ('ATTR{vendor}=="0x%s", ATTR{device}=="0x%s", '
+                  'GOTO="autosuspend_enable"\n' % (vendor, device))
 
+  usb_rules = ''
   for dev_ids in USB_IDS:
     vid, pid = dev_ids.split(':')
+    usb_rules += ('ATTR{idVendor}=="%s", ATTR{idProduct}=="%s", '
+                  'GOTO="autosuspend_enable"\n' % (vid, pid))
 
-    print('ATTR{idVendor}=="%s", ATTR{idProduct}=="%s", '
-          'GOTO="autosuspend_enable"' % (vid, pid))
-
-  print(UDEV_RULE_TAIL)
-
+  print(UDEV_RULE % {'pci_rules': pci_rules, 'usb_rules': usb_rules})
 
 if __name__ == '__main__':
   main()
