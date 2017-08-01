@@ -84,7 +84,10 @@
             ],
           },
           'includes': ['../common-mk/common_test.gypi'],
-          'dependencies': ['libpermission_broker'],
+          'dependencies': [
+            'libpermission_broker',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
           'sources': [
             'allow_tty_device_rule_unittest.cc',
             'allow_usb_device_rule_unittest.cc',
@@ -97,7 +100,6 @@
             'port_tracker_unittest.cc',
             'rule_engine_unittest.cc',
             'rule_test.cc',
-            'run_all_tests.cc',
           ],
         },
       ],
