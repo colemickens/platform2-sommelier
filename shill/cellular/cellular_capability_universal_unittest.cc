@@ -801,7 +801,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
       .WillOnce(Return(sim_properties));
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
-      .Times(1);
+      .Times(3);
 
   EXPECT_FALSE(cellular_->sim_present());
   EXPECT_EQ(nullptr, capability_->sim_proxy_);;
@@ -830,7 +830,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
       .WillOnce(Return(sim_properties));
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
-      .Times(1);
+      .Times(3);
 
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_NONE;
   capability_->OnSimLockStatusChanged();
@@ -1178,7 +1178,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
       .Times(1).WillOnce(Return(sim_properties));
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
-      .Times(1);
+      .Times(4);
 
   EXPECT_FALSE(cellular_->sim_present());
   EXPECT_EQ(nullptr, capability_->sim_proxy_);;
@@ -1218,7 +1218,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
       .Times(1).WillOnce(Return(sim_properties));
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
-      .Times(1);
+      .Times(4);
 
   capability_->OnSimPathChanged(kSimPath);
   EXPECT_TRUE(cellular_->sim_present());
@@ -1269,7 +1269,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
   const char kOperatorName[] = "Custom SPN";
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
-      .Times(2);
+      .Times(6);
   EXPECT_CALL(*mock_home_provider_info_, UpdateIMSI(kNewImsi)).Times(2);
   new_properties.SetString(MM_SIM_PROPERTY_IMSI, kNewImsi);
   new_properties.SetString(MM_SIM_PROPERTY_SIMIDENTIFIER, kSimIdentifier);

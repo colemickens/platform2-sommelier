@@ -1404,6 +1404,7 @@ void CellularCapabilityUniversal::OnModemCurrentCapabilitiesChanged(
 void CellularCapabilityUniversal::OnMdnChanged(
     const string& mdn) {
   cellular()->set_mdn(NormalizeMdn(mdn));
+  UpdateServiceActivationState();
   UpdatePendingActivationState();
 }
 
@@ -1741,6 +1742,7 @@ void CellularCapabilityUniversal::OnSimIdentifierChanged(const string& id) {
   cellular()->home_provider_info()->UpdateICCID(id);
   // Provide ICCID to serving operator as well to aid in MVNO identification.
   cellular()->serving_operator_info()->UpdateICCID(id);
+  UpdateServiceActivationState();
   UpdatePendingActivationState();
 }
 
