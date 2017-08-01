@@ -140,6 +140,8 @@ struct container_rlimit {
  * securebits_skip_mask - The mask of securebits to skip when restricting caps.
  * do_init - Whether the container needs an extra process to be run as init.
  * selinux_context - The SELinux context name the container will run under.
+ * pre_start_hook - A function pointer to be called prior to calling execve(2).
+ * pre_start_hook_payload - Parameter that will be passed to pre_start_hook().
  */
 struct container_config {
 	char *config_root;
@@ -175,6 +177,10 @@ struct container_config {
 	uint64_t securebits_skip_mask;
 	int do_init;
 	char *selinux_context;
+	minijail_hook_t pre_start_hook;
+	void *pre_start_hook_payload;
+	int *inherited_fds;
+	size_t inherited_fd_count;
 };
 
 struct container_config *container_config_create()
@@ -233,6 +239,7 @@ void container_config_destroy(struct container_config *c)
 	FREE_AND_NULL(c->run_setfiles);
 	FREE_AND_NULL(c->cgroup_parent);
 	FREE_AND_NULL(c->selinux_context);
+	FREE_AND_NULL(c->inherited_fds);
 	FREE_AND_NULL(c);
 }
 
@@ -665,6 +672,29 @@ int container_config_set_selinux_context(struct container_config *c,
 	c->selinux_context = strdup(context);
 	if (c->selinux_context)
 		return -ENOMEM;
+	return 0;
+}
+
+void container_config_set_pre_execve_hook(struct container_config *c,
+					 int (*hook)(void*),
+					 void *payload)
+{
+	c->pre_start_hook = hook;
+	c->pre_start_hook_payload = payload;
+}
+
+int container_config_inherit_fds(struct container_config *c,
+				 int *inherited_fds,
+				 size_t inherited_fd_count)
+{
+	if (c->inherited_fds)
+		return -EINVAL;
+	c->inherited_fds = calloc(inherited_fd_count, sizeof(int));
+	if (!c->inherited_fds)
+		return -ENOMEM;
+	memcpy(c->inherited_fds, inherited_fds,
+	       inherited_fd_count * sizeof(int));
+	c->inherited_fd_count = inherited_fd_count;
 	return 0;
 }
 
@@ -1653,6 +1683,21 @@ int container_start(struct container *c, const struct container_config *config)
 		rc = minijail_add_hook(c->jail, &setexeccon,
 				       config->selinux_context,
 				       MINIJAIL_HOOK_EVENT_PRE_EXECVE);
+		if (rc)
+			goto error_rmdir;
+	}
+
+        if (config->pre_start_hook) {
+		rc = minijail_add_hook(c->jail, config->pre_start_hook,
+				       config->pre_start_hook_payload,
+				       MINIJAIL_HOOK_EVENT_PRE_EXECVE);
+		if (rc)
+			goto error_rmdir;
+        }
+
+	for (i = 0; i < config->inherited_fd_count; i++) {
+		rc = minijail_preserve_fd(c->jail, config->inherited_fds[i],
+					 config->inherited_fds[i]);
 		if (rc)
 			goto error_rmdir;
 	}

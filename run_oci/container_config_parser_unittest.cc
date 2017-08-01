@@ -8,6 +8,9 @@
 #include <sys/mount.h>
 #include <sys/resource.h>
 
+#include <map>
+#include <vector>
+
 #include <base/at_exit.h>
 #include <base/values.h>
 #include <gtest/gtest.h>
@@ -459,6 +462,19 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(effective_capset->second.to_ullong(),
             (1ull << CAP_AUDIT_WRITE) | (1ull << CAP_KILL) |
                 (1ull << CAP_NET_BIND_SERVICE));
+  // hooks
+  std::vector<OciHook> *pre_start_hooks = &basic_config->pre_start_hooks;
+  EXPECT_EQ(pre_start_hooks->size(), 2);
+  EXPECT_EQ((*pre_start_hooks)[0].path, "/usr/bin/fix-mounts");
+  EXPECT_EQ((*pre_start_hooks)[0].args,
+            (std::vector<std::string>{"fix-mounts", "arg1", "arg2"}));
+  EXPECT_EQ((*pre_start_hooks)[0].env,
+            (std::map<std::string, std::string>{{"key1", "value1"}}));
+  EXPECT_EQ((*pre_start_hooks)[1].path, "/usr/bin/setup-network");
+  std::vector<OciHook>* post_start_hooks = &basic_config->post_start_hooks;
+  EXPECT_EQ(post_start_hooks->size(), 1);
+  EXPECT_EQ((*post_start_hooks)[0].path, "/usr/bin/notify-start");
+  EXPECT_EQ((*post_start_hooks)[0].timeout, base::TimeDelta::FromSeconds(5));
 }
 
 TEST(OciConfigParserTest, TestStrippedConfig) {

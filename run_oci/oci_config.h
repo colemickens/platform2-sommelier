@@ -16,6 +16,8 @@
 #include <string>
 #include <vector>
 
+#include <base/time/time.h>
+
 struct OciPlatform {
   std::string os;
   std::string arch;
@@ -118,6 +120,13 @@ struct OciLinux {
   // Unused: maskedPaths, readonlyPaths, rootfsPropagation, mountLabel, sysctl
 };
 
+struct OciHook {
+  std::string path;
+  std::vector<std::string> args;  // Optional
+  std::map<std::string, std::string> env;  // Optional
+  base::TimeDelta timeout;  // Optional
+};
+
 struct OciConfig {
   std::string ociVersion;
   OciPlatform platform;
@@ -125,9 +134,12 @@ struct OciConfig {
   OciProcess process;
   std::string hostname;  // Optional
   std::vector<OciMount> mounts;  // Optional
+  std::vector<OciHook> pre_start_hooks;  // Optional
+  std::vector<OciHook> post_start_hooks;  // Optional
+  std::vector<OciHook> post_stop_hooks;  // Optional
   // json field name - linux
   OciLinux linux_config;  // Optional
-  // Unused: hooks, annotations
+  // Unused: annotations
 };
 
 #endif  // RUN_OCI_OCI_CONFIG_H_

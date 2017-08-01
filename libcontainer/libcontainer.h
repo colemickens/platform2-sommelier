@@ -264,6 +264,26 @@ void container_config_set_run_as_init(struct container_config *c,
 int container_config_set_selinux_context(struct container_config *c,
 					 const char *context);
 
+/*
+ * Sets a pre-execve hook that is run in the child process just before the
+ * container invokes execve(2). If this is used to run a pre-start hook which
+ * should run in the caller's context, a synchronization mechanism (such as a
+ * pair of pipes or sending messages through a unix domain pipe) should be used
+ * to ensure this hook blocks until the pre-start hook finishes running. The
+ * file descriptors used to synchronize this can be passed using
+ * container_config_inherit_fds().
+ */
+void container_config_set_pre_execve_hook(struct container_config* c,
+					  int (*hook)(void*),
+					  void *payload);
+
+/*
+ * Sets the set of file descriptors to inherit.
+ */
+int container_config_inherit_fds(struct container_config *c,
+				 int *inherited_fds,
+				 size_t inherited_fd_count);
+
 /* Container manipulation. */
 struct container;
 

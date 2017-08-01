@@ -11,9 +11,11 @@
 #include <map>
 #include <regex>  // NOLINT(build/c++11)
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/json/json_reader.h>
+#include <base/strings/string_split.h>
 #include <base/values.h>
 
 namespace run_oci {
@@ -564,6 +566,98 @@ bool HostnameValid(const std::string& hostname) {
   return true;
 }
 
+bool ParseHooksList(const base::ListValue& hooks_list,
+                    std::vector<OciHook>* hooks_out,
+                    const std::string& hook_type) {
+  size_t num_hooks = hooks_list.GetSize();
+  for (size_t i = 0; i < num_hooks; ++i) {
+    OciHook hook;
+    const base::DictionaryValue* hook_dict;
+    if (!hooks_list.GetDictionary(i, &hook_dict)) {
+      LOG(ERROR) << "Fail to get " << hook_type << " hook item " << i;
+      return false;
+    }
+
+    if (!hook_dict->GetString("path", &hook.path)) {
+      LOG(ERROR) << "Fail to get path of " << hook_type << " hook " << i;
+      return false;
+    }
+
+    const base::ListValue* hook_args;
+    // args are optional.
+    if (hook_dict->GetList("args", &hook_args)) {
+      size_t num_args = hook_args->GetSize();
+      for (size_t j = 0; j < num_args; ++j) {
+        std::string arg;
+        if (!hook_args->GetString(j, &arg)) {
+          LOG(ERROR) << "Fail to get arg " << j << " of " << hook_type
+                     << " hook " << i;
+          return false;
+        }
+        hook.args.push_back(arg);
+      }
+    }
+
+    const base::ListValue* hook_envs;
+    // envs are optional.
+    if (hook_dict->GetList("env", &hook_envs)) {
+      size_t num_env = hook_envs->GetSize();
+      for (size_t j = 0; j < num_env; ++j) {
+        std::string env;
+        if (!hook_envs->GetString(j, &env)) {
+          LOG(ERROR) << "Fail to get env " << j << " of " << hook_type
+                     << " hook " << i;
+          return false;
+        }
+        std::vector<std::string> kvp = base::SplitString(
+            env, "=", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+        if (kvp.size() != 2) {
+          LOG(ERROR) << "Fail to parse env \"" << env
+                     << "\". Must be in name=value format.";
+          return false;
+        }
+        hook.env.insert(std::make_pair(kvp[0], kvp[1]));
+      }
+    }
+
+    int timeout_seconds;
+    // timeout is optional.
+    if (hook_dict->GetInteger("timeout", &timeout_seconds)) {
+      hook.timeout = base::TimeDelta::FromSeconds(timeout_seconds);
+    } else {
+      hook.timeout = base::TimeDelta::Max();
+    }
+
+    hooks_out->emplace_back(std::move(hook));
+  }
+  return true;
+}
+
+bool ParseHooks(const base::DictionaryValue& config_root_dict,
+                OciConfigPtr const& config_out) {
+  const base::DictionaryValue* hooks_config_dict;
+  if (!config_root_dict.GetDictionary("hooks", &hooks_config_dict)) {
+    // Hooks are optional.
+    return true;
+  }
+
+  const base::ListValue* hooks_list;
+  if (hooks_config_dict->GetList("prestart", &hooks_list)) {
+    if (!ParseHooksList(*hooks_list, &config_out->pre_start_hooks, "prestart"))
+      return false;
+  }
+  if (hooks_config_dict->GetList("poststart", &hooks_list)) {
+    if (!ParseHooksList(
+            *hooks_list, &config_out->post_start_hooks, "poststart"))
+      return false;
+  }
+  if (hooks_config_dict->GetList("poststop", &hooks_list)) {
+    if (!ParseHooksList(*hooks_list, &config_out->post_stop_hooks, "poststop"))
+      return false;
+  }
+  return true;
+}
+
 // Parses the configuration file for the container.  The config file specifies
 // basic filesystem info and details about the process to be run.  namespace,
 // cgroup, and syscall configurations are also specified
@@ -600,6 +694,11 @@ bool ParseConfigDict(const base::DictionaryValue& config_root_dict,
   // Get a list of mount points and mounts.
   if (!ParseMounts(config_root_dict, config_out)) {
     LOG(ERROR) << "Failed to parse mounts";
+    return false;
+  }
+
+  // Hooks info
+  if (!ParseHooks(config_root_dict, config_out)) {
     return false;
   }
 

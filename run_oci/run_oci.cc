@@ -3,14 +3,22 @@
 // found in the LICENSE file.
 
 #include <getopt.h>
-#include <sstream>
-#include <string>
 #include <sys/mount.h>
 
+#include <ostream>
+#include <sstream>
+#include <string>
+
+#include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/json/json_writer.h>
+#include <base/macros.h>
+#include <base/memory/ptr_util.h>
+#include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 #include <libcontainer/libcontainer.h>
 
@@ -26,6 +34,65 @@ using run_oci::OciConfigPtr;
 
 using ContainerConfigPtr = std::unique_ptr<container_config,
                                            decltype(&container_config_destroy)>;
+
+// WaitablePipe provides a way for one process to wait on another. This only
+// uses the read(2) and close(2) syscalls, so it can work even in a restrictive
+// environment. Each process must call only one of Wait() and Signal() exactly
+// once.
+struct WaitablePipe {
+  WaitablePipe() {
+    if (pipe(pipe_fds) == -1)
+      PLOG(FATAL) << "Failed to create pipe";
+  }
+
+  ~WaitablePipe() {
+    if (pipe_fds[0] != -1)
+      close(pipe_fds[0]);
+    if (pipe_fds[1] != -1)
+      close(pipe_fds[1]);
+  }
+
+  void Wait() {
+    char buf;
+
+    close(pipe_fds[1]);
+    HANDLE_EINTR(read(pipe_fds[0], &buf, sizeof(buf)));
+    close(pipe_fds[0]);
+
+    pipe_fds[0] = -1;
+    pipe_fds[1] = -1;
+  }
+
+  void Signal() {
+    close(pipe_fds[0]);
+    close(pipe_fds[1]);
+
+    pipe_fds[0] = -1;
+    pipe_fds[1] = -1;
+  }
+
+  int pipe_fds[2];
+};
+
+// PreStartHookState holds two WaitablePipes so that the container can wait for
+// its parent to run prestart hooks just prior to calling execve(2).
+struct PreStartHookState {
+  WaitablePipe reached_pipe;
+  WaitablePipe ready_pipe;
+};
+
+std::ostream& operator<<(std::ostream& o, const OciHook& hook) {
+  o << "Hook{path=\"" << hook.path << "\", args=[";
+  bool first = true;
+  for (const auto& arg : hook.args) {
+    if (!first)
+      o << ", ";
+    first = false;
+    o << arg;
+  }
+  o << "]}";
+  return o;
+}
 
 // Converts a single UID map to a string.
 std::string GetIdMapString(const OciLinuxNamespaceMapping& map) {
@@ -260,6 +327,113 @@ bool AppendMounts(const BindMounts& bind_mounts, container_config* config_out) {
   return true;
 }
 
+// Generates OCI-compliant, JSON-formatted container state. This is
+// pretty-printed so that bash scripts can more easily grab the fields instead
+// of having to parse the JSON blob.
+std::string ContainerState(int child_pid,
+                           const OciRoot& root,
+                           const std::string& runfs,
+                           const std::string& status) {
+  base::DictionaryValue state;
+  state.SetString("ociVersion", "1.0");
+  state.SetString("id", base::StringPrintf("run_oci:%d", child_pid));
+  state.SetString("status", status);
+  state.SetString("bundle", root.path);
+  state.SetInteger("pid", child_pid);
+  std::unique_ptr<base::DictionaryValue> annotations =
+      base::MakeUnique<base::DictionaryValue>();
+  annotations->SetStringWithoutPathExpansion(
+      "org.chromium.run_oci.container_root", runfs);
+  state.Set("annotations", std::move(annotations));
+  std::string state_json;
+  if (!base::JSONWriter::WriteWithOptions(
+          state, base::JSONWriter::OPTIONS_PRETTY_PRINT, &state_json)) {
+    LOG(ERROR) << "Failed to serialize the container state";
+    return std::string();
+  }
+  return state_json;
+}
+
+// Runs one hook.
+bool RunOneHook(const OciHook& hook,
+                const std::string& hook_type,
+                const std::string& container_state) {
+  base::LaunchOptions options;
+  if (!hook.env.empty()) {
+    options.clear_environ = true;
+    options.environ = hook.env;
+  }
+
+  int write_pipe_fds[2] = {0};
+  if (HANDLE_EINTR(pipe(write_pipe_fds)) != 0) {
+    LOG(ERROR) << "Bad write pipe";
+    return false;
+  }
+  base::ScopedFD write_pipe_read_fd(write_pipe_fds[0]);
+  base::ScopedFD write_pipe_write_fd(write_pipe_fds[1]);
+  base::FileHandleMappingVector fds_to_remap{
+      {write_pipe_read_fd.get(), STDIN_FILENO}, {STDERR_FILENO, STDERR_FILENO}};
+  options.fds_to_remap = &fds_to_remap;
+
+  std::vector<std::string> args;
+  if (hook.args.empty()) {
+    args.push_back(hook.path);
+  } else {
+    args = hook.args;
+    // Overwrite the first argument with the path since base::LaunchProcess does
+    // not take an additional parameter for the executable name. Since the OCI
+    // spec mandates that the path should be absolute, it's better to use that
+    // rather than rely on whatever short name was passed in |args|.
+    args[0] = hook.path;
+  }
+
+  base::Process child = base::LaunchProcess(args, options);
+  write_pipe_read_fd.reset();
+  if (!base::WriteFileDescriptor(write_pipe_write_fd.get(),
+                                 container_state.c_str(),
+                                 container_state.size())) {
+    PLOG(ERROR) << "Failed to send container state";
+  }
+  write_pipe_write_fd.reset();
+  int exit_code;
+  if (!child.WaitForExitWithTimeout(hook.timeout, &exit_code)) {
+    LOG(ERROR) << "Timeout exceeded running " << hook_type << " hook " << hook;
+    if (!child.Terminate(0, true))
+      LOG(ERROR) << "Failed to terminate " << hook_type << " hook " << hook;
+    return false;
+  }
+  if (exit_code != 0) {
+    LOG(ERROR) << hook_type << " hook " << hook << " exited with status "
+               << exit_code;
+    return false;
+  }
+  return true;
+}
+
+bool RunHooks(const std::vector<OciHook>& hooks,
+              int child_pid,
+              const OciRoot& root,
+              const std::string& runfs,
+              const std::string& hook_stage,
+              const std::string& status) {
+  bool success = true;
+  std::string container_state = ContainerState(child_pid, root, runfs, status);
+  for (const auto& hook : hooks)
+    success &= RunOneHook(hook, hook_stage, container_state);
+  return success;
+}
+
+// A callback that is run in the container process just before calling execve(2)
+// that waits for the parent process to run all the prestart hooks.
+int WaitForPreStartHooks(void* payload) {
+  PreStartHookState* state = reinterpret_cast<PreStartHookState*>(payload);
+
+  state->reached_pipe.Signal();
+  state->ready_pipe.Wait();
+
+  return 0;
+}
+
 // Runs an OCI image that is mounted at |container_dir|.  Blocks until the
 // program specified in config.json exits.  Returns -1 on error.
 int RunOci(const base::FilePath& container_dir,
@@ -303,6 +477,26 @@ int RunOci(const base::FilePath& container_dir,
         config.get(), oci_config->process.selinuxLabel.c_str());
   }
 
+  std::unique_ptr<PreStartHookState> pre_start_hook_state;
+  if (!oci_config->pre_start_hooks.empty()) {
+    pre_start_hook_state = base::MakeUnique<PreStartHookState>();
+    int inherited_fds[4];
+    memcpy(inherited_fds,
+           pre_start_hook_state->reached_pipe.pipe_fds,
+           sizeof(pre_start_hook_state->reached_pipe.pipe_fds));
+    memcpy(
+        inherited_fds + arraysize(pre_start_hook_state->reached_pipe.pipe_fds),
+        pre_start_hook_state->ready_pipe.pipe_fds,
+        sizeof(pre_start_hook_state->ready_pipe.pipe_fds));
+    // All these fds will be closed in WaitForPreStartHooks in the child
+    // process.
+    container_config_inherit_fds(
+        config.get(), inherited_fds, arraysize(inherited_fds));
+    container_config_set_pre_execve_hook(config.get(),
+                                        WaitForPreStartHooks,
+                                        pre_start_hook_state.get());
+  }
+
   if (container_options.cgroup_parent.length() > 0) {
     container_config_set_cgroup_parent(config.get(),
                                        container_options.cgroup_parent.c_str(),
@@ -340,7 +534,47 @@ int RunOci(const base::FilePath& container_dir,
     return -1;
   }
 
-  return container_wait(container.get());
+  int child_pid = container_pid(container.get());
+  const char *runfs_cstr = container_root(container.get());
+  std::string runfs(runfs_cstr != nullptr ? runfs_cstr
+                                          : oci_config->root.path.c_str());
+
+  if (pre_start_hook_state) {
+    pre_start_hook_state->reached_pipe.Wait();
+    if (!RunHooks(oci_config->pre_start_hooks,
+                  child_pid,
+                  oci_config->root,
+                  runfs,
+                  "prestart",
+                  "created")) {
+      LOG(ERROR) << "Failed to run all prestart hooks";
+      return container_kill(container.get());
+    }
+    pre_start_hook_state->ready_pipe.Signal();
+  }
+
+  if (!RunHooks(oci_config->post_start_hooks,
+                child_pid,
+                oci_config->root,
+                runfs,
+                "poststart",
+                "running")) {
+    LOG(ERROR) << "Error running poststart hooks";
+    return container_kill(container.get());
+  }
+
+  int status = container_wait(container.get());
+
+  if (!RunHooks(oci_config->post_stop_hooks,
+                child_pid,
+                oci_config->root,
+                runfs,
+                "poststop",
+                "stopped")) {
+    LOG(WARNING) << "Error running poststop hooks";
+  }
+
+  return status;
 }
 
 const struct option longopts[] = {
