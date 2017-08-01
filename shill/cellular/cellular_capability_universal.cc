@@ -58,16 +58,12 @@ static string ObjectID(CellularCapabilityUniversal* c) {
 }
 
 // static
-const char CellularCapabilityUniversal::kConnectPin[] = "pin";
-const char CellularCapabilityUniversal::kConnectOperatorId[] = "operator-id";
 const char CellularCapabilityUniversal::kConnectApn[] = "apn";
-const char CellularCapabilityUniversal::kConnectIPType[] = "ip-type";
 const char CellularCapabilityUniversal::kConnectUser[] = "user";
 const char CellularCapabilityUniversal::kConnectPassword[] = "password";
 const char CellularCapabilityUniversal::kConnectNumber[] = "number";
 const char CellularCapabilityUniversal::kConnectAllowRoaming[] =
     "allow-roaming";
-const char CellularCapabilityUniversal::kConnectRMProtocol[] = "rm-protocol";
 const int64_t CellularCapabilityUniversal::kEnterPinTimeoutMilliseconds = 20000;
 const int64_t
 CellularCapabilityUniversal::kRegistrationDroppedUpdateTimeoutMilliseconds =

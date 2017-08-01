@@ -61,15 +61,11 @@ class CellularCapabilityUniversal : public CellularCapability {
   // TODO(jglasgow): Generate from modem manager into
   // ModemManager-names.h.
   // See http://crbug.com/212909.
-  static const char kConnectPin[];
-  static const char kConnectOperatorId[];
   static const char kConnectApn[];
-  static const char kConnectIPType[];
   static const char kConnectUser[];
   static const char kConnectPassword[];
   static const char kConnectNumber[];
   static const char kConnectAllowRoaming[];
-  static const char kConnectRMProtocol[];
 
   CellularCapabilityUniversal(Cellular* cellular,
                               ControlInterface* control_interface,
@@ -184,7 +180,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kNovatelLTEMMPlugin[];
   static const char kTelitMMPlugin[];
 
-  static const int64_t kActivationRegistrationTimeoutMilliseconds;
   static const int64_t kEnterPinTimeoutMilliseconds;
   static const int64_t kRegistrationDroppedUpdateTimeoutMilliseconds;
   static const int kSetPowerStateTimeoutMilliseconds;

@@ -79,7 +79,6 @@ class CellularCapability {
   static const int kTimeoutSetupLocation;
 
   static const char kModemPropertyIMSI[];
-  static const char kModemPropertyState[];
 
   // |cellular| is the parent Cellular device.
   CellularCapability(Cellular* cellular,
