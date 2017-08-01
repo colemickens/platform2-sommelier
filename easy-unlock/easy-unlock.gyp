@@ -40,7 +40,10 @@
         {
           'target_name': 'easy_unlock_test_runner',
           'type': 'executable',
-          'dependencies': ['libeasyunlock'],
+          'dependencies': [
+            'libeasyunlock',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
           'includes': ['../common-mk/common_test.gypi'],
           'variables': {
             'deps': [
@@ -49,7 +52,6 @@
           },
           'sources': [
             'easy_unlock_unittest.cc',
-            'test_runner.cc',
           ],
         },
       ],
