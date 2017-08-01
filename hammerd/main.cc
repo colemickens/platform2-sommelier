@@ -12,6 +12,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
+#include <brillo/syslog_logging.h>
 
 #include "hammerd/hammer_updater.h"
 #include "hammerd/process_lock.h"
@@ -26,6 +27,7 @@ const char kDefaultImagePath[] = "/lib/firmware/hammer.fw";
 int main(int argc, const char* argv[]) {
   DEFINE_string(image, kDefaultImagePath, "The path of the image file.");
   brillo::FlagHelper::Init(argc, argv, "Hammer EC firmware updater daemon.");
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader);
 
   base::FilePath file_path(FILE_PATH_LITERAL(kLockFile));
   hammerd::ProcessLock lock(file_path);
