@@ -67,11 +67,11 @@
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
             'libimage-burner',
+            '../common-mk/testrunner.gyp:testrunner',
           ],
           'sources': [
             'image_burner_impl_unittest.cc',
             'image_burner_utils_unittest.cc',
-            'unittest_runner.cc',
           ],
         },
       ],
