@@ -11,11 +11,6 @@
 
 #include "label_detect.h"
 
-// TODO(kcwu): remove after linux-header patched
-#ifndef V4L2_PIX_FMT_VP9
-#define V4L2_PIX_FMT_VP9 v4l2_fourcc('V', 'P', '9', '0')
-#endif
-
 static const char* kVideoDevicePattern = "/dev/video*";
 static const char* kJpegDevicePattern = "/dev/jpeg*";
 static const char* kDRMDevicePattern = "/dev/dri/card*";
@@ -141,8 +136,10 @@ static bool is_vaapi_dec_vp9_device(int fd) {
 */
 static bool is_v4l2_dec_vp9_device(int fd) {
   return is_hw_video_acc_device(fd) &&
-    is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-         V4L2_PIX_FMT_VP9);
+    (is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+         V4L2_PIX_FMT_VP9) ||
+     is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+         V4L2_PIX_FMT_VP9_FRAME));
 }
 
 /* Determines "hw_video_acc_vp9" label. That is, either the VAAPI device
