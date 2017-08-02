@@ -91,7 +91,17 @@ class Camera3Device {
   const camera_metadata_t* ConstructDefaultRequestSettings(int type);
 
   // Add output stream in preparation for stream configuration
-  void AddOutputStream(int format, int width, int height);
+  void AddOutputStream(int format,
+                       int width,
+                       int height,
+                       camera3_stream_rotation_t crop_rotate_scale_degrees);
+
+  // Add output stream with raw |crop_rotate_scale_degrees| values. This
+  // function should be used for testing invalid values only.
+  void AddOutputStreamWithRawDegrees(int format,
+                                     int width,
+                                     int height,
+                                     int crop_rotate_scale_degrees);
 
   // Configure streams and return configured streams if |streams| is not null
   int ConfigureStreams(std::vector<const camera3_stream_t*>* streams);

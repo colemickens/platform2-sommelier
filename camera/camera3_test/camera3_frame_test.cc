@@ -116,8 +116,8 @@ TEST_P(Camera3SingleFrameTest, GetFrame) {
     VLOGF(1) << "Resolution " << resolution.Width() << "x"
              << resolution.Height();
 
-    cam_device_.AddOutputStream(format, resolution.Width(),
-                                resolution.Height());
+    cam_device_.AddOutputStream(format, resolution.Width(), resolution.Height(),
+                                CAMERA3_STREAM_ROTATION_0);
     ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
         << "Configuring stream fails";
 
@@ -142,7 +142,8 @@ class Camera3MultiFrameTest : public Camera3FrameFixture,
 };
 
 TEST_P(Camera3MultiFrameTest, GetFrame) {
-  cam_device_.AddOutputStream(default_format_, default_width_, default_height_);
+  cam_device_.AddOutputStream(default_format_, default_width_, default_height_,
+                              CAMERA3_STREAM_ROTATION_0);
   ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
       << "Configuring stream fails";
 
@@ -174,7 +175,8 @@ class Camera3MixedTemplateMultiFrameTest
 };
 
 TEST_P(Camera3MixedTemplateMultiFrameTest, GetFrame) {
-  cam_device_.AddOutputStream(default_format_, default_width_, default_height_);
+  cam_device_.AddOutputStream(default_format_, default_width_, default_height_,
+                              CAMERA3_STREAM_ROTATION_0);
   ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
       << "Configuring stream fails";
 
@@ -258,7 +260,8 @@ TEST_P(Camera3FlushRequestsTest, GetFrame) {
 
   // The number of configured streams must match the value of
   // |kNumberOfConfiguredStreams|.
-  cam_device_.AddOutputStream(default_format_, default_width_, default_height_);
+  cam_device_.AddOutputStream(default_format_, default_width_, default_height_,
+                              CAMERA3_STREAM_ROTATION_0);
   ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
       << "Configuring stream fails";
 
@@ -304,25 +307,26 @@ TEST_P(Camera3MultiStreamFrameTest, GetFrame) {
                                 &preview_resolution))
       << "Failed to get max resolution for implementation defined format";
   preview_resolution = CapResolution(preview_resolution, limit_resolution);
-  cam_device_.AddOutputStream(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
-                              preview_resolution.Width(),
-                              preview_resolution.Height());
+  cam_device_.AddOutputStream(
+      HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, preview_resolution.Width(),
+      preview_resolution.Height(), CAMERA3_STREAM_ROTATION_0);
 
   // Another stream with small size
   ResolutionInfo fd_resolution(0, 0);
   ASSERT_EQ(0, GetMinResolution(HAL_PIXEL_FORMAT_YCbCr_420_888, &fd_resolution))
       << "Failed to get min resolution for YCbCr 420 format";
   cam_device_.AddOutputStream(HAL_PIXEL_FORMAT_YCbCr_420_888,
-                              fd_resolution.Width(), fd_resolution.Height());
+                              fd_resolution.Width(), fd_resolution.Height(),
+                              CAMERA3_STREAM_ROTATION_0);
 
   // Capture stream with largest size
   ResolutionInfo capture_resolution(0, 0);
   ASSERT_EQ(
       0, GetMaxResolution(HAL_PIXEL_FORMAT_YCbCr_420_888, &capture_resolution))
       << "Failed to get max resolution for YCbCr 420 format";
-  cam_device_.AddOutputStream(HAL_PIXEL_FORMAT_YCbCr_420_888,
-                              capture_resolution.Width(),
-                              capture_resolution.Height());
+  cam_device_.AddOutputStream(
+      HAL_PIXEL_FORMAT_YCbCr_420_888, capture_resolution.Width(),
+      capture_resolution.Height(), CAMERA3_STREAM_ROTATION_0);
 
   ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
       << "Configuring stream fails";
@@ -683,7 +687,8 @@ void Camera3SimpleCaptureFrames::ValidatePartialMetadata() {
 TEST_P(Camera3SimpleCaptureFrames, Camera3ResultAllKeysTest) {
   // Reference:
   // camera2/cts/CaptureResultTest.java#testCameraCaptureResultAllKeys
-  cam_device_.AddOutputStream(default_format_, default_width_, default_height_);
+  cam_device_.AddOutputStream(default_format_, default_width_, default_height_,
+                              CAMERA3_STREAM_ROTATION_0);
   ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
       << "Configuring stream fails";
   CameraMetadataUniquePtr metadata(clone_camera_metadata(
@@ -711,7 +716,8 @@ TEST_P(Camera3SimpleCaptureFrames, Camera3PartialResultTest) {
     return;
   }
 
-  cam_device_.AddOutputStream(default_format_, default_width_, default_height_);
+  cam_device_.AddOutputStream(default_format_, default_width_, default_height_,
+                              CAMERA3_STREAM_ROTATION_0);
   ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
       << "Configuring stream fails";
 
@@ -803,7 +809,8 @@ void Camera3ResultTimestampsTest::ValidateAndGetTimestamp(int64_t* timestamp) {
 TEST_P(Camera3ResultTimestampsTest, GetFrame) {
   // Reference:
   // camera2/cts/CaptureResultTest.java#testResultTimestamps
-  cam_device_.AddOutputStream(default_format_, default_width_, default_height_);
+  cam_device_.AddOutputStream(default_format_, default_width_, default_height_,
+                              CAMERA3_STREAM_ROTATION_0);
   ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
       << "Configuring stream fails";
 
@@ -878,7 +885,8 @@ void Camera3InvalidBufferTest::ProcessCaptureResult(
 }
 
 void Camera3InvalidBufferTest::RunInvalidBufferTest(buffer_handle_t* handle) {
-  cam_device_.AddOutputStream(default_format_, default_width_, default_height_);
+  cam_device_.AddOutputStream(default_format_, default_width_, default_height_,
+                              CAMERA3_STREAM_ROTATION_0);
   std::vector<const camera3_stream_t*> streams;
   ASSERT_EQ(0, cam_device_.ConfigureStreams(&streams))
       << "Configuring stream fails";
@@ -1078,7 +1086,7 @@ Camera3PortraitRotationTest::ConvertToI420(BufferHandleUniquePtr* buffer) {
       case V4L2_PIX_FMT_NV12M:
         if (libyuv::NV12ToI420(
                 static_cast<uint8_t*>(in_ycbcr_info.y), in_ycbcr_info.ystride,
-                static_cast<uint8_t*>(in_ycbcr_info.cr), in_ycbcr_info.cstride,
+                static_cast<uint8_t*>(in_ycbcr_info.cb), in_ycbcr_info.cstride,
                 out_buffer->y, out_buffer->ystride, out_buffer->cb,
                 out_buffer->cstride, out_buffer->cr, out_buffer->cstride,
                 resolution_.Width(), resolution_.Height()) != 0) {
@@ -1220,7 +1228,8 @@ TEST_P(Camera3PortraitRotationTest, GetFrame) {
     VLOGF(1) << "Rotation " << rotation_degrees_;
 
     cam_device_.AddOutputStream(format_, resolution_.Width(),
-                                resolution_.Height());
+                                resolution_.Height(),
+                                CAMERA3_STREAM_ROTATION_0);
     ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
         << "Configuring stream fails";
 
@@ -1251,15 +1260,24 @@ TEST_P(Camera3PortraitRotationTest, GetFrame) {
       SaveImage(*orig_i420_image, "_orig");
     }
 
-    // Re-configure streams because the metadata
-    // ANDROID_SENSOR_CROP_ROTATE_SCALE does not conform to per-frame control
+    // Re-configure streams with rotation
+    camera3_stream_rotation_t crop_rotate_scale_degrees =
+        CAMERA3_STREAM_ROTATION_0;
+    switch (rotation_degrees_) {
+      case 90:
+        crop_rotate_scale_degrees = CAMERA3_STREAM_ROTATION_90;
+        break;
+      case 270:
+        crop_rotate_scale_degrees = CAMERA3_STREAM_ROTATION_270;
+        break;
+      default:
+        FAIL() << "Invalid rotation degree: " << rotation_degrees_;
+    }
     cam_device_.AddOutputStream(format_, resolution_.Width(),
-                                resolution_.Height());
+                                resolution_.Height(),
+                                crop_rotate_scale_degrees);
     ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
         << "Configuring stream fails";
-    // Get crop-rotate-scaled pattern
-    UpdateMetadata(ANDROID_SENSOR_CROP_ROTATE_SCALE, &rotation_degrees_, 1,
-                   &metadata);
     ASSERT_EQ(0, CreateCaptureRequestByMetadata(metadata, nullptr))
         << "Creating capture request fails";
 

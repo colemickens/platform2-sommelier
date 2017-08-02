@@ -80,17 +80,18 @@ ResolutionInfo Camera3StreamFixture::CapResolution(ResolutionInfo input,
 // Test spec:
 // - Camera ID
 // - Output stream format
-class Camera3StreamTest
+class Camera3SingleStreamTest
     : public Camera3StreamFixture,
       public ::testing::WithParamInterface<std::tuple<int32_t, int32_t>> {
  public:
-  Camera3StreamTest() : Camera3StreamFixture(std::get<0>(GetParam())) {}
+  Camera3SingleStreamTest() : Camera3StreamFixture(std::get<0>(GetParam())) {}
 };
 
-TEST_P(Camera3StreamTest, CreateStream) {
+TEST_P(Camera3SingleStreamTest, CreateStream) {
   int32_t format = std::get<1>(GetParam());
 
-  cam_device_.AddOutputStream(format, default_width_, default_height_);
+  cam_device_.AddOutputStream(format, default_width_, default_height_,
+                              CAMERA3_STREAM_ROTATION_0);
   if (cam_device_.GetStaticInfo()->IsFormatAvailable(format)) {
     ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
         << "Configuring stream of supported format fails";
@@ -100,18 +101,7 @@ TEST_P(Camera3StreamTest, CreateStream) {
   }
 }
 
-// Test spec:
-// - Camera ID
-// - Output stream format
-class Camera3BadResultionStreamTest
-    : public Camera3StreamFixture,
-      public ::testing::WithParamInterface<std::tuple<int32_t, int32_t>> {
- public:
-  Camera3BadResultionStreamTest()
-      : Camera3StreamFixture(std::get<0>(GetParam())) {}
-};
-
-TEST_P(Camera3BadResultionStreamTest, CreateStream) {
+TEST_P(Camera3SingleStreamTest, BadResolution) {
   int32_t format = std::get<1>(GetParam());
 
   if (cam_device_.GetStaticInfo()->IsFormatAvailable(format)) {
@@ -123,7 +113,8 @@ TEST_P(Camera3BadResultionStreamTest, CreateStream) {
            available_resolutions.end()) {
       bad_width++;
     }
-    cam_device_.AddOutputStream(format, bad_width, default_height_);
+    cam_device_.AddOutputStream(format, bad_width, default_height_,
+                                CAMERA3_STREAM_ROTATION_0);
     ASSERT_NE(0, cam_device_.ConfigureStreams(nullptr))
         << "Configuring stream of bad resolution succeeds";
   }
@@ -145,33 +136,82 @@ TEST_P(Camera3MultiStreamTest, CreateStream) {
                                 &preview_resolution))
       << "Failed to get max resolution for implementation defined format";
   preview_resolution = CapResolution(preview_resolution, limit_resolution);
-  cam_device_.AddOutputStream(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
-                              preview_resolution.Width(),
-                              preview_resolution.Height());
+  cam_device_.AddOutputStream(
+      HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, preview_resolution.Width(),
+      preview_resolution.Height(), CAMERA3_STREAM_ROTATION_0);
 
   // Face detection stream with small size
   ResolutionInfo fd_resolution(0, 0);
   ASSERT_EQ(0, GetMinResolution(HAL_PIXEL_FORMAT_YCbCr_420_888, &fd_resolution))
       << "Failed to get min resolution for YCbCr 420 format";
   cam_device_.AddOutputStream(HAL_PIXEL_FORMAT_YCbCr_420_888,
-                              fd_resolution.Width(), fd_resolution.Height());
+                              fd_resolution.Width(), fd_resolution.Height(),
+                              CAMERA3_STREAM_ROTATION_0);
 
   // Capture stream with largest size
   ResolutionInfo capture_resolution(0, 0);
   ASSERT_EQ(
       0, GetMaxResolution(HAL_PIXEL_FORMAT_YCbCr_420_888, &capture_resolution))
       << "Failed to get max resolution for YCbCr 420 format";
-  cam_device_.AddOutputStream(HAL_PIXEL_FORMAT_YCbCr_420_888,
-                              capture_resolution.Width(),
-                              capture_resolution.Height());
+  cam_device_.AddOutputStream(
+      HAL_PIXEL_FORMAT_YCbCr_420_888, capture_resolution.Width(),
+      capture_resolution.Height(), CAMERA3_STREAM_ROTATION_0);
 
   ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
       << "Configuring stream fails";
 }
 
+TEST_P(Camera3MultiStreamTest, DifferentRotation) {
+  // Preview stream with large size no bigger than 1080p
+  ResolutionInfo limit_resolution(1920, 1080);
+  ResolutionInfo preview_resolution(0, 0);
+  ASSERT_EQ(0, GetMaxResolution(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
+                                &preview_resolution))
+      << "Failed to get max resolution for implementation defined format";
+  preview_resolution = CapResolution(preview_resolution, limit_resolution);
+  cam_device_.AddOutputStream(
+      HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, preview_resolution.Width(),
+      preview_resolution.Height(), CAMERA3_STREAM_ROTATION_0);
+
+  // Capture stream with largest size
+  ResolutionInfo capture_resolution(0, 0);
+  ASSERT_EQ(
+      0, GetMaxResolution(HAL_PIXEL_FORMAT_YCbCr_420_888, &capture_resolution))
+      << "Failed to get max resolution for YCbCr 420 format";
+  cam_device_.AddOutputStream(
+      HAL_PIXEL_FORMAT_YCbCr_420_888, capture_resolution.Width(),
+      capture_resolution.Height(), CAMERA3_STREAM_ROTATION_90);
+
+  ASSERT_NE(0, cam_device_.ConfigureStreams(nullptr))
+      << "Configuring streams of different rotation should not succeed";
+}
+
+// Test spec:
+// - Camera ID
+// - Output stream format
+// - Rotation degrees
+class Camera3StreamInvalidRotationTest
+    : public Camera3StreamFixture,
+      public ::testing::WithParamInterface<
+          std::tuple<int32_t, int32_t, int32_t>> {
+ public:
+  Camera3StreamInvalidRotationTest()
+      : Camera3StreamFixture(std::get<0>(GetParam())) {}
+};
+
+TEST_P(Camera3StreamInvalidRotationTest, CreateStream) {
+  int32_t format = std::get<1>(GetParam());
+  int32_t crop_rotate_scale_degrees = std::get<2>(GetParam());
+
+  cam_device_.AddOutputStreamWithRawDegrees(
+      format, default_width_, default_height_, crop_rotate_scale_degrees);
+  ASSERT_NE(0, cam_device_.ConfigureStreams(nullptr))
+      << "Configuring stream of invalid rotation should not succeed";
+}
+
 INSTANTIATE_TEST_CASE_P(
-    CreateStream,
     Camera3StreamTest,
+    Camera3SingleStreamTest,
     ::testing::Combine(
         ::testing::ValuesIn(Camera3Module().GetCameraIds()),
         ::testing::Values(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
@@ -183,22 +223,23 @@ INSTANTIATE_TEST_CASE_P(
                           HAL_PIXEL_FORMAT_Y16,
                           HAL_PIXEL_FORMAT_RAW16)));
 
-INSTANTIATE_TEST_CASE_P(
-    CreateStream,
-    Camera3BadResultionStreamTest,
-    ::testing::Combine(
-        ::testing::ValuesIn(Camera3Module().GetCameraIds()),
-        ::testing::Values(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
-                          HAL_PIXEL_FORMAT_YCbCr_420_888,
-                          HAL_PIXEL_FORMAT_YCrCb_420_SP,
-                          HAL_PIXEL_FORMAT_BLOB,
-                          HAL_PIXEL_FORMAT_YV12,
-                          HAL_PIXEL_FORMAT_Y8,
-                          HAL_PIXEL_FORMAT_Y16,
-                          HAL_PIXEL_FORMAT_RAW16)));
-
-INSTANTIATE_TEST_CASE_P(CreateStream,
+INSTANTIATE_TEST_CASE_P(Camera3StreamTest,
                         Camera3MultiStreamTest,
                         ::testing::ValuesIn(Camera3Module().GetCameraIds()));
+
+INSTANTIATE_TEST_CASE_P(
+    Camera3StreamTest,
+    Camera3StreamInvalidRotationTest,
+    ::testing::Combine(
+        ::testing::ValuesIn(Camera3Module().GetCameraIds()),
+        ::testing::Values(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
+                          HAL_PIXEL_FORMAT_YCbCr_420_888,
+                          HAL_PIXEL_FORMAT_YCrCb_420_SP,
+                          HAL_PIXEL_FORMAT_BLOB,
+                          HAL_PIXEL_FORMAT_YV12,
+                          HAL_PIXEL_FORMAT_Y8,
+                          HAL_PIXEL_FORMAT_Y16,
+                          HAL_PIXEL_FORMAT_RAW16),
+        ::testing::Values(CAMERA3_STREAM_ROTATION_180, 90, 180, 270)));
 
 }  // namespace camera3_test

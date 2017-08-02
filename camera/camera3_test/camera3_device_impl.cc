@@ -107,11 +107,15 @@ const camera_metadata_t* Camera3DeviceImpl::ConstructDefaultRequestSettings(
   return metadata;
 }
 
-void Camera3DeviceImpl::AddOutputStream(int format, int width, int height) {
+void Camera3DeviceImpl::AddOutputStream(int format,
+                                        int width,
+                                        int height,
+                                        int crop_rotate_scale_degrees) {
   VLOGF_ENTER();
   hal_thread_.PostTaskSync(
       FROM_HERE, base::Bind(&Camera3DeviceImpl::AddOutputStreamOnThread,
-                            base::Unretained(this), format, width, height));
+                            base::Unretained(this), format, width, height,
+                            crop_rotate_scale_degrees));
 }
 
 int Camera3DeviceImpl::ConfigureStreams(
@@ -288,7 +292,8 @@ void Camera3DeviceImpl::ConstructDefaultRequestSettingsOnThread(
 
 void Camera3DeviceImpl::AddOutputStreamOnThread(int format,
                                                 int width,
-                                                int height) {
+                                                int height,
+                                                int crop_rotate_scale_degrees) {
   DCHECK(thread_checker_.CalledOnValidThread());
   if (initialized_) {
     // Push to the bin that is not used currently
@@ -297,6 +302,7 @@ void Camera3DeviceImpl::AddOutputStreamOnThread(int format,
     stream.width = width;
     stream.height = height;
     stream.format = format;
+    stream.crop_rotate_scale_degrees = crop_rotate_scale_degrees;
     cam_stream_[!cam_stream_idx_].push_back(stream);
   }
 }

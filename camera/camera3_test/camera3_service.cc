@@ -358,13 +358,13 @@ void Camera3Service::Camera3DeviceService::
   }
 
   if (still_capture_resolution.Area()) {
-    cam_device_.AddOutputStream(HAL_PIXEL_FORMAT_BLOB,
-                                still_capture_resolution.Width(),
-                                still_capture_resolution.Height());
+    cam_device_.AddOutputStream(
+        HAL_PIXEL_FORMAT_BLOB, still_capture_resolution.Width(),
+        still_capture_resolution.Height(), CAMERA3_STREAM_ROTATION_0);
   }
-  cam_device_.AddOutputStream(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
-                              preview_resolution.Width(),
-                              preview_resolution.Height());
+  cam_device_.AddOutputStream(
+      HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, preview_resolution.Width(),
+      preview_resolution.Height(), CAMERA3_STREAM_ROTATION_0);
   if (cam_device_.ConfigureStreams(&streams_) != 0) {
     ADD_FAILURE() << "Configuring stream fails";
     *result = -EINVAL;

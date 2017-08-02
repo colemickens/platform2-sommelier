@@ -57,9 +57,23 @@ const camera_metadata_t* Camera3Device::ConstructDefaultRequestSettings(
   return impl_->ConstructDefaultRequestSettings(type);
 }
 
-void Camera3Device::AddOutputStream(int format, int width, int height) {
+void Camera3Device::AddOutputStream(
+    int format,
+    int width,
+    int height,
+    camera3_stream_rotation_t crop_rotate_scale_degrees) {
   DCHECK(impl_);
-  impl_->AddOutputStream(format, width, height);
+  impl_->AddOutputStream(format, width, height,
+                         static_cast<int>(crop_rotate_scale_degrees));
+}
+
+void Camera3Device::AddOutputStreamWithRawDegrees(
+    int format,
+    int width,
+    int height,
+    int crop_rotate_scale_degrees) {
+  DCHECK(impl_);
+  impl_->AddOutputStream(format, width, height, crop_rotate_scale_degrees);
 }
 
 int Camera3Device::ConfigureStreams(
