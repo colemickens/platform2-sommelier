@@ -23,6 +23,7 @@
       <tp:member name="DriveIsRotational" type="b"> </tp:member>
       <tp:member name="DeviceIsReadOnly" type="b"> </tp:member>
       <tp:member name="DeviceSize" type="t"> </tp:member>
+      <tp:member name="FileSystemType" type="s"> </tp:member>
     </tp:struct>
     <tp:struct name="MountEntry" array-name="MountEntries">
       <tp:member name="Status" type="u"> </tp:member>

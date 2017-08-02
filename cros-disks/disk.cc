@@ -83,6 +83,7 @@ DBusDisk Disk::ToDBusFormat() const {
   disk[kDeviceMediaType].writer().append_uint32(media_type());
   disk[kDeviceSize].writer().append_uint64(device_capacity());
   disk[kDeviceIsReadOnly].writer().append_bool(is_read_only());
+  disk[kFileSystemType].writer().append_string(filesystem_type().c_str());
   DBus::MessageIter iter = disk[kDeviceMountPaths].writer();
   iter << mount_paths();
   return disk;
