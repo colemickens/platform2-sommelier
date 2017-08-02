@@ -17,8 +17,11 @@
 
 namespace hammerd {
 
-HammerUpdater::HammerUpdater(const std::string& image)
-    : HammerUpdater(image, base::MakeUnique<FirmwareUpdater>()) {}
+HammerUpdater::HammerUpdater(const std::string& image, uint16_t vendor_id,
+                             uint16_t product_id, int bus, int port)
+    : HammerUpdater(image, base::MakeUnique<FirmwareUpdater>(
+          base::MakeUnique<UsbEndpoint>(
+              vendor_id, product_id, bus, port))) {}
 
 HammerUpdater::HammerUpdater(
     const std::string& image,

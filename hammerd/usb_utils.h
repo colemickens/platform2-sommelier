@@ -16,9 +16,6 @@
 
 namespace hammerd {
 
-// TODO(akahuang): Make them as argument or include usb_descriptor.h
-constexpr uint16_t kUsbVidGoogle = 0x18d1;
-constexpr uint16_t kUsbPidGoogle = 0x5022;
 constexpr uint8_t kUsbSubclassGoogleUpdate = 0x53;
 constexpr uint8_t kUsbProtocolGoogleUpdate = 0xff;
 
@@ -29,6 +26,7 @@ void LogUSBError(const char* func_name, int return_code);
 class UsbEndpointInterface {
  public:
   virtual ~UsbEndpointInterface() = default;
+
   // Initializes the USB endpoint.
   virtual bool Connect() = 0;
   // Releases USB endpoint.
@@ -65,7 +63,8 @@ class UsbEndpointInterface {
 
 class UsbEndpoint : public UsbEndpointInterface {
  public:
-  UsbEndpoint();
+  UsbEndpoint(uint16_t vendor_id, uint16_t product_id);
+  UsbEndpoint(uint16_t vendor_id, uint16_t product_id, int bus, int port);
 
   // UsbEndpointInterface:
   ~UsbEndpoint() override;
@@ -105,6 +104,10 @@ class UsbEndpoint : public UsbEndpointInterface {
                    int len,
                    unsigned int timeout_ms = 0);
 
+  uint16_t vendor_id_;
+  uint16_t product_id_;
+  int bus_;
+  int port_;
   libusb_device_handle* devh_;
   std::string configuration_string_;
   int iface_num_;

@@ -49,8 +49,13 @@ void LogUSBError(const char* func_name, int return_code) {
              << libusb_strerror(static_cast<libusb_error>(return_code)) << ")";
 }
 
-UsbEndpoint::UsbEndpoint()
-    : devh_(nullptr), iface_num_(-1), ep_num_(-1), chunk_len_(0) {}
+UsbEndpoint::UsbEndpoint(uint16_t vendor_id, uint16_t product_id)
+    : UsbEndpoint(vendor_id, product_id, -1, -1) {}
+
+UsbEndpoint::UsbEndpoint(uint16_t vendor_id, uint16_t product_id,
+                         int bus, int port)
+    : vendor_id_(vendor_id), product_id_(product_id), bus_(bus), port_(port),
+      devh_(nullptr), iface_num_(-1), ep_num_(-1), chunk_len_(0) {}
 
 UsbEndpoint::~UsbEndpoint() {
   Close();
@@ -58,8 +63,8 @@ UsbEndpoint::~UsbEndpoint() {
 }
 
 bool UsbEndpoint::Connect() {
-  // NOTE: If multiple interfaces matched the VID/PID, then we connect the first
-  // found one and ignore others.
+  // NOTE: If multiple interfaces matched the VID/PID, then we connect
+  // to the first one found, and ignore others.
   if (IsConnected()) {
     LOG(INFO) << "Already initialized. Ignore.";
     return true;
@@ -67,16 +72,27 @@ bool UsbEndpoint::Connect() {
 
   InitLibUSB();
   LOG(INFO) << base::StringPrintf(
-      "open_device %x:%x", kUsbVidGoogle, kUsbPidGoogle);
-  // TODO(akahuang): Make VID/PID configurable.
-  devh_ =
-      libusb_open_device_with_vid_pid(nullptr, kUsbVidGoogle, kUsbPidGoogle);
+      "open_device %x:%x", vendor_id_, product_id_);
+  // TODO(kitching): We should use libusb_get_device_list for device
+  //                 enumeration instead, looking to see which device is
+  //                 on the particular bus/port.
+  devh_ = libusb_open_device_with_vid_pid(nullptr, vendor_id_, product_id_);
   if (!devh_) {
     LOG(ERROR) << "Can't find device.";
     Close();
     return false;
   }
-  LOG(INFO) << "Get dev handle: " << devh_;
+
+  LOG(INFO) << "Checking for bus " << bus_ << " port " << port_ << "...";
+  libusb_device* dev = libusb_get_device(devh_);
+  int bus = libusb_get_bus_number(dev);
+  int port = libusb_get_port_number(dev);
+
+  if ((bus_ != -1 && bus != bus_) || (port_ != -1 && port != port_)) {
+    LOG(ERROR) << "Invalid bus " << bus << " and port " << port << ".";
+    Close();
+    return false;
+  }
 
   iface_num_ = FindInterface();
   if (iface_num_ < 0) {

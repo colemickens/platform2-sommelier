@@ -25,7 +25,11 @@ class HammerUpdater {
     kInvalidFirmware,
   };
 
-  explicit HammerUpdater(const std::string& image);
+  HammerUpdater(const std::string& image,
+                uint16_t vendor_id,
+                uint16_t product_id,
+                int bus,
+                int port);
   virtual ~HammerUpdater() = default;
 
   // Handle the whole update process, including pre-processing, main update

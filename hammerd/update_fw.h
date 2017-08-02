@@ -207,7 +207,6 @@ class FirmwareUpdaterInterface {
 // It contains the data of the original transfer_descriptor.
 class FirmwareUpdater : public FirmwareUpdaterInterface {
  public:
-  FirmwareUpdater();
   explicit FirmwareUpdater(std::unique_ptr<UsbEndpoint> endpoint);
 
   // FirmwareUpdaterInterface implementation:
