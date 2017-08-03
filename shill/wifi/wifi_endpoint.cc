@@ -84,9 +84,9 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
 
   ssid_string_ = string(ssid_.begin(), ssid_.end());
   WiFi::SanitizeSSID(&ssid_string_);
-  ssid_hex_ = base::HexEncode(&(*ssid_.begin()), ssid_.size());
+  ssid_hex_ = base::HexEncode(ssid_.data(), ssid_.size());
   bssid_string_ = Device::MakeStringFromHardwareAddress(bssid_);
-  bssid_hex_ = base::HexEncode(&(*bssid_.begin()), bssid_.size());
+  bssid_hex_ = base::HexEncode(bssid_.data(), bssid_.size());
 
   CheckForTetheringSignature();
 }
