@@ -166,21 +166,25 @@ void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
   proto->Clear();
   proto->set_external_power(status.external_power);
   proto->set_battery_state(status.battery_state);
-  proto->set_battery_percent(status.display_battery_percentage);
   proto->set_supports_dual_role_devices(status.supports_dual_role_devices);
 
-  // Show the user the time until powerd will shut down the system automatically
-  // rather than the time until the battery is completely empty.
-  proto->set_battery_time_to_empty_sec(
-      status.battery_time_to_shutdown.InSeconds());
-  proto->set_battery_time_to_full_sec(status.battery_time_to_full.InSeconds());
-  proto->set_is_calculating_battery_time(status.is_calculating_battery_time);
+  if (status.battery_state != PowerSupplyProperties_BatteryState_NOT_PRESENT) {
+    proto->set_battery_percent(status.display_battery_percentage);
 
-  if (status.battery_state == PowerSupplyProperties_BatteryState_FULL ||
-      status.battery_state == PowerSupplyProperties_BatteryState_CHARGING) {
-    proto->set_battery_discharge_rate(-status.battery_energy_rate);
-  } else {
-    proto->set_battery_discharge_rate(status.battery_energy_rate);
+    // Show the user the time until powerd will shut down the system
+    // automatically rather than the time until the battery is completely empty.
+    proto->set_battery_time_to_empty_sec(
+        status.battery_time_to_shutdown.InSeconds());
+    proto->set_battery_time_to_full_sec(
+        status.battery_time_to_full.InSeconds());
+    proto->set_is_calculating_battery_time(status.is_calculating_battery_time);
+
+    if (status.battery_state == PowerSupplyProperties_BatteryState_FULL ||
+        status.battery_state == PowerSupplyProperties_BatteryState_CHARGING) {
+      proto->set_battery_discharge_rate(-status.battery_energy_rate);
+    } else {
+      proto->set_battery_discharge_rate(status.battery_energy_rate);
+    }
   }
 
   for (auto port : status.ports) {

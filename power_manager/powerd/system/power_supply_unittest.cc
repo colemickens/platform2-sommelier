@@ -1576,6 +1576,31 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   EXPECT_TRUE(proto.is_calculating_battery_time());
 }
 
+TEST_F(PowerSupplyTest, OmitBatteryFieldsWhenBatteryNotPresent) {
+  // When a battery isn't present, battery-related fields should be omitted from
+  // the protobuf.
+  PowerStatus status;
+  status.line_power_on = true;
+  status.battery_is_present = false;
+  status.external_power = PowerSupplyProperties_ExternalPower_AC;
+  status.battery_state = PowerSupplyProperties_BatteryState_NOT_PRESENT;
+
+  PowerSupplyProperties proto;
+  CopyPowerStatusToProtocolBuffer(status, &proto);
+  EXPECT_EQ(status.external_power, proto.external_power());
+  EXPECT_EQ(status.battery_state, proto.battery_state());
+  EXPECT_FALSE(proto.has_battery_percent());
+  EXPECT_FALSE(proto.has_battery_time_to_empty_sec());
+  EXPECT_FALSE(proto.has_battery_time_to_full_sec());
+  EXPECT_FALSE(proto.has_is_calculating_battery_time());
+  EXPECT_FALSE(proto.has_battery_discharge_rate());
+
+  // powerd historically passed a battery_percent of -1 when a battery wasn't
+  // present, so ensure the proto default matches this for backwards
+  // compatibility: https://crbug.com/724903
+  EXPECT_DOUBLE_EQ(-1.0, proto.battery_percent());
+}
+
 TEST_F(PowerSupplyTest, BatteryEnergyValue) {
   const double kCharge = 1.0;
   // Set energy_now attribute to charge times voltage + 1 to double check that
