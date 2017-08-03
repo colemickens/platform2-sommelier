@@ -145,12 +145,12 @@ class CameraClient {
         V4L2CameraDevice* device,
         const camera3_callback_ops_t* callback_ops,
         const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
-        MetadataHandler* metadata_handler,
-        int crop_rotate_scale_degrees);
+        MetadataHandler* metadata_handler);
     ~RequestHandler();
 
     // Synchronous call to start streaming.
     void StreamOn(Size stream_on_resolution,
+                  int crop_rotate_scale_degrees,
                   const base::Callback<void(int, int)>& callback);
 
     // Synchronous call to stop streaming.

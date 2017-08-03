@@ -132,6 +132,11 @@ int CameraClient::ConfigureStreams(
       return -EINVAL;
     }
     streams.push_back(stream_config->streams[i]);
+    if (i && stream_config->streams[i]->crop_rotate_scale_degrees !=
+                 stream_config->streams[i - 1]->crop_rotate_scale_degrees) {
+      LOGF(ERROR) << "Unsupported different crop ratate scale degrees";
+      return -EINVAL;
+    }
     // Here assume the attribute of all streams are the same.
     switch (stream_config->streams[i]->crop_rotate_scale_degrees) {
       case CAMERA3_STREAM_ROTATION_0:
@@ -327,9 +332,9 @@ int CameraClient::StreamOn(Size stream_on_resolution,
     }
     request_task_runner_ = request_thread_.task_runner();
 
-    request_handler_.reset(new RequestHandler(
-        id_, device_info_, device_.get(), callback_ops_, request_task_runner_,
-        metadata_handler_.get(), crop_rotate_scale_degrees));
+    request_handler_.reset(
+        new RequestHandler(id_, device_info_, device_.get(), callback_ops_,
+                           request_task_runner_, metadata_handler_.get()));
   }
 
   auto future = internal::Future<int>::Create(nullptr);
@@ -337,9 +342,10 @@ int CameraClient::StreamOn(Size stream_on_resolution,
       base::Bind(&CameraClient::StreamOnCallback, base::Unretained(this),
                  base::RetainedRef(future), num_buffers);
   request_task_runner_->PostTask(
-      FROM_HERE, base::Bind(&CameraClient::RequestHandler::StreamOn,
-                            base::Unretained(request_handler_.get()),
-                            stream_on_resolution, streamon_callback));
+      FROM_HERE,
+      base::Bind(&CameraClient::RequestHandler::StreamOn,
+                 base::Unretained(request_handler_.get()), stream_on_resolution,
+                 crop_rotate_scale_degrees, streamon_callback));
   return future->Get();
 }
 
@@ -385,8 +391,7 @@ CameraClient::RequestHandler::RequestHandler(
     V4L2CameraDevice* device,
     const camera3_callback_ops_t* callback_ops,
     const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
-    MetadataHandler* metadata_handler,
-    int crop_rotate_scale_degrees)
+    MetadataHandler* metadata_handler)
     : device_id_(device_id),
       device_info_(device_info),
       device_(device),
@@ -395,8 +400,7 @@ CameraClient::RequestHandler::RequestHandler(
       metadata_handler_(metadata_handler),
       stream_on_resolution_(0, 0),
       current_v4l2_buffer_id_(-1),
-      flush_started_(false),
-      crop_rotate_scale_degrees_(crop_rotate_scale_degrees) {
+      flush_started_(false) {
   SupportedFormats supported_formats =
       device_->GetDeviceSupportedFormats(device_info_.device_path);
   qualified_formats_ = GetQualifiedFormats(supported_formats);
@@ -406,9 +410,11 @@ CameraClient::RequestHandler::~RequestHandler() {}
 
 void CameraClient::RequestHandler::StreamOn(
     Size stream_on_resolution,
+    int crop_rotate_scale_degrees,
     const base::Callback<void(int, int)>& callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
+  crop_rotate_scale_degrees_ = crop_rotate_scale_degrees;
   int ret = StreamOnImpl(stream_on_resolution);
   if (ret) {
     callback.Run(0, ret);
