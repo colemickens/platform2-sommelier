@@ -604,4 +604,8 @@ bool TpmInit::ReloadCryptohomeKey() {
   return true;
 }
 
+bool TpmInit::GetVersion(Tpm::TpmVersionInfo* version_info) {
+  return get_tpm() && get_tpm()->GetVersionInfo(version_info);
+}
+
 }  // namespace cryptohome

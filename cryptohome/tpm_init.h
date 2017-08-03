@@ -119,6 +119,8 @@ class TpmInit {
 
   virtual bool ReloadCryptohomeKey();
 
+  virtual bool GetVersion(Tpm::TpmVersionInfo* version_info);
+
  private:
   FRIEND_TEST(TpmInitTest, ContinueInterruptedInitializeSrk);
 

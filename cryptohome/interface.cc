@@ -577,6 +577,12 @@ gboolean cryptohome_tpm_attestation_reset_identity(Cryptohome* self,
                          OUT_reset_request,
                          OUT_success);
 }
+gboolean cryptohome_tpm_get_version(Cryptohome* self,
+                                    gchar** OUT_result,
+                                    GError** error) {
+  CRYPTOHOME_WRAP_METHOD(TpmGetVersion,
+                         OUT_result);
+}
 gboolean cryptohome_pkcs11_get_tpm_token_info(Cryptohome* self,
                                               gchar** OUT_label,
                                               gchar** OUT_user_pin,

@@ -530,6 +530,8 @@ class Service : public brillo::dbus::AbstractDbusService,
                                                GArray** OUT_reset_request,
                                                gboolean* OUT_success,
                                                GError** error) = 0;
+  virtual gboolean TpmGetVersion(gchar** OUT_result,
+                                 GError** error);
   virtual gboolean GetEndorsementInfo(const GArray* request,
                                       DBusGMethodInvocation* context) = 0;
   virtual gboolean InitializeCastKey(const GArray* request,
