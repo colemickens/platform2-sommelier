@@ -32,19 +32,26 @@ namespace shill {
 namespace {
 const char kNameServer0[] = "8.8.8.8";
 const char kNameServer1[] = "8.8.9.9";
+const char kNameServer2[] = "2001:4860:4860:0:0:0:0:8888";
+const char kNameServerEvil[] = "8.8.8.8\noptions debug";
+const char kNameServerSubtlyEvil[] = "3.14.159.265";
 const char kSearchDomain0[] = "chromium.org";
 const char kSearchDomain1[] = "google.com";
 const char kSearchDomain2[] = "crbug.com";
+const char kSearchDomainEvil[] = "google.com\nnameserver 6.6.6.6";
+const char kSearchDomainSubtlyEvil[] = "crate&barrel.com";
 const char kExpectedOutput[] =
-  "nameserver 8.8.8.8\n"
-  "nameserver 8.8.9.9\n"
-  "search chromium.org google.com\n"
-  "options single-request timeout:1 attempts:5\n";
+    "nameserver 8.8.8.8\n"
+    "nameserver 8.8.9.9\n"
+    "nameserver 2001:4860:4860::8888\n"
+    "search chromium.org google.com\n"
+    "options single-request timeout:1 attempts:5\n";
 const char kExpectedIgnoredSearchOutput[] =
-  "nameserver 8.8.8.8\n"
-  "nameserver 8.8.9.9\n"
-  "search google.com\n"
-  "options single-request timeout:1 attempts:5\n";
+    "nameserver 8.8.8.8\n"
+    "nameserver 8.8.9.9\n"
+    "nameserver 2001:4860:4860::8888\n"
+    "search google.com\n"
+    "options single-request timeout:1 attempts:5\n";
 }  // namespace
 
 class ResolverTest : public Test {
@@ -85,8 +92,35 @@ TEST_F(ResolverTest, NonEmpty) {
   vector<string> domain_search;
   dns_servers.push_back(kNameServer0);
   dns_servers.push_back(kNameServer1);
+  dns_servers.push_back(kNameServer2);
   domain_search.push_back(kSearchDomain0);
   domain_search.push_back(kSearchDomain1);
+
+  EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
+  EXPECT_TRUE(base::PathExists(path_));
+  EXPECT_EQ(kExpectedOutput, ReadFile());
+
+  EXPECT_TRUE(resolver_->ClearDNS());
+}
+
+TEST_F(ResolverTest, Sanitize) {
+  EXPECT_FALSE(base::PathExists(path_));
+  EXPECT_TRUE(resolver_->ClearDNS());
+
+  MockControl control;
+  vector<string> dns_servers;
+  vector<string> domain_search;
+
+  dns_servers.push_back(kNameServer0);
+  dns_servers.push_back(kNameServerEvil);
+  dns_servers.push_back(kNameServer1);
+  dns_servers.push_back(kNameServerSubtlyEvil);
+  dns_servers.push_back(kNameServer2);
+
+  domain_search.push_back(kSearchDomainEvil);
+  domain_search.push_back(kSearchDomain0);
+  domain_search.push_back(kSearchDomain1);
+  domain_search.push_back(kSearchDomainSubtlyEvil);
 
   EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
   EXPECT_TRUE(base::PathExists(path_));
@@ -115,6 +149,7 @@ TEST_F(ResolverTest, IgnoredSearchList) {
   vector<string> domain_search;
   dns_servers.push_back(kNameServer0);
   dns_servers.push_back(kNameServer1);
+  dns_servers.push_back(kNameServer2);
   domain_search.push_back(kSearchDomain0);
   domain_search.push_back(kSearchDomain1);
   vector<string> ignored_search;

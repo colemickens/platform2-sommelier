@@ -23,8 +23,10 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 
+#include "shill/dns_util.h"
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
+#include "shill/net/ip_address.h"
 
 using std::string;
 using std::vector;
@@ -61,7 +63,14 @@ bool Resolver::SetDNSFromLists(const std::vector<std::string>& dns_servers,
 
   vector<string> lines;
   for (const auto& server : dns_servers) {
-    lines.push_back("nameserver " + server);
+    IPAddress addr(server);
+    std::string canonical_ip;
+    if (addr.family() != IPAddress::kFamilyUnknown &&
+        addr.IntoString(&canonical_ip)) {
+      lines.push_back("nameserver " + canonical_ip);
+    } else {
+      LOG(WARNING) << "Malformed nameserver IP: " << server;
+    }
   }
 
   vector<string> filtered_domain_search;
@@ -69,7 +78,11 @@ bool Resolver::SetDNSFromLists(const std::vector<std::string>& dns_servers,
     if (std::find(ignored_search_list_.begin(),
                   ignored_search_list_.end(),
                   domain) == ignored_search_list_.end()) {
-      filtered_domain_search.push_back(domain);
+      if (IsValidDNSDomain(domain)) {
+        filtered_domain_search.push_back(domain);
+      } else {
+        LOG(WARNING) << "Malformed search domain: " << domain;
+      }
     }
   }
 
