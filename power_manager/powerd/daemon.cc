@@ -334,7 +334,11 @@ void Daemon::Init() {
     } else {
       display_backlight_ = delegate_->CreateInternalBacklight(
           base::FilePath(kInternalBacklightPath), kInternalBacklightPattern);
-      if (display_backlight_) {
+      if (!display_backlight_) {
+        LOG(ERROR) << "Failed to initialize display backlight under "
+                   << kInternalBacklightPath << " using pattern "
+                   << kInternalBacklightPattern;
+      } else {
         display_backlight_controller_ =
             delegate_->CreateInternalBacklightController(
                 display_backlight_.get(),
@@ -349,7 +353,11 @@ void Daemon::Init() {
     if (BoolPrefIsTrue(kHasKeyboardBacklightPref)) {
       keyboard_backlight_ = delegate_->CreateInternalBacklight(
           base::FilePath(kKeyboardBacklightPath), kKeyboardBacklightPattern);
-      if (keyboard_backlight_) {
+      if (!keyboard_backlight_) {
+        LOG(ERROR) << "Failed to initialize keyboard backlight under "
+                   << kKeyboardBacklightPath << " using pattern "
+                   << kKeyboardBacklightPattern;
+      } else {
         keyboard_backlight_controller_ =
             delegate_->CreateKeyboardBacklightController(
                 keyboard_backlight_.get(),

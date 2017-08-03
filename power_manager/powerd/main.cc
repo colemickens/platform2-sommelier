@@ -113,11 +113,9 @@ class DaemonDelegateImpl : public DaemonDelegate {
       const base::FilePath& base_path,
       const base::FilePath::StringType& pattern) override {
     auto backlight = base::WrapUnique(new system::InternalBacklight());
-    if (!backlight->Init(base_path, pattern)) {
-      LOG(ERROR) << "Cannot initialize display backlight";
-      return std::unique_ptr<system::BacklightInterface>();
-    }
-    return std::move(backlight);
+    return backlight->Init(base_path, pattern)
+               ? std::move(backlight)
+               : std::unique_ptr<system::BacklightInterface>();
   }
 
   std::unique_ptr<policy::BacklightController>
