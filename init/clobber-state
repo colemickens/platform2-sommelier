@@ -20,7 +20,11 @@ set -x
 CLOBBER_STATE_LOG="/tmp/clobber-state.log"
 : [ -x /sbin/frecon ] && ${TTY=/run/frecon/vt0} || ${TTY=/dev/tty1}
 
-# Run "clobber-state fast" to clobber the state quickly but unsecurely.
+# Command line parameters for clobber-state:
+# factory:  run in the context of a factory flow, do not reboot when done
+# fast:     less thorough data destruction
+# keepimg:  don't delete the non-active set of kernel/root partitions
+# safe:     preserve some files and VPD keys
 FACTORY_WIPE=$(echo "$@" | grep -sqw factory && echo "factory")
 FAST_WIPE=$(echo "$@" | grep -sqw fast && echo "fast")
 KEEPIMG=$(echo "$@" | grep -sqw keepimg && echo "keepimg")
@@ -440,8 +444,8 @@ wipe_stateful_partition() {
       dd bs=4M count=1 if=/dev/zero of=${OTHER_KERNEL_DEV}
     fi
 
-    # Clear TPM at next boot to make the TPM state consistent with (the soon to be
-    # induced) absence of install_attributes.pb.
+    # Clear TPM at next boot to make the TPM state consistent with (the soon to
+    # be induced) absence of install_attributes.pb.
     crossystem clear_tpm_owner_request=1
 
     # Just wipe the start of the partition and remake the fs on
@@ -454,8 +458,8 @@ wipe_stateful_partition() {
       wipedev ${OTHER_KERNEL_DEV}
     fi
 
-    # Clear TPM at next boot to make the TPM state consistent with (the soon to be
-    # induced) absence of install_attributes.pb.
+    # Clear TPM at next boot to make the TPM state consistent with (the soon to
+    # be induced) absence of install_attributes.pb.
     crossystem clear_tpm_owner_request=1
 
     # Wipe everything on the stateful partition.
