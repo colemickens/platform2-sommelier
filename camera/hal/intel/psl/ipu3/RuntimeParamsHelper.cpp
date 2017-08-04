@@ -101,9 +101,9 @@ RuntimeParamsHelper::copyWeightGrid(IPU3AICRuntimeParams &to, ia_aiq_hist_weight
     ia_aiq_hist_weight_grid *weight_grid;
     weight_grid = (ia_aiq_hist_weight_grid*) to.weight_grid;
     weight_grid->height = from->height;
-    int size = weight_grid->height * from->height * sizeof(*weight_grid->weights);
-    memcpy(weight_grid->weights, from->weights, size);
     weight_grid->width = from->width;
+    size_t size = weight_grid->height * weight_grid->width * sizeof(*weight_grid->weights);
+    memcpy(weight_grid->weights, from->weights, size);
 }
 
 #ifdef REMOTE_3A_SERVER
@@ -183,10 +183,10 @@ RuntimeParamsHelper::copyWeightGridMod(IPU3AICRuntimeParams &to, ia_aiq_hist_wei
 {
     ia_aiq_hist_weight_grid *weight_grid;
     weight_grid = (ia_aiq_hist_weight_grid*) to.weight_grid;
-    int size = from.height * from.width * sizeof(*weight_grid->weights);
     weight_grid->height = from.height;
-    memcpy(weight_grid->weights, from.weights, size);
     weight_grid->width = from.width;
+    size_t size = from.height * from.width * sizeof(*weight_grid->weights);
+    memcpy(weight_grid->weights, from.weights, size);
 }
 #endif
 
