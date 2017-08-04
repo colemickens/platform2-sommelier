@@ -50,7 +50,8 @@ CameraBuffer::CameraBuffer() :  mWidth(0),
                                 mOwner(nullptr),
                                 mDataPtr(nullptr),
                                 mRequestID(0),
-                                mCameraId(0)
+                                mCameraId(0),
+                                mDmaBufFd(-1)
 {
     LOG1("%s default constructor for buf %p", __FUNCTION__, this);
     CLEAR(mUserBuffer);
@@ -96,8 +97,10 @@ CameraBuffer::CameraBuffer(int w,
         mCameraId(cameraId),
         mHandle(nullptr),
         mHandlePtr(nullptr),
-        mGbmBufferMapper(nullptr)
+        mGbmBufferMapper(nullptr),
+        mDmaBufFd(-1)
 {
+    LOG1("%s create malloc camera buffer %p", __FUNCTION__, this);
     if (usrPtr != nullptr) {
         mDataPtr = usrPtr;
         mInit = true;
@@ -117,7 +120,11 @@ CameraBuffer::CameraBuffer(int w,
  *
  * Constructor for buffers allocated using mmap
  *
+ * \param w [IN] width
+ * \param h [IN] height
+ * \param s [IN] stride
  * \param fd [IN] File descriptor to map
+ * \param dmaBufFd [IN] File descriptor for dmabuf
  * \param length [IN] amount of data to map
  * \param v4l2fmt [IN] Pixel format in V4L2 enum
  * \param offset [IN] offset from the begining of the file (mmap param)
@@ -127,14 +134,14 @@ CameraBuffer::CameraBuffer(int w,
  * Success of the mmap can be queried by checking the size of the resulting
  * buffer
  */
-CameraBuffer::CameraBuffer(int fd, int length, int v4l2fmt, int offset,
-                           int prot, int flags):
-        mWidth(1),
-        mHeight(length),
-        mSize(0),
+CameraBuffer::CameraBuffer(int w, int h, int s, int fd, int dmaBufFd, int length,
+                           int v4l2fmt, int offset, int prot, int flags):
+        mWidth(w),
+        mHeight(h),
+        mSize(length),
         mFormat(0),
         mV4L2Fmt(v4l2fmt),
-        mStride(1),
+        mStride(s),
         mInit(false),
         mLocked(false),
         mType(BUF_TYPE_MMAP),
@@ -144,11 +151,12 @@ CameraBuffer::CameraBuffer(int fd, int length, int v4l2fmt, int offset,
         mCameraId(-1),
         mHandle(nullptr),
         mHandlePtr(nullptr),
-        mGbmBufferMapper(nullptr)
+        mGbmBufferMapper(nullptr),
+        mDmaBufFd(dmaBufFd)
 {
+    LOG1("%s create mmap camera buffer %p", __FUNCTION__, this);
     mLocked = true;
     mInit = true;
-    mSize = length;
     CLEAR(mUserBuffer);
     CLEAR(mTimestamp);
     mUserBuffer.release_fence = -1;
@@ -160,7 +168,7 @@ CameraBuffer::CameraBuffer(int fd, int length, int v4l2fmt, int offset,
         mDataPtr = nullptr;
         return;
     }
-    LOG1("mmaped address for  %p length %d", mDataPtr, mSize);
+    LOG1("mmaped address for %p length %d", mDataPtr, mSize);
 }
 
 /**
@@ -218,6 +226,7 @@ CameraBuffer::~CameraBuffer()
                 munmap(mDataPtr, mSize);
             mDataPtr = nullptr;
             mSize = 0;
+            close(mDmaBufFd);
             break;
         case BUF_TYPE_HANDLE:
             break;
@@ -264,7 +273,6 @@ status_t CameraBuffer::getFence(camera3_stream_buffer* buf)
 
     return NO_ERROR;
 }
-
 
 /**
  * lock
@@ -334,7 +342,7 @@ status_t CameraBuffer::lock()
         return INVALID_OPERATION;
     }
 
-    if (mType == BUF_TYPE_MALLOC) {
+    if (mType != BUF_TYPE_HANDLE) {
          mLocked = true;
          return NO_ERROR;
     }
@@ -360,7 +368,7 @@ status_t CameraBuffer::lock()
 status_t CameraBuffer::unlock()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    if (mLocked && mType == BUF_TYPE_MALLOC) {
+    if (mLocked && mType != BUF_TYPE_HANDLE) {
          mLocked = false;
          return NO_ERROR;
     }

@@ -63,7 +63,8 @@ public:
      * These are used via the utility methods in the MemoryUtils namespace
      */
     CameraBuffer(int w, int h, int s, int v4l2fmt, void* usrPtr, int cameraId, int dataSizeOverride = 0);
-    CameraBuffer(int fd, int length, int v4l2fmt, int offset, int prot, int flags);
+    CameraBuffer(int w, int h, int s, int fd, int dmaBufFd, int length, int v4l2fmt,
+                 int offset, int prot, int flags);
     /**
      * initialization for the wrapper around the framework buffers
      */
@@ -97,6 +98,7 @@ public:
     void setRequestId(int requestId) {mRequestID = requestId; }
     int requestId() {return mRequestID; }
     status_t getFence(camera3_stream_buffer* buf);
+    int dmaBufFd() {return mDmaBufFd; }
 
 private:
     camera3_stream_buffer_t mUserBuffer; /*!< Original structure passed by request */
@@ -121,6 +123,7 @@ private:
     int           mRequestID;         /*!< this is filled by hw streams after
                                           calling putframe */
     int mCameraId;
+    int mDmaBufFd;                    /*!< file descriptor for dmabuf */
 };
 
 namespace MemoryUtils {
