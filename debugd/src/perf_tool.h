@@ -24,29 +24,23 @@ class PerfTool {
 
   // Runs the perf tool with the request command for |duration_secs| seconds
   // and returns either a perf_data or perf_stat protobuf in serialized form.
-  int GetPerfOutput(const uint32_t& duration_secs,
-                    const std::vector<std::string>& perf_args,
-                    std::vector<uint8_t>* perf_data,
-                    std::vector<uint8_t>* perf_stat,
-                    brillo::ErrorPtr* error);
+  bool GetPerfOutput(uint32_t duration_secs,
+                     const std::vector<std::string>& perf_args,
+                     std::vector<uint8_t>* perf_data,
+                     std::vector<uint8_t>* perf_stat,
+                     int32_t* status,
+                     brillo::ErrorPtr* error);
 
   // Runs the perf tool with the request command for |duration_secs| seconds
   // and returns either a perf_data or perf_stat protobuf in serialized form
   // over the passed stdout_fd file descriptor, or nothing if there was an
   // error.
-  bool GetPerfOutputFd(const uint32_t& duration_secs,
+  bool GetPerfOutputFd(uint32_t duration_secs,
                        const std::vector<std::string>& perf_args,
                        const dbus::FileDescriptor& stdout_fd,
                        brillo::ErrorPtr* error);
 
  private:
-  // Helper function that runs perf for a given |duration_secs| returning the
-  // collected data in |data_string|. Return value is the status from running
-  // perf.
-  int GetPerfOutputHelper(const uint32_t& duration_secs,
-                          const std::vector<std::string>& perf_args,
-                          std::string* data_string);
-
   DISALLOW_COPY_AND_ASSIGN(PerfTool);
 };
 

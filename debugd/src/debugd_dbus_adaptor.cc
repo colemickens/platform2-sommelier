@@ -140,9 +140,8 @@ bool DebugdDBusAdaptor::GetPerfOutput(
     int32_t* status,
     std::vector<uint8_t>* perf_data,
     std::vector<uint8_t>* perf_stat) {
-  *status = perf_tool_->GetPerfOutput(
-      duration_sec, perf_args, perf_data, perf_stat, error);
-  return *status == 0;
+  return perf_tool_->GetPerfOutput(
+      duration_sec, perf_args, perf_data, perf_stat, status, error);
 }
 
 bool DebugdDBusAdaptor::GetPerfOutputFd(

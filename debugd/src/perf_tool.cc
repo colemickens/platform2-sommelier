@@ -75,20 +75,38 @@ bool Orphan() {
 
 PerfTool::PerfTool() {}
 
-int PerfTool::GetPerfOutput(const uint32_t& duration_secs,
-                            const std::vector<std::string>& perf_args,
-                            std::vector<uint8_t>* perf_data,
-                            std::vector<uint8_t>* perf_stat,
-                            brillo::ErrorPtr* error) {
+bool PerfTool::GetPerfOutput(uint32_t duration_secs,
+                             const std::vector<std::string>& perf_args,
+                             std::vector<uint8_t>* perf_data,
+                             std::vector<uint8_t>* perf_stat,
+                             int32_t* status,
+                             brillo::ErrorPtr* error) {
   PerfSubcommand subcommand = GetPerfSubcommandType(perf_args);
   if (subcommand == PERF_COMMAND_UNSUPPORTED) {
     DEBUGD_ADD_ERROR(error, kUnsupportedPerfToolErrorName, kArgsError);
-    return -1;
+    return false;
   }
 
+  // This whole method is synchronous, so we create a subprocess, let it run to
+  // completion, then gather up its output to return it.
+  ProcessWithOutput process;
+  process.SandboxAs("root", "root");
+  if (!process.Init()) {
+    DEBUGD_ADD_ERROR(
+        error, kProcessErrorName, "Process initialization failure.");
+    return false;
+  }
+
+  AddQuipperArguments(&process, duration_secs, perf_args);
+
   std::string output_string;
-  int result =
-      GetPerfOutputHelper(duration_secs, perf_args, &output_string);
+  *status = process.Run();
+  if (*status != 0) {
+    output_string =
+        base::StringPrintf("<process exited with status: %d>", *status);
+  } else {
+    process.GetOutput(&output_string);
+  }
 
   switch (subcommand) {
   case PERF_COMMAND_RECORD:
@@ -103,10 +121,10 @@ int PerfTool::GetPerfOutput(const uint32_t& duration_secs,
     break;
   }
 
-  return result;
+  return true;
 }
 
-bool PerfTool::GetPerfOutputFd(const uint32_t& duration_secs,
+bool PerfTool::GetPerfOutputFd(uint32_t duration_secs,
                                const std::vector<std::string>& perf_args,
                                const dbus::FileDescriptor& stdout_fd,
                                brillo::ErrorPtr* error) {
@@ -134,33 +152,6 @@ bool PerfTool::GetPerfOutputFd(const uint32_t& duration_secs,
     return false;
   }
   return true;
-}
-
-int PerfTool::GetPerfOutputHelper(const uint32_t& duration_secs,
-                                  const std::vector<std::string>& perf_args,
-                                  std::string* data_string) {
-  // This whole method is synchronous, so we create a subprocess, let it run to
-  // completion, then gather up its output to return it.
-  ProcessWithOutput process;
-  process.SandboxAs("root", "root");
-  if (!process.Init()) {
-    *data_string = "<process init failed>";
-    return -1;
-  }
-
-  AddQuipperArguments(&process, duration_secs, perf_args);
-
-  // Run the process to completion. If the process might take a while, you may
-  // have to make this asynchronous using .Start().
-  int status = process.Run();
-  if (status != 0) {
-    *data_string =
-        base::StringPrintf("<process exited with status: %d>", status);
-  } else {
-    process.GetOutput(data_string);
-  }
-
-  return status;
 }
 
 }  // namespace debugd
