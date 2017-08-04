@@ -5,6 +5,10 @@
 #ifndef CAMERA3_TEST_CAMERA3_FRAME_FIXTURE_H_
 #define CAMERA3_TEST_CAMERA3_FRAME_FIXTURE_H_
 
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "camera3_test/camera3_stream_fixture.h"
 
 namespace camera3_test {
@@ -12,6 +16,7 @@ namespace camera3_test {
 class Camera3FrameFixture : public Camera3StreamFixture {
  public:
   const uint32_t kDefaultTimeoutMs = 1000;
+  static const uint32_t kARGBPixelWidth = 4;
 
   explicit Camera3FrameFixture(int cam_id) : Camera3StreamFixture(cam_id) {}
 
@@ -27,6 +32,51 @@ class Camera3FrameFixture : public Camera3StreamFixture {
 
   // Wait for shutter and capture result with timeout
   void WaitShutterAndCaptureResult(const struct timespec& timeout);
+
+  enum class ImageFormat {
+    IMAGE_FORMAT_ARGB,
+    IMAGE_FORMAT_I420,
+    IMAGE_FORMAT_END
+  };
+
+  struct ImagePlane {
+    ImagePlane(uint32_t stride, uint32_t size, uint8_t* addr);
+
+    uint32_t stride;
+    uint32_t size;
+    uint8_t* addr;
+  };
+
+  struct Image {
+    Image(uint32_t w, uint32_t h, ImageFormat f);
+    int SaveToFile(const std::string filename) const;
+
+    uint32_t width;
+    uint32_t height;
+    ImageFormat format;
+    std::vector<uint8_t> data;
+    uint32_t size;
+    std::vector<ImagePlane> planes;
+  };
+
+  typedef std::unique_ptr<struct Image> ImageUniquePtr;
+
+  // Convert the buffer to given format and return a new buffer in the Image
+  // structure. The input buffer is freed.
+  ImageUniquePtr ConvertToImage(BufferHandleUniquePtr buffer,
+                                uint32_t width,
+                                uint32_t height,
+                                ImageFormat format);
+
+  ImageUniquePtr GenerateColorBarsPattern(uint32_t width,
+                                          uint32_t height,
+                                          ImageFormat format,
+                                          bool is_fade_to_gray);
+
+  // Computes the peak signal-to-noise ratio of given images. Given images must
+  // be of the I420 format; otherwise, the maximum finite value representable
+  // by the double type is returned.
+  double ComputePsnr(const Image& buffer_a, const Image& buffer_b);
 
  private:
   // Create and process capture request of given metadata |metadata|. The frame
