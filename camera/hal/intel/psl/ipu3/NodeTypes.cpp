@@ -22,7 +22,21 @@ namespace camera2 {
 
 int getDefaultMemoryType(IPU3NodeNames node)
 {
-    return V4L2_MEMORY_USERPTR;
+    /*
+     * According to V4L2 framework, the video device that exports dmabuf
+     * must use V4L2_MEMORY_MMAP. V4L2_MEMORY_DMABUF is used for video
+     * devices that import dmabuf.
+     * ISYS_NODE_RAW works as a dmabuf exporter.
+     * IMGU_NODE_INPUT imports the dmabuf fd exported from ISYS_NODE_RAW.
+     */
+    switch (node) {
+    case ISYS_NODE_RAW:
+        return V4L2_MEMORY_MMAP;
+    case IMGU_NODE_INPUT:
+        return V4L2_MEMORY_DMABUF;
+    default:
+        return V4L2_MEMORY_USERPTR;
+    }
 }
 
 }
