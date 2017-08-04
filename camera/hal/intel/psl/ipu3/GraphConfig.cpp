@@ -51,6 +51,7 @@ namespace gcu = graphconfig::utils;
 #define MEDIACTL_PAD_OUTPUT_NUM 2
 #define MEDIACTL_PAD_VF_NUM 3
 #define MEDIACTL_PAD_PV_NUM 4
+#define SCALING_FACTOR 1
 
 const string csi2_without_port = "ipu3-csi2:";
 
@@ -1970,6 +1971,7 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig &mediaCtlConfig)
     mediaCtlConfig.mLinkParams.clear();
     mediaCtlConfig.mFormatParams.clear();
     mediaCtlConfig.mSelectionParams.clear();
+    mediaCtlConfig.mSelectionVideoParams.clear();
     mediaCtlConfig.mControlParams.clear();
     mediaCtlConfig.mVideoNodes.clear();
     string csi2;
@@ -2240,6 +2242,41 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig &mediaCtlConfig)
     return OK;
 }
 
+status_t GraphConfig::getNodeInfo(const ia_uid uid, const Node &parent, int* width, int* height)
+{
+    status_t status = OK;
+
+    Node *node = nullptr;
+    status = parent.getDescendant(uid, &node);
+    if (status != css_err_none) {
+        LOGE("pipe log <%s> node is not present in graph (descriptor or settings) - continuing.",GCSS::ItemUID::key2str(uid));
+        return UNKNOWN_ERROR;
+    }
+    status = node->getValue(GCSS_KEY_WIDTH, *width);
+    if (status != css_err_none) {
+        LOGE("pipe log Could not get width for <%s>", NODE_NAME(node));
+        return UNKNOWN_ERROR;
+    }
+
+    if (width == 0) {
+        LOGE("pipe log Could not get width for <%s>", NODE_NAME(node));
+        return UNKNOWN_ERROR;
+    }
+
+    status = node->getValue(GCSS_KEY_HEIGHT, *height);
+    if (status != css_err_none) {
+        LOGE("pipe log Could not get height for <%s>", NODE_NAME(node));
+        return UNKNOWN_ERROR;
+    }
+
+    if (height == 0) {
+        LOGE("pipe log Could not get height for <%s>", NODE_NAME(node));
+        return UNKNOWN_ERROR;
+    }
+
+    return status;
+}
+
 /*
  * Imgu specific function
  */
@@ -2251,12 +2288,14 @@ status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig &mediaCtlConfig,
     mediaCtlConfig.mLinkParams.clear();
     mediaCtlConfig.mFormatParams.clear();
     mediaCtlConfig.mSelectionParams.clear();
+    mediaCtlConfig.mSelectionVideoParams.clear();
     mediaCtlConfig.mControlParams.clear();
     mediaCtlConfig.mVideoNodes.clear();
 
     Node *imgu = nullptr;
     int width = 0, height = 0, format = 0;
     int enabled = 1;
+    std::string kImguName = "ipu3-imgu:0";
 
     ret = mSettings->getDescendant(GCSS_KEY_IMGU, &imgu);
     if (ret != css_err_none) {
@@ -2359,6 +2398,58 @@ status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig &mediaCtlConfig,
         addFormatParams(name, width, height, 1,
                         format, 0, mediaCtlConfig);
 
+        if (GCSS::ItemUID::key2str(uids[i].uid) == GC_PREVIEW ||
+            GCSS::ItemUID::key2str(uids[i].uid) == GC_STILL ||
+            GCSS::ItemUID::key2str(uids[i].uid) == GC_VIDEO) {
+
+            int nodeWidth = 0, nodeHeight = 0;
+
+            // Get GDC info
+            ret = getNodeInfo(GCSS_KEY_IMGU_GDC, *pipe, &nodeWidth, &nodeHeight);
+            if (ret != OK) {
+                LOGE("pipe log name: %s can't get info!", name.c_str());
+                return UNKNOWN_ERROR;
+            }
+            LOG2("pipe log name: %s  gdc size %dx%d", name.c_str(), nodeWidth, nodeHeight);
+            addFormatParams(kImguName, nodeWidth, nodeHeight, 0,
+                                     V4L2_MBUS_FMT_UYVY8_2X8, 0, mediaCtlConfig);
+
+            // Get IF info
+            ret = getNodeInfo(GCSS_KEY_IMGU_IF, *pipe, &nodeWidth, &nodeHeight);
+            if (ret != OK) {
+                LOGE("pipe log name: %s can't get info!", name.c_str());
+                return UNKNOWN_ERROR;
+            }
+            struct v4l2_selection select;
+            CLEAR(select);
+            select.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+            select.target = V4L2_SEL_TGT_CROP;
+            select.flags = 0;
+            select.r.left = 0;
+            select.r.top = 0;
+            select.r.width = nodeWidth;
+            select.r.height = nodeHeight;
+            addSelectionVideoParams(MEDIACTL_INPUTNAME, select, &mediaCtlConfig);
+            LOG2("pipe log name: %s  if size %dx%d", name.c_str(), nodeWidth, nodeHeight);
+
+            // Get BDS info
+            ret = getNodeInfo(GCSS_KEY_IMGU_BDS, *pipe, &nodeWidth, &nodeHeight);
+            if (ret != OK) {
+                LOGE("pipe log name: %s can't get info!", name.c_str());
+                return UNKNOWN_ERROR;
+            }
+            CLEAR(select);
+            select.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+            select.target = V4L2_SEL_TGT_COMPOSE;
+            select.flags = 0;
+            select.r.left = 0;
+            select.r.top = 0;
+            select.r.width = nodeWidth;
+            select.r.height = nodeHeight;
+            addSelectionVideoParams(MEDIACTL_INPUTNAME, select, &mediaCtlConfig);
+            LOG2("pipe log name: %s  bds size %dx%d", name.c_str(), nodeWidth, nodeHeight);
+        }
+
         /* if node active add it to mediactl config */
         if (width != 0) {
             LOG2("Adding video node: %s", NODE_NAME(pipe));
@@ -2366,16 +2457,16 @@ status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig &mediaCtlConfig,
         }
 
         if (GCSS::ItemUID::key2str(uids[i].uid) != GC_INPUT) {
-            addLinkParams(string("ipu3-imgu:0"), uids[i].pad, name, 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+            addLinkParams(kImguName, uids[i].pad, name, 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
         }
     }
 
     addImguVideoNode(nullptr, mediaCtlConfig, GCSS_KEY_IMGU_STATS);
-    addLinkParams(string("ipu3-imgu:0"), 5, MEDIACTL_STATNAME, 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+    addLinkParams(kImguName, 5, MEDIACTL_STATNAME, 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
 
     LOG2("Adding parameter node");
     addImguVideoNode(nullptr, mediaCtlConfig, GCSS_KEY_IMGU_PARAMETERS);
-    addLinkParams(MEDIACTL_PARAMETERNAME, 0,string("ipu3-imgu:0"), 1, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+    addLinkParams(MEDIACTL_PARAMETERNAME, 0, kImguName, 1, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
 
     return ret;
 }
@@ -2781,6 +2872,24 @@ void GraphConfig::addSelectionParams(const string &entityName,
     }
 }
 
+void GraphConfig::addSelectionVideoParams(const string &entityName,
+                                     const struct v4l2_selection &select,
+                                     MediaCtlConfig* config)
+{
+    if (entityName.empty()) {
+        LOGE("The entity <%s> is empty!", entityName.c_str());
+        return;
+    }
+
+    MediaCtlSelectionVideoParams mediaCtlSelectionVideoParams;
+    mediaCtlSelectionVideoParams.entityName = entityName;
+    mediaCtlSelectionVideoParams.select = select;
+    config->mSelectionVideoParams.push_back(mediaCtlSelectionVideoParams);
+    LOG2("@%s, width:%d, height:%d, left:%d, top:%d, target:%d, type:%d, flags:%d entityName:%s",
+        __FUNCTION__, select.r.width, select.r.height, select.r.left, select.r.top,
+        select.target, select.type, select.flags, entityName.c_str());
+}
+
 /**
  * Add link params into config
  *
@@ -2980,8 +3089,10 @@ GraphConfig::getSensorFrameParams(ia_aiq_frame_params &sensorFrameParams)
     int32_t scalingDenom = 1; // avoid possible division by 0
     int32_t lScaler = 0; // left scaler crop
     int32_t tScaler = 0; // top scaler crop
-    int32_t wScaler = wPixArray;
-    int32_t hScaler = hPixArray;
+    hBinning = (hBinning <= 0) ? 1 : hBinning;
+    vBinning = (vBinning <= 0) ? 1 : vBinning;
+    int32_t wScaler = wPixArray / hBinning;
+    int32_t hScaler = hPixArray / vBinning;
 
     ret = sensorNode->getDescendant(GCSS_KEY_SCALER, &scalerNode);
     if (ret != css_err_none) {
@@ -3042,32 +3153,22 @@ GraphConfig::getSensorFrameParams(ia_aiq_frame_params &sensorFrameParams)
     int32_t wCroppedImage = ((wPixFormatOut * scalingDenom) / scalingNum * hBinning);
     int32_t hCroppedImage = ((hPixFormatOut * scalingDenom) / scalingNum * vBinning);
 
-    int32_t hScalingNum = scalingNum;
-    int32_t hScalingDenom = scalingDenom * hBinning;
-    int32_t vScalingNum = scalingNum;
-    int32_t vScalingDenom = scalingDenom * vBinning;
-
     LOG1("------------------- sensorFrameParams ---------------------------");
     LOG1("%s: Final cropped Image w = %d, Final cropped Image h = %d",
                  __FUNCTION__, wCroppedImage, hCroppedImage);
 
     LOG1("%s: Horizontal_crop_offset = %d, Vertical_crop_offset = %d",
                  __FUNCTION__, lFinalCrop, tFinalCrop);
-
-    LOG1("%s: Horizontal_scaling_factor = %d/%d,"
-         " Vertical_scaling factor = %d/%d", __FUNCTION__,
-                                             hScalingNum, hScalingDenom,
-                                             vScalingNum, vScalingDenom);
     LOG1("-----------------------------------------------------------------");
 
     sensorFrameParams.cropped_image_width = wCroppedImage;
     sensorFrameParams.cropped_image_height = hCroppedImage;
     sensorFrameParams.horizontal_crop_offset = lFinalCrop;
     sensorFrameParams.vertical_crop_offset = tFinalCrop;
-    sensorFrameParams.horizontal_scaling_numerator = hScalingNum;
-    sensorFrameParams.horizontal_scaling_denominator = hScalingDenom;
-    sensorFrameParams.vertical_scaling_numerator = vScalingNum;
-    sensorFrameParams.vertical_scaling_denominator = vScalingDenom;
+    sensorFrameParams.horizontal_scaling_numerator = SCALING_FACTOR;
+    sensorFrameParams.horizontal_scaling_denominator = SCALING_FACTOR;
+    sensorFrameParams.vertical_scaling_numerator = SCALING_FACTOR;
+    sensorFrameParams.vertical_scaling_denominator = SCALING_FACTOR;
     return OK;
 }
 

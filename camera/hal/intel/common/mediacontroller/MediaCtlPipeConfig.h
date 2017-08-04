@@ -19,6 +19,7 @@
 
 #include <vector>
 #include <string>
+#include <linux/videodev2.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,6 +81,11 @@ typedef struct {
 
 typedef struct {
     string entityName;
+    struct v4l2_selection select;
+} MediaCtlSelectionVideoParams;
+
+typedef struct {
+    string entityName;
     int controlId;
     int value;
     string controlName;
@@ -101,6 +107,7 @@ typedef struct {
     std::vector<MediaCtlLinkParams> mLinkParams;
     std::vector<MediaCtlFormatParams> mFormatParams;
     std::vector<MediaCtlSelectionParams> mSelectionParams;
+    std::vector<MediaCtlSelectionVideoParams> mSelectionVideoParams;
     std::vector<MediaCtlControlParams> mControlParams;
     std::vector<MediaCtlElement> mVideoNodes;
 } MediaCtlConfig;

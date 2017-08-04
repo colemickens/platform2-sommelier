@@ -38,6 +38,7 @@ public:
     void writeJpegMetadata(RequestCtrlState &reqState) const;
     void writeLensMetadata(RequestCtrlState &reqState) const;
     void writeLSCMetadata(std::shared_ptr<RequestCtrlState> &reqState) const;
+    void FillSensorDescriptor(const ControlUnit::Message &msg);
     status_t fillTonemapCurve(RequestCtrlState &reqAiqCfg);
 
 private:
@@ -45,23 +46,6 @@ private:
 
 
 private:
-    struct StaticMetadataCache {
-                camera_metadata_ro_entry availableEffectModes;
-                camera_metadata_ro_entry availableEdgeModes;
-                camera_metadata_ro_entry availableNoiseReductionModes;
-                camera_metadata_ro_entry availableTonemapModes;
-                camera_metadata_ro_entry availableHotPixelMapModes;
-                camera_metadata_ro_entry availableHotPixelModes;
-                camera_metadata_ro_entry availableVideoStabilization;
-                camera_metadata_ro_entry availableOpticalStabilization;
-                camera_metadata_ro_entry currentAperture;
-                camera_metadata_ro_entry currentFocalLength;
-                camera_metadata_ro_entry flashInfoAvailable;
-                camera_metadata_ro_entry lensShadingMapSize;
-                camera_metadata_ro_entry maxAnalogSensitivity;
-                StaticMetadataCache() { CLEAR(*this); }
-    };
-
     uint32_t mMaxCurvePoints; /*!< Cache for max curve points for tonemap */
     float   *mRGammaLut;      /*!< [(P_IN, P_OUT), (P_IN, P_OUT), ..] */
     float   *mGGammaLut;      /*!< [(P_IN, P_OUT), (P_IN, P_OUT), ..] */
@@ -70,7 +54,6 @@ private:
     float mLscGridRGGB[MAX_LSC_GRID_SIZE * 4];
     float mLscOffGrid[MAX_LSC_GRID_SIZE * 4];
     int mCameraId;
-    StaticMetadataCache mStaticMetadataCache;
     ia_aiq_exposure_sensor_descriptor mSensorDescriptor;
     static constexpr float ONE_PERCENT = 0.01f;
     Intel3aPlus *m3aWrapper; /* Metadata doesn't own m3aWrapper */

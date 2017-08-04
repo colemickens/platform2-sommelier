@@ -380,7 +380,10 @@ private:
                             int target,
                             int pad,
                             MediaCtlConfig &config);
-
+    void addSelectionVideoParams(const string &entityName,
+                                 const struct v4l2_selection &select,
+                                 MediaCtlConfig* config);
+    status_t getNodeInfo(const ia_uid uid, const Node &parent, int *width, int *height);
     status_t getTPGMediaCtlData(MediaCtlConfig &mediaCtlConfig);
     status_t getSensorMediaCtlData(MediaCtlConfig &mediaCtlConfig);
     void dumpMediaCtlConfig(const MediaCtlConfig &config) const;

@@ -40,6 +40,7 @@ CameraWindow::CameraWindow() :
     mHeight(0)
 {
     CLEAR(mMeteringRectangle);
+    CLEAR(mCenter);
 }
 
 void CameraWindow::init(ia_coordinate topLeft,ia_coordinate bottomRight, int aWeight)

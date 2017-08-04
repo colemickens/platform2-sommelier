@@ -45,6 +45,7 @@ SettingsProcessor::SettingsProcessor(int cameraId,
     mAPA = PlatformData::getActivePixelArray(mCameraId);
     cacheStaticMetadata();
     CLEAR(mCurrentFrameParams);
+    CLEAR(mSensorDescriptor);
 }
 
 SettingsProcessor::~SettingsProcessor()
@@ -123,7 +124,7 @@ SettingsProcessor::processRequestSettings(const CameraMetadata  &settings,
     reqAiqCfg.captureSettings->shadingMode = saParams.saMode;
     reqAiqCfg.captureSettings->shadingMapMode = saParams.shadingMapMode;
 
-    return status;
+    return processTestPatternMode(settings, reqAiqCfg);
 }
 
 /**
@@ -196,8 +197,8 @@ status_t SettingsProcessor::processIspSettings(const CameraMetadata &settings,
 
     //# ANDROID_METADATA_Control android.edge.mode done
     entry = settings.find(ANDROID_EDGE_MODE);
-    uint8_t edgeMode =
-            MetadataHelper::checkSetting(mStaticMetadataCache.availableEdgeModes, entry);
+    uint8_t edgeMode = 0;
+    MetadataHelper::getSetting(mStaticMetadataCache.availableEdgeModes, entry, &edgeMode);
     reqAiqCfg.captureSettings->ispControls.ee.mode = edgeMode;
 
     switch (edgeMode) {
@@ -239,8 +240,9 @@ status_t SettingsProcessor::processIspSettings(const CameraMetadata &settings,
 
     //# ANDROID_METADATA_Control android.noiseReduction.mode done
     entry = settings.find(ANDROID_NOISE_REDUCTION_MODE);
-    uint8_t noiseReductionMode =
-            MetadataHelper::checkSetting(mStaticMetadataCache.availableNoiseReductionModes, entry);
+    uint8_t noiseReductionMode = 0;
+    MetadataHelper::getSetting(mStaticMetadataCache.availableNoiseReductionModes, entry,
+                                 &noiseReductionMode);
     reqAiqCfg.captureSettings->ispControls.nr.mode = noiseReductionMode;
 
     switch (noiseReductionMode) {
@@ -280,8 +282,8 @@ status_t SettingsProcessor::processIspSettings(const CameraMetadata &settings,
 
     //# ANDROID_METADATA_Control android.control.effectMode done
     entry = settings.find(ANDROID_CONTROL_EFFECT_MODE);
-    uint8_t effectMode =
-            MetadataHelper::checkSetting(mStaticMetadataCache.availableEffectModes, entry);
+    uint8_t effectMode = 0;
+    MetadataHelper::getSetting(mStaticMetadataCache.availableEffectModes, entry, &effectMode);
     reqAiqCfg.captureSettings->ispControls.effect = effectMode;
 
     switch (effectMode) {
@@ -342,9 +344,10 @@ void SettingsProcessor::cacheStaticMetadata()
             MetadataHelper::getMetadataEntry(meta, ANDROID_SENSOR_MAX_ANALOG_SENSITIVITY);
     mStaticMetadataCache.pipelineDepth =
             MetadataHelper::getMetadataEntry(meta, ANDROID_REQUEST_PIPELINE_MAX_DEPTH);
-
     mStaticMetadataCache.lensSupported =
             MetadataHelper::getMetadataEntry(meta, ANDROID_LENS_INFO_MINIMUM_FOCUS_DISTANCE);
+    mStaticMetadataCache.availableTestPatternModes =
+            MetadataHelper::getMetadataEntry(meta, ANDROID_SENSOR_AVAILABLE_TEST_PATTERN_MODES);
 }
 
 status_t
@@ -605,15 +608,13 @@ SettingsProcessor::processStabilizationSettings(const CameraMetadata &settings,
     camera_metadata_ro_entry entry;
     //# ANDROID_METADATA_Control android.control.videoStabilizationMode done
     entry = settings.find(ANDROID_CONTROL_VIDEO_STABILIZATION_MODE);
-    reqAiqCfg.captureSettings->videoStabilizationMode =
-            MetadataHelper::checkSetting(mStaticMetadataCache.availableVideoStabilization,
-                             entry);
+    MetadataHelper::getSetting(mStaticMetadataCache.availableVideoStabilization, entry,
+                                 &(reqAiqCfg.captureSettings->videoStabilizationMode));
 
     //# ANDROID_METADATA_Control android.lens.opticalStabilizationMode done
     entry = settings.find(ANDROID_LENS_OPTICAL_STABILIZATION_MODE);
-    reqAiqCfg.captureSettings->opticalStabilizationMode =
-            MetadataHelper::checkSetting(mStaticMetadataCache.availableOpticalStabilization,
-                             entry);
+    MetadataHelper::getSetting(mStaticMetadataCache.availableOpticalStabilization, entry,
+                                 &(reqAiqCfg.captureSettings->opticalStabilizationMode));
     return OK;
 }
 
@@ -624,12 +625,12 @@ status_t SettingsProcessor::processHotPixelSettings(const CameraMetadata &settin
     camera_metadata_ro_entry entry;
     //# ANDROID_METADATA_Control android.statistics.hotPixelMapMode done
     entry = settings.find(ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE);
-    reqAiqCfg.captureSettings->hotPixelMapMode =
-            MetadataHelper::checkSetting(mStaticMetadataCache.availableHotPixelMapModes, entry);
+    MetadataHelper::getSetting(mStaticMetadataCache.availableHotPixelMapModes, entry,
+                                 &(reqAiqCfg.captureSettings->hotPixelMapMode));
     //# ANDROID_METADATA_Control android.hotPixel.mode done
     entry = settings.find(ANDROID_HOT_PIXEL_MODE);
-    reqAiqCfg.captureSettings->hotPixelMode =
-            MetadataHelper::checkSetting(mStaticMetadataCache.availableHotPixelModes, entry);
+    MetadataHelper::getSetting(mStaticMetadataCache.availableHotPixelModes, entry,
+                                 &(reqAiqCfg.captureSettings->hotPixelMode));
     return OK;
 }
 
@@ -643,8 +644,8 @@ status_t SettingsProcessor::processTonemapSettings(const CameraMetadata &setting
 
     //# ANDROID_METADATA_Control android.tonemap.mode done
     entry = settings.find(ANDROID_TONEMAP_MODE);
-    reqAiqCfg.captureSettings->tonemapMode =
-            MetadataHelper::checkSetting(mStaticMetadataCache.availableTonemapModes, entry);
+    MetadataHelper::getSetting(mStaticMetadataCache.availableTonemapModes, entry,
+                                 &(reqAiqCfg.captureSettings->tonemapMode));
     // ITS test_param_tonemap_mode WA: allow incoming contrast curve, but
     // only in manual mode (control mode off).
     if (entry.count == 1 &&
@@ -689,6 +690,20 @@ status_t SettingsProcessor::processTonemapSettings(const CameraMetadata &setting
         DELETE_ARRAY_AND_NULLIFY(reqAiqCfg.gGammaLut);
         DELETE_ARRAY_AND_NULLIFY(reqAiqCfg.bGammaLut);
     }
+
+    return OK;
+}
+
+
+status_t SettingsProcessor::processTestPatternMode(const CameraMetadata &settings,
+                                             RequestCtrlState &reqAiqCfg)
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    camera_metadata_ro_entry entry;
+
+    entry = settings.find(ANDROID_SENSOR_TEST_PATTERN_MODE);
+    MetadataHelper::getSetting(mStaticMetadataCache.availableTestPatternModes, entry,
+                                 &(reqAiqCfg.captureSettings->testPatternMode));
 
     return OK;
 }

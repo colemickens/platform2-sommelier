@@ -76,6 +76,7 @@
  */
 #define INIT_COORDINATE(p,xVal,yVal) (p).x = xVal; (p).y = yVal;
 
+#define ALGIN4(x) (((x) + 3U) & (~3U))
 #define ALIGN8(x) (((x) + 7) & ~7)
 #define ALIGN16(x) (((x) + 15) & ~15)
 #define ALIGN32(x) (((x) + 31) & ~31)

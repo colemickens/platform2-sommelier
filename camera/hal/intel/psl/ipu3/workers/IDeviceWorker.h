@@ -31,7 +31,6 @@ enum DeviceMessageId {
     MESSAGE_COMPLETE_REQ,
     MESSAGE_ID_POLL,
     MESSAGE_ID_FLUSH,
-    MESSAGE_ID_PARAM,
     MESSAGE_ID_MAX
 };
 
@@ -66,7 +65,6 @@ public:
     ProcTaskMsg pMsg;
     MessageCallbackMetadata cbMetadataMsg;
     MessagePollEvent pollEvent;
-    ipu3_uapi_params *param;
 
     DeviceMessage():
         id(MESSAGE_ID_MAX) {}

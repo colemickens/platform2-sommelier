@@ -21,7 +21,6 @@
 #include <KBL_AIC.h>
 #include "FrameWorker.h"
 #include "IPU3ISPPipe.h"
-#include "tasks/ICaptureEventSource.h"
 
 namespace android {
 namespace camera2 {
@@ -78,7 +77,7 @@ struct GridInfo
 
 class SkyCamProxy;
 
-class ParameterWorker: public FrameWorker, public ICaptureEventSource
+class ParameterWorker: public FrameWorker
 {
 public:
     ParameterWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId);
@@ -88,7 +87,6 @@ public:
     status_t prepareRun(std::shared_ptr<DeviceMessage> msg);
     status_t run();
     status_t postRun();
-    status_t setStillParam(ipu3_uapi_params *param);
 
     void dump();
 
@@ -127,8 +125,6 @@ private:
 
     aic_config *mAicConfig;
 
-    ipu3_uapi_params mStillParams;
-    bool mStillParamsReady;
     std::mutex mStillParamsMutex;
 
 };

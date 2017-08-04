@@ -46,26 +46,6 @@ __attribute__((destructor(102))) void deInitIaLog() {
     ia_log_deinit();
 }
 
-void RequestStatistics::init()
-{
-    CLEAR(rgbsGrid);
-    CLEAR(afGrid);
-    CLEAR(aiqStatsInputParams);
-    reset();
-}
-void RequestStatistics::reset() {
-    rgbsGridArray = &rgbsGrid;
-    aiqStatsInputParams.rgbs_grids = &rgbsGridArray;
-    aiqStatsInputParams.num_rgbs_grids = 1;
-    afGridArray = &afGrid;
-    aiqStatsInputParams.num_af_grids = 1;
-    aiqStatsInputParams.af_grids = &afGridArray;
-    aiqStatsInputParams.frame_af_parameters = &af_results;
-    aiqStatsInputParams.hdr_rgbs_grid = nullptr;
-    aiqStatsInputParams.depth_grids  = nullptr;
-    aiqStatsInputParams.num_depth_grids = 0;
-}
-
 void AiqInputParams::init()
 {
     CLEAR(aeInputParams);
@@ -168,6 +148,18 @@ AiqResults::AiqResults() :
         mChannelGB(nullptr),
         mChannelB(nullptr)
 {
+    LOG1("@%s", __FUNCTION__);
+    CLEAR(awbResults);
+    CLEAR(aeResults);
+    CLEAR(gbceResults);
+    CLEAR(paResults);
+    CLEAR(mExposureResults);
+    CLEAR(mWeightGrid);
+    CLEAR(mGenericExposure);
+    CLEAR(mSensorExposure);
+    CLEAR(afResults);
+    CLEAR(saResults);
+    CLEAR_N(mFlashes, NUM_FLASH_LEDS);
 }
 
 
@@ -191,6 +183,7 @@ void AiqResults::init()
     CLEAR(mFlashes);
     CLEAR(mGenericExposure);
     CLEAR(mSensorExposure);
+
     /*AE results init */
     aeResults.exposures = &mExposureResults;
     aeResults.weight_grid = &mWeightGrid;
@@ -227,8 +220,7 @@ Intel3aCore::Intel3aCore(int camId):
         mMkn(nullptr),
         mCameraId(camId),
         mHyperFocalDistance(2.5f),
-        mEnableAiqdDataSave(false),
-        mAiqdFileName("")
+        mEnableAiqdDataSave(false)
 {
     LOG1("@%s", __FUNCTION__);
 }
@@ -294,8 +286,9 @@ status_t Intel3aCore::init(int maxGridW,
     const ia_binary_data *pAiqdData = nullptr;
 
     if (mEnableAiqdDataSave && sensorName != nullptr) {
-        mAiqdFileName = PlatformData::getAiqdFileName(sensorName);
-        pAiqdData = readAiqdData(&aiqdData) ? &aiqdData : nullptr;
+        /* fill in aiqd info to do 3A calculation */
+        if (PlatformData::readAiqdData(mCameraId, &aiqdData))
+            pAiqdData = &aiqdData;
     }
 
     mIaAiqHandle = ia_aiq_init((ia_binary_data*)&(cpfData),
@@ -306,13 +299,6 @@ status_t Intel3aCore::init(int maxGridW,
                                 NUM_EXPOSURES,
                                 mCmc,
                                 mMkn);
-
-    cameranvm_delete(outputNvmData);
-    //release the aiqddata allocated in the readAiqdData
-    if (aiqdData.data) {
-        free(aiqdData.data);
-        CLEAR(aiqdData);
-    }
 
     if (!mIaAiqHandle) {
         LOGE("Error in IA AIQ init");
@@ -1242,52 +1228,6 @@ status_t Intel3aCore::storeLensShadingMap(const LSCGrid &inputLscGrid,
 
 /**
  *
- * Read the aiqd data from host file system
- *
- * \param[out] aiqdData aiqd data from the host file system
- *
- * \return true: aiqd data correctly read
- *         false: for any case with error
- */
-bool Intel3aCore::readAiqdData(ia_binary_data *aiqdData)
-{
-    LOG1("@%s", __FUNCTION__);
-    struct stat fileStat;
-    CLEAR(fileStat);
-    bool ret = false;
-
-    if (stat(mAiqdFileName.c_str(), &fileStat) != 0) {
-        LOGE("can't read aiqd file or file doesn't exist, AiqdFileName = %s", mAiqdFileName.c_str());
-        return ret;
-    }
-
-    aiqdData->size = fileStat.st_size;
-    LOG2("aiqd file size: %d", aiqdData->size);
-
-    if (aiqdData->size > 0) {
-        aiqdData->data = malloc(aiqdData->size);
-        if (aiqdData->data) {
-            FILE *f = fopen(mAiqdFileName.c_str(), "rb");
-            if (f) {
-                size_t readCount = fread(aiqdData->data, sizeof(unsigned char), aiqdData->size, f);
-                if (readCount != aiqdData->size) {
-                    LOGE("read aiqd %d bytes from file: %s fail", aiqdData->size, mAiqdFileName.c_str());
-                    fclose(f);
-                    return false;
-                }
-                fclose(f);
-                ret = true;
-            }
-        }
-    }
-    if (!ret)
-        LOGE("read aiqd %d bytes from file: %s fail", aiqdData->size, mAiqdFileName.c_str());
-
-    return ret;
-}
-
-/**
- *
  * Enable/Disable load/save the aiqd data from/to
  * the host file system
  *
@@ -1321,23 +1261,9 @@ bool Intel3aCore::saveAiqdData()
         return false;
     }
 
-    FILE *f = fopen(mAiqdFileName.c_str(), "wb");
-    if (nullptr == f) {
-        LOGE("Can't save aiqd to file!");
-        return false;
-    }
+    /* save aiqd data to variables which locate in the array defined in platformdata */
+    PlatformData::saveAiqdData(mCameraId, aiqdData);
 
-    size_t writeCount = fwrite(aiqdData.data, 1, aiqdData.size, f);
-    if (writeCount != aiqdData.size) {
-        LOGE("Save aiqd %d bytes to file: %s fail", aiqdData.size, mAiqdFileName.c_str());
-        fclose(f);
-        return false;
-    }
-
-    fflush(f);
-    fclose(f);
-
-    LOG2("Save aiqd %d bytes to file: %s", aiqdData.size, mAiqdFileName.c_str());
     return true;
 }
 } NAMESPACE_DECLARATION_END

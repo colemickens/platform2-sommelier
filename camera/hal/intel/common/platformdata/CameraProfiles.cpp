@@ -123,6 +123,8 @@ CameraProfiles::~CameraProfiles()
     }
 
     mCameraIdToCameraInfo.clear();
+
+    mSensorNames.clear();
 }
 
 const CameraCapInfo *CameraProfiles::getCameraCapInfo(int cameraId)
@@ -946,6 +948,7 @@ bool CameraProfiles::isSensorPresent(std::vector<SensorDriverDescriptor> &detect
            }
        }
     }
+
     return false;
 }
 /**
@@ -972,6 +975,7 @@ void CameraProfiles::checkField(CameraProfiles *profiles,
         int attIndex = 2;
         if (atts[attIndex]) {
             if (strcmp(atts[attIndex], "name") == 0) {
+                mSensorIndex++;
                 LOG1("@%s: mSensorIndex = %d, name = %s, mSensorNames.size():%zu",
                         __FUNCTION__, mSensorIndex,
                         atts[attIndex + 1], profiles->mSensorNames.size());
@@ -980,8 +984,9 @@ void CameraProfiles::checkField(CameraProfiles *profiles,
                                                       atts[attIndex + 1],
                                                       mSensorIndex);
 
-                if (profiles->mUseEntry)
-                    mSensorIndex++;
+                if (profiles->mUseEntry) {
+                    mCameraIdToSensorName.insert(make_pair(mSensorIndex, std::string(atts[attIndex + 1])));
+                }
             } else {
                 LOGE("unknown attribute atts[%d] = %s", attIndex, atts[attIndex]);
             }
@@ -1050,19 +1055,6 @@ void CameraProfiles::handleCommon(const char *name, const char **atts)
     if (strcmp(atts[0], "value") != 0) {
         LOGE("name:%s, atts[0]:%s, xml format wrong", name, atts[0]);
         return;
-    }
-
-    if (strcmp(name, "supportDualVideo") == 0) {
-        mCameraCommon-> mSupportDualVideo = (strcmp(atts[1], "true") == 0);
-    } else if (strcmp(name, "supportExtendedMakernote") == 0) {
-        mCameraCommon-> mSupportExtendedMakernote = (strcmp(atts[1], "true") == 0);
-    } else if (strcmp(name, "supportFullColorRange") == 0) {
-        mCameraCommon->mSupportFullColorRange = (strcmp(atts[1], "true") == 0);
-    } else if (strcmp(name, "supportIPUAcceleration") == 0) {
-        mCameraCommon->mSupportIPUAcceleration = (strcmp(atts[1], "true") == 0);
-    } else if (strcmp(name, "cameraDeviceAPIVersion") == 0) {
-        if (strcmp(atts[1], "CAMERA_DEVICE_API_VERSION_3_3") == 0)
-            mCameraCommon->mCameraDeviceAPIVersion = CAMERA_DEVICE_API_VERSION_3_3;
     }
 }
 

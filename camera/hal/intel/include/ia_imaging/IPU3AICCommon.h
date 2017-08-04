@@ -142,22 +142,6 @@ public:
 	size_t GetSize() {
 		return m_size;
 	}
-	/* TODO ask Maya why, maybe possible to cancel the entire class by removing aic_parameters::domain_num
-	int& operator()(size_t x, size_t y) {
-		int i = 0;
-		int& iRet = i;
-		if ((0 != m_data.size()) && ((int)m_data.size() > (y*m_width + x)))
-			return m_data.at(y*m_width + x);
-		return iRet;
-	}
-	const int& operator()(size_t x, size_t y) const {
-		int i = 0;
-		const int& iRet = i;
-		if ((0 != m_data.size()) && ((int)m_data.size() > (y*m_width + x)))
-			return m_data.at(y*m_width + x);
-		return iRet;
-	}
-	*/
 };
 
 //////////////////////////////
@@ -192,7 +176,7 @@ struct IPU3AICRuntimeParams
 	bool disable_gamma;   /*!< Optional. disable gamma for VHDR.*/
 	bool preserve_color;   /*!< Optional. use previous calibration for color processing blocks for VHDR.*/
 	bool ull_on;			/*!< Optional. Flag that is true in the system will run ULL2 after the ISP */
-};
+}; /* IPU3AICRuntimeParams owns all pointer variables */
 
 typedef struct aic_inputs {
 	const ia_cmc_t *CMCParsed;

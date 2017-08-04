@@ -37,4 +37,8 @@
 #define ENV_CAMERA_CSS_DEBUG          "cameraCSSDebug"
 #define ENV_CAMERA_CSS_DUMP_PATH      "cameraCSSDumpPath"
 
+// Dump stats grid
+#define ENV_CAMERA_RGBS_GRID_DUMP "rgbsGridDump"
+#define ENV_CAMERA_AF_GRID_DUMP "afGridDump"
+
 #endif // _CHROME_CAMERA_LOG_H_

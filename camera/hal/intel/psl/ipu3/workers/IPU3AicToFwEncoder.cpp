@@ -383,8 +383,7 @@ ispShdEncode(aic_config *config, ipu3_uapi_params *params)
         }
     }
 
-    //FIXME: disable shd
-    params->use.acc_shd = 0;
+    params->use.acc_shd = 1;
 }
 
 void

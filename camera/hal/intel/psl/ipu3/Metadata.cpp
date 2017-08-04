@@ -20,6 +20,7 @@
 #include "ControlUnit.h"
 #include "LogHelper.h"
 #include "SettingsProcessor.h"
+#include "CameraMetadataHelper.h"
 
 namespace android {
 namespace camera2 {
@@ -33,6 +34,7 @@ Metadata::Metadata(int cameraId, Intel3aPlus *a3aWrapper):
         m3aWrapper(a3aWrapper)
 {
     CLEAR(mLscGridRGGB);
+    CLEAR(mSensorDescriptor);
     // init LscOffGrid to 1.0f
     std::fill(std::begin(mLscOffGrid), std::end(mLscOffGrid), 1.0f);
 }
@@ -59,11 +61,9 @@ Metadata::writeAwbMetadata(RequestCtrlState &reqState)
      * Update the manual color correction parameters
      * For the mode assume that we behave and we do as we are told
      */
-    //# ANDROID_METADATA_Dynamic android.colorCorrection.mode done
      reqState.ctrlUnitResult->update(ANDROID_COLOR_CORRECTION_MODE,
                                      &reqState.aaaControls.awb.colorCorrectionMode,
                                      1);
-    //# ANDROID_METADATA_Dynamic android.colorCorrection.aberrationMode done
      reqState.ctrlUnitResult->update(ANDROID_COLOR_CORRECTION_ABERRATION_MODE,
                                      &reqState.aaaControls.awb.colorCorrectionAberrationMode,
                                      1);
@@ -76,7 +76,6 @@ Metadata::writeAwbMetadata(RequestCtrlState &reqState)
      gains[1] = paResults.color_gains.gr;
      gains[2] = paResults.color_gains.gb;
      gains[3] = paResults.color_gains.b;
-     //# ANDROID_METADATA_Dynamic android.colorCorrection.gains done
      reqState.ctrlUnitResult->update(ANDROID_COLOR_CORRECTION_GAINS, gains, 4);
 
      /*
@@ -91,7 +90,6 @@ Metadata::writeAwbMetadata(RequestCtrlState &reqState)
              transformMatrix[j + 3*i].denominator = COLOR_TRANSFORM_PRECISION;
          }
      }
-     //# ANDROID_METADATA_Dynamic android.colorCorrection.transform done
      reqState.ctrlUnitResult->update(ANDROID_COLOR_CORRECTION_TRANSFORM,
                                      transformMatrix, 9);
 }
@@ -131,72 +129,63 @@ void Metadata::writeJpegMetadata(RequestCtrlState &reqState) const
 
     // TODO: Put JPEG settings to ProcessingUnitSettings, when implemented
 
-    //# ANDROID_METADATA_Dynamic android.jpeg.gpsCoordinates copied
     camera_metadata_ro_entry entry = settings->find(ANDROID_JPEG_GPS_COORDINATES);
     if (entry.count == 3) {
         reqState.ctrlUnitResult->update(ANDROID_JPEG_GPS_COORDINATES, entry.data.d, entry.count);
     }
 
-    //# ANDROID_METADATA_Dynamic android.jpeg.gpsProcessingMethod copied
     entry = settings->find(ANDROID_JPEG_GPS_PROCESSING_METHOD);
     if (entry.count > 0) {
         reqState.ctrlUnitResult->update(ANDROID_JPEG_GPS_PROCESSING_METHOD, entry.data.u8, entry.count);
     }
 
-    //# ANDROID_METADATA_Dynamic android.jpeg.gpsTimestamp copied
     entry = settings->find(ANDROID_JPEG_GPS_TIMESTAMP);
     if (entry.count == 1) {
         reqState.ctrlUnitResult->update(ANDROID_JPEG_GPS_TIMESTAMP, entry.data.i64, entry.count);
     }
 
-    //# ANDROID_METADATA_Dynamic android.jpeg.orientation copied
     entry = settings->find(ANDROID_JPEG_ORIENTATION);
     if (entry.count == 1) {
         reqState.ctrlUnitResult->update(ANDROID_JPEG_ORIENTATION, entry.data.i32, entry.count);
     }
 
-    //# ANDROID_METADATA_Dynamic android.jpeg.quality copied
     entry = settings->find(ANDROID_JPEG_QUALITY);
     if (entry.count == 1) {
         reqState.ctrlUnitResult->update(ANDROID_JPEG_QUALITY, entry.data.u8, entry.count);
     }
 
-    //# ANDROID_METADATA_Dynamic android.jpeg.thumbnailQuality copied
     entry = settings->find(ANDROID_JPEG_THUMBNAIL_QUALITY);
     if (entry.count == 1) {
         reqState.ctrlUnitResult->update(ANDROID_JPEG_THUMBNAIL_QUALITY, entry.data.u8, entry.count);
     }
 
-    //# ANDROID_METADATA_Dynamic android.jpeg.thumbnailSize copied
     entry = settings->find(ANDROID_JPEG_THUMBNAIL_SIZE);
     if (entry.count == 2) {
         reqState.ctrlUnitResult->update(ANDROID_JPEG_THUMBNAIL_SIZE, entry.data.i32, entry.count);
     }
-
-    //# ANDROID_METADATA_Dynamic android.jpeg.size done
-    //# Future
 }
 
 void Metadata::writeMiscMetadata(RequestCtrlState &reqState) const
 {
-    //# ANDROID_METADATA_Dynamic android.tonemap.mode copied
+    uint8_t sceneMode = ANDROID_CONTROL_SCENE_MODE_DISABLED;
+    reqState.ctrlUnitResult->update(ANDROID_CONTROL_SCENE_MODE, &sceneMode, 1);
+
+    uint8_t flashModeValue = ANDROID_FLASH_MODE_OFF;
+    reqState.ctrlUnitResult->update(ANDROID_FLASH_MODE, &flashModeValue, 1);
+
     reqState.ctrlUnitResult->update(ANDROID_TONEMAP_MODE,
                                     &reqState.captureSettings->tonemapMode, 1);
 
-    //# ANDROID_METADATA_Dynamic android.hotPixel.mode copied
     reqState.ctrlUnitResult->update(ANDROID_HOT_PIXEL_MODE,
                                     &reqState.captureSettings->hotPixelMode, 1);
 
-    //# ANDROID_METADATA_Dynamic android.statistics.hotPixelMapMode copied
     reqState.ctrlUnitResult->update(ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE,
                                     &reqState.captureSettings->hotPixelMapMode, 1);
 
-    //# ANDROID_METADATA_Dynamic android.statistics.faceDetectMode OFF
     uint8_t fdValue = ANDROID_STATISTICS_FACE_DETECT_MODE_OFF;
     reqState.ctrlUnitResult->update(ANDROID_STATISTICS_FACE_DETECT_MODE,
         &fdValue, 1);
 
-    //# Set ANDROID_STATISTICS_FACE_IDS to zero as we do not support face detection
     int faceIds[1] = {0};
     reqState.ctrlUnitResult->update(ANDROID_STATISTICS_FACE_IDS,
                                     faceIds, 1);
@@ -206,25 +195,26 @@ void Metadata::writeLSCMetadata(std::shared_ptr<RequestCtrlState> &reqState) con
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     std::shared_ptr<CaptureUnitSettings> settings = reqState->captureSettings;
-    if (mStaticMetadataCache.lensShadingMapSize.count == 2 &&
+    const camera_metadata_t *meta = PlatformData::getStaticMetadata(mCameraId);
+    camera_metadata_ro_entry_t lensShadingMapSize =
+                MetadataHelper::getMetadataEntry(meta, ANDROID_LENS_INFO_SHADING_MAP_SIZE);
+
+    if (lensShadingMapSize.count == 2 &&
         settings->shadingMapMode == ANDROID_STATISTICS_LENS_SHADING_MAP_MODE_ON) {
-        size_t size = mStaticMetadataCache.lensShadingMapSize.data.i32[0] *
-                      mStaticMetadataCache.lensShadingMapSize.data.i32[1] * 4;
+        size_t size = lensShadingMapSize.data.i32[0] *
+                      lensShadingMapSize.data.i32[1] * 4;
         bool lscOn = (settings->shadingMode != ANDROID_SHADING_MODE_OFF);
         const float *lscMap = lscOn ? mLscGridRGGB : mLscOffGrid;
 
-        //# ANDROID_METADATA_Dynamic android.statistics.lensShadingMap done
         reqState->ctrlUnitResult->update(ANDROID_STATISTICS_LENS_SHADING_MAP,
                                         lscMap,
                                         size);
     }
 
-    //# ANDROID_METADATA_Dynamic android.shading.mode done
     reqState->ctrlUnitResult->update(ANDROID_SHADING_MODE,
                                     &reqState->captureSettings->shadingMode,
                                     1);
 
-    //# ANDROID_METADATA_Dynamic android.statistics.lensShadingMapMode done
     reqState->ctrlUnitResult->update(ANDROID_STATISTICS_LENS_SHADING_MAP_MODE,
                                     &reqState->captureSettings->shadingMapMode,
                                     1);
@@ -234,21 +224,24 @@ void Metadata::writeLensMetadata(RequestCtrlState &reqState) const
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
 
-    // TODO: Do this better. Metadata and EXIF data are now both written
     // from static metadata in different places. Use same result data for both.
+    const camera_metadata_t *meta = PlatformData::getStaticMetadata(mCameraId);
+    camera_metadata_ro_entry_t currentAperture =
+            MetadataHelper::getMetadataEntry(meta, ANDROID_LENS_INFO_AVAILABLE_APERTURES);
+    camera_metadata_ro_entry_t currentFocalLength =
+            MetadataHelper::getMetadataEntry(meta, ANDROID_LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
 
-    //# ANDROID_METADATA_Dynamic android.lens.aperture done
-    if (mStaticMetadataCache.currentAperture.count)
+    if (currentAperture.count) {
         reqState.ctrlUnitResult->update(ANDROID_LENS_APERTURE,
-                mStaticMetadataCache.currentAperture.data.f,
-                mStaticMetadataCache.currentAperture.count);
-    //# ANDROID_METADATA_Dynamic android.lens.focalLength done
-    if (mStaticMetadataCache.currentFocalLength.count)
+                currentAperture.data.f,
+                currentAperture.count);
+    }
+    if (currentFocalLength.count) {
         reqState.ctrlUnitResult->update(ANDROID_LENS_FOCAL_LENGTH,
-                mStaticMetadataCache.currentFocalLength.data.f,
-                mStaticMetadataCache.currentFocalLength.count);
+                currentFocalLength.data.f,
+                currentFocalLength.count);
+    }
 
-    //# ANDROID_METADATA_Dynamic android.lens.filterDensity done
     float filterDensityNotSupported = 0.0f;
     reqState.ctrlUnitResult->update(ANDROID_LENS_FILTER_DENSITY,
                                     &filterDensityNotSupported,
@@ -295,7 +288,6 @@ void Metadata::writeSensorMetadata(RequestCtrlState &reqState)
     int64_t frameDuration = (pixels_per_line * lines_per_frame) /
                             mSensorDescriptor.pixel_clock_freq_mhz;
     frameDuration *= 1000;
-    //# ANDROID_METADATA_Dynamic android.sensor.frameDuration done
     reqState.ctrlUnitResult->update(ANDROID_SENSOR_FRAME_DURATION,
                                          &frameDuration, 1);
 
@@ -319,7 +311,6 @@ void Metadata::writeSensorMetadata(RequestCtrlState &reqState)
         exposureTime = manualExpTime;
     }
     exposureTime = exposureTime * 1000; // to ns.
-    //# ANDROID_METADATA_Dynamic android.sensor.exposureTime done
     reqState.ctrlUnitResult->update(ANDROID_SENSOR_EXPOSURE_TIME,
                                      &exposureTime, 1);
 
@@ -341,23 +332,16 @@ void Metadata::writeSensorMetadata(RequestCtrlState &reqState)
         sensitivity = inputSensitivity;
     }
 
-    //# ANDROID_METADATA_Dynamic android.sensor.sensitivity done
     reqState.ctrlUnitResult->update(ANDROID_SENSOR_SENSITIVITY,
                                          &sensitivity, 1);
 
     int32_t value = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
-    //ANDROID_METADATA_Control android.sensor.testPatternMode done
-    //# AM NOT PROCESSED
     entry = settings->find(ANDROID_SENSOR_TEST_PATTERN_MODE);
     if (entry.count == 1)
         value = entry.data.i32[0];
 
-    //# ANDROID_METADATA_Dynamic android.sensor.testPatternMode copied
     reqState.ctrlUnitResult->update(ANDROID_SENSOR_TEST_PATTERN_MODE,
                                      &value, 1);
-
-    //# ANDROID_METADATA_Dynamic android.sensor.temperature done
-    //# AM FUTURE
 }
 
 status_t Metadata::initTonemaps()
@@ -392,6 +376,12 @@ status_t Metadata::initTonemaps()
     return OK;
 }
 
+void
+Metadata::FillSensorDescriptor(const ControlUnit::Message &msg)
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    mSensorDescriptor = msg.data.sensor.exposureDesc;
+}
 
 status_t Metadata::fillTonemapCurve(RequestCtrlState &reqState)
 {
@@ -403,19 +393,16 @@ status_t Metadata::fillTonemapCurve(RequestCtrlState &reqState)
     // TODO: apply the curves from request to gbce results
     if (reqState.tonemapContrastCurve) {
         if (reqState.rGammaLut != nullptr) {
-            //# ANDROID_METADATA_Dynamic android.tonemap.curveRed  done
             reqState.ctrlUnitResult->update(ANDROID_TONEMAP_CURVE_RED,
                     reqState.rGammaLut,
                     reqState.rGammaLutSize);
         }
         if (reqState.gGammaLut != nullptr) {
-            //# ANDROID_METADATA_Dynamic android.tonemap.curveGreen done
             reqState.ctrlUnitResult->update(ANDROID_TONEMAP_CURVE_GREEN,
                     reqState.gGammaLut,
                     reqState.gGammaLutSize);
         }
         if (reqState.bGammaLut != nullptr) {
-            //# ANDROID_METADATA_Dynamic android.tonemap.curveBlue done
             reqState.ctrlUnitResult->update(ANDROID_TONEMAP_CURVE_BLUE,
                     reqState.bGammaLut,
                     reqState.bGammaLutSize);
@@ -440,29 +427,24 @@ status_t Metadata::fillTonemapCurve(RequestCtrlState &reqState)
             mGGammaLut[i * 2 + 1] = gbceResults.g_gamma_lut[i * multiplier];
             mBGammaLut[i * 2 + 1] = gbceResults.b_gamma_lut[i * multiplier];
         }
-        //# ANDROID_METADATA_Dynamic android.tonemap.curveRed  done
         reqState.ctrlUnitResult->update(ANDROID_TONEMAP_CURVE_RED,
                 mRGammaLut,
                 mMaxCurvePoints * 2);
-        //# ANDROID_METADATA_Dynamic android.tonemap.curveGreen done
         reqState.ctrlUnitResult->update(ANDROID_TONEMAP_CURVE_GREEN,
                 mGGammaLut,
                 mMaxCurvePoints * 2);
-        //# ANDROID_METADATA_Dynamic android.tonemap.curveBlue done
         reqState.ctrlUnitResult->update(ANDROID_TONEMAP_CURVE_BLUE,
                 mBGammaLut,
                 mMaxCurvePoints * 2);
     }
 
     if (reqState.captureSettings->tonemapMode == ANDROID_TONEMAP_MODE_GAMMA_VALUE) {
-        //# ANDROID_METADATA_Dynamic android.tonemap.gamma done
         reqState.ctrlUnitResult->update(ANDROID_TONEMAP_GAMMA,
                 &reqState.captureSettings->gammaValue,
                 1);
     }
 
     if (reqState.captureSettings->tonemapMode == ANDROID_TONEMAP_MODE_PRESET_CURVE) {
-        //# ANDROID_METADATA_Dynamic android.tonemap.presetCurve done
         reqState.ctrlUnitResult->update(ANDROID_TONEMAP_PRESET_CURVE,
                 &reqState.captureSettings->presetCurve,
                 1);

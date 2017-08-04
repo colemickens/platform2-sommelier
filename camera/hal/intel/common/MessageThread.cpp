@@ -26,7 +26,7 @@ void thread_data_t::trampoline(const thread_data_t* t)
      thread_func_t f = t->entryFunction;
      void* u = t->userData;
 
-     prctl(PR_SET_NAME, (unsigned long) t->threadName, 0, 0, 0);
+     prctl(PR_SET_NAME, (unsigned long) t->threadName.c_str(), 0, 0, 0);
 
      delete t;
 
@@ -38,6 +38,7 @@ MessageThread::MessageThread(IMessageHandler* runner, const char* name,
     mRunner(runner), mName(name), mPriority(priority)
 {
     LOG1("@%s:%s prio %d", __FUNCTION__, mName.c_str(), mPriority);
+    CLEAR(mThreadId);
 }
 
 MessageThread::~MessageThread()
@@ -60,16 +61,7 @@ status_t MessageThread::run()
 
     if (!mName.empty()) {
         thread_data_t* t = new thread_data_t;
-        const char* s = mName.c_str();
-        int len = strlen(s);
-
-        if (len < THREAD_NAME_LEN)
-            strncpy(t->threadName, s, len + 1);
-        else {
-            s = mName.c_str() + len - THREAD_NAME_LEN + 1;
-            strncpy(t->threadName, s, THREAD_NAME_LEN);
-        }
-
+        t->threadName = mName;
         t->entryFunction = threadLoop;
         t->userData = this;
         entryFunction = (thread_func_t)&thread_data_t::trampoline;

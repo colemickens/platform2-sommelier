@@ -81,7 +81,6 @@ public:  /* private types */
         MESSAGE_ID_NEW_SHUTTER,
         MESSAGE_NEW_CV_RESULT,
         MESSAGE_ID_FLUSH,
-        MESSAGE_ID_PARAM,
         MESSAGE_ID_MAX
     };
 
@@ -121,7 +120,6 @@ public:  /* private types */
         Camera3Request* request;
         std::shared_ptr<RequestCtrlState> state;
         std::shared_ptr<IPU3CapturedStatistics> stats;
-        std::shared_ptr<ipu3_uapi_params> param;
         std::shared_ptr<CaptureBuffer> rawBuffer;
         std::shared_ptr<CaptureBuffer> yuvBuffer;
         CaptureEventType type;
@@ -154,7 +152,6 @@ private:  /* Methods */
     status_t handleNewRequest(Message &msg);
     status_t handleNewImage(Message &msg);
     status_t handleNewStat(Message &msg);
-    status_t handleParam(Message &msg);
     status_t handleNewSensorDescriptor(Message &msg);
     status_t handleNewShutter(Message &msg);
     status_t handleMessageFlush(void);
@@ -177,14 +174,11 @@ private:  /* Members */
     std::map<int, std::shared_ptr<RequestCtrlState>> mWaitingForCapture;
     std::vector<std::shared_ptr<RequestCtrlState>> mPendingRequests;
     std::shared_ptr<IPU3CapturedStatistics>  mLatestStatistics;
-    std::shared_ptr<ipu3_uapi_params> mLatestParam;
     ImguUnit       *mImguUnit; /* ControlUnit doesn't own ImguUnit */
     CaptureUnit    *mCaptureUnit; /* ControlUnit doesn't own mCaptureUnit */
     Intel3aPlus    *m3aWrapper;
     int             mCameraId;
     int             mFirstPipeBufferCount;
-    bool            mFirstRequest;  /*!< the next request is the first after
-                                         streamconfig*/
 
     /**
      * Thread control members

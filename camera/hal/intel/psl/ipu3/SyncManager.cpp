@@ -480,6 +480,7 @@ status_t SyncManager::handleMessageSOF(Message &msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = NO_ERROR;
+    int mode = TEST_PATTERN_MODE_DEFAULT;
 
     if (!mStarted) {
         LOGD("SOF[%d] received while closing- ignoring",
@@ -510,6 +511,22 @@ status_t SyncManager::handleMessageSOF(Message &msg)
         status = applySensorParams(expParams);
         if (status != NO_ERROR)
             LOGE("Failed to apply sensor parameters.");
+
+        switch (mQueuedSettings[0]->testPatternMode) {
+            case TEST_PATTERN_MODE_OFF:
+                mode = TEST_PATTERN_MODE_OFF;
+                break;
+            case TEST_PATTERN_MODE_SOLID_COLOR:
+                mode = TEST_PATTERN_MODE_SOLID_COLOR;
+                break;
+            default:
+                LOGE("test pattern mode error");
+                return BAD_VALUE;
+        }
+
+        status = mSensorOp->setTestPattern(mode);
+        CheckError((status != NO_ERROR), status, "@%s, Fail to set test pattern mode = %d [%d]!",
+                    __FUNCTION__, mQueuedSettings[0]->testPatternMode, status);
 
         /**
          * Mark the exposure id where this settings should be in effect.

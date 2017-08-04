@@ -384,6 +384,8 @@ SWJpegEncoder::CodecWorkerThread::CodecWorkerThread() :
     mDataSize(-1)
 {
     LOG1("@%s, line:%d", __FUNCTION__, __LINE__);
+    CLEAR(mThreadId);
+    CLEAR(mCfg);
 }
 
 SWJpegEncoder::CodecWorkerThread::~CodecWorkerThread()
@@ -479,6 +481,8 @@ SWJpegEncoder::Codec::Codec() :
     mJpegQuality(DEFAULT_JPEG_QUALITY)
 {
     LOG1("@%s", __FUNCTION__);
+    CLEAR(mCInfo);
+    CLEAR(mJErr);
 }
 
 SWJpegEncoder::Codec::~Codec()
@@ -494,7 +498,6 @@ SWJpegEncoder::Codec::~Codec()
 void SWJpegEncoder::Codec::init(void)
 {
     LOG1("@%s", __FUNCTION__);
-    CLEAR(mCInfo);
     mCInfo.err = jpeg_std_error(&mJErr);
     jpeg_create_compress(&mCInfo);
 }

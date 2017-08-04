@@ -93,7 +93,10 @@ CameraBuffer::CameraBuffer(int w,
         mOwner(nullptr),
         mDataPtr(nullptr),
         mRequestID(0),
-        mCameraId(cameraId)
+        mCameraId(cameraId),
+        mHandle(nullptr),
+        mHandlePtr(nullptr),
+        mGbmBufferMapper(nullptr)
 {
     if (usrPtr != nullptr) {
         mDataPtr = usrPtr;
@@ -138,12 +141,16 @@ CameraBuffer::CameraBuffer(int fd, int length, int v4l2fmt, int offset,
         mOwner(nullptr),
         mDataPtr(nullptr),
         mRequestID(0),
-        mCameraId(-1)
+        mCameraId(-1),
+        mHandle(nullptr),
+        mHandlePtr(nullptr),
+        mGbmBufferMapper(nullptr)
 {
     mLocked = true;
     mInit = true;
     mSize = length;
     CLEAR(mUserBuffer);
+    CLEAR(mTimestamp);
     mUserBuffer.release_fence = -1;
     mUserBuffer.acquire_fence = -1;
 

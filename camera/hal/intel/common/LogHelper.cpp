@@ -39,6 +39,10 @@ char    gDumpPath[PATH_MAX] = CAMERA_OPERATION_FOLDER;
 int32_t gEnforceDvs = 0;
 int32_t gGuiLogLevel = 0;
 
+// Dump stats grid data
+int32_t gRgbsGridDump = 0;
+int32_t gAfGridDump = 0;
+
 namespace LogHelper {
 // Declare external functions (Depends on OS)
 extern void __initOsEnviroment();
@@ -109,6 +113,15 @@ void setDebugLevel(void)
 
     if (__getEnviromentValue(ENV_CAMERA_HAL_GUI_TRACE, &gGuiLogLevel)) {
         LOGD("Gui Debug level is 0x%x", gGuiLogLevel);
+    }
+
+    // Dump stats grid data
+    if (__getEnviromentValue(ENV_CAMERA_RGBS_GRID_DUMP, &gRgbsGridDump)) {
+        LOGD("RGBS grid dump level is 0x%x", gRgbsGridDump);
+    }
+
+    if (__getEnviromentValue(ENV_CAMERA_AF_GRID_DUMP, &gAfGridDump)) {
+        LOGD("AF grid dump level is 0x%x", gAfGridDump);
     }
 
 }

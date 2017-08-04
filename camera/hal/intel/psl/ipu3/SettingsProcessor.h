@@ -63,6 +63,7 @@ private:
         camera_metadata_ro_entry maxAnalogSensitivity;
         camera_metadata_ro_entry pipelineDepth;
         camera_metadata_ro_entry lensSupported;
+        camera_metadata_ro_entry availableTestPatternModes;
         StaticMetadataCache() { CLEAR(*this); }
 
         status_t getFlashInfoAvailable(bool &available) const
@@ -113,6 +114,8 @@ private:
     void processCroppingRegion(const CameraMetadata &settings,
                                    RequestCtrlState &reqAiqCfg);
 
+    status_t processTestPatternMode(const CameraMetadata &settings,
+                                    RequestCtrlState &reqAiqCfg);
     char mapImageEnhancementSettings(const CameraMetadata &settings,
             const int enhancementName,
             RequestCtrlState &reqAiqCfg);

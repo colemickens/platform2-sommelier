@@ -46,6 +46,12 @@ typedef enum {
     SUBDEV_ISYSBACKEND
 } sensorEntityType;
 
+enum {
+    TEST_PATTERN_MODE_OFF = 0,
+    TEST_PATTERN_MODE_SOLID_COLOR = 1,
+    TEST_PATTERN_MODE_DEFAULT = 2,
+};
+
 class ISettingsSyncListener {
 public:
     virtual ~ISettingsSyncListener() {};

@@ -30,6 +30,7 @@
 extern "C" {
 #endif
 
+#define MAX_COLOR_CONVERSION_MATRIX 3
 typedef struct ia_aiq_t ia_aiq;
 
 /*!
@@ -426,7 +427,7 @@ typedef struct
     rgbs_grid_block *blocks_ptr;  /*!< RGBS blocks. */
     unsigned short grid_width;    /*!< Grid width. */
     unsigned short grid_height;   /*!< Grid height. */
-} ia_aiq_rgbs_grid;
+} ia_aiq_rgbs_grid; /* ia_aiq_rgbs_grid owns this */
 
 /*!
  * \brief Grid block for 32-bit HDR.
@@ -468,7 +469,7 @@ typedef struct
     unsigned short block_height;  /*!< Block height (bq per grid element). */
     int *filter_response_1;       /*!< Filter response of filter 1 (e.g. low pass, used by auto focus). */
     int *filter_response_2;       /*!< Filter response of filter 2 (e.g. high pass, used by auto focus). */
-} ia_aiq_af_grid;
+} ia_aiq_af_grid; /* ia_aiq_af_grid owns filter_response_1 and filter_response_2 */
 
 /*!
  * \brief Depth grid statistics
@@ -719,13 +720,13 @@ typedef struct {
     unsigned short num_patches;                       /*!< Number of patches that were used to make decision. */
     float covered_area;                               /*!< Statistics area covered by selected patches (%). */
     ia_aiq_frame_params frame_params;                 /*!< Frame parameters that describe cropped area size and its position under LSC grid. */
-} ia_aiq_sa_results;
+} ia_aiq_sa_results; /* ia_aiq_sa_results owns lsc_grid */
 
 /*!
  * \brief Results from Parameter Adaptor.
  */
 typedef struct {
-    float color_conversion_matrix[3][3];              /*!< CC matrix. */
+    float color_conversion_matrix[MAX_COLOR_CONVERSION_MATRIX][MAX_COLOR_CONVERSION_MATRIX]; /*!< CC matrix. */
     ia_aiq_color_channels black_level;                /*!< Black level coefficients of each Bayer channel (absolute level). */
     ia_aiq_color_channels color_gains;                /*!< RGB gains for each color channels including given (in ia_aiq_pa_input_params) color gains and gains calculated from AWB results. */
     ia_aiq_color_channels_lut linearization;          /*!< LUTs for linearization of each color channel after black level correction. */

@@ -119,36 +119,29 @@ camera_metadata_ro_entry_t getMetadataEntry(const camera_metadata_t *metadata, u
     return entry;
 }
 
-/**
- * Convenience function for checking whether a setting is in a list of supported
- * values. Note that the "supported" entry MUST have the tag in it!
- */
-uint8_t checkSetting(const camera_metadata_ro_entry_t &supported,
-                     const camera_metadata_ro_entry_t &setting)
+void getValueByType(const camera_metadata_ro_entry_t& setting, int idx, uint8_t* value)
 {
-    if (supported.count == 0) {
-        LOGE("no supported option in xml for tag \"%s.%s\"",
-             get_camera_metadata_section_name(supported.tag),
-             get_camera_metadata_tag_name(supported.tag));
-        return 0;
-    }
-    if (setting.count == 1) {
-        for (size_t i = 0; i < supported.count; i++) {
-            if (supported.data.u8[i] ==
-                    setting.data.u8[0]) {
-                return setting.data.u8[0];
-            }
-        }
-        LOGE("trying to use unsupported value %d for tag \"%s.%s\"",
-             setting.data.u8[0],
-             get_camera_metadata_section_name(setting.tag),
-             get_camera_metadata_tag_name(setting.tag));
-    } else {
-        LOGE("count for settings isn't one, can't check it");
-    }
-    LOGE("using default value %d instead of the setting",
-         supported.data.u8[0]);
-    return supported.data.u8[0];
+    *value = setting.data.u8[idx];
+}
+
+void getValueByType(const camera_metadata_ro_entry_t& setting, int idx, int32_t* value)
+{
+    *value = setting.data.i32[idx];
+}
+
+void getValueByType(const camera_metadata_ro_entry_t& setting, int idx, float* value)
+{
+    *value = setting.data.f[idx];
+}
+
+void getValueByType(const camera_metadata_ro_entry_t& setting, int idx, int64_t* value)
+{
+    *value = setting.data.i64[idx];
+}
+
+void getValueByType(const camera_metadata_ro_entry_t& setting, int idx, double* value)
+{
+    *value = setting.data.d[idx];
 }
 
 const void * getMetadataValues(const camera_metadata_t * metadata, uint32_t tag, int type, int * count)

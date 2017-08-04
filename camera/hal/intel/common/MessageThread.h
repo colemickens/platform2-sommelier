@@ -35,13 +35,10 @@ public:
 
 typedef void* (*thread_func_t)(void*);
 
-// len of thread name is the same as the value defined in OS
-#define THREAD_NAME_LEN   15
-
 struct thread_data_t {
    thread_func_t   entryFunction;
    void* userData;
-   char threadName[THREAD_NAME_LEN];
+   std::string threadName;
 
    // set thread name with prctl.
    static void trampoline(const thread_data_t* t);

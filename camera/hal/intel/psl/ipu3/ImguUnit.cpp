@@ -370,8 +370,6 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
         } else if (it.first == IMGU_NODE_PARAM) {
             std::shared_ptr<ParameterWorker> tmp = nullptr;
             tmp = std::make_shared<ParameterWorker>(it.second, mCameraId);
-            mListenerDeviceWorkers.push_back(tmp.get());
-            mParaWorker = tmp.get();
             mFirstWorkers.push_back(tmp);
             mDeviceWorkers.push_back(tmp); // parameters
         } else if (it.first == IMGU_NODE_STILL || it.first == IMGU_NODE_PREVIEW || it.first == IMGU_NODE_VIDEO) {
@@ -826,9 +824,6 @@ ImguUnit::messageThreadLoop(void)
         case MESSAGE_ID_FLUSH:
             status = handleMessageFlush();
             break;
-        case MESSAGE_ID_PARAM:
-            status = handleMessageStillParam(msg);
-            break;
         default:
             LOGE("ERROR Unknown message %d in thread loop", msg.id);
             status = BAD_VALUE;
@@ -885,24 +880,5 @@ ImguUnit::handleMessageFlush(void)
 
     return NO_ERROR;
 }
-
-status_t
-ImguUnit::setStillParam(ipu3_uapi_params* param)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    DeviceMessage msg;
-    msg.id = MESSAGE_ID_PARAM;
-    msg.param = param;
-
-    return mMessageQueue.send(&msg, MESSAGE_ID_PARAM);
-}
-
-status_t
-ImguUnit::handleMessageStillParam(DeviceMessage& msg)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    return mParaWorker->setStillParam(msg.param);
-}
-
 } /* namespace camera2 */
 } /* namespace android */

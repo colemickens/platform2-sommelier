@@ -43,7 +43,6 @@ public:
             std::shared_ptr<MediaController> mediaCtl);
     virtual ~ImguUnit();
     status_t flush(void);
-    status_t setStillParam(ipu3_uapi_params *param);
     status_t configStreams(std::vector<camera3_stream_t*> &activeStreams);
     void cleanListener();
     status_t completeRequest(std::shared_ptr<ProcUnitSettings> &processingSettings,
@@ -61,7 +60,6 @@ private:
     status_t processNextRequest();
     status_t handleMessagePoll(DeviceMessage msg);
     status_t handleMessageFlush(void);
-    status_t handleMessageStillParam(DeviceMessage& msg);
     status_t updateProcUnitResults(Camera3Request &request,
                                    std::shared_ptr<ProcUnitSettings> settings);
     status_t startProcessing();
@@ -91,7 +89,6 @@ private:
     int mCameraId;
     GraphConfigManager &mGCM;
     bool mThreadRunning;
-    ParameterWorker* mParaWorker;
     std::unique_ptr<MessageThread> mMessageThread;
     MessageQueue<DeviceMessage, DeviceMessageId> mMessageQueue;
     StreamConfig mActiveStreams;

@@ -41,6 +41,11 @@ extern int32_t gDumpSkipNum;         //< camera.hal.dump.skip_num
 extern int32_t gDumpCount;           //< camera.hal.dump.count
 extern char    gDumpPath[PATH_MAX];  //< camera.hal.dump.path
 
+// RGBS is one of the analog component video standards.
+// composite sync, where the horizontal and vertical signals are mixed together on a separate wire (the S in RGBS)
+extern int32_t gRgbsGridDump;
+extern int32_t gAfGridDump;
+
 /**
  * Debug LOG levels, set/clean bit to turn on/off
  *

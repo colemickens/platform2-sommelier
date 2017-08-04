@@ -455,6 +455,36 @@ status_t V4L2VideoNode::setFormat(struct v4l2_format &aFormat)
     return NO_ERROR;
 }
 
+status_t V4L2VideoNode::setSelection(const struct v4l2_selection &aSelection)
+{
+    LOG1("@%s device = %s", __FUNCTION__, mName.c_str());
+    int ret = 0;
+
+    if ((mState != DEVICE_OPEN) &&
+        (mState != DEVICE_CONFIGURED)){
+        LOGE("%s invalid device state %d",__FUNCTION__, mState);
+        return INVALID_OPERATION;
+    }
+
+    LOG2("VIDIOC_S_SELECTION name %s type: %u, target: 0x%x, flags: 0x%x, rect left: %d, rect top: %d, width: %d, height: %d",
+        mName.c_str(),
+        aSelection.type,
+        aSelection.target,
+        aSelection.flags,
+        aSelection.r.left,
+        aSelection.r.top,
+        aSelection.r.width,
+        aSelection.r.height);
+
+    ret = pbxioctl(VIDIOC_S_SELECTION, const_cast<v4l2_selection*>(&aSelection));
+    if (ret < 0) {
+        LOGE("VIDIOC_S_SELECTION failed: %s", strerror(errno));
+        return UNKNOWN_ERROR;
+    }
+    return NO_ERROR;
+}
+
+
 int V4L2VideoNode::grabFrame(struct v4l2_buffer_info *buf)
 {
     LOG2("@%s %s", __FUNCTION__, mName.c_str());

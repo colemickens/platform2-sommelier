@@ -193,8 +193,8 @@ camera_metadata_t* PSLConfParser::constructDefaultMetadata(int cameraId, int req
     uint8_t afMode = selectAfMode(staticMeta, requestTemplate);
     uint8_t aeMode = ANDROID_CONTROL_AE_MODE_ON;
     uint8_t awbMode = ANDROID_CONTROL_AWB_MODE_AUTO;
-    uint8_t edgeMode = ANDROID_EDGE_MODE_FAST;
-    uint8_t nrMode = ANDROID_NOISE_REDUCTION_MODE_FAST;
+    uint8_t edgeMode = ANDROID_EDGE_MODE_OFF;
+    uint8_t nrMode = ANDROID_NOISE_REDUCTION_MODE_OFF;
     camera_metadata_entry entry;
 
     switch (requestTemplate) {
@@ -214,7 +214,7 @@ camera_metadata_t* PSLConfParser::constructDefaultMetadata(int cameraId, int req
                 }
             }
         }
-        edgeMode = ANDROID_EDGE_MODE_HIGH_QUALITY;
+        edgeMode = ANDROID_EDGE_MODE_OFF;
         break;
     case ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_RECORD:
         intent = ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_RECORD;
@@ -288,6 +288,7 @@ camera_metadata_t* PSLConfParser::constructDefaultMetadata(int cameraId, int req
 
     TAGINFO(ANDROID_CONTROL_MODE, controlMode);
     TAGINFO(ANDROID_CONTROL_EFFECT_MODE, bogusValue);
+    TAGINFO(ANDROID_CONTROL_SCENE_MODE, bogusValue);
     TAGINFO(ANDROID_CONTROL_VIDEO_STABILIZATION_MODE, bogusValue);
     TAGINFO(ANDROID_CONTROL_AE_MODE, aeMode);
     TAGINFO(ANDROID_CONTROL_AE_LOCK, bogusValue);

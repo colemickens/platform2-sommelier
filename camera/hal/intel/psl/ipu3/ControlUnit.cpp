@@ -35,6 +35,8 @@
 
 static const int SETTINGS_POOL_SIZE = MAX_REQUEST_IN_PROCESS_NUM * 2;
 
+static const int IPU3_MAX_STATISTICS_BLOCK = (80*60); // size of RGBS blocks
+
 namespace android {
 namespace camera2 {
 
@@ -49,7 +51,6 @@ ControlUnit::ControlUnit(ImguUnit *thePU,
         mCaptureUnit(theCU),
         m3aWrapper(nullptr),
         mCameraId(cameraId),
-        mFirstRequest(true),
         mFirstPipeBufferCount(0),
         mThreadRunning(false),
         mMessageQueue("CtrlUnitThread", static_cast<int>(MESSAGE_ID_MAX)),
@@ -59,7 +60,7 @@ ControlUnit::ControlUnit(ImguUnit *thePU,
         mSettingsProcessor(nullptr),
         mMetadata(nullptr),
         m3ARunner(nullptr),
-        mLatestParam(nullptr)
+        mLensController(nullptr)
 {
 }
 
@@ -76,6 +77,12 @@ ControlUnit::init()
     mMessageThread->run();
 
     const IPU3CameraCapInfo *cap = getIPU3CameraCapInfo(mCameraId);
+    if (!cap) {
+        LOGE("Not enough information for getting NVM data");
+    } else {
+        sensorName = cap->getSensorName();
+    }
+
     if (!cap || cap->sensorType() == SENSOR_TYPE_RAW) {
         m3aWrapper = new Intel3aPlus(mCameraId);
     } else {
@@ -103,13 +110,6 @@ ControlUnit::init()
     }
 
     mCaptureUnit->setSettingsProcessor(mSettingsProcessor);
-
-    if (!cap) {
-        LOGE("Not enough information for getting NVM data");
-    } else {
-        nvmData = cap->getNvmData();
-        sensorName = cap->getSensorName();
-    }
 
     /*
      * init the pools of Request State structs and CaptureUnit settings
@@ -353,7 +353,6 @@ ControlUnit::~ControlUnit()
     delete mMetadata;
     mMetadata = nullptr;
 
-
     delete m3ARunner;
     m3ARunner = nullptr;
 }
@@ -365,10 +364,8 @@ ControlUnit::configStreamsDone(bool configChanged)
 
     if (configChanged) {
         mFirstPipeBufferCount = 0;
-        mFirstRequest = true;
         mPendingRequests.clear();
         mWaitingForCapture.clear();
-        mLatestStatistics.reset();
         mSettingsHistory.clear();
     }
 
@@ -463,7 +460,6 @@ ControlUnit::processRequest(Camera3Request* request,
 
     msg.id = MESSAGE_ID_NEW_REQUEST;
     msg.state = state;
-    msg.request = request;
     status =  mMessageQueue.send(&msg);
     return status;
 }
@@ -499,35 +495,25 @@ ControlUnit::handleNewRequest(Message &msg)
         LOGE("Could not process all settings, reporting request as invalid");
     }
 
-    /**
+  /**
      * PHASE2: Process for capture or Q or reprocessing
-     * If this is the first request or the request uses 3A manual mode
-     * then we do not need to wait for stats. Process the request for capture
+     * For performance reason,
+     * if it's the first several requests which are less than pipeline depth,
+     * we do not need to wait for stats. Process the request for capture.
      *
      * In other case just queue the request for later processing (when stats
      * arrive)
      */
-
-    if (msg.request->getBufferCountOfFormat(HAL_PIXEL_FORMAT_BLOB) && mLatestParam.get() != nullptr) {
-        mImguUnit->setStillParam(mLatestParam.get());
-        LOG2("%s set still param %p!", __FUNCTION__, mLatestParam.get());
-    } else {
-        LOG2("%s set still param!", __FUNCTION__);
-        mImguUnit->setStillParam(nullptr);
-    }
-
-    if (mFirstRequest || IS_CONTROL_MODE_OFF(reqState->aaaControls.controlMode)
-        || (mFirstPipeBufferCount < pipelineDepth)) {
-        LOG2("%s for mFirstRequest and mFirstPipeBufferCount or id %d", __FUNCTION__, reqId);
-        // Manual mode path(s) and startup, without statistics
-        std::shared_ptr<IPU3CapturedStatistics> dummyStats = nullptr;
-        status = processRequestForCapture(reqState, dummyStats);
+    if (mFirstPipeBufferCount < pipelineDepth) {
+        LOG2("%s for mFirstPipeBufferCount or id %d", __FUNCTION__, reqId);
+        // Startup without statistics
+        std::shared_ptr<IPU3CapturedStatistics> stats = nullptr;
+        status = processRequestForCapture(reqState, stats);
         if (CC_UNLIKELY(status != OK)) {
             LOGE("Failed to process request %d for capture [%d]", reqId,
                                                                   status);
             // TODO: handle error !
         }
-        mFirstRequest = false;
         mFirstPipeBufferCount++;
     } else {
         // Normal path with 3A running and statistics flowing
@@ -548,25 +534,6 @@ ControlUnit::handleNewRequest(Message &msg)
     }
 
     return status;
-}
-
-/**
- * handleParam
- *
- * save the preview psl parameters for still use
- */
-status_t
-ControlUnit::handleParam(Message &msg)
-{
-    if (msg.param.get() == nullptr)
-        return BAD_VALUE;
-
-    LOG2("%s receive param reqid:%d data:%p",
-          __FUNCTION__,
-          msg.requestId,
-          msg.param.get());
-    mLatestParam = msg.param;
-    return NO_ERROR;
 }
 
 /**
@@ -902,6 +869,7 @@ status_t
 ControlUnit::handleNewSensorDescriptor(Message &msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    mMetadata->FillSensorDescriptor(msg);
     return mSettingsProcessor->handleNewSensorDescriptor(msg);
 }
 
@@ -923,7 +891,6 @@ status_t
 ControlUnit::handleMessageFlush(void)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    mLatestStatistics.reset();
     return NO_ERROR;
 }
 
@@ -964,9 +931,6 @@ ControlUnit::messageThreadLoop()
             break;
         case MESSAGE_ID_FLUSH:
             status = handleMessageFlush();
-            break;
-        case MESSAGE_ID_PARAM:
-            status = handleParam(msg);
             break;
         default:
             LOGE("ERROR Unknown message %d", msg.id);
@@ -1029,13 +993,6 @@ ControlUnit::notifyCaptureEvent(CaptureMessage *captureMsg)
             msg.data.shutter.tv_usec = captureMsg->data.event.timestamp.tv_usec;
             mMessageQueue.send(&msg);
             break;
-        case CAPTURE_EVENT_PARAM:
-            msg.id = MESSAGE_ID_PARAM;
-            msg.type = CAPTURE_EVENT_PARAM;
-            msg.requestId = captureMsg->data.event.reqId;
-            msg.param = captureMsg->data.event.param;
-            mMessageQueue.send(&msg);
-            break;
         default:
             LOGW("Unsupported Capture event ");
             break;
@@ -1073,35 +1030,31 @@ void ControlUnit::prepareStats(RequestCtrlState &reqState,
         __FUNCTION__, s.id,
         reqState.request->getId());
 
-    /**
-     * Prepare the input parameters for the statistics
-     */
-    s.reset();
-    s.aiqStatsInputParams.camera_orientation = ia_aiq_camera_orientation_unknown;
+    // Prepare the input parameters for the statistics
+    ia_aiq_statistics_input_params* params = &s.aiqStatsInputParams;
+    params->camera_orientation = ia_aiq_camera_orientation_unknown;
 
-    s.aiqStatsInputParams.external_histograms = nullptr;
-    s.aiqStatsInputParams.num_external_histograms = 0;
+    params->external_histograms = nullptr;
+    params->num_external_histograms = 0;
 
     // TODO: use frame idx for algo after stats rate meet out request
     settingsInEffect = findSettingsInEffect(s.id);
-
-    AiqResults &latestResults = m3ARunner->getLatestResults();
-
-    if (settingsInEffect.get() == nullptr) {
-        LOGE("preparing statistics from exp %lld that we do not track",
-                        s.aiqStatsInputParams.frame_id);
-        // default to latest results
-        s.aiqStatsInputParams.frame_ae_parameters = &latestResults.aeResults;
-        s.aiqStatsInputParams.frame_af_parameters = &latestResults.afResults;
-        s.aiqStatsInputParams.awb_results = &latestResults.awbResults;
-        s.aiqStatsInputParams.frame_sa_parameters = &latestResults.saResults;
-        s.aiqStatsInputParams.frame_pa_parameters = &latestResults.paResults;
+    if (settingsInEffect.get()) {
+        params->frame_ae_parameters = &settingsInEffect->aiqResults.aeResults;
+        params->frame_af_parameters = &settingsInEffect->aiqResults.afResults;
+        params->awb_results = &settingsInEffect->aiqResults.awbResults;
+        params->frame_sa_parameters = &settingsInEffect->aiqResults.saResults;
+        params->frame_pa_parameters = &settingsInEffect->aiqResults.paResults;
     } else {
-        s.aiqStatsInputParams.frame_ae_parameters = &settingsInEffect->aiqResults.aeResults;
-        s.aiqStatsInputParams.frame_af_parameters = &settingsInEffect->aiqResults.afResults;
-        s.aiqStatsInputParams.awb_results = &settingsInEffect->aiqResults.awbResults;
-        s.aiqStatsInputParams.frame_sa_parameters = &settingsInEffect->aiqResults.saResults;
-        s.aiqStatsInputParams.frame_pa_parameters = &settingsInEffect->aiqResults.paResults;
+        LOGE("preparing statistics from exp %lld that we do not track", params->frame_id);
+
+        // default to latest results
+        AiqResults& latestResults = m3ARunner->getLatestResults();
+        params->frame_ae_parameters = &latestResults.aeResults;
+        params->frame_af_parameters = &latestResults.afResults;
+        params->awb_results = &latestResults.awbResults;
+        params->frame_sa_parameters = &latestResults.saResults;
+        params->frame_pa_parameters = &latestResults.paResults;
     }
 
     /**
@@ -1111,11 +1064,12 @@ void ControlUnit::prepareStats(RequestCtrlState &reqState,
      * AF usually runs first, but not always. For that reason we pass the stats
      * to the AIQ algorithms here.
      */
-    status = m3aWrapper->setStatistics(&s.aiqStatsInputParams);
+    status = m3aWrapper->setStatistics(params);
     if (CC_UNLIKELY(status != OK)) {
         LOGW("Failed to set statistics for 3A iteration");
     }
-    // Now algo's are ready to run
+
+    // algo's are ready to run
     reqState.afState = ALGORITHM_READY;
     reqState.aeState = ALGORITHM_READY;
     reqState.awbState = ALGORITHM_READY;

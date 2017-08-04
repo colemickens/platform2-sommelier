@@ -88,22 +88,22 @@ static void printLogToSys(const char *module, int priority, const char *level, c
     switch (priority) {
         case logging::LOG_ERROR:
             LOG(ERROR) << level << " " << module << ":" << outStr;
-        break;
+            break;
         case logging::LOG_WARNING:
             LOG(WARNING) << level << " " << module << ":" << outStr;
-        break;
+            break;
         case logging::LOG_INFO:
             LOG(INFO) << level << " " << module << ":" << outStr;
-        break;
+            break;
         case logging::LOG_VERBOSE:
             VLOG(1) << level << " " << module << ":" << outStr;
-        break;
+            break;
         case logging::LOG_VERBOSE - 1:
             VLOG(2) << level << " " << module << ":" << outStr;
-        break;
+            break;
         case logging::LOG_VERBOSE - 2:
             VLOG(3) << level << " " << module << ":" << outStr;
-        break;
+            break;
         default:
             VLOG(1) << level << " " << module << ":" << outStr;
             break;
@@ -138,46 +138,46 @@ void __camera_hal_log_ap(bool condition, int prio, const char *tag,
         // the cameraDebug environment variable.
         case CAMERA_DEBUG_LOG_LEVEL1:
             levelStr = "D/L1";
-        break;
+            break;
         case CAMERA_DEBUG_LOG_LEVEL2:
             levelStr = "D/L2";
-        break;
+            break;
         case CAMERA_DEBUG_LOG_REQ_STATE:
             levelStr = "D/REQ";
-        break;
+            break;
         case CAMERA_DEBUG_LOG_AIQ:
             levelStr = "D/AIQ";
-        break;
+            break;
         case CAMERA_DEBUG_LOG_XML:
             levelStr = "D/XML";
-        break;
+            break;
         case CAMERA_DEBUG_TYPE_ERROR:
             levelStr = "E/";
             syslogPrio = logging::LOG_ERROR;
-        break;
+            break;
         case CAMERA_DEBUG_TYPE_WARN:
             levelStr = "W/";
             syslogPrio = logging::LOG_WARNING;
-        break;
+            break;
         case CAMERA_DEBUG_TYPE_INFO:
             levelStr = "I/";
             // VLOG(1)
             syslogPrio = logging::LOG_VERBOSE;
-        break;
+            break;
         case CAMERA_DEBUG_TYPE_VERBOSE:
             levelStr = "V/";
             // VLOG(2)
             syslogPrio = logging::LOG_VERBOSE - 1;
-        break;
+            break;
         case CAMERA_DEBUG_TYPE_DEBUG:
             levelStr = "D/";
             // VLOG(3)
             syslogPrio = logging::LOG_VERBOSE - 2;
-        break;
+            break;
         default:
             levelStr = "UNKNOWN/";
             syslogPrio = logging::LOG_VERBOSE - 2;
-        break;
+            break;
     }
 
     if (gLogOutType)

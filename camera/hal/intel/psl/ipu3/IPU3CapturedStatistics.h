@@ -26,47 +26,28 @@ namespace camera2 {
 /**
  * \struct IPU3CapturedStatistics
  *
- * This is the structure used to communicate new 3A statistics between capture
- * unit and control unit.
  * It can store one or more types of statistics (AF,AWB,AE).
  *
- * This structure adds the pointers to the structures with the actual
- * memory that are pooled in the capture unit.
- *
- * Normal flow of this structures is:
- * 1- Pools initialized at capture unit.
- * 2- Captured stats passed from capture unit to control unit.
- * 3 -Control unit will return the statistics once it has consumed them.
+ * Firstly, the statistics will be gotten
+ * from the node "3a stat" of IMGU in StatisticsWorker.
+ * Then the statistics will be sent to the ControlUnit.
+ * In the ControlUnit before running AE, AF and AWB,
+ * the statistics is set to the algo via ia_aiq_statistics_set().
  */
-struct IPU3CapturedStatistics: public RequestStatistics {
-    /**
-     * Cleanup before recycle
-     *
-     * This method is called by the SharedPoolItem when the item is recycled
-     * At this stage we can cleanup before recycling the struct.
-     * In this case we reset the TracingSP of individual stats buffers
-     * this reference is holding. Other references may be still alive.
-     *
-     * \param[in] me: reference to self since this is a static method.
-     */
-    static void recyclerReset(IPU3CapturedStatistics *me)
-    {
-        if (CC_LIKELY(me != nullptr)) {
-            me->pooledAfGrid.reset();
-            me->pooledRGBSGrid.reset();
-            me->pooledHistogram.reset();
-        } else {
-            LOGE("Trying to reset a null IPU3CapturedStatistics !!- BUG ");
-        }
-    }
-    /**
-     * pointers to the structure pooled in the capture unit, used for tracking
-     * purposes and to detect what statistics are provided
-     * Do not use directly. Use the ones from the base class.
-     **/
+struct IPU3CapturedStatistics {
+    int id;     /* request Id */
+
+    /* the buffers are from mAfFilterBuffPool and mRgbsGridBuffPool in StatisticsWorker */
     std::shared_ptr<ia_aiq_af_grid> pooledAfGrid;
     std::shared_ptr<ia_aiq_rgbs_grid> pooledRGBSGrid;
-    std::shared_ptr<ia_aiq_histogram> pooledHistogram;
+
+    ia_aiq_statistics_input_params aiqStatsInputParams;
+
+#define MAX_NUM_RGBS_GRIDS 1
+#define MAX_NUM_AF_GRIDS 1
+    const ia_aiq_rgbs_grid* rgbsGridArray[MAX_NUM_RGBS_GRIDS];
+    const ia_aiq_af_grid* afGridArray[MAX_NUM_AF_GRIDS];
+    ia_aiq_af_results af_results;
 };
 
 } //namespace android

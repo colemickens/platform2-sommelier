@@ -49,6 +49,9 @@ public:
 public: /* types */
     std::vector<camera_metadata_t *> mStaticMeta;
 
+    // one example: key: 0, value:"ov13858"
+    std::map<int, std::string> mCameraIdToSensorName;
+
 protected: /* private types */
     enum DataField {
         FIELD_INVALID = 0,

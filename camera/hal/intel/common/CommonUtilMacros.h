@@ -53,6 +53,8 @@
 
 #define CLEAR(x) memset (&(x), 0, sizeof (x))
 
+#define CLEAR_N(x, n) memset (&(x), 0, sizeof(x) * n)
+
 #define STRLEN_S(x) std::char_traits<char>::length(x)
 
 #define PROPERTY_VALUE_MAX  92

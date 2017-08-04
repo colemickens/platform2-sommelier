@@ -18,6 +18,7 @@
 
 #include "StatisticsWorker.h"
 #include "statsConverter/ipu3-stats.h"
+#include "LogHelper.h"
 
 namespace android {
 namespace camera2 {
@@ -92,6 +93,7 @@ status_t StatisticsWorker::run()
         return UNKNOWN_ERROR;
     }
 
+    #define DUMP_INTERVAL 10
     status_t status = OK;
 
     v4l2_buffer_info buf;
@@ -113,17 +115,15 @@ status_t StatisticsWorker::run()
 
     ipu3_stats_get_3a(&out, &in);
 
-    std::shared_ptr<ia_aiq_rgbs_grid> rgbsGrid = nullptr;
-    std::shared_ptr<ia_aiq_af_grid> afGrid = nullptr;
-
     if (mAfFilterBuffPool == nullptr || mRgbsGridBuffPool == nullptr) {
         LOGE("mAfFilterBuffPool and mAfFilterBuffPool not configured");
         return BAD_VALUE;
     }
 
+    std::shared_ptr<ia_aiq_rgbs_grid> rgbsGrid = nullptr;
+    std::shared_ptr<ia_aiq_af_grid> afGrid = nullptr;
     status = mAfFilterBuffPool->acquireItem(afGrid);
     status |= mRgbsGridBuffPool->acquireItem(rgbsGrid);
-
     if (status != OK || afGrid.get() == nullptr || rgbsGrid.get() == nullptr) {
         LOGE("Failed to acquire 3A statistics memory from pools");
         return UNKNOWN_ERROR;
@@ -137,20 +137,48 @@ status_t StatisticsWorker::run()
         LOGE("Not enough memory to allocate stats");
         return NO_MEMORY;
     }
-
     stats->id = mMsg->pMsg.reqId;
-    stats->rgbsGrid = *rgbsGrid.get();
-    stats->afGrid = *afGrid.get();
     stats->pooledRGBSGrid = rgbsGrid;
     stats->pooledAfGrid = afGrid;
-    stats->reset();
+
+    CLEAR(stats->aiqStatsInputParams);
+
+    stats->rgbsGridArray[0] = stats->pooledRGBSGrid.get();
+    stats->aiqStatsInputParams.rgbs_grids = stats->rgbsGridArray;
+    stats->aiqStatsInputParams.num_rgbs_grids
+        = sizeof(stats->rgbsGridArray) / sizeof(stats->rgbsGridArray[0]);
+
+    stats->afGridArray[0] = stats->pooledAfGrid.get();
+    stats->aiqStatsInputParams.af_grids = stats->afGridArray;
+    stats->aiqStatsInputParams.num_af_grids
+        = sizeof(stats->afGridArray) / sizeof(stats->afGridArray[0]);
+
+    stats->aiqStatsInputParams.frame_af_parameters = &stats->af_results;
+    stats->aiqStatsInputParams.hdr_rgbs_grid = nullptr;
+    stats->aiqStatsInputParams.depth_grids  = nullptr;
+    stats->aiqStatsInputParams.num_depth_grids = 0;
+
     stats->aiqStatsInputParams.frame_id = buf.vbuffer.sequence;
-    stats->aiqStatsInputParams.frame_timestamp = (buf.vbuffer.timestamp.tv_sec * 1000000) + buf.vbuffer.timestamp.tv_usec;
+    stats->aiqStatsInputParams.frame_timestamp
+        = (buf.vbuffer.timestamp.tv_sec * 1000000) + buf.vbuffer.timestamp.tv_usec;
 
     outMsg.data.event.stats = stats;
 
-    ia_err ia_status = skycam_statistics_convert(&out.ia_css_4a_statistics, &stats->rgbsGrid, &stats->afGrid);
+    if (0 == (buf.vbuffer.sequence % DUMP_INTERVAL)) {
+        if (gRgbsGridDump) {
+            std::string filename = CAMERA_OPERATION_FOLDER;
+            filename += "rgbs_grid";
+            writeRgbsGridToBmp(filename.c_str(), out.ia_css_4a_statistics, buf.vbuffer.sequence);
+        }
 
+        if (gAfGridDump) {
+            std::string filename = CAMERA_OPERATION_FOLDER;
+            filename += "af_grid";
+            writeAfGridToBmp(filename.c_str(), out.ia_css_4a_statistics, buf.vbuffer.sequence);
+        }
+    }
+
+    ia_err ia_status = skycam_statistics_convert(&out.ia_css_4a_statistics, rgbsGrid.get(), afGrid.get());
     if (ia_status != 0) {
         LOGE("skycam_statistics_convert failed, %d", status);
         return UNKNOWN_ERROR;
@@ -164,6 +192,201 @@ status_t StatisticsWorker::run()
 status_t StatisticsWorker::postRun()
 {
     mMsg = nullptr;
+    return OK;
+}
+
+void StatisticsWorker::writeBmp(const std::string &filename,
+    const ia_css_4a_statistics &input_params,
+    unsigned int grid_width, unsigned int grid_height,
+    unsigned int cur_grid_filter_num, unsigned int flag)
+{
+    FILE *bmpFile = fopen(filename.c_str(), "wb");
+    if (!bmpFile) {
+        LOGE("@%s, Failed to open Bmp file:%s from file system!, error:%s",
+            __FUNCTION__, filename.c_str(), strerror(errno));
+        return;
+    }
+
+    size_t bmpSize = sizeof(BMPFILETYPE) + sizeof(BMPFILEHEADER) + \
+                                 sizeof(BMPINFOHEADER) + ALGIN4(grid_width * 3) * grid_height;
+    std::unique_ptr<unsigned char[]> bmpBuffer(new unsigned char[bmpSize]);
+
+    LOG2("stat bmp buffer size %d grid %dx%d", bmpSize, grid_width, grid_height);
+
+    if (flag == RGBS_GRID_TO_BMP) {
+        gridToBmp(input_params.data, grid_width, grid_height, bmpBuffer.get());
+    } else if (flag == AF_GRID_TO_BMP) {
+        afGridFilterResponseToBmp(input_params.data, bmpBuffer.get(),
+                                 grid_width, grid_height, cur_grid_filter_num);
+    }
+    fwrite(bmpBuffer.get(), 1, bmpSize, bmpFile);
+
+    fclose(bmpFile);
+}
+
+void StatisticsWorker::writeRgbsGridToBmp(const std::string &rgbsFilename,
+    const ia_css_4a_statistics &input_params,
+    unsigned int frame_counter)
+{
+    int grid_width = input_params.stats_4a_config->awb_grd_config.grid_width;
+    int grid_height = input_params.stats_4a_config->awb_grd_config.grid_height;
+    int rgbs_grids_size = grid_width * grid_height;
+    int rgbs_flag = RGBS_GRID_TO_BMP;
+
+    if (input_params.data == nullptr) {
+        LOGE("Input parameter is invalid !");
+        return;
+    }
+
+    if (input_params.data) {
+        std::string filename = rgbsFilename;
+        filename += "_" + std::to_string(frame_counter) + ".bmp";
+        writeBmp(filename, input_params, grid_width, grid_height, 0, rgbs_flag);
+    }
+}
+
+void StatisticsWorker::writeAfGridToBmp(const std::string &afFilename,
+    const ia_css_4a_statistics &input_params,
+    unsigned int frame_counter)
+{
+    unsigned int grid_width = input_params.stats_4a_config->af_grd_config.grid_width;
+    unsigned int grid_height = input_params.stats_4a_config->af_grd_config.grid_height;
+    int af_flag = AF_GRID_TO_BMP;
+
+    if (input_params.data == nullptr) {
+        LOGE("Input parameter is invalid !");
+        return;
+    }
+
+    for (unsigned int j = 1; j <= GRID_FILTER_NUM; ++j) {
+        std::string filename = afFilename;
+        filename += "_FR" + std::to_string(j) + "_" + std::to_string(frame_counter) + ".bmp";
+        writeBmp(filename, input_params, grid_width, grid_height, j, af_flag);
+    }
+}
+
+status_t StatisticsWorker::afGridFilterResponseToBmp(const stats_4a_public_raw_buffer *raw_buffer,
+    unsigned char *output_ptr,
+    unsigned int grid_width,
+    unsigned int grid_height,
+    int filter_num)
+{
+    if (filter_num <= 0 || filter_num > GRID_FILTER_NUM)
+        return BAD_VALUE;
+
+    const af_public_raw_buffer_t  *af_raw_buffer = &raw_buffer->af_raw_buffer;
+    unsigned int i, j;
+    unsigned int width = grid_width;
+    unsigned int height = grid_height;
+    int max = std::numeric_limits<int>::lowest();
+    int min = std::numeric_limits<int>::max();
+    int cur = 0;
+
+    if(raw_buffer == nullptr || output_ptr == nullptr)
+        return BAD_VALUE;
+
+    createBmpHeader(width, height, &output_ptr);
+
+    for (j = 0; j < height * width; j++) {
+        cur = (filter_num == 1) ? af_raw_buffer->y_table[j].y1_avg :\
+            af_raw_buffer->y_table[j].y2_avg;
+
+        if (cur > max)
+            max = cur;
+
+        if (cur < min)
+            min = cur;
+    }
+
+    if (max == min) {
+        max = (max == 0) ? 1 : min;
+        min = 0;
+    }
+
+    for (j = 0; j < height; j++) {
+        for (i = 0 ; i < width; i++) {
+            /* note filter_num =1 is low pass filter, filter_num=2 is high pass filter */
+            cur = (filter_num == 1)
+                    ? af_raw_buffer->y_table[i + width*j].y1_avg
+                    : af_raw_buffer->y_table[i + width*j].y2_avg;
+            unsigned char g_channel = (unsigned char)((cur - min) * 255 / (max - min));
+            *output_ptr++ = g_channel;
+            *output_ptr++ = g_channel;
+            *output_ptr++ = g_channel;
+        }
+
+        for (i = width % 4; i > 0; i--)
+            *output_ptr++ = 0;
+    }
+
+    return OK;
+}
+
+void StatisticsWorker::createBmpHeader(unsigned int width,
+    unsigned int height,
+    unsigned char **output_ptr)
+{
+    BMPFILETYPE type;
+    BMPFILEHEADER head;
+    BMPINFOHEADER info;
+
+    type.bfType[0] = 'B';
+    type.bfType[1] = 'M';
+
+    head.bfSize = 0;
+    head.bfReserved1 = head.bfReserved2 = 0;
+    head.bfOffBits = sizeof(BMPFILETYPE) + sizeof(BMPFILEHEADER) + sizeof(BMPINFOHEADER);
+
+    info.biSize = sizeof(BMPINFOHEADER);
+    info.biWidth = (int32_t)width;
+    info.biHeight = ((int32_t)height);
+    info.biPlanes = 1;
+    info.biBitCount = 24;
+    info.biCompression = 0;
+    info.biSizeImage = 0;
+    info.biXPelsPerMeter = 0;
+    info.biYPelsPerMeter = 0;
+    info.biClrUsed = 0;
+    info.biClrImportant = 0;
+
+    MEMCPY_S(*output_ptr, sizeof(BMPFILETYPE), &type, sizeof(type));
+    *output_ptr += sizeof(BMPFILETYPE);
+    MEMCPY_S(*output_ptr, sizeof(BMPFILEHEADER), &head, sizeof(head));
+    *output_ptr += sizeof(BMPFILEHEADER);
+    MEMCPY_S(*output_ptr, sizeof(BMPINFOHEADER), &info, sizeof(info));
+    *output_ptr += sizeof(BMPINFOHEADER);
+    LOG2("stat bmp info %dx%d", info.biWidth, info.biHeight);
+}
+
+status_t StatisticsWorker::gridToBmp(
+    const stats_4a_public_raw_buffer *rgbs_grid_ptr,
+    int width, int height,
+    unsigned char *output_ptr)
+{
+    if (rgbs_grid_ptr == nullptr || output_ptr == nullptr)
+        return BAD_VALUE;
+
+    unsigned char *rgb_output_ptr = output_ptr;
+    unsigned int i, j;
+    const awb_public_set_item_t *current_rgbs_block_ptr = rgbs_grid_ptr->awb_raw_buffer.rgb_table;
+
+    createBmpHeader(width, height, &rgb_output_ptr);
+
+    for (j = 0; j < height; j++) {
+        for (i = 0 ; i < width; i++) {
+            /* one pixel  constitute by R G B */
+            *rgb_output_ptr++ = current_rgbs_block_ptr->B_avg;
+            *rgb_output_ptr++ = (uint8_t)((current_rgbs_block_ptr->Gr_avg + \
+                current_rgbs_block_ptr->Gb_avg) / 2);
+            *rgb_output_ptr++ = current_rgbs_block_ptr->R_avg;
+            current_rgbs_block_ptr++;
+        }
+
+        for (i = ALGIN4(width * 3) - (width * 3); i > 0; i--) {
+            *rgb_output_ptr++ = 0;
+        }
+    }
+
     return OK;
 }
 

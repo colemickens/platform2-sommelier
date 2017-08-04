@@ -1,11 +1,11 @@
 /*
- * Copyright (C) 2015 - 2017 Intel Corporation.
+ * Copyright 2014-2017 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,8 +16,6 @@
 
 #ifndef _CPFF_SPECIFIC_DATA_H_
 #define _CPFF_SPECIFIC_DATA_H_
-
-// date:7/29/2014 3:03:42 PM
 
 #include <new>
 
@@ -692,9 +690,7 @@ public:
 	INT32PTR	numOfValues;
 	int32_t		nOfNodes;
     INT8PTR		value;
-	//INT8PTR     default_value;
 	RecordParam();
-
 };
 
 union URecordParam

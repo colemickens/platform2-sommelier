@@ -70,7 +70,6 @@ public:
         CAPTURE_EVENT_NEW_SENSOR_DESCRIPTOR,
         CAPTURE_EVENT_SHUTTER,
         CAPTURE_EVENT_YUV,
-        CAPTURE_EVENT_PARAM,
         CAPTURE_EVENT_MAX
     };
     // Buffers output from CaptureUnit

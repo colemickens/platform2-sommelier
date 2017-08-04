@@ -53,6 +53,8 @@ public:
     virtual int getAperture(int &aperture);
     virtual int updateFrameTimings();
     virtual int setSensorFT(int width, int height);
+    virtual int getTestPattern(int *mode);
+    virtual int setTestPattern(int mode);
 protected:
     virtual status_t getActivePixelArraySize(int &width, int &height,
                                              int &code);

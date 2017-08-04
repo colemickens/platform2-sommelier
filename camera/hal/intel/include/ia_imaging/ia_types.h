@@ -34,7 +34,7 @@ typedef struct
 {
     void        *data;
     unsigned int size;
-} ia_binary_data;
+} ia_binary_data; /* ia_binay_data owns data */
 
 /**
  *  \brief Defines a common record header.
@@ -91,7 +91,7 @@ typedef enum {
 } ia_frame_format;
 
 typedef struct {
-    void           *data;     /**< Pointer to the image data */
+    void           *data;     /**< Pointer to the image data, ia_ipf_buffer_container owns this */
     int             size;     /**< Total number of bytes in data*/
     int             width;    /**< Width of the frame in pixels */
     int             height;   /**< Height of the frame in lines */

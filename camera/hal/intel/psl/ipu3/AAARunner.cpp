@@ -58,6 +58,7 @@ AAARunner::AAARunner(int camerId, Intel3aPlus *aaaWrapper, SettingsProcessor *se
     CLEAR(mResizeLscGridGb);
     CLEAR(mResizeLscGridB);
     CLEAR(mLscGridRGGB);
+    CLEAR(mLatestInputParams);
 }
 
 status_t AAARunner::init(bool digiGainOnSensor)

@@ -136,6 +136,28 @@ status_t MediaCtlHelper::configure(IStreamConfigProvider &graphConfigMgr, IStrea
         }
     }
 
+    // setting all the selections
+    for (auto& it :mMediaCtlConfig->mSelectionVideoParams) {
+        std::shared_ptr<MediaEntity> entity;
+        std::shared_ptr<V4L2VideoNode> vNode;
+
+        status = mMediaCtl->getMediaEntity(entity, it.entityName.c_str());
+        if (status != NO_ERROR) {
+            LOGE("Cannot get media entity (ret = %d)", status);
+            return status;
+        }
+        status = entity->getDevice((std::shared_ptr<V4L2DeviceBase>&)vNode);
+        if (status != NO_ERROR) {
+            LOGE("Cannot get media entity device (ret = %d)", status);
+            return status;
+        }
+        status = vNode->setSelection(it.select);
+        if (status != NO_ERROR) {
+            LOGE("Cannot set MediaCtl format selection (ret = %d)", status);
+            return status;
+        }
+     }
+
     // setting all the basic controls necessary for the media controller entities.
     // HFLIP already set earlier, so no need to set it again.
     for (unsigned int i = 0; i < mMediaCtlConfig->mControlParams.size(); i++) {

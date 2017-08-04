@@ -452,6 +452,37 @@ status_t SensorHwOp::setSensorFT(int width, int height)
     return OK;
 }
 
+/**
+ * retrieving test pattern mode from sensor driver
+ *
+ * \param[OUT] mode: sensor test pattern mode
+ * 0: TEST_PATTERN_MODE_OFF
+ * 1: TEST_PATTERN_MODE_SOLID_COLOR
+ * 2: TEST_PATTERN_MODE_DEFAULT
+ *
+ * \return IOCTL return value.
+ */
+int SensorHwOp::getTestPattern(int *mode)
+{
+    return pPixelArraySubdev->getControl(V4L2_CID_TEST_PATTERN, mode);
+}
+
+/**
+ * set test pattern mode to sensor driver
+ *
+ * \param[IN] mode: test pattern mode
+ * 0: TEST_PATTERN_MODE_OFF
+ * 1: TEST_PATTERN_MODE_SOLID_COLOR
+ * 2: TEST_PATTERN_MODE_DEFAULT
+ *
+ * \return IOCTL return value.
+ */
+int SensorHwOp::setTestPattern(int mode)
+{
+    return pPixelArraySubdev->setControl(V4L2_CID_TEST_PATTERN,
+                                  mode, "Test Pattern");
+}
+
 /*
  * -- end SensorHwOp
  */

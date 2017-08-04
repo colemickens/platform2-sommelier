@@ -76,6 +76,7 @@ struct CaptureUnitSettings {
     uint8_t controlAeMode;      /**< ANDROID_CONTROL_AE_MODE */
     uint8_t presetCurve;        /**< ANDROID_TONEMAP_PRESET_CURVE */
     float gammaValue;           /**< ANDROID_TONEMAP_GAMMA */
+    int32_t testPatternMode;    /**< ANDROID_SENSOR_TEST_PATTERN_MODE */
 
     bool flashFired; /**< 'true' if flash was succesfully lit for the capture */
     bool torchAsked; /**< 'true' if client asks for torch */
@@ -115,6 +116,7 @@ struct CaptureUnitSettings {
         controlAeMode(0),
         presetCurve(0),
         gammaValue(0.0),
+        testPatternMode(0),
         flashFired(false),
         torchAsked(false),
         dump(false),

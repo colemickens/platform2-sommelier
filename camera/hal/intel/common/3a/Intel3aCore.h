@@ -61,26 +61,6 @@ static const unsigned int MAKERNOTE_SECTION1_SIZE = 32000;  // 32KB
 static const unsigned int MAKERNOTE_SECTION2_SIZE = 100000;  //100KB
 
 /**
- * \struct RequestStatistics
- *
- * Statistics per request provided by the HW
- * Typically a capture unit will convert the HW specific statistics to this AIQ
- * format.
- */
-struct RequestStatistics {
-    void init();
-    void reset();
-    int id;     /*!> request Id */
-    ia_aiq_rgbs_grid rgbsGrid;
-    ia_aiq_af_grid   afGrid;
-    ia_aiq_statistics_input_params aiqStatsInputParams;
-private:
-    const ia_aiq_rgbs_grid *rgbsGridArray;
-    const ia_aiq_af_grid *afGridArray;
-    ia_aiq_af_results af_results;
-};
-
-/**
  * \struct AiqInputParams
  * The private structs are part of AE, AF and AWB input parameters.
  * They need to separately be introduced to store the contents for
@@ -370,7 +350,6 @@ private:
     // prevent copy constructor and assignment operator
     Intel3aCore(const Intel3aCore& other);
     Intel3aCore& operator=(const Intel3aCore& other);
-    bool readAiqdData(ia_binary_data *aiqdData);
     bool saveAiqdData();
 
     status_t convertError(ia_err iaErr);
@@ -385,7 +364,6 @@ private:
     CameraWindow mActivePixelArray;
     float mHyperFocalDistance; /**< in millimeters */
     bool mEnableAiqdDataSave;
-    std::string mAiqdFileName;
 
 }; //  class Intel3aCore
 

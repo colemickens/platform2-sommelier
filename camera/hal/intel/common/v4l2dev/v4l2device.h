@@ -158,6 +158,7 @@ public:
     virtual status_t setFormat(FrameInfo &aConfig);
     virtual status_t getFormat(struct v4l2_format &aFormat);
     virtual status_t setFormat(struct v4l2_format &aFormat);
+    virtual status_t setSelection(const struct v4l2_selection &aSelection);
     virtual status_t queryCapturePixelFormats(std::vector<v4l2_fmtdesc> &formats);
 
     // Buffer pool management -- DEPRECATED!

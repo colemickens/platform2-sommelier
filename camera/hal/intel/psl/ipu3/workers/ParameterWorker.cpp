@@ -42,8 +42,8 @@ ParameterWorker::ParameterWorker(std::shared_ptr<V4L2VideoNode> node, int camera
     CLEAR(mIspPipes);
     CLEAR(mStillRuntimeParams);
     CLEAR(mPreviewRuntimeParams);
-    CLEAR(mStillParams);
-    mStillParamsReady = false;
+    CLEAR(mCpfData);
+    CLEAR(mGridInfo);
 }
 
 ParameterWorker::~ParameterWorker()
@@ -79,29 +79,10 @@ int ParameterWorker::allocLscTable(IPU3AICRuntimeParams & runtime)
     return LscSize;
 }
 
-status_t ParameterWorker::setStillParam(ipu3_uapi_params *param)
-{
-    std::lock_guard<std::mutex> l(mStillParamsMutex);
-
-    if (param == nullptr) {
-      mStillParamsReady = false;
-      CLEAR(mStillParams);
-      return NO_ERROR;
-    }
-
-    MEMCPY_S((void *)&mStillParams, sizeof(ipu3_uapi_params),
-        (void *)param, sizeof(ipu3_uapi_params));
-    mStillParamsReady = true;
-
-    return NO_ERROR;
-}
-
 status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     status_t ret = OK;
-
-    mStillParamsReady = false;
 
     if (PlatformData::getCpfAndCmc(mCpfData, mCmcData, mCameraId) != OK) {
         LOGE("%s : Could not get cpf and cmc data",__FUNCTION__);
@@ -238,38 +219,18 @@ status_t ParameterWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     std::lock_guard<std::mutex> l(mStillParamsMutex);
 
-    if (mStillParamsReady) {
-        LOG2("%s copy the still param, mBuffers size %d, user ptr: %p, still ptr: %p, %d!",
-          __FUNCTION__, mBuffers.size(), mBuffers[0].m.userptr, &mStillParams, sizeof(ipu3_uapi_params));
-        MEMCPY_S((void *)mBuffers[0].m.userptr, sizeof(ipu3_uapi_params),
-            (void *)&mStillParams, sizeof(ipu3_uapi_params));
-    } else {
-        mMsg = msg;
-
-        updateAicInputParams(mMsg, mStillRuntimeParams);
-        if (mSkyCamAIC)
-            mSkyCamAIC->Run(mStillRuntimeParams);
-        mAicConfig = mSkyCamAIC->GetAicConfig();
-        if (mAicConfig == nullptr) {
-            LOGE("Could not get AIC config");
-            return UNKNOWN_ERROR;
-        }
-
-        ipu3_uapi_params *ipu3Params = (ipu3_uapi_params*)mBuffers[0].m.userptr;
-        IPU3AicToFwEncoder::encodeParameters(mAicConfig, ipu3Params);
-
-        ICaptureEventListener::CaptureMessage outMsg;
-        outMsg.id = ICaptureEventListener::CAPTURE_MESSAGE_ID_EVENT;
-        outMsg.data.event.type = ICaptureEventListener::CAPTURE_EVENT_PARAM;
-        std::shared_ptr<ipu3_uapi_params> lParams = std::make_shared<ipu3_uapi_params>();
-        LOG2("%s return the parameter %p to control unit!", __FUNCTION__, lParams.get());
-        MEMCPY_S(lParams.get(), sizeof(ipu3_uapi_params), (void*)ipu3Params, sizeof(ipu3_uapi_params));
-        outMsg.data.event.param = lParams;
-        outMsg.data.event.reqId = msg->pMsg.processingSettings->request->getId();
-
-        notifyListeners(&outMsg);
+    mMsg = msg;
+    updateAicInputParams(mMsg, mStillRuntimeParams);
+    if (mSkyCamAIC)
+        mSkyCamAIC->Run(mStillRuntimeParams);
+    mAicConfig = mSkyCamAIC->GetAicConfig();
+    if (mAicConfig == nullptr) {
+        LOGE("Could not get AIC config");
+        return UNKNOWN_ERROR;
     }
 
+    ipu3_uapi_params *ipu3Params = (ipu3_uapi_params*)mBuffers[0].m.userptr;
+    IPU3AicToFwEncoder::encodeParameters(mAicConfig, ipu3Params);
 
     status_t status = mNode->putFrame(&mBuffers[0]);
     if (status != OK) {
@@ -371,13 +332,14 @@ void ParameterWorker::fillAicInputParams(ia_aiq_frame_params &sensorFrameParams,
     // Currently assuming that the ISP crops in the middle.
     // Need to consider bayer order
 
-    pAicResolutionConfigParams->horizontal_IF_crop = ((pipeCfg.csi_be_width / 2 - pipeCfg.input_feeder_out_width / 2) / 2);
-    pAicResolutionConfigParams->vertical_IF_crop = ((pipeCfg.csi_be_height / 2 - pipeCfg.input_feeder_out_height / 2) / 2);
-    pAicResolutionConfigParams->BDSin_img_width = pipeCfg.input_feeder_out_width / 2;
-    pAicResolutionConfigParams->BDSin_img_height = pipeCfg.input_feeder_out_height / 2;
-    pAicResolutionConfigParams->BDSout_img_width = pipeCfg.bds_out_width / 2;
-    pAicResolutionConfigParams->BDSout_img_height = pipeCfg.bds_out_height / 2;
-    pAicResolutionConfigParams->BDS_horizontal_padding = (uint16_t)(mGridInfo.bds_padding_width / 2);
+    pAicResolutionConfigParams->horizontal_IF_crop = ((pipeCfg.csi_be_width - pipeCfg.input_feeder_out_width) / 2);
+    pAicResolutionConfigParams->vertical_IF_crop = ((pipeCfg.csi_be_height - pipeCfg.input_feeder_out_height) / 2);
+    pAicResolutionConfigParams->BDSin_img_width = pipeCfg.input_feeder_out_width;
+    pAicResolutionConfigParams->BDSin_img_height = pipeCfg.input_feeder_out_height;
+    pAicResolutionConfigParams->BDSout_img_width = pipeCfg.bds_out_width;
+    pAicResolutionConfigParams->BDSout_img_height = pipeCfg.bds_out_height;
+    pAicResolutionConfigParams->BDS_horizontal_padding =
+                          (uint16_t)(ALIGN128(pipeCfg.bds_out_width) - pipeCfg.bds_out_width);
 
     runtimeParams.frame_resolution_parameters = pAicResolutionConfigParams;
 
