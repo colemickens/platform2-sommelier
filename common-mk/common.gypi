@@ -41,7 +41,6 @@
     'USE_ftdi_tpm%': 0,
     'USE_fuzzing%': 0,
     'USE_gdmwimax%': 0,
-    'USE_libcros%': 1,
     'USE_metrics_uploader%': 0,
     'USE_mtd%': 0,
     'USE_opengles%': 0,
