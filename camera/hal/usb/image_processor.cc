@@ -24,8 +24,6 @@ namespace arc {
  *
  * android_pixel_format_t           videodev2.h            FOURCC in libyuv
  * -----------------------------------------------------------------------------
- * HAL_PIXEL_FORMAT_YV12          = V4L2_PIX_FMT_YVU420  = FOURCC_YV12
- * HAL_PIXEL_FORMAT_YCrCb_420_SP  = V4L2_PIX_FMT_NV21    = FOURCC_NV21
  * HAL_PIXEL_FORMAT_RGBA_8888     = V4L2_PIX_FMT_RGBX32  = FOURCC_ABGR
  * HAL_PIXEL_FORMAT_YCbCr_422_I   = V4L2_PIX_FMT_YUYV    = FOURCC_YUYV
  *                                                       = FOURCC_YUY2
@@ -86,7 +84,6 @@ size_t ImageProcessor::GetConvertedSize(int fourcc,
   }
 
   switch (fourcc) {
-    case V4L2_PIX_FMT_YVU420:  // YV12
     case V4L2_PIX_FMT_YVU420M:
       return Align16(width) * height + Align16(width / 2) * height;
     case V4L2_PIX_FMT_YUV420:  // YU12
@@ -149,25 +146,6 @@ int ImageProcessor::ConvertFormat(const android::CameraMetadata& metadata,
     // (V4L2_PIX_FMT_YUV420), and YV12 is similar to YU12 except that U/V
     // planes are swapped.
     switch (out_frame->GetFourcc()) {
-      case V4L2_PIX_FMT_YVU420: {  // YV12
-        // YV12 horizontal stride should be a multiple of 16 pixels for each
-        // plane.
-        int ystride = Align16(out_frame->GetWidth());
-        int uvstride = Align16(out_frame->GetWidth() / 2);
-        int res = libyuv::I420Copy(
-            in_frame.GetData(), in_frame.GetWidth(),
-            in_frame.GetData() + in_frame.GetWidth() * in_frame.GetHeight(),
-            in_frame.GetWidth() / 2,
-            in_frame.GetData() +
-                in_frame.GetWidth() * in_frame.GetHeight() * 5 / 4,
-            in_frame.GetWidth() / 2, out_frame->GetData(), ystride,
-            out_frame->GetData() + ystride * out_frame->GetHeight() +
-                uvstride * out_frame->GetHeight() / 2,
-            uvstride, out_frame->GetData() + ystride * out_frame->GetHeight(),
-            uvstride, out_frame->GetWidth(), out_frame->GetHeight());
-        LOGF_IF(ERROR, res) << "YU12ToYV12() returns " << res;
-        return res ? -EINVAL : 0;
-      }
       case V4L2_PIX_FMT_YVU420M: {  // YM21, multiple planes YV12
         int res = libyuv::I420Copy(
             in_frame.GetData(), in_frame.GetWidth(),
@@ -189,19 +167,6 @@ int ImageProcessor::ConvertFormat(const android::CameraMetadata& metadata,
         memcpy(out_frame->GetData(), in_frame.GetData(),
                in_frame.GetDataSize());
         return 0;
-      }
-      case V4L2_PIX_FMT_NV21: {  // NV21
-        int res = libyuv::I420ToNV21(
-            in_frame.GetData(), in_frame.GetWidth(),
-            in_frame.GetData() + in_frame.GetWidth() * in_frame.GetHeight(),
-            in_frame.GetWidth() / 2,
-            in_frame.GetData() +
-                in_frame.GetWidth() * in_frame.GetHeight() * 5 / 4,
-            in_frame.GetWidth() / 2, out_frame->GetData(FrameBuffer::YPLANE),
-            out_frame->GetWidth(), out_frame->GetData(FrameBuffer::VPLANE),
-            out_frame->GetWidth(), in_frame.GetWidth(), in_frame.GetHeight());
-        LOGF_IF(ERROR, res) << "I420ToNV21() returns " << res;
-        return res ? -EINVAL : 0;
       }
       case V4L2_PIX_FMT_NV12M: {  // NM12
         int res = libyuv::I420ToNV12(

@@ -41,11 +41,6 @@ class CachedFrame {
   int GetWidth() const;
   int GetHeight() const;
 
-  // Calculate the output buffer size when converting to the specified pixel
-  // format. |fourcc| is defined as V4L2_PIX_FMT_* in linux/videodev2.h. Return
-  // 0 on error.
-  size_t GetConvertedSize(int fourcc) const;
-
   // Caller should fill everything except |data_size| and |fd| of |out_frame|.
   // The function will do format conversion and scale to fit |out_frame|
   // requirement.

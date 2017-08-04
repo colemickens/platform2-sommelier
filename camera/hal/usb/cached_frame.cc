@@ -6,7 +6,6 @@
 #include "hal/usb/cached_frame.h"
 
 #include <errno.h>
-#include <libyuv.h>
 
 #include "arc/common.h"
 #include "hal/usb/common_types.h"
@@ -69,11 +68,6 @@ int CachedFrame::GetHeight() const {
   return yu12_frame_->GetHeight();
 }
 
-size_t CachedFrame::GetConvertedSize(int fourcc) const {
-  return ImageProcessor::GetConvertedSize(fourcc, yu12_frame_->GetWidth(),
-                                          yu12_frame_->GetHeight());
-}
-
 int CachedFrame::Convert(const android::CameraMetadata& metadata,
                          FrameBuffer* out_frame,
                          bool video_hack) {
@@ -106,7 +100,6 @@ int CachedFrame::ConvertToYU12(bool test_pattern) {
 }
 
 int CachedFrame::CropRotateScale(int rotate_degree) {
-  // TODO(henryhsu): Move libyuv part to ImageProcessor.
   if (yu12_frame_->GetHeight() % 2 != 0 || yu12_frame_->GetWidth() % 2 != 0) {
     LOGF(ERROR) << "yu12_frame_ has odd dimension: " << yu12_frame_->GetWidth()
                 << "x" << yu12_frame_->GetHeight();

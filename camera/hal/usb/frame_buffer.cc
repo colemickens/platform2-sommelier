@@ -170,13 +170,6 @@ int GrallocFrameBuffer::Map() {
       }
       break;
     case V4L2_PIX_FMT_RGBX32: {
-      int calculated_size =
-          ImageProcessor::GetConvertedSize(fourcc_, width_, height_);
-      if (calculated_size != buffer_size_) {
-        LOGF(ERROR) << "Buffer size mismatch. Calculated: " << calculated_size
-                    << ", actual: " << buffer_size_;
-        return -EINVAL;
-      }
       ret = buffer_mapper_->Lock(buffer_, 0, 0, 0, width_, height_, &addr);
       if (!ret) {
         data_[0] = static_cast<uint8_t*>(addr);
