@@ -22,7 +22,7 @@
 #include "CameraStream.h"
 #include "Camera3GFXFormat.h"
 #include <unistd.h>
-#include <android/sync/sync.h>
+#include <sync/sync.h>
 
 NAMESPACE_DECLARATION {
 ////////////////////////////////////////////////////////////////////
