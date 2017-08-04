@@ -40,9 +40,8 @@ class AuthPolicyFlags {
     kQuiet = 0,     // All flags off (default).
     kTaciturn = 1,  // A few logs only with important stats.
     kChatty = 2,    // More verbose logs, low debug level.
-    kVerbose = 3,   // Log everything except seccomp, high debug level. Seccomp
-                    // failure logging whitelists a few syscalls and hence has a
-                    // negative impact on security.
+    kVerbose = 3,   // Highly verbose logs, including seccomp failures, high
+                    // debug level.
     kMinLevel = kQuiet,
     kMaxLevel = kVerbose
   };

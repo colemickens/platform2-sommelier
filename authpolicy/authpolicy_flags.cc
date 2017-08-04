@@ -166,12 +166,16 @@ void AuthPolicyFlags::SetDefaults(DefaultLevel default_level) {
       flags_.set_net_log_level("3");
       break;
     case kVerbose:
-      flags_.set_trace_kinit(true);
       flags_.set_log_policy_values(true);
       flags_.set_log_commands(true);
       flags_.set_log_command_output_on_error(true);
       flags_.set_log_gpo(true);
       flags_.set_net_log_level("10");
+      // TODO(ljusten): Consider removing this once stabilized. Note that
+      // uprev'ing a dependency of Samba might introduce seccomp failures,
+      // though! See https://crbug.com/752944.
+      flags_.set_log_seccomp(true);
+      flags_.set_trace_kinit(true);
       break;
   }
 }
