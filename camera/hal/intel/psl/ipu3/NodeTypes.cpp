@@ -28,9 +28,13 @@ int getDefaultMemoryType(IPU3NodeNames node)
      * devices that import dmabuf.
      * ISYS_NODE_RAW works as a dmabuf exporter.
      * IMGU_NODE_INPUT imports the dmabuf fd exported from ISYS_NODE_RAW.
+     * IMGU_NODE_PARAM and IMGU_NODE_STAT nodes map and use the pointers
+     * to the buffers allocated from kernel.
      */
     switch (node) {
     case ISYS_NODE_RAW:
+    case IMGU_NODE_PARAM:
+    case IMGU_NODE_STAT:
         return V4L2_MEMORY_MMAP;
     case IMGU_NODE_INPUT:
         return V4L2_MEMORY_DMABUF;
