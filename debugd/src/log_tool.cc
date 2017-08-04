@@ -218,6 +218,8 @@ const Log common_logs[] = {
   { "cros_tp version", "/bin/cat /sys/class/chromeos/cros_tp/version" },
   { "cros_tp console", "/usr/sbin/ectool --name=cros_tp console",
     kRoot, kRoot },
+  { "cros_tp frame", "/usr/sbin/ectool --name=cros_tp tpframeget",
+    kRoot, kRoot },
 
   // Stuff pulled out of the original list. These need access to the running X
   // session, which we'd rather not give to debugd, or return info specific to
