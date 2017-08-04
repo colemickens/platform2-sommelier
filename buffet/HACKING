@@ -10,7 +10,7 @@ A. COMMON WORKFLOWS
 Some common workflows for developing with buffet:
 
 # Tell portage that you'd like to make local changes to Buffet:
-cros_workon start --board=${BOARD} buffet
+cros_workon-${BOARD} start buffet
 
 # Edit files in platform2/buffet/
 vim ...
