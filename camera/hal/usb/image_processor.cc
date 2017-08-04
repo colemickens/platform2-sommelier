@@ -70,30 +70,34 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
 // How precise the float-to-rational conversion for EXIF tags would be.
 static const int kRationalPrecision = 10000;
 
-inline static size_t Align16(size_t value) {
-  return (value + 15) & ~15;
-}
-
-size_t ImageProcessor::GetConvertedSize(int fourcc,
-                                        uint32_t width,
-                                        uint32_t height) {
-  if ((width % 2) || (height % 2)) {
-    LOGF(ERROR) << "Width or height is not even (" << width << " x " << height
-                << ")";
+size_t ImageProcessor::GetConvertedSize(const FrameBuffer& frame) {
+  if ((frame.GetWidth() % 2) || (frame.GetHeight() % 2)) {
+    LOGF(ERROR) << "Width or height is not even (" << frame.GetWidth() << " x "
+                << frame.GetHeight() << ")";
     return 0;
   }
 
-  switch (fourcc) {
-    case V4L2_PIX_FMT_YVU420M:
-      return Align16(width) * height + Align16(width / 2) * height;
-    case V4L2_PIX_FMT_YUV420:  // YU12
-    // Fall-through.
-    case V4L2_PIX_FMT_NV12M:  // NV12
-      return width * height * 3 / 2;
+  switch (frame.GetFourcc()) {
+    case V4L2_PIX_FMT_YVU420M:  // YM21, multiple planes YV12
+    case V4L2_PIX_FMT_YUV420M:  // YM12, multiple planes YU12
+      if (frame.GetNumPlanes() != 3) {
+        LOGF(ERROR) << "Stride is not set correctly";
+        return 0;
+      }
+      return frame.GetStride(FrameBuffer::YPLANE) * frame.GetHeight() +
+             frame.GetStride(FrameBuffer::UPLANE) * frame.GetHeight() / 2 +
+             frame.GetStride(FrameBuffer::VPLANE) * frame.GetHeight() / 2;
+    case V4L2_PIX_FMT_NV12M:  // NV12, multiple planes
+      if (frame.GetNumPlanes() != 2) {
+        LOGF(ERROR) << "Stride is not set correctly";
+        return 0;
+      }
+      return frame.GetStride(FrameBuffer::YPLANE) * frame.GetHeight() +
+             frame.GetStride(FrameBuffer::UPLANE) * frame.GetHeight() / 2;
     case V4L2_PIX_FMT_RGBX32:
-      return width * height * 4;
+      return frame.GetStride() * frame.GetHeight();
     default:
-      LOGF(ERROR) << "Pixel format " << FormatToString(fourcc)
+      LOGF(ERROR) << "Pixel format " << FormatToString(frame.GetFourcc())
                   << " is unsupported.";
       return 0;
   }
@@ -109,8 +113,7 @@ int ImageProcessor::ConvertFormat(const android::CameraMetadata& metadata,
   }
 
   if (out_frame->GetFourcc() != V4L2_PIX_FMT_JPEG) {
-    size_t data_size = GetConvertedSize(
-        out_frame->GetFourcc(), in_frame.GetWidth(), in_frame.GetHeight());
+    size_t data_size = GetConvertedSize(*out_frame);
 
     if (out_frame->SetDataSize(data_size)) {
       LOGF(ERROR) << "Set data size failed";
@@ -118,20 +121,22 @@ int ImageProcessor::ConvertFormat(const android::CameraMetadata& metadata,
     }
   }
 
+  VLOGF(1) << "Convert format from " << FormatToString(in_frame.GetFourcc())
+           << " to " << FormatToString(out_frame->GetFourcc());
+
   if (in_frame.GetFourcc() == V4L2_PIX_FMT_YUYV) {
     switch (out_frame->GetFourcc()) {
-      case V4L2_PIX_FMT_YUV420:  // YU12
+      case V4L2_PIX_FMT_YUV420M:  // YM12, multiple planes YU12
       {
-        int res = libyuv::YUY2ToI420(
-            in_frame.GetData(), in_frame.GetWidth() * 2, out_frame->GetData(),
-            out_frame->GetWidth(),
-            out_frame->GetData() +
-                out_frame->GetWidth() * out_frame->GetHeight(),
-            out_frame->GetWidth() / 2,
-            out_frame->GetData() +
-                out_frame->GetWidth() * out_frame->GetHeight() * 5 / 4,
-            out_frame->GetWidth() / 2, in_frame.GetWidth(),
-            in_frame.GetHeight());
+        int res =
+            libyuv::YUY2ToI420(in_frame.GetData(), in_frame.GetWidth() * 2,
+                               out_frame->GetData(FrameBuffer::YPLANE),
+                               out_frame->GetStride(FrameBuffer::YPLANE),
+                               out_frame->GetData(FrameBuffer::UPLANE),
+                               out_frame->GetStride(FrameBuffer::UPLANE),
+                               out_frame->GetData(FrameBuffer::VPLANE),
+                               out_frame->GetStride(FrameBuffer::VPLANE),
+                               in_frame.GetWidth(), in_frame.GetHeight());
         LOGF_IF(ERROR, res) << "YUY2ToI420() for YU12 returns " << res;
         return res ? -EINVAL : 0;
       }
@@ -141,26 +146,27 @@ int ImageProcessor::ConvertFormat(const android::CameraMetadata& metadata,
                     << " is unsupported for YUYV source format.";
         return -EINVAL;
     }
-  } else if (in_frame.GetFourcc() == V4L2_PIX_FMT_YUV420) {
+  } else if (in_frame.GetFourcc() == V4L2_PIX_FMT_YUV420M) {
     // V4L2_PIX_FMT_YVU420 is YV12. I420 is usually referred to YU12
     // (V4L2_PIX_FMT_YUV420), and YV12 is similar to YU12 except that U/V
     // planes are swapped.
     switch (out_frame->GetFourcc()) {
       case V4L2_PIX_FMT_YVU420M: {  // YM21, multiple planes YV12
-        int res = libyuv::I420Copy(
-            in_frame.GetData(), in_frame.GetWidth(),
-            in_frame.GetData() + in_frame.GetWidth() * in_frame.GetHeight(),
-            in_frame.GetWidth() / 2,
-            in_frame.GetData() +
-                in_frame.GetWidth() * in_frame.GetHeight() * 5 / 4,
-            in_frame.GetWidth() / 2, out_frame->GetData(FrameBuffer::YPLANE),
-            out_frame->GetStride(FrameBuffer::YPLANE),
-            out_frame->GetData(FrameBuffer::UPLANE),
-            out_frame->GetStride(FrameBuffer::UPLANE),
-            out_frame->GetData(FrameBuffer::VPLANE),
-            out_frame->GetStride(FrameBuffer::VPLANE), out_frame->GetWidth(),
-            out_frame->GetHeight());
-        LOGF_IF(ERROR, res) << "YU12ToYM21() returns " << res;
+        int res =
+            libyuv::I420Copy(in_frame.GetData(FrameBuffer::YPLANE),
+                             in_frame.GetStride(FrameBuffer::YPLANE),
+                             in_frame.GetData(FrameBuffer::UPLANE),
+                             in_frame.GetStride(FrameBuffer::UPLANE),
+                             in_frame.GetData(FrameBuffer::VPLANE),
+                             in_frame.GetStride(FrameBuffer::VPLANE),
+                             out_frame->GetData(FrameBuffer::YPLANE),
+                             out_frame->GetStride(FrameBuffer::YPLANE),
+                             out_frame->GetData(FrameBuffer::UPLANE),
+                             out_frame->GetStride(FrameBuffer::UPLANE),
+                             out_frame->GetData(FrameBuffer::VPLANE),
+                             out_frame->GetStride(FrameBuffer::VPLANE),
+                             out_frame->GetWidth(), out_frame->GetHeight());
+        LOGF_IF(ERROR, res) << "I420Copy() returns " << res;
         return res ? -EINVAL : 0;
       }
       case V4L2_PIX_FMT_YUV420: {  // YU12
@@ -169,28 +175,30 @@ int ImageProcessor::ConvertFormat(const android::CameraMetadata& metadata,
         return 0;
       }
       case V4L2_PIX_FMT_NV12M: {  // NM12
-        int res = libyuv::I420ToNV12(
-            in_frame.GetData(), in_frame.GetWidth(),
-            in_frame.GetData() + in_frame.GetWidth() * in_frame.GetHeight(),
-            in_frame.GetWidth() / 2,
-            in_frame.GetData() +
-                in_frame.GetWidth() * in_frame.GetHeight() * 5 / 4,
-            in_frame.GetWidth() / 2, out_frame->GetData(FrameBuffer::YPLANE),
-            out_frame->GetWidth(), out_frame->GetData(FrameBuffer::UPLANE),
-            out_frame->GetWidth(), in_frame.GetWidth(), in_frame.GetHeight());
+        int res = libyuv::I420ToNV12(in_frame.GetData(FrameBuffer::YPLANE),
+                                     in_frame.GetStride(FrameBuffer::YPLANE),
+                                     in_frame.GetData(FrameBuffer::UPLANE),
+                                     in_frame.GetStride(FrameBuffer::UPLANE),
+                                     in_frame.GetData(FrameBuffer::VPLANE),
+                                     in_frame.GetStride(FrameBuffer::VPLANE),
+                                     out_frame->GetData(FrameBuffer::YPLANE),
+                                     out_frame->GetStride(FrameBuffer::YPLANE),
+                                     out_frame->GetData(FrameBuffer::UPLANE),
+                                     out_frame->GetStride(FrameBuffer::UPLANE),
+                                     in_frame.GetWidth(), in_frame.GetHeight());
         LOGF_IF(ERROR, res) << "I420ToNV12() returns " << res;
         return res ? -EINVAL : 0;
       }
       case V4L2_PIX_FMT_RGBX32: {
-        int res = libyuv::I420ToABGR(
-            in_frame.GetData(), in_frame.GetWidth(),
-            in_frame.GetData() + in_frame.GetWidth() * in_frame.GetHeight(),
-            in_frame.GetWidth() / 2,
-            in_frame.GetData() +
-                in_frame.GetWidth() * in_frame.GetHeight() * 5 / 4,
-            in_frame.GetWidth() / 2, out_frame->GetData(),
-            out_frame->GetWidth() * 4, in_frame.GetWidth(),
-            in_frame.GetHeight());
+        int res =
+            libyuv::I420ToABGR(in_frame.GetData(FrameBuffer::YPLANE),
+                               in_frame.GetStride(FrameBuffer::YPLANE),
+                               in_frame.GetData(FrameBuffer::UPLANE),
+                               in_frame.GetStride(FrameBuffer::UPLANE),
+                               in_frame.GetData(FrameBuffer::VPLANE),
+                               in_frame.GetStride(FrameBuffer::VPLANE),
+                               out_frame->GetData(), out_frame->GetWidth() * 4,
+                               in_frame.GetWidth(), in_frame.GetHeight());
         LOGF_IF(ERROR, res) << "I420ToABGR() returns " << res;
         return res ? -EINVAL : 0;
       }
@@ -207,18 +215,17 @@ int ImageProcessor::ConvertFormat(const android::CameraMetadata& metadata,
     }
   } else if (in_frame.GetFourcc() == V4L2_PIX_FMT_MJPEG) {
     switch (out_frame->GetFourcc()) {
-      case V4L2_PIX_FMT_YUV420: {  // YU12
-        int res = libyuv::MJPGToI420(
-            in_frame.GetData(), in_frame.GetDataSize(), out_frame->GetData(),
-            out_frame->GetWidth(),
-            out_frame->GetData() +
-                out_frame->GetWidth() * out_frame->GetHeight(),
-            out_frame->GetWidth() / 2,
-            out_frame->GetData() +
-                out_frame->GetWidth() * out_frame->GetHeight() * 5 / 4,
-            out_frame->GetWidth() / 2, in_frame.GetWidth(),
-            in_frame.GetHeight(), out_frame->GetWidth(),
-            out_frame->GetHeight());
+      case V4L2_PIX_FMT_YUV420M: {  // YM12, multiple planes YU12
+        int res =
+            libyuv::MJPGToI420(in_frame.GetData(), in_frame.GetDataSize(),
+                               out_frame->GetData(FrameBuffer::YPLANE),
+                               out_frame->GetStride(FrameBuffer::YPLANE),
+                               out_frame->GetData(FrameBuffer::UPLANE),
+                               out_frame->GetStride(FrameBuffer::UPLANE),
+                               out_frame->GetData(FrameBuffer::VPLANE),
+                               out_frame->GetStride(FrameBuffer::VPLANE),
+                               in_frame.GetWidth(), in_frame.GetHeight(),
+                               out_frame->GetWidth(), out_frame->GetHeight());
         LOGF_IF(ERROR, res) << "MJPEGToI420() returns " << res;
         return res ? -EINVAL : 0;
       }
@@ -242,14 +249,13 @@ int ImageProcessor::Scale(const FrameBuffer& in_frame, FrameBuffer* out_frame) {
     return -EINVAL;
   }
 
-  size_t data_size = GetConvertedSize(
-      in_frame.GetFourcc(), out_frame->GetWidth(), out_frame->GetHeight());
+  out_frame->SetFourcc(in_frame.GetFourcc());
+  size_t data_size = GetConvertedSize(*out_frame);
 
   if (out_frame->SetDataSize(data_size)) {
     LOGF(ERROR) << "Set data size failed";
     return -EINVAL;
   }
-  out_frame->SetFourcc(in_frame.GetFourcc());
 
   VLOGF(1) << "Scale image from " << in_frame.GetWidth() << "x"
            << in_frame.GetHeight() << " to " << out_frame->GetWidth() << "x"
@@ -294,14 +300,15 @@ int ImageProcessor::CropAndRotate(const FrameBuffer& in_frame,
       return -EINVAL;
   }
 
-  size_t data_size = GetConvertedSize(
-      in_frame.GetFourcc(), out_frame->GetWidth(), out_frame->GetHeight());
+  out_frame->SetFourcc(in_frame.GetFourcc());
+  size_t data_size = GetConvertedSize(*out_frame);
 
   if (out_frame->SetDataSize(data_size)) {
     LOGF(ERROR) << "Set data size failed";
     return -EINVAL;
   }
-  out_frame->SetFourcc(in_frame.GetFourcc());
+
+  VLOGF(1) << "Crop and rotate image, rotate degree: " << rotate_degree;
 
   // This libyuv method first crops the frame and then rotates it 90 degrees
   // clockwise or counterclockwise.

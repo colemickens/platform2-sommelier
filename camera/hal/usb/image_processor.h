@@ -23,9 +23,9 @@ namespace arc {
 // The stride of Y, U, and V planes should a multiple of 16 pixels.
 struct ImageProcessor {
   // Calculate the output buffer size when converting to the specified pixel
-  // format. |fourcc| is defined as V4L2_PIX_FMT_* in linux/videodev2.h.
+  // format according to fourcc, width, height, and stride of |frame|.
   // Return 0 on error.
-  static size_t GetConvertedSize(int fourcc, uint32_t width, uint32_t height);
+  static size_t GetConvertedSize(const FrameBuffer& frame);
 
   // Convert format from |in_frame.fourcc| to |out_frame->fourcc|. Caller should
   // fill |data|, |buffer_size|, |width|, and |height| of |out_frame|. The

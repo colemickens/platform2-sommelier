@@ -46,8 +46,9 @@ class FrameBuffer {
   uint32_t GetFourcc() const { return fourcc_; }
   size_t GetStride(size_t plane) const;
   size_t GetStride() const { return stride_[0]; }
+  size_t GetNumPlanes() const { return num_planes_; }
 
-  void SetFourcc(uint32_t fourcc) { fourcc_ = fourcc; }
+  virtual void SetFourcc(uint32_t fourcc);
   virtual int SetDataSize(size_t data_size);
 
  protected:
@@ -82,11 +83,14 @@ class AllocatedFrameBuffer : public FrameBuffer {
   int Map() override { return 0; }
   int Unmap() override { return 0; }
 
-  void SetWidth(uint32_t width) { width_ = width; }
-  void SetHeight(uint32_t height) { height_ = height; }
+  void SetWidth(uint32_t width);
+  void SetHeight(uint32_t height);
+  void SetFourcc(uint32_t fourcc) override;
   int SetDataSize(size_t data_size) override;
 
  private:
+  void SetData();
+  void SetStride();
   std::unique_ptr<uint8_t[]> buffer_;
 };
 

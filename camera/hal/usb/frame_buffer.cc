@@ -33,11 +33,15 @@ uint8_t* FrameBuffer::GetData(size_t plane) const {
 }
 
 size_t FrameBuffer::GetStride(size_t plane) const {
-  if (plane >= num_planes_ || plane >= data_.size()) {
+  if (plane >= num_planes_) {
     LOGF(ERROR) << "Invalid plane " << plane;
     return 0;
   }
   return stride_[plane];
+}
+
+void FrameBuffer::SetFourcc(uint32_t fourcc) {
+  fourcc_ = fourcc;
 }
 
 int FrameBuffer::SetDataSize(size_t data_size) {
@@ -61,14 +65,74 @@ AllocatedFrameBuffer::AllocatedFrameBuffer(int buffer_size) {
 
 AllocatedFrameBuffer::~AllocatedFrameBuffer() {}
 
+void AllocatedFrameBuffer::SetWidth(uint32_t width) {
+  width_ = width;
+  if (fourcc_ && height_) {
+    SetStride();
+  }
+}
+
+void AllocatedFrameBuffer::SetHeight(uint32_t height) {
+  height_ = height;
+  if (fourcc_ && width_) {
+    SetStride();
+  }
+}
+
+void AllocatedFrameBuffer::SetFourcc(uint32_t fourcc) {
+  fourcc_ = fourcc;
+  if (width_ && height_) {
+    SetStride();
+  }
+}
+
 int AllocatedFrameBuffer::SetDataSize(size_t size) {
   if (size > buffer_size_) {
     buffer_.reset(new uint8_t[size]);
     buffer_size_ = size;
-    data_[0] = buffer_.get();
   }
   data_size_ = size;
+  SetData();
   return 0;
+}
+
+void AllocatedFrameBuffer::SetData() {
+  switch (fourcc_) {
+    case V4L2_PIX_FMT_YUV420M:  // YU12, multiple planes
+      if (num_planes_ != 3) {
+        LOGF(ERROR) << "Stride is not set correctly";
+        return;
+      }
+      data_.resize(num_planes_, 0);
+      data_[YPLANE] = buffer_.get();
+      data_[UPLANE] = data_[YPLANE] + stride_[YPLANE] * height_;
+      data_[VPLANE] = data_[UPLANE] + stride_[UPLANE] * height_ / 2;
+      break;
+    default:
+      data_.resize(num_planes_, 0);
+      data_[0] = buffer_.get();
+      break;
+  }
+}
+
+void AllocatedFrameBuffer::SetStride() {
+  if (!width_ || !height_ || !fourcc_) {
+    LOGF(ERROR) << "Invalid width (" << width_ << ") or height (" << height_
+                << ") or fourcc (" << FormatToString(fourcc_) << ")";
+    return;
+  }
+  switch (fourcc_) {
+    case V4L2_PIX_FMT_YUV420M:  // YU12, multiple planes
+      num_planes_ = 3;
+      stride_.resize(num_planes_, 0);
+      stride_[YPLANE] = width_;
+      stride_[UPLANE] = stride_[VPLANE] = width_ / 2;
+      break;
+    default:
+      LOGF(ERROR) << "Pixel format " << FormatToString(fourcc_)
+                  << " is unsupported.";
+      break;
+  }
 }
 
 V4L2FrameBuffer::V4L2FrameBuffer(base::ScopedFD fd,
