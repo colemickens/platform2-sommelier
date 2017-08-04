@@ -171,6 +171,9 @@ const Log common_logs[] = {
   { "storage_info", "/bin/cat /var/log/storage_info.txt" },
   { "syslog", "/usr/share/userfeedback/scripts/getmsgs --last '2 hours'"
               " /var/log/messages" },
+  { "system_log_stats", "echo 'BLOCK_SIZE=1024'; "
+    "find /var/log/ -type f -exec du --block-size=1024 {} + | sort -n -r",
+    kRoot, kRoot},
   { "tlsdate", "/bin/cat /var/log/tlsdate.log" },
   { "top thread", "/usr/bin/top -Hb -n 1 | head -n 40"},
   { "top memory", "/usr/bin/top -o \"+%MEM\" -bn 1 | head -n 57"},
