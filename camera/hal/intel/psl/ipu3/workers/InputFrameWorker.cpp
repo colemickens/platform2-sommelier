@@ -55,8 +55,18 @@ status_t InputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = OK;
+    int memType = mNode->getMemoryType();
 
-    mBuffers[0].m.userptr = (long unsigned int)msg->pMsg.rawNonScaledBuffer->buf->data();
+    if (memType == V4L2_MEMORY_USERPTR)
+        mBuffers[0].m.userptr = (long unsigned int)msg->pMsg.rawNonScaledBuffer->buf->data();
+    else if (memType == V4L2_MEMORY_DMABUF) {
+        mBuffers[0].m.fd = msg->pMsg.rawNonScaledBuffer->buf->dmaBufFd();
+        CheckError((mBuffers[0].m.fd < 0), BAD_VALUE, "@%s invalid fd(%d) passed from isys.\n",
+            __func__, mBuffers[0].m.fd);
+    } else {
+        LOGE("@%s unsupported memory type %d.", __func__, memType);
+        return BAD_VALUE;
+    }
     status |= mNode->putFrame(&mBuffers[0]);
     msg->pMsg.processingSettings->request->setSeqenceId(msg->pMsg.rawNonScaledBuffer->v4l2Buf.sequence);
     PERFORMANCE_HAL_ATRACE_PARAM1("seqId", msg->pMsg.rawNonScaledBuffer->v4l2Buf.sequence);
