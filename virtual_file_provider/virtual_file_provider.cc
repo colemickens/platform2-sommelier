@@ -1,0 +1,117 @@
+// Copyright 2017 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include <sys/vfs.h>
+
+#include <base/at_exit.h>
+#include <base/bind.h>
+#include <base/location.h>
+#include <base/logging.h>
+#include <base/memory/ptr_util.h>
+#include <base/message_loop/message_loop.h>
+#include <base/posix/eintr_wrapper.h>
+#include <base/threading/platform_thread.h>
+#include <base/threading/thread.h>
+#include <brillo/syslog_logging.h>
+
+#include "virtual_file_provider/fuse_main.h"
+#include "virtual_file_provider/service.h"
+#include "virtual_file_provider/util.h"
+
+namespace virtual_file_provider {
+
+namespace {
+
+// Service thread handles D-Bus method calls.
+class ServiceThread : public base::Thread {
+ public:
+  explicit ServiceThread(const base::FilePath& fuse_mount_path)
+      : Thread("Service thread"),
+        fuse_mount_path_(fuse_mount_path),
+        service_(base::MakeUnique<Service>(fuse_mount_path)) {}
+
+  ~ServiceThread() override { Stop(); }
+
+  Service* service() { return service_.get(); }
+
+ protected:
+  // base::Thread overrides:
+  void Init() override {
+    CHECK(WaitForFuseMount());
+    CHECK(ClearCapabilities());
+    CHECK(service_->Initialize());
+  }
+
+  void CleanUp() override {
+    service_.reset();  // Must be destructed on the same thread as Initialize().
+  }
+
+ private:
+  // Waits for the FUSE mount to get ready.
+  bool WaitForFuseMount() {
+    constexpr int kMaxRetryCount = 3000;
+    constexpr base::TimeDelta kRetryInterval =
+        base::TimeDelta::FromMilliseconds(1);
+
+    for (int retry_count = 0; retry_count < kMaxRetryCount; ++retry_count) {
+      struct statfs buf = {};
+      if (HANDLE_EINTR(statfs(fuse_mount_path_.value().c_str(), &buf)) < 0) {
+        PLOG(ERROR) << "statfs() failed.";
+        return false;
+      }
+      // Compare with FUSE_SUPER_MAGIC (defined in <kernel>/fs/fuse/inode.c).
+      if (buf.f_type == 0x65735546)
+        return true;
+
+      base::PlatformThread::Sleep(kRetryInterval);
+    }
+    LOG(ERROR) << "Timed out while waiting for FUSE mount.";
+    return false;
+  }
+
+  const base::FilePath fuse_mount_path_;
+  std::unique_ptr<Service> service_;
+
+  DISALLOW_COPY_AND_ASSIGN(ServiceThread);
+};
+
+// Runs Service::SendReadRequest() on the service thread.
+void SendReadRequest(ServiceThread* service_thread,
+                     const std::string& id,
+                     int64_t offset,
+                     int64_t size,
+                     base::ScopedFD fd) {
+  service_thread->task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&Service::SendReadRequest,
+                 // This is safe as service_thread outlives the FUSE main loop.
+                 base::Unretained(service_thread->service()),
+                 id, offset, size, base::Passed(&fd)));
+}
+
+}  // namespace
+
+}  // namespace virtual_file_provider
+
+int main(int argc, char** argv) {
+  if (argc != 2) {
+    fprintf(stderr, "usage: %s <FUSE mount path>\n", argv[0]);
+    return 1;
+  }
+  base::FilePath fuse_mount_path(argv[1]);
+
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
+  base::AtExitManager at_exit_manager;
+
+  // Run D-Bus service on the service thread.
+  virtual_file_provider::ServiceThread service_thread(fuse_mount_path);
+  base::Thread::Options options;
+  options.message_loop_type = base::MessageLoop::TYPE_IO;
+  service_thread.StartWithOptions(options);
+
+  // Enter the FUSE main loop.
+  return virtual_file_provider::FuseMain(
+      fuse_mount_path,
+      base::Bind(&virtual_file_provider::SendReadRequest, &service_thread));
+}
