@@ -18,6 +18,7 @@
 
 #include "FrameWorker.h"
 #include "Camera3GFXFormat.h"
+#include <sys/mman.h>
 
 namespace android {
 namespace camera2 {
@@ -105,6 +106,8 @@ status_t FrameWorker::setWorkerDeviceBuffers(int memType)
 
 status_t FrameWorker::allocateWorkerBuffers()
 {
+    int memType = mNode->getMemoryType();
+    int dmaBufFd;
     std::shared_ptr<CameraBuffer> buf = nullptr;
     for (unsigned int i = 0; i < MAX_WORK_BUFFERS; i++) {
         LOG2("@%s allocate format: %s size: %d %dx%d bytesperline: %d", __func__, v4l2Fmt2Str(mFormat.fmt.pix.pixelformat),
@@ -112,20 +115,40 @@ status_t FrameWorker::allocateWorkerBuffers()
                 mFormat.fmt.pix.width,
                 mFormat.fmt.pix.height,
                 mFormat.fmt.pix.bytesperline);
-        buf = MemoryUtils::allocateHeapBuffer(mFormat.fmt.pix.width,
+        switch (memType) {
+        case V4L2_MEMORY_USERPTR:
+            buf = MemoryUtils::allocateHeapBuffer(mFormat.fmt.pix.width,
                 mFormat.fmt.pix.height,
-                widthToStride(mFormat.fmt.pix.pixelformat, mFormat.fmt.pix.width),
+                mFormat.fmt.pix.bytesperline,
                 mFormat.fmt.pix.pixelformat,
                 mCameraId,
                 PAGE_ALIGN(mFormat.fmt.pix.sizeimage));
-        if (buf.get() == nullptr)
-            return NO_MEMORY;
+            if (buf.get() == nullptr)
+                return NO_MEMORY;
+            mBuffers[i].m.userptr = reinterpret_cast<unsigned long>(buf->data());
+            memset(buf->data(), 0, buf->size());
+            LOG2("mBuffers[%d].m.userptr: %p", i , mBuffers[i].m.userptr);
+            break;
+        case V4L2_MEMORY_MMAP:
+            dmaBufFd = mNode->exportFrame(i);
+            buf = std::make_shared<CameraBuffer>(mFormat.fmt.pix.width,
+                mFormat.fmt.pix.height,
+                mFormat.fmt.pix.bytesperline,
+                mNode->getFd(),
+                dmaBufFd,
+                mBuffers[i].length,
+                mFormat.fmt.pix.pixelformat,
+                mBuffers[i].m.offset, PROT_READ | PROT_WRITE, MAP_SHARED);
+            if (buf.get() == nullptr)
+                return BAD_VALUE;
+            break;
+        default:
+            LOGE("@%s Unsupported memory type %d", __func__, memType);
+            return BAD_VALUE;
+        }
 
         mBuffers[i].bytesused = mFormat.fmt.pix.sizeimage;
-        mBuffers[i].m.userptr = (unsigned long int)buf->data();
-        LOG2("mBuffers[%d].m.userptr: %p", i , mBuffers[i].m.userptr);
         mCameraBuffers.push_back(buf);
-        memset((void*)mBuffers[i].m.userptr, 0, buf->size());
     }
 
     return OK;

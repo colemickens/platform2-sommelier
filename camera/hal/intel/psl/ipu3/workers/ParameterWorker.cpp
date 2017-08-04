@@ -232,7 +232,7 @@ status_t ParameterWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
         return UNKNOWN_ERROR;
     }
 
-    ipu3_uapi_params *ipu3Params = (ipu3_uapi_params*)mBuffers[0].m.userptr;
+    ipu3_uapi_params *ipu3Params = (ipu3_uapi_params*)mCameraBuffers[0]->data();
     IPU3AicToFwEncoder::encodeParameters(mAicConfig, ipu3Params);
 
     status_t status = mNode->putFrame(&mBuffers[0]);

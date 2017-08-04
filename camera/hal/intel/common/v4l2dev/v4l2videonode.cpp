@@ -202,6 +202,11 @@ status_t V4L2VideoNode::queryCapturePixelFormats(std::vector<v4l2_fmtdesc> &form
     return NO_ERROR;
 }
 
+int V4L2VideoNode::getMemoryType()
+{
+    return mMemoryType;
+}
+
 status_t V4L2VideoNode::setInput(int index)
 {
     LOG1("@%s %s", __FUNCTION__, mName.c_str());

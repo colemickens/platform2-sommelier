@@ -61,7 +61,7 @@ status_t StatisticsWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
     if (ret != OK)
         return ret;
 
-    if (mCameraBuffers[0]->size() < frame.width) {
+    if (mCameraBuffers[0]->size() < mFormat.fmt.pix.sizeimage) {
         LOGE("Stats buffer is not big enough");
         return UNKNOWN_ERROR;
     }
@@ -112,7 +112,7 @@ status_t StatisticsWorker::run()
     CLEAR(out);
     CLEAR(in);
 
-    memcpy(&in, (void*)buf.vbuffer.m.userptr, sizeof(imgu_abi_stats_3a));
+    memcpy(&in, mCameraBuffers[0]->data(), sizeof(imgu_abi_stats_3a));
 
     ipu3_stats_get_3a(&out, &in);
 
