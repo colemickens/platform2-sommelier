@@ -487,17 +487,13 @@ status_t V4L2VideoNode::setSelection(const struct v4l2_selection &aSelection)
 
 int V4L2VideoNode::grabFrame(struct v4l2_buffer_info *buf)
 {
-    LOG2("@%s %s", __FUNCTION__, mName.c_str());
     int ret(0);
 
-    if (mState != DEVICE_STARTED) {
-        LOGE("%s invalid device state %d",__FUNCTION__, mState);
-        return -1;
-    }
-    if (buf == nullptr) {
-        LOGE("%s: invalid parameter buf is nullptr",__FUNCTION__);
-        return -1;
-    }
+    LOG2("@%s %s enter", __FUNCTION__, mName.c_str());
+    CheckError((mState != DEVICE_STARTED), -1, "@%s %s invalid device state %d",
+        __FUNCTION__, mName.c_str(), mState);
+    CheckError((buf == nullptr), -1, "@%s %s invalid parameter buf is nullptr",
+        __FUNCTION__, mName.c_str());
 
     ret = dqbuf(buf);
 
@@ -508,7 +504,7 @@ int V4L2VideoNode::grabFrame(struct v4l2_buffer_info *buf)
     mFrameCounter++;
     mFrameCounter &= INT_MAX;
 
-    LOG2("@%s, index:%d, addr:%p", __FUNCTION__, buf->vbuffer.index, (void *)buf->vbuffer.m.userptr);
+    printBufferInfo(__FUNCTION__, buf->vbuffer);
     return buf->vbuffer.index;
 }
 
@@ -519,12 +515,9 @@ int V4L2VideoNode::grabFrame(struct v4l2_buffer_info *buf)
 status_t V4L2VideoNode::putFrame(struct v4l2_buffer const *buf)
 {
     unsigned int index = buf->index;
-    LOG2("@%s, index:%d, addr:%p name:%s", __FUNCTION__, buf->index, (void *)buf->m.userptr, mName.c_str());
 
-    if (index >= mBufferPool.size()) {
-        LOGE("Invalid index %d pool size %zu", index, mBufferPool.size());
-        return BAD_INDEX;
-    }
+    CheckError((index >= mBufferPool.size()), BAD_INDEX, "@%s %s Invalid index %d pool size %zu",
+        __FUNCTION__, mName.c_str(), index, mBufferPool.size());
 
     mBufferPool.at(index).vbuffer.m = buf->m;
     mBufferPool.at(index).cache_flags = buf->flags;
@@ -541,16 +534,14 @@ status_t V4L2VideoNode::putFrame(struct v4l2_buffer const *buf)
  */
 int V4L2VideoNode::putFrame(unsigned int index)
 {
-    LOG2("@%s %s", __FUNCTION__, mName.c_str());
     int ret(0);
 
-    if (index >= mBufferPool.size()) {
-        LOGE("Invalid index %d pool size %zu", index, mBufferPool.size());
-        return BAD_INDEX;
-    }
+    LOG2("@%s %s enter", __FUNCTION__, mName.c_str());
+    CheckError((index >= mBufferPool.size()), BAD_INDEX, "@%s %s Invalid index %d pool size %zu",
+        __FUNCTION__, mName.c_str(), index, mBufferPool.size());
     struct v4l2_buffer_info vbuf = mBufferPool.at(index);
-    LOG2("@%s: userptr = %p", __FUNCTION__, (void*)vbuf.vbuffer.m.userptr);
     ret = qbuf(&vbuf);
+    printBufferInfo(__FUNCTION__, vbuf.vbuffer);
 
     return ret;
 }
@@ -826,7 +817,7 @@ status_t V4L2VideoNode::setBufferPool(void **pool, unsigned int poolSize,
 status_t V4L2VideoNode::setBufferPool(std::vector<struct v4l2_buffer> &pool,
                                       bool cached, int memType)
 {
-    LOG1("@%s: device = %s", __FUNCTION__, mName.c_str());
+    LOG1("@%s: device = %s memType = %d", __FUNCTION__, mName.c_str(), memType);
     struct v4l2_buffer_info vinfo;
     CLEAR(vinfo);
     int ret;
@@ -988,6 +979,24 @@ int V4L2VideoNode::requestBuffers(size_t num_buffers, int memType)
         LOGW("Got less buffers than requested! %u < %zu",req_buf.count, num_buffers);
 
     return req_buf.count;
+}
+
+void V4L2VideoNode::printBufferInfo(const char *func, const struct v4l2_buffer &buf)
+{
+    switch (mMemoryType) {
+    case V4L2_MEMORY_USERPTR:
+        LOG2("@%s %s idx:%d addr:%p", func, mName.c_str(), buf.index, (void *)buf.m.userptr);
+        break;
+    case V4L2_MEMORY_MMAP:
+        LOG2("@%s %s idx:%d offset:0x%x", func, mName.c_str(), buf.index, buf.m.offset);
+        break;
+    case V4L2_MEMORY_DMABUF:
+        LOG2("@%s %s idx:%d fd:%d", func, mName.c_str(), buf.index, buf.m.fd);
+        break;
+    default:
+        LOG2("@%s %s unknown memory type %d", func, mName.c_str(), mMemoryType);
+        break;
+    }
 }
 
 int V4L2VideoNode::qbuf(struct v4l2_buffer_info *buf)

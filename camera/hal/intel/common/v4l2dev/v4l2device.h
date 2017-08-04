@@ -197,6 +197,7 @@ protected:
     virtual int freeBuffer(struct v4l2_buffer_info *buf_info);
     virtual int requestBuffers(size_t num_buffers,
                                int memType = V4L2_MEMORY_USERPTR);
+    virtual void printBufferInfo(const char *func, const struct v4l2_buffer &buf);
 
 protected:
 
