@@ -50,7 +50,7 @@ status_t BufferPools::createBufferPools(int numBufs, int numSkips,
         std::shared_ptr<InputSystem> isys)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    std::shared_ptr<V4L2VideoNode> node = isys->findOutputNode(ISYS_NODE_CSI_BE_SOC);
+    std::shared_ptr<V4L2VideoNode> node = isys->findOutputNode(ISYS_NODE_RAW);
     FrameInfo frameInfo;
     status_t status = NO_ERROR;
 
@@ -83,7 +83,7 @@ status_t BufferPools::createBufferPools(int numBufs, int numSkips,
         v4l2Buffers.push_back(captureBufPtr->v4l2Buf);
     }
 
-    status = isys->setBufferPool(ISYS_NODE_CSI_BE_SOC, v4l2Buffers, true);
+    status = isys->setBufferPool(ISYS_NODE_RAW, v4l2Buffers, true);
     if (status != NO_ERROR) {
         LOGE("Failed to set the capture buffer pool in ISYS status: 0x%X", status);
         return status;

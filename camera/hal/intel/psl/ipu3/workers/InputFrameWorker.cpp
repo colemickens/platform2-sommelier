@@ -19,6 +19,7 @@
 #include "InputFrameWorker.h"
 
 #include "PerformanceTraces.h"
+#include "NodeTypes.h"
 
 namespace android {
 namespace camera2 {
@@ -43,7 +44,7 @@ status_t InputFrameWorker::configure(std::shared_ptr<GraphConfig> & /*config*/)
     if (ret != OK)
         return ret;
 
-    ret = setWorkerDeviceBuffers();
+    ret = setWorkerDeviceBuffers(getDefaultMemoryType(IMGU_NODE_INPUT));
     if (ret != OK)
         return ret;
 

@@ -28,7 +28,6 @@
 #include "GraphConfig.h"
 #include "CameraStream.h"
 
-
 // File-local constants
 namespace {
 const int ISA_CONFIG_STATS_PLANES = 2;
@@ -438,8 +437,7 @@ status_t InputSystem::handleMessageSetBufferPool(Message &msg)
     bool cached = msg.data.bufferPool.cached;
     std::shared_ptr<V4L2VideoNode> videoNode = nullptr;
 
-    // ISA config and 3A stats nodes use MMAP buffers
-    int memType = V4L2_MEMORY_USERPTR;
+    int memType = getDefaultMemoryType(ISYS_NODE_RAW);
 
     ConfiguredNodesPerName::iterator it =
                             mConfiguredNodesPerName.find(isysNodeName);

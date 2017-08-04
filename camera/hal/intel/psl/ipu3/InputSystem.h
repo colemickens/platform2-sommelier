@@ -33,7 +33,7 @@
 #include "SharedItemPool.h"
 #include <utils/Errors.h>
 #include "MediaCtlHelper.h"
-#include "IMGUTypes.h"
+#include "NodeTypes.h"
 
 /**
  * Forward declarations to avoid includes

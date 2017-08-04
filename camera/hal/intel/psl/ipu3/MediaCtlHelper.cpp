@@ -20,7 +20,6 @@
 #include "Camera3GFXFormat.h"
 #include "MediaCtlHelper.h"
 #include "MediaEntity.h"
-#include "IMGUTypes.h"
 
 const char* STATISTICS = "3a statistics";
 const char* PARAMS = "parameters";

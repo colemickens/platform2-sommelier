@@ -21,20 +21,22 @@
 #include "OutputFrameWorker.h"
 #include "ColorConverter.h"
 #include "CaptureBuffer.h"
+#include "NodeTypes.h"
 
 namespace android {
 namespace camera2 {
 
-OutputFrameWorker::OutputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId, camera3_stream_t* stream, IPU3NodeNames name) :
+OutputFrameWorker::OutputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId, camera3_stream_t* stream, IPU3NodeNames nodeName) :
                 FrameWorker(node, cameraId, "OutputFrameWorker"),
                 mOutputBuffer(nullptr),
                 mStream(stream),
                 mAllDone(false),
-                mUseInternalBuffer(true)
+                mUseInternalBuffer(true),
+                mNodeName(nodeName)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     if (mNode)
-        LOG1("@%s, node name:%d, device name:%s", __FUNCTION__, name, mNode->name());
+        LOG1("@%s, node name:%d, device name:%s", __FUNCTION__, nodeName, mNode->name());
 }
 
 OutputFrameWorker::~OutputFrameWorker()
@@ -55,7 +57,7 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
             mFormat.fmt.pix.width,
             mFormat.fmt.pix.height);
 
-    ret = setWorkerDeviceBuffers();
+    ret = setWorkerDeviceBuffers(getDefaultMemoryType(mNodeName));
     if (ret != OK)
         return ret;
 

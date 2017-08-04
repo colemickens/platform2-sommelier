@@ -20,7 +20,7 @@
 #include "GraphConfigManager.h"
 #include "LogHelper.h"
 #include "FormatUtils.h"
-#include "IMGUTypes.h"
+#include "NodeTypes.h"
 #include "Camera3GFXFormat.h"
 #include "PlatformData.h"
 #include <GCSSParser.h>
@@ -2551,7 +2551,7 @@ void GraphConfig::addVideoNodes(const Node* csiBESocOutput,
     MediaCtlElement mediaCtlElement;
 
     // Imgu support
-    mediaCtlElement.isysNodeName = ISYS_NODE_CSI_BE_SOC;
+    mediaCtlElement.isysNodeName = ISYS_NODE_RAW;
     mediaCtlElement.name = mCSIBE;
     config.mVideoNodes.push_back(mediaCtlElement);
 }

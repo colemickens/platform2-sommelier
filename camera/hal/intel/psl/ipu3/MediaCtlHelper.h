@@ -21,7 +21,7 @@
 #include "MediaController.h"
 #include "v4l2device.h"
 #include <ia_aiq_types.h>
-#include "IMGUTypes.h"
+#include "NodeTypes.h"
 
 namespace android {
 namespace camera2 {

@@ -26,7 +26,6 @@
 #include "workers/InputFrameWorker.h"
 #include "workers/OutputFrameWorker.h"
 #include "workers/StatisticsWorker.h"
-#include "IMGUTypes.h"
 
 namespace android {
 namespace camera2 {

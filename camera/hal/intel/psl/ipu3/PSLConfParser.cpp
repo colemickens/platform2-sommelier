@@ -27,7 +27,7 @@
 #include "IPU3Types.h"
 #include "LogHelper.h"
 #include "GraphConfigManager.h"
-#include "IMGUTypes.h"
+#include "NodeTypes.h"
 
 using std::string;
 
@@ -954,8 +954,8 @@ int PSLConfParser::getControlIdAsValue(const char* format)
  */
 int PSLConfParser::getIsysNodeNameAsValue(const char* isysNodeName)
 {
-    if (!strcmp(isysNodeName, "ISYS_NODE_CSI_BE_SOC")) {
-        return ISYS_NODE_CSI_BE_SOC;
+    if (!strcmp(isysNodeName, "ISYS_NODE_RAW")) {
+        return ISYS_NODE_RAW;
     } else {
         LOGE("Unknown ISYS node name (%s)", isysNodeName);
         return IMGU_NODE_NULL;

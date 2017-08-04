@@ -27,7 +27,7 @@ namespace camera2 {
 class OutputFrameWorker: public FrameWorker, public ICaptureEventSource
 {
 public:
-    OutputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId, camera3_stream_t* stream, IPU3NodeNames name);
+    OutputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId, camera3_stream_t* stream, IPU3NodeNames nodeName);
     virtual ~OutputFrameWorker();
 
     virtual status_t configure(std::shared_ptr<GraphConfig> &config);
@@ -48,6 +48,7 @@ private:
     camera3_stream_t* mStream; /* OutputFrameWorker doesn't own mStream */
     bool mAllDone;
     bool mUseInternalBuffer;
+    IPU3NodeNames mNodeName;
 };
 
 } /* namespace camera2 */

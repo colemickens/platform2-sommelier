@@ -87,14 +87,14 @@ status_t FrameWorker::setWorkerDeviceFormat(v4l2_buf_type type, FrameInfo &frame
     return OK;
 }
 
-status_t FrameWorker::setWorkerDeviceBuffers()
+status_t FrameWorker::setWorkerDeviceBuffers(int memType)
 {
     for (unsigned int i = 0; i < MAX_WORK_BUFFERS; i++) {
         v4l2_buffer buffer;
         CLEAR(buffer);
         mBuffers.push_back(buffer);
     }
-    status_t ret = mNode->setBufferPool(mBuffers, true);
+    status_t ret = mNode->setBufferPool(mBuffers, true, memType);
     if (ret != OK) {
         LOGE("Unable to set buffer pool", ret);
         return ret;

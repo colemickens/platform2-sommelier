@@ -49,7 +49,8 @@ PSLSRC = \
     psl/ipu3/IPU3ISPPipe.cpp \
     psl/ipu3/MediaCtlHelper.cpp \
     common/platformdata/gc/FormatUtils.cpp \
-    psl/ipu3/statsConverter/ipu3-stats.cpp
+    psl/ipu3/statsConverter/ipu3-stats.cpp \
+    psl/ipu3/NodeTypes.cpp
 
 PSLCPPFLAGS = \
     -I$(top_srcdir)/common/platformdata/metadataAutoGen/6.0.1 \

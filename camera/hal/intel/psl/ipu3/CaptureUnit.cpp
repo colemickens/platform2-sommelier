@@ -368,8 +368,8 @@ int CaptureUnit::getActiveIsysNodes(std::shared_ptr<GraphConfig> graphConfig)
         activeNodes |= node.first;
 
         switch(node.first) {
-            case ISYS_NODE_CSI_BE_SOC:
-                LOG1("ISYS_NODE_CSI_BE_SOC");
+            case ISYS_NODE_RAW:
+                LOG1("ISYS_NODE_RAW");
                 gcNodeName = "csi_be:output";
                 break;
             default:
@@ -598,12 +598,12 @@ status_t CaptureUnit::enqueueIsysBuffer(std::shared_ptr<InflightRequestState> &r
         return UNKNOWN_ERROR;
     }
 
-    if (mActiveIsysNodes & ISYS_NODE_CSI_BE_SOC) {
-        capBufPtr->mDestinationTerminal = mNodeToPortMap[ISYS_NODE_CSI_BE_SOC];
+    if (mActiveIsysNodes & ISYS_NODE_RAW) {
+        capBufPtr->mDestinationTerminal = mNodeToPortMap[ISYS_NODE_RAW];
 
         capBufPtr->v4l2Buf.flags |= V4L2_BUF_FLAG_NO_CACHE_INVALIDATE | V4L2_BUF_FLAG_NO_CACHE_CLEAN;
 
-        status = mIsys->putFrame(ISYS_NODE_CSI_BE_SOC,
+        status = mIsys->putFrame(ISYS_NODE_RAW,
                                  &(capBufPtr->v4l2Buf), reqId);
     } else {
         LOGE("Unsupport ISYS capture type!");
@@ -726,7 +726,7 @@ status_t CaptureUnit::handleMessageIsysEvent(Message &msg)
     outMsg.id = ICaptureEventListener::CAPTURE_MESSAGE_ID_EVENT;
 
     switch(isysNodeName) {
-    case ISYS_NODE_CSI_BE_SOC:
+    case ISYS_NODE_RAW:
         status = processIsysBuffer(msg);
         break;
     // TODO: handle other types
@@ -811,7 +811,7 @@ status_t CaptureUnit::processIsysBuffer(Message &msg)
         state->shutterDone = true;
     }
 
-    if (isysNode == ISYS_NODE_CSI_BE_SOC) {
+    if (isysNode == ISYS_NODE_RAW) {
         outMsg.data.event.type = ICaptureEventListener::CAPTURE_EVENT_RAW_BAYER;
         // Send notification if needed in this request
         if (gc->isIsaOutputDestinationActive(isysBufferPtr->mDestinationTerminal)) {

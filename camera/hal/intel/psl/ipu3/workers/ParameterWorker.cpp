@@ -28,6 +28,7 @@
 #include "SkyCamProxy.h"
 #include "RuntimeParamsHelper.h"
 #include "IPU3AicToFwEncoder.h"
+#include "NodeTypes.h"
 
 namespace android {
 namespace camera2 {
@@ -183,7 +184,7 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
     if (ret != OK)
         return ret;
 
-    ret = setWorkerDeviceBuffers();
+    ret = setWorkerDeviceBuffers(getDefaultMemoryType(IMGU_NODE_PARAM));
     if (ret != OK)
         return ret;
 

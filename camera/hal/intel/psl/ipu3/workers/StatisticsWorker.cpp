@@ -19,6 +19,7 @@
 #include "StatisticsWorker.h"
 #include "statsConverter/ipu3-stats.h"
 #include "LogHelper.h"
+#include "NodeTypes.h"
 
 namespace android {
 namespace camera2 {
@@ -52,7 +53,7 @@ status_t StatisticsWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
     if (ret != OK)
         return ret;
 
-    ret = setWorkerDeviceBuffers();
+    ret = setWorkerDeviceBuffers(getDefaultMemoryType(IMGU_NODE_STAT));
     if (ret != OK)
         return ret;
 

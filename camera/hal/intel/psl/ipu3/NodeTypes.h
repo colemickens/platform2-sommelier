@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef IMGUTYPES_H_
-#define IMGUTYPES_H_
+#ifndef NODETYPES_H_
+#define NODETYPES_H_
 
 
 namespace android {
@@ -33,10 +33,12 @@ enum IPU3NodeNames {
     IMGU_NODE_PARAM =           1 << 5,
     IMGU_NODE_STAT =            1 << 6,
     IMGU_NODE_INPUT =           1 << 7,
-    ISYS_NODE_CSI_BE_SOC =      1 << 8
+    ISYS_NODE_RAW =             1 << 8
 };
+
+int getDefaultMemoryType(IPU3NodeNames node);
 
 }  // namespace camera2
 }  // namespace android
 
-#endif /* IMGUTYPES_H_ */
+#endif /* NODETYPES_H_ */
