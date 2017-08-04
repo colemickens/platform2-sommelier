@@ -179,6 +179,7 @@ public:
     virtual int grabFrame(struct v4l2_buffer_info *buf);
     virtual int putFrame(struct v4l2_buffer const *buf);
     virtual int putFrame(unsigned int index);
+    virtual int exportFrame(unsigned int index);
 
     // Convenience accessors
     virtual bool isStarted() const { return mState == DEVICE_STARTED; }

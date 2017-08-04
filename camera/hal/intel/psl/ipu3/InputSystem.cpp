@@ -474,6 +474,16 @@ status_t InputSystem::getOutputNodes(ConfiguredNodesPerName **nodes,
     return status;
 }
 
+std::shared_ptr<V4L2VideoNode> InputSystem::findOutputNode(IPU3NodeNames isysNodeName)
+{
+    auto it = mConfiguredNodesPerName.find(isysNodeName);
+    if (it == mConfiguredNodesPerName.end()) {
+        LOGE("@%s ISYS node (%d) not found!", __FUNCTION__, isysNodeName);
+        return nullptr;
+    }
+    return it->second;
+}
+
 status_t InputSystem::handleMessageGetOutputNodes(Message &msg)
 {
     LOG1("@%s", __FUNCTION__);

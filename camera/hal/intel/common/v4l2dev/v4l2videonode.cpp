@@ -546,6 +546,36 @@ int V4L2VideoNode::putFrame(unsigned int index)
     return ret;
 }
 
+int V4L2VideoNode::exportFrame(unsigned int index)
+{
+    int ret(0);
+
+    if (mMemoryType != V4L2_MEMORY_MMAP) {
+        LOGE("@%s %s Cannot export non-mmap buffers", __FUNCTION__, mName.c_str());
+        return BAD_VALUE;
+    }
+
+    if (index >= mBufferPool.size()) {
+        LOGE("@%s %s Invalid index %d pool size %zu",
+            __FUNCTION__, mName.c_str(), index, mBufferPool.size());
+        return BAD_INDEX;
+    }
+
+    struct v4l2_buffer_info vbuf = mBufferPool.at(index);
+    struct v4l2_exportbuffer ebuf;
+    CLEAR(ebuf);
+    ebuf.type = vbuf.vbuffer.type;
+    ebuf.index = index;
+    ret = pioctl(mFd, VIDIOC_EXPBUF, &ebuf, mName.c_str());
+    if (ret < 0) {
+        LOGE("@%s %s VIDIOC_EXPBUF failed ret %d : %s",
+            __FUNCTION__, mName.c_str(), ret, strerror(errno));
+        return ret;
+    }
+    LOG2("@%s %s idx %d fd %d", __FUNCTION__, mName.c_str(), index, ebuf.fd);
+    return ebuf.fd;
+}
+
 status_t V4L2VideoNode::setParameter (struct v4l2_streamparm *aParam)
 {
     LOG2("@%s %s", __FUNCTION__, mName.c_str());

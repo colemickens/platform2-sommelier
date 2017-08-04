@@ -104,6 +104,7 @@ public:
     status_t setBufferPool(IPU3NodeNames isysNodeName, std::vector<struct v4l2_buffer> &pool, bool cached);
     status_t releaseBufferPools();
     status_t getOutputNodes(ConfiguredNodesPerName **nodes, int &nodeCount);
+    std::shared_ptr<V4L2VideoNode> findOutputNode(IPU3NodeNames isysNodeName);
     status_t enqueueMediaRequest(int32_t requestId);
     status_t capture(int requestId);
     status_t flush();

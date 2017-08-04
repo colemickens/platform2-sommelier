@@ -19,6 +19,7 @@
 #include "BufferPools.h"
 #include "LogHelper.h"
 #include <linux/videodev2.h>
+#include <sys/mman.h>
 
 namespace android {
 namespace camera2 {
@@ -49,69 +50,25 @@ status_t BufferPools::createBufferPools(int numBufs, int numSkips,
         std::shared_ptr<InputSystem> isys)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    std::shared_ptr<V4L2VideoNode> node = nullptr;
-    int nodeCount = 0;
-    IPU3NodeNames isysNodeName = IMGU_NODE_NULL;
-
-    mBufferPoolSize = numBufs + numSkips;
-
-    InputSystem::ConfiguredNodesPerName *nodes = nullptr;
-
-    status_t status = isys->getOutputNodes(&nodes, nodeCount);
-    if (status != NO_ERROR) {
-        LOGE("ISYS output nodes not configured");
-        return status;
-    }
+    std::shared_ptr<V4L2VideoNode> node = isys->findOutputNode(ISYS_NODE_CSI_BE_SOC);
     FrameInfo frameInfo;
+    status_t status = NO_ERROR;
+
+    CheckError((node.get() == nullptr), UNKNOWN_ERROR,
+        "@%s: create buffer pool failed", __FUNCTION__);
+    mBufferPoolSize = numBufs + numSkips;
 
     /**
      * Init the pool of capture buffer structs. This pool contains the
      * V4L2 buffers that are registered to the V4L2 device.
      */
     mCaptureItemsPool.init(mBufferPoolSize);
-
-    for (const auto &devNode : *nodes) {
-        isysNodeName = devNode.first;
-        node = devNode.second;
-
-        if (isysNodeName == ISYS_NODE_CSI_BE_SOC) {
-            LOG1("ISYS node %d", isysNodeName);
-            node->getConfig(frameInfo);
-            struct v4l2_format aFormat;
-            CLEAR(aFormat);
-            node->getFormat(aFormat);
-            LOG1("@%s: creating capture buffer pool (size: %d) format: %s",
-                    __FUNCTION__, mBufferPoolSize, v4l2Fmt2Str(frameInfo.format));
-            status = createCaptureBufferPool(frameInfo, isysNodeName, isys, numSkips);
-        } else {
-            LOGE("Unsupported ISYS node %d", isysNodeName);
-            status = UNKNOWN_ERROR;
-        }
-
-        if (status != NO_ERROR) {
-            LOGE("Failed to create buffer pool for ISYS node %d", isysNodeName);
-            return status;
-        }
-    }
-
-    return status;
-}
-
-/**
- * Creates pool of CaptureBuffer's needed to be queued to Isys nodes.
- *
- * \param[in] frameInfo Width, height, format and stride information for the allocation
- * \param[in] isysNodeName Used for checkign which ISYS device node the buffers will be set to
- * \param[in,out] isys InputSystem object to which the buffer pool will be assigned to
- * \param[in] numSkips umber of skip buffers to allocate
- * \return NO_ERROR if acllocation and setting the buffer pool was successful
- */
-status_t BufferPools::createCaptureBufferPool(const FrameInfo &frameInfo,
-        IPU3NodeNames isysNodeName,
-        std::shared_ptr<InputSystem> isys, int numSkips)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
-    status_t status = NO_ERROR;
+    node->getConfig(frameInfo);
+    struct v4l2_format aFormat;
+    CLEAR(aFormat);
+    node->getFormat(aFormat);
+    LOG1("@%s: creating capture buffer pool (size: %d) format: %s",
+        __FUNCTION__, mBufferPoolSize, v4l2Fmt2Str(frameInfo.format));
 
     std::vector<v4l2_buffer> v4l2Buffers;
     for (unsigned int i = 0; i < mBufferPoolSize; i++) {
@@ -126,13 +83,13 @@ status_t BufferPools::createCaptureBufferPool(const FrameInfo &frameInfo,
         v4l2Buffers.push_back(captureBufPtr->v4l2Buf);
     }
 
-    status = isys->setBufferPool(isysNodeName, v4l2Buffers, true);
+    status = isys->setBufferPool(ISYS_NODE_CSI_BE_SOC, v4l2Buffers, true);
     if (status != NO_ERROR) {
         LOGE("Failed to set the capture buffer pool in ISYS status: 0x%X", status);
         return status;
     }
 
-    status = allocateCaptureBuffers(frameInfo, numSkips, v4l2Buffers);
+    status = allocateCaptureBuffers(node, frameInfo, numSkips, v4l2Buffers);
     if (status != NO_ERROR) {
         LOGE("Failed to allocate capture buffer in ISYS status: 0x%X", status);
         return status;
@@ -153,20 +110,23 @@ status_t BufferPools::createCaptureBufferPool(const FrameInfo &frameInfo,
  * proper v4l2 id for each buffer, including the skip buffers, and the skip
  * buffers will share memory between each other.
  *
+ * \param[in] node the video node that owns the v4l2 buffers
  * \param[in] frameInfo Width, height, stride and format info for the buffers
  *  being allocated
  * \param[in] numSkips Number of skip buffers to allocate
  * \param[out] v4l2Buffers The allocated V4L2 buffers
  * \return status of execution
  */
-status_t BufferPools::allocateCaptureBuffers(const FrameInfo &frameInfo,
+status_t BufferPools::allocateCaptureBuffers(
+        std::shared_ptr<V4L2VideoNode> node,
+        const FrameInfo &frameInfo,
         int numSkips, std::vector<struct v4l2_buffer> &v4l2Buffers)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     status_t status = NO_ERROR;
     std::shared_ptr<CameraBuffer> tmpBuf = nullptr;
-    std::shared_ptr<CameraBuffer> skipBuf = nullptr;
     std::shared_ptr<CaptureBuffer> captureBuf = nullptr;
+    InputSystem::ConfiguredNodesPerName *nodes = nullptr;
 
     if (v4l2Buffers.size() == 0) {
         LOGE("v4l2 buffers where not allocated");
@@ -181,32 +141,15 @@ status_t BufferPools::allocateCaptureBuffers(const FrameInfo &frameInfo,
     }
 
     uint32_t dataSizeOverride = v4l2Buffers[0].length;
-
-    skipBuf = allocateBuffer(frameInfo, mCameraId, dataSizeOverride, false);
-
-    if (skipBuf == nullptr) {
-        LOGE("Failed to allocate internal ISYS skip buffer");
-        return NO_MEMORY;
-    }
-
-    if (skipBuf->size() != dataSizeOverride) {
-        LOGE("Capture buffer is not big enough");
-        return NO_MEMORY;
-    }
-
     unsigned int numBufs = mBufferPoolSize - numSkips;
     LOG2("numBufs: %d numSkips: %d", numBufs, numSkips);
     for (unsigned int i = 0; i < mBufferPoolSize; i++) {
-        if (i < numBufs) {
-            tmpBuf = allocateBuffer(frameInfo, mCameraId, dataSizeOverride, false);
-            if (tmpBuf == nullptr) {
-                LOGE("Failed to allocate internal ISYS capture buffers");
-                return NO_MEMORY;
-            }
-        } else {
-            LOG1("capture buffer allocation, using same buffer for skip, i = %d", i);
-            tmpBuf = skipBuf;
-        }
+        tmpBuf = allocateBuffer(node, frameInfo, mCameraId, v4l2Buffers[i],
+                                dataSizeOverride);
+        CheckError((tmpBuf == nullptr), NO_MEMORY,
+            "Failed to allocate internal ISYS %s buffer", i < numBufs ? "capture" : "skip");
+        CheckError((tmpBuf->size() != dataSizeOverride), NO_MEMORY,
+            "Capture buffer is not big enough");
 
         mCaptureItemsPool.acquireItem(captureBuf);
         if (captureBuf.get() == nullptr) {
@@ -228,25 +171,45 @@ status_t BufferPools::allocateCaptureBuffers(const FrameInfo &frameInfo,
 }
 
 
-std::shared_ptr<CameraBuffer> BufferPools::allocateBuffer(const FrameInfo &frameInfo,
+std::shared_ptr<CameraBuffer> BufferPools::allocateBuffer(std::shared_ptr<V4L2VideoNode> node,
+                                             const FrameInfo &frameInfo,
                                              int mCameraId,
-                                             size_t dataSizeOverride,
-                                             bool useWidthForStride)
+                                             struct v4l2_buffer &v4l2Buf,
+                                             size_t dataSizeOverride)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     std::shared_ptr<CameraBuffer> buf = nullptr;
+    int dmaBufFd;
     LOG2("@%s allocate format: %s", __func__, v4l2Fmt2Str(frameInfo.format));
-    buf = MemoryUtils::allocateHeapBuffer(frameInfo.width,
-                                          frameInfo.height,
-                                          useWidthForStride ? frameInfo.width : frameInfo.stride,
-                                          frameInfo.format,
-                                          mCameraId,
-                                          dataSizeOverride);
+    switch (v4l2Buf.memory) {
+    case V4L2_MEMORY_USERPTR:
+        buf = MemoryUtils::allocateHeapBuffer(frameInfo.width,
+                                              frameInfo.height,
+                                              frameInfo.stride,
+                                              frameInfo.format,
+                                              mCameraId,
+                                              dataSizeOverride);
+        memset(buf->data(), 0, buf->size());
+        break;
+    case V4L2_MEMORY_MMAP:
+        dmaBufFd = node->exportFrame(v4l2Buf.index);
+        buf = std::make_shared<CameraBuffer>(frameInfo.width,
+                                             frameInfo.height,
+                                             frameInfo.stride,
+                                             node->getFd(),
+                                             dmaBufFd,
+                                             dataSizeOverride,
+                                             frameInfo.format,
+                                             v4l2Buf.m.offset, PROT_READ | PROT_WRITE, MAP_SHARED);
+        break;
+    default:
+        LOGE("Unsupported memory type.");
+        return nullptr;
+    }
     if (buf == nullptr) {
         LOGE("Failed to allocate skip buffer");
         return nullptr;
     }
-    memset(buf->data(), 0, buf->size());
     return buf;
 }
 

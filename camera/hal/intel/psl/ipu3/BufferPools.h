@@ -48,14 +48,15 @@ public:
     void freeBuffers();
 
 private:
-    status_t createCaptureBufferPool(const FrameInfo &frameInfo, IPU3NodeNames isysNodeName,
-            std::shared_ptr<InputSystem> isys, int numSkips);
-    status_t allocateCaptureBuffers(const FrameInfo &frameInfo, int numSkips,
-            std::vector<struct v4l2_buffer> &v4l2Buffers);
-    std::shared_ptr<CameraBuffer> allocateBuffer(const FrameInfo &frameInfo,
+    status_t allocateCaptureBuffers(std::shared_ptr<V4L2VideoNode> node,
+                                    const FrameInfo &frameInfo,
+                                    int numSkips,
+                                    std::vector<struct v4l2_buffer> &v4l2Buffers);
+    std::shared_ptr<CameraBuffer> allocateBuffer(std::shared_ptr<V4L2VideoNode> node,
+                                    const FrameInfo &frameInfo,
                                     int mCameraId,
-                                    size_t dataSizeOverride,
-                                    bool useWidthForStride);
+                                    struct v4l2_buffer &v4l2Buf,
+                                    size_t dataSizeOverride);
 
 private:
     SharedItemPool<CaptureBuffer>   mCaptureItemsPool;         /**< Pool of buffers for Isys capture node. */
