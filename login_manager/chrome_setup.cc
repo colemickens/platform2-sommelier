@@ -392,6 +392,9 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("voice_interaction"))
     builder->AddArg("--enable-voice-interaction");
 
+  if (builder->UseFlagIsSet("background_blur"))
+    builder->AddArg("--enable-background-blur");
+
   SetUpWallpaperFlags(builder, cros_config, base::Bind(base::PathExists));
 
   // TODO(yongjaek): Remove the following flag when the kiosk mode app is ready
