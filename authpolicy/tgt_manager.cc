@@ -79,6 +79,8 @@ const char kKeyBadPrincipal[] =
     "not found in Kerberos database while getting initial credentials";
 const char kKeyBadPassword[] =
     "Preauthentication failed while getting initial credentials";
+const char kKeyBadPassword2[] =
+    "Password incorrect while getting initial credentials";
 const char kKeyPasswordExpiredStdout[] =
     "Password expired.  You must change it now.";
 const char kKeyPasswordExpiredStderr[] =
@@ -148,7 +150,8 @@ ErrorType GetKinitError(const ProcessExecutor& kinit_cmd,
                << (is_machine_principal ? "machine" : "user") << " name";
     return is_machine_principal ? ERROR_BAD_MACHINE_NAME : ERROR_BAD_USER_NAME;
   }
-  if (Contains(kinit_err, kKeyBadPassword)) {
+  if (Contains(kinit_err, kKeyBadPassword) ||
+      Contains(kinit_err, kKeyBadPassword2)) {
     LOG(ERROR) << "kinit failed - bad password";
     return ERROR_BAD_PASSWORD;
   }
