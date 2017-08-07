@@ -25,7 +25,17 @@ class HammerUpdater {
 
   explicit HammerUpdater(const std::string& image);
   virtual ~HammerUpdater() = default;
+
+  // Handle the whole update process, including pre-processing, main update
+  // logic loop, and the post-processing.
   virtual bool Run();
+  // Handle the main update logic loop. For each round, it establishes the USB
+  // connection, calls RunOnce() method, and runs some actions according the
+  // returned status.
+  virtual RunStatus RunLoop();
+  // Handle the update logic from connecting to the EC to sending reset signal.
+  // There is only one USB connection during each RunOnce() method call.
+  // |post_rw_jump| indicates whether we jump to RW section last round.
   virtual RunStatus RunOnce(const bool post_rw_jump);
   virtual void PostRWProcess();
 

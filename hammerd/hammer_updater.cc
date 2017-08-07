@@ -33,32 +33,37 @@ bool HammerUpdater::Run() {
     return false;
   }
 
+  HammerUpdater::RunStatus status = RunLoop();
+  bool ret = (status == HammerUpdater::RunStatus::kNoUpdate);
+  return ret;
+}
+
+HammerUpdater::RunStatus HammerUpdater::RunLoop() {
   constexpr unsigned int kMaximumRunCount = 10;
   // Time it takes hammer to reset or jump to RW, before being
   // available for the next USB connection.
   constexpr unsigned int kResetTimeMs = 100;
   bool post_rw_jump = false;
 
+  HammerUpdater::RunStatus status;
   for (int run_count = 0; run_count < kMaximumRunCount; ++run_count) {
-    HammerUpdater::RunStatus status = HammerUpdater::RunStatus::kFatalError;
-
-    if (fw_updater_->TryConnectUSB()) {
-      status = RunOnce(post_rw_jump);
-    } else {
+    if (!fw_updater_->TryConnectUSB()) {
       LOG(ERROR) << "Failed to connect USB.";
+      return HammerUpdater::RunStatus::kFatalError;
     }
-    post_rw_jump = false;
 
+    status = RunOnce(post_rw_jump);
+    post_rw_jump = false;
     switch (status) {
       case HammerUpdater::RunStatus::kNoUpdate:
         LOG(INFO) << "Hammer does not need to update.";
         fw_updater_->CloseUSB();
-        return true;
+        return status;
 
       case HammerUpdater::RunStatus::kFatalError:
         LOG(ERROR) << "Hammer encountered a fatal error!";
         fw_updater_->CloseUSB();
-        return false;
+        return status;
 
       case HammerUpdater::RunStatus::kNeedReset:
         LOG(INFO) << "Reset hammer and run again. run_count=" << run_count;
@@ -82,13 +87,13 @@ bool HammerUpdater::Run() {
       default:
         LOG(ERROR) << "Unknown RunStatus: " << static_cast<int>(status);
         fw_updater_->CloseUSB();
-        return false;
+        return HammerUpdater::RunStatus::kFatalError;
     }
   }
 
   LOG(ERROR) << "Maximum run count exceeded (" << kMaximumRunCount
              << ")! Shutdown Hammerd.";
-  return false;
+  return status;
 }
 
 HammerUpdater::RunStatus HammerUpdater::RunOnce(const bool post_rw_jump) {
