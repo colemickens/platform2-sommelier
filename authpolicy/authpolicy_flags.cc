@@ -30,17 +30,15 @@ std::string Align(const char* str) {
 
 // Removes the value with the key |name| from |dict|, checks |type| and returns
 // the value if the type matches. Prints an error message otherwise.
-// TODO(ljusten): Remove |type_name| and use base::Value::GetTypeName once it's
-// available.
 std::unique_ptr<base::Value> GetValueOfType(base::DictionaryValue* dict,
                                             const char* name,
-                                            base::Value::Type type,
-                                            const char* type_name) {
+                                            base::Value::Type type) {
   std::unique_ptr<base::Value> value;
   if (!dict->Remove(name, &value))
     return nullptr;
   if (!value->IsType(type)) {
-    LOG(ERROR) << name << " must be a " << type_name;
+    LOG(ERROR) << name << " must be a "
+               << base::Value::GetTypeName(value->type());
     return nullptr;
   }
   return value;
@@ -57,7 +55,7 @@ class BoolFlag {
   // Remove the value with key |name_| from |dict| and puts it into |flags|.
   void Handle(protos::DebugFlags* flags, base::DictionaryValue* dict) const {
     std::unique_ptr<base::Value> value =
-        GetValueOfType(dict, name_, base::Value::Type::BOOLEAN, "boolean");
+        GetValueOfType(dict, name_, base::Value::Type::BOOLEAN);
     if (value) {
       bool bool_value = false;
       CHECK(value->GetAsBoolean(&bool_value));
@@ -88,7 +86,7 @@ class StringFlag {
   // Remove the value with key |name_| from |dict| and puts it into |flags|.
   void Handle(protos::DebugFlags* flags, base::DictionaryValue* dict) const {
     std::unique_ptr<base::Value> value =
-        GetValueOfType(dict, name_, base::Value::Type::STRING, "string");
+        GetValueOfType(dict, name_, base::Value::Type::STRING);
     if (value) {
       std::string string_value;
       CHECK(value->GetAsString(&string_value));

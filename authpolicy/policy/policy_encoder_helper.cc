@@ -17,23 +17,6 @@
 #include "authpolicy/policy/preg_parser.h"
 
 namespace policy {
-namespace {
-
-// TODO(ljusten): Copied from latest Chromium base::Value::GetTypeName, remove
-// once the latest code is merged.
-const char* const kTypeNames[] = {"null",   "boolean", "integer",    "double",
-                                  "string", "binary",  "dictionary", "list"};
-static_assert(arraysize(kTypeNames) ==
-                  static_cast<size_t>(base::Value::Type::LIST) + 1,
-              "kTypeNames Has Wrong Size");
-
-const char* GetValueTypeName(const base::Value* value) {
-  DCHECK_GE(static_cast<int>(value->GetType()), 0);
-  DCHECK_LT(static_cast<size_t>(value->GetType()), arraysize(kTypeNames));
-  return kTypeNames[static_cast<size_t>(value->GetType())];
-}
-
-}  // namespace
 
 constexpr char kKeyUserDevice[] = "Software\\Policies\\Google\\ChromeOS";
 constexpr char kKeyExtensions[] =
@@ -91,7 +74,7 @@ void PrintConversionError(const base::Value* value,
                           const char* policy_name,
                           const std::string* index_str) {
   LOG(ERROR) << "Failed to convert value '" << *value << " of type '"
-             << GetValueTypeName(value) << "'"
+             << base::Value::GetTypeName(value->type()) << "'"
              << " to " << target_type << " for policy '" << policy_name << "'"
              << (index_str ? " at index " + *index_str : "");
 }
