@@ -30,7 +30,13 @@ const char kWrongPasswordError[] =
     "kinit: Preauthentication failed while getting initial credentials";
 const char kPasswordExpiredStdout[] =
     "Password expired.  You must change it now.";
-const char kPasswordExpiredStderr[] =
+const char kPasswordRejectedStdout[] =
+    "Password change rejected: The password must include numbers or symbols.  "
+    "Don't include any part of your name in the password.  The password must "
+    "contain at least 7 characters.  The password must be different from the "
+    "previous 24 passwords.  The password can only be changed once a day..  "
+    "Please try again.";
+const char kCannotReadPasswordStderr[] =
     "Cannot read password while getting initial credentials";
 const char kNetworkError[] = "Cannot resolve network address for KDC in realm";
 const char kCannotContactKdc[] = "Cannot contact any KDC";
@@ -166,7 +172,13 @@ int HandleCommandLine(const std::string& command_line) {
 
     // Stub expired password error.
     if (password == kExpiredPassword) {
-      WriteOutput(kPasswordExpiredStdout, kPasswordExpiredStderr);
+      WriteOutput(kPasswordExpiredStdout, kCannotReadPasswordStderr);
+      return kExitCodeError;
+    }
+
+    // Stub rejected password error.
+    if (password == kRejectedPassword) {
+      WriteOutput(kPasswordRejectedStdout, kCannotReadPasswordStderr);
       return kExitCodeError;
     }
 

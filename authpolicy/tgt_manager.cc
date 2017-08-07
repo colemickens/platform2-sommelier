@@ -83,7 +83,8 @@ const char kKeyBadPassword2[] =
     "Password incorrect while getting initial credentials";
 const char kKeyPasswordExpiredStdout[] =
     "Password expired.  You must change it now.";
-const char kKeyPasswordExpiredStderr[] =
+const char kKeyPasswordRejectedStdout[] = "Password change rejected";
+const char kCannotReadPasswordStderr[] =
     "Cannot read password while getting initial credentials";
 const char kKeyCannotResolve[] =
     "Cannot resolve network address for KDC in realm";
@@ -158,9 +159,14 @@ ErrorType GetKinitError(const ProcessExecutor& kinit_cmd,
   // Check both stderr and stdout here since any kinit error in the change-
   // password-workflow would otherwise be interpreted as 'password expired'.
   if (Contains(kinit_out, kKeyPasswordExpiredStdout) &&
-      Contains(kinit_err, kKeyPasswordExpiredStderr)) {
+      Contains(kinit_err, kCannotReadPasswordStderr)) {
     LOG(ERROR) << "kinit failed - password expired";
     return ERROR_PASSWORD_EXPIRED;
+  }
+  if (Contains(kinit_out, kKeyPasswordRejectedStdout) &&
+      Contains(kinit_err, kCannotReadPasswordStderr)) {
+    LOG(ERROR) << "kinit failed - password rejected";
+    return ERROR_PASSWORD_REJECTED;
   }
   if (Contains(kinit_err, kKeyCannotResolve)) {
     LOG(ERROR) << "kinit failed - cannot resolve KDC realm";

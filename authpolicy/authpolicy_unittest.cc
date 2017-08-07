@@ -718,6 +718,14 @@ TEST_F(AuthPolicyTest, AuthFailsExpiredPassword) {
   EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
+// Authentication fails for rejected password.
+TEST_F(AuthPolicyTest, AuthFailsRejectedPassword) {
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_PASSWORD_REJECTED,
+            Auth(kUserPrincipal, "", MakeFileDescriptor(kRejectedPassword)));
+  EXPECT_EQ(2, metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
+}
+
 // Authentication succeeds if the "password will expire" warning is shown.
 TEST_F(AuthPolicyTest, AuthSucceedsPasswordWillExpire) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));

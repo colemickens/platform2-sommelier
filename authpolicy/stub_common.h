@@ -78,6 +78,8 @@ extern const char kPassword[];
 extern const char kWrongPassword[];
 // Triggers "expired password" error in kinit.
 extern const char kExpiredPassword[];
+// Triggers "rejected password" error in kinit.
+extern const char kRejectedPassword[];
 // Triggers "password will expire" warning in kinit.
 extern const char kWillExpirePassword[];
 
