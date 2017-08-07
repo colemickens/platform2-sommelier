@@ -119,6 +119,25 @@ grpc::Status ServiceImpl::ConfigureNetwork(grpc::ServerContext* ctx,
   LOG(INFO) << "Set IPv4 netmask for interface " << kInterfaceName << " to "
             << AddressToString(ipv4_config.netmask());
 
+  // Set the interface up and running.  This needs to happen before the kernel
+  // will let us set the gateway.
+  if (HANDLE_EINTR(ioctl(fd.get(), SIOCGIFFLAGS, &ifr)) != 0) {
+    int saved_errno = errno;
+    PLOG(ERROR) << "Failed to fetch flags for interface " << kInterfaceName;
+    return grpc::Status(grpc::INTERNAL, string("failed to fetch flags: ") +
+                                            strerror(saved_errno));
+  }
+
+  ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
+  if (HANDLE_EINTR(ioctl(fd.get(), SIOCSIFFLAGS, &ifr)) != 0) {
+    int saved_errno = errno;
+    PLOG(ERROR) << "Failed to set flags for interface " << kInterfaceName;
+    return grpc::Status(grpc::INTERNAL, string("failed to set flags: ") +
+                                            strerror(saved_errno));
+  }
+
+  LOG(INFO) << "Set interface " << kInterfaceName << " up and running";
+
   // Set the gateway.
   struct rtentry route;
   memset(&route, 0, sizeof(route));
@@ -151,24 +170,6 @@ grpc::Status ServiceImpl::ConfigureNetwork(grpc::ServerContext* ctx,
 
   LOG(INFO) << "Set default IPv4 gateway for interface " << kInterfaceName
             << " to " << AddressToString(ipv4_config.gateway());
-
-  // Now that everything is configured, set the up and running flags.
-  if (HANDLE_EINTR(ioctl(fd.get(), SIOCGIFFLAGS, &ifr)) != 0) {
-    int saved_errno = errno;
-    PLOG(ERROR) << "Failed to fetch flags for interface " << kInterfaceName;
-    return grpc::Status(grpc::INTERNAL, string("failed to fetch flags: ") +
-                                            strerror(saved_errno));
-  }
-
-  ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
-  if (HANDLE_EINTR(ioctl(fd.get(), SIOCSIFFLAGS, &ifr)) != 0) {
-    int saved_errno = errno;
-    PLOG(ERROR) << "Failed to set flags for interface " << kInterfaceName;
-    return grpc::Status(grpc::INTERNAL, string("failed to set flags: ") +
-                                            strerror(saved_errno));
-  }
-
-  LOG(INFO) << "Set interface " << kInterfaceName << " up and running";
 
   return grpc::Status::OK;
 }
