@@ -97,8 +97,9 @@ bool FirmwareUpdater::TryConnectUSB() {
     if (ret) {
       // Flush data from the EC's "out" buffer.  There may be leftover data
       // in this buffer from a previous failure.
-      uint8_t buf[uep_->GetChunkLength()];
-      while (uep_->Receive(buf, sizeof(buf), true, kFlushTimeoutMs) > 0) {
+      const size_t buf_len = uep_->GetChunkLength();
+      std::unique_ptr<uint8_t[]> buf(new uint8_t[buf_len]);
+      while (uep_->Receive(buf.get(), buf_len, true, kFlushTimeoutMs) > 0) {
         LOG(INFO) << "Flushing data...";
       }
 

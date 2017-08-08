@@ -200,7 +200,8 @@ TEST_F(FirmwareUpdaterTest, TryConnectUSB_FAIL) {
 TEST_F(FirmwareUpdaterTest, TryConnectUSB_FetchVersion_Legacy) {
   InSequence dummy;
   EXPECT_CALL(*uep_, Connect()).WillOnce(Return(true));
-  EXPECT_CALL(*uep_, GetConfigurationString()).WillOnce(Return("version_string"));
+  EXPECT_CALL(*uep_, GetConfigurationString())
+      .WillOnce(Return("version_string"));
   ASSERT_EQ(fw_updater_->TryConnectUSB(), true);
   ASSERT_EQ(fw_updater_->version_, "version_string");
 }

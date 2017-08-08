@@ -6,6 +6,8 @@
 
 #include "hammerd/hammer_updater.h"
 
+#include <utility>
+
 #include <unistd.h>
 
 #include <base/logging.h>

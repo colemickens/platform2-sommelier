@@ -5,6 +5,7 @@
 #ifndef HAMMERD_HAMMER_UPDATER_H_
 #define HAMMERD_HAMMER_UPDATER_H_
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
@@ -48,12 +49,12 @@ class HammerUpdater {
   FRIEND_TEST(HammerUpdaterFullTest, RunOnce_ResetToRO);
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(HammerUpdater);
-
   // The image data to be updated.
   std::string image_;
   // The main firmware updater.
   std::unique_ptr<FirmwareUpdaterInterface> fw_updater_;
+
+  DISALLOW_COPY_AND_ASSIGN(HammerUpdater);
 };
 
 }  // namespace hammerd
