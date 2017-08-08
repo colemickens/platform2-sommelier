@@ -159,14 +159,17 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
             }
 
             if (buffer->format() == HAL_PIXEL_FORMAT_BLOB) {
-                mJpegTask = std::unique_ptr<JpegEncodeTask>(new JpegEncodeTask(mCameraId));
+                if (!mJpegTask.get()) {
+                    LOG2("Create JpegEncodeTask");
+                    mJpegTask = std::unique_ptr<JpegEncodeTask>(new JpegEncodeTask(mCameraId));
 
-                status = mJpegTask->init();
-                if (status != NO_ERROR) {
-                    LOGE("Failed to init JpegEncodeTask Task");
-                    status = NO_INIT;
-                    mJpegTask.reset();
-                    return status;
+                    status = mJpegTask->init();
+                    if (status != NO_ERROR) {
+                        LOGE("Failed to init JpegEncodeTask Task");
+                        status = NO_INIT;
+                        mJpegTask.reset();
+                        return status;
+                    }
                 }
 
                 status = mJpegTask->handleMessageSettings(*msg->pMsg.processingSettings);
@@ -239,6 +242,11 @@ status_t OutputFrameWorker::run()
 
     status = mNode->grabFrame(&outBuf);
 
+    ICaptureEventListener::CaptureMessage outMsg;
+    outMsg.id = ICaptureEventListener::CAPTURE_MESSAGE_ID_EVENT;
+    outMsg.data.event.type = ICaptureEventListener::CAPTURE_EVENT_YUV;
+    outMsg.data.event.yuvBuffer = mCameraBuffers[0];
+    notifyListeners(&outMsg);
     return status;
 }
 
@@ -343,7 +351,11 @@ OutputFrameWorker::convertJpeg(std::shared_ptr<CameraBuffer> input,
     msg.jpegInputbuffer = input;
     msg.request = request;
 
-    status_t status = mJpegTask->handleMessageNewJpegInput(msg);
+    status_t status = NO_ERROR;
+    if (mJpegTask.get()) {
+        status = mJpegTask->handleMessageNewJpegInput(msg);
+    }
+
     return status;
 }
 

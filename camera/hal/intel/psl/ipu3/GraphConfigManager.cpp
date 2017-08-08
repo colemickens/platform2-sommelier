@@ -37,6 +37,7 @@ using std::map;
 namespace android {
 namespace camera2 {
 
+#define MAX_NUM_STREAMS    3
 const char *GraphConfigManager::DEFAULT_DESCRIPTOR_FILE = "/etc/camera/graph_descriptor.xml";
 const char *GraphConfigManager::DEFAULT_SETTINGS_FILE = "/etc/camera/graph_settings.xml";
 
@@ -300,6 +301,10 @@ void GraphConfigManager::handleMap(camera3_stream_t* stream, ResolutionItem& res
     mQuery[h] = std::to_string(rotate ? stream->width : stream->height);
 }
 
+#define streamSizeGT(s1, s2) (((s1)->width * (s1)->height) > ((s2)->width * (s2)->height))
+#define streamSizeEQ(s1, s2) (((s1)->width * (s1)->height) == ((s2)->width * (s2)->height))
+#define streamSizeGE(s1, s2) (((s1)->width * (s1)->height) >= ((s2)->width * (s2)->height))
+
 status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*> &streams,
                                                     int& videoStreamCnt, int& stillStreamCnt,
                                                     int& needEnableStill)
@@ -312,100 +317,102 @@ status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*>
         }
     }
 
-    std::vector<camera3_stream_t *> yuvStreams;
-    std::vector<camera3_stream_t *> blobStreams;
-    yuvStreams.clear();
-    blobStreams.clear();
+    // Don't support RAW currently
+    std::vector<camera3_stream_t *> availableStreams;
+    int yuvNum = 0;
+    int blobNum = 0;
+
+    // Keep streams in order: BLOB, IMPL, YUV...
     for (int i = 0; i < streams.size(); i++) {
         switch (streams[i]->format) {
             case HAL_PIXEL_FORMAT_BLOB:
-                 blobStreams.push_back(streams[i]);
+                 // Process later
                  break;
             case HAL_PIXEL_FORMAT_YCbCr_420_888:
-            case HAL_PIXEL_FORMAT_YCbCr_422_I:
+                 yuvNum++;
+                 availableStreams.push_back(streams[i]);
+                 break;
             case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
-                 yuvStreams.push_back(streams[i]);
+                 yuvNum++;
+                 availableStreams.insert(availableStreams.begin(), streams[i]);
                  break;
             default:
-                LOGW("Unsupported stream format %d", streams.at(i)->format);
-                break;
+                LOGE("Unsupported stream format %d", streams.at(i)->format);
+                return BAD_VALUE;
         }
     }
+    for (int i = 0; i < streams.size(); i++) {
+        if (streams[i]->format == HAL_PIXEL_FORMAT_BLOB) {
+            blobNum++;
+            availableStreams.insert(availableStreams.begin(), streams[i]);
+        }
+    }
+    LOG2("@%s, blobNum:%d, yuvNum:%d", __FUNCTION__, blobNum, yuvNum);
 
-    int yuvNum = yuvStreams.size();
-    int blobNum = blobStreams.size();
-    LOG2("@%s, yuvNum:%d, blobNum:%d", __FUNCTION__, yuvNum, blobNum);
-    PlatformGraphConfigKey streamKey;
-    ResolutionItem res;
+    // Main output produces full size frames
+    // Secondary output produces small size frames
+    int mainOutputIndex = -1;
+    int secondaryOutputIndex = -1;
+    bool isVideoSnapshot = false;
 
-    if (blobNum) {
+    if (availableStreams.size() == 1) {
+        mainOutputIndex = 0;
+    } else if (availableStreams.size() == 2) {
+        mainOutputIndex = (streamSizeGE(availableStreams[0], availableStreams[1])) ? 0 : 1;
+        secondaryOutputIndex = mainOutputIndex ? 0 : 1;
+    } else if (availableStreams.size() == 3 && blobNum == 1) {
+        // Check if it is video snapshot case: jpeg size = yuv size
+        // Otherwise it is still capture case
+        if (streamSizeEQ(availableStreams[0], availableStreams[1])
+            || streamSizeEQ(availableStreams[0], availableStreams[2])) {
+            // Ignore jpeg stream here, it will use frames of video stream as input.
+            isVideoSnapshot = true;
+            mainOutputIndex = (streamSizeGE(availableStreams[1], availableStreams[2])) ? 1 : 2; // For video stream
+            secondaryOutputIndex = (mainOutputIndex == 1) ? 2 : 1; // For preview stream
+        } else {
+            // Ignore 3rd stream, it will use frames of preview stream as input.
+            secondaryOutputIndex = (streamSizeGE(availableStreams[1], availableStreams[2])) ? 1 : 2; // For preview stream
+
+            if (streamSizeGT(availableStreams[0], availableStreams[secondaryOutputIndex])) {
+                mainOutputIndex = 0; // For JPEG stream
+            } else {
+                mainOutputIndex = secondaryOutputIndex;
+                secondaryOutputIndex = 0;
+            }
+        }
+    } else {
+        LOGE("@%s, ERROR, blobNum:%d, yuvNum:%d", __FUNCTION__, blobNum, yuvNum);
+        return UNKNOWN_ERROR;
+    }
+
+    if (blobNum && !isVideoSnapshot) {
         needEnableStill = true;
         LOGD("@%s, it has BLOB, needEnableStill:%d", __FUNCTION__, needEnableStill);
     }
 
-    if (blobNum == 1) {
-        if (yuvNum == 0) { // 1 JPEG stream only
-            stillStreamCnt++;
-            handleStillStream(res, streamKey);
-            handleMap(blobStreams[0], res, streamKey);
-        } else if (yuvNum == 1) { // 1 JPEG stream and 1 YUV stream
-            camera3_stream_t* sYuv = yuvStreams[0];
-            camera3_stream_t* sBlob = blobStreams[0];
-            if (sBlob->width >= sYuv->width) {
-                stillStreamCnt++;
-                handleStillStream(res, streamKey);
-                handleMap(blobStreams[0], res, streamKey);
+    LOG2("@%s, mainOutputIndex %d, secondaryOutputIndex %d ", __FUNCTION__, mainOutputIndex, secondaryOutputIndex);
 
-                videoStreamCnt++;
-                handleVideoStream(res, streamKey);
-                handleMap(yuvStreams[0], res, streamKey);
-            } else {
-                stillStreamCnt++;
-                handleStillStream(res, streamKey);
-                handleMap(yuvStreams[0], res, streamKey);
+    PlatformGraphConfigKey streamKey;
+    ResolutionItem res;
 
-                videoStreamCnt++;
-                handleVideoStream(res, streamKey);
-                handleMap(blobStreams[0], res, streamKey);
-            }
-        } else {
-            LOGE("@%s, line:%d, ERROR, blobNum:%d, yuvNum:%d", __FUNCTION__, __LINE__, blobNum, yuvNum);
-            return UNKNOWN_ERROR;
-        }
+    stillStreamCnt++;
+    handleStillStream(res, streamKey);
+    handleMap(availableStreams[mainOutputIndex], res, streamKey);
+    LOG2("@%s, stream size still: %dx%d, format 0x%x, %s", __FUNCTION__,
+         availableStreams[mainOutputIndex]->width,
+         availableStreams[mainOutputIndex]->height,
+         availableStreams[mainOutputIndex]->format,
+         METAID2STR(android_scaler_availableFormats_values, availableStreams[mainOutputIndex]->format));
 
-        return OK;
-    } else if (blobNum > 1) {
-        LOGE("@%s, line:%d, ERROR, blobNum:%d, yuvNum:%d", __FUNCTION__, __LINE__, blobNum, yuvNum);
-        return UNKNOWN_ERROR;
-    } else {
-        LOG2("@%s, no blob", __FUNCTION__);
-    }
-
-    if (yuvNum == 1) { // 1 YUV stream only
-        stillStreamCnt++;
-        handleStillStream(res, streamKey);
-        handleMap(yuvStreams[0], res, streamKey);
-    } else if (yuvNum == 2) { // 2 YUV streams
-        int maxWidth = 0;
-        int idx = 0;
-        for (int i = 0; i < yuvNum; i++) {
-            camera3_stream_t* s = yuvStreams[i];
-            if (s->width > maxWidth) {
-                maxWidth = s->width;
-                idx = i;
-            }
-        }
-
-        stillStreamCnt++;
-        handleStillStream(res, streamKey);
-        handleMap(yuvStreams[idx], res, streamKey);
-
+    if (secondaryOutputIndex >= 0) {
         videoStreamCnt++;
         handleVideoStream(res, streamKey);
-        handleMap(yuvStreams[1 - idx], res, streamKey);
-    } else {
-        LOGE("@%s, ERROR, the current yuv stream number is:%d", __FUNCTION__, yuvNum);
-        return UNKNOWN_ERROR;
+        handleMap(availableStreams[secondaryOutputIndex], res, streamKey);
+        LOG2("@%s, stream size video: %dx%d, format 0x%x, %s", __FUNCTION__,
+             availableStreams[secondaryOutputIndex]->width,
+             availableStreams[secondaryOutputIndex]->height,
+             availableStreams[secondaryOutputIndex]->format,
+             METAID2STR(android_scaler_availableFormats_values, availableStreams[secondaryOutputIndex]->format));
     }
 
     return OK;
@@ -439,7 +446,14 @@ status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &stre
      * Add to the query the number of active outputs
      */
     ItemUID streamCount = {GCSS_KEY_ACTIVE_OUTPUTS};
-    mQuery[streamCount] = std::to_string(streams.size());
+    if (streams.size() > MAX_NUM_STREAMS) {
+        LOGE("Maximum number of streams %d exceeded: %d",
+            MAX_NUM_STREAMS, streams.size());
+        return BAD_VALUE;
+    }
+    // W/A: Only support 2 streams in GC due to ISP pipe outputs.
+    int streamNum = (streams.size() > 2) ? 2 : streams.size();
+    mQuery[streamCount] = std::to_string(streamNum);
     /*
      * regenerate the stream resolutions vector if needed
      * We do this because we consume this vector for each stream configuration.

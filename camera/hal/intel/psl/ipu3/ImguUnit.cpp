@@ -16,15 +16,14 @@
 
 #define LOG_TAG "ImguUnit"
 
-#include "ImguUnit.h"
-
 #include <vector>
-
+#include "ImguUnit.h"
 #include "LogHelper.h"
 #include "PerformanceTraces.h"
 #include "IPU3CapturedStatistics.h"
 #include "workers/InputFrameWorker.h"
 #include "workers/OutputFrameWorker.h"
+#include "workers/SWOutputFrameWorker.h"
 #include "workers/StatisticsWorker.h"
 
 namespace android {
@@ -234,13 +233,13 @@ ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
              mActiveStreams.blobStreams.push_back(activeStreams.at(i));
              graphConfig->setPipeType(GraphConfig::PIPE_STILL);
              break;
-        case HAL_PIXEL_FORMAT_RAW16:
-             mActiveStreams.rawStreams.push_back(activeStreams.at(i));
-             break;
         case HAL_PIXEL_FORMAT_YCbCr_420_888:
-        case HAL_PIXEL_FORMAT_YCbCr_422_I:
-        case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
              mActiveStreams.yuvStreams.push_back(activeStreams.at(i));
+             break;
+        case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
+             // Always put IMPL stream on the begin for mapping, in the
+             // 3 stream case, IMPL is prefered to use for preview
+             mActiveStreams.yuvStreams.insert(mActiveStreams.yuvStreams.begin(), activeStreams.at(i));
              break;
         default:
             LOGW("Unsupported stream format %d",
@@ -248,7 +247,6 @@ ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
             break;
         }
     }
-
     status_t status = createProcessingTasks(graphConfig);
     if (status != NO_ERROR) {
        LOGE("Processing tasks creation failed (ret = %d)", status);
@@ -265,69 +263,94 @@ ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
     return OK;
 }
 
+#define streamSizeGT(s1, s2) (((s1)->width * (s1)->height) > ((s2)->width * (s2)->height))
+#define streamSizeEQ(s1, s2) (((s1)->width * (s1)->height) == ((s2)->width * (s2)->height))
+#define streamSizeGE(s1, s2) (((s1)->width * (s1)->height) >= ((s2)->width * (s2)->height))
+
 status_t ImguUnit::mapStreamWithDeviceNode()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     int blobNum = mActiveStreams.blobStreams.size();
     int yuvNum = mActiveStreams.yuvStreams.size();
-    LOG2("@%s, blobNum:%d, yuvNum:%d", __FUNCTION__, blobNum, yuvNum);
+    int streamNum = blobNum + yuvNum;
+
+    if (blobNum > 1) {
+        LOGE("Don't support blobNum %d", blobNum);
+        return BAD_VALUE;
+    }
 
     IPU3NodeNames videoNode = IMGU_NODE_VIDEO;
     IPU3NodeNames vfPreviewNode = IMGU_NODE_VF_PREVIEW;
     IPU3NodeNames pvPreivewNode = IMGU_NODE_PV_PREVIEW;
-
     mStreamNodeMapping.clear();
+    mStreamListenerMapping.clear();
 
-    if (blobNum == 1) {
-        if (yuvNum == 0) { // 1 JPEG stream only
-            mStreamNodeMapping[videoNode] = mActiveStreams.blobStreams[0];
-            mStreamNodeMapping[vfPreviewNode] = nullptr;
-            mStreamNodeMapping[pvPreivewNode] = nullptr;
-        } else if (yuvNum == 1) { // 1 JPEG stream and 1 YUV stream
-            camera3_stream_t* sYuv = mActiveStreams.yuvStreams[0];
-            camera3_stream_t* sBlob = mActiveStreams.blobStreams[0];
-            if (sBlob->width >= sYuv->width) {
-                mStreamNodeMapping[videoNode] = mActiveStreams.blobStreams[0];
-                mStreamNodeMapping[vfPreviewNode] = mActiveStreams.yuvStreams[0];
-                mStreamNodeMapping[pvPreivewNode] = mActiveStreams.yuvStreams[0];
-            } else {
-                mStreamNodeMapping[videoNode] = mActiveStreams.yuvStreams[0];
-                mStreamNodeMapping[vfPreviewNode] = mActiveStreams.blobStreams[0];
-                mStreamNodeMapping[pvPreivewNode] = mActiveStreams.blobStreams[0];
-            }
-        } else {
-            LOGE("@%s, line:%d, ERROR, blobNum:%d, yuvNum:%d", __FUNCTION__, __LINE__, blobNum, yuvNum);
-            return UNKNOWN_ERROR;
-        }
-
-        return OK;
-    } else if (blobNum > 1) {
-        LOGE("@%s, line:%d, ERROR, blobNum:%d, yuvNum:%d", __FUNCTION__, __LINE__, blobNum, yuvNum);
-        return UNKNOWN_ERROR;
-    } else {
-        LOG2("@%s, no blob", __FUNCTION__);
+    std::vector<camera3_stream_t *> availableStreams = mActiveStreams.yuvStreams;
+    if (blobNum) {
+        availableStreams.insert(availableStreams.begin(), mActiveStreams.blobStreams[0]);
     }
 
-    if (yuvNum == 1) { // 1 YUV stream only
-        // let yuv output from vf which includes scaler module to ensure FOV is
-        // the same between preview and snapshot
-        mStreamNodeMapping[videoNode] = nullptr;
-        mStreamNodeMapping[vfPreviewNode] = mActiveStreams.yuvStreams[0];
-    } else if (yuvNum == 2) { // 2 YUV streams
-        int maxWidth = 0;
-        int idx = 0;
-        for (int i = 0; i < yuvNum; i++) {
-            camera3_stream_t* s = mActiveStreams.yuvStreams[i];
-            if (s->width > maxWidth) {
-                maxWidth = s->width;
-                idx = i;
+    LOG1("@%s, %d streams, blobNum:%d, yuvNum:%d", __FUNCTION__, streamNum, blobNum, yuvNum);
+
+    int videoIdx = -1;
+    int previewIdx = -1;
+    int listenerIdx = -1;
+    IPU3NodeNames listenToNode = IMGU_NODE_NULL;
+
+    if (streamNum == 1) {
+        // Use preview for still capture to get same FOV with 2 streams preview case.
+        previewIdx = 0;
+    } else if (streamNum == 2) {
+        videoIdx = (streamSizeGE(availableStreams[0], availableStreams[1])) ? 0 : 1;
+        previewIdx = videoIdx ? 0 : 1;
+    } else if (yuvNum == 2 && blobNum == 1) {
+        // Check if it is video snapshot case: jpeg size = yuv size
+        // Otherwise it is still capture case, same to GraphConfigManager::mapStreamToKey.
+        if (streamSizeEQ(availableStreams[0], availableStreams[1])
+            || streamSizeEQ(availableStreams[0], availableStreams[2])) {
+            videoIdx = (streamSizeGE(availableStreams[1], availableStreams[2])) ? 1 : 2; // For video stream
+            previewIdx = (videoIdx == 1) ? 2 : 1; // For preview stream
+            listenerIdx = 0; // For jpeg stream
+            listenToNode = IMGU_NODE_VIDEO;
+        } else {
+            previewIdx = (streamSizeGE(availableStreams[1], availableStreams[2])) ? 1 : 2; // For preview stream
+            listenerIdx = (previewIdx == 1) ? 2 : 1; // For preview callback stream
+            if (streamSizeGT(availableStreams[0], availableStreams[previewIdx])) {
+                videoIdx = 0; // For JPEG stream
+                listenToNode = IMGU_NODE_VF_PREVIEW;
+            } else {
+                videoIdx = previewIdx;
+                previewIdx = 0; // For JPEG stream
+                listenToNode = IMGU_NODE_VIDEO;
             }
         }
-        mStreamNodeMapping[videoNode] = mActiveStreams.yuvStreams[idx];
-        mStreamNodeMapping[vfPreviewNode] = mActiveStreams.yuvStreams[1 - idx];
     } else {
-        LOGE("@%s, ERROR, the current yuv stream number is:%d", __FUNCTION__, yuvNum);
+        LOGE("@%s, ERROR, blobNum:%d, yuvNum:%d", __FUNCTION__, blobNum, yuvNum);
         return UNKNOWN_ERROR;
+    }
+
+    mStreamNodeMapping[IMGU_NODE_VF_PREVIEW] = availableStreams[previewIdx];
+    mStreamNodeMapping[IMGU_NODE_PV_PREVIEW] = mStreamNodeMapping[IMGU_NODE_VF_PREVIEW];
+    LOG1("@%s, %d stream %p size preview: %dx%d, format %s", __FUNCTION__,
+         previewIdx, availableStreams[previewIdx],
+         availableStreams[previewIdx]->width, availableStreams[previewIdx]->height,
+         METAID2STR(android_scaler_availableFormats_values,
+                    availableStreams[previewIdx]->format));
+
+    if (videoIdx >= 0) {
+        mStreamNodeMapping[IMGU_NODE_VIDEO] = availableStreams[videoIdx];
+        LOG1("@%s, %d stream %p size video: %dx%d, format %s", __FUNCTION__,
+             videoIdx, availableStreams[videoIdx],
+             availableStreams[videoIdx]->width, availableStreams[videoIdx]->height,
+             METAID2STR(android_scaler_availableFormats_values,
+                        availableStreams[videoIdx]->format));
+    }
+
+    if (listenerIdx >= 0) {
+        mStreamListenerMapping[listenToNode] = availableStreams[listenerIdx];
+        LOG1("@%s (%dx%d 0x%x), %p listen to 0x%x", __FUNCTION__,
+             availableStreams[listenerIdx]->width, availableStreams[listenerIdx]->height,
+             availableStreams[listenerIdx]->format, availableStreams[listenerIdx], listenToNode);
     }
 
     return OK;
@@ -402,13 +425,17 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
             mFirstWorkers.push_back(tmp);
             videoConfig->deviceWorkers.push_back(tmp); // parameters
         } else if (it.first == IMGU_NODE_STILL || it.first == IMGU_NODE_VIDEO) {
-            std::shared_ptr<FrameWorker> tmp = nullptr;
+            std::shared_ptr<OutputFrameWorker> tmp = nullptr;
             tmp = std::make_shared<OutputFrameWorker>(it.second, mCameraId, mStreamNodeMapping[it.first], it.first);
             videoConfig->deviceWorkers.push_back(tmp);
             videoConfig->pollableWorkers.push_back(tmp);
             videoConfig->nodes.push_back(tmp->getNode());
+            if (it.first == IMGU_NODE_VIDEO) {
+                createSwOutputFrameWork(it.first, tmp.get());
+            }
         } else if (it.first == IMGU_NODE_VF_PREVIEW) {
             vfWorker = std::make_shared<OutputFrameWorker>(it.second, mCameraId, mStreamNodeMapping[it.first], it.first);
+            createSwOutputFrameWork(it.first, vfWorker.get());
         } else if (it.first == IMGU_NODE_PV_PREVIEW) {
             pvWorker = std::make_shared<OutputFrameWorker>(it.second, mCameraId, mStreamNodeMapping[it.first], it.first);
         } else if (it.first == IMGU_NODE_RAW) {
@@ -456,6 +483,21 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
     }
 
     return OK;
+}
+
+void ImguUnit::createSwOutputFrameWork(IPU3NodeNames nodeName,
+                                           ICaptureEventSource* source)
+{
+    LOG1("@%s nodeName 0x%x, mapping len %d",  __FUNCTION__, nodeName, mStreamNodeMapping.size());
+    std::map<IPU3NodeNames, camera3_stream_t *>::iterator it;
+    it = mStreamListenerMapping.find(nodeName);
+    if (it != mStreamListenerMapping.end()) {
+        LOG1("@%s stream %p listen to nodeName 0x%x", __FUNCTION__, it->second, nodeName);
+        std::shared_ptr<SWOutputFrameWorker> tmp = nullptr;
+        tmp = std::make_shared<SWOutputFrameWorker>(mCameraId, it->second);
+        source->attachListener(tmp.get());
+        mCurPipeConfig->deviceWorkers.push_back(tmp);
+    }
 }
 
 void

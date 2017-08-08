@@ -87,6 +87,7 @@ public:
         std::shared_ptr<CaptureBuffer> pixelBuffer;   /**< Single buffer for output from CaptureUnit. To be identified by CaptureEventType  */
         std::shared_ptr<IPU3CapturedStatistics> stats;
         std::shared_ptr<ipu3_uapi_params> param;
+        std::shared_ptr<CameraBuffer> yuvBuffer;
         unsigned int     reqId;
         ia_aiq_exposure_sensor_descriptor exposureDesc;
         ia_aiq_frame_params frameParams;
