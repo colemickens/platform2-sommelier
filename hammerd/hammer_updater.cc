@@ -6,14 +6,15 @@
 
 #include "hammerd/hammer_updater.h"
 
-#include <utility>
-
 #include <unistd.h>
+
+#include <utility>
 
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
+#include <chromeos/dbus/service_constants.h>
 
 namespace hammerd {
 
@@ -23,15 +24,19 @@ HammerUpdater::HammerUpdater(const std::string& image, uint16_t vendor_id,
         image,
         base::MakeUnique<FirmwareUpdater>(
             base::MakeUnique<UsbEndpoint>(vendor_id, product_id, bus, port)),
-        base::MakeUnique<PairManager>()) {}
+        base::MakeUnique<PairManager>(),
+        base::MakeUnique<DBusWrapper>()) {}
 
 HammerUpdater::HammerUpdater(
     const std::string& image,
     std::unique_ptr<FirmwareUpdaterInterface> fw_updater,
-    std::unique_ptr<PairManagerInterface> pair_manager)
+    std::unique_ptr<PairManagerInterface> pair_manager,
+    std::unique_ptr<DBusWrapperInterface> dbus_wrapper)
     : image_(image),
       fw_updater_(std::move(fw_updater)),
-      pair_manager_(std::move(pair_manager)) {}
+      pair_manager_(std::move(pair_manager)),
+      dbus_wrapper_(std::move(dbus_wrapper)),
+      dbus_notified_(false) {}
 
 bool HammerUpdater::Run() {
   // The time period after which hammer automatically jumps to RW section.
@@ -81,6 +86,14 @@ bool HammerUpdater::Run() {
     base::PlatformThread::Sleep(
         base::TimeDelta::FromMilliseconds(kUdevGuardTimeMs));
     LOG(INFO) << "Finish the infinite loop prevention.";
+  }
+
+  // If we tried to update the firmware, send a signal to notify the updating is
+  // finished.
+  if (dbus_notified_) {
+    dbus_notified_ = false;
+    dbus_wrapper_->SendSignal(ret ? kBaseFirmwareUpdateSucceededSignal
+                                  : kBaseFirmwareUpdateFailedSignal);
   }
   return ret;
 }
@@ -196,6 +209,7 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(
   if (fw_updater_->CurrentSection() == SectionName::RW) {
     if (fw_updater_->NeedsUpdate(SectionName::RW)) {
       LOG(INFO) << "RW section needs update.";
+      NotifyUpdateStarted();
       return HammerUpdater::RunStatus::kNeedReset;
     }
     return PostRWProcess();
@@ -208,6 +222,7 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(
   // then continue with the update procedure.
   if (need_inject_entropy || post_rw_jump ||
       fw_updater_->NeedsUpdate(SectionName::RW)) {
+    NotifyUpdateStarted();
     // If we have just finished a jump to RW, but we're still in RO, then
     // we should log the failure.
     if (post_rw_jump) {
@@ -289,6 +304,13 @@ HammerUpdater::RunStatus HammerUpdater::Pair() {
       return HammerUpdater::RunStatus::kFatalError;
   }
   return HammerUpdater::RunStatus::kFatalError;
+}
+
+void HammerUpdater::NotifyUpdateStarted() {
+  if (!dbus_notified_) {
+    dbus_notified_ = true;
+    dbus_wrapper_->SendSignal(kBaseFirmwareUpdateStartedSignal);
+  }
 }
 
 }  // namespace hammerd

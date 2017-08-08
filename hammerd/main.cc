@@ -11,6 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/message_loop/message_loop.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
@@ -60,6 +61,9 @@ int main(int argc, const char* argv[]) {
     return EXIT_FAILURE;
   }
 
+  // The message loop registers a task runner with the current thread, which
+  // is used by DBusWrapper to send signals.
+  base::MessageLoop message_loop;
   hammerd::HammerUpdater updater(
       image, FLAGS_vendor_id, FLAGS_product_id, FLAGS_usb_bus, FLAGS_usb_port);
   bool ret = updater.Run();

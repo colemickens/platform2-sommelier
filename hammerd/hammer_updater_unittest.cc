@@ -22,12 +22,16 @@
 //  - Test the logic of PostRWProcess, the interaction with external interfaces.
 //  - Mock all external data members only.
 
+#include <utility>
+
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "hammerd/hammer_updater.h"
+#include "hammerd/mock_dbus_wrapper.h"
 #include "hammerd/mock_pair_utils.h"
 #include "hammerd/mock_update_fw.h"
 
@@ -74,11 +78,14 @@ class HammerUpdaterTest : public testing::Test {
     hammer_updater_.reset(new HammerUpdaterType{
         image_,
         base::MakeUnique<MockFirmwareUpdater>(),
-        base::MakeUnique<MockPairManagerInterface>()});
+        base::MakeUnique<MockPairManagerInterface>(),
+        base::MakeUnique<MockDBusWrapper>()});
     fw_updater_ =
         static_cast<MockFirmwareUpdater*>(hammer_updater_->fw_updater_.get());
     pair_manager_ = static_cast<MockPairManagerInterface*>(
         hammer_updater_->pair_manager_.get());
+    dbus_wrapper_ = static_cast<MockDBusWrapper*>(
+        hammer_updater_->dbus_wrapper_.get());
 
     // By default, expect no USB connections to be made. This can
     // be overridden by a call to ExpectUSBConnections.
@@ -103,6 +110,7 @@ class HammerUpdaterTest : public testing::Test {
   std::unique_ptr<HammerUpdaterType> hammer_updater_;
   MockFirmwareUpdater* fw_updater_;
   MockPairManagerInterface* pair_manager_;
+  MockDBusWrapper* dbus_wrapper_;
   std::string image_ = "MOCK IMAGE";
   int usb_connection_count_;
 };
@@ -212,6 +220,7 @@ TEST_F(HammerUpdaterRWTest, Run_UpdateRWAfterJumpToRWFailed) {
     // Second round: Jump to RW fails, so update RW.
     EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, SendDone()).WillOnce(Return());
+    EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateStartedSignal));
     EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO))
         .WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RW))
@@ -232,6 +241,7 @@ TEST_F(HammerUpdaterRWTest, Run_UpdateRWAfterJumpToRWFailed) {
     EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, SendDone()).WillOnce(Return());
     EXPECT_CALL(*hammer_updater_, PostRWProcess());
+    EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateSucceededSignal));
   }
 
   ExpectUSBConnections(AtLeast(1));
@@ -431,6 +441,7 @@ TEST_F(HammerUpdaterRWTest, RunOnce_ResetToRO) {
   {
     InSequence dummy;
     EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
+    EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateStartedSignal));
   }
 
   ASSERT_EQ(hammer_updater_->RunOnce(false, false),

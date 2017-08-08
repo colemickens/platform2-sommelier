@@ -10,6 +10,7 @@
 
 #include <base/macros.h>
 
+#include "hammerd/dbus_wrapper.h"
 #include "hammerd/pair_utils.h"
 #include "hammerd/update_fw.h"
 
@@ -53,7 +54,12 @@ class HammerUpdater {
   // Used in unittests to inject mock instance.
   HammerUpdater(const std::string& image,
                 std::unique_ptr<FirmwareUpdaterInterface> fw_updater,
-                std::unique_ptr<PairManagerInterface> pair_manager);
+                std::unique_ptr<PairManagerInterface> pair_manager,
+                std::unique_ptr<DBusWrapperInterface> dbus_wrapper);
+
+  // Sends DBus kBaseFirmwareUpdateStartedSignal to notify other processes that
+  // the RW section will now be updated.
+  void NotifyUpdateStarted();
 
   template <typename HammerUpdaterType>
   friend class HammerUpdaterTest;
@@ -65,6 +71,13 @@ class HammerUpdater {
   std::unique_ptr<FirmwareUpdaterInterface> fw_updater_;
   // The pairing manager.
   std::unique_ptr<PairManagerInterface> pair_manager_;
+  // The DBus wrapper is used to send signals to other processes.
+  std::unique_ptr<DBusWrapperInterface> dbus_wrapper_;
+  // When we send a DBus signal to notify that the update process is starting,
+  // we set this flag. After the whole process finishes, we will send another
+  // DBus signal to notify whether the process succeeded or failed, and the flag
+  // will be unset.
+  bool dbus_notified_;
 
   DISALLOW_COPY_AND_ASSIGN(HammerUpdater);
 };

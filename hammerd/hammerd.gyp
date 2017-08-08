@@ -7,6 +7,11 @@
         'libchrome-<(libbase_ver)',
         'libusb-1.0',
         'openssl',
+        # system_api depends on protobuf (or protobuf-lite). It must appear
+        # before protobuf here or the linker flags won't be in the right
+        # order.
+        'system_api',
+        'protobuf-lite',
       ],
     },
   },
@@ -17,6 +22,7 @@
       'sources': [
         # TODO(crbug.com/649672): Upgrade to OpenSSL 1.1 support curve25519.
         'curve25519.c',
+        'dbus_wrapper.cc',
         'fmap_utils.cc',
         'hammer_updater.cc',
         'pair_utils.cc',
