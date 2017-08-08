@@ -2,8 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# TODO(akahuang): Detect event on a specific USB port instead of VID/PID.
-# TODO(akahuang): Pass the USB device node into hammerd.
 ACTION=="add", ENV{ID_MODEL}=="Hammer", SUBSYSTEM=="usb", \
-  ATTRS{idVendor}=="18d1", ATTRS{idProduct}=="5022", \
+  DEVPATH=="/devices/pci0000:00/0000:00:12.0/usb1/1-1", \
   RUN+="/sbin/initctl emit --no-wait hammer-device-added"

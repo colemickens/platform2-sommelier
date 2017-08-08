@@ -1,0 +1,5 @@
+env IMAGE_PATH="/lib/firmware/myfirmware.fw"
+env VENDOR_ID=4660  # 0x123
+env PRODUCT_ID=74565  # 0x1234
+env USB_BUS=1
+env USB_PORT=1
