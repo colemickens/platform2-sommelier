@@ -36,7 +36,24 @@ const base::FilePath::CharType kDefaultPeripheralBatteryPath[] =
 // Default interval for polling the device battery info.
 const int kDefaultPollIntervalMs = 600000;
 
+// Reads |path| to |value_out| and trims trailing whitespace. False is returned
+// if the file doesn't exist or can't be read.
+bool ReadStringFromFile(const base::FilePath& path, std::string *value_out) {
+  if (!base::ReadFileToString(path, value_out))
+    return false;
+
+  base::TrimWhitespaceASCII(*value_out, base::TRIM_TRAILING, value_out);
+  return true;
+}
+
 }  // namespace
+
+const char PeripheralBatteryWatcher::kScopeFile[] = "scope";
+const char PeripheralBatteryWatcher::kScopeValueDevice[] = "Device";
+const char PeripheralBatteryWatcher::kStatusFile[] = "status";
+const char PeripheralBatteryWatcher::kStatusValueUnknown[] = "Unknown";
+const char PeripheralBatteryWatcher::kModelNameFile[] = "model_name";
+const char PeripheralBatteryWatcher::kCapacityFile[] = "capacity";
 
 PeripheralBatteryWatcher::PeripheralBatteryWatcher()
     : dbus_wrapper_(NULL),
@@ -56,21 +73,22 @@ void PeripheralBatteryWatcher::GetBatteryList(
   base::FileEnumerator dir_enumerator(
       peripheral_battery_path_, false, base::FileEnumerator::DIRECTORIES);
 
-  // Peripheral battery has a sysfs entry with name "scope" containing value
-  // "Device".
-  for (base::FilePath check_path = dir_enumerator.Next(); !check_path.empty();
-       check_path = dir_enumerator.Next()) {
-    base::FilePath scope_path = check_path.Append("scope");
-    if (!base::PathExists(scope_path))
+  for (base::FilePath device_path = dir_enumerator.Next(); !device_path.empty();
+       device_path = dir_enumerator.Next()) {
+    // Peripheral batteries have device scopes.
+    std::string scope;
+    if (!ReadStringFromFile(device_path.Append(kScopeFile), &scope) ||
+        scope != kScopeValueDevice)
       continue;
 
-    std::string buf;
-    base::ReadFileToString(scope_path, &buf);
-    base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING, &buf);
-    if (buf != "Device")
+    // Some devices may initially have an unknown status; avoid reporting
+    // them: http://b/64392016
+    std::string status;
+    if (ReadStringFromFile(device_path.Append(kStatusFile), &status) &&
+        status == kStatusValueUnknown)
       continue;
 
-    battery_list->push_back(check_path);
+    battery_list->push_back(device_path);
   }
 }
 
@@ -84,17 +102,13 @@ void PeripheralBatteryWatcher::ReadBatteryStatuses() {
     base::FilePath path = new_battery_list[i];
 
     // sysfs entry "capacity" has the current battery level.
-    base::FilePath capacity_path = path.Append("capacity");
+    base::FilePath capacity_path = path.Append(kCapacityFile);
     if (!base::PathExists(capacity_path))
       continue;
 
-    base::FilePath model_name_path = path.Append("model_name");
-    if (!base::PathExists(model_name_path))
-      continue;
-
     std::string model_name;
-    base::ReadFileToString(model_name_path, &model_name);
-    base::TrimWhitespaceASCII(model_name, base::TRIM_TRAILING, &model_name);
+    if (!ReadStringFromFile(path.Append(kModelNameFile), &model_name))
+      continue;
 
     battery_readers_.push_back(base::MakeUnique<AsyncFileReader>());
     AsyncFileReader* reader = battery_readers_.back().get();

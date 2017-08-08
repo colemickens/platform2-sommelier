@@ -23,6 +23,21 @@ class DBusWrapperInterface;
 
 class PeripheralBatteryWatcher {
  public:
+  // sysfs file containing a battery's scope.
+  static const char kScopeFile[];
+  // kScopeFile value used for peripheral batteries.
+  static const char kScopeValueDevice[];
+
+  // sysfs file containing a battery's status.
+  static const char kStatusFile[];
+  // kStatusFile value used to report an unknown status.
+  static const char kStatusValueUnknown[];
+
+  // sysfs file containing a battery's model name.
+  static const char kModelNameFile[];
+  // sysfs file containing a battery's capacity.
+  static const char kCapacityFile[];
+
   PeripheralBatteryWatcher();
   ~PeripheralBatteryWatcher();
 
