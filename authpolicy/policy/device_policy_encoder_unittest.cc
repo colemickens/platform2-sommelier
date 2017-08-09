@@ -370,6 +370,9 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(em::DeviceSecondFactorAuthenticationProto::U2F,
             policy.device_second_factor_authentication().mode());
 
+  EncodeString(&policy, key::kCastReceiverName, kString);
+  EXPECT_EQ(kString, policy.cast_receiver_name().name());
+
   //
   // Check whether all device policies have been handled.
   //

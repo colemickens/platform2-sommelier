@@ -479,6 +479,10 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
     policy->mutable_device_second_factor_authentication()->set_mode(
         static_cast<em::DeviceSecondFactorAuthenticationProto_U2fMode>(value));
   });
+
+  EncodeString(key::kCastReceiverName, [policy](const std::string& value) {
+    policy->mutable_cast_receiver_name()->set_name(value);
+  });
 }
 
 void DevicePolicyEncoder::EncodeBoolean(
