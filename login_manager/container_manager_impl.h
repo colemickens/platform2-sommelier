@@ -56,6 +56,9 @@ class ContainerManagerImpl : public ContainerManagerInterface {
   virtual void OnContainerStopped(bool clean);
 
  private:
+  // Kills the container with SIGKILL.
+  void KillContainer(pid_t pid);
+
   // Frees any resources used by the container.
   void CleanUpContainer(pid_t pid);
 

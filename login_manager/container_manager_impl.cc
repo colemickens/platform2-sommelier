@@ -5,6 +5,7 @@
 #include "login_manager/container_manager_impl.h"
 
 #include <errno.h>
+#include <signal.h>
 #include <stdint.h>
 #include <sys/mount.h>
 
@@ -88,13 +89,12 @@ void ContainerManagerImpl::RequestJobExit() {
   // If HandleExit() is called after this point, it is considered clean.
   clean_exit_ = true;
 
-  if (stateful_mode_ == StatefulMode::STATELESS || !RequestTermination()) {
-    LOG(INFO) << "Killing off container " << name_;
-    int rc = container_kill(container_.get());
-    if (rc != 0) {
-      LOG(ERROR) << "Failed to kill container " << name_ << ": "
-                 << libcontainer_strerror(rc);
-    }
+  if (stateful_mode_ == StatefulMode::STATELESS) {
+    // Stateless containers can be killed forcefully since they don't need
+    // graceful teardown.
+    KillContainer(pid);
+  } else {
+    RequestTermination();
   }
 }
 
@@ -106,14 +106,9 @@ void ContainerManagerImpl::EnsureJobExit(base::TimeDelta timeout) {
   if (!GetContainerPID(&pid))
     return;
 
-  if (!system_utils_->ProcessIsGone(pid, timeout)) {
-    LOG(INFO) << "Killing off container " << name_;
-    int rc = container_kill(container_.get());
-    if (rc != 0) {
-      LOG(ERROR) << "Failed to kill container " << name_ << ": "
-                 << libcontainer_strerror(rc);
-    }
-  }
+  if (!system_utils_->ProcessIsGone(pid, timeout))
+    KillContainer(pid);
+
   CleanUpContainer(pid);
 }
 
@@ -199,6 +194,12 @@ bool ContainerManagerImpl::RequestTermination() {
 }
 
 void ContainerManagerImpl::OnContainerStopped(bool clean) {}
+
+void ContainerManagerImpl::KillContainer(pid_t pid) {
+  LOG(INFO) << "Killing off container " << name_;
+  if (system_utils_->kill(pid, 0, SIGKILL) != 0 && errno != ESRCH)
+    PLOG(ERROR) << "Failed to kill container " << name_;
+}
 
 void ContainerManagerImpl::CleanUpContainer(pid_t pid) {
   if (!container_)
