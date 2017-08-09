@@ -33,6 +33,7 @@ using trunks::TrunksDBusProxy;
 // Commands we support
 constexpr char kForce[] = "force";
 constexpr char kGetLock[] = "get_lock";
+constexpr char kPopLogEntry[] = "pop_logentry";
 constexpr char kRaw[] = "raw";
 constexpr char kSetLock[] = "set_lock";
 constexpr char kSysInfo[] = "sysinfo";
@@ -50,6 +51,7 @@ void PrintUsage() {
   printf("  trunks_send --%s\n", kGetLock);
   printf("  trunks_send --%s\n", kSetLock);
   printf("  trunks_send --%s\n", kSysInfo);
+  printf("  trunks_send --%s\n", kPopLogEntry);
   printf("  trunks_send --%s XX [XX ..]\n", kRaw);
   printf("  trunks_send [--%s] --%s <bin file>\n", kForce, kUpdate);
   printf("Options:\n");
@@ -89,6 +91,7 @@ enum vendor_cmd_cc {
   VENDOR_CC_GET_LOCK = 16,
   VENDOR_CC_SET_LOCK = 17,
   VENDOR_CC_SYSINFO = 18,
+  VENDOR_CC_POP_LOG_ENTRY = 28,
 };
 
 // The TPM response code is all zero for success.
@@ -600,7 +603,7 @@ static int VcSysInfo(TrunksDBusProxy* proxy, base::CommandLine* cl)
     return 1;
 
   if (out.size() != sizeof(struct sysinfo_s)) {
-    LOG(ERROR) << "TPM response was too short!";
+    LOG(ERROR) << "Wrong TPM response size.";
     return 1;
   }
 
@@ -618,6 +621,51 @@ static int VcSysInfo(TrunksDBusProxy* proxy, base::CommandLine* cl)
   printf("DEV_ID:      0x%08x 0x%08x\n",
          sysinfo.dev_id0, sysinfo.dev_id1);
 
+  return 0;
+}
+
+// PopLogEntry command:
+// There are no input args.
+// Output is this struct, all fields in network order.
+struct logentry_s {
+  uint32_t timestamp; /* Relative timestamp of event, "msec ago" */
+  uint8_t type;       /* Type of event logged */
+  uint8_t size;       /* Byte size of extra payload data, only 0 supported */
+  uint16_t data;      /* Type-defined additional log info */
+} __attribute__((packed));
+
+static int VcPopLogEntry(TrunksDBusProxy* proxy, base::CommandLine* cl)
+{
+  std::string out;
+  uint32_t rc = VendorCommand(proxy, VENDOR_CC_POP_LOG_ENTRY, out, &out);
+  base::Time ts;
+  base::Time::Exploded ts_exploded;
+
+  if (rc)
+    return 1;
+
+  if (out.size() == 0) {
+    LOG(INFO) << "No log entry available.";
+    return 0;
+  }
+  if (out.size() != sizeof(struct logentry_s)) { /* proper struct */
+    LOG(ERROR) << "Wrong TPM response size.";
+    return 1;
+  }
+
+  struct logentry_s logentry;
+  memcpy(&logentry, out.c_str(), out.size());
+  logentry.timestamp = base::NetToHost32(logentry.timestamp);
+  logentry.data = base::NetToHost16(logentry.data);
+
+  ts = base::Time::Now() -
+       base::TimeDelta::FromMilliseconds(logentry.timestamp);
+  ts.LocalExplode(&ts_exploded);
+
+  printf("LogEntry %04i%02i%02i-%02i:%02i:%02i.%03i: Type: 0x%x Data: 0x%x\n",
+         ts_exploded.year, ts_exploded.month, ts_exploded.day_of_month,
+         ts_exploded.hour, ts_exploded.minute, ts_exploded.second,
+         ts_exploded.millisecond, logentry.type, logentry.data);
   return 0;
 }
 
@@ -641,6 +689,9 @@ int main(int argc, char** argv) {
 
   if (cl->HasSwitch(kGetLock))
     return VcGetLock(&proxy, cl);
+
+  if (cl->HasSwitch(kPopLogEntry))
+    return VcPopLogEntry(&proxy, cl);
 
   if (cl->HasSwitch(kSetLock))
     return VcSetLock(&proxy, cl);
