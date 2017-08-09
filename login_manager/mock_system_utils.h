@@ -29,6 +29,7 @@ class MockSystemUtils : public SystemUtils {
   MOCK_METHOD0(GetVmState, VmState(void));
   MOCK_METHOD2(ProcessGroupIsGone, bool(pid_t child_spec,
                                         base::TimeDelta timeout));
+  MOCK_METHOD2(ProcessIsGone, bool(pid_t child_spec, base::TimeDelta timeout));
   MOCK_METHOD2(EnsureAndReturnSafeFileSize, bool(const base::FilePath& file,
                                                  int32_t* file_size_32));
   MOCK_METHOD1(Exists, bool(const base::FilePath& file));

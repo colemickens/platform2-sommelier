@@ -133,6 +133,10 @@ pid_t SystemUtilsImpl::fork() {
 
 bool SystemUtilsImpl::ProcessGroupIsGone(pid_t child_spec,
                                          base::TimeDelta timeout) {
+  return ProcessIsGone(-child_spec, timeout);
+}
+
+bool SystemUtilsImpl::ProcessIsGone(pid_t child_spec, base::TimeDelta timeout) {
   base::TimeTicks start = base::TimeTicks::Now();
   base::TimeDelta elapsed;
   int ret;
@@ -140,10 +144,13 @@ bool SystemUtilsImpl::ProcessGroupIsGone(pid_t child_spec,
   DCHECK_GE(timeout.InSeconds(), 0);
   DCHECK_LE(timeout.InSeconds(),
             static_cast<int64_t>(std::numeric_limits<int>::max()));
+  // TODO(yusukes): The alarm() solution seems to have a race. If it fires
+  // before calling waitpid(), waitpid() may block longer than the |timeout|,
+  // possibly indefintely.
   alarm(static_cast<int32_t>(timeout.InSeconds()));
   do {
     errno = 0;
-    ret = ::waitpid(-child_spec, NULL, 0);
+    ret = ::waitpid(child_spec, NULL, 0);
     elapsed = base::TimeTicks::Now() - start;
   } while (ret > 0 || (errno == EINTR && elapsed < timeout));
 

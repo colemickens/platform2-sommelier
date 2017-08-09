@@ -68,6 +68,10 @@ class SystemUtils {
   virtual bool ProcessGroupIsGone(pid_t child_spec,
                                   base::TimeDelta timeout) = 0;
 
+  // Returns: true if process specified by |child_spec| exited,
+  //          false if we time out.
+  virtual bool ProcessIsGone(pid_t child_spec, base::TimeDelta timeout) = 0;
+
   virtual bool EnsureAndReturnSafeFileSize(const base::FilePath& file,
                                            int32_t* file_size_32) = 0;
 
