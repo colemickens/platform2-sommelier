@@ -144,8 +144,11 @@ class Camera3MultiFrameTest : public Camera3FrameFixture,
 TEST_P(Camera3MultiFrameTest, GetFrame) {
   cam_device_.AddOutputStream(default_format_, default_width_, default_height_,
                               CAMERA3_STREAM_ROTATION_0);
-  ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
+  std::vector<const camera3_stream_t*> streams;
+  ASSERT_EQ(0, cam_device_.ConfigureStreams(&streams))
       << "Configuring stream fails";
+  ASSERT_EQ(1, streams.size());
+  int32_t stream_queue_depth = static_cast<int32_t>(streams[0]->max_buffers);
 
   int32_t type = std::get<1>(GetParam());
   if (!cam_device_.IsTemplateSupported(type)) {
@@ -153,14 +156,17 @@ TEST_P(Camera3MultiFrameTest, GetFrame) {
   }
 
   int32_t num_frames = std::get<2>(GetParam());
+  struct timespec timeout;
+  GetTimeOfTimeout(kDefaultTimeoutMs, &timeout);
   for (int32_t i = 0; i < num_frames; i++) {
+    if (i >= stream_queue_depth) {
+      WaitShutterAndCaptureResult(timeout);
+    }
     EXPECT_EQ(0, CreateCaptureRequestByTemplate(type, nullptr))
         << "Creating capture request fails";
   }
 
-  struct timespec timeout;
-  GetTimeOfTimeout(kDefaultTimeoutMs, &timeout);
-  for (int32_t i = 0; i < num_frames; i++) {
+  for (int32_t i = 0; i < std::min(num_frames, stream_queue_depth); i++) {
     WaitShutterAndCaptureResult(timeout);
   }
 }
