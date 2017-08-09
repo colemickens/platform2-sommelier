@@ -547,11 +547,12 @@ bool ChromeosManagerDBusAdaptor::ClaimInterface(
   manager_->ClaimDevice(claimer, interface_name, &e);
   if (e.IsSuccess() && claimer_name != "") {
     // Only setup watcher for non-default claimer.
-    watcher_for_device_claimer_.reset(
+    watcher_for_device_claimer_ =
         dbus_service_watcher_factory_->CreateDBusServiceWatcher(
-            proxy_bus_, claimer,
+            proxy_bus_,
+            claimer,
             Bind(&ChromeosManagerDBusAdaptor::OnDeviceClaimerVanished,
-                 Unretained(this))));
+                 Unretained(this)));
   }
   return !e.ToChromeosError(error);
 }

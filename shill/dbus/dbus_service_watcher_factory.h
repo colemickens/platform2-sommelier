@@ -17,6 +17,7 @@
 #ifndef SHILL_DBUS_DBUS_SERVICE_WATCHER_FACTORY_H_
 #define SHILL_DBUS_DBUS_SERVICE_WATCHER_FACTORY_H_
 
+#include <memory>
 #include <string>
 
 #include <base/callback.h>
@@ -34,8 +35,9 @@ class DBusServiceWatcherFactory {
   // This is a singleton. Use DBusServiceWatcherFactory::GetInstance()->Foo().
   static DBusServiceWatcherFactory* GetInstance();
 
-  virtual ChromeosDBusServiceWatcher* CreateDBusServiceWatcher(
-      scoped_refptr<dbus::Bus> bus, const std::string& connection_name,
+  virtual std::unique_ptr<ChromeosDBusServiceWatcher> CreateDBusServiceWatcher(
+      scoped_refptr<dbus::Bus> bus,
+      const std::string& connection_name,
       const base::Closure& on_connection_vanish);
 
  protected:

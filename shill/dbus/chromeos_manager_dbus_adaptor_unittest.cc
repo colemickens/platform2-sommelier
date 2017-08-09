@@ -18,6 +18,7 @@
 
 #include <memory>
 
+#include <base/memory/ptr_util.h>
 #include <brillo/errors/error.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -37,6 +38,7 @@ using dbus::MockBus;
 using dbus::Response;
 using std::string;
 using testing::_;
+using testing::ByMove;
 using testing::DoAll;
 using testing::Invoke;
 using testing::Return;
@@ -115,7 +117,7 @@ TEST_F(ChromeosManagerDBusAdaptorTest, ClaimInterface) {
   EXPECT_CALL(manager_, ClaimDevice(_, kInterfaceName, _))
       .WillOnce(WithArg<2>(Invoke(SetErrorTypeSuccess)));
   EXPECT_CALL(dbus_service_watcher_factory_, CreateDBusServiceWatcher(_, _, _))
-      .WillOnce(Return(new MockDBusServiceWatcher()));
+      .WillOnce(Return(ByMove(base::MakeUnique<MockDBusServiceWatcher>())));
   manager_adaptor_.ClaimInterface(&error, message.get(), kNonDefaultClaimerName,
                                   kInterfaceName);
   EXPECT_NE(nullptr, manager_adaptor_.watcher_for_device_claimer_.get());

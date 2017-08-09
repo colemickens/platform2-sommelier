@@ -16,6 +16,8 @@
 
 #include "shill/dbus/dbus_service_watcher_factory.h"
 
+#include <base/memory/ptr_util.h>
+
 #include "shill/dbus/chromeos_dbus_service_watcher.h"
 
 namespace shill {
@@ -32,11 +34,13 @@ DBusServiceWatcherFactory* DBusServiceWatcherFactory::GetInstance() {
   return g_dbus_service_watcher_factory.Pointer();
 }
 
-ChromeosDBusServiceWatcher* DBusServiceWatcherFactory::CreateDBusServiceWatcher(
-    scoped_refptr<dbus::Bus> bus, const std::string& connection_name,
+std::unique_ptr<ChromeosDBusServiceWatcher>
+DBusServiceWatcherFactory::CreateDBusServiceWatcher(
+    scoped_refptr<dbus::Bus> bus,
+    const std::string& connection_name,
     const base::Closure& on_connection_vanish) {
-  return new ChromeosDBusServiceWatcher(bus, connection_name,
-                                        on_connection_vanish);
+  return base::MakeUnique<ChromeosDBusServiceWatcher>(
+      bus, connection_name, on_connection_vanish);
 }
 
 }  // namespace shill
