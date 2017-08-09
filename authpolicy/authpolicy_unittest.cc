@@ -1263,8 +1263,7 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsWithData) {
   // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
   policy::PRegUserDevicePolicyWriter writer;
   writer.AppendBoolean(policy::key::kDeviceGuestModeEnabled, kPolicyBool);
-  writer.AppendInteger(policy::key::kDeviceLocalAccountAutoLoginDelay,
-                       kPolicyInt);
+  writer.AppendInteger(policy::key::kDevicePolicyRefreshRate, kPolicyInt);
   writer.AppendString(policy::key::kSystemTimezone, kTimezone);
   const std::vector<std::string> flags = {"flag1", "flag2"};
   writer.AppendStringList(policy::key::kDeviceStartUpFlags, flags);
@@ -1273,7 +1272,8 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchSucceedsWithData) {
   validate_device_policy_ = [flags](
                                 const em::ChromeDeviceSettingsProto& policy) {
     EXPECT_EQ(kPolicyBool, policy.guest_mode_enabled().guest_mode_enabled());
-    EXPECT_EQ(kPolicyInt, policy.device_local_accounts().auto_login_delay());
+    EXPECT_EQ(kPolicyInt,
+              policy.device_policy_refresh_rate().device_policy_refresh_rate());
     EXPECT_EQ(kTimezone, policy.system_timezone().timezone());
     const em::StartUpFlagsProto& flags_proto = policy.start_up_flags();
     EXPECT_EQ(flags_proto.flags_size(), static_cast<int>(flags.size()));
@@ -1303,8 +1303,7 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchGposOverride) {
   // See UserPolicyFetchSucceedsWithData for the logic of policy testing.
   policy::PRegUserDevicePolicyWriter writer1;
   writer1.AppendBoolean(policy::key::kDeviceGuestModeEnabled, kOtherPolicyBool);
-  writer1.AppendInteger(policy::key::kDeviceLocalAccountAutoLoginDelay,
-                        kPolicyInt);
+  writer1.AppendInteger(policy::key::kDevicePolicyRefreshRate, kPolicyInt);
   writer1.AppendString(policy::key::kSystemTimezone, kTimezone);
   const std::vector<std::string> flags1 = {"flag1", "flag2", "flag3"};
   writer1.AppendStringList(policy::key::kDeviceStartUpFlags, flags1);
@@ -1312,8 +1311,7 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchGposOverride) {
 
   policy::PRegUserDevicePolicyWriter writer2;
   writer2.AppendBoolean(policy::key::kDeviceGuestModeEnabled, kPolicyBool);
-  writer2.AppendInteger(policy::key::kDeviceLocalAccountAutoLoginDelay,
-                        kOtherPolicyInt);
+  writer2.AppendInteger(policy::key::kDevicePolicyRefreshRate, kOtherPolicyInt);
   writer2.AppendString(policy::key::kSystemTimezone, kAltTimezone);
   const std::vector<std::string> flags2 = {"flag4", "flag5"};
   writer2.AppendStringList(policy::key::kDeviceStartUpFlags, flags2);
@@ -1323,7 +1321,7 @@ TEST_F(AuthPolicyTest, DevicePolicyFetchGposOverride) {
                                 const em::ChromeDeviceSettingsProto& policy) {
     EXPECT_EQ(kPolicyBool, policy.guest_mode_enabled().guest_mode_enabled());
     EXPECT_EQ(kOtherPolicyInt,
-              policy.device_local_accounts().auto_login_delay());
+              policy.device_policy_refresh_rate().device_policy_refresh_rate());
     EXPECT_EQ(kAltTimezone, policy.system_timezone().timezone());
     const em::StartUpFlagsProto& flags_proto = policy.start_up_flags();
     EXPECT_EQ(flags_proto.flags_size(), static_cast<int>(flags2.size()));

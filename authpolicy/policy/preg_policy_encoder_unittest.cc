@@ -203,7 +203,7 @@ TEST_F(PregPolicyEncoderTest, DevicePolicyEncodingWorks) {
   // Create a preg file with some interesting data.
   PRegUserDevicePolicyWriter writer;
   writer.AppendBoolean(key::kDeviceGuestModeEnabled, kPolicyBool);
-  writer.AppendInteger(key::kDeviceLocalAccountAutoLoginDelay, kPolicyInt);
+  writer.AppendInteger(key::kDevicePolicyRefreshRate, kPolicyInt);
   writer.AppendString(key::kSystemTimezone, kPolicyStr);
   const std::vector<std::string> flags = {"flag1", "flag2"};
   writer.AppendStringList(key::kDeviceStartUpFlags, flags);
@@ -216,7 +216,8 @@ TEST_F(PregPolicyEncoderTest, DevicePolicyEncodingWorks) {
 
   // Check that policy has the same values as we wrote to the file.
   EXPECT_EQ(kPolicyBool, policy.guest_mode_enabled().guest_mode_enabled());
-  EXPECT_EQ(kPolicyInt, policy.device_local_accounts().auto_login_delay());
+  EXPECT_EQ(kPolicyInt,
+            policy.device_policy_refresh_rate().device_policy_refresh_rate());
   EXPECT_EQ(kPolicyStr, policy.system_timezone().timezone());
   const em::StartUpFlagsProto& flags_proto = policy.start_up_flags();
   EXPECT_EQ(flags_proto.flags_size(), static_cast<int>(flags.size()));
@@ -230,7 +231,7 @@ TEST_F(PregPolicyEncoderTest, DevicePolicyFileOverride) {
   // support mandatory/recommended policies.
   PRegUserDevicePolicyWriter writer1;
   writer1.AppendBoolean(key::kDeviceGuestModeEnabled, kOtherPolicyBool);
-  writer1.AppendInteger(key::kDeviceLocalAccountAutoLoginDelay, kPolicyInt);
+  writer1.AppendInteger(key::kDevicePolicyRefreshRate, kPolicyInt);
   writer1.AppendString(key::kSystemTimezone, kPolicyStr);
   const std::vector<std::string> flags1 = {"flag1", "flag2", "flag3"};
   writer1.AppendStringList(key::kDeviceStartUpFlags, flags1);
@@ -239,8 +240,7 @@ TEST_F(PregPolicyEncoderTest, DevicePolicyFileOverride) {
   // Write file 2 with the same policies, but different values.
   PRegUserDevicePolicyWriter writer2;
   writer2.AppendBoolean(key::kDeviceGuestModeEnabled, kPolicyBool);
-  writer2.AppendInteger(key::kDeviceLocalAccountAutoLoginDelay,
-                        kOtherPolicyInt);
+  writer2.AppendInteger(key::kDevicePolicyRefreshRate, kOtherPolicyInt);
   writer2.AppendString(key::kSystemTimezone, kOtherPolicyStr);
   const std::vector<std::string> flags2 = {"flag4", "flag5"};
   writer2.AppendStringList(key::kDeviceStartUpFlags, flags2);
@@ -253,7 +253,8 @@ TEST_F(PregPolicyEncoderTest, DevicePolicyFileOverride) {
 
   // Check that the values from file 2 prevailed.
   EXPECT_EQ(kPolicyBool, policy.guest_mode_enabled().guest_mode_enabled());
-  EXPECT_EQ(kOtherPolicyInt, policy.device_local_accounts().auto_login_delay());
+  EXPECT_EQ(kOtherPolicyInt,
+            policy.device_policy_refresh_rate().device_policy_refresh_rate());
   EXPECT_EQ(kOtherPolicyStr, policy.system_timezone().timezone());
   const em::StartUpFlagsProto& flags_proto = policy.start_up_flags();
   EXPECT_EQ(flags_proto.flags_size(), static_cast<int>(flags2.size()));

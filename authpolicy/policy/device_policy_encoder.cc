@@ -145,7 +145,6 @@ void DevicePolicyEncoder::EncodePolicy(
   LOG_IF(INFO, log_policy_values_) << "Device policy";
   EncodeLoginPolicies(policy);
   EncodeNetworkPolicies(policy);
-  EncodeReportingPolicies(policy);
   EncodeAutoUpdatePolicies(policy);
   EncodeAccessibilityPolicies(policy);
   EncodeGenericPolicies(policy);
@@ -177,52 +176,9 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
         value);
   });
 
-  // TODO(ljusten): It is not clear how to map the DeviceLocalAccounts policy
-  // to DeviceLocalAccountsProto accounts. The former is a string with no json
-  // schema, the latter is a struct with id, type and kiosk info.
-  HandleUnsupported(key::kDeviceLocalAccounts);
-  EncodeString(
-      key::kDeviceLocalAccountAutoLoginId, [policy](const std::string& value) {
-        policy->mutable_device_local_accounts()->set_auto_login_id(value);
-      });
-  EncodeInteger(key::kDeviceLocalAccountAutoLoginDelay, [policy](int value) {
-    policy->mutable_device_local_accounts()->set_auto_login_delay(value);
-  });
-  EncodeBoolean(
-      key::kDeviceLocalAccountAutoLoginBailoutEnabled, [policy](bool value) {
-        policy->mutable_device_local_accounts()->set_enable_auto_login_bailout(
-            value);
-      });
-  EncodeBoolean(key::kDeviceLocalAccountPromptForNetworkWhenOffline,
-                [policy](bool value) {
-                  policy->mutable_device_local_accounts()
-                      ->set_prompt_for_network_when_offline(value);
-                });
-
-  EncodeBoolean(key::kSupervisedUsersEnabled, [policy](bool value) {
-    policy->mutable_supervised_users_settings()->set_supervised_users_enabled(
-        value);
-  });
-  EncodeBoolean(key::kDeviceTransferSAMLCookies, [policy](bool value) {
-    policy->mutable_saml_settings()->set_transfer_saml_cookies(value);
-  });
-  EncodeInteger(key::kLoginAuthenticationBehavior, [policy](int value) {
-    policy->mutable_login_authentication_behavior()
-        ->set_login_authentication_behavior(
-            static_cast<em::LoginAuthenticationBehaviorProto_LoginBehavior>(
-                value));
-  });
   EncodeBoolean(key::kDeviceAllowBluetooth, [policy](bool value) {
     policy->mutable_allow_bluetooth()->set_allow_bluetooth(value);
   });
-  EncodeStringList(key::kLoginVideoCaptureAllowedUrls,
-                   [policy](const std::vector<std::string>& values) {
-                     auto list =
-                         policy->mutable_login_video_capture_allowed_urls();
-                     list->clear_urls();
-                     for (const std::string& value : values)
-                       list->add_urls(value);
-                   });
   EncodeStringList(key::kDeviceLoginScreenAppInstallList,
                    [policy](const std::vector<std::string>& values) {
                      auto list =
@@ -245,13 +201,6 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
                      for (const std::string& value : values)
                        list->add_login_screen_input_methods(value);
                    });
-  EncodeInteger(key::kDeviceEcryptfsMigrationStrategy, [policy](int value) {
-    policy->mutable_device_ecryptfs_migration_strategy()
-        ->set_migration_strategy(
-            static_cast<
-                em::DeviceEcryptfsMigrationStrategyProto_MigrationStrategy>(
-                value));
-  });
 }
 
 void DevicePolicyEncoder::EncodeNetworkPolicies(
@@ -260,80 +209,11 @@ void DevicePolicyEncoder::EncodeNetworkPolicies(
     policy->mutable_data_roaming_enabled()->set_data_roaming_enabled(value);
   });
 
-  EncodeString(
-      key::kNetworkThrottlingEnabled, [policy](const std::string& value) {
-        std::string error;
-        std::unique_ptr<base::DictionaryValue> dict_value =
-            JsonToDictionary(value, &error);
-        bool enabled;
-        int upload_rate_kbits, download_rate_kbits;
-        if (!dict_value || !dict_value->GetBoolean("enabled", &enabled) ||
-            !dict_value->GetInteger("upload_rate_kbits", &upload_rate_kbits) ||
-            !dict_value->GetInteger("download_rate_kbits",
-                                    &download_rate_kbits)) {
-          LOG(ERROR) << "Invalid JSON string '"
-                     << (!error.empty() ? error : value) << "' for policy '"
-                     << key::kNetworkThrottlingEnabled
-                     << "', ignoring. Expected: "
-                     << "'{\"enabled\"=<true/false>, \"upload_rate_kbits\""
-                     << "=<kbits>, \"download_rate_kbits\"=<kbits>}'.";
-          return;
-        }
-        em::NetworkThrottlingEnabledProto* entry =
-            policy->mutable_network_throttling();
-        entry->set_enabled(enabled);
-        entry->set_upload_rate_kbits(upload_rate_kbits);
-        entry->set_download_rate_kbits(download_rate_kbits);
-      });
-
   EncodeString(key::kDeviceOpenNetworkConfiguration,
                [policy](const std::string& value) {
                  policy->mutable_open_network_configuration()
                      ->set_open_network_configuration(value);
                });
-}
-
-void DevicePolicyEncoder::EncodeReportingPolicies(
-    em::ChromeDeviceSettingsProto* policy) const {
-  EncodeBoolean(key::kReportDeviceVersionInfo, [policy](bool value) {
-    policy->mutable_device_reporting()->set_report_version_info(value);
-  });
-  EncodeBoolean(key::kReportDeviceActivityTimes, [policy](bool value) {
-    policy->mutable_device_reporting()->set_report_activity_times(value);
-  });
-  EncodeBoolean(key::kReportDeviceBootMode, [policy](bool value) {
-    policy->mutable_device_reporting()->set_report_boot_mode(value);
-  });
-  EncodeBoolean(key::kReportDeviceLocation, [policy](bool value) {
-    policy->mutable_device_reporting()->set_report_location(value);
-  });
-  EncodeBoolean(key::kReportDeviceNetworkInterfaces, [policy](bool value) {
-    policy->mutable_device_reporting()->set_report_network_interfaces(value);
-  });
-  EncodeBoolean(key::kReportDeviceUsers, [policy](bool value) {
-    policy->mutable_device_reporting()->set_report_users(value);
-  });
-  EncodeBoolean(key::kReportDeviceHardwareStatus, [policy](bool value) {
-    policy->mutable_device_reporting()->set_report_hardware_status(value);
-  });
-  EncodeBoolean(key::kReportDeviceSessionStatus, [policy](bool value) {
-    policy->mutable_device_reporting()->set_report_session_status(value);
-  });
-  EncodeBoolean(key::kReportUploadFrequency, [policy](bool value) {
-    policy->mutable_device_reporting()->set_device_status_frequency(value);
-  });
-
-  EncodeBoolean(key::kHeartbeatEnabled, [policy](bool value) {
-    policy->mutable_device_heartbeat_settings()->set_heartbeat_enabled(value);
-  });
-  EncodeInteger(key::kHeartbeatFrequency, [policy](int value) {
-    policy->mutable_device_heartbeat_settings()->set_heartbeat_frequency(value);
-  });
-
-  EncodeBoolean(key::kLogUploadEnabled, [policy](bool value) {
-    policy->mutable_device_log_upload_settings()->set_system_log_upload_enabled(
-        value);
-  });
 }
 
 void DevicePolicyEncoder::EncodeAutoUpdatePolicies(
@@ -379,11 +259,6 @@ void DevicePolicyEncoder::EncodeAutoUpdatePolicies(
   });
   EncodeBoolean(key::kDeviceAutoUpdateP2PEnabled, [policy](bool value) {
     policy->mutable_auto_update_settings()->set_p2p_enabled(value);
-  });
-
-  EncodeBoolean(key::kAllowKioskAppControlChromeVersion, [policy](bool value) {
-    policy->mutable_allow_kiosk_app_control_chrome_version()
-        ->set_allow_kiosk_app_control_chrome_version(value);
   });
 }
 
@@ -447,10 +322,6 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
         policy->mutable_allow_redeem_offers()->set_allow_redeem_offers(value);
       });
 
-  EncodeInteger(key::kUptimeLimit, [policy](int value) {
-    policy->mutable_uptime_limit()->set_uptime_limit(value);
-  });
-
   EncodeStringList(key::kDeviceStartUpFlags,
                    [policy](const std::vector<std::string>& values) {
                      auto list = policy->mutable_start_up_flags();
@@ -464,15 +335,6 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
                  policy->mutable_variations_parameter()->set_parameter(value);
                });
 
-  EncodeBoolean(key::kAttestationEnabledForDevice, [policy](bool value) {
-    policy->mutable_attestation_settings()->set_attestation_enabled(value);
-  });
-  EncodeBoolean(
-      key::kAttestationForContentProtectionEnabled, [policy](bool value) {
-        policy->mutable_attestation_settings()->set_content_protection_enabled(
-            value);
-      });
-
   EncodeString(key::kDeviceLoginScreenPowerManagement,
                [policy](const std::string& value) {
                  policy->mutable_login_screen_power_management()
@@ -482,16 +344,6 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   EncodeBoolean(key::kDeviceBlockDevmode, [policy](bool value) {
     policy->mutable_system_settings()->set_block_devmode(value);
   });
-
-  EncodeInteger(key::kExtensionCacheSize, [policy](int value) {
-    policy->mutable_extension_cache_size()->set_extension_cache_size(value);
-  });
-
-  EncodeString(key::kDeviceLoginScreenDomainAutoComplete,
-               [policy](const std::string& value) {
-                 policy->mutable_login_screen_domain_auto_complete()
-                     ->set_login_screen_domain_auto_complete(value);
-               });
 
   EncodeInteger(key::kDisplayRotationDefault, [policy](int value) {
     policy->mutable_display_rotation_default()->set_display_rotation_default(
@@ -533,21 +385,17 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
     policy->mutable_device_wallpaper_image()->set_device_wallpaper_image(value);
   });
 
-  EncodeInteger(key::kDeviceSecondFactorAuthentication, [policy](int value) {
-    policy->mutable_device_second_factor_authentication()->set_mode(
-        static_cast<em::DeviceSecondFactorAuthenticationProto_U2fMode>(value));
-  });
-
   EncodeString(key::kDeviceOffHours, [policy](const std::string& value) {
     std::string error;
     std::unique_ptr<base::DictionaryValue> dict_value =
         JsonToDictionary(value, &error);
     const base::ListValue* intervals = nullptr;
-    const base::ListValue* ignored_policies = nullptr;
+    const base::ListValue* ignored_policy_proto_tags = nullptr;
     std::string timezone;
     bool is_error =
         !dict_value || !dict_value->GetList("intervals", &intervals) ||
-        !dict_value->GetList("ignored_policies", &ignored_policies) ||
+        !dict_value->GetList("ignored_policy_proto_tags",
+                             &ignored_policy_proto_tags) ||
         !dict_value->GetString("timezone", &timezone);
     auto proto = std::make_unique<em::DeviceOffHoursProto>();
     if (!is_error) {
@@ -558,8 +406,10 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
             !EncodeDeviceOffHoursIntervalProto(*entry, proto->add_intervals());
       }
 
-      for (const base::Value* entry : *ignored_policies) {
-        is_error |= !entry->GetAsString(proto->add_ignored_policies());
+      for (const base::Value* entry : *ignored_policy_proto_tags) {
+        int tag = 0;
+        is_error |= !entry->GetAsInteger(&tag);
+        proto->add_ignored_policy_proto_tags(tag);
       }
     }
 
@@ -718,16 +568,6 @@ void DevicePolicyEncoder::EncodeStringList(
 
   // Create proto and set values.
   set_policy(string_values);
-}
-
-void DevicePolicyEncoder::HandleUnsupported(const char* policy_name) const {
-  // Try to get policy value from dict.
-  const base::Value* value = dict_->GetValue(policy_name);
-  if (!value)
-    return;
-
-  LOG_IF(INFO, log_policy_values_)
-      << "  Ignoring unsupported policy '" << policy_name << "'.";
 }
 
 }  // namespace policy

@@ -54,8 +54,7 @@ class DevicePolicyEncoderTest
     handled_policy_keys_.insert(key);
   }
 
-  // Returns a vector of all policy keys that were not encoded or otherwise
-  // marked handled (e.g. unsupported policies).
+  // Returns a vector of all policy keys that were not encoded.
   std::vector<std::string> GetUnhandledPolicyKeys() const {
     std::vector<std::string> unhandled_policy_keys;
     for (const char** key = kDevicePolicyKeys; *key; ++key) {
@@ -104,47 +103,8 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeBoolean(&policy, key::kDeviceEphemeralUsersEnabled, kBool);
   EXPECT_EQ(kBool, policy.ephemeral_users_enabled().ephemeral_users_enabled());
 
-  EncodeInteger(&policy,
-                key::kDeviceEcryptfsMigrationStrategy,
-                em::DeviceEcryptfsMigrationStrategyProto::DISALLOW_ARC);
-  EXPECT_EQ(em::DeviceEcryptfsMigrationStrategyProto::DISALLOW_ARC,
-            policy.device_ecryptfs_migration_strategy().migration_strategy());
-
-  // Unsupported, see device_policy_encoder.cc for explanation, simply mark
-  // handled.
-  MarkHandled(key::kDeviceLocalAccounts);
-  EncodeString(&policy, key::kDeviceLocalAccountAutoLoginId, kString);
-  EXPECT_EQ(kString, policy.device_local_accounts().auto_login_id());
-  EncodeInteger(&policy, key::kDeviceLocalAccountAutoLoginDelay, kInt);
-  EXPECT_EQ(kInt, policy.device_local_accounts().auto_login_delay());
-  EncodeBoolean(
-      &policy, key::kDeviceLocalAccountAutoLoginBailoutEnabled, kBool);
-  EXPECT_EQ(kBool, policy.device_local_accounts().enable_auto_login_bailout());
-  EncodeBoolean(
-      &policy, key::kDeviceLocalAccountPromptForNetworkWhenOffline, kBool);
-  EXPECT_EQ(kBool,
-            policy.device_local_accounts().prompt_for_network_when_offline());
-
-  EncodeBoolean(&policy, key::kSupervisedUsersEnabled, kBool);
-  EXPECT_EQ(kBool,
-            policy.supervised_users_settings().supervised_users_enabled());
-
-  EncodeBoolean(&policy, key::kDeviceTransferSAMLCookies, kBool);
-  EXPECT_EQ(kBool, policy.saml_settings().transfer_saml_cookies());
-
-  // The encoder of this policy converts ints to LoginBehavior enums.
-  EncodeInteger(&policy,
-                key::kLoginAuthenticationBehavior,
-                em::LoginAuthenticationBehaviorProto::SAML_INTERSTITIAL);
-  EXPECT_EQ(
-      em::LoginAuthenticationBehaviorProto::SAML_INTERSTITIAL,
-      policy.login_authentication_behavior().login_authentication_behavior());
-
   EncodeBoolean(&policy, key::kDeviceAllowBluetooth, kBool);
   EXPECT_EQ(kBool, policy.allow_bluetooth().allow_bluetooth());
-  EncodeStringList(&policy, key::kLoginVideoCaptureAllowedUrls, kStringList);
-  EXPECT_EQ(kStringList,
-            ToVector(policy.login_video_capture_allowed_urls().urls()));
   EncodeStringList(&policy, key::kDeviceLoginScreenAppInstallList, kStringList);
   EXPECT_EQ(kStringList,
             ToVector(policy.device_login_screen_app_install_list()
@@ -165,51 +125,9 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeBoolean(&policy, key::kDeviceDataRoamingEnabled, kBool);
   EXPECT_EQ(kBool, policy.data_roaming_enabled().data_roaming_enabled());
 
-  // The encoder of this policy converts a JSON string to separate values.
-  EncodeString(&policy,
-               key::kNetworkThrottlingEnabled,
-               "{\"enabled\":true,"
-               " \"upload_rate_kbits\":128,"
-               " \"download_rate_kbits\":256}");
-  EXPECT_EQ(true, policy.network_throttling().enabled());
-  EXPECT_EQ(128, policy.network_throttling().upload_rate_kbits());
-  EXPECT_EQ(256, policy.network_throttling().download_rate_kbits());
-
   EncodeString(&policy, key::kDeviceOpenNetworkConfiguration, kString);
   EXPECT_EQ(kString,
             policy.open_network_configuration().open_network_configuration());
-
-  //
-  // Reporting policies.
-  //
-
-  EncodeBoolean(&policy, key::kReportDeviceVersionInfo, kBool);
-  EXPECT_EQ(kBool, policy.device_reporting().report_version_info());
-  EncodeBoolean(&policy, key::kReportDeviceActivityTimes, kBool);
-  EXPECT_EQ(kBool, policy.device_reporting().report_activity_times());
-  EncodeBoolean(&policy, key::kReportDeviceBootMode, kBool);
-  EXPECT_EQ(kBool, policy.device_reporting().report_boot_mode());
-  EncodeBoolean(&policy, key::kReportDeviceLocation, kBool);
-  EXPECT_EQ(kBool, policy.device_reporting().report_location());
-  EncodeBoolean(&policy, key::kReportDeviceNetworkInterfaces, kBool);
-  EXPECT_EQ(kBool, policy.device_reporting().report_network_interfaces());
-  EncodeBoolean(&policy, key::kReportDeviceUsers, kBool);
-  EXPECT_EQ(kBool, policy.device_reporting().report_users());
-  EncodeBoolean(&policy, key::kReportDeviceHardwareStatus, kBool);
-  EXPECT_EQ(kBool, policy.device_reporting().report_hardware_status());
-  EncodeBoolean(&policy, key::kReportDeviceSessionStatus, kBool);
-  EXPECT_EQ(kBool, policy.device_reporting().report_session_status());
-  EncodeBoolean(&policy, key::kReportUploadFrequency, kBool);
-  EXPECT_EQ(kBool, policy.device_reporting().device_status_frequency());
-
-  EncodeBoolean(&policy, key::kHeartbeatEnabled, kBool);
-  EXPECT_EQ(kBool, policy.device_heartbeat_settings().heartbeat_enabled());
-  EncodeInteger(&policy, key::kHeartbeatFrequency, kInt);
-  EXPECT_EQ(kInt, policy.device_heartbeat_settings().heartbeat_frequency());
-
-  EncodeBoolean(&policy, key::kLogUploadEnabled, kBool);
-  EXPECT_EQ(kBool,
-            policy.device_log_upload_settings().system_log_upload_enabled());
 
   //
   // Auto update policies.
@@ -244,11 +162,6 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(kBool, policy.auto_update_settings().reboot_after_update());
   EncodeBoolean(&policy, key::kDeviceAutoUpdateP2PEnabled, kBool);
   EXPECT_EQ(kBool, policy.auto_update_settings().p2p_enabled());
-
-  EncodeBoolean(&policy, key::kAllowKioskAppControlChromeVersion, kBool);
-  EXPECT_EQ(kBool,
-            policy.allow_kiosk_app_control_chrome_version()
-                .allow_kiosk_app_control_chrome_version());
 
   //
   // Accessibility policies.
@@ -310,19 +223,11 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
       &policy, key::kDeviceAllowRedeemChromeOsRegistrationOffers, kBool);
   EXPECT_EQ(kBool, policy.allow_redeem_offers().allow_redeem_offers());
 
-  EncodeInteger(&policy, key::kUptimeLimit, kInt);
-  EXPECT_EQ(kInt, policy.uptime_limit().uptime_limit());
-
   EncodeStringList(&policy, key::kDeviceStartUpFlags, kStringList);
   EXPECT_EQ(kStringList, ToVector(policy.start_up_flags().flags()));
 
   EncodeString(&policy, key::kDeviceVariationsRestrictParameter, kString);
   EXPECT_EQ(kString, policy.variations_parameter().parameter());
-
-  EncodeBoolean(&policy, key::kAttestationEnabledForDevice, kBool);
-  EXPECT_EQ(kBool, policy.attestation_settings().attestation_enabled());
-  EncodeBoolean(&policy, key::kAttestationForContentProtectionEnabled, kBool);
-  EXPECT_EQ(kBool, policy.attestation_settings().content_protection_enabled());
 
   EncodeString(&policy, key::kDeviceLoginScreenPowerManagement, kString);
   EXPECT_EQ(
@@ -331,14 +236,6 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
 
   EncodeBoolean(&policy, key::kDeviceBlockDevmode, kBool);
   EXPECT_EQ(kBool, policy.system_settings().block_devmode());
-
-  EncodeInteger(&policy, key::kExtensionCacheSize, kInt);
-  EXPECT_EQ(kInt, policy.extension_cache_size().extension_cache_size());
-
-  EncodeString(&policy, key::kDeviceLoginScreenDomainAutoComplete, kString);
-  EXPECT_EQ(kString,
-            policy.login_screen_domain_auto_complete()
-                .login_screen_domain_auto_complete());
 
   // The encoder of this policy converts ints to Rotation enums.
   EncodeInteger(&policy,
@@ -363,12 +260,6 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
 
   EncodeString(&policy, key::kDeviceWallpaperImage, kString);
   EXPECT_EQ(kString, policy.device_wallpaper_image().device_wallpaper_image());
-
-  EncodeInteger(&policy,
-                key::kDeviceSecondFactorAuthentication,
-                em::DeviceSecondFactorAuthenticationProto::U2F);
-  EXPECT_EQ(em::DeviceSecondFactorAuthenticationProto::U2F,
-            policy.device_second_factor_authentication().mode());
 
   EncodeString(&policy,
                key::kDeviceOffHours,
@@ -398,7 +289,7 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
                    }
                  ],
                  "timezone": "GMT",
-                 "ignored_policies": ["policy1", "policy2"]
+                 "ignored_policy_proto_tags": [3, 8]
                })!!!");
   const auto& device_off_hours_proto = policy.device_off_hours();
   EXPECT_EQ(2, device_off_hours_proto.intervals_size());
@@ -413,8 +304,9 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(38640000, interval2.start().time());
   EXPECT_EQ(57600000, interval2.end().time());
   EXPECT_EQ("GMT", device_off_hours_proto.timezone());
-  EXPECT_EQ("policy1", device_off_hours_proto.ignored_policies().Get(0));
-  EXPECT_EQ("policy2", device_off_hours_proto.ignored_policies().Get(1));
+  EXPECT_EQ(2, device_off_hours_proto.ignored_policy_proto_tags_size());
+  EXPECT_EQ(3, device_off_hours_proto.ignored_policy_proto_tags().Get(0));
+  EXPECT_EQ(8, device_off_hours_proto.ignored_policy_proto_tags().Get(1));
 
   EncodeString(&policy, key::kCastReceiverName, kString);
   EXPECT_EQ(kString, policy.cast_receiver_name().name());

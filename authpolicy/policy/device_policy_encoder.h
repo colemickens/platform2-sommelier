@@ -53,8 +53,6 @@ class DevicePolicyEncoder {
       enterprise_management::ChromeDeviceSettingsProto* policy) const;
   void EncodeNetworkPolicies(
       enterprise_management::ChromeDeviceSettingsProto* policy) const;
-  void EncodeReportingPolicies(
-      enterprise_management::ChromeDeviceSettingsProto* policy) const;
   void EncodeAutoUpdatePolicies(
       enterprise_management::ChromeDeviceSettingsProto* policy) const;
   void EncodeAccessibilityPolicies(
