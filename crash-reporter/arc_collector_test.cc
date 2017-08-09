@@ -156,7 +156,7 @@ class ArcCollectorTest : public Test {
       std::istringstream ss(auxv);
       contents->clear();
       uint32_t byte;
-      ss >> std::hex >> std::setfill('0');
+      ss >> std::hex;
       while (ss >> byte) {
         contents->push_back(byte);
       }
