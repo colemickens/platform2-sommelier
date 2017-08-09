@@ -105,7 +105,7 @@ void ContainerManagerImpl::EnsureJobExit(base::TimeDelta timeout) {
   if (!GetContainerPID(&pid))
     return;
 
-  if (!system_utils_->ProcessGroupIsGone(pid, timeout)) {
+  if (!system_utils_->ProcessIsGone(pid, timeout)) {
     LOG(INFO) << "Killing off container " << name_;
     int rc = container_kill(container_.get());
     if (rc != 0) {
