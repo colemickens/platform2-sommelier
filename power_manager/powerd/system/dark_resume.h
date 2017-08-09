@@ -134,8 +134,9 @@ class DarkResume : public DarkResumeInterface {
   bool ExitDarkResume() override;
 
  private:
-  // Fills |suspend_durations_|, returning false if the pref was unset or empty.
-  bool ReadSuspendDurationsPref();
+  // Fills |suspend_durations_| based on kDarkResumeSuspendDurationsPref
+  // (or leaves it empty if the pref is unset or empty).
+  void ReadSuspendDurationsPref();
 
   // This enables functionality for dark resume in devices that are listed in
   // the prefs_file. The base_file is the name of the sysfs file we are writing
@@ -204,7 +205,7 @@ class DarkResume : public DarkResumeInterface {
   // How long the system should suspend (values) at a given battery percentage
   // (keys).
   typedef std::map<double, base::TimeDelta> SuspendMap;
-  SuspendMap suspend_durations_;
+  SuspendMap battery_check_suspend_durations_;
 
   // What the next suspend-time action should be.
   Action next_action_;

@@ -93,8 +93,8 @@ void DarkResume::Init(PowerSupplyInterface* power_supply,
     timer_ = std::move(timer);
 
   bool disable = false;
-  enabled_ = (!prefs_->GetBool(kDisableDarkResumePref, &disable) || !disable) &&
-             ReadSuspendDurationsPref();
+  enabled_ = (!prefs_->GetBool(kDisableDarkResumePref, &disable) || !disable);
+  ReadSuspendDurationsPref();
   LOG(INFO) << "Dark resume user space " << (enabled_ ? "enabled" : "disabled");
 
   std::string source_file;
@@ -123,7 +123,7 @@ void DarkResume::Init(PowerSupplyInterface* power_supply,
 }
 
 void DarkResume::PrepareForSuspendRequest() {
-  if (timer_ && enabled_)
+  if (timer_ && enabled_ && !battery_check_suspend_durations_.empty())
     ScheduleBatteryCheck();
 }
 
@@ -139,7 +139,8 @@ void DarkResume::GetActionForSuspendAttempt(Action* action,
   DCHECK(action);
   DCHECK(suspend_duration);
 
-  if (!enabled_ || !power_supply_->RefreshImmediately()) {
+  if (!enabled_ || battery_check_suspend_durations_.empty() ||
+      !power_supply_->RefreshImmediately()) {
     *action = Action::SUSPEND;
     *suspend_duration = base::TimeDelta();
     return;
@@ -168,9 +169,12 @@ void DarkResume::ScheduleBatteryCheck() {
 }
 
 base::TimeDelta DarkResume::GetNextSuspendDuration() {
+  if (battery_check_suspend_durations_.empty())
+    return base::TimeDelta();
   const double battery = power_supply_->GetPowerStatus().battery_percentage;
-  SuspendMap::iterator suspend_it = suspend_durations_.upper_bound(battery);
-  if (suspend_it != suspend_durations_.begin())
+  SuspendMap::iterator suspend_it =
+      battery_check_suspend_durations_.upper_bound(battery);
+  if (suspend_it != battery_check_suspend_durations_.begin())
     suspend_it--;
   return suspend_it->second;
 }
@@ -186,15 +190,19 @@ void DarkResume::UpdateNextAction() {
 
   // If suspending from the non-dark-resume state, or if the battery level has
   // actually increased since the previous suspend attempt, update the shutdown
-  // threshold.
-  if (!in_dark_resume || battery > battery_shutdown_threshold_) {
+  // threshold if battery_check_suspend_durations_ are present. If
+  // battery_check_suspend_durations is empty, battery_shutdown_threshold_
+  // doesn't matter.
+  if (!battery_check_suspend_durations_.empty() &&
+      (!in_dark_resume || battery > battery_shutdown_threshold_)) {
     battery_shutdown_threshold_ = battery;
     LOG(INFO) << "Updated shutdown threshold to " << battery << "%";
   }
 
-  next_action_ = (battery < battery_shutdown_threshold_ && !line_power)
-                     ? Action::SHUT_DOWN
-                     : Action::SUSPEND;
+  next_action_ = Action::SUSPEND;
+  if (!battery_check_suspend_durations_.empty() &&
+      battery < battery_shutdown_threshold_ && !line_power)
+    next_action_ = Action::SHUT_DOWN;
 }
 
 void DarkResume::HandleSuccessfulResume() {
@@ -260,18 +268,18 @@ bool DarkResume::ExitDarkResume() {
   return true;
 }
 
-bool DarkResume::ReadSuspendDurationsPref() {
-  suspend_durations_.clear();
+void DarkResume::ReadSuspendDurationsPref() {
+  battery_check_suspend_durations_.clear();
 
   std::string data;
   if (!prefs_->GetString(kDarkResumeSuspendDurationsPref, &data))
-    return false;
+    return;
 
   base::StringPairs pairs;
   base::TrimWhitespaceASCII(data, base::TRIM_TRAILING, &data);
   if (!base::SplitStringIntoKeyValuePairs(data, ' ', '\n', &pairs)) {
     LOG(ERROR) << "Unable to parse " << kDarkResumeSuspendDurationsPref;
-    return false;
+    return;
   }
   for (size_t i = 0; i < pairs.size(); ++i) {
     double battery_level = 0.0;
@@ -280,19 +288,18 @@ bool DarkResume::ReadSuspendDurationsPref() {
         !base::StringToInt(pairs[i].second, &suspend_duration)) {
       LOG(ERROR) << "Unable to parse values on line " << i << " of "
                  << kDarkResumeSuspendDurationsPref;
-      return false;
+      return;
     }
 
     if (suspend_duration % base::TimeDelta::FromDays(1).InSeconds() == 0) {
       LOG(ERROR) << "Suspend duration in " << kDarkResumeSuspendDurationsPref
                  << " cannot be multiple of 86400";
-      return false;
+      return;
     }
 
-    suspend_durations_[battery_level] =
+    battery_check_suspend_durations_[battery_level] =
         base::TimeDelta::FromSeconds(suspend_duration);
   }
-  return !suspend_durations_.empty();
 }
 
 void DarkResume::GetFiles(std::vector<base::FilePath>* files,

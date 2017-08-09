@@ -405,12 +405,12 @@ TYPED_TEST(DarkResumeTest, EnableAndDisable) {
   EXPECT_EQ(10, suspend_duration.InSeconds());
 
   // An empty suspend durations pref should result in dark resume being
-  // disabled.
+  // enabled.
   this->prefs_.SetString(kDarkResumeSuspendDurationsPref, std::string());
   this->dark_resume_.reset(new DarkResume);
   this->Init();
-  EXPECT_EQ(DarkResume::kDisabled, this->ReadFile(kActivePath));
-  EXPECT_EQ(TypeParam::kDisabled, this->ReadFile(kSourcePath));
+  EXPECT_EQ(DarkResume::kEnabled, this->ReadFile(kActivePath));
+  EXPECT_EQ(TypeParam::kEnabled, this->ReadFile(kSourcePath));
 
   this->dark_resume_->PrepareForSuspendRequest();
   this->Suspend(&action, &suspend_duration, false);
