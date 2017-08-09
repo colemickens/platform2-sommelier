@@ -18,6 +18,7 @@
 
 #include <net/if_arp.h>
 
+#include <base/memory/ptr_util.h>
 #include <gtest/gtest.h>
 
 #include "shill/icmp_session.h"
@@ -44,6 +45,7 @@ using base::Unretained;
 using std::string;
 using std::vector;
 using testing::_;
+using testing::ByMove;
 using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
@@ -367,7 +369,10 @@ class ConnectionDiagnosticsTest : public Test {
                      ConnectionDiagnostics::kResultSuccess);
     ASSERT_FALSE(family == IPAddress::kFamilyUnknown);
 
-    dns_client_ = new NiceMock<MockDNSClient>();
+    auto dns_client = base::MakeUnique<NiceMock<MockDNSClient>>();
+    EXPECT_CALL(*dns_client,
+                Start(connection_diagnostics_.target_url_->host(), _))
+        .WillOnce(Return(true));
     EXPECT_CALL(*connection_.get(), IsIPv6())
         .WillOnce(Return(family == IPAddress::kFamilyIPv6));
     EXPECT_CALL(
@@ -375,10 +380,7 @@ class ConnectionDiagnosticsTest : public Test {
         CreateDNSClient(family, kInterfaceName, dns_servers_,
                         ConnectionDiagnostics::kDNSTimeoutSeconds * 1000,
                         &dispatcher_, _))
-        .WillOnce(Return(dns_client_));  // Passes ownership
-    EXPECT_CALL(*dns_client_,
-                Start(connection_diagnostics_.target_url_->host(), _))
-        .WillOnce(Return(true));
+        .WillOnce(Return(ByMove(std::move(dns_client))));
     connection_diagnostics_.ResolveTargetServerIPAddress(dns_servers_);
   }
 
@@ -838,7 +840,6 @@ class ConnectionDiagnosticsTest : public Test {
   // Used only for EXPECT_CALL(). Objects are owned by
   // |connection_diagnostics_|.
   NiceMock<MockArpClient>* arp_client_;
-  NiceMock<MockDNSClient>* dns_client_;
   NiceMock<MockIcmpSession>* icmp_session_;
   NiceMock<MockIcmpSession>* dns_server_icmp_session_0_;
   NiceMock<MockIcmpSession>* dns_server_icmp_session_1_;

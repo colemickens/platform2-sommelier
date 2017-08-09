@@ -353,11 +353,11 @@ void ConnectionDiagnostics::ResolveTargetServerIPAddress(
   SLOG(this, 3) << __func__;
 
   Error e;
-  dns_client_.reset(dns_client_factory_->CreateDNSClient(
+  dns_client_ = dns_client_factory_->CreateDNSClient(
       connection_->IsIPv6() ? IPAddress::kFamilyIPv6 : IPAddress::kFamilyIPv4,
       connection_->interface_name(), dns_servers, kDNSTimeoutSeconds * 1000,
       dispatcher_, Bind(&ConnectionDiagnostics::OnDNSResolutionComplete,
-                        weak_ptr_factory_.GetWeakPtr())));
+                        weak_ptr_factory_.GetWeakPtr()));
   if (!dns_client_->Start(target_url_->host(), &e)) {
     LOG(ERROR) << __func__ << ": could not start DNS -- " << e.message();
     AddEventWithMessage(kTypeResolveTargetServerIP, kPhaseStart, kResultFailure,

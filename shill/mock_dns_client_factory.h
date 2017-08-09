@@ -36,13 +36,14 @@ class MockDNSClientFactory : public DNSClientFactory {
   // This is a singleton. Use MockDNSClientFactory::GetInstance()->Foo().
   static MockDNSClientFactory* GetInstance();
 
-  MOCK_METHOD6(CreateDNSClient,
-               DNSClient* (IPAddress::Family family,
-                           const std::string& interface_name,
-                           const std::vector<std::string>& dns_servers,
-                           int timeout_ms,
-                           EventDispatcher* dispatcher,
-                           const DNSClient::ClientCallback& callback));
+  MOCK_METHOD6(
+      CreateDNSClient,
+      std::unique_ptr<DNSClient>(IPAddress::Family family,
+                                 const std::string& interface_name,
+                                 const std::vector<std::string>& dns_servers,
+                                 int timeout_ms,
+                                 EventDispatcher* dispatcher,
+                                 const DNSClient::ClientCallback& callback));
 
  protected:
   MockDNSClientFactory();

@@ -16,6 +16,8 @@
 
 #include "shill/dns_client_factory.h"
 
+#include <base/memory/ptr_util.h>
+
 using std::string;
 using std::vector;
 
@@ -35,19 +37,19 @@ DNSClientFactory* DNSClientFactory::GetInstance() {
   return g_dns_client_factory.Pointer();
 }
 
-DNSClient* DNSClientFactory::CreateDNSClient(
+std::unique_ptr<DNSClient> DNSClientFactory::CreateDNSClient(
     IPAddress::Family family,
     const string& interface_name,
     const vector<string>& dns_servers,
     int timeout_ms,
     EventDispatcher* dispatcher,
     const DNSClient::ClientCallback& callback) {
-  return new DNSClient(family,
-                       interface_name,
-                       dns_servers,
-                       timeout_ms,
-                       dispatcher,
-                       callback);
+  return base::MakeUnique<DNSClient>(family,
+                                     interface_name,
+                                     dns_servers,
+                                     timeout_ms,
+                                     dispatcher,
+                                     callback);
 }
 
 }  // namespace shill

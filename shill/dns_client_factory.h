@@ -17,6 +17,7 @@
 #ifndef SHILL_DNS_CLIENT_FACTORY_H_
 #define SHILL_DNS_CLIENT_FACTORY_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -35,7 +36,7 @@ class DNSClientFactory {
   // This is a singleton. Use DNSClientFactory::GetInstance()->Foo().
   static DNSClientFactory* GetInstance();
 
-  virtual DNSClient* CreateDNSClient(
+  virtual std::unique_ptr<DNSClient> CreateDNSClient(
       IPAddress::Family family,
       const std::string& interface_name,
       const std::vector<std::string>& dns_servers,
