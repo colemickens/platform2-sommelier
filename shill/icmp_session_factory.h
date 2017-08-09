@@ -17,6 +17,8 @@
 #ifndef SHILL_ICMP_SESSION_FACTORY_H_
 #define SHILL_ICMP_SESSION_FACTORY_H_
 
+#include <memory>
+
 #include <base/lazy_instance.h>
 
 #include "shill/icmp_session.h"
@@ -30,7 +32,8 @@ class IcmpSessionFactory {
   // This is a singleton. Use IcmpSessionFactory::GetInstance()->Foo().
   static IcmpSessionFactory* GetInstance();
 
-  virtual IcmpSession* CreateIcmpSession(EventDispatcher* dispatcher);
+  virtual std::unique_ptr<IcmpSession> CreateIcmpSession(
+      EventDispatcher* dispatcher);
 
  protected:
   IcmpSessionFactory();

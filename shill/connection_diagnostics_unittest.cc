@@ -662,18 +662,23 @@ class ConnectionDiagnosticsTest : public Test {
       // any pings.
       ASSERT_TRUE(is_success ||
                   expected_issue == ConnectionDiagnostics::kIssueInternalError);
-      dns_server_icmp_session_0_ = new NiceMock<MockIcmpSession>(&dispatcher_);
-      dns_server_icmp_session_1_ = new NiceMock<MockIcmpSession>(&dispatcher_);
-      EXPECT_CALL(*MockIcmpSessionFactory::GetInstance(),
-                  CreateIcmpSession(&dispatcher_))
-          .WillOnce(Return(dns_server_icmp_session_0_))
-          .WillOnce(Return(dns_server_icmp_session_1_));
-      EXPECT_CALL(*dns_server_icmp_session_0_,
+
+      auto dns_server_icmp_session_0 =
+          base::MakeUnique<NiceMock<MockIcmpSession>>(&dispatcher_);
+      auto dns_server_icmp_session_1 =
+          base::MakeUnique<NiceMock<MockIcmpSession>>(&dispatcher_);
+
+      EXPECT_CALL(*dns_server_icmp_session_0,
                   Start(IsSameIPAddress(IPAddress(kDNSServer0)), _, _))
           .WillOnce(Return(is_success));
-      EXPECT_CALL(*dns_server_icmp_session_1_,
+      EXPECT_CALL(*dns_server_icmp_session_1,
                   Start(IsSameIPAddress(IPAddress(kDNSServer1)), _, _))
           .WillOnce(Return(is_success));
+
+      EXPECT_CALL(*MockIcmpSessionFactory::GetInstance(),
+                  CreateIcmpSession(&dispatcher_))
+          .WillOnce(Return(ByMove(std::move(dns_server_icmp_session_0))))
+          .WillOnce(Return(ByMove(std::move(dns_server_icmp_session_1))));
     }
 
     if (is_success) {
@@ -841,8 +846,6 @@ class ConnectionDiagnosticsTest : public Test {
   // |connection_diagnostics_|.
   NiceMock<MockArpClient>* arp_client_;
   NiceMock<MockIcmpSession>* icmp_session_;
-  NiceMock<MockIcmpSession>* dns_server_icmp_session_0_;
-  NiceMock<MockIcmpSession>* dns_server_icmp_session_1_;
   NiceMock<MockPortalDetector>* portal_detector_;
 
   // For each test, all events we expect to appear in the final result are

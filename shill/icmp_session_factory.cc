@@ -16,6 +16,8 @@
 
 #include "shill/icmp_session_factory.h"
 
+#include <base/memory/ptr_util.h>
+
 namespace shill {
 
 namespace {
@@ -30,9 +32,9 @@ IcmpSessionFactory* IcmpSessionFactory::GetInstance() {
   return g_icmp_session_factory.Pointer();
 }
 
-IcmpSession* IcmpSessionFactory::CreateIcmpSession(
+std::unique_ptr<IcmpSession> IcmpSessionFactory::CreateIcmpSession(
     EventDispatcher* dispatcher) {
-  return new IcmpSession(dispatcher);
+  return base::MakeUnique<IcmpSession>(dispatcher);
 }
 
 }  // namespace shill

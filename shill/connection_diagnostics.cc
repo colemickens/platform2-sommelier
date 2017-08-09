@@ -403,8 +403,7 @@ void ConnectionDiagnostics::PingDNSServers() {
 
     bool emplace_success =
         (id_to_pending_dns_server_icmp_session_.emplace(
-             i, std::unique_ptr<IcmpSession>(
-                    icmp_session_factory_->CreateIcmpSession(dispatcher_))))
+             i, icmp_session_factory_->CreateIcmpSession(dispatcher_)))
             .second;
     if (emplace_success &&
         id_to_pending_dns_server_icmp_session_.at(i)->Start(
