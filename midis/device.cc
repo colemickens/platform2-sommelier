@@ -83,7 +83,7 @@ void Device::HandleReceiveData(const char* buffer, uint32_t subdevice,
 
 void Device::RemoveClientFromDevice(uint32_t client_id) {
   LOG(INFO) << "Removing the client: " << client_id
-            << " from all device watchers.";
+            << " from all device watchers for device: " << name_;
   for (auto list_it = client_fds_.begin(); list_it != client_fds_.end();) {
     // First remove all clients in a subdevice.
     for (auto it = list_it->second.begin(); it != list_it->second.end();) {

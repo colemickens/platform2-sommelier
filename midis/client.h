@@ -58,6 +58,8 @@ class Client : public DeviceTracker::Observer {
   void OnDeviceAddedOrRemoved(const struct MidisDeviceInfo* dev_info,
                               bool added) override;
 
+  void HandleCloseDeviceMessage();
+
   // On receipt of a REQUEST_PORT message header, this function contacts
   // the requisite device, obtains an FD for the relevant subdevice, and
   // returns the FD.

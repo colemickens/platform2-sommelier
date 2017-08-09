@@ -207,6 +207,34 @@ int MidisProcessDeviceAddedRemoved(int fd, struct MidisDeviceInfo* dev_info) {
   return 0;
 }
 
+int MidisCloseDevice(int fd, const struct MidisRequestPort* port_msg) {
+  if (!port_msg) {
+    return -EINVAL;
+  }
+
+  struct MidisMessageHeader header;
+  header.type = CLOSE_DEVICE;
+  header.payload_size = 0;
+  int bytes = TEMP_FAILURE_RETRY(write(fd, &header, sizeof(header)));
+  if (bytes == -1) {
+    return -errno;
+  }
+
+  if (bytes != sizeof(header)) {
+    return -EPROTO;
+  }
+
+  bytes = TEMP_FAILURE_RETRY(write(fd, port_msg, sizeof(*port_msg)));
+  if (bytes == -1) {
+    return -errno;
+  }
+
+  if (bytes != sizeof(*port_msg)) {
+    return -EPROTO;
+  }
+  return 0;
+}
+
 #ifdef __cplusplus
 }
 #endif

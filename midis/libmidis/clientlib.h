@@ -21,6 +21,7 @@ static const uint8_t kMidisMaxDevices = 7;
 enum ClientMsgType {
   REQUEST_LIST_DEVICES = 0,
   REQUEST_PORT = 1,
+  CLOSE_DEVICE = 2,
 };
 
 // Enum listing the types of messages the server can send.
@@ -194,6 +195,23 @@ int MidisProcessRequestPortResponse(int fd, struct MidisRequestPort* port_msg);
 //   0 on success.
 //   -errno otherwise.
 int MidisProcessDeviceAddedRemoved(int fd, struct MidisDeviceInfo* dev_info);
+
+// Request to close all fds on ports of a particular device.
+//
+// If successful, the service will remove all socket pairs open for the
+// specified device with this client. No acknowledgement is expected for this
+// message.
+//
+// Args:
+//   fd: client fd to communicate with MIDIS.
+//   port_msg: pointer to a struct containing card, device_num of the requested
+//     device to be closed. We reuse `struct MidisRequestPort here` since it
+//     encapsulates the information we need.
+//
+// Returns:
+//   0 on success.
+//   -errno otherwise.
+int MidisCloseDevice(int fd, const struct MidisRequestPort* port_msg);
 
 #ifdef __cplusplus
 }

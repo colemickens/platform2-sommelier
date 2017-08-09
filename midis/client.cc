@@ -176,17 +176,20 @@ void Client::AddClientToPort() {
 }
 
 void Client::HandleClientMessages() {
-  int bytes;
   struct MidisMessageHeader header;
 
-  if ((bytes = HANDLE_EINTR(read(client_fd_.get(), &header,
-                                 sizeof(struct MidisMessageHeader)))) > 0) {
+  ssize_t bytes = HANDLE_EINTR(read(client_fd_.get(), &header,
+      sizeof(struct MidisMessageHeader)));
+  if (bytes > 0) {
     switch (header.type) {
       case REQUEST_LIST_DEVICES:
         SendDevicesList();
         break;
       case REQUEST_PORT:
         AddClientToPort();
+        break;
+      case CLOSE_DEVICE:
+        HandleCloseDeviceMessage();
         break;
       default:
         LOG(ERROR) << "Unknown message: " << header.type;
@@ -232,6 +235,20 @@ void Client::OnDeviceAddedOrRemoved(const struct MidisDeviceInfo* dev_info,
     PLOG(ERROR) << "NotifyDeviceAdded() payload: write to client_fd_failed.";
     TriggerClientDeletion();
   }
+}
+
+void Client::HandleCloseDeviceMessage() {
+  struct MidisRequestPort port_msg;
+  ssize_t ret = HANDLE_EINTR(read(client_fd_.get(), &port_msg,
+                                  sizeof(port_msg)));
+  if (ret != sizeof(port_msg)) {
+    LOG(ERROR) << "Read of client fd for MidisRequestPort message failed.";
+    TriggerClientDeletion();
+    return;
+  }
+
+  device_tracker_->RemoveClientFromDevice(
+      client_id_, port_msg.card, port_msg.device_num);
 }
 
 }  // namespace midis

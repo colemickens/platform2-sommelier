@@ -376,6 +376,15 @@ base::ScopedFD DeviceTracker::AddClientToReadSubdevice(uint32_t sys_num,
   return base::ScopedFD();
 }
 
+void DeviceTracker::RemoveClientFromDevice(uint32_t client_id,
+                                           uint32_t sys_num,
+                                           uint32_t device_num) {
+  auto it = devices_.find(udev_handler_->GenerateDeviceId(sys_num, device_num));
+  if (it != devices_.end()) {
+    it->second->RemoveClientFromDevice(client_id);
+  }
+}
+
 void DeviceTracker::RemoveClientFromDevices(uint32_t client_id) {
   for (auto& id_device_pair : devices_) {
     id_device_pair.second->RemoveClientFromDevice(client_id);

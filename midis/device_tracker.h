@@ -117,6 +117,18 @@ class DeviceTracker {
   base::ScopedFD AddClientToReadSubdevice(uint32_t sys_num, uint32_t device_num,
                                           uint32_t subdevice_num,
                                           uint32_t client_id);
+
+  // Remove the client from all watchers for the element of |device_| which
+  // matches is identified by |sys_num| and |device_num|. This is useful when a
+  // client wants to close requested ports for a device, but may choose to
+  // re-request them later on.
+  void RemoveClientFromDevice(uint32_t client_id,
+                              uint32_t sys_num,
+                              uint32_t device_num);
+
+  // Remove the client from all devices in |devices_|. This function is intended
+  // to be used when we detect the removal of an entire client either through
+  // orderly or disorderly shutdown.
   void RemoveClientFromDevices(uint32_t client_id);
 
  private:
