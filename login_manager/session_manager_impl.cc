@@ -111,6 +111,9 @@ constexpr char SessionManagerImpl::kArcBootedImpulse[] = "arc-booted";
 constexpr char SessionManagerImpl::kRemoveOldArcDataImpulse[] =
     "remove-old-arc-data";
 
+constexpr base::TimeDelta SessionManagerImpl::kContainerTimeout =
+    base::TimeDelta::FromSeconds(1);
+
 namespace {
 
 // Constants used in email validation.
@@ -157,10 +160,6 @@ const char kCpuSharesFile[] =
 const unsigned int kCpuSharesForeground = 1024;
 const unsigned int kCpuSharesBackground = 64;
 #endif
-
-// SystemUtils::EnsureJobExit() DCHECKs if the timeout is zero, so this is the
-// minimum amount of time we must wait before killing the containers.
-constexpr base::TimeDelta kContainerTimeout = base::TimeDelta::FromSeconds(1);
 
 // The interval used to periodically check if time sync was done by tlsdated.
 constexpr base::TimeDelta kSystemClockLastSyncInfoRetryDelay =

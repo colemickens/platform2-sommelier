@@ -102,6 +102,10 @@ class SessionManagerImpl
   static const char kArcBootedImpulse[];
   static const char kRemoveOldArcDataImpulse[];
 
+  // SystemUtils::EnsureJobExit() DCHECKs if the timeout is zero, so this is the
+  // minimum amount of time we must wait before killing the containers.
+  static const base::TimeDelta kContainerTimeout;
+
   SessionManagerImpl(std::unique_ptr<InitDaemonController> init_controller,
                      const scoped_refptr<dbus::Bus>& bus,
                      base::Closure lock_screen_closure,

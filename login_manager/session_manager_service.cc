@@ -273,7 +273,7 @@ void SessionManagerService::HandleExit(const siginfo_t& ignored) {
 
   // Also ensure all containers are gone.
   android_container_.RequestJobExit();
-  android_container_.EnsureJobExit(GetKillTimeout());
+  android_container_.EnsureJobExit(SessionManagerImpl::kContainerTimeout);
 
   // Do nothing if already shutting down.
   if (shutting_down_)
@@ -470,7 +470,7 @@ void SessionManagerService::CleanupChildren(base::TimeDelta timeout) {
   android_container_.RequestJobExit();
   EnsureJobExit(timeout);
   key_gen_.EnsureJobExit(timeout);
-  android_container_.EnsureJobExit(timeout);
+  android_container_.EnsureJobExit(SessionManagerImpl::kContainerTimeout);
 }
 
 bool SessionManagerService::OnTerminationSignal(
