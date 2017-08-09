@@ -18,6 +18,8 @@
 
 #include <string>
 
+#include <base/memory/ptr_util.h>
+
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/no_out_of_credits_detector.h"
 #include "shill/cellular/subscription_state_out_of_credits_detector.h"
@@ -47,28 +49,22 @@ OutOfCreditsDetector::~OutOfCreditsDetector() {
 }
 
 // static
-OutOfCreditsDetector*
-OutOfCreditsDetector::CreateDetector(OOCType detector_type,
-                                     EventDispatcher* dispatcher,
-                                     Manager* manager,
-                                     Metrics* metrics,
-                                     CellularService* service) {
+std::unique_ptr<OutOfCreditsDetector> OutOfCreditsDetector::CreateDetector(
+    OOCType detector_type,
+    EventDispatcher* dispatcher,
+    Manager* manager,
+    Metrics* metrics,
+    CellularService* service) {
   switch (detector_type) {
     case OOCTypeSubscriptionState:
       LOG(INFO) << __func__
                 << ": Using subscription status out-of-credits detection";
-      return
-          new SubscriptionStateOutOfCreditsDetector(dispatcher,
-                                                    manager,
-                                                    metrics,
-                                                    service);
+      return base::MakeUnique<SubscriptionStateOutOfCreditsDetector>(
+          dispatcher, manager, metrics, service);
     default:
       LOG(INFO) << __func__ << ": No out-of-credits detection";
-      return
-          new NoOutOfCreditsDetector(dispatcher,
-                                     manager,
-                                     metrics,
-                                     service);
+      return base::MakeUnique<NoOutOfCreditsDetector>(
+          dispatcher, manager, metrics, service);
   }
 }
 

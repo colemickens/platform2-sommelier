@@ -17,6 +17,8 @@
 #ifndef SHILL_CELLULAR_OUT_OF_CREDITS_DETECTOR_H_
 #define SHILL_CELLULAR_OUT_OF_CREDITS_DETECTOR_H_
 
+#include <memory>
+
 #include <base/macros.h>
 
 #include "shill/service.h"
@@ -50,11 +52,12 @@ class OutOfCreditsDetector {
   // For OOCTypeNone, this methods returns NoOutOfCreditsDetector.
   // For OOCTypeSubscriptionState, this method returns
   // SubscriptionStateOutOfCreditsDetector.
-  static OutOfCreditsDetector* CreateDetector(OOCType detector_type,
-                                              EventDispatcher* dispatcher,
-                                              Manager* manager,
-                                              Metrics* metrics,
-                                              CellularService* service);
+  static std::unique_ptr<OutOfCreditsDetector> CreateDetector(
+      OOCType detector_type,
+      EventDispatcher* dispatcher,
+      Manager* manager,
+      Metrics* metrics,
+      CellularService* service);
 
   // Resets the detector state.
   virtual void ResetDetector() = 0;
