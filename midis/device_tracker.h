@@ -5,92 +5,27 @@
 #ifndef MIDIS_DEVICE_TRACKER_H_
 #define MIDIS_DEVICE_TRACKER_H_
 
-#include <libudev.h>
-#include <sound/asound.h>
+#include <alsa/asoundlib.h>
 
 #include <map>
 #include <memory>
-#include <string>
 #include <vector>
 
 #include <base/files/scoped_file.h>
-#include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 #include <gtest/gtest_prod.h>
 
 #include "midis/device.h"
 #include "midis/libmidis/clientlib.h"
+#include "midis/seq_handler_interface.h"
 
 namespace midis {
 
-class DeviceTracker;
-
-class UdevHandler {
- public:
-  explicit UdevHandler(DeviceTracker* device_tracker);
-  virtual ~UdevHandler() {}
-
-  bool InitUdevHandler();
-  std::unique_ptr<Device> CreateDevice(struct udev_device* udev_device);
-
-  struct UdevDeviceDeleter {
-    void operator()(udev_device* dev) const { udev_device_unref(dev); }
-  };
-
-  virtual std::string GetMidiDeviceDname(struct udev_device* device);
-  virtual std::unique_ptr<snd_rawmidi_info> GetDeviceInfo(
-      const std::string& dname);
-  dev_t GetDeviceDevNum(struct udev_device* udev_device);
-  const char* GetDeviceSysNum(struct udev_device* udev_device);
-  void ProcessUdevEvent(struct udev_device* udev_device);
-  void ProcessUdevFd(int fd);
-  void EnumerateExistingDevices();
-
-  static uint32_t GenerateDeviceId(uint32_t sys_num, uint32_t device_num) {
-    return (sys_num << 8) | device_num;
-  }
-
-  virtual std::string ExtractManufacturerString(struct udev_device* udev_device,
-                                                const std::string& name);
-
- private:
-  const std::string UdevDeviceGetPropertyOrSysAttr(
-      struct udev_device* udev_device, const char* property_key,
-      const char* sysattr_key);
-
-  struct UdevDeleter {
-    void operator()(udev* dev) const { udev_unref(dev); }
-  };
-
-  struct UdevEnumDeleter {
-    void operator()(udev_enumerate* enumerate) const {
-      udev_enumerate_unref(enumerate);
-    }
-  };
-
-  std::unique_ptr<udev, UdevDeleter> udev_;
-
-  struct UdevMonitorDeleter {
-    void operator()(udev_monitor* dev) const { udev_monitor_unref(dev); }
-  };
-
-  std::unique_ptr<udev_monitor, UdevMonitorDeleter> udev_monitor_;
-
-  base::ScopedFD udev_monitor_fd_;
-  DeviceTracker* dev_tracker_;
-  base::WeakPtrFactory<UdevHandler> weak_factory_;
-
-  DISALLOW_COPY_AND_ASSIGN(UdevHandler);
-};
+class SeqHandler;
 
 class DeviceTracker {
  public:
-  // TODO(pmalani): Add factory functions that take care of calling
-  // initialization routines, like InitDeviceTracker(), so that users of the
-  // class don't have to worry about calling a prescribed set of functions.
   DeviceTracker();
-
-  explicit DeviceTracker(std::unique_ptr<UdevHandler> handler);
   void AddDevice(std::unique_ptr<Device> dev);
   void RemoveDevice(uint32_t sys_num, uint32_t dev_num);
   bool InitDeviceTracker();
@@ -114,7 +49,8 @@ class DeviceTracker {
 
   void RemoveDeviceObserver(Observer* obs);
 
-  base::ScopedFD AddClientToReadSubdevice(uint32_t sys_num, uint32_t device_num,
+  base::ScopedFD AddClientToReadSubdevice(uint32_t sys_num,
+                                          uint32_t device_num,
                                           uint32_t subdevice_num,
                                           uint32_t client_id);
 
@@ -131,7 +67,26 @@ class DeviceTracker {
   // orderly or disorderly shutdown.
   void RemoveClientFromDevices(uint32_t client_id);
 
+  static uint32_t GenerateDeviceId(uint32_t sys_num, uint32_t device_num) {
+    return (sys_num << 8) | device_num;
+  }
+
  private:
+  void HandleReceiveData(uint32_t card_id,
+                         uint32_t device_id,
+                         uint32_t port_id,
+                         const char* buffer,
+                         size_t buf_len);
+
+  // Utility function to ascertain whether a device is already registered.
+  bool IsDevicePresent(uint32_t card_id, uint32_t device_id);
+
+  // Utility function to ascertain whether a port is already registered.
+  bool IsPortPresent(uint32_t card_id, uint32_t device_id, uint32_t port_id);
+
+  // Private helper to retrieve a Device pointer if it exists.
+  Device* FindDevice(uint32_t card_id, uint32_t device_id) const;
+
   friend class ClientTest;
   friend class DeviceTrackerTest;
   FRIEND_TEST(ClientTest, AddClientAndReceiveMessages);
@@ -143,7 +98,8 @@ class DeviceTracker {
                                            bool added);
 
   std::map<uint32_t, std::unique_ptr<Device>> devices_;
-  std::unique_ptr<UdevHandler> udev_handler_;
+  std::unique_ptr<SeqHandlerInterface> seq_handler_;
+
   base::ObserverList<Observer> observer_list_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceTracker);

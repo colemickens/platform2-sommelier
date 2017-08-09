@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 #include "midis/device.h"
 
+#include <alsa/asoundlib.h>
 #include <fcntl.h>
 #include <sys/socket.h>
 
@@ -17,62 +18,83 @@
 #include "midis/file_handler.h"
 #include "midis/subdevice_client_fd_holder.h"
 
+namespace {
+
+const unsigned int kInputPortCaps =
+    SND_SEQ_PORT_CAP_READ | SND_SEQ_PORT_CAP_SUBS_READ;
+const unsigned int kOutputPortCaps =
+    SND_SEQ_PORT_CAP_WRITE | SND_SEQ_PORT_CAP_SUBS_WRITE;
+
+}  // namespace
+
 namespace midis {
 
-base::FilePath Device::basedir_ = base::FilePath();
-
-Device::Device(const std::string& name, const std::string& manufacturer,
-               uint32_t card, uint32_t device, uint32_t num_subdevices,
-               uint32_t flags)
+Device::Device(const std::string& name,
+               const std::string& manufacturer,
+               uint32_t card,
+               uint32_t device,
+               uint32_t num_subdevices,
+               uint32_t flags,
+               InPort::SubscribeCallback in_sub_cb,
+               OutPort::SubscribeCallback out_sub_cb,
+               InPort::DeletionCallback in_del_cb,
+               OutPort::DeletionCallback out_del_cb,
+               OutPort::SendMidiDataCallback send_data_cb,
+               const std::map<uint32_t, unsigned int>& port_caps)
     : name_(name),
       manufacturer_(manufacturer),
       card_(card),
       device_(device),
       num_subdevices_(num_subdevices),
       flags_(flags),
+      in_sub_cb_(in_sub_cb),
+      out_sub_cb_(out_sub_cb),
+      in_del_cb_(in_del_cb),
+      out_del_cb_(out_del_cb),
+      send_data_cb_(send_data_cb),
+      port_caps_(port_caps),
       weak_factory_(this) {
   LOG(INFO) << "Device created: " << name_;
 }
 
-Device::~Device() { StopMonitoring(); }
+Device::~Device() {
+  StopMonitoring();
+}
 
-// Cancel all the file watchers and remove the file handlers.
-// This function is called if :
-// a. Something has gone wrong with the Device monitor and we need to bail
-// b. Something has gone wrong while adding the device.
-// c. During a graceful shutdown.
 void Device::StopMonitoring() {
   // Cancel all the clients FDs who were listening / writing to this device.
   client_fds_.clear();
-  handlers_.clear();
+  in_ports_.clear();
+  out_ports_.clear();
 }
 
 bool Device::StartMonitoring() {
-  // For each sub-device, we instantiate a fd, and an fd watcher
-  // and handler messages from the device in a generic handler.
-  for (uint32_t i = 0; i < num_subdevices_; i++) {
-    std::string path = base::StringPrintf(
-        "%s/dev/snd/midiC%uD%u", basedir_.value().c_str(), card_, device_);
-
-    auto fh = FileHandler::Create(
-        path, i,
-        base::Bind(&Device::HandleReceiveData, weak_factory_.GetWeakPtr()));
-    if (!fh) {
-      return false;
+  for (auto& it : port_caps_) {
+    if (it.second & kInputPortCaps) {
+      auto in_port = InPort::Create(device_, it.first, in_sub_cb_, in_del_cb_);
+      if (in_port) {
+        in_ports_.emplace(it.first, std::move(in_port));
+        LOG(INFO) << "Input Port created for port:" << it.first;
+      }
     }
-    // NOTE: If any initialization of any of the sub-device handlers fails,
-    // we mark the StartMonitoring option as failed, and return false.
-    // The caller should the invoke Device::StopMonitoring() to cleanup
-    // the existing file handlers.
-    handlers_.emplace(i, std::move(fh));
+    if (it.second & kOutputPortCaps) {
+      auto out_port = OutPort::Create(
+          device_, it.first, out_sub_cb_, out_del_cb_, send_data_cb_);
+      if (out_port) {
+        out_ports_.emplace(it.first, std::move(out_port));
+        LOG(INFO) << "Outpot Port created for port:" << it.first;
+      }
+    }
   }
   return true;
 }
 
-void Device::HandleReceiveData(const char* buffer, uint32_t subdevice,
+void Device::HandleReceiveData(const char* buffer,
+                               uint32_t subdevice,
                                size_t buf_len) const {
-  LOG(INFO) << "Device: " << device_ << " Subdevice: " << subdevice
-            << ", The read MIDI info is:" << buffer;
+  // NOTE: We don't check whether this subdevice can actually receive data
+  // because the data is coming in from the a MIDI H/W port, and so if data is
+  // being generated here, it must be from a valid source.
   auto list_it = client_fds_.find(subdevice);
   if (list_it != client_fds_.end()) {
     for (const auto& id_fd_entry : list_it->second) {
@@ -108,11 +130,17 @@ void Device::RemoveClientFromDevice(uint32_t client_id) {
 }
 
 void Device::WriteClientDataToDevice(uint32_t subdevice_id,
-                                     const uint8_t* buffer, size_t buf_len) {
-  auto handler = handlers_.find(subdevice_id);
-  if (handler != handlers_.end()) {
-    handler->second->WriteData(buffer, buf_len);
+                                     const uint8_t* buffer,
+                                     size_t buf_len) {
+  // Check whether this port supports output, otherwise just drop the data, and
+  // print a warning.
+  auto it = out_ports_.find(subdevice_id);
+  if (it == out_ports_.end()) {
+    LOG(WARNING)
+        << "Data received on port: " << subdevice_id
+        << " which doesn't support writing to MIDI device; dropping data";
   }
+  it->second->SendData(buffer, buf_len);
 }
 
 base::ScopedFD Device::AddClientToReadSubdevice(uint32_t client_id,
@@ -142,7 +170,9 @@ base::ScopedFD Device::AddClientToReadSubdevice(uint32_t client_id,
     std::vector<std::unique_ptr<SubDeviceClientFdHolder>> list_entries;
 
     list_entries.emplace_back(SubDeviceClientFdHolder::Create(
-        client_id, subdevice_id, std::move(server_fd),
+        client_id,
+        subdevice_id,
+        std::move(server_fd),
         base::Bind(&Device::WriteClientDataToDevice,
                    weak_factory_.GetWeakPtr())));
 
@@ -158,7 +188,9 @@ base::ScopedFD Device::AddClientToReadSubdevice(uint32_t client_id,
       }
     }
     id_fd_list->second.emplace_back(SubDeviceClientFdHolder::Create(
-        client_id, subdevice_id, std::move(server_fd),
+        client_id,
+        subdevice_id,
+        std::move(server_fd),
         base::Bind(&Device::WriteClientDataToDevice,
                    weak_factory_.GetWeakPtr())));
   }

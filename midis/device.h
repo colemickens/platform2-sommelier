@@ -18,6 +18,8 @@
 #include <brillo/message_loops/message_loop.h>
 #include <gtest/gtest_prod.h>
 
+#include "midis/ports.h"
+
 namespace midis {
 
 class FileHandler;
@@ -29,9 +31,18 @@ class SubDeviceClientFdHolder;
 // to arrive at an identifier.
 class Device {
  public:
-  Device(const std::string& name, const std::string& manufacturer,
-         uint32_t card, uint32_t device, uint32_t num_subdevices,
-         uint32_t flags);
+  Device(const std::string& name,
+         const std::string& manufacturer,
+         uint32_t card,
+         uint32_t device,
+         uint32_t num_subdevices,
+         uint32_t flags,
+         InPort::SubscribeCallback in_sub_cb,
+         OutPort::SubscribeCallback out_sub_cb,
+         InPort::DeletionCallback in_del_cb,
+         OutPort::DeletionCallback out_del_cb,
+         OutPort::SendMidiDataCallback send_data_cb,
+         const std::map<uint32_t, unsigned int>& port_caps);
   ~Device();
 
   const std::string& GetName() const { return name_; }
@@ -49,13 +60,18 @@ class Device {
   // pipe FD so that we can read MIDI events and send them to the MIDI
   // H/W.
   //
-  // TODO(pmalani): How do you arbitrate MIDI data from multiple clients. The
-  // best approach would be to just allow access to one client for the output.
   // Returns:
   //   A valid base::ScopedFD on success.
   //   An empty base::ScopedFD otherwise.
   base::ScopedFD AddClientToReadSubdevice(uint32_t client_id,
                                           uint32_t subdevice_id);
+
+  // Callback function which is invoked by the FileHandler object when data is
+  // received *from* a particular subdevice of a MIDI H/W device or external
+  // client.
+  void HandleReceiveData(const char* buffer,
+                         uint32_t subdevice,
+                         size_t buf_len) const;
 
   // This function is called when a Client is removed from the service for
   // orderly or unorderly reasons (like disconnection). The client is removed
@@ -65,48 +81,57 @@ class Device {
  private:
   friend class ClientTest;
   friend class DeviceTest;
-  friend class UdevHandlerTest;
   FRIEND_TEST(ClientTest, AddClientAndReceiveMessages);
-  FRIEND_TEST(DeviceTest, TestHandleDeviceRead);
-  FRIEND_TEST(UdevHandlerTest, CreateDevicePositive);
-  // This function instantiates a FileHandler for each subdevice. If all the
-  // FileHandlers can get initialized successfully, each of them is added to the
-  // handlers_ map.
+  FRIEND_TEST(DeviceTest, TestDevicePortCreation);
+
+  // This function initializes subscriptions for all the listed ports.
+  // As the ports are initialized, they get stored in |in_ports_| and
+  // |out_ports_| respectively.
   bool StartMonitoring();
-  // Deletes all the FileHandlers created during StartMontoring().
+
+  // Removes all the port subscriptions which were started during
+  // StartMontoring(). This function is called if : a. Something has gone wrong
+  // with the Device monitor and we need to bail b. Something has gone wrong
+  // while adding the device. c. During a graceful shutdown.
   void StopMonitoring();
-  // Helper function to set the base directory to be used for creating and
-  // looking for dev node paths. Helpful for testing (where we don't have real
-  // h/w, and dev nodes have to be faked).
-  static void SetBaseDirForTesting(const base::FilePath& dir) {
-    Device::basedir_ = dir;
-  }
-  // Callback function which is invoked by the FileHandler object when data is
-  // received for a particular subdevice.
-  void HandleReceiveData(const char* buffer, uint32_t subdevice,
-                         size_t buf_len) const;
 
   // Callback function which is invoked by SubDeviceClientFdHolder object when
-  // data is received from client to be sent to a particular subdevice.
-  void WriteClientDataToDevice(uint32_t subdevice_id, const uint8_t* buffer,
+  // data is received from client to be sent *to* a particular subdevice.
+  void WriteClientDataToDevice(uint32_t subdevice_id,
+                               const uint8_t* buffer,
                                size_t buf_len);
 
   std::string name_;
   std::string manufacturer_;
+  // TODO(pmalani): Unused, so remove
   uint32_t card_;
   uint32_t device_;
   uint32_t num_subdevices_;
+  // TODO(pmalani): Unused, so remove.
   uint32_t flags_;
-  // This data structure maps subdevice id's to corresponding file handler
-  // objects.
-  std::map<uint32_t, std::unique_ptr<FileHandler>> handlers_;
+
   // This data-structure performs the following map:
   //
   // subdevice ---> (client_1, pipefd_1), (client_2, pipefd_2), ...., (client_n,
   // pipefd_n).
   std::map<uint32_t, std::vector<std::unique_ptr<SubDeviceClientFdHolder>>>
       client_fds_;
-  static base::FilePath basedir_;
+
+  // Callbacks to be run by the InPort and OutPort objects.
+  InPort::SubscribeCallback in_sub_cb_;
+  OutPort::SubscribeCallback out_sub_cb_;
+  InPort::DeletionCallback in_del_cb_;
+  OutPort::DeletionCallback out_del_cb_;
+  OutPort::SendMidiDataCallback send_data_cb_;
+
+  // Map storing all the valid seq port_ids and the corresponding caps.
+  std::map<uint32_t, unsigned int> port_caps_;
+
+  // This data structure maps the port_id to corresponding InPort we create.
+  std::map<uint32_t, std::unique_ptr<InPort>> in_ports_;
+  // This data structure maps the port_id to corresponding OutPort we create.
+  std::map<uint32_t, std::unique_ptr<OutPort>> out_ports_;
+
   base::WeakPtrFactory<Device> weak_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
