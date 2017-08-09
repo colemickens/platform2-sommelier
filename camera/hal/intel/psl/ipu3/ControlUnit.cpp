@@ -888,7 +888,6 @@ ControlUnit::handleNewShutter(Message &msg)
 
     int64_t ts = msg.data.shutter.tv_sec * 1000000000; // seconds to nanoseconds
     ts += msg.data.shutter.tv_usec * 1000; // microseconds to nanoseconds
-    ts += systemTime(); // TODO:fix this in driver
 
     //# ANDROID_METADATA_Dynamic android.sensor.timestamp done
     reqState->ctrlUnitResult->update(ANDROID_SENSOR_TIMESTAMP, &ts, 1);
