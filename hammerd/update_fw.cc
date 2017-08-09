@@ -234,13 +234,12 @@ bool FirmwareUpdater::LoadImage(const std::string& image) {
 }
 
 SectionName FirmwareUpdater::CurrentSection() const {
-  SectionName writable_section;
   for (const auto& section : sections_) {
     if (targ_.offset == section.offset) {
-      writable_section = section.name;
+      return OtherSection(section.name);
     }
   }
-  return OtherSection(writable_section);
+  return SectionName::Invalid;
 }
 
 bool FirmwareUpdater::NeedsUpdate(SectionName section_name) const {
