@@ -126,10 +126,12 @@ chromeos {
     family {
         firmware {
             script = "updater4.sh";
+        };
     };
 
     models {
         reef {
+            powerd_prefs = "reef";
             wallpaper = "seaside_life";
             firmware {
                 bcs-overlay = "overlay-reef-private";
@@ -141,27 +143,26 @@ chromeos {
                     "${SYSROOT}/usr/sbin/ectool",
                     "bcs://Reef.something.tbz";
             };
-            powerd_prefs = "reef";
         };
 
         pyro {
+            powerd_prefs = "pyro_snappy";
             wallpaper = "alien_invasion";
             firmware {
                 bcs-overlay = "overlay-pyro-private";
                 main-image = "bcs://Pyro.9042.41.0.tbz2";
                 ec-image = "bcs://Pyro_EC.9042.41.0.tbz2";
             };
-            powerd_prefs = "pyro_snappy";
         };
 
         snappy {
+            powerd_prefs = "pyro_snappy";
             wallpaper = "chocolate";
             firmware {
                 bcs-overlay = "overlay-snappy-private";
                 main-image = "bcs://Snappy.9042.43.0.tbz2";
                 ec-image = "bcs://Snappy_EC.9042.43.0.tbz2";
             };
-            powerd_prefs = "pyro_snappy";
         };
     };
 };
