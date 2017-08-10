@@ -465,6 +465,11 @@ gboolean cryptohome_remove_firmware_management_parameters(
 gboolean cryptohome_migrate_to_dircrypto(Cryptohome* self,
                                          GArray* id,
                                          GError** error);
+gboolean cryptohome_migrate_to_dircrypto_ex(
+    Cryptohome* self,
+    GArray* id,
+    GArray* migrate_request,
+    GError** error);
 gboolean cryptohome_needs_dircrypto_migration(Cryptohome* self,
                                               GArray* identifier,
                                               gboolean* OUT_needs_migration,

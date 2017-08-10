@@ -1959,8 +1959,8 @@ bool Mount::MountLegacyHome(const FilePath& from, MountError* mount_error) {
 }
 
 bool Mount::MigrateToDircrypto(
-    const dircrypto_data_migrator::MigrationHelper::ProgressCallback&
-    callback) {
+    const dircrypto_data_migrator::MigrationHelper::ProgressCallback& callback,
+    MigrationType migration_type) {
   std::string obfuscated_username;
   current_user_->GetObfuscatedUsername(&obfuscated_username);
   FilePath temporary_mount =
@@ -1974,8 +1974,12 @@ bool Mount::MigrateToDircrypto(
   // Do migration.
   constexpr uint64_t kMaxChunkSize = 128 * 1024 * 1024;
   dircrypto_data_migrator::MigrationHelper migrator(
-      platform_, temporary_mount, mount_point_,
-      GetUserDirectoryForUser(obfuscated_username), kMaxChunkSize);
+      platform_,
+      temporary_mount,
+      mount_point_,
+      GetUserDirectoryForUser(obfuscated_username),
+      kMaxChunkSize,
+      migration_type);
   {  // Abort if already cancelled.
     base::AutoLock lock(active_dircrypto_migrator_lock_);
     if (is_dircrypto_migration_cancelled_)

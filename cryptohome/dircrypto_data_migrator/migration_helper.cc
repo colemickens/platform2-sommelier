@@ -50,18 +50,56 @@ constexpr uint64_t kFreeSpaceBuffer = kErasureBlockSize;
 // The maximum size of job list.
 constexpr size_t kDefaultMaxJobListSize = 100000;
 
+// List of paths in the root part of the user home to be migrated when minimal
+// migration is performed. If the last component of a path is *, it means that
+// all children should be migrated too.
+const char* const kMinimalMigrationRootPathsWhitelist[] = {
+    // Keep the user policy - network/proxy settings could be stored here and
+    // chrome will need network access to re-setup the wiped profile. Also, we
+    // want to make absolutely sure that the user session does not end up in an
+    // unmanaged state (without policy).
+    "session_manager/policy",
+};
+
+// List of paths in the user part of the user home to be migrated when minimal
+// migration is performed. If the path refers to a directory, all children will
+// be migrated too.
+const char* const kMinimalMigrationUserPathsWhitelist[] = {
+    // Migrate the log directory, because it only gets created on fresh user
+    // home creation by copying the skeleton structure. If it's missing, chrome
+    // user sessoin won't log.
+    "log",
+    // Migrate the user's certificate database, in case the user has client
+    // certificates necesary to access networks.
+    ".pki",
+    // Migrate Cookies, as authentiation tokens might be stored in cookies.
+    "Cookies",
+    "Cookies-journal",
+    // Migrate state realted to HTTPS, especially channel binding state (Origin
+    // Bound Certs), and transport security (HSTS).
+    "Origin Bound Certs",
+    "Origin Bound Certs-journal",
+    "TransportSecurity",
+    // Web Data contains the Token Service Table which authentication tokens for
+    // chrome services (sign-in OAuth2 token).
+    "Web Data",
+    "Web Data-journal",
+};
+
 // Sends the UMA stat for the start/end status of migration respectively in the
 // constructor/destructor. By default the "generic error" end status is set, so
 // to report other status, call an appropriate method to overwrite it.
 class MigrationStartAndEndStatusReporter {
  public:
-  MigrationStartAndEndStatusReporter(bool resumed,
+  MigrationStartAndEndStatusReporter(MigrationType migration_type,
+                                     bool resumed,
                                      const AtomicFlag& is_cancelled) :
+      migration_type_(migration_type),
       resumed_(resumed),
       is_cancelled_(is_cancelled),
       end_status_(resumed ? kResumedMigrationFailedGeneric :
                   kNewMigrationFailedGeneric) {
-    ReportDircryptoMigrationStartStatus(
+    ReportDircryptoMigrationStartStatus(migration_type,
         resumed_ ? kMigrationResumed : kMigrationStarted);
   }
 
@@ -70,7 +108,7 @@ class MigrationStartAndEndStatusReporter {
       end_status_ = resumed_ ?
           kResumedMigrationCancelled : kNewMigrationCancelled;
     }
-    ReportDircryptoMigrationEndStatus(end_status_);
+    ReportDircryptoMigrationEndStatus(migration_type_, end_status_);
   }
 
   void SetSuccess() {
@@ -97,6 +135,7 @@ class MigrationStartAndEndStatusReporter {
   }
 
  private:
+  const MigrationType migration_type_;
   const bool resumed_;
   const AtomicFlag& is_cancelled_;
   DircryptoMigrationEndStatus end_status_;
@@ -281,12 +320,14 @@ MigrationHelper::MigrationHelper(Platform* platform,
                                  const base::FilePath& from,
                                  const base::FilePath& to,
                                  const base::FilePath& status_files_dir,
-                                 uint64_t max_chunk_size)
+                                 uint64_t max_chunk_size,
+                                 MigrationType migration_type)
     : platform_(platform),
       from_base_path_(from),
       to_base_path_(to),
       status_files_dir_(status_files_dir),
       max_chunk_size_(max_chunk_size),
+      migration_type_(migration_type),
       effective_chunk_size_(0),
       total_byte_count_(0),
       total_directory_byte_count_(0),
@@ -301,7 +342,18 @@ MigrationHelper::MigrationHelper(Platform* platform,
       failed_error_type_(base::File::FILE_OK),
       num_job_threads_(0),
       max_job_list_size_(kDefaultMaxJobListSize),
-      worker_pool_(new WorkerPool(this)) {}
+      worker_pool_(new WorkerPool(this)) {
+  if (migration_type_ == MigrationType::MINIMAL) {
+    for (const char* path : kMinimalMigrationRootPathsWhitelist) {
+      minimal_migration_paths_.emplace_back(
+          base::FilePath(kRootHomeSuffix).Append(path));
+    }
+    for (const char* path : kMinimalMigrationUserPathsWhitelist) {
+      minimal_migration_paths_.emplace_back(
+          base::FilePath(kUserHomeSuffix).Append(path));
+    }
+  }
+}
 
 MigrationHelper::~MigrationHelper() {}
 
@@ -309,7 +361,10 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
   base::ElapsedTimer timer;
   skipped_file_list_path_ = to_base_path_.Append(kSkippedFileListFileName);
   const bool resumed = IsMigrationStarted();
-  MigrationStartAndEndStatusReporter status_reporter(resumed, is_cancelled_);
+  MigrationStartAndEndStatusReporter status_reporter(
+      migration_type_,
+      resumed,
+      is_cancelled_);
 
   if (progress_callback.is_null()) {
     LOG(ERROR) << "Invalid progress callback";
@@ -364,13 +419,18 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
     effective_chunk_size_ =
         effective_chunk_size_ - (effective_chunk_size_ % kErasureBlockSize);
 
-  if (!CalculateDataToMigrate(from_base_path_)) {
-    LOG(ERROR) << "Failed to calculate number of bytes to migrate";
-    return false;
-  }
-  if (!resumed) {
-    ReportDircryptoMigrationTotalByteCountInMb(total_byte_count_ / 1024 / 1024);
-    ReportDircryptoMigrationTotalFileCount(n_files_ + n_dirs_ + n_symlinks_);
+  if (migration_type_ == MigrationType::FULL) {
+    // Only calculate data size if not doing a minimal migration, as we're
+    // skipping most data in minimal migration.
+    if (!CalculateDataToMigrate(from_base_path_)) {
+      LOG(ERROR) << "Failed to calculate number of bytes to migrate";
+      return false;
+    }
+    if (!resumed) {
+      ReportDircryptoMigrationTotalByteCountInMb(
+          total_byte_count_ / 1024 / 1024);
+      ReportDircryptoMigrationTotalFileCount(n_files_ + n_dirs_ + n_symlinks_);
+    }
   }
   ReportStatus(DIRCRYPTO_MIGRATION_IN_PROGRESS);
   struct stat from_stat;
@@ -381,7 +441,10 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
         failed_operation_type_, failed_error_type_);
     return false;
   }
-  ReportTimerStart(kDircryptoMigrationTimer);
+  const auto migration_timer_id = migration_type_ == MigrationType::MINIMAL
+                                      ? kDircryptoMinimalMigrationTimer
+                                      : kDircryptoMigrationTimer;
+  ReportTimerStart(migration_timer_id);
   LOG(INFO) << "Preparation took " << timer.Elapsed().InMilliseconds()
             << " ms.";
   // MigrateDir() recursively traverses the directory tree on the main thread,
@@ -399,15 +462,19 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
     return false;
   }
   if (!resumed)
-    ReportTimerStop(kDircryptoMigrationTimer);
+    ReportTimerStop(migration_timer_id);
 
   // One more progress update to say that we've hit 100%
   ReportStatus(DIRCRYPTO_MIGRATION_IN_PROGRESS);
   status_reporter.SetSuccess();
   const int elapsed_ms = timer.Elapsed().InMilliseconds();
   const int speed_kb_per_s = elapsed_ms ? (total_byte_count_ / elapsed_ms) : 0;
-  LOG(INFO) << "Migrated " << total_byte_count_ << " bytes in " <<  elapsed_ms
-            << " ms at " <<  speed_kb_per_s << " KB/s.";
+  if (migration_type_ == MigrationType::MINIMAL) {
+    LOG(INFO) << "Minimal migration took " << elapsed_ms << " ms.";
+  } else {
+    LOG(INFO) << "Migrated " << total_byte_count_ << " bytes in " << elapsed_ms
+              << " ms at " << speed_kb_per_s << " KB/s.";
+  }
   return true;
 }
 
@@ -461,8 +528,43 @@ void MigrationHelper::IncrementMigratedBytes(uint64_t bytes) {
 }
 
 void MigrationHelper::ReportStatus(DircryptoMigrationStatus status) {
+  // Don't report for minimal migration, because we haven't calculated totals.
+  if (migration_type_ == MigrationType::MINIMAL)
+    return;
+
   progress_callback_.Run(status, migrated_byte_count_, total_byte_count_);
   next_report_ = base::TimeTicks::Now() + kStatusSignalInterval;
+}
+
+bool MigrationHelper::ShouldMigrateFile(const base::FilePath& child) {
+  if (migration_type_ == MigrationType::FULL) {
+    // crbug.com/728892: This directory can be falling into a weird state that
+    // confuses the migrator. Never try migration. Just delete it. This is fine
+    // because Cryptohomed anyway creates a pass-through directory at this path
+    // and Chrome never uses contents of the directory left by old sessions.
+    if (child == base::FilePath(kUserHomeSuffix).Append(kGCacheDir)
+                                                .Append(kGCacheVersionDir)
+                                                .Append(kGCacheTmpDir)) {
+      return false;
+    }
+
+    return true;
+  } else {
+    // Minimal migration - process the whitelist. Because the whitelist is
+    // supposed to be small, we won't recurse into many subdirectories, so we
+    // assume that iterating all whitelist elements for each file is fine.
+    for (const auto& migration_path : minimal_migration_paths_) {
+      // If the current path is one of the whitelisted paths, or its
+      // parent, migrate it.
+      if (child == migration_path || child.IsParent(migration_path))
+        return true;
+      // Recursively migrate contents of directories specified for migration.
+      if (migration_path.IsParent(child))
+        return true;
+    }
+
+    return false;
+  }
 }
 
 bool MigrationHelper::MigrateDir(const base::FilePath& child,
@@ -472,22 +574,6 @@ bool MigrationHelper::MigrateDir(const base::FilePath& child,
   }
   const base::FilePath from_dir = from_base_path_.Append(child);
   const base::FilePath to_dir = to_base_path_.Append(child);
-
-  // crbug.com/728892: This directory can be falling into a weird state that
-  // confuses the migrator. Never try migration. Just delete it. This is fine
-  // because Cryptohomed anyway creates a pass-through directory at this path
-  // and Chrome never uses contents of the directory left by old sessions.
-  if (child == base::FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(
-          kGCacheVersionDir).Append(kGCacheTmpDir)) {
-    if (!platform_->DeleteFile(from_dir, true /* recursive */)) {
-      PLOG(ERROR) << "Failed to delete " << child.value();
-      RecordFileErrorWithCurrentErrno(kMigrationFailedAtDelete, child);
-      return false;
-    }
-    // Now the |child| directory is completely deleted. Next, decrease the child
-    // count of the parent directory so that it can be deleted.
-    return DecrementChildCountAndDeleteIfNecessary(child.DirName());
-  }
 
   if (!platform_->CreateDirectory(to_dir)) {
     LOG(ERROR) << "Failed to create directory " << to_dir.value();
@@ -514,6 +600,16 @@ bool MigrationHelper::MigrateDir(const base::FilePath& child,
     const FileEnumerator::FileInfo& entry_info = enumerator->GetInfo();
     const base::FilePath& new_child = child.Append(entry.BaseName());
     mode_t mode = entry_info.stat().st_mode;
+    if (!ShouldMigrateFile(new_child)) {
+      // Delete paths which should be skipped
+      if (!platform_->DeleteFile(entry, true /* recursive */)) {
+        PLOG(ERROR) << "Failed to delete " << entry.value();
+        RecordFileErrorWithCurrentErrno(kMigrationFailedAtDelete, entry);
+        return false;
+      }
+      continue;
+    }
+
     IncrementChildCount(child);
     if (S_ISDIR(mode)) {
       // Directory.

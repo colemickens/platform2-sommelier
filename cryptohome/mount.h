@@ -34,6 +34,7 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/dircrypto_data_migrator/migration_helper.h"
 #include "cryptohome/homedirs.h"
+#include "cryptohome/migration_type.h"
 #include "cryptohome/mount_stack.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/user_oldest_activity_timestamp_cache.h"
@@ -297,9 +298,12 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Migrates the data from eCryptfs to dircrypto.
   // Call MountCryptohome with to_migrate_from_ecryptfs beforehand.
+  // If |migration_type| is MINIMAL, no progress reporting will be done and only
+  // whitelisted paths will be migrated.
   bool MigrateToDircrypto(
       const dircrypto_data_migrator::MigrationHelper::ProgressCallback&
-      callback);
+          callback,
+      MigrationType migration_type);
 
   // Cancels the active dircrypto migration if there is, and wait for it to
   // stop.

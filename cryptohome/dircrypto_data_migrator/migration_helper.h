@@ -7,6 +7,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
@@ -17,6 +18,7 @@
 
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/dircrypto_data_migrator/atomic_flag.h"
+#include "cryptohome/migration_type.h"
 #include "cryptohome/platform.h"
 
 namespace base {
@@ -61,11 +63,14 @@ class MigrationHelper {
   // for the desired size of data to transfer at once, but may be reduced if
   // there is not enough free space on disk or the provided max_chunk_size is
   // inefficient.
+  // If |minimal_migration| is true, progress reporting will be omitted and only
+  // important profile parts will be migrated. Most user data will be wiped.
   MigrationHelper(Platform* platform,
                   const base::FilePath& from,
                   const base::FilePath& to,
                   const base::FilePath& status_files_dir,
-                  uint64_t max_chunk_size);
+                  uint64_t max_chunk_size,
+                  MigrationType migration_type);
   virtual ~MigrationHelper();
 
   void set_namespaced_mtime_xattr_name_for_testing(const std::string& name) {
@@ -124,6 +129,9 @@ class MigrationHelper {
   //   child - relative path under the base path to migrate.
   bool MigrateDir(const base::FilePath& child,
                   const FileEnumerator::FileInfo& info);
+  // Returns true if |child| should be migrated. false means that it will be
+  // deleted in the old user home, but not copied to the new user home.
+  bool ShouldMigrateFile(const base::FilePath& child);
   // Creates a new link |to_base_path_|/|child| which has the same attributes
   // and target as |from_base_path_|/|child|.  If the target points to an
   // absolute path under |from_base_path_|, it is rewritten to point to the
@@ -183,6 +191,10 @@ class MigrationHelper {
   ProgressCallback progress_callback_;
   const base::FilePath status_files_dir_;
   uint64_t max_chunk_size_;
+  MigrationType migration_type_;
+  // Whitelisted paths for minimal migration. May contain directories and files.
+  std::vector<base::FilePath> minimal_migration_paths_;
+
   uint64_t effective_chunk_size_;
   uint64_t total_byte_count_;
   uint64_t total_directory_byte_count_;

@@ -7,6 +7,7 @@
 
 #include <base/files/file.h>
 
+#include "cryptohome/migration_type.h"
 #include "cryptohome/tpm.h"
 
 namespace cryptohome {
@@ -42,6 +43,7 @@ enum TimerType {
   kPkcs11InitTimer,
   kMountExTimer,
   kDircryptoMigrationTimer,
+  kDircryptoMinimalMigrationTimer,
   kNumTimerTypes  // For the number of timer types.
 };
 
@@ -171,14 +173,18 @@ void ReportChecksum(ChecksumStatus status);
 void ReportFreedGCacheDiskSpaceInMb(int mb);
 
 // The |status| value is reported to the
-// "Cryptohome.DircryptoMigrationStartStatus"
+// "Cryptohome.DircryptoMigrationStartStatus" (full migration)
+// or the "Cryptohome.DircryptoMinimalMigrationStartStatus" (minimal migration)
 // enum histogram.
-void ReportDircryptoMigrationStartStatus(DircryptoMigrationStartStatus status);
+void ReportDircryptoMigrationStartStatus(MigrationType migration_type,
+                                         DircryptoMigrationStartStatus status);
 
 // The |status| value is reported to the
-// "Cryptohome.DircryptoMigrationEndStatus"
+// "Cryptohome.DircryptoMigrationEndStatus" (full migration)
+// or the "Cryptohome.DircryptoMinimalMigrationEndStatus" (minimal migration)
 // enum histogram.
-void ReportDircryptoMigrationEndStatus(DircryptoMigrationEndStatus status);
+void ReportDircryptoMigrationEndStatus(MigrationType migration_type,
+                                       DircryptoMigrationEndStatus status);
 
 // The |error_code| value is reported to the
 // "Cryptohome.DircryptoMigrationFailedErrorCode"

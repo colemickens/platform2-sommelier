@@ -3294,6 +3294,7 @@ void Service::DispatchEvents() {
 }
 
 gboolean Service::MigrateToDircrypto(const GArray* account_id,
+                                     const GArray* migrate_request,
                                      GError** error) {
   std::unique_ptr<AccountIdentifier> identifier(new AccountIdentifier);
 
@@ -3302,16 +3303,36 @@ gboolean Service::MigrateToDircrypto(const GArray* account_id,
     return FALSE;
   }
 
+  MigrationType migration_type = MigrationType::FULL;
+  // TODO(bug758837,pmarko): Currently, cryptohomed offers MigrateToDircrypto
+  // and MigrateToDircryptoEx. Only the latter has |migrate_request|. With
+  // bug758837, MigrateToDircrypto will have |migrate_request| and it will not
+  // be optional here anymore.
+  if (migrate_request) {
+    std::unique_ptr<MigrateToDircryptoRequest> request =
+        base::MakeUnique<MigrateToDircryptoRequest>();
+    if (!request->ParseFromArray(migrate_request->data,
+                                 migrate_request->len)) {
+      LOG(ERROR) << "Failed to parse migrate_request.";
+      return FALSE;
+    }
+    if (request->minimal_migration())
+      migration_type = MigrationType::MINIMAL;
+  }
   // This Dbus method just kicks the migration task on the mount thread,
   // and replies immediately.
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
+  mount_thread_.message_loop()->PostTask(
+      FROM_HERE,
       base::Bind(&Service::DoMigrateToDircrypto,
                  base::Unretained(this),
-                 base::Owned(identifier.release())));
+                 base::Owned(identifier.release()),
+                 migration_type));
   return TRUE;
 }
 
-void Service::DoMigrateToDircrypto(AccountIdentifier* identifier) {
+void Service::DoMigrateToDircrypto(
+    AccountIdentifier* identifier,
+    MigrationType migration_type) {
   scoped_refptr<cryptohome::Mount> mount =
       GetMountForUser(GetAccountId(*identifier));
   if (!mount.get()) {
@@ -3322,7 +3343,8 @@ void Service::DoMigrateToDircrypto(AccountIdentifier* identifier) {
   LOG(INFO) << "Migrating to dircrypto.";
   if (!mount->MigrateToDircrypto(
           base::Bind(&Service::SendDircryptoMigrationProgressSignal,
-                     base::Unretained(this)))) {
+                     base::Unretained(this)),
+          migration_type)) {
     LOG(ERROR) << "Failed to migrate.";
     SendDircryptoMigrationProgressSignal(DIRCRYPTO_MIGRATION_FAILED, 0, 0);
     return;

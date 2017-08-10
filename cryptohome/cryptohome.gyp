@@ -184,6 +184,7 @@
         'interface.cc',
         'lockbox-cache-tpm.cc',
         'lockbox-cache.cc',
+        'migration_type.h',
         'mount.cc',
         'mount_factory.cc',
         'mount_stack.cc',

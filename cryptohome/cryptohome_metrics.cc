@@ -33,6 +33,10 @@ constexpr char kCryptohomeDircryptoMigrationStartStatusHistogram[] =
     "Cryptohome.DircryptoMigrationStartStatus";
 constexpr char kCryptohomeDircryptoMigrationEndStatusHistogram[] =
     "Cryptohome.DircryptoMigrationEndStatus";
+constexpr char kCryptohomeDircryptoMinimalMigrationStartStatusHistogram[] =
+    "Cryptohome.DircryptoMinimalMigrationStartStatus";
+constexpr char kCryptohomeDircryptoMinimalMigrationEndStatusHistogram[] =
+    "Cryptohome.DircryptoMinimalMigrationEndStatus";
 constexpr char kCryptohomeDircryptoMigrationFailedErrorCodeHistogram[] =
     "Cryptohome.DircryptoMigrationFailedErrorCode";
 constexpr char kCryptohomeDircryptoMigrationFailedOperationTypeHistogram[] =
@@ -72,7 +76,12 @@ const TimerHistogramParams kTimerHistogramParams[cryptohome::kNumTimerTypes] = {
     // Ext4 crypto migration is expected to takes few minutes in a fast case,
     // and with many tens of thousands of files it may take hours.
     {"Cryptohome.TimeToCompleteDircryptoMigration", 1000,
-     10 * 60 * 60 * 1000, 50}};
+     10 * 60 * 60 * 1000, 50},
+    // Minimal migration is expected to take few seconds in a fast case,
+    // and minutes in the worst case if we forgot to blacklist files.
+    {"Cryptohome.TimeToCompleteDircryptoMinimalMigration", 200,
+     2 * 60 * 1000, 50}
+};
 
 MetricsLibrary* g_metrics = NULL;
 chromeos_metrics::TimerReporter* g_timers[cryptohome::kNumTimerTypes] = {NULL};
@@ -197,22 +206,28 @@ void ReportFreedGCacheDiskSpaceInMb(int mb) {
                        50 /* number of buckets */);
 }
 
-void ReportDircryptoMigrationStartStatus(DircryptoMigrationStartStatus status) {
+void ReportDircryptoMigrationStartStatus(MigrationType migration_type,
+                                         DircryptoMigrationStartStatus status) {
   if (!g_metrics) {
     return;
   }
-  g_metrics->SendEnumToUMA(kCryptohomeDircryptoMigrationStartStatusHistogram,
-                           status,
-                           kMigrationStartStatusNumBuckets);
+  const char* metric =
+      migration_type == MigrationType::FULL
+          ? kCryptohomeDircryptoMigrationStartStatusHistogram
+          : kCryptohomeDircryptoMinimalMigrationStartStatusHistogram;
+  g_metrics->SendEnumToUMA(metric, status, kMigrationStartStatusNumBuckets);
 }
 
-void ReportDircryptoMigrationEndStatus(DircryptoMigrationEndStatus status) {
+void ReportDircryptoMigrationEndStatus(MigrationType migration_type,
+                                       DircryptoMigrationEndStatus status) {
   if (!g_metrics) {
     return;
   }
-  g_metrics->SendEnumToUMA(kCryptohomeDircryptoMigrationEndStatusHistogram,
-                           status,
-                           kMigrationEndStatusNumBuckets);
+  const char* metric =
+      migration_type == MigrationType::FULL
+          ? kCryptohomeDircryptoMigrationEndStatusHistogram
+          : kCryptohomeDircryptoMinimalMigrationEndStatusHistogram;
+  g_metrics->SendEnumToUMA(metric, status, kMigrationEndStatusNumBuckets);
 }
 
 void ReportDircryptoMigrationFailedErrorCode(base::File::Error error_code) {

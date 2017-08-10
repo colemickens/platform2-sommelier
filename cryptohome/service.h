@@ -26,6 +26,7 @@
 #include "cryptohome/dbus_transition.h"
 #include "cryptohome/firmware_management_parameters.h"
 #include "cryptohome/install_attributes.h"
+#include "cryptohome/migration_type.h"
 #include "cryptohome/mount.h"
 #include "cryptohome/mount_factory.h"
 #include "cryptohome/mount_task.h"
@@ -387,9 +388,12 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual gboolean TpmClearStoredPassword(GError** error);
 
   virtual gboolean MigrateToDircrypto(const GArray* account_id,
+                                      const GArray* migrate_request,
                                       GError** error);
   // Runs on the mount thread.
-  virtual void DoMigrateToDircrypto(AccountIdentifier* identifier);
+  virtual void DoMigrateToDircrypto(
+      AccountIdentifier* identifier,
+      MigrationType migration_type);
 
   virtual gboolean NeedsDircryptoMigration(const GArray* account_id,
                                            gboolean* OUT_needs_migration,

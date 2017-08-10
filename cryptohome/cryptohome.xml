@@ -530,15 +530,25 @@
       <arg type="ay" name="request" direction="in" />
       <arg type="ay" name="reply" direction="out" />
     </method>
-    <!-- Both arguments are protobufs. Since the migration process may
-         take arbitrary long time, this dbus method just kicks it and
+    <!-- The account_id argument is a protobuf. Since the migration process
+         may take arbitrary long time, this dbus method just kicks it and
          returns immediately. The actual results are notified back by:
          DircryptoMigrationProgress signal.
          account_id: AccountIdentifier
-         authorization_request: AuthorizationRequest
     -->
     <method name="MigrateToDircrypto">
       <arg type="ay" name="account_id" direction="in" />
+    </method>
+    <!-- The account_id argument is a protobuf. Since the migration process
+         may take arbitrary long time, this dbus method just kicks it and
+         returns immediately. The actual results are notified back by:
+         DircryptoMigrationProgress signal.
+         account_id: AccountIdentifier
+         migrate_request: MigrateToDircryptoRequest
+    -->
+    <method name="MigrateToDircryptoEx">
+      <arg type="ay" name="account_id" direction="in" />
+      <arg type="ay" name="migrate_request" direction="in" />
     </method>
     <!-- Whether the user identified by |account_id| needs to migrate to
          dircrypto. Returns true if the migration has not started or incomplete.

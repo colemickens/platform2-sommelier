@@ -25,6 +25,7 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/thread.h>
 
+#include "cryptohome/migration_type.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/platform.h"
 
@@ -163,7 +164,7 @@ TEST_F(MigrationHelperTest, EmptyTest) {
   Platform platform;
   MigrationHelper helper(
       &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
-      kDefaultChunkSize);
+      kDefaultChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -180,7 +181,7 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
   Platform platform;
   MigrationHelper helper(
       &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
-      kDefaultChunkSize);
+      kDefaultChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -253,7 +254,7 @@ TEST_F(MigrationHelperTest, DirectoryPartiallyMigrated) {
   Platform platform;
   MigrationHelper helper(
       &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
-      kDefaultChunkSize);
+      kDefaultChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -298,7 +299,7 @@ TEST_F(MigrationHelperTest, CopySymlink) {
   Platform platform;
   MigrationHelper helper(
       &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
-      kDefaultChunkSize);
+      kDefaultChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
   FilePath target;
@@ -359,7 +360,7 @@ TEST_F(MigrationHelperTest, OneEmptyFile) {
   Platform platform;
   MigrationHelper helper(
       &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
-      kDefaultChunkSize);
+      kDefaultChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -380,7 +381,7 @@ TEST_F(MigrationHelperTest, OneEmptyFileInDirectory) {
   Platform platform;
   MigrationHelper helper(
       &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
-      kDefaultChunkSize);
+      kDefaultChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -410,7 +411,7 @@ TEST_F(MigrationHelperTest, UnreadableFile) {
   Platform platform;
   MigrationHelper helper(
       &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
-      kDefaultChunkSize);
+      kDefaultChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -443,7 +444,7 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   Platform platform;
   MigrationHelper helper(
       &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
-      kDefaultChunkSize);
+      kDefaultChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -552,7 +553,7 @@ TEST_F(MigrationHelperTest, CopyOwnership) {
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   MigrationHelper helper(
       &mock_platform, from_dir_.path(), to_dir_.path(),
-      status_files_dir_.path(), kDefaultChunkSize);
+      status_files_dir_.path(), kDefaultChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -609,7 +610,7 @@ TEST_F(MigrationHelperTest, MigrateNestedDir) {
   Platform platform;
   MigrationHelper helper(
       &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
-      kDefaultChunkSize);
+      kDefaultChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -642,7 +643,7 @@ TEST_F(MigrationHelperTest, MigrateInProgress) {
   Platform platform;
   MigrationHelper helper(
       &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
-      kDefaultChunkSize);
+      kDefaultChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -667,7 +668,7 @@ TEST_F(MigrationHelperTest, MigrateInProgressDuplicateFile) {
   Platform platform;
   MigrationHelper helper(
       &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
-      kDefaultChunkSize);
+      kDefaultChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -692,7 +693,7 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFile) {
   Platform platform;
   MigrationHelper helper(
       &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
-      kDefaultChunkSize);
+      kDefaultChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -736,7 +737,7 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFileDuplicateData) {
   Platform platform;
   MigrationHelper helper(
       &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
-      kDefaultChunkSize);
+      kDefaultChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -777,7 +778,7 @@ TEST_F(MigrationHelperTest, ProgressCallback) {
   Platform platform;
   MigrationHelper helper(
       &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
-      kDefaultChunkSize);
+      kDefaultChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -841,7 +842,7 @@ TEST_F(MigrationHelperTest, NotEnoughFreeSpace) {
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   MigrationHelper helper(
       &mock_platform, from_dir_.path(), to_dir_.path(),
-      status_files_dir_.path(), kDefaultChunkSize);
+      status_files_dir_.path(), kDefaultChunkSize, MigrationType::FULL);
 
   EXPECT_CALL(mock_platform, AmountOfFreeDiskSpace(testing::_))
       .WillOnce(testing::Return(0));
@@ -857,7 +858,7 @@ TEST_F(MigrationHelperTest, ForceSmallerChunkSize) {
   constexpr int kNumJobThreads = 2;
   MigrationHelper helper(
       &mock_platform, from_dir_.path(), to_dir_.path(),
-      status_files_dir_.path(), kMaxChunkSize);
+      status_files_dir_.path(), kMaxChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
   helper.set_num_job_threads_for_testing(kNumJobThreads);
@@ -894,7 +895,7 @@ TEST_F(MigrationHelperTest, SkipInvalidSQLiteFiles) {
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   MigrationHelper helper(
       &mock_platform, from_dir_.path(), to_dir_.path(),
-      status_files_dir_.path(), kDefaultChunkSize);
+      status_files_dir_.path(), kDefaultChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
   const char kCorruptedFilePath[] =
@@ -932,7 +933,7 @@ TEST_F(MigrationHelperTest, AllJobThreadsFailing) {
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   MigrationHelper helper(
       &mock_platform, from_dir_.path(), to_dir_.path(),
-      status_files_dir_.path(), kDefaultChunkSize);
+      status_files_dir_.path(), kDefaultChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -960,7 +961,7 @@ TEST_F(MigrationHelperTest, SkipDuppedGCacheTmpDir) {
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   MigrationHelper helper(
       &mock_platform, from_dir_.path(), to_dir_.path(),
-      status_files_dir_.path(), kDefaultChunkSize);
+      status_files_dir_.path(), kDefaultChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -993,12 +994,92 @@ TEST_F(MigrationHelperTest, SkipDuppedGCacheTmpDir) {
                                         base::Unretained(this))));
 }
 
+TEST_F(MigrationHelperTest, MinimalMigration) {
+  testing::NiceMock<MockPlatform> mock_platform;
+  Platform real_platform;
+  PassThroughPlatformMethods(&mock_platform, &real_platform);
+  MigrationHelper helper(
+      &mock_platform, from_dir_.path(), to_dir_.path(),
+      status_files_dir_.path(), kDefaultChunkSize, MigrationType::MINIMAL);
+  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
+  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+
+  std::vector<FilePath> expect_kept_dirs;
+  std::vector<FilePath> expect_kept_files;
+  std::vector<FilePath> expect_skipped_dirs;
+  std::vector<FilePath> expect_skipped_files;
+
+  // Set up expectations about what is skipped and what is kept.
+  // Random stuff not on the whitelist is skipped.
+  expect_skipped_dirs.emplace_back("user/Application Cache");
+  expect_skipped_dirs.emplace_back("root/android-data");
+  expect_skipped_files.emplace_back("user/Application Cache/subfile");
+  expect_skipped_files.emplace_back("user/skipped_file");
+  expect_skipped_files.emplace_back("root/skipped_file");
+
+  // session_manager/policy in the root section is kept along with children.
+  expect_kept_dirs.emplace_back("root/session_manager/policy");
+  expect_kept_files.emplace_back("root/session_manager/policy/subfile1");
+  expect_kept_files.emplace_back("root/session_manager/policy/subfile2");
+  expect_kept_dirs.emplace_back("user/log");
+  // .pki directory is kept along with contents
+  expect_kept_dirs.emplace_back("user/.pki");
+  expect_kept_dirs.emplace_back("user/.pki/nssdb");
+  expect_kept_files.emplace_back("user/.pki/nssdb/subfile1");
+  expect_kept_files.emplace_back("user/.pki/nssdb/subfile2");
+  // top-level Web Data is kept
+  expect_kept_files.emplace_back("user/Web Data");
+
+  // Create all directories
+  for (const auto& path : expect_kept_dirs)
+    ASSERT_TRUE(real_platform.CreateDirectory(from_dir_.path().Append(path)))
+        << path.value();
+
+  for (const auto& path : expect_skipped_dirs)
+    ASSERT_TRUE(real_platform.CreateDirectory(from_dir_.path().Append(path)))
+        << path.value();
+
+  // Create all files
+  for (const auto& path : expect_kept_files)
+    ASSERT_TRUE(real_platform.TouchFileDurable(from_dir_.path().Append(path)))
+        << path.value();
+
+  for (const auto& path : expect_skipped_files)
+    ASSERT_TRUE(real_platform.TouchFileDurable(from_dir_.path().Append(path)))
+        << path.value();
+
+  // Test the minimal migration.
+  EXPECT_TRUE(helper.Migrate(base::Bind(&MigrationHelperTest::ProgressCaptor,
+                                        base::Unretained(this))));
+
+  // Only the expected files and directories are moved.
+  for (const auto& path : expect_kept_dirs)
+    EXPECT_TRUE(real_platform.DirectoryExists(to_dir_.path().Append(path)))
+        << path.value();
+
+  for (const auto& path : expect_kept_files)
+    EXPECT_TRUE(real_platform.FileExists(to_dir_.path().Append(path)))
+        << path.value();
+
+  for (const auto& path : expect_skipped_dirs)
+    EXPECT_FALSE(real_platform.FileExists(to_dir_.path().Append(path)))
+        << path.value();
+
+  for (const auto& path : expect_skipped_files)
+    EXPECT_FALSE(real_platform.FileExists(to_dir_.path().Append(path)))
+        << path.value();
+
+  // The source is empty.
+  EXPECT_TRUE(base::IsDirectoryEmpty(from_dir_.path()));
+}
+
 TEST_F(MigrationHelperTest, CancelMigrationBeforeStart) {
   testing::NiceMock<MockPlatform> mock_platform;
   Platform real_platform;
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   MigrationHelper helper(&mock_platform, from_dir_.path(), to_dir_.path(),
-                         status_files_dir_.path(), kDefaultChunkSize);
+                         status_files_dir_.path(), kDefaultChunkSize,
+                         MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -1013,7 +1094,8 @@ TEST_F(MigrationHelperTest, CancelMigrationOnAnotherThread) {
   Platform real_platform;
   PassThroughPlatformMethods(&mock_platform, &real_platform);
   MigrationHelper helper(&mock_platform, from_dir_.path(), to_dir_.path(),
-                         status_files_dir_.path(), kDefaultChunkSize);
+                         status_files_dir_.path(), kDefaultChunkSize,
+                         MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -1060,7 +1142,7 @@ TEST_P(DataMigrationTest, CopyFileData) {
   Platform platform;
   MigrationHelper helper(
       &platform, from_dir_.path(), to_dir_.path(), status_files_dir_.path(),
-      kDefaultChunkSize);
+      kDefaultChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -1104,7 +1186,8 @@ class MigrationHelperJobListTest
 TEST_P(MigrationHelperJobListTest, ProcessJobs) {
   Platform platform;
   MigrationHelper helper(&platform, from_dir_.path(), to_dir_.path(),
-                         status_files_dir_.path(), kDefaultChunkSize);
+                         status_files_dir_.path(), kDefaultChunkSize,
+                         MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
   helper.set_max_job_list_size_for_testing(GetParam());

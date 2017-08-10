@@ -264,6 +264,7 @@ namespace switches {
   static const char kEcryptfsSwitch[] = "ecryptfs";
   static const char kToMigrateFromEcryptfsSwitch[] = "to_migrate_from_ecryptfs";
   static const char kHiddenMount[] = "hidden_mount";
+  static const char kMinimalMigration[] = "minimal_migration";
 }  // namespace switches
 
 #define DBUS_METHOD(method_name) \
@@ -2671,10 +2672,18 @@ int main(int argc, char **argv) {
     if (!account_ary.get())
       return -1;
 
+    cryptohome::MigrateToDircryptoRequest request;
+    request.set_minimal_migration(cl->HasSwitch(switches::kMinimalMigration));
+
+    brillo::glib::ScopedArray request_ary(GArrayFromProtoBuf(request));
+    if (!request_ary.get())
+      return -1;
+
     brillo::glib::ScopedError error;
-    if (!org_chromium_CryptohomeInterface_migrate_to_dircrypto(
+    if (!org_chromium_CryptohomeInterface_migrate_to_dircrypto_ex(
             proxy.gproxy(),
             account_ary.get(),
+            request_ary.get(),
             &brillo::Resetter(&error).lvalue())) {
       printf("MigrateToDircrypto call failed: %s\n", error->message);
       return -1;
