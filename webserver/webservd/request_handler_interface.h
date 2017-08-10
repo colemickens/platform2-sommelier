@@ -30,7 +30,7 @@ class RequestHandlerInterface {
   RequestHandlerInterface() = default;
   virtual ~RequestHandlerInterface() = default;
 
-  virtual void HandleRequest(Request* request) = 0;
+  virtual void HandleRequest(Request* request, const std::string& src) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(RequestHandlerInterface);

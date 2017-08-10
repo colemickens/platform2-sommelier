@@ -36,7 +36,7 @@ class DBusRequestHandler final : public RequestHandlerInterface {
 
   // Called to process an incoming HTTP request this handler is subscribed
   // to handle.
-  void HandleRequest(Request* request) override;
+  void HandleRequest(Request* request, const std::string& src) override;
 
  private:
   Server* server_{nullptr};

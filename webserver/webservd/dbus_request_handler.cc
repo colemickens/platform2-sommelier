@@ -50,10 +50,12 @@ DBusRequestHandler::DBusRequestHandler(Server* server,
       handler_proxy_{handler_proxy} {
 }
 
-void DBusRequestHandler::HandleRequest(Request* request) {
+void DBusRequestHandler::HandleRequest(Request* request,
+                                       const std::string& src) {
   std::vector<std::tuple<std::string, std::string>> headers;
   for (const auto& pair : request->GetHeaders())
     headers.emplace_back(pair.first, pair.second);
+  headers.emplace_back("Source-Host", src);
 
   std::vector<std::tuple<int32_t, std::string, std::string, std::string,
                          std::string>> files;

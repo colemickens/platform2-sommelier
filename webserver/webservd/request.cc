@@ -14,7 +14,9 @@
 
 #include "webservd/request.h"
 
+#include <arpa/inet.h>
 #include <microhttpd.h>
+#include <netinet/in.h>
 
 #include <base/bind.h>
 #include <base/files/file.h>
@@ -251,8 +253,16 @@ void Request::ForwardRequestToHandler() {
     protocol_handler_->AddRequest(this);
     auto p = protocol_handler_->request_handlers_.find(request_handler_id_);
     CHECK(p != protocol_handler_->request_handlers_.end());
+    const MHD_ConnectionInfo* info = MHD_get_connection_info(
+        connection_, MHD_CONNECTION_INFO_CLIENT_ADDRESS);
+    struct sockaddr_in6 *sock_addr;
+    char src[INET6_ADDRSTRLEN] = {};
+    if (info) {
+      sock_addr = reinterpret_cast<struct sockaddr_in6 *>(info->client_addr);
+      inet_ntop(AF_INET6,&sock_addr->sin6_addr, src, INET6_ADDRSTRLEN);
+    }
     // Send the request over D-Bus and await the response.
-    p->second.handler->HandleRequest(this);
+    p->second.handler->HandleRequest(this, src);
   } else {
     // There was no handler found when request was made, respond with
     // 404 Page Not Found.
