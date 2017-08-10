@@ -127,10 +127,17 @@ bool TestPattern::GenerateColorBarFadeToGray() {
         color_bar_height;
     for (size_t w = 0; w < resolution_.width; w++) {
       int index = (w / color_bar_width) % color_bar.size();
-      *data++ = std::get<2>(color_bar[index]) * gray_factor;  // B
-      *data++ = std::get<1>(color_bar[index]) * gray_factor;  // G
-      *data++ = std::get<0>(color_bar[index]) * gray_factor;  // R
-      *data++ = 0x00;                                         // A
+      auto get_fade_color = [&](uint8_t base_color) {
+        uint8_t color = base_color * gray_factor;
+        if ((w / (color_bar_width / 2)) % 2) {
+          color = (color & 0xF0) | (color >> 4);
+        }
+        return color;
+      };
+      *data++ = get_fade_color(std::get<2>(color_bar[index]));  // B
+      *data++ = get_fade_color(std::get<1>(color_bar[index]));  // G
+      *data++ = get_fade_color(std::get<0>(color_bar[index]));  // R
+      *data++ = 0x00;                                           // A
     }
   }
 
