@@ -78,7 +78,6 @@ class ScopeLogger {
   // Returns a singleton of this class.
   static ScopeLogger* GetInstance();
 
-  ScopeLogger();
   ~ScopeLogger();
 
   // Returns true if logging is enabled for |scope| and |verbose_level|, i.e.
@@ -127,6 +126,8 @@ class ScopeLogger {
   FRIEND_TEST(ScopeLoggerTest, GetEnabledScopeNames);
   FRIEND_TEST(ScopeLoggerTest, SetScopeEnabled);
   FRIEND_TEST(ScopeLoggerTest, SetVerboseLevel);
+
+  ScopeLogger();
 
   // Disables logging for all scopes.
   void DisableAllScopes();
