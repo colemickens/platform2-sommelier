@@ -271,47 +271,47 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
       return &inactive_bearer_properties_;
     }
 
-    virtual mm1::ModemLocationProxyInterface* CreateMM1ModemLocationProxy(
+    mm1::ModemLocationProxyInterface* CreateMM1ModemLocationProxy(
         const std::string& /*path*/,
-        const std::string& /*service*/) {
+        const std::string& /*service*/) override {
       return test_->modem_location_proxy_.release();
     }
 
-    virtual mm1::ModemModem3gppProxyInterface* CreateMM1ModemModem3gppProxy(
+    mm1::ModemModem3gppProxyInterface* CreateMM1ModemModem3gppProxy(
         const std::string& /*path*/,
-        const std::string& /*service*/) {
+        const std::string& /*service*/) override {
       return test_->modem_3gpp_proxy_.release();
     }
 
-    virtual mm1::ModemModemCdmaProxyInterface* CreateMM1ModemModemCdmaProxy(
+    mm1::ModemModemCdmaProxyInterface* CreateMM1ModemModemCdmaProxy(
         const std::string& /*path*/,
-        const std::string& /*service*/) {
+        const std::string& /*service*/) override {
       return test_->modem_cdma_proxy_.release();
     }
 
-    virtual mm1::ModemProxyInterface* CreateMM1ModemProxy(
+    mm1::ModemProxyInterface* CreateMM1ModemProxy(
         const std::string& /*path*/,
-        const std::string& /*service*/) {
+        const std::string& /*service*/) override {
       return test_->modem_proxy_.release();
     }
 
-    virtual mm1::ModemSimpleProxyInterface* CreateMM1ModemSimpleProxy(
+    mm1::ModemSimpleProxyInterface* CreateMM1ModemSimpleProxy(
         const std::string& /*path*/,
-        const std::string& /*service*/) {
+        const std::string& /*service*/) override {
       return test_->modem_simple_proxy_.release();
     }
 
-    virtual mm1::SimProxyInterface* CreateSimProxy(
+    mm1::SimProxyInterface* CreateSimProxy(
         const std::string& /*path*/,
-        const std::string& /*service*/) {
+        const std::string& /*service*/) override {
       mm1::MockSimProxy* sim_proxy = test_->sim_proxy_.release();
       test_->sim_proxy_.reset(new mm1::MockSimProxy());
       return sim_proxy;
     }
 
-    virtual DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
+    DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
         const std::string& path,
-        const std::string& /*service*/) {
+        const std::string& /*service*/) override {
       MockDBusPropertiesProxy* properties_proxy =
           test_->properties_proxy_.release();
       if (path.find(kActiveBearerPathPrefix) != std::string::npos) {

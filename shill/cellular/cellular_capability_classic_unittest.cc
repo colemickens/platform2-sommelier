@@ -168,27 +168,27 @@ class CellularCapabilityTest : public testing::Test {
    public:
     explicit TestControl(CellularCapabilityTest* test) : test_(test) {}
 
-    virtual ModemProxyInterface* CreateModemProxy(
+    ModemProxyInterface* CreateModemProxy(
         const string& /*path*/,
-        const string& /*service*/) {
+        const string& /*service*/) override {
       return test_->proxy_.release();
     }
 
-    virtual ModemSimpleProxyInterface* CreateModemSimpleProxy(
+    ModemSimpleProxyInterface* CreateModemSimpleProxy(
         const string& /*path*/,
-        const string& /*service*/) {
+        const string& /*service*/) override {
       return test_->simple_proxy_.release();
     }
 
-    virtual ModemCDMAProxyInterface* CreateModemCDMAProxy(
+    ModemCDMAProxyInterface* CreateModemCDMAProxy(
         const string& /*path*/,
-        const string& /*service*/) {
+        const string& /*service*/) override {
       return test_->cdma_proxy_.release();
     }
 
-    virtual ModemGSMCardProxyInterface* CreateModemGSMCardProxy(
+    ModemGSMCardProxyInterface* CreateModemGSMCardProxy(
         const string& /*path*/,
-        const string& /*service*/) {
+        const string& /*service*/) override {
       // TODO(benchan): This code conditionally returns a nullptr to avoid
       // CellularCapabilityGSM::InitProperties (and thus
       // CellularCapabilityGSM::GetIMSI) from being called during the
@@ -197,15 +197,15 @@ class CellularCapabilityTest : public testing::Test {
           test_->gsm_card_proxy_.release() : nullptr;
     }
 
-    virtual ModemGSMNetworkProxyInterface* CreateModemGSMNetworkProxy(
+    ModemGSMNetworkProxyInterface* CreateModemGSMNetworkProxy(
         const string& /*path*/,
-        const string& /*service*/) {
+        const string& /*service*/) override {
       return test_->gsm_network_proxy_.release();
     }
 
-    virtual ModemGobiProxyInterface* CreateModemGobiProxy(
+    ModemGobiProxyInterface* CreateModemGobiProxy(
         const string& /*path*/,
-        const string& /*service*/) {
+        const string& /*service*/) override {
       return test_->gobi_proxy_.release();
     }
 

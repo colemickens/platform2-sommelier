@@ -144,39 +144,39 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
 
     // TODO(armansito): Some of these methods won't be necessary after 3GPP
     // gets refactored out of CellularCapabilityUniversal.
-    virtual mm1::ModemModem3gppProxyInterface* CreateMM1ModemModem3gppProxy(
+    mm1::ModemModem3gppProxyInterface* CreateMM1ModemModem3gppProxy(
         const std::string& /*path*/,
-        const std::string& /*service*/) {
+        const std::string& /*service*/) override {
       return test_->modem_3gpp_proxy_.release();
     }
 
-    virtual mm1::ModemModemCdmaProxyInterface* CreateMM1ModemModemCdmaProxy(
+    mm1::ModemModemCdmaProxyInterface* CreateMM1ModemModemCdmaProxy(
         const std::string& /*path*/,
-        const std::string& /*service*/) {
+        const std::string& /*service*/) override {
       return test_->modem_cdma_proxy_.release();
     }
 
-    virtual mm1::ModemProxyInterface* CreateMM1ModemProxy(
+    mm1::ModemProxyInterface* CreateMM1ModemProxy(
         const std::string& /*path*/,
-        const std::string& /*service*/) {
+        const std::string& /*service*/) override {
       return test_->modem_proxy_.release();
     }
 
-    virtual mm1::ModemSimpleProxyInterface* CreateMM1ModemSimpleProxy(
+    mm1::ModemSimpleProxyInterface* CreateMM1ModemSimpleProxy(
         const std::string& /*path*/,
-        const std::string& /*service*/) {
+        const std::string& /*service*/) override {
       return test_->modem_simple_proxy_.release();
     }
 
-    virtual mm1::SimProxyInterface* CreateSimProxy(
+    mm1::SimProxyInterface* CreateSimProxy(
         const std::string& /*path*/,
-        const std::string& /*service*/) {
+        const std::string& /*service*/) override {
       return test_->sim_proxy_.release();
     }
 
-    virtual DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
+    DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
         const std::string& /*path*/,
-        const std::string& /*service*/) {
+        const std::string& /*service*/) override {
       return test_->properties_proxy_.release();
     }
 

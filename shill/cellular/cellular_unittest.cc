@@ -478,37 +478,37 @@ class CellularTest : public testing::Test {
    public:
     explicit TestControl(CellularTest* test) : test_(test) {}
 
-    virtual DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
+    DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
         const std::string& path,
-        const std::string& service) {
+        const std::string& service) override {
       CHECK(test_->dbus_properties_proxy_);
       return test_->dbus_properties_proxy_.release();
     }
 
-    virtual ModemProxyInterface* CreateModemProxy(
+    ModemProxyInterface* CreateModemProxy(
         const string& /*path*/,
-        const string& /*service*/) {
+        const string& /*service*/) override {
       CHECK(test_->proxy_);
       return test_->proxy_.release();
     }
 
-    virtual ModemSimpleProxyInterface* CreateModemSimpleProxy(
+    ModemSimpleProxyInterface* CreateModemSimpleProxy(
         const string& /*path*/,
-        const string& /*service*/) {
+        const string& /*service*/) override {
       CHECK(test_->simple_proxy_);
       return test_->simple_proxy_.release();
     }
 
-    virtual ModemCDMAProxyInterface* CreateModemCDMAProxy(
+    ModemCDMAProxyInterface* CreateModemCDMAProxy(
         const string& /*path*/,
-        const string& /*service*/) {
+        const string& /*service*/) override {
       CHECK(test_->cdma_proxy_);
       return test_->cdma_proxy_.release();
     }
 
-    virtual ModemGSMCardProxyInterface* CreateModemGSMCardProxy(
+    ModemGSMCardProxyInterface* CreateModemGSMCardProxy(
         const string& /*path*/,
-        const string& /*service*/) {
+        const string& /*service*/) override {
       // TODO(benchan): This code conditionally returns a nullptr to avoid
       // CellularCapabilityGSM::InitProperties (and thus
       // CellularCapabilityGSM::GetIMSI) from being called during the
@@ -519,37 +519,37 @@ class CellularTest : public testing::Test {
           test_->gsm_card_proxy_.release() : nullptr;
     }
 
-    virtual ModemGSMNetworkProxyInterface* CreateModemGSMNetworkProxy(
+    ModemGSMNetworkProxyInterface* CreateModemGSMNetworkProxy(
         const string& /*path*/,
-        const string& /*service*/) {
+        const string& /*service*/) override {
       CHECK(test_->gsm_network_proxy_);
       return test_->gsm_network_proxy_.release();
     }
 
-    virtual mm1::ModemLocationProxyInterface* CreateMM1ModemLocationProxy(
+    mm1::ModemLocationProxyInterface* CreateMM1ModemLocationProxy(
         const std::string& path,
-        const std::string& service) {
+        const std::string& service) override {
       CHECK(test_->mm1_modem_location_proxy_);
       return test_->mm1_modem_location_proxy_.release();
     }
 
-    virtual mm1::ModemModem3gppProxyInterface* CreateMM1ModemModem3gppProxy(
+    mm1::ModemModem3gppProxyInterface* CreateMM1ModemModem3gppProxy(
         const std::string& path,
-        const std::string& service) {
+        const std::string& service) override {
       CHECK(test_->mm1_modem_3gpp_proxy_);
       return test_->mm1_modem_3gpp_proxy_.release();
     }
 
-    virtual mm1::ModemProxyInterface* CreateMM1ModemProxy(
+    mm1::ModemProxyInterface* CreateMM1ModemProxy(
       const std::string& path,
-      const std::string& service) {
+      const std::string& service) override {
       CHECK(test_->mm1_proxy_);
       return test_->mm1_proxy_.release();
     }
 
-    virtual mm1::ModemSimpleProxyInterface* CreateMM1ModemSimpleProxy(
+    mm1::ModemSimpleProxyInterface* CreateMM1ModemSimpleProxy(
         const string& /*path*/,
-        const string& /*service*/) {
+        const string& /*service*/) override {
       CHECK(test_->mm1_simple_proxy_);
       return test_->mm1_simple_proxy_.release();
     }

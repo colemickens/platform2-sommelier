@@ -189,21 +189,21 @@ class CellularCapabilityGSMTest : public testing::Test {
    public:
     explicit TestControl(CellularCapabilityGSMTest* test) : test_(test) {}
 
-    virtual ModemProxyInterface* CreateModemProxy(
+    ModemProxyInterface* CreateModemProxy(
         const string& /*path*/,
-        const string& /*service*/) {
+        const string& /*service*/) override {
       return test_->proxy_.release();
     }
 
-    virtual ModemSimpleProxyInterface* CreateModemSimpleProxy(
+    ModemSimpleProxyInterface* CreateModemSimpleProxy(
         const string& /*path*/,
-        const string& /*service*/) {
+        const string& /*service*/) override {
       return test_->simple_proxy_.release();
     }
 
-    virtual ModemGSMCardProxyInterface* CreateModemGSMCardProxy(
+    ModemGSMCardProxyInterface* CreateModemGSMCardProxy(
         const string& /*path*/,
-        const string& /*service*/) {
+        const string& /*service*/) override {
       // TODO(benchan): This code conditionally returns a nullptr to avoid
       // CellularCapabilityGSM::InitProperties (and thus
       // CellularCapabilityGSM::GetIMSI) from being called during the
@@ -212,9 +212,9 @@ class CellularCapabilityGSMTest : public testing::Test {
           test_->card_proxy_.release() : nullptr;
     }
 
-    virtual ModemGSMNetworkProxyInterface* CreateModemGSMNetworkProxy(
+    ModemGSMNetworkProxyInterface* CreateModemGSMNetworkProxy(
         const string& /*path*/,
-        const string& /*service*/) {
+        const string& /*service*/) override {
       return test_->network_proxy_.release();
     }
 
