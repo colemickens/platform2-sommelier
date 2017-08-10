@@ -23,6 +23,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/control_interface.h"
+#include "shill/dhcp/dhcp_proxy_interface.h"
 #include "shill/firewall_proxy_interface.h"
 #include "shill/power_manager_proxy_interface.h"
 #include "shill/upstart/upstart_proxy_interface.h"
@@ -90,7 +91,7 @@ class NiceMockControl : public ControlInterface {
   MOCK_METHOD1(CreateDHCPCDListener,
                DHCPCDListenerInterface*(DHCPProvider* provider));
   MOCK_METHOD1(CreateDHCPProxy,
-               DHCPProxyInterface*(const std::string& service));
+               std::unique_ptr<DHCPProxyInterface>(const std::string& service));
 
   MOCK_METHOD0(CreateUpstartProxy, std::unique_ptr<UpstartProxyInterface>());
 

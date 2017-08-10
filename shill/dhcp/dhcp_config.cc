@@ -143,7 +143,7 @@ bool DHCPConfig::ReleaseIP(ReleaseReason reason) {
 void DHCPConfig::InitProxy(const string& service) {
   if (!proxy_.get()) {
     LOG(INFO) << "Init DHCP Proxy: " << device_name() << " at " << service;
-    proxy_.reset(control_interface_->CreateDHCPProxy(service));
+    proxy_ = control_interface_->CreateDHCPProxy(service);
   }
 }
 

@@ -246,9 +246,9 @@ DHCPCDListenerInterface* ChromeosDBusControl::CreateDHCPCDListener(
   return new ChromeosDHCPCDListener(proxy_bus_, dispatcher_, provider);
 }
 
-DHCPProxyInterface* ChromeosDBusControl::CreateDHCPProxy(
+std::unique_ptr<DHCPProxyInterface> ChromeosDBusControl::CreateDHCPProxy(
     const string& service) {
-  return new ChromeosDHCPCDProxy(proxy_bus_, service);
+  return base::MakeUnique<ChromeosDHCPCDProxy>(proxy_bus_, service);
 }
 
 std::unique_ptr<UpstartProxyInterface>

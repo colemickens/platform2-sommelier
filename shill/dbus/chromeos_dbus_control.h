@@ -87,7 +87,8 @@ class ChromeosDBusControl : public ControlInterface {
   DHCPCDListenerInterface* CreateDHCPCDListener(
       DHCPProvider* provider) override;
 
-  DHCPProxyInterface* CreateDHCPProxy(const std::string& service) override;
+  std::unique_ptr<DHCPProxyInterface> CreateDHCPProxy(
+      const std::string& service) override;
 
   std::unique_ptr<FirewallProxyInterface> CreateFirewallProxy() override;
 

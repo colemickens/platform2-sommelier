@@ -146,7 +146,8 @@ class ControlInterface {
   virtual DHCPCDListenerInterface* CreateDHCPCDListener(
       DHCPProvider* provider) = 0;
 
-  virtual DHCPProxyInterface* CreateDHCPProxy(const std::string& service) = 0;
+  virtual std::unique_ptr<DHCPProxyInterface> CreateDHCPProxy(
+      const std::string& service) = 0;
 
   virtual std::unique_ptr<FirewallProxyInterface> CreateFirewallProxy() = 0;
 

@@ -40,6 +40,7 @@ using std::string;
 using std::unique_ptr;
 using testing::_;
 using testing::AnyNumber;
+using testing::ByMove;
 using testing::ContainsRegex;
 using testing::InvokeWithoutArgs;
 using testing::Mock;
@@ -133,7 +134,7 @@ TEST_F(DHCPConfigTest, InitProxy) {
   EXPECT_TRUE(proxy_.get());
   EXPECT_FALSE(config_->proxy_.get());
   EXPECT_CALL(control_, CreateDHCPProxy(kService))
-      .WillOnce(ReturnAndReleasePointee(&proxy_));
+      .WillOnce(Return(ByMove(std::move(proxy_))));
   config_->InitProxy(kService);
   EXPECT_FALSE(proxy_.get());
   EXPECT_TRUE(config_->proxy_.get());
