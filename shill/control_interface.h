@@ -143,7 +143,7 @@ class ControlInterface {
 
   virtual std::unique_ptr<UpstartProxyInterface> CreateUpstartProxy() = 0;
 
-  virtual DHCPCDListenerInterface* CreateDHCPCDListener(
+  virtual std::unique_ptr<DHCPCDListenerInterface> CreateDHCPCDListener(
       DHCPProvider* provider) = 0;
 
   virtual std::unique_ptr<DHCPProxyInterface> CreateDHCPProxy(

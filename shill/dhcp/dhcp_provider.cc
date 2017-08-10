@@ -77,7 +77,7 @@ void DHCPProvider::Init(ControlInterface* control_interface,
                         EventDispatcher* dispatcher,
                         Metrics* metrics) {
   SLOG(this, 2) << __func__;
-  listener_.reset(control_interface->CreateDHCPCDListener(this));
+  listener_ = control_interface->CreateDHCPCDListener(this);
   control_interface_ = control_interface;
   dispatcher_ = dispatcher;
   metrics_ = metrics;

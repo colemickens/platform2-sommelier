@@ -24,6 +24,7 @@
 
 #include "shill/control_interface.h"
 #include "shill/dhcp/dhcp_proxy_interface.h"
+#include "shill/dhcp/dhcpcd_listener_interface.h"
 #include "shill/firewall_proxy_interface.h"
 #include "shill/power_manager_proxy_interface.h"
 #include "shill/upstart/upstart_proxy_interface.h"
@@ -88,8 +89,9 @@ class MockControl : public ControlInterface {
                SupplicantBSSProxyInterface*(WiFiEndpoint* wifi_endpoint,
                                             const std::string& object_path));
 #endif  // DISABLE_WIFI
-  MOCK_METHOD1(CreateDHCPCDListener,
-               DHCPCDListenerInterface*(DHCPProvider* provider));
+  MOCK_METHOD1(
+      CreateDHCPCDListener,
+      std::unique_ptr<DHCPCDListenerInterface>(DHCPProvider* provider));
   MOCK_METHOD1(CreateDHCPProxy,
                std::unique_ptr<DHCPProxyInterface>(const std::string& service));
 
