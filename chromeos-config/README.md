@@ -115,6 +115,14 @@ properties.
                 that we should re-sign and generate a read-write firmware image.
                 This replaces the `CROS_FIRMWARE_BUILD_MAIN_RW_IMAGE` ebuild
                 variable.
+            +   `shares`(optional): Phandle pointing to the firmware to use for
+                this model. This is a list with a single phandle, pointing to
+                the firmware node of another model. The presense of this
+                property indicates that this model does not have separate
+                firmware although it may have its own keyset. This property is
+                used to share firmware across multiple models where hardware
+                differences are small and we can detect the model from board
+                ID pins.
         *   `powerd_prefs` (optional): Name of a subdirectory under the powerd
             model_specific prefs directory where model-specific prefs files are
             stored.
@@ -133,7 +141,7 @@ chromeos {
         reef {
             powerd_prefs = "reef";
             wallpaper = "seaside_life";
-            firmware {
+            reef_firmware: firmware {
                 bcs-overlay = "overlay-reef-private";
                 main-image = "bcs://Reef.9042.50.0.tbz2";
                 ec-image = "bcs://Reef-EC.9042.43.0.tbz2";
@@ -162,6 +170,14 @@ chromeos {
                 bcs-overlay = "overlay-snappy-private";
                 main-image = "bcs://Snappy.9042.43.0.tbz2";
                 ec-image = "bcs://Snappy_EC.9042.43.0.tbz2";
+            };
+        };
+
+        basking {
+            powerd_prefs = "reef";
+            wallpaper = "coffee";
+            firmware {
+                shares = <&reef_firmware>;
             };
         };
     };
