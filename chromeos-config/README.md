@@ -84,14 +84,17 @@ properties.
                 firmware. On dogfood devices where RO firmware can be updated,
                 we perform a full firmware update if the existing firmware on
                 the device is older than this version.
+                *Deprecation in progress. See crbug.com/70541.*
             *   `stable-ec-version` (optional): Version of the stable EC
                 firmware. On dogfood devices where RO EC firmware can be
                 updated, we perform a full firmware update if the existing EC
                 firmware on the device is older than  this version.
+                *Deprecation in progress. See crbug.com/70541.*
             *   `stable-pd-version` (optional): Version of the stable PD
                 firmware. On dogfood devices where RO PD firmware can be
                 updated, we perform a full firmware update if the existing PD
                 firmware on the device is older than this version.
+                *Deprecation in progress. See crbug.com/70541.*
             *   `extra` (optional): A list of extra files or directories needed
                 to update firmware, each being a string filename. Any filename
                 is supported. If it starts with `bcs://` then it is read from
