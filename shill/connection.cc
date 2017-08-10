@@ -292,7 +292,7 @@ void Connection::UpdateGatewayMetric(const IPConfigRefPtr& config) {
 
 bool Connection::SetupIptableEntries() {
   if (!firewall_proxy_) {
-    firewall_proxy_.reset(control_interface_->CreateFirewallProxy());
+    firewall_proxy_ = control_interface_->CreateFirewallProxy();
   }
 
   std::vector<std::string> user_names;

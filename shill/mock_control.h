@@ -23,6 +23,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/control_interface.h"
+#include "shill/firewall_proxy_interface.h"
 #include "shill/power_manager_proxy_interface.h"
 
 namespace shill {
@@ -92,7 +93,7 @@ class MockControl : public ControlInterface {
 
   MOCK_METHOD0(CreateUpstartProxy, UpstartProxyInterface*());
 
-  MOCK_METHOD0(CreateFirewallProxy, FirewallProxyInterface*());
+  MOCK_METHOD0(CreateFirewallProxy, std::unique_ptr<FirewallProxyInterface>());
 
 #if !defined(DISABLE_CELLULAR)
   MOCK_METHOD2(CreateDBusPropertiesProxy,

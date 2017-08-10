@@ -255,8 +255,9 @@ UpstartProxyInterface* ChromeosDBusControl::CreateUpstartProxy() {
   return new ChromeosUpstartProxy(proxy_bus_);
 }
 
-FirewallProxyInterface* ChromeosDBusControl::CreateFirewallProxy() {
-  return new ChromeosPermissionBrokerProxy(proxy_bus_);
+std::unique_ptr<FirewallProxyInterface>
+ChromeosDBusControl::CreateFirewallProxy() {
+  return base::MakeUnique<ChromeosPermissionBrokerProxy>(proxy_bus_);
 }
 
 #if !defined(DISABLE_CELLULAR)

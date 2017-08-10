@@ -89,7 +89,7 @@ class ChromeosDBusControl : public ControlInterface {
 
   DHCPProxyInterface* CreateDHCPProxy(const std::string& service) override;
 
-  FirewallProxyInterface* CreateFirewallProxy() override;
+  std::unique_ptr<FirewallProxyInterface> CreateFirewallProxy() override;
 
 #if !defined(DISABLE_CELLULAR)
   DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
