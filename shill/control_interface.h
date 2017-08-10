@@ -141,7 +141,7 @@ class ControlInterface {
       const std::string& object_path) = 0;
 #endif  // DISABLE_WIFI
 
-  virtual UpstartProxyInterface* CreateUpstartProxy() = 0;
+  virtual std::unique_ptr<UpstartProxyInterface> CreateUpstartProxy() = 0;
 
   virtual DHCPCDListenerInterface* CreateDHCPCDListener(
       DHCPProvider* provider) = 0;

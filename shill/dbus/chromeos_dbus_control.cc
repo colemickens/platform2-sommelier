@@ -251,8 +251,9 @@ DHCPProxyInterface* ChromeosDBusControl::CreateDHCPProxy(
   return new ChromeosDHCPCDProxy(proxy_bus_, service);
 }
 
-UpstartProxyInterface* ChromeosDBusControl::CreateUpstartProxy() {
-  return new ChromeosUpstartProxy(proxy_bus_);
+std::unique_ptr<UpstartProxyInterface>
+ChromeosDBusControl::CreateUpstartProxy() {
+  return base::MakeUnique<ChromeosUpstartProxy>(proxy_bus_);
 }
 
 std::unique_ptr<FirewallProxyInterface>

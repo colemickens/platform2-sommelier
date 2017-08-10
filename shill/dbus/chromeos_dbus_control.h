@@ -82,7 +82,7 @@ class ChromeosDBusControl : public ControlInterface {
       const std::string& object_path) override;
 #endif  // DISABLE_WIFI
 
-  UpstartProxyInterface* CreateUpstartProxy() override;
+  std::unique_ptr<UpstartProxyInterface> CreateUpstartProxy() override;
 
   DHCPCDListenerInterface* CreateDHCPCDListener(
       DHCPProvider* provider) override;

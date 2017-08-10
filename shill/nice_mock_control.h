@@ -25,6 +25,7 @@
 #include "shill/control_interface.h"
 #include "shill/firewall_proxy_interface.h"
 #include "shill/power_manager_proxy_interface.h"
+#include "shill/upstart/upstart_proxy_interface.h"
 
 namespace shill {
 // An implementation of the Shill RPC-channel-interface-factory interface that
@@ -91,7 +92,7 @@ class NiceMockControl : public ControlInterface {
   MOCK_METHOD1(CreateDHCPProxy,
                DHCPProxyInterface*(const std::string& service));
 
-  MOCK_METHOD0(CreateUpstartProxy, UpstartProxyInterface*());
+  MOCK_METHOD0(CreateUpstartProxy, std::unique_ptr<UpstartProxyInterface>());
 
   MOCK_METHOD0(CreateFirewallProxy, std::unique_ptr<FirewallProxyInterface>());
 

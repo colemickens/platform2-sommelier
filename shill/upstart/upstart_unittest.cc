@@ -37,10 +37,9 @@ class FakeControl : public MockControl {
       : upstart_proxy_raw_(new MockUpstartProxy),
         upstart_proxy_(upstart_proxy_raw_) {}
 
-  UpstartProxyInterface* CreateUpstartProxy() override {
+  std::unique_ptr<UpstartProxyInterface> CreateUpstartProxy() override {
     CHECK(upstart_proxy_);
-    // Passes ownership.
-    return upstart_proxy_.release();
+    return std::move(upstart_proxy_);
   }
 
   // Can not guarantee that the returned object is alive.
