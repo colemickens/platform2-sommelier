@@ -18,6 +18,7 @@
 #define SHILL_CONTROL_INTERFACE_H_
 
 #include <algorithm>
+#include <memory>
 #include <string>
 
 #include <base/callback.h>
@@ -94,16 +95,21 @@ class ControlInterface {
   virtual ~ControlInterface() {}
   virtual void RegisterManagerObject(
       Manager* manager, const base::Closure& registration_done_callback) = 0;
-  virtual DeviceAdaptorInterface* CreateDeviceAdaptor(Device* device) = 0;
-  virtual IPConfigAdaptorInterface* CreateIPConfigAdaptor(
+  virtual std::unique_ptr<DeviceAdaptorInterface> CreateDeviceAdaptor(
+      Device* device) = 0;
+  virtual std::unique_ptr<IPConfigAdaptorInterface> CreateIPConfigAdaptor(
       IPConfig* ipconfig) = 0;
-  virtual ManagerAdaptorInterface* CreateManagerAdaptor(Manager* manager) = 0;
-  virtual ProfileAdaptorInterface* CreateProfileAdaptor(Profile* profile) = 0;
-  virtual ServiceAdaptorInterface* CreateServiceAdaptor(Service* service) = 0;
-  virtual RPCTaskAdaptorInterface* CreateRPCTaskAdaptor(RPCTask* task) = 0;
+  virtual std::unique_ptr<ManagerAdaptorInterface> CreateManagerAdaptor(
+      Manager* manager) = 0;
+  virtual std::unique_ptr<ProfileAdaptorInterface> CreateProfileAdaptor(
+      Profile* profile) = 0;
+  virtual std::unique_ptr<ServiceAdaptorInterface> CreateServiceAdaptor(
+      Service* service) = 0;
+  virtual std::unique_ptr<RPCTaskAdaptorInterface> CreateRPCTaskAdaptor(
+      RPCTask* task) = 0;
 #ifndef DISABLE_VPN
-  virtual ThirdPartyVpnAdaptorInterface* CreateThirdPartyVpnAdaptor(
-      ThirdPartyVpnDriver* driver) = 0;
+  virtual std::unique_ptr<ThirdPartyVpnAdaptorInterface>
+  CreateThirdPartyVpnAdaptor(ThirdPartyVpnDriver* driver) = 0;
 #endif
 
   virtual const std::string& NullRPCIdentifier() = 0;

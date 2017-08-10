@@ -36,14 +36,20 @@ class ChromeosDBusControl : public ControlInterface {
   void RegisterManagerObject(
       Manager* manager,
       const base::Closure& registration_done_callback) override;
-  DeviceAdaptorInterface* CreateDeviceAdaptor(Device* device) override;
-  IPConfigAdaptorInterface* CreateIPConfigAdaptor(IPConfig* ipconfig) override;
-  ManagerAdaptorInterface* CreateManagerAdaptor(Manager* manager) override;
-  ProfileAdaptorInterface* CreateProfileAdaptor(Profile* profile) override;
-  RPCTaskAdaptorInterface* CreateRPCTaskAdaptor(RPCTask* task) override;
-  ServiceAdaptorInterface* CreateServiceAdaptor(Service* service) override;
+  std::unique_ptr<DeviceAdaptorInterface> CreateDeviceAdaptor(
+      Device* device) override;
+  std::unique_ptr<IPConfigAdaptorInterface> CreateIPConfigAdaptor(
+      IPConfig* ipconfig) override;
+  std::unique_ptr<ManagerAdaptorInterface> CreateManagerAdaptor(
+      Manager* manager) override;
+  std::unique_ptr<ProfileAdaptorInterface> CreateProfileAdaptor(
+      Profile* profile) override;
+  std::unique_ptr<RPCTaskAdaptorInterface> CreateRPCTaskAdaptor(
+      RPCTask* task) override;
+  std::unique_ptr<ServiceAdaptorInterface> CreateServiceAdaptor(
+      Service* service) override;
 #ifndef DISABLE_VPN
-  ThirdPartyVpnAdaptorInterface* CreateThirdPartyVpnAdaptor(
+  std::unique_ptr<ThirdPartyVpnAdaptorInterface> CreateThirdPartyVpnAdaptor(
       ThirdPartyVpnDriver* driver) override;
 #endif
 
@@ -164,7 +170,7 @@ class ChromeosDBusControl : public ControlInterface {
 
  private:
   template <typename Object, typename AdaptorInterface, typename Adaptor>
-  AdaptorInterface* CreateAdaptor(Object* object);
+  std::unique_ptr<AdaptorInterface> CreateAdaptor(Object* object);
 
   void OnDBusServiceRegistered(
       const base::Callback<void(bool)>& completion_action, bool success);

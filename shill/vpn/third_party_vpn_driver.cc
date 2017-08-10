@@ -117,7 +117,7 @@ bool ThirdPartyVpnDriver::Load(StoreInterface* storage,
   if (adaptor_interface_ == nullptr) {
     storage->GetString(storage_id, kObjectPathSuffixProperty,
                        &object_path_suffix_);
-    adaptor_interface_.reset(control_->CreateThirdPartyVpnAdaptor(this));
+    adaptor_interface_ = control_->CreateThirdPartyVpnAdaptor(this);
   }
   return return_value;
 }
@@ -140,7 +140,7 @@ bool ThirdPartyVpnDriver::SetExtensionId(const std::string& value,
                                          Error* error) {
   if (adaptor_interface_ == nullptr) {
     object_path_suffix_ = value;
-    adaptor_interface_.reset(control_->CreateThirdPartyVpnAdaptor(this));
+    adaptor_interface_ = control_->CreateThirdPartyVpnAdaptor(this);
     return true;
   }
   error->Populate(Error::kAlreadyExists, "Extension ID is set");

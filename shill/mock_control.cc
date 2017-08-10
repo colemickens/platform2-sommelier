@@ -16,6 +16,8 @@
 
 #include "shill/mock_control.h"
 
+#include <base/memory/ptr_util.h>
+
 #include "shill/mock_adaptors.h"
 
 namespace shill {
@@ -24,38 +26,40 @@ MockControl::MockControl() {}
 
 MockControl::~MockControl() {}
 
-DeviceAdaptorInterface* MockControl::CreateDeviceAdaptor(Device* /*device*/) {
-  return new DeviceMockAdaptor();
+std::unique_ptr<DeviceAdaptorInterface> MockControl::CreateDeviceAdaptor(
+    Device* /*device*/) {
+  return base::MakeUnique<DeviceMockAdaptor>();
 }
 
-IPConfigAdaptorInterface* MockControl::CreateIPConfigAdaptor(
+std::unique_ptr<IPConfigAdaptorInterface> MockControl::CreateIPConfigAdaptor(
     IPConfig* /*config*/) {
-  return new IPConfigMockAdaptor();
+  return base::MakeUnique<IPConfigMockAdaptor>();
 }
 
-ManagerAdaptorInterface* MockControl::CreateManagerAdaptor(
+std::unique_ptr<ManagerAdaptorInterface> MockControl::CreateManagerAdaptor(
     Manager* /*manager*/) {
-  return new ManagerMockAdaptor();
+  return base::MakeUnique<ManagerMockAdaptor>();
 }
 
-ProfileAdaptorInterface* MockControl::CreateProfileAdaptor(
+std::unique_ptr<ProfileAdaptorInterface> MockControl::CreateProfileAdaptor(
     Profile* /*profile*/) {
-  return new ProfileMockAdaptor();
+  return base::MakeUnique<ProfileMockAdaptor>();
 }
 
-RPCTaskAdaptorInterface* MockControl::CreateRPCTaskAdaptor(RPCTask* /*task*/) {
-  return new RPCTaskMockAdaptor();
+std::unique_ptr<RPCTaskAdaptorInterface> MockControl::CreateRPCTaskAdaptor(
+    RPCTask* /*task*/) {
+  return base::MakeUnique<RPCTaskMockAdaptor>();
 }
 
-ServiceAdaptorInterface* MockControl::CreateServiceAdaptor(
+std::unique_ptr<ServiceAdaptorInterface> MockControl::CreateServiceAdaptor(
     Service* /*service*/) {
-  return new ServiceMockAdaptor();
+  return base::MakeUnique<ServiceMockAdaptor>();
 }
 
 #ifndef DISABLE_VPN
-ThirdPartyVpnAdaptorInterface* MockControl::CreateThirdPartyVpnAdaptor(
-      ThirdPartyVpnDriver* /*driver*/) {
-  return new ThirdPartyVpnMockAdaptor();
+std::unique_ptr<ThirdPartyVpnAdaptorInterface>
+MockControl::CreateThirdPartyVpnAdaptor(ThirdPartyVpnDriver* /*driver*/) {
+  return base::MakeUnique<ThirdPartyVpnMockAdaptor>();
 }
 #endif
 

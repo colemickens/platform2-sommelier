@@ -38,14 +38,20 @@ class MockControl : public ControlInterface {
 
   // Each of these can be called once.  Ownership of the appropriate
   // interface pointer is given up upon call.
-  DeviceAdaptorInterface* CreateDeviceAdaptor(Device* device) override;
-  IPConfigAdaptorInterface* CreateIPConfigAdaptor(IPConfig* config) override;
-  ManagerAdaptorInterface* CreateManagerAdaptor(Manager* manager) override;
-  ProfileAdaptorInterface* CreateProfileAdaptor(Profile* profile) override;
-  RPCTaskAdaptorInterface* CreateRPCTaskAdaptor(RPCTask* task) override;
-  ServiceAdaptorInterface* CreateServiceAdaptor(Service* service) override;
+  std::unique_ptr<DeviceAdaptorInterface> CreateDeviceAdaptor(
+      Device* device) override;
+  std::unique_ptr<IPConfigAdaptorInterface> CreateIPConfigAdaptor(
+      IPConfig* config) override;
+  std::unique_ptr<ManagerAdaptorInterface> CreateManagerAdaptor(
+      Manager* manager) override;
+  std::unique_ptr<ProfileAdaptorInterface> CreateProfileAdaptor(
+      Profile* profile) override;
+  std::unique_ptr<RPCTaskAdaptorInterface> CreateRPCTaskAdaptor(
+      RPCTask* task) override;
+  std::unique_ptr<ServiceAdaptorInterface> CreateServiceAdaptor(
+      Service* service) override;
 #ifndef DISABLE_VPN
-  ThirdPartyVpnAdaptorInterface* CreateThirdPartyVpnAdaptor(
+  std::unique_ptr<ThirdPartyVpnAdaptorInterface> CreateThirdPartyVpnAdaptor(
       ThirdPartyVpnDriver* driver) override;
 #endif
   const std::string& NullRPCIdentifier() override;

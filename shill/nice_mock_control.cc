@@ -16,6 +16,7 @@
 
 #include "shill/nice_mock_control.h"
 
+#include <base/memory/ptr_util.h>
 #include <gmock/gmock.h>
 
 #include "shill/mock_adaptors.h"
@@ -28,40 +29,40 @@ NiceMockControl::NiceMockControl() {}
 
 NiceMockControl::~NiceMockControl() {}
 
-DeviceAdaptorInterface* NiceMockControl::CreateDeviceAdaptor(
+std::unique_ptr<DeviceAdaptorInterface> NiceMockControl::CreateDeviceAdaptor(
     Device* /*device*/) {
-  return new NiceMock<DeviceMockAdaptor>();
+  return base::MakeUnique<NiceMock<DeviceMockAdaptor>>();
 }
 
-IPConfigAdaptorInterface* NiceMockControl::CreateIPConfigAdaptor(
-    IPConfig* /*config*/) {
-  return new NiceMock<IPConfigMockAdaptor>();
+std::unique_ptr<IPConfigAdaptorInterface>
+NiceMockControl::CreateIPConfigAdaptor(IPConfig* /*config*/) {
+  return base::MakeUnique<NiceMock<IPConfigMockAdaptor>>();
 }
 
-ManagerAdaptorInterface* NiceMockControl::CreateManagerAdaptor(
+std::unique_ptr<ManagerAdaptorInterface> NiceMockControl::CreateManagerAdaptor(
     Manager* /*manager*/) {
-  return new NiceMock<ManagerMockAdaptor>();
+  return base::MakeUnique<NiceMock<ManagerMockAdaptor>>();
 }
 
-ProfileAdaptorInterface* NiceMockControl::CreateProfileAdaptor(
+std::unique_ptr<ProfileAdaptorInterface> NiceMockControl::CreateProfileAdaptor(
     Profile* /*profile*/) {
-  return new NiceMock<ProfileMockAdaptor>();
+  return base::MakeUnique<NiceMock<ProfileMockAdaptor>>();
 }
 
-RPCTaskAdaptorInterface* NiceMockControl::CreateRPCTaskAdaptor(
+std::unique_ptr<RPCTaskAdaptorInterface> NiceMockControl::CreateRPCTaskAdaptor(
     RPCTask* /*task*/) {
-  return new NiceMock<RPCTaskMockAdaptor>();
+  return base::MakeUnique<NiceMock<RPCTaskMockAdaptor>>();
 }
 
-ServiceAdaptorInterface* NiceMockControl::CreateServiceAdaptor(
+std::unique_ptr<ServiceAdaptorInterface> NiceMockControl::CreateServiceAdaptor(
     Service* /*service*/) {
-  return new NiceMock<ServiceMockAdaptor>();
+  return base::MakeUnique<NiceMock<ServiceMockAdaptor>>();
 }
 
 #ifndef DISABLE_VPN
-ThirdPartyVpnAdaptorInterface* NiceMockControl::CreateThirdPartyVpnAdaptor(
-      ThirdPartyVpnDriver* /*driver*/) {
-  return new NiceMock<ThirdPartyVpnMockAdaptor>();
+std::unique_ptr<ThirdPartyVpnAdaptorInterface>
+NiceMockControl::CreateThirdPartyVpnAdaptor(ThirdPartyVpnDriver* /*driver*/) {
+  return base::MakeUnique<NiceMock<ThirdPartyVpnMockAdaptor>>();
 }
 #endif
 

@@ -16,6 +16,7 @@
 
 #include "shill/dbus/chromeos_dbus_control.h"
 
+#include <base/memory/ptr_util.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -119,8 +120,9 @@ void ChromeosDBusControl::RegisterManagerObject(
 }
 
 template <typename Object, typename AdaptorInterface, typename Adaptor>
-AdaptorInterface* ChromeosDBusControl::CreateAdaptor(Object* object) {
-  return new Adaptor(adaptor_bus_, object);
+std::unique_ptr<AdaptorInterface> ChromeosDBusControl::CreateAdaptor(
+    Object* object) {
+  return base::MakeUnique<Adaptor>(adaptor_bus_, object);
 }
 
 void ChromeosDBusControl::OnDBusServiceRegistered(
@@ -143,52 +145,53 @@ void ChromeosDBusControl::TakeServiceOwnership(bool success) {
       << "Unable to take ownership of " << kFlimflamServiceName;
 }
 
-DeviceAdaptorInterface* ChromeosDBusControl::CreateDeviceAdaptor(
-    Device* device) {
-  return
-      CreateAdaptor<Device, DeviceAdaptorInterface, ChromeosDeviceDBusAdaptor>(
-          device);
+std::unique_ptr<DeviceAdaptorInterface>
+ChromeosDBusControl::CreateDeviceAdaptor(Device* device) {
+  return CreateAdaptor<Device,
+                       DeviceAdaptorInterface,
+                       ChromeosDeviceDBusAdaptor>(device);
 }
 
-IPConfigAdaptorInterface* ChromeosDBusControl::CreateIPConfigAdaptor(
-    IPConfig* config) {
-  return
-      CreateAdaptor<IPConfig, IPConfigAdaptorInterface,
-                    ChromeosIPConfigDBusAdaptor>(config);
+std::unique_ptr<IPConfigAdaptorInterface>
+ChromeosDBusControl::CreateIPConfigAdaptor(IPConfig* config) {
+  return CreateAdaptor<IPConfig,
+                       IPConfigAdaptorInterface,
+                       ChromeosIPConfigDBusAdaptor>(config);
 }
 
-ManagerAdaptorInterface* ChromeosDBusControl::CreateManagerAdaptor(
-    Manager* manager) {
-  return new ChromeosManagerDBusAdaptor(adaptor_bus_, proxy_bus_, manager);
+std::unique_ptr<ManagerAdaptorInterface>
+ChromeosDBusControl::CreateManagerAdaptor(Manager* manager) {
+  return base::MakeUnique<ChromeosManagerDBusAdaptor>(
+      adaptor_bus_, proxy_bus_, manager);
 }
 
-ProfileAdaptorInterface* ChromeosDBusControl::CreateProfileAdaptor(
-    Profile* profile) {
-  return
-      CreateAdaptor<Profile, ProfileAdaptorInterface,
-                    ChromeosProfileDBusAdaptor>(profile);
+std::unique_ptr<ProfileAdaptorInterface>
+ChromeosDBusControl::CreateProfileAdaptor(Profile* profile) {
+  return CreateAdaptor<Profile,
+                       ProfileAdaptorInterface,
+                       ChromeosProfileDBusAdaptor>(profile);
 }
 
-RPCTaskAdaptorInterface* ChromeosDBusControl::CreateRPCTaskAdaptor(
-    RPCTask* task) {
-  return
-      CreateAdaptor<RPCTask, RPCTaskAdaptorInterface,
-                    ChromeosRPCTaskDBusAdaptor>(task);
+std::unique_ptr<RPCTaskAdaptorInterface>
+ChromeosDBusControl::CreateRPCTaskAdaptor(RPCTask* task) {
+  return CreateAdaptor<RPCTask,
+                       RPCTaskAdaptorInterface,
+                       ChromeosRPCTaskDBusAdaptor>(task);
 }
 
-ServiceAdaptorInterface* ChromeosDBusControl::CreateServiceAdaptor(
-    Service* service) {
-  return
-      CreateAdaptor<Service, ServiceAdaptorInterface,
-                    ChromeosServiceDBusAdaptor>(service);
+std::unique_ptr<ServiceAdaptorInterface>
+ChromeosDBusControl::CreateServiceAdaptor(Service* service) {
+  return CreateAdaptor<Service,
+                       ServiceAdaptorInterface,
+                       ChromeosServiceDBusAdaptor>(service);
 }
 
 #ifndef DISABLE_VPN
-ThirdPartyVpnAdaptorInterface* ChromeosDBusControl::CreateThirdPartyVpnAdaptor(
-    ThirdPartyVpnDriver* driver) {
-  return
-      CreateAdaptor<ThirdPartyVpnDriver, ThirdPartyVpnAdaptorInterface,
-                    ChromeosThirdPartyVpnDBusAdaptor>(driver);
+std::unique_ptr<ThirdPartyVpnAdaptorInterface>
+ChromeosDBusControl::CreateThirdPartyVpnAdaptor(ThirdPartyVpnDriver* driver) {
+  return CreateAdaptor<ThirdPartyVpnDriver,
+                       ThirdPartyVpnAdaptorInterface,
+                       ChromeosThirdPartyVpnDBusAdaptor>(driver);
 }
 #endif
 

@@ -63,7 +63,7 @@ Profile::Profile(ControlInterface* control_interface,
       control_interface_(control_interface),
       name_(name) {
   if (connect_to_rpc)
-    adaptor_.reset(control_interface->CreateProfileAdaptor(this));
+    adaptor_ = control_interface->CreateProfileAdaptor(this);
 
   // kCheckPortalListProperty: Registered in DefaultProfile
   // kCountryProperty: Registered in DefaultProfile
