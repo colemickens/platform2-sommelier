@@ -57,7 +57,7 @@ class ChromeosDBusControl : public ControlInterface {
 
   // The caller retains ownership of 'delegate'.  It must not be deleted before
   // the proxy.
-  PowerManagerProxyInterface* CreatePowerManagerProxy(
+  std::unique_ptr<PowerManagerProxyInterface> CreatePowerManagerProxy(
       PowerManagerProxyDelegate* delegate,
       const base::Closure& service_appeared_callback,
       const base::Closure& service_vanished_callback) override;

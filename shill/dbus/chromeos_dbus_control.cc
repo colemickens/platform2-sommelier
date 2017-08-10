@@ -195,15 +195,16 @@ ChromeosDBusControl::CreateThirdPartyVpnAdaptor(ThirdPartyVpnDriver* driver) {
 }
 #endif
 
-PowerManagerProxyInterface* ChromeosDBusControl::CreatePowerManagerProxy(
+std::unique_ptr<PowerManagerProxyInterface>
+ChromeosDBusControl::CreatePowerManagerProxy(
     PowerManagerProxyDelegate* delegate,
     const base::Closure& service_appeared_callback,
     const base::Closure& service_vanished_callback) {
-  return new ChromeosPowerManagerProxy(dispatcher_,
-                                       proxy_bus_,
-                                       delegate,
-                                       service_appeared_callback,
-                                       service_vanished_callback);
+  return base::MakeUnique<ChromeosPowerManagerProxy>(dispatcher_,
+                                                     proxy_bus_,
+                                                     delegate,
+                                                     service_appeared_callback,
+                                                     service_vanished_callback);
 }
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)

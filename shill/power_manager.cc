@@ -59,11 +59,10 @@ void PowerManager::Start(
     const SuspendImminentCallback& suspend_imminent_callback,
     const SuspendDoneCallback& suspend_done_callback,
     const DarkSuspendImminentCallback& dark_suspend_imminent_callback) {
-  power_manager_proxy_.reset(
-      control_interface_->CreatePowerManagerProxy(
-          this,
-          Bind(&PowerManager::OnPowerManagerAppeared, Unretained(this)),
-          Bind(&PowerManager::OnPowerManagerVanished, Unretained(this))));
+  power_manager_proxy_ = control_interface_->CreatePowerManagerProxy(
+      this,
+      Bind(&PowerManager::OnPowerManagerAppeared, Unretained(this)),
+      Bind(&PowerManager::OnPowerManagerVanished, Unretained(this)));
   suspend_delay_ = suspend_delay;
   suspend_imminent_callback_ = suspend_imminent_callback;
   suspend_done_callback_ = suspend_done_callback;

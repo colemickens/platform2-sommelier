@@ -23,6 +23,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/control_interface.h"
+#include "shill/power_manager_proxy_interface.h"
 
 namespace shill {
 // An implementation of the Shill RPC-channel-interface-factory interface that
@@ -61,12 +62,11 @@ class MockControl : public ControlInterface {
                    const std::string& connection_name,
                    const base::Closure& on_connection_vanished));
 
-  MOCK_METHOD3(
-      CreatePowerManagerProxy,
-      PowerManagerProxyInterface*(
-          PowerManagerProxyDelegate* delegate,
-          const base::Closure& service_appeared_callback,
-          const base::Closure& service_vanished_callback));
+  MOCK_METHOD3(CreatePowerManagerProxy,
+               std::unique_ptr<PowerManagerProxyInterface>(
+                   PowerManagerProxyDelegate* delegate,
+                   const base::Closure& service_appeared_callback,
+                   const base::Closure& service_vanished_callback));
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   MOCK_METHOD2(CreateSupplicantProcessProxy,
                SupplicantProcessProxyInterface*(

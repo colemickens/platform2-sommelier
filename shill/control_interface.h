@@ -116,7 +116,7 @@ class ControlInterface {
 
   // The caller retains ownership of 'delegate'.  It must not be deleted before
   // the proxy.
-  virtual PowerManagerProxyInterface* CreatePowerManagerProxy(
+  virtual std::unique_ptr<PowerManagerProxyInterface> CreatePowerManagerProxy(
       PowerManagerProxyDelegate* delegate,
       const base::Closure& service_appeared_callback,
       const base::Closure& service_vanished_callback) = 0;

@@ -53,14 +53,14 @@ class FakeControl : public MockControl {
         power_manager_proxy_raw_(new MockPowerManagerProxy),
         power_manager_proxy_(power_manager_proxy_raw_) {}
 
-  virtual PowerManagerProxyInterface* CreatePowerManagerProxy(
+  std::unique_ptr<PowerManagerProxyInterface> CreatePowerManagerProxy(
       PowerManagerProxyDelegate* delegate,
       const base::Closure& service_appeared_callback,
-      const base::Closure& service_vanished_callback) {
+      const base::Closure& service_vanished_callback) override {
     CHECK(power_manager_proxy_);
     delegate_ = delegate;
     // Passes ownership.
-    return power_manager_proxy_.release();
+    return std::move(power_manager_proxy_);
   }
 
   PowerManagerProxyDelegate* delegate() const { return delegate_; }
