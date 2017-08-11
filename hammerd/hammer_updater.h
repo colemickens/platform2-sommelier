@@ -52,6 +52,7 @@ class HammerUpdater {
   FRIEND_TEST(HammerUpdaterFlowTest, Run_AlwaysReset);
   FRIEND_TEST(HammerUpdaterFlowTest, Run_FatalError);
   FRIEND_TEST(HammerUpdaterFlowTest, Run_Reset3Times);
+  FRIEND_TEST(HammerUpdaterFullTest, Run_InvalidSection);
   FRIEND_TEST(HammerUpdaterFullTest, Run_UpdateRWAfterJumpToRWFailed);
   FRIEND_TEST(HammerUpdaterFullTest, RunOnce_UpdateRW);
   FRIEND_TEST(HammerUpdaterFullTest, RunOnce_UnlockRW);

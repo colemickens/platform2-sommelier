@@ -161,6 +161,13 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(const bool post_rw_jump) {
   LOG(INFO) << "### CURRENT SECTION: "
             << ToString(fw_updater_->CurrentSection()) << " ###";
 
+  // ********************** UNKNOWN **********************
+  // If the layout of the firmware has changed, we cannot handle this case.
+  if (fw_updater_->CurrentSection() == SectionName::Invalid) {
+    LOG(INFO) << "Hammer is in RO but the firmware layout has changed.";
+    return HammerUpdater::RunStatus::kInvalidFirmware;
+  }
+
   // ********************** RW **********************
   // If EC already entered the RW section, then check if RW needs updating.
   // If an update is needed, request a hammer reset. Let the next invocation

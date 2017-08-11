@@ -150,6 +150,25 @@ TEST_F(HammerUpdaterFlowTest, Run_Reset3Times) {
   ASSERT_EQ(hammer_updater_->Run(), true);
 }
 
+// Return false if the layout of the firmware is changed.
+// Condition:
+//   1. The current section is Invalid.
+TEST_F(HammerUpdaterFullTest, Run_InvalidSection) {
+  EXPECT_CALL(*fw_updater_, LoadImage(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*fw_updater_, CurrentSection())
+      .WillRepeatedly(Return(SectionName::Invalid));
+
+  {
+    InSequence dummy;
+    EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
+    EXPECT_CALL(*fw_updater_, SendDone()).WillOnce(Return());
+  }
+
+  ExpectUSBConnections(AtLeast(1));
+  ASSERT_EQ(hammer_updater_->Run(), false);
+}
+
 // Update the RW after JUMP_TO_RW failed.
 // Condition:
 //   1. In RO section.
