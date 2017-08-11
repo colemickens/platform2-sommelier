@@ -1,7 +1,7 @@
 # Chrome OS Configuration -- Master Chrome OS Configuration tools / library
 
-This is the homepage/documentation for chromeos-config which provides access
-to the master configuration for Chrome OS.
+This is the homepage/documentation for chromeos-config which provides access to
+the master configuration for Chrome OS.
 
 [TOC]
 
@@ -13,8 +13,8 @@ published to chromium.org once the feature is complete and launched.
 
 ## Important classes
 
-See [CrosConfig](./libcros_config/cros_config.h) for the class to use to
-access configuration strings.
+See [CrosConfig](./libcros_config/cros_config.h) for the class to use to access
+configuration strings.
 
 ## Binding
 
@@ -24,42 +24,40 @@ permitted.
 
 In Chromium OS, the word 'model' is used to distinguish different hardware or
 products for which we want to build software. A model shares the same hardware
-and the same brand. Typically two different models are distinguished by
-hardware variations (e.g. different screen size) or branch variations (a
-different OEM).
+and the same brand. Typically two different models are distinguished by hardware
+variations (e.g. different screen size) or branch variations (a different OEM).
 
 Note: In the description below, entries with children are nodes and leaves are
 properties.
 
 *   `family`: Provides family-level configuration settings, which apply to all
-              models in the family.
+    models in the family.
 
-    *   `firmware` (optional) : Contains information about firmware
-        versions and files
-        *   `script`: Updater script to use. See
-            [the pack_dist directory](https://cs.corp.google.com/chromeos_public/src/platform/firmware/pack_dist)
+    *   `firmware` (optional) : Contains information about firmware versions and
+        files
+        *   `script`: Updater script to use. See [the pack_dist
+            directory](https://cs.corp.google.com/chromeos_public/src/platform/firmware/pack_dist)
             for the scripts. The options are:
-            *   `updater1s.sh`: Only used by mario. Do not use for new
-                boards.
-            *   `updater2.sh`: Only used by x86-alex and x86-zgb. Do not
-                use for new boards.
+            *   `updater1s.sh`: Only used by mario. Do not use for new boards.
+            *   `updater2.sh`: Only used by x86-alex and x86-zgb. Do not use for
+                new boards.
             *   `updater3.sh`: Used for various devices shipped around 2012.
-            *   `updater4.sh`: In current use. Supports software sync for
-                the EC.
+            *   `updater4.sh`: In current use. Supports software sync for the
+                EC.
             *   `updater5.sh`: In current use. Supports firmware v4
                 (chromeos-ec, vboot2)
 
 *   `models`: Sub-nodes of this define models supported by this board.
 
-    * `<model name>`: actual name of the model being defined, e.g. `reef` or
+    *   `<model name>`: actual name of the model being defined, e.g. `reef` or
         `pyro`
         *   `wallpaper` (optional): base filename of the default wallpaper to
             show on this device. The base filename points `session_manager` to
             two files in the `/usr/share/chromeos-assets/wallpaper/<wallpaper>`
             directory: `/[filename]_[small|large].jpg`. If these files are
             missing or the property does not exist, "default" is used.
-        *   `firmware` (optional) : Contains information about firmware
-            versions and files
+        *   `firmware` (optional) : Contains information about firmware versions
+            and files
             *   `bcs-overlay`: Overlay name containing the firmware binaries.
                 This is used to generate the full path. For example a value of
                 `overlay-reef-private` in the `reef` model means that all files
@@ -76,16 +74,16 @@ properties.
                     compile phase within the depthcharge ebuild.
                 *   `libpayload`: Not currently used as the libpayload ebuild is
                     not yet unibuild-aware.
-            *   `main-image`: Main image location. This must start with
-                `bcs://` . It refers to a file available in BCS. The file will
-                be unpacked to produce a firmware binary image.
-            *   `main-rw-image` (optional): Main RW (Read/Write) image
-                location. This must start with `bcs://`. It refers to a file
-                available in BCS. The file will be unpacked to produce a
-                firmware binary image.
+            *   `main-image`: Main image location. This must start with `bcs://`
+                . It refers to a file available in BCS. The file will be
+                unpacked to produce a firmware binary image.
+            *   `main-rw-image` (optional): Main RW (Read/Write) image location.
+                This must start with `bcs://`. It refers to a file available in
+                BCS. The file will be unpacked to produce a firmware binary
+                image.
             *   `ec-image` (optional): EC (Embedded Controller) image location.
-                This must start with `bcs://` . It refers to a file available
-                in BCS. The file will be unpacked to produce a firmware binary
+                This must start with `bcs://` . It refers to a file available in
+                BCS. The file will be unpacked to produce a firmware binary
                 image.
             *   `pd-image` (optional): PD (Power Delivery controller) image
                 location. This must start with `bcs://` . It refers to a file
@@ -94,18 +92,18 @@ properties.
             *   `stable-main-version` (optional): Version of the stable
                 firmware. On dogfood devices where RO firmware can be updated,
                 we perform a full firmware update if the existing firmware on
-                the device is older than this version.
-                *Deprecation in progress. See crbug.com/70541.*
+                the device is older than this version. *Deprecation in progress.
+                See crbug.com/70541.*
             *   `stable-ec-version` (optional): Version of the stable EC
                 firmware. On dogfood devices where RO EC firmware can be
                 updated, we perform a full firmware update if the existing EC
-                firmware on the device is older than  this version.
-                *Deprecation in progress. See crbug.com/70541.*
+                firmware on the device is older than this version. *Deprecation
+                in progress. See crbug.com/70541.*
             *   `stable-pd-version` (optional): Version of the stable PD
                 firmware. On dogfood devices where RO PD firmware can be
                 updated, we perform a full firmware update if the existing PD
-                firmware on the device is older than this version.
-                *Deprecation in progress. See crbug.com/70541.*
+                firmware on the device is older than this version. *Deprecation
+                in progress. See crbug.com/70541.*
             *   `extra` (optional): A list of extra files or directories needed
                 to update firmware, each being a string filename. Any filename
                 is supported. If it starts with `bcs://` then it is read from
@@ -132,8 +130,8 @@ properties.
                 property indicates that this model does not have separate
                 firmware although it may have its own keyset. This property is
                 used to share firmware across multiple models where hardware
-                differences are small and we can detect the model from board
-                ID pins.
+                differences are small and we can detect the model from board ID
+                pins.
         *   `powerd_prefs` (optional): Name of a subdirectory under the powerd
             model_specific prefs directory where model-specific prefs files are
             stored.
