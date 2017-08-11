@@ -43,7 +43,7 @@ struct Log {
   const char *size_cap;  // passed as arg to 'tail'
 };
 
-const Log common_logs[] = {
+const Log kCommandLogs[] = {
   { "CLIENT_ID", "/usr/bin/metrics_client -i"},
   { "LOGDATE", "/bin/date" },
   { "atrus_logs", "/bin/cat /var/log/atrus.log 2> /dev/null" },
@@ -241,7 +241,7 @@ const Log common_logs[] = {
   { nullptr, nullptr }
 };
 
-const Log extra_logs[] = {
+const Log kExtraLogs[] = {
 #if USE_CELLULAR
   { "mm-status", "/usr/bin/modem status" },
 #endif  // USE_CELLULAR
@@ -250,7 +250,7 @@ const Log extra_logs[] = {
   { nullptr, nullptr }
 };
 
-const Log feedback_logs[] = {
+const Log kFeedbackLogs[] = {
 #if USE_CELLULAR
   { "mm-status", "/usr/bin/modem status-feedback" },
 #endif  // USE_CELLULAR
@@ -262,7 +262,7 @@ const Log feedback_logs[] = {
 // List of log files needed to be part of the feedback report that are huge and
 // must be sent back to the client via the file descriptor using
 // LogTool::GetBigFeedbackLogs().
-const Log big_feedback_logs[] = {
+const Log kBigFeedbackLogs[] = {
   { "arc-bugreport",
     "/bin/cat /run/arc/bugreport/pipe 2> /dev/null",
     // ARC bugreport permissions are weird. Since we're just running cat, this
@@ -277,7 +277,7 @@ const Log big_feedback_logs[] = {
 // List of log files that must directly be collected by Chrome. This is because
 // debugd is running under a VFS namespace and does not have access to later
 // cryptohome mounts.
-const Log user_logs[] = {
+const Log kUserLogs[] = {
   {"chrome_user_log", "log/chrome"},
   {"login-times", "login-times"},
   {"logout-times", "logout-times"},
@@ -368,25 +368,25 @@ void LogTool::CreateConnectivityReport() {
 
 string LogTool::GetLog(const string& name) {
   string result;
-     GetNamedLogFrom(name, common_logs, &result)
-  || GetNamedLogFrom(name, extra_logs, &result)
-  || GetNamedLogFrom(name, feedback_logs, &result);
+     GetNamedLogFrom(name, kCommandLogs, &result)
+  || GetNamedLogFrom(name, kExtraLogs, &result)
+  || GetNamedLogFrom(name, kFeedbackLogs, &result);
   return result;
 }
 
 LogTool::LogMap LogTool::GetAllLogs() {
   CreateConnectivityReport();
   LogMap result;
-  GetLogsFrom(common_logs, &result);
-  GetLogsFrom(extra_logs, &result);
+  GetLogsFrom(kCommandLogs, &result);
+  GetLogsFrom(kExtraLogs, &result);
   return result;
 }
 
 LogTool::LogMap LogTool::GetFeedbackLogs() {
   CreateConnectivityReport();
   LogMap result;
-  GetLogsFrom(common_logs, &result);
-  GetLogsFrom(feedback_logs, &result);
+  GetLogsFrom(kCommandLogs, &result);
+  GetLogsFrom(kFeedbackLogs, &result);
   AnonymizeLogMap(&result);
   return result;
 }
@@ -394,16 +394,16 @@ LogTool::LogMap LogTool::GetFeedbackLogs() {
 void LogTool::GetBigFeedbackLogs(const dbus::FileDescriptor& fd) {
   CreateConnectivityReport();
   base::DictionaryValue dictionary;
-  GetLogsInDictionary(common_logs, &anonymizer_, &dictionary);
-  GetLogsInDictionary(feedback_logs, &anonymizer_, &dictionary);
-  GetLogsInDictionary(big_feedback_logs, &anonymizer_, &dictionary);
+  GetLogsInDictionary(kCommandLogs, &anonymizer_, &dictionary);
+  GetLogsInDictionary(kFeedbackLogs, &anonymizer_, &dictionary);
+  GetLogsInDictionary(kBigFeedbackLogs, &anonymizer_, &dictionary);
   SerializeLogsAsJSON(dictionary, fd);
 }
 
 LogTool::LogMap LogTool::GetUserLogFiles() {
   LogMap result;
-  for (size_t i = 0; user_logs[i].name; ++i)
-    result[user_logs[i].name] = user_logs[i].command;
+  for (size_t i = 0; kUserLogs[i].name; ++i)
+    result[kUserLogs[i].name] = kUserLogs[i].command;
   return result;
 }
 
