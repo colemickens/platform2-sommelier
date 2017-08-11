@@ -4,11 +4,12 @@
  * found in the LICENSE file.
  */
 
-#include "arc/camera_buffer_mapper.h"
+#include "common/camera_buffer_mapper_impl.h"
 
 #include <sys/mman.h>
 
 #include <functional>
+#include <memory>
 
 #include <base/at_exit.h>
 #include <drm_fourcc.h>
@@ -315,15 +316,15 @@ static size_t GetFormatBpp(uint32_t drm_format) {
   return 0;
 }
 
-class CameraBufferMapperTest : public ::testing::Test {
+class CameraBufferMapperImplTest : public ::testing::Test {
  public:
-  CameraBufferMapperTest() = default;
+  CameraBufferMapperImplTest() = default;
 
   void SetUp() {
     EXPECT_CALL(gbm_, CreateGbmDevice())
         .Times(1)
         .WillOnce(Return(&dummy_device));
-    cbm_ = new CameraBufferMapper();
+    cbm_ = new CameraBufferMapperImpl();
   }
 
   void TearDown() {
@@ -381,15 +382,15 @@ class CameraBufferMapperTest : public ::testing::Test {
   }
 
  protected:
-  CameraBufferMapper* cbm_;
+  CameraBufferMapperImpl* cbm_;
 
   MockGbm gbm_;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(CameraBufferMapperTest);
+  DISALLOW_COPY_AND_ASSIGN(CameraBufferMapperImplTest);
 };
 
-TEST_F(CameraBufferMapperTest, LockTest) {
+TEST_F(CameraBufferMapperImplTest, LockTest) {
   // Create a dummy buffer.
   const int kBufferWidth = 1280, kBufferHeight = 720;
   auto buffer = CreateBuffer(1, GRALLOC, DRM_FORMAT_XBGR8888,
@@ -444,7 +445,7 @@ TEST_F(CameraBufferMapperTest, LockTest) {
   EXPECT_CALL(gbm_, Close(dummy_fd)).Times(1);
 }
 
-TEST_F(CameraBufferMapperTest, LockYCbCrTest) {
+TEST_F(CameraBufferMapperImplTest, LockYCbCrTest) {
   // Create a dummy buffer.
   const int kBufferWidth = 1280, kBufferHeight = 720;
   auto buffer =
@@ -570,7 +571,7 @@ TEST_F(CameraBufferMapperTest, LockYCbCrTest) {
   EXPECT_CALL(gbm_, Close(dummy_fd)).Times(1);
 }
 
-TEST_F(CameraBufferMapperTest, ShmBufferTest) {
+TEST_F(CameraBufferMapperImplTest, ShmBufferTest) {
   // Create a dummy buffer.
   const int kBufferWidth = 1280, kBufferHeight = 720;
   auto buffer = CreateBuffer(1, SHM, DRM_FORMAT_XBGR8888,
@@ -608,7 +609,7 @@ TEST_F(CameraBufferMapperTest, ShmBufferTest) {
   EXPECT_EQ(cbm_->Deregister(handle), 0);
 }
 
-TEST_F(CameraBufferMapperTest, GetPlaneSizeTest) {
+TEST_F(CameraBufferMapperImplTest, GetPlaneSizeTest) {
   const int kBufferWidth = 1280, kBufferHeight = 720;
 
   auto gralloc_buffer = CreateBuffer(0, GRALLOC, DRM_FORMAT_XBGR8888,
@@ -618,8 +619,9 @@ TEST_F(CameraBufferMapperTest, GetPlaneSizeTest) {
       reinterpret_cast<buffer_handle_t>(gralloc_buffer.get());
   const size_t kRGBXBufferSize =
       kBufferWidth * kBufferHeight * GetFormatBpp(DRM_FORMAT_XBGR8888);
-  EXPECT_EQ(CameraBufferMapper::GetPlaneSize(rgbx_handle, 0), kRGBXBufferSize);
-  EXPECT_EQ(CameraBufferMapper::GetPlaneSize(rgbx_handle, 1), 0);
+  EXPECT_EQ(CameraBufferMapperImpl::GetPlaneSize(rgbx_handle, 0),
+            kRGBXBufferSize);
+  EXPECT_EQ(CameraBufferMapperImpl::GetPlaneSize(rgbx_handle, 1), 0);
 
   auto nv12_buffer =
       CreateBuffer(1, SHM, DRM_FORMAT_NV21, HAL_PIXEL_FORMAT_YCbCr_420_888,
@@ -630,9 +632,11 @@ TEST_F(CameraBufferMapperTest, GetPlaneSizeTest) {
       kBufferWidth * kBufferHeight * GetFormatBpp(DRM_FORMAT_NV12) / 2;
   buffer_handle_t nv12_handle =
       reinterpret_cast<buffer_handle_t>(nv12_buffer.get());
-  EXPECT_EQ(CameraBufferMapper::GetPlaneSize(nv12_handle, 0), kNV12Plane0Size);
-  EXPECT_EQ(CameraBufferMapper::GetPlaneSize(nv12_handle, 1), kNV12Plane1Size);
-  EXPECT_EQ(CameraBufferMapper::GetPlaneSize(nv12_handle, 2), 0);
+  EXPECT_EQ(CameraBufferMapperImpl::GetPlaneSize(nv12_handle, 0),
+            kNV12Plane0Size);
+  EXPECT_EQ(CameraBufferMapperImpl::GetPlaneSize(nv12_handle, 1),
+            kNV12Plane1Size);
+  EXPECT_EQ(CameraBufferMapperImpl::GetPlaneSize(nv12_handle, 2), 0);
 
   auto yuv420_buffer =
       CreateBuffer(2, SHM, DRM_FORMAT_YUV420, HAL_PIXEL_FORMAT_YCbCr_420_888,
@@ -643,16 +647,16 @@ TEST_F(CameraBufferMapperTest, GetPlaneSizeTest) {
       kBufferWidth * kBufferHeight * GetFormatBpp(DRM_FORMAT_YUV420) / 4;
   buffer_handle_t yuv420_handle =
       reinterpret_cast<buffer_handle_t>(yuv420_buffer.get());
-  EXPECT_EQ(CameraBufferMapper::GetPlaneSize(yuv420_handle, 0),
+  EXPECT_EQ(CameraBufferMapperImpl::GetPlaneSize(yuv420_handle, 0),
             kYuv420Plane0Size);
-  EXPECT_EQ(CameraBufferMapper::GetPlaneSize(yuv420_handle, 1),
+  EXPECT_EQ(CameraBufferMapperImpl::GetPlaneSize(yuv420_handle, 1),
             kYuv420Plane12Size);
-  EXPECT_EQ(CameraBufferMapper::GetPlaneSize(yuv420_handle, 2),
+  EXPECT_EQ(CameraBufferMapperImpl::GetPlaneSize(yuv420_handle, 2),
             kYuv420Plane12Size);
-  EXPECT_EQ(CameraBufferMapper::GetPlaneSize(yuv420_handle, 3), 0);
+  EXPECT_EQ(CameraBufferMapperImpl::GetPlaneSize(yuv420_handle, 3), 0);
 }
 
-TEST_F(CameraBufferMapperTest, DeregisterTest) {
+TEST_F(CameraBufferMapperImplTest, DeregisterTest) {
   // Create two dummy buffers.
   const int kBufferWidth = 1280, kBufferHeight = 720;
   auto buffer1 =

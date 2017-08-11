@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 
 #include "common/camera_buffer_mapper_internal.h"
+#include "common/camera_buffer_mapper_typedefs.h"
 
 namespace camera3_test {
 

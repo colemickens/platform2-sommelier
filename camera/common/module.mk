@@ -16,8 +16,8 @@ clean: CLEAN(common/future_unittest)
 tests: CXX_BINARY(common/future_unittest)
 
 camera_buffer_mapper_unittest_OBJS = \
-	common/camera_buffer_mapper.o \
-	common/camera_buffer_mapper_unittest.o
+	common/camera_buffer_mapper_impl.o \
+	common/camera_buffer_mapper_impl_unittest.o
 camera_buffer_mapper_unittest_PC_DEPS := gbm libchrome-$(BASE_VER) libdrm
 camera_buffer_mapper_unittest_CPPFLAGS = \
 	$(call get_pc_cflags,$(camera_buffer_mapper_unittest_PC_DEPS))
@@ -37,7 +37,7 @@ libcbm_PC_DEPS := gbm libchrome-$(BASE_VER) libdrm
 libcbm_CPPFLAGS := $(call get_pc_cflags,$(libcbm_PC_DEPS))
 libcbm_LDLIBS := $(call get_pc_libs,$(libcbm_PC_DEPS))
 libcbm_OBJS = \
-	common/camera_buffer_mapper.o \
+	common/camera_buffer_mapper_impl.o \
 	common/camera_buffer_mapper_internal.o
 CXX_LIBRARY(common/libcbm.so): $(libcbm_OBJS)
 CXX_LIBRARY(common/libcbm.so): CPPFLAGS += $(libcbm_CPPFLAGS)

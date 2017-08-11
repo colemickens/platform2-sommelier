@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_ARC_CAMERA_BUFFER_MAPPER_TYPEDEFS_H_
-#define INCLUDE_ARC_CAMERA_BUFFER_MAPPER_TYPEDEFS_H_
+#ifndef COMMON_CAMERA_BUFFER_MAPPER_TYPEDEFS_H_
+#define COMMON_CAMERA_BUFFER_MAPPER_TYPEDEFS_H_
 
 #include <unistd.h>
 
@@ -42,8 +42,10 @@ class EXPORTED GbmDevice {
                           uint32_t format,
                           uint32_t flags);
 
+  operator bool() const { return device_ != nullptr; }
+
  private:
-  friend class CameraBufferMapper;
+  friend class CameraBufferMapperImpl;
 
   GbmDevice();
 
@@ -125,4 +127,4 @@ typedef std::unordered_map<MappedBufferInfoKeyType,
 
 }  // namespace arc
 
-#endif  // INCLUDE_ARC_CAMERA_BUFFER_MAPPER_TYPEDEFS_H_
+#endif  // COMMON_CAMERA_BUFFER_MAPPER_TYPEDEFS_H_

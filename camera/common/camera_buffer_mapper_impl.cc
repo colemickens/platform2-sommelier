@@ -4,8 +4,9 @@
  * found in the LICENSE file.
  */
 
-#include "arc/camera_buffer_mapper.h"
+#include "common/camera_buffer_mapper_impl.h"
 
+#include <utility>
 #include <vector>
 
 #include <linux/videodev2.h>
@@ -18,6 +19,7 @@
 #include "arc/common.h"
 #include "common/camera_buffer_handle.h"
 #include "common/camera_buffer_mapper_internal.h"
+#include "common/camera_buffer_mapper_typedefs.h"
 
 namespace arc {
 
@@ -47,240 +49,12 @@ void GbmDevice::Deleter::operator()(GbmDevice* device) {
 
 // static
 CameraBufferMapper* CameraBufferMapper::GetInstance() {
-  static CameraBufferMapper instance;
-  if (!instance.gbm_device_->device_) {
+  static CameraBufferMapperImpl instance;
+  if (!instance.gbm_device_) {
     LOGF(ERROR) << "Failed to create GBM device for CameraBufferMapper";
     return nullptr;
   }
   return &instance;
-}
-
-CameraBufferMapper::CameraBufferMapper() : gbm_device_(new GbmDevice()) {}
-
-int CameraBufferMapper::Register(buffer_handle_t buffer) {
-  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
-  if (!handle) {
-    return -EINVAL;
-  }
-
-  base::AutoLock l(lock_);
-
-  auto context_it = buffer_context_.find(buffer);
-  if (context_it != buffer_context_.end()) {
-    context_it->second->usage++;
-    return 0;
-  }
-
-  std::unique_ptr<BufferContext> buffer_context(new struct BufferContext);
-
-  if (handle->type == GRALLOC) {
-    // Import the buffer if we haven't done so.
-    struct gbm_import_fd_planar_data import_data;
-    memset(&import_data, 0, sizeof(import_data));
-    import_data.width = handle->width;
-    import_data.height = handle->height;
-    import_data.format = handle->drm_format;
-    uint32_t num_planes = GetNumPlanes(buffer);
-    if (num_planes <= 0) {
-      return -EINVAL;
-    }
-    for (size_t i = 0; i < num_planes; ++i) {
-      import_data.fds[i] = handle->fds[i].get();
-      import_data.strides[i] = handle->strides[i];
-      import_data.offsets[i] = handle->offsets[i];
-    }
-
-    uint32_t usage =
-        GBM_BO_USE_LINEAR | GBM_BO_USE_CAMERA_READ | GBM_BO_USE_CAMERA_WRITE;
-    buffer_context->bo = gbm_bo_import(
-        gbm_device_->device_, GBM_BO_IMPORT_FD_PLANAR, &import_data, usage);
-    if (!buffer_context->bo) {
-      LOGF(ERROR) << "Failed to import buffer 0x" << std::hex
-                  << handle->buffer_id;
-      return -EIO;
-    }
-  } else if (handle->type == SHM) {
-    // The shared memory buffer is a contiguous area of memory which is large
-    // enough to hold all the physical planes.  We mmap the buffer on Register
-    // and munmap on Deregister.
-    off_t size = lseek(handle->fds[0].get(), 0, SEEK_END);
-    if (size == -1) {
-      LOGF(ERROR) << "Failed to get shm buffer size through lseek: "
-                  << strerror(errno);
-      return -errno;
-    }
-    buffer_context->shm_buffer_size = static_cast<uint32_t>(size);
-    lseek(handle->fds[0].get(), 0, SEEK_SET);
-    buffer_context->mapped_addr =
-        mmap(nullptr, buffer_context->shm_buffer_size, PROT_READ | PROT_WRITE,
-             MAP_SHARED, handle->fds[0].get(), 0);
-    if (buffer_context->mapped_addr == MAP_FAILED) {
-      LOGF(ERROR) << "Failed to mmap shm buffer: " << strerror(errno);
-      return -errno;
-    }
-  } else {
-    NOTREACHED() << "Invalid buffer type: " << handle->type;
-    return -EINVAL;
-  }
-
-  buffer_context->usage = 1;
-  buffer_context_[buffer] = std::move(buffer_context);
-  return 0;
-}
-
-int CameraBufferMapper::Deregister(buffer_handle_t buffer) {
-  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
-  if (!handle) {
-    return -EINVAL;
-  }
-
-  base::AutoLock l(lock_);
-
-  auto context_it = buffer_context_.find(buffer);
-  if (context_it == buffer_context_.end()) {
-    LOGF(ERROR) << "Unknown buffer 0x" << std::hex << handle->buffer_id;
-    return -EINVAL;
-  }
-  auto buffer_context = context_it->second.get();
-  if (handle->type == GRALLOC) {
-    if (!--buffer_context->usage) {
-      // Unmap all the existing mapping of bo.
-      for (auto it = buffer_info_.begin(); it != buffer_info_.end();) {
-        if (it->second->bo == buffer_context->bo) {
-          it = buffer_info_.erase(it);
-        } else {
-          ++it;
-        }
-      }
-      buffer_context_.erase(context_it);
-    }
-    return 0;
-  } else if (handle->type == SHM) {
-    if (!--buffer_context->usage) {
-      int ret =
-          munmap(buffer_context->mapped_addr, buffer_context->shm_buffer_size);
-      if (ret == -1) {
-        LOGF(ERROR) << "Failed to munmap shm buffer: " << strerror(errno);
-      }
-      buffer_context_.erase(context_it);
-    }
-    return 0;
-  } else {
-    NOTREACHED() << "Invalid buffer type: " << handle->type;
-    return -EINVAL;
-  }
-}
-
-int CameraBufferMapper::Lock(buffer_handle_t buffer,
-                             uint32_t flags,
-                             uint32_t x,
-                             uint32_t y,
-                             uint32_t width,
-                             uint32_t height,
-                             void** out_addr) {
-  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
-  if (!handle) {
-    return -EINVAL;
-  }
-  uint32_t num_planes = GetNumPlanes(buffer);
-  if (!num_planes) {
-    return -EINVAL;
-  }
-  if (num_planes > 1) {
-    LOGF(ERROR) << "Lock called on multi-planar buffer 0x" << std::hex
-                << handle->buffer_id;
-    return -EINVAL;
-  }
-
-  *out_addr = Map(buffer, flags, 0);
-  if (*out_addr == MAP_FAILED) {
-    return -EINVAL;
-  }
-  return 0;
-}
-
-int CameraBufferMapper::LockYCbCr(buffer_handle_t buffer,
-                                  uint32_t flags,
-                                  uint32_t x,
-                                  uint32_t y,
-                                  uint32_t width,
-                                  uint32_t height,
-                                  struct android_ycbcr* out_ycbcr) {
-  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
-  if (!handle) {
-    return -EINVAL;
-  }
-  uint32_t num_planes = GetNumPlanes(buffer);
-  if (!num_planes) {
-    return -EINVAL;
-  }
-  if (num_planes < 2) {
-    LOGF(ERROR) << "LockYCbCr called on single-planar buffer 0x" << std::hex
-                << handle->buffer_id;
-    return -EINVAL;
-  }
-
-  DCHECK_LE(num_planes, 3u);
-  std::vector<uint8_t*> addr(3);
-  for (size_t i = 0; i < num_planes; ++i) {
-    void* a = Map(buffer, flags, i);
-    if (a == MAP_FAILED) {
-      return -EINVAL;
-    }
-    addr[i] = reinterpret_cast<uint8_t*>(a);
-  }
-  out_ycbcr->y = addr[0];
-  out_ycbcr->ystride = handle->strides[0];
-  out_ycbcr->cstride = handle->strides[1];
-
-  if (num_planes == 2) {
-    out_ycbcr->chroma_step = 2;
-    switch (handle->drm_format) {
-      case DRM_FORMAT_NV12:
-        out_ycbcr->cb = addr[1];
-        out_ycbcr->cr = addr[1] + 1;
-        break;
-
-      case DRM_FORMAT_NV21:
-        out_ycbcr->cb = addr[1] + 1;
-        out_ycbcr->cr = addr[1];
-        break;
-
-      default:
-        LOGF(ERROR) << "Unsupported semi-planar format: "
-                    << FormatToString(handle->drm_format);
-        return -EINVAL;
-    }
-  } else {  // num_planes == 3
-    out_ycbcr->chroma_step = 1;
-    switch (handle->drm_format) {
-      case DRM_FORMAT_YUV420:
-        out_ycbcr->cb = addr[1];
-        out_ycbcr->cr = addr[2];
-        break;
-
-      case DRM_FORMAT_YVU420:
-        out_ycbcr->cb = addr[2];
-        out_ycbcr->cr = addr[1];
-        break;
-
-      default:
-        LOGF(ERROR) << "Unsupported planar format: "
-                    << FormatToString(handle->drm_format);
-        return -EINVAL;
-    }
-  }
-  return 0;
-}
-
-int CameraBufferMapper::Unlock(buffer_handle_t buffer) {
-  for (size_t i = 0; i < GetNumPlanes(buffer); ++i) {
-    int ret = Unmap(buffer, i);
-    if (ret) {
-      return ret;
-    }
-  }
-  return 0;
 }
 
 // static
@@ -434,13 +208,244 @@ size_t CameraBufferMapper::GetPlaneSize(buffer_handle_t buffer, size_t plane) {
           DIV_ROUND_UP(handle->height, vertical_subsampling));
 }
 
-GbmDevice* CameraBufferMapper::GetGbmDevice() {
+CameraBufferMapperImpl::CameraBufferMapperImpl()
+    : gbm_device_(new GbmDevice()) {}
+
+CameraBufferMapperImpl::~CameraBufferMapperImpl() {}
+
+int CameraBufferMapperImpl::Register(buffer_handle_t buffer) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return -EINVAL;
+  }
+
+  base::AutoLock l(lock_);
+
+  auto context_it = buffer_context_.find(buffer);
+  if (context_it != buffer_context_.end()) {
+    context_it->second->usage++;
+    return 0;
+  }
+
+  std::unique_ptr<BufferContext> buffer_context(new struct BufferContext);
+
+  if (handle->type == GRALLOC) {
+    // Import the buffer if we haven't done so.
+    struct gbm_import_fd_planar_data import_data;
+    memset(&import_data, 0, sizeof(import_data));
+    import_data.width = handle->width;
+    import_data.height = handle->height;
+    import_data.format = handle->drm_format;
+    uint32_t num_planes = GetNumPlanes(buffer);
+    if (num_planes <= 0) {
+      return -EINVAL;
+    }
+    for (size_t i = 0; i < num_planes; ++i) {
+      import_data.fds[i] = handle->fds[i].get();
+      import_data.strides[i] = handle->strides[i];
+      import_data.offsets[i] = handle->offsets[i];
+    }
+
+    uint32_t usage =
+        GBM_BO_USE_LINEAR | GBM_BO_USE_CAMERA_READ | GBM_BO_USE_CAMERA_WRITE;
+    buffer_context->bo = gbm_bo_import(
+        gbm_device_->device_, GBM_BO_IMPORT_FD_PLANAR, &import_data, usage);
+    if (!buffer_context->bo) {
+      LOGF(ERROR) << "Failed to import buffer 0x" << std::hex
+                  << handle->buffer_id;
+      return -EIO;
+    }
+  } else if (handle->type == SHM) {
+    // The shared memory buffer is a contiguous area of memory which is large
+    // enough to hold all the physical planes.  We mmap the buffer on Register
+    // and munmap on Deregister.
+    off_t size = lseek(handle->fds[0].get(), 0, SEEK_END);
+    if (size == -1) {
+      LOGF(ERROR) << "Failed to get shm buffer size through lseek: "
+                  << strerror(errno);
+      return -errno;
+    }
+    buffer_context->shm_buffer_size = static_cast<uint32_t>(size);
+    lseek(handle->fds[0].get(), 0, SEEK_SET);
+    buffer_context->mapped_addr =
+        mmap(nullptr, buffer_context->shm_buffer_size, PROT_READ | PROT_WRITE,
+             MAP_SHARED, handle->fds[0].get(), 0);
+    if (buffer_context->mapped_addr == MAP_FAILED) {
+      LOGF(ERROR) << "Failed to mmap shm buffer: " << strerror(errno);
+      return -errno;
+    }
+  } else {
+    NOTREACHED() << "Invalid buffer type: " << handle->type;
+    return -EINVAL;
+  }
+
+  buffer_context->usage = 1;
+  buffer_context_[buffer] = std::move(buffer_context);
+  return 0;
+}
+
+int CameraBufferMapperImpl::Deregister(buffer_handle_t buffer) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return -EINVAL;
+  }
+
+  base::AutoLock l(lock_);
+
+  auto context_it = buffer_context_.find(buffer);
+  if (context_it == buffer_context_.end()) {
+    LOGF(ERROR) << "Unknown buffer 0x" << std::hex << handle->buffer_id;
+    return -EINVAL;
+  }
+  auto buffer_context = context_it->second.get();
+  if (handle->type == GRALLOC) {
+    if (!--buffer_context->usage) {
+      // Unmap all the existing mapping of bo.
+      for (auto it = buffer_info_.begin(); it != buffer_info_.end();) {
+        if (it->second->bo == buffer_context->bo) {
+          it = buffer_info_.erase(it);
+        } else {
+          ++it;
+        }
+      }
+      buffer_context_.erase(context_it);
+    }
+    return 0;
+  } else if (handle->type == SHM) {
+    if (!--buffer_context->usage) {
+      int ret =
+          munmap(buffer_context->mapped_addr, buffer_context->shm_buffer_size);
+      if (ret == -1) {
+        LOGF(ERROR) << "Failed to munmap shm buffer: " << strerror(errno);
+      }
+      buffer_context_.erase(context_it);
+    }
+    return 0;
+  } else {
+    NOTREACHED() << "Invalid buffer type: " << handle->type;
+    return -EINVAL;
+  }
+}
+
+int CameraBufferMapperImpl::Lock(buffer_handle_t buffer,
+                                 uint32_t flags,
+                                 uint32_t x,
+                                 uint32_t y,
+                                 uint32_t width,
+                                 uint32_t height,
+                                 void** out_addr) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return -EINVAL;
+  }
+  uint32_t num_planes = GetNumPlanes(buffer);
+  if (!num_planes) {
+    return -EINVAL;
+  }
+  if (num_planes > 1) {
+    LOGF(ERROR) << "Lock called on multi-planar buffer 0x" << std::hex
+                << handle->buffer_id;
+    return -EINVAL;
+  }
+
+  *out_addr = Map(buffer, flags, 0);
+  if (*out_addr == MAP_FAILED) {
+    return -EINVAL;
+  }
+  return 0;
+}
+
+int CameraBufferMapperImpl::LockYCbCr(buffer_handle_t buffer,
+                                      uint32_t flags,
+                                      uint32_t x,
+                                      uint32_t y,
+                                      uint32_t width,
+                                      uint32_t height,
+                                      struct android_ycbcr* out_ycbcr) {
+  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
+  if (!handle) {
+    return -EINVAL;
+  }
+  uint32_t num_planes = GetNumPlanes(buffer);
+  if (!num_planes) {
+    return -EINVAL;
+  }
+  if (num_planes < 2) {
+    LOGF(ERROR) << "LockYCbCr called on single-planar buffer 0x" << std::hex
+                << handle->buffer_id;
+    return -EINVAL;
+  }
+
+  DCHECK_LE(num_planes, 3u);
+  std::vector<uint8_t*> addr(3);
+  for (size_t i = 0; i < num_planes; ++i) {
+    void* a = Map(buffer, flags, i);
+    if (a == MAP_FAILED) {
+      return -EINVAL;
+    }
+    addr[i] = reinterpret_cast<uint8_t*>(a);
+  }
+  out_ycbcr->y = addr[0];
+  out_ycbcr->ystride = handle->strides[0];
+  out_ycbcr->cstride = handle->strides[1];
+
+  if (num_planes == 2) {
+    out_ycbcr->chroma_step = 2;
+    switch (handle->drm_format) {
+      case DRM_FORMAT_NV12:
+        out_ycbcr->cb = addr[1];
+        out_ycbcr->cr = addr[1] + 1;
+        break;
+
+      case DRM_FORMAT_NV21:
+        out_ycbcr->cb = addr[1] + 1;
+        out_ycbcr->cr = addr[1];
+        break;
+
+      default:
+        LOGF(ERROR) << "Unsupported semi-planar format: "
+                    << FormatToString(handle->drm_format);
+        return -EINVAL;
+    }
+  } else {  // num_planes == 3
+    out_ycbcr->chroma_step = 1;
+    switch (handle->drm_format) {
+      case DRM_FORMAT_YUV420:
+        out_ycbcr->cb = addr[1];
+        out_ycbcr->cr = addr[2];
+        break;
+
+      case DRM_FORMAT_YVU420:
+        out_ycbcr->cb = addr[2];
+        out_ycbcr->cr = addr[1];
+        break;
+
+      default:
+        LOGF(ERROR) << "Unsupported planar format: "
+                    << FormatToString(handle->drm_format);
+        return -EINVAL;
+    }
+  }
+  return 0;
+}
+
+int CameraBufferMapperImpl::Unlock(buffer_handle_t buffer) {
+  for (size_t i = 0; i < GetNumPlanes(buffer); ++i) {
+    int ret = Unmap(buffer, i);
+    if (ret) {
+      return ret;
+    }
+  }
+  return 0;
+}
+
+GbmDevice* CameraBufferMapperImpl::GetGbmDevice() {
   return gbm_device_.get();
 }
 
-void* CameraBufferMapper::Map(buffer_handle_t buffer,
-                              uint32_t flags,
-                              uint32_t plane) {
+void* CameraBufferMapperImpl::Map(buffer_handle_t buffer,
+                                  uint32_t flags,
+                                  uint32_t plane) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
   if (!handle) {
     return MAP_FAILED;
@@ -527,7 +532,7 @@ void* CameraBufferMapper::Map(buffer_handle_t buffer,
   }
 }
 
-int CameraBufferMapper::Unmap(buffer_handle_t buffer, uint32_t plane) {
+int CameraBufferMapperImpl::Unmap(buffer_handle_t buffer, uint32_t plane) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
   if (!handle) {
     return -EINVAL;
