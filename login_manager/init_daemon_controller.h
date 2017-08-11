@@ -19,7 +19,10 @@ class InitDaemonController {
  public:
   // Different triggering modes.
   enum class TriggerMode {
-    // Wait for the impulse to be fully processed before returning.
+    // Wait for the impulse to be fully processed before returning. Triggering
+    // a SYNC impulse may block on dependent init jobs. Always prefer ASYNC over
+    // SYNC unless your code actually needs the synchronous behavior.
+    // TODO(yusukes): Get rid of SYNC once ARC stops using it.
     SYNC,
     // Asynchronously trigger the impulse.
     ASYNC,
