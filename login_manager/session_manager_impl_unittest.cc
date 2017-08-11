@@ -2122,8 +2122,8 @@ TEST_F(SessionManagerImplTest, EmitArcBooted) {
       *init_controller_,
       TriggerImpulseInternal(SessionManagerImpl::kArcBootedImpulse,
                              ElementsAre(StartsWith("ANDROID_DATA_OLD_DIR=")),
-                             InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+                             InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(nullptr));
   {
     brillo::ErrorPtr error;
     EXPECT_TRUE(impl_->EmitArcBooted(&error, kSaneEmail));
@@ -2134,8 +2134,8 @@ TEST_F(SessionManagerImplTest, EmitArcBooted) {
       *init_controller_,
       TriggerImpulseInternal(SessionManagerImpl::kArcBootedImpulse,
                              ElementsAre(),
-                             InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+                             InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(nullptr));
   {
     brillo::ErrorPtr error;
     EXPECT_TRUE(impl_->EmitArcBooted(&error, std::string()));

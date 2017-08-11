@@ -1126,15 +1126,8 @@ bool SessionManagerImpl::EmitArcBooted(brillo::ErrorPtr* error,
                          android_data_old_dir.value());
   }
 
-  if (!init_controller_->TriggerImpulse(
-          kArcBootedImpulse, keyvals,
-          InitDaemonController::TriggerMode::SYNC)) {
-    constexpr char kMessage[] = "Emitting arc-booted impulse failed.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kEmitFailed, kMessage);
-    return false;
-  }
-
+  init_controller_->TriggerImpulse(kArcBootedImpulse, keyvals,
+                                   InitDaemonController::TriggerMode::ASYNC);
   return true;
 #else
   *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
