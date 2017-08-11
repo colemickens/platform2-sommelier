@@ -64,8 +64,7 @@ U2fMode GetU2fMode(bool force_u2f, bool force_g2f) {
     return U2fMode::kU2fExtended;
   }
 
-  if (force_u2f || policy_mode == U2fMode::kU2f ||
-      policy_mode == U2fMode::kUnset) {
+  if (force_u2f || policy_mode == U2fMode::kU2f) {
     return U2fMode::kU2f;
   }
 
