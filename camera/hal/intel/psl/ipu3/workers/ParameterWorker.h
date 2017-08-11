@@ -99,11 +99,20 @@ private:
             width(0),
             height(0) {}
     };
+
+    // same mode definition with tuning file
+    enum CPFFMode {
+        CPFF_MAIN = 0,
+        CPFF_FHD,
+        CPFF_HD,
+        CPFF_VGA,
+    };
     void updateAicInputParams(std::shared_ptr<DeviceMessage> msg, IPU3AICRuntimeParams &runtimeParams) const;
     void fillAicInputParams(ia_aiq_frame_params &sensorFrameParams, PipeConfig &pipeCfg, IPU3AICRuntimeParams &runtimeParams) const;
     status_t setGridInfo(uint32_t csiBeWidth);
     status_t getPipeConfig(PipeConfig &pipeCfg, std::shared_ptr<GraphConfig> &config, const string &pin) const;
-    int allocLscTable(IPU3AICRuntimeParams &runtimeParams ) ;
+    void overrideCPFFMode(PipeConfig *pipeCfg, std::shared_ptr<GraphConfig> &config);
+    int allocLscTable(IPU3AICRuntimeParams &runtimeParams);
 
 private:
     std::shared_ptr<SkyCamProxy> mSkyCamAIC;

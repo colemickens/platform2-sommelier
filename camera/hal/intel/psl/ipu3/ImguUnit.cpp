@@ -222,6 +222,7 @@ ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
         switch (activeStreams.at(i)->format) {
         case HAL_PIXEL_FORMAT_BLOB:
              mActiveStreams.blobStreams.push_back(activeStreams.at(i));
+             graphConfig->setPipeType(GraphConfig::PIPE_STILL);
              break;
         case HAL_PIXEL_FORMAT_RAW16:
              mActiveStreams.rawStreams.push_back(activeStreams.at(i));
