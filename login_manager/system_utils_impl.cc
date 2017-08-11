@@ -26,6 +26,7 @@
 #include <base/process/launch.h>
 #include <base/strings/string_util.h>
 #include <base/sys_info.h>
+#include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <brillo/process.h>
 #include <brillo/userdb_utils.h>
@@ -142,26 +143,26 @@ bool SystemUtilsImpl::ProcessGroupIsGone(pid_t child_spec,
 }
 
 bool SystemUtilsImpl::ProcessIsGone(pid_t child_spec, base::TimeDelta timeout) {
-  base::TimeTicks start = base::TimeTicks::Now();
-  base::TimeDelta elapsed;
-  int ret;
-
   DCHECK_GE(timeout.InSeconds(), 0);
   DCHECK_LE(timeout.InSeconds(),
             static_cast<int64_t>(std::numeric_limits<int>::max()));
-  // TODO(yusukes): The alarm() solution seems to have a race. If it fires
-  // before calling waitpid(), waitpid() may block longer than the |timeout|,
-  // possibly indefintely.
-  alarm(static_cast<int32_t>(timeout.InSeconds()));
-  do {
-    errno = 0;
-    ret = ::waitpid(child_spec, NULL, 0);
-    elapsed = base::TimeTicks::Now() - start;
-  } while (ret > 0 || (errno == EINTR && elapsed < timeout));
 
-  // Once we exit the loop, we know there was an error.
-  alarm(0);
-  return errno == ECHILD;  // EINTR means we timed out.
+  base::TimeTicks start = base::TimeTicks::Now();
+
+  do {
+    int ret = 0;
+    // We do this in a loop to support waiting on multiple children.
+    // This is necessary for the ProcessGroupIsGone function to work.
+    do {
+      ret = waitpid(child_spec, nullptr, WNOHANG);
+      if (ret == -1 && errno == ECHILD)
+        return true;
+    } while (ret > 0);
+
+    base::PlatformThread::YieldCurrentThread();
+  } while (base::TimeTicks::Now() - start < timeout);
+
+  return false;
 }
 
 bool SystemUtilsImpl::EnsureAndReturnSafeFileSize(const base::FilePath& file,
