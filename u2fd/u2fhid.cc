@@ -226,12 +226,10 @@ int U2fHid::HidMessage::BuildReport(int offset, std::string* report_out) {
 }
 
 struct U2fHid::Transaction {
-  Transaction() : cid(0), cmd(U2fHidCommand::kError), total_size(0), seq(0) {}
-  ~Transaction() {}
-  uint32_t cid;
-  U2fHidCommand cmd;
-  size_t total_size;
-  int seq;
+  uint32_t cid = 0;
+  U2fHidCommand cmd = U2fHidCommand::kError;
+  size_t total_size = 0;
+  int seq = 0;
   std::string payload;
   base::OneShotTimer timeout;
 };
