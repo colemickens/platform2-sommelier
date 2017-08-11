@@ -305,6 +305,8 @@ status_t Intel3aCore::init(int maxGridW,
         status = UNKNOWN_ERROR;
     }
 
+    LOG1("@%s: AIQ version: %s.", __FUNCTION__, ia_aiq_get_version());
+
     mHyperFocalDistance = calculateHyperfocalDistance(*mCmc);
     /**
      * Cache all the values we are going to need from the static metadata
