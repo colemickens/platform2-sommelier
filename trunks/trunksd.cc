@@ -143,5 +143,10 @@ int main(int argc, char** argv) {
   service.set_power_manager(&power_manager);
 #endif
   LOG(INFO) << "Trunks service started.";
-  return service.Run();
+  int exit_code = service.Run();
+  // Need to stop the background thread before destroying ResourceManager
+  // and PowerManager. Otherwise, a task posted by BackgroundCommandTransceiver
+  // may attempt to access those destroyed objects.
+  background_thread.Stop();
+  return exit_code;
 }
