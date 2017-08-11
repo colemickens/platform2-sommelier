@@ -27,6 +27,11 @@ HammerUpdater::HammerUpdater(
     : image_(image), fw_updater_(std::move(fw_updater)) {}
 
 bool HammerUpdater::Run() {
+  // The time period after which hammer automatically jumps to RW section.
+  constexpr unsigned int kJumpToRWTimeMs = 1000;
+  // The time period from USB device ready to udev invoking hammerd.
+  constexpr unsigned int kUdevGuardTimeMs = 1000;
+
   LOG(INFO) << "Load and validate the image.";
   if (!fw_updater_->LoadImage(image_)) {
     LOG(ERROR) << "Failed to load image.";
@@ -35,6 +40,41 @@ bool HammerUpdater::Run() {
 
   HammerUpdater::RunStatus status = RunLoop();
   bool ret = (status == HammerUpdater::RunStatus::kNoUpdate);
+
+  // If hammerd send reset or jump to RW signal at the last run, hammer will
+  // re-connect to the AP and udev will trigger hammerd again. We MUST prohibit
+  // the next invocation, otherwise udev will invoke hammerd infinitely.
+  //
+  // The timing of invocation might be entering into RO section or RW section.
+  // Therefore we might wait for USB device once when sending JumpToRW, and wait
+  // twice when sending Reset signal.
+  if (status == HammerUpdater::RunStatus::kNeedReset ||
+      status == HammerUpdater::RunStatus::kNeedJump) {
+    LOG(INFO) << "Wait for USB device ready...";
+    bool usb_connection = fw_updater_->TryConnectUSB();
+    fw_updater_->CloseUSB();
+    if (!usb_connection) {
+      return ret;
+    }
+    if (status == HammerUpdater::RunStatus::kNeedReset) {
+      LOG(INFO) << "USB device probably in RO, waiting for it to enter RW.";
+      base::PlatformThread::Sleep(
+          base::TimeDelta::FromMilliseconds(kJumpToRWTimeMs));
+
+      usb_connection = fw_updater_->TryConnectUSB();
+      fw_updater_->CloseUSB();
+      if (!usb_connection) {
+        return ret;
+      }
+    }
+
+    LOG(INFO) << "Now USB device should be in RW. Wait "
+              << kUdevGuardTimeMs / 1000
+              << "s to prevent udev invoking next process.";
+    base::PlatformThread::Sleep(
+        base::TimeDelta::FromMilliseconds(kUdevGuardTimeMs));
+    LOG(INFO) << "Finish the infinite loop prevention.";
+  }
   return ret;
 }
 
@@ -49,7 +89,8 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
   for (int run_count = 0; run_count < kMaximumRunCount; ++run_count) {
     if (!fw_updater_->TryConnectUSB()) {
       LOG(ERROR) << "Failed to connect USB.";
-      return HammerUpdater::RunStatus::kFatalError;
+      fw_updater_->CloseUSB();
+      return HammerUpdater::RunStatus::kLostConnection;
     }
 
     status = RunOnce(post_rw_jump);
@@ -62,8 +103,20 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
 
       case HammerUpdater::RunStatus::kFatalError:
         LOG(ERROR) << "Hammer encountered a fatal error!";
+        // Send the reset signal to hammer, and then prevent the next hammerd
+        // process be invoked.
+        fw_updater_->SendSubcommand(UpdateExtraCommand::kImmediateReset);
         fw_updater_->CloseUSB();
-        return status;
+        return HammerUpdater::RunStatus::kNeedReset;
+
+      case HammerUpdater::RunStatus::kInvalidFirmware:
+        // Send the JumpToRW to hammer, and then prevent the next hammerd
+        // process be invoked.
+        fw_updater_->SendSubcommand(UpdateExtraCommand::kJumpToRW);
+        fw_updater_->CloseUSB();
+        base::PlatformThread::Sleep(
+            base::TimeDelta::FromMilliseconds(kResetTimeMs));
+        return HammerUpdater::RunStatus::kNeedJump;
 
       case HammerUpdater::RunStatus::kNeedReset:
         LOG(INFO) << "Reset hammer and run again. run_count=" << run_count;
@@ -91,8 +144,7 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
     }
   }
 
-  LOG(ERROR) << "Maximum run count exceeded (" << kMaximumRunCount
-             << ")! Shutdown Hammerd.";
+  LOG(ERROR) << "Maximum run count exceeded (" << kMaximumRunCount << ")! ";
   return status;
 }
 

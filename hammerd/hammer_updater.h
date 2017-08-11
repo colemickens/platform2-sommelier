@@ -21,6 +21,8 @@ class HammerUpdater {
     kFatalError,
     kNeedReset,
     kNeedJump,
+    kLostConnection,
+    kInvalidFirmware,
   };
 
   explicit HammerUpdater(const std::string& image);
