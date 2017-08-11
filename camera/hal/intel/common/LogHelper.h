@@ -223,6 +223,7 @@ using LogHelper::__camera_hal_log;
 #define LOG1(...) __camera_hal_log(gLogLevel & CAMERA_DEBUG_LOG_LEVEL1, CAMERA_DEBUG_LOG_LEVEL1, CAMHAL_TAG, __VA_ARGS__)
 #define LOG2(...) __camera_hal_log(gLogLevel & CAMERA_DEBUG_LOG_LEVEL2, CAMERA_DEBUG_LOG_LEVEL2, CAMHAL_TAG, __VA_ARGS__)
 #define LOGR(...) __camera_hal_log(gLogLevel & CAMERA_DEBUG_LOG_REQ_STATE, CAMERA_DEBUG_LOG_REQ_STATE, CAMHAL_TAG, __VA_ARGS__)
+#define LOGAIQ(...) __camera_hal_log(gLogLevel & CAMERA_DEBUG_LOG_AIQ, CAMERA_DEBUG_LOG_AIQ, CAMHAL_TAG, __VA_ARGS__)
 
 #define LOGD(...) __camera_hal_log(true, CAMERA_DEBUG_TYPE_DEBUG, CAMHAL_TAG, __VA_ARGS__)
 #define LOGV(...) __camera_hal_log(true, CAMERA_DEBUG_TYPE_VERBOSE, CAMHAL_TAG, __VA_ARGS__)

@@ -986,6 +986,11 @@ int PSLConfParser::readNvmData()
     sensorName = info->getSensorName();
     nvmDirectory = info->getNvmDirectory();
 
+    if (nvmDirectory.length() > 0) {
+        LOG1("NVM dirctory from config is null");
+        return UNKNOWN_ERROR;
+    }
+
     nvmData.size = 0;
     nvmData.data = nullptr;
     //check separator of path name
@@ -1002,7 +1007,7 @@ int PSLConfParser::readNvmData()
 
     nvmFile = fopen(nvmDataPath.c_str(), "rb");
     if (!nvmFile) {
-        LOGE("Failed to open NVM file");
+        LOGE("Failed to open NVM file: %s", nvmDataPath.c_str());
         return UNKNOWN_ERROR;
     }
 

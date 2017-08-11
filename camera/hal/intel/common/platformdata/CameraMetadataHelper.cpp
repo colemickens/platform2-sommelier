@@ -215,7 +215,7 @@ void dumpMetadata(const camera_metadata_t * meta)
         } else {
             typeName = camera_metadata_type_names[entry.type];
         }
-        LOG2("(%d)%s.%s (%05x): %s[%zu], type: %d\n",
+        LOG2("(%d)%s.%s (%05x): %s[%zu], type: %d",
              i,
              tagSection,
              tagName,

@@ -114,7 +114,7 @@ status_t SyncManager::setSubdev(std::shared_ptr<MediaEntity> entity, sensorEntit
         mPixelArraySubdev = subdev;
         break;
     case SUBDEV_ISYSRECEIVER:
-        if (entity->getType() != SUBDEV_SENSOR) {
+        if (entity->getType() != SUBDEV_GENERIC) {
             LOGE("%s is not Isys receiver subdevice\n", entity->getName());
         }
         mIsysReceiverSubdev = subdev;

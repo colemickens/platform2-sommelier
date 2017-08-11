@@ -190,7 +190,7 @@ status_t CameraBuffer::init(const camera3_stream_buffer *aBuffer, int cameraId)
     mUserBuffer = *aBuffer;
     mUserBuffer.release_fence = -1;
     mCameraId = cameraId;
-    LOGD("@%s, mHandle:%p, mFormat:%d, mWidth:%d, mHeight:%d, mStride:%d",
+    LOG2("@%s, mHandle:%p, mFormat:%d, mWidth:%d, mHeight:%d, mStride:%d",
         __FUNCTION__, mHandle, mFormat, mWidth, mHeight, mStride);
 
     int ret = mGbmBufferMapper->Register(mHandle);

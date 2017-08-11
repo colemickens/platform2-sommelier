@@ -50,7 +50,7 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
     if (ret != OK)
         return ret;
 
-    LOGD("@%s allocate format: %s size: %d %dx%d", __func__, v4l2Fmt2Str(mFormat.fmt.pix.pixelformat),
+    LOG1("@%s allocate format: %s size: %d %dx%d", __func__, v4l2Fmt2Str(mFormat.fmt.pix.pixelformat),
             mFormat.fmt.pix.sizeimage,
             mFormat.fmt.pix.width,
             mFormat.fmt.pix.height);
@@ -156,7 +156,7 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     }
 
     if (notFound) {
-        LOGD("No work for this worker mStream: %p", mStream);
+        LOG1("No work for this worker mStream: %p", mStream);
         mAllDone = true;
         mOutputBuffer = nullptr;
         mPollMe = false;
@@ -175,7 +175,7 @@ status_t OutputFrameWorker::run()
     }
 
     if (mAllDone) {
-        LOGD("No work for this worker");
+        LOG1("No work for this worker");
         return OK;
     }
 
