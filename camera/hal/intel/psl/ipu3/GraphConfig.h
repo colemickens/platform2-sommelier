@@ -266,6 +266,13 @@ public:
 
     status_t getIsaStreamIds(std::vector<int32_t> &streamIdVector,
                              std::map<string, int32_t> &isaOutputPort2StreamIdMap);
+    enum PipeType {
+        PIPE_STILL = 0,
+        PIPE_PREVIEW,
+    };
+    PipeType getPipeType() const { return mPipeType; }
+    void setPipeType(PipeType type) { mPipeType = type; }
+    bool isStillPipe() { return mPipeType == PIPE_STILL; }
 
 public:
     void setMediaCtl(std::shared_ptr<MediaController> mediaCtl) { mMediaCtl = mediaCtl; }
@@ -424,6 +431,7 @@ private:
     bool mMetaEnabled; // indicates if the specific sensor provides sensor
                        // embedded metadata
     bool mFallback;
+    PipeType mPipeType;
     enum SourceType {
         SRC_NONE = 0,
         SRC_SENSOR,

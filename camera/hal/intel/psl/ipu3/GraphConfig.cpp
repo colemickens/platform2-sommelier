@@ -73,6 +73,7 @@ GraphConfig::GraphConfig() :
         mReqId(0),
         mMetaEnabled(false),
         mFallback(false),
+        mPipeType(PIPE_PREVIEW),
         mSourceType(SRC_NONE)
 {
     //CLEAR(mProgramGroup);
