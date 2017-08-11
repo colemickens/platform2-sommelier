@@ -156,9 +156,8 @@ TEST_F(ComponentTest, TestCopyAndMountComponent) {
   // mock here. The platform_ImageLoader autotest tests the real helper
   // process running as a dbus service.
   auto helper_mock = base::MakeUnique<MockHelperProcess>();
-  EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kSquashFS, _))
-      .Times(1);
-  ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))
+  EXPECT_CALL(*helper_mock, SendMountCommand(_, _, _)).Times(1);
+  ON_CALL(*helper_mock, SendMountCommand(_, _, _))
       .WillByDefault(testing::Return(true));
   ASSERT_TRUE(copied_component->Mount(helper_mock.get(), mount_dir));
 }

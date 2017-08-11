@@ -30,7 +30,6 @@ constexpr char kTestDataVersion[] = "22.0.0.158";
 constexpr char kTestUpdatedVersion[] = "22.0.0.256";
 
 // Get the path of the test component in the test data folder.
-base::FilePath GetTestDataPath(const std::string& subdir);
 base::FilePath GetTestComponentPath();
 base::FilePath GetTestComponentPath(const std::string& version);
 

@@ -98,22 +98,8 @@ void MountHelper::OnFileCanReadWithoutBlocking(int fd) {
 }
 
 MountResponse MountHelper::HandleCommand(MountImage& command) {
-  // Convert the fs type to a string.
-  std::string fs_type;
-  switch (command.fs_type()) {
-    case MountImage_FileSystem_EXT4:
-      fs_type = "ext4";
-      break;
-    case MountImage_FileSystem_SQUASH:
-      fs_type = "squashfs";
-      break;
-    default:
-      LOG(FATAL) << "unknown filesystem type";
-  }
-
   bool status = mounter_.Mount(base::ScopedFD(pending_fd_),
                                base::FilePath(command.mount_path()),
-                               fs_type,
                                command.table());
   if (!status) LOG(ERROR) << "mount failed";
 

@@ -46,14 +46,10 @@ constexpr char kManifestVersionField[] = "manifest-version";
 constexpr char kVersionField[] = "version";
 // The name of the field containing the image hash.
 constexpr char kImageHashField[] = "image-sha256-hash";
-// The name of the image file (squashfs).
-constexpr char kImageFileNameSquashFS[] = "image.squash";
-// The name of the image file (ext4).
-constexpr char kImageFileNameExt4[] = "image.ext4";
+// The name of the image file.
+constexpr char kImageFileName[] = "image.squash";
 // The name of the field containing the table hash.
 constexpr char kTableHashField[] = "table-sha256-hash";
-// The name of the optional field containing the file system type.
-constexpr char kFSType[] = "fs-type";
 // The name of the table file.
 constexpr char kTableFileName[] = "table";
 // The maximum size of any file to read into memory.
@@ -106,16 +102,8 @@ base::FilePath GetTablePath(const base::FilePath& component_dir) {
   return component_dir.Append(kTableFileName);
 }
 
-base::FilePath GetImagePath(const base::FilePath& component_dir,
-                            FileSystem fs_type) {
-  if (fs_type == FileSystem::kExt4)
-    return component_dir.Append(kImageFileNameExt4);
-  else if (fs_type == FileSystem::kSquashFS)
-    return component_dir.Append(kImageFileNameSquashFS);
-  else {
-    NOTREACHED();
-    return base::FilePath();
-  }
+base::FilePath GetImagePath(const base::FilePath& component_dir) {
+  return component_dir.Append(kImageFileName);
 }
 
 bool WriteFileToDisk(const base::FilePath& path, const std::string& contents) {
@@ -197,7 +185,7 @@ bool Component::Mount(HelperProcess* mounter, const base::FilePath& dest_dir) {
     return false;
   }
 
-  base::FilePath image_path(GetImagePath(component_dir_, manifest_.fs_type));
+  base::FilePath image_path(GetImagePath(component_dir_));
   base::File image(image_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!image.IsValid()) {
     LOG(ERROR) << "Could not open image file.";
@@ -205,8 +193,7 @@ bool Component::Mount(HelperProcess* mounter, const base::FilePath& dest_dir) {
   }
   base::ScopedFD image_fd(image.TakePlatformFile());
 
-  return mounter->SendMountCommand(image_fd.get(), dest_dir.value(),
-                                   manifest_.fs_type, table);
+  return mounter->SendMountCommand(image_fd.get(), dest_dir.value(), table);
 }
 
 bool Component::ParseManifest() {
@@ -268,20 +255,6 @@ bool Component::ParseManifest() {
     return false;
   }
 
-  // The fs_type field is optional, and squashfs by default.
-  manifest_.fs_type = FileSystem::kSquashFS;
-  std::string fs_type;
-  if (manifest_dict->GetString(kFSType, &fs_type)) {
-    if (fs_type == "ext4") {
-      manifest_.fs_type = FileSystem::kExt4;
-    } else if (fs_type == "squashfs") {
-      manifest_.fs_type = FileSystem::kSquashFS;
-    } else {
-      LOG(ERROR) << "Unsupported file system type: " << fs_type;
-      return false;
-    }
-  }
-
   return true;
 }
 
@@ -334,8 +307,8 @@ bool Component::CopyTo(const base::FilePath& dest_dir) {
     return false;
   }
 
-  base::FilePath image_src(GetImagePath(component_dir_, manifest_.fs_type));
-  base::FilePath image_dest(GetImagePath(dest_dir, manifest_.fs_type));
+  base::FilePath image_src(GetImagePath(component_dir_));
+  base::FilePath image_dest(GetImagePath(dest_dir));
   if (!CopyComponentFile(image_src, image_dest, manifest_.image_sha256)) {
     LOG(ERROR) << "Could not copy image file.";
     return false;

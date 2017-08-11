@@ -118,9 +118,8 @@ TEST_F(ImageLoaderTest, MountValidImage) {
                                       std::end(kDevPublicKey)));
 
   auto helper_mock = base::MakeUnique<MockHelperProcess>();
-  EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kSquashFS, _))
-      .Times(2);
-  ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))
+  EXPECT_CALL(*helper_mock, SendMountCommand(_, _, _)).Times(2);
+  ON_CALL(*helper_mock, SendMountCommand(_, _, _))
       .WillByDefault(testing::Return(true));
 
   base::ScopedTempDir scoped_mount_dir;
@@ -153,9 +152,8 @@ TEST_F(ImageLoaderTest, LoadComponentAtPath) {
       std::vector<uint8_t>(std::begin(kDevPublicKey), std::end(kDevPublicKey)));
 
   auto helper_mock = base::MakeUnique<MockHelperProcess>();
-  EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kSquashFS, _))
-      .Times(1);
-  ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))
+  EXPECT_CALL(*helper_mock, SendMountCommand(_, _, _)).Times(1);
+  ON_CALL(*helper_mock, SendMountCommand(_, _, _))
       .WillByDefault(testing::Return(true));
 
   base::ScopedTempDir scoped_mount_dir;
@@ -172,40 +170,14 @@ TEST_F(ImageLoaderTest, LoadComponentAtPath) {
   EXPECT_EQ(expected_path, mnt_path);
 }
 
-TEST_F(ImageLoaderTest, LoadExt4Image) {
-  Keys keys;
-  keys.push_back(
-      std::vector<uint8_t>(std::begin(kDevPublicKey), std::end(kDevPublicKey)));
-
-  auto helper_mock = base::MakeUnique<MockHelperProcess>();
-  EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kExt4, _))
-      .Times(1);
-  ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))
-      .WillByDefault(testing::Return(true));
-
-  base::ScopedTempDir scoped_mount_dir;
-  ASSERT_TRUE(scoped_mount_dir.CreateUniqueTempDir());
-
-  ImageLoaderConfig config(keys, temp_dir_.value().c_str(),
-                           scoped_mount_dir.path().value().c_str());
-  ImageLoaderImpl loader(std::move(config));
-
-  const std::string expected_path =
-      scoped_mount_dir.path().value() + "/ext4/1.6.10.10";
-  const std::string mnt_path = loader.LoadComponentAtPath(
-      "ext4", GetTestDataPath("ext4_component"), helper_mock.get());
-  EXPECT_EQ(expected_path, mnt_path);
-}
-
 TEST_F(ImageLoaderTest, MountInvalidImage) {
   Keys keys;
-  keys.push_back(
-      std::vector<uint8_t>(std::begin(kDevPublicKey), std::end(kDevPublicKey)));
+  keys.push_back(std::vector<uint8_t>(std::begin(kDevPublicKey),
+                                      std::end(kDevPublicKey)));
 
   auto helper_mock = base::MakeUnique<MockHelperProcess>();
-  EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kSquashFS, _))
-      .Times(0);
-  ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))
+  EXPECT_CALL(*helper_mock, SendMountCommand(_, _, _)).Times(0);
+  ON_CALL(*helper_mock, SendMountCommand(_, _, _))
       .WillByDefault(testing::Return(true));
 
   base::ScopedTempDir scoped_mount_dir;

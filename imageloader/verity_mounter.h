@@ -1,7 +1,6 @@
 // Copyright 2016 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
 #ifndef IMAGELOADER_VERITY_MOUNTER_H_
 #define IMAGELOADER_VERITY_MOUNTER_H_
 
@@ -19,7 +18,6 @@ class VerityMounter {
 
   virtual bool Mount(const base::ScopedFD& image_fd,
                      const base::FilePath& mount_point,
-                     const std::string& fs_type,
                      const std::string& table);
 
   // Take the raw table, clean up any newlines, insert the device_path, and add

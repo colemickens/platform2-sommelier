@@ -35,9 +35,6 @@ constexpr int kComponentDirPerms = 0755;
 // The permissions that files in the component should have.
 constexpr int kComponentFilePerms = 0644;
 
-// The supported file systems for images.
-enum class FileSystem { kExt4, kSquashFS };
-
 class Component {
  public:
   // This is a parsed version of the imageloader.json manifest.
@@ -46,7 +43,6 @@ class Component {
     std::vector<uint8_t> image_sha256;
     std::vector<uint8_t> table_sha256;
     std::string version;
-    FileSystem fs_type;
   };
 
   // Creates a Component. Returns nullptr if initialization and verification
