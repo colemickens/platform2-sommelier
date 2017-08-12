@@ -1647,18 +1647,12 @@ bool SessionManagerImpl::StartArcNetwork(brillo::ErrorPtr* error_out) {
   }
 
   // Tell init to configure the network.
-  if (!init_controller_->TriggerImpulse(
-          kStartArcNetworkImpulse,
-          {"CONTAINER_NAME=" + std::string(kArcContainerName),
-           "CONTAINER_PATH=" + root_path.value(),
-           "CONTAINER_PID=" + std::to_string(pid)},
-          InitDaemonController::TriggerMode::SYNC)) {
-    constexpr char kMessage[] = "Emitting start-arc-network impulse failed.";
-    LOG(ERROR) << kMessage;
-    *error_out = CreateError(dbus_error::kEmitFailed, kMessage);
-    return false;
-  }
-
+  init_controller_->TriggerImpulse(
+      kStartArcNetworkImpulse,
+      {"CONTAINER_NAME=" + std::string(kArcContainerName),
+       "CONTAINER_PATH=" + root_path.value(),
+       "CONTAINER_PID=" + std::to_string(pid)},
+      InitDaemonController::TriggerMode::ASYNC);
   return true;
 }
 

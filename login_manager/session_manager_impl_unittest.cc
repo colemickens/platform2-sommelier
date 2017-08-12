@@ -1573,8 +1573,8 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForUser) {
                           SessionManagerImpl::kArcContainerName,
                       "CONTAINER_PATH=",
                       "CONTAINER_PID=" + std::to_string(kAndroidPid)),
-          InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+          InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(nullptr));
   EXPECT_CALL(
       *init_controller_,
       TriggerImpulseInternal(SessionManagerImpl::kStopArcNetworkImpulse,
@@ -1679,8 +1679,8 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
                           SessionManagerImpl::kArcContainerName,
                       "CONTAINER_PATH=",
                       "CONTAINER_PID=" + std::to_string(kAndroidPid)),
-          InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+          InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(nullptr));
   EXPECT_CALL(
       *init_controller_,
       TriggerImpulseInternal(SessionManagerImpl::kStopArcNetworkImpulse,
@@ -1792,8 +1792,8 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
                           SessionManagerImpl::kArcContainerName,
                       "CONTAINER_PATH=",
                       "CONTAINER_PID=" + std::to_string(kAndroidPid)),
-          InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+          InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(nullptr));
   EXPECT_CALL(
       *init_controller_,
       TriggerImpulseInternal(SessionManagerImpl::kStopArcNetworkImpulse,
@@ -1986,9 +1986,8 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
                           SessionManagerImpl::kArcContainerName,
                       "CONTAINER_PATH=",
                       "CONTAINER_PID=" + std::to_string(kAndroidPid)),
-          InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-
+          InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(nullptr));
   {
     brillo::ErrorPtr error;
     StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
@@ -2040,8 +2039,8 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
                           SessionManagerImpl::kArcContainerName,
                       "CONTAINER_PATH=",
                       "CONTAINER_PID=" + std::to_string(kAndroidPid)),
-          InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+          InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(nullptr));
 
   std::string container_instance_id;
   {
