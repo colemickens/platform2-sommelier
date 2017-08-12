@@ -445,8 +445,8 @@ class SessionManagerImplTest : public ::testing::Test {
         TriggerImpulseInternal(
             SessionManagerImpl::kRemoveOldArcDataImpulse,
             ElementsAre(StartsWith("ANDROID_DATA_OLD_DIR=")),
-            InitDaemonController::TriggerMode::SYNC))
-        .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+            InitDaemonController::TriggerMode::ASYNC))
+        .WillOnce(Return(nullptr));
 #endif
   }
 

@@ -1256,12 +1256,10 @@ bool SessionManagerImpl::RemoveArcDataInternal(
   // Note that the init job never deletes |android_data_old_dir| itself so the
   // rename() operation above never fails.
   LOG(INFO) << "Removing contents in " << android_data_old_dir.value();
-  if (!init_controller_->TriggerImpulse(
-          kRemoveOldArcDataImpulse,
-          {"ANDROID_DATA_OLD_DIR=" + android_data_old_dir.value()},
-          InitDaemonController::TriggerMode::SYNC)) {
-    LOG(ERROR) << "Failed to emit " << kRemoveOldArcDataImpulse << " impulse";
-  }
+  init_controller_->TriggerImpulse(
+      kRemoveOldArcDataImpulse,
+      {"ANDROID_DATA_OLD_DIR=" + android_data_old_dir.value()},
+      InitDaemonController::TriggerMode::ASYNC);
   return true;
 }
 #endif  // USE_CHEETS
