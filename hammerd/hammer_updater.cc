@@ -179,7 +179,7 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(
   }
   fw_updater_->SendDone();
 
-  LOG(INFO) << "### CURRENT SECTION: "
+  LOG(INFO) << "### Current Section: "
             << ToString(fw_updater_->CurrentSection()) << " ###";
 
   // ********************** UNKNOWN **********************

@@ -244,10 +244,10 @@ bool FirmwareUpdater::LoadImage(const std::string& image) {
   }
 
   image_ = image;
-  LOG(INFO) << "Header versions:";
+  LOG(INFO) << "### On-disk Firmware Update ###";
   for (const auto& section : sections_) {
     LOG(INFO) << base::StringPrintf(
-        "%s offset=0x%08x/0x%08x version=%s rollback=%d key_version=%d",
+        "  %s: offset=0x%08x/0x%08x version=%s rollback=%d key_version=%d",
         ToString(section.name),
         section.offset,
         section.size,
@@ -454,9 +454,10 @@ bool FirmwareUpdater::SendFirstPDU() {
     return false;
   }
 
-  LOG(INFO) << "Response of the first PDU:";
+  std::string writable_section = ToString(OtherSection(CurrentSection()));
+  LOG(INFO) << "### Writable Section: " << writable_section << " ###";
   LOG(INFO) << base::StringPrintf(
-      "Maximum PDU size: %d, Flash protection: %04x, Version: %s, "
+      "  Maximum PDU size: %d, Flash protection: %04x, Version: %s, "
       "Key version: %d, Minimum rollback: %d, Writeable at offset: 0x%x",
       targ_.maximum_pdu_size,
       targ_.flash_protection,
@@ -464,7 +465,6 @@ bool FirmwareUpdater::SendFirstPDU() {
       targ_.key_version,
       targ_.min_rollback,
       targ_.offset);
-  LOG(INFO) << "SendFirstPDU finished successfully.";
   return true;
 }
 
