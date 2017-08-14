@@ -133,7 +133,37 @@ TEST_F(ComponentTest, InitComponentAndCheckManifest) {
             component->manifest().table_sha256);
 }
 
-TEST_F(ComponentTest, TestCopyAndMountComponent) {
+TEST_F(ComponentTest, TestCopyAndMountComponentExt4) {
+  std::unique_ptr<Component> component =
+      Component::Create(GetTestDataPath("ext4_component"), keys_);
+  ASSERT_NE(nullptr, component);
+
+  const base::FilePath copied_dir = temp_dir_.Append("dest");
+  ASSERT_TRUE(base::CreateDirectory(copied_dir));
+  ASSERT_TRUE(base::SetPosixFilePermissions(copied_dir, kComponentDirPerms));
+
+  ASSERT_TRUE(component->CopyTo(copied_dir));
+
+  std::unique_ptr<Component> copied_component =
+      Component::Create(copied_dir, keys_);
+  ASSERT_NE(nullptr, copied_component);
+
+  const base::FilePath mount_dir = temp_dir_.Append("mount");
+  ASSERT_TRUE(base::CreateDirectory(copied_dir));
+  ASSERT_TRUE(base::SetPosixFilePermissions(copied_dir, kComponentDirPerms));
+
+  // Note: this fails to test the actual mounting process since it is just a
+  // mock here. The platform_ImageLoader autotest tests the real helper
+  // process running as a dbus service.
+  auto helper_mock = base::MakeUnique<MockHelperProcess>();
+  EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kExt4, _))
+      .Times(1);
+  ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))
+      .WillByDefault(testing::Return(true));
+  ASSERT_TRUE(copied_component->Mount(helper_mock.get(), mount_dir));
+}
+
+TEST_F(ComponentTest, TestCopyAndMountComponentSquashfs) {
   std::unique_ptr<Component> component =
       Component::Create(GetTestComponentPath(), keys_);
   ASSERT_NE(nullptr, component);
@@ -156,8 +186,9 @@ TEST_F(ComponentTest, TestCopyAndMountComponent) {
   // mock here. The platform_ImageLoader autotest tests the real helper
   // process running as a dbus service.
   auto helper_mock = base::MakeUnique<MockHelperProcess>();
-  EXPECT_CALL(*helper_mock, SendMountCommand(_, _, _)).Times(1);
-  ON_CALL(*helper_mock, SendMountCommand(_, _, _))
+  EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kSquashFS, _))
+      .Times(1);
+  ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))
       .WillByDefault(testing::Return(true));
   ASSERT_TRUE(copied_component->Mount(helper_mock.get(), mount_dir));
 }

@@ -12,6 +12,9 @@
 
 namespace imageloader {
 
+// Forward declare the FileSystem enum.
+enum class FileSystem;
+
 // Tracks a helper subprocess. Handles forking, cleaning up on termination, and
 // IPC.
 class HelperProcess {
@@ -27,6 +30,7 @@ class HelperProcess {
   // Sends a message telling the helper process to mount the file backed by |fd|
   // at the |path|.
   virtual bool SendMountCommand(int fd, const std::string& path,
+                                FileSystem fs_type,
                                 const std::string& table);
 
   const pid_t pid() { return pid_; }

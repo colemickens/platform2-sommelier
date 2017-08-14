@@ -14,6 +14,12 @@ package imageloader;
 message MountImage {
   required string mount_path = 1;
   required string table = 2;
+  enum FileSystem {
+    UNKNOWN = 0;
+    SQUASH = 1;
+    EXT4 = 2;
+  }
+  required FileSystem fs_type = 3 [default = UNKNOWN];
 }
 
 message MountResponse {

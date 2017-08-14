@@ -241,6 +241,7 @@ bool VerityMounter::SetupTable(std::string* table,
 
 bool VerityMounter::Mount(const base::ScopedFD& image_fd,
                           const base::FilePath& mount_point,
+                          const std::string& fs_type,
                           const std::string& table) {
   // First check if the component is already mounted and avoid unnecessary work.
   bool already_mounted = false;
@@ -272,7 +273,7 @@ bool VerityMounter::Mount(const base::ScopedFD& image_fd,
     return false;
   }
 
-  if (mount(dev_name.c_str(), mount_point.value().c_str(), "squashfs",
+  if (mount(dev_name.c_str(), mount_point.value().c_str(), fs_type.c_str(),
             MS_RDONLY | MS_NOSUID | MS_NODEV, "") < 0) {
     PLOG(ERROR) << "mount, mount_point " << mount_point.value();
     ClearVerityDevice(dev_name);

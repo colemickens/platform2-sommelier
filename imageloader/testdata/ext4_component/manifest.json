@@ -1,0 +1,9 @@
+{
+    "description": "Epson printing driver.",
+    "name": "epson-inkjet-printer-escpr",
+    "version": "1.6.10.10",
+    "min-env-version": "2.1",
+    "squash" : "false",
+    "image-name" : "image.ext4",
+    "fs-type" : "ext4"
+}

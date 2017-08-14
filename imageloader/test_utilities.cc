@@ -12,7 +12,13 @@
 
 #include "component.h"
 
-namespace {
+namespace base {
+void PrintTo(const base::FilePath& path, std::ostream* stream) {
+  *stream << path.value();
+}
+}  // namespace base
+
+namespace imageloader {
 
 base::FilePath GetTestDataPath(const std::string& subdir) {
   const char* src_dir = getenv("CROS_WORKON_SRCROOT");
@@ -25,16 +31,6 @@ base::FilePath GetTestDataPath(const std::string& subdir) {
                        .Append(subdir);
   return component_path;
 }
-
-}  // namespace
-
-namespace base {
-void PrintTo(const base::FilePath& path, std::ostream* stream) {
-  *stream << path.value();
-}
-}  // namespace base
-
-namespace imageloader {
 
 base::FilePath GetTestComponentPath() {
   return GetTestComponentPath(kTestDataVersion);
