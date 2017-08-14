@@ -248,8 +248,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   static const char kType[];
 
-  void Init();
-
   static uint global_serial_;
   PropertyStore store_;
   const std::string device_name_;

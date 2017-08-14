@@ -57,12 +57,7 @@ uint IPConfig::global_serial_ = 0;
 
 IPConfig::IPConfig(ControlInterface* control_interface,
                    const std::string& device_name)
-    : device_name_(device_name),
-      type_(kType),
-      serial_(global_serial_++),
-      adaptor_(control_interface->CreateIPConfigAdaptor(this)) {
-  Init();
-}
+    : IPConfig(control_interface, device_name, kType) {}
 
 IPConfig::IPConfig(ControlInterface* control_interface,
                    const std::string& device_name,
@@ -71,10 +66,6 @@ IPConfig::IPConfig(ControlInterface* control_interface,
       type_(type),
       serial_(global_serial_++),
       adaptor_(control_interface->CreateIPConfigAdaptor(this)) {
-  Init();
-}
-
-void IPConfig::Init() {
   store_.RegisterConstString(kAddressProperty, &properties_.address);
   store_.RegisterConstString(kBroadcastProperty,
                              &properties_.broadcast_address);
@@ -103,7 +94,7 @@ void IPConfig::Init() {
                                 &properties_.isns_option_data);
   time_ = Time::GetInstance();
   current_lease_expiration_time_ = {kDefaultLeaseExpirationTime, 0};
-  SLOG(this, 2) << __func__ << " device: " << device_name();
+  SLOG(this, 2) << __func__ << " device: " << device_name_;
 }
 
 IPConfig::~IPConfig() {
