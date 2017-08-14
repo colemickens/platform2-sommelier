@@ -289,7 +289,6 @@ std::unique_ptr<ChapsProxyImpl> ChapsProxyImpl::Create() {
 
 bool ChapsProxyImpl::OpenIsolate(SecureBlob* isolate_credential,
                                  bool* new_isolate_created) {
-  AutoLock lock(lock_);
   bool result = false;
   SecureBlob isolate_credential_in;
   SecureBlob isolate_credential_out;
@@ -304,7 +303,6 @@ bool ChapsProxyImpl::OpenIsolate(SecureBlob* isolate_credential,
 }
 
 void ChapsProxyImpl::CloseIsolate(const SecureBlob& isolate_credential) {
-  AutoLock lock(lock_);
   proxy_->CallMethod(kCloseIsolateMethod, AsVector(isolate_credential));
 }
 
@@ -313,7 +311,6 @@ bool ChapsProxyImpl::LoadToken(const SecureBlob& isolate_credential,
                                const vector<uint8_t>& auth_data,
                                const string& label,
                                uint64_t* slot_id) {
-  AutoLock lock(lock_);
   bool result = false;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
       kLoadTokenMethod, AsVector(isolate_credential), path, auth_data, label);
@@ -324,14 +321,12 @@ bool ChapsProxyImpl::LoadToken(const SecureBlob& isolate_credential,
 
 void ChapsProxyImpl::UnloadToken(const SecureBlob& isolate_credential,
                                  const string& path) {
-  AutoLock lock(lock_);
   proxy_->CallMethod(kUnloadTokenMethod, AsVector(isolate_credential), path);
 }
 
 void ChapsProxyImpl::ChangeTokenAuthData(const string& path,
                                          const vector<uint8_t>& old_auth_data,
                                          const vector<uint8_t>& new_auth_data) {
-  AutoLock lock(lock_);
   proxy_->CallMethod(kChangeTokenAuthDataMethod, path, old_auth_data,
                      new_auth_data);
 }
@@ -339,7 +334,6 @@ void ChapsProxyImpl::ChangeTokenAuthData(const string& path,
 bool ChapsProxyImpl::GetTokenPath(const SecureBlob& isolate_credential,
                                   uint64_t slot_id,
                                   string* path) {
-  AutoLock lock(lock_);
   bool result = false;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
       kGetTokenPathMethod, AsVector(isolate_credential), slot_id);
@@ -348,14 +342,12 @@ bool ChapsProxyImpl::GetTokenPath(const SecureBlob& isolate_credential,
 }
 
 void ChapsProxyImpl::SetLogLevel(const int32_t& level) {
-  AutoLock lock(lock_);
   proxy_->CallMethod(kSetLogLevelMethod, level);
 }
 
 uint32_t ChapsProxyImpl::GetSlotList(const SecureBlob& isolate_credential,
                                      bool token_present,
                                      vector<uint64_t>* slot_list) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!slot_list, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
@@ -368,7 +360,6 @@ uint32_t ChapsProxyImpl::GetSlotList(const SecureBlob& isolate_credential,
 uint32_t ChapsProxyImpl::GetSlotInfo(const SecureBlob& isolate_credential,
                                      uint64_t slot_id,
                                      SlotInfo* slot_info) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!slot_info, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
@@ -381,7 +372,6 @@ uint32_t ChapsProxyImpl::GetSlotInfo(const SecureBlob& isolate_credential,
 uint32_t ChapsProxyImpl::GetTokenInfo(const SecureBlob& isolate_credential,
                                       uint64_t slot_id,
                                       TokenInfo* token_info) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!token_info, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
@@ -394,7 +384,6 @@ uint32_t ChapsProxyImpl::GetTokenInfo(const SecureBlob& isolate_credential,
 uint32_t ChapsProxyImpl::GetMechanismList(const SecureBlob& isolate_credential,
                                           uint64_t slot_id,
                                           vector<uint64_t>* mechanism_list) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!mechanism_list, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
@@ -408,7 +397,6 @@ uint32_t ChapsProxyImpl::GetMechanismInfo(const SecureBlob& isolate_credential,
                                           uint64_t slot_id,
                                           uint64_t mechanism_type,
                                           MechanismInfo* mechanism_info) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!mechanism_info, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
@@ -423,7 +411,6 @@ uint32_t ChapsProxyImpl::InitToken(const SecureBlob& isolate_credential,
                                    uint64_t slot_id,
                                    const string* so_pin,
                                    const vector<uint8_t>& label) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   string tmp_pin;
   if (so_pin)
@@ -439,7 +426,6 @@ uint32_t ChapsProxyImpl::InitToken(const SecureBlob& isolate_credential,
 uint32_t ChapsProxyImpl::InitPIN(const SecureBlob& isolate_credential,
                                  uint64_t session_id,
                                  const string* pin) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   string tmp_pin;
   if (pin)
@@ -456,7 +442,6 @@ uint32_t ChapsProxyImpl::SetPIN(const SecureBlob& isolate_credential,
                                 uint64_t session_id,
                                 const string* old_pin,
                                 const string* new_pin) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   string tmp_old_pin;
   if (old_pin)
@@ -476,7 +461,6 @@ uint32_t ChapsProxyImpl::OpenSession(const SecureBlob& isolate_credential,
                                      uint64_t slot_id,
                                      uint64_t flags,
                                      uint64_t* session_id) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!session_id, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
@@ -488,7 +472,6 @@ uint32_t ChapsProxyImpl::OpenSession(const SecureBlob& isolate_credential,
 
 uint32_t ChapsProxyImpl::CloseSession(const SecureBlob& isolate_credential,
                                       uint64_t session_id) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
       kCloseSessionMethod, AsVector(isolate_credential), session_id);
@@ -499,7 +482,6 @@ uint32_t ChapsProxyImpl::CloseSession(const SecureBlob& isolate_credential,
 
 uint32_t ChapsProxyImpl::CloseAllSessions(const SecureBlob& isolate_credential,
                                           uint64_t slot_id) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
       kCloseAllSessionsMethod, AsVector(isolate_credential), slot_id);
@@ -511,7 +493,6 @@ uint32_t ChapsProxyImpl::CloseAllSessions(const SecureBlob& isolate_credential,
 uint32_t ChapsProxyImpl::GetSessionInfo(const SecureBlob& isolate_credential,
                                         uint64_t session_id,
                                         SessionInfo* session_info) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!session_info, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
@@ -524,7 +505,6 @@ uint32_t ChapsProxyImpl::GetSessionInfo(const SecureBlob& isolate_credential,
 uint32_t ChapsProxyImpl::GetOperationState(const SecureBlob& isolate_credential,
                                            uint64_t session_id,
                                            vector<uint8_t>* operation_state) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!operation_state, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
@@ -540,7 +520,6 @@ uint32_t ChapsProxyImpl::SetOperationState(
     const vector<uint8_t>& operation_state,
     uint64_t encryption_key_handle,
     uint64_t authentication_key_handle) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
       kSetOperationStateMethod, AsVector(isolate_credential), session_id,
@@ -554,7 +533,6 @@ uint32_t ChapsProxyImpl::Login(const SecureBlob& isolate_credential,
                                uint64_t session_id,
                                uint64_t user_type,
                                const string* pin) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   string tmp_pin;
   if (pin)
@@ -569,7 +547,6 @@ uint32_t ChapsProxyImpl::Login(const SecureBlob& isolate_credential,
 
 uint32_t ChapsProxyImpl::Logout(const SecureBlob& isolate_credential,
                                 uint64_t session_id) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
       kLogoutMethod, AsVector(isolate_credential), session_id);
@@ -582,7 +559,6 @@ uint32_t ChapsProxyImpl::CreateObject(const SecureBlob& isolate_credential,
                                       uint64_t session_id,
                                       const vector<uint8_t>& attributes,
                                       uint64_t* new_object_handle) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!new_object_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
@@ -598,7 +574,6 @@ uint32_t ChapsProxyImpl::CopyObject(const SecureBlob& isolate_credential,
                                     uint64_t object_handle,
                                     const vector<uint8_t>& attributes,
                                     uint64_t* new_object_handle) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!new_object_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
@@ -612,7 +587,6 @@ uint32_t ChapsProxyImpl::CopyObject(const SecureBlob& isolate_credential,
 uint32_t ChapsProxyImpl::DestroyObject(const SecureBlob& isolate_credential,
                                        uint64_t session_id,
                                        uint64_t object_handle) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
       proxy_->CallMethod(kDestroyObjectMethod, AsVector(isolate_credential),
@@ -626,7 +600,6 @@ uint32_t ChapsProxyImpl::GetObjectSize(const SecureBlob& isolate_credential,
                                        uint64_t session_id,
                                        uint64_t object_handle,
                                        uint64_t* object_size) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!object_size, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
@@ -642,7 +615,6 @@ uint32_t ChapsProxyImpl::GetAttributeValue(const SecureBlob& isolate_credential,
                                            uint64_t object_handle,
                                            const vector<uint8_t>& attributes_in,
                                            vector<uint8_t>* attributes_out) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!attributes_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
@@ -657,7 +629,6 @@ uint32_t ChapsProxyImpl::SetAttributeValue(const SecureBlob& isolate_credential,
                                            uint64_t session_id,
                                            uint64_t object_handle,
                                            const vector<uint8_t>& attributes) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
       proxy_->CallMethod(kSetAttributeValueMethod, AsVector(isolate_credential),
@@ -670,7 +641,6 @@ uint32_t ChapsProxyImpl::SetAttributeValue(const SecureBlob& isolate_credential,
 uint32_t ChapsProxyImpl::FindObjectsInit(const SecureBlob& isolate_credential,
                                          uint64_t session_id,
                                          const vector<uint8_t>& attributes) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
       proxy_->CallMethod(kFindObjectsInitMethod, AsVector(isolate_credential),
@@ -684,7 +654,6 @@ uint32_t ChapsProxyImpl::FindObjects(const SecureBlob& isolate_credential,
                                      uint64_t session_id,
                                      uint64_t max_object_count,
                                      vector<uint64_t>* object_list) {
-  AutoLock lock(lock_);
   if (!object_list || object_list->size() > 0)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -698,7 +667,6 @@ uint32_t ChapsProxyImpl::FindObjects(const SecureBlob& isolate_credential,
 
 uint32_t ChapsProxyImpl::FindObjectsFinal(const SecureBlob& isolate_credential,
                                           uint64_t session_id) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
       kFindObjectsFinalMethod, AsVector(isolate_credential), session_id);
@@ -712,7 +680,6 @@ uint32_t ChapsProxyImpl::EncryptInit(const SecureBlob& isolate_credential,
                                      uint64_t mechanism_type,
                                      const vector<uint8_t>& mechanism_parameter,
                                      uint64_t key_handle) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
       kEncryptInitMethod, AsVector(isolate_credential), session_id,
@@ -728,7 +695,6 @@ uint32_t ChapsProxyImpl::Encrypt(const SecureBlob& isolate_credential,
                                  uint64_t max_out_length,
                                  uint64_t* actual_out_length,
                                  vector<uint8_t>* data_out) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
@@ -747,7 +713,6 @@ uint32_t ChapsProxyImpl::EncryptUpdate(const SecureBlob& isolate_credential,
                                        uint64_t max_out_length,
                                        uint64_t* actual_out_length,
                                        vector<uint8_t>* data_out) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
@@ -765,7 +730,6 @@ uint32_t ChapsProxyImpl::EncryptFinal(const SecureBlob& isolate_credential,
                                       uint64_t max_out_length,
                                       uint64_t* actual_out_length,
                                       vector<uint8_t>* data_out) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
@@ -780,7 +744,6 @@ uint32_t ChapsProxyImpl::EncryptFinal(const SecureBlob& isolate_credential,
 
 void ChapsProxyImpl::EncryptCancel(const SecureBlob& isolate_credential,
                                    uint64_t session_id) {
-  AutoLock lock(lock_);
   proxy_->CallMethod(kEncryptCancelMethod, AsVector(isolate_credential),
                      session_id);
 }
@@ -790,7 +753,6 @@ uint32_t ChapsProxyImpl::DecryptInit(const SecureBlob& isolate_credential,
                                      uint64_t mechanism_type,
                                      const vector<uint8_t>& mechanism_parameter,
                                      uint64_t key_handle) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
       kDecryptInitMethod, AsVector(isolate_credential), session_id,
@@ -806,7 +768,6 @@ uint32_t ChapsProxyImpl::Decrypt(const SecureBlob& isolate_credential,
                                  uint64_t max_out_length,
                                  uint64_t* actual_out_length,
                                  vector<uint8_t>* data_out) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
@@ -825,7 +786,6 @@ uint32_t ChapsProxyImpl::DecryptUpdate(const SecureBlob& isolate_credential,
                                        uint64_t max_out_length,
                                        uint64_t* actual_out_length,
                                        vector<uint8_t>* data_out) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
@@ -842,7 +802,6 @@ uint32_t ChapsProxyImpl::DecryptFinal(const SecureBlob& isolate_credential,
                                       uint64_t max_out_length,
                                       uint64_t* actual_out_length,
                                       vector<uint8_t>* data_out) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
@@ -856,7 +815,6 @@ uint32_t ChapsProxyImpl::DecryptFinal(const SecureBlob& isolate_credential,
 
 void ChapsProxyImpl::DecryptCancel(const SecureBlob& isolate_credential,
                                    uint64_t session_id) {
-  AutoLock lock(lock_);
   proxy_->CallMethod(kDecryptCancelMethod, AsVector(isolate_credential),
                      session_id);
 }
@@ -866,7 +824,6 @@ uint32_t ChapsProxyImpl::DigestInit(
     uint64_t session_id,
     uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
       proxy_->CallMethod(kDigestInitMethod, AsVector(isolate_credential),
@@ -882,7 +839,6 @@ uint32_t ChapsProxyImpl::Digest(const SecureBlob& isolate_credential,
                                 uint64_t max_out_length,
                                 uint64_t* actual_out_length,
                                 vector<uint8_t>* digest) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
       proxy_->CallMethod(kDigestMethod, AsVector(isolate_credential),
@@ -896,7 +852,6 @@ uint32_t ChapsProxyImpl::Digest(const SecureBlob& isolate_credential,
 uint32_t ChapsProxyImpl::DigestUpdate(const SecureBlob& isolate_credential,
                                       uint64_t session_id,
                                       const vector<uint8_t>& data_in) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
       kDigestUpdateMethod, AsVector(isolate_credential), session_id, data_in);
@@ -908,7 +863,6 @@ uint32_t ChapsProxyImpl::DigestUpdate(const SecureBlob& isolate_credential,
 uint32_t ChapsProxyImpl::DigestKey(const SecureBlob& isolate_credential,
                                    uint64_t session_id,
                                    uint64_t key_handle) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
       kDigestKeyMethod, AsVector(isolate_credential), session_id, key_handle);
@@ -922,7 +876,6 @@ uint32_t ChapsProxyImpl::DigestFinal(const SecureBlob& isolate_credential,
                                      uint64_t max_out_length,
                                      uint64_t* actual_out_length,
                                      vector<uint8_t>* digest) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
       proxy_->CallMethod(kDigestFinalMethod, AsVector(isolate_credential),
@@ -935,7 +888,6 @@ uint32_t ChapsProxyImpl::DigestFinal(const SecureBlob& isolate_credential,
 
 void ChapsProxyImpl::DigestCancel(const SecureBlob& isolate_credential,
                                   uint64_t session_id) {
-  AutoLock lock(lock_);
   proxy_->CallMethod(kDigestCancelMethod, AsVector(isolate_credential),
                      session_id);
 }
@@ -945,7 +897,6 @@ uint32_t ChapsProxyImpl::SignInit(const SecureBlob& isolate_credential,
                                   uint64_t mechanism_type,
                                   const vector<uint8_t>& mechanism_parameter,
                                   uint64_t key_handle) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
       kSignInitMethod, AsVector(isolate_credential), session_id, mechanism_type,
@@ -961,7 +912,6 @@ uint32_t ChapsProxyImpl::Sign(const SecureBlob& isolate_credential,
                               uint64_t max_out_length,
                               uint64_t* actual_out_length,
                               vector<uint8_t>* signature) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
       proxy_->CallMethod(kSignMethod, AsVector(isolate_credential), session_id,
@@ -975,7 +925,6 @@ uint32_t ChapsProxyImpl::Sign(const SecureBlob& isolate_credential,
 uint32_t ChapsProxyImpl::SignUpdate(const SecureBlob& isolate_credential,
                                     uint64_t session_id,
                                     const vector<uint8_t>& data_part) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
       kSignUpdateMethod, AsVector(isolate_credential), session_id, data_part);
@@ -989,7 +938,6 @@ uint32_t ChapsProxyImpl::SignFinal(const SecureBlob& isolate_credential,
                                    uint64_t max_out_length,
                                    uint64_t* actual_out_length,
                                    vector<uint8_t>* signature) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
       proxy_->CallMethod(kSignFinalMethod, AsVector(isolate_credential),
@@ -1002,7 +950,6 @@ uint32_t ChapsProxyImpl::SignFinal(const SecureBlob& isolate_credential,
 
 void ChapsProxyImpl::SignCancel(const SecureBlob& isolate_credential,
                                 uint64_t session_id) {
-  AutoLock lock(lock_);
   proxy_->CallMethod(kSignCancelMethod, AsVector(isolate_credential),
                      session_id);
 }
@@ -1013,7 +960,6 @@ uint32_t ChapsProxyImpl::SignRecoverInit(
     uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
     uint64_t key_handle) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
       kSignRecoverInitMethod, AsVector(isolate_credential), session_id,
@@ -1029,7 +975,6 @@ uint32_t ChapsProxyImpl::SignRecover(const SecureBlob& isolate_credential,
                                      uint64_t max_out_length,
                                      uint64_t* actual_out_length,
                                      vector<uint8_t>* signature) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
       proxy_->CallMethod(kSignRecoverMethod, AsVector(isolate_credential),
@@ -1045,7 +990,6 @@ uint32_t ChapsProxyImpl::VerifyInit(const SecureBlob& isolate_credential,
                                     uint64_t mechanism_type,
                                     const vector<uint8_t>& mechanism_parameter,
                                     uint64_t key_handle) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
       kVerifyInitMethod, AsVector(isolate_credential), session_id,
@@ -1059,7 +1003,6 @@ uint32_t ChapsProxyImpl::Verify(const SecureBlob& isolate_credential,
                                 uint64_t session_id,
                                 const vector<uint8_t>& data,
                                 const vector<uint8_t>& signature) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
       kVerifyMethod, AsVector(isolate_credential), session_id, data, signature);
@@ -1071,7 +1014,6 @@ uint32_t ChapsProxyImpl::Verify(const SecureBlob& isolate_credential,
 uint32_t ChapsProxyImpl::VerifyUpdate(const SecureBlob& isolate_credential,
                                       uint64_t session_id,
                                       const vector<uint8_t>& data_part) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
       kVerifyUpdateMethod, AsVector(isolate_credential), session_id, data_part);
@@ -1083,7 +1025,6 @@ uint32_t ChapsProxyImpl::VerifyUpdate(const SecureBlob& isolate_credential,
 uint32_t ChapsProxyImpl::VerifyFinal(const SecureBlob& isolate_credential,
                                      uint64_t session_id,
                                      const vector<uint8_t>& signature) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
       kVerifyUpdateMethod, AsVector(isolate_credential), session_id, signature);
@@ -1094,7 +1035,6 @@ uint32_t ChapsProxyImpl::VerifyFinal(const SecureBlob& isolate_credential,
 
 void ChapsProxyImpl::VerifyCancel(const SecureBlob& isolate_credential,
                                   uint64_t session_id) {
-  AutoLock lock(lock_);
   proxy_->CallMethod(kVerifyCancelMethod, AsVector(isolate_credential),
                      session_id);
 }
@@ -1105,7 +1045,6 @@ uint32_t ChapsProxyImpl::VerifyRecoverInit(
     uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
     uint64_t key_handle) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
       kVerifyRecoverInitMethod, AsVector(isolate_credential), session_id,
@@ -1121,7 +1060,6 @@ uint32_t ChapsProxyImpl::VerifyRecover(const SecureBlob& isolate_credential,
                                        uint64_t max_out_length,
                                        uint64_t* actual_out_length,
                                        vector<uint8_t>* data) {
-  AutoLock lock(lock_);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
       proxy_->CallMethod(kVerifyRecoverMethod, AsVector(isolate_credential),
@@ -1139,7 +1077,6 @@ uint32_t ChapsProxyImpl::DigestEncryptUpdate(
     uint64_t max_out_length,
     uint64_t* actual_out_length,
     vector<uint8_t>* data_out) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
@@ -1158,7 +1095,6 @@ uint32_t ChapsProxyImpl::DecryptDigestUpdate(
     uint64_t max_out_length,
     uint64_t* actual_out_length,
     vector<uint8_t>* data_out) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
@@ -1176,7 +1112,6 @@ uint32_t ChapsProxyImpl::SignEncryptUpdate(const SecureBlob& isolate_credential,
                                            uint64_t max_out_length,
                                            uint64_t* actual_out_length,
                                            vector<uint8_t>* data_out) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
@@ -1195,7 +1130,6 @@ uint32_t ChapsProxyImpl::DecryptVerifyUpdate(
     uint64_t max_out_length,
     uint64_t* actual_out_length,
     vector<uint8_t>* data_out) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
@@ -1213,7 +1147,6 @@ uint32_t ChapsProxyImpl::GenerateKey(const SecureBlob& isolate_credential,
                                      const vector<uint8_t>& mechanism_parameter,
                                      const vector<uint8_t>& attributes,
                                      uint64_t* key_handle) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
@@ -1233,7 +1166,6 @@ uint32_t ChapsProxyImpl::GenerateKeyPair(
     const vector<uint8_t>& private_attributes,
     uint64_t* public_key_handle,
     uint64_t* private_key_handle) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!public_key_handle || !private_key_handle,
                           CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -1256,7 +1188,6 @@ uint32_t ChapsProxyImpl::WrapKey(const SecureBlob& isolate_credential,
                                  uint64_t max_out_length,
                                  uint64_t* actual_out_length,
                                  vector<uint8_t>* wrapped_key) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !wrapped_key,
                           CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -1277,7 +1208,6 @@ uint32_t ChapsProxyImpl::UnwrapKey(const SecureBlob& isolate_credential,
                                    const vector<uint8_t>& wrapped_key,
                                    const vector<uint8_t>& attributes,
                                    uint64_t* key_handle) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =
@@ -1296,7 +1226,6 @@ uint32_t ChapsProxyImpl::DeriveKey(const SecureBlob& isolate_credential,
                                    uint64_t base_key_handle,
                                    const vector<uint8_t>& attributes,
                                    uint64_t* key_handle) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
@@ -1310,7 +1239,6 @@ uint32_t ChapsProxyImpl::DeriveKey(const SecureBlob& isolate_credential,
 uint32_t ChapsProxyImpl::SeedRandom(const SecureBlob& isolate_credential,
                                     uint64_t session_id,
                                     const vector<uint8_t>& seed) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(seed.size() == 0, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
@@ -1324,7 +1252,6 @@ uint32_t ChapsProxyImpl::GenerateRandom(const SecureBlob& isolate_credential,
                                         uint64_t session_id,
                                         uint64_t num_bytes,
                                         vector<uint8_t>* random_data) {
-  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!random_data || num_bytes == 0, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
   std::unique_ptr<dbus::Response> resp =

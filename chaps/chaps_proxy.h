@@ -295,10 +295,6 @@ class ChapsProxyImpl : public ChapsInterface {
   std::unique_ptr<base::AtExitManager> at_exit_;
   std::unique_ptr<base::Thread> dbus_thread_;  // Runs D-Bus tasks for |proxy_|.
   scoped_refptr<DBusProxyWrapper> proxy_;
-  // TODO(dkrahn): Once crosbug.com/35421 has been fixed this lock must be
-  // removed.  Currently this is needed to avoid flooding the chapsd dbus
-  // dispatcher which seems to drop requests under pressure.
-  base::Lock lock_;
 
   DISALLOW_COPY_AND_ASSIGN(ChapsProxyImpl);
 };
