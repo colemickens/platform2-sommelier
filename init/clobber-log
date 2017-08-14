@@ -92,11 +92,18 @@ repair_log() {
 
   mount_pstore
   echo "-- Ramoops (logs from last boot):" >>"${dest_path}"
-  if [ -f "${RAMOOPS_LOG}" ]; then
-    tail -n ${RAMOOPS_DUMP_LINES} ${RAMOOPS_LOG} >>"${dest_path}" 2>/dev/null
-  else
-    echo "(No ramoops found, sorry)" >>"${dest_path}"
-  fi
+  # There might be more than one record, so grab them all with a glob.
+  # Plus, for <linux-3.19, it's named "console-ramoops", but for newer
+  # versions, it's named "console-ramoops-#".
+  local ramoops
+  for ramoops in "${RAMOOPS_LOG}"*; do
+    if [ -f "${ramoops}" ]; then
+      echo "${ramoops}"
+      tail -n ${RAMOOPS_DUMP_LINES} "${ramoops}" >>"${dest_path}" 2>/dev/null
+    else
+      echo "(No ramoops found, sorry)" >>"${dest_path}"
+    fi
+  done
 
   # try to dump first several blocks
   echo "-- File system $1 block data (gz+base64):" >>"$dest_path"
