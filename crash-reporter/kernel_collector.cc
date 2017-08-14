@@ -19,11 +19,18 @@ using base::StringPrintf;
 
 namespace {
 
-const char kConsoleRamoops[] = "console-ramoops";
 const char kDefaultKernelStackSignature[] = "kernel-UnspecifiedStackSignature";
 const char kDumpParentPath[] = "/dev";
 const char kDumpPath[] = "/dev/pstore";
-const char kDumpFormat[] = "dmesg-ramoops-%zu";
+const char kDumpRecordDmesgName[] = "dmesg";
+const char kDumpRecordConsoleName[] = "console";
+const char kDumpDriverRamoopsName[] = "ramoops";
+// The files take the form <record type>-<driver name>-<record id>.
+// e.g. console-ramoops-0 or dmesg-ramoops-0.
+const char kDumpNameFormat[] = "%s-%s-%zu";
+// Like above, but for older systems when the kernel didn't add the record id.
+const char kDumpNameFormatOld[] = "%s-%s";
+
 const FilePath kEventLogPath("/var/log/eventlog.txt");
 const char kEventNameBoot[] = "System boot";
 const char kEventNameWatchdog[] = "Hardware watchdog reset";
@@ -71,7 +78,7 @@ pcrecpp::RE kSanityCheckRe("\n(<\\d+>)?\\[\\s*(\\d+\\.\\d+)\\]");
 KernelCollector::KernelCollector()
     : is_enabled_(false),
       eventlog_path_(kEventLogPath),
-      ramoops_dump_path_(kDumpPath),
+      dump_path_(kDumpPath),
       records_(0),
       // We expect crash dumps in the format of architecture we are built for.
       arch_(GetCompilerArch()) {
@@ -85,7 +92,7 @@ void KernelCollector::OverrideEventLogPath(const FilePath &file_path) {
 }
 
 void KernelCollector::OverridePreservedDumpPath(const FilePath &file_path) {
-  ramoops_dump_path_ = file_path;
+  dump_path_ = file_path;
 }
 
 bool KernelCollector::ReadRecordToString(std::string *contents,
@@ -101,10 +108,10 @@ bool KernelCollector::ReadRecordToString(std::string *contents,
       "====\\d+\\.\\d+\n(.*)",
       pcrecpp::RE_Options().set_multiline(true).set_dotall(true));
 
-  FilePath ramoops_record;
-  GetRamoopsRecordPath(&ramoops_record, current_record);
-  if (!base::ReadFileToString(ramoops_record, &record)) {
-    LOG(ERROR) << "Unable to open " << ramoops_record.value();
+  FilePath record_path = GetDumpRecordPath(
+      kDumpRecordDmesgName, kDumpDriverRamoopsName, current_record);
+  if (!base::ReadFileToString(record_path, &record)) {
+    LOG(ERROR) << "Unable to open " << record_path.value();
     return false;
   }
 
@@ -123,18 +130,24 @@ bool KernelCollector::ReadRecordToString(std::string *contents,
     contents->append(record);
     *record_found = true;
   } else {
-    LOG(WARNING) << "Found invalid record at " << ramoops_record.value();
+    LOG(WARNING) << "Found invalid record at " << record_path.value();
   }
 
   // Remove the record from pstore after it's found.
   if (*record_found)
-    base::DeleteFile(ramoops_record, false);
+    base::DeleteFile(record_path, false);
 
   return true;
 }
 
-void KernelCollector::GetRamoopsRecordPath(FilePath *path, size_t record) {
-  *path = ramoops_dump_path_.Append(StringPrintf(kDumpFormat, record));
+FilePath KernelCollector::GetDumpRecordPath(
+    const char* type, const char* driver, size_t record) {
+  return dump_path_.Append(StringPrintf(kDumpNameFormat, type, driver, record));
+}
+
+FilePath KernelCollector::GetDumpRecordOldPath(
+    const char* type, const char* driver) {
+  return dump_path_.Append(StringPrintf(kDumpNameFormatOld, type, driver));
 }
 
 bool KernelCollector::LoadParameters() {
@@ -142,10 +155,10 @@ bool KernelCollector::LoadParameters() {
   size_t count;
 
   for (count = 0; count < kMaxDumpRecords; ++count) {
-    FilePath ramoops_record;
-    GetRamoopsRecordPath(&ramoops_record, count);
+    FilePath record_path = GetDumpRecordPath(kDumpRecordDmesgName,
+                                             kDumpDriverRamoopsName, count);
 
-    if (!base::PathExists(ramoops_record))
+    if (!base::PathExists(record_path))
       break;
   }
 
@@ -173,7 +186,7 @@ bool KernelCollector::LoadPreservedDump(std::string *contents) {
   }
 
   if (!any_records_found) {
-    LOG(ERROR) << "No valid records found in " << ramoops_dump_path_.value();
+    LOG(ERROR) << "No valid records found in " << dump_path_.value();
     return false;
   }
 
@@ -206,15 +219,26 @@ bool KernelCollector::LastRebootWasWatchdog() {
 }
 
 bool KernelCollector::LoadConsoleRamoops(std::string *contents) {
-  FilePath console_ramoops_path = ramoops_dump_path_.Append(kConsoleRamoops);
+  FilePath record_path;
 
-  if (!base::PathExists(console_ramoops_path)) {
-    LOG(WARNING) << "No console-ramoops file found after watchdog reset!";
-    return false;
+  // We assume there is only one record.  Bad idea?
+  record_path = GetDumpRecordPath(kDumpRecordConsoleName,
+                                  kDumpDriverRamoopsName, 0);
+
+  // Deal with the filename change starting with linux-3.19+.
+  if (!base::PathExists(record_path)) {
+    // If the file doesn't exist, we might be running on an older system which
+    // uses the older file name format (<linux-3.19).
+    record_path = GetDumpRecordOldPath(kDumpRecordConsoleName,
+                                       kDumpDriverRamoopsName);
+    if (!base::PathExists(record_path)) {
+      LOG(WARNING) << "No console-ramoops file found after watchdog reset!";
+      return false;
+    }
   }
 
-  if (!base::ReadFileToString(console_ramoops_path, contents)) {
-    LOG(ERROR) << "Unable to open " << console_ramoops_path.value();
+  if (!base::ReadFileToString(record_path, contents)) {
+    LOG(ERROR) << "Unable to open " << record_path.value();
     return false;
   }
 

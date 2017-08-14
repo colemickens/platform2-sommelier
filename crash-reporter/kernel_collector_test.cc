@@ -41,10 +41,16 @@ class KernelCollectorTest : public ::testing::Test {
   }
 
   void SetUpSuccessfulCollect();
-  void SetUpSuccessfulWatchdog();
+  void SetUpSuccessfulWatchdog(const FilePath&);
   void ComputeKernelStackSignatureCommon();
+  void WatchdogOptedOutHelper(const FilePath&);
+  void WatchdogOKHelper(const FilePath&);
+  void WatchdogOnlyLastBootHelper(const FilePath&);
 
   const FilePath &console_ramoops_file() const { return test_console_ramoops_; }
+  const FilePath &console_ramoops_file_old() const {
+    return test_console_ramoops_old_;
+  }
   const FilePath &eventlog_file() const { return test_eventlog_; }
   const FilePath &kcrash_file() const { return test_kcrash_; }
   const FilePath &test_crash_directory() const { return test_crash_directory_; }
@@ -64,8 +70,10 @@ class KernelCollectorTest : public ::testing::Test {
     ASSERT_TRUE(base::CreateDirectory(test_kcrash_));
     collector_.OverridePreservedDumpPath(test_kcrash_);
 
-    test_console_ramoops_ = test_kcrash_.Append("console-ramoops");
+    test_console_ramoops_ = test_kcrash_.Append("console-ramoops-0");
     ASSERT_FALSE(base::PathExists(test_console_ramoops_));
+    test_console_ramoops_old_ = test_kcrash_.Append("console-ramoops");
+    ASSERT_FALSE(base::PathExists(test_console_ramoops_old_));
     test_kcrash_ = test_kcrash_.Append("dmesg-ramoops-0");
     ASSERT_FALSE(base::PathExists(test_kcrash_));
 
@@ -79,6 +87,7 @@ class KernelCollectorTest : public ::testing::Test {
   }
 
   FilePath test_console_ramoops_;
+  FilePath test_console_ramoops_old_;
   FilePath test_eventlog_;
   FilePath test_kcrash_;
   FilePath test_crash_directory_;
@@ -267,13 +276,13 @@ void KernelCollectorTest::SetUpSuccessfulCollect() {
   ASSERT_EQ(0, s_crashes);
 }
 
-void KernelCollectorTest::SetUpSuccessfulWatchdog() {
+void KernelCollectorTest::SetUpSuccessfulWatchdog(const FilePath& path) {
   collector_.set_crash_directory_for_test(test_crash_directory());
   WriteStringToFile(eventlog_file(),
     "112 | 2016-03-24 15:09:39 | System boot | 0\n"
     "113 | 2016-03-24 15:11:20 | System boot | 0\n"
     "114 | 2016-03-24 15:11:20 | Hardware watchdog reset\n");
-  WriteStringToFile(console_ramoops_file(), "\n[ 0.0000] I can haz boot!");
+  WriteStringToFile(path, "\n[ 0.0000] I can haz boot!");
 }
 
 TEST_F(KernelCollectorTest, CollectOptedOut) {
@@ -284,12 +293,20 @@ TEST_F(KernelCollectorTest, CollectOptedOut) {
   ASSERT_EQ(0, s_crashes);
 }
 
-TEST_F(KernelCollectorTest, WatchdogOptedOut) {
-  SetUpSuccessfulWatchdog();
+void KernelCollectorTest::WatchdogOptedOutHelper(const FilePath& path) {
+  SetUpSuccessfulWatchdog(path);
   s_metrics = false;
   ASSERT_TRUE(collector_.Collect());
   ASSERT_TRUE(FindLog("(ignoring - no consent)"));
   ASSERT_EQ(0, s_crashes);
+}
+
+TEST_F(KernelCollectorTest, WatchdogOptedOut) {
+  WatchdogOptedOutHelper(console_ramoops_file());
+}
+
+TEST_F(KernelCollectorTest, WatchdogOptedOutOld) {
+  WatchdogOptedOutHelper(console_ramoops_file_old());
 }
 
 TEST_F(KernelCollectorTest, CollectOK) {
@@ -316,20 +333,36 @@ TEST_F(KernelCollectorTest, CollectOK) {
   ASSERT_EQ("something", contents);
 }
 
-TEST_F(KernelCollectorTest, WatchdogOK) {
-  SetUpSuccessfulWatchdog();
+void KernelCollectorTest::WatchdogOKHelper(const FilePath& path) {
+  SetUpSuccessfulWatchdog(path);
   ASSERT_TRUE(collector_.Collect());
   ASSERT_EQ(1, s_crashes);
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog("kernel-(WATCHDOG)-I can haz"));
 }
 
-TEST_F(KernelCollectorTest, WatchdogOnlyLastBoot) {
+TEST_F(KernelCollectorTest, WatchdogOK) {
+  WatchdogOKHelper(console_ramoops_file());
+}
+
+TEST_F(KernelCollectorTest, WatchdogOKOld) {
+  WatchdogOKHelper(console_ramoops_file_old());
+}
+
+void KernelCollectorTest::WatchdogOnlyLastBootHelper(const FilePath& path) {
   char next[] = "115 | 2016-03-24 15:24:27 | System boot | 0";
-  SetUpSuccessfulWatchdog();
+  SetUpSuccessfulWatchdog(path);
   ASSERT_EQ(strlen(next), base::WriteFile(eventlog_file(), next, strlen(next)));
   ASSERT_FALSE(collector_.Collect());
   ASSERT_EQ(0, s_crashes);
+}
+
+TEST_F(KernelCollectorTest, WatchdogOnlyLastBoot) {
+  WatchdogOnlyLastBootHelper(console_ramoops_file());
+}
+
+TEST_F(KernelCollectorTest, WatchdogOnlyLastBootOld) {
+  WatchdogOnlyLastBootHelper(console_ramoops_file_old());
 }
 
 // Perform tests which are common across architectures

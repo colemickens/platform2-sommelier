@@ -71,7 +71,10 @@ class KernelCollector : public CrashCollector {
   bool LastRebootWasWatchdog();
   bool LoadConsoleRamoops(std::string *contents);
 
-  void GetRamoopsRecordPath(base::FilePath *path, size_t record);
+  base::FilePath GetDumpRecordPath(const char* type, const char* driver,
+                                   size_t record);
+  base::FilePath GetDumpRecordOldPath(const char* type, const char* driver);
+
   bool LoadParameters();
   bool HasMoreRecords();
 
@@ -109,7 +112,7 @@ class KernelCollector : public CrashCollector {
 
   bool is_enabled_;
   base::FilePath eventlog_path_;
-  base::FilePath ramoops_dump_path_;
+  base::FilePath dump_path_;
   size_t records_;
 
   // The architecture of kernel dump strings we are working with.
