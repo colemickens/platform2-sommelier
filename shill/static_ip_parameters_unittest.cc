@@ -48,9 +48,9 @@ const int32_t kPrefixLen = 24;
 
 }  // namespace
 
-class StaticIpParametersTest : public Test {
+class StaticIPParametersTest : public Test {
  public:
-  StaticIpParametersTest() {}
+  StaticIPParametersTest() {}
 
   void ExpectEmptyIPConfig() {
     EXPECT_TRUE(ipconfig_props_.address.empty());
@@ -169,7 +169,7 @@ class StaticIpParametersTest : public Test {
   IPConfig::Properties ipconfig_props_;
 };
 
-TEST_F(StaticIpParametersTest, InitState) {
+TEST_F(StaticIPParametersTest, InitState) {
   ExpectEmptyIPConfig();
 
   // Applying an empty set of parameters on an empty set of properties should
@@ -178,13 +178,13 @@ TEST_F(StaticIpParametersTest, InitState) {
   ExpectEmptyIPConfig();
 }
 
-TEST_F(StaticIpParametersTest, ApplyEmptyParameters) {
+TEST_F(StaticIPParametersTest, ApplyEmptyParameters) {
   PopulateIPConfig();
   static_params_.ApplyTo(&ipconfig_props_);
   ExpectPopulatedIPConfig();
 }
 
-TEST_F(StaticIpParametersTest, ControlInterface) {
+TEST_F(StaticIPParametersTest, ControlInterface) {
   PropertyStore store;
   static_params_.PlumbPropertyStore(&store);
   SetStaticProperties(&store);
@@ -231,7 +231,7 @@ TEST_F(StaticIpParametersTest, ControlInterface) {
   EXPECT_EQ(kPrefixLen, int_value);
 }
 
-TEST_F(StaticIpParametersTest, Profile) {
+TEST_F(StaticIPParametersTest, Profile) {
   StrictMock<MockStore> store;
   const string kID = "storage_id";
   EXPECT_CALL(store, GetString(kID, "StaticIP.Address", _))
@@ -267,7 +267,7 @@ TEST_F(StaticIpParametersTest, Profile) {
   static_params_.Save(&store, kID);
 }
 
-TEST_F(StaticIpParametersTest, SavedParameters) {
+TEST_F(StaticIPParametersTest, SavedParameters) {
   // Calling RestoreTo() when no parameters are set should not crash or
   // add any entries.
   static_params_.RestoreTo(&ipconfig_props_);
@@ -312,7 +312,7 @@ TEST_F(StaticIpParametersTest, SavedParameters) {
   ExpectPropertiesWithVersion(&static_params_props, "StaticIP", 2);
 }
 
-TEST_F(StaticIpParametersTest, SavedParametersDict) {
+TEST_F(StaticIPParametersTest, SavedParametersDict) {
   // Calling RestoreTo() when no parameters are set should not crash or
   // add any entries.
   static_params_.RestoreTo(&ipconfig_props_);
