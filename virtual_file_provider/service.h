@@ -14,6 +14,8 @@
 #include <base/threading/thread_checker.h>
 #include <dbus/exported_object.h>
 
+#include "virtual_file_provider/size_map.h"
+
 namespace dbus {
 class Bus;
 class MethodCall;
@@ -25,7 +27,8 @@ namespace virtual_file_provider {
 // This class handles incoming D-Bus method calls.
 class Service {
  public:
-  explicit Service(const base::FilePath& fuse_mount_path);
+  Service(const base::FilePath& fuse_mount_path,
+          SizeMap* size_map);
   ~Service();
 
   // Exports D-Bus methods via the system bus and requests the ownership of the
@@ -51,6 +54,7 @@ class Service {
                 dbus::ExportedObject::ResponseSender response_sender);
 
   const base::FilePath fuse_mount_path_;
+  SizeMap* const size_map_;
   scoped_refptr<dbus::Bus> bus_;
   dbus::ExportedObject* exported_object_ = nullptr;
   dbus::ObjectProxy* request_handler_proxy_ = nullptr;

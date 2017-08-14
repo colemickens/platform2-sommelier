@@ -21,8 +21,10 @@
 
 namespace virtual_file_provider {
 
-Service::Service(const base::FilePath& fuse_mount_path)
-    : fuse_mount_path_(fuse_mount_path), weak_ptr_factory_(this) {
+Service::Service(const base::FilePath& fuse_mount_path, SizeMap* size_map)
+    : fuse_mount_path_(fuse_mount_path),
+      size_map_(size_map),
+      weak_ptr_factory_(this) {
   thread_checker_.DetachFromThread();
 }
 
@@ -103,8 +105,24 @@ void Service::SendIdReleased(const std::string& id) {
 void Service::OpenFile(dbus::MethodCall* method_call,
                        dbus::ExportedObject::ResponseSender response_sender) {
   DCHECK(thread_checker_.CalledOnValidThread());
+
+  dbus::MessageReader reader(method_call);
+  int64_t size = 0;
+  if (!reader.PopInt64(&size)) {
+    response_sender.Run(dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_INVALID_ARGS, "Size must be provided."));
+    return;
+  }
   // Generate a new ID.
   std::string id = base::GenerateGUID();
+
+  // Set the size of the ID.
+  // NOTE: Currently, updating the size value is not supported. If the virtual
+  // file gets modified later, the size map's value can contradict with the real
+  // value and it can result in read errors.
+  CHECK_EQ(-1, size_map_->GetSize(id));
+  size_map_->SetSize(id, size);
+
   // An ID corresponds to a file name in the FUSE file system.
   base::FilePath path = fuse_mount_path_.AppendASCII(id);
   // Create a new FD associated with the ID.

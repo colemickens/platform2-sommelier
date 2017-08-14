@@ -4,6 +4,7 @@
 
 #include "virtual_file_provider/fuse_main.h"
 
+#include <algorithm>
 #include <string>
 #include <utility>
 
@@ -20,16 +21,8 @@ namespace {
 
 constexpr char kFileSystemName[] = "virtual-file-provider";
 
-struct Callbacks {
-  Callbacks() = default;
-  ~Callbacks() = default;
-
-  SendReadRequestCallback send_read_request_callback;
-  ReleaseCallback release_callback;
-};
-
-const Callbacks& GetCallbacks() {
-  return *static_cast<const Callbacks*>(fuse_get_context()->private_data);
+FuseMainDelegate* GetDelegate() {
+  return static_cast<FuseMainDelegate*>(fuse_get_context()->private_data);
 }
 
 int GetAttr(const char* path, struct stat* stat) {
@@ -38,15 +31,23 @@ int GetAttr(const char* path, struct stat* stat) {
     stat->st_mode = S_IFDIR;
     stat->st_nlink = 2;
   } else {
+    DCHECK_EQ('/', path[0]);
+    // File name is the ID.
+    std::string id(path + 1);
+
+    const int64_t size = GetDelegate()->GetSize(id);
+    if (size < 0) {
+      LOG(ERROR) << "Invalid ID " << id;
+      return -ENOENT;
+    }
     stat->st_mode = S_IFREG;
     stat->st_nlink = 1;
+    stat->st_size = size;
   }
   return 0;
 }
 
 int Open(const char* path, struct fuse_file_info* fi) {
-  // Use direct_io as we don't provide the file size in GetAttr().
-  fi->direct_io = 1;
   return 0;
 }
 
@@ -59,6 +60,17 @@ int Read(const char* path,
   // File name is the ID.
   std::string id(path + 1);
 
+  // Adjust the size to avoid issuing unnecessary read requests.
+  const int64_t file_size = GetDelegate()->GetSize(id);
+  if (file_size < 0) {
+    LOG(ERROR) << "Invalid ID " << id;
+    return -EIO;
+  }
+  size = std::min(static_cast<int64_t>(size), file_size - off);
+  if (size <= 0) {
+    return 0;
+  }
+
   // Create a pipe to receive data from chrome. By using pipe instead of D-Bus
   // to receive data, we can reliably avoid deadlock at read(), provided chrome
   // doesn't leak the file descriptor of the write end.
@@ -70,8 +82,7 @@ int Read(const char* path,
   base::ScopedFD read_end(fds[0]), write_end(fds[1]);
 
   // Send read request to chrome with the write end of the pipe.
-  GetCallbacks().send_read_request_callback.Run(
-      id, off, size, std::move(write_end));
+  GetDelegate()->HandleReadRequest(id, off, size, std::move(write_end));
 
   // Read the data from the read end of the pipe.
   size_t result = 0;
@@ -93,7 +104,7 @@ int Release(const char* path, struct fuse_file_info* fi) {
   // File name is the ID.
   std::string id(path + 1);
 
-  GetCallbacks().release_callback.Run(id);
+  GetDelegate()->NotifyIdReleased(id);
   return 0;
 }
 
@@ -116,9 +127,7 @@ void* Init(struct fuse_conn_info* conn) {
 
 }  // namespace
 
-int FuseMain(const base::FilePath& mount_path,
-             const SendReadRequestCallback& send_read_request_callback,
-             const ReleaseCallback& release_callback) {
+int FuseMain(const base::FilePath& mount_path, FuseMainDelegate* delegate) {
   const std::string path_str = mount_path.AsUTF8Unsafe();
   const char* fuse_argv[] = {
       kFileSystemName,
@@ -136,10 +145,7 @@ int FuseMain(const base::FilePath& mount_path,
       .readdir = ReadDir,
       .init = Init,
   };
-  Callbacks callbacks;
-  callbacks.send_read_request_callback = send_read_request_callback;
-  callbacks.release_callback = release_callback;
-  void* private_data = &callbacks;
+  void* private_data = delegate;
   return fuse_main(arraysize(fuse_argv),
                    const_cast<char**>(fuse_argv),
                    &operations,

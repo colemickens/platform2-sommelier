@@ -25,6 +25,7 @@
       'sources': [
         'fuse_main.cc',
         'service.cc',
+        'size_map.cc',
         'util.cc',
         'virtual_file_provider.cc',
       ],

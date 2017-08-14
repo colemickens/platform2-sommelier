@@ -26,10 +26,10 @@ namespace {
 // Service thread handles D-Bus method calls.
 class ServiceThread : public base::Thread {
  public:
-  explicit ServiceThread(const base::FilePath& fuse_mount_path)
+  ServiceThread(const base::FilePath& fuse_mount_path, SizeMap* size_map)
       : Thread("Service thread"),
         fuse_mount_path_(fuse_mount_path),
-        service_(base::MakeUnique<Service>(fuse_mount_path)) {}
+        service_(base::MakeUnique<Service>(fuse_mount_path, size_map)) {}
 
   ~ServiceThread() override { Stop(); }
 
@@ -76,27 +76,53 @@ class ServiceThread : public base::Thread {
   DISALLOW_COPY_AND_ASSIGN(ServiceThread);
 };
 
-// Runs Service::SendReadRequest() on the service thread.
-void SendReadRequest(ServiceThread* service_thread,
-                     const std::string& id,
-                     int64_t offset,
-                     int64_t size,
-                     base::ScopedFD fd) {
-  service_thread->task_runner()->PostTask(
+class FuseMainDelegateImpl : public FuseMainDelegate {
+ public:
+  FuseMainDelegateImpl(ServiceThread* service_thread, SizeMap* size_map)
+      : service_thread_(service_thread), size_map_(size_map) {}
+  ~FuseMainDelegateImpl() override = default;
+
+  // FuseMainDelegate overrides:
+  int64_t GetSize(const std::string& id) override;
+  void HandleReadRequest(const std::string& id,
+                         int64_t offset,
+                         int64_t size,
+                         base::ScopedFD fd) override;
+  void NotifyIdReleased(const std::string& id) override;
+
+ private:
+  ServiceThread* const service_thread_;
+  SizeMap* const size_map_;
+
+  DISALLOW_COPY_AND_ASSIGN(FuseMainDelegateImpl);
+};
+
+int64_t FuseMainDelegateImpl::GetSize(const std::string& id) {
+  return size_map_->GetSize(id);
+}
+
+void FuseMainDelegateImpl::HandleReadRequest(const std::string& id,
+                                             int64_t offset,
+                                             int64_t size,
+                                             base::ScopedFD fd) {
+  service_thread_->task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&Service::SendReadRequest,
                  // This is safe as service_thread outlives the FUSE main loop.
-                 base::Unretained(service_thread->service()),
+                 base::Unretained(service_thread_->service()),
                  id, offset, size, base::Passed(&fd)));
 }
 
-// Sends the released ID to Chrome.
-void OnIdReleased(ServiceThread* service_thread, const std::string& id) {
-  service_thread->task_runner()->PostTask(
+void FuseMainDelegateImpl::NotifyIdReleased(const std::string& id) {
+  if (!size_map_->Erase(id)) {
+    LOG(ERROR) << "Invalid ID " << id;
+    return;
+  }
+  service_thread_->task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&Service::SendIdReleased,
                  // This is safe as service_thread outlives the FUSE main loop.
-                 base::Unretained(service_thread->service()), id));
+                 base::Unretained(service_thread_->service()), id));
 }
 
 }  // namespace
@@ -113,15 +139,17 @@ int main(int argc, char** argv) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   base::AtExitManager at_exit_manager;
 
+  virtual_file_provider::SizeMap size_map;
+
   // Run D-Bus service on the service thread.
-  virtual_file_provider::ServiceThread service_thread(fuse_mount_path);
+  virtual_file_provider::ServiceThread service_thread(
+      fuse_mount_path, &size_map);
   base::Thread::Options options;
   options.message_loop_type = base::MessageLoop::TYPE_IO;
   service_thread.StartWithOptions(options);
 
   // Enter the FUSE main loop.
-  return virtual_file_provider::FuseMain(
-      fuse_mount_path,
-      base::Bind(&virtual_file_provider::SendReadRequest, &service_thread),
-      base::Bind(&virtual_file_provider::OnIdReleased, &service_thread));
+  virtual_file_provider::FuseMainDelegateImpl delegate(&service_thread,
+                                                       &size_map);
+  return virtual_file_provider::FuseMain(fuse_mount_path, &delegate);
 }

@@ -13,17 +13,29 @@
 
 namespace virtual_file_provider {
 
-using SendReadRequestCallback = base::Callback<void(
-    const std::string& id, int64_t offset, int64_t size, base::ScopedFD fd)>;
-using ReleaseCallback = base::Callback<void(const std::string& id)>;
+// Delegate for FuseMain().
+class FuseMainDelegate {
+ public:
+  virtual ~FuseMainDelegate() = default;
+
+  // Returns the size of the file, or returns -1 if the ID is invalid.
+  virtual int64_t GetSize(const std::string& id) = 0;
+
+  // Handles a read request. Data should be written to the given FD.
+  virtual void HandleReadRequest(const std::string& id,
+                                 int64_t offset,
+                                 int64_t size,
+                                 base::ScopedFD fd) = 0;
+
+  // FuseMain() calls this when an ID is released.
+  virtual void NotifyIdReleased(const std::string& id) = 0;
+};
 
 // Mounts the FUSE file system on the given path and runs the FUSE main loop.
 // This doesn't exit until the FUSE main loop exits (e.g. the file system is
 // unmounted, or this process is terminated).
 // Returns the value returned by libfuse's fuse_main().
-int FuseMain(const base::FilePath& mount_path,
-             const SendReadRequestCallback& send_read_request_callback,
-             const ReleaseCallback& release_callback);
+int FuseMain(const base::FilePath& mount_path, FuseMainDelegate* delegate);
 
 }  // namespace virtual_file_provider
 
