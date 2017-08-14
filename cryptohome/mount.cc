@@ -60,6 +60,8 @@ namespace cryptohome {
 
 const FilePath::CharType kDefaultHomeDir[] = "/home/chronos/user";
 const FilePath::CharType kDefaultShadowRoot[] = "/home/.shadow";
+const FilePath::CharType kEphemeralCryptohomeDir[] = "/run/cryptohome";
+const FilePath::CharType kSparseFileDir[] = "ephemeral_data";
 const char kDefaultSharedUser[] = "chronos";
 const char kChapsUserName[] = "chaps";
 const char kDefaultSharedAccessGroup[] = "chronos-access";
@@ -80,16 +82,14 @@ const FilePath::CharType kGCacheTmpDir[] = "tmp";
 const char kUserHomeSuffix[] = "user";
 const char kRootHomeSuffix[] = "root";
 const FilePath::CharType kMountDir[] = "mount";
+const FilePath::CharType kEphemeralMountDir[] = "ephemeral_mount";
 const FilePath::CharType kTemporaryMountDir[] = "temporary_mount";
-const FilePath::CharType kSkeletonDir[] = "skeleton";
 const FilePath::CharType kKeyFile[] = "master";
 const int kKeyFileMax = 100;  // master.0 ... master.99
 const mode_t kKeyFilePermissions = 0600;
 const FilePath::CharType kKeyLegacyPrefix[] = "legacy-";
-const FilePath::CharType kEphemeralDir[] = "ephemeralfs";
-const char kEphemeralMountType[] = "tmpfs";
-const FilePath::CharType kGuestMountPath[] = "guestfs";
-const char kEphemeralMountPerms[] = "mode=0700";
+const char kEphemeralMountType[] = "ext4";
+const char kEphemeralMountOptions[] = "";
 
 const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
 const gid_t kDaemonStoreGid = 400;
@@ -105,18 +105,6 @@ class ScopedUmask {
   Platform* platform_;
   int old_mask_;
 };
-
-Mount::ScopedMountPoint::ScopedMountPoint(Mount* mount,
-                                          const FilePath& src,
-                                          const FilePath& dest)
-  : mount_(mount), src_(src), dest_(dest) {
-}
-
-Mount::ScopedMountPoint::~ScopedMountPoint() {
-  if (mount_->platform_->IsDirectoryMounted(dest_)) {
-    mount_->ForceUnmount(src_, dest_);
-  }
-}
 
 Mount::Mount()
     : default_user_(-1),
@@ -714,47 +702,125 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   return true;
 }
 
+void Mount::CleanUpEphemeral() {
+  if (!ephemeral_loop_device_.empty()) {
+    if (!platform_->DetachLoop(ephemeral_loop_device_)) {
+      ReportCryptohomeError(kEphemeralCleanUpFailed);
+      PLOG(ERROR) << "Can't detach loop: " << ephemeral_loop_device_.value();
+    }
+    ephemeral_loop_device_.clear();
+  }
+  if (!ephemeral_file_path_.empty()) {
+    if (!platform_->DeleteFile(ephemeral_file_path_, false /* recursive */)) {
+      ReportCryptohomeError(kEphemeralCleanUpFailed);
+      PLOG(ERROR) << "Failed to clean up ephemeral sparse file: "
+                  << ephemeral_file_path_.value();
+    }
+    ephemeral_file_path_.clear();
+  }
+}
+
 bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
-  const std::string username = credentials.username();
-  FilePath path = GetUserEphemeralPath(credentials.GetObfuscatedUsername(
-      system_salt_));
-  const FilePath user_multi_home = GetUserPath(username);
-  const FilePath root_multi_home = GetRootPath(username);
+  // Ephemeral cryptohome can't be mounted twice.
+  CHECK(ephemeral_file_path_.empty());
+  CHECK(ephemeral_loop_device_.empty());
 
-  // If we're mounting as a guest, as source use just "guestfs" instead of an
-  // actual path. We don't want the guest cryptohome to persist even between
-  // logins during the same boot.
-  if (credentials.username() == kGuestUserName)
-    path = FilePath(kGuestMountPath);
-
-  if (!EnsureUserMountPoints(credentials))
-    return false;
-  if (!SetUpEphemeralCryptohome(path, user_multi_home))
-    return false;
-  if (!RememberMount(path,
-                    root_multi_home,
-                    kEphemeralMountType,
-                    kEphemeralMountPerms)) {
-    LOG(ERROR) << "Mount of ephemeral root home at " << root_multi_home.value()
-               << "failed: " << errno;
+  bool mounted = MountEphemeralCryptohomeInner(credentials);
+  if (!mounted) {
     UnmountAll();
+    CleanUpEphemeral();
+  }
+  return mounted;
+}
+
+bool Mount::MountEphemeralCryptohomeInner(const Credentials& credentials) {
+  // Underlying sparse file will be created in a temporary directory in RAM.
+  const FilePath ephemeral_root(kEphemeralCryptohomeDir);
+
+  // Determine ephemeral cryptohome size.
+  struct statvfs vfs;
+  if (!platform_->StatVFS(ephemeral_root, &vfs)) {
+    PLOG(ERROR) << "Can't determine ephemeral cryptohome size";
+    return false;
+  }
+  const size_t sparse_size = vfs.f_blocks * vfs.f_frsize;
+
+  // Create underlying sparse file
+  const std::string obfuscated_username =
+      credentials.GetObfuscatedUsername(system_salt_);
+  const FilePath sparse_file = GetEphemeralSparseFile(obfuscated_username);
+  if (!platform_->CreateDirectory(sparse_file.DirName())) {
+    LOG(ERROR) << "Can't create directory for ephemeral sparse files";
     return false;
   }
 
-  if (legacy_mount_)
-    MountLegacyHome(user_multi_home, NULL);
+  // Remember the file to clean up if error will happen during file creation.
+  ephemeral_file_path_ = sparse_file;
+  if (!platform_->CreateSparseFile(sparse_file, sparse_size)) {
+    LOG(ERROR) << "Can't create ephemeral sparse file";
+    return false;
+  }
+
+  // Format the sparse file into ext4.
+  if (!platform_->FormatExt4(sparse_file)) {
+    LOG(ERROR) << "Can't format ephemeral sparse file into ext4";
+    return false;
+  }
+
+  // Create a loop device based on the sparse file.
+  ephemeral_loop_device_ = platform_->AttachLoop(sparse_file);
+  if (ephemeral_loop_device_.empty()) {
+    LOG(ERROR) << "Can't create loop device";
+    return false;
+  }
+
+  const FilePath mount_point =
+      GetUserEphemeralMountDirectory(obfuscated_username);
+  if (!platform_->CreateDirectory(mount_point)) {
+    PLOG(ERROR) << "Directory creation failed for " << mount_point.value();
+    return false;
+  }
+  if (!RememberMount(ephemeral_loop_device_,
+                     mount_point,
+                     kEphemeralMountType,
+                     kEphemeralMountOptions)) {
+    PLOG(ERROR) << "Can't mount ephemeral mount point";
+    return false;
+  }
+
+  // Create user & root directories.
+  MigrateToUserHome(mount_point);
+  if (!EnsureUserMountPoints(credentials)) {
+    return false;
+  }
+
+  const FilePath user_home =
+      GetMountedEphemeralUserHomePath(obfuscated_username);
+  const FilePath root_home =
+      GetMountedEphemeralRootHomePath(obfuscated_username);
+  const std::string username = credentials.username();
+  const FilePath user_multi_home = GetUserPath(username);
+  const FilePath root_multi_home = GetRootPath(username);
+  if (!SetUpEphemeralCryptohome(user_home, user_multi_home))
+    return false;
+  if (!RememberBind(root_home, root_multi_home)) {
+    LOG(ERROR) << "Mount of ephemeral root home at " << root_multi_home.value()
+               << "failed: " << errno;
+    return false;
+  }
+
+  if (legacy_mount_ && !MountLegacyHome(user_multi_home, nullptr))
+    return false;
 
   FilePath multi_home = GetNewUserPath(username);
   if (!RememberBind(user_multi_home, multi_home)) {
     PLOG(ERROR) << "Bind mount failed: " << user_multi_home.value() << " -> "
                 << multi_home.value();
-    UnmountAll();
     return false;
   }
 
   if (!UserSignInEffects(true /* is_mount */, false /* is_owner */)) {
     LOG(ERROR) << "Failed to set user type, aborting ephemeral mount";
-    UnmountAll();
     return false;
   }
 
@@ -764,35 +830,12 @@ bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
 
 bool Mount::SetUpEphemeralCryptohome(const FilePath& source_path,
                                      const FilePath& home_dir) {
-  // First, build up the home dir at a mount point not accessible to chronos.
-  // This helps to avoid chown race conditions.
-  const FilePath ephemeral_skeleton_path = GetEphemeralSkeletonPath();
-  if (!platform_->CreateDirectory(ephemeral_skeleton_path)) {
-    LOG(ERROR) << "Failed to create " << ephemeral_skeleton_path.value() << ": "
-               << errno;
-    return false;
-  }
-  // Note! This mount point does not show up in the MountStack.
-  // TODO(wad) check for existing mount first.
-  if (!platform_->Mount(source_path,
-                        ephemeral_skeleton_path,
-                        kEphemeralMountType,
-                        kEphemeralMountPerms)) {
-    LOG(ERROR) << "Mount of ephemeral skeleton at "
-               << ephemeral_skeleton_path.value()
-               << "failed: " << errno;
-    return false;
-  }
-  // Whatever happens, we want to unmount the tmpfs used to build the skeleton
-  // home directory.
-  ScopedMountPoint scoped_skeleton_mount(this, source_path,
-                                         ephemeral_skeleton_path);
-  CopySkeleton(ephemeral_skeleton_path);
+  CopySkeleton(source_path);
 
   // Create the Downloads directory if it does not exist so that it can later be
   // made group accessible when SetupGroupAccess() is called.
   FilePath downloads_path =
-      FilePath(ephemeral_skeleton_path).Append(kDownloadsDir);
+      FilePath(source_path).Append(kDownloadsDir);
   if (!platform_->DirectoryExists(downloads_path)) {
     if (!platform_->CreateDirectory(downloads_path) ||
         !platform_->SetOwnership(
@@ -803,22 +846,22 @@ bool Mount::SetUpEphemeralCryptohome(const FilePath& source_path,
     }
   }
 
-  if (!platform_->SetOwnership(ephemeral_skeleton_path,
+  if (!platform_->SetOwnership(source_path,
                                default_user_,
                                default_access_group_,
                                true)) {
     LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
                << default_access_group_ << ") of path: "
-               << ephemeral_skeleton_path.value();
+               << source_path.value();
     return false;
   }
 
-  if (!SetupGroupAccess(FilePath(ephemeral_skeleton_path)))
+  if (!SetupGroupAccess(FilePath(source_path)))
     return false;
 
-  if (!RememberBind(ephemeral_skeleton_path, home_dir)) {
+  if (!RememberBind(source_path, home_dir)) {
     LOG(ERROR) << "Bind mount of ephemeral user home from "
-               << ephemeral_skeleton_path.value() << " to "
+               << source_path.value() << " to "
                << home_dir.value() << " failed: " << errno;
     return false;
   }
@@ -846,8 +889,13 @@ bool Mount::RememberBind(const FilePath& src,
 
 void Mount::UnmountAll() {
   FilePath src, dest;
+  const FilePath ephemeral_mount_path =
+      FilePath(kEphemeralCryptohomeDir).Append(kEphemeralMountDir);
   while (mounts_.Pop(&src, &dest)) {
     ForceUnmount(src, dest);
+    // Clean up destination directory for ephemeral loop device mounts.
+    if (ephemeral_mount_path.IsParent(dest))
+      platform_->DeleteFile(dest, true /* recursive */);
   }
 
   // Invalidate dircrypto key to make directory contents inaccessible.
@@ -898,6 +946,7 @@ bool Mount::UnmountCryptohome() {
   MaybeCancelActiveDircryptoMigrationAndWait();
 
   UnmountAll();
+  CleanUpEphemeral();
   ReloadDevicePolicy();
   if (AreEphemeralUsersEnabled())
     homedirs_->RemoveNonOwnerCryptohomes();
@@ -1447,11 +1496,6 @@ FilePath Mount::GetUserKeyFileForUser(
                      .Append(kKeyFile).AddExtension(safe_label);
 }
 
-FilePath Mount::GetUserEphemeralPath(
-    const std::string& obfuscated_username) const {
-  return FilePath(kEphemeralDir).Append(obfuscated_username);
-}
-
 FilePath Mount::GetUserVaultPath(
     const std::string& obfuscated_username) const {
   return shadow_root_.Append(obfuscated_username).Append(kVaultDir);
@@ -1460,6 +1504,12 @@ FilePath Mount::GetUserVaultPath(
 FilePath Mount::GetUserMountDirectory(
     const std::string& obfuscated_username) const {
   return shadow_root_.Append(obfuscated_username).Append(kMountDir);
+}
+
+FilePath Mount::GetUserEphemeralMountDirectory(
+    const std::string& obfuscated_username) const {
+  return FilePath(kEphemeralCryptohomeDir).Append(kEphemeralMountDir)
+      .Append(obfuscated_username);
 }
 
 FilePath Mount::GetUserTemporaryMountDirectory(
@@ -1485,10 +1535,16 @@ FilePath Mount::GetMountedRootHomePath(
   return GetUserMountDirectory(obfuscated_username).Append(kRootHomeSuffix);
 }
 
-// TODO(dkrahn,wad) Makes this unique so we don't have to worry about
-//                  parallelism.
-FilePath Mount::GetEphemeralSkeletonPath() const {
-  return shadow_root_.Append(kSkeletonDir);
+FilePath Mount::GetMountedEphemeralUserHomePath(
+    const std::string& obfuscated_username) const {
+  return GetUserEphemeralMountDirectory(obfuscated_username)
+      .Append(kUserHomeSuffix);
+}
+
+FilePath Mount::GetMountedEphemeralRootHomePath(
+    const std::string& obfuscated_username) const {
+  return GetUserEphemeralMountDirectory(obfuscated_username)
+      .Append(kRootHomeSuffix);
 }
 
 std::string Mount::GetObfuscatedOwner() {
@@ -1956,6 +2012,11 @@ FilePath Mount::GetNewUserPath(const std::string& username) {
   std::string sanitized = SanitizeUserName(username);
   std::string user_dir = StringPrintf("u-%s", sanitized.c_str());
   return FilePath("/home").Append(kDefaultSharedUser).Append(user_dir);
+}
+
+FilePath Mount::GetEphemeralSparseFile(const std::string& obfuscated_username) {
+  return FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir)
+      .Append(obfuscated_username);
 }
 
 bool Mount::MountLegacyHome(const FilePath& from, MountError* mount_error) {

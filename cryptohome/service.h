@@ -721,9 +721,15 @@ class Service : public brillo::dbus::AbstractDbusService,
   // Called periodically on Mount thread to detect low disk space and emit a
   // signal if detected.
   virtual void LowDiskCallback();
-  // Returns true if there are any existing mounts and populates
-  // |mounts| with the mount point.
-  virtual bool GetExistingMounts(
+  // Filters out active mounts from |mounts|, populating |active_mounts| set.
+  // If |force| is set, stale mounts with open files are ignored.
+  // Returns true if stale mount filtered out because of open files.
+  virtual bool FilterActiveMounts(
+      std::multimap<const base::FilePath, const base::FilePath>* mounts,
+      std::multimap<const base::FilePath, const base::FilePath>* active_mounts,
+      bool force);
+  // Populates |mounts| with ephemeral cryptohome mount points.
+  virtual void GetEphemeralLoopDevicesMounts(
       std::multimap<const base::FilePath, const base::FilePath>* mounts);
 
   // Checks if the machine is enterprise owned and report to mount_ then.

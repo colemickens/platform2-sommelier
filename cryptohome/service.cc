@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
@@ -33,6 +34,7 @@
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -254,17 +256,6 @@ Service* Service::CreateDefault(const std::string& abe_data) {
 #endif
 }
 
-bool Service::GetExistingMounts(
-    std::multimap<const FilePath, const FilePath>* mounts) {
-  bool found = platform_->GetMountsBySourcePrefix(homedirs_->shadow_root(),
-                                                  mounts);
-  found |= platform_->GetMountsBySourcePrefix(FilePath(kEphemeralDir),
-                                              mounts);
-  found |= platform_->GetMountsBySourcePrefix(FilePath(kGuestMountPath),
-                                              mounts);
-  return found;
-}
-
 static bool PrefixPresent(const std::vector<FilePath>& prefixes,
                           const std::string path) {
   for (const auto& prefix : prefixes)
@@ -334,40 +325,16 @@ void Service::SendDBusErrorReply(DBusGMethodInvocation* context,
     event_source_.AddEvent(reply_cb);
 }
 
-bool Service::CleanUpStaleMounts(bool force) {
-  // This function is meant to aid in a clean recovery from a crashed or
-  // manually restarted cryptohomed.  Cryptohomed may restart:
-  // 1. Before any mounts occur
-  // 2. While mounts are active
-  // 3. During an unmount
-  // In case #1, there should be no special work to be done.
-  // The best way to disambiguate #2 and #3 is to determine if there are
-  // any active open files on any stale mounts.  If there are open files,
-  // then we've likely(*) resumed an active session. If there are not,
-  // the last cryptohome should have been unmounted.
-  // It's worth noting that a restart during active use doesn't impair
-  // other user session behavior, like CheckKey, because it doesn't rely
-  // exclusively on mount state.
-  //
-  // In the future, it may make sense to attempt to keep the MountMap
-  // persisted to disk which would make resumption much easier.
-  //
-  // (*) Relies on the expectation that all processes have been killed off.
+bool Service::FilterActiveMounts(
+    std::multimap<const FilePath, const FilePath>* mounts,
+    std::multimap<const FilePath, const FilePath>* active_mounts,
+    bool force) {
   bool skipped = false;
-  std::multimap<const FilePath, const FilePath> matches;
-  std::vector<FilePath> exclude;
-  if (!GetExistingMounts(&matches)) {
-    // If there's no existing mounts, go ahead and unload all chaps tokens by
-    // passing an empty exclude list.
-    UnloadPkcs11Tokens(exclude);
-    return skipped;
-  }
-
-  for (auto match = matches.begin(); match != matches.end(); ) {
+  for (auto match = mounts->begin(); match != mounts->end(); ) {
     auto curr = match;
     bool keep = false;
     // Walk each set of sources as one group since multimaps are key ordered.
-    for (; match != matches.end() && match->first == curr->first; ++match) {
+    for (; match != mounts->end() && match->first == curr->first; ++match) {
       // Ignore known mounts.
       mounts_lock_.Acquire();
       for (const auto& mount_pair : mounts_) {
@@ -390,20 +357,119 @@ bool Service::CleanUpStaleMounts(bool force) {
         }
       }
     }
-
     // Delete anything that shouldn't be unmounted.
     if (keep) {
-      for (auto it = curr; it != match; ++it)
-        exclude.push_back(it->second);
-      matches.erase(curr, match);
+      active_mounts->insert(curr, match);
+      mounts->erase(curr, match);
     }
   }
-  UnloadPkcs11Tokens(exclude);
+  return skipped;
+}
+
+void Service::GetEphemeralLoopDevicesMounts(
+    std::multimap<const FilePath, const FilePath>* mounts) {
+  std::multimap<const FilePath, const FilePath> loop_mounts;
+  platform_->GetLoopDeviceMounts(&loop_mounts);
+
+  const FilePath sparse_path = FilePath(kEphemeralCryptohomeDir)
+      .Append(kSparseFileDir);
+  for (const auto& device : platform_->GetAttachedLoopDevices()) {
+    // Ephemeral mounts are mounts from a loop device with ephemeral sparse
+    // backing file.
+    if (sparse_path.IsParent(device.backing_file)) {
+      auto range = loop_mounts.equal_range(device.device);
+      mounts->insert(range.first, range.second);
+    }
+  }
+}
+
+bool Service::CleanUpStaleMounts(bool force) {
+  // This function is meant to aid in a clean recovery from a crashed or
+  // manually restarted cryptohomed.  Cryptohomed may restart:
+  // 1. Before any mounts occur
+  // 2. While mounts are active
+  // 3. During an unmount
+  // In case #1, there should be no special work to be done.
+  // The best way to disambiguate #2 and #3 is to determine if there are
+  // any active open files on any stale mounts.  If there are open files,
+  // then we've likely(*) resumed an active session. If there are not,
+  // the last cryptohome should have been unmounted.
+  // It's worth noting that a restart during active use doesn't impair
+  // other user session behavior, like CheckKey, because it doesn't rely
+  // exclusively on mount state.
+  //
+  // In the future, it may make sense to attempt to keep the MountMap
+  // persisted to disk which would make resumption much easier.
+  //
+  // (*) Relies on the expectation that all processes have been killed off.
+  std::multimap<const FilePath, const FilePath> shadow_mounts;
+  std::multimap<const FilePath, const FilePath> ephemeral_mounts;
+  platform_->GetMountsBySourcePrefix(homedirs_->shadow_root(), &shadow_mounts);
+  GetEphemeralLoopDevicesMounts(&ephemeral_mounts);
+
+  std::multimap<const FilePath, const FilePath> excluded;
+  bool skipped = FilterActiveMounts(&shadow_mounts, &excluded, force);
+  skipped |= FilterActiveMounts(&ephemeral_mounts, &excluded, force);
+
+  std::vector<FilePath> excluded_mount_points;
+  for (const auto& mount : excluded)
+    excluded_mount_points.push_back(mount.second);
+  UnloadPkcs11Tokens(excluded_mount_points);
   // Unmount anything left.
-  for (const auto& match : matches) {
-    LOG(WARNING) << "Lazily unmounting stale mount: " << match.second.value()
-                 << " from " << match.first.value();
-    platform_->Unmount(match.second, true, NULL);
+  for (const auto& match : shadow_mounts) {
+    LOG(WARNING) << "Lazily unmounting stale shadow mount: "
+                 << match.second.value() << " from " << match.first.value();
+    platform_->Unmount(match.second, true, nullptr);
+  }
+  for (const auto& match : ephemeral_mounts) {
+    LOG(WARNING) << "Lazily unmounting stale ephemeral mount: "
+                 << match.second.value() << " from " << match.first.value();
+    platform_->Unmount(match.second, true, nullptr);
+    // Clean up destination directory for ephemeral mounts under ephemeral
+    // cryptohome dir.
+    if (base::StartsWith(match.first.value(), kLoopPrefix,
+                         base::CompareCase::SENSITIVE) &&
+        FilePath(kEphemeralCryptohomeDir).IsParent(match.second)) {
+      platform_->DeleteFile(match.second, true /* recursive */);
+    }
+  }
+
+  // TODO(chromium:781821): Add autotests for this case.
+  std::vector<Platform::LoopDevice> loop_devices =
+      platform_->GetAttachedLoopDevices();
+  const FilePath sparse_dir = FilePath(kEphemeralCryptohomeDir)
+      .Append(kSparseFileDir);
+  std::vector<FilePath> stale_sparse_files;
+  platform_->EnumerateDirectoryEntries(sparse_dir, false /* is_recursive */,
+                                       &stale_sparse_files);
+  for (const auto& device : loop_devices) {
+    // Check whether it's created from an ephemeral sparse file.
+    if (!sparse_dir.IsParent(device.backing_file))
+      continue;
+    if (excluded.count(device.device) == 0) {
+      LOG(WARNING) << "Detaching stale loop device: "
+                   << device.device.value();
+      if (!platform_->DetachLoop(device.device)) {
+        ReportCryptohomeError(kEphemeralCleanUpFailed);
+        PLOG(ERROR) << "Can't detach stale loop: " << device.device.value();
+      }
+    } else {
+      // Remove if it's a non-stale loop device.
+      stale_sparse_files.erase(std::remove(stale_sparse_files.begin(),
+                                           stale_sparse_files.end(),
+                                           device.backing_file),
+                               stale_sparse_files.end());
+    }
+  }
+
+  for (const auto& file : stale_sparse_files) {
+    LOG(WARNING) << "Deleting stale ephemeral backing sparse file: "
+                 << file.value();
+    if (!platform_->DeleteFile(file, false /* recursive */)) {
+      ReportCryptohomeError(kEphemeralCleanUpFailed);
+      PLOG(ERROR) << "Failed to clean up ephemeral sparse file: "
+                  << file.value();
+    }
   }
   return skipped;
 }

@@ -525,7 +525,7 @@ struct Mounts {
   const FilePath dst;
 };
 
-const struct Mounts kShadowMounts[] = {
+const Mounts kShadowMounts[] = {
   { FilePath("/home/.shadow/a"), FilePath("/home/user/0")},
   { FilePath("/home/.shadow/a"), FilePath("/home/root/0")},
   { FilePath("/home/.shadow/b"), FilePath("/home/user/1")},
@@ -534,11 +534,32 @@ const struct Mounts kShadowMounts[] = {
 };
 const int kShadowMountsCount = 5;
 
+const Mounts kLoopDevMounts[] = {
+    { FilePath("/dev/loop7"), FilePath("/run/cryptohome/ephemeral_mount/1")},
+    { FilePath("/dev/loop7"), FilePath("/home/user/0")},
+    { FilePath("/dev/loop7"), FilePath("/home/root/0")},
+    { FilePath("/dev/loop7"), FilePath("/home/chronos/u-1")},
+    { FilePath("/dev/loop7"), FilePath("/home/chronos/user")},
+    { FilePath("/dev/loop1"), FilePath("/opt/google/containers")},
+    { FilePath("/dev/loop2"), FilePath("/home/root/1")},
+    { FilePath("/dev/loop2"), FilePath("/home/user/1")},
+};
+const int kEphemeralMountsCount = 5;
+
+const Platform::LoopDevice kLoopDevices[] = {
+    { FilePath("/mnt/stateful_partition/encrypted.block"),
+      FilePath("/dev/loop0")},
+    { FilePath("/run/cryptohome/ephemeral_data/1"), FilePath("/dev/loop7")},
+};
+
+const FilePath kSparseFiles[] = {
+    FilePath("/run/cryptohome/ephemeral_data/2"),
+    FilePath("/run/cryptohome/ephemeral_data/1"),
+};
+
 bool StaleShadowMounts(
     const FilePath& from_prefix,
     std::multimap<const FilePath, const FilePath>* mounts) {
-  LOG(INFO) << "StaleShadowMounts(" << from_prefix.value()
-            << "): called";
   if (from_prefix.value() == "/home/.shadow") {
     if (!mounts)
       return true;
@@ -546,11 +567,122 @@ bool StaleShadowMounts(
     for (int i = 0; i < kShadowMountsCount; ++i, ++m) {
       mounts->insert(
           std::pair<const FilePath, const FilePath>(m->src, m->dst));
-      LOG(INFO) << "Inserting " << m->src.value() << ":" << m->dst.value();
     }
     return true;
   }
   return false;
+}
+
+bool LoopDeviceMounts(
+    std::multimap<const FilePath, const FilePath>* mounts) {
+  if (!mounts)
+    return false;
+  const Mounts* m = kLoopDevMounts;
+  for (int i = 0; i < arraysize(kLoopDevMounts); ++i, ++m)
+    mounts->insert(std::make_pair(m->src, m->dst));
+  return true;
+}
+
+bool EnumerateSparseFiles(const base::FilePath& path, bool is_recursive,
+                          std::vector<base::FilePath>* ent_list) {
+  if (path != FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir))
+    return false;
+  ent_list->insert(ent_list->end(), std::begin(kSparseFiles),
+      std::end(kSparseFiles));
+  return true;
+}
+
+TEST_F(ServiceTest, CleanUpStale_NoOpenFiles_Ephemeral) {
+  // Check that when we have ephemeral mounts, no active mounts,
+  // and no open filehandles, all stale mounts are unmounted, loop device is
+  // detached and sparse file is deleted.
+
+  EXPECT_CALL(platform_, GetMountsBySourcePrefix(homedirs_.shadow_root(), _))
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform_, GetAttachedLoopDevices())
+    .WillRepeatedly(Return(std::vector<Platform::LoopDevice>(
+        std::begin(kLoopDevices), std::end(kLoopDevices))));
+  EXPECT_CALL(platform_, GetLoopDeviceMounts(_))
+    .WillOnce(Invoke(LoopDeviceMounts));
+  EXPECT_CALL(platform_,
+      EnumerateDirectoryEntries(
+          FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir), _, _))
+    .WillOnce(Invoke(EnumerateSparseFiles));
+  EXPECT_CALL(platform_, GetProcessesWithOpenFiles(_, _))
+    .Times(kEphemeralMountsCount);
+
+  for (int i = 0; i < kEphemeralMountsCount; ++i) {
+    EXPECT_CALL(platform_, Unmount(kLoopDevMounts[i].dst, true, _))
+      .WillRepeatedly(Return(true));
+  }
+  EXPECT_CALL(platform_, DetachLoop(FilePath("/dev/loop7")))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(kSparseFiles[0], _)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(kSparseFiles[1], _)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(kLoopDevMounts[0].dst, _))
+    .WillOnce(Return(true));
+  EXPECT_FALSE(service_.CleanUpStaleMounts(false));
+}
+
+TEST_F(ServiceTest, CleanUpStale_OpenLegacy_Ephemeral) {
+  // Check that when we have ephemeral mounts, no active mounts,
+  // and some open filehandles to the legacy homedir, everything is kept.
+
+  EXPECT_CALL(platform_, GetMountsBySourcePrefix(homedirs_.shadow_root(), _))
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform_, GetAttachedLoopDevices())
+    .WillRepeatedly(Return(std::vector<Platform::LoopDevice>(
+        std::begin(kLoopDevices), std::end(kLoopDevices))));
+  EXPECT_CALL(platform_, GetLoopDeviceMounts(_))
+    .WillOnce(Invoke(LoopDeviceMounts));
+  EXPECT_CALL(platform_,
+      EnumerateDirectoryEntries(
+          FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir), _, _))
+    .WillOnce(Invoke(EnumerateSparseFiles));
+  EXPECT_CALL(platform_, GetProcessesWithOpenFiles(_, _))
+    .Times(kEphemeralMountsCount - 1);
+  std::vector<ProcessInformation> processes(1);
+  processes[0].set_process_id(1);
+  EXPECT_CALL(platform_,
+      GetProcessesWithOpenFiles(FilePath("/home/chronos/user"), _))
+    .Times(1)
+    .WillRepeatedly(SetArgPointee<1>(processes));
+
+  EXPECT_CALL(platform_, Unmount(_, _, _))
+    .Times(0);
+  EXPECT_TRUE(service_.CleanUpStaleMounts(false));
+}
+
+TEST_F(ServiceTest, CleanUpStale_OpenLegacy_Ephemeral_Forced) {
+  // Check that when we have ephemeral mounts, no active mounts,
+  // and some open filehandles to the legacy homedir, but cleanup is forced,
+  // all mounts are unmounted, loop device is detached and file is deleted.
+
+  EXPECT_CALL(platform_, GetMountsBySourcePrefix(homedirs_.shadow_root(), _))
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform_, GetAttachedLoopDevices())
+    .WillRepeatedly(Return(std::vector<Platform::LoopDevice>(
+        std::begin(kLoopDevices), std::end(kLoopDevices))));
+  EXPECT_CALL(platform_, GetLoopDeviceMounts(_))
+    .WillOnce(Invoke(LoopDeviceMounts));
+  EXPECT_CALL(platform_,
+      EnumerateDirectoryEntries(
+          FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir), _, _))
+    .WillOnce(Invoke(EnumerateSparseFiles));
+  EXPECT_CALL(platform_, GetProcessesWithOpenFiles(_, _))
+    .Times(0);
+
+  for (int i = 0; i < kEphemeralMountsCount; ++i) {
+    EXPECT_CALL(platform_, Unmount(kLoopDevMounts[i].dst, true, _))
+      .WillRepeatedly(Return(true));
+  }
+  EXPECT_CALL(platform_, DetachLoop(FilePath("/dev/loop7")))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(kSparseFiles[0], _)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(kSparseFiles[1], _)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(kLoopDevMounts[0].dst, _))
+    .WillOnce(Return(true));
+  EXPECT_FALSE(service_.CleanUpStaleMounts(true));
 }
 
 TEST_F(ServiceTest, CleanUpStale_EmptyMap_NoOpenFiles_ShadowOnly) {
@@ -558,8 +690,15 @@ TEST_F(ServiceTest, CleanUpStale_EmptyMap_NoOpenFiles_ShadowOnly) {
   // and no open filehandles, all stale mounts are unmounted.
 
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
-    .Times(3)
-    .WillRepeatedly(Invoke(StaleShadowMounts));
+    .WillOnce(Invoke(StaleShadowMounts));
+  EXPECT_CALL(platform_, GetAttachedLoopDevices())
+    .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
+  EXPECT_CALL(platform_, GetLoopDeviceMounts(_))
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform_,
+      EnumerateDirectoryEntries(
+          FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir), _, _))
+    .WillOnce(Return(false));
   EXPECT_CALL(platform_, GetProcessesWithOpenFiles(_, _))
     .Times(kShadowMountsCount);
   EXPECT_CALL(platform_, Unmount(_, true, _))
@@ -573,8 +712,15 @@ TEST_F(ServiceTest, CleanUpStale_EmptyMap_OpenLegacy_ShadowOnly) {
   // and some open filehandles to the legacy homedir, all mounts without
   // filehandles are unmounted.
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
-    .Times(3)
-    .WillRepeatedly(Invoke(StaleShadowMounts));
+    .WillOnce(Invoke(StaleShadowMounts));
+  EXPECT_CALL(platform_, GetAttachedLoopDevices())
+    .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
+  EXPECT_CALL(platform_, GetLoopDeviceMounts(_))
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform_,
+      EnumerateDirectoryEntries(
+          FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir), _, _))
+    .WillOnce(Return(false));
   std::vector<ProcessInformation> processes(1);
   processes[0].set_process_id(1);
   EXPECT_CALL(platform_, GetProcessesWithOpenFiles(_, _))
@@ -602,8 +748,11 @@ TEST_F(ServiceTestNotInitialized,
     .WillOnce(Return(mount));
   service_.set_mount_factory(&mount_factory);
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
-    .Times(3)
-    .WillRepeatedly(Return(false));
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform_, GetAttachedLoopDevices())
+    .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
+  EXPECT_CALL(platform_, GetLoopDeviceMounts(_))
+    .WillOnce(Return(false));
   ASSERT_TRUE(service_.Initialize());
 
   EXPECT_CALL(*mount, Init(&platform_, service_.crypto(), _))
@@ -613,17 +762,27 @@ TEST_F(ServiceTestNotInitialized,
   EXPECT_CALL(*mount, UpdateCurrentUserActivityTimestamp(_))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
-    .Times(3)
-    .WillRepeatedly(Return(false));
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform_, GetAttachedLoopDevices())
+    .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
+  EXPECT_CALL(platform_, GetLoopDeviceMounts(_))
+    .WillOnce(Return(false));
 
   gint error_code = 0;
   gboolean result = FALSE;
   ASSERT_TRUE(service_.Mount("foo@bar.net", "key", true, false,
-                             &error_code, &result, NULL));
+                             &error_code, &result, nullptr));
   ASSERT_EQ(TRUE, result);
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
-    .Times(3)
-    .WillRepeatedly(Invoke(StaleShadowMounts));
+    .WillOnce(Invoke(StaleShadowMounts));
+  EXPECT_CALL(platform_, GetAttachedLoopDevices())
+    .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
+  EXPECT_CALL(platform_, GetLoopDeviceMounts(_))
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform_,
+      EnumerateDirectoryEntries(
+          FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir), _, _))
+    .WillOnce(Return(false));
   EXPECT_CALL(platform_, GetProcessesWithOpenFiles(_, _))
     .Times(kShadowMountsCount);
 

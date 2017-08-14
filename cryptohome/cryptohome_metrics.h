@@ -31,6 +31,7 @@ enum CryptohomeError {
   kTssCommunicationFailure = 16,
   kTssInvalidHandle = 17,
   kBothTpmAndScryptWrappedKeyset = 18,
+  kEphemeralCleanUpFailed = 19,
   kCryptohomeErrorNumBuckets,  // Must be the last entry.
 };
 

@@ -40,6 +40,9 @@ namespace cryptohome {
 // Default umask
 extern const int kDefaultUmask;
 
+// Loop devices prefix.
+extern const base::FilePath::CharType kLoopPrefix[];
+
 class ProcessInformation;
 
 // Decoded content of /proc/<id>/mountinfo file that has format:

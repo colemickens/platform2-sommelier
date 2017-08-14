@@ -45,6 +45,9 @@
 
 namespace cryptohome {
 
+// Paths to sparse file for ephemeral mounts.
+extern const base::FilePath::CharType kEphemeralCryptohomeDir[];
+extern const base::FilePath::CharType kSparseFileDir[];
 // Directories that we intend to track (make pass-through in cryptohome vault)
 extern const base::FilePath::CharType kCacheDir[];
 extern const base::FilePath::CharType kDownloadsDir[];
@@ -70,7 +73,6 @@ extern const int kKeyFileMax;
 // File system type for ephemeral mounts.
 extern const char kEphemeralMountType[];
 extern const base::FilePath::CharType kEphemeralDir[];
-extern const base::FilePath::CharType kGuestMountPath[];
 
 class BootLockbox;
 class ChapsClientFactory;
@@ -324,6 +326,10 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // http://crbug.com/224291
   static base::FilePath GetNewUserPath(const std::string& username);
 
+  // Returns the path to sparse file used for ephemeral cryptohome for the user.
+  static base::FilePath GetEphemeralSparseFile(
+      const std::string& obfuscated_username);
+
   void set_legacy_mount(bool legacy) { legacy_mount_ = legacy; }
 
   // Does not take ownership.
@@ -344,21 +350,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   friend class ChapsDirectoryTest;
 
  private:
-  // A class which scopes a mount point.  i.e. The mount point is unmounted on
-  // destruction.
-  class ScopedMountPoint {
-   public:
-    ScopedMountPoint(Mount* mount,
-                     const base::FilePath& src,
-                     const base::FilePath& dest);
-    ~ScopedMountPoint();
-
-   private:
-    Mount* mount_;
-    const base::FilePath src_;
-    const base::FilePath dest_;
-  };
-
   // Checks if the cryptohome vault exists for the given credentials
   //
   // Parameters
@@ -536,13 +527,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   base::FilePath GetUserDirectoryForUser(
       const std::string& obfuscated_username) const;
 
-  // Gets the directory representing the user's ephemeral cryptohome.
-  //
-  // Parameters
-  //   obfuscated_username - Obfuscated username field of the credentials.
-  base::FilePath GetUserEphemeralPath(
-      const std::string& obfuscated_username) const;
-
   // Gets the user's vault directory
   //
   // Parameters
@@ -552,8 +536,15 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Gets the directory to mount the user's cryptohome at
   //
   // Parameters
-  //   credentials - The credentials representing the user
+  //   obfuscated_username - Obfuscated username field of the credentials.
   base::FilePath GetUserMountDirectory(
+      const std::string& obfuscated_username) const;
+
+  // Gets the directory to mount the user's ephemeral cryptohome at.
+  //
+  // Parameters
+  //   obfuscated_username - Obfuscated username field of the credentials.
+  base::FilePath GetUserEphemeralMountDirectory(
       const std::string& obfuscated_username) const;
 
   // Gets the directory to temporarily mount the user's cryptohome at.
@@ -578,20 +569,32 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Returns the mounted userhome path (e.g. /home/.shadow/.../mount/user)
   //
   // Parameters
-  //   credentials - The Credentials representing the user
+  //   obfuscated_username - Obfuscated username field of the credentials.
   base::FilePath GetMountedUserHomePath(
       const std::string& obfuscated_username) const;
 
   // Returns the mounted roothome path (e.g. /home/.shadow/.../mount/root)
   //
   // Parameters
-  //   credentials - The Credentials representing the user
+  //   obfuscated_username - Obfuscated username field of the credentials.
   base::FilePath GetMountedRootHomePath(
       const std::string& obfuscated_username) const;
 
-  // Returns a path suitable for building a skeleton for an ephemeral home
-  // directory.
-  base::FilePath GetEphemeralSkeletonPath() const;
+  // Returns the mounted userhome path for ephemeral user
+  // (e.g. /home/.shadow/.../ephemeral-mount/user)
+  //
+  // Parameters
+  //   obfuscated_username - Obfuscated username field of the credentials.
+  base::FilePath GetMountedEphemeralUserHomePath(
+      const std::string& obfuscated_username) const;
+
+  // Returns the mounted roothome path for ephemeral user (
+  // e.g. /home/.shadow/.../ephemeral-mount/root)
+  //
+  // Parameters
+  //   obfuscated_username - Obfuscated username field of the credentials.
+  base::FilePath GetMountedEphemeralRootHomePath(
+      const std::string& obfuscated_username) const;
 
   // Get the owner user's obfuscated hash. This is empty if the owner has not
   // been set yet or the device is enterprise owned.
@@ -651,6 +654,13 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Parameters
   //   credentials - The credentials representing the user.
   bool MountEphemeralCryptohome(const Credentials& credentials);
+
+  // Implementation of ephemeral cryptohome mount that doesn't clean up after
+  // failure and return false in this case.
+  //
+  // Parameters
+  //   credentials - The credentials representing the user.
+  bool MountEphemeralCryptohomeInner(const Credentials& credentials);
 
   // Sets up a freshly mounted ephemeral cryptohome by adjusting its permissions
   // and populating it with a skeleton directory and file structure.
@@ -742,6 +752,10 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Relies on ForceUnmount() internally; see the caveat listed for it
   //
   void UnmountAll();
+
+  // Deletes loop device used for ephemeral cryptohome and underlying
+  // temporary sparse file.
+  void CleanUpEphemeral();
 
   // Forcibly unmounts a mountpoint, killing processes with open handles to it
   // if necessary. Note that this approach is not bulletproof - if a process can
@@ -864,6 +878,14 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // true if mounted with |shadow_only|=true. This is only valid when
   // IsMounted() is true.
   bool shadow_only_;
+
+  // Tracks loop device used for ephemeral cryptohome.
+  // Empty when device is not present.
+  base::FilePath ephemeral_loop_device_;
+
+  // Tracks path to ephemeral cryptohome sparse file.
+  // Empty when file is not created or already deleted.
+  base::FilePath ephemeral_file_path_;
 
   std::unique_ptr<ChapsClientFactory> default_chaps_client_factory_;
   ChapsClientFactory* chaps_client_factory_;

@@ -50,8 +50,7 @@ class MakeTests {
   void InjectSystemSalt(MockPlatform* platform, const base::FilePath& path);
   // Inject mocks needed for skeleton population.
   void InjectEphemeralSkeleton(MockPlatform* platform,
-                               const base::FilePath& root,
-                               bool exists);
+                               const base::FilePath& root);
   void TearDownSystemSalt();
 
   std::vector<TestUser> users;
@@ -90,11 +89,14 @@ class TestUser {
   base::FilePath image_path;
   base::FilePath vault_path;
   base::FilePath vault_mount_path;
+  base::FilePath ephemeral_mount_path;
   base::FilePath tracked_directories_json_path;
   base::FilePath user_vault_path;
   base::FilePath root_vault_path;
   base::FilePath user_vault_mount_path;
   base::FilePath root_vault_mount_path;
+  base::FilePath user_ephemeral_mount_path;
+  base::FilePath root_ephemeral_mount_path;
   base::FilePath keyset_path;
   base::FilePath salt_path;
   base::FilePath mount_prefix;

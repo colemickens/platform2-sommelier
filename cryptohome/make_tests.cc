@@ -117,32 +117,25 @@ void MakeTests::InjectSystemSalt(MockPlatform* platform,
 }
 
 void MakeTests::InjectEphemeralSkeleton(MockPlatform* platform,
-                                        const FilePath& root,
-                                        bool exists) {
-  const FilePath skel = root.Append("skeleton");
-  EXPECT_CALL(*platform, CreateDirectory(
-        Property(&FilePath::value, StartsWith(skel.value()))))
-    .WillRepeatedly(Return(true));
+                                        const FilePath& root) {
   EXPECT_CALL(
       *platform,
       SetOwnership(
-          Property(&FilePath::value, StartsWith(skel.value())), _, _, _))
+          Property(&FilePath::value, StartsWith(root.value())), _, _, _))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*platform,
       DirectoryExists(
-        Property(&FilePath::value, StartsWith(skel.value()))))
-    .WillRepeatedly(Return(exists));
+        Property(&FilePath::value, StartsWith(root.value()))))
+    .WillRepeatedly(Return(false));
   EXPECT_CALL(*platform,
       FileExists(
-        Property(&FilePath::value, StartsWith(skel.value()))))
-    .WillRepeatedly(Return(exists));
-  if (!exists) {
-    EXPECT_CALL(*platform,
-        SetGroupAccessible(
-          Property(&FilePath::value, StartsWith(skel.value())),
-          _, _))
-      .WillRepeatedly(Return(true));
-  }
+        Property(&FilePath::value, StartsWith(root.value()))))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(*platform,
+      SetGroupAccessible(
+        Property(&FilePath::value, StartsWith(root.value())),
+        _, _))
+    .WillRepeatedly(Return(true));
 }
 
 
@@ -170,11 +163,15 @@ void TestUser::FromInfo(const struct TestUserInfo* info,
   image_path = base_path.Append("image");
   vault_path = base_path.Append("vault");
   vault_mount_path = base_path.Append("mount");
+  ephemeral_mount_path = FilePath(kEphemeralCryptohomeDir)
+      .Append("ephemeral_mount").Append(obfuscated_username);
   tracked_directories_json_path = base_path.Append("tracked_directories.json");
   root_vault_path = vault_path.Append("root");
   user_vault_path = vault_path.Append("user");
   root_vault_mount_path = vault_mount_path.Append("root");
   user_vault_mount_path = vault_mount_path.Append("user");
+  root_ephemeral_mount_path = ephemeral_mount_path.Append("root");
+  user_ephemeral_mount_path = ephemeral_mount_path.Append("user");
   keyset_path = base_path.Append("master.0");
   salt_path = base_path.Append("master.0.salt");
   user_salt.assign('A', PKCS5_SALT_LEN);

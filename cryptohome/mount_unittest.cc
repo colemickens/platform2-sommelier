@@ -281,6 +281,39 @@ class MountTest
         .WillOnce(Return(true));
   }
 
+  void ExpectEphemeralCryptohomeMount(const TestUser& user) {
+    EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
+        .WillOnce(Return(true));
+    const FilePath ephemeral_filename =
+        Mount::GetEphemeralSparseFile(user.obfuscated_username);
+    EXPECT_CALL(platform_, CreateSparseFile(ephemeral_filename, _))
+        .WillOnce(Return(true));
+    EXPECT_CALL(platform_, AttachLoop(ephemeral_filename))
+        .WillOnce(Return(FilePath("/dev/loop7")));
+    EXPECT_CALL(platform_, FormatExt4(ephemeral_filename))
+        .WillOnce(Return(true));
+
+    EXPECT_CALL(platform_,
+                Mount(FilePath("/dev/loop7"), _, kEphemeralMountType, _))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
+        .WillOnce(Return(false));  // first mount
+    EXPECT_CALL(platform_, Bind(_, _))
+        .WillRepeatedly(Return(true));
+
+    EXPECT_CALL(platform_, GetFileEnumerator(kSkelDir, _, _))
+        .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
+        .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
+    EXPECT_CALL(platform_, DirectoryExists(_))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(platform_, CreateDirectory(user.vault_path))
+        .Times(0);
+    EXPECT_CALL(platform_, CreateDirectory(_))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(platform_, FileExists(_))
+        .WillRepeatedly(Return(true));
+  }
+
  protected:
   // Protected for trivial access.
   MakeTests helper_;
@@ -2010,7 +2043,8 @@ TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
                           Return(true)));
   EXPECT_CALL(platform_,
       DirectoryExists(
-        Property(&FilePath::value, StartsWith(user->user_vault_path.value()))))
+        Property(&FilePath::value,
+                 StartsWith(user->user_vault_path.value()))))
     .WillRepeatedly(Return(true));
 
   EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
@@ -2123,43 +2157,10 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountNoCreateTest) {
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(_, _, _))
     .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
 
-  EXPECT_CALL(platform_, GetFileEnumerator(_, _, _))
-    .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
-    .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
-
-  EXPECT_CALL(platform_, DirectoryExists(_))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Stat(_, _))
-    .WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_, CreateDirectory(user->vault_path))
-    .Times(0);
-  EXPECT_CALL(platform_, CreateDirectory(_))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, DeleteFile(_, _))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, FileExists(_))
-    .WillRepeatedly(Return(true));
-
-  // Make sure it's a tmpfs mount until we move to ephemeral key use.
-  EXPECT_CALL(platform_, Mount(_, _, _, _))
-      .Times(0);
-
-  EXPECT_CALL(platform_,
-      IsDirectoryMounted(FilePath("test_image_dir/skeleton")))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
-      .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, Unmount(_, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Unmount(FilePath("test_image_dir/skeleton"), _, _))
-      .WillOnce(Return(true));  // Scope mount
-  EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
-    .WillOnce(Return(false));  // first mount
-  EXPECT_CALL(platform_, Bind(_, _))
-      .WillRepeatedly(Return(true));
+    .WillRepeatedly(Return(true));
+
+  ExpectEphemeralCryptohomeMount(*user);
 
   // Enterprise enrolled -> no one is the owner.
   EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
@@ -2207,40 +2208,7 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(_, _, _))
     .WillRepeatedly(DoAll(SetArgPointee<2>(empty), Return(true)));
 
-  EXPECT_CALL(platform_, GetFileEnumerator(_, _, _))
-    .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
-    .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
-
-  EXPECT_CALL(platform_, DirectoryExists(_))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Stat(_, _))
-    .WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_, CreateDirectory(user->vault_path))
-    .Times(0);
-  EXPECT_CALL(platform_, CreateDirectory(_))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, DeleteFile(_, _))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, FileExists(_))
-    .WillRepeatedly(Return(true));
-
-  EXPECT_CALL(platform_, Mount(_, _, _, _))
-      .Times(0);
-
-  EXPECT_CALL(platform_,
-      IsDirectoryMounted(FilePath("test_image_dir/skeleton")))
-    .WillOnce(Return(true));
-  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Unmount(FilePath("test_image_dir/skeleton"), _, _))
-      .WillOnce(Return(true));  // Scope mount
-  EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
-    .WillOnce(Return(false));  // first mount
-  EXPECT_CALL(platform_, Bind(_, _))
-      .WillRepeatedly(Return(true));
+  ExpectEphemeralCryptohomeMount(*user);
 
   // Enterprise enrolled -> no one is the owner.
   EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
@@ -2253,6 +2221,8 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
   UsernamePasskey up(user->username, user->passkey);
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 
+  EXPECT_CALL(platform_, Unmount(user->ephemeral_mount_path,  _, _))
+    .WillOnce(Return(true));
   EXPECT_CALL(platform_,
       Unmount(
         Property(&FilePath::value, StartsWith("/home/chronos/u-")),
@@ -2279,6 +2249,189 @@ TEST_P(EphemeralNoUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
       .WillOnce(Return(true));
 
   EXPECT_TRUE(mount_->UnmountCryptohome());
+}
+
+TEST_P(EphemeralNoUserSystemTest, EnterpriseMountStatVFSFailure) {
+  // Checks that when ephemeral statvfs call fails, no clean up happens.
+  set_policy(false, "", true);
+  mount_->set_enterprise_owned(true);
+  const TestUser* const user = &helper_.users[0];
+
+  EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
+  EXPECT_CALL(platform_, DeleteFile(_, _)).Times(0);
+
+  EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
+    .WillOnce(Return(false));
+
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
+  mount_args.create_if_missing = true;
+  MountError error;
+  UsernamePasskey up(user->username, user->passkey);
+  ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
+}
+
+TEST_P(EphemeralNoUserSystemTest, EnterpriseMountCreateSparseDirFailure) {
+  // Checks that when directory for ephemeral sparse files fails to be created,
+  // no clean up happens.
+  set_policy(false, "", true);
+  mount_->set_enterprise_owned(true);
+  const TestUser* const user = &helper_.users[0];
+
+  EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
+  EXPECT_CALL(platform_, DeleteFile(_, _)).Times(0);
+
+  EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+      CreateDirectory(Mount::GetEphemeralSparseFile(user->obfuscated_username)
+                          .DirName()))
+    .WillOnce(Return(false));
+
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
+  mount_args.create_if_missing = true;
+  MountError error;
+  UsernamePasskey up(user->username, user->passkey);
+  ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
+}
+
+TEST_P(EphemeralNoUserSystemTest, EnterpriseMountCreateSparseFailure) {
+  // Checks that when ephemeral sparse file fails to create, no clean up
+  // happens.
+  set_policy(false, "", true);
+  mount_->set_enterprise_owned(true);
+  const TestUser* const user = &helper_.users[0];
+
+  EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
+  EXPECT_CALL(platform_,
+      DeleteFile(Mount::GetEphemeralSparseFile(user->obfuscated_username), _))
+    .Times(1);
+
+  EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+      CreateDirectory(Mount::GetEphemeralSparseFile(user->obfuscated_username)
+                          .DirName()))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+      CreateSparseFile(
+          Mount::GetEphemeralSparseFile(user->obfuscated_username), _))
+    .WillOnce(Return(false));
+
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
+  mount_args.create_if_missing = true;
+  MountError error;
+  UsernamePasskey up(user->username, user->passkey);
+  ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
+}
+
+TEST_P(EphemeralNoUserSystemTest, EnterpriseMountAttachLoopFailure) {
+  // Checks that when ephemeral loop device fails to attach, clean up happens
+  // appropriately.
+  set_policy(false, "", true);
+  mount_->set_enterprise_owned(true);
+  const TestUser* const user = &helper_.users[0];
+
+  EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
+  EXPECT_CALL(platform_,
+      DeleteFile(Mount::GetEphemeralSparseFile(user->obfuscated_username), _))
+    .Times(1);
+
+  EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+      CreateDirectory(Mount::GetEphemeralSparseFile(user->obfuscated_username)
+                          .DirName()))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+      CreateSparseFile(
+          Mount::GetEphemeralSparseFile(user->obfuscated_username), _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+      FormatExt4(Mount::GetEphemeralSparseFile(user->obfuscated_username)))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+      AttachLoop(Mount::GetEphemeralSparseFile(user->obfuscated_username)))
+    .WillOnce(Return(FilePath()));
+
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
+  mount_args.create_if_missing = true;
+  MountError error;
+  UsernamePasskey up(user->username, user->passkey);
+  ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
+}
+
+TEST_P(EphemeralNoUserSystemTest, EnterpriseMountFormatFailure) {
+  // Checks that when ephemeral loop device fails to be formatted, clean up
+  // happens appropriately.
+  set_policy(false, "", true);
+  mount_->set_enterprise_owned(true);
+  const TestUser* const user = &helper_.users[0];
+
+  EXPECT_CALL(platform_, DetachLoop(_)).Times(0);
+  EXPECT_CALL(platform_,
+      DeleteFile(Mount::GetEphemeralSparseFile(user->obfuscated_username), _))
+    .Times(1);
+
+  EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+      CreateDirectory(Mount::GetEphemeralSparseFile(user->obfuscated_username)
+                          .DirName()))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+      CreateSparseFile(
+          Mount::GetEphemeralSparseFile(user->obfuscated_username), _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+      FormatExt4(Mount::GetEphemeralSparseFile(user->obfuscated_username)))
+    .WillOnce(Return(false));
+
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
+  mount_args.create_if_missing = true;
+  MountError error;
+  UsernamePasskey up(user->username, user->passkey);
+  ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
+}
+
+TEST_P(EphemeralNoUserSystemTest, EnterpriseMountEnsureUserMountFailure) {
+  // Checks that when ephemeral mount fails to ensure mount points, clean up
+  // happens appropriately.
+  set_policy(false, "", true);
+  mount_->set_enterprise_owned(true);
+  const TestUser* const user = &helper_.users[0];
+
+  EXPECT_CALL(platform_, DetachLoop(_)).Times(1);
+  EXPECT_CALL(platform_,
+      DeleteFile(Mount::GetEphemeralSparseFile(user->obfuscated_username), _))
+    .Times(1);
+
+  EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+      CreateSparseFile(
+          Mount::GetEphemeralSparseFile(user->obfuscated_username), _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+      FormatExt4(Mount::GetEphemeralSparseFile(user->obfuscated_username)))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+      AttachLoop(Mount::GetEphemeralSparseFile(user->obfuscated_username)))
+    .WillOnce(Return(FilePath("/dev/loop7")));
+  EXPECT_CALL(platform_, Stat(_, _))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, CreateDirectory(_))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_,
+      CreateDirectory(Mount::GetEphemeralSparseFile(user->obfuscated_username)
+                          .DirName()))
+    .WillOnce(Return(true));
+
+
+  Mount::MountArgs mount_args = GetDefaultMountArgs();
+  mount_args.create_if_missing = true;
+  MountError error;
+  UsernamePasskey up(user->username, user->passkey);
+  ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
 class EphemeralOwnerOnlySystemTest : public AltImageTest {
@@ -2313,42 +2466,10 @@ TEST_P(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(_, _, _))
     .WillRepeatedly(DoAll(SetArgPointee<2>(owner_only), Return(true)));
 
-  EXPECT_CALL(platform_, GetFileEnumerator(_, _, _))
-    .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
-    .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
-
-  EXPECT_CALL(platform_, DirectoryExists(_))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Stat(_, _))
-    .WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_, CreateDirectory(user->vault_path))
-    .Times(0);
-  EXPECT_CALL(platform_, CreateDirectory(_))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, DeleteFile(_, _))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, FileExists(_))
-    .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, IsDirectoryMounted(_))
     .WillRepeatedly(Return(false));
 
-  EXPECT_CALL(platform_, Mount(_, _, _, _))
-      .Times(0);
-  EXPECT_CALL(platform_,
-      IsDirectoryMounted(FilePath("test_image_dir/skeleton")))
-    .WillOnce(Return(true));
-  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_,
-      Unmount(FilePath("test_image_dir/skeleton"), _, _))
-      .WillOnce(Return(true));  // Scope mount
-  EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
-    .WillOnce(Return(false));  // first mount
-  EXPECT_CALL(platform_, Bind(_, _))
-      .WillRepeatedly(Return(true));
+  ExpectEphemeralCryptohomeMount(*user);
 
   // Different user -> not an owner.
   EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
@@ -2359,6 +2480,8 @@ TEST_P(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
   MountError error;
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 
+  EXPECT_CALL(platform_, Unmount(user->ephemeral_mount_path, _, _))
+    .WillOnce(Return(true));
   EXPECT_CALL(platform_,
       Unmount(
         Property(&FilePath::value, StartsWith("/home/chronos/u-")),
@@ -2403,43 +2526,9 @@ TEST_P(EphemeralOwnerOnlySystemTest, NonOwnerMountEnsureEphemeralTest) {
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(_, _, _))
     .WillRepeatedly(DoAll(SetArgPointee<2>(owner_only), Return(true)));
 
-  EXPECT_CALL(platform_, GetFileEnumerator(_, _, _))
-    .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
-    .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
-
-  EXPECT_CALL(platform_, DirectoryExists(_))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Stat(_, _))
-    .WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_, CreateDirectory(user->vault_path))
-    .Times(0);
-  EXPECT_CALL(platform_, CreateDirectory(_))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, DeleteFile(_, _))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, FileExists(_))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, IsDirectoryMounted(_))
-    .WillRepeatedly(Return(false));
-
-  EXPECT_CALL(platform_, Mount(_, _, _, _))
-      .Times(0);
-  EXPECT_CALL(platform_,
-      IsDirectoryMounted(FilePath("test_image_dir/skeleton")))
-    .WillOnce(Return(true));
-  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
-      .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, Unmount(_, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Unmount(FilePath("test_image_dir/skeleton"), _, _))
-      .WillOnce(Return(true));  // Scope mount
-  EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
-    .WillOnce(Return(false));  // first mount
-  EXPECT_CALL(platform_, Bind(_, _))
-      .WillRepeatedly(Return(true));
+    .WillRepeatedly(Return(true));
+  ExpectEphemeralCryptohomeMount(*user);
 
   // Different user -> not an owner.
   EXPECT_CALL(tpm_, SetUserType(Tpm::UserType::NonOwner))
@@ -2619,7 +2708,8 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
                  brillo::cryptohome::home::GetUserPath(user->username)),
            _))
     .WillRepeatedly(Return(false));
-  helper_.InjectEphemeralSkeleton(&platform_, kImageDir, false);
+  helper_.InjectEphemeralSkeleton(&platform_,
+      FilePath(user->user_ephemeral_mount_path));
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
                         shared_gid_, kDaemonGid, ShouldTestEcryptfs());
   // Only expect the mounted user to "exist".
@@ -2634,23 +2724,19 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, GetFileEnumerator(kSkelDir, _, _))
-    .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
-    .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
-
-  EXPECT_CALL(platform_, Mount(_, _, _, _))
-      .Times(0);
   EXPECT_CALL(platform_,
-      IsDirectoryMounted(FilePath("test_image_dir/skeleton")))
+      DeleteFile(Mount::GetEphemeralSparseFile(user->obfuscated_username), _))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Unmount(FilePath("test_image_dir/skeleton"), _, _))
-      .WillOnce(Return(true));  // Scope mount
-  EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
-    .WillOnce(Return(false));  // first mount
-  EXPECT_CALL(platform_, Bind(_, _))
-      .WillRepeatedly(Return(true));
+
+  EXPECT_CALL(platform_, Stat(user->root_ephemeral_mount_path, _))
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform_,
+      EnumerateDirectoryEntries(user->ephemeral_mount_path, _, _))
+    .WillOnce(DoAll(SetArgPointee<2>(empty), Return(true)));
+  EXPECT_CALL(platform_, DeleteFile(user->root_ephemeral_mount_path, true))
+    .WillOnce(Return(true));
+
+  ExpectEphemeralCryptohomeMount(*user);
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
@@ -2676,6 +2762,8 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
       .WillOnce(Return(true));  // user mount
   EXPECT_CALL(platform_, Unmount(FilePath("/home/chronos/user"), _, _))
       .WillOnce(Return(true));  // legacy mount
+  EXPECT_CALL(platform_, DeleteFile(user->ephemeral_mount_path, _))
+      .WillOnce(Return(true));
   EXPECT_CALL(platform_, ClearUserKeyring())
       .WillRepeatedly(Return(true));
   ASSERT_TRUE(mount_->UnmountCryptohome());
@@ -2724,7 +2812,8 @@ TEST_P(EphemeralExistingUserSystemTest, MountRemoveTest) {
                  brillo::cryptohome::home::GetUserPath(user->username)),
            _))
     .WillRepeatedly(Return(false));
-  helper_.InjectEphemeralSkeleton(&platform_, kImageDir, false);
+  helper_.InjectEphemeralSkeleton(&platform_,
+      FilePath(user->user_ephemeral_mount_path));
   user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
                         shared_gid_, kDaemonGid, ShouldTestEcryptfs());
   // Only expect the mounted user to "exist".
@@ -2739,23 +2828,19 @@ TEST_P(EphemeralExistingUserSystemTest, MountRemoveTest) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, GetFileEnumerator(kSkelDir, _, _))
-    .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
-    .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
-
-  EXPECT_CALL(platform_, Mount(_, _, _, _))
-      .Times(0);
   EXPECT_CALL(platform_,
-      IsDirectoryMounted(FilePath("test_image_dir/skeleton")))
+      DeleteFile(Mount::GetEphemeralSparseFile(user->obfuscated_username), _))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Unmount(FilePath("test_image_dir/skeleton"), _, _))
-    .WillOnce(Return(true));  // Scope mount
-  EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
-    .WillOnce(Return(false));  // first mount
-  EXPECT_CALL(platform_, Bind(_, _))
-    .WillRepeatedly(Return(true));
+
+  EXPECT_CALL(platform_, Stat(user->root_ephemeral_mount_path, _))
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform_,
+      EnumerateDirectoryEntries(user->ephemeral_mount_path, _, _))
+    .WillOnce(DoAll(SetArgPointee<2>(empty), Return(true)));
+  EXPECT_CALL(platform_, DeleteFile(user->root_ephemeral_mount_path, true))
+    .WillOnce(Return(true));
+
+  ExpectEphemeralCryptohomeMount(*user);
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
@@ -2780,6 +2865,8 @@ TEST_P(EphemeralExistingUserSystemTest, MountRemoveTest) {
     .WillOnce(Return(true));  // user mount
   EXPECT_CALL(platform_, Unmount(FilePath("/home/chronos/user"), _, _))
     .WillOnce(Return(true));  // legacy mount
+  EXPECT_CALL(platform_, DeleteFile(user->ephemeral_mount_path, _))
+    .WillOnce(Return(true));
   EXPECT_CALL(platform_, ClearUserKeyring())
     .WillRepeatedly(Return(true));
   ASSERT_TRUE(mount_->UnmountCryptohome());
@@ -2911,35 +2998,23 @@ TEST_P(EphemeralExistingUserSystemTest, NonOwnerMountEnsureEphemeralTest) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, GetFileEnumerator(kSkelDir, _, _))
-    .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
-    .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
   EXPECT_CALL(platform_,
       FileExists(
         Property(&FilePath::value, StartsWith("/home/chronos/user"))))
     .WillRepeatedly(Return(true));
 
-  EXPECT_CALL(platform_,
-      IsDirectoryMounted(FilePath("test_image_dir/skeleton")))
-    .WillRepeatedly(Return(true));
+  helper_.InjectEphemeralSkeleton(&platform_,
+      FilePath(user->user_ephemeral_mount_path));
 
-  helper_.InjectEphemeralSkeleton(&platform_, kImageDir, false);
-
-  EXPECT_CALL(platform_, Mount(_, _, _, _))
-      .Times(0);
+  EXPECT_CALL(platform_, Stat(user->root_ephemeral_mount_path, _))
+    .WillOnce(Return(false));
   EXPECT_CALL(platform_,
-      IsDirectoryMounted(FilePath("test_image_dir/skeleton")))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
-      .WillRepeatedly(Return(true));
+      EnumerateDirectoryEntries(user->ephemeral_mount_path, _, _))
+    .WillOnce(DoAll(SetArgPointee<2>(empty), Return(true)));
+
   EXPECT_CALL(platform_, Unmount(_, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Unmount(FilePath("test_image_dir/skeleton"), _, _))
-      .WillOnce(Return(true));  // Scope mount
-  EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
-    .WillOnce(Return(false));  // first mount
-  EXPECT_CALL(platform_, Bind(_, _))
-      .WillRepeatedly(Return(true));
+    .WillRepeatedly(Return(true));
+  ExpectEphemeralCryptohomeMount(*user);
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
@@ -3002,34 +3077,23 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, GetFileEnumerator(kSkelDir, _, _))
-    .WillOnce(Return(new NiceMock<MockFileEnumerator>()))
-    .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
   EXPECT_CALL(platform_,
       FileExists(
         Property(&FilePath::value, StartsWith("/home/chronos/user"))))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_,
-      IsDirectoryMounted(FilePath("test_image_dir/skeleton")))
-    .WillRepeatedly(Return(true));
 
-  helper_.InjectEphemeralSkeleton(&platform_, kImageDir, false);
+  helper_.InjectEphemeralSkeleton(&platform_,
+      FilePath(user->user_ephemeral_mount_path));
 
-  EXPECT_CALL(platform_, Mount(_, _, _, _))
-      .Times(0);
+  EXPECT_CALL(platform_, Stat(user->root_ephemeral_mount_path, _))
+    .WillOnce(Return(false));
   EXPECT_CALL(platform_,
-      IsDirectoryMounted(FilePath("test_image_dir/skeleton")))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
-      .WillRepeatedly(Return(true));
+      EnumerateDirectoryEntries(user->ephemeral_mount_path, _, _))
+    .WillOnce(DoAll(SetArgPointee<2>(empty), Return(true)));
+
   EXPECT_CALL(platform_, Unmount(_, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_, Unmount(FilePath("test_image_dir/skeleton"), _, _))
-      .WillOnce(Return(true));  // Scope mount
-  EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
-    .WillOnce(Return(false));  // first mount
-  EXPECT_CALL(platform_, Bind(_, _))
-      .WillRepeatedly(Return(true));
+    .WillRepeatedly(Return(true));
+  ExpectEphemeralCryptohomeMount(*user);
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
@@ -3072,24 +3136,46 @@ TEST_P(EphemeralNoUserSystemTest, MountGuestUserDir) {
   EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, IsDirectoryMounted(_))
-    .WillOnce(Return(false))
     .WillOnce(Return(false));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, FileExists(_))
     .WillRepeatedly(Return(true));
+
+  EXPECT_CALL(platform_, StatVFS(FilePath(kEphemeralCryptohomeDir), _))
+    .WillOnce(Return(true));
+  const std::string sparse_prefix =
+      FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir).value();
   EXPECT_CALL(platform_,
-      Mount(FilePath("guestfs"), FilePath("test_image_dir/skeleton"), _, _))
+      CreateSparseFile(
+          Property(&FilePath::value, StartsWith(sparse_prefix)), _))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_,
-      Mount(
-        FilePath("guestfs"),
-        Property(&FilePath::value, StartsWith("/home/root/")),
-        _, _))
+      AttachLoop(Property(&FilePath::value, StartsWith(sparse_prefix))))
+    .WillOnce(Return(FilePath("/dev/loop7")));
+  EXPECT_CALL(platform_,
+      FormatExt4(Property(&FilePath::value, StartsWith(sparse_prefix))))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+      Stat(Property(&FilePath::value, StartsWith(kEphemeralCryptohomeDir)), _))
+    .WillOnce(Return(false));
+  std::vector<FilePath> empty;
+  EXPECT_CALL(platform_,
+      EnumerateDirectoryEntries(
+        Property(&FilePath::value, StartsWith(kEphemeralCryptohomeDir)),  _, _))
+    .WillOnce(DoAll(SetArgPointee<2>(empty), Return(true)));
+  EXPECT_CALL(platform_, Mount(_, _, _, _))
+    .Times(0);
+  EXPECT_CALL(platform_,
+      Mount(FilePath("/dev/loop7"), _, kEphemeralMountType, _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+      Bind(Property(&FilePath::value, StartsWith(kEphemeralCryptohomeDir)),
+           Property(&FilePath::value, StartsWith("/home/root/"))))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_,
       Bind(
-        FilePath("test_image_dir/skeleton"),
+        Property(&FilePath::value, StartsWith(kEphemeralCryptohomeDir)),
         Property(&FilePath::value, StartsWith("/home/user/"))))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_,
@@ -3155,6 +3241,17 @@ TEST_P(EphemeralNoUserSystemTest, MountGuestUserFailSetUserType) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, FileExists(_))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, StatVFS(_, _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, CreateSparseFile(_, _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, AttachLoop(_))
+    .WillOnce(Return(FilePath("/dev/loop7")));
+  EXPECT_CALL(platform_, FormatExt4(_))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+      Stat(Property(&FilePath::value, StartsWith(kEphemeralCryptohomeDir)), _))
+    .WillOnce(Return(false));
   EXPECT_CALL(platform_, Mount(_, _, _, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, Bind(_, _))
