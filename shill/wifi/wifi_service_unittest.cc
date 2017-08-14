@@ -411,10 +411,8 @@ TEST_F(WiFiServiceTest, Constructor) {
 TEST_F(WiFiServiceTest, StorageId) {
   WiFiServiceRefPtr wifi_service = MakeSimpleService(kSecurityNone);
   string id = wifi_service->GetStorageIdentifier();
-  for (uint i = 0; i < id.length(); ++i) {
-    EXPECT_TRUE(id[i] == '_' ||
-                isxdigit(id[i]) ||
-                (isalpha(id[i]) && islower(id[i])));
+  for (char c : id) {
+    EXPECT_TRUE(c == '_' || isxdigit(c) || (isalpha(c) && islower(c)));
   }
   size_t mac_pos = id.find(base::ToLowerASCII(GetAnyDeviceAddress()));
   EXPECT_NE(mac_pos, string::npos);
