@@ -53,7 +53,7 @@ const int IPConfig::kUndefinedMTU = 0;
 const char IPConfig::kType[] = "ip";
 
 // static
-uint IPConfig::global_serial_ = 0;
+uint32_t IPConfig::global_serial_ = 0;
 
 IPConfig::IPConfig(ControlInterface* control_interface,
                    const std::string& device_name)

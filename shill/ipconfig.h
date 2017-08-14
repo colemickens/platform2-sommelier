@@ -131,7 +131,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   const std::string& device_name() const { return device_name_; }
   const std::string& type() const { return type_; }
-  uint serial() const { return serial_; }
+  uint32_t serial() const { return serial_; }
 
   std::string GetRpcIdentifier() const;
 
@@ -248,11 +248,11 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   static const char kType[];
 
-  static uint global_serial_;
+  static uint32_t global_serial_;
   PropertyStore store_;
   const std::string device_name_;
   const std::string type_;
-  const uint serial_;
+  const uint32_t serial_;
   std::unique_ptr<IPConfigAdaptorInterface> adaptor_;
   Properties properties_;
   UpdateCallback update_callback_;
