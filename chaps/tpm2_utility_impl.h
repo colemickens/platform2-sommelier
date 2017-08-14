@@ -13,7 +13,7 @@
 #include <string>
 
 #include <base/macros.h>
-#include <base/sequenced_task_runner.h>
+#include <base/single_thread_task_runner.h>
 #include <base/synchronization/lock.h>
 #include <gtest/gtest_prod.h>
 #include <trunks/hmac_session.h>
@@ -38,10 +38,9 @@ class TPM2UtilityImpl : public TPMUtility {
 
   TPM2UtilityImpl();
   // This c'tor allows us to specify a task_runner to use to perform TPM
-  // operations. This class will not hold a reference to task_runner, but it is
-  // required to be valid for the lifetime of the object.
+  // operations.
   explicit TPM2UtilityImpl(
-      const scoped_refptr<base::SequencedTaskRunner>& task_runner);
+      const scoped_refptr<base::SingleThreadTaskRunner>& task_runner);
   // Does not take ownership of |factory|.
   explicit TPM2UtilityImpl(trunks::TrunksFactory* factory);
   virtual ~TPM2UtilityImpl();
@@ -118,6 +117,8 @@ class TPM2UtilityImpl : public TPMUtility {
   // |key_handle| is not tracked, this method does nothing.
   void FlushHandle(int key_handle);
 
+  // Task runner used to operate the |default_trunks_proxy_|.
+  scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
   std::unique_ptr<trunks::CommandTransceiver> default_trunks_proxy_;
   std::unique_ptr<trunks::CommandTransceiver> default_background_transceiver_;
   std::unique_ptr<trunks::TrunksFactoryImpl> default_factory_;

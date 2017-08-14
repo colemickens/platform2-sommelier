@@ -96,6 +96,10 @@ void InitTransceiver(trunks::CommandTransceiver* transceiver) {
   }
 }
 
+void TermTransceiver(std::unique_ptr<trunks::CommandTransceiver> transceiver) {
+  transceiver.reset();
+}
+
 }  // namespace
 
 namespace chaps {
@@ -148,8 +152,9 @@ TPM2UtilityImpl::TPM2UtilityImpl()
 }
 
 TPM2UtilityImpl::TPM2UtilityImpl(
-    const scoped_refptr<base::SequencedTaskRunner>& task_runner)
-        : default_trunks_proxy_(new trunks::TrunksDBusProxy) {
+    const scoped_refptr<base::SingleThreadTaskRunner>& task_runner)
+        : task_runner_(task_runner),
+          default_trunks_proxy_(new trunks::TrunksDBusProxy) {
   task_runner->PostNonNestableTask(
       FROM_HERE,
       base::Bind(&InitTransceiver,
@@ -186,6 +191,20 @@ TPM2UtilityImpl::~TPM2UtilityImpl() {
         LOG(WARNING) << "Error flushing handle: " << it2;
       }
     }
+  }
+
+  // If we have a task runner, then that was the task runner used to initialize
+  // the |default_trunks_proxy_|. Destroy the proxy on that task runner to
+  // satisfy threading restrictions.
+  if (task_runner_) {
+    default_factory_.reset();
+    default_background_transceiver_.reset();
+    // TODO(ejcaruso): replace with DeleteSoon when libchrome has the unique_ptr
+    // specialization after the uprev
+    task_runner_->PostNonNestableTask(
+        FROM_HERE,
+        base::Bind(&TermTransceiver,
+                   base::Passed(&default_trunks_proxy_)));
   }
 }
 
