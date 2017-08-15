@@ -15,6 +15,7 @@
 #include "cros-disks/format_manager.h"
 #include "cros-disks/metrics.h"
 #include "cros-disks/platform.h"
+#include "cros-disks/rename_manager.h"
 #include "cros-disks/session_manager_proxy.h"
 
 namespace cros_disks {
@@ -42,6 +43,7 @@ class Daemon {
   DeviceEjector device_ejector_;
   DiskManager disk_manager_;
   FormatManager format_manager_;
+  RenameManager rename_manager_;
   CrosDisksServer server_;
   DeviceEventModerator event_moderator_;
   SessionManagerProxy session_manager_proxy_;

@@ -13,6 +13,7 @@
 #include "cros-disks/disk_manager.h"
 #include "cros-disks/format_manager.h"
 #include "cros-disks/platform.h"
+#include "cros-disks/rename_manager.h"
 
 using std::string;
 using std::vector;
@@ -22,16 +23,20 @@ namespace cros_disks {
 CrosDisksServer::CrosDisksServer(DBus::Connection& connection,  // NOLINT
                                  Platform* platform,
                                  DiskManager* disk_manager,
-                                 FormatManager* format_manager)
+                                 FormatManager* format_manager,
+                                 RenameManager* rename_manager)
     : DBus::ObjectAdaptor(connection, kCrosDisksServicePath),
       platform_(platform),
       disk_manager_(disk_manager),
-      format_manager_(format_manager) {
+      format_manager_(format_manager),
+      rename_manager_(rename_manager) {
   CHECK(platform_) << "Invalid platform object";
   CHECK(disk_manager_) << "Invalid disk manager object";
   CHECK(format_manager_) << "Invalid format manager object";
+  CHECK(rename_manager_) << "Invalid rename manager object";
 
   format_manager_->set_observer(this);
+  rename_manager_->set_observer(this);
 }
 
 void CrosDisksServer::RegisterMountManager(MountManager* mount_manager) {
@@ -64,6 +69,28 @@ void CrosDisksServer::Format(const string& path,
     LOG(ERROR) << "Could not format device '" << path
                << "' as filesystem '" << filesystem_type << "'";
     FormatCompleted(error_type, path);
+  }
+}
+
+void CrosDisksServer::Rename(const string& path,
+                             const string& volume_name,
+                             DBus::Error& error) {  // NOLINT
+  RenameErrorType error_type = RENAME_ERROR_NONE;
+  Disk disk;
+  if (!disk_manager_->GetDiskByDevicePath(path, &disk)) {
+    error_type = RENAME_ERROR_INVALID_DEVICE_PATH;
+  } else if (disk.is_on_boot_device() || disk.is_read_only()) {
+    error_type = RENAME_ERROR_DEVICE_NOT_ALLOWED;
+  } else {
+    error_type =
+       rename_manager_->StartRenaming(path, disk.device_file(), volume_name,
+                                      disk.filesystem_type());
+  }
+
+  if (error_type != RENAME_ERROR_NONE) {
+    LOG(ERROR) << "Could not rename device '" << path
+               << "' as '" << volume_name << "'";
+    RenameCompleted(error_type, path);
   }
 }
 
@@ -177,6 +204,11 @@ DBusDisk CrosDisksServer::GetDeviceProperties(const string& device_path,
 void CrosDisksServer::OnFormatCompleted(const string& device_path,
                                         FormatErrorType error_type) {
   FormatCompleted(error_type, device_path);
+}
+
+void CrosDisksServer::OnRenameCompleted(const string& device_path,
+                                        RenameErrorType error_type) {
+  RenameCompleted(error_type, device_path);
 }
 
 void CrosDisksServer::OnScreenIsLocked() {

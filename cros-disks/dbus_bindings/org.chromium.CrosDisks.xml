@@ -84,6 +84,12 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="Rename">
+      <arg name="path" type="s" direction="in">
+      </arg>
+      <arg name="volumeName" type="s" direction="in">
+      </arg>
+    </method>
 
     <signal name="DeviceAdded">
       <arg name="device" type="s" direction="out">
@@ -120,6 +126,12 @@
       </arg>
     </signal>
     <signal name="FormatCompleted">
+      <arg name="status" type="u" direction="out">
+      </arg>
+      <arg name="device" type="s" direction="out">
+      </arg>
+    </signal>
+    <signal name="RenameCompleted">
       <arg name="status" type="u" direction="out">
       </arg>
       <arg name="device" type="s" direction="out">

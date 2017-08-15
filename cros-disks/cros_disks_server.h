@@ -14,6 +14,7 @@
 #include "cros-disks/disk.h"
 #include "cros-disks/format_manager_observer_interface.h"
 #include "cros-disks/mount_entry.h"
+#include "cros-disks/rename_manager_observer_interface.h"
 #include "cros-disks/session_manager_observer_interface.h"
 
 namespace cros_disks {
@@ -22,6 +23,7 @@ class DiskManager;
 class FormatManager;
 class MountManager;
 class Platform;
+class RenameManager;
 
 struct DeviceEvent;
 
@@ -47,12 +49,14 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
                         public DBus::ObjectAdaptor,
                         public DeviceEventDispatcherInterface,
                         public FormatManagerObserverInterface,
-                        public SessionManagerObserverInterface {
+                        public SessionManagerObserverInterface,
+                        public RenameManagerObserverInterface {
  public:
   CrosDisksServer(DBus::Connection& connection,  // NOLINT
                   Platform* platform,
                   DiskManager* disk_manager,
-                  FormatManager* format_manager);
+                  FormatManager* format_manager,
+                  RenameManager* rename_manager);
   ~CrosDisksServer() override = default;
 
   // Registers a mount manager.
@@ -64,6 +68,13 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   void Format(const std::string& path,
               const std::string& filesystem_type,
               const std::vector<std::string>& options,
+              DBus::Error& error) override;  // NOLINT
+
+  // A method for renaming a device specified by |path|.
+  // On completion, a RenameCompleted signal is emitted to indicate whether
+  // the operation succeeded or failed using a RenameErrorType enum value.
+  void Rename(const std::string& path,
+              const std::string& volume_name,
               DBus::Error& error) override;  // NOLINT
 
   // A method for checking if the daemon is running. Always returns true.
@@ -107,6 +118,11 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   void OnFormatCompleted(const std::string& device_path,
                          FormatErrorType error_type) override;
 
+  // Implements the RenameManagerObserverInterface interface to handle
+  // the event when a renaming operation has completed.
+  void OnRenameCompleted(const std::string& device_path,
+                         RenameErrorType error_type) override;
+
   // Implements the SessionManagerObserverInterface interface to handle
   // the event when the screen is locked.
   void OnScreenIsLocked() override;
@@ -145,6 +161,8 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   DiskManager* disk_manager_;
 
   FormatManager* format_manager_;
+
+  RenameManager* rename_manager_;
 
   std::vector<MountManager*> mount_managers_;
 };
