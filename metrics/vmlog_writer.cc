@@ -8,6 +8,7 @@
 #include <inttypes.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <string>
@@ -20,7 +21,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
-#include <base/sys_info.h>
 #include <brillo/daemons/daemon.h>
 
 namespace chromeos_metrics {
@@ -250,23 +250,38 @@ void VmlogWriter::WriteCallback() {
     return;
   }
 
-  int64_t uptime_micros = base::SysInfo::Uptime().InMicroseconds();
+  uint64_t delta_page_faults = r.page_faults_ - previous_record_.page_faults_;
+  uint64_t delta_file_page_faults =
+      r.file_page_faults_ - previous_record_.file_page_faults_;
+  uint64_t delta_anon_page_faults =
+      r.anon_page_faults_ - previous_record_.anon_page_faults_;
+  uint64_t delta_swap_in = r.swap_in_ - previous_record_.swap_in_;
+  uint64_t delta_swap_out = r.swap_out_ - previous_record_.swap_out_;
+
+  timeval tv;
+  gettimeofday(&tv, nullptr);
+  struct tm tm_time;
+  localtime_r(&tv.tv_sec, &tm_time);
   std::string out_line = base::StringPrintf(
-      "[%5" PRIu64 ".%" PRIu64  "]"
+      "[%02d%02d/%02d%02d%02d]"
       " %" PRIu64 " %" PRIu64" %" PRIu64" %" PRIu64 " %" PRIu64 "\n",
-      uptime_micros / 1000000,
-      uptime_micros % 1000000,
-      r.page_faults_,
-      r.file_page_faults_,
-      r.anon_page_faults_,
-      r.swap_in_,
-      r.swap_out_);
+      tm_time.tm_mon + 1,
+      tm_time.tm_mday,
+      tm_time.tm_hour,
+      tm_time.tm_min,
+      tm_time.tm_sec,
+      delta_page_faults,
+      delta_file_page_faults,
+      delta_anon_page_faults,
+      delta_swap_in,
+      delta_swap_out);
 
   if (!vmlog_->Write(out_line)) {
     LOG(ERROR) << "Writing to vmlog failed.";
     timer_.Stop();
     return;
   }
+  previous_record_ = r;
 }
 
 }  // namespace chromeos_metrics
