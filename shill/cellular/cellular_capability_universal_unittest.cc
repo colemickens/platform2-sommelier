@@ -231,7 +231,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
 
   MOCK_METHOD1(TestCallback, void(const Error& error));
 
-  MOCK_METHOD0(DummyCallback, void(void));
+  MOCK_METHOD0(DummyCallback, void());
 
   void SetMockRegistrationDroppedUpdateCallback() {
     capability_->registration_dropped_update_callback_.Reset(

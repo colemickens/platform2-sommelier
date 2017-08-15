@@ -41,8 +41,7 @@ class MockModem : public Modem {
   MOCK_CONST_METHOD2(GetLinkName,
                      bool(const KeyValueStore& modem_properties,
                           std::string* name));
-  MOCK_CONST_METHOD0(GetModemInterface,
-                     std::string(void));
+  MOCK_CONST_METHOD0(GetModemInterface, std::string());
   MOCK_METHOD3(ConstructCellular, Cellular*(
       const std::string& link_name,
       const std::string& device_name,

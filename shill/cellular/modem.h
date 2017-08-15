@@ -76,7 +76,7 @@ class Modem {
   virtual bool GetLinkName(const KeyValueStore& properties,
                            std::string* name) const = 0;
   // Returns the name of the DBUS Modem interface.
-  virtual std::string GetModemInterface(void) const = 0;
+  virtual std::string GetModemInterface() const = 0;
 
  private:
   friend class ModemTest;
@@ -156,7 +156,7 @@ class ModemClassic : public Modem {
  protected:
   bool GetLinkName(const KeyValueStore& modem_properties,
                    std::string* name) const override;
-  std::string GetModemInterface(void) const override;
+  std::string GetModemInterface() const override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ModemClassic);
@@ -176,7 +176,7 @@ class Modem1 : public Modem {
  protected:
   bool GetLinkName(const KeyValueStore& modem_properties,
                    std::string* name) const override;
-  std::string GetModemInterface(void) const override;
+  std::string GetModemInterface() const override;
 
  private:
   friend class Modem1Test;

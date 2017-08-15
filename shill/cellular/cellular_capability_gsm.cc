@@ -762,9 +762,9 @@ void CellularCapabilityGSM::OnGetIMSIReply(const ResultCallback& callback,
     cellular()->set_sim_present(false);
     if (get_imsi_retries_++ < kGetIMSIRetryLimit) {
       SLOG(this, 2) << "GetIMSI failed - " << error << ". Retrying";
-      base::Callback<void(void)> retry_get_imsi_cb =
-          Bind(&CellularCapabilityGSM::GetIMSI,
-               weak_ptr_factory_.GetWeakPtr(), callback);
+      base::Closure retry_get_imsi_cb = Bind(&CellularCapabilityGSM::GetIMSI,
+                                             weak_ptr_factory_.GetWeakPtr(),
+                                             callback);
       cellular()->dispatcher()->PostDelayedTask(
           FROM_HERE,
           retry_get_imsi_cb,

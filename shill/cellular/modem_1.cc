@@ -90,7 +90,7 @@ void Modem1::CreateDeviceMM1(const InterfaceToProperties& properties) {
   CreateDeviceFromModemProperties(properties);
 }
 
-string Modem1::GetModemInterface(void) const {
+string Modem1::GetModemInterface() const {
   return string(MM_DBUS_INTERFACE_MODEM);
 }
 

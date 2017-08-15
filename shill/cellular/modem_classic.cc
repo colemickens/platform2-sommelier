@@ -72,7 +72,7 @@ void ModemClassic::CreateDeviceClassic(
   CreateDeviceFromModemProperties(properties);
 }
 
-string ModemClassic::GetModemInterface(void) const {
+string ModemClassic::GetModemInterface() const {
   return string(MM_MODEM_INTERFACE);
 }
 
