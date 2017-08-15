@@ -32,11 +32,10 @@ class EventDispatcher;
 
 class ChromeosWiMaxManagerProxy : public WiMaxManagerProxyInterface {
  public:
-  explicit ChromeosWiMaxManagerProxy(
-      EventDispatcher* dispatcher,
-      const scoped_refptr<dbus::Bus>& bus,
-      const base::Closure& service_appeared_callback,
-      const base::Closure& service_vanished_callback);
+  ChromeosWiMaxManagerProxy(EventDispatcher* dispatcher,
+                            const scoped_refptr<dbus::Bus>& bus,
+                            const base::Closure& service_appeared_callback,
+                            const base::Closure& service_vanished_callback);
   ~ChromeosWiMaxManagerProxy() override;
 
   // Inherited from WiMaxManagerProxyInterface.

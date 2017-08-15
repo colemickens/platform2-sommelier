@@ -28,8 +28,7 @@ namespace shill {
 
 class MockConnectivityTrial : public ConnectivityTrial {
  public:
-  explicit MockConnectivityTrial(ConnectionRefPtr connection,
-                                 int trial_timeout_seconds);
+  MockConnectivityTrial(ConnectionRefPtr connection, int trial_timeout_seconds);
   ~MockConnectivityTrial() override;
 
   MOCK_METHOD2(Start, bool(const std::string&, int));

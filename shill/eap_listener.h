@@ -35,8 +35,7 @@ class EapListener {
  public:
   using EapRequestReceivedCallback = base::Callback<void()>;
 
-  explicit EapListener(EventDispatcher* event_dispatcher,
-                       int interface_index);
+  EapListener(EventDispatcher* event_dispatcher, int interface_index);
   virtual ~EapListener();
 
   // Create a socket for tranmission and reception.  Returns true

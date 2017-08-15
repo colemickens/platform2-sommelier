@@ -142,7 +142,7 @@ class SHILL_EXPORT NetlinkManager {
   class NetlinkResponseHandler :
     public base::RefCounted<NetlinkResponseHandler> {
    public:
-    explicit NetlinkResponseHandler(
+    NetlinkResponseHandler(
         const NetlinkAckHandler& ack_handler,
         const NetlinkAuxilliaryMessageHandler& error_handler);
     virtual ~NetlinkResponseHandler();

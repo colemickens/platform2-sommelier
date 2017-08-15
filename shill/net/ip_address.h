@@ -44,7 +44,7 @@ class SHILL_EXPORT IPAddress {
   // Constructs an IPAddress object from a sockaddr_in or sockaddr_in6
   // structure, depending on the family specified in |address_struct|.  |size|
   // specifies the actual size of the structure backing |address_struct|.
-  explicit IPAddress(const sockaddr* address_struct, size_t size);
+  IPAddress(const sockaddr* address_struct, size_t size);
 
   IPAddress(Family family, const ByteString& address);
   IPAddress(Family family, const ByteString& address, unsigned int prefix);
