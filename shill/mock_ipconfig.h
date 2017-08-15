@@ -33,16 +33,16 @@ class MockIPConfig : public IPConfig {
                const std::string& device_name);
   ~MockIPConfig() override;
 
-  MOCK_CONST_METHOD0(properties, const Properties& (void));
-  MOCK_METHOD0(RequestIP, bool(void));
-  MOCK_METHOD0(RenewIP, bool(void));
+  MOCK_CONST_METHOD0(properties, const Properties&());
+  MOCK_METHOD0(RequestIP, bool());
+  MOCK_METHOD0(RenewIP, bool());
   MOCK_METHOD1(ReleaseIP, bool(ReleaseReason reason));
-  MOCK_METHOD0(ResetProperties, void(void));
-  MOCK_METHOD0(EmitChanges, void(void));
+  MOCK_METHOD0(ResetProperties, void());
+  MOCK_METHOD0(EmitChanges, void());
   MOCK_METHOD1(UpdateDNSServers,
                void(const std::vector<std::string>& dns_servers));
   MOCK_METHOD1(UpdateLeaseExpirationTime, void(uint32_t new_lease_duration));
-  MOCK_METHOD0(ResetLeaseExpirationTime, void(void));
+  MOCK_METHOD0(ResetLeaseExpirationTime, void());
 
  private:
   const Properties& real_properties() {

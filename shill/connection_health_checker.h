@@ -203,7 +203,7 @@ class ConnectionHealthChecker {
   const base::Callback<void(bool, int)> connection_complete_callback_;
   // Active TCP connection during health check.
   std::unique_ptr<AsyncConnection> tcp_connection_;
-  const base::Callback<void(void)> report_result_;
+  const base::Closure report_result_;
   // Active socket for |tcp_connection_| during an active health check.
   int sock_fd_;
   // Interface to read TCP connection information from the system.
