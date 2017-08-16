@@ -28,9 +28,14 @@ out as pid 1.
 `vm_syslog` is the syslog daemon that runs inside the VM.  It is automatically
 started by maitred and provides a socket at `/dev/log` for applications to send
 it log records.  `vm_syslog` aggregates the log records and then forwards them
-outside the VM to the logging service provided by `vm_launcher`.  `vm_launcher`
-then tags these records with the unique identifier assigned to that VM instance
-before forwarding the logs to the syslog daemon.
+outside the VM to the logging service running on the host.  The logging service
+tags the records it receives with the unique identifier for the VM from which
+the logs originated and then forwards them on to the host syslog service.  This
+ensures that the VM logs are captured in any feedback reports that are uploaded
+to Google's servers.
+
+Additionally, `vm_syslog` reads kernel logs from `/dev/kmsg` (inside the VM)
+and forwards those to the logging service running on the host.
 
 ## crash_collector
 
