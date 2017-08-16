@@ -29,7 +29,7 @@ const unsigned int STAT_WORK_BUFFERS = 1;
 StatisticsWorker::StatisticsWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId,
                      std::shared_ptr<SharedItemPool<ia_aiq_af_grid>> &afFilterBuffPool,
                      std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> &rgbsGridBuffPool):
-        FrameWorker(node, cameraId, "StatisticsWorker"),
+        FrameWorker(node, cameraId, STAT_WORK_BUFFERS, "StatisticsWorker"),
         mAfFilterBuffPool(afFilterBuffPool),
         mRgbsGridBuffPool(rgbsGridBuffPool)
 {
@@ -55,11 +55,11 @@ status_t StatisticsWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
     if (ret != OK)
         return ret;
 
-    ret = setWorkerDeviceBuffers(getDefaultMemoryType(IMGU_NODE_STAT), STAT_WORK_BUFFERS);
+    ret = setWorkerDeviceBuffers(getDefaultMemoryType(IMGU_NODE_STAT));
     if (ret != OK)
         return ret;
 
-    ret = allocateWorkerBuffers(STAT_WORK_BUFFERS);
+    ret = allocateWorkerBuffers();
     if (ret != OK)
         return ret;
 
@@ -87,8 +87,7 @@ status_t StatisticsWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
         return status;
     }
 
-    mIndex++;
-    mIndex = mIndex % STAT_WORK_BUFFERS;
+    mIndex = (mIndex + 1) % mPipelineDepth;
 
     return OK;
 }

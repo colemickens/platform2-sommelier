@@ -98,7 +98,7 @@ public:
     void setRequestId(int requestId) {mRequestID = requestId; }
     int requestId() {return mRequestID; }
     status_t getFence(camera3_stream_buffer* buf);
-    int dmaBufFd() {return mDmaBufFd; }
+    int dmaBufFd() {return mType == BUF_TYPE_HANDLE ? mHandle->data[0] : mDmaBufFd;}
 
 private:
     camera3_stream_buffer_t mUserBuffer; /*!< Original structure passed by request */

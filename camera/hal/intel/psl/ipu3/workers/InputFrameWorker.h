@@ -25,7 +25,7 @@ namespace camera2 {
 class InputFrameWorker : public FrameWorker
 {
 public:
-    InputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId);
+    InputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId, size_t pipelineDepth);
     virtual ~InputFrameWorker();
 
     status_t configure(std::shared_ptr<GraphConfig> &config);

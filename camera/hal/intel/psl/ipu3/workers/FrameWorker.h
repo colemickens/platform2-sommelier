@@ -26,7 +26,8 @@ namespace camera2 {
 class FrameWorker : public IDeviceWorker
 {
 public:
-    FrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId, std::string name = "FrameWorker");
+    FrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId,
+                size_t pipelineDepth, std::string name = "FrameWorker");
     virtual ~FrameWorker();
 
     virtual status_t configure(std::shared_ptr<GraphConfig> &config);
@@ -43,9 +44,9 @@ public:
     virtual const char *name() { return mNode->name(); }
 
 protected:
-    status_t allocateWorkerBuffers(const unsigned int bufferNum);
+    status_t allocateWorkerBuffers();
     status_t setWorkerDeviceFormat(v4l2_buf_type type, FrameInfo &frame);
-    status_t setWorkerDeviceBuffers(int memType, const unsigned int bufferNum);
+    status_t setWorkerDeviceBuffers(int memType);
 
 protected:
     std::vector<v4l2_buffer> mBuffers;
@@ -55,6 +56,7 @@ protected:
     v4l2_format mFormat;
     std::shared_ptr<V4L2VideoNode> mNode;
     bool mPollMe;
+    size_t mPipelineDepth;
 };
 
 } /* namespace camera2 */

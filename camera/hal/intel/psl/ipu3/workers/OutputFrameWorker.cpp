@@ -23,15 +23,16 @@
 #include "CaptureBuffer.h"
 #include "NodeTypes.h"
 #include <libyuv.h>
+#include <sys/mman.h>
 
 namespace android {
 namespace camera2 {
 
-const unsigned int OUTPUTFRAME_WORK_BUFFERS = 3;
-
-OutputFrameWorker::OutputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId, camera3_stream_t* stream, IPU3NodeNames nodeName) :
-                FrameWorker(node, cameraId, "OutputFrameWorker"),
+OutputFrameWorker::OutputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId,
+                camera3_stream_t* stream, IPU3NodeNames nodeName, size_t pipelineDepth) :
+                FrameWorker(node, cameraId, pipelineDepth, "OutputFrameWorker"),
                 mOutputBuffer(nullptr),
+                mWorkingBuffer(nullptr),
                 mStream(stream),
                 mAllDone(false),
                 mPostProcessType(PROCESS_NONE),
@@ -60,10 +61,6 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
             mFormat.fmt.pix.width,
             mFormat.fmt.pix.height);
 
-    ret = setWorkerDeviceBuffers(getDefaultMemoryType(mNodeName), OUTPUTFRAME_WORK_BUFFERS);
-    if (ret != OK)
-        return ret;
-
     mPostProcessType = PROCESS_NONE;
     if (mStream) {
         if (needRotation() > 0) {
@@ -86,12 +83,27 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
     }
 
     LOG1("%s: process type 0x%x", __FUNCTION__, mPostProcessType);
-    // Use internal buffer for SW process
-    if (mPostProcessType != PROCESS_NONE) {
-        return allocateWorkerBuffers(OUTPUTFRAME_WORK_BUFFERS);
-    }
 
     mIndex = 0;
+    // If using internal buffer, only one buffer is required.
+    if (mPostProcessType != PROCESS_NONE)
+        mPipelineDepth = 1;
+    ret = setWorkerDeviceBuffers(
+        mPostProcessType != PROCESS_NONE ? V4L2_MEMORY_MMAP : getDefaultMemoryType(mNodeName));
+    CheckError((ret != OK), ret, "@%s set worker device buffers failed.", __FUNCTION__);
+
+    // Allocate internal buffer.
+    if (mPostProcessType != PROCESS_NONE) {
+        mWorkingBuffer = std::make_shared<CameraBuffer>(mFormat.fmt.pix.width,
+                mFormat.fmt.pix.height,
+                mFormat.fmt.pix.bytesperline,
+                mNode->getFd(), -1, // dmabuf fd is not required.
+                mBuffers[0].length,
+                mFormat.fmt.pix.pixelformat,
+                mBuffers[0].m.offset, PROT_READ | PROT_WRITE, MAP_SHARED);
+        CheckError((mWorkingBuffer.get() == nullptr), NO_MEMORY,
+            "@%s failed to allocate internal buffer.", __FUNCTION__);
+    }
 
     return OK;
 }
@@ -191,12 +203,27 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
             if (mPostProcessType == PROCESS_NONE) {
                 // Use stream buffer for zero-copy
                 mBuffers[mIndex].bytesused = mFormat.fmt.pix.sizeimage;
-                mBuffers[mIndex].m.userptr = (unsigned long int)buffer->data();
-                mCameraBuffers.push_back(buffer);
-                LOG2("mBuffers[mIndex].m.userptr: %p", mBuffers[mIndex].m.userptr);
+                switch (mNode->getMemoryType()) {
+                case V4L2_MEMORY_USERPTR:
+                    mBuffers[mIndex].m.userptr = reinterpret_cast<unsigned long>(buffer->data());
+                    LOG2("%s mBuffers[%d].m.userptr: %p",
+                        __FUNCTION__, mIndex, mBuffers[mIndex].m.userptr);
+                    break;
+                case V4L2_MEMORY_DMABUF:
+                    mBuffers[mIndex].m.fd = buffer->dmaBufFd();
+                    LOG2("%s mBuffers[%d].m.fd: %d", __FUNCTION__, mIndex, mBuffers[mIndex].m.fd);
+                    break;
+                case V4L2_MEMORY_MMAP:
+                    LOG2("%s mBuffers[%d].m.offset: 0x%x",
+                        __FUNCTION__, mIndex, mBuffers[mIndex].m.offset);
+                    break;
+                default:
+                    LOGE("%s unsupported memory type.", __FUNCTION__);
+                    return BAD_VALUE;
+                }
+                mWorkingBuffer = buffer;
             }
             status |= mNode->putFrame(&mBuffers[mIndex]);
-
 
             notFound = false;
             break;
@@ -245,9 +272,9 @@ status_t OutputFrameWorker::run()
     ICaptureEventListener::CaptureMessage outMsg;
     outMsg.id = ICaptureEventListener::CAPTURE_MESSAGE_ID_EVENT;
     outMsg.data.event.type = ICaptureEventListener::CAPTURE_EVENT_YUV;
-    outMsg.data.event.yuvBuffer = mCameraBuffers[0];
+    outMsg.data.event.yuvBuffer = mWorkingBuffer;
     notifyListeners(&outMsg);
-    return status;
+    return (status < 0) ? status : OK;
 }
 
 status_t OutputFrameWorker::postRun()
@@ -292,14 +319,14 @@ status_t OutputFrameWorker::postRun()
     }
     if (mPostProcessType & PROCESS_JPEG_ENCODING) {
         // JPEG encoding
-        status = convertJpeg(mCameraBuffers[0], mOutputBuffer, request);
+        status = convertJpeg(mWorkingBuffer, mOutputBuffer, request);
         if (status != OK) {
             LOGE("@%s, JPEG conversion failed! [%d]!", __FUNCTION__, status);
             goto exit;
         }
         mOutputBuffer->dumpImage(CAMERA_DUMP_JPEG, ".jpg");
     } else if (mPostProcessType & PROCESS_DOWNSCALING) {
-        status = scaleFrame(mCameraBuffers[0], mOutputBuffer);
+        status = scaleFrame(mWorkingBuffer, mOutputBuffer);
         if (status != OK) {
             LOGE("@%s, Scale frame failed! [%d]!", __FUNCTION__, status);
             goto exit;
@@ -309,7 +336,7 @@ status_t OutputFrameWorker::postRun()
     // Dump the buffers if enabled in flags
     if (mOutputBuffer->format() == HAL_PIXEL_FORMAT_BLOB) {
         // Use internal buffer
-        mCameraBuffers[0]->dumpImage(CAMERA_DUMP_JPEG, "before_jpeg_converion_nv12");
+        mWorkingBuffer->dumpImage(CAMERA_DUMP_JPEG, "before_jpeg_converion_nv12");
     } else if (mOutputBuffer->format() == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED
             || mOutputBuffer->format() == HAL_PIXEL_FORMAT_YCbCr_420_888) {
         if (stream->usage() & GRALLOC_USAGE_HW_VIDEO_ENCODER) {
@@ -322,14 +349,11 @@ status_t OutputFrameWorker::postRun()
     // call capturedone for the stream of the buffer
     stream->captureDone(mOutputBuffer, request);
 
-    if (mPostProcessType == PROCESS_NONE) {
-        mCameraBuffers.erase(mCameraBuffers.begin());
-    }
-
 exit:
     /* Prevent from using old data */
     mMsg = nullptr;
     mOutputBuffer = nullptr;
+    mIndex = (mIndex + 1) % mPipelineDepth;
 
     return status;
 }
@@ -372,18 +396,18 @@ status_t OutputFrameWorker::rotateFrame(int outFormat, int angle)
         return UNKNOWN_ERROR;
     }
 
-    const uint8* inBuffer = (uint8*)mBuffers[0].m.userptr;
+    const uint8* inBuffer = (uint8*)mBuffers[mIndex].m.userptr;
     uint8* outBuffer = (outFormat == HAL_PIXEL_FORMAT_BLOB)
-                           ? (uint8*)(mCameraBuffers[0]->data())
+                           ? (uint8*)(mWorkingBuffer->data())
                            : (uint8*)(mOutputBuffer->data());
     int outW = mOutputBuffer->width();
     int outH = mOutputBuffer->height();
     int outStride = (outFormat == HAL_PIXEL_FORMAT_BLOB)
-                        ? mCameraBuffers[0]->stride()
+                        ? mWorkingBuffer->stride()
                         : mOutputBuffer->stride();
     int inW = mFormat.fmt.pix.width;
     int inH = mFormat.fmt.pix.height;
-    int inStride = mCameraBuffers[0]->stride();
+    int inStride = mWorkingBuffer->stride();
     if (mRotateBuffer.size() < mFormat.fmt.pix.sizeimage) {
         mRotateBuffer.resize(mFormat.fmt.pix.sizeimage);
     }

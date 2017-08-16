@@ -25,6 +25,7 @@
 #include "workers/OutputFrameWorker.h"
 #include "workers/SWOutputFrameWorker.h"
 #include "workers/StatisticsWorker.h"
+#include "CameraMetadataHelper.h"
 
 namespace android {
 namespace camera2 {
@@ -404,40 +405,50 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
     mCurPipeConfig = videoConfig;
     std::shared_ptr<OutputFrameWorker> vfWorker = nullptr;
     std::shared_ptr<OutputFrameWorker> pvWorker = nullptr;
+    const camera_metadata_t *meta = PlatformData::getStaticMetadata(mCameraId);
+    camera_metadata_ro_entry entry;
+    CLEAR(entry);
+    if (meta)
+        entry = MetadataHelper::getMetadataEntry(
+            meta, ANDROID_REQUEST_PIPELINE_MAX_DEPTH);
+    size_t pipelineDepth = entry.count == 1 ? entry.data.u8[0] : 1;
     for (const auto &it : mConfiguredNodesPerName) {
+        std::shared_ptr<FrameWorker> worker = nullptr;
         if (it.first == IMGU_NODE_INPUT) {
-            std::shared_ptr<FrameWorker> tmp = nullptr;
-            tmp = std::make_shared<InputFrameWorker>(it.second, mCameraId);
-            videoConfig->deviceWorkers.push_back(tmp); // Input frame;
-            videoConfig->pollableWorkers.push_back(tmp);
-            videoConfig->nodes.push_back(tmp->getNode()); // Nodes are added for pollthread init
-            mFirstWorkers.push_back(tmp);
-        } else if (it.first == IMGU_NODE_STAT) {
-            std::shared_ptr<StatisticsWorker> worker =
-                std::make_shared<StatisticsWorker>(it.second, mCameraId, mAfFilterBuffPool, mRgbsGridBuffPool);
-            mListenerDeviceWorkers.push_back(worker.get());
-            videoConfig->deviceWorkers.push_back(worker);
+            worker = std::make_shared<InputFrameWorker>(it.second, mCameraId, pipelineDepth);
+            videoConfig->deviceWorkers.push_back(worker); // Input frame;
             videoConfig->pollableWorkers.push_back(worker);
-            videoConfig->nodes.push_back(worker->getNode());
+            videoConfig->nodes.push_back(worker->getNode()); // Nodes are added for pollthread init
+            mFirstWorkers.push_back(worker);
+        } else if (it.first == IMGU_NODE_STAT) {
+            std::shared_ptr<StatisticsWorker> statWorker =
+                std::make_shared<StatisticsWorker>(it.second, mCameraId,
+                    mAfFilterBuffPool, mRgbsGridBuffPool);
+            mListenerDeviceWorkers.push_back(statWorker.get());
+            videoConfig->deviceWorkers.push_back(statWorker);
+            videoConfig->pollableWorkers.push_back(statWorker);
+            videoConfig->nodes.push_back(statWorker->getNode());
         } else if (it.first == IMGU_NODE_PARAM) {
-            std::shared_ptr<ParameterWorker> tmp = nullptr;
-            tmp = std::make_shared<ParameterWorker>(it.second, mCameraId);
-            mFirstWorkers.push_back(tmp);
-            videoConfig->deviceWorkers.push_back(tmp); // parameters
+            worker = std::make_shared<ParameterWorker>(it.second, mCameraId);
+            mFirstWorkers.push_back(worker);
+            videoConfig->deviceWorkers.push_back(worker); // parameters
         } else if (it.first == IMGU_NODE_STILL || it.first == IMGU_NODE_VIDEO) {
-            std::shared_ptr<OutputFrameWorker> tmp = nullptr;
-            tmp = std::make_shared<OutputFrameWorker>(it.second, mCameraId, mStreamNodeMapping[it.first], it.first);
-            videoConfig->deviceWorkers.push_back(tmp);
-            videoConfig->pollableWorkers.push_back(tmp);
-            videoConfig->nodes.push_back(tmp->getNode());
+            std::shared_ptr<OutputFrameWorker> outWorker =
+                std::make_shared<OutputFrameWorker>(it.second, mCameraId,
+                    mStreamNodeMapping[it.first], it.first, pipelineDepth);
+            videoConfig->deviceWorkers.push_back(outWorker);
+            videoConfig->pollableWorkers.push_back(outWorker);
+            videoConfig->nodes.push_back(outWorker->getNode());
             if (it.first == IMGU_NODE_VIDEO) {
-                createSwOutputFrameWork(it.first, tmp.get());
+                createSwOutputFrameWork(it.first, outWorker.get());
             }
         } else if (it.first == IMGU_NODE_VF_PREVIEW) {
-            vfWorker = std::make_shared<OutputFrameWorker>(it.second, mCameraId, mStreamNodeMapping[it.first], it.first);
+            vfWorker = std::make_shared<OutputFrameWorker>(it.second, mCameraId,
+                mStreamNodeMapping[it.first], it.first, pipelineDepth);
             createSwOutputFrameWork(it.first, vfWorker.get());
         } else if (it.first == IMGU_NODE_PV_PREVIEW) {
-            pvWorker = std::make_shared<OutputFrameWorker>(it.second, mCameraId, mStreamNodeMapping[it.first], it.first);
+            pvWorker = std::make_shared<OutputFrameWorker>(it.second, mCameraId,
+                mStreamNodeMapping[it.first], it.first, pipelineDepth);
         } else if (it.first == IMGU_NODE_RAW) {
             LOGW("Not implemented"); // raw
             continue;

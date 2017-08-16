@@ -23,11 +23,13 @@
 namespace android {
 namespace camera2 {
 
-FrameWorker::FrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId, std::string name) :
+FrameWorker::FrameWorker(std::shared_ptr<V4L2VideoNode> node,
+                         int cameraId, size_t pipelineDepth, std::string name) :
         IDeviceWorker(cameraId),
         mNode(node),
         mPollMe(false),
-        mIndex(0)
+        mIndex(0),
+        mPipelineDepth(pipelineDepth)
 {
     LOG1("%s handling node %s", name.c_str(), mNode->name());
     CLEAR(mFormat);
@@ -89,9 +91,9 @@ status_t FrameWorker::setWorkerDeviceFormat(v4l2_buf_type type, FrameInfo &frame
     return OK;
 }
 
-status_t FrameWorker::setWorkerDeviceBuffers(int memType, const unsigned int bufferNum)
+status_t FrameWorker::setWorkerDeviceBuffers(int memType)
 {
-    for (unsigned int i = 0; i < bufferNum; i++) {
+    for (unsigned int i = 0; i < mPipelineDepth; i++) {
         v4l2_buffer buffer;
         CLEAR(buffer);
         mBuffers.push_back(buffer);
@@ -105,12 +107,12 @@ status_t FrameWorker::setWorkerDeviceBuffers(int memType, const unsigned int buf
     return OK;
 }
 
-status_t FrameWorker::allocateWorkerBuffers(const unsigned int bufferNum)
+status_t FrameWorker::allocateWorkerBuffers()
 {
     int memType = mNode->getMemoryType();
     int dmaBufFd;
     std::shared_ptr<CameraBuffer> buf = nullptr;
-    for (unsigned int i = 0; i < bufferNum; i++) {
+    for (unsigned int i = 0; i < mPipelineDepth; i++) {
         LOG2("@%s allocate format: %s size: %d %dx%d bytesperline: %d", __func__, v4l2Fmt2Str(mFormat.fmt.pix.pixelformat),
                 mFormat.fmt.pix.sizeimage,
                 mFormat.fmt.pix.width,

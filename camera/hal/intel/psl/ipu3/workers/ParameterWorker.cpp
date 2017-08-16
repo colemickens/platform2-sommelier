@@ -36,7 +36,7 @@ namespace camera2 {
 const unsigned int PARA_WORK_BUFFERS = 1;
 
 ParameterWorker::ParameterWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId) :
-        FrameWorker(node, cameraId, "ParameterWorker"),
+        FrameWorker(node, cameraId, PARA_WORK_BUFFERS, "ParameterWorker"),
         mSkyCamAIC(nullptr),
         mCmcData(nullptr),
         mAicConfig(nullptr)
@@ -186,11 +186,11 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
     if (ret != OK)
         return ret;
 
-    ret = setWorkerDeviceBuffers(getDefaultMemoryType(IMGU_NODE_PARAM), PARA_WORK_BUFFERS);
+    ret = setWorkerDeviceBuffers(getDefaultMemoryType(IMGU_NODE_PARAM));
     if (ret != OK)
         return ret;
 
-    ret = allocateWorkerBuffers(PARA_WORK_BUFFERS);
+    ret = allocateWorkerBuffers();
     if (ret != OK)
         return ret;
 
@@ -245,8 +245,7 @@ status_t ParameterWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
         return UNKNOWN_ERROR;
     }
 
-    mIndex++;
-    mIndex = mIndex % PARA_WORK_BUFFERS;
+    mIndex = (mIndex + 1) % mPipelineDepth;
 
     return OK;
 }

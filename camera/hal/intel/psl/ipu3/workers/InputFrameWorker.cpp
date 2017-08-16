@@ -24,10 +24,10 @@
 namespace android {
 namespace camera2 {
 
-const unsigned int INPUTFRAME_WORK_BUFFERS = 7;
-
-InputFrameWorker::InputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int cameraId) :
-        FrameWorker(node, cameraId, "InputFrameWorker")
+InputFrameWorker::InputFrameWorker(std::shared_ptr<V4L2VideoNode> node,
+        int cameraId, size_t pipelineDepth) :
+        /* Keep the same number of buffers as ISYS. */
+        FrameWorker(node, cameraId, pipelineDepth + 1, "InputFrameWorker")
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     mPollMe = true;
@@ -46,11 +46,9 @@ status_t InputFrameWorker::configure(std::shared_ptr<GraphConfig> & /*config*/)
     if (ret != OK)
         return ret;
 
-    ret = setWorkerDeviceBuffers(getDefaultMemoryType(IMGU_NODE_INPUT), INPUTFRAME_WORK_BUFFERS);
+    ret = setWorkerDeviceBuffers(getDefaultMemoryType(IMGU_NODE_INPUT));
     if (ret != OK)
         return ret;
-
-    mIndex = 0;
 
     return OK;
 }
@@ -60,22 +58,21 @@ status_t InputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = OK;
     int memType = mNode->getMemoryType();
+    int index = msg->pMsg.rawNonScaledBuffer->v4l2Buf.index;
 
     if (memType == V4L2_MEMORY_USERPTR)
-        mBuffers[mIndex].m.userptr = (long unsigned int)msg->pMsg.rawNonScaledBuffer->buf->data();
+        mBuffers[index].m.userptr = (long unsigned int)msg->pMsg.rawNonScaledBuffer->buf->data();
     else if (memType == V4L2_MEMORY_DMABUF) {
-        mBuffers[mIndex].m.fd = msg->pMsg.rawNonScaledBuffer->buf->dmaBufFd();
-        CheckError((mBuffers[mIndex].m.fd < 0), BAD_VALUE, "@%s invalid fd(%d) passed from isys.\n",
-            __func__, mBuffers[mIndex].m.fd);
+        mBuffers[index].m.fd = msg->pMsg.rawNonScaledBuffer->buf->dmaBufFd();
+        CheckError((mBuffers[index].m.fd < 0), BAD_VALUE, "@%s invalid fd(%d) passed from isys.\n",
+            __func__, mBuffers[index].m.fd);
     } else {
         LOGE("@%s unsupported memory type %d.", __func__, memType);
         return BAD_VALUE;
     }
-    status |= mNode->putFrame(&mBuffers[mIndex]);
+    status |= mNode->putFrame(&mBuffers[index]);
 
     msg->pMsg.processingSettings->request->setSeqenceId(msg->pMsg.rawNonScaledBuffer->v4l2Buf.sequence);
-    mIndex++;
-    mIndex = mIndex % INPUTFRAME_WORK_BUFFERS;
     PERFORMANCE_HAL_ATRACE_PARAM1("seqId", msg->pMsg.rawNonScaledBuffer->v4l2Buf.sequence);
 
     return status;
