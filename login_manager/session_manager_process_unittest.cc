@@ -64,6 +64,8 @@ class SessionManagerProcessTest : public ::testing::Test {
   void SetUp() override {
     fake_loop_.SetAsCurrent();
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
+
+    aborted_browser_pid_path_ = tmpdir_.path().Append("aborted_browser_pid");
   }
 
   void TearDown() override {
@@ -116,6 +118,8 @@ class SessionManagerProcessTest : public ::testing::Test {
                                          &utils_);
     manager_->test_api().set_liveness_checker(liveness_checker_);
     manager_->test_api().set_session_manager(session_manager_impl_);
+    manager_->test_api().set_aborted_browser_pid_path(
+        aborted_browser_pid_path_);
   }
 
   void SimpleRunManager() {
@@ -144,6 +148,7 @@ class SessionManagerProcessTest : public ::testing::Test {
   scoped_refptr<SessionManagerService> manager_;
   MockMetrics metrics_;
   SystemUtilsImpl utils_;
+  base::FilePath aborted_browser_pid_path_;
 
   // These are bare pointers, not unique_ptrs, because we need to give them
   // to a SessionManagerService instance, but also be able to set expectations
@@ -348,6 +353,20 @@ TEST_F(SessionManagerProcessTest, TestWipeOnBadState) {
 
   ASSERT_FALSE(manager_->test_api().InitializeImpl());
   ASSERT_EQ(SessionManagerService::MUST_WIPE_DEVICE, manager_->exit_code());
+}
+
+// When aborting the browser, the session manager should write the killed pid.
+TEST_F(SessionManagerProcessTest, TestAbortedBrowserPidWritten) {
+  FakeBrowserJob* job = CreateMockJobAndInitManager(false);
+  EXPECT_CALL(*job, KillEverything(SIGKILL, _)).Times(AnyNumber());
+  ASSERT_TRUE(job->RunInBackground());
+
+  manager_->AbortBrowser(SIGKILL, "");
+  ASSERT_TRUE(base::PathExists(aborted_browser_pid_path_));
+  std::string read_pid_str;
+  ASSERT_TRUE(base::ReadFileToString(aborted_browser_pid_path_, &read_pid_str));
+  int read_pid = atoi(read_pid_str.c_str());
+  EXPECT_EQ(kDummyPid, read_pid);
 }
 
 }  // namespace login_manager

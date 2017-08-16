@@ -88,6 +88,9 @@ class SessionManagerService
     void set_exit_on_child_done(bool do_exit) {
       session_manager_service_->exit_on_child_done_ = do_exit;
     }
+    void set_aborted_browser_pid_path(const base::FilePath& path) {
+      session_manager_service_->aborted_browser_pid_path_ = path;
+    }
 
     // Executes the CleanupChildren() method on the manager.
     void CleanupChildren(int timeout_sec) {
@@ -223,6 +226,7 @@ class SessionManagerService
   std::unique_ptr<LivenessChecker> liveness_checker_;
   const bool enable_browser_abort_on_hang_;
   const base::TimeDelta liveness_checking_interval_;
+  base::FilePath aborted_browser_pid_path_;
 
   // Holds pointers to nss_, key_gen_, this. Shares system_, login_metrics_.
   std::unique_ptr<SessionManagerInterface> impl_;

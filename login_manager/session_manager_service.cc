@@ -6,6 +6,9 @@
 
 #include <dbus/dbus.h>  // C dbus library header. Used in FilterMessage().
 #include <stdint.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <memory>
@@ -19,6 +22,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <brillo/message_loops/message_loop.h>
@@ -53,6 +57,11 @@ const int kNumSignals = sizeof(kSignals) / sizeof(int);
 // The only path where containers are allowed to be installed.  They must be
 // part of the read-only, signed root image.
 const char kContainerInstallDirectory[] = "/opt/google/containers";
+
+// The path where the pid of an aborted browser process is written. This is done
+// so that crash reporting tools can detect an abort that originated from
+// session_manager.
+const char kAbortedBrowserPidPath[] = "/run/chrome/aborted_browser_pid";
 
 // I need a do-nothing action for SIGALRM, or using alarm() will kill me.
 void DoNothing(int signal) {
@@ -125,6 +134,7 @@ SessionManagerService::SessionManagerService(
                          SessionManagerImpl::kArcContainerName),
       enable_browser_abort_on_hang_(enable_browser_abort_on_hang),
       liveness_checking_interval_(hang_detection_interval),
+      aborted_browser_pid_path_(kAbortedBrowserPidPath),
       shutting_down_(false),
       shutdown_already_(false),
       exit_code_(SUCCESS) {
@@ -222,6 +232,26 @@ void SessionManagerService::RunBrowser() {
 
 void SessionManagerService::AbortBrowser(int signal,
                                          const std::string& message) {
+  std::string pid_string = base::IntToString(browser_->CurrentPid());
+  base::WriteFile(aborted_browser_pid_path_,
+                  pid_string.c_str(),
+                  pid_string.size());
+
+  // Change the file to be owned by the user and group of the containing
+  // directory. crash_reporter, which reads this file, is run by chrome using
+  // the chronos user.
+  struct stat stat_buf;
+  if (stat(aborted_browser_pid_path_.DirName().value().c_str(),
+           &stat_buf) < 0) {
+    PLOG(ERROR) << "Could not stat: "
+                << aborted_browser_pid_path_.DirName().value();
+  } else {
+    if (chown(aborted_browser_pid_path_.value().c_str(),
+              stat_buf.st_uid, stat_buf.st_gid) < 0) {
+      PLOG(ERROR) << "Could not chown: " << aborted_browser_pid_path_.value();
+    }
+  }
+
   browser_->Kill(signal, message);
   browser_->WaitAndAbort(GetKillTimeout());
 }
