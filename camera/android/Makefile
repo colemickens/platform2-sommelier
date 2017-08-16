@@ -17,6 +17,4 @@ libcamera_client: libcamera_client/all
 
 libcamera_metadata: libcamera_metadata/all
 
-libsync: libsync/all
-
-.PHONY: libcamera_client libcamera_metadata libsync
+.PHONY: libcamera_client libcamera_metadata

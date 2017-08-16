@@ -1,9 +1,0 @@
-diff --git a/home/jcliang/arc/bionic/libc/upstream-openbsd/lib/libc/string/strlcpy.c b/strlcpy.c
-index 5fcf084..6301674 100644
---- a/home/jcliang/arc/bionic/libc/upstream-openbsd/lib/libc/string/strlcpy.c
-+++ b/strlcpy.c
-@@ -48,4 +48,3 @@ strlcpy(char *dst, const char *src, size_t dsize)
- 
- 	return(src - osrc - 1);	/* count does not include NUL */
- }
--DEF_WEAK(strlcpy);
