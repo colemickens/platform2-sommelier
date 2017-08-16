@@ -36,7 +36,12 @@ class SHILL_EXPORT IPAddress {
   static const char kFamilyNameIPv4[];
   static const char kFamilyNameIPv6[];
 
+  IPAddress();
+
   explicit IPAddress(Family family);
+  IPAddress(Family family, const ByteString& address);
+  IPAddress(Family family, const ByteString& address, unsigned int prefix);
+
   // Constructs an IPAddress object given a standard string representation of an
   // IP address (e.g. "192.144.30.54").
   explicit IPAddress(const std::string& ip_string);
@@ -46,8 +51,6 @@ class SHILL_EXPORT IPAddress {
   // specifies the actual size of the structure backing |address_struct|.
   IPAddress(const sockaddr* address_struct, size_t size);
 
-  IPAddress(Family family, const ByteString& address);
-  IPAddress(Family family, const ByteString& address, unsigned int prefix);
   ~IPAddress();
 
   // Since this is a copyable datatype...

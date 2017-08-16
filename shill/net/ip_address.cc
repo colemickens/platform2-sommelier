@@ -52,21 +52,17 @@ const char IPAddress::kFamilyNameIPv4[] = "IPv4";
 // static
 const char IPAddress::kFamilyNameIPv6[] = "IPv6";
 
+IPAddress::IPAddress() : IPAddress(IPAddress::kFamilyUnknown) {}
+
+IPAddress::IPAddress(Family family) : family_(family), prefix_(0) {}
+
 IPAddress::IPAddress(Family family, const ByteString& address)
-    : family_(family) ,
-      address_(address),
-      prefix_(0) {}
+    : IPAddress(family, address, 0) {}
 
 IPAddress::IPAddress(Family family,
                      const ByteString& address,
                      unsigned int prefix)
-    : family_(family) ,
-      address_(address),
-      prefix_(prefix) {}
-
-IPAddress::IPAddress(Family family)
-    : family_(family),
-      prefix_(0) {}
+    : family_(family), address_(address), prefix_(prefix) {}
 
 IPAddress::IPAddress(const std::string& ip_string)
     : prefix_(0) {
