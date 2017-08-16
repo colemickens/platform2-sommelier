@@ -32,6 +32,10 @@ const char kGzipPath[] = "/bin/gzip";
 const char kChromeLogFilename[] = "chrome.txt";
 const char kGpuStateFilename[] = "i915_error_state.log.xz";
 
+// Filename for the pid of the browser process if it was aborted due to a
+// browser hang. Written by session_manager.
+constexpr char kAbortedBrowserPidPath[] = "/run/chrome/aborted_browser_pid";
+
 // From //net/crash/collector/collector.h
 const int kDefaultMaxUploadBytes = 1024 * 1024;
 
@@ -182,6 +186,16 @@ bool ChromeCollector::HandleCrash(const FilePath &file_path,
     // "logs" appears to be displayed on the crash server.
     AddCrashMetaUploadFile(it.first, it.second.value());
     report_size += file_size;
+  }
+
+  base::FilePath aborted_path(kAbortedBrowserPidPath);
+  string pid_data;
+  if (base::ReadFileToString(aborted_path, &pid_data)) {
+    base::TrimWhitespaceASCII(pid_data, base::TRIM_TRAILING, &pid_data);
+    if (pid_data == base::IntToString(pid)) {
+      AddCrashMetaData("browser_hang", "true");
+      base::DeleteFile(aborted_path, false);
+    }
   }
 
   // We're done.
