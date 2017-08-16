@@ -217,6 +217,13 @@ mode_update_tpm_firmware_low_battery() {
   show_assets_message "update_tpm_firmware_low_battery"
 }
 
+# Show a message explaining to the user that the battery isn't sufficiently
+# charged to a apply a firmware update and tell them that they need to wait
+# while the battery is charging.
+mode_update_tpm_firmware_low_battery_charging() {
+  show_assets_message "update_tpm_firmware_low_battery_charging"
+}
+
 # Show a message telling the user that the TPM firmware update failed and that
 # they need to go through recovery to retry the update.
 mode_update_tpm_firmware_failure() {
