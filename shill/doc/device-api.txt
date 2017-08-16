@@ -394,7 +394,7 @@ Properties	string Address [readonly]
 				PIN-locked. Otherwise, it specifies the type
 				of lock in effect: "sim-pin" or "sim-puk".
 
-			uint32 RetriesLeft
+			int32 RetriesLeft
 
 				If LockType is empty or is "sim-pin", then
 				this property gives the number of attempts

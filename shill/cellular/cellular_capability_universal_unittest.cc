@@ -1883,7 +1883,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusToProperty) {
   KeyValueStore store = capability_->SimLockStatusToProperty(&error);
   EXPECT_FALSE(store.GetBool(kSIMLockEnabledProperty));
   EXPECT_TRUE(store.GetString(kSIMLockTypeProperty).empty());
-  EXPECT_EQ(0, store.GetUint(kSIMLockRetriesLeftProperty));
+  EXPECT_EQ(0, store.GetInt(kSIMLockRetriesLeftProperty));
 
   capability_->sim_lock_status_.enabled = true;
   capability_->sim_lock_status_.retries_left = 3;
@@ -1891,7 +1891,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusToProperty) {
   store = capability_->SimLockStatusToProperty(&error);
   EXPECT_TRUE(store.GetBool(kSIMLockEnabledProperty));
   EXPECT_EQ("sim-pin", store.GetString(kSIMLockTypeProperty));
-  EXPECT_EQ(3, store.GetUint(kSIMLockRetriesLeftProperty));
+  EXPECT_EQ(3, store.GetInt(kSIMLockRetriesLeftProperty));
 
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PUK;
   store = capability_->SimLockStatusToProperty(&error);

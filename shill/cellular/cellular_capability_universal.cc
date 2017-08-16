@@ -183,7 +183,7 @@ KeyValueStore CellularCapabilityUniversal::SimLockStatusToProperty(
   }
   status.SetBool(kSIMLockEnabledProperty, sim_lock_status_.enabled);
   status.SetString(kSIMLockTypeProperty, lock_type);
-  status.SetUint(kSIMLockRetriesLeftProperty, sim_lock_status_.retries_left);
+  status.SetInt(kSIMLockRetriesLeftProperty, sim_lock_status_.retries_left);
   return status;
 }
 

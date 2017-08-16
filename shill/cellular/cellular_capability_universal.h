@@ -267,7 +267,7 @@ class CellularCapabilityUniversal : public CellularCapability {
 
     bool enabled;
     MMModemLock lock_type;
-    uint32_t retries_left;
+    int32_t retries_left;
   };
 
   // SubscriptionState represents the provisioned state of SIM. It is used

@@ -111,7 +111,7 @@ KeyValueStore CellularCapabilityGSM::SimLockStatusToProperty(Error* /*error*/) {
   KeyValueStore status;
   status.SetBool(kSIMLockEnabledProperty, sim_lock_status_.enabled);
   status.SetString(kSIMLockTypeProperty, sim_lock_status_.lock_type);
-  status.SetUint(kSIMLockRetriesLeftProperty, sim_lock_status_.retries_left);
+  status.SetInt(kSIMLockRetriesLeftProperty, sim_lock_status_.retries_left);
   return status;
 }
 

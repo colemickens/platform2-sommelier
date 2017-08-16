@@ -669,7 +669,7 @@ TEST_F(CellularCapabilityGSMTest, OnPropertiesChanged) {
   KeyValueStore lock_status;
   lock_status.SetBool(kSIMLockEnabledProperty, true);
   lock_status.SetString(kSIMLockTypeProperty, "");
-  lock_status.SetUint(kSIMLockRetriesLeftProperty, 0);
+  lock_status.SetInt(kSIMLockRetriesLeftProperty, 0);
 
   EXPECT_CALL(*device_adaptor_, EmitKeyValueStoreChanged(
       kSIMLockStatusProperty,
@@ -691,7 +691,7 @@ TEST_F(CellularCapabilityGSMTest, OnPropertiesChanged) {
   KeyValueStore lock_status2;
   lock_status2.SetBool(kSIMLockEnabledProperty, false);
   lock_status2.SetString(kSIMLockTypeProperty, kLockType);
-  lock_status2.SetUint(kSIMLockRetriesLeftProperty, kRetries);
+  lock_status2.SetInt(kSIMLockRetriesLeftProperty, kRetries);
   EXPECT_CALL(*device_adaptor_,
               EmitKeyValueStoreChanged(kSIMLockStatusProperty,
                                        KeyValueStoreEq(lock_status2)));
