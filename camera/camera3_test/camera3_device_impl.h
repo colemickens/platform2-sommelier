@@ -122,34 +122,46 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
   // Static callback forwarding methods from HAL to instance
   static void ProcessCaptureResultForwarder(
       const camera3_callback_ops* cb,
-      const camera3_capture_result* result);
+      const camera3_capture_result_t* result);
 
   // Static callback forwarding methods from HAL to instance
   static void NotifyForwarder(const camera3_callback_ops* cb,
-                              const camera3_notify_msg* msg);
+                              const camera3_notify_msg_t* msg);
+
+  struct StreamBuffer : camera3_stream_buffer_t {
+    explicit StreamBuffer(const camera3_stream_buffer_t& buffer);
+    buffer_handle_t buffer_handle;
+  };
+
+  struct CaptureResult : camera3_capture_result_t {
+    explicit CaptureResult(const camera3_capture_result_t& result);
+    CameraMetadataUniquePtr metadata_result;
+    std::vector<StreamBuffer> stream_buffers;
+  };
 
   // Callback functions from HAL device
-  void ProcessCaptureResult(const camera3_capture_result* result);
+  void ProcessCaptureResult(const camera3_capture_result_t* result);
 
-  void ProcessCaptureResultOnThread(const camera3_capture_result* result);
+  void ProcessCaptureResultOnThread(std::unique_ptr<CaptureResult> result);
 
   // Callback functions from HAL device
-  void Notify(const camera3_notify_msg* msg);
+  void Notify(const camera3_notify_msg_t* msg);
 
-  void NotifyOnThread(const camera3_notify_msg* msg);
+  void NotifyOnThread(camera3_notify_msg_t msg);
 
   // Get the buffers out of the given stream buffers |output_buffers|. The
   // buffers are return in the container |unique_buffers|, and the caller of
   // the function is expected to take the buffer ownership.
   int GetOutputStreamBufferHandles(
-      const std::vector<camera3_stream_buffer_t>& output_buffers,
+      const std::vector<StreamBuffer>& output_buffers,
       std::vector<BufferHandleUniquePtr>* unique_buffers);
 
   // Whether or not partial result is used
   bool UsePartialResult() const;
 
-  // Process and handle partial result of one callback.
-  void ProcessPartialResult(const camera3_capture_result& result);
+  // Process and handle partial result of one callback. The |metadata_result|
+  // field of |result| will be reset.
+  void ProcessPartialResult(CaptureResult* result);
 
   const std::string GetThreadName(int cam_id);
 
@@ -196,9 +208,6 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
    public:
     CaptureResultInfo();
 
-    // Allocate and copy into partial metadata
-    void AllocateAndCopyMetadata(const camera_metadata_t& src);
-
     // Determine whether or not the key is available
     bool IsMetadataKeyAvailable(int32_t key) const;
 
@@ -217,7 +226,7 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
 
     std::vector<CameraMetadataUniquePtr> partial_metadata_;
 
-    std::vector<camera3_stream_buffer_t> output_buffers_;
+    std::vector<StreamBuffer> output_buffers_;
 
    private:
     bool GetMetadataKeyEntry(int32_t key,

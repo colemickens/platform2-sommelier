@@ -459,17 +459,32 @@ void Camera3DeviceImpl::ProcessCaptureRequestOnThread(
   }
 }
 
-void Camera3DeviceImpl::ProcessCaptureResultOnThread(
-    const camera3_capture_result* result) {
-  DCHECK(thread_checker_.CalledOnValidThread());
-  if (!process_capture_result_cb_.is_null()) {
-    process_capture_result_cb_.Run(result);
-    return;
+Camera3DeviceImpl::StreamBuffer::StreamBuffer(
+    const camera3_stream_buffer_t& stream_buffer)
+    : camera3_stream_buffer_t(stream_buffer) {
+  buffer_handle = *stream_buffer.buffer;
+}
+
+Camera3DeviceImpl::CaptureResult::CaptureResult(
+    const camera3_capture_result_t& result)
+    : camera3_capture_result_t(result) {
+  if (result.result) {
+    metadata_result.reset(clone_camera_metadata(result.result));
   }
+  for (uint32_t i = 0; i < result.num_output_buffers; i++) {
+    stream_buffers.emplace_back(result.output_buffers[i]);
+  }
+}
+
+void Camera3DeviceImpl::ProcessCaptureResultOnThread(
+    std::unique_ptr<CaptureResult> result) {
+  VLOGF_ENTER();
+  DCHECK(thread_checker_.CalledOnValidThread());
   ASSERT_NE(nullptr, result) << "Capture result is null";
   // At least one of metadata or output buffers or input buffer should be
   // returned
-  ASSERT_TRUE((result->result != NULL) || (result->num_output_buffers != 0) ||
+  ASSERT_TRUE((result->metadata_result != nullptr) ||
+              (result->num_output_buffers != 0) ||
               (result->input_buffer != NULL))
       << "No result data provided by HAL for frame " << result->frame_number;
   if (result->num_output_buffers) {
@@ -484,21 +499,22 @@ void Camera3DeviceImpl::ProcessCaptureResultOnThread(
 
   // For HAL3.2 or above, If HAL doesn't support partial, it must always set
   // partial_result to 1 when metadata is included in this result.
-  ASSERT_TRUE(UsePartialResult() || result->result == NULL ||
+  ASSERT_TRUE(UsePartialResult() || !result->metadata_result ||
               result->partial_result == 1)
       << "Result is malformed: partial_result must be 1 if partial result is "
          "not supported";
   // If partial_result > 0, there should be metadata returned in this result;
   // otherwise, there should be none.
-  ASSERT_TRUE((result->partial_result > 0) == (result->result != NULL));
+  ASSERT_TRUE((result->partial_result > 0) ==
+              (result->metadata_result != nullptr));
 
-  if (result->result) {
-    ProcessPartialResult(*result);
-    EXPECT_KEY_VALUE_GT_I64(result->result, ANDROID_SENSOR_TIMESTAMP, 0);
+  if (result->metadata_result) {
+    EXPECT_KEY_VALUE_GT_I64(result->metadata_result.get(),
+                            ANDROID_SENSOR_TIMESTAMP, 0);
+    ProcessPartialResult(result.get());
   }
 
-  for (uint32_t i = 0; i < result->num_output_buffers; i++) {
-    camera3_stream_buffer_t stream_buffer = result->output_buffers[i];
+  for (const auto& stream_buffer : result->stream_buffers) {
     ASSERT_NE(nullptr, stream_buffer.buffer)
         << "Capture result output buffer is null";
     // An error may be expected while flushing
@@ -513,9 +529,10 @@ void Camera3DeviceImpl::ProcessCaptureResultOnThread(
           << "Error waiting on buffer acquire fence";
       close(stream_buffer.release_fence);
     }
-    capture_result_info_map_[result->frame_number].output_buffers_.push_back(
-        result->output_buffers[i]);
   }
+  capture_result_info_map_[result->frame_number].output_buffers_.insert(
+      capture_result_info_map_[result->frame_number].output_buffers_.end(),
+      result->stream_buffers.begin(), result->stream_buffers.end());
 
   capture_result_info_map_[result->frame_number].num_output_buffers_ +=
       result->num_output_buffers;
@@ -561,16 +578,12 @@ void Camera3DeviceImpl::ProcessCaptureResultOnThread(
   }
 }
 
-void Camera3DeviceImpl::NotifyOnThread(const camera3_notify_msg* msg) {
+void Camera3DeviceImpl::NotifyOnThread(camera3_notify_msg_t msg) {
   DCHECK(thread_checker_.CalledOnValidThread());
-  if (!notify_cb_.is_null()) {
-    notify_cb_.Run(msg);
-    return;
-  }
-  EXPECT_EQ(CAMERA3_MSG_SHUTTER, msg->type)
-      << "Shutter error = " << msg->message.error.error_code;
+  EXPECT_EQ(CAMERA3_MSG_SHUTTER, msg.type)
+      << "Shutter error = " << msg.message.error.error_code;
 
-  if (msg->type == CAMERA3_MSG_SHUTTER) {
+  if (msg.type == CAMERA3_MSG_SHUTTER) {
     sem_post(&shutter_sem_);
   }
 }
@@ -597,7 +610,7 @@ const Camera3Device::StaticInfo* Camera3DeviceImpl::GetStaticInfo() const {
 
 void Camera3DeviceImpl::ProcessCaptureResultForwarder(
     const camera3_callback_ops* cb,
-    const camera3_capture_result* result) {
+    const camera3_capture_result_t* result) {
   // Forward to callback of instance
   Camera3DeviceImpl* d =
       const_cast<Camera3DeviceImpl*>(static_cast<const Camera3DeviceImpl*>(cb));
@@ -605,7 +618,7 @@ void Camera3DeviceImpl::ProcessCaptureResultForwarder(
 }
 
 void Camera3DeviceImpl::NotifyForwarder(const camera3_callback_ops* cb,
-                                        const camera3_notify_msg* msg) {
+                                        const camera3_notify_msg_t* msg) {
   // Forward to callback of instance
   Camera3DeviceImpl* d =
       const_cast<Camera3DeviceImpl*>(static_cast<const Camera3DeviceImpl*>(cb));
@@ -613,21 +626,32 @@ void Camera3DeviceImpl::NotifyForwarder(const camera3_callback_ops* cb,
 }
 
 void Camera3DeviceImpl::ProcessCaptureResult(
-    const camera3_capture_result* result) {
+    const camera3_capture_result_t* result) {
   VLOGF_ENTER();
-  hal_thread_.PostTaskSync(
-      FROM_HERE, base::Bind(&Camera3DeviceImpl::ProcessCaptureResultOnThread,
-                            base::Unretained(this), result));
+  if (!process_capture_result_cb_.is_null()) {
+    process_capture_result_cb_.Run(result);
+    return;
+  }
+  std::unique_ptr<CaptureResult> unique_result(new CaptureResult(*result));
+  hal_thread_.PostTaskAsync(
+      FROM_HERE,
+      base::Bind(&Camera3DeviceImpl::ProcessCaptureResultOnThread,
+                 base::Unretained(this), base::Passed(&unique_result)));
 }
 
-void Camera3DeviceImpl::Notify(const camera3_notify_msg* msg) {
-  hal_thread_.PostTaskSync(FROM_HERE,
-                           base::Bind(&Camera3DeviceImpl::NotifyOnThread,
-                                      base::Unretained(this), msg));
+void Camera3DeviceImpl::Notify(const camera3_notify_msg_t* msg) {
+  VLOGF_ENTER();
+  if (!notify_cb_.is_null()) {
+    notify_cb_.Run(msg);
+    return;
+  }
+  hal_thread_.PostTaskAsync(FROM_HERE,
+                            base::Bind(&Camera3DeviceImpl::NotifyOnThread,
+                                       base::Unretained(this), *msg));
 }
 
 int Camera3DeviceImpl::GetOutputStreamBufferHandles(
-    const std::vector<camera3_stream_buffer_t>& output_buffers,
+    const std::vector<StreamBuffer>& output_buffers,
     std::vector<BufferHandleUniquePtr>* unique_buffers) {
   DCHECK(thread_checker_.CalledOnValidThread());
   VLOGF_ENTER();
@@ -643,7 +667,7 @@ int Camera3DeviceImpl::GetOutputStreamBufferHandles(
     auto stream_buffers = &stream_buffer_map_[output_buffer.stream];
     auto it = std::find_if(stream_buffers->begin(), stream_buffers->end(),
                            [=](const BufferHandleUniquePtr& buffer) {
-                             return *buffer == *output_buffer.buffer;
+                             return *buffer == output_buffer.buffer_handle;
                            });
     if (it != stream_buffers->end()) {
       unique_buffers->push_back(std::move(*it));
@@ -661,48 +685,39 @@ bool Camera3DeviceImpl::UsePartialResult() const {
   return static_info_->GetPartialResultCount() > 1;
 }
 
-void Camera3DeviceImpl::ProcessPartialResult(
-    const camera3_capture_result& result) {
+void Camera3DeviceImpl::ProcessPartialResult(CaptureResult* result) {
   DCHECK(thread_checker_.CalledOnValidThread());
   // True if this partial result is the final one. If HAL does not use partial
   // result, the value is True by default.
   bool is_final_partial_result = !UsePartialResult();
   // Check if this result carries only partial metadata
-  if (UsePartialResult() && result.result != NULL) {
-    EXPECT_LE(result.partial_result, static_info_->GetPartialResultCount());
-    EXPECT_GE(result.partial_result, 1);
+  if (UsePartialResult() && result->metadata_result != nullptr) {
+    EXPECT_LE(result->partial_result, static_info_->GetPartialResultCount());
+    EXPECT_GE(result->partial_result, 1);
     camera_metadata_ro_entry_t entry;
-    if (find_camera_metadata_ro_entry(
-            result.result, ANDROID_QUIRKS_PARTIAL_RESULT, &entry) == 0) {
+    if (find_camera_metadata_ro_entry(result->metadata_result.get(),
+                                      ANDROID_QUIRKS_PARTIAL_RESULT,
+                                      &entry) == 0) {
       is_final_partial_result =
           (entry.data.i32[0] == ANDROID_QUIRKS_PARTIAL_RESULT_FINAL);
     }
   }
 
   // Did we get the (final) result metadata for this capture?
-  if (result.result != NULL && is_final_partial_result) {
+  if (result->metadata_result != nullptr && is_final_partial_result) {
     EXPECT_FALSE(
-        capture_result_info_map_[result.frame_number].have_result_metadata_)
+        capture_result_info_map_[result->frame_number].have_result_metadata_)
         << "Called multiple times with final metadata";
-    capture_result_info_map_[result.frame_number].have_result_metadata_ = true;
+    capture_result_info_map_[result->frame_number].have_result_metadata_ = true;
   }
 
-  capture_result_info_map_[result.frame_number].AllocateAndCopyMetadata(
-      *result.result);
+  capture_result_info_map_[result->frame_number].partial_metadata_.push_back(
+      std::move(result->metadata_result));
 }
 
 Camera3DeviceImpl::CaptureResultInfo::CaptureResultInfo()
     : num_output_buffers_(0), have_result_metadata_(false) {
   thread_checker_.DetachFromThread();
-}
-
-void Camera3DeviceImpl::CaptureResultInfo::AllocateAndCopyMetadata(
-    const camera_metadata_t& src) {
-  DCHECK(thread_checker_.CalledOnValidThread());
-  CameraMetadataUniquePtr metadata(allocate_copy_camera_metadata_checked(
-      &src, get_camera_metadata_size(&src)));
-  ASSERT_NE(nullptr, metadata.get()) << "Copying result partial metadata fails";
-  partial_metadata_.push_back(std::move(metadata));
 }
 
 bool Camera3DeviceImpl::CaptureResultInfo::IsMetadataKeyAvailable(
