@@ -18,10 +18,15 @@ class VpdProcess {
   using KeyValuePairs = std::vector<std::pair<std::string, std::string>>;
   using CompletionCallback = base::Callback<void(bool)>;
 
-  // Update values in RW_VPD by running the VPD utility in a separate process.
+  // Update values in RW_VPD by running the update_rw_vpd utility in a separate
+  // process. Keys with empty string values are deleted. update_rw_vpd will not
+  // perform unnecessary writes if the already cache matches the update unless
+  // |ignore_cache| is set to true which will unconditionally update the VPD.
+  //
   // Takes ownership of |completion| if process starts successfully. Returns
-  // whether fork() was successful. Keys with empty string values are deleted.
+  // whether fork() was successful.
   virtual bool RunInBackground(const KeyValuePairs& updates,
+                               bool ignore_cache,
                                const CompletionCallback& completion) = 0;
 };
 

@@ -904,7 +904,7 @@ void SessionManagerImpl::StartTPMFirmwareUpdate(
                  update_mode,
                  base::Passed(&response));
   if (!vpd_process_->RunInBackground(
-          {{kTPMFirmwareUpdateModeVPDKey, update_mode}}, completion)) {
+          {{kTPMFirmwareUpdateModeVPDKey, update_mode}}, true, completion)) {
     // Make sure to send a response.
     completion.Run(false);
   }

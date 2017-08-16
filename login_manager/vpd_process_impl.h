@@ -27,6 +27,7 @@ class VpdProcessImpl
 
   // Implementation of VpdProcess.
   bool RunInBackground(const KeyValuePairs& updates,
+                       bool sync_cache,
                        const CompletionCallback& completion) override;
 
   // Implementation of JobManagerInterface.

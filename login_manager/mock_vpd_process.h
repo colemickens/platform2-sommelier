@@ -21,8 +21,9 @@ class SystemUtils;
 class MockVpdProcess : public VpdProcess {
  public:
   MockVpdProcess() : VpdProcess() {}
-  MOCK_METHOD2(RunInBackground,
+  MOCK_METHOD3(RunInBackground,
                bool(const KeyValuePairs& updates,
+                    bool ignore_cache,
                     const CompletionCallback& completion));
 };
 

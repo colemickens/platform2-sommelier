@@ -26,6 +26,7 @@ VpdProcessImpl::VpdProcessImpl(SystemUtils* system_utils)
 }
 
 bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
+                                     bool ignore_cache,
                                      const CompletionCallback& completion) {
   subprocess_.reset(new ChildJobInterface::Subprocess(0, system_utils_));
 
@@ -35,7 +36,12 @@ bool VpdProcessImpl::RunInBackground(const KeyValuePairs& updates,
     argv.push_back(entry.second);
   }
 
-  if (!subprocess_->ForkAndExec(argv, std::vector<std::string>())) {
+  std::vector<std::string> env;
+  if (ignore_cache) {
+    env.push_back("VPD_IGNORE_CACHE=1");
+  }
+
+  if (!subprocess_->ForkAndExec(argv, env)) {
     // The caller remains responsible for running |completion|.
     return false;
   }

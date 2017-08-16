@@ -134,7 +134,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
     proto->mutable_system_settings()->set_block_devmode(false);
     SetSettings(service_.get(), std::move(proto));
 
-    EXPECT_CALL(vpd_process_, RunInBackground(_, _))
+    EXPECT_CALL(vpd_process_, RunInBackground(_, false, _))
         .WillRepeatedly(Return(true));
   }
 
@@ -601,7 +601,7 @@ TEST_F(DevicePolicyServiceTest, SetBlockDevModeInNvram) {
   proto->mutable_system_settings()->set_block_devmode(true);
   SetSettings(service_.get(), std::move(proto));
 
-  EXPECT_CALL(vpd_process_, RunInBackground(_, _))
+  EXPECT_CALL(vpd_process_, RunInBackground(_, false, _))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(UpdateSystemSettings(service_.get()));
@@ -623,7 +623,7 @@ TEST_F(DevicePolicyServiceTest, UnsetBlockDevModeInNvram) {
   proto->mutable_system_settings()->set_block_devmode(false);
   SetSettings(service_.get(), std::move(proto));
 
-  EXPECT_CALL(vpd_process_, RunInBackground(_, _))
+  EXPECT_CALL(vpd_process_, RunInBackground(_, false, _))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(UpdateSystemSettings(service_.get()));
@@ -662,7 +662,7 @@ TEST_F(DevicePolicyServiceTest, CheckNotEnrolledDevice) {
       {Crossystem::kBlockDevmode, "0"},
       {Crossystem::kCheckEnrollment, "0"},
   };
-  EXPECT_CALL(vpd_process_, RunInBackground(updates, _))
+  EXPECT_CALL(vpd_process_, RunInBackground(updates, false, _))
       .Times(1)
       .WillOnce(Return(true));
 
@@ -699,7 +699,7 @@ TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
       {Crossystem::kBlockDevmode, "0"},
       {Crossystem::kCheckEnrollment, "1"},
   };
-  EXPECT_CALL(vpd_process_, RunInBackground(updates, _))
+  EXPECT_CALL(vpd_process_, RunInBackground(updates, false, _))
       .Times(1)
       .WillOnce(Return(true));
 
@@ -730,7 +730,7 @@ TEST_F(DevicePolicyServiceTest, CheckFailUpdateVPD) {
       {Crossystem::kBlockDevmode, "0"},
       {Crossystem::kCheckEnrollment, "1"},
   };
-  EXPECT_CALL(vpd_process_, RunInBackground(updates, _))
+  EXPECT_CALL(vpd_process_, RunInBackground(updates, false, _))
       .Times(1)
       .WillOnce(Return(false));
 

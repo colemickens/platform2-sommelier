@@ -571,7 +571,9 @@ bool DevicePolicyService::UpdateSystemSettings(
                                    std::to_string(is_enrolled)));
 
   return vpd_process_->RunInBackground(
-      updates, base::Bind(&HandleVpdUpdateCompletion, is_enrolled, completion));
+      updates,
+      false,
+      base::Bind(&HandleVpdUpdateCompletion, is_enrolled, completion));
 }
 
 }  // namespace login_manager
