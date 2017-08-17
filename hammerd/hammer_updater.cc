@@ -19,14 +19,19 @@ namespace hammerd {
 
 HammerUpdater::HammerUpdater(const std::string& image, uint16_t vendor_id,
                              uint16_t product_id, int bus, int port)
-    : HammerUpdater(image, base::MakeUnique<FirmwareUpdater>(
-          base::MakeUnique<UsbEndpoint>(
-              vendor_id, product_id, bus, port))) {}
+    : HammerUpdater(
+        image,
+        base::MakeUnique<FirmwareUpdater>(
+            base::MakeUnique<UsbEndpoint>(vendor_id, product_id, bus, port)),
+        base::MakeUnique<PairManager>()) {}
 
 HammerUpdater::HammerUpdater(
     const std::string& image,
-    std::unique_ptr<FirmwareUpdaterInterface> fw_updater)
-    : image_(image), fw_updater_(std::move(fw_updater)) {}
+    std::unique_ptr<FirmwareUpdaterInterface> fw_updater,
+    std::unique_ptr<PairManagerInterface> pair_manager)
+    : image_(image),
+      fw_updater_(std::move(fw_updater)),
+      pair_manager_(std::move(pair_manager)) {}
 
 bool HammerUpdater::Run() {
   // The time period after which hammer automatically jumps to RW section.
@@ -223,8 +228,24 @@ void HammerUpdater::PostRWProcess() {
   LOG(INFO) << "Start the process after entering RW section.";
   // TODO(akahuang): Update RO section in dogfood mode.
   // TODO(akahuang): Update trackpad FW.
-  // TODO(akahuang): Pairing.
+  Pair();
   // TODO(akahuang): Rollback increment.
+}
+
+bool HammerUpdater::Pair() {
+  auto status = pair_manager_->PairChallenge(fw_updater_.get());
+  switch (status) {
+    case ChallengeStatus::kChallengePassed:
+      // TODO(akahuang): Check if the base is swapped.
+      return true;
+    case ChallengeStatus::kChallengeFailed:
+      return false;
+    case ChallengeStatus::kNeedInjectEntropy:
+      // TODO(akahuang): Inject the entropy.
+      return false;
+    case ChallengeStatus::kUnknownError:
+      return false;
+  }
 }
 
 }  // namespace hammerd

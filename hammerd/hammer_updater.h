@@ -10,6 +10,7 @@
 
 #include <base/macros.h>
 
+#include "hammerd/pair_utils.h"
 #include "hammerd/update_fw.h"
 
 namespace hammerd {
@@ -44,11 +45,13 @@ class HammerUpdater {
   // |post_rw_jump| indicates whether we jump to RW section last round.
   virtual RunStatus RunOnce(const bool post_rw_jump);
   virtual void PostRWProcess();
+  virtual bool Pair();
 
  protected:
   // Used in unittests to inject mock instance.
   HammerUpdater(const std::string& image,
-                std::unique_ptr<FirmwareUpdaterInterface> fw_updater);
+                std::unique_ptr<FirmwareUpdaterInterface> fw_updater,
+                std::unique_ptr<PairManagerInterface> pair_manager);
 
   template <typename HammerUpdaterType>
   friend class HammerUpdaterTest;
@@ -58,6 +61,8 @@ class HammerUpdater {
   std::string image_;
   // The main firmware updater.
   std::unique_ptr<FirmwareUpdaterInterface> fw_updater_;
+  // The pairing manager.
+  std::unique_ptr<PairManagerInterface> pair_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(HammerUpdater);
 };

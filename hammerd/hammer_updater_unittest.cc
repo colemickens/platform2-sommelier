@@ -28,6 +28,7 @@
 #include <gtest/gtest.h>
 
 #include "hammerd/hammer_updater.h"
+#include "hammerd/mock_pair_utils.h"
 #include "hammerd/mock_update_fw.h"
 
 using testing::_;
@@ -70,9 +71,13 @@ class HammerUpdaterTest : public testing::Test {
   void SetUp() override {
     // Mock out data members.
     hammer_updater_.reset(new HammerUpdaterType{
-        image_, base::MakeUnique<MockFirmwareUpdater>())});
+        image_,
+        base::MakeUnique<MockFirmwareUpdater>(),
+        base::MakeUnique<MockPairManagerInterface>()});
     fw_updater_ =
         static_cast<MockFirmwareUpdater*>(hammer_updater_->fw_updater_.get());
+    pair_manager_ = static_cast<MockPairManagerInterface*>(
+        hammer_updater_->pair_manager_.get());
 
     // By default, expect no USB connections to be made. This can
     // be overridden by a call to ExpectUSBConnections.
@@ -96,6 +101,7 @@ class HammerUpdaterTest : public testing::Test {
  protected:
   std::unique_ptr<HammerUpdaterType> hammer_updater_;
   MockFirmwareUpdater* fw_updater_;
+  MockPairManagerInterface* pair_manager_;
   std::string image_ = "MOCK IMAGE";
   int usb_connection_count_;
 };
@@ -363,4 +369,14 @@ TEST_F(HammerUpdaterRWTest, RunOnce_ResetToRO) {
   ASSERT_EQ(hammer_updater_->RunOnce(false),
             HammerUpdater::RunStatus::kNeedReset);
 }
+
+// Post RW process:
+// Condition:
+//   1. Pairing is successful.
+TEST_F(HammerUpdaterPostRWTest, Pairing) {
+  EXPECT_CALL(*pair_manager_, PairChallenge(fw_updater_))
+      .WillOnce(Return(ChallengeStatus::kChallengePassed));
+  hammer_updater_->PostRWProcess();
+}
+
 }  // namespace hammerd

@@ -20,5 +20,13 @@ class MockPairManager : public PairManager {
                void(PairChallengeRequest* request, uint8_t* private_key));
 };
 
+// Mock public method PairChallenge() used to inject into HammerUpdater.
+class MockPairManagerInterface : public PairManagerInterface {
+ public:
+  MockPairManagerInterface() = default;
+  MOCK_METHOD1(PairChallenge,
+               ChallengeStatus(FirmwareUpdaterInterface* fw_updater));
+};
+
 }  // namespace hammerd
 #endif  // HAMMERD_MOCK_PAIR_UTILS_H_
