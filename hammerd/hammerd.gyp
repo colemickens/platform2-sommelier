@@ -2,10 +2,11 @@
   'target_defaults': {
     'variables': {
       'deps': [
-        'libchrome-<(libbase_ver)',
-        'libbrillo-<(libbase_ver)',
-        'libusb-1.0',
         'fmap',
+        'libbrillo-<(libbase_ver)',
+        'libchrome-<(libbase_ver)',
+        'libusb-1.0',
+        'openssl',
       ],
     },
   },
@@ -14,6 +15,8 @@
       'target_name': 'libhammerd',
       'type': 'static_library',
       'sources': [
+        # TODO(crbug.com/649672): Upgrade to OpenSSL 1.1 support curve25519.
+        'curve25519.c',
         'fmap_utils.cc',
         'hammer_updater.cc',
         'process_lock.cc',
@@ -42,6 +45,7 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
+            'curve25519_unittest.cc',
             'hammer_updater_unittest.cc',
             'update_fw_unittest.cc',
           ],
