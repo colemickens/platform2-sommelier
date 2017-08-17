@@ -61,6 +61,26 @@ enum class UpdateExtraCommand : uint16_t {
   kPairChallenge = 6,
 };
 
+enum class ECResponseStatus : uint8_t {
+  kSuccess = 0,
+  kInvalidCommand = 1,
+  kError = 2,
+  kInvalidParam = 3,
+  kAccessDenied = 4,
+  kInvalidResponse = 5,
+  kInvalidVersion = 6,
+  kInvalidChecksum = 7,
+  kInProgress = 8,  // Accepted, command in progress
+  kUnavailable = 9,  // No response available
+  kTimeout = 10,  // We got a timeout
+  kOverflow = 11,  // Table / data overflow
+  kInvalidHeader = 12,  // Header contains invalid data
+  kRequestTruncated = 13,  // Didn't get the entire request
+  kResponseTooBig = 14,  // Response was too big to handle
+  kBusError = 15,  // Communications bus error
+  kBusy = 16,  // Up but too busy.  Should retry
+};
+
 const char* ToString(UpdateExtraCommand subcommand);
 
 // This is the frame format the host uses when sending update PDUs over USB.

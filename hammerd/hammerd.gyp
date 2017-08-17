@@ -19,6 +19,7 @@
         'curve25519.c',
         'fmap_utils.cc',
         'hammer_updater.cc',
+        'pair_utils.cc',
         'process_lock.cc',
         'update_fw.cc',
         'usb_utils.cc',
@@ -47,6 +48,7 @@
           'sources': [
             'curve25519_unittest.cc',
             'hammer_updater_unittest.cc',
+            'pair_utils_unittest.cc',
             'update_fw_unittest.cc',
           ],
         },
