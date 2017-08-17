@@ -219,7 +219,7 @@ class ControlInterface {
 #endif  // DISABLE_CELLULAR
 
 #if !defined(DISABLE_WIMAX)
-  virtual WiMaxDeviceProxyInterface* CreateWiMaxDeviceProxy(
+  virtual std::unique_ptr<WiMaxDeviceProxyInterface> CreateWiMaxDeviceProxy(
       const std::string& path) = 0;
   virtual WiMaxManagerProxyInterface* CreateWiMaxManagerProxy(
       const base::Closure& service_appeared_callback,

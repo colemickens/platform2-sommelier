@@ -20,7 +20,7 @@
 #include <string>
 #include <utility>
 
-#include <base/stl_util.h>
+#include <base/memory/ptr_util.h>
 
 #include "shill/dhcp/mock_dhcp_config.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
@@ -37,6 +37,7 @@ using base::Bind;
 using base::Unretained;
 using std::string;
 using testing::_;
+using testing::ByMove;
 using testing::NiceMock;
 using testing::Return;
 
@@ -54,8 +55,7 @@ const char kTestPath[] = "/org/chromium/WiMaxManager/Device/6";
 class WiMaxTest : public testing::Test {
  public:
   WiMaxTest()
-      : proxy_(new MockWiMaxDeviceProxy()),
-        metrics_(&dispatcher_),
+      : metrics_(&dispatcher_),
         manager_(&control_, &dispatcher_, &metrics_),
         dhcp_config_(new MockDHCPConfig(&control_,
                                         kTestLinkName)),
@@ -82,7 +82,6 @@ class WiMaxTest : public testing::Test {
     device_->pending_service_ = nullptr;
   }
 
-  std::unique_ptr<MockWiMaxDeviceProxy> proxy_;
   NiceMockControl control_;
   EventDispatcherForTest dispatcher_;
   NiceMock<MockMetrics> metrics_;
@@ -98,13 +97,17 @@ TEST_F(WiMaxTest, Constructor) {
 }
 
 TEST_F(WiMaxTest, StartStop) {
-  EXPECT_FALSE(device_->proxy_.get());
+  auto device_proxy = base::MakeUnique<MockWiMaxDeviceProxy>();
+
+  EXPECT_CALL(*device_proxy, Enable(_, _, _));
+  EXPECT_CALL(*device_proxy, set_networks_changed_callback(_));
+  EXPECT_CALL(*device_proxy, set_status_changed_callback(_));
+  EXPECT_CALL(*device_proxy, Disable(_, _, _));
+
   EXPECT_CALL(control_, CreateWiMaxDeviceProxy(_))
-      .WillOnce(ReturnAndReleasePointee(&proxy_));
-  EXPECT_CALL(*proxy_, Enable(_, _, _));
-  EXPECT_CALL(*proxy_, set_networks_changed_callback(_));
-  EXPECT_CALL(*proxy_, set_status_changed_callback(_));
-  EXPECT_CALL(*proxy_, Disable(_, _, _));
+      .WillOnce(Return(ByMove(std::move(device_proxy))));
+
+  EXPECT_FALSE(device_->proxy_.get());
   device_->Start(nullptr, EnabledStateChangedCallback());
   ASSERT_TRUE(device_->proxy_.get());
 
@@ -236,7 +239,7 @@ TEST_F(WiMaxTest, DropService) {
 }
 
 TEST_F(WiMaxTest, OnDeviceVanished) {
-  device_->proxy_ = std::move(proxy_);
+  device_->proxy_ = base::MakeUnique<MockWiMaxDeviceProxy>();
   scoped_refptr<MockWiMaxService> service(
       new MockWiMaxService(&control_, nullptr, &metrics_, &manager_));
   device_->pending_service_ = service;
@@ -250,8 +253,10 @@ TEST_F(WiMaxTest, OnEnableComplete) {
   MockWiMaxProvider provider;
   EXPECT_CALL(manager_, wimax_provider()).WillOnce(Return(&provider));
   RpcIdentifiers networks(1, "path");
-  EXPECT_CALL(*proxy_, Networks(_)).WillOnce(Return(networks));
-  device_->proxy_ = std::move(proxy_);
+  auto device_proxy = base::MakeUnique<MockWiMaxDeviceProxy>();
+  EXPECT_CALL(*device_proxy, Networks(_)).WillOnce(Return(networks));
+  device_->proxy_ = std::move(device_proxy);
+
   EXPECT_CALL(provider, OnNetworksChanged());
   Target target;
   EXPECT_CALL(target, EnabledStateChanged(_));
@@ -298,9 +303,10 @@ TEST_F(WiMaxTest, ConnectTo) {
   EXPECT_CALL(*service, SetState(Service::kStateAssociating));
   device_->status_ = wimax_manager::kDeviceStatusScanning;
   EXPECT_CALL(*service, GetNetworkObjectPath()).WillOnce(Return(kPath));
-  EXPECT_CALL(*proxy_, Connect(kPath, _, _, _, _))
+  auto device_proxy = base::MakeUnique<MockWiMaxDeviceProxy>();
+  EXPECT_CALL(*device_proxy, Connect(kPath, _, _, _, _))
       .WillOnce(SetErrorTypeInArgument<2>(Error::kSuccess));
-  device_->proxy_ = std::move(proxy_);
+  device_->proxy_ = std::move(device_proxy);
   Error error;
   device_->ConnectTo(service, &error);
   EXPECT_TRUE(error.IsSuccess());

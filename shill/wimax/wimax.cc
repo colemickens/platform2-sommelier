@@ -93,7 +93,7 @@ WiMax::~WiMax() {
 void WiMax::Start(Error* error, const EnabledStateChangedCallback& callback) {
   SLOG(this, 2) << __func__;
   scanning_ = false;
-  proxy_.reset(control_interface()->CreateWiMaxDeviceProxy(path_));
+  proxy_ = control_interface()->CreateWiMaxDeviceProxy(path_);
   proxy_->set_networks_changed_callback(
       Bind(&WiMax::OnNetworksChanged, Unretained(this)));
   proxy_->set_status_changed_callback(

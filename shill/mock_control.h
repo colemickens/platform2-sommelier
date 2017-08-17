@@ -29,6 +29,10 @@
 #include "shill/power_manager_proxy_interface.h"
 #include "shill/upstart/upstart_proxy_interface.h"
 
+#if !defined(DISABLE_WIMAX)
+#include "shill/wimax/wimax_device_proxy_interface.h"
+#endif  // DISABLE_WIMAX
+
 namespace shill {
 // An implementation of the Shill RPC-channel-interface-factory interface that
 // returns mocks.
@@ -157,8 +161,9 @@ class MockControl : public ControlInterface {
 #endif  // DISABLE_CELLULAR
 
 #if !defined(DISABLE_WIMAX)
-  MOCK_METHOD1(CreateWiMaxDeviceProxy,
-               WiMaxDeviceProxyInterface*(const std::string& path));
+  MOCK_METHOD1(
+      CreateWiMaxDeviceProxy,
+      std::unique_ptr<WiMaxDeviceProxyInterface>(const std::string& path));
   MOCK_METHOD2(CreateWiMaxManagerProxy,
                WiMaxManagerProxyInterface*(
                    const base::Closure& service_appeared_callback,

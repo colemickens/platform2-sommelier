@@ -44,6 +44,7 @@
 
 using std::string;
 using std::vector;
+using testing::ByMove;
 using testing::InvokeWithoutArgs;
 using testing::Return;
 using testing::ReturnNull;
@@ -179,7 +180,7 @@ TEST_F(WiMaxProviderTest, ConnectDisconnectWiMaxManager) {
   EXPECT_CALL(*device_proxy, Connect(_, _, _, _, _))
       .WillOnce(SetErrorTypeInArgument<2>(Error::kSuccess));
   EXPECT_CALL(control_, CreateWiMaxDeviceProxy(_))
-      .WillOnce(ReturnAndReleasePointee(&device_proxy));
+      .WillOnce(Return(ByMove(std::move(device_proxy))));
 
   WiMaxRefPtr device = provider_.devices_[device_link];
   ASSERT_NE(nullptr, device);

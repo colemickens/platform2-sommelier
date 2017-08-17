@@ -377,9 +377,9 @@ mm1::SimProxyInterface* ChromeosDBusControl::CreateSimProxy(
 #endif  // DISABLE_CELLULAR
 
 #if !defined(DISABLE_WIMAX)
-WiMaxDeviceProxyInterface* ChromeosDBusControl::CreateWiMaxDeviceProxy(
-    const string& path) {
-  return new ChromeosWiMaxDeviceProxy(proxy_bus_, path);
+std::unique_ptr<WiMaxDeviceProxyInterface>
+ChromeosDBusControl::CreateWiMaxDeviceProxy(const string& path) {
+  return base::MakeUnique<ChromeosWiMaxDeviceProxy>(proxy_bus_, path);
 }
 
 WiMaxManagerProxyInterface* ChromeosDBusControl::CreateWiMaxManagerProxy(
