@@ -324,6 +324,8 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     base::DeleteFile(data_dir.Append("Local State"), false);
   }
 
+  if (builder->UseFlagIsSet("eve"))
+    builder->AddArg("--force-clamshell-power-button");
   if (builder->UseFlagIsSet("kevin")) {
     // TODO(jdufault): Remove this once quick unlock launches on all boards.
     builder->AddFeatureEnableOverride("QuickUnlockPin");
