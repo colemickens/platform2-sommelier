@@ -148,8 +148,7 @@ const Log kCommandLogs[] = {
   { "mount-encrypted", "/bin/cat /var/log/mount-encrypted.log" },
   { "mountinfo", "/bin/cat /proc/1/mountinfo" },
   { "net-diags.net.log", "/bin/cat /var/log/net-diags.net.log" },
-  { "netlog", "/usr/share/userfeedback/scripts/getmsgs --last '2 hours'"
-              " /var/log/net.log" },
+  { "netlog", "/usr/share/userfeedback/scripts/getmsgs /var/log/net.log" },
   {
     "nvmap_iovmm",
     "/bin/cat /sys/kernel/debug/nvmap/iovmm/allocations 2> /dev/null",
@@ -169,8 +168,7 @@ const Log kCommandLogs[] = {
   // /proc/slabinfo is owned by root and has 0400 permission.
   { "slabinfo", "/bin/cat /proc/slabinfo", kRoot, kRoot, },
   { "storage_info", "/bin/cat /var/log/storage_info.txt" },
-  { "syslog", "/usr/share/userfeedback/scripts/getmsgs --last '2 hours'"
-              " /var/log/messages" },
+  { "syslog", "/usr/share/userfeedback/scripts/getmsgs /var/log/messages" },
   { "system_log_stats", "echo 'BLOCK_SIZE=1024'; "
     "find /var/log/ -type f -exec du --block-size=1024 {} + | sort -n -r",
     kRoot, kRoot},

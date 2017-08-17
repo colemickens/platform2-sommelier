@@ -12,5 +12,5 @@
 
 chrome_log,/usr/share/userfeedback/scripts/get_log /home/chronos/user/chrome | grep -E "<empty>|<not available>|network_library",ascii
 chrome_system_log,/usr/share/userfeedback/scripts/get_log /var/log/chrome/chrome | grep -E "<empty>|<not available>|network_library",ascii
-syslog,/usr/share/userfeedback/scripts/getmsgs --last '2 hours' /var/log/messages | grep -E "<empty>|<not available>|flimflam|wpa_supplicant|l2tpipsec_vpn|ipsec|xl2tpd|pppd"
+syslog,/usr/share/userfeedback/scripts/getmsgs /var/log/messages | grep -E "<empty>|<not available>|flimflam|wpa_supplicant|l2tpipsec_vpn|ipsec|xl2tpd|pppd"
 ui_log,/usr/share/userfeedback/scripts/get_log /var/log/ui/ui.LATEST | grep -E "<empty>|<not available>|chromeos_network"

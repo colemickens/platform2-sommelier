@@ -5,18 +5,11 @@
 # found in the LICENSE file.
 #
 # This script prints the last part of a syslog-timestamped file to the
-# stdout according to a time specification.  By default the last day of
-# msgs written to /var/log/messages is printed. Options:
-# --last <time>    collect most recent msgs up to <time> (default 1 day)
+# stdout.  By default the content of /var/log/messages is printed. Options:
 # --bytes N        cap collected data at N bytes (default 512K)
 #
 # Note option order is important (TODO(sleffler) rewrite w/ shflags)
 
-if [ "$1" = "--last" -o "$1" = "-l" ]; then
-  LAST="$2"; shift; shift
-else
-  LAST='1 day'
-fi
 if [ "$1" = "--bytes" -o "$1" = "-c" ]; then
   MAXDATA="$2"; shift; shift
 else
@@ -27,8 +20,8 @@ LOGFILE=${1:-/var/log/messages}
 # create list of files assuming normal log rotation
 
 LOGFILES="${LOGFILE}"
-local BASENAME="${LOGFILE%%.*}"
-local EXTENSION="${LOGFILE#*.}"
+BASENAME="${LOGFILE%%.*}"
+EXTENSION="${LOGFILE#*.}"
 if [ "${BASENAME}" = "${EXTENSION}" ]; then
   EXTENSION=""
 else
@@ -40,38 +33,4 @@ for i in 1 2 3 4 5 6 7 8 9; do
   LOGFILES="${LOGFILES} $FILE"
 done
 
-# We want to normalize dates to UTC so timezones don't complicate things.
-export TZ="UTC"
-
-WHEN="now - $LAST"
-DATE=$(date -d "$WHEN" +'%s')
-
-# The awk script below takes into account timezone in the log's timestamp.
-#
-# A date string in log messages looks like this:
-#  2017-08-07T00:58:08.288730-07:00
-#
-# We first turn this into a string that mktime can recognize:
-#  "2017 08 07 00 58 08"
-# Note: mktime is not is POSIX awk, but gawk/mawk do support it.
-#
-# Also, we drop the nanoseconds, as they do not matter at all for the precision
-# required here.
-#
-# mktime gets the UTC date (as we set TZ="UTC"), we need to compensate for
-# timezone, parsing the timezone string (-05:30) from fixed offsets in the
-# string into tz/tzm.
-
-tac $LOGFILES \
-  | awk -v DATE="$DATE" '{
-    split($1, s, /[-T:.]/)
-    d = mktime(s[1] " " s[2] " " s[3] " " s[4] " " s[5] " " s[6])
-    tz = int(substr($1, 27, 3))
-    tzm = int(substr($1, 31, 2))
-    if (tz < 0)
-      tzm = -tzm
-    if ((d - (tz * 3600 + tzm * 60)) < DATE)
-      exit
-    print
-  }' | tac \
-  | tail -c $MAXDATA
+cat $LOGFILES | tail -c $MAXDATA
