@@ -120,7 +120,7 @@ struct RoutingTableEntry {
 
   ~RoutingTableEntry() {}
 
-  bool Equals(const RoutingTableEntry& b) {
+  bool Equals(const RoutingTableEntry& b) const {
     return (dst.Equals(b.dst) &&
             src.Equals(b.src) &&
             gateway.Equals(b.gateway) &&
