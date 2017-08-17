@@ -655,7 +655,7 @@ Properties 	string ActiveProfile [readwrite]
 			the limited usage of WiFi or Bluetooth devices might
 			be allowed in some situations.
 
-		string PortalURL [readwrite]
+		string PortalURL [readonly]
 
 			The URL to use when doing captive portal checking.
 			When a service reaches the "ready" state and

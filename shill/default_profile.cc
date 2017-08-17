@@ -65,8 +65,6 @@ const char DefaultProfile::kStorageNoAutoConnectTechnologies[] =
 // static
 const char DefaultProfile::kStorageOfflineMode[] = "OfflineMode";
 // static
-const char DefaultProfile::kStoragePortalURL[] = "PortalURL";
-// static
 const char DefaultProfile::kStoragePortalCheckInterval[] =
     "PortalCheckInterval";
 // static
@@ -97,7 +95,6 @@ DefaultProfile::DefaultProfile(ControlInterface* control,
   store->RegisterConstString(kNoAutoConnectTechnologiesProperty,
                              &manager_props.no_auto_connect_technologies);
   store->RegisterConstBool(kOfflineModeProperty, &manager_props.offline_mode);
-  store->RegisterConstString(kPortalURLProperty, &manager_props.portal_url);
   store->RegisterConstInt32(kPortalCheckIntervalProperty,
                             &manager_props.portal_check_interval_seconds);
   store->RegisterConstString(kProhibitedTechnologiesProperty,
@@ -142,10 +139,10 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props,
                             &manager_props->no_auto_connect_technologies)) {
     manager_props->no_auto_connect_technologies = "";
   }
-  if (!storage()->GetString(kStorageId, kStoragePortalURL,
-                            &manager_props->portal_url)) {
-    manager_props->portal_url = ConnectivityTrial::kDefaultURL;
-  }
+
+  // This used to be loaded from the default profile, but now it is fixed.
+  manager_props->portal_url = ConnectivityTrial::kDefaultURL;
+
   std::string check_interval;
   if (!storage()->GetString(kStorageId, kStoragePortalCheckInterval,
                             &check_interval) ||
@@ -196,9 +193,6 @@ bool DefaultProfile::Save() {
   storage()->SetString(kStorageId,
                        kStorageNoAutoConnectTechnologies,
                        props_.no_auto_connect_technologies);
-  storage()->SetString(kStorageId,
-                       kStoragePortalURL,
-                       props_.portal_url);
   storage()->SetString(kStorageId,
                        kStoragePortalCheckInterval,
                        base::IntToString(props_.portal_check_interval_seconds));

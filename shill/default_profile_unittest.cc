@@ -163,10 +163,6 @@ TEST_F(DefaultProfileTest, Save) {
                         DefaultProfile::kStorageProhibitedTechnologies,
                         ""))
       .WillOnce(Return(true));
-  EXPECT_CALL(*storage.get(), SetString(DefaultProfile::kStorageId,
-                                        DefaultProfile::kStoragePortalURL,
-                                        ""))
-      .WillOnce(Return(true));
   EXPECT_CALL(*storage.get(),
               SetString(DefaultProfile::kStorageId,
                         DefaultProfile::kStoragePortalCheckInterval,
@@ -223,10 +219,6 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
               GetString(DefaultProfile::kStorageId,
                         DefaultProfile::kStorageProhibitedTechnologies,
                         _))
-      .WillOnce(Return(false));
-  EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
-                                        DefaultProfile::kStoragePortalURL,
-                                        &manager_props.portal_url))
       .WillOnce(Return(false));
   EXPECT_CALL(*storage.get(),
               GetString(DefaultProfile::kStorageId,
@@ -296,11 +288,6 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
                         _))
       .WillOnce(DoAll(SetArgumentPointee<2>(no_auto_connect_technologies),
                       Return(true)));
-  const string portal_url("http://www.chromium.org");
-  EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
-                                        DefaultProfile::kStoragePortalURL,
-                                        _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(portal_url), Return(true)));
   const string portal_check_interval_string("10");
   const int portal_check_interval_int = 10;
   EXPECT_CALL(*storage.get(),
@@ -333,7 +320,6 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
             manager_props.link_monitor_technologies);
   EXPECT_EQ(no_auto_connect_technologies,
             manager_props.no_auto_connect_technologies);
-  EXPECT_EQ(portal_url, manager_props.portal_url);
   EXPECT_EQ(portal_check_interval_int,
             manager_props.portal_check_interval_seconds);
   EXPECT_EQ(prohibited_technologies, manager_props.prohibited_technologies);
