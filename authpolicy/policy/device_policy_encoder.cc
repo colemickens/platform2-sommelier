@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/json/json_reader.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <components/policy/core/common/registry_dict.h>
 #include <dbus/shill/dbus-constants.h>
@@ -81,7 +82,63 @@ std::unique_ptr<base::DictionaryValue> JsonToDictionary(const std::string& json,
   return dict_value;
 }
 
-}  //  namespace
+#define CONVERT_WEEKDAY(weekday)        \
+  if (str == #weekday) {                \
+    *wd = em::WeeklyTimeProto::weekday; \
+    return true;                        \
+  }
+
+bool StringToWeekday(const std::string& str, em::WeeklyTimeProto::Weekday* wd) {
+  CONVERT_WEEKDAY(MONDAY);
+  CONVERT_WEEKDAY(TUESDAY);
+  CONVERT_WEEKDAY(WEDNESDAY);
+  CONVERT_WEEKDAY(THURSDAY);
+  CONVERT_WEEKDAY(FRIDAY);
+  CONVERT_WEEKDAY(SATURDAY);
+  CONVERT_WEEKDAY(SUNDAY);
+  return false;
+}
+
+#undef CONVERT_WEEKDAY
+
+// Converts a dictionary |value| to a WeeklyTimeProto |proto|.
+bool EncodeWeeklyTimeProto(const base::DictionaryValue& value,
+                           em::WeeklyTimeProto* proto) {
+  std::string weekday_str;
+  em::WeeklyTimeProto::Weekday weekday = em::WeeklyTimeProto::MONDAY;
+  int time = 0;
+  if (!value.GetString("weekday", &weekday_str) ||
+      !StringToWeekday(weekday_str, &weekday) ||
+      !value.GetInteger("time", &time)) {
+    return false;
+  }
+
+  proto->set_weekday(weekday);
+  proto->set_time(time);
+  return true;
+}
+
+// Converts the dictionary |value| to a DeviceOffHoursIntervalProto |proto|.
+bool EncodeDeviceOffHoursIntervalProto(const base::Value& value,
+                                       em::DeviceOffHoursIntervalProto* proto) {
+  const base::DictionaryValue* dict = nullptr;
+  if (!value.GetAsDictionary(&dict))
+    return false;
+
+  const base::DictionaryValue* start = nullptr;
+  if (!dict->GetDictionary("start", &start))
+    return false;
+
+  const base::DictionaryValue* end = nullptr;
+  if (!dict->GetDictionary("end", &end))
+    return false;
+
+  DCHECK(start && end);
+  return EncodeWeeklyTimeProto(*start, proto->mutable_start()) &&
+         EncodeWeeklyTimeProto(*end, proto->mutable_end());
+}
+
+}  // namespace
 
 void DevicePolicyEncoder::EncodePolicy(
     em::ChromeDeviceSettingsProto* policy) const {
@@ -478,6 +535,41 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   EncodeInteger(key::kDeviceSecondFactorAuthentication, [policy](int value) {
     policy->mutable_device_second_factor_authentication()->set_mode(
         static_cast<em::DeviceSecondFactorAuthenticationProto_U2fMode>(value));
+  });
+
+  EncodeString(key::kDeviceOffHours, [policy](const std::string& value) {
+    std::string error;
+    std::unique_ptr<base::DictionaryValue> dict_value =
+        JsonToDictionary(value, &error);
+    const base::ListValue* intervals = nullptr;
+    const base::ListValue* ignored_policies = nullptr;
+    std::string timezone;
+    bool is_error = !dict_value ||
+                    !dict_value->GetList("interval", &intervals) ||
+                    !dict_value->GetList("ignored_policy", &ignored_policies) ||
+                    !dict_value->GetString("timezone", &timezone);
+    auto proto = base::MakeUnique<em::DeviceOffHoursProto>();
+    if (!is_error) {
+      proto->set_timezone(timezone);
+
+      for (const base::Value* entry : *intervals) {
+        is_error |=
+            !EncodeDeviceOffHoursIntervalProto(*entry, proto->add_interval());
+      }
+
+      for (const base::Value* entry : *ignored_policies) {
+        is_error |= !entry->GetAsString(proto->add_ignored_policy());
+      }
+    }
+
+    if (is_error) {
+      LOG(ERROR) << "Invalid JSON string '" << (!error.empty() ? error : value)
+                 << "' for policy '" << key::kDeviceOffHours << "', ignoring. "
+                 << "See policy_templates.json for example.";
+      return;
+    }
+
+    policy->set_allocated_device_off_hours(proto.release());
   });
 
   EncodeString(key::kCastReceiverName, [policy](const std::string& value) {

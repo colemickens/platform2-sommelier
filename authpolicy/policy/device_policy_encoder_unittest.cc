@@ -370,6 +370,52 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(em::DeviceSecondFactorAuthenticationProto::U2F,
             policy.device_second_factor_authentication().mode());
 
+  EncodeString(&policy,
+               key::kDeviceOffHours,
+               R"!!!(
+               {
+                 "interval":
+                 [
+                   {
+                     "start": {
+                       "weekday": "MONDAY",
+                       "time": 12840000
+                     },
+                     "end": {
+                       "weekday": "MONDAY",
+                       "time": 21720000
+                     }
+                   },
+                   {
+                     "start": {
+                       "weekday": "FRIDAY",
+                       "time": 38640000
+                     },
+                     "end": {
+                       "weekday": "FRIDAY",
+                       "time": 57600000
+                     }
+                   }
+                 ],
+                 "timezone": "GMT",
+                 "ignored_policy": ["policy1", "policy2"]
+               })!!!");
+  const auto& device_off_hours_proto = policy.device_off_hours();
+  EXPECT_EQ(2, device_off_hours_proto.interval_size());
+  const auto& interval1 = device_off_hours_proto.interval().Get(0);
+  const auto& interval2 = device_off_hours_proto.interval().Get(1);
+  EXPECT_EQ(em::WeeklyTimeProto::MONDAY, interval1.start().weekday());
+  EXPECT_EQ(em::WeeklyTimeProto::MONDAY, interval1.end().weekday());
+  EXPECT_EQ(12840000, interval1.start().time());
+  EXPECT_EQ(21720000, interval1.end().time());
+  EXPECT_EQ(em::WeeklyTimeProto::FRIDAY, interval2.start().weekday());
+  EXPECT_EQ(em::WeeklyTimeProto::FRIDAY, interval2.end().weekday());
+  EXPECT_EQ(38640000, interval2.start().time());
+  EXPECT_EQ(57600000, interval2.end().time());
+  EXPECT_EQ("GMT", device_off_hours_proto.timezone());
+  EXPECT_EQ("policy1", device_off_hours_proto.ignored_policy().Get(0));
+  EXPECT_EQ("policy2", device_off_hours_proto.ignored_policy().Get(1));
+
   EncodeString(&policy, key::kCastReceiverName, kString);
   EXPECT_EQ(kString, policy.cast_receiver_name().name());
 
