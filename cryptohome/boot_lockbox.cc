@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <openssl/objects.h>
 #include <openssl/rsa.h>
+#include <openssl/sha.h>
 
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptolib.h"
@@ -24,8 +25,6 @@ using brillo::SecureBlob;
 namespace {
 
 const int kPCRIndex = 15;
-
-const unsigned char kPCRValue[20] = {0};
 
 // This is an arbitrary value, our only goal is for the PCR to be non-zero.
 const char kPCRExtension[] = "CROS_PCR15_845A4A757B94";
@@ -46,8 +45,14 @@ struct RSADeleter {
 
 namespace cryptohome {
 
+size_t GetPcrValueSize(Tpm* tpm) {
+  return (tpm && tpm->GetVersion() == Tpm::TpmVersion::TPM_2_0) ?
+      SHA256_DIGEST_LENGTH : SHA_DIGEST_LENGTH;
+}
+
 BootLockbox::BootLockbox(Tpm* tpm, Platform* platform, Crypto* crypto)
-    : tpm_(tpm), platform_(platform), crypto_(crypto) {
+    : tpm_(tpm), platform_(platform), crypto_(crypto),
+      initial_pcr_value_(GetPcrValueSize(tpm), 0) {
 }
 
 BootLockbox::~BootLockbox() {}
@@ -79,8 +84,8 @@ bool BootLockbox::Verify(const brillo::SecureBlob& data,
   if (!GetCreationBlob(&creation_blob)) {
     return false;
   }
-  brillo::SecureBlob pcr_value(std::begin(kPCRValue), std::end(kPCRValue));
-  if (!tpm_->VerifyPCRBoundKey(kPCRIndex, pcr_value, key_blob, creation_blob)) {
+  if (!tpm_->VerifyPCRBoundKey(kPCRIndex, initial_pcr_value_, key_blob,
+                               creation_blob)) {
     return false;
   }
   return true;
@@ -99,8 +104,7 @@ bool BootLockbox::FinalizeBoot() {
 bool BootLockbox::IsFinalized() {
   brillo::SecureBlob actual_pcr_value;
   return tpm_->ReadPCR(kPCRIndex, &actual_pcr_value) &&
-         actual_pcr_value.size() == arraysize(kPCRValue) &&
-         memcmp(actual_pcr_value.data(), kPCRValue, arraysize(kPCRValue));
+         actual_pcr_value != initial_pcr_value_;
 }
 
 bool BootLockbox::GetKeyBlob(brillo::SecureBlob* key_blob) {
@@ -179,8 +183,7 @@ bool BootLockbox::CreateKey() {
   brillo::SecureBlob key_blob;
   brillo::SecureBlob public_key;
   brillo::SecureBlob creation_blob;
-  brillo::SecureBlob pcr_value(std::begin(kPCRValue), std::end(kPCRValue));
-  if (!tpm_->CreatePCRBoundKey(kPCRIndex, pcr_value, &key_blob,
+  if (!tpm_->CreatePCRBoundKey(kPCRIndex, initial_pcr_value_, &key_blob,
                                &public_key, &creation_blob)) {
     LOG(ERROR) << "Failed to create boot-lockbox key.";
     return false;
