@@ -2155,6 +2155,8 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
 
     ON_CALL(utils_, Exists(_))
         .WillByDefault(Invoke(this, &StartTPMFirmwareUpdateTest::FileExists));
+    ON_CALL(utils_, GetAppOutput(_, _))
+        .WillByDefault(Invoke(this, &StartTPMFirmwareUpdateTest::GetAppOutput));
     ON_CALL(*device_policy_service_, InstallAttributesEnterpriseMode())
         .WillByDefault(Return(false));
     ON_CALL(vpd_process_, RunInBackground(_, _, _))
@@ -2189,8 +2191,26 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
     expected_error_ = error;
   }
 
-  void SetUpdateMode(const std::string& update_mode) {
-    update_mode_ = update_mode;
+  void SetUpdateMode(const std::string& mode) {
+    update_mode_ = mode;
+  }
+
+  void SetExistingVPDParams(const std::string& params) {
+    existing_vpd_params_ = params;
+  }
+
+  void SetExpectedVPDParams(const std::string& params) {
+    expected_vpd_params_ = params;
+  }
+
+  bool GetAppOutput(const std::vector<std::string>& argv, std::string* output) {
+    if (argv.size() != 2) {
+      return false;
+    }
+    if (argv[1] == SessionManagerImpl::kTPMFirmwareUpdateParamsVPDKey) {
+      *output = existing_vpd_params_;
+    }
+    return true;
   }
 
   bool RunVpdProcess(const VpdProcess::KeyValuePairs& updates,
@@ -2199,9 +2219,9 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
     EXPECT_EQ(1, updates.size());
     EXPECT_TRUE(ignore_cache);
     if (updates.size() == 1) {
-      EXPECT_EQ(SessionManagerImpl::kTPMFirmwareUpdateModeVPDKey,
+      EXPECT_EQ(SessionManagerImpl::kTPMFirmwareUpdateParamsVPDKey,
                 updates[0].first);
-      EXPECT_EQ(update_mode_, updates[0].second);
+      EXPECT_EQ(expected_vpd_params_, updates[0].second);
     }
     if (vpd_spawned_) {
       completion_ = std::move(completion);
@@ -2218,6 +2238,8 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
   }
 
   std::string update_mode_ = "first_boot";
+  std::string existing_vpd_params_;
+  std::string expected_vpd_params_ = "mode:first_boot";
   std::string expected_error_;
   std::map<std::string, bool> file_existence_;
   bool vpd_spawned_ = true;
@@ -2231,6 +2253,13 @@ TEST_F(StartTPMFirmwareUpdateTest, Success_FirstBoot) {
 
 TEST_F(StartTPMFirmwareUpdateTest, Success_Recovery) {
   SetUpdateMode("recovery");
+  SetExpectedVPDParams("mode:recovery");
+}
+
+TEST_F(StartTPMFirmwareUpdateTest, Success_DryRunPreserved) {
+  SetExistingVPDParams("attempts:2,dryrun:1,mode:complete");
+  SetExpectedVPDParams("mode:first_boot,dryrun:1");
+  ExpectDeviceRestart();
 }
 
 TEST_F(StartTPMFirmwareUpdateTest, AlreadyLoggedIn) {

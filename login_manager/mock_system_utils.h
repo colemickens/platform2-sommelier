@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <gmock/gmock.h>
@@ -25,6 +26,8 @@ class MockSystemUtils : public SystemUtils {
   MOCK_METHOD3(kill, int(pid_t pid, uid_t uid, int signal));
   MOCK_METHOD1(time, time_t(time_t*));  // NOLINT
   MOCK_METHOD0(fork, pid_t(void));
+  MOCK_METHOD2(GetAppOutput,
+               bool(const std::vector<std::string>&, std::string*));
   MOCK_METHOD0(GetDevModeState, DevModeState(void));
   MOCK_METHOD0(GetVmState, VmState(void));
   MOCK_METHOD2(ProcessGroupIsGone, bool(pid_t child_spec,

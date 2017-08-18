@@ -29,6 +29,7 @@
 #include <base/rand_util.h>
 #include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -83,8 +84,8 @@ constexpr char SessionManagerImpl::kResetFile[] =
 constexpr char SessionManagerImpl::kTPMFirmwareUpdateAvailableFile[] =
     "/run/tpm_firmware_update_available";
 
-constexpr char SessionManagerImpl::kTPMFirmwareUpdateModeVPDKey[] =
-    "tpm_firmware_update_mode";
+constexpr char SessionManagerImpl::kTPMFirmwareUpdateParamsVPDKey[] =
+    "tpm_firmware_update_params";
 
 constexpr char SessionManagerImpl::kStartUserSessionImpulse[] =
     "start-user-session";
@@ -897,6 +898,29 @@ void SessionManagerImpl::StartTPMFirmwareUpdate(
     return;
   }
 
+  // Get the current TPM firmware update params from VPD.
+  std::string vpd_params;
+  base::StringPairs vpd_pairs;
+  if (!system_->GetAppOutput(
+          {"/usr/sbin/vpd_get_value", kTPMFirmwareUpdateParamsVPDKey},
+          &vpd_params) ||
+      !base::SplitStringIntoKeyValuePairs(vpd_params, ':', ',', &vpd_pairs)) {
+    constexpr char kMessage[] = "Failed to get current VPD value.";
+    LOG(ERROR) << kMessage;
+    auto error = CreateError(dbus_error::kVpdUpdateFailed, kMessage);
+    response->ReplyWithError(error.get());
+    return;
+  }
+
+  // Construct the update parameters.
+  vpd_params = "mode:" + update_mode;
+  for (const auto& pair : vpd_pairs) {
+    if (pair.first == "dryrun") {
+      vpd_params += ",dryrun:1";
+      break;
+    }
+  }
+
   // Trigger VPD key update.
   auto completion =
       base::Bind(&SessionManagerImpl::OnTPMFirmwareUpdateModeUpdated,
@@ -904,7 +928,7 @@ void SessionManagerImpl::StartTPMFirmwareUpdate(
                  update_mode,
                  base::Passed(&response));
   if (!vpd_process_->RunInBackground(
-          {{kTPMFirmwareUpdateModeVPDKey, update_mode}}, true, completion)) {
+          {{kTPMFirmwareUpdateParamsVPDKey, vpd_params}}, true, completion)) {
     // Make sure to send a response.
     completion.Run(false);
   }

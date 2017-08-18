@@ -77,8 +77,10 @@ class SessionManagerImpl
   // Path to flag file indicating that a TPM firmware update is available.
   static const char kTPMFirmwareUpdateAvailableFile[];
 
-  // The VPD key that holds the consented TPM firmware update mode.
-  static const char kTPMFirmwareUpdateModeVPDKey[];
+  // The VPD key that holds the TPM firmware update parameters. These are
+  // encoded string-value pairs using ':' as the value separator and ',' as the
+  // pair separator.
+  static const char kTPMFirmwareUpdateParamsVPDKey[];
 
   // Name of impulse emitted when user session starts.
   static const char kStartUserSessionImpulse[];

@@ -131,6 +131,11 @@ pid_t SystemUtilsImpl::fork() {
   return ::fork();
 }
 
+bool SystemUtilsImpl::GetAppOutput(const std::vector<std::string>& argv,
+                                   std::string* output) {
+  return base::GetAppOutput(argv, output);
+}
+
 bool SystemUtilsImpl::ProcessGroupIsGone(pid_t child_spec,
                                          base::TimeDelta timeout) {
   return ProcessIsGone(-child_spec, timeout);

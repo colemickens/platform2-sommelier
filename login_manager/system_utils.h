@@ -57,6 +57,10 @@ class SystemUtils {
   // Forks a new process.  In the parent, returns child's pid.  In child, 0.
   virtual pid_t fork() = 0;
 
+  // Run an external program and collect its stdout in |output|.
+  virtual bool GetAppOutput(const std::vector<std::string>& argv,
+                            std::string* output) = 0;
+
   // Returns the current developer mode.
   virtual DevModeState GetDevModeState() = 0;
 

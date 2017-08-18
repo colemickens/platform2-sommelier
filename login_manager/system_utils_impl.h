@@ -33,6 +33,8 @@ class SystemUtilsImpl : public SystemUtils {
   int kill(pid_t pid, uid_t owner, int signal) override;
   time_t time(time_t* t) override;
   pid_t fork() override;
+  bool GetAppOutput(const std::vector<std::string>& argv,
+                    std::string* output) override;
   DevModeState GetDevModeState() override;
   VmState GetVmState() override;
   bool ProcessGroupIsGone(pid_t child_spec, base::TimeDelta timeout) override;
