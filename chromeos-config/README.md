@@ -139,6 +139,9 @@ properties.
                 differences are small and we can detect the model from board ID
                 pins. At this time, only a phandle reference to a node at
                 family/firmware/shared is supported.
+            *   `key-id` (optional): Unique ID that matches which key
+                will be used in for firmware signing as part of vboot.
+                For context, see go/cros-unibuild-signing
         *   `powerd_prefs` (optional): Name of a subdirectory under the powerd
             model_specific prefs directory where model-specific prefs files are
             stored.
@@ -175,6 +178,7 @@ chromeos {
             wallpaper = "seaside_life";
             firmware {
                 shares = <&shared>;
+                key-id = "reef";
             }
         };
 
@@ -191,6 +195,7 @@ chromeos {
                 };
                 main-image = "bcs://Pyro.9042.41.0.tbz2";
                 ec-image = "bcs://Pyro_EC.9042.41.0.tbz2";
+                key-id = "pyro";
             };
         };
 
@@ -207,6 +212,7 @@ chromeos {
                 };
                 main-image = "bcs://Snappy.9042.43.0.tbz2";
                 ec-image = "bcs://Snappy_EC.9042.43.0.tbz2";
+                key-id = "snappy";
             };
         };
 
@@ -215,6 +221,7 @@ chromeos {
             wallpaper = "coffee";
             firmware {
                 shares = <&shared>;
+                key-id = "basking";
             };
         };
     };
