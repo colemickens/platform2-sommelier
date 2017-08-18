@@ -482,7 +482,7 @@ status_t SyncManager::handleMessageSOF(Message &msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = NO_ERROR;
-    int mode = TEST_PATTERN_MODE_DEFAULT;
+    int mode = TEST_PATTERN_MODE_OFF;
 
     if (!mStarted) {
         LOGD("SOF[%d] received while closing- ignoring",
@@ -515,15 +515,15 @@ status_t SyncManager::handleMessageSOF(Message &msg)
             LOGE("Failed to apply sensor parameters.");
 
         switch (mQueuedSettings[0]->testPatternMode) {
-            case TEST_PATTERN_MODE_OFF:
+            case ANDROID_SENSOR_TEST_PATTERN_MODE_OFF:
                 mode = TEST_PATTERN_MODE_OFF;
                 break;
-            case TEST_PATTERN_MODE_SOLID_COLOR:
-                mode = TEST_PATTERN_MODE_SOLID_COLOR;
+            case ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS:
+                mode = TEST_PATTERN_MODE_COLOR_BARS;
                 break;
             default:
-                LOGE("test pattern mode error");
-                return BAD_VALUE;
+                LOGW("test pattern mode[%d] not supported", mQueuedSettings[0]->testPatternMode);
+                break;
         }
 
         status = mSensorOp->setTestPattern(mode);
