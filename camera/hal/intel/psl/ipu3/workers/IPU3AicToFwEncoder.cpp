@@ -224,7 +224,7 @@ ispCdsEncode(aic_config *config, ipu3_uapi_params *params)
     params->acc_param.cds.ds_c13 = (__u32)config->rgbpp_2500_config.cds.coeffs.c13;
     params->acc_param.cds.ds_nf = (__u32)config->rgbpp_2500_config.cds.nf;
 
-    params->acc_param.cds.uv_bin_output = 1;
+    params->acc_param.cds.uv_bin_output = 0;
     params->acc_param.cds.csc_en = 1;
     params->use.acc_cds = 1;
 }
