@@ -46,18 +46,8 @@ properties.
                 EC.
             *   `updater5.sh`: In current use. Supports firmware v4
                 (chromeos-ec, vboot2)
-
-*   `models`: Sub-nodes of this define models supported by this board.
-
-    *   `<model name>`: actual name of the model being defined, e.g. `reef` or
-        `pyro`
-        *   `wallpaper` (optional): base filename of the default wallpaper to
-            show on this device. The base filename points `session_manager` to
-            two files in the `/usr/share/chromeos-assets/wallpaper/<wallpaper>`
-            directory: `/[filename]_[small|large].jpg`. If these files are
-            missing or the property does not exist, "default" is used.
-        *   `firmware` (optional) : Contains information about firmware versions
-            and files
+        *   `shared`: Contains information intended to be shared across all
+            models (see firmware discussion under models below)
             *   `bcs-overlay`: Overlay name containing the firmware binaries.
                 This is used to generate the full path. For example a value of
                 `overlay-reef-private` in the `reef` model means that all files
@@ -124,14 +114,31 @@ properties.
                 that we should re-sign and generate a read-write firmware image.
                 This replaces the `CROS_FIRMWARE_BUILD_MAIN_RW_IMAGE` ebuild
                 variable.
-            +   `shares`(optional): Phandle pointing to the firmware to use for
+
+*   `models`: Sub-nodes of this define models supported by this board.
+
+    *   `<model name>`: actual name of the model being defined, e.g. `reef` or
+        `pyro`
+        *   `wallpaper` (optional): base filename of the default wallpaper to
+            show on this device. The base filename points `session_manager` to
+            two files in the `/usr/share/chromeos-assets/wallpaper/<wallpaper>`
+            directory: `/[filename]_[small|large].jpg`. If these files are
+            missing or the property does not exist, "default" is used.
+        *   `firmware` (optional) : Contains information about firmware versions
+            and files. The properties and nodes inside this node are exactly the
+            same as family/firmware/shared. By convention, tools looking for
+            firmware properties for a model will fallback to the family-level
+            firmware/shared configuration if the node or property is not found
+            at the model level.
+            *   `shares`(optional): Phandle pointing to the firmware to use for
                 this model. This is a list with a single phandle, pointing to
                 the firmware node of another model. The presense of this
                 property indicates that this model does not have separate
                 firmware although it may have its own keyset. This property is
                 used to share firmware across multiple models where hardware
                 differences are small and we can detect the model from board ID
-                pins.
+                pins. At this time, only a phandle reference to a node at
+                family/firmware/shared is supported.
         *   `powerd_prefs` (optional): Name of a subdirectory under the powerd
             model_specific prefs directory where model-specific prefs files are
             stored.
@@ -143,14 +150,7 @@ chromeos {
     family {
         firmware {
             script = "updater4.sh";
-        };
-    };
-
-    models {
-        reef {
-            powerd_prefs = "reef";
-            wallpaper = "seaside_life";
-            reef_firmware: firmware {
+            shared: shared {
                 bcs-overlay = "overlay-reef-private";
                 build-targets {
                     coreboot = "reef";
@@ -166,6 +166,16 @@ chromeos {
                     "${SYSROOT}/usr/sbin/ectool",
                     "bcs://Reef.something.tbz";
             };
+        };
+    };
+
+    models {
+        reef {
+            powerd_prefs = "reef";
+            wallpaper = "seaside_life";
+            firmware {
+                shares = <&shared>;
+            }
         };
 
         pyro {
@@ -204,7 +214,7 @@ chromeos {
             powerd_prefs = "reef";
             wallpaper = "coffee";
             firmware {
-                shares = <&reef_firmware>;
+                shares = <&shared>;
             };
         };
     };
