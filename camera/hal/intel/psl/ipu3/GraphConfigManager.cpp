@@ -293,9 +293,11 @@ void GraphConfigManager::handleMap(camera3_stream_t* stream, ResolutionItem& res
 
     ItemUID w = res.first;
     ItemUID h = res.second;
-
-    mQuery[w] = std::to_string(stream->width);
-    mQuery[h] = std::to_string(stream->height);
+    bool rotate = stream->stream_type == CAMERA3_STREAM_OUTPUT &&
+                  (stream->crop_rotate_scale_degrees == CAMERA3_STREAM_ROTATION_90
+                   || stream->crop_rotate_scale_degrees == CAMERA3_STREAM_ROTATION_270);
+    mQuery[w] = std::to_string(rotate ? stream->height : stream->width);
+    mQuery[h] = std::to_string(rotate ? stream->width : stream->height);
 }
 
 status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*> &streams,
