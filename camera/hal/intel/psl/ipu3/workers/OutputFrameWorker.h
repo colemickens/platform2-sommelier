@@ -37,6 +37,8 @@ public:
 
 private:
     std::unique_ptr<JpegEncodeTask> mJpegTask;
+    int needRotation();
+    status_t rotateFrame(int outFormat, int angle);
     status_t convertJpeg(std::shared_ptr<CameraBuffer> buffer,
                          std::shared_ptr<CameraBuffer> jpegBuffer,
                          Camera3Request *request);
@@ -49,6 +51,8 @@ private:
     bool mAllDone;
     bool mUseInternalBuffer;
     IPU3NodeNames mNodeName;
+    /* OutputFrameWorker has the ownership of this rotate working buffer */
+    std::vector<uint8_t> mRotateBuffer;
 };
 
 } /* namespace camera2 */

@@ -22,6 +22,7 @@
 #include "ColorConverter.h"
 #include "CaptureBuffer.h"
 #include "NodeTypes.h"
+#include <libyuv.h>
 
 namespace android {
 namespace camera2 {
@@ -62,12 +63,30 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
         return ret;
 
     // Use internal buffers
-    mUseInternalBuffer = (mStream && mStream->format == HAL_PIXEL_FORMAT_BLOB);
+    mUseInternalBuffer =
+        mStream && (mStream->format == HAL_PIXEL_FORMAT_BLOB || needRotation() > 0);
     if (mUseInternalBuffer) {
         return allocateWorkerBuffers();
     }
 
     return OK;
+}
+
+int OutputFrameWorker::needRotation()
+{
+    CheckError((mStream == nullptr), 0, "%s, mStream is nullptr", __FUNCTION__);
+
+    if (mStream->stream_type != CAMERA3_STREAM_OUTPUT) {
+        LOG1("%s, no need rotation for stream type %d", __FUNCTION__, mStream->stream_type);
+        return 0;
+    }
+
+    if (mStream->crop_rotate_scale_degrees == CAMERA3_STREAM_ROTATION_90)
+        return 90;
+    else if (mStream->crop_rotate_scale_degrees == CAMERA3_STREAM_ROTATION_270)
+        return 270;
+
+    return 0;
 }
 
 status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
@@ -229,6 +248,11 @@ status_t OutputFrameWorker::postRun()
 
     stream = mOutputBuffer->getOwner();
 
+    int angle = 0;
+    if (mUseInternalBuffer && (angle = needRotation()) > 0) {
+       rotateFrame(mOutputBuffer->format(), angle);
+    }
+
     // Dump the buffers if enabled in flags
     if (mOutputBuffer->format() == HAL_PIXEL_FORMAT_BLOB) {
         // Use internal buffer
@@ -283,5 +307,54 @@ OutputFrameWorker::convertJpeg(std::shared_ptr<CameraBuffer> input,
     return status;
 }
 
+status_t OutputFrameWorker::rotateFrame(int outFormat, int angle)
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+
+    // Check the output buffer resolution with device config resolution
+    if ((mOutputBuffer->width() != mFormat.fmt.pix.height)
+         || (mOutputBuffer->height() != mFormat.fmt.pix.width)) {
+        LOGE("output resolution not match [%d x %d] vs [%d x %d]",
+              mOutputBuffer->width(), mOutputBuffer->height(),
+              mFormat.fmt.pix.width, mFormat.fmt.pix.height);
+        return UNKNOWN_ERROR;
+    }
+
+    const uint8* inBuffer = (uint8*)mBuffers[0].m.userptr;
+    uint8* outBuffer = (outFormat == HAL_PIXEL_FORMAT_BLOB)
+                           ? (uint8*)(mCameraBuffers[0]->data())
+                           : (uint8*)(mOutputBuffer->data());
+    int outW = mOutputBuffer->width();
+    int outH = mOutputBuffer->height();
+    int outStride = (outFormat == HAL_PIXEL_FORMAT_BLOB)
+                        ? mCameraBuffers[0]->stride()
+                        : mOutputBuffer->stride();
+    int inW = mFormat.fmt.pix.width;
+    int inH = mFormat.fmt.pix.height;
+    int inStride = mCameraBuffers[0]->stride();
+    if (mRotateBuffer.size() < mFormat.fmt.pix.sizeimage) {
+        mRotateBuffer.resize(mFormat.fmt.pix.sizeimage);
+    }
+
+    uint8* I420Buffer = mRotateBuffer.data();
+    int ret = libyuv::NV12ToI420Rotate(inBuffer, inStride, inBuffer + inH * inStride, inStride,
+                                       I420Buffer, outW,
+                                       I420Buffer + outW * outH, outW / 2,
+                                       I420Buffer + outW * outH * 5 / 4, outW / 2,
+                                       inW, inH,
+                                       (angle == 90) ? libyuv::RotationMode::kRotate90
+                                                     : libyuv::RotationMode::kRotate270);
+    CheckError((ret < 0), UNKNOWN_ERROR, "@%s, rotate fail [%d]!", __FUNCTION__, ret);
+
+    ret = libyuv::I420ToNV12(I420Buffer, outW,
+                             I420Buffer + outW * outH, outW / 2,
+                             I420Buffer + outW * outH * 5 / 4, outW / 2,
+                             outBuffer, outStride,
+                             outBuffer +  outStride * outH, outStride,
+                             outW, outH);
+    CheckError((ret < 0), UNKNOWN_ERROR, "@%s, convert fail [%d]!", __FUNCTION__, ret);
+
+    return OK;
+}
 } /* namespace camera2 */
 } /* namespace android */

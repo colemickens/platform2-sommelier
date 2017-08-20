@@ -114,7 +114,8 @@ libcamerahal_la_CPPFLAGS += $(ARC_CAMERA3_ANDROID_HEADERS_CFLAGS) \
                             $(LIBCAMERA_METADATA_CFLAGS) \
                             $(LIBCBM_CFLAGS) \
                             $(LIBCHROME_CFLAGS) \
-                            $(LIBSYNC_CFLAGS)
+                            $(LIBSYNC_CFLAGS) \
+                            $(LIBYUV_CFLAGS)
 
 #includes
 KERNELHEADERS = -I$(top_srcdir)/LAL/ipu3/include/uapi \
@@ -137,7 +138,7 @@ ALLINCLUDES = \
 libcamerahal_la_CPPFLAGS += $(ALLINCLUDES)
 
 # libs
-EXTERNAL_LIBS = -ljpeg -lexpat -lpthread $(LIBCBM_LIBS) $(LIBCHROME_LIBS)
+EXTERNAL_LIBS = -ljpeg -lexpat -lpthread $(LIBCBM_LIBS) $(LIBCHROME_LIBS) $(LIBYUV_LIBS)
 UTIL_LIBS =  $(PSLLIBS) \
           $(IA_IMAGING_LIBS) \
           $(LIBIACSS_LIBS)

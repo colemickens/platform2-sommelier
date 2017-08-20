@@ -61,6 +61,7 @@ PKG_CHECK_MODULES([LIBCAMERA_METADATA], [libcamera_metadata])
 PKG_CHECK_MODULES([LIBCAMERA_CLIENT], [libcamera_client])
 PKG_CHECK_MODULES([LIBCBM], [libcbm])
 PKG_CHECK_MODULES([LIBSYNC], [libsync])
+PKG_CHECK_MODULES([LIBYUV], [libyuv])
 PKG_CHECK_MODULES([IA_IMAGING], [ia_imaging])
 
 # Checks for header files.
