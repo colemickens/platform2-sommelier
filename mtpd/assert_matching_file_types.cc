@@ -6,7 +6,7 @@
 
 #include <base/macros.h>
 
-#include "mtp_file_entry.pb.h"
+#include "system_api/proto_bindings/mtp_file_entry.pb.h"
 
 #define COMPILE_ASSERT_MATCH(libmtp_type, protobuf_type) \
   static_assert(int(libmtp_type) == int(protobuf_type), "Mismatching types")

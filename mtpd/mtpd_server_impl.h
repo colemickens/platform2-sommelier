@@ -14,7 +14,7 @@
 #include "device_event_delegate.h"
 #include "device_manager.h"
 #include "file_entry.h"
-#include "mtpd_server/mtpd_server.h"
+#include "mtpd/dbus_adaptors/org.chromium.Mtpd.h"
 
 namespace mtpd {
 

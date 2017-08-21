@@ -12,7 +12,7 @@
 
 #include <base/macros.h>
 
-#include "mtp_file_entry.pb.h"
+#include "system_api/proto_bindings/mtp_file_entry.pb.h"
 
 namespace mtpd {
 
