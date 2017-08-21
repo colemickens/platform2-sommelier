@@ -19,8 +19,8 @@
 #include <base/synchronization/lock.h>
 #include <base/threading/simple_thread.h>
 
-#include "file_entry.h"
-#include "storage_info.h"
+#include "mtpd/file_entry.h"
+#include "mtpd/storage_info.h"
 
 extern "C" {
 struct udev;

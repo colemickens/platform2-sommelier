@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "device_manager.h"
+#include "mtpd/device_manager.h"
 
 #include <libudev.h>
 #include <sys/stat.h>
@@ -21,7 +21,7 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "device_event_delegate.h"
+#include "mtpd/device_event_delegate.h"
 
 namespace mtpd {
 

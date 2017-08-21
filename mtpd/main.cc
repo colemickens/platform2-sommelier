@@ -17,7 +17,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus-c++/glib-integration.h>
 
-#include "daemon.h"
+#include "mtpd/daemon.h"
 
 
 using base::CommandLine;

@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "storage_info.h"
+#include "mtpd/storage_info.h"
 
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "string_helpers.h"
+#include "mtpd/string_helpers.h"
 #include "system_api/proto_bindings/mtp_storage_info.pb.h"
 
 namespace mtpd {

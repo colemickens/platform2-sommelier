@@ -11,10 +11,10 @@
 #include <base/compiler_specific.h>
 #include <base/macros.h>
 
-#include "device_event_delegate.h"
-#include "device_manager.h"
-#include "file_entry.h"
 #include "mtpd/dbus_adaptors/org.chromium.Mtpd.h"
+#include "mtpd/device_event_delegate.h"
+#include "mtpd/device_manager.h"
+#include "mtpd/file_entry.h"
 
 namespace mtpd {
 
