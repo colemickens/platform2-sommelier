@@ -134,14 +134,14 @@ wait_for_tty() {
 }
 
 wipe_block_dev() {
-  DEV="$1"
+  local dev="$1"
   # Wipe the filesystem size if we can determine it. Full partition wipe
   # takes a long time on 16G SSD or rotating media.
-  if dumpe2fs ${DEV} ; then
-    FS_BLOCKS=$(dumpe2fs -h ${DEV} | grep "Block count" | sed "s/^.*:\W*//")
-    FS_BLOCKSIZE=$(dumpe2fs -h ${DEV} | grep "Block size" | sed "s/^.*:\W*//")
+  if dumpe2fs "${dev}" ; then
+    FS_BLOCKS=$(dumpe2fs -h "${dev}" | grep "Block count" | sed "s/^.*:\W*//")
+    FS_BLOCKSIZE=$(dumpe2fs -h "${dev}" | grep "Block size" | sed "s/^.*:\W*//")
   else
-    FS_BLOCKS=$(numsectors ${DEV})
+    FS_BLOCKS=$(numsectors "${dev}")
     FS_BLOCKSIZE=512
   fi
   BLOCKS_4M=$((4 * 1024 * 1024 / $FS_BLOCKSIZE))  # 4MiB in sectors
@@ -159,13 +159,19 @@ wipe_block_dev() {
       stty -F "${TTY}" raw -echo -cread || :
       exec 0</dev/null || :
       pv -etp -s $((4 * 1024 * 1024 * ${FULL_BLKS})) /dev/zero 2>"${TTY}" |
-        dd of=${DEV} bs=4M count=${FULL_BLKS} iflag=fullblock oflag=sync
+        dd of="${dev}" bs=4M count=${FULL_BLKS} iflag=fullblock oflag=sync
     )
   else
-    dd if=/dev/zero of=${DEV} bs=4M count=${FULL_BLKS}
+    dd if=/dev/zero of="${dev}" bs=4M count=${FULL_BLKS}
   fi
-  dd if=/dev/zero of=${DEV} bs=${FS_BLOCKSIZE} count=${REMAINDER_SECTORS} \
+  dd if=/dev/zero of="${dev}" bs=${FS_BLOCKSIZE} count=${REMAINDER_SECTORS} \
     seek=$(($FULL_BLKS * $BLOCKS_4M))
+}
+
+# Faster, but less thorough data destruction.
+wipe_block_dev_fast() {
+  local dev="$1"
+  dd if=/dev/zero of="${dev}" bs=4M count=1
 }
 
 # Get the specified information from the specified UBI volume.
@@ -267,6 +273,8 @@ wipedev() {
   local dev="$1"
   if [ "${IS_MTD}" = "1" ]; then
     wipe_mtd_dev "${dev}"
+  elif [ "${FAST_WIPE}" = "fast" ]; then
+    wipe_block_dev_fast "${dev}"
   else
     wipe_block_dev "${dev}"
   fi
@@ -437,34 +445,18 @@ wipe_stateful_partition() {
   # state and presence/absence of install attributes in case of power loss.
   # 2. The destruction of stateful must be last in the sequence in order to
   # minimize the probability of losing the preserved files.
-  if [ "$FAST_WIPE" = "fast" ] && [ "${IS_MTD}" = "0" ]; then
-    if [ -z "${KEEPIMG}" ]; then
-      ensure_bootable_kernel "${KERNEL_PART_NUM}" "${ROOT_DISK}"
-      dd bs=4M count=1 if=/dev/zero of=${OTHER_ROOT_DEV}
-      dd bs=4M count=1 if=/dev/zero of=${OTHER_KERNEL_DEV}
-    fi
-
-    # Clear TPM at next boot to make the TPM state consistent with (the soon to
-    # be induced) absence of install_attributes.pb.
-    crossystem clear_tpm_owner_request=1
-
-    # Just wipe the start of the partition and remake the fs on
-    # the stateful partition.
-    dd bs=4M count=1 if=/dev/zero of=${STATE_DEV}
-  else
-    if [ -z "${KEEPIMG}" ]; then
-      ensure_bootable_kernel "${KERNEL_PART_NUM}" "${ROOT_DISK}"
-      wipedev ${OTHER_ROOT_DEV}
-      wipedev ${OTHER_KERNEL_DEV}
-    fi
-
-    # Clear TPM at next boot to make the TPM state consistent with (the soon to
-    # be induced) absence of install_attributes.pb.
-    crossystem clear_tpm_owner_request=1
-
-    # Wipe everything on the stateful partition.
-    wipedev ${STATE_DEV}
+  if [ -z "${KEEPIMG}" ]; then
+    ensure_bootable_kernel "${KERNEL_PART_NUM}" "${ROOT_DISK}"
+    wipedev ${OTHER_ROOT_DEV}
+    wipedev ${OTHER_KERNEL_DEV}
   fi
+
+  # Clear TPM at next boot to make the TPM state consistent with (the soon to
+  # be induced) absence of install_attributes.pb.
+  crossystem clear_tpm_owner_request=1
+
+  # Wipe everything on the stateful partition.
+  wipedev ${STATE_DEV}
 }
 
 create_stateful_file_system() {
