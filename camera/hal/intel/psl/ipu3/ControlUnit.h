@@ -207,6 +207,8 @@ private:  /* Members */
     AAARunner *m3ARunner;
     LensHw *mLensController;
 
+    /* Using for Af sync */
+    uint32_t mAfApplySequence;
     uint32_t mSofSequence;
 };  // class ControlUnit
 

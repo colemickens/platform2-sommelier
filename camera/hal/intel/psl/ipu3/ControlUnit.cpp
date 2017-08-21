@@ -61,6 +61,7 @@ ControlUnit::ControlUnit(ImguUnit *thePU,
         mMetadata(nullptr),
         m3ARunner(nullptr),
         mLensController(nullptr),
+        mAfApplySequence(0),
         mSofSequence(0)
 {
 }
@@ -578,6 +579,7 @@ ControlUnit::processRequestForCapture(std::shared_ptr<RequestCtrlState> &reqStat
 
     if (stats != nullptr) {
         prepareStats(*reqState, *stats.get());
+        LOG2("%s, stats frame sequence %u", __FUNCTION__, stats->frameSequence);
     }
 
     status = m3ARunner->run2A(*reqState);
@@ -588,7 +590,17 @@ ControlUnit::processRequestForCapture(std::shared_ptr<RequestCtrlState> &reqStat
 
     mMetadata->writeLSCMetadata(reqState);
 
-    m3ARunner->runAf(*reqState);
+    if (mSofSequence == 0 || (stats != nullptr && stats->frameSequence >= mAfApplySequence)) {
+        m3ARunner->runAf(*reqState);
+        if (stats != nullptr) {
+            LOG2("%s, mAfApplySequence %u, frame sequence %u, mSofSequence %u",
+                  __FUNCTION__, mAfApplySequence, stats->frameSequence, mSofSequence);
+        }
+        mAfApplySequence = mSofSequence + 1;
+    } else {
+        MEMCPY_S(&reqState->captureSettings->aiqResults.afResults, sizeof(ia_aiq_af_results),
+                 &m3ARunner->getLatestResults().afResults, sizeof(ia_aiq_af_results));
+    }
 
     // Latest results are saved for the next frame calculation if we do not
     // find the correct results.
