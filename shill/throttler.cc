@@ -99,6 +99,12 @@ bool Throttler::DisableThrottlingOnAllInterfaces(
     }
   }
 
+  if (commands.empty()) {
+    Done(callback, Error::kSuccess, "");
+    ClearThrottleStatus();
+    return true;
+  }
+
   callback_ = callback;
   result = StartTCForCommands(commands);
   if (result) {
@@ -222,6 +228,7 @@ bool Throttler::ApplyThrottleToNewInterface(const std::string& interface_name) {
 
 bool Throttler::StartTCForCommands(const std::vector<std::string>& commands) {
   CHECK_EQ(tc_pid_, 0);
+  CHECK(!commands.empty());
   std::vector<std::string> args = {
       "-f",  // Continue if there is a failure or no-op
       "-b",  // Batch mode
@@ -238,7 +245,7 @@ bool Throttler::StartTCForCommands(const std::vector<std::string>& commands) {
       // here implies throttling errors show up in /var/log/net.log.
       nullptr);
 
-  LOG(ERROR) << "Spawned tc with pid: " << tc_pid_;
+  SLOG(this, 1) << "Spawned tc with pid: " << tc_pid_;
 
   if (file_io_->SetFdNonBlocking(tc_stdin_)) {
     Done(callback_, Error::kOperationFailed,
