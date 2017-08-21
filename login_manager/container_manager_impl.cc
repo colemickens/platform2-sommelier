@@ -29,7 +29,6 @@ namespace login_manager {
 
 namespace {
 
-const char kContainerRunPath[] = "/run/containers";
 const char kSessionManagerCgroup[] = "session_manager_containers";
 const char kMountinfoPath[] = "/proc/self/mountinfo";
 
@@ -46,7 +45,8 @@ std::string libcontainer_strerror(int err) {
 
 ContainerManagerImpl::ContainerPtr CreateContainer(const std::string& name) {
   return ContainerManagerImpl::ContainerPtr(
-      container_new(name.c_str(), kContainerRunPath), &container_destroy);
+      container_new(name.c_str(), ContainerManagerInterface::kContainerRunPath),
+      &container_destroy);
 }
 
 }  // anonymous namespace

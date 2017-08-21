@@ -38,6 +38,16 @@ ps -u chronos --no-headers -o pid,stat,args |
 
 bootstat other-processes-terminated
 
+# Android master containers use run_oci to terminate and clean up containers.
+# If run_oci exists, let run_oci perform the task first before falling back to
+# general cleanup.
+if [ -f /usr/bin/run_oci ]; then
+  for container in /run/containers/* ; do
+    run_oci kill "${container}"
+    run_oci destroy "${container}"
+  done
+fi
+
 # If there are any orphaned containers, they should also be cleaned up.
 # This needs to be done prior to cryptohome unmounting so that there are no
 # remaining processes with files open that would prevent a clean unmount.

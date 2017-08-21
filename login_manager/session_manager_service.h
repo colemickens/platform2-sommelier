@@ -21,6 +21,7 @@
 #include <install_attributes/libinstallattributes.h>
 
 #include "login_manager/android_container_manager_impl.h"
+#include "login_manager/android_oci_wrapper.h"
 #include "login_manager/child_exit_handler.h"
 #include "login_manager/crossystem_impl.h"
 #include "login_manager/job_manager.h"
@@ -221,7 +222,7 @@ class SessionManagerService
   ServerBackedStateKeyGenerator state_key_generator_;
   CrossystemImpl crossystem_;
   VpdProcessImpl vpd_process_;
-  AndroidContainerManagerImpl android_container_;
+  std::unique_ptr<ContainerManagerInterface> android_container_;
   InstallAttributesReader install_attributes_reader_;
   std::unique_ptr<LivenessChecker> liveness_checker_;
   const bool enable_browser_abort_on_hang_;

@@ -61,7 +61,6 @@
         ],
       },
       'sources': [
-        'android_container_manager_impl.cc',
         'blob_util.cc',
         'browser_job.cc',
         'child_exit_handler.cc',
@@ -69,6 +68,7 @@
         'chrome_setup.cc',
         'container_config_parser.cc',
         'container_manager_impl.cc',
+        'container_manager_interface.cc',
         'crossystem.cc',
         'crossystem_impl.cc',
         'cumulative_use_time_metric.cc',
@@ -96,6 +96,26 @@
         'user_policy_service.cc',
         'user_policy_service_factory.cc',
         'vpd_process_impl.cc',
+      ],
+      'variables': {
+        'USE_android_container_master_arc_dev%': 0,
+      },
+      'conditions': [
+        ['USE_android_container_master_arc_dev == 1', {
+          'sources': [
+            'android_oci_wrapper.cc',
+          ],
+          'defines': [
+            'USE_ANDROID_MASTER_CONTAINER=1',
+          ],
+        }, { # USE_android_container_master_arc_dev != 1
+          'sources': [
+            'android_container_manager_impl.cc',
+          ],
+          'defines': [
+            'USE_ANDROID_MASTER_CONTAINER=0',
+          ],
+        }],
       ],
     },
     {
@@ -136,6 +156,7 @@
               'libchrome-test-<(libbase_ver)',
               'libcros_config',
             ],
+            'USE_android_container_master_arc_dev%': 0,
           },
           'sources': [
             'browser_job_unittest.cc',
@@ -168,6 +189,20 @@
             'session_manager_testrunner.cc',
             'system_utils_unittest.cc',
             'user_policy_service_unittest.cc',
+          ],
+          'conditions': [
+            ['USE_android_container_master_arc_dev == 1', {
+              'sources': [
+                'android_oci_wrapper_unittest.cc',
+              ],
+              'defines': [
+                'USE_ANDROID_MASTER_CONTAINER=1',
+              ],
+            }, { # USE_android_container_master_arc_dev != 1
+              'defines': [
+                'USE_ANDROID_MASTER_CONTAINER=0',
+              ],
+            }],
           ],
         },
       ],

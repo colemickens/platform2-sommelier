@@ -33,12 +33,21 @@ class SystemUtilsImpl : public SystemUtils {
   int kill(pid_t pid, uid_t owner, int signal) override;
   time_t time(time_t* t) override;
   pid_t fork() override;
+  int close(int fd) override;
+  int chdir(const base::FilePath& path) override;
+  pid_t setsid() override;
+  int execve(const base::FilePath& exec_file,
+             const char* const argv[],
+             const char* const envp[]) override;
   bool GetAppOutput(const std::vector<std::string>& argv,
                     std::string* output) override;
   DevModeState GetDevModeState() override;
   VmState GetVmState() override;
   bool ProcessGroupIsGone(pid_t child_spec, base::TimeDelta timeout) override;
   bool ProcessIsGone(pid_t child_spec, base::TimeDelta timeout) override;
+  pid_t Wait(pid_t child_spec,
+             base::TimeDelta timeout,
+             int* status_out) override;
 
   bool EnsureAndReturnSafeFileSize(const base::FilePath& file,
                                    int32_t* file_size_32) override;
@@ -49,6 +58,9 @@ class SystemUtilsImpl : public SystemUtils {
   bool CreateTemporaryDirIn(const base::FilePath& parent_dir,
                             base::FilePath* out_dir) override;
   bool CreateDir(const base::FilePath& dir) override;
+  bool EnumerateFiles(const base::FilePath& root_path,
+                      int file_type,
+                      std::vector<base::FilePath>* out_files) override;
   bool GetUniqueFilenameInWriteOnlyTempDir(
       base::FilePath* temp_file_path) override;
   bool RemoveDirTree(const base::FilePath& dir) override;
@@ -66,6 +78,11 @@ class SystemUtilsImpl : public SystemUtils {
                                mode_t mode) override;
   ScopedPlatformHandle CreateServerHandle(
       const NamedPlatformHandle& named_handle) override;
+  bool ReadFileToString(const base::FilePath& path,
+                        std::string* str_out) override;
+  bool ChangeBlockedSignals(int how, const std::vector<int>& signals) override;
+  bool LaunchAndWait(const std::vector<std::string>& args,
+                     int* exit_code_out) override;
 
   void set_base_dir_for_testing(const base::FilePath& base_dir) {
     CHECK(!base_dir.empty());

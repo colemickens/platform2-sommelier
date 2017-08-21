@@ -29,6 +29,9 @@ class ContainerManagerInterface : public JobManagerInterface {
   // |clean| is true if the container was shut down through RequestJobExit.
   using ExitCallback = base::Callback<void(pid_t, bool clean)>;
 
+  // The path to the location of containers.
+  constexpr static const char kContainerRunPath[] = "/run/containers";
+
   virtual ~ContainerManagerInterface() {}
 
   // Starts the container. Returns true on success.

@@ -1629,6 +1629,7 @@ std::string SessionManagerImpl::StartArcContainer(
     const std::string& init_signal,
     const std::vector<std::string>& init_keyvals,
     brillo::ErrorPtr* error_out) {
+#if !USE_ANDROID_MASTER_CONTAINER
   if (!init_controller_->TriggerImpulse(
           init_signal, init_keyvals,
           InitDaemonController::TriggerMode::SYNC)) {
@@ -1638,6 +1639,7 @@ std::string SessionManagerImpl::StartArcContainer(
     *error_out = CreateError(dbus_error::kEmitFailed, message);
     return std::string();
   }
+#endif  // !USE_ANDROID_MASTER_CONTAINER
 
   // Container instance id needs to be valid ASCII/UTF-8, so encode as base64.
   std::string container_instance_id =

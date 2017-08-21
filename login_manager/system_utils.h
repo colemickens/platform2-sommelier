@@ -57,6 +57,24 @@ class SystemUtils {
   // Forks a new process.  In the parent, returns child's pid.  In child, 0.
   virtual pid_t fork() = 0;
 
+  // Closes file descriptor |fd|.
+  virtual int close(int fd) = 0;
+
+  // Changes working directory to |path|.
+  virtual int chdir(const base::FilePath& path) = 0;
+
+  // Creates a new session. It only succeeds if the calling process is not a
+  // process group leader. Returns the new session ID on success, or -1 on
+  // failure.
+  virtual pid_t setsid() = 0;
+
+  // Executes the |exec_file|. |argv| is execution arguments. |argv| shouldn't
+  // contain the program. |envp| is set up as the initial environment variables.
+  // This function doesn't return on success, so if it returns it's a failure.
+  virtual int execve(const base::FilePath& exec_file,
+                     const char* const argv[],
+                     const char* const envp[]) = 0;
+
   // Run an external program and collect its stdout in |output|.
   virtual bool GetAppOutput(const std::vector<std::string>& argv,
                             std::string* output) = 0;
@@ -75,6 +93,14 @@ class SystemUtils {
   // Returns: true if process specified by |child_spec| exited,
   //          false if we time out.
   virtual bool ProcessIsGone(pid_t child_spec, base::TimeDelta timeout) = 0;
+
+  // Returns PID of child process if we reap a child process within timeout, 0
+  // if we time out or -1 if we fail. |status_out| is set only if we reap a
+  // child process. Note unlike ProcessGroupIsGone, it only reaps at most one
+  // child per call.
+  virtual pid_t Wait(pid_t child_spec,
+                     base::TimeDelta timeout,
+                     int* status_out) = 0;
 
   virtual bool EnsureAndReturnSafeFileSize(const base::FilePath& file,
                                            int32_t* file_size_32) = 0;
@@ -101,6 +127,14 @@ class SystemUtils {
 
   // Creates a directory.
   virtual bool CreateDir(const base::FilePath& dir) = 0;
+
+  // Enumerates files in |root_path|. The order of results is not guaranteed.
+  // |file_type| is a bit mask of FileType defined in
+  // base/files/file_enumerator.h. |root_path| will be prepended to returned
+  // paths.
+  virtual bool EnumerateFiles(const base::FilePath& root_path,
+                              int file_type,
+                              std::vector<base::FilePath>* out_files) = 0;
 
   // Generates a guaranteed-unique filename in a write-only temp dir.
   // Returns false upon failure.
@@ -143,6 +177,22 @@ class SystemUtils {
   // Calls mojo::edk::CreateServerHandle().
   virtual ScopedPlatformHandle CreateServerHandle(
       const NamedPlatformHandle& named_handle) = 0;
+
+  // Reads file content from file at |path| into string at |str_out|.
+  virtual bool ReadFileToString(const base::FilePath& path,
+                                std::string* str_out) = 0;
+
+  // Changes blocked signals. |how| takes one of |SIG_BLOCK|, |SIG_UNBLOCK| and
+  // |SIG_SETMASK|. See man page of sigprocmask(2) for more details. |signals|
+  // contains all signals to operate on.
+  virtual bool ChangeBlockedSignals(int how,
+                                    const std::vector<int>& signals) = 0;
+
+  // Runs command specified in |argv| in a separate process and wait until it
+  // it finishes. Returns true if the process is up, false otherwise.
+  // |exit_code_out| is set only when this function returns true.
+  virtual bool LaunchAndWait(const std::vector<std::string>& argv,
+                             int* exit_code_out) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SystemUtils);

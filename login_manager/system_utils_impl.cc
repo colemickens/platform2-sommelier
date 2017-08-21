@@ -14,10 +14,12 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <limits>
 #include <string>
 #include <vector>
 
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
@@ -36,25 +38,6 @@ using std::string;
 using std::vector;
 
 namespace login_manager {
-
-namespace {
-
-bool LaunchAndWait(const vector<string>& argv, int* out_exit_code) {
-  base::Process process(base::LaunchProcess(argv, base::LaunchOptions()));
-  if (!process.IsValid()) {
-    PLOG(ERROR) << "Failed to create a process for '"
-                << base::JoinString(argv, " ") << "'";
-    return false;
-  }
-  if (!process.WaitForExit(out_exit_code)) {
-    PLOG(ERROR) << "Failed to wait for '" << base::JoinString(argv, " ")
-                << "' to exit";
-    return false;
-  }
-  return true;
-}
-
-}  // namespace
 
 SystemUtilsImpl::SystemUtilsImpl()
     : dev_mode_state_(DevModeState::DEV_MODE_UNKNOWN),
@@ -132,6 +115,26 @@ pid_t SystemUtilsImpl::fork() {
   return ::fork();
 }
 
+int SystemUtilsImpl::close(int fd) {
+  return ::close(fd);
+}
+
+int SystemUtilsImpl::chdir(const base::FilePath& path) {
+  return ::chdir(path.value().c_str());
+}
+
+pid_t SystemUtilsImpl::setsid() {
+  return ::setsid();
+}
+
+int SystemUtilsImpl::execve(const base::FilePath& exec_file,
+                            const char* const argv[],
+                            const char* const envp[]) {
+  return ::execve(exec_file.value().c_str(),
+                  const_cast<char* const*>(argv),
+                  const_cast<char* const*>(envp));
+}
+
 bool SystemUtilsImpl::GetAppOutput(const std::vector<std::string>& argv,
                                    std::string* output) {
   return base::GetAppOutput(argv, output);
@@ -147,22 +150,48 @@ bool SystemUtilsImpl::ProcessIsGone(pid_t child_spec, base::TimeDelta timeout) {
   DCHECK_LE(timeout.InSeconds(),
             static_cast<int64_t>(std::numeric_limits<int>::max()));
 
+  base::TimeTicks timeout_time = base::TimeTicks::Now() + timeout;
+
+  pid_t ret = 0;
+  // We do this in a loop to support waiting on multiple children.
+  // This is necessary for the ProcessGroupIsGone function to work.
+  do {
+    base::TimeDelta time_remaining = timeout_time - base::TimeTicks::Now();
+
+    // Pass 0 to |timeout| if we already time out to reap all zombie processes
+    // specified by |child_spec|. This loop will end when |ret| is no longer
+    // larger than 0, i.e. no more zombie process to reap.
+    ret =
+        Wait(child_spec, std::max(time_remaining, base::TimeDelta()), nullptr);
+    if (ret == -1 && errno == ECHILD)
+      return true;
+  } while (ret > 0);
+
+  return false;
+}
+
+pid_t SystemUtilsImpl::Wait(pid_t child_spec,
+                            base::TimeDelta timeout,
+                            int* status_out) {
+  DCHECK_GE(timeout.InSeconds(), 0);
+
   base::TimeTicks start = base::TimeTicks::Now();
 
   do {
-    int ret = 0;
-    // We do this in a loop to support waiting on multiple children.
-    // This is necessary for the ProcessGroupIsGone function to work.
-    do {
-      ret = waitpid(child_spec, nullptr, WNOHANG);
-      if (ret == -1 && errno == ECHILD)
-        return true;
-    } while (ret > 0);
+    pid_t pid = waitpid(child_spec, status_out, WNOHANG);
+    // Error happens.
+    if (pid == -1 && errno != EINTR)
+      return -1;
+
+    // A process is reaped.
+    if (pid > 0)
+      return pid;
 
     base::PlatformThread::YieldCurrentThread();
   } while (base::TimeTicks::Now() - start < timeout);
 
-  return false;
+  // Times out.
+  return 0;
 }
 
 bool SystemUtilsImpl::EnsureAndReturnSafeFileSize(const base::FilePath& file,
@@ -278,6 +307,24 @@ bool SystemUtilsImpl::CreateDir(const base::FilePath& dir) {
   return base::CreateDirectoryAndGetError(PutInsideBaseDir(dir), nullptr);
 }
 
+bool SystemUtilsImpl::EnumerateFiles(const base::FilePath& root_path,
+                                     int file_type,
+                                     std::vector<base::FilePath>* out_files) {
+  out_files->clear();
+
+  if (!DirectoryExists(root_path)) {
+    LOG(ERROR) << "\'" << root_path.value() << "\" is not a directory";
+    return false;
+  }
+
+  base::FileEnumerator files(root_path, false, file_type);
+  for (base::FilePath name = files.Next(); !name.empty(); name = files.Next()) {
+    out_files->push_back(name);
+  }
+
+  return true;
+}
+
 bool SystemUtilsImpl::IsDirectoryEmpty(const base::FilePath& dir) {
   const base::FilePath dir_in_base_dir = PutInsideBaseDir(dir);
   return !base::DirectoryExists(dir_in_base_dir) ||
@@ -337,6 +384,52 @@ ScopedPlatformHandle SystemUtilsImpl::CreateServerHandle(
   // TODO(yusukes): Once libmojo is updated to >=r415560, call
   // mojo::edk::CreateServerHandle() instead.
   return login_manager::CreateServerHandle(named_handle_in_base_dir);
+}
+
+bool SystemUtilsImpl::ReadFileToString(const base::FilePath& path,
+                                       std::string* str_out) {
+  return base::ReadFileToString(path, str_out);
+}
+
+bool SystemUtilsImpl::ChangeBlockedSignals(int how,
+                                           const std::vector<int>& signals) {
+  sigset_t sigset;
+  if (sigemptyset(&sigset)) {
+    PLOG(ERROR) << "Failed to empty sigset";
+    return false;
+  }
+
+  for (int signal : signals) {
+    if (sigaddset(&sigset, signal)) {
+      PLOG(ERROR) << "Failed to set signal " << signal << " to sigset";
+      return false;
+    }
+  }
+
+  if (sigprocmask(how, &sigset, nullptr)) {
+    PLOG(ERROR) << "Failed to change sigblk";
+    return false;
+  }
+
+  return true;
+}
+
+bool SystemUtilsImpl::LaunchAndWait(const std::vector<std::string>& argv,
+                                    int* exit_code_out) {
+  DCHECK(!argv.empty());
+
+  base::Process process(base::LaunchProcess(argv, base::LaunchOptions()));
+  if (!process.IsValid()) {
+    PLOG(ERROR) << "Failed to create a process for '"
+                << base::JoinString(argv, " ") << "'";
+    return false;
+  }
+  if (!process.WaitForExit(exit_code_out)) {
+    PLOG(ERROR) << "Failed to wait for '" << base::JoinString(argv, " ")
+                << "' to exit";
+    return false;
+  }
+  return true;
 }
 
 }  // namespace login_manager

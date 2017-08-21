@@ -26,6 +26,13 @@ class MockSystemUtils : public SystemUtils {
   MOCK_METHOD3(kill, int(pid_t pid, uid_t uid, int signal));
   MOCK_METHOD1(time, time_t(time_t*));  // NOLINT
   MOCK_METHOD0(fork, pid_t(void));
+  MOCK_METHOD1(close, int(int fd));
+  MOCK_METHOD1(chdir, int(const base::FilePath& path));
+  MOCK_METHOD0(setsid, pid_t());
+  MOCK_METHOD3(execve,
+               int(const base::FilePath& exec_file,
+                   const char* const argv[],
+                   const char* const envp[]));
   MOCK_METHOD2(GetAppOutput,
                bool(const std::vector<std::string>&, std::string*));
   MOCK_METHOD0(GetDevModeState, DevModeState(void));
@@ -33,6 +40,7 @@ class MockSystemUtils : public SystemUtils {
   MOCK_METHOD2(ProcessGroupIsGone, bool(pid_t child_spec,
                                         base::TimeDelta timeout));
   MOCK_METHOD2(ProcessIsGone, bool(pid_t child_spec, base::TimeDelta timeout));
+  MOCK_METHOD3(Wait, pid_t(pid_t, base::TimeDelta, int*));
   MOCK_METHOD2(EnsureAndReturnSafeFileSize, bool(const base::FilePath& file,
                                                  int32_t* file_size_32));
   MOCK_METHOD1(Exists, bool(const base::FilePath& file));
@@ -42,6 +50,8 @@ class MockSystemUtils : public SystemUtils {
   MOCK_METHOD2(CreateTemporaryDirIn, bool(const base::FilePath& parent_dir,
                                           base::FilePath* out_dir));
   MOCK_METHOD1(CreateDir, bool(const base::FilePath& dir));
+  MOCK_METHOD3(EnumerateFiles,
+               bool(const base::FilePath&, int, std::vector<base::FilePath>*));
   MOCK_METHOD1(GetUniqueFilenameInWriteOnlyTempDir,
                bool(base::FilePath* temp_file_path));
   MOCK_METHOD1(RemoveDirTree, bool(const base::FilePath& dir));
@@ -60,6 +70,13 @@ class MockSystemUtils : public SystemUtils {
                                              mode_t mode));
   MOCK_METHOD1(CreateServerHandle,
                ScopedPlatformHandle(const NamedPlatformHandle& named_handle));
+
+  MOCK_METHOD2(ReadFileToString, bool(const base::FilePath&, std::string*));
+
+  MOCK_METHOD2(ChangeBlockedSignals,
+               bool(int how, const std::vector<int>& signals));
+
+  MOCK_METHOD2(LaunchAndWait, bool(const std::vector<std::string>&, int*));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockSystemUtils);
