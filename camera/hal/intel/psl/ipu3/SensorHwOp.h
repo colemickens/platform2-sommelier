@@ -68,6 +68,8 @@ protected:
     int pCropHeight;
     int pSensorFTWidth;
     int pSensorFTHeight;
+    bool pHBlankReadOnly;
+    bool pVBlankReadOnly;
 
 }; //class SensorHwOpBase
 

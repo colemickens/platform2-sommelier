@@ -38,7 +38,9 @@ SensorHwOp::SensorHwOp(std::shared_ptr<V4L2Subdevice> pixelArraySubdev):
    pCropWidth(0),
    pCropHeight(0),
    pSensorFTWidth(0),
-   pSensorFTHeight(0)
+   pSensorFTHeight(0),
+   pHBlankReadOnly(false),
+   pVBlankReadOnly(false)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 }
@@ -80,17 +82,34 @@ status_t SensorHwOp::updateMembers()
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     int status = BAD_VALUE;
     int code = 0;
+    v4l2_queryctrl control;
 
     status = getActivePixelArraySize(pCropWidth, pCropHeight, code);
     if (status != NO_ERROR) {
         LOGE("Error getting  PA size");
         return UNKNOWN_ERROR;
     }
+
     status = updateFrameTimings();
     if (status != NO_ERROR) {
         LOGE("Error updating frame timings");
         return UNKNOWN_ERROR;
     }
+
+    control.id = V4L2_CID_HBLANK;
+    status = pPixelArraySubdev->queryControl(control);
+    if (status == NO_ERROR && (control.flags & V4L2_CTRL_FLAG_READ_ONLY)) {
+        pHBlankReadOnly = true;
+        LOG1("HBLANK is readonly");
+    }
+
+    control.id = V4L2_CID_VBLANK;
+    status = pPixelArraySubdev->queryControl(control);
+    if (status == NO_ERROR && (control.flags & V4L2_CTRL_FLAG_READ_ONLY)) {
+        pVBlankReadOnly = true;
+        LOG1("VBLANK is readonly");
+    }
+
     return status;
 }
 
@@ -309,7 +328,7 @@ status_t SensorHwOp::setFrameDuration(unsigned int llp, unsigned int fll)
     int horzBlank, vertBlank;
 
     /* only calculate when not 0 */
-    if (llp) {
+    if (llp && !pHBlankReadOnly) {
         horzBlank = llp - pCropWidth;
         statusH = pPixelArraySubdev->setControl(V4L2_CID_HBLANK,
                                                 horzBlank, "Horizontal Blanking");
@@ -317,7 +336,7 @@ status_t SensorHwOp::setFrameDuration(unsigned int llp, unsigned int fll)
             LOGE("Failed to set hblank");
     }
 
-    if (fll) {
+    if (fll && !pVBlankReadOnly) {
         vertBlank = fll - pCropHeight;
         statusV = pPixelArraySubdev->setControl(V4L2_CID_VBLANK,
                                                 vertBlank, "Vertical Blanking");
