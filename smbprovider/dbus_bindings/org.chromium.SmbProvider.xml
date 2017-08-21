@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<node name="/org/chromium/SmbProvider"
+    xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.SmbProvider">
+
+    <method name="Mount">
+      <tp:docstring>
+        'Mounts' a given share by attempting to call smbc_opendir on given share path. 'Mounts' is
+        in quotes because this does not actually do an actual mount since it is not needed on an SMB
+        share. On success, this returns the corresponding mount id.
+      </tp:docstring>
+      <arg name="share_path" type="s" direction="in">
+        <tp:docstring>
+          Path of the share to be mounted. (e.g. "smb://qnap/testshare")
+        </tp:docstring>
+      </arg>
+      <arg name="error_code" type="i" direction="out">
+        <tp:docstring>
+          Returned error code. See ErrorType enum.
+        </tp:docstring>
+      </arg>
+      <arg name="mount_id" type="i" direction="out">
+        <tp:docstring>
+          Unique identifier of the mounted share.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
+    <method name="Unmount">
+      <tp:docstring>
+        Unmounts' the mount corresponding to the mount id. 'Unmounts' is in quotes because this
+        does not do an actual unmount since SMB does not need to actually mount a share.
+      </tp:docstring>
+      <arg name="mount_id" type="i" direction="in">
+        <tp:docstring>
+          Unique identifier of the mounted share.
+        </tp:docstring>
+      </arg>
+      <arg name="error_code" type="i" direction="out">
+        <tp:docstring>
+          Returned error code. See ErrorType enum.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
+    <method name="ReadDirectory">
+      <tp:docstring>
+        Reads the directory on a given path. This outputs a serialized DirectoryEntryList protobuf.
+      </tp:docstring>
+      <arg name="mount_id" type="i" direction="in">
+        <tp:docstring>
+          Unique identifier of the mounted share.
+        </tp:docstring>
+      </arg>
+      <arg name="directory_path" type="s" direction="in">
+        <tp:docstring>
+          Path of the directory. (e.g. "/testfolder")
+        </tp:docstring>
+      </arg>
+      <arg name="error_code" type="i" direction="out">
+        <tp:docstring>
+          Returned error code. See ErrorType enum.
+        </tp:docstring>
+      </arg>
+      <arg name="entries" type="ay" direction="out">
+        <tp:docstring>
+          Serialized DirectoryEntryList protobuf.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
+    <method name="GetMetadataEntry">
+      <tp:docstring>
+        Gets the metadata of a given entry. This outputs an serialized DirectoryEntry protobuf.
+      </tp:docstring>
+      <arg name="mount_id" type="i" direction="in">
+        <tp:docstring>
+          Unique identifier of the mounted share.
+        </tp:docstring>
+      </arg>
+      <arg name="entry_path" type="s" direction="in">
+        <tp:docstring>
+          Path of the entry. (e.g. "/testfolder/dog.jpg")
+        </tp:docstring>
+      </arg>
+      <arg name="error_code" type="i" direction="out">
+        <tp:docstring>
+          Returned error code. See ErrorType enum.
+        </tp:docstring>
+      </arg>
+      <arg name="entry" type="ay" direction="out">
+        <tp:docstring>
+          Serialized DirectoryEntry protobuf.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+  </interface>
+</node>
