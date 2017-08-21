@@ -21,6 +21,27 @@
 
 namespace hammerd {
 
+const char* ToString(UpdateExtraCommand subcommand) {
+  switch (subcommand) {
+    case UpdateExtraCommand::kImmediateReset:
+      return "ImmediateReset";
+    case UpdateExtraCommand::kJumpToRW:
+      return "JumpToRW";
+    case UpdateExtraCommand::kStayInRO:
+      return "StayInRO";
+    case UpdateExtraCommand::kUnlockRW:
+      return "UnlockRW";
+    case UpdateExtraCommand::kUnlockRollback:
+      return "UnlockRollback";
+    case UpdateExtraCommand::kInjectEntropy:
+      return "InjectEntropy";
+    case UpdateExtraCommand::kPairChallenge:
+      return "PairChallenge";
+    default:
+      return "UNKNOWN_COMMAND";
+  }
+}
+
 const char* ToString(SectionName name) {
   switch (name) {
     case SectionName::RO:
@@ -316,14 +337,29 @@ bool FirmwareUpdater::TransferImage(SectionName section_name) {
 bool FirmwareUpdater::InjectEntropy() {
   constexpr int kDataSize = 32;
   std::string entropy_data = base::RandBytesAsString(kDataSize);
-  return SendSubcommand(UpdateExtraCommand::kInjectEntropy, entropy_data);
+  return SendSubcommandWithPayload(UpdateExtraCommand::kInjectEntropy,
+                                   entropy_data);
 }
 
-bool FirmwareUpdater::SendSubcommand(UpdateExtraCommand subcommand,
-                                     const std::string& cmd_body) {
-  LOG(INFO) << ">>> SendSubcommand";
+bool FirmwareUpdater::SendSubcommand(UpdateExtraCommand subcommand) {
+  std::string cmd_body = "";
+  return SendSubcommandWithPayload(subcommand, cmd_body);
+}
 
-  uint8_t response = -1;
+bool FirmwareUpdater::SendSubcommandWithPayload(UpdateExtraCommand subcommand,
+                                                const std::string& cmd_body) {
+  uint8_t response;
+  return SendSubcommandReceiveResponse(
+      subcommand, cmd_body, &response, sizeof(response));
+}
+
+bool FirmwareUpdater::SendSubcommandReceiveResponse(
+    UpdateExtraCommand subcommand,
+    const std::string& cmd_body,
+    void* resp,
+    size_t resp_size) {
+  LOG(INFO) << ">>> SendSubcommand: " << ToString(subcommand);
+
   uint16_t subcommand_value = static_cast<uint16_t>(subcommand);
   size_t usb_msg_size =
       sizeof(UpdateFrameHeader) + sizeof(subcommand_value) + cmd_body.size();
@@ -342,22 +378,18 @@ bool FirmwareUpdater::SendSubcommand(UpdateExtraCommand subcommand,
     memcpy(frame_ptr + 1, cmd_body.data(), cmd_body.size());
   }
 
-  bool ret;
   if (subcommand == UpdateExtraCommand::kImmediateReset) {
     // When sending reset command, we won't get the response. Therefore just
     // check the Send action is successful.
-    int received = uep_->Send(ufh.get(), usb_msg_size, false);
-    ret = (received == usb_msg_size);
-  } else {
-    int received = uep_->Transfer(
-        ufh.get(), usb_msg_size, &response, sizeof(response), false);
-    ret = (received == sizeof(response));
+    int sent = uep_->Send(ufh.get(), usb_msg_size, false);
+    return (sent == usb_msg_size);
   }
-  if (ret) {
-    LOG(INFO) << "Sent sub-command: " << std::hex << subcommand << std::dec
-              << ", response: " << base::HexEncode(&response, sizeof(response));
-  }
-  return ret;
+  int received =
+      uep_->Transfer(ufh.get(), usb_msg_size, resp, resp_size, false);
+  // The first byte of the response is the status of the subcommand.
+  LOG(INFO) << base::StringPrintf("Status of subcommand: %d",
+                                  *(reinterpret_cast<uint8_t*>(resp)));
+  return (received == resp_size);
 }
 
 bool FirmwareUpdater::SendFirstPDU() {

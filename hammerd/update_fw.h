@@ -61,6 +61,8 @@ enum class UpdateExtraCommand : uint16_t {
   kPairChallenge = 6,
 };
 
+const char* ToString(UpdateExtraCommand subcommand);
+
 // This is the frame format the host uses when sending update PDUs over USB.
 //
 // The PDUs are up to 1K bytes in size, they are fragmented into USB chunks of
@@ -149,8 +151,14 @@ class FirmwareUpdaterInterface {
   virtual bool SendFirstPDU() = 0;
   virtual void SendDone() = 0;
   virtual bool InjectEntropy() = 0;
-  virtual bool SendSubcommand(UpdateExtraCommand subcommand,
-                              const std::string& cmd_body = "") = 0;
+
+  virtual bool SendSubcommand(UpdateExtraCommand subcommand) = 0;
+  virtual bool SendSubcommandWithPayload(UpdateExtraCommand subcommand,
+                                         const std::string& cmd_body) = 0;
+  virtual bool SendSubcommandReceiveResponse(UpdateExtraCommand subcommand,
+                                             const std::string& cmd_body,
+                                             void* resp,
+                                             size_t resp_size) = 0;
   virtual bool TransferImage(SectionName section_name) = 0;
   virtual SectionName CurrentSection() const = 0;
   virtual bool NeedsUpdate(SectionName section_name) const = 0;
@@ -196,8 +204,13 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   // dependent. The target tells between update PDUs and encapsulated vendor
   // subcommands by looking at the EXT_CMD value - it is kUpdateExtraCmd and
   // as such is guaranteed not to be a valid update PDU destination address.
-  bool SendSubcommand(UpdateExtraCommand subcommand,
-                      const std::string& cmd_body = "") override;
+  bool SendSubcommand(UpdateExtraCommand subcommand) override;
+  bool SendSubcommandWithPayload(UpdateExtraCommand subcommand,
+                                 const std::string& cmd_body) override;
+  bool SendSubcommandReceiveResponse(UpdateExtraCommand subcommand,
+                                     const std::string& cmd_body,
+                                     void* resp,
+                                     size_t resp_size) override;
 
   // Transfers the image to the target section.
   bool TransferImage(SectionName section_name) override;

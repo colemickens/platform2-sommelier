@@ -114,8 +114,7 @@ TEST_F(HammerUpdaterFlowTest, Run_AlwaysReset) {
   EXPECT_CALL(*hammer_updater_, RunOnce(false))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(HammerUpdater::RunStatus::kNeedReset));
-  EXPECT_CALL(*fw_updater_,
-              SendSubcommand(UpdateExtraCommand::kImmediateReset, _))
+  EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kImmediateReset))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
 
@@ -141,8 +140,7 @@ TEST_F(HammerUpdaterFlowTest, Run_Reset3Times) {
       .WillOnce(Return(HammerUpdater::RunStatus::kNeedReset))
       .WillOnce(Return(HammerUpdater::RunStatus::kNeedReset))
       .WillRepeatedly(Return(HammerUpdater::RunStatus::kNoUpdate));
-  EXPECT_CALL(*fw_updater_,
-              SendSubcommand(UpdateExtraCommand::kImmediateReset, _))
+  EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kImmediateReset))
       .Times(3)
       .WillRepeatedly(Return(true));
 
@@ -190,24 +188,24 @@ TEST_F(HammerUpdaterFullTest, Run_UpdateRWAfterJumpToRWFailed) {
     // First round: RW does not need update.  Attempt to jump to RW.
     EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, SendDone()).WillOnce(Return());
-    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kJumpToRW, _))
+    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kJumpToRW))
         .WillOnce(Return(true));
 
     // Second round: Jump to RW fails, so update RW.
     EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, SendDone()).WillOnce(Return());
-    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO, _))
+    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO))
         .WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RW))
         .WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_,
-                SendSubcommand(UpdateExtraCommand::kImmediateReset, _))
+                SendSubcommand(UpdateExtraCommand::kImmediateReset))
         .WillOnce(Return(true));
 
     // Third round: Again attempt to jump to RW.
     EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, SendDone()).WillOnce(Return());
-    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kJumpToRW, _))
+    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kJumpToRW))
         .WillOnce(
             DoAll(Assign(&current_section, SectionName::RW), Return(true)));
 
@@ -237,7 +235,7 @@ TEST_F(HammerUpdaterFullTest, RunOnce_UpdateRW) {
   {
     InSequence dummy;
     EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
-    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO, _))
+    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO))
         .WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RW))
         .WillOnce(Return(true));
@@ -264,7 +262,7 @@ TEST_F(HammerUpdaterFullTest, RunOnce_UnlockRW) {
   {
     InSequence dummy;
     EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
-    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO, _))
+    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO))
         .WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, UnLockSection(SectionName::RW))
         .WillRepeatedly(Return(true));

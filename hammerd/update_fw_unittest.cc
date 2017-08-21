@@ -248,6 +248,7 @@ TEST_F(FirmwareUpdaterTest, SendFirstPDU) {
 }
 
 // Send the kInjectEntropy subcommand.
+// We also send the payload with this subcommand.
 TEST_F(FirmwareUpdaterTest, SendSubcommand_InjectEntropy) {
   // Build the header data.
   uint16_t subcommand =
@@ -272,12 +273,13 @@ TEST_F(FirmwareUpdaterTest, SendSubcommand_InjectEntropy) {
     EXPECT_CALL(*uep_, Receive(_, 1, false, _));
   }
 
-  ASSERT_EQ(fw_updater_->SendSubcommand(UpdateExtraCommand::kInjectEntropy,
-                                        fake_entropy),
+  ASSERT_EQ(fw_updater_->SendSubcommandWithPayload(
+                UpdateExtraCommand::kInjectEntropy, fake_entropy),
             true);
 }
 
 // Send the kImmediateReset subcommand.
+// After sending the command, the EC will reset and not respond.
 TEST_F(FirmwareUpdaterTest, SendSubcommand_Reset) {
   // Build the header data.
   uint16_t subcommand =

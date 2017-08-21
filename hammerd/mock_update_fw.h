@@ -23,9 +23,15 @@ class MockFirmwareUpdater : public FirmwareUpdaterInterface {
   MOCK_METHOD0(SendFirstPDU, bool());
   MOCK_METHOD0(SendDone, void());
   MOCK_METHOD0(InjectEntropy, bool());
-  MOCK_METHOD2(SendSubcommand,
+  MOCK_METHOD1(SendSubcommand, bool(UpdateExtraCommand subcommand));
+  MOCK_METHOD2(SendSubcommandWithPayload,
                bool(UpdateExtraCommand subcommand,
                     const std::string& cmd_body));
+  MOCK_METHOD4(SendSubcommandReceiveResponse,
+               bool(UpdateExtraCommand subcommand,
+                    const std::string& cmd_body,
+                    void* resp,
+                    size_t resp_size));
   MOCK_METHOD1(TransferImage, bool(SectionName section_name));
   MOCK_CONST_METHOD0(CurrentSection, SectionName());
   MOCK_CONST_METHOD1(NeedsUpdate, bool(SectionName section_name));
