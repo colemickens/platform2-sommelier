@@ -26,7 +26,6 @@
 #include "crash-reporter/unclean_shutdown_collector.h"
 #include "crash-reporter/user_collector.h"
 
-static const char kCrashCounterHistogram[] = "Logging.CrashCounter";
 static const char kUserCrashSignal[] =
     "org.chromium.CrashReporter.UserCrash";
 static const char kKernelCrashDetected[] = "/run/kernel-crash-detected";
@@ -59,10 +58,8 @@ static bool TouchFile(const FilePath &file_path) {
 }
 
 static void SendCrashMetrics(CrashKinds type, const char* name) {
-  // TODO(kmixter): We can remove this histogram as part of
-  // crosbug.com/11163.
-  s_metrics_lib.SendEnumToUMA(kCrashCounterHistogram, type, kCrashKindMax);
-  s_metrics_lib.SendCrashToUMA(name);
+  // TODO(ddavenport): Remove this stub and the rest of the code around
+  // Logging.CrashCounter once we're certain no one is using it (crbug/754850).
 }
 
 static void CountECCrash() {
