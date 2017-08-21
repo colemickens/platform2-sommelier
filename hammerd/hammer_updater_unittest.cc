@@ -20,8 +20,12 @@ using testing::ReturnPointee;
 
 namespace hammerd {
 
-ACTION_P(Increment, n) { ++(*n); }
-ACTION_P(Decrement, n) { --(*n); }
+ACTION_P(Increment, n) {
+  ++(*n);
+}
+ACTION_P(Decrement, n) {
+  --(*n);
+}
 
 // The class is used to test the top-level method: Run(), so we mock
 // other methods.
@@ -46,20 +50,16 @@ class HammerUpdaterTest : public testing::Test {
     EXPECT_CALL(*fw_updater_, CloseUSB()).Times(0);
   }
 
-  void TearDown() override {
-    ASSERT_EQ(usb_connection_count_, 0);
-  }
+  void TearDown() override { ASSERT_EQ(usb_connection_count_, 0); }
 
   void ExpectUSBConnections(const testing::Cardinality count) {
     // Checked in TearDown.
     EXPECT_CALL(*fw_updater_, TryConnectUSB())
         .Times(count)
-        .WillRepeatedly(DoAll(Increment(&usb_connection_count_),
-                              Return(true)));
+        .WillRepeatedly(DoAll(Increment(&usb_connection_count_), Return(true)));
     EXPECT_CALL(*fw_updater_, CloseUSB())
         .Times(count)
-        .WillRepeatedly(DoAll(Decrement(&usb_connection_count_),
-                              Return()));
+        .WillRepeatedly(DoAll(Decrement(&usb_connection_count_), Return()));
   }
 
  protected:
@@ -74,10 +74,10 @@ class HammerUpdaterFlowTest : public HammerUpdaterTest {
     // MockHammerUpdater mocks out RunOnce so that Run can be tested.
     // FirmwareUpdater is also mocked out.
     hammer_updater_.reset(new MockHammerUpdater{
-        image_, std::unique_ptr<FirmwareUpdaterInterface>(
-            new MockFirmwareUpdater())});
-    fw_updater_ = static_cast<MockFirmwareUpdater*>(
-            hammer_updater_->fw_updater_.get());
+        image_,
+        std::unique_ptr<FirmwareUpdaterInterface>(new MockFirmwareUpdater())});
+    fw_updater_ =
+        static_cast<MockFirmwareUpdater*>(hammer_updater_->fw_updater_.get());
   }
 
  protected:
@@ -89,10 +89,10 @@ class HammerUpdaterFullTest : public HammerUpdaterTest {
   void SetFwUpdater() override {
     // Use the normal HammerUpdater class.  We only mock out FirmwareUpdater.
     hammer_updater_.reset(new HammerUpdater{
-        image_, std::unique_ptr<FirmwareUpdaterInterface>(
-            new MockFirmwareUpdater())});
-    fw_updater_ = static_cast<MockFirmwareUpdater*>(
-            hammer_updater_->fw_updater_.get());
+        image_,
+        std::unique_ptr<FirmwareUpdaterInterface>(new MockFirmwareUpdater())});
+    fw_updater_ =
+        static_cast<MockFirmwareUpdater*>(hammer_updater_->fw_updater_.get());
   }
 
  protected:
@@ -154,8 +154,7 @@ TEST_F(HammerUpdaterFlowTest, Run_Reset3Times) {
 // Condition:
 //   1. The current section is Invalid.
 TEST_F(HammerUpdaterFullTest, Run_InvalidSection) {
-  EXPECT_CALL(*fw_updater_, LoadImage(_))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*fw_updater_, LoadImage(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(*fw_updater_, CurrentSection())
       .WillRepeatedly(Return(SectionName::Invalid));
 
@@ -177,8 +176,7 @@ TEST_F(HammerUpdaterFullTest, Run_InvalidSection) {
 TEST_F(HammerUpdaterFullTest, Run_UpdateRWAfterJumpToRWFailed) {
   SectionName current_section = SectionName::RO;
 
-  EXPECT_CALL(*fw_updater_, LoadImage(_))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*fw_updater_, LoadImage(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(*fw_updater_, NeedsUpdate(SectionName::RW))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*fw_updater_, IsSectionLocked(SectionName::RW))
@@ -192,15 +190,13 @@ TEST_F(HammerUpdaterFullTest, Run_UpdateRWAfterJumpToRWFailed) {
     // First round: RW does not need update.  Attempt to jump to RW.
     EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, SendDone()).WillOnce(Return());
-    EXPECT_CALL(*fw_updater_,
-                SendSubcommand(UpdateExtraCommand::kJumpToRW, _))
+    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kJumpToRW, _))
         .WillOnce(Return(true));
 
     // Second round: Jump to RW fails, so update RW.
     EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, SendDone()).WillOnce(Return());
-    EXPECT_CALL(*fw_updater_,
-                SendSubcommand(UpdateExtraCommand::kStayInRO, _))
+    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO, _))
         .WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RW))
         .WillOnce(Return(true));
@@ -211,10 +207,9 @@ TEST_F(HammerUpdaterFullTest, Run_UpdateRWAfterJumpToRWFailed) {
     // Third round: Again attempt to jump to RW.
     EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, SendDone()).WillOnce(Return());
-    EXPECT_CALL(*fw_updater_,
-                SendSubcommand(UpdateExtraCommand::kJumpToRW, _))
-        .WillOnce(DoAll(Assign(&current_section, SectionName::RW),
-                        Return(true)));
+    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kJumpToRW, _))
+        .WillOnce(
+            DoAll(Assign(&current_section, SectionName::RW), Return(true)));
 
     // Fourth round: Check that jumping to RW was successful.
     EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
@@ -242,8 +237,7 @@ TEST_F(HammerUpdaterFullTest, RunOnce_UpdateRW) {
   {
     InSequence dummy;
     EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
-    EXPECT_CALL(*fw_updater_,
-                SendSubcommand(UpdateExtraCommand::kStayInRO, _))
+    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO, _))
         .WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RW))
         .WillOnce(Return(true));
@@ -270,8 +264,7 @@ TEST_F(HammerUpdaterFullTest, RunOnce_UnlockRW) {
   {
     InSequence dummy;
     EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
-    EXPECT_CALL(*fw_updater_,
-                SendSubcommand(UpdateExtraCommand::kStayInRO, _))
+    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO, _))
         .WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, UnLockSection(SectionName::RW))
         .WillRepeatedly(Return(true));

@@ -81,7 +81,10 @@ FirmwareUpdater::FirmwareUpdater()
 
 FirmwareUpdater::FirmwareUpdater(std::unique_ptr<UsbEndpoint> uep,
                                  std::unique_ptr<FmapInterface> fmap)
-    : uep_(std::move(uep)), fmap_(std::move(fmap)), targ_(), image_(""),
+    : uep_(std::move(uep)),
+      fmap_(std::move(fmap)),
+      targ_(),
+      image_(""),
       sections_() {}
 
 bool FirmwareUpdater::TryConnectUSB() {
@@ -111,8 +114,7 @@ bool FirmwareUpdater::TryConnectUSB() {
     if (duration > kTimeoutMs) {
       break;
     }
-    base::PlatformThread::Sleep(
-        base::TimeDelta::FromMilliseconds(kIntervalMs));
+    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(kIntervalMs));
   }
   LOG(ERROR) << "Failed to connect USB endpoint.";
   return false;
@@ -251,23 +253,22 @@ bool FirmwareUpdater::NeedsUpdate(SectionName section_name) const {
   // so the way we detect the version string depends on CurrentSection().
   if (section_name == SectionName::RW) {
     SectionInfo section = sections_[static_cast<int>(section_name)];
-    const char *rw_version =
-      CurrentSection() == SectionName::RW ? version_.c_str() : targ_.version;
+    const char* rw_version =
+        CurrentSection() == SectionName::RW ? version_.c_str() : targ_.version;
 
     LOG(INFO) << "NeedsUpdate(" << ToString(section_name) << ")?";
-    LOG(INFO) << "NeedsUpdate: version [EC] " << rw_version
-              << " vs. " << section.version << " [update]";
-    LOG(INFO) << "NeedsUpdate: rollback [EC] " << targ_.min_rollback
-              << " vs. " << section.rollback << " [update]";
+    LOG(INFO) << "NeedsUpdate: version [EC] " << rw_version << " vs. "
+              << section.version << " [update]";
+    LOG(INFO) << "NeedsUpdate: rollback [EC] " << targ_.min_rollback << " vs. "
+              << section.rollback << " [update]";
     LOG(INFO) << "NeedsUpdate: key_version [EC] " << targ_.key_version
               << " vs. " << section.key_version << " [update]";
 
     // TODO(akahuang): We might still want to update even the version is
     // identical. Add a flag if we have the request in the future.
-    return (strncmp(rw_version, section.version,
-                    sizeof(section.version)) != 0 &&
-            targ_.min_rollback <= section.rollback &&
-            targ_.key_version == section.key_version);
+    return (targ_.min_rollback <= section.rollback &&
+            targ_.key_version == section.key_version &&
+            strncmp(rw_version, section.version, sizeof(section.version)) != 0);
   } else {
     // TODO(akahuang): Confirm the condition of RO update.
     return false;

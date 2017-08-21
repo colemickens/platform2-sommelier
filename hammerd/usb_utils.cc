@@ -49,8 +49,8 @@ void LogUSBError(const char* func_name, int return_code) {
              << libusb_strerror(static_cast<libusb_error>(return_code)) << ")";
 }
 
-UsbEndpoint::UsbEndpoint() : devh_(nullptr), iface_num_(-1), ep_num_(-1),
-                             chunk_len_(0) {}
+UsbEndpoint::UsbEndpoint()
+    : devh_(nullptr), iface_num_(-1), ep_num_(-1), chunk_len_(0) {}
 
 UsbEndpoint::~UsbEndpoint() {
   Close();
@@ -172,8 +172,7 @@ std::string UsbEndpoint::GetStringDescriptorAscii(uint8_t index) {
   // libusb_get_string_descriptor_ascii uses an internal buffer that can only
   // hold up to 128 ASCII characters.
   uint8_t data[128];
-  int r = libusb_get_string_descriptor_ascii(
-      devh_, index, data, sizeof(data));
+  int r = libusb_get_string_descriptor_ascii(devh_, index, data, sizeof(data));
   if (r < 0) {
     LogUSBError("libusb_get_string_descriptor", r);
     return std::string();

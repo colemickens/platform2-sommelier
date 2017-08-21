@@ -27,8 +27,8 @@ const char kDefaultImagePath[] = "/lib/firmware/hammer.fw";
 int main(int argc, const char* argv[]) {
   DEFINE_string(image, kDefaultImagePath, "The path of the image file.");
   brillo::FlagHelper::Init(argc, argv, "Hammer EC firmware updater daemon.");
-  brillo::InitLog(
-      brillo::kLogToSyslog | brillo::kLogHeader | brillo::kLogToStderrIfTty);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
+                  brillo::kLogToStderrIfTty);
 
   base::FilePath file_path(FILE_PATH_LITERAL(kLockFile));
   hammerd::ProcessLock lock(file_path);

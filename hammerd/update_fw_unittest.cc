@@ -32,9 +32,8 @@ class FirmwareUpdaterTest : public testing::Test {
  public:
   void SetUp() override {
     fw_updater_.reset(
-        new FirmwareUpdater{
-            std::unique_ptr<UsbEndpoint>(new MockUsbEndpoint()),
-            std::unique_ptr<FmapInterface>(new MockFmap())});
+        new FirmwareUpdater{std::unique_ptr<UsbEndpoint>(new MockUsbEndpoint()),
+                            std::unique_ptr<FmapInterface>(new MockFmap())});
     uep_ = static_cast<MockUsbEndpoint*>(fw_updater_->uep_.get());
     fmap_ = static_cast<MockFmap*>(fw_updater_->fmap_.get());
 
@@ -220,10 +219,11 @@ TEST_F(FirmwareUpdaterTest, TryConnectUSB_FetchVersion_FAIL) {
 TEST_F(FirmwareUpdaterTest, TryConnectUSB_LeftoverData) {
   EXPECT_CALL(*uep_, Connect()).WillOnce(Return(true));
   EXPECT_CALL(*uep_, GetChunkLength()).WillOnce(Return(10));
-  EXPECT_CALL(*uep_, Receive(_, 10, true, _)).Times(3)
-                                             .WillOnce(Return(10))
-                                             .WillOnce(Return(10))
-                                             .WillOnce(Return(0));
+  EXPECT_CALL(*uep_, Receive(_, 10, true, _))
+      .Times(3)
+      .WillOnce(Return(10))
+      .WillOnce(Return(10))
+      .WillOnce(Return(0));
   EXPECT_CALL(*uep_, GetConfigurationString())
       .WillOnce(Return("RO:version_string"));
   ASSERT_EQ(fw_updater_->TryConnectUSB(), true);
