@@ -2,22 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "midis/daemon.h"
+
 #include <base/bind.h>
 #include <base/memory/ptr_util.h>
+#include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 
-#include "midis/daemon.h"
-
-namespace {
-
-// TODO(pmalani): Move these into system_api once names are finalized.
-constexpr char kMidisServiceName[] = "org.chromium.Midis";
-constexpr char kMidisServicePath[] = "/org/chromium/Midis";
-constexpr char kMidisInterfaceName[] = "org.chromium.Midis";
-constexpr char kBootstrapMojoConnectionMethod[] = "BootstrapMojoConnection";
-
-}  // namespace
 
 namespace midis {
 
