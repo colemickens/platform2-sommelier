@@ -46,6 +46,8 @@
         'chaps.cc',
         'chaps_proxy.cc',
         'chaps_utility.cc',
+        'dbus/dbus_proxy_wrapper.cc',
+        'dbus/scoped_bus.cc',
         'isolate_chromeos.cc',
         'proto_conversion.cc',
         'token_manager_client.cc',
@@ -62,6 +64,8 @@
         'chaps.cc',
         'chaps_proxy.cc',
         'chaps_utility.cc',
+        'dbus/dbus_proxy_wrapper.cc',
+        'dbus/scoped_bus.cc',
         'isolate_chromeos.cc',
         'proto_conversion.cc',
         'token_manager_client.cc',
@@ -197,6 +201,19 @@
           'sources': [
             'chaps_service.cc',
             'chaps_service_test.cc',
+          ],
+        },
+        {
+          'target_name': 'dbus_test',
+          'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'dependencies': [
+            'libchaps_static',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
+          'sources': [
+            'dbus/dbus_proxy_wrapper_test.cc',
+            'dbus/scoped_bus_test.cc',
           ],
         },
         {

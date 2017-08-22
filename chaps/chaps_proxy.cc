@@ -10,16 +10,14 @@
 #include <base/macros.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
-#include <base/synchronization/waitable_event.h>
-#include <base/task_runner_util.h>
 #include <brillo/dbus/dbus_method_invoker.h>
-#include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_path.h>
-#include <dbus/object_proxy.h>
 
 #include "chaps/chaps.h"
 #include "chaps/chaps_utility.h"
+#include "chaps/dbus/dbus_proxy_wrapper.h"
+#include "chaps/dbus/scoped_bus.h"
 #include "chaps/dbus_bindings/constants.h"
 #include "chaps/isolate.h"
 #include "pkcs11/cryptoki.h"
@@ -34,9 +32,6 @@ namespace {
 
 const char kDBusThreadName[] = "chaps_dbus_client_thread";
 
-// 5 minutes, since some TPM operations can take a while.
-constexpr int kDBusTimeoutMs = 5 * 60 * 1000;
-
 // These methods are equivalent to static_casting the blob to
 // a regular std::vector since this is just an upcast. The reason why
 // we use them is that the libbrillo D-Bus bindings rely on template
@@ -50,62 +45,6 @@ inline const std::vector<uint8_t>& AsVector(const SecureBlob& blob) {
 
 inline std::vector<uint8_t>* AsVector(SecureBlob* blob) {
   return blob;
-}
-
-// libchrome's D-Bus bindings have a lot of threading restrictions which
-// force us to create the D-Bus objects and call them from the same
-// sequence every time. Because of this, we attempt to serialize all D-Bus
-// calls and constructions to one task runner. However, our API is limited
-// by the PKCS#11 interface, so we can't expose this asynchrony at a higher
-// level.
-//
-// This stuff below is tooling to try and hide this thread-jumping as much
-// as possible.
-using OnObjectProxyConstructedCallback =
-    base::Callback<void(bool, scoped_refptr<dbus::Bus>, dbus::ObjectProxy*)>;
-
-void OnServiceAvailable(OnObjectProxyConstructedCallback callback,
-                        scoped_refptr<dbus::Bus> bus,
-                        dbus::ObjectProxy* proxy,
-                        bool service_is_available) {
-  if (!service_is_available) {
-    LOG(ERROR) << "Failed to wait for chaps service to become available";
-    callback.Run(false, nullptr, nullptr);
-    return;
-  }
-
-  // Call GetSlotList to perform stage 2 initialization of chapsd if it
-  // hasn't already done so.
-  brillo::ErrorPtr error;
-  if (!brillo::dbus_utils::CallMethodAndBlockWithTimeout(
-          kDBusTimeoutMs, proxy, chaps::kChapsInterface,
-          chaps::kGetSlotListMethod, &error,
-          AsVector(
-              chaps::IsolateCredentialManager::GetDefaultIsolateCredential()),
-          false)) {
-    LOG(ERROR) << "Chaps service is up but unresponsive: "
-               << error->GetMessage();
-    callback.Run(false, nullptr, nullptr);
-    return;
-  }
-
-  callback.Run(true, bus, proxy);
-}
-
-void CreateObjectProxyOnTaskRunner(OnObjectProxyConstructedCallback callback) {
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
-
-  auto proxy = bus->GetObjectProxy(chaps::kChapsServiceName,
-                                   dbus::ObjectPath(chaps::kChapsServicePath));
-  if (!proxy) {
-    callback.Run(false, nullptr, nullptr);
-    return;
-  }
-
-  proxy->WaitForServiceToBeAvailable(
-      base::Bind(&OnServiceAvailable, callback, bus, proxy));
 }
 
 // We need to be able to shadow AtExitManagers because we don't know if the
@@ -123,136 +62,6 @@ class ProxyAtExitManager : public base::AtExitManager {
 
 namespace chaps {
 
-// Wrapper around the dbus::ObjectProxy which sets up a default
-// method timeout and runs D-Bus calls on the given |task_runner|.
-class DBusProxyWrapper : public base::RefCountedThreadSafe<DBusProxyWrapper> {
- public:
-  DBusProxyWrapper(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
-                   scoped_refptr<dbus::Bus> bus,
-                   dbus::ObjectProxy* dbus_proxy)
-      : task_runner_(task_runner), bus_(bus), dbus_proxy_(dbus_proxy) {}
-
-  template <typename... Args>
-  std::unique_ptr<dbus::Response> CallMethod(const std::string& method_name,
-                                             const Args&... args) {
-    DCHECK(!task_runner_->BelongsToCurrentThread());
-
-    std::unique_ptr<dbus::Response> resp;
-    base::WaitableEvent completion_event(false /* manual_reset */,
-                                         false /* initially_signaled */);
-    task_runner_->PostTask(
-        FROM_HERE,
-        base::Bind(&DBusProxyWrapper::CallMethodOnTaskRunner<Args...>, this,
-                   &resp, &completion_event, method_name, args...));
-    completion_event.Wait();
-    return resp;
-  }
-
-  // We have to shut the bus down on its origin thread, so offload it
-  // to the task runner.
-  void Shutdown() {
-    DCHECK(!task_runner_->BelongsToCurrentThread());
-
-    base::WaitableEvent completion_event(false /* manual_reset */,
-                                         false /* initially_signaled */);
-    task_runner_->PostTask(
-        FROM_HERE, base::Bind(&DBusProxyWrapper::ShutdownOnTaskRunner, this,
-                              &completion_event));
-    completion_event.Wait();
-  }
-
- private:
-  // Hide the destructor so we can't delete this while a task might have a
-  // reference to it.
-  friend class base::RefCountedThreadSafe<DBusProxyWrapper>;
-  virtual ~DBusProxyWrapper() {}
-
-  template <typename... Args>
-  void CallMethodOnTaskRunner(std::unique_ptr<dbus::Response>* out_resp,
-                              base::WaitableEvent* completion_event,
-                              const std::string& method_name,
-                              const Args&... args) {
-    DCHECK(task_runner_->BelongsToCurrentThread());
-
-    *out_resp = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
-        kDBusTimeoutMs, dbus_proxy_, kChapsInterface, method_name, nullptr,
-        args...);
-    completion_event->Signal();
-  }
-
-  void ShutdownOnTaskRunner(base::WaitableEvent* completion_event) {
-    DCHECK(task_runner_->BelongsToCurrentThread());
-
-    bus_->ShutdownAndBlock();
-    completion_event->Signal();
-  }
-
-  scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
-
-  scoped_refptr<dbus::Bus> bus_;
-  dbus::ObjectProxy* dbus_proxy_;  // weak, owned by |bus_|
-
-  DISALLOW_COPY_AND_ASSIGN(DBusProxyWrapper);
-};
-
-// To ensure we don't block forever waiting for the chapsd service to
-// show up.
-class ProxyWrapperConstructionTask
-    : public base::RefCountedThreadSafe<ProxyWrapperConstructionTask> {
- public:
-  ProxyWrapperConstructionTask()
-      : completion_event_(false /* manual_reset */,
-                          false /* initially_signaled */) {}
-
-  scoped_refptr<DBusProxyWrapper> ConstructProxyWrapper(
-      scoped_refptr<base::SingleThreadTaskRunner> task_runner) {
-    // This task will call the SetObjectProxyCallback with the results
-    // of the construction attempt.
-    task_runner->PostTask(
-        FROM_HERE,
-        base::Bind(
-            &CreateObjectProxyOnTaskRunner,
-            base::Bind(&ProxyWrapperConstructionTask::SetObjectProxyCallback,
-                       this)));
-
-    // If we wait too long for the chapsd service to become available,
-    // cancel construction.
-    if (!completion_event_.TimedWait(base::TimeDelta::FromSeconds(5))) {
-      LOG(ERROR) << "Chaps service is not available";
-      return nullptr;
-    }
-
-    // |completion_event_| was signaled, try constructing the proxy.
-    if (!success_)
-      return nullptr;
-
-    return scoped_refptr<DBusProxyWrapper>(
-        new DBusProxyWrapper(task_runner, bus_, object_proxy_));
-  }
-
- private:
-  // Hide the destructor so we can't delete this while a task might have a
-  // reference to it.
-  friend class base::RefCountedThreadSafe<ProxyWrapperConstructionTask>;
-  virtual ~ProxyWrapperConstructionTask() {}
-
-  void SetObjectProxyCallback(bool success,
-                              scoped_refptr<dbus::Bus> bus,
-                              dbus::ObjectProxy* object_proxy) {
-    success_ = success;
-    bus_ = bus;
-    object_proxy_ = object_proxy;
-    completion_event_.Signal();
-  }
-
-  base::WaitableEvent completion_event_;
-  bool success_;
-  scoped_refptr<dbus::Bus> bus_;
-  dbus::ObjectProxy* object_proxy_;
-
-  DISALLOW_COPY_AND_ASSIGN(ProxyWrapperConstructionTask);
-};
-
 // Below is the real implementation.
 
 ChapsProxyImpl::ChapsProxyImpl(std::unique_ptr<base::AtExitManager> at_exit,
@@ -262,9 +71,7 @@ ChapsProxyImpl::ChapsProxyImpl(std::unique_ptr<base::AtExitManager> at_exit,
       dbus_thread_(std::move(dbus_thread)),
       proxy_(proxy) {}
 
-ChapsProxyImpl::~ChapsProxyImpl() {
-  proxy_->Shutdown();
-}
+ChapsProxyImpl::~ChapsProxyImpl() {}
 
 // static
 std::unique_ptr<ChapsProxyImpl> ChapsProxyImpl::Create() {
