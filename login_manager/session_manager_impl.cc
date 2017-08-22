@@ -1539,6 +1539,8 @@ bool SessionManagerImpl::StartArcInstanceInternal(
   };
 
   const bool continue_boot = container_pid > 0;
+  android_container_->SetStatefulMode(in_request.for_login_screen() ?
+                        StatefulMode::STATELESS : StatefulMode::STATEFUL);
   if (!in_request.for_login_screen()) {
     arc_start_time_ = base::TimeTicks::Now();
 

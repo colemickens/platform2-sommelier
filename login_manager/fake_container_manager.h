@@ -25,6 +25,7 @@ class FakeContainerManager : public ContainerManagerInterface {
   void EnsureJobExit(base::TimeDelta timeout) override;
 
   bool StartContainer(const ExitCallback& exit_callback) override;
+  void SetStatefulMode(StatefulMode mode) override;
   bool GetRootFsPath(base::FilePath* path_out) const override;
   bool GetContainerPID(pid_t* pid_out) const override;
 

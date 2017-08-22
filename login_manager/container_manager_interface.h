@@ -16,6 +16,11 @@
 
 namespace login_manager {
 
+enum class StatefulMode {
+  STATEFUL,
+  STATELESS,
+};
+
 // Provides methods for running and stopping containers.
 //
 // Containers can only be run from the verified rootfs.
@@ -29,6 +34,10 @@ class ContainerManagerInterface : public JobManagerInterface {
   // Starts the container. Returns true on success.
   // If successful, |exit_callback| will be notified when the process exits.
   virtual bool StartContainer(const ExitCallback& exit_callback) = 0;
+
+  // Set the container as stateful or stateless.
+  // Stateless containers use a faster teardown procedure.
+  virtual void SetStatefulMode(StatefulMode mode) = 0;
 
   // Gets the path of the rootfs of the container.
   virtual bool GetRootFsPath(base::FilePath* path_out) const = 0;

@@ -58,7 +58,8 @@ ContainerManagerImpl::ContainerManagerImpl(
       container_directory_(containers_directory.Append(name)),
       name_(name),
       container_(nullptr, &container_destroy),
-      clean_exit_(false) {
+      clean_exit_(false),
+      stateful_mode_(StatefulMode::STATEFUL) {
   DCHECK(system_utils_);
 }
 
@@ -87,7 +88,7 @@ void ContainerManagerImpl::RequestJobExit() {
   // If HandleExit() is called after this point, it is considered clean.
   clean_exit_ = true;
 
-  if (!RequestTermination()) {
+  if (stateful_mode_ == StatefulMode::STATELESS || !RequestTermination()) {
     LOG(INFO) << "Killing off container " << name_;
     int rc = container_kill(container_.get());
     if (rc != 0) {
@@ -173,6 +174,10 @@ bool ContainerManagerImpl::StartContainer(const ExitCallback& exit_callback) {
   clean_exit_ = false;
 
   return true;
+}
+
+void ContainerManagerImpl::SetStatefulMode(StatefulMode mode) {
+  stateful_mode_ = mode;
 }
 
 bool ContainerManagerImpl::GetRootFsPath(base::FilePath* path_out) const {

@@ -38,6 +38,7 @@ class ContainerManagerImpl : public ContainerManagerInterface {
 
   // ContainerManagerInterface:
   bool StartContainer(const ExitCallback& exit_callback) override;
+  void SetStatefulMode(StatefulMode mode) override;
   bool GetRootFsPath(base::FilePath* path_out) const override;
   bool GetContainerPID(pid_t* pid_out) const override;
 
@@ -75,6 +76,9 @@ class ContainerManagerImpl : public ContainerManagerInterface {
 
   // True if RequestJobExit was called before the container process exits.
   bool clean_exit_;
+
+  // Whether container is stateful or stateless.
+  StatefulMode stateful_mode_;
 
   DISALLOW_COPY_AND_ASSIGN(ContainerManagerImpl);
 };

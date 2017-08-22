@@ -29,6 +29,8 @@ bool FakeContainerManager::StartContainer(const ExitCallback& exit_callback) {
   return true;
 }
 
+void FakeContainerManager::SetStatefulMode(StatefulMode mode) {}
+
 bool FakeContainerManager::GetRootFsPath(base::FilePath* path_out) const {
   if (!running_)
     return false;
