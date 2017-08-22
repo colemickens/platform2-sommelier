@@ -59,9 +59,6 @@ The JSON service configuration file will look like this:
 ```json
 {
   "service_name": "service.name.of.Frobinator",
-  "object_manager": {
-    "object_path": "/object/path/to/Frobinator/ObjectManager"
-  }
 }
 ```
 
@@ -70,8 +67,6 @@ Then, in your service, you can
 interface and adaptor classes for Frobinator, and users can
 `#include <frobinator/dbus-proxies.h>` to get the proxy classes. Try to
 follow the [best practices] doc and only export one object for your service.
-The `ObjectManager` here will be used to integrate with Brillo's D-Bus
-daemons but otherwise should not affect your implementation of the bindings.
 
 ## D-Bus types vs. C++ types
 
@@ -235,12 +230,9 @@ to use containment instead here. A simple daemon could look like this:
 class DBusAdaptor : public org::chromium::FrobinatorInterface,
                     public org::chromium::FrobinatorAdaptor {
  public:
-  explicit DBusAdaptor(
-      brillo::dbus_utils::ExportedObjectManager* object_manager)
+  explicit DBusAdaptor(scoped_refptr<dbus::Bus> bus)
     : org::chromium::FrobinatorAdaptor(this),
-      dbus_object_(object_manager,
-                   object_manager->GetBus(),
-                   dbus::ObjectPath(kFrobinatorServicePath)) {
+      dbus_object_(nullptr, bus, dbus::ObjectPath(kFrobinatorServicePath)) {}
 
   void RegisterAsync(
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
@@ -262,14 +254,12 @@ class DBusAdaptor : public org::chromium::FrobinatorInterface,
 
 class FrobinatorDaemon : public brillo::DBusServiceDaemon {
  public:
-  FrobinatorDaemon()
-    : DBusServiceDaemon(kFrobinatorServiceName,
-                        dbus::ObjectPath(kObjectManagerPath)) {}
+  FrobinatorDaemon() : DBusServiceDaemon(kFrobinatorServiceName) {}
 
  protected:
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
-    adaptor_.reset(new DBusAdaptor(object_manager_.get()));
+    adaptor_.reset(new DBusAdaptor(bus_));
     adaptor_->RegisterAsync(sequencer->GetHandler("RegisterAsync() failed",
                                                   true));
   }
