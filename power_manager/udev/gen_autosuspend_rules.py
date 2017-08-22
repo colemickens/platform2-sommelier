@@ -169,6 +169,14 @@ USB_IDS += [
   "18d1:5014",
 ]
 
+# USB Audio devices
+USB_IDS += [
+  # Google USB-C to 3.5mm Digital Headphone Jack Adapter "Mir"
+  "18d1:5025",
+  # Google USB-C to 3.5mm Digital Headphone Jack Adapter "Mir" (HID only)
+  "18d1:5029",
+]
+
 # List of PCI devices (vendorid:deviceid) for which it is safe to enable
 # autosuspend.
 PCI_IDS = []
