@@ -138,7 +138,7 @@ status_t CaptureUnit::init()
         return NO_INIT;
     }
 
-    mSyncManager = std::make_shared<SyncManager>(mCameraId,mMediaCtl, mIsys.get());
+    mSyncManager = std::make_shared<SyncManager>(mCameraId, mMediaCtl, this, mIsys.get());
 
     status_t status = mSyncManager->init(mSensorSettingsDelay, mGainDelay);
     if (status != NO_ERROR) {
@@ -884,6 +884,18 @@ status_t CaptureUnit::notifyListeners(ICaptureEventListener::CaptureMessage *msg
         ret |= (*it)->notifyCaptureEvent((ICaptureEventListener::CaptureMessage*)msg);
 
     return ret;
+}
+
+bool CaptureUnit::notifySofEvent(uint32_t sequence)
+{
+    LOG2("%s, sof event sequence %u", __FUNCTION__, sequence);
+    ICaptureEventListener::CaptureMessage outMsg;
+    outMsg.id = ICaptureEventListener::CAPTURE_MESSAGE_ID_EVENT;
+
+    outMsg.data.event.sequence = sequence;
+    outMsg.data.event.type = ICaptureEventListener::CAPTURE_EVENT_NEW_SOF;
+
+    return notifyListeners(&outMsg);
 }
 
 } // namespace camera2

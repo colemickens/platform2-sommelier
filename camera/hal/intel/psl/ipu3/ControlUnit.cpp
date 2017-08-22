@@ -60,7 +60,8 @@ ControlUnit::ControlUnit(ImguUnit *thePU,
         mSettingsProcessor(nullptr),
         mMetadata(nullptr),
         m3ARunner(nullptr),
-        mLensController(nullptr)
+        mLensController(nullptr),
+        mSofSequence(0)
 {
 }
 
@@ -992,6 +993,10 @@ ControlUnit::notifyCaptureEvent(CaptureMessage *captureMsg)
             msg.data.shutter.tv_sec = captureMsg->data.event.timestamp.tv_sec;
             msg.data.shutter.tv_usec = captureMsg->data.event.timestamp.tv_usec;
             mMessageQueue.send(&msg);
+            break;
+        case CAPTURE_EVENT_NEW_SOF:
+            mSofSequence = captureMsg->data.event.sequence;
+            LOG2("sof event sequence = %u", mSofSequence);
             break;
         default:
             LOGW("Unsupported Capture event ");

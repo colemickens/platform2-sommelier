@@ -68,6 +68,7 @@ public:
         CAPTURE_EVENT_2A_STATISTICS,
         CAPTURE_EVENT_AE_HISTOGRAM,
         CAPTURE_EVENT_NEW_SENSOR_DESCRIPTOR,
+        CAPTURE_EVENT_NEW_SOF,
         CAPTURE_EVENT_SHUTTER,
         CAPTURE_EVENT_YUV,
         CAPTURE_EVENT_MAX
@@ -125,7 +126,8 @@ public:
 
 class CaptureUnit :
     public IMessageHandler,
-    public IISysObserver
+    public IISysObserver,
+    public ISofListener
 {
 // public methods
 public:
@@ -158,6 +160,8 @@ public:
     status_t attachListener(ICaptureEventListener *aListener);
     void cleanListeners();
 
+    /* ISofListener interface */
+    virtual bool notifySofEvent(uint32_t sequence);
 private:
     // thread message IDs
     enum MessageId {

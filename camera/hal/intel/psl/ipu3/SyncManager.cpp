@@ -30,9 +30,11 @@ namespace camera2 {
 
 SyncManager::SyncManager(int32_t cameraId,
                          std::shared_ptr<MediaController> mediaCtl,
+                         ISofListener *sofListener,
                          ISettingsSyncListener *listener):
     mCameraId(cameraId),
     mMediaCtl(mediaCtl),
+    mSofListener(sofListener),
     mSettingsSyncListener(listener),
     mSensorType(SENSOR_TYPE_NONE),
     mSensorOp(nullptr),
@@ -889,9 +891,12 @@ status_t SyncManager::notifyPollEvent(PollEventMessage *pollEventMsg)
                 LOGE("Message ID = MESSAGE_ID_MAX should never end up here");
             }
             mMessageQueue.send(&msg);
-            LOG2("%s: EVENT, MessageId: %d, activedev: %d, reqId = %d, event seq: %d",
+            LOG2("%s: EVENT, MessageId: %d, activedev: %d, reqId: %d, sof event sequence: %u",
                  __FUNCTION__, pollEventMsg->id, pollEventMsg->data.activeDevices->size(),
                  pollEventMsg->data.reqId, event.sequence);
+
+            // notify SOF event
+            mSofListener->notifySofEvent(event.sequence);
         } while (event.pending > 0);
     }
     return OK;

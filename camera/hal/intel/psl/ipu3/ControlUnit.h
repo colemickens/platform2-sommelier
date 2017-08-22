@@ -78,6 +78,7 @@ public:  /* private types */
         MESSAGE_ID_NEW_2A_STAT,
         MESSAGE_ID_NEW_SENSOR_METADATA,
         MESSAGE_ID_NEW_SENSOR_DESCRIPTOR,
+        MESSAGE_ID_NEW_SOF,
         MESSAGE_ID_NEW_SHUTTER,
         MESSAGE_NEW_CV_RESULT,
         MESSAGE_ID_FLUSH,
@@ -153,6 +154,7 @@ private:  /* Methods */
     status_t handleNewImage(Message &msg);
     status_t handleNewStat(Message &msg);
     status_t handleNewSensorDescriptor(Message &msg);
+    status_t handleNewSof(Message &msg);
     status_t handleNewShutter(Message &msg);
     status_t handleMessageFlush(void);
 
@@ -204,6 +206,8 @@ private:  /* Members */
 
     AAARunner *m3ARunner;
     LensHw *mLensController;
+
+    uint32_t mSofSequence;
 };  // class ControlUnit
 
 }  // namespace camera2

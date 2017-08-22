@@ -52,6 +52,12 @@ enum {
     TEST_PATTERN_MODE_DEFAULT = 2,
 };
 
+class ISofListener {
+public:
+    virtual ~ISofListener() {}
+    virtual bool notifySofEvent(uint32_t sequence) = 0;
+};
+
 class ISettingsSyncListener {
 public:
     virtual ~ISettingsSyncListener() {};
@@ -70,6 +76,7 @@ class SyncManager : public IMessageHandler,
 public:
     SyncManager(int32_t cameraId,
                 std::shared_ptr<MediaController> mediaCtl,
+                ISofListener *sofListener,
                 ISettingsSyncListener *syncListener);
     ~SyncManager();
 
@@ -92,6 +99,7 @@ private:
     const IPU3CameraCapInfo *mCapInfo; /* SyncManager doesn't own mCapInfo */
     std::shared_ptr<MediaController> mMediaCtl;
 
+    ISofListener *mSofListener; /* SyncManager doesn't own mSofListener */
     ISettingsSyncListener *mSettingsSyncListener; /* SyncManager doesn't own mSettingsSyncListener */
     std::unique_ptr<PollerThread> mPollerThread;
 
