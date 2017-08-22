@@ -172,7 +172,7 @@ protected:  /* Members */
     unsigned mItemsCount;
     bool mProfileEnd[MAX_CAMERAS];
     CameraHWInfo * mCameraCommon; /* ChromeCameraProfiles has the ownership */
-    ItemPool<CameraInfo>  mCameraInfoPool;
+    ItemPool<CameraInfo> mCameraInfoPool;
     // To store the supported HW type for each camera id
     std::map<int, CameraInfo*> mCameraIdToCameraInfo; /* mCameraIdToCameraInfo doesn't has
                                                 * the ownership of CameraInfo */

@@ -1225,7 +1225,7 @@ void CameraProfiles::getDataFromXmlFile(void)
     void *pBuf = nullptr;
     FILE *fp = nullptr;
     LOG1("@%s", __FUNCTION__);
-    camera_metadata_t * currentMeta = nullptr;
+    camera_metadata_t *currentMeta = nullptr;
     status_t res;
     int tag = ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS;
 
@@ -1286,7 +1286,7 @@ exit:
         mMetadataCache = nullptr;
     }
     if (fp)
-    ::fclose(fp);
+        ::fclose(fp);
 }
 
 CameraHwType CameraProfiles::getCameraHwforId(int cameraId)

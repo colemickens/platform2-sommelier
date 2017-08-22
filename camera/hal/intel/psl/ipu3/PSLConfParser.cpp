@@ -66,8 +66,6 @@ PSLConfParser::PSLConfParser(std::string& xmlName, const std::vector<SensorDrive
     mSensorIndex  = -1;
     getPSLDataFromXmlFile();
     getGraphConfigFromXmlFile();
-    // Uncomment to display all the parsed values
-    //dump();
 }
 
 PSLConfParser::~PSLConfParser()
@@ -844,7 +842,7 @@ exit:
     if (pBuf)
         free(pBuf);
     if (fp)
-    ::fclose(fp);
+        ::fclose(fp);
 }
 
 /*

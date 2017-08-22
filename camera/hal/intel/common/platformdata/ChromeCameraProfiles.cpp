@@ -76,9 +76,6 @@ status_t ChromeCameraProfiles::init()
     // Parse common sections
     getDataFromXmlFile();
 
-    // Uncomment to display all the parsed values
-    //dump();
-
     createConfParser();
 
     return OK;

@@ -127,15 +127,6 @@ void PlatformData::init()
 {
     LOGD("Camera HAL static init");
 
-    if (mCameraHWInfo) {
-        delete mCameraHWInfo;
-        mCameraHWInfo = nullptr;
-    }
-    if (mInstance) {
-        delete mInstance;
-        mInstance = nullptr;
-    }
-
     CLEAR(sKnownCPFConfigurations);
 
     if (mGcssKeyMap) {
@@ -144,19 +135,22 @@ void PlatformData::init()
     }
     mGcssKeyMap = new GcssKeyMap;
 
+    if (mCameraHWInfo) {
+        delete mCameraHWInfo;
+        mCameraHWInfo = nullptr;
+    }
     mCameraHWInfo = new CameraHWInfo();
 
-    mInstance = new ChromeCameraProfiles(mCameraHWInfo);
-    if (!mInstance) {
-        LOGE("Not enough memory to create Camera profiles");
-        return;
+    if (mInstance) {
+        delete mInstance;
+        mInstance = nullptr;
     }
+    mInstance = new ChromeCameraProfiles(mCameraHWInfo);
 
     int ret = mInstance->init();
     if (ret != OK) {
         LOGE("Failed to initialize Camera profiles");
-        delete mInstance;
-        mInstance = nullptr;
+        deinit();
         return;
     }
 
@@ -882,7 +876,6 @@ status_t CameraHWInfo::initDriverList()
         LOGE("Could not find sensor names");
         ret = NO_INIT;
     }
-
 
     for (unsigned i = 0 ;i < mSensorInfo.size(); ++i)
         LOG1("@%s, mSensorName:%s, mDeviceName:%s, port:%d", __FUNCTION__,
