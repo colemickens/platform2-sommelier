@@ -439,25 +439,14 @@ wipe_keysets() {
   done
 }
 
-wipe_stateful_partition() {
-  # Order constraints:
-  # 1. The crossystem call must happen immediately before the destruction of the
-  # stateful partition to minimize the probability of inconsistency between TPM
-  # state and presence/absence of install attributes in case of power loss.
-  # 2. The destruction of stateful must be last in the sequence in order to
-  # minimize the probability of losing the preserved files.
+# Wipe non-active kernel and root partitions unless |KEEPIMG| is set. This is
+# used in the factory to remove the test image before shipping the device.
+potentially_wipe_non_active_kernel_and_root() {
   if [ -z "${KEEPIMG}" ]; then
     ensure_bootable_kernel "${KERNEL_PART_NUM}" "${ROOT_DISK}"
     wipedev ${OTHER_ROOT_DEV}
     wipedev ${OTHER_KERNEL_DEV}
   fi
-
-  # Clear TPM at next boot to make the TPM state consistent with (the soon to
-  # be induced) absence of install_attributes.pb.
-  crossystem clear_tpm_owner_request=1
-
-  # Wipe everything on the stateful partition.
-  wipedev ${STATE_DEV}
 }
 
 create_stateful_file_system() {
@@ -487,15 +476,15 @@ tag_developer_mode_flags() {
   fi
 }
 
-# Removes the following keys from the vpd when transitioning
-# between developer and verified mode. Do not do this for a safe wipe.
+# Removes the following keys from the VPD when transitioning between developer
+# and verified mode. Do not do this for a safe wipe.
 #   first_active_omaha_ping_sent
 #   recovery_count
 remove_vpd_keys() {
   local key=""
   if [ "${SAFE_WIPE}" != "safe" ]; then
     for key in "recovery_count" "first_active_omaha_ping_sent"; do
-      # Do not report failures as the key might not even exist in the vpd.
+      # Do not report failures as the key might not even exist in the VPD.
       vpd -i RW_VPD -d "${key}"
     done
   fi
@@ -504,6 +493,11 @@ remove_vpd_keys() {
 main() {
   ensure_root_account
   redirect_log_start
+
+  # Most effective means of destroying user data is run at the start: Throwing
+  # away the key to encrypted stateful by requesting the TPM to be cleared at
+  # next boot.
+  crossystem clear_tpm_owner_request=1
 
   preserve_files
   detect_system_config
@@ -535,17 +529,20 @@ main() {
   # Make sure the stateful partition has been unmounted.
   umount -n "${STATE_PATH}"
 
-  wipe_stateful_partition
+  # Destroy user data: wipe the stateful partition.
+  wipedev "${STATE_DEV}"
   create_stateful_file_system
 
   # Mount the fresh image for last minute additions.
   mount -n "${STATE_DEV}" "${STATE_PATH}"
-
   restore_preserved_files
-  tag_developer_mode_flags
 
-  # Remove extra vpd keys when switching to developer mode.
+  # Destroy less sensitive data.
   remove_vpd_keys
+  potentially_wipe_non_active_kernel_and_root
+
+  # Mark deletion complete to prevent re-wipe after reboot.
+  tag_developer_mode_flags
 
   # Flush linux caches.
   sync
