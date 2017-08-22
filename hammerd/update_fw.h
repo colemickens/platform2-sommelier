@@ -145,54 +145,28 @@ struct SectionInfo {
 class FirmwareUpdaterInterface {
  public:
   virtual ~FirmwareUpdaterInterface() = default;
-  virtual bool LoadImage(const std::string& image) = 0;
-  virtual bool TryConnectUSB() = 0;
-  virtual void CloseUSB() = 0;
-  virtual bool SendFirstPDU() = 0;
-  virtual void SendDone() = 0;
-  virtual bool InjectEntropy() = 0;
-
-  virtual bool SendSubcommand(UpdateExtraCommand subcommand) = 0;
-  virtual bool SendSubcommandWithPayload(UpdateExtraCommand subcommand,
-                                         const std::string& cmd_body) = 0;
-  virtual bool SendSubcommandReceiveResponse(UpdateExtraCommand subcommand,
-                                             const std::string& cmd_body,
-                                             void* resp,
-                                             size_t resp_size) = 0;
-  virtual bool TransferImage(SectionName section_name) = 0;
-  virtual SectionName CurrentSection() const = 0;
-  virtual bool NeedsUpdate(SectionName section_name) const = 0;
-  virtual bool IsSectionLocked(SectionName section_name) const = 0;
-  virtual bool UnLockSection(SectionName section_name) = 0;
-};
-
-// Implement the core logic of updating firmware.
-// It contains the data of the original transfer_descriptor.
-class FirmwareUpdater : public FirmwareUpdaterInterface {
- public:
-  FirmwareUpdater();
 
   // Scans the new image and retrieve versions of RO and RW sections.
-  bool LoadImage(const std::string& image) override;
+  virtual bool LoadImage(const std::string& image) = 0;
 
   // Tries to connect to the USB endpoint during a period of time.
-  bool TryConnectUSB() override;
+  virtual bool TryConnectUSB() = 0;
 
   // Closes the connection to the USB endpoint.
-  void CloseUSB() override;
+  virtual void CloseUSB() = 0;
 
   // Setups the connection with the EC firmware by sending the first PDU.
   // Returns true if successfully setup the connection.
-  bool SendFirstPDU() override;
+  virtual bool SendFirstPDU() = 0;
 
   // Indicates to the target that update image transfer has been completed. Upon
   // receipt of this message the target state machine transitions into the
   // 'rx_idle' state. The host may send an extension command to reset the target
   // after this.
-  void SendDone() override;
+  virtual void SendDone() = 0;
 
   // Injects entropy into the hammer device.
-  bool InjectEntropy() override;
+  virtual bool InjectEntropy() = 0;
 
   // Sends the external command through USB. The format of the payload is:
   //   4 bytes      4 bytes         4 bytes       2 bytes      variable size
@@ -204,6 +178,45 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   // dependent. The target tells between update PDUs and encapsulated vendor
   // subcommands by looking at the EXT_CMD value - it is kUpdateExtraCmd and
   // as such is guaranteed not to be a valid update PDU destination address.
+  virtual bool SendSubcommand(UpdateExtraCommand subcommand) = 0;
+  virtual bool SendSubcommandWithPayload(UpdateExtraCommand subcommand,
+                                 const std::string& cmd_body) = 0;
+  virtual bool SendSubcommandReceiveResponse(UpdateExtraCommand subcommand,
+                                     const std::string& cmd_body,
+                                     void* resp,
+                                     size_t resp_size) = 0;
+
+  // Transfers the image to the target section.
+  virtual bool TransferImage(SectionName section_name) = 0;
+
+  // Returns the current section that EC is running. One of "RO" or "RW".
+  virtual SectionName CurrentSection() const = 0;
+
+  // Determines whether the given section needs updating.  Returns an accurate
+  // answer regardless of which section is currently running.
+  virtual bool NeedsUpdate(SectionName section_name) const = 0;
+
+  // Determines the section is locked or not.
+  virtual bool IsSectionLocked(SectionName section_name) const = 0;
+
+  // Unlocks the section. Need to send "Reset" command afterward.
+  virtual bool UnLockSection(SectionName section_name) = 0;
+};
+
+// Implement the core logic of updating firmware.
+// It contains the data of the original transfer_descriptor.
+class FirmwareUpdater : public FirmwareUpdaterInterface {
+ public:
+  FirmwareUpdater();
+  explicit FirmwareUpdater(std::unique_ptr<UsbEndpoint> endpoint);
+
+  // FirmwareUpdaterInterface implementation:
+  bool LoadImage(const std::string& image) override;
+  bool TryConnectUSB() override;
+  void CloseUSB() override;
+  bool SendFirstPDU() override;
+  void SendDone() override;
+  bool InjectEntropy() override;
   bool SendSubcommand(UpdateExtraCommand subcommand) override;
   bool SendSubcommandWithPayload(UpdateExtraCommand subcommand,
                                  const std::string& cmd_body) override;
@@ -211,21 +224,10 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
                                      const std::string& cmd_body,
                                      void* resp,
                                      size_t resp_size) override;
-
-  // Transfers the image to the target section.
   bool TransferImage(SectionName section_name) override;
-
-  // Returns the current section that EC is running. One of "RO" or "RW".
   SectionName CurrentSection() const override;
-
-  // Determines whether the given section needs updating.  Returns an accurate
-  // answer regardless of which section is currently running.
   bool NeedsUpdate(SectionName section_name) const override;
-
-  // Determines the section is locked or not.
   bool IsSectionLocked(SectionName section_name) const override;
-
-  // Unlocks the section. Need to send "Reset" command afterward.
   bool UnLockSection(SectionName section_name) override;
 
  protected:
