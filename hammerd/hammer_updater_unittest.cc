@@ -54,7 +54,8 @@ class MockRunOnceHammerUpdater : public HammerUpdater {
   using HammerUpdater::HammerUpdater;
   ~MockRunOnceHammerUpdater() override = default;
 
-  MOCK_METHOD1(RunOnce, RunStatus(const bool post_rw_jump));
+  MOCK_METHOD2(RunOnce, RunStatus(const bool post_rw_jump,
+                                  const bool need_inject_entropy));
 };
 
 class MockRWProcessHammerUpdater : public HammerUpdater {
@@ -62,7 +63,7 @@ class MockRWProcessHammerUpdater : public HammerUpdater {
   using HammerUpdater::HammerUpdater;
   ~MockRWProcessHammerUpdater() override = default;
 
-  MOCK_METHOD0(PostRWProcess, void());
+  MOCK_METHOD0(PostRWProcess, RunStatus());
 };
 
 template <typename HammerUpdaterType>
@@ -121,7 +122,7 @@ class HammerUpdaterPostRWTest : public HammerUpdaterTest<HammerUpdater> {};
 TEST_F(HammerUpdaterFlowTest, Run_LoadImageFailed) {
   EXPECT_CALL(*fw_updater_, LoadImage(image_)).WillOnce(Return(false));
   EXPECT_CALL(*fw_updater_, TryConnectUSB()).Times(0);
-  EXPECT_CALL(*hammer_updater_, RunOnce(_)).Times(0);
+  EXPECT_CALL(*hammer_updater_, RunOnce(_, _)).Times(0);
 
   ASSERT_FALSE(hammer_updater_->Run());
 }
@@ -129,7 +130,7 @@ TEST_F(HammerUpdaterFlowTest, Run_LoadImageFailed) {
 // Sends reset command if RunOnce returns kNeedReset.
 TEST_F(HammerUpdaterFlowTest, Run_AlwaysReset) {
   EXPECT_CALL(*fw_updater_, LoadImage(image_)).WillOnce(Return(true));
-  EXPECT_CALL(*hammer_updater_, RunOnce(false))
+  EXPECT_CALL(*hammer_updater_, RunOnce(false, _))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(HammerUpdater::RunStatus::kNeedReset));
   EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kImmediateReset))
@@ -143,7 +144,7 @@ TEST_F(HammerUpdaterFlowTest, Run_AlwaysReset) {
 // A fatal error occurred during update.
 TEST_F(HammerUpdaterFlowTest, Run_FatalError) {
   EXPECT_CALL(*fw_updater_, LoadImage(image_)).WillOnce(Return(true));
-  EXPECT_CALL(*hammer_updater_, RunOnce(false))
+  EXPECT_CALL(*hammer_updater_, RunOnce(false, _))
       .WillOnce(Return(HammerUpdater::RunStatus::kFatalError));
 
   ExpectUSBConnections(AtLeast(1));
@@ -153,7 +154,7 @@ TEST_F(HammerUpdaterFlowTest, Run_FatalError) {
 // After three attempts, Run reports no update needed.
 TEST_F(HammerUpdaterFlowTest, Run_Reset3Times) {
   EXPECT_CALL(*fw_updater_, LoadImage(image_)).WillOnce(Return(true));
-  EXPECT_CALL(*hammer_updater_, RunOnce(false))
+  EXPECT_CALL(*hammer_updater_, RunOnce(false, _))
       .WillOnce(Return(HammerUpdater::RunStatus::kNeedReset))
       .WillOnce(Return(HammerUpdater::RunStatus::kNeedReset))
       .WillOnce(Return(HammerUpdater::RunStatus::kNeedReset))
@@ -179,7 +180,7 @@ TEST_F(HammerUpdaterRWTest, RunOnce_InvalidSection) {
     EXPECT_CALL(*fw_updater_, SendDone()).WillOnce(Return());
   }
 
-  ASSERT_EQ(hammer_updater_->RunOnce(false),
+  ASSERT_EQ(hammer_updater_->RunOnce(false, false),
             HammerUpdater::RunStatus::kInvalidFirmware);
 }
 
@@ -237,6 +238,72 @@ TEST_F(HammerUpdaterRWTest, Run_UpdateRWAfterJumpToRWFailed) {
   ASSERT_EQ(hammer_updater_->Run(), true);
 }
 
+// Inject Entropy.
+// Condition:
+//   1. In RO section at the begining.
+//   2. RW does not need update.
+//   3. RW is not locked.
+//   4. Pairing failed at the first time.
+//   5. After injecting entropy successfully, pairing is successful
+TEST_F(HammerUpdaterRWTest, Run_InjectEntropy) {
+  SectionName current_section = SectionName::RO;
+
+  EXPECT_CALL(*fw_updater_, LoadImage(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*fw_updater_, NeedsUpdate(SectionName::RW))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*fw_updater_, IsSectionLocked(SectionName::RW))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*fw_updater_, CurrentSection())
+      .WillRepeatedly(ReturnPointee(&current_section));
+
+  {
+    InSequence dummy;
+
+    // First round: RW does not need update.  Attempt to jump to RW.
+    EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
+    EXPECT_CALL(*fw_updater_, SendDone()).WillOnce(Return());
+    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kJumpToRW))
+        .WillOnce(DoAll(Assign(&current_section, SectionName::RW),
+                        Return(true)));
+
+    // Second round: Entering RW section, and need to inject entropy.
+    EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
+    EXPECT_CALL(*fw_updater_, SendDone()).WillOnce(Return());
+    EXPECT_CALL(*hammer_updater_, PostRWProcess())
+        .WillOnce(Return(HammerUpdater::RunStatus::kNeedInjectEntropy));
+    EXPECT_CALL(*fw_updater_,
+                SendSubcommand(UpdateExtraCommand::kImmediateReset))
+        .WillOnce(DoAll(Assign(&current_section, SectionName::RO),
+                        Return(true)));
+
+    // Third round: Inject entropy and reset again.
+    EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
+    EXPECT_CALL(*fw_updater_, SendDone()).WillOnce(Return());
+    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO))
+        .WillOnce(Return(true));
+    EXPECT_CALL(*fw_updater_, InjectEntropy()).WillOnce(Return(true));
+    EXPECT_CALL(*fw_updater_,
+                SendSubcommand(UpdateExtraCommand::kImmediateReset))
+        .WillOnce(Return(true));
+
+    // Fourth round: Send JumpToRW.
+    EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
+    EXPECT_CALL(*fw_updater_, SendDone()).WillOnce(Return());
+    EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kJumpToRW))
+        .WillOnce(DoAll(Assign(&current_section, SectionName::RW),
+                        Return(true)));
+
+    // Fifth round: Pairing is successful.
+    EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
+    EXPECT_CALL(*fw_updater_, SendDone()).WillOnce(Return());
+    EXPECT_CALL(*hammer_updater_, PostRWProcess())
+        .WillOnce(Return(HammerUpdater::RunStatus::kNoUpdate));
+  }
+
+  ExpectUSBConnections(AtLeast(1));
+  ASSERT_EQ(hammer_updater_->Run(), true);
+}
+
 // Update the RW and continue.
 // Condition:
 //   1. In RO section.
@@ -260,7 +327,7 @@ TEST_F(HammerUpdaterRWTest, RunOnce_UpdateRW) {
         .WillOnce(Return(true));
   }
 
-  ASSERT_EQ(hammer_updater_->RunOnce(false),
+  ASSERT_EQ(hammer_updater_->RunOnce(false, false),
             HammerUpdater::RunStatus::kNeedReset);
 }
 
@@ -287,7 +354,7 @@ TEST_F(HammerUpdaterRWTest, RunOnce_UnlockRW) {
         .WillRepeatedly(Return(true));
   }
 
-  ASSERT_EQ(hammer_updater_->RunOnce(false),
+  ASSERT_EQ(hammer_updater_->RunOnce(false, false),
             HammerUpdater::RunStatus::kNeedReset);
 }
 
@@ -307,7 +374,7 @@ TEST_F(HammerUpdaterRWTest, RunOnce_JumpToRW) {
     EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
   }
 
-  ASSERT_EQ(hammer_updater_->RunOnce(false),
+  ASSERT_EQ(hammer_updater_->RunOnce(false, false),
             HammerUpdater::RunStatus::kNeedJump);
 }
 
@@ -326,7 +393,7 @@ TEST_F(HammerUpdaterRWTest, RunOnce_CompleteRWJump) {
     EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
   }
 
-  ASSERT_EQ(hammer_updater_->RunOnce(true),
+  ASSERT_EQ(hammer_updater_->RunOnce(true, false),
             HammerUpdater::RunStatus::kNoUpdate);
 }
 
@@ -346,7 +413,7 @@ TEST_F(HammerUpdaterRWTest, RunOnce_KeepInRW) {
     EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
   }
 
-  ASSERT_EQ(hammer_updater_->RunOnce(false),
+  ASSERT_EQ(hammer_updater_->RunOnce(false, false),
             HammerUpdater::RunStatus::kNoUpdate);
 }
 
@@ -366,17 +433,52 @@ TEST_F(HammerUpdaterRWTest, RunOnce_ResetToRO) {
     EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
   }
 
-  ASSERT_EQ(hammer_updater_->RunOnce(false),
+  ASSERT_EQ(hammer_updater_->RunOnce(false, false),
             HammerUpdater::RunStatus::kNeedReset);
 }
 
-// Post RW process:
-// Condition:
-//   1. Pairing is successful.
-TEST_F(HammerUpdaterPostRWTest, Pairing) {
+// Successfully Pair with Hammer.
+TEST_F(HammerUpdaterPostRWTest, Pairing_Passed) {
   EXPECT_CALL(*pair_manager_, PairChallenge(fw_updater_))
       .WillOnce(Return(ChallengeStatus::kChallengePassed));
-  hammer_updater_->PostRWProcess();
+  EXPECT_EQ(hammer_updater_->PostRWProcess(),
+            HammerUpdater::RunStatus::kNoUpdate);
+}
+
+// Hammer needs to inject entropy, and rollback is locked.
+TEST_F(HammerUpdaterPostRWTest, Pairing_NeedEntropyRollbackLocked) {
+  {
+    InSequence dummy;
+    EXPECT_CALL(*pair_manager_, PairChallenge(fw_updater_))
+        .WillOnce(Return(ChallengeStatus::kNeedInjectEntropy));
+    EXPECT_CALL(*fw_updater_, IsRollbackLocked())
+        .WillOnce(Return(true));
+    EXPECT_CALL(*fw_updater_, UnLockRollback())
+        .WillOnce(Return(true));
+  }
+  EXPECT_EQ(hammer_updater_->PostRWProcess(),
+            HammerUpdater::RunStatus::kNeedInjectEntropy);
+}
+
+// Hammer needs to inject entropy, and rollback is not locked.
+TEST_F(HammerUpdaterPostRWTest, Pairing_NeedEntropyRollbackUnLocked) {
+  {
+    InSequence dummy;
+    EXPECT_CALL(*pair_manager_, PairChallenge(fw_updater_))
+        .WillOnce(Return(ChallengeStatus::kNeedInjectEntropy));
+    EXPECT_CALL(*fw_updater_, IsRollbackLocked())
+        .WillOnce(Return(false));
+  }
+  EXPECT_EQ(hammer_updater_->PostRWProcess(),
+            HammerUpdater::RunStatus::kNeedInjectEntropy);
+}
+
+// Failed to pair with Hammer.
+TEST_F(HammerUpdaterPostRWTest, Pairing_Failed) {
+  EXPECT_CALL(*pair_manager_, PairChallenge(fw_updater_))
+      .WillOnce(Return(ChallengeStatus::kChallengeFailed));
+  EXPECT_EQ(hammer_updater_->PostRWProcess(),
+            HammerUpdater::RunStatus::kFatalError);
 }
 
 }  // namespace hammerd

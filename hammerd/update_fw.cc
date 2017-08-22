@@ -308,6 +308,16 @@ bool FirmwareUpdater::UnLockSection(SectionName section_name) {
   return false;
 }
 
+bool FirmwareUpdater::IsRollbackLocked() const {
+  // TODO(akahuang): Implement this.
+  return false;
+}
+
+bool FirmwareUpdater::UnLockRollback() {
+  // TODO(akahuang): Implement this.
+  return false;
+}
+
 // Note: It is assumed that when TransferImage is called, hammer EC is in the
 // IDLE state.  This function takes care of the entire update process, including
 // bringing hammer EC back to the IDLE state afterwards.

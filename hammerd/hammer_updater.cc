@@ -91,6 +91,7 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
   // available for the next USB connection.
   constexpr unsigned int kResetTimeMs = 100;
   bool post_rw_jump = false;
+  bool need_inject_entropy = false;
 
   HammerUpdater::RunStatus status;
   for (int run_count = 0; run_count < kMaximumRunCount; ++run_count) {
@@ -100,8 +101,9 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
       return HammerUpdater::RunStatus::kLostConnection;
     }
 
-    status = RunOnce(post_rw_jump);
+    status = RunOnce(post_rw_jump, need_inject_entropy);
     post_rw_jump = false;
+    need_inject_entropy = false;
     switch (status) {
       case HammerUpdater::RunStatus::kNoUpdate:
         LOG(INFO) << "Hammer does not need to update.";
@@ -111,14 +113,14 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
       case HammerUpdater::RunStatus::kFatalError:
         LOG(ERROR) << "Hammer encountered a fatal error!";
         // Send the reset signal to hammer, and then prevent the next hammerd
-        // process be invoked.
+        // process from being invoked.
         fw_updater_->SendSubcommand(UpdateExtraCommand::kImmediateReset);
         fw_updater_->CloseUSB();
         return HammerUpdater::RunStatus::kNeedReset;
 
       case HammerUpdater::RunStatus::kInvalidFirmware:
         // Send the JumpToRW to hammer, and then prevent the next hammerd
-        // process be invoked.
+        // process from being invoked.
         fw_updater_->SendSubcommand(UpdateExtraCommand::kJumpToRW);
         fw_updater_->CloseUSB();
         base::PlatformThread::Sleep(
@@ -144,6 +146,17 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
             base::TimeDelta::FromMilliseconds(kResetTimeMs));
         continue;
 
+      case HammerUpdater::RunStatus::kNeedInjectEntropy:
+        need_inject_entropy = true;
+        fw_updater_->SendSubcommand(UpdateExtraCommand::kImmediateReset);
+        fw_updater_->CloseUSB();
+        base::PlatformThread::Sleep(
+            base::TimeDelta::FromMilliseconds(kResetTimeMs));
+        // If it is the last run, we should treat it as kNeedReset because we
+        // just sent a kImmediateReset signal.
+        status = HammerUpdater::RunStatus::kNeedReset;
+        continue;
+
       default:
         LOG(ERROR) << "Unknown RunStatus: " << static_cast<int>(status);
         fw_updater_->CloseUSB();
@@ -155,7 +168,8 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
   return status;
 }
 
-HammerUpdater::RunStatus HammerUpdater::RunOnce(const bool post_rw_jump) {
+HammerUpdater::RunStatus HammerUpdater::RunOnce(
+    const bool post_rw_jump, const bool need_inject_entropy) {
   // The first time we use SendFirstPDU it is to gather information about
   // hammer's running EC. We should use SendDone right away to get the EC
   // back into a state where we can send a subcommand.
@@ -184,8 +198,7 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(const bool post_rw_jump) {
       LOG(INFO) << "RW section needs update.";
       return HammerUpdater::RunStatus::kNeedReset;
     }
-    PostRWProcess();
-    return HammerUpdater::RunStatus::kNoUpdate;
+    return PostRWProcess();
   }
 
   // ********************** RO **********************
@@ -193,7 +206,8 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(const bool post_rw_jump) {
   //   (1) failed to jump to RW after the last run; or
   //   (2) RW section needs updating,
   // then continue with the update procedure.
-  if (post_rw_jump || fw_updater_->NeedsUpdate(SectionName::RW)) {
+  if (need_inject_entropy || post_rw_jump ||
+      fw_updater_->NeedsUpdate(SectionName::RW)) {
     // If we have just finished a jump to RW, but we're still in RO, then
     // we should log the failure.
     if (post_rw_jump) {
@@ -206,6 +220,16 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(const bool post_rw_jump) {
     if (!fw_updater_->SendSubcommand(UpdateExtraCommand::kStayInRO)) {
       LOG(ERROR) << "Failed to stay in RO.";
       return HammerUpdater::RunStatus::kNeedReset;
+    }
+
+    if (need_inject_entropy) {
+      bool ret = fw_updater_->InjectEntropy();
+      if (ret) {
+        LOG(INFO) << "Successfully injected entropy.";
+        return HammerUpdater::RunStatus::kNeedReset;
+      }
+      LOG(ERROR) << "Failed to inject entropy.";
+      return HammerUpdater::RunStatus::kFatalError;
     }
 
     if (fw_updater_->IsSectionLocked(SectionName::RW)) {
@@ -224,28 +248,47 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(const bool post_rw_jump) {
   return HammerUpdater::RunStatus::kNeedJump;
 }
 
-void HammerUpdater::PostRWProcess() {
+HammerUpdater::RunStatus HammerUpdater::PostRWProcess() {
   LOG(INFO) << "Start the process after entering RW section.";
+  HammerUpdater::RunStatus ret;
+
+  // Pair with hammer.
+  ret = Pair();
+  if (ret != HammerUpdater::RunStatus::kNoUpdate) {
+    return ret;
+  }
+
   // TODO(akahuang): Update RO section in dogfood mode.
   // TODO(akahuang): Update trackpad FW.
-  Pair();
   // TODO(akahuang): Rollback increment.
+
+  // All process are done.
+  return HammerUpdater::RunStatus::kNoUpdate;
 }
 
-bool HammerUpdater::Pair() {
+HammerUpdater::RunStatus HammerUpdater::Pair() {
   auto status = pair_manager_->PairChallenge(fw_updater_.get());
   switch (status) {
     case ChallengeStatus::kChallengePassed:
       // TODO(akahuang): Check if the base is swapped.
-      return true;
-    case ChallengeStatus::kChallengeFailed:
-      return false;
+      return HammerUpdater::RunStatus::kNoUpdate;
+
     case ChallengeStatus::kNeedInjectEntropy:
-      // TODO(akahuang): Inject the entropy.
-      return false;
+      if (fw_updater_->IsRollbackLocked()) {
+        if (!fw_updater_->UnLockRollback()) {
+          LOG(ERROR) << "Failed to unlock rollback. Skip injecting entropy.";
+          return HammerUpdater::RunStatus::kFatalError;
+        }
+      }
+      return HammerUpdater::RunStatus::kNeedInjectEntropy;
+
+    case ChallengeStatus::kChallengeFailed:
+      return HammerUpdater::RunStatus::kFatalError;
+
     case ChallengeStatus::kUnknownError:
-      return false;
+      return HammerUpdater::RunStatus::kFatalError;
   }
+  return HammerUpdater::RunStatus::kFatalError;
 }
 
 }  // namespace hammerd

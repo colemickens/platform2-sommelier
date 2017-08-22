@@ -60,6 +60,7 @@ enum class UpdateExtraCommand : uint16_t {
   kInjectEntropy = 5,
   kPairChallenge = 6,
 };
+const char* ToString(UpdateExtraCommand subcommand);
 
 enum class ECResponseStatus : uint8_t {
   kSuccess = 0,
@@ -81,7 +82,8 @@ enum class ECResponseStatus : uint8_t {
   kBusy = 16,  // Up but too busy.  Should retry
 };
 
-const char* ToString(UpdateExtraCommand subcommand);
+
+
 
 // This is the frame format the host uses when sending update PDUs over USB.
 //
@@ -221,6 +223,12 @@ class FirmwareUpdaterInterface {
 
   // Unlocks the section. Need to send "Reset" command afterward.
   virtual bool UnLockSection(SectionName section_name) = 0;
+
+  // Determines the rollback is locked or not.
+  virtual bool IsRollbackLocked() const = 0;
+
+  // Unlocks the rollback. Need to send "Reset" command afterward.
+  virtual bool UnLockRollback() = 0;
 };
 
 // Implement the core logic of updating firmware.
@@ -248,6 +256,9 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   bool NeedsUpdate(SectionName section_name) const override;
   bool IsSectionLocked(SectionName section_name) const override;
   bool UnLockSection(SectionName section_name) override;
+
+  bool IsRollbackLocked() const override;
+  bool UnLockRollback() override;
 
  protected:
   // Used in unit tests to inject mocks.

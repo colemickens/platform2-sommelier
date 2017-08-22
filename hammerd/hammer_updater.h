@@ -22,6 +22,7 @@ class HammerUpdater {
     kFatalError,
     kNeedReset,
     kNeedJump,
+    kNeedInjectEntropy,
     kLostConnection,
     kInvalidFirmware,
   };
@@ -42,10 +43,11 @@ class HammerUpdater {
   virtual RunStatus RunLoop();
   // Handle the update logic from connecting to the EC to sending reset signal.
   // There is only one USB connection during each RunOnce() method call.
-  // |post_rw_jump| indicates whether we jump to RW section last round.
-  virtual RunStatus RunOnce(const bool post_rw_jump);
-  virtual void PostRWProcess();
-  virtual bool Pair();
+  // |post_rw_jump| indicates whether we jumped to RW section last round.
+  virtual RunStatus RunOnce(const bool post_rw_jump,
+                            const bool need_inject_entropy);
+  virtual RunStatus PostRWProcess();
+  virtual RunStatus Pair();
 
  protected:
   // Used in unittests to inject mock instance.
