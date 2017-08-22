@@ -26,42 +26,66 @@ bool InitLibUSB();
 void ExitLibUSB();
 void LogUSBError(const char* func_name, int return_code);
 
-class UsbEndpoint {
+class UsbEndpointInterface {
  public:
-  UsbEndpoint();
-  virtual ~UsbEndpoint();
-
+  virtual ~UsbEndpointInterface() = default;
   // Initializes the USB endpoint.
-  virtual bool Connect();
+  virtual bool Connect() = 0;
   // Releases USB endpoint.
-  virtual void Close();
+  virtual void Close() = 0;
   // Returns whether the USB endpoint is initialized.
-  virtual bool IsConnected() const;
+  virtual bool IsConnected() const = 0;
 
   // Sends the data to USB endpoint and then reads the result back.
   // Returns the byte number of the received data. -1 if the process fails.
-  int Transfer(const void* outbuf,
-               int outlen,
-               void* inbuf,
-               int inlen,
-               bool allow_less,
-               unsigned int timeout_ms = 0);
+  virtual int Transfer(const void* outbuf,
+                       int outlen,
+                       void* inbuf,
+                       int inlen,
+                       bool allow_less,
+                       unsigned int timeout_ms = 0) = 0;
   // Sends the data to USB endpoint.
   // Returns the byte number of the received data.
-  virtual int Send(const void* outbuf, int outlen, unsigned int timeout_ms = 0);
+  virtual int Send(const void* outbuf, int outlen, unsigned int timeout_ms = 0)
+      = 0;
   // Receives the data from USB endpoint.
   // Returns the byte number of the received data. -1 if the amount of received
   // data is not as required and `allow_less` argument is false.
   virtual int Receive(void* inbuf,
                       int inlen,
                       bool allow_less = false,
-                      unsigned int timeout_ms = 0);
+                      unsigned int timeout_ms = 0) = 0;
 
   // Gets the chunk length of the USB endpoint.
-  virtual size_t GetChunkLength() const { return chunk_len_; }
+  virtual size_t GetChunkLength() const = 0;
 
   // Gets the configuration string of the USB endpoint.
-  virtual std::string GetConfigurationString() const {
+  virtual std::string GetConfigurationString() const = 0;
+};
+
+class UsbEndpoint : public UsbEndpointInterface {
+ public:
+  UsbEndpoint();
+
+  // UsbEndpointInterface:
+  ~UsbEndpoint() override;
+  bool Connect() override;
+  void Close() override;
+  bool IsConnected() const override;
+  int Transfer(const void* outbuf,
+               int outlen,
+               void* inbuf,
+               int inlen,
+               bool allow_less,
+               unsigned int timeout_ms = 0) override;
+  int Send(const void* outbuf, int outlen, unsigned int timeout_ms = 0)
+      override;
+  int Receive(void* inbuf,
+              int inlen,
+              bool allow_less = false,
+              unsigned int timeout_ms = 0) override;
+  size_t GetChunkLength() const override { return chunk_len_; }
+  std::string GetConfigurationString() const override {
     return configuration_string_;
   }
 

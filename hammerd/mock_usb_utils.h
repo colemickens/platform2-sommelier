@@ -19,7 +19,7 @@ ACTION_P(WriteBuf, ptr) {
   return arg1;
 }
 
-class MockUsbEndpoint : public UsbEndpoint {
+class MockUsbEndpoint : public UsbEndpointInterface {
  public:
   MockUsbEndpoint() = default;
   ~MockUsbEndpoint() override = default;
@@ -29,7 +29,20 @@ class MockUsbEndpoint : public UsbEndpoint {
   MOCK_CONST_METHOD0(GetChunkLength, size_t());
   MOCK_CONST_METHOD0(GetConfigurationString, std::string());
 
-  int Send(const void* outbuf, int outlen, unsigned int timeout) override {
+  // Use implementation identical to UsbEndpoint::Transfer, and test calls
+  // to Send and Receive instead.
+  int Transfer(const void* outbuf, int outlen, void* inbuf, int inlen,
+               bool allow_less, unsigned int timeout_ms) override {
+    constexpr int kError = -1;
+    if (Send(outbuf, outlen, timeout_ms) != outlen) {
+      return kError;
+    }
+    if (inlen == 0) {
+      return 0;
+    }
+    return Receive(inbuf, inlen, allow_less, timeout_ms);
+  }
+  int Send(const void* outbuf, int outlen, unsigned int timeout_ms) override {
     // We only care about the value of the output buffer.
     auto out_ptr = reinterpret_cast<const uint8_t*>(outbuf);
     std::vector<uint8_t> out(out_ptr, out_ptr + outlen);
@@ -41,7 +54,7 @@ class MockUsbEndpoint : public UsbEndpoint {
 
   MOCK_METHOD4(
       Receive,
-      int(void* inbuf, int inlen, bool allow_less, unsigned int timeout));
+      int(void* inbuf, int inlen, bool allow_less, unsigned int timeout_ms));
 };
 
 }  // namespace hammerd

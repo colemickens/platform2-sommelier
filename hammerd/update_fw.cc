@@ -97,10 +97,10 @@ bool operator!=(const SectionInfo& lhs, const SectionInfo& rhs) {
 }
 
 FirmwareUpdater::FirmwareUpdater()
-    : FirmwareUpdater(std::unique_ptr<UsbEndpoint>(new UsbEndpoint()),
+    : FirmwareUpdater(std::unique_ptr<UsbEndpointInterface>(new UsbEndpoint()),
                       std::unique_ptr<FmapInterface>(new Fmap())) {}
 
-FirmwareUpdater::FirmwareUpdater(std::unique_ptr<UsbEndpoint> uep,
+FirmwareUpdater::FirmwareUpdater(std::unique_ptr<UsbEndpointInterface> uep,
                                  std::unique_ptr<FmapInterface> fmap)
     : uep_(std::move(uep)),
       fmap_(std::move(fmap)),

@@ -32,8 +32,9 @@ class FirmwareUpdaterTest : public testing::Test {
  public:
   void SetUp() override {
     fw_updater_.reset(
-        new FirmwareUpdater{std::unique_ptr<UsbEndpoint>(new MockUsbEndpoint()),
-                            std::unique_ptr<FmapInterface>(new MockFmap())});
+        new FirmwareUpdater{
+            std::unique_ptr<UsbEndpointInterface>(new MockUsbEndpoint()),
+            std::unique_ptr<FmapInterface>(new MockFmap())});
     uep_ = static_cast<MockUsbEndpoint*>(fw_updater_->uep_.get());
     fmap_ = static_cast<MockFmap*>(fw_updater_->fmap_.get());
 
