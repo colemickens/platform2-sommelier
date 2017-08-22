@@ -1,6 +1,26 @@
 // Copyright 2017 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+//
+// The calling structure of HammerUpdater:
+//   Run() => RunLoop() => RunOnce() => PostRWProcess().
+// Since RunLoop only iterately call the Run() method, so we don't test it
+// directly. Therefore, we have 3-layer unittests:
+//
+// - HammerUpdaterFlowTest:
+//  - Test the logic of Run(), the interaction with RunOnce().
+//  - Mock RunOnce() and data members.
+//
+// - HammerUpdaterRWTest:
+//  - Test the logic of RunOnce(), the interaction with PostRWProcess() and
+//    external interfaces (fw_updater, pair_manager, ...etc).
+//  - One exception: Test a special sequence that needs to reset 3 times called
+//    by Run().
+//  - Mock PostRWProcess() and data members.
+//
+// - HammerUpdaterPostRWTest:
+//  - Test the logic of PostRWProcess, the interaction with external interfaces.
+//  - Mock all external data members only.
 
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
@@ -28,22 +48,32 @@ ACTION_P(Decrement, n) {
   --(*n);
 }
 
-// The class is used to test the top-level method: Run(), so we mock
-// other methods.
-class MockHammerUpdater : public HammerUpdater {
+class MockRunOnceHammerUpdater : public HammerUpdater {
  public:
   using HammerUpdater::HammerUpdater;
-  ~MockHammerUpdater() override = default;
+  ~MockRunOnceHammerUpdater() override = default;
 
   MOCK_METHOD1(RunOnce, RunStatus(const bool post_rw_jump));
 };
 
+class MockRWProcessHammerUpdater : public HammerUpdater {
+ public:
+  using HammerUpdater::HammerUpdater;
+  ~MockRWProcessHammerUpdater() override = default;
+
+  MOCK_METHOD0(PostRWProcess, void());
+};
+
+template <typename HammerUpdaterType>
 class HammerUpdaterTest : public testing::Test {
  public:
-  virtual void SetFwUpdater() = 0;
-
   void SetUp() override {
-    SetFwUpdater();
+    // Mock out data members.
+    hammer_updater_.reset(new HammerUpdaterType{
+        image_, base::MakeUnique<MockFirmwareUpdater>())});
+    fw_updater_ =
+        static_cast<MockFirmwareUpdater*>(hammer_updater_->fw_updater_.get());
+
     // By default, expect no USB connections to be made. This can
     // be overridden by a call to ExpectUSBConnections.
     usb_connection_count_ = 0;
@@ -64,39 +94,22 @@ class HammerUpdaterTest : public testing::Test {
   }
 
  protected:
+  std::unique_ptr<HammerUpdaterType> hammer_updater_;
   MockFirmwareUpdater* fw_updater_;
   std::string image_ = "MOCK IMAGE";
   int usb_connection_count_;
 };
 
-class HammerUpdaterFlowTest : public HammerUpdaterTest {
- public:
-  void SetFwUpdater() override {
-    // MockHammerUpdater mocks out RunOnce so that Run can be tested.
-    // FirmwareUpdater is also mocked out.
-    hammer_updater_.reset(new MockHammerUpdater{
-        image_, base::MakeUnique<MockFirmwareUpdater>()});
-    fw_updater_ =
-        static_cast<MockFirmwareUpdater*>(hammer_updater_->fw_updater_.get());
-  }
-
- protected:
-  std::unique_ptr<MockHammerUpdater> hammer_updater_;
-};
-
-class HammerUpdaterFullTest : public HammerUpdaterTest {
- public:
-  void SetFwUpdater() override {
-    // Use the normal HammerUpdater class.  We only mock out FirmwareUpdater.
-    hammer_updater_.reset(new HammerUpdater{
-        image_, base::MakeUnique<MockFirmwareUpdater>()});
-    fw_updater_ =
-        static_cast<MockFirmwareUpdater*>(hammer_updater_->fw_updater_.get());
-  }
-
- protected:
-  std::unique_ptr<HammerUpdater> hammer_updater_;
-};
+// We mock RunOnce function here to verify the interaction between Run() and
+// RunOnce().
+class HammerUpdaterFlowTest
+    : public HammerUpdaterTest<MockRunOnceHammerUpdater> {};
+// We mock PostRWProcess function here to verify the flow of RW section
+// updating.
+class HammerUpdaterRWTest
+    : public HammerUpdaterTest<MockRWProcessHammerUpdater> {};
+// We only mock the data members to verify the PostRWProcess() function.
+class HammerUpdaterPostRWTest : public HammerUpdaterTest<HammerUpdater> {};
 
 // Failed to load image.
 TEST_F(HammerUpdaterFlowTest, Run_LoadImageFailed) {
@@ -150,8 +163,7 @@ TEST_F(HammerUpdaterFlowTest, Run_Reset3Times) {
 // Return false if the layout of the firmware is changed.
 // Condition:
 //   1. The current section is Invalid.
-TEST_F(HammerUpdaterFullTest, Run_InvalidSection) {
-  EXPECT_CALL(*fw_updater_, LoadImage(_)).WillRepeatedly(Return(true));
+TEST_F(HammerUpdaterRWTest, RunOnce_InvalidSection) {
   EXPECT_CALL(*fw_updater_, CurrentSection())
       .WillRepeatedly(Return(SectionName::Invalid));
 
@@ -161,8 +173,8 @@ TEST_F(HammerUpdaterFullTest, Run_InvalidSection) {
     EXPECT_CALL(*fw_updater_, SendDone()).WillOnce(Return());
   }
 
-  ExpectUSBConnections(AtLeast(1));
-  ASSERT_EQ(hammer_updater_->Run(), false);
+  ASSERT_EQ(hammer_updater_->RunOnce(false),
+            HammerUpdater::RunStatus::kInvalidFirmware);
 }
 
 // Update the RW after JUMP_TO_RW failed.
@@ -170,7 +182,7 @@ TEST_F(HammerUpdaterFullTest, Run_InvalidSection) {
 //   1. In RO section.
 //   2. RW does not need update.
 //   3. Fails to jump to RW due to invalid signature.
-TEST_F(HammerUpdaterFullTest, Run_UpdateRWAfterJumpToRWFailed) {
+TEST_F(HammerUpdaterRWTest, Run_UpdateRWAfterJumpToRWFailed) {
   SectionName current_section = SectionName::RO;
 
   EXPECT_CALL(*fw_updater_, LoadImage(_)).WillRepeatedly(Return(true));
@@ -208,9 +220,11 @@ TEST_F(HammerUpdaterFullTest, Run_UpdateRWAfterJumpToRWFailed) {
         .WillOnce(
             DoAll(Assign(&current_section, SectionName::RW), Return(true)));
 
-    // Fourth round: Check that jumping to RW was successful.
+    // Fourth round: Check that jumping to RW was successful, and that
+    // PostRWProcessing is called.
     EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, SendDone()).WillOnce(Return());
+    EXPECT_CALL(*hammer_updater_, PostRWProcess());
   }
 
   ExpectUSBConnections(AtLeast(1));
@@ -222,7 +236,7 @@ TEST_F(HammerUpdaterFullTest, Run_UpdateRWAfterJumpToRWFailed) {
 //   1. In RO section.
 //   2. RW needs update.
 //   3. RW is not locked.
-TEST_F(HammerUpdaterFullTest, RunOnce_UpdateRW) {
+TEST_F(HammerUpdaterRWTest, RunOnce_UpdateRW) {
   EXPECT_CALL(*fw_updater_, CurrentSection())
       .WillRepeatedly(Return(SectionName::RO));
   EXPECT_CALL(*fw_updater_, NeedsUpdate(SectionName::RW))
@@ -249,7 +263,7 @@ TEST_F(HammerUpdaterFullTest, RunOnce_UpdateRW) {
 //   1. In RO section.
 //   2. RW needs update.
 //   3. RW is locked.
-TEST_F(HammerUpdaterFullTest, RunOnce_UnlockRW) {
+TEST_F(HammerUpdaterRWTest, RunOnce_UnlockRW) {
   EXPECT_CALL(*fw_updater_, CurrentSection())
       .WillRepeatedly(Return(SectionName::RO));
   EXPECT_CALL(*fw_updater_, NeedsUpdate(SectionName::RW))
@@ -275,7 +289,7 @@ TEST_F(HammerUpdaterFullTest, RunOnce_UnlockRW) {
 // Condition:
 //   1. In RO section.
 //   2. RW does not need update.
-TEST_F(HammerUpdaterFullTest, RunOnce_JumpToRW) {
+TEST_F(HammerUpdaterRWTest, RunOnce_JumpToRW) {
   EXPECT_CALL(*fw_updater_, NeedsUpdate(SectionName::RW))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*fw_updater_, CurrentSection())
@@ -295,7 +309,7 @@ TEST_F(HammerUpdaterFullTest, RunOnce_JumpToRW) {
 // Condition:
 //   1. In RW section.
 //   2. RW jump flag is set.
-TEST_F(HammerUpdaterFullTest, RunOnce_CompleteRWJump) {
+TEST_F(HammerUpdaterRWTest, RunOnce_CompleteRWJump) {
   EXPECT_CALL(*fw_updater_, CurrentSection())
       .WillRepeatedly(Return(SectionName::RW));
   EXPECT_CALL(*fw_updater_, SendDone()).WillRepeatedly(Return());
@@ -314,7 +328,7 @@ TEST_F(HammerUpdaterFullTest, RunOnce_CompleteRWJump) {
 // Condition:
 //   1. In RW section.
 //   2. RW does not need update.
-TEST_F(HammerUpdaterFullTest, RunOnce_KeepInRW) {
+TEST_F(HammerUpdaterRWTest, RunOnce_KeepInRW) {
   EXPECT_CALL(*fw_updater_, CurrentSection())
       .WillRepeatedly(Return(SectionName::RW));
   EXPECT_CALL(*fw_updater_, NeedsUpdate(SectionName::RW))
@@ -334,7 +348,7 @@ TEST_F(HammerUpdaterFullTest, RunOnce_KeepInRW) {
 // Condition:
 //   1. In RW section.
 //   2. RW needs update.
-TEST_F(HammerUpdaterFullTest, RunOnce_ResetToRO) {
+TEST_F(HammerUpdaterRWTest, RunOnce_ResetToRO) {
   EXPECT_CALL(*fw_updater_, CurrentSection())
       .WillRepeatedly(Return(SectionName::RW));
   EXPECT_CALL(*fw_updater_, NeedsUpdate(SectionName::RW))

@@ -50,20 +50,8 @@ class HammerUpdater {
   HammerUpdater(const std::string& image,
                 std::unique_ptr<FirmwareUpdaterInterface> fw_updater);
 
-  friend class HammerUpdaterFlowTest;
-  friend class HammerUpdaterFullTest;
-  FRIEND_TEST(HammerUpdaterFlowTest, Run_LoadImageFailed);
-  FRIEND_TEST(HammerUpdaterFlowTest, Run_AlwaysReset);
-  FRIEND_TEST(HammerUpdaterFlowTest, Run_FatalError);
-  FRIEND_TEST(HammerUpdaterFlowTest, Run_Reset3Times);
-  FRIEND_TEST(HammerUpdaterFullTest, Run_InvalidSection);
-  FRIEND_TEST(HammerUpdaterFullTest, Run_UpdateRWAfterJumpToRWFailed);
-  FRIEND_TEST(HammerUpdaterFullTest, RunOnce_UpdateRW);
-  FRIEND_TEST(HammerUpdaterFullTest, RunOnce_UnlockRW);
-  FRIEND_TEST(HammerUpdaterFullTest, RunOnce_JumpToRW);
-  FRIEND_TEST(HammerUpdaterFullTest, RunOnce_CompleteRWJump);
-  FRIEND_TEST(HammerUpdaterFullTest, RunOnce_KeepInRW);
-  FRIEND_TEST(HammerUpdaterFullTest, RunOnce_ResetToRO);
+  template <typename HammerUpdaterType>
+  friend class HammerUpdaterTest;
 
  private:
   // The image data to be updated.
