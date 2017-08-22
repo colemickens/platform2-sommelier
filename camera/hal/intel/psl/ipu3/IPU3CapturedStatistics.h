@@ -48,6 +48,7 @@ struct IPU3CapturedStatistics {
     const ia_aiq_rgbs_grid* rgbsGridArray[MAX_NUM_RGBS_GRIDS];
     const ia_aiq_af_grid* afGridArray[MAX_NUM_AF_GRIDS];
     ia_aiq_af_results af_results;
+    uint32_t frameSequence;
 };
 
 } //namespace android

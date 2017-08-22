@@ -785,6 +785,7 @@ status_t InputSystem::handleMessagePollEvent(Message &msg)
                   mBufferSeqNbr, outBuf.vbuffer.sequence);
             mBufferSeqNbr = outBuf.vbuffer.sequence;
         }
+        LOG2("input system outBuf.vbuffer.sequence %u", outBuf.vbuffer.sequence);
         mBuffersReceived++;
 
         // Notify observer

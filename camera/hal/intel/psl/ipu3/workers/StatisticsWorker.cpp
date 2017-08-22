@@ -162,6 +162,9 @@ status_t StatisticsWorker::run()
     stats->aiqStatsInputParams.frame_timestamp
         = (buf.vbuffer.timestamp.tv_sec * 1000000) + buf.vbuffer.timestamp.tv_usec;
 
+    stats->frameSequence = mMsg->pMsg.rawNonScaledBuffer->v4l2Buf.sequence;
+    LOG2("sensor frame sequence %u", stats->frameSequence);
+
     outMsg.data.event.stats = stats;
 
     if (0 == (buf.vbuffer.sequence % DUMP_INTERVAL)) {
