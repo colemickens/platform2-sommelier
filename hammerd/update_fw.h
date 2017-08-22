@@ -230,7 +230,7 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
 
  protected:
   // Used in unit tests to inject mocks.
-  FirmwareUpdater(std::unique_ptr<UsbEndpointInterface> uep,
+  FirmwareUpdater(std::unique_ptr<UsbEndpointInterface> endpoint,
                   std::unique_ptr<FmapInterface> fmap);
 
   // Fetches the version of the currently-running section.
@@ -247,7 +247,7 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
                      size_t payload_size);
 
   // The USB endpoint interface to the hammer EC.
-  std::unique_ptr<UsbEndpointInterface> uep_;
+  std::unique_ptr<UsbEndpointInterface> endpoint_;
   // The fmap function interface.
   std::unique_ptr<FmapInterface> fmap_;
   // The information of the first response PDU.

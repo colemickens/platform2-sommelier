@@ -100,9 +100,9 @@ FirmwareUpdater::FirmwareUpdater()
     : FirmwareUpdater(std::unique_ptr<UsbEndpointInterface>(new UsbEndpoint()),
                       std::unique_ptr<FmapInterface>(new Fmap())) {}
 
-FirmwareUpdater::FirmwareUpdater(std::unique_ptr<UsbEndpointInterface> uep,
+FirmwareUpdater::FirmwareUpdater(std::unique_ptr<UsbEndpointInterface> endpoint,
                                  std::unique_ptr<FmapInterface> fmap)
-    : uep_(std::move(uep)),
+    : endpoint_(std::move(endpoint)),
       fmap_(std::move(fmap)),
       targ_(),
       image_(""),
@@ -117,13 +117,14 @@ bool FirmwareUpdater::TryConnectUSB() {
   auto start_time = base::Time::Now();
   int64_t duration = 0;
   while (true) {
-    bool ret = uep_->Connect();
+    bool ret = endpoint_->Connect();
     if (ret) {
       // Flush data from the EC's "out" buffer.  There may be leftover data
       // in this buffer from a previous failure.
-      const size_t buf_len = uep_->GetChunkLength();
+      const size_t buf_len = endpoint_->GetChunkLength();
       std::unique_ptr<uint8_t[]> buf(new uint8_t[buf_len]);
-      while (uep_->Receive(buf.get(), buf_len, true, kFlushTimeoutMs) > 0) {
+      while (endpoint_->Receive(buf.get(), buf_len, true,
+                                kFlushTimeoutMs) > 0) {
         LOG(INFO) << "Flushing data...";
       }
 
@@ -143,7 +144,7 @@ bool FirmwareUpdater::TryConnectUSB() {
 
 bool FirmwareUpdater::FetchVersion() {
   // Grab and parse the configuration string from USB endpoint.
-  version_ = uep_->GetConfigurationString();
+  version_ = endpoint_->GetConfigurationString();
   if (version_.empty()) {
     LOG(ERROR) << "Empty version from configuration string descriptor.";
     return false;
@@ -159,7 +160,7 @@ bool FirmwareUpdater::FetchVersion() {
 }
 
 void FirmwareUpdater::CloseUSB() {
-  uep_->Close();
+  endpoint_->Close();
 }
 
 bool FirmwareUpdater::LoadImage(const std::string& image) {
@@ -381,11 +382,11 @@ bool FirmwareUpdater::SendSubcommandReceiveResponse(
   if (subcommand == UpdateExtraCommand::kImmediateReset) {
     // When sending reset command, we won't get the response. Therefore just
     // check the Send action is successful.
-    int sent = uep_->Send(ufh.get(), usb_msg_size, false);
+    int sent = endpoint_->Send(ufh.get(), usb_msg_size, false);
     return (sent == usb_msg_size);
   }
   int received =
-      uep_->Transfer(ufh.get(), usb_msg_size, resp, resp_size, false);
+      endpoint_->Transfer(ufh.get(), usb_msg_size, resp, resp_size, false);
   // The first byte of the response is the status of the subcommand.
   LOG(INFO) << base::StringPrintf("Status of subcommand: %d",
                                   *(reinterpret_cast<uint8_t*>(resp)));
@@ -397,14 +398,14 @@ bool FirmwareUpdater::SendFirstPDU() {
   UpdateFrameHeader ufh;
   memset(&ufh, 0, sizeof(ufh));
   ufh.block_size = htobe32(sizeof(ufh));
-  if (uep_->Send(&ufh, sizeof(ufh)) != sizeof(ufh)) {
+  if (endpoint_->Send(&ufh, sizeof(ufh)) != sizeof(ufh)) {
     LOG(ERROR) << "Send first update frame header failed.";
     return false;
   }
 
   // We got something. Check for errors in response.
   FirstResponsePDU rpdu;
-  size_t rxed_size = uep_->Receive(&rpdu, sizeof(rpdu), true);
+  size_t rxed_size = endpoint_->Receive(&rpdu, sizeof(rpdu), true);
   const size_t kMinimumResponseSize = 8;
   if (rxed_size < kMinimumResponseSize) {
     LOG(ERROR) << "Unexpected response size: " << rxed_size
@@ -459,7 +460,7 @@ void FirmwareUpdater::SendDone() {
   LOG(INFO) << ">>> SendDone";
   uint32_t out = htobe32(kUpdateDoneCmd);
   uint8_t unused_received;
-  uep_->Transfer(&out, sizeof(out), &unused_received, 1, false);
+  endpoint_->Transfer(&out, sizeof(out), &unused_received, 1, false);
 }
 
 bool FirmwareUpdater::TransferSection(const uint8_t* data_ptr,
@@ -501,14 +502,14 @@ bool FirmwareUpdater::TransferBlock(UpdateFrameHeader* ufh,
   // First send the header.
   LOG(INFO) << "Send the block header: "
             << base::HexEncode(reinterpret_cast<uint8_t*>(ufh), sizeof(*ufh));
-  uep_->Send(ufh, sizeof(*ufh));
+  endpoint_->Send(ufh, sizeof(*ufh));
 
   // Now send the block, chunk by chunk.
   size_t transfer_size = 0;
   while (transfer_size < payload_size) {
-    int chunk_size =
-        std::min<size_t>(uep_->GetChunkLength(), payload_size - transfer_size);
-    uep_->Send(transfer_data_ptr, chunk_size);
+    int chunk_size = std::min<size_t>(
+        endpoint_->GetChunkLength(), payload_size - transfer_size);
+    endpoint_->Send(transfer_data_ptr, chunk_size);
     transfer_data_ptr += chunk_size;
     transfer_size += chunk_size;
     DLOG(INFO) << "Send block data " << transfer_size << "/" << payload_size;
@@ -516,7 +517,7 @@ bool FirmwareUpdater::TransferBlock(UpdateFrameHeader* ufh,
 
   // Now get the reply.
   uint32_t reply;
-  if (uep_->Receive(&reply, sizeof(reply), true) == -1) {
+  if (endpoint_->Receive(&reply, sizeof(reply), true) == -1) {
     return false;
   }
   reply = *(reinterpret_cast<uint8_t*>(&reply));

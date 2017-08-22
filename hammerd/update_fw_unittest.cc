@@ -35,7 +35,7 @@ class FirmwareUpdaterTest : public testing::Test {
         new FirmwareUpdater{
             std::unique_ptr<UsbEndpointInterface>(new MockUsbEndpoint()),
             std::unique_ptr<FmapInterface>(new MockFmap())});
-    uep_ = static_cast<MockUsbEndpoint*>(fw_updater_->uep_.get());
+    endpoint_ = static_cast<MockUsbEndpoint*>(fw_updater_->endpoint_.get());
     fmap_ = static_cast<MockFmap*>(fw_updater_->fmap_.get());
 
     good_rpdu_.return_value = htobe32(0);
@@ -69,7 +69,7 @@ class FirmwareUpdaterTest : public testing::Test {
 
  protected:
   std::unique_ptr<FirmwareUpdater> fw_updater_;
-  MockUsbEndpoint* uep_;
+  MockUsbEndpoint* endpoint_;
   MockFmap* fmap_;
 
   // Good response of first header.
@@ -176,11 +176,12 @@ std::function<bool()> TrueAfterPeriod(base::Time start, int64_t period_ms) {
 TEST_F(FirmwareUpdaterTest, TryConnectUSB_OK) {
   InSequence dummy;
   auto now = base::Time::Now();
-  ON_CALL(*uep_, Connect()).WillByDefault(Invoke(TrueAfterPeriod(now, 500)));
-  EXPECT_CALL(*uep_, Connect()).Times(AtLeast(1));
-  EXPECT_CALL(*uep_, GetChunkLength()).WillOnce(Return(0x40));
-  EXPECT_CALL(*uep_, Receive(_, 0x40, true, _)).WillOnce(Return(-1));
-  EXPECT_CALL(*uep_, GetConfigurationString())
+  ON_CALL(*endpoint_, Connect())
+      .WillByDefault(Invoke(TrueAfterPeriod(now, 500)));
+  EXPECT_CALL(*endpoint_, Connect()).Times(AtLeast(1));
+  EXPECT_CALL(*endpoint_, GetChunkLength()).WillOnce(Return(0x40));
+  EXPECT_CALL(*endpoint_, Receive(_, 0x40, true, _)).WillOnce(Return(-1));
+  EXPECT_CALL(*endpoint_, GetConfigurationString())
       .WillOnce(Return("RO:version_string"));
   ASSERT_EQ(fw_updater_->TryConnectUSB(), true);
   ASSERT_EQ(fw_updater_->version_, "version_string");
@@ -190,17 +191,18 @@ TEST_F(FirmwareUpdaterTest, TryConnectUSB_OK) {
 TEST_F(FirmwareUpdaterTest, TryConnectUSB_FAIL) {
   InSequence dummy;
   auto now = base::Time::Now();
-  ON_CALL(*uep_, Connect()).WillByDefault(Invoke(TrueAfterPeriod(now, 5000)));
-  EXPECT_CALL(*uep_, Connect()).Times(AtLeast(1));
-  EXPECT_CALL(*uep_, GetConfigurationString()).Times(0);
+  ON_CALL(*endpoint_, Connect())
+      .WillByDefault(Invoke(TrueAfterPeriod(now, 5000)));
+  EXPECT_CALL(*endpoint_, Connect()).Times(AtLeast(1));
+  EXPECT_CALL(*endpoint_, GetConfigurationString()).Times(0);
   ASSERT_EQ(fw_updater_->TryConnectUSB(), false);
 }
 
 // Test legacy-style version string.
 TEST_F(FirmwareUpdaterTest, TryConnectUSB_FetchVersion_Legacy) {
   InSequence dummy;
-  EXPECT_CALL(*uep_, Connect()).WillOnce(Return(true));
-  EXPECT_CALL(*uep_, GetConfigurationString())
+  EXPECT_CALL(*endpoint_, Connect()).WillOnce(Return(true));
+  EXPECT_CALL(*endpoint_, GetConfigurationString())
       .WillOnce(Return("version_string"));
   ASSERT_EQ(fw_updater_->TryConnectUSB(), true);
   ASSERT_EQ(fw_updater_->version_, "version_string");
@@ -209,23 +211,23 @@ TEST_F(FirmwareUpdaterTest, TryConnectUSB_FetchVersion_Legacy) {
 // Parse the given invalid configuration string descriptor.
 TEST_F(FirmwareUpdaterTest, TryConnectUSB_FetchVersion_FAIL) {
   InSequence dummy;
-  EXPECT_CALL(*uep_, Connect()).WillOnce(Return(true));
-  EXPECT_CALL(*uep_, GetChunkLength()).WillOnce(Return(0x40));
-  EXPECT_CALL(*uep_, Receive(_, 0x40, true, _)).WillOnce(Return(-1));
-  EXPECT_CALL(*uep_, GetConfigurationString()).WillOnce(Return(""));
+  EXPECT_CALL(*endpoint_, Connect()).WillOnce(Return(true));
+  EXPECT_CALL(*endpoint_, GetChunkLength()).WillOnce(Return(0x40));
+  EXPECT_CALL(*endpoint_, Receive(_, 0x40, true, _)).WillOnce(Return(-1));
+  EXPECT_CALL(*endpoint_, GetConfigurationString()).WillOnce(Return(""));
   ASSERT_EQ(fw_updater_->TryConnectUSB(), false);
 }
 
 // Simulate leftover data on the EC's "out" buffer.
 TEST_F(FirmwareUpdaterTest, TryConnectUSB_LeftoverData) {
-  EXPECT_CALL(*uep_, Connect()).WillOnce(Return(true));
-  EXPECT_CALL(*uep_, GetChunkLength()).WillOnce(Return(10));
-  EXPECT_CALL(*uep_, Receive(_, 10, true, _))
+  EXPECT_CALL(*endpoint_, Connect()).WillOnce(Return(true));
+  EXPECT_CALL(*endpoint_, GetChunkLength()).WillOnce(Return(10));
+  EXPECT_CALL(*endpoint_, Receive(_, 10, true, _))
       .Times(3)
       .WillOnce(Return(10))
       .WillOnce(Return(10))
       .WillOnce(Return(0));
-  EXPECT_CALL(*uep_, GetConfigurationString())
+  EXPECT_CALL(*endpoint_, GetConfigurationString())
       .WillOnce(Return("RO:version_string"));
   ASSERT_EQ(fw_updater_->TryConnectUSB(), true);
 }
@@ -233,16 +235,17 @@ TEST_F(FirmwareUpdaterTest, TryConnectUSB_LeftoverData) {
 // Send done command.
 TEST_F(FirmwareUpdaterTest, SendDone) {
   InSequence dummy;
-  EXPECT_CALL(*uep_, SendHelper(done_cmd_, _, _)).WillOnce(ReturnArg<2>());
-  EXPECT_CALL(*uep_, Receive(_, 1, false, _)).WillOnce(Return(1));
+  EXPECT_CALL(*endpoint_, SendHelper(done_cmd_, _, _)).WillOnce(ReturnArg<2>());
+  EXPECT_CALL(*endpoint_, Receive(_, 1, false, _)).WillOnce(Return(1));
   fw_updater_->SendDone();
 }
 
 // Send first PDU and get the good response.
 TEST_F(FirmwareUpdaterTest, SendFirstPDU) {
   InSequence dummy;
-  EXPECT_CALL(*uep_, SendHelper(first_header_, _, _)).WillOnce(ReturnArg<2>());
-  EXPECT_CALL(*uep_, Receive(_, sizeof(good_rpdu_), true, _))
+  EXPECT_CALL(*endpoint_, SendHelper(first_header_, _, _))
+      .WillOnce(ReturnArg<2>());
+  EXPECT_CALL(*endpoint_, Receive(_, sizeof(good_rpdu_), true, _))
       .WillOnce(WriteBuf(&good_rpdu_));
 
   ASSERT_EQ(fw_updater_->SendFirstPDU(), true);
@@ -265,13 +268,13 @@ TEST_F(FirmwareUpdaterTest, SendSubcommand_InjectEntropy) {
   ufh_data.insert(ufh_data.end(), sub_cmd_data.begin(), sub_cmd_data.end());
   ufh_data.insert(ufh_data.end(), fake_entropy.begin(), fake_entropy.end());
 
-  ON_CALL(*uep_, SendHelper(_, _, _)).WillByDefault(ReturnArg<2>());
-  ON_CALL(*uep_, Receive(_, 1, false, _)).WillByDefault(Return(1));
+  ON_CALL(*endpoint_, SendHelper(_, _, _)).WillByDefault(ReturnArg<2>());
+  ON_CALL(*endpoint_, Receive(_, 1, false, _)).WillByDefault(Return(1));
   {
     InSequence dummy;
     // Send the subcommand.
-    EXPECT_CALL(*uep_, SendHelper(ufh_data, _, _));
-    EXPECT_CALL(*uep_, Receive(_, 1, false, _));
+    EXPECT_CALL(*endpoint_, SendHelper(ufh_data, _, _));
+    EXPECT_CALL(*endpoint_, Receive(_, 1, false, _));
   }
 
   ASSERT_EQ(fw_updater_->SendSubcommandWithPayload(
@@ -292,13 +295,13 @@ TEST_F(FirmwareUpdaterTest, SendSubcommand_Reset) {
       sizeof(UpdateFrameHeader) + sizeof(subcommand), 0, kUpdateExtraCmd);
   ufh_data.insert(ufh_data.end(), sub_cmd_data.begin(), sub_cmd_data.end());
 
-  ON_CALL(*uep_, SendHelper(_, _, _)).WillByDefault(ReturnArg<2>());
-  ON_CALL(*uep_, Receive(_, 1, false, _)).WillByDefault(Return(1));
+  ON_CALL(*endpoint_, SendHelper(_, _, _)).WillByDefault(ReturnArg<2>());
+  ON_CALL(*endpoint_, Receive(_, 1, false, _)).WillByDefault(Return(1));
   {
     InSequence dummy;
     // Send subcommand. Because the hammer is reset after sending the command,
     // it won't reply the response.
-    EXPECT_CALL(*uep_, SendHelper(ufh_data, _, _));
+    EXPECT_CALL(*endpoint_, SendHelper(ufh_data, _, _));
   }
 
   ASSERT_EQ(fw_updater_->SendSubcommand(UpdateExtraCommand::kImmediateReset),
@@ -371,10 +374,10 @@ TEST_F(FirmwareUpdaterTest, NeedsUpdate) {
 // Therefore it should send 3 packets with 0x40, 0x40, 0x20 bytes.
 TEST_F(FirmwareUpdaterTest, TransferImage) {
   // Set the default action of mock USB endpoint.
-  ON_CALL(*uep_, Connect()).WillByDefault(Return(true));
-  ON_CALL(*uep_, GetChunkLength()).WillByDefault(Return(0x40));
-  ON_CALL(*uep_, SendHelper(_, _, _)).WillByDefault(ReturnArg<2>());
-  ON_CALL(*uep_, Receive(_, _, _, _)).WillByDefault(ReturnArg<1>());
+  ON_CALL(*endpoint_, Connect()).WillByDefault(Return(true));
+  ON_CALL(*endpoint_, GetChunkLength()).WillByDefault(Return(0x40));
+  ON_CALL(*endpoint_, SendHelper(_, _, _)).WillByDefault(ReturnArg<2>());
+  ON_CALL(*endpoint_, Receive(_, _, _, _)).WillByDefault(ReturnArg<1>());
 
   // Set the mock image data and section info.
   fw_updater_->image_ = std::string(0x11000 + 0xA0, 0);
@@ -389,33 +392,33 @@ TEST_F(FirmwareUpdaterTest, TransferImage) {
   std::vector<uint8_t> ufh_data;
   uint32_t good_reply = 0;
 
-  EXPECT_CALL(*uep_, GetChunkLength()).Times(AnyNumber());
+  EXPECT_CALL(*endpoint_, GetChunkLength()).Times(AnyNumber());
   {
     InSequence dummy;
 
     // Send first PDU and get a valid response.
-    EXPECT_CALL(*uep_, SendHelper(first_header_, _, _));
-    EXPECT_CALL(*uep_, Receive(_, sizeof(good_rpdu_), true, _))
+    EXPECT_CALL(*endpoint_, SendHelper(first_header_, _, _));
+    EXPECT_CALL(*endpoint_, Receive(_, sizeof(good_rpdu_), true, _))
         .WillOnce(WriteBuf(&good_rpdu_));
 
     // Send first section with 2 blocks. (0x40 bytes, 0x40 bytes)
     ufh_data = BuildHeaderData(sizeof(UpdateFrameHeader) + 0x80, 0, 0x11000);
-    EXPECT_CALL(*uep_, SendHelper(ufh_data, _, _));
-    EXPECT_CALL(*uep_, SendHelper(_, image_ptr + 0x11000, 0x40));
-    EXPECT_CALL(*uep_, SendHelper(_, image_ptr + 0x11040, 0x40));
-    EXPECT_CALL(*uep_, Receive(_, sizeof(good_reply), true, _))
+    EXPECT_CALL(*endpoint_, SendHelper(ufh_data, _, _));
+    EXPECT_CALL(*endpoint_, SendHelper(_, image_ptr + 0x11000, 0x40));
+    EXPECT_CALL(*endpoint_, SendHelper(_, image_ptr + 0x11040, 0x40));
+    EXPECT_CALL(*endpoint_, Receive(_, sizeof(good_reply), true, _))
         .WillOnce(WriteBuf(&good_reply));
 
     // Send second section with 1 block. (0x20 bytes)
     ufh_data = BuildHeaderData(sizeof(UpdateFrameHeader) + 0x20, 0, 0x11080);
-    EXPECT_CALL(*uep_, SendHelper(ufh_data, _, _));
-    EXPECT_CALL(*uep_, SendHelper(_, image_ptr + 0x11080, 0x20));
-    EXPECT_CALL(*uep_, Receive(_, sizeof(good_reply), true, _))
+    EXPECT_CALL(*endpoint_, SendHelper(ufh_data, _, _));
+    EXPECT_CALL(*endpoint_, SendHelper(_, image_ptr + 0x11080, 0x20));
+    EXPECT_CALL(*endpoint_, Receive(_, sizeof(good_reply), true, _))
         .WillOnce(WriteBuf(&good_reply));
 
     // Send done command.
-    EXPECT_CALL(*uep_, SendHelper(done_cmd_, _, _));
-    EXPECT_CALL(*uep_, Receive(_, 1, false, _)).WillOnce(Return(1));
+    EXPECT_CALL(*endpoint_, SendHelper(done_cmd_, _, _));
+    EXPECT_CALL(*endpoint_, Receive(_, 1, false, _)).WillOnce(Return(1));
   }
 
   // TransferImage takes care of running SendFirstPDU, which sets maximum
