@@ -12,11 +12,11 @@
 
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
-#include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
+#include <openssl/rand.h>
 #include <vboot/vb21_struct.h>
 
 namespace hammerd {
@@ -337,7 +337,9 @@ bool FirmwareUpdater::TransferImage(SectionName section_name) {
 
 bool FirmwareUpdater::InjectEntropy() {
   constexpr int kDataSize = 32;
-  std::string entropy_data = base::RandBytesAsString(kDataSize);
+  uint8_t entropy[kDataSize];
+  RAND_bytes(entropy, kDataSize);
+  std::string entropy_data(reinterpret_cast<char*>(entropy), kDataSize);
   return SendSubcommandWithPayload(UpdateExtraCommand::kInjectEntropy,
                                    entropy_data);
 }
