@@ -489,11 +489,8 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("edge_touch_filtering"))
     AddArg("--edge-touch-filtering");
 
-  // Explicitly enable/disable native gpu memory buffers based on the flag being
-  // set or not.
-  AddArg(UseFlagIsSet("native_gpu_memory_buffers")
-    ? "--enable-native-gpu-memory-buffers"
-    : "--disable-native-gpu-memory-buffers");
+  if (UseFlagIsSet("native_gpu_memory_buffers"))
+    AddArg("--enable-native-gpu-memory-buffers");
 
   if (UseFlagIsSet("drm_atomic")) {
     AddArg("--enable-drm-atomic");
