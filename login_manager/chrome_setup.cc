@@ -394,14 +394,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("internal_stylus"))
     builder->AddArg("--has-internal-stylus");
 
-  if (builder->UseFlagIsSet("disable_login_animations")) {
-    builder->AddArg("--disable-login-animations");
-    builder->AddArg("--disable-boot-animation");
-    builder->AddArg("--ash-copy-host-background-at-boot");
-  } else if (builder->UseFlagIsSet("fade_boot_splash_screen")) {
-    builder->AddArg("--ash-animate-from-boot-splash-screen");
-  }
-
   if (builder->UseFlagIsSet("voice_interaction"))
     builder->AddArg("--enable-voice-interaction");
 
