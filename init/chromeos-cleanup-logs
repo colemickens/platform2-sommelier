@@ -71,7 +71,7 @@ rotate_file() {
 rotate_logs() {
   echo Rotating rsyslogd logs
   for x in messages secure net.log faillog session_manager atrus.log \
-           tlsdate.log authpolicy.log; do
+           tlsdate.log authpolicy.log tpm-firmware-updater.log; do
     rotate_file "/var/log/${x}"
   done
   sudo pkill -HUP rsyslogd

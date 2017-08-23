@@ -184,6 +184,10 @@ const Log kCommandLogs[] = {
               " -e 'synaptics: Touchpad model'"
               " -e 'chromeos-[a-z]*-touch-[a-z]*-update'"
               " /var/log/messages | tail -n 20" },
+  {
+    "tpm-firmware-updater",
+    "/usr/share/userfeedback/scripts/getmsgs /var/log/tpm-firmware-updater.log"
+  },
   // TODO(jorgelo,mnissler): Don't run this as root.
   // On TPM 1.2 devices this will likely require adding a new user to the 'tss'
   // group.
