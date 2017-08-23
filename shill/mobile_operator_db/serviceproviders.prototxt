@@ -7974,13 +7974,6 @@ mno {
     mccmnc : "44087"
     mccmnc : "44099"
     mobile_apn {
-      apn : "mopera.ne.jp"
-      plan : POSTPAID
-      localized_name {
-        name : "mopera"
-      }
-    }
-    mobile_apn {
       apn : "mopera.net"
       plan : POSTPAID
       localized_name {
