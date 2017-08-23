@@ -193,6 +193,7 @@ int Camera3Service::Camera3DeviceService::Initialize() {
 }
 
 void Camera3Service::Camera3DeviceService::Destroy() {
+  service_thread_.Stop();
   sem_destroy(&preview_frame_sem_);
   cam_device_.Destroy();
 }

@@ -25,7 +25,8 @@ int Camera3TestThread::PostTaskSync(const tracked_objects::Location& from_here,
                                     base::Closure task) {
   VLOGF_ENTER();
   auto future = internal::Future<void>::Create(&relay_);
-  if (!thread_.task_runner()->PostTask(
+  if (!thread_.task_runner() ||
+      !thread_.task_runner()->PostTask(
           from_here, base::Bind(&Camera3TestThread::ProcessTaskOnThread,
                                 base::Unretained(this), task,
                                 internal::GetFutureCallback(future)))) {
@@ -39,7 +40,8 @@ int Camera3TestThread::PostTaskSync(const tracked_objects::Location& from_here,
 int Camera3TestThread::PostTaskAsync(const tracked_objects::Location& from_here,
                                      base::Closure task) {
   VLOGF_ENTER();
-  if (!thread_.task_runner()->PostTask(from_here, task)) {
+  if (!thread_.task_runner() ||
+      !thread_.task_runner()->PostTask(from_here, task)) {
     LOG(ERROR) << "Failed to post task";
     return -EIO;
   }
