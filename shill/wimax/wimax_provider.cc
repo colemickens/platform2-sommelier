@@ -65,10 +65,9 @@ void WiMaxProvider::Start() {
 
   // Create a proxy for WiMaxManager service. This provider will connect to it
   // if/when the OnWiMaxManagerAppear callback is invoked.
-  wimax_manager_proxy_.reset(
-      control_->CreateWiMaxManagerProxy(
-          Bind(&WiMaxProvider::OnWiMaxManagerAppeared, Unretained(this)),
-          Bind(&WiMaxProvider::OnWiMaxManagerVanished, Unretained(this))));
+  wimax_manager_proxy_ = control_->CreateWiMaxManagerProxy(
+      Bind(&WiMaxProvider::OnWiMaxManagerAppeared, Unretained(this)),
+      Bind(&WiMaxProvider::OnWiMaxManagerVanished, Unretained(this)));
   wimax_manager_proxy_->set_devices_changed_callback(
       Bind(&WiMaxProvider::OnDevicesChanged, Unretained(this)));
 }

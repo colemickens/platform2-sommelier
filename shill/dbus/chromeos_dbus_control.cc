@@ -382,13 +382,14 @@ ChromeosDBusControl::CreateWiMaxDeviceProxy(const string& path) {
   return base::MakeUnique<ChromeosWiMaxDeviceProxy>(proxy_bus_, path);
 }
 
-WiMaxManagerProxyInterface* ChromeosDBusControl::CreateWiMaxManagerProxy(
+std::unique_ptr<WiMaxManagerProxyInterface>
+ChromeosDBusControl::CreateWiMaxManagerProxy(
     const base::Closure& service_appeared_callback,
     const base::Closure& service_vanished_callback) {
-  return new ChromeosWiMaxManagerProxy(dispatcher_,
-                                       proxy_bus_,
-                                       service_appeared_callback,
-                                       service_vanished_callback);
+  return base::MakeUnique<ChromeosWiMaxManagerProxy>(dispatcher_,
+                                                     proxy_bus_,
+                                                     service_appeared_callback,
+                                                     service_vanished_callback);
 }
 
 WiMaxNetworkProxyInterface* ChromeosDBusControl::CreateWiMaxNetworkProxy(

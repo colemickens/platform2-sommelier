@@ -121,19 +121,20 @@ class WiMaxProviderTest : public testing::Test {
 };
 
 TEST_F(WiMaxProviderTest, StartStop) {
-  MockWiMaxManagerProxy* wimax_manager_proxy = new MockWiMaxManagerProxy();
-
   base::Closure service_appeared_callback;
-  EXPECT_FALSE(provider_.wimax_manager_proxy_.get());
+
+  auto wimax_manager_proxy = base::MakeUnique<MockWiMaxManagerProxy>();
+  EXPECT_CALL(*wimax_manager_proxy, set_devices_changed_callback(_)).Times(1);
+  EXPECT_CALL(*wimax_manager_proxy, Devices(_))
+      .WillOnce(Return(RpcIdentifiers()));
   EXPECT_CALL(control_, CreateWiMaxManagerProxy(_, _))
       .WillOnce(DoAll(SaveArg<0>(&service_appeared_callback),
-                      Return(wimax_manager_proxy)));
-  EXPECT_CALL(*wimax_manager_proxy, set_devices_changed_callback(_)).Times(1);
+                      Return(ByMove(std::move(wimax_manager_proxy)))));
+
+  EXPECT_FALSE(provider_.wimax_manager_proxy_.get());
   provider_.Start();
   EXPECT_TRUE(provider_.wimax_manager_proxy_.get());
 
-  EXPECT_CALL(*wimax_manager_proxy, Devices(_))
-      .WillOnce(Return(RpcIdentifiers()));
   service_appeared_callback.Run();
 
   provider_.pending_devices_[GetTestLinkName(2)] = GetTestPath(2);

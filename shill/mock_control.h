@@ -31,6 +31,7 @@
 
 #if !defined(DISABLE_WIMAX)
 #include "shill/wimax/wimax_device_proxy_interface.h"
+#include "shill/wimax/wimax_manager_proxy_interface.h"
 #endif  // DISABLE_WIMAX
 
 namespace shill {
@@ -165,7 +166,7 @@ class MockControl : public ControlInterface {
       CreateWiMaxDeviceProxy,
       std::unique_ptr<WiMaxDeviceProxyInterface>(const std::string& path));
   MOCK_METHOD2(CreateWiMaxManagerProxy,
-               WiMaxManagerProxyInterface*(
+               std::unique_ptr<WiMaxManagerProxyInterface>(
                    const base::Closure& service_appeared_callback,
                    const base::Closure& service_vanished_callback));
   MOCK_METHOD1(CreateWiMaxNetworkProxy,
