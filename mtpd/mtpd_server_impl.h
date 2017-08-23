@@ -10,6 +10,10 @@
 
 #include <base/compiler_specific.h>
 #include <base/macros.h>
+#include <brillo/dbus/async_event_sequencer.h>
+#include <brillo/dbus/dbus_object.h>
+#include <brillo/errors/error.h>
+#include <dbus/bus.h>
 
 #include "mtpd/dbus_adaptors/org.chromium.Mtpd.h"
 #include "mtpd/device_event_delegate.h"
@@ -21,51 +25,55 @@ namespace mtpd {
 class DeviceManager;
 
 // The D-bus server for the mtpd daemon.
-class MtpdServer : public org::chromium::Mtpd_adaptor,
-                   public DBus::ObjectAdaptor,
+class MtpdServer : public org::chromium::MtpdInterface,
+                   public org::chromium::MtpdAdaptor,
                    public DeviceEventDelegate {
  public:
-  explicit MtpdServer(DBus::Connection& connection);
+  explicit MtpdServer(scoped_refptr<dbus::Bus> bus);
   virtual ~MtpdServer();
 
-  // org::chromium::Mtpd_adaptor implementation.
-  std::vector<std::string> EnumerateStorages(DBus::Error& error) override;
-  std::vector<uint8_t> GetStorageInfo(const std::string& storageName,
-                                      DBus::Error& error) override;
-  std::vector<uint8_t> GetStorageInfoFromDevice(const std::string& storageName,
-                                                DBus::Error& error) override;
-  std::string OpenStorage(const std::string& storageName,
-                          const std::string& mode,
-                          DBus::Error& error) override;
-  void CloseStorage(const std::string& handle, DBus::Error& error) override;
-  std::vector<uint32_t> ReadDirectoryEntryIds(const std::string& handle,
-                                              const uint32_t& fileId,
-                                              DBus::Error& error) override;
-  std::vector<uint8_t> GetFileInfo(const std::string& handle,
-                                   const std::vector<uint32_t>& fileIds,
-                                   DBus::Error& error) override;
-  std::vector<uint8_t> ReadFileChunk(const std::string& handle,
-                                     const uint32_t& fileId,
-                                     const uint32_t& offset,
-                                     const uint32_t& count,
-                                     DBus::Error& error) override;
-  void CopyFileFromLocal(const std::string& handle,
-                         const DBus::FileDescriptor& fileDescriptor,
-                         const uint32_t& parentId,
-                         const std::string& fileName,
-                         DBus::Error& error) override;
-  void DeleteObject(const std::string& handle,
-                    const uint32_t& objectId,
-                    DBus::Error& error) override;
-  void RenameObject(const std::string& handle,
-                    const uint32_t& objectId,
-                    const std::string& newName,
-                    DBus::Error& error) override;
-  void CreateDirectory(const std::string& handle,
-                       const uint32_t& parentId,
-                       const std::string& directoryName,
-                       DBus::Error& error) override;
-  bool IsAlive(DBus::Error& error) override;
+  // org::chromium::MtpdAdaptor implementation.
+  std::vector<std::string> EnumerateStorages() override;
+  std::vector<uint8_t> GetStorageInfo(const std::string& storage_name) override;
+  std::vector<uint8_t> GetStorageInfoFromDevice(
+      const std::string& storage_name) override;
+  bool OpenStorage(brillo::ErrorPtr* error,
+                   const std::string& storage_name,
+                   const std::string& mode,
+                   std::string* id) override;
+  bool CloseStorage(brillo::ErrorPtr* error,
+                    const std::string& handle) override;
+  bool ReadDirectoryEntryIds(brillo::ErrorPtr* error,
+                             const std::string& handle,
+                             uint32_t file_id,
+                             std::vector<uint32_t>* directory_listing) override;
+  bool GetFileInfo(brillo::ErrorPtr* error,
+                   const std::string& handle,
+                   const std::vector<uint32_t>& file_ids,
+                   std::vector<uint8_t>* serialized_file_entries) override;
+  bool ReadFileChunk(brillo::ErrorPtr* error,
+                     const std::string& handle,
+                     uint32_t file_id,
+                     uint32_t offset,
+                     uint32_t count,
+                     std::vector<uint8_t>* file_contents) override;
+  bool CopyFileFromLocal(brillo::ErrorPtr* error,
+                         const std::string& handle,
+                         const dbus::FileDescriptor& file_descriptor,
+                         uint32_t parent_id,
+                         const std::string& file_name) override;
+  bool DeleteObject(brillo::ErrorPtr* error,
+                    const std::string& handle,
+                    uint32_t object_id) override;
+  bool RenameObject(brillo::ErrorPtr* error,
+                    const std::string& handle,
+                    uint32_t object_id,
+                    const std::string& new_name) override;
+  bool CreateDirectory(brillo::ErrorPtr* error,
+                       const std::string& handle,
+                       uint32_t parent_id,
+                       const std::string& directory_name) override;
+  bool IsAlive() override;
 
   // DeviceEventDelegate implementation.
   void StorageAttached(const std::string& storage_name) override;
@@ -76,6 +84,10 @@ class MtpdServer : public org::chromium::Mtpd_adaptor,
 
   // Processes the available device events.
   void ProcessDeviceEvents();
+
+  // Register D-Bus object.
+  void RegisterAsync(
+      const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
 
  private:
   // StorageHandleInfo is a pair of StorageName and Mode.
@@ -91,6 +103,9 @@ class MtpdServer : public org::chromium::Mtpd_adaptor,
   bool IsOpenedWithWrite(const std::string& handle);
 
   HandleMap handle_map_;
+
+  // Exported D-Bus object.
+  brillo::dbus_utils::DBusObject dbus_object_;
 
   // Device manager needs to be last, so it is the first to be destroyed.
   DeviceManager device_manager_;

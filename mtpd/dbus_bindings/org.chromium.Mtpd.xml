@@ -3,40 +3,43 @@
 <node xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.Mtpd">
     <method name="EnumerateStorages">
-      <arg name="storageList" type="as" direction="out">
+      <arg name="storage_list" type="as" direction="out">
       <tp:docstring>
         List of storages. Storages are described as Bus:Location:StorageId.
         E.g. usb:2,4:1234.
       </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
 
     <method name="GetStorageInfo">
-      <arg name="storageName" type="s" direction="in">
+      <arg name="storage_name" type="s" direction="in">
       <tp:docstring>
         Storage name is in the same format as EnumerateStorages.
       </tp:docstring>
       </arg>
-      <arg name="storageInfo" type="ay" direction="out">
+      <arg name="storage_info" type="ay" direction="out">
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
 
     <method name="GetStorageInfoFromDevice">
-      <arg name="storageName" type="s" direction="in">
+      <arg name="storage_name" type="s" direction="in">
       <tp:docstring>
         Storage name is in the same format as EnumerateStorages.
       </tp:docstring>
       </arg>
-      <arg name="storageInfo" type="ay" direction="out">
+      <arg name="storage_info" type="ay" direction="out">
       <tp:docstring>
         Storage info read from device. While this contains device related
         properties, these properties are not updated with this call.
       </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
 
     <method name="OpenStorage">
-      <arg name="storageName" type="s" direction="in">
+      <arg name="storage_name" type="s" direction="in">
       <tp:docstring>
         Storage name is in the same format as EnumerateStorages.
       </tp:docstring>
@@ -51,6 +54,7 @@
         Handle to the storage. Empty on failure.
       </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
 
     <method name="CloseStorage">
@@ -59,6 +63,7 @@
         Handle to the storage from OpenStorage.
       </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
 
     <method name="ReadDirectoryEntryIds">
@@ -67,7 +72,7 @@
         Handle to the storage from OpenStorage.
       </tp:docstring>
       </arg>
-      <arg name="fileId" type="u" direction="in">
+      <arg name="file_id" type="u" direction="in">
       <tp:docstring>
         Id of the directory to read.
       </tp:docstring>
@@ -77,6 +82,7 @@
         An array of file ids for the directory entries.
       </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
 
     <method name="GetFileInfo">
@@ -85,7 +91,7 @@
         Handle to the storage from OpenStorage.
       </tp:docstring>
       </arg>
-      <arg name="fileIds" type="au" direction="in">
+      <arg name="file_ids" type="au" direction="in">
       <tp:docstring>
         Array of file ids to read. Should be at least 1. Trying to read too
         many IDs at once may result in a DBus timeout, depending on the speed
@@ -97,6 +103,7 @@
       </arg>
       <arg name="info" type="ay" direction="out">
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
 
     <method name="ReadFileChunk">
@@ -105,7 +112,7 @@
         Handle to the storage from OpenStorage.
       </tp:docstring>
       </arg>
-      <arg name="fileId" type="u" direction="in">
+      <arg name="file_id" type="u" direction="in">
       </arg>
       <arg name="offset" type="u" direction="in">
       <tp:docstring>
@@ -119,6 +126,7 @@
       </arg>
       <arg name="data" type="ay" direction="out">
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
 
     <method name="CopyFileFromLocal">
@@ -127,21 +135,22 @@
           Handle to the storage from OpenStorage.
         </tp:docstring>
       </arg>
-      <arg name="fileDescriptor" type="h" direction="in">
+      <arg name="file_descriptor" type="h" direction="in">
         <tp:docstring>
           File descriptor of original file.
         </tp:docstring>
       </arg>
-      <arg name="parentId" type="u" direction="in">
+      <arg name="parent_id" type="u" direction="in">
         <tp:docstring>
           Object id of destination folder.
         </tp:docstring>
       </arg>
-      <arg name="fileName" type="s" direction="in">
+      <arg name="file_name" type="s" direction="in">
         <tp:docstring>
           Destination file name.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
 
     <method name="DeleteObject">
@@ -150,11 +159,12 @@
           Handle to the storage from OpenStorage.
         </tp:docstring>
       </arg>
-      <arg name="objectId" type="u" direction="in">
+      <arg name="object_id" type="u" direction="in">
         <tp:docstring>
           Object id of an object to be deleted.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
 
     <method name="RenameObject">
@@ -163,16 +173,17 @@
           Handle to the storage from OpenStorage.
         </tp:docstring>
       </arg>
-      <arg name="objectId" type="u" direction="in">
+      <arg name="object_id" type="u" direction="in">
         <tp:docstring>
           Object id of an object to be renamed.
         </tp:docstring>
       </arg>
-      <arg name="newName" type="s" direction="in">
+      <arg name="new_name" type="s" direction="in">
         <tp:docstring>
           New name.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
 
     <method name="CreateDirectory">
@@ -181,16 +192,17 @@
           Handle to the storage from OpenStorage.
         </tp:docstring>
       </arg>
-      <arg name="parentId" type="u" direction="in">
+      <arg name="parent_id" type="u" direction="in">
         <tp:docstring>
           Object id of a parent directory.
         </tp:docstring>
       </arg>
-      <arg name="directoryName" type="s" direction="in">
+      <arg name="directory_name" type="s" direction="in">
         <tp:docstring>
           Directory name of a new directory.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
 
     <method name="IsAlive">
@@ -202,17 +214,18 @@
           Boolean indicating whether the MTP service is alive.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
 
     <signal name="MTPStorageAttached">
-      <arg name="storageName" type="s" direction="out">
+      <arg name="storage_name" type="s" direction="out">
       <tp:docstring>
         Storage name is in the same format as EnumerateStorages.
       </tp:docstring>
       </arg>
     </signal>
     <signal name="MTPStorageDetached">
-      <arg name="storageName" type="s" direction="out">
+      <arg name="storage_name" type="s" direction="out">
       <tp:docstring>
         Storage name is in the same format as EnumerateStorages.
       </tp:docstring>

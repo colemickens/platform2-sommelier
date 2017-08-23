@@ -5,7 +5,6 @@
 #ifndef MTPD_DEVICE_MANAGER_H_
 #define MTPD_DEVICE_MANAGER_H_
 
-#include <glib.h>
 #include <libmtp.h>
 
 #include <map>
@@ -208,9 +207,7 @@ class DeviceManager {
 
   // Iterates through attached devices and find ones that are newly attached.
   // Then populates |device_map_| for the newly attached devices.
-  // If this is called as a result of a callback, it came from |source|,
-  // which needs to be properly destructed.
-  void AddDevices(GSource* source);
+  void AddDevices();
 
   // Re-reads the storage advertised by an already known device
   // on the USB bus.

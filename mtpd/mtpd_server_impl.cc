@@ -8,6 +8,7 @@
 #include <base/rand_util.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/tracked_objects.h>
 #include <chromeos/dbus/service_constants.h>
 
 namespace mtpd {
@@ -19,204 +20,255 @@ namespace {
 // times out.
 const uint32_t kMaxReadCount = 1024 * 1024;
 
-const char kInvalidHandleErrorMessage[] = "Invalid handle ";
-
-void SetInvalidHandleError(const std::string& handle, DBus::Error* error) {
-  std::string error_msg = kInvalidHandleErrorMessage + handle;
-  error->set(kMtpdServiceError, error_msg.c_str());
+void AddError(brillo::ErrorPtr* error,
+              const tracked_objects::Location& location,
+              const std::string& message) {
+  brillo::Error::AddTo(error,
+                       location,
+                       brillo::errors::dbus::kDomain,
+                       kMtpdServiceError,
+                       message);
 }
 
-template <typename ReturnType>
-ReturnType InvalidHandle(const std::string& handle, DBus::Error* error) {
-  SetInvalidHandleError(handle, error);
-  return ReturnType();
+void AddInvalidHandleError(brillo::ErrorPtr* error,
+                           const tracked_objects::Location& location,
+                           const std::string& handle) {
+  brillo::Error::AddToPrintf(error,
+                             location,
+                             brillo::errors::dbus::kDomain,
+                             kMtpdServiceError,
+                             "Invalid handle %s", handle.c_str());
 }
 
 }  // namespace
 
-MtpdServer::MtpdServer(DBus::Connection& connection)
-    : DBus::ObjectAdaptor(connection, kMtpdServicePath),
+MtpdServer::MtpdServer(scoped_refptr<dbus::Bus> bus)
+    : org::chromium::MtpdAdaptor(this),
+      dbus_object_(nullptr, bus, dbus::ObjectPath(kMtpdServicePath)),
       device_manager_(this) {}
 
 MtpdServer::~MtpdServer() {}
 
-std::vector<std::string> MtpdServer::EnumerateStorages(DBus::Error& error) {
+std::vector<std::string> MtpdServer::EnumerateStorages() {
   return device_manager_.EnumerateStorages();
 }
 
-std::vector<uint8_t> MtpdServer::GetStorageInfo(const std::string& storageName,
-                                                DBus::Error& error) {
-  const StorageInfo* info = device_manager_.GetStorageInfo(storageName);
+std::vector<uint8_t> MtpdServer::GetStorageInfo(
+    const std::string& storage_name) {
+  const StorageInfo* info = device_manager_.GetStorageInfo(storage_name);
   return info ? info->ToDBusFormat() : StorageInfo().ToDBusFormat();
 }
 
 std::vector<uint8_t> MtpdServer::GetStorageInfoFromDevice(
-    const std::string& storageName,
-    DBus::Error& error) {
+    const std::string& storage_name) {
   const StorageInfo* info =
-      device_manager_.GetStorageInfoFromDevice(storageName);
+      device_manager_.GetStorageInfoFromDevice(storage_name);
   return info ? info->ToDBusFormat() : StorageInfo().ToDBusFormat();
 }
 
-std::string MtpdServer::OpenStorage(const std::string& storageName,
-                                    const std::string& mode,
-                                    DBus::Error& error) {
+bool MtpdServer::OpenStorage(brillo::ErrorPtr* error,
+                             const std::string& storage_name,
+                             const std::string& mode,
+                             std::string* id) {
   if (!(mode == kReadOnlyMode || mode == kReadWriteMode)) {
-    std::string error_msg = "Cannot open " + storageName + " in mode: " + mode;
-    error.set(kMtpdServiceError, error_msg.c_str());
-    return std::string();
+    brillo::Error::AddToPrintf(error,
+                               FROM_HERE,
+                               brillo::errors::dbus::kDomain,
+                               kMtpdServiceError,
+                               "Cannot open %s in mode: %s",
+                               storage_name.c_str(), mode.c_str());
+    return false;
   }
 
-  if (!device_manager_.HasStorage(storageName)) {
-    std::string error_msg = "Cannot open unknown storage " + storageName;
-    error.set(kMtpdServiceError, error_msg.c_str());
-    return std::string();
+  if (!device_manager_.HasStorage(storage_name)) {
+    brillo::Error::AddToPrintf(error,
+                               FROM_HERE,
+                               brillo::errors::dbus::kDomain,
+                               kMtpdServiceError,
+                               "Cannot open unknown storage %s",
+                               storage_name.c_str());
+    return false;
   }
 
-  std::string id;
+  std::string new_id;
   uint32_t random_data[4];
   do {
     base::RandBytes(random_data, sizeof(random_data));
-    id = base::HexEncode(random_data, sizeof(random_data));
-  } while (ContainsKey(handle_map_, id));
+    new_id = base::HexEncode(random_data, sizeof(random_data));
+  } while (ContainsKey(handle_map_, new_id));
 
-  handle_map_.insert(std::make_pair(id, std::make_pair(storageName, mode)));
-  return id;
+  handle_map_.insert(
+      std::make_pair(new_id, std::make_pair(storage_name, mode)));
+  *id = new_id;
+  return true;
 }
 
-void MtpdServer::CloseStorage(const std::string& handle, DBus::Error& error) {
-  if (handle_map_.erase(handle) == 0)
-    SetInvalidHandleError(handle, &error);
+bool MtpdServer::CloseStorage(brillo::ErrorPtr* error,
+                              const std::string& handle) {
+  if (handle_map_.erase(handle) == 0) {
+    AddInvalidHandleError(error, FROM_HERE, handle);
+    return false;
+  }
+
+  return true;
 }
 
-std::vector<uint32_t> MtpdServer::ReadDirectoryEntryIds(
-    const std::string& handle,
-    const uint32_t& fileId,
-    DBus::Error& error) {
-  std::vector<uint32_t> directory_listing;
+bool MtpdServer::ReadDirectoryEntryIds(
+      brillo::ErrorPtr* error,
+      const std::string& handle,
+      uint32_t file_id,
+      std::vector<uint32_t>* directory_listing) {
   std::string storage_name = LookupHandle(handle);
   if (storage_name.empty()) {
-    SetInvalidHandleError(handle, &error);
-    return directory_listing;
+    AddInvalidHandleError(error, FROM_HERE, handle);
+    return false;
   }
 
-  if (!device_manager_.ReadDirectoryEntryIds(storage_name, fileId,
-                                             &directory_listing)) {
-    error.set(kMtpdServiceError, "ReadDirectoryEntryIds failed");
+  if (!device_manager_.ReadDirectoryEntryIds(storage_name, file_id,
+                                             directory_listing)) {
+    AddError(error, FROM_HERE, "ReadDirectoryEntryIds failed");
+    return false;
   }
-  return directory_listing;
+
+  return true;
 }
 
-std::vector<uint8_t> MtpdServer::GetFileInfo(
-    const std::string& handle,
-    const std::vector<uint32_t>& fileIds,
-    DBus::Error& error) {
-  if (fileIds.empty()) {
-    error.set(kMtpdServiceError, "GetFileInfo called with no file ids");
-    return FileEntry::EmptyFileEntriesToDBusFormat();
+bool MtpdServer::GetFileInfo(brillo::ErrorPtr* error,
+                             const std::string& handle,
+                             const std::vector<uint32_t>& file_ids,
+                             std::vector<uint8_t>* serialized_file_entries) {
+  if (file_ids.empty()) {
+    AddError(error, FROM_HERE, "GetFileInfo called with no file ids");
+    return false;
   }
 
   std::string storage_name = LookupHandle(handle);
   if (storage_name.empty()) {
-    SetInvalidHandleError(handle, &error);
-    return FileEntry::EmptyFileEntriesToDBusFormat();
+    AddInvalidHandleError(error, FROM_HERE, handle);
+    return false;
   }
 
   std::vector<FileEntry> file_info;
-  if (!device_manager_.GetFileInfo(storage_name, fileIds, &file_info)) {
-    error.set(kMtpdServiceError, "GetFileInfo failed");
-    return FileEntry::EmptyFileEntriesToDBusFormat();
+  if (!device_manager_.GetFileInfo(storage_name, file_ids, &file_info)) {
+    AddError(error, FROM_HERE, "GetFileInfo failed");
+    return false;
   }
-  return FileEntry::FileEntriesToDBusFormat(file_info);
+
+  *serialized_file_entries = FileEntry::FileEntriesToDBusFormat(file_info);
+  return true;
 }
 
-std::vector<uint8_t> MtpdServer::ReadFileChunk(const std::string& handle,
-                                               const uint32_t& fileId,
-                                               const uint32_t& offset,
-                                               const uint32_t& count,
-                                               DBus::Error& error) {
+bool MtpdServer::ReadFileChunk(brillo::ErrorPtr* error,
+                               const std::string& handle,
+                               uint32_t file_id,
+                               uint32_t offset,
+                               uint32_t count,
+                               std::vector<uint8_t>* file_contents) {
   if (count > kMaxReadCount || count == 0) {
-    error.set(kMtpdServiceError, "Invalid count for ReadFileChunk");
-    return std::vector<uint8_t>();
+    AddError(error, FROM_HERE, "Invalid count for ReadFileChunk");
+    return false;
   }
   std::string storage_name = LookupHandle(handle);
-  if (storage_name.empty())
-    return InvalidHandle<std::vector<uint8_t> >(handle, &error);
-
-  std::vector<uint8_t> file_contents;
-  if (!device_manager_.ReadFileChunk(storage_name, fileId, offset, count,
-                                     &file_contents)) {
-    error.set(kMtpdServiceError, "ReadFileChunk failed");
-    return std::vector<uint8_t>();
+  if (storage_name.empty()) {
+    AddInvalidHandleError(error, FROM_HERE, handle);
+    return false;
   }
-  return file_contents;
+
+  if (!device_manager_.ReadFileChunk(storage_name, file_id, offset, count,
+                                     file_contents)) {
+    AddError(error, FROM_HERE, "ReadFileChunk failed");
+    return false;
+  }
+
+  return true;
 }
 
-void MtpdServer::CopyFileFromLocal(const std::string& handle,
-                                   const DBus::FileDescriptor& fileDescriptor,
-                                   const uint32_t& parentId,
-                                   const std::string& fileName,
-                                   DBus::Error& error) {
+bool MtpdServer::CopyFileFromLocal(brillo::ErrorPtr* error,
+                                   const std::string& handle,
+                                   const dbus::FileDescriptor& file_descriptor,
+                                   uint32_t parent_id,
+                                   const std::string& file_name) {
   const std::string storage_name = LookupHandle(handle);
-  if (storage_name.empty() || !IsOpenedWithWrite(handle))
-    return InvalidHandle<void>(handle, &error);
-
-  if (!device_manager_.CopyFileFromLocal(storage_name, fileDescriptor.get(),
-                                         parentId, fileName)) {
-    error.set(kMtpdServiceError, "CopyFileFromLocal failed");
+  if (storage_name.empty() || !IsOpenedWithWrite(handle)) {
+    AddInvalidHandleError(error, FROM_HERE, handle);
+    return false;
   }
+
+  if (!device_manager_.CopyFileFromLocal(storage_name, file_descriptor.value(),
+                                         parent_id, file_name)) {
+    AddError(error, FROM_HERE, "CopyFileFromLocal failed");
+    return false;
+  }
+
+  return true;
 }
 
-void MtpdServer::DeleteObject(const std::string& handle,
-                              const uint32_t& objectId,
-                              DBus::Error& error) {
+bool MtpdServer::DeleteObject(brillo::ErrorPtr* error,
+                              const std::string& handle,
+                              uint32_t object_id) {
   const std::string storage_name = LookupHandle(handle);
-  if (storage_name.empty() || !IsOpenedWithWrite(handle))
-    return InvalidHandle<void>(handle, &error);
-
-  if (!device_manager_.DeleteObject(storage_name, objectId)) {
-    error.set(kMtpdServiceError, "DeleteObject failed");
+  if (storage_name.empty() || !IsOpenedWithWrite(handle)) {
+    AddInvalidHandleError(error, FROM_HERE, handle);
+    return false;
   }
+
+  if (!device_manager_.DeleteObject(storage_name, object_id)) {
+    AddError(error, FROM_HERE, "DeleteObject failed");
+    return false;
+  }
+
+  return true;
 }
 
-void MtpdServer::RenameObject(const std::string& handle,
-                              const uint32_t& objectId,
-                              const std::string& newName,
-                              DBus::Error& error) {
+bool MtpdServer::RenameObject(brillo::ErrorPtr* error,
+                              const std::string& handle,
+                              uint32_t object_id,
+                              const std::string& new_name) {
   const std::string storage_name = LookupHandle(handle);
-  if (storage_name.empty() || !IsOpenedWithWrite(handle))
-    return InvalidHandle<void>(handle, &error);
-
-  if (!device_manager_.RenameObject(storage_name, objectId, newName)) {
-    error.set(kMtpdServiceError, "RenameObject failed");
+  if (storage_name.empty() || !IsOpenedWithWrite(handle)) {
+    AddInvalidHandleError(error, FROM_HERE, handle);
+    return false;
   }
+
+  if (!device_manager_.RenameObject(storage_name, object_id, new_name)) {
+    AddError(error, FROM_HERE, "RenameObject failed");
+    return false;
+  }
+
+  return true;
 }
 
-void MtpdServer::CreateDirectory(const std::string& handle,
-                                 const uint32_t& parentId,
-                                 const std::string& directoryName,
-                                 DBus::Error& error) {
+bool MtpdServer::CreateDirectory(brillo::ErrorPtr* error,
+                                 const std::string& handle,
+                                 uint32_t parent_id,
+                                 const std::string& directory_name) {
   const std::string storage_name = LookupHandle(handle);
-  if (storage_name.empty() || !IsOpenedWithWrite(handle))
-    return InvalidHandle<void>(handle, &error);
-
-  if (!device_manager_.CreateDirectory(storage_name, parentId, directoryName)) {
-    error.set(kMtpdServiceError, "CreateDirectory failed.");
+  if (storage_name.empty() || !IsOpenedWithWrite(handle)) {
+    AddInvalidHandleError(error, FROM_HERE, handle);
+    return false;
   }
+
+  if (!device_manager_.CreateDirectory(storage_name, parent_id,
+                                       directory_name)) {
+    AddError(error, FROM_HERE, "CreateDirectory failed.");
+    return false;
+  }
+
+  return true;
 }
 
-bool MtpdServer::IsAlive(DBus::Error& error) {
+bool MtpdServer::IsAlive() {
   return true;
 }
 
 void MtpdServer::StorageAttached(const std::string& storage_name) {
   // Fire DBus signal.
-  MTPStorageAttached(storage_name);
+  SendMTPStorageAttachedSignal(storage_name);
 }
 
 void MtpdServer::StorageDetached(const std::string& storage_name) {
   // Fire DBus signal.
-  MTPStorageDetached(storage_name);
+  SendMTPStorageDetachedSignal(storage_name);
 }
 
 int MtpdServer::GetDeviceEventDescriptor() const {
@@ -236,6 +288,12 @@ bool MtpdServer::IsOpenedWithWrite(const std::string& handle) {
   HandleMap::const_iterator it = handle_map_.find(handle);
   return (it == handle_map_.end()) ? false
                                    : it->second.second == kReadWriteMode;
+}
+
+void MtpdServer::RegisterAsync(
+    const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
+  RegisterWithDBusObject(&dbus_object_);
+  dbus_object_.RegisterAsync(cb);
 }
 
 }  // namespace mtpd

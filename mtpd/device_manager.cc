@@ -15,6 +15,7 @@
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
 #include <base/memory/ptr_util.h>
+#include <base/message_loop/message_loop.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -47,13 +48,6 @@ const char kVendorSpecificUsbInterfaceClass[] = "255";
 const char kUsbPrefix[] = "usb";
 const char kUDevEventType[] = "udev";
 const char kUDevUsbSubsystem[] = "usb";
-
-gboolean GlibRunClosure(gpointer data) {
-  base::Closure* cb = reinterpret_cast<base::Closure*>(data);
-  cb->Run();
-  delete cb;
-  return FALSE;
-}
 
 std::string RawDeviceToString(const LIBMTP_raw_device_t& device) {
   return base::StringPrintf("%s:%u,%d", kUsbPrefix, device.bus_location,
@@ -102,7 +96,7 @@ DeviceManager::DeviceManager(DeviceEventDelegate* delegate)
   LIBMTP_Init();
 
   // Trigger a device scan.
-  AddDevices(nullptr /* no callback source */);
+  AddDevices();
 }
 
 DeviceManager::~DeviceManager() {
@@ -545,11 +539,10 @@ void DeviceManager::HandleDeviceNotification(udev_device* device) {
   if (kEventAction == "add") {
     // Some devices do not respond well when immediately probed. Thus there is
     // a 1 second wait here to give the device to settle down.
-    GSource* source = g_timeout_source_new_seconds(1);
-    auto cb = base::MakeUnique<base::Closure>(base::Bind(
-        &DeviceManager::AddDevices, weak_ptr_factory_.GetWeakPtr(), source));
-    g_source_set_callback(source, &GlibRunClosure, cb.release(), nullptr);
-    g_source_attach(source, nullptr);
+    base::MessageLoopForIO::current()->task_runner()->PostDelayedTask(
+        FROM_HERE,
+        base::Bind(&DeviceManager::AddDevices, weak_ptr_factory_.GetWeakPtr()),
+        base::TimeDelta::FromSeconds(1));
     return;
   }
   if (kEventAction == "remove") {
@@ -586,13 +579,7 @@ void DeviceManager::PollDevice(LIBMTP_mtpdevice_t* mtp_device,
   }
 }
 
-void DeviceManager::AddDevices(GSource* source) {
-  if (source) {
-    // Matches g_source_attach().
-    g_source_destroy(source);
-    // Matches the implicit add-ref in g_timeout_source_new_seconds().
-    g_source_unref(source);
-  }
+void DeviceManager::AddDevices() {
   AddOrUpdateDevices(true /* add */, "");
 }
 
