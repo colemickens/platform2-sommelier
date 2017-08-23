@@ -1370,19 +1370,19 @@ static int mount_runfs(struct container *c, const struct container_config *confi
 	if (chmod(c->runfsroot, root_dir_mode))
 		return -errno;
 
-        if (mount(rootfs, c->runfsroot, "",
-                  MS_BIND | (config->rootfs_mount_flags & MS_REC), NULL)) {
-                return -errno;
-        }
+	if (mount(rootfs, c->runfsroot, "",
+	          MS_BIND | (config->rootfs_mount_flags & MS_REC), NULL)) {
+		return -errno;
+	}
 
-        /* MS_BIND ignores any flags passed to it (except MS_REC). We need a
-         * second call to mount() to actually set them.
-         */
-        if (config->rootfs_mount_flags &&
-            mount(rootfs, c->runfsroot, "",
-                  (config->rootfs_mount_flags & ~MS_REC), NULL)) {
-                return -errno;
-        }
+	/* MS_BIND ignores any flags passed to it (except MS_REC). We need a
+	 * second call to mount() to actually set them.
+	 */
+	if (config->rootfs_mount_flags &&
+	    mount(rootfs, c->runfsroot, "",
+	          (config->rootfs_mount_flags & ~MS_REC), NULL)) {
+		return -errno;
+	}
 
 	return 0;
 }
@@ -1754,7 +1754,14 @@ static int container_teardown(struct container *c)
 
 	unmount_external_mounts(c);
 	if (c->runfsroot && c->runfs) {
-		if (umount(c->runfsroot))
+		/* |c->runfsroot| may have been mounted recursively. Thus use
+		 * MNT_DETACH to "immediately disconnect the filesystem and all
+		 * filesystems mounted below it from each other and from the
+		 * mount table". Otherwise one would need to unmount every
+		 * single dependent mount before unmounting |c->runfsroot|
+		 * itself.
+		 */
+		if (umount2(c->runfsroot, MNT_DETACH))
 			ret = -errno;
 		if (rmdir(c->runfsroot))
 			ret = -errno;
