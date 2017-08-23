@@ -12,6 +12,7 @@
 
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
@@ -97,8 +98,8 @@ bool operator!=(const SectionInfo& lhs, const SectionInfo& rhs) {
 }
 
 FirmwareUpdater::FirmwareUpdater()
-    : FirmwareUpdater(std::unique_ptr<UsbEndpointInterface>(new UsbEndpoint()),
-                      std::unique_ptr<FmapInterface>(new Fmap())) {}
+    : FirmwareUpdater(base::MakeUnique<UsbEndpoint>(),
+                      base::MakeUnique<Fmap>()) {}
 
 FirmwareUpdater::FirmwareUpdater(std::unique_ptr<UsbEndpointInterface> endpoint,
                                  std::unique_ptr<FmapInterface> fmap)

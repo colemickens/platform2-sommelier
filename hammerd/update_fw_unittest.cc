@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/rand_util.h>
 #include <base/time/time.h>
@@ -33,8 +34,8 @@ class FirmwareUpdaterTest : public testing::Test {
   void SetUp() override {
     fw_updater_.reset(
         new FirmwareUpdater{
-            std::unique_ptr<UsbEndpointInterface>(new MockUsbEndpoint()),
-            std::unique_ptr<FmapInterface>(new MockFmap())});
+            base::MakeUnique<MockUsbEndpoint>(),
+            base::MakeUnique<MockFmap>()});
     endpoint_ = static_cast<MockUsbEndpoint*>(fw_updater_->endpoint_.get());
     fmap_ = static_cast<MockFmap*>(fw_updater_->fmap_.get());
 

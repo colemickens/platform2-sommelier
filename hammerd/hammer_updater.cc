@@ -11,15 +11,14 @@
 #include <unistd.h>
 
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 
 namespace hammerd {
 
 HammerUpdater::HammerUpdater(const std::string& image)
-    : HammerUpdater(
-          image,
-          std::unique_ptr<FirmwareUpdaterInterface>(new FirmwareUpdater())) {}
+    : HammerUpdater(image, base::MakeUnique<FirmwareUpdater>()) {}
 
 HammerUpdater::HammerUpdater(
     const std::string& image,

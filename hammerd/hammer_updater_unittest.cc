@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -74,8 +75,7 @@ class HammerUpdaterFlowTest : public HammerUpdaterTest {
     // MockHammerUpdater mocks out RunOnce so that Run can be tested.
     // FirmwareUpdater is also mocked out.
     hammer_updater_.reset(new MockHammerUpdater{
-        image_,
-        std::unique_ptr<FirmwareUpdaterInterface>(new MockFirmwareUpdater())});
+        image_, base::MakeUnique<MockFirmwareUpdater>()});
     fw_updater_ =
         static_cast<MockFirmwareUpdater*>(hammer_updater_->fw_updater_.get());
   }
@@ -89,8 +89,7 @@ class HammerUpdaterFullTest : public HammerUpdaterTest {
   void SetFwUpdater() override {
     // Use the normal HammerUpdater class.  We only mock out FirmwareUpdater.
     hammer_updater_.reset(new HammerUpdater{
-        image_,
-        std::unique_ptr<FirmwareUpdaterInterface>(new MockFirmwareUpdater())});
+        image_, base::MakeUnique<MockFirmwareUpdater>()});
     fw_updater_ =
         static_cast<MockFirmwareUpdater*>(hammer_updater_->fw_updater_.get());
   }
