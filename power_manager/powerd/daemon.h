@@ -56,6 +56,7 @@ class WifiController;
 namespace system {
 class AcpiWakeupHelperInterface;
 class AmbientLightSensorInterface;
+class ArcTimerManager;
 class AudioClientInterface;
 class BacklightInterface;
 class DarkResumeInterface;
@@ -307,6 +308,9 @@ class Daemon : public policy::BacklightControllerObserver,
   std::unique_ptr<policy::WifiController> wifi_controller_;
 
   std::unique_ptr<metrics::MetricsCollector> metrics_collector_;
+
+  // Object that manages all operations related to timers in the ARC instance.
+  std::unique_ptr<system::ArcTimerManager> arc_timer_manager_;
 
   // Checks if a lockfile exists indicating that power management should be
   // overridden (typically due to a firmware update).

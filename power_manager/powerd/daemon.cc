@@ -38,6 +38,7 @@
 #include "power_manager/powerd/policy/state_controller.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper_interface.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
+#include "power_manager/powerd/system/arc_timer_manager.h"
 #include "power_manager/powerd/system/audio_client_interface.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 #include "power_manager/powerd/system/dark_resume_interface.h"
@@ -281,6 +282,7 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       suspender_(new policy::Suspender),
       wifi_controller_(std::make_unique<policy::WifiController>()),
       metrics_collector_(new metrics::MetricsCollector),
+      arc_timer_manager_(std::make_unique<system::ArcTimerManager>()),
       retry_shutdown_for_lockfile_timer_(false /* retain_user_task */,
                                          true /* is_repeating */),
       wakeup_count_path_(kDefaultWakeupCountPath),
@@ -424,6 +426,8 @@ void Daemon::Init() {
       delegate_->CreatePeripheralBatteryWatcher(dbus_wrapper_.get());
   power_override_lockfile_checker_ = delegate_->CreateLockfileChecker(
       base::FilePath(kPowerOverrideLockfileDir), {});
+
+  arc_timer_manager_->Init(dbus_wrapper_.get());
 
   // Asynchronously undo the previous force-lid-open request to the EC (if there
   // was one).

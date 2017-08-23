@@ -59,6 +59,7 @@
       'sources': [
         'powerd/system/acpi_wakeup_helper.cc',
         'powerd/system/ambient_light_sensor.cc',
+        'powerd/system/arc_timer_manager.cc',
         'powerd/system/async_file_reader.cc',
         'powerd/system/audio_client.cc',
         'powerd/system/dark_resume.cc',
@@ -344,6 +345,7 @@
             'common/testrunner.cc',
             'powerd/system/acpi_wakeup_helper_unittest.cc',
             'powerd/system/ambient_light_sensor_unittest.cc',
+            'powerd/system/arc_timer_manager_unittest.cc',
             'powerd/system/async_file_reader_unittest.cc',
             'powerd/system/audio_client_unittest.cc',
             'powerd/system/display/display_watcher_unittest.cc',
