@@ -29,6 +29,10 @@
 #include "shill/power_manager_proxy_interface.h"
 #include "shill/upstart/upstart_proxy_interface.h"
 
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+#include "shill/supplicant/supplicant_process_proxy_interface.h"
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+
 #if !defined(DISABLE_WIMAX)
 #include "shill/wimax/wimax_device_proxy_interface.h"
 #include "shill/wimax/wimax_manager_proxy_interface.h"
@@ -78,7 +82,7 @@ class MockControl : public ControlInterface {
                    const base::Closure& service_vanished_callback));
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   MOCK_METHOD2(CreateSupplicantProcessProxy,
-               SupplicantProcessProxyInterface*(
+               std::unique_ptr<SupplicantProcessProxyInterface>(
                    const base::Closure& service_appeared_callback,
                    const base::Closure& service_vanished_callback));
   MOCK_METHOD2(CreateSupplicantInterfaceProxy,

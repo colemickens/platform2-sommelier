@@ -122,7 +122,8 @@ class ControlInterface {
       const base::Closure& service_vanished_callback) = 0;
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-  virtual SupplicantProcessProxyInterface* CreateSupplicantProcessProxy(
+  virtual std::unique_ptr<SupplicantProcessProxyInterface>
+  CreateSupplicantProcessProxy(
       const base::Closure& service_appeared_callback,
       const base::Closure& service_vanished_callback) = 0;
 

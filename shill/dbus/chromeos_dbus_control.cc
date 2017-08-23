@@ -208,14 +208,15 @@ ChromeosDBusControl::CreatePowerManagerProxy(
 }
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-SupplicantProcessProxyInterface*
-    ChromeosDBusControl::CreateSupplicantProcessProxy(
-        const base::Closure& service_appeared_callback,
-        const base::Closure& service_vanished_callback) {
-  return new ChromeosSupplicantProcessProxy(dispatcher_,
-                                            proxy_bus_,
-                                            service_appeared_callback,
-                                            service_vanished_callback);
+std::unique_ptr<SupplicantProcessProxyInterface>
+ChromeosDBusControl::CreateSupplicantProcessProxy(
+    const base::Closure& service_appeared_callback,
+    const base::Closure& service_vanished_callback) {
+  return base::MakeUnique<ChromeosSupplicantProcessProxy>(
+      dispatcher_,
+      proxy_bus_,
+      service_appeared_callback,
+      service_vanished_callback);
 }
 
 SupplicantInterfaceProxyInterface*

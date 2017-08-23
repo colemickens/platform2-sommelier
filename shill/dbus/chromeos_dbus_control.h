@@ -63,7 +63,7 @@ class ChromeosDBusControl : public ControlInterface {
       const base::Closure& service_vanished_callback) override;
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-  SupplicantProcessProxyInterface* CreateSupplicantProcessProxy(
+  std::unique_ptr<SupplicantProcessProxyInterface> CreateSupplicantProcessProxy(
       const base::Closure& service_appeared_callback,
       const base::Closure& service_vanished_callback) override;
 
