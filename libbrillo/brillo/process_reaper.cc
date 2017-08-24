@@ -11,7 +11,6 @@
 #include <base/bind.h>
 #include <base/posix/eintr_wrapper.h>
 #include <brillo/asynchronous_signal_handler.h>
-#include <brillo/daemons/daemon.h>
 #include <brillo/location_logging.h>
 
 namespace brillo {

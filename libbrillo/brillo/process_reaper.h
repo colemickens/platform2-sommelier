@@ -13,7 +13,6 @@
 #include <base/location.h>
 #include <base/macros.h>
 #include <brillo/asynchronous_signal_handler.h>
-#include <brillo/daemons/daemon.h>
 
 namespace brillo {
 
