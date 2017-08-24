@@ -112,6 +112,10 @@ const Log kCommandLogs[] = {
   },
   { "ifconfig", "/bin/ifconfig -a" },
   { "input_devices", "/bin/cat /proc/bus/input/devices" },
+  // Information about the wiphy device, such as current channel.
+  { "iw_dev", "/usr/sbin/iw dev" },
+  // Hardware capabilities of the wiphy device.
+  { "iw_list", "/usr/sbin/iw list" },
   { "kernel-crashes",
     "/bin/cat /var/spool/crash/kernel.*.kcrash 2> /dev/null" },
   { "lsmod", "lsmod" },
