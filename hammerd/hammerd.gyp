@@ -26,6 +26,14 @@
       ],
     },
     {
+      'target_name': 'libhammerd-api',
+      'type': 'shared_library',
+      'dependencies': ['libhammerd'],
+      'sources': [
+        'hammerd_api.cc',
+      ],
+    },
+    {
       'target_name': 'hammerd',
       'type': 'executable',
       'dependencies': ['libhammerd'],
