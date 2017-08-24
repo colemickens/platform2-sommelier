@@ -425,6 +425,7 @@ wipe_keysets() {
 
   for file in \
       "${STATE_PATH}/encrypted.key" \
+      "${STATE_PATH}/encrypted.needs-finalization" \
       "${STATE_PATH}/home/.shadow/cryptohome.key" \
       "${STATE_PATH}/home/.shadow/salt" \
       "${STATE_PATH}/home/.shadow/salt.sum" \
