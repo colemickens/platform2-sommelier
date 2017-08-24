@@ -5,6 +5,9 @@
 #ifndef LIBBRILLO_BRILLO_GLIB_DBUS_H_
 #define LIBBRILLO_BRILLO_GLIB_DBUS_H_
 
+// IMPORTANT: Do not use this in new code. Instead, use libchrome's D-Bus
+// bindings. See https://goo.gl/EH3MmR for more details.
+
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
 
