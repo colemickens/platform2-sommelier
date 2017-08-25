@@ -880,7 +880,7 @@ status_t SyncManager::notifyPollEvent(PollEventMessage *pollEventMsg)
 
             msg.data.frameEvent.timestamp.tv_sec = event.timestamp.tv_sec;
             msg.data.frameEvent.timestamp.tv_usec = (event.timestamp.tv_nsec / 1000);
-            msg.data.frameEvent.exp_id = event.sequence;
+            msg.data.frameEvent.exp_id = event.u.frame_sync.frame_sequence;
             msg.data.frameEvent.reqId = pollEventMsg->data.reqId;
             if (mFrameSyncSource == FRAME_SYNC_SOF) {
                 msg.id = MESSAGE_ID_SOF;
@@ -891,12 +891,12 @@ status_t SyncManager::notifyPollEvent(PollEventMessage *pollEventMsg)
                 LOGE("Message ID = MESSAGE_ID_MAX should never end up here");
             }
             mMessageQueue.send(&msg);
-            LOG2("%s: EVENT, MessageId: %d, activedev: %d, reqId: %d, sof event sequence: %u",
+            LOG2("%s: EVENT, MessageId: %d, activedev: %d, reqId: %d, seq: %u, frame sequence: %u",
                  __FUNCTION__, pollEventMsg->id, pollEventMsg->data.activeDevices->size(),
-                 pollEventMsg->data.reqId, event.sequence);
+                 pollEventMsg->data.reqId, event.sequence, event.u.frame_sync.frame_sequence);
 
             // notify SOF event
-            mSofListener->notifySofEvent(event.sequence);
+            mSofListener->notifySofEvent(event.u.frame_sync.frame_sequence);
         } while (event.pending > 0);
     }
     return OK;
