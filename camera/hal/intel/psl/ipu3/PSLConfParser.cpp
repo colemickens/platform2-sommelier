@@ -311,12 +311,24 @@ camera_metadata_t* PSLConfParser::constructDefaultMetadata(int cameraId, int req
 
     TAGINFO(ANDROID_SYNC_FRAME_NUMBER, bogusValue);
 
-    int32_t fpsRange[] = { 10, 30 };
-    int32_t videoFpsRange[] = { 30, 30 };
-    if (requestTemplate == ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_RECORD)
-        TAGINFO_ARRAY(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, videoFpsRange, 2);
-    else
-        TAGINFO_ARRAY(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, fpsRange, 2);
+    camera_metadata_ro_entry fpsRangesEntry;
+    fpsRangesEntry.count = 0;
+    int ret = find_camera_metadata_ro_entry(staticMeta,
+                          ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES,
+                          &fpsRangesEntry);
+
+    //Default fps target range
+    int32_t fpsRange[] = { 30, 30 };
+
+    if ((fpsRangesEntry.count >= 2) && (fpsRangesEntry.count % 2 == 0)) {
+        //the first one in the entry list is used
+        fpsRange[0] = fpsRangesEntry.data.i32[0];
+        fpsRange[1] = fpsRangesEntry.data.i32[1];
+    } else {
+        //Default value {30, 30} is used
+        LOGW("Error/No aeAvailableTargetFpsRanges is found in camera profile, [30,30] is used by default!");
+    }
+    TAGINFO_ARRAY(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, fpsRange, 2);
 
     value = ANDROID_CONTROL_AE_ANTIBANDING_MODE_AUTO;
     TAGINFO(ANDROID_CONTROL_AE_ANTIBANDING_MODE, value);
