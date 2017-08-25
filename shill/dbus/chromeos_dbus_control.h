@@ -71,7 +71,7 @@ class ChromeosDBusControl : public ControlInterface {
   CreateSupplicantInterfaceProxy(SupplicantEventDelegateInterface* delegate,
                                  const std::string& object_path) override;
 
-  SupplicantNetworkProxyInterface* CreateSupplicantNetworkProxy(
+  std::unique_ptr<SupplicantNetworkProxyInterface> CreateSupplicantNetworkProxy(
       const std::string& object_path) override;
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 

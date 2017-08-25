@@ -131,8 +131,8 @@ class ControlInterface {
   CreateSupplicantInterfaceProxy(SupplicantEventDelegateInterface* delegate,
                                  const std::string& object_path) = 0;
 
-  virtual SupplicantNetworkProxyInterface* CreateSupplicantNetworkProxy(
-      const std::string& object_path) = 0;
+  virtual std::unique_ptr<SupplicantNetworkProxyInterface>
+  CreateSupplicantNetworkProxy(const std::string& object_path) = 0;
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 #if !defined(DISABLE_WIFI)

@@ -91,6 +91,7 @@ using std::vector;
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::AtLeast;
+using ::testing::ByMove;
 using ::testing::ContainsRegex;
 using ::testing::DoAll;
 using ::testing::EndsWith;
@@ -619,7 +620,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     ON_CALL(control_interface_, CreateSupplicantBSSProxy(_, _))
         .WillByDefault(ReturnAndReleasePointee(&supplicant_bss_proxy_));
     ON_CALL(control_interface_, CreateSupplicantNetworkProxy(_))
-        .WillByDefault(ReturnAndReleasePointee(&supplicant_network_proxy_));
+        .WillByDefault(
+            Invoke(this, &WiFiObjectTest::CreateSupplicantNetworkProxy));
     Nl80211Message::SetMessageType(kNl80211FamilyId);
 
     // Transfers ownership.
@@ -1340,6 +1342,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return std::move(supplicant_interface_proxy_);
   }
 
+  std::unique_ptr<SupplicantNetworkProxyInterface> CreateSupplicantNetworkProxy(
+      const std::string& object_path) {
+    return std::move(supplicant_network_proxy_);
+  }
+
   unique_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
   unique_ptr<MockSupplicantNetworkProxy> supplicant_network_proxy_;
 };
@@ -1978,10 +1985,10 @@ TEST_F(WiFiMainTest, DisconnectCurrentService) {
 
   // Expect that the entry associated with this network will be disabled.
   auto network_proxy = base::MakeUnique<MockSupplicantNetworkProxy>();
-  EXPECT_CALL(*control_interface(),
-              CreateSupplicantNetworkProxy(kPath))
-      .WillOnce(ReturnAndReleasePointee(&network_proxy));
   EXPECT_CALL(*network_proxy, SetEnabled(false)).WillOnce(Return(true));
+  EXPECT_CALL(*control_interface(), CreateSupplicantNetworkProxy(kPath))
+      .WillOnce(Return(ByMove(std::move(network_proxy))));
+
   EXPECT_CALL(*eap_state_handler_, Reset());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(kPath)).Times(0);
   EXPECT_CALL(*service, SetFailure(_)).Times(0);
@@ -2004,10 +2011,10 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithFailure) {
 
   // Expect that the entry associated with this network will be disabled.
   auto network_proxy = base::MakeUnique<MockSupplicantNetworkProxy>();
-  EXPECT_CALL(*control_interface(),
-              CreateSupplicantNetworkProxy(kPath))
-      .WillOnce(ReturnAndReleasePointee(&network_proxy));
   EXPECT_CALL(*network_proxy, SetEnabled(false)).WillOnce(Return(true));
+  EXPECT_CALL(*control_interface(), CreateSupplicantNetworkProxy(kPath))
+      .WillOnce(Return(ByMove(std::move(network_proxy))));
+
   EXPECT_CALL(*eap_state_handler_, Reset());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(kPath)).Times(0);
   EXPECT_CALL(*service, SetFailure(Service::kFailureOutOfRange));

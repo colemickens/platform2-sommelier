@@ -602,8 +602,8 @@ void WiFi::DisconnectFrom(WiFiService* service) {
 }
 
 bool WiFi::DisableNetwork(const string& network) {
-  std::unique_ptr<SupplicantNetworkProxyInterface> supplicant_network_proxy(
-      control_interface()->CreateSupplicantNetworkProxy(network));
+  std::unique_ptr<SupplicantNetworkProxyInterface> supplicant_network_proxy =
+      control_interface()->CreateSupplicantNetworkProxy(network);
   if (!supplicant_network_proxy->SetEnabled(false)) {
     LOG(ERROR) << "DisableNetwork for " << network << " failed.";
     return false;
