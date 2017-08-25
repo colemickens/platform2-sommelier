@@ -72,6 +72,7 @@ private:
     status_t requestExitAndWait();
     status_t mapStreamWithDeviceNode();
     status_t createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig);
+    status_t checkAndSwitchPipe(Camera3Request* request);
     status_t kickstart();
     void clearWorkers();
 
@@ -127,6 +128,8 @@ private:
     static const int PUBLIC_STATS_POOL_SIZE = 9;
     static const int IPU3_MAX_STATISTICS_WIDTH = 80;
     static const int IPU3_MAX_STATISTICS_HEIGHT = 60;
+
+    bool mTakingPicture;
 };
 
 } /* namespace camera2 */

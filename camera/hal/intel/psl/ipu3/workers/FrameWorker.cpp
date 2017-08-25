@@ -55,7 +55,7 @@ status_t FrameWorker::startWorker()
 
 status_t FrameWorker::stopWorker()
 {
-    return OK;
+    return mNode->stop(true);
 }
 
 status_t FrameWorker::setWorkerDeviceFormat(v4l2_buf_type type, FrameInfo &frame)

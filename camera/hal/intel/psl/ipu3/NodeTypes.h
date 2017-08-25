@@ -26,14 +26,15 @@ namespace camera2 {
  */
 enum IPU3NodeNames {
     IMGU_NODE_NULL =            0,
-    IMGU_NODE_PREVIEW =         1 << 1,
-    IMGU_NODE_VIDEO =           1 << 2,
-    IMGU_NODE_STILL =           1 << 3,
-    IMGU_NODE_RAW =             1 << 4,
-    IMGU_NODE_PARAM =           1 << 5,
-    IMGU_NODE_STAT =            1 << 6,
-    IMGU_NODE_INPUT =           1 << 7,
-    ISYS_NODE_RAW =             1 << 8
+    IMGU_NODE_VF_PREVIEW =      1 << 1,
+    IMGU_NODE_PV_PREVIEW =      1 << 2,
+    IMGU_NODE_VIDEO =           1 << 3,
+    IMGU_NODE_STILL =           1 << 4,
+    IMGU_NODE_RAW =             1 << 5,
+    IMGU_NODE_PARAM =           1 << 6,
+    IMGU_NODE_STAT =            1 << 7,
+    IMGU_NODE_INPUT =           1 << 8,
+    ISYS_NODE_RAW =             1 << 9
 };
 
 int getDefaultMemoryType(IPU3NodeNames node);

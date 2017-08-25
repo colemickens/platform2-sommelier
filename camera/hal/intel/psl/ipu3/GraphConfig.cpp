@@ -2460,8 +2460,9 @@ void GraphConfig::setMediaCtlConfig(std::shared_ptr<MediaController> mediaCtl,
                                                         : MEDIACTL_PREVIEWNAME;
     mLut.push_back(lut);
 
+    int previewNodeName = enableStill ? IMGU_NODE_PV_PREVIEW : IMGU_NODE_VF_PREVIEW;
     for (auto & it : mLut) {
-         it.ipuNodeName = (it.uid == GCSS_KEY_IMGU_PREVIEW) ? IMGU_NODE_PREVIEW
+         it.ipuNodeName = (it.uid == GCSS_KEY_IMGU_PREVIEW) ? previewNodeName
                         : (it.uid == GCSS_KEY_IMGU_VIDEO)   ? IMGU_NODE_VIDEO
                         : (it.uid == GCSS_KEY_IMGU_STILL)   ? IMGU_NODE_STILL
                         : (it.uid == GCSS_KEY_INPUT)        ? IMGU_NODE_INPUT
