@@ -57,6 +57,10 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, IsUserSpecificDirectoryEnabled);
   FRIEND_TEST(CrashCollectorTest, MetaData);
   FRIEND_TEST(CrashCollectorTest, Sanitize);
+  FRIEND_TEST(CrashCollectorTest, StripSensitiveDataBasic);
+  FRIEND_TEST(CrashCollectorTest, StripSensitiveDataBulk);
+  FRIEND_TEST(CrashCollectorTest, StripSensitiveDataSample);
+  FRIEND_TEST(CrashCollectorTest, TruncatedLog);
   FRIEND_TEST(CrashCollectorTest, WriteNewFile);
   FRIEND_TEST(ForkExecAndPipeTest, Basic);
   FRIEND_TEST(ForkExecAndPipeTest, NonZeroReturnValue);
@@ -88,6 +92,10 @@ class CrashCollector {
   // Return a filename that has only [a-z0-1_] characters by mapping
   // all others into '_'.
   std::string Sanitize(const std::string &name);
+
+  // Strip any data that the user might not want sent up to the crash server.
+  // |contents| is modified in-place.
+  void StripSensitiveData(std::string *contents);
 
   virtual bool GetActiveUserSessions(
       std::map<std::string, std::string> *sessions);
@@ -186,6 +194,7 @@ class CrashCollector {
   base::FilePath lsb_release_;
   base::FilePath system_crash_path_;
   base::FilePath log_config_path_;
+  size_t max_log_size_;
 
   scoped_refptr<dbus::Bus> bus_;
 

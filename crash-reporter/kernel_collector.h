@@ -58,15 +58,11 @@ class KernelCollector : public CrashCollector {
  private:
   friend class KernelCollectorTest;
   FRIEND_TEST(KernelCollectorTest, LoadPreservedDump);
-  FRIEND_TEST(KernelCollectorTest, StripSensitiveDataBasic);
-  FRIEND_TEST(KernelCollectorTest, StripSensitiveDataBulk);
-  FRIEND_TEST(KernelCollectorTest, StripSensitiveDataSample);
   FRIEND_TEST(KernelCollectorTest, CollectOK);
 
   virtual bool DumpDirMounted();
 
   bool LoadPreservedDump(std::string *contents);
-  void StripSensitiveData(std::string *kernel_dump);
 
   bool LastRebootWasWatchdog();
   bool LoadConsoleRamoops(std::string *contents);

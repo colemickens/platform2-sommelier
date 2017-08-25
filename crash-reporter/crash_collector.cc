@@ -16,6 +16,8 @@
 #include <set>
 #include <vector>
 
+#include <pcrecpp.h>
+
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
@@ -65,6 +67,9 @@ const mode_t kSystemCrashPathMode = 01755;
 
 const uid_t kRootGroup = 0;
 
+// Buffer size for reading a log into memory.
+constexpr size_t kMaxLogSize = 1024 * 1024;
+
 }  // namespace
 
 const char * const CrashCollector::kUnknownVersion = "unknown";
@@ -92,6 +97,7 @@ CrashCollector::CrashCollector(bool force_user_crash_dir)
     : lsb_release_(kLsbRelease),
       system_crash_path_(kSystemCrashPath),
       log_config_path_(kDefaultLogConfig),
+      max_log_size_(kMaxLogSize),
       force_user_crash_dir_(force_user_crash_dir) {
 }
 
@@ -148,6 +154,78 @@ std::string CrashCollector::Sanitize(const std::string &name) {
       result[i] = '_';
   }
   return result;
+}
+
+void CrashCollector::StripSensitiveData(std::string *contents) {
+  // At the moment, the only sensitive data we strip is MAC addresses.
+
+  // Get rid of things that look like MAC addresses, since they could possibly
+  // give information about where someone has been.  This is strings that look
+  // like this: 11:22:33:44:55:66
+  // Complications:
+  // - Within a given log, we want to be able to tell when the same MAC
+  //   was used more than once.  Thus, we'll consistently replace the first
+  //   MAC found with 00:00:00:00:00:01, the second with ...:02, etc.
+  // - ACPI commands look like MAC addresses.  We'll specifically avoid getting
+  //   rid of those.
+  std::ostringstream result;
+  std::string pre_mac_str;
+  std::string mac_str;
+  std::map<std::string, std::string> mac_map;
+  pcrecpp::StringPiece input(*contents);
+
+  // This RE will find the next MAC address and can return us the data preceding
+  // the MAC and the MAC itself.
+  pcrecpp::RE mac_re("(.*?)("
+                     "[0-9a-fA-F][0-9a-fA-F]:"
+                     "[0-9a-fA-F][0-9a-fA-F]:"
+                     "[0-9a-fA-F][0-9a-fA-F]:"
+                     "[0-9a-fA-F][0-9a-fA-F]:"
+                     "[0-9a-fA-F][0-9a-fA-F]:"
+                     "[0-9a-fA-F][0-9a-fA-F])",
+                     pcrecpp::RE_Options()
+                       .set_multiline(true)
+                       .set_dotall(true));
+
+  // This RE will identify when the 'pre_mac_str' shows that the MAC address
+  // was really an ACPI cmd.  The full string looks like this:
+  //   ata1.00: ACPI cmd ef/10:03:00:00:00:a0 (SET FEATURES) filtered out
+  pcrecpp::RE acpi_re("ACPI cmd ef/$",
+                      pcrecpp::RE_Options()
+                        .set_multiline(true)
+                        .set_dotall(true));
+
+  // Keep consuming, building up a result string as we go.
+  while (mac_re.Consume(&input, &pre_mac_str, &mac_str)) {
+    if (acpi_re.PartialMatch(pre_mac_str)) {
+      // We really saw an ACPI command; add to result w/ no stripping.
+      result << pre_mac_str << mac_str;
+    } else {
+      // Found a MAC address; look up in our hash for the mapping.
+      std::string replacement_mac = mac_map[mac_str];
+      if (replacement_mac == "") {
+        // It wasn't present, so build up a replacement string.
+        int mac_id = mac_map.size();
+
+        // Handle up to 2^32 unique MAC address; overkill, but doesn't hurt.
+        replacement_mac = StringPrintf("00:00:%02x:%02x:%02x:%02x",
+                                       (mac_id & 0xff000000) >> 24,
+                                       (mac_id & 0x00ff0000) >> 16,
+                                       (mac_id & 0x0000ff00) >> 8,
+                                       (mac_id & 0x000000ff));
+        mac_map[mac_str] = replacement_mac;
+      }
+
+      // Dump the string before the MAC and the fake MAC address into result.
+      result << pre_mac_str << replacement_mac;
+    }
+  }
+
+  // One last bit of data might still be in the input.
+  result << input;
+
+  // We'll just assign right back to |contents|.
+  *contents = result.str();
 }
 
 std::string CrashCollector::FormatDumpBasename(const std::string &exec_name,
@@ -419,8 +497,8 @@ bool CrashCollector::GetLogContents(const FilePath &config_path,
                                     const FilePath &output_file) {
   brillo::KeyValueStore store;
   if (!store.Load(config_path)) {
-    LOG(INFO) << "Unable to read log configuration file "
-              << config_path.value();
+    LOG(WARNING) << "Unable to read log configuration file "
+                 << config_path.value();
     return false;
   }
 
@@ -428,16 +506,52 @@ bool CrashCollector::GetLogContents(const FilePath &config_path,
   if (!store.GetString(exec_name, &command))
     return false;
 
+  FilePath raw_output_file;
+  if (!base::CreateTemporaryFile(&raw_output_file)) {
+    LOG(WARNING) << "Failed to create temporary file for raw log output.";
+    return false;
+  }
+
   brillo::ProcessImpl diag_process;
   diag_process.AddArg(kShellPath);
   diag_process.AddStringOption("-c", command);
-  diag_process.RedirectOutput(output_file.value());
+  diag_process.RedirectOutput(raw_output_file.value());
 
   const int result = diag_process.Run();
   if (result != 0) {
-    LOG(INFO) << "Log command \"" << command << "\" exited with " << result;
+    LOG(WARNING) << "Log command \"" << command << "\" exited with " << result;
     return false;
   }
+
+  std::string log_contents;
+  if (!base::ReadFileToStringWithMaxSize(raw_output_file,
+                                         &log_contents,
+                                         max_log_size_)) {
+    if (log_contents.empty()) {
+      LOG(WARNING) << "Failed to read raw log contents.";
+      return false;
+    }
+    // If ReadFileToStringWithMaxSize returned false and log_contents is
+    // non-empty, this means the log is larger than max_log_size_.
+    LOG(WARNING) << "Log is larger than " << max_log_size_
+                 << " bytes. Truncating.";
+    log_contents.append("\n<TRUNCATED>\n");
+  }
+
+  StripSensitiveData(&log_contents);
+
+  // We must use WriteNewFile instead of base::WriteFile as we
+  // do not want to write with root access to a symlink that an attacker
+  // might have created.
+  if (WriteNewFile(output_file,
+                   log_contents.data(),
+                   log_contents.size()) !=
+      static_cast<int>(log_contents.length())) {
+    LOG(WARNING) << "Error writing sanitized log to "
+                 << output_file.value().c_str();
+    return false;
+  }
+
   return true;
 }
 
