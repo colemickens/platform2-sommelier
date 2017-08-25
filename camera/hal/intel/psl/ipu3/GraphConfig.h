@@ -342,17 +342,17 @@ private:
      */
     status_t parseSensorNodeInfo(Node* sensorNode, SourceNodeInfo &info);
     status_t parseTPGNodeInfo(Node* tpgNode, SourceNodeInfo &info);
-    status_t getMediaCtlData(MediaCtlConfig& mediaCtlConfig);
-    status_t getImguMediaCtlData(MediaCtlConfig &mediaCtlConfig,
-                            bool swapVideoPreview, bool enableStill);
+    status_t getMediaCtlData(MediaCtlConfig* mediaCtlConfig);
+    status_t getImguMediaCtlData(bool swapVideoPreview,
+                                 bool enableStill,
+                                 MediaCtlConfig* mediaCtlConfig);
     status_t addControls(const Node *sensorNode,
                          const SourceNodeInfo &sensorInfo,
-                         MediaCtlConfig &config);
+                         MediaCtlConfig* config);
 
     void addVideoNodes(const Node* csiBESocOutput,
-                       MediaCtlConfig &config,
-                       std::string &csiPort);
-    void addImguVideoNode(const Node* node, MediaCtlConfig &config, uint32_t uid);
+                       MediaCtlConfig* config);
+    void addImguVideoNode(const Node* node, uint32_t uid, MediaCtlConfig* config);
     status_t getBinningFactor(const Node *node,
                               int32_t &hBin, int32_t &vBin) const;
     status_t getScalingFactor(const Node *node,
@@ -362,21 +362,21 @@ private:
                       uint32_t controlName,
                       int controlId,
                       const string &strValue,
-                      MediaCtlConfig &config);
+                      MediaCtlConfig* config);
     void addFormatParams(const string &entityName,
                          int width,
                          int height,
                          int pad,
                          int formatCode,
                          int field,
-                         MediaCtlConfig &config);
+                         MediaCtlConfig* config);
     void addLinkParams(const string &srcName,
                        int srcPad,
                        const string &sinkName,
                        int sinkPad,
                        int enable,
                        int flags,
-                       MediaCtlConfig &config);
+                       MediaCtlConfig* config);
     void addSelectionParams(const string &entityName,
                             int width,
                             int height,
@@ -384,7 +384,7 @@ private:
                             int top,
                             int target,
                             int pad,
-                            MediaCtlConfig &config);
+                            MediaCtlConfig* config);
     void addSelectionVideoParams(const string &entityName,
                                  const struct v4l2_selection &select,
                                  MediaCtlConfig* config);

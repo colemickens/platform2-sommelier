@@ -1959,8 +1959,10 @@ status_t GraphConfig::parseSensorNodeInfo(Node* sensorNode,
  * \return UNKNOWN ERROR   at failure
  */
 
-status_t GraphConfig::getMediaCtlData(MediaCtlConfig &mediaCtlConfig)
+status_t GraphConfig::getMediaCtlData(MediaCtlConfig *mediaCtlConfig)
 {
+    CheckError((!mediaCtlConfig), BAD_VALUE, "@%s null ptr\n", __FUNCTION__);
+
     ConfigProperties cameraProps;      // camera properties
     css_err_t ret = css_err_none;
     status_t retErr = OK;
@@ -1969,12 +1971,12 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig &mediaCtlConfig)
     Node *sourceNode = nullptr;
 
     // reset possible old values from the mediaCtlConfig struct
-    mediaCtlConfig.mLinkParams.clear();
-    mediaCtlConfig.mFormatParams.clear();
-    mediaCtlConfig.mSelectionParams.clear();
-    mediaCtlConfig.mSelectionVideoParams.clear();
-    mediaCtlConfig.mControlParams.clear();
-    mediaCtlConfig.mVideoNodes.clear();
+    mediaCtlConfig->mLinkParams.clear();
+    mediaCtlConfig->mFormatParams.clear();
+    mediaCtlConfig->mSelectionParams.clear();
+    mediaCtlConfig->mSelectionVideoParams.clear();
+    mediaCtlConfig->mControlParams.clear();
+    mediaCtlConfig->mVideoNodes.clear();
     string csi2;
     bool hasTPG = false;
     if (mSourceType == SRC_SENSOR) {
@@ -2049,10 +2051,10 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig &mediaCtlConfig)
     cameraProps.outputHeight = sourceInfo.output.h;
     cameraProps.id = id;
     cameraProps.name = cameraName.c_str();
-    mediaCtlConfig.mCameraProps = cameraProps;
+    mediaCtlConfig->mCameraProps = cameraProps;
 
-    mediaCtlConfig.mFTCSize.Width = sourceInfo.output.w;
-    mediaCtlConfig.mFTCSize.Height = sourceInfo.output.h;
+    mediaCtlConfig->mFTCSize.Width = sourceInfo.output.w;
+    mediaCtlConfig->mFTCSize.Height = sourceInfo.output.h;
 
     Node *pixelFormatterIn = nullptr, *pixelFormatterOut = nullptr;
     Node *csiBEOutput = nullptr, *csiBESocOutput = nullptr;
@@ -2223,10 +2225,10 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig &mediaCtlConfig)
     /*
      * Add video nodes into mediaCtlConfig
      */
-    addVideoNodes(csiBESocOutput, mediaCtlConfig, sourceInfo.csiPort);
+    addVideoNodes(csiBESocOutput, mediaCtlConfig);
 
     if (gDumpType & CAMERA_DUMP_MEDIA_CTL)
-        dumpMediaCtlConfig(mediaCtlConfig);
+        dumpMediaCtlConfig(*mediaCtlConfig);
 
     return OK;
 }
@@ -2269,17 +2271,20 @@ status_t GraphConfig::getNodeInfo(const ia_uid uid, const Node &parent, int* wid
 /*
  * Imgu specific function
  */
-status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig &mediaCtlConfig,
-                                        bool swapVideoPreview, bool enableStill)
+status_t GraphConfig::getImguMediaCtlData(bool swapVideoPreview,
+                                          bool enableStill,
+                                          MediaCtlConfig *mediaCtlConfig)
 {
+    CheckError((!mediaCtlConfig), BAD_VALUE, "@%s null ptr\n", __FUNCTION__);
+
     int ret;
     // reset possible old values from the mediaCtlConfig struct
-    mediaCtlConfig.mLinkParams.clear();
-    mediaCtlConfig.mFormatParams.clear();
-    mediaCtlConfig.mSelectionParams.clear();
-    mediaCtlConfig.mSelectionVideoParams.clear();
-    mediaCtlConfig.mControlParams.clear();
-    mediaCtlConfig.mVideoNodes.clear();
+    mediaCtlConfig->mLinkParams.clear();
+    mediaCtlConfig->mFormatParams.clear();
+    mediaCtlConfig->mSelectionParams.clear();
+    mediaCtlConfig->mSelectionVideoParams.clear();
+    mediaCtlConfig->mControlParams.clear();
+    mediaCtlConfig->mVideoNodes.clear();
 
     Node *imgu = nullptr;
     int width = 0, height = 0, format = 0;
@@ -2418,7 +2423,7 @@ status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig &mediaCtlConfig,
             select.r.top = 0;
             select.r.width = nodeWidth;
             select.r.height = nodeHeight;
-            addSelectionVideoParams(MEDIACTL_INPUTNAME, select, &mediaCtlConfig);
+            addSelectionVideoParams(MEDIACTL_INPUTNAME, select, mediaCtlConfig);
             LOG2("pipe log name: %s  if size %dx%d", name.c_str(), nodeWidth, nodeHeight);
 
             // Get BDS info
@@ -2435,14 +2440,14 @@ status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig &mediaCtlConfig,
             select.r.top = 0;
             select.r.width = nodeWidth;
             select.r.height = nodeHeight;
-            addSelectionVideoParams(MEDIACTL_INPUTNAME, select, &mediaCtlConfig);
+            addSelectionVideoParams(MEDIACTL_INPUTNAME, select, mediaCtlConfig);
             LOG2("pipe log name: %s  bds size %dx%d", name.c_str(), nodeWidth, nodeHeight);
         }
 
         /* if node active add it to mediactl config */
         if (width != 0) {
             LOG2("Adding video node: %s", NODE_NAME(pipe));
-            addImguVideoNode(pipe, mediaCtlConfig, uids[i].uid);
+            addImguVideoNode(pipe, uids[i].uid, mediaCtlConfig);
         }
 
         if (GCSS::ItemUID::key2str(uids[i].uid) != GC_INPUT) {
@@ -2450,11 +2455,11 @@ status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig &mediaCtlConfig,
         }
     }
 
-    addImguVideoNode(nullptr, mediaCtlConfig, GCSS_KEY_IMGU_STATS);
+    addImguVideoNode(nullptr, GCSS_KEY_IMGU_STATS, mediaCtlConfig);
     addLinkParams(kImguName, 5, MEDIACTL_STATNAME, 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
 
     LOG2("Adding parameter node");
-    addImguVideoNode(nullptr, mediaCtlConfig, GCSS_KEY_IMGU_PARAMETERS);
+    addImguVideoNode(nullptr, GCSS_KEY_IMGU_PARAMETERS, mediaCtlConfig);
     addLinkParams(MEDIACTL_PARAMETERNAME, 0, kImguName, 1, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
 
     return ret;
@@ -2497,7 +2502,7 @@ bool GraphConfig::doesNodeExist(string nodeName)
  */
 status_t GraphConfig::addControls(const Node *sensorNode,
                                   const SourceNodeInfo &sourceInfo,
-                                  MediaCtlConfig &config)
+                                  MediaCtlConfig* config)
 {
     css_err_t ret = css_err_none;
     std::string value;
@@ -2533,55 +2538,58 @@ status_t GraphConfig::addControls(const Node *sensorNode,
  * \param mediaCtlConfig[out] populate this struct with given values
  */
 void GraphConfig::addVideoNodes(const Node* csiBESocOutput,
-                                MediaCtlConfig &config,
-                                std::string &csiPort)
+                                MediaCtlConfig* config)
 {
+    CheckError((!config), VOID_VALUE, "@%s null ptr\n", __FUNCTION__);
+
     MediaCtlElement mediaCtlElement;
 
     // Imgu support
     mediaCtlElement.isysNodeName = ISYS_NODE_RAW;
     mediaCtlElement.name = mCSIBE;
-    config.mVideoNodes.push_back(mediaCtlElement);
+    config->mVideoNodes.push_back(mediaCtlElement);
 }
 
-void GraphConfig::addImguVideoNode(const Node* node, MediaCtlConfig &config, uint32_t uid)
+void GraphConfig::addImguVideoNode(const Node* node, uint32_t uid, MediaCtlConfig *config)
 {
+    CheckError((!config), VOID_VALUE, "@%s null ptr\n", __FUNCTION__);
+
     MediaCtlElement mediaCtlElement;
 
     if (uid == GCSS_KEY_IMGU_PREVIEW) {
         mediaCtlElement.isysNodeName = IMGU_NODE_PREVIEW;
         mediaCtlElement.name = mSecondNodeName;
-        config.mVideoNodes.push_back(mediaCtlElement);
+        config->mVideoNodes.push_back(mediaCtlElement);
     }
 
     if (uid == GCSS_KEY_IMGU_VIDEO) {
         mediaCtlElement.isysNodeName = IMGU_NODE_VIDEO;
         mediaCtlElement.name = mMainNodeName;
-        config.mVideoNodes.push_back(mediaCtlElement);
+        config->mVideoNodes.push_back(mediaCtlElement);
     }
 
     if (uid == GCSS_KEY_IMGU_STILL) {
         mediaCtlElement.isysNodeName = IMGU_NODE_STILL;
         mediaCtlElement.name = MEDIACTL_STILLNAME;
-        config.mVideoNodes.push_back(mediaCtlElement);
+        config->mVideoNodes.push_back(mediaCtlElement);
     }
 
     if (uid == GCSS_KEY_INPUT) {
         mediaCtlElement.isysNodeName = IMGU_NODE_INPUT;
         mediaCtlElement.name = MEDIACTL_INPUTNAME;
-        config.mVideoNodes.push_back(mediaCtlElement);
+        config->mVideoNodes.push_back(mediaCtlElement);
     }
 
     if (uid == GCSS_KEY_IMGU_STATS) {
         mediaCtlElement.isysNodeName = IMGU_NODE_STAT;
         mediaCtlElement.name = MEDIACTL_STATNAME;
-        config.mVideoNodes.push_back(mediaCtlElement);
+        config->mVideoNodes.push_back(mediaCtlElement);
     }
 
     if (uid == GCSS_KEY_IMGU_PARAMETERS) {
         mediaCtlElement.isysNodeName = IMGU_NODE_PARAM;
         mediaCtlElement.name = MEDIACTL_PARAMETERNAME;
-        config.mVideoNodes.push_back(mediaCtlElement);
+        config->mVideoNodes.push_back(mediaCtlElement);
     }
 
 }
@@ -2779,9 +2787,9 @@ void GraphConfig::addFormatParams(const string &entityName,
                                   int pad,
                                   int format,
                                   int field,
-                                  MediaCtlConfig &config)
+                                  MediaCtlConfig *config)
 {
-    if (!entityName.empty()) {
+    if (!entityName.empty() && config) {
         MediaCtlFormatParams mediaCtlFormatParams;
         mediaCtlFormatParams.entityName = entityName;
         mediaCtlFormatParams.width = width;
@@ -2790,7 +2798,7 @@ void GraphConfig::addFormatParams(const string &entityName,
         mediaCtlFormatParams.formatCode = format;
         mediaCtlFormatParams.stride = 0;
         mediaCtlFormatParams.field = field;
-        config.mFormatParams.push_back(mediaCtlFormatParams);
+        config->mFormatParams.push_back(mediaCtlFormatParams);
         LOG2("@%s, entityName:%s, width:%d, height:%d, pad:%d, format:%d, format:%s, field:%d",
             __FUNCTION__, entityName.c_str(), width, height, pad, format, v4l2Fmt2Str(format), field);
     }
@@ -2808,9 +2816,9 @@ void GraphConfig::addCtlParams(const string &entityName,
                                uint32_t controlName,
                                int controlId,
                                const string &strValue,
-                               MediaCtlConfig &config)
+                               MediaCtlConfig *config)
 {
-    if (!entityName.empty()) {
+    if (!entityName.empty() && config) {
         int value = atoi(strValue.c_str());
         string controlNameStr = GCSS::ItemUID::key2str(controlName);
 
@@ -2819,7 +2827,7 @@ void GraphConfig::addCtlParams(const string &entityName,
         mediaCtlControlParams.controlName = controlNameStr;
         mediaCtlControlParams.controlId = controlId;
         mediaCtlControlParams.value = value;
-        config.mControlParams.push_back(mediaCtlControlParams);
+        config->mControlParams.push_back(mediaCtlControlParams);
         LOG2("@%s, entityName:%s, controlNameStr:%s, controlId:%d, value:%d",
             __FUNCTION__, entityName.c_str(), controlNameStr.c_str(), controlId, value);
     }
@@ -2844,9 +2852,9 @@ void GraphConfig::addSelectionParams(const string &entityName,
                                      int top,
                                      int target,
                                      int pad,
-                                     MediaCtlConfig &config)
+                                     MediaCtlConfig *config)
 {
-    if (!entityName.empty()) {
+    if (!entityName.empty() && config) {
         MediaCtlSelectionParams mediaCtlSelectionParams;
         mediaCtlSelectionParams.width = width;
         mediaCtlSelectionParams.height = height;
@@ -2855,7 +2863,7 @@ void GraphConfig::addSelectionParams(const string &entityName,
         mediaCtlSelectionParams.target = target;
         mediaCtlSelectionParams.pad = pad;
         mediaCtlSelectionParams.entityName = entityName;
-        config.mSelectionParams.push_back(mediaCtlSelectionParams);
+        config->mSelectionParams.push_back(mediaCtlSelectionParams);
         LOG2("@%s, width:%d, height:%d, left:%d, top:%d, target:%d, pad:%d, entityName:%s",
             __FUNCTION__, width, height, left, top, target, pad, entityName.c_str());
     }
@@ -2865,8 +2873,8 @@ void GraphConfig::addSelectionVideoParams(const string &entityName,
                                      const struct v4l2_selection &select,
                                      MediaCtlConfig* config)
 {
-    if (entityName.empty()) {
-        LOGE("The entity <%s> is empty!", entityName.c_str());
+    if (entityName.empty() || !config) {
+        LOGE("The config or entity <%s> is empty!", entityName.c_str());
         return;
     }
 
@@ -2896,9 +2904,9 @@ void GraphConfig::addLinkParams(const string &srcName,
                                 int sinkPad,
                                 int enable,
                                 int flags,
-                                MediaCtlConfig &config)
+                                MediaCtlConfig *config)
 {
-    if (!srcName.empty() && !sinkName.empty()) {
+    if (!srcName.empty() && !sinkName.empty() && config) {
         MediaCtlLinkParams mediaCtlLinkParams;
         mediaCtlLinkParams.srcName = srcName;
         mediaCtlLinkParams.srcPad = srcPad;
@@ -2906,7 +2914,7 @@ void GraphConfig::addLinkParams(const string &srcName,
         mediaCtlLinkParams.sinkPad = sinkPad;
         mediaCtlLinkParams.enable = enable;
         mediaCtlLinkParams.flags = flags;
-        config.mLinkParams.push_back(mediaCtlLinkParams);
+        config->mLinkParams.push_back(mediaCtlLinkParams);
         LOG2("@%s, srcName:%s, srcPad:%d, sinkName:%s, sinkPad:%d, enable:%d, flags:%d",
             __FUNCTION__, srcName.c_str(), srcPad, sinkName.c_str(), sinkPad, enable, flags);
     }

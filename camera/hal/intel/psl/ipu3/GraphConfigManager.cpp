@@ -517,7 +517,7 @@ status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &stre
     // Get media control config
     mMediaCtlConfigsPrev = mMediaCtlConfigs;
     gc->setMediaCtl(mMediaCtl);
-    ret = gc->getMediaCtlData(mMediaCtlConfigs);
+    ret = gc->getMediaCtlData(&mMediaCtlConfigs);
     if (ret != OK) {
         LOGE("Couldn't get mediaCtl data");
     }
@@ -525,7 +525,7 @@ status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &stre
     bool swapVideoPreview = needSwapVideoPreview(mFirstQueryResults[0], id);
 
     mImguMediaCtlConfigsPrev = mImguMediaCtlConfigs;
-    ret = gc->getImguMediaCtlData(mImguMediaCtlConfigs, swapVideoPreview, needEnableStill);
+    ret = gc->getImguMediaCtlData(swapVideoPreview, needEnableStill, &mImguMediaCtlConfigs);
     if (ret != OK) {
         LOGE("Couldn't get Imgu mediaCtl data");
     }
