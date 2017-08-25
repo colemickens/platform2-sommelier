@@ -58,7 +58,10 @@ redirect_log_stop() {
 }
 
 preserve_files() {
-  # Preserve these files in safe mode.
+  # Preserve these files in safe mode. (Please request a privacy review before
+  # adding files.)
+  # TODO(tnagel): Drop install_attributes.pb after AUE of the last remaining
+  # boards that don't support programmatic TPM reset (lumpy and stumpy).
   if [ "$SAFE_WIPE" = "safe" ]; then
     PRESERVED_FILES="
       unencrypted/preserve/attestation.epb
