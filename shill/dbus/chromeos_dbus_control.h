@@ -67,9 +67,9 @@ class ChromeosDBusControl : public ControlInterface {
       const base::Closure& service_appeared_callback,
       const base::Closure& service_vanished_callback) override;
 
-  SupplicantInterfaceProxyInterface* CreateSupplicantInterfaceProxy(
-      SupplicantEventDelegateInterface* delegate,
-      const std::string& object_path) override;
+  std::unique_ptr<SupplicantInterfaceProxyInterface>
+  CreateSupplicantInterfaceProxy(SupplicantEventDelegateInterface* delegate,
+                                 const std::string& object_path) override;
 
   SupplicantNetworkProxyInterface* CreateSupplicantNetworkProxy(
       const std::string& object_path) override;

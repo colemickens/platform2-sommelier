@@ -317,8 +317,8 @@ bool Ethernet::StartSupplicant() {
     }
   }
 
-  supplicant_interface_proxy_.reset(
-      control_interface_->CreateSupplicantInterfaceProxy(this, interface_path));
+  supplicant_interface_proxy_ =
+      control_interface_->CreateSupplicantInterfaceProxy(this, interface_path);
   supplicant_interface_path_ = interface_path;
   return true;
 }

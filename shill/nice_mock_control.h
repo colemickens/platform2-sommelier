@@ -30,6 +30,7 @@
 #include "shill/upstart/upstart_proxy_interface.h"
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+#include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_process_proxy_interface.h"
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
@@ -86,7 +87,7 @@ class NiceMockControl : public ControlInterface {
                    const base::Closure& service_appeared_callback,
                    const base::Closure& service_vanished_callback));
   MOCK_METHOD2(CreateSupplicantInterfaceProxy,
-               SupplicantInterfaceProxyInterface*(
+               std::unique_ptr<SupplicantInterfaceProxyInterface>(
                    SupplicantEventDelegateInterface* delegate,
                    const std::string& object_path));
   MOCK_METHOD1(CreateSupplicantNetworkProxy,

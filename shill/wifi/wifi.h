@@ -625,7 +625,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Helper function for setting supplicant_interface_proxy_ pointer.
   void SetSupplicantInterfaceProxy(
-      SupplicantInterfaceProxyInterface* supplicant_interface_proxy);
+      std::unique_ptr<SupplicantInterfaceProxyInterface> proxy);
 
   // Pointer to the provider object that maintains WiFiService objects.
   WiFiProvider* provider_;

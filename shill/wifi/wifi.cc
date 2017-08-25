@@ -29,6 +29,7 @@
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -2267,12 +2268,11 @@ void WiFi::SetConnectionDebugging(bool enabled) {
 }
 
 void WiFi::SetSupplicantInterfaceProxy(
-    SupplicantInterfaceProxyInterface* supplicant_interface_proxy) {
-  if (supplicant_interface_proxy) {
-    supplicant_interface_proxy_.reset(supplicant_interface_proxy);
-    tdls_manager_.reset(new TDLSManager(dispatcher(),
-                                        supplicant_interface_proxy,
-                                        link_name()));
+    std::unique_ptr<SupplicantInterfaceProxyInterface> proxy) {
+  if (proxy) {
+    supplicant_interface_proxy_ = std::move(proxy);
+    tdls_manager_ = base::MakeUnique<TDLSManager>(
+        dispatcher(), supplicant_interface_proxy_.get(), link_name());
   } else {
     supplicant_interface_proxy_.reset();
     tdls_manager_.reset();

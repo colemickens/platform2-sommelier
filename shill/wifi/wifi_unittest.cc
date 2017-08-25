@@ -614,7 +614,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     ON_CALL(*manager(), IsSuspending()).WillByDefault(Return(false));
 
     ON_CALL(control_interface_, CreateSupplicantInterfaceProxy(_, _))
-        .WillByDefault(ReturnAndReleasePointee(&supplicant_interface_proxy_));
+        .WillByDefault(
+            Invoke(this, &WiFiObjectTest::CreateSupplicantInterfaceProxy));
     ON_CALL(control_interface_, CreateSupplicantBSSProxy(_, _))
         .WillByDefault(ReturnAndReleasePointee(&supplicant_bss_proxy_));
     ON_CALL(control_interface_, CreateSupplicantNetworkProxy(_))
@@ -1333,6 +1334,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   MockNetlinkManager netlink_manager_;
 
  private:
+  std::unique_ptr<SupplicantInterfaceProxyInterface>
+  CreateSupplicantInterfaceProxy(SupplicantEventDelegateInterface* delegate,
+                                 const std::string& object_path) {
+    return std::move(supplicant_interface_proxy_);
+  }
+
   unique_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
   unique_ptr<MockSupplicantNetworkProxy> supplicant_network_proxy_;
 };

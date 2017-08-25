@@ -54,6 +54,7 @@ using std::string;
 using std::vector;
 using testing::_;
 using testing::AnyNumber;
+using testing::ByMove;
 using testing::EndsWith;
 using testing::Eq;
 using testing::InSequence;
@@ -200,10 +201,11 @@ class EthernetTest : public testing::Test {
   }
 
   MockSupplicantInterfaceProxy* ExpectCreateSupplicantInterfaceProxy() {
+    MockSupplicantInterfaceProxy* proxy = supplicant_interface_proxy_.get();
     EXPECT_CALL(control_interface_,
                 CreateSupplicantInterfaceProxy(_, kInterfacePath))
-        .WillOnce(ReturnAndReleasePointee(&supplicant_interface_proxy_));
-    return supplicant_interface_proxy_.get();
+        .WillOnce(Return(ByMove(std::move(supplicant_interface_proxy_))));
+    return proxy;
   }
 #endif  // DISABLE_WIRED_8021X
 

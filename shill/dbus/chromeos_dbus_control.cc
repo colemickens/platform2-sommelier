@@ -219,11 +219,10 @@ ChromeosDBusControl::CreateSupplicantProcessProxy(
       service_vanished_callback);
 }
 
-SupplicantInterfaceProxyInterface*
-    ChromeosDBusControl::CreateSupplicantInterfaceProxy(
-        SupplicantEventDelegateInterface* delegate,
-        const string& object_path) {
-  return new ChromeosSupplicantInterfaceProxy(
+std::unique_ptr<SupplicantInterfaceProxyInterface>
+ChromeosDBusControl::CreateSupplicantInterfaceProxy(
+    SupplicantEventDelegateInterface* delegate, const string& object_path) {
+  return base::MakeUnique<ChromeosSupplicantInterfaceProxy>(
       proxy_bus_, object_path, delegate);
 }
 

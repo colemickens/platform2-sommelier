@@ -127,9 +127,9 @@ class ControlInterface {
       const base::Closure& service_appeared_callback,
       const base::Closure& service_vanished_callback) = 0;
 
-  virtual SupplicantInterfaceProxyInterface* CreateSupplicantInterfaceProxy(
-      SupplicantEventDelegateInterface* delegate,
-      const std::string& object_path) = 0;
+  virtual std::unique_ptr<SupplicantInterfaceProxyInterface>
+  CreateSupplicantInterfaceProxy(SupplicantEventDelegateInterface* delegate,
+                                 const std::string& object_path) = 0;
 
   virtual SupplicantNetworkProxyInterface* CreateSupplicantNetworkProxy(
       const std::string& object_path) = 0;
