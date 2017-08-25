@@ -154,8 +154,9 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
   # Mount stateful partition from STATE_DEV.
   if ! mount -n -t ${FS_FORMAT_STATE} -o ${STATE_FLAGS} \
          "${STATE_DEV}" /mnt/stateful_partition; then
-    # Try to rebuild the stateful partition by clobber-state
-    # (for security concern, we don't use fast mode)
+    # Try to rebuild the stateful partition by clobber-state. (Not using fast
+    # mode out of security consideration: the device might have gotten into this
+    # state through power loss during dev mode transition).
     chromeos-boot-alert self_repair
     clobber-log --repair "${STATE_DEV}" \
         "Self-repair corrupted stateful partition"
