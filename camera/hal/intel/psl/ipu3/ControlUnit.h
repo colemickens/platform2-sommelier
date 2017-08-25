@@ -208,6 +208,7 @@ private:  /* Members */
     LensHw *mLensController;
 
     /* Using for Af sync */
+    bool mAfFirstRun;
     uint32_t mAfApplySequence;
     uint32_t mSofSequence;
 };  // class ControlUnit

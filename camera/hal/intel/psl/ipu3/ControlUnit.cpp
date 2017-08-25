@@ -61,6 +61,7 @@ ControlUnit::ControlUnit(ImguUnit *thePU,
         mMetadata(nullptr),
         m3ARunner(nullptr),
         mLensController(nullptr),
+        mAfFirstRun(true),
         mAfApplySequence(0),
         mSofSequence(0)
 {
@@ -590,17 +591,17 @@ ControlUnit::processRequestForCapture(std::shared_ptr<RequestCtrlState> &reqStat
 
     mMetadata->writeLSCMetadata(reqState);
 
-    if (mSofSequence == 0 || (stats != nullptr && stats->frameSequence >= mAfApplySequence)) {
-        m3ARunner->runAf(*reqState);
+    bool bypass = true;
+    if (mAfFirstRun || (stats != nullptr && stats->frameSequence >= mAfApplySequence)) {
         if (stats != nullptr) {
             LOG2("%s, mAfApplySequence %u, frame sequence %u, mSofSequence %u",
                   __FUNCTION__, mAfApplySequence, stats->frameSequence, mSofSequence);
         }
         mAfApplySequence = mSofSequence + 1;
-    } else {
-        MEMCPY_S(&reqState->captureSettings->aiqResults.afResults, sizeof(ia_aiq_af_results),
-                 &m3ARunner->getLatestResults().afResults, sizeof(ia_aiq_af_results));
+        mAfFirstRun = false;
+        bypass = false;
     }
+    m3ARunner->runAf(*reqState, bypass);
 
     // Latest results are saved for the next frame calculation if we do not
     // find the correct results.
@@ -904,6 +905,8 @@ status_t
 ControlUnit::handleMessageFlush(void)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+
+    mAfApplySequence = 0;
     return NO_ERROR;
 }
 
