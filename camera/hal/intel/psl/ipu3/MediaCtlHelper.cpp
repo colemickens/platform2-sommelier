@@ -31,7 +31,9 @@ MediaCtlHelper::MediaCtlHelper(std::shared_ptr<MediaController> mediaCtl,
         IOpenCallBack *openCallBack, bool isIMGU) :
         mOpenVideoNodeCallBack(openCallBack),
         mMediaCtl(mediaCtl),
-        mMediaCtlConfig(nullptr)
+        mMediaCtlConfig(nullptr),
+        mPipeConfig(nullptr),
+        mConfigedPipeType(IStreamConfigProvider::MEDIA_TYPE_MAX_COUNT)
 {
     if (isIMGU)
         mMediaCtl->resetLinks();
@@ -40,12 +42,17 @@ MediaCtlHelper::MediaCtlHelper(std::shared_ptr<MediaController> mediaCtl,
 MediaCtlHelper::~MediaCtlHelper()
 {
     closeVideoNodes();
-    resetLinks();
+    resetLinks(mMediaCtlConfig);
+    resetLinks(mPipeConfig);
 }
 
 status_t MediaCtlHelper::configure(IStreamConfigProvider &graphConfigMgr, IStreamConfigProvider::MediaType type)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    if (isMediaTypeForPipe(type)) {
+        LOGE("%d is type for pipe!", type);
+        return BAD_VALUE;
+    }
 
     std::shared_ptr<GraphConfig> gc = graphConfigMgr.getBaseGraphConfig();
     media_device_info deviceInfo;
@@ -57,14 +64,24 @@ status_t MediaCtlHelper::configure(IStreamConfigProvider &graphConfigMgr, IStrea
         return status;
     }
 
-    // Get previous values from gc to reset
+    // Reset pipe config
+    status = resetLinks(graphConfigMgr.getMediaCtlConfigPrev(mConfigedPipeType));
+    if (status != NO_ERROR) {
+        LOGE("Cannot reset MediaCtl links");
+        return status;
+    }
+    mConfigedPipeType = IStreamConfigProvider::MEDIA_TYPE_MAX_COUNT;
+    mPipeConfig = nullptr;
+
+    // Reset common config
     mMediaCtlConfig = graphConfigMgr.getMediaCtlConfigPrev(type);
-    status = resetLinks();
+    status = resetLinks(mMediaCtlConfig);
     if (status != NO_ERROR) {
         LOGE("Cannot reset MediaCtl links");
         return status;
     }
 
+    // Handle new common config
     mMediaCtlConfig = graphConfigMgr.getMediaCtlConfig(type);
     if (mMediaCtlConfig == nullptr) {
         LOGE("Not able to pick up Media Ctl configuration ");
@@ -175,6 +192,67 @@ status_t MediaCtlHelper::configure(IStreamConfigProvider &graphConfigMgr, IStrea
     return status;
 }
 
+status_t MediaCtlHelper::configurePipe(IStreamConfigProvider &graphConfigMgr,
+                                       IStreamConfigProvider::MediaType pipeType,
+                                       bool resetFormat)
+{
+    LOG1("%s: %d ->%d", __FUNCTION__, mConfigedPipeType, pipeType);
+    status_t status = OK;
+    if (!isMediaTypeForPipe(pipeType)) {
+        LOGE("%d is not type for pipe!", pipeType);
+        return BAD_VALUE;
+    }
+
+    if (mConfigedPipeType == pipeType)
+        return OK;
+
+    // Disable link for the old MediaCtlData
+    const MediaCtlConfig* config = graphConfigMgr.getMediaCtlConfig(mConfigedPipeType);
+    if (config) {
+        for (size_t i = 0; i < config->mLinkParams.size(); i++) {
+            MediaCtlLinkParams pipeLink = config->mLinkParams[i];
+            pipeLink.enable = false;
+            status = mMediaCtl->configureLink(pipeLink);
+            if (status != NO_ERROR) {
+                LOGE("Cannot set MediaCtl links (ret = %d)", status);
+                return status;
+            }
+        }
+    }
+
+    // Config for the new MediaCtlData
+    config = graphConfigMgr.getMediaCtlConfig(pipeType);
+    if (!config) {
+        return OK;
+    }
+
+    mPipeConfig = config; // Remeber it for disabling link in ~MediaCtlHelper()
+    mConfigedPipeType = pipeType;
+    for (size_t i = 0; i < config->mLinkParams.size(); i++) {
+        MediaCtlLinkParams pipeLink = config->mLinkParams[i];
+        status = mMediaCtl->configureLink(pipeLink);
+        if (status != NO_ERROR) {
+            LOGE("Cannot set MediaCtl links (ret = %d)", status);
+            return status;
+        }
+    }
+    if (!resetFormat)
+        return OK;
+
+    for (size_t i = 0; i < config->mFormatParams.size(); i++) {
+        MediaCtlFormatParams pipeFormat = config->mFormatParams[i];
+        pipeFormat.field = 0;
+        pipeFormat.stride = widthToStride(pipeFormat.formatCode, pipeFormat.width);
+
+        status = mMediaCtl->setFormat(pipeFormat);
+        if (status != NO_ERROR) {
+            LOGE("Cannot set MediaCtl format (ret = %d)", status);
+            return status;
+        }
+    }
+    return OK;
+}
+
 status_t MediaCtlHelper::openVideoNodes()
 {
     LOG1("@%s", __FUNCTION__);
@@ -250,18 +328,18 @@ status_t MediaCtlHelper::closeVideoNodes()
 }
 
 
-status_t MediaCtlHelper::resetLinks()
+status_t MediaCtlHelper::resetLinks(const MediaCtlConfig *config)
 {
     LOG1("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
 
-    if (mMediaCtlConfig == nullptr) {
+    if (config == nullptr) {
         LOG2("%s mMediaCtlConfig is NULL", __FUNCTION__);
         return status;
     }
 
-    for (unsigned int i = 0; i < mMediaCtlConfig->mLinkParams.size(); i++) {
-        MediaCtlLinkParams pipeLink = mMediaCtlConfig->mLinkParams[i];
+    for (size_t i = 0; i < config->mLinkParams.size(); i++) {
+        MediaCtlLinkParams pipeLink = config->mLinkParams[i];
         pipeLink.enable = false;
         status = mMediaCtl->configureLink(pipeLink);
 

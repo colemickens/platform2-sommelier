@@ -533,7 +533,9 @@ status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &stre
     if (ret != OK) {
         LOGE("Couldn't get mediaCtl data");
     }
-    ret = gc->getImguMediaCtlData(&mMediaCtlConfigs[IMGU_COMMON]);
+    ret = gc->getImguMediaCtlData(&mMediaCtlConfigs[IMGU_COMMON],
+                                  &mMediaCtlConfigs[IMGU_VIDEO],
+                                  &mMediaCtlConfigs[IMGU_STILL]);
     if (ret != OK) {
         LOGE("Couldn't get Imgu mediaCtl data");
     }

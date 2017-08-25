@@ -73,6 +73,7 @@ private:
     status_t mapStreamWithDeviceNode();
     status_t createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig);
     status_t kickstart();
+    void clearWorkers();
 
     status_t allocatePublicStatBuffers(int numBufs);
     void freePublicStatBuffers();
@@ -82,6 +83,17 @@ private:
         IMGU_IDLE,
     };
 
+    enum ImguPipeType {
+        PIPE_VIDEO_INDEX = 0,
+        PIPE_STILL_INDEX,
+        PIPE_NUM
+    };
+
+    struct PipeConfiguration {
+        std::vector<std::shared_ptr<IDeviceWorker>> deviceWorkers;
+        std::vector<std::shared_ptr<FrameWorker>> pollableWorkers;
+        std::vector<std::shared_ptr<V4L2DeviceBase>> nodes; /* PollerThread owns this */
+    };
 
 private:
     ImguState mState;
@@ -94,15 +106,14 @@ private:
     StreamConfig mActiveStreams;
     std::vector<std::shared_ptr<ITaskEventListener>> mListeningTasks;   // Tasks that listen for events from another task.
 
-    std::vector<std::shared_ptr<IDeviceWorker>> mDeviceWorkers;
+    PipeConfiguration mPipeConfigs[PIPE_NUM];
     std::vector<std::shared_ptr<IDeviceWorker>> mFirstWorkers;
-    std::vector<std::shared_ptr<FrameWorker>> mPollableWorkers;
     std::vector<ICaptureEventSource *> mListenerDeviceWorkers; /* mListenerDeviceWorkers doesn't own ICaptureEventSource objects */
     std::vector<ICaptureEventListener*> mListeners; /* mListeners doesn't own ICaptureEventListener objects */
+    PipeConfiguration* mCurPipeConfig;
 
     MediaCtlHelper mMediaCtlHelper;
     std::unique_ptr<PollerThread> mPollerThread;
-    std::vector<std::shared_ptr<V4L2DeviceBase>> mNodes; /* PollerThread owns this */
 
     std::vector<std::shared_ptr<DeviceMessage>> mMessagesPending; // Keep copy of message until workers start to handle it
     std::vector<std::shared_ptr<DeviceMessage>> mMessagesUnderwork; // Keep copy of message until workers have processed it

@@ -41,6 +41,13 @@ public:
 
     status_t configure(IStreamConfigProvider &graphConfigMgr,
             IStreamConfigProvider::MediaType type);
+    status_t configurePipe(IStreamConfigProvider &graphConfigMgr,
+                           IStreamConfigProvider::MediaType pipeType,
+                           bool resetFormat = false);
+    bool isMediaTypeForPipe(IStreamConfigProvider::MediaType pipeType) const {
+        return (pipeType == IStreamConfigProvider::IMGU_VIDEO
+             || pipeType == IStreamConfigProvider::IMGU_STILL);
+    }
     status_t configureImguNodes(IStreamConfigProvider &graphConfigMgr);
 
     std::map<IPU3NodeNames, std::shared_ptr<V4L2VideoNode>> getConfiguredNodesPerName()
@@ -76,7 +83,7 @@ public:
 private:
     status_t openVideoNodes();
     status_t openVideoNode(const char *entityName, IPU3NodeNames isysNodeName);
-    status_t resetLinks();
+    status_t resetLinks(const MediaCtlConfig *config);
     status_t closeVideoNodes();
 
 private:
@@ -86,6 +93,8 @@ private:
     std::shared_ptr<MediaController> mMediaCtl;
 
     const MediaCtlConfig *mMediaCtlConfig;
+    const MediaCtlConfig *mPipeConfig;
+    IStreamConfigProvider::MediaType mConfigedPipeType;
 
     std::vector<std::shared_ptr<V4L2VideoNode>>  mConfiguredNodes;        /**< Configured video nodes */
     std::map<IPU3NodeNames, std::shared_ptr<V4L2VideoNode>> mConfiguredNodesPerName;

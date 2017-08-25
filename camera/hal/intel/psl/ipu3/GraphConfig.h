@@ -355,7 +355,9 @@ private:
     status_t parseSensorNodeInfo(Node* sensorNode, SourceNodeInfo &info);
     status_t parseTPGNodeInfo(Node* tpgNode, SourceNodeInfo &info);
     status_t getMediaCtlData(MediaCtlConfig* mediaCtlConfig);
-    status_t getImguMediaCtlData(MediaCtlConfig* mediaCtlConfig);
+    status_t getImguMediaCtlData(MediaCtlConfig* mediaCtlConfig,
+                                 MediaCtlConfig* mediaCtlConfigVideo,
+                                 MediaCtlConfig* mediaCtlConfigStill);
     status_t addControls(const Node *sensorNode,
                          const SourceNodeInfo &sensorInfo,
                          MediaCtlConfig* config);

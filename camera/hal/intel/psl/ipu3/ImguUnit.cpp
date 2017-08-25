@@ -39,6 +39,7 @@ ImguUnit::ImguUnit(int cameraId,
         mThreadRunning(false),
         mMessageQueue("ImguUnitThread", static_cast<int>(MESSAGE_ID_MAX)),
         mMediaCtlHelper(mediaCtl, nullptr, true),
+        mCurPipeConfig(nullptr),
         mPollerThread(new PollerThread("ImguPollerThread")),
         mFirstRequest(true)
 {
@@ -71,7 +72,6 @@ ImguUnit::~ImguUnit()
         status |= mPollerThread->requestExitAndWait();
         mPollerThread.reset();
     }
-    mNodes.clear();
 
     requestExitAndWait();
     if (mMessageThread != nullptr) {
@@ -89,15 +89,23 @@ ImguUnit::~ImguUnit()
     mActiveStreams.yuvStreams.clear();
 
     cleanListener();
-
-    /* Delete workers. */
-    mPollableWorkers.clear();
-    mDeviceWorkers.clear();
-    mFirstWorkers.clear();
+    clearWorkers();
 
     freePublicStatBuffers();
     mRgbsGridBuffPool.reset();
     mAfFilterBuffPool.reset();
+}
+
+void ImguUnit::clearWorkers()
+{
+    for (size_t i = 0; i < PIPE_NUM; i++) {
+        PipeConfiguration* config = &(mPipeConfigs[i]);
+        config->deviceWorkers.clear();
+        config->pollableWorkers.clear();
+        config->nodes.clear();
+    }
+    mFirstWorkers.clear();
+    mListenerDeviceWorkers.clear();
 }
 
 /**
@@ -211,6 +219,7 @@ ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
     mActiveStreams.yuvStreams.clear();
     mActiveStreams.inputStream = nullptr;
     mFirstRequest = true;
+    mCurPipeConfig = nullptr;
 
     for (unsigned int i = 0; i < activeStreams.size(); ++i) {
         if (activeStreams.at(i)->stream_type == CAMERA3_STREAM_INPUT) {
@@ -244,7 +253,7 @@ ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
        return UNKNOWN_ERROR;
     }
 
-    status = mPollerThread->init(mNodes,
+    status = mPollerThread->init(mCurPipeConfig->nodes,
                                  this, POLLPRI | POLLIN | POLLOUT | POLLERR, false);
     if (status != NO_ERROR) {
        LOGE("PollerThread init failed (ret = %d)", status);
@@ -337,9 +346,16 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
         return UNKNOWN_ERROR;
     }
 
-    mNodes.clear();
+    clearWorkers();
     // Open and configure imgu video nodes
     status = mMediaCtlHelper.configure(mGCM, IStreamConfigProvider::IMGU_COMMON);
+    if (status != OK)
+        return UNKNOWN_ERROR;
+    status = mMediaCtlHelper.configurePipe(mGCM, IStreamConfigProvider::IMGU_STILL, true);
+    if (status != OK)
+        return UNKNOWN_ERROR;
+    // Set video pipe by default
+    status = mMediaCtlHelper.configurePipe(mGCM, IStreamConfigProvider::IMGU_VIDEO, true);
     if (status != OK)
         return UNKNOWN_ERROR;
 
@@ -352,32 +368,33 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
     if (mapStreamWithDeviceNode() != OK)
         return UNKNOWN_ERROR;
 
+    mCurPipeConfig = &(mPipeConfigs[PIPE_VIDEO_INDEX]);
     for (const auto &it : mConfiguredNodesPerName) {
         if (it.first == IMGU_NODE_INPUT) {
             std::shared_ptr<FrameWorker> tmp = nullptr;
             tmp = std::make_shared<InputFrameWorker>(it.second, mCameraId);
-            mDeviceWorkers.push_back(tmp); // Input frame;
-            mPollableWorkers.push_back(tmp);
-            mNodes.push_back(tmp->getNode()); // Nodes are added for pollthread init
+            mCurPipeConfig->deviceWorkers.push_back(tmp); // Input frame;
+            mCurPipeConfig->pollableWorkers.push_back(tmp);
+            mCurPipeConfig->nodes.push_back(tmp->getNode()); // Nodes are added for pollthread init
             mFirstWorkers.push_back(tmp);
         } else if (it.first == IMGU_NODE_STAT) {
             std::shared_ptr<StatisticsWorker> worker =
                 std::make_shared<StatisticsWorker>(it.second, mCameraId, mAfFilterBuffPool, mRgbsGridBuffPool);
             mListenerDeviceWorkers.push_back(worker.get());
-            mDeviceWorkers.push_back(worker);
-            mPollableWorkers.push_back(worker);
-            mNodes.push_back(worker->getNode());
+            mCurPipeConfig->deviceWorkers.push_back(worker);
+            mCurPipeConfig->pollableWorkers.push_back(worker);
+            mCurPipeConfig->nodes.push_back(worker->getNode());
         } else if (it.first == IMGU_NODE_PARAM) {
             std::shared_ptr<ParameterWorker> tmp = nullptr;
             tmp = std::make_shared<ParameterWorker>(it.second, mCameraId);
             mFirstWorkers.push_back(tmp);
-            mDeviceWorkers.push_back(tmp); // parameters
+            mCurPipeConfig->deviceWorkers.push_back(tmp); // parameters
         } else if (it.first == IMGU_NODE_STILL || it.first == IMGU_NODE_PREVIEW || it.first == IMGU_NODE_VIDEO) {
             std::shared_ptr<FrameWorker> tmp = nullptr;
             tmp = std::make_shared<OutputFrameWorker>(it.second, mCameraId, mStreamNodeMapping[it.first], it.first);
-            mDeviceWorkers.push_back(tmp);
-            mPollableWorkers.push_back(tmp);
-            mNodes.push_back(tmp->getNode());
+            mCurPipeConfig->deviceWorkers.push_back(tmp);
+            mCurPipeConfig->pollableWorkers.push_back(tmp);
+            mCurPipeConfig->nodes.push_back(tmp->getNode());
         } else if (it.first == IMGU_NODE_RAW) {
             LOGW("Not implemented"); // raw
             continue;
@@ -388,7 +405,7 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
     }
 
     status_t ret = OK;
-    for (const auto &it : mDeviceWorkers) {
+    for (const auto &it : mCurPipeConfig->deviceWorkers) {
         ret = (*it).configure(graphConfig);
 
         if (ret != OK) {
@@ -549,26 +566,26 @@ status_t ImguUnit::processNextRequest()
         }
     }
 
-    std::vector<std::shared_ptr<IDeviceWorker>>::iterator it = mDeviceWorkers.begin();
-    for (;it != mDeviceWorkers.end(); ++it) {
+    std::vector<std::shared_ptr<IDeviceWorker>>::iterator it = mCurPipeConfig->deviceWorkers.begin();
+    for (;it != mCurPipeConfig->deviceWorkers.end(); ++it) {
         status = (*it)->prepareRun(msg);
         if (status != OK) {
             return status;
         }
     }
 
-    mNodes.clear();
-    std::vector<std::shared_ptr<FrameWorker>>::iterator pollDevice = mPollableWorkers.begin();
-    for (;pollDevice != mPollableWorkers.end(); ++pollDevice) {
+    mCurPipeConfig->nodes.clear();
+    std::vector<std::shared_ptr<FrameWorker>>::iterator pollDevice = mCurPipeConfig->pollableWorkers.begin();
+    for (;pollDevice != mCurPipeConfig->pollableWorkers.end(); ++pollDevice) {
         bool needsPolling = (*pollDevice)->needPolling();
         if (needsPolling) {
-            mNodes.push_back((*pollDevice)->getNode());
+            mCurPipeConfig->nodes.push_back((*pollDevice)->getNode());
         }
     }
 
     status = mPollerThread->pollRequest(request->getId(),
                                         500000,
-                                        &mNodes);
+                                        &(mCurPipeConfig->nodes));
 
     if (status != OK)
         return status;
@@ -651,13 +668,13 @@ ImguUnit::startProcessing()
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
 
     status_t status = OK;
-    std::vector<std::shared_ptr<IDeviceWorker>>::iterator it = mDeviceWorkers.begin();
-    for (;it != mDeviceWorkers.end(); ++it) {
+    std::vector<std::shared_ptr<IDeviceWorker>>::iterator it = mCurPipeConfig->deviceWorkers.begin();
+    for (;it != mCurPipeConfig->deviceWorkers.end(); ++it) {
         status |= (*it)->run();
     }
 
-    it = mDeviceWorkers.begin();
-    for (;it != mDeviceWorkers.end(); ++it) {
+    it = mCurPipeConfig->deviceWorkers.begin();
+    for (;it != mCurPipeConfig->deviceWorkers.end(); ++it) {
         status |= (*it)->postRun();
     }
 
@@ -873,11 +890,7 @@ ImguUnit::handleMessageFlush(void)
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     mPollerThread->flush(true);
 
-    mPollableWorkers.clear();
-    mDeviceWorkers.clear();
-    mFirstWorkers.clear();
-    mListenerDeviceWorkers.clear();
-
+    clearWorkers();
     return NO_ERROR;
 }
 } /* namespace camera2 */

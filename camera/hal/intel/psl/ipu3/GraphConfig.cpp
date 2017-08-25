@@ -2265,9 +2265,12 @@ status_t GraphConfig::getNodeInfo(const ia_uid uid, const Node &parent, int* wid
 /*
  * Imgu specific function
  */
-status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig *mediaCtlConfig)
+status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig *mediaCtlConfig,
+                                          MediaCtlConfig *mediaCtlConfigVideo,
+                                          MediaCtlConfig *mediaCtlConfigStill)
 {
-    CheckError((!mediaCtlConfig), BAD_VALUE, "@%s null ptr\n", __FUNCTION__);
+    CheckError((!mediaCtlConfig || !mediaCtlConfigVideo || !mediaCtlConfigStill), \
+               BAD_VALUE, "@%s null ptr\n", __FUNCTION__);
 
     int ret;
 
@@ -2333,9 +2336,6 @@ status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig *mediaCtlConfig)
         else
             return UNKNOWN_ERROR;
 
-        addFormatParams(mLut[i].nodeName, width, height, 1,
-                        format, 0, mediaCtlConfig);
-
         if (mLut[i].uidStr == GC_PREVIEW ||
             mLut[i].uidStr == GC_STILL ||
             mLut[i].uidStr == GC_VIDEO) {
@@ -2394,8 +2394,15 @@ status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig *mediaCtlConfig)
             addImguVideoNode(mLut[i].ipuNodeName, mLut[i].nodeName, mediaCtlConfig);
         }
 
+        MediaCtlConfig* pipeConfig = (mLut[i].pad == MEDIACTL_PAD_PV_NUM) ? mediaCtlConfigStill
+                                   : (mLut[i].pad == MEDIACTL_PAD_VF_NUM) ? mediaCtlConfigVideo
+                                   :                                        mediaCtlConfig;
+
+        addFormatParams(mLut[i].nodeName, width, height, 1,
+                        format, 0, pipeConfig);
+
         if (mLut[i].uidStr != GC_INPUT) {
-            addLinkParams(kImguName, mLut[i].pad, mLut[i].nodeName, 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+            addLinkParams(kImguName, mLut[i].pad, mLut[i].nodeName, 0, 1, MEDIA_LNK_FL_ENABLED, pipeConfig);
         }
     }
 
