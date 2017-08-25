@@ -164,7 +164,7 @@ class ChromeosDBusControl : public ControlInterface {
   std::unique_ptr<WiMaxManagerProxyInterface> CreateWiMaxManagerProxy(
       const base::Closure& service_appeared_callback,
       const base::Closure& service_vanished_callback) override;
-  WiMaxNetworkProxyInterface* CreateWiMaxNetworkProxy(
+  std::unique_ptr<WiMaxNetworkProxyInterface> CreateWiMaxNetworkProxy(
       const std::string& path) override;
 #endif  // DISABLE_WIMAX
 

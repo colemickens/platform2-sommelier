@@ -395,8 +395,8 @@ void WiMaxProvider::RetrieveNetworkInfo(const RpcIdentifier& path) {
     return;
   }
   LOG(INFO) << "WiMAX network appeared: " << path;
-  std::unique_ptr<WiMaxNetworkProxyInterface> proxy(
-      control_->CreateWiMaxNetworkProxy(path));
+  std::unique_ptr<WiMaxNetworkProxyInterface> proxy =
+      control_->CreateWiMaxNetworkProxy(path);
   Error error;
   NetworkInfo info;
   info.name = proxy->Name(&error);

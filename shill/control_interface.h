@@ -224,7 +224,7 @@ class ControlInterface {
   virtual std::unique_ptr<WiMaxManagerProxyInterface> CreateWiMaxManagerProxy(
       const base::Closure& service_appeared_callback,
       const base::Closure& service_vanished_callback) = 0;
-  virtual WiMaxNetworkProxyInterface* CreateWiMaxNetworkProxy(
+  virtual std::unique_ptr<WiMaxNetworkProxyInterface> CreateWiMaxNetworkProxy(
       const std::string& path) = 0;
 #endif  // DISABLE_WIMAX
 

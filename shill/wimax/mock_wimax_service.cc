@@ -26,4 +26,9 @@ MockWiMaxService::MockWiMaxService(ControlInterface* control,
 
 MockWiMaxService::~MockWiMaxService() {}
 
+bool MockWiMaxService::Start(
+    std::unique_ptr<WiMaxNetworkProxyInterface> proxy) {
+  return MockableStart(proxy.get());
+}
+
 }  // namespace shill

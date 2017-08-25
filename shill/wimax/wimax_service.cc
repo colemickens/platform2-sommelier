@@ -101,10 +101,9 @@ void WiMaxService::Stop() {
   NotifyPropertyChanges();
 }
 
-bool WiMaxService::Start(WiMaxNetworkProxyInterface* proxy) {
+bool WiMaxService::Start(std::unique_ptr<WiMaxNetworkProxyInterface> proxy) {
   SLOG(this, 2) << __func__;
   CHECK(proxy);
-  std::unique_ptr<WiMaxNetworkProxyInterface> local_proxy(proxy);
   if (IsStarted()) {
     return true;
   }
@@ -134,7 +133,7 @@ bool WiMaxService::Start(WiMaxNetworkProxyInterface* proxy) {
   SetStrength(signal_strength);
   proxy->set_signal_strength_changed_callback(
       Bind(&WiMaxService::OnSignalStrengthChanged, Unretained(this)));
-  proxy_ = std::move(local_proxy);
+  proxy_ = std::move(proxy);
   UpdateConnectable();
   NotifyPropertyChanges();
   LOG(INFO) << "WiMAX service started: " << GetStorageIdentifier();

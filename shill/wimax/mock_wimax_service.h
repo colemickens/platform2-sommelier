@@ -32,7 +32,12 @@ class MockWiMaxService : public WiMaxService {
   ~MockWiMaxService() override;
 
   MOCK_CONST_METHOD0(GetNetworkObjectPath, RpcIdentifier());
-  MOCK_METHOD1(Start, bool(WiMaxNetworkProxyInterface* proxy));
+
+  // gmock doesn't support a std::unique_ptr<> argument in MOCK_METHOD, so we
+  // use override Start() to forward the call to MockableStart.
+  bool Start(std::unique_ptr<WiMaxNetworkProxyInterface> proxy) override;
+  MOCK_METHOD1(MockableStart, bool(WiMaxNetworkProxyInterface* proxy));
+
   MOCK_METHOD0(Stop, void());
   MOCK_CONST_METHOD0(IsStarted, bool());
   MOCK_METHOD1(SetState, void(ConnectState state));

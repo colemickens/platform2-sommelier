@@ -55,7 +55,7 @@ class WiMaxService : public Service {
   // and listening for its signal strength. Returns true on success, false
   // otherwise. Takes ownership of proxy, regardless of the result of the
   // operation. The proxy will be destroyed on failure.
-  virtual bool Start(WiMaxNetworkProxyInterface* proxy);
+  virtual bool Start(std::unique_ptr<WiMaxNetworkProxyInterface> proxy);
 
   // Stops the service by disassociating it from |proxy_| and resetting its
   // signal strength to 0. If the service is connected, it notifies the carrier

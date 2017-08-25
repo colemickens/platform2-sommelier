@@ -42,6 +42,7 @@
 #if !defined(DISABLE_WIMAX)
 #include "shill/wimax/wimax_device_proxy_interface.h"
 #include "shill/wimax/wimax_manager_proxy_interface.h"
+#include "shill/wimax/wimax_network_proxy_interface.h"
 #endif  // DISABLE_WIMAX
 
 namespace shill {
@@ -180,8 +181,9 @@ class NiceMockControl : public ControlInterface {
                std::unique_ptr<WiMaxManagerProxyInterface>(
                    const base::Closure& service_appeared_callback,
                    const base::Closure& service_vanished_callback));
-  MOCK_METHOD1(CreateWiMaxNetworkProxy,
-               WiMaxNetworkProxyInterface*(const std::string& path));
+  MOCK_METHOD1(
+      CreateWiMaxNetworkProxy,
+      std::unique_ptr<WiMaxNetworkProxyInterface>(const std::string& path));
 #endif  // DISABLE_WIMAX
 
  private:

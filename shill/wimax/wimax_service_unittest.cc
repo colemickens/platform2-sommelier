@@ -19,6 +19,7 @@
 #include <string>
 #include <utility>
 
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
@@ -61,8 +62,7 @@ const char kTestNetworkId[] = "1234abcd";
 class WiMaxServiceTest : public testing::Test {
  public:
   WiMaxServiceTest()
-      : proxy_(new MockWiMaxNetworkProxy()),
-        manager_(&control_, nullptr, nullptr),
+      : manager_(&control_, nullptr, nullptr),
         metrics_(nullptr),
         device_(new MockWiMax(&control_, nullptr, &metrics_, &manager_,
                               kTestLinkName, kTestAddress, kTestInterfaceIndex,
@@ -99,7 +99,6 @@ class WiMaxServiceTest : public testing::Test {
     return static_cast<ServiceMockAdaptor*>(service_->adaptor());
   }
 
-  std::unique_ptr<MockWiMaxNetworkProxy> proxy_;
   NiceMockControl control_;
   MockManager manager_;
   NiceMock<MockMetrics> metrics_;
@@ -139,17 +138,19 @@ TEST_F(WiMaxServiceTest, StartStop) {
   EXPECT_FALSE(service_->IsVisible());
   EXPECT_EQ(0, service_->strength());
   EXPECT_FALSE(service_->proxy_.get());
-  EXPECT_CALL(*proxy_, Name(_)).WillOnce(Return(kName));
-  EXPECT_CALL(*proxy_, Identifier(_)).WillOnce(Return(kIdentifier));
-  EXPECT_CALL(*proxy_, SignalStrength(_)).WillOnce(Return(kStrength));
-  EXPECT_CALL(*proxy_, set_signal_strength_changed_callback(_));
+
+  auto network_proxy = base::MakeUnique<MockWiMaxNetworkProxy>();
+  EXPECT_CALL(*network_proxy, Name(_)).WillOnce(Return(kName));
+  EXPECT_CALL(*network_proxy, Identifier(_)).WillOnce(Return(kIdentifier));
+  EXPECT_CALL(*network_proxy, SignalStrength(_)).WillOnce(Return(kStrength));
+  EXPECT_CALL(*network_proxy, set_signal_strength_changed_callback(_));
   ServiceMockAdaptor* adaptor = GetAdaptor();
   EXPECT_CALL(*adaptor, EmitBoolChanged(kConnectableProperty, _))
      .Times(AnyNumber());
   EXPECT_CALL(*adaptor, EmitBoolChanged(kVisibleProperty, true));
   ExpectUpdateService();
   service_->need_passphrase_ = false;
-  EXPECT_TRUE(service_->Start(proxy_.release()));
+  EXPECT_TRUE(service_->Start(std::move(network_proxy)));
   EXPECT_TRUE(service_->IsStarted());
   EXPECT_TRUE(service_->IsVisible());
   EXPECT_EQ(kStrength, service_->strength());
@@ -190,7 +191,7 @@ TEST_F(WiMaxServiceTest, Connectable) {
   EXPECT_FALSE(service_->connectable());
 
   // Connectable.
-  service_->proxy_ = std::move(proxy_);
+  service_->proxy_ = base::MakeUnique<MockWiMaxNetworkProxy>();
   ExpectUpdateService();
   service_->OnEapCredentialsChanged(Service::kReasonPropertyUpdate);
   EXPECT_FALSE(service_->need_passphrase_);

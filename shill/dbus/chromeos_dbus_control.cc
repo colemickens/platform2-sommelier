@@ -393,9 +393,9 @@ ChromeosDBusControl::CreateWiMaxManagerProxy(
                                                      service_vanished_callback);
 }
 
-WiMaxNetworkProxyInterface* ChromeosDBusControl::CreateWiMaxNetworkProxy(
-    const string& path) {
-  return new ChromeosWiMaxNetworkProxy(proxy_bus_, path);
+std::unique_ptr<WiMaxNetworkProxyInterface>
+ChromeosDBusControl::CreateWiMaxNetworkProxy(const string& path) {
+  return base::MakeUnique<ChromeosWiMaxNetworkProxy>(proxy_bus_, path);
 }
 #endif  // DISABLE_WIMAX
 
