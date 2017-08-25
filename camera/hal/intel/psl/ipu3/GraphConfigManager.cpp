@@ -339,9 +339,7 @@ status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*>
     ResolutionItem res;
 
     if (blobNum) {
-        // still pipe doesn't have statistic information, use video pipe
-        // TODO: ensure still pipe use correct statistic data
-        needEnableStill = false;
+        needEnableStill = true;
         LOGD("@%s, it has BLOB, needEnableStill:%d", __FUNCTION__, needEnableStill);
     }
 

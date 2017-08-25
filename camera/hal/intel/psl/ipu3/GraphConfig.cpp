@@ -2404,6 +2404,18 @@ status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig *mediaCtlConfig,
         if (mLut[i].uidStr != GC_INPUT) {
             addLinkParams(kImguName, mLut[i].pad, mLut[i].nodeName, 0, 1, MEDIA_LNK_FL_ENABLED, pipeConfig);
         }
+
+        // Add video pipe config also when still pipe is enabled.
+        // Video pipe will be used for still preview phase because still pipe has no stats output
+        // Related node is added to common MediaCtlData for device opening.
+        if (mLut[i].pad == MEDIACTL_PAD_PV_NUM) {
+            addFormatParams(MEDIACTL_PREVIEWNAME, width, height, 1,
+                            format, 0, mediaCtlConfigVideo);
+            addLinkParams(kImguName, MEDIACTL_PAD_VF_NUM, MEDIACTL_PREVIEWNAME, 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfigVideo);
+
+            addImguVideoNode(IMGU_NODE_VF_PREVIEW, MEDIACTL_PREVIEWNAME, mediaCtlConfig);
+        }
+
     }
 
     addImguVideoNode(IMGU_NODE_STAT, MEDIACTL_STATNAME, mediaCtlConfig);
