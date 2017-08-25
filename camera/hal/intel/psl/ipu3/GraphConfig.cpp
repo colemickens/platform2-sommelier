@@ -1970,13 +1970,6 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig *mediaCtlConfig)
     SourceNodeInfo sourceInfo;
     Node *sourceNode = nullptr;
 
-    // reset possible old values from the mediaCtlConfig struct
-    mediaCtlConfig->mLinkParams.clear();
-    mediaCtlConfig->mFormatParams.clear();
-    mediaCtlConfig->mSelectionParams.clear();
-    mediaCtlConfig->mSelectionVideoParams.clear();
-    mediaCtlConfig->mControlParams.clear();
-    mediaCtlConfig->mVideoNodes.clear();
     string csi2;
     bool hasTPG = false;
     if (mSourceType == SRC_SENSOR) {
@@ -2277,13 +2270,6 @@ status_t GraphConfig::getImguMediaCtlData(MediaCtlConfig *mediaCtlConfig)
     CheckError((!mediaCtlConfig), BAD_VALUE, "@%s null ptr\n", __FUNCTION__);
 
     int ret;
-    // reset possible old values from the mediaCtlConfig struct
-    mediaCtlConfig->mLinkParams.clear();
-    mediaCtlConfig->mFormatParams.clear();
-    mediaCtlConfig->mSelectionParams.clear();
-    mediaCtlConfig->mSelectionVideoParams.clear();
-    mediaCtlConfig->mControlParams.clear();
-    mediaCtlConfig->mVideoNodes.clear();
 
     Node *imgu = nullptr;
     int width = 0, height = 0, format = 0;

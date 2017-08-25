@@ -518,13 +518,22 @@ status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &stre
     gc->setMediaCtlConfig(mMediaCtl, swapVideoPreview, needEnableStill);
 
     // Get media control config
-    mMediaCtlConfigsPrev = mMediaCtlConfigs;
-    ret = gc->getMediaCtlData(&mMediaCtlConfigs);
+    for (size_t i = 0; i < MEDIA_TYPE_MAX_COUNT; i++) {
+        mMediaCtlConfigsPrev[i] = mMediaCtlConfigs[i];
+
+        // Reset old values
+        mMediaCtlConfigs[i].mLinkParams.clear();
+        mMediaCtlConfigs[i].mFormatParams.clear();
+        mMediaCtlConfigs[i].mSelectionParams.clear();
+        mMediaCtlConfigs[i].mSelectionVideoParams.clear();
+        mMediaCtlConfigs[i].mControlParams.clear();
+        mMediaCtlConfigs[i].mVideoNodes.clear();
+    }
+    ret = gc->getMediaCtlData(&mMediaCtlConfigs[CIO2]);
     if (ret != OK) {
         LOGE("Couldn't get mediaCtl data");
     }
-    mImguMediaCtlConfigsPrev = mImguMediaCtlConfigs;
-    ret = gc->getImguMediaCtlData(&mImguMediaCtlConfigs);
+    ret = gc->getImguMediaCtlData(&mMediaCtlConfigs[IMGU_COMMON]);
     if (ret != OK) {
         LOGE("Couldn't get Imgu mediaCtl data");
     }
@@ -618,6 +627,10 @@ const MediaCtlConfig* GraphConfigManager::getMediaCtlConfig(IStreamConfigProvide
     vector<int> foundConfigId;
     int id = 0;
 
+    if (type >= MEDIA_TYPE_MAX_COUNT) {
+        return nullptr;
+    }
+
     if (mFirstQueryResults.empty()) {
         LOGE("Invalid operation, first level query no done yet");
         return nullptr;
@@ -639,15 +652,15 @@ const MediaCtlConfig* GraphConfigManager::getMediaCtlConfig(IStreamConfigProvide
      * If there is more than one it means that there could be a potential change
      * of sensor mode for a new request.
      */
+
     if (type == CIO2) {
-        if (mMediaCtlConfigs.mControlParams.size() < 1)
+        if (mMediaCtlConfigs[type].mControlParams.size() < 1) {
             return nullptr;
-        return &mMediaCtlConfigs;
-    } else {
-        if (mImguMediaCtlConfigs.mVideoNodes.size() < 1)
-            return nullptr;
-        return &mImguMediaCtlConfigs;
+        }
+    } else if (mMediaCtlConfigs[type].mLinkParams.size() < 1) {
+        return nullptr;
     }
+    return &mMediaCtlConfigs[type];
 }
 
 /**
@@ -655,15 +668,17 @@ const MediaCtlConfig* GraphConfigManager::getMediaCtlConfig(IStreamConfigProvide
  */
 const MediaCtlConfig* GraphConfigManager::getMediaCtlConfigPrev(IStreamConfigProvider::MediaType type) const
 {
-    if (type == CIO2) {
-        if (mMediaCtlConfigsPrev.mControlParams.size() < 1)
-            return nullptr;
-        return &mMediaCtlConfigsPrev;
-    } else {
-        if (mImguMediaCtlConfigsPrev.mLinkParams.size() < 1)
-            return nullptr;
-        return &mImguMediaCtlConfigsPrev;
+    if (type >= MEDIA_TYPE_MAX_COUNT) {
+        return nullptr;
     }
+    if (type == CIO2) {
+        if (mMediaCtlConfigsPrev[type].mControlParams.size() < 1) {
+            return nullptr;
+        }
+    } else if (mMediaCtlConfigsPrev[type].mLinkParams.size() < 1) {
+        return nullptr;
+    }
+    return &mMediaCtlConfigsPrev[type];
 }
 
 std::shared_ptr<GraphConfig>

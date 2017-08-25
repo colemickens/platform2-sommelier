@@ -91,8 +91,12 @@ private:
 class IStreamConfigProvider {
 public:
     enum MediaType {
-        CIO2,
-        IMGU
+        CIO2 = 0,
+        IMGU_COMMON,
+        IMGU_VIDEO,
+        IMGU_STILL,
+
+        MEDIA_TYPE_MAX_COUNT
     };
 
     virtual ~IStreamConfigProvider() { };
@@ -224,10 +228,8 @@ private:
     std::map<camera3_stream_t*, uid_t> mStreamToSinkIdMap;
 
     bool mFallback; /**< This is to tell if we need to use fallback settings */
-    MediaCtlConfig mMediaCtlConfigs;
-    MediaCtlConfig mImguMediaCtlConfigs;
-    MediaCtlConfig mMediaCtlConfigsPrev;
-    MediaCtlConfig mImguMediaCtlConfigsPrev;
+    MediaCtlConfig mMediaCtlConfigs[MEDIA_TYPE_MAX_COUNT];
+    MediaCtlConfig mMediaCtlConfigsPrev[MEDIA_TYPE_MAX_COUNT];
 
     std::shared_ptr<MediaController> mMediaCtl;
 };

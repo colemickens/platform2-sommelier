@@ -339,7 +339,7 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
 
     mNodes.clear();
     // Open and configure imgu video nodes
-    status = mMediaCtlHelper.configure(mGCM, IStreamConfigProvider::IMGU);
+    status = mMediaCtlHelper.configure(mGCM, IStreamConfigProvider::IMGU_COMMON);
     if (status != OK)
         return UNKNOWN_ERROR;
 
