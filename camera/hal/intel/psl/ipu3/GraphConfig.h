@@ -273,7 +273,10 @@ public:
     bool isStillPipe() { return mPipeType == PIPE_STILL; }
 
 public:
-    void setMediaCtl(std::shared_ptr<MediaController> mediaCtl) { mMediaCtl = mediaCtl; }
+    void setMediaCtlConfig(std::shared_ptr<MediaController> mediaCtl,
+                           bool swapVideoPreview,
+                           bool enableStill);
+
 private:
     /* Helper structures to access Sensor Node information easily */
     class Rectangle {
@@ -284,6 +287,15 @@ private:
         int32_t t;  /*<! top */
         int32_t l;  /*<! left */
     };
+
+    struct MediaCtlLut {
+        string uidStr;
+        uint32_t uid;
+        int pad;
+        string nodeName;
+        int ipuNodeName;
+    };
+
     class SubdevPad: public Rectangle {
     public:
         SubdevPad();
@@ -343,16 +355,14 @@ private:
     status_t parseSensorNodeInfo(Node* sensorNode, SourceNodeInfo &info);
     status_t parseTPGNodeInfo(Node* tpgNode, SourceNodeInfo &info);
     status_t getMediaCtlData(MediaCtlConfig* mediaCtlConfig);
-    status_t getImguMediaCtlData(bool swapVideoPreview,
-                                 bool enableStill,
-                                 MediaCtlConfig* mediaCtlConfig);
+    status_t getImguMediaCtlData(MediaCtlConfig* mediaCtlConfig);
     status_t addControls(const Node *sensorNode,
                          const SourceNodeInfo &sensorInfo,
                          MediaCtlConfig* config);
 
     void addVideoNodes(const Node* csiBESocOutput,
                        MediaCtlConfig* config);
-    void addImguVideoNode(const Node* node, uint32_t uid, MediaCtlConfig* config);
+    void addImguVideoNode(int ipuNodeName, const string& nodeName, MediaCtlConfig* config);
     status_t getBinningFactor(const Node *node,
                               int32_t &hBin, int32_t &vBin) const;
     status_t getScalingFactor(const Node *node,
@@ -478,6 +488,7 @@ private:
     std::string mCSIBE;
     std::shared_ptr<MediaController> mMediaCtl;
 
+    std::vector<MediaCtlLut> mLut;
     string mMainNodeName;
     string mSecondNodeName;
 };

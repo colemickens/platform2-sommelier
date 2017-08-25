@@ -514,18 +514,17 @@ status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &stre
         return UNKNOWN_ERROR;
     }
 
+    bool swapVideoPreview = needSwapVideoPreview(mFirstQueryResults[0], id);
+    gc->setMediaCtlConfig(mMediaCtl, swapVideoPreview, needEnableStill);
+
     // Get media control config
     mMediaCtlConfigsPrev = mMediaCtlConfigs;
-    gc->setMediaCtl(mMediaCtl);
     ret = gc->getMediaCtlData(&mMediaCtlConfigs);
     if (ret != OK) {
         LOGE("Couldn't get mediaCtl data");
     }
-
-    bool swapVideoPreview = needSwapVideoPreview(mFirstQueryResults[0], id);
-
     mImguMediaCtlConfigsPrev = mImguMediaCtlConfigs;
-    ret = gc->getImguMediaCtlData(swapVideoPreview, needEnableStill, &mImguMediaCtlConfigs);
+    ret = gc->getImguMediaCtlData(&mImguMediaCtlConfigs);
     if (ret != OK) {
         LOGE("Couldn't get Imgu mediaCtl data");
     }
