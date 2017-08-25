@@ -71,6 +71,24 @@ void Camera3FrameFixture::WaitShutterAndCaptureResult(
       << "Timeout waiting for capture result callback";
 }
 
+std::vector<int32_t>
+Camera3FrameFixture::GetAvailableColorBarsTestPatternModes() {
+  std::vector<int32_t> test_pattern_modes;
+  if (cam_device_.GetStaticInfo()->GetAvailableTestPatternModes(
+          &test_pattern_modes) != 0) {
+    ADD_FAILURE() << "Failed to get sensor available test pattern modes";
+    return std::vector<int32_t>();
+  }
+  std::vector<int32_t> result;
+  for (const auto& it : supported_color_bars_test_pattern_modes_) {
+    if (std::find(test_pattern_modes.begin(), test_pattern_modes.end(), it) !=
+        test_pattern_modes.end()) {
+      result.push_back(it);
+    }
+  }
+  return result;
+}
+
 Camera3FrameFixture::ImagePlane::ImagePlane(uint32_t stride,
                                             uint32_t size,
                                             uint8_t* addr)
@@ -240,8 +258,12 @@ Camera3FrameFixture::ImageUniquePtr
 Camera3FrameFixture::GenerateColorBarsPattern(uint32_t width,
                                               uint32_t height,
                                               ImageFormat format,
-                                              bool is_fade_to_gray) {
-  if (format >= ImageFormat::IMAGE_FORMAT_END) {
+                                              int32_t color_bars_pattern) {
+  if (format >= ImageFormat::IMAGE_FORMAT_END ||
+      std::find(supported_color_bars_test_pattern_modes_.begin(),
+                supported_color_bars_test_pattern_modes_.end(),
+                color_bars_pattern) ==
+          supported_color_bars_test_pattern_modes_.end()) {
     return nullptr;
   }
   ImageUniquePtr argb_image(
@@ -270,7 +292,7 @@ Camera3FrameFixture::GenerateColorBarsPattern(uint32_t width,
     for (size_t w = 0; w < width; w++) {
       int index = (w / color_bar_width) % color_bar.size();
       auto get_fade_color = [&](uint8_t base_color) {
-        if (!is_fade_to_gray) {
+        if (color_bars_pattern == ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS) {
           return base_color;
         }
         uint8_t color = base_color * gray_factor;
@@ -1214,21 +1236,9 @@ void Camera3FrameContentTest::ProcessResultMetadataOutputBuffers(
 }
 
 TEST_P(Camera3FrameContentTest, CorruptionDetection) {
-  std::vector<int32_t> test_pattern_modes;
-  ASSERT_EQ(0, cam_device_.GetStaticInfo()->GetAvailableTestPatternModes(
-                   &test_pattern_modes))
-      << "Failed to get available test pattern modes";
-  bool is_color_bars_fade_to_gray =
-      std::find(test_pattern_modes.begin(), test_pattern_modes.end(),
-                ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY) !=
-      test_pattern_modes.end();
-  if (!is_color_bars_fade_to_gray) {
-    ASSERT_NE(test_pattern_modes.end(),
-              std::find(test_pattern_modes.begin(), test_pattern_modes.end(),
-                        ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS))
-        << "The Sensor test patterns color bars and color bars fade to grey "
-           "are not supported";
-  }
+  auto test_pattern_modes = GetAvailableColorBarsTestPatternModes();
+  ASSERT_FALSE(test_pattern_modes.empty())
+      << "Failed to get sensor available test pattern modes";
 
   cam_device_.AddOutputStream(format_, width_, height_,
                               CAMERA3_STREAM_ROTATION_0);
@@ -1236,11 +1246,8 @@ TEST_P(Camera3FrameContentTest, CorruptionDetection) {
       << "Configuring stream fails";
   CameraMetadataUniquePtr metadata(clone_camera_metadata(
       cam_device_.ConstructDefaultRequestSettings(CAMERA3_TEMPLATE_PREVIEW)));
-  int32_t test_pattern =
-      is_color_bars_fade_to_gray
-          ? ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY
-          : ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS;
-  UpdateMetadata(ANDROID_SENSOR_TEST_PATTERN_MODE, &test_pattern, 1, &metadata);
+  UpdateMetadata(ANDROID_SENSOR_TEST_PATTERN_MODE, test_pattern_modes.data(), 1,
+                 &metadata);
   ASSERT_EQ(0, CreateCaptureRequestByMetadata(metadata, nullptr))
       << "Creating capture request fails";
 
@@ -1254,7 +1261,7 @@ TEST_P(Camera3FrameContentTest, CorruptionDetection) {
 
   auto pattern_image =
       GenerateColorBarsPattern(width_, height_, ImageFormat::IMAGE_FORMAT_I420,
-                               is_color_bars_fade_to_gray);
+                               test_pattern_modes.front());
   ASSERT_NE(nullptr, pattern_image);
 
   struct {
@@ -1433,14 +1440,9 @@ int Camera3PortraitRotationTest::CropRotateScale(const Image& in_buffer,
 }
 
 TEST_P(Camera3PortraitRotationTest, GetFrame) {
-  std::vector<int32_t> test_pattern_modes;
-  ASSERT_TRUE(
-      cam_device_.GetStaticInfo()->GetAvailableTestPatternModes(
-          &test_pattern_modes) == 0 &&
-      std::find(test_pattern_modes.begin(), test_pattern_modes.end(),
-                ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY) !=
-          test_pattern_modes.end())
-      << "The Sensor test pattern color bars fading to grey is not supported";
+  auto test_pattern_modes = GetAvailableColorBarsTestPatternModes();
+  ASSERT_FALSE(test_pattern_modes.empty())
+      << "Failed to get sensor available test pattern modes";
 
   if (cam_device_.GetStaticInfo()->IsFormatAvailable(format_)) {
     VLOGF(1) << "Device " << cam_id_;
@@ -1456,10 +1458,8 @@ TEST_P(Camera3PortraitRotationTest, GetFrame) {
     // Get original pattern
     CameraMetadataUniquePtr metadata(clone_camera_metadata(
         cam_device_.ConstructDefaultRequestSettings(CAMERA3_TEMPLATE_PREVIEW)));
-    int32_t test_pattern =
-        ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY;
-    UpdateMetadata(ANDROID_SENSOR_TEST_PATTERN_MODE, &test_pattern, 1,
-                   &metadata);
+    UpdateMetadata(ANDROID_SENSOR_TEST_PATTERN_MODE, test_pattern_modes.data(),
+                   1, &metadata);
     ASSERT_EQ(0, CreateCaptureRequestByMetadata(metadata, nullptr))
         << "Creating capture request fails";
 

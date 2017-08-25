@@ -18,7 +18,11 @@ class Camera3FrameFixture : public Camera3StreamFixture {
   const uint32_t kDefaultTimeoutMs = 1000;
   static const uint32_t kARGBPixelWidth = 4;
 
-  explicit Camera3FrameFixture(int cam_id) : Camera3StreamFixture(cam_id) {}
+  explicit Camera3FrameFixture(int cam_id)
+      : Camera3StreamFixture(cam_id),
+        supported_color_bars_test_pattern_modes_(
+            {ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY,
+             ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS}) {}
 
  protected:
   // Create and process capture request of given metadata |metadata|. The frame
@@ -32,6 +36,9 @@ class Camera3FrameFixture : public Camera3StreamFixture {
 
   // Wait for shutter and capture result with timeout
   void WaitShutterAndCaptureResult(const struct timespec& timeout);
+
+  // Get available color bars test pattern modes
+  std::vector<int32_t> GetAvailableColorBarsTestPatternModes();
 
   enum class ImageFormat {
     IMAGE_FORMAT_ARGB,
@@ -71,7 +78,7 @@ class Camera3FrameFixture : public Camera3StreamFixture {
   ImageUniquePtr GenerateColorBarsPattern(uint32_t width,
                                           uint32_t height,
                                           ImageFormat format,
-                                          bool is_fade_to_gray);
+                                          int32_t color_bars_pattern);
 
   // Computes the peak signal-to-noise ratio of given images. Given images must
   // be of the I420 format; otherwise, the maximum finite value representable
@@ -83,6 +90,8 @@ class Camera3FrameFixture : public Camera3StreamFixture {
   // number of the created request is returned if |frame_number| is not null.
   int32_t CreateCaptureRequest(const camera_metadata_t& metadata,
                                uint32_t* frame_number);
+
+  std::vector<int32_t> supported_color_bars_test_pattern_modes_;
 
   DISALLOW_COPY_AND_ASSIGN(Camera3FrameFixture);
 };
