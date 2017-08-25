@@ -29,6 +29,10 @@
 #include "shill/power_manager_proxy_interface.h"
 #include "shill/upstart/upstart_proxy_interface.h"
 
+#if !defined(DISABLE_WIFI)
+#include "shill/supplicant/supplicant_bss_proxy_interface.h"
+#endif  // DISABLE_WIFI
+
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_process_proxy_interface.h"
@@ -97,8 +101,9 @@ class NiceMockControl : public ControlInterface {
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 #if !defined(DISABLE_WIFI)
   MOCK_METHOD2(CreateSupplicantBSSProxy,
-               SupplicantBSSProxyInterface*(WiFiEndpoint* wifi_endpoint,
-                                            const std::string& object_path));
+               std::unique_ptr<SupplicantBSSProxyInterface>(
+                   WiFiEndpoint* wifi_endpoint,
+                   const std::string& object_path));
 #endif  // DISABLE_WIFI
   MOCK_METHOD1(
       CreateDHCPCDListener,

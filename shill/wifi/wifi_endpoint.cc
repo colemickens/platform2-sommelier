@@ -94,8 +94,8 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
 WiFiEndpoint::~WiFiEndpoint() {}
 
 void WiFiEndpoint::Start() {
-  supplicant_bss_proxy_.reset(
-      control_interface_->CreateSupplicantBSSProxy(this, rpc_id_));
+  supplicant_bss_proxy_ =
+      control_interface_->CreateSupplicantBSSProxy(this, rpc_id_);
 }
 
 void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {

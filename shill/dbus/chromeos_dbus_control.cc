@@ -234,10 +234,11 @@ ChromeosDBusControl::CreateSupplicantNetworkProxy(const string& object_path) {
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 #if !defined(DISABLE_WIFI)
-SupplicantBSSProxyInterface* ChromeosDBusControl::CreateSupplicantBSSProxy(
-    WiFiEndpoint* wifi_endpoint,
-    const string& object_path) {
-  return new ChromeosSupplicantBSSProxy(proxy_bus_, object_path, wifi_endpoint);
+std::unique_ptr<SupplicantBSSProxyInterface>
+ChromeosDBusControl::CreateSupplicantBSSProxy(WiFiEndpoint* wifi_endpoint,
+                                              const string& object_path) {
+  return base::MakeUnique<ChromeosSupplicantBSSProxy>(
+      proxy_bus_, object_path, wifi_endpoint);
 }
 #endif  // DISABLE_WIFI
 

@@ -137,9 +137,8 @@ class ControlInterface {
 
 #if !defined(DISABLE_WIFI)
   // See comment in supplicant_bss_proxy.h, about bare pointer.
-  virtual SupplicantBSSProxyInterface* CreateSupplicantBSSProxy(
-      WiFiEndpoint* wifi_endpoint,
-      const std::string& object_path) = 0;
+  virtual std::unique_ptr<SupplicantBSSProxyInterface> CreateSupplicantBSSProxy(
+      WiFiEndpoint* wifi_endpoint, const std::string& object_path) = 0;
 #endif  // DISABLE_WIFI
 
   virtual std::unique_ptr<UpstartProxyInterface> CreateUpstartProxy() = 0;

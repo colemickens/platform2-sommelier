@@ -77,9 +77,8 @@ class ChromeosDBusControl : public ControlInterface {
 
 #if !defined(DISABLE_WIFI)
   // See comment in supplicant_bss_proxy.h, about bare pointer.
-  SupplicantBSSProxyInterface* CreateSupplicantBSSProxy(
-      WiFiEndpoint* wifi_endpoint,
-      const std::string& object_path) override;
+  std::unique_ptr<SupplicantBSSProxyInterface> CreateSupplicantBSSProxy(
+      WiFiEndpoint* wifi_endpoint, const std::string& object_path) override;
 #endif  // DISABLE_WIFI
 
   std::unique_ptr<UpstartProxyInterface> CreateUpstartProxy() override;
