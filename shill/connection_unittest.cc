@@ -65,6 +65,43 @@ const char kSearchDomain1[] = "google.com";
 const char kIPv6Address[] = "2001:db8::1";
 const char kIPv6NameServer0[] = "2001:db9::1";
 const char kIPv6NameServer1[] = "2001:db9::2";
+
+MATCHER_P2(IsIPAddress, address, prefix, "") {
+  IPAddress match_address(address);
+  match_address.set_prefix(prefix);
+  return match_address.Equals(arg);
+}
+
+MATCHER_P(IsIPv6Address, address, "") {
+  IPAddress match_address(address);
+  return match_address.Equals(arg);
+}
+
+MATCHER(IsDefaultAddress, "") {
+  IPAddress match_address(arg);
+  return match_address.IsDefault();
+}
+
+MATCHER(IsNonNullCallback, "") {
+  return !arg.is_null();
+}
+
+MATCHER_P(IsValidRoutingTableEntry, dst, "") {
+  return dst.Equals(arg.dst);
+}
+
+MATCHER_P(IsValidThrowRoute, dst, "") {
+  return dst.Equals(arg.dst) && arg.type == RTN_THROW;
+}
+
+MATCHER_P(IsLinkRouteTo, dst, "") {
+  return dst.HasSameAddressAs(arg.dst) &&
+      arg.dst.prefix() ==
+          IPAddress::GetMaxPrefixLength(IPAddress::kFamilyIPv4) &&
+      !arg.src.IsValid() && !arg.gateway.IsValid() &&
+      arg.scope == RT_SCOPE_LINK && !arg.from_rtnl;
+}
+
 }  // namespace
 
 class ConnectionTest : public Test {
@@ -210,46 +247,6 @@ class ConnectionTest : public Test {
   StrictMock<MockRoutingTable> routing_table_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
 };
-
-namespace {
-
-MATCHER_P2(IsIPAddress, address, prefix, "") {
-  IPAddress match_address(address);
-  match_address.set_prefix(prefix);
-  return match_address.Equals(arg);
-}
-
-MATCHER_P(IsIPv6Address, address, "") {
-  IPAddress match_address(address);
-  return match_address.Equals(arg);
-}
-
-MATCHER(IsDefaultAddress, "") {
-  IPAddress match_address(arg);
-  return match_address.IsDefault();
-}
-
-MATCHER(IsNonNullCallback, "") {
-  return !arg.is_null();
-}
-
-MATCHER_P(IsValidRoutingTableEntry, dst, "") {
-  return dst.Equals(arg.dst);
-}
-
-MATCHER_P(IsValidThrowRoute, dst, "") {
-  return dst.Equals(arg.dst) && arg.type == RTN_THROW;
-}
-
-MATCHER_P(IsLinkRouteTo, dst, "") {
-  return dst.HasSameAddressAs(arg.dst) &&
-      arg.dst.prefix() ==
-          IPAddress::GetMaxPrefixLength(IPAddress::kFamilyIPv4) &&
-      !arg.src.IsValid() && !arg.gateway.IsValid() &&
-      arg.scope == RT_SCOPE_LINK && !arg.from_rtnl;
-}
-
-}  // namespace
 
 TEST_F(ConnectionTest, InitState) {
   EXPECT_EQ(kTestDeviceInterfaceIndex0, connection_->interface_index_);
