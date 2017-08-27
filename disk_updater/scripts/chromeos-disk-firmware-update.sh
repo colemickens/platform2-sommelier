@@ -14,13 +14,13 @@
 # Temperaray directory to put device information
 DEFINE_string 'tmp_dir' '' "Use existing temporary directory."
 DEFINE_string 'fw_package_dir' '' "Location of the firmware package."
-DEFINE_string 'hdparm' '/sbin/hdparm' "hdparm binary to use."
+DEFINE_string 'hdparm' 'hdparm' "hdparm binary to use."
 DEFINE_string 'hdparm_kingston' '/opt/google/disk/bin/hdparm_kingston' \
               "hdparm for kingston recovery."
-DEFINE_string 'smartctl' '/usr/sbin/smartctl' "smartctl binary to use."
-DEFINE_string 'pwr_suspend' '/usr/bin/powerd_dbus_suspend' "To power cycle SSD"
-DEFINE_string 'mmc' '/usr/bin/mmc' "mmc binary to use."
-DEFINE_string 'nvme' '/usr/sbin/nvme' "nvme binary to use."
+DEFINE_string 'smartctl' 'smartctl' "smartctl binary to use."
+DEFINE_string 'pwr_suspend' 'powerd_dbus_suspend' "To power cycle SSD"
+DEFINE_string 'mmc' 'mmc' "mmc binary to use."
+DEFINE_string 'nvme' 'nvme' "nvme binary to use."
 DEFINE_string 'status' '' "Status file to write to."
 DEFINE_boolean 'test' ${FLAGS_FALSE} "For unit testing."
 
@@ -30,6 +30,7 @@ DEFINE_boolean 'test' ${FLAGS_FALSE} "For unit testing."
 #   disk_fw_file
 #   disk_exp_fw_rev
 #   disk_fw_opt
+#   nvme_out : A file where the output of "nvme id-ctrl" is stored.
 
 log_msg() {
   logger -t "chromeos-disk-firmware-update[${PPID}]" "$@"
@@ -45,6 +46,13 @@ die() {
 FLAGS "$@" || exit 1
 eval set -- "${FLAGS_ARGV}"
 
+# program_installed - check if the specified program is installed.
+program_installed() {
+  if ! command -v "$1" > /dev/null; then
+    log_msg "$1 is not installed"
+    return 1
+  fi
+}
 # disk_fw_select - Select the proper disk firmware to use.
 #
 # This code reuse old installer disk firmware upgrade code.
@@ -120,8 +128,7 @@ disk_hdparm_info() {
   local device="$1"
 
   # Test if we have the tool needed for an upgrade.
-  if [ ! -x "${FLAGS_hdparm}" ]; then
-    log_msg "hdparm is not installed"
+  if ! program_installed "${FLAGS_hdparm}"; then
     return 1
   fi
 
@@ -164,8 +171,7 @@ disk_mmc_info() {
   disk_fw_rev=$(cat "/sys/block/$1/device/fwrev")
 
   # Test if we have the tool needed for an upgrade.
-  if [ ! -x "${FLAGS_mmc}" ]; then
-    log_msg "mmc is not installed"
+  if ! program_installed "${FLAGS_mmc}"; then
     return 1
   fi
 
@@ -228,11 +234,10 @@ disk_ata_info() {
 disk_nvme_info() {
   local device="$1"
   local rc=0
-  local nvme_out="${FLAGS_tmp_dir}/${device}"
+  nvme_out="${FLAGS_tmp_dir}/${device}"
 
   # Test if we have the tool needed for an upgrade.
-  if [ ! -x "${FLAGS_nvme}" ]; then
-    log_msg "nvme is not installed"
+  if ! program_installed "${FLAGS_mmc}"; then
     return 1
   fi
 
@@ -479,6 +484,62 @@ disk_nmve_reset() {
   echo 1 > "/sys/block/${device}n1/device/device/reset"
 }
 
+# disk_nvme_current_slot - Retrieve which slot the current firmware comes from.
+#
+# Information is located in the first byte of Log 3
+# (Firmware Slot Information Log).
+#
+# Return the slot number, assume nvme device is up.
+disk_nvme_current_slot() {
+  local device="$1"
+
+  local byte0="$("${FLAGS_nvme}" get-log "/dev/${device}" \
+      --raw-binary --log-id 3 --log-len 512 | \
+      od -An -t u1 -N 1)"
+  echo $((byte0 & 0x3))
+}
+
+# disk_nvme_get_frmw - get FRMW from identity data.
+#
+# Use already collected id-ctrl data, and extrace the Firmware Updates field.
+# The fields have the following format:
+#
+#  7    5  4 3   1 0
+#  +------+-+-----+-+
+#  |      | |     | |
+#  +------+-+-----+-+
+#          \   \   \
+#           \   \   --- slot 1 is read only, can not be use for update.
+#            \   ------ number of slot available (between 1 and 7)
+#             --------- action 3 (upgrade without reset available)
+disk_nvme_get_frmw() {
+  local device="$1"
+  grep "frmw" "${nvme_out}" | cut -d ':' -f 2
+}
+
+disk_nvme_get_min_writable_slot() {
+  local frmw="$1"
+  # Slot 1 can be read only, check frmw bit 0.
+  echo $(((frmw & 0x1) + 1))
+}
+
+disk_nvme_get_max_writable_slot() {
+  local frmw="$1"
+  # Bit 1 - 3 of frmw contains the number of slots.
+  echo $(((frmw & 0xe) >> 1))
+}
+
+# disk_nvme_action_supported - Return supported action
+#
+# Return the commit action the device is supporting:
+# - 3 : the device can upgrade without reset,
+# - 2 : the device needs reset to upgrade (mandatory).
+disk_nvme_action_supported() {
+  local frmw="$1"
+  # Bit 4 of frmw indicates if upgrade without reset is supported.
+  echo $((((frmw & 0x10) >> 4) + 2))
+}
+
 # disk_nvme_upgrade - Upgrade the firmware on the NVME storage
 #
 # Update the firmware on the disk.
@@ -486,7 +547,10 @@ disk_nmve_reset() {
 # inputs:
 #     device            -- the device name [nvme0,...]
 #     fw_file           -- the firmware image
-#     fw_options        -- the options from the rule file. (unused)
+#     fw_options        -- the options from the rule file.
+#
+# By default the NVMe device can be upgraded without reset (commit action 3),
+# see NVMe 1.3 Figure 76. If reset is needed, we use commit action 2.
 #
 # returns non 0 on error
 #
@@ -494,20 +558,49 @@ disk_nvme_upgrade() {
   local device="$1"
   local fw_file="$2"
   local fw_options="$3"
+  local frmw="$(disk_nvme_get_frmw "${device}")"
+  local action="$(disk_nvme_action_supported "${frmw}")"
+  local curr_slot="$(disk_nvme_current_slot "${device}")"
+  local min_slot="$(disk_nvme_get_min_writable_slot "${frmw}")"
+  local max_slot="$(disk_nvme_get_max_writable_slot "${frmw}")"
+  local new_slot rc
+
+  if [ ${curr_slot} -eq ${max_slot} ]; then
+    new_slot=${min_slot}
+  else
+    new_slot=$((curr_slot + 1))
+  fi
+  if echo "${fw_options}" | grep -q "separate_slot"; then
+    if [ ${new_slot} -eq ${curr_slot} ]; then
+      log_msg "Unable to find proper slot: current ${curr_slot}, " \
+              "min: ${min_slot}, max: ${max_slot}"
+      return 1
+    fi
+  fi
 
   "${FLAGS_nvme}" fw-download "/dev/${device}" --fw="${fw_file}"
-  if [ $? -ne 0 ]; then
-    log_msg "Unable to download ${fw_file} to  ${device}"
-    return $?
+  rc=$?
+  if [ ${rc} -ne 0 ]; then
+    log_msg "Unable to download ${fw_file} to ${device}"
+    return ${rc}
   fi
 
-  "${FLAGS_nvme}" fw-activate "/dev/${device}" --slot=1 --action=1
-  if [ $? -ne 0 ]; then
-    log_msg "Unable to activate ${fw_file} to  ${device}"
-    return $?
+  # Use action 0 to download image into slot.
+  "${FLAGS_nvme}" fw-activate "/dev/${device}" --slot="${new_slot}" --action=0
+  rc=$?
+  if [ ${rc} -ne 0 ]; then
+     log_msg "Unable to load ${fw_file} to ${device}"
+     return ${rc}
   fi
-
-  disk_nmve_reset "${device}"
+  "${FLAGS_nvme}" fw-activate "/dev/${device}" --slot="${new_slot}" \
+    --action="${action}"
+  rc=$?
+  if [ ${rc} -eq 11 -a ${action} -eq 2 ]; then
+    disk_nmve_reset "${device}"
+  elif [ ${rc} -ne 0 ]; then
+    log_msg "Unable to activate ${fw_file} to ${device}"
+    return ${rc}
+  fi
 }
 
 # disk_upgrade - Upgrade the firmware on the disk

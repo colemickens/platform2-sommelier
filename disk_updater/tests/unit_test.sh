@@ -4,4 +4,9 @@
 # found in the LICENSE file.
 #
 # Command for unit test.
-echo "$(basename "$0")" "$@" | sed "s#/tmp/test_fw\..\{6\}#temp_dir#g"
+echo "$(basename "$0")" "$@" | sed -E "s#/tmp/test_fw\..{6}#temp_dir#g"
+if echo "$@" | grep -qe "--action=2"; then
+  exit 11
+else
+  exit 0
+fi

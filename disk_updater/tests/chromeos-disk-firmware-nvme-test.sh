@@ -80,9 +80,14 @@ list_fixed_nvme_disks() {
   echo "nvme0"
 }
 
+disk_nvme_current_slot() {
+  echo "    1"
+}
+
+# Upgrade with reset.
 prepare_test
 nvme_id_files=(
-  'INTEL_SSDPEKKW256G7-PSF100C'
+  'INTEL_SSDPEKKW256G7-PSF101C'
   ''
   ''
   'INTEL_SSDPEKKW256G7-PSF109C'
@@ -115,12 +120,38 @@ disk_nmve_reset() {
 
 prepare_test
 nvme_id_files=(
-  'INTEL_SSDPEKKW256G7-PSF100C'
+  'INTEL_SSDPEKKW256G7-PSF101C'
 )
 nvme_id_rc=(0)
 run_test
 check_test 3 nvme_upgrade_failed 1 $?
 echo NVME PASS 3
 
+# Upgrade without reset.
+prepare_test
+nvme_id_files=(
+  'INTEL_SSDPEKKW256G7-PSF100C'
+  ''
+  ''
+  'INTEL_SSDPEKKW256G7-PSF109C'
+  'INTEL_SSDPEKKW256G7-PSF109C'
+)
+nvme_id_rc=(0 10 10 0 0)
+
+run_test
+check_test 4 nvme_upgraded 0 $?
+echo NVME PASS 4
+
+# Upgrade Samsung device
+prepare_test
+nvme_id_files=(
+  'SAMSUNG_KUS040205M-DXC81G1E'
+  'SAMSUNG_KUS040205M-DXC81G1T'
+  'SAMSUNG_KUS040205M-DXC81G1T'
+)
+nvme_id_rc=(0 0 0)
+run_test
+check_test 5 nvme_upgraded 0 $?
+echo NVME PASS 5
 
 rm -rf "${DISK_TEMP}"
