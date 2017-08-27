@@ -43,8 +43,13 @@ class Time;
 class IPConfig : public base::RefCounted<IPConfig> {
  public:
   struct Route {
+    Route() : prefix(0) {}
+    Route(const std::string& host_in,
+          int prefix_in,
+          const std::string& gateway_in)
+        : host(host_in), prefix(prefix_in), gateway(gateway_in) {}
     std::string host;
-    std::string netmask;
+    int prefix;
     std::string gateway;
   };
 
@@ -90,7 +95,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
     bool blackhole_ipv6;
     // MTU to set on the interface.  If unset, defaults to |kDefaultMTU|.
     int32_t mtu;
-    // A list of (host,netmask,gateway) tuples for this connection.
+    // A list of (host,prefix,gateway) tuples for this connection.
     std::vector<Route> routes;
     // Vendor encapsulated option string gained from DHCP.
     ByteArray vendor_encapsulated_options;

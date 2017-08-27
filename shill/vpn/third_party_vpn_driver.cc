@@ -396,8 +396,7 @@ void ThirdPartyVpnDriver::SetParameters(
   for (const auto& value : inclusion_list) {
     ip_address.SetAddressAndPrefixFromString(value);
     ip_address.IntoString(&route.host);
-    IPAddress::GetAddressMaskFromPrefix(
-        ip_address.family(), ip_address.prefix()).IntoString(&route.netmask);
+    route.prefix = ip_address.prefix();
     ip_properties_.routes.push_back(route);
   }
 

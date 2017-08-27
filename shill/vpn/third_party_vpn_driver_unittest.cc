@@ -398,8 +398,8 @@ TEST_F(ThirdPartyVpnDriverTest, SetParameters) {
   EXPECT_EQ(driver_->ip_properties_.routes.size(), 2);
   EXPECT_EQ(driver_->ip_properties_.routes[0].host, "123.211.61.29");
   EXPECT_EQ(driver_->ip_properties_.routes[1].host, "123.211.42.29");
-  EXPECT_EQ(driver_->ip_properties_.routes[0].netmask, "254.0.0.0");
-  EXPECT_EQ(driver_->ip_properties_.routes[1].netmask, "255.255.128.0");
+  EXPECT_EQ(driver_->ip_properties_.routes[0].prefix, 7);
+  EXPECT_EQ(driver_->ip_properties_.routes[1].prefix, 17);
   EXPECT_EQ(driver_->ip_properties_.routes[0].gateway, parameters["address"]);
   EXPECT_EQ(driver_->ip_properties_.routes[1].gateway, parameters["address"]);
   EXPECT_TRUE(error.empty());

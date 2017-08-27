@@ -122,7 +122,6 @@ class RoutingTableTest : public Test {
   static const char kTestV6NetAddress0[];
   static const char kTestV6NetAddress1[];
   static const char kTestRemoteAddress4[];
-  static const char kTestRemoteNetmask4[];
   static const char kTestRemoteNetwork4[];
   static const int kTestRemotePrefix4;
   static const uint32_t kTestRequestSeq;
@@ -177,7 +176,6 @@ const char RoutingTableTest::kTestNetAddress1[] = "192.168.1.2";
 const char RoutingTableTest::kTestV6NetAddress0[] = "2001:db8::123";
 const char RoutingTableTest::kTestV6NetAddress1[] = "2001:db8::456";
 const char RoutingTableTest::kTestRemoteAddress4[] = "192.168.2.254";
-const char RoutingTableTest::kTestRemoteNetmask4[] = "255.255.255.0";
 const char RoutingTableTest::kTestRemoteNetwork4[] = "192.168.100.0";
 const int RoutingTableTest::kTestRemotePrefix4 = 24;
 const uint32_t RoutingTableTest::kTestRequestSeq = 456;
@@ -715,7 +713,7 @@ TEST_F(RoutingTableTest, ConfigureRoutes) {
 
   IPConfig::Route route;
   route.host = kTestRemoteNetwork4;
-  route.netmask = kTestRemoteNetmask4;
+  route.prefix = kTestRemotePrefix4;
   route.gateway = kTestGatewayAddress4;
   routes.push_back(route);
   ipconfig->UpdateProperties(properties, true);

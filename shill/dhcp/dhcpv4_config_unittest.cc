@@ -273,12 +273,12 @@ TEST_F(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   EXPECT_EQ(2, properties.routes.size());
   const IPConfig::Route& route0 = properties.routes[0];
   EXPECT_EQ(kDefaultAddress, route0.host);
-  EXPECT_EQ("0.0.0.0", route0.netmask);
+  EXPECT_EQ(0, route0.prefix);
   EXPECT_EQ(kRouter2, route0.gateway);
 
   const IPConfig::Route& route1 = properties.routes[1];
   EXPECT_EQ(kAddress1, route1.host);
-  EXPECT_EQ("255.255.255.0", route1.netmask);
+  EXPECT_EQ(24, route1.prefix);
   EXPECT_EQ(kRouter1, route1.gateway);
 
   // A malformed routing table should not affect the current table.

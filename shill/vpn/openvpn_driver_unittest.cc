@@ -141,9 +141,11 @@ class OpenVPNDriverTest
   static const char kValue2[];
   static const char kGateway1[];
   static const char kNetmask1[];
+  static const int kPrefix1;
   static const char kNetwork1[];
   static const char kGateway2[];
   static const char kNetmask2[];
+  static const int kPrefix2;
   static const char kNetwork2[];
   static const char kInterfaceName[];
   static const int kInterfaceIndex;
@@ -276,9 +278,11 @@ const char OpenVPNDriverTest::kProperty2[] = "OpenVPN.SomeProperty2";
 const char OpenVPNDriverTest::kValue2[] = "some-property-value2";
 const char OpenVPNDriverTest::kGateway1[] = "10.242.2.13";
 const char OpenVPNDriverTest::kNetmask1[] = "255.255.255.255";
+const int OpenVPNDriverTest::kPrefix1 = 32;
 const char OpenVPNDriverTest::kNetwork1[] = "10.242.2.1";
 const char OpenVPNDriverTest::kGateway2[] = "10.242.2.14";
 const char OpenVPNDriverTest::kNetmask2[] = "255.255.0.0";
+const int OpenVPNDriverTest::kPrefix2 = 16;
 const char OpenVPNDriverTest::kNetwork2[] = "192.168.0.0";
 const char OpenVPNDriverTest::kInterfaceName[] = "tun0";
 const int OpenVPNDriverTest::kInterfaceIndex = 123;
@@ -512,35 +516,38 @@ TEST_F(OpenVPNDriverTest, ParseRouteOption) {
   OpenVPNDriver::ParseRouteOption("network_1", kNetwork1, &routes);
   EXPECT_EQ(2, routes.size());
   EXPECT_EQ(kGateway1, routes[1].gateway);
-  EXPECT_EQ(kNetmask1, routes[1].netmask);
+  EXPECT_EQ(kPrefix1, routes[1].prefix);
   EXPECT_EQ(kNetwork1, routes[1].host);
   EXPECT_EQ(kGateway2, routes[2].gateway);
-  EXPECT_EQ(kNetmask2, routes[2].netmask);
+  EXPECT_EQ(kPrefix2, routes[2].prefix);
   EXPECT_EQ(kNetwork2, routes[2].host);
 }
 
 TEST_F(OpenVPNDriverTest, SetRoutes) {
   OpenVPNDriver::RouteOptions routes;
-  routes[1].gateway = "1.2.3.4";
-  routes[1].host = "1.2.3.4";
   routes[2].host = "2.3.4.5";
-  routes[2].netmask = "255.0.0.0";
-  routes[3].netmask = "255.0.0.0";
+  routes[2].prefix = 8;
+
+  routes[3].prefix = 8;
   routes[3].gateway = "1.2.3.5";
-  routes[5].host = kNetwork2;
-  routes[5].netmask = kNetmask2;
-  routes[5].gateway = kGateway2;
+
   routes[4].host = kNetwork1;
-  routes[4].netmask = kNetmask1;
+  routes[4].prefix = kPrefix1;
   routes[4].gateway = kGateway1;
+
+  routes[5].host = kNetwork2;
+  routes[5].prefix = kPrefix2;
+  routes[5].gateway = kGateway2;
+
   IPConfig::Properties props;
   OpenVPNDriver::SetRoutes(routes, &props);
   ASSERT_EQ(2, props.routes.size());
+
   EXPECT_EQ(kGateway1, props.routes[0].gateway);
-  EXPECT_EQ(kNetmask1, props.routes[0].netmask);
+  EXPECT_EQ(kPrefix1, props.routes[0].prefix);
   EXPECT_EQ(kNetwork1, props.routes[0].host);
   EXPECT_EQ(kGateway2, props.routes[1].gateway);
-  EXPECT_EQ(kNetmask2, props.routes[1].netmask);
+  EXPECT_EQ(kPrefix2, props.routes[1].prefix);
   EXPECT_EQ(kNetwork2, props.routes[1].host);
 
   // Tests that the routes are not reset if no new routes are supplied.
@@ -669,10 +676,10 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   EXPECT_EQ("2.2.2.2", props.dns_servers[2]);
   ASSERT_EQ(2, props.routes.size());
   EXPECT_EQ(kGateway1, props.routes[0].gateway);
-  EXPECT_EQ(kNetmask1, props.routes[0].netmask);
+  EXPECT_EQ(kPrefix1, props.routes[0].prefix);
   EXPECT_EQ(kNetwork1, props.routes[0].host);
   EXPECT_EQ(kGateway2, props.routes[1].gateway);
-  EXPECT_EQ(kNetmask2, props.routes[1].netmask);
+  EXPECT_EQ(kPrefix2, props.routes[1].prefix);
   EXPECT_EQ(kNetwork2, props.routes[1].host);
   EXPECT_FALSE(props.blackhole_ipv6);
 

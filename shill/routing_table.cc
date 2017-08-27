@@ -227,7 +227,7 @@ bool RoutingTable::ConfigureRoutes(int interface_index,
   for (const auto& route : routes) {
     SLOG(this, 3) << "Installing route:"
                   << " Destination: " << route.host
-                  << " Netmask: " << route.netmask
+                  << " Prefix: " << route.prefix
                   << " Gateway: " << route.gateway;
     IPAddress destination_address(address_family);
     IPAddress source_address(address_family);  // Left as default.
@@ -244,8 +244,7 @@ bool RoutingTable::ConfigureRoutes(int interface_index,
       ret = false;
       continue;
     }
-    destination_address.set_prefix(
-        IPAddress::GetPrefixLengthFromMask(address_family, route.netmask));
+    destination_address.set_prefix(route.prefix);
     if (!AddRoute(interface_index,
                   RoutingTableEntry(destination_address,
                                     source_address,

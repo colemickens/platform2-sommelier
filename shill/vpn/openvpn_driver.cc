@@ -524,6 +524,8 @@ IPConfig::Route* OpenVPNDriver::GetRouteOptionEntry(
 // static
 void OpenVPNDriver::ParseRouteOption(
     const string& key, const string& value, RouteOptions* routes) {
+  // IPv4 uses route_{network,netmask,gateway}_<index>
+  // IPv6 uses route_ipv6_{network,gateway}_<index>
   IPConfig::Route* route = GetRouteOptionEntry("network_", key, routes);
   if (route) {
     route->host = value;
@@ -531,7 +533,8 @@ void OpenVPNDriver::ParseRouteOption(
   }
   route = GetRouteOptionEntry("netmask_", key, routes);
   if (route) {
-    route->netmask = value;
+    route->prefix = IPAddress::GetPrefixLengthFromMask(IPAddress::kFamilyIPv4,
+                                                       value);
     return;
   }
   route = GetRouteOptionEntry("gateway_", key, routes);
@@ -548,7 +551,7 @@ void OpenVPNDriver::SetRoutes(const RouteOptions& routes,
   vector<IPConfig::Route> new_routes;
   for (const auto& route_map : routes) {
     const IPConfig::Route& route = route_map.second;
-    if (route.host.empty() || route.netmask.empty() || route.gateway.empty()) {
+    if (route.host.empty() || route.gateway.empty()) {
       LOG(WARNING) << "Ignoring incomplete route: " << route_map.first;
       continue;
     }

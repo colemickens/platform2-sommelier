@@ -314,9 +314,7 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
     } else {
       IPConfig::Route route;
       CHECK(destination.IntoString(&route.host));
-      IPAddress netmask(IPAddress::GetAddressMaskFromPrefix(
-          destination.family(), destination.prefix()));
-      CHECK(netmask.IntoString(&route.netmask));
+      route.prefix = destination.prefix();
       CHECK(gateway.IntoString(&route.gateway));
       routes.push_back(route);
       SLOG(nullptr, 2) << "In " << __func__ << ": Adding route to to "
