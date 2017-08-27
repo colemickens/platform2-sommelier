@@ -29,8 +29,8 @@ else
 fi
 for i in 1 2 3 4 5 6 7 8 9; do
   FILE="${BASENAME}".$i${EXTENSION}
-  [ -f "$FILE" ] || break
-  LOGFILES="${LOGFILES} $FILE"
+  [ -f "${FILE}" ] || break
+  LOGFILES="${FILE} ${LOGFILES}"
 done
 
-cat $LOGFILES | tail -c $MAXDATA
+cat ${LOGFILES} | tail -c ${MAXDATA}
