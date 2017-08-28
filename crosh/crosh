@@ -1563,6 +1563,23 @@ cmd_c() (
   cleanup
 )
 
+USAGE_evtest='evtest'
+EXEC_evtest='/usr/bin/evtest'
+HELP_evtest='
+  Run evtest in safe mode.
+'
+cmd_evtest() (
+  if [ $# -ne 0 ]; then
+    help "too many arguments"
+    return 1
+  else
+    # --safe is "safe" mode, which will only print limited info.
+    # We don't allow any other arguments now. Any attempt to enable more
+    # features should go through security review first.
+    "${EXEC_evtest}" --safe
+  fi
+)
+
 substr() {
   local str="$1"
   local start="$2"
