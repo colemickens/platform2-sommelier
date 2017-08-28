@@ -120,6 +120,8 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--enable-arc-oobe-optin");
   if (builder->UseFlagIsSet("arc_always_start_with_no_play_store"))
     builder->AddArg("--arc-start-mode=always-start-with-no-play-store");
+  if (builder->UseFlagIsSet("arc_transition_m_to_n"))
+    builder->AddArg("--arc-transition-migration-required");
 }
 
 // Blatantly copied from //components/crx_file/id_util.cc.
