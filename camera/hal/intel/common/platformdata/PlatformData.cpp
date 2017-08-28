@@ -206,12 +206,16 @@ void PlatformData::init()
  * This method is only called once when the HAL library is unloaded
  */
 void PlatformData::deinit() {
-    saveAiqdDataToFile();
-    for (int i = 0; i < numberOfCameras(); i++) {
-        mCameraHWInfo->mAiqdDataInfo[i].mData.reset();
+    if (mCameraHWInfo) {
+        saveAiqdDataToFile();
+        for (int i = 0; i < numberOfCameras(); i++) {
+            mCameraHWInfo->mAiqdDataInfo[i].mData.reset();
 
-        delete sKnownCPFConfigurations[i];
-        sKnownCPFConfigurations[i] = nullptr;
+            delete sKnownCPFConfigurations[i];
+            sKnownCPFConfigurations[i] = nullptr;
+        }
+        delete mCameraHWInfo;
+        mCameraHWInfo = nullptr;
     }
 
     if (mGcssKeyMap) {
@@ -222,10 +226,6 @@ void PlatformData::deinit() {
     if (mInstance) {
         delete mInstance;
         mInstance = nullptr;
-    }
-    if (mCameraHWInfo) {
-        delete mCameraHWInfo;
-        mCameraHWInfo = nullptr;
     }
 }
 
