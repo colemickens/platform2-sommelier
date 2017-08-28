@@ -2612,15 +2612,47 @@ void Manager::RecheckPortalOnService(const ServiceRefPtr& service) {
 }
 
 void Manager::RequestScan(const string& technology, Error* error) {
-  if (technology == kTypeWifi || technology == "") {
-    for (const auto& wifi_device : FilterByTechnology(Technology::kWifi)) {
-      metrics_->NotifyUserInitiatedEvent(Metrics::kUserInitiatedEventWifiScan);
-      wifi_device->Scan(error, __func__);
-    }
+  Technology::Identifier technology_identifier;
+  // TODO(benchan): To maintain backward compatibility, we treat an unspecified
+  // technology as WiFi. We should remove this special handling and treat an
+  // unspecified technology as an error after we update existing clients of
+  // this API to specify a valid technology when calling this method.
+  if (technology.empty()) {
+    technology_identifier = Technology::kWifi;
   } else {
-    // TODO(quiche): support scanning for other technologies?
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Unrecognized technology " + technology);
+    technology_identifier = Technology::IdentifierFromName(technology);
+  }
+
+  switch (technology_identifier) {
+    case Technology::kCellular:
+      for (const auto& device : FilterByTechnology(technology_identifier)) {
+        // TODO(benchan): Add a metric to track user-initiated scan for cellular
+        // technology.
+        device->Scan(error, __func__);
+      }
+      break;
+
+    case Technology::kWifi:
+      for (const auto& device : FilterByTechnology(technology_identifier)) {
+        metrics_->NotifyUserInitiatedEvent(
+            Metrics::kUserInitiatedEventWifiScan);
+        device->Scan(error, __func__);
+      }
+      break;
+
+    case Technology::kUnknown:
+      Error::PopulateAndLog(FROM_HERE,
+                            error,
+                            Error::kInvalidArguments,
+                            "Unrecognized technology " + technology);
+      break;
+
+    default:
+      Error::PopulateAndLog(FROM_HERE,
+                            error,
+                            Error::kInvalidArguments,
+                            "Scan unsupported for technology " + technology);
+      break;
   }
 }
 
