@@ -256,8 +256,8 @@ void CellularCapabilityClassic::SetCarrier(const string& carrier,
                                            const ResultCallback& callback) {
   LOG(INFO) << __func__ << "(" << carrier << ")";
   if (!gobi_proxy_.get()) {
-    gobi_proxy_.reset(control_interface()->CreateModemGobiProxy(
-        cellular()->dbus_path(), cellular()->dbus_service()));
+    gobi_proxy_ = control_interface()->CreateModemGobiProxy(
+        cellular()->dbus_path(), cellular()->dbus_service());
   }
   CHECK(error);
   gobi_proxy_->SetCarrier(carrier, error, callback,

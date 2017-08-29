@@ -326,10 +326,10 @@ ChromeosDBusControl::CreateModemGSMNetworkProxy(const string& path,
       proxy_bus_, path, service);
 }
 
-ModemGobiProxyInterface* ChromeosDBusControl::CreateModemGobiProxy(
-    const string& path,
-    const string& service) {
-  return new ChromeosModemGobiProxy(proxy_bus_, path, service);
+std::unique_ptr<ModemGobiProxyInterface>
+ChromeosDBusControl::CreateModemGobiProxy(const string& path,
+                                          const string& service) {
+  return base::MakeUnique<ChromeosModemGobiProxy>(proxy_bus_, path, service);
 }
 
 // Proxies for ModemManager1 interfaces

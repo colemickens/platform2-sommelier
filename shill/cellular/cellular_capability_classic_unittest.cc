@@ -204,10 +204,10 @@ class CellularCapabilityTest : public testing::Test {
       return std::move(test_->gsm_network_proxy_);
     }
 
-    ModemGobiProxyInterface* CreateModemGobiProxy(
+    std::unique_ptr<ModemGobiProxyInterface> CreateModemGobiProxy(
         const string& /*path*/,
         const string& /*service*/) override {
-      return test_->gobi_proxy_.release();
+      return std::move(test_->gobi_proxy_);
     }
 
    private:
