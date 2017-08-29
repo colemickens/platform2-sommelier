@@ -180,10 +180,10 @@ class CellularCapabilityTest : public testing::Test {
       return std::move(test_->simple_proxy_);
     }
 
-    ModemCDMAProxyInterface* CreateModemCDMAProxy(
+    std::unique_ptr<ModemCDMAProxyInterface> CreateModemCDMAProxy(
         const string& /*path*/,
         const string& /*service*/) override {
-      return test_->cdma_proxy_.release();
+      return std::move(test_->cdma_proxy_);
     }
 
     ModemGSMCardProxyInterface* CreateModemGSMCardProxy(

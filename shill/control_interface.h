@@ -174,7 +174,7 @@ class ControlInterface {
   virtual std::unique_ptr<ModemSimpleProxyInterface> CreateModemSimpleProxy(
       const std::string& path, const std::string& service) = 0;
 
-  virtual ModemCDMAProxyInterface* CreateModemCDMAProxy(
+  virtual std::unique_ptr<ModemCDMAProxyInterface> CreateModemCDMAProxy(
       const std::string& path,
       const std::string& service) = 0;
 

@@ -62,8 +62,8 @@ CellularCapabilityCDMA::~CellularCapabilityCDMA() {}
 
 void CellularCapabilityCDMA::InitProxies() {
   CellularCapabilityClassic::InitProxies();
-  proxy_.reset(control_interface()->CreateModemCDMAProxy(
-      cellular()->dbus_path(), cellular()->dbus_service()));
+  proxy_ = control_interface()->CreateModemCDMAProxy(
+      cellular()->dbus_path(), cellular()->dbus_service());
   proxy_->set_signal_quality_callback(
       Bind(&CellularCapabilityCDMA::OnSignalQualitySignal,
            weak_ptr_factory_.GetWeakPtr()));

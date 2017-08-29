@@ -30,6 +30,7 @@
 
 #if !defined(DISABLE_CELLULAR)
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"
+#include "shill/cellular/modem_cdma_proxy_interface.h"
 #include "shill/cellular/modem_manager_proxy_interface.h"
 #include "shill/cellular/modem_proxy_interface.h"
 #include "shill/cellular/modem_simple_proxy_interface.h"
@@ -147,8 +148,8 @@ class NiceMockControl : public ControlInterface {
                    const std::string& path, const std::string& service));
 
   MOCK_METHOD2(CreateModemCDMAProxy,
-               ModemCDMAProxyInterface*(const std::string& path,
-                                        const std::string& service));
+               std::unique_ptr<ModemCDMAProxyInterface>(
+                   const std::string& path, const std::string& service));
   MOCK_METHOD2(CreateModemGSMCardProxy,
                ModemGSMCardProxyInterface*(const std::string& path,
                                            const std::string& service));
