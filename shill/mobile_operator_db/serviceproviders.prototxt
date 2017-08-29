@@ -37,7 +37,6 @@ mno {
     mccmnc : "42402"
     mobile_apn {
       apn : "mnet"
-      plan : POSTPAID
       localized_name {
         name : "Etisalat"
       }
@@ -48,7 +47,6 @@ mno {
     }
     mobile_apn {
       apn : "etisalat.ae"
-      plan : POSTPAID
       localized_name {
         name : "Etisalat 3G"
       }
@@ -69,7 +67,6 @@ mno {
     mccmnc : "42403"
     mobile_apn {
       apn : "du"
-      plan : POSTPAID
     }
   }
 }
@@ -85,7 +82,6 @@ mno {
     mccmnc : "41201"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       username : "awcc"
       password : "1111"
     }
@@ -103,14 +99,12 @@ mno {
     mccmnc : "27602"
     mobile_apn {
       apn : "Twa"
-      plan : POSTPAID
       localized_name {
         name : "TWA"
       }
     }
     mobile_apn {
       apn : "vodafoneweb"
-      plan : POSTPAID
       localized_name {
         name : "Vodafone Web"
       }
@@ -129,7 +123,6 @@ mno {
     mccmnc : "28301"
     mobile_apn {
       apn : "internet.beeline.am"
-      plan : POSTPAID
       username : "internet"
       password : "internet"
     }
@@ -147,7 +140,6 @@ mno {
     mccmnc : "28304"
     mobile_apn {
       apn : "connect.kt.am"
-      plan : POSTPAID
       localized_name {
         name : "KT_MARK"
       }
@@ -166,14 +158,12 @@ mno {
     mccmnc : "28310"
     mobile_apn {
       apn : "internet.orange"
-      plan : POSTPAID
       localized_name {
         name : "Internet Hima (USB)"
       }
     }
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Broadband"
       }
@@ -192,14 +182,12 @@ mno {
     mccmnc : "28305"
     mobile_apn {
       apn : "connect.vivacell.am"
-      plan : POSTPAID
       localized_name {
         name : "MTS connect"
       }
     }
     mobile_apn {
       apn : "inet.vivacell.am"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Broadband"
       }
@@ -236,7 +224,6 @@ mno {
     mccmnc : "63102"
     mobile_apn {
       apn : "internet.unitel.co.ao"
-      plan : POSTPAID
     }
   }
 }
@@ -252,7 +239,6 @@ mno {
     mccmnc : "722340"
     mobile_apn {
       apn : "arnet.personal.com"
-      plan : POSTPAID
       dns : "172.25.7.6"
       dns : "172.25.7.7"
     }
@@ -272,7 +258,6 @@ mno {
     mccmnc : "722330"
     mobile_apn {
       apn : "gprs.claro.com.ar"
-      plan : POSTPAID
       localized_name {
         name : "3G Internet"
       }
@@ -283,7 +268,6 @@ mno {
     }
     mobile_apn {
       apn : "internet.ctimovil.com.ar"
-      plan : POSTPAID
       localized_name {
         name : "GPRS"
       }
@@ -305,7 +289,6 @@ mno {
     mccmnc : "722070"
     mobile_apn {
       apn : "internet.gprs.unifon.com.ar"
-      plan : POSTPAID
       localized_name {
         name : "WAP"
       }
@@ -314,7 +297,6 @@ mno {
     }
     mobile_apn {
       apn : "internet.gprs.unifon.com.ar"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
@@ -336,7 +318,6 @@ mno {
     mccmnc : "72234"
     mobile_apn {
       apn : "gprs.personal.com"
-      plan : POSTPAID
       localized_name {
         name : "GPRS"
       }
@@ -347,7 +328,6 @@ mno {
     }
     mobile_apn {
       apn : "datos.personal.com"
-      plan : POSTPAID
       localized_name {
         name : "DATOS"
       }
@@ -368,7 +348,6 @@ mno {
     mccmnc : "23201"
     mobile_apn {
       apn : "a1.net"
-      plan : POSTPAID
       localized_name {
         name : "A1 Breitband"
       }
@@ -379,7 +358,6 @@ mno {
     }
     mobile_apn {
       apn : "aon.data"
-      plan : POSTPAID
       localized_name {
         name : "aon (Flex, Breitband-Duo, BusinessFlex)"
       }
@@ -388,7 +366,6 @@ mno {
     }
     mobile_apn {
       apn : "aon.at"
-      plan : POSTPAID
       localized_name {
         name : "aonMobile"
       }
@@ -409,7 +386,6 @@ mno {
     mccmnc : "23201"
     mobile_apn {
       apn : "mdata.com"
-      plan : PREPAID
       localized_name {
         name : "International Roaming"
       }
@@ -430,13 +406,11 @@ mno {
     mccmnc : "23211"
     mobile_apn {
       apn : "bob.at"
-      plan : PREPAID
       username : "data@bob.at"
       password : "ppp"
     }
     mobile_apn {
       apn : "bob.at"
-      plan : PREPAID
       username : "ppp@bob.at"
       password : "ppp"
       dns : "194.48.139.254"
@@ -444,7 +418,6 @@ mno {
     }
     mobile_apn {
       apn : "mms.bob.at"
-      plan : POSTPAID
       username : "data@bob.at"
       password : "ppp"
     }
@@ -465,7 +438,6 @@ mno {
     mccmnc : "23210"
     mobile_apn {
       apn : "drei.at"
-      plan : POSTPAID
       dns : "213.94.78.17"
       dns : "213.94.78.16"
     }
@@ -483,7 +455,6 @@ mno {
     mccmnc : "23205"
     mobile_apn {
       apn : "web.one.at"
-      plan : POSTPAID
       localized_name {
         name : "OneNet Web"
       }
@@ -494,7 +465,6 @@ mno {
     }
     mobile_apn {
       apn : "wap.one.at"
-      plan : POSTPAID
       localized_name {
         name : "Orange WAP"
       }
@@ -503,7 +473,6 @@ mno {
     }
     mobile_apn {
       apn : "mms.one.at"
-      plan : POSTPAID
       localized_name {
         name : "Orange MMS"
       }
@@ -512,7 +481,6 @@ mno {
     }
     mobile_apn {
       apn : "fullspeed"
-      plan : POSTPAID
       localized_name {
         name : "Web (no filtering)"
       }
@@ -521,7 +489,6 @@ mno {
     }
     mobile_apn {
       apn : "orange.web"
-      plan : POSTPAID
       localized_name {
         name : "Orange Web"
       }
@@ -532,7 +499,6 @@ mno {
     }
     mobile_apn {
       apn : "orange.mms"
-      plan : POSTPAID
       localized_name {
         name : "Orange Web"
       }
@@ -553,7 +519,6 @@ mno {
     mccmnc : "23203"
     mobile_apn {
       apn : "gprswap"
-      plan : POSTPAID
       localized_name {
         name : "WAP"
       }
@@ -562,7 +527,6 @@ mno {
     }
     mobile_apn {
       apn : "gprsinternet"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
@@ -573,7 +537,6 @@ mno {
     }
     mobile_apn {
       apn : "business.gprsinternet"
-      plan : POSTPAID
       localized_name {
         name : "Business Internet"
       }
@@ -595,7 +558,6 @@ mno {
     mccmnc : "23203"
     mobile_apn {
       apn : "volmobil"
-      plan : PREPAID
     }
   }
 }
@@ -611,7 +573,6 @@ mno {
     mccmnc : "23212"
     mobile_apn {
       apn : "web.yesss.at"
-      plan : POSTPAID
     }
   }
 }
@@ -627,7 +588,6 @@ mno {
     mccmnc : "23207"
     mobile_apn {
       apn : "web"
-      plan : POSTPAID
       localized_name {
         name : "Ge org:)"
       }
@@ -720,7 +680,6 @@ mno {
     mccmnc : "50538"
     mobile_apn {
       apn : "purtona.net"
-      plan : POSTPAID
       localized_name {
         name : "Crazy NET"
       }
@@ -729,7 +688,6 @@ mno {
     }
     mobile_apn {
       apn : "purtona.wap"
-      plan : POSTPAID
       localized_name {
         name : "Crazy WAP/MMS"
       }
@@ -856,14 +814,12 @@ mno {
     mccmnc : "50502"
     mobile_apn {
       apn : "internode"
-      plan : POSTPAID
       localized_name {
         name : "NodeMobile Data"
       }
     }
     mobile_apn {
       apn : "splns333a1"
-      plan : POSTPAID
       localized_name {
         name : "Old NodeMobile Data (before 2009-08-26)"
       }
@@ -882,7 +838,6 @@ mno {
     mccmnc : "50502"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Internet (handsets)"
       }
@@ -891,7 +846,6 @@ mno {
     }
     mobile_apn {
       apn : "yesinternet"
-      plan : PREPAID
       localized_name {
         name : "Optus Yes Internet"
       }
@@ -900,7 +854,6 @@ mno {
     }
     mobile_apn {
       apn : "connect"
-      plan : POSTPAID
       localized_name {
         name : "Wireless Broadband"
       }
@@ -909,7 +862,6 @@ mno {
     }
     mobile_apn {
       apn : "connectcap"
-      plan : POSTPAID
       localized_name {
         name : "Post-Paid Mobile Broadband"
       }
@@ -918,7 +870,6 @@ mno {
     }
     mobile_apn {
       apn : "preconnect"
-      plan : POSTPAID
       localized_name {
         name : "Pre-Paid Mobile Broadband"
       }
@@ -927,7 +878,6 @@ mno {
     }
     mobile_apn {
       apn : "mms"
-      plan : POSTPAID
       localized_name {
         name : "Optus MMS"
       }
@@ -992,14 +942,12 @@ mno {
     }
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "TPG (all except iPhone)"
       }
     }
     mobile_apn {
       apn : "mms"
-      plan : POSTPAID
       localized_name {
         name : "MMS"
       }
@@ -1018,13 +966,11 @@ mno {
     mccmnc : "50501"
     mobile_apn {
       apn : "telstra.wap"
-      plan : POSTPAID
       dns : "139.130.4.4"
       dns : "203.50.2.71"
     }
     mobile_apn {
       apn : "telstra.datapack"
-      plan : POSTPAID
       localized_name {
         name : "Telstra (3G data pack)"
       }
@@ -1034,7 +980,6 @@ mno {
     }
     mobile_apn {
       apn : "telstra.internet"
-      plan : POSTPAID
       localized_name {
         name : "Telstra (Next G)"
       }
@@ -1043,7 +988,6 @@ mno {
     }
     mobile_apn {
       apn : "telstra.pcpack"
-      plan : POSTPAID
       localized_name {
         name : "Telstra (3G PC pack - pay by time)"
       }
@@ -1053,21 +997,18 @@ mno {
     }
     mobile_apn {
       apn : "telstra.iph"
-      plan : POSTPAID
       localized_name {
         name : "Telstra Internet/Wap"
       }
     }
     mobile_apn {
       apn : "telstra.mms"
-      plan : POSTPAID
       localized_name {
         name : "Telstra MMS"
       }
     }
     mobile_apn {
       apn : "telstra.bigpond"
-      plan : POSTPAID
       localized_name {
         name : "Telstra BigPond"
       }
@@ -1086,7 +1027,6 @@ mno {
     mccmnc : "50506"
     mobile_apn {
       apn : "3netaccess"
-      plan : POSTPAID
       username : "a"
       password : "a"
       dns : "202.124.68.130"
@@ -1094,7 +1034,6 @@ mno {
     }
     mobile_apn {
       apn : "3services"
-      plan : PREPAID
       localized_name {
         name : "Three Prepaid"
       }
@@ -1117,7 +1056,6 @@ mno {
     mccmnc : "50502"
     mobile_apn {
       apn : "VirginInternet"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Internet"
       }
@@ -1127,7 +1065,6 @@ mno {
     }
     mobile_apn {
       apn : "VirginBroadband"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Broadband"
       }
@@ -1146,14 +1083,12 @@ mno {
     mccmnc : "50503"
     mobile_apn {
       apn : "vfinternet.au"
-      plan : POSTPAID
       localized_name {
         name : "Postpaid and some prepaid phone plans"
       }
     }
     mobile_apn {
       apn : "vfprepaymbb"
-      plan : PREPAID
       localized_name {
         name : "Prepaid"
       }
@@ -1162,7 +1097,6 @@ mno {
     }
     mobile_apn {
       apn : "live.vodafone.com"
-      plan : POSTPAID
       localized_name {
         name : "Vodafone Internet"
       }
@@ -1221,7 +1155,6 @@ mno {
     mccmnc : "50502"
     mobile_apn {
       apn : "iinet"
-      plan : POSTPAID
     }
   }
 }
@@ -1237,7 +1170,6 @@ mno {
     mccmnc : "40001"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -1253,7 +1185,6 @@ mno {
     mccmnc : "40004"
     mobile_apn {
       apn : "azerfon"
-      plan : POSTPAID
     }
   }
 }
@@ -1269,7 +1200,6 @@ mno {
     mccmnc : "40002"
     mobile_apn {
       apn : "mms"
-      plan : POSTPAID
     }
   }
 }
@@ -1285,7 +1215,6 @@ mno {
     mccmnc : "21890"
     mobile_apn {
       apn : "mms.bhmobile.ba"
-      plan : POSTPAID
     }
   }
 }
@@ -1301,7 +1230,6 @@ mno {
     mccmnc : "21803"
     mobile_apn {
       apn : "gprs.eronet.ba"
-      plan : POSTPAID
     }
   }
 }
@@ -1317,7 +1245,6 @@ mno {
     mccmnc : "21805"
     mobile_apn {
       apn : "mtelgprs1"
-      plan : POSTPAID
       localized_name {
         name : "Package 1"
       }
@@ -1326,7 +1253,6 @@ mno {
     }
     mobile_apn {
       apn : "mtelgprs2"
-      plan : POSTPAID
       localized_name {
         name : "Package 2"
       }
@@ -1335,7 +1261,6 @@ mno {
     }
     mobile_apn {
       apn : "mtelgprs3"
-      plan : POSTPAID
       localized_name {
         name : "Package 3"
       }
@@ -1344,7 +1269,6 @@ mno {
     }
     mobile_apn {
       apn : "mtelgprs4"
-      plan : POSTPAID
       localized_name {
         name : "Package 4"
       }
@@ -1353,7 +1277,6 @@ mno {
     }
     mobile_apn {
       apn : "mtelfun"
-      plan : PREPAID
       localized_name {
         name : "Prepaid"
       }
@@ -1374,7 +1297,6 @@ mno {
     mccmnc : "342750"
     mobile_apn {
       apn : "isp.digicelbarbados.com"
-      plan : POSTPAID
     }
   }
 }
@@ -1390,7 +1312,6 @@ mno {
     mccmnc : "47003"
     mobile_apn {
       apn : "blweb"
-      plan : POSTPAID
       localized_name {
         name : "Web"
       }
@@ -1432,7 +1353,6 @@ mno {
     mccmnc : "47001"
     mobile_apn {
       apn : "gpinternet"
-      plan : POSTPAID
       dns : "202.56.4.120"
       dns : "202.56.4.121"
     }
@@ -1450,7 +1370,6 @@ mno {
     mccmnc : "47002"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
@@ -1470,7 +1389,6 @@ mno {
     mccmnc : "47007"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
@@ -1490,7 +1408,6 @@ mno {
     mccmnc : "20620"
     mobile_apn {
       apn : "gprs.base.be"
-      plan : POSTPAID
       username : "base"
       password : "base"
       dns : "195.130.131.139"
@@ -1510,7 +1427,6 @@ mno {
     mccmnc : "20620"
     mobile_apn {
       apn : "web.be"
-      plan : PREPAID
       username : "web"
       password : "web"
     }
@@ -1528,7 +1444,6 @@ mno {
     mccmnc : "20610"
     mobile_apn {
       apn : "web.pro.be"
-      plan : POSTPAID
       localized_name {
         name : "Business"
       }
@@ -1539,7 +1454,6 @@ mno {
     }
     mobile_apn {
       apn : "internet.be"
-      plan : POSTPAID
       localized_name {
         name : "Personal"
       }
@@ -1550,7 +1464,6 @@ mno {
     }
     mobile_apn {
       apn : "iew.be"
-      plan : POSTPAID
       localized_name {
         name : "Internet Everywhere"
       }
@@ -1561,7 +1474,6 @@ mno {
     }
     mobile_apn {
       apn : "mworld.be"
-      plan : POSTPAID
       username : "mobistar"
       password : "mobistar"
       dns : "212.65.63.10"
@@ -1581,7 +1493,6 @@ mno {
     mccmnc : "20610"
     mobile_apn {
       apn : "orangeinternet"
-      plan : POSTPAID
     }
   }
 }
@@ -1597,7 +1508,6 @@ mno {
     mccmnc : "20601"
     mobile_apn {
       apn : "internet.proximus.be"
-      plan : POSTPAID
       localized_name {
         name : "Inter"
       }
@@ -1606,7 +1516,6 @@ mno {
     }
     mobile_apn {
       apn : "intraprox.be"
-      plan : POSTPAID
       localized_name {
         name : "Intra"
       }
@@ -1627,21 +1536,18 @@ mno {
     mccmnc : "20610"
     mobile_apn {
       apn : "mobile.internet.be"
-      plan : POSTPAID
       localized_name {
         name : "Old Walk & Surf"
       }
     }
     mobile_apn {
       apn : "telenetwap.be"
-      plan : POSTPAID
       localized_name {
         name : "Walk & Talk"
       }
     }
     mobile_apn {
       apn : "telenetwap.be"
-      plan : POSTPAID
       localized_name {
         name : "Walk & Surf"
       }
@@ -1660,7 +1566,6 @@ mno {
     mccmnc : "61302"
     mobile_apn {
       apn : "internet"
-      plan : PREPAID
     }
   }
 }
@@ -1676,7 +1581,6 @@ mno {
     mccmnc : "28405"
     mobile_apn {
       apn : "internet.globul.bg"
-      plan : POSTPAID
       username : "globul"
       dns : "192.168.88.11"
     }
@@ -1694,7 +1598,6 @@ mno {
     mccmnc : "28401"
     mobile_apn {
       apn : "inet-gprs.mtel.bg"
-      plan : POSTPAID
       dns : "213.226.7.34"
       dns : "213.226.7.35"
     }
@@ -1712,7 +1615,6 @@ mno {
     mccmnc : "28403"
     mobile_apn {
       apn : "internet.vivacom.bg"
-      plan : POSTPAID
       localized_name {
         name : "Vivacom Internet (Postpaid)"
       }
@@ -1721,7 +1623,6 @@ mno {
     }
     mobile_apn {
       apn : "internet.vivatel.bg"
-      plan : POSTPAID
       localized_name {
         name : "Vivatel (old)"
       }
@@ -1743,7 +1644,6 @@ mno {
     mccmnc : "42601"
     mobile_apn {
       apn : "internet.batelco.com"
-      plan : POSTPAID
       localized_name {
         name : "oNet"
       }
@@ -1764,7 +1664,6 @@ mno {
     mccmnc : "42604"
     mobile_apn {
       apn : "viva.bh"
-      plan : POSTPAID
       localized_name {
         name : "Viva"
       }
@@ -1783,7 +1682,6 @@ mno {
     mccmnc : "42602"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
@@ -1792,7 +1690,6 @@ mno {
     }
     mobile_apn {
       apn : "hsdpa"
-      plan : POSTPAID
       localized_name {
         name : "eGO"
       }
@@ -1813,7 +1710,6 @@ mno {
     mccmnc : "64203"
     mobile_apn {
       apn : "ucnet"
-      plan : POSTPAID
     }
   }
 }
@@ -1829,7 +1725,6 @@ mno {
     mccmnc : "64202"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -1845,7 +1740,6 @@ mno {
     mccmnc : "52802"
     mobile_apn {
       apn : "bmobilewap"
-      plan : POSTPAID
     }
   }
 }
@@ -1861,7 +1755,6 @@ mno {
     mccmnc : "52811"
     mobile_apn {
       apn : "dst.wap"
-      plan : POSTPAID
       username : "wap"
       password : "wap"
     }
@@ -1879,7 +1772,6 @@ mno {
     mccmnc : "72416"
     mobile_apn {
       apn : "brt.br"
-      plan : POSTPAID
       username : "BrT"
       password : "BrT"
     }
@@ -1900,7 +1792,6 @@ mno {
     mccmnc : "72434"
     mobile_apn {
       apn : "ctbc.br"
-      plan : POSTPAID
       username : "ctbc"
       password : "1212"
     }
@@ -1918,13 +1809,11 @@ mno {
     mccmnc : "72405"
     mobile_apn {
       apn : "claro.com.br"
-      plan : POSTPAID
       username : "claro"
       password : "claro"
     }
     mobile_apn {
       apn : "bandalarga.claro.com.br"
-      plan : POSTPAID
       localized_name {
         name : "3G"
       }
@@ -1947,12 +1836,10 @@ mno {
     mccmnc : "72424"
     mobile_apn {
       apn : "gprs.oi.com.br"
-      plan : POSTPAID
       password : "oioioi"
     }
     mobile_apn {
       apn : "wapgprs.oi.com.br"
-      plan : POSTPAID
       localized_name {
         name : "WAP"
       }
@@ -1976,7 +1863,6 @@ mno {
     mccmnc : "72408"
     mobile_apn {
       apn : "tim.br"
-      plan : POSTPAID
       username : "tim"
       password : "tim"
       dns : "10.223.246.102"
@@ -1995,7 +1881,6 @@ mno {
     }
     mobile_apn {
       apn : "wap.telcel.com"
-      plan : POSTPAID
       username : "iesgprs"
       password : "iesgprs2002"
       dns : "66.36.250.14"
@@ -2017,7 +1902,6 @@ mno {
     mccmnc : "72423"
     mobile_apn {
       apn : "zap.vivo.com.br"
-      plan : POSTPAID
       username : "vivo"
       password : "vivo"
     }
@@ -2035,7 +1919,6 @@ mno {
     mccmnc : "364390"
     mobile_apn {
       apn : "internet.btcbahamas.com"
-      plan : POSTPAID
     }
   }
 }
@@ -2051,7 +1934,6 @@ mno {
     mccmnc : "65201"
     mobile_apn {
       apn : "internet.mascom"
-      plan : POSTPAID
     }
   }
 }
@@ -2067,7 +1949,6 @@ mno {
     mccmnc : "25702"
     mobile_apn {
       apn : "internet.mts.by"
-      plan : POSTPAID
       username : "mts"
       password : "mts"
     }
@@ -2085,7 +1966,6 @@ mno {
     mccmnc : "25703"
     mobile_apn {
       apn : "internet.life.com.by"
-      plan : POSTPAID
     }
   }
 }
@@ -2101,7 +1981,6 @@ mno {
     mccmnc : "25701"
     mobile_apn {
       apn : "wap.velcom.by"
-      plan : POSTPAID
       localized_name {
         name : "GPRS WAP"
       }
@@ -2110,7 +1989,6 @@ mno {
     }
     mobile_apn {
       apn : "web.velcom.by"
-      plan : POSTPAID
       localized_name {
         name : "GPRS WEB"
       }
@@ -2119,7 +1997,6 @@ mno {
     }
     mobile_apn {
       apn : "plus.velcom.by"
-      plan : POSTPAID
       localized_name {
         name : "GPRS WEB PLUS"
       }
@@ -2128,7 +2005,6 @@ mno {
     }
     mobile_apn {
       apn : "privet.velcom.by"
-      plan : POSTPAID
       localized_name {
         name : "GPRS PRIVET"
       }
@@ -2137,7 +2013,6 @@ mno {
     }
     mobile_apn {
       apn : "web1.velcom.by"
-      plan : POSTPAID
       localized_name {
         name : "WEB BASIC"
       }
@@ -2146,7 +2021,6 @@ mno {
     }
     mobile_apn {
       apn : "web2.velcom.by"
-      plan : POSTPAID
       localized_name {
         name : "WEB 25"
       }
@@ -2155,7 +2029,6 @@ mno {
     }
     mobile_apn {
       apn : "web3.velcom.by"
-      plan : POSTPAID
       localized_name {
         name : "WEB 150"
       }
@@ -2164,7 +2037,6 @@ mno {
     }
     mobile_apn {
       apn : "vmi.velcom.by"
-      plan : POSTPAID
       localized_name {
         name : "WEB 500"
       }
@@ -2188,21 +2060,18 @@ mno {
     mccmnc : "302880"
     mobile_apn {
       apn : "inet.bell.ca"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
     }
     mobile_apn {
       apn : "pda.bell.ca"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Web"
       }
     }
     mobile_apn {
       apn : "pda2.bell.ca"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Fast Web"
       }
@@ -2257,7 +2126,6 @@ mno {
     mccmnc : "302370"
     mobile_apn {
       apn : "internet.fido.ca"
-      plan : POSTPAID
       username : "fido"
       password : "fido"
       dns : "204.92.15.211"
@@ -2277,14 +2145,12 @@ mno {
     mccmnc : "302320"
     mobile_apn {
       apn : "wap.davewireless.com"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Web"
       }
     }
     mobile_apn {
       apn : "internet.davewireless.com"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Broadband"
       }
@@ -2303,7 +2169,6 @@ mno {
     mccmnc : "302720"
     mobile_apn {
       apn : "internet.com"
-      plan : POSTPAID
       username : "wapuser1"
       password : "wap"
       dns : "207.181.101.4"
@@ -2356,28 +2221,24 @@ mno {
     mccmnc : "302880"
     mobile_apn {
       apn : "isp.telus.com"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
     }
     mobile_apn {
       apn : "vpn.telus.com"
-      plan : POSTPAID
       localized_name {
         name : "Internet (with VPN)"
       }
     }
     mobile_apn {
       apn : "bb.telus.com"
-      plan : POSTPAID
       localized_name {
         name : "Blackberry"
       }
     }
     mobile_apn {
       apn : "sp.telus.com"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Web/Smartphone"
       }
@@ -2415,14 +2276,12 @@ mno {
     mccmnc : "302510"
     mobile_apn {
       apn : "media.videotron"
-      plan : POSTPAID
       localized_name {
         name : "Telephony data"
       }
     }
     mobile_apn {
       apn : "ihvm.videotron"
-      plan : POSTPAID
       localized_name {
         name : "IHVM"
       }
@@ -2452,14 +2311,12 @@ mno {
     mccmnc : "302490"
     mobile_apn {
       apn : "broadband.windmobile.ca"
-      plan : POSTPAID
       localized_name {
         name : "Laptop (data stick)"
       }
     }
     mobile_apn {
       apn : "internet.windmobile.ca"
-      plan : POSTPAID
       localized_name {
         name : "Mobile (add-on for phone)"
       }
@@ -2478,7 +2335,6 @@ mno {
     mccmnc : "63001"
     mobile_apn {
       apn : "vodanet"
-      plan : POSTPAID
       username : "vodalive"
       dns : "172.24.97.1"
     }
@@ -2496,7 +2352,6 @@ mno {
     mccmnc : "22801"
     mobile_apn {
       apn : "gprs.swisscom.ch"
-      plan : POSTPAID
       localized_name {
         name : "Migros Data"
       }
@@ -2515,7 +2370,6 @@ mno {
     mccmnc : "22803"
     mobile_apn {
       apn : "mobileoffice3g"
-      plan : POSTPAID
       localized_name {
         name : "Internet Everywhere - Standard"
       }
@@ -2524,7 +2378,6 @@ mno {
     }
     mobile_apn {
       apn : "click"
-      plan : PREPAID
       localized_name {
         name : "Internet Everywhere - Prepaid"
       }
@@ -2533,7 +2386,6 @@ mno {
     }
     mobile_apn {
       apn : "intranetaccess"
-      plan : POSTPAID
       localized_name {
         name : "Internet Everywhere - Intranet Access"
       }
@@ -2558,7 +2410,6 @@ mno {
     mccmnc : "22802"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       username : "internet"
       password : "internet"
       dns : "194.230.1.103"
@@ -2588,7 +2439,6 @@ mno {
     mccmnc : "22801"
     mobile_apn {
       apn : "gprs.swisscom.ch"
-      plan : POSTPAID
       localized_name {
         name : "Swisscom GPRS"
       }
@@ -2597,7 +2447,6 @@ mno {
     }
     mobile_apn {
       apn : "corporate.swisscom.ch"
-      plan : POSTPAID
       localized_name {
         name : "Swisscom CAA"
       }
@@ -2606,7 +2455,6 @@ mno {
     }
     mobile_apn {
       apn : "event.swisscom.ch"
-      plan : POSTPAID
       localized_name {
         name : "Swisscom MMS"
       }
@@ -2626,7 +2474,6 @@ mno {
     mccmnc : "61205"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       dns : "172.16.100.5"
     }
   }
@@ -2643,13 +2490,11 @@ mno {
     mccmnc : "73003"
     mobile_apn {
       apn : "bam.clarochile.cl"
-      plan : POSTPAID
       username : "clarochile"
       password : "clarochile"
     }
     mobile_apn {
       apn : "bap.clarochile.cl"
-      plan : PREPAID
       localized_name {
         name : "Prepago"
       }
@@ -2658,7 +2503,6 @@ mno {
     }
     mobile_apn {
       apn : "wap.clarochile.cl"
-      plan : POSTPAID
       localized_name {
         name : "WAP"
       }
@@ -2679,7 +2523,6 @@ mno {
     mccmnc : "73001"
     mobile_apn {
       apn : "imovil.entelpcs.cl"
-      plan : POSTPAID
       localized_name {
         name : "Contract / Prepaid / WebSession"
       }
@@ -2688,7 +2531,6 @@ mno {
     }
     mobile_apn {
       apn : "bam.entelpcs.cl"
-      plan : POSTPAID
       localized_name {
         name : "WAP"
       }
@@ -2709,7 +2551,6 @@ mno {
     mccmnc : "73010"
     mobile_apn {
       apn : "web.tmovil.cl"
-      plan : POSTPAID
       localized_name {
         name : "Web"
       }
@@ -2718,7 +2559,6 @@ mno {
     }
     mobile_apn {
       apn : "wap.tmovil.cl"
-      plan : POSTPAID
       localized_name {
         name : "WAP"
       }
@@ -2739,7 +2579,6 @@ mno {
     mccmnc : "62401"
     mobile_apn {
       apn : "INTERNET"
-      plan : POSTPAID
       username : "guest"
       password : "guest"
     }
@@ -2757,7 +2596,6 @@ mno {
     mccmnc : "62402"
     mobile_apn {
       apn : "orangecmgprs"
-      plan : POSTPAID
       username : "orange"
       password : "orange"
     }
@@ -2776,7 +2614,6 @@ mno {
     mccmnc : "46002"
     mobile_apn {
       apn : "cmwap"
-      plan : POSTPAID
       localized_name {
         name : "WAP"
       }
@@ -2785,7 +2622,6 @@ mno {
     }
     mobile_apn {
       apn : "cmnet"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
@@ -2828,7 +2664,6 @@ mno {
     mccmnc : "46001"
     mobile_apn {
       apn : "3gnet"
-      plan : POSTPAID
       username : "uninet"
     }
   }
@@ -2845,7 +2680,6 @@ mno {
     mccmnc : "732101"
     mobile_apn {
       apn : "internet.comcel.com.co"
-      plan : POSTPAID
       username : "COMCELWEB"
       password : "COMCELWEB"
     }
@@ -2864,7 +2698,6 @@ mno {
     mccmnc : "732123"
     mobile_apn {
       apn : "internet.movistar.com.co"
-      plan : POSTPAID
       username : "movistar"
       password : "movistar"
     }
@@ -2883,7 +2716,6 @@ mno {
     mccmnc : "732111"
     mobile_apn {
       apn : "web.colombiamovil.com.co"
-      plan : POSTPAID
     }
   }
 }
@@ -2900,13 +2732,11 @@ mno {
     mccmnc : "732111"
     mobile_apn {
       apn : "www.une.net.co"
-      plan : POSTPAID
       username : "une"
       password : "une"
     }
     mobile_apn {
       apn : "une4glte.net.co"
-      plan : POSTPAID
       localized_name {
         name : "LTE (4G)"
       }
@@ -2924,7 +2754,6 @@ mno {
     }
     mobile_apn {
       apn : "web.uffmovil.com.co"
-      plan : POSTPAID
     }
   }
 }
@@ -2940,7 +2769,6 @@ mno {
     mccmnc : "732123"
     mobile_apn {
       apn : "web.vmc.net.co"
-      plan : POSTPAID
     }
   }
 }
@@ -2955,7 +2783,6 @@ mno {
     }
     mobile_apn {
       apn : "moviletb.net.co"
-      plan : POSTPAID
       username : "etb"
       password : "etb"
     }
@@ -2974,7 +2801,6 @@ mno {
     mccmnc : "71202"
     mobile_apn {
       apn : "icecelular"
-      plan : POSTPAID
       username : "guest"
       password : "guest"
       dns : "208.133.206.44"
@@ -2993,7 +2819,6 @@ mno {
     mccmnc : "71203"
     mobile_apn {
       apn : "kolbi3g"
-      plan : POSTPAID
       localized_name {
         name : "Kolbi 3g"
       }
@@ -3012,14 +2837,12 @@ mno {
     mccmnc : "28001"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Contract"
       }
     }
     mobile_apn {
       apn : "pp.internet"
-      plan : PREPAID
       localized_name {
         name : "Prepaid"
       }
@@ -3038,7 +2861,6 @@ mno {
     mccmnc : "28010"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       username : "wap"
       password : "wap"
     }
@@ -3056,19 +2878,16 @@ mno {
     mccmnc : "23002"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       dns : "160.218.10.200"
       dns : "160.218.43.200"
     }
     mobile_apn {
       apn : "internet.open"
-      plan : POSTPAID
       dns : "160.218.10.200"
       dns : "160.218.43.200"
     }
     mobile_apn {
       apn : "internet"
-      plan : PREPAID
       localized_name {
         name : "Prepaid"
       }
@@ -3087,7 +2906,6 @@ mno {
     mccmnc : "23001"
     mobile_apn {
       apn : "internet.t-mobile.cz"
-      plan : POSTPAID
       dns : "62.141.0.1"
       dns : "213.162.65.1"
     }
@@ -3105,7 +2923,6 @@ mno {
     mccmnc : "23003"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       dns : "217.77.161.130"
       dns : "217.77.161.131"
     }
@@ -3123,7 +2940,6 @@ mno {
     mccmnc : "26207"
     mobile_apn {
       apn : "internet.partner1"
-      plan : POSTPAID
       localized_name {
         name : "Option Mobile"
       }
@@ -3144,7 +2960,6 @@ mno {
     mccmnc : "26201"
     mobile_apn {
       apn : "internet.t-mobile"
-      plan : PREPAID
       localized_name {
         name : "Prepaid Contracts"
       }
@@ -3169,7 +2984,6 @@ mno {
     mccmnc : "26277"
     mobile_apn {
       apn : "internet.eplus.de"
-      plan : POSTPAID
       username : "eplus"
       password : "gprs"
       dns : "212.23.97.2"
@@ -3193,7 +3007,6 @@ mno {
       mccmnc : "26277"
       mobile_apn {
         apn : "internet.eplus.de"
-        plan : POSTPAID
         localized_name {
           name : "Volume rate/30 Day Flatrate"
         }
@@ -3204,7 +3017,6 @@ mno {
       }
       mobile_apn {
         apn : "tagesflat.eplus.de"
-        plan : POSTPAID
         localized_name {
           name : "24 Hour Flatrate"
         }
@@ -3231,7 +3043,6 @@ mno {
       mccmnc : "26203"
       mobile_apn {
         apn : "internet.netcologne.de"
-        plan : POSTPAID
         username : "web"
         password : "password"
       }
@@ -3254,13 +3065,11 @@ mno {
       mccmnc : "26277"
       mobile_apn {
         apn : "internet.eplus.de"
-        plan : POSTPAID
         username : "blau"
         password : "blau"
       }
       mobile_apn {
         apn : "tagesflat.eplus.de"
-        plan : POSTPAID
         localized_name {
           name : "24 Hour Flatrate"
         }
@@ -3289,7 +3098,6 @@ mno {
       mccmnc : "26277"
       mobile_apn {
         apn : "internet.eplus.de"
-        plan : POSTPAID
         username : "simyo"
         password : "simyo"
         dns : "212.23.97.2"
@@ -3312,7 +3120,6 @@ mno {
     mccmnc : "26211"
     mobile_apn {
       apn : "pinternet.interkom.de"
-      plan : POSTPAID
       username : "fonic"
       password : "fonic"
     }
@@ -3332,7 +3139,6 @@ mno {
     mccmnc : "26211"
     mobile_apn {
       apn : "pinternet.interkom.de"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
@@ -3353,7 +3159,6 @@ mno {
     mccmnc : "26211"
     mobile_apn {
       apn : "pinternet.interkom.de"
-      plan : POSTPAID
       localized_name {
         name : "LOOP"
       }
@@ -3362,7 +3167,6 @@ mno {
     }
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Pay-by-MB"
       }
@@ -3371,7 +3175,6 @@ mno {
     }
     mobile_apn {
       apn : "surfo2"
-      plan : POSTPAID
       localized_name {
         name : "Pay-by-time"
       }
@@ -3394,14 +3197,12 @@ mno {
     mccmnc : "26206"
     mobile_apn {
       apn : "internet.t-d1.de"
-      plan : POSTPAID
       password : "t-d1"
       dns : "193.254.160.1"
       dns : "193.254.160.130"
     }
     mobile_apn {
       apn : "internet.t-mobile"
-      plan : POSTPAID
       username : "t-mobile"
       password : "tm"
       dns : "10.74.83.22"
@@ -3424,7 +3225,6 @@ mno {
     mccmnc : "26211"
     mobile_apn {
       apn : "webmobil1"
-      plan : POSTPAID
       localized_name {
         name : "Tagesflat / Monats-Flatrate L / Monats-Flatrate XL"
       }
@@ -3445,13 +3245,11 @@ mno {
     mccmnc : "26209"
     mobile_apn {
       apn : "web.vodafone.de"
-      plan : POSTPAID
       dns : "139.7.30.125"
       dns : "139.7.30.126"
     }
     mobile_apn {
       apn : "event.vodafone.de"
-      plan : POSTPAID
       localized_name {
         name : "WebSessions"
       }
@@ -3478,14 +3276,12 @@ mno {
       mccmnc : "26209"
       mobile_apn {
         apn : "web.vodafone.de"
-        plan : POSTPAID
         localized_name {
           name : "Mobile Broadband"
         }
       }
       mobile_apn {
         apn : "mail.partner.de"
-        plan : POSTPAID
         localized_name {
           name : "Mobile Web"
         }
@@ -3509,14 +3305,12 @@ mno {
       mccmnc : "26202"
       mobile_apn {
         apn : "access.vodafone.de"
-        plan : POSTPAID
         localized_name {
           name : "BILD Mobilportal"
         }
       }
       mobile_apn {
         apn : "web.vodafone.de"
-        plan : POSTPAID
         localized_name {
           name : "Contract"
         }
@@ -3525,7 +3319,6 @@ mno {
       }
       mobile_apn {
         apn : "event.vodafone.de"
-        plan : PREPAID
         localized_name {
           name : "BILDmobil Speedstick (Surfpakete)"
         }
@@ -3545,28 +3338,24 @@ mno {
     mccmnc : "23806"
     mobile_apn {
       apn : "bredband.tre.dk"
-      plan : POSTPAID
       localized_name {
         name : "Bredbånd (standard)"
       }
     }
     mobile_apn {
       apn : "net.tre.dk"
-      plan : PREPAID
       localized_name {
         name : "Bredbånd Premium Kontant"
       }
     }
     mobile_apn {
       apn : "data.tre.dk"
-      plan : POSTPAID
       localized_name {
         name : "3 (standard for mobilkunder; spærret for indgående trafik)"
       }
     }
     mobile_apn {
       apn : "static.tre.dk"
-      plan : POSTPAID
       localized_name {
         name : "3 (statisk IP)"
       }
@@ -3587,14 +3376,12 @@ mno {
       mccmnc : "23806"
       mobile_apn {
         apn : "bredband.oister.dk"
-        plan : POSTPAID
         localized_name {
           name : "Mobile Broadband"
         }
       }
       mobile_apn {
         apn : "data.dk"
-        plan : POSTPAID
         localized_name {
           name : "Mobile Internet"
         }
@@ -3614,7 +3401,6 @@ mno {
     mccmnc : "23802"
     mobile_apn {
       apn : "internet.bibob.dk"
-      plan : POSTPAID
     }
   }
 }
@@ -3631,7 +3417,6 @@ mno {
     mccmnc : "23877"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -3646,7 +3431,6 @@ mno {
     }
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       username : "Fullrate"
       password : "Fullrate"
     }
@@ -3664,17 +3448,14 @@ mno {
     mccmnc : "23801"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       dns : "194.239.134.83"
       dns : "193.162.153.164"
     }
     mobile_apn {
       apn : "internet.no"
-      plan : POSTPAID
     }
     mobile_apn {
       apn : "internet.se"
-      plan : POSTPAID
     }
   }
   mvno {
@@ -3692,7 +3473,6 @@ mno {
       mccmnc : "23801"
       mobile_apn {
         apn : "internet"
-        plan : POSTPAID
       }
     }
   }
@@ -3711,7 +3491,6 @@ mno {
       mccmnc : "23801"
       mobile_apn {
         apn : "internet"
-        plan : POSTPAID
         dns : "194.239.134.83"
         dns : "193.162.153.164"
       }
@@ -3732,7 +3511,6 @@ mno {
       mccmnc : "23801"
       mobile_apn {
         apn : "internet"
-        plan : POSTPAID
       }
     }
   }
@@ -3751,7 +3529,6 @@ mno {
       mccmnc : "23801"
       mobile_apn {
         apn : "internet"
-        plan : POSTPAID
       }
     }
   }
@@ -3769,7 +3546,6 @@ mno {
     mccmnc : "23877"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       dns : "212.88.64.199"
       dns : "212.88.64.14"
     }
@@ -3788,7 +3564,6 @@ mno {
     mccmnc : "23830"
     mobile_apn {
       apn : "www.internet.mtelia.dk"
-      plan : POSTPAID
     }
   }
 }
@@ -3823,7 +3598,6 @@ mno {
     mccmnc : "37002"
     mobile_apn {
       apn : "internet.ideasclaro.com.do"
-      plan : POSTPAID
       dns : "196.3.81.5"
       dns : "196.3.81.132"
     }
@@ -3841,7 +3615,6 @@ mno {
     mccmnc : "37001"
     mobile_apn {
       apn : "orangenet.com.do"
-      plan : POSTPAID
     }
   }
 }
@@ -3857,7 +3630,6 @@ mno {
     mccmnc : "37004"
     mobile_apn {
       apn : "edge.viva.net.do"
-      plan : POSTPAID
       username : "viva"
       password : "viva"
     }
@@ -3875,7 +3647,6 @@ mno {
     mccmnc : "60302"
     mobile_apn {
       apn : "djezzy.internet"
-      plan : POSTPAID
     }
   }
 }
@@ -3891,7 +3662,6 @@ mno {
     mccmnc : "60301"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       username : "internet"
       password : "internet"
     }
@@ -3909,7 +3679,6 @@ mno {
     mccmnc : "60303"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "WEB"
       }
@@ -3930,7 +3699,6 @@ mno {
     mccmnc : "74000"
     mobile_apn {
       apn : "navega.movistar.ec"
-      plan : POSTPAID
       username : "movistar"
       password : "movistar"
     }
@@ -3948,7 +3716,6 @@ mno {
     mccmnc : "74001"
     mobile_apn {
       apn : "internet.porta.com.ec"
-      plan : POSTPAID
     }
   }
 }
@@ -3964,7 +3731,6 @@ mno {
     mccmnc : "24801"
     mobile_apn {
       apn : "internet.emt.ee"
-      plan : POSTPAID
       dns : "217.71.32.116"
       dns : "217.71.32.115"
     }
@@ -3982,7 +3748,6 @@ mno {
     mccmnc : "24802"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       dns : "194.204.0.1"
     }
   }
@@ -3999,7 +3764,6 @@ mno {
     mccmnc : "24801"
     mobile_apn {
       apn : "internet.emt.ee"
-      plan : POSTPAID
     }
   }
 }
@@ -4015,7 +3779,6 @@ mno {
     mccmnc : "24803"
     mobile_apn {
       apn : "internet.tele2.ee"
-      plan : POSTPAID
       username : "wap"
       password : "wap"
     }
@@ -4033,7 +3796,6 @@ mno {
     mccmnc : "60203"
     mobile_apn {
       apn : "etisalat"
-      plan : POSTPAID
     }
   }
 }
@@ -4049,7 +3811,6 @@ mno {
     mccmnc : "60201"
     mobile_apn {
       apn : "mobinilweb"
-      plan : POSTPAID
       dns : "80.75.166.250"
       dns : "163.121.163.201"
     }
@@ -4067,7 +3828,6 @@ mno {
     mccmnc : "60202"
     mobile_apn {
       apn : "internet.vodafone.net"
-      plan : POSTPAID
       username : "internet"
       password : "internet"
       dns : "163.121.128.134"
@@ -4087,7 +3847,6 @@ mno {
     mccmnc : "21403"
     mobile_apn {
       apn : "orangeworld"
-      plan : POSTPAID
       username : "orange"
       password : "orange"
     }
@@ -4104,7 +3863,6 @@ mno {
     }
     mobile_apn {
       apn : "CARREFOURINTERNET"
-      plan : POSTPAID
     }
   }
 }
@@ -4140,7 +3898,6 @@ mno {
     mccmnc : "21408"
     mobile_apn {
       apn : "internet.euskaltel.mobi"
-      plan : POSTPAID
       username : "CLIENTE"
       password : "EUSKALTEL"
     }
@@ -4158,7 +3915,6 @@ mno {
     mccmnc : "21421"
     mobile_apn {
       apn : "jazzinternet"
-      plan : PREPAID
       dns : "87.216.1.65"
       dns : "87.216.1.66"
     }
@@ -4176,7 +3932,6 @@ mno {
     mccmnc : "21403"
     mobile_apn {
       apn : "moreinternet"
-      plan : POSTPAID
     }
   }
 }
@@ -4193,7 +3948,6 @@ mno {
     mccmnc : "21407"
     mobile_apn {
       apn : "telefonica.es"
-      plan : POSTPAID
       localized_name {
         name : "Telefónica"
       }
@@ -4204,7 +3958,6 @@ mno {
     }
     mobile_apn {
       apn : "movistar.es"
-      plan : POSTPAID
       localized_name {
         name : "Movistar (USB modems)"
       }
@@ -4231,7 +3984,6 @@ mno {
       mccmnc : "21405"
       mobile_apn {
         apn : "tuenti.com"
-        plan : POSTPAID
         username : "tuenti"
         password : "tuenti"
       }
@@ -4250,7 +4002,6 @@ mno {
     mccmnc : "21403"
     mobile_apn {
       apn : "internetmas"
-      plan : POSTPAID
     }
   }
 }
@@ -4266,7 +4017,6 @@ mno {
     mccmnc : "21418"
     mobile_apn {
       apn : "internet.ono.com"
-      plan : POSTPAID
       dns : "62.42.230.24"
       dns : "62.42.63.52"
     }
@@ -4285,7 +4035,6 @@ mno {
     mccmnc : "21409"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Orange"
       }
@@ -4309,14 +4058,12 @@ mno {
     mccmnc : "21406"
     mobile_apn {
       apn : "gprs.pepephone.com"
-      plan : POSTPAID
       localized_name {
         name : "Pepephone"
       }
     }
     mobile_apn {
       apn : "gprsmov.pepephone.com"
-      plan : POSTPAID
       localized_name {
         name : "Pepephone (Mobile)"
       }
@@ -4335,7 +4082,6 @@ mno {
     mccmnc : "21419"
     mobile_apn {
       apn : "gprs-service.com"
-      plan : POSTPAID
       dns : "195.230.105.134"
       dns : "195.230.105.135"
     }
@@ -4353,7 +4099,6 @@ mno {
     mccmnc : "21416"
     mobile_apn {
       apn : "internet.telecable.es"
-      plan : POSTPAID
       username : "telecable"
       password : "telecable"
     }
@@ -4372,7 +4117,6 @@ mno {
     mccmnc : "21406"
     mobile_apn {
       apn : "ac.vodafone.es"
-      plan : POSTPAID
       localized_name {
         name : "Vodafone"
       }
@@ -4383,7 +4127,6 @@ mno {
     }
     mobile_apn {
       apn : "airtelnet.es"
-      plan : POSTPAID
       localized_name {
         name : "Airtel (old)"
       }
@@ -4406,7 +4149,6 @@ mno {
     mccmnc : "21404"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       dns : "213.248.76.210"
       dns : "213.248.100.54"
     }
@@ -4424,7 +4166,6 @@ mno {
     mccmnc : "21403"
     mobile_apn {
       apn : "INTERNETTPH"
-      plan : POSTPAID
       dns : "213.143.33.8"
       dns : "62.36.225.150"
     }
@@ -4442,7 +4183,6 @@ mno {
     mccmnc : "21417"
     mobile_apn {
       apn : "internet.mundo-r.com"
-      plan : POSTPAID
     }
   }
 }
@@ -4477,7 +4217,6 @@ mno {
     mccmnc : "63601"
     mobile_apn {
       apn : "etc.com"
-      plan : POSTPAID
       dns : "213.55.96.148"
       dns : "213.55.96.166"
     }
@@ -4495,7 +4234,6 @@ mno {
     mccmnc : "24403"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "dna internet"
       }
@@ -4570,7 +4308,6 @@ mno {
     mccmnc : "24405"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -4604,7 +4341,6 @@ mno {
     mccmnc : "24421"
     mobile_apn {
       apn : "internet.saunalahti"
-      plan : POSTPAID
       localized_name {
         name : "Postpaid (contract) NAT (available for all subscribers)"
       }
@@ -4613,7 +4349,6 @@ mno {
     }
     mobile_apn {
       apn : "internet4"
-      plan : POSTPAID
       localized_name {
         name : "Postpaid (contract) public IP address (needs to be ordered)"
       }
@@ -4622,7 +4357,6 @@ mno {
     }
     mobile_apn {
       apn : "internet"
-      plan : PREPAID
       localized_name {
         name : "Prepaid (no contract)"
       }
@@ -4643,13 +4377,11 @@ mno {
     mccmnc : "24491"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       dns : "192.89.123.230"
       dns : "192.89.123.231"
     }
     mobile_apn {
       apn : "prointernet"
-      plan : POSTPAID
       localized_name {
         name : "Prointernet (public IP)"
       }
@@ -4669,7 +4401,6 @@ mno {
     }
     mobile_apn {
       apn : "internet.welho.fi"
-      plan : POSTPAID
       localized_name {
         name : "Wekkula"
       }
@@ -4688,15 +4419,12 @@ mno {
     mccmnc : "54201"
     mobile_apn {
       apn : "vfinternet.fj"
-      plan : POSTPAID
     }
     mobile_apn {
       apn : "kidanet.fj"
-      plan : POSTPAID
     }
     mobile_apn {
       apn : "prepay.vfinternet.fj"
-      plan : PREPAID
     }
   }
 }
@@ -4712,7 +4440,6 @@ mno {
     mccmnc : "28802"
     mobile_apn {
       apn : "vmc.vodafone.fo"
-      plan : POSTPAID
     }
   }
 }
@@ -4727,7 +4454,6 @@ mno {
     }
     mobile_apn {
       apn : "wap65"
-      plan : POSTPAID
     }
   }
 }
@@ -4744,7 +4470,6 @@ mno {
     mccmnc : "20821"
     mobile_apn {
       apn : "a2bouygtel.com"
-      plan : POSTPAID
       localized_name {
         name : "Contrat Pro Data Illimité"
       }
@@ -4752,7 +4477,6 @@ mno {
     }
     mobile_apn {
       apn : "b2bouygtel.com"
-      plan : POSTPAID
       localized_name {
         name : "B2Bouygtel"
       }
@@ -4760,7 +4484,6 @@ mno {
     }
     mobile_apn {
       apn : "ebouygtel.com"
-      plan : POSTPAID
       localized_name {
         name : "Forfait Data"
       }
@@ -4768,7 +4491,6 @@ mno {
     }
     mobile_apn {
       apn : "mmsbouygtel.com"
-      plan : POSTPAID
       localized_name {
         name : "Forfait Data"
       }
@@ -4776,7 +4498,6 @@ mno {
     }
     mobile_apn {
       apn : "pcebouygtel.com"
-      plan : POSTPAID
       localized_name {
         name : "Contrat Pro Data"
       }
@@ -4796,7 +4517,6 @@ mno {
     mccmnc : "20815"
     mobile_apn {
       apn : "free"
-      plan : POSTPAID
       localized_name {
         name : "Free-Mobile"
       }
@@ -4805,7 +4525,6 @@ mno {
     }
     mobile_apn {
       apn : "mmsfree"
-      plan : POSTPAID
       localized_name {
         name : "Free-Mobile"
       }
@@ -4825,7 +4544,6 @@ mno {
     mccmnc : "20800"
     mobile_apn {
       apn : "orange.fr"
-      plan : POSTPAID
       localized_name {
         name : "Orange Internet"
       }
@@ -4834,7 +4552,6 @@ mno {
     }
     mobile_apn {
       apn : "internet-entreprise"
-      plan : POSTPAID
       localized_name {
         name : "Business Contract"
       }
@@ -4843,7 +4560,6 @@ mno {
     }
     mobile_apn {
       apn : "orange"
-      plan : POSTPAID
       localized_name {
         name : "No Contract / Mobicarte"
       }
@@ -4854,7 +4570,6 @@ mno {
     }
     mobile_apn {
       apn : "orange-mib"
-      plan : POSTPAID
       localized_name {
         name : "Orange Entreprises"
       }
@@ -4865,7 +4580,6 @@ mno {
     }
     mobile_apn {
       apn : "orange-acte"
-      plan : POSTPAID
       localized_name {
         name : "Orange MMS"
       }
@@ -4874,7 +4588,6 @@ mno {
     }
     mobile_apn {
       apn : "orange.ie"
-      plan : POSTPAID
       localized_name {
         name : "Internet Everywhere 3G"
       }
@@ -4899,13 +4612,11 @@ mno {
       mccmnc : "20801"
       mobile_apn {
         apn : "ao.fr"
-        plan : POSTPAID
         username : "orange"
         password : "orange"
       }
       mobile_apn {
         apn : "ofnew.fr"
-        plan : POSTPAID
         localized_name {
           name : "Pay-by-MB"
         }
@@ -4928,7 +4639,6 @@ mno {
     mccmnc : "20811"
     mobile_apn {
       apn : "websfr"
-      plan : POSTPAID
       localized_name {
         name : "Web / Prepaid"
       }
@@ -4937,28 +4647,24 @@ mno {
     }
     mobile_apn {
       apn : "wapsfr"
-      plan : POSTPAID
       localized_name {
         name : "WAP"
       }
     }
     mobile_apn {
       apn : "internetpro"
-      plan : POSTPAID
       localized_name {
         name : "SFR internetpro"
       }
     }
     mobile_apn {
       apn : "ipnet"
-      plan : POSTPAID
       localized_name {
         name : "SFR ipnet"
       }
     }
     mobile_apn {
       apn : "slsfr"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Broadband"
       }
@@ -4967,14 +4673,12 @@ mno {
     }
     mobile_apn {
       apn : "sl2sfr"
-      plan : POSTPAID
       localized_name {
         name : "Full Internet (Webphone)"
       }
     }
     mobile_apn {
       apn : "internetneuf"
-      plan : POSTPAID
       localized_name {
         name : "Internet (Neuf Telecom)"
       }
@@ -4993,7 +4697,6 @@ mno {
     mccmnc : "20822"
     mobile_apn {
       apn : "netgprs.com"
-      plan : POSTPAID
     }
   }
 }
@@ -5009,14 +4712,12 @@ mno {
     mccmnc : "23420"
     mobile_apn {
       apn : "3internet"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
     }
     mobile_apn {
       apn : "three.co.uk"
-      plan : POSTPAID
       localized_name {
         name : "Handsets"
       }
@@ -5036,7 +4737,6 @@ mno {
       }
       mobile_apn {
         apn : "hpdp-internet.foggmobile.com"
-        plan : PREPAID
       }
     }
   }
@@ -5053,7 +4753,6 @@ mno {
     mccmnc : "23415"
     mobile_apn {
       apn : "asdamobiles.co.uk"
-      plan : PREPAID
       username : "web"
       password : "web"
     }
@@ -5071,7 +4770,6 @@ mno {
     mccmnc : "23400"
     mobile_apn {
       apn : "btmobile.bt.com"
-      plan : POSTPAID
       username : "bt"
       password : "bt"
     }
@@ -5091,7 +4789,6 @@ mno {
     mccmnc : "23411"
     mobile_apn {
       apn : "mobile.o2.co.uk"
-      plan : POSTPAID
       localized_name {
         name : "Contract"
       }
@@ -5102,7 +4799,6 @@ mno {
     }
     mobile_apn {
       apn : "mobile.o2.co.uk"
-      plan : POSTPAID
       localized_name {
         name : "Contract (faster)"
       }
@@ -5113,7 +4809,6 @@ mno {
     }
     mobile_apn {
       apn : "payandgo.o2.co.uk"
-      plan : PREPAID
       localized_name {
         name : "Pay and Go (Prepaid)"
       }
@@ -5122,7 +4817,6 @@ mno {
     }
     mobile_apn {
       apn : "idata.o2.co.uk"
-      plan : POSTPAID
       localized_name {
         name : "iPhone (Contract)"
       }
@@ -5131,7 +4825,6 @@ mno {
     }
     mobile_apn {
       apn : "m-bb.o2.co.uk"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Broadband"
       }
@@ -5142,7 +4835,6 @@ mno {
     }
     mobile_apn {
       apn : "wap.o2.co.uk"
-      plan : POSTPAID
       localized_name {
         name : "WAP"
       }
@@ -5165,7 +4857,6 @@ mno {
     mccmnc : "23434"
     mobile_apn {
       apn : "orangeinternet"
-      plan : POSTPAID
       localized_name {
         name : "Contract"
       }
@@ -5176,7 +4867,6 @@ mno {
     }
     mobile_apn {
       apn : "internetvpn"
-      plan : POSTPAID
       localized_name {
         name : "Contract (with VPN)"
       }
@@ -5187,7 +4877,6 @@ mno {
     }
     mobile_apn {
       apn : "orangewap"
-      plan : POSTPAID
       localized_name {
         name : "Orange WAP"
       }
@@ -5233,7 +4922,6 @@ mno {
     mccmnc : "23430"
     mobile_apn {
       apn : "general.t-mobile.uk"
-      plan : POSTPAID
       username : "User"
       password : "mms"
       dns : "149.254.201.126"
@@ -5241,7 +4929,6 @@ mno {
     }
     mobile_apn {
       apn : "general.t-mobile.uk"
-      plan : POSTPAID
       dns : "149.254.230.7"
       dns : "149.254.199.126"
     }
@@ -5278,7 +4965,6 @@ mno {
     mccmnc : "23411"
     mobile_apn {
       apn : "prepay.tesco-mobile.com"
-      plan : PREPAID
       username : "tescowap"
       password : "password"
       dns : "193.113.200.195"
@@ -5298,13 +4984,11 @@ mno {
     mccmnc : "23432"
     mobile_apn {
       apn : "vdata"
-      plan : POSTPAID
       dns : "196.7.0.138"
       dns : "196.7.142.132"
     }
     mobile_apn {
       apn : "goto.virginmobile.uk"
-      plan : POSTPAID
       username : "user"
     }
   }
@@ -5321,7 +5005,6 @@ mno {
     mccmnc : "23415"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Contract Internet"
       }
@@ -5332,7 +5015,6 @@ mno {
     }
     mobile_apn {
       apn : "ppbundle.internet"
-      plan : PREPAID
       localized_name {
         name : "PAYG Internet Bundle"
       }
@@ -5343,7 +5025,6 @@ mno {
     }
     mobile_apn {
       apn : "smart"
-      plan : PREPAID
       localized_name {
         name : "PAYG Internet"
       }
@@ -5352,7 +5033,6 @@ mno {
     }
     mobile_apn {
       apn : "pp.internet"
-      plan : PREPAID
       localized_name {
         name : "PAYG Internet"
       }
@@ -5361,7 +5041,6 @@ mno {
     }
     mobile_apn {
       apn : "pp.vodafone.co.uk"
-      plan : PREPAID
       localized_name {
         name : "PAYG WAP"
       }
@@ -5387,7 +5066,6 @@ mno {
     mccmnc : "23411"
     mobile_apn {
       apn : "giffgaff.com"
-      plan : PREPAID
       localized_name {
         name : "Mobile Broadband"
       }
@@ -5408,7 +5086,6 @@ mno {
     mccmnc : "28201"
     mobile_apn {
       apn : "Internet"
-      plan : POSTPAID
       dns : "212.72.130.20"
       dns : "212.72.152.001"
     }
@@ -5426,7 +5103,6 @@ mno {
     mccmnc : "23403"
     mobile_apn {
       apn : "airtel-ci-gprs.com"
-      plan : POSTPAID
     }
   }
 }
@@ -5442,14 +5118,12 @@ mno {
     mccmnc : "23455"
     mobile_apn {
       apn : "wap"
-      plan : POSTPAID
       localized_name {
         name : "WAP"
       }
     }
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
@@ -5468,7 +5142,6 @@ mno {
     mccmnc : "23450"
     mobile_apn {
       apn : "pepper"
-      plan : POSTPAID
       dns : "212.9.0.135"
       dns : "212.9.0.136"
     }
@@ -5486,7 +5159,6 @@ mno {
     mccmnc : "62006"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -5521,7 +5193,6 @@ mno {
     mccmnc : "62007"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -5537,7 +5208,6 @@ mno {
     mccmnc : "62001"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -5553,7 +5223,6 @@ mno {
     mccmnc : "62003"
     mobile_apn {
       apn : "web.tigo.com.gh"
-      plan : POSTPAID
       username : "web"
     }
   }
@@ -5570,7 +5239,6 @@ mno {
     mccmnc : "62002"
     mobile_apn {
       apn : "browse"
-      plan : POSTPAID
     }
   }
 }
@@ -5600,7 +5268,6 @@ mno {
     mccmnc : "20201"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -5616,14 +5283,12 @@ mno {
     mccmnc : "20205"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Contract"
       }
     }
     mobile_apn {
       apn : "web.session"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Broadband On Demand"
       }
@@ -5645,7 +5310,6 @@ mno {
     mccmnc : "20210"
     mobile_apn {
       apn : "gint.b-online.gr"
-      plan : POSTPAID
       username : "web"
       password : "web"
     }
@@ -5663,7 +5327,6 @@ mno {
     mccmnc : "70401"
     mobile_apn {
       apn : "internet.ideasclaro"
-      plan : POSTPAID
     }
   }
 }
@@ -5679,7 +5342,6 @@ mno {
     mccmnc : "70402"
     mobile_apn {
       apn : "Wap.tigo.gt"
-      plan : POSTPAID
       username : "Wap"
       password : "Wap"
     }
@@ -5697,7 +5359,6 @@ mno {
     mccmnc : "70403"
     mobile_apn {
       apn : "internet.movistar.gt"
-      plan : POSTPAID
       username : "movistargt"
       password : "movistargt"
     }
@@ -5715,7 +5376,6 @@ mno {
     mccmnc : "73801"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       username : "web"
       password : "web"
     }
@@ -5733,7 +5393,6 @@ mno {
     mccmnc : "73802"
     mobile_apn {
       apn : "wap.cellinkgy.com"
-      plan : POSTPAID
       username : "test"
       password : "test"
     }
@@ -5752,7 +5411,6 @@ mno {
     mccmnc : "45402"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       dns : "202.84.255.1"
       dns : "203.116.254.150"
     }
@@ -5770,7 +5428,6 @@ mno {
     mccmnc : "45412"
     mobile_apn {
       apn : "peoples.net"
-      plan : POSTPAID
     }
   }
 }
@@ -5786,7 +5443,6 @@ mno {
     mccmnc : "45410"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -5802,7 +5458,6 @@ mno {
     mccmnc : "45404"
     mobile_apn {
       apn : "web.orangehk.com"
-      plan : POSTPAID
     }
   }
 }
@@ -5819,21 +5474,18 @@ mno {
     mccmnc : "45419"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Sunday (Old)"
       }
     }
     mobile_apn {
       apn : "pccwdata"
-      plan : POSTPAID
       localized_name {
         name : "PCCW 2G/GPRS"
       }
     }
     mobile_apn {
       apn : "pccw"
-      plan : POSTPAID
       localized_name {
         name : "PCCW 3G"
       }
@@ -5852,7 +5504,6 @@ mno {
     mccmnc : "45406"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -5868,7 +5519,6 @@ mno {
     mccmnc : "45416"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -5885,7 +5535,6 @@ mno {
     mccmnc : "45404"
     mobile_apn {
       apn : "mobile.three.com.hk"
-      plan : POSTPAID
     }
   }
 }
@@ -5901,7 +5550,6 @@ mno {
     mccmnc : "70802"
     mobile_apn {
       apn : "internet.tigo.hn"
-      plan : POSTPAID
     }
   }
 }
@@ -5917,7 +5565,6 @@ mno {
     mccmnc : "21902"
     mobile_apn {
       apn : "carnet.tele2.hr"
-      plan : POSTPAID
       username : "AAIEDU"
       password : ""
     }
@@ -5935,7 +5582,6 @@ mno {
     mccmnc : "21910"
     mobile_apn {
       apn : "carnet.vip.hr"
-      plan : POSTPAID
       username : "AAIEDU"
       password : ""
     }
@@ -5953,7 +5599,6 @@ mno {
     mccmnc : "21901"
     mobile_apn {
       apn : "web.htgprs"
-      plan : POSTPAID
       dns : "10.12.0.1"
     }
   }
@@ -5970,7 +5615,6 @@ mno {
     mccmnc : "21902"
     mobile_apn {
       apn : "mobileinternet.tele2.hr"
-      plan : POSTPAID
       dns : "212.247.156.66"
     }
   }
@@ -5987,14 +5631,12 @@ mno {
     mccmnc : "21910"
     mobile_apn {
       apn : "data.vip.hr"
-      plan : POSTPAID
       localized_name {
         name : "Contract and Prepaid"
       }
     }
     mobile_apn {
       apn : "gprs5.vipnet.hr"
-      plan : POSTPAID
       localized_name {
         name : "GPRS 5"
       }
@@ -6004,7 +5646,6 @@ mno {
     }
     mobile_apn {
       apn : "gprs0.vipnet.hr"
-      plan : POSTPAID
       localized_name {
         name : "GPRS 0"
       }
@@ -6014,7 +5655,6 @@ mno {
     }
     mobile_apn {
       apn : "3g.vip.hr"
-      plan : POSTPAID
       localized_name {
         name : "3G"
       }
@@ -6037,7 +5677,6 @@ mno {
     mccmnc : "21601"
     mobile_apn {
       apn : "digi"
-      plan : POSTPAID
       localized_name {
         name : "DIGI Move"
       }
@@ -6055,7 +5694,6 @@ mno {
     }
     mobile_apn {
       apn : "invitel.mobilnet"
-      plan : POSTPAID
       localized_name {
         name : "net.and.go"
       }
@@ -6074,13 +5712,11 @@ mno {
     mccmnc : "21630"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       dns : "212.51.115.1"
       dns : "194.176.224.6"
     }
     mobile_apn {
       apn : "mms-westel"
-      plan : POSTPAID
       localized_name {
         name : "MMS"
       }
@@ -6102,7 +5738,6 @@ mno {
     mccmnc : "21601"
     mobile_apn {
       apn : "net"
-      plan : POSTPAID
       localized_name {
         name : "mobilinternet"
       }
@@ -6123,7 +5758,6 @@ mno {
     mccmnc : "21670"
     mobile_apn {
       apn : "standardnet.vodafone.net"
-      plan : POSTPAID
       localized_name {
         name : "Előf. Normál"
       }
@@ -6134,7 +5768,6 @@ mno {
     }
     mobile_apn {
       apn : "internet.vodafone.net"
-      plan : POSTPAID
       localized_name {
         name : "Előf. töm."
       }
@@ -6143,7 +5776,6 @@ mno {
     }
     mobile_apn {
       apn : "vitamax.snet.vodafone.net"
-      plan : POSTPAID
       localized_name {
         name : "Felt. norm."
       }
@@ -6152,7 +5784,6 @@ mno {
     }
     mobile_apn {
       apn : "vitamax.internet.vodafone.net"
-      plan : POSTPAID
       localized_name {
         name : "Vodafone (felt. töm.)"
       }
@@ -6173,7 +5804,6 @@ mno {
     mccmnc : "51089"
     mobile_apn {
       apn : "3gprs"
-      plan : POSTPAID
       localized_name {
         name : "GPRS"
       }
@@ -6182,7 +5812,6 @@ mno {
     }
     mobile_apn {
       apn : "3data"
-      plan : POSTPAID
       localized_name {
         name : "Monthly Internet Service"
       }
@@ -6206,7 +5835,6 @@ mno {
     mccmnc : "51008"
     mobile_apn {
       apn : "AXIS"
-      plan : POSTPAID
       username : "axis"
       password : "123456"
     }
@@ -6255,7 +5883,6 @@ mno {
     mccmnc : "51011"
     mobile_apn {
       apn : "www.xlgprs.net"
-      plan : POSTPAID
       username : "xlgprs"
       password : "proxl"
       dns : "202.152.254.245"
@@ -6296,7 +5923,6 @@ mno {
     mccmnc : "51001"
     mobile_apn {
       apn : "indosatgprs"
-      plan : POSTPAID
       localized_name {
         name : "IM3/Mentari Time-based"
       }
@@ -6305,7 +5931,6 @@ mno {
     }
     mobile_apn {
       apn : "indosatgprs"
-      plan : POSTPAID
       localized_name {
         name : "IM3/Mentari Volume-based"
       }
@@ -6314,7 +5939,6 @@ mno {
     }
     mobile_apn {
       apn : "indosatgprs"
-      plan : POSTPAID
       localized_name {
         name : "Matrix 3G/3.5G"
       }
@@ -6397,7 +6021,6 @@ mno {
     mccmnc : "51020"
     mobile_apn {
       apn : "telkomsel"
-      plan : POSTPAID
       username : "wap"
       password : "wap123"
       dns : "202.152.0.2"
@@ -6405,7 +6028,6 @@ mno {
     }
     mobile_apn {
       apn : "flash"
-      plan : POSTPAID
       localized_name {
         name : "Flash Time-based"
       }
@@ -6414,7 +6036,6 @@ mno {
     }
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Flash Volume-based"
       }
@@ -6455,7 +6076,6 @@ mno {
     mccmnc : "27203"
     mobile_apn {
       apn : "data.mymeteor.ie"
-      plan : POSTPAID
       localized_name {
         name : "Meteor Data"
       }
@@ -6464,7 +6084,6 @@ mno {
     }
     mobile_apn {
       apn : "broadband.mymeteor.ie"
-      plan : POSTPAID
       localized_name {
         name : "Broadband To Go"
       }
@@ -6473,7 +6092,6 @@ mno {
     }
     mobile_apn {
       apn : "isp.mymeteor.ie"
-      plan : POSTPAID
       localized_name {
         name : "GPRS"
       }
@@ -6496,7 +6114,6 @@ mno {
       mccmnc : "27203"
       mobile_apn {
         apn : "broadband.eircommbb.ie"
-        plan : POSTPAID
         localized_name {
           name : "Broadband To Go"
         }
@@ -6518,7 +6135,6 @@ mno {
     mccmnc : "27202"
     mobile_apn {
       apn : "open.internet"
-      plan : POSTPAID
       localized_name {
         name : "Contract"
       }
@@ -6529,7 +6145,6 @@ mno {
     }
     mobile_apn {
       apn : "pp.internet"
-      plan : PREPAID
       localized_name {
         name : "Prepaid"
       }
@@ -6540,7 +6155,6 @@ mno {
     }
     mobile_apn {
       apn : "internet"
-      plan : PREPAID
       localized_name {
         name : "Old Config Internet and MMS"
       }
@@ -6559,7 +6173,6 @@ mno {
     mccmnc : "27205"
     mobile_apn {
       apn : "3ireland.ie"
-      plan : POSTPAID
       dns : "172.31.140.69"
       dns : "172.30.140.69"
     }
@@ -6577,7 +6190,6 @@ mno {
     mccmnc : "27201"
     mobile_apn {
       apn : "hs.vodafone.ie"
-      plan : POSTPAID
       username : "vodafone"
       password : "vodafone"
       dns : "89.19.64.36"
@@ -6585,7 +6197,6 @@ mno {
     }
     mobile_apn {
       apn : "isp.vodafone.ie"
-      plan : POSTPAID
       localized_name {
         name : "Old"
       }
@@ -6594,7 +6205,6 @@ mno {
     }
     mobile_apn {
       apn : "live.vodafone.com"
-      plan : PREPAID
       localized_name {
         name : "Prepaid"
       }
@@ -6616,7 +6226,6 @@ mno {
     mccmnc : "42502"
     mobile_apn {
       apn : "internetg"
-      plan : POSTPAID
     }
   }
 }
@@ -6632,7 +6241,6 @@ mno {
     mccmnc : "42508"
     mobile_apn {
       apn : "internet.golantelecom.net.il"
-      plan : POSTPAID
     }
   }
 }
@@ -6648,7 +6256,6 @@ mno {
     mccmnc : "42515"
     mobile_apn {
       apn : "hcminternet"
-      plan : POSTPAID
     }
   }
 }
@@ -6664,7 +6271,6 @@ mno {
     mccmnc : "42507"
     mobile_apn {
       apn : "net.hotm"
-      plan : POSTPAID
     }
   }
 }
@@ -6680,7 +6286,6 @@ mno {
     mccmnc : "42501"
     mobile_apn {
       apn : "uinternet"
-      plan : POSTPAID
       localized_name {
         name : "3G Internet"
       }
@@ -6701,7 +6306,6 @@ mno {
     mccmnc : "42503"
     mobile_apn {
       apn : "internet.pelephone.net.il"
-      plan : POSTPAID
       localized_name {
         name : "3G"
       }
@@ -6722,7 +6326,6 @@ mno {
     mccmnc : "42516"
     mobile_apn {
       apn : "internet.rl"
-      plan : POSTPAID
       username : "rl@3g"
       password : "rl"
     }
@@ -6740,7 +6343,6 @@ mno {
     mccmnc : "42514"
     mobile_apn {
       apn : "data.youphone.co.il"
-      plan : POSTPAID
     }
   }
 }
@@ -6756,7 +6358,6 @@ mno {
     mccmnc : "23458"
     mobile_apn {
       apn : "3gpronto"
-      plan : POSTPAID
     }
   }
 }
@@ -6773,14 +6374,12 @@ mno {
     mccmnc : "23455"
     mobile_apn {
       apn : "wap"
-      plan : POSTPAID
       localized_name {
         name : "WAP"
       }
     }
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
@@ -6818,28 +6417,24 @@ mno {
     mccmnc : "405812"
     mobile_apn {
       apn : "aircelweb"
-      plan : POSTPAID
       localized_name {
         name : "Web"
       }
     }
     mobile_apn {
       apn : "aircelgprs"
-      plan : POSTPAID
       localized_name {
         name : "GPRS"
       }
     }
     mobile_apn {
       apn : "aircelgprs.po"
-      plan : POSTPAID
       localized_name {
         name : "GPRS (Postpaid)"
       }
     }
     mobile_apn {
       apn : "aircelgprs.pr"
-      plan : PREPAID
       localized_name {
         name : "GPRS (Prepaid)"
       }
@@ -6880,7 +6475,6 @@ mno {
     mccmnc : "40556"
     mobile_apn {
       apn : "airtelgprs.com"
-      plan : POSTPAID
       dns : "202.56.230.5"
       dns : "202.56.240.5"
     }
@@ -6918,49 +6512,42 @@ mno {
     mccmnc : "40481"
     mobile_apn {
       apn : "bsnlnet"
-      plan : POSTPAID
       localized_name {
         name : "New GPRS/3G"
       }
     }
     mobile_apn {
       apn : "bsnlwap"
-      plan : POSTPAID
       localized_name {
         name : "New WAP"
       }
     }
     mobile_apn {
       apn : "bsnlsouth"
-      plan : POSTPAID
       localized_name {
         name : "Old South Zone A (Karnatka, Andhra Pradesh, Chennai, Tamil Nadu, Kerala)"
       }
     }
     mobile_apn {
       apn : "gprssouth.cellone.in"
-      plan : POSTPAID
       localized_name {
         name : "Old South Zone B (Karnatka, Andhra Pradesh, Chennai, Tamil Nadu, Kerala)"
       }
     }
     mobile_apn {
       apn : "gprsnorth.cellone.in"
-      plan : POSTPAID
       localized_name {
         name : "Old North Zone (Haryana, Punjab, UP(East), UP(West), Himachal Pradesh, Rajasthan, Jammu & Kashmir)"
       }
     }
     mobile_apn {
       apn : "gprswest.cellone.in"
-      plan : POSTPAID
       localized_name {
         name : "Old West Zone (Maharashtra, Gujrat, Madhya Pradesh, Chattishgarh)"
       }
     }
     mobile_apn {
       apn : "www.e.pr"
-      plan : PREPAID
       localized_name {
         name : "Old East Zone Prepaid (Jharkhand, Bihar, Kolkata, West Bengal, Orissa, Assam, North East, Adman Nicobar)"
       }
@@ -6969,7 +6556,6 @@ mno {
     }
     mobile_apn {
       apn : "www.e.po"
-      plan : POSTPAID
       localized_name {
         name : "Old East Zone Postpaid (Jharkhand, Bihar, Kolkata, West Bengal, Orissa, Assam, North East, Adman Nicobar)"
       }
@@ -7004,7 +6590,6 @@ mno {
     mccmnc : "405850"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -7035,7 +6620,6 @@ mno {
     }
     mobile_apn {
       apn : "gprsmtnldel"
-      plan : POSTPAID
       localized_name {
         name : "Delhi"
       }
@@ -7044,7 +6628,6 @@ mno {
     }
     mobile_apn {
       apn : "gprsppsmum"
-      plan : PREPAID
       localized_name {
         name : "Mumbai (Prepaid)"
       }
@@ -7053,7 +6636,6 @@ mno {
     }
     mobile_apn {
       apn : "gprsmtnlmum"
-      plan : POSTPAID
       localized_name {
         name : "Mumbai (Postpaid / Plan 2)"
       }
@@ -7095,21 +6677,18 @@ mno {
     mccmnc : "40513"
     mobile_apn {
       apn : "smartnet"
-      plan : POSTPAID
       localized_name {
         name : "Smart Net"
       }
     }
     mobile_apn {
       apn : "smartwap"
-      plan : POSTPAID
       localized_name {
         name : "Smart WAP"
       }
     }
     mobile_apn {
       apn : "rcomnet"
-      plan : POSTPAID
       localized_name {
         name : "Netconnect (RCOMNET)"
       }
@@ -7161,13 +6740,11 @@ mno {
     mccmnc : "40444"
     mobile_apn {
       apn : "Simplyenjoy"
-      plan : POSTPAID
       username : "spice"
       password : "spice"
     }
     mobile_apn {
       apn : "simplydownload"
-      plan : POSTPAID
       localized_name {
         name : "kar"
       }
@@ -7205,14 +6782,12 @@ mno {
     mccmnc : "405047"
     mobile_apn {
       apn : "TATA.DOCOMO.INTERNET"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
     }
     mobile_apn {
       apn : "TATADOCOMO3G"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
@@ -7321,14 +6896,12 @@ mno {
     mccmnc : "405756"
     mobile_apn {
       apn : "www"
-      plan : POSTPAID
       localized_name {
         name : "Vodafone Connect"
       }
     }
     mobile_apn {
       apn : "portalnmms"
-      plan : POSTPAID
       localized_name {
         name : "Vodafone Live"
       }
@@ -7347,7 +6920,6 @@ mno {
     mccmnc : "41850"
     mobile_apn {
       apn : "net.asiacell.com"
-      plan : POSTPAID
     }
   }
 }
@@ -7395,7 +6967,6 @@ mno {
     mccmnc : "41840"
     mobile_apn {
       apn : "net.korek.com"
-      plan : POSTPAID
       username : "korek"
       password : "korek"
     }
@@ -7432,7 +7003,6 @@ mno {
     mccmnc : "43235"
     mobile_apn {
       apn : "mtnirancell"
-      plan : POSTPAID
     }
   }
 }
@@ -7448,7 +7018,6 @@ mno {
     mccmnc : "43211"
     mobile_apn {
       apn : "mcinet"
-      plan : POSTPAID
     }
   }
 }
@@ -7464,7 +7033,6 @@ mno {
     mccmnc : "27411"
     mobile_apn {
       apn : "internet.nova.is"
-      plan : POSTPAID
       dns : "192.168.190.54"
       dns : "192.168.190.55"
     }
@@ -7482,7 +7050,6 @@ mno {
     mccmnc : "27401"
     mobile_apn {
       apn : "wap.simi.is"
-      plan : POSTPAID
       dns : "194.105.224.1"
       dns : "212.30.200.200"
     }
@@ -7501,7 +7068,6 @@ mno {
     mccmnc : "27403"
     mobile_apn {
       apn : "vmc.gprs.is"
-      plan : POSTPAID
       dns : "213.176.128.51"
       dns : "213.176.128.50"
     }
@@ -7519,7 +7085,6 @@ mno {
     mccmnc : "22299"
     mobile_apn {
       apn : "tre.it"
-      plan : POSTPAID
       localized_name {
         name : "Ricaricabile"
       }
@@ -7528,7 +7093,6 @@ mno {
     }
     mobile_apn {
       apn : "datacard.tre.it"
-      plan : POSTPAID
       localized_name {
         name : "Abbonamento"
       }
@@ -7549,7 +7113,6 @@ mno {
       mccmnc : "22299"
       mobile_apn {
         apn : "internet.vistream.it"
-        plan : PREPAID
         localized_name {
           name : "Megabip Internet"
         }
@@ -7571,14 +7134,12 @@ mno {
       mccmnc : "22299"
       mobile_apn {
         apn : "apn.fastweb.it"
-        plan : POSTPAID
         localized_name {
           name : "Voce/dati"
         }
       }
       mobile_apn {
         apn : "datacard.fastweb.it"
-        plan : POSTPAID
         localized_name {
           name : "Solo dati"
         }
@@ -7600,7 +7161,6 @@ mno {
     mccmnc : "22207"
     mobile_apn {
       apn : "web.noverca.it"
-      plan : PREPAID
       localized_name {
         name : "Noverca WEB"
       }
@@ -7613,7 +7173,6 @@ mno {
     }
     mobile_apn {
       apn : "wap.noverca.it"
-      plan : POSTPAID
       localized_name {
         name : "Noverca WAP"
       }
@@ -7633,7 +7192,6 @@ mno {
     mccmnc : "22201"
     mobile_apn {
       apn : "ibox.tim.it"
-      plan : POSTPAID
       localized_name {
         name : "Maxxi Alice/Internet"
       }
@@ -7642,7 +7200,6 @@ mno {
     }
     mobile_apn {
       apn : "wap.tim.it"
-      plan : POSTPAID
       localized_name {
         name : "WAP"
       }
@@ -7666,7 +7223,6 @@ mno {
       mccmnc : "22201"
       mobile_apn {
         apn : "web.coopvoce.it"
-        plan : POSTPAID
         localized_name {
           name : "Internet Mobile"
         }
@@ -7688,7 +7244,6 @@ mno {
       mccmnc : "22201"
       mobile_apn {
         apn : "tiscalimobileinternet"
-        plan : PREPAID
         localized_name {
           name : "Tiscali Internet"
         }
@@ -7708,14 +7263,12 @@ mno {
     mccmnc : "22210"
     mobile_apn {
       apn : "mobile.vodafone.it"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Internet"
       }
     }
     mobile_apn {
       apn : "web.omnitel.it"
-      plan : POSTPAID
       localized_name {
         name : "Internet Facile (old)"
       }
@@ -7738,7 +7291,6 @@ mno {
       mccmnc : "22210"
       mobile_apn {
         apn : "internet.postemobile.it"
-        plan : POSTPAID
       }
     }
   }
@@ -7755,7 +7307,6 @@ mno {
     mccmnc : "22288"
     mobile_apn {
       apn : "internet.wind"
-      plan : POSTPAID
       localized_name {
         name : "Non-business"
       }
@@ -7766,7 +7317,6 @@ mno {
     }
     mobile_apn {
       apn : "internet.wind.biz"
-      plan : POSTPAID
       localized_name {
         name : "Business"
       }
@@ -7789,7 +7339,6 @@ mno {
     mccmnc : "23403"
     mobile_apn {
       apn : "airtel-ci-gprs.com"
-      plan : POSTPAID
     }
   }
 }
@@ -7805,7 +7354,6 @@ mno {
     mccmnc : "23450"
     mobile_apn {
       apn : "pepper"
-      plan : POSTPAID
       username : "abc"
       password : "abc"
       dns : "212.9.0.135"
@@ -7825,14 +7373,12 @@ mno {
     mccmnc : "23455"
     mobile_apn {
       apn : "wap"
-      plan : POSTPAID
       localized_name {
         name : "WAP"
       }
     }
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
@@ -7851,7 +7397,6 @@ mno {
     mccmnc : "338020"
     mobile_apn {
       apn : "wap"
-      plan : POSTPAID
     }
   }
 }
@@ -7867,7 +7412,6 @@ mno {
     mccmnc : "338050"
     mobile_apn {
       apn : "web.digiceljamaica.com"
-      plan : POSTPAID
       username : "wapuser"
       password : "wap03jam"
       dns : "208.131.176.126"
@@ -7887,7 +7431,6 @@ mno {
     mccmnc : "41677"
     mobile_apn {
       apn : "net.orange.jo"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Broadband"
       }
@@ -7908,7 +7451,6 @@ mno {
     mccmnc : "41601"
     mobile_apn {
       apn : "zain"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Broadband"
       }
@@ -7975,7 +7517,6 @@ mno {
     mccmnc : "44099"
     mobile_apn {
       apn : "mopera.net"
-      plan : POSTPAID
       localized_name {
         name : "mopera U"
       }
@@ -8000,7 +7541,6 @@ mno {
       mccmnc : "44010"
       mobile_apn {
         apn : "dm.jplat.net"
-        plan : POSTPAID
         localized_name {
           name : "u300"
         }
@@ -8042,7 +7582,6 @@ mno {
     mccmnc : "44098"
     mobile_apn {
       apn : "softbank"
-      plan : POSTPAID
       username : "ai@softbank"
       password : "softbank"
     }
@@ -8081,7 +7620,6 @@ mno {
     mccmnc : "44000"
     mobile_apn {
       apn : "emb.ne.jp"
-      plan : POSTPAID
       username : "em"
       password : "em"
     }
@@ -8099,7 +7637,6 @@ mno {
     mccmnc : "63903"
     mobile_apn {
       apn : "ke.celtel.com"
-      plan : POSTPAID
     }
   }
 }
@@ -8115,7 +7652,6 @@ mno {
     mccmnc : "63907"
     mobile_apn {
       apn : "bew.orange.co.ke"
-      plan : POSTPAID
     }
   }
 }
@@ -8142,7 +7678,6 @@ mno {
     mccmnc : "63902"
     mobile_apn {
       apn : "safaricom"
-      plan : PREPAID
       localized_name {
         name : "Safaricom (Prepaid)"
       }
@@ -8151,7 +7686,6 @@ mno {
     }
     mobile_apn {
       apn : "safaricom"
-      plan : POSTPAID
       username : "web"
       password : "web"
     }
@@ -8179,7 +7713,6 @@ mno {
     mccmnc : "63905"
     mobile_apn {
       apn : "internet.econet.co.ke"
-      plan : POSTPAID
     }
   }
 }
@@ -8195,7 +7728,6 @@ mno {
     mccmnc : "43701"
     mobile_apn {
       apn : "internet.beeline.kg"
-      plan : POSTPAID
     }
   }
 }
@@ -8230,7 +7762,6 @@ mno {
     mccmnc : "43705"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -8246,7 +7777,6 @@ mno {
     mccmnc : "43709"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -8473,7 +8003,6 @@ mno {
     mccmnc : "45006"
     mobile_apn {
       apn : "internet.lguplus.co.kr"
-      plan : POSTPAID
     }
   }
 }
@@ -8518,14 +8047,12 @@ mno {
     mccmnc : "45005"
     mobile_apn {
       apn : "lte.sktelecom.com"
-      plan : POSTPAID
       localized_name {
         name : "SKT LTE"
       }
     }
     mobile_apn {
       apn : "web.sktelecom.com"
-      plan : POSTPAID
       localized_name {
         name : "SKT 3G"
       }
@@ -8544,7 +8071,6 @@ mno {
     mccmnc : "41904"
     mobile_apn {
       apn : "viva"
-      plan : POSTPAID
     }
   }
 }
@@ -8560,7 +8086,6 @@ mno {
     mccmnc : "41903"
     mobile_apn {
       apn : "action.wataniya.com"
-      plan : POSTPAID
     }
   }
 }
@@ -8576,7 +8101,6 @@ mno {
     mccmnc : "41902"
     mobile_apn {
       apn : "pps"
-      plan : POSTPAID
       localized_name {
         name : "Personal"
       }
@@ -8585,7 +8109,6 @@ mno {
     }
     mobile_apn {
       apn : "apn01"
-      plan : POSTPAID
       localized_name {
         name : "Corporate"
       }
@@ -8604,7 +8127,6 @@ mno {
     mccmnc : "40102"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -8620,7 +8142,6 @@ mno {
     mccmnc : "40101"
     mobile_apn {
       apn : "internet.beeline.kz"
-      plan : POSTPAID
       username : "@internet.beeline"
       dns : "212.19.149.53"
       dns : "194.226.128.1"
@@ -8658,7 +8179,6 @@ mno {
     mccmnc : "40102"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -8693,7 +8213,6 @@ mno {
     mccmnc : "40177"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -8709,7 +8228,6 @@ mno {
     mccmnc : "45708"
     mobile_apn {
       apn : "beelinenet"
-      plan : PREPAID
     }
   }
 }
@@ -8725,7 +8243,6 @@ mno {
     mccmnc : "45702"
     mobile_apn {
       apn : "etlnet"
-      plan : POSTPAID
       dns : "192.168.4.130"
     }
   }
@@ -8742,7 +8259,6 @@ mno {
     mccmnc : "45701"
     mobile_apn {
       apn : "ltcnet"
-      plan : PREPAID
     }
   }
 }
@@ -8758,14 +8274,12 @@ mno {
     mccmnc : "45703"
     mobile_apn {
       apn : "startelecom"
-      plan : PREPAID
       localized_name {
         name : "Unitel (2G)"
       }
     }
     mobile_apn {
       apn : "unitel3g"
-      plan : PREPAID
       localized_name {
         name : "Unitel (3G)"
       }
@@ -8784,7 +8298,6 @@ mno {
     mccmnc : "41503"
     mobile_apn {
       apn : "gprs.mtctouch.com.lb"
-      plan : POSTPAID
     }
   }
 }
@@ -8800,7 +8313,6 @@ mno {
     mccmnc : "358110"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -8816,7 +8328,6 @@ mno {
     mccmnc : "41305"
     mobile_apn {
       apn : "www.wap.airtel.lk"
-      plan : POSTPAID
     }
   }
 }
@@ -8832,28 +8343,24 @@ mno {
     mccmnc : "41302"
     mobile_apn {
       apn : "www.dialogsl.com"
-      plan : POSTPAID
       localized_name {
         name : "Postpaid"
       }
     }
     mobile_apn {
       apn : "ppinternet"
-      plan : PREPAID
       localized_name {
         name : "Prepaid"
       }
     }
     mobile_apn {
       apn : "dialogbb"
-      plan : POSTPAID
       localized_name {
         name : "Unlimited Broadband"
       }
     }
     mobile_apn {
       apn : "kitbb.com"
-      plan : PREPAID
       localized_name {
         name : "Prepaid (Kitbb)"
       }
@@ -8872,7 +8379,6 @@ mno {
     mccmnc : "41308"
     mobile_apn {
       apn : "htwap"
-      plan : POSTPAID
     }
   }
 }
@@ -8888,7 +8394,6 @@ mno {
     mccmnc : "41301"
     mobile_apn {
       apn : "isp"
-      plan : POSTPAID
     }
   }
 }
@@ -8904,7 +8409,6 @@ mno {
     mccmnc : "41303"
     mobile_apn {
       apn : "wap"
-      plan : POSTPAID
     }
   }
 }
@@ -8920,7 +8424,6 @@ mno {
     mccmnc : "65101"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -8936,7 +8439,6 @@ mno {
     mccmnc : "24602"
     mobile_apn {
       apn : "banga"
-      plan : POSTPAID
       dns : "213.226.131.131"
       dns : "193.219.88.36"
     }
@@ -8954,7 +8456,6 @@ mno {
     mccmnc : "24601"
     mobile_apn {
       apn : "gprs.omnitel.net"
-      plan : POSTPAID
       localized_name {
         name : "Contract"
       }
@@ -8963,7 +8464,6 @@ mno {
     }
     mobile_apn {
       apn : "gprs.startas.lt"
-      plan : POSTPAID
       localized_name {
         name : "No contract"
       }
@@ -8986,7 +8486,6 @@ mno {
     mccmnc : "24603"
     mobile_apn {
       apn : "internet.tele2.lt"
-      plan : POSTPAID
     }
   }
 }
@@ -9002,7 +8501,6 @@ mno {
     mccmnc : "27001"
     mobile_apn {
       apn : "web.pt.lu"
-      plan : POSTPAID
       dns : "194.154.192.101"
       dns : "194.154.192.102"
     }
@@ -9020,7 +8518,6 @@ mno {
     mccmnc : "27099"
     mobile_apn {
       apn : "orange.lu"
-      plan : POSTPAID
       dns : "85.94.224.1"
       dns : "85.94.224.2"
     }
@@ -9038,7 +8535,6 @@ mno {
     mccmnc : "27077"
     mobile_apn {
       apn : "hspa"
-      plan : POSTPAID
       localized_name {
         name : "hspa"
       }
@@ -9047,7 +8543,6 @@ mno {
     }
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "internet"
       }
@@ -9070,7 +8565,6 @@ mno {
     mccmnc : "27099"
     mobile_apn {
       apn : "vox.lu"
-      plan : POSTPAID
     }
   }
 }
@@ -9086,14 +8580,12 @@ mno {
     mccmnc : "24705"
     mobile_apn {
       apn : "wap"
-      plan : POSTPAID
       localized_name {
         name : "Bite plus"
       }
     }
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Prepaid/Contract"
       }
@@ -9112,20 +8604,17 @@ mno {
     mccmnc : "24701"
     mobile_apn {
       apn : "internet.lmt.lv"
-      plan : POSTPAID
       dns : "212.93.96.2"
       dns : "212.93.96.4"
     }
     mobile_apn {
       apn : "open.lmt.lv"
-      plan : POSTPAID
       localized_name {
         name : "O!Karte internet"
       }
     }
     mobile_apn {
       apn : "okarte.lmt.lv"
-      plan : POSTPAID
       localized_name {
         name : "O!Karte"
       }
@@ -9144,7 +8633,6 @@ mno {
     mccmnc : "24702"
     mobile_apn {
       apn : "internet.tele2.lv"
-      plan : POSTPAID
       localized_name {
         name : "Regular"
       }
@@ -9153,7 +8641,6 @@ mno {
     }
     mobile_apn {
       apn : "mobileinternet.tele2.lv"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Internet"
       }
@@ -9162,7 +8649,6 @@ mno {
     }
     mobile_apn {
       apn : "data.tele2.lv"
-      plan : POSTPAID
       localized_name {
         name : "Zelta Zivtina"
       }
@@ -9183,14 +8669,12 @@ mno {
     mccmnc : "60401"
     mobile_apn {
       apn : "www.iamgprs1.ma"
-      plan : POSTPAID
       localized_name {
         name : "Abonnement"
       }
     }
     mobile_apn {
       apn : "www.iamgprs2.ma"
-      plan : PREPAID
       localized_name {
         name : "Pre-payé"
       }
@@ -9209,7 +8693,6 @@ mno {
     mccmnc : "60400"
     mobile_apn {
       apn : "internet1.meditel.ma"
-      plan : POSTPAID
       localized_name {
         name : "Abonnement"
       }
@@ -9218,7 +8701,6 @@ mno {
     }
     mobile_apn {
       apn : "internet2.meditel.ma"
-      plan : PREPAID
       localized_name {
         name : "Pre-payé"
       }
@@ -9239,7 +8721,6 @@ mno {
     mccmnc : "60402"
     mobile_apn {
       apn : "www.wana.ma"
-      plan : POSTPAID
       localized_name {
         name : "INWI"
       }
@@ -9258,7 +8739,6 @@ mno {
     mccmnc : "25902"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
@@ -9279,7 +8759,6 @@ mno {
     mccmnc : "25901"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
@@ -9300,7 +8779,6 @@ mno {
     mccmnc : "25905"
     mobile_apn {
       apn : "internet.unite.md"
-      plan : POSTPAID
       localized_name {
         name : "Internet cu abonament"
       }
@@ -9309,7 +8787,6 @@ mno {
     }
     mobile_apn {
       apn : "internet3g.unite.md"
-      plan : PREPAID
       localized_name {
         name : "Internet fără abonament"
       }
@@ -9330,7 +8807,6 @@ mno {
     mccmnc : "29701"
     mobile_apn {
       apn : "gprs.promonte.com"
-      plan : POSTPAID
     }
   }
 }
@@ -9346,7 +8822,6 @@ mno {
     mccmnc : "29702"
     mobile_apn {
       apn : "tmcg-data"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Broadband"
       }
@@ -9355,7 +8830,6 @@ mno {
     }
     mobile_apn {
       apn : "tmcg-nw"
-      plan : POSTPAID
       localized_name {
         name : "GPRS"
       }
@@ -9364,14 +8838,12 @@ mno {
     }
     mobile_apn {
       apn : "internet-postpaid"
-      plan : POSTPAID
       localized_name {
         name : "Postpaid (old)"
       }
     }
     mobile_apn {
       apn : "internet-prepaid"
-      plan : PREPAID
       localized_name {
         name : "Prepaid (old)"
       }
@@ -9390,7 +8862,6 @@ mno {
     mccmnc : "29703"
     mobile_apn {
       apn : "gprsinternet"
-      plan : POSTPAID
     }
   }
 }
@@ -9406,7 +8877,6 @@ mno {
     mccmnc : "64601"
     mobile_apn {
       apn : "internet"
-      plan : PREPAID
     }
   }
 }
@@ -9422,7 +8892,6 @@ mno {
     mccmnc : "64602"
     mobile_apn {
       apn : "orangeworld"
-      plan : PREPAID
       username : "world"
       password : "orange"
     }
@@ -9440,7 +8909,6 @@ mno {
     mccmnc : "64604"
     mobile_apn {
       apn : "internet"
-      plan : PREPAID
     }
   }
 }
@@ -9456,7 +8924,6 @@ mno {
     mccmnc : "29402"
     mobile_apn {
       apn : "datacard"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
@@ -9475,7 +8942,6 @@ mno {
     mccmnc : "29401"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       username : "internet"
       password : "internet"
     }
@@ -9493,7 +8959,6 @@ mno {
     mccmnc : "29403"
     mobile_apn {
       apn : "vipoperator"
-      plan : POSTPAID
       username : "vipoperator"
       password : "vipoperator"
     }
@@ -9530,7 +8995,6 @@ mno {
     mccmnc : "61001"
     mobile_apn {
       apn : "web.malitel3.ml"
-      plan : PREPAID
       localized_name {
         name : "3G+"
       }
@@ -9551,7 +9015,6 @@ mno {
     mccmnc : "61002"
     mobile_apn {
       apn : "iew"
-      plan : PREPAID
       localized_name {
         name : "Internet Every Where"
       }
@@ -9560,7 +9023,6 @@ mno {
     }
     mobile_apn {
       apn : "internet"
-      plan : PREPAID
       localized_name {
         name : "Internet"
       }
@@ -9581,7 +9043,6 @@ mno {
     mccmnc : "41401"
     mobile_apn {
       apn : "mptnet"
-      plan : POSTPAID
       localized_name {
         name : "MPTNET"
       }
@@ -9602,7 +9063,6 @@ mno {
     mccmnc : "42899"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -9619,7 +9079,6 @@ mno {
     mccmnc : "45505"
     mobile_apn {
       apn : "web.hutchisonmacau.com"
-      plan : POSTPAID
       username : "hutchison"
       password : "1234"
     }
@@ -9638,7 +9097,6 @@ mno {
     mccmnc : "45504"
     mobile_apn {
       apn : "ctm-mobile"
-      plan : POSTPAID
     }
   }
 }
@@ -9665,14 +9123,12 @@ mno {
     mccmnc : "27821"
     mobile_apn {
       apn : "gosurfing"
-      plan : POSTPAID
       localized_name {
         name : "Postpaid"
       }
     }
     mobile_apn {
       apn : "rtgsurfing"
-      plan : PREPAID
       localized_name {
         name : "Prepaid"
       }
@@ -9691,7 +9147,6 @@ mno {
     mccmnc : "27801"
     mobile_apn {
       apn : "Internet"
-      plan : POSTPAID
       username : "internet"
       password : "internet"
       dns : "80.85.96.131"
@@ -9711,7 +9166,6 @@ mno {
     mccmnc : "61710"
     mobile_apn {
       apn : "WEB"
-      plan : POSTPAID
     }
   }
 }
@@ -9727,7 +9181,6 @@ mno {
     mccmnc : "47201"
     mobile_apn {
       apn : "internet.dhimobile"
-      plan : POSTPAID
     }
   }
 }
@@ -9743,7 +9196,6 @@ mno {
     mccmnc : "47202"
     mobile_apn {
       apn : "WataniyaNet"
-      plan : POSTPAID
     }
   }
 }
@@ -9759,7 +9211,6 @@ mno {
     mccmnc : "65001"
     mobile_apn {
       apn : "Internet"
-      plan : POSTPAID
     }
   }
 }
@@ -9786,7 +9237,6 @@ mno {
     mccmnc : "33403"
     mobile_apn {
       apn : "internet.movistar.mx"
-      plan : POSTPAID
       username : "movistar"
       password : "movistar"
     }
@@ -9804,7 +9254,6 @@ mno {
     mccmnc : "33402"
     mobile_apn {
       apn : "internet.itelcel.com"
-      plan : POSTPAID
       username : "webgprs"
       password : "webgprs2002"
     }
@@ -9823,14 +9272,12 @@ mno {
     mccmnc : "50219"
     mobile_apn {
       apn : "celcom.net.my"
-      plan : POSTPAID
       localized_name {
         name : "GPRS"
       }
     }
     mobile_apn {
       apn : "celcom3g"
-      plan : POSTPAID
       localized_name {
         name : "Celcom 3G"
       }
@@ -9849,7 +9296,6 @@ mno {
     mccmnc : "50216"
     mobile_apn {
       apn : "diginet"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Internet"
       }
@@ -9858,7 +9304,6 @@ mno {
     }
     mobile_apn {
       apn : "3gdgnet"
-      plan : POSTPAID
       localized_name {
         name : "Broadband"
       }
@@ -9878,7 +9323,6 @@ mno {
     mccmnc : "50217"
     mobile_apn {
       apn : "maxisbb"
-      plan : POSTPAID
       localized_name {
         name : "Broadband"
       }
@@ -9887,7 +9331,6 @@ mno {
     }
     mobile_apn {
       apn : "net"
-      plan : POSTPAID
       localized_name {
         name : "GPRS"
       }
@@ -9896,7 +9339,6 @@ mno {
     }
     mobile_apn {
       apn : "unet"
-      plan : POSTPAID
       localized_name {
         name : "3G (handsets)"
       }
@@ -9919,7 +9361,6 @@ mno {
     mccmnc : "64301"
     mobile_apn {
       apn : "isp.mcel.mz"
-      plan : POSTPAID
       username : "guest"
       password : "guest"
       dns : "212.96.24.2"
@@ -9939,7 +9380,6 @@ mno {
     mccmnc : "64304"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Contract / Prepaid"
       }
@@ -9958,7 +9398,6 @@ mno {
     mccmnc : "64903"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Leo"
       }
@@ -9977,7 +9416,6 @@ mno {
     mccmnc : "64901"
     mobile_apn {
       apn : "ppsinternet"
-      plan : POSTPAID
       localized_name {
         name : "Tango"
       }
@@ -9986,7 +9424,6 @@ mno {
     }
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Contract"
       }
@@ -10024,7 +9461,6 @@ mno {
     mccmnc : "62180"
     mobile_apn {
       apn : "internet.ng.airtel.com.ng"
-      plan : PREPAID
       username : "internet"
       password : "internet"
     }
@@ -10042,7 +9478,6 @@ mno {
     mccmnc : "62190"
     mobile_apn {
       apn : "etisalat"
-      plan : POSTPAID
       localized_name {
         name : "Etisalat Internet"
       }
@@ -10062,7 +9497,6 @@ mno {
     mccmnc : "62170"
     mobile_apn {
       apn : "glosecure"
-      plan : POSTPAID
       localized_name {
         name : "Pay as You Go"
       }
@@ -10071,7 +9505,6 @@ mno {
     }
     mobile_apn {
       apn : "gloflat"
-      plan : POSTPAID
       localized_name {
         name : "Glo 3G Packs"
       }
@@ -10093,7 +9526,6 @@ mno {
     mccmnc : "62160"
     mobile_apn {
       apn : "web.gprs.mtnnigeria.net"
-      plan : PREPAID
       username : "web"
       password : "web"
     }
@@ -10143,7 +9575,6 @@ mno {
     mccmnc : "71073"
     mobile_apn {
       apn : "wap.emovil"
-      plan : POSTPAID
       localized_name {
         name : "WAP"
       }
@@ -10152,7 +9583,6 @@ mno {
     }
     mobile_apn {
       apn : "web.emovil"
-      plan : POSTPAID
       localized_name {
         name : "Web"
       }
@@ -10161,7 +9591,6 @@ mno {
     }
     mobile_apn {
       apn : "internet.ideasalo.ni"
-      plan : POSTPAID
       localized_name {
         name : "Web (Alo pcs)"
       }
@@ -10170,7 +9599,6 @@ mno {
     }
     mobile_apn {
       apn : "wap.ideasalo.ni"
-      plan : POSTPAID
       localized_name {
         name : "WAP (Alo pcs)"
       }
@@ -10191,7 +9619,6 @@ mno {
     mccmnc : "71030"
     mobile_apn {
       apn : "internet.movistar.ni"
-      plan : POSTPAID
       username : "internet"
       password : "internet"
     }
@@ -10209,15 +9636,12 @@ mno {
     mccmnc : "20408"
     mobile_apn {
       apn : "prepaidinternet"
-      plan : POSTPAID
     }
     mobile_apn {
       apn : "fastinternet"
-      plan : POSTPAID
     }
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       username : "KPN"
       password : "gprs"
       dns : "62.133.126.28"
@@ -10231,7 +9655,6 @@ mno {
     }
     mobile_apn {
       apn : "noapn"
-      plan : POSTPAID
       dns : "62.133.126.28"
       dns : "62.133.126.29"
     }
@@ -10251,7 +9674,6 @@ mno {
       mccmnc : "20408"
       mobile_apn {
         apn : "internet"
-        plan : POSTPAID
       }
     }
   }
@@ -10270,7 +9692,6 @@ mno {
       mccmnc : "20408"
       mobile_apn {
         apn : "portalmmm.nl"
-        plan : POSTPAID
       }
     }
   }
@@ -10290,7 +9711,6 @@ mno {
       mccmnc : "20410"
       mobile_apn {
         apn : "portalmmm.nl"
-        plan : PREPAID
         localized_name {
           name : "Aldi Talk Mobiel Prepaid Internet"
         }
@@ -10310,7 +9730,6 @@ mno {
     mccmnc : "20409"
     mobile_apn {
       apn : "data.lycamobile.nl"
-      plan : PREPAID
       username : "lmnl"
       password : "plus"
     }
@@ -10328,7 +9747,6 @@ mno {
     mccmnc : "20420"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       username : "orange"
       password : "orange"
     }
@@ -10346,7 +9764,6 @@ mno {
     mccmnc : "20416"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       dns : "193.78.240.12"
       dns : "193.79.242.39"
     }
@@ -10366,7 +9783,6 @@ mno {
       mccmnc : "20416"
       mobile_apn {
         apn : "internet.ben"
-        plan : POSTPAID
         dns : "193.78.240.12"
         dns : "193.79.242.39"
       }
@@ -10385,7 +9801,6 @@ mno {
     mccmnc : "20402"
     mobile_apn {
       apn : "data.tele2.nl"
-      plan : POSTPAID
     }
   }
 }
@@ -10401,7 +9816,6 @@ mno {
     mccmnc : "20412"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
   mvno {
@@ -10419,7 +9833,6 @@ mno {
       mccmnc : "20412"
       mobile_apn {
         apn : "multimedia.lebara.nl"
-        plan : PREPAID
       }
     }
   }
@@ -10437,7 +9850,6 @@ mno {
     mccmnc : "20404"
     mobile_apn {
       apn : "live.vodafone.com"
-      plan : POSTPAID
       localized_name {
         name : "Non-business"
       }
@@ -10448,7 +9860,6 @@ mno {
     }
     mobile_apn {
       apn : "office.vodafone.nl"
-      plan : POSTPAID
       localized_name {
         name : "Business"
       }
@@ -10499,7 +9910,6 @@ mno {
     }
     mobile_apn {
       apn : "umts.xs4all.nl"
-      plan : POSTPAID
       username : "xs4all"
       password : "xs4all"
     }
@@ -10516,7 +9926,6 @@ mno {
     }
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -10532,7 +9941,6 @@ mno {
     mccmnc : "24207"
     mobile_apn {
       apn : "internet.ventelo.no"
-      plan : POSTPAID
     }
   }
 }
@@ -10548,7 +9956,6 @@ mno {
     mccmnc : "24202"
     mobile_apn {
       apn : "internet.netcom.no"
-      plan : POSTPAID
       username : "netcom"
       password : "netcom"
       dns : "212.169.123.67"
@@ -10570,7 +9977,6 @@ mno {
       mccmnc : "24202"
       mobile_apn {
         apn : "netcom"
-        plan : POSTPAID
         username : "chess"
         password : "chess"
       }
@@ -10624,7 +10030,6 @@ mno {
       mccmnc : "24205"
       mobile_apn {
         apn : "internet"
-        plan : POSTPAID
       }
     }
   }
@@ -10660,7 +10065,6 @@ mno {
     mccmnc : "24208"
     mobile_apn {
       apn : "internet.no"
-      plan : POSTPAID
       dns : "80.232.41.10"
       dns : "80.232.41.20"
     }
@@ -10678,14 +10082,12 @@ mno {
     mccmnc : "24204"
     mobile_apn {
       apn : "internet.tele2.no"
-      plan : POSTPAID
       localized_name {
         name : "Mobilt internet"
       }
     }
     mobile_apn {
       apn : "mobileinternet.tele2.no"
-      plan : POSTPAID
       localized_name {
         name : "Mobilt bredbånd"
       }
@@ -10704,7 +10106,6 @@ mno {
     mccmnc : "24201"
     mobile_apn {
       apn : "telenor"
-      plan : POSTPAID
       dns : "212.17.131.3"
       dns : "148.122.161.2"
     }
@@ -10725,7 +10126,6 @@ mno {
     mccmnc : "24207"
     mobile_apn {
       apn : "internet.ventelo.no"
-      plan : POSTPAID
     }
   }
 }
@@ -10760,7 +10160,6 @@ mno {
     mccmnc : "42902"
     mobile_apn {
       apn : "mero"
-      plan : POSTPAID
     }
   }
 }
@@ -10776,7 +10175,6 @@ mno {
     mccmnc : "42901"
     mobile_apn {
       apn : "ntnet"
-      plan : POSTPAID
     }
   }
 }
@@ -10792,14 +10190,12 @@ mno {
     mccmnc : "53024"
     mobile_apn {
       apn : "mms"
-      plan : POSTPAID
       localized_name {
         name : "MMS"
       }
     }
     mobile_apn {
       apn : "internet"
-      plan : PREPAID
       localized_name {
         name : "Broadband"
       }
@@ -10819,7 +10215,6 @@ mno {
     }
     mobile_apn {
       apn : "www.orcon.net.nz"
-      plan : PREPAID
       localized_name {
         name : "Broadband"
       }
@@ -10839,14 +10234,12 @@ mno {
     mccmnc : "53005"
     mobile_apn {
       apn : "wap.telecom.co.nz"
-      plan : POSTPAID
       localized_name {
         name : "XT mobile (WAP)"
       }
     }
     mobile_apn {
       apn : "internet.telecom.co.nz"
-      plan : POSTPAID
       localized_name {
         name : "XT mobile (Internet with Firewall)"
       }
@@ -10855,7 +10248,6 @@ mno {
     }
     mobile_apn {
       apn : "direct.telecom.co.nz"
-      plan : POSTPAID
       localized_name {
         name : "XT mobile (Direct Internet)"
       }
@@ -10864,7 +10256,6 @@ mno {
     }
     mobile_apn {
       apn : "oa.telecom.co.nz"
-      plan : POSTPAID
       localized_name {
         name : "XT mobile (One Office/Remote Office)"
       }
@@ -10882,7 +10273,6 @@ mno {
     }
     mobile_apn {
       apn : "www.telstraclear.net.nz"
-      plan : PREPAID
       localized_name {
         name : "Broadband"
       }
@@ -10901,7 +10291,6 @@ mno {
     mccmnc : "53001"
     mobile_apn {
       apn : "live.vodafone.com"
-      plan : POSTPAID
       localized_name {
         name : "WAP"
       }
@@ -10910,14 +10299,12 @@ mno {
     }
     mobile_apn {
       apn : "www.vodafone.net.nz"
-      plan : POSTPAID
       localized_name {
         name : "Contract / Prepaid (Restricted)"
       }
     }
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Unrestricted (public)"
       }
@@ -10944,7 +10331,6 @@ mno {
     mccmnc : "42203"
     mobile_apn {
       apn : "isp.nawras.com.om"
-      plan : POSTPAID
     }
   }
 }
@@ -10960,7 +10346,6 @@ mno {
     mccmnc : "42202"
     mobile_apn {
       apn : "taif"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Broadband"
       }
@@ -10969,7 +10354,6 @@ mno {
     }
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Internet (old)"
       }
@@ -10988,7 +10372,6 @@ mno {
     mccmnc : "71401"
     mobile_apn {
       apn : "apn01.cwpanama.com.pa"
-      plan : POSTPAID
     }
   }
 }
@@ -11004,7 +10387,6 @@ mno {
     mccmnc : "71402"
     mobile_apn {
       apn : "internet.movistar.pa"
-      plan : POSTPAID
       username : "movistarpa"
       password : "movistarpa"
       dns : "200.39.10.1"
@@ -11024,13 +10406,11 @@ mno {
     mccmnc : "71610"
     mobile_apn {
       apn : "tim.pe"
-      plan : POSTPAID
       username : "tim"
       password : "tulibertad"
     }
     mobile_apn {
       apn : "ba.amx"
-      plan : PREPAID
       localized_name {
         name : "Internet Móvil Prepago"
       }
@@ -11051,7 +10431,6 @@ mno {
     mccmnc : "71606"
     mobile_apn {
       apn : "movistar.pe"
-      plan : POSTPAID
       username : "movistar@datos"
       password : "movistar"
     }
@@ -11069,7 +10448,6 @@ mno {
     mccmnc : "71607"
     mobile_apn {
       apn : "datacard.nextel.com.pe"
-      plan : POSTPAID
     }
   }
 }
@@ -11085,7 +10463,6 @@ mno {
     mccmnc : "54720"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -11101,7 +10478,6 @@ mno {
     mccmnc : "53703"
     mobile_apn {
       apn : "internet.digicelpng.com"
-      plan : PREPAID
       localized_name {
         name : "Prepaid"
       }
@@ -11122,7 +10498,6 @@ mno {
     mccmnc : "51505"
     mobile_apn {
       apn : "minternet"
-      plan : POSTPAID
     }
   }
 }
@@ -11138,7 +10513,6 @@ mno {
     mccmnc : "51502"
     mobile_apn {
       apn : "internet.globe.com.ph"
-      plan : POSTPAID
       localized_name {
         name : "Postpaid"
       }
@@ -11149,7 +10523,6 @@ mno {
     }
     mobile_apn {
       apn : "http.globe.com.ph"
-      plan : PREPAID
       localized_name {
         name : "Prepaid"
       }
@@ -11160,7 +10533,6 @@ mno {
     }
     mobile_apn {
       apn : "www.globe.com.ph"
-      plan : POSTPAID
       localized_name {
         name : "WAP"
       }
@@ -11183,7 +10555,6 @@ mno {
     mccmnc : "51503"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       username : "witsductoor"
       password : "banonoy"
       dns : "202.57.96.3"
@@ -11203,7 +10574,6 @@ mno {
     mccmnc : "51506"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       username : "telenor"
       password : "telenor"
     }
@@ -11221,14 +10591,12 @@ mno {
     mccmnc : "51501"
     mobile_apn {
       apn : "connect.mobilinkworld.com"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
     }
     mobile_apn {
       apn : "jazzconnect.mobilinkworld.com"
-      plan : POSTPAID
       localized_name {
         name : "Jazz"
       }
@@ -11266,7 +10634,6 @@ mno {
     mccmnc : "51506"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       username : "telenor"
       password : "telenor"
     }
@@ -11284,7 +10651,6 @@ mno {
     mccmnc : "41003"
     mobile_apn {
       apn : "ufone.internet"
-      plan : POSTPAID
       username : "ufone"
       password : "ufone"
     }
@@ -11302,7 +10668,6 @@ mno {
     mccmnc : "51507"
     mobile_apn {
       apn : "warid"
-      plan : POSTPAID
     }
   }
 }
@@ -11329,7 +10694,6 @@ mno {
     mccmnc : "51504"
     mobile_apn {
       apn : "zonginternet"
-      plan : POSTPAID
     }
   }
 }
@@ -11345,7 +10709,6 @@ mno {
     mccmnc : "26012"
     mobile_apn {
       apn : "multi.internet"
-      plan : POSTPAID
     }
   }
 }
@@ -11399,8 +10762,6 @@ mno {
     mccmnc : "26003"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
-      plan : PREPAID
       localized_name {
         name : "Standard access - with image compression"
       }
@@ -11414,7 +10775,6 @@ mno {
     }
     mobile_apn {
       apn : "vpn"
-      plan : POSTPAID
       localized_name {
         name : "VPN mode access without compression (requires activation)"
       }
@@ -11442,7 +10802,6 @@ mno {
       mccmnc : "26003"
       mobile_apn {
         apn : "aster.internet"
-        plan : POSTPAID
         username : "internet"
         password : "internet"
       }
@@ -11463,7 +10822,6 @@ mno {
       mccmnc : "26003"
       mobile_apn {
         apn : "telogic.internet"
-        plan : POSTPAID
         username : "internet"
       }
     }
@@ -11483,7 +10841,6 @@ mno {
       mccmnc : "26003"
       mobile_apn {
         apn : "internet"
-        plan : POSTPAID
         localized_name {
           name : "Default APN"
         }
@@ -11492,7 +10849,6 @@ mno {
       }
       mobile_apn {
         apn : "mni.internet"
-        plan : POSTPAID
         localized_name {
           name : "APN: mni.internet"
         }
@@ -11500,7 +10856,6 @@ mno {
       }
       mobile_apn {
         apn : "telogic.internet"
-        plan : POSTPAID
         localized_name {
           name : "APN: telogic.internet"
         }
@@ -11540,8 +10895,6 @@ mno {
     mccmnc : "26006"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
-      plan : PREPAID
     }
   }
   mvno {
@@ -11559,7 +10912,6 @@ mno {
       mccmnc : "26006"
       mobile_apn {
         apn : "internet"
-        plan : POSTPAID
       }
     }
   }
@@ -11578,7 +10930,6 @@ mno {
       mccmnc : "26006"
       mobile_apn {
         apn : "internet"
-        plan : POSTPAID
       }
     }
   }
@@ -11595,7 +10946,6 @@ mno {
     mccmnc : "26001"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "LTE Plus"
       }
@@ -11606,8 +10956,6 @@ mno {
     }
     mobile_apn {
       apn : "www.plusgsm.pl"
-      plan : POSTPAID
-      plan : PREPAID
       localized_name {
         name : "Standard access"
       }
@@ -11621,7 +10969,6 @@ mno {
     }
     mobile_apn {
       apn : "pro.plusgsm.pl"
-      plan : POSTPAID
       localized_name {
         name : "External dynamic IP address (requires activation)"
       }
@@ -11635,7 +10982,6 @@ mno {
     }
     mobile_apn {
       apn : "m2m.plusgsm.pl"
-      plan : POSTPAID
       localized_name {
         name : "External static IP address (requires activation)"
       }
@@ -11649,8 +10995,6 @@ mno {
     }
     mobile_apn {
       apn : "optimizer"
-      plan : POSTPAID
-      plan : PREPAID
       localized_name {
         name : "iPlus optimizer with data compression"
       }
@@ -11676,7 +11020,6 @@ mno {
       mccmnc : "26001"
       mobile_apn {
         apn : "freedata.pl"
-        plan : PREPAID
       }
     }
   }
@@ -11695,7 +11038,6 @@ mno {
       mccmnc : "26001"
       mobile_apn {
         apn : "internet.gadu-gadu.pl"
-        plan : PREPAID
       }
     }
   }
@@ -11714,7 +11056,6 @@ mno {
       mccmnc : "26001"
       mobile_apn {
         apn : "www.plusgsm.pl"
-        plan : PREPAID
         username : "internet"
         password : "internet"
       }
@@ -11735,7 +11076,6 @@ mno {
       mccmnc : "26001"
       mobile_apn {
         apn : "www.mobile.pl"
-        plan : POSTPAID
       }
     }
   }
@@ -11771,8 +11111,6 @@ mno {
     mccmnc : "26002"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
-      plan : PREPAID
       dns : "213.158.194.1"
       dns : "213.158.193.38"
     }
@@ -11792,7 +11130,6 @@ mno {
       mccmnc : "26002"
       mobile_apn {
         apn : "heyah.pl"
-        plan : PREPAID
         username : "heyah"
         password : "heyah"
         dns : "213.158.194.1"
@@ -11815,7 +11152,6 @@ mno {
       mccmnc : "26002"
       mobile_apn {
         apn : "wapMOBILKING"
-        plan : PREPAID
         username : "mobilking"
         password : "mobilking"
       }
@@ -11834,7 +11170,6 @@ mno {
     mccmnc : "26017"
     mobile_apn {
       apn : "darmowy"
-      plan : PREPAID
     }
   }
 }
@@ -11850,7 +11185,6 @@ mno {
     mccmnc : "26803"
     mobile_apn {
       apn : "clixinternetmovel"
-      plan : POSTPAID
     }
   }
 }
@@ -11866,7 +11200,6 @@ mno {
     mccmnc : "26803"
     mobile_apn {
       apn : "kanguru-portatil"
-      plan : POSTPAID
       localized_name {
         name : "Portable"
       }
@@ -11878,7 +11211,6 @@ mno {
     }
     mobile_apn {
       apn : "kanguru-tempo"
-      plan : PREPAID
       localized_name {
         name : "Tempo (Prepaid)"
       }
@@ -11887,7 +11219,6 @@ mno {
     }
     mobile_apn {
       apn : "kangurufixo"
-      plan : POSTPAID
       localized_name {
         name : "Fixo"
       }
@@ -11916,14 +11247,12 @@ mno {
     mccmnc : "26803"
     mobile_apn {
       apn : "umts"
-      plan : POSTPAID
       localized_name {
         name : "3G"
       }
     }
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "GPRS"
       }
@@ -11943,7 +11272,6 @@ mno {
     mccmnc : "26806"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Tmn Internet"
       }
@@ -11954,7 +11282,6 @@ mno {
     }
     mobile_apn {
       apn : "mmsc.tmn.pt"
-      plan : POSTPAID
       localized_name {
         name : "Tmn Mms"
       }
@@ -11977,7 +11304,6 @@ mno {
     mccmnc : "26801"
     mobile_apn {
       apn : "internet.vodafone.pt"
-      plan : POSTPAID
       username : "vodafone"
       password : "vodafone"
       dns : "212.18.160.133"
@@ -11985,14 +11311,12 @@ mno {
     }
     mobile_apn {
       apn : "net2.vodafone.pt"
-      plan : POSTPAID
       localized_name {
         name : "Vodafone Internet"
       }
     }
     mobile_apn {
       apn : "vas.vodafone.pt"
-      plan : POSTPAID
       localized_name {
         name : "Vodafone MMS"
       }
@@ -12015,14 +11339,12 @@ mno {
       mccmnc : "26801"
       mobile_apn {
         apn : "internet.zon.pt"
-        plan : POSTPAID
         localized_name {
           name : "Dados Móveis"
         }
       }
       mobile_apn {
         apn : "vas.zon.pt"
-        plan : POSTPAID
         localized_name {
           name : "MMS"
         }
@@ -12044,7 +11366,6 @@ mno {
     mccmnc : "74402"
     mobile_apn {
       apn : "gprs.claro.com.py"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
@@ -12063,7 +11384,6 @@ mno {
     mccmnc : "74405"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -12079,14 +11399,12 @@ mno {
     mccmnc : "74404"
     mobile_apn {
       apn : "internet.tigo.py"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
     }
     mobile_apn {
       apn : "broadband.tigo.py"
-      plan : POSTPAID
       localized_name {
         name : "Broadband"
       }
@@ -12110,7 +11428,6 @@ mno {
     mccmnc : "74401"
     mobile_apn {
       apn : "vox.wap"
-      plan : POSTPAID
     }
   }
 }
@@ -12126,7 +11443,6 @@ mno {
     mccmnc : "42701"
     mobile_apn {
       apn : "gprs.qtel"
-      plan : POSTPAID
       localized_name {
         name : "Qatarnet"
       }
@@ -12147,14 +11463,12 @@ mno {
     mccmnc : "42702"
     mobile_apn {
       apn : "web.vodafone.com.qa"
-      plan : POSTPAID
       localized_name {
         name : "Web"
       }
     }
     mobile_apn {
       apn : "vodafone.com.qa"
-      plan : POSTPAID
       localized_name {
         name : "Web (old)"
       }
@@ -12173,28 +11487,24 @@ mno {
     mccmnc : "64710"
     mobile_apn {
       apn : "websfr"
-      plan : POSTPAID
       localized_name {
         name : "Contract / Prepaid"
       }
     }
     mobile_apn {
       apn : "slsfr"
-      plan : POSTPAID
       localized_name {
         name : "SFR slsfr"
       }
     }
     mobile_apn {
       apn : "internetpro"
-      plan : POSTPAID
       localized_name {
         name : "SFR internetpro"
       }
     }
     mobile_apn {
       apn : "ipnet"
-      plan : POSTPAID
       localized_name {
         name : "SFR ipnet"
       }
@@ -12213,14 +11523,12 @@ mno {
     mccmnc : "22605"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Home"
       }
     }
     mobile_apn {
       apn : "static"
-      plan : POSTPAID
       localized_name {
         name : "Business (static)"
       }
@@ -12239,7 +11547,6 @@ mno {
     mccmnc : "22610"
     mobile_apn {
       apn : "net"
-      plan : POSTPAID
       dns : "172.22.7.21"
       dns : "172.22.7.20"
     }
@@ -12257,7 +11564,6 @@ mno {
     mccmnc : "22601"
     mobile_apn {
       apn : "tobe.vodafone.ro"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Internet (Prepaid)"
       }
@@ -12266,7 +11572,6 @@ mno {
     }
     mobile_apn {
       apn : "internet.vodafone.ro"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Internet (Postpaid)"
       }
@@ -12275,7 +11580,6 @@ mno {
     }
     mobile_apn {
       apn : "internet.pre.vodafone.ro"
-      plan : PREPAID
       localized_name {
         name : "Mobile Internet (Prepaid)"
       }
@@ -12284,7 +11588,6 @@ mno {
     }
     mobile_apn {
       apn : "live.vodafone.com"
-      plan : POSTPAID
       localized_name {
         name : "Live! (Postpaid)"
       }
@@ -12293,7 +11596,6 @@ mno {
     }
     mobile_apn {
       apn : "live.pre.vodafone.ro"
-      plan : PREPAID
       localized_name {
         name : "Live! (Prepaid)"
       }
@@ -12333,7 +11635,6 @@ mno {
     mccmnc : "22003"
     mobile_apn {
       apn : "gprsinternet"
-      plan : POSTPAID
       username : "mts"
       password : "064"
       dns : "195.178.38.3"
@@ -12352,7 +11653,6 @@ mno {
     mccmnc : "22001"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       username : "telenor"
       password : "gprs"
     }
@@ -12370,7 +11670,6 @@ mno {
     mccmnc : "22005"
     mobile_apn {
       apn : "vipmobile"
-      plan : POSTPAID
       username : "vipmobile"
       password : "vipmobile"
     }
@@ -12391,7 +11690,6 @@ mno {
     mccmnc : "25012"
     mobile_apn {
       apn : "inet.bwc.ru"
-      plan : POSTPAID
       username : "bwc"
       password : "bwc"
       dns : "81.18.113.2"
@@ -12415,7 +11713,6 @@ mno {
     mccmnc : "25099"
     mobile_apn {
       apn : "home.beeline.ru"
-      plan : POSTPAID
       localized_name {
         name : "3G modem"
       }
@@ -12429,7 +11726,6 @@ mno {
     }
     mobile_apn {
       apn : "internet.beeline.ru"
-      plan : POSTPAID
       localized_name {
         name : "Mobile phone"
       }
@@ -12455,7 +11751,6 @@ mno {
     mccmnc : "25005"
     mobile_apn {
       apn : "wap.etk.ru"
-      plan : POSTPAID
     }
   }
 }
@@ -12474,7 +11769,6 @@ mno {
     mccmnc : "25005"
     mobile_apn {
       apn : "internet.etk.ru"
-      plan : POSTPAID
       username : "etk"
       dns : "10.10.30.3"
       dns : "10.10.30.4"
@@ -12493,7 +11787,6 @@ mno {
     mccmnc : "25001"
     mobile_apn {
       apn : "internet.mts.ru"
-      plan : POSTPAID
       username : "mts"
       password : "mts"
       dns : "213.87.0.1"
@@ -12516,7 +11809,6 @@ mno {
     mccmnc : "25002"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "RUS"
       }
@@ -12543,7 +11835,6 @@ mno {
     mccmnc : "25035"
     mobile_apn {
       apn : "inet.ycc.ru"
-      plan : POSTPAID
       username : "motiv"
       dns : "217.148.52.34"
       dns : "217.148.52.3"
@@ -12562,7 +11853,6 @@ mno {
     mccmnc : "25003"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       username : "ncc"
       dns : "10.0.3.5"
       dns : "10.0.3.2"
@@ -12581,7 +11871,6 @@ mno {
     mccmnc : "25016"
     mobile_apn {
       apn : "internet.ntc"
-      plan : POSTPAID
       dns : "80.243.64.67"
       dns : "80.243.68.34"
     }
@@ -12717,7 +12006,6 @@ mno {
     }
     mobile_apn {
       apn : "internet.tatincom.ru"
-      plan : POSTPAID
       username : "tatincom"
       password : "tatincom"
       dns : "89.207.96.2"
@@ -12740,7 +12028,6 @@ mno {
     mccmnc : "25020"
     mobile_apn {
       apn : "internet.tele2.ru"
-      plan : POSTPAID
       dns : "130.244.127.161"
       dns : "130.244.127.169"
     }
@@ -12758,7 +12045,6 @@ mno {
     mccmnc : "25039"
     mobile_apn {
       apn : "internet.usi.ru"
-      plan : POSTPAID
     }
   }
 }
@@ -12774,7 +12060,6 @@ mno {
     mccmnc : "63510"
     mobile_apn {
       apn : "internet.mtn"
-      plan : POSTPAID
     }
   }
 }
@@ -12790,7 +12075,6 @@ mno {
     mccmnc : "63513"
     mobile_apn {
       apn : "web.tigo.rw"
-      plan : POSTPAID
     }
   }
 }
@@ -12806,14 +12090,12 @@ mno {
     mccmnc : "42003"
     mobile_apn {
       apn : "web1"
-      plan : POSTPAID
       localized_name {
         name : "Postpaid"
       }
     }
     mobile_apn {
       apn : "web2"
-      plan : PREPAID
       localized_name {
         name : "Prepaid"
       }
@@ -12832,7 +12114,6 @@ mno {
     mccmnc : "42001"
     mobile_apn {
       apn : "jawalnet.com.sa"
-      plan : POSTPAID
       dns : "212.118.133.101"
       dns : "212.118.133.102"
     }
@@ -12850,7 +12131,6 @@ mno {
     mccmnc : "42004"
     mobile_apn {
       apn : "zain"
-      plan : POSTPAID
     }
   }
 }
@@ -12866,7 +12146,6 @@ mno {
     mccmnc : "63402"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -12901,7 +12180,6 @@ mno {
     mccmnc : "63407"
     mobile_apn {
       apn : "sudaninet"
-      plan : POSTPAID
       username : "sudani"
       password : "sudani"
     }
@@ -12919,7 +12197,6 @@ mno {
     mccmnc : "63401"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -12936,21 +12213,18 @@ mno {
     mccmnc : "24004"
     mobile_apn {
       apn : "data.tre.se"
-      plan : POSTPAID
       localized_name {
         name : "Mobiltelefon"
       }
     }
     mobile_apn {
       apn : "bredband.tre.se"
-      plan : POSTPAID
       localized_name {
         name : "Bredband"
       }
     }
     mobile_apn {
       apn : "net.tre.se"
-      plan : POSTPAID
       localized_name {
         name : "Bredband Kontantkort"
       }
@@ -12972,7 +12246,6 @@ mno {
       mccmnc : "24004"
       mobile_apn {
         apn : "bredband.comhem.se"
-        plan : POSTPAID
       }
     }
   }
@@ -12991,21 +12264,18 @@ mno {
       mccmnc : "24004"
       mobile_apn {
         apn : "internet.telenor.se"
-        plan : POSTPAID
         localized_name {
           name : "Mobilt Internet"
         }
       }
       mobile_apn {
         apn : "services.telenor.se"
-        plan : POSTPAID
         localized_name {
           name : "Mobilsurf med maxtaxa"
         }
       }
       mobile_apn {
         apn : "bredband.telenor.se"
-        plan : POSTPAID
         localized_name {
           name : "Mobilt Bredband"
         }
@@ -13025,21 +12295,18 @@ mno {
     mccmnc : "24005"
     mobile_apn {
       apn : "data.comviq.se"
-      plan : PREPAID
       localized_name {
         name : "Surf"
       }
     }
     mobile_apn {
       apn : "internet.tele2.se"
-      plan : PREPAID
       localized_name {
         name : "Tele2 Comviq 3G"
       }
     }
     mobile_apn {
       apn : "mobileinternet.tele2.se"
-      plan : PREPAID
       localized_name {
         name : "Tele2 Comviq 3G (7,2 Mbit/s)"
       }
@@ -13058,7 +12325,6 @@ mno {
     mccmnc : "24001"
     mobile_apn {
       apn : "halebop.telia.se"
-      plan : POSTPAID
     }
   }
 }
@@ -13075,7 +12341,6 @@ mno {
     mccmnc : "24005"
     mobile_apn {
       apn : "mobiflex.telia.se"
-      plan : POSTPAID
       localized_name {
         name : "Mobiflex"
       }
@@ -13094,7 +12359,6 @@ mno {
     mccmnc : "24007"
     mobile_apn {
       apn : "internet.parlino.se"
-      plan : POSTPAID
     }
   }
 }
@@ -13110,7 +12374,6 @@ mno {
     mccmnc : "24014"
     mobile_apn {
       apn : "internet.se"
-      plan : POSTPAID
     }
   }
 }
@@ -13127,14 +12390,12 @@ mno {
     mccmnc : "24005"
     mobile_apn {
       apn : "internet.tele2.se"
-      plan : POSTPAID
       localized_name {
         name : "Mobilt Internet"
       }
     }
     mobile_apn {
       apn : "mobileinternet.tele2.se"
-      plan : POSTPAID
       localized_name {
         name : "Mobilt Bredband"
       }
@@ -13155,21 +12416,18 @@ mno {
     mccmnc : "24008"
     mobile_apn {
       apn : "internet.telenor.se"
-      plan : POSTPAID
       localized_name {
         name : "Mobilt Internet"
       }
     }
     mobile_apn {
       apn : "services.telenor.se"
-      plan : POSTPAID
       localized_name {
         name : "Mobilsurf med maxtaxa"
       }
     }
     mobile_apn {
       apn : "bredband.telenor.se"
-      plan : POSTPAID
       localized_name {
         name : "Mobilt Bredband"
       }
@@ -13194,14 +12452,12 @@ mno {
       mccmnc : "24008"
       mobile_apn {
         apn : "bredband.glocalnet.se"
-        plan : POSTPAID
         localized_name {
           name : "Mobilt Bredband"
         }
       }
       mobile_apn {
         apn : "internet.glocalnet.se"
-        plan : POSTPAID
         localized_name {
           name : "Glocalnet Internet"
         }
@@ -13222,7 +12478,6 @@ mno {
     mccmnc : "24005"
     mobile_apn {
       apn : "online.telia.se"
-      plan : POSTPAID
       localized_name {
         name : "Telia 3G"
       }
@@ -13242,7 +12497,6 @@ mno {
     mccmnc : "24001"
     mobile_apn {
       apn : "online.telia.se"
-      plan : POSTPAID
     }
   }
 }
@@ -13257,14 +12511,12 @@ mno {
     }
     mobile_apn {
       apn : "sp-internet"
-      plan : POSTPAID
       localized_name {
         name : "Mobilt Bredband"
       }
     }
     mobile_apn {
       apn : "internet.uvtc.com"
-      plan : POSTPAID
       localized_name {
         name : "Mobilt Internet"
       }
@@ -13283,7 +12535,6 @@ mno {
     mccmnc : "24009"
     mobile_apn {
       apn : "internet.djuice.se"
-      plan : POSTPAID
     }
   }
 }
@@ -13318,7 +12569,6 @@ mno {
     mccmnc : "52503"
     mobile_apn {
       apn : "sunsurf"
-      plan : POSTPAID
       localized_name {
         name : "SunSurf/Mobile Broadband (postpaid)"
       }
@@ -13328,7 +12578,6 @@ mno {
     }
     mobile_apn {
       apn : "miworld"
-      plan : POSTPAID
       localized_name {
         name : "MiWorld Mobile (postpaid)"
       }
@@ -13337,7 +12586,6 @@ mno {
     }
     mobile_apn {
       apn : "miworldcard"
-      plan : PREPAID
       localized_name {
         name : "MiWorld Mobile (prepaid)"
       }
@@ -13346,14 +12594,12 @@ mno {
     }
     mobile_apn {
       apn : "prepaidbb"
-      plan : PREPAID
       localized_name {
         name : "Mobile Broadband (prepaid)"
       }
     }
     mobile_apn {
       apn : "sunsurfmcard"
-      plan : PREPAID
       localized_name {
         name : "M Card (prepaid)"
       }
@@ -13373,7 +12619,6 @@ mno {
     mccmnc : "52502"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       dns : "165.21.100.88"
       dns : "165.21.83.88"
     }
@@ -13391,7 +12636,6 @@ mno {
     mccmnc : "52505"
     mobile_apn {
       apn : "shwap"
-      plan : POSTPAID
       localized_name {
         name : "WAP"
       }
@@ -13401,14 +12645,12 @@ mno {
     }
     mobile_apn {
       apn : "shppd"
-      plan : PREPAID
       localized_name {
         name : "MaxMobile Broadband (prepaid)"
       }
     }
     mobile_apn {
       apn : "shinternet"
-      plan : POSTPAID
       localized_name {
         name : "MaxMobile Broadband (postpaid)"
       }
@@ -13427,7 +12669,6 @@ mno {
     mccmnc : "29341"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Postpaid"
       }
@@ -13438,7 +12679,6 @@ mno {
     }
     mobile_apn {
       apn : "internetpro"
-      plan : POSTPAID
       username : "mobitel"
       password : "internet"
       dns : "213.229.248.161"
@@ -13458,7 +12698,6 @@ mno {
     mccmnc : "29364"
     mobile_apn {
       apn : "internet.t-2.net"
-      plan : POSTPAID
     }
   }
 }
@@ -13474,7 +12713,6 @@ mno {
     mccmnc : "29340"
     mobile_apn {
       apn : "internet.simobil.si"
-      plan : POSTPAID
       username : "simobil"
       password : "internet"
       dns : "121.30.86.130"
@@ -13494,7 +12732,6 @@ mno {
     mccmnc : "23106"
     mobile_apn {
       apn : "o2internet"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
@@ -13515,7 +12752,6 @@ mno {
     mccmnc : "23101"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       dns : "213.151.200.31"
       dns : "213.151.208.162"
     }
@@ -13534,7 +12770,6 @@ mno {
     mccmnc : "23104"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       dns : "195.91.0.17"
       dns : "194.154.227.17"
     }
@@ -13552,7 +12787,6 @@ mno {
     mccmnc : "60802"
     mobile_apn {
       apn : "wap.sentelgsm.com"
-      plan : POSTPAID
       dns : "200.85.0.104"
       dns : "200.85.0.107"
     }
@@ -13570,7 +12804,6 @@ mno {
     mccmnc : "70610"
     mobile_apn {
       apn : "internet.ideasclaro"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
@@ -13589,7 +12822,6 @@ mno {
     mccmnc : "70604"
     mobile_apn {
       apn : "internet.movistar.sv"
-      plan : POSTPAID
       username : "movistarsv"
       password : "movistarsv"
     }
@@ -13607,7 +12839,6 @@ mno {
     mccmnc : "70603"
     mobile_apn {
       apn : "internet.tigo.sv"
-      plan : POSTPAID
     }
   }
 }
@@ -13623,7 +12854,6 @@ mno {
     mccmnc : "70602"
     mobile_apn {
       apn : "wap.digicelsv.com"
-      plan : POSTPAID
     }
   }
 }
@@ -13639,7 +12869,6 @@ mno {
     mccmnc : "52001"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       dns : "202.183.255.20"
       dns : "202.183.255.21"
     }
@@ -13657,7 +12886,6 @@ mno {
     mccmnc : "52018"
     mobile_apn {
       apn : "www.dtac.co.th"
-      plan : POSTPAID
       dns : "202.44.202.2"
       dns : "203.44.144.33"
     }
@@ -13675,7 +12903,6 @@ mno {
     mccmnc : "52015"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -13691,7 +12918,6 @@ mno {
     mccmnc : "52099"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       username : "true"
       password : "true"
     }
@@ -13709,28 +12935,24 @@ mno {
     mccmnc : "60501"
     mobile_apn {
       apn : "weborange"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
     }
     mobile_apn {
       apn : "mms.otun"
-      plan : POSTPAID
       localized_name {
         name : "Internet + MMS"
       }
     }
     mobile_apn {
       apn : "keygp"
-      plan : PREPAID
       localized_name {
         name : "Internet Everywhere Prepaid"
       }
     }
     mobile_apn {
       apn : "keypro"
-      plan : POSTPAID
       localized_name {
         name : "Internet Everywhere Professional"
       }
@@ -13769,7 +12991,6 @@ mno {
     mccmnc : "60502"
     mobile_apn {
       apn : "mms.tn"
-      plan : POSTPAID
       localized_name {
         name : "MMS"
       }
@@ -13778,7 +12999,6 @@ mno {
     }
     mobile_apn {
       apn : "gprs.tn"
-      plan : POSTPAID
       localized_name {
         name : "GPRS DATA"
       }
@@ -13787,7 +13007,6 @@ mno {
     }
     mobile_apn {
       apn : "internet.tn"
-      plan : POSTPAID
       localized_name {
         name : "WEB DATA"
       }
@@ -13807,13 +13026,11 @@ mno {
     mccmnc : "28604"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       dns : "212.156.4.4"
       dns : "212.156.4.20"
     }
     mobile_apn {
       apn : "aycell"
-      plan : POSTPAID
       localized_name {
         name : "(former Aycell)"
       }
@@ -13834,14 +13051,12 @@ mno {
     mccmnc : "28601"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Turkcell internet"
       }
     }
     mobile_apn {
       apn : "mgb"
-      plan : POSTPAID
       localized_name {
         name : "Turkcell 3G"
       }
@@ -13868,7 +13083,6 @@ mno {
     }
     mobile_apn {
       apn : "edge.kktctelsim.com"
-      plan : POSTPAID
       localized_name {
         name : "KKTC Telsim"
       }
@@ -13887,7 +13101,6 @@ mno {
     mccmnc : "37413"
     mobile_apn {
       apn : "wap.digiceltt.com"
-      plan : POSTPAID
       username : "wap"
       password : "wap"
     }
@@ -13905,7 +13118,6 @@ mno {
     mccmnc : "37412"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       username : "wap"
       password : "wap"
     }
@@ -13940,11 +13152,9 @@ mno {
     mccmnc : "46692"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
     mobile_apn {
       apn : "emome"
-      plan : POSTPAID
       username : "web"
       password : "web"
     }
@@ -13965,7 +13175,6 @@ mno {
     mccmnc : "46601"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -13984,7 +13193,6 @@ mno {
     mccmnc : "46699"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -14003,7 +13211,6 @@ mno {
     mccmnc : "46697"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -14022,7 +13229,6 @@ mno {
     mccmnc : "46689"
     mobile_apn {
       apn : "vibo"
-      plan : POSTPAID
     }
   }
 }
@@ -14038,7 +13244,6 @@ mno {
     mccmnc : "64005"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -14085,7 +13290,6 @@ mno {
     mccmnc : "64004"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -14101,7 +13305,6 @@ mno {
     mccmnc : "64003"
     mobile_apn {
       apn : "znet"
-      plan : POSTPAID
     }
   }
 }
@@ -14136,7 +13339,6 @@ mno {
     mccmnc : "64002"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -14152,7 +13354,6 @@ mno {
     mccmnc : "25502"
     mobile_apn {
       apn : "internet.beeline.ua"
-      plan : POSTPAID
     }
   }
 }
@@ -14187,21 +13388,18 @@ mno {
     mccmnc : "25503"
     mobile_apn {
       apn : "www.djuice.com.ua"
-      plan : POSTPAID
       localized_name {
         name : "Internet GPRS"
       }
     }
     mobile_apn {
       apn : "xl.kyivstar.net"
-      plan : POSTPAID
       localized_name {
         name : "Internet XL"
       }
     }
     mobile_apn {
       apn : "3g.kyivstar.net"
-      plan : POSTPAID
       localized_name {
         name : "Internet 3G"
       }
@@ -14240,13 +13438,11 @@ mno {
     mccmnc : "25501"
     mobile_apn {
       apn : "www.jeans.ua"
-      plan : POSTPAID
       dns : "80.255.64.23"
       dns : "80.255.64.24"
     }
     mobile_apn {
       apn : "hyper.net"
-      plan : POSTPAID
       localized_name {
         name : "Hyper.NET"
       }
@@ -14267,7 +13463,6 @@ mno {
     mccmnc : "25501"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "GPRS Internet"
       }
@@ -14277,21 +13472,18 @@ mno {
     }
     mobile_apn {
       apn : "hyper.net"
-      plan : POSTPAID
       localized_name {
         name : "Hyper.NET"
       }
     }
     mobile_apn {
       apn : "active"
-      plan : POSTPAID
       localized_name {
         name : "HyperActive"
       }
     }
     mobile_apn {
       apn : "www.umc.ua"
-      plan : POSTPAID
       localized_name {
         name : "umc.ua"
       }
@@ -14343,7 +13535,6 @@ mno {
     mccmnc : "25507"
     mobile_apn {
       apn : "3g.utel.ua"
-      plan : POSTPAID
     }
   }
 }
@@ -14359,7 +13550,6 @@ mno {
     mccmnc : "25503"
     mobile_apn {
       apn : "www.ab.kyivstar.net"
-      plan : POSTPAID
       localized_name {
         name : "Ace&Base"
       }
@@ -14368,14 +13558,12 @@ mno {
     }
     mobile_apn {
       apn : "www.kyivstar.net"
-      plan : POSTPAID
       localized_name {
         name : "Contract GPRS"
       }
     }
     mobile_apn {
       apn : "3g.kyivstar.net"
-      plan : POSTPAID
       localized_name {
         name : "Internet 3G"
       }
@@ -14394,7 +13582,6 @@ mno {
     mccmnc : "25506"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       localized_name {
         name : "Standard"
       }
@@ -14403,7 +13590,6 @@ mno {
     }
     mobile_apn {
       apn : "speed"
-      plan : POSTPAID
       localized_name {
         name : "Faster"
       }
@@ -14424,7 +13610,6 @@ mno {
     mccmnc : "64110"
     mobile_apn {
       apn : "yellopix.mtn.co.ug"
-      plan : POSTPAID
       dns : "193.108.252.50"
       dns : "193.108.252.51"
     }
@@ -14442,7 +13627,6 @@ mno {
     mccmnc : "64114"
     mobile_apn {
       apn : "orange.ug"
-      plan : POSTPAID
     }
   }
 }
@@ -14458,14 +13642,12 @@ mno {
     mccmnc : "64111"
     mobile_apn {
       apn : "utbroadband"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Broadband"
       }
     }
     mobile_apn {
       apn : "utweb"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Internet"
       }
@@ -14484,7 +13666,6 @@ mno {
     mccmnc : "64122"
     mobile_apn {
       apn : "web.waridtel.co.ug"
-      plan : POSTPAID
     }
   }
 }
@@ -14500,7 +13681,6 @@ mno {
     mccmnc : "64101"
     mobile_apn {
       apn : "web.ug.zain.com"
-      plan : POSTPAID
     }
   }
 }
@@ -14521,28 +13701,24 @@ mno {
     mccmnc : "310680"
     mobile_apn {
       apn : "Broadband"
-      plan : POSTPAID
       localized_name {
         name : "LaptopConnect (data cards)"
       }
     }
     mobile_apn {
       apn : "wap.cingular"
-      plan : POSTPAID
       localized_name {
         name : "MEdia Net (phones)"
       }
     }
     mobile_apn {
       apn : "isp.cingular"
-      plan : POSTPAID
       localized_name {
         name : "Data Connect (old)"
       }
     }
     mobile_apn {
       apn : "pta"
-      plan : POSTPAID
       localized_name {
         name : "LTE"
       }
@@ -14563,11 +13739,9 @@ mno {
       mccmnc : "310410"
       mobile_apn {
         apn : "att.mvno"
-        plan : PREPAID
       }
       mobile_apn {
         apn : "tfdata"
-        plan : PREPAID
       }
     }
   }
@@ -14585,7 +13759,6 @@ mno {
     mccmnc : "311370"
     mobile_apn {
       apn : "web.gci"
-      plan : POSTPAID
     }
   }
 }
@@ -14833,7 +14006,6 @@ mno {
     mccmnc : "311570"
     mobile_apn {
       apn : "ISP"
-      plan : POSTPAID
     }
   }
 }
@@ -14876,7 +14048,6 @@ mno {
     mccmnc : "310420"
     mobile_apn {
       apn : "wap.gocbw.com"
-      plan : POSTPAID
       username : "cbw"
     }
   }
@@ -14938,7 +14109,6 @@ mno {
     mccmnc : "310570"
     mobile_apn {
       apn : "wapgw.chinookwireless.net"
-      plan : POSTPAID
     }
   }
 }
@@ -14991,7 +14161,6 @@ mno {
     mccmnc : "310120"
     mobile_apn {
       apn : "r.ispsn"
-      plan : POSTPAID
       localized_name {
         name : "Internet"
       }
@@ -15073,14 +14242,12 @@ mno {
     mccmnc : "310800"
     mobile_apn {
       apn : "fast.t-mobile.com"
-      plan : POSTPAID
       localized_name {
         name : "LTE"
       }
     }
     mobile_apn {
       apn : "epc.tmobile.com"
-      plan : POSTPAID
       localized_name {
         name : "Internet/WebConnect"
       }
@@ -15089,21 +14256,18 @@ mno {
     }
     mobile_apn {
       apn : "wap.voicestream.com"
-      plan : POSTPAID
       localized_name {
         name : "Web2Go/t-zones"
       }
     }
     mobile_apn {
       apn : "internet2.voicestream.com"
-      plan : POSTPAID
       localized_name {
         name : "Internet (old)"
       }
     }
     mobile_apn {
       apn : "internet3.voicestream.com"
-      plan : POSTPAID
       localized_name {
         name : "Internet with VPN (old)"
       }
@@ -15229,7 +14393,6 @@ mno {
     mccmnc : "311480"
     mobile_apn {
       apn : "vzwinternet"
-      plan : POSTPAID
       localized_name {
         name : "4G LTE Contract"
       }
@@ -15468,7 +14631,6 @@ mno {
     mccmnc : "74801"
     mobile_apn {
       apn : "adslmovil"
-      plan : POSTPAID
       localized_name {
         name : "ADSL Móvil"
       }
@@ -15477,7 +14639,6 @@ mno {
     }
     mobile_apn {
       apn : "prepago.ancel"
-      plan : PREPAID
       localized_name {
         name : "ADSL Móvil Prepago"
       }
@@ -15486,7 +14647,6 @@ mno {
     }
     mobile_apn {
       apn : "gprs.ancel"
-      plan : POSTPAID
       localized_name {
         name : "GPRS"
       }
@@ -15507,7 +14667,6 @@ mno {
     mccmnc : "74810"
     mobile_apn {
       apn : "gprs.claro.com.uy"
-      plan : POSTPAID
       localized_name {
         name : "3G Internet"
       }
@@ -15516,7 +14675,6 @@ mno {
     }
     mobile_apn {
       apn : "internet.ctimovil.com.uy"
-      plan : POSTPAID
       localized_name {
         name : "2G Internet"
       }
@@ -15537,7 +14695,6 @@ mno {
     mccmnc : "74807"
     mobile_apn {
       apn : "apnumt.movistar.com.uy"
-      plan : POSTPAID
       localized_name {
         name : "3G Internet"
       }
@@ -15546,7 +14703,6 @@ mno {
     }
     mobile_apn {
       apn : "webapn.movistar.com.uy"
-      plan : POSTPAID
       localized_name {
         name : "2G Internet"
       }
@@ -15567,7 +14723,6 @@ mno {
     mccmnc : "43404"
     mobile_apn {
       apn : "internet.beeline.uz"
-      plan : POSTPAID
       username : "beeline"
       password : "beeline"
     }
@@ -15585,7 +14740,6 @@ mno {
     mccmnc : "43407"
     mobile_apn {
       apn : "net.mts.uz"
-      plan : POSTPAID
       username : "mts"
       password : "mts"
     }
@@ -15620,7 +14774,6 @@ mno {
     mccmnc : "360070"
     mobile_apn {
       apn : "wap.digiceloecs.com"
-      plan : POSTPAID
       username : "wapoecs"
       password : "wap03oecs"
     }
@@ -15640,7 +14793,6 @@ mno {
     mccmnc : "73403"
     mobile_apn {
       apn : "gprsweb.digitel.ve"
-      plan : POSTPAID
       dns : "57.67.127.195"
     }
   }
@@ -15657,7 +14809,6 @@ mno {
     mccmnc : "73406"
     mobile_apn {
       apn : "int.movilnet.com.ve"
-      plan : POSTPAID
       dns : "200.44.32.12"
       dns : "200.11.248.12"
     }
@@ -15675,7 +14826,6 @@ mno {
     mccmnc : "73404"
     mobile_apn {
       apn : "internet.movistar.ve"
-      plan : POSTPAID
       dns : "200.35.65.3"
       dns : "200.35.65.4"
     }
@@ -15693,7 +14843,6 @@ mno {
     mccmnc : "45207"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -15728,7 +14877,6 @@ mno {
     mccmnc : "45208"
     mobile_apn {
       apn : "e-internet"
-      plan : POSTPAID
       localized_name {
         name : "EVNTelecomNet"
       }
@@ -15747,7 +14895,6 @@ mno {
     mccmnc : "45201"
     mobile_apn {
       apn : "m-wap"
-      plan : POSTPAID
       username : "mms"
       password : "mms"
     }
@@ -15784,7 +14931,6 @@ mno {
     mccmnc : "45205"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -15800,14 +14946,12 @@ mno {
     mccmnc : "45204"
     mobile_apn {
       apn : "v-internet"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Internet"
       }
     }
     mobile_apn {
       apn : "e-connect"
-      plan : POSTPAID
       localized_name {
         name : "D-com 3G"
       }
@@ -15826,7 +14970,6 @@ mno {
     mccmnc : "45202"
     mobile_apn {
       apn : "m3-world"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Internet"
       }
@@ -15835,7 +14978,6 @@ mno {
     }
     mobile_apn {
       apn : "m3-card"
-      plan : POSTPAID
       localized_name {
         name : "Mobile Broadband"
       }
@@ -15856,7 +14998,6 @@ mno {
     mccmnc : "65502"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
     }
   }
 }
@@ -15872,7 +15013,6 @@ mno {
     mccmnc : "65507"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       dns : "196.7.0.138"
       dns : "196.7.142.132"
     }
@@ -15890,7 +15030,6 @@ mno {
     mccmnc : "65510"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       dns : "196.11.240.241"
       dns : "209.212.97.1"
     }
@@ -15908,7 +15047,6 @@ mno {
     mccmnc : "65507"
     mobile_apn {
       apn : "vdata"
-      plan : POSTPAID
       dns : "196.7.0.138"
       dns : "196.7.142.132"
     }
@@ -15926,13 +15064,11 @@ mno {
     mccmnc : "65501"
     mobile_apn {
       apn : "internet"
-      plan : POSTPAID
       dns : "196.207.40.165"
       dns : "196.43.46.190"
     }
     mobile_apn {
       apn : "unrestricted"
-      plan : POSTPAID
       localized_name {
         name : "Unrestricted"
       }
@@ -15973,7 +15109,6 @@ mno {
     mccmnc : "312620"
     mobile_apn {
       apn : "hpdp-internet.foggmobile.com"
-      plan : PREPAID
     }
   }
   # If the IMSI range is correct, we still want to treat this as an MVNO.

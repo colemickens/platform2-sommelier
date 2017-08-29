@@ -492,8 +492,6 @@ class ServiceProvidersConverter(object):
         if apn is None:
             apn=''
         self._SpewString(u'apn', apn)
-        for plan_node in sorted(apn_node.findall(u'plan')):
-            self._SpewEnum(u'plan', plan_node.get(u'type').upper())
         for name_node in sorted(apn_node.findall(u'name')):
             self._SpewLocalizedNameNode(name_node)
         for gateway_node in apn_node.findall(u'gateway'):

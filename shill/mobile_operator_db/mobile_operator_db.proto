@@ -45,13 +45,6 @@ message LocalizedName {
 
 message MobileAPN {
   required string apn = 1;
-
-  enum Plan {
-    PREPAID = 1;
-    POSTPAID = 2;
-  }
-  repeated Plan plan = 2;
-
   repeated LocalizedName localized_name = 3;
   optional string gateway = 4;
   optional string username = 5;
