@@ -178,9 +178,8 @@ class ControlInterface {
       const std::string& path,
       const std::string& service) = 0;
 
-  virtual ModemGSMCardProxyInterface* CreateModemGSMCardProxy(
-      const std::string& path,
-      const std::string& service) = 0;
+  virtual std::unique_ptr<ModemGSMCardProxyInterface> CreateModemGSMCardProxy(
+      const std::string& path, const std::string& service) = 0;
 
   virtual ModemGSMNetworkProxyInterface* CreateModemGSMNetworkProxy(
       const std::string& path,

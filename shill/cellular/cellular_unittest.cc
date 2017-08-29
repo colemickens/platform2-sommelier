@@ -506,7 +506,7 @@ class CellularTest : public testing::Test {
       return std::move(test_->cdma_proxy_);
     }
 
-    ModemGSMCardProxyInterface* CreateModemGSMCardProxy(
+    std::unique_ptr<ModemGSMCardProxyInterface> CreateModemGSMCardProxy(
         const string& /*path*/,
         const string& /*service*/) override {
       // TODO(benchan): This code conditionally returns a nullptr to avoid
@@ -515,8 +515,10 @@ class CellularTest : public testing::Test {
       // construction. Remove this workaround after refactoring the tests.
       CHECK(!test_->create_gsm_card_proxy_from_factory_ ||
             test_->gsm_card_proxy_);
-      return test_->create_gsm_card_proxy_from_factory_ ?
-          test_->gsm_card_proxy_.release() : nullptr;
+      if (test_->create_gsm_card_proxy_from_factory_) {
+        return std::move(test_->gsm_card_proxy_);
+      }
+      return nullptr;
     }
 
     ModemGSMNetworkProxyInterface* CreateModemGSMNetworkProxy(

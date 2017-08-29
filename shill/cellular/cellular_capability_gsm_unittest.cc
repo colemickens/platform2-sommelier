@@ -201,15 +201,17 @@ class CellularCapabilityGSMTest : public testing::Test {
       return std::move(test_->simple_proxy_);
     }
 
-    ModemGSMCardProxyInterface* CreateModemGSMCardProxy(
+    std::unique_ptr<ModemGSMCardProxyInterface> CreateModemGSMCardProxy(
         const string& /*path*/,
         const string& /*service*/) override {
       // TODO(benchan): This code conditionally returns a nullptr to avoid
       // CellularCapabilityGSM::InitProperties (and thus
       // CellularCapabilityGSM::GetIMSI) from being called during the
       // construction. Remove this workaround after refactoring the tests.
-      return test_->create_card_proxy_from_factory_ ?
-          test_->card_proxy_.release() : nullptr;
+      if (test_->create_card_proxy_from_factory_) {
+        return std::move(test_->card_proxy_);
+      }
+      return nullptr;
     }
 
     ModemGSMNetworkProxyInterface* CreateModemGSMNetworkProxy(
