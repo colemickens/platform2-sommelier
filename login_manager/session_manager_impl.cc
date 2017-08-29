@@ -1536,6 +1536,8 @@ bool SessionManagerImpl::StartArcInstanceInternal(
   std::vector<std::string> keyvals = {
       "CHROMEOS_DEV_MODE=" + std::to_string(IsDevMode(system_)),
       "CHROMEOS_INSIDE_VM=" + std::to_string(IsInsideVm(system_)),
+      "NATIVE_BRIDGE_EXPERIMENT=" +
+          std::to_string(in_request.native_bridge_experiment()),
   };
 
   const bool continue_boot = container_pid > 0;

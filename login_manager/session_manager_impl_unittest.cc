@@ -1478,7 +1478,8 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForLoginScreen) {
       TriggerImpulseInternal(
           SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse,
           ElementsAre("CHROMEOS_DEV_MODE=0",
-                      "CHROMEOS_INSIDE_VM=0"),
+                      "CHROMEOS_INSIDE_VM=0",
+                      "NATIVE_BRIDGE_EXPERIMENT=0"),
           InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
@@ -1552,6 +1553,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ForUser) {
           SessionManagerImpl::kStartArcInstanceImpulse,
           ElementsAre("CHROMEOS_DEV_MODE=0",
                       "CHROMEOS_INSIDE_VM=0",
+                      "NATIVE_BRIDGE_EXPERIMENT=0",
                       StartsWith("ANDROID_DATA_DIR="),
                       StartsWith("ANDROID_DATA_OLD_DIR="),
                       std::string("CHROMEOS_USER=") + kSaneEmail,
@@ -1625,7 +1627,8 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
       TriggerImpulseInternal(
           SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse,
           ElementsAre("CHROMEOS_DEV_MODE=0",
-                      "CHROMEOS_INSIDE_VM=0"),
+                      "CHROMEOS_INSIDE_VM=0",
+                      "NATIVE_BRIDGE_EXPERIMENT=0"),
           InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
@@ -1656,6 +1659,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
           SessionManagerImpl::kContinueArcBootImpulse,
           ElementsAre("CHROMEOS_DEV_MODE=0",
                       "CHROMEOS_INSIDE_VM=0",
+                      "NATIVE_BRIDGE_EXPERIMENT=0",
                       StartsWith("ANDROID_DATA_DIR="),
                       StartsWith("ANDROID_DATA_OLD_DIR="),
                       std::string("CHROMEOS_USER=") + kSaneEmail,
@@ -1723,6 +1727,30 @@ TEST_F(SessionManagerImplTest, ArcInstanceStart_ContinueBooting) {
   EXPECT_FALSE(android_container_.running());
 }
 
+TEST_F(SessionManagerImplTest, ArcInstanceStart_NativeBridgeExperiment) {
+  EXPECT_CALL(
+      *init_controller_,
+      TriggerImpulseInternal(
+          SessionManagerImpl::kStartArcInstanceForLoginScreenImpulse,
+          ElementsAre("CHROMEOS_DEV_MODE=0",
+                      "CHROMEOS_INSIDE_VM=0",
+                      "NATIVE_BRIDGE_EXPERIMENT=1"),
+          InitDaemonController::TriggerMode::SYNC))
+      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+
+  brillo::ErrorPtr error;
+  StartArcInstanceRequest request;
+  // Use for login screen mode for minimalistic test.
+  request.set_for_login_screen(true);
+  request.set_native_bridge_experiment(true);
+  std::string container_instance_id;
+  dbus::FileDescriptor server_socket_fd;
+  EXPECT_TRUE(impl_->StartArcInstance(
+      &error, SerializeAsBlob(request), &container_instance_id,
+      &server_socket_fd));
+  EXPECT_FALSE(error.get());
+}
+
 TEST_F(SessionManagerImplTest, ArcInstanceStart_NoSession) {
   brillo::ErrorPtr error;
   StartArcInstanceRequest request = CreateStartArcInstanceRequestForUser();
@@ -1771,6 +1799,7 @@ TEST_F(SessionManagerImplTest, ArcInstanceCrash) {
           SessionManagerImpl::kStartArcInstanceImpulse,
           ElementsAre("CHROMEOS_DEV_MODE=1",
                       "CHROMEOS_INSIDE_VM=0",
+                      "NATIVE_BRIDGE_EXPERIMENT=0",
                       StartsWith("ANDROID_DATA_DIR="),
                       StartsWith("ANDROID_DATA_OLD_DIR="),
                       std::string("CHROMEOS_USER=") + kSaneEmail,
@@ -1971,6 +2000,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning) {
           SessionManagerImpl::kStartArcInstanceImpulse,
           ElementsAre("CHROMEOS_DEV_MODE=0",
                       "CHROMEOS_INSIDE_VM=0",
+                      "NATIVE_BRIDGE_EXPERIMENT=0",
                       StartsWith("ANDROID_DATA_DIR="),
                       StartsWith("ANDROID_DATA_OLD_DIR="),
                       std::string("CHROMEOS_USER=") + kSaneEmail,
@@ -2024,6 +2054,7 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
           SessionManagerImpl::kStartArcInstanceImpulse,
           ElementsAre("CHROMEOS_DEV_MODE=0",
                       "CHROMEOS_INSIDE_VM=0",
+                      "NATIVE_BRIDGE_EXPERIMENT=0",
                       StartsWith("ANDROID_DATA_DIR="),
                       StartsWith("ANDROID_DATA_OLD_DIR="),
                       std::string("CHROMEOS_USER=") + kSaneEmail,
