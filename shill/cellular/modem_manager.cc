@@ -151,9 +151,9 @@ void ModemManagerClassic::Disconnect() {
 
 void ModemManagerClassic::InitModemClassic(ModemClassic* modem) {
   // TODO(rochberg): Switch to asynchronous calls (crbug.com/200687).
-  std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy(
+  std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy =
       control_interface()->CreateDBusPropertiesProxy(modem->path(),
-                                                     modem->service()));
+                                                     modem->service());
   KeyValueStore properties =
       properties_proxy->GetAll(MM_MODEM_INTERFACE);
 

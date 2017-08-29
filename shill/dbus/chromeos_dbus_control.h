@@ -90,9 +90,8 @@ class ChromeosDBusControl : public ControlInterface {
       const std::string& service) override;
 
 #if !defined(DISABLE_CELLULAR)
-  DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
-      const std::string& path,
-      const std::string& service) override;
+  std::unique_ptr<DBusPropertiesProxyInterface> CreateDBusPropertiesProxy(
+      const std::string& path, const std::string& service) override;
 
   DBusObjectManagerProxyInterface* CreateDBusObjectManagerProxy(
       const std::string& path,

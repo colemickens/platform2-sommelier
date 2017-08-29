@@ -478,11 +478,11 @@ class CellularTest : public testing::Test {
    public:
     explicit TestControl(CellularTest* test) : test_(test) {}
 
-    DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
+    std::unique_ptr<DBusPropertiesProxyInterface> CreateDBusPropertiesProxy(
         const std::string& path,
         const std::string& service) override {
       CHECK(test_->dbus_properties_proxy_);
-      return test_->dbus_properties_proxy_.release();
+      return std::move(test_->dbus_properties_proxy_);
     }
 
     ModemProxyInterface* CreateModemProxy(

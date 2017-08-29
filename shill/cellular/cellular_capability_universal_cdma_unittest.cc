@@ -174,10 +174,10 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
       return test_->sim_proxy_.release();
     }
 
-    DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
+    std::unique_ptr<DBusPropertiesProxyInterface> CreateDBusPropertiesProxy(
         const std::string& /*path*/,
         const std::string& /*service*/) override {
-      return test_->properties_proxy_.release();
+      return std::move(test_->properties_proxy_);
     }
 
    private:

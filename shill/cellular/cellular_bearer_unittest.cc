@@ -26,6 +26,7 @@
 
 using std::string;
 using std::vector;
+using testing::ByMove;
 using testing::Return;
 using testing::ReturnNull;
 using testing::_;
@@ -154,18 +155,17 @@ TEST_F(CellularBearerTest, Constructor) {
 }
 
 TEST_F(CellularBearerTest, Init) {
-  // Ownership of |properties_proxy| is transferred to |bearer_| via
-  // |control_|.
   auto properties_proxy = base::MakeUnique<MockDBusPropertiesProxy>();
-  EXPECT_CALL(*control_.get(),
-              CreateDBusPropertiesProxy(kBearerDBusPath, kBearerDBusService))
-      .WillOnce(ReturnAndReleasePointee(&properties_proxy));
   EXPECT_CALL(*properties_proxy.get(), set_properties_changed_callback(_))
       .Times(1);
   EXPECT_CALL(*properties_proxy.get(), GetAll(MM_DBUS_INTERFACE_BEARER))
       .WillOnce(Return(ConstructBearerProperties(true, kDataInterface,
                                                  MM_BEARER_IP_METHOD_STATIC,
                                                  MM_BEARER_IP_METHOD_STATIC)));
+  EXPECT_CALL(*control_.get(),
+              CreateDBusPropertiesProxy(kBearerDBusPath, kBearerDBusService))
+      .WillOnce(Return(ByMove(std::move(properties_proxy))));
+
   bearer_.Init();
   EXPECT_TRUE(bearer_.connected());
   EXPECT_EQ(kDataInterface, bearer_.data_interface());

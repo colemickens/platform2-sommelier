@@ -17,6 +17,7 @@
 #include "shill/cellular/modem.h"
 
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/ptr_util.h>
 #include <ModemManager/ModemManager.h>
 
 #include "shill/cellular/cellular_capability.h"
@@ -34,6 +35,7 @@
 using std::string;
 using std::vector;
 using testing::_;
+using testing::ByMove;
 using testing::DoAll;
 using testing::Return;
 using testing::SetArgumentPointee;
@@ -57,7 +59,6 @@ class Modem1Test : public Test {
       : modem_info_(nullptr, &dispatcher_, nullptr, nullptr),
         device_info_(modem_info_.control_interface(), modem_info_.dispatcher(),
                      modem_info_.metrics(), modem_info_.manager()),
-        proxy_(new MockDBusPropertiesProxy()),
         modem_(
             new Modem1(
                 kService,
@@ -75,7 +76,6 @@ class Modem1Test : public Test {
   EventDispatcherForTest dispatcher_;
   MockModemInfo modem_info_;
   MockDeviceInfo device_info_;
-  std::unique_ptr<MockDBusPropertiesProxy> proxy_;
   MockControl control_interface_;
   std::unique_ptr<Modem1> modem_;
   MockRTNLHandler rtnl_handler_;
@@ -120,7 +120,7 @@ TEST_F(Modem1Test, CreateDeviceMM1) {
   properties[MM_DBUS_INTERFACE_MODEM_MODEM3GPP] = modem3gpp_properties;
 
   EXPECT_CALL(control_interface_, CreateDBusPropertiesProxy(kPath, kService))
-      .WillOnce(ReturnAndReleasePointee(&proxy_));
+      .WillOnce(Return(ByMove(base::MakeUnique<MockDBusPropertiesProxy>())));
   modem_->CreateDeviceMM1(properties);
   EXPECT_TRUE(modem_->device().get());
   EXPECT_TRUE(modem_->device()->capability_->IsRegistered());

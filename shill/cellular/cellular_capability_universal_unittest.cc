@@ -22,6 +22,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -309,11 +310,11 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
       return sim_proxy;
     }
 
-    DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
+    std::unique_ptr<DBusPropertiesProxyInterface> CreateDBusPropertiesProxy(
         const std::string& path,
         const std::string& /*service*/) override {
-      MockDBusPropertiesProxy* properties_proxy =
-          test_->properties_proxy_.release();
+      std::unique_ptr<MockDBusPropertiesProxy> properties_proxy =
+          std::move(test_->properties_proxy_);
       if (path.find(kActiveBearerPathPrefix) != std::string::npos) {
         EXPECT_CALL(*properties_proxy, GetAll(MM_DBUS_INTERFACE_BEARER))
             .Times(AnyNumber())
@@ -323,7 +324,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
             .Times(AnyNumber())
             .WillRepeatedly(Return(inactive_bearer_properties_));
       }
-      test_->properties_proxy_.reset(new MockDBusPropertiesProxy());
+      test_->properties_proxy_ = base::MakeUnique<MockDBusPropertiesProxy>();
       return properties_proxy;
     }
 

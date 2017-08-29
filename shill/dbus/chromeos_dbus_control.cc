@@ -258,10 +258,11 @@ ChromeosDBusControl::CreateUpstartProxy() {
 }
 
 #if !defined(DISABLE_CELLULAR)
-DBusPropertiesProxyInterface* ChromeosDBusControl::CreateDBusPropertiesProxy(
-    const string& path,
-    const string& service) {
-  return new ChromeosDBusPropertiesProxy(proxy_bus_, path, service);
+std::unique_ptr<DBusPropertiesProxyInterface>
+ChromeosDBusControl::CreateDBusPropertiesProxy(const string& path,
+                                               const string& service) {
+  return base::MakeUnique<ChromeosDBusPropertiesProxy>(
+      proxy_bus_, path, service);
 }
 
 DBusObjectManagerProxyInterface*

@@ -255,9 +255,9 @@ void CellularCapabilityUniversalCDMA::GetProperties() {
   SLOG(this, 2) << __func__;
   CellularCapabilityUniversal::GetProperties();
 
-  std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy(
+  std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy =
       control_interface()->CreateDBusPropertiesProxy(
-          cellular()->dbus_path(), cellular()->dbus_service()));
+          cellular()->dbus_path(), cellular()->dbus_service());
 
   KeyValueStore properties(
       properties_proxy->GetAll(MM_DBUS_INTERFACE_MODEM_MODEMCDMA));

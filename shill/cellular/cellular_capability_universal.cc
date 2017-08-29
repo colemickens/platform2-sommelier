@@ -752,9 +752,9 @@ void CellularCapabilityUniversal::OnConnectReply(const ResultCallback& callback,
 void CellularCapabilityUniversal::GetProperties() {
   SLOG(this, 3) << __func__;
 
-  std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy(
+  std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy =
       control_interface()->CreateDBusPropertiesProxy(
-          cellular()->dbus_path(), cellular()->dbus_service()));
+          cellular()->dbus_path(), cellular()->dbus_service());
 
   KeyValueStore properties(
       properties_proxy->GetAll(MM_DBUS_INTERFACE_MODEM));
@@ -1370,9 +1370,9 @@ void CellularCapabilityUniversal::OnSimPathChanged(
     cellular()->home_provider_info()->Reset();
   } else {
     cellular()->set_sim_present(true);
-    std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy(
+    std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy =
         control_interface()->CreateDBusPropertiesProxy(
-            sim_path, cellular()->dbus_service()));
+            sim_path, cellular()->dbus_service());
     // TODO(jglasgow): convert to async interface
     KeyValueStore properties(properties_proxy->GetAll(MM_DBUS_INTERFACE_SIM));
     OnSimPropertiesChanged(properties, vector<string>());
@@ -1508,9 +1508,9 @@ void CellularCapabilityUniversal::OnSimLockStatusChanged() {
   if (IsValidSimPath(sim_path_) &&
       (sim_lock_status_.lock_type == MM_MODEM_LOCK_NONE ||
        sim_lock_status_.lock_type == MM_MODEM_LOCK_UNKNOWN)) {
-    std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy(
+    std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy =
         control_interface()->CreateDBusPropertiesProxy(
-            sim_path_, cellular()->dbus_service()));
+            sim_path_, cellular()->dbus_service());
     KeyValueStore properties(
         properties_proxy->GetAll(MM_DBUS_INTERFACE_SIM));
     OnSimPropertiesChanged(properties, vector<string>());

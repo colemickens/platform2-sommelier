@@ -77,8 +77,8 @@ bool CellularBearer::Init() {
   SLOG(this, 3) << __func__ << ": path='" << dbus_path_
                 << "', service='" << dbus_service_ << "'";
 
-  dbus_properties_proxy_.reset(
-      control_interface_->CreateDBusPropertiesProxy(dbus_path_, dbus_service_));
+  dbus_properties_proxy_ =
+      control_interface_->CreateDBusPropertiesProxy(dbus_path_, dbus_service_);
   // It is possible that ProxyFactory::CreateDBusPropertiesProxy() returns
   // nullptr as the bearer DBus object may no longer exist.
   if (!dbus_properties_proxy_) {

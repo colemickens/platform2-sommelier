@@ -71,8 +71,8 @@ Modem::~Modem() {
 }
 
 void Modem::Init() {
-  dbus_properties_proxy_.reset(
-      control_interface_->CreateDBusPropertiesProxy(path(), service()));
+  dbus_properties_proxy_ =
+      control_interface_->CreateDBusPropertiesProxy(path(), service());
   dbus_properties_proxy_->set_modem_manager_properties_changed_callback(
       Bind(&Modem::OnModemManagerPropertiesChanged, Unretained(this)));
   dbus_properties_proxy_->set_properties_changed_callback(

@@ -28,6 +28,10 @@
 #include "shill/power_manager_proxy_interface.h"
 #include "shill/upstart/upstart_proxy_interface.h"
 
+#if !defined(DISABLE_CELLULAR)
+#include "shill/dbus_properties_proxy_interface.h"
+#endif  // DISABLE_CELLULAR
+
 #if !defined(DISABLE_WIFI)
 #include "shill/supplicant/supplicant_bss_proxy_interface.h"
 #endif  // DISABLE_WIFI
@@ -115,8 +119,8 @@ class MockControl : public ControlInterface {
 
 #if !defined(DISABLE_CELLULAR)
   MOCK_METHOD2(CreateDBusPropertiesProxy,
-               DBusPropertiesProxyInterface*(const std::string& path,
-                                             const std::string& service));
+               std::unique_ptr<DBusPropertiesProxyInterface>(
+                   const std::string& path, const std::string& service));
 
   MOCK_METHOD4(CreateDBusObjectManagerProxy,
                DBusObjectManagerProxyInterface*(

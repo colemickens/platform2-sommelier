@@ -150,9 +150,9 @@ class ControlInterface {
       const std::string& service) = 0;
 
 #if !defined(DISABLE_CELLULAR)
-  virtual DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
-      const std::string& path,
-      const std::string& service) = 0;
+  virtual std::unique_ptr<DBusPropertiesProxyInterface>
+  CreateDBusPropertiesProxy(const std::string& path,
+                            const std::string& service) = 0;
 
   virtual DBusObjectManagerProxyInterface* CreateDBusObjectManagerProxy(
       const std::string& path,
