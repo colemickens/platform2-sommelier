@@ -508,6 +508,7 @@ typedef struct
     const ia_aiq_pa_results *frame_pa_parameters;               /*!< Optional (Mandatory if external_histogram is not given).
                                                                      AWB results used in the frame from where the statistics are collected.
                                                                      GBCE will give default gamma table if external histogram or AWB results are not available. */
+    void *reserved;
     ia_aiq_camera_orientation camera_orientation;               /*!< The orientation of the camera. Currently unused. */
 
     const ia_aiq_awb_results *awb_results;                      /*!< Optional. Estimated AWB results from the previous run of AWB */
