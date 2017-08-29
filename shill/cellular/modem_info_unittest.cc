@@ -54,7 +54,7 @@ TEST_F(ModemInfoTest, StartStop) {
   EXPECT_EQ(0, modem_info_.modem_managers_.size());
   EXPECT_CALL(control_interface_,
               CreateModemManagerProxy(_, _, "org.chromium.ModemManager", _, _))
-      .WillOnce(Return(new MockModemManagerProxy()));
+      .WillOnce(Return(ByMove(base::MakeUnique<MockModemManagerProxy>())));
   EXPECT_CALL(
       control_interface_,
       CreateDBusObjectManagerProxy(_, "org.freedesktop.ModemManager1", _, _))
@@ -69,7 +69,7 @@ TEST_F(ModemInfoTest, RegisterModemManager) {
   static const char kService[] = "some.dbus.service";
   EXPECT_CALL(control_interface_,
               CreateModemManagerProxy(_, _, kService, _, _))
-      .WillOnce(Return(new MockModemManagerProxy()));
+      .WillOnce(Return(ByMove(base::MakeUnique<MockModemManagerProxy>())));
   modem_info_.RegisterModemManager(base::MakeUnique<ModemManagerClassic>(
       &control_interface_, kService, "/dbus/service/path", &modem_info_));
   ASSERT_EQ(1, modem_info_.modem_managers_.size());

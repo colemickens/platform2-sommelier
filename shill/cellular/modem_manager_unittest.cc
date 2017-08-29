@@ -141,19 +141,17 @@ class ModemManagerClassicTest : public ModemManagerTest {
  public:
   ModemManagerClassicTest()
       : ModemManagerTest(),
-        modem_manager_(&control_, kService, kPath, &modem_info_),
-        proxy_(new MockModemManagerProxy()) {}
+        modem_manager_(&control_, kService, kPath, &modem_info_) {}
 
  protected:
   ModemManagerClassicMockInit modem_manager_;
-  MockModemManagerProxy* proxy_;
 };
 
 TEST_F(ModemManagerClassicTest, StartStop) {
   EXPECT_EQ(nullptr, modem_manager_.proxy_.get());
 
   EXPECT_CALL(control_, CreateModemManagerProxy(_, kPath, kService, _, _))
-      .WillOnce(Return(proxy_));
+      .WillOnce(Return(ByMove(base::MakeUnique<MockModemManagerProxy>())));
   modem_manager_.Start();
   EXPECT_NE(nullptr, modem_manager_.proxy_.get());
 
@@ -162,11 +160,13 @@ TEST_F(ModemManagerClassicTest, StartStop) {
 }
 
 TEST_F(ModemManagerClassicTest, Connect) {
-  // Setup proxy.
-  modem_manager_.proxy_.reset(proxy_);
-
-  EXPECT_CALL(*proxy_, EnumerateDevices())
+  auto proxy = base::MakeUnique<MockModemManagerProxy>();
+  EXPECT_CALL(*proxy, EnumerateDevices())
       .WillOnce(Return(vector<string>(1, kModemPath)));
+
+  // Setup proxy.
+  modem_manager_.proxy_ = std::move(proxy);
+
   EXPECT_CALL(modem_manager_,
               InitModemClassic(
                   Pointee(Field(&Modem::path_, StrEq(kModemPath)))));

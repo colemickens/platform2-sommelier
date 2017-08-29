@@ -161,7 +161,7 @@ class ControlInterface {
       const base::Closure& service_appeared_callback,
       const base::Closure& service_vanished_callback) = 0;
 
-  virtual ModemManagerProxyInterface* CreateModemManagerProxy(
+  virtual std::unique_ptr<ModemManagerProxyInterface> CreateModemManagerProxy(
       ModemManagerClassic* manager,
       const std::string& path,
       const std::string& service,

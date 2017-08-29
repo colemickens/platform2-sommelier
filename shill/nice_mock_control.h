@@ -30,6 +30,7 @@
 
 #if !defined(DISABLE_CELLULAR)
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"
+#include "shill/cellular/modem_manager_proxy_interface.h"
 #include "shill/dbus_properties_proxy_interface.h"
 #endif  // DISABLE_CELLULAR
 
@@ -130,7 +131,7 @@ class NiceMockControl : public ControlInterface {
                    const base::Closure& service_appeared_callback,
                    const base::Closure& service_vanished_callback));
   MOCK_METHOD5(CreateModemManagerProxy,
-               ModemManagerProxyInterface*(
+               std::unique_ptr<ModemManagerProxyInterface>(
                    ModemManagerClassic* manager,
                    const std::string& path,
                    const std::string& service,

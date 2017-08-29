@@ -108,14 +108,12 @@ ModemManagerClassic::~ModemManagerClassic() {
 void ModemManagerClassic::Start() {
   LOG(INFO) << "Start watching modem manager service: " << service();
   CHECK(!proxy_);
-  proxy_.reset(
-      control_interface()->CreateModemManagerProxy(
-          this,
-          path(),
-          service(),
-          base::Bind(&ModemManagerClassic::OnAppeared, base::Unretained(this)),
-          base::Bind(&ModemManagerClassic::OnVanished,
-                     base::Unretained(this))));
+  proxy_ = control_interface()->CreateModemManagerProxy(
+      this,
+      path(),
+      service(),
+      base::Bind(&ModemManagerClassic::OnAppeared, base::Unretained(this)),
+      base::Bind(&ModemManagerClassic::OnVanished, base::Unretained(this)));
 }
 
 void ModemManagerClassic::Stop() {

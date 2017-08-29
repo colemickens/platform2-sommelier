@@ -280,20 +280,20 @@ ChromeosDBusControl::CreateDBusObjectManagerProxy(
       service_vanished_callback);
 }
 
-ModemManagerProxyInterface*
-    ChromeosDBusControl::CreateModemManagerProxy(
-        ModemManagerClassic* manager,
-        const string& path,
-        const string& service,
-        const base::Closure& service_appeared_callback,
-        const base::Closure& service_vanished_callback) {
-  return new ChromeosModemManagerProxy(dispatcher_,
-                                       proxy_bus_,
-                                       manager,
-                                       path,
-                                       service,
-                                       service_appeared_callback,
-                                       service_vanished_callback);
+std::unique_ptr<ModemManagerProxyInterface>
+ChromeosDBusControl::CreateModemManagerProxy(
+    ModemManagerClassic* manager,
+    const string& path,
+    const string& service,
+    const base::Closure& service_appeared_callback,
+    const base::Closure& service_vanished_callback) {
+  return base::MakeUnique<ChromeosModemManagerProxy>(dispatcher_,
+                                                     proxy_bus_,
+                                                     manager,
+                                                     path,
+                                                     service,
+                                                     service_appeared_callback,
+                                                     service_vanished_callback);
 }
 
 ModemProxyInterface* ChromeosDBusControl::CreateModemProxy(
