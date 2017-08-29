@@ -296,10 +296,9 @@ ChromeosDBusControl::CreateModemManagerProxy(
                                                      service_vanished_callback);
 }
 
-ModemProxyInterface* ChromeosDBusControl::CreateModemProxy(
-    const string& path,
-    const string& service) {
-  return new ChromeosModemProxy(proxy_bus_, path, service);
+std::unique_ptr<ModemProxyInterface> ChromeosDBusControl::CreateModemProxy(
+    const string& path, const string& service) {
+  return base::MakeUnique<ChromeosModemProxy>(proxy_bus_, path, service);
 }
 
 ModemSimpleProxyInterface* ChromeosDBusControl::CreateModemSimpleProxy(

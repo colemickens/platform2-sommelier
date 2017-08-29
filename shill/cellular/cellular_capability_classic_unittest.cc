@@ -168,10 +168,10 @@ class CellularCapabilityTest : public testing::Test {
    public:
     explicit TestControl(CellularCapabilityTest* test) : test_(test) {}
 
-    ModemProxyInterface* CreateModemProxy(
+    std::unique_ptr<ModemProxyInterface> CreateModemProxy(
         const string& /*path*/,
         const string& /*service*/) override {
-      return test_->proxy_.release();
+      return std::move(test_->proxy_);
     }
 
     ModemSimpleProxyInterface* CreateModemSimpleProxy(

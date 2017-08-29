@@ -106,8 +106,8 @@ class ChromeosDBusControl : public ControlInterface {
       const base::Closure& service_appeared_callback,
       const base::Closure& service_vanished_callback) override;
 
-  ModemProxyInterface* CreateModemProxy(const std::string& path,
-                                        const std::string& service) override;
+  std::unique_ptr<ModemProxyInterface> CreateModemProxy(
+      const std::string& path, const std::string& service) override;
 
   ModemSimpleProxyInterface* CreateModemSimpleProxy(
       const std::string& path,
