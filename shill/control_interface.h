@@ -154,7 +154,8 @@ class ControlInterface {
   CreateDBusPropertiesProxy(const std::string& path,
                             const std::string& service) = 0;
 
-  virtual DBusObjectManagerProxyInterface* CreateDBusObjectManagerProxy(
+  virtual std::unique_ptr<DBusObjectManagerProxyInterface>
+  CreateDBusObjectManagerProxy(
       const std::string& path,
       const std::string& service,
       const base::Closure& service_appeared_callback,

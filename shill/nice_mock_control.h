@@ -29,6 +29,7 @@
 #include "shill/upstart/upstart_proxy_interface.h"
 
 #if !defined(DISABLE_CELLULAR)
+#include "shill/cellular/dbus_objectmanager_proxy_interface.h"
 #include "shill/dbus_properties_proxy_interface.h"
 #endif  // DISABLE_CELLULAR
 
@@ -123,7 +124,7 @@ class NiceMockControl : public ControlInterface {
                    const std::string& path, const std::string& service));
 
   MOCK_METHOD4(CreateDBusObjectManagerProxy,
-               DBusObjectManagerProxyInterface*(
+               std::unique_ptr<DBusObjectManagerProxyInterface>(
                    const std::string& path,
                    const std::string& service,
                    const base::Closure& service_appeared_callback,

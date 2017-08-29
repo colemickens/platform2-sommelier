@@ -51,12 +51,11 @@ ModemManager1::~ModemManager1() {
 void ModemManager1::Start() {
   LOG(INFO) << "Start watching modem manager service: " << service();
   CHECK(!proxy_);
-  proxy_.reset(
-      control_interface()->CreateDBusObjectManagerProxy(
-          path(),
-          service(),
-          base::Bind(&ModemManager1::OnAppeared, base::Unretained(this)),
-          base::Bind(&ModemManager1::OnVanished, base::Unretained(this))));
+  proxy_ = control_interface()->CreateDBusObjectManagerProxy(
+      path(),
+      service(),
+      base::Bind(&ModemManager1::OnAppeared, base::Unretained(this)),
+      base::Bind(&ModemManager1::OnVanished, base::Unretained(this)));
   proxy_->set_interfaces_added_callback(
       Bind(&ModemManager1::OnInterfacesAddedSignal,
            weak_ptr_factory_.GetWeakPtr()));

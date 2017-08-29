@@ -29,6 +29,7 @@
 #include "shill/test_event_dispatcher.h"
 
 using testing::_;
+using testing::ByMove;
 using testing::Return;
 using testing::Test;
 
@@ -54,10 +55,10 @@ TEST_F(ModemInfoTest, StartStop) {
   EXPECT_CALL(control_interface_,
               CreateModemManagerProxy(_, _, "org.chromium.ModemManager", _, _))
       .WillOnce(Return(new MockModemManagerProxy()));
-  EXPECT_CALL(control_interface_,
-              CreateDBusObjectManagerProxy(
-                  _, "org.freedesktop.ModemManager1", _, _))
-      .WillOnce(Return(new MockDBusObjectManagerProxy()));
+  EXPECT_CALL(
+      control_interface_,
+      CreateDBusObjectManagerProxy(_, "org.freedesktop.ModemManager1", _, _))
+      .WillOnce(Return(ByMove(base::MakeUnique<MockDBusObjectManagerProxy>())));
   modem_info_.Start();
   EXPECT_EQ(2, modem_info_.modem_managers_.size());
   modem_info_.Stop();

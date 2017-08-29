@@ -93,7 +93,7 @@ class ChromeosDBusControl : public ControlInterface {
   std::unique_ptr<DBusPropertiesProxyInterface> CreateDBusPropertiesProxy(
       const std::string& path, const std::string& service) override;
 
-  DBusObjectManagerProxyInterface* CreateDBusObjectManagerProxy(
+  std::unique_ptr<DBusObjectManagerProxyInterface> CreateDBusObjectManagerProxy(
       const std::string& path,
       const std::string& service,
       const base::Closure& service_appeared_callback,

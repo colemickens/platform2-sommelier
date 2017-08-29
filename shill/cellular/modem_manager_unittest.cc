@@ -33,6 +33,7 @@
 using std::string;
 using std::vector;
 using testing::_;
+using testing::ByMove;
 using testing::Pointee;
 using testing::Return;
 using testing::SaveArg;
@@ -189,18 +190,24 @@ class ModemManager1Test : public ModemManagerTest {
  public:
   ModemManager1Test()
       : ModemManagerTest(),
-        modem_manager_(&control_, kService, kPath, &modem_info_),
-        proxy_(new MockDBusObjectManagerProxy()) {}
+        modem_manager_(&control_, kService, kPath, &modem_info_) {}
 
  protected:
-  virtual void SetUp() {
-    proxy_->IgnoreSetCallbacks();
+  std::unique_ptr<MockDBusObjectManagerProxy> CreateDBusObjectManagerProxy() {
+    auto proxy = base::MakeUnique<MockDBusObjectManagerProxy>();
+    proxy->IgnoreSetCallbacks();
+    return proxy;
   }
 
   void Connect(const ObjectsWithProperties& expected_objects) {
+    auto proxy = CreateDBusObjectManagerProxy();
+
     ManagedObjectsCallback get_managed_objects_callback;
-    EXPECT_CALL(*proxy_, GetManagedObjects(_, _, _))
+    EXPECT_CALL(*proxy, GetManagedObjects(_, _, _))
         .WillOnce(SaveArg<1>(&get_managed_objects_callback));
+
+    // Set up proxy.
+    modem_manager_.proxy_ = std::move(proxy);
     modem_manager_.Connect();
     get_managed_objects_callback.Run(expected_objects, Error());
   }
@@ -218,17 +225,18 @@ class ModemManager1Test : public ModemManagerTest {
   }
 
   ModemManager1MockInit modem_manager_;
-  MockDBusObjectManagerProxy* proxy_;
   MockControl control_;
 };
 
 TEST_F(ModemManager1Test, StartStop) {
   EXPECT_EQ(nullptr, modem_manager_.proxy_.get());
 
+  auto proxy = CreateDBusObjectManagerProxy();
+  EXPECT_CALL(*proxy, set_interfaces_added_callback(_));
+  EXPECT_CALL(*proxy, set_interfaces_removed_callback(_));
   EXPECT_CALL(control_, CreateDBusObjectManagerProxy(kPath, kService, _, _))
-      .WillOnce(Return(proxy_));
-  EXPECT_CALL(*proxy_, set_interfaces_added_callback(_));
-  EXPECT_CALL(*proxy_, set_interfaces_removed_callback(_));
+      .WillOnce(Return(ByMove(std::move(proxy))));
+
   modem_manager_.Start();
   EXPECT_NE(nullptr, modem_manager_.proxy_.get());
 
@@ -237,18 +245,12 @@ TEST_F(ModemManager1Test, StartStop) {
 }
 
 TEST_F(ModemManager1Test, Connect) {
-  // Setup proxy.
-  modem_manager_.proxy_.reset(proxy_);
-
   Connect(GetModemWithProperties());
   EXPECT_EQ(1, modem_manager_.modems_.size());
   EXPECT_TRUE(ContainsKey(modem_manager_.modems_, kModemPath));
 }
 
 TEST_F(ModemManager1Test, AddRemoveInterfaces) {
-  // Setup proxy.
-  modem_manager_.proxy_.reset(proxy_);
-
   // Have nothing come back from GetManagedObjects
   Connect(ObjectsWithProperties());
   EXPECT_EQ(0, modem_manager_.modems_.size());

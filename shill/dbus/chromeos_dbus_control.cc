@@ -265,18 +265,19 @@ ChromeosDBusControl::CreateDBusPropertiesProxy(const string& path,
       proxy_bus_, path, service);
 }
 
-DBusObjectManagerProxyInterface*
-    ChromeosDBusControl::CreateDBusObjectManagerProxy(
-        const string& path,
-        const string& service,
-        const base::Closure& service_appeared_callback,
-        const base::Closure& service_vanished_callback) {
-  return new ChromeosDBusObjectManagerProxy(dispatcher_,
-                                            proxy_bus_,
-                                            path,
-                                            service,
-                                            service_appeared_callback,
-                                            service_vanished_callback);
+std::unique_ptr<DBusObjectManagerProxyInterface>
+ChromeosDBusControl::CreateDBusObjectManagerProxy(
+    const string& path,
+    const string& service,
+    const base::Closure& service_appeared_callback,
+    const base::Closure& service_vanished_callback) {
+  return base::MakeUnique<ChromeosDBusObjectManagerProxy>(
+      dispatcher_,
+      proxy_bus_,
+      path,
+      service,
+      service_appeared_callback,
+      service_vanished_callback);
 }
 
 ModemManagerProxyInterface*
