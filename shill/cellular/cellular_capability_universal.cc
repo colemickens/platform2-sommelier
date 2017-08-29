@@ -208,8 +208,8 @@ void CellularCapabilityUniversal::InitProxies() {
       control_interface()->CreateMM1ModemSimpleProxy(
           cellular()->dbus_path(), cellular()->dbus_service()));
 
-  modem_location_proxy_.reset(control_interface()->CreateMM1ModemLocationProxy(
-      cellular()->dbus_path(), cellular()->dbus_service()));
+  modem_location_proxy_ = control_interface()->CreateMM1ModemLocationProxy(
+      cellular()->dbus_path(), cellular()->dbus_service());
 
   modem_proxy_->set_state_changed_callback(
       Bind(&CellularCapabilityUniversal::OnModemStateChangedSignal,

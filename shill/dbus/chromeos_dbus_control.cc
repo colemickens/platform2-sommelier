@@ -333,11 +333,11 @@ ChromeosDBusControl::CreateModemGobiProxy(const string& path,
 }
 
 // Proxies for ModemManager1 interfaces
-mm1::ModemLocationProxyInterface*
-    ChromeosDBusControl::CreateMM1ModemLocationProxy(
-        const string& path,
-        const string& service) {
-  return new mm1::ChromeosModemLocationProxy(proxy_bus_, path, service);
+std::unique_ptr<mm1::ModemLocationProxyInterface>
+ChromeosDBusControl::CreateMM1ModemLocationProxy(const string& path,
+                                                 const string& service) {
+  return base::MakeUnique<mm1::ChromeosModemLocationProxy>(
+      proxy_bus_, path, service);
 }
 
 mm1::ModemModem3gppProxyInterface*

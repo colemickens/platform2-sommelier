@@ -272,10 +272,10 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
       return &inactive_bearer_properties_;
     }
 
-    mm1::ModemLocationProxyInterface* CreateMM1ModemLocationProxy(
-        const std::string& /*path*/,
-        const std::string& /*service*/) override {
-      return test_->modem_location_proxy_.release();
+    std::unique_ptr<mm1::ModemLocationProxyInterface>
+    CreateMM1ModemLocationProxy(const std::string& /*path*/,
+                                const std::string& /*service*/) override {
+      return std::move(test_->modem_location_proxy_);
     }
 
     mm1::ModemModem3gppProxyInterface* CreateMM1ModemModem3gppProxy(
