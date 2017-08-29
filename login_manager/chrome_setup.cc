@@ -122,6 +122,8 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--arc-start-mode=always-start-with-no-play-store");
   if (builder->UseFlagIsSet("arc_transition_m_to_n"))
     builder->AddArg("--arc-transition-migration-required");
+  if (builder->UseFlagIsSet("arc_only_start_after_login"))
+    builder->AddArg("--arc-start-mode=only-start-after-login");
 }
 
 // Blatantly copied from //components/crx_file/id_util.cc.
