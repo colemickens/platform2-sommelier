@@ -301,10 +301,10 @@ std::unique_ptr<ModemProxyInterface> ChromeosDBusControl::CreateModemProxy(
   return base::MakeUnique<ChromeosModemProxy>(proxy_bus_, path, service);
 }
 
-ModemSimpleProxyInterface* ChromeosDBusControl::CreateModemSimpleProxy(
-    const string& path,
-    const string& service) {
-  return new ChromeosModemSimpleProxy(proxy_bus_, path, service);
+std::unique_ptr<ModemSimpleProxyInterface>
+ChromeosDBusControl::CreateModemSimpleProxy(const string& path,
+                                            const string& service) {
+  return base::MakeUnique<ChromeosModemSimpleProxy>(proxy_bus_, path, service);
 }
 
 ModemCDMAProxyInterface* ChromeosDBusControl::CreateModemCDMAProxy(

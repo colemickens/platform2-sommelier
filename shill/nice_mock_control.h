@@ -32,6 +32,7 @@
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"
 #include "shill/cellular/modem_manager_proxy_interface.h"
 #include "shill/cellular/modem_proxy_interface.h"
+#include "shill/cellular/modem_simple_proxy_interface.h"
 #include "shill/dbus_properties_proxy_interface.h"
 #endif  // DISABLE_CELLULAR
 
@@ -142,8 +143,8 @@ class NiceMockControl : public ControlInterface {
                std::unique_ptr<ModemProxyInterface>(
                    const std::string& path, const std::string& service));
   MOCK_METHOD2(CreateModemSimpleProxy,
-               ModemSimpleProxyInterface*(const std::string& path,
-                                          const std::string& service));
+               std::unique_ptr<ModemSimpleProxyInterface>(
+                   const std::string& path, const std::string& service));
 
   MOCK_METHOD2(CreateModemCDMAProxy,
                ModemCDMAProxyInterface*(const std::string& path,

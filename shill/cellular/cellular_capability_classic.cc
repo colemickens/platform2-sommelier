@@ -97,8 +97,8 @@ void CellularCapabilityClassic::InitProxies() {
   SLOG(this, 2) << __func__;
   proxy_ = control_interface()->CreateModemProxy(cellular()->dbus_path(),
                                                  cellular()->dbus_service());
-  simple_proxy_.reset(control_interface()->CreateModemSimpleProxy(
-      cellular()->dbus_path(), cellular()->dbus_service()));
+  simple_proxy_ = control_interface()->CreateModemSimpleProxy(
+      cellular()->dbus_path(), cellular()->dbus_service());
   proxy_->set_state_changed_callback(
       Bind(&CellularCapabilityClassic::OnModemStateChangedSignal,
            weak_ptr_factory_.GetWeakPtr()));
