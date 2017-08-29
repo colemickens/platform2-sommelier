@@ -144,10 +144,10 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
 
     // TODO(armansito): Some of these methods won't be necessary after 3GPP
     // gets refactored out of CellularCapabilityUniversal.
-    mm1::ModemModem3gppProxyInterface* CreateMM1ModemModem3gppProxy(
-        const std::string& /*path*/,
-        const std::string& /*service*/) override {
-      return test_->modem_3gpp_proxy_.release();
+    std::unique_ptr<mm1::ModemModem3gppProxyInterface>
+    CreateMM1ModemModem3gppProxy(const std::string& /*path*/,
+                                 const std::string& /*service*/) override {
+      return std::move(test_->modem_3gpp_proxy_);
     }
 
     mm1::ModemModemCdmaProxyInterface* CreateMM1ModemModemCdmaProxy(

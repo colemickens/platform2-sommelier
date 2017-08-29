@@ -198,9 +198,8 @@ void CellularCapabilityUniversal::HelpRegisterConstDerivedKeyValueStore(
 }
 
 void CellularCapabilityUniversal::InitProxies() {
-  modem_3gpp_proxy_.reset(
-      control_interface()->CreateMM1ModemModem3gppProxy(
-          cellular()->dbus_path(), cellular()->dbus_service()));
+  modem_3gpp_proxy_ = control_interface()->CreateMM1ModemModem3gppProxy(
+      cellular()->dbus_path(), cellular()->dbus_service());
   modem_proxy_.reset(
       control_interface()->CreateMM1ModemProxy(cellular()->dbus_path(),
                                                cellular()->dbus_service()));
