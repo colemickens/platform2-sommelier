@@ -199,10 +199,9 @@ class CellularCapabilityTest : public testing::Test {
       return nullptr;
     }
 
-    ModemGSMNetworkProxyInterface* CreateModemGSMNetworkProxy(
-        const string& /*path*/,
-        const string& /*service*/) override {
-      return test_->gsm_network_proxy_.release();
+    std::unique_ptr<ModemGSMNetworkProxyInterface> CreateModemGSMNetworkProxy(
+        const string& /*path*/, const string& /*service*/) override {
+      return std::move(test_->gsm_network_proxy_);
     }
 
     ModemGobiProxyInterface* CreateModemGobiProxy(

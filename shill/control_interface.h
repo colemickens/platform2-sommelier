@@ -181,9 +181,9 @@ class ControlInterface {
   virtual std::unique_ptr<ModemGSMCardProxyInterface> CreateModemGSMCardProxy(
       const std::string& path, const std::string& service) = 0;
 
-  virtual ModemGSMNetworkProxyInterface* CreateModemGSMNetworkProxy(
-      const std::string& path,
-      const std::string& service) = 0;
+  virtual std::unique_ptr<ModemGSMNetworkProxyInterface>
+  CreateModemGSMNetworkProxy(const std::string& path,
+                             const std::string& service) = 0;
 
   virtual ModemGobiProxyInterface* CreateModemGobiProxy(
       const std::string& path,

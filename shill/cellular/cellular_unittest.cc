@@ -521,11 +521,11 @@ class CellularTest : public testing::Test {
       return nullptr;
     }
 
-    ModemGSMNetworkProxyInterface* CreateModemGSMNetworkProxy(
+    std::unique_ptr<ModemGSMNetworkProxyInterface> CreateModemGSMNetworkProxy(
         const string& /*path*/,
         const string& /*service*/) override {
       CHECK(test_->gsm_network_proxy_);
-      return test_->gsm_network_proxy_.release();
+      return std::move(test_->gsm_network_proxy_);
     }
 
     mm1::ModemLocationProxyInterface* CreateMM1ModemLocationProxy(

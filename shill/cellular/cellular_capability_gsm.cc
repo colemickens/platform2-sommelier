@@ -132,9 +132,8 @@ void CellularCapabilityGSM::InitProxies() {
     card_proxy_ = control_interface()->CreateModemGSMCardProxy(
         cellular()->dbus_path(), cellular()->dbus_service());
   }
-  network_proxy_.reset(
-      control_interface()->CreateModemGSMNetworkProxy(
-          cellular()->dbus_path(), cellular()->dbus_service()));
+  network_proxy_ = control_interface()->CreateModemGSMNetworkProxy(
+      cellular()->dbus_path(), cellular()->dbus_service());
   network_proxy_->set_signal_quality_callback(
       Bind(&CellularCapabilityGSM::OnSignalQualitySignal,
            weak_ptr_factory_.GetWeakPtr()));
