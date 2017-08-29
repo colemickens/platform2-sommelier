@@ -74,7 +74,7 @@ using namespace android::camera2;
 #define TNR3_ISP_SCALE (1<<(ISP_VEC_ELEMBITS - 1))
 #define TNR3_RND_OFFSET (TNR3_ISP_SCALE>>1)
 #define TNR3_MAX_VALUE (TNR3_ISP_SCALE - 1)
-#define TNR3_MIN_VALUE (TNR3_ISP_SCALE)
+#define TNR3_MIN_VALUE -(TNR3_ISP_SCALE)
 #define HOST_SCALING 0
 #define clamp(a, min_val, max_val) MIN(MAX((a), (min_val)), (max_val))
 
