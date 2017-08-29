@@ -25,6 +25,7 @@
 #include "FormatUtils.h"
 #include "LogHelper.h"
 #include "UtilityMacros.h"
+#include "Camera3V4l2Format.h"
 
 NAMESPACE_DECLARATION {
 using std::string;
@@ -106,6 +107,11 @@ static const FormatInfo gFormatMapping[] = {
     { V4L2_MBUS_FMT_SGRBG12_1X12, 0, "V4L2_MBUS_FMT_SGRBG12_1X12", "SGRBG12_1X12", 12, FORMAT_MBUS_BAYER },
     { V4L2_MBUS_FMT_SRGGB12_1X12, 0, "V4L2_MBUS_FMT_SRGGB12_1X12", "SRGGB12_1X12", 12, FORMAT_MBUS_BAYER },
 
+    { V4L2_MBUS_FMT_SBGGR10_1X10, get_fourcc('B', 'G', '1', '0'), "V4L2_MBUS_FMT_SBGGR10_1X10", "SBGGR10_1X10", 10, FORMAT_MBUS_BAYER },
+    { V4L2_MBUS_FMT_SGBRG10_1X10, get_fourcc('G', 'B', '1', '0'), "V4L2_MBUS_FMT_SGBRG10_1X10", "SGBRG10_1X10", 10, FORMAT_MBUS_BAYER },
+    { V4L2_MBUS_FMT_SGRBG10_1X10, get_fourcc('B', 'A', '1', '0'), "V4L2_MBUS_FMT_SGRBG10_1X10", "SGRBG10_1X10", 10, FORMAT_MBUS_BAYER },
+    { V4L2_MBUS_FMT_SRGGB10_1X10, get_fourcc('R', 'G', '1', '0'), "V4L2_MBUS_FMT_SRGGB10_1X10", "SRGGB10_1X10", 10, FORMAT_MBUS_BAYER },
+
     { V4L2_MBUS_FMT_SBGGR8_1X8, 0, "V4L2_MBUS_FMT_SBGGR8_1X8", "SBGGR8_1X8", 8, FORMAT_MBUS_BAYER },
     { V4L2_MBUS_FMT_SGBRG8_1X8, 0, "V4L2_MBUS_FMT_SGBRG8_1X8", "SGBRG8_1X8", 8, FORMAT_MBUS_BAYER },
     { V4L2_MBUS_FMT_SGRBG8_1X8, 0, "V4L2_MBUS_FMT_SGRBG8_1X8", "SGRBG8_1X8", 8, FORMAT_MBUS_BAYER },
@@ -128,7 +134,7 @@ const string pixelCode2String(int32_t code)
         }
     }
 
-    LOGE("Invalid Pixel Format: 0x%x", code);
+    LOGE("Invalid Pixel Format: 0x%x, %s", code, v4l2Fmt2Str(code));
     return "INVALID FORMAT";
 }
 
@@ -225,7 +231,6 @@ int32_t getMBusFormat(const std::string &bayerOrder, const int32_t bpp)
 
 int32_t getMBusFormat(int32_t commonPixelFormat)
 {
-
     for (size_t i = 0; i < ARRAY_SIZE(gFormatMapping); i++) {
         if (gFormatMapping[i].type == FORMAT_MBUS_BAYER ||
             gFormatMapping[i].type == FORMAT_MBUS_YUV ) {

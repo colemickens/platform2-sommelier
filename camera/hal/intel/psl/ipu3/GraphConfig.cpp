@@ -2082,18 +2082,6 @@ status_t GraphConfig::getMediaCtlData(MediaCtlConfig &mediaCtlConfig)
         }
     }
 
-    /*
-     * From the CSI-BE port we convert the format from common (X-OS) in settings
-     * to OS specific values (mbus and v4l2).
-     */
-    int32_t csiBeMbusFormat = gcu::getMBusFormat(get_fourcc(formatStr[0],
-                                                           formatStr[1],
-                                                           formatStr[2],
-                                                           formatStr[3]));
-    int32_t csiBev4l2Format = gcu::getV4L2Format(get_fourcc(formatStr[0],
-                                                           formatStr[1],
-                                                           formatStr[2],
-                                                           formatStr[3]));
     /* sanity check, we have at least one CSI-BE */
     if (CC_UNLIKELY(csiBESocOutput == nullptr && csiBEOutput == nullptr)) {
         LOGE("Error: CSI BE Output nullptr");

@@ -986,8 +986,8 @@ int PSLConfParser::readNvmData()
     sensorName = info->getSensorName();
     nvmDirectory = info->getNvmDirectory();
 
-    if (nvmDirectory.length() > 0) {
-        LOG1("NVM dirctory from config is null");
+    if (nvmDirectory.length() == 0) {
+        LOGW("NVM dirctory from config is null");
         return UNKNOWN_ERROR;
     }
 

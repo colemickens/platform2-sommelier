@@ -23,6 +23,9 @@ NAMESPACE_DECLARATION {
 namespace graphconfig {
 namespace utils {
 
+#define get_fourcc(a, b, c, d) ((uint32_t)(d) | ((uint32_t)(c) << 8) \
+                        | ((uint32_t)(b) << 16) | ((uint32_t)(a) << 24))
+
 int32_t getMBusFormat(int32_t commonPixelFormat);
 int32_t getMBusFormat(const std::string &bayerOrder, const int32_t bpp);
 int32_t getV4L2Format(const int32_t commonPixelFormat);

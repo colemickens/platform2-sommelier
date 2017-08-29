@@ -239,6 +239,7 @@ using LogHelper::__camera_hal_log;
 #define LOG1(...)
 #define LOG2(...)
 #define LOGR(...)
+#define LOGAIQ(...)
 
 #define LOGD(...)
 #define LOGV(...)

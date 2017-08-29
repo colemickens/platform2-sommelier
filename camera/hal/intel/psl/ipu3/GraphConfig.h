@@ -35,8 +35,6 @@ class GraphConfigNode;
 }
 
 #define NODE_NAME(x) (getNodeName(x).c_str())
-#define get_fourcc(a, b, c, d) ((uint32_t)(d) | ((uint32_t)(c) << 8) \
-                        | ((uint32_t)(b) << 16) | ((uint32_t)(a) << 24))
 
 namespace android {
 namespace camera2 {
