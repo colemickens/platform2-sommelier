@@ -21,6 +21,10 @@ camera3_test: camera3_test/arc_camera3_test
 
 .PHONY: camera3_test
 
+camera3_fuzzer: camera3_test/arc_camera3_fuzzer
+
+.PHONY: camera3_fuzzer
+
 hal_adapter:
 	$(MAKE) hal_adapter/mojo/mojo_templates
 	$(MAKE) hal_adapter/arc_camera3_service

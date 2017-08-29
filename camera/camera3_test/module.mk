@@ -25,3 +25,17 @@ camera3_test/arc_camera3_test: CXX_BINARY(camera3_test/arc_camera3_test)
 clean: CLEAN(camera3_test/arc_camera3_test)
 
 .PHONY: camera3_test/arc_camera3_test
+
+CXX_BINARY(camera3_test/arc_camera3_fuzzer): CPPFLAGS += \
+	$(camera3_test_CPPFLAGS) -g -D FUZZER \
+	-fsanitize=address -fsanitize-coverage=trace-pc-guard
+CXX_BINARY(camera3_test/arc_camera3_fuzzer): LDLIBS += $(camera3_test_LDLIBS) \
+	-lFuzzer -fsanitize=address -fsanitize-coverage=trace-pc-guard
+CXX_BINARY(camera3_test/arc_camera3_fuzzer): \
+	$(camera3_test_CXX_OBJECTS)
+
+camera3_test/arc_camera3_fuzzer: CXX_BINARY(camera3_test/arc_camera3_fuzzer)
+
+clean: CLEAN(camera3_test/arc_camera3_fuzzer)
+
+.PHONY: camera3_test/arc_camera3_fuzzer

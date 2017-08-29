@@ -10,6 +10,9 @@
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/macros.h>
+
+#include "camera3_test/camera3_test_data_forwarder.h"
 
 namespace camera3_test {
 
@@ -944,27 +947,59 @@ TEST_F(Camera3ModuleFixture, ChromeOSRequiredResolution) {
 
 }  // namespace camera3_test
 
-int main(int argc, char** argv) {
-  base::AtExitManager exit_manager;
+static base::AtExitManager exit_manager;
 
+bool InitializeTest(int* argc, char*** argv, void** cam_hal_handle) {
   // Set up logging so we can enable VLOGs with -v / --vmodule.
-  base::CommandLine::Init(argc, argv);
+  base::CommandLine::Init(*argc, *argv);
   logging::LoggingSettings settings;
   settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
   LOG_ASSERT(logging::InitLogging(settings));
 
   // Open camera HAL and get module
-  void* cam_hal_handle = NULL;
-  camera3_test::InitCameraModule(&cam_hal_handle);
+  camera3_test::InitCameraModule(cam_hal_handle);
   camera3_test::g_module_thread.Start();
 
+  // Initialize gtest
+  ::testing::InitGoogleTest(argc, *argv);
+  if (testing::Test::HasFailure()) {
+    camera3_test::g_module_thread.Stop();
+    if (cam_hal_handle) {
+      dlclose(cam_hal_handle);
+    }
+    return false;
+  }
+  return true;
+}
+
+#ifdef FUZZER
+
+extern "C" int LLVMFuzzerInitialize(int* argc, char*** argv) {
+  void* cam_hal_handle = NULL;
+  if (!InitializeTest(argc, argv, &cam_hal_handle)) {
+    exit(EXIT_FAILURE);
+  }
+  ::testing::TestEventListeners& listeners =
+      ::testing::UnitTest::GetInstance()->listeners();
+  delete listeners.Release(listeners.default_result_printer());
+  return 0;
+}
+
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t* Data, size_t Size) {
+  camera3_test::Camera3TestDataForwarder::GetInstance()->SetData(Data, Size);
+  ignore_result(RUN_ALL_TESTS());
+  return 0;
+}
+
+#else
+int main(int argc, char** argv) {
   int result = EXIT_FAILURE;
-  if (!testing::Test::HasFailure()) {
-    // Initialize and run all tests
-    ::testing::InitGoogleTest(&argc, argv);
+  void* cam_hal_handle = NULL;
+  if (!InitializeTest(&argc, &argv, &cam_hal_handle)) {
+    return result;
+  } else {
     result = RUN_ALL_TESTS();
   }
-
   camera3_test::g_module_thread.Stop();
   if (cam_hal_handle) {
     // Close Camera HAL
@@ -973,3 +1008,4 @@ int main(int argc, char** argv) {
 
   return result;
 }
+#endif
