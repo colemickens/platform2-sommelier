@@ -193,7 +193,7 @@ bool ChromeCollector::HandleCrash(const FilePath &file_path,
   if (base::ReadFileToString(aborted_path, &pid_data)) {
     base::TrimWhitespaceASCII(pid_data, base::TRIM_TRAILING, &pid_data);
     if (pid_data == base::IntToString(pid)) {
-      AddCrashMetaData("browser_hang", "true");
+      AddCrashMetaUploadData("browser_hang", "true");
       base::DeleteFile(aborted_path, false);
     }
   }
