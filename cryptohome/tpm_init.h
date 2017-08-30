@@ -149,9 +149,6 @@ class TpmInit {
   bool LoadOwnerPassword(const TpmStatus& tpm_status,
                          brillo::Blob* owner_password);
 
-  // Migrate any TPM status files from old location to new location.
-  void MigrateStatusFiles();
-
   // Returns whether or not the TPM is enabled by checking a flag in the TPM's
   // entry in either /sys/class/misc or /sys/class/tpm.
   bool IsEnabledCheckViaSysfs(const base::FilePath& enabled_file);

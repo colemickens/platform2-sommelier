@@ -32,8 +32,6 @@ const FilePath kMiscTpmCheckEnabledFile("/sys/class/misc/tpm0/device/enabled");
 const FilePath kMiscTpmCheckOwnedFile("/sys/class/misc/tpm0/device/owned");
 const FilePath kTpmTpmCheckEnabledFile("/sys/class/tpm/tpm0/device/enabled");
 const FilePath kTpmTpmCheckOwnedFile("/sys/class/tpm/tpm0/device/owned");
-const FilePath kTpmOwnedFileOld("/var/lib/.tpm_owned");
-const FilePath kTpmStatusFileOld("/var/lib/.tpm_status");
 extern const FilePath kTpmOwnedFile("/mnt/stateful_partition/.tpm_owned");
 const FilePath kTpmStatusFile("/mnt/stateful_partition/.tpm_status");
 const FilePath kOpenCryptokiPath("/var/lib/opencryptoki");
@@ -174,17 +172,6 @@ void TpmInit::ThreadMain() {
   }
 }
 
-void TpmInit::MigrateStatusFiles() {
-  if (!platform_->FileExists(kTpmOwnedFile) &&
-      platform_->FileExists(kTpmOwnedFileOld)) {
-    platform_->Move(kTpmOwnedFileOld, kTpmOwnedFile);
-  }
-  if (!platform_->FileExists(kTpmStatusFile) &&
-      platform_->FileExists(kTpmStatusFileOld)) {
-    platform_->Move(kTpmStatusFileOld, kTpmStatusFile);
-  }
-}
-
 bool TpmInit::SetupTpm(bool load_key) {
   const bool was_initialized = get_tpm()->IsInitialized();
   if (!was_initialized) {
@@ -215,8 +202,6 @@ bool TpmInit::SetupTpm(bool load_key) {
 }
 
 void TpmInit::RestoreTpmStateFromStorage() {
-  MigrateStatusFiles();
-
   // Checking disabled and owned either via sysfs or via TSS calls will block if
   // ownership is being taken by another thread or process.  So for this to work
   // well, SetupTpm() needs to be called before TakeOwnership() is called.  At
