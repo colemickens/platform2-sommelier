@@ -156,10 +156,9 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
       return std::move(test_->modem_cdma_proxy_);
     }
 
-    mm1::ModemProxyInterface* CreateMM1ModemProxy(
-        const std::string& /*path*/,
-        const std::string& /*service*/) override {
-      return test_->modem_proxy_.release();
+    std::unique_ptr<mm1::ModemProxyInterface> CreateMM1ModemProxy(
+        const std::string& /*path*/, const std::string& /*service*/) override {
+      return std::move(test_->modem_proxy_);
     }
 
     mm1::ModemSimpleProxyInterface* CreateMM1ModemSimpleProxy(

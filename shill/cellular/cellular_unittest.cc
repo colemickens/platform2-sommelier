@@ -542,11 +542,10 @@ class CellularTest : public testing::Test {
       return std::move(test_->mm1_modem_3gpp_proxy_);
     }
 
-    mm1::ModemProxyInterface* CreateMM1ModemProxy(
-      const std::string& path,
-      const std::string& service) override {
+    std::unique_ptr<mm1::ModemProxyInterface> CreateMM1ModemProxy(
+        const std::string& path, const std::string& service) override {
       CHECK(test_->mm1_proxy_);
-      return test_->mm1_proxy_.release();
+      return std::move(test_->mm1_proxy_);
     }
 
     mm1::ModemSimpleProxyInterface* CreateMM1ModemSimpleProxy(

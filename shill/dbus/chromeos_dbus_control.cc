@@ -354,10 +354,10 @@ ChromeosDBusControl::CreateMM1ModemModemCdmaProxy(const string& path,
       proxy_bus_, path, service);
 }
 
-mm1::ModemProxyInterface* ChromeosDBusControl::CreateMM1ModemProxy(
-    const string& path,
-    const string& service) {
-  return new mm1::ChromeosModemProxy(proxy_bus_, path, service);
+std::unique_ptr<mm1::ModemProxyInterface>
+ChromeosDBusControl::CreateMM1ModemProxy(const string& path,
+                                         const string& service) {
+  return base::MakeUnique<mm1::ChromeosModemProxy>(proxy_bus_, path, service);
 }
 
 mm1::ModemSimpleProxyInterface* ChromeosDBusControl::CreateMM1ModemSimpleProxy(
