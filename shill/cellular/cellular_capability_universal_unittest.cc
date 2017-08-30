@@ -295,10 +295,9 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
       return std::move(test_->modem_proxy_);
     }
 
-    mm1::ModemSimpleProxyInterface* CreateMM1ModemSimpleProxy(
-        const std::string& /*path*/,
-        const std::string& /*service*/) override {
-      return test_->modem_simple_proxy_.release();
+    std::unique_ptr<mm1::ModemSimpleProxyInterface> CreateMM1ModemSimpleProxy(
+        const std::string& /*path*/, const std::string& /*service*/) override {
+      return std::move(test_->modem_simple_proxy_);
     }
 
     mm1::SimProxyInterface* CreateSimProxy(

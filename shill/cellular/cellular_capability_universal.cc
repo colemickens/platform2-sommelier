@@ -202,9 +202,8 @@ void CellularCapabilityUniversal::InitProxies() {
       cellular()->dbus_path(), cellular()->dbus_service());
   modem_proxy_ = control_interface()->CreateMM1ModemProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
-  modem_simple_proxy_.reset(
-      control_interface()->CreateMM1ModemSimpleProxy(
-          cellular()->dbus_path(), cellular()->dbus_service()));
+  modem_simple_proxy_ = control_interface()->CreateMM1ModemSimpleProxy(
+      cellular()->dbus_path(), cellular()->dbus_service());
 
   modem_location_proxy_ = control_interface()->CreateMM1ModemLocationProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
