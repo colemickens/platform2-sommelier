@@ -29,6 +29,7 @@
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
+#include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 
@@ -37,7 +38,6 @@
 #include "shill/shill_ares.h"
 
 using base::Bind;
-using std::map;
 using std::string;
 using std::vector;
 
@@ -47,6 +47,12 @@ namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDNS;
 static string ObjectID(DNSClient* d) { return d->interface_name(); }
 }
+
+namespace {
+
+using IOHandlerMap = std::map<ares_socket_t, std::unique_ptr<IOHandler>>;
+
+}  // namespace
 
 const char DNSClient::kErrorNoData[] = "The query response contains no answers";
 const char DNSClient::kErrorFormErr[] = "The server says the query is bad";
@@ -64,8 +70,8 @@ struct DNSClientState {
   DNSClientState() : channel(nullptr), start_time{} {}
 
   ares_channel channel;
-  map<ares_socket_t, std::shared_ptr<IOHandler>> read_handlers;
-  map<ares_socket_t, std::shared_ptr<IOHandler>> write_handlers;
+  IOHandlerMap read_handlers;
+  IOHandlerMap write_handlers;
   struct timeval start_time;
 };
 
@@ -291,13 +297,8 @@ void DNSClient::ReceiveDNSReplyCB(void* arg, int status,
 }
 
 bool DNSClient::RefreshHandles() {
-  map<ares_socket_t, std::shared_ptr<IOHandler>> old_read =
-      resolver_state_->read_handlers;
-  map<ares_socket_t, std::shared_ptr<IOHandler>> old_write =
-      resolver_state_->write_handlers;
-
-  resolver_state_->read_handlers.clear();
-  resolver_state_->write_handlers.clear();
+  IOHandlerMap old_read(std::move(resolver_state_->read_handlers));
+  IOHandlerMap old_write(std::move(resolver_state_->write_handlers));
 
   ares_socket_t sockets[ARES_GETSOCK_MAXNUM];
   int action_bits = ares_->GetSock(resolver_state_->channel, sockets,
@@ -310,24 +311,22 @@ bool DNSClient::RefreshHandles() {
   for (int i = 0; i < ARES_GETSOCK_MAXNUM; i++) {
     if (ARES_GETSOCK_READABLE(action_bits, i)) {
       if (ContainsKey(old_read, sockets[i])) {
-        resolver_state_->read_handlers[sockets[i]] = old_read[sockets[i]];
+        resolver_state_->read_handlers[sockets[i]] =
+            std::move(old_read[sockets[i]]);
       } else {
         resolver_state_->read_handlers[sockets[i]] =
-            std::shared_ptr<IOHandler> (
-                dispatcher_->CreateReadyHandler(sockets[i],
-                                                IOHandler::kModeInput,
-                                                read_callback));
+            base::WrapUnique(dispatcher_->CreateReadyHandler(
+                sockets[i], IOHandler::kModeInput, read_callback));
       }
     }
     if (ARES_GETSOCK_WRITABLE(action_bits, i)) {
       if (ContainsKey(old_write, sockets[i])) {
-        resolver_state_->write_handlers[sockets[i]] = old_write[sockets[i]];
+        resolver_state_->write_handlers[sockets[i]] =
+            std::move(old_write[sockets[i]]);
       } else {
         resolver_state_->write_handlers[sockets[i]] =
-            std::shared_ptr<IOHandler> (
-                dispatcher_->CreateReadyHandler(sockets[i],
-                                                IOHandler::kModeOutput,
-                                                write_callback));
+            base::WrapUnique(dispatcher_->CreateReadyHandler(
+                sockets[i], IOHandler::kModeOutput, write_callback));
       }
     }
   }
