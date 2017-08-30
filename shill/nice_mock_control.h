@@ -183,7 +183,7 @@ class NiceMockControl : public ControlInterface {
   MOCK_METHOD2(CreateMM1ModemSimpleProxy,
                std::unique_ptr<mm1::ModemSimpleProxyInterface>(
                    const std::string& path, const std::string& service));
-  MOCK_METHOD2(CreateSimProxy,
+  MOCK_METHOD2(CreateMM1SimProxy,
                std::unique_ptr<mm1::SimProxyInterface>(
                    const std::string& path, const std::string& service));
 #endif  // DISABLE_CELLULAR

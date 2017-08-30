@@ -1352,7 +1352,7 @@ void CellularCapabilityUniversal::OnSimPathChanged(
 
   sim_proxy_ = nullptr;
   if (IsValidSimPath(sim_path)) {
-    sim_proxy_ = control_interface()->CreateSimProxy(
+    sim_proxy_ = control_interface()->CreateMM1SimProxy(
         sim_path, cellular()->dbus_service());
   }
   sim_path_ = sim_path;
