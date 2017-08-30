@@ -347,11 +347,11 @@ ChromeosDBusControl::CreateMM1ModemModem3gppProxy(const string& path,
       proxy_bus_, path, service);
 }
 
-mm1::ModemModemCdmaProxyInterface*
-    ChromeosDBusControl::CreateMM1ModemModemCdmaProxy(
-        const string& path,
-        const string& service) {
-  return new mm1::ChromeosModemModemCdmaProxy(proxy_bus_, path, service);
+std::unique_ptr<mm1::ModemModemCdmaProxyInterface>
+ChromeosDBusControl::CreateMM1ModemModemCdmaProxy(const string& path,
+                                                  const string& service) {
+  return base::MakeUnique<mm1::ChromeosModemModemCdmaProxy>(
+      proxy_bus_, path, service);
 }
 
 mm1::ModemProxyInterface* ChromeosDBusControl::CreateMM1ModemProxy(

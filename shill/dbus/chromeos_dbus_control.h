@@ -132,9 +132,9 @@ class ChromeosDBusControl : public ControlInterface {
   CreateMM1ModemModem3gppProxy(const std::string& path,
                                const std::string& service) override;
 
-  mm1::ModemModemCdmaProxyInterface* CreateMM1ModemModemCdmaProxy(
-      const std::string& path,
-      const std::string& service) override;
+  std::unique_ptr<mm1::ModemModemCdmaProxyInterface>
+  CreateMM1ModemModemCdmaProxy(const std::string& path,
+                               const std::string& service) override;
 
   mm1::ModemProxyInterface* CreateMM1ModemProxy(
       const std::string& path,

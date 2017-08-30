@@ -32,6 +32,7 @@
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"
 #include "shill/cellular/mm1_modem_location_proxy_interface.h"
 #include "shill/cellular/mm1_modem_modem3gpp_proxy_interface.h"
+#include "shill/cellular/mm1_modem_modemcdma_proxy_interface.h"
 #include "shill/cellular/modem_cdma_proxy_interface.h"
 #include "shill/cellular/modem_gobi_proxy_interface.h"
 #include "shill/cellular/modem_gsm_card_proxy_interface.h"
@@ -171,8 +172,8 @@ class NiceMockControl : public ControlInterface {
                std::unique_ptr<mm1::ModemModem3gppProxyInterface>(
                    const std::string& path, const std::string& service));
   MOCK_METHOD2(CreateMM1ModemModemCdmaProxy,
-               mm1::ModemModemCdmaProxyInterface*(const std::string& path,
-                                                  const std::string& service));
+               std::unique_ptr<mm1::ModemModemCdmaProxyInterface>(
+                   const std::string& path, const std::string& service));
   MOCK_METHOD2(CreateMM1ModemProxy,
                mm1::ModemProxyInterface*(const std::string& path,
                                          const std::string& service));

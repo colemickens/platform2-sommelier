@@ -73,9 +73,8 @@ CellularCapabilityUniversalCDMA::~CellularCapabilityUniversalCDMA() {}
 
 void CellularCapabilityUniversalCDMA::InitProxies() {
   SLOG(this, 2) << __func__;
-  modem_cdma_proxy_.reset(
-      control_interface()->CreateMM1ModemModemCdmaProxy(
-          cellular()->dbus_path(), cellular()->dbus_service()));
+  modem_cdma_proxy_ = control_interface()->CreateMM1ModemModemCdmaProxy(
+      cellular()->dbus_path(), cellular()->dbus_service());
   modem_cdma_proxy_->set_activation_state_callback(
       Bind(&CellularCapabilityUniversalCDMA::OnActivationStateChangedSignal,
       weak_cdma_ptr_factory_.GetWeakPtr()));

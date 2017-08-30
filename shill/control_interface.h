@@ -197,9 +197,9 @@ class ControlInterface {
   CreateMM1ModemModem3gppProxy(const std::string& path,
                                const std::string& service) = 0;
 
-  virtual mm1::ModemModemCdmaProxyInterface* CreateMM1ModemModemCdmaProxy(
-      const std::string& path,
-      const std::string& service) = 0;
+  virtual std::unique_ptr<mm1::ModemModemCdmaProxyInterface>
+  CreateMM1ModemModemCdmaProxy(const std::string& path,
+                               const std::string& service) = 0;
 
   virtual mm1::ModemProxyInterface* CreateMM1ModemProxy(
       const std::string& path,
