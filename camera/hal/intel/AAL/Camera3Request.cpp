@@ -118,7 +118,7 @@ Camera3Request::init(camera3_capture_request* req,
         return BAD_VALUE;
     }
 
-    std::lock_guard<std::mutex> l(mAccessLock);
+    std::unique_lock<std::mutex> l(mAccessLock);
 
     for (uint32_t i = 0; i < req->num_output_buffers; i++) {
         LOG2("@%s, req, width:%d, stream type:0x%x", __FUNCTION__,
@@ -157,6 +157,7 @@ Camera3Request::init(camera3_capture_request* req,
     status |= checkOutputStreams(req);
     if (status != NO_ERROR) {
         LOGE("error with the request's buffers");
+        l.unlock();
         deInit();
         return BAD_VALUE;
     }
