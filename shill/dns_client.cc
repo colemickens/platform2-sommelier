@@ -103,7 +103,7 @@ bool DNSClient::Start(const string& hostname, Error* error) {
     return false;
   }
 
-  if (!resolver_state_.get()) {
+  if (!resolver_state_) {
     struct ares_options options;
     memset(&options, 0, sizeof(options));
     options.timeout = timeout_ms_;
@@ -114,7 +114,7 @@ bool DNSClient::Start(const string& hostname, Error* error) {
       return false;
     }
 
-    resolver_state_.reset(new DNSClientState);
+    resolver_state_ = base::MakeUnique<DNSClientState>();
     int status = ares_->InitOptions(&resolver_state_->channel,
                                    &options,
                                    ARES_OPT_TIMEOUTMS);
@@ -122,7 +122,7 @@ bool DNSClient::Start(const string& hostname, Error* error) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                             "ARES initialization returns error code: " +
                             base::IntToString(status));
-      resolver_state_.reset();
+      resolver_state_ = nullptr;
       return false;
     }
 
@@ -147,7 +147,7 @@ bool DNSClient::Start(const string& hostname, Error* error) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                             "ARES set DNS servers error code: " +
                             base::IntToString(status));
-      resolver_state_.reset();
+      resolver_state_ = nullptr;
       return false;
     }
 
@@ -171,7 +171,7 @@ bool DNSClient::Start(const string& hostname, Error* error) {
 
 void DNSClient::Stop() {
   SLOG(this, 3) << "In " << __func__;
-  if (!resolver_state_.get()) {
+  if (!resolver_state_) {
     return;
   }
 
@@ -180,7 +180,7 @@ void DNSClient::Stop() {
   error_.Reset();
   address_.SetAddressToDefault();
   ares_->Destroy(resolver_state_->channel);
-  resolver_state_.reset();
+  resolver_state_ = nullptr;
 }
 
 bool DNSClient::IsActive() const {
