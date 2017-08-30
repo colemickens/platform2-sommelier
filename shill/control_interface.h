@@ -208,9 +208,8 @@ class ControlInterface {
   CreateMM1ModemSimpleProxy(const std::string& path,
                             const std::string& service) = 0;
 
-  virtual mm1::SimProxyInterface* CreateSimProxy(
-      const std::string& path,
-      const std::string& service) = 0;
+  virtual std::unique_ptr<mm1::SimProxyInterface> CreateSimProxy(
+      const std::string& path, const std::string& service) = 0;
 #endif  // DISABLE_CELLULAR
 
 #if !defined(DISABLE_WIMAX)

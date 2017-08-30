@@ -300,11 +300,11 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
       return std::move(test_->modem_simple_proxy_);
     }
 
-    mm1::SimProxyInterface* CreateSimProxy(
-        const std::string& /*path*/,
-        const std::string& /*service*/) override {
-      mm1::MockSimProxy* sim_proxy = test_->sim_proxy_.release();
-      test_->sim_proxy_.reset(new mm1::MockSimProxy());
+    std::unique_ptr<mm1::SimProxyInterface> CreateSimProxy(
+        const std::string& /*path*/, const std::string& /*service*/) override {
+      std::unique_ptr<mm1::MockSimProxy> sim_proxy =
+          std::move(test_->sim_proxy_);
+      test_->sim_proxy_ = base::MakeUnique<mm1::MockSimProxy>();
       return sim_proxy;
     }
 

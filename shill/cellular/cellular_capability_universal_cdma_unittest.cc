@@ -166,10 +166,9 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
       return std::move(test_->modem_simple_proxy_);
     }
 
-    mm1::SimProxyInterface* CreateSimProxy(
-        const std::string& /*path*/,
-        const std::string& /*service*/) override {
-      return test_->sim_proxy_.release();
+    std::unique_ptr<mm1::SimProxyInterface> CreateSimProxy(
+        const std::string& /*path*/, const std::string& /*service*/) override {
+      return std::move(test_->sim_proxy_);
     }
 
     std::unique_ptr<DBusPropertiesProxyInterface> CreateDBusPropertiesProxy(

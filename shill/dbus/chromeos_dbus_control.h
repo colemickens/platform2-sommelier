@@ -142,9 +142,8 @@ class ChromeosDBusControl : public ControlInterface {
   std::unique_ptr<mm1::ModemSimpleProxyInterface> CreateMM1ModemSimpleProxy(
       const std::string& path, const std::string& service) override;
 
-  mm1::SimProxyInterface* CreateSimProxy(
-      const std::string& path,
-      const std::string& service) override;
+  std::unique_ptr<mm1::SimProxyInterface> CreateSimProxy(
+      const std::string& path, const std::string& service) override;
 #endif  // DISABLE_CELLULAR
 
 #if !defined(DISABLE_WIMAX)
