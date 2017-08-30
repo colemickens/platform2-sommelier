@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "vm_launcher/mac_address.h"
+#include "vm_tools/launcher/mac_address.h"
 
 #include <sys/types.h>
 
@@ -16,7 +16,8 @@
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
 
-namespace vm_launcher {
+namespace vm_tools {
+namespace launcher {
 
 namespace {
 
@@ -159,4 +160,5 @@ bool MacAddress::IsValidMac(const Octets& candidate) const {
   return true;
 }
 
-}  // namespace vm_launcher
+}  // namespace launcher
+}  // namespace vm_tools

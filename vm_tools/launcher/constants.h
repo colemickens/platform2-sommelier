@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef VM_LAUNCHER_CONSTANTS_H_
-#define VM_LAUNCHER_CONSTANTS_H_
+#ifndef VM_TOOLS_LAUNCHER_CONSTANTS_H_
+#define VM_TOOLS_LAUNCHER_CONSTANTS_H_
 
-namespace vm_launcher {
+namespace vm_tools {
+namespace launcher {
 
 // Path to lkvm binary.
 constexpr char kLkvmBin[] = "/usr/bin/lkvm";
@@ -19,6 +20,7 @@ constexpr char kVmRootfsPath[] = "/opt/google/vm/vm_rootfs.img";
 // Runtime directory where information about running VMs will be stored.
 constexpr char kVmRuntimeDirectory[] = "/run/vm";
 
-}  // namespace vm_launcher
+}  // namespace launcher
+}  // namespace vm_tools
 
-#endif  // VM_LAUNCHER_CONSTANTS_H_
+#endif  // VM_TOOLS_LAUNCHER_CONSTANTS_H_

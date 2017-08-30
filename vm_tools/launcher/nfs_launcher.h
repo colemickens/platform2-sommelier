@@ -2,20 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef VM_LAUNCHER_NFS_LAUNCHER_H_
-#define VM_LAUNCHER_NFS_LAUNCHER_H_
+#ifndef VM_TOOLS_LAUNCHER_NFS_LAUNCHER_H_
+#define VM_TOOLS_LAUNCHER_NFS_LAUNCHER_H_
 
-#include <string>
 #include <brillo/process.h>
+#include <string>
 
-namespace vm_launcher {
+namespace vm_tools {
+namespace launcher {
 
 // Name of nfs-ganesha's upstart job.
 constexpr char kGaneshaJobName[] = "nfs-ganesha";
 
 // Path to nfs-ganesha seccomp policy file.
 constexpr char kGaneshaPolicyFile[] =
-  "/usr/share/policy/nfs-ganesha-seccomp.policy";
+    "/usr/share/policy/nfs-ganesha-seccomp.policy";
 
 // Path to ganesha's temporary config and log directory.
 constexpr char kGaneshaConfigDirectory[] = "/run/ganesha";
@@ -42,6 +43,7 @@ class NfsLauncher {
 
   bool running_ = false;
 };
-}  // namespace vm_launcher
+}  // namespace launcher
+}  // namespace vm_tools
 
-#endif  // VM_LAUNCHER_NFS_LAUNCHER_H_
+#endif  // VM_TOOLS_LAUNCHER_NFS_LAUNCHER_H_

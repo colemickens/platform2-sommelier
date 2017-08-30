@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "vm_launcher/pooled_resource.h"
+#include "vm_tools/launcher/pooled_resource.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -18,9 +18,10 @@
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
 
-#include "vm_launcher/constants.h"
+#include "vm_tools/launcher/constants.h"
 
-namespace vm_launcher {
+namespace vm_tools {
+namespace launcher {
 
 namespace {
 
@@ -94,7 +95,7 @@ bool WriteStringToFd(int fd, const std::string& contents) {
 bool PooledResource::Allocate() {
   // The fcntl lock will be dropped when fd goes out of scope.
   std::string file_path =
-      base::StringPrintf("%s/%s", vm_launcher::kVmRuntimeDirectory, GetName());
+      base::StringPrintf("%s/%s", launcher::kVmRuntimeDirectory, GetName());
   base::ScopedFD fd = CreateAndLockFile(base::FilePath(file_path));
   if (!fd.is_valid())
     return false;
@@ -139,4 +140,5 @@ bool PooledResource::Release() {
   return true;
 }
 
-}  // namespace vm_launcher
+}  // namespace launcher
+}  // namespace vm_tools

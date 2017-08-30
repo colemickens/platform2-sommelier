@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef VM_LAUNCHER_MAC_ADDRESS_H_
-#define VM_LAUNCHER_MAC_ADDRESS_H_
+#ifndef VM_TOOLS_LAUNCHER_MAC_ADDRESS_H_
+#define VM_TOOLS_LAUNCHER_MAC_ADDRESS_H_
 
 #include <stdint.h>
 
@@ -14,9 +14,10 @@
 
 #include <base/macros.h>
 
-#include "vm_launcher/pooled_resource.h"
+#include "vm_tools/launcher/pooled_resource.h"
 
-namespace vm_launcher {
+namespace vm_tools {
+namespace launcher {
 
 // Generates locally managed EUI-48 MAC addresses and ensures no collisions.
 class MacAddress : public PooledResource {
@@ -46,6 +47,7 @@ class MacAddress : public PooledResource {
 
   DISALLOW_COPY_AND_ASSIGN(MacAddress);
 };
-}  // namespace vm_launcher
+}  // namespace launcher
+}  // namespace vm_tools
 
-#endif  // VM_LAUNCHER_MAC_ADDRESS_H_
+#endif  // VM_TOOLS_LAUNCHER_MAC_ADDRESS_H_

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "vm_launcher/subnet.h"
+#include "vm_tools/launcher/subnet.h"
 
 #include <stdint.h>
 #include <sys/types.h>
@@ -15,7 +15,8 @@
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 
-namespace vm_launcher {
+namespace vm_tools {
+namespace launcher {
 
 namespace {
 // The 100.115.92.0/24 subnet is reserved and cannot be publicly routed.
@@ -125,4 +126,5 @@ bool Subnet::ReleaseResource() {
   return true;
 }
 
-}  // namespace vm_launcher
+}  // namespace launcher
+}  // namespace vm_tools

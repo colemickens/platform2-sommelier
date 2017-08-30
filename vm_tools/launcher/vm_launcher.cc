@@ -15,10 +15,10 @@
 #include <brillo/process.h>
 #include <brillo/syslog_logging.h>
 
-#include "vm_launcher/constants.h"
-#include "vm_launcher/mac_address.h"
-#include "vm_launcher/nfs_launcher.h"
-#include "vm_launcher/subnet.h"
+#include "vm_tools/launcher/constants.h"
+#include "vm_tools/launcher/mac_address.h"
+#include "vm_tools/launcher/nfs_launcher.h"
+#include "vm_tools/launcher/subnet.h"
 
 namespace {
 
@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
   }
 
   // TODO(smbarber): Make an init script do this.
-  rc = mkdir(vm_launcher::kVmRuntimeDirectory, 0700);
+  rc = mkdir(vm_tools::launcher::kVmRuntimeDirectory, 0700);
   if (rc && errno != EEXIST) {
     PLOG(ERROR) << "Failed to create vm runtime directory";
     return 1;
@@ -74,11 +74,11 @@ int main(int argc, char** argv) {
   }
 
   brillo::ProcessImpl vm_process;
-  vm_process.AddArg(vm_launcher::kLkvmBin);
+  vm_process.AddArg(vm_tools::launcher::kLkvmBin);
   vm_process.AddArg("run");
-  vm_process.AddStringOption("-k", vm_launcher::kVmKernelPath);
-  vm_process.AddStringOption("-d",
-                             std::string(vm_launcher::kVmRootfsPath) + ",ro");
+  vm_process.AddStringOption("-k", vm_tools::launcher::kVmKernelPath);
+  vm_process.AddStringOption(
+      "-d", std::string(vm_tools::launcher::kVmRootfsPath) + ",ro");
 
   if (S_ISDIR(container_stat.st_mode & S_IFMT)) {
     vm_process.AddStringOption("--9p", FLAGS_container + ",container_rootfs");
@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
     vm_process.AddStringOption("-d", FLAGS_container + ",ro");
   }
 
-  auto mac_addr = vm_launcher::MacAddress::Create();
+  auto mac_addr = vm_tools::launcher::MacAddress::Create();
   if (!mac_addr) {
     LOG(ERROR) << "Could not allocate MAC address";
     return 1;
@@ -94,7 +94,7 @@ int main(int argc, char** argv) {
 
   LOG(INFO) << "Allocated MAC address " << mac_addr->ToString();
 
-  auto subnet = vm_launcher::Subnet::Create();
+  auto subnet = vm_tools::launcher::Subnet::Create();
   if (!subnet) {
     LOG(ERROR) << "Could not allocate subnet";
     return 1;
@@ -125,12 +125,12 @@ int main(int argc, char** argv) {
   vm_process.AddArg("--rng");
 
   // kvmtool likes sticking sockets in HOME. Force it to use /run/vm instead.
-  rc = setenv("HOME", vm_launcher::kVmRuntimeDirectory, true);
+  rc = setenv("HOME", vm_tools::launcher::kVmRuntimeDirectory, true);
   if (rc < 0) {
     PLOG(ERROR) << "Could not set HOME before launching kvmtool";
     return 1;
   }
-  vm_launcher::NfsLauncher nfs;
+  vm_tools::launcher::NfsLauncher nfs;
 
   if (FLAGS_nfs && !nfs.Launch()) {
     LOG(ERROR) << "Unable to launch NFS server";

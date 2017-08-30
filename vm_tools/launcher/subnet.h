@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef VM_LAUNCHER_SUBNET_H_
-#define VM_LAUNCHER_SUBNET_H_
+#ifndef VM_TOOLS_LAUNCHER_SUBNET_H_
+#define VM_TOOLS_LAUNCHER_SUBNET_H_
 
 #include <bitset>
 #include <memory>
@@ -11,9 +11,10 @@
 
 #include <base/macros.h>
 
-#include "vm_launcher/pooled_resource.h"
+#include "vm_tools/launcher/pooled_resource.h"
 
-namespace vm_launcher {
+namespace vm_tools {
+namespace launcher {
 
 // Manages IPv4 subnets that can be assigned to VMs.
 class Subnet : public PooledResource {
@@ -47,6 +48,7 @@ class Subnet : public PooledResource {
 
   DISALLOW_COPY_AND_ASSIGN(Subnet);
 };
-}  // namespace vm_launcher
+}  // namespace launcher
+}  // namespace vm_tools
 
-#endif  // VM_LAUNCHER_SUBNET_H_
+#endif  // VM_TOOLS_LAUNCHER_SUBNET_H_

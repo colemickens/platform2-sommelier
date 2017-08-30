@@ -15,5 +15,16 @@
         'maitred/client.cc',
       ],
     },
+    {
+      'target_name': 'vm_launcher',
+      'type': 'executable',
+      'sources': [
+        'launcher/mac_address.cc',
+        'launcher/nfs_launcher.cc',
+        'launcher/pooled_resource.cc',
+        'launcher/subnet.cc',
+        'launcher/vm_launcher.cc',
+      ],
+    },
   ],
 }

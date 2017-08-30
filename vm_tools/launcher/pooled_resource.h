@@ -2,17 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef VM_LAUNCHER_POOLED_RESOURCE_H_
-#define VM_LAUNCHER_POOLED_RESOURCE_H_
+#ifndef VM_TOOLS_LAUNCHER_POOLED_RESOURCE_H_
+#define VM_TOOLS_LAUNCHER_POOLED_RESOURCE_H_
 
 #include <string>
 
-namespace vm_launcher {
+namespace vm_tools {
+namespace launcher {
 
 // Manages a limited resource that needs to be assigned to each VM.
-// Since multiple instances of vm_launcher can be run at once, this class
+// Since multiple instances of launcher can be run at once, this class
 // assists in keeping track of allocated resources in a file. fcntl locking
-// is used to guarantee that only one instance of vm_launcher may access the
+// is used to guarantee that only one instance of launcher may access the
 // list of allocated resources at a time.
 class PooledResource {
  public:
@@ -54,6 +55,7 @@ class PooledResource {
   // Returns true if the release succeeded, or false otherwise.
   virtual bool ReleaseResource() = 0;
 };
-}  // namespace vm_launcher
+}  // namespace launcher
+}  // namespace vm_tools
 
-#endif  // VM_LAUNCHER_POOLED_RESOURCE_H_
+#endif  // VM_TOOLS_LAUNCHER_POOLED_RESOURCE_H_

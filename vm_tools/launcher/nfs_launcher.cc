@@ -2,26 +2,25 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "vm_launcher/constants.h"
-#include "vm_launcher/nfs_launcher.h"
+#include "vm_tools/launcher/nfs_launcher.h"
+#include "vm_tools/launcher/constants.h"
 
-#include <sys/signal.h>
-#include <base/logging.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <brillo/process.h>
 #include <brillo/syslog_logging.h>
+#include <sys/signal.h>
 
-
-namespace vm_launcher {
+namespace vm_tools {
+namespace launcher {
 
 bool NfsLauncher::Terminate() {
   brillo::ProcessImpl nfs_upstart;
   nfs_upstart.AddArg("/sbin/stop");
-  nfs_upstart.AddArg(vm_launcher::kGaneshaJobName);
+  nfs_upstart.AddArg(launcher::kGaneshaJobName);
 
   LOG(INFO) << "Stopping NFS server";
-  if (!nfs_upstart.Run())
-  {
+  if (!nfs_upstart.Run()) {
     PLOG(ERROR) << "Unable to stop NFS server";
     return false;
   }
@@ -51,9 +50,9 @@ EXPORT
 }
 )XXX";
 
-  base::FilePath config_directory(vm_launcher::kGaneshaConfigDirectory);
+  base::FilePath config_directory(launcher::kGaneshaConfigDirectory);
   if (!base::DirectoryExists(config_directory)) {
-    LOG(INFO) << "Config directory " << vm_launcher::kGaneshaConfigDirectory
+    LOG(INFO) << "Config directory " << launcher::kGaneshaConfigDirectory
               << "does not exist, creating.";
     if (!base::CreateDirectory(config_directory)) {
       PLOG(ERROR) << "Unable to create config directory";
@@ -61,10 +60,10 @@ EXPORT
     }
   }
   base::FilePath config_file_path =
-      base::FilePath(vm_launcher::kGaneshaConfigDirectory)
-      .Append(base::FilePath("ganesha.conf"));
-  bool write_result = base::WriteFile(config_file_path, config.c_str(),
-                                      config.length());
+      base::FilePath(launcher::kGaneshaConfigDirectory)
+          .Append(base::FilePath("ganesha.conf"));
+  bool write_result =
+      base::WriteFile(config_file_path, config.c_str(), config.length());
   if (!write_result)
     PLOG(ERROR) << "Unable to write config file " << config_file_path.value();
   return write_result;
@@ -77,7 +76,7 @@ bool NfsLauncher::Launch() {
 
   brillo::ProcessImpl nfs_upstart;
   nfs_upstart.AddArg("/sbin/start");
-  nfs_upstart.AddArg(vm_launcher::kGaneshaJobName);
+  nfs_upstart.AddArg(launcher::kGaneshaJobName);
 
   LOG(INFO) << "Starting NFS server";
 
@@ -91,4 +90,5 @@ NfsLauncher::~NfsLauncher() {
     Terminate();
 }
 
-}  // namespace vm_launcher
+}  // namespace launcher
+}  // namespace vm_tools
