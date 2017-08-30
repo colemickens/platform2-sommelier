@@ -303,8 +303,10 @@ status_t ImguUnit::mapStreamWithDeviceNode()
     }
 
     if (yuvNum == 1) { // 1 YUV stream only
-        mStreamNodeMapping[videoNode] = mActiveStreams.yuvStreams[0];
-        mStreamNodeMapping[previewNode] = nullptr;
+        // let yuv output from vf which includes scaler module to ensure FOV is
+        // the same between preview and snapshot
+        mStreamNodeMapping[videoNode] = nullptr;
+        mStreamNodeMapping[previewNode] = mActiveStreams.yuvStreams[0];
     } else if (yuvNum == 2) { // 2 YUV streams
         int maxWidth = 0;
         int idx = 0;
