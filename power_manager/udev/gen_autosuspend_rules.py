@@ -141,6 +141,8 @@ USB_IDS += [
   "1410:a023",
   # Altair (LTE) (spring)
   "216f:0047",
+  # Fibocom (L850-GL)
+  "2cb7:0007",
 ]
 
 # Mass Storage
