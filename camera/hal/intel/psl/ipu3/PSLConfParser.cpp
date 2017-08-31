@@ -1014,7 +1014,7 @@ int PSLConfParser::readNvmData()
     if (nvmDataPath.back() != '/')
         nvmDataPath.append("/");
 
-    nvmDataPath.append("nvm");
+    nvmDataPath.append("eeprom");
     LOG1("NVM data for %s is located in %s", sensorName.c_str(), nvmDataPath.c_str());
 
     nvmFile = fopen(nvmDataPath.c_str(), "rb");

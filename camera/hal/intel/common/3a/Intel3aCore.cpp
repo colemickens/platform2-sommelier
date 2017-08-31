@@ -25,7 +25,6 @@
 #include <ia_exc.h>
 #include <ia_log.h>
 #include <ia_mkn_encoder.h>
-#include <cameranvm.h>
 
 #include "PlatformData.h"
 #include "LogHelper.h"
@@ -236,7 +235,6 @@ status_t Intel3aCore::init(int maxGridW,
     status_t status = NO_ERROR;
     ia_err iaErr = ia_err_none;
     ia_binary_data cpfData;
-    ia_binary_data *outputNvmData = nullptr;
     const AiqConf* aiqConf = PlatformData::getAiqConfiguration(mCameraId);
     if (CC_UNLIKELY(aiqConf == nullptr)) {
         LOGE("CPF file was not initialized ");
@@ -244,21 +242,6 @@ status_t Intel3aCore::init(int maxGridW,
     }
     cpfData.data = aiqConf->ptr();
     cpfData.size = aiqConf->size();
-
-    if (sensorName != nullptr) {
-        if (nvmData.data == nullptr || nvmData.size == 0) {
-            LOG1("NVM data not available for %s - not necessarily an error", sensorName);
-        } else {
-            LOG1("sensorname: %s, nvmData.size: %d", sensorName, nvmData.size);
-            /**
-             * Convert the NVM data from an unknown binary format into Intel Format.
-             * Sensor name is given as a parameter so that a correct parser is chosen.
-             */
-            cameranvm_create(sensorName, &nvmData, nullptr, &outputNvmData);
-        }
-    }
-    // No need to report the case where sensor name is nullptr since many of the PSLs
-    // don't use that.
 
     mMkn = ia_mkn_init(ia_mkn_cfg_compression,
                        MAKERNOTE_SECTION1_SIZE,
@@ -277,7 +260,6 @@ status_t Intel3aCore::init(int maxGridW,
     mCmc = aiqConf->getCMCHandler();
     if (CC_UNLIKELY(mCmc == nullptr)) {
         LOGE("%s: CMC handler nullptr, not initialized", __FUNCTION__);
-        cameranvm_delete(outputNvmData);
         return NO_INIT;
     }
 
@@ -292,7 +274,7 @@ status_t Intel3aCore::init(int maxGridW,
     }
 
     mIaAiqHandle = ia_aiq_init((ia_binary_data*)&(cpfData),
-                                outputNvmData,
+                                &nvmData,
                                 pAiqdData,
                                 maxGridW,
                                 maxGridH,

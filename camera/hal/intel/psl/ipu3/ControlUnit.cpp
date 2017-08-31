@@ -94,6 +94,8 @@ ControlUnit::init()
     }
 
     m3aWrapper->enableAiqdDataSave(true);
+    if (cap)
+        nvmData = cap->mNvmData;
     if (m3aWrapper->initAIQ(MAX_STATISTICS_WIDTH,
                             MAX_STATISTICS_HEIGHT,
                             nvmData,

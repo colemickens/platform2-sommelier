@@ -142,12 +142,11 @@ EXTERNAL_LIBS = -ljpeg -lexpat -lpthread $(LIBCBM_LIBS) $(LIBCHROME_LIBS) $(LIBY
 UTIL_LIBS =  $(PSLLIBS) \
           $(IA_IMAGING_LIBS) \
           $(LIBIACSS_LIBS)
-CAMERALIBS_LIBS = -lcameranvm
 STATIC_LIBS = $(LIBCAMERA_CLIENT_LIBS) \
               $(LIBCAMERA_METADATA_LIBS) \
               $(LIBSYNC_LIBS)
 OTHER_LIBS = -ldl
-libcamerahal_la_LIBADD = $(EXTERNAL_LIBS) $(UTIL_LIBS) $(CAMERALIBS_LIBS) $(STATIC_LIBS) $(OTHER_LIBS)
+libcamerahal_la_LIBADD = $(EXTERNAL_LIBS) $(UTIL_LIBS) $(STATIC_LIBS) $(OTHER_LIBS)
 
 libcamerahal_la_LDFLAGS = -Wl,-z,defs
 
