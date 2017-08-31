@@ -60,6 +60,12 @@ U2fMode ReadU2fPolicy() {
 U2fMode GetU2fMode(bool force_u2f, bool force_g2f) {
   U2fMode policy_mode = ReadU2fPolicy();
 
+  // Always honor the administrator request to disable even if given
+  // contradictory override flags.
+  if (policy_mode == U2fMode::kDisabled) {
+    return U2fMode::kDisabled;
+  }
+
   if (force_g2f || policy_mode == U2fMode::kU2fExtended) {
     return U2fMode::kU2fExtended;
   }
