@@ -30,7 +30,7 @@ bool HttpSender::Send(const std::string& content,
       &error);
   if (!response || response->ExtractDataAsString() != "OK") {
     if (error) {
-      DLOG(ERROR) << "Failed to send data: " << error->GetMessage();
+      LOG(ERROR) << "Failed to send data: " << error->GetMessage();
     }
     return false;
   }

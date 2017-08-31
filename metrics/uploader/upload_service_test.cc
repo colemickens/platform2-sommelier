@@ -36,7 +36,8 @@ class UploadServiceTest : public testing::Test {
         exit_manager_(new base::AtExitManager()) {
     sender_ = new SenderMock;
     upload_service_.sender_.reset(sender_);
-    upload_service_.Init(base::TimeDelta::FromMinutes(30), kMetricsFilePath);
+    upload_service_.Init(base::TimeDelta::FromMinutes(30), kMetricsFilePath,
+                         true);
   }
 
   virtual void SetUp() {

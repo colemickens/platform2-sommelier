@@ -62,7 +62,8 @@ class UploadService : public base::HistogramFlattener {
                          const std::string& server);
 
   void Init(const base::TimeDelta& upload_interval,
-            const std::string& metrics_file);
+            const std::string& metrics_file,
+            bool uploads_enabled);
 
   // Starts a new log. The log needs to be regenerated after each successful
   // launch as it is destroyed when staging the log.
@@ -114,8 +115,9 @@ class UploadService : public base::HistogramFlattener {
   // Resets the internal state.
   void Reset();
 
-  // Reads all the metrics from the disk.
-  void ReadMetrics();
+  // Reads and consumes metrics from the message file, up to a max amount.
+  // Returns false if more metrics are remaining in the file.
+  bool ReadMetrics();
 
   // Adds a generic sample to the current log.
   void AddSample(const metrics::MetricSample& sample);
@@ -147,6 +149,7 @@ class UploadService : public base::HistogramFlattener {
   std::unique_ptr<MetricsLog> staged_log_;
 
   std::string metrics_file_;
+  bool skip_upload_;
 
   bool testing_;
 };

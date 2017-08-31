@@ -44,9 +44,11 @@ UploadService::UploadService(SystemProfileSetter* setter,
 }
 
 void UploadService::Init(const base::TimeDelta& upload_interval,
-                         const std::string& metrics_file) {
+                         const std::string& metrics_file,
+                         bool uploads_enabled) {
   base::StatisticsRecorder::Initialize();
   metrics_file_ = metrics_file;
+  skip_upload_ = !uploads_enabled;
 
   if (!testing_) {
     base::MessageLoop::current()->PostDelayedTask(
@@ -78,22 +80,53 @@ void UploadService::UploadEventCallback(const base::TimeDelta& interval) {
 }
 
 void UploadService::UploadEvent() {
+  bool all_metrics_processed;
+
+  if (skip_upload_) {
+    // Process incoming samples as if we were going to upload them, but discard
+    // them instead.  Consuming the samples has the side effect of truncating
+    // the uma-events file, which otherwise grows indefinitely.
+    while (true) {
+      // ReadMetrics() may have to be called multiple times, because if
+      // uma-events is too large it processes samples in batches.
+      Reset();
+      if (ReadMetrics())
+        break;
+    }
+    return;
+  }
+
+  // If staged_log_ is not empty, it means that the previous upload failed.
+  // Retry sending the logs, then return. (QUESTION: why return, instead of
+  // continuing and sending the recent metrics as well?  It's not critical
+  // since they'll be sent later, but why not now?)
   if (staged_log_) {
-    // Previous upload failed, retry sending the logs.
     SendStagedLog();
     return;
   }
 
-  // Previous upload successful, reading metrics sample from the file.
-  ReadMetrics();
-  GatherHistograms();
+  // The previous upload was successful. Read the new metrics samples from the
+  // uma-events file and ship them.  If the file is too large, ReadMetrics()
+  // updates the file to reflect which samples were read and returns false.
+  // Loop until all samples are processed (or an error occurs).
+  while (true) {
+    all_metrics_processed = ReadMetrics();
+    GatherHistograms();
 
-  // No samples found. Exit to avoid sending an empty log.
-  if (!current_log_)
-    return;
+    // No samples found. Exit to avoid sending an empty log.
+    if (!current_log_)
+      break;
 
-  StageCurrentLog();
-  SendStagedLog();
+    // Stage and send the logs.
+    StageCurrentLog();
+    SendStagedLog();
+
+    // If staged_logs_ is not empty, SendStagedLog failed.  Try later.
+    if (staged_log_)
+      break;
+    if (all_metrics_processed)
+      break;
+  }
 }
 
 void UploadService::SendStagedLog() {
@@ -129,20 +162,22 @@ void UploadService::Reset() {
   failed_upload_count_ = 0;
 }
 
-void UploadService::ReadMetrics() {
+bool UploadService::ReadMetrics() {
   CHECK(!staged_log_)
       << "cannot read metrics until the old logs have been discarded";
 
   std::vector<std::unique_ptr<metrics::MetricSample>> samples;
-  metrics::SerializationUtils::ReadAndTruncateMetricsFromFile(metrics_file_,
-                                                              &samples);
+  bool result = metrics::SerializationUtils::ReadAndTruncateMetricsFromFile(
+      metrics_file_,
+      &samples,
+      metrics::SerializationUtils::kSampleBatchMaxLength);
 
-  int i = 0;
   for (const auto& sample : samples) {
     AddSample(*sample);
-    i++;
   }
-  DLOG(INFO) << i << " samples read";
+  DLOG(INFO) << samples.size() << " samples found in uma-events";
+
+  return result;
 }
 
 void UploadService::AddSample(const metrics::MetricSample& sample) {

@@ -22,10 +22,16 @@ namespace SerializationUtils {
 // deserialization was successful) or a NULL std::unique_ptr.
 std::unique_ptr<MetricSample> ParseSample(const std::string& sample);
 
-// Reads all samples from a file and truncate the file when done.
-void ReadAndTruncateMetricsFromFile(
+// Reads samples from a file, and modifies the file to reflect the samples
+// processed.  If all samples are read, truncates the file to zero size and
+// returns true.  If sample_batch_max_length is exceeded when reading a batch of
+// samples, changes the file to logically contain only the remaining samples.
+// Returns false if samples are left for further processing, true in all other
+// cases (including errors).
+bool ReadAndTruncateMetricsFromFile(
     const std::string& filename,
-    std::vector<std::unique_ptr<MetricSample>>* metrics);
+    std::vector<std::unique_ptr<MetricSample>>* metrics,
+    size_t sample_batch_max_length);
 
 // Serializes a sample and write it to filename.
 // The format for the message is:
@@ -39,8 +45,15 @@ void ReadAndTruncateMetricsFromFile(
 //  with the architecture's endianness.
 bool WriteMetricToFile(const MetricSample& sample, const std::string& filename);
 
-// Maximum length of a serialized message
-static const int kMessageMaxLength = 1024;
+// Maximum length of a serialized message.
+static const size_t kMessageMaxLength = 1024;
+
+// Maximum size of serialized messages that we will read and upload in one
+// pass.  If a device does not have connectivity for a long time, a large
+// number of messages can accumulate.  Without this limit, the large number of
+// messages can put strain on resources (such as RAM for the metrics daemon's
+// heap) when connectivity is restored and the upload is attempted.
+static const size_t kSampleBatchMaxLength = 10 * 1024 * 1024;
 
 }  // namespace SerializationUtils
 }  // namespace metrics
