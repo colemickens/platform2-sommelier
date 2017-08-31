@@ -479,12 +479,6 @@ void FirmwareUpdater::SendDone() {
 bool FirmwareUpdater::TransferSection(const uint8_t* data_ptr,
                                       uint32_t section_addr,
                                       size_t data_len) {
-  // Actually, we can skip trailing chunks of 0xff, as the entire
-  // section space must be erased before the update is attempted.
-  // TODO(akahuang): skip blocks within the image.
-  while (data_len && (data_ptr[data_len - 1] == 0xff))
-    data_len--;
-
   LOG(INFO) << "Sending 0x" << std::hex << data_len << " bytes to 0x"
             << section_addr << std::dec;
   while (data_len > 0) {
@@ -512,6 +506,20 @@ bool FirmwareUpdater::TransferSection(const uint8_t* data_ptr,
 bool FirmwareUpdater::TransferBlock(UpdateFrameHeader* ufh,
                                     const uint8_t* transfer_data_ptr,
                                     size_t payload_size) {
+  // The section space must be erased before the update is attempted.
+  // Thus we can skip blocks entirely composed of 0xff.
+  bool empty_block = true;
+  for (int i = 0; i < payload_size; i++) {
+    if (transfer_data_ptr[i] != 0xff) {
+      empty_block = false;
+      break;
+    }
+  }
+  if (empty_block) {
+    LOG(INFO) << "Block is all 0xff; skipping.";
+    return true;
+  }
+
   // First send the header.
   LOG(INFO) << "Send the block header: "
             << base::HexEncode(reinterpret_cast<uint8_t*>(ufh), sizeof(*ufh));
