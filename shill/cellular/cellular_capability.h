@@ -80,10 +80,6 @@ class CellularCapability {
 
   static const char kModemPropertyIMSI[];
 
-  // |cellular| is the parent Cellular device.
-  CellularCapability(Cellular* cellular,
-                     ControlInterface* control_interface,
-                     ModemInfo* modem_info);
   virtual ~CellularCapability();
 
   virtual std::string GetTypeString() const = 0;
@@ -286,6 +282,11 @@ class CellularCapability {
   ModemInfo* modem_info() const { return modem_info_; }
 
  protected:
+  // |cellular| is the parent Cellular device.
+  CellularCapability(Cellular* cellular,
+                     ControlInterface* control_interface,
+                     ModemInfo* modem_info);
+
   // Releases all proxies held by the object. This is most useful during unit
   // tests.
   virtual void ReleaseProxies() = 0;
