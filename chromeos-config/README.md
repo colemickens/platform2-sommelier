@@ -132,13 +132,14 @@ properties.
             at the model level.
             *   `shares`(optional): Phandle pointing to the firmware to use for
                 this model. This is a list with a single phandle, pointing to
-                the firmware node of another model. The presense of this
+                the firmware node of another model. The presence of this
                 property indicates that this model does not have separate
                 firmware although it may have its own keyset. This property is
                 used to share firmware across multiple models where hardware
                 differences are small and we can detect the model from board ID
                 pins. At this time, only a phandle reference to a node at
-                family/firmware/shared is supported.
+                family/firmware/shared is supported. The phandle target node
+                must be named with a valid model (e.g. 'reef').
             *   `key-id` (optional): Unique ID that matches which key
                 will be used in for firmware signing as part of vboot.
                 For context, see go/cros-unibuild-signing
@@ -153,7 +154,7 @@ chromeos {
     family {
         firmware {
             script = "updater4.sh";
-            shared: shared {
+            shared: reef {
                 bcs-overlay = "overlay-reef-private";
                 build-targets {
                     coreboot = "reef";
