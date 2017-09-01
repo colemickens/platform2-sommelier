@@ -9,6 +9,8 @@
 #include <sstream>
 #include <string>
 
+#include <base/bind.h>
+#include <base/callback_forward.h>
 #include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -79,6 +81,17 @@ struct WaitablePipe {
 struct PreStartHookState {
   WaitablePipe reached_pipe;
   WaitablePipe ready_pipe;
+};
+
+// DeferredRunner ensures a base::Closure is run when it goes out of scope.
+class DeferredRunner {
+ public:
+  explicit DeferredRunner(const base::Closure& closure) : closure_(closure) {}
+  ~DeferredRunner() { closure_.Run(); }
+
+ private:
+  base::Closure closure_;
+  DISALLOW_COPY_AND_ASSIGN(DeferredRunner);
 };
 
 std::ostream& operator<<(std::ostream& o, const OciHook& hook) {
@@ -424,6 +437,16 @@ bool RunHooks(const std::vector<OciHook>& hooks,
   return success;
 }
 
+void RunPostStopHooks(const std::vector<OciHook>& hooks,
+                      int child_pid,
+                      const base::FilePath& container_dir,
+                      const std::string& runfs) {
+  if (!RunHooks(
+          hooks, child_pid, container_dir, runfs, "poststop", "stopped")) {
+    LOG(WARNING) << "Error running poststop hooks";
+  }
+}
+
 // A callback that is run in the container process just before calling execve(2)
 // that waits for the parent process to run all the prestart hooks.
 int WaitForPreStartHooks(void* payload) {
@@ -540,6 +563,14 @@ int RunOci(const base::FilePath& container_dir,
   std::string runfs(runfs_cstr != nullptr ? runfs_cstr
                                           : oci_config->root.path.c_str());
 
+  // The callback is run in the same stack, so base::ConstRef() is safe.
+  DeferredRunner post_stop_hooks(
+      base::Bind(&RunPostStopHooks,
+                 base::ConstRef(oci_config->post_stop_hooks),
+                 child_pid,
+                 container_dir,
+                 runfs));
+
   if (pre_start_hook_state) {
     pre_start_hook_state->reached_pipe.Wait();
     if (!RunHooks(oci_config->pre_start_hooks,
@@ -564,18 +595,7 @@ int RunOci(const base::FilePath& container_dir,
     return container_kill(container.get());
   }
 
-  int status = container_wait(container.get());
-
-  if (!RunHooks(oci_config->post_stop_hooks,
-                child_pid,
-                container_dir,
-                runfs,
-                "poststop",
-                "stopped")) {
-    LOG(WARNING) << "Error running poststop hooks";
-  }
-
-  return status;
+  return container_wait(container.get());
 }
 
 const struct option longopts[] = {
