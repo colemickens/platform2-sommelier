@@ -74,7 +74,20 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
   const void* blob = blob_.c_str();
 
   std::string full_path = kModelNodePath + std::string("/") + model_ + path;
+  std::string wl_full_path;
   int subnode = fdt_path_offset(blob, full_path.c_str());
+  int wl_subnode = -1;
+  if (whitelabel_offset_ != -1) {
+    wl_full_path = kModelNodePath + std::string("/") +
+        std::string(fdt_get_name(blob, whitelabel_offset_, NULL) + path);
+    wl_subnode = fdt_path_offset(blob, wl_full_path.c_str());
+    if (subnode < 0 && wl_subnode >= 0) {
+      LOG(INFO) << "The path " << path << " does not exist. Falling back to "
+                << "whitelabel path";
+      subnode = wl_subnode;
+      full_path = wl_full_path;
+    }
+  }
   if (subnode < 0) {
     LOG(ERROR) << "The path " << path << " does not exist.";
     return false;
@@ -83,9 +96,15 @@ bool CrosConfig::GetString(const std::string& path, const std::string& prop,
   int len = 0;
   const char* ptr = static_cast<const char*>(
       fdt_getprop(blob, subnode, prop.c_str(), &len));
+  if (!ptr && wl_subnode >= 0) {
+    ptr = static_cast<const char*>(fdt_getprop(blob, wl_subnode, prop.c_str(),
+                                               &len));
+    LOG(INFO) << "The property " << prop << " does not exist. Falling back to "
+              << "whitelabel property";
+  }
   if (!ptr || len < 0) {
     LOG(WARNING) << "Cannot get path " << path << " property " << prop << ": "
-                 << fdt_strerror(len);
+                 << "full path " << full_path << ": " << fdt_strerror(len);
     return false;
   }
 
@@ -170,6 +189,31 @@ bool CrosConfig::InitCommon(const base::FilePath& filepath,
       return false;
     }
     model_offset_ = node;
+
+    // See if there is a whitelabel config for this model. We probably don't
+    // need all these checks since validation will ensure that the config is
+    // correct. But this is a critical tool and we want to avoid crashes in any
+    // situation.
+    int len;
+    const fdt32_t* wl_ptr = static_cast<const fdt32_t*>(
+        fdt_getprop(blob, model_offset_, "whitelabel", &len));
+    if (wl_ptr) {
+      if (len != sizeof(fdt32_t)) {
+        LOG(ERROR) << "Whitelabel phandle for model " << model_
+                   << " is of size " << len << " but should be "
+                   << sizeof(fdt32_t);
+        return false;
+      }
+      int phandle = fdt32_to_cpu(*wl_ptr);
+      int offset = fdt_node_offset_by_phandle(blob, phandle);
+      if (offset < 0) {
+        LOG(ERROR) << "Whitelabel lookup for model " << model_ << " failed: "
+                   << fdt_strerror(offset);
+        return false;
+      }
+      whitelabel_offset_ = offset;
+    }
+
     LOG(INFO) << "Using master configuration for model " << model_;
   }
   inited_ = true;

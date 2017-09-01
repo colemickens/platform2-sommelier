@@ -11,9 +11,9 @@
 
 class CrosConfigTest : public testing::Test {
  protected:
-  void InitConfig() {
+  void InitConfig(const std::string model = "pyro") {
     base::FilePath filepath("test.dtb");
-    ASSERT_TRUE(cros_config_.InitForTest(filepath, "pyro"));
+    ASSERT_TRUE(cros_config_.InitForTest(filepath, model));
   }
 
   brillo::CrosConfig cros_config_;
@@ -82,10 +82,39 @@ TEST_F(CrosConfigTest, CheckGoodStringNonRoot) {
 TEST_F(CrosConfigTest, CheckGetModelNames) {
   InitConfig();
   std::vector<std::string> models = cros_config_.GetModelNames();
-  ASSERT_EQ(models.size(), 4);
+  ASSERT_EQ(models.size(), 7);
   ASSERT_EQ(models[0], "pyro");
   ASSERT_EQ(models[1], "caroline");
   ASSERT_EQ(models[2], "reef");
+  ASSERT_EQ(models[3], "broken");
+  ASSERT_EQ(models[4], "whitetip");
+  ASSERT_EQ(models[5], "whitetip1");
+  ASSERT_EQ(models[6], "whitetip2");
+}
+
+TEST_F(CrosConfigTest, CheckWhiteLabel) {
+  // These mirror the tests in libcros_config_host_unittest testWhitelabel()
+  InitConfig("whitetip1");
+  std::string val;
+
+  // These are defined by whitetip1 itself.
+  ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
+  ASSERT_EQ("shark", val);
+  ASSERT_TRUE(cros_config_.GetString("/firmware", "key-id", &val));
+  ASSERT_EQ("WHITETIP1", val);
+
+  // This is in a subnode defined by whitetip.
+  ASSERT_TRUE(cros_config_.GetString("/touch", "present", &val));
+  ASSERT_EQ("yes", val);
+
+  // This is in the main node, but defined by whitetip
+  ASSERT_TRUE(cros_config_.GetString("/", "powerd-prefs", &val));
+  ASSERT_EQ("whitetip", val);
+
+  // This is defined by whitetip's shared firmware. We don't have access to this
+  // at run-time since we don't follow the 'shares' phandles.
+  ASSERT_FALSE(cros_config_.GetString("/firmware/build-targets", "coreboot",
+                                      &val));
 }
 
 int main(int argc, char **argv) {
