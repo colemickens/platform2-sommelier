@@ -36,8 +36,18 @@ public:
     status_t postRun();
 
 private:
+    enum PostProcessType {
+        PROCESS_NONE = 0,      // pipe outputs directly, don't need any SW process
+        PROCESS_JPEG_ENCODING = 1<<0,
+        PROCESS_ROTATE = 1<<1,
+        PROCESS_DOWNSCALING= 1<<2
+    };
+
+private:
     std::unique_ptr<JpegEncodeTask> mJpegTask;
     int needRotation();
+    status_t scaleFrame(std::shared_ptr<CameraBuffer> input,
+                        std::shared_ptr<CameraBuffer> output);
     status_t rotateFrame(int outFormat, int angle);
     status_t convertJpeg(std::shared_ptr<CameraBuffer> buffer,
                          std::shared_ptr<CameraBuffer> jpegBuffer,
@@ -49,8 +59,9 @@ private:
     std::shared_ptr<CameraBuffer> mOutputBuffer;
     camera3_stream_t* mStream; /* OutputFrameWorker doesn't own mStream */
     bool mAllDone;
-    bool mUseInternalBuffer;
+    int mPostProcessType;
     IPU3NodeNames mNodeName;
+
     /* OutputFrameWorker has the ownership of this rotate working buffer */
     std::vector<uint8_t> mRotateBuffer;
 };

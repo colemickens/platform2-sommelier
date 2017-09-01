@@ -34,7 +34,7 @@ OutputFrameWorker::OutputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int ca
                 mOutputBuffer(nullptr),
                 mStream(stream),
                 mAllDone(false),
-                mUseInternalBuffer(true),
+                mPostProcessType(PROCESS_NONE),
                 mNodeName(nodeName)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
@@ -64,10 +64,30 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
     if (ret != OK)
         return ret;
 
-    // Use internal buffers
-    mUseInternalBuffer =
-        mStream && (mStream->format == HAL_PIXEL_FORMAT_BLOB || needRotation() > 0);
-    if (mUseInternalBuffer) {
+    mPostProcessType = PROCESS_NONE;
+    if (mStream) {
+        if (needRotation() > 0) {
+            LOG2("need rotation");
+            mPostProcessType |= PROCESS_ROTATE;
+        }
+        if (mStream->format == HAL_PIXEL_FORMAT_BLOB) {
+            LOG2("need jpeg encoding");
+            // ImgEncoder will do downscaling if need, so don't check size here.
+            mPostProcessType |= PROCESS_JPEG_ENCODING;
+        } else if (mFormat.fmt.pix.width * mFormat.fmt.pix.height
+            > mStream->width * mStream->height) {
+            // Currently only for 13M + QVGA.
+            // For other cases, ISP can output with expected size.
+            LOG2("need downscaling: %dx%d -> %dx%d",
+                    mFormat.fmt.pix.width, mFormat.fmt.pix.height,
+                    mStream->width, mStream->height);
+            mPostProcessType |= PROCESS_DOWNSCALING;
+        }
+    }
+
+    LOG1("%s: process type 0x%x", __FUNCTION__, mPostProcessType);
+    // Use internal buffer for SW process
+    if (mPostProcessType != PROCESS_NONE) {
         return allocateWorkerBuffers(OUTPUTFRAME_WORK_BUFFERS);
     }
 
@@ -165,7 +185,7 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
             mAllDone = false;
             mPollMe = true;
 
-            if (!mUseInternalBuffer) {
+            if (mPostProcessType == PROCESS_NONE) {
                 // Use stream buffer for zero-copy
                 mBuffers[mIndex].bytesused = mFormat.fmt.pix.sizeimage;
                 mBuffers[mIndex].m.userptr = (unsigned long int)buffer->data();
@@ -233,6 +253,7 @@ status_t OutputFrameWorker::postRun()
 
     Camera3Request* request;
     CameraStream *stream;
+    status_t status = UNKNOWN_ERROR;
 
     request = mMsg->cbMetadataMsg.request;
 
@@ -252,21 +273,24 @@ status_t OutputFrameWorker::postRun()
 
     stream = mOutputBuffer->getOwner();
 
-    int angle = 0;
-    if (mUseInternalBuffer && (angle = needRotation()) > 0) {
-       rotateFrame(mOutputBuffer->format(), angle);
+    if (mPostProcessType & PROCESS_ROTATE) {
+        int angle = needRotation();
+        rotateFrame(mOutputBuffer->format(), angle);
+    }
+    if (mPostProcessType & PROCESS_JPEG_ENCODING) {
+        // JPEG encoding
+        status = convertJpeg(mCameraBuffers[0], mOutputBuffer, request);
+        CheckError((status != OK), status, "@%s, JPEG conversion failed! [%d]!", __FUNCTION__, status);
+        mOutputBuffer->dumpImage(CAMERA_DUMP_JPEG, ".jpg");
+    } else if (mPostProcessType & PROCESS_DOWNSCALING) {
+        status = scaleFrame(mCameraBuffers[0], mOutputBuffer);
+        CheckError((status != OK), status, "@%s, Scale frame failed! [%d]!", __FUNCTION__, status);
     }
 
     // Dump the buffers if enabled in flags
     if (mOutputBuffer->format() == HAL_PIXEL_FORMAT_BLOB) {
         // Use internal buffer
         mCameraBuffers[0]->dumpImage(CAMERA_DUMP_JPEG, "before_jpeg_converion_nv12");
-        status_t status = convertJpeg(mCameraBuffers[0], mOutputBuffer, request);
-        mOutputBuffer->dumpImage(CAMERA_DUMP_JPEG, ".jpg");
-        if (status != OK) {
-            LOGE("JPEG conversion failed!");
-            // Return buffer anyway
-        }
     } else if (mOutputBuffer->format() == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED
             || mOutputBuffer->format() == HAL_PIXEL_FORMAT_YCbCr_420_888) {
         if (stream->usage() & GRALLOC_USAGE_HW_VIDEO_ENCODER) {
@@ -279,7 +303,7 @@ status_t OutputFrameWorker::postRun()
     // call capturedone for the stream of the buffer
     stream->captureDone(mOutputBuffer, request);
 
-    if (!mUseInternalBuffer) {
+    if (mPostProcessType == PROCESS_NONE) {
         mCameraBuffers.erase(mCameraBuffers.begin());
     }
 
@@ -360,5 +384,36 @@ status_t OutputFrameWorker::rotateFrame(int outFormat, int angle)
 
     return OK;
 }
+
+status_t OutputFrameWorker::scaleFrame(std::shared_ptr<CameraBuffer> input,
+                                       std::shared_ptr<CameraBuffer> output)
+{
+    // Y plane
+    libyuv::ScalePlane((uint8*)input->data(),
+                input->stride(),
+                input->width(),
+                input->height(),
+                (uint8*)output->data(),
+                output->stride(),
+                output->width(),
+                output->height(),
+                libyuv::kFilterNone);
+
+    // UV plane
+    // TODO: should get bpl to calculate offset
+    int inUVOffsetByte = input->stride() * input->height();
+    int outUVOffsetByte = output->stride() * output->height();
+    libyuv::ScalePlane_16((uint16*)input->data() + inUVOffsetByte / 2,
+                input->stride() / 2,
+                input->width() / 2,
+                input->height() / 2,
+                (uint16*)output->data() + outUVOffsetByte / 2,
+                output->stride() / 2,
+                output->width() / 2,
+                output->height() / 2,
+                libyuv::kFilterNone);
+    return OK;
+}
+
 } /* namespace camera2 */
 } /* namespace android */
