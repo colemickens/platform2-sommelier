@@ -98,7 +98,6 @@ class CellularPropertyTest : public PropertyStoreTest {
                              Cellular::kTypeCDMA,
                              "",
                              "")) {}
-  virtual ~CellularPropertyTest() {}
 
  protected:
   MockModemInfo modem_info_;
@@ -164,7 +163,7 @@ class CellularTest : public testing::Test {
                                           Technology::kCellular);
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
     static_cast<Device*>(device_.get())->rtnl_handler_ = &rtnl_handler_;
     device_->set_dhcp_provider(&dhcp_provider_);
     device_->process_manager_ = &process_manager_;
@@ -174,7 +173,7 @@ class CellularTest : public testing::Test {
         .Times(AnyNumber());
   }
 
-  virtual void TearDown() {
+  void TearDown()  override {
     device_->DestroyIPConfig();
     device_->state_ = Cellular::kStateDisabled;
     device_->capability_->ReleaseProxies();

@@ -76,13 +76,13 @@ class CellularCapabilityGSMTest : public testing::Test {
                                           Technology::kCellular);
   }
 
-  virtual ~CellularCapabilityGSMTest() {
+  ~CellularCapabilityGSMTest() override {
     cellular_->service_ = nullptr;
     capability_ = nullptr;
     device_adaptor_ = nullptr;
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
     capability_ =
         static_cast<CellularCapabilityGSM*>(cellular_->capability_.get());
     device_adaptor_ =

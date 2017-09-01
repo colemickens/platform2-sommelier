@@ -59,13 +59,13 @@ class SubscriptionStateOutOfCreditsDetectorTest : public testing::Test {
                 modem_info_.dispatcher(), modem_info_.manager(),
                 modem_info_.metrics(), service_.get())) {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     service_->connection_ = connection_;
     cellular_->service_ = service_;
     service_->SetRoamingState(kRoamingStateHome);
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     cellular_->service_ = nullptr;  // Break circular reference.
   }
 

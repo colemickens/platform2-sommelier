@@ -71,13 +71,13 @@ class CellularCapabilityTest : public testing::Test {
                             Technology::kCellular);
   }
 
-  virtual ~CellularCapabilityTest() {
+  ~CellularCapabilityTest() override {
     cellular_->service_ = nullptr;
     capability_ = nullptr;
     device_adaptor_ = nullptr;
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
     static_cast<Device*>(cellular_.get())->rtnl_handler_ = &rtnl_handler_;
 
     capability_ = static_cast<CellularCapabilityClassic*>(
@@ -87,7 +87,7 @@ class CellularCapabilityTest : public testing::Test {
     ASSERT_NE(nullptr, device_adaptor_);;
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     capability_->control_interface_ = nullptr;
   }
 

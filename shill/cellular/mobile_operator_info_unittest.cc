@@ -102,7 +102,6 @@ FilePath CreateTempDatabase(const unsigned char database_data[],
 class MockMobileOperatorInfoObserver : public MobileOperatorInfo::Observer {
  public:
   MockMobileOperatorInfoObserver() {}
-  virtual ~MockMobileOperatorInfoObserver() {}
 
   MOCK_METHOD0(OnOperatorChanged, void());
 };
@@ -220,7 +219,7 @@ class MobileOperatorInfoMainTest
  public:
   MobileOperatorInfoMainTest() : event_checking_policy_(GetParam()) {}
 
-  virtual void SetUp() {
+  void SetUp() override {
     operator_info_->ClearDatabasePaths();
     AddDatabase(mobile_operator_db::main_test,
                 arraysize(mobile_operator_db::main_test));
@@ -1067,7 +1066,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
 
   // Same as MobileOperatorInfoMainTest, except that the database used is
   // different.
-  virtual void SetUp() {
+  void SetUp() override {
     operator_info_->ClearDatabasePaths();
     AddDatabase(mobile_operator_db::data_test,
                 arraysize(mobile_operator_db::data_test));
@@ -1518,7 +1517,7 @@ class MobileOperatorInfoObserverTest : public MobileOperatorInfoMainTest {
 
   // Same as |MobileOperatorInfoMainTest::SetUp|, except that we don't add a
   // default observer.
-  virtual void SetUp() {
+  void SetUp() override {
     operator_info_->ClearDatabasePaths();
     AddDatabase(mobile_operator_db::data_test,
                 arraysize(mobile_operator_db::data_test));

@@ -68,8 +68,8 @@ class ModemTest : public Test {
                 kPath,
                 &modem_info_,
                 nullptr)) {}
-  virtual void SetUp();
-  virtual void TearDown();
+  void SetUp() override;
+  void TearDown() override;
 
   void ReplaceSingletons() {
     modem_->rtnl_handler_ = &rtnl_handler_;

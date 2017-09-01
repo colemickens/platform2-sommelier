@@ -102,13 +102,13 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
                                           Technology::kCellular);
   }
 
-  virtual ~CellularCapabilityUniversalTest() {
+  ~CellularCapabilityUniversalTest() override {
     cellular_->service_ = nullptr;
     capability_ = nullptr;
     device_adaptor_ = nullptr;
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
     capability_ = static_cast<CellularCapabilityUniversal*>(
         cellular_->capability_.get());
     device_adaptor_ =
@@ -124,7 +124,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
     SetMockMobileOperatorInfoObjects();
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     capability_->control_interface_ = nullptr;
   }
 

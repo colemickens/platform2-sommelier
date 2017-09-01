@@ -61,12 +61,12 @@ class CellularCapabilityCDMATest : public testing::Test {
                                           Technology::kCellular);
   }
 
-  virtual ~CellularCapabilityCDMATest() {
+  ~CellularCapabilityCDMATest() override {
     cellular_->service_ = nullptr;
     capability_ = nullptr;
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
     capability_ =
         static_cast<CellularCapabilityCDMA*>(cellular_->capability_.get());
   }

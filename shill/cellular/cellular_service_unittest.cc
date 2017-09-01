@@ -65,11 +65,11 @@ class CellularServiceTest : public testing::Test {
         service_(new CellularService(&modem_info_, device_)),
         adaptor_(nullptr) {}
 
-  virtual ~CellularServiceTest() {
+  ~CellularServiceTest() override {
     adaptor_ = nullptr;
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
     adaptor_ =
         static_cast<ServiceMockAdaptor*>(service_->adaptor());
     out_of_credits_detector_ =

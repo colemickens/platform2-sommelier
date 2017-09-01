@@ -83,13 +83,13 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
         mock_home_provider_info_(nullptr),
         mock_serving_operator_info_(nullptr) {}
 
-  virtual ~CellularCapabilityUniversalCDMATest() {
+  ~CellularCapabilityUniversalCDMATest() override {
     cellular_->service_ = nullptr;
     capability_ = nullptr;
     device_adaptor_ = nullptr;
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
     capability_ = static_cast<CellularCapabilityUniversalCDMA*>(
         cellular_->capability_.get());
     device_adaptor_ =
@@ -97,7 +97,7 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
     cellular_->service_ = service_;
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     capability_->control_interface_ = nullptr;
   }
 
