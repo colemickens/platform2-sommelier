@@ -426,7 +426,7 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(basic_config->hostname, "tester");
   ASSERT_EQ(basic_config->mounts.size(), 7);
   EXPECT_EQ(basic_config->mounts[0].options.size(), 0);
-  EXPECT_EQ(basic_config->mounts[1].destination, "/dev");
+  EXPECT_EQ(basic_config->mounts[1].destination, base::FilePath("/dev"));
   EXPECT_EQ(basic_config->mounts[2].options.size(), 6);
   // Devices
   ASSERT_EQ(2, basic_config->linux_config.devices.size());

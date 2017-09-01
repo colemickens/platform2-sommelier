@@ -55,9 +55,9 @@ struct OciRoot {
 };
 
 struct OciMount {
-  std::string destination;
+  base::FilePath destination;
   std::string type;
-  std::string source;
+  base::FilePath source;
   std::vector<std::string> options;  // Optional
 };
 

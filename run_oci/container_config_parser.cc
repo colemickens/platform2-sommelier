@@ -292,18 +292,21 @@ bool ParseMounts(const base::DictionaryValue& config_root_dict,
       return false;
     }
     OciMount mount;
-    if (!mount_dict->GetString("destination", &mount.destination)) {
+    std::string value;
+    if (!mount_dict->GetString("destination", &value)) {
       LOG(ERROR) << "Fail to get mount path for mount " << i;
       return false;
     }
+    mount.destination = base::FilePath(value);
     if (!mount_dict->GetString("type", &mount.type)) {
       LOG(ERROR) << "Fail to get mount type for mount " << i;
       return false;
     }
-    if (!mount_dict->GetString("source", &mount.source)) {
+    if (!mount_dict->GetString("source", &value)) {
       LOG(ERROR) << "Fail to get mount source for mount " << i;
       return false;
     }
+    mount.source = base::FilePath(value);
 
     // |options| are owned by |mount_dict|
     const base::ListValue* options = nullptr;

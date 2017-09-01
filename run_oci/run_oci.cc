@@ -199,23 +199,22 @@ void ConfigureMounts(const std::vector<OciMount>& mounts,
                                             &verity_options);
     flags = SanitizeFlags(mount.type, flags);
 
-    container_config_add_mount(config_out,
-                               "mount",
-                               mount.source.c_str(),
-                               mount.destination.c_str(),
-                               mount.type.c_str(),
-                               options.empty() ?
-                                   NULL : options.c_str(),
-                               verity_options.empty() ?
-                                   NULL : verity_options.c_str(),
-                               flags,
-                               uid,
-                               gid,
-                               0750,
-                               // Loopback devices have to be mounted outside.
-                               !loopback,
-                               1,
-                               loopback);
+    container_config_add_mount(
+        config_out,
+        "mount",
+        base::MakeAbsoluteFilePath(mount.source).value().c_str(),
+        mount.destination.value().c_str(),
+        mount.type.c_str(),
+        options.empty() ? NULL : options.c_str(),
+        verity_options.empty() ? NULL : verity_options.c_str(),
+        flags,
+        uid,
+        gid,
+        0750,
+        // Loopback devices have to be mounted outside.
+        !loopback,
+        1,
+        loopback);
   }
 }
 
