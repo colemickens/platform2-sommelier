@@ -218,9 +218,7 @@ class MobileOperatorInfoMainTest
     : public MobileOperatorInfoInitTest,
       public WithParamInterface<EventCheckingPolicy> {
  public:
-  MobileOperatorInfoMainTest()
-      : MobileOperatorInfoInitTest(),
-        event_checking_policy_(GetParam()) {}
+  MobileOperatorInfoMainTest() : event_checking_policy_(GetParam()) {}
 
   virtual void SetUp() {
     operator_info_->ClearDatabasePaths();
@@ -1065,7 +1063,7 @@ TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCAndSID) {
 
 class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
  public:
-  MobileOperatorInfoDataTest() : MobileOperatorInfoMainTest() {}
+  MobileOperatorInfoDataTest() = default;
 
   // Same as MobileOperatorInfoMainTest, except that the database used is
   // different.
@@ -1516,7 +1514,7 @@ TEST_P(MobileOperatorInfoDataTest, FilteredOLP) {
 
 class MobileOperatorInfoObserverTest : public MobileOperatorInfoMainTest {
  public:
-  MobileOperatorInfoObserverTest() : MobileOperatorInfoMainTest() {}
+  MobileOperatorInfoObserverTest() = default;
 
   // Same as |MobileOperatorInfoMainTest::SetUp|, except that we don't add a
   // default observer.

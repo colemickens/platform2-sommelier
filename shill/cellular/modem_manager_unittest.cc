@@ -83,8 +83,7 @@ class ModemManagerForTest : public ModemManager {
 class ModemManagerCoreTest : public ModemManagerTest {
  public:
   ModemManagerCoreTest()
-      : ModemManagerTest(),
-        modem_manager_(&control_, kService, kPath, &modem_info_) {}
+      : modem_manager_(&control_, kService, kPath, &modem_info_) {}
 
  protected:
   ModemManagerForTest modem_manager_;
@@ -140,8 +139,7 @@ class ModemManagerClassicMockInit : public ModemManagerClassic {
 class ModemManagerClassicTest : public ModemManagerTest {
  public:
   ModemManagerClassicTest()
-      : ModemManagerTest(),
-        modem_manager_(&control_, kService, kPath, &modem_info_) {}
+      : modem_manager_(&control_, kService, kPath, &modem_info_) {}
 
  protected:
   ModemManagerClassicMockInit modem_manager_;
@@ -189,8 +187,7 @@ class ModemManager1MockInit : public ModemManager1 {
 class ModemManager1Test : public ModemManagerTest {
  public:
   ModemManager1Test()
-      : ModemManagerTest(),
-        modem_manager_(&control_, kService, kPath, &modem_info_) {}
+      : modem_manager_(&control_, kService, kPath, &modem_info_) {}
 
  protected:
   std::unique_ptr<MockDBusObjectManagerProxy> CreateDBusObjectManagerProxy() {
