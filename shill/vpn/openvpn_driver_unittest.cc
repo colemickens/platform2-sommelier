@@ -172,7 +172,7 @@ class OpenVPNDriverTest
   }
 
   void RemoveStringArg(const string& arg) {
-    driver_->args()->RemoveString(arg);
+    driver_->args()->Remove(arg);
   }
 
   const ServiceRefPtr& GetSelectedService() {

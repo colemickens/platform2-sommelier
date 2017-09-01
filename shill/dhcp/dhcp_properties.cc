@@ -131,7 +131,7 @@ void DhcpProperties::ClearMappedStringProperty(const size_t& index,
                                                Error* error) {
   CHECK(index < arraysize(kPropertyNames));
   if (properties_.ContainsString(kPropertyNames[index])) {
-    properties_.RemoveString(kPropertyNames[index]);
+    properties_.Remove(kPropertyNames[index]);
   } else {
     error->Populate(Error::kNotFound, "Property is not set");
   }

@@ -144,7 +144,7 @@ TEST_F(KeyValueStoreTest, ByteArrays) {
   store_.SetByteArrays(kByteArraysKey, kByteArraysValue);
   EXPECT_TRUE(store_.ContainsByteArrays(kByteArraysKey));
   EXPECT_EQ(kByteArraysValue, store_.GetByteArrays(kByteArraysKey));
-  store_.RemoveByteArrays(kByteArraysKey);
+  store_.Remove(kByteArraysKey);
   EXPECT_FALSE(store_.ContainsByteArrays(kByteArraysKey));
 }
 
@@ -157,7 +157,7 @@ TEST_F(KeyValueStoreTest, Int) {
   EXPECT_TRUE(store_.ContainsInt(kIntKey));
   EXPECT_EQ(kValue, store_.GetInt(kIntKey));
   EXPECT_EQ(kValue, store_.LookupInt(kIntKey, kDefaultValue));
-  store_.RemoveInt(kIntKey);
+  store_.Remove(kIntKey);
   EXPECT_FALSE(store_.ContainsInt(kIntKey));
 }
 
@@ -173,7 +173,7 @@ TEST_F(KeyValueStoreTest, Int16) {
   store_.SetInt16(kInt16Key, kInt16Value);
   EXPECT_TRUE(store_.ContainsInt16(kInt16Key));
   EXPECT_EQ(kInt16Value, store_.GetInt16(kInt16Key));
-  store_.RemoveInt16(kInt16Key);
+  store_.Remove(kInt16Key);
   EXPECT_FALSE(store_.ContainsInt16(kInt16Key));
 }
 
@@ -216,7 +216,7 @@ TEST_F(KeyValueStoreTest, KeyValueStore) {
   store_.SetKeyValueStore(kKeyValueStoreKey, value);
   EXPECT_TRUE(store_.ContainsKeyValueStore(kKeyValueStoreKey));
   EXPECT_EQ(value, store_.GetKeyValueStore(kKeyValueStoreKey));
-  store_.RemoveKeyValueStore(kKeyValueStoreKey);
+  store_.Remove(kKeyValueStoreKey);
   EXPECT_FALSE(store_.ContainsKeyValueStore(kKeyValueStoreKey));
 }
 
@@ -225,7 +225,7 @@ TEST_F(KeyValueStoreTest, RpcIdentifier) {
   store_.SetRpcIdentifier(kRpcIdentifierKey, kRpcIdentifierValue);
   EXPECT_TRUE(store_.ContainsRpcIdentifier(kRpcIdentifierKey));
   EXPECT_EQ(kRpcIdentifierValue, store_.GetRpcIdentifier(kRpcIdentifierKey));
-  store_.RemoveRpcIdentifier(kRpcIdentifierKey);
+  store_.Remove(kRpcIdentifierKey);
   EXPECT_FALSE(store_.ContainsRpcIdentifier(kRpcIdentifierKey));
 }
 
@@ -247,7 +247,7 @@ TEST_F(KeyValueStoreTest, String) {
   EXPECT_TRUE(store_.ContainsString(kStringKey));
   EXPECT_EQ(kValue, store_.LookupString(kStringKey, kDefaultValue));
   EXPECT_EQ(kValue, store_.GetString(kStringKey));
-  store_.RemoveString(kStringKey);
+  store_.Remove(kStringKey);
   EXPECT_FALSE(store_.ContainsString(kStringKey));
   EXPECT_EQ(kDefaultValue, store_.LookupString(kStringKey, kDefaultValue));
 }
@@ -257,7 +257,7 @@ TEST_F(KeyValueStoreTest, Stringmap) {
   store_.SetStringmap(kStringmapKey, kStringmapValue);
   EXPECT_TRUE(store_.ContainsStringmap(kStringmapKey));
   EXPECT_EQ(kStringmapValue, store_.GetStringmap(kStringmapKey));
-  store_.RemoveStringmap(kStringmapKey);
+  store_.Remove(kStringmapKey);
   EXPECT_FALSE(store_.ContainsStringmap(kStringmapKey));
 }
 
@@ -266,7 +266,7 @@ TEST_F(KeyValueStoreTest, Strings) {
   store_.SetStrings(kStringsKey, kStringsValue);
   EXPECT_TRUE(store_.ContainsStrings(kStringsKey));
   EXPECT_EQ(kStringsValue, store_.GetStrings(kStringsKey));
-  store_.RemoveStrings(kStringsKey);
+  store_.Remove(kStringsKey);
   EXPECT_FALSE(store_.ContainsStrings(kStringsKey));
 }
 
@@ -289,7 +289,7 @@ TEST_F(KeyValueStoreTest, Uint8) {
   store_.SetUint8(kUint8Key, kUint8Value);
   EXPECT_TRUE(store_.ContainsUint8(kUint8Key));
   EXPECT_EQ(kUint8Value, store_.GetUint8(kUint8Key));
-  store_.RemoveUint8(kUint8Key);
+  store_.Remove(kUint8Key);
   EXPECT_FALSE(store_.ContainsUint8(kUint8Key));
 }
 
@@ -298,7 +298,7 @@ TEST_F(KeyValueStoreTest, Uint8s) {
   store_.SetUint8s(kUint8sKey, kUint8sValue);
   EXPECT_TRUE(store_.ContainsUint8s(kUint8sKey));
   EXPECT_EQ(kUint8sValue, store_.GetUint8s(kUint8sKey));
-  store_.RemoveUint8s(kUint8sKey);
+  store_.Remove(kUint8sKey);
   EXPECT_FALSE(store_.ContainsUint8s(kUint8sKey));
 }
 
@@ -307,7 +307,7 @@ TEST_F(KeyValueStoreTest, Uint32s) {
   store_.SetUint32s(kUint32sKey, kUint32sValue);
   EXPECT_TRUE(store_.ContainsUint32s(kUint32sKey));
   EXPECT_EQ(kUint32sValue, store_.GetUint32s(kUint32sKey));
-  store_.RemoveUint32s(kUint32sKey);
+  store_.Remove(kUint32sKey);
   EXPECT_FALSE(store_.ContainsUint32s(kUint32sKey));
 }
 
@@ -315,10 +315,10 @@ TEST_F(KeyValueStoreTest, DoubleRemove) {
   const string kKey("foo");
   // Make sure we don't get an exception/infinite loop if we do a
   // "Remove()" when the key does not exist.
-  store_.RemoveInt(kKey);
-  store_.RemoveInt(kKey);
-  store_.RemoveString(kKey);
-  store_.RemoveString(kKey);
+  store_.Remove(kKey);
+  store_.Remove(kKey);
+  store_.Remove(kKey);
+  store_.Remove(kKey);
 }
 
 TEST_F(KeyValueStoreTest, Clear) {

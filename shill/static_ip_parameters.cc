@@ -158,7 +158,7 @@ void StaticIPParameters::Load(
           if (storage->GetInt(storage_id, name, &value)) {
             args_.SetInt(property.name, value);
           } else {
-            args_.RemoveInt(property.name);
+            args_.Remove(property.name);
           }
         }
         break;
@@ -168,7 +168,7 @@ void StaticIPParameters::Load(
           if (storage->GetString(storage_id, name, &value)) {
             args_.SetString(property.name, value);
           } else {
-            args_.RemoveString(property.name);
+            args_.Remove(property.name);
           }
         }
         break;
@@ -182,7 +182,7 @@ void StaticIPParameters::Load(
                 value, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
             args_.SetStrings(property.name, string_list);
           } else {
-            args_.RemoveStrings(property.name);
+            args_.Remove(property.name);
           }
         }
         break;
@@ -364,21 +364,21 @@ void StaticIPParameters::ClearMappedProperty(
   switch (property.type) {
     case Property::kTypeInt32:
       if (args_.ContainsInt(property.name)) {
-        args_.RemoveInt(property.name);
+        args_.Remove(property.name);
       } else {
         error->Populate(Error::kNotFound, "Property is not set");
       }
       break;
     case Property::kTypeString:
       if (args_.ContainsString(property.name)) {
-        args_.RemoveString(property.name);
+        args_.Remove(property.name);
       } else {
         error->Populate(Error::kNotFound, "Property is not set");
       }
       break;
     case Property::kTypeStrings:
       if (args_.ContainsStrings(property.name)) {
-        args_.RemoveStrings(property.name);
+        args_.Remove(property.name);
       } else {
         error->Populate(Error::kNotFound, "Property is not set");
       }

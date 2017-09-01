@@ -426,54 +426,6 @@ void KeyValueStore::Set(const string& name, const brillo::Any& value) {
   properties_[name] = value;
 }
 
-void KeyValueStore::RemoveByteArrays(const string& name) {
-  properties_.erase(name);
-}
-
-void KeyValueStore::RemoveInt(const string& name) {
-  properties_.erase(name);
-}
-
-void KeyValueStore::RemoveInt16(const string& name) {
-  properties_.erase(name);
-}
-
-void KeyValueStore::RemoveKeyValueStore(const string& name) {
-  properties_.erase(name);
-}
-
-void KeyValueStore::RemoveRpcIdentifier(const string& name) {
-  properties_.erase(name);
-}
-
-void KeyValueStore::RemoveString(const string& name) {
-  properties_.erase(name);
-}
-
-void KeyValueStore::RemoveStringmap(const string& name) {
-  properties_.erase(name);
-}
-
-void KeyValueStore::RemoveStrings(const string& name) {
-  properties_.erase(name);
-}
-
-void KeyValueStore::RemoveUint16(const string& name) {
-  properties_.erase(name);
-}
-
-void KeyValueStore::RemoveUint8(const string& name) {
-  properties_.erase(name);
-}
-
-void KeyValueStore::RemoveUint8s(const string& name) {
-  properties_.erase(name);
-}
-
-void KeyValueStore::RemoveUint32s(const string& name) {
-  properties_.erase(name);
-}
-
 void KeyValueStore::Remove(const string& name) {
   properties_.erase(name);
 }

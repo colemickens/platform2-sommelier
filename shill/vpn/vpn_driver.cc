@@ -70,7 +70,7 @@ bool VPNDriver::Load(StoreInterface* storage, const string& storage_id) {
       if (storage->GetStringList(storage_id, property, &value)) {
         args_.SetStrings(property, value);
       } else {
-        args_.RemoveStrings(property);
+        args_.Remove(property);
       }
     } else {
       string value;
@@ -80,7 +80,7 @@ bool VPNDriver::Load(StoreInterface* storage, const string& storage_id) {
       if (loaded) {
         args_.SetString(property, value);
       } else {
-        args_.RemoveString(property);
+        args_.Remove(property);
       }
     }
   }
@@ -128,7 +128,7 @@ void VPNDriver::UnloadCredentials() {
   for (size_t i = 0; i < property_count_; i++) {
     if ((properties_[i].flags &
          (Property::kEphemeral | Property::kCredential))) {
-      args_.RemoveString(properties_[i].property);
+      args_.Remove(properties_[i].property);
     }
   }
 }
@@ -169,7 +169,7 @@ void VPNDriver::InitPropertyStore(PropertyStore* store) {
 void VPNDriver::ClearMappedStringProperty(const size_t& index, Error* error) {
   CHECK(index < property_count_);
   if (args_.ContainsString(properties_[index].property)) {
-    args_.RemoveString(properties_[index].property);
+    args_.Remove(properties_[index].property);
   } else {
     error->Populate(Error::kNotFound, "Property is not set");
   }
@@ -178,7 +178,7 @@ void VPNDriver::ClearMappedStringProperty(const size_t& index, Error* error) {
 void VPNDriver::ClearMappedStringsProperty(const size_t& index, Error* error) {
   CHECK(index < property_count_);
   if (args_.ContainsStrings(properties_[index].property)) {
-    args_.RemoveStrings(properties_[index].property);
+    args_.Remove(properties_[index].property);
   } else {
     error->Populate(Error::kNotFound, "Property is not set");
   }

@@ -129,20 +129,6 @@ class KeyValueStore {
   void SetUint32s(const std::string& name, const std::vector<uint32_t>& value);
   void Set(const std::string& name, const brillo::Any& value);
 
-  // TODO(zqiu): remove type specific remove functions and add a generic remove
-  // function instead.
-  void RemoveString(const std::string& name);
-  void RemoveStringmap(const std::string& name);
-  void RemoveStrings(const std::string& name);
-  void RemoveInt(const std::string& name);
-  void RemoveKeyValueStore(const std::string& name);
-  void RemoveInt16(const std::string& name);
-  void RemoveRpcIdentifier(const std::string& name);
-  void RemoveByteArrays(const std::string& name);
-  void RemoveUint16(const std::string& name);
-  void RemoveUint8(const std::string& name);
-  void RemoveUint8s(const std::string& name);
-  void RemoveUint32s(const std::string& name);
   void Remove(const std::string& name);
 
   // If |name| is in this store returns its value, otherwise returns

@@ -355,7 +355,7 @@ TEST_F(DHCPv4ConfigTest, ParseConfigurationWithMinimumMTU) {
 
   // With a minimum MTU set, values below the minimum should be ignored.
   config_->set_minimum_mtu(1500);
-  conf.RemoveUint16(DHCPv4Config::kConfigurationKeyMTU);
+  conf.Remove(DHCPv4Config::kConfigurationKeyMTU);
   conf.SetUint16(DHCPv4Config::kConfigurationKeyMTU, 1499);
   EXPECT_CALL(metrics_,
               SendSparseToUMA(Metrics::kMetricDhcpClientMTUValue, 1499));
@@ -365,7 +365,7 @@ TEST_F(DHCPv4ConfigTest, ParseConfigurationWithMinimumMTU) {
 
   // A value (other than 576) should be accepted if it is >= mimimum_mtu.
   config_->set_minimum_mtu(577);
-  conf.RemoveUint16(DHCPv4Config::kConfigurationKeyMTU);
+  conf.Remove(DHCPv4Config::kConfigurationKeyMTU);
   conf.SetUint16(DHCPv4Config::kConfigurationKeyMTU, 577);
   EXPECT_CALL(metrics_,
               SendSparseToUMA(Metrics::kMetricDhcpClientMTUValue, 577));

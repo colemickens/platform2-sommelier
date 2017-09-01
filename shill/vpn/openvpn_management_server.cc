@@ -301,7 +301,7 @@ void OpenVPNManagementServer::PerformStaticChallenge(const string& tag) {
   if (!token.empty()) {
     password_encoded = token;
     // Don't reuse token.
-    driver_->args()->RemoveString(kOpenVPNTokenProperty);
+    driver_->args()->Remove(kOpenVPNTokenProperty);
   } else {
     string b64_password(brillo::data_encoding::Base64Encode(password));
     string b64_otp(brillo::data_encoding::Base64Encode(otp));
@@ -309,7 +309,7 @@ void OpenVPNManagementServer::PerformStaticChallenge(const string& tag) {
                                     b64_password.c_str(),
                                     b64_otp.c_str());
     // Don't reuse OTP.
-    driver_->args()->RemoveString(kOpenVPNOTPProperty);
+    driver_->args()->Remove(kOpenVPNOTPProperty);
   }
   SendUsername(tag, user);
   SendPassword(tag, password_encoded);
