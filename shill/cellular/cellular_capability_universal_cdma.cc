@@ -182,6 +182,11 @@ void CellularCapabilityUniversalCDMA::UpdatePendingActivationState() {
   }
 }
 
+bool CellularCapabilityUniversalCDMA::AreProxiesInitialized() const {
+  return modem_cdma_proxy_ != nullptr &&
+         CellularCapabilityUniversal::AreProxiesInitialized();
+}
+
 bool CellularCapabilityUniversalCDMA::IsServiceActivationRequired() const {
   // If there is no online payment portal information, it's safer to assume
   // the service does not require activation.

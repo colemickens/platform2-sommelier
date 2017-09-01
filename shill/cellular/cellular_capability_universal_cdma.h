@@ -45,6 +45,7 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
       const std::string& interface,
       const KeyValueStore& changed_properties,
       const std::vector<std::string>& invalidated_properties) override;
+  bool AreProxiesInitialized() const override;
   bool IsServiceActivationRequired() const override;
   bool IsActivating() const override;
   void Activate(const std::string& carrier,
