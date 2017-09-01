@@ -150,10 +150,6 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
     cellular_->service_ = service;
   }
 
-  void ClearService() {
-    cellular_->service_ = nullptr;
-  }
-
   void ExpectModemAndModem3gppProperties() {
     // Set up mock modem properties.
     KeyValueStore modem_properties;

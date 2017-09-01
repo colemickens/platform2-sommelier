@@ -224,10 +224,6 @@ class CellularCapabilityGSMTest : public testing::Test {
     CellularCapabilityGSMTest* test_;
   };
 
-  void SetProxy() {
-    capability_->proxy_ = std::move(proxy_);
-  }
-
   void SetCardProxy() {
     capability_->card_proxy_ = std::move(card_proxy_);
   }

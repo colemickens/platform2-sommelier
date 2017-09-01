@@ -105,22 +105,6 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
     cellular_->service_ = new CellularService(&modem_info_, cellular_);
   }
 
-  void ClearService() {
-    cellular_->service_ = nullptr;
-  }
-
-  void ReleaseCapabilityProxies() {
-    capability_->ReleaseProxies();
-  }
-
-  void SetCdmaProxy() {
-    capability_->modem_cdma_proxy_ = std::move(modem_cdma_proxy_);
-  }
-
-  void SetSimpleProxy() {
-    capability_->modem_simple_proxy_ = std::move(modem_simple_proxy_);
-  }
-
   void SetMockMobileOperatorInfoObjects() {
     CHECK(!mock_home_provider_info_);
     CHECK(!mock_serving_operator_info_);
