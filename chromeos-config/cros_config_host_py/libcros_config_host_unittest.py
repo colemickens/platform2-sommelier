@@ -15,7 +15,8 @@ import fdt_util
 from libcros_config_host import AudioFile, CrosConfig, TouchFile
 
 DTS_FILE = '../libcros_config/test.dts'
-MODELS = ['pyro', 'caroline', 'reef', 'broken']
+MODELS = ['pyro', 'caroline', 'reef', 'broken', 'whitetip', 'whitetip1',
+          'whitetip2', ]
 PYRO_BUCKET = ('gs://chromeos-binaries/HOME/bcs-reef-private/'
                'overlay-reef-private/chromeos-base/chromeos-firmware-pyro/')
 CAROLINE_BUCKET = ('gs://chromeos-binaries/HOME/bcs-reef-private/'
@@ -177,6 +178,29 @@ class CrosConfigHostTest(unittest.TestCase):
                    '/usr/share/alsa/ucm/bxtda7219max.reef-ucm/bxtda7219max' +
                    '.reef-ucm.conf')])
 
+  def testWhitelabel(self):
+    # These mirror the tests in cros_config_unittest.cc CheckWhiteLabel
+    config = CrosConfig(self.file)
+    whitetip1 = config.models['whitetip1']
+
+    # These are defined by whitetip1 itself
+    self.assertEqual(whitetip1.properties['wallpaper'].value, 'shark')
+    self.assertEqual(
+        whitetip1.ChildPropertyFromPath('/firmware', 'key-id').value,
+        'WHITETIP1')
+
+    # This is in a subnode defined by whitetip
+    self.assertEqual(whitetip1.ChildPropertyFromPath('/touch', 'present').value,
+                     'yes')
+
+    # This is in the main node, but defined by whitetip
+    self.assertEqual(whitetip1.ChildPropertyFromPath('/', 'powerd-prefs').value,
+                     'whitetip')
+
+    # This is defined by whitetip's shared firmware
+    target = whitetip1.ChildPropertyFromPath('/firmware/build-targets',
+                                             'coreboot')
+    self.assertEqual(target.value, 'caroline')
 
   def testGetFirmwareBuildTargets(self):
     config = CrosConfig(self.file)

@@ -149,10 +149,17 @@ class CrosConfigValidator(object):
     Returns:
       True if this element is present, False if absent
     """
-    sibling_names = parent_node.props.keys()
-    if schema.conditional_props and sibling_names:
-      parent_props = [e.name for e in schema.parent.elements]
-      for name, value in schema.conditional_props.iteritems():
+    if schema.conditional_props:
+      for rel_name, value in schema.conditional_props.iteritems():
+        name = rel_name
+        schema_target = schema.parent
+        node_target = parent_node
+        while name.startswith('../'):
+          schema_target = schema_target.parent
+          node_target = node_target.parent
+          name = name[3:]
+        parent_props = [e.name for e in schema_target.elements]
+        sibling_names = node_target.props.keys()
         if name in parent_props and value != (name in sibling_names):
           return False
     return True
@@ -348,7 +355,7 @@ BUILD_TARGETS_SCHEMA = NodeDesc('build-targets', True, elements=[
     PropString('ec', True),
     PropString('depthcharge', True),
     PropString('libpayload', True),
-], conditional_props={'shares': False})
+], conditional_props={'shares': False, '../whitelabel': False})
 
 BASE_AUDIO_SCHEMA = [
     PropString('card', True, '', {'audio-type': False}),
@@ -359,6 +366,8 @@ BASE_AUDIO_SCHEMA = [
     PropString('topology-xml', False, '', {'audio-type': False}),
     PropString('topology-bin', False, '', {'audio-type': False}),
 ]
+
+NOT_WL = {'whitelabel': False}
 
 """This is the schema. It is a hierarchical set of nodes and properties, just
 like the device tree. If an object subclasses NodeDesc then it is a node,
@@ -372,7 +381,7 @@ SCHEMA = NodeDesc('/', True, [
         NodeDesc('family', True, [
             NodeDesc('audio', elements=[
                 NodeAny('', [PropPhandleTarget()] +
-                    copy.deepcopy(BASE_AUDIO_SCHEMA)),
+                        copy.deepcopy(BASE_AUDIO_SCHEMA)),
             ]),
             NodeDesc('firmware', elements=[
                 PropString('script', True, r'updater4\.sh'),
@@ -402,32 +411,33 @@ SCHEMA = NodeDesc('/', True, [
         NodeDesc('models', True, [
             NodeModel([
                 PropPhandleTarget(),
+                PropPhandle('whitelabel', '/chromeos/models/MODEL', False),
                 NodeDesc('firmware', False, [
                     PropPhandle('shares', '/chromeos/family/firmware/MODEL',
-                                False),
+                                False, {'../whitelabel': False}),
                     PropString('key-id', False, '[A-Z][A-Z0-9]+'),
                     copy.deepcopy(BUILD_TARGETS_SCHEMA)
                     ] + copy.deepcopy(BASE_FIRMWARE_SCHEMA)),
                 PropString('brand-code', False, '[A-Z]{4}'),
-                PropString('powerd-prefs'),
+                PropString('powerd-prefs', conditional_props=NOT_WL),
                 PropString('wallpaper', False, '[a-z_]+'),
                 NodeDesc('audio', False, [
-                  NodeAny(r'main', [
-                      PropPhandle('audio-type', '/chromeos/family/audio/ANY',
-                                  False),
-                      PropString('cras-config-dir', True, r'\w+'),
-                      PropString('ucm-suffix', True, r'\w+'),
-                      PropString('topology-name', False, r'\w+'),
-                  ] + copy.deepcopy(BASE_AUDIO_SCHEMA)),
-                ]),
+                    NodeAny(r'main', [
+                        PropPhandle('audio-type', '/chromeos/family/audio/ANY',
+                                    False),
+                        PropString('cras-config-dir', True, r'\w+'),
+                        PropString('ucm-suffix', True, r'\w+'),
+                        PropString('topology-name', False, r'\w+'),
+                    ] + copy.deepcopy(BASE_AUDIO_SCHEMA)),
+                ], conditional_props=NOT_WL),
                 NodeDesc('submodels', False, [
                     NodeSubmodel([
                         PropPhandleTarget()
                     ])
-                ]),
+                ], conditional_props=NOT_WL),
                 NodeDesc('thermal', False, [
                     PropString('dptf-dv', False, r'\w+/dptf.dv'),
-                ]),
+                ], conditional_props=NOT_WL),
                 NodeDesc('touch', False, [
                     PropString('present', False, r'yes|no|probe'),
                     # We want to validate that probe-regex is only present when
@@ -445,7 +455,7 @@ SCHEMA = NodeDesc('/', True, [
                                    {'touch-type': False}),
                         PropString('date-code', False),
                     ]),
-                ]),
+                ], conditional_props=NOT_WL),
             ])
         ])
     ])

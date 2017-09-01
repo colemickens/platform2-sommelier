@@ -339,6 +339,46 @@ MAPPING = '''
 };
 '''
 
+WHITELABEL = '''
+&models {
+  /* Whitelabel model */
+  whitetip: whitetip {
+    firmware {
+      shares = <&shared>;
+    };
+  };
+
+  whitetip1 {
+    whitelabel = <&whitetip>;
+    wallpaper = "shark";
+    brand-code = "SHAR";
+    firmware {
+      key-id = "WHITELABEL1";
+    };
+  };
+
+  whitetip2 {
+    whitelabel = <&whitetip>;
+    wallpaper = "more_shark";
+    brand-code = "SHAQ";
+    firmware {
+      key-id = "WHITELABEL2";
+    };
+  };
+
+  bad {
+    whitelabel = <&whitetip>;
+    firmware {
+      shares = <&shared>;
+      key-id = "WHITELABEL2";
+    };
+    thermal {
+      dptf-dv = "bad/dptf.dv";
+    };
+  };
+};
+'''
+
 class UnitTests(cros_test_lib.TestCase):
   """Unit tests for CrosConfigValidator"""
   def setUp(self):
@@ -497,6 +537,12 @@ class UnitTests(cros_test_lib.TestCase):
         'model or submodel',
         ], result)
 
+  def testWhiteLabel(self):
+    result = self.Run(HEADER + MODELS + FAMILY_FIRMWARE + WHITELABEL)
+    self._CheckAllIn([
+        "/bad: Unexpected subnode 'thermal', valid list is (firmware)",
+        "bad/firmware: Unexpected property 'shares', valid list is (key-id)",
+        ], result)
 
 if __name__ == '__main__':
   cros_test_lib.main(module=__name__)
