@@ -52,8 +52,10 @@ sched_getscheduler: 1
 rt_sigreturn: 1
 chdir: 1
 pipe2: 1
-eventfd2: 1
+getuid: 1
+getgid: 1
 geteuid: 1
+getegid: 1
 fstat: 1
 uname: 1
 unlink: 1
@@ -68,3 +70,6 @@ prctl: arg0 == 0xf
 setpriority: 1
 getrandom: 1
 nanosleep: 1
+epoll_create1: 1
+epoll_ctl: 1
+epoll_wait: 1

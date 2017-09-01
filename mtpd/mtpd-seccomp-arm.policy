@@ -31,7 +31,6 @@ getsockname: 1
 clock_getres: 1
 sched_get_priority_min: 1
 connect: 1
-eventfd2: 1
 sched_getparam: 1
 rt_sigprocmask: 1
 access: 1
@@ -44,7 +43,10 @@ sigreturn: 1
 setsockopt: 1
 # Allow socket(domain==PF_LOCAL) or socket(domain==PF_NETLINK)
 socket: arg0 == 0x1 || arg0 == 0x10
+getuid32: 1
+getgid32: 1
 geteuid32: 1
+getegid32: 1
 restart_syscall: 1
 exit: 1
 exit_group: 1
@@ -70,3 +72,6 @@ prctl: arg0 == 0xf
 setpriority: 1
 getrandom: 1
 nanosleep: 1
+epoll_create1: 1
+epoll_ctl: 1
+epoll_wait: 1
