@@ -95,6 +95,8 @@ USB_IDS += [
   "0cf3:3007",
   # Atheros (butterfly)
   "0cf3:311e",
+  # Atheros (scarlet)
+  "0cf3:e300",
   # Marvell (rambi)
   "1286:2046",
   # Marvell (gru)
