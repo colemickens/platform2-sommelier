@@ -40,7 +40,7 @@ constexpr char kModelSpecificPrefsSubdir[] = "model_specific";
 // Path and key name in CrosConfig database to look up model-specific pref
 // subdirectory.
 constexpr char kModelSubdirConfigPath[] = "/";
-constexpr char kModelSubdirConfigKey[] = "powerd_prefs";
+constexpr char kModelSubdirConfigKey[] = "powerd-prefs";
 
 // Minimum time between batches of prefs being written to disk, in
 // milliseconds.

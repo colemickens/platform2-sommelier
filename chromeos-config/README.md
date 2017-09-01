@@ -143,7 +143,7 @@ properties.
             *   `key-id` (optional): Unique ID that matches which key
                 will be used in for firmware signing as part of vboot.
                 For context, see go/cros-unibuild-signing
-        *   `powerd_prefs` (optional): Name of a subdirectory under the powerd
+        *   `powerd-prefs` (optional): Name of a subdirectory under the powerd
             model_specific prefs directory where model-specific prefs files are
             stored.
 
@@ -175,7 +175,7 @@ chromeos {
 
     models {
         reef {
-            powerd_prefs = "reef";
+            powerd-prefs = "reef";
             wallpaper = "seaside_life";
             firmware {
                 shares = <&shared>;
@@ -184,7 +184,7 @@ chromeos {
         };
 
         pyro {
-            powerd_prefs = "pyro_snappy";
+            powerd-prefs = "pyro_snappy";
             wallpaper = "alien_invasion";
             firmware {
                 bcs-overlay = "overlay-pyro-private";
@@ -201,7 +201,7 @@ chromeos {
         };
 
         snappy {
-            powerd_prefs = "pyro_snappy";
+            powerd-prefs = "pyro_snappy";
             wallpaper = "chocolate";
             firmware {
                 bcs-overlay = "overlay-snappy-private";
@@ -218,7 +218,7 @@ chromeos {
         };
 
         basking {
-            powerd_prefs = "reef";
+            powerd-prefs = "reef";
             wallpaper = "coffee";
             firmware {
                 shares = <&shared>;
