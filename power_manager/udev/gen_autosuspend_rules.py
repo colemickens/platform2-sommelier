@@ -1,15 +1,17 @@
-#!/usr/bin/python2
+#!/usr/bin/env python2
 
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# This script is executed at build time to generate udev rules. The
-# resulting rules file is installed on the device, the script itself
-# is not.
+"""Autosuspend udev rule generator
+
+This script is executed at build time to generate udev rules. The
+resulting rules file is installed on the device, the script itself
+is not.
+"""
 
 from __future__ import print_function
-import string
 
 # List of USB devices (vendorid:productid) for which it is safe to enable
 # autosuspend.
