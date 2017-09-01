@@ -331,14 +331,14 @@ bool AppendMounts(const BindMounts& bind_mounts, container_config* config_out) {
 // pretty-printed so that bash scripts can more easily grab the fields instead
 // of having to parse the JSON blob.
 std::string ContainerState(int child_pid,
-                           const OciRoot& root,
+                           const base::FilePath& container_dir,
                            const std::string& runfs,
                            const std::string& status) {
   base::DictionaryValue state;
   state.SetString("ociVersion", "1.0");
   state.SetString("id", base::StringPrintf("run_oci:%d", child_pid));
   state.SetString("status", status);
-  state.SetString("bundle", root.path);
+  state.SetString("bundle", base::MakeAbsoluteFilePath(container_dir).value());
   state.SetInteger("pid", child_pid);
   std::unique_ptr<base::DictionaryValue> annotations =
       base::MakeUnique<base::DictionaryValue>();
@@ -412,12 +412,13 @@ bool RunOneHook(const OciHook& hook,
 
 bool RunHooks(const std::vector<OciHook>& hooks,
               int child_pid,
-              const OciRoot& root,
+              const base::FilePath& container_dir,
               const std::string& runfs,
               const std::string& hook_stage,
               const std::string& status) {
   bool success = true;
-  std::string container_state = ContainerState(child_pid, root, runfs, status);
+  std::string container_state =
+      ContainerState(child_pid, container_dir, runfs, status);
   for (const auto& hook : hooks)
     success &= RunOneHook(hook, hook_stage, container_state);
   return success;
@@ -543,7 +544,7 @@ int RunOci(const base::FilePath& container_dir,
     pre_start_hook_state->reached_pipe.Wait();
     if (!RunHooks(oci_config->pre_start_hooks,
                   child_pid,
-                  oci_config->root,
+                  container_dir,
                   runfs,
                   "prestart",
                   "created")) {
@@ -555,7 +556,7 @@ int RunOci(const base::FilePath& container_dir,
 
   if (!RunHooks(oci_config->post_start_hooks,
                 child_pid,
-                oci_config->root,
+                container_dir,
                 runfs,
                 "poststart",
                 "running")) {
@@ -567,7 +568,7 @@ int RunOci(const base::FilePath& container_dir,
 
   if (!RunHooks(oci_config->post_stop_hooks,
                 child_pid,
-                oci_config->root,
+                container_dir,
                 runfs,
                 "poststop",
                 "stopped")) {
