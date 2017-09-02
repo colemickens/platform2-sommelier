@@ -29,7 +29,6 @@ class CellularService;
 class EventDispatcher;
 class Manager;
 class Metrics;
-class TrafficMonitor;
 
 // Base class for the various out-of-credits detection mechanism.
 class OutOfCreditsDetector {

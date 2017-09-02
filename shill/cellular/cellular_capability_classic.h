@@ -34,9 +34,7 @@
 namespace shill {
 
 class Cellular;
-class ControlInterface;
 class Error;
-class EventDispatcher;
 class ModemGobiProxyInterface;
 class ModemInfo;
 

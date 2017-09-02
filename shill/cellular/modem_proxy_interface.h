@@ -23,7 +23,6 @@
 
 namespace shill {
 
-class CallContext;
 class Error;
 
 using ModemStateChangedSignalCallback =

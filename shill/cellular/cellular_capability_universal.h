@@ -39,8 +39,6 @@
 #include "shill/cellular/mm1_sim_proxy_interface.h"
 #include "shill/cellular/out_of_credits_detector.h"
 
-struct mobile_provider;
-
 namespace shill {
 
 class ModemInfo;

@@ -32,11 +32,7 @@
 
 namespace shill {
 
-class ControlInterface;
 class Error;
-class EventDispatcher;
-class Manager;
-class OutOfCreditsDetector;
 
 class CellularService : public Service {
  public:

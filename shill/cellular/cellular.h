@@ -41,7 +41,6 @@ class CellularCapability;
 class Error;
 class ExternalTask;
 class GeolocationInfo;
-class MobileOperatorInfo;
 class PPPDeviceFactory;
 class ProcessManager;
 
