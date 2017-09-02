@@ -34,12 +34,10 @@ using std::vector;
 
 namespace shill {
 
-ModemManager::ModemManager(ControlInterface* control_interface,
-                           const string& service,
+ModemManager::ModemManager(const string& service,
                            const string& path,
                            ModemInfo* modem_info)
-    : control_interface_(control_interface),
-      service_(service),
+    : service_(service),
       path_(path),
       service_connected_(false),
       modem_info_(modem_info) {}
@@ -94,12 +92,10 @@ void ModemManager::OnDeviceInfoAvailable(const string& link_name) {
 }
 
 // ModemManagerClassic
-ModemManagerClassic::ModemManagerClassic(
-    ControlInterface* control_interface,
-    const string& service,
-    const string& path,
-    ModemInfo* modem_info)
-    : ModemManager(control_interface, service, path, modem_info) {}
+ModemManagerClassic::ModemManagerClassic(const string& service,
+                                         const string& path,
+                                         ModemInfo* modem_info)
+    : ModemManager(service, path, modem_info) {}
 
 ModemManagerClassic::~ModemManagerClassic() {
   Stop();

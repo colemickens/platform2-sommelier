@@ -34,15 +34,10 @@ using std::vector;
 
 namespace shill {
 
-ModemManager1::ModemManager1(ControlInterface* control_interface,
-                             const string& service,
+ModemManager1::ModemManager1(const string& service,
                              const string& path,
                              ModemInfo* modem_info)
-    : ModemManager(control_interface,
-                   service,
-                   path,
-                   modem_info),
-      weak_ptr_factory_(this) {}
+    : ModemManager(service, path, modem_info), weak_ptr_factory_(this) {}
 
 ModemManager1::~ModemManager1() {
   Stop();

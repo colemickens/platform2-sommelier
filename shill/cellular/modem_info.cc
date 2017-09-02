@@ -48,11 +48,11 @@ void ModemInfo::Start() {
   pending_activation_store_->InitStorage(manager_->storage_path());
 
   RegisterModemManager(base::MakeUnique<ModemManagerClassic>(
-      control_interface_, cromo::kCromoServiceName, cromo::kCromoServicePath,
-      this));
-  RegisterModemManager(base::MakeUnique<ModemManager1>(
-      control_interface_, modemmanager::kModemManager1ServiceName,
-      modemmanager::kModemManager1ServicePath, this));
+      cromo::kCromoServiceName, cromo::kCromoServicePath, this));
+  RegisterModemManager(
+      base::MakeUnique<ModemManager1>(modemmanager::kModemManager1ServiceName,
+                                      modemmanager::kModemManager1ServicePath,
+                                      this));
 }
 
 void ModemInfo::Stop() {

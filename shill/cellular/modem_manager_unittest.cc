@@ -70,11 +70,10 @@ const char ModemManagerTest::kModemPath[] = "/org/blah/Modem/blah/0";
 
 class ModemManagerForTest : public ModemManager {
  public:
-  ModemManagerForTest(ControlInterface* control_interface,
-                      const string& service,
+  ModemManagerForTest(const string& service,
                       const string& path,
                       ModemInfo* modem_info)
-    : ModemManager(control_interface, service, path, modem_info) {}
+      : ModemManager(service, path, modem_info) {}
 
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
@@ -82,8 +81,7 @@ class ModemManagerForTest : public ModemManager {
 
 class ModemManagerCoreTest : public ModemManagerTest {
  public:
-  ModemManagerCoreTest()
-      : modem_manager_(&control_, kService, kPath, &modem_info_) {}
+  ModemManagerCoreTest() : modem_manager_(kService, kPath, &modem_info_) {}
 
  protected:
   ModemManagerForTest modem_manager_;
@@ -127,19 +125,17 @@ TEST_F(ModemManagerCoreTest, AddRemoveModem) {
 
 class ModemManagerClassicMockInit : public ModemManagerClassic {
  public:
-  ModemManagerClassicMockInit(ControlInterface* control_interface,
-                              const string& service,
+  ModemManagerClassicMockInit(const string& service,
                               const string& path,
-                              ModemInfo* modem_info_) :
-      ModemManagerClassic(control_interface, service, path, modem_info_) {}
+                              ModemInfo* modem_info_)
+      : ModemManagerClassic(service, path, modem_info_) {}
 
   MOCK_METHOD1(InitModemClassic, void(ModemClassic*));
 };
 
 class ModemManagerClassicTest : public ModemManagerTest {
  public:
-  ModemManagerClassicTest()
-      : modem_manager_(&control_, kService, kPath, &modem_info_) {}
+  ModemManagerClassicTest() : modem_manager_(kService, kPath, &modem_info_) {}
 
  protected:
   ModemManagerClassicMockInit modem_manager_;
@@ -175,19 +171,17 @@ TEST_F(ModemManagerClassicTest, Connect) {
 
 class ModemManager1MockInit : public ModemManager1 {
  public:
-  ModemManager1MockInit(ControlInterface* control_interface,
-                        const string& service,
+  ModemManager1MockInit(const string& service,
                         const string& path,
-                        ModemInfo* modem_info_) :
-      ModemManager1(control_interface, service, path, modem_info_) {}
+                        ModemInfo* modem_info_)
+      : ModemManager1(service, path, modem_info_) {}
+
   MOCK_METHOD2(InitModem1, void(Modem1*, const InterfaceToProperties&));
 };
 
-
 class ModemManager1Test : public ModemManagerTest {
  public:
-  ModemManager1Test()
-      : modem_manager_(&control_, kService, kPath, &modem_info_) {}
+  ModemManager1Test() : modem_manager_(kService, kPath, &modem_info_) {}
 
  protected:
   std::unique_ptr<MockDBusObjectManagerProxy> CreateDBusObjectManagerProxy() {
@@ -222,7 +216,6 @@ class ModemManager1Test : public ModemManagerTest {
   }
 
   ModemManager1MockInit modem_manager_;
-  MockControl control_;
 };
 
 TEST_F(ModemManager1Test, StartStop) {

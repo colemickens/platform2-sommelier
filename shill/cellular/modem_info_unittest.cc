@@ -71,7 +71,7 @@ TEST_F(ModemInfoTest, RegisterModemManager) {
               CreateModemManagerProxy(_, _, kService, _, _))
       .WillOnce(Return(ByMove(base::MakeUnique<MockModemManagerProxy>())));
   modem_info_.RegisterModemManager(base::MakeUnique<ModemManagerClassic>(
-      &control_interface_, kService, "/dbus/service/path", &modem_info_));
+      kService, "/dbus/service/path", &modem_info_));
   ASSERT_EQ(1, modem_info_.modem_managers_.size());
   ModemManager* manager = modem_info_.modem_managers_[0].get();
   EXPECT_EQ(kService, manager->service_);

@@ -43,8 +43,7 @@ class ModemManagerProxyInterface;
 // Handles a modem manager service and creates and destroys modem instances.
 class ModemManager {
  public:
-  ModemManager(ControlInterface* control_interface,
-               const std::string& service,
+  ModemManager(const std::string& service,
                const std::string& path,
                ModemInfo* modem_info);
   virtual ~ModemManager();
@@ -61,7 +60,9 @@ class ModemManager {
  protected:
   const std::string& service() const { return service_; }
   const std::string& path() const { return path_; }
-  ControlInterface* control_interface() const { return control_interface_; }
+  ControlInterface* control_interface() const {
+    return modem_info_->control_interface();
+  }
   ModemInfo* modem_info() const { return modem_info_; }
 
   // Service availability callbacks.
@@ -94,8 +95,6 @@ class ModemManager {
   FRIEND_TEST(ModemManagerCoreTest, ConnectDisconnect);
   FRIEND_TEST(ModemManagerCoreTest, OnAppearVanish);
 
-  ControlInterface* control_interface_;
-
   const std::string service_;
   const std::string path_;
   bool service_connected_;
@@ -110,11 +109,9 @@ class ModemManager {
 
 class ModemManagerClassic : public ModemManager {
  public:
-  ModemManagerClassic(ControlInterface* control_interface,
-                      const std::string& service,
+  ModemManagerClassic(const std::string& service,
                       const std::string& path,
                       ModemInfo* modem_info);
-
   ~ModemManagerClassic() override;
 
   void Start() override;
@@ -143,11 +140,9 @@ class ModemManagerClassic : public ModemManager {
 
 class ModemManager1 : public ModemManager {
  public:
-  ModemManager1(ControlInterface* control_interface,
-                const std::string& service,
+  ModemManager1(const std::string& service,
                 const std::string& path,
                 ModemInfo* modem_info);
-
   ~ModemManager1() override;
 
   void Start() override;
