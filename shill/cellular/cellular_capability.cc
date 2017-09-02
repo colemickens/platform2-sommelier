@@ -49,11 +49,8 @@ const int CellularCapability::kTimeoutScan = 120000;
 const int CellularCapability::kTimeoutSetupLocation = 45000;
 
 CellularCapability::CellularCapability(Cellular* cellular,
-                                       ControlInterface* control_interface,
                                        ModemInfo* modem_info)
-    : cellular_(cellular),
-      control_interface_(control_interface),
-      modem_info_(modem_info) {}
+    : cellular_(cellular), modem_info_(modem_info) {}
 
 CellularCapability::~CellularCapability() {}
 

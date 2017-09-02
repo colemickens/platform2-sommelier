@@ -54,10 +54,8 @@ const char kPropertyConnectNumber[] = "number";
 }  // namespace
 
 CellularCapabilityUniversalCDMA::CellularCapabilityUniversalCDMA(
-    Cellular* cellular,
-    ControlInterface* control_interface,
-    ModemInfo* modem_info)
-    : CellularCapabilityUniversal(cellular, control_interface, modem_info),
+    Cellular* cellular, ModemInfo* modem_info)
+    : CellularCapabilityUniversal(cellular, modem_info),
       weak_cdma_ptr_factory_(this),
       activation_state_(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),
       cdma_1x_registration_state_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),

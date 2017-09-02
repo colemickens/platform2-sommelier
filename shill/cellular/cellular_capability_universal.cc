@@ -141,13 +141,11 @@ string AccessTechnologyToTechnologyFamily(uint32_t access_technologies) {
 
 }  // namespace
 
-CellularCapabilityUniversal::CellularCapabilityUniversal(
-    Cellular* cellular,
-    ControlInterface* control_interface,
-    ModemInfo* modem_info)
-    : CellularCapability(cellular, control_interface, modem_info),
-      mobile_operator_info_(new MobileOperatorInfo(cellular->dispatcher(),
-                                                   "ParseScanResult")),
+CellularCapabilityUniversal::CellularCapabilityUniversal(Cellular* cellular,
+                                                         ModemInfo* modem_info)
+    : CellularCapability(cellular, modem_info),
+      mobile_operator_info_(
+          new MobileOperatorInfo(cellular->dispatcher(), "ParseScanResult")),
       weak_ptr_factory_(this),
       registration_state_(MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN),
       current_capabilities_(MM_MODEM_CAPABILITY_NONE),

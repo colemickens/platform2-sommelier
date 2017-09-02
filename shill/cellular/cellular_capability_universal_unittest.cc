@@ -124,10 +124,6 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
     SetMockMobileOperatorInfoObjects();
   }
 
-  void TearDown() override {
-    capability_->control_interface_ = nullptr;
-  }
-
   void CreateService() {
     // The following constants are never directly accessed by the tests.
     const char kStorageIdentifier[] = "default_test_storage_id";

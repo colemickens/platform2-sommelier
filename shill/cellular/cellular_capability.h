@@ -278,13 +278,14 @@ class CellularCapability {
   // -------------------------------------------------------------------------
 
   Cellular* cellular() const { return cellular_; }
-  ControlInterface* control_interface() const { return control_interface_; }
+  ControlInterface* control_interface() const {
+    return modem_info_->control_interface();
+  }
   ModemInfo* modem_info() const { return modem_info_; }
 
  protected:
   // |cellular| is the parent Cellular device.
   CellularCapability(Cellular* cellular,
-                     ControlInterface* control_interface,
                      ModemInfo* modem_info);
 
   // Releases all proxies held by the object. This is most useful during unit
@@ -304,7 +305,6 @@ class CellularCapability {
   FRIEND_TEST(CellularTest, TearDown);
 
   Cellular* cellular_;
-  ControlInterface* control_interface_;
   ModemInfo* modem_info_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapability);

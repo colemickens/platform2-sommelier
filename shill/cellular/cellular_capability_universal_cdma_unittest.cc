@@ -97,10 +97,6 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
     cellular_->service_ = service_;
   }
 
-  void TearDown() override {
-    capability_->control_interface_ = nullptr;
-  }
-
   void SetService() {
     cellular_->service_ = new CellularService(&modem_info_, cellular_);
   }

@@ -45,11 +45,9 @@ static string ObjectID(CellularCapabilityCDMA* c) {
 // static
 const char CellularCapabilityCDMA::kPhoneNumber[] = "#777";
 
-CellularCapabilityCDMA::CellularCapabilityCDMA(
-    Cellular* cellular,
-    ControlInterface* control_interface,
-    ModemInfo* modem_info)
-    : CellularCapabilityClassic(cellular, control_interface, modem_info),
+CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular* cellular,
+                                               ModemInfo* modem_info)
+    : CellularCapabilityClassic(cellular, modem_info),
       weak_ptr_factory_(this),
       activation_starting_(false),
       activation_state_(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),

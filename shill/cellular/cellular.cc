@@ -345,28 +345,19 @@ void Cellular::InitCapability(Type type) {
   SLOG(this, 2) << __func__ << "(" << type << ")";
   switch (type) {
     case kTypeGSM:
-      capability_.reset(new CellularCapabilityGSM(this,
-                                                  control_interface(),
-                                                  modem_info_));
+      capability_.reset(new CellularCapabilityGSM(this, modem_info_));
       break;
     case kTypeCDMA:
-      capability_.reset(new CellularCapabilityCDMA(this,
-                                                   control_interface(),
-                                                   modem_info_));
+      capability_.reset(new CellularCapabilityCDMA(this, modem_info_));
       break;
     case kTypeUniversal:
-      capability_.reset(new CellularCapabilityUniversal(
-          this,
-          control_interface(),
-          modem_info_));
+      capability_.reset(new CellularCapabilityUniversal(this, modem_info_));
       break;
     case kTypeUniversalCDMA:
-      capability_.reset(new CellularCapabilityUniversalCDMA(
-          this,
-          control_interface(),
-          modem_info_));
+      capability_.reset(new CellularCapabilityUniversalCDMA(this, modem_info_));
       break;
-    default: NOTREACHED();
+    default:
+      NOTREACHED();
   }
   mobile_operator_info_observer_->set_capability(capability_.get());
 }

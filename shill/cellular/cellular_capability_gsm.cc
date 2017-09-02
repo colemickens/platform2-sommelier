@@ -64,15 +64,12 @@ const char CellularCapabilityGSM::kPropertyUnlockRetries[] = "UnlockRetries";
 const int CellularCapabilityGSM::kGetIMSIRetryLimit = 40;
 const int64_t CellularCapabilityGSM::kGetIMSIRetryDelayMilliseconds = 500;
 
-
-CellularCapabilityGSM::CellularCapabilityGSM(
-    Cellular* cellular,
-    ControlInterface* control_interface,
-    ModemInfo* modem_info)
-    : CellularCapabilityClassic(cellular, control_interface, modem_info),
+CellularCapabilityGSM::CellularCapabilityGSM(Cellular* cellular,
+                                             ModemInfo* modem_info)
+    : CellularCapabilityClassic(cellular, modem_info),
       weak_ptr_factory_(this),
-      mobile_operator_info_(new MobileOperatorInfo(cellular->dispatcher(),
-                                                   "ParseScanResult")),
+      mobile_operator_info_(
+          new MobileOperatorInfo(cellular->dispatcher(), "ParseScanResult")),
       registration_state_(MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN),
       access_technology_(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN),
       home_provider_info_(nullptr),
@@ -90,7 +87,7 @@ CellularCapabilityGSM::CellularCapabilityGSM(
   // proxies can be created when the cellular device/capability is constructed,
   // but callbacks for DBus signal updates are not set up until the device is
   // enabled.
-  card_proxy_ = control_interface->CreateModemGSMCardProxy(
+  card_proxy_ = control_interface()->CreateModemGSMCardProxy(
       cellular->dbus_path(), cellular->dbus_service());
   // TODO(benchan): To allow unit testing using a mock proxy without further
   // complicating the code, the test proxy factory is set up to return a nullptr

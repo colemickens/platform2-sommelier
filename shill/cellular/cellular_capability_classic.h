@@ -66,9 +66,7 @@ class CellularCapabilityClassic : public CellularCapability {
   static const int kTimeoutSetCarrierMilliseconds;
 
   // |cellular| is the parent Cellular device.
-  CellularCapabilityClassic(Cellular* cellular,
-                            ControlInterface* control_interface,
-                            ModemInfo* modem_info);
+  CellularCapabilityClassic(Cellular* cellular, ModemInfo* modem_info);
   ~CellularCapabilityClassic() override;
 
   // Inherited from CellularCapability.

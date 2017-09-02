@@ -78,12 +78,9 @@ static Cellular::ModemState ConvertClassicToModemState(uint32_t classic_state) {
   }
 }
 
-CellularCapabilityClassic::CellularCapabilityClassic(
-    Cellular* cellular,
-    ControlInterface* control_interface,
-    ModemInfo* modem_info)
-    : CellularCapability(cellular, control_interface, modem_info),
-      weak_ptr_factory_(this) {
+CellularCapabilityClassic::CellularCapabilityClassic(Cellular* cellular,
+                                                     ModemInfo* modem_info)
+    : CellularCapability(cellular, modem_info), weak_ptr_factory_(this) {
   // This class is currently instantiated only for Gobi modems so setup the
   // supported carriers list appropriately and expose it over RPC.
   cellular->set_supported_carriers({kCarrierGenericUMTS,

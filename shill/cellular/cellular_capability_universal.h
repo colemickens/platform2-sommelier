@@ -67,9 +67,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kConnectNumber[];
   static const char kConnectAllowRoaming[];
 
-  CellularCapabilityUniversal(Cellular* cellular,
-                              ControlInterface* control_interface,
-                              ModemInfo* modem_info);
+  CellularCapabilityUniversal(Cellular* cellular, ModemInfo* modem_info);
   ~CellularCapabilityUniversal() override;
 
   // Inherited from CellularCapability.

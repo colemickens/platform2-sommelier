@@ -41,9 +41,7 @@ class ModemInfo;
 
 class CellularCapabilityGSM : public CellularCapabilityClassic {
  public:
-  CellularCapabilityGSM(Cellular* cellular,
-                        ControlInterface* control_interface,
-                        ModemInfo* modem_info);
+  CellularCapabilityGSM(Cellular* cellular, ModemInfo* modem_info);
   ~CellularCapabilityGSM() override;
 
   // Inherited from CellularCapability.
