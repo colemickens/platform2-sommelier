@@ -50,15 +50,13 @@ size_t Modem::fake_dev_serial_ = 0;
 
 Modem::Modem(const string& service,
              const string& path,
-             ModemInfo* modem_info,
-             ControlInterface* control_interface)
+             ModemInfo* modem_info)
     : service_(service),
       path_(path),
       modem_info_(modem_info),
       type_(Cellular::kTypeInvalid),
       pending_device_info_(false),
-      rtnl_handler_(RTNLHandler::GetInstance()),
-      control_interface_(control_interface) {
+      rtnl_handler_(RTNLHandler::GetInstance()) {
   LOG(INFO) << "Modem created: at " << path;
 }
 
@@ -72,7 +70,8 @@ Modem::~Modem() {
 
 void Modem::Init() {
   dbus_properties_proxy_ =
-      control_interface_->CreateDBusPropertiesProxy(path(), service());
+      modem_info_->control_interface()->CreateDBusPropertiesProxy(path(),
+                                                                  service());
   dbus_properties_proxy_->set_modem_manager_properties_changed_callback(
       Bind(&Modem::OnModemManagerPropertiesChanged, Unretained(this)));
   dbus_properties_proxy_->set_properties_changed_callback(

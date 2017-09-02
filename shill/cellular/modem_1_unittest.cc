@@ -57,14 +57,12 @@ class Modem1Test : public Test {
  public:
   Modem1Test()
       : modem_info_(nullptr, &dispatcher_, nullptr, nullptr),
-        device_info_(modem_info_.control_interface(), modem_info_.dispatcher(),
-                     modem_info_.metrics(), modem_info_.manager()),
-        modem_(
-            new Modem1(
-                kService,
-                kPath,
-                &modem_info_,
-                &control_interface_)) {}
+        device_info_(modem_info_.control_interface(),
+                     modem_info_.dispatcher(),
+                     modem_info_.metrics(),
+                     modem_info_.manager()),
+        modem_(new Modem1(kService, kPath, &modem_info_)) {}
+
   void SetUp() override;
   void TearDown() override;
 
@@ -76,7 +74,6 @@ class Modem1Test : public Test {
   EventDispatcherForTest dispatcher_;
   MockModemInfo modem_info_;
   MockDeviceInfo device_info_;
-  MockControl control_interface_;
   std::unique_ptr<Modem1> modem_;
   MockRTNLHandler rtnl_handler_;
   ByteString expected_address_;
@@ -119,7 +116,8 @@ TEST_F(Modem1Test, CreateDeviceMM1) {
       MM_MODEM_3GPP_REGISTRATION_STATE_HOME);
   properties[MM_DBUS_INTERFACE_MODEM_MODEM3GPP] = modem3gpp_properties;
 
-  EXPECT_CALL(control_interface_, CreateDBusPropertiesProxy(kPath, kService))
+  EXPECT_CALL(*(modem_info_.mock_control_interface()),
+              CreateDBusPropertiesProxy(kPath, kService))
       .WillOnce(Return(ByMove(base::MakeUnique<MockDBusPropertiesProxy>())));
   modem_->CreateDeviceMM1(properties);
   EXPECT_TRUE(modem_->device().get());

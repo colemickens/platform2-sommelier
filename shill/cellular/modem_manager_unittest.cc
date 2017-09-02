@@ -54,8 +54,7 @@ class ModemManagerTest : public Test {
   static const char kModemPath[];
 
   std::unique_ptr<StrictModem> CreateModem() {
-    return base::MakeUnique<StrictModem>(
-        kService, kModemPath, &modem_info_, &control_);
+    return base::MakeUnique<StrictModem>(kService, kModemPath, &modem_info_);
   }
 
   EventDispatcherForTest dispatcher_;

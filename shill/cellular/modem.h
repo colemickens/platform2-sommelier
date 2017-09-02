@@ -33,8 +33,6 @@
 
 namespace shill {
 
-class ControlInterface;
-
 // Handles an instance of ModemManager.Modem and an instance of a Cellular
 // device.
 class Modem {
@@ -43,8 +41,7 @@ class Modem {
   // "/org/chromium/ModemManager/Gobi/0").
   Modem(const std::string& service,
         const std::string& path,
-        ModemInfo* modem_info,
-        ControlInterface* control_interface);
+        ModemInfo* modem_info);
   virtual ~Modem();
 
   // Asynchronously initializes support for the modem.
@@ -132,8 +129,6 @@ class Modem {
   bool pending_device_info_;
   RTNLHandler* rtnl_handler_;
 
-  ControlInterface* control_interface_;
-
   // Serial number used to uniquify fake device names for Cellular
   // devices that don't have network devices. (Names must be unique
   // for D-Bus, and PPP dongles don't have network devices.)
@@ -146,8 +141,7 @@ class ModemClassic : public Modem {
  public:
   ModemClassic(const std::string& service,
                const std::string& path,
-               ModemInfo* modem_info,
-               ControlInterface* control_interface);
+               ModemInfo* modem_info);
   ~ModemClassic() override;
 
   // Gathers information and passes it to CreateDeviceFromModemProperties.
@@ -166,8 +160,7 @@ class Modem1 : public Modem {
  public:
   Modem1(const std::string& service,
          const std::string& path,
-         ModemInfo* modem_info,
-         ControlInterface* control_interface);
+         ModemInfo* modem_info);
   ~Modem1() override;
 
   // Gathers information and passes it to CreateDeviceFromModemProperties.

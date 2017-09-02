@@ -26,11 +26,8 @@ using std::vector;
 
 namespace shill {
 
-Modem1::Modem1(const string& service,
-               const string& path,
-               ModemInfo* modem_info,
-               ControlInterface* control_interface)
-    : Modem(service, path, modem_info, control_interface) {}
+Modem1::Modem1(const string& service, const string& path, ModemInfo* modem_info)
+    : Modem(service, path, modem_info) {}
 
 Modem1::~Modem1() {}
 

@@ -85,8 +85,7 @@ void ModemManager1::AddModem1(const string& path,
     return;
   }
 
-  auto modem = base::MakeUnique<Modem1>(
-      service(), path, modem_info(), control_interface());
+  auto modem = base::MakeUnique<Modem1>(service(), path, modem_info());
   InitModem1(modem.get(), properties);
 
   RecordAddedModem(std::move(modem));
