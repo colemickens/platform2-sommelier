@@ -102,6 +102,7 @@
         'src/sysrq_tool.cc',
         'src/systrace_tool.cc',
         'src/tracepath_tool.cc',
+        'src/u2f_tool.cc',
         'src/variant_utils.cc',
         'src/wifi_debug_tool.cc',
         'src/wifi_power_tool.cc',

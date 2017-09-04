@@ -815,6 +815,19 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="SetU2fFlags">
+      <tp:docstring>
+        Modify u2fd daemon debugging/override flags.
+      </tp:docstring>
+      <arg name="flags" type="s" direction="in">
+        <tp:docstring>
+          Flags (comma separated) to force debugging features.
+          Supports flag(s): u2f g2f verbose
+        </tp:docstring>
+      </arg>
+      <arg name="status" type="s" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
     <method name="SetWifiDriverDebug">
       <tp:docstring>
         Enable/disable Wifi driver debugging.

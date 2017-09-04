@@ -660,6 +660,17 @@ cmd_network_diag() (
   /usr/bin/network_diag "$@"
 )
 
+USAGE_u2f_flags='<u2f | g2f>[,verbose]'
+HELP_u2f_flags='
+  Set flags to override the second-factor authentication daemon configuration.
+  u2f: Always enable the standard U2F mode even if not set in device policy.
+  g2f: Always enable the U2F mode plus some additional extensions.
+  verbose: Increase the daemon logging verbosity in /var/log/messages.
+'
+cmd_u2f_flags() (
+  debugd SetU2fFlags "string:$*"
+)
+
 debugd() {
   # Default timeout 30 seconds.
   local timeout="--reply-timeout=30000"

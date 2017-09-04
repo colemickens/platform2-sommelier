@@ -45,6 +45,7 @@
 #include "debugd/src/sysrq_tool.h"
 #include "debugd/src/systrace_tool.h"
 #include "debugd/src/tracepath_tool.h"
+#include "debugd/src/u2f_tool.h"
 #include "debugd/src/wifi_debug_tool.h"
 #include "debugd/src/wifi_power_tool.h"
 #include "debugd/src/wimax_status_tool.h"
@@ -153,6 +154,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::string SwapSetParameter(const std::string& parameter_name,
                                uint32_t parameter_value) override;
   bool SetWifiDriverDebug(int32_t flags) override;
+  std::string SetU2fFlags(const std::string& flags) override;
   void ContainerStarted() override;
   void ContainerStopped() override;
   std::string SetWifiPowerSave(bool enable) override;
@@ -187,6 +189,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<SysrqTool> sysrq_tool_;
   std::unique_ptr<SystraceTool> systrace_tool_;
   std::unique_ptr<TracePathTool> tracepath_tool_;
+  std::unique_ptr<U2fTool> u2f_tool_;
   std::unique_ptr<WifiDebugTool> wifi_debug_tool_;
   std::unique_ptr<WifiPowerTool> wifi_power_tool_;
   std::unique_ptr<WiMaxStatusTool> wimax_status_tool_;
