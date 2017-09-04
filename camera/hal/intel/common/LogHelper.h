@@ -178,6 +178,7 @@ void cca_print_info(const char *fmt, va_list ap);
 void setDebugLevel(void);
 bool isDebugLevelEnable(int level);
 bool isDumpTypeEnable(int dumpType);
+bool isDebugTypeEnable(int debugType);
 bool isPerfDumpTypeEnable(int dumpType);
 bool isDumpMediaTopo(void);
 bool isDumpMediaInfo(void);

@@ -195,6 +195,23 @@ status_t StatisticsWorker::run()
         return UNKNOWN_ERROR;
     }
 
+    if (LogHelper::isDebugTypeEnable(CAMERA_DEBUG_LOG_AIQ)) {
+        if (rgbsGrid.get() != nullptr
+                && rgbsGrid.get()->blocks_ptr != nullptr
+                && rgbsGrid.get()->grid_width > 0
+                && rgbsGrid.get()->grid_height > 0) {
+            int sumLuma = 0;
+            size_t size = rgbsGrid.get()->grid_width * rgbsGrid.get()->grid_height;
+            rgbs_grid_block *ptr = rgbsGrid.get()->blocks_ptr;
+            for (size_t i = 0; i < size; ++i) {
+                sumLuma += (ptr[i].avg_r + (ptr[i].avg_gb+ptr[i].avg_gr )/2 + ptr[i].avg_b) / 3;
+            }
+            LOGAIQ("%s, frame %u RGBS y_mean %d, widthxheight = [%dx%d]", __FUNCTION__,
+                stats->frameSequence, sumLuma / size,
+                rgbsGrid.get()->grid_width, rgbsGrid.get()->grid_height);
+        }
+    }
+
     notifyListeners(&outMsg);
 
     return OK;

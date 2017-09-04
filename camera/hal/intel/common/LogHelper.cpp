@@ -131,6 +131,11 @@ bool isDumpTypeEnable(int dumpType)
     return gDumpType & dumpType;
 }
 
+bool isDebugTypeEnable(int debugType)
+{
+    return gLogLevel & debugType;
+}
+
 bool isPerfDumpTypeEnable(int dumpType)
 {
     return gPerfLevel & dumpType;
