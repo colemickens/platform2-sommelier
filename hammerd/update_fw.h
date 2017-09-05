@@ -59,6 +59,7 @@ enum class UpdateExtraCommand : uint16_t {
   kUnlockRollback = 4,
   kInjectEntropy = 5,
   kPairChallenge = 6,
+  kTouchpadInfo = 7,
 };
 const char* ToString(UpdateExtraCommand subcommand);
 
@@ -145,7 +146,22 @@ enum class SectionName {
 const char* ToString(SectionName name);
 SectionName OtherSection(SectionName name);
 
-// This array describes all four sections of the new image.
+
+// Below is the touchpad_info struct from src/platform/ec/include/update_fw.h.
+struct __attribute__((packed)) TouchpadInfo {
+  uint8_t status;        // Indicate if we get info from touchpad
+  uint8_t reserved;      // Reserved for padding
+  uint16_t vendor;       // Vendor USB id
+  uint32_t fw_address;   // Virtual address that points to touchpad firmware
+  uint32_t fw_size;      // Size of the touchpad firmware
+  struct {
+    uint16_t id;
+    uint16_t fw_version;
+    uint16_t fw_checksum;
+  } elan;
+};
+
+// The section information of the new EC image.
 struct SectionInfo {
   SectionName name;
   uint32_t offset;
@@ -168,8 +184,11 @@ class FirmwareUpdaterInterface {
  public:
   virtual ~FirmwareUpdaterInterface() = default;
 
-  // Scans the new image and retrieve versions of RO and RW sections.
-  virtual bool LoadImage(const std::string& image) = 0;
+  // Scans the new EC image and retrieve versions of RO and RW sections.
+  virtual bool LoadECImage(const std::string& ec_image) = 0;
+
+  // Retrieves local touchpad firmware.
+  virtual bool LoadTouchpadImage(const std::string& touchpad_image) = 0;
 
   // Tries to connect to the USB endpoint during a period of time.
   virtual bool TryConnectUSB() = 0;
@@ -181,10 +200,10 @@ class FirmwareUpdaterInterface {
   // Returns true if successfully setup the connection.
   virtual bool SendFirstPDU() = 0;
 
-  // Indicates to the target that update image transfer has been completed. Upon
-  // receipt of this message the target state machine transitions into the
-  // 'rx_idle' state. The host may send an extension command to reset the target
-  // after this.
+  // Indicates to hammer that transferal of EC/touchpad firmware has completed.
+  // Upon receipt of this message the target state machine transitions into
+  // the 'rx_idle' state. The host may send an extension command to reset the
+  // target after this.
   virtual void SendDone() = 0;
 
   // Injects entropy into the hammer device.
@@ -202,14 +221,18 @@ class FirmwareUpdaterInterface {
   // as such is guaranteed not to be a valid update PDU destination address.
   virtual bool SendSubcommand(UpdateExtraCommand subcommand) = 0;
   virtual bool SendSubcommandWithPayload(UpdateExtraCommand subcommand,
-                                 const std::string& cmd_body) = 0;
+                                         const std::string& cmd_body) = 0;
   virtual bool SendSubcommandReceiveResponse(UpdateExtraCommand subcommand,
-                                     const std::string& cmd_body,
-                                     void* resp,
-                                     size_t resp_size) = 0;
+                                             const std::string& cmd_body,
+                                             void* resp,
+                                             size_t resp_size) = 0;
 
   // Transfers the image to the target section.
   virtual bool TransferImage(SectionName section_name) = 0;
+
+  // Transfers the touchpad firmware to a virtual address.
+  virtual bool TransferTouchpadFirmware(uint32_t section_addr,
+                                        size_t data_len) = 0;
 
   // Returns the current section that EC is running. One of "RO" or "RW".
   virtual SectionName CurrentSection() const = 0;
@@ -241,7 +264,8 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   explicit FirmwareUpdater(std::unique_ptr<UsbEndpoint> endpoint);
 
   // FirmwareUpdaterInterface implementation:
-  bool LoadImage(const std::string& image) override;
+  bool LoadECImage(const std::string& ec_image) override;
+  bool LoadTouchpadImage(const std::string& touchpad_image) override;
   bool TryConnectUSB() override;
   void CloseUSB() override;
   bool SendFirstPDU() override;
@@ -255,6 +279,8 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
                                      void* resp,
                                      size_t resp_size) override;
   bool TransferImage(SectionName section_name) override;
+  bool TransferTouchpadFirmware(uint32_t section_addr,
+                                size_t data_len) override;
   SectionName CurrentSection() const override;
   bool UpdatePossible(SectionName section_name) const override;
   bool VersionMismatch(SectionName section_name) const override;
@@ -275,12 +301,12 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   // Transfers the data of the target section.
   bool TransferSection(const uint8_t* data_ptr,
                        uint32_t section_addr,
-                       size_t data_len);
+                       size_t data_len, bool use_block_skip);
 
   // Transfers a block of data.
   bool TransferBlock(UpdateFrameHeader* ufh,
                      const uint8_t* transfer_data_ptr,
-                     size_t payload_size);
+                     size_t payload_size, bool use_block_skip);
 
   // The USB endpoint interface to the hammer EC.
   std::unique_ptr<UsbEndpointInterface> endpoint_;
@@ -291,13 +317,15 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   // The version of the currently-running section.  Retrieved through USB
   // endpoint's configuration string descriptor as part of TryConnectUSB.
   std::string version_;
-  // The image data to be updated.
-  std::string image_;
-  // The information of the RO and RW sections in the image data.
+  // The EC image data to be updated.
+  std::string ec_image_;
+  // The touchpad image data to be updated.
+  std::string touchpad_image_;
+  // The information of the RO and RW sections in the EC image data.
   std::vector<SectionInfo> sections_;
 
   friend class FirmwareUpdaterTest;
-  FRIEND_TEST(FirmwareUpdaterTest, LoadImage);
+  FRIEND_TEST(FirmwareUpdaterTest, LoadECImage);
   FRIEND_TEST(FirmwareUpdaterTest, TryConnectUSB_OK);
   FRIEND_TEST(FirmwareUpdaterTest, TryConnectUSB_FAIL);
   FRIEND_TEST(FirmwareUpdaterTest, TryConnectUSB_FetchVersion_Legacy);
@@ -312,6 +340,7 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   FRIEND_TEST(FirmwareUpdaterTest, VersionMismatch);
 
  private:
+  bool CheckEmptyBlock(const uint8_t* transfer_data_ptr, size_t payload_size);
   DISALLOW_COPY_AND_ASSIGN(FirmwareUpdater);
 };
 

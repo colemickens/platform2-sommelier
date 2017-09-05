@@ -18,30 +18,35 @@
 
 namespace hammerd {
 
-HammerUpdater::HammerUpdater(const std::string& image, uint16_t vendor_id,
-                             uint16_t product_id, int bus, int port)
+HammerUpdater::HammerUpdater(const std::string& ec_image,
+                             const std::string& touchpad_image,
+                             uint16_t vendor_id, uint16_t product_id,
+                             int bus, int port)
     : HammerUpdater(
-        image,
+        ec_image,
+        touchpad_image,
         base::MakeUnique<FirmwareUpdater>(
             base::MakeUnique<UsbEndpoint>(vendor_id, product_id, bus, port)),
         base::MakeUnique<PairManager>(),
         base::MakeUnique<DBusWrapper>()) {}
 
 HammerUpdater::HammerUpdater(
-    const std::string& image,
+    const std::string& ec_image,
+    const std::string& touchpad_image,
     std::unique_ptr<FirmwareUpdaterInterface> fw_updater,
     std::unique_ptr<PairManagerInterface> pair_manager,
     std::unique_ptr<DBusWrapperInterface> dbus_wrapper)
-    : image_(image),
+    : ec_image_(ec_image),
+      touchpad_image_(touchpad_image),
       fw_updater_(std::move(fw_updater)),
       pair_manager_(std::move(pair_manager)),
       dbus_wrapper_(std::move(dbus_wrapper)),
       dbus_notified_(false) {}
 
 bool HammerUpdater::Run() {
-  LOG(INFO) << "Load and validate the image.";
-  if (!fw_updater_->LoadImage(image_)) {
-    LOG(ERROR) << "Failed to load image.";
+  LOG(INFO) << "Load and validate the EC image.";
+  if (!fw_updater_->LoadECImage(ec_image_)) {
+    LOG(ERROR) << "Failed to load EC image.";
     return false;
   }
 
@@ -256,14 +261,18 @@ HammerUpdater::RunStatus HammerUpdater::PostRWProcess() {
     return HammerUpdater::RunStatus::kNeedReset;
   }
 
+  // Trigger the retry if update fails.
+  if (RunTouchpadUpdater() != RunStatus::kTouchpadUpdated) {
+    LOG(INFO) << "Touchpad update failure.";
+    return RunStatus::kNeedReset;
+  }
+
   // Pair with hammer.
-  HammerUpdater::RunStatus ret;
-  ret = Pair();
+  HammerUpdater::RunStatus ret = Pair();
   if (ret != HammerUpdater::RunStatus::kNoUpdate) {
     return ret;
   }
 
-  // TODO(akahuang): Update trackpad FW.
   // TODO(akahuang): Rollback increment.
 
   // All process are done.
@@ -344,4 +353,44 @@ void HammerUpdater::NotifyUpdateStarted() {
   }
 }
 
+HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
+  if (!touchpad_image_.size()) {  // We are missing the touchpad file.
+    LOG(INFO) << "Touchpad will remain unmodified as binary is not provided.";
+    return RunStatus::kTouchpadUpdated;
+  }
+
+  LOG(INFO) << "Loading touchpad firmware image.";
+  if (!fw_updater_->LoadTouchpadImage(touchpad_image_)) {
+    LOG(ERROR) << "Failed to load touchpad image.";
+    return RunStatus::kInvalidFirmware;
+  }
+
+  // Make request to get infomation from hammer.
+  TouchpadInfo response;
+  if (!fw_updater_->SendSubcommandReceiveResponse(
+          UpdateExtraCommand::kTouchpadInfo, "",
+          reinterpret_cast<void*>(&response),
+          sizeof(response))) {
+      LOG(ERROR) << "Not able to get touchpad info from base.";
+      return RunStatus::kNeedReset;
+  }
+  LOG(INFO) << "vendor: " << std::hex << "0x" << response.vendor;
+  LOG(INFO) << "fw_address: " << std::hex << "0x" << response.fw_address;
+  LOG(INFO) << "fw_size: " << std::hex << "0x" << response.fw_size;
+  LOG(INFO) << "id: " << std::hex << "0x" << response.elan.id;
+  LOG(INFO) << "fw_version: " << std::hex << "0x" << response.elan.fw_version;
+  LOG(INFO) << "fw_checksum: " << std::hex << "0x" << response.elan.fw_checksum;
+
+  // TODO(b/65534217): Check if our binary is identical to
+  //                   that of hammer by filename.
+  bool ret = fw_updater_->TransferTouchpadFirmware(
+      response.fw_address, response.fw_size);
+  if (ret) {
+    LOG(INFO) << "Touchpad update succeeded.";
+    return HammerUpdater::RunStatus::kTouchpadUpdated;
+  } else {
+    LOG(ERROR) << "Touchpad update failed.";
+    return HammerUpdater::RunStatus::kFatalError;
+  }
+}
 }  // namespace hammerd

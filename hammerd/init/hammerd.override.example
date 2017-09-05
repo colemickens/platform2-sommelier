@@ -1,4 +1,5 @@
-env IMAGE_PATH="/lib/firmware/myfirmware.fw"
+env EC_IMAGE_PATH="/lib/firmware/myfirmware.fw"
+env TOUCHPAD_IMAGE_PATH="/lib/firmware/myfirmware-touchpad.fw"
 env VENDOR_ID=4660  # 0x123
 env PRODUCT_ID=74565  # 0x1234
 env USB_BUS=1

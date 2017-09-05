@@ -80,45 +80,45 @@ class FirmwareUpdaterTest : public testing::Test {
   std::vector<uint8_t> done_cmd_;
 };
 
-// Load a fake image with each value. The image contains:
+// Load a fake EC image with each value. The EC image contains:
 // - Fake header: 5 bytes
 // - mock fmap: sizeof(fmap) bytes
 // - RO version string: 32 bytes
 // - RW version string: 32 bytes
 // - RW rollback version: 4 bytes
 // - RO key: sizeof(vb21_packed_key) bytes
-TEST_F(FirmwareUpdaterTest, LoadImage) {
-  // Build a fake image.
-  std::string image("12345");
-  int64_t mock_offset = image.size();
+TEST_F(FirmwareUpdaterTest, LoadECImage) {
+  // Build a fake EC image.
+  std::string ec_image("12345");
+  int64_t mock_offset = ec_image.size();
   fmap mock_fmap;
   mock_fmap.size = 5 + sizeof(fmap) + 32 + 32 + 4 + sizeof(vb21_packed_key);
-  image.append(reinterpret_cast<char*>(&mock_fmap), sizeof(mock_fmap));
+  ec_image.append(reinterpret_cast<char*>(&mock_fmap), sizeof(mock_fmap));
 
-  int64_t ro_version_offset = image.size();
+  int64_t ro_version_offset = ec_image.size();
   char ro_version[32] = "RO MOCK VERSION";
-  image.append(ro_version, 32);
+  ec_image.append(ro_version, 32);
 
-  int64_t rw_version_offset = image.size();
+  int64_t rw_version_offset = ec_image.size();
   char rw_version[32] = "RW MOCK VERSION";
-  image.append(rw_version, 32);
+  ec_image.append(rw_version, 32);
 
-  int64_t rw_rollback_offset = image.size();
+  int64_t rw_rollback_offset = ec_image.size();
   int32_t rw_rollback = 35;
-  image.append(reinterpret_cast<char*>(&rw_rollback), sizeof(rw_rollback));
+  ec_image.append(reinterpret_cast<char*>(&rw_rollback), sizeof(rw_rollback));
 
-  int64_t ro_key_offset = image.size();
+  int64_t ro_key_offset = ec_image.size();
   vb21_packed_key ro_key;
   ro_key.key_version = 1;
-  image.append(reinterpret_cast<char*>(&ro_key), sizeof(ro_key));
+  ec_image.append(reinterpret_cast<char*>(&ro_key), sizeof(ro_key));
 
-  size_t image_len = image.size();
-  ASSERT_EQ(image_len, mock_fmap.size);
+  size_t ec_image_len = ec_image.size();
+  ASSERT_EQ(ec_image_len, mock_fmap.size);
 
   const fmap* mock_fmap_ptr = reinterpret_cast<const fmap*>(
-      reinterpret_cast<const uint8_t*>(image.data()) + mock_offset);
+      reinterpret_cast<const uint8_t*>(ec_image.data()) + mock_offset);
 
-  EXPECT_CALL(*fmap_, Find(_, image_len)).WillOnce(Return(mock_offset));
+  EXPECT_CALL(*fmap_, Find(_, ec_image_len)).WillOnce(Return(mock_offset));
   // Find RO section.
   fmap_area ro_section_area;
   ro_section_area.offset = 0x0;
@@ -155,8 +155,8 @@ TEST_F(FirmwareUpdaterTest, LoadImage) {
   EXPECT_CALL(*fmap_, FindArea(mock_fmap_ptr, "RW_RBVER"))
       .WillOnce(Return(&rw_rollback_area));
 
-  ASSERT_EQ(fw_updater_->LoadImage(image), true);
-  ASSERT_EQ(fw_updater_->image_, image);
+  ASSERT_EQ(fw_updater_->LoadECImage(ec_image), true);
+  ASSERT_EQ(fw_updater_->ec_image_, ec_image);
   ASSERT_EQ(
       fw_updater_->sections_[0],
       SectionInfo(SectionName::RO, 0x0, 0x10000, "RO MOCK VERSION", -1, -1));
@@ -418,15 +418,15 @@ TEST_F(FirmwareUpdaterTest, TransferImage) {
   ON_CALL(*endpoint_, SendHelper(_, _, _)).WillByDefault(ReturnArg<2>());
   ON_CALL(*endpoint_, Receive(_, _, _, _)).WillByDefault(ReturnArg<1>());
 
-  // Set the mock image data and section info.
-  fw_updater_->image_ = std::string(0x11000 + 0xA0, 0);
+  // Set the mock EC image data and section info.
+  fw_updater_->ec_image_ = std::string(0x11000 + 0xA0, 0);
   fw_updater_->sections_ = {
       SectionInfo(SectionName::RO, 0x0, 0x10000, "RO MOCK VERSION", -1, -1),
       SectionInfo(SectionName::RW, 0x11000, 0xA0, "RW MOCK VERSION", 35, 1)};
   // Writable offset is at RW, so current section is RO.
   fw_updater_->targ_.offset = 0x11000;
   const uint8_t* image_ptr =
-      reinterpret_cast<const uint8_t*>(fw_updater_->image_.data());
+      reinterpret_cast<const uint8_t*>(fw_updater_->ec_image_.data());
 
   std::vector<uint8_t> ufh_data;
   uint32_t good_reply = 0;

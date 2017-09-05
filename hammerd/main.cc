@@ -24,15 +24,18 @@ constexpr char kLockFile[] = "/run/lock/hammerd.lock";
 // Use Google as the default USB vendor ID.
 constexpr uint16_t kDefaultUsbVendorId = 0x18d1;
 // TODO(kitching): Remove these defaults after merging new udev rules.
-constexpr char kDefaultImagePath[] = "/lib/firmware/hammer.fw";
+constexpr char kDefaultECImagePath[] = "/lib/firmware/hammer.fw";
 constexpr uint16_t kDefaultUsbProductId = 0x5022;
 constexpr int kDefaultUsbBus = 1;
 constexpr int kDefaultUsbPort = 2;
 }  // namespace
 
 int main(int argc, const char* argv[]) {
-  DEFINE_string(image_path, kDefaultImagePath,
-                "Path to the firmware image file");
+  DEFINE_string(ec_image_path, kDefaultECImagePath,
+                "Path to the EC firmware image file");
+  DEFINE_string(touchpad_image_path, "", "Path to the touchpad image file");
+  // TODO(b/65534217): Define a flag about touchpad version that is expected
+  //                   to be computed by init script.
   DEFINE_int32(vendor_id, kDefaultUsbVendorId,
                "USB vendor ID of the device");
   DEFINE_int32(product_id, kDefaultUsbProductId,
@@ -50,9 +53,21 @@ int main(int argc, const char* argv[]) {
     return EXIT_SUCCESS;
   }
 
-  std::string image;
-  if (!base::ReadFileToString(base::FilePath(FLAGS_image_path), &image)) {
-    LOG(ERROR) << "Image file is not found: " << FLAGS_image_path;
+  std::string ec_image;
+  if (!base::ReadFileToString(base::FilePath(FLAGS_ec_image_path), &ec_image)) {
+    LOG(ERROR) << "EC image file is not found: " << FLAGS_ec_image_path;
+    return EXIT_FAILURE;
+  }
+
+  std::string touchpad_image;
+  if (!FLAGS_touchpad_image_path.size()) {
+    LOG(INFO) << "Touchpad image is not assigned. " <<
+                 "Proceeding without updating touchpad.";
+
+  } else if (!base::ReadFileToString(base::FilePath(FLAGS_touchpad_image_path),
+                                     &touchpad_image)) {
+    LOG(ERROR) << "Touchpad image is not found with path ["
+               << FLAGS_touchpad_image_path << "]. Abort.";
     return EXIT_FAILURE;
   }
 
@@ -65,7 +80,7 @@ int main(int argc, const char* argv[]) {
   // is used by DBusWrapper to send signals.
   base::MessageLoop message_loop;
   hammerd::HammerUpdater updater(
-      image, FLAGS_vendor_id, FLAGS_product_id, FLAGS_usb_bus, FLAGS_usb_port);
-  bool ret = updater.Run();
-  return ret ? EXIT_SUCCESS : EXIT_FAILURE;
+      ec_image, touchpad_image, FLAGS_vendor_id, FLAGS_product_id,
+      FLAGS_usb_bus, FLAGS_usb_port);
+  return updater.Run() ? EXIT_SUCCESS : EXIT_FAILURE;
 }

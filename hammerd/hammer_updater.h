@@ -26,9 +26,11 @@ class HammerUpdater {
     kNeedInjectEntropy,
     kLostConnection,
     kInvalidFirmware,
+    kTouchpadUpdated
   };
 
-  HammerUpdater(const std::string& image,
+  HammerUpdater(const std::string& ec_image,
+                const std::string& touchpad_image,
                 uint16_t vendor_id,
                 uint16_t product_id,
                 int bus,
@@ -50,9 +52,13 @@ class HammerUpdater {
   virtual RunStatus PostRWProcess();
   virtual RunStatus Pair();
 
+  // Update the touchpad firmware via the virtual address.
+  virtual RunStatus RunTouchpadUpdater();
+
  protected:
   // Used in unittests to inject mock instance.
-  HammerUpdater(const std::string& image,
+  HammerUpdater(const std::string& ec_image,
+                const std::string& touchpad_image,
                 std::unique_ptr<FirmwareUpdaterInterface> fw_updater,
                 std::unique_ptr<PairManagerInterface> pair_manager,
                 std::unique_ptr<DBusWrapperInterface> dbus_wrapper);
@@ -68,8 +74,10 @@ class HammerUpdater {
   friend class HammerUpdaterTest;
 
  private:
-  // The image data to be updated.
-  std::string image_;
+  // The EC_image data to be updated.
+  std::string ec_image_;
+  // The touchpad image data to be updated.
+  std::string touchpad_image_;
   // The main firmware updater.
   std::unique_ptr<FirmwareUpdaterInterface> fw_updater_;
   // The pairing manager.

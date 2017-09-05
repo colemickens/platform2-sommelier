@@ -27,8 +27,8 @@ BRILLO_EXPORT bool FirmwareUpdater_TryConnectUSB(
     FirmwareUpdater* updater);
 BRILLO_EXPORT void FirmwareUpdater_CloseUSB(
     FirmwareUpdater* updater);
-BRILLO_EXPORT bool FirmwareUpdater_LoadImage(
-    FirmwareUpdater* updater, std::string image);
+BRILLO_EXPORT bool FirmwareUpdater_LoadECImage(
+    FirmwareUpdater* updater, std::string ec_image);
 BRILLO_EXPORT SectionName FirmwareUpdater_CurrentSection(
     FirmwareUpdater* updater);
 BRILLO_EXPORT bool FirmwareUpdater_UpdatePossible(

@@ -38,6 +38,8 @@ const char* ToString(UpdateExtraCommand subcommand) {
       return "InjectEntropy";
     case UpdateExtraCommand::kPairChallenge:
       return "PairChallenge";
+    case UpdateExtraCommand::kTouchpadInfo:
+      return "TouchpadInfo";
     default:
       return "UNKNOWN_COMMAND";
   }
@@ -106,7 +108,7 @@ FirmwareUpdater::FirmwareUpdater(std::unique_ptr<UsbEndpointInterface> endpoint,
     : endpoint_(std::move(endpoint)),
       fmap_(std::move(fmap)),
       targ_(),
-      image_(""),
+      ec_image_(""),
       sections_() {}
 
 bool FirmwareUpdater::TryConnectUSB() {
@@ -164,25 +166,25 @@ void FirmwareUpdater::CloseUSB() {
   endpoint_->Close();
 }
 
-bool FirmwareUpdater::LoadImage(const std::string& image) {
-  image_.clear();
+bool FirmwareUpdater::LoadECImage(const std::string& ec_image) {
+  ec_image_.clear();
   sections_.clear();
   sections_.push_back(SectionInfo(SectionName::RO));
   sections_.push_back(SectionInfo(SectionName::RW));
   uint8_t* image_ptr =
-      const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(image.data()));
-  size_t len = image.size();
+      const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(ec_image.data()));
+  size_t len = ec_image.size();
 
   int64_t offset = fmap_->Find(image_ptr, len);
   if (offset < 0) {
-    LOG(ERROR) << "Cannot find FMAP in image";
+    LOG(ERROR) << "Cannot find FMAP in ec_image.";
     return false;
   }
 
   // TODO(akahuang): validate fmap struct more than this?
   fmap* fmap = reinterpret_cast<struct fmap*>(image_ptr + offset);
   if (fmap->size != len) {
-    LOG(ERROR) << "Mismatch between FMAP size and image size";
+    LOG(ERROR) << "Mismatch between FMAP size and ec_image size.";
     return false;
   }
 
@@ -243,7 +245,7 @@ bool FirmwareUpdater::LoadImage(const std::string& image) {
     }
   }
 
-  image_ = image;
+  ec_image_ = ec_image;
   LOG(INFO) << "### On-disk Firmware Update ###";
   for (const auto& section : sections_) {
     LOG(INFO) << base::StringPrintf(
@@ -255,6 +257,11 @@ bool FirmwareUpdater::LoadImage(const std::string& image) {
         section.rollback,
         section.key_version);
   }
+  return true;
+}
+
+bool FirmwareUpdater::LoadTouchpadImage(const std::string& touchpad_image) {
+  touchpad_image_ = touchpad_image;
   return true;
 }
 
@@ -338,28 +345,32 @@ bool FirmwareUpdater::UnLockRollback() {
 // IDLE state.  This function takes care of the entire update process, including
 // bringing hammer EC back to the IDLE state afterwards.
 bool FirmwareUpdater::TransferImage(SectionName section_name) {
-  if (!SendFirstPDU()) {
-    LOG(ERROR) << "Failed to send the first PDU.";
-    return false;
-  }
-
-  bool ret = false;
-  const uint8_t* image_ptr = reinterpret_cast<const uint8_t*>(image_.data());
+  const uint8_t* image_ptr = reinterpret_cast<const uint8_t*>(ec_image_.data());
   auto section = sections_[static_cast<int>(section_name)];
   LOG(INFO) << "Section to be updated: " << section.name;
-  if (section.offset + section.size > image_.size()) {
-    LOG(ERROR) << "image length (" << image_.size()
+  if (section.offset + section.size > ec_image_.size()) {
+    LOG(ERROR) << "EC image length (" << ec_image_.size()
                << ") is smaller than transfer requirements: " << section.offset
                << " + " << section.size;
     return false;
   }
-  ret =
-      TransferSection(image_ptr + section.offset, section.offset, section.size);
+  return TransferSection(image_ptr + section.offset,
+                         section.offset, section.size, true);
+}
 
-  // SendDone signals to hammer EC that we have finished transferring the image,
-  // and that it should complete the update.
-  SendDone();
-  return ret;
+bool FirmwareUpdater::TransferTouchpadFirmware(
+    uint32_t section_addr, size_t data_len) {
+  const uint8_t* image_ptr = reinterpret_cast<const uint8_t*>(
+      touchpad_image_.data());
+
+  if (touchpad_image_.size() != data_len) {
+    LOG(ERROR) << "Local touchpad binary doesn't match remote IC size.";
+    LOG(ERROR) << "Local=" << touchpad_image_.size() << " bytes."
+               << "Remote=" << data_len << " bytes.";
+    return false;
+  }
+
+  return TransferSection(image_ptr, section_addr, data_len, false);
 }
 
 bool FirmwareUpdater::InjectEntropy() {
@@ -494,7 +505,13 @@ void FirmwareUpdater::SendDone() {
 
 bool FirmwareUpdater::TransferSection(const uint8_t* data_ptr,
                                       uint32_t section_addr,
-                                      size_t data_len) {
+                                      size_t data_len, bool use_block_skip) {
+  if (!SendFirstPDU()) {
+    LOG(ERROR) << "Failed to send the first PDU.";
+    return false;
+  }
+
+  bool ret = true;
   LOG(INFO) << "Sending 0x" << std::hex << data_len << " bytes to 0x"
             << section_addr << std::dec;
   while (data_len > 0) {
@@ -508,30 +525,36 @@ bool FirmwareUpdater::TransferSection(const uint8_t* data_ptr,
               << " "
               << "0x" << ufh.block_base << " "
               << "0x" << ufh.block_digest << std::dec;
-    if (!TransferBlock(&ufh, data_ptr, payload_size)) {
+    if (!TransferBlock(&ufh, data_ptr, payload_size, use_block_skip)) {
       LOG(ERROR) << "Failed to transfer block, " << data_len << " to go";
-      return false;
+      ret = false;
+      break;
     }
     data_len -= payload_size;
     data_ptr += payload_size;
     section_addr += payload_size;
+  }
+  SendDone();
+
+  return ret;
+}
+
+bool FirmwareUpdater::CheckEmptyBlock(
+    const uint8_t* transfer_data_ptr, size_t payload_size) {
+  for (int i = 0; i < payload_size; i++) {
+    if (transfer_data_ptr[i] != 0xff)
+      return false;
   }
   return true;
 }
 
 bool FirmwareUpdater::TransferBlock(UpdateFrameHeader* ufh,
                                     const uint8_t* transfer_data_ptr,
-                                    size_t payload_size) {
+                                    size_t payload_size, bool use_block_skip) {
   // The section space must be erased before the update is attempted.
-  // Thus we can skip blocks entirely composed of 0xff.
-  bool empty_block = true;
-  for (int i = 0; i < payload_size; i++) {
-    if (transfer_data_ptr[i] != 0xff) {
-      empty_block = false;
-      break;
-    }
-  }
-  if (empty_block) {
+  // Thus we can skip blocks entirely composed of 0xff. However, this doesn't
+  // apply for touchpad update.
+  if (use_block_skip && CheckEmptyBlock(transfer_data_ptr, payload_size)) {
     LOG(INFO) << "Block is all 0xff; skipping.";
     return true;
   }
