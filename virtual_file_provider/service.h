@@ -17,6 +17,7 @@
 namespace dbus {
 class Bus;
 class MethodCall;
+class ObjectProxy;
 }  // namespace dbus
 
 namespace virtual_file_provider {
@@ -31,7 +32,7 @@ class Service {
   // service name.
   bool Initialize();
 
-  // Sends ReadRequest signal with the given parameters.
+  // Sends read request with the given parameters.
   // Chrome is responsible to feed the data to the FD.
   void SendReadRequest(const std::string& id,
                        int64_t offset,
@@ -48,6 +49,7 @@ class Service {
   const base::FilePath fuse_mount_path_;
   scoped_refptr<dbus::Bus> bus_;
   dbus::ExportedObject* exported_object_ = nullptr;
+  dbus::ObjectProxy* request_handler_proxy_ = nullptr;
 
   base::ThreadChecker thread_checker_;
 
