@@ -17,6 +17,7 @@
 #ifndef SHILL_MOCK_DNS_CLIENT_FACTORY_H_
 #define SHILL_MOCK_DNS_CLIENT_FACTORY_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 

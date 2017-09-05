@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/bind.h>
 #include <gmock/gmock.h>

@@ -17,6 +17,8 @@
 #ifndef SHILL_MOCK_ICMP_SESSION_FACTORY_H_
 #define SHILL_MOCK_ICMP_SESSION_FACTORY_H_
 
+#include <memory>
+
 #include <base/lazy_instance.h>
 #include <gmock/gmock.h>
 

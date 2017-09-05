@@ -17,8 +17,9 @@
 #ifndef SHILL_DBUS_CHROMEOS_MM1_MODEM_LOCATION_PROXY_H_
 #define SHILL_DBUS_CHROMEOS_MM1_MODEM_LOCATION_PROXY_H_
 
+#include <map>
+#include <memory>
 #include <string>
-#include <vector>
 
 #include "cellular/dbus-proxies.h"
 #include "shill/cellular/mm1_modem_location_proxy_interface.h"

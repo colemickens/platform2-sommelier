@@ -18,6 +18,7 @@
 #define SHILL_NET_NETLINK_ATTRIBUTE_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 

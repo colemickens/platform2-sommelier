@@ -16,6 +16,7 @@
 
 #include "shill/upstart/upstart.h"
 
+#include <utility>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

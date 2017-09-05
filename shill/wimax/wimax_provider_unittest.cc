@@ -17,6 +17,7 @@
 #include "shill/wimax/wimax_provider.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/memory/ptr_util.h>

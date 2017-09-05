@@ -17,6 +17,7 @@
 #ifndef SHILL_DBUS_MOCK_DBUS_SERVICE_WATCHER_FACTORY_H_
 #define SHILL_DBUS_MOCK_DBUS_SERVICE_WATCHER_FACTORY_H_
 
+#include <memory>
 #include <string>
 
 #include <gmock/gmock.h>

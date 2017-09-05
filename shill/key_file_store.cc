@@ -16,6 +16,8 @@
 
 #include "shill/key_file_store.h"
 
+#include <memory>
+
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
 #include <base/memory/ptr_util.h>

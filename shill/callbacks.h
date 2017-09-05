@@ -17,6 +17,7 @@
 #ifndef SHILL_CALLBACKS_H_
 #define SHILL_CALLBACKS_H_
 
+#include <map>
 #include <string>
 #include <vector>
 

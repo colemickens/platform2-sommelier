@@ -17,6 +17,7 @@
 #ifndef SHILL_MOCK_CONTROL_H_
 #define SHILL_MOCK_CONTROL_H_
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>

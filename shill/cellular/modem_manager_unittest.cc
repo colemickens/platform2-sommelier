@@ -16,6 +16,8 @@
 
 #include "shill/cellular/modem_manager.h"
 
+#include <utility>
+
 #include <base/memory/ptr_util.h>
 #include <base/stl_util.h>
 #include <ModemManager/ModemManager.h>

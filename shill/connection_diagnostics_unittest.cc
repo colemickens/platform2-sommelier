@@ -18,6 +18,8 @@
 
 #include <net/if_arp.h>
 
+#include <utility>
+
 #include <base/memory/ptr_util.h>
 #include <gtest/gtest.h>
 

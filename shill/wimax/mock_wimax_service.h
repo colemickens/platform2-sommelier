@@ -17,6 +17,8 @@
 #ifndef SHILL_WIMAX_MOCK_WIMAX_SERVICE_H_
 #define SHILL_WIMAX_MOCK_WIMAX_SERVICE_H_
 
+#include <memory>
+
 #include <gmock/gmock.h>
 
 #include "shill/wimax/wimax_service.h"
