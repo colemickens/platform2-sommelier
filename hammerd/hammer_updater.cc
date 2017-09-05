@@ -237,16 +237,32 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(
 }
 
 HammerUpdater::RunStatus HammerUpdater::PostRWProcess() {
-  LOG(INFO) << "Start the process after entering RW section.";
-  HammerUpdater::RunStatus ret;
+  LOG(INFO) << "Start the post-RW process.";
+
+  // RO section should be unlocked on dogfood devices -- no need to first run
+  // UnLockSection.
+  // TODO(kitching): Consider adding a UI warning to make sure a dogfood user
+  // does not detach the base at the wrong time, as that could brick it.
+  if (fw_updater_->IsSectionLocked(SectionName::RO)) {
+    LOG(INFO) << "RO section is locked. Update infeasible.";
+  } else if (!fw_updater_->VersionMismatch(SectionName::RO)) {
+    LOG(INFO) << "RO section is unlocked, but update not needed.";
+  } else {
+    LOG(INFO) << "RO is unlocked and update is needed. Starting update.";
+    bool ret = fw_updater_->TransferImage(SectionName::RO);
+    LOG(INFO) << "RO update " << (ret ? "passed." : "failed.");
+    // In the case that the update failed, a reset will either brick the device,
+    // or get it back into a normal state.
+    return HammerUpdater::RunStatus::kNeedReset;
+  }
 
   // Pair with hammer.
+  HammerUpdater::RunStatus ret;
   ret = Pair();
   if (ret != HammerUpdater::RunStatus::kNoUpdate) {
     return ret;
   }
 
-  // TODO(akahuang): Update RO section in dogfood mode.
   // TODO(akahuang): Update trackpad FW.
   // TODO(akahuang): Rollback increment.
 
