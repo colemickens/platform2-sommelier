@@ -104,8 +104,8 @@ RenameErrorType RenameManager::StartRenaming(const string& device_path,
     return RENAME_ERROR_INTERNAL;
   }
 
+  // TODO(klemenko): Further restrict the capabilities
   SandboxedProcess* process = &rename_process_[device_path];
-  process->SetCapabilities(0);
   process->SetUserId(rename_user_id);
   process->SetGroupId(rename_group_id);
   process->SetNoNewPrivileges();
