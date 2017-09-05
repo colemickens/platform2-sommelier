@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <metrics/metrics_library.h>
 
@@ -16,6 +17,9 @@
 #include "hammerd/update_fw.h"
 
 namespace hammerd {
+
+// Get the sysfs path of the USB device.
+const base::FilePath GetUsbSysfsPath(int bus, int port);
 
 class HammerUpdater {
  public:
@@ -35,7 +39,8 @@ class HammerUpdater {
                 uint16_t vendor_id,
                 uint16_t product_id,
                 int bus,
-                int port);
+                int port,
+                bool at_boot);
   virtual ~HammerUpdater() = default;
 
   // Handle the whole update process, including pre-processing, main update
@@ -64,6 +69,8 @@ class HammerUpdater {
   // Used in unittests to inject mock instance.
   HammerUpdater(const std::string& ec_image,
                 const std::string& touchpad_image,
+                bool at_boot,
+                const base::FilePath& base_path,
                 std::unique_ptr<FirmwareUpdaterInterface> fw_updater,
                 std::unique_ptr<PairManagerInterface> pair_manager,
                 std::unique_ptr<DBusWrapperInterface> dbus_wrapper,
@@ -84,6 +91,10 @@ class HammerUpdater {
   std::string ec_image_;
   // The touchpad image data to be updated.
   std::string touchpad_image_;
+  // Set this flag when hammerd is triggered at boot time.
+  bool at_boot_;
+  // The sysfs path of the USB device.
+  base::FilePath base_path_;
   // The main firmware updater.
   std::unique_ptr<FirmwareUpdaterInterface> fw_updater_;
   // The pairing manager.

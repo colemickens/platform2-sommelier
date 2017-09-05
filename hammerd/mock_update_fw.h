@@ -52,6 +52,7 @@ class MockFirmwareUpdater : public FirmwareUpdaterInterface {
   MOCK_METHOD1(UnlockSection, bool(SectionName section_name));
   MOCK_CONST_METHOD0(IsRollbackLocked, bool());
   MOCK_METHOD0(UnlockRollback, bool());
+  MOCK_CONST_METHOD0(GetEcImageVersion, std::string());
 };
 
 }  // namespace hammerd

@@ -11,8 +11,11 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
@@ -21,13 +24,20 @@
 
 namespace hammerd {
 
+const base::FilePath GetUsbSysfsPath(int bus, int port) {
+  return base::FilePath(base::StringPrintf("/sys/bus/usb/devices/%d-%d",
+                                           bus, port));
+}
+
 HammerUpdater::HammerUpdater(const std::string& ec_image,
                              const std::string& touchpad_image,
                              uint16_t vendor_id, uint16_t product_id,
-                             int bus, int port)
+                             int bus, int port, bool at_boot)
     : HammerUpdater(
         ec_image,
         touchpad_image,
+        at_boot,
+        GetUsbSysfsPath(bus, port),
         std::make_unique<FirmwareUpdater>(
             std::make_unique<UsbEndpoint>(vendor_id, product_id, bus, port)),
         std::make_unique<PairManager>(),
@@ -37,12 +47,16 @@ HammerUpdater::HammerUpdater(const std::string& ec_image,
 HammerUpdater::HammerUpdater(
     const std::string& ec_image,
     const std::string& touchpad_image,
+    bool at_boot,
+    const base::FilePath& base_path,
     std::unique_ptr<FirmwareUpdaterInterface> fw_updater,
     std::unique_ptr<PairManagerInterface> pair_manager,
     std::unique_ptr<DBusWrapperInterface> dbus_wrapper,
     std::unique_ptr<MetricsLibraryInterface> metrics)
     : ec_image_(ec_image),
       touchpad_image_(touchpad_image),
+      at_boot_(at_boot),
+      base_path_(base_path),
       fw_updater_(std::move(fw_updater)),
       pair_manager_(std::move(pair_manager)),
       dbus_wrapper_(std::move(dbus_wrapper)),
@@ -54,6 +68,28 @@ bool HammerUpdater::Run() {
   if (!fw_updater_->LoadEcImage(ec_image_)) {
     LOG(ERROR) << "Failed to load EC image.";
     return false;
+  }
+  // At boot time, we block UI and check the base need updating or not. But
+  // libusb_init takes long time to enumerate USB device during boot time, we do
+  // a quick firmware version check by USB sysfs first. If the base is not
+  // plugged or up to date, then we can terminate hammerd quickly.
+  if (at_boot_) {
+    LOG(INFO) << "Trigger at boot. Check the firmware version first.";
+    base::FilePath conf_path = base_path_.Append("configuration");
+    if (!base::PathExists(conf_path)) {
+      LOG(INFO) << conf_path.value()
+                << " is not found, the base might not be attached.";
+      return false;
+    }
+
+    std::string current_version;
+    base::ReadFileToString(conf_path, &current_version);
+    base::TrimString(current_version, "\n", &current_version);
+    LOG(INFO) << "The firmware version in current base: " << current_version;
+    if (current_version == "RW:" + fw_updater_->GetEcImageVersion()) {
+      LOG(INFO) << "The version up to date, skip updating.";
+      return true;
+    }
   }
 
   HammerUpdater::RunStatus status = RunLoop();
@@ -472,4 +508,5 @@ HammerUpdater::RunStatus HammerUpdater::RunTouchpadUpdater() {
     return HammerUpdater::RunStatus::kFatalError;
   }
 }
+
 }  // namespace hammerd

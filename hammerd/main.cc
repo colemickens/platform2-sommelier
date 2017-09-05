@@ -37,6 +37,9 @@ int main(int argc, const char* argv[]) {
   DEFINE_int32(usb_bus, -1, "USB bus to search");
   DEFINE_int32(usb_port, -1, "USB port to search");
   DEFINE_int32(autosuspend_delay_ms, -1, "USB autosuspend delay time (ms)");
+  DEFINE_bool(at_boot, false,
+              "Invoke proecess at boot time. "
+              "Exit if RW is up-to-date (no pairing)");
   brillo::FlagHelper::Init(argc, argv, "Hammer EC firmware updater daemon");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
                   brillo::kLogToStderrIfTty);
@@ -77,19 +80,18 @@ int main(int argc, const char* argv[]) {
   base::MessageLoop message_loop;
   hammerd::HammerUpdater updater(
       ec_image, touchpad_image, FLAGS_vendor_id, FLAGS_product_id,
-      FLAGS_usb_bus, FLAGS_usb_port);
+      FLAGS_usb_bus, FLAGS_usb_port, FLAGS_at_boot);
   bool ret = updater.Run();
   if (ret && FLAGS_autosuspend_delay_ms >= 0) {
     LOG(INFO) << "Enable USB autosuspend with delay "
               << FLAGS_autosuspend_delay_ms << " ms.";
+    base::FilePath base_path =
+        hammerd::GetUsbSysfsPath(FLAGS_usb_bus, FLAGS_usb_port);
     constexpr char kPowerLevelPath[] = "power/level";
     constexpr char kAutosuspendDelayMsPath[] = "power/autosuspend_delay_ms";
     constexpr char kPowerLevel[] = "auto";
     std::string delay_ms = base::StringPrintf("%d", FLAGS_autosuspend_delay_ms);
 
-    base::FilePath base_path = base::FilePath(
-        base::StringPrintf("/sys/bus/usb/devices/%d-%d",
-                           FLAGS_usb_bus, FLAGS_usb_port));
     base::WriteFile(base_path.Append(base::FilePath(kPowerLevelPath)),
                     kPowerLevel, sizeof(kPowerLevel) - 1);
     base::WriteFile(base_path.Append(base::FilePath(kAutosuspendDelayMsPath)),

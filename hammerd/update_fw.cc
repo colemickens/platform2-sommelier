@@ -584,4 +584,8 @@ bool FirmwareUpdater::TransferBlock(UpdateFrameHeader* ufh,
   return true;
 }
 
+std::string FirmwareUpdater::GetEcImageVersion() const {
+  return sections_[0].version;
+}
+
 }  // namespace hammerd

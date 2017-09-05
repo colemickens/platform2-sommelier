@@ -261,6 +261,8 @@ class FirmwareUpdaterInterface {
 
   // Unlocks the rollback. Need to send "Reset" command afterward.
   virtual bool UnlockRollback() = 0;
+
+  virtual std::string GetEcImageVersion() const = 0;
 };
 
 // Implement the core logic of updating firmware.
@@ -299,6 +301,8 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
 
   bool IsRollbackLocked() const override;
   bool UnlockRollback() override;
+
+  std::string GetEcImageVersion() const override;
 
  protected:
   // Used in unit tests to inject mocks.

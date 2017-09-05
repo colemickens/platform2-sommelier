@@ -211,6 +211,11 @@ mode_update_tpm_firmware() {
   show_assets_message "update_tpm_firmware"
 }
 
+# Show a message indicating that we're doing a hammer firmware update.
+mode_update_detachable_base_firmware() {
+  show_assets_message "update_detachable_base_firmware"
+}
+
 # Show a message explaining to the user that the battery isn't sufficiently
 # charged to a apply a firmware update and ask for the charger to be plugged.
 mode_update_tpm_firmware_low_battery() {

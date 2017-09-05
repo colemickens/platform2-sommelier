@@ -32,6 +32,7 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <base/files/file_path.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -92,6 +93,8 @@ class HammerUpdaterTest : public testing::Test {
     hammer_updater_.reset(new HammerUpdaterType{
         ec_image_,
         touchpad_image_,
+        false,
+        base::FilePath(""),
         std::make_unique<MockFirmwareUpdater>(),
         std::make_unique<MockPairManagerInterface>(),
         std::make_unique<MockDBusWrapper>(),
