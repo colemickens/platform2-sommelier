@@ -24,7 +24,7 @@ constexpr char kMidisPipe[] = "arc-midis-pipe";
 constexpr char kSocketPath[] = "/run/midis/midis_socket";
 const int kUnixNamedSocketBacklog = 5;
 
-// Implementation of the MidisManagerGetter interface. This is used to
+// Implementation of the MidisHost interface. This is used to
 // get the actual MidisManager interface which is used by the client to
 // communicate with midis.
 // A request to initialize this should be initiated by the ArcBridgeHost.
@@ -33,27 +33,25 @@ const int kUnixNamedSocketBacklog = 5;
 // during the lifetime of the service. An error in the Message Pipe associated
 // with this class is most likely an unrecoverable error, and will necessitate
 // the restart of the midis service from Chrome.
-class MidisManagerGetterImpl : public arc::mojom::MidisManagerGetter {
+class MidisHostImpl : public arc::mojom::MidisHost {
  public:
-  explicit MidisManagerGetterImpl(
-      arc::mojom::MidisManagerGetterRequest request);
-  ~MidisManagerGetterImpl() override = default;
+  explicit MidisHostImpl(arc::mojom::MidisHostRequest request);
+  ~MidisHostImpl() override = default;
 
-  // mojom::MidisManagerGetter:
+  // mojom::MidisHost:
   void Connect() override;
 
  private:
-  mojo::Binding<arc::mojom::MidisManagerGetter> binding_;
+  mojo::Binding<arc::mojom::MidisHost> binding_;
 
-  DISALLOW_COPY_AND_ASSIGN(MidisManagerGetterImpl);
+  DISALLOW_COPY_AND_ASSIGN(MidisHostImpl);
 };
 
-MidisManagerGetterImpl::MidisManagerGetterImpl(
-    arc::mojom::MidisManagerGetterRequest request)
+MidisHostImpl::MidisHostImpl(arc::mojom::MidisHostRequest request)
     : binding_(this, std::move(request)) {}
 
-void MidisManagerGetterImpl::Connect() {
-  VLOG(1) << "The MidisManagerGetterInterface is working";
+void MidisHostImpl::Connect() {
+  VLOG(1) << "The MidisHostInterface is working.";
 }
 
 }  // namespace
@@ -156,12 +154,12 @@ void ClientTracker::AcceptProxyConnection(base::ScopedFD fd) {
       mojo::edk::ScopedPlatformHandle(mojo::edk::PlatformHandle(fd.release())));
   mojo::ScopedMessagePipeHandle child_pipe =
       mojo::edk::CreateChildMessagePipe(kMidisPipe);
-  midis_manager_getter_ = base::MakeUnique<MidisManagerGetterImpl>(
-      mojo::MakeRequest<arc::mojom::MidisManagerGetter>(std::move(child_pipe)));
+  midis_host_ = base::MakeUnique<MidisHostImpl>(
+      mojo::MakeRequest<arc::mojom::MidisHost>(std::move(child_pipe)));
 }
 
 bool ClientTracker::IsProxyConnected() {
-  return midis_manager_getter_ != nullptr;
+  return midis_host_ != nullptr;
 }
 
 void ClientTracker::OnShutdownComplete() {

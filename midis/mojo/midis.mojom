@@ -9,13 +9,15 @@ module arc.mojom;
 
 // This interface is needed to get the actual MidisManager interface handle.
 // Next Method ID: 1
-interface MidisManagerGetter {
+interface MidisHost {
+  // This is used by a client to register with midis and obtain a handle to
+  // the client interface. It is currently a stub.
   Connect@0();
 };
 
-// interface MidisInstance is implemented in the ARC MIDI JNI code that
+// MidisInstance is implemented in the ARC MIDI JNI code that
 // runs in Android and handles the Android side of the ArcBridge connection.
 // Next Method ID: 1
 interface MidisInstance {
-  Init@0(MidisManagerGetter host_ptr);
+  Init@0(MidisHost host_ptr);
 };

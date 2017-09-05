@@ -30,15 +30,15 @@ class ClientTracker : public mojo::edk::ProcessDelegate {
   size_t GetNumClientsForTesting() const { return clients_.size(); }
   void RemoveClient(uint32_t client_id);
 
-  // Sets up the MidisManagerGetter Mojo interface using the FD passed in
+  // Sets up the MidisHost Mojo interface using the FD passed in
   // via D-Bus. The net result of this function should be the creation
-  // of a MidisManagerGetterImpl object which ClientTracker manages.
+  // of a MidisHostImpl object which ClientTracker manages.
   void AcceptProxyConnection(base::ScopedFD fd);
 
   // mojo::edk::ProcessDelegate:
   void OnShutdownComplete() override;
 
-  // Helper function to check whether a |midis_manager_getter_| object is
+  // Helper function to check whether a |midis_host_| object is
   // already associated with ClientTracker.
   bool IsProxyConnected();
 
@@ -60,7 +60,7 @@ class ClientTracker : public mojo::edk::ProcessDelegate {
   DeviceTracker* device_tracker_;
   base::FilePath basedir_;
   base::SequenceChecker sequence_checker_;
-  std::unique_ptr<arc::mojom::MidisManagerGetter> midis_manager_getter_;
+  std::unique_ptr<arc::mojom::MidisHost> midis_host_;
 
   base::WeakPtrFactory<ClientTracker> weak_factory_;
   DISALLOW_COPY_AND_ASSIGN(ClientTracker);
