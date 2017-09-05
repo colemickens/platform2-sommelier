@@ -592,13 +592,12 @@ $(1): %.o: %.pic.o %.pie.o
 	$$(QUIET)touch "$$@"
 endef
 
+# Wrap all the deps in $$(wildcard) so a missing header won't cause weirdness.
+# First we remove newlines and \, then wrap it.
 define OBJECT_PATTERN_implementation
   @$(ECHO) "$(1)		$(subst $(SRC)/,,$<) -> $(2).o"
   $(call auto_mkdir,$@)
   $(QUIET)$($(1)) -c -MD -MF $(2).d $(3) -o $(2).o $<
-  $(QUIET)# Wrap all the deps in $$(wildcard) so a missing header
-  $(QUIET)# won't cause weirdness.  First we remove newlines and \,
-  $(QUIET)# then wrap it.
   $(QUIET)sed -i -e :j -e '$$!N;s|\\\s*\n| |;tj' \
     -e 's|^\(.*\s*:\s*\)\(.*\)$$|\1 $$\(wildcard \2\)|' $(2).d
 endef
