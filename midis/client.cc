@@ -16,12 +16,18 @@
 
 namespace midis {
 
-Client::Client(base::ScopedFD fd, DeviceTracker* device_tracker,
-               uint32_t client_id, ClientDeletionCallback del_cb)
+Client::Client(base::ScopedFD fd,
+               DeviceTracker* device_tracker,
+               uint32_t client_id,
+               ClientDeletionCallback del_cb,
+               arc::mojom::MidisServerRequest request,
+               arc::mojom::MidisClientPtr client_ptr)
     : client_fd_(std::move(fd)),
       device_tracker_(device_tracker),
       client_id_(client_id),
       del_cb_(del_cb),
+      client_ptr_(std::move(client_ptr)),
+      binding_(this, std::move(request)),
       weak_factory_(this) {
   device_tracker_->AddDeviceObserver(this);
 }
@@ -36,12 +42,30 @@ std::unique_ptr<Client> Client::Create(base::ScopedFD fd,
                                        DeviceTracker* device_tracker,
                                        uint32_t client_id,
                                        ClientDeletionCallback del_cb) {
-  std::unique_ptr<Client> cli(
-      new Client(std::move(fd), device_tracker, client_id, del_cb));
+  std::unique_ptr<Client> cli(new Client(
+      std::move(fd), device_tracker, client_id, del_cb, nullptr, nullptr));
   if (!cli->StartMonitoring()) {
     return nullptr;
   }
   LOG(INFO) << "New client created: " << client_id;
+  return cli;
+}
+
+std::unique_ptr<Client> Client::CreateMojo(
+    DeviceTracker* device_tracker,
+    uint32_t client_id,
+    ClientDeletionCallback del_cb,
+    arc::mojom::MidisServerRequest request,
+    arc::mojom::MidisClientPtr client_ptr) {
+  // Create the client object.
+  std::unique_ptr<Client> cli(new Client(base::ScopedFD(),
+                                         device_tracker,
+                                         client_id,
+                                         del_cb,
+                                         std::move(request),
+                                         std::move(client_ptr)));
+  LOG(INFO) << "New Mojo client created: " << client_id;
+
   return cli;
 }
 
@@ -178,8 +202,8 @@ void Client::AddClientToPort() {
 void Client::HandleClientMessages() {
   struct MidisMessageHeader header;
 
-  ssize_t bytes = HANDLE_EINTR(read(client_fd_.get(), &header,
-      sizeof(struct MidisMessageHeader)));
+  ssize_t bytes = HANDLE_EINTR(
+      read(client_fd_.get(), &header, sizeof(struct MidisMessageHeader)));
   if (bytes > 0) {
     switch (header.type) {
       case REQUEST_LIST_DEVICES:
@@ -203,7 +227,10 @@ void Client::HandleClientMessages() {
 
 bool Client::StartMonitoring() {
   msg_taskid_ = brillo::MessageLoop::current()->WatchFileDescriptor(
-      FROM_HERE, client_fd_.get(), brillo::MessageLoop::kWatchRead, true,
+      FROM_HERE,
+      client_fd_.get(),
+      brillo::MessageLoop::kWatchRead,
+      true,
       base::Bind(&Client::HandleClientMessages, weak_factory_.GetWeakPtr()));
   return msg_taskid_ != brillo::MessageLoop::kTaskIdNull;
 }
@@ -239,8 +266,8 @@ void Client::OnDeviceAddedOrRemoved(const struct MidisDeviceInfo* dev_info,
 
 void Client::HandleCloseDeviceMessage() {
   struct MidisRequestPort port_msg;
-  ssize_t ret = HANDLE_EINTR(read(client_fd_.get(), &port_msg,
-                                  sizeof(port_msg)));
+  ssize_t ret =
+      HANDLE_EINTR(read(client_fd_.get(), &port_msg, sizeof(port_msg)));
   if (ret != sizeof(port_msg)) {
     LOG(ERROR) << "Read of client fd for MidisRequestPort message failed.";
     TriggerClientDeletion();

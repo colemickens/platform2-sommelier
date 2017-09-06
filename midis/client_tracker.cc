@@ -35,28 +35,54 @@ const int kUnixNamedSocketBacklog = 5;
 // the restart of the midis service from Chrome.
 class MidisHostImpl : public arc::mojom::MidisHost {
  public:
-  explicit MidisHostImpl(arc::mojom::MidisHostRequest request);
+  // |client_tracker|, which must outlive MidisHostImpl, is owned by the caller.
+  MidisHostImpl(arc::mojom::MidisHostRequest request,
+                midis::ClientTracker* client_tracker);
   ~MidisHostImpl() override = default;
 
   // mojom::MidisHost:
-  void Connect() override;
+  void Connect(arc::mojom::MidisServerRequest request,
+               arc::mojom::MidisClientPtr client_ptr) override;
 
  private:
+  // It's safe to hold a raw pointer to ClientTracker since we can assume
+  // that the lifecycle of ClientTracker is a superset of the lifecycle of
+  // MidisHostImpl.
+  midis::ClientTracker* client_tracker_;
   mojo::Binding<arc::mojom::MidisHost> binding_;
 
   DISALLOW_COPY_AND_ASSIGN(MidisHostImpl);
 };
 
-MidisHostImpl::MidisHostImpl(arc::mojom::MidisHostRequest request)
-    : binding_(this, std::move(request)) {}
+MidisHostImpl::MidisHostImpl(arc::mojom::MidisHostRequest request,
+                             midis::ClientTracker* client_tracker)
+    : client_tracker_(client_tracker), binding_(this, std::move(request)) {}
 
-void MidisHostImpl::Connect() {
-  VLOG(1) << "The MidisHostInterface is working.";
+void MidisHostImpl::Connect(arc::mojom::MidisServerRequest request,
+                            arc::mojom::MidisClientPtr client_ptr) {
+  VLOG(1) << "Connect() called.";
+  client_tracker_->MakeMojoClient(std::move(request), std::move(client_ptr));
 }
 
 }  // namespace
 
 namespace midis {
+
+void ClientTracker::MakeMojoClient(arc::mojom::MidisServerRequest request,
+                                   arc::mojom::MidisClientPtr client_ptr) {
+  client_id_counter_++;
+  VLOG(1) << "MakeMojoClient called.";
+  std::unique_ptr<Client> new_cli = Client::CreateMojo(
+      device_tracker_,
+      client_id_counter_,
+      base::Bind(&ClientTracker::RemoveClient, weak_factory_.GetWeakPtr()),
+      std::move(request),
+      std::move(client_ptr));
+
+  if (new_cli) {
+    clients_.emplace(client_id_counter_, std::move(new_cli));
+  }
+}
 
 ClientTracker::ClientTracker() : client_id_counter_(0), weak_factory_(this) {}
 
@@ -155,7 +181,7 @@ void ClientTracker::AcceptProxyConnection(base::ScopedFD fd) {
   mojo::ScopedMessagePipeHandle child_pipe =
       mojo::edk::CreateChildMessagePipe(kMidisPipe);
   midis_host_ = base::MakeUnique<MidisHostImpl>(
-      mojo::MakeRequest<arc::mojom::MidisHost>(std::move(child_pipe)));
+      mojo::MakeRequest<arc::mojom::MidisHost>(std::move(child_pipe)), this);
 }
 
 bool ClientTracker::IsProxyConnected() {

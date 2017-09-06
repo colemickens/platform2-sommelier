@@ -11,26 +11,48 @@
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/message_loops/message_loop.h>
+#include <mojo/public/cpp/bindings/binding.h>
 
 #include "midis/device.h"
 #include "midis/device_tracker.h"
 #include "midis/libmidis/clientlib.h"
+#include "mojo/midis.mojom.h"
 
 namespace midis {
 
-class Client : public DeviceTracker::Observer {
+class Client : public DeviceTracker::Observer, public arc::mojom::MidisServer {
  public:
   using ClientDeletionCallback = base::Callback<void(uint32_t)>;
-  ~Client();
+  ~Client() override;
+
+  // Legacy Create() function to create a new client.
+  // Still kept here while we are in the process of transitioning to Mojo
+  // clients.
+  // TODO(pmalani): Remove once Mojo server and client interfaces are fully
+  // implemented.
   static std::unique_ptr<Client> Create(base::ScopedFD fd,
                                         DeviceTracker* device_tracker,
                                         uint32_t client_id,
                                         ClientDeletionCallback del_callback);
+
+  // Similar to the original Create() call, but for Mojo clients.
+  static std::unique_ptr<Client> CreateMojo(
+      DeviceTracker* device_tracker,
+      uint32_t client_id,
+      ClientDeletionCallback del_callback,
+      arc::mojom::MidisServerRequest request,
+      arc::mojom::MidisClientPtr client_ptr);
+
   void NotifyDeviceAddedOrRemoved(struct MidisDeviceInfo* dev_info, bool added);
 
  private:
-  Client(base::ScopedFD fd, DeviceTracker* device_tracker, uint32_t client_id,
-         ClientDeletionCallback del_cb);
+  Client(base::ScopedFD fd,
+         DeviceTracker* device_tracker,
+         uint32_t client_id,
+         ClientDeletionCallback del_cb,
+         arc::mojom::MidisServerRequest request,
+         arc::mojom::MidisClientPtr client_ptr);
+
   // Start monitoring the client socket fd for messages from the client.
   bool StartMonitoring();
   // Stop the task which was watching the client socket df.
@@ -82,6 +104,12 @@ class Client : public DeviceTracker::Observer {
   DeviceTracker* device_tracker_;
   uint32_t client_id_;
   base::Callback<void(uint32_t)> del_cb_;
+
+  // Handle to the Mojo client interface. This is used to send necessary
+  // information to the clients when required.
+  arc::mojom::MidisClientPtr client_ptr_;
+  mojo::Binding<arc::mojom::MidisServer> binding_;
+
   base::WeakPtrFactory<Client> weak_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(Client);

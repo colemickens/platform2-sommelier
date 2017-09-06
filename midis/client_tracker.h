@@ -42,6 +42,10 @@ class ClientTracker : public mojo::edk::ProcessDelegate {
   // already associated with ClientTracker.
   bool IsProxyConnected();
 
+  // Create a new Mojo Client and place it in the list of clients.
+  void MakeMojoClient(arc::mojom::MidisServerRequest request,
+                      arc::mojom::MidisClientPtr client_ptr);
+
  private:
   friend class ClientTest;
   friend class ClientTrackerTest;

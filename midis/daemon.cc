@@ -90,6 +90,9 @@ void Daemon::BootstrapMojoConnection(
 
   client_tracker_->AcceptProxyConnection(std::move(fd));
   LOG(INFO) << "MojoBridger connection established.";
+  std::unique_ptr<dbus::Response> response =
+      dbus::Response::FromMethodCall(method_call);
+  response_sender.Run(std::move(response));
 }
 
 }  // namespace midis
