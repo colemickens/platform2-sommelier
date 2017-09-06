@@ -402,7 +402,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--enable-voice-interaction");
 
   if (builder->UseFlagIsSet("background_blur"))
-    builder->AddArg("--enable-background-blur");
+    builder->AddFeatureEnableOverride("EnableBackgroundBlur");
 
   SetUpWallpaperFlags(builder, cros_config, base::Bind(base::PathExists));
 
