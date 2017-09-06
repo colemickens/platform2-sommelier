@@ -36,10 +36,6 @@ struct AVFSPathMapping {
   const char* const avfs_path;
 };
 
-// Process capabilities required by the avfsd process:
-//   CAP_SYS_ADMIN for mounting/unmounting filesystem
-const uint64_t kAVFSMountProgramCapabilities = 1 << CAP_SYS_ADMIN;
-
 const char kAVFSMountGroup[] = "chronos-access";
 const char kAVFSMountUser[] = "avfs";
 // TODO(wad,benchan): Revisit the location of policy files once more system
@@ -345,15 +341,7 @@ bool ArchiveManager::MountAVFSPath(const string& base_path,
       "ro,nodev,noexec,nosuid,allow_other,user=%s,modules=subdir,subdir=%s",
       kAVFSMountUser, base_path.c_str()));
   mount_process.AddArgument(avfs_path);
-  if (base::PathExists(FilePath(kAVFSSeccompFilterPolicyFile))) {
-    mount_process.LoadSeccompFilterPolicy(kAVFSSeccompFilterPolicyFile);
-  } else {
-    // TODO(benchan): Remove this fallback mechanism once we have policy files
-    //                for all supported platforms.
-    LOG(WARNING) << "Seccomp filter policy '" << kAVFSSeccompFilterPolicyFile
-                 << "' not found. Use POSIX capabilities mechanism instead";
-    mount_process.SetCapabilities(kAVFSMountProgramCapabilities);
-  }
+  mount_process.LoadSeccompFilterPolicy(kAVFSSeccompFilterPolicyFile);
   // TODO(benchan): Enable PID and VFS namespace.
   // TODO(wad,ellyjones,benchan): Enable network namespace once libminijail
   // supports it.
