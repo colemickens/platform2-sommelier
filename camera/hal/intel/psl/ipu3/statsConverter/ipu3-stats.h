@@ -20,6 +20,8 @@
 #include "statsConverter/ipu3-interface.h"
 #include "stats_3a_public.h"
 
+#include "ia_aiq_types.h"
+
 #define AWB_FR_MAX_GRID_WIDTH   32
 #define AWB_FR_MAX_GRID_HEIGHT  24
 #define AF_MAX_GRID_HEIGHT  24
@@ -43,5 +45,9 @@ struct ipu3_stats_all_stats {
 void ipu3_stats_init_3a(struct ipu3_stats_all_stats *all_stats);
 void ipu3_stats_get_3a(struct ipu3_stats_all_stats *all_stats,
                        const struct imgu_abi_stats_3a *isp_stats);
+ia_err intel_skycam_statistics_convert(
+    const ia_css_4a_statistics& statistics,
+    ia_aiq_rgbs_grid* out_rgbs_grid,
+    ia_aiq_af_grid* out_af_grid);
 
 #endif

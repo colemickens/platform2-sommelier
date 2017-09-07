@@ -22,6 +22,10 @@
 #include "ipu3-stats.h"
 #include "LogHelper.h"
 
+#include "ia_types.h"
+#include "stats_3a_public.h"
+#include "ia_aiq_types.h"
+
 #define IA_CSS_ENTER(...) { }
 #define IA_CSS_LEAVE(...) { }
 #define IA_CSS_ENTER_PRIVATE(...) { }
@@ -1002,3 +1006,41 @@ ipu3_stats_get_3a(struct ipu3_stats_all_stats *all_stats,
                        &stats_enable);
 }
 
+
+ia_err intel_skycam_statistics_convert(
+    const ia_css_4a_statistics& statistics,
+    ia_aiq_rgbs_grid* out_rgbs_grid,
+    ia_aiq_af_grid* out_af_grid)
+{
+    if (!out_rgbs_grid || !out_af_grid) {
+        return ia_err_data;
+    }
+
+    // AWB (RGBS) grid.
+    out_rgbs_grid->grid_width = statistics.stats_4a_config->awb_grd_config.grid_width;
+    out_rgbs_grid->grid_height = statistics.stats_4a_config->awb_grd_config.grid_height;
+
+    for (int i = 0; i < out_rgbs_grid->grid_width*out_rgbs_grid->grid_height; ++i) {
+        out_rgbs_grid->blocks_ptr[i].avg_r = statistics.data->awb_raw_buffer.rgb_table[i].R_avg;
+        out_rgbs_grid->blocks_ptr[i].avg_b = statistics.data->awb_raw_buffer.rgb_table[i].B_avg;
+        out_rgbs_grid->blocks_ptr[i].avg_gb = statistics.data->awb_raw_buffer.rgb_table[i].Gb_avg;
+        out_rgbs_grid->blocks_ptr[i].avg_gr = statistics.data->awb_raw_buffer.rgb_table[i].Gr_avg;
+        out_rgbs_grid->blocks_ptr[i].sat = statistics.data->awb_raw_buffer.rgb_table[i].sat_ratio;
+    }
+
+    // AF (aka F response) grid.
+    out_af_grid->grid_width = statistics.stats_4a_config->af_grd_config.grid_width;
+    out_af_grid->grid_height = statistics.stats_4a_config->af_grd_config.grid_height;
+
+    // The AIQ block expects block dimensions specified in BQ's, while
+    // SkyCam uses log2 of pixel count.
+    out_af_grid->block_width = 1 << (statistics.stats_4a_config->af_grd_config.block_width - 1);
+    out_af_grid->block_height = 1 << (statistics.stats_4a_config->af_grd_config.block_height - 1);
+
+    for(int i = 0; i < out_af_grid->grid_width * out_af_grid->grid_height; ++i) {
+        out_af_grid->filter_response_1[i] = statistics.data->af_raw_buffer.y_table[i].y1_avg;
+        out_af_grid->filter_response_2[i] = statistics.data->af_raw_buffer.y_table[i].y2_avg;
+    }
+
+    return ia_err_none;
+}
