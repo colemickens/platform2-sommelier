@@ -25,7 +25,7 @@
 #include "LogHelper.h"
 #include "SkyCamProxy.h"
 #ifdef REMOTE_3A_SERVER
-#include "ipc/client/SkyCamSocketProxy.h"
+#include "ipc/client/SkyCamMojoProxy.h"
 #else
 #include "SkyCamLocalProxy.h"
 #endif
@@ -54,7 +54,7 @@ std::shared_ptr<SkyCamProxy> SkyCamProxy::createProxy(int cameraId, IPU3ISPPipe 
 
 #ifdef REMOTE_3A_SERVER
     LOGD("Use IPC implementation");
-    proxyObject = std::make_shared<SkyCamSocketProxy>();
+    proxyObject = std::make_shared<SkyCamMojoProxy>();
     if (proxyObject == nullptr) {
         LOGE("Not enough memory to create SkyCamProxy");
         return nullptr;
