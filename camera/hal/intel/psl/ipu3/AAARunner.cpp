@@ -52,6 +52,7 @@ AAARunner::AAARunner(int camerId, Intel3aPlus *aaaWrapper, SettingsProcessor *se
         mDigiGainOnSensor(false),
         mPrecaptureResultRequestId(PRECAPTURE_ID_INVAL)
 {
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 
     CLEAR(mResizeLscGridR);
     CLEAR(mResizeLscGridGr);
@@ -63,6 +64,8 @@ AAARunner::AAARunner(int camerId, Intel3aPlus *aaaWrapper, SettingsProcessor *se
 
 status_t AAARunner::init(bool digiGainOnSensor)
 {
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+
     mLatestInputParams.init();
     /*
      * Initialize the AE State Machine
@@ -88,6 +91,8 @@ status_t AAARunner::init(bool digiGainOnSensor)
 
 AAARunner::~AAARunner()
 {
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+
     m3aWrapper = nullptr;
 
     delete mAeState;
@@ -111,6 +116,8 @@ AAARunner::~AAARunner()
  */
 status_t AAARunner::run2A(RequestCtrlState &reqState)
 {
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+
     status_t status = NO_ERROR;
     int prevExposure = 0;
     int prevIso = 0;
@@ -187,6 +194,7 @@ status_t AAARunner::run2A(RequestCtrlState &reqState)
      */
     bool forceAwbRun = (reqId == 0);
     bool awbLocked = (mAwbState->getState() == ANDROID_CONTROL_AWB_STATE_LOCKED);
+
     /*
      * Auto White Balance
      */

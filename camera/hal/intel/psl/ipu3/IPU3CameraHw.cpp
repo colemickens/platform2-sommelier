@@ -27,17 +27,6 @@
 #include "CaptureUnit.h"
 #include "PSLConfParser.h"
 
-#ifdef REMOTE_3A_SERVER
-#include "ipc/client/SocketHandler.h"
-#endif
-
-void createAndConnectTo3aServer();
-void disconnectFrom3aServer();
-
-// PSL library constructor priorities start at 200
-void __attribute__ ((constructor(200))) createAndConnectTo3aServer();
-void __attribute__ ((destructor(200))) disconnectFrom3aServer();
-
 namespace android {
 namespace camera2 {
 
@@ -394,6 +383,7 @@ IPU3CameraHw::dump(int fd)
 {
     UNUSED(fd);
 }
+
 /**
  * initStaticMetadata
  *
@@ -439,26 +429,3 @@ IPU3CameraHw::initStaticMetadata(void)
 
 }  // namespace camera2
 }  // namespace android
-
-void createAndConnectTo3aServer()
-{
-#ifdef REMOTE_3A_SERVER
-    // TODO: after refactoring, need to initClient() + initServer()
-    android::camera2::SocketHandler *handle;
-    handle = android::camera2::SocketHandler::getInstance();
-#endif
-}
-
-void disconnectFrom3aServer()
-{
-#ifdef REMOTE_3A_SERVER
-    android::camera2::SocketHandler *handle;
-    handle = android::camera2::SocketHandler::getInstance();
-    if (handle) {
-        LOG1("closing IPC connection");
-        handle->closeConnection();
-    }
-
-    android::camera2::SocketHandler::deleteInstance();
-#endif
-}

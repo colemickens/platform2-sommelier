@@ -20,10 +20,6 @@
 #include <IPU3AICCommon.h>
 #include "utils/Errors.h"
 
-#ifdef REMOTE_3A_SERVER
-#include "client/ia_aiq_ipc.h"
-#endif
-
 namespace android {
 namespace camera2 {
 
@@ -34,11 +30,7 @@ public:
     static void copyPaResults(IPU3AICRuntimeParams &to, ia_aiq_pa_results &from);
     static void copySaResults(IPU3AICRuntimeParams &to, ia_aiq_sa_results &from);
     static void copyWeightGrid(IPU3AICRuntimeParams &to, ia_aiq_hist_weight_grid *from);
-#ifdef REMOTE_3A_SERVER
-    static void copyPaResultsMod(IPU3AICRuntimeParams &to, ia_aiq_pa_results_data &from);
-    static void copySaResultsMod(IPU3AICRuntimeParams &to, ia_aiq_sa_results_data &from);
-    static void copyWeightGridMod(IPU3AICRuntimeParams &to, ia_aiq_hist_weight_grid_data &from);
-#endif
+
 private:
     RuntimeParamsHelper();
     virtual ~RuntimeParamsHelper();
