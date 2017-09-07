@@ -57,6 +57,9 @@ class HammerUpdater {
                 std::unique_ptr<PairManagerInterface> pair_manager,
                 std::unique_ptr<DBusWrapperInterface> dbus_wrapper);
 
+  // Waits for hammer USB device ready. It is called after the whole updating
+  // process to prevent invoking hammerd infinitely.
+  void WaitUSBReady(HammerUpdater::RunStatus status);
   // Sends DBus kBaseFirmwareUpdateStartedSignal to notify other processes that
   // the RW section will now be updated.
   void NotifyUpdateStarted();

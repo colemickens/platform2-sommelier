@@ -172,7 +172,7 @@ TEST_F(HammerUpdaterFlowTest, Run_Reset3Times) {
       .WillRepeatedly(Return(true));
 
   ExpectUSBConnections(Exactly(4));
-  ASSERT_EQ(hammer_updater_->Run(), true);
+  ASSERT_TRUE(hammer_updater_->Run());
 }
 
 // Return false if the layout of the firmware is changed.
@@ -245,7 +245,53 @@ TEST_F(HammerUpdaterRWTest, Run_UpdateRWAfterJumpToRWFailed) {
   }
 
   ExpectUSBConnections(AtLeast(1));
-  ASSERT_EQ(hammer_updater_->Run(), true);
+  ASSERT_TRUE(hammer_updater_->Run());
+}
+
+// Send UpdateFailed DBus signal after continuous RW update failure.
+// Condition:
+//   1. In RO section.
+//   2. RW needs update.
+//   3. Always fails to update RW.
+//   4. USB device disconnects after RunLoop.
+TEST_F(HammerUpdaterRWTest, Run_UpdateRWFailed) {
+  EXPECT_CALL(*fw_updater_, CurrentSection())
+      .WillRepeatedly(Return(SectionName::RO));
+  EXPECT_CALL(*fw_updater_, NeedsUpdate(SectionName::RW))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*fw_updater_, TransferImage(SectionName::RW))
+      .WillRepeatedly(Return(false));
+
+  // Hammerd would try to update RW 10 times, so just use WillRepeatedly
+  // instead of using InSequence.
+  EXPECT_CALL(*fw_updater_, LoadImage(_)).WillOnce(Return(true));
+  EXPECT_CALL(*fw_updater_, IsSectionLocked(SectionName::RW))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*fw_updater_, SendFirstPDU()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*fw_updater_, SendDone()).WillRepeatedly(Return());
+  EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kStayInRO))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*fw_updater_, SendSubcommand(UpdateExtraCommand::kImmediateReset))
+      .WillRepeatedly(Return(true));
+
+  // USB losts connection after jumping out the RunLoop.
+  {
+    InSequence dummy;
+    EXPECT_CALL(*fw_updater_, TryConnectUSB())
+        .Times(10)
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*fw_updater_, TryConnectUSB())
+        .WillOnce(Return(false));
+  }
+  EXPECT_CALL(*fw_updater_, CloseUSB())
+      .Times(11)
+      .WillRepeatedly(Return());
+
+  // We should send UpdateStart and UpdateFailed DBus signal.
+  EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateStartedSignal));
+  EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateFailedSignal));
+
+  ASSERT_FALSE(hammer_updater_->Run());
 }
 
 // Inject Entropy.
@@ -311,7 +357,7 @@ TEST_F(HammerUpdaterRWTest, Run_InjectEntropy) {
   }
 
   ExpectUSBConnections(AtLeast(1));
-  ASSERT_EQ(hammer_updater_->Run(), true);
+  ASSERT_TRUE(hammer_updater_->Run());
 }
 
 // Update the RW and continue.
