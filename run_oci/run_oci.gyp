@@ -31,6 +31,7 @@
       'sources': [
         'container_config_parser.cc',
         'run_oci.cc',
+        'run_oci_utils.cc',
       ],
     },
   ],
@@ -41,7 +42,9 @@
           'target_name': 'container_config_parser_unittest',
           'type': 'executable',
           'includes': ['../common-mk/common_test.gypi'],
-          'defines': ['UNIT_TEST'],
+          'dependencies': [
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
           'variables': {
             'deps': [
               'libchrome-test-<(libbase_ver)',
@@ -50,6 +53,23 @@
           'sources': [
             'container_config_parser.cc',
             'container_config_parser_unittest.cc',
+          ],
+        },
+        {
+          'target_name': 'run_oci_unittest',
+          'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'dependencies': [
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
+          'variables': {
+            'deps': [
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
+          'sources': [
+            'run_oci_unittest.cc',
+            'run_oci_utils.cc',
           ],
         },
       ]},

@@ -11,7 +11,6 @@
 #include <map>
 #include <vector>
 
-#include <base/at_exit.h>
 #include <base/values.h>
 #include <gtest/gtest.h>
 
@@ -490,9 +489,3 @@ TEST(OciConfigParserTest, TestInvalidHostnameConfig) {
 }
 
 }  // namespace run_oci
-
-int main(int argc, char **argv) {
-  base::AtExitManager exit_manager;
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

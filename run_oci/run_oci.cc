@@ -3,20 +3,26 @@
 // found in the LICENSE file.
 
 #include <getopt.h>
+#include <signal.h>
 #include <sys/mount.h>
+#include <sys/types.h>
 
+#include <algorithm>
 #include <ostream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/callback_forward.h>
 #include <base/command_line.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/files/scoped_temp_dir.h>
+#include <base/files/scoped_file.h>
 #include <base/json/json_writer.h>
 #include <base/macros.h>
 #include <base/memory/ptr_util.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
@@ -26,6 +32,7 @@
 
 #include "run_oci/container_config_parser.h"
 #include "run_oci/container_options.h"
+#include "run_oci/run_oci_utils.h"
 
 namespace {
 
@@ -36,6 +43,40 @@ using run_oci::OciConfigPtr;
 
 using ContainerConfigPtr = std::unique_ptr<container_config,
                                            decltype(&container_config_destroy)>;
+
+constexpr base::FilePath::CharType kRunContainersPath[] =
+    FILE_PATH_LITERAL("/run/containers");
+
+constexpr base::FilePath::CharType kProcSelfMountsPath[] =
+    FILE_PATH_LITERAL("/proc/self/mounts");
+
+constexpr base::FilePath::CharType kContainerPidFilename[] =
+    FILE_PATH_LITERAL("container.pid");
+constexpr base::FilePath::CharType kConfigJsonFilename[] =
+    FILE_PATH_LITERAL("config.json");
+constexpr base::FilePath::CharType kRunOciFilename[] =
+    FILE_PATH_LITERAL(".run_oci");
+
+// PIDs can be up to 8 characters, plus the terminating NUL byte. Rounding it up
+// to the next power-of-two.
+constexpr size_t kMaxPidFileLength = 16;
+
+const std::map<std::string, int> kSignalMap = {
+#define SIGNAL_MAP_ENTRY(name) \
+  { #name, SIG##name }
+    SIGNAL_MAP_ENTRY(HUP),   SIGNAL_MAP_ENTRY(INT),    SIGNAL_MAP_ENTRY(QUIT),
+    SIGNAL_MAP_ENTRY(ILL),   SIGNAL_MAP_ENTRY(TRAP),   SIGNAL_MAP_ENTRY(ABRT),
+    SIGNAL_MAP_ENTRY(BUS),   SIGNAL_MAP_ENTRY(FPE),    SIGNAL_MAP_ENTRY(KILL),
+    SIGNAL_MAP_ENTRY(USR1),  SIGNAL_MAP_ENTRY(SEGV),   SIGNAL_MAP_ENTRY(USR2),
+    SIGNAL_MAP_ENTRY(PIPE),  SIGNAL_MAP_ENTRY(ALRM),   SIGNAL_MAP_ENTRY(TERM),
+    SIGNAL_MAP_ENTRY(CLD),   SIGNAL_MAP_ENTRY(CHLD),   SIGNAL_MAP_ENTRY(CONT),
+    SIGNAL_MAP_ENTRY(STOP),  SIGNAL_MAP_ENTRY(TSTP),   SIGNAL_MAP_ENTRY(TTIN),
+    SIGNAL_MAP_ENTRY(TTOU),  SIGNAL_MAP_ENTRY(URG),    SIGNAL_MAP_ENTRY(XCPU),
+    SIGNAL_MAP_ENTRY(XFSZ),  SIGNAL_MAP_ENTRY(VTALRM), SIGNAL_MAP_ENTRY(PROF),
+    SIGNAL_MAP_ENTRY(WINCH), SIGNAL_MAP_ENTRY(POLL),   SIGNAL_MAP_ENTRY(IO),
+    SIGNAL_MAP_ENTRY(PWR),   SIGNAL_MAP_ENTRY(SYS),
+#undef SIGNAL_MAP_ENTRY
+};
 
 // WaitablePipe provides a way for one process to wait on another. This only
 // uses the read(2) and close(2) syscalls, so it can work even in a restrictive
@@ -86,8 +127,18 @@ struct PreStartHookState {
 // DeferredRunner ensures a base::Closure is run when it goes out of scope.
 class DeferredRunner {
  public:
-  explicit DeferredRunner(const base::Closure& closure) : closure_(closure) {}
-  ~DeferredRunner() { closure_.Run(); }
+  explicit DeferredRunner(base::Closure closure = base::Closure())
+      : closure_(std::move(closure)) {}
+
+  ~DeferredRunner() {
+    if (closure_.is_null())
+      return;
+    closure_.Run();
+  }
+
+  void Reset(base::Closure closure = base::Closure()) {
+    closure_ = std::move(closure);
+  }
 
  private:
   base::Closure closure_;
@@ -343,19 +394,20 @@ bool AppendMounts(const BindMounts& bind_mounts, container_config* config_out) {
 // pretty-printed so that bash scripts can more easily grab the fields instead
 // of having to parse the JSON blob.
 std::string ContainerState(int child_pid,
+                           const base::FilePath& bundle_dir,
                            const base::FilePath& container_dir,
-                           const std::string& runfs,
                            const std::string& status) {
   base::DictionaryValue state;
   state.SetString("ociVersion", "1.0");
   state.SetString("id", base::StringPrintf("run_oci:%d", child_pid));
   state.SetString("status", status);
-  state.SetString("bundle", base::MakeAbsoluteFilePath(container_dir).value());
+  state.SetString("bundle", base::MakeAbsoluteFilePath(bundle_dir).value());
   state.SetInteger("pid", child_pid);
   std::unique_ptr<base::DictionaryValue> annotations =
       base::MakeUnique<base::DictionaryValue>();
   annotations->SetStringWithoutPathExpansion(
-      "org.chromium.run_oci.container_root", runfs);
+      "org.chromium.run_oci.container_root",
+      base::MakeAbsoluteFilePath(container_dir).value());
   state.Set("annotations", std::move(annotations));
   std::string state_json;
   if (!base::JSONWriter::WriteWithOptions(
@@ -399,6 +451,8 @@ bool RunOneHook(const OciHook& hook,
     args[0] = hook.path;
   }
 
+  DVLOG(1) << "Running " << hook_type << " " << hook;
+
   base::Process child = base::LaunchProcess(args, options);
   write_pipe_read_fd.reset();
   if (!base::WriteFileDescriptor(write_pipe_write_fd.get(),
@@ -424,13 +478,13 @@ bool RunOneHook(const OciHook& hook,
 
 bool RunHooks(const std::vector<OciHook>& hooks,
               int child_pid,
+              const base::FilePath& bundle_dir,
               const base::FilePath& container_dir,
-              const std::string& runfs,
               const std::string& hook_stage,
               const std::string& status) {
   bool success = true;
   std::string container_state =
-      ContainerState(child_pid, container_dir, runfs, status);
+      ContainerState(child_pid, bundle_dir, container_dir, status);
   for (const auto& hook : hooks)
     success &= RunOneHook(hook, hook_stage, container_state);
   return success;
@@ -438,10 +492,10 @@ bool RunHooks(const std::vector<OciHook>& hooks,
 
 void RunPostStopHooks(const std::vector<OciHook>& hooks,
                       int child_pid,
-                      const base::FilePath& container_dir,
-                      const std::string& runfs) {
+                      const base::FilePath& bundle_dir,
+                      const base::FilePath& container_dir) {
   if (!RunHooks(
-          hooks, child_pid, container_dir, runfs, "poststop", "stopped")) {
+          hooks, child_pid, bundle_dir, container_dir, "poststop", "stopped")) {
     LOG(WARNING) << "Error running poststop hooks";
   }
 }
@@ -457,16 +511,76 @@ int WaitForPreStartHooks(void* payload) {
   return 0;
 }
 
-// Runs an OCI image that is mounted at |container_dir|.  Blocks until the
-// program specified in config.json exits.  Returns -1 on error.
-int RunOci(const base::FilePath& container_dir,
-           const ContainerOptions& container_options) {
-  base::ScopedTempDir temp_dir;
-  base::FilePath container_config_file = container_dir.Append("config.json");
+void CleanUpContainer(const base::FilePath& container_dir) {
+  std::vector<base::FilePath> mountpoints = run_oci::GetMountpointsUnder(
+      container_dir, base::FilePath(kProcSelfMountsPath));
+
+  // Sort the list of mountpoints. Since this is a tree structure, unmounting
+  // recursively can be achieved by traversing this list in inverse
+  // lexicographic order.
+  std::sort(
+      mountpoints.begin(),
+      mountpoints.end(),
+      [](const base::FilePath& a, const base::FilePath& b) { return b < a; });
+  for (const auto& mountpoint : mountpoints) {
+    if (umount2(mountpoint.value().c_str(), MNT_DETACH))
+      PLOG(ERROR) << "Failed to unmount " << mountpoint.value();
+  }
+
+  if (!base::DeleteFile(container_dir, true /*recursive*/)) {
+    PLOG(ERROR) << "Failed to clean up the container directory "
+                << container_dir.value();
+  }
+}
+
+// Runs an OCI image with the configuration found at |bundle_dir|.
+// If |inplace| is true, |bundle_dir| will also be used to mount the rootfs.
+// Otherwise, a new directory under kRunContainersPath will be created.
+// If |detach_after_start| is true, blocks until the program specified in
+// config.json exits, otherwise blocks until after the post-start hooks have
+// finished.
+// Returns -1 on error.
+int RunOci(const base::FilePath& bundle_dir,
+           const std::string& container_id,
+           const ContainerOptions& container_options,
+           bool inplace,
+           bool detach_after_start) {
+  base::FilePath container_dir;
+  const base::FilePath container_config_file =
+      bundle_dir.Append(kConfigJsonFilename);
 
   OciConfigPtr oci_config(new OciConfig());
   if (!OciConfigFromFile(container_config_file, oci_config)) {
     return -1;
+  }
+
+  DeferredRunner cleanup;
+
+  if (detach_after_start) {
+    container_dir = base::FilePath(kRunContainersPath).Append(container_id);
+    if (inplace) {
+      if (container_dir != bundle_dir) {
+        LOG(ERROR) << "With --inplace, the directory where config.json is "
+                      "located must be "
+                   << container_dir.value();
+        return -1;
+      }
+    } else {
+      LOG(ERROR)
+          << "Non-inplace mode not implemented yet. Please pass in --inplace.";
+      return -1;
+    }
+
+    cleanup.Reset(base::Bind(CleanUpContainer, container_dir));
+
+    // Create an empty file, just to tag this container as being
+    // run_oci-managed.
+    if (base::WriteFile(container_dir.Append(kRunOciFilename), "", 0) != 0) {
+      LOG(ERROR) << "Failed to create .run_oci tag file";
+      return -1;
+    }
+  } else {
+    container_dir = bundle_dir;
   }
 
   ContainerConfigPtr config(container_config_create(),
@@ -558,43 +672,149 @@ int RunOci(const base::FilePath& container_dir,
   }
 
   int child_pid = container_pid(container.get());
-  const char *runfs_cstr = container_root(container.get());
-  std::string runfs(runfs_cstr != nullptr ? runfs_cstr
-                                          : oci_config->root.path.c_str());
+  if (detach_after_start) {
+    const base::FilePath container_pid_path =
+        container_dir.Append(kContainerPidFilename);
+    std::string child_pid_str = base::StringPrintf("%d\n", child_pid);
+    if (base::WriteFile(container_pid_path,
+                        child_pid_str.c_str(),
+                        child_pid_str.size()) != child_pid_str.size()) {
+      PLOG(ERROR) << "Failed to write the container PID to "
+                  << container_pid_path.value();
+      return -1;
+    }
+  }
 
   // The callback is run in the same stack, so base::ConstRef() is safe.
   DeferredRunner post_stop_hooks(
       base::Bind(&RunPostStopHooks,
                  base::ConstRef(oci_config->post_stop_hooks),
                  child_pid,
-                 container_dir,
-                 runfs));
+                 bundle_dir,
+                 container_dir));
 
   if (pre_start_hook_state) {
     pre_start_hook_state->reached_pipe.Wait();
     if (!RunHooks(oci_config->pre_start_hooks,
                   child_pid,
+                  bundle_dir,
                   container_dir,
-                  runfs,
                   "prestart",
                   "created")) {
       LOG(ERROR) << "Failed to run all prestart hooks";
-      return container_kill(container.get());
+      container_kill(container.get());
+      return -1;
     }
     pre_start_hook_state->ready_pipe.Signal();
   }
 
   if (!RunHooks(oci_config->post_start_hooks,
                 child_pid,
+                bundle_dir,
                 container_dir,
-                runfs,
                 "poststart",
                 "running")) {
     LOG(ERROR) << "Error running poststart hooks";
-    return container_kill(container.get());
+    container_kill(container.get());
+    return -1;
+  }
+
+  if (detach_after_start) {
+    // The container has reached a steady state. We can now return and let the
+    // container keep running. We don't want to run the post-stop hooks now, but
+    // until the user actually deletes the container.
+    post_stop_hooks.Reset();
+    cleanup.Reset();
+    return 0;
   }
 
   return container_wait(container.get());
+}
+
+bool GetContainerPID(const std::string& container_id, pid_t* pid_out) {
+  const base::FilePath container_dir =
+      base::FilePath(kRunContainersPath).Append(container_id);
+  const base::FilePath container_pid_path =
+      container_dir.Append(kContainerPidFilename);
+
+  std::string container_pid_str;
+  if (!base::ReadFileToStringWithMaxSize(
+          container_pid_path, &container_pid_str, kMaxPidFileLength)) {
+    PLOG(ERROR) << "Failed to read " << container_pid_path.value();
+    return false;
+  }
+
+  int container_pid;
+  if (!base::StringToInt(
+          base::TrimWhitespaceASCII(container_pid_str, base::TRIM_ALL),
+          &container_pid)) {
+    LOG(ERROR) << "Failed to convert the container pid to a number";
+    return false;
+  }
+
+  if (!base::PathExists(container_dir.Append(kRunOciFilename))) {
+    LOG(ERROR) << "Container " << container_id << " is not run_oci-managed";
+    return false;
+  }
+
+  *pid_out = static_cast<pid_t>(container_pid);
+  return true;
+}
+
+int OciKill(const std::string& container_id, int kill_signal) {
+  pid_t container_pid;
+  if (!GetContainerPID(container_id, &container_pid))
+    return -1;
+
+  if (kill(container_pid, kill_signal) == -1) {
+    PLOG(ERROR) << "Failed to send signal";
+    return -1;
+  }
+
+  return 0;
+}
+
+base::FilePath GetBundlePath(const base::FilePath& container_config_file) {
+  if (!base::IsLink(container_config_file)) {
+    // If the config.json is not a symlink, it was created using --inplace.
+    return container_config_file.DirName();
+  }
+  base::FilePath bundle_path;
+  if (!base::ReadSymbolicLink(container_config_file, &bundle_path)) {
+    PLOG(ERROR) << "Failed to read symlink " << container_config_file.value();
+    return base::FilePath();
+  }
+  return bundle_path.DirName();
+}
+
+int OciDestroy(const std::string& container_id) {
+  const base::FilePath container_dir =
+      base::FilePath(kRunContainersPath).Append(container_id);
+  const base::FilePath container_config_file =
+      container_dir.Append(kConfigJsonFilename);
+
+  pid_t container_pid;
+  if (!GetContainerPID(container_id, &container_pid))
+    return -1;
+
+  OciConfigPtr oci_config(new OciConfig());
+  if (!OciConfigFromFile(container_config_file, oci_config)) {
+    return -1;
+  }
+
+  if (kill(container_pid, 0) != -1 || errno != ESRCH) {
+    PLOG(ERROR) << "Container " << container_id << " is still running.";
+    return -1;
+  }
+
+  // We are committed to cleaning everything up now.
+  RunPostStopHooks(oci_config->post_stop_hooks,
+                   container_pid,
+                   GetBundlePath(container_config_file),
+                   container_dir);
+  CleanUpContainer(container_dir);
+
+  return 0;
 }
 
 const struct option longopts[] = {
@@ -604,29 +824,77 @@ const struct option longopts[] = {
   { "alt_syscall", required_argument, NULL, 's' },
   { "securebits_skip_mask", required_argument, NULL, 'B' },
   { "use_current_user", no_argument, NULL, 'u' },
+  { "signal", required_argument, NULL, 'S' },
+  { "container_path", required_argument, NULL, 'c' },
+  { "inplace", no_argument, NULL, 128 },
   { 0, 0, 0, 0 },
 };
 
 void print_help(const char *argv0) {
-  printf("usage: %s [OPTIONS] <container path> -- [Command Args]\n", argv0);
-  printf("  -b, --bind_mount=<A>:<B>       Mount path A to B container.\n");
-  printf("  -h, --help                     Print this message and exit.\n");
-  printf("  -p, --cgroup_parent=<NAME>     Set parent cgroup for container.\n");
-  printf("  -s, --alt_syscall=<NAME>       Set the alt-syscall table.\n");
-  printf("  -B, --securebits_skip_mask=<MASK> Skips setting securebits in\n");
-  printf("                                 <mask> when restricting caps.\n");
-  printf("  -u, --use_current_user         Map the current user/group only.\n");
-  printf("  -i, --dont_run_as_init         Do not run the command as init.\n");
-  printf("\n");
+  printf(
+      "usage: %1$s [OPTIONS] <command> <container id>\n"
+      "Commands:\n"
+      "  run     creates and runs the container in the foreground.\n"
+      "          %1$s will remain alive until the container's\n"
+      "          init process exits and all resources are freed.\n"
+      "          Running a container in this way does not support\n"
+      "          the 'kill' or 'destroy' commands\n"
+      "  start   creates and runs the container in the background.\n"
+      "          The container can then be torn down with the 'kill'\n"
+      "          command, and resources freed with the 'delete' command.\n"
+      "  kill    sends the specified signal to the container's init.\n"
+      "          the post-stop hooks will not be run at this time.\n"
+      "  destroy runs the post-stop hooks and releases all resources.\n"
+      "\n"
+      "Global options:\n"
+      "  -h, --help                     Print this message and exit.\n"
+      "\n"
+      "run/start:\n"
+      "\n"
+      "  %1$s {run,start} [OPTIONS] <container id> [-- <args>]\n"
+      "\n"
+      "Options for run and start:\n"
+      "  -c, --container_path=<PATH>    The path of the container.\n"
+      "                                 Defaults to $PWD.\n"
+      "  -b, --bind_mount=<A>:<B>       Mount path A to B container.\n"
+      "  -p, --cgroup_parent=<NAME>     Set parent cgroup for container.\n"
+      "  -s, --alt_syscall=<NAME>       Set the alt-syscall table.\n"
+      "  -B, --securebits_skip_mask=<MASK> Skips setting securebits in\n"
+      "                                 <mask> when restricting caps.\n"
+      "  -u, --use_current_user         Map the current user/group only.\n"
+      "  -i, --dont_run_as_init         Do not run the command as init.\n"
+      "\n"
+      "Options for start:\n"
+      "  --inplace                      The container path is the same\n"
+      "                                 as the state path. Useful if the\n"
+      "                                 config.json file needs to be\n"
+      "                                 modified prior to running.\n"
+      "\n"
+      "kill:\n"
+      "\n"
+      "  %1$s kill [OPTIONS] <container id>\n"
+      "\n"
+      "Options for kill:\n"
+      "  -S, --signal=<SIGNAL>          The signal to send to init.\n"
+      "                                 Defaults to TERM.\n"
+      "destroy:\n"
+      "\n"
+      "  %1$s destroy <container id>\n"
+      "\n",
+      argv0);
 }
 
 }  // anonymous namespace
 
 int main(int argc, char **argv) {
   ContainerOptions container_options;
+  base::FilePath bundle_dir = base::MakeAbsoluteFilePath(base::FilePath("."));
   int c;
+  int kill_signal = SIGTERM;
+  bool inplace = false;
 
-  while ((c = getopt_long(argc, argv, "b:B:hp:s:uU", longopts, NULL)) != -1) {
+  while ((c = getopt_long(argc, argv, "b:B:c:hp:s:S:uU", longopts, NULL)) !=
+         -1) {
     switch (c) {
     case 'b': {
       std::istringstream ss(optarg);
@@ -649,6 +917,9 @@ int main(int argc, char **argv) {
         return -1;
       }
       break;
+    case 'c':
+      bundle_dir = base::MakeAbsoluteFilePath(base::FilePath(optarg));
+      break;
     case 'u':
       container_options.use_current_user = true;
       break;
@@ -658,12 +929,24 @@ int main(int argc, char **argv) {
     case 's':
       container_options.alt_syscall_table = optarg;
       break;
+    case 'S': {
+      auto it = kSignalMap.find(optarg);
+      if (it == kSignalMap.end()) {
+        LOG(ERROR) << "Invalid signal name '" << optarg << "'";
+        return -1;
+      }
+      kill_signal = it->second;
+      break;
+    }
     case 'i':
       container_options.run_as_init = false;
       break;
     case 'h':
       print_help(argv[0]);
       return 0;
+    case 128:  // inplace
+      inplace = true;
+      break;
     default:
       print_help(argv[0]);
       return 1;
@@ -671,14 +954,41 @@ int main(int argc, char **argv) {
   }
 
   if (optind >= argc) {
-    LOG(ERROR) << "Container path is required.";
+    LOG(ERROR) << "Command is required.";
     print_help(argv[0]);
     return -1;
   }
+  std::string command(argv[optind++]);
 
-  int path_arg_index = optind;
-  for (optind++; optind < argc; optind++)
+  if (optind >= argc) {
+    LOG(ERROR) << "Container id is required.";
+    print_help(argv[0]);
+    return -1;
+  }
+  std::string container_id(argv[optind++]);
+
+  for (; optind < argc; optind++)
     container_options.extra_program_args.push_back(std::string(argv[optind]));
 
-  return RunOci(base::FilePath(argv[path_arg_index]), container_options);
+  if (command == "run") {
+    return RunOci(bundle_dir,
+                  container_id,
+                  container_options,
+                  true /*inplace*/,
+                  false /*detach_after_start*/);
+  } else if (command == "start") {
+    return RunOci(bundle_dir,
+                  container_id,
+                  container_options,
+                  inplace,
+                  true /*detach_after_start*/);
+  } else if (command == "kill") {
+    return OciKill(container_id, kill_signal);
+  } else if (command == "destroy") {
+    return OciDestroy(container_id);
+  } else {
+    LOG(ERROR) << "Unknown command '" << command << "'";
+    print_help(argv[0]);
+    return -1;
+  }
 }
