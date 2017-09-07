@@ -201,6 +201,8 @@ std::string ShutdownReasonToString(ShutdownReason reason) {
       return "system-update";
     case ShutdownReason::EXIT_DARK_RESUME_FAILED:
       return "exit-dark-resume-failed";
+    case ShutdownReason::UNKNOWN:
+      return "unknown";
   }
   NOTREACHED() << "Unhandled shutdown reason " << reason;
   return "unknown";

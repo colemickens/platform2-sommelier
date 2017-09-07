@@ -1177,33 +1177,64 @@ void Daemon::HandleGetTpmStatusResponse(dbus::Response* response) {
 
 std::unique_ptr<dbus::Response> Daemon::HandleRequestShutdownMethod(
     dbus::MethodCall* method_call) {
+  // Both arguments are optional.
+  dbus::MessageReader reader(method_call);
+  int32_t arg = 0;
+  ShutdownReason reason = ShutdownReason::UNKNOWN;
+  if (reader.PopInt32(&arg)) {
+    switch (static_cast<RequestShutdownReason>(arg)) {
+      case REQUEST_SHUTDOWN_FOR_USER:
+        reason = ShutdownReason::USER_REQUEST;
+        break;
+      case REQUEST_SHUTDOWN_OTHER:
+        reason = ShutdownReason::UNKNOWN;
+        break;
+      default:
+        LOG(WARNING) << "Got unknown shutdown reason " << arg;
+    }
+  }
+
+  std::string description;
+  reader.PopString(&description);
+
   LOG(INFO) << "Got " << kRequestShutdownMethod << " message from "
-            << method_call->GetSender();
-  ShutDown(ShutdownMode::POWER_OFF, ShutdownReason::USER_REQUEST);
+            << method_call->GetSender() << " with reason "
+            << ShutdownReasonToString(reason) << " (" << description << ")";
+
+  ShutDown(ShutdownMode::POWER_OFF, reason);
   return std::unique_ptr<dbus::Response>();
 }
 
 std::unique_ptr<dbus::Response> Daemon::HandleRequestRestartMethod(
     dbus::MethodCall* method_call) {
-  LOG(INFO) << "Got " << kRequestRestartMethod << " message from "
-            << method_call->GetSender();
-  ShutdownReason shutdown_reason = ShutdownReason::USER_REQUEST;
-
+  // Both arguments are optional.
   dbus::MessageReader reader(method_call);
   int32_t arg = 0;
+  ShutdownReason reason = ShutdownReason::UNKNOWN;
   if (reader.PopInt32(&arg)) {
     switch (static_cast<RequestRestartReason>(arg)) {
       case REQUEST_RESTART_FOR_USER:
-        shutdown_reason = ShutdownReason::USER_REQUEST;
+        reason = ShutdownReason::USER_REQUEST;
         break;
       case REQUEST_RESTART_FOR_UPDATE:
-        shutdown_reason = ShutdownReason::SYSTEM_UPDATE;
+        reason = ShutdownReason::SYSTEM_UPDATE;
+        break;
+      case REQUEST_RESTART_OTHER:
+        reason = ShutdownReason::UNKNOWN;
         break;
       default:
         LOG(WARNING) << "Got unknown restart reason " << arg;
     }
   }
-  ShutDown(ShutdownMode::REBOOT, shutdown_reason);
+
+  std::string description;
+  reader.PopString(&description);
+
+  LOG(INFO) << "Got " << kRequestRestartMethod << " message from "
+            << method_call->GetSender() << " with reason "
+            << ShutdownReasonToString(reason) << " (" << description << ")";
+
+  ShutDown(ShutdownMode::REBOOT, reason);
   return std::unique_ptr<dbus::Response>();
 }
 

@@ -716,6 +716,8 @@ TEST_F(DaemonTest, RequestShutdown) {
   async_commands_.clear();
   sync_commands_.clear();
   dbus::MethodCall method_call(kPowerManagerInterface, kRequestShutdownMethod);
+  dbus::MessageWriter message_writer(&method_call);
+  message_writer.AppendInt32(REQUEST_SHUTDOWN_FOR_USER);
   ASSERT_TRUE(CallSyncDBusMethod(&method_call).get());
 
   EXPECT_TRUE(internal_backlight_controller_->shutting_down());
@@ -800,8 +802,7 @@ TEST_F(DaemonTest, DeferShutdownWhileFlashromRunning) {
   ASSERT_TRUE(base::DeleteFile(kFlashromPidDir, true /* recursive */));
   ASSERT_TRUE(daemon_->TriggerRetryShutdownTimerForTesting());
   ASSERT_EQ(1, async_commands_.size());
-  EXPECT_EQ(GetShutdownCommand(ShutdownReason::USER_REQUEST),
-            async_commands_[0]);
+  EXPECT_EQ(GetShutdownCommand(ShutdownReason::UNKNOWN), async_commands_[0]);
 
   // The timer should've been stopped.
   EXPECT_FALSE(daemon_->TriggerRetryShutdownTimerForTesting());

@@ -286,7 +286,7 @@ enum class ButtonState {
   REPEAT,
 };
 
-// Reasons for the system being shut down.
+// Reasons for the system being shut down or rebooted.
 // Note: These are reported in a histogram and must not be renumbered.
 enum class ShutdownReason {
   // Explicit user request (e.g. holding power button).
@@ -303,6 +303,8 @@ enum class ShutdownReason {
   SYSTEM_UPDATE = 5,
   // Failed to properly recover from dark resume.
   EXIT_DARK_RESUME_FAILED = 6,
+  // Unclassified external request sent to powerd by another process.
+  UNKNOWN = 7,
 };
 
 // Returns human-readable descriptions of enum values.
