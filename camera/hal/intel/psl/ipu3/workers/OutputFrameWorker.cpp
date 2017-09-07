@@ -246,29 +246,34 @@ status_t OutputFrameWorker::postRun()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
 
+    status_t status = OK;
+    int angle = 0;
+
     if (mMsg == nullptr) {
         LOGE("Message null - Fix the bug");
-        return UNKNOWN_ERROR;
+        status = UNKNOWN_ERROR;
+        goto exit;
     }
 
     Camera3Request* request;
     CameraStream *stream;
-    status_t status = UNKNOWN_ERROR;
 
     request = mMsg->cbMetadataMsg.request;
 
     if (mAllDone) {
         mAllDone = false;
-        return OK;
+        goto exit;
     }
 
     if (mOutputBuffer == nullptr) {
         LOGE("No buffer provided for captureDone");
-        return UNKNOWN_ERROR;
+        status = UNKNOWN_ERROR;
+        goto exit;
     }
     if (request == nullptr) {
         LOGE("No request provided for captureDone");
-        return UNKNOWN_ERROR;
+        status = UNKNOWN_ERROR;
+        goto exit;
     }
 
     stream = mOutputBuffer->getOwner();
@@ -280,11 +285,17 @@ status_t OutputFrameWorker::postRun()
     if (mPostProcessType & PROCESS_JPEG_ENCODING) {
         // JPEG encoding
         status = convertJpeg(mCameraBuffers[0], mOutputBuffer, request);
-        CheckError((status != OK), status, "@%s, JPEG conversion failed! [%d]!", __FUNCTION__, status);
+        if (status != OK) {
+            LOGE("@%s, JPEG conversion failed! [%d]!", __FUNCTION__, status);
+            goto exit;
+        }
         mOutputBuffer->dumpImage(CAMERA_DUMP_JPEG, ".jpg");
     } else if (mPostProcessType & PROCESS_DOWNSCALING) {
         status = scaleFrame(mCameraBuffers[0], mOutputBuffer);
-        CheckError((status != OK), status, "@%s, Scale frame failed! [%d]!", __FUNCTION__, status);
+        if (status != OK) {
+            LOGE("@%s, Scale frame failed! [%d]!", __FUNCTION__, status);
+            goto exit;
+        }
     }
 
     // Dump the buffers if enabled in flags
@@ -307,11 +318,12 @@ status_t OutputFrameWorker::postRun()
         mCameraBuffers.erase(mCameraBuffers.begin());
     }
 
+exit:
     /* Prevent from using old data */
     mMsg = nullptr;
     mOutputBuffer = nullptr;
 
-    return OK;
+    return status;
 }
 
 /**
