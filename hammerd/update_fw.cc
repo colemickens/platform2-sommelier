@@ -267,35 +267,51 @@ SectionName FirmwareUpdater::CurrentSection() const {
   return SectionName::Invalid;
 }
 
-bool FirmwareUpdater::NeedsUpdate(SectionName section_name) const {
+bool FirmwareUpdater::UpdatePossible(SectionName section_name) const {
   // section_name refers to the section about which we are inquiring.
-  // section refers to the particular section of the local firmware file.
+  // local_section refers to the particular section of the local firmware file.
+  // CurrentSection() refers to the currently-running section.
+  SectionInfo local_section = sections_[static_cast<int>(section_name)];
+
+  if (section_name == SectionName::RW) {
+    LOG(INFO) << "UpdatePossible(" << ToString(section_name) << ")?";
+    LOG(INFO) << "UpdatePossible: rollback [EC] " << targ_.min_rollback
+              << " vs. " << local_section.rollback << " [update]";
+    LOG(INFO) << "UpdatePossible: key_version [EC] " << targ_.key_version
+              << " vs. " << local_section.key_version << " [update]";
+
+    return (targ_.min_rollback <= local_section.rollback &&
+            targ_.key_version == local_section.key_version);
+  } else {
+    // RO updates will only be allowed for Dogfood devices (i.e. write-protect
+    // is disabled). In this case, updates are possible regardless of rollback
+    // and key version.
+    return true;
+  }
+}
+
+bool FirmwareUpdater::VersionMismatch(SectionName section_name) const {
+  // section_name refers to the section about which we are inquiring.
+  // local_section refers to the particular section of the local firmware file.
   // CurrentSection() refers to the currently-running section.
   //
   // targ_ header only provides information about the non-running section,
   // so the way we detect the version string depends on CurrentSection().
-  if (section_name == SectionName::RW) {
-    SectionInfo section = sections_[static_cast<int>(section_name)];
-    const char* rw_version =
-        CurrentSection() == SectionName::RW ? version_.c_str() : targ_.version;
+  SectionInfo local_section = sections_[static_cast<int>(section_name)];
 
-    LOG(INFO) << "NeedsUpdate(" << ToString(section_name) << ")?";
-    LOG(INFO) << "NeedsUpdate: version [EC] " << rw_version << " vs. "
-              << section.version << " [update]";
-    LOG(INFO) << "NeedsUpdate: rollback [EC] " << targ_.min_rollback << " vs. "
-              << section.rollback << " [update]";
-    LOG(INFO) << "NeedsUpdate: key_version [EC] " << targ_.key_version
-              << " vs. " << section.key_version << " [update]";
+  const char* rw_version =
+      CurrentSection() == SectionName::RW ? version_.c_str() : targ_.version;
+  const char* ro_version =
+      CurrentSection() == SectionName::RO ? version_.c_str() : targ_.version;
+  const char* version =
+      section_name == SectionName::RW ? rw_version : ro_version;
 
-    // TODO(akahuang): We might still want to update even the version is
-    // identical. Add a flag if we have the request in the future.
-    return (targ_.min_rollback <= section.rollback &&
-            targ_.key_version == section.key_version &&
-            strncmp(rw_version, section.version, sizeof(section.version)) != 0);
-  } else {
-    // TODO(akahuang): Confirm the condition of RO update.
-    return false;
-  }
+  // TODO(akahuang): We might still want to update even the version is
+  // identical. Add a flag if we have the request in the future.
+  LOG(INFO) << "VersionMismatch: version [EC] " << version << " vs. "
+            << local_section.version << " [update]";
+  return strncmp(version, local_section.version,
+                 sizeof(local_section.version)) != 0;
 }
 
 bool FirmwareUpdater::IsSectionLocked(SectionName section_name) const {

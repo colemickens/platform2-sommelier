@@ -327,45 +327,83 @@ TEST_F(FirmwareUpdaterTest, CurrentSection) {
   ASSERT_EQ(fw_updater_->CurrentSection(), SectionName::Invalid);
 }
 
-TEST_F(FirmwareUpdaterTest, NeedsUpdate) {
+TEST_F(FirmwareUpdaterTest, UpdatePossible) {
   fw_updater_->sections_ = {
       SectionInfo(SectionName::RO, 0x0, 0x10000, "RO MOCK VERSION", -1, -1),
       SectionInfo(SectionName::RW, 0x11000, 0xA0, "RW MOCK VERSION", 35, 1)};
+
   // Writable offset is at RW, so current section is RO.
   fw_updater_->targ_.offset = 0x11000;
 
-  // A case that needs to update RW.
-  snprintf(fw_updater_->targ_.version,
-           sizeof(fw_updater_->targ_.version),
-           "ANOTHER VERSION");
-  fw_updater_->targ_.min_rollback = 35;
-  fw_updater_->targ_.key_version = 1;
-  ASSERT_EQ(fw_updater_->NeedsUpdate(SectionName::RW), true);
-
-  // The key version is not the same.
-  snprintf(fw_updater_->targ_.version,
-           sizeof(fw_updater_->targ_.version),
-           "ANOTHER VERSION");
-  fw_updater_->targ_.min_rollback = 35;
-  fw_updater_->targ_.key_version = 2;
-  ASSERT_EQ(fw_updater_->NeedsUpdate(SectionName::RW), false);
-
-  // Minimum rollback is larger than the updated image.
-  snprintf(fw_updater_->targ_.version,
-           sizeof(fw_updater_->targ_.version),
-           "ANOTHER VERSION");
-  fw_updater_->targ_.min_rollback = 40;
-  fw_updater_->targ_.key_version = 1;
-  ASSERT_EQ(fw_updater_->NeedsUpdate(SectionName::RW), false);
-
-  // The version is the same.
+  // Everything is the same -- update should be possible.
   snprintf(fw_updater_->targ_.version,
            sizeof(fw_updater_->targ_.version),
            "%s",
            fw_updater_->sections_[1].version);
   fw_updater_->targ_.min_rollback = 35;
   fw_updater_->targ_.key_version = 1;
-  ASSERT_EQ(fw_updater_->NeedsUpdate(SectionName::RW), false);
+  ASSERT_EQ(fw_updater_->UpdatePossible(SectionName::RW), true);
+
+  // Version is different -- update should be possible.
+  snprintf(fw_updater_->targ_.version,
+           sizeof(fw_updater_->targ_.version),
+           "ANOTHER VERSION");
+  fw_updater_->targ_.min_rollback = 35;
+  fw_updater_->targ_.key_version = 1;
+  ASSERT_EQ(fw_updater_->UpdatePossible(SectionName::RW), true);
+
+  // Minimum rollback is larger than the updated image -- update not possible.
+  snprintf(fw_updater_->targ_.version,
+           sizeof(fw_updater_->targ_.version),
+           "ANOTHER VERSION");
+  fw_updater_->targ_.min_rollback = 40;
+  fw_updater_->targ_.key_version = 1;
+  ASSERT_EQ(fw_updater_->UpdatePossible(SectionName::RW), false);
+
+  // The key version is not the same -- update not possible.
+  snprintf(fw_updater_->targ_.version,
+           sizeof(fw_updater_->targ_.version),
+           "ANOTHER VERSION");
+  fw_updater_->targ_.min_rollback = 35;
+  fw_updater_->targ_.key_version = 2;
+  ASSERT_EQ(fw_updater_->UpdatePossible(SectionName::RW), false);
+
+  // Writable offset is at RO, so current section is RW.
+  fw_updater_->targ_.offset = 0x0;
+
+  // RO updates should always be possible.
+  snprintf(fw_updater_->targ_.version,
+           sizeof(fw_updater_->targ_.version),
+           "ANOTHER VERSION");
+  fw_updater_->targ_.min_rollback = 40;
+  fw_updater_->targ_.key_version = 2;
+  ASSERT_EQ(fw_updater_->UpdatePossible(SectionName::RO), true);
+}
+
+TEST_F(FirmwareUpdaterTest, VersionMismatch) {
+  fw_updater_->sections_ = {
+      SectionInfo(SectionName::RO, 0x0, 0x10000, "RO MOCK VERSION", -1, -1),
+      SectionInfo(SectionName::RW, 0x11000, 0xA0, "RW MOCK VERSION", 35, 1)};
+
+  // Writable offset is at RW, so current section is RO.
+  fw_updater_->targ_.offset = 0x11000;
+
+  // Version is the same.
+  snprintf(fw_updater_->targ_.version,
+           sizeof(fw_updater_->targ_.version),
+           "%s",
+           fw_updater_->sections_[1].version);
+  fw_updater_->targ_.min_rollback = 35;
+  fw_updater_->targ_.key_version = 1;
+  ASSERT_EQ(fw_updater_->VersionMismatch(SectionName::RW), false);
+
+  // Version is different.
+  snprintf(fw_updater_->targ_.version,
+           sizeof(fw_updater_->targ_.version),
+           "ANOTHER VERSION");
+  fw_updater_->targ_.min_rollback = 35;
+  fw_updater_->targ_.key_version = 1;
+  ASSERT_EQ(fw_updater_->VersionMismatch(SectionName::RW), true);
 }
 
 // Test to transfer RW section.

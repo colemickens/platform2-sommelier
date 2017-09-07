@@ -168,10 +168,16 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(
   // If an update is needed, request a hammer reset. Let the next invocation
   // of Run handle the update.
   if (fw_updater_->CurrentSection() == SectionName::RW) {
-    if (fw_updater_->NeedsUpdate(SectionName::RW)) {
-      LOG(INFO) << "RW section needs update.";
-      NotifyUpdateStarted();
-      return HammerUpdater::RunStatus::kNeedReset;
+    if (fw_updater_->VersionMismatch(SectionName::RW)) {
+      if (fw_updater_->UpdatePossible(SectionName::RW)) {
+        LOG(INFO) << "RW section needs update. Rebooting to RO.";
+        NotifyUpdateStarted();
+        return HammerUpdater::RunStatus::kNeedReset;
+      } else {
+        LOG(INFO) << "RW section needs update, but local image is "
+                  << "incompatible. Continuing to post-RW process; maybe "
+                  << "RO can be updated.";
+      }
     }
     return PostRWProcess();
   }
@@ -182,12 +188,18 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce(
   //   (2) RW section needs updating,
   // then continue with the update procedure.
   if (need_inject_entropy || post_rw_jump ||
-      fw_updater_->NeedsUpdate(SectionName::RW)) {
+      (fw_updater_->VersionMismatch(SectionName::RW) &&
+       fw_updater_->UpdatePossible(SectionName::RW))) {
     NotifyUpdateStarted();
     // If we have just finished a jump to RW, but we're still in RO, then
     // we should log the failure.
     if (post_rw_jump) {
       LOG(ERROR) << "Failed to jump to RW. Need to update RW section.";
+      if (!fw_updater_->UpdatePossible(SectionName::RW)) {
+        LOG(ERROR) << "RW section is unusable, but local image is "
+                   << "incompatible. Giving up.";
+        return HammerUpdater::RunStatus::kFatalError;
+      }
     }
 
     // EC is still running in RO section. Send "Stay in RO" command before

@@ -36,9 +36,13 @@ BRILLO_EXPORT SectionName FirmwareUpdater_CurrentSection(
     FirmwareUpdater* updater) {
   return updater->CurrentSection();
 }
-BRILLO_EXPORT bool FirmwareUpdater_NeedsUpdate(
+BRILLO_EXPORT bool FirmwareUpdater_UpdatePossible(
     FirmwareUpdater* updater, SectionName section_name) {
-  return updater->NeedsUpdate(section_name);
+  return updater->UpdatePossible(section_name);
+}
+BRILLO_EXPORT bool FirmwareUpdater_VersionMismatch(
+    FirmwareUpdater* updater, SectionName section_name) {
+  return updater->VersionMismatch(section_name);
 }
 BRILLO_EXPORT bool FirmwareUpdater_TransferImage(
     FirmwareUpdater* updater, SectionName section_name) {

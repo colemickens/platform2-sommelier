@@ -34,7 +34,8 @@ class MockFirmwareUpdater : public FirmwareUpdaterInterface {
                     size_t resp_size));
   MOCK_METHOD1(TransferImage, bool(SectionName section_name));
   MOCK_CONST_METHOD0(CurrentSection, SectionName());
-  MOCK_CONST_METHOD1(NeedsUpdate, bool(SectionName section_name));
+  MOCK_CONST_METHOD1(UpdatePossible, bool(SectionName section_name));
+  MOCK_CONST_METHOD1(VersionMismatch, bool(SectionName section_name));
   MOCK_CONST_METHOD1(IsSectionLocked, bool(SectionName section_name));
   MOCK_METHOD1(UnLockSection, bool(SectionName section_name));
   MOCK_CONST_METHOD0(IsRollbackLocked, bool());

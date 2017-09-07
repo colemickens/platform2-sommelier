@@ -214,9 +214,12 @@ class FirmwareUpdaterInterface {
   // Returns the current section that EC is running. One of "RO" or "RW".
   virtual SectionName CurrentSection() const = 0;
 
-  // Determines whether the given section needs updating.  Returns an accurate
-  // answer regardless of which section is currently running.
-  virtual bool NeedsUpdate(SectionName section_name) const = 0;
+  // Determines whether it is possible to update the given section.
+  virtual bool UpdatePossible(SectionName section_name) const = 0;
+
+  // Determines whether the given section has a different firmware version
+  // from that of the local file.
+  virtual bool VersionMismatch(SectionName section_name) const = 0;
 
   // Determines the section is locked or not.
   virtual bool IsSectionLocked(SectionName section_name) const = 0;
@@ -253,7 +256,8 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
                                      size_t resp_size) override;
   bool TransferImage(SectionName section_name) override;
   SectionName CurrentSection() const override;
-  bool NeedsUpdate(SectionName section_name) const override;
+  bool UpdatePossible(SectionName section_name) const override;
+  bool VersionMismatch(SectionName section_name) const override;
   bool IsSectionLocked(SectionName section_name) const override;
   bool UnLockSection(SectionName section_name) override;
 
@@ -304,7 +308,8 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   FRIEND_TEST(FirmwareUpdaterTest, SendSubcommand_Reset);
   FRIEND_TEST(FirmwareUpdaterTest, TransferImage);
   FRIEND_TEST(FirmwareUpdaterTest, CurrentSection);
-  FRIEND_TEST(FirmwareUpdaterTest, NeedsUpdate);
+  FRIEND_TEST(FirmwareUpdaterTest, UpdatePossible);
+  FRIEND_TEST(FirmwareUpdaterTest, VersionMismatch);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FirmwareUpdater);

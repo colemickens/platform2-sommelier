@@ -31,7 +31,9 @@ BRILLO_EXPORT bool FirmwareUpdater_LoadImage(
     FirmwareUpdater* updater, std::string image);
 BRILLO_EXPORT SectionName FirmwareUpdater_CurrentSection(
     FirmwareUpdater* updater);
-BRILLO_EXPORT bool FirmwareUpdater_NeedsUpdate(
+BRILLO_EXPORT bool FirmwareUpdater_UpdatePossible(
+    FirmwareUpdater* updater, SectionName section_name);
+BRILLO_EXPORT bool FirmwareUpdater_VersionMismatch(
     FirmwareUpdater* updater, SectionName section_name);
 BRILLO_EXPORT bool FirmwareUpdater_TransferImage(
     FirmwareUpdater* updater, SectionName section_name);
