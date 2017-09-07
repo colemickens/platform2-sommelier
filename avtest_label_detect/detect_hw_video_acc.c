@@ -13,7 +13,7 @@
 
 static const char* kVideoDevicePattern = "/dev/video*";
 static const char* kJpegDevicePattern = "/dev/jpeg*";
-static const char* kDRMDevicePattern = "/dev/dri/card*";
+static const char* kDRMDevicePattern = "/dev/dri/renderD*";
 
 /* Helper function for detect_video_acc_h264.
  * A V4L2 device supports H.264 decoding, if it's
