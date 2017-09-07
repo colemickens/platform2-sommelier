@@ -203,8 +203,6 @@ AiqResults &AiqResults::operator=(const AiqResults& other)
 
 Intel3aCore::Intel3aCore(int camId):
         mCmc(nullptr),
-        mIaAiqHandle(nullptr),
-        mMkn(nullptr),
         mCameraId(camId),
         mHyperFocalDistance(2.5f),
         mEnableAiqdDataSave(false)
@@ -231,26 +229,20 @@ status_t Intel3aCore::init(int maxGridW,
     cpfData.data = aiqConf->ptr();
     cpfData.size = aiqConf->size();
 
-    mMkn = ia_mkn_init(ia_mkn_cfg_compression,
+    bool ret = mMkn.init(ia_mkn_cfg_compression,
                        MAKERNOTE_SECTION1_SIZE,
                        MAKERNOTE_SECTION2_SIZE);
-    if (mMkn == nullptr) {
-        LOGE("Error in initing makernote");
-        status = UNKNOWN_ERROR;
-    }
-    LOG2("@%s, mMkn:%p", __FUNCTION__, mMkn);
+    CheckError(ret == false, UNKNOWN_ERROR, "@%s, Error in initing makernote", __FUNCTION__);
 
-    iaErr = ia_mkn_enable(mMkn, true);
+    iaErr = mMkn.enable(true);
     if (iaErr != ia_err_none) {
         status = convertError(iaErr);
         LOGE("Error in enabling makernote: %d", status);
     }
 
-    mCmc = aiqConf->getCMCHandler();
-    if (CC_UNLIKELY(mCmc == nullptr)) {
-        LOGE("%s: CMC handler nullptr, not initialized", __FUNCTION__);
-        return NO_INIT;
-    }
+    mCmc = aiqConf->getCMC();
+    CheckError(mCmc == nullptr, NO_INIT,
+        "@%s, call getCMC() fails, not initialized", __FUNCTION__);
 
     ia_binary_data aiqdData;
     CLEAR(aiqdData);
@@ -262,23 +254,19 @@ status_t Intel3aCore::init(int maxGridW,
             pAiqdData = &aiqdData;
     }
 
-    mIaAiqHandle = ia_aiq_init((ia_binary_data*)&(cpfData),
+    ret = mAiq.init((ia_binary_data*)&(cpfData),
                                 &nvmData,
                                 pAiqdData,
                                 maxGridW,
                                 maxGridH,
                                 NUM_EXPOSURES,
-                                mCmc,
-                                mMkn);
+                                mCmc->getCmcHandle(),
+                                mMkn.getMknHandle());
+    CheckError(ret == false, UNKNOWN_ERROR, "@%s, Error in IA AIQ init", __FUNCTION__);
 
-    if (!mIaAiqHandle) {
-        LOGE("Error in IA AIQ init");
-        status = UNKNOWN_ERROR;
-    }
+    LOG1("@%s: AIQ version: %s.", __FUNCTION__, mAiq.getVersion());
 
-    LOG1("@%s: AIQ version: %s.", __FUNCTION__, ia_aiq_get_version());
-
-    mHyperFocalDistance = calculateHyperfocalDistance(*mCmc);
+    mHyperFocalDistance = calculateHyperfocalDistance(*mCmc->getCmc());
     /**
      * Cache all the values we are going to need from the static metadata
      */
@@ -292,16 +280,14 @@ status_t Intel3aCore::init(int maxGridW,
 
 void Intel3aCore::deinit()
 {
-    LOG1("@%s, mEnableAiqdDataSave:%d, mIaAiqHandle:%p, mMkn:%p",
-        __FUNCTION__, mEnableAiqdDataSave, mIaAiqHandle, mMkn);
+    LOG1("@%s, mEnableAiqdDataSave:%d",
+        __FUNCTION__, mEnableAiqdDataSave);
 
     if (mEnableAiqdDataSave)
         saveAiqdData();
 
-    ia_aiq_deinit(mIaAiqHandle);
-    mIaAiqHandle = nullptr;
-    ia_mkn_uninit(mMkn);
-    mMkn = nullptr;
+    mAiq.deinit();
+    mMkn.uninit();
 }
 
 /**
@@ -357,10 +343,16 @@ void Intel3aCore::convertFromAndroidToIaCoordinates(const CameraWindow &srcWindo
     bottomright.x = srcWindow.right();
     bottomright.y = srcWindow.bottom();
 
-    topleft = ia_coordinate_convert(&androidCoord,
-                                    &iaCoord, topleft);
-    bottomright = ia_coordinate_convert(&androidCoord,
-                                        &iaCoord, bottomright);
+    topleft = mCoordinate.convert(androidCoord, iaCoord, topleft);
+    if (topleft.x < 0 || topleft.y < 0) {
+        LOGE("@%s, convert wrong, topleft: x:%d, y:%d", __FUNCTION__, topleft.x, topleft.y);
+        topleft = {srcWindow.left(), srcWindow.top()};
+    }
+    bottomright = mCoordinate.convert(androidCoord, iaCoord, bottomright);
+    if (bottomright.x < 0 || bottomright.y < 0) {
+        LOGE("@%s, convert wrong, bottomright: x:%d, y:%d", __FUNCTION__, bottomright.x, bottomright.y);
+        bottomright = {srcWindow.right(), srcWindow.bottom()};
+    }
 
     toWindow.init(topleft, bottomright, srcWindow.weight());
 }
@@ -382,10 +374,16 @@ void Intel3aCore::convertFromIaToAndroidCoordinates(const CameraWindow &srcWindo
     bottomright.x = srcWindow.right();
     bottomright.y = srcWindow.bottom();
 
-    topleft = ia_coordinate_convert(&iaCoord,
-                                    &androidCoord, topleft);
-    bottomright = ia_coordinate_convert(&iaCoord,
-                                        &androidCoord, bottomright);
+    topleft = mCoordinate.convert(iaCoord, androidCoord, topleft);
+    if (topleft.x < 0 || topleft.y < 0) {
+        LOGE("@%s, convert wrong, topleft.x:%d, topleft.y:%d", __FUNCTION__, topleft.x, topleft.y);
+        topleft = {srcWindow.left(), srcWindow.top()};
+    }
+    bottomright = mCoordinate.convert(iaCoord, androidCoord, bottomright);
+    if (bottomright.x < 0 || bottomright.y < 0) {
+        LOGE("@%s, convert wrong, bottomright.x:%d, bottomright.y:%d", __FUNCTION__, bottomright.x, bottomright.y);
+        bottomright = {srcWindow.right(), srcWindow.bottom()};
+    }
 
     toWindow.init(topleft, bottomright, srcWindow.weight());
 }
@@ -396,7 +394,7 @@ status_t Intel3aCore::setStatistics(ia_aiq_statistics_input_params *ispStatistic
     status_t status = NO_ERROR;
     ia_err iaErr = ia_err_none;
     if (ispStatistics != nullptr) {
-          iaErr = ia_aiq_statistics_set(mIaAiqHandle, ispStatistics);
+          iaErr = mAiq.statisticsSet(ispStatistics);
           status |= convertError(iaErr);
           if (CC_UNLIKELY(status != NO_ERROR)) {
               LOGE("Error setting statistics before 3A");
@@ -425,7 +423,7 @@ status_t Intel3aCore::getMakerNote(ia_mkn_trg aTarget, ia_binary_data &aBlob)
     if (aBlob.data == nullptr)
         return BAD_VALUE;
 
-    mkn = ia_mkn_prepare(mMkn, aTarget);
+    mkn = mMkn.prepare(aTarget);
 
     if (mkn.size > aBlob.size) {
         LOGE(" Provided buffer is too small (%d) for maker note (%d)",
@@ -448,8 +446,9 @@ status_t Intel3aCore::runAe(ia_aiq_statistics_input_params *ispStatistics,
     status_t status = NO_ERROR;
     ia_err iaErr = ia_err_none;
     ia_aiq_ae_results *new_ae_results = nullptr;
-    if (CC_UNLIKELY(mIaAiqHandle == nullptr)) {
-        LOGE("ia_aiq_handle does not exist.");
+
+    if (mAiq.isInitialized() == false) {
+        LOGE("@%s, aiq doesn't initialized", __FUNCTION__);
         return NO_INIT;
     }
 
@@ -457,7 +456,7 @@ status_t Intel3aCore::runAe(ia_aiq_statistics_input_params *ispStatistics,
      * First set statistics if provided
      */
     if (ispStatistics != nullptr) {
-        iaErr = ia_aiq_statistics_set(mIaAiqHandle, ispStatistics);
+        iaErr = mAiq.statisticsSet(ispStatistics);
         status |= convertError(iaErr);
         if (CC_UNLIKELY(status != NO_ERROR)) {
             LOGE("Error setting statistics before 3A");
@@ -484,8 +483,8 @@ status_t Intel3aCore::runAe(ia_aiq_statistics_input_params *ispStatistics,
         }
     }
     {
-        PERFORMANCE_HAL_ATRACE_PARAM1("ia_aiq_ae_run", 1);
-        iaErr = ia_aiq_ae_run(mIaAiqHandle, aeInputParams, &new_ae_results);
+        PERFORMANCE_HAL_ATRACE_PARAM1("mAiq.aeRun", 1);
+        iaErr = mAiq.aeRun(aeInputParams, &new_ae_results);
     }
     status |= convertError(iaErr);
     if (status != NO_ERROR) {
@@ -510,8 +509,9 @@ status_t Intel3aCore::runAf(ia_aiq_statistics_input_params *ispStatistics,
     status_t status = NO_ERROR;
     ia_err iaErr = ia_err_none;
     ia_aiq_af_results *new_af_results = nullptr;
-    if (CC_UNLIKELY(mIaAiqHandle == nullptr)) {
-        LOGE("ia_aiq_handle does not exist.");
+
+    if (mAiq.isInitialized() == false) {
+        LOGE("@%s, aiq doesn't initialized", __FUNCTION__);
         return NO_INIT;
     }
 
@@ -519,15 +519,15 @@ status_t Intel3aCore::runAf(ia_aiq_statistics_input_params *ispStatistics,
      * First set statistics if provided
      */
     if (ispStatistics != nullptr) {
-        iaErr = ia_aiq_statistics_set(mIaAiqHandle, ispStatistics);
+        iaErr = mAiq.statisticsSet(ispStatistics);
         status |= convertError(iaErr);
         if (CC_UNLIKELY(status != NO_ERROR)) {
             LOGE("Error setting statistics before AF");
         }
     }
     {
-        PERFORMANCE_HAL_ATRACE_PARAM1("ia_aiq_af_run", 1);
-        iaErr = ia_aiq_af_run(mIaAiqHandle, afInputParams, &new_af_results);
+        PERFORMANCE_HAL_ATRACE_PARAM1("mAiq.afRun", 1);
+        iaErr = mAiq.afRun(afInputParams, &new_af_results);
     }
     status |= convertError(iaErr);
     if (CC_UNLIKELY(status != NO_ERROR)) {
@@ -553,32 +553,33 @@ status_t Intel3aCore::runAwb(ia_aiq_statistics_input_params *ispStatistics,
     status_t status = NO_ERROR;
     ia_err iaErr = ia_err_none;
     ia_aiq_awb_results *new_awb_results = nullptr;
+
+    if (mAiq.isInitialized() == false) {
+        LOGE("@%s, aiq doesn't initialized", __FUNCTION__);
+        return NO_INIT;
+    }
+
     /**
      * First set statistics if provided
      */
     if (ispStatistics != nullptr) {
-        iaErr = ia_aiq_statistics_set(mIaAiqHandle, ispStatistics);
+        iaErr = mAiq.statisticsSet(ispStatistics);
         status |= convertError(iaErr);
         if (CC_UNLIKELY(status != NO_ERROR)) {
             LOGE("Error setting statistics before 3A");
         }
     }
 
-    if (CC_LIKELY(mIaAiqHandle)) {
-        if (awbInputParams != nullptr) {
-            // Todo: manual AWB
-        }
-        {
-            PERFORMANCE_HAL_ATRACE_PARAM1("ia_aiq_awb_run", 1);
-            iaErr = ia_aiq_awb_run(mIaAiqHandle, awbInputParams, &new_awb_results);
-        }
-        status |= convertError(iaErr);
-        if (CC_UNLIKELY(status != NO_ERROR)) {
-            LOGE("Error running AWB");
-        }
-    } else {
-        status = UNKNOWN_ERROR;
-        LOGE("ia_aiq_handle does not exist.");
+    if (awbInputParams != nullptr) {
+        // Todo: manual AWB
+    }
+    {
+        PERFORMANCE_HAL_ATRACE_PARAM1("mAiq.awbRun", 1);
+        iaErr = mAiq.awbRun(awbInputParams, &new_awb_results);
+    }
+    status |= convertError(iaErr);
+    if (CC_UNLIKELY(status != NO_ERROR)) {
+        LOGE("Error running AWB");
     }
 
     //storing results;
@@ -606,32 +607,33 @@ status_t Intel3aCore::runGbce(ia_aiq_statistics_input_params *ispStatistics,
     status_t status = NO_ERROR;
     ia_err iaErr = ia_err_none;
     ia_aiq_gbce_results *new_gbce_results = nullptr;
+
+    if (mAiq.isInitialized() == false) {
+        LOGE("@%s, aiq doesn't initialized", __FUNCTION__);
+        return NO_INIT;
+    }
+
     /**
      * First set statistics if provided
      */
     if (ispStatistics != nullptr) {
-        iaErr = ia_aiq_statistics_set(mIaAiqHandle, ispStatistics);
+        iaErr = mAiq.statisticsSet(ispStatistics);
         status |= convertError(iaErr);
         if (CC_UNLIKELY(status != NO_ERROR)) {
             LOGE("Error setting statistics before run GBCE");
         }
     }
 
-    if (CC_LIKELY(mIaAiqHandle)) {
-        if (gbceInputParams != nullptr) {
-            // Todo: manual GBCE?
-        }
-        {
-            PERFORMANCE_HAL_ATRACE_PARAM1("ia_aiq_gbce_run", 1);
-            iaErr = ia_aiq_gbce_run(mIaAiqHandle, gbceInputParams, &new_gbce_results);
-        }
-        status |= convertError(iaErr);
-        if (CC_UNLIKELY(status != NO_ERROR)) {
-            LOGE("Error running GBCE");
-        }
-    } else {
-        status = UNKNOWN_ERROR;
-        LOGE("ia_aiq_handle does not exist.");
+    if (gbceInputParams != nullptr) {
+        // Todo: manual GBCE?
+    }
+    {
+        PERFORMANCE_HAL_ATRACE_PARAM1("mAiq.gbceRun", 1);
+        iaErr = mAiq.gbceRun(gbceInputParams, &new_gbce_results);
+    }
+    status |= convertError(iaErr);
+    if (CC_UNLIKELY(status != NO_ERROR)) {
+        LOGE("Error running GBCE");
     }
 
     //storing results;
@@ -656,23 +658,25 @@ status_t Intel3aCore::runPa(ia_aiq_statistics_input_params *ispStatistics,
     status_t status = NO_ERROR;
     ia_err iaErr = ia_err_none;
     ia_aiq_pa_results *new_pa_results = nullptr;
-    if (CC_UNLIKELY(!mIaAiqHandle)) {
-        LOGE("ia_aiq_handle does not exist.");
-        return  UNKNOWN_ERROR;
+
+    if (mAiq.isInitialized() == false) {
+        LOGE("@%s, aiq doesn't initialized", __FUNCTION__);
+        return NO_INIT;
     }
+
     /**
      * First set statistics if provided
      */
     if (ispStatistics != nullptr) {
-        iaErr = ia_aiq_statistics_set(mIaAiqHandle, ispStatistics);
+        iaErr = mAiq.statisticsSet(ispStatistics);
         status |= convertError(iaErr);
         if (CC_UNLIKELY(status != NO_ERROR)) {
             LOGE("Error setting statistics before PA run");
         }
     }
     {
-        PERFORMANCE_HAL_ATRACE_PARAM1("ia_aiq_pa_run", 1);
-        iaErr = ia_aiq_pa_run(mIaAiqHandle, paInputParams, &new_pa_results);
+        PERFORMANCE_HAL_ATRACE_PARAM1("mAiq.paRun", 1);
+        iaErr = mAiq.paRun(paInputParams, &new_pa_results);
     }
     status |= convertError(iaErr);
     if (CC_UNLIKELY(status != NO_ERROR)) {
@@ -701,15 +705,17 @@ status_t Intel3aCore::runSa(ia_aiq_statistics_input_params *ispStatistics,
     status_t status = NO_ERROR;
     ia_err iaErr = ia_err_none;
     ia_aiq_sa_results *new_sa_results = nullptr;
-    if (CC_UNLIKELY(!mIaAiqHandle)) {
-        LOGE("ia_aiq_handle does not exist.");
-        return  UNKNOWN_ERROR;
+
+    if (mAiq.isInitialized() == false) {
+        LOGE("@%s, aiq doesn't initialized", __FUNCTION__);
+        return NO_INIT;
     }
+
     /**
      * First set statistics if provided
      */
     if (ispStatistics != nullptr) {
-        iaErr = ia_aiq_statistics_set(mIaAiqHandle, ispStatistics);
+        iaErr = mAiq.statisticsSet(ispStatistics);
         status |= convertError(iaErr);
         if (CC_UNLIKELY(status != NO_ERROR)) {
             LOGE("Error setting statistics before SA run");
@@ -717,8 +723,8 @@ status_t Intel3aCore::runSa(ia_aiq_statistics_input_params *ispStatistics,
     }
 
     {
-        PERFORMANCE_HAL_ATRACE_PARAM1("ia_aiq_sa_run", 1);
-        iaErr = ia_aiq_sa_run(mIaAiqHandle, saInputParams, &new_sa_results);
+        PERFORMANCE_HAL_ATRACE_PARAM1("mAiq.saRun", 1);
+        iaErr = mAiq.saRun(saInputParams, &new_sa_results);
     }
 
     status |= convertError(iaErr);
@@ -769,7 +775,11 @@ status_t Intel3aCore::calculateDepthOfField(const ia_aiq_af_results &afResults,
     const float DEFAULT_DOF = 5000.0f;
     dofNear = DEFAULT_DOF;
     dofFar = DEFAULT_DOF;
-    cmc_optomechanics_t *optoInfo = mCmc->cmc_parsed_optics.cmc_optomechanics;
+
+    cmc_optomechanics_t* optoInfo = nullptr;
+    if (getCmc()) {
+        optoInfo = getCmc()->cmc_parsed_optics.cmc_optomechanics;
+    }
     if (CC_UNLIKELY(focusDistance == 0.0f)) {
         // Not reporting error since this may be normal in fixed focus sensors
         return OK;
@@ -1124,11 +1134,11 @@ bool Intel3aCore::saveAiqdData()
     CLEAR(aiqdData);
     ia_err iaErr = ia_err_none;
 
-    iaErr = ia_aiq_get_aiqd_data(mIaAiqHandle, &aiqdData);
+    iaErr = mAiq.getAiqdData(&aiqdData);
     if (iaErr != ia_err_none
         || aiqdData.size == 0
         || aiqdData.data == nullptr) {
-        LOGE("call ia_aiq_get_aiqd_data() fail, err:%d, size:%d, data:%p",
+        LOGE("call getAiqdData() fail, err:%d, size:%d, data:%p",
                 iaErr, aiqdData.size, aiqdData.data);
         return false;
     }

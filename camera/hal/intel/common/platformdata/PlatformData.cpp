@@ -807,8 +807,9 @@ float PlatformData::getStepEv(int cameraId)
 /**
  * static convenience getter for cpf and cmc data.
  */
-status_t PlatformData::getCpfAndCmc(ia_binary_data &cpfData,
-                                    ia_cmc_t* &cmcData,
+status_t PlatformData::getCpfAndCmc(ia_binary_data& cpfData,
+                                    ia_cmc_t** cmcData,
+                                    uintptr_t* cmcHandle,
                                     int cameraId,
                                     string mode)
 {
@@ -820,10 +821,18 @@ status_t PlatformData::getCpfAndCmc(ia_binary_data &cpfData,
     cpfData.data = aiqConf->ptr();
     cpfData.size = aiqConf->size();
 
-    cmcData = const_cast<AiqConf*>(aiqConf)->getCMCHandler();
-    if CC_UNLIKELY(cmcData == 0) {
-        LOGE("Could not parse cmc data.");
-        return NO_INIT;
+    const Intel3aCmc* cmc = aiqConf->getCMC();
+    CheckError(cmc == nullptr, NO_INIT, "@%s, call getCMC() fails", __FUNCTION__);
+
+    if (cmcData) {
+        *cmcData = cmc->getCmc();
+        CheckError(*cmcData == nullptr, NO_INIT, "@%s, call getCmc() fails", __FUNCTION__);
+    }
+
+    if (cmcHandle) {
+        *cmcHandle = cmc->getCmcHandle();
+        CheckError(reinterpret_cast<ia_cmc_t*>(*cmcHandle) == nullptr,
+            NO_INIT, "@%s, call getCmcHandle() fails", __FUNCTION__);
     }
 
     return OK;

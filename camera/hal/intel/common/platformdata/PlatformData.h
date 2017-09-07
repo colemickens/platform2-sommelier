@@ -335,8 +335,9 @@ public:
     static bool supportExtendedMakernote(void);
     static bool supportIPUAcceleration(void);
     static bool supportFullColorRange(void);
-    static status_t getCpfAndCmc(ia_binary_data &cpfData,
-                                 ia_cmc_t* &cmcData,
+    static status_t getCpfAndCmc(ia_binary_data& cpfData,
+                                 ia_cmc_t** cmcData,
+                                 uintptr_t* cmcHandle,
                                  int cameraId,
                                  std::string mode = std::string(CPF_MODE_DEFAULT));
     /**

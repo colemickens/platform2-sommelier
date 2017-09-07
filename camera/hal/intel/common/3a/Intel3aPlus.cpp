@@ -59,6 +59,7 @@ status_t Intel3aPlus::initAIQ(int maxGridW,
 
     status_t status = NO_ERROR;
     status = init(maxGridW, maxGridH, nvmData, sensorName);
+    CheckError(status != NO_ERROR, status, "@%s, init() fails", __FUNCTION__);
 
     /**
      * Cache all the values we are going to need from the static metadata
@@ -153,24 +154,23 @@ void Intel3aPlus::setSupportIsoMap(bool support)
  */
 void Intel3aPlus::initIsoMappingRatio()
 {
-    if (mSupportIsoMap == false)
-        return;
+    CheckError(mSupportIsoMap == false, VOID_VALUE, "@%s, mSupportIsoMap is false", __FUNCTION__);
 
-    if (mCmc == nullptr || mCmc->cmc_sensitivity == nullptr) {
-        return;
-    }
+    const ia_cmc_t* cmc = getCmc();
+    CheckError(cmc == nullptr, VOID_VALUE, "@%s, cmc is nullptr", __FUNCTION__);
+    CheckError(cmc->cmc_sensitivity == nullptr, VOID_VALUE, "@%s, cmc_sensitivity is nullptr", __FUNCTION__);
 
     /* Get base/module ISO */
-    int32_t baseIso = mCmc->cmc_sensitivity->base_iso;
+    int32_t baseIso = cmc->cmc_sensitivity->base_iso;
 
     /* Get the max analog sensitivity */
     double maxAnalogIso = 0;
-    if (mCmc->cmc_parsed_analog_gain_conversion.cmc_analog_gain_conversion != nullptr) {
+    if (cmc->cmc_parsed_analog_gain_conversion.cmc_analog_gain_conversion != nullptr) {
         float maxAnalogGain = 0.0;
         unsigned short analogGainCode = 0;
-        ia_exc_analog_gain_to_sensor_units(&(mCmc->cmc_parsed_analog_gain_conversion),
+        mExc.AnalogGainToSensorUnits(&(cmc->cmc_parsed_analog_gain_conversion),
                                            1000, &analogGainCode);
-        ia_exc_sensor_units_to_analog_gain(&(mCmc->cmc_parsed_analog_gain_conversion),
+        mExc.SensorUnitsToAnalogGain(&(cmc->cmc_parsed_analog_gain_conversion),
                                            analogGainCode,
                                            &maxAnalogGain);
         // caclulate the iso base on max analog gain
@@ -179,11 +179,11 @@ void Intel3aPlus::initIsoMappingRatio()
 
     /* Get the max digital gain */
     double maxDigitalGain = 1.0;
-    if (mCmc->cmc_parsed_digital_gain.cmc_digital_gain != nullptr) {
+    if (cmc->cmc_parsed_digital_gain.cmc_digital_gain != nullptr) {
         int fractionBits =
-            mCmc->cmc_parsed_digital_gain.cmc_digital_gain->digital_gain_fraction_bits;
+            cmc->cmc_parsed_digital_gain.cmc_digital_gain->digital_gain_fraction_bits;
         maxDigitalGain =
-            mCmc->cmc_parsed_digital_gain.cmc_digital_gain->digital_gain_max / pow(2, fractionBits);
+            cmc->cmc_parsed_digital_gain.cmc_digital_gain->digital_gain_max / pow(2, fractionBits);
     }
 
     double maxIso = maxAnalogIso * maxDigitalGain;
@@ -208,12 +208,14 @@ void Intel3aPlus::initIsoMappingRatio()
  */
 int32_t Intel3aPlus::mapUiIso2RealIso (int32_t iso)
 {
-    if (mSupportIsoMap == false)
-        return iso;
+    CheckError(mSupportIsoMap == false, iso, "@%s, mSupportIsoMap is false", __FUNCTION__);
+    CheckError(fabs(mPseudoIsoRatio) < EPSILON, 0, "@%s, mPseudoIsoRatio < EPSILON", __FUNCTION__);
 
-    if (mCmc == nullptr || mCmc->cmc_sensitivity == nullptr || fabs(mPseudoIsoRatio) < EPSILON)
-        return 0;
-    int baseIso = mCmc->cmc_sensitivity->base_iso;
+    const ia_cmc_t* cmc = getCmc();
+    CheckError(cmc == nullptr, 0, "@%s, cmc is nullptr", __FUNCTION__);
+    CheckError(cmc->cmc_sensitivity == nullptr, 0, "@%s, cmc_sensitivity is nullptr", __FUNCTION__);
+
+    int baseIso = cmc->cmc_sensitivity->base_iso;
     if (iso < mMinSensitivity) {
         LOGW("Limiting UI ISO. Should be larger than %d", mMinSensitivity);
         return baseIso;
@@ -236,12 +238,14 @@ int32_t Intel3aPlus::mapUiIso2RealIso (int32_t iso)
  */
 int32_t Intel3aPlus::mapRealIso2UiIso (int32_t iso)
 {
-    if (mSupportIsoMap == false)
-        return iso;
+    CheckError(mSupportIsoMap == false, iso, "@%s, mSupportIsoMap is false", __FUNCTION__);
+    CheckError(fabs(mPseudoIsoRatio) < EPSILON, 0, "@%s, mPseudoIsoRatio < EPSILON", __FUNCTION__);
 
-    if (mCmc == nullptr || mCmc->cmc_sensitivity == nullptr || fabs(mPseudoIsoRatio) < EPSILON)
-        return 0;
-    int baseIso = mCmc->cmc_sensitivity->base_iso;
+    const ia_cmc_t* cmc = getCmc();
+    CheckError(cmc == nullptr, 0, "@%s, cmc is nullptr", __FUNCTION__);
+    CheckError(cmc->cmc_sensitivity == nullptr, 0, "@%s, cmc_sensitivity is nullptr", __FUNCTION__);
+
+    int baseIso = cmc->cmc_sensitivity->base_iso;
     if (iso < baseIso) {
         LOGW("Limiting real ISO. Should be larger than %d", baseIso);
         return mMinSensitivity;

@@ -113,6 +113,8 @@ private:
 private:
     int mCameraId;
 
+    Intel3aExc mExc;
+
     /**
      * Cached values from static metadata
      */

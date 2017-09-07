@@ -86,8 +86,9 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     status_t ret = OK;
+    uintptr_t cmcHandle = reinterpret_cast<uintptr_t>(nullptr);
 
-    if (PlatformData::getCpfAndCmc(mCpfData, mCmcData, mCameraId) != OK) {
+    if (PlatformData::getCpfAndCmc(mCpfData, &mCmcData, &cmcHandle, mCameraId) != OK) {
         LOGE("%s : Could not get cpf and cmc data",__FUNCTION__);
         return NO_INIT;
     }
@@ -105,11 +106,6 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
         RuntimeParamsHelper::deleteAiStructs(mStillRuntimeParams);
         RuntimeParamsHelper::deleteAiStructs(mPreviewRuntimeParams);
         return ret;
-    }
-
-    if (PlatformData::getCpfAndCmc(mCpfData, mCmcData, mCameraId) != OK) {
-        LOGE("Could not get cpf and cmc data");
-        return NO_INIT;
     }
 
     GraphConfig::NodesPtrVector sinks;
@@ -156,9 +152,10 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
         mIspPipes[i] = new IPU3ISPPipe;
     }
 
+    ia_cmc_t* cmc = reinterpret_cast<ia_cmc_t*>(cmcHandle);
     if (foundStill) {
         if (mSkyCamAIC == nullptr) {
-            mSkyCamAIC = SkyCamProxy::createProxy(mCameraId, mIspPipes, NUM_ISP_PIPES, mCmcData, &mCpfData, &mStillRuntimeParams, 0, 0);
+            mSkyCamAIC = SkyCamProxy::createProxy(mCameraId, mIspPipes, NUM_ISP_PIPES, cmc, &mCpfData, &mStillRuntimeParams, 0, 0);
             if (mSkyCamAIC == nullptr) {
                 LOGE("Not able to create SkyCam AIC");
                 return NO_MEMORY;
@@ -168,7 +165,7 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
 
     if (foundPreview) {
         if (mSkyCamAIC == nullptr) {
-            mSkyCamAIC = SkyCamProxy::createProxy(mCameraId, mIspPipes, NUM_ISP_PIPES, mCmcData, &mCpfData, &mPreviewRuntimeParams, 0, 0);
+            mSkyCamAIC = SkyCamProxy::createProxy(mCameraId, mIspPipes, NUM_ISP_PIPES, cmc, &mCpfData, &mPreviewRuntimeParams, 0, 0);
             if (mSkyCamAIC == nullptr) {
                 LOGE("Not able to create SkyCam AIC");
                 return NO_MEMORY;

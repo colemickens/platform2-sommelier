@@ -34,6 +34,7 @@
 #include "ia_exc.h"
 #include "CameraMetadataHelper.h"
 #include "Intel3aPlus.h"
+#include "Intel3aExc.h"
 
 NAMESPACE_DECLARATION {
 using std::string;
@@ -54,10 +55,11 @@ const char* frameUseModeList[FRAME_USE_MODE_NUMBER] = {CPF_MODE_STILL,
                                                        CPF_MODE_VIDEO,
                                                        CPF_MODE_PREVIEW};
 
-AiqConf::AiqConf(const int size):
-    mCMC(nullptr),
+AiqConf::AiqConf(const int cameraId, const int size):
     mMetadata(nullptr),
+    mCameraId(cameraId),
     mPtr(nullptr),
+    mCmc(cameraId),
     mSize(size)
 {
     if (size)
@@ -66,10 +68,7 @@ AiqConf::AiqConf(const int size):
 
 AiqConf::~AiqConf()
 {
-    if(mCMC) {
-        ia_cmc_parser_deinit(mCMC);
-        mCMC = nullptr;
-    }
+    mCmc.deinit();
 
     if (mMetadata)
         mMetadata = nullptr;
@@ -80,17 +79,28 @@ AiqConf::~AiqConf()
 
 status_t AiqConf::initCMC()
 {
-    if(mCMC == nullptr && ptr() != nullptr) {
-        ia_binary_data cpfData;
-        CLEAR(cpfData);
-        cpfData.data = ptr();
-        cpfData.size = size();
-        mCMC = ia_cmc_parser_init((ia_binary_data*)&(cpfData));
-        if (mCMC != nullptr)
-            return NO_ERROR;
+    if (mCmc.getCmc() != nullptr
+        || ptr() == nullptr) {
+        LOGE("@%s, Error Initializing CMC", __FUNCTION__);
+        return NO_INIT;
     }
-    LOGE("Error Initializing CMC");
-    return NO_INIT;
+
+    ia_binary_data cpfData;
+    CLEAR(cpfData);
+    cpfData.data = ptr();
+    cpfData.size = size();
+
+    bool ret = mCmc.init((ia_binary_data*)&(cpfData));
+    CheckError(ret == false, NO_INIT, "@%s, mCmc->init fails", __FUNCTION__);
+
+    ia_cmc_t* cmc = mCmc.getCmc();
+    cmc_lens_shading_t* cmc_lens_shading = cmc->cmc_parsed_lens_shading.cmc_lens_shading;
+    if (cmc_lens_shading) {
+        LOG1("@%s, grid_width:%d, grid_height:%d",
+            __FUNCTION__, cmc_lens_shading->grid_width, cmc_lens_shading->grid_height);
+    }
+
+    return NO_ERROR;
 }
 
 status_t AiqConf::initMapping(LightSrcMap &lightSourceMap)
@@ -141,7 +151,7 @@ status_t AiqConf::initMapping(LightSrcMap &lightSourceMap)
 status_t AiqConf::fillStaticMetadataFromCMC(camera_metadata_t * metadata)
 {
     status_t res = OK;
-    if (mCMC == nullptr) {
+    if (mCmc.getCmc() == nullptr) {
         res = initCMC();
         if (res != NO_ERROR)
             return res;
@@ -164,15 +174,19 @@ status_t AiqConf::fillStaticMetadataFromCMC(camera_metadata_t * metadata)
 status_t AiqConf::fillLensStaticMetadata(camera_metadata_t * metadata)
 {
     status_t res = OK;
-    if (mCMC->cmc_parsed_optics.cmc_optomechanics != nullptr) {
-        uint16_t camera_features = mCMC->cmc_parsed_optics.cmc_optomechanics->camera_actuator_features;
+
+    ia_cmc_t* cmc = mCmc.getCmc();
+    CheckError(cmc == nullptr, UNKNOWN_ERROR, "@%s, mCmc.getCmc fails", __FUNCTION__);
+
+    if (cmc->cmc_parsed_optics.cmc_optomechanics != nullptr) {
+        uint16_t camera_features = cmc->cmc_parsed_optics.cmc_optomechanics->camera_actuator_features;
         // Lens: aperture
         float fn = 2.53;
         if (!(camera_features & cmc_camera_feature_variable_apertures)
-            && mCMC->cmc_parsed_optics.cmc_optomechanics->num_apertures == 1
-            && mCMC->cmc_parsed_optics.lut_apertures != nullptr) {
+            && cmc->cmc_parsed_optics.cmc_optomechanics->num_apertures == 1
+            && cmc->cmc_parsed_optics.lut_apertures != nullptr) {
             // fixed aperture, the fn should be divided 100 because the value is multiplied 100 in cmc
-            fn = (float)mCMC->cmc_parsed_optics.lut_apertures[0] / 100;
+            fn = (float)cmc->cmc_parsed_optics.lut_apertures[0] / 100;
             float av = log10(pow(fn, 2)) / log10(2.0);
             av = ((int)(av * 10 + 0.5)) / 10.0;
             res |= MetadataHelper::updateMetadata(metadata, ANDROID_LENS_INFO_AVAILABLE_APERTURES, &av, 1);
@@ -181,14 +195,14 @@ status_t AiqConf::fillLensStaticMetadata(camera_metadata_t * metadata)
         // Lens: FilterDensities
         int32_t nd_gain = 0;
         if (camera_features & cmc_camera_feature_nd_filter)
-            nd_gain = mCMC->cmc_parsed_optics.cmc_optomechanics->nd_gain;
+            nd_gain = cmc->cmc_parsed_optics.cmc_optomechanics->nd_gain;
         res |= MetadataHelper::updateMetadata(metadata, ANDROID_LENS_INFO_AVAILABLE_FILTER_DENSITIES, (float*)&nd_gain, 1);
         LOG2("static ANDROID_LENS_INFO_AVAILABLE_FILTER_DENSITIES :%d", nd_gain);
         // Lens: availableFocalLengths, only support fixed focal length
         float effect_focal_length = 3.00;
         if (!(camera_features & cmc_camera_feature_optical_zoom)) {
             // focal length (mm * 100) from CMC
-            effect_focal_length = (float)mCMC->cmc_parsed_optics.cmc_optomechanics->effect_focal_length / 100;
+            effect_focal_length = (float)cmc->cmc_parsed_optics.cmc_optomechanics->effect_focal_length / 100;
             res |= MetadataHelper::updateMetadata(metadata, ANDROID_LENS_INFO_AVAILABLE_FOCAL_LENGTHS, &effect_focal_length, 1);
             LOG2("static ANDROID_LENS_INFO_AVAILABLE_FOCAL_LENGTHS :%.2f", effect_focal_length);
         }
@@ -200,15 +214,15 @@ status_t AiqConf::fillLensStaticMetadata(camera_metadata_t * metadata)
          *
          */
         float min_focus_distance = 0.0;
-        if (mCMC->cmc_parsed_optics.cmc_optomechanics->actuator != 0) {
+        if (cmc->cmc_parsed_optics.cmc_optomechanics->actuator != 0) {
             // the unit from CMC is cm, convert to diopters (1/m)
-            if (mCMC->cmc_parsed_optics.cmc_optomechanics->min_focus_distance != 0)
-                min_focus_distance = 100 / (float)mCMC->cmc_parsed_optics.cmc_optomechanics->min_focus_distance;
+            if (cmc->cmc_parsed_optics.cmc_optomechanics->min_focus_distance != 0)
+                min_focus_distance = 100 / (float)cmc->cmc_parsed_optics.cmc_optomechanics->min_focus_distance;
         }
         res |= MetadataHelper::updateMetadata(metadata, ANDROID_LENS_INFO_MINIMUM_FOCUS_DISTANCE, &min_focus_distance, 1);
         LOG2("static ANDROID_LENS_INFO_MINIMUM_FOCUS_DISTANCE :%.2f", min_focus_distance);
 
-        float hyperfocal_distance_diopter = 1000 / Intel3aPlus::calculateHyperfocalDistance(*mCMC);
+        float hyperfocal_distance_diopter = 1000 / Intel3aPlus::calculateHyperfocalDistance(*cmc);
         res |= MetadataHelper::updateMetadata(metadata, ANDROID_LENS_INFO_HYPERFOCAL_DISTANCE, &hyperfocal_distance_diopter, 1);
         LOG2("static ANDROID_LENS_INFO_HYPERFOCAL_DISTANCE :%.2f", hyperfocal_distance_diopter);
         // TODO: lens.info.availableOpticalStabilization
@@ -222,9 +236,12 @@ status_t AiqConf::fillLightSourceStaticMetadata(camera_metadata_t * metadata)
     LightSrcMap lightSourceMap;
     initMapping(lightSourceMap);
 
+    ia_cmc_t* cmc = mCmc.getCmc();
+    CheckError(cmc == nullptr, UNKNOWN_ERROR, "@%s, mCmc.getCmc fails", __FUNCTION__);
+
     // color matrices
-    if (mCMC->cmc_parsed_color_matrices.cmc_color_matrix != nullptr && mCMC->cmc_parsed_color_matrices.cmc_color_matrices != nullptr) {
-        int num_matrices = mCMC->cmc_parsed_color_matrices.cmc_color_matrices->num_matrices;
+    if (cmc->cmc_parsed_color_matrices.cmc_color_matrix != nullptr && cmc->cmc_parsed_color_matrices.cmc_color_matrices != nullptr) {
+        int num_matrices = cmc->cmc_parsed_color_matrices.cmc_color_matrices->num_matrices;
         // android metadata requests 2 light source
         if (num_matrices < 2)
             return res;
@@ -273,7 +290,7 @@ status_t AiqConf::fillLightSourceStaticMetadata(camera_metadata_t * metadata)
         CLEAR(forward_matrix);
 
         for(int light_src_num = 0; light_src_num < 2; light_src_num++) {
-            cmc_light_source light_src = (cmc_light_source)mCMC->cmc_parsed_color_matrices.cmc_color_matrix[light_src_num].light_src_type;
+            cmc_light_source light_src = (cmc_light_source)cmc->cmc_parsed_color_matrices.cmc_color_matrix[light_src_num].light_src_type;
             LightSrcMap::iterator it = lightSourceMap.find(light_src);
             if (it == lightSourceMap.end()) {
                 LOG2("light source not found, use default!!");
@@ -288,7 +305,7 @@ status_t AiqConf::fillLightSourceStaticMetadata(camera_metadata_t * metadata)
             // colorTransform
             MEMCPY_S(matrix_accurate,
                      sizeof(matrix_accurate),
-                     mCMC->cmc_parsed_color_matrices.cmc_color_matrix[light_src_num].matrix_accurate,
+                     cmc->cmc_parsed_color_matrices.cmc_color_matrix[light_src_num].matrix_accurate,
                      sizeof(int32_t) * TRANSFORM_MATRIX_SIZE);
             res |= MetadataHelper::updateMetadata(metadata, sensor_color_transform_tag[light_src_num], &matrix_accurate, TRANSFORM_MATRIX_SIZE);
             LOG2("matrix_accurate:%d,%d,%d,%d,%d,%d,%d,%d,%d",matrix_accurate[0],
@@ -322,10 +339,14 @@ status_t AiqConf::fillSensorStaticMetadata(camera_metadata_t * metadata)
 {
     LOG1("%s", __FUNCTION__);
     status_t res = OK;
+
+    ia_cmc_t* cmc = mCmc.getCmc();
+    CheckError(cmc == nullptr, UNKNOWN_ERROR, "@%s, mCmc.getCmc fails", __FUNCTION__);
+
     // colorFilterArrangement
-    if (mCMC->cmc_general_data != nullptr) {
+    if (cmc->cmc_general_data != nullptr) {
         uint16_t color_order = 0;
-        switch (mCMC->cmc_general_data->color_order) {
+        switch (cmc->cmc_general_data->color_order) {
         case cmc_bayer_order_grbg:
             color_order = ANDROID_SENSOR_INFO_COLOR_FILTER_ARRANGEMENT_GRBG;
             break;
@@ -347,29 +368,29 @@ status_t AiqConf::fillSensorStaticMetadata(camera_metadata_t * metadata)
         LOG2("color order:%d", color_order);
     }
     // whiteLevel
-    if (mCMC->cmc_saturation_level != nullptr) {
-        int32_t saturation_level = mCMC->cmc_saturation_level->saturation_cc1;
+    if (cmc->cmc_saturation_level != nullptr) {
+        int32_t saturation_level = cmc->cmc_saturation_level->saturation_cc1;
         res |= MetadataHelper::updateMetadata(metadata, ANDROID_SENSOR_INFO_WHITE_LEVEL, &saturation_level, 1);
         LOG2("saturation_level:%d", saturation_level);
     }
 
     int16_t base_iso = 0;
     // baseGainFactor
-    if (mCMC->cmc_sensitivity != nullptr) {
+    if (cmc->cmc_sensitivity != nullptr) {
         // baseGainFactor's definition is gain factor from electrons to raw units when ISO=100
         camera_metadata_rational_t baseGainFactor;
         baseGainFactor.numerator = 100;
-        baseGainFactor.denominator = mCMC->cmc_sensitivity->base_iso;
-        base_iso = mCMC->cmc_sensitivity->base_iso;
+        baseGainFactor.denominator = cmc->cmc_sensitivity->base_iso;
+        base_iso = cmc->cmc_sensitivity->base_iso;
         res |= MetadataHelper::updateMetadata(metadata, ANDROID_SENSOR_BASE_GAIN_FACTOR, &baseGainFactor, 1);
         LOG2("base_iso:%d", base_iso);
     }
     // blackLevelPattern
-    if (mCMC->cmc_parsed_black_level.cmc_black_level_luts != nullptr) {
-        uint16_t cc1 = mCMC->cmc_parsed_black_level.cmc_black_level_luts->color_channels.cc1 / 256;
-        uint16_t cc2 = mCMC->cmc_parsed_black_level.cmc_black_level_luts->color_channels.cc2 / 256;
-        uint16_t cc3 = mCMC->cmc_parsed_black_level.cmc_black_level_luts->color_channels.cc3 / 256;
-        uint16_t cc4 = mCMC->cmc_parsed_black_level.cmc_black_level_luts->color_channels.cc4 / 256;
+    if (cmc->cmc_parsed_black_level.cmc_black_level_luts != nullptr) {
+        uint16_t cc1 = cmc->cmc_parsed_black_level.cmc_black_level_luts->color_channels.cc1 / 256;
+        uint16_t cc2 = cmc->cmc_parsed_black_level.cmc_black_level_luts->color_channels.cc2 / 256;
+        uint16_t cc3 = cmc->cmc_parsed_black_level.cmc_black_level_luts->color_channels.cc3 / 256;
+        uint16_t cc4 = cmc->cmc_parsed_black_level.cmc_black_level_luts->color_channels.cc4 / 256;
         int32_t black_level_pattern[4];
         black_level_pattern[0] = cc1;
         black_level_pattern[1] = cc2;
@@ -383,14 +404,15 @@ status_t AiqConf::fillSensorStaticMetadata(camera_metadata_t * metadata)
     fillLightSourceStaticMetadata(metadata);
 
     // maxAnalogSensitivity
-    if (mCMC->cmc_parsed_analog_gain_conversion.cmc_analog_gain_conversion != nullptr) {
+    if (cmc->cmc_parsed_analog_gain_conversion.cmc_analog_gain_conversion != nullptr) {
+        Intel3aExc exc;
         int32_t max_analog_sensitivity = 0;
         float max_analog_gain = 0.0;
         unsigned short analog_gain_code = 0;
         // we can give a large value (e.g. 1000) as input to ia_exc.
         // Output from ia_exc is a clipped sensor specific MAX.
-        ia_exc_analog_gain_to_sensor_units(&(mCMC->cmc_parsed_analog_gain_conversion), 1000, &analog_gain_code);
-        ia_exc_sensor_units_to_analog_gain(&(mCMC->cmc_parsed_analog_gain_conversion),
+        exc.AnalogGainToSensorUnits(&(cmc->cmc_parsed_analog_gain_conversion), 1000, &analog_gain_code);
+        exc.SensorUnitsToAnalogGain(&(cmc->cmc_parsed_analog_gain_conversion),
                                            analog_gain_code,
                                            &max_analog_gain);
        // caclulate the iso base on max analog gain
@@ -412,10 +434,14 @@ Preserve the same Aspect Ratio.
 status_t AiqConf::fillLscSizeStaticMetadata(camera_metadata_t * metadata)
 {
     status_t res = OK;
-    if (mCMC->cmc_parsed_lens_shading.cmc_lens_shading != nullptr) {
+
+    ia_cmc_t* cmc = mCmc.getCmc();
+    CheckError(cmc == nullptr, UNKNOWN_ERROR, "@%s, mCmc.getCmc fails", __FUNCTION__);
+
+    if (cmc->cmc_parsed_lens_shading.cmc_lens_shading != nullptr) {
         int32_t lensShadingMapSize[2];
-        lensShadingMapSize[0] = mCMC->cmc_parsed_lens_shading.cmc_lens_shading->grid_width;
-        lensShadingMapSize[1] = mCMC->cmc_parsed_lens_shading.cmc_lens_shading->grid_height;
+        lensShadingMapSize[0] = cmc->cmc_parsed_lens_shading.cmc_lens_shading->grid_width;
+        lensShadingMapSize[1] = cmc->cmc_parsed_lens_shading.cmc_lens_shading->grid_height;
 
         int i = 1;
         uint16_t destWidth = lensShadingMapSize[0];
@@ -439,7 +465,7 @@ CpfStore::CpfStore(const int xmlCameraId, CameraHWInfo * cameraHWInfo)
     , mHasMediaController(false)
     , mIsOldConfig(false)
 {
-    LOG1("@%s", __FUNCTION__);
+    LOG1("@%s, mCameraId:%d", __FUNCTION__, mCameraId);
 
     mAiqConf.clear();
 
@@ -798,7 +824,7 @@ void CpfStore::getCpfFileMode(const string &cpfFileName, string &mode)
 
 status_t CpfStore::loadConf(const string &cpfFileName)
 {
-    LOG1("@%s", __FUNCTION__);
+    LOG1("@%s, cameraId:%d", __FUNCTION__, mCameraId);
     FILE *file;
     struct stat statCurrent;
     status_t ret = 0;
@@ -822,7 +848,7 @@ status_t CpfStore::loadConf(const string &cpfFileName)
             break;
         }
 
-        AiqConf *conf = new AiqConf(fileSize);
+        AiqConf *conf = new AiqConf(mCameraId, fileSize);
 
         if (!conf->ptr() || fread(conf->ptr(), fileSize, 1, file) < 1) {
             LOGE("ERROR reading CPF file \"%s\"!", cpfFileName.c_str());

@@ -180,7 +180,7 @@ status_t ControlUnit::allocateLscResults()
     ia_binary_data cpfData;
     ia_cmc_t *cmcData = nullptr;
 
-    PlatformData::getCpfAndCmc(cpfData, cmcData, mCameraId);
+    PlatformData::getCpfAndCmc(cpfData, &cmcData, nullptr, mCameraId);
     if (!cmcData) {
         LOGE("No CMC data available for sensor. fix the CPF file!");
         return UNKNOWN_ERROR;

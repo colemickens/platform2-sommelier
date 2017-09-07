@@ -27,6 +27,7 @@
 #include <system/camera_metadata.h>
 #include "ia_cmc_parser.h"
 #include "Metadata.h"
+#include "Intel3aCmc.h"
 
 NAMESPACE_DECLARATION {
 class CameraHWInfo;
@@ -39,9 +40,9 @@ class CameraHWInfo;
 class AiqConf
 {
 public:
-    explicit AiqConf(const int size = 0);
+    explicit AiqConf(const int cameraId, const int size = 0);
     ~AiqConf();
-    ia_cmc_t* getCMCHandler() const { return mCMC; }
+    const Intel3aCmc* getCMC() const { return &mCmc; }
     status_t fillStaticMetadataFromCMC(camera_metadata_t * metadata);
     status_t initCMC();
     void *ptr() const { return mPtr; }
@@ -58,8 +59,9 @@ private:
     status_t fillLscSizeStaticMetadata(camera_metadata_t * metadata);
 
 private:
-    ia_cmc_t *mCMC; /* CameraConf owns mCMC */
+    Intel3aCmc mCmc; /* CameraConf owns mCmc */
     camera_metadata_t* mMetadata; /* CameraConf doesn't own mMetadata */
+    int mCameraId;
 };
 
 class CpfStore

@@ -27,6 +27,12 @@
 #include "Intel3aControls.h"
 #include "Intel3aHelper.h"
 
+#include "Intel3aCoordinate.h"
+#include "Intel3aAiq.h"
+#include "Intel3aCmc.h"
+#include "Intel3aExc.h"
+#include "Intel3aMkn.h"
+
 NAMESPACE_DECLARATION {
 static const unsigned int NUM_EXPOSURES = 1;   /*!> Number of frames AIQ algorithm
                                                     provides output for */
@@ -328,7 +334,7 @@ public:
     static status_t deepCopyPAResults(ia_aiq_pa_results *dst, const ia_aiq_pa_results *src);
     static status_t deepCopySAResults(ia_aiq_sa_results *dst, const ia_aiq_sa_results *src);
 
-    const ia_cmc_t* getCmc() const { return mCmc; }
+    const ia_cmc_t* getCmc() const { return mCmc ? mCmc->getCmc() : nullptr; }
     char mapUiImageEnhancement2Aiq(int uiValue);
 
 private:
@@ -340,16 +346,19 @@ private:
     status_t convertError(ia_err iaErr);
 
 protected:
-    ia_cmc_t *mCmc; /* CameraConf has ownership */
+    const Intel3aCmc* mCmc; /* CameraConf has ownership */
+
 // private members
 private:
-    ia_aiq *mIaAiqHandle; /* Intel3aCore has ownership */
-    ia_mkn  *mMkn; /* Intel3aCore has ownership */
     int mCameraId;
     CameraWindow mActivePixelArray;
     float mHyperFocalDistance; /**< in millimeters */
     bool mEnableAiqdDataSave;
 
+private:
+    Intel3aAiq mAiq;
+    Intel3aMkn mMkn;
+    Intel3aCoordinate mCoordinate;
 }; //  class Intel3aCore
 
 } NAMESPACE_DECLARATION_END

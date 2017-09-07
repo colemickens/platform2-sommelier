@@ -25,6 +25,12 @@ lib_LTLIBRARIES = \
         common/3a/IntelAFStateMachine.cpp \
         common/3a/IntelAWBStateMachine.cpp
 
+3ASRC += common/3awrapper/Intel3aCoordinate.cpp \
+         common/3awrapper/Intel3aAiq.cpp \
+         common/3awrapper/Intel3aCmc.cpp \
+         common/3awrapper/Intel3aExc.cpp \
+         common/3awrapper/Intel3aMkn.cpp
+
 AALSRC = AAL/Camera3HAL.cpp \
          AAL/Camera3HAL.h \
          AAL/Camera3Request.cpp \
@@ -134,6 +140,8 @@ ALLINCLUDES = \
     -I$(top_srcdir)/common/imageProcess \
     -I$(top_srcdir)/common/jpeg \
     -I$(top_srcdir)/common/gcss
+
+ALLINCLUDES += -I$(top_srcdir)/common/3awrapper
 
 libcamerahal_la_CPPFLAGS += $(ALLINCLUDES)
 
