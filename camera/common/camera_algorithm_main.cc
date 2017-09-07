@@ -51,38 +51,39 @@ int main(int argc, char** argv) {
     PLOGF(ERROR) << "fcntl(F_SETFL) failed to disable O_NONBLOCK";
     return EXIT_FAILURE;
   }
-  while (true) {
-    VLOGF(1) << "Waiting for incoming connection";
-    base::ScopedFD connection_fd(accept(socket_fd.get(), NULL, 0));
-    if (!connection_fd.is_valid()) {
-      LOGF(ERROR) << "Failed to accept client connect request";
-      continue;
-    }
-    const size_t kTokenLength = 33;
-    char recv_buf[kTokenLength] = {0};
-    std::deque<mojo::edk::PlatformHandle> platform_handles;
-    if (PlatformChannelRecvmsg(mojo::edk::PlatformHandle(connection_fd.get()),
-                               recv_buf, sizeof(recv_buf), &platform_handles,
-                               true) == 0) {
-      LOGF(ERROR) << "Failed to receive message";
-      continue;
-    }
-    if (platform_handles.size() != 1 || !platform_handles.front().is_valid()) {
-      LOGF(ERROR) << "Received connection handle is invalid";
-      continue;
-    }
-    VLOGF(1) << "Message from client " << std::string(recv_buf);
-    int pid = fork();
-    if (pid == 0) {
-      arc::CameraAlgorithmAdapter adapter;
-      adapter.Run(std::string(recv_buf),
-                  mojo::edk::ScopedPlatformHandle(platform_handles.front()));
-      exit(0);
-    } else if (pid > 0) {
-      wait(NULL);
-    } else {
-      LOGF(ERROR) << "Fork failed";
-    }
+
+  VLOGF(1) << "Waiting for incoming connection";
+  base::ScopedFD connection_fd(accept(socket_fd.get(), NULL, 0));
+  if (!connection_fd.is_valid()) {
+    LOGF(ERROR) << "Failed to accept client connect request";
+    return EXIT_FAILURE;
   }
+  const size_t kTokenLength = 33;
+  char recv_buf[kTokenLength] = {0};
+  std::deque<mojo::edk::PlatformHandle> platform_handles;
+  if (PlatformChannelRecvmsg(mojo::edk::PlatformHandle(connection_fd.get()),
+                             recv_buf, sizeof(recv_buf), &platform_handles,
+                             true) == 0) {
+    LOGF(ERROR) << "Failed to receive message";
+    return EXIT_FAILURE;
+  }
+  if (platform_handles.size() != 1 || !platform_handles.front().is_valid()) {
+    LOGF(ERROR) << "Received connection handle is invalid";
+    return EXIT_FAILURE;
+  }
+
+  VLOGF(1) << "Message from client " << std::string(recv_buf);
+  int pid = fork();
+  if (pid == 0) {
+    arc::CameraAlgorithmAdapter adapter;
+    adapter.Run(std::string(recv_buf),
+                mojo::edk::ScopedPlatformHandle(platform_handles.front()));
+    exit(0);
+  } else if (pid > 0) {
+    wait(NULL);
+  } else {
+    LOGF(ERROR) << "Fork failed";
+  }
+
   return 0;
 }
