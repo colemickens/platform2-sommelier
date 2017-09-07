@@ -32,19 +32,6 @@
 #include "Utils.h"
 
 NAMESPACE_DECLARATION {
-__attribute__((constructor(102))) void initIaLog() {
-    // set up logging functions for CCA library
-    ia_env env;
-    env.vdebug = &LogHelper::cca_print_debug;
-    env.verror = &LogHelper::cca_print_error;
-    env.vinfo = &LogHelper::cca_print_info;
-    ia_log_init(&env);
-}
-
-__attribute__((destructor(102))) void deInitIaLog() {
-    ia_log_deinit();
-}
-
 void AiqInputParams::init()
 {
     CLEAR(aeInputParams);
@@ -131,6 +118,7 @@ AiqInputParams &AiqInputParams::operator=(const AiqInputParams &other)
 
 status_t AiqResults::allocateLsc(size_t lscSize)
 {
+    LOG1("@%s, lscSize:%d", __FUNCTION__, lscSize);
     mChannelR  = new float[lscSize];
     mChannelGR = new float[lscSize];
     mChannelGB = new float[lscSize];
@@ -161,9 +149,9 @@ AiqResults::AiqResults() :
     CLEAR_N(mFlashes, NUM_FLASH_LEDS);
 }
 
-
 AiqResults::~AiqResults()
 {
+    LOG1("@%s", __FUNCTION__);
     DELETE_ARRAY_AND_NULLIFY(mChannelR);
     DELETE_ARRAY_AND_NULLIFY(mChannelGR);
     DELETE_ARRAY_AND_NULLIFY(mChannelGB);
@@ -221,7 +209,7 @@ Intel3aCore::Intel3aCore(int camId):
         mHyperFocalDistance(2.5f),
         mEnableAiqdDataSave(false)
 {
-    LOG1("@%s", __FUNCTION__);
+    LOG1("@%s, mCameraId:%d", __FUNCTION__, mCameraId);
 }
 
 
@@ -250,6 +238,7 @@ status_t Intel3aCore::init(int maxGridW,
         LOGE("Error in initing makernote");
         status = UNKNOWN_ERROR;
     }
+    LOG2("@%s, mMkn:%p", __FUNCTION__, mMkn);
 
     iaErr = ia_mkn_enable(mMkn, true);
     if (iaErr != ia_err_none) {
@@ -303,7 +292,8 @@ status_t Intel3aCore::init(int maxGridW,
 
 void Intel3aCore::deinit()
 {
-    LOG1("@%s", __FUNCTION__);
+    LOG1("@%s, mEnableAiqdDataSave:%d, mIaAiqHandle:%p, mMkn:%p",
+        __FUNCTION__, mEnableAiqdDataSave, mIaAiqHandle, mMkn);
 
     if (mEnableAiqdDataSave)
         saveAiqdData();
@@ -413,37 +403,6 @@ status_t Intel3aCore::setStatistics(ia_aiq_statistics_input_params *ispStatistic
           }
     }
     return status;
-}
-
-/**
- * \brief Wrapper for ia_mkn_add_record. Adds or updates a data record in the makernote.
- *
- * \param[in] data_format_id     Mandatory.\n
- *                               Record data format ID.
- * \param[in] data_name_id       Mandatory.\n
- *                               Record name ID.
- * \param[in] data               Mandatory.\n
- *                               Pointer to record data to be copied into the makernote. Size of data to be copied is calculated
- *                               from on DFID and number of elements.
- * \param[in] num_elements       Mandatory.\n
- *                               Number of elements to store.
- * \param[in] key                Mandatory.\n
- *                               Packing key (16 bytes). nullptr means 'no packing'.
- * \return                       Error code.
- */
-status_t Intel3aCore::addMakerNoteRecord(ia_mkn_dfid mkn_data_format_id,
-                                ia_mkn_dnid mkn_data_name_id,
-                                const void *data,
-                                unsigned int num_elements,
-                                const char *key)
-{
-    if (!data || !mMkn)
-        return BAD_VALUE;
-
-    int ret = ia_mkn_add_record(mMkn, mkn_data_format_id, mkn_data_name_id, data,
-                                num_elements, key);
-
-    return (ret != 0) ? UNKNOWN_ERROR : OK;
 }
 
 /**
@@ -685,36 +644,6 @@ status_t Intel3aCore::runGbce(ia_aiq_statistics_input_params *ispStatistics,
     return status;
 }
 
-status_t Intel3aCore::runDsd(ia_aiq_dsd_input_params *dsdInputParams,
-                             ia_aiq_scene_mode &detectedSceneMode)
-{
-    LOG2("@%s", __FUNCTION__);
-    detectedSceneMode = ia_aiq_scene_mode_none;
-
-    if (CC_UNLIKELY(!mIaAiqHandle)) {
-        LOGE("ia_aiq_handle does not exist.");
-        return UNKNOWN_ERROR;
-    }
-
-    if (CC_UNLIKELY(!dsdInputParams)) {
-        LOGE("No dsd input params.");
-        return UNKNOWN_ERROR;
-    }
-    ia_err ret;
-    {
-        PERFORMANCE_HAL_ATRACE_PARAM1("ia_aiq_dsd_run", 1);
-        ret = ia_aiq_dsd_run(mIaAiqHandle,
-                                dsdInputParams,
-                                &detectedSceneMode);
-    }
-    if (ret != ia_err_none) {
-        return convertError(ret);
-    }
-
-    LOG2("Success, detected scene mode: %d", detectedSceneMode);
-    return NO_ERROR;
-}
-
 /**
  * Runs the Parameter adaptor stage
  */
@@ -923,47 +852,6 @@ float Intel3aCore::calculateHyperfocalDistance(ia_cmc_t &cmc)
                                       (fNumber * cocMicros);
     return hyperfocalDistanceMillis != 0.0f ?
            hyperfocalDistanceMillis : DEFAULT_HYPERFOCAL_DISTANCE;
-}
-
-status_t Intel3aCore::convertExposureSensorUnitToAndroid(const ia_aiq_ae_results *results,
-                                                         const ia_aiq_exposure_sensor_descriptor *sensorDescriptor,
-                                                         int64_t &exposureTime)
-{
-    status_t status = NO_ERROR;
-    int usExposure = 0;
-    if (CC_UNLIKELY(results == nullptr || results->exposures == nullptr ||
-                    results->exposures->sensor_exposure  == nullptr ||
-                    sensorDescriptor == nullptr)) {
-        LOGE("%s: one of the pointer to data is nullptr", __FUNCTION__);
-        return BAD_VALUE;
-    }
-
-    status = ia_exc_sensor_units_to_exposure_time(sensorDescriptor,
-                                                  results->exposures->sensor_exposure->coarse_integration_time,
-                                                  results->exposures->sensor_exposure->fine_integration_time,
-                                                  &usExposure);
-    // ExposureTime in nanoseconds
-    exposureTime = usExposure * 1000;
-
-    return status;
-}
-
-status_t Intel3aCore::convertGainSensorUnitToAndroidISO(const ia_aiq_ae_results *results, int32_t &iso) {
-
-    status_t status = NO_ERROR;
-    if (CC_UNLIKELY(results == nullptr || results->exposures == nullptr ||
-                    results->exposures->sensor_exposure == nullptr)) {
-        LOGE("%s: one of the pointer to data is nullptr", __FUNCTION__);
-        return BAD_VALUE;
-    }
-
-    status = ia_exc_convert_gain_codes_to_iso(&mCmc->cmc_parsed_analog_gain_conversion,
-                                              &mCmc->cmc_parsed_digital_gain,
-                                              mCmc->cmc_sensitivity,
-                                              results->exposures->sensor_exposure->analog_gain_code_global,
-                                              results->exposures->sensor_exposure->digital_gain_global,
-                                              &iso);
-    return status;
 }
 
 /***** Deep Copy Functions ******/

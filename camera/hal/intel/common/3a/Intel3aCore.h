@@ -274,9 +274,6 @@ public:
                      ia_aiq_gbce_input_params *gbceInputParams,
                      ia_aiq_gbce_results *gbceResults);
 
-    status_t runDsd(ia_aiq_dsd_input_params *dsdInputParams,
-                    ia_aiq_scene_mode &detectedSceneMode);
-
     status_t runPa(ia_aiq_statistics_input_params *ispStatistics,
                    ia_aiq_pa_input_params *paInputParams,
                    ia_aiq_pa_results *paResults);
@@ -285,12 +282,6 @@ public:
                    ia_aiq_sa_input_params *saInputParams,
                    ia_aiq_sa_results *saResults);
 
-    status_t addMakerNoteRecord(ia_mkn_dfid mkn_data_format_id,
-                                ia_mkn_dnid mkn_data_name_id,
-                                const void *data,
-                                unsigned int num_elements,
-                                const char *key);
-
     status_t getMakerNote(ia_mkn_trg aTarget, ia_binary_data &aBlob);
 
     void convertFromAndroidToIaCoordinates(const CameraWindow &srcWindow,
@@ -298,12 +289,6 @@ public:
     void convertFromIaToAndroidCoordinates(const CameraWindow &srcWindow,
                                            CameraWindow &toWindow);
 
-    status_t convertExposureSensorUnitToAndroid(const ia_aiq_ae_results *results,
-                                                const ia_aiq_exposure_sensor_descriptor *sensorDescriptor,
-                                                int64_t &exposureTime);
-
-    status_t convertGainSensorUnitToAndroidISO(const ia_aiq_ae_results *results,
-                                               int32_t &iso);
     status_t calculateDepthOfField(const ia_aiq_af_results &afResults,
                                    float &dofNear, float &dofFar) const;
 
