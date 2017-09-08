@@ -336,6 +336,15 @@ bool ContainerConfigFromOci(const OciConfig& oci,
   ConfigureDevices(oci.linux_config.devices, config_out);
   ConfigureCgroupDevices(oci.linux_config.resources.devices, config_out);
 
+  // Allow using the host network namespace if the config omits it.
+  bool has_netns = false;
+  for (const auto& ns : oci.linux_config.namespaces) {
+      if (ns.type == "network")
+          has_netns = true;
+  }
+  if (!has_netns)
+      container_config_share_host_netns(config_out);
+
   for (const auto& limit : oci.process.rlimits) {
     if (container_config_add_rlimit(
             config_out, limit.type, limit.soft, limit.hard)) {

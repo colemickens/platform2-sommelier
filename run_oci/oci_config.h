@@ -109,10 +109,15 @@ struct OciSeccomp {
   std::vector<OciSeccompSyscall> syscalls;
 };
 
+struct OciNamespace {
+  std::string type;
+  std::string path;  // Optional
+};
+
 struct OciLinux {
   std::vector<OciLinuxDevice> devices;  // Optional
   std::string cgroupsPath;  // Optional
-  // Unused: namespaces
+  std::vector<OciNamespace> namespaces;
   OciLinuxResources resources;  // Optional
   std::vector<OciLinuxNamespaceMapping> uidMappings;  // Optional
   std::vector<OciLinuxNamespaceMapping> gidMappings;  // Optional

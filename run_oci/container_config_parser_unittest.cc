@@ -224,7 +224,8 @@ const char kBasicJsonData[] = R"json(
             },
             "namespaces": [
                 {
-                    "type": "pid"
+                    "type": "pid",
+                    "path": "/proc/1234/ns/pid"
                 },
                 {
                     "type": "network"
@@ -435,6 +436,12 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(dev->fileMode, 438);
   EXPECT_EQ(dev->uid, 0);
   EXPECT_EQ(dev->gid, 3221225472);  // INT32_MAX < id < UINT32_MAX
+  // Namespaces
+  ASSERT_EQ(5, basic_config->linux_config.namespaces.size());
+  EXPECT_EQ(basic_config->linux_config.namespaces[0].type, "pid");
+  EXPECT_EQ(basic_config->linux_config.namespaces[0].path, "/proc/1234/ns/pid");
+  EXPECT_EQ(basic_config->linux_config.namespaces[1].type, "network");
+  EXPECT_EQ(basic_config->linux_config.namespaces[1].path, "");
   // Namespace Maps
   ASSERT_EQ(1, basic_config->linux_config.uidMappings.size());
   OciLinuxNamespaceMapping *id_map =

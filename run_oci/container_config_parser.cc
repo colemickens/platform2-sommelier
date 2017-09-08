@@ -364,6 +364,26 @@ bool ParseResources(const base::DictionaryValue& resources_dict,
   return true;
 }
 
+// Parses the list of namespaces and fills |namespaces_out| with them.
+bool ParseNamespaces(const base::ListValue* namespaces_list,
+                     std::vector<OciNamespace>* namespaces_out) {
+  for (size_t i = 0; i < namespaces_list->GetSize(); ++i) {
+    OciNamespace new_namespace;
+    const base::DictionaryValue* ns;
+    if (!namespaces_list->GetDictionary(i, &ns)) {
+      LOG(ERROR) << "Failed to get namespace " << i;
+      return false;
+    }
+    if (!ns->GetString("type", &new_namespace.type)) {
+      LOG(ERROR) << "Namespace " << i << " missing type";
+      return false;
+    }
+    ns->GetString("path", &new_namespace.path);
+    namespaces_out->push_back(new_namespace);
+  }
+  return true;
+}
+
 // Parse the list of device nodes that the container needs to run.
 bool ParseDeviceList(const base::DictionaryValue& linux_dict,
                      OciConfigPtr const& config_out) {
@@ -542,6 +562,12 @@ bool ParseLinuxConfigDict(const base::DictionaryValue& runtime_root_dict,
   const base::DictionaryValue* resources_dict = nullptr;
   if (linux_dict->GetDictionary("resources", &resources_dict)) {
     if (!ParseResources(*resources_dict, &config_out->linux_config.resources))
+      return false;
+  }
+
+  const base::ListValue* namespaces_list = nullptr;
+  if (linux_dict->GetList("namespaces", &namespaces_list)) {
+    if (!ParseNamespaces(namespaces_list, &config_out->linux_config.namespaces))
       return false;
   }
 
