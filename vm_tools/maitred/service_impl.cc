@@ -189,7 +189,7 @@ grpc::Status ServiceImpl::Shutdown(grpc::ServerContext* ctx,
 grpc::Status ServiceImpl::LaunchProcess(
     grpc::ServerContext* ctx,
     const vm_tools::LaunchProcessRequest* request,
-    vm_tools::EmptyMessage* response) {
+    vm_tools::LaunchProcessResponse* response) {
   LOG(INFO) << "Received request to launch process";
   if (!init_) {
     return grpc::Status(grpc::FAILED_PRECONDITION, "not running as init");
@@ -199,16 +199,43 @@ grpc::Status ServiceImpl::LaunchProcess(
     return grpc::Status(grpc::INVALID_ARGUMENT, "missing argv");
   }
 
+  if (request->respawn() && request->wait_for_exit()) {
+    return grpc::Status(grpc::INVALID_ARGUMENT,
+                        "respawn and wait_for_exit cannot both be true");
+  }
+
   std::vector<string> argv(request->argv().begin(), request->argv().end());
   std::map<string, string> env;
   for (const auto& pair : request->env()) {
     env[pair.first] = pair.second;
   }
 
+  Init::ProcessExitInfo exit_info = {
+      .reason = Init::ProcessExitReason::UNKNOWN, .status = 0,
+  };
   if (!init_->Spawn(std::move(argv), std::move(env), request->respawn(),
-                    request->use_console())) {
+                    request->use_console(), request->wait_for_exit(),
+                    &exit_info)) {
     return grpc::Status(grpc::INTERNAL, "failed to spawn process");
   }
+
+  if (!request->wait_for_exit()) {
+    return grpc::Status::OK;
+  }
+
+  switch (exit_info.reason) {
+    case Init::ProcessExitReason::EXITED:
+      response->set_reason(vm_tools::EXITED);
+      break;
+    case Init::ProcessExitReason::SIGNALED:
+      response->set_reason(vm_tools::SIGNALED);
+      break;
+    case Init::ProcessExitReason::UNKNOWN:
+      response->set_reason(vm_tools::UNKNOWN);
+      break;
+  }
+
+  response->set_status(exit_info.status);
 
   return grpc::Status::OK;
 }

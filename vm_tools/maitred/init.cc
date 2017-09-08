@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <stdint.h>
+#include <sys/eventfd.h>
 #include <sys/mount.h>
 #include <sys/signalfd.h>
 #include <sys/wait.h>
@@ -27,6 +28,7 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/message_loop/message_loop.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/time/time.h>
 
 using std::string;
@@ -255,6 +257,7 @@ class Init::Worker : public base::MessageLoopForIO::Watcher {
     std::map<string, string> env;
     bool respawn;
     bool use_console;
+    bool wait_for_exit;
 
     std::list<base::Time> spawn_times;
   };
@@ -266,8 +269,12 @@ class Init::Worker : public base::MessageLoopForIO::Watcher {
   // events.
   void Start();
 
-  // Actually spawn a child process.
-  void Spawn(struct ChildInfo info);
+  // Actually spawns a child process.  Waits until it receives confirmation from
+  // the child that the requested program was actually started and fills in
+  // |exit_info| with information about the process.  Additionally if
+  // |info.wait_for_exit| is true, then waits until the child process exits or
+  // is killed before returning.
+  void Spawn(struct ChildInfo info, int semfd, ProcessExitInfo* exit_info);
 
   // base::MessageLoopForIO::Watcher overrides.
   void OnFileCanReadWithoutBlocking(int fd) override;
@@ -304,7 +311,9 @@ void Init::Worker::Start() {
   CHECK(ret) << "Failed to watch SIGHCHLD file descriptor";
 }
 
-void Init::Worker::Spawn(struct ChildInfo info) {
+void Init::Worker::Spawn(struct ChildInfo info,
+                         int semfd,
+                         ProcessExitInfo* exit_info) {
   DCHECK_GT(info.argv.size(), 0);
 
   // Build the argv.
@@ -365,17 +374,40 @@ void Init::Worker::Spawn(struct ChildInfo info) {
 
     // execvp never returns except in case of an error.
     _exit(errno);
+  }
+
+  // Parent process.
+  if (info.wait_for_exit) {
+    DCHECK_NE(semfd, -1);
+    DCHECK(exit_info);
+
+    int status = 0;
+    pid_t child = waitpid(pid, &status, 0);
+    DCHECK_EQ(child, pid);
+
+    if (WIFEXITED(status)) {
+      exit_info->reason = ProcessExitReason::EXITED;
+      exit_info->status = WEXITSTATUS(status);
+    } else if (WIFSIGNALED(status)) {
+      exit_info->reason = ProcessExitReason::SIGNALED;
+      exit_info->status = WTERMSIG(status);
+    } else {
+      exit_info->reason = ProcessExitReason::UNKNOWN;
+    }
+
+    uint64_t done = 1;
+    ssize_t ret = write(semfd, &done, sizeof(done));
+    DCHECK_EQ(ret, sizeof(done));
   } else {
-    // Parent process.
     info.spawn_times.emplace_back(base::Time::Now());
 
     // result is a pair<iterator, bool>.
     auto result = children_.emplace(pid, std::move(info));
     DCHECK(result.second);
-
-    // Restore the signal mask.
-    sigprocmask(SIG_SETMASK, &omask, nullptr);
   }
+
+  // Restore the signal mask.
+  sigprocmask(SIG_SETMASK, &omask, nullptr);
 }
 
 void Init::Worker::OnFileCanReadWithoutBlocking(int fd) {
@@ -445,7 +477,7 @@ void Init::Worker::OnFileCanReadWithoutBlocking(int fd) {
     }
 
     // Respawn the process.
-    Spawn(std::move(info));
+    Spawn(std::move(info), -1, nullptr);
   }
 }
 
@@ -474,8 +506,11 @@ Init::~Init() {
 bool Init::Spawn(std::vector<string> argv,
                  std::map<string, string> env,
                  bool respawn,
-                 bool use_console) {
-  CHECK_GT(argv.size(), 0);
+                 bool use_console,
+                 bool wait_for_exit,
+                 ProcessExitInfo* exit_info) {
+  CHECK(!argv.empty());
+  CHECK(!(respawn && wait_for_exit));
 
   if (!worker_) {
     // If there's no worker then we are currently in the process of shutting
@@ -486,10 +521,37 @@ bool Init::Spawn(std::vector<string> argv,
   struct Worker::ChildInfo info = {.argv = std::move(argv),
                                    .env = std::move(env),
                                    .respawn = respawn,
-                                   .use_console = use_console};
-  return worker_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&Worker::Spawn, base::Unretained(worker_.get()),
-                            base::Passed(std::move(info))));
+                                   .use_console = use_console,
+                                   .wait_for_exit = wait_for_exit};
+  if (!wait_for_exit) {
+    return worker_thread_.task_runner()->PostTask(
+        FROM_HERE, base::Bind(&Worker::Spawn, base::Unretained(worker_.get()),
+                              base::Passed(std::move(info)), -1, nullptr));
+  }
+
+  // Need to wait for this process to exit.
+  CHECK(exit_info);
+
+  base::ScopedFD sem(eventfd(0, EFD_CLOEXEC | EFD_SEMAPHORE));
+  if (!sem.is_valid()) {
+    PLOG(ERROR) << "Failed to create semaphore eventfd";
+    return false;
+  }
+
+  bool ret = worker_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&Worker::Spawn, base::Unretained(worker_.get()),
+                 base::Passed(std::move(info)), sem.get(), exit_info));
+  if (!ret) {
+    return false;
+  }
+
+  uint64_t done = 0;
+  ssize_t count = HANDLE_EINTR(read(sem.get(), &done, sizeof(done)));
+  DCHECK_EQ(count, sizeof(done));
+  DCHECK_EQ(done, 1);
+
+  return true;
 }
 
 bool Init::Setup() {

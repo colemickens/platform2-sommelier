@@ -96,14 +96,26 @@ bool LaunchProcess(vm_tools::Maitred::Stub* stub, base::FilePath path) {
 
   // Make the RPC.
   grpc::ClientContext ctx;
-  vm_tools::EmptyMessage empty;
+  vm_tools::LaunchProcessResponse response;
 
-  grpc::Status status = stub->LaunchProcess(&ctx, request, &empty);
+  grpc::Status status = stub->LaunchProcess(&ctx, request, &response);
   if (status.ok()) {
     LOG(INFO) << "Successfully launched process " << request.argv()[0];
   } else {
     LOG(ERROR) << "Failed to launch process " << request.argv()[0] << ": "
                << status.error_message();
+  }
+
+  if (!status.ok() || !request.wait_for_exit()) {
+    return true;
+  }
+
+  if (response.reason() == vm_tools::EXITED) {
+    LOG(INFO) << "Process exited with status " << response.status();
+  } else if (response.reason() == vm_tools::SIGNALED) {
+    LOG(INFO) << "Process killed by signal " << response.status();
+  } else {
+    LOG(WARNING) << "Process exited with unknown status";
   }
 
   return true;

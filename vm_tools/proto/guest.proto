@@ -39,12 +39,42 @@ message LaunchProcessRequest {
 
   // If |true| the process will be respawned when it exits or is killed.
   // Processes that respawn too frequently will be stopped and will need to be
-  // explicitly restarted via a LaunchProcess rpc.
+  // explicitly restarted via a LaunchProcess rpc.  Cannot be true if
+  // |wait_for_exit| is true.
   bool respawn = 3;
 
   // If |true| the process will use /dev/console for its standard I/O.
   // Otherwise all standard I/O is redirected to /dev/null.
   bool use_console = 4;
+
+  // If |true| then maitre'd will wait for the process to exit and include its
+  // exit status in the response. Cannot be true if |respawn| is true.
+  bool wait_for_exit = 5;
+}
+
+// The reason why a process exited.
+enum ExitReason {
+  // ¯\_(ツ)_/¯
+  UNKNOWN = 0;
+
+  // The process exited normally.
+  EXITED = 1;
+
+  // The process was killed by a signal.
+  SIGNALED = 2;
+}
+
+// Response sent back after maitre'd launches a process.  Will only be filled in
+// if the |wait_for_exit| field of the LaunchProcessRequest was set to true.
+message LaunchProcessResponse {
+  // The reason why the process exited.
+  ExitReason reason = 1;
+
+  // If |reason| is EXITED then this contains the exit status of the process.  If
+  // |reason| is SIGNALED then this contains the signal number that killed the
+  // process.  If |reason| is UNKNOWN then the contents of this field are
+  // undefined.
+  sint32 status = 2;
 }
 
 // Implemented by maitred inside the VM.
@@ -56,5 +86,5 @@ service Maitred {
   rpc Shutdown (EmptyMessage) returns (EmptyMessage);
 
   // Launch one process inside the VM.
-  rpc LaunchProcess (LaunchProcessRequest) returns (EmptyMessage);
+  rpc LaunchProcess (LaunchProcessRequest) returns (LaunchProcessResponse);
 }

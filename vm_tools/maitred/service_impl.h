@@ -29,9 +29,10 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
   grpc::Status Shutdown(grpc::ServerContext* ctx,
                         const vm_tools::EmptyMessage* request,
                         vm_tools::EmptyMessage* response) override;
-  grpc::Status LaunchProcess(grpc::ServerContext* ctx,
-                             const vm_tools::LaunchProcessRequest* request,
-                             vm_tools::EmptyMessage* response) override;
+  grpc::Status LaunchProcess(
+      grpc::ServerContext* ctx,
+      const vm_tools::LaunchProcessRequest* request,
+      vm_tools::LaunchProcessResponse* response) override;
 
  private:
   std::unique_ptr<Init> init_;

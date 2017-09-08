@@ -20,6 +20,26 @@ namespace maitred {
 // runs as pid 1 on a VM.
 class Init final {
  public:
+  // The reason why a process exited.
+  enum class ProcessExitReason {
+    UNKNOWN,
+    EXITED,
+    SIGNALED,
+  };
+
+  // Information about a process' exit.
+  struct ProcessExitInfo {
+    ProcessExitInfo() = default;
+
+    // The reason why the process exited.
+    ProcessExitReason reason = ProcessExitReason::UNKNOWN;
+
+    // If |reason| is EXITED, then this will hold the exit status.  If |reason|
+    // is SIGNALED, then this will hold the signal number that killed the
+    // process.
+    int32_t status = 0;
+  };
+
   // Creates a new instance of this class and performs various bits of early
   // setup up like mounting file systems, creating directories, and setting
   // up signal handlers.
@@ -27,11 +47,15 @@ class Init final {
   ~Init();
 
   // Spawn a process with the given argv and environment.  |argv[0]| must be
-  // the full path to the program or the name of a program found in PATH.
+  // the full path to the program or the name of a program found in PATH.  If
+  // |wait_for_exit| is true, then wait for the spawned process to exit and
+  // fill in |exit_info| with the information about the process's exit.
   bool Spawn(std::vector<std::string> argv,
              std::map<std::string, std::string> env,
              bool respawn,
-             bool use_console);
+             bool use_console,
+             bool wait_for_exit,
+             ProcessExitInfo* exit_info);
 
  private:
   Init() = default;
