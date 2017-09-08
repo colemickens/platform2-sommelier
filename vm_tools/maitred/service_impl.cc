@@ -35,6 +35,7 @@ namespace {
 
 // Default name of the interface in the VM.
 constexpr char kInterfaceName[] = "eth0";
+constexpr char kLoopbackName[] = "lo";
 
 // Convert a 32-bit int in network byte order into a printable string.
 string AddressToString(uint32_t address) {
@@ -48,6 +49,32 @@ string AddressToString(uint32_t address) {
   }
 
   return string(buf);
+}
+
+// Set a network interface's flags to be up and running. Returns 0 on success,
+// or the saved errno otherwise.
+int EnableInterface(int sockfd, const char* ifname) {
+  struct ifreq ifr;
+  int ret;
+  memset(&ifr, 0, sizeof(ifr));
+  strncpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
+
+  ret = HANDLE_EINTR(ioctl(sockfd, SIOCGIFFLAGS, &ifr));
+  if (ret) {
+    int saved_errno = errno;
+    PLOG(ERROR) << "Failed to fetch flags for interface " << ifname;
+    return saved_errno;
+  }
+
+  ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
+  ret = HANDLE_EINTR(ioctl(sockfd, SIOCSIFFLAGS, &ifr));
+  if (ret) {
+    int saved_errno = errno;
+    PLOG(ERROR) << "Failed to set flags for interface " << ifname;
+    return saved_errno;
+  }
+
+  return 0;
 }
 
 }  // namespace
@@ -126,22 +153,21 @@ grpc::Status ServiceImpl::ConfigureNetwork(grpc::ServerContext* ctx,
 
   // Set the interface up and running.  This needs to happen before the kernel
   // will let us set the gateway.
-  if (HANDLE_EINTR(ioctl(fd.get(), SIOCGIFFLAGS, &ifr)) != 0) {
-    int saved_errno = errno;
-    PLOG(ERROR) << "Failed to fetch flags for interface " << kInterfaceName;
-    return grpc::Status(grpc::INTERNAL, string("failed to fetch flags: ") +
-                                            strerror(saved_errno));
+  int ret = EnableInterface(fd.get(), kInterfaceName);
+  if (ret) {
+    return grpc::Status(
+        grpc::INTERNAL,
+        string("failed to enable network interface: ") + strerror(ret));
   }
-
-  ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
-  if (HANDLE_EINTR(ioctl(fd.get(), SIOCSIFFLAGS, &ifr)) != 0) {
-    int saved_errno = errno;
-    PLOG(ERROR) << "Failed to set flags for interface " << kInterfaceName;
-    return grpc::Status(grpc::INTERNAL, string("failed to set flags: ") +
-                                            strerror(saved_errno));
-  }
-
   LOG(INFO) << "Set interface " << kInterfaceName << " up and running";
+
+  // Bring up the loopback interface too.
+  ret = EnableInterface(fd.get(), kLoopbackName);
+  if (ret) {
+    return grpc::Status(
+        grpc::INTERNAL,
+        string("failed to enable loopback interface") + strerror(ret));
+  }
 
   // Set the gateway.
   struct rtentry route;
