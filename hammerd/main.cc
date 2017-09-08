@@ -12,6 +12,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
@@ -28,6 +29,7 @@ constexpr char kDefaultECImagePath[] = "/lib/firmware/hammer.fw";
 constexpr uint16_t kDefaultUsbProductId = 0x5022;
 constexpr int kDefaultUsbBus = 1;
 constexpr int kDefaultUsbPort = 2;
+constexpr int kDefaultAutosuspendDelayMs = -1;
 }  // namespace
 
 int main(int argc, const char* argv[]) {
@@ -42,6 +44,8 @@ int main(int argc, const char* argv[]) {
                "USB product ID of the device");
   DEFINE_int32(usb_bus, kDefaultUsbBus, "USB bus to search");
   DEFINE_int32(usb_port, kDefaultUsbPort, "USB port to search");
+  DEFINE_int32(autosuspend_delay_ms, kDefaultAutosuspendDelayMs,
+               "USB autosuspend delay time (ms)");
   brillo::FlagHelper::Init(argc, argv, "Hammer EC firmware updater daemon");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
                   brillo::kLogToStderrIfTty);
@@ -82,5 +86,22 @@ int main(int argc, const char* argv[]) {
   hammerd::HammerUpdater updater(
       ec_image, touchpad_image, FLAGS_vendor_id, FLAGS_product_id,
       FLAGS_usb_bus, FLAGS_usb_port);
-  return updater.Run() ? EXIT_SUCCESS : EXIT_FAILURE;
+  bool ret = updater.Run();
+  if (ret && FLAGS_autosuspend_delay_ms >= 0) {
+    LOG(INFO) << "Enable USB autosuspend with delay "
+              << FLAGS_autosuspend_delay_ms << " ms.";
+    constexpr char kPowerLevelPath[] = "power/level";
+    constexpr char kAutosuspendDelayMsPath[] = "power/autosuspend_delay_ms";
+    constexpr char kPowerLevel[] = "auto";
+    std::string delay_ms = base::StringPrintf("%d", FLAGS_autosuspend_delay_ms);
+
+    base::FilePath base_path = base::FilePath(
+        base::StringPrintf("/sys/bus/usb/devices/%d-%d",
+                           FLAGS_usb_bus, FLAGS_usb_port));
+    base::WriteFile(base_path.Append(base::FilePath(kPowerLevelPath)),
+                    kPowerLevel, sizeof(kPowerLevel) - 1);
+    base::WriteFile(base_path.Append(base::FilePath(kAutosuspendDelayMsPath)),
+                    delay_ms.data(), delay_ms.size());
+  }
+  return ret ? EXIT_SUCCESS : EXIT_FAILURE;
 }
