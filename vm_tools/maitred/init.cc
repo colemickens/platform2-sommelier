@@ -167,6 +167,10 @@ constexpr struct {
         .mode = 01777,
     },
     {
+        .path = "/run/sshd",
+        .mode = 0755,
+    },
+    {
         .path = "/var/cache",
         .mode = 0755,
     },
