@@ -54,14 +54,6 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
-		object path AddIPConfig(string method) --DEPRECATED--
-
-			This function only remains so it does not trigger
-			an error in the caller, and returns the path "/",
-			and never returns an error.  In flimflam it used to
-			provide the ability to create IPConfig objects
-			to the device to provide IPv4 or IPv6 setup state.
-
 		void RequirePin(string pin, boolean require)
 
 			(Cellular only) Enable or disable PIN protection for

@@ -34,10 +34,6 @@
 			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
 		<method name="ProposeScan"/>
-		<method name="AddIPConfig">
-			<arg type="s" direction="in"/>
-			<arg type="o" direction="out"/>
-		</method>
 		<method name="Register">
 			<arg type="s" direction="in"/>
 			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>

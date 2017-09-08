@@ -187,14 +187,6 @@ bool ChromeosDeviceDBusAdaptor::ProposeScan(brillo::ErrorPtr* error) {
   return !e.ToChromeosError(error);
 }
 
-bool ChromeosDeviceDBusAdaptor::AddIPConfig(brillo::ErrorPtr* error,
-                                            const string& /*method*/,
-                                            dbus::ObjectPath* out_path) {
-  SLOG(this, 2) << __func__;
-  Error e(Error::kNotSupported, "This function is deprecated in shill");
-  return !e.ToChromeosError(error);
-}
-
 void ChromeosDeviceDBusAdaptor::Register(DBusMethodResponsePtr<> response,
                                          const string& network_id) {
   SLOG(this, 2) << __func__ << ": " << network_id;
