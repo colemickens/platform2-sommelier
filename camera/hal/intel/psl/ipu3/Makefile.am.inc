@@ -72,20 +72,22 @@ PSLCPPFLAGS += \
     -I$(top_srcdir)/psl/ipu3/ipc
 
 PSLSRC += \
-    psl/ipu3/ipc/client/ia_aiq_ipc.cpp \
-    psl/ipu3/ipc/client/ia_cmc_ipc.cpp \
-    psl/ipu3/ipc/client/ia_exc_ipc.cpp \
-    psl/ipu3/ipc/client/ia_mkn_ipc.cpp \
-    psl/ipu3/ipc/client/ia_coordinate_ipc.cpp \
-    psl/ipu3/ipc/client/SkyCamSocketProxy.cpp \
-    psl/ipu3/ipc/client/SocketHandler.cpp \
-    psl/ipu3/ipc/client/IPCMessenger.cpp \
-    psl/ipu3/ipc/client/ia_log.cpp
-endif
+    psl/ipu3/ipc/client/SkyCamMojoProxy.cpp \
+    psl/ipu3/ipc/client/Intel3AClient.cpp \
+    psl/ipu3/ipc/IPCCommon.cpp \
+    psl/ipu3/ipc/IPCAic.cpp \
+    psl/ipu3/ipc/IPCAiq.cpp \
+    psl/ipu3/ipc/IPCCmc.cpp \
+    psl/ipu3/ipc/IPCExc.cpp \
+    psl/ipu3/ipc/IPCMkn.cpp
 
-PSLLIBS = \
-    -lSkyCamAICKBL \
-    -lStatsConverter
+libcamerahal_la_LDFLAGS += -lcab.pic
+libcamerahal_la_LDFLAGS += -lrt
+libcamerahal_la_LDFLAGS += -ldl
+libcamerahal_la_LDFLAGS += -lbase-$(BASE_VER)
+libcamerahal_la_LDFLAGS += -lbase-core-$(BASE_VER)
+libcamerahal_la_LDFLAGS += -lmojo-$(BASE_VER).pic
+endif
 
 if !REMOTE_3A_SERVER
 # libmfldadvci shared libraries
@@ -95,29 +97,39 @@ libcamerahal_la_LDFLAGS += \
     -lia_exc \
     -lia_log \
     -lia_mkn \
-    -lia_coordinate
+    -lia_coordinate \
+    -lSkyCamAICKBL
 endif
 
 if REMOTE_3A_SERVER
-bin_PROGRAMS = intel3aserver
-intel3aserver_SOURCES = \
+lib_LTLIBRARIES += libcam_algo.la
+libcam_algo_la_SOURCES = \
     psl/ipu3/IPU3ISPPipe.cpp \
     psl/ipu3/RuntimeParamsHelper.cpp \
-    psl/ipu3/ipc/server/Intel3aServer.cpp \
+    psl/ipu3/ipc/server/Intel3AServer.cpp \
     psl/ipu3/ipc/server/AicLibrary.cpp \
     psl/ipu3/ipc/server/CmcLibrary.cpp \
     psl/ipu3/ipc/server/AiqLibrary.cpp \
     psl/ipu3/ipc/server/MknLibrary.cpp \
     psl/ipu3/ipc/server/CoordinateLibrary.cpp \
     psl/ipu3/ipc/server/ExcLibrary.cpp \
-    psl/ipu3/ipc/server/cca_logger_ipc.cpp \
     common/LogHelper.cpp \
-    common/LogHelperChrome.cpp
+    common/LogHelperChrome.cpp \
+    psl/ipu3/ipc/IPCCommon.cpp \
+    psl/ipu3/ipc/IPCAic.cpp \
+    psl/ipu3/ipc/IPCAiq.cpp \
+    psl/ipu3/ipc/IPCCmc.cpp \
+    psl/ipu3/ipc/IPCExc.cpp \
+    psl/ipu3/ipc/IPCMkn.cpp
 
-intel3aserver_CPPFLAGS = -std=c++11 \
+libcam_algo_la_CPPFLAGS = -std=c++11 \
     -I$(top_srcdir)/common \
     -I$(top_srcdir)/psl/ipu3 \
     -I$(top_srcdir)/psl/ipu3/ipc \
+    -I$(top_srcdir)/include \
+    -I$(top_srcdir)/include/ia_imaging \
+    -I$(ROOT)/usr/include/android/system/core/include \
+    -I$(ROOT)/usr/include/base-$(BASE_VER) \
     $(LIBUTILS_CFLAGS) \
     $(IA_IMAGING_CFLAGS) \
     -D__USE_ANDROID_METADATA__ \
@@ -125,8 +137,13 @@ intel3aserver_CPPFLAGS = -std=c++11 \
     -DCAMERA_HAL_DEBUG \
     -DREMOTE_3A_SERVER
 
-intel3aserver_LDFLAGS = \
+libcam_algo_la_CPPFLAGS += -DNAMESPACE_DECLARATION=namespace\ android\ {\namespace\ camera2
+libcam_algo_la_CPPFLAGS += -DNAMESPACE_DECLARATION_END=}
+libcam_algo_la_CPPFLAGS += -DUSING_DECLARED_NAMESPACE=using\ namespace\ android::camera2
+
+libcam_algo_la_LDFLAGS = \
     -lSkyCamAICKBL \
+    -lStatsConverter \
     -lia_cmc_parser \
     -lia_aiq \
     -lia_exc \
@@ -134,4 +151,10 @@ intel3aserver_LDFLAGS = \
     -lia_log \
     -lia_coordinate \
     $(LIBUTILS_LIBS)
+
+libcam_algo_la_LDFLAGS += -lbase-$(BASE_VER)
+libcam_algo_la_LDFLAGS += -lbase-core-$(BASE_VER)
+libcam_algo_la_LDFLAGS += -lmojo-$(BASE_VER).pic
+
 endif
+

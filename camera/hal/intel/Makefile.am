@@ -25,11 +25,20 @@ lib_LTLIBRARIES = \
         common/3a/IntelAFStateMachine.cpp \
         common/3a/IntelAWBStateMachine.cpp
 
+if REMOTE_3A_SERVER
+3ASRC += psl/ipu3/ipc/client/Intel3aCommon.cpp \
+         psl/ipu3/ipc/client/Intel3aCoordinate.cpp \
+         psl/ipu3/ipc/client/Intel3aAiq.cpp \
+         psl/ipu3/ipc/client/Intel3aCmc.cpp \
+         psl/ipu3/ipc/client/Intel3aExc.cpp \
+         psl/ipu3/ipc/client/Intel3aMkn.cpp
+else
 3ASRC += common/3awrapper/Intel3aCoordinate.cpp \
          common/3awrapper/Intel3aAiq.cpp \
          common/3awrapper/Intel3aCmc.cpp \
          common/3awrapper/Intel3aExc.cpp \
          common/3awrapper/Intel3aMkn.cpp
+endif
 
 AALSRC = AAL/Camera3HAL.cpp \
          AAL/Camera3HAL.h \
@@ -141,7 +150,11 @@ ALLINCLUDES = \
     -I$(top_srcdir)/common/jpeg \
     -I$(top_srcdir)/common/gcss
 
+if REMOTE_3A_SERVER
+ALLINCLUDES += -I$(top_srcdir)/psl/ipu3/ipc/client
+else
 ALLINCLUDES += -I$(top_srcdir)/common/3awrapper
+endif
 
 libcamerahal_la_CPPFLAGS += $(ALLINCLUDES)
 
