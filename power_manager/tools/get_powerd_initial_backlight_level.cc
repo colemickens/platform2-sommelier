@@ -36,11 +36,24 @@ int main(int argc, char* argv[]) {
               "(if applicable).");
   DEFINE_bool(force_battery,
               false,
-              "Force the battery brightness to be used.");
+              "Display the level used on battery even if currently on AC.");
+  DEFINE_int32(level_to_percent,
+               -1,
+               "Convert the supplied panel brightness level to a nonlinear "
+               "percent.");
+  DEFINE_double(percent_to_level,
+               -1.0,
+               "Convert the supplied nonlinear panel brightness percent to a "
+               "level.");
   brillo::FlagHelper::Init(argc, argv, "Print initial backlight levels.");
 
   base::AtExitManager at_exit_manager;
   base::MessageLoopForIO message_loop;
+
+  CHECK(!(FLAGS_keyboard &&
+          (FLAGS_level_to_percent >= 0 || FLAGS_percent_to_level >= 0.0)))
+      << "--level_to_percent and --percent_to_level only operate on the panel "
+      << "backlight";
 
   // Get the max and current brightness from the real backlight and use them to
   // initialize a stub backlight (so that the controller can do its thing
@@ -87,6 +100,16 @@ int main(int argc, char* argv[]) {
                      light_sensor.get(),
                      display_power_setter.get());
     backlight_controller.reset(controller);
+
+    // This is all we need to convert between levels and percents.
+    if (FLAGS_level_to_percent >= 0) {
+      printf("%0.2f\n", controller->LevelToPercent(FLAGS_level_to_percent));
+      return 0;
+    } else if (FLAGS_percent_to_level >= 0.0) {
+      printf("%" PRId64 "\n",
+             controller->PercentToLevel(FLAGS_percent_to_level));
+      return 0;
+    }
   }
 
   // Get the power source.
