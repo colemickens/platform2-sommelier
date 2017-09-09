@@ -67,22 +67,6 @@ const char kAbortedBrowserPidPath[] = "/run/chrome/aborted_browser_pid";
 void DoNothing(int signal) {
 }
 
-void FireAndForgetDBusMethodCall(dbus::ObjectProxy* proxy,
-                                 const char* interface,
-                                 const char* method) {
-  dbus::MethodCall call(interface, method);
-  proxy->CallMethod(&call,
-                    dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-                    dbus::ObjectProxy::EmptyResponseCallback());
-}
-
-void FireAndBlockOnDBusMethodCall(dbus::ObjectProxy* proxy,
-                                  const char* interface,
-                                  const char* method) {
-  dbus::MethodCall call(interface, method);
-  proxy->CallMethodAndBlock(&call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-}
-
 }  // anonymous namespace
 
 // TODO(mkrebs): Remove CollectChrome timeout and file when
@@ -123,6 +107,8 @@ SessionManagerService::SessionManagerService(
       kill_timeout_(base::TimeDelta::FromSeconds(kill_timeout)),
       match_rule_(base::StringPrintf("type='method_call', interface='%s'",
                                      kSessionManagerInterface)),
+      chrome_dbus_proxy_(nullptr),
+      powerd_dbus_proxy_(nullptr),
       login_metrics_(metrics),
       system_(utils),
       nss_(NssUtil::Create()),
@@ -157,11 +143,11 @@ bool SessionManagerService::Initialize() {
   LOG(INFO) << "SessionManagerService starting";
   InitializeDBus();
 
-  dbus::ObjectProxy* chrome_dbus_proxy =
+  chrome_dbus_proxy_ =
       bus_->GetObjectProxy(chromeos::kLibCrosServiceName,
                            dbus::ObjectPath(chromeos::kLibCrosServicePath));
 
-  dbus::ObjectProxy* powerd_dbus_proxy = bus_->GetObjectProxy(
+  powerd_dbus_proxy_ = bus_->GetObjectProxy(
       power_manager::kPowerManagerServiceName,
       dbus::ObjectPath(power_manager::kPowerManagerServicePath));
 
@@ -179,26 +165,19 @@ bool SessionManagerService::Initialize() {
                            dbus::ObjectPath(InitDaemonControllerImpl::kPath));
 
   liveness_checker_.reset(new LivenessCheckerImpl(this,
-                                                  chrome_dbus_proxy,
+                                                  chrome_dbus_proxy_,
                                                   enable_browser_abort_on_hang_,
                                                   liveness_checking_interval_));
 
   // Initially store in derived-type pointer, so that we can initialize
   // appropriately below.
   impl_ = base::MakeUnique<SessionManagerImpl>(
+      this /* delegate */,
       base::MakeUnique<InitDaemonControllerImpl>(init_dbus_proxy),
       bus_,
-      base::Bind(&FireAndForgetDBusMethodCall,
-                 base::Unretained(chrome_dbus_proxy),
-                 chromeos::kLibCrosServiceInterface,
-                 chromeos::kLockScreen),
-      base::Bind(&FireAndBlockOnDBusMethodCall,
-                 base::Unretained(powerd_dbus_proxy),
-                 power_manager::kPowerManagerInterface,
-                 power_manager::kRequestRestartMethod),
       &key_gen_,
       &state_key_generator_,
-      this,
+      this /* manager, i.e. ProcessManagerServiceInterface */,
       login_metrics_,
       nss_.get(),
       system_,
@@ -223,6 +202,24 @@ void SessionManagerService::Finalize() {
   LOG(INFO) << "SessionManagerService exiting";
   impl_->Finalize();
   ShutDownDBus();
+}
+
+void SessionManagerService::LockScreen() {
+  dbus::MethodCall call(chromeos::kLibCrosServiceInterface,
+                        chromeos::kLockScreen);
+  chrome_dbus_proxy_->CallMethod(&call,
+                                 dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+                                 dbus::ObjectProxy::EmptyResponseCallback());
+}
+
+void SessionManagerService::RestartDevice(const std::string& description) {
+  dbus::MethodCall call(power_manager::kPowerManagerInterface,
+                        power_manager::kRequestRestartMethod);
+  dbus::MessageWriter writer(&call);
+  writer.AppendInt32(power_manager::REQUEST_RESTART_OTHER);
+  writer.AppendString(description);
+  powerd_dbus_proxy_->CallMethodAndBlock(
+      &call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
 }
 
 void SessionManagerService::ScheduleShutdown() {

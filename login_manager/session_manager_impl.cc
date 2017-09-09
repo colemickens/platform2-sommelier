@@ -291,10 +291,9 @@ struct SessionManagerImpl::UserSession {
 };
 
 SessionManagerImpl::SessionManagerImpl(
+    Delegate* delegate,
     std::unique_ptr<InitDaemonController> init_controller,
     const scoped_refptr<dbus::Bus>& bus,
-    base::Closure lock_screen_closure,
-    base::Closure restart_device_closure,
     KeyGenerator* key_gen,
     ServerBackedStateKeyGenerator* state_key_generator,
     ProcessManagerServiceInterface* manager,
@@ -313,12 +312,11 @@ SessionManagerImpl::SessionManagerImpl(
       supervised_user_creation_ongoing_(false),
       system_clock_synchronized_(false),
       init_controller_(std::move(init_controller)),
-      lock_screen_closure_(lock_screen_closure),
-      restart_device_closure_(restart_device_closure),
       system_clock_last_sync_info_retry_delay_(
           kSystemClockLastSyncInfoRetryDelay),
       bus_(bus),
       adaptor_(this),
+      delegate_(delegate),
       key_gen_(key_gen),
       state_key_generator_(state_key_generator),
       manager_(manager),
@@ -332,7 +330,9 @@ SessionManagerImpl::SessionManagerImpl(
       install_attributes_reader_(install_attributes_reader),
       system_clock_proxy_(system_clock_proxy),
       mitigator_(key_gen),
-      weak_ptr_factory_(this) {}
+      weak_ptr_factory_(this) {
+  DCHECK(delegate_);
+}
 
 SessionManagerImpl::~SessionManagerImpl() {
   device_policy_->set_delegate(NULL);  // Could use WeakPtr instead?
@@ -799,7 +799,7 @@ bool SessionManagerImpl::LockScreen(brillo::ErrorPtr* error) {
   }
   if (!screen_locked_) {
     screen_locked_ = true;
-    lock_screen_closure_.Run();
+    delegate_->LockScreen();
   }
   LOG(INFO) << "LockScreen() method called.";
   return true;
@@ -1329,7 +1329,7 @@ void SessionManagerImpl::InitiateDeviceWipe(const std::string& reason) {
   const base::FilePath reset_path(kResetFile);
   system_->AtomicFileWrite(reset_path,
                            "fast safe keepimg reason=" + sanitized_reason);
-  restart_device_closure_.Run();
+  delegate_->RestartDevice("session_manager (" + reason + ")");
 }
 
 // static

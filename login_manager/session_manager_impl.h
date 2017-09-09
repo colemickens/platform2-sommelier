@@ -108,10 +108,23 @@ class SessionManagerImpl
   // minimum amount of time we must wait before killing the containers.
   static const base::TimeDelta kContainerTimeout;
 
-  SessionManagerImpl(std::unique_ptr<InitDaemonController> init_controller,
+  // The Delegate interface performs actions on behalf of SessionManagerImpl.
+  class Delegate {
+   public:
+    virtual ~Delegate() = default;
+
+    // Asks Chrome to lock the screen asynchronously.
+    virtual void LockScreen() = 0;
+
+    // Asks powerd to restart the device. |description| will be logged by powerd
+    // to explain the reason for the restart.
+    virtual void RestartDevice(const std::string& description) = 0;
+  };
+
+  // Ownership of raw pointer arguments remains with the caller.
+  SessionManagerImpl(Delegate* delegate,
+                     std::unique_ptr<InitDaemonController> init_controller,
                      const scoped_refptr<dbus::Bus>& bus,
-                     base::Closure lock_screen_closure,
-                     base::Closure restart_device_closure,
                      KeyGenerator* key_gen,
                      ServerBackedStateKeyGenerator* state_key_generator,
                      ProcessManagerServiceInterface* manager,
@@ -408,9 +421,6 @@ class SessionManagerImpl
 
   std::unique_ptr<InitDaemonController> init_controller_;
 
-  base::Closure lock_screen_closure_;
-  base::Closure restart_device_closure_;
-
   base::TimeDelta system_clock_last_sync_info_retry_delay_;
   base::TimeTicks arc_start_time_;
 
@@ -418,6 +428,7 @@ class SessionManagerImpl
   org::chromium::SessionManagerInterfaceAdaptor adaptor_;
   std::unique_ptr<DBusService> dbus_service_;
 
+  Delegate* delegate_;                                  // Owned by the caller.
   KeyGenerator* key_gen_;                               // Owned by the caller.
   ServerBackedStateKeyGenerator* state_key_generator_;  // Owned by the caller.
   ProcessManagerServiceInterface* manager_;             // Owned by the caller.

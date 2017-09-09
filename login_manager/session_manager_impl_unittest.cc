@@ -255,7 +255,8 @@ class ResponseCapturer {
 
 }  // anonymous namespace
 
-class SessionManagerImplTest : public ::testing::Test {
+class SessionManagerImplTest : public ::testing::Test,
+                               public SessionManagerImpl::Delegate {
  public:
   SessionManagerImplTest()
       : bus_(new FakeBus()),
@@ -327,12 +328,9 @@ class SessionManagerImplTest : public ::testing::Test {
 
     init_controller_ = new MockInitDaemonController();
     impl_ = base::MakeUnique<SessionManagerImpl>(
+        this /* delegate */,
         base::WrapUnique(init_controller_),
         bus_.get(),
-        base::Bind(&SessionManagerImplTest::FakeLockScreen,
-                   base::Unretained(this)),
-        base::Bind(&SessionManagerImplTest::FakeRestartDevice,
-                   base::Unretained(this)),
         &key_gen_,
         &state_key_generator_,
         &manager_,
@@ -387,6 +385,12 @@ class SessionManagerImplTest : public ::testing::Test {
     SetSystemSalt(nullptr);
     EXPECT_EQ(actual_locks_, expected_locks_);
     EXPECT_EQ(actual_restarts_, expected_restarts_);
+  }
+
+  // SessionManagerImpl::Delegate:
+  void LockScreen() override { actual_locks_++; }
+  void RestartDevice(const std::string& description) override {
+    actual_restarts_++;
   }
 
  protected:
@@ -659,10 +663,6 @@ class SessionManagerImplTest : public ::testing::Test {
                             SessionManagerImpl::kStarted)))
         .Times(1);
   }
-
-  void FakeLockScreen() { actual_locks_++; }
-
-  void FakeRestartDevice() { actual_restarts_++; }
 
   string fake_salt_ = "fake salt";
 

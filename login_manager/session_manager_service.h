@@ -30,6 +30,7 @@
 #include "login_manager/policy_key.h"
 #include "login_manager/process_manager_service_interface.h"
 #include "login_manager/server_backed_state_key_generator.h"
+#include "login_manager/session_manager_impl.h"
 #include "login_manager/session_manager_interface.h"
 #include "login_manager/vpd_process_impl.h"
 
@@ -53,6 +54,7 @@ class SystemUtils;
 // D-Bus.
 class SessionManagerService
     : public base::RefCountedThreadSafe<SessionManagerService>,
+      public SessionManagerImpl::Delegate,
       public JobManagerInterface,
       public ProcessManagerServiceInterface {
  public:
@@ -132,7 +134,11 @@ class SessionManagerService
 
   ExitCode exit_code() { return exit_code_; }
 
-  // Implementing ProcessManagerServiceInterface
+  // SessionManagerImpl:
+  void LockScreen() override;
+  void RestartDevice(const std::string& description) override;
+
+  // ProcessManagerServiceInterface:
   void ScheduleShutdown() override;
   void RunBrowser() override;
   void AbortBrowser(int signal, const std::string& message) override;
@@ -144,7 +150,7 @@ class SessionManagerService
                        const std::vector<std::string>& flags) override;
   bool IsBrowser(pid_t pid) override;
 
-  // Implementation of JobManagerInterface.
+  // JobManagerInterface:
   // Actually just an alias for IsBrowser
   bool IsManagedJob(pid_t pid) override;
   // Re-runs the browser, unless one of the following is true:
@@ -212,6 +218,8 @@ class SessionManagerService
 
   scoped_refptr<dbus::Bus> bus_;
   const std::string match_rule_;
+  dbus::ObjectProxy* chrome_dbus_proxy_;  // Owned by |bus_|.
+  dbus::ObjectProxy* powerd_dbus_proxy_;  // Owned by |bus_|.
 
   LoginMetrics* login_metrics_;  // Owned by the caller.
   SystemUtils* system_;          // Owned by the caller.
