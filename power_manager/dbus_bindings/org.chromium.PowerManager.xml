@@ -4,12 +4,23 @@
 <node name="/org/chromium/PowerManager"
   xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.PowerManager">
-    <method name="RequestShutdown" />
+    <method name="RequestShutdown">
+      <tp:docstring>
+        The |reason| arg is a power_manager::RequestShutdownReason value.
+        The |description| arg is a human-readable string describing the reason
+        for the request; it is logged by powerd.
+      </tp:docstring>
+      <arg name="reason" direction="in" type="i" />
+      <arg name="description" direction="in" type="s" />
+    </method>
     <method name="RequestRestart">
       <tp:docstring>
         The |reason| arg is a power_manager::RequestRestartReason value.
+        The |description| arg is a human-readable string describing the reason
+        for the request; it is logged by powerd.
       </tp:docstring>
       <arg name="reason" direction="in" type="i" />
+      <arg name="description" direction="in" type="s" />
     </method>
     <method name="RequestSuspend">
       <tp:docstring>
