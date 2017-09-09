@@ -31,19 +31,18 @@ bool NfsLauncher::Configure() {
   // For now, a single export sufficies. When having more VMs and maintaining
   // their state, the following config needs to be modified to export per VM.
   std::string config = R"XXX(
-NFSV4 {
-  Grace_Period = 1;
-  #Graceless = true;
+NFS_Core_Param {
+    MNT_Port = 2050;
 }
 EXPORT
 {
   Export_Id = 1366;
   Path = /home/chronos/user; #jail address
-  Pseudo = /export;
   Squash = Root;
   Anonymous_Uid = 1000; #chronos
   Anonymous_Gid = 1000;
   Access_Type = RW;
+  Protocols = 3;
   FSAL {
     Name = VFS;
   }
