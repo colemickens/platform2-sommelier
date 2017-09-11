@@ -106,9 +106,6 @@ class ChromeosManagerDBusAdaptor
   bool GetService(brillo::ErrorPtr* error,
                   const brillo::VariantDictionary& args,
                   dbus::ObjectPath* service_path) override;
-  bool GetVPNService(brillo::ErrorPtr* error,
-                     const brillo::VariantDictionary& args,
-                     dbus::ObjectPath* service_path) override;
   bool GetWifiService(brillo::ErrorPtr* error,
                       const brillo::VariantDictionary& args,
                       dbus::ObjectPath* service_path) override;

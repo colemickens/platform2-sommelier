@@ -73,10 +73,6 @@
 			<arg type="a{sv}" direction="in"/>
 			<arg type="o" direction="out"/>
 		</method>
-		<method name="GetVPNService">
-			<arg type="a{sv}" direction="in"/>
-			<arg type="o" direction="out"/>
-		</method>
 		<method name="GetDebugLevel">
 			<arg type="i" direction="out"/>
 		</method>

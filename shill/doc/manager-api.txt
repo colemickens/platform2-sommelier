@@ -283,16 +283,6 @@ Methods
 					 [service].Error.InvalidNetworkName
 					 [service].Error.InvalidPassphrase
 
-		object GetVPNService(dict properties) --DEPRECATED--
-
-			Like GetService, but only for "vpn" services and
-			without using the GUID property to lookup a service.
-
-			Possible Errors: [service].Error.InvalidArguments
-					 [service].Error.NotSupported
-					 [service].Error.PermissionDenied
-					 [service].Error.InternalError
-
 		object GetWifiService(dict properties) --DEPRECATED--
 
 			Like GetService, but only for "wifi" services and

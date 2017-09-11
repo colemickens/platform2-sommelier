@@ -281,15 +281,6 @@ bool ChromeosManagerDBusAdaptor::GetService(
 }
 
 // Obsolete, use GetService instead.
-bool ChromeosManagerDBusAdaptor::GetVPNService(
-    brillo::ErrorPtr* error,
-    const brillo::VariantDictionary& args,
-    dbus::ObjectPath* service_path) {
-  SLOG(this, 2) << __func__;
-  return GetService(error, args, service_path);
-}
-
-// Obsolete, use GetService instead.
 bool ChromeosManagerDBusAdaptor::GetWifiService(
     brillo::ErrorPtr* error,
     const brillo::VariantDictionary& args,
