@@ -222,6 +222,36 @@ constexpr struct {
     },
 };
 
+// Number of defined signals that the process could receive (not including
+// real time signals).
+constexpr int kNumSignals = 32;
+
+// Resets all signal handlers to the default.  This is called in child processes
+// immediately before exec-ing so that signals are not unexpectedly blocked.
+// Returns true if all signal handlers were successfully set to their default
+// dispositions and false if even one of them failed.  Callers should inspect
+// errno for the error.
+bool ResetSignalHandlers() {
+  for (int signo = 1; signo < kNumSignals; ++signo) {
+    if (signo == SIGKILL || signo == SIGSTOP) {
+      // sigaction returns an error if we try to set the disposition of these
+      // signals to SIG_DFL.
+      continue;
+    }
+    struct sigaction act = {
+      .sa_handler = SIG_DFL,
+      .sa_flags = 0,
+    };
+    sigemptyset(&act.sa_mask);
+
+    if (sigaction(signo, &act, nullptr) != 0) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 // Recursively changes the owner and group for all files and directories in
 // |path| (including |path|) to |uid| and |gid|, respectively.
 bool ChangeOwnerAndGroup(base::FilePath path, uid_t uid, gid_t gid) {
@@ -368,6 +398,12 @@ void Init::Worker::Spawn(struct ChildInfo info,
         _exit(errno);
       }
     }
+
+    // Restore signal handlers and unblock all signals.
+    if (!ResetSignalHandlers()) {
+      _exit(errno);
+    }
+    sigprocmask(SIG_UNBLOCK, &mask, nullptr);
 
     // Launch the process.
     execvp(argv[0], const_cast<char* const*>(argv.data()));
