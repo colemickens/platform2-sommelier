@@ -283,18 +283,6 @@ Methods
 					 [service].Error.InvalidNetworkName
 					 [service].Error.InvalidPassphrase
 
-		object GetWifiService(dict properties) --DEPRECATED--
-
-			Like GetService, but only for "wifi" services and
-			without using the GUID property to lookup a service.
-
-			Possible Errors: [service].Error.InvalidArguments
-					 [service].Error.NotSupported
-					 [service].Error.PermissionDenied
-					 [service].Error.InternalError
-					 [service].Error.InvalidNetworkName
-					 [service].Error.InvalidPassphrase
-
 		void SetDebugTags(string taglist)
 
 			Set the debug tags that are enabled for logging to

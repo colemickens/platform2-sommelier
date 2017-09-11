@@ -280,16 +280,6 @@ bool ChromeosManagerDBusAdaptor::GetService(
   return true;
 }
 
-// Obsolete, use GetService instead.
-bool ChromeosManagerDBusAdaptor::GetWifiService(
-    brillo::ErrorPtr* error,
-    const brillo::VariantDictionary& args,
-    dbus::ObjectPath* service_path) {
-  SLOG(this, 2) << __func__;
-  return GetService(error, args, service_path);
-}
-
-
 bool ChromeosManagerDBusAdaptor::ConfigureService(
     brillo::ErrorPtr* error,
     const brillo::VariantDictionary& args,
