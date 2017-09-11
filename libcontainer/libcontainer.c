@@ -10,6 +10,7 @@
 #if USE_device_mapper
 #include <libdevmapper.h>
 #endif
+#include <limits.h>
 #include <malloc.h>
 #include <signal.h>
 #include <stdint.h>
