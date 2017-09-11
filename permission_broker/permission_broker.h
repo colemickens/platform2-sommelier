@@ -16,7 +16,7 @@
 #include <base/sequenced_task_runner.h>
 #include <brillo/dbus/exported_object_manager.h>
 
-#include "container_utils/device_jail/device_jail_server.h"
+#include "container_utils/device_jail_server.h"
 #include "firewalld/dbus-proxies.h"
 #include "permission_broker/dbus_adaptors/org.chromium.PermissionBroker.h"
 #include "permission_broker/port_tracker.h"

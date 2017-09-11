@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CONTAINER_UTILS_DEVICE_JAIL_DEVICE_JAIL_CONTROL_H_
-#define CONTAINER_UTILS_DEVICE_JAIL_DEVICE_JAIL_CONTROL_H_
+#ifndef CONTAINER_UTILS_DEVICE_JAIL_CONTROL_H_
+#define CONTAINER_UTILS_DEVICE_JAIL_CONTROL_H_
 
 #include <memory>
 #include <string>
@@ -45,4 +45,4 @@ class DeviceJailControl {
 
 }  // namespace device_jail
 
-#endif  // CONTAINER_UTILS_DEVICE_JAIL_DEVICE_JAIL_CONTROL_H_
+#endif  // CONTAINER_UTILS_DEVICE_JAIL_CONTROL_H_

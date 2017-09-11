@@ -33,7 +33,6 @@
     'USE_containers%': 0,
     'USE_cros_host%': 0,
     'USE_dbus%': 0,
-    'USE_device_jail%': 0,
     'USE_device_mapper%': 0,
     'USE_dhcpv6%': 0,
     'USE_direncryption%': 0,

@@ -61,7 +61,7 @@ const char kOpenFailedError[] = "open_failed";
 
 namespace permission_broker {
 
-#if USE_DEVICE_JAIL
+#if USE_CONTAINERS
 class JailRequestHandler : public device_jail::DeviceJailServer::Delegate {
  public:
   explicit JailRequestHandler(RuleEngine* rule_engine)
@@ -86,7 +86,7 @@ class JailRequestHandler : public device_jail::DeviceJailServer::Delegate {
  private:
   RuleEngine* rule_engine_;  // weak
 };
-#endif
+#endif  // USE_CONTAINERS
 
 PermissionBroker::PermissionBroker(
     brillo::dbus_utils::ExportedObjectManager* object_manager,

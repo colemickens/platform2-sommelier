@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CONTAINER_UTILS_DEVICE_JAIL_DEVICE_JAIL_SERVER_H_
-#define CONTAINER_UTILS_DEVICE_JAIL_DEVICE_JAIL_SERVER_H_
+#ifndef CONTAINER_UTILS_DEVICE_JAIL_SERVER_H_
+#define CONTAINER_UTILS_DEVICE_JAIL_SERVER_H_
 
 #include <linux/device_jail.h>
 
@@ -54,4 +54,4 @@ class DeviceJailServer : base::MessageLoopForIO::Watcher {
 
 }  // namespace device_jail
 
-#endif  // CONTAINER_UTILS_DEVICE_JAIL_DEVICE_JAIL_SERVER_H_
+#endif  // CONTAINER_UTILS_DEVICE_JAIL_SERVER_H_

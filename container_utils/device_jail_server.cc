@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "container_utils/device_jail/device_jail_server.h"
+#include "container_utils/device_jail_server.h"
 
 #include <fcntl.h>
 #include <sys/types.h>

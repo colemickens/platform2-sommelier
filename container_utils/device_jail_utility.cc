@@ -14,8 +14,8 @@
 #include <base/run_loop.h>
 #include <brillo/flag_helper.h>
 
-#include "container_utils/device_jail/device_jail_control.h"
-#include "container_utils/device_jail/device_jail_server.h"
+#include "container_utils/device_jail_control.h"
+#include "container_utils/device_jail_server.h"
 
 using device_jail::DeviceJailControl;
 using device_jail::DeviceJailServer;

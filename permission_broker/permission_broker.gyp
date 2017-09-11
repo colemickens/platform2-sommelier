@@ -1,7 +1,7 @@
 {
   'target_defaults': {
     'defines': [
-      'USE_DEVICE_JAIL=<(USE_device_jail)',
+      'USE_CONTAINERS=<(USE_containers)',
     ],
     'variables': {
       'deps': [
@@ -58,7 +58,7 @@
         'usb_subsystem_udev_rule.cc',
       ],
       'conditions': [
-        ['USE_device_jail == 1', {
+        ['USE_containers == 1', {
           'dependencies': [
             '../container_utils/container_utils.gyp:libdevice_jail',
           ],

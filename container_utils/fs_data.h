@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CONTAINER_UTILS_DEVICE_JAIL_FS_DATA_H_
-#define CONTAINER_UTILS_DEVICE_JAIL_FS_DATA_H_
+#ifndef CONTAINER_UTILS_FS_DATA_H_
+#define CONTAINER_UTILS_FS_DATA_H_
 
 #include <memory>
 #include <string>
@@ -13,7 +13,7 @@
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 
-#include "container_utils/device_jail/device_jail_control.h"
+#include "container_utils/device_jail_control.h"
 
 struct stat;
 
@@ -64,4 +64,4 @@ class FsData {
 
 }  // namespace device_jail
 
-#endif  // CONTAINER_UTILS_DEVICE_JAIL_FS_DATA_H_
+#endif  // CONTAINER_UTILS_FS_DATA_H_

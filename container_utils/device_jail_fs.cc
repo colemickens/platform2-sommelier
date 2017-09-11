@@ -31,7 +31,7 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
-#include "container_utils/device_jail/fs_data.h"
+#include "container_utils/fs_data.h"
 
 namespace {
 
