@@ -76,11 +76,6 @@ int MetadataHandler::FillDefaultMetadata(android::CameraMetadata* metadata) {
   UPDATE(ANDROID_CONTROL_AWB_AVAILABLE_MODES, &awb_available_mode, 1);
   UPDATE(ANDROID_CONTROL_AWB_MODE, &awb_available_mode, 1);
 
-  const uint8_t ae_antibanding_mode = ANDROID_CONTROL_AE_ANTIBANDING_MODE_OFF;
-  UPDATE(ANDROID_CONTROL_AE_AVAILABLE_ANTIBANDING_MODES, &ae_antibanding_mode,
-         1);
-  UPDATE(ANDROID_CONTROL_AE_ANTIBANDING_MODE, &ae_antibanding_mode, 1);
-
   const uint8_t ae_available_mode = ANDROID_CONTROL_AE_MODE_ON;
   UPDATE(ANDROID_CONTROL_AE_AVAILABLE_MODES, &ae_available_mode, 1);
   // ON means auto-exposure is active with no flash control.
@@ -544,6 +539,29 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
 
   UPDATE(ANDROID_LENS_APERTURE,
          &device_info.lens_info_available_apertures.data()[0], 1);
+
+  std::vector<uint8_t> ae_antibanding_modes;
+  uint8_t ae_antibanding_mode;
+  if (device_info.power_line_frequency == PowerLineFrequency::FREQ_AUTO) {
+    ae_antibanding_modes.push_back(ANDROID_CONTROL_AE_ANTIBANDING_MODE_AUTO);
+    ae_antibanding_mode = ANDROID_CONTROL_AE_ANTIBANDING_MODE_AUTO;
+  } else {
+    ae_antibanding_modes.push_back(ANDROID_CONTROL_AE_ANTIBANDING_MODE_50HZ);
+    ae_antibanding_modes.push_back(ANDROID_CONTROL_AE_ANTIBANDING_MODE_60HZ);
+    if (device_info.power_line_frequency == PowerLineFrequency::FREQ_50HZ) {
+      ae_antibanding_mode = ANDROID_CONTROL_AE_ANTIBANDING_MODE_50HZ;
+    } else if (device_info.power_line_frequency ==
+               PowerLineFrequency::FREQ_60HZ) {
+      ae_antibanding_mode = ANDROID_CONTROL_AE_ANTIBANDING_MODE_60HZ;
+    } else {
+      LOGF(ERROR) << "Invalid power line frequency setting: "
+                  << device_info.power_line_frequency;
+      return -EINVAL;
+    }
+  }
+  UPDATE(ANDROID_CONTROL_AE_AVAILABLE_ANTIBANDING_MODES,
+         ae_antibanding_modes.data(), ae_antibanding_modes.size());
+  UPDATE(ANDROID_CONTROL_AE_ANTIBANDING_MODE, &ae_antibanding_mode, 1);
   return 0;
 }
 
