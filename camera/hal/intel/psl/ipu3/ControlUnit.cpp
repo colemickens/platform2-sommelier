@@ -47,11 +47,12 @@ ControlUnit::ControlUnit(ImguUnit *thePU,
         mRequestStatePool("CtrlReqState"),
         mCaptureUnitSettingsPool("CapUSettings"),
         mProcUnitSettingsPool("ProcUSettings"),
+        mLatestStatistics(nullptr),
+        mLatestRequestId(-1),
         mImguUnit(thePU),
         mCaptureUnit(theCU),
         m3aWrapper(nullptr),
         mCameraId(cameraId),
-        mStatsEventReceived(false),
         mThreadRunning(false),
         mMessageQueue("CtrlUnitThread", static_cast<int>(MESSAGE_ID_MAX)),
         mMessageThread(nullptr),
@@ -368,7 +369,8 @@ ControlUnit::configStreamsDone(bool configChanged)
     LOG1("@%s: config changed: %d", __FUNCTION__, configChanged);
 
     if (configChanged) {
-        mStatsEventReceived = false;
+        mLatestRequestId = -1;
+        mPendingRequests.clear();
         mWaitingForCapture.clear();
         mSettingsHistory.clear();
     }
@@ -474,7 +476,6 @@ ControlUnit::handleNewRequest(Message &msg)
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
 
     status_t status = NO_ERROR;
-    int reqId = msg.state->request->getId();
     std::shared_ptr<RequestCtrlState> reqState = msg.state;
 
     /**
@@ -498,27 +499,29 @@ ControlUnit::handleNewRequest(Message &msg)
         LOGE("Could not process all settings, reporting request as invalid");
     }
 
-  /**
+    mPendingRequests.push_back(reqState);
+    reqState = mPendingRequests[0];
+
+    /**
      * PHASE2: Process for capture or Q or reprocessing
      * Use dummy stats if no stats is received.
-     * IPU3CameraHw::processRequest() controls the number of request
-     * processed with dummy stats.
      *
      * Use the latest valid stats for still capture,
      * it comes from video pipe (during still preview)
      */
-    std::shared_ptr<IPU3CapturedStatistics> stats = nullptr;
-    if (mStatsEventReceived
-        || reqState->request->getBufferCountOfFormat(HAL_PIXEL_FORMAT_BLOB)) {
-        stats = mLatestStatistics;
+    if (mLatestRequestId > mCaptureUnit->getPipelineDepth()
+        || mLatestRequestId == -1
+        || reqState->request->getBufferCountOfFormat(HAL_PIXEL_FORMAT_BLOB) > 0
+        || (mLatestStatistics != nullptr && mLatestRequestId == mLatestStatistics->id)) {
+        mPendingRequests.erase(mPendingRequests.begin());
+
+        status = processRequestForCapture(reqState, mLatestStatistics);
+        if (CC_UNLIKELY(status != OK)) {
+            LOGE("Failed to process req %d for capture [%d]", reqState->request->getId(), status);
+            // TODO: handle error !
+        }
     }
 
-    status = processRequestForCapture(reqState, stats);
-    if (CC_UNLIKELY(status != OK)) {
-        LOGE("Failed to process request %d for capture [%d]", reqId,
-                                                              status);
-        // TODO: handle error !
-    }
     return status;
 }
 
@@ -605,6 +608,7 @@ ControlUnit::processRequestForCapture(std::shared_ptr<RequestCtrlState> &reqStat
      * Move the request to the vector mWaitingForCapture
      */
     mWaitingForCapture.insert(std::make_pair(reqId, reqState));
+    mLatestRequestId = reqId;
 
     /*
      * Store the settings in the settings history if we expect stats to be in
@@ -695,12 +699,11 @@ status_t
 ControlUnit::handleNewStat(Message &msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    std::shared_ptr<RequestCtrlState> reqState = nullptr;
     status_t status = NO_ERROR;
     std::shared_ptr<IPU3CapturedStatistics> stats = msg.stats;
-    int reqId = 0;
+    int statsId = 0;
     if (stats.get() != nullptr) {
-        reqId = stats->id;
+        statsId = stats->id;
 
         // Still pipe has no stats output and data is invalid
         // so here only valid data are saved.
@@ -708,7 +711,28 @@ ControlUnit::handleNewStat(Message &msg)
             mLatestStatistics = stats;
     }
 
-    mStatsEventReceived = true;
+    if (mPendingRequests.empty()) {
+        return status;
+    }
+
+    // Process request
+    std::shared_ptr<RequestCtrlState> reqState = mPendingRequests[0];
+    mPendingRequests.erase(mPendingRequests.begin());
+
+    if (CC_UNLIKELY(!reqState || reqState->request == nullptr)) {
+        LOGE("reqState is nullptr, find BUG!");
+        return UNKNOWN_ERROR;
+    }
+
+    LOG2("@%s: process reqState %d, with stat id of req %d", __FUNCTION__,
+            reqState->request->getId(), statsId);
+
+    status = processRequestForCapture(reqState, mLatestStatistics);
+    if (CC_UNLIKELY(status != OK)) {
+        LOGE("Failed to process request %d for capture ", reqState->request->getId());
+        // TODO: handle error !
+    }
+
     return status;
 }
 

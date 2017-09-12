@@ -174,12 +174,14 @@ private:  /* Members */
     SharedItemPool<ProcUnitSettings> mProcUnitSettingsPool;
 
     std::map<int, std::shared_ptr<RequestCtrlState>> mWaitingForCapture;
+    std::vector<std::shared_ptr<RequestCtrlState>> mPendingRequests;
     std::shared_ptr<IPU3CapturedStatistics>  mLatestStatistics;
+    int64_t mLatestRequestId;
+
     ImguUnit       *mImguUnit; /* ControlUnit doesn't own ImguUnit */
     CaptureUnit    *mCaptureUnit; /* ControlUnit doesn't own mCaptureUnit */
     Intel3aPlus    *m3aWrapper;
     int             mCameraId;
-    bool            mStatsEventReceived;
 
     /**
      * Thread control members
