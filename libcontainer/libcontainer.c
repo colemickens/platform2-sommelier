@@ -10,7 +10,6 @@
 #if USE_device_mapper
 #include <libdevmapper.h>
 #endif
-#include <limits.h>
 #include <malloc.h>
 #include <signal.h>
 #include <stdint.h>
@@ -1447,7 +1446,7 @@ static int device_setup(struct container *c,
 static int setexeccon(void *payload)
 {
 	char *init_domain = (char *) payload;
-	char exec_path[PATH_MAX];
+	char *exec_path;
 	pid_t tid = syscall(SYS_gettid);
 	int fd;
 
@@ -1455,12 +1454,13 @@ static int setexeccon(void *payload)
 		return -errno;
 	}
 
-	if (snprintf(exec_path, sizeof(exec_path),
+	if (asprintf(&exec_path,
 		     "/proc/self/task/%d/attr/exec", tid) < 0) {
 		return -errno;
 	}
 
 	fd = open(exec_path, O_WRONLY|O_CLOEXEC);
+	free(exec_path);
 	if (fd == -1) {
 		return -errno;
 	}
