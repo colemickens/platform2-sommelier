@@ -477,7 +477,7 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
   UPDATE(ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES, fps_ranges,
          ARRAY_SIZE(fps_ranges));
 
-  UPDATE(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, fps_ranges, sizeof(int32_t) * 2);
+  UPDATE(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, fps_ranges, 2);
 
   UPDATE(ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
          stream_configurations.data(), stream_configurations.size());
