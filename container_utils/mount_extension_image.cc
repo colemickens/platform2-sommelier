@@ -35,6 +35,13 @@ const char kExtensionManifestName[] = "container.json";
 const char kManifestNameField[] = "name";
 const char kManifestVersionField[] = "version";
 
+// When we find a matching container, we want to know where it's located
+// and what the version string is so imageloader can load it.
+struct ContainerInfo {
+  base::FilePath container_dir;
+  std::string version;
+};
+
 // Returns true if |container_dir| contains a container whose name matches
 // |name|.  Additionally, if it finds an extension, |version| is populated
 // with the extension version.
@@ -92,10 +99,10 @@ bool MatchContainer(const base::FilePath& container_dir,
 // Searches all mounted user directories for an extension named |name| and
 // returns the path to its extension directory. Additionally populates
 // |version| with the extension version if found.
-base::FilePath FindExtensionDirectory(scoped_refptr<dbus::Bus> bus,
-                                      const std::string& name,
-                                      std::string* version) {
+std::vector<ContainerInfo> FindExtensionDirectory(scoped_refptr<dbus::Bus> bus,
+                                                  const std::string& name) {
   std::map<std::string, std::string> sessions;
+  std::vector<ContainerInfo> container_infos;
   brillo::ErrorPtr error;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxy> proxy(
       new org::chromium::SessionManagerInterfaceProxy(bus));
@@ -106,7 +113,7 @@ base::FilePath FindExtensionDirectory(scoped_refptr<dbus::Bus> bus,
     LOG(ERROR) << "Error calling D-Bus proxy call to interface "
                << "'" << proxy->GetObjectPath().value() << "': "
                << error->GetMessage();
-    return base::FilePath();
+    return std::vector<ContainerInfo>();
   }
 
   // Walk all active sessions and poke their Extensions dir for containers.
@@ -123,12 +130,13 @@ base::FilePath FindExtensionDirectory(scoped_refptr<dbus::Bus> bus,
     for (base::FilePath container_dir = fe.Next();
          !container_dir.empty();
          container_dir = fe.Next()) {
-      if (MatchContainer(container_dir, name, version))
-        return container_dir;
+      std::string version;
+      if (MatchContainer(container_dir, name, &version))
+        container_infos.push_back(ContainerInfo{container_dir, version});
     }
   }
 
-  return base::FilePath();
+  return container_infos;
 }
 
 // D-Bus calls to imageloader.
@@ -262,7 +270,7 @@ base::FilePath MountImage(scoped_refptr<dbus::Bus> bus,
 }  // namespace
 
 int main(int argc, char **argv) {
-  DEFINE_string(name, "", "Name of extension which packages the container");
+  DEFINE_string(name, "", "Name of container");
   brillo::FlagHelper::Init(argc, argv,
                            "Mounts a container image out of an extension.");
   brillo::InitLog(brillo::kLogToSyslog);
@@ -276,26 +284,28 @@ int main(int argc, char **argv) {
   options.bus_type = dbus::Bus::SYSTEM;
   scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
 
-  std::string extension_version;
-  base::FilePath extension_dir =
-      FindExtensionDirectory(bus, FLAGS_name, &extension_version);
-  if (extension_dir.empty()) {
-    LOG(ERROR) << "Could not find extension named \""
-               << FLAGS_name << "\"";
+  std::vector<ContainerInfo> container_infos =
+      FindExtensionDirectory(bus, FLAGS_name);
+  if (container_infos.empty()) {
+    LOG(ERROR) << "Could not find container named \"" << FLAGS_name << "\"";
     return 1;
   }
 
-  DLOG(INFO) << "Found " << FLAGS_name << " " << extension_version;
-  base::FilePath mount_dir = MountImage(bus,
-                                        FLAGS_name,
-                                        extension_version,
-                                        extension_dir);
-  if (mount_dir.empty()) {
-    LOG(ERROR) << "Could not mount image from \""
-               << extension_dir.value() << "\"";
-    return 1;
+  for (const auto& info : container_infos) {
+    DLOG(INFO) << "Found " << FLAGS_name << " " << info.version;
+    base::FilePath mount_dir = MountImage(bus,
+                                          FLAGS_name,
+                                          info.version,
+                                          info.container_dir);
+    if (!mount_dir.empty()) {
+      printf("%s\n", mount_dir.value().c_str());
+      return 0;
+    }
+
+    LOG(ERROR) << "Could not mount container image from \""
+               << info.container_dir.value() << "\"";
   }
 
-  printf("%s\n", mount_dir.value().c_str());
-  return 0;
+  LOG(ERROR) << "Could not mount any containers";
+  return 1;
 }
