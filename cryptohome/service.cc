@@ -2452,6 +2452,8 @@ gboolean Service::TpmClearStoredPassword(GError** error) {
   return TRUE;
 }
 
+// TODO(isandrk): Deprecated, remove at some point in the future when most
+// clients switch to TpmGetVersionStructured. crbug.com/765597
 gboolean Service::TpmGetVersion(gchar** OUT_result,
                                 GError** error) {
   cryptohome::Tpm::TpmVersionInfo version_info;
@@ -2478,6 +2480,38 @@ gboolean Service::TpmGetVersion(gchar** OUT_result,
                      vendor_specific.c_str());
 
   *OUT_result = g_strdup(info.c_str());
+  return TRUE;
+}
+
+gboolean Service::TpmGetVersionStructured(guint32* OUT_family,
+                                          guint64* OUT_spec_level,
+                                          guint32* OUT_manufacturer,
+                                          guint32* OUT_tpm_model,
+                                          guint64* OUT_firmware_version,
+                                          gchar** OUT_vendor_specific,
+                                          GError** error) {
+  cryptohome::Tpm::TpmVersionInfo version_info;
+  if (!tpm_init_->GetVersion(&version_info)) {
+    LOG(ERROR) << "Could not get TPM version information.";
+    *OUT_family = 0;
+    *OUT_spec_level = 0;
+    *OUT_manufacturer = 0;
+    *OUT_tpm_model = 0;
+    *OUT_firmware_version = 0;
+    *OUT_vendor_specific = nullptr;
+    return FALSE;
+  }
+
+  *OUT_family           = version_info.family;
+  *OUT_spec_level       = version_info.spec_level;
+  *OUT_manufacturer     = version_info.manufacturer;
+  *OUT_tpm_model        = version_info.tpm_model;
+  *OUT_firmware_version = version_info.firmware_version;
+  std::string vendor_specific_hex =
+      base::HexEncode(version_info.vendor_specific.data(),
+                      version_info.vendor_specific.size());
+  *OUT_vendor_specific  = g_strdup(vendor_specific_hex.c_str());
+
   return TRUE;
 }
 

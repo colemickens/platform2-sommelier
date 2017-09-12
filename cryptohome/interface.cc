@@ -583,6 +583,22 @@ gboolean cryptohome_tpm_get_version(Cryptohome* self,
   CRYPTOHOME_WRAP_METHOD(TpmGetVersion,
                          OUT_result);
 }
+gboolean cryptohome_tpm_get_version_structured(Cryptohome* self,
+                                               guint32* OUT_family,
+                                               guint64* OUT_spec_level,
+                                               guint32* OUT_manufacturer,
+                                               guint32* OUT_tpm_model,
+                                               guint64* OUT_firmware_version,
+                                               gchar** OUT_vendor_specific,
+                                               GError** error) {
+  CRYPTOHOME_WRAP_METHOD(TpmGetVersionStructured,
+                         OUT_family,
+                         OUT_spec_level,
+                         OUT_manufacturer,
+                         OUT_tpm_model,
+                         OUT_firmware_version,
+                         OUT_vendor_specific);
+}
 gboolean cryptohome_pkcs11_get_tpm_token_info(Cryptohome* self,
                                               gchar** OUT_label,
                                               gchar** OUT_user_pin,
