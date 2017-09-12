@@ -32,6 +32,7 @@
 #include <linux/kdev_t.h>  // MAJOR(), MINOR()
 #include <string>
 #include <sstream>
+#include <fstream>
 
 // TODO this should come from the crl header file
 // crl is a common code module in sensor driver, which contains
@@ -70,6 +71,13 @@ GcssKeyMap* PlatformData::mGcssKeyMap = nullptr;
  */
 
 static const char *DEFAULT_MAIN_DEVICE = "/dev/video0";
+
+/**
+ * Property file defines product name and manufactory info
+ * Used for EXIF header of JPEG
+ * Format: key=value in each line
+ */
+static const char *CAMERA_PROPERTY_PATH = "/var/cache/camera/camera.prop";
 
 GcssKeyMap::GcssKeyMap()
 {
@@ -843,6 +851,8 @@ CameraHWInfo::CameraHWInfo() :
 status_t CameraHWInfo::init(const std::string &mediaDevicePath)
 {
     mMediaControllerPathName = mediaDevicePath;
+    readProperty();
+
     return initDriverList();
 }
 
@@ -884,6 +894,43 @@ status_t CameraHWInfo::initDriverList()
     return ret;
 }
 
+status_t CameraHWInfo::readProperty()
+{
+    std::fstream props(CAMERA_PROPERTY_PATH, std::ios::in);
+
+    if (!props.is_open()) {
+        LOGW("Failed to load camera property file.");
+        return UNKNOWN_ERROR;
+    }
+
+    const std::string kManufacturer = "ro.product.manufacturer";
+    const std::string kModel = "ro.product.model";
+    const std::string kDelimiter = "=";
+    std::map<std::string, std::string> properties;
+
+    while (!props.eof()) {
+        size_t pos;
+        std::string line, key, value;
+
+        std::getline(props, line);
+        pos = line.find(kDelimiter);
+        if (pos != std::string::npos) {
+            key = line.substr(0, pos);
+            value = line.substr(pos + 1);
+            properties[key] = value;
+            LOG2("%s, new key,value: %s,%s", __FUNCTION__, key.c_str(), value.c_str());
+        }
+    }
+
+    if (properties.find(kManufacturer) != properties.end()) {
+        mManufacturerName = properties[kManufacturer];
+    }
+    if (properties.find(kModel) != properties.end()) {
+        mProductName = properties[kModel];
+    }
+
+    return OK;
+}
 
 status_t CameraHWInfo::findMediaControllerSensors()
 {

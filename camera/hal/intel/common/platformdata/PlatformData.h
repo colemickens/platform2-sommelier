@@ -226,6 +226,7 @@ public:
 private:
     // the below functions are used to init the mSensorInfo
     status_t initDriverList();
+    status_t readProperty();
     status_t findMediaControllerSensors();
     status_t findMediaDeviceInfo();
     status_t initDriverListHelper(unsigned major, unsigned minor, SensorDriverDescriptor& drvInfo);
