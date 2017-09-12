@@ -204,6 +204,27 @@ void FixUnencryptedPermission() {
   }
 }
 
+// Do board specific post install stuff, if available.
+bool RunBoardPostInstall(const string &install_dir) {
+  int result;
+  string script =  install_dir + "/usr/sbin/board-postinst";
+  string command = script + " " + install_dir;
+
+  if (access(script.c_str(), X_OK)) {
+    return true;
+  }
+
+  printf("Starting board post install script (%s)\n", command.c_str());
+  result = RunCommand(command);
+
+  if (result)
+    fprintf(stderr, "Board post install failed (%d).\n", result);
+  else
+    printf("Board post install succeeded\n");
+
+  return result == 0;
+}
+
 // Do post install stuff.
 //
 // Install kernel, set up the proper bootable partition in
@@ -338,6 +359,11 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
   string disk_fw_check_complete = string(kStatefulMount) +
       "/unencrypted/cache/.disk_firmware_upgrade_completed";
   unlink(disk_fw_check_complete.c_str());
+
+  if (!RunBoardPostInstall(install_config.root.mount())) {
+    fprintf(stderr, "Failed to perform board specific post install script.");
+    return false;
+  }
 
   // In postinst in future, we may provide an option (ex, --update_firmware).
   string firmware_tag_file = (install_config.root.mount() +
