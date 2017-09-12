@@ -19,13 +19,7 @@ namespace policy {
 namespace {
 
 // Registry key for Chrome branded builds.
-const char kRegistryKeyChromeOS[] = "Software\\Policies\\Google\\ChromeOS";
-// Registry key for Chromium branded builds.
-const char kRegistryKeyChromiumOS[] = "Software\\Policies\\ChromiumOS";
-
-// Keys for checking the branding (Chromium/Chrome) in lsb-release flags.
-const char kChromeOSReleaseNameKey[] = "CHROMEOS_RELEASE_NAME";
-const char kChromeOSReleaseNameValue[] = "Chrome OS";
+const char kRegistryKey[] = "Software\\Policies\\Google\\ChromeOS";
 
 // TODO(ljusten): Copied from latest Chromium base::Value::GetTypeName, remove
 // once the latest code is merged.
@@ -49,13 +43,7 @@ const char* GetValueTypeName(const base::Value* value) {
 }  // namespace
 
 std::string GetRegistryKey() {
-  // Note: GetLsbReleaseValue might fail when running unit tests. Default to
-  // Chromium OS branding in this case.
-  std::string value;
-  const bool is_chrome_branded =
-      (base::SysInfo::GetLsbReleaseValue(kChromeOSReleaseNameKey, &value) &&
-       value == kChromeOSReleaseNameValue);
-  return is_chrome_branded ? kRegistryKeyChromeOS : kRegistryKeyChromiumOS;
+  return kRegistryKey;
 }
 
 bool LoadPRegFile(const base::FilePath& preg_file, RegistryDict* dict) {
