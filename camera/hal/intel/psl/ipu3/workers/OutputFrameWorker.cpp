@@ -46,6 +46,7 @@ OutputFrameWorker::OutputFrameWorker(std::shared_ptr<V4L2VideoNode> node, int ca
 OutputFrameWorker::~OutputFrameWorker()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    mPostProcessBufs.clear();
 }
 
 status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
@@ -69,16 +70,19 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
         }
         if (mStream->format == HAL_PIXEL_FORMAT_BLOB) {
             LOG2("need jpeg encoding");
-            // ImgEncoder will do downscaling if need, so don't check size here.
             mPostProcessType |= PROCESS_JPEG_ENCODING;
-        } else if (mFormat.fmt.pix.width * mFormat.fmt.pix.height
-            > mStream->width * mStream->height) {
-            // Currently only for 13M + QVGA.
-            // For other cases, ISP can output with expected size.
-            LOG2("need downscaling: %dx%d -> %dx%d",
+        }
+        if ((!(mPostProcessType & PROCESS_JPEG_ENCODING)
+             && mFormat.fmt.pix.width * mFormat.fmt.pix.height
+                 > mStream->width * mStream->height)
+            || mFormat.fmt.pix.width * mFormat.fmt.pix.height
+                < mStream->width * mStream->height) {
+            // Down-scaling only for non-jpeg encoding since encoder can support this
+            // Up-scaling for ISP output resolution is smaller than required in stream
+            LOG2("need scaling: %dx%d -> %dx%d",
                     mFormat.fmt.pix.width, mFormat.fmt.pix.height,
                     mStream->width, mStream->height);
-            mPostProcessType |= PROCESS_DOWNSCALING;
+            mPostProcessType |= PROCESS_SCALING;
         }
     }
 
@@ -313,30 +317,88 @@ status_t OutputFrameWorker::postRun()
 
     stream = mOutputBuffer->getOwner();
 
+    // Rotate input buffer is always mWorkingBuffer
+    // and output buffer will be mPostProcessBufs[0] or directly mOutputBuffer
     if (mPostProcessType & PROCESS_ROTATE) {
         int angle = needRotation();
-        rotateFrame(mOutputBuffer->format(), angle);
-    }
-    if (mPostProcessType & PROCESS_JPEG_ENCODING) {
-        // JPEG encoding
-        status = convertJpeg(mWorkingBuffer, mOutputBuffer, request);
+        // Check if any post-processing needed after rotate
+        if (mPostProcessType & PROCESS_JPEG_ENCODING
+            || mPostProcessType & PROCESS_SCALING) {
+            if (mPostProcessBufs.empty()
+                || mPostProcessBufs[0]->width() != mFormat.fmt.pix.height
+                || mPostProcessBufs[0]->height() != mFormat.fmt.pix.width) {
+                mPostProcessBufs.clear();
+                // Create rotate output working buffer
+                std::shared_ptr<CameraBuffer> buf;
+                buf = MemoryUtils::allocateHeapBuffer(mFormat.fmt.pix.height,
+                                   mFormat.fmt.pix.width,
+                                   mFormat.fmt.pix.height,
+                                   mFormat.fmt.pix.pixelformat,
+                                   mCameraId,
+                                   PAGE_ALIGN(mFormat.fmt.pix.sizeimage));
+                CheckError((buf.get() == nullptr), NO_MEMORY,
+                           "@%s, No memory for rotate", __FUNCTION__);
+                mPostProcessBufs.push_back(buf);
+            }
+            // Rotate to internal post-processing buffer
+            status = rotateFrame(mWorkingBuffer, mPostProcessBufs[0], angle);
+        } else {
+            // Rotate to output dst buffer
+            status = rotateFrame(mWorkingBuffer, mOutputBuffer, angle);
+        }
         if (status != OK) {
-            LOGE("@%s, JPEG conversion failed! [%d]!", __FUNCTION__, status);
+            LOGE("@%s, Rotate frame failed! [%d]!", __FUNCTION__, status);
             goto exit;
         }
-        mOutputBuffer->dumpImage(CAMERA_DUMP_JPEG, ".jpg");
-    } else if (mPostProcessType & PROCESS_DOWNSCALING) {
-        status = scaleFrame(mWorkingBuffer, mOutputBuffer);
+    } else {
+        mPostProcessBufs.push_back(mWorkingBuffer);
+    }
+
+    // Scale input buffer is mPostProcessBufs[0]
+    // and output buffer will be mPostProcessBufs[1] or directly mOutputBuffer
+    if (mPostProcessType & PROCESS_SCALING) {
+        if (mPostProcessType & PROCESS_JPEG_ENCODING
+            && (mPostProcessBufs.empty()
+                || mPostProcessBufs.back()->width() != mStream->width
+                || mPostProcessBufs.back()->height() != mStream->height)) {
+            // Create scale output working buffer
+            std::shared_ptr<CameraBuffer> buf;
+            buf = MemoryUtils::allocateHeapBuffer(mStream->width,
+                               mStream->height,
+                               mStream->width,
+                               mFormat.fmt.pix.pixelformat,
+                               mCameraId,
+                               PAGE_ALIGN(mStream->width * mStream->height * 3 / 2));
+            CheckError((buf.get() == nullptr), NO_MEMORY,
+                       "@%s, No memory for scale", __FUNCTION__);
+            mPostProcessBufs.push_back(buf);
+            // Scale to internal post-processing buffer
+             status = scaleFrame(mPostProcessBufs[0], mPostProcessBufs[1]);
+        } else {
+            // Scale to output dst buffer
+            status = scaleFrame(mPostProcessBufs[0], mOutputBuffer);
+        }
         if (status != OK) {
             LOGE("@%s, Scale frame failed! [%d]!", __FUNCTION__, status);
             goto exit;
         }
     }
 
+    // Jpeg input buffer is always mPostProcessBufs.back()
+    if (mPostProcessType & PROCESS_JPEG_ENCODING) {
+        // JPEG encoding
+        status = convertJpeg(mPostProcessBufs.back(), mOutputBuffer, request);
+        if (status != OK) {
+            LOGE("@%s, JPEG conversion failed! [%d]!", __FUNCTION__, status);
+            goto exit;
+        }
+        mOutputBuffer->dumpImage(CAMERA_DUMP_JPEG, ".jpg");
+    }
+
     // Dump the buffers if enabled in flags
     if (mOutputBuffer->format() == HAL_PIXEL_FORMAT_BLOB) {
         // Use internal buffer
-        mWorkingBuffer->dumpImage(CAMERA_DUMP_JPEG, "before_jpeg_converion_nv12");
+        mPostProcessBufs.back()->dumpImage(CAMERA_DUMP_JPEG, "before_jpeg_converion_nv12");
     } else if (mOutputBuffer->format() == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED
             || mOutputBuffer->format() == HAL_PIXEL_FORMAT_YCbCr_420_888) {
         if (stream->usage() & GRALLOC_USAGE_HW_VIDEO_ENCODER) {
@@ -383,31 +445,26 @@ OutputFrameWorker::convertJpeg(std::shared_ptr<CameraBuffer> input,
     return status;
 }
 
-status_t OutputFrameWorker::rotateFrame(int outFormat, int angle)
+status_t OutputFrameWorker::rotateFrame(std::shared_ptr<CameraBuffer> input,
+                                        std::shared_ptr<CameraBuffer> output,
+                                        int angle)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
 
     // Check the output buffer resolution with device config resolution
-    if ((mOutputBuffer->width() != mFormat.fmt.pix.height)
-         || (mOutputBuffer->height() != mFormat.fmt.pix.width)) {
-        LOGE("output resolution not match [%d x %d] vs [%d x %d]",
-              mOutputBuffer->width(), mOutputBuffer->height(),
-              mFormat.fmt.pix.width, mFormat.fmt.pix.height);
-        return UNKNOWN_ERROR;
-    }
+    CheckError((output->width() != input->height() || output->height() != input->width()),
+               UNKNOWN_ERROR, "output resolution mis-match [%d x %d] -> [%d x %d]",
+               input->width(), input->height(),
+               output->width(), output->height());
 
-    const uint8* inBuffer = (uint8*)mBuffers[mIndex].m.userptr;
-    uint8* outBuffer = (outFormat == HAL_PIXEL_FORMAT_BLOB)
-                           ? (uint8*)(mWorkingBuffer->data())
-                           : (uint8*)(mOutputBuffer->data());
-    int outW = mOutputBuffer->width();
-    int outH = mOutputBuffer->height();
-    int outStride = (outFormat == HAL_PIXEL_FORMAT_BLOB)
-                        ? mWorkingBuffer->stride()
-                        : mOutputBuffer->stride();
-    int inW = mFormat.fmt.pix.width;
-    int inH = mFormat.fmt.pix.height;
-    int inStride = mWorkingBuffer->stride();
+    const uint8* inBuffer = (uint8*)(input->data());
+    uint8* outBuffer = (uint8*)(output->data());
+    int outW = output->width();
+    int outH = output->height();
+    int outStride = output->stride();
+    int inW = input->width();
+    int inH = input->height();
+    int inStride = input->stride();
     if (mRotateBuffer.size() < mFormat.fmt.pix.sizeimage) {
         mRotateBuffer.resize(mFormat.fmt.pix.sizeimage);
     }

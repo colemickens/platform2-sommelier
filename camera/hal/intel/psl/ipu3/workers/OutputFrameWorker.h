@@ -41,7 +41,7 @@ private:
         PROCESS_NONE = 0,      // pipe outputs directly, don't need any SW process
         PROCESS_JPEG_ENCODING = 1<<0,
         PROCESS_ROTATE = 1<<1,
-        PROCESS_DOWNSCALING= 1<<2
+        PROCESS_SCALING= 1<<2
     };
 
 private:
@@ -49,7 +49,9 @@ private:
     int needRotation();
     status_t scaleFrame(std::shared_ptr<CameraBuffer> input,
                         std::shared_ptr<CameraBuffer> output);
-    status_t rotateFrame(int outFormat, int angle);
+    status_t rotateFrame(std::shared_ptr<CameraBuffer> input,
+                         std::shared_ptr<CameraBuffer> output,
+                         int angle);
     status_t convertJpeg(std::shared_ptr<CameraBuffer> buffer,
                          std::shared_ptr<CameraBuffer> jpegBuffer,
                          Camera3Request *request);
@@ -66,6 +68,8 @@ private:
 
     /* OutputFrameWorker has the ownership of this rotate working buffer */
     std::vector<uint8_t> mRotateBuffer;
+    /* Working buffers for post-processing*/
+    std::vector<std::shared_ptr<CameraBuffer>> mPostProcessBufs;
 };
 
 } /* namespace camera2 */
