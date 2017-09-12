@@ -1449,6 +1449,7 @@ static int setexeccon(void *payload)
 	char *exec_path;
 	pid_t tid = syscall(SYS_gettid);
 	int fd;
+	int rc = 0;
 
 	if (tid == -1) {
 		return -errno;
@@ -1467,11 +1468,11 @@ static int setexeccon(void *payload)
 
 	if (write(fd, init_domain, strlen(init_domain)) !=
 	    (ssize_t) strlen(init_domain)) {
-		return -errno;
+		rc = -errno;
 	}
 
 	close(fd);
-	return 0;
+	return rc;
 }
 
 int container_start(struct container *c, const struct container_config *config)
