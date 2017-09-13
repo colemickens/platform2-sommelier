@@ -102,8 +102,10 @@ bool KernelConfigToBiosType(const string& kernel_config, BiosType* type) {
   return false;
 }
 
+namespace {
+
 // Returns zero on success, exit code on failure
-static int TryCr50Update(const string &install_dir) {
+int TryCr50Update(const string &install_dir) {
   int result;
   string script =  install_dir + "/usr/share/cros/cr50-update.sh";
   string command = script + " " + install_dir;
@@ -439,6 +441,8 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
   printf("ChromeosChrootPostinst complete\n");
   return true;
 }
+
+}  // namespace
 
 bool RunPostInstall(const string& install_dir,
                     const string& install_dev,
