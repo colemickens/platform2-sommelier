@@ -54,6 +54,10 @@ class DeviceStub : public Device {
             const EnabledStateChangedCallback& /*callback*/) override {}
   void Initialize() override {}
 
+  void OnIPConfigUpdated(const IPConfigRefPtr& /*ipconfig*/,
+                         bool /*new_lease_acquired*/) override {}
+  void OnIPv6ConfigUpdated() override {}
+
  private:
   DISALLOW_COPY_AND_ASSIGN(DeviceStub);
 };
