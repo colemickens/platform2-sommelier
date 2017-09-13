@@ -553,9 +553,9 @@ TEST_F(RoutingTableTest, PolicyRuleAddFlush) {
   EXPECT_EQ(CountRoutingPolicyEntries(), 1);
 
   RoutingPolicyEntry entry1(IPAddress::kFamilyIPv4,
-                            101,     // priority
-                            table1,  // table
-                            "br0");  // interface_name
+                            101,        // priority
+                            table1,     // table
+                            "arcbr0");  // interface_name
   EXPECT_CALL(rtnl_handler_, SendMessage(_)).WillOnce(Return(true));
   EXPECT_TRUE(routing_table_->AddRule(iface_id0, entry1));
   EXPECT_EQ(CountRoutingPolicyEntries(), 2);

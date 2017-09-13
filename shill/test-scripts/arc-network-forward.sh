@@ -30,7 +30,7 @@ function run_iptables {
       # No forwarding for localhost.
       ;;
 
-      "br0" | "veth_android" )
+      "arcbr0" | "veth_android" )
       # No forwarding from the Android interfaces.
       ;;
 
