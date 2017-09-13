@@ -750,13 +750,16 @@ status_t InputSystem::handleMessagePollEvent(Message &msg)
                                                             requestId);
 
     if (msg.data.pollEvent.pollMsgId == POLL_EVENT_ID_ERROR) {
-            // Notify observer
-            IISysObserver::IsysMessage isysMsg;
-            isysMsg.id = IISysObserver::ISYS_MESSAGE_ID_ERROR;
-            isysMsg.data.error.status = status;
-            mObserver->notifyIsysEvent(isysMsg);
-            // TODO: status = UNKNOWN_ERROR ?
-            return status;
+        // Notify observer
+        IISysObserver::IsysMessage isysMsg;
+        isysMsg.id = IISysObserver::ISYS_MESSAGE_ID_ERROR;
+        isysMsg.data.error.status = status;
+        mObserver->notifyIsysEvent(isysMsg);
+        // Poll again
+        status = mPollerThread->pollRequest(mCaptureInProgress->requestId,
+                   IPU3_EVENT_POLL_TIMEOUT,
+                   (std::vector<std::shared_ptr<V4L2DeviceBase>>*) &mCaptureInProgress->configuredNodesForRequest);
+        return status;
     }
 
     for (int i = 0; i < activeNodecount; i++) {
@@ -768,6 +771,10 @@ status_t InputSystem::handleMessagePollEvent(Message &msg)
             isysMsg.id = IISysObserver::ISYS_MESSAGE_ID_ERROR;
             isysMsg.data.error.status = status;
             mObserver->notifyIsysEvent(isysMsg);
+            // Poll again
+            status = mPollerThread->pollRequest(mCaptureInProgress->requestId,
+                       IPU3_EVENT_POLL_TIMEOUT,
+                       (std::vector<std::shared_ptr<V4L2DeviceBase>>*) &mCaptureInProgress->configuredNodesForRequest);
             return status;
         }
 
@@ -780,6 +787,10 @@ status_t InputSystem::handleMessagePollEvent(Message &msg)
             isysMsg.id = IISysObserver::ISYS_MESSAGE_ID_ERROR;
             isysMsg.data.error.status = status;
             mObserver->notifyIsysEvent(isysMsg);
+            // Poll again
+            status = mPollerThread->pollRequest(mCaptureInProgress->requestId,
+                       IPU3_EVENT_POLL_TIMEOUT,
+                       (std::vector<std::shared_ptr<V4L2DeviceBase>>*) &mCaptureInProgress->configuredNodesForRequest);
             return status;
         }
 
