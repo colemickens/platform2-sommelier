@@ -19,7 +19,7 @@
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(log_to_stderr, false, "Log to both syslog and stderr");
-  DEFINE_string(internal_interface, "br0",
+  DEFINE_string(internal_interface, "arcbr0",
                 "Name of the host interface that connects to the guest");
   DEFINE_string(mdns_ip,
                 "100.115.92.2",
