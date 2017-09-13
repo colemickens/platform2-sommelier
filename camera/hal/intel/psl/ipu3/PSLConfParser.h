@@ -99,6 +99,8 @@ private:
     void dumpSensorInfoSection(int cameraId);
     void dumpMediaCtlElementsSection(int cameraId);
     void dump(void);
+
+    std::vector<std::string> mElementNames;
 };
 
 } // namespace camera2

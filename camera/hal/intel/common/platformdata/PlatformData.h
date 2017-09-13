@@ -207,6 +207,9 @@ public:
     bool supportIPUAcceleration(void) const { return mSupportIPUAcceleration; }
     status_t getAvailableSensorModes(const std::string &sensorName,
                                      SensorModeVector &sensorModes) const;
+    void getMediaCtlElementNames(std::vector<std::string> &elementNames) const;
+    std::string getFullMediaCtlElementName(const std::vector<std::string> elementNames,
+                                           const char *value) const;
 
     std::string mProductName;
     std::string mManufacturerName;

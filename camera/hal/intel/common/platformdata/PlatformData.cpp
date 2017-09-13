@@ -1167,7 +1167,6 @@ status_t CameraHWInfo::getAvailableSensorModes(const std::string &sensorName,
 
     // Loop through menu and add indexes and names to vector
     for (menu.index = 0; menu.index <= max; menu.index++) {
-
         ret = (device->queryMenu(menu));
         if (ret != NO_ERROR) {
             LOGE("Error opening query menu at index: %d", menu.index);
@@ -1181,6 +1180,41 @@ status_t CameraHWInfo::getAvailableSensorModes(const std::string &sensorName,
         LOGE("Error closing device (%s)", devname);
 
     return NO_ERROR;
+}
+
+void CameraHWInfo::getMediaCtlElementNames(std::vector<std::string> &elementNames) const
+{
+    int fd = open(mMediaControllerPathName.c_str(), O_RDONLY);
+    CheckError(fd == -1, VOID_VALUE, "@%s, Could not open media controller device: %s",
+           __FUNCTION__, strerror(errno));
+
+    struct media_entity_desc entity;
+    CLEAR(entity);
+    entity.id |= MEDIA_ENT_ID_FLAG_NEXT;
+
+    while (ioctl(fd, MEDIA_IOC_ENUM_ENTITIES, &entity) >= 0) {
+        elementNames.push_back(std::string(entity.name));
+        LOG2("@%s, entity name:%s, id:%d", __FUNCTION__, entity.name, entity.id);
+        entity.id |= MEDIA_ENT_ID_FLAG_NEXT;
+    }
+
+    CheckError(close(fd) > 0, VOID_VALUE, "@%s, Error in closing media controller: %s",
+           __FUNCTION__, strerror(errno));
+}
+
+std::string CameraHWInfo::getFullMediaCtlElementName(const std::vector<std::string> elementNames,
+                                                     const char *value) const
+{
+    for (auto &it: elementNames) {
+        if (it.find(value) != std::string::npos) {
+            LOG2("@%s, find match element name: %s, new name: %s",
+                __FUNCTION__, value, it.c_str());
+            return it;
+        }
+    }
+
+    LOGE("@%s, No match element name is found for %s!", __FUNCTION__, value);
+    return value;
 }
 
 status_t CameraHWInfo::initDriverListHelper(unsigned major, unsigned minor, SensorDriverDescriptor& drvInfo)

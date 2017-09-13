@@ -597,7 +597,8 @@ void PSLConfParser::handleMediaCtlElements(const char *name, const char **atts)
             const XML_Char* attr_name = *atts++;
             const XML_Char* attr_value = *atts++;
             if (strcmp(attr_name, "name") == 0) {
-                currentElement.name = attr_value;
+                currentElement.name =
+                    PlatformData::getCameraHWInfo()->getFullMediaCtlElementName(mElementNames, attr_value);
             } else if (strcmp(attr_name, "type") == 0) {
                 currentElement.type = attr_value;
             } else if (strcmp(attr_name, "isysNodeName") == 0) {
@@ -824,6 +825,8 @@ void PSLConfParser::getPSLDataFromXmlFile(void)
         LOGE("@%s, line:%d, parser is nullptr", __FUNCTION__, __LINE__);
         goto exit;
     }
+
+    PlatformData::getCameraHWInfo()->getMediaCtlElementNames(mElementNames);
     ::XML_SetUserData(parser, this);
     ::XML_SetElementHandler(parser, startElement, endElement);
 
