@@ -861,11 +861,14 @@ status_t SyncManager::notifyPollEvent(PollEventMessage *pollEventMsg)
     if (pollEventMsg == nullptr || pollEventMsg->data.activeDevices == nullptr)
         return BAD_VALUE;
 
-    if (pollEventMsg->id != 0) {
+    if (pollEventMsg->id == POLL_EVENT_ID_ERROR) {
         LOGE("Polling Failed for frame id: %d, ret was %d",
               pollEventMsg->data.reqId,
               pollEventMsg->data.pollStatus);
 
+        // Poll again
+        mPollerThread->pollRequest(0, 1000,
+                           (std::vector<std::shared_ptr<V4L2DeviceBase>>*) &mDevicesToPoll);
     } else if (pollEventMsg->data.activeDevices->empty()) {
         LOG1("%s Polling from Flush: succeeded", __FUNCTION__);
         // TODO flush actions.
