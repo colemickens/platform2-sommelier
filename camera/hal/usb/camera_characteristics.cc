@@ -14,6 +14,7 @@
 #include <base/strings/string_split.h>
 
 #include "arc/common.h"
+#include "arc/timezone.h"
 
 namespace arc {
 
@@ -59,32 +60,40 @@ static const char kConstantFramerateUnsupported[] =
 static const char kAllowExternalCamera[] = "allow_external_camera";
 
 static const struct DeviceInfo kDefaultCharacteristics = {
-    "",     // device_path
-    "",     // usb_vid
-    "",     // usb_pid
-    0,      // frames_to_skip_after_streamon
-    0,      // lens_facing
-    0,      // sensor_orientation
-    66.5,   // horizontal_view_angle_16_9
-    0.0,    // horizontal_view_angle_4_3
-    {1.6},  // lens_info_available_focal_lengths
-    0.3,    // lens_info_minimum_focus_distance
-    0.5,    // lens_info_optimal_focus_distance
-    42.5,   // vertical_view_angle_16_9
-    0.0,    // vertical_view_angle_4_3
-    false,  // resolution_1280x960_unsupported
-    false,  // resolution_1600x1200_unsupported
-    false,  // constant_framerate_unsupported
-    0,      // sensor_info_pixel_array_size_width
-    0       // sensor_info_pixel_array_size_height
+    "",                                // device_path
+    "",                                // usb_vid
+    "",                                // usb_pid
+    0,                                 // frames_to_skip_after_streamon
+    PowerLineFrequency::FREQ_DEFAULT,  // power_line_frequency
+    0,                                 // lens_facing
+    0,                                 // sensor_orientation
+    66.5,                              // horizontal_view_angle_16_9
+    0.0,                               // horizontal_view_angle_4_3
+    {1.6},                             // lens_info_available_focal_lengths
+    0.3,                               // lens_info_minimum_focus_distance
+    0.5,                               // lens_info_optimal_focus_distance
+    42.5,                              // vertical_view_angle_16_9
+    0.0,                               // vertical_view_angle_4_3
+    false,                             // resolution_1280x960_unsupported
+    false,                             // resolution_1600x1200_unsupported
+    false,                             // constant_framerate_unsupported
+    0,                                 // sensor_info_pixel_array_size_width
+    0,                                 // sensor_info_pixel_array_size_height
+    {2.0},                             // lens_info_available_apertures
+    0,                                 // sensor_info_physical_size_width
+    0                                  // sensor_info_physical_size_height
 };
 
 CameraCharacteristics::CameraCharacteristics() {}
 
 CameraCharacteristics::~CameraCharacteristics() {}
 
+DeviceInfo CameraCharacteristics::GetDefaultDeviceInfo() {
+  return kDefaultCharacteristics;
+}
+
 const DeviceInfos CameraCharacteristics::GetCharacteristicsFromFile(
-    const std::unordered_map<std::string, std::string>& devices) {
+    const std::unordered_map<std::string, DeviceInfo>& devices) {
   const base::FilePath path(kCameraCharacteristicsConfigFile);
   FILE* file = base::OpenFile(path, "r");
   if (!file) {
@@ -161,9 +170,7 @@ const DeviceInfos CameraCharacteristics::GetCharacteristicsFromFile(
         pid = tmp_pid;
         const auto& device = devices.find(value);
         if (device != devices.end()) {
-          tmp_device_infos[camera_id].usb_vid = vid;
-          tmp_device_infos[camera_id].usb_pid = pid;
-          tmp_device_infos[camera_id].device_path = device->second;
+          tmp_device_infos[camera_id] = device->second;
         }
 
         VLOGF(1) << "Camera" << camera_id << " " << kUsbVidPid << ": " << value;
@@ -378,12 +385,12 @@ void CameraCharacteristics::AddFloatValue(const char* value,
 }
 
 void CameraCharacteristics::AddExternalCameras(
-    const std::unordered_map<std::string, std::string>& devices,
+    const std::unordered_map<std::string, DeviceInfo>& devices,
     DeviceInfos* device_infos) {
   for (const auto& device : devices) {
     bool device_exist = false;
     for (const auto& info : *device_infos) {
-      if (device.second == info.device_path) {
+      if (device.second.device_path == info.device_path) {
         device_exist = true;
         break;
       }
@@ -392,13 +399,10 @@ void CameraCharacteristics::AddExternalCameras(
       std::vector<std::string> usb_vid_pid = base::SplitString(
           device.first, ":", base::WhitespaceHandling::TRIM_WHITESPACE,
           base::SplitResult::SPLIT_WANT_ALL);
-      DeviceInfo device_info = kDefaultCharacteristics;
-      device_info.usb_vid = usb_vid_pid[0];
-      device_info.usb_pid = usb_vid_pid[1];
-      device_info.device_path = device.second;
+      DeviceInfo device_info = device.second;
       device_infos->push_back(device_info);
       VLOGF(1) << "Add external camera: " << device.first << ", "
-               << device.second;
+               << device.second.device_path;
     }
   }
 }

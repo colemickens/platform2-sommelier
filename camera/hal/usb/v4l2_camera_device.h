@@ -15,6 +15,7 @@
 #include <base/files/scoped_file.h>
 #include <base/synchronization/lock.h>
 
+#include "arc/timezone.h"
 #include "hal/usb/common_types.h"
 
 namespace arc {
@@ -23,6 +24,7 @@ namespace arc {
 class V4L2CameraDevice {
  public:
   V4L2CameraDevice();
+  explicit V4L2CameraDevice(const DeviceInfo& device_info);
   virtual ~V4L2CameraDevice();
 
   // Connect camera device with |device_path|. Return 0 if device is opened
@@ -83,7 +85,7 @@ class V4L2CameraDevice {
                                       uint32_t fourcc,
                                       uint32_t width,
                                       uint32_t height);
-  const std::unordered_map<std::string, std::string> GetCameraDevicesByPattern(
+  const std::unordered_map<std::string, DeviceInfo> GetCameraDevicesByPattern(
       std::string pattern);
 
   // This is for suspend/resume feature. USB camera will be enumerated after
@@ -91,9 +93,15 @@ class V4L2CameraDevice {
   int RetryDeviceOpen(const std::string& device_path, int flags);
 
   // External camera is the only one camera device of /dev/video* which is not
-  // in |internal_devices_|. Ruturns <VID:PID, device_path> if external camera
+  // in |internal_devices_|. Ruturns <VID:PID, device_info> if external camera
   // is found. Otherwise, returns empty strings.
-  std::pair<std::string, std::string> FindExternalCamera();
+  std::pair<std::string, DeviceInfo> FindExternalCamera();
+
+  // Get power frequency supported from device.
+  PowerLineFrequency GetPowerLineFrequency(int fd);
+
+  // Set power frequency supported from device.
+  int SetPowerLineFrequency(PowerLineFrequency setting);
 
   // The number of video buffers we want to request in kernel.
   const int kNumVideoBuffers = 4;
@@ -108,8 +116,10 @@ class V4L2CameraDevice {
   std::vector<bool> buffers_at_client_;
 
   // Keep internal camera devices to distinguish external camera.
-  // First index is VID:PID and second index is the device path.
-  std::unordered_map<std::string, std::string> internal_devices_;
+  // First index is VID:PID and second index is the device info.
+  std::unordered_map<std::string, DeviceInfo> internal_devices_;
+
+  const DeviceInfo device_info_;
 
   // Since V4L2CameraDevice may be called on different threads, this is used to
   // guard all variables.

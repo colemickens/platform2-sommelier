@@ -49,7 +49,11 @@ static bool ReadIdFile(const std::string& path, std::string* id) {
   return true;
 }
 
-V4L2CameraDevice::V4L2CameraDevice() : stream_on_(false) {}
+V4L2CameraDevice::V4L2CameraDevice()
+    : stream_on_(false), device_info_(DeviceInfo()) {}
+
+V4L2CameraDevice::V4L2CameraDevice(const DeviceInfo& device_info)
+    : stream_on_(false), device_info_(device_info) {}
 
 V4L2CameraDevice::~V4L2CameraDevice() {
   device_fd_.reset();
@@ -77,9 +81,9 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
   std::string correct_device_path = device_path;
   if (!device_path.compare(0, strlen(kAllowedVideoPrefix),
                            kAllowedVideoPrefix)) {
-    std::pair<std::string, std::string> external_camera = FindExternalCamera();
+    std::pair<std::string, DeviceInfo> external_camera = FindExternalCamera();
     if (external_camera.first != "") {
-      correct_device_path = external_camera.second;
+      correct_device_path = external_camera.second.device_path;
     }
   }
 
@@ -207,6 +211,12 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
   }
   *buffer_size = fmt.fmt.pix.sizeimage;
   VLOGF(1) << "Buffer size: " << *buffer_size;
+
+  // Set power line frequency
+  ret = SetPowerLineFrequency(device_info_.power_line_frequency);
+  if (ret < 0) {
+    return -EINVAL;
+  }
 
   v4l2_requestbuffers req_buffers;
   memset(&req_buffers, 0, sizeof(req_buffers));
@@ -376,9 +386,9 @@ const SupportedFormats V4L2CameraDevice::GetDeviceSupportedFormats(
   std::string correct_device_path = device_path;
   if (!device_path.compare(0, strlen(kAllowedVideoPrefix),
                            kAllowedVideoPrefix)) {
-    std::pair<std::string, std::string> external_camera = FindExternalCamera();
+    std::pair<std::string, DeviceInfo> external_camera = FindExternalCamera();
     if (external_camera.first != "") {
-      correct_device_path = external_camera.second;
+      correct_device_path = external_camera.second.device_path;
     }
   }
 
@@ -423,17 +433,17 @@ const SupportedFormats V4L2CameraDevice::GetDeviceSupportedFormats(
 const DeviceInfos V4L2CameraDevice::GetCameraDeviceInfos() {
   // /dev/camera-internal* symbolic links should have been created and pointed
   // to the internal cameras according to Vid and Pid.
-  std::unordered_map<std::string, std::string> camera_devices =
+  std::unordered_map<std::string, DeviceInfo> camera_devices =
       GetCameraDevicesByPattern(std::string(kAllowedCameraPrefix) + "*");
   internal_devices_ = camera_devices;
 
   CameraCharacteristics characteristics;
   bool external_camera_support = characteristics.IsExternalCameraSupported();
   if (external_camera_support) {
-    std::pair<std::string, std::string> external_camera = FindExternalCamera();
+    std::pair<std::string, DeviceInfo> external_camera = FindExternalCamera();
     if (external_camera.first != "") {
       VLOGF(1) << "Add external camera " << external_camera.first
-               << ", path: " << external_camera.second;
+               << ", path: " << external_camera.second.device_path;
       camera_devices.insert(external_camera);
     }
   }
@@ -448,12 +458,12 @@ const DeviceInfos V4L2CameraDevice::GetCameraDeviceInfos() {
     LOGF(ERROR) << "Cannot find any camera devices with "
                 << kAllowedCameraPrefix << "*";
     LOGF(ERROR) << "List available cameras as follows: ";
-    std::unordered_map<std::string, std::string> video_devices =
+    std::unordered_map<std::string, DeviceInfo> video_devices =
         GetCameraDevicesByPattern(std::string(kAllowedVideoPrefix) + "*");
     for (const auto& device : video_devices) {
       size_t pos = device.first.find(":");
       if (pos != std::string::npos) {
-        LOGF(ERROR) << "Device path: " << device.second
+        LOGF(ERROR) << "Device path: " << device.second.device_path
                     << " vid: " << device.first.substr(0, pos - 1)
                     << " pid: " << device.first.substr(pos + 1);
       } else {
@@ -501,13 +511,13 @@ std::vector<float> V4L2CameraDevice::GetFrameRateList(int fd,
   return frame_rates;
 }
 
-const std::unordered_map<std::string, std::string>
+const std::unordered_map<std::string, DeviceInfo>
 V4L2CameraDevice::GetCameraDevicesByPattern(std::string pattern) {
   const base::FilePath path(pattern);
   base::FileEnumerator enumerator(path.DirName(), false,
                                   base::FileEnumerator::FILES,
                                   path.BaseName().value());
-  std::unordered_map<std::string, std::string> devices;
+  std::unordered_map<std::string, DeviceInfo> devices;
   std::string device_path, device_name;
 
   while (!enumerator.Next().empty()) {
@@ -532,6 +542,7 @@ V4L2CameraDevice::GetCameraDevicesByPattern(std::string pattern) {
     }
 
     v4l2_capability cap;
+    DeviceInfo device_info = CameraCharacteristics::GetDefaultDeviceInfo();
     if ((TEMP_FAILURE_RETRY(ioctl(fd.get(), VIDIOC_QUERYCAP, &cap)) == 0) &&
         ((cap.capabilities & V4L2_CAP_VIDEO_CAPTURE) &&
          !(cap.capabilities & V4L2_CAP_VIDEO_OUTPUT))) {
@@ -551,12 +562,18 @@ V4L2CameraDevice::GetCameraDevicesByPattern(std::string pattern) {
       }
       VLOGF(1) << "Device path: " << target_path.value() << " vid: " << usb_vid
                << " pid: " << usb_pid;
-      devices.insert(
-          std::make_pair(usb_vid + ":" + usb_pid, target_path.value()));
+      device_info.usb_vid = usb_vid;
+      device_info.usb_pid = usb_pid;
+      device_info.device_path = target_path.value();
+
+      // Get power line frequency info
+      device_info.power_line_frequency = GetPowerLineFrequency(fd.get());
+
+      devices.insert(std::make_pair(usb_vid + ":" + usb_pid, device_info));
     }
   }
   if (devices.empty()) {
-    LOGF(ERROR) << "Cannot find any camera devices with pattern " << pattern;
+    VLOGF(1) << "Cannot find any camera devices with pattern " << pattern;
   }
   return devices;
 }
@@ -602,8 +619,8 @@ int V4L2CameraDevice::RetryDeviceOpen(const std::string& device_path,
   return -1;
 }
 
-std::pair<std::string, std::string> V4L2CameraDevice::FindExternalCamera() {
-  std::unordered_map<std::string, std::string> video_devices =
+std::pair<std::string, DeviceInfo> V4L2CameraDevice::FindExternalCamera() {
+  std::unordered_map<std::string, DeviceInfo> video_devices =
       GetCameraDevicesByPattern(std::string(kAllowedVideoPrefix) + "*");
 
   if (internal_devices_.size() == 0) {
@@ -614,25 +631,91 @@ std::pair<std::string, std::string> V4L2CameraDevice::FindExternalCamera() {
   for (const auto& device : internal_devices_) {
     base::FilePath target;
     std::string device_path;
-    if (base::ReadSymbolicLink(base::FilePath(device.second), &target)) {
+    if (base::ReadSymbolicLink(base::FilePath(device.second.device_path),
+                               &target)) {
       device_path = "/dev/" + target.value();
     } else {
-      LOGF(ERROR) << device.second << " should be a symbolic link";
+      LOGF(ERROR) << device.second.device_path << " should be a symbolic link";
     }
     video_devices.erase(device.first);
   }
 
   if (video_devices.size() > 1) {
     LOGF(ERROR) << "Only allow one external camera";
-    return std::make_pair("", "");
+    return std::make_pair("", DeviceInfo());
   }
 
   for (const auto& device : video_devices) {
     VLOGF(1) << "Find external camera " << device.first
-             << ", path: " << device.second;
+             << ", path: " << device.second.device_path;
     return device;
   }
-  return std::make_pair("", "");
+  return std::make_pair("", DeviceInfo());
+}
+
+PowerLineFrequency V4L2CameraDevice::GetPowerLineFrequency(int fd) {
+  struct v4l2_queryctrl query = {};
+  query.id = V4L2_CID_POWER_LINE_FREQUENCY;
+  if (TEMP_FAILURE_RETRY(ioctl(fd, VIDIOC_QUERYCTRL, &query)) < 0) {
+    LOGF(ERROR) << "Power line frequency should support auto or 50/60Hz";
+    return PowerLineFrequency::FREQ_ERROR;
+  }
+
+  PowerLineFrequency frequency = GetPowerLineFrequencyForLocation();
+  if (frequency == PowerLineFrequency::FREQ_DEFAULT) {
+    switch (query.default_value) {
+      case V4L2_CID_POWER_LINE_FREQUENCY_50HZ:
+        frequency = PowerLineFrequency::FREQ_50HZ;
+        break;
+      case V4L2_CID_POWER_LINE_FREQUENCY_60HZ:
+        frequency = PowerLineFrequency::FREQ_60HZ;
+        break;
+      case V4L2_CID_POWER_LINE_FREQUENCY_AUTO:
+        frequency = PowerLineFrequency::FREQ_AUTO;
+        break;
+      default:
+        break;
+    }
+  }
+
+  // Prefer auto setting if camera module supports auto mode.
+  if (query.maximum == V4L2_CID_POWER_LINE_FREQUENCY_AUTO) {
+    frequency = PowerLineFrequency::FREQ_AUTO;
+  } else if (query.minimum >= V4L2_CID_POWER_LINE_FREQUENCY_60HZ) {
+    LOGF(ERROR) << "Camera module should at least support 50/60Hz";
+    return PowerLineFrequency::FREQ_ERROR;
+  }
+  return frequency;
+}
+
+int V4L2CameraDevice::SetPowerLineFrequency(PowerLineFrequency setting) {
+  int v4l2_freq_setting = V4L2_CID_POWER_LINE_FREQUENCY_DISABLED;
+  switch (setting) {
+    case PowerLineFrequency::FREQ_50HZ:
+      v4l2_freq_setting = V4L2_CID_POWER_LINE_FREQUENCY_50HZ;
+      break;
+    case PowerLineFrequency::FREQ_60HZ:
+      v4l2_freq_setting = V4L2_CID_POWER_LINE_FREQUENCY_60HZ;
+      break;
+    case PowerLineFrequency::FREQ_AUTO:
+      v4l2_freq_setting = V4L2_CID_POWER_LINE_FREQUENCY_AUTO;
+      break;
+    default:
+      LOGF(ERROR) << "Invalid setting for power line frequency: " << setting;
+      return -EINVAL;
+  }
+
+  struct v4l2_control control = {};
+  control.id = V4L2_CID_POWER_LINE_FREQUENCY;
+  control.value = v4l2_freq_setting;
+  if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_S_CTRL, &control)) <
+      0) {
+    LOGF(ERROR) << "Error setting power line frequency to "
+                << v4l2_freq_setting;
+    return -EINVAL;
+  }
+  VLOGF(1) << "Set power line frequency(" << setting << ") successfully";
+  return 0;
 }
 
 }  // namespace arc

@@ -28,7 +28,7 @@ CameraClient::CameraClient(int id,
                            hw_device_t** hw_device)
     : id_(id),
       device_info_(device_info),
-      device_(new V4L2CameraDevice()),
+      device_(new V4L2CameraDevice(device_info)),
       callback_ops_(nullptr),
       metadata_handler_(new MetadataHandler(static_info)),
       request_thread_("Capture request thread") {

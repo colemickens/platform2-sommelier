@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include "arc/timezone.h"
+
 namespace arc {
 
 struct DeviceInfo {
@@ -21,6 +23,8 @@ struct DeviceInfo {
   std::string usb_pid;
   // Some cameras need to wait several frames to output correct images.
   uint32_t frames_to_skip_after_streamon;
+  // Power line frequency supported by device.
+  PowerLineFrequency power_line_frequency;
 
   // Member definitions can be found in https://developer.android.com/
   // reference/android/hardware/camera2/CameraCharacteristics.html

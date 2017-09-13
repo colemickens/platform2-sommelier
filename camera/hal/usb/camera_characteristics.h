@@ -41,11 +41,13 @@ class CameraCharacteristics {
   CameraCharacteristics();
   ~CameraCharacteristics();
 
+  static DeviceInfo GetDefaultDeviceInfo();
+
   // Parses /etc/camera/camera_characteristics.conf.
   // Returns DeviceInfos with default characteristics if the config file doesn't
   // exist.
   const DeviceInfos GetCharacteristicsFromFile(
-      const std::unordered_map<std::string, std::string>& devices);
+      const std::unordered_map<std::string, DeviceInfo>& devices);
 
   // Returns that external camera is supported or not.
   bool IsExternalCameraSupported();
@@ -63,7 +65,7 @@ class CameraCharacteristics {
                      const char* characteristic_name,
                      float* characteristic);
   void AddExternalCameras(
-      const std::unordered_map<std::string, std::string>& devices,
+      const std::unordered_map<std::string, DeviceInfo>& devices,
       DeviceInfos* device_infos);
 
   DISALLOW_COPY_AND_ASSIGN(CameraCharacteristics);
