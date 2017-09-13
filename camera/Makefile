@@ -49,6 +49,10 @@ libcamera_jpeg: common/libcamera_jpeg
 
 .PHONY: libcamera_jpeg
 
+libcamera_timezone: common/libcamera_timezone
+
+.PHONY: libcamera_timezone
+
 libcbm: common/libcbm
 
 .PHONY: libcbm

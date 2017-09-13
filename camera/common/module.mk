@@ -116,6 +116,19 @@ CXX_LIBRARY(common/libcamera_exif.so): $(libcamera_exif_OBJS)
 clean: CLEAN(common/libcamera_exif.so)
 common/libcamera_exif: CXX_LIBRARY(common/libcamera_exif.so)
 
+libcamera_timezone_OBJS = common/timezone.o
+libcamera_timezone_PC_DEPS := libchrome-$(BASE_VER)
+libcamera_timezone_CPPFLAGS := \
+	$(call get_pc_cflags,$(libcamera_timezone_PC_DEPS))
+libcamera_timezone_LDLIBS := $(call get_pc_libs,$(libcamera_timezone_PC_DEPS))
+CXX_STATIC_LIBRARY(common/libcamera_timezone.pic.a): \
+	CPPFLAGS += $(libcamera_timezone_CPPFLAGS)
+CXX_STATIC_LIBRARY(common/libcamera_timezone.pic.a): \
+	LDLIBS += $(libcamera_timezone_LDLIBS)
+CXX_STATIC_LIBRARY(common/libcamera_timezone.pic.a): $(libcamera_timezone_OBJS)
+clean: CLEAN(common/libcamera_timezone.pic.a)
+common/libcamera_timezone: CXX_STATIC_LIBRARY(common/libcamera_timezone.pic.a)
+
 # To link against object files under common/, add $(COMMON_OBJECTS) to the
 # dependency list of your target.
 COMMON_OBJECTS := \
