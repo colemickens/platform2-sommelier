@@ -24,8 +24,9 @@ class MockPairManager : public PairManager {
 class MockPairManagerInterface : public PairManagerInterface {
  public:
   MockPairManagerInterface() = default;
-  MOCK_METHOD1(PairChallenge,
-               ChallengeStatus(FirmwareUpdaterInterface* fw_updater));
+  MOCK_METHOD2(PairChallenge,
+               ChallengeStatus(FirmwareUpdaterInterface* fw_updater,
+                               DBusWrapperInterface* dbus_wrapper));
 };
 
 }  // namespace hammerd

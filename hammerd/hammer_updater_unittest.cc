@@ -564,7 +564,7 @@ TEST_F(HammerUpdaterRWTest, RunOnce_UpdateCorruptRWIncompatibleKey) {
 
 // Successfully Pair with Hammer.
 TEST_F(HammerUpdaterPostRWTest, Pairing_Passed) {
-  EXPECT_CALL(*pair_manager_, PairChallenge(fw_updater_))
+  EXPECT_CALL(*pair_manager_, PairChallenge(fw_updater_, dbus_wrapper_))
       .WillOnce(Return(ChallengeStatus::kChallengePassed));
   EXPECT_EQ(hammer_updater_->Pair(), HammerUpdater::RunStatus::kNoUpdate);
 }
@@ -573,7 +573,7 @@ TEST_F(HammerUpdaterPostRWTest, Pairing_Passed) {
 TEST_F(HammerUpdaterPostRWTest, Pairing_NeedEntropyRollbackLocked) {
   {
     InSequence dummy;
-    EXPECT_CALL(*pair_manager_, PairChallenge(fw_updater_))
+    EXPECT_CALL(*pair_manager_, PairChallenge(fw_updater_, dbus_wrapper_))
         .WillOnce(Return(ChallengeStatus::kNeedInjectEntropy));
     EXPECT_CALL(*fw_updater_, IsRollbackLocked()).WillOnce(Return(true));
     EXPECT_CALL(*fw_updater_, UnlockRollback()).WillOnce(Return(true));
@@ -586,7 +586,7 @@ TEST_F(HammerUpdaterPostRWTest, Pairing_NeedEntropyRollbackLocked) {
 TEST_F(HammerUpdaterPostRWTest, Pairing_NeedEntropyRollbackUnlocked) {
   {
     InSequence dummy;
-    EXPECT_CALL(*pair_manager_, PairChallenge(fw_updater_))
+    EXPECT_CALL(*pair_manager_, PairChallenge(fw_updater_, dbus_wrapper_))
         .WillOnce(Return(ChallengeStatus::kNeedInjectEntropy));
     EXPECT_CALL(*fw_updater_, IsRollbackLocked()).WillOnce(Return(false));
   }
@@ -596,7 +596,7 @@ TEST_F(HammerUpdaterPostRWTest, Pairing_NeedEntropyRollbackUnlocked) {
 
 // Failed to pair with Hammer.
 TEST_F(HammerUpdaterPostRWTest, Pairing_Failed) {
-  EXPECT_CALL(*pair_manager_, PairChallenge(fw_updater_))
+  EXPECT_CALL(*pair_manager_, PairChallenge(fw_updater_, dbus_wrapper_))
       .WillOnce(Return(ChallengeStatus::kChallengeFailed));
   EXPECT_EQ(hammer_updater_->Pair(), HammerUpdater::RunStatus::kFatalError);
 }
@@ -718,7 +718,7 @@ TEST_F(HammerUpdaterPostRWTest, Run_KeyVersionUpdate) {
         .WillOnce(WriteResponse(static_cast<void *>(&response)));
     EXPECT_CALL(*fw_updater_, TransferTouchpadFirmware(_, _))
         .WillOnce(Return(true));
-    EXPECT_CALL(*pair_manager_, PairChallenge(fw_updater_))
+    EXPECT_CALL(*pair_manager_, PairChallenge(fw_updater_, dbus_wrapper_))
         .WillOnce(Return(ChallengeStatus::kChallengePassed));
     EXPECT_CALL(*dbus_wrapper_, SendSignal(kBaseFirmwareUpdateSucceededSignal));
   }

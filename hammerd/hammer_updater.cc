@@ -314,7 +314,8 @@ HammerUpdater::RunStatus HammerUpdater::UpdateRO() {
 }
 
 HammerUpdater::RunStatus HammerUpdater::Pair() {
-  auto status = pair_manager_->PairChallenge(fw_updater_.get());
+  auto status = pair_manager_->PairChallenge(fw_updater_.get(),
+                                             dbus_wrapper_.get());
   switch (status) {
     case ChallengeStatus::kChallengePassed:
       // TODO(akahuang): Check if the base is swapped.

@@ -10,10 +10,12 @@
 
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <openssl/hmac.h>
 #include <openssl/sha.h>
 
+#include "hammerd/mock_dbus_wrapper.h"
 #include "hammerd/mock_pair_utils.h"
 #include "hammerd/mock_update_fw.h"
 #include "hammerd/pair_utils.h"
@@ -105,6 +107,7 @@ class PairTest : public testing::Test {
 
  protected:
   MockPairManager pair_manager_;
+  MockDBusWrapper dbus_wrapper_;
   std::string request_payload_;
   TestVector tv_;
   MockFirmwareUpdater fw_updater_;
@@ -121,7 +124,10 @@ TEST_F(PairTest, ChallengePassed) {
                                      tv_.bob_public_,
                                      tv_.authenticator_,
                                      true));
-  EXPECT_EQ(pair_manager_.PairChallenge(&fw_updater_),
+  EXPECT_CALL(dbus_wrapper_,
+              SendSignalWithArgHelper(kPairChallengeSucceededSignal,
+                                      tv_.bob_public_));
+  EXPECT_EQ(pair_manager_.PairChallenge(&fw_updater_, &dbus_wrapper_),
             ChallengeStatus::kChallengePassed);
 }
 
@@ -137,7 +143,8 @@ TEST_F(PairTest, ChallengeFailed) {
                                      tv_.alice_public_,
                                      tv_.authenticator_,
                                      true));
-  EXPECT_EQ(pair_manager_.PairChallenge(&fw_updater_),
+  EXPECT_CALL(dbus_wrapper_, SendSignal(kPairChallengeFailedSignal));
+  EXPECT_EQ(pair_manager_.PairChallenge(&fw_updater_, &dbus_wrapper_),
             ChallengeStatus::kChallengeFailed);
 }
 
@@ -152,7 +159,7 @@ TEST_F(PairTest, ChallengeNeedInjectEntropy) {
                                      std::vector<uint8_t>(),
                                      std::vector<uint8_t>(),
                                      false));
-  EXPECT_EQ(pair_manager_.PairChallenge(&fw_updater_),
+  EXPECT_EQ(pair_manager_.PairChallenge(&fw_updater_, &dbus_wrapper_),
             ChallengeStatus::kNeedInjectEntropy);
 }
 
@@ -167,7 +174,8 @@ TEST_F(PairTest, ChallengeUnknownError) {
                                      std::vector<uint8_t>(),
                                      std::vector<uint8_t>(),
                                      false));
-  EXPECT_EQ(pair_manager_.PairChallenge(&fw_updater_),
+  EXPECT_CALL(dbus_wrapper_, SendSignal(kPairChallengeFailedSignal));
+  EXPECT_EQ(pair_manager_.PairChallenge(&fw_updater_, &dbus_wrapper_),
             ChallengeStatus::kUnknownError);
 }
 }  // namespace hammerd

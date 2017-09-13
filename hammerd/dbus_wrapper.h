@@ -25,17 +25,23 @@ class DBusWrapperInterface {
  public:
   virtual ~DBusWrapperInterface() = default;
 
-  // Send a signal.
-  virtual void SendSignal(dbus::Signal* signal) = 0;
+  // Send a signal without argument.
   virtual void SendSignal(const std::string& signal_name) = 0;
+  // Send a signal with a binary-blob argument.
+  // Currently we only have one signal with a binary-blob argument. If we need
+  // other kind of arguments in the future, then switch to protobuf.
+  virtual void SendSignalWithArg(const std::string& signal_name,
+                                 const uint8_t* values, size_t length) = 0;
 };
 
 class DBusWrapper : public DBusWrapperInterface {
  public:
   DBusWrapper();
   virtual ~DBusWrapper() = default;
-  void SendSignal(dbus::Signal* signal) override;
+
   void SendSignal(const std::string& signal_name) override;
+  void SendSignalWithArg(const std::string& signal_name,
+                         const uint8_t* values, size_t length) override;
 
  protected:
   scoped_refptr<dbus::Bus> bus_;

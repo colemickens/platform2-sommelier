@@ -9,6 +9,7 @@
 #include <gtest/gtest_prod.h>
 
 #include "hammerd/curve25519.h"
+#include "hammerd/dbus_wrapper.h"
 #include "hammerd/update_fw.h"
 
 namespace hammerd {
@@ -50,7 +51,8 @@ class PairManagerInterface {
   // Generates the challange request and sends to the hammer. Then verifies the
   // challenge.
   virtual ChallengeStatus PairChallenge(
-      FirmwareUpdaterInterface* fw_updater) = 0;
+      FirmwareUpdaterInterface* fw_updater,
+      DBusWrapperInterface* dbus_wrapper) = 0;
 };
 
 // The host for generating and verifying the challenge.
@@ -60,7 +62,8 @@ class PairManager : public PairManagerInterface {
  public:
   PairManager() = default;
   ~PairManager() override = default;
-  ChallengeStatus PairChallenge(FirmwareUpdaterInterface* fw_updater) override;
+  ChallengeStatus PairChallenge(FirmwareUpdaterInterface* fw_updater,
+                                DBusWrapperInterface* dbus_wrapper) override;
 
  protected:
   virtual void GenerateChallenge(PairChallengeRequest* request,

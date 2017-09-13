@@ -10,6 +10,7 @@
 
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <chromeos/dbus/service_constants.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
@@ -18,7 +19,7 @@ namespace hammerd {
 
 // Implementation of PairManager.
 ChallengeStatus PairManager::PairChallenge(
-    FirmwareUpdaterInterface* fw_updater) {
+    FirmwareUpdaterInterface* fw_updater, DBusWrapperInterface* dbus_wrapper) {
   // Generate Challenge request.
   PairChallengeRequest request;
   uint8_t private_key[X25519_PRIVATE_KEY_LEN];
@@ -36,18 +37,25 @@ ChallengeStatus PairManager::PairChallenge(
     if (response.status ==
         static_cast<uint8_t>(EcResponseStatus::kUnavailable)) {
       LOG(ERROR) << "Need to inject the entropy.";
+      // Because we will inject entropy and try to pair again, we don't send
+      // kPairChallengeFailed signal here.
       return ChallengeStatus::kNeedInjectEntropy;
     }
     LOG(ERROR) << "Unknown error! The status of response: " << response.status;
+    dbus_wrapper->SendSignal(kPairChallengeFailedSignal);
     return ChallengeStatus::kUnknownError;
   }
 
   // Verify the response.
   if (VerifyChallenge(request, private_key, response)) {
     LOG(INFO) << "The pair challenge passed.";
+    dbus_wrapper->SendSignalWithArg(kPairChallengeSucceededSignal,
+                                    response.public_key,
+                                    sizeof(response.public_key));
     return ChallengeStatus::kChallengePassed;
   }
   LOG(ERROR) << "The pair challenge failed.";
+  dbus_wrapper->SendSignal(kPairChallengeFailedSignal);
   return ChallengeStatus::kChallengeFailed;
 }
 

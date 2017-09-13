@@ -4,6 +4,7 @@
 
 #include "hammerd/dbus_wrapper.h"
 
+#include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 
 namespace hammerd {
@@ -20,15 +21,20 @@ DBusWrapper::DBusWrapper() {
       bus_->GetExportedObject(dbus::ObjectPath(kHammerdServicePath));
 }
 
-void DBusWrapper::SendSignal(dbus::Signal* signal) {
-  DCHECK(signal);
-  exported_object_->SendSignal(signal);
+void DBusWrapper::SendSignal(const std::string& signal_name) {
+  SendSignalWithArg(signal_name, nullptr, 0);
 }
 
-void DBusWrapper::SendSignal(const std::string& signal_name) {
+void DBusWrapper::SendSignalWithArg(const std::string& signal_name,
+                                    const uint8_t* values, size_t length) {
   LOG(INFO) << "Send the DBus signal: " << signal_name;
   dbus::Signal signal(kHammerdInterface, signal_name);
-  SendSignal(&signal);
+  if (length > 0) {
+    LOG(INFO) << "The signal argument: " << base::HexEncode(values, length);
+    dbus::MessageWriter writer(&signal);
+    writer.AppendArrayOfBytes(values, length);
+  }
+  exported_object_->SendSignal(&signal);
 }
 
 }  // namespace hammerd
