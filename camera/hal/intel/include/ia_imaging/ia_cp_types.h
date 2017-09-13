@@ -123,7 +123,7 @@ typedef struct
 {
 	int			se_exposure_time;
 	int			le_exposure_time;
-	uint8_t		gae_model;                  /* 0 None (GAE is off), 1 Translation [1]*/
+	uint8_t		gae_model;                  /* 0 - None (GAE is off), 1 - Translation [1]*/
 	uint8_t		gae_bright_thr_low;			/* Brightness threshold low (can be sensor dependent) [4] */
 	uint8_t		gae_bright_thr_high;		/* Brightness threshold high (can be sensor dependent) [250] */
 	int			gae_pyr_low;
