@@ -210,33 +210,48 @@ grpc::Status ServiceImpl::LaunchProcess(
     env[pair.first] = pair.second;
   }
 
-  Init::ProcessExitInfo exit_info = {
-      .reason = Init::ProcessExitReason::UNKNOWN, .status = 0,
-  };
+  Init::ProcessLaunchInfo launch_info;
   if (!init_->Spawn(std::move(argv), std::move(env), request->respawn(),
                     request->use_console(), request->wait_for_exit(),
-                    &exit_info)) {
+                    &launch_info)) {
     return grpc::Status(grpc::INTERNAL, "failed to spawn process");
   }
 
-  if (!request->wait_for_exit()) {
-    return grpc::Status::OK;
+  switch (launch_info.status) {
+    case Init::ProcessStatus::UNKNOWN:
+      LOG(WARNING) << "Child process has unknown status";
+
+      response->set_status(vm_tools::UNKNOWN);
+      break;
+    case Init::ProcessStatus::EXITED:
+      LOG(INFO) << "Requested process " << request->argv()[0] << " exited with "
+                << "status " << launch_info.code;
+
+      response->set_status(vm_tools::EXITED);
+      response->set_code(launch_info.code);
+      break;
+    case Init::ProcessStatus::SIGNALED:
+      LOG(INFO) << "Requested process " << request->argv()[0] << " killed by "
+                << "signal " << launch_info.code;
+
+      response->set_status(vm_tools::SIGNALED);
+      response->set_code(launch_info.code);
+      break;
+    case Init::ProcessStatus::LAUNCHED:
+      LOG(INFO) << "Launched process " << request->argv()[0];
+
+      response->set_status(vm_tools::LAUNCHED);
+      break;
+    case Init::ProcessStatus::FAILED:
+      LOG(ERROR) << "Failed to launch requested process";
+
+      response->set_status(vm_tools::FAILED);
+      break;
   }
 
-  switch (exit_info.reason) {
-    case Init::ProcessExitReason::EXITED:
-      response->set_reason(vm_tools::EXITED);
-      break;
-    case Init::ProcessExitReason::SIGNALED:
-      response->set_reason(vm_tools::SIGNALED);
-      break;
-    case Init::ProcessExitReason::UNKNOWN:
-      response->set_reason(vm_tools::UNKNOWN);
-      break;
-  }
 
-  response->set_status(exit_info.status);
-
+  // Return OK no matter what because the RPC itself succeeded even if there
+  // was an issue with launching the process.
   return grpc::Status::OK;
 }
 

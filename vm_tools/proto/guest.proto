@@ -52,8 +52,8 @@ message LaunchProcessRequest {
   bool wait_for_exit = 5;
 }
 
-// The reason why a process exited.
-enum ExitReason {
+// The current status of a process launched via LaunchProcess.
+enum ProcessStatus {
   // ¯\_(ツ)_/¯
   UNKNOWN = 0;
 
@@ -62,19 +62,24 @@ enum ExitReason {
 
   // The process was killed by a signal.
   SIGNALED = 2;
+
+  // Successfully launched but may or may not have exited yet.
+  LAUNCHED = 3;
+
+  // One or more setup steps failed and the process did not launch.
+  FAILED = 4;
 }
 
 // Response sent back after maitre'd launches a process.  Will only be filled in
 // if the |wait_for_exit| field of the LaunchProcessRequest was set to true.
 message LaunchProcessResponse {
-  // The reason why the process exited.
-  ExitReason reason = 1;
+  // The status of the launched process.
+  ProcessStatus status = 1;
 
-  // If |reason| is EXITED then this contains the exit status of the process.  If
-  // |reason| is SIGNALED then this contains the signal number that killed the
-  // process.  If |reason| is UNKNOWN then the contents of this field are
-  // undefined.
-  sint32 status = 2;
+  // If |status| is EXITED then this contains the exit status of the process.  If
+  // |status| is SIGNALED then this contains the signal number that killed the
+  // process.  Otherwise the contents of this field are undefined.
+  sint32 code = 2;
 }
 
 // Implemented by maitred inside the VM.

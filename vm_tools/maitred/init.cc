@@ -8,13 +8,17 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <stdint.h>
+#include <string.h>
 #include <sys/eventfd.h>
 #include <sys/mount.h>
 #include <sys/signalfd.h>
+#include <sys/socket.h>
+#include <sys/uio.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 #include <algorithm>
+#include <limits>
 #include <list>
 #include <utility>
 
@@ -222,16 +226,57 @@ constexpr struct {
     },
 };
 
+// Information about any errors that happen in the child process before the exec
+// call.  This is sent back to the parent process via a socket.
+struct __attribute__((packed)) ChildErrorInfo {
+  enum class Reason : uint8_t {
+    // Failed to set session id.
+    SESSION_ID = 0,
+    // Unable to open console.
+    CONSOLE = 1,
+    // Unable to set stdio fds.
+    STDIO_FD = 2,
+    // Unable to set environment variable.
+    SETENV = 3,
+    // Unable to reset signal handlers.
+    SIGNAL_RESET = 4,
+    // Failed to exec the requested program.
+    EXEC = 5,
+  };
+
+  union {
+    // If |reason| is STDIO_FD, the fd that we failed to dup.
+    int32_t fd;
+
+    // If |reason| is SETENV, then the child process will append the key and
+    // value of the environment variable pair that failed to this struct.  This
+    // value tells the parent process the length of the 2 strings, including the
+    // '\0' byte for each string.
+    uint16_t env_length;
+
+    // If |reason| is SIGNAL_RESET, the signal number for which we failed to set
+    // the default disposition.
+    int32_t signo;
+  } details;
+
+  // The errno value after the failed action.
+  int32_t err;
+
+  // Error reason.
+  Reason reason;
+};
+
 // Number of defined signals that the process could receive (not including
 // real time signals).
 constexpr int kNumSignals = 32;
 
 // Resets all signal handlers to the default.  This is called in child processes
 // immediately before exec-ing so that signals are not unexpectedly blocked.
-// Returns true if all signal handlers were successfully set to their default
-// dispositions and false if even one of them failed.  Callers should inspect
-// errno for the error.
-bool ResetSignalHandlers() {
+// Returns 0 if all signal handlers were successfully set to their default
+// dispositions.  Returns the signal number of the signal for which resetting
+// the signal handler failed, if any.  Callers should inspect errno for the
+// error.
+int ResetSignalHandlers() {
   for (int signo = 1; signo < kNumSignals; ++signo) {
     if (signo == SIGKILL || signo == SIGSTOP) {
       // sigaction returns an error if we try to set the disposition of these
@@ -239,17 +284,16 @@ bool ResetSignalHandlers() {
       continue;
     }
     struct sigaction act = {
-      .sa_handler = SIG_DFL,
-      .sa_flags = 0,
+        .sa_handler = SIG_DFL, .sa_flags = 0,
     };
     sigemptyset(&act.sa_mask);
 
     if (sigaction(signo, &act, nullptr) != 0) {
-      return false;
+      return signo;
     }
   }
 
-  return true;
+  return 0;
 }
 
 // Recursively changes the owner and group for all files and directories in
@@ -277,6 +321,186 @@ bool ChangeOwnerAndGroup(base::FilePath path, uid_t uid, gid_t gid) {
   return true;
 }
 
+// Performs various setup steps in the child process after calling fork() but
+// before calling exec(). |error_fd| should be a valid file descriptor for a
+// socket and will be used to send error information back to the parent process
+// if any of the setup steps fail.
+void DoChildSetup(const char* console,
+                  const std::map<string, string>& env,
+                  int error_fd) {
+  // Create a new session and process group.
+  if (setsid() == -1) {
+    struct ChildErrorInfo info = {
+        .reason = ChildErrorInfo::Reason::SESSION_ID, .err = errno,
+    };
+
+    send(error_fd, &info, sizeof(info), MSG_NOSIGNAL);
+    _exit(errno);
+  }
+
+  // File descriptor for the child's stdio.
+  int fd = open(console, O_RDWR | O_NOCTTY);
+  if (fd < 0) {
+    struct ChildErrorInfo info = {
+        .reason = ChildErrorInfo::Reason::CONSOLE, .err = errno,
+    };
+
+    send(error_fd, &info, sizeof(info), MSG_NOSIGNAL);
+    _exit(errno);
+  }
+
+  // Override the parent's stdio fds with the console fd.
+  for (int newfd = 0; newfd < 3; ++newfd) {
+    if (dup2(fd, newfd) < 0) {
+      struct ChildErrorInfo info = {
+          .reason = ChildErrorInfo::Reason::STDIO_FD,
+          .err = errno,
+          .details = {.fd = newfd},
+      };
+
+      send(error_fd, &info, sizeof(info), MSG_NOSIGNAL);
+      _exit(errno);
+    }
+  }
+
+  // Close the console fd, if necessary.
+  if (fd >= 3) {
+    close(fd);
+  }
+
+  // Set the umask back to a reasonable default.
+  umask(0022);
+
+  // Set the environment variables.
+  for (const auto& pair : env) {
+    if (setenv(pair.first.c_str(), pair.second.c_str(), 1) == 0) {
+      continue;
+    }
+
+    // Failed to set an environment variable.  Send the error back to the
+    // parent process.
+    uint16_t env_length = 0;
+    if (pair.first.size() + pair.second.size() + 2 <
+        std::numeric_limits<uint16_t>::max()) {
+      env_length =
+          static_cast<uint16_t>(pair.first.size() + pair.second.size() + 2);
+    }
+    struct ChildErrorInfo info = {
+        .reason = ChildErrorInfo::Reason::SETENV,
+        .err = errno,
+        .details = {.env_length = env_length},
+    };
+    send(error_fd, &info, sizeof(info), MSG_NOSIGNAL);
+
+    // Also send back the offending (key, value) pair if it's not too long.
+    // The pair is sent back in the format: <key>\0<value>\0.
+    if (env_length != 0) {
+      struct iovec iovs[] = {
+          {
+              .iov_base =
+                  static_cast<void*>(const_cast<char*>(pair.first.data())),
+              .iov_len = pair.first.size() + 1,
+          },
+          {
+              .iov_base =
+                  static_cast<void*>(const_cast<char*>(pair.second.data())),
+              .iov_len = pair.second.size() + 1,
+          },
+      };
+      struct msghdr hdr = {
+          .msg_name = nullptr,
+          .msg_namelen = 0,
+          .msg_iov = iovs,
+          .msg_iovlen = sizeof(iovs) / sizeof(iovs[0]),
+          .msg_control = nullptr,
+          .msg_controllen = 0,
+          .msg_flags = 0,
+      };
+      sendmsg(error_fd, &hdr, MSG_NOSIGNAL);
+    }
+    _exit(errno);
+  }
+
+  // Restore signal handlers and unblock all signals.
+  int signo = ResetSignalHandlers();
+  if (signo != 0) {
+    struct ChildErrorInfo info = {
+        .reason = ChildErrorInfo::Reason::SIGNAL_RESET,
+        .err = errno,
+        .details = {.signo = signo},
+    };
+
+    send(error_fd, &info, sizeof(info), MSG_NOSIGNAL);
+    _exit(errno);
+  }
+
+  // Unblock all signals.
+  sigset_t mask;
+  sigfillset(&mask);
+  sigprocmask(SIG_UNBLOCK, &mask, nullptr);
+}
+
+// Logs information about the error that occurred in the child process.
+void LogChildError(const struct ChildErrorInfo& child_info, int fd) {
+  const char* msg = nullptr;
+  switch (child_info.reason) {
+    case ChildErrorInfo::Reason::SESSION_ID:
+      msg = "Failed to set session id in child process: ";
+      break;
+    case ChildErrorInfo::Reason::CONSOLE:
+      msg = "Failed to open console in child process: ";
+      break;
+    case ChildErrorInfo::Reason::STDIO_FD:
+      msg = "Failed to setup stdio file descriptors in child process: ";
+      break;
+    case ChildErrorInfo::Reason::SETENV:
+      msg = "Failed to set environment variable in child process: ";
+      break;
+    case ChildErrorInfo::Reason::SIGNAL_RESET:
+      msg = "Failed to reset signal handler disposition in child process: ";
+      break;
+    case ChildErrorInfo::Reason::EXEC:
+      msg = "Failed to execute requested program in child process: ";
+      break;
+  }
+
+  LOG(ERROR) << msg << strerror(child_info.err);
+
+  if (child_info.reason == ChildErrorInfo::Reason::STDIO_FD) {
+    LOG(ERROR) << "Unable to dup console fd to " << child_info.details.fd;
+    return;
+  }
+
+  if (child_info.reason == ChildErrorInfo::Reason::SIGNAL_RESET) {
+    LOG(ERROR) << "Unable to set signal disposition for signal "
+               << child_info.details.signo << " to SIG_DFL";
+    return;
+  }
+
+  if (child_info.reason == ChildErrorInfo::Reason::SETENV &&
+      child_info.details.env_length > 0) {
+    auto buf = base::MakeUnique<char[]>(child_info.details.env_length + 1);
+    if (recv(fd, buf.get(), child_info.details.env_length, 0) !=
+        child_info.details.env_length) {
+      PLOG(ERROR) << "Unable to fetch error details from child process";
+      return;
+    }
+    buf[child_info.details.env_length] = '\0';
+
+    char* key = buf.get();
+    char* value = strchr(buf.get(), '\0');
+    if (value - key == child_info.details.env_length) {
+      LOG(ERROR) << "Missing value in SETENV error details";
+      return;
+    }
+
+    // Step over the nullptr at the end of |key|.
+    ++value;
+
+    LOG(ERROR) << "Unable to set " << key << " to " << value;
+  }
+}
+
 }  // namespace
 
 class Init::Worker : public base::MessageLoopForIO::Watcher {
@@ -301,10 +525,10 @@ class Init::Worker : public base::MessageLoopForIO::Watcher {
 
   // Actually spawns a child process.  Waits until it receives confirmation from
   // the child that the requested program was actually started and fills in
-  // |exit_info| with information about the process.  Additionally if
+  // |launch_info| with information about the process.  Additionally if
   // |info.wait_for_exit| is true, then waits until the child process exits or
   // is killed before returning.
-  void Spawn(struct ChildInfo info, int semfd, ProcessExitInfo* exit_info);
+  void Spawn(struct ChildInfo info, int semfd, ProcessLaunchInfo* launch_info);
 
   // base::MessageLoopForIO::Watcher overrides.
   void OnFileCanReadWithoutBlocking(int fd) override;
@@ -343,14 +567,30 @@ void Init::Worker::Start() {
 
 void Init::Worker::Spawn(struct ChildInfo info,
                          int semfd,
-                         ProcessExitInfo* exit_info) {
+                         ProcessLaunchInfo* launch_info) {
   DCHECK_GT(info.argv.size(), 0);
+  DCHECK_NE(semfd, -1);
+  DCHECK(launch_info);
 
   // Build the argv.
   std::vector<const char*> argv(info.argv.size());
   std::transform(info.argv.begin(), info.argv.end(), argv.begin(),
                  [](const string& arg) -> const char* { return arg.c_str(); });
   argv.emplace_back(nullptr);
+
+  // Create a pair of sockets for communicating information about the child
+  // process setup.  If there was an error in any of the steps performed before
+  // running execvp, then the child process will send back a ChildErrorInfo
+  // struct with the error details over the socket.  If the execvp runs
+  // successful then the socket will automatically be closed (because of
+  // the SOCK_CLOEXEC flag) and the parent will read 0 bytes from its end
+  // of the socketpair.
+  int info_fds[2];
+  if (socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, info_fds) != 0) {
+    PLOG(ERROR) << "Failed to create socketpair for child process";
+    launch_info->status = ProcessStatus::FAILED;
+    return;
+  }
 
   // Block all signals before forking to prevent signals from arriving in the
   // child.
@@ -361,86 +601,86 @@ void Init::Worker::Spawn(struct ChildInfo info,
   pid_t pid = fork();
   if (pid < 0) {
     PLOG(ERROR) << "Failed to fork";
+    launch_info->status = ProcessStatus::FAILED;
     return;
   }
 
   if (pid == 0) {
-    // Create a new session and process group.
-    if (setsid() == -1) {
-      _exit(errno);
-    }
+    // Child process.
+    close(info_fds[0]);
 
-    // File descriptor for the child's stdio.
     const char* console = info.use_console ? "/dev/console" : "/dev/null";
-    int fd = open(console, O_RDWR | O_NOCTTY);
-    if (fd < 0) {
-      _exit(errno);
-    }
-
-    // Override the parent's stdio fds with the console fd.
-    for (int newfd = 0; newfd < 3; ++newfd) {
-      if (dup2(fd, newfd) < 0) {
-        _exit(errno);
-      }
-    }
-
-    // Close the console fd, if necessary.
-    if (fd >= 3) {
-      close(fd);
-    }
-
-    // Set the umask back to a reasonable default.
-    umask(0022);
-
-    // Set the environment variables.
-    for (const auto& pair : info.env) {
-      if (setenv(pair.first.c_str(), pair.second.c_str(), 1) != 0) {
-        _exit(errno);
-      }
-    }
-
-    // Restore signal handlers and unblock all signals.
-    if (!ResetSignalHandlers()) {
-      _exit(errno);
-    }
-    sigprocmask(SIG_UNBLOCK, &mask, nullptr);
+    DoChildSetup(console, info.env, info_fds[1]);
 
     // Launch the process.
     execvp(argv[0], const_cast<char* const*>(argv.data()));
 
     // execvp never returns except in case of an error.
+    struct ChildErrorInfo info = {
+        .reason = ChildErrorInfo::Reason::EXEC, .err = errno,
+    };
+
+    send(info_fds[1], &info, sizeof(info), MSG_NOSIGNAL);
     _exit(errno);
   }
 
   // Parent process.
-  if (info.wait_for_exit) {
-    DCHECK_NE(semfd, -1);
-    DCHECK(exit_info);
+  close(info_fds[1]);
+  struct ChildErrorInfo child_info = {};
+  ssize_t ret = recv(info_fds[0], &child_info, sizeof(child_info), 0);
 
+  // There are 3 possibilities here:
+  //   - The process setup completed successfully and the program was launched.
+  //     In this case the socket fd in the child process will be closed on
+  //     exec and ret will be 0.
+  //   - An error occurred during setup.  ret will be sizeof(child_info).
+  //   - An error occurred during the recv.  In this case we assume the child
+  //     setup was successful.  If it wasn't, we'll find out about it through
+  //     the normal child reaping mechanism.
+  if (ret == sizeof(child_info)) {
+    // Error occurred in the child.
+    LogChildError(child_info, info_fds[0]);
+
+    // Reap the child process here since we know it already failed.
+    int status = 0;
+    pid_t child = waitpid(pid, &status, 0);
+    DCHECK_EQ(child, pid);
+
+    launch_info->status = ProcessStatus::FAILED;
+  } else if (ret < 0) {
+    PLOG(ERROR) << "Failed to receive information about child process setup";
+    launch_info->status = ProcessStatus::UNKNOWN;
+  }
+  close(info_fds[0]);
+
+  if (ret == 0 && info.wait_for_exit) {
     int status = 0;
     pid_t child = waitpid(pid, &status, 0);
     DCHECK_EQ(child, pid);
 
     if (WIFEXITED(status)) {
-      exit_info->reason = ProcessExitReason::EXITED;
-      exit_info->status = WEXITSTATUS(status);
+      launch_info->status = ProcessStatus::EXITED;
+      launch_info->code = WEXITSTATUS(status);
     } else if (WIFSIGNALED(status)) {
-      exit_info->reason = ProcessExitReason::SIGNALED;
-      exit_info->status = WTERMSIG(status);
+      launch_info->status = ProcessStatus::SIGNALED;
+      launch_info->code = WTERMSIG(status);
     } else {
-      exit_info->reason = ProcessExitReason::UNKNOWN;
+      launch_info->status = ProcessStatus::UNKNOWN;
     }
 
-    uint64_t done = 1;
-    ssize_t ret = write(semfd, &done, sizeof(done));
-    DCHECK_EQ(ret, sizeof(done));
-  } else {
+  } else if (ret == 0) {
     info.spawn_times.emplace_back(base::Time::Now());
 
     // result is a pair<iterator, bool>.
     auto result = children_.emplace(pid, std::move(info));
     DCHECK(result.second);
+
+    launch_info->status = ProcessStatus::LAUNCHED;
   }
+
+  uint64_t done = 1;
+  ssize_t count = write(semfd, &done, sizeof(done));
+  DCHECK_EQ(count, sizeof(done));
 
   // Restore the signal mask.
   sigprocmask(SIG_SETMASK, &omask, nullptr);
@@ -544,9 +784,10 @@ bool Init::Spawn(std::vector<string> argv,
                  bool respawn,
                  bool use_console,
                  bool wait_for_exit,
-                 ProcessExitInfo* exit_info) {
+                 ProcessLaunchInfo* launch_info) {
   CHECK(!argv.empty());
   CHECK(!(respawn && wait_for_exit));
+  CHECK(launch_info);
 
   if (!worker_) {
     // If there's no worker then we are currently in the process of shutting
@@ -559,16 +800,10 @@ bool Init::Spawn(std::vector<string> argv,
                                    .respawn = respawn,
                                    .use_console = use_console,
                                    .wait_for_exit = wait_for_exit};
-  if (!wait_for_exit) {
-    return worker_thread_.task_runner()->PostTask(
-        FROM_HERE, base::Bind(&Worker::Spawn, base::Unretained(worker_.get()),
-                              base::Passed(std::move(info)), -1, nullptr));
-  }
 
-  // Need to wait for this process to exit.
-  CHECK(exit_info);
-
-  base::ScopedFD sem(eventfd(0, EFD_CLOEXEC | EFD_SEMAPHORE));
+  // Create a semaphore that we will use to wait for the worker thread to launch
+  // the process and fill in the the ProcessLaunchInfo struct with the result.
+  base::ScopedFD sem(eventfd(0 /*initval*/, EFD_CLOEXEC | EFD_SEMAPHORE));
   if (!sem.is_valid()) {
     PLOG(ERROR) << "Failed to create semaphore eventfd";
     return false;
@@ -577,7 +812,7 @@ bool Init::Spawn(std::vector<string> argv,
   bool ret = worker_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&Worker::Spawn, base::Unretained(worker_.get()),
-                 base::Passed(std::move(info)), sem.get(), exit_info));
+                 base::Passed(std::move(info)), sem.get(), launch_info));
   if (!ret) {
     return false;
   }

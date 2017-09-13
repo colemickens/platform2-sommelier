@@ -21,23 +21,34 @@ namespace maitred {
 class Init final {
  public:
   // The reason why a process exited.
-  enum class ProcessExitReason {
+  enum class ProcessStatus {
+    // Process is in an unknown state.
     UNKNOWN,
+
+    // Process exited.
     EXITED,
+
+    // Killed by a signal.
     SIGNALED,
+
+    // Launched but may or may not have exited yet.
+    LAUNCHED,
+
+    // One or more setup steps failed and the process did not launch.
+    FAILED,
   };
 
-  // Information about a process' exit.
-  struct ProcessExitInfo {
-    ProcessExitInfo() = default;
+  // Information about a process launch.
+  struct ProcessLaunchInfo {
+    ProcessLaunchInfo() = default;
 
-    // The reason why the process exited.
-    ProcessExitReason reason = ProcessExitReason::UNKNOWN;
+    // Current status of the process.
+    ProcessStatus status = ProcessStatus::UNKNOWN;
 
-    // If |reason| is EXITED, then this will hold the exit status.  If |reason|
+    // If |status| is EXITED, then this will hold the exit status.  If |status|
     // is SIGNALED, then this will hold the signal number that killed the
-    // process.
-    int32_t status = 0;
+    // process.  Otherwise this value is undefined.
+    int32_t code = 0;
   };
 
   // Creates a new instance of this class and performs various bits of early
@@ -49,13 +60,13 @@ class Init final {
   // Spawn a process with the given argv and environment.  |argv[0]| must be
   // the full path to the program or the name of a program found in PATH.  If
   // |wait_for_exit| is true, then wait for the spawned process to exit and
-  // fill in |exit_info| with the information about the process's exit.
+  // fill in |launch_info| with the information about the process's exit.
   bool Spawn(std::vector<std::string> argv,
              std::map<std::string, std::string> env,
              bool respawn,
              bool use_console,
              bool wait_for_exit,
-             ProcessExitInfo* exit_info);
+             ProcessLaunchInfo* launch_info);
 
  private:
   Init() = default;
