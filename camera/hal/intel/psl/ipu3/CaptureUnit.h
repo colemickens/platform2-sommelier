@@ -315,6 +315,7 @@ private:
     std::vector<camera3_stream_t *>      mActiveStreams; /* mActiveStreams doesn't own camera3_stream_t objects */
 
     /* Input system event listeners */
+    std::mutex   mListenerLock;  /* Protects mListeners */
     std::vector<ICaptureEventListener*> mListeners; /* mListeners doesn't own ICaptureEventListener objects */
 
     BufferPools *mBufferPools;

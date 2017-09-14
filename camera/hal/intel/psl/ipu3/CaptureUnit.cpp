@@ -624,12 +624,20 @@ status_t CaptureUnit::enqueueIsysBuffer(std::shared_ptr<InflightRequestState> &r
 status_t CaptureUnit::attachListener(ICaptureEventListener *aListener)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+
+    std::lock_guard<std::mutex> l(mListenerLock);
     mListeners.push_back(aListener);
+
     return OK;
 }
 
 void CaptureUnit::cleanListeners()
-{}
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+
+    std::lock_guard<std::mutex> l(mListenerLock);
+    mListeners.clear();
+}
 
 void CaptureUnit::notifyIsysEvent(IsysMessage &isysMsg)
 {
@@ -879,6 +887,8 @@ status_t CaptureUnit::notifyListeners(ICaptureEventListener::CaptureMessage *msg
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     bool ret = false;
+
+    std::lock_guard<std::mutex> l(mListenerLock);
     std::vector<ICaptureEventListener*>::iterator it = mListeners.begin();
     for (;it != mListeners.end(); ++it)
         ret |= (*it)->notifyCaptureEvent((ICaptureEventListener::CaptureMessage*)msg);
