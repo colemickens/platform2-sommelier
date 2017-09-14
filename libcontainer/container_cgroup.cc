@@ -13,15 +13,14 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "container_cgroup.h"
+#include "libcontainer/container_cgroup.h"
 
 static const char *cgroup_names[NUM_CGROUP_TYPES] = {
 	"cpu", "cpuacct", "cpuset", "devices", "freezer", "schedtune"
 };
 
 static int open_cgroup_file(const char *cgroup_path, const char *name,
-			    bool write)
-{
+			    bool write) {
 	int fd;
 	int flags = write ? O_WRONLY | O_CREAT | O_TRUNC : O_RDONLY;
 	char *path = NULL;
@@ -37,8 +36,7 @@ static int open_cgroup_file(const char *cgroup_path, const char *name,
 }
 
 static int write_cgroup_file(const char *cgroup_path, const char *name,
-			     const char *str)
-{
+			     const char *str) {
 	int fd;
 	int rc = 0;
 
@@ -54,8 +52,7 @@ static int write_cgroup_file(const char *cgroup_path, const char *name,
 }
 
 static int write_cgroup_file_int(const char *cgroup_path, const char *name,
-				 const int value)
-{
+				 const int value) {
 	char *str = NULL;
 	int rc;
 
@@ -67,8 +64,7 @@ static int write_cgroup_file_int(const char *cgroup_path, const char *name,
 	return rc;
 }
 
-static int copy_cgroup_parent(const char *cgroup_path, const char *name)
-{
+static int copy_cgroup_parent(const char *cgroup_path, const char *name) {
 	char *parent_path = NULL;
 	int rc = 0;
 	int src, dst;
@@ -113,20 +109,17 @@ out_free_parent_path:
 	return rc;
 }
 
-static int freeze(const struct container_cgroup *cg)
-{
+static int freeze(const struct container_cgroup *cg) {
 	return write_cgroup_file(cg->cgroup_paths[CGROUP_FREEZER],
 				 "freezer.state", "FROZEN\n");
 }
 
-static int thaw(const struct container_cgroup *cg)
-{
+static int thaw(const struct container_cgroup *cg) {
 	return write_cgroup_file(cg->cgroup_paths[CGROUP_FREEZER],
 				 "freezer.state", "THAWED\n");
 }
 
-static int deny_all_devices(const struct container_cgroup *cg)
-{
+static int deny_all_devices(const struct container_cgroup *cg) {
 	return write_cgroup_file(cg->cgroup_paths[CGROUP_DEVICES],
 				 "devices.deny", "a\n");
 }
@@ -148,8 +141,7 @@ static char *get_device_string(const int major, const int minor) {
 }
 
 static int add_device(const struct container_cgroup *cg, int allow, int major,
-		      int minor, int read, int write, int modify, char type)
-{
+		      int minor, int read, int write, int modify, char type) {
 	char *device_string = NULL;
 	char *perm_string = NULL;
 	int rc;
@@ -184,32 +176,28 @@ error_out:
 	return rc;
 }
 
-static int set_cpu_shares(const struct container_cgroup *cg, int shares)
-{
+static int set_cpu_shares(const struct container_cgroup *cg, int shares) {
 	return write_cgroup_file_int(cg->cgroup_paths[CGROUP_CPU],
 				     "cpu.shares", shares);
 }
 
-static int set_cpu_quota(const struct container_cgroup *cg, int quota)
-{
+static int set_cpu_quota(const struct container_cgroup *cg, int quota) {
 	return write_cgroup_file_int(cg->cgroup_paths[CGROUP_CPU],
 				     "cpu.cfs_quota_us", quota);
 }
 
-static int set_cpu_period(const struct container_cgroup *cg, int period)
-{
+static int set_cpu_period(const struct container_cgroup *cg, int period) {
 	return write_cgroup_file_int(cg->cgroup_paths[CGROUP_CPU],
 				     "cpu.cfs_period_us", period);
 }
 
-static int set_cpu_rt_runtime(const struct container_cgroup *cg, int rt_runtime)
-{
+static int set_cpu_rt_runtime(const struct container_cgroup *cg,
+			      int rt_runtime) {
 	return write_cgroup_file_int(cg->cgroup_paths[CGROUP_CPU],
 				     "cpu.rt_runtime_us", rt_runtime);
 }
 
-static int set_cpu_rt_period(const struct container_cgroup *cg, int rt_period)
-{
+static int set_cpu_rt_period(const struct container_cgroup *cg, int rt_period) {
 	return write_cgroup_file_int(cg->cgroup_paths[CGROUP_CPU],
 				     "cpu.rt_period_us", rt_period);
 }
@@ -226,9 +214,8 @@ static const struct cgroup_ops cgroup_ops = {
 	.set_cpu_rt_period = set_cpu_rt_period,
 };
 
-static int create_cgroup_as_owner(const char *cgroup_path,
-				  uid_t cgroup_owner, gid_t cgroup_group)
-{
+static int create_cgroup_as_owner(const char *cgroup_path, uid_t cgroup_owner,
+				  gid_t cgroup_group) {
 	int error = 0;
 
 	/*
@@ -236,7 +223,6 @@ static int create_cgroup_as_owner(const char *cgroup_path,
 	 * as that user.
 	 */
 	if (getuid() == 0 && (cgroup_owner != 0 || cgroup_group != 0)) {
-
 		if (setegid(cgroup_group))
 			return -errno;
 
@@ -271,8 +257,7 @@ static int create_cgroup_as_owner(const char *cgroup_path,
 }
 
 static int check_cgroup_available(const char *cgroup_root,
-				  const char *cgroup_name)
-{
+				  const char *cgroup_name) {
 	char *path;
 	int rc;
 
@@ -292,8 +277,7 @@ struct container_cgroup *container_cgroup_new(const char *name,
 					      const char *cgroup_root,
 					      const char *cgroup_parent,
 					      uid_t cgroup_owner,
-					      gid_t cgroup_group)
-{
+					      gid_t cgroup_group) {
 	int i;
 	int rc;
 
@@ -355,8 +339,7 @@ error_free_cg:
 	return NULL;
 }
 
-void container_cgroup_destroy(struct container_cgroup *cg)
-{
+void container_cgroup_destroy(struct container_cgroup *cg) {
 	int i;
 
 	free(cg->name);
@@ -369,4 +352,3 @@ void container_cgroup_destroy(struct container_cgroup *cg)
 	}
 	free(cg);
 }
-

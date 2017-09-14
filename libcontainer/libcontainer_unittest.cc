@@ -10,10 +10,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "test_harness.h"
+#include "libcontainer/test_harness.h"
 
-#include "container_cgroup.h"
-#include "libcontainer.h"
+#include "libcontainer/container_cgroup.h"
+#include "libcontainer/libcontainer.h"
 
 static const pid_t INIT_TEST_PID = 5555;
 static const int TEST_CPU_SHARES = 200;
@@ -83,20 +83,17 @@ struct mock_cgroup {
 
 static struct mock_cgroup gmcg;
 
-static int mock_freeze(const struct container_cgroup *cg)
-{
+static int mock_freeze(const struct container_cgroup *cg) {
 	struct mock_cgroup *mcg = (struct mock_cgroup *)cg;
 	return mcg->freeze_ret;
 }
 
-static int mock_thaw(const struct container_cgroup *cg)
-{
+static int mock_thaw(const struct container_cgroup *cg) {
 	struct mock_cgroup *mcg = (struct mock_cgroup *)cg;
 	return mcg->thaw_ret;
 }
 
-static int mock_deny_all_devices(const struct container_cgroup *cg)
-{
+static int mock_deny_all_devices(const struct container_cgroup *cg) {
 	struct mock_cgroup *mcg = (struct mock_cgroup *)cg;
 	++mcg->deny_all_devs_called_count;
 	return mcg->deny_all_devs_ret;
@@ -104,8 +101,7 @@ static int mock_deny_all_devices(const struct container_cgroup *cg)
 
 static int mock_add_device(const struct container_cgroup *cg, int allow,
 			   int major, int minor, int read, int write,
-			   int modify, char type)
-{
+			   int modify, char type) {
 	struct mock_cgroup *mcg = (struct mock_cgroup *)cg;
 
 	if (mcg->add_dev_called_count >= MAX_ADD_DEVICE_CALLS)
@@ -121,36 +117,33 @@ static int mock_add_device(const struct container_cgroup *cg, int allow,
 	return mcg->add_device_ret;
 }
 
-static int mock_set_cpu_shares(const struct container_cgroup *cg, int shares)
-{
+static int mock_set_cpu_shares(const struct container_cgroup *cg, int shares) {
 	struct mock_cgroup *mcg = (struct mock_cgroup *)cg;
 	mcg->set_cpu_shares_count++;
 	return mcg->set_cpu_ret;
 }
 
-static int mock_set_cpu_quota(const struct container_cgroup *cg, int quota)
-{
+static int mock_set_cpu_quota(const struct container_cgroup *cg, int quota) {
 	struct mock_cgroup *mcg = (struct mock_cgroup *)cg;
 	mcg->set_cpu_quota_count++;
 	return mcg->set_cpu_ret;
 }
 
-static int mock_set_cpu_period(const struct container_cgroup *cg, int period)
-{
+static int mock_set_cpu_period(const struct container_cgroup *cg, int period) {
 	struct mock_cgroup *mcg = (struct mock_cgroup *)cg;
 	mcg->set_cpu_period_count++;
 	return mcg->set_cpu_ret;
 }
 
-static int mock_set_cpu_rt_runtime(const struct container_cgroup *cg, int rt_runtime)
-{
+static int mock_set_cpu_rt_runtime(const struct container_cgroup *cg,
+				   int rt_runtime) {
 	struct mock_cgroup *mcg = (struct mock_cgroup *)cg;
 	mcg->set_cpu_rt_runtime_count++;
 	return mcg->set_cpu_ret;
 }
 
-static int mock_set_cpu_rt_period(const struct container_cgroup *cg, int rt_period)
-{
+static int mock_set_cpu_rt_period(const struct container_cgroup *cg,
+				  int rt_period) {
 	struct mock_cgroup *mcg = (struct mock_cgroup *)cg;
 	mcg->set_cpu_rt_period_count++;
 	return mcg->set_cpu_ret;
@@ -159,19 +152,16 @@ static int mock_set_cpu_rt_period(const struct container_cgroup *cg, int rt_peri
 struct container_cgroup *container_cgroup_new(const char *name,
 					      const char *cgroup_root,
 					      const char *cgroup_parent,
-					      uid_t uid, gid_t gid)
-{
+					      uid_t uid, gid_t gid) {
 	gmcg.cg.name = strdup(name);
 	return &gmcg.cg;
 }
 
-void container_cgroup_destroy(struct container_cgroup *c)
-{
+void container_cgroup_destroy(struct container_cgroup *c) {
 	free(c->name);
 }
 
-TEST(premounted_runfs)
-{
+TEST(premounted_runfs) {
 	char premounted_runfs[] = "/tmp/cgtest_run/root";
 	struct container_config *config = container_config_create();
 	ASSERT_NE(nullptr, config);
@@ -183,8 +173,7 @@ TEST(premounted_runfs)
 	container_config_destroy(config);
 }
 
-TEST(pid_file_path)
-{
+TEST(pid_file_path) {
 	char pid_file_path[] = "/tmp/cgtest_run/root/container.pid";
 	struct container_config *config = container_config_create();
 	ASSERT_NE(nullptr, config);
@@ -204,8 +193,7 @@ FIXTURE(container_test) {
 	char *rootfs;
 };
 
-FIXTURE_SETUP(container_test)
-{
+FIXTURE_SETUP(container_test) {
 	char temp_template[] = "/tmp/cgtestXXXXXX";
 	char rundir_template[] = "/tmp/cgtest_runXXXXXX";
 	char *rundir;
@@ -249,7 +237,6 @@ FIXTURE_SETUP(container_test)
 	stat_rdev_ret = makedev(2, 3);
 
 	snprintf(path, sizeof(path), "%s/dev", self->rootfs);
-	//mkdir(path, S_IRWXU | S_IRWXG);
 
 	self->mount_flags = MS_NOSUID | MS_NODEV | MS_NOEXEC;
 
@@ -308,8 +295,7 @@ FIXTURE_SETUP(container_test)
 	ASSERT_NE(nullptr, self->container);
 }
 
-FIXTURE_TEARDOWN(container_test)
-{
+FIXTURE_TEARDOWN(container_test) {
 	char path[256];
 	int i;
 
@@ -327,8 +313,7 @@ FIXTURE_TEARDOWN(container_test)
 	free(mkdtemp_root);
 }
 
-TEST_F(container_test, test_mount_tmp_start)
-{
+TEST_F(container_test, test_mount_tmp_start) {
 	char *path;
 
 	EXPECT_EQ(0, container_start(self->container, self->config));
@@ -397,8 +382,7 @@ TEST_F(container_test, test_mount_tmp_start)
 	EXPECT_EQ(1, minijail_reset_signal_mask_called);
 }
 
-TEST_F(container_test, test_kill_container)
-{
+TEST_F(container_test, test_kill_container) {
 	EXPECT_EQ(0, container_start(self->container, self->config));
 	EXPECT_EQ(0, container_kill(self->container));
 	EXPECT_EQ(1, kill_called);
@@ -409,10 +393,8 @@ TEST_F(container_test, test_kill_container)
 /* libc stubs so the UT doesn't need root to call mount, etc. */
 extern "C" {
 
-int mount(const char *source, const char *target,
-	  const char *filesystemtype, unsigned long mountflags,
-	  const void *data)
-{
+int mount(const char *source, const char *target, const char *filesystemtype,
+	  unsigned long mountflags, const void *data) {
 	if (mount_called >= 5)
 		return 0;
 
@@ -425,8 +407,7 @@ int mount(const char *source, const char *target,
 	return 0;
 }
 
-int umount(const char *target)
-{
+int umount(const char *target) {
 	return 0;
 }
 
@@ -447,13 +428,11 @@ int mknod(const char *pathname, mode_t mode, dev_t dev)
 	return 0;
 }
 
-int chown(const char *path, uid_t owner, gid_t group)
-{
+int chown(const char *path, uid_t owner, gid_t group) {
 	return 0;
-};
+}
 
-int kill(pid_t pid, int sig)
-{
+int kill(pid_t pid, int sig) {
 	++kill_called;
 	kill_sig = sig;
 	return 0;
@@ -470,131 +449,107 @@ int stat(const char *path, struct stat *buf)
 	return 0;
 }
 
-int chmod(const char *path, mode_t mode)
-{
+int chmod(const char *path, mode_t mode) {
 	return 0;
 }
 
-char *mkdtemp(char *template_string)
-{
+char *mkdtemp(char *template_string) {
 	mkdtemp_root = strdup(template_string);
 	return template_string;
 }
 
-int mkdir(const char *pathname, mode_t mode)
-{
+int mkdir(const char *pathname, mode_t mode) {
 	return 0;
 }
 
-int rmdir(const char *pathname)
-{
+int rmdir(const char *pathname) {
 	return 0;
 }
 
-int unlink(const char *pathname)
-{
+int unlink(const char *pathname) {
 	return 0;
 }
 
 /* Minijail stubs */
-struct minijail *minijail_new(void)
-{
+struct minijail *minijail_new(void) {
 	return (struct minijail *)0x55;
 }
 
-void minijail_destroy(struct minijail *j)
-{
+void minijail_destroy(struct minijail *j) {
 }
 
 int minijail_mount(struct minijail *j, const char *src, const char *dest,
-		   const char *type, unsigned long flags)
-{
+		   const char *type, unsigned long flags) {
 	return 0;
 }
 
-void minijail_namespace_vfs(struct minijail *j)
-{
+void minijail_namespace_vfs(struct minijail *j) {
 	++minijail_vfs_called;
 }
 
-void minijail_namespace_ipc(struct minijail *j)
-{
+void minijail_namespace_ipc(struct minijail *j) {
 	++minijail_ipc_called;
 }
 
-void minijail_namespace_net(struct minijail *j)
-{
+void minijail_namespace_net(struct minijail *j) {
 	++minijail_net_called;
 }
 
-void minijail_namespace_pids(struct minijail *j)
-{
+void minijail_namespace_pids(struct minijail *j) {
 	++minijail_pids_called;
 }
 
-void minijail_namespace_user(struct minijail *j)
-{
+void minijail_namespace_user(struct minijail *j) {
 	++minijail_user_called;
 }
 
-int minijail_uidmap(struct minijail *j, const char *uidmap)
-{
+int minijail_uidmap(struct minijail *j, const char *uidmap) {
 	return 0;
 }
 
-int minijail_gidmap(struct minijail *j, const char *gidmap)
-{
+int minijail_gidmap(struct minijail *j, const char *gidmap) {
 	return 0;
 }
 
-int minijail_enter_pivot_root(struct minijail *j, const char *dir)
-{
+int minijail_enter_pivot_root(struct minijail *j, const char *dir) {
 	return 0;
 }
 
-void minijail_run_as_init(struct minijail *j)
-{
+void minijail_run_as_init(struct minijail *j) {
 	++minijail_run_as_init_called;
 }
 
 int minijail_run_pid_pipes_no_preload(struct minijail *j, const char *filename,
 				      char *const argv[], pid_t *pchild_pid,
 				      int *pstdin_fd, int *pstdout_fd,
-				      int *pstderr_fd)
-{
+				      int *pstderr_fd) {
 	*pchild_pid = INIT_TEST_PID;
 	return 0;
 }
 
-int minijail_write_pid_file(struct minijail *j, const char *path)
-{
+int minijail_write_pid_file(struct minijail *j, const char *path) {
 	return 0;
 }
 
-int minijail_wait(struct minijail *j)
-{
+int minijail_wait(struct minijail *j) {
 	++minijail_wait_called;
 	return 0;
 }
 
-int minijail_use_alt_syscall(struct minijail *j, const char *table)
-{
+int minijail_use_alt_syscall(struct minijail *j, const char *table) {
 	minijail_alt_syscall_table = table;
 	return 0;
 }
 
-int minijail_add_to_cgroup(struct minijail *j, const char *cg_path)
-{
+int minijail_add_to_cgroup(struct minijail *j, const char *cg_path) {
 	return 0;
 }
 
-void minijail_reset_signal_mask(struct minijail *j)
-{
+void minijail_reset_signal_mask(struct minijail *j) {
 	++minijail_reset_signal_mask_called;
 }
 
-void minijail_skip_remount_private(struct minijail *j)
-{
+void minijail_skip_remount_private(struct minijail *j) {
 }
 
 }   // extern "C"

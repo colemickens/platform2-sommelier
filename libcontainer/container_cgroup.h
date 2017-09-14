@@ -6,8 +6,8 @@
  * be found in the linux kernel at Documentation/cgroups/.
  */
 
-#ifndef CONTAINER_MANAGER_CGROUP_H_
-#define CONTAINER_MANAGER_CGROUP_H_
+#ifndef LIBCONTAINER_CONTAINER_CGROUP_H_
+#define LIBCONTAINER_CONTAINER_CGROUP_H_
 
 #include <sys/types.h>
 #include <unistd.h>
@@ -54,4 +54,4 @@ struct container_cgroup *container_cgroup_new(const char *name,
 					      gid_t cgroup_group);
 void container_cgroup_destroy(struct container_cgroup *);
 
-#endif  /* CONTAINER_MANAGER_CGROUP_H_ */
+#endif  // LIBCONTAINER_CONTAINER_CGROUP_H_

@@ -5,9 +5,6 @@
         'libminijail',
       ],
     },
-    'include_dirs': [
-      '.',
-    ],
     'defines': [
       'USE_device_mapper=<(USE_device_mapper)',
     ],

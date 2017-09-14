@@ -14,27 +14,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <syscall.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <syscall.h>
 #include <unistd.h>
 
+#include <libminijail.h>
 #include <linux/loop.h>
 
-#include "container_cgroup.h"
-#include "libcontainer.h"
-#include "libminijail.h"
+#include "libcontainer/container_cgroup.h"
+#include "libcontainer/libcontainer.h"
 
 #define FREE_AND_NULL(ptr) \
 do { \
 	free(ptr); \
 	ptr = NULL; \
-} while(0)
+} while (0)
 
 #define MAX_NUM_SETFILES_ARGS 128
-#define MAX_RLIMITS 32 // Linux defines 15 at the time of writing.
+#define MAX_RLIMITS 32  // Linux defines 15 at the time of writing.
 
 static const char loopdev_ctl[] = "/dev/loop-control";
 #if USE_device_mapper
@@ -43,8 +43,7 @@ static const char dm_dev_prefix[] = "/dev/mapper/";
 
 static int container_teardown(struct container *c);
 
-static int strdup_and_free(char **dest, const char *src)
-{
+static int strdup_and_free(char **dest, const char *src) {
 	char *copy = strdup(src);
 	if (!copy)
 		return -ENOMEM;
@@ -181,14 +180,12 @@ struct container_config {
 	size_t inherited_fd_count;
 };
 
-struct container_config *container_config_create()
-{
+struct container_config *container_config_create() {
 	return reinterpret_cast<struct container_config *>(
 	    calloc(1, sizeof(struct container_config)));
 }
 
-static void container_free_program_args(struct container_config *c)
-{
+static void container_free_program_args(struct container_config *c) {
 	unsigned int i;
 
 	if (!c->program_argv)
@@ -199,8 +196,7 @@ static void container_free_program_args(struct container_config *c)
 	FREE_AND_NULL(c->program_argv);
 }
 
-static void container_config_free_mount(struct container_mount *mount)
-{
+static void container_config_free_mount(struct container_mount *mount) {
 	FREE_AND_NULL(mount->name);
 	FREE_AND_NULL(mount->source);
 	FREE_AND_NULL(mount->destination);
@@ -208,13 +204,11 @@ static void container_config_free_mount(struct container_mount *mount)
 	FREE_AND_NULL(mount->data);
 }
 
-static void container_config_free_device(struct container_device *device)
-{
+static void container_config_free_device(struct container_device *device) {
 	FREE_AND_NULL(device->path);
 }
 
-void container_config_destroy(struct container_config *c)
-{
+void container_config_destroy(struct container_config *c) {
 	size_t i;
 
 	if (c == NULL)
@@ -243,29 +237,24 @@ void container_config_destroy(struct container_config *c)
 }
 
 int container_config_config_root(struct container_config *c,
-				 const char *config_root)
-{
+				 const char *config_root) {
 	return strdup_and_free(&c->config_root, config_root);
 }
 
-const char *container_config_get_config_root(const struct container_config *c)
-{
+const char *container_config_get_config_root(const struct container_config *c) {
 	return c->config_root;
 }
 
-int container_config_rootfs(struct container_config *c, const char *rootfs)
-{
+int container_config_rootfs(struct container_config *c, const char *rootfs) {
 	return strdup_and_free(&c->rootfs, rootfs);
 }
 
-const char *container_config_get_rootfs(const struct container_config *c)
-{
+const char *container_config_get_rootfs(const struct container_config *c) {
 	return c->rootfs;
 }
 
 void container_config_rootfs_mount_flags(struct container_config *c,
-					 unsigned long rootfs_mount_flags)
-{
+					 unsigned long rootfs_mount_flags) {
 	/* Since we are going to add MS_REMOUNT anyways, add it here so we can
 	 * simply check against zero later. MS_BIND is also added to avoid
 	 * re-mounting the original filesystem, since the rootfs is always
@@ -274,35 +263,31 @@ void container_config_rootfs_mount_flags(struct container_config *c,
 	c->rootfs_mount_flags = MS_REMOUNT | MS_BIND | rootfs_mount_flags;
 }
 
-unsigned long container_config_get_rootfs_mount_flags(
-		const struct container_config *c)
-{
+unsigned long
+container_config_get_rootfs_mount_flags(const struct container_config *c) {
 	return c->rootfs_mount_flags;
 }
 
-int container_config_premounted_runfs(struct container_config *c, const char *runfs)
-{
+int container_config_premounted_runfs(struct container_config *c,
+				      const char *runfs) {
 	return strdup_and_free(&c->premounted_runfs, runfs);
 }
 
-const char *container_config_get_premounted_runfs(const struct container_config *c)
-{
+const char *
+container_config_get_premounted_runfs(const struct container_config *c) {
 	return c->premounted_runfs;
 }
 
-int container_config_pid_file(struct container_config *c, const char *path)
-{
+int container_config_pid_file(struct container_config *c, const char *path) {
 	return strdup_and_free(&c->pid_file_path, path);
 }
 
-const char *container_config_get_pid_file(const struct container_config *c)
-{
+const char *container_config_get_pid_file(const struct container_config *c) {
 	return c->pid_file_path;
 }
 
-int container_config_program_argv(struct container_config *c,
-				  const char **argv, size_t num_args)
-{
+int container_config_program_argv(struct container_config *c, const char **argv,
+				  size_t num_args) {
 	size_t i;
 
 	container_free_program_args(c);
@@ -323,58 +308,48 @@ error_free_return:
 	return -ENOMEM;
 }
 
-size_t container_config_get_num_program_args(const struct container_config *c)
-{
+size_t container_config_get_num_program_args(const struct container_config *c) {
 	return c->num_args;
 }
 
 const char *container_config_get_program_arg(const struct container_config *c,
-					     size_t index)
-{
+					     size_t index) {
 	if (index >= c->num_args)
 		return NULL;
 	return c->program_argv[index];
 }
 
-void container_config_uid(struct container_config *c, uid_t uid)
-{
+void container_config_uid(struct container_config *c, uid_t uid) {
 	c->uid = uid;
 }
 
-uid_t container_config_get_uid(const struct container_config *c)
-{
+uid_t container_config_get_uid(const struct container_config *c) {
 	return c->uid;
 }
 
-int container_config_uid_map(struct container_config *c, const char *uid_map)
-{
+int container_config_uid_map(struct container_config *c, const char *uid_map) {
 	return strdup_and_free(&c->uid_map, uid_map);
 }
 
-void container_config_gid(struct container_config *c, gid_t gid)
-{
+void container_config_gid(struct container_config *c, gid_t gid) {
 	c->gid = gid;
 }
 
-gid_t container_config_get_gid(const struct container_config *c)
-{
+gid_t container_config_get_gid(const struct container_config *c) {
 	return c->gid;
 }
 
-int container_config_gid_map(struct container_config *c, const char *gid_map)
-{
+int container_config_gid_map(struct container_config *c, const char *gid_map) {
 	return strdup_and_free(&c->gid_map, gid_map);
 }
 
 int container_config_alt_syscall_table(struct container_config *c,
-				       const char *alt_syscall_table)
-{
+				       const char *alt_syscall_table) {
 	return strdup_and_free(&c->alt_syscall_table, alt_syscall_table);
 }
 
 int container_config_add_rlimit(struct container_config *c, int type,
-				uint32_t cur, uint32_t max)
-{
+				uint32_t cur, uint32_t max) {
 	if (c->num_rlimits >= MAX_RLIMITS) {
 		return -ENOMEM;
 	}
@@ -385,21 +360,12 @@ int container_config_add_rlimit(struct container_config *c, int type,
 	return 0;
 }
 
-int container_config_add_mount(struct container_config *c,
-			       const char *name,
-			       const char *source,
-			       const char *destination,
-			       const char *type,
-			       const char *data,
-			       const char *verity,
-			       int flags,
-			       int uid,
-			       int gid,
-			       int mode,
-			       int mount_in_ns,
-			       int create,
-			       int loopback)
-{
+int container_config_add_mount(struct container_config *c, const char *name,
+			       const char *source, const char *destination,
+			       const char *type, const char *data,
+			       const char *verity, int flags, int uid, int gid,
+			       int mode, int mount_in_ns, int create,
+			       int loopback) {
 	struct container_mount *mount_ptr;
 	struct container_mount *current_mount;
 
@@ -442,15 +408,9 @@ error_free_return:
 	return -ENOMEM;
 }
 
-int container_config_add_cgroup_device(struct container_config *c,
-				       int allow,
-				       char type,
-				       int major,
-				       int minor,
-				       int read,
-				       int write,
-				       int modify)
-{
+int container_config_add_cgroup_device(struct container_config *c, int allow,
+				       char type, int major, int minor,
+				       int read, int write, int modify) {
 	struct container_cgroup_device *dev_ptr;
 	struct container_cgroup_device *current_dev;
 
@@ -475,19 +435,11 @@ int container_config_add_cgroup_device(struct container_config *c,
 	return 0;
 }
 
-int container_config_add_device(struct container_config *c,
-				char type,
-				const char *path,
-				int fs_permissions,
-				int major,
-				int minor,
-				int copy_minor,
-				int uid,
-				int gid,
-				int read_allowed,
-				int write_allowed,
-				int modify_allowed)
-{
+int container_config_add_device(struct container_config *c, char type,
+				const char *path, int fs_permissions, int major,
+				int minor, int copy_minor, int uid, int gid,
+				int read_allowed, int write_allowed,
+				int modify_allowed) {
 	struct container_device *dev_ptr;
 	struct container_device *current_dev;
 
@@ -534,18 +486,16 @@ error_free_return:
 }
 
 int container_config_run_setfiles(struct container_config *c,
-				   const char *setfiles_cmd)
-{
+				  const char *setfiles_cmd) {
 	return strdup_and_free(&c->run_setfiles, setfiles_cmd);
 }
 
-const char *container_config_get_run_setfiles(const struct container_config *c)
-{
+const char *
+container_config_get_run_setfiles(const struct container_config *c) {
 	return c->run_setfiles;
 }
 
-int container_config_set_cpu_shares(struct container_config *c, int shares)
-{
+int container_config_set_cpu_shares(struct container_config *c, int shares) {
 	/* CPU shares must be 2 or higher. */
 	if (shares < 2)
 		return -EINVAL;
@@ -554,10 +504,8 @@ int container_config_set_cpu_shares(struct container_config *c, int shares)
 	return 0;
 }
 
-int container_config_set_cpu_cfs_params(struct container_config *c,
-					int quota,
-					int period)
-{
+int container_config_set_cpu_cfs_params(struct container_config *c, int quota,
+					int period) {
 	/*
 	 * quota could be set higher than period to utilize more than one CPU.
 	 * quota could also be set as -1 to indicate the cgroup does not adhere
@@ -574,9 +522,7 @@ int container_config_set_cpu_cfs_params(struct container_config *c,
 }
 
 int container_config_set_cpu_rt_params(struct container_config *c,
-				       int rt_runtime,
-				       int rt_period)
-{
+				       int rt_runtime, int rt_period) {
 	/*
 	 * rt_runtime could be set as 0 to prevent the cgroup from using
 	 * realtime CPU.
@@ -589,84 +535,69 @@ int container_config_set_cpu_rt_params(struct container_config *c,
 	return 0;
 }
 
-int container_config_get_cpu_shares(struct container_config *c)
-{
+int container_config_get_cpu_shares(struct container_config *c) {
 	return c->cpu_cgparams.shares;
 }
 
-int container_config_get_cpu_quota(struct container_config *c)
-{
+int container_config_get_cpu_quota(struct container_config *c) {
 	return c->cpu_cgparams.quota;
 }
 
-int container_config_get_cpu_period(struct container_config *c)
-{
+int container_config_get_cpu_period(struct container_config *c) {
 	return c->cpu_cgparams.period;
 }
 
-int container_config_get_cpu_rt_runtime(struct container_config *c)
-{
+int container_config_get_cpu_rt_runtime(struct container_config *c) {
 	return c->cpu_cgparams.rt_runtime;
 }
 
-int container_config_get_cpu_rt_period(struct container_config *c)
-{
+int container_config_get_cpu_rt_period(struct container_config *c) {
 	return c->cpu_cgparams.rt_period;
 }
 
 int container_config_set_cgroup_parent(struct container_config *c,
-				       const char *parent,
-				       uid_t cgroup_owner, gid_t cgroup_group)
-{
+				       const char *parent, uid_t cgroup_owner,
+				       gid_t cgroup_group) {
 	c->cgroup_owner = cgroup_owner;
 	c->cgroup_group = cgroup_group;
 	return strdup_and_free(&c->cgroup_parent, parent);
 }
 
-const char *container_config_get_cgroup_parent(struct container_config *c)
-{
+const char *container_config_get_cgroup_parent(struct container_config *c) {
 	return c->cgroup_parent;
 }
 
-void container_config_share_host_netns(struct container_config *c)
-{
+void container_config_share_host_netns(struct container_config *c) {
 	c->share_host_netns = 1;
 }
 
-int get_container_config_share_host_netns(struct container_config *c)
-{
+int get_container_config_share_host_netns(struct container_config *c) {
 	return c->share_host_netns;
 }
 
-void container_config_keep_fds_open(struct container_config *c)
-{
+void container_config_keep_fds_open(struct container_config *c) {
 	c->keep_fds_open = 1;
 }
 
-void container_config_set_capmask(struct container_config *c,
-				  uint64_t capmask,
-				  int ambient)
-{
+void container_config_set_capmask(struct container_config *c, uint64_t capmask,
+				  int ambient) {
 	c->use_capmask = 1;
 	c->capmask = capmask;
 	c->use_capmask_ambient = ambient;
 }
 
 void container_config_set_securebits_skip_mask(struct container_config *c,
-					       uint64_t securebits_skip_mask)
-{
+					       uint64_t securebits_skip_mask) {
 	c->securebits_skip_mask = securebits_skip_mask;
 }
 
 void container_config_set_run_as_init(struct container_config *c,
-				      int run_as_init)
-{
+				      int run_as_init) {
 	c->do_init = !run_as_init;
 }
 
 int container_config_set_selinux_context(struct container_config *c,
-					 const char *context)
-{
+					 const char *context) {
 	if (!context)
 		return -EINVAL;
 	c->selinux_context = strdup(context);
@@ -676,17 +607,13 @@ int container_config_set_selinux_context(struct container_config *c,
 }
 
 void container_config_set_pre_execve_hook(struct container_config *c,
-					 int (*hook)(void*),
-					 void *payload)
-{
+					  int (*hook)(void *), void *payload) {
 	c->pre_start_hook = hook;
 	c->pre_start_hook_payload = payload;
 }
 
-int container_config_inherit_fds(struct container_config *c,
-				 int *inherited_fds,
-				 size_t inherited_fd_count)
-{
+int container_config_inherit_fds(struct container_config *c, int *inherited_fds,
+				 size_t inherited_fd_count) {
 	if (c->inherited_fds)
 		return -EINVAL;
 	c->inherited_fds =
@@ -720,9 +647,7 @@ struct container {
 	char *name;
 };
 
-struct container *container_new(const char *name,
-				const char *rundir)
-{
+struct container *container_new(const char *name, const char *rundir) {
 	struct container *c;
 
 	c = reinterpret_cast<struct container *>(calloc(1, sizeof(*c)));
@@ -737,8 +662,7 @@ struct container *container_new(const char *name,
 	return c;
 }
 
-void container_destroy(struct container *c)
-{
+void container_destroy(struct container *c) {
 	if (c->cgroup)
 		container_cgroup_destroy(c->cgroup);
 	if (c->jail)
@@ -754,8 +678,7 @@ void container_destroy(struct container *c)
  * inside of the user namespace, return the equivalent outside id, or
  * return < 0 on error.
  */
-static int get_userns_outside_id(const char *map, int id)
-{
+static int get_userns_outside_id(const char *map, int id) {
 	char *map_copy, *mapping, *saveptr1, *saveptr2;
 	int inside, outside, length;
 	int result = 0;
@@ -792,8 +715,7 @@ exit:
 	return result;
 }
 
-static int make_dir(const char *path, int uid, int gid, int mode)
-{
+static int make_dir(const char *path, int uid, int gid, int mode) {
 	if (mkdir(path, mode))
 		return -errno;
 	if (chmod(path, mode))
@@ -803,8 +725,7 @@ static int make_dir(const char *path, int uid, int gid, int mode)
 	return 0;
 }
 
-static int touch_file(const char *path, int uid, int gid, int mode)
-{
+static int touch_file(const char *path, int uid, int gid, int mode) {
 	int rc;
 	int fd = open(path, O_RDWR | O_CREAT, mode);
 	if (fd < 0)
@@ -822,9 +743,7 @@ static int touch_file(const char *path, int uid, int gid, int mode)
  */
 static int setup_mount_destination(const struct container_config *config,
 				   const struct container_mount *mnt,
-				   const char *source,
-				   const char *dest)
-{
+				   const char *source, const char *dest) {
 	int uid_userns, gid_userns;
 	int rc;
 	struct stat st_buf;
@@ -853,8 +772,8 @@ static int setup_mount_destination(const struct container_config *config,
 /* Fork and exec the setfiles command to configure the selinux policy. */
 static int run_setfiles_command(const struct container *c,
 				const struct container_config *config,
-				char *const *destinations, size_t num_destinations)
-{
+				char *const *destinations,
+				size_t num_destinations) {
 	int rc;
 	int status;
 	int pid;
@@ -904,8 +823,7 @@ static int run_setfiles_command(const struct container *c,
 }
 
 /* Find a free loop device and attach it. */
-static int loopdev_setup(char **loopdev_ret, const char *source)
-{
+static int loopdev_setup(char **loopdev_ret, const char *source) {
 	int ret = 0;
 	int source_fd = -1;
 	int control_fd = -1;
@@ -960,8 +878,7 @@ exit:
 }
 
 /* Detach the specified loop device. */
-static int loopdev_detach(const char *loopdev)
-{
+static int loopdev_detach(const char *loopdev) {
 	int ret = 0;
 	int fd;
 
@@ -983,8 +900,7 @@ exit:
 
 /* Create a new device mapper target for the source. */
 static int dm_setup(char **dm_path_ret, char **dm_name_ret, const char *source,
-		    const char *verity_cmdline)
-{
+		    const char *verity_cmdline) {
 	int ret = 0;
 #if USE_device_mapper
 	char *p;
@@ -1010,7 +926,7 @@ static int dm_setup(char **dm_path_ret, char **dm_name_ret, const char *source,
 	source_len = strlen(source);
 	verity = reinterpret_cast<char *>(
 	    malloc(strlen(verity_cmdline) + source_len * 2 + 1));
-	strcpy(verity, verity_cmdline);
+	memcpy(verity, verity_cmdline, strlen(verity_cmdline) + 1);
 	while ((p = strstr(verity, "@DEV@")) != NULL) {
 		memmove(p + source_len, p + 5, strlen(p + 5) + 1);
 		memcpy(p, source, source_len);
@@ -1063,8 +979,7 @@ exit:
 }
 
 /* Tear down the device mapper target. */
-static int dm_detach(const char *dm_name)
-{
+static int dm_detach(const char *dm_name) {
 	int ret = 0;
 #if USE_device_mapper
 	struct dm_task *dmt;
@@ -1093,8 +1008,7 @@ exit:
  * Unmounts anything we mounted in this mount namespace in the opposite order
  * that they were mounted.
  */
-static int unmount_external_mounts(struct container *c)
-{
+static int unmount_external_mounts(struct container *c) {
 	int ret = 0;
 
 	while (c->num_ext_mounts) {
@@ -1131,8 +1045,7 @@ static int unmount_external_mounts(struct container *c)
  * consideration for combination of MS_BIND/MS_RDONLY flag.
  */
 static int mount_external(const char *src, const char *dest, const char *type,
-			  unsigned long flags, const void *data)
-{
+			  unsigned long flags, const void *data) {
 	int remount_ro = 0;
 
 	/*
@@ -1159,8 +1072,7 @@ static int mount_external(const char *src, const char *dest, const char *type,
 
 static int do_container_mount(struct container *c,
 			      const struct container_config *config,
-			      const struct container_mount *mnt)
-{
+			      const struct container_mount *mnt) {
 	char *dm_source = NULL;
 	char *loop_source = NULL;
 	char *source = NULL;
@@ -1255,8 +1167,7 @@ exit:
 }
 
 static int do_container_mounts(struct container *c,
-			       const struct container_config *config)
-{
+			       const struct container_config *config) {
 	unsigned int i;
 	int rc = 0;
 
@@ -1294,8 +1205,7 @@ error_free_return:
 static int container_create_device(const struct container *c,
 				   const struct container_config *config,
 				   const struct container_device *dev,
-				   int minor)
-{
+				   int minor) {
 	char *path = NULL;
 	int rc = 0;
 	int mode;
@@ -1338,9 +1248,8 @@ exit:
 	return rc;
 }
 
-
-static int mount_runfs(struct container *c, const struct container_config *config)
-{
+static int mount_runfs(struct container *c,
+		       const struct container_config *config) {
 	static const mode_t root_dir_mode = 0660;
 	const char *rootfs = config->rootfs;
 	char *runfs_template = NULL;
@@ -1394,8 +1303,7 @@ static int mount_runfs(struct container *c, const struct container_config *confi
 }
 
 static int device_setup(struct container *c,
-			const struct container_config *config)
-{
+			const struct container_config *config) {
 	int rc;
 	size_t i;
 
@@ -1449,9 +1357,8 @@ static int device_setup(struct container *c,
 	return 0;
 }
 
-static int setexeccon(void *payload)
-{
-	char *init_domain = (char *) payload;
+static int setexeccon(void *payload) {
+	char *init_domain = reinterpret_cast<char *>(payload);
 	char *exec_path;
 	pid_t tid = syscall(SYS_gettid);
 	int fd;
@@ -1481,8 +1388,8 @@ static int setexeccon(void *payload)
 	return rc;
 }
 
-int container_start(struct container *c, const struct container_config *config)
-{
+int container_start(struct container *c,
+		    const struct container_config *config) {
 	int rc = 0;
 	unsigned int i;
 	int cgroup_uid, cgroup_gid;
@@ -1696,13 +1603,13 @@ int container_start(struct container *c, const struct container_config *config)
 			goto error_rmdir;
 	}
 
-        if (config->pre_start_hook) {
+	if (config->pre_start_hook) {
 		rc = minijail_add_hook(c->jail, config->pre_start_hook,
 				       config->pre_start_hook_payload,
 				       MINIJAIL_HOOK_EVENT_PRE_EXECVE);
 		if (rc)
 			goto error_rmdir;
-        }
+	}
 
 	for (i = 0; i < config->inherited_fd_count; i++) {
 		rc = minijail_preserve_fd(c->jail, config->inherited_fds[i],
@@ -1747,18 +1654,15 @@ error_rmdir:
 	return rc;
 }
 
-const char *container_root(struct container *c)
-{
+const char *container_root(struct container *c) {
 	return c->runfs;
 }
 
-int container_pid(struct container *c)
-{
+int container_pid(struct container *c) {
 	return c->init_pid;
 }
 
-static int container_teardown(struct container *c)
-{
+static int container_teardown(struct container *c) {
 	int ret = 0;
 
 	unmount_external_mounts(c);
@@ -1789,8 +1693,7 @@ static int container_teardown(struct container *c)
 	return ret;
 }
 
-int container_wait(struct container *c)
-{
+int container_wait(struct container *c) {
 	int rc;
 
 	do {
@@ -1804,8 +1707,7 @@ int container_wait(struct container *c)
 	return rc;
 }
 
-int container_kill(struct container *c)
-{
+int container_kill(struct container *c) {
 	if (kill(c->init_pid, SIGKILL) && errno != ESRCH)
 		return -errno;
 	return container_wait(c);

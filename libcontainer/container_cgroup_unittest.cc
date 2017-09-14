@@ -9,15 +9,14 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "test_harness.h"
+#include "libcontainer/test_harness.h"
 
-#include "container_cgroup.h"
+#include "libcontainer/container_cgroup.h"
 
 static const char CGNAME[] = "testcg";
 static const char CGPARENTNAME[] = "testparentcg";
 
-static int check_is_dir(const char *path)
-{
+static int check_is_dir(const char *path) {
 	int rc;
 	struct stat st_buf;
 
@@ -27,21 +26,18 @@ static int check_is_dir(const char *path)
 	return S_ISDIR(st_buf.st_mode);
 }
 
-static void create_file_with_content(const char *name, const char *content)
-{
+static void create_file_with_content(const char *name, const char *content) {
 	FILE *fp = fopen(name, "w");
 	if (content)
 		fputs(content, fp);
 	fclose(fp);
 }
 
-static void create_file(const char *name)
-{
+static void create_file(const char *name) {
 	create_file_with_content(name, NULL);
 }
 
-static int string_in_file(const char *path, const char *str)
-{
+static int string_in_file(const char *path, const char *str) {
 	FILE *fp = fopen(path, "r");
 	char *buf = NULL;
 	size_t len;
@@ -61,8 +57,7 @@ static int string_in_file(const char *path, const char *str)
 	return 0;
 }
 
-static int file_has_line(const char *path, const char *line)
-{
+static int file_has_line(const char *path, const char *line) {
 	FILE *fp;
 	char *buf = NULL;
 	size_t len;
@@ -195,8 +190,7 @@ FIXTURE(basic_manipulation) {
 	char schedtune_cg[256];
 };
 
-FIXTURE_SETUP(basic_manipulation)
-{
+FIXTURE_SETUP(basic_manipulation) {
 	char temp_template[] = "/tmp/cgtestXXXXXX";
 	char path[256];
 
@@ -277,8 +271,7 @@ FIXTURE_SETUP(basic_manipulation)
 	create_file(path);
 }
 
-FIXTURE_TEARDOWN(basic_manipulation)
-{
+FIXTURE_TEARDOWN(basic_manipulation) {
 	char cmd[256];
 
 	snprintf(cmd, sizeof(cmd), "rm -rf %s/*", self->cgroup_root);
@@ -289,44 +282,38 @@ FIXTURE_TEARDOWN(basic_manipulation)
 	EXPECT_EQ(0, system(cmd));
 }
 
-TEST_F(basic_manipulation, freeze)
-{
+TEST_F(basic_manipulation, freeze) {
 	char path[256];
 	EXPECT_EQ(0, self->ccg->ops->freeze(self->ccg));
 	snprintf(path, sizeof(path), "%s/freezer.state", self->freezer_cg);
 	EXPECT_TRUE(string_in_file(path, "FROZEN"));
 }
 
-TEST_F(basic_manipulation, thaw)
-{
+TEST_F(basic_manipulation, thaw) {
 	char path[256];
 	EXPECT_EQ(0, self->ccg->ops->thaw(self->ccg));
 	snprintf(path, sizeof(path), "%s/freezer.state", self->freezer_cg);
 	EXPECT_TRUE(string_in_file(path, "THAWED"));
 }
 
-TEST_F(basic_manipulation, default_all_devs_disallow)
-{
+TEST_F(basic_manipulation, default_all_devs_disallow) {
 	char path[256];
 	ASSERT_EQ(0, self->ccg->ops->deny_all_devices(self->ccg));
 	snprintf(path, sizeof(path), "%s/devices.deny", self->devices_cg);
 	EXPECT_TRUE(file_has_line(path, "a\n"));
 }
 
-TEST_F(basic_manipulation, add_device_invalid_type)
-{
+TEST_F(basic_manipulation, add_device_invalid_type) {
 	EXPECT_NE(0, self->ccg->ops->add_device(self->ccg, 1, 14, 3, 1, 1, 0,
 						'x'));
 }
 
-TEST_F(basic_manipulation, add_device_no_perms)
-{
+TEST_F(basic_manipulation, add_device_no_perms) {
 	EXPECT_NE(0, self->ccg->ops->add_device(self->ccg, 1, 14, 3, 0, 0, 0,
 						'c'));
 }
 
-TEST_F(basic_manipulation, add_device_rw)
-{
+TEST_F(basic_manipulation, add_device_rw) {
 	char path[256];
 	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 1, 14, 3, 1, 1, 0,
 						'c'));
@@ -334,8 +321,7 @@ TEST_F(basic_manipulation, add_device_rw)
 	EXPECT_TRUE(file_has_line(path, "c 14:3 rw\n"));
 }
 
-TEST_F(basic_manipulation, add_device_rwm)
-{
+TEST_F(basic_manipulation, add_device_rwm) {
 	char path[256];
 	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 1, 14, 3, 1, 1, 1,
 						'c'));
@@ -343,8 +329,7 @@ TEST_F(basic_manipulation, add_device_rwm)
 	EXPECT_TRUE(file_has_line(path, "c 14:3 rwm\n"));
 }
 
-TEST_F(basic_manipulation, add_device_ro)
-{
+TEST_F(basic_manipulation, add_device_ro) {
 	char path[256];
 	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 1, 14, 3, 1, 0, 0,
 						'c'));
@@ -352,8 +337,7 @@ TEST_F(basic_manipulation, add_device_ro)
 	EXPECT_TRUE(file_has_line(path, "c 14:3 r\n"));
 }
 
-TEST_F(basic_manipulation, add_device_wo)
-{
+TEST_F(basic_manipulation, add_device_wo) {
 	char path[256];
 	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 1, 14, 3, 0, 1, 0,
 						'c'));
@@ -361,8 +345,7 @@ TEST_F(basic_manipulation, add_device_wo)
 	EXPECT_TRUE(file_has_line(path, "c 14:3 w\n"));
 }
 
-TEST_F(basic_manipulation, add_device_major_wide)
-{
+TEST_F(basic_manipulation, add_device_major_wide) {
 	char path[256];
 	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 1, 14, -1, 0, 1, 0,
 						'c'));
@@ -370,8 +353,7 @@ TEST_F(basic_manipulation, add_device_major_wide)
 	EXPECT_TRUE(file_has_line(path, "c 14:* w\n"));
 }
 
-TEST_F(basic_manipulation, add_device_major_minor_wildcard)
-{
+TEST_F(basic_manipulation, add_device_major_minor_wildcard) {
 	char path[256];
 	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 1, -1, -1, 0, 1, 0,
 						'c'));
@@ -379,8 +361,7 @@ TEST_F(basic_manipulation, add_device_major_minor_wildcard)
 	EXPECT_TRUE(file_has_line(path, "c *:* w\n"));
 }
 
-TEST_F(basic_manipulation, add_device_deny_all)
-{
+TEST_F(basic_manipulation, add_device_deny_all) {
 	char path[256];
 	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 0, -1, -1, 1, 1, 1,
 						'a'));
@@ -388,8 +369,7 @@ TEST_F(basic_manipulation, add_device_deny_all)
 	EXPECT_TRUE(file_has_line(path, "a *:* rwm\n"));
 }
 
-TEST_F(basic_manipulation, add_device_block)
-{
+TEST_F(basic_manipulation, add_device_block) {
 	char path[256];
 	EXPECT_EQ(0, self->ccg->ops->add_device(self->ccg, 1, 14, 3, 1, 1, 0,
 						'b'));
@@ -397,40 +377,35 @@ TEST_F(basic_manipulation, add_device_block)
 	EXPECT_TRUE(file_has_line(path, "b 14:3 rw\n"));
 }
 
-TEST_F(basic_manipulation, set_cpu_shares)
-{
+TEST_F(basic_manipulation, set_cpu_shares) {
 	char path[256];
 	EXPECT_EQ(0, self->ccg->ops->set_cpu_shares(self->ccg, 500));
 	snprintf(path, sizeof(path), "%s/cpu.shares", self->cpu_cg);
 	EXPECT_TRUE(string_in_file(path, "500"));
 }
 
-TEST_F(basic_manipulation, set_cpu_quota)
-{
+TEST_F(basic_manipulation, set_cpu_quota) {
 	char path[256];
 	EXPECT_EQ(0, self->ccg->ops->set_cpu_quota(self->ccg, 200000));
 	snprintf(path, sizeof(path), "%s/cpu.cfs_quota_us", self->cpu_cg);
 	EXPECT_TRUE(string_in_file(path, "200000"));
 }
 
-TEST_F(basic_manipulation, set_cpu_period)
-{
+TEST_F(basic_manipulation, set_cpu_period) {
 	char path[256];
 	EXPECT_EQ(0, self->ccg->ops->set_cpu_period(self->ccg, 800000));
 	snprintf(path, sizeof(path), "%s/cpu.cfs_period_us", self->cpu_cg);
 	EXPECT_TRUE(string_in_file(path, "800000"));
 }
 
-TEST_F(basic_manipulation, set_cpu_rt_runtime)
-{
+TEST_F(basic_manipulation, set_cpu_rt_runtime) {
 	char path[256];
 	EXPECT_EQ(0, self->ccg->ops->set_cpu_rt_runtime(self->ccg, 100000));
 	snprintf(path, sizeof(path), "%s/cpu.rt_runtime_us", self->cpu_cg);
 	EXPECT_TRUE(string_in_file(path, "100000"));
 }
 
-TEST_F(basic_manipulation, set_cpu_rt_period)
-{
+TEST_F(basic_manipulation, set_cpu_rt_period) {
 	char path[256];
 	EXPECT_EQ(0, self->ccg->ops->set_cpu_rt_period(self->ccg, 500000));
 	snprintf(path, sizeof(path), "%s/cpu.rt_period_us", self->cpu_cg);
@@ -438,4 +413,3 @@ TEST_F(basic_manipulation, set_cpu_rt_period)
 }
 
 TEST_HARNESS_MAIN
-

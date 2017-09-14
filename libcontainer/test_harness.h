@@ -38,8 +38,8 @@
  *
  * API inspired by code.google.com/p/googletest
  */
-#ifndef TEST_HARNESS_H_
-#define TEST_HARNESS_H_
+#ifndef LIBCONTAINER_TEST_HARNESS_H_
+#define LIBCONTAINER_TEST_HARNESS_H_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -201,7 +201,7 @@
 #define _TEST(test_name) \
   static void test_name(struct __test_metadata *_metadata); \
   static struct __test_metadata _##test_name##_object = \
-    { .name= "global." #test_name, .fn= &test_name }; \
+    { .name = "global." #test_name, .fn = &test_name }; \
   static void __attribute__((constructor)) _register_##test_name(void) { \
     __register_test(&_##test_name##_object); \
   } \
@@ -251,9 +251,9 @@
     fixture_name##_teardown(_metadata, &self); \
   } \
   static struct __test_metadata _##fixture_name##_##test_name##_object = { \
-    .name= #fixture_name "." #test_name, \
-    .fn= &wrapper_##fixture_name##_##test_name, \
-   }; \
+    .name = #fixture_name "." #test_name, \
+    .fn = &wrapper_##fixture_name##_##test_name, \
+  }; \
   static void __attribute__((constructor)) \
       _register_##fixture_name##_##test_name(void) { \
     __register_test(&_##fixture_name##_##test_name##_object); \
@@ -434,4 +434,4 @@ static int test_harness_run(int __attribute__((unused)) argc,
   return ret;
 }
 
-#endif  /* TEST_HARNESS_H_ */
+#endif  // LIBCONTAINER_TEST_HARNESS_H_
