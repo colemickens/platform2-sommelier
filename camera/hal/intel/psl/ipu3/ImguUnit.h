@@ -35,6 +35,7 @@
 namespace android {
 namespace camera2 {
 
+class SWOutputFrameWorker;
 class ImguUnit: public IMessageHandler,
                 public IPollEventListener {
 
@@ -73,7 +74,8 @@ private:
     status_t mapStreamWithDeviceNode();
     status_t createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig);
     status_t checkAndSwitchPipe(Camera3Request* request);
-    void createSwOutputFrameWork(IPU3NodeNames nodeName, ICaptureEventSource* source);
+    std::shared_ptr<SWOutputFrameWorker> createSwOutputFrameWork(IPU3NodeNames nodeName,
+                                                                 ICaptureEventSource* source);
     status_t kickstart();
     void clearWorkers();
 

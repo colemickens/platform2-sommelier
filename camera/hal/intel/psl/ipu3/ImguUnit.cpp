@@ -318,7 +318,7 @@ status_t ImguUnit::mapStreamWithDeviceNode()
             listenerIdx = (previewIdx == 1) ? 2 : 1; // For preview callback stream
             if (streamSizeGT(availableStreams[0], availableStreams[previewIdx])) {
                 videoIdx = 0; // For JPEG stream
-                listenToNode = IMGU_NODE_VF_PREVIEW;
+                listenToNode = IMGU_NODE_PV_PREVIEW;
             } else {
                 videoIdx = previewIdx;
                 previewIdx = 0; // For JPEG stream
@@ -405,6 +405,7 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
     mCurPipeConfig = videoConfig;
     std::shared_ptr<OutputFrameWorker> vfWorker = nullptr;
     std::shared_ptr<OutputFrameWorker> pvWorker = nullptr;
+    std::shared_ptr<SWOutputFrameWorker> pvListenerWorker = nullptr;
     const camera_metadata_t *meta = PlatformData::getStaticMetadata(mCameraId);
     camera_metadata_ro_entry entry;
     CLEAR(entry);
@@ -449,6 +450,7 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
         } else if (it.first == IMGU_NODE_PV_PREVIEW) {
             pvWorker = std::make_shared<OutputFrameWorker>(it.second, mCameraId,
                 mStreamNodeMapping[it.first], it.first, pipelineDepth);
+            pvListenerWorker = createSwOutputFrameWork(it.first, pvWorker.get());
         } else if (it.first == IMGU_NODE_RAW) {
             LOGW("Not implemented"); // raw
             continue;
@@ -474,6 +476,11 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
         videoConfig->deviceWorkers.insert(videoConfig->deviceWorkers.begin(), vfWorker);
         videoConfig->pollableWorkers.insert(videoConfig->pollableWorkers.begin(), vfWorker);
         videoConfig->nodes.insert(videoConfig->nodes.begin(), vfWorker->getNode());
+
+        // vf node provides source frame during still preview instead of pv node.
+        if (pvListenerWorker.get()) {
+            vfWorker->attachListener(pvListenerWorker.get());
+        }
     }
 
     status_t ret = OK;
@@ -496,10 +503,10 @@ ImguUnit::createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig)
     return OK;
 }
 
-void ImguUnit::createSwOutputFrameWork(IPU3NodeNames nodeName,
-                                           ICaptureEventSource* source)
+std::shared_ptr<SWOutputFrameWorker>
+ImguUnit::createSwOutputFrameWork(IPU3NodeNames nodeName, ICaptureEventSource* source)
 {
-    LOG1("@%s nodeName 0x%x, mapping len %d",  __FUNCTION__, nodeName, mStreamNodeMapping.size());
+    LOG1("@%s nodeName 0x%x, mapping len %d",  __FUNCTION__, nodeName, mStreamListenerMapping.size());
     std::map<IPU3NodeNames, camera3_stream_t *>::iterator it;
     it = mStreamListenerMapping.find(nodeName);
     if (it != mStreamListenerMapping.end()) {
@@ -508,7 +515,10 @@ void ImguUnit::createSwOutputFrameWork(IPU3NodeNames nodeName,
         tmp = std::make_shared<SWOutputFrameWorker>(mCameraId, it->second);
         source->attachListener(tmp.get());
         mCurPipeConfig->deviceWorkers.push_back(tmp);
+        return tmp;
     }
+
+    return nullptr;
 }
 
 void
