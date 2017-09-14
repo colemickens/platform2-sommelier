@@ -25,14 +25,17 @@ class ObjectPoolMock : public ObjectPool {
   MOCK_METHOD2(GetInternalBlob, bool(int, std::string*));
   MOCK_METHOD2(SetInternalBlob, bool(int, const std::string&));
   MOCK_METHOD1(SetEncryptionKey, bool(const brillo::SecureBlob&));
-  MOCK_METHOD1(Insert, bool(Object*));  // NOLINT(readability/function)
-  MOCK_METHOD1(Import, bool(Object*));  // NOLINT(readability/function)
-  MOCK_METHOD1(Delete, bool(const Object*));
-  MOCK_METHOD0(DeleteAll, bool());
-  MOCK_METHOD2(Find, bool(const Object*, std::vector<const Object*>*));
-  MOCK_METHOD2(FindByHandle, bool(int, const Object**));
+  MOCK_METHOD1(Insert,
+               ObjectPool::Result(Object*));  // NOLINT(readability/function)
+  MOCK_METHOD1(Import,
+               ObjectPool::Result(Object*));  // NOLINT(readability/function)
+  MOCK_METHOD1(Delete, ObjectPool::Result(const Object*));
+  MOCK_METHOD0(DeleteAll, ObjectPool::Result());
+  MOCK_METHOD2(Find,
+               ObjectPool::Result(const Object*, std::vector<const Object*>*));
+  MOCK_METHOD2(FindByHandle, ObjectPool::Result(int, const Object**));
   MOCK_METHOD1(GetModifiableObject, Object*(const Object*));
-  MOCK_METHOD1(Flush, bool(const Object*));
+  MOCK_METHOD1(Flush, ObjectPool::Result(const Object*));
   void SetupFake(int handle_base) {
     last_handle_ = handle_base;
     ON_CALL(*this, Insert(testing::_))
@@ -49,34 +52,34 @@ class ObjectPoolMock : public ObjectPool {
   }
 
  private:
-  bool FakeInsert(Object* o) {
+  ObjectPool::Result FakeInsert(Object* o) {
     v_.push_back(o);
     o->set_handle(++last_handle_);
-    return true;
+    return ObjectPool::Result::Success;
   }
-  bool FakeDelete(const Object* o) {
+  ObjectPool::Result FakeDelete(const Object* o) {
     for (size_t i = 0; i < v_.size(); ++i) {
       if (o == v_[i]) {
         delete v_[i];
         v_.erase(v_.begin() + i);
-        return true;
+        return ObjectPool::Result::Success;
       }
     }
-    return false;
+    return ObjectPool::Result::Failure;
   }
-  bool FakeFind(const Object* o, std::vector<const Object*>* v) {
+  ObjectPool::Result FakeFind(const Object* o, std::vector<const Object*>* v) {
     for (size_t i = 0; i < v_.size(); ++i)
       v->push_back(v_[i]);
-    return true;
+    return ObjectPool::Result::Success;
   }
-  bool FakeFindByHandle(int handle, const Object** o) {
+  ObjectPool::Result FakeFindByHandle(int handle, const Object** o) {
     for (size_t i = 0; i < v_.size(); ++i) {
       if (handle == v_[i]->handle()) {
         *o = v_[i];
-        return true;
+        return ObjectPool::Result::Success;
       }
     }
-    return false;
+    return ObjectPool::Result::Failure;
   }
   std::vector<const Object*> v_;
   int last_handle_;

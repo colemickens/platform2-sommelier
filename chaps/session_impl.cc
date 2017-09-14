@@ -119,16 +119,18 @@ CK_RV SessionImpl::DestroyObject(int object_handle) {
   CHECK(object);
   ObjectPool* pool = object->IsTokenObject() ? token_object_pool_
       : session_object_pool_.get();
-  if (!pool->Delete(object))
+  if (pool->Delete(object) != ObjectPool::Result::Success)
     return CKR_GENERAL_ERROR;
   return CKR_OK;
 }
 
 bool SessionImpl::GetObject(int object_handle, const Object** object) {
   CHECK(object);
-  if (token_object_pool_->FindByHandle(object_handle, object))
+  if (token_object_pool_->FindByHandle(object_handle, object) ==
+      ObjectPool::Result::Success)
     return true;
-  return session_object_pool_->FindByHandle(object_handle, object);
+  return session_object_pool_->FindByHandle(object_handle, object) ==
+         ObjectPool::Result::Success;
 }
 
 bool SessionImpl::GetModifiableObject(int object_handle, Object** object) {
@@ -146,7 +148,8 @@ CK_RV SessionImpl::FlushModifiableObject(Object* object) {
   CHECK(object);
   ObjectPool* pool = object->IsTokenObject() ? token_object_pool_
       : session_object_pool_.get();
-  return pool->Flush(object) ? CKR_OK : CKR_FUNCTION_FAILED;
+  return pool->Flush(object) == ObjectPool::Result::Success ?
+      CKR_OK : CKR_FUNCTION_FAILED;
 }
 
 CK_RV SessionImpl::FindObjectsInit(const CK_ATTRIBUTE_PTR attributes,
@@ -159,12 +162,14 @@ CK_RV SessionImpl::FindObjectsInit(const CK_ATTRIBUTE_PTR attributes,
   vector<const Object*> objects;
   if (!search_template->IsAttributePresent(CKA_TOKEN) ||
       search_template->IsTokenObject()) {
-    if (!token_object_pool_->Find(search_template.get(), &objects))
+    if (token_object_pool_->Find(search_template.get(), &objects) !=
+        ObjectPool::Result::Success)
       return CKR_GENERAL_ERROR;
   }
   if (!search_template->IsAttributePresent(CKA_TOKEN) ||
       !search_template->IsTokenObject()) {
-    if (!session_object_pool_->Find(search_template.get(), &objects))
+    if (session_object_pool_->Find(search_template.get(), &objects) !=
+        ObjectPool::Result::Success)
       return CKR_GENERAL_ERROR;
   }
   find_results_.clear();
@@ -534,7 +539,7 @@ CK_RV SessionImpl::GenerateKey(CK_MECHANISM_TYPE mechanism,
     return result;
   ObjectPool* pool = object->IsTokenObject() ? token_object_pool_
       : session_object_pool_.get();
-  if (!pool->Insert(object.get()))
+  if (pool->Insert(object.get()) != ObjectPool::Result::Success)
     return CKR_FUNCTION_FAILED;
   *new_key_handle = object.release()->handle();
   return CKR_OK;
@@ -626,9 +631,10 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
   result = private_object->FinalizeNewObject();
   if (result != CKR_OK)
     return result;
-  if (!public_pool->Insert(public_object.get()))
+  if (public_pool->Insert(public_object.get()) != ObjectPool::Result::Success)
     return CKR_FUNCTION_FAILED;
-  if (!private_pool->Insert(private_object.get())) {
+  if (private_pool->Insert(private_object.get()) !=
+      ObjectPool::Result::Success) {
     public_pool->Delete(public_object.release());
     return CKR_FUNCTION_FAILED;
   }
@@ -868,7 +874,7 @@ CK_RV SessionImpl::CreateObjectInternal(const CK_ATTRIBUTE_PTR attributes,
   } else {
     pool = session_object_pool_.get();
   }
-  if (!pool->Insert(object.get()))
+  if (pool->Insert(object.get()) != ObjectPool::Result::Success)
     return CKR_GENERAL_ERROR;
   *new_object_handle = object.release()->handle();
   return CKR_OK;

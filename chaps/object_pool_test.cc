@@ -29,6 +29,7 @@ using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
+using Result = chaps::ObjectPool::Result;
 
 namespace chaps {
 
@@ -137,7 +138,7 @@ TEST_F(TestObjectPool, Init) {
   EXPECT_TRUE(pool_->SetEncryptionKey(key));
   vector<const Object*> v;
   std::unique_ptr<Object> find_all(CreateObjectMock());
-  EXPECT_TRUE(pool_->Find(find_all.get(), &v));
+  EXPECT_EQ(Result::Success, pool_->Find(find_all.get(), &v));
   ASSERT_EQ(3, v.size());
   EXPECT_TRUE(v[0]->GetAttributeString(CKA_ID) == string("value"));
   EXPECT_TRUE(v[1]->GetAttributeString(CKA_ID) == string("value"));
@@ -185,44 +186,44 @@ TEST_F(TestObjectPool, InsertFindUpdateDelete) {
       .WillRepeatedly(Return(true));
   vector<const Object*> v;
   std::unique_ptr<Object> find_all(CreateObjectMock());
-  EXPECT_TRUE(pool2_->Find(find_all.get(), &v));
+  EXPECT_EQ(Result::Success, pool2_->Find(find_all.get(), &v));
   EXPECT_EQ(0, v.size());
-  EXPECT_TRUE(pool2_->Insert(CreateObjectMock()));
-  EXPECT_TRUE(pool2_->Insert(CreateObjectMock()));
-  EXPECT_TRUE(pool2_->Find(find_all.get(), &v));
+  EXPECT_EQ(Result::Success, pool2_->Insert(CreateObjectMock()));
+  EXPECT_EQ(Result::Success, pool2_->Insert(CreateObjectMock()));
+  EXPECT_EQ(Result::Success, pool2_->Find(find_all.get(), &v));
   ASSERT_EQ(2, v.size());
   Object* o = pool2_->GetModifiableObject(v[0]);
-  EXPECT_TRUE(pool2_->Flush(o));
-  EXPECT_TRUE(pool2_->Delete(v[0]));
-  EXPECT_TRUE(pool2_->Delete(v[1]));
+  EXPECT_EQ(Result::Success, pool2_->Flush(o));
+  EXPECT_EQ(Result::Success, pool2_->Delete(v[0]));
+  EXPECT_EQ(Result::Success, pool2_->Delete(v[1]));
   v.clear();
-  EXPECT_TRUE(pool2_->Find(find_all.get(), &v));
+  EXPECT_EQ(Result::Success, pool2_->Find(find_all.get(), &v));
   EXPECT_EQ(0, v.size());
   // Now with the persistent pool.
-  EXPECT_TRUE(pool_->Find(find_all.get(), &v));
+  EXPECT_EQ(Result::Success, pool_->Find(find_all.get(), &v));
   EXPECT_EQ(0, v.size());
   Object* tmp = CreateObjectMock();
-  EXPECT_FALSE(pool_->Insert(tmp));
-  EXPECT_TRUE(pool_->Insert(tmp));
-  EXPECT_TRUE(pool_->Find(find_all.get(), &v));
+  EXPECT_NE(Result::Success, pool_->Insert(tmp));
+  EXPECT_EQ(Result::Success, pool_->Insert(tmp));
+  EXPECT_EQ(Result::Success, pool_->Find(find_all.get(), &v));
   ASSERT_EQ(1, v.size());
   o = pool_->GetModifiableObject(v[0]);
-  EXPECT_FALSE(pool_->Flush(o));
-  EXPECT_TRUE(pool_->Flush(o));
-  EXPECT_FALSE(pool_->Delete(v[0]));
-  EXPECT_TRUE(pool_->Delete(v[0]));
+  EXPECT_NE(Result::Success, pool_->Flush(o));
+  EXPECT_EQ(Result::Success, pool_->Flush(o));
+  EXPECT_NE(Result::Success, pool_->Delete(v[0]));
+  EXPECT_EQ(Result::Success, pool_->Delete(v[0]));
   v.clear();
-  EXPECT_TRUE(pool_->Find(find_all.get(), &v));
+  EXPECT_EQ(Result::Success, pool_->Find(find_all.get(), &v));
   EXPECT_EQ(0, v.size());
 }
 
 // Test handling of an invalid object pointer.
 TEST_F(TestObjectPool, UnknownObject) {
   std::unique_ptr<Object> o(CreateObjectMock());
-  EXPECT_FALSE(pool_->Flush(o.get()));
-  EXPECT_FALSE(pool_->Delete(o.get()));
-  EXPECT_FALSE(pool2_->Flush(o.get()));
-  EXPECT_FALSE(pool2_->Delete(o.get()));
+  EXPECT_NE(Result::Success, pool_->Flush(o.get()));
+  EXPECT_NE(Result::Success, pool_->Delete(o.get()));
+  EXPECT_NE(Result::Success, pool2_->Flush(o.get()));
+  EXPECT_NE(Result::Success, pool2_->Delete(o.get()));
 }
 
 // Test multiple insertion of the same object pointer.
@@ -230,11 +231,11 @@ TEST_F(TestObjectPool, DuplicateObject) {
   Object* o = CreateObjectMock();
   EXPECT_CALL(*store_, InsertObjectBlob(_, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<1>(3), Return(true)));
-  EXPECT_TRUE(pool_->Insert(o));
-  EXPECT_FALSE(pool_->Insert(o));
+  EXPECT_EQ(Result::Success, pool_->Insert(o));
+  EXPECT_NE(Result::Success, pool_->Insert(o));
   Object* o2 = CreateObjectMock();
-  EXPECT_TRUE(pool2_->Insert(o2));
-  EXPECT_FALSE(pool2_->Insert(o2));
+  EXPECT_EQ(Result::Success, pool2_->Insert(o2));
+  EXPECT_NE(Result::Success, pool2_->Insert(o2));
 }
 
 TEST_F(TestObjectPool, DeleteAll) {
@@ -243,38 +244,38 @@ TEST_F(TestObjectPool, DeleteAll) {
   EXPECT_CALL(*store_, DeleteAllObjectBlobs())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
-  EXPECT_TRUE(pool_->Insert(CreateObjectMock()));
-  EXPECT_TRUE(pool_->Insert(CreateObjectMock()));
-  EXPECT_TRUE(pool_->Insert(CreateObjectMock()));
+  EXPECT_EQ(Result::Success, pool_->Insert(CreateObjectMock()));
+  EXPECT_EQ(Result::Success, pool_->Insert(CreateObjectMock()));
+  EXPECT_EQ(Result::Success, pool_->Insert(CreateObjectMock()));
   vector<const Object*> v;
   std::unique_ptr<Object> find_all(CreateObjectMock());
-  EXPECT_TRUE(pool_->Find(find_all.get(), &v));
+  EXPECT_EQ(Result::Success, pool_->Find(find_all.get(), &v));
   EXPECT_EQ(3, v.size());
   // Test the store failure is passed back but cached objects are still deleted.
-  EXPECT_FALSE(pool_->DeleteAll());
+  EXPECT_NE(Result::Success, pool_->DeleteAll());
   v.clear();
-  EXPECT_TRUE(pool_->Find(find_all.get(), &v));
+  EXPECT_EQ(Result::Success, pool_->Find(find_all.get(), &v));
   EXPECT_EQ(0, v.size());
-  EXPECT_TRUE(pool_->Insert(CreateObjectMock()));
-  EXPECT_TRUE(pool_->Insert(CreateObjectMock()));
-  EXPECT_TRUE(pool_->Insert(CreateObjectMock()));
+  EXPECT_EQ(Result::Success, pool_->Insert(CreateObjectMock()));
+  EXPECT_EQ(Result::Success, pool_->Insert(CreateObjectMock()));
+  EXPECT_EQ(Result::Success, pool_->Insert(CreateObjectMock()));
   // Test with store success.
-  EXPECT_TRUE(pool_->DeleteAll());
+  EXPECT_EQ(Result::Success, pool_->DeleteAll());
   v.clear();
-  EXPECT_TRUE(pool_->Find(find_all.get(), &v));
+  EXPECT_EQ(Result::Success, pool_->Find(find_all.get(), &v));
   EXPECT_EQ(0, v.size());
   // Test with session pool.
   EXPECT_CALL(*store_, InsertObjectBlob(_, _)).Times(0);
   EXPECT_CALL(*store_, DeleteAllObjectBlobs()).Times(0);
-  EXPECT_TRUE(pool2_->Insert(CreateObjectMock()));
-  EXPECT_TRUE(pool2_->Insert(CreateObjectMock()));
-  EXPECT_TRUE(pool2_->Insert(CreateObjectMock()));
+  EXPECT_EQ(Result::Success, pool2_->Insert(CreateObjectMock()));
+  EXPECT_EQ(Result::Success, pool2_->Insert(CreateObjectMock()));
+  EXPECT_EQ(Result::Success, pool2_->Insert(CreateObjectMock()));
   v.clear();
-  EXPECT_TRUE(pool2_->Find(find_all.get(), &v));
+  EXPECT_EQ(Result::Success, pool2_->Find(find_all.get(), &v));
   EXPECT_EQ(3, v.size());
-  EXPECT_TRUE(pool2_->DeleteAll());
+  EXPECT_EQ(Result::Success, pool2_->DeleteAll());
   v.clear();
-  EXPECT_TRUE(pool2_->Find(find_all.get(), &v));
+  EXPECT_EQ(Result::Success, pool2_->Find(find_all.get(), &v));
   EXPECT_EQ(0, v.size());
 }
 

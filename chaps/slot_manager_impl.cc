@@ -204,7 +204,7 @@ void TokenInitThread::ThreadMain() {
       LOG(ERROR) << "Authentication failed for token at " << path_.value()
                  << ", reinitializing token.";
       tpm_utility_->UnloadKeysForSlot(slot_id_);
-      if (!object_pool_->DeleteAll())
+      if (object_pool_->DeleteAll() != ObjectPool::Result::Success)
         LOG(WARNING) << "Failed to delete all existing objects.";
       if (!InitializeKeyHierarchy(&master_key)) {
         LOG(ERROR) << "Failed to initialize key hierarchy at " << path_.value();
@@ -624,7 +624,7 @@ bool SlotManagerImpl::LoadSoftwareToken(const SecureBlob& auth_data,
   }
   if (HmacSha512(kAuthKeyMacInput, auth_key_mac) != saved_mac) {
     LOG(ERROR) << "Bad authorization data, reinitializing token.";
-    if (!object_pool->DeleteAll())
+    if (object_pool->DeleteAll() != ObjectPool::Result::Success)
       LOG(WARNING) << "Failed to delete all existing objects.";
     return InitializeSoftwareToken(auth_data, object_pool);
   }
@@ -636,7 +636,7 @@ bool SlotManagerImpl::LoadSoftwareToken(const SecureBlob& auth_data,
                  encrypted_master_key,
                  &master_key_str)) {
     LOG(ERROR) << "Failed to decrypt master key, reinitializing token.";
-    if (!object_pool->DeleteAll())
+    if (object_pool->DeleteAll() != ObjectPool::Result::Success)
       LOG(WARNING) << "Failed to delete all existing objects.";
     return InitializeSoftwareToken(auth_data, object_pool);
   }

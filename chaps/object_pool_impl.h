@@ -45,15 +45,15 @@ class ObjectPoolImpl : public ObjectPool {
   virtual bool GetInternalBlob(int blob_id, std::string* blob);
   virtual bool SetInternalBlob(int blob_id, const std::string& blob);
   virtual bool SetEncryptionKey(const brillo::SecureBlob& key);
-  virtual bool Insert(Object* object);
-  virtual bool Import(Object* object);
-  virtual bool Delete(const Object* object);
-  virtual bool DeleteAll();
-  virtual bool Find(const Object* search_template,
-                    std::vector<const Object*>* matching_objects);
-  virtual bool FindByHandle(int handle, const Object** object);
+  virtual Result Insert(Object* object);
+  virtual Result Import(Object* object);
+  virtual Result Delete(const Object* object);
+  virtual Result DeleteAll();
+  virtual Result Find(const Object* search_template,
+                      std::vector<const Object*>* matching_objects);
+  virtual Result FindByHandle(int handle, const Object** object);
   virtual Object* GetModifiableObject(const Object* object);
-  virtual bool Flush(const Object* object);
+  virtual Result Flush(const Object* object);
 
  private:
   // An object matches a template when it holds values for all template

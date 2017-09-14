@@ -583,9 +583,10 @@ class SoftwareOnlyTest : public TestSlotManager {
     return pool_write_result_;
   }
 
-  bool FakeDeleteAll() {
+  ObjectPool::Result FakeDeleteAll() {
     delete_all_num_calls_++;
-    return pool_write_result_;
+    return pool_write_result_ ?
+        ObjectPool::Result::Success : ObjectPool::Result::Failure;
   }
 
  protected:

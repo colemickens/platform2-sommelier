@@ -38,6 +38,12 @@ enum InternalBlobId {
 // metadata is stored.
 class ObjectPool {
  public:
+  // Possible results of object pool operations.
+  enum class Result {
+    Success = 0,
+    Failure,
+  };
+
   virtual ~ObjectPool() {}
   // These methods get and set internal persistent blobs. These internal blobs
   // are for use by Chaps. PKCS #11 applications will not see these when
@@ -56,24 +62,24 @@ class ObjectPool {
   // lifetime of the pool, this method should be called with zero-length key.
   virtual bool SetEncryptionKey(const brillo::SecureBlob& key) = 0;
   // This method takes ownership of the 'object' pointer on success.
-  virtual bool Insert(Object* object) = 0;
+  virtual Result Insert(Object* object) = 0;
   // Imports an object from an external source. Like 'Insert', this method takes
   // ownership of the 'object' pointer on success.
-  virtual bool Import(Object* object) = 0;
+  virtual Result Import(Object* object) = 0;
   // Deletes an existing object.
-  virtual bool Delete(const Object* object) = 0;
+  virtual Result Delete(const Object* object) = 0;
   // Deletes all existing objects.
-  virtual bool DeleteAll() = 0;
+  virtual Result DeleteAll() = 0;
   // Finds all objects matching the search template and appends them to the
   // supplied vector.
-  virtual bool Find(const Object* search_template,
-                    std::vector<const Object*>* matching_objects) = 0;
+  virtual Result Find(const Object* search_template,
+                      std::vector<const Object*>* matching_objects) = 0;
   // Finds an object by handle. Returns false if the handle does not exist.
-  virtual bool FindByHandle(int handle, const Object** object) = 0;
+  virtual Result FindByHandle(int handle, const Object** object) = 0;
   // Returns a modifiable version of the given object.
   virtual Object* GetModifiableObject(const Object* object) = 0;
   // Flushes a modified object to persistent storage.
-  virtual bool Flush(const Object* object) = 0;
+  virtual Result Flush(const Object* object) = 0;
 };
 
 }  // namespace chaps

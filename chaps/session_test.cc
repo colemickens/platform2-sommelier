@@ -32,6 +32,7 @@ using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
 using ::testing::StrictMock;
+using Result = chaps::ObjectPool::Result;
 
 namespace {
 
@@ -41,7 +42,7 @@ void ConfigureObjectPool(chaps::ObjectPoolMock* op, int handle_base) {
   EXPECT_CALL(*op, Find(_, _)).Times(AnyNumber());
   EXPECT_CALL(*op, FindByHandle(_, _)).Times(AnyNumber());
   EXPECT_CALL(*op, Delete(_)).Times(AnyNumber());
-  EXPECT_CALL(*op, Flush(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*op, Flush(_)).WillRepeatedly(Return(Result::Success));
 }
 
 chaps::ObjectPool* CreateObjectPoolMock() {
@@ -777,8 +778,8 @@ TEST_F(TestSession, Flush) {
   ObjectMock session_object;
   EXPECT_CALL(session_object, IsTokenObject()).WillRepeatedly(Return(false));
   EXPECT_CALL(token_pool_, Flush(_))
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
+      .WillOnce(Return(Result::Failure))
+      .WillRepeatedly(Return(Result::Success));
   EXPECT_NE(session_->FlushModifiableObject(&token_object), CKR_OK);
   EXPECT_EQ(session_->FlushModifiableObject(&token_object), CKR_OK);
   EXPECT_EQ(session_->FlushModifiableObject(&session_object), CKR_OK);

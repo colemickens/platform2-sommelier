@@ -133,7 +133,7 @@ bool OpencryptokiImporter::ImportObjects(ObjectPool* object_pool) {
       LOG(WARNING) << "Failed to create an object instance.";
       continue;
     }
-    if (object_pool->Import(object))
+    if (object_pool->Import(object) == ObjectPool::Result::Success)
       ++num_imported;
   }
   LOG(INFO) << "Imported: " << num_imported << "; Pending: "
@@ -160,7 +160,7 @@ bool OpencryptokiImporter::FinishImportAsync(ObjectPool* object_pool) {
       LOG(WARNING) << "Failed to create an object instance.";
       continue;
     }
-    if (object_pool->Import(object))
+    if (object_pool->Import(object) == ObjectPool::Result::Success)
       ++num_imported;
   }
   LOG(INFO) << "Finished importing " << num_imported << " pending objects.";

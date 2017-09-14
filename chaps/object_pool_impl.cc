@@ -29,6 +29,7 @@ using std::map;
 using std::string;
 using std::shared_ptr;
 using std::vector;
+using Result = chaps::ObjectPool::Result;
 
 namespace chaps {
 
@@ -108,7 +109,7 @@ bool ObjectPoolImpl::SetEncryptionKey(const SecureBlob& key) {
   return true;
 }
 
-bool ObjectPoolImpl::Insert(Object* object) {
+Result ObjectPoolImpl::Insert(Object* object) {
   // If it's a private object we need to wait until private objects have been
   // loaded.
   if (object->IsPrivate() && !is_private_loaded_) {
@@ -118,58 +119,58 @@ bool ObjectPoolImpl::Insert(Object* object) {
   return Import(object);
 }
 
-bool ObjectPoolImpl::Import(Object* object) {
+Result ObjectPoolImpl::Import(Object* object) {
   AutoLock lock(lock_);
   if (objects_.find(object) != objects_.end())
-    return false;
+    return Result::Failure;
   if (store_.get()) {
     ObjectBlob serialized;
     if (!Serialize(object, &serialized))
-      return false;
+      return Result::Failure;
     // Parsing the serialized blob will normalize the object attribute values.
     // e.g. If the caller specified 32-bits for a CK_ULONG on a 64-bit system,
     // the value will be resized correctly.
     if (!Parse(serialized, object))
-      return false;
+      return Result::Failure;
     int store_id;
     if (!store_->InsertObjectBlob(serialized, &store_id))
-      return false;
+      return Result::Failure;
     object->set_store_id(store_id);
   }
   object->set_handle(handle_generator_->CreateHandle());
   objects_.insert(object);
   handle_object_map_[object->handle()] = shared_ptr<const Object>(object);
-  return true;
+  return Result::Success;
 }
 
-bool ObjectPoolImpl::Delete(const Object* object) {
+Result ObjectPoolImpl::Delete(const Object* object) {
   AutoLock lock(lock_);
   if (objects_.find(object) == objects_.end())
-    return false;
+    return Result::Failure;
   if (store_.get()) {
     // If it's a private object we need to wait until private objects have been
     // loaded.
     if (object->IsPrivate() && !is_private_loaded_)
       WaitForPrivateObjects();
     if (!store_->DeleteObjectBlob(object->store_id()))
-      return false;
+      return Result::Failure;
   }
   handle_object_map_.erase(object->handle());
   objects_.erase(object);
-  return true;
+  return Result::Success;
 }
 
-bool ObjectPoolImpl::DeleteAll() {
+Result ObjectPoolImpl::DeleteAll() {
   AutoLock lock(lock_);
   objects_.clear();
   handle_object_map_.clear();
   if (store_.get())
-    return store_->DeleteAllObjectBlobs();
-  return true;
+    return store_->DeleteAllObjectBlobs() ? Result::Success : Result::Failure;
+  return Result::Success;
 }
 
-bool ObjectPoolImpl::Find(const Object* search_template,
-                          vector<const Object*>* matching_objects) {
+Result ObjectPoolImpl::Find(const Object* search_template,
+                            vector<const Object*>* matching_objects) {
   AutoLock lock(lock_);
   // If we're looking for private objects we need to wait until private objects
   // have been loaded.
@@ -183,39 +184,39 @@ bool ObjectPoolImpl::Find(const Object* search_template,
     if (Matches(search_template, *it))
       matching_objects->push_back(*it);
   }
-  return true;
+  return Result::Success;
 }
 
-bool ObjectPoolImpl::FindByHandle(int handle, const Object** object) {
+Result ObjectPoolImpl::FindByHandle(int handle, const Object** object) {
   AutoLock lock(lock_);
   CHECK(object);
   HandleObjectMap::iterator it = handle_object_map_.find(handle);
   if (it == handle_object_map_.end())
-    return false;
+    return Result::Failure;
   *object = it->second.get();
-  return true;
+  return Result::Success;
 }
 
 Object* ObjectPoolImpl::GetModifiableObject(const Object* object) {
   return const_cast<Object*>(object);
 }
 
-bool ObjectPoolImpl::Flush(const Object* object) {
+Result ObjectPoolImpl::Flush(const Object* object) {
   AutoLock lock(lock_);
   if (objects_.find(object) == objects_.end())
-    return false;
+    return Result::Failure;
   if (store_.get()) {
     ObjectBlob serialized;
     if (!Serialize(object, &serialized))
-      return false;
+      return Result::Failure;
     // If it's a private object we need to wait until private objects have been
     // loaded.
     if (object->IsPrivate() && !is_private_loaded_)
       WaitForPrivateObjects();
     if (!store_->UpdateObjectBlob(object->store_id(), serialized))
-      return false;
+      return Result::Failure;
   }
-  return true;
+  return Result::Success;
 }
 
 bool ObjectPoolImpl::Matches(const Object* object_template,
